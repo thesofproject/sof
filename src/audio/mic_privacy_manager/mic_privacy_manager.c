@@ -203,59 +203,29 @@ void update_gtw_mic_state(struct mic_privacy_data *mic_priv_data, uint32_t hw_mi
 	}
 }
 
-
 void mic_privacy_process(struct mic_privacy_data *mic_priv, struct comp_buffer *buffer, uint32_t copy_samples)
 {
 
-	uint32_t sg_size_in_bytes;
-	sg_size_in_bytes = audio_stream_frame_bytes(&buffer->stream);
-	uint32_t one_ms_in_bytes = sg_size_in_bytes * (buffer->stream.runtime_stream_params.rate / 1000);
-	uint32_t copy_bytes = copy_samples * audio_stream_sample_bytes(&buffer->stream);
+	if (mic_priv->mic_privacy_state == FADE_IN){
+		mic_priv->mic_privacy_state = UNMUTED;
 
-	if (mic_priv->mic_privacy_state == FADE_IN) {
-		if (mic_priv->fade_in_out_bytes == 0) {
-			//start addition
-			//mic_priv->mic_priv_gain_params.fade_in_sg_count = 0;
-			//mic_priv->mic_priv_gain_params.gain_env = 0;
-
-			if (mic_privacy_manager_get_policy() == FW_MANAGED) {
-
-				//TODO set hda hw bit
-				//REGISTER(DGLISxCS)(stream_idx)->part.ddz = 1;
-				//REGISTER(DGLISxCS)(stream_idx)->part.ddz = 0;
-			}
-		}
-		mic_priv->fade_in_out_bytes += copy_bytes;
-		if (mic_priv->fade_in_out_bytes > one_ms_in_bytes * mic_priv->max_ramp_time_in_ms) {
-			mic_priv->mic_privacy_state = UNMUTED;
-			mic_priv->fade_in_out_bytes = 0;
-		}
-
-		if (mic_priv->max_ramp_time_in_ms > 0) {
-			//gain_input(buffer, &mic_priv->mic_priv_gain_params, &mic_priv->mic_priv_gain_coefs_ioctl, copy_bytes);
-			buffer_zero(buffer); //Gain temporarily disabled
-		}
 	}
 	else if (mic_priv->mic_privacy_state == FADE_OUT){
-		if (mic_priv->fade_in_out_bytes == 0) {
-			//start subtraction
+		mic_priv->mic_privacy_state = MUTED;
+		buffer_zero(buffer);
 
-			//mic_priv->mic_priv_gain_params.fade_in_sg_count = 0;
-			//mic_priv->mic_priv_gain_params.gain_env = MAX_INT64;
-		}
-		mic_priv->fade_in_out_bytes += copy_bytes;
-		if (mic_priv->fade_in_out_bytes > one_ms_in_bytes * mic_priv->max_ramp_time_in_ms) {
-			mic_priv->mic_privacy_state = MUTED;
-			mic_priv->fade_in_out_bytes = 0;
-		}
-		if (mic_priv->max_ramp_time_in_ms > 0) {
-			//LOG_INF("FADE_OUT dmic_gain_input ramp time ms = %d", mic_priv->max_ramp_time_in_ms);
-			//gain_input(buffer, &mic_priv->mic_priv_gain_params, &mic_priv->mic_priv_gain_coefs_ioctl, copy_bytes);
-			buffer_zero(buffer); //Gain temporarily disabled
-		}
 	}
 	else if (mic_priv->mic_privacy_state == MUTED) {
 		buffer_zero(buffer);
 	}
+	else if (mic_priv->mic_privacy_state == UNMUTED) {
+
+	}
+	else
+	{
+		LOG_ERR("mic_privacy_process invalid state 0x%x", mic_priv->mic_privacy_state);
+	}
+
 }
+
 

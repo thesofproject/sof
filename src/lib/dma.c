@@ -397,13 +397,12 @@ int dma_buffer_copy_from_no_consume(struct comp_dev *dev, struct comp_buffer *so
 	/* process data */
 	ret = process(istream, 0, &sink->stream, 0, samples);
 
-	struct processing_module *mod = comp_get_drvdata(dev);
+	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 
-	if(cd->mic_priv) {
 
+	if(cd->mic_priv)
 		mic_privacy_process(cd->mic_priv, sink, samples);
-	}
 
 	buffer_stream_writeback(sink, sink_bytes);
 

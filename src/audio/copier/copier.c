@@ -200,6 +200,8 @@ static int copier_init(struct processing_module *mod)
 				comp_info(dev, "mic_privacy notifier registering, update mic state");
 				notifier_register(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,
 				                  mic_privacy_event, 0);
+
+				LOG_INF("MBU cd= 0x%x, dev = 0x%x, mic_priv = 0x%x, mod = 0x%x", cd, dev, cd->mic_priv, md);
 			}
 			break;
 #if CONFIG_IPC4_GATEWAY
