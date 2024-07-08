@@ -260,8 +260,8 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 		config->tone.sample_rate = tone->sample_rate;
 		break;
 	case SOF_COMP_ASRC:
-		config->asrc.source_rate = src->source_rate;
-		config->asrc.sink_rate = src->sink_rate;
+		config->asrc.source_rate = asrc->source_rate;
+		config->asrc.sink_rate = asrc->sink_rate;
 		config->asrc.asynchronous_mode = asrc->asynchronous_mode;
 		config->asrc.operation_mode = asrc->operation_mode;
 		break;
