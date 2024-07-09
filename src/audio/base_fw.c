@@ -460,6 +460,45 @@ static int global_perf_data_get(uint32_t *data_off_size, char *data)
 #endif
 }
 
+static int io_global_perf_state_get(uint32_t *data_off_size, char *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	*data = io_perf_monitor_get_state();
+	*data_off_size = sizeof(enum ipc4_perf_measurements_state_set);
+
+	return IPC4_SUCCESS;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+static int io_global_perf_data_get(uint32_t *data_off_size, char *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	int ret;
+	struct global_perf_data *perf_data = (struct global_perf_data *)data;
+
+	ret = io_perf_monitor_get_performance_data(perf_data);
+	if (ret < 0)
+		return IPC4_ERROR_INVALID_PARAM;
+	*data_off_size = sizeof(*perf_data)
+			+ perf_data->perf_item_count * sizeof(*perf_data->perf_items);
+
+	return IPC4_SUCCESS;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+static int io_perf_monitor_state_set(const char *data)
+{
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	return io_perf_monitor_set_state((enum ipc4_perf_measurements_state_set)*data);
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 static int basefw_get_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -503,6 +542,11 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		return extended_global_perf_data_get(data_offset, data);
 	case IPC4_GLOBAL_PERF_DATA:
 		return global_perf_data_get(data_offset, data);
+	case IPC4_IO_PERF_MEASUREMENTS_STATE:
+		return io_global_perf_state_get(data_offset, data);
+	case IPC4_IO_GLOBAL_PERF_DATA:
+		return io_global_perf_data_get(data_offset, data);
+
 	/* TODO: add more support */
 	case IPC4_DSP_RESOURCE_STATE:
 	case IPC4_NOTIFICATION_MASK:
@@ -574,6 +618,8 @@ static int basefw_set_large_config(struct comp_dev *dev,
 		return basefw_dma_control(first_block, last_block, data_offset, data);
 	case IPC4_PERF_MEASUREMENTS_STATE:
 		return set_perf_meas_state(data);
+	case IPC4_IO_PERF_MEASUREMENTS_STATE:
+		return io_perf_monitor_state_set(data);
 	case IPC4_SYSTEM_TIME:
 		return basefw_set_system_time(param_id, first_block,
 						last_block, data_offset, data);
