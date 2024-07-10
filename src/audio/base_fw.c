@@ -476,7 +476,7 @@ static int io_global_perf_data_get(uint32_t *data_off_size, char *data)
 {
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	int ret;
-	struct global_perf_data *perf_data = (struct global_perf_data *)data;
+	struct io_global_perf_data *perf_data = (struct io_global_perf_data *)data;
 
 	ret = io_perf_monitor_get_performance_data(perf_data);
 	if (ret < 0)

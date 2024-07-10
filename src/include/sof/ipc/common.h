@@ -70,6 +70,12 @@ struct ipc {
 	/* processing task */
 	struct task ipc_task;
 
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* io performance measurement */
+	struct io_perf_data_item *io_perf_in_msg_count;
+	struct io_perf_data_item *io_perf_out_msg_count;
+#endif
+
 #ifdef __ZEPHYR__
 	struct k_work_delayable z_delayed_work;
 #endif

@@ -32,6 +32,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <sof/debug/telemetry/performance_monitor.h>
+
 LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(ipc);
@@ -154,9 +156,14 @@ void ipc_send_queued_msg(void)
 	msg = list_first_item(&ipc->msg_list, struct ipc_msg,
 			      list);
 
-	if (ipc_platform_send_msg(msg) == 0)
+	if (ipc_platform_send_msg(msg) == 0) {
 		/* Remove the message from the list if it has been successfully sent. */
 		list_item_del(&msg->list);
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+		/* Increment performance counters */
+		io_perf_monitor_update_data(ipc->io_perf_out_msg_count, 1);
+#endif
+	}
 out:
 	k_spin_unlock(&ipc->lock, key);
 }
@@ -274,6 +281,18 @@ int ipc_init(struct sof *sof)
 	list_init(&sof->ipc->msg_list);
 	list_init(&sof->ipc->comp_list);
 
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	struct io_perf_data_item init_data = {IO_PERF_IPC_ID,
+					      cpu_get_id(),
+					      IO_PERF_INPUT_DIRECTION,
+					      IO_PERF_POWERED_UP_ENABLED,
+					      IO_PERF_D0IX_POWER_MODE,
+					      0, 0, 0 };
+	io_perf_monitor_init_data(&sof->ipc->io_perf_in_msg_count, &init_data);
+	init_data.direction = IO_PERF_OUTPUT_DIRECTION;
+	io_perf_monitor_init_data(&sof->ipc->io_perf_out_msg_count, &init_data);
+#endif
+
 #ifdef __ZEPHYR__
 	k_work_init_delayable(&sof->ipc->z_delayed_work, ipc_work_handler);
 #endif
@@ -316,6 +335,11 @@ static void ipc_complete_task(void *data)
 static enum task_state ipc_do_cmd(void *data)
 {
 	struct ipc *ipc = data;
+
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* Increment performance counters */
+	io_perf_monitor_update_data(ipc->io_perf_in_msg_count, 1);
+#endif
 
 	/*
 	 * 32-bit writes are atomic and at the moment no IPC processing is
