@@ -1019,8 +1019,13 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 
 	new_ptr = _balloc_unlocked(flags, caps, bytes, alignment);
 
-	if (new_ptr && ptr && !(flags & SOF_MEM_FLAG_NO_COPY))
-		memcpy_s(new_ptr, copy_bytes, ptr, copy_bytes);
+	if (new_ptr && ptr && !(flags & SOF_MEM_FLAG_NO_COPY)) {
+		if (memcpy_s(new_ptr, copy_bytes, ptr, copy_bytes)) {
+			_rfree_unlocked(new_ptr);
+			k_spin_unlock(&memmap->lock, key);
+			return NULL;
+		}
+	}
 
 	if (new_ptr)
 		_rfree_unlocked(ptr);
