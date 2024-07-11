@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config SOF_DEBUG_STREAM_SLOT
+	bool "Enable SOF debug stream debug window slot"
+	help
+	  Debug stream is an abstract stream of records of debug
+	  information from SOF system that are streamed from SOF DSP
+	  to the host side for decoding and presentation. This option
+	  enables transferring the records from DSP to host over a
+	  debug window slot.
+
+if SOF_DEBUG_STREAM_SLOT
+
+config SOF_DEBUG_STREAM_SLOT_NUMBER
+	int "Debug window slot where to put debug stream slot"
+	default 3
+	range 0 14
+	help
+	  Which debug slot to reserve for Debug Stream. Remember to map
+	  the slot with MEMORY_WIN_2_SIZE in soc/intel/intel_adsp/Kconfig,
+	  in Zephyr source tree. The slots are 4k in size and one slot is
+	  used for descriptors, so for slot 3 to be mapped, the WIN_2_SIZE
+	  must be (1 + 3) * 4k = 16k or greater.
+
+endif
+

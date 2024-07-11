@@ -188,6 +188,7 @@ endmacro()
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
+add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
 add_subdirectory(test/)
 
 
