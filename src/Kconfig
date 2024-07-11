@@ -23,3 +23,5 @@ rsource "math/Kconfig"
 rsource "library_manager/Kconfig"
 
 rsource "debug/telemetry/Kconfig"
+
+rsource "debug/debug_stream/Kconfig"
