@@ -403,7 +403,7 @@ static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *data)
 
 int set_perf_meas_state(const char *data)
 {
-#ifdef CONFIG_SOF_TELEMETRY
+#if CONFIG_SOF_TELEMETRY && CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	enum ipc4_perf_measurements_state_set state = *data;
 
 	switch (state) {
