@@ -73,6 +73,7 @@ f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
 bfc7488c-75aa-4ce8-9dbed8da08a698c2 file
 61bca9a8-18d0-4a18-8e7b2639219804b7 gain
 c3c74249-058e-414f-82404da5f3fc2389 google_hotword
+bf0e1bbc-dc6a-45fe-bc902554cb137ab4 google_ctc_audio_processing
 b780a0a6-269f-466f-b47723dfa05af758 google_rtc_audio_processing
 8b9d100c-6d78-418f-90a3e0e805d0852b host
 8f00c3bb-e835-4767-9a34b8ec1041e56b hsdai

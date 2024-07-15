@@ -783,6 +783,33 @@ if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING AND NOT CONFIG_GOOGLE_RTC_AUDIO_PROCE
 	target_link_libraries(SOF INTERFACE gcc)
 endif()
 
+zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	${SOF_AUDIO_PATH}/google/google_ctc_audio_processing.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_GOOGLE_CTC_AUDIO_PROCESSING_MOCK
+	${SOF_AUDIO_PATH}/google/google_ctc_audio_processing_mock.c
+)
+
+if(CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING
+		${SOF_AUDIO_PATH}/google/google_ctc_audio_processing_ipc3.c)
+elseif(CONFIG_IPC_MAJOR_4)
+	zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING
+		${SOF_AUDIO_PATH}/google/google_ctc_audio_processing_ipc4.c)
+endif()
+
+if(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING AND NOT CONFIG_GOOGLE_CTC_AUDIO_PROCESSING_MOCK)
+	zephyr_include_directories(../third_party/include)
+	target_link_directories(SOF INTERFACE ../third_party/lib)
+	target_link_libraries(SOF INTERFACE google_ctc_audio_processing)
+	target_link_libraries(SOF INTERFACE c++)
+	target_link_libraries(SOF INTERFACE c++abi)
+	target_link_libraries(SOF INTERFACE m)
+	target_link_libraries(SOF INTERFACE c)
+	target_link_libraries(SOF INTERFACE gcc)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR
 	${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
 )

@@ -88,4 +88,24 @@ config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 
 endif # COMP_GOOGLE_RTC_AUDIO_PROCESSING
 
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	bool "Google Crosstalk Cancellation Audio processing"
+	select COMP_BLOB
+	select GOOGLE_CTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
+	select STATIC_INIT_GNU if ZEPHYR_SOF_MODULE
+	default n
+	depends on ZEPHYR_SOF_MODULE
+	help
+	  Select for Google crosstalk cancellation audio processing. It
+	  uses the Google real-time audio processing library to perform
+	  crosstalk cancellation.
+
+config GOOGLE_CTC_AUDIO_PROCESSING_MOCK
+	bool "Google Crosstalk Cancellation Audio processing mock"
+	default y if COMP_STUBS
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	help
+	  Mock Google crosstalk cancellation audio processing.
+	  It allows for compilation check and basic audio flow checking.
+
 endmenu
