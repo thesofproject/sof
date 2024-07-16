@@ -230,7 +230,7 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 }
 
 static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
-			      struct lib_manager_module *mctx, struct module_data *md,
+			      struct lib_manager_module *mctx, struct llext **llext,
 			      const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
@@ -240,7 +240,7 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 		.pre_located = true,
 		.section_detached = llext_manager_section_detached,
 	};
-	int ret = llext_load(&ebl->loader, name, &md->llext, &ldr_parm);
+	int ret = llext_load(&ebl->loader, name, llext, &ldr_parm);
 
 	if (ret)
 		return ret;
@@ -407,7 +407,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
 
 	/* LLEXT linking is only needed once for all the drivers in each module */
-	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx, md,
+	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx, &md->llext,
 				 (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
