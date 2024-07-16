@@ -291,8 +291,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
 }
 
-uintptr_t llext_manager_allocate_module(struct processing_module *proc,
-					const struct comp_ipc_config *ipc_config,
+uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config)
 {
 	struct sof_man_fw_desc *desc;
@@ -317,7 +316,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
 
 	/* LLEXT linking is only needed once for all the modules in the library */
-	ret = llext_manager_link(desc, mod_array, module_id, &proc->priv.llext,
+	ret = llext_manager_link(desc, mod_array, module_id, &ctx->llext,
 				 (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0)
 		return 0;
