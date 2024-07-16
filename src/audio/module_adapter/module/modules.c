@@ -62,7 +62,7 @@ static int modules_init(struct processing_module *mod)
 	void *adapter;
 	int ret;
 
-	uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, src_cfg);
+	uintptr_t module_entry_point = lib_manager_allocate_module(config, src_cfg);
 
 	if (module_entry_point == 0) {
 		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");

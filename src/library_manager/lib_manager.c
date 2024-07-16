@@ -338,8 +338,7 @@ static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instanc
 	return sys_mm_drv_unmap_region((__sparse_force void *)va_base, bss_size);
 }
 
-uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      const struct comp_ipc_config *ipc_config,
+uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config)
 {
 	const struct sof_man_module *mod;
@@ -356,7 +355,7 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 	}
 
 	if (module_is_llext(mod))
-		return llext_manager_allocate_module(proc, ipc_config, ipc_specific_config);
+		return llext_manager_allocate_module(ipc_config, ipc_specific_config);
 
 	ret = lib_manager_load_module(module_id, mod);
 	if (ret < 0)
@@ -419,8 +418,7 @@ int lib_manager_free_module(const uint32_t component_id)
 
 #define PAGE_SZ		4096 /* equals to MAN_PAGE_SIZE used by rimage */
 
-uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      const struct comp_ipc_config *ipc_config,
+uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config, const void **buildinfo)
 {
 	tr_err(&lib_manager_tr, "Dynamic module allocation is not supported");
@@ -510,12 +508,10 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	 * Variable used by llext_manager to temporary store llext handle before creation
 	 * a instance of processing_module.
 	 */
-	struct processing_module tmp_proc;
 	struct comp_dev *dev;
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
-	tmp_proc.priv.llext = NULL;
-	const uint32_t module_entry_point = lib_manager_allocate_module(&tmp_proc, config,
+	const uint32_t module_entry_point = lib_manager_allocate_module(config,
 									args->data);
 
 	if (!module_entry_point) {
@@ -540,30 +536,26 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	}
 
 	dev = module_adapter_new(drv, config, spec);
-	if (dev) {
-		struct processing_module *mod = comp_mod(dev);
-
-		mod->priv.llext = tmp_proc.priv.llext;
-	} else {
+	if (!dev)
 		lib_manager_free_module(module_id);
-	}
+
 	return dev;
 }
 
 static void lib_manager_module_free(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
-	struct llext *llext = mod->priv.llext;
 	const struct comp_ipc_config *const config = &mod->dev->ipc_config;
-	const uint32_t module_id = config->id;
+	const uint32_t module_id = IPC4_MOD_ID(config->id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	int ret;
 
 	/* This call invalidates dev, mod and config pointers! */
 	module_adapter_free(dev);
 
-	if (!llext || !llext_unload(&llext)) {
+	if (!ctx->mod || !llext_manager_unload(module_id)) {
 		/* Free module resources allocated in L2 memory. */
-		ret = lib_manager_free_module(module_id);
+		ret = lib_manager_free_module(config->id);
 		if (ret < 0)
 			comp_err(dev, "lib_manager_free_module() failed!");
 	}
