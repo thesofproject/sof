@@ -4,6 +4,7 @@ include(tplg-targets-hda-generic.cmake)
 include(tplg-targets-cavs25.cmake)
 include(tplg-targets-ace1.cmake)
 include(tplg-targets-ace2.cmake)
+include(tplg-targets-ace3.cmake)
 include(tplg-targets-imx8.cmake)
 
 add_custom_target(topology2_prod)
