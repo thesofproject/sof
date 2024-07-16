@@ -443,14 +443,17 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 			for (int i = 0; i < arch_num_cpus(); i++) {
 				if (data.kcps[i] > 0) {
 					uint32_t core_kcps = core_kcps_get(i);
-
-					/* Tests showed, that we cannot go below 40000kcps on MTL */
-					if (data.kcps[i] > core_kcps - DSP_MIN_KCPS)
+					/*
+					 * When the 0-CPC work-around is used,
+					 * going below 40000 kcps doesn't work on MTL
+					 */
+					if (ret == PPL_STATUS_PATH_STOP &&
+					    data.kcps[i] > core_kcps - DSP_MIN_KCPS)
 						data.kcps[i] = core_kcps - DSP_MIN_KCPS;
 
 					core_kcps_adjust(i, -data.kcps[i]);
 					tr_info(pipe, "Sum of KCPS consumption: %d, core: %d",
-						core_kcps, i);
+						core_kcps_get(i), i);
 				}
 			}
 		}
