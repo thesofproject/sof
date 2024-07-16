@@ -329,8 +329,7 @@ static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx
 	return i - 1;
 }
 
-uintptr_t llext_manager_allocate_module(struct processing_module *proc,
-					const struct comp_ipc_config *ipc_config,
+uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config)
 {
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
@@ -348,7 +347,6 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	size_t mod_offset = mod_array[entry_index].segment[LIB_MANAGER_TEXT].file_offset;
 	const struct sof_man_module_manifest *mod_manifest;
 	const struct sof_module_api_build_info *buildinfo;
-	struct module_data *md = &proc->priv;
 	size_t mod_size;
 	int i, inst_idx;
 	int ret;
@@ -407,8 +405,8 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
 
 	/* LLEXT linking is only needed once for all the drivers in each module */
-	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx, &md->llext,
-				 (const void **)&buildinfo, &mod_manifest);
+	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx,
+				 &mctx->llext, (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
 		return 0;
@@ -423,7 +421,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		}
 
 		/* Map executable code and data */
-		ret = llext_manager_load_module(md->llext, &ebl, mctx);
+		ret = llext_manager_load_module(mctx->llext, &ebl, mctx);
 		if (ret < 0)
 			return 0;
 
@@ -439,6 +437,15 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	}
 
 	return mctx->mod_manifest[inst_idx].module.entry_point;
+}
+
+int llext_manager_unload(uint32_t module_id)
+{
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	return llext_unload(&ctx->mod[mod_idx].llext);
 }
 
 int llext_manager_free_module(const uint32_t component_id)

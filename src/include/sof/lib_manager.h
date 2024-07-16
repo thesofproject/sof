@@ -95,9 +95,12 @@ struct lib_manager_segment_desc {
 	size_t size;
 };
 
+struct llext;
+
 struct lib_manager_module {
 	unsigned int start_idx;
 	const struct sof_man_module_manifest *mod_manifest;
+	struct llext *llext; /* Zephyr loadable extension context */
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
 };
 
@@ -188,8 +191,7 @@ struct processing_module;
  * Function is responsible to allocate module in available free memory and assigning proper address.
  * (WIP) These feature will contain module validation and proper memory management.
  */
-uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      const struct comp_ipc_config *ipc_config,
+uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config);
 
 /*
