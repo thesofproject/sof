@@ -7,8 +7,9 @@
 #define NATIVE_SYSTEM_SERVICE_H
 
 #include <stdint.h>
-
+#ifndef SOF_MONOLITHIC_BUILD
 #include "logger.h"
+#endif
 #include "adsp_stddef.h"
 #include <module/iadk/adsp_error_code.h>
 
