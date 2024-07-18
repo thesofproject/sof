@@ -25,7 +25,7 @@ SECTIONS {
     } >HPSRAM_seg : rodata_phdr
 
     /* Module manifest is here */
-    .module 0 : {
+    .module : {
         KEEP(*(.module))
-    }
+    } >HPSRAM_seg : rodata_phdr
 }
