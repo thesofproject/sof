@@ -10,4 +10,7 @@ target_compile_definitions(smart_amp_test PRIVATE
 	CONFIG_IPC_MAJOR_4=1
 )
 
-target_include_directories(smart_amp_test PRIVATE "${SOF_BASE}/src/include")
+target_include_directories(smart_amp_test PRIVATE
+    "${SOF_BASE}/src/include"
+    "${SOF_BASE}/posix/include"
+)
