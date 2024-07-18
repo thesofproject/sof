@@ -9,6 +9,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <module/module/base.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -37,6 +38,7 @@
 
 #include "copier/copier.h"
 #include "copier/dai_copier.h"
+#include "copier/copier_gain.h"
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/dai.h>
@@ -319,6 +321,15 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		ret = stream_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
 						  dd->process, bytes, dd->chmap);
 #if CONFIG_IPC_MAJOR_4
+		/* Apply gain to the local buffer */
+		if (dd->ipc_config.apply_gain) {
+			ret = copier_gain_input(dev, dd->local_buffer, dd->gain_data,
+						GAIN_ADD, bytes);
+			if (ret)
+				comp_err(dev, "copier_gain_input() failed err=%d", ret);
+			buffer_stream_writeback(dd->local_buffer, bytes);
+		}
+
 		/* Skip in case of endpoint DAI devices created by the copier */
 		if (converter) {
 			/*
