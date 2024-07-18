@@ -10,6 +10,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include "copier.h"
 #include "dai_copier.h"
+#include "copier_gain.h"
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
@@ -217,9 +218,29 @@ static int copier_dai_init(struct comp_dev *dev,
 	if (ret < 0)
 		goto e_zephyr_free;
 
+	/* Allocate gain data if selected for this dai type and set basic params */
+	if (dai->apply_gain) {
+		struct copier_gain_params *gain_data = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
+							       0, SOF_MEM_CAPS_RAM,
+							       sizeof(*gain_data));
+		if (!gain_data) {
+			ret = -ENOMEM;
+			goto e_zephyr_free;
+		}
+		cd->dd[index]->gain_data = gain_data;
+
+		ret = copier_gain_set_params(dev, cd->dd[index]);
+		if (ret < 0) {
+			comp_err(dev, "Failed to set gain params!");
+			goto gain_free;
+		}
+	}
+
 	cd->endpoint_num++;
 
 	return 0;
+gain_free:
+	rfree(dd->gain_data);
 e_zephyr_free:
 	dai_common_free(dd);
 free_dd:
@@ -348,6 +369,7 @@ void copier_dai_free(struct copier_data *cd)
 {
 	for (int i = 0; i < cd->endpoint_num; i++) {
 		dai_common_free(cd->dd[i]);
+		rfree(cd->dd[i]->gain_data);
 		rfree(cd->dd[i]);
 	}
 	/* only dai have multi endpoint case */
