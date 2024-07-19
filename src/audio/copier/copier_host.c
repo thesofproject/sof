@@ -136,7 +136,6 @@ int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
 
 	config->type = SOF_COMP_HOST;
-	cd->gtw_type = ipc4_gtw_host;
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
 				    copier_cfg->base.audio_fmt.valid_bit_depth,
@@ -196,7 +195,7 @@ int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
 		get_converter_func(&copier_cfg->base.audio_fmt,
 				   &copier_cfg->out_fmt,
-				   ipc4_gtw_host, IPC4_DIRECTION(dir), DUMMY_CHMAP);
+				   ipc4_gtw_host, IPC4_DIRECTION(dir));
 	if (!cd->converter[IPC4_COPIER_GATEWAY_PIN]) {
 		comp_err(dev, "failed to get converter for host, dir %d", dir);
 		ret = -EINVAL;
