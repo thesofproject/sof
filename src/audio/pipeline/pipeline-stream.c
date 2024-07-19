@@ -315,6 +315,17 @@ static void pipeline_trigger_xrun(struct pipeline *p, struct comp_dev **host)
 }
 
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+static struct ipc4_base_module_cfg *ipc4_get_base_cfg(struct comp_dev *comp)
+{
+	if (comp->drv->type != SOF_COMP_MODULE_ADAPTER)
+		return comp_get_drvdata(comp);
+
+	struct processing_module *mod = comp_mod(comp);
+	struct module_data *md = &mod->priv;
+
+	return &md->cfg.base_cfg;
+}
+
 static int pipeline_calc_cps_consumption(struct comp_dev *current,
 					struct comp_buffer *calling_buf,
 					struct pipeline_walk_context *ctx, int dir)
@@ -333,14 +344,7 @@ static int pipeline_calc_cps_consumption(struct comp_dev *current,
 	comp_core = current->ipc_config.core;
 
 	/* modules created through module adapter have different priv_data */
-	if (current->drv->type != SOF_COMP_MODULE_ADAPTER) {
-		cd = comp_get_drvdata(current);
-	} else {
-		struct processing_module *mod = comp_mod(current);
-		struct module_data *md = &mod->priv;
-
-		cd = &md->cfg.base_cfg;
-	}
+	cd = ipc4_get_base_cfg(current);
 
 	if (cd->cpc == 0) {
 		/* Use maximum clock budget, assume 1ms chunk size */
