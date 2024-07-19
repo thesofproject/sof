@@ -331,6 +331,7 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
+	uint64_t life_time;
 	int ret;
 
 	/* check whether pipeline exists */
@@ -341,6 +342,17 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	/* Pass IPC to target core */
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc4_process_on_core(ipc_pipe->core, false);
+
+	if (ipc_pipe->pipeline->init_time) {
+		/*
+		 * This pipeline must not be destroyed before a minimum time
+		 * since its creation has passed
+		 */
+		life_time = k_cyc_to_ms_near64(sof_cycle_get_64() - ipc_pipe->pipeline->init_time);
+		pipe_dbg(ipc_pipe->pipeline, "Extend pipeline life beyond %llu", life_time);
+		if (life_time < CONFIG_LIBRARY_PIPELINE_FORCE_MIN_LIFETIME)
+			k_msleep(CONFIG_LIBRARY_PIPELINE_FORCE_MIN_LIFETIME - life_time);
+	}
 
 	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
 	if (ret != IPC4_SUCCESS) {
