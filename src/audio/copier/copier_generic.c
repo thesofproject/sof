@@ -289,6 +289,16 @@ int copier_gain_input32(struct comp_buffer *buff, enum copier_gain_state state,
 	return 0;
 }
 
+bool copier_is_unity_gain(struct copier_gain_params *gain_params)
+{
+	/* Set unity gain flag */
+	for (int i = 0; i < MAX_GAIN_COEFFS_CNT; i++) {
+		if (gain_params->gain_coeffs[i] != UNITY_GAIN_GENERIC)
+			return false;
+	}
+	return true;
+}
+
 #endif
 
 void copier_update_params(struct copier_data *cd, struct comp_dev *dev,

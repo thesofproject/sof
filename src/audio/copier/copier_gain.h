@@ -101,6 +101,15 @@ struct copier_gain_params {
 	uint16_t channels_count; /**< Number of channels */
 };
 
+/** Gain Coefficients IO Control
+ *
+ * This parameter is sent by the driver to add/modify a static gain.
+ * Coefficients are encoded in Q10 format.
+ */
+struct gain_dma_control_data {
+	uint16_t gain_coeffs[MAX_GAIN_COEFFS_CNT];
+} __packed __aligned(4);
+
 /**
  * @brief Sets gain parameters.
  *
@@ -195,5 +204,39 @@ int copier_gain_input(struct comp_dev *dev, struct comp_buffer *buff,
  * @return The state of the copier gain (enum copier_gain_state).
  */
 enum copier_gain_state copier_gain_eval_state(struct copier_gain_params *gain_params);
+
+/**
+ * Sets/modify gain for a copier module in runtime.
+ *
+ * @param dev The copier device structure.
+ * @param dd The DAI data structure.
+ * @param gain_data The gain control data structure.
+ * @return 0 on success, otherwise a negative error code.
+ */
+int copier_set_gain(struct comp_dev *dev, struct dai_data *dd,
+		    struct gain_dma_control_data *gain_data);
+
+/**
+ * Checks for unity gain mode.
+ *
+ * @param gain_params The copier gain parameters structure.
+ * @return true if the gain is set to unity gain, false otherwise.
+ */
+bool copier_is_unity_gain(struct copier_gain_params *gain_params);
+
+/**
+ * Controls the gain for a copier device using DMA Control IPC message.
+ *
+ * This function retrieves gain data from the DMA Control IPC message and updates
+ * corresponding dai device gain params structure.
+ *
+ * @param node_id Gateway node id.
+ * @param config_data The gain configuration data.
+ * @param config_size The size of the gain configuration data.
+ * @param dai_type The type of the DAI device.
+ * @return 0 on success, otherwise a negative error code.
+ */
+int copier_gain_dma_control(uint32_t node_id, const uint32_t *config_data,
+			    size_t config_size, enum sof_ipc_dai_type dai_type);
 
 #endif /* __SOF_COPIER_GAIN_H__ */
