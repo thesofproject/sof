@@ -4,3 +4,7 @@ if(CONFIG_IPC4_GATEWAY)
 		copier_ipcgtw.c
 	)
 endif()
+
+if(CONFIG_COPIER_GAIN)
+	add_local_sources(sof copier_gain.c)
+endif()

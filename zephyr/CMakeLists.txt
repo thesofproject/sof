@@ -687,6 +687,10 @@ zephyr_library_sources_ifdef(CONFIG_IPC4_GATEWAY
 	${SOF_AUDIO_PATH}/copier/copier_ipcgtw.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_COPIER_GAIN
+	${SOF_AUDIO_PATH}/copier/copier_gain.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
