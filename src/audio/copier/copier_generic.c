@@ -107,6 +107,188 @@ int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
 	return 0;
 }
 
+int copier_gain_input16(struct comp_buffer *buff, enum copier_gain_state state,
+			enum copier_gain_envelope_dir dir,
+			struct copier_gain_params *gain_params, uint32_t frames)
+{
+	int16_t *dst = audio_stream_get_rptr(&buff->stream);
+	const int nch = audio_stream_get_channels(&buff->stream);
+	int samples = frames * nch;
+	int16_t gain_env[MAX_GAIN_COEFFS_CNT] = {0};
+	int16_t gain_env_sq;
+	int16_t gain_env_i16;
+	int16_t *dst_tmp;
+	int16_t gain;
+	int nmax, i, j;
+
+	switch (state) {
+	case STATIC_GAIN:
+		/* static gain */
+		if (gain_params->unity_gain)
+			return 0;
+
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s16(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+
+			for (j = 0; j < nch; j++) {
+				dst_tmp = dst + j;
+				gain = gain_params->gain_coeffs[j];
+				for (i = 0; i < nmax; i += nch)
+					dst_tmp[i] = q_multsr_sat_16x16(dst_tmp[i], gain,
+									GAIN_Q10_INT_SHIFT);
+			}
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		break;
+	case MUTE:
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s16(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+			size_t zeroed_bytes = nmax * sizeof(int16_t);
+			/* Apply mute */
+			memset_s(dst, zeroed_bytes, 0, zeroed_bytes);
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		break;
+	case TRANS_GAIN:
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s16(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+
+			/* Precalculate gain envelope */
+			gain_env_i16 = gain_params->gain_env >> I64_TO_I16_SHIFT;
+			for (i = 0; i < MAX_GAIN_COEFFS_CNT; i++)
+				gain_env[i] = gain_env_i16 + gain_params->init_gain[i];
+
+			/* Apply fade */
+			for (j = 0; j < nch; j++) {
+				dst += j;
+				/* Quadratic fade part in Q15 format*/
+				gain_env_sq = q_multsr_16x16(gain_env[j], gain_env[j], 15);
+
+				/* Calculate gain value. Gain coeffs in Q10 format but
+				 * gain_env_sq in Q15. So shifting result by 15 bits.
+				 */
+				gain = q_multsr_16x16(gain_params->gain_coeffs[j],
+						      gain_env_sq, 15);
+
+				for (i = 0; i < nmax; i += nch)
+					dst[i] = q_multsr_sat_16x16(dst[i], gain,
+								    GAIN_Q10_INT_SHIFT);
+			}
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		break;
+	}
+
+	if (state == MUTE) {
+		gain_params->silence_sg_count += frames;
+	} else if (state == TRANS_GAIN) {
+		gain_params->fade_in_sg_count += frames;
+		if (dir == GAIN_ADD)
+			gain_params->gain_env += gain_params->step_i64 * frames;
+		else
+			gain_params->gain_env -= gain_params->step_i64 * frames;
+	}
+
+	return 0;
+}
+
+int copier_gain_input32(struct comp_buffer *buff, enum copier_gain_state state,
+			enum copier_gain_envelope_dir dir,
+			struct copier_gain_params *gain_params, uint32_t frames)
+{
+	int32_t *dst = audio_stream_get_rptr(&buff->stream);
+	const int nch = audio_stream_get_channels(&buff->stream);
+	int samples = frames * nch;
+	int16_t gain_env[MAX_GAIN_COEFFS_CNT] = {0};
+	int32_t *dst_tmp;
+	int16_t gain, gain_env_i16, gain_env_sq;
+	int nmax, i, j;
+
+	switch (state) {
+	case STATIC_GAIN:
+		/* static gain */
+		if (gain_params->unity_gain)
+			return 0;
+
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s32(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+
+			for (j = 0; j < nch; j++) {
+				dst_tmp = dst + j;
+				/* Gain is in Q21.10 format */
+				gain = gain_params->gain_coeffs[j];
+				for (i = 0; i < nmax; i += nch)
+					dst_tmp[i] = q_multsr_sat_32x32(dst_tmp[i], gain,
+									GAIN_Q10_INT_SHIFT);
+			}
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		break;
+	case MUTE:
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s32(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+			size_t zeroed_bytes = nmax * sizeof(int32_t);
+
+			/* Apply mute*/
+			memset_s(dst, zeroed_bytes, 0, zeroed_bytes);
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		break;
+	case TRANS_GAIN:
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s32(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+
+			/* Precalculate gain envelope */
+			gain_env_i16 = gain_params->gain_env >> I64_TO_I16_SHIFT;
+			for (i = 0; i < MAX_GAIN_COEFFS_CNT; i++)
+				gain_env[i] = gain_env_i16 + gain_params->init_gain[i];
+
+			/* Apply fade */
+			for (j = 0; j < nch; j++) {
+				dst += j;
+				/* Quadratic fade part in Q15 format*/
+				gain_env_sq = q_multsr_16x16(gain_env[j], gain_env[j], 15);
+
+				/* Calculate gain value. Gain coeffs in Q10 format but
+				 * gain_env_sq in Q15. So shifting result by 15 bits.
+				 */
+				gain = q_multsr_16x16(gain_params->gain_coeffs[j],
+						      gain_env_sq, 15);
+
+				for (i = 0; i < nmax; i += nch)
+					dst[i] =  q_multsr_sat_32x32(dst[i], gain,
+								     GAIN_Q10_INT_SHIFT);
+			}
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		break;
+	}
+
+	if (state == MUTE) {
+		gain_params->silence_sg_count += frames;
+	} else if (state == TRANS_GAIN) {
+		gain_params->fade_in_sg_count += frames;
+		if (dir == GAIN_ADD)
+			gain_params->gain_env += gain_params->step_i64 * frames;
+		else
+			gain_params->gain_env -= gain_params->step_i64 * frames;
+	}
+
+	return 0;
+}
+
 #endif
 
 void copier_update_params(struct copier_data *cd, struct comp_dev *dev,

@@ -37,6 +37,7 @@
 
 /* 16x2 store operation requires shift to middle part of 32 bit register */
 #define I64_TO_I16_SHIFT  48
+#define I64_TO_I32_SHIFT  32
 #define MIDDLE_PART_SHIFT 8
 
 /* Unit gain in q10 format applied by default */
@@ -141,5 +142,58 @@ void copier_gain_set_basic_params(struct comp_dev *dev, struct dai_data *dd,
 int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
 				struct ipc4_base_module_cfg *ipc4_cfg,
 				uint32_t fade_period, uint32_t frames);
+
+/**
+ * @brief Applies gain to a 16-bit container size.
+ *
+ * This function applies gain to the input audio buffer. There are three gain modes
+ * supported: static gain, mute, and gain transition (fade-in or fade-out).
+ *
+ * @param buff Pointer to the input audio buffer.
+ * @param state The state of the gain processing.
+ * @param dir direction of the gain envelope change.
+ * @param frames The number of frames to be processed.
+ */
+int copier_gain_input16(struct comp_buffer *buff, enum copier_gain_state state,
+			enum copier_gain_envelope_dir dir,
+			struct copier_gain_params *gain_params, uint32_t frames);
+
+/**
+ * @brief Applies gain to a 32-bit container size.
+ *
+ * This function applies gain to the input audio buffer. There are three gain modes
+ * supported: static gain, mute, and gain transition (fade-in or fade-out).
+ *
+ * @param buff Pointer to the input audio buffer.
+ * @param state The state of the gain processing.
+ * @param dir Direction of the gain envelope change.
+ * @param gain_params The pointer to the copier_gain_params structure.
+ * @param frames The number of frames to be processed.
+ */
+int copier_gain_input32(struct comp_buffer *buff, enum copier_gain_state state,
+			enum copier_gain_envelope_dir dir,
+			struct copier_gain_params *gain_params, uint32_t frames);
+
+/**
+ * @brief Applies gain to the input audio buffer, selects the appropriate gain method.
+ *
+ * @param dev The pointer to the comp_dev structure representing the audio component device.
+ * @param buff The pointer to the comp_buffer structure representing the input buffer.
+ * @param gain_params The pointer to the copier_gain_params structure.
+ * @param dir Direction of the gain envelope change.
+ * @param stream_bytes The number of bytes in the input buffer.
+ * @return 0 on success, negative error code on failure.
+ */
+int copier_gain_input(struct comp_dev *dev, struct comp_buffer *buff,
+		      struct copier_gain_params *gain_params,
+		      enum copier_gain_envelope_dir dir, uint32_t stream_bytes);
+
+/**
+ * Evaluates appropriate gain mode based on the current gain parameters
+ *
+ * @param gain_params The pointer to the copier_gain_params structure.
+ * @return The state of the copier gain (enum copier_gain_state).
+ */
+enum copier_gain_state copier_gain_eval_state(struct copier_gain_params *gain_params);
 
 #endif /* __SOF_COPIER_GAIN_H__ */
