@@ -163,6 +163,8 @@ struct dai_data {
 	/* io performance measurement */
 	struct io_perf_data_item *io_perf_bytes_count;
 #endif
+	/* Copier gain params */
+	struct copier_gain_params *gain_data;
 };
 
 /* these 3 are here to satisfy clk.c and ssp.h interconnection, will be removed leter */
