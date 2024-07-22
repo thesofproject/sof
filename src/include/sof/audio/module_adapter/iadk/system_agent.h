@@ -55,7 +55,7 @@ namespace system
 		}
 
 	private:
-		static AdspSystemService system_service_;
+		static const AdspSystemService system_service_;
 		uint32_t log_handle_;
 		uint32_t const core_id_;
 		uint32_t module_id_;

@@ -128,7 +128,7 @@ AdspErrorCode native_system_service_get_interface(adsp_iface_id id, system_servi
 	return ADSP_NO_ERROR;
 }
 
-struct native_system_service_api native_system_service = {
+const struct native_system_service_api native_system_service = {
 	.log_message  = native_system_service_log_message,
 	.safe_memcpy = native_system_service_safe_memcpy,
 	.safe_memmove = native_system_service_safe_memmove,
