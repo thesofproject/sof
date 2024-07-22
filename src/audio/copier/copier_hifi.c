@@ -415,4 +415,12 @@ int copier_gain_input32(struct comp_buffer *buff, enum copier_gain_state state,
 	return 0;
 }
 
+bool copier_is_unity_gain(struct copier_gain_params *gain_params)
+{
+	ae_int16x4 gain_coeffs = AE_MOVF16X4_FROMINT64(UNITY_GAIN_4X_Q10);
+	xtbool4 unity_gain_check = AE_EQ16(gain_params->gain_coeffs[0], gain_coeffs);
+
+	return XT_ALL4(unity_gain_check) ? true : false;
+}
+
 #endif

@@ -72,3 +72,79 @@ enum copier_gain_state copier_gain_eval_state(struct copier_gain_params *gain_pa
 
 	return state;
 }
+
+int copier_gain_dma_control(uint32_t node_id, const uint32_t *config_data,
+			    size_t config_size, enum sof_ipc_dai_type dai_type)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+	struct comp_dev *dev;
+	struct list_item *clist;
+
+	int ret;
+
+	list_for_item(clist, &ipc->comp_list) {
+		struct gain_dma_control_data *gain_data = NULL;
+
+		icd = container_of(clist, struct ipc_comp_dev, list);
+
+		if (!icd || icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		dev = icd->cd;
+
+		if (!dev || dev->ipc_config.type != SOF_COMP_DAI)
+			continue;
+
+		struct processing_module *mod = comp_mod(dev);
+		struct copier_data *cd = module_get_private_data(mod);
+
+		ret = copier_set_gain(dev, cd->dd[0], gain_data);
+		if (ret)
+			comp_err(dev, "Gain DMA control: failed to set gain");
+		return ret;
+	}
+
+	return -ENODEV;
+}
+
+int copier_set_gain(struct comp_dev *dev, struct dai_data *dd,
+		    struct gain_dma_control_data *gain_data)
+{
+	struct copier_gain_params *gain_params = dd->gain_data;
+	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
+	const int channels = copier_cfg->base.audio_fmt.channels_count;
+	uint16_t static_gain[MAX_GAIN_COEFFS_CNT];
+	int ret;
+
+	if (!gain_data) {
+		comp_err(dev, "Gain data is NULL");
+		return -EINVAL;
+	}
+
+	/* Set gain coefficients */
+	comp_info(dev, "Update gain coefficients from DMA_CONTROL ipc");
+
+	size_t gain_coef_size = channels * sizeof(uint16_t);
+
+	ret = memcpy_s(static_gain, gain_coef_size, gain_data->gain_coeffs,
+		       gain_coef_size);
+	if (ret) {
+		comp_err(dev, "memcpy_s failed with error %d", ret);
+		return ret;
+	}
+
+	for (int i = channels; i < MAX_GAIN_COEFFS_CNT; i++)
+		static_gain[i] = static_gain[i % channels];
+
+	ret = memcpy_s(gain_params->gain_coeffs, sizeof(static_gain),
+		       static_gain, sizeof(static_gain));
+	if (ret) {
+		comp_err(dev, "memcpy_s failed with error %d", ret);
+		return ret;
+	}
+
+	gain_params->unity_gain = copier_is_unity_gain(gain_params);
+
+	return 0;
+}
