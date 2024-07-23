@@ -7,7 +7,6 @@
 #ifndef _ADSP_SYSTEM_SERVICE_H_
 #define _ADSP_SYSTEM_SERVICE_H_
 
-#include "logger.h"
 #include "adsp_stddef.h"
 #include <module/iadk/adsp_error_code.h>
 #include "native_system_service.h"

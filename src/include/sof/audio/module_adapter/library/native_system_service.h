@@ -8,7 +8,6 @@
 
 #include <stdint.h>
 
-#include "logger.h"
 #include "adsp_stddef.h"
 #include <module/iadk/adsp_error_code.h>
 
