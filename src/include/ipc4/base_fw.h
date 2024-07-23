@@ -485,7 +485,7 @@ struct ipc4_astate_table {
 struct ipc4_dma_control {
 	uint32_t node_id;
 	uint32_t config_length;
-	uint32_t config_data[1];
+	uint32_t config_data[0];
 } __attribute__((packed, aligned(4)));
 
 enum ipc4_perf_measurements_state_set {

@@ -9,6 +9,7 @@
 #include <rtos/string.h>
 #include <sof/tlv.h>
 #include <sof/lib/dai.h>
+#include <ipc/dai.h>
 
 #if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 #include <intel_adsp_hda.h>
@@ -24,6 +25,7 @@
 
 #include <ipc4/base_fw.h>
 #include <rimage/sof/user/manifest.h>
+#include "copier/copier_gain.h"
 
 struct ipc4_modules_info {
 	uint32_t modules_count;
@@ -353,7 +355,18 @@ int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, size_t 
 
 	tr_info(&basefw_comp_tr, "node_id 0x%x, config_data 0x%x, data_size %u",
 		node_id, (uint32_t)config_data, data_size);
+
 	switch (node.f.dma_type) {
+	case ipc4_dmic_link_input_class:
+		/* In DMIC case we don't need to update zephyr dai params */
+		ret = copier_gain_dma_control(node, config_data, data_size,
+					      SOF_DAI_INTEL_DMIC);
+		if (ret) {
+			tr_err(&basefw_comp_tr,
+			       "Failed to update copier gain coefs, error: %d", ret);
+			return IPC4_INVALID_REQUEST;
+		}
+		return IPC4_SUCCESS;
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
 		type = DAI_INTEL_SSP;

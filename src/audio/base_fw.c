@@ -588,7 +588,7 @@ static int basefw_dma_control(bool first_block,
 	}
 
 	dma_control = (struct ipc4_dma_control *)data;
-	data_size = data_offset - (sizeof(struct ipc4_dma_control) - sizeof(uint32_t));
+	data_size = data_offset - sizeof(struct ipc4_dma_control);
 
 	if (data_size < (dma_control->config_length * sizeof(uint32_t))) {
 		tr_err(&ipc_tr, "DMA Control data too short: got %u, expected %u",

@@ -230,13 +230,13 @@ bool copier_is_unity_gain(struct copier_gain_params *gain_params);
  * This function retrieves gain data from the DMA Control IPC message and updates
  * corresponding dai device gain params structure.
  *
- * @param node_id Gateway node id.
+ * @param node Gateway node id.
  * @param config_data The gain configuration data.
  * @param config_size The size of the gain configuration data.
  * @param dai_type The type of the DAI device.
  * @return 0 on success, otherwise a negative error code.
  */
-int copier_gain_dma_control(uint32_t node_id, const uint32_t *config_data,
+int copier_gain_dma_control(union ipc4_connector_node_id node, const char *config_data,
 			    size_t config_size, enum sof_ipc_dai_type dai_type);
 
 #endif /* __SOF_COPIER_GAIN_H__ */
