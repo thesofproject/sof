@@ -15,7 +15,6 @@
 #include <rtos/string.h>
 #include <utilities/array.h>
 #include <module/iadk/adsp_error_code.h>
-#include <logger.h>
 #include <native_system_service.h>
 #include <system_agent_interface.h>
 #include <module_initial_settings_concrete.h>
