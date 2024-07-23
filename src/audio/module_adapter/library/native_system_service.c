@@ -17,13 +17,44 @@
 #include <sof/ipc/msg.h>
 #include <native_system_service.h>
 #include <sof/lib_manager.h>
+#include <module/module/logger.h>
 
 #define RSIZE_MAX 0x7FFFFFFF
+
+ /*! Module log level priority to sof log level conversion array */
+const int log_priority_map[L_MAX] = {
+	/*! Critical message. */
+	[L_CRITICAL] = LOG_LEVEL_CRITICAL,
+	/*! Error message. */
+	[L_ERROR] = LOG_LEVEL_ERROR,
+	/*! High importance log level. */
+	[L_HIGH] = LOG_LEVEL_ERROR,
+	/*! Warning message. */
+	[L_WARNING] = LOG_LEVEL_WARNING,
+	/*! Medium importance log level. */
+	[L_MEDIUM] = LOG_LEVEL_WARNING,
+	/*! Low importance log level. */
+	[L_LOW] = LOG_LEVEL_INFO,
+	/*! Information. */
+	[L_INFO] = LOG_LEVEL_INFO,
+	/*! Verbose message. */
+	[L_VERBOSE] = LOG_LEVEL_VERBOSE,
+	[L_DEBUG] = LOG_LEVEL_DEBUG
+};
+
+static int log_priority_to_sof_level(enum log_priority log_priority)
+{
+	if ((uint32_t)log_priority >= L_DEBUG)
+		return LOG_LEVEL_DEBUG;
+
+	return log_priority_map[log_priority];
+}
 
 void native_system_service_log_message(AdspLogPriority log_priority, uint32_t log_entry,
 				       AdspLogHandle const *log_handle, uint32_t param1,
 				       uint32_t param2, uint32_t param3, uint32_t param4)
 {
+	log_priority_to_sof_level(log_priority);
 	uint32_t argc = (log_entry & 0x7);
 	/* TODO: Need to call here function like _log_sofdict, since we do not have format */
 	/*       passed from library */
