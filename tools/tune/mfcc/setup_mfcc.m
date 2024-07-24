@@ -45,9 +45,22 @@ if nargin < 1
 	cfg.top_db = 200; % Set to 80 for librosa
 end
 
+cfg.tplg_fn = '../../topology/topology1/m4/mfcc/mfcc_config.m4';
+cfg.tplg_ver = 1;
+cfg.ipc_ver = 3;
+export_mfcc_setup(cfg);
+
+cfg.tplg_fn = '../../topology/topology2/include/components/mfcc/default.conf';
+cfg.tplg_ver = 2;
+cfg.ipc_ver = 4;
+export_mfcc_setup(cfg);
+
+end
+
+function export_mfcc_setup(cfg)
+
 %% Use blob tool from EQ
-addpath('../eq');
-fn = '../../topology/topology1/m4/mfcc/mfcc_config.m4';
+addpath('../common');
 
 %% Blob size, size plus reserved(8) + current parameters
 nbytes_data = 104;
@@ -57,7 +70,7 @@ sh32 = [0 -8 -16 -24];
 sh16 = [0 -8];
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = eq_get_abi(nbytes_data);
+[abi_bytes, nbytes_abi] = get_abi(nbytes_data, cfg.ipc_ver);
 
 %% Initialize correct size uint8 array
 nbytes = nbytes_abi + nbytes_data;
@@ -105,7 +118,20 @@ v = cfg.subtract_mean;                           [b8, j] = add_w8b(v, b8, j); % 
 v = cfg.use_energy;                              [b8, j] = add_w8b(v, b8, j); % bool
 
 %% Export
-eq_tplg_write(fn, b8, 'DEF_MFCC_PRIV', 'Exported MFCC configuration');
+switch cfg.tplg_ver
+       case 1
+	       tplg_write(cfg.tplg_fn, b8, "DEF_MFCC_PRIV", ...
+			  "Exported with script setup_mfcc.m", ...
+			  "cd tools/tune/mfcc; octave setup_mfcc.m");
+       case 2
+	       tplg2_write(cfg.tplg_fn, b8, "mfcc_config", ...
+			   "Exported MFCC configuration", ...
+			   "cd tools/tune/mfcc; octave setup_mfcc.m");
+       otherwise
+	       error("Illegal cfg.tplg_ver, use 1 for topology v1 or 2 topology v2.");
+end
+
+rmpath('../common');
 
 end
 
