@@ -18,6 +18,13 @@
 #include <sof/trace/trace.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
+#if CONFIG_VIRTUAL_HEAP
+#include <sof/lib/regions_mm.h>
+
+struct vmh_heap *virtual_buffers_heap;
+struct k_spinlock vmh_lock;
+#endif /* CONFIG_VIRTUAL_HEAP */
+
 
 /* Zephyr includes */
 #include <zephyr/init.h>
@@ -188,6 +195,91 @@ static void l3_heap_free(struct k_heap *h, void *mem)
 }
 
 #endif
+
+#if CONFIG_VIRTUAL_HEAP
+static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, uint32_t caps, size_t bytes,
+				uint32_t align)
+{
+	void *mem;
+
+	K_SPINLOCK(&vmh_lock) {
+		heap->core_id = cpu_get_id();
+		mem = vmh_alloc(heap, bytes);
+	}
+
+	if (!mem)
+		return NULL;
+
+	assert(IS_ALIGNED(mem, align));
+
+	if (flags & SOF_MEM_FLAG_COHERENT)
+		return sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)mem);
+
+	return mem;
+}
+
+/**
+ * Checks whether pointer is from virtual memory range.
+ * @param ptr Pointer to memory being checked.
+ * @return True if pointer falls into virtual memory region, false otherwise.
+ */
+static bool is_virtual_heap_pointer(void *ptr)
+{
+	uintptr_t virtual_heap_start = POINTER_TO_UINT(sys_cache_cached_ptr_get(&heapmem)) +
+				       HEAPMEM_SIZE;
+	uintptr_t virtual_heap_end = CONFIG_KERNEL_VM_BASE + CONFIG_KERNEL_VM_SIZE;
+
+	if (!is_cached(ptr))
+		ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
+
+	return ((POINTER_TO_UINT(ptr) >= virtual_heap_start) &&
+		(POINTER_TO_UINT(ptr) < virtual_heap_end));
+}
+
+static void virtual_heap_free(void *ptr)
+{
+	int ret;
+
+	ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
+
+	K_SPINLOCK(&vmh_lock) {
+		virtual_buffers_heap->core_id = cpu_get_id();
+		ret = vmh_free(virtual_buffers_heap, ptr);
+	}
+
+	if (ret)
+		tr_err(&zephyr_tr, "Unable to free %p! %d", ptr, ret);
+}
+
+static const struct vmh_heap_config static_hp_buffers = {
+	{
+		{ 128, 32},
+		{ 512, 8},
+		{ 1024, 44},
+		{ 2048, 8},
+		{ 4096, 11},
+		{ 8192, 10},
+		{ 65536, 3},
+		{ 131072, 1},
+		{ 524288, 1} /* buffer for kpb */
+	},
+};
+
+static int virtual_heap_init(void)
+{
+	k_spinlock_init(&vmh_lock);
+
+	virtual_buffers_heap = vmh_init_heap(&static_hp_buffers, MEM_REG_ATTR_SHARED_HEAP, 0,
+					     false);
+	if (!virtual_buffers_heap)
+		tr_err(&zephyr_tr, "Unable to init virtual buffers heap!");
+
+	return 0;
+}
+
+SYS_INIT(virtual_heap_init, POST_KERNEL, 1);
+
+#endif /* CONFIG_VIRTUAL_HEAP */
 
 static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
 {
@@ -395,6 +487,12 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		heap = &sof_heap;
 	}
 
+#if CONFIG_VIRTUAL_HEAP
+	/* Use virtual heap if it is available */
+	if (virtual_buffers_heap)
+		return virtual_heap_alloc(virtual_buffers_heap, flags, caps, bytes, align);
+#endif /* CONFIG_VIRTUAL_HEAP */
+
 	if (flags & SOF_MEM_FLAG_COHERENT)
 		return heap_alloc_aligned(heap, align, bytes);
 
@@ -417,6 +515,13 @@ void rfree(void *ptr)
 	}
 #endif
 
+#if CONFIG_VIRTUAL_HEAP
+	if (is_virtual_heap_pointer(ptr)) {
+		virtual_heap_free(ptr);
+		return;
+	}
+#endif
+
 	heap_free(&sof_heap, ptr);
 }
 EXPORT_SYMBOL(rfree);
@@ -428,7 +533,6 @@ static int heap_init(void)
 #if CONFIG_L3_HEAP
 	sys_heap_init(&l3_heap.heap, UINT_TO_POINTER(get_l3_heap_start()), get_l3_heap_size());
 #endif
-
 	return 0;
 }
 

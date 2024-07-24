@@ -617,6 +617,12 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 	if (retval)
 		return retval;
 
+	/* Platforms based on xtensa have a non-coherent cache between cores. Before releasing
+	 * a memory block, it is necessary to invalidate the cache. This memory block can be
+	 * allocated by another core and performing cache writeback by the previous owner will
+	 * destroy current content of the main memory.
+	 */
+	sys_cache_data_invd_range(ptr, size_to_free);
 	return vmh_unmap_region(heap->physical_blocks_allocators[mem_block_iter], ptr,
 				size_to_free);
 }
