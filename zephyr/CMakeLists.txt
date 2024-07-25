@@ -447,6 +447,52 @@ zephyr_library_sources_ifdef(CONFIG_MATH_LUT_SINE_FIXED
 	${SOF_MATH_PATH}/lut_trig.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_MATH_FFT
+        ${SOF_MATH_PATH}/fft/fft_common.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_FFT
+        ${SOF_MATH_PATH}/fft/fft_16.c
+        ${SOF_MATH_PATH}/fft/fft_16_hifi3.c
+)
+
+zephyr_library_sources_ifdef(ONFIG_MATH_32BIT_FFT
+        ${SOF_MATH_PATH}/fft/fft_32.c
+        ${SOF_MATH_PATH}/fft/fft_32_hifi3.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MATH_DCT
+        ${SOF_MATH_PATH}/dct.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MATH_WINDOW
+        ${SOF_MATH_PATH}/window.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MATH_MATRIX
+        ${SOF_MATH_PATH}/matrix.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MATH_AUDITORY
+        ${SOF_MATH_PATH}/auditory/auditory.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_MEL_FILTERBANK
+        ${SOF_MATH_PATH}/auditory/mel_filterbank_16.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_MATH_32BIT_MEL_FILTERBANK
+        ${SOF_MATH_PATH}/auditory/mel_filterbank_32.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_NATURAL_LOGARITHM_FIXED
+        ${SOF_MATH_PATH}/log_e.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_BINARY_LOGARITHM_FIXED
+        ${SOF_MATH_PATH}/base2log.c
+)
+
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
@@ -867,6 +913,15 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 
 zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 	${SOF_AUDIO_PATH}/mux/mux_${ipc_suffix}.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COMP_MFCC
+	${SOF_AUDIO_PATH}/mfcc/mfcc.c
+	${SOF_AUDIO_PATH}/mfcc/mfcc_setup.c
+	${SOF_AUDIO_PATH}/mfcc/mfcc_common.c
+	${SOF_AUDIO_PATH}/mfcc/mfcc_generic.c
+	${SOF_AUDIO_PATH}/mfcc/mfcc_hifi3.c
+	${SOF_AUDIO_PATH}/mfcc/mfcc_hifi4.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
