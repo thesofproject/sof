@@ -26,6 +26,7 @@
 #include <ipc/topology.h>
 #include <user/mfcc.h>
 #include <user/trace.h>
+#include <rtos/init.h>
 #include <rtos/string.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -257,3 +258,4 @@ static const struct module_interface mfcc_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);
+SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);

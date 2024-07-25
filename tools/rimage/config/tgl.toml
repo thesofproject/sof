@@ -60,7 +60,7 @@ name = "ADSPFW"
 load_offset = "0x30000"
 
 [module]
-count = 24
+count = 25
 	[[module.entry]]
 	name = "BRNGUP"
 	uuid = "61EB0CB9-34D8-4F59-A21D-04C54C21D3A4"
@@ -535,6 +535,22 @@ count = 24
 	[[module.entry]]
 	name = "IGO_NR"
 	uuid = "696AE2BC-2877-11EB-ADC1-0242AC120002"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	# MFCC module config
+	[[module.entry]]
+	name = "MFCC"
+	uuid = "DB10A773-1AA4-4CEA-A21F-2D57A5C982EB"
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"

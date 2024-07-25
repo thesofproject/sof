@@ -50,9 +50,6 @@
 #endif
 #define MFCC_NORMALIZE_MAX_SHIFT	10
 
-struct audio_stream;
-struct comp_dev;
-
 /** \brief Type definition for processing function select return value. */
 typedef void (*mfcc_func)(struct processing_module *mod,
 			  struct input_stream_buffer *bsource,
@@ -189,7 +186,7 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 #endif
 
 #ifdef UNIT_TEST
-void sys_comp_mfcc_init(void);
+void sys_comp_module_mfcc_interface_init(void);
 #endif
 
 #endif /* __SOF_AUDIO_MFCC_MFCC_COMP_H__ */
