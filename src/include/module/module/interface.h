@@ -155,7 +155,7 @@ struct module_interface {
 				int num_output_buffers);
 
 	/**
-	 * Set module configuration for the given configuration ID
+	 * (optional) Set module configuration for the given configuration ID
 	 *
 	 * If the complete configuration message is greater than MAX_BLOB_SIZE bytes, the
 	 * transmission will be split into several smaller fragments.
@@ -171,7 +171,7 @@ struct module_interface {
 				 size_t response_size);
 
 	/**
-	 * Get module runtime configuration for the given configuration ID
+	 * (optional) Get module runtime configuration for the given configuration ID
 	 *
 	 * If the complete configuration message is greater than MAX_BLOB_SIZE bytes, the
 	 * transmission will be split into several smaller fragments.
@@ -185,13 +185,13 @@ struct module_interface {
 				 uint8_t *fragment, size_t fragment_size);
 
 	/**
-	 * Set processing mode for the module
+	 * (unused) Set processing mode for the module
 	 */
 	int (*set_processing_mode)(struct processing_module *mod,
 				   enum module_processing_mode mode);
 
 	/**
-	 * Get the current processing mode for the module
+	 * (unused) Get the current processing mode for the module
 	 */
 	enum module_processing_mode (*get_processing_mode)(struct processing_module *mod);
 
@@ -207,16 +207,17 @@ struct module_interface {
 	 */
 	int (*free)(struct processing_module *mod);
 	/**
-	 * Module specific bind procedure, called when modules are bound with each other
+	 * (optional) Module specific bind procedure, called when modules are bound with each other
 	 */
 	int (*bind)(struct processing_module *mod, void *data);
 	/**
-	 * Module specific unbind procedure, called when modules are disconnected from one another
+	 * (optional) Module specific unbind procedure, called when modules are disconnected from
+	 * one another
 	 */
 	int (*unbind)(struct processing_module *mod, void *data);
 
 	/**
-	 * Module specific trigger procedure, called when modules are triggered
+	 * (optional) Module specific trigger procedure, called when modules are triggered
 	 */
 	int (*trigger)(struct processing_module *mod, int cmd);
 
