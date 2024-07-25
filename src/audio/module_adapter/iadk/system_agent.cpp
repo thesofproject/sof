@@ -15,11 +15,12 @@
 #include <rtos/string.h>
 #include <utilities/array.h>
 #include <module/iadk/adsp_error_code.h>
-#include <native_system_service.h>
+#include <system_service.h>
 #include <system_agent_interface.h>
 #include <module_initial_settings_concrete.h>
 #include <iadk_module_adapter.h>
 #include <system_agent.h>
+#include <sof/audio/module_adapter/library/native_system_service.h>
 
 using namespace intel_adsp;
 using namespace intel_adsp::system;
@@ -28,31 +29,6 @@ using namespace dsp_fw;
 void* operator new(size_t size, intel_adsp::ModuleHandle *placeholder) throw()
 {
 	return placeholder;
-}
-
-extern "C" {
-	void native_system_service_log_message (AdspLogPriority log_priority, uint32_t log_entry,
-						AdspLogHandle const* log_handle, uint32_t param1,
-						uint32_t param2, uint32_t param3, uint32_t param4);
-
-	AdspErrorCode native_system_service_safe_memcpy(void *RESTRICT dst, size_t maxlen,
-					      const void *RESTRICT src, size_t len);
-
-	AdspErrorCode native_system_service_safe_memmove(void *dst, size_t maxlen,
-					       const void *src, size_t len);
-
-	void *native_system_service_vec_memset(void *dst, int c, size_t len);
-
-	AdspErrorCode native_system_service_create_notification(notification_params *params,
-						      uint8_t *notification_buffer,
-						      uint32_t notification_buffer_size,
-						      adsp_notification_handle *handle);
-
-	AdspErrorCode native_system_service_send_notif_msg(adsp_notification_target notification_target,
-							   adsp_notification_handle message,
-							   uint32_t actual_payload_size);
-
-	AdspErrorCode native_system_service_get_interface(adsp_iface_id id, system_service_iface **iface);
 }
 
 namespace intel_adsp

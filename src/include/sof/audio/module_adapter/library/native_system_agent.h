@@ -12,7 +12,7 @@
 #include <native_system_service.h>
 
 struct native_system_agent {
-	struct native_system_service_api system_service;
+	struct system_service system_service;
 	uint32_t log_handle;
 	uint32_t core_id;
 	uint32_t module_id;

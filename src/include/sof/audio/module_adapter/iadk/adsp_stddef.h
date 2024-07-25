@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- *
- * Copyright(c) 2022 Intel Corporation. All rights reserved.
+/* SPDX-License-Identifier: BSD-3-Clause */
+/*
+ * Copyright(c) 2022 - 2024 Intel Corporation. All rights reserved.
  */
 
 #ifndef _ADSP_STDDEF_H_
@@ -15,13 +15,6 @@
 #endif /* __ZEPHYR__ */
 
 #include <module/module/logger.h>
-
-#ifdef __XTENSA__
-  #define RESTRICT __restrict
-#else
-  #define RESTRICT
-#endif
-
 
 /*! Log level priority enumeration. */
 typedef enum log_priority AdspLogPriority, log_priority_e;
