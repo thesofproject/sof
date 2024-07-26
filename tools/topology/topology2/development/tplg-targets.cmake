@@ -68,6 +68,16 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin"
 "cavs-nocodec\;sof-ptl-nocodec-dmic-4ch-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 DMIC0_RATE=96000,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-dmic-4ch-96k.bin"
 
+# SSP topology for PTL with 96 kHz DMIC and 96 kHz SSP0
+"cavs-nocodec\;sof-ptl-nocodec-dmic-4ch-96k-ssp0-96k\;PLATFORM=ptl,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_RATE=96000,SSP0_RATE=96000,PASSTHROUGH=true,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-dmic-4ch-96k-ssp0-96k.bin"
+
+# SSP topology for PTL with 96 kHz DMIC and 192 kHz SSP0
+"cavs-nocodec\;sof-ptl-nocodec-dmic-4ch-96k-ssp0-192k\;PLATFORM=ptl,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_RATE=96000,SSP0_RATE=192000,PASSTHROUGH=true,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-dmic-4ch-96k-ssp0-192k.bin"
+
 # SSP topology for PTL FPGA with lower DMIC IO clock of 19.2MHz, 2ch PDM0 enabled
 "cavs-nocodec\;sof-ptl-nocodec-fpga-2ch-pdm0\;PLATFORM=ptl,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-2ch-pdm0.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
@@ -81,6 +91,11 @@ NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 "cavs-nocodec\;sof-ptl-nocodec-fpga-dmic-4ch-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
 PDM1_MIC_B_ENABLE=1,DMIC0_RATE=96000,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-dmic-4ch-96k.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
+
+# SSP topology for PTL FPGA, same as previous but with 96 kHz SSP0
+"cavs-nocodec\;sof-ptl-nocodec-fpga-dmic-4ch-96k-ssp0-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_RATE=96000,SSP0_RATE=96000,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-dmic-4ch-96k-ssp0-96k.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
 
 # Topology for PTL with max98357a and rt5682
 "cavs-rt5682\;sof-ptl-max98357a-rt5682-ssp2-ssp0\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
