@@ -17,7 +17,6 @@
 #include <xtensa/hal.h>
 #include <xtensa/config/core.h>
 #include <xtensa/config/specreg.h>
-#include "xtos-internal.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -281,6 +280,7 @@ void platform_interrupt_init(void)
 	acp_dsp_sw_intr_enable();
 }
 
+#ifndef __ZEPHYR__
 void platform_interrupt_set(uint32_t irq)
 {
 	arch_interrupt_set(irq);
@@ -300,6 +300,7 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 		break;
 	}
 }
+#endif
 
 uint32_t platform_interrupt_get_enabled(void)
 {
