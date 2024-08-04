@@ -8,9 +8,9 @@
 #ifndef __SOF_AUDIO_FORMAT_HIFI3_H__
 #define __SOF_AUDIO_FORMAT_HIFI3_H__
 
+#include <stdint.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi3.h>
-#include <stdint.h>
 
 /* Saturation inline functions */
 
