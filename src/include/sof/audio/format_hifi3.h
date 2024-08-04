@@ -155,4 +155,23 @@ static inline int8_t sat_int8(int32_t x)
 	return (int8_t)AE_MOVAD32_L(a_i);
 }
 
+/**
+ * @brief Saturate and round two 32-bit integers to 8-bit packed into an 8x2 vector.
+ *
+ * @param x 32-bit integer.
+ * @param y 32-bit integer.
+ * @return Packed 8-bit saturated integers.
+ *
+ * This function takes two 32-bit integers, packs them into a 32x2 vector,
+ * and performs 8-bit saturation on each element, returning the result in an 8x2 vector.
+ */
+static inline ae_int32x2 vec_sat_int8x2(int32_t x, int32_t y)
+{
+	/* Move two 32-bit values to ae_f32x2 type */
+	ae_f32x2 d0 = AE_MOVDA32X2(x, y);
+
+	/* Shift left by 24 bits and then right by 24 bits to sign-extend and saturate */
+	return AE_F32X2_SRAI(AE_F32X2_SLAIS(d0, 24), 24);
+}
+
 #endif /* __SOF_AUDIO_FORMAT_HIFI3_H__ */
