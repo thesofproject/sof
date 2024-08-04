@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2021 Intel Corporation. All rights reserved.
+ * Copyright(c) 2024 Intel Corporation. All rights reserved.
+ *
+ * Author: Shriram Shastry <malladi.sastry@linux.intel.com>
  */
 
 #ifndef __SOF_AUDIO_FORMAT_HIFI3_H__
