@@ -14,9 +14,22 @@
 
 /* Saturation inline functions */
 
+/**
+ * @brief Saturate a 64-bit integer to 32-bit.
+ *
+ * @param x 64-bit integer.
+ * @return 32-bit saturated integer.
+ *
+ * This function takes a 64-bit integer, performs bitwise shifting,
+ * and returns a saturated 32-bit integer.
+ */
 static inline int32_t sat_int32(int64_t x)
 {
-	return (ae_int32)AE_ROUND32F48SSYM(AE_SLAI64(x, 16));
+	/* Shift left by 32 bits with saturation */
+	ae_f64 shifted = AE_SLAI64S(x, 32);
+
+	/* Shift right by 32 bits */
+	return (int32_t)AE_MOVINT32_FROMINT64(AE_SRAI64(shifted, 32));
 }
 
 static inline int32_t sat_int24(int32_t x)
