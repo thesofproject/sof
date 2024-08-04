@@ -72,6 +72,24 @@ static inline int32_t sat_int24(int32_t x)
 	return (ae_int32)AE_SAT24S(d0);
 }
 
+/**
+ * @brief Saturate and round two 32-bit integers to 24-bit packed into a 32x2 vector.
+ *
+ * @param x 32-bit integer.
+ * @param y 32-bit integer.
+ * @return Packed 24-bit saturated integers.
+ *
+ * This function takes two 32-bit integers, packs them into a 32x2 vector,
+ * and performs saturation to 24-bit on each element.
+ */
+static inline ae_int32x2 vec_sat_int24x2(int32_t x, int32_t y)
+{
+	/* Move two 32-bit values to ae_f32x2 type */
+	ae_f32x2 d0 = AE_MOVDA32X2(x, y);
+
+	/* Saturate both values to 24-bit and pack them */
+	return (ae_int32x2)AE_SAT24S(d0);
+}
 static inline int16_t sat_int16(int32_t x)
 {
 	return AE_SAT16X4(x, x);
