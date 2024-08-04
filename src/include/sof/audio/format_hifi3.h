@@ -32,6 +32,27 @@ static inline int32_t sat_int32(int64_t x)
 	return (int32_t)AE_MOVINT32_FROMINT64(AE_SRAI64(shifted, 32));
 }
 
+/**
+ * @brief Saturate and round two 64-bit integers to 32-bit packed into a 32x2 vector.
+ *
+ * @param x 64-bit integer.
+ * @param y 64-bit integer.
+ * @return Packed 32-bit saturated integers.
+ *
+ * This function takes two 64-bit integers, converts them to ae_f64 format,
+ * and returns them as a packed ae_int32x2 vector after saturation.
+ */
+static inline ae_int32x2 vec_sat_int32x2(int64_t x, int64_t y)
+{
+	ae_f64 d0, d1;
+
+	/* Convert 64-bit integers to ae_f64 format */
+	d0 = (ae_f64)x;
+	d1 = (ae_f64)y;
+
+	/* Round and saturate both 64-bit values to 32-bit and pack them */
+	return (ae_int32x2)AE_ROUND32X2F64SSYM(d0, d1);
+}
 static inline int32_t sat_int24(int32_t x)
 {
 	return AE_SRAI32(AE_SLAI32S(x, 8), 8);
