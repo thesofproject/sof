@@ -133,14 +133,26 @@ static inline ae_int16x4 vec_sat_int16x4(int32_t x, int32_t y, int32_t z, int32_
 	/* Saturate all values to 16-bit and pack them */
 	return AE_SAT16X4(d0, d1);
 }
+
+/**
+ * @brief Saturate and round a 32-bit integer to 8-bit.
+ *
+ * @param x 32-bit integer.
+ * @return 8-bit saturated integer.
+ *
+ * This function takes a 32-bit integer, performs bitwise operations to extract the lower 8
+ * bits, and returns an 8-bit saturated integer.
+ */
 static inline int8_t sat_int8(int32_t x)
 {
-	if (x > INT8_MAX)
-		return INT8_MAX;
-	else if (x < INT8_MIN)
-		return INT8_MIN;
-	else
-		return (int8_t)x;
+	/* Shift left by 24 bits */
+	ae_f32x2 a_i = AE_SLAI32S(x, 24);
+
+	/* Shift right by 24 bits to sign-extend the 8-bit value */
+	a_i = AE_SRAI32(a_i, 24);
+
+	/* Extract the lower 8 bits as an int8_t */
+	return (int8_t)AE_MOVAD32_L(a_i);
 }
 
 #endif /* __SOF_AUDIO_FORMAT_HIFI3_H__ */
