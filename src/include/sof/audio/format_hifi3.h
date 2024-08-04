@@ -53,9 +53,23 @@ static inline ae_int32x2 vec_sat_int32x2(int64_t x, int64_t y)
 	/* Round and saturate both 64-bit values to 32-bit and pack them */
 	return (ae_int32x2)AE_ROUND32X2F64SSYM(d0, d1);
 }
+
+/**
+ * @brief Saturate and round a 32-bit integer to 24-bit.
+ *
+ * @param x 32-bit integer.
+ * @return 24-bit saturated integer.
+ *
+ * This function takes a 32-bit integer and saturates it to a 24-bit integer
+ * using saturating arithmetic instructions.
+ */
 static inline int32_t sat_int24(int32_t x)
 {
-	return AE_SRAI32(AE_SLAI32S(x, 8), 8);
+	/* Move 32-bit value to ae_f32x2 type */
+	ae_f32x2 d0 = AE_MOVDA32(x);
+
+	/* Saturate to 24-bit */
+	return (ae_int32)AE_SAT24S(d0);
 }
 
 static inline int16_t sat_int16(int32_t x)
