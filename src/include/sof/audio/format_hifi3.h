@@ -112,6 +112,27 @@ static inline int16_t sat_int16(int32_t x)
 	return AE_MOVAD16_0(result);
 }
 
+/**
+ * @brief Saturate and round four 32-bit integers to 16-bit packed into a 16x4 vector.
+ *
+ * @param x 32-bit integer.
+ * @param y 32-bit integer.
+ * @param z 32-bit integer.
+ * @param q 32-bit integer.
+ * @return Packed 16-bit saturated integers.
+ *
+ * This function takes four 32-bit integers, packs them into two 32x2 vectors,
+ * and performs 16-bit saturation on each element, returning the result in a 16x4 vector.
+ */
+static inline ae_int16x4 vec_sat_int16x4(int32_t x, int32_t y, int32_t z, int32_t q)
+{
+	/* Move four 32-bit values to ae_int32x2 type */
+	ae_int32x2 d0 = AE_MOVDA32X2(x, y);
+	ae_int32x2 d1 = AE_MOVDA32X2(z, q);
+
+	/* Saturate all values to 16-bit and pack them */
+	return AE_SAT16X4(d0, d1);
+}
 static inline int8_t sat_int8(int32_t x)
 {
 	if (x > INT8_MAX)
