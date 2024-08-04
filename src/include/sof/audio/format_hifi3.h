@@ -90,9 +90,26 @@ static inline ae_int32x2 vec_sat_int24x2(int32_t x, int32_t y)
 	/* Saturate both values to 24-bit and pack them */
 	return (ae_int32x2)AE_SAT24S(d0);
 }
+
+/**
+ * @brief Saturate a 32-bit integer to 16-bit.
+ *
+ * @param x 32-bit integer.
+ * @return 16-bit saturated integer.
+ *
+ * This function takes a 32-bit integer, packs it into a vector,
+ * and performs saturation to 16-bit on each element.
+ */
 static inline int16_t sat_int16(int32_t x)
 {
-	return AE_SAT16X4(x, x);
+	/* Move 32-bit value to ae_int32x2 type */
+	ae_int32x2 d0 = AE_MOVDA32(x);
+
+	/* Saturate both values to 16-bit and pack them */
+	ae_int16x4 result = AE_SAT16X4(d0, d0);
+
+	/* Use AE_MOVAD16_0 to extract the first 16-bit value */
+	return AE_MOVAD16_0(result);
 }
 
 static inline int8_t sat_int8(int32_t x)
