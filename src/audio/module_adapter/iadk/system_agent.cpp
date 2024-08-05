@@ -15,7 +15,6 @@
 #include <rtos/string.h>
 #include <utilities/array.h>
 #include <module/iadk/adsp_error_code.h>
-#include <logger.h>
 #include <native_system_service.h>
 #include <system_agent_interface.h>
 #include <module_initial_settings_concrete.h>
@@ -62,7 +61,7 @@ namespace system
 {
 
 /* Structure storing handles to system service operations */
-AdspSystemService SystemAgent::system_service_ = {
+const AdspSystemService SystemAgent::system_service_ = {
 	native_system_service_log_message,
 	native_system_service_safe_memcpy,
 	native_system_service_safe_memmove,

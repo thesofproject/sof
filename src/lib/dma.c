@@ -447,9 +447,8 @@ int dma_buffer_copy_to(struct comp_buffer *source,
 	return ret;
 }
 
-int dma_buffer_copy_from_no_consume(struct comp_buffer *source,
-				    struct comp_buffer *sink,
-				    dma_process_func process, uint32_t source_bytes, uint32_t chmap)
+int stream_copy_from_no_consume(struct comp_buffer *source, struct comp_buffer *sink,
+				dma_process_func process, uint32_t source_bytes, uint32_t chmap)
 {
 	int source_channels = audio_stream_get_channels(&source->stream);
 	int sink_channels = audio_stream_get_channels(&sink->stream);

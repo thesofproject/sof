@@ -125,10 +125,10 @@ static int16_t max_mic_distance(struct tdfb_comp_data *cd)
 
 	/* Max lag based on largest array dimension. Microphone coordinates are Q4.12 meters */
 	for (i = 0; i < cd->config->num_mic_locations; i++) {
-		for (j = 0; i < cd->config->num_mic_locations; i++) {
-			if (j == i)
-				continue;
-
+		/* Calculate distances between all possible microphone pairs to
+		 * find the maximum distance
+		 */
+		for (j = i + 1; j < cd->config->num_mic_locations; j++) {
 			dx = cd->mic_locations[i].x - cd->mic_locations[j].x;
 			dy = cd->mic_locations[i].y - cd->mic_locations[j].y;
 			dz = cd->mic_locations[i].z - cd->mic_locations[j].z;
@@ -157,9 +157,9 @@ static bool line_array_mode_check(struct tdfb_comp_data *cd)
 
 	/* Cross product of vectors AB and AC is (0, 0, 0) if they are co-linear.
 	 * Form vector AB(a,b,c) from x(i+1) - x(i), y(i+1) - y(i), z(i+1) - z(i)
-	 * Form vector AC(d,e,f) from x(i+2) - x(i), y(i+2) - y(1), z(i+2) - z(i)
+	 * Form vector AC(d,e,f) from x(i+2) - x(i), y(i+2) - y(i), z(i+2) - z(i)
 	 */
-	for (i = 0; i < num_mic_locations - 3; i++) {
+	for (i = 0; i < num_mic_locations - 2; i++) {
 		a = cd->mic_locations[i + 1].x - cd->mic_locations[i].x;
 		b = cd->mic_locations[i + 1].y - cd->mic_locations[i].y;
 		c = cd->mic_locations[i + 1].z - cd->mic_locations[i].z;
@@ -282,9 +282,9 @@ static void level_update(struct tdfb_comp_data *cd, int frames, int ch_count, in
 	/* Calculate mean square level */
 	for (n = 0; n < frames; n++) {
 		s = *p;
+		tmp += ((int32_t)s * s);
 		p += ch_count;
 		tdfb_cinc_s16(&p, cd->direction.d_end, cd->direction.d_size);
-		tmp += ((int64_t)s * s);
 	}
 
 	/* Calculate mean square power */

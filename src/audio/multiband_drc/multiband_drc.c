@@ -126,6 +126,14 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	comp_info(dev, "multiband_drc_init_coef(), initializing %i-way crossover",
 		  config->num_bands);
 
+	/* Crossover: determine the split function */
+	cd->crossover_split = crossover_find_split_func(config->num_bands);
+	if (!cd->crossover_split) {
+		comp_err(dev, "multiband_drc_init_coef(), No crossover_split for band count(%i)",
+			 config->num_bands);
+		return -EINVAL;
+	}
+
 	/* Crossover: collect the coef array and assign it to every channel */
 	crossover = config->crossover_coef;
 	for (ch = 0; ch < nch; ch++) {
@@ -328,7 +336,10 @@ static int multiband_drc_process(struct processing_module *mod,
 		}
 	}
 
-	cd->multiband_drc_func(mod, source, sink, frames);
+	if (cd->process_enabled)
+		cd->multiband_drc_func(mod, source, sink, frames);
+	else
+		multiband_drc_default_pass(mod, source, sink, frames);
 
 	/* calc new free and available */
 	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
@@ -364,32 +375,18 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	comp_dbg(dev, "multiband_drc_prepare(), source_format=%d, sink_format=%d",
 		 cd->source_format, cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	if (cd->config && cd->process_enabled) {
+	if (cd->config) {
 		ret = multiband_drc_setup(mod, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_prepare() error: multiband_drc_setup failed.");
 			return ret;
 		}
+	}
 
-		cd->multiband_drc_func = multiband_drc_find_proc_func(cd->source_format);
-		if (!cd->multiband_drc_func) {
-			comp_err(dev, "multiband_drc_prepare(), No proc func");
-			return -EINVAL;
-		}
-
-		cd->crossover_split = crossover_find_split_func(cd->config->num_bands);
-		if (!cd->crossover_split) {
-			comp_err(dev, "multiband_drc_prepare(), No crossover_split for band num %i",
-				 cd->config->num_bands);
-			return -EINVAL;
-		}
-	} else {
-		comp_info(dev, "multiband_drc_prepare(), DRC is in passthrough mode");
-		cd->multiband_drc_func = multiband_drc_find_proc_func_pass(cd->source_format);
-		if (!cd->multiband_drc_func) {
-			comp_err(dev, "multiband_drc_prepare(), No proc func passthrough");
-			return -EINVAL;
-		}
+	cd->multiband_drc_func = multiband_drc_find_proc_func(cd->source_format);
+	if (!cd->multiband_drc_func) {
+		comp_err(dev, "multiband_drc_prepare(), No proc func");
+		return -EINVAL;
 	}
 
 	return ret;

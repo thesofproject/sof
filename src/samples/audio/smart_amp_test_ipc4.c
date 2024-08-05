@@ -5,7 +5,6 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
 #ifndef __SOF_MODULE_SERVICE_BUILD__
-#include <sof/compiler_attributes.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/trace/trace.h>
@@ -38,6 +37,7 @@ DECLARE_TR_CTX(smart_amp_test_comp_tr, SOF_UUID(smart_amp_test_uuid),
 #include <ipc4/module.h>
 #include <sof/math/numbers.h>
 #endif
+#include <sof/compiler_attributes.h>
 #include <sof/samples/audio/smart_amp_test.h>
 #include <module/module/api_ver.h>
 #include <rimage/sof/user/manifest.h>

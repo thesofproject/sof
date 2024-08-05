@@ -35,6 +35,10 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 			sof_add_static_library(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
 		endif()
 
+		if(CONFIG_CADENCE_CODEC_MP3_ENC)
+			sof_add_static_library(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
+		endif()
+
 		if(CONFIG_CADENCE_CODEC_SBC_DEC)
 			sof_add_static_library(xa_sbc_dec ${CONFIG_CADENCE_CODEC_SBC_DEC_LIB})
 		endif()

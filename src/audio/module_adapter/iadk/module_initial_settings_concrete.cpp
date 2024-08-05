@@ -6,7 +6,6 @@
 
 #include <adsp_stddef.h>
 #include <module_initial_settings_concrete.h>
-#include <logger.h>
 
 extern "C" {
 int memcpy_s(void * dst, size_t maxlen, const void * src, size_t len);

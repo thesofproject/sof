@@ -6,8 +6,8 @@
  *	   Adrian Warecki <adrian.warecki@intel.com>
  */
 
-#ifndef __MODULE_MODULE_GENERIC__
-#define __MODULE_MODULE_GENERIC__
+#ifndef __MODULE_MODULE_BASE__
+#define __MODULE_MODULE_BASE__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -180,4 +180,4 @@ struct processing_module {
 #endif /* SOF_MODULE_PRIVATE */
 };
 
-#endif /* __MODULE_MODULE_GENERIC__ */
+#endif /* __MODULE_MODULE_BASE__ */
