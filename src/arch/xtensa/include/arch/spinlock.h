@@ -118,10 +118,7 @@ static inline void arch_spin_unlock(struct k_spinlock *lock)
  */
 static inline void arch_spin_unlock(struct k_spinlock *lock)
 {
-	uint32_t result;
-
 	lock->lock = 0;
-	result = 1;
 }
 
 #endif /* XCHAL_HAVE_EXCLUSIVE || XCHAL_HAVE_S32C1I  */
