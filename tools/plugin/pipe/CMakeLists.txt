@@ -16,7 +16,7 @@ target_include_directories(sof-pipe PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/..
 	${sof_source_directory}/src/audio)
 
-target_compile_options(sof-pipe PRIVATE -DPIC -g -O3 -Wl,-EL -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
+target_compile_options(sof-pipe PRIVATE -DPIC -g -O3 -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
 
 target_include_directories(sof-pipe PRIVATE ${sof_install_directory}/include)
 target_include_directories(sof-pipe PRIVATE ${parser_install_dir}/include)

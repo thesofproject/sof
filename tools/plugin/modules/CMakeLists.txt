@@ -11,7 +11,7 @@ target_include_directories(sof_mod_shm PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/../pipe
 	${sof_source_directory}/src/audio)
 
-target_compile_options(sof_mod_shm PRIVATE -DPIC -g -O3 -Wl,-EL -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
+target_compile_options(sof_mod_shm PRIVATE -DPIC -g -O3 -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
 
 install(TARGETS sof_mod_shm
 		DESTINATION /usr/lib/x86_64-linux-gnu/alsa-lib)
@@ -39,7 +39,7 @@ target_include_directories(sof_mod_alsa PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/../pipe
 	${sof_source_directory}/src/audio)
 
-target_compile_options(sof_mod_alsa PRIVATE -DPIC -g -O3 -Wl,-EL -Wmissing-prototypes
+target_compile_options(sof_mod_alsa PRIVATE -DPIC -g -O3 -Wmissing-prototypes
   -Wimplicit-fallthrough -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
 
 install(TARGETS sof_mod_alsa

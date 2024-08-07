@@ -20,7 +20,7 @@ add_library(sof_ns MODULE noise_suppression.c)
 target_link_libraries(sof_ns PRIVATE sof_ns_interface)
 target_link_libraries(sof_ns PRIVATE -Wl,--export-dynamic)
 sof_append_relative_path_definitions(sof_ns)
-target_compile_options(sof_ns PRIVATE -DPIC -g -O3 -Wl,-EL -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
+target_compile_options(sof_ns PRIVATE -DPIC -g -O3 -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
 install(TARGETS sof_ns DESTINATION /usr/lib/x86_64-linux-gnu/alsa-lib)
 
 target_include_directories(sof_ns PRIVATE
