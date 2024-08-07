@@ -123,7 +123,6 @@ target_compile_options(sof_options INTERFACE
 	$<$<COMPILE_LANGUAGE:C>:
 		-${optimization_flag} -g
 		-Wall -Werror
-		-Wl,-EL
 		-Wmissing-prototypes
 		-Wpointer-arith
 		${XTENSA_C_FLAGS}
