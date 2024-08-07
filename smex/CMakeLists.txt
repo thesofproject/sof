@@ -23,7 +23,7 @@ target_compile_options(smex PRIVATE
 )
 
 target_link_options(smex PRIVATE
-	-Wall -Werror -Wl,-EL
+	-Wall -Werror
 )
 
 target_include_directories(smex PRIVATE
