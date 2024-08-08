@@ -249,14 +249,18 @@ bool buffer_params_match(struct comp_buffer *buffer,
 
 static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
+#if CONFIG_INCOHERENT
 	if (buffer->is_shared)
 		audio_stream_invalidate(&buffer->stream, bytes);
+#endif
 }
 
 static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
+#if CONFIG_INCOHERENT
 	if (buffer->is_shared)
 		audio_stream_writeback(&buffer->stream, bytes);
+#endif
 }
 
 
