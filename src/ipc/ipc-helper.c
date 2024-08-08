@@ -184,9 +184,12 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 {
 	/* check if it's a connection between cores */
 	if (buffer->core != comp_core) {
+#if CONFIG_INCOHERENT
 		/* buffer must be shared */
 		assert(buffer->is_shared);
-
+#else
+		buffer->is_shared = true;
+#endif
 		if (!comp->is_shared)
 			comp_make_shared(comp);
 	}
