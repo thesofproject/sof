@@ -80,6 +80,8 @@ struct ipc_config_dai {
 	const struct ipc4_audio_format *out_fmt;/**< audio format for output pin 0 - required
 						  * for ACE 2.0 and newer
 						  */
+	/* Gain feature flag */
+	bool apply_gain;
 };
 
 /* generic volume component */

@@ -157,6 +157,8 @@ struct dai_data {
 	struct llp_slot_info slot_info;
 	/* fast mode, use one byte memory to save repreated cycles */
 	bool fast_mode;
+	/* Copier gain params */
+	struct copier_gain_params *gain_data;
 };
 
 /* these 3 are here to satisfy clk.c and ssp.h interconnection, will be removed leter */

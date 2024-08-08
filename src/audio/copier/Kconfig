@@ -28,3 +28,16 @@ config COMP_DAI_GROUP
 	help
 	  Select for grouping physical DAIs into a logical DAI that can be
 	  triggered atomically to synchronise stream start and stop operations.
+
+if COMP_COPIER
+
+config COPIER_GAIN
+	bool "COPIER gain feature"
+	default y
+	  help
+	    Select for using copier gain feature. There are three modes available:
+	    - Static gain: gain is set at initialization and remains constant.
+	    - Mute: gain is set to 0, signal is muted.
+	    - Transition gain: gain is set to a target value over a specified time.
+	      Common use cases are fade-in and fade-out effects.
+endif
