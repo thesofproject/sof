@@ -151,7 +151,7 @@ const struct device *zephyr_dev[] = {
 #endif
 };
 
-static const struct device *dai_get_zephyr_device(uint32_t type, uint32_t index)
+const struct device *dai_get_device(uint32_t type, uint32_t index)
 {
 	struct dai_config cfg;
 	int dir;
@@ -211,7 +211,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	const struct device *dev;
 	struct dai *d;
 
-	dev = dai_get_zephyr_device(type, index);
+	dev = dai_get_device(type, index);
 	if (!dev) {
 		tr_err(&dai_tr, "dai_get: failed to get dai with index %d type %d",
 		       index, type);
