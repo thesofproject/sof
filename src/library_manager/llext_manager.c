@@ -363,3 +363,13 @@ int llext_manager_free_module(const uint32_t component_id)
 
 	return llext_manager_unload_module(base_module_id, mod);
 }
+
+bool comp_is_llext(struct comp_dev *comp)
+{
+	const uint32_t module_id = IPC4_MOD_ID(comp->ipc_config.id);
+	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
+		LIB_MANAGER_LIB_ID_SHIFT;
+	const struct sof_man_module *mod = lib_manager_get_module_manifest(base_module_id);
+
+	return mod && module_is_llext(mod);
+}

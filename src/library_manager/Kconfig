@@ -33,4 +33,15 @@ config LIBRARY_AUTH_SUPPORT
 	  could be used if enabled.
 	  If unsure say N.
 
+config LIBRARY_PIPELINE_FORCE_MIN_LIFETIME
+	int "Minimum pipeline life-time in ms"
+	default 0
+	range 0 500
+	help
+	  Typically pipelines are created for streaming, which lasts for
+	  considerable time, at least seconds. But in some test-cases pipelines
+	  are created and quickly destroyed again with no streaming at all. In
+	  some configurations this leads to failures. This option allows setting
+	  a minimum pipeline life-time, which fixes those scenarios.
+
 endmenu

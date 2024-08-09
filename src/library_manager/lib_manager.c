@@ -339,11 +339,6 @@ static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instanc
 	return sys_mm_drv_unmap_region((__sparse_force void *)va_base, bss_size);
 }
 
-static inline bool module_is_llext(const struct sof_man_module *mod)
-{
-	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT;
-}
-
 uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 				      const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config)

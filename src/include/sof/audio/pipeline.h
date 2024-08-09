@@ -94,6 +94,7 @@ struct pipeline {
 		bool aborted;		/* STOP or PAUSE failed, stay active */
 		bool pending;		/* trigger scheduled but not executed yet */
 	} trigger;
+	uint64_t init_time;
 };
 
 struct pipeline_walk_context {

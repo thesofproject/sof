@@ -12,6 +12,7 @@
 #include <rtos/interrupt.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
+#include <sof/llext_manager.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
@@ -260,6 +261,11 @@ static int pipeline_comp_complete(struct comp_dev *current,
 
 	/* complete component init */
 	current->pipeline = ppl_data->p;
+
+	if (comp_is_llext(current))
+		/* pipelines are allocated using rzalloc(), so initially .init_time = 0 */
+		current->pipeline->init_time = sof_cycle_get_64();
+
 	/* LL module has its period always eq period of the pipeline
 	 * DP period is set to 0 as sink format may not yet been set
 	 * It will be calculated during module prepare operation

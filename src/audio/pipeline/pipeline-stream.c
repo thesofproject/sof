@@ -192,7 +192,9 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	return  0;
 }
-#else
+
+#else /* CONFIG_LIBRARY */
+
 /* only collect scheduling components */
 static int pipeline_comp_list(struct comp_dev *current,
 			      struct comp_buffer *calling_buf,
@@ -315,77 +317,60 @@ static void pipeline_trigger_xrun(struct pipeline *p, struct comp_dev **host)
 }
 
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-static int pipeline_calc_cps_consumption(struct comp_dev *current,
-					struct comp_buffer *calling_buf,
-					struct pipeline_walk_context *ctx, int dir)
+static struct ipc4_base_module_cfg *ipc4_get_base_cfg(struct comp_dev *comp)
 {
-	struct pipeline_data *ppl_data = ctx->comp_data;
-	struct ipc4_base_module_cfg *cd;
-	int comp_core, kcps;
+	if (comp->drv->type != SOF_COMP_MODULE_ADAPTER)
+		return comp_get_drvdata(comp);
 
-	pipe_dbg(ppl_data->p, "pipeline_calc_cps_consumption(), current->comp.id = %u, dir = %u",
-		 dev_comp_id(current), dir);
+	struct processing_module *mod = comp_mod(comp);
+	struct module_data *md = &mod->priv;
 
-	if (!comp_is_single_pipeline(current, ppl_data->start)) {
-		pipe_dbg(ppl_data->p, "pipeline_calc_cps_consumption(), current is from another pipeline");
-		return 0;
-	}
-	comp_core = current->ipc_config.core;
-
-	/* modules created through module adapter have different priv_data */
-	if (current->drv->type != SOF_COMP_MODULE_ADAPTER) {
-		cd = comp_get_drvdata(current);
-	} else {
-		struct processing_module *mod = comp_mod(current);
-		struct module_data *md = &mod->priv;
-
-		cd = &md->cfg.base_cfg;
-	}
-
-	if (cd->cpc == 0) {
-		/* Use maximum clock budget, assume 1ms chunk size */
-		uint32_t core_kcps = core_kcps_get(comp_core);
-
-		if (!current->kcps_inc[comp_core]) {
-			current->kcps_inc[comp_core] = core_kcps;
-			ppl_data->kcps[comp_core] = CLK_MAX_CPU_HZ / 1000 - core_kcps;
-		} else {
-			ppl_data->kcps[comp_core] = core_kcps - current->kcps_inc[comp_core];
-			current->kcps_inc[comp_core] = 0;
-		}
-		tr_warn(pipe,
-			"0 CPS requested for module: %#x, core: %d using safe max KCPS: %u",
-			current->ipc_config.id, comp_core, ppl_data->kcps[comp_core]);
-
-		return PPL_STATUS_PATH_STOP;
-	} else {
-		kcps = cd->cpc * 1000 / current->period;
-		tr_dbg(pipe, "Module: %#x KCPS consumption: %d, core: %d",
-		       current->ipc_config.id, kcps, comp_core);
-
-		ppl_data->kcps[comp_core] += kcps;
-	}
-
-	return pipeline_for_each_comp(current, ctx, dir);
+	return &md->cfg.base_cfg;
 }
-#endif
+
+static void pipeline_cps_rebalance(struct pipeline *p, bool starting)
+{
+	unsigned int core_kcps[CONFIG_CORE_COUNT] = {};
+	struct ipc *ipc = ipc_get();
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+	const unsigned int clk_max_khz = CLK_MAX_CPU_HZ / 1000;
+
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		struct comp_dev *comp = icd->cd;
+
+		/* Don't add components on the pipeline, that we're shutting down */
+		if (comp->state >= COMP_STATE_PREPARE &&
+		    (comp->pipeline != p || starting)) {
+			struct ipc4_base_module_cfg *cd = ipc4_get_base_cfg(comp);
+
+			if (cd->cpc && core_kcps[icd->core] < clk_max_khz)
+				core_kcps[icd->core] += cd->cpc;
+			else
+				core_kcps[icd->core] = clk_max_khz;
+		}
+	}
+
+	for (int i = 0; i < arch_num_cpus(); i++) {
+		int delta_kcps = core_kcps[i] - core_kcps_get(i);
+
+		tr_info(pipe, "Proposed KCPS consumption: %d, core: %d, delta: %d",
+			core_kcps[i], i, delta_kcps);
+		if (delta_kcps)
+			core_kcps_adjust(i, delta_kcps);
+	}
+}
+#endif /* CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL */
 
 /* trigger pipeline in IPC context */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
 	int ret;
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-/* FIXME: this must be a platform-specific parameter or a Kconfig option */
-#define DSP_MIN_KCPS 50000
-
-	struct pipeline_data data = {
-		.start = p->source_comp,
-		.p = p,
-	};
-	struct pipeline_walk_context walk_ctx = {
-		.comp_func = pipeline_calc_cps_consumption,
-		.comp_data = &data,
-	};
 	bool trigger_first = false;
 	uint32_t flags = 0;
 #endif
@@ -418,16 +403,8 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 		flags = irq_lock();
 		/* setup walking ctx for removing consumption */
-		if (!trigger_first) {
-			ret = walk_ctx.comp_func(p->source_comp, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM);
-
-			for (int i = 0; i < arch_num_cpus(); i++) {
-				if (data.kcps[i] > 0) {
-					core_kcps_adjust(i, data.kcps[i]);
-					tr_info(pipe, "Sum of KCPS consumption: %d, core: %d", core_kcps_get(i), i);
-				}
-			}
-		}
+		if (!trigger_first)
+			pipeline_cps_rebalance(p, true);
 #endif
 		ret = pipeline_trigger_list(p, host, cmd);
 		if (ret < 0) {
@@ -437,23 +414,8 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 			return ret;
 		}
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-		if (trigger_first) {
-			ret = walk_ctx.comp_func(p->source_comp, NULL, &walk_ctx, PPL_DIR_DOWNSTREAM);
-
-			for (int i = 0; i < arch_num_cpus(); i++) {
-				if (data.kcps[i] > 0) {
-					uint32_t core_kcps = core_kcps_get(i);
-
-					/* Tests showed, that we cannot go below 40000kcps on MTL */
-					if (data.kcps[i] > core_kcps - DSP_MIN_KCPS)
-						data.kcps[i] = core_kcps - DSP_MIN_KCPS;
-
-					core_kcps_adjust(i, -data.kcps[i]);
-					tr_info(pipe, "Sum of KCPS consumption: %d, core: %d",
-						core_kcps, i);
-				}
-			}
-		}
+		if (trigger_first)
+			pipeline_cps_rebalance(p, false);
 		irq_unlock(flags);
 #endif
 		/* IPC response will be sent from the task, unless it was paused */
@@ -462,7 +424,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	return 0;
 }
-#endif
+#endif /* CONFIG_LIBRARY */
 
 /* Runs in IPC or in pipeline task context */
 static int pipeline_comp_trigger(struct comp_dev *current,
