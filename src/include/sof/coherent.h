@@ -17,7 +17,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/cpu.h>
 
-#define __coherent __aligned(DCACHE_LINE_SIZE)
+#define __coherent __aligned(PLATFORM_DCACHE_ALIGN)
 
 /*
  * The coherent API allows optimized access to memory by multiple cores, using
@@ -332,14 +332,8 @@ static inline void __coherent_shared_thread(struct coherent *c, const size_t siz
 __must_check static inline struct coherent __sparse_cache *coherent_acquire(struct coherent *c,
 								     const size_t size)
 {
-	if (c->shared) {
-		struct coherent __sparse_cache *cc = uncache_to_cache(c);
-
+	if (c->shared)
 		c->key = k_spin_lock(&c->lock);
-
-		/* invalidate local copy */
-		dcache_invalidate_region(cc, size);
-	}
 
 	return (__sparse_force struct coherent __sparse_cache *)c;
 }
@@ -347,14 +341,8 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire(stru
 static inline void coherent_release(struct coherent __sparse_cache *c,
 				    const size_t size)
 {
-	if (c->shared) {
-		struct coherent *uc = cache_to_uncache(c);
-
-		/* wtb and inv local data to coherent object */
-		dcache_writeback_invalidate_region(c, size);
-
-		k_spin_unlock(&uc->lock, uc->key);
-	}
+	if (c->shared)
+		k_spin_unlock(&c->lock, c->key);
 }
 
 static inline void *__coherent_init(size_t offset, const size_t size)
