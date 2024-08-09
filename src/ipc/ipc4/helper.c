@@ -556,33 +556,34 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 *	sink_module needs to set its IBS (input buffer size)
 	 *		as min_available in buffer's source ifc
 	 */
-	sink_set_min_free_space(audio_stream_get_sink(&buffer->stream), obs);
-	source_set_min_available(audio_stream_get_source(&buffer->stream), ibs);
+	sink_set_min_free_space(audio_buffer_get_sink(&buffer->audio_buffer), obs);
+	source_set_min_available(audio_buffer_get_source(&buffer->audio_buffer), ibs);
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	struct ring_buffer *ring_buffer = NULL;
 
 	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
 	    source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-		ring_buffer =
-			ring_buffer_create(source_get_min_available(&buffer->stream._source_api),
-					   sink_get_min_free_space(&buffer->stream._sink_api),
-					   buffer->is_shared ?
-						RING_BUFFER_MODE_SHARED : RING_BUFFER_MODE_LOCAL,
-					   buf_get_id(buffer),
-					   &buffer->stream.runtime_stream_params);
+		struct sof_source *source = audio_buffer_get_source(&buffer->audio_buffer);
+		struct sof_sink *sink = audio_buffer_get_sink(&buffer->audio_buffer);
+
+		ring_buffer = ring_buffer_create(source_get_min_available(source),
+						 sink_get_min_free_space(sink),
+						 buffer->is_shared ?
+						   RING_BUFFER_MODE_SHARED : RING_BUFFER_MODE_LOCAL,
+						 buf_get_id(buffer));
 		if (!ring_buffer)
 			goto free;
 	}
 
 	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
 		/* data destination module needs to use ring_buffer */
-		buffer_attach_secondary_buffer(buffer, false /* at_input = false */,
-					       &ring_buffer->audio_buffer);
+		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, false, /* at_input */
+						     &ring_buffer->audio_buffer);
 	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
 		/* data source module needs to use ring_buffer */
-		buffer_attach_secondary_buffer(buffer, true /* at_input = true */,
-					       &ring_buffer->audio_buffer);
+		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, true, /* at_input */
+						     &ring_buffer->audio_buffer);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	/*
 	 * Connect and bind the buffer to both source and sink components with LL processing been

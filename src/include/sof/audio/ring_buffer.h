@@ -106,18 +106,9 @@ struct sof_audio_stream_params;
 
 /* the ring_buffer structure */
 struct ring_buffer {
+	/* public: read only */
 	struct sof_audio_buffer audio_buffer;
 
-	/* public: read only */
-
-	/* note!
-	 * as ring_buffer is currently used as a shadow for comp_buffer only for DP components,
-	 * the audio_stream_params vector must be shared between comp_buffer and ring_buffer
-	 * the audio_stream_params pointer should point to the proper comp_buffer structure
-	 *
-	 * to be changed to the structure itself when pipeline2.0 is introduced
-	 */
-	struct sof_audio_stream_params *audio_stream_params;
 	size_t data_buffer_size;
 
 	uint32_t _flags;		/* RING_BUFFER_MODE_* */
@@ -140,11 +131,8 @@ struct ring_buffer {
  *
  * @param id a stream ID, accessible later by sink_get_id/source_get_id
  *
- * @param audio_stream_params pointer to audio params vector, shared between ring_buffer and
- *			      comp_buffer for dp modules
- *
  */
 struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
-				 uint32_t id, struct sof_audio_stream_params *audio_stream_params);
+				       uint32_t id);
 
 #endif /* __SOF_RING_BUFFER_H__ */
