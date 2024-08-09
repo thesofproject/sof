@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2023 Intel Corporation. All rights reserved.
 
+# Because this is meant to be sourced
+# shellcheck disable=SC2148
+# shellcheck disable=SC2034
+
 ### XTENSA_ toolchain configuration shared across projects ###
 
 # These variables are currently used in/by:
