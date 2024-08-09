@@ -75,14 +75,8 @@ setup_xtensa_tools_build()
     test -n "${XTENSA_CORE}" ||
         die "Illegal platform $BUILD_PLATFORM, no XTENSA_CORE found.\n"
 
-    # Zephyr is not part of the testbench at all but let's play nice and
-    # align with that naming convention to keep things simple.
-    case "${ZEPHYR_TOOLCHAIN_VARIANT}" in
-        xcc)       COMPILER=xt-xcc;;
-        xt-clang)  COMPILER=xt-clang;;
-        *) die 'Unknown or undefined ZEPHYR_TOOLCHAIN_VARIANT=%s\n' \
-               "${ZEPHYR_TOOLCHAIN_VARIANT}";;
-    esac
+    # This (local?) variable should probably be inlined
+    COMPILER=xt-"$SOF_CC_BASE"
 
     install_bin=install/tools/$TOOLCHAIN_VER/XtensaTools/bin
     tools_bin=$XTENSA_TOOLS_ROOT/$install_bin
