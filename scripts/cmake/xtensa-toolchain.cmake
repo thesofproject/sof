@@ -49,10 +49,13 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # xt toolchain only partially follows gcc convention
 if(TOOLCHAIN STREQUAL "xt")
 	set(XCC 1)
-	set(CMAKE_C_COMPILER ${CROSS_COMPILE}xcc)
-else()
-	set(CMAKE_C_COMPILER ${CROSS_COMPILE}gcc)
 endif()
+
+if(NOT DEFINED SOF_CC_BASE)
+set(SOF_CC_BASE "gcc")
+endif()
+# e.g.: "xt-" + "xcc"
+set(CMAKE_C_COMPILER ${CROSS_COMPILE}${SOF_CC_BASE})
 
 find_program(CMAKE_LD NAMES "${CROSS_COMPILE}ld" PATHS ENV PATH NO_DEFAULT_PATH)
 find_program(CMAKE_AR NAMES "${CROSS_COMPILE}ar" PATHS ENV PATH NO_DEFAULT_PATH)

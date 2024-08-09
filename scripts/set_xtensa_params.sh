@@ -145,6 +145,15 @@ case "$platform" in
 	;;
 esac
 
+# Pre-zephyr "XTOS" build
+case "$platform" in
+    none_yet)
+	SOF_CC_BASE='clang';;
+    *)
+	SOF_CC_BASE='xcc';;
+esac
+
+# For Zephyr unit tests, testbench,...
 case "$platform" in
     imx8*|mtl|lnl)
         ZEPHYR_TOOLCHAIN_VARIANT='xt-clang';;

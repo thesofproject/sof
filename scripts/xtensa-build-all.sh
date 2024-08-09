@@ -231,6 +231,8 @@ do
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
 		build_dir_suffix='xcc'
 	else
+		# Override SOF_CC_BASE from set_xtensa_params.sh
+		SOF_CC_BASE='gcc'
 		TOOLCHAIN=$HOST
 		PATH=$SOF_TOP/../$HOST/bin:$OLDPATH
 		build_dir_suffix='gcc'
@@ -248,6 +250,7 @@ do
 	printf 'PATH=%s\n' "$PATH"
 	( set -x # log the main commands and their parameters
 	cmake -DTOOLCHAIN="$TOOLCHAIN" \
+		-DSOF_CC_BASE="$SOF_CC_BASE" \
 		-DROOT_DIR="$ROOT" \
 		-DMEU_OPENSSL="${MEU_OPENSSL}" \
 		"${MEU_PATH_OPTION}" \
