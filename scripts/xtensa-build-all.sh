@@ -234,15 +234,15 @@ do
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		printf 'XTENSA_SYSTEM=%s\n' "${XTENSA_SYSTEM}"
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
-		COMPILER="xcc"
+		build_dir_suffix='xcc'
 	else
 		TOOLCHAIN=$HOST
 		PATH=$SOF_TOP/../$HOST/bin:$OLDPATH
-		COMPILER="gcc"
+		build_dir_suffix='gcc'
 		DEFCONFIG_PATCH=""
 	fi
 
-	BUILD_DIR=build_${platform}_${COMPILER}
+	BUILD_DIR=build_${platform}_${build_dir_suffix}
 	printf "Build in %s\n" "$BUILD_DIR"
 
 	# only delete binary related to this build
