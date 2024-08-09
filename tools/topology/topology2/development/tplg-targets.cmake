@@ -55,6 +55,35 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 
 "cavs-sdw\;sof-lnl-fpga-rt711-l0\;PLATFORM=lnl,NUM_HDMIS=0,PASSTHROUGH=true"
 
+# SSP topology for PTL
+"cavs-nocodec\;sof-ptl-nocodec\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin"
+
+# SSP topology for PTL with 96 kHz DMIC
+"cavs-nocodec\;sof-ptl-nocodec-dmic-4ch-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+DMIC0_RATE=96000,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec-dmic-4ch-96k.bin"
+
+# SSP topology for PTL FPGA with lower DMIC IO clock of 19.2MHz, 2ch PDM0 enabled
+"cavs-nocodec\;sof-ptl-nocodec-fpga-2ch-pdm0\;PLATFORM=ptl,NUM_DMICS=2,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-2ch-pdm0.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
+
+# SSP topology for PTL FPGA with lower DMIC IO clock of 19.2MHz, 4ch both PDM0 and PDM1 enabled
+"cavs-nocodec\;sof-ptl-nocodec-fpga-4ch\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
+
+# SSP topology for PTL FPGA with lower DMIC IO clock of 19.2MHz, 4ch both PDM0 and PDM1 enabled, with 96 kHz DMIC
+"cavs-nocodec\;sof-ptl-nocodec-fpga-dmic-4ch-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_RATE=96000,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-dmic-4ch-96k.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
+
+# Topology for PTL with max98357a and rt5682
+"cavs-rt5682\;sof-ptl-max98357a-rt5682-ssp2-ssp0\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-max98357a-rt5682-ssp2-ssp0.bin,DEEPBUFFER_FW_DMA_MS=10,HEADSET_SSP_DAI_INDEX=2,\
+SPK_ID=6,SPEAKER_SSP_DAI_INDEX=0,HEADSET_CODEC_NAME=SSP2-Codec,SPEAKER_CODEC_NAME=SSP0-Codec,\
+BT_NAME=SSP1-BT,BT_INDEX=1,BT_ID=7,BT_PCM_NAME=Bluetooth,INCLUDE_ECHO_REF=true,DEEP_BUF_SPK=true"
+
 # CAVS HDA topology with mixer-based efx eq pipelines for HDA and passthrough pipelines for HDMI
 "sof-hda-generic\;sof-hda-efx-generic\;HDA_CONFIG=efx,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough"
