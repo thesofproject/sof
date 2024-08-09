@@ -210,22 +210,17 @@ do
 		XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$TOOLCHAIN_VER"
 		XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$TOOLCHAIN_VER"
 
-		# make sure the required version of xtensa tools is installed
-		if [ -d "$XTENSA_TOOLS_DIR" ]
-			then
-				XCC="xt-xcc"
-			else
-				XCC="none"
-				>&2 printf 'WARNING: %s
-\t is not a directory, reverting to gcc\n' "$XTENSA_TOOLS_DIR"
-		fi
+		[ -d "$XTENSA_TOOLS_DIR" ] || {
+			>&2 printf 'ERROR: %s\t is not a directory\n' "$XTENSA_TOOLS_DIR"
+			exit 1
+		}
 	fi
 
 	# CMake uses ROOT_DIR for includes and libraries a bit like
 	# --sysroot would.
 	ROOT="$SOF_TOP/../xtensa-root/$HOST"
 
-	if [ "$XCC" == "xt-xcc" ]
+	if [ -n "$XTENSA_TOOLS_ROOT" ]
 	then
 		TOOLCHAIN=xt
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
