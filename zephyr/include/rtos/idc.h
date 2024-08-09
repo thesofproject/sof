@@ -20,6 +20,8 @@
 #include <stdint.h>
 #include <rtos/cache.h>
 
+#include <sof/debug/telemetry/performance_monitor.h>
+
 /** \brief IDC send blocking flag. */
 #define IDC_BLOCKING		0
 
@@ -171,6 +173,11 @@ struct idc {
 	struct task idc_task;		/**< IDC processing task */
 	struct idc_payload *payload;
 	int irq;
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* io performance measurement */
+	struct io_perf_data_item *io_perf_in_msg_count;
+	struct io_perf_data_item *io_perf_out_msg_count;
+#endif
 };
 
 /* idc trace context, used by multiple units */

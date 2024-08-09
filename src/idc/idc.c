@@ -34,6 +34,8 @@
 #include <stdint.h>
 #include <sof/lib/ams.h>
 
+#include <sof/debug/telemetry/performance_monitor.h>
+
 LOG_MODULE_REGISTER(idc, CONFIG_SOF_LOG_LEVEL);
 
 /** \brief IDC message payload per core. */
@@ -481,6 +483,11 @@ static void idc_complete(void *data)
 	uint32_t type = iTS(idc->received_msg.header);
 	k_spinlock_key_t key;
 
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* Increment performance counters */
+	io_perf_monitor_update_data(idc->io_perf_out_msg_count, 1);
+#endif
+
 	switch (type) {
 	case iTS(IDC_MSG_IPC):
 		/* Signal the host */
@@ -510,6 +517,18 @@ int idc_init(void)
 
 	/* initialize idc data */
 	(*idc)->payload = platform_shared_get(static_payload, sizeof(static_payload));
+
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	struct io_perf_data_item init_data = {IO_PERF_IDC_ID,
+					      cpu_get_id(),
+					      IO_PERF_INPUT_DIRECTION,
+					      IO_PERF_POWERED_UP_ENABLED,
+					      IO_PERF_D0IX_POWER_MODE,
+					      0, 0, 0 };
+	io_perf_monitor_init_data(&(*idc)->io_perf_in_msg_count, &init_data);
+	init_data.direction = IO_PERF_OUTPUT_DIRECTION;
+	io_perf_monitor_init_data(&(*idc)->io_perf_out_msg_count, &init_data);
+#endif
 
 	/* process task */
 #ifndef __ZEPHYR__

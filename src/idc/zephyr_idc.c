@@ -33,6 +33,8 @@
 #include <sof/trace/trace.h>
 #include <sof/lib/uuid.h>
 
+#include <sof/debug/telemetry/performance_monitor.h>
+
 LOG_MODULE_REGISTER(zephyr_idc, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(zephyr_idc);
@@ -87,6 +89,11 @@ static void idc_handler(struct k_p4wq_work *work)
 	idc->received_msg.core = msg->core;
 	idc->received_msg.header = msg->header;
 	idc->received_msg.extension = msg->extension;
+
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* Increment performance counters */
+	io_perf_monitor_update_data(idc->io_perf_in_msg_count, 1);
+#endif
 
 	switch (msg->header) {
 	case IDC_MSG_POWER_UP:
@@ -150,6 +157,11 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	__ASSERT_NO_MSG(!is_cached(msg_cp));
 
 	k_p4wq_submit(q_zephyr_idc + target_cpu, work);
+
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* Increment performance counters */
+	io_perf_monitor_update_data(idc->io_perf_out_msg_count, 1);
+#endif
 
 	switch (mode) {
 	case IDC_BLOCKING:
