@@ -7,6 +7,9 @@
 #define __SOF_TELEMETRY_H__
 
 #include <ipc4/base_fw.h>
+#ifdef __ZEPHYR__
+#include <zephyr/timing/timing.h>
+#endif
 
 /* Slot in memory window 2 (Debug Window) to be used as telemetry slot */
 #define SOF_DW_TELEMETRY_SLOT 1
@@ -84,5 +87,11 @@ struct telemetry_perf_queue {
 };
 
 void telemetry_update(uint32_t begin_ccount, uint32_t current_ccount);
+
+#ifdef CONFIG_TIMING_FUNCTIONS
+#define telemetry_timestamp timing_counter_get
+#else
+#define telemetry_timestamp sof_cycle_get_64
+#endif
 
 #endif /*__SOF_TELEMETRY_H__ */
