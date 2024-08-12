@@ -39,6 +39,7 @@ import json
 import gzip
 import dataclasses
 import concurrent.futures as concurrent
+import tarfile
 
 from west import configuration as west_config
 
@@ -330,6 +331,8 @@ IPC4
         └── sof-PLAT.ri\n
 				""")
 
+	parser.add_argument("--no-tarball", default=False, action='store_true',
+			    help="""Do not create a tar file of the installed firmware files under build-sof-staging.""")
 	parser.add_argument("--version", required=False, action="store_true",
 			    help="Prints version of this script.")
 
@@ -1169,6 +1172,28 @@ def reproducible_checksum(platform, ri_file):
 	chk256 = sof_ri_info.EraseVariables(ri_file, parsed_ri, west_top / repro_output)
 	print('sha256sum {0}\n{1} {0}'.format(repro_output, chk256))
 
+def create_tarball():
+	# vendor directories (typically under /lib/firmware) to include
+        # in the tarball
+	vendor_dirs = [ 'intel']
+
+	build_top = west_top / 'build-sof-staging' / 'sof'
+
+	tarball_name = 'sof.tgz'
+
+	prev_cwd = os.getcwd()
+	os.chdir(build_top)
+
+	tarball_path = build_top / tarball_name
+	with tarfile.open(tarball_path, 'w:gz') as tarball:
+		for vendor_dir in vendor_dirs:
+			vendor_dir_path = build_top / vendor_dir
+			if not vendor_dir_path.exists():
+				continue
+			tarball.add(vendor_dir, recursive=True)
+		print(f"Tarball %s created" % tarball_path)
+
+	os.chdir(prev_cwd)
 
 def main():
 	parse_args()
@@ -1190,6 +1215,8 @@ def main():
 
 	build_rimage()
 	build_platforms()
+	if not args.no_tarball:
+		create_tarball()
 	show_installed_files()
 
 if __name__ == "__main__":
