@@ -254,11 +254,11 @@ static void zephyr_ll_run(void *data)
 static void schedule_ll_callback(void *data)
 {
 #ifdef CONFIG_SOF_TELEMETRY
-	const uint32_t begin_stamp = (uint32_t)sof_cycle_get_64();
+	const uint32_t begin_stamp = (uint32_t)telemetry_timestamp();
 #endif
 	zephyr_ll_run(data);
 #ifdef CONFIG_SOF_TELEMETRY
-	const uint32_t current_stamp = (uint32_t)sof_cycle_get_64();
+	const uint32_t current_stamp = (uint32_t)telemetry_timestamp();
 
 	telemetry_update(begin_stamp, current_stamp);
 #endif
