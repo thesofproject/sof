@@ -495,13 +495,13 @@ int comp_copy(struct comp_dev *dev)
 #endif
 
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
-		const uint32_t begin_stamp = (uint32_t)sof_cycle_get_64();
+		const uint32_t begin_stamp = (uint32_t)telemetry_timestamp();
 #endif
 
 		ret = dev->drv->ops.copy(dev);
 
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
-		const uint32_t cycles_consumed = (uint32_t)sof_cycle_get_64() - begin_stamp;
+		const uint32_t cycles_consumed = (uint32_t)telemetry_timestamp() - begin_stamp;
 
 		comp_update_performance_data(dev, cycles_consumed);
 #endif
