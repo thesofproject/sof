@@ -15,7 +15,8 @@ add_library(audio_for_selector STATIC
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector.c
 	${PROJECT_SOURCE_DIR}/src/audio/selector/selector_generic.c
-	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c

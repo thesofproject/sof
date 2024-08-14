@@ -10,13 +10,14 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_local_sources(sof
 		host-legacy.c
 		component.c
-		buffer.c
 		source_api_helper.c
 		sink_api_helper.c
 		sink_source_utils.c
 		audio_stream.c
 		channel_map.c
 	)
+
+	add_subdirectory(buffers)
 
 	if(CONFIG_COMP_BLOB)
 		add_local_sources(sof data_blob.c)
@@ -128,7 +129,7 @@ endif()
 add_local_sources(sof
 	component.c
 	data_blob.c
-	buffer.c
+	buffers/comp_buffer.c
 	buffers/audio_buffer.c
 	source_api_helper.c
 	sink_api_helper.c
