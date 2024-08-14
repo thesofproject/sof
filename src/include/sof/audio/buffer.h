@@ -120,19 +120,12 @@ extern struct tr_ctx buffer_tr;
 /*
  * audio component buffer - connects 2 audio components together in pipeline.
  *
- * The buffer is a hot structure that must be shared on certain cache
- * incoherent architectures.
+ * this is a legacy component connector for pipeline 1.0
  *
- * Access flow (on cache incoherent architectures only)
- * 1) buffer acquired by using uncache cache coherent pointer.
- * 2) buffer is invalidated after lock acquired.
- * 3) buffer is safe to use cached pointer for access.
- * 4) release buffer cached pointer
- * 5) write back cached data and release lock using uncache pointer.
  */
 struct comp_buffer {
 	/* data buffer */
-	CORE_CHECK_STRUCT_FIELD;
+	struct sof_audio_buffer audio_buffer;
 
 	struct audio_stream stream;
 
@@ -190,49 +183,33 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uin
 struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size, uint32_t caps,
 				       uint32_t flags, uint32_t align, bool is_shared);
 struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared);
-#if CONFIG_PIPELINE_2_0
-/*
- * attach a secondary buffer (any type) before buffer (when at_input == true) or behind a buffer
- *
- * before buffer (at_input == true):
- *  2.0 mod ==> (sink_API) secondary buffer ==>
- *			==> comp_buffer (audio_stream or source API) ==> 1.0 mod
- *
- * after buffer (at_input == false):
- *  1.0 mod ==> (audio_stream or sink API) ==> comp_buffer ==>
- *			==> secondary buffer(source API) == 2.0 mod
- *
- * If a secondary buffer is attached, it replaces source or sink interface of audio_stream
- * allowing the module connected to it using all properties of secondary buffer (like
- * lockless cross-core connection in case of ring_buffer etc.) keeping legacy interface
- * to other modules
- *
- * buffer_sync_secondary_buffer must be called every 1 ms to move data to/from
- * secondary buffer to comp_buffer
- *
- * @param buffer pointer to a buffer
- * @param at_input true indicates that a secondary buffer is located at data input, replacing
- *			sink API of audio_stream
- *		   false indicates that a secondary buffer is located at data output, replacing
- *			source API of audio_stream
- * @param secondary_buffer pointer to a buffer to be attached
- */
-int buffer_attach_secondary_buffer(struct comp_buffer *buffer, bool at_input,
-				   struct sof_audio_buffer *secondary_buffer);
 
-/*
- * move data from/to secondary buffer, must be called periodically as described above
- *
- * @param buffer pointer to a buffer
- * @param limit data copy limit. Indicates maximum amount of data that will be moved from/to
- *		secondary buffer in an operation
- */
-int buffer_sync_secondary_buffer(struct comp_buffer *buffer, size_t limit);
-#endif /* CONFIG_PIPELINE_2_0 */
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);
 int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, size_t minimum_size,
 			  uint32_t alignment);
-void buffer_free(struct comp_buffer *buffer);
+
+/* legacy wrappers, to be removed. Don't use them if possible */
+static inline struct comp_buffer *comp_buffer_get_from_source(struct sof_source *source)
+{
+	struct sof_audio_buffer *audio_buffer = sof_audo_buffer_from_source(source);
+
+	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
+}
+
+static inline struct comp_buffer *comp_buffer_get_from_sink(struct sof_sink *sink)
+{
+	struct sof_audio_buffer *audio_buffer = sof_audo_buffer_from_sink(sink);
+
+	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
+}
+
+static inline void buffer_free(struct comp_buffer *buffer)
+{
+	audio_buffer_free(&buffer->audio_buffer);
+}
+
+/* end of legacy wrappers */
+
 void buffer_zero(struct comp_buffer *buffer);
 
 /* called by a component after producing data into this buffer */

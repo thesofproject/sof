@@ -285,7 +285,6 @@ static int mixin_process(struct processing_module *mod,
 	 * and frames free in each connected mixout sink buffer.
 	 */
 	for (i = 0; i < num_of_sinks; i++) {
-		struct audio_stream *stream;
 		struct comp_buffer *unused_in_between_buf;
 		struct comp_dev *mixout;
 		struct sof_sink *mixout_sink;
@@ -299,9 +298,8 @@ static int mixin_process(struct processing_module *mod,
 		 * TODO: find out a solution to reach mixout without knowledge of mixin
 		 * sof_sink implementation.
 		 */
-		stream = container_of(sinks[i], struct audio_stream, _sink_api);
 		/* unused buffer between mixin and mixout */
-		unused_in_between_buf = container_of(stream, struct comp_buffer, stream);
+		unused_in_between_buf = comp_buffer_get_from_sink(sinks[i]);
 		mixout = unused_in_between_buf->sink;
 
 		/* Skip non-active mixout like it is not connected so it does not
@@ -477,7 +475,6 @@ static int mixout_process(struct processing_module *mod,
 	 * produced now.
 	 */
 	for (i = 0; i < num_of_sources; i++) {
-		const struct audio_stream *source_stream;
 		struct comp_buffer *unused_in_between_buf;
 		struct comp_dev *mixin;
 
@@ -487,9 +484,7 @@ static int mixout_process(struct processing_module *mod,
 		 * TODO: find out a solution to reach mixin without knowledge of mixout
 		 * sof_source implementation.
 		 */
-		source_stream = container_of(sources[i], struct audio_stream, _source_api);
-		unused_in_between_buf = container_of(source_stream, struct comp_buffer,
-						     stream);
+		unused_in_between_buf = comp_buffer_get_from_source(sources[i]);
 		mixin = unused_in_between_buf->source;
 
 		pending_frames = get_mixin_pending_frames(md, mixin);
@@ -502,13 +497,10 @@ static int mixout_process(struct processing_module *mod,
 
 	if (frames_to_produce > 0 && frames_to_produce < INT32_MAX) {
 		for (i = 0; i < num_of_sources; i++) {
-			const struct audio_stream *source_stream;
 			struct comp_buffer *unused_in_between_buf;
 			struct comp_dev *mixin;
 
-			source_stream = container_of(sources[i], struct audio_stream, _source_api);
-			unused_in_between_buf = container_of(source_stream,
-							     struct comp_buffer, stream);
+			unused_in_between_buf = comp_buffer_get_from_source(sources[i]);
 			mixin = unused_in_between_buf->source;
 
 			pending_frames = get_mixin_pending_frames(md, mixin);
@@ -567,7 +559,6 @@ static int mixout_reset(struct processing_module *mod)
 		int i;
 
 		for (i = 0; i < mod->num_of_sources; i++) {
-			const struct audio_stream *source_stream;
 			const struct comp_buffer *source_buf;
 			bool stop;
 
@@ -577,11 +568,7 @@ static int mixout_reset(struct processing_module *mod)
 			 * TODO: find out a solution to reach mixin without knowledge of mixout
 			 * sof_source implementation.
 			 */
-			source_stream = container_of(mod->sources[i],
-						     struct audio_stream, _source_api);
-			source_buf = container_of(source_stream, struct comp_buffer,
-						  stream);
-
+			source_buf = comp_buffer_get_from_source(mod->sources[i]);
 			stop = (dev->pipeline == source_buf->source->pipeline &&
 					source_buf->source->state > COMP_STATE_PAUSED);
 
