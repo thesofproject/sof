@@ -9,8 +9,8 @@
 #include "src.h"
 #include "src_config.h"
 
-#include "coef/src_lite_ipc4_int32_define.h"
-#include "coef/src_lite_ipc4_int32_table.h"
+#include "coef/src_lite_int32_define.h"
+#include "coef/src_lite_int32_table.h"
 
 LOG_MODULE_REGISTER(src_lite, CONFIG_SOF_LOG_LEVEL);
 
