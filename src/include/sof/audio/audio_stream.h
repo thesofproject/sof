@@ -47,12 +47,8 @@
  * audio_stream_consume()/audio_stream_produce() (just a single call following
  * series of reads/writes).
  *
- * Audio stream implements pipeline2.0 sink and source API
  */
 struct audio_stream {
-	struct sof_source _source_api;	/**< source API, don't modify, use helper functions only */
-	struct sof_sink _sink_api;	/**< sink API, don't modify, use helper functions only  */
-
 	/* runtime data */
 	uint32_t size;	/**< Runtime buffer size in bytes (period multiple) */
 	uint32_t avail;	/**< Available bytes for reading */
@@ -63,19 +59,7 @@ struct audio_stream {
 	void *end_addr;	/**< Buffer end address */
 	uint8_t byte_align_req;
 	uint8_t frame_align_req;
-#if CONFIG_PIPELINE_2_0
-	/**
-	 * sink API of an additional buffer
-	 * of any type at data input
-	 */
-	struct sof_audio_buffer *secondary_buffer_sink;
 
-	/**
-	 * source API of an additional buffer
-	 * at data output
-	 */
-	struct sof_audio_buffer *secondary_buffer_source;
-#endif /* CONFIG_PIPELINE_2_0 */
 
 	/* runtime stream params */
 	struct sof_audio_stream_params runtime_stream_params;
@@ -1028,15 +1012,6 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 		*valid_fmt = SOF_IPC_FRAME_FLOAT;
 	}
 }
-
-/** get a handler to source API
- */
-struct sof_source *
-audio_stream_get_source(struct audio_stream *audio_stream);
-
-struct sof_sink *
-audio_stream_get_sink(struct audio_stream *audio_stream);
-
 /** @}*/
 
 #endif /* __SOF_AUDIO_AUDIO_STREAM_H__ */

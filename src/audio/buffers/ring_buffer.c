@@ -227,10 +227,13 @@ static int ring_buffer_set_ipc_params(struct ring_buffer *ring_buffer,
 	if (ring_buffer->_hw_params_configured && !force_update)
 		return 0;
 
-	ring_buffer->audio_stream_params->frame_fmt = params->frame_fmt;
-	ring_buffer->audio_stream_params->rate = params->rate;
-	ring_buffer->audio_stream_params->channels = params->channels;
-	ring_buffer->audio_stream_params->buffer_fmt = params->buffer_fmt;
+	struct sof_audio_stream_params *audio_stream_params =
+		audio_buffer_get_stream_params(&ring_buffer->audio_buffer);
+
+	audio_stream_params->frame_fmt = params->frame_fmt;
+	audio_stream_params->rate = params->rate;
+	audio_stream_params->channels = params->channels;
+	audio_stream_params->buffer_fmt = params->buffer_fmt;
 
 	ring_buffer->_hw_params_configured = true;
 
@@ -271,13 +274,12 @@ static const struct sink_ops ring_buffer_sink_ops = {
 	.audio_set_ipc_params = ring_buffer_set_ipc_params_sink,
 };
 
-static const struct audio_buffer_ops ring_buffer_audio_buffer_ops = {
+static const struct audio_buffer_ops audio_buffer_ops = {
 	.free = ring_buffer_free,
 };
 
 struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
-				       uint32_t id,
-				       struct sof_audio_stream_params *audio_stream_params)
+				       uint32_t id)
 {
 	struct ring_buffer *ring_buffer;
 
@@ -292,19 +294,22 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 		return NULL;
 
 	ring_buffer->_flags = flags;
-	ring_buffer->audio_stream_params = audio_stream_params;
 
-	CORE_CHECK_STRUCT_INIT(&ring_buffer->audio_buffer, flags & RING_BUFFER_MODE_SHARED);
-
-	/* initiate structures */
-	source_init(audio_buffer_get_source(&ring_buffer->audio_buffer), &ring_buffer_source_ops,
-		    ring_buffer->audio_stream_params);
-	sink_init(audio_buffer_get_sink(&ring_buffer->audio_buffer), &ring_buffer_sink_ops,
-		  ring_buffer->audio_stream_params);
+	/* init base structure. The audio_stream_params is NULL because ring_buffer
+	 * is currently used as a secondary buffer for DP only
+	 *
+	 * pointer in audio_buffer will be overwritten when attaching ring_buffer as a
+	 * secondary buffer
+	 */
+	audio_buffer_init(&ring_buffer->audio_buffer, BUFFER_TYPE_RING_BUFFER,
+			  flags & RING_BUFFER_MODE_SHARED, &ring_buffer_source_ops,
+			  &ring_buffer_sink_ops, &audio_buffer_ops, NULL);
 
 	/* set obs/ibs in sink/source interfaces */
-	sink_set_min_free_space(&ring_buffer->audio_buffer._sink_api, min_free_space);
-	source_set_min_available(&ring_buffer->audio_buffer._source_api, min_available);
+	sink_set_min_free_space(audio_buffer_get_sink(&ring_buffer->audio_buffer),
+				min_free_space);
+	source_set_min_available(audio_buffer_get_source(&ring_buffer->audio_buffer),
+				 min_available);
 
 	uint32_t max_ibs_obs = MAX(min_available, min_free_space);
 
@@ -319,14 +324,9 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 	if (!ring_buffer->_data_buffer)
 		goto err;
 
-	ring_buffer->audio_stream_params->id = id;
 	tr_info(&ring_buffer_tr, "Ring buffer created, id: %u shared: %u min_available: %u min_free_space %u, size %u",
 		id, ring_buffer_is_shared(ring_buffer), min_available, min_free_space,
 		ring_buffer->data_buffer_size);
-
-	/* set common buffer api */
-	ring_buffer->audio_buffer.ops = &ring_buffer_audio_buffer_ops;
-	ring_buffer->audio_buffer.buffer_type = BUFFER_TYPE_RING_BUFFER;
 
 	/* return a pointer to allocated structure */
 	return ring_buffer;

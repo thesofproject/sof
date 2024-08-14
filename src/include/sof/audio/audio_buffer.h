@@ -203,6 +203,7 @@ static inline struct sof_audio_buffer *sof_audo_buffer_from_source(struct sof_so
  * @param is_shared indicates if the buffer will be shared between cores
  * @param source_ops pointer to virtual methods table for source API
  * @param sink_ops pointer to virtual methods table for sink API
+ * @param audio_buffer_ops pointer to required buffer virtual methods implementation
  * @param audio_stream_params pointer to audio stream (currently kept in buffer implementation)
  */
 static inline

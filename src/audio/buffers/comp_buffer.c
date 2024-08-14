@@ -30,6 +30,176 @@ LOG_MODULE_REGISTER(buffer, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(buffer);
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
+static size_t comp_buffer_get_data_available(struct sof_source *source)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
+
+	return audio_stream_get_avail_bytes(&buffer->stream);
+}
+
+static int comp_buffer_get_data(struct sof_source *source, size_t req_size,
+				void const **data_ptr, void const **buffer_start,
+				size_t *buffer_size)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
+
+	if (req_size > audio_stream_get_avail_bytes(&buffer->stream))
+		return -ENODATA;
+
+	buffer_stream_invalidate(buffer, req_size);
+
+	/* get circular buffer parameters */
+	*data_ptr = buffer->stream.r_ptr;
+	*buffer_start = buffer->stream.addr;
+	*buffer_size = buffer->stream.size;
+	return 0;
+}
+
+static int comp_buffer_release_data(struct sof_source *source, size_t free_size)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
+
+	if (free_size)
+		audio_stream_consume(&buffer->stream, free_size);
+
+	return 0;
+}
+
+static int comp_buffer_set_ipc_params_source(struct sof_source *source,
+					     struct sof_ipc_stream_params *params,
+					     bool force_update)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
+
+	return buffer_set_params(buffer, params, force_update);
+}
+
+static int comp_buffer_source_format_set(struct sof_source *source)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
+
+	audio_stream_recalc_align(&buffer->stream);
+	return 0;
+}
+
+static int comp_buffer_source_set_alignment_constants(struct sof_source *source,
+						      const uint32_t byte_align,
+						      const uint32_t frame_align_req)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
+
+	audio_stream_set_align(byte_align, frame_align_req, &buffer->stream);
+	return 0;
+}
+
+static size_t comp_buffer_get_free_size(struct sof_sink *sink)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+
+	return audio_stream_get_free_bytes(&buffer->stream);
+}
+
+static int comp_buffer_get_buffer(struct sof_sink *sink, size_t req_size,
+				  void **data_ptr, void **buffer_start, size_t *buffer_size)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+
+	if (req_size >  audio_stream_get_free_bytes(&buffer->stream))
+		return -ENODATA;
+
+	/* get circular buffer parameters */
+	*data_ptr = buffer->stream.w_ptr;
+	*buffer_start = buffer->stream.addr;
+	*buffer_size = buffer->stream.size;
+	return 0;
+}
+
+static int comp_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+
+	if (commit_size) {
+		buffer_stream_writeback(buffer, commit_size);
+		audio_stream_produce(&buffer->stream, commit_size);
+	}
+
+	return 0;
+}
+
+static int comp_buffer_set_ipc_params_sink(struct sof_sink *sink,
+					   struct sof_ipc_stream_params *params,
+					   bool force_update)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+
+	return buffer_set_params(buffer, params, force_update);
+}
+
+static int comp_buffer_sink_format_set(struct sof_sink *sink)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+
+	audio_stream_recalc_align(&buffer->stream);
+	return 0;
+}
+
+static int comp_buffer_sink_set_alignment_constants(struct sof_sink *sink,
+						    const uint32_t byte_align,
+						    const uint32_t frame_align_req)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+
+	audio_stream_set_align(byte_align, frame_align_req, &buffer->stream);
+	return 0;
+}
+
+/* free component in the pipeline */
+static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
+{
+	if (!audio_buffer)
+		return;
+
+	CORE_CHECK_STRUCT(audio_buffer);
+
+	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
+
+	struct buffer_cb_free cb_data = {
+		.buffer = buffer,
+	};
+
+	buf_dbg(buffer, "buffer_free()");
+
+	notifier_event(buffer, NOTIFIER_ID_BUFFER_FREE,
+		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
+
+	/* In case some listeners didn't unregister from buffer's callbacks */
+	notifier_unregister_all(NULL, buffer);
+
+	rfree(buffer->stream.addr);
+}
+
+static const struct source_ops comp_buffer_source_ops = {
+	.get_data_available = comp_buffer_get_data_available,
+	.get_data = comp_buffer_get_data,
+	.release_data = comp_buffer_release_data,
+	.audio_set_ipc_params = comp_buffer_set_ipc_params_source,
+	.on_audio_format_set = comp_buffer_source_format_set,
+	.set_alignment_constants = comp_buffer_source_set_alignment_constants
+};
+
+static const struct sink_ops comp_buffer_sink_ops = {
+	.get_free_size = comp_buffer_get_free_size,
+	.get_buffer = comp_buffer_get_buffer,
+	.commit_buffer = comp_buffer_commit_buffer,
+	.audio_set_ipc_params = comp_buffer_set_ipc_params_sink,
+	.on_audio_format_set = comp_buffer_sink_format_set,
+	.set_alignment_constants = comp_buffer_sink_set_alignment_constants
+};
+
+static const struct audio_buffer_ops audio_buffer_ops = {
+	.free = comp_buffer_free,
+};
+
 static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, uint32_t caps,
 					       uint32_t flags, bool is_shared)
 {
@@ -47,10 +217,12 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, u
 		return NULL;
 	}
 
-	CORE_CHECK_STRUCT_INIT(buffer, is_shared);
-
 	buffer->is_shared = is_shared;
 	buffer->caps = caps;
+
+	audio_buffer_init(&buffer->audio_buffer, BUFFER_TYPE_LEGACY_BUFFER, is_shared,
+			  &comp_buffer_source_ops, &comp_buffer_sink_ops, &audio_buffer_ops,
+			  &buffer->stream.runtime_stream_params);
 
 	/* From here no more uncached access to the buffer object, except its list headers */
 	audio_stream_set_addr(&buffer->stream, stream_addr);
@@ -94,66 +266,6 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uin
 
 	return buffer;
 }
-
-#if CONFIG_PIPELINE_2_0
-int buffer_attach_secondary_buffer(struct comp_buffer *buffer, bool at_input,
-				   struct sof_audio_buffer *secondary_buffer)
-{
-	if (buffer->stream.secondary_buffer_sink || buffer->stream.secondary_buffer_source) {
-		buf_err(buffer, "Only one secondary buffer may be attached to a buffer");
-		return -EINVAL;
-	}
-	if (at_input)
-		buffer->stream.secondary_buffer_sink = secondary_buffer;
-	else
-		buffer->stream.secondary_buffer_source = secondary_buffer;
-
-	buf_info(buffer, "ring_buffer attached to buffer as a secondary, at_input: %u", at_input);
-	return 0;
-}
-
-int buffer_sync_secondary_buffer(struct comp_buffer *buffer, size_t limit)
-{
-	int err;
-
-	struct sof_source *data_src;
-	struct sof_sink *data_dst;
-
-	if (buffer->stream.secondary_buffer_sink) {
-		/*
-		 * comp_buffer sink API is shadowed, that means there's a secondary_buffer
-		 * at data input
-		 * get data from secondary_buffer (use source API)
-		 * copy to comp_buffer (use sink API)
-		 */
-		data_src = audio_buffer_get_source(buffer->stream.secondary_buffer_sink);
-		data_dst = &buffer->stream._sink_api;
-	} else if (buffer->stream.secondary_buffer_source) {
-		/*
-		 * comp_buffer source API is shadowed, that means there's a secondary_buffer
-		 * at data output
-		 * get data from comp_buffer (use source API)
-		 * copy to secondary_buffer (use sink API)
-		 */
-		data_src = &buffer->stream._source_api;
-		data_dst = audio_buffer_get_sink(buffer->stream.secondary_buffer_source);
-
-	} else {
-		return -EINVAL;
-	}
-
-	/*
-	 * keep data_available and free_size in local variables to avoid check_time/use_time
-	 * race in MIN macro
-	 */
-	size_t data_available = source_get_data_available(data_src);
-	size_t free_size = sink_get_free_size(data_dst);
-	size_t to_copy = MIN(MIN(data_available, free_size), limit);
-
-	err = source_to_sink_copy(data_src, data_dst, true, to_copy);
-	return err;
-}
-#endif /* CONFIG_PIPELINE_2_0 */
 
 struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size, uint32_t caps,
 				       uint32_t flags, uint32_t align, bool is_shared)
@@ -201,7 +313,7 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 void buffer_zero(struct comp_buffer *buffer)
 {
 	buf_dbg(buffer, "stream_zero()");
-	CORE_CHECK_STRUCT(buffer);
+	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	bzero(audio_stream_get_addr(&buffer->stream), audio_stream_get_size(&buffer->stream));
 	if (buffer->caps & SOF_MEM_CAPS_DMA)
@@ -214,7 +326,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 {
 	void *new_ptr = NULL;
 
-	CORE_CHECK_STRUCT(buffer);
+	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	/* validate request */
 	if (size == 0) {
@@ -256,7 +368,7 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	void *new_ptr = NULL;
 	size_t new_size;
 
-	CORE_CHECK_STRUCT(buffer);
+	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	/* validate request */
 	if (minimum_size == 0 || preferred_size < minimum_size) {
@@ -311,7 +423,7 @@ int buffer_set_params(struct comp_buffer *buffer,
 	int ret;
 	int i;
 
-	CORE_CHECK_STRUCT(buffer);
+	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	if (!params) {
 		buf_err(buffer, "buffer_set_params(): !params");
@@ -341,7 +453,7 @@ bool buffer_params_match(struct comp_buffer *buffer,
 			 struct sof_ipc_stream_params *params, uint32_t flag)
 {
 	assert(params);
-	CORE_CHECK_STRUCT(buffer);
+	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	if ((flag & BUFF_PARAMS_FRAME_FMT) &&
 	     audio_stream_get_frm_fmt(&buffer->stream) != params->frame_fmt)
@@ -356,33 +468,6 @@ bool buffer_params_match(struct comp_buffer *buffer,
 		return false;
 
 	return true;
-}
-
-/* free component in the pipeline */
-void buffer_free(struct comp_buffer *buffer)
-{
-	struct buffer_cb_free cb_data = {
-		.buffer = buffer,
-	};
-
-	CORE_CHECK_STRUCT(buffer);
-
-	if (!buffer)
-		return;
-
-	buf_dbg(buffer, "buffer_free()");
-
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_FREE,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	/* In case some listeners didn't unregister from buffer's callbacks */
-	notifier_unregister_all(NULL, buffer);
-#if CONFIG_PIPELINE_2_0
-	audio_buffer_free(buffer->stream.secondary_buffer_sink);
-	audio_buffer_free(buffer->stream.secondary_buffer_source);
-#endif /* CONFIG_PIPELINE_2_0 */
-	rfree(buffer->stream.addr);
-	rfree(buffer);
 }
 
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
@@ -431,7 +516,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		.transaction_begin_address = audio_stream_get_rptr(&buffer->stream),
 	};
 
-	CORE_CHECK_STRUCT(buffer);
+	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	/* return if no bytes */
 	if (!bytes) {
@@ -471,7 +556,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *list = buffer_comp_list(buffer, dir);
-	CORE_CHECK_STRUCT(buffer);
+	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 	list_item_prepend(list, head);
 }
 
@@ -482,6 +567,6 @@ void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *buf_list = buffer_comp_list(buffer, dir);
-	CORE_CHECK_STRUCT(buffer);
+	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 	list_item_del(buf_list);
 }

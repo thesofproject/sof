@@ -195,7 +195,7 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink_buffer =
 				container_of(blist, struct comp_buffer, source_list);
-		mod->sinks[i] = audio_stream_get_sink(&sink_buffer->stream);
+		mod->sinks[i] = audio_buffer_get_sink(&sink_buffer->audio_buffer);
 		i++;
 	}
 	mod->num_of_sinks = i;
@@ -205,7 +205,7 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 		struct comp_buffer *source_buffer =
 				container_of(blist, struct comp_buffer, sink_list);
 
-		mod->sources[i] = audio_stream_get_source(&source_buffer->stream);
+		mod->sources[i] = audio_buffer_get_source(&source_buffer->audio_buffer);
 		i++;
 	}
 	mod->num_of_sources = i;
