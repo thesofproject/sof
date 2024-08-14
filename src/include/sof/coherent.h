@@ -385,14 +385,8 @@ static inline void __coherent_shared(struct coherent *c, const size_t size)
 __must_check static inline struct coherent __sparse_cache *coherent_acquire_thread(
 	struct coherent *c, const size_t size)
 {
-	if (c->shared) {
-		struct coherent __sparse_cache *cc = uncache_to_cache(c);
-
+	if (c->shared)
 		k_mutex_lock(&c->mutex, K_FOREVER);
-
-		/* invalidate local copy */
-		dcache_invalidate_region(cc, size);
-	}
 
 	return (__sparse_force struct coherent __sparse_cache *)c;
 }
@@ -400,14 +394,8 @@ __must_check static inline struct coherent __sparse_cache *coherent_acquire_thre
 static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 					   const size_t size)
 {
-	if (c->shared) {
-		struct coherent *uc = cache_to_uncache(c);
-
-		/* wtb and inv local data to coherent object */
-		dcache_writeback_invalidate_region(c, size);
-
-		k_mutex_unlock(&uc->mutex);
-	}
+	if (c->shared)
+		k_mutex_unlock(&c->mutex);
 }
 
 static inline void *__coherent_init_thread(size_t offset, const size_t size)
