@@ -416,6 +416,7 @@ zephyr_library_sources(
 	# SOF mandatory audio processing
 	${SOF_AUDIO_PATH}/channel_map.c
 	${SOF_AUDIO_PATH}/buffer.c
+	${SOF_AUDIO_PATH}/buffers/audio_buffer.c
 	${SOF_AUDIO_PATH}/source_api_helper.c
 	${SOF_AUDIO_PATH}/sink_api_helper.c
 	${SOF_AUDIO_PATH}/sink_source_utils.c
