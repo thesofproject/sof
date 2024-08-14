@@ -3,6 +3,7 @@
  * Copyright(c) 2023 Intel Corporation. All rights reserved.
  */
 
+#include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/audio_stream.h>
 

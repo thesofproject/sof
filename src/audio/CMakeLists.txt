@@ -129,6 +129,7 @@ add_local_sources(sof
 	component.c
 	data_blob.c
 	buffer.c
+	buffers/audio_buffer.c
 	source_api_helper.c
 	sink_api_helper.c
 	sink_source_utils.c
