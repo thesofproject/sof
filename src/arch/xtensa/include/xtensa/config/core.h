@@ -37,22 +37,28 @@
 #define XTENSA_CONFIG_CORE_H
 
 /*
- * This define is used by the new 2023 xt-clang toolchain and, while there are a few definitions
+ * This define is used by Assembly files of platform ACP_7_0's toolchain.
+ * Else condition has new 2023 xt-clang toolchain and, while there are a few definitions
  * (identical to this one) in various implementations such as newlib, none of them is in use when
  * building SOF with Zephyr and XtensaTools.
  */
 
-#if defined(__ZEPHYR__)
+#if defined (_ASMLANGUAGE) || defined (__ASSEMBLER__)
+
+#ifndef UINT32_C
+#define UINT32_C(x) x
+#endif
+
+#else
 
 #ifndef __UINT32_C
 #define __UINT32_C(x) x ## U
 #endif
-
 #ifndef UINT32_C
 #define UINT32_C(x) __UINT32_C(x)
 #endif
 
-#endif
+#endif /*_ASMLANGUAGE or __ASSEMBLER__*/
 
 /*  CONFIGURATION INDEPENDENT DEFINITIONS:  */
 #ifdef __XTENSA__
