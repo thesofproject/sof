@@ -91,7 +91,7 @@ void audio_buffer_free(struct sof_audio_buffer *buffer)
 	audio_buffer_free(buffer->secondary_buffer_sink);
 	audio_buffer_free(buffer->secondary_buffer_source);
 #endif /* CONFIG_PIPELINE_2_0 */
-	if (buffer->free)
-		buffer->free(buffer);
+	if (buffer->ops->free)
+		buffer->ops->free(buffer);
 	rfree(buffer);
 }
