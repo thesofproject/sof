@@ -920,7 +920,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		 */
 		struct comp_buffer *buffer =
 				container_of(blist, struct comp_buffer, sink_list);
-		err = buffer_sync_secondary_buffer(buffer, UINT_MAX);
+		err = audio_buffer_sync_secondary_buffer(&buffer->audio_buffer, UINT_MAX);
 
 		if (err) {
 			comp_err(dev, "LL to DP copy error status: %d", err);
@@ -947,10 +947,10 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		struct comp_buffer *buffer =
 				container_of(blist, struct comp_buffer, source_list);
 		struct sof_source *following_mod_data_source =
-				audio_stream_get_source(&buffer->stream);
+				audio_buffer_get_source(&buffer->audio_buffer);
 
-		err = buffer_sync_secondary_buffer
-			(buffer,
+		err = audio_buffer_sync_secondary_buffer
+			(&buffer->audio_buffer,
 			 source_get_min_available(following_mod_data_source));
 
 		if (err) {
