@@ -14,7 +14,8 @@ add_library(
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
-	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c

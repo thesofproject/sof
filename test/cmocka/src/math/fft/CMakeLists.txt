@@ -7,7 +7,8 @@ cmocka_test(fft
 	${PROJECT_SOURCE_DIR}/src/math/fft/fft_16_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/math/fft/fft_32.c
 	${PROJECT_SOURCE_DIR}/src/math/fft/fft_32_hifi3.c
-	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
 	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
