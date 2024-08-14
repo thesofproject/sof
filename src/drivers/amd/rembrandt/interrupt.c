@@ -17,7 +17,6 @@
 #include <xtensa/hal.h>
 #include <xtensa/config/core.h>
 #include <xtensa/config/specreg.h>
-#include <xtensa/core-macros.h>
 #include "xtos-internal.h"
 #include <errno.h>
 #include <inttypes.h>

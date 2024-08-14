@@ -6,7 +6,6 @@
 //              SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
 
 #include <rtos/panic.h>
-#include <xtensa/core-macros.h>
 #include <platform/chip_offset_byte.h>
 #include <platform/chip_registers.h>
 #include <rtos/interrupt.h>
