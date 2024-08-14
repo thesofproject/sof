@@ -200,6 +200,7 @@ jobs:
              --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
              --cmake-args=--warn-uninitialized
              --overlay=sof/app/overlays/repro-build.conf
+             --no-tarball
              ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
       - name: Upload build artifacts
@@ -366,6 +367,7 @@ jobs:
           --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
           --cmake-args=--warn-uninitialized
           --overlay=sof/app/overlays/repro-build.conf
+          --no-tarball
           ${{ matrix.build_opts }} ${{ matrix.platforms }}
 
       - name: Upload build artifacts
