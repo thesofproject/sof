@@ -15,6 +15,18 @@
 #define BUFFER_TYPE_LEGACY_BUFFER 1
 #define BUFFER_TYPE_RING_BUFFER 2
 
+/* forward def */
+struct sof_audio_buffer;
+
+struct audio_buffer_ops {
+	/**
+	 * @brief this method must free all structures allocated by buffer implementation
+	 *	  it must not free the buffer memory itself
+	 *	  OPTIONAL
+	 */
+	void (*free)(struct sof_audio_buffer *buffer);
+};
+
 /* base class for all buffers, all buffers must inherit from it */
 struct sof_audio_buffer {
 	CORE_CHECK_STRUCT_FIELD;
@@ -56,11 +68,7 @@ struct sof_audio_buffer {
 	struct sof_sink _sink_api;      /**< sink api handler */
 
 	/* virtual methods */
-	/**
-	 * @brief this method must free all structures allocated by buffer implementation
-	 *	  it must not free the buffer memory itself
-	 */
-	void (*free)(struct sof_audio_buffer *buffer);
+	const struct audio_buffer_ops *ops;
 };
 
 #if CONFIG_PIPELINE_2_0
@@ -200,10 +208,12 @@ static inline struct sof_audio_buffer *sof_audo_buffer_from_source(struct sof_so
 static inline
 void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bool is_shared,
 		       const struct source_ops *source_ops, const struct sink_ops *sink_ops,
+		       const struct audio_buffer_ops *audio_buffer_ops,
 		       struct sof_audio_stream_params *audio_stream_params)
 {
 	CORE_CHECK_STRUCT_INIT(&buffer, is_shared);
 	buffer->buffer_type = buffer_type;
+	buffer->ops = audio_buffer_ops;
 	buffer->audio_stream_params = audio_stream_params;
 	source_init(audio_buffer_get_source(buffer), source_ops,
 		    audio_buffer_get_stream_params(buffer));

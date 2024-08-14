@@ -271,6 +271,10 @@ static const struct sink_ops ring_buffer_sink_ops = {
 	.audio_set_ipc_params = ring_buffer_set_ipc_params_sink,
 };
 
+static const struct audio_buffer_ops ring_buffer_audio_buffer_ops = {
+	.free = ring_buffer_free,
+};
+
 struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
 				       uint32_t id,
 				       struct sof_audio_stream_params *audio_stream_params)
@@ -321,7 +325,7 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 		ring_buffer->data_buffer_size);
 
 	/* set common buffer api */
-	ring_buffer->audio_buffer.free = ring_buffer_free;
+	ring_buffer->audio_buffer.ops = &ring_buffer_audio_buffer_ops;
 	ring_buffer->audio_buffer.buffer_type = BUFFER_TYPE_RING_BUFFER;
 
 	/* return a pointer to allocated structure */
