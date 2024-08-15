@@ -15,7 +15,6 @@
 #include <rtos/init.h>
 
 #include <google_ctc_audio_processing.h>
-#include <google_ctc_audio_processing_sof_message_reader.h>
 
 #include "google_ctc_audio_processing.h"
 
@@ -80,6 +79,12 @@ static void ctc_s16_default(struct google_ctc_audio_processing_comp_data *cd,
 	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s16(sink, dest));
 	int written_samples = 0;
 
+	if (!cd->enabled) {
+		audio_stream_copy(source, 0, sink, 0, samples);
+		module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
+		return;
+	}
+
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
 	       written_samples < samples_to_written) {
@@ -129,6 +134,12 @@ static void ctc_s24_default(struct google_ctc_audio_processing_comp_data *cd,
 	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s24(source, src));
 	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s24(sink, dest));
 	int written_samples = 0;
+
+	if (!cd->enabled) {
+		audio_stream_copy(source, 0, sink, 0, samples);
+		module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
+		return;
+	}
 
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
@@ -180,6 +191,12 @@ static void ctc_s32_default(struct google_ctc_audio_processing_comp_data *cd,
 	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s32(sink, dest));
 	int written_samples = 0;
 
+	if (!cd->enabled) {
+		audio_stream_copy(source, 0, sink, 0, samples);
+		module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
+		return;
+	}
+
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
 	       written_samples < samples_to_written) {
@@ -215,6 +232,8 @@ static void ctc_s32_default(struct google_ctc_audio_processing_comp_data *cd,
 static int ctc_free(struct processing_module *mod)
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
+
+	comp_info(mod->dev, "ctc_free()");
 
 	if (cd) {
 		rfree(cd->input);
@@ -268,6 +287,8 @@ static int ctc_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 
+	cd->enabled = true;
+
 	comp_dbg(dev, "ctc_init(): Ready");
 
 	return 0;
@@ -279,7 +300,7 @@ static int google_ctc_audio_processing_reconfigure(struct processing_module *mod
 	struct comp_dev *dev = mod->dev;
 	uint8_t *config;
 	size_t size;
-	int ret;
+	int ret = 0;
 
 	comp_dbg(dev, "google_ctc_audio_processing_reconfigure()");
 
@@ -295,32 +316,21 @@ static int google_ctc_audio_processing_reconfigure(struct processing_module *mod
 	}
 
 	comp_info(dev, "google_ctc_audio_processing_reconfigure(): New tuning config %p (%zu bytes)",
-		  config, size);
+		  cd->config, size);
+
+	cd->config = (struct google_ctc_config *)config;
+	if (cd->config)
+		cd->enabled = cd->config->params.enabled;
 
 	cd->reconfigure = false;
-
-	uint8_t *processing_config;
-	size_t processing_config_size;
-	bool processing_config_present;
-
-	GoogleCtcAudioProcessingParseSofConfigMessage(config, size,
-						      &processing_config,
-						      &processing_config_size,
-						      &processing_config_present);
-
-	if (processing_config_present) {
-		comp_info(dev,
-			  "google_ctc_audio_processing_reconfigure(): Applying config of size %zu bytes",
-			  processing_config_size);
-
-		ret = GoogleCtcAudioProcessingReconfigure(cd->state,
-							  processing_config,
-							  processing_config_size);
-		if (ret) {
-			comp_err(dev, "GoogleCtcAudioProcessingReconfigure failed: %d",
-				 ret);
-			return ret;
-		}
+	comp_info(dev,
+		  "google_ctc_audio_processing_reconfigure(): Applying config of size %zu bytes",
+		  size);
+	ret = GoogleCtcAudioProcessingReconfigure(cd->state, config, size);
+	if (ret) {
+		comp_err(dev, "GoogleCtcAudioProcessingReconfigure failed: %d",
+			 ret);
+		return ret;
 	}
 
 	return 0;
@@ -371,18 +381,31 @@ static int ctc_prepare(struct processing_module *mod,
 							     audio_stream_get_rate(&source->stream),
 							     /*config=*/NULL,
 							     /*config_size=*/0);
+	if (!cd->state) {
+		comp_err(mod->dev, "ctc_prepare(), failed to create CTC");
+		return -ENOMEM;
+	}
 
+	cd->config = comp_get_data_blob(cd->tuning_handler, NULL, NULL);
+	if (cd->config)
+		cd->enabled = cd->config->params.enabled;
 	return 0;
 }
 
 static int ctc_reset(struct processing_module *mod)
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
+	size_t buf_size = cd->chunk_frames * sizeof(cd->input[0]) * kMaxChannels;
 
 	comp_info(mod->dev, "ctc_reset()");
 
 	GoogleCtcAudioProcessingFree(cd->state);
+	cd->state = NULL;
 	cd->ctc_func = NULL;
+	cd->input_samples = 0;
+	cd->next_avail_output_samples = 0;
+	memset(cd->input, 0 , buf_size);
+	memset(cd->output, 0 , buf_size);
 	return 0;
 }
 
@@ -408,6 +431,7 @@ static int ctc_process(struct processing_module *mod,
 	}
 
 	cd->ctc_func(cd, source, sink, &input_buffers[0], &output_buffers[0], frames);
+
 	return 0;
 }
 

@@ -44,7 +44,9 @@ int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 		return ret;
 
 	if (comp_is_new_data_blob_available(cd->tuning_handler)) {
-		comp_get_data_blob(cd->tuning_handler, NULL, NULL);
+		cd->config = comp_get_data_blob(cd->tuning_handler, NULL, NULL);
+		if (cd->config)
+			cd->enabled = cd->config->params.enabled;
 		cd->reconfigure = true;
 	}
 
