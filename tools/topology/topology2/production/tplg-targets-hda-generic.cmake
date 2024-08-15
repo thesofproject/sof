@@ -11,8 +11,8 @@ list(APPEND TPLGS
 # passthrough pipelines for HDMI and
 # 2 or 4 DMIC, no NHLT blob included in topology
 "sof-hda-generic\;sof-hda-generic-2ch\;HDA_CONFIG=mix,NUM_DMICS=2"
-"sof-hda-generic\;sof-hda-generic-4ch\;HDA_CONFIG=mix,NUM_DMICS=4,\
-PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
+"sof-hda-generic\;sof-hda-generic-4ch\;HDA_CONFIG=mix,\
+NUM_DMICS=4,DMIC0_PCM_CHANNELS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
 
 # HDA topology with mixer-based pipelines for HDA and
 # passthrough pipelines for HDMI and
@@ -24,14 +24,14 @@ PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1"
 # Topologies for CAVS2.5 architecture
 "sof-hda-generic\;sof-hda-generic-cavs25-2ch\;HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-2ch.bin"
-"sof-hda-generic\;sof-hda-generic-cavs25-4ch\;HDA_CONFIG=mix,NUM_DMICS=4,\
-PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+"sof-hda-generic\;sof-hda-generic-cavs25-4ch\;HDA_CONFIG=mix,\
+NUM_DMICS=4,DMIC0_PCM_CHANNELS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-4ch.bin"
 
 # Topologies for ACE1 and ACE2 architectures
 "sof-hda-generic\;sof-hda-generic-ace1-2ch\;PLATFORM=mtl,HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-2ch.bin"
-"sof-hda-generic\;sof-hda-generic-ace1-4ch\;PLATFORM=mtl,HDA_CONFIG=mix,NUM_DMICS=4,\
-PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+"sof-hda-generic\;sof-hda-generic-ace1-4ch\;PLATFORM=mtl,HDA_CONFIG=mix,\
+NUM_DMICS=4,DMIC0_PCM_CHANNELS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-4ch.bin"
 )

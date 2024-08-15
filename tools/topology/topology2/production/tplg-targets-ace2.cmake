@@ -3,7 +3,8 @@
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 list(APPEND TPLGS
 # SDW topology for LNL RVP
-"cavs-sdw\;sof-lnl-rt711-4ch\;PLATFORM=lnl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+"cavs-sdw\;sof-lnl-rt711-4ch\;PLATFORM=lnl,\
+NUM_DMICS=4,DMIC0_PCM_CHANNELS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-lnl-rt711-4ch.bin,\
 HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6"
 
