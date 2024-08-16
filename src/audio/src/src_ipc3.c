@@ -38,7 +38,7 @@
 #include <stdint.h>
 #include <limits.h>
 
-#include "src.h"
+#include "src_common.h"
 #include "src_config.h"
 
 SOF_DEFINE_REG_UUID(src);

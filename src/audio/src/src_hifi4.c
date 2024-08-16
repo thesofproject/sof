@@ -10,7 +10,7 @@
 
 #if SRC_HIFI4
 
-#include "src.h"
+#include "src_common.h"
 
 #include <sof/math/numbers.h>
 #include <xtensa/config/defs.h>
