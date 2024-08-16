@@ -10,7 +10,7 @@
 
 #if SRC_HIFI3
 
-#include "src.h"
+#include "src_common.h"
 
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi3.h>

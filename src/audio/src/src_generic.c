@@ -16,7 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "src.h"
+#include "src_common.h"
 
 #if SRC_SHORT /* 16 bit coefficients version */
 

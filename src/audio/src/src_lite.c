@@ -6,7 +6,7 @@
 
 #include <rtos/init.h>
 
-#include "src.h"
+#include "src_common.h"
 #include "src_config.h"
 
 #include "coef/src_lite_int32_define.h"
