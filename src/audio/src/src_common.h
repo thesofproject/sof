@@ -43,6 +43,10 @@ struct src_param {
 	int stage2_times;
 	int idx_in;
 	int idx_out;
+	int num_in_fs;
+	int num_out_fs;
+	int max_fir_delay_size_xnch;
+	int max_out_delay_size_xnch;
 	int nch;
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
