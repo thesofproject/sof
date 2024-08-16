@@ -24,10 +24,9 @@ SDW_SPK_STREAM=SDW2-Playback,SDW_DMIC_STREAM=SDW0-Capture,SDW_AMP_FEEDBACK=false
 DMIC1_ID=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,SDW_AMP_FEEDBACK=false,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-rt711-rt1308-4ch.bin"
 
-"cavs-sdw\;sof-tgl-cs42l43-l3-cs35l56-l01\;PLATFORM=tgl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
-SDW_SPK_STREAM=Playback-SmartAmp,SDW_SPK_IN_STREAM=Capture-SmartAmp,\
-SDW_DMIC_STREAM=Capture-SmartMic,SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
-SDW_JACK_IN_STREAM=Capture-SimpleJack,SDW_AMP_FMT_24=true,SDW_JACK_FMT_24=true"
+"cavs-sdw\;sof-tgl-cs42l43-l3-cs35l56-l01\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
 # IPC4 topology for TGL rt712 Headset, Amp and DMIC
 "cavs-sdw\;sof-tgl-rt712\;SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
