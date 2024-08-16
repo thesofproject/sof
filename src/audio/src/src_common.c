@@ -41,26 +41,6 @@
 #include "src_common.h"
 #include "src_config.h"
 
-#if SRC_SHORT || CONFIG_COMP_SRC_TINY
-#include "coef/src_tiny_int16_define.h"
-#include "coef/src_tiny_int16_table.h"
-#elif CONFIG_COMP_SRC_SMALL
-#include "coef/src_small_int32_define.h"
-#include "coef/src_small_int32_table.h"
-#elif CONFIG_COMP_SRC_STD
-#include "coef/src_std_int32_define.h"
-#include "coef/src_std_int32_table.h"
-#elif CONFIG_COMP_SRC_IPC4_FULL_MATRIX
-#include "coef/src_ipc4_int32_define.h"
-#include "coef/src_ipc4_int32_table.h"
-#else
-#error "No valid configuration selected for SRC"
-#endif
-
-/* The FIR maximum lengths are per channel so need to multiply them */
-#define MAX_FIR_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE)
-#define MAX_OUT_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE)
-
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
 /* Calculates buffers to allocate for a SRC mode */
@@ -189,10 +169,10 @@ static int init_stages(const struct src_stage *stage1, const struct src_stage *s
 	}
 
 	/* Check the sizes are less than MAX */
-	if (src->state1.fir_delay_size > MAX_FIR_DELAY_SIZE_XNCH ||
-	    src->state1.out_delay_size > MAX_OUT_DELAY_SIZE_XNCH ||
-	    src->state2.fir_delay_size > MAX_FIR_DELAY_SIZE_XNCH ||
-	    src->state2.out_delay_size > MAX_OUT_DELAY_SIZE_XNCH) {
+	if (src->state1.fir_delay_size > p->max_fir_delay_size_xnch ||
+	    src->state1.out_delay_size > p->max_out_delay_size_xnch ||
+	    src->state2.fir_delay_size > p->max_fir_delay_size_xnch ||
+	    src->state2.out_delay_size > p->max_out_delay_size_xnch) {
 		src->state1.fir_delay = NULL;
 		src->state1.out_delay = NULL;
 		src->state2.fir_delay = NULL;
@@ -600,8 +580,8 @@ int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 	int fs_in = cd->source_rate;
 	int fs_out = cd->sink_rate;
 
-	a->idx_in = src_find_fs(a->in_fs, NUM_IN_FS, fs_in);
-	a->idx_out = src_find_fs(a->out_fs, NUM_OUT_FS, fs_out);
+	a->idx_in = src_find_fs(a->in_fs, a->num_in_fs, fs_in);
+	a->idx_out = src_find_fs(a->out_fs, a->num_out_fs, fs_out);
 
 	/* Check that both in and out rates are supported */
 	if (a->idx_in < 0 || a->idx_out < 0) {
@@ -612,39 +592,6 @@ int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 
 	return 0;
 }
-
-static int src_prepare(struct processing_module *mod,
-		       struct sof_source **sources, int num_of_sources,
-		       struct sof_sink **sinks, int num_of_sinks)
-{
-	struct comp_data *cd = module_get_private_data(mod);
-	struct src_param *a = &cd->param;
-	int ret;
-
-	comp_info(mod->dev, "src_prepare()");
-
-	if (num_of_sources != 1 || num_of_sinks != 1)
-		return -EINVAL;
-
-	a->in_fs = src_in_fs;
-	a->out_fs = src_out_fs;
-
-	src_get_source_sink_params(mod->dev, sources[0], sinks[0]);
-
-	ret = src_param_set(mod->dev, cd);
-	if (ret < 0)
-		return ret;
-
-	a->stage1 = src_table1[a->idx_out][a->idx_in];
-	a->stage2 = src_table2[a->idx_out][a->idx_in];
-
-	ret = src_params_general(mod, sources[0], sinks[0]);
-	if (ret < 0)
-		return ret;
-
-	return src_prepare_general(mod, sources[0], sinks[0]);
-}
-
 
 bool src_is_ready_to_process(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,
@@ -710,17 +657,3 @@ int src_free(struct processing_module *mod)
 	rfree(cd);
 	return 0;
 }
-
-static const struct module_interface src_interface = {
-	.init = src_init,
-	.prepare = src_prepare,
-	.process = src_process,
-	.is_ready_to_process = src_is_ready_to_process,
-	.set_configuration = src_set_config,
-	.get_configuration = src_get_config,
-	.reset = src_reset,
-	.free = src_free,
-};
-
-DECLARE_MODULE_ADAPTER(src_interface, SRC_UUID, src_tr);
-SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);

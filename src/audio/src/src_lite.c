@@ -34,6 +34,10 @@ static int src_lite_prepare(struct processing_module *mod,
 
 	a->in_fs = src_in_fs;
 	a->out_fs = src_out_fs;
+	a->num_in_fs = NUM_IN_FS;
+	a->num_out_fs = NUM_OUT_FS;
+	a->max_fir_delay_size_xnch = (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE);
+	a->max_out_delay_size_xnch = (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE);
 
 	ret = src_param_set(mod->dev, cd);
 	if (ret < 0)
