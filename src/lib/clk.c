@@ -62,13 +62,15 @@ void clock_set_freq(int clock, uint32_t hz)
 	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
 					 hz);
 
-	tr_info(&clock_tr, "clock %d set freq %dHz freq_idx %d",
-		clock, hz, idx);
+	if (clk_info->current_freq_idx != idx &&
+	    (!clk_info->set_freq ||
+	     clk_info->set_freq(clock, idx) == 0)) {
+		tr_info(&clock_tr, "clock %d set freq %dHz freq_idx %d old %d",
+			clock, hz, idx, clk_info->current_freq_idx);
 
-	if (!clk_info->set_freq ||
-	    clk_info->set_freq(clock, idx) == 0)
 		/* update clock frequency */
 		clk_info->current_freq_idx = idx;
+	}
 
 	clock_unlock(key);
 }
