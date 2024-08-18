@@ -351,15 +351,34 @@ cd_fail:
 	return ret;
 }
 
+/**
+ * @brief Free resources allocated by Multiband DRC processing component.
+ *
+ * This function releases all memory and resources associated with the
+ * multiband DRC component's operation. This includes dynamically allocated
+ * filter state instances as well as freeing up the model handler.
+ *
+ * @param[in] mod Pointer to the processing module to be freed.
+ *
+ * @return 0 indicating success.
+ */
 static int multiband_drc_free(struct processing_module *mod)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
 	comp_info(mod->dev, "multiband_drc_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
+	if (cd) {
+		/* Freeing other resources as part of the component data */
+		comp_data_blob_handler_free(cd->model_handler);
 
-	rfree(cd);
+		/* Free the main component data structure */
+		rfree(cd);
+
+		/* Clear the private module data pointer */
+		module_set_private_data(mod, NULL);
+	}
+
 	return 0;
 }
 
