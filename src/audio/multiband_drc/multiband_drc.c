@@ -278,6 +278,21 @@ static int multiband_drc_setup(struct processing_module *mod, int16_t channels, 
  * End of Multiband DRC setup code. Next the standard component methods.
  */
 
+/**
+ * @brief Initialize Multiband Dynamic Range Control (DRC) component.
+ *
+ * Allocates and initializes memory for the multiband DRC component data, including
+ * state structure, coefficient blocks, and module interface.
+ *
+ * The function checks and ensures that the provided configuration blob size is
+ * within expected limits. If successful, the component state is reset and multiband
+ * DRC processing is enabled by default.
+ *
+ * @param[in] mod	    Pointer to the processing module to be initialized.
+ *
+ * @return 0 on success, -EINVAL if configuration blob size is too large,
+ *	   -ENOMEM if memory allocation fails for component data.
+ */
 static int multiband_drc_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
@@ -305,12 +320,6 @@ static int multiband_drc_init(struct processing_module *mod)
 	md->private = cd;
 	cd->multiband_drc_func = NULL;
 	cd->crossover_split = NULL;
-	/* Initialize to enabled is a workaround for IPC4 kernel version 6.6 and
-	 * before where the processing is never enabled via switch control. New
-	 * kernel sends the IPC4 switch control and sets this to desired state
-	 * before prepare.
-	 */
-	multiband_drc_process_enable(&cd->process_enabled);
 
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
@@ -328,6 +337,12 @@ static int multiband_drc_init(struct processing_module *mod)
 	}
 	multiband_drc_reset_state(&cd->state);
 
+	/* Initialize to enabled as a workaround for IPC4 kernel version 6.6
+	 * and before where the processing is never enabled via switch
+	 * control. The new kernel sends the IPC4 switch control and sets
+	 * this to the desired state before prepare.
+	 */
+	multiband_drc_process_enable(&cd->process_enabled);
 	return 0;
 
 cd_fail:
