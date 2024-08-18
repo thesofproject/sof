@@ -3,6 +3,7 @@
 // Copyright(c) 2020 Google LLC. All rights reserved.
 //
 // Author: Pin-chih Lin <johnylin@google.com>
+//	   Shriram Shastry <malladi.sastry@linux.intel.com>
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
@@ -92,17 +93,39 @@ static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
 	return 0;
 }
 
-static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, uint32_t rate)
+/**
+ * \brief Initializes coefficients for the multiband DRC processing module.
+ *
+ * This function performs initialization of the crossover, emphasis, and
+ * deemphasis coefficients for each channel of the multiband DRC. It also
+ * allocates memory for pre-delay buffers and sets the delay time for each band.
+ * Memory is allocated ensuring alignment requirements are met to guarantee
+ * efficient access to the data structures.
+ *
+ * \param[in] mod Processing module containing pertinent data.
+ * \param[in] nch Number of channels to process.
+ * \param[in] rate Sample rate of the audio stream.
+ *
+ * \return 0 on success, error code otherwise.
+ */
+static int
+multiband_drc_init_coef(struct processing_module *mod, int16_t nch, uint32_t rate)
 {
 	struct comp_dev *dev = mod->dev;
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
-	struct sof_eq_iir_biquad *crossover;
-	struct sof_eq_iir_biquad *emphasis;
-	struct sof_eq_iir_biquad *deemphasis;
 	struct sof_multiband_drc_config *config = cd->config;
 	struct multiband_drc_state *state = &cd->state;
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
 	int i, ch, ret, num_bands;
+
+	/* Alignment requirement for the iir_state_df2t structure */
+	size_t alignment = __alignof__(struct iir_state_df2t);
+
+	/* Initialize total_size to accumulate the total memory needed */
+	size_t total_size = 0;
+
+	/* Declare sizes for emphasis, crossover delay, and per channel calculation */
+	size_t emp_deemp_size, crossover_delay_size, per_channel_size;
 
 	if (!config) {
 		comp_err(dev, "multiband_drc_init_coef(), no config is set");
@@ -118,8 +141,8 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 		return -EINVAL;
 	}
 	if (config->num_bands > SOF_MULTIBAND_DRC_MAX_BANDS) {
-		comp_err(dev, "multiband_drc_init_coef(), invalid bands count(%i)",
-			 config->num_bands);
+		comp_err(dev,
+			 "multiband_drc_init_coef(), invalid bands count(%i)", config->num_bands);
 		return -EINVAL;
 	}
 
@@ -134,12 +157,50 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 		return -EINVAL;
 	}
 
+	/* Calculate sizes for various components */
+	emp_deemp_size = sizeof(struct iir_state_df2t) * SOF_EMP_DEEMP_BIQUADS;
+	crossover_delay_size = sizeof(uint64_t) * CROSSOVER_NUM_DELAYS_LR4;
+	per_channel_size = emp_deemp_size * 3 + crossover_delay_size * 3;
+
+	/* Calculate aligned total size */
+	total_size = (per_channel_size + alignment - 1) * nch;
+	total_size += sizeof(struct drc_state) * num_bands * nch;
+
+	/* Allocate base memory */
+	uint8_t *base_addr = (uint8_t *)rballoc(0, SOF_MEM_CAPS_RAM, total_size);
+
+	if (!base_addr) {
+		comp_err(dev, "multiband_drc_init_coef(), memory allocation failed for size %zu",
+			 total_size);
+		return -ENOMEM;
+	}
+
+	for (ch = 0; ch < nch; ++ch) {
+		size_t emp_offset = ch * per_channel_size;
+		size_t crossover_offset = emp_offset + emp_deemp_size;
+		size_t deemp_offset = crossover_offset + crossover_delay_size;
+
+		/* Align the emp_offset to the required alignment boundary */
+		emp_offset = ((uintptr_t)(base_addr + emp_offset) + alignment - 1) &
+			      ~(alignment - 1);
+		/* Align the crossover_offset to the required alignment boundary */
+		crossover_offset = ((uintptr_t)(base_addr + crossover_offset) + alignment - 1) &
+				   ~(alignment - 1);
+		/* Align the deemp_offset to the required alignment boundary */
+		deemp_offset = ((uintptr_t)(base_addr + deemp_offset) + alignment - 1) &
+			       ~(alignment - 1);
+
+		/* Assign the aligned pointers for the current channel */
+		state->emphasis[ch] = *(struct iir_state_df2t *)(base_addr + emp_offset);
+		state->crossover[ch] = *(struct crossover_state *)(base_addr + crossover_offset);
+		state->deemphasis[ch] = *(struct iir_state_df2t *)(base_addr + deemp_offset);
+	}
+
 	/* Crossover: collect the coef array and assign it to every channel */
-	crossover = config->crossover_coef;
+	struct sof_eq_iir_biquad *crossover = config->crossover_coef;
+
 	for (ch = 0; ch < nch; ch++) {
-		ret = crossover_init_coef_ch(crossover, &state->crossover[ch],
-					     config->num_bands);
-		/* Free all previously allocated blocks in case of an error */
+		ret = crossover_init_coef_ch(crossover, &state->crossover[ch], config->num_bands);
 		if (ret < 0) {
 			comp_err(dev,
 				 "multiband_drc_init_coef(), could not assign coeffs to ch %d", ch);
@@ -150,12 +211,12 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	comp_info(dev, "multiband_drc_init_coef(), initializing emphasis_eq");
 
 	/* Emphasis: collect the coef array and assign it to every channel */
-	emphasis = config->emp_coef;
+	struct sof_eq_iir_biquad *emphasis = config->emp_coef;
+
 	for (ch = 0; ch < nch; ch++) {
 		ret = multiband_drc_eq_init_coef_ch(emphasis, &state->emphasis[ch]);
-		/* Free all previously allocated blocks in case of an error */
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_init_coef(), could not assign coeffs to ch %d",
+			comp_err(dev, "multiband_drc_init_coef(), could not assign emphasis coeffs to ch %d",
 				 ch);
 			goto err;
 		}
@@ -164,12 +225,12 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	comp_info(dev, "multiband_drc_init_coef(), initializing deemphasis_eq");
 
 	/* Deemphasis: collect the coef array and assign it to every channel */
-	deemphasis = config->deemp_coef;
+	struct sof_eq_iir_biquad *deemphasis = config->deemp_coef;
+
 	for (ch = 0; ch < nch; ch++) {
 		ret = multiband_drc_eq_init_coef_ch(deemphasis, &state->deemphasis[ch]);
-		/* Free all previously allocated blocks in case of an error */
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_init_coef(), could not assign coeffs to ch %d",
+			comp_err(dev, "multiband_drc_init_coef(), could not assign deemphasis coeffs to ch %d",
 				 ch);
 			goto err;
 		}
@@ -182,14 +243,14 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 		ret = drc_init_pre_delay_buffers(&state->drc[i], (size_t)sample_bytes, (int)nch);
 		if (ret < 0) {
 			comp_err(dev,
-				 "multiband_drc_init_coef(), could not init pre delay buffers");
+				 "multiband_drc_init_coef(), could not init pre-delay buffers");
 			goto err;
 		}
 
-		ret = drc_set_pre_delay_time(&state->drc[i],
-					     cd->config->drc_coef[i].pre_delay_time, rate);
+		ret = drc_set_pre_delay_time(&state->drc[i], cd->config->drc_coef[i].pre_delay_time,
+					     rate);
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_init_coef(), could not set pre delay time");
+			comp_err(dev, "multiband_drc_init_coef(), could not set pre-delay time");
 			goto err;
 		}
 	}
@@ -198,6 +259,7 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 
 err:
 	multiband_drc_reset_state(state);
+	rfree(base_addr); /* Free allocated memory in case of error */
 	return ret;
 }
 
