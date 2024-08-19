@@ -108,6 +108,7 @@ config XT_INTERRUPT_LEVEL_5
 config COMPILER_WORKAROUND_CACHE_ATTR
 	bool
 	default n
+	depends on XTENSA
 	help
 	  Select this to activate use of functions instead of macros
 	  to decide whether an address is cacheable or not.
