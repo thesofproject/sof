@@ -53,6 +53,8 @@ extern struct tr_ctx zephyr_tr;
 /* The Zephyr heap */
 
 #ifdef CONFIG_IMX
+
+#ifdef CONFIG_XTENSA
 #define HEAPMEM_SIZE		(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
 
 /*
@@ -60,6 +62,20 @@ extern struct tr_ctx zephyr_tr;
  * duplicated in two sections and the sdram0 region overflows.
  */
 __section(".heap_mem") static uint8_t __aligned(64) heapmem[HEAPMEM_SIZE];
+
+#else
+
+/* for ARM64 the heap is placed inside the .bss section.
+ *
+ * This is because we want to avoid introducing new sections in
+ * the arm64 linker script. Also, is there really a need to place
+ * it inside a special section?
+ *
+ * i.MX93 is the only ARM64-based platform so defining the heap this way
+ * for all ARM64-based platforms should be safe.
+ */
+static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
+#endif /* CONFIG_XTENSA */
 
 #elif CONFIG_ACE
 
@@ -76,18 +92,6 @@ __section(".heap_mem") static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[H
 /* Zephyr native_posix links as a host binary and lacks the automated heap markers */
 #define HEAPMEM_SIZE (256 * 1024)
 char __aligned(8) heapmem[HEAPMEM_SIZE];
-
-#elif defined(CONFIG_ARM64)
-/* for ARM64 the heap is placed inside the .bss section.
- *
- * This is because we want to avoid introducing new sections in
- * the arm64 linker script. Also, is there really a need to place
- * it inside a special section?
- *
- * i.MX93 is the only ARM64-based platform so defining the heap this way
- * for all ARM64-based platforms should be safe.
- */
-static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
 
 #else
 
