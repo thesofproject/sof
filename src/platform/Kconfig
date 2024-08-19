@@ -293,7 +293,7 @@ config HOST
 config IMX
 	bool
 	default n
-	select COMPILER_WORKAROUND_CACHE_ATTR
+	select COMPILER_WORKAROUND_CACHE_ATTR if XTENSA
 	help
 	  This has to be selected for every i.MX NXP platform.
 	  It enables NXP platforms-specific features.
