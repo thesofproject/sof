@@ -493,7 +493,7 @@ static int test_keyword_set_config(struct comp_dev *dev,
 	cfg = (struct sof_detect_test_config *)cdata->data->data;
 	bs = cfg->size;
 
-	comp_info(dev, "test_keyword_set_config(), blob size = %u", bs);
+	comp_info(dev, "test_keyword_set_config(), blob size = %zu", bs);
 
 	if (bs != sizeof(struct sof_detect_test_config)) {
 		comp_err(dev, "test_keyword_set_config(): invalid blob size");
@@ -578,7 +578,7 @@ static int test_keyword_get_config(struct comp_dev *dev,
 
 	/* Copy back to user space */
 	bs = cd->config.size;
-	comp_info(dev, "value of block size: %u", bs);
+	comp_info(dev, "value of block size: %zu", bs);
 
 	if (bs == 0 || bs > size)
 		return -EINVAL;
