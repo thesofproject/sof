@@ -393,6 +393,14 @@ if (CONFIG_SOC_MIMX9352_A55)
 		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
+	# SOF-specific linker script additions
+	zephyr_linker_sources(RWDATA
+	  ${sof_top_dir}/src/platform/imx93_a55/linker/rwdata.ld
+	)
+	zephyr_linker_sources(DATA_SECTIONS
+	  ${sof_top_dir}/src/platform/imx93_a55/linker/data-sections.ld
+	)
+
 	set(PLATFORM "imx93_a55")
 endif()
 
