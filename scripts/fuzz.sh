@@ -17,6 +17,8 @@ Usage:
              relatively verbose stderr is not redirected by -o.
   -j n       Number of concurrent -jobs=n. Defaults to 1.
              The value 0 uses the output of the 'nproc' command.
+  -d         Add debug optimizations and symbols to the build.
+             Useful for testcase reproduction.
 
 Arguments after -- are passed as is to CMake (through west).
 When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
@@ -85,9 +87,10 @@ main()
   local BUILD_ONLY=false
   local FUZZER_STDOUT=/dev/stdout # bashism
   local TEST_DURATION=3
+  local DEBUG_BUILD=false
 
   # Parse "$@". getopts stops after '--'
-  while getopts "hj:po:t:b" opt; do
+  while getopts "hj:po:t:bd" opt; do
       case "$opt" in
           h) print_help; exit 0;;
           j) if [ "$OPTARG" -eq 0 ]; then JOBS=$(nproc); else JOBS="$OPTARG"; fi;;
@@ -95,6 +98,7 @@ main()
           o) FUZZER_STDOUT="$OPTARG";;
           t) TEST_DURATION="$OPTARG";;
           b) BUILD_ONLY=true;;
+          d) DEBUG_BUILD=true;;
           *) print_help; exit 1;;
       esac
   done
@@ -115,6 +119,14 @@ main()
     -DCONFIG_ZEPHYR_POSIX_FUZZ_TICKS=100
     -DCONFIG_ASAN=y
   )
+
+  local debug_configs=(
+    -DCONFIG_DEBUG=y
+    -DCONFIG_DEBUG_OPTIMIZATIONS=y
+  )
+
+  # append debug flags if a debug build
+  if $DEBUG_BUILD; then fuzz_configs=( "${fuzz_configs[@]}" "${debug_configs[@]}" ); fi
 
   # Note there's never any reason to delete fuzz_corpus/.
   # Don't trust `west build -p` because it is not 100% unreliable,
