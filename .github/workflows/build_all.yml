@@ -66,4 +66,4 @@ jobs:
           clang --verbose
           set -x
           sof/scripts/fuzz.sh -b -- -DEXTRA_CFLAGS='-Werror' -DEXTRA_CXXFLAGS='-Werror' \
-              -DOVERLAY_CONFIG=stub_build_all_${{ matrix.IPC }}.conf
+              -DEXTRA_CONF_FILE='stub_build_all_${{ matrix.IPC }}.conf'
