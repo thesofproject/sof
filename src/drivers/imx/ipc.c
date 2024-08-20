@@ -129,7 +129,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
-#ifndef CONFIG_IMX93_A55
+#ifdef CONFIG_XTENSA
 	if (ipc->pm_prepare_D3) {
 		while (1)
 			/*
@@ -139,7 +139,7 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 			 */
 			wait_for_interrupt(0);
 	}
-#endif /* CONFIG_IMX93_A55 */
+#endif /* CONFIG_XTENSA */
 }
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
