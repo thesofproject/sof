@@ -1,8 +1,9 @@
-% [ceps, t, n] = decode_ceps(fn, num_ceps)
+% [ceps, t, n] = decode_ceps(fn, num_ceps, num_channels)
 %
 % Input
 %   fn - File with MFCC data in .raw or .wav format
 %   num_ceps - number of cepstral coefficients per frame
+%   num_channels - needed for .raw format, omit for .wav
 %
 % Outputs
 %   ceps - cepstral coefficients
@@ -12,10 +13,10 @@
 % SPDX-License-Identifier: BSD-3-Clause
 % Copyright(c) 2022 Intel Corporation. All rights reserved.
 
-function [ceps, t, n] = decode_ceps(fn, num_ceps, channels)
+function [ceps, t, n] = decode_ceps(fn, num_ceps, num_channels)
 
 if nargin < 3
-	channels = 1;
+	num_channels = 1;
 end
 
 % MFCC stream
@@ -24,7 +25,7 @@ qformat = 7;
 magic = [25443 28006]; % ASCII 'mfcc' as int16
 
 % Load output data
-data = get_file(fn);
+[data, num_channels] = get_file(fn, num_channels);
 
 idx1 = find(data == magic(1));
 idx = [];
@@ -40,7 +41,7 @@ end
 
 period_ceps = idx(2)-idx(1);
 num_frames = length(idx);
-t_ceps = period_ceps / channels / fs;
+t_ceps = period_ceps / num_channels / fs;
 t = (0:num_frames -1) * t_ceps;
 n = 1:num_ceps;
 
@@ -62,7 +63,7 @@ ylabel('Cepstral coef #');
 
 end
 
-function data = get_file(fn)
+function [data, num_channels] = get_file(fn, num_channels)
 
 [~, ~, ext] = fileparts(fn);
 
@@ -78,10 +79,11 @@ switch lower(ext)
 			error('Only 16-bit wav file format is supported');
 		end
 		s = size(tmp);
-		if s(2) > 1
+		num_channels = s(2);
+		if num_channels > 1
 			data = int16(zeros(prod(s), 1));
-			for i = 1:s(2)
-				data(i:s(2):end) = tmp(:, i);
+			for i = 1:num_channels
+				data(i:num_channels:end) = tmp(:, i);
 			end
 		end
 	otherwise
