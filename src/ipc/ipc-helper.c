@@ -66,7 +66,7 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared
 	if (buffer) {
 		buffer->stream.runtime_stream_params.id = desc->comp.id;
 		buffer->stream.runtime_stream_params.pipeline_id = desc->comp.pipeline_id;
-		buffer->core = desc->comp.core;
+		buffer->Xcore = desc->comp.core;
 
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
@@ -183,7 +183,7 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 			struct comp_buffer *buffer, uint32_t dir)
 {
 	/* check if it's a connection between cores */
-	if (buffer->core != comp_core) {
+	if (buffer->Xcore != comp_core) {
 #if CONFIG_INCOHERENT
 		/* buffer must be shared */
 		assert(audio_buffer_is_shared(&buffer->audio_buffer));

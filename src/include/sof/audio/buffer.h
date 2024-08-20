@@ -131,7 +131,7 @@ struct comp_buffer {
 
 	/* configuration */
 	uint32_t caps;
-	uint32_t core;
+	uint32_t Xcore;		//XXX REMOVE
 	struct tr_ctx tctx;			/* trace settings */
 //	bool is_shared;			/* buffer structure is shared between 2 cores */
 
