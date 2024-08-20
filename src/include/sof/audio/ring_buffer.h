@@ -100,18 +100,12 @@
 struct ring_buffer;
 struct sof_audio_stream_params;
 
-/* buffer flags */
-#define RING_BUFFER_MODE_LOCAL 0
-#define RING_BUFFER_MODE_SHARED BIT(1)
-
 /* the ring_buffer structure */
 struct ring_buffer {
 	/* public: read only */
 	struct sof_audio_buffer audio_buffer;
 
 	size_t data_buffer_size;
-
-	uint32_t _flags;		/* RING_BUFFER_MODE_* */
 
 	uint8_t __sparse_cache *_data_buffer;
 	size_t _write_offset;		/* private: to be modified by data producer using API */
@@ -126,13 +120,11 @@ struct ring_buffer {
  *			 ring_buffer's source api
  * @param min_free_space minimum buffer space in queue required by the module using
  *			 ring_buffer's sink api
- *
- * @param flags a combinatin of RING_BUFFER_MODE_* flags determining working mode
- *
+ * @param is_shared indicates if the buffer will be shared between cores
  * @param id a stream ID, accessible later by sink_get_id/source_get_id
  *
  */
-struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
+struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, bool is_shared,
 				       uint32_t id);
 
 #endif /* __SOF_RING_BUFFER_H__ */

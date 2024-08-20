@@ -217,7 +217,6 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, u
 		return NULL;
 	}
 
-	buffer->is_shared = is_shared;
 	buffer->caps = caps;
 
 	audio_buffer_init(&buffer->audio_buffer, BUFFER_TYPE_LEGACY_BUFFER, is_shared,

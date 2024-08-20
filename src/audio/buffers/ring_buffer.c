@@ -42,12 +42,12 @@ static void ring_buffer_free(struct sof_audio_buffer *buffer)
 }
 
 /**
- * @brief return true if the queue is shared between 2 cores
+ * @brief return true if the ring buffer is shared between 2 cores
  */
 static inline
 bool ring_buffer_is_shared(struct ring_buffer *ring_buffer)
 {
-	return !!(ring_buffer->_flags & RING_BUFFER_MODE_SHARED);
+	return audio_buffer_is_shared(&ring_buffer->audio_buffer);
 }
 
 static inline uint8_t __sparse_cache *ring_buffer_buffer_end(struct ring_buffer *ring_buffer)
@@ -278,13 +278,13 @@ static const struct audio_buffer_ops audio_buffer_ops = {
 	.free = ring_buffer_free,
 };
 
-struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, uint32_t flags,
+struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, bool is_shared,
 				       uint32_t id)
 {
 	struct ring_buffer *ring_buffer;
 
 	/* allocate ring_buffer structure */
-	if (flags & RING_BUFFER_MODE_SHARED)
+	if (is_shared)
 		ring_buffer = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 				      sizeof(*ring_buffer));
 	else
@@ -293,8 +293,6 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 	if (!ring_buffer)
 		return NULL;
 
-	ring_buffer->_flags = flags;
-
 	/* init base structure. The audio_stream_params is NULL because ring_buffer
 	 * is currently used as a secondary buffer for DP only
 	 *
@@ -302,8 +300,8 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 	 * secondary buffer
 	 */
 	audio_buffer_init(&ring_buffer->audio_buffer, BUFFER_TYPE_RING_BUFFER,
-			  flags & RING_BUFFER_MODE_SHARED, &ring_buffer_source_ops,
-			  &ring_buffer_sink_ops, &audio_buffer_ops, NULL);
+			  is_shared, &ring_buffer_source_ops, &ring_buffer_sink_ops,
+			  &audio_buffer_ops, NULL);
 
 	/* set obs/ibs in sink/source interfaces */
 	sink_set_min_free_space(audio_buffer_get_sink(&ring_buffer->audio_buffer),
