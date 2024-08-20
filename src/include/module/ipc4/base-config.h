@@ -181,8 +181,10 @@ enum ipc4_base_module_params {
 };
 
 struct ipc4_pin_props {
-	/* type of the connected stream. */
-	enum ipc4_stream_type stream_type;
+	/* type of the connected stream.
+	 * Holds an "enum ipc4_stream_type" value. Fixed-size because of #9378
+	 */
+	uint32_t stream_type;
 
 	/* audio format of the stream. The content is valid in case of ePcm stream_type. */
 	struct ipc4_audio_format format;
