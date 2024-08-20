@@ -614,9 +614,9 @@ struct comp_dev {
 	/* performance data*/
 	struct comp_perf_data perf_data;
 	/* Input Buffer Size for pin 0, add array for other pins if needed */
-	size_t ibs;
+	size_t XXibs;
 	/* Output Buffers Size for pin 0, add array for other pins if needed */
-	size_t obs;
+	size_t XXobs;
 	/* max dsp cycles per chunk */
 	size_t cpc;
 	/* size of 1ms for input format in bytes */

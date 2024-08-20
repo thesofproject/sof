@@ -539,7 +539,7 @@ bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used)
 
 	if (perf_meas_get_state() == IPC4_PERF_MEASUREMENTS_STARTED) {
 		/* we divide by ibs so we need to check if its set */
-		if (item && dev->ibs != 0) {
+		if (item && dev->XXibs != 0) {
 			item->total_iteration_count++;
 			if (item->total_iteration_count == 0) {
 				/* We can't allow count to overflow to 0. Overflow will also make
@@ -555,10 +555,10 @@ bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used)
 			}
 			item->total_cycles_consumed += cycles_used;
 			item->item.avg_kcps = item->total_cycles_consumed * dev->ll_chunk_size
-				/ (dev->ibs * item->total_iteration_count);
+				/ (dev->XXibs * item->total_iteration_count);
 			item->item.peak_kcps =
 				MAX(item->item.peak_kcps, (cycles_used * dev->ll_chunk_size)
-				/ dev->ibs);
+				/ dev->XXibs);
 		}
 	}
 	return update_peak_of_measured_cpc(dev, cycles_used);
@@ -579,6 +579,7 @@ static uint32_t get_one_ms_in_bytes(const struct ipc4_audio_format fmt)
 }
 #endif
 
+// to tylko dla IPC4 i potrzebne dla perf. ZMIENIC
 void comp_update_ibs_obs_cpc(struct comp_dev *dev)
 {
 #if CONFIG_IPC_MAJOR_4
@@ -592,19 +593,19 @@ void comp_update_ibs_obs_cpc(struct comp_dev *dev)
 		/* set neutral values */
 		dev->ll_chunk_size = 0;
 		dev->cpc = 0;
-		dev->obs = 0;
-		dev->ibs = 0;
+		dev->XXobs = 0;
+		dev->XXibs = 0;
 	}
 	dev->ll_chunk_size = get_one_ms_in_bytes(dev_cfg.audio_fmt);
-	dev->obs = dev_cfg.obs;
-	dev->ibs = dev_cfg.ibs;
+	dev->XXobs = dev_cfg.obs;
+	dev->XXibs = dev_cfg.ibs;
 	dev->cpc = dev_cfg.cpc;
 #else
 	/* set neutral values */
 	dev->ll_chunk_size = 0;
 	dev->cpc = 0;
-	dev->obs = 0;
-	dev->ibs = 0;
+	dev->XXobs = 0;
+	dev->XXibs = 0;
 #endif
 }
 
