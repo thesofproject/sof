@@ -7,8 +7,8 @@ print_help()
 
 Usage:
 
-      $0 -b      -- -DOVERLAY_CONFIG=stub_build_all_ipc4.conf -DEXTRA_CFLAGS="-O0 -g3" ...
-      $0 -t 500  -- -DOVERLAY_CONFIG=stub_build_all_ipc3.conf ...
+      $0 -b      -- -DEXTRA_CONF_FILE=stub_build_all_ipc4.conf -DEXTRA_CFLAGS="-O0 -g3" ...
+      $0 -t 500  -- -DEXTRA_CONF_FILE=stub_build_all_ipc3.conf ...
 
   -p         Delete build-fuzz/ first ("pristine")
   -b         Do not run/fuzz: stop after the build.
@@ -52,9 +52,9 @@ Versions 12+ have all been observed to work.
 You will need the kconfigs specified below for correct operation,
 but can add more at the end of this script's command line to
 duplicate configurations as needed.  Alternatively you can pass
-overlay files in kconfig syntax via:
+extra config files in kconfig syntax via:
 
-   fuzz.sh  -t 300 -- -DOVERLAY_CONFIG=... -DEXTRA_CFLAGS='-Wone -Wtwo' ...
+   fuzz.sh  -t 300 -- -DEXTRA_CONF_FILE='debug.conf;other.conf' -DEXTRA_CFLAGS='-Wone -Wtwo' ...
 
 EOFHELP
 }
@@ -103,7 +103,7 @@ main()
   # This also drops _leading_ '--'.
   shift $((OPTIND-1))
 
-  # Move this to a new fuzz.conf overlay file if it grows bigger
+  # Move this to a new fuzz.conf EXTRA_CONF_FILE if it grows bigger
   local fuzz_configs=(
     -DCONFIG_ZEPHYR_POSIX=y
     -DCONFIG_ASSERT=y
