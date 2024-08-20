@@ -133,7 +133,7 @@ struct comp_buffer {
 	uint32_t caps;
 	uint32_t core;
 	struct tr_ctx tctx;			/* trace settings */
-	bool is_shared;			/* buffer structure is shared between 2 cores */
+//	bool is_shared;			/* buffer structure is shared between 2 cores */
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
@@ -227,7 +227,7 @@ bool buffer_params_match(struct comp_buffer *buffer,
 static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
 #if CONFIG_INCOHERENT
-	if (buffer->is_shared)
+	if (audio_buffer_is_shared(&buffer->audio_buffer))
 		audio_stream_invalidate(&buffer->stream, bytes);
 #endif
 }
@@ -235,7 +235,7 @@ static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t
 static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
 #if CONFIG_INCOHERENT
-	if (buffer->is_shared)
+	if (audio_buffer_is_shared(&buffer->audio_buffer))
 		audio_stream_writeback(&buffer->stream, bytes);
 #endif
 }

@@ -569,7 +569,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 		ring_buffer = ring_buffer_create(source_get_min_available(source),
 						 sink_get_min_free_space(sink),
-						 buffer->is_shared ?
+						 audio_buffer_is_shared(&buffer->audio_buffer) ?
 						   RING_BUFFER_MODE_SHARED : RING_BUFFER_MODE_LOCAL,
 						 buf_get_id(buffer));
 		if (!ring_buffer)

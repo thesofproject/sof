@@ -186,9 +186,9 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 	if (buffer->core != comp_core) {
 #if CONFIG_INCOHERENT
 		/* buffer must be shared */
-		assert(buffer->is_shared);
+		assert(audio_buffer_is_shared(&buffer->audio_buffer));
 #else
-		buffer->is_shared = true;
+		buffer->audio_buffer.is_shared = true;
 #endif
 		if (!comp->is_shared)
 			comp_make_shared(comp);
