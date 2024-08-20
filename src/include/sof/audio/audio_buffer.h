@@ -34,6 +34,8 @@ struct sof_audio_buffer {
 	/* type of the buffer BUFFER_TYPE_* */
 	uint32_t buffer_type;
 
+	bool is_shared;   /* buffer structure is shared between 2 cores */
+
 #if CONFIG_PIPELINE_2_0
 	/**
 	 * sink API of an additional buffer
@@ -166,6 +168,11 @@ struct sof_source *audio_buffer_get_source(struct sof_audio_buffer *buffer)
 
 #endif /* CONFIG_PIPELINE_2_0 */
 
+static inline bool audio_buffer_is_shared(struct sof_audio_buffer *buffer)
+{
+	return buffer->is_shared;
+}
+
 /**
  * @brief return a handler to stream params structure
  */
@@ -216,6 +223,7 @@ void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bo
 	buffer->buffer_type = buffer_type;
 	buffer->ops = audio_buffer_ops;
 	buffer->audio_stream_params = audio_stream_params;
+	buffer->is_shared = is_shared;
 	source_init(audio_buffer_get_source(buffer), source_ops,
 		    audio_buffer_get_stream_params(buffer));
 	sink_init(audio_buffer_get_sink(buffer), sink_ops,
