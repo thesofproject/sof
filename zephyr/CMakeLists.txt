@@ -755,6 +755,12 @@ elseif(CONFIG_COMP_DRC)
 	)
 endif()
 
+if(NOT CONFIG_COMP_DRC STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/drc/drc_log.c
+	)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c

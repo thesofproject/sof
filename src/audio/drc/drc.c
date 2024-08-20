@@ -36,11 +36,10 @@
 #include "drc.h"
 #include "drc_algorithm.h"
 
-LOG_MODULE_REGISTER(drc, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_DECLARE(drc, CONFIG_SOF_LOG_LEVEL);
 
-SOF_DEFINE_REG_UUID(drc);
-
-DECLARE_TR_CTX(drc_tr, SOF_UUID(drc_uuid), LOG_LEVEL_INFO);
+extern const struct sof_uuid drc_uuid;
+extern struct tr_ctx drc_tr;
 
 void drc_reset_state(struct drc_state *state)
 {
