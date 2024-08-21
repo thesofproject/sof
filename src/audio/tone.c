@@ -429,10 +429,10 @@ static int tone_params(struct comp_dev *dev,
 	struct comp_buffer *sourceb, *sinkb;
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+				  Xsink_list);
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+				Xsource_list);
 
 	comp_info(dev, "tone_params(), config->frame_fmt = %u",
 		  dev->ipc_config.frame_fmt);
@@ -675,7 +675,7 @@ static int tone_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+				  Xsink_list);
 
 	cd->channels = audio_stream_get_channels(&sourceb->stream);
 	comp_info(dev, "tone_prepare(), cd->channels = %u, cd->rate = %u",

@@ -171,7 +171,7 @@ static int ghd_params(struct comp_dev *dev,
 
 	/* This detector component will only ever have 1 source */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+				  Xsink_list);
 
 	if (audio_stream_get_channels(sourceb->stream) != 1) {
 		comp_err(dev, "ghd_params(): Only single-channel supported");

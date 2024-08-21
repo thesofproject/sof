@@ -216,9 +216,9 @@ static int waves_effect_allocate(struct processing_module *mod)
 static int waves_effect_check(struct comp_dev *dev)
 {
 	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-						    source_list);
+						    Xsource_list);
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
-						     sink_list);
+						     Xsink_list);
 	const struct audio_stream *src_fmt = &source->stream;
 	const struct audio_stream *snk_fmt = &sink->stream;
 
@@ -285,7 +285,7 @@ static int waves_effect_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
-						     sink_list);
+						     Xsink_list);
 	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 	const struct audio_stream *src_fmt = &source->stream;

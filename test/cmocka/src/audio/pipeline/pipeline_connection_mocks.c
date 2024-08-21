@@ -17,8 +17,8 @@ void cleanup_test_data(struct pipeline_connect_data *data)
 {
 	list_init(&data->first->bsource_list);
 	list_init(&data->second->bsource_list);
-	list_init(&data->b1->sink_list);
-	list_init(&data->b1->source_list);
+	list_init(&data->b1->Xsink_list);
+	list_init(&data->b1->Xsource_list);
 	list_init(&data->first->bsink_list);
 	list_init(&data->second->bsink_list);
 	list_init(&data->b2->sink_list);

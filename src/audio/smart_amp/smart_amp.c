@@ -746,7 +746,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	/* searching for stream and feedback source buffers */
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source_buffer = container_of(blist, struct comp_buffer,
-								 sink_list);
+								 Xsink_list);
 
 		if (source_buffer->Xsource->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
@@ -756,7 +756,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 
 	/* sink buffer */
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
-					source_list);
+					Xsource_list);
 
 	/* get frame format and channels param of stream and feedback source */
 	ff_src_fmt = audio_stream_get_frm_fmt(&sad->source_buf->stream);

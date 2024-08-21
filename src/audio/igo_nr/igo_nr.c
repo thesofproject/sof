@@ -379,7 +379,7 @@ static inline int32_t set_capture_func(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+				  Xsink_list);
 
 	/* The igo_nr supports S16_LE data. Format converter is needed. */
 	switch (audio_stream_get_frm_fmt(&sourceb->stream)) {

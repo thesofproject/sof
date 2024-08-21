@@ -248,7 +248,7 @@ static int shmread_copy(struct comp_dev *dev)
 
 	/* local SOF source buffer */
 	buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+				 Xsink_list);
 	source = &buffer->stream;
 	rptr = source->r_ptr;
 
@@ -307,7 +307,7 @@ static int shmwrite_copy(struct comp_dev *dev)
 
 	/* local SOF sink buffer */
 	buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
-				 source_list);
+				 Xsource_list);
 	sink = &buffer->stream;
 	wptr = sink->w_ptr;
 

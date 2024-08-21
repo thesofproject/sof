@@ -502,7 +502,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	/* searching for stream and feedback source buffers */
 	list_for_item(blist, &dev->bsource_list) {
 		source_buffer = container_of(blist, struct comp_buffer,
-					     sink_list);
+					     Xsink_list);
 
 		/* FIXME: how often can this loop be run? */
 		if (source_buffer->Xsource->ipc_config.type == SOF_COMP_DEMUX)
@@ -512,7 +512,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	}
 
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
-					source_list);
+					Xsource_list);
 
 	sad->out_channels = audio_stream_get_channels(&sad->sink_buf->stream);
 

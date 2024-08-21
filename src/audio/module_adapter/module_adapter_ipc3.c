@@ -130,7 +130,7 @@ static int module_source_status_count(struct comp_dev *dev, uint32_t status)
 		 * current one.
 		 */
 		struct comp_buffer *source = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  Xsink_list);
 
 		if (source->source && source->source->state == status)
 			count++;

@@ -63,7 +63,7 @@ static int selector_verify_params(struct comp_dev *dev,
 	comp_dbg(dev, "selector_verify_params()");
 
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+				Xsource_list);
 
 	/* check whether params->channels (received from driver) are equal to
 	 * cd->config.in_channels_count (PLAYBACK) or
@@ -74,7 +74,7 @@ static int selector_verify_params(struct comp_dev *dev,
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* fetch sink buffer for playback */
 		buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
-					 source_list);
+					 Xsource_list);
 		if (cd->config.in_channels_count &&
 		    cd->config.in_channels_count != params->channels) {
 			comp_err(dev, "selector_verify_params(): src in_channels_count does not match pcm channels");
@@ -93,7 +93,7 @@ static int selector_verify_params(struct comp_dev *dev,
 	} else {
 		/* fetch source buffer for capture */
 		buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
-					 sink_list);
+					 Xsink_list);
 		if (cd->config.out_channels_count &&
 		    cd->config.out_channels_count != params->channels) {
 			comp_err(dev, "selector_verify_params(): src in_channels_count does not match pcm channels");
@@ -354,7 +354,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	comp_dbg(dev, "selector_trigger()");
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+				  Xsink_list);
 
 	ret = comp_set_state(dev, cmd);
 
@@ -384,9 +384,9 @@ static int selector_copy(struct comp_dev *dev)
 
 	/* selector component will have 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+				 Xsink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
+			       Xsource_list);
 
 	if (!audio_stream_get_avail(&source->stream))
 		return PPL_STATUS_PATH_STOP;
@@ -433,9 +433,9 @@ static int selector_prepare(struct comp_dev *dev)
 
 	/* selector component will have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+				  Xsink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+				Xsource_list);
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

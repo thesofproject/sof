@@ -495,11 +495,11 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dd->local_buffer = list_first_item(&dev->bsource_list,
 						   struct comp_buffer,
-						   sink_list);
+						   Xsink_list);
 	else
 		dd->local_buffer = list_first_item(&dev->bsink_list,
 						   struct comp_buffer,
-						   source_list);
+						   Xsource_list);
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {

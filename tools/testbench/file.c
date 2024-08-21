@@ -813,7 +813,7 @@ static int file_copy(struct comp_dev *dev)
 	case FILE_READ:
 		/* file component sink buffer */
 		buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
-					 source_list);
+					 Xsource_list);
 
 		/* test sink has enough free frames */
 		snk_frames = MIN(audio_stream_get_free_frames(&buffer->stream), dev->frames);

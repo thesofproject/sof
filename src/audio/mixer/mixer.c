@@ -172,7 +172,7 @@ static int mixer_reset(struct processing_module *mod)
 		list_for_item(blist, &dev->bsource_list) {
 			/* FIXME: this is racy and implicitly protected by serialised IPCs */
 			struct comp_buffer *source = container_of(blist, struct comp_buffer,
-								  sink_list);
+								  Xsink_list);
 			bool stop = false;
 
 			if (source->source && source->source->state > COMP_STATE_READY)
