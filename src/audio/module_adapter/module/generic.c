@@ -17,11 +17,6 @@
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
-/*****************************************************************************/
-/* Local helper functions						     */
-/*****************************************************************************/
-static int validate_config(struct module_config *cfg);
-
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 {
 	int ret;
@@ -58,12 +53,6 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 
 	ret = memcpy_s(dst->data, size, cfg, size);
 	assert(!ret);
-	ret = validate_config(dst->data);
-	if (ret) {
-		comp_err(dev, "module_load_config(): validation of config failed!");
-		ret = -EINVAL;
-		goto err;
-	}
 
 	/* Config loaded, mark it as valid */
 	dst->size = size;
@@ -188,12 +177,6 @@ int module_free_memory(struct processing_module *mod, void *ptr)
 		 ptr);
 
 	return -EINVAL;
-}
-
-static int validate_config(struct module_config *cfg)
-{
-	/* TODO: validation of codec specific setup config */
-	return 0;
 }
 
 int module_prepare(struct processing_module *mod,
