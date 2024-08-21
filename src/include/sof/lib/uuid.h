@@ -15,6 +15,8 @@
 #include <zephyr/sys/iterable_sections.h>
 #endif
 
+#include <stdint.h>
+
 /** \addtogroup uuid_api UUID API
  *  UUID API specification.
  *  @{
