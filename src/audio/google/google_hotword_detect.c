@@ -392,7 +392,7 @@ static int ghd_copy(struct comp_dev *dev)
 
 	/* keyword components will only ever have 1 source */
 	source = list_first_item(&dev->bsource_list,
-				 struct comp_buffer, sink_list);
+				 struct comp_buffer, Xsink_list);
 	stream = &sourceb->stream;
 
 	bytes = audio_stream_get_avail_bytes(stream);

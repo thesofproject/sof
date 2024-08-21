@@ -861,7 +861,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	struct list_item *blist;
 
 	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink = container_of(blist, struct comp_buffer, source_list);
+		struct comp_buffer *sink = container_of(blist, struct comp_buffer, Xsource_list);
 		enum sof_comp_type type;
 
 		if (!sink->sink) {

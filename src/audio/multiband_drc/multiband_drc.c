@@ -364,7 +364,7 @@ static int multiband_drc_prepare(struct processing_module *mod,
 		return ret;
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

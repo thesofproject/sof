@@ -146,7 +146,7 @@ static bool is_hostless_downstream(struct comp_dev *current)
 	list_for_item(clist, &current->bsink_list) {
 		struct comp_buffer *buffer;
 
-		buffer = container_of(clist, struct comp_buffer, source_list);
+		buffer = container_of(clist, struct comp_buffer, Xsource_list);
 
 		/* don't go downstream if this component is not connected */
 		if (!buffer->sink)
@@ -179,10 +179,10 @@ static bool is_hostless_upstream(struct comp_dev *current)
 	list_for_item(clist, &current->bsource_list) {
 		struct comp_buffer *buffer;
 
-		buffer = container_of(clist, struct comp_buffer, sink_list);
+		buffer = container_of(clist, struct comp_buffer, Xsink_list);
 
 		/* don't go upstream if this component is not connected */
-		if (!buffer->source)
+		if (!buffer->Xsource)
 			continue;
 
 		/* dont go upstream if this comp belongs to another pipeline */
@@ -191,7 +191,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 			continue;
 
 		/* return if there is a host comp upstream */
-		if (!is_hostless_upstream(buffer->source))
+		if (!is_hostless_upstream(buffer->Xsource))
 			return false;
 	}
 

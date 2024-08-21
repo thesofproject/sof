@@ -634,9 +634,9 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	 * activated in tandem; also the API is deprecated
 	 */
 	cd->ref_comp_buffer = list_first_item(&dev->bsource_list,
-					      struct comp_buffer, sink_list);
+					      struct comp_buffer, Xsink_list);
 	if (cd->aec_reference_source == 1)
-		cd->ref_comp_buffer = list_next_item(cd->ref_comp_buffer, sink_list);
+		cd->ref_comp_buffer = list_next_item(cd->ref_comp_buffer, Xsink_list);
 #endif
 
 #ifdef CONFIG_IPC_MAJOR_4

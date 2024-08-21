@@ -234,7 +234,7 @@ static int mixer_prepare(struct processing_module *mod,
 		 * preparing the mixer, so they shouldn't touch it until we're
 		 * done.
 		 */
-		source = container_of(blist, struct comp_buffer, sink_list);
+		source = container_of(blist, struct comp_buffer, Xsink_list);
 		mixer_set_frame_alignment(&source->stream);
 		stop = source->source && (source->source->state == COMP_STATE_PAUSED ||
 					    source->source->state == COMP_STATE_ACTIVE);

@@ -211,7 +211,7 @@ static void fill_source_s16(struct test_data *td, int frames_max)
 	int i;
 	int samples_processed = 0;
 
-	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	ss = &sb->stream;
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * audio_stream_get_channels(ss);
@@ -246,7 +246,7 @@ static void verify_sink_s16(struct test_data *td)
 	int samples;
 	int i;
 
-	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	ss = &sb->stream;
 	samples = mod->output_buffers[0].size >> 1;
 	for (i = 0; i < samples; i++) {
@@ -277,7 +277,7 @@ static void fill_source_s24(struct test_data *td, int frames_max)
 	int i;
 	int samples_processed = 0;
 
-	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	ss = &sb->stream;
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * audio_stream_get_channels(ss);
@@ -312,7 +312,7 @@ static void verify_sink_s24(struct test_data *td)
 	int samples;
 	int i;
 
-	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	ss = &sb->stream;
 	samples = mod->output_buffers[0].size >> 2;
 	for (i = 0; i < samples; i++) {
@@ -343,7 +343,7 @@ static void fill_source_s32(struct test_data *td, int frames_max)
 	int i;
 	int samples_processed = 0;
 
-	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	ss = &sb->stream;
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * audio_stream_get_channels(ss);
@@ -378,7 +378,7 @@ static void verify_sink_s32(struct test_data *td)
 	int samples;
 	int i;
 
-	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	ss = &sb->stream;
 	samples = mod->output_buffers[0].size >> 2;
 	for (i = 0; i < samples; i++) {

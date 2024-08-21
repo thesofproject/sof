@@ -45,7 +45,7 @@ int crossover_check_sink_assign(struct processing_module *mod,
 	list_for_item(sink_list, &dev->bsink_list) {
 		unsigned int pipeline_id;
 
-		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink = container_of(sink_list, struct comp_buffer, Xsource_list);
 		pipeline_id = buffer_pipeline_id(sink);
 
 		i = crossover_get_stream_index(mod, config, pipeline_id);

@@ -105,7 +105,7 @@ void module_adapter_check_data(struct processing_module *mod, struct comp_dev *d
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->num_of_sources == 1 &&
 	    mod->num_of_sinks == 1) {
 		mod->source_comp_buffer = list_first_item(&dev->bsource_list,
-							  struct comp_buffer, sink_list);
+							  struct comp_buffer, Xsink_list);
 		mod->sink_comp_buffer = sink;
 		mod->stream_copy_single_to_single = true;
 	}
@@ -315,7 +315,7 @@ int module_adapter_sink_src_prepare(struct comp_dev *dev)
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink_buffer =
-				container_of(blist, struct comp_buffer, source_list);
+				container_of(blist, struct comp_buffer, Xsource_list);
 		mod->sinks[i] = audio_buffer_get_sink(&sink_buffer->audio_buffer);
 		i++;
 	}
@@ -324,7 +324,7 @@ int module_adapter_sink_src_prepare(struct comp_dev *dev)
 	i = 0;
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source_buffer =
-				container_of(blist, struct comp_buffer, sink_list);
+				container_of(blist, struct comp_buffer, Xsink_list);
 
 		mod->sources[i] = audio_buffer_get_source(&source_buffer->audio_buffer);
 		i++;

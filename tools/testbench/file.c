@@ -702,11 +702,11 @@ static int file_params(struct comp_dev *dev,
 	/* file component sink/source buffer period count */
 	switch (cd->fs.mode) {
 	case FILE_READ:
-		buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		buffer = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 		periods = dev->ipc_config.periods_sink;
 		break;
 	case FILE_WRITE:
-		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 		periods = dev->ipc_config.periods_source;
 		break;
 	default:
@@ -831,7 +831,7 @@ static int file_copy(struct comp_dev *dev)
 	case FILE_WRITE:
 		/* file component source buffer */
 		buffer = list_first_item(&dev->bsource_list,
-					 struct comp_buffer, sink_list);
+					 struct comp_buffer, Xsink_list);
 
 		/* test source has enough free frames */
 		src_frames = audio_stream_get_avail_frames(&buffer->stream);
