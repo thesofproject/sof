@@ -598,6 +598,12 @@ elseif(CONFIG_COMP_IIR)
 	)
 endif()
 
+if(NOT CONFIG_COMP_IIR STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir_log.c
+	)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_MATH_FIR
 	${SOF_MATH_PATH}/fir_generic.c
 	${SOF_MATH_PATH}/fir_hifi2ep.c
@@ -663,6 +669,12 @@ elseif(CONFIG_COMP_MIXIN_MIXOUT)
 		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_generic.c
 		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi3.c
 		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi5.c
+	)
+endif()
+
+if(NOT CONFIG_COMP_MIXIN_MIXOUT STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_log.c
 	)
 endif()
 

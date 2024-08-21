@@ -31,15 +31,13 @@
 
 #include "mixin_mixout.h"
 
-LOG_MODULE_REGISTER(mixin_mixout, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_DECLARE(mixin_mixout, CONFIG_SOF_LOG_LEVEL);
 
-/* mixin 39656eb2-3b71-4049-8d3f-f92cd5c43c09 */
-SOF_DEFINE_REG_UUID(mixin);
-DECLARE_TR_CTX(mixin_tr, SOF_UUID(mixin_uuid), LOG_LEVEL_INFO);
+extern const struct sof_uuid mixin_uuid;
+extern struct tr_ctx mixin_tr;
 
-/* mixout 3c56505a-24d7-418f-bddc-c1f5a3ac2ae0 */
-SOF_DEFINE_REG_UUID(mixout);
-DECLARE_TR_CTX(mixout_tr, SOF_UUID(mixout_uuid), LOG_LEVEL_INFO);
+extern const struct sof_uuid mixout_uuid;
+extern struct tr_ctx mixout_tr;
 
 #define MIXIN_MAX_SINKS IPC4_MIXIN_MODULE_MAX_OUTPUT_QUEUES
 #define MIXOUT_MAX_SOURCES IPC4_MIXOUT_MODULE_MAX_INPUT_QUEUES
