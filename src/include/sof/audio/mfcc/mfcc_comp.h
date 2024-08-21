@@ -125,8 +125,8 @@ struct mfcc_state {
 	int low_freq;
 	int high_freq;
 	int sample_rate;
-	int waiting_fill:1; /**< booleans */
-	int prev_samples_valid:1;
+	bool waiting_fill; /**< booleans */
+	bool prev_samples_valid;
 	size_t sample_buffers_size; /**< bytes */
 };
 
