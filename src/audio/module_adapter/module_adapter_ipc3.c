@@ -82,7 +82,7 @@ int module_adapter_init_data(struct comp_dev *dev,
 	if (size) {
 		ret = module_load_config(dev, data, size);
 		if (ret < 0) {
-			comp_err(dev, "module_adapter_new() error %d: config loading has failed.",
+			comp_err(dev, "module_adapter_init_data() error %d: config loading has failed.",
 				 ret);
 			return ret;
 		}
