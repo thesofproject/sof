@@ -175,7 +175,7 @@ static int mixer_reset(struct processing_module *mod)
 								  Xsink_list);
 			bool stop = false;
 
-			if (source->source && source->source->state > COMP_STATE_READY)
+			if (source->Xsource && source->Xsource->state > COMP_STATE_READY)
 				stop = true;
 
 			/* only mix the sources with the same state with mixer */
@@ -236,8 +236,8 @@ static int mixer_prepare(struct processing_module *mod,
 		 */
 		source = container_of(blist, struct comp_buffer, Xsink_list);
 		mixer_set_frame_alignment(&source->stream);
-		stop = source->source && (source->source->state == COMP_STATE_PAUSED ||
-					    source->source->state == COMP_STATE_ACTIVE);
+		stop = source->Xsource && (source->Xsource->state == COMP_STATE_PAUSED ||
+					    source->Xsource->state == COMP_STATE_ACTIVE);
 
 		/* only prepare downstream if we have no active sources */
 		if (stop)

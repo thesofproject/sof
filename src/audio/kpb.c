@@ -864,11 +864,11 @@ static int kpb_prepare(struct comp_dev *dev)
 		struct comp_buffer *sink = container_of(blist, struct comp_buffer, Xsource_list);
 		enum sof_comp_type type;
 
-		if (!sink->sink) {
+		if (!sink->Xsink) {
 			ret = -EINVAL;
 			break;
 		}
-		type = dev_comp_type(sink->sink);
+		type = dev_comp_type(sink->Xsink);
 
 		switch (type) {
 		case SOF_COMP_SELECTOR:

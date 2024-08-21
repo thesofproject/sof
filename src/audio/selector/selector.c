@@ -362,7 +362,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	 * kpb_init_draining() and kpb_draining_task() are interrupted by
 	 * new pipeline_task()
 	 */
-	type = dev_comp_type(sourceb->source);
+	type = dev_comp_type(sourceb->Xsource);
 
 	return type == SOF_COMP_KPB ? PPL_STATUS_PATH_TERMINATE : ret;
 }
