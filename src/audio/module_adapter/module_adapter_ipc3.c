@@ -68,7 +68,17 @@ int module_adapter_init_data(struct comp_dev *dev,
 		data = spec;
 		break;
 	}
-	default:
+	case SOF_COMP_EQ_IIR:
+	case SOF_COMP_EQ_FIR:
+	case SOF_COMP_KEYWORD_DETECT:
+	case SOF_COMP_KPB:
+	case SOF_COMP_SELECTOR:
+	case SOF_COMP_DEMUX:
+	case SOF_COMP_MUX:
+	case SOF_COMP_DCBLOCK:
+	case SOF_COMP_SMART_AMP:
+	case SOF_COMP_MODULE_ADAPTER:
+	case SOF_COMP_NONE:
 	{
 		const struct ipc_config_process *ipc_module_adapter = spec;
 
@@ -76,6 +86,9 @@ int module_adapter_init_data(struct comp_dev *dev,
 		data = ipc_module_adapter->data;
 		break;
 	}
+	default:
+		comp_err(dev, "module_adapter_init_data() unsupported comp type %d", config->type);
+		return -EINVAL;
 	}
 
 	/* Copy initial config */
