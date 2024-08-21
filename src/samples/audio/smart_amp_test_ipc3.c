@@ -429,7 +429,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	if (sad->feedback_buf) {
 		struct comp_buffer *buf = sad->feedback_buf;
 
-		if (buf->source && comp_get_state(dev, buf->source) == dev->state) {
+		if (buf->Xsource && comp_get_state(dev, buf->Xsource) == dev->state) {
 			/* feedback */
 			avail_feedback_frames =
 				audio_stream_get_avail_frames(&buf->stream);
