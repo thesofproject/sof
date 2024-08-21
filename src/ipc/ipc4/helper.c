@@ -292,9 +292,9 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		list_for_item_safe(list, _list, &icd->cd->bsink_list) {
 			struct comp_dev *sink;
 
-			buffer = container_of(list, struct comp_buffer, source_list);
+			buffer = container_of(list, struct comp_buffer, Xsource_list);
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
-			sink = buffer->sink;
+			sink = buffer->Xsink;
 
 			/* free the buffer only when the sink module has also been disconnected */
 			if (!sink)
@@ -305,9 +305,9 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		list_for_item_safe(list, _list, &icd->cd->bsource_list) {
 			struct comp_dev *source;
 
-			buffer = container_of(list, struct comp_buffer, sink_list);
+			buffer = container_of(list, struct comp_buffer, Xsink_list);
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
-			source = buffer->source;
+			source = buffer->Xsource;
 
 			/* free the buffer only when the source module has also been disconnected */
 			if (!source)
@@ -698,7 +698,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 	list_for_item(sink_list, &src->bsink_list) {
-		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
+		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, Xsource_list);
 		bool found = buf_get_id(buf) == buffer_id;
 
 		if (found) {
@@ -861,9 +861,9 @@ static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 		if (list_is_empty(&icd->cd->bsource_list))
 			continue;
 
-		src_buf = list_first_item(&icd->cd->bsource_list, struct comp_buffer, sink_list);
-		if (src_buf->source->direction_set) {
-			icd->cd->direction = src_buf->source->direction;
+		src_buf = list_first_item(&icd->cd->bsource_list, struct comp_buffer, Xsink_list);
+		if (src_buf->Xsource->direction_set) {
+			icd->cd->direction = src_buf->Xsource->direction;
 			icd->cd->direction_set = true;
 			continue;
 		}

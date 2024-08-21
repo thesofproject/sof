@@ -668,7 +668,7 @@ static void set_selector_params(struct processing_module *mod,
 	/* update each sink format */
 	list_for_item(sink_list, &dev->bsink_list) {
 		struct comp_buffer *sink_buf =
-			container_of(sink_list, struct comp_buffer, source_list);
+			container_of(sink_list, struct comp_buffer, Xsource_list);
 
 		ipc4_update_buffer_format(sink_buf, out_fmt);
 		audio_stream_set_channels(&sink_buf->stream, params->channels);
@@ -681,7 +681,7 @@ static void set_selector_params(struct processing_module *mod,
 	 * for a short time when the second pipeline already started
 	 * and the first one is not ready yet along with sink buffers params
 	 */
-	src_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	src_buf = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 
 	if (!src_buf->hw_params_configured)
 		ipc4_update_buffer_format(src_buf, &mod->priv.cfg.base_cfg.audio_fmt);
@@ -713,15 +713,15 @@ static int selector_verify_params(struct processing_module *mod,
 	/* apply input/output channels count according to stream direction */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		params->channels = out_channels;
-		buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		buffer = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	} else {
 		params->channels = in_channels;
-		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	}
 	buffer_set_params(buffer, params, BUFFER_UPDATE_FORCE);
 
 	/* set component period frames */
-	buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	buffer = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	component_set_nearest_period_frames(dev, audio_stream_get_rate(&buffer->stream));
 
 	return 0;
@@ -841,8 +841,8 @@ static int selector_prepare(struct processing_module *mod,
 		return PPL_STATUS_PATH_STOP;
 
 	/* selector component will have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 
 	audio_stream_set_align(4, 1, &sourceb->stream);
 	audio_stream_set_align(4, 1, &sinkb->stream);

@@ -61,10 +61,10 @@ void dcblock_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 }
 

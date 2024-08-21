@@ -279,12 +279,12 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 			struct comp_buffer *sink;
 			int j;
 
-			sink = container_of(sink_list, struct comp_buffer, source_list);
+			sink = container_of(sink_list, struct comp_buffer, Xsource_list);
 
 			if (sink == dd->dma_buffer)
 				continue;
 
-			sink_dev = sink->sink;
+			sink_dev = sink->Xsink;
 
 			j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
 
@@ -331,13 +331,13 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 				struct comp_buffer *sink;
 				int j;
 
-				sink = container_of(sink_list, struct comp_buffer, source_list);
+				sink = container_of(sink_list, struct comp_buffer, Xsource_list);
 
 				/* this has been handled above already */
 				if (sink == dd->local_buffer)
 					continue;
 
-				sink_dev = sink->sink;
+				sink_dev = sink->Xsink;
 
 				j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 
@@ -853,10 +853,10 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dd->local_buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
-						   sink_list);
+						   Xsink_list);
 	else
 		dd->local_buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
-						   source_list);
+						   Xsource_list);
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
@@ -1526,11 +1526,11 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dd->local_buffer = list_first_item(&dev->bsource_list,
 						   struct comp_buffer,
-						   sink_list);
+						   Xsink_list);
 	else
 		dd->local_buffer = list_first_item(&dev->bsink_list,
 						   struct comp_buffer,
-						   source_list);
+						   Xsource_list);
 
 	local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
 
@@ -1605,8 +1605,8 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 			struct comp_dev *sink_dev;
 			struct comp_buffer *sink;
 
-			sink = container_of(sink_list, struct comp_buffer, source_list);
-			sink_dev = sink->sink;
+			sink = container_of(sink_list, struct comp_buffer, Xsource_list);
+			sink_dev = sink->Xsink;
 
 			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
 			    sink->hw_params_configured) {
@@ -1637,8 +1637,8 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 				struct comp_dev *sink_dev;
 				struct comp_buffer *sink;
 
-				sink = container_of(sink_list, struct comp_buffer, source_list);
-				sink_dev = sink->sink;
+				sink = container_of(sink_list, struct comp_buffer, Xsource_list);
+				sink_dev = sink->Xsink;
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
 				    sink->hw_params_configured) {

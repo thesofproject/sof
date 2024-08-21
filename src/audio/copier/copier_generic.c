@@ -83,7 +83,7 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 	list_for_item(sink_list, &dev->bsink_list) {
 		int j;
 
-		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink = container_of(sink_list, struct comp_buffer, Xsource_list);
 
 		j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 

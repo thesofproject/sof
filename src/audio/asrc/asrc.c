@@ -397,9 +397,9 @@ static int asrc_params(struct processing_module *mod)
 	}
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+				  Xsink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+				Xsource_list);
 
 	/* update the source/sink buffer formats. Sink rate will be modified below */
 	asrc_update_buffer_format(sourceb, cd);
@@ -452,9 +452,9 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 	if (cd->mode == ASRC_OM_PUSH) {
 		/* In push mode check if sink component is DAI */
 		do {
-			sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+			sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 
-			dev = sinkb->sink;
+			dev = sinkb->Xsink;
 
 			if (!dev) {
 				comp_err(asrc_dev, "At end, no DAI found.");
@@ -470,9 +470,9 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 	} else {
 		/* In pull mode check if source component is DAI */
 		do {
-			sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+			sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 
-			dev = sourceb->source;
+			dev = sourceb->Xsource;
 
 			if (!dev) {
 				comp_err(asrc_dev, "At beginning, no DAI found.");
@@ -546,9 +546,9 @@ static int asrc_prepare(struct processing_module *mod,
 
 	/* SRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
+				  struct comp_buffer, Xsink_list);
 	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
+				struct comp_buffer, Xsource_list);
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -797,9 +797,9 @@ static int asrc_process(struct processing_module *mod,
 
 	/* asrc component needs 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+				 Xsink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
+			       Xsource_list);
 
 	frames_src = audio_stream_get_avail_frames(source_s);
 	frames_snk = audio_stream_get_free_frames(sink_s);

@@ -178,10 +178,10 @@ static int aria_prepare(struct processing_module *mod,
 
 	comp_info(dev, "aria_prepare()");
 
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	aria_set_stream_params(source, mod);
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	aria_set_stream_params(sink, mod);
 
 	if (audio_stream_get_valid_fmt(&source->stream) != SOF_IPC_FRAME_S24_4LE ||

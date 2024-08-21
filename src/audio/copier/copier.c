@@ -388,7 +388,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 			return -EINVAL;
 		}
 
-		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
+		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, Xsink_list);
 		pipe_reg.stream_start_offset = posn.dai_posn +
 			latency * audio_stream_period_bytes(&buffer->stream, dev->frames);
 		pipe_reg.stream_end_offset = 0;
@@ -412,7 +412,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 			return -EINVAL;
 		}
 
-		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
+		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, Xsink_list);
 		pipe_reg.stream_start_offset += latency *
 			audio_stream_period_bytes(&buffer->stream, dev->frames);
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg.stream_start_offset,
@@ -463,8 +463,8 @@ static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
 	list_for_item(sink_list, &dev->bsink_list) {
 		struct comp_dev *sink_dev;
 
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-		sink_dev = sink->sink;
+		sink = container_of(sink_list, struct comp_buffer, Xsource_list);
+		sink_dev = sink->Xsink;
 		processed_data->sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
 			ret = do_conversion_copy(dev, cd, src_c, sink, processed_data);
@@ -509,7 +509,7 @@ static int copier_module_copy(struct processing_module *mod,
 		struct comp_dev *sink_dev;
 
 		sink_c = container_of(output_buffers[i].data, struct comp_buffer, stream);
-		sink_dev = sink_c->sink;
+		sink_dev = sink_c->Xsink;
 		processed_data.sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
 			uint32_t source_samples;
@@ -563,7 +563,7 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 		return -EINVAL;
 	}
 
-	src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	src = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 
 	/* gateway(s) on output */
 	ret = do_conversion_copy(dev, cd, src, cd->multi_endpoint_buffer, &processed_data);
@@ -1073,7 +1073,7 @@ static int copier_bind(struct processing_module *mod, void *data)
 
 	/* update sink format */
 	list_for_item(list, &dev->bsink_list) {
-		struct comp_buffer *buffer = container_of(list, struct comp_buffer, source_list);
+		struct comp_buffer *buffer = container_of(list, struct comp_buffer, Xsource_list);
 		uint32_t id = IPC4_SRC_QUEUE_ID(buf_get_id(buffer));
 
 		if (src_queue_id == id) {

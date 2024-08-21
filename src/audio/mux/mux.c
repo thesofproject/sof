@@ -246,8 +246,8 @@ static int demux_process(struct processing_module *mod,
 
 	/* align sink streams with their respective configurations */
 	list_for_item(clist, &dev->bsink_list) {
-		sink = container_of(clist, struct comp_buffer, source_list);
-		if (sink->sink->state == dev->state) {
+		sink = container_of(clist, struct comp_buffer, Xsource_list);
+		if (sink->Xsink->state == dev->state) {
 			i = get_stream_index(dev, cd, buffer_pipeline_id(sink));
 			/* return if index wrong */
 			if (i < 0) {
@@ -303,8 +303,8 @@ static int mux_process(struct processing_module *mod,
 	/* align source streams with their respective configurations */
 	j = 0;
 	list_for_item(clist, &dev->bsource_list) {
-		source = container_of(clist, struct comp_buffer, sink_list);
-		if (source->source->state == dev->state) {
+		source = container_of(clist, struct comp_buffer, Xsink_list);
+		if (source->Xsource->state == dev->state) {
 			if (frames)
 				frames = MIN(frames, input_buffers[j].size);
 			else
@@ -335,8 +335,8 @@ static int mux_process(struct processing_module *mod,
 	/* Update consumed and produced */
 	j = 0;
 	list_for_item(clist, &dev->bsource_list) {
-		source = container_of(clist, struct comp_buffer, sink_list);
-		if (source->source->state == dev->state)
+		source = container_of(clist, struct comp_buffer, Xsink_list);
+		if (source->Xsource->state == dev->state)
 			mod->input_buffers[j].consumed = source_bytes;
 		j++;
 	}
@@ -356,8 +356,8 @@ static int mux_reset(struct processing_module *mod)
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		list_for_item(blist, &dev->bsource_list) {
 			struct comp_buffer *source = container_of(blist, struct comp_buffer,
-								  sink_list);
-			int state = source->source->state;
+								  Xsink_list);
+			int state = source->Xsource->state;
 
 			/* only mux the sources with the same state with mux */
 			if (state > COMP_STATE_READY)
@@ -449,8 +449,8 @@ static int demux_trigger(struct processing_module *mod, int cmd)
 	 */
 	if (cmd == COMP_TRIGGER_PRE_START) {
 		list_for_item(li, &mod->dev->bsink_list) {
-			b = container_of(li, struct comp_buffer, source_list);
-			if (b->sink->pipeline != mod->dev->pipeline)
+			b = container_of(li, struct comp_buffer, Xsource_list);
+			if (b->Xsink->pipeline != mod->dev->pipeline)
 				audio_stream_set_overrun(&b->stream, true);
 		}
 

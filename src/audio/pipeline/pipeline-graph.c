@@ -167,9 +167,9 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 			    int dir)
 {
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
-		buffer->source = comp;
+		buffer->Xsource = comp;
 	else
-		buffer->sink = comp;
+		buffer->Xsink = comp;
 }
 
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,

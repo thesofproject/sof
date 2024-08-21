@@ -130,19 +130,19 @@ struct comp_buffer {
 	struct audio_stream stream;
 
 	/* configuration */
-	uint32_t caps;
+	uint32_t caps;	// caps is specific to comp_buffer
 	uint32_t Xcore;		//XXX REMOVE
 // potrzeba dla !zephyr oraz dla !ipc4
 	struct tr_ctx tctx;			/* trace settings */
 
 
 	/* connected components */
-	struct comp_dev *source;	/* source component */
-	struct comp_dev *sink;		/* sink component */
+	struct comp_dev *Xsource;	/* source component */
+	struct comp_dev *Xsink;		/* sink component */
 
 	/* lists */
-	struct list_item source_list;	/* list in comp buffers */
-	struct list_item sink_list;	/* list in comp buffers */
+	struct list_item Xsource_list;	/* list in comp buffers */
+	struct list_item Xsink_list;	/* list in comp buffers */
 
 	/* runtime stream params */
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
@@ -163,13 +163,13 @@ struct buffer_cb_free {
 };
 
 #define buffer_comp_list(buffer, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->source_list : \
-	 &buffer->sink_list)
+	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->Xsource_list : \
+	 &buffer->Xsink_list)
 
 #define buffer_from_list(ptr, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? \
-	 container_of(ptr, struct comp_buffer, source_list) : \
-	 container_of(ptr, struct comp_buffer, sink_list))
+	 container_of(ptr, struct comp_buffer, Xsource_list) : \
+	 container_of(ptr, struct comp_buffer, Xsink_list))
 
 #define buffer_set_cb(buffer, func, data, type) \
 	do {				\
@@ -260,7 +260,7 @@ void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir);
 
 static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
 {
-	struct comp_dev *comp = dir == PPL_DIR_DOWNSTREAM ? buffer->sink : buffer->source;
+	struct comp_dev *comp = dir == PPL_DIR_DOWNSTREAM ? buffer->Xsink : buffer->Xsource;
 	return comp;
 }
 

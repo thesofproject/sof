@@ -75,14 +75,14 @@ static inline struct comp_buffer *get_buffer(struct comp_dev *dev)
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (list_is_empty(&dev->bsink_list))
 			return NULL;
-		return list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		return list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	}
 
 	assert(dev->direction == SOF_IPC_STREAM_CAPTURE);
 
 	if (list_is_empty(&dev->bsource_list))
 		return NULL;
-	return list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	return list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 }
 
 int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,

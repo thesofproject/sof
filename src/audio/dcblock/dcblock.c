@@ -199,8 +199,8 @@ static int dcblock_prepare(struct processing_module *mod,
 	dcblock_params(mod);
 
 	/* DC Filter component will only ever have one source and sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

@@ -795,11 +795,11 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	if (params->direction == SOF_IPC_STREAM_PLAYBACK)
 		hd->local_buffer = list_first_item(&dev->bsink_list,
 						   struct comp_buffer,
-						   source_list);
+						   Xsource_list);
 	else
 		hd->local_buffer = list_first_item(&dev->bsource_list,
 						   struct comp_buffer,
-						   sink_list);
+						   Xsink_list);
 
 	period_bytes = dev->frames * get_frame_bytes(params->frame_fmt, params->channels);
 

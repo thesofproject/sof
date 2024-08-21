@@ -139,11 +139,11 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		if (list_is_empty(sink_list))
 			buf = list_first_item(source_list,
 					      struct comp_buffer,
-					      sink_list);
+					      Xsink_list);
 		else
 			buf = list_first_item(sink_list,
 					      struct comp_buffer,
-					      source_list);
+					      Xsource_list);
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
@@ -171,7 +171,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 
 		/* fetch sink buffer in order to calculate period frames */
 		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-					source_list);
+					Xsource_list);
 
 		component_set_nearest_period_frames(dev, audio_stream_get_rate(&sinkb->stream));
 	}
@@ -307,9 +307,9 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	irq_local_disable(flags);
 	list_for_item_safe(clist, tmp, &icd->cd->bsource_list) {
-		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, sink_list);
+		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, Xsink_list);
 
-		buffer->sink = NULL;
+		buffer->Xsink = NULL;
 		/* Also if it isn't shared - we are about to modify uncached data */
 		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
 						   sizeof(*buffer));
@@ -318,9 +318,9 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	}
 
 	list_for_item_safe(clist, tmp, &icd->cd->bsink_list) {
-		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, source_list);
+		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, Xsource_list);
 
-		buffer->source = NULL;
+		buffer->Xsource = NULL;
 		/* Also if it isn't shared - we are about to modify uncached data */
 		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
 						   sizeof(*buffer));

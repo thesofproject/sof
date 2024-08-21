@@ -231,7 +231,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
 	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
 	 */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 
 	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
 	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
@@ -391,7 +391,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	} else {
 		list_for_item(blist, &mod->sink_buffer_list) {
 			struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-								  sink_list);
+								  Xsink_list);
 
 			ret = buffer_set_size(buffer, buff_size, 0);
 			if (ret < 0) {
@@ -412,7 +412,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 free:
 	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  Xsink_list);
 		uint32_t flags;
 
 		irq_local_disable(flags);
@@ -611,7 +611,7 @@ static void module_adapter_process_output(struct comp_dev *dev)
 		if (mod->output_buffers[i].size > 0) {
 			struct comp_buffer *buffer;
 
-			buffer = container_of(blist, struct comp_buffer, sink_list);
+			buffer = container_of(blist, struct comp_buffer, Xsink_list);
 
 			ca_copy_from_module_to_sink(&buffer->stream, mod->output_buffers[i].data,
 						    mod->output_buffers[i].size);
@@ -630,8 +630,8 @@ static void module_adapter_process_output(struct comp_dev *dev)
 			if (i == j) {
 				struct comp_buffer *source;
 
-				sink = container_of(blist, struct comp_buffer, source_list);
-				source = container_of(_blist, struct comp_buffer, sink_list);
+				sink = container_of(blist, struct comp_buffer, Xsource_list);
+				source = container_of(_blist, struct comp_buffer, Xsink_list);
 
 				module_copy_samples(dev, source, sink,
 						    mod->output_buffers[i].size);
@@ -757,7 +757,7 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	/* Note: Source buffer state is not checked to enable mixout to generate zero
 	 * PCM codes when source is not active.
 	 */
-	if (mod->sink_comp_buffer->sink->state == dev->state)
+	if (mod->sink_comp_buffer->Xsink->state == dev->state)
 		num_output_buffers = 1;
 
 	ret = module_process_legacy(mod, mod->input_buffers, 1,
@@ -800,7 +800,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsink_list) {
 		struct comp_buffer *sink;
 
-		sink = container_of(blist, struct comp_buffer, source_list);
+		sink = container_of(blist, struct comp_buffer, Xsource_list);
 		sinks[i++] = sink;
 	}
 	num_output_buffers = i;
@@ -813,7 +813,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		struct comp_buffer *source;
 
-		source = container_of(blist, struct comp_buffer, sink_list);
+		source = container_of(blist, struct comp_buffer, Xsink_list);
 		sources[i++] = source;
 	}
 	num_input_buffers = i;
@@ -825,11 +825,11 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	/* setup active input/output buffers for processing */
 	if (num_output_buffers == 1) {
 		module_single_sink_setup(dev, sources, sinks);
-		if (sinks[0]->sink->state != dev->state)
+		if (sinks[0]->Xsink->state != dev->state)
 			num_output_buffers = 0;
 	} else if (num_input_buffers == 1) {
 		module_single_source_setup(dev, sources, sinks);
-		if (sources[0]->source->state != dev->state) {
+		if (sources[0]->Xsource->state != dev->state) {
 			num_input_buffers = 0;
 		}
 	} else {
@@ -919,7 +919,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		 * to ring_buffer (as sink)
 		 */
 		struct comp_buffer *buffer =
-				container_of(blist, struct comp_buffer, sink_list);
+				container_of(blist, struct comp_buffer, Xsink_list);
 		err = audio_buffer_sync_secondary_buffer(&buffer->audio_buffer, UINT_MAX);
 
 		if (err) {
@@ -945,7 +945,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		 * FIX: copy only the following module's IBS in each LL cycle
 		 */
 		struct comp_buffer *buffer =
-				container_of(blist, struct comp_buffer, source_list);
+				container_of(blist, struct comp_buffer, Xsource_list);
 		struct sof_source *following_mod_data_source =
 				audio_buffer_get_source(&buffer->audio_buffer);
 
@@ -1015,7 +1015,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 	comp_dbg(dev, "module_adapter_raw_data_type_copy(): start");
 
 	list_for_item(blist, &mod->sink_buffer_list) {
-		sink = container_of(blist, struct comp_buffer, sink_list);
+		sink = container_of(blist, struct comp_buffer, Xsink_list);
 
 		min_free_frames = MIN(min_free_frames,
 				      audio_stream_get_free_frames(&sink->stream));
@@ -1026,10 +1026,10 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 		uint32_t bytes_to_process;
 		int frames, source_frame_bytes;
 
-		source = container_of(blist, struct comp_buffer, sink_list);
+		source = container_of(blist, struct comp_buffer, Xsink_list);
 
 		/* check if the source dev is in the same state as the dev */
-		if (!source->source || source->source->state != dev->state)
+		if (!source->Xsource || source->Xsource->state != dev->state)
 			continue;
 
 		frames = MIN(min_free_frames,
@@ -1064,7 +1064,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 	/* consume from all input buffers */
 	list_for_item(blist, &dev->bsource_list) {
 
-		source = container_of(blist, struct comp_buffer, sink_list);
+		source = container_of(blist, struct comp_buffer, Xsink_list);
 
 		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
 
@@ -1182,7 +1182,7 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	list_for_item(blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  Xsink_list);
 		buffer_zero(buffer);
 	}
 
@@ -1209,7 +1209,7 @@ void module_adapter_free(struct comp_dev *dev)
 
 	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  Xsink_list);
 		uint32_t flags;
 
 		irq_local_disable(flags);

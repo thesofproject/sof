@@ -108,9 +108,9 @@ static int crossover_assign_sinks(struct processing_module *mod,
 	list_for_item(sink_list, &dev->bsink_list) {
 		unsigned int sink_id, state;
 
-		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink = container_of(sink_list, struct comp_buffer, Xsource_list);
 		sink_id = crossover_get_sink_id(cd, buffer_pipeline_id(sink), j);
-		state = sink->sink->state;
+		state = sink->Xsink->state;
 		if (state != dev->state) {
 			j++;
 			continue;
@@ -539,7 +539,7 @@ static int crossover_prepare(struct processing_module *mod,
 
 	/* Crossover has a variable number of sinks */
 	mod->max_sinks = SOF_CROSSOVER_MAX_STREAMS;
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 
 	/* Get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&source->stream);
@@ -547,7 +547,7 @@ static int crossover_prepare(struct processing_module *mod,
 
 	/* Validate frame format and buffer size of sinks */
 	list_for_item(sink_list, &dev->bsink_list) {
-		sink = container_of(sink_list, struct comp_buffer, source_list);
+		sink = container_of(sink_list, struct comp_buffer, Xsource_list);
 		if (cd->source_format != audio_stream_get_frm_fmt(&sink->stream)) {
 			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different.",
 				 cd->source_format, audio_stream_get_frm_fmt(&sink->stream));

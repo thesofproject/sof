@@ -300,7 +300,7 @@ static int mixin_process(struct processing_module *mod,
 		 */
 		/* unused buffer between mixin and mixout */
 		unused_in_between_buf = comp_buffer_get_from_sink(sinks[i]);
-		mixout = unused_in_between_buf->sink;
+		mixout = unused_in_between_buf->Xsink;
 
 		/* Skip non-active mixout like it is not connected so it does not
 		 * block other possibly connected mixouts. In addition, non-active
@@ -485,7 +485,7 @@ static int mixout_process(struct processing_module *mod,
 		 * sof_source implementation.
 		 */
 		unused_in_between_buf = comp_buffer_get_from_source(sources[i]);
-		mixin = unused_in_between_buf->source;
+		mixin = unused_in_between_buf->Xsource;
 
 		pending_frames = get_mixin_pending_frames(md, mixin);
 		if (!pending_frames)
@@ -501,7 +501,7 @@ static int mixout_process(struct processing_module *mod,
 			struct comp_dev *mixin;
 
 			unused_in_between_buf = comp_buffer_get_from_source(sources[i]);
-			mixin = unused_in_between_buf->source;
+			mixin = unused_in_between_buf->Xsource;
 
 			pending_frames = get_mixin_pending_frames(md, mixin);
 			if (!pending_frames)
@@ -569,8 +569,8 @@ static int mixout_reset(struct processing_module *mod)
 			 * sof_source implementation.
 			 */
 			source_buf = comp_buffer_get_from_source(mod->sources[i]);
-			stop = (dev->pipeline == source_buf->source->pipeline &&
-					source_buf->source->state > COMP_STATE_PAUSED);
+			stop = (dev->pipeline == source_buf->Xsource->pipeline &&
+					source_buf->Xsource->state > COMP_STATE_PAUSED);
 
 			if (stop)
 				/* should not reset the downstream components */
