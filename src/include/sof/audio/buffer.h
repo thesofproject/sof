@@ -132,7 +132,9 @@ struct comp_buffer {
 	/* configuration */
 	uint32_t caps;
 	uint32_t Xcore;		//XXX REMOVE
+// potrzeba dla !zephyr oraz dla !ipc4
 	struct tr_ctx tctx;			/* trace settings */
+
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
