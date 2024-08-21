@@ -47,8 +47,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	}
 	if (!dst->data) {
 		comp_err(dev, "module_load_config(): failed to allocate space for setup config.");
-		ret = -ENOMEM;
-		goto err;
+		return -ENOMEM;
 	}
 
 	ret = memcpy_s(dst->data, size, cfg, size);
@@ -59,11 +58,6 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	dst->avail = true;
 
 	comp_dbg(dev, "module_load_config() done");
-	return ret;
-err:
-	if (dst->data)
-		rfree(dst->data);
-	dst->data = NULL;
 	return ret;
 }
 
