@@ -149,16 +149,16 @@ static bool is_hostless_downstream(struct comp_dev *current)
 		buffer = container_of(clist, struct comp_buffer, Xsource_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->sink)
+		if (!buffer->Xsink)
 			continue;
 
 		/* dont go downstream if this comp belongs to another pipe */
-		if (buffer->sink->ipc_config.pipeline_id !=
+		if (buffer->Xsink->ipc_config.pipeline_id !=
 			current->ipc_config.pipeline_id)
 			continue;
 
 		/* return if there's a host comp downstream */
-		if (!is_hostless_downstream(buffer->sink))
+		if (!is_hostless_downstream(buffer->Xsink))
 			return false;
 	}
 
@@ -186,7 +186,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 			continue;
 
 		/* dont go upstream if this comp belongs to another pipeline */
-		if (buffer->source->ipc_config.pipeline_id !=
+		if (buffer->Xsource->ipc_config.pipeline_id !=
 		    current->ipc_config.pipeline_id)
 			continue;
 

@@ -481,10 +481,10 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	if (!bytes) {
 #if CONFIG_SOF_LOG_DBG_BUFFER
 		buf_dbg(buffer, "comp_update_buffer_produce(), no bytes to produce, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
-			buffer->source ? dev_comp_id(buffer->source) : (unsigned int)UINT32_MAX,
-			buffer->source ? dev_comp_type(buffer->source) : (unsigned int)UINT32_MAX,
-			buffer->sink ? dev_comp_id(buffer->sink) : (unsigned int)UINT32_MAX,
-			buffer->sink ? dev_comp_type(buffer->sink) : (unsigned int)UINT32_MAX);
+			buffer->Xsource ? dev_comp_id(buffer->Xsource) : (unsigned int)UINT32_MAX,
+			buffer->Xsource ? dev_comp_type(buffer->Xsource) : (unsigned int)UINT32_MAX,
+			buffer->Xsink ? dev_comp_id(buffer->Xsink) : (unsigned int)UINT32_MAX,
+			buffer->Xsink ? dev_comp_type(buffer->Xsink) : (unsigned int)UINT32_MAX);
 #endif
 		return;
 	}
@@ -521,10 +521,10 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	if (!bytes) {
 #if CONFIG_SOF_LOG_DBG_BUFFER
 		buf_dbg(buffer, "comp_update_buffer_consume(), no bytes to consume, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
-			buffer->source ? dev_comp_id(buffer->source) : (unsigned int)UINT32_MAX,
-			buffer->source ? dev_comp_type(buffer->source) : (unsigned int)UINT32_MAX,
-			buffer->sink ? dev_comp_id(buffer->sink) : (unsigned int)UINT32_MAX,
-			buffer->sink ? dev_comp_type(buffer->sink) : (unsigned int)UINT32_MAX);
+			buffer->Xsource ? dev_comp_id(buffer->Xsource) : (unsigned int)UINT32_MAX,
+			buffer->Xsource ? dev_comp_type(buffer->Xsource) : (unsigned int)UINT32_MAX,
+			buffer->Xsink ? dev_comp_id(buffer->Xsink) : (unsigned int)UINT32_MAX,
+			buffer->Xsink ? dev_comp_type(buffer->Xsink) : (unsigned int)UINT32_MAX);
 #endif
 		return;
 	}

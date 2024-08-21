@@ -29,11 +29,11 @@ static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 
 	/* set bsink list */
 	if (dev)
-		list_item_append(&buffer->source_list, &dev->bsink_list);
+		list_item_append(&buffer->Xsource_list, &dev->bsink_list);
 
 	/* alloc sink and set default parameters */
-	buffer->sink = calloc(1, sizeof(struct comp_dev));
-	buffer->sink->state = COMP_STATE_PREPARE;
+	buffer->Xsink = calloc(1, sizeof(struct comp_dev));
+	buffer->Xsink->state = COMP_STATE_PREPARE;
 	audio_stream_set_frm_fmt(&buffer->stream, frame_fmt);
 	audio_stream_set_channels(&buffer->stream, channels);
 
@@ -42,7 +42,7 @@ static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 
 static inline void free_test_sink(struct comp_buffer *buffer)
 {
-	free(buffer->sink);
+	free(buffer->Xsink);
 	buffer_free(buffer);
 }
 
@@ -64,11 +64,11 @@ static inline struct comp_buffer *create_test_source(struct comp_dev *dev,
 
 	/*set bsource list */
 	if (dev)
-		list_item_append(&buffer->sink_list, &dev->bsource_list);
+		list_item_append(&buffer->Xsink_list, &dev->bsource_list);
 
 	/* alloc source and set default parameters */
-	buffer->source = calloc(1, sizeof(struct comp_dev));
-	buffer->source->state = COMP_STATE_PREPARE;
+	buffer->Xsource = calloc(1, sizeof(struct comp_dev));
+	buffer->Xsource->state = COMP_STATE_PREPARE;
 	audio_stream_set_frm_fmt(&buffer->stream, frame_fmt);
 	audio_stream_set_channels(&buffer->stream, channels);
 
@@ -77,6 +77,6 @@ static inline struct comp_buffer *create_test_source(struct comp_dev *dev,
 
 static inline void free_test_source(struct comp_buffer *buffer)
 {
-	free(buffer->source);
+	free(buffer->Xsource);
 	buffer_free(buffer);
 }

@@ -748,7 +748,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		struct comp_buffer *source_buffer = container_of(blist, struct comp_buffer,
 								 sink_list);
 
-		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
+		if (source_buffer->Xsource->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;
