@@ -111,8 +111,12 @@ static ssize_t smart_amp_alloc_mod_memblk(struct smart_amp_data *sad,
 
 	/* query the required size from inner model. */
 	ret = mod->mod_ops->query_memblk_size(mod, blk);
-	if (ret <= 0)
+	if (ret < 0)
 		goto error;
+
+	/* no memory required */
+	if (ret == 0)
+		return 0;
 
 	/* allocate the memory block when returned size > 0. */
 	size = ret;
