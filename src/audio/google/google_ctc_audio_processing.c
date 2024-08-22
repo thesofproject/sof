@@ -61,6 +61,19 @@ static inline float convert_int32_to_float(int32_t data)
 static const int kChunkFrames = 48;
 static const int kMaxChannels = 2;
 
+static void ctc_passthrough(const struct audio_stream *source,
+			    struct audio_stream *sink,
+			    struct input_stream_buffer *input_buffers,
+			    struct output_stream_buffer *output_buffers,
+			    uint32_t frames)
+{
+	int n_ch = audio_stream_get_channels(source);
+	int samples = frames * n_ch;
+
+	audio_stream_copy(source, 0, sink, 0, samples);
+	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
+}
+
 #if CONFIG_FORMAT_S16LE
 static void ctc_s16_default(struct google_ctc_audio_processing_comp_data *cd,
 			    const struct audio_stream *source,
@@ -78,6 +91,11 @@ static void ctc_s16_default(struct google_ctc_audio_processing_comp_data *cd,
 	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s16(source, src));
 	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s16(sink, dest));
 	int written_samples = 0;
+
+	if (!cd->enabled) {
+		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
+		return;
+	}
 
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
@@ -129,6 +147,11 @@ static void ctc_s24_default(struct google_ctc_audio_processing_comp_data *cd,
 	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s24(sink, dest));
 	int written_samples = 0;
 
+	if (!cd->enabled) {
+		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
+		return;
+	}
+
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
 	       written_samples < samples_to_written) {
@@ -178,6 +201,11 @@ static void ctc_s32_default(struct google_ctc_audio_processing_comp_data *cd,
 	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s32(source, src));
 	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s32(sink, dest));
 	int written_samples = 0;
+
+	if (!cd->enabled) {
+		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
+		return;
+	}
 
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
@@ -266,6 +294,8 @@ static int ctc_init(struct processing_module *mod)
 		ctc_free(mod);
 		return -ENOMEM;
 	}
+
+	cd->enabled = true;
 
 	comp_dbg(dev, "ctc_init(): Ready");
 
