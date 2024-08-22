@@ -14,6 +14,7 @@
 		 (sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *) \
 				     (WIN3_MBASE + WIN3_OFFSET))))
 
+#if IS_ENABLED(CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS)
 /**
  * Initializer for struct perf_data_item_comp
  *
@@ -86,5 +87,55 @@ int enable_performance_counters(void);
  * Unregister performance data records marked for removal.
  */
 void disable_performance_counters(void);
+
+#else
+
+static inline
+void perf_data_item_comp_init(struct perf_data_item_comp *perf, uint32_t resource_id,
+			      uint32_t power_mode)
+{}
+
+static inline struct perf_data_item_comp *perf_data_getnext(void)
+{
+	return NULL;
+}
+
+static inline
+int free_performance_data(struct perf_data_item_comp *item)
+{
+	return 0;
+}
+
+static inline void perf_meas_set_state(enum ipc4_perf_measurements_state_set state) {}
+
+static inline enum ipc4_perf_measurements_state_set perf_meas_get_state(void)
+{
+	return IPC4_PERF_MEASUREMENTS_DISABLED;
+}
+
+static inline int get_performance_data(struct global_perf_data * const global_perf_data)
+{
+	return 0;
+}
+
+static inline
+int get_extended_performance_data(struct extended_global_perf_data * const ext_global_perf_data)
+{
+	return 0;
+}
+
+static inline int reset_performance_counters(void)
+{
+	return 0;
+}
+
+static inline int enable_performance_counters(void)
+{
+	return 0;
+}
+
+static inline void disable_performance_counters(void) {}
+
+#endif
 
 #endif
