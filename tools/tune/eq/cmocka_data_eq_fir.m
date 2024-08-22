@@ -82,8 +82,18 @@ end
 function eq = test_response(fn, vn, fs)
 
 %% Get EQ
-blob_fn = '../../ctl/eq_fir_loudness.txt';
+blob_fn = '../../ctl/ipc3/eq_fir_loudness.txt';
 eq = eq_blob_plot(blob_fn, 'fir', fs, [], 0);
+
+% Shorten the FIR to make it fit a single 384 byte IPC. The
+% changed response does not matter in cmocka test case.
+n_new = 100;
+n_orig = length(eq.b_fir);
+if n_orig > n_new
+	n_center = floor(n_orig / 2);
+	n_half = floor(n_new / 2);
+	eq.b_fir = eq.b_fir(n_center - n_half:n_center + n_half - 1);
+end
 
 %% Quantize and pack filter coefficients plus shifts etc.
 bq = eq_fir_blob_quant(eq.b_fir);
