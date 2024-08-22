@@ -7,13 +7,16 @@ if(CONFIG_SOF)
 if(CONFIG_LIBRARY)
 	set(PLATFORM "library")
 	set(ARCH host)
+	set(PLATFORM_HEADERS "posix")
 	zephyr_include_directories(../src/platform/library/include)
 elseif(CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 	set(PLATFORM "posix")
+	set(PLATFORM_HEADERS "posix")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
+	set(PLATFORM_HEADERS "xtos")
 endif()
 
 # Appends literal with path of the source file relative to the project root
@@ -140,7 +143,7 @@ if (CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
 else()
 	# include Zephyr before xtos to flag up any errors in SOF
 	target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
-	target_include_directories(SOF INTERFACE ${sof_top_dir}/xtos/include)
+	target_include_directories(SOF INTERFACE ${sof_top_dir}/${PLATFORM_HEADERS}/include)
 endif()
 
 # SOF module init
