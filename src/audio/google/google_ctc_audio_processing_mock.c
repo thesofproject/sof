@@ -52,17 +52,6 @@ void GoogleCtcAudioProcessingProcess(GoogleCtcAudioProcessingState *state,
 		 src, sizeof(float) * num_frames * num_channels);
 }
 
-void GoogleCtcAudioProcessingParseSofConfigMessage(uint8_t *message,
-						   size_t message_size,
-						   uint8_t **config,
-						   size_t *config_size,
-						   bool *config_present)
-{
-	*config = NULL;
-	*config_size = 0;
-	*config_present = false;
-}
-
 int GoogleCtcAudioProcessingReconfigure(GoogleCtcAudioProcessingState *state,
 					const uint8_t *config, int config_size)
 {
