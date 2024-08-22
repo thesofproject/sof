@@ -197,6 +197,7 @@ struct inner_model_ops {
 	 *    blk - the memblk usage type.
 	 * Returns:
 	 *    The bytesize or negative error code.
+	 *    0 means no memory required
 	 */
 	int (*query_memblk_size)(struct smart_amp_mod_data_base *mod,
 				 enum smart_amp_mod_memblk blk);
