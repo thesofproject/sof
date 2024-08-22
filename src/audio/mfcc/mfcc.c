@@ -84,7 +84,7 @@ static int mfcc_init(struct processing_module *mod)
 
 	/* Check first that configuration blob size is sane */
 	if (bs > SOF_MFCC_CONFIG_MAX_SIZE) {
-		comp_err(dev, "mfcc_init() error: configuration blob size %u exceeds %d",
+		comp_err(dev, "mfcc_init() error: configuration blob size %zu exceeds %d",
 			 bs, SOF_MFCC_CONFIG_MAX_SIZE);
 		return -EINVAL;
 	}
