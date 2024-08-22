@@ -231,7 +231,7 @@ void _log_sofdict(log_func_t sofdict_logf, bool atomic, const void *log_entry,
 
 /* _log_message() */
 
-#ifdef CONFIG_LIBRARY
+#ifdef CONFIG_LIBRARY || CONFIG_ZEPHYR_POSIX
 
 #include <sys/time.h>
 
