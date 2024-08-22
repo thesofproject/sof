@@ -103,18 +103,8 @@ main()
   # This also drops _leading_ '--'.
   shift $((OPTIND-1))
 
-  # Move this to a new fuzz.conf EXTRA_CONF_FILE if it grows bigger
-  local fuzz_configs=(
-    -DCONFIG_ZEPHYR_POSIX=y
-    -DCONFIG_ASSERT=y
-    -DCONFIG_EXCEPTION_DEBUG=y
-    -DCONFIG_ARCH_POSIX_TRAP_ON_FATAL=y
-    -DCONFIG_SYS_HEAP_BIG_ONLY=y
-    -DCONFIG_ZEPHYR_NATIVE_DRIVERS=y
-    -DCONFIG_ARCH_POSIX_LIBFUZZER=y
-    -DCONFIG_ZEPHYR_POSIX_FUZZ_TICKS=100
-    -DCONFIG_ASAN=y
-  )
+  # https://docs.zephyrproject.org/latest/build/kconfig/setting.html#initial-conf
+  local conf_files_list='prj.conf;boards/native_sim_libfuzzer.conf'
 
   # Note there's never any reason to delete fuzz_corpus/.
   # Don't trust `west build -p` because it is not 100% unreliable,
@@ -125,7 +115,7 @@ main()
    # When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
    # the last 'VAL UE2' wins. Previous ones are silently ignored.
   west build -d build-fuzz -b native_sim "$SOF_TOP"/app/ -- \
-      "${fuzz_configs[@]}" "$@"
+       -DCONF_FILE="$conf_files_list" "$@"
   )
 
   if $BUILD_ONLY; then
