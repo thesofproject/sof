@@ -285,8 +285,8 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 			return -EINVAL;
 
 		/* Copy back to user space */
-		ret = memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
-			       (cdata->data))->size, &cd->config,
+		ret = memcpy_s(cdata->data->data,
+			       size, &cd->config,
 			       sizeof(cd->config));
 		assert(!ret);
 
