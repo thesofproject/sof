@@ -37,9 +37,23 @@ struct google_ctc_audio_processing_comp_data {
 	uint32_t chunk_frames;
 	GoogleCtcAudioProcessingState *state;
 	struct comp_data_blob_handler *tuning_handler;
+	bool enabled;
 	bool reconfigure;
 	ctc_func ctc_func;
 };
+
+struct google_ctc_config {
+	/* size of the whole ctc config */
+	uint32_t size;
+
+	/* reserved */
+	uint32_t reserved[4];
+
+	uint32_t data[];
+} __packed;
+
+#define CTC_BLOB_DATA_SIZE 4100
+#define CTC_BLOB_CONFIG_SIZE (sizeof(struct google_ctc_config) + CTC_BLOB_DATA_SIZE)
 
 int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 		   enum module_cfg_fragment_position pos,

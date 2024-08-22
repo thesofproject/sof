@@ -27,6 +27,8 @@ int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
 	int ret;
+	struct google_ctc_config *config;
+	int size;
 
 	switch (param_id) {
 	case 0:
@@ -44,7 +46,19 @@ int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 		return ret;
 
 	if (comp_is_new_data_blob_available(cd->tuning_handler)) {
-		comp_get_data_blob(cd->tuning_handler, NULL, NULL);
+		config = comp_get_data_blob(cd->tuning_handler, &size, NULL);
+		if (size != CTC_BLOB_CONFIG_SIZE) {
+			comp_err(mod->dev,
+				 "ctc_set_config(): Invalid config size = %d",
+				 size);
+			return -EINVAL;
+		}
+		if (config->size != CTC_BLOB_CONFIG_SIZE) {
+			comp_err(mod->dev,
+				 "ctc_set_config(): Invalid config->size = %d",
+				 config->size);
+			return -EINVAL;
+		}
 		cd->reconfigure = true;
 	}
 

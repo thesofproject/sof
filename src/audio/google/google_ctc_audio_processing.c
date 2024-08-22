@@ -15,7 +15,6 @@
 #include <rtos/init.h>
 
 #include <google_ctc_audio_processing.h>
-#include <google_ctc_audio_processing_sof_message_reader.h>
 
 #include "google_ctc_audio_processing.h"
 
@@ -298,31 +297,15 @@ static int google_ctc_audio_processing_reconfigure(struct processing_module *mod
 		  config, size);
 
 	cd->reconfigure = false;
-
-	uint8_t *processing_config;
-	size_t processing_config_size;
-	bool processing_config_present;
-
-	GoogleCtcAudioProcessingParseSofConfigMessage(config, size,
-						      &processing_config,
-						      &processing_config_size,
-						      &processing_config_present);
-
-	if (processing_config_present) {
-		comp_info(dev,
-			  "google_ctc_audio_processing_reconfigure(): Applying config of size %zu bytes",
-			  processing_config_size);
-
-		ret = GoogleCtcAudioProcessingReconfigure(cd->state,
-							  processing_config,
-							  processing_config_size);
-		if (ret) {
-			comp_err(dev, "GoogleCtcAudioProcessingReconfigure failed: %d",
-				 ret);
-			return ret;
-		}
+	comp_info(dev,
+		  "google_ctc_audio_processing_reconfigure(): Applying config of size %zu bytes",
+		  size);
+	ret = GoogleCtcAudioProcessingReconfigure(cd->state, config, size);
+	if (ret) {
+		comp_err(dev, "GoogleCtcAudioProcessingReconfigure failed: %d",
+			 ret);
+		return ret;
 	}
-
 	return 0;
 }
 
@@ -335,6 +318,8 @@ static int ctc_prepare(struct processing_module *mod,
 	struct comp_buffer *source;
 	enum sof_ipc_frame fmt;
 	int num_channels;
+	uint8_t *config;
+	int config_size;
 
 	comp_info(mod->dev, "ctc_prepare()");
 
@@ -367,10 +352,21 @@ static int ctc_prepare(struct processing_module *mod,
 	}
 	cd->next_avail_output_samples = cd->chunk_frames * num_channels;
 
+	config = comp_get_data_blob(cd->tuning_handler, &config_size, NULL);
+
+	if (config_size != CTC_BLOB_CONFIG_SIZE) {
+		comp_info(mod->dev, "ctc_prepare(): config_size not expected: %d", config_size);
+		config = NULL;
+		config_size = 0;
+	}
 	cd->state = GoogleCtcAudioProcessingCreateWithConfig(cd->chunk_frames,
 							     audio_stream_get_rate(&source->stream),
-							     /*config=*/NULL,
-							     /*config_size=*/0);
+							     config,
+							     config_size);
+	if (!cd->state) {
+		comp_err(mod->dev, "ctc_prepare(), failed to create CTC");
+		return -ENOMEM;
+	}
 
 	return 0;
 }
