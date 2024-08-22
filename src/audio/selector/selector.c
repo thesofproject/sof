@@ -281,6 +281,8 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_dbg(dev, "selector_ctrl_get_data(), SOF_CTRL_CMD_BINARY");
+		if (size < sizeof(cd->config))
+			return -EINVAL;
 
 		/* Copy back to user space */
 		ret = memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
