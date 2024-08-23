@@ -293,10 +293,10 @@ static int drc_process(struct processing_module *mod,
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void drc_params(struct processing_module *mod)
+static void drc_params(struct processing_module *mod,
+		       struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "drc_params()");
@@ -304,20 +304,15 @@ static void drc_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 static int drc_prepare(struct processing_module *mod,
-		       struct sof_source **sources, int num_of_sources,
-		       struct sof_sink **sinks, int num_of_sinks)
+		       struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 	int channels;
 	int rate;
@@ -326,12 +321,8 @@ static int drc_prepare(struct processing_module *mod,
 	comp_info(dev, "drc_prepare()");
 
 #if CONFIG_IPC_MAJOR_4
-	drc_params(mod);
+	drc_params(mod, sourceb, sinkb);
 #endif
-
-	/* DRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -373,7 +364,7 @@ static int drc_reset(struct processing_module *mod)
 
 static const struct module_interface drc_interface = {
 	.init = drc_init,
-	.prepare = drc_prepare,
+	.prepare_legacy = drc_prepare,
 	.process_audio_stream = drc_process,
 	.set_configuration = drc_set_config,
 	.get_configuration = drc_get_config,
