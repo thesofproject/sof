@@ -668,13 +668,11 @@ static void volume_set_alignment(struct audio_stream *source,
  * to also do some type of conversion here.
  */
 static int volume_prepare(struct processing_module *mod,
-			  struct sof_source **sources, int num_of_sources,
-			  struct sof_sink **sinks, int num_of_sinks)
+			  struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
 	uint32_t sink_period_bytes;
 	int ret;
 	int i;
@@ -684,11 +682,6 @@ static int volume_prepare(struct processing_module *mod,
 	ret = volume_peak_prepare(cd, mod);
 
 	/* volume component will only ever have 1 sink and source buffer */
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, Xsource_list);
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, Xsink_list);
-
 	volume_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get sink period bytes */
@@ -775,7 +768,7 @@ static int volume_reset(struct processing_module *mod)
 
 static const struct module_interface volume_interface = {
 	.init = volume_init,
-	.prepare = volume_prepare,
+	.prepare_legacy = volume_prepare,
 	.process_audio_stream = volume_process,
 	.set_configuration = volume_set_config,
 	.get_configuration = volume_get_config,
@@ -789,7 +782,7 @@ SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
 #if CONFIG_COMP_GAIN
 static const struct module_interface gain_interface = {
 	.init = volume_init,
-	.prepare = volume_prepare,
+	.prepare_legacy = volume_prepare,
 	.process_audio_stream = volume_process,
 	.set_configuration = volume_set_config,
 	.get_configuration = volume_get_config,
