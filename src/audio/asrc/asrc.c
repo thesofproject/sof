@@ -378,12 +378,12 @@ static int asrc_verify_params(struct processing_module *mod,
 }
 
 /* set component audio stream parameters */
-static int asrc_params(struct processing_module *mod)
+static int asrc_params(struct processing_module *mod, struct comp_buffer *sourceb,
+		       struct comp_buffer *sinkb)
 {
 	struct sof_ipc_stream_params *pcm_params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
 	int err;
 
 	comp_info(dev, "asrc_params()");
@@ -395,11 +395,6 @@ static int asrc_params(struct processing_module *mod)
 		comp_err(dev, "asrc_params(): pcm params verification failed.");
 		return -EINVAL;
 	}
-
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  Xsink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				Xsource_list);
 
 	/* update the source/sink buffer formats. Sink rate will be modified below */
 	asrc_update_buffer_format(sourceb, cd);
@@ -452,6 +447,7 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 	if (cd->mode == ASRC_OM_PUSH) {
 		/* In push mode check if sink component is DAI */
 		do {
+			/* XXXXX - can't be done now, add something to pipeline 2.0 tools */
 			sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 
 			dev = sinkb->Xsink;
@@ -522,12 +518,10 @@ static int asrc_trigger(struct processing_module *mod, int cmd)
 }
 
 static int asrc_prepare(struct processing_module *mod,
-			struct sof_source **sources, int num_of_sources,
-			struct sof_sink **sinks, int num_of_sinks)
+			struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	struct comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
 	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
 	int sample_bytes;
@@ -540,15 +534,11 @@ static int asrc_prepare(struct processing_module *mod,
 
 	comp_info(dev, "asrc_prepare()");
 
-	ret = asrc_params(mod);
+	ret = asrc_params(mod, sourceb, sinkb);
 	if (ret < 0)
 		return ret;
 
 	/* SRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, Xsink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, Xsource_list);
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -782,7 +772,6 @@ static int asrc_process(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *source, *sink;
 	struct audio_stream *source_s = input_buffers[0].data;
 	struct audio_stream *sink_s = output_buffers[0].data;
 	int frames_src;
@@ -794,12 +783,6 @@ static int asrc_process(struct processing_module *mod,
 	ret = asrc_control_loop(dev, cd);
 	if (ret)
 		return ret;
-
-	/* asrc component needs 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 Xsink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       Xsource_list);
 
 	frames_src = audio_stream_get_avail_frames(source_s);
 	frames_snk = audio_stream_get_free_frames(sink_s);
@@ -832,9 +815,7 @@ static int asrc_process(struct processing_module *mod,
 		int produced = 0;
 
 		/* consumed bytes are not known at this point */
-		buffer_stream_invalidate(source, audio_stream_get_size(source_s));
 		cd->asrc_func(mod, source_s, sink_s, &consumed, &produced);
-		buffer_stream_writeback(sink, produced * audio_stream_frame_bytes(sink_s));
 
 		comp_dbg(dev, "asrc_process(), consumed = %u,  produced = %u", consumed, produced);
 
@@ -869,7 +850,7 @@ static int asrc_reset(struct processing_module *mod)
 
 static const struct module_interface asrc_interface = {
 	.init = asrc_init,
-	.prepare = asrc_prepare,
+	.prepare_legacy = asrc_prepare,
 	.process_audio_stream = asrc_process,
 	.trigger = asrc_trigger,
 	.set_configuration = asrc_set_config,
