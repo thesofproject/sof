@@ -64,7 +64,8 @@ void eq_iir_set_passthrough_func(struct comp_data *cd,
 				 enum sof_ipc_frame source_format,
 				 enum sof_ipc_frame sink_format);
 
-int eq_iir_prepare_sub(struct processing_module *mod);
+int eq_iir_prepare_sub(struct processing_module *mod, struct comp_buffer *source,
+		       struct comp_buffer *sink);
 
 void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
 		 struct output_stream_buffer *bsink, uint32_t frames);

@@ -99,12 +99,12 @@ int eq_iir_new_blob(struct processing_module *mod, struct comp_data *cd,
 	return 0;
 }
 
-static int eq_iir_params(struct processing_module *mod)
+static int eq_iir_params(struct processing_module *mod, struct comp_buffer *sourceb,
+			 struct comp_buffer *sinkb)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct sof_ipc_stream_params comp_params;
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sinkb;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i, ret;
 
@@ -125,7 +125,6 @@ static int eq_iir_params(struct processing_module *mod)
 		comp_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
 
 	component_set_nearest_period_frames(dev, comp_params.rate);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	ret = buffer_set_params(sinkb, &comp_params, true);
 	return ret;
 }
@@ -137,15 +136,15 @@ void eq_iir_set_passthrough_func(struct comp_data *cd,
 	cd->eq_iir_func = eq_iir_pass;
 }
 
-int eq_iir_prepare_sub(struct processing_module *mod)
+int eq_iir_prepare_sub(struct processing_module *mod, struct comp_buffer *source,
+		       struct comp_buffer *sink)
 {
 	struct comp_dev *dev = mod->dev;
 	int ret = 0;
 
-	ret = eq_iir_params(mod);
+	ret = eq_iir_params(mod, source, sink);
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
 }
-

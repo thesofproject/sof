@@ -265,19 +265,13 @@ static eq_iir_func eq_iir_find_func(enum sof_ipc_frame source_format,
 }
 
 static int eq_iir_verify_params(struct comp_dev *dev,
-				struct sof_ipc_stream_params *params)
+				struct sof_ipc_stream_params *params,
+				struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
-	struct comp_buffer *sourceb, *sinkb;
 	uint32_t buffer_flag;
 	int ret;
 
 	comp_dbg(dev, "eq_iir_verify_params()");
-
-	/* EQ component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  Xsink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				Xsource_list);
 
 	/* we check whether we can support frame_fmt conversion (whether we have
 	 * such conversion function) due to source and sink buffer frame_fmt's.
@@ -330,7 +324,8 @@ void eq_iir_set_passthrough_func(struct comp_data *cd,
 					   ARRAY_SIZE(fm_passthrough));
 }
 
-int eq_iir_prepare_sub(struct processing_module *mod)
+int eq_iir_prepare_sub(struct processing_module *mod, struct comp_buffer *source,
+		       struct comp_buffer *sink)
 {
-	return eq_iir_verify_params(mod->dev, mod->stream_params);
+	return eq_iir_verify_params(mod->dev, mod->stream_params, source, sink);
 }

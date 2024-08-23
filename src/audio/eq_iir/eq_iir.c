@@ -175,11 +175,9 @@ static void eq_iir_set_alignment(struct audio_stream *source,
 }
 
 static int eq_iir_prepare(struct processing_module *mod,
-			  struct sof_source **sources, int num_of_sources,
-			  struct sof_sink **sinks, int num_of_sinks)
+			  struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
@@ -188,13 +186,10 @@ static int eq_iir_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "eq_iir_prepare()");
 
-	ret = eq_iir_prepare_sub(mod);
+	ret = eq_iir_prepare_sub(mod, sourceb, sinkb);
 	if (ret < 0)
 		return ret;
 
-	/* EQ component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	eq_iir_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get source and sink data format */
@@ -241,7 +236,7 @@ static int eq_iir_reset(struct processing_module *mod)
 
 static const struct module_interface eq_iir_interface = {
 	.init = eq_iir_init,
-	.prepare = eq_iir_prepare,
+	.prepare_legacy = eq_iir_prepare,
 	.process_audio_stream = eq_iir_process,
 	.set_configuration = eq_iir_set_config,
 	.get_configuration = eq_iir_get_config,
