@@ -3,7 +3,7 @@
 
 # EQs
 ifelse(TEST_PIPE_NAME, `eq-iir', `define(PIPELINE_FILTER1, `eq_iir_coef_loudness.m4')')
-ifelse(TEST_PIPE_NAME, `eq-fir', `define(PIPELINE_FILTER2, `eq_fir_coef_loudness.m4')')
+ifelse(TEST_PIPE_NAME, `eq-fir', `define(PIPELINE_FILTER2, `eq_fir_coef_mid.m4')')
 
 # TDFB test pipelines with different names for different configurations
 
