@@ -60,7 +60,8 @@ int dcblock_set_ipc_config(struct processing_module *mod,
 				  fragment_size);
 }
 
-void dcblock_params(struct processing_module *mod)
+void dcblock_params(struct processing_module *mod, struct comp_buffer *sourceb,
+		    struct comp_buffer *sinkb)
 {
 }
 

@@ -187,20 +187,14 @@ static int dcblock_process(struct processing_module *mod,
  * \return Error code.
  */
 static int dcblock_prepare(struct processing_module *mod,
-			   struct sof_source **sources, int num_of_sources,
-			   struct sof_sink **sinks, int num_of_sinks)
+			   struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 
 	comp_info(dev, "dcblock_prepare()");
 
-	dcblock_params(mod);
-
-	/* DC Filter component will only ever have one source and sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
+	dcblock_params(mod, sourceb, sinkb);
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -247,7 +241,7 @@ static int dcblock_reset(struct processing_module *mod)
 
 static const struct module_interface dcblock_interface = {
 	.init = dcblock_init,
-	.prepare = dcblock_prepare,
+	.prepare_legacy = dcblock_prepare,
 	.process_audio_stream = dcblock_process,
 	.set_configuration = dcblock_set_config,
 	.get_configuration = dcblock_get_config,
