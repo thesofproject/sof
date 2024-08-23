@@ -479,15 +479,6 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 	return mod_manifest->module.entry_point;
 }
 
-int llext_manager_unload(uint32_t module_id)
-{
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
-
-	return llext_unload(&ctx->mod[mod_idx].llext);
-}
-
 int llext_manager_free_module(const uint32_t component_id)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
@@ -501,8 +492,17 @@ int llext_manager_free_module(const uint32_t component_id)
 		return -ENOENT;
 	}
 
+	if (!ctx->mod) {
+		tr_err(&lib_manager_tr, "NULL module array: ID %#x ctx %p", component_id, ctx);
+		return -ENOENT;
+	}
+
 	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
 	struct lib_manager_module *mctx = ctx->mod + mod_idx;
+
+	if (llext_unload(&mctx->llext))
+		/* More users are active */
+		return 0;
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
