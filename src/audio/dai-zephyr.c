@@ -76,7 +76,7 @@ int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_i
 {
 	if (dd->group) {
 		if (dd->group->group_id != group_id) {
-			comp_err(dev, "dai_assign_group(), DAI already in group %d, requested %d",
+			comp_err(dev, "DAI already in group %d, requested %d",
 				 dd->group->group_id, group_id);
 			return -EINVAL;
 		}
@@ -87,12 +87,12 @@ int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_i
 
 	dd->group = dai_group_get(group_id, DAI_CREAT);
 	if (!dd->group) {
-		comp_err(dev, "dai_assign_group(), failed to assign group %d",
+		comp_err(dev, "failed to assign group %d",
 			 group_id);
 		return -EINVAL;
 	}
 
-	comp_dbg(dev, "dai_assign_group(), group %d num %d",
+	comp_dbg(dev, "group %d num %d",
 		 group_id, dd->group->num_dais);
 
 	/* Register for the atomic trigger event */
@@ -373,7 +373,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 					dd->local_buffer : dd->dma_buffer;
 		sink_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 					dd->dma_buffer : dd->local_buffer;
-		comp_err(dev, "dai_dma_cb() dma buffer copy failed, dir %d bytes %d avail %d free %d",
+		comp_err(dev, "dma buffer copy failed, dir %d bytes %d avail %d free %d",
 			 dev->direction, bytes,
 			 audio_stream_get_avail_samples(&source_c->stream) *
 				audio_stream_frame_bytes(&source_c->stream),
@@ -455,7 +455,7 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 
 	dd->dai = dai_get(dai_cfg->type, dai_cfg->dai_index, DAI_CREAT);
 	if (!dd->dai) {
-		comp_err(dev, "dai_new(): dai_get() failed to create DAI.");
+		comp_err(dev, "dai_get() failed to create DAI.");
 		return -ENODEV;
 	}
 
@@ -468,7 +468,7 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	dd->dma = dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, DMA_ACCESS_SHARED);
 	if (!dd->dma) {
 		dai_put(dd->dai);
-		comp_err(dev, "dai_new(): dma_get() failed to get shared access to DMA.");
+		comp_err(dev, "dma_get() failed to get shared access to DMA.");
 		return -ENODEV;
 	}
 
@@ -599,7 +599,7 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 
 	ret = dai_common_get_hw_params(dd, dev, &hw_params, params->direction);
 	if (ret < 0) {
-		comp_err(dev, "dai_verify_params(): dai_verify_params failed ret %d", ret);
+		comp_err(dev, "dai_verify_params failed ret %d", ret);
 		return ret;
 	}
 
@@ -610,13 +610,13 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 	 * pcm_converter functions.
 	 */
 	if (hw_params.rate && hw_params.rate != params->rate) {
-		comp_err(dev, "dai_verify_params(): pcm rate parameter %d does not match hardware rate %d",
+		comp_err(dev, "pcm rate parameter %d does not match hardware rate %d",
 			 params->rate, hw_params.rate);
 		return -EINVAL;
 	}
 
 	if (hw_params.channels && hw_params.channels != params->channels) {
-		comp_err(dev, "dai_verify_params(): pcm channels parameter %d does not match hardware channels %d",
+		comp_err(dev, "pcm channels parameter %d does not match hardware channels %d",
 			 params->channels, hw_params.channels);
 		return -EINVAL;
 	}
@@ -683,7 +683,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 	}
 
 	if (!dd->process) {
-		comp_err(dev, "dai_set_sg_config(): converter NULL: local fmt %d dma fmt %d\n",
+		comp_err(dev, "converter NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
 		return -EINVAL;
 	}
@@ -705,28 +705,28 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->period;
 
-	comp_dbg(dev, "dai_set_sg_config(): dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
+	comp_dbg(dev, "dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
 		 config->dest_dev, dd->stream_id, config->src_width, config->dest_width);
 
 	if (!config->elem_array.elems) {
 		fifo = dai_get_fifo(dd->dai, dev->direction, dd->stream_id);
 
-		comp_dbg(dev, "dai_set_sg_config(): fifo 0x%x", fifo);
+		comp_dbg(dev, "fifo 0x%x", fifo);
 
 		err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_MAX_BLOCK_COUNT, &max_block_count);
 		if (err < 0) {
-			comp_err(dev, "dai_set_sg_config(): can't get max block count, err = %d",
+			comp_err(dev, "can't get max block count, err = %d",
 				 err);
 			goto out;
 		}
 
 		if (!max_block_count) {
-			comp_err(dev, "dai_set_sg_config(): invalid max-block-count of zero");
+			comp_err(dev, "invalid max-block-count of zero");
 			goto out;
 		}
 
 		if (max_block_count < period_count) {
-			comp_dbg(dev, "dai_set_sg_config(): unsupported period count %d",
+			comp_dbg(dev, "unsupported period count %d",
 				 period_count);
 			buf_size = period_count * period_bytes;
 			do {
@@ -735,7 +735,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 					period_bytes = buf_size / period_count;
 					break;
 				} else {
-					comp_warn(dev, "dai_set_sg_config() alignment error for buf_size = %d, block count = %d",
+					comp_warn(dev, "alignment error for buf_size = %d, block count = %d",
 						  buf_size, max_block_count);
 				}
 			} while (--max_block_count > 0);
@@ -748,7 +748,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 				   (uintptr_t)audio_stream_get_addr(&dd->dma_buffer->stream),
 				   fifo);
 		if (err < 0) {
-			comp_err(dev, "dai_set_sg_config() sg alloc failed period_count %d period_bytes %d err = %d",
+			comp_err(dev, "sg alloc failed period_count %d period_bytes %d err = %d",
 				 period_count, period_bytes, err);
 			return err;
 		}
@@ -770,7 +770,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	dma_cfg = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			  sizeof(struct dma_config));
 	if (!dma_cfg) {
-		comp_err(dev, "dai_set_dma_config(): dma_cfg allocation failed");
+		comp_err(dev, "dma_cfg allocation failed");
 		return -ENOMEM;
 	}
 
@@ -801,7 +801,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 				sizeof(struct dma_block_config) * dma_cfg->block_count);
 	if (!dma_block_cfg) {
 		rfree(dma_cfg);
-		comp_err(dev, "dai_set_dma_config: dma_block_config allocation failed");
+		comp_err(dev, "dma_block_config allocation failed");
 		return -ENOMEM;
 	}
 
@@ -860,27 +860,27 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
-		comp_info(dev, "dai_set_dma_buffer() component has been already configured.");
+		comp_info(dev, "component has been already configured.");
 		return 0;
 	}
 
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		comp_err(dev, "dai_set_dma_buffer(): comp state %d, expected COMP_STATE_READY.",
+		comp_err(dev, "comp state %d, expected COMP_STATE_READY.",
 			 dev->state);
 		return -EINVAL;
 	}
 
 	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT, &addr_align);
 	if (err < 0) {
-		comp_err(dev, "dai_set_dma_buffer(): can't get dma buffer addr align, err = %d",
+		comp_err(dev, "can't get dma buffer addr align, err = %d",
 			 err);
 		return err;
 	}
 
 	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_SIZE_ALIGNMENT, &align);
 	if (err < 0 || !align) {
-		comp_err(dev, "dai_set_dma_buffer(): no valid dma align, err = %d, align = %u",
+		comp_err(dev, "no valid dma align, err = %d, align = %u",
 			 err, align);
 		return -EINVAL;
 	}
@@ -891,7 +891,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
-		comp_err(dev, "dai_set_dma_buffer(): invalid period_bytes.");
+		comp_err(dev, "invalid period_bytes.");
 		return -EINVAL;
 	}
 
@@ -918,7 +918,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 	if (!period_count) {
-		comp_err(dev, "dai_set_dma_buffer(): no valid dma buffer period count");
+		comp_err(dev, "no valid dma buffer period count");
 		return -EINVAL;
 	}
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
@@ -932,14 +932,14 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 					    addr_align);
 
 		if (err < 0) {
-			comp_err(dev, "dai_set_dma_buffer(): buffer_size = %u failed", buffer_size);
+			comp_err(dev, "buffer_size = %u failed", buffer_size);
 			return err;
 		}
 	} else {
 		dd->dma_buffer = buffer_alloc_range(buffer_size_preferred, buffer_size,
 						    SOF_MEM_CAPS_DMA, 0, addr_align, false);
 		if (!dd->dma_buffer) {
-			comp_err(dev, "dai_set_dma_buffer(): failed to alloc dma buffer");
+			comp_err(dev, "failed to alloc dma buffer");
 			return -ENOMEM;
 		}
 
@@ -973,7 +973,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	/* configure dai_data first */
 	err = ipc_dai_data_config(dd, dev);
 	if (err < 0) {
-		comp_err(dev, "dai_zephyr_params(): ipc dai data config failed.");
+		comp_err(dev, "ipc dai data config failed.");
 		return err;
 	}
 
@@ -996,25 +996,25 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 
 	err = dai_verify_params(dd, dev, &params);
 	if (err < 0) {
-		comp_err(dev, "dai_zephyr_params(): pcm params verification failed.");
+		comp_err(dev, "pcm params verification failed.");
 		return -EINVAL;
 	}
 
 	err = dai_set_dma_buffer(dd, dev, &params, &period_bytes, &period_count);
 	if (err < 0) {
-		comp_err(dev, "dai_zephyr_params(): alloc dma buffer failed.");
+		comp_err(dev, "alloc dma buffer failed.");
 		goto out;
 	}
 
 	err = dai_set_sg_config(dd, dev, period_bytes, period_count);
 	if (err < 0) {
-		comp_err(dev, "dai_zephyr_params(): set sg config failed.");
+		comp_err(dev, "set sg config failed.");
 		goto out;
 	}
 
 	err = dai_set_dma_config(dd, dev);
 	if (err < 0)
-		comp_err(dev, "dai_zephyr_params(): set dma config failed.");
+		comp_err(dev, "set dma config failed.");
 out:
 	/*
 	 * Make sure to free all allocated items, all functions
@@ -1046,7 +1046,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_common_config_prepare(): Component is in active state.");
+		comp_info(dev, "Component is in active state.");
 		return 0;
 	}
 
@@ -1056,13 +1056,13 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	if (dd->chan) {
-		comp_info(dev, "dai_common_config_prepare(): dma channel index %d already configured",
+		comp_info(dev, "dma channel index %d already configured",
 			  dd->chan->index);
 		return 0;
 	}
 
 	channel = dai_config_dma_channel(dd, dev, dd->dai_spec_config);
-	comp_dbg(dev, "dai_common_config_prepare(), channel = %d", channel);
+	comp_dbg(dev, "channel = %d", channel);
 
 	/* do nothing for asking for channel free, for compatibility. */
 	if (channel == DMA_CHAN_INVALID) {
@@ -1073,7 +1073,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	/* get DMA channel */
 	channel = dma_request_channel(dd->dma->z_dev, &channel);
 	if (channel < 0) {
-		comp_err(dev, "dai_common_config_prepare(): dma_request_channel() failed");
+		comp_err(dev, "dma_request_channel() failed");
 		dd->chan = NULL;
 		return -EIO;
 	}
@@ -1081,7 +1081,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	dd->chan = &dd->dma->chan[channel];
 	dd->chan->dev_data = dd;
 
-	comp_dbg(dev, "dai_common_config_prepare(): new configured dma channel index %d",
+	comp_dbg(dev, "new configured dma channel index %d",
 		 dd->chan->index);
 
 	return 0;
@@ -1094,13 +1094,13 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 	dd->total_data_processed = 0;
 
 	if (!dd->chan) {
-		comp_err(dev, "dai_common_prepare(): Missing dd->chan.");
+		comp_err(dev, "Missing dd->chan.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
 
 	if (!dd->config.elem_array.elems) {
-		comp_err(dev, "dai_common_prepare(): Missing dd->config.elem_array.elems.");
+		comp_err(dev, "Missing dd->config.elem_array.elems.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -1189,7 +1189,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 {
 	int ret = 0;
 
-	comp_dbg(dev, "dai_comp_trigger_internal(), command = %u", cmd);
+	comp_dbg(dev, "command = %u", cmd);
 
 #ifdef CONFIG_IPC_MAJOR_3
 	if (dev->state == comp_get_requested_state(cmd))
@@ -1198,7 +1198,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		comp_dbg(dev, "dai_comp_trigger_internal(), START");
+		comp_dbg(dev, "START");
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
@@ -1262,12 +1262,12 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_XRUN:
-		comp_info(dev, "dai_comp_trigger_internal(), XRUN");
+		comp_info(dev, "XRUN");
 		dd->xrun = 1;
 
 		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_STOP:
-		comp_dbg(dev, "dai_comp_trigger_internal(), STOP");
+		comp_dbg(dev, "STOP");
 /*
  * Some platforms cannot just simple disable
  * DMA channel during the transfer,
@@ -1289,7 +1289,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 #endif
 		break;
 	case COMP_TRIGGER_PAUSE:
-		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
+		comp_dbg(dev, "PAUSE");
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
 		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
@@ -1330,7 +1330,7 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 
 	/* DAI not in a group, use normal trigger */
 	if (!group) {
-		comp_dbg(dev, "dai_common_trigger(), non-atomic trigger");
+		comp_dbg(dev, "non-atomic trigger");
 		return dai_comp_trigger_internal(dd, dev, cmd);
 	}
 
@@ -1340,13 +1340,13 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 		/* First DAI to receive the trigger command,
 		 * prepare for atomic trigger
 		 */
-		comp_dbg(dev, "dai_common_trigger(), begin atomic trigger for group %d",
+		comp_dbg(dev, "begin atomic trigger for group %d",
 			 group->group_id);
 		group->trigger_cmd = cmd;
 		group->trigger_counter = group->num_dais - 1;
 	} else if (group->trigger_cmd != cmd) {
 		/* Already processing a different trigger command */
-		comp_err(dev, "dai_common_trigger(), already processing atomic trigger");
+		comp_err(dev, "already processing atomic trigger");
 		ret = -EAGAIN;
 	} else {
 		/* Count down the number of remaining DAIs required
@@ -1354,7 +1354,7 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 		 * takes place
 		 */
 		group->trigger_counter--;
-		comp_dbg(dev, "dai_common_trigger(), trigger counter %d, group %d",
+		comp_dbg(dev, "trigger counter %d, group %d",
 			 group->trigger_counter, group->group_id);
 
 		if (!group->trigger_counter) {
@@ -1388,10 +1388,10 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
 {
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_err(dev, "dai_report_xrun(): underrun due to no data available");
+		comp_err(dev, "underrun due to no data available");
 		comp_underrun(dev, dd->local_buffer, bytes);
 	} else {
-		comp_err(dev, "dai_report_xrun(): overrun due to no space available");
+		comp_err(dev, "overrun due to no space available");
 		comp_overrun(dev, dd->local_buffer, bytes);
 	}
 }
@@ -1428,10 +1428,10 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 		case -EPIPE:
 			/* DMA status can return -EPIPE and current status content if xrun occurs */
 			if (direction == SOF_IPC_STREAM_PLAYBACK)
-				comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(): dma_get_status() underrun occurred, endpoint: %d ret = %u",
+				comp_dbg(dev, "dma_get_status() underrun occurred, endpoint: %d ret = %u",
 					 i, ret);
 			else
-				comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(): dma_get_status() overrun occurred, enpdoint: %d ret = %u",
+				comp_dbg(dev, "dma_get_status() overrun occurred, enpdoint: %d ret = %u",
 					 i, ret);
 			break;
 		default:
@@ -1458,13 +1458,13 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	 */
 	if (!(dd[0]->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
 		frames = MIN(frames, dev->frames);
-	comp_dbg(dev, "dai_zephyr_multi_endpoint_copy(), dir: %d copy frames= 0x%x",
+	comp_dbg(dev, "dir: %d copy frames= 0x%x",
 		 dev->direction, frames);
 
 	/* return if nothing to copy */
 	if (!frames) {
 #if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
-		comp_warn(dev, "dai_zephyr_multi_endpoint_copy(): nothing to copy");
+		comp_warn(dev, "nothing to copy");
 #endif
 
 		for (i = 0; i < num_endpoints; i++) {
@@ -1490,7 +1490,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 		/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
 		ret = dai_trigger(dd[i]->dai->dev, direction, DAI_TRIGGER_COPY);
 		if (ret < 0)
-			comp_warn(dev, "dai_zephyr_multi_endpoint_copy(): dai trigger copy failed");
+			comp_warn(dev, "dai trigger copy failed");
 
 		status = dai_dma_multi_endpoint_cb(dd[i], dev, frames, multi_endpoint_buffer);
 		if (status == DMA_CB_STATUS_END)
@@ -1562,10 +1562,10 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	case -EPIPE:
 		/* DMA status can return -EPIPE and current status content if xrun occurs */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			comp_dbg(dev, "dai_common_copy(): dma_get_status() underrun occurred, ret = %u",
+			comp_dbg(dev, "dma_get_status() underrun occurred, ret = %u",
 				 ret);
 		else
-			comp_dbg(dev, "dai_common_copy(): dma_get_status() overrun occurred, ret = %u",
+			comp_dbg(dev, "dma_get_status() overrun occurred, ret = %u",
 				 ret);
 		break;
 	default:
@@ -1580,7 +1580,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		set_new_local_buffer(dd, dev);
 
 		if (!dd->local_buffer) {
-			comp_warn(dev, "dai_zephyr_copy(): local buffer unbound, cannot copy");
+			comp_warn(dev, "local buffer unbound, cannot copy");
 			return 0;
 		}
 	}
@@ -1660,25 +1660,25 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	copy_bytes = frames * audio_stream_frame_bytes(&dd->dma_buffer->stream);
 
-	comp_dbg(dev, "dai_common_copy(), dir: %d copy_bytes= 0x%x",
+	comp_dbg(dev, "dir: %d copy_bytes= 0x%x",
 		 dev->direction, copy_bytes);
 
 #if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
 	    copy_bytes + avail_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_common_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, avail_bytes, dd->period_bytes);
 	else if (dev->direction == SOF_IPC_STREAM_CAPTURE &&
 		 copy_bytes + free_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_common_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, free_bytes, dd->period_bytes);
 #endif
 
 	/* return if nothing to copy */
 	if (!copy_bytes) {
 #if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
-		comp_warn(dev, "dai_zephyr_copy(): nothing to copy");
+		comp_warn(dev, "nothing to copy);
 #endif
 		dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, 0);
 		return 0;
@@ -1687,7 +1687,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
 	ret = dai_trigger(dd->dai->dev, dev->direction, DAI_TRIGGER_COPY);
 	if (ret < 0)
-		comp_warn(dev, "dai_common_copy(): dai trigger copy failed");
+		comp_warn(dev, "dai trigger copy failed");
 
 	if (dai_dma_cb(dd, dev, copy_bytes, converter) == DMA_CB_STATUS_END)
 		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
@@ -1731,7 +1731,7 @@ int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_ts_config()");
 	if (!dd->chan) {
-		comp_err(dev, "dai_ts_config(), No DMA channel information");
+		comp_err(dev, "No DMA channel information");
 		return -EINVAL;
 	}
 
@@ -1746,7 +1746,7 @@ int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 		cfg->type = DAI_INTEL_DMIC;
 		break;
 	default:
-		comp_err(dev, "dai_ts_config(), not supported dai type");
+		comp_err(dev, "not supported dai type");
 		return -EINVAL;
 	}
 
@@ -1852,7 +1852,7 @@ int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data)
 
 	if (dd && dd->local_buffer) {
 		if (buf_get_id(dd->local_buffer) == buf_id) {
-			comp_dbg(dev, "dai_zephyr_unbind: local_buffer %x unbound", buf_id);
+			comp_dbg(dev, "local_buffer %x unbound", buf_id);
 			dd->local_buffer = NULL;
 		}
 	}
