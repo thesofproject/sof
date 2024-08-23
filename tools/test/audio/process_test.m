@@ -411,12 +411,13 @@ function test = test_defaults(t)
 	test.fr_rp_max_db = 0.5;        % Allow 0.5 dB frequency response ripple
 
 	% No need to collect trace
-	test.trace = '';
+	test.trace = [tempname('/tmp') '.txt'];
 end
 
 function test = test_run_process(test)
 	delete_check(1, test.fn_out);
 	test = test_run(test);
+	delete_check(1, test.trace);
 end
 
 function test_result_print(t, testverbose, testacronym, test)

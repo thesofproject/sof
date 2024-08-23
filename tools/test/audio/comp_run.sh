@@ -116,8 +116,14 @@ run_testbench ()
         # shellcheck disable=SC2086
         $VALGRIND_CMD $CMD
     else
-        # shellcheck disable=SC2086
-        $VALGRIND_CMD $CMD 2> "$FN_TRACE"
+        $VALGRIND_CMD $CMD 2> "$FN_TRACE" || {
+            local ret=$?
+            echo ----------------------------------------------------------
+            cat "$FN_TRACE"
+            echo ----------------------------------------------------------
+            return $ret # "exit" would be for something unexpected and catastrophic,
+                        # not for a "regular" test failure
+        }
     fi
 }
 
