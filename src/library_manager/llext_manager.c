@@ -352,8 +352,18 @@ int llext_manager_free_module(const uint32_t component_id)
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
 		LIB_MANAGER_LIB_ID_SHIFT;
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(base_module_id);
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
+
+	if (!ctx->llext) {
+		tr_err(&lib_manager_tr, "NULL llext: ID %#x ctx %p", component_id, ctx);
+		return -ENOENT;
+	}
+
+	if (llext_unload(&ctx->llext))
+		/* More users are active */
+		return 0;
 
 	mod = lib_manager_get_module_manifest(base_module_id);
 
