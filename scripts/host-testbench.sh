@@ -105,7 +105,9 @@ test_component dcblock 32 32 48000 "$FullTest"
 test_component drc 32 32 48000 "$FullTest"
 
 # test with multiband-drc
-test_component multiband-drc 32 32 48000 "$FullTest"
+# TODO: Restore this test when testbench supports multi-part
+# binary control IPC.
+#test_component multiband-drc 32 32 48000 "$FullTest"
 
 # test with src
 test_component src 24 24 48000 "$FullTest"
