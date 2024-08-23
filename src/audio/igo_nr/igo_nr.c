@@ -372,17 +372,13 @@ static int igo_nr_capture_s32(struct comp_data *cd,
 }
 #endif
 
-static inline int32_t set_capture_func(struct processing_module *mod)
+static inline int32_t set_capture_func(struct processing_module *mod, struct sof_source *source)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb;
 	struct comp_dev *dev = mod->dev;
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  Xsink_list);
-
 	/* The igo_nr supports S16_LE data. Format converter is needed. */
-	switch (audio_stream_get_frm_fmt(&sourceb->stream)) {
+	switch (source_get_frm_fmt(source)) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		comp_info(dev, "set_capture_func(), SOF_IPC_FRAME_S16_LE");
@@ -860,7 +856,7 @@ static int32_t igo_nr_prepare(struct processing_module *mod,
 	 */
 	cd->process_enable[cd->config.active_channel_idx] = true;
 
-	return set_capture_func(mod);
+	return set_capture_func(mod, source);
 }
 
 static int igo_nr_reset(struct processing_module *mod)
