@@ -633,6 +633,7 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	/* Don't need the ref buffer on IPC4 as pipelines are always
 	 * activated in tandem; also the API is deprecated
 	 */
+	//XXXXXXX problem - nie moge na raz legacy i sink_src
 	cd->ref_comp_buffer = list_first_item(&dev->bsource_list,
 					      struct comp_buffer, Xsink_list);
 	if (cd->aec_reference_source == 1)
