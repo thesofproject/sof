@@ -168,20 +168,16 @@ static void aria_set_stream_params(struct comp_buffer *buffer,
 }
 
 static int aria_prepare(struct processing_module *mod,
-			struct sof_source **sources, int num_of_sources,
-			struct sof_sink **sinks, int num_of_sinks)
+			struct comp_buffer *source, struct comp_buffer *sink)
 {
 	int ret;
-	struct comp_buffer *source, *sink;
 	struct comp_dev *dev = mod->dev;
 	struct aria_data *cd = module_get_private_data(mod);
 
 	comp_info(dev, "aria_prepare()");
 
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	aria_set_stream_params(source, mod);
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	aria_set_stream_params(sink, mod);
 
 	if (audio_stream_get_valid_fmt(&source->stream) != SOF_IPC_FRAME_S24_4LE ||
@@ -283,7 +279,7 @@ static int aria_set_config(struct processing_module *mod, uint32_t param_id,
 
 static const struct module_interface aria_interface = {
 	.init = aria_init,
-	.prepare = aria_prepare,
+	.prepare_legacy = aria_prepare,
 	.process_audio_stream = aria_process,
 	.reset = aria_reset,
 	.free = aria_free,
