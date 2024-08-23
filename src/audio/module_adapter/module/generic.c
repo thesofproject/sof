@@ -190,13 +190,20 @@ int module_prepare(struct processing_module *mod,
 	if (mod->priv.state < MODULE_INITIALIZED)
 		return -EPERM;
 #endif
-	if (ops->prepare) {
+	if (ops->prepare)
 		ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
-		if (ret) {
-			comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
-				 ret, dev_comp_id(dev));
-			return ret;
-		}
+	else if (ops->prepare_legacy) {
+		struct comp_buffer *first_source, *first_sink;
+
+		first_sink = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
+		first_source = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
+		ret = ops->prepare_legacy(mod, first_source, first_sink);
+	}
+
+	if (ret) {
+		comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
+			 ret, dev_comp_id(dev));
+		return ret;
 	}
 
 	/* After prepare is done we no longer need runtime configuration

@@ -65,6 +65,7 @@ struct output_stream_buffer {
 struct processing_module;
 struct sof_source;
 struct sof_sink;
+struct comp_buffer;
 
 /**
  * \struct module_interface
@@ -79,10 +80,29 @@ struct module_interface {
 	/**
 	 * (optional) Module specific prepare procedure, called as part of module_adapter
 	 * component preparation in .prepare()
+	 *
+	 * There are 2 versions of prepare
+	 *  .prepare - a pipeline2.0 procedure, to be used for modules using sink/source
+	 *	       interface
+	 *  .prepare_legacy - legacy version, for modules using comp_buffer as a data
+	 *		      source.
 	 */
 	int (*prepare)(struct processing_module *mod,
 		       struct sof_source **sources, int num_of_sources,
 		       struct sof_sink **sinks, int num_of_sinks);
+
+	/**
+	 * (optional) Module specific prepare procedure, called as part of module_adapter
+	 * component preparation in .prepare()
+	 *
+	 * @param first_source pointer to a first comp_buffer source.
+	 * @param first_sink pointer to a first comp_buffer sink
+	 *
+	 * For modules with multiple inputs the buffers are organized as a list,
+	 * use comp_buffer_get_next_source() and comp_buffer_get_next_sink() to reach them
+	 */
+	int (*prepare_legacy)(struct processing_module *mod,
+			      struct comp_buffer *first_source, struct comp_buffer *first_sink);
 
 	/**
 	 * (optional) return true if the module is ready to process
