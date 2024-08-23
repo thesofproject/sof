@@ -303,13 +303,11 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 	const struct sof_module_api_build_info *buildinfo;
 	const struct sof_man_module_manifest *mod_manifest;
 
-	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
-	       ipc_config->id);
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
 	desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
 	if (!ctx || !desc) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module(): failed to get module descriptor");
+		tr_err(&lib_manager_tr, "Failed to get module descriptor");
 		return 0;
 	}
 
@@ -325,8 +323,7 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 		/* First instance: check that the module is native */
 		if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
 		    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
-			tr_err(&lib_manager_tr,
-			       "llext_manager_allocate_module(): Unsupported module API version");
+			tr_err(&lib_manager_tr, "Unsupported module API version");
 			return -ENOEXEC;
 		}
 
@@ -356,7 +353,7 @@ int llext_manager_free_module(const uint32_t component_id)
 	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
 		LIB_MANAGER_LIB_ID_SHIFT;
 
-	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", component_id);
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
 	mod = lib_manager_get_module_manifest(base_module_id);
 
