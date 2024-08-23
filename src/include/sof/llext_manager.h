@@ -27,14 +27,11 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 
 int llext_manager_free_module(const uint32_t component_id);
 
-int llext_manager_unload(uint32_t module_id);
-
 bool comp_is_llext(struct comp_dev *comp);
 #else
 #define module_is_llext(mod) false
 #define llext_manager_allocate_module(ipc_config, ipc_specific_config) 0
 #define llext_manager_free_module(component_id) 0
-#define llext_manager_unload(module_id) 0
 #define comp_is_llext(comp) false
 #endif
 
