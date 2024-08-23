@@ -243,6 +243,8 @@ static int ctc_free(struct processing_module *mod)
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
+	comp_info(mod->dev, "ctc_free()");
+
 	if (cd) {
 		rfree(cd->input);
 		rfree(cd->output);
@@ -404,11 +406,17 @@ static int ctc_prepare(struct processing_module *mod,
 static int ctc_reset(struct processing_module *mod)
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
+	size_t buf_size = cd->chunk_frames * sizeof(cd->input[0]) * kMaxChannels;
 
 	comp_info(mod->dev, "ctc_reset()");
 
 	GoogleCtcAudioProcessingFree(cd->state);
+	cd->state = NULL;
 	cd->ctc_func = NULL;
+	cd->input_samples = 0;
+	cd->next_avail_output_samples = 0;
+	memset(cd->input, 0, buf_size);
+	memset(cd->output, 0, buf_size);
 	return 0;
 }
 
