@@ -113,6 +113,8 @@ test_component drc 32 32 48000 "$FullTest"
 test_component src 24 24 48000 "$FullTest"
 
 # test with tdfb
-test_component tdfb 32 32 48000 "$FullTest"
+# TODO: Restore this test when testbench supports multi-part
+# binary control IPC.
+#test_component tdfb 32 32 48000 "$FullTest"
 
 echo "All tests are done!"
