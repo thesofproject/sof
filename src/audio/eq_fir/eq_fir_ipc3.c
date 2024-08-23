@@ -46,7 +46,8 @@ int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 	return 0;
 }
 
-int eq_fir_params(struct processing_module *mod)
+int eq_fir_params(struct processing_module *mod,
+		  struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	return 0;
 }

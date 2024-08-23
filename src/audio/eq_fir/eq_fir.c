@@ -405,11 +405,9 @@ static void eq_fir_set_alignment(struct audio_stream *source,
 }
 
 static int eq_fir_prepare(struct processing_module *mod,
-			  struct sof_source **sources, int num_of_sources,
-			  struct sof_sink **sinks, int num_of_sinks)
+			  struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 	int channels;
 	enum sof_ipc_frame frame_fmt;
@@ -417,15 +415,12 @@ static int eq_fir_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "eq_fir_prepare()");
 
-	ret = eq_fir_params(mod);
+	ret = eq_fir_params(mod, sourceb, sinkb);
 	if (ret < 0) {
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return ret;
 	}
 
-	/* EQ component will only ever have 1 source and 1 sink buffer. */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	eq_fir_set_alignment(&sourceb->stream, &sinkb->stream);
 	channels = audio_stream_get_channels(&sinkb->stream);
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -475,7 +470,7 @@ static const struct module_interface eq_fir_interface = {
 		.set_configuration = eq_fir_set_config,
 		.get_configuration = eq_fir_get_config,
 		.process_audio_stream = eq_fir_process,
-		.prepare = eq_fir_prepare,
+		.prepare_legacy = eq_fir_prepare,
 		.reset = eq_fir_reset,
 };
 

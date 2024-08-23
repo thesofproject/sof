@@ -48,10 +48,10 @@ int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 	return 0;
 }
 
-int eq_fir_params(struct processing_module *mod)
+int eq_fir_params(struct processing_module *mod,
+		  struct comp_buffer *sourceb, struct comp_buffer *sinkb)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "eq_fir_params()");
@@ -59,10 +59,7 @@ int eq_fir_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, Xsink_list);
 	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, Xsource_list);
 	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 
 	return 0;

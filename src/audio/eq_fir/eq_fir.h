@@ -70,8 +70,8 @@ void eq_fir_2x_s32(struct fir_state_32x16 *fir, struct input_stream_buffer *bsou
 
 int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt);
 
-int eq_fir_params(struct processing_module *mod);
-
+int eq_fir_params(struct processing_module *mod,
+		  struct comp_buffer *sourceb, struct comp_buffer *sinkb);
 /*
  * The optimized FIR functions variants need to be updated into function
  * set_fir_func.
