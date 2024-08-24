@@ -10,7 +10,7 @@ Usage:
       $0 -b      -- -DEXTRA_CONF_FILE=stub_build_all_ipc4.conf -DEXTRA_CFLAGS="-O0 -g3" ...
       $0 -t 500  -- -DEXTRA_CONF_FILE=stub_build_all_ipc3.conf ...
 
-  -i4        Appends: -- -DCONFIG_IPC_MAJOR_4=y
+  -i4        Appends: -- -DCONFIG_IPC_MAJOR_4=y  + fuzz_IPC4_features.conf
   -i3        See above
   -p         Delete build-fuzz/ first ("pristine")
   -b         Do not run/fuzz: stop after the build.
@@ -109,6 +109,11 @@ main()
 
   # https://docs.zephyrproject.org/latest/build/kconfig/setting.html#initial-conf
   local conf_files_list='prj.conf;boards/native_sim_libfuzzer.conf'
+
+  conf_files_list+=';configs/fuzz_features.conf'
+  if [ -n "$IPC" ]; then
+      conf_files_list+=";configs/fuzz_IPC${IPC}_features.conf"
+  fi
 
   # Note there's never any reason to delete fuzz_corpus/.
   # Don't trust `west build -p` because it is not 100% unreliable,
