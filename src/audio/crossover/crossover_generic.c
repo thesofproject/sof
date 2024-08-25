@@ -225,32 +225,32 @@ static void crossover_s32_default(struct comp_data *cd,
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
+	struct audio_stream *sink_stream[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
 	struct crossover_state *state;
 	const struct audio_stream *source_stream = bsource->data;
-	struct audio_stream *sink_stream;
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;
+	int active_sinks = 0;
 	int nch = audio_stream_get_channels(source_stream);
 	int32_t out[num_sinks];
 
+	for (j = 0; j < num_sinks; j++) {
+		if (bsinks[j])
+			sink_stream[active_sinks++] = bsinks[j]->data;
+	}
+
 	for (ch = 0; ch < nch; ch++) {
-		idx = ch;
 		state = &cd->state[ch];
-		for (i = 0; i < frames; i++) {
+		for (i = 0, idx = ch; i < frames; i++, idx += nch) {
 			x = audio_stream_read_frag_s32(source_stream, idx);
 			cd->crossover_split(*x, out, state);
 
-			for (j = 0; j < num_sinks; j++) {
-				if (!bsinks[j])
-					continue;
-				sink_stream = bsinks[j]->data;
-				y = audio_stream_write_frag_s32(sink_stream,
-								idx);
+			for (j = 0; j < active_sinks; j++) {
+				y = audio_stream_write_frag_s32(sink_stream[j], idx);
 				*y = out[j];
 			}
 
-			idx += nch;
 		}
 	}
 }
