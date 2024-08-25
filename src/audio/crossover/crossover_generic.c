@@ -219,34 +219,65 @@ static void crossover_s24_default(struct comp_data *cd,
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
+/**
+ * \brief Processes audio frames with a crossover filter for s32 format.
+ *
+ * This function divides audio data from an input stream into multiple output
+ * streams based on a crossover filter. It reads the input audio data, applies
+ * the crossover filter, and writes the processed audio data to active output
+ * streams.
+ *
+ * \param cd Pointer to the component data structure which holds the crossover state.
+ * \param bsource Pointer to the input stream buffer structure.
+ * \param bsinks Array of pointers to output stream buffer structures.
+ * \param num_sinks Number of output stream buffers in the bsinks array.
+ * \param frames Number of audio frames to process.
+ */
 static void crossover_s32_default(struct comp_data *cd,
 				  struct input_stream_buffer *bsource,
 				  struct output_stream_buffer **bsinks,
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
+	/* Array to hold active sink streams; initialized to null */
 	struct audio_stream *sink_stream[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
 	struct crossover_state *state;
+	/* Source stream to read audio data from */
 	const struct audio_stream *source_stream = bsource->data;
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;
+	/* Counter for active sink streams */
 	int active_sinks = 0;
+	/* Number of channels in the source stream */
 	int nch = audio_stream_get_channels(source_stream);
+	/* Output buffer for processed data */
 	int32_t out[num_sinks];
 
+	/* Identify active sinks, avoid processing null sinks later */
 	for (j = 0; j < num_sinks; j++) {
 		if (bsinks[j])
 			sink_stream[active_sinks++] = bsinks[j]->data;
 	}
 
+	/* Process for each channel */
+	/* Loop through each channel in the source stream */
 	for (ch = 0; ch < nch; ch++) {
+		/* Set current crossover state for this channel */
 		state = &cd->state[ch];
+		/* Iterate over frames */
+		/* Loop through each frame */
 		for (i = 0, idx = ch; i < frames; i++, idx += nch) {
+			/* Read source */
+			/* Read the current audio frame for the channel */
 			x = audio_stream_read_frag_s32(source_stream, idx);
+			/* Apply the crossover split logic to the audio data */
 			cd->crossover_split(*x, out, state);
 
+			/* Write output to active sinks */
+			/* Write processed output to active sinks */
 			for (j = 0; j < active_sinks; j++) {
+				/* Write processed data to sink */
 				y = audio_stream_write_frag_s32(sink_stream[j], idx);
 				*y = out[j];
 			}
