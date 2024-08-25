@@ -55,6 +55,7 @@ set(TPLGS
 	"sof-imx8-wm8960\;sof-imx8mp-eq-iir-wm8962\;-DCODEC=wm8962\;-DRATE=48000\;-DPPROC=eq-iir-volume\;-DSAI_INDEX=3\;-DDMA_DOMAIN"
 	"sof-imx8-wm8960\;sof-imx8mp-eq-fir-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=eq-fir-volume\;-DSAI_INDEX=3\;-DDMA_DOMAIN"
 	"sof-imx8-wm8960\;sof-imx8mp-eq-fir-wm8962\;-DCODEC=wm8962\;-DRATE=48000\;-DPPROC=eq-fir-volume\;-DSAI_INDEX=3\;-DDMA_DOMAIN"
+	"sof-imx8-wm8960\;sof-imx8mp-gui-components-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=gui-components\;-DSAI_INDEX=3\;-DDMA_DOMAIN"
 	"sof-imx8-wm8960\;sof-imx8mp-drc-wm8960\;-DCODEC=wm8960\;-DRATE=48000\;-DPPROC=drc\;-DSAI_INDEX=3\;-DDMA_DOMAIN"
 	## end i.MX8MP topologies
 
