@@ -31,50 +31,61 @@ int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_
 	if (a->columns != b->rows || a->rows != c->rows || b->columns != c->columns)
 		return -EINVAL;
 
-	int32_t s;  /* Changed from int64_t to int32_t */
-	int16_t *x;
-	int16_t *y;
-	int16_t *z = c->data;
-	int i, j, k;
-	int y_inc = b->columns;
-	const int shift_minus_one = a->fractions + b->fractions - c->fractions - 1;
+	int32_t acc;	/* Accumulator for dot product calculation */
+	int16_t *x, *y, *z = c->data; /* Pointers for matrices a, b, and c */
+	int i, j, k;	/* Loop counters */
+	int y_inc = b->columns;	   /* Column increment for matrix b elements */
+	/* Calculate shift amount for adjusting fractional bits in the result */
+	const int shift = a->fractions + b->fractions - c->fractions - 1;
 
 	/* Check shift to ensure no integer overflow occurs during shifting */
-	if (shift_minus_one < -1 || shift_minus_one > 31)
+	if (shift < -1 || shift > 31)
 		return -ERANGE;
 
-	/* If all data is Q0 */
-	if (shift_minus_one == -1) {
+	/* Special case when shift is -1 (Q0 data) */
+	if (shift == -1) {
+		/* Matrix multiplication loop */
 		for (i = 0; i < a->rows; i++) {
 			for (j = 0; j < b->columns; j++) {
-				s = 0;
+				/* Initialize accumulator for each element */
+				acc = 0;
+				/* Set x at the start of ith row of a */
 				x = a->data + a->columns * i;
+				/* Set y at the top of jth column of b */
 				y = b->data + j;
+				/* Dot product loop */
 				for (k = 0; k < b->rows; k++) {
-					/* Enhanced pointer arithmetic */
-					s += (int32_t)(*x++) * (*y);
+					/* Multiply & accumulate */
+					acc += (int32_t)(*x++) * (*y);
+					 /* Move to next row in the current column of b */
 					y += y_inc;
 				}
 				/* Enhanced pointer arithmetic */
-				*z++ = (int16_t)s;
+				*z = (int16_t)acc;
+				z++; /* Move to the next element in the output matrix */
 			}
 		}
-
-		return 0;
-	}
-
-	for (i = 0; i < a->rows; i++) {
-		for (j = 0; j < b->columns; j++) {
-			s = 0;
-			x = a->data + a->columns * i;
-			y = b->data + j;
-			for (k = 0; k < b->rows; k++) {
+	} else {
+		/* General case for other shift values */
+		for (i = 0; i < a->rows; i++) {
+			for (j = 0; j < b->columns; j++) {
+				/* Initialize accumulator for each element */
+				acc = 0;
+				/* Set x at the start of ith row of a */
+				x = a->data + a->columns * i;
+				/* Set y at the top of jth column of b */
+				y = b->data + j;
+				/* Dot product loop */
+				for (k = 0; k < b->rows; k++) {
+					/* Multiply & accumulate Enhanced pointer arithmetic */
+					acc += (int32_t)(*x++) * (*y);
+					/* Move to next row in the current column of b */
+					y += y_inc;
+				}
 				/* Enhanced pointer arithmetic */
-				s += (int32_t)(*x++) * (*y);
-				y += y_inc;
+				*z = (int16_t)(((acc >> shift) + 1) >> 1); /*Shift to Qx.y */
+				z++; /* Move to the next element in the output matrix */
 			}
-			/* Enhanced pointer arithmetic */
-			*z++ = (int16_t)(((s >> shift_minus_one) + 1) >> 1); /*Shift to Qx.y */
 		}
 	}
 	return 0;
