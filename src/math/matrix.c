@@ -51,12 +51,12 @@ int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_
 				x = a->data + a->columns * i;
 				y = b->data + j;
 				for (k = 0; k < b->rows; k++) {
-					s += (int32_t)(*x) * (*y);
-					x++;
+					/* Enhanced pointer arithmetic */
+					s += (int32_t)(*x++) * (*y);
 					y += y_inc;
 				}
-				*z = (int16_t)s; /* For Q16.0 */
-				z++;
+				/* Enhanced pointer arithmetic */
+				*z++ = (int16_t)s;
 			}
 		}
 
@@ -69,12 +69,12 @@ int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_
 			x = a->data + a->columns * i;
 			y = b->data + j;
 			for (k = 0; k < b->rows; k++) {
-				s += (int32_t)(*x) * (*y);
-				x++;
+				/* Enhanced pointer arithmetic */
+				s += (int32_t)(*x++) * (*y);
 				y += y_inc;
 			}
-			*z = (int16_t)(((s >> shift_minus_one) + 1) >> 1); /*Shift to Qx.y */
-			z++;
+			/* Enhanced pointer arithmetic */
+			*z++ = (int16_t)(((s >> shift_minus_one) + 1) >> 1); /*Shift to Qx.y */
 		}
 	}
 	return 0;
