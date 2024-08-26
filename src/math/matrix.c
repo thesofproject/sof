@@ -31,7 +31,7 @@ int mat_multiply(struct mat_matrix_16b *a, struct mat_matrix_16b *b, struct mat_
 	if (a->columns != b->rows || a->rows != c->rows || b->columns != c->columns)
 		return -EINVAL;
 
-	int64_t s;
+	int32_t s;  /* Changed from int64_t to int32_t */
 	int16_t *x;
 	int16_t *y;
 	int16_t *z = c->data;
