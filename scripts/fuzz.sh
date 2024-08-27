@@ -10,6 +10,8 @@ Usage:
       $0 -b      -- -DEXTRA_CONF_FILE=stub_build_all_ipc4.conf -DEXTRA_CFLAGS="-O0 -g3" ...
       $0 -t 500  -- -DEXTRA_CONF_FILE=stub_build_all_ipc3.conf ...
 
+  -i4        Appends: -- -DCONFIG_IPC_MAJOR_4=y
+  -i3        See above
   -p         Delete build-fuzz/ first ("pristine")
   -b         Do not run/fuzz: stop after the build.
   -t n       Fuzz for n seconds.
@@ -85,10 +87,12 @@ main()
   local BUILD_ONLY=false
   local FUZZER_STDOUT=/dev/stdout # bashism
   local TEST_DURATION=3
+  local IPC
 
   # Parse "$@". getopts stops after '--'
-  while getopts "hj:po:t:b" opt; do
+  while getopts "i:hj:po:t:b" opt; do
       case "$opt" in
+          i) IPC="$OPTARG";;
           h) print_help; exit 0;;
           j) if [ "$OPTARG" -eq 0 ]; then JOBS=$(nproc); else JOBS="$OPTARG"; fi;;
           p) PRISTINE=true;;
@@ -111,11 +115,17 @@ main()
   # especially not when doing unusual toolchain things.
   if $PRISTINE; then rm -rf build-fuzz/; fi
 
+  # When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
+  # the last 'VAL UE2' wins. Previous ones are silently ignored.
+  local cmake_args=( -DCONF_FILE="$conf_files_list" )
+  if [ -n "$IPC" ]; then
+      cmake_args+=( "-DCONFIG_IPC_MAJOR_$IPC=y" )
+  fi
+
+  cmake_args+=( "$@" )
+
   (set -x
-   # When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
-   # the last 'VAL UE2' wins. Previous ones are silently ignored.
-  west build -d build-fuzz -b native_sim "$SOF_TOP"/app/ -- \
-       -DCONF_FILE="$conf_files_list" "$@"
+   west build -d build-fuzz -b native_sim "$SOF_TOP"/app/ -- "${cmake_args[@]}"
   )
 
   if $BUILD_ONLY; then
