@@ -377,6 +377,10 @@ void volume_reset_state(struct vol_data *cd)
 	cd->sample_rate_inv = 0;
 	cd->copy_gain = true;
 	cd->is_passthrough = false;
+
+#if CONFIG_COMP_PEAK_VOL
+	memset(cd->peak_regs.peak_meter, 0, sizeof(cd->peak_regs.peak_meter));
+#endif
 }
 
 void volume_prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
