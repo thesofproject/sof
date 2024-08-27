@@ -120,7 +120,7 @@ int mat_multiply_elementwise(struct mat_matrix_16b *a, struct mat_matrix_16b *b,
 	int16_t *x = a->data;
 	int16_t *y = b->data;
 	int16_t *z = c->data;
-	int64_t p;
+	int32_t p;
 	int i;
 	const int shift_minus_one = a->fractions + b->fractions - c->fractions - 1;
 
