@@ -139,7 +139,7 @@ int volume_init(struct processing_module *mod)
 	/* malloc memory to store temp peak volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
 	 */
-	cd->peak_vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
+	cd->peak_vol = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
 	if (!cd->peak_vol) {
 		rfree(cd->vol);
 		rfree(cd);
