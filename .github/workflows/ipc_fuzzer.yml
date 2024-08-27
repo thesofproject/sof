@@ -30,7 +30,7 @@ jobs:
       fail-fast: false
       matrix:
         # Keep these names short due to questionable Github UI choices
-        IPC: [IPC3, IPC4]
+        IPC: [3, 4]
 
     steps:
       - name: add i386 arch
@@ -77,14 +77,10 @@ jobs:
           cd workspace
           clang --verbose
           set -x
-          case '${{ matrix.IPC }}' in
-            IPC3) cmake_arg='-DCONFIG_IPC_MAJOR_3=y' ;;
-            IPC4) cmake_arg='-DCONFIG_IPC_MAJOR_4=y' ;;
-          esac
           duration="${{inputs.fuzzing_duration_s}}"
           duration="${duration:-301}"  # pull_request has not 'inputs.' :-(
           # Note libFuzzer makes a difference between -jobs and -workers (capped at nproc/2)
-          sof/scripts/fuzz.sh -o fuzz-stdout.txt -t "$duration" -j"$(nproc)" -- "$cmake_arg"
+          sof/scripts/fuzz.sh -i '${{ matrix.IPC }}' -o fuzz-stdout.txt -t "$duration" -j"$(nproc)"
 
       - name: Upload stdout
         uses: actions/upload-artifact@v4
