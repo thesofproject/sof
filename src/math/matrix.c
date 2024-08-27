@@ -126,22 +126,15 @@ int mat_multiply_elementwise(struct mat_matrix_16b *a, struct mat_matrix_16b *b,
 
 	/* If all data is Q0 */
 	if (shift_minus_one == -1) {
-		for (i = 0; i < a->rows * a->columns; i++) {
+		for (i = 0; i < a->rows * a->columns; i++, x++, y++, z++)
 			*z = *x * *y;
-			x++;
-			y++;
-			z++;
-		}
 
 		return 0;
 	}
 
-	for (i = 0; i < a->rows * a->columns; i++) {
+	for (i = 0; i < a->rows * a->columns; i++, x++, y++, z++) {
 		p = (int32_t)(*x) * *y;
-		*z = (int16_t)(((p >> shift_minus_one) + 1) >> 1); /*Shift to Qx.y */
-		x++;
-		y++;
-		z++;
+		*z = (int16_t)(((p >> shift_minus_one) + 1) >> 1); /* Shift to Qx.y */
 	}
 
 	return 0;
