@@ -20,7 +20,7 @@
 /* TDFB and EQFIR depend on math FIR.
  * so align TDFB, math FIR, and EQFIR use same selection.
  */
-#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
+#if SOF_USE_MIN_HIFI(3, FILTER)
 #define TDFB_HIFI3	1
 #elif SOF_USE_HIFI(2, FILTER)
 #define TDFB_HIFI2	1

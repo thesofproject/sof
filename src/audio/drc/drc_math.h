@@ -18,7 +18,7 @@
 /* Unmark this define to use cordic arc sine implementation. */
 /* #define DRC_USE_CORDIC_ASIN */
 
-#if SOF_USE_HIFI(4, DRC) || SOF_USE_HIFI(3, DRC)
+#if SOF_USE_MIN_HIFI(3, DRC)
 
 #include <xtensa/tie/xt_hifi3.h>
 

@@ -14,7 +14,7 @@
 
 #include <rtos/symbol.h>
 
-#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
+#if SOF_USE_MIN_HIFI(3, FILTER)
 
 /*
  * Direct form I second order filter block (biquad)
