@@ -143,7 +143,7 @@ void mfcc_fill_fft_buffer(struct mfcc_state *state)
 	idx += state->prev_data_size;
 	in = (ae_int16 *)buf->r_ptr;
 	out = (ae_int16 *)&fft->fft_buf[idx].real;
-	set_circular_buf1(buf->addr, buf->end_addr);
+	set_circular_buf0(buf->addr, buf->end_addr);
 	for (j = 0; j < fft->fft_hop_size; j++) {
 		AE_L16_XC(sample, in, buf_inc);
 		AE_S16_0_XP(sample, out, fft_inc);
