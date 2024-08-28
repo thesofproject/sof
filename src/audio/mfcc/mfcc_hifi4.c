@@ -205,7 +205,7 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 		AE_L16_XP(win, win_in, win_inc);
 		temp = AE_MULF16SS_00(sample, win);
 		temp = AE_SLAA32S(temp, input_shift);
-		sample =  AE_ROUND16X4F32SASYM(temp, temp);
+		sample = AE_ROUND16X4F32SASYM(temp, temp);
 		AE_S16_0_XP(sample, fft_in, fft_inc);
 	}
 #else
