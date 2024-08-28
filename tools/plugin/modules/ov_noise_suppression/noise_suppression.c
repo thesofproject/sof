@@ -31,7 +31,7 @@ LOG_MODULE_REGISTER(ns, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(ns);
 
-DECLARE_TR_CTX(ns_comp_tr, SOF_UUID(ns_comp_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(ns_comp_tr, SOF_UUID(ns_uuid), LOG_LEVEL_INFO);
 
 static int ns_free(struct processing_module *mod)
 {
@@ -72,5 +72,5 @@ static const struct module_interface ns_interface = {
 	.free = ns_free
 };
 
-DECLARE_MODULE_ADAPTER(ns_interface, ns_comp_uuid, ns_comp_tr);
+DECLARE_MODULE_ADAPTER(ns_interface, ns_uuid, ns_comp_tr);
 SOF_MODULE_INIT(ns, sys_comp_module_ns_interface_init);
