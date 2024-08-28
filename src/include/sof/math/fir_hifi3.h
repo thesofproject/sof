@@ -11,7 +11,7 @@
 #include <sof/math/fir_config.h>
 #include <sof/common.h>
 
-#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
+#if SOF_USE_MIN_HIFI(3, FILTER)
 
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>

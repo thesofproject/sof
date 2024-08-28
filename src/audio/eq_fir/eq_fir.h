@@ -20,7 +20,7 @@
 #if SOF_USE_HIFI(2, FILTER)
 #include <sof/math/fir_hifi2ep.h>
 #endif
-#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
+#if SOF_USE_MIN_HIFI(3, FILTER)
 #include <sof/math/fir_hifi3.h>
 #endif
 #include <user/fir.h>
@@ -77,7 +77,7 @@ int eq_fir_params(struct processing_module *mod);
  * set_fir_func.
  */
 
-#if SOF_USE_HIFI(2, FILTER) || SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
+#if SOF_USE_MIN_HIFI(2, FILTER)
 #if CONFIG_FORMAT_S16LE
 static inline void set_s16_fir(struct comp_data *cd)
 {

@@ -15,7 +15,7 @@
 #include "drc_algorithm.h"
 #include "drc_math.h"
 
-#if SOF_USE_HIFI(4, DRC)
+#if SOF_USE_MIN_HIFI(4, DRC)
 
 #include <xtensa/tie/xt_hifi4.h>
 

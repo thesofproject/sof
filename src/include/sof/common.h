@@ -187,6 +187,17 @@
 #define SOF_USE_HIFI(level, component) (SOF_CONFIG_HIFI(level, component) || \
 	(SOF_CONFIG_HIFI(MAX, component) && level == SOF_MAX_XCHAL_HIFI))
 
+/* True if:
+ *  (1) EITHER this particular level was manually forced in Kconfig,
+ *  (2) OR:  - this component defaulted to "MAX"
+ *           - AND this level is less or equal to max available in the XC HAL.
+ *
+ * Use e.g. for highest optimization level source file, e.g. SOF_USE_MIN_HIFI(4, component)
+ * for HiFi4 code version that can be built with HiFi4 or HiFi5 tool chain.
+ */
+#define SOF_USE_MIN_HIFI(minlevel, component) (SOF_CONFIG_HIFI(minlevel, component) || \
+	(SOF_CONFIG_HIFI(MAX, component) && minlevel <= SOF_MAX_XCHAL_HIFI))
+
 #ifndef __XCC__ // Cadence toolchains: either xt-xcc or xt-clang.
 #  define SOF_MAX_XCHAL_HIFI NONE
 #else
