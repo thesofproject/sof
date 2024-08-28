@@ -59,7 +59,8 @@ static int modules_init(struct processing_module *mod)
 	const struct comp_driver *const drv = dev->drv;
 	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
 	const struct comp_ipc_config *config = &dev->ipc_config;
-	void *system_agent;
+	void *adapter;
+	int ret;
 
 	uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, src_cfg);
 
@@ -81,16 +82,20 @@ static int modules_init(struct processing_module *mod)
 		.size = md->cfg.size >> 2,
 	};
 
-	system_agent = system_agent_start(module_entry_point, module_id, instance_id, 0, log_handle,
-					  &mod_cfg);
+	ret = system_agent_start(module_entry_point, module_id, instance_id, 0, log_handle,
+				 &mod_cfg, &adapter);
+	if (ret) {
+		comp_info(dev, "System agent failed");
+		return ret;
+	}
 
-	module_set_private_data(mod, system_agent);
+	module_set_private_data(mod, adapter);
 
 	md->mpd.in_buff_size = src_cfg->ibs;
 	md->mpd.out_buff_size = src_cfg->obs;
 
 	mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
-	return iadk_wrapper_init(system_agent);
+	return iadk_wrapper_init(adapter);
 }
 
 /**
