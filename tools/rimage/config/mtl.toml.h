@@ -132,5 +132,9 @@
 #include <audio/igo_nr/igo_nr.toml>
 #endif
 
+#ifdef CONFIG_COMP_MFCC
+#include <audio/mfcc/mfcc.toml>
+#endif
+
 [module]
 count = __COUNTER__
