@@ -30,7 +30,7 @@ config SOF_ZEPHYR_HEAP_CACHED
 config SOF_ZEPHYR_HEAP_SIZE
 	hex "Size of the Zephyr heap for SOF"
 	default 0xF0000 if SOC_INTEL_ACE15_MTPM || SOC_INTEL_ACE20_LNL
-	default 0xD0000 if SOC_INTEL_ACE30
+	default 0xD0000 if SOC_INTEL_ACE30 || SOC_INTEL_ACE40
 	default 0x0
 	help
 	 Support scaling of the heap size for different platforms and different types

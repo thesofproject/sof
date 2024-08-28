@@ -264,16 +264,20 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE15_MTPM
-			${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
-		)
+		${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
+	)
 
 	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE20_LNL
-			${SOF_PLATFORM_PATH}/lunarlake/lib/clk.c
-		)
+		${SOF_PLATFORM_PATH}/lunarlake/lib/clk.c
+	)
 
 	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE30
-			${SOF_PLATFORM_PATH}/ace30/lib/clk.c
-		)
+		${SOF_PLATFORM_PATH}/ace30/lib/clk.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE40
+		${SOF_PLATFORM_PATH}/novalake/lib/clk.c
+	)
 
 	# Sources for virtual heap management
 	zephyr_library_sources(
@@ -294,6 +298,8 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		set(PLATFORM "lunarlake")
 	elseif(CONFIG_SOC_INTEL_ACE30)
 		set(PLATFORM "ace30")
+	elseif(CONFIG_SOC_INTEL_ACE40)
+		set(PLATFORM "novalake")
 	endif()
 
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/ace/include)
