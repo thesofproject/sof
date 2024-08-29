@@ -39,9 +39,9 @@
 #include <xtensa/tie/xt_timer.h>
 #endif
 
-/* 37c196ae-3532-4282-8a78-dd9d50cc7123 */
-DECLARE_SOF_RT_UUID("testbench", testbench_uuid, 0x37c196ae, 0x3532, 0x4282,
-		    0x8a, 0x78, 0xdd, 0x9d, 0x50, 0xcc, 0x71, 0x23);
+SOF_DEFINE_REG_UUID(testbench);
+DECLARE_TR_CTX(testbench_tr, SOF_UUID(testbench_uuid), LOG_LEVEL_INFO);
+LOG_MODULE_REGISTER(testbench, CONFIG_SOF_LOG_LEVEL);
 
 /* testbench helper functions for pipeline setup and trigger */
 
@@ -225,7 +225,7 @@ void tb_show_file_stats(struct testbench_prm *tb, int pipeline_id)
 			continue;
 
 		dev = icd->cd;
-		mod = comp_get_drvdata(dev);
+		mod = comp_mod(dev);
 		fcd = module_get_private_data(mod);
 		printf("file %s: id %d: type %d: samples %d copies %d\n",
 		       fcd->fs.fn, dev->ipc_config.id, dev->drv->type, fcd->fs.n,
@@ -241,7 +241,7 @@ void tb_show_file_stats(struct testbench_prm *tb, int pipeline_id)
 			continue;
 
 		dev = icd->cd;
-		mod = comp_get_drvdata(dev);
+		mod = comp_mod(dev);
 		fcd = module_get_private_data(mod);
 		printf("file %s: id %d: type %d: samples %d copies %d\n",
 		       fcd->fs.fn, dev->ipc_config.id, dev->drv->type, fcd->fs.n,
@@ -348,7 +348,7 @@ bool tb_is_pipeline_enabled(struct testbench_prm *tb, int pipeline_id)
 	return false;
 }
 
-void tb_find_file_components(struct testbench_prm *tb)
+int tb_find_file_components(struct testbench_prm *tb)
 {
 	struct ipc_comp_dev *icd;
 	struct processing_module *mod;
@@ -367,7 +367,11 @@ void tb_find_file_components(struct testbench_prm *tb)
 			continue;
 		}
 
-		mod = comp_get_drvdata(icd->cd);
+		mod = comp_mod(icd->cd);
+		if (!mod) {
+			fprintf(stderr, "error: null module.\n");
+			return -EINVAL;
+		}
 		fcd = module_get_private_data(mod);
 		tb->fr[i].state = &fcd->fs;
 	}
@@ -384,8 +388,10 @@ void tb_find_file_components(struct testbench_prm *tb)
 			continue;
 		}
 
-		mod = comp_get_drvdata(icd->cd);
+		mod = comp_mod(icd->cd);
 		fcd = module_get_private_data(mod);
 		tb->fw[i].state = &fcd->fs;
 	}
+
+	return 0;
 }

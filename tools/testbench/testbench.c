@@ -349,7 +349,12 @@ static int pipline_test(struct testbench_prm *tp)
 		}
 
 
-		tb_find_file_components(tp); /* Track file comp status during copying */
+		err = tb_find_file_components(tp); /* Track file comp status during copying */
+		if (err < 0) {
+			fprintf(stderr, "error: file component find failed %d\n", err);
+			break;
+		}
+
 		tb_gettime(&td0);
 
 		/* sleep to let the pipeline work - we exit at timeout OR

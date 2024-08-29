@@ -158,6 +158,6 @@ bool tb_schedule_pipeline_check_state(struct testbench_prm *tp);
 
 bool tb_is_pipeline_enabled(struct testbench_prm *tb, int pipeline_id);
 
-void tb_find_file_components(struct testbench_prm *tb);
+int tb_find_file_components(struct testbench_prm *tb);
 
 #endif
