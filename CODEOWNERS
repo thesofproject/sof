@@ -28,7 +28,7 @@ src/include/sof/drivers/afe*		@yaochunhung
 
 # audio component
 src/audio/src*				@singalsu @abonislawski
-src/audio/chain_dma*			@makarukp
+# src/audio/chain_dma*			TODO
 src/audio/copier/*			@randerwang @abonislawski @pblaszko
 src/audio/eq*				@singalsu
 src/audio/eq_fir*			@singalsu
@@ -68,7 +68,7 @@ src/drivers/mediatek/mt8195/*		@yaochunhung @kuanhsuncheng
 src/math/*				@singalsu
 src/ipc/*				@bardliao @marcinszkudlinski @pblaszko
 src/drivers/intel/cavs/sue-ipc.c	@lyakh
-src/lib/*				@libinyang
+# src/lib/*				TODO
 src/debug/gdb/*				@abonislawski
 src/schedule				@pblaszko @marcinszkudlinski @dbaluta @LaurentiuM1234
 
