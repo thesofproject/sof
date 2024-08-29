@@ -46,6 +46,12 @@ define(`BT_PCM_ID', `8')
 define(`HW_CONFIG_ID', 8)
 include(`platform/intel/intel-generic-bt.m4')')
 
+# define HDA0_OUT DAI pipeline if the codec adapter is included.
+ifdef(`DTS',`define(PIPELINE_HDA0_OUT)')
+ifdef(`WAVES',`
+define(PIPELINE_HDA0_OUT)
+define(`ENDPOINT_NAME', `Codec')')
+
 # The pipeline naming notation is pipe-mixer-PROCESSING-dai-DIRECTION.m4
 # HSPROC is set by makefile, if not the default above is applied
 define(PIPE_HEADSET_PLAYBACK, `sof/pipe-mixer-`HSPROC'-dai-playback.m4')
@@ -107,18 +113,19 @@ DAI_ADD(PIPE_HEADSET_PLAYBACK,
 # Low Latency playback pipeline 1 on PCM 30 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(
-	ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4, sof/pipe-host-volume-playback.m4),
+	ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4,
+	ifdef(`WAVES', sof/pipe-waves-codec-playback.m4, sof/pipe-host-volume-playback.m4)),
 	30, 0, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000,
 	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
-ifdef(`DTS',
+ifdef(`PIPELINE_HDA0_OUT',
 `
-# Because there is no dai pipeline.30 for HDA0.OUT in pipe-eq-iir-dts-codec-playback.m4, so
-# using macro defined W_PIPELINE_TOP() to add missing dai pipeline back. Instead of
-# modifying in pipe-eq-iir-dts-codec-playback.m4, these changes are not necessary for all others.
+# Because there is no dai pipeline.30 for HDA0.OUT in corresponding m4 file, so
+# using macro defined W_PIPELINE_TOP() to add missing dai pipeline back.
+# The changes are applying to connect codec adapter widget configuration.
 W_PIPELINE_TOP(30, HDA0.OUT, 1000, 0, 0, 1, pipe_dai_schedule_plat)
 ')
 
