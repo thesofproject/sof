@@ -368,12 +368,14 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 {
 	struct comp_buffer *buffer = hd->local_buffer;
 	struct dma_status dma_stat;
+	bool retry_dma_status = false;
 	uint32_t avail_samples;
 	uint32_t free_samples;
 	uint32_t dma_sample_bytes;
 	uint32_t dma_copy_bytes;
 	int ret;
 
+again:
 	/* get data sizes from DMA */
 	ret = dma_get_status(hd->chan->dma->z_dev, hd->chan->index, &dma_stat);
 	if (ret < 0) {
@@ -389,9 +391,25 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		avail_samples = (dma_stat.pending_length - hd->partial_size) / dma_sample_bytes;
 		free_samples = audio_stream_get_free_samples(&buffer->stream);
+
+		if (!avail_samples && !retry_dma_status) {
+			comp_info(dev, "no bytes from DMA, retry once in 5us");
+			k_usleep(5);
+			retry_dma_status = true;
+
+			goto again;
+		}
 	} else {
 		avail_samples = audio_stream_get_avail_samples(&buffer->stream);
 		free_samples = (dma_stat.free - hd->partial_size) / dma_sample_bytes;
+
+		if (!free_samples && !retry_dma_status) {
+			comp_info(dev, "no free space at DMA, retry once in 5us");
+			k_usleep(5);
+			retry_dma_status = true;
+
+			goto again;
+		}
 	}
 
 	dma_copy_bytes = MIN(avail_samples, free_samples) * dma_sample_bytes;
