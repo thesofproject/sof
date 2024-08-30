@@ -15,6 +15,8 @@
 #include <module_initial_settings.h>
 #include <adsp_stddef.h>
 #include <system_error.h>
+#include <sof/common.h>
+#include <api_version.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,6 +113,8 @@ namespace dsp_fw
 
 		intel_adsp::ProcessingModuleInterface &processing_module_;
 	};
+
+STATIC_ASSERT(sizeof(IadkModuleAdapter) <= IADK_MODULE_PASS_BUFFER_SIZE, IadkModuleAdapter_too_big);
 
 } /* namespace dsp_fw */
 
