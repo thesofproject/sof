@@ -97,6 +97,7 @@ int sink_set_rate(struct sof_sink *sink, unsigned int rate)
 		return sink->ops->on_audio_format_set(sink);
 	return 0;
 }
+EXPORT_SYMBOL(sink_set_rate);
 
 int sink_set_channels(struct sof_sink *sink, unsigned int channels)
 {
@@ -114,6 +115,7 @@ int sink_set_buffer_fmt(struct sof_sink *sink, uint32_t buffer_fmt)
 		return sink->ops->on_audio_format_set(sink);
 	return 0;
 }
+EXPORT_SYMBOL(sink_set_buffer_fmt);
 
 int sink_set_overrun(struct sof_sink *sink, bool overrun_permitted)
 {
@@ -129,6 +131,7 @@ int sink_set_params(struct sof_sink *sink, struct sof_ipc_stream_params *params,
 		return sink->ops->audio_set_ipc_params(sink, params, force_update);
 	return 0;
 }
+EXPORT_SYMBOL(sink_set_params);
 
 int sink_set_alignment_constants(struct sof_sink *sink, const uint32_t byte_align,
 				 const uint32_t frame_align_req)
@@ -137,3 +140,4 @@ int sink_set_alignment_constants(struct sof_sink *sink, const uint32_t byte_alig
 		return sink->ops->set_alignment_constants(sink, byte_align, frame_align_req);
 	return 0;
 }
+EXPORT_SYMBOL(sink_set_alignment_constants);

@@ -8,6 +8,7 @@ if(CONFIG_COMP_VOLUME)
 		volume_generic_with_peakvol.c
 		volume_hifi3_with_peakvol.c
 		volume_hifi4_with_peakvol.c
+		volume_log.c
 		volume.c)
 	if(CONFIG_IPC_MAJOR_3)
 		add_local_sources(sof volume_ipc3.c)

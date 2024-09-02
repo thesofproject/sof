@@ -15,6 +15,7 @@
 #include <sof/audio/format.h>
 #include <sof/math/fir_generic.h>
 #include <user/fir.h>
+#include <rtos/symbol.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -33,6 +34,7 @@ void fir_reset(struct fir_state_32x16 *fir)
 	 * reset so omitting setting also fir->delay to NULL.
 	 */
 }
+LL_EXTENSION_SYMBOL(fir_reset);
 
 int fir_delay_size(struct sof_fir_coef_data *config)
 {
@@ -49,6 +51,7 @@ int fir_delay_size(struct sof_fir_coef_data *config)
 	 */
 	return (config->length + 4) * sizeof(int32_t);
 }
+LL_EXTENSION_SYMBOL(fir_delay_size);
 
 int fir_init_coef(struct fir_state_32x16 *fir,
 		  struct sof_fir_coef_data *config)
@@ -60,12 +63,14 @@ int fir_init_coef(struct fir_state_32x16 *fir,
 	fir->coef = ASSUME_ALIGNED(&config->coef[0], 4);
 	return 0;
 }
+LL_EXTENSION_SYMBOL(fir_init_coef);
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 {
 	fir->delay = *data;
 	*data += fir->length; /* Point to next delay line start */
 }
+LL_EXTENSION_SYMBOL(fir_init_delay);
 
 int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 {
@@ -113,6 +118,7 @@ int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	/* Q2.46 -> Q2.31, saturate to Q1.31 */
 	return sat_int32(y >> shift);
 }
+LL_EXTENSION_SYMBOL(fir_32x16);
 
 void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1, int32_t *y0, int32_t *y1)
 {
@@ -179,5 +185,6 @@ void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1, int32_t *
 	*y0 = sat_int32(a0 >> shift);
 	*y1 = sat_int32(a1 >> shift);
 }
+LL_EXTENSION_SYMBOL(fir_32x16_2x);
 
 #endif

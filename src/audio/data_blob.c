@@ -58,6 +58,7 @@ void comp_data_blob_set_validator(struct comp_data_blob_handler *blob_handler,
 
 	blob_handler->validator = validator;
 }
+EXPORT_SYMBOL(comp_data_blob_set_validator);
 
 void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
 			 size_t *size, uint32_t *crc)

@@ -61,7 +61,7 @@ static int modules_init(struct processing_module *mod)
 	const struct comp_ipc_config *config = &dev->ipc_config;
 	void *system_agent;
 
-	uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, src_cfg);
+	uintptr_t module_entry_point = lib_manager_allocate_module(config, src_cfg);
 
 	if (module_entry_point == 0) {
 		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");

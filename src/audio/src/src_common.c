@@ -41,7 +41,7 @@
 #include "src_common.h"
 #include "src_config.h"
 
-LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_DECLARE(src, CONFIG_SOF_LOG_LEVEL);
 
 /* Calculates buffers to allocate for a SRC mode */
 static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)

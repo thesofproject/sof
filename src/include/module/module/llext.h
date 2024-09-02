@@ -10,7 +10,7 @@
 { \
 	.module = { \
 		.name = manifest_name, \
-		.uuid = {mod_uuid},			  \
+		.uuid = {mod_uuid}, \
 		.entry_point = (uint32_t)(entry), \
 		.instance_max_count = instances, \
 		.type = { \
@@ -18,6 +18,18 @@
 			.domain_ll = 1, \
 		}, \
 		.affinity_mask = (affinity), \
+	} \
+}
+
+#define SOF_LLEXT_AUX_MANIFEST(manifest_name, entry, mod_uuid) \
+{ \
+	.module = { \
+		.name = manifest_name, \
+		.uuid = {mod_uuid}, \
+		.entry_point = (uint32_t)(entry), \
+		.type = { \
+			.load_type = SOF_MAN_MOD_TYPE_LLEXT_AUX, \
+		}, \
 	} \
 }
 

@@ -41,11 +41,9 @@
 #include "src_common.h"
 #include "src_config.h"
 
-SOF_DEFINE_REG_UUID(src4);
-
-DECLARE_TR_CTX(src_tr, SOF_UUID(src4_uuid), LOG_LEVEL_INFO);
-
 LOG_MODULE_DECLARE(src, CONFIG_SOF_LOG_LEVEL);
+extern const struct sof_uuid src4_uuid;
+extern struct tr_ctx src_tr;
 
 int src_rate_check(const void *spec)
 {

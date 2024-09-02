@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_FIR
-	bool "FIR component"
+	tristate "FIR component"
 	select MATH_FIR
 	select COMP_BLOB
 	depends on COMP_MODULE_ADAPTER
+	default m if LIBRARY_DEFAULT_MODULAR
 	default y
 	help
 	  Select for FIR component. FIR performance can differ between DSP

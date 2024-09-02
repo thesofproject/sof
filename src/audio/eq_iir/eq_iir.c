@@ -35,11 +35,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-LOG_MODULE_REGISTER(eq_iir, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_DECLARE(eq_iir, CONFIG_SOF_LOG_LEVEL);
 
-SOF_DEFINE_REG_UUID(eq_iir);
-
-DECLARE_TR_CTX(eq_iir_tr, SOF_UUID(eq_iir_uuid), LOG_LEVEL_INFO);
+extern const struct sof_uuid eq_iir_uuid;
+extern struct tr_ctx eq_iir_tr;
 
 /*
  * End of EQ setup code. Next the standard component methods.

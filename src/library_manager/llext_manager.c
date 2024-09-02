@@ -104,7 +104,7 @@ static int llext_manager_load_data_from_storage(void __sparse_cache *vma, void *
 	return ret;
 }
 
-static int llext_manager_load_module(uint32_t module_id, const struct sof_man_module *mod)
+static int llext_manager_load_module(uint32_t module_id)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	uint8_t *load_base = (uint8_t *)ctx->base_addr;
@@ -185,9 +185,8 @@ e_text:
 	return ret;
 }
 
-static int llext_manager_unload_module(uint32_t module_id, const struct sof_man_module *mod)
+static int llext_manager_unload_module(struct lib_manager_mod_ctx *ctx)
 {
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
 		ctx->segment[LIB_MANAGER_TEXT].addr;
@@ -219,8 +218,9 @@ static int llext_manager_unload_module(uint32_t module_id, const struct sof_man_
 	return err;
 }
 
-static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_module *mod,
-			      uint32_t module_id, struct module_data *md, const void **buildinfo,
+static int llext_manager_link(const struct sof_man_fw_desc *desc, const struct sof_man_module *mod,
+			      uint32_t module_id, struct llext **llext,
+			      const struct sof_module_api_build_info **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
 	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
@@ -233,14 +233,14 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 		.relocate_local = !ctx->segment[LIB_MANAGER_TEXT].size,
 		.pre_located = true,
 	};
-	int ret = llext_load(&ebl.loader, mod->name, &md->llext, &ldr_parm);
+	int ret = llext_load(&ebl.loader, mod->name, llext, &ldr_parm);
 
 	if (ret)
 		return ret;
 
 	ctx->segment[LIB_MANAGER_TEXT].addr = ebl.loader.sects[LLEXT_MEM_TEXT].sh_addr;
 	ctx->segment[LIB_MANAGER_TEXT].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_TEXT] - imr_base;
+		(uintptr_t)(*llext)->mem[LLEXT_MEM_TEXT] - imr_base;
 	ctx->segment[LIB_MANAGER_TEXT].size = ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x offset %#x",
@@ -252,7 +252,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	ctx->segment[LIB_MANAGER_RODATA].addr =
 		ebl.loader.sects[LLEXT_MEM_RODATA].sh_addr;
 	ctx->segment[LIB_MANAGER_RODATA].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] - imr_base;
+		(uintptr_t)(*llext)->mem[LLEXT_MEM_RODATA] - imr_base;
 	ctx->segment[LIB_MANAGER_RODATA].size = ebl.loader.sects[LLEXT_MEM_RODATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x offset %#x",
@@ -263,7 +263,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	ctx->segment[LIB_MANAGER_DATA].addr =
 		ebl.loader.sects[LLEXT_MEM_DATA].sh_addr;
 	ctx->segment[LIB_MANAGER_DATA].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_DATA] - imr_base;
+		(uintptr_t)(*llext)->mem[LLEXT_MEM_DATA] - imr_base;
 	ctx->segment[LIB_MANAGER_DATA].size = ebl.loader.sects[LLEXT_MEM_DATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x offset %#x",
@@ -291,11 +291,34 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
 }
 
-uintptr_t llext_manager_allocate_module(struct processing_module *proc,
-					const struct comp_ipc_config *ipc_config,
+static int llext_lib_find(const struct llext *llext, struct lib_manager_mod_ctx **dep_ctx)
+{
+	struct ext_library *_ext_lib = ext_lib_get();
+	unsigned int i;
+
+	if (!llext)
+		return -EINVAL;
+
+	for (i = 0; i < ARRAY_SIZE(_ext_lib->desc); i++)
+		if (_ext_lib->desc[i] && _ext_lib->desc[i]->llext == llext) {
+			*dep_ctx = _ext_lib->desc[i];
+			return i;
+		}
+
+	return -ENOENT;
+}
+
+static void llext_depend_unlink(struct lib_manager_mod_ctx *dep_ctx[], int n)
+{
+	for (; n >= 0; n--)
+		if (dep_ctx[n]->llext->use_count == 1)
+			llext_manager_unload_module(dep_ctx[n]);
+}
+
+uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config)
 {
-	struct sof_man_fw_desc *desc;
+	const struct sof_man_fw_desc *desc;
 	struct sof_man_module *mod_array;
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
@@ -304,21 +327,24 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	const struct sof_module_api_build_info *buildinfo;
 	const struct sof_man_module_manifest *mod_manifest;
 
-	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
-	       ipc_config->id);
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
 	desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
 	if (!ctx || !desc) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module(): failed to get module descriptor");
+		tr_err(&lib_manager_tr, "Failed to get module descriptor");
 		return 0;
 	}
 
-	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+	mod_array = (struct sof_man_module *)((const char *)desc + SOF_MAN_MODULE_OFFSET(0));
 
-	/* LLEXT linking is only needed once for all the modules in the library */
-	ret = llext_manager_link(desc, mod_array, module_id, &proc->priv, (const void **)&buildinfo,
-				 &mod_manifest);
+	/*
+	 * LLEXT linking is only needed once for all the modules in the library.
+	 * This calls llext_load(), which also takes references to any
+	 * dependencies, sets up sections and retrieves buildinfo and
+	 * mod_manifest
+	 */
+	ret = llext_manager_link(desc, mod_array, module_id, &ctx->llext,
+				 &buildinfo, &mod_manifest);
 	if (ret < 0)
 		return 0;
 
@@ -326,13 +352,53 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		/* First instance: check that the module is native */
 		if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
 		    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
-			tr_err(&lib_manager_tr,
-			       "llext_manager_allocate_module(): Unsupported module API version");
+			tr_err(&lib_manager_tr, "Unsupported module API version");
 			return -ENOEXEC;
 		}
 
+		int i;
+
+		/* Check if any dependencies need to be mapped */
+		for (i = 0; i < ARRAY_SIZE(ctx->llext->dependency); i++) {
+			/* Dependencies are filled from the beginning of the array upwards */
+			if (!ctx->llext->dependency[i])
+				break;
+
+			/*
+			 * Protected by the IPC serialization, but maybe we should protect the
+			 * use-count explicitly too. Currently the use-count is first incremented
+			 * when an auxiliary library is loaded, it was then additionally incremented
+			 * when the current dependent module was mapped. If it's higher than two,
+			 * then some other modules also depend on it and have already mapped it.
+			 */
+			if (ctx->llext->dependency[i]->use_count > 2)
+				continue;
+
+			/* First user of this dependency, load it into SRAM */
+			struct lib_manager_mod_ctx *dep_ctx[LLEXT_MAX_DEPENDENCIES];
+			int dep_id = llext_lib_find(ctx->llext->dependency[i], &dep_ctx[i]);
+
+			if (dep_id < 0) {
+				tr_err(&lib_manager_tr,
+				       "Unmet dependency: cannot find dependency %u", i);
+				continue;
+			}
+
+			tr_info(&lib_manager_tr, "%s depending on %s base %p, %u users",
+				ctx->llext->name,
+				ctx->llext->dependency[i]->name,
+				dep_ctx[i]->base_addr,
+				ctx->llext->dependency[i]->use_count);
+
+			ret = llext_manager_load_module(dep_id << LIB_MANAGER_LIB_ID_SHIFT);
+			if (ret < 0) {
+				llext_depend_unlink(dep_ctx, i - 1);
+				return 0;
+			}
+		}
+
 		/* Map executable code and data */
-		ret = llext_manager_load_module(module_id, mod_array);
+		ret = llext_manager_load_module(module_id);
 		if (ret < 0)
 			return 0;
 
@@ -343,8 +409,8 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		size_t offset = (uintptr_t)mod_manifest - imr_rodata;
 
 		/* ctx->mod_manifest points to an array of module manifests */
-		ctx->mod_manifest = (const struct sof_man_module_manifest *)(va_rodata_base +
-									     offset);
+		ctx->mod_manifest = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)
+							       (va_rodata_base + offset));
 	}
 
 	return ctx->mod_manifest[entry_index].module.entry_point;
@@ -352,16 +418,48 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 
 int llext_manager_free_module(const uint32_t component_id)
 {
-	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
 		LIB_MANAGER_LIB_ID_SHIFT;
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(base_module_id);
 
-	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", component_id);
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
-	mod = lib_manager_get_module_manifest(base_module_id);
+	if (!ctx->llext) {
+		tr_err(&lib_manager_tr, "NULL llext: ID %#x ctx %p", component_id, ctx);
+		return -ENOENT;
+	}
 
-	return llext_manager_unload_module(base_module_id, mod);
+	struct lib_manager_mod_ctx *dep_ctx[LLEXT_MAX_DEPENDENCIES] = {};
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ctx->llext->dependency); i++)
+		if (llext_lib_find(ctx->llext->dependency[i], &dep_ctx[i]) < 0)
+			break;
+
+	if (llext_unload(&ctx->llext))
+		/* More users are active */
+		return 0;
+
+	/* Last user cleaning up, put dependencies */
+	if (i > 0)
+		llext_depend_unlink(dep_ctx, i - 1);
+
+	return llext_manager_unload_module(ctx);
+}
+
+/* An auxiliary library has been loaded, need to read in its exported symbols */
+int llext_manager_add_library(const struct sof_man_module *mod, uint32_t module_id)
+{
+	if (mod->type.load_type != SOF_MAN_MOD_TYPE_LLEXT_AUX)
+		return 0;
+
+	struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+	const struct sof_man_fw_desc *desc = lib_manager_get_library_manifest(module_id);
+	const struct sof_module_api_build_info *buildinfo;
+	const struct sof_man_module_manifest *mod_manifest;
+
+	return llext_manager_link(desc, mod, module_id, &ctx->llext, &buildinfo, &mod_manifest);
 }
 
 bool comp_is_llext(struct comp_dev *comp)

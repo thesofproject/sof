@@ -38,6 +38,13 @@ function(sof_append_relative_path_definitions target)
 	endforeach()
 endfunction()
 
+define_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET
+  BRIEF_DOCS "Last LLEXT target"
+  FULL_DOCS "\
+Building LLEXT targets must be serialized. This property contains the \
+previously added LLEXT module for the establishment of a dependency chain."
+)
+
 # Used by LLEXT modules to create a file with module UUIDs
 function(sof_llext_write_uuids module)
 	file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/../${module}.toml uuids REGEX "^[ \t]*uuid *=")
@@ -54,7 +61,6 @@ endfunction()
 # Build an LLEXT module. Provice a module name, a list of sources and an address
 # of the .text section as arguments.
 function(sof_llext_build module)
-	set(single_args TEXT_ADDR)
 	set(multi_args SOURCES)
 	cmake_parse_arguments(PARSE_ARGV 1 SOF_LLEXT "${options}" "${single_args}" "${multi_args}")
 
@@ -91,12 +97,28 @@ function(sof_llext_build module)
 
 	get_target_property(proc_in_file ${module} lib_output)
 	get_target_property(proc_out_file ${module} pkg_input)
+	get_target_property(proc_pkg_file ${module} pkg_output)
+	set(size_file ${PROJECT_BINARY_DIR}/module_size)
+
+	get_property(last_target GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET)
+	if(NOT "${last_target}" STREQUAL "")
+		add_dependencies(${module}_llext_proc ${last_target})
+	endif()
+	set_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET ${module})
+
 	add_llext_command(TARGET ${module}
 		POST_BUILD
-		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py
-			--text-addr="${SOF_LLEXT_TEXT_ADDR}" -f ${proc_in_file} ${CMAKE_C_COMPILER} --
+		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py -s ${size_file}
+			--text-addr=${CONFIG_LIBRARY_BASE_ADDRESS}
+			-f ${proc_in_file} ${CMAKE_C_COMPILER} --
 			-o ${proc_out_file} ${EXTRA_LINKER_PARAMS}
 	                $<TARGET_OBJECTS:${module}_llext_lib>
+	)
+
+	add_llext_command(TARGET ${module}
+		POST_PKG
+		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_offset_calc.py
+			-i ${proc_pkg_file} -s ${size_file}
 	)
 endfunction()
 
@@ -544,13 +566,25 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_FIR
-	${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi3.c
-	${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi2ep.c
-	${SOF_AUDIO_PATH}/eq_fir/eq_fir_generic.c
-	${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
-	${SOF_AUDIO_PATH}/eq_fir/eq_fir_${ipc_suffix}.c
-)
+if(CONFIG_COMP_FIR STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/eq_fir/llext
+			 ${PROJECT_BINARY_DIR}/eq_fir_llext)
+	add_dependencies(app eq_iir)
+elseif(CONFIG_COMP_FIR)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi3.c
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi2ep.c
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_generic.c
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir.c
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_${ipc_suffix}.c
+	)
+endif()
+
+if(NOT CONFIG_COMP_FIR STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/eq_fir/eq_fir_log.c
+	)
+endif()
 
 if(CONFIG_COMP_IIR STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/eq_iir/llext
@@ -564,11 +598,23 @@ elseif(CONFIG_COMP_IIR)
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_MATH_FIR
-	${SOF_MATH_PATH}/fir_generic.c
-	${SOF_MATH_PATH}/fir_hifi2ep.c
-	${SOF_MATH_PATH}/fir_hifi3.c
-)
+if(NOT CONFIG_COMP_IIR STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/eq_iir/eq_iir_log.c
+	)
+endif()
+
+if(CONFIG_MATH_FIR STREQUAL "m")
+	add_subdirectory(${SOF_MATH_PATH}/fir_llext
+			 ${PROJECT_BINARY_DIR}/fir_llext)
+	add_dependencies(app fir)
+elseif(CONFIG_MATH_FIR)
+	zephyr_library_sources(
+		${SOF_MATH_PATH}/fir_generic.c
+		${SOF_MATH_PATH}/fir_hifi2ep.c
+		${SOF_MATH_PATH}/fir_hifi3.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
 	${SOF_MATH_PATH}/iir_df1_generic.c
@@ -582,15 +628,24 @@ zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF2T
 	${SOF_MATH_PATH}/iir_df2t.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_ASRC
-	${SOF_AUDIO_PATH}/asrc/asrc.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
-	${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
-)
+if(CONFIG_COMP_ASRC STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/asrc/llext
+			 ${PROJECT_BINARY_DIR}/asrc_llext)
+	add_dependencies(app asrc)
+elseif(CONFIG_COMP_ASRC)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/asrc/asrc.c
+		${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
+		${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
+		${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
+		${SOF_AUDIO_PATH}/asrc/asrc_${ipc_suffix}.c
+	)
+endif()
 
-if(CONFIG_COMP_ASRC)
-	zephyr_library_sources(${SOF_AUDIO_PATH}/asrc/asrc_${ipc_suffix}.c)
+if(NOT CONFIG_COMP_ASRC STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/asrc/asrc_log.c
+	)
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
@@ -632,6 +687,12 @@ elseif(CONFIG_COMP_MIXIN_MIXOUT)
 	)
 endif()
 
+if(NOT CONFIG_COMP_MIXIN_MIXOUT STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_log.c
+	)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_TONE
 	${SOF_AUDIO_PATH}/tone.c
 )
@@ -654,16 +715,28 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_VOLUME
-	${SOF_AUDIO_PATH}/volume/volume_hifi4.c
-	${SOF_AUDIO_PATH}/volume/volume_hifi3.c
-	${SOF_AUDIO_PATH}/volume/volume_generic.c
-	${SOF_AUDIO_PATH}/volume/volume_hifi4_with_peakvol.c
-	${SOF_AUDIO_PATH}/volume/volume_hifi3_with_peakvol.c
-	${SOF_AUDIO_PATH}/volume/volume_generic_with_peakvol.c
-	${SOF_AUDIO_PATH}/volume/volume.c
-	${SOF_AUDIO_PATH}/volume/volume_${ipc_suffix}.c
-)
+if(CONFIG_COMP_VOLUME STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/volume/llext
+			 ${PROJECT_BINARY_DIR}/volume_llext)
+	add_dependencies(app volume)
+elseif(CONFIG_COMP_VOLUME)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/volume/volume_hifi4.c
+		${SOF_AUDIO_PATH}/volume/volume_hifi3.c
+		${SOF_AUDIO_PATH}/volume/volume_generic.c
+		${SOF_AUDIO_PATH}/volume/volume_hifi4_with_peakvol.c
+		${SOF_AUDIO_PATH}/volume/volume_hifi3_with_peakvol.c
+		${SOF_AUDIO_PATH}/volume/volume_generic_with_peakvol.c
+		${SOF_AUDIO_PATH}/volume/volume.c
+		${SOF_AUDIO_PATH}/volume/volume_${ipc_suffix}.c
+	)
+endif()
+
+if(NOT CONFIG_COMP_VOLUME STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/volume/volume_log.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
@@ -722,19 +795,32 @@ zephyr_library_sources_ifdef(CONFIG_COMP_CHAIN_DMA
 	${SOF_AUDIO_PATH}/chain_dma.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_SRC
-	${SOF_AUDIO_PATH}/src/src_hifi2ep.c
-	${SOF_AUDIO_PATH}/src/src_generic.c
-	${SOF_AUDIO_PATH}/src/src_hifi3.c
-	${SOF_AUDIO_PATH}/src/src_hifi4.c
-	${SOF_AUDIO_PATH}/src/src_common.c
-	${SOF_AUDIO_PATH}/src/src.c
-	${SOF_AUDIO_PATH}/src/src_${ipc_suffix}.c
-)
+if(CONFIG_COMP_SRC STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/src/llext
+			 ${PROJECT_BINARY_DIR}/src_llext)
+	add_dependencies(app src)
+elseif(CONFIG_COMP_SRC)
+	zephyr_library_sources_ifdef(CONFIG_COMP_SRC
+		${SOF_AUDIO_PATH}/src/src_hifi2ep.c
+		${SOF_AUDIO_PATH}/src/src_generic.c
+		${SOF_AUDIO_PATH}/src/src_hifi3.c
+		${SOF_AUDIO_PATH}/src/src_hifi4.c
+		${SOF_AUDIO_PATH}/src/src_common.c
+		${SOF_AUDIO_PATH}/src/src.c
+		${SOF_AUDIO_PATH}/src/src_${ipc_suffix}.c
+	)
 
-zephyr_library_sources_ifdef(CONFIG_COMP_SRC_LITE
-	${SOF_AUDIO_PATH}/src/src_lite.c
-)
+	zephyr_library_sources_ifdef(CONFIG_COMP_SRC_LITE
+		${SOF_AUDIO_PATH}/src/src_lite.c
+	)
+endif()
+
+if(NOT CONFIG_COMP_SRC STREQUAL "n")
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/src/src_log.c
+	)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
 	${SOF_AUDIO_PATH}/base_fw.c
 )
@@ -892,14 +978,20 @@ zephyr_library_sources_ifdef(CONFIG_COMP_RTNR_STUB
 	${SOF_AUDIO_PATH}/rtnr/rtnr_stub.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
-	${SOF_AUDIO_PATH}/tdfb/tdfb.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_direction.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_hifi3.c
-	${SOF_AUDIO_PATH}/tdfb/tdfb_${ipc_suffix}.c
-)
+if(CONFIG_COMP_TDFB STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/tdfb/llext
+			 ${PROJECT_BINARY_DIR}/tdfb_llext)
+	add_dependencies(app tdfb)
+elseif(CONFIG_COMP_TDFB)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/tdfb/tdfb.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_direction.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_hifi3.c
+		${SOF_AUDIO_PATH}/tdfb/tdfb_${ipc_suffix}.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
 	${SOF_MATH_PATH}/sqrt_int16.c

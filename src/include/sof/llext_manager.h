@@ -18,20 +18,23 @@ struct comp_ipc_config;
 
 static inline bool module_is_llext(const struct sof_man_module *mod)
 {
-	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT;
+	return mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT ||
+		mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX;
 }
 
-uintptr_t llext_manager_allocate_module(struct processing_module *proc,
-					const struct comp_ipc_config *ipc_config,
+uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config);
 
 int llext_manager_free_module(const uint32_t component_id);
 
+int llext_manager_add_library(const struct sof_man_module *mod, uint32_t module_id);
+
 bool comp_is_llext(struct comp_dev *comp);
 #else
 #define module_is_llext(mod) false
-#define llext_manager_allocate_module(proc, ipc_config, ipc_specific_config) 0
+#define llext_manager_allocate_module(ipc_config, ipc_specific_config) 0
 #define llext_manager_free_module(component_id) 0
+#define llext_manager_add_library(mod, module_id) 0
 #define llext_unload(ext) 0
 #define comp_is_llext(comp) false
 #endif

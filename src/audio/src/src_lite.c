@@ -53,7 +53,7 @@ static int src_lite_prepare(struct processing_module *mod,
 	return src_prepare_general(mod, sources[0], sinks[0]);
 }
 
-static const struct module_interface src_lite_interface = {
+const struct module_interface src_lite_interface = {
 	.init = src_init,
 	.prepare = src_lite_prepare,
 	.process = src_process,
