@@ -482,12 +482,17 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t align)
 {
 	struct k_heap *heap;
+	void *ret;
 
 	/* choose a heap */
 	if (caps & SOF_MEM_CAPS_L3) {
 #if CONFIG_L3_HEAP
 		heap = &l3_heap;
-		return (__sparse_force void *)l3_heap_alloc_aligned(heap, align, bytes);
+		ret = l3_heap_alloc_aligned(heap, align, bytes);
+		if (!ret)
+			tr_err(&zephyr_tr, "!l3_heap_alloc_aligned");
+
+		return (__sparse_force void *)ret;
 #else
 		tr_err(&zephyr_tr, "L3_HEAP not available.");
 		return NULL;
@@ -498,14 +503,25 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 
 #if CONFIG_VIRTUAL_HEAP
 	/* Use virtual heap if it is available */
-	if (virtual_buffers_heap)
-		return virtual_heap_alloc(virtual_buffers_heap, flags, caps, bytes, align);
+	if (virtual_buffers_heap) {
+		ret = virtual_heap_alloc(virtual_buffers_heap, flags, caps, bytes, align);
+		if (!ret)
+			tr_err(&zephyr_tr, "!virtual_heap_alloc");
+		return ret;
+	}
 #endif /* CONFIG_VIRTUAL_HEAP */
 
-	if (flags & SOF_MEM_FLAG_COHERENT)
-		return heap_alloc_aligned(heap, align, bytes);
+	if (flags & SOF_MEM_FLAG_COHERENT) {
+		ret = heap_alloc_aligned(heap, align, bytes);
+		if (!ret)
+			tr_err(&zephyr_tr, "!heap_alloc_aligned");
+		return ret;
+	}
 
-	return (__sparse_force void *)heap_alloc_aligned_cached(heap, align, bytes);
+	ret = heap_alloc_aligned_cached(heap, align, bytes);
+	if (!ret)
+		tr_err(&zephyr_tr, "!heap_alloc_aligned_cached");
+	return (__sparse_force void *)ret;
 }
 EXPORT_SYMBOL(rballoc_align);
 
