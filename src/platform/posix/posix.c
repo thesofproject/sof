@@ -9,10 +9,10 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/lib/agent.h>
 
-uint8_t posix_hostbox[MAILBOX_HOSTBOX_SIZE];
-uint8_t posix_dspbox[MAILBOX_DSPBOX_SIZE];
-uint8_t posix_stream[MAILBOX_STREAM_SIZE];
-uint8_t posix_trace[MAILBOX_TRACE_SIZE];
+uint32_t posix_hostbox[MAILBOX_HOSTBOX_SIZE / sizeof(uint32_t)];
+uint32_t posix_dspbox[MAILBOX_DSPBOX_SIZE / sizeof(uint32_t)];
+uint32_t posix_stream[MAILBOX_STREAM_SIZE / sizeof(uint32_t)];
+uint32_t posix_trace[MAILBOX_TRACE_SIZE / sizeof(uint32_t)];
 
 /* This seems like a vestige.  Existing Zephyr platforms are emitting
  * these markers in their linker scripts, and wrapper.c code iterates
