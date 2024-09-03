@@ -904,8 +904,6 @@ static int ipc_trace_filter_update(uint32_t header)
 	int cnt;
 
 	packet = ipc->comp_data;
-	elem = packet->elems;
-	end = &packet->elems[packet->elem_cnt];
 
 	/* validation, packet->hdr.size has already been compared with SOF_IPC_MSG_MAX_SIZE */
 	if (sizeof(*packet) + sizeof(*elem) * packet->elem_cnt != packet->hdr.size) {
@@ -916,6 +914,9 @@ static int ipc_trace_filter_update(uint32_t header)
 
 	tr_info(&ipc_tr, "ipc: trace_filter_update received, size %d elems",
 		packet->elem_cnt);
+
+	elem = packet->elems;
+	end = &packet->elems[packet->elem_cnt];
 
 	/* read each filter set and update selected components trace settings */
 	while (elem != end) {
