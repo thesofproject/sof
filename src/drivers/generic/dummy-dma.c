@@ -105,6 +105,7 @@ static ssize_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
 	 */
 	dcache_invalidate_region((void *)rptr, copy_size);
 
+	tr_info(&ddma_tr, "dummy dma wptr %x rptr %x size 0x%x", wptr, rptr, copy_size);
 	/* Perform the copy, being careful if we overflow the elem */
 	ret = memcpy_s((void *)wptr, remaining_size, (void *)rptr, copy_size);
 	assert(!ret);
