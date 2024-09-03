@@ -105,7 +105,8 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 	 * which derived comp we have and how much its specific members
 	 * add.
 	 */
-	if (comp->hdr.size < sizeof(*comp) + comp->ext_data_length) {
+	if (comp->ext_data_length > SOF_IPC_MSG_MAX_SIZE ||
+	    comp->hdr.size < sizeof(*comp) + comp->ext_data_length) {
 		tr_err(&comp_tr, "Invalid size, hdr.size=0x%x, ext_data_length=0x%x\n",
 		       comp->hdr.size, comp->ext_data_length);
 		goto out;
