@@ -34,7 +34,7 @@ else
 end
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = eq_get_abi(0);
+[abi_bytes, nbytes_abi] = get_abi(0);
 
 %% Defaults
 eq.b = [];

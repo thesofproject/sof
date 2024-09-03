@@ -73,9 +73,7 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	t.files_delete = 1;        % Set to 0 to inspect the audio data files
 
 	%% Prepare
-	addpath('std_utils');
-	addpath('test_utils');
-	addpath('../../tune/eq');
+	process_test_paths(true);
 	mkdir_check(plots);
 	mkdir_check(reports);
 	n_meas = 6;
@@ -177,6 +175,7 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 		fprintf('\nTest passed.\n');
 	end
 
+	process_test_paths(false);
 end
 
 %% ------------------------------------------------------------
@@ -327,10 +326,10 @@ function test = g_spec(test, prm)
 	switch lower(test.comp)
 		case 'eq-iir'
 			blob = fullfile(prm.blobpath, prm.iirblob);
-			h = eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
+			h = sof_eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
 		case 'eq-fir'
 			blob = fullfile(prm.blobpath, prm.firblob);
-			h = eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
+			h = sof_eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
 		otherwise
 			test.g_db_expect = zeros(1, test.nch);
 			return
@@ -343,10 +342,10 @@ function test = fr_mask(test, prm)
 	switch lower(test.comp)
 		case 'eq-iir'
 			blob = fullfile(prm.blobpath, prm.iirblob);
-			h = eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
+			h = sof_eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
 		case 'eq-fir'
 			blob = fullfile(prm.blobpath, prm.firblob);
-			h = eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
+			h = sof_eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
 		otherwise
 			% Define a generic mask for frequency response, generally
 			% all processing at 8 kHz or above should pass, if not
@@ -437,5 +436,21 @@ function test_result_print(t, testverbose, testacronym, test)
 				testacronym, t.comp, ...
 				t.bits_in, t.bits_out, t.fs, i);
 		print(pfn, '-dpng');
+	end
+end
+
+function process_test_paths(enable)
+
+	sof_src_audio = '../../../src/audio';
+	if enable
+		addpath('std_utils');
+		addpath('test_utils');
+		addpath('../../tune/common');
+		addpath([sof_src_audio '/eq_iir/tune']);
+	else
+		rmpath('std_utils');
+		rmpath('test_utils');
+		rmpath('../../tune/common');
+		rmpath([sof_src_audio '/eq_iir/tune']);
 	end
 end
