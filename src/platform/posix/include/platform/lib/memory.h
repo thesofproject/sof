@@ -11,19 +11,19 @@
 #define uncache_to_cache(addr) (addr)
 #define cache_to_uncache(addr) (addr)
 
-extern uint8_t posix_hostbox[];
+extern uint32_t posix_hostbox[];
 #define MAILBOX_HOSTBOX_SIZE 1024
 #define MAILBOX_HOSTBOX_BASE (&posix_hostbox[0])
 
-extern uint8_t posix_dspbox[];
+extern uint32_t posix_dspbox[];
 #define MAILBOX_DSPBOX_SIZE 4096
 #define MAILBOX_DSPBOX_BASE (&posix_dspbox[0])
 
-extern uint8_t posix_stream[];
+extern uint32_t posix_stream[];
 #define MAILBOX_STREAM_SIZE 4096
 #define MAILBOX_STREAM_BASE (&posix_stream[0])
 
-extern uint8_t posix_trace[];
+extern uint32_t posix_trace[];
 #define MAILBOX_TRACE_BASE (&posix_trace[0])
 #define MAILBOX_TRACE_SIZE 4096
 
