@@ -261,10 +261,13 @@ build-sof-staging (for old, developer /lib/firmware/intel/sof-ipc4/)
 
 	# https://docs.zephyrproject.org/latest/build/kconfig/setting.html#initial-conf
 	# https://docs.zephyrproject.org/latest/develop/application/index.html#important-build-system-variables
+	# TODO, support "snippets"?
+	# https://docs.zephyrproject.org/latest/build/snippets/writing.html
 	parser.add_argument("-o", "--overlay", type=pathlib.Path, required=False, action='append',
 			default=[], help=
 """All '-o arg1 -o arg2 ...' arguments are combined into a single -DEXTRA_CONF_FILE='arg1;arg2;...'
-list. Files latter in the list seem to have precedence. Direct -C=-DCONFIG_xxx=.. options seem to
+list. This tweaks the build CONFIGuration like Device Tree "overlays" and Zephyr snippets do.
+Files latter in the list seem to have precedence. Direct -C=-DCONFIG_xxx=.. options seem to
 have precedence over -DEXTRA_CONF_FILE=... Rely on precedence as little as possible.""")
 
 	parser.add_argument("-p", "--pristine", required=False, action="store_true",
@@ -830,21 +833,21 @@ def build_platforms():
 		if args.cmake_args:
 			build_cmd += args.cmake_args
 
-		overlays = [str(item.resolve(True)) for item in args.overlay]
+		extra_conf_files = [str(item.resolve(True)) for item in args.overlay]
 		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
 		# if both are provided, because it's no harm to merge the same overlay twice.
 		if args.debug:
-			overlays.append(str(pathlib.Path(SOF_TOP, "app", "debug_overlay.conf")))
+			extra_conf_files.append(str(pathlib.Path(SOF_TOP, "app", "debug_overlay.conf")))
 
 		# The xt-cland Cadence toolchain currently cannot link shared
 		# libraries for Xtensa. Therefore when it's used we switch to
 		# building relocatable ELF objects.
 		if platf_build_environ.get("ZEPHYR_TOOLCHAIN_VARIANT") == 'xt-clang':
-			overlays.append(str(pathlib.Path(SOF_TOP, "app", "llext_relocatable.conf")))
+			extra_conf_files.append(str(pathlib.Path(SOF_TOP, "app", "llext_relocatable.conf")))
 
-		if overlays:
-			overlays = ";".join(overlays)
-			build_cmd.append(f"-DEXTRA_CONF_FILE={overlays}")
+		if extra_conf_files:
+			extra_conf_files = ";".join(extra_conf_files)
+			build_cmd.append(f"-DEXTRA_CONF_FILE={extra_conf_files}")
 
 		abs_build_dir = pathlib.Path(west_top, platform_build_dir_name)
 
@@ -853,9 +856,9 @@ def build_platforms():
 			pathlib.Path(abs_build_dir, "build.ninja").is_file()
 			or pathlib.Path(abs_build_dir, "Makefile").is_file()
 		):
-			if args.cmake_args or overlays:
+			if args.cmake_args or extra_conf_files:
 				warnings.warn("""CMake args slow down incremental builds.
-	Passing CMake parameters and overlays on the command line slows down incremental builds
+	Passing CMake parameters and -o conf files on the command line slows down incremental builds
 	see https://docs.zephyrproject.org/latest/guides/west/build-flash-debug.html#one-time-cmake-arguments
 	Try "west config build.cmake-args -- ..." instead.""")
 
