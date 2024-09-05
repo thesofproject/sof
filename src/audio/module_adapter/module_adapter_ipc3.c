@@ -40,8 +40,8 @@ int module_adapter_init_data(struct comp_dev *dev,
 {
 	int ret;
 
-	const unsigned char *data;
-	uint32_t size;
+	const unsigned char *data = NULL;
+	uint32_t size = 0;
 
 	switch (config->type) {
 	case SOF_COMP_VOLUME:
@@ -68,6 +68,8 @@ int module_adapter_init_data(struct comp_dev *dev,
 		data = spec;
 		break;
 	}
+	case SOF_COMP_MIXER:
+		break;
 	case SOF_COMP_EQ_IIR:
 	case SOF_COMP_EQ_FIR:
 	case SOF_COMP_KEYWORD_DETECT:
