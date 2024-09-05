@@ -24,8 +24,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <xtensa/config/core.h>
 #include "xtos-internal.h"
+#include <xtensa/config/core.h>
 
 
 #if XCHAL_HAVE_EXCEPTIONS
