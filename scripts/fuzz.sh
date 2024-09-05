@@ -12,6 +12,7 @@ Usage:
 
   -i4        Appends: -- -DCONFIG_IPC_MAJOR_4=y  + fuzz_IPC4_features.conf
   -i3        See above
+  -s         Which sanitizer to use, defaults to address
   -p         Delete build-fuzz/ first ("pristine")
   -b         Do not run/fuzz: stop after the build.
   -t n       Fuzz for n seconds.
@@ -87,15 +88,17 @@ main()
   local BUILD_ONLY=false
   local FUZZER_STDOUT=/dev/stdout # bashism
   local TEST_DURATION=3
+  local SANITIZER=address
   local IPC
 
   # Parse "$@". getopts stops after '--'
-  while getopts "i:hj:po:t:b" opt; do
+  while getopts "i:hj:ps:o:t:b" opt; do
       case "$opt" in
           i) IPC="$OPTARG";;
           h) print_help; exit 0;;
           j) if [ "$OPTARG" -eq 0 ]; then JOBS=$(nproc); else JOBS="$OPTARG"; fi;;
           p) PRISTINE=true;;
+          s) SANITIZER="$OPTARG";;
           o) FUZZER_STDOUT="$OPTARG";;
           t) TEST_DURATION="$OPTARG";;
           b) BUILD_ONLY=true;;
@@ -114,6 +117,11 @@ main()
   if [ -n "$IPC" ]; then
       conf_files_list+=";configs/fuzz_IPC${IPC}_features.conf"
   fi
+
+  case $SANITIZER in
+      address) conf_files_list+=";configs/fuzz_asan.conf";;
+      *) echo "Unknown fuzzer type"; print_help; exit 1;;
+  esac
 
   # Note there's never any reason to delete fuzz_corpus/.
   # Don't trust `west build -p` because it is not 100% unreliable,
