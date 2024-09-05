@@ -89,6 +89,8 @@ static inline void ipc4_send_reply(struct ipc4_message_reply *reply)
 {
 	struct ipc *ipc = ipc_get();
 
+	/* copy the extension from the message reply */
+	reply->extension.dat = msg_reply.extension;
 	memcpy((char *)ipc->comp_data, reply, sizeof(*reply));
 }
 
@@ -1088,6 +1090,9 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 							     data,
 							     (const char *)MAILBOX_HOSTBOX_BASE);
 	} else {
+#if CONFIG_LIBRARY
+		data += sizeof(reply);
+#endif
 		ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
 						config.extension.r.init_block,
 						config.extension.r.final_block,
@@ -1235,9 +1240,15 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 							     config.extension.r.data_off_size,
 							     (const char *)MAILBOX_HOSTBOX_BASE);
 	} else {
+#if CONFIG_LIBRARY
+		struct ipc *ipc = ipc_get();
+		const char *data = (const char *)ipc->comp_data + sizeof(config);
+#else
+		const char *data = (const char *)MAILBOX_HOSTBOX_BASE;
+#endif
 		ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
 			config.extension.r.init_block, config.extension.r.final_block,
-			config.extension.r.data_off_size, (const char *)MAILBOX_HOSTBOX_BASE);
+			config.extension.r.data_off_size, data);
 		if (ret < 0) {
 			ipc_cmd_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
 				    (uint32_t)config.primary.r.module_id,
