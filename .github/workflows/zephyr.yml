@@ -199,7 +199,7 @@ jobs:
              --cmake-args=-DEXTRA_CXXFLAGS=-Werror
              --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
              --cmake-args=--warn-uninitialized
-             --overlay=sof/app/overlays/repro-build.conf
+             --overlay=sof/app/configs/repro-build.conf
              --no-tarball
              ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
@@ -366,7 +366,7 @@ jobs:
           --cmake-args=-DEXTRA_CXXFLAGS=-Werror
           --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
           --cmake-args=--warn-uninitialized
-          --overlay=sof/app/overlays/repro-build.conf
+          --overlay=sof/app/configs/repro-build.conf
           --no-tarball
           ${{ matrix.build_opts }} ${{ matrix.platforms }}
 
