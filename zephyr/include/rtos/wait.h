@@ -17,7 +17,7 @@
 static inline void idelay(int n)
 {
 	while (n--)
-		asm volatile("nop");
+		__asm__ volatile("nop");
 }
 
 /* DSP default delay in cycles - all platforms use this today */
@@ -49,7 +49,7 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
  */
 static inline void wait_for_interrupt(int level)
 {
-	asm volatile("waiti 0");
+	__asm__ volatile("waiti 0");
 }
 
 #endif /* __ZEPHYR_RTOS_WAIT_H__ */
