@@ -51,6 +51,7 @@
 #endif
 
 #define SOF_MAGIC	"sofpipe"
+#define MAX_VOLUME_SIZE 120
 
 enum plugin_state {
 	SOF_PLUGIN_STATE_INIT	= 0,
@@ -61,8 +62,10 @@ enum plugin_state {
 };
 
 struct plug_shm_ctl {
-	unsigned int comp_id;
+	unsigned int module_id;
+	unsigned int instance_id;
 	unsigned int type;
+	unsigned int volume_table[MAX_VOLUME_SIZE];
 	union {
 		struct snd_soc_tplg_mixer_control mixer_ctl;
 		struct snd_soc_tplg_enum_control enum_ctl;

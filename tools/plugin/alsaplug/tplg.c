@@ -750,9 +750,8 @@ int plug_parse_topology(snd_sof_plug_t *plug)
 
 	tplg_debug("parsing topology file %s\n", ctx->tplg_file);
 
-	/* TODO: ctl callback */
-//	ctx->ctl_arg = sp;
-//	ctx->ctl_cb = pipe_kcontrol_cb_new;
+	ctx->ctl_arg = plug;
+	ctx->ctl_cb = plug_kcontrol_cb_new;
 
 	/* open topology file */
 	file = fopen(ctx->tplg_file, "rb");
