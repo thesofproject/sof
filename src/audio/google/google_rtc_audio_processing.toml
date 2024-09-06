@@ -1,19 +1,23 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "1"
+#endif
+
 	[[module.entry]]
 	name = "RTC_AEC"
-        uuid = "B780A0A6-269F-466F-B477-23DFA05AF758"
-        REM # bit #i = 1 means core #i is allowed.
-        affinity_mask = "0x7"
-        instance_count = "1"
-        domain_types = "1"
-        load_type = "1"
-        module_type = "10"
+	uuid = "B780A0A6-269F-466F-B477-23DFA05AF758"
+	REM # bit #i = 1 means core #i is allowed.
+	affinity_mask = "0x7"
+	instance_count = "1"
+	domain_types = "1"
+	load_type = LOAD_TYPE
+	module_type = "10"
 	init_config = "1"
-        auto_start = "0"
-        sched_caps = [1, 0x00008000]
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
 
-        REM # pin = [dir, type, sample rate, size, container, channel-cfg]
-        pin = [0, 0, 0x8, 0x2, 0x2, 0x1,
-                0, 0, 0x8, 0x2, 0x2, 0x4,
-                1, 0, 0x8, 0x2, 0x2, 0x1]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0x8, 0x2, 0x2, 0x1,
+		0, 0, 0x8, 0x2, 0x2, 0x4,
+		1, 0, 0x8, 0x2, 0x2, 0x1]
 
 	index = __COUNTER__

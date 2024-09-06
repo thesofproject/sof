@@ -887,23 +887,29 @@ elseif(CONFIG_COMP_MULTIBAND_DRC)
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING
-	${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c
-)
+if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/google/llext_rtc
+			 ${PROJECT_BINARY_DIR}/google_rtc_audio_processing_llext)
+	add_dependencies(app google_rtc_audio_processing)
+elseif(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c
+	)
 
-zephyr_library_sources_ifdef(CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK
-	${SOF_AUDIO_PATH}/google/google_rtc_audio_processing_mock.c
-)
+	zephyr_library_sources_ifdef(CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK
+		${SOF_AUDIO_PATH}/google/google_rtc_audio_processing_mock.c
+	)
 
-if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING AND NOT CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK)
-	zephyr_include_directories(../third_party/include)
-	target_link_directories(SOF INTERFACE ../third_party/lib)
-	target_link_libraries(SOF INTERFACE google_rtc_audio_processing)
-	target_link_libraries(SOF INTERFACE c++)
-	target_link_libraries(SOF INTERFACE c++abi)
-	target_link_libraries(SOF INTERFACE m)
-	target_link_libraries(SOF INTERFACE c)
-	target_link_libraries(SOF INTERFACE gcc)
+	if(NOT CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK)
+		zephyr_include_directories(../third_party/include)
+		target_link_directories(SOF INTERFACE ../third_party/lib)
+		target_link_libraries(SOF INTERFACE google_rtc_audio_processing)
+		target_link_libraries(SOF INTERFACE c++)
+		target_link_libraries(SOF INTERFACE c++abi)
+		target_link_libraries(SOF INTERFACE m)
+		target_link_libraries(SOF INTERFACE c)
+		target_link_libraries(SOF INTERFACE gcc)
+	endif()
 endif()
 
 if(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING STREQUAL "m")
