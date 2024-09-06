@@ -4,7 +4,6 @@
 //
 // Author: Eddy Hsu <eddyhsu@google.com>
 #include "google_ctc_audio_processing.h"
-#include "google_ctc_audio_processing_sof_message_reader.h"
 
 #include <rtos/alloc.h>
 #include <stdint.h>
