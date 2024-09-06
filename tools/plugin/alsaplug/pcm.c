@@ -47,7 +47,6 @@ typedef struct snd_sof_pcm {
 	 /* pipeline IPC response queues */
 	struct plug_mq_desc pipeline_ipc_rx[TPLG_MAX_PCM_PIPELINES];
 
-	struct plug_shm_desc glb_ctx;
 	struct plug_shm_desc shm_pcm;
 
 	int frame_us;
@@ -550,26 +549,10 @@ static int plug_pcm_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
 		}
 	}
 
-	/* init global status shm name */
-	err = plug_shm_init(&pcm->glb_ctx, plug->tplg_file, "ctx", 0);
-	if (err < 0) {
-		SNDERR("error: invalid name for global SHM %s\n", plug->tplg_file);
-		return err;
-	}
-
 	/* init PCM shm name */
 	err = plug_shm_init(&pcm->shm_pcm, plug->tplg_file, "pcm", plug->pcm_id);
 	if (err < 0) {
 		SNDERR("error: invalid name for PCM SHM %s\n", plug->tplg_file);
-		return err;
-	}
-
-	/* open the global sof-pipe context via SHM */
-	pcm->glb_ctx.size = 128 * 1024;
-	err = plug_shm_open(&pcm->glb_ctx);
-	if (err < 0) {
-		SNDERR("error: failed to open sof-pipe context: %s:%s",
-		       pcm->glb_ctx.name, strerror(err));
 		return err;
 	}
 
@@ -585,7 +568,7 @@ static int plug_pcm_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
 	err = plug_init_shm_ctx(plug);
 	if (err < 0) {
 		SNDERR("error: failed to init sof-pipe ep context: %s:%s",
-		       pcm->glb_ctx.name, strerror(err));
+		       pcm->shm_pcm.name, strerror(err));
 		return -err;
 	}
 
@@ -652,7 +635,7 @@ static int plug_pcm_close(snd_pcm_ioplug_t *io)
 {
 	snd_sof_plug_t *plug = io->private_data;
 	snd_sof_pcm_t *pcm = plug->module_prv;
-	struct plug_shm_glb_state *ctx = pcm->glb_ctx.addr;
+	struct plug_shm_glb_state *ctx = plug->glb_ctx.addr;
 	int err = 0;
 
 	printf("%s %d\n", __func__, __LINE__);
@@ -692,7 +675,7 @@ static int plug_pcm_hw_free(snd_pcm_ioplug_t *io)
 		return ret;
 
 	close(pcm->shm_pcm.fd);
-	close(pcm->glb_ctx.fd);
+	close(plug->glb_ctx.fd);
 
 	for (i = 0; i < pipeline_list->count; i++) {
 		struct tplg_pipeline_info *pipe_info = pipeline_list->pipelines[i];
@@ -857,8 +840,7 @@ static int plug_create(snd_sof_plug_t *plug, snd_pcm_t **pcmp, const char *name,
 
 static int plug_init_shm_ctx(snd_sof_plug_t *plug)
 {
-	snd_sof_pcm_t *pcm = plug->module_prv;
-	struct plug_shm_glb_state *glb = pcm->glb_ctx.addr;
+	struct plug_shm_glb_state *glb = plug->glb_ctx.addr;
 	struct endpoint_hw_config *ep;
 	struct plug_cmdline_item *ci;
 	struct plug_config *pc;
@@ -931,6 +913,22 @@ static int plug_init_sof_pipe(snd_sof_plug_t *plug, snd_pcm_t **pcmp,
 
 	/* plugin only works with IPC4 */
 	plug->tplg.ipc_major = 4;
+
+	/* init global status hsm name */
+	err = plug_shm_init(&plug->glb_ctx, plug->tplg_file, "ctx", 0);
+	if (err < 0) {
+		SNDERR("error: invalid name for global SHM %s\n", plug->tplg_file);
+		return err;
+	}
+
+	/* open the global context via SHM */
+	plug->glb_ctx.size = 128 * 1024;
+	err = plug_shm_open(&plug->glb_ctx);
+	if (err < 0) {
+		SNDERR("error: failed to open plugin context: %s:%s",
+		       plug->glb_ctx.name, strerror(err));
+		return err;
+	}
 
 	/* parse topology file */
 	err = plug_parse_topology(plug);

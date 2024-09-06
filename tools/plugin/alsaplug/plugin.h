@@ -42,6 +42,8 @@ typedef struct snd_sof_plug {
 	struct plug_mq_desc ipc_tx;
 	struct plug_mq_desc ipc_rx;
 
+	struct plug_shm_desc glb_ctx;
+
 	int pcm_id;
 	struct tplg_pcm_info *pcm_info;
 
