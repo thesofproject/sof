@@ -297,7 +297,7 @@ static int parse_slave_configs(snd_sof_plug_t *plug, snd_config_t *n)
  * Parse the client cmdline. Format is
  * tplg:pcm:card:dev:config[dai_pipe:card:dev:config]...]
  */
-static int parse_client_cmdline(snd_sof_plug_t *plug, char *cmdline)
+static int parse_client_cmdline(snd_sof_plug_t *plug, char *cmdline, bool just_tplg)
 {
 	struct plug_cmdline_item *cmd_item;
 	char *tplg, *next, *card, *dev, *config, *pcm;
@@ -327,6 +327,9 @@ static int parse_client_cmdline(snd_sof_plug_t *plug, char *cmdline)
 	plug->tplg_file = strdup(tplg_file);
 	if (!plug->tplg_file)
 		return -ENOMEM;
+
+	if (just_tplg)
+		return 0;
 
 	/* get PCM ID */
 	pcm = strtok_r(next, ":", &next);
@@ -393,7 +396,7 @@ static int parse_client_cmdline(snd_sof_plug_t *plug, char *cmdline)
  * TODO: contruct sof pipe cmd line.
  */
 int plug_parse_conf(snd_sof_plug_t *plug, const char *name, snd_config_t *root,
-		    snd_config_t *conf)
+		    snd_config_t *conf, bool just_tplg)
 {
 	snd_config_iterator_t i, next;
 	const char *tplg = NULL;
@@ -443,7 +446,7 @@ int plug_parse_conf(snd_sof_plug_t *plug, const char *name, snd_config_t *root,
 	}
 
 	/* parse the client command line */
-	if (parse_client_cmdline(plug, (char *)tplg)) {
+	if (parse_client_cmdline(plug, (char *)tplg, just_tplg)) {
 		SNDERR("invalid sof cmd line");
 		return -EINVAL;
 	}

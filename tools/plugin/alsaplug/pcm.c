@@ -1012,7 +1012,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(sof)
 		pcm->capture = 1;
 
 	/* parse the ALSA configuration file for sof plugin */
-	err = plug_parse_conf(plug, name, root, conf);
+	err = plug_parse_conf(plug, name, root, conf, false);
 	if (err < 0) {
 		SNDERR("failed to parse config: %s", strerror(err));
 		goto parse_conf_err;
