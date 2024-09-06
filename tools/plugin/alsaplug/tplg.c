@@ -270,7 +270,7 @@ static int plug_new_pga(snd_sof_plug_t *plug)
 
 	/* skip kcontrols for now */
 	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols,
-				 tplg_ctl, ctx->hdr->payload_size, &volume) < 0) {
+				 tplg_ctl, ctx->hdr->payload_size, comp_info) < 0) {
 		SNDERR("error: loading controls\n");
 		goto out;
 	}
