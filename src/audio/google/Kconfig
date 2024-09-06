@@ -89,7 +89,7 @@ config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 endif # COMP_GOOGLE_RTC_AUDIO_PROCESSING
 
 config COMP_GOOGLE_CTC_AUDIO_PROCESSING
-	bool "Google Crosstalk Cancellation Audio processing"
+	tristate "Google Crosstalk Cancellation Audio processing"
 	select COMP_BLOB
 	select GOOGLE_CTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
 	select STATIC_INIT_GNU if ZEPHYR_SOF_MODULE

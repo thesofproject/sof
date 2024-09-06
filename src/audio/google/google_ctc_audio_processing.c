@@ -348,7 +348,6 @@ static int ctc_prepare(struct processing_module *mod,
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source;
-	enum sof_ipc_frame fmt;
 	int num_channels;
 	uint8_t *config;
 	int config_size;
@@ -459,3 +458,23 @@ DECLARE_MODULE_ADAPTER(google_ctc_audio_processing_interface,
 		       google_ctc_audio_processing_uuid, google_ctc_audio_processing_tr);
 SOF_MODULE_INIT(google_ctc_audio_processing,
 		sys_comp_module_google_ctc_audio_processing_interface_init);
+
+#if CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#define UUID_GOOGLE_CTC 0xBC, 0x1B, 0x0E, 0xBF, 0x6A, 0xDC, 0xFE, 0x45, 0x90, 0xBC, \
+	 0x25, 0x54, 0xCB, 0x13, 0x7A, 0xB4
+
+SOF_LLEXT_MOD_ENTRY(google_ctc_audio_processing, &google_ctc_audio_processing_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("CTC", google_ctc_audio_processing_llext_entry,
+				  1, UUID_GOOGLE_CTC, 40);
+
+SOF_LLEXT_BUILDINFO;
+
+#endif
