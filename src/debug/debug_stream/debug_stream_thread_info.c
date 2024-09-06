@@ -76,7 +76,7 @@ static uint32_t thread_info_get_cycles(void *tid, k_thread_runtime_stats_t *thre
 	int i;
 
 	if (ud->thread_count >= ARRAY_SIZE(ud->active_threads)) {
-		LOG_WRN("Thread could exceeds tha max threads %u >= %u",
+		LOG_WRN("Thread count exceeds the max threads %u >= %u",
 			ud->thread_count, ARRAY_SIZE(ud->active_threads));
 		return 0;
 	}

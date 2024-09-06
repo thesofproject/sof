@@ -141,7 +141,7 @@ static int debug_stream_slot_init(void)
 		buf->next_seqno = 0;
 		buf->w_ptr = 0;
 		k_mutex_init(&cpu_mutex[i].m);
-		/* The core specific mutexes are now .dss which is uncached so the
+		/* The core specific mutexes are now .bss which is uncached so the
 		 * following line is commented out. However, since the mutexes are
 		 * core specific there should be nothing preventing from having them
 		 * in cached memory.
