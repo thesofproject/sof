@@ -57,7 +57,7 @@ int sofplug_load_hook(snd_config_t *root, snd_config_t *config,
 		      snd_config_t **dst, snd_config_t *private_data);
 
 int plug_parse_conf(snd_sof_plug_t *plug, const char *name,
-		    snd_config_t *root, snd_config_t *conf);
+		    snd_config_t *root, snd_config_t *conf, bool just_tplg);
 int plug_parse_topology(snd_sof_plug_t *plug);
 int plug_set_up_pipelines(snd_sof_plug_t *plug, int dir);
 int plug_free_pipelines(snd_sof_plug_t *plug, struct tplg_pipeline_list *pipeline_list, int dir);
