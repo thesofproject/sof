@@ -31,7 +31,8 @@
 typedef struct snd_sof_ctl {
 	struct plug_shm_glb_state *glb;
 	snd_ctl_ext_t ext;
-	struct plug_mq_desc ipc;
+	struct plug_mq_desc ipc_tx;
+	struct plug_mq_desc ipc_rx;
 	struct plug_shm_desc shm_ctx;
 	int subscribed;
 	int updated[MAX_CTLS];
@@ -49,6 +50,26 @@ typedef struct snd_sof_ctl {
 
 #define CTL_GET_TPLG_BYTES(_ctl, _key) \
 		(&_ctl->glb->ctl[_key].bytes_ctl)
+
+static uint32_t mixer_to_ipc(unsigned int value, uint32_t *volume_table, int size)
+{
+	if (value >= size)
+		return volume_table[size - 1];
+
+	return volume_table[value];
+}
+
+static uint32_t ipc_to_mixer(uint32_t value, uint32_t *volume_table, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		if (volume_table[i] >= value)
+			return i;
+	}
+
+	return i - 1;
+}
 
 /* number of ctls */
 static int plug_ctl_elem_count(snd_ctl_ext_t *ext)
@@ -180,95 +201,160 @@ static int plug_ctl_get_integer_info(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, 
 static int plug_ctl_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, long *value)
 {
 	snd_sof_ctl_t *ctl = ext->private_data;
-	struct snd_soc_tplg_mixer_control *mixer_ctl =
-		CTL_GET_TPLG_MIXER(ctl, key);
-	struct sof_ipc_ctrl_data *ctl_data;
-	struct sof_ipc_ctrl_value_chan *chanv;
-	int err, i;
+	struct snd_soc_tplg_mixer_control *mixer_ctl = CTL_GET_TPLG_MIXER(ctl, key);
+	struct ipc4_module_large_config config = {{ 0 }};
+	struct ipc4_peak_volume_config *volume;
+	struct ipc4_module_large_config_reply *reply;
+	char *reply_data;
+	void *msg;
+	int reply_data_size, size;
+	int num_data_items;
+	int i, err;
 
-	// TODO: set generic max size
-	ctl_data = calloc(IPC3_MAX_MSG_SIZE, 1);
-	if (!ctl_data)
+	/* configure the IPC message */
+	config.primary.r.type = SOF_IPC4_MOD_LARGE_CONFIG_GET;
+	config.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+	config.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	config.primary.r.module_id = ctl->glb->ctl[key].module_id;
+	config.primary.r.instance_id = ctl->glb->ctl[key].instance_id;
+
+	config.extension.r.data_off_size = sizeof(volume);
+	config.extension.r.large_param_id = IPC4_VOLUME;
+	config.extension.r.final_block = 1;
+	config.extension.r.init_block = 1;
+
+	size = sizeof(config);
+	msg = calloc(size, 1);
+	if (!msg)
 		return -ENOMEM;
-	chanv = ctl_data->chanv;
 
-	/* setup the IPC message */
-	ctl_data->comp_id = ctl->glb->ctl[key].comp_id;
-	ctl_data->cmd = SOF_CTRL_CMD_VOLUME;
-	ctl_data->type = SOF_CTRL_TYPE_VALUE_COMP_GET;
-	ctl_data->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_GET_VALUE;
-	ctl_data->rhdr.hdr.size = sizeof(ctl_data);
-	ctl_data->num_elems = mixer_ctl->num_channels;
+	/* reply contains both the requested data and the reply status */
+	reply_data_size = sizeof(reply) + mixer_ctl->num_channels * sizeof(*volume);
+	reply_data = calloc(reply_data_size, 1);
+	if (!reply_data_size) {
+		free(msg);
+		return -ENOMEM;
+	}
 
-	/* send message and wait for reply */
-	err = plug_mq_cmd(&ctl->ipc, ctl_data, IPC3_MAX_MSG_SIZE, ctl_data, IPC3_MAX_MSG_SIZE);
+	/* send the IPC message */
+	memcpy(msg, &config, sizeof(config));
+	err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx,
+				msg, size, reply_data, reply_data_size);
+	free(msg);
 	if (err < 0) {
-		SNDERR("error: can't read CTL %d message\n",
-		       ctl_data->comp_id);
-		return err;
+		SNDERR("failed to set volume for control %s\n", mixer_ctl->hdr.name);
+		goto out;
 	}
 
-	/* did IPC succeed ? */
-	if (ctl_data->rhdr.error != 0) {
-		SNDERR("error: can't read CTL %d failed: error %d\n",
-		       ctl_data->comp_id, ctl_data->rhdr.error);
-		return ctl_data->rhdr.error;
+	reply = (struct ipc4_module_large_config_reply *)reply_data;
+	if (reply->primary.r.status != IPC4_SUCCESS) {
+		SNDERR("volume control %s set failed with status %d\n",
+		       mixer_ctl->hdr.name, reply->primary.r.status);
+		err = -EINVAL;
+		goto out;
 	}
 
-	/* get data from IPC */
+	/* check data sanity */
+	num_data_items = reply->extension.r.data_off_size / sizeof(*volume);
+	if (num_data_items != mixer_ctl->num_channels) {
+		SNDERR("Channel count %d doesn't match the expected value %d\n",
+		       num_data_items, mixer_ctl->num_channels);
+		err = -EINVAL;
+		goto out;
+	}
+
+	/* set the mixer values based on the received data */
+	volume = (struct ipc4_peak_volume_config *)(reply_data + sizeof(*reply));
 	for (i = 0; i < mixer_ctl->num_channels; i++)
-		value[i] = chanv[i].value;
-
-	free(ctl_data);
-
+		value[i] = ipc_to_mixer(volume[i].target_volume, ctl->glb->ctl[key].volume_table,
+					mixer_ctl->max + 1);
+out:
+	free(reply_data);
 	return err;
 }
 
 static int plug_ctl_write_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, long *value)
 {
 	snd_sof_ctl_t *ctl = ext->private_data;
-	struct snd_soc_tplg_mixer_control *mixer_ctl =
-			CTL_GET_TPLG_MIXER(ctl, key);
-	struct sof_ipc_ctrl_data *ctl_data;
-	struct sof_ipc_ctrl_value_chan *chanv;
-	int err;
+	struct snd_soc_tplg_mixer_control *mixer_ctl = CTL_GET_TPLG_MIXER(ctl, key);
+	struct ipc4_module_large_config config = {{ 0 }};
+	struct ipc4_peak_volume_config volume;
+	struct ipc4_message_reply reply;
+	bool all_channels_equal = true;
+	uint32_t val;
+	void *msg;
+	int size, err;
 	int i;
 
-	// TODO: set generic max size
-	ctl_data = calloc(IPC3_MAX_MSG_SIZE, 1);
-	if (!ctl_data)
-		return -ENOMEM;
-	chanv = ctl_data->chanv;
-
-	/* setup the IPC message */
-	ctl_data->comp_id = ctl->glb->ctl[key].comp_id;
-	ctl_data->cmd = SOF_CTRL_CMD_VOLUME;
-	ctl_data->type = SOF_CTRL_TYPE_VALUE_COMP_SET;
-	ctl_data->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_SET_VALUE;
-	ctl_data->rhdr.hdr.size = sizeof(ctl_data);
-	ctl_data->num_elems = mixer_ctl->num_channels;
-
 	/* set data for IPC */
-	for (i = 0; i < mixer_ctl->num_channels; i++)
-		chanv[i].value = value[i];
-
-	err = plug_mq_cmd(&ctl->ipc, ctl_data, IPC3_MAX_MSG_SIZE,
-			  ctl_data, IPC3_MAX_MSG_SIZE);
-	if (err < 0) {
-		SNDERR("error: can't write CTL %d message\n", ctl_data->comp_id);
-		return err;
+	val = value[0];
+	for (i = 1; i < mixer_ctl->num_channels; i++) {
+		if (value[i] != val) {
+			all_channels_equal = false;
+			break;
+		}
 	}
 
-	/* did IPC succeed ? */
-	if (ctl_data->rhdr.error != 0) {
-		SNDERR("error: can't write CTL %d failed: error %d\n",
-		       ctl_data->comp_id, ctl_data->rhdr.error);
-		return ctl_data->rhdr.error;
+	/*
+	 * if all channels have the same volume, send a single IPC, else, send individual IPCs
+	 * for each channel
+	 */
+	for (i = 0; i < mixer_ctl->num_channels; i++) {
+		if (all_channels_equal) {
+			volume.channel_id = IPC4_ALL_CHANNELS_MASK;
+			volume.target_volume = mixer_to_ipc(val, ctl->glb->ctl[key].volume_table,
+							    mixer_ctl->max + 1);
+		} else {
+			volume.channel_id = i;
+			volume.target_volume = mixer_to_ipc(value[i],
+							    ctl->glb->ctl[key].volume_table,
+							    mixer_ctl->max + 1);
+		}
+
+		/* TODO: get curve duration and type from topology */
+		volume.curve_type = 1;
+		volume.curve_duration = 200000;
+
+		/* configure the IPC message */
+		config.primary.r.type = SOF_IPC4_MOD_LARGE_CONFIG_SET;
+		config.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+		config.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+		config.primary.r.module_id = ctl->glb->ctl[key].module_id;
+		config.primary.r.instance_id = ctl->glb->ctl[key].instance_id;
+
+		config.extension.r.data_off_size = sizeof(volume);
+		config.extension.r.large_param_id = IPC4_VOLUME;
+		config.extension.r.final_block = 1;
+		config.extension.r.init_block = 1;
+
+		size = sizeof(config) + sizeof(volume);
+		msg = calloc(size, 1);
+		if (!msg)
+			return -ENOMEM;
+
+		memcpy(msg, &config, sizeof(config));
+		memcpy(msg + sizeof(config), &volume, sizeof(volume));
+
+		/* send the message and check status */
+		err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx,
+					msg, size, &reply, sizeof(reply));
+		free(msg);
+		if (err < 0) {
+			SNDERR("failed to set volume control %s\n", mixer_ctl->hdr.name);
+			return err;
+		}
+
+		if (reply.primary.r.status != IPC4_SUCCESS) {
+			SNDERR("volume control %s set failed with status %d\n",
+			       mixer_ctl->hdr.name, reply.primary.r.status);
+			return -EINVAL;
+		}
+
+		if (all_channels_equal)
+			break;
 	}
 
-	free(ctl_data);
-
-	return err;
+	return 0;
 }
 
 /*
@@ -319,190 +405,28 @@ static int plug_ctl_get_enumerated_name(snd_ctl_ext_t *ext, snd_ctl_ext_key_t ke
 static int plug_ctl_read_enumerated(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 				    unsigned int *items)
 {
-	snd_sof_ctl_t *ctl = ext->private_data;
-	struct snd_soc_tplg_enum_control *enum_ctl =
-		CTL_GET_TPLG_ENUM(ctl, key);
-	struct sof_ipc_ctrl_data *ctl_data;
-	struct sof_ipc_ctrl_value_comp *compv;
-	int err, i;
-
-	// TODO: set generic max size
-	ctl_data = calloc(IPC3_MAX_MSG_SIZE, 1);
-	if (!ctl_data)
-		return -ENOMEM;
-	compv = ctl_data->compv;
-
-	/* setup the IPC message */
-	ctl_data->comp_id = ctl->glb->ctl[key].comp_id;
-	ctl_data->cmd = SOF_CTRL_CMD_ENUM;
-	ctl_data->type = SOF_CTRL_TYPE_VALUE_COMP_GET;
-	ctl_data->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_GET_VALUE;
-	ctl_data->rhdr.hdr.size = sizeof(ctl_data);
-
-	/* send message and wait for reply */
-	err = plug_mq_cmd(&ctl->ipc, ctl_data, IPC3_MAX_MSG_SIZE,
-			  ctl_data, IPC3_MAX_MSG_SIZE);
-	if (err < 0) {
-		SNDERR("error: can't read CTL %d message\n", ctl_data->comp_id);
-		return err;
-	}
-
-	/* did IPC succeed ? */
-	if (ctl_data->rhdr.error != 0) {
-		SNDERR("error: can't read CTL %d failed: error %d\n",
-		       ctl_data->comp_id, ctl_data->rhdr.error);
-		return ctl_data->rhdr.error;
-	}
-
-	/* get data from IPC */
-	for (i = 0; i < enum_ctl->num_channels; i++)
-		items[i] = compv[i].uvalue;
-
-	free(ctl_data);
-
-	return err;
+	return 0;
 }
 
 static int plug_ctl_write_enumerated(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 				     unsigned int *items)
 {
-	snd_sof_ctl_t *ctl = ext->private_data;
-	struct snd_soc_tplg_enum_control *enum_ctl =
-		CTL_GET_TPLG_ENUM(ctl, key);
-	struct sof_ipc_ctrl_data *ctl_data;
-	struct sof_ipc_ctrl_value_comp *compv;
-	int err, i;
-
-	// TODO: set generic max size
-	ctl_data = calloc(IPC3_MAX_MSG_SIZE, 1);
-	if (!ctl_data)
-		return -ENOMEM;
-	compv = ctl_data->compv;
-
-	printf("%s %d\n", __func__, __LINE__);
-
-	/* setup the IPC message */
-	ctl_data->comp_id = ctl->glb->ctl[key].comp_id;
-	ctl_data->cmd = SOF_CTRL_CMD_ENUM;
-	ctl_data->type = SOF_CTRL_TYPE_VALUE_COMP_SET;
-	ctl_data->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_SET_VALUE;
-	ctl_data->rhdr.hdr.size = sizeof(ctl_data);
-
-	/* set data for IPC */
-	for (i = 0; i < enum_ctl->num_channels; i++)
-		compv[i].uvalue = items[i];
-
-	/* send message and wait for reply */
-	err = plug_mq_cmd(&ctl->ipc, ctl_data, IPC3_MAX_MSG_SIZE,
-			  ctl_data, IPC3_MAX_MSG_SIZE);
-	if (err < 0) {
-		SNDERR("error: can't read CTL %d message\n", ctl_data->comp_id);
-		goto out;
-	}
-
-	/* did IPC succeed ? */
-	if (ctl_data->rhdr.error != 0) {
-		SNDERR("error: can't read CTL %d failed: error %d\n",
-		       ctl_data->comp_id, ctl_data->rhdr.error);
-		err = ctl_data->rhdr.error;
-	}
-
-out:
-	free(ctl_data);
-	return err;
+	return 0;
 }
 
 /*
- * Bytes ops - TODO handle large blobs
+ * Bytes ops
  */
-
 static int plug_ctl_read_bytes(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 			       unsigned char *data, size_t max_bytes)
 {
-	snd_sof_ctl_t *ctl = ext->private_data;
-	struct snd_soc_tplg_bytes_control *binary_ctl =
-		CTL_GET_TPLG_BYTES(ctl, key);
-	struct sof_ipc_ctrl_data *ctl_data;
-	int err;
-
-	// TODO: set generic max size
-	ctl_data = calloc(IPC3_MAX_MSG_SIZE, 1);
-	if (!ctl_data)
-		return -ENOMEM;
-
-	/* setup the IPC message */
-	ctl_data->comp_id = ctl->glb->ctl[key].comp_id;
-	ctl_data->cmd = SOF_CTRL_CMD_BINARY;
-	ctl_data->type = SOF_CTRL_TYPE_VALUE_COMP_GET;
-	ctl_data->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_GET_VALUE;
-	ctl_data->rhdr.hdr.size = sizeof(ctl_data);
-
-	/* send message and wait for reply */
-	err = plug_mq_cmd(&ctl->ipc, ctl_data, IPC3_MAX_MSG_SIZE,
-			  ctl_data, IPC3_MAX_MSG_SIZE);
-	if (err < 0) {
-		SNDERR("error: can't read CTL %d message\n", ctl_data->comp_id);
-		return err;
-	}
-
-	/* did IPC succeed ? */
-	if (ctl_data->rhdr.error != 0) {
-		SNDERR("error: can't read CTL %d failed: error %d\n",
-		       ctl_data->comp_id, ctl_data->rhdr.error);
-		return ctl_data->rhdr.error;
-	}
-
-	/* get data for IPC */
-	memcpy(data, &ctl_data->data, MIN(binary_ctl->max, max_bytes));
-	free(ctl_data);
-
-	return err;
+	return 0;
 }
 
 static int plug_ctl_write_bytes(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 				unsigned char *data, size_t max_bytes)
 {
-	snd_sof_ctl_t *ctl = ext->private_data;
-	struct snd_soc_tplg_bytes_control *binary_ctl =
-		CTL_GET_TPLG_BYTES(ctl, key);
-	struct sof_ipc_ctrl_data *ctl_data;
-	int err;
-
-	// TODO: set generic max size
-	ctl_data = calloc(IPC3_MAX_MSG_SIZE, 1);
-	if (!ctl_data)
-		return -ENOMEM;
-
-	printf("%s %d\n", __func__, __LINE__);
-
-	/* setup the IPC message */
-	ctl_data->comp_id = ctl->glb->ctl[key].comp_id;
-	ctl_data->cmd = SOF_CTRL_CMD_BINARY;
-	ctl_data->type = SOF_CTRL_TYPE_VALUE_COMP_SET;
-	ctl_data->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_SET_VALUE;
-	ctl_data->rhdr.hdr.size = sizeof(ctl_data);
-
-	/* set data for IPC */
-	memcpy(&ctl_data->data, data, MIN(binary_ctl->max, max_bytes));
-
-	/* send message and wait for reply */
-	err = plug_mq_cmd(&ctl->ipc, ctl_data, IPC3_MAX_MSG_SIZE,
-			  ctl_data, IPC3_MAX_MSG_SIZE);
-	if (err < 0) {
-		SNDERR("error: can't read CTL %d message\n", ctl_data->comp_id);
-		return err;
-	}
-
-	/* did IPC succeed ? */
-	if (ctl_data->rhdr.error != 0) {
-		SNDERR("error: can't read CTL %d failed: error %d\n",
-		       ctl_data->comp_id, ctl_data->rhdr.error);
-		return ctl_data->rhdr.error;
-	}
-
-	free(ctl_data);
-
-	return err;
+	return 0;
 }
 
 /*
@@ -618,22 +542,39 @@ SND_CTL_PLUGIN_DEFINE_FUNC(sof)
 	plug->module_prv = ctl;
 
 	/* parse the ALSA configuration file for sof plugin */
-	err = plug_parse_conf(plug, name, root, conf);
+	err = plug_parse_conf(plug, name, root, conf, true);
 	if (err < 0) {
 		SNDERR("failed to parse config: %s", strerror(err));
 		goto error;
 	}
 
-	/* create message queue for IPC */
-	err = plug_mq_init(&ctl->ipc, plug->tplg_file, "ipc", 0);
-	if (err < 0)
-		goto error;
-
-	/* open message queue for IPC */
-	err = plug_mq_open(&ctl->ipc);
+	/* init IPC tx message queue name */
+	err = plug_mq_init(&ctl->ipc_tx, "sof", "ipc-tx", 0);
 	if (err < 0) {
-		SNDERR("failed to open IPC message queue: %s", strerror(err));
-		SNDERR("The PCM needs to be open for mixers to connect to pipeline");
+		SNDERR("error: invalid name for IPC tx mq %s\n", plug->tplg_file);
+		goto error;
+	}
+
+	/* open the sof-pipe IPC tx message queue */
+	err = plug_mq_open(&ctl->ipc_tx);
+	if (err < 0) {
+		SNDERR("error: failed to open sof-pipe IPC mq %s: %s",
+		       ctl->ipc_tx.queue_name, strerror(err));
+		goto error;
+	}
+
+	/* init IPC rx message queue name */
+	err = plug_mq_init(&ctl->ipc_rx, "sof", "ipc-rx", 0);
+	if (err < 0) {
+		SNDERR("error: invalid name for IPC rx mq %s\n", plug->tplg_file);
+		goto error;
+	}
+
+	/* open the sof-pipe IPC rx message queue */
+	err = plug_mq_open(&ctl->ipc_rx);
+	if (err < 0) {
+		SNDERR("error: failed to open sof-pipe IPC mq %s: %s",
+		       ctl->ipc_rx.queue_name, strerror(err));
 		goto error;
 	}
 
@@ -662,7 +603,7 @@ SND_CTL_PLUGIN_DEFINE_FUNC(sof)
 		sizeof(ctl->ext.mixername) - 1);
 
 	/* polling on message queue - supported on Linux but not portable */
-	ctl->ext.poll_fd = ctl->ipc.mq;
+	ctl->ext.poll_fd = ctl->ipc_tx.mq;
 
 	ctl->ext.callback = &sof_ext_callback;
 	ctl->ext.private_data = ctl;
