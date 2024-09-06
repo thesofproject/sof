@@ -6,7 +6,9 @@ list(APPEND TPLGS
 "sof-hda-generic\;sof-hda-generic-idisp\;"
 # HDA topology with mixer-based pipelines for HDA and
 # passthrough pipelines for HDMI
-"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix"
+"sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
+EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
+
 # HDA topology with mixer-based pipelines for HDA and
 # passthrough pipelines for HDMI and
 # 2 or 4 DMIC, no NHLT blob included in topology
