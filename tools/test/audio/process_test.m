@@ -1,6 +1,6 @@
 % process_test - test objective audio quality parameters
 %
-% process_test(comp, bits_in_list, bits_out_list, fs, fulltest, xtrun)
+% process_test(comp, bits_in_list, bits_out_list, fs, fulltest, show_plots, xtrun)
 %
 % Inputs
 %   comp - component to test
@@ -8,17 +8,19 @@
 %   bits_out_list - output workd lengths
 %   fs - sample rate
 %   fulltest - 0 perform only chirp test, 1 perform all
+%   show_plots - use 1 to show, defaults to hidden with 0
+%                with value 2 also temporary sound files are preserved
 %   xtrun - set to 'xt-run' or 'xt-run --turbo' to test with xt-testbench
 %
 % E.g.
-% process_test('eq-iir', 32, 32, 48000, 0, 'xt-run --turbo');
+% process_test('eq-iir', 32, 32, 48000, 0, 0, 'xt-run --turbo');
 % process_test('eq-iir', 32, 32);
 
 % SPDX-License-Identifier: BSD-3-Clause
 % Copyright(c) 2017-2022 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_list, fs, fulltest, xtrun)
+function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_list, fs, fulltest, show_plots, xtrun)
 	%% Defaults for call parameters
 	if nargin < 1
 		comp = 'EQIIR';
@@ -41,6 +43,10 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	end
 
 	if nargin < 6
+		show_plots = 0;
+	end
+
+	if nargin < 7
 		xtrun = '';
 	end
 
@@ -68,9 +74,19 @@ function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_lis
 	%  visibility set to 0 only console text is seen. The plots are
 	%  exported into plots directory in png format and can be viewed from
 	%  there.
-	t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
-	t.plot_visible = 'off';    % Use off for batch tests and on for interactive
-	t.files_delete = 1;        % Set to 0 to inspect the audio data files
+	if show_plots > 0
+		t.plot_close_windows = 0;  % Workaround for visible windows if Octave hangs
+		t.plot_visible = 'on';     % Use off for batch tests and on for interactive
+	else
+		t.plot_close_windows = 1;
+		t.plot_visible = 'off';
+	end
+
+	if show_plots > 1
+		t.files_delete = 0;        % Set to 0 to inspect the audio data files
+	else
+		t.files_delete = 1;
+	end
 
 	%% Prepare
 	process_test_paths(true);
