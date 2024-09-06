@@ -262,7 +262,7 @@ NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC1_RATE=16000,\
 DMIC1_ENABLE=MFCC,DMIC1_MFCC_PARAMS=default"
 
 # Topology for SOF plugin
-"development/sof-plugin\;sof-plugin\;NOISE_SUPPRESSION=false"
+"development/sof-plugin\;sof-plugin\;NOISE_SUPPRESSION=false,PLAYBACK_PROCESS=passthrough"
 
 # mtl-rt5650 with AEC but not DTS
 "cavs-rt5682\;sof-mtl-rt5650-google-aec\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
