@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_CROSSOVER
-	bool "Crossover Filter component"
+	tristate "Crossover Filter component"
 	select COMP_BLOB
 	select MATH_IIR_DF2T
 	default n
