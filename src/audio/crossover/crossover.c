@@ -636,3 +636,22 @@ static const struct module_interface crossover_interface = {
 
 DECLARE_MODULE_ADAPTER(crossover_interface, crossover_uuid, crossover_tr);
 SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);
+
+#if CONFIG_COMP_CROSSOVER_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#define UUID_CROSSOVER 0xD1, 0x9A, 0x8C, 0x94, 0x6A, 0x80, 0x31, 0x41, 0x6C, 0xAD, \
+		0xB2, 0xBD, 0xA9, 0xE3, 0x5A, 0x9F
+
+SOF_LLEXT_MOD_ENTRY(crossover, &crossover_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("XOVER", crossover_llext_entry, 1, UUID_CROSSOVER, 40);
+
+SOF_LLEXT_BUILDINFO;
+
+#endif

@@ -824,11 +824,17 @@ zephyr_library_sources_ifdef(CONFIG_COMP_ARIA
 	${SOF_AUDIO_PATH}/aria/aria_generic.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
-	${SOF_AUDIO_PATH}/crossover/crossover.c
-	${SOF_AUDIO_PATH}/crossover/crossover_generic.c
-	${SOF_AUDIO_PATH}/crossover/crossover_${ipc_suffix}.c
-)
+if(CONFIG_COMP_CROSSOVER STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/crossover/llext
+			 ${PROJECT_BINARY_DIR}/crossover_llext)
+	add_dependencies(app crossover)
+elseif(CONFIG_COMP_CROSSOVER)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/crossover/crossover.c
+		${SOF_AUDIO_PATH}/crossover/crossover_generic.c
+		${SOF_AUDIO_PATH}/crossover/crossover_${ipc_suffix}.c
+	)
+endif()
 
 if(CONFIG_COMP_DRC STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/drc/llext
