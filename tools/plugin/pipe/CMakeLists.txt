@@ -4,7 +4,6 @@ add_executable(sof-pipe
 	main.c
 	cpu.c
 	pipeline.c
-	ctl.c
 	ipc4.c
 	../common.c
 )

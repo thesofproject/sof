@@ -6,6 +6,7 @@ add_library(asound_module_pcm_sof MODULE
 	plugin.c
 	../common.c
 	tplg.c
+	tplg_ctl.c
 )
 
 sof_append_relative_path_definitions(asound_module_pcm_sof)

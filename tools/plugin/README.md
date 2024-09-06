@@ -70,11 +70,16 @@ arecord -Dsof:plugin:1:default:default:48k2c16b -f dat file.wav
 ```
 Will record audio using the plugin topology and PCM ID 1.
 
-Mixer settings can be adjusted for sof-plugin by (Not functional yet)
+Mixer settings can be adjusted for sof-plugin by
 
 ```
-alsamixer -Dsof:sof-plugin:1
+alsamixer -Dsof:plugin
 ```
+or
+```
+amixer -Dsof:plugin cset numid=1 20
+```
+Right now, only volume controls are supported. Support for bytes and enum controls is pending.
 
 # Instructions for testing OpenVino noise suppression model with the SOF plugin:
 1. Fetch the model from the Open Model zoo repository ex: noise-suppression-poconetlike-0001.xml
