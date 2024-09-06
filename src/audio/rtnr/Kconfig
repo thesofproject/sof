@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_RTNR
-	bool "RTNR component"
+	tristate "RTNR component"
 	select COMP_BLOB
 	select COMP_RTNR_STUB if COMP_STUBS
 	default n

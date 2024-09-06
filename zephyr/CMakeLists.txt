@@ -920,9 +920,19 @@ zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR_STUB
 	${SOF_AUDIO_PATH}/igo_nr/igo_nr_stub.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_RTNR
-	${SOF_AUDIO_PATH}/rtnr/rtnr.c
-)
+if(CONFIG_COMP_RTNR STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/rtnr/llext
+			 ${PROJECT_BINARY_DIR}/rtnr_llext)
+	add_dependencies(app rtnr)
+elseif(CONFIG_COMP_RTNR)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/rtnr/rtnr.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_COMP_RTNR_STUB
+		${SOF_AUDIO_PATH}/rtnr/rtnr_stub.c
+	)
+endif()
 
 if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
 	add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_test_llext
@@ -933,10 +943,6 @@ elseif(CONFIG_SAMPLE_SMART_AMP)
 		${SOF_SAMPLES_PATH}/audio/smart_amp_test_${ipc_suffix}.c
 	)
 endif()
-
-zephyr_library_sources_ifdef(CONFIG_COMP_RTNR_STUB
-	${SOF_AUDIO_PATH}/rtnr/rtnr_stub.c
-)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_TDFB
 	${SOF_AUDIO_PATH}/tdfb/tdfb.c
