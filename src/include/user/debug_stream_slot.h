@@ -24,43 +24,36 @@
  * structure that is initialized once at DSP boot time. All elements
  * in bellow example are 32-bit unsigned integers:
  *
- *      --------------------------------------------------  ---
- *      | id = DEBUG_STREAM_IDENTIFIER                   |   |
- *      | total_size = 4096                              | 64 bytes
- *      | num_sections = CONFIG_MP_MAX_NUM_CPUS *        |   |
- *      | <padding>                                      |   |
- *      --------------------------------------------------  ---
- *      | section_descriptor [] = {                      |   |
- *      |   {                                            |   |
- *      |      core_id = 0                               |   |
- *      |      size = 1344                               | 64 bytes
- *      |      offset = 64                               |   |
- *      |   }                                            |   |
- *      | <padding>                                      |   |
- *      --------------------------------------------------  ---
- *      |   {                                            |   |
- *      |      core_id = 1                               |   |
- *      |      size = 1344                               | 64 bytes
- *      |      offset = 1344+64                          |   |
- *      |   }                                            |   |
- *      | <padding>                                      |   |
- *      --------------------------------------------------  ---
- *      |   {                                            |   |
- *      |      core_id = 2                               |   |
- *      |      size = 1344                               | 64 bytes
- *      |      offset = 2*1344+64                        |   |
- *      |   }                                            |   |
- *      | }                                              |   |
- *      | <padding>                                      |   |
- *      --------------------------------------------------  ---
+ *      --------------------------------------------------
+ *      | id = DEBUG_STREAM_IDENTIFIER                   |
+ *      | total_size = 4096                              |
+ *      | num_sections = CONFIG_MP_MAX_NUM_CPUS *        |
+ *      | section_descriptor [] = {                      |
+ *      |   {                                            |
+ *      |      core_id = 0                               |
+ *      |      size = 1344                               |
+ *      |      offset = 64                               |
+ *      |   }                                            |
+ *      |   {                                            |
+ *      |      core_id = 1                               |
+ *      |      size = 1344                               |
+ *      |      offset = 1344+64                          |
+ *      |   }                                            |
+ *      |   {                                            |
+ *      |      core_id = 2                               |
+ *      |      size = 1344                               |
+ *      |      offset = 2*1344+64                        |
+ *      |   }                                            |
+ *      | }                                              |
+ *      | <padding>                                      |
+ *      -------------------------------------------------- n * 64 bytes
  *   * CONFIG_MP_MAX_NUM_CPUS is 3 in this example
  *
  * The header contains generic information like identifier, total
  * size, and number of sections. After the generic fields there is an
- * array of section descriptors. Each array element is cacheline
- * aligned. The array has 'num_sections' number of elements. Each
- * element in the array describes a circular buffer, one for each DSP
- * core.
+ * array of section descriptors. The array has 'num_sections' number
+ * of elements. Each element in the array describes a circular buffer,
+ * one for each DSP core.
  *
  * The remaining memory in the debug window slot is divided between
  * those sections. The buffers are not necessarily of equal size, like
@@ -82,11 +75,12 @@
  * The debug stream writes the records of abstract data to the
  * circular buffer, and updates the w_ptr when the record is
  * completely written. The host side receiver tries to keep up with the
- * w_ptr and keeps track of its read position. The size of the record
- * is written - again - after each record and before the next. This is
- * to allow parsing the stream backwards in an overrun recovery
- * situation. The w_ptr value is updated last, when the record is
- * completely written.
+ * w_ptr and keeps track of its read position.
+ *
+ * The size of the record is written - again - after each record and
+ * before the next. This is to allow parsing the stream backwards in
+ * an overrun recovery situation. The w_ptr value is updated last,
+ * when the record is completely written.
  */
 
 #include <stdint.h>

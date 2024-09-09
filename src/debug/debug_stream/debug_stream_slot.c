@@ -100,8 +100,9 @@ int debug_stream_slot_send_record(struct debug_stream_record *rec)
 static int debug_stream_slot_init(void)
 {
 	struct debug_stream_slot_hdr *hdr = debug_stream_get_slot();
-	size_t hdr_size = offsetof(struct debug_stream_slot_hdr,
-				   section_desc[CONFIG_MP_MAX_NUM_CPUS]);
+	size_t hdr_size = ALIGN_UP(offsetof(struct debug_stream_slot_hdr,
+					    section_desc[CONFIG_MP_MAX_NUM_CPUS]),
+				   CONFIG_DCACHE_LINE_SIZE);
 	size_t section_area_size = ADSP_DW_SLOT_SIZE - hdr_size;
 	size_t section_size = ALIGN_DOWN(section_area_size /
 					 CONFIG_MP_MAX_NUM_CPUS,
