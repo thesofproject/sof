@@ -34,30 +34,11 @@
 #define PLATFORM_LPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram1)) / SRAM_BANK_SIZE)
 #define PLATFORM_HPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram0)) / SRAM_BANK_SIZE)
 
-#define SRAM_CACHED_BASE		0xA0000000
-#define SRAM_BASE			0x40000000
-#define SRAM_ALIAS_MASK			0xF0000000
-#define SRAM_ALIAS_OFFSET		0x60000000
+#include <zephyr/cache.h>
 
-#if !defined UNIT_TEST
-static inline void __sparse_cache *uncache_to_cache(void *address)
-{
-	return (void __sparse_cache *)(((uintptr_t)(address) & ~SRAM_ALIAS_MASK) |
-				       SRAM_CACHED_BASE);
-}
-
-static inline void *cache_to_uncache(void __sparse_cache *address)
-{
-	return (void *)(((uintptr_t)(address) & ~SRAM_ALIAS_MASK) | SRAM_BASE);
-}
-
-#define is_uncached(address) \
-				(((uint32_t)(address) & SRAM_ALIAS_MASK) == SRAM_BASE)
-#else
-#define uncache_to_cache(address)       address
-#define cache_to_uncache(address)       address
-#define is_uncached(address)            0
-#endif
+#define uncache_to_cache(address)       sys_cache_cached_ptr_get(address)
+#define cache_to_uncache(address)       sys_cache_uncached_ptr_get(address)
+#define is_uncached(address)            sys_cache_is_ptr_cached(address)
 
 /**
  * \brief Returns pointer to the memory shared by multiple cores.
