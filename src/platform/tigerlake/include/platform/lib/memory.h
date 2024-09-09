@@ -333,12 +333,6 @@
 #define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
 #define SOF_STACK_TOTAL_SIZE	(CONFIG_CORE_COUNT * SOF_STACK_SIZE)
 
-/* SOF Core S configuration */
-#define SOF_CORE_S_SIZE \
-	ALIGN((HEAP_SYSTEM_S_SIZE + HEAP_SYS_RUNTIME_S_SIZE + SOF_STACK_SIZE),\
-	SRAM_BANK_SIZE)
-#define SOF_CORE_S_T_SIZE ((CONFIG_CORE_COUNT - 1) * SOF_CORE_S_SIZE)
-
 /*
  * The LP SRAM Heap and Stack on Tigerlake are organised like this :-
  *

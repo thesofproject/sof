@@ -16,10 +16,6 @@
 #include <sof/lib/cpu.h>
 #endif
 
-#define SRAM_BANK_SIZE			(128 * 1024)
-
-#define EBB_BANKS_IN_SEGMENT		32
-
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN		DCACHE_LINE_SIZE
 
@@ -30,9 +26,6 @@
  * align to cache line size instead.
  */
 #define SHARED_DATA
-
-#define PLATFORM_LPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram1)) / SRAM_BANK_SIZE)
-#define PLATFORM_HPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram0)) / SRAM_BANK_SIZE)
 
 #include <zephyr/cache.h>
 

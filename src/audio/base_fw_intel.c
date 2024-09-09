@@ -20,6 +20,8 @@
 #endif
 #include <zephyr/pm/device_runtime.h>
 
+#include <sof/lib/memory.h>
+
 #include <ipc4/base_fw.h>
 #include <rimage/sof/user/manifest.h>
 
@@ -27,6 +29,21 @@ struct ipc4_modules_info {
 	uint32_t modules_count;
 	struct sof_man_module modules[0];
 } __packed __aligned(4);
+
+/*
+ * TODO: default to value of ACE1.x platforms. This is defined
+ *       in multiple places in Zephyr, mm_drv_intel_adsp.h and
+ *       cavs25/adsp_memory.h, needs to be unified (and defined
+ *       in Zephyr side)
+ */
+#ifndef SRAM_BANK_SIZE
+#define SRAM_BANK_SIZE			(128 * 1024)
+#endif
+
+#define EBB_BANKS_IN_SEGMENT		32
+
+#define PLATFORM_LPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram1)) / SRAM_BANK_SIZE)
+#define PLATFORM_HPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram0)) / SRAM_BANK_SIZE)
 
 LOG_MODULE_REGISTER(basefw_intel, CONFIG_SOF_LOG_LEVEL);
 
@@ -54,6 +71,13 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 	uint32_t value;
 
 	tlv_value_uint32_set(tuple, IPC4_HP_EBB_COUNT_HW_CFG, PLATFORM_HPSRAM_EBB_COUNT);
+
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_EBB_SIZE_BYTES_HW_CFG, SRAM_BANK_SIZE);
+
+	tuple = tlv_next(tuple);
+	value = SOF_DIV_ROUND_UP(EBB_BANKS_IN_SEGMENT * SRAM_BANK_SIZE, HOST_PAGE_SIZE);
+	tlv_value_uint32_set(tuple, IPC4_TOTAL_PHYS_MEM_PAGES_HW_CFG, value);
 
 	tuple = tlv_next(tuple);
 	/* 2 DMIC dais */

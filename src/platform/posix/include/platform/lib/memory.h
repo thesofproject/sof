@@ -39,11 +39,6 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 	return ptr;
 }
 
-#define SRAM_BANK_SIZE 0x10000
-#define EBB_BANKS_IN_SEGMENT 32
-#define PLATFORM_HPSRAM_EBB_COUNT 32
-#define PLATFORM_LPSRAM_EBB_COUNT 1
-
 #define SHARED_DATA /**/
 
 #endif /* PLATFORM_HOST_PLATFORM_MEMORY_H */
