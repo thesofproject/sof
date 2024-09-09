@@ -634,10 +634,16 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
 	${SOF_AUDIO_PATH}/dcblock/dcblock_${ipc_suffix}.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_SEL
-	${SOF_AUDIO_PATH}/selector/selector_generic.c
-	${SOF_AUDIO_PATH}/selector/selector.c
-)
+if(CONFIG_COMP_SEL STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/selector/llext
+			 ${PROJECT_BINARY_DIR}/selector_llext)
+	add_dependencies(app selector)
+elseif(CONFIG_COMP_SEL)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/selector/selector_generic.c
+		${SOF_AUDIO_PATH}/selector/selector.c
+	)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_KPB
 	${SOF_AUDIO_PATH}/kpb.c

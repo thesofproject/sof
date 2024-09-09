@@ -1,10 +1,14 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
 	[[module.entry]]
 	name = "MICSEL"
 	uuid = "32FE92C1-1E17-4FC2-9758-C7F3542E980A"
 	affinity_mask = "0x1"
 	instance_count = "8"
 	domain_types = "0"
-	load_type = "0"
+	load_type = LOAD_TYPE
 	init_config = "1"
 	module_type = "0xC"
 	auto_start = "0"
