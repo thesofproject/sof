@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config DTS_CODEC
-        bool "DTS codec"
+        tristate "DTS codec"
         default n
         select DTS_CODEC_STUB if COMP_STUBS
         help

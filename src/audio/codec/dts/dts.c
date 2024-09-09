@@ -419,7 +419,9 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 			    const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			    size_t response_size)
 {
+#if CONFIG_IPC_MAJOR_3
 	struct module_data *md = &mod->priv;
+#endif
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
@@ -469,3 +471,22 @@ static const struct module_interface dts_interface = {
 
 DECLARE_MODULE_ADAPTER(dts_interface, dts_uuid, dts_tr);
 SOF_MODULE_INIT(dts, sys_comp_module_dts_interface_init);
+
+#if CONFIG_DTS_CODEC_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#define UUID_DTS 0x4F, 0xC3, 0x5F, 0xD9, 0x0F, 0x37, 0xC7, 0x4A, 0x86, 0xBC, \
+		0xBF, 0xDC, 0x5B, 0xE2, 0x41, 0xE6
+
+SOF_LLEXT_MOD_ENTRY(dts, &dts_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("DTS", dts_llext_entry, 1, UUID_DTS, 40);
+
+SOF_LLEXT_BUILDINFO;
+
+#endif
