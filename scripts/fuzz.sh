@@ -20,6 +20,7 @@ Usage:
              relatively verbose stderr is not redirected by -o.
   -j n       Number of concurrent -jobs=n. Defaults to 1.
              The value 0 uses the output of the 'nproc' command.
+  -a arch    The architecture to build against (i386, x86_64)
 
 Arguments after -- are passed as is to CMake (through west).
 When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
@@ -89,10 +90,12 @@ main()
   local FUZZER_STDOUT=/dev/stdout # bashism
   local TEST_DURATION=3
   local SANITIZER=address
+  local ARCH=i386
   local IPC
+  local BOARD
 
   # Parse "$@". getopts stops after '--'
-  while getopts "i:hj:ps:o:t:b" opt; do
+  while getopts "i:hj:ps:a:o:t:b" opt; do
       case "$opt" in
           i) IPC="$OPTARG";;
           h) print_help; exit 0;;
@@ -101,6 +104,7 @@ main()
           s) SANITIZER="$OPTARG";;
           o) FUZZER_STDOUT="$OPTARG";;
           t) TEST_DURATION="$OPTARG";;
+          a) ARCH="$OPTARG";;
           b) BUILD_ONLY=true;;
           *) print_help; exit 1;;
       esac
@@ -124,6 +128,12 @@ main()
       *) echo "Unknown fuzzer type"; print_help; exit 1;;
   esac
 
+  case $ARCH in
+      i386) BOARD="native_sim";;
+      x86_64) BOARD="native_sim/native/64";;
+      *) echo "Unknown arch type"; print_help; exit 1;;
+  esac
+
   # Note there's never any reason to delete fuzz_corpus/.
   # Don't trust `west build -p` because it is not 100% unreliable,
   # especially not when doing unusual toolchain things.
@@ -139,7 +149,7 @@ main()
   cmake_args+=( "$@" )
 
   (set -x
-   west build -d build-fuzz -b native_sim "$SOF_TOP"/app/ -- "${cmake_args[@]}"
+   west build -d build-fuzz -b $BOARD "$SOF_TOP"/app/ -- "${cmake_args[@]}"
   )
 
   if $BUILD_ONLY; then
