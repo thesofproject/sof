@@ -886,3 +886,22 @@ static const struct module_interface igo_nr_interface = {
 
 DECLARE_MODULE_ADAPTER(igo_nr_interface, igo_nr_uuid, igo_nr_tr);
 SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
+
+#if CONFIG_COMP_IGO_NR_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#define UUID_IGO_NR 0xBC, 0xE2, 0x6A, 0x69, 0x77, 0x28, 0xEB, 0x11, 0xC1, 0xAD, \
+		0x02, 0x42, 0xAC, 0x12, 0x00, 0x02
+
+SOF_LLEXT_MOD_ENTRY(igo_nr, &igo_nr_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("IGO_NR", igo_nr_llext_entry, 1, UUID_IGO_NR, 40);
+
+SOF_LLEXT_BUILDINFO;
+
+#endif
