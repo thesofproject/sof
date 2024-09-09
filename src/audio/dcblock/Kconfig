@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_DCBLOCK
-	bool "DC Blocking Filter component"
+	tristate "DC Blocking Filter component"
 	default y
 	help
 	  Select for DC Blocking Filter component. This component filters out
