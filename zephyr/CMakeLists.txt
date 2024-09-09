@@ -920,13 +920,19 @@ elseif(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING)
 	endif()
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR
-	${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
-)
+if(CONFIG_COMP_IGO_NR STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/igo_nr/llext
+			 ${PROJECT_BINARY_DIR}/igo_nr_llext)
+	add_dependencies(app igo_nr)
+elseif(CONFIG_COMP_IGO_NR)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
+	)
 
-zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR_STUB
-	${SOF_AUDIO_PATH}/igo_nr/igo_nr_stub.c
-)
+	zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR_STUB
+		${SOF_AUDIO_PATH}/igo_nr/igo_nr_stub.c
+	)
+endif()
 
 if(CONFIG_COMP_RTNR STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/rtnr/llext

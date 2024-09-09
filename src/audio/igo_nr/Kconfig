@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_IGO_NR
-	bool "IGO NR component"
+	tristate "IGO NR component"
 	select COMP_BLOB
 	select COMP_IGO_NR_STUB if COMP_STUBS
 	default n
