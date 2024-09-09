@@ -631,9 +631,6 @@ zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
 	${SOF_AUDIO_PATH}/dcblock/dcblock.c
 	${SOF_AUDIO_PATH}/dcblock/dcblock_hifi3.c
 	${SOF_AUDIO_PATH}/dcblock/dcblock_hifi4.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_DCBLOCK
 	${SOF_AUDIO_PATH}/dcblock/dcblock_${ipc_suffix}.c
 )
 
@@ -830,9 +827,6 @@ zephyr_library_sources_ifdef(CONFIG_COMP_ARIA
 zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
 	${SOF_AUDIO_PATH}/crossover/crossover.c
 	${SOF_AUDIO_PATH}/crossover/crossover_generic.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_CROSSOVER
 	${SOF_AUDIO_PATH}/crossover/crossover_${ipc_suffix}.c
 )
 
@@ -860,9 +854,6 @@ endif()
 zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
 	${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_${ipc_suffix}.c
 )
 
@@ -969,9 +960,6 @@ zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
 zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 	${SOF_AUDIO_PATH}/mux/mux.c
 	${SOF_AUDIO_PATH}/mux/mux_generic.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_MUX
 	${SOF_AUDIO_PATH}/mux/mux_${ipc_suffix}.c
 )
 
