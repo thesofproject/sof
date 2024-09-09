@@ -43,15 +43,8 @@ LOG_MODULE_REGISTER(selector, CONFIG_SOF_LOG_LEVEL);
 static const struct comp_driver comp_selector;
 
 SOF_DEFINE_REG_UUID(selector);
-#define SELECTOR_UUID selector_uuid
-#else
-SOF_DEFINE_REG_UUID(selector4);
-#define SELECTOR_UUID selector4_uuid
-#endif
+DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
 
-DECLARE_TR_CTX(selector_tr, SOF_UUID(SELECTOR_UUID), LOG_LEVEL_INFO);
-
-#if CONFIG_IPC_MAJOR_3
 static int selector_verify_params(struct comp_dev *dev,
 				  struct sof_ipc_stream_params *params)
 {
@@ -228,7 +221,6 @@ static int selector_params(struct comp_dev *dev,
 	return 0;
 }
 
-#if CONFIG_IPC_MAJOR_3
 /**
  * \brief Sets selector control command.
  * \param[in,out] dev Selector base component device.
@@ -339,7 +331,6 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 
 	return ret;
 }
-#endif
 
 /**
  * \brief Sets component state.
@@ -520,15 +511,13 @@ static int selector_reset(struct comp_dev *dev)
 /** \brief Selector component definition. */
 static const struct comp_driver comp_selector = {
 	.type	= SOF_COMP_SELECTOR,
-	.uid	= SOF_RT_UUID(SELECTOR_UUID),
+	.uid	= SOF_RT_UUID(selector_uuid),
 	.tctx	= &selector_tr,
 	.ops	= {
 		.create		= selector_new,
 		.free		= selector_free,
 		.params		= selector_params,
-#if CONFIG_IPC_MAJOR_3
 		.cmd		= selector_cmd,
-#endif
 		.trigger	= selector_trigger,
 		.copy		= selector_copy,
 		.prepare	= selector_prepare,
@@ -549,7 +538,12 @@ UT_STATIC void sys_comp_selector_init(void)
 
 DECLARE_MODULE(sys_comp_selector_init);
 SOF_MODULE_INIT(selector, sys_comp_selector_init);
+
 #else
+
+SOF_DEFINE_REG_UUID(selector4);
+DECLARE_TR_CTX(selector_tr, SOF_UUID(selector4_uuid), LOG_LEVEL_INFO);
+
 static void build_config(struct comp_data *cd, struct module_config *cfg)
 {
 	enum sof_ipc_frame frame_fmt, valid_fmt;
@@ -929,6 +923,26 @@ static const struct module_interface selector_interface = {
 	.free			= selector_free
 };
 
-DECLARE_MODULE_ADAPTER(selector_interface, SELECTOR_UUID, selector_tr);
+DECLARE_MODULE_ADAPTER(selector_interface, selector4_uuid, selector_tr);
 SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
+
+#if CONFIG_COMP_SEL_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+#define UUID_SELECTOR 0x32, 0xFE, 0x92, 0xC1, 0x17, 0x1E, 0xC2, 0x4F, 0x58, 0x97, \
+		0xC7, 0xF3, 0x54, 0x2E, 0x98, 0x0A
+
+SOF_LLEXT_MOD_ENTRY(selector, &selector_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("MICSEL", selector_llext_entry, 1, UUID_SELECTOR, 8);
+
+SOF_LLEXT_BUILDINFO;
+
+#endif
+
 #endif

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_SEL
-	bool "Channel selector component"
+	tristate "Channel selector component"
 	default y
 	help
 	  Select for SEL component
