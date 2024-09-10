@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <ipc4/gateway.h>
 
 #define IPC4_ALH_MAX_NUMBER_OF_GTW 16
