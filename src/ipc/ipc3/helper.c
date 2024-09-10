@@ -114,7 +114,7 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 	}
 
 	offset = comp->hdr.size - comp->ext_data_length;
-	if ((offset & 0x3) != 0) {
+	if (!IS_ALIGNED(offset, 4)) {
 		tr_err(&comp_tr, "Invalid ext data offset %lx", offset);
 		goto out;
 	}
