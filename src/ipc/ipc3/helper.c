@@ -80,6 +80,7 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
 	struct sof_ipc_comp_ext *comp_ext;
+	uintptr_t offset;
 	k_spinlock_key_t key;
 
 	/* do we have extended data ? */
@@ -112,9 +113,13 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 		goto out;
 	}
 
-	comp_ext = (struct sof_ipc_comp_ext *)
-		   ((uint8_t *)comp + comp->hdr.size -
-		    comp->ext_data_length);
+	offset = comp->hdr.size - comp->ext_data_length;
+	if ((offset & 0x3) != 0) {
+		tr_err(&comp_tr, "Invalid ext data offset %lx", offset);
+		goto out;
+	}
+
+	comp_ext = (struct sof_ipc_comp_ext *)((uint8_t *)comp + offset);
 
 	/* UUID is first item in extended data - check its big enough */
 	if (comp->ext_data_length < UUID_SIZE) {
