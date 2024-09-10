@@ -10,11 +10,15 @@
  * \authors Tomasz Leman <tomasz.m.leman@intel.com>
  */
 
+#include <sof/audio/component.h>
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/pm_runtime.h>
 #include <ipc/topology.h>
+#include <module/module/base.h>
 #include <rtos/alloc.h>
+
+#include "../audio/copier/copier.h"
 
 /* Zephyr includes */
 #include <version.h>
@@ -47,6 +51,66 @@ extern void *global_imr_ram_storage;
 #endif
 
 #if CONFIG_PM
+#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+/*
+ * SOF explicitly manages DAI power states to meet the audio-specific requirement
+ * that all audio pipelines must be paused prior to entering the D3 power state.
+ * Zephyr's PM framework is designed to suspend devices based on their runtime
+ * usage, which does not align with the audio pipeline lifecycle managed by SOF.
+ * During system PM transitions, Zephyr does not automatically handle the suspension
+ * of DAIs, as it lacks the context of audio pipeline states. Therefore, SOF
+ * implements additional logic to synchronize DAI states with the DSP core during
+ * audio pipeline pauses and resumes. This ensures seamless audio performance and
+ * data integrity across D3 transitions, which is critical for SOF's operation
+ * and currently outside the scope of Zephyr's device-level PM capabilities.
+ */
+static void suspend_dais(void)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+	struct processing_module *mod;
+	struct copier_data *cd;
+	struct dai_data *dd;
+
+	list_for_item(clist, &ipc_get()->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT || dev_comp_type(icd->cd) != SOF_COMP_DAI)
+			continue;
+
+		mod = comp_mod(icd->cd);
+		cd = module_get_private_data(mod);
+		dd = cd->dd[0];
+		if (dai_remove(dd->dai->dev) < 0) {
+			tr_err(&zephyr_tr, "DAI suspend failed, type %d index %d",
+			       dd->dai->type, dd->dai->index);
+		}
+	}
+}
+
+static void resume_dais(void)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+	struct processing_module *mod;
+	struct copier_data *cd;
+	struct dai_data *dd;
+
+	list_for_item(clist, &ipc_get()->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT || dev_comp_type(icd->cd) != SOF_COMP_DAI)
+			continue;
+
+		mod = comp_mod(icd->cd);
+		cd = module_get_private_data(mod);
+		dd = cd->dd[0];
+		if (dai_probe(dd->dai->dev) < 0) {
+			tr_err(&zephyr_tr, "DAI resume failed, type %d index %d",
+			       dd->dai->type, dd->dai->index);
+		}
+	}
+}
+#endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
+
 void cpu_notify_state_entry(enum pm_state state)
 {
 	if (!cpu_is_primary(arch_proc_id()))
@@ -80,6 +144,8 @@ void cpu_notify_state_entry(enum pm_state state)
 			k_panic();
 		}
 
+		/* Suspend all DAI components before entering D3 state. */
+		suspend_dais();
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
 	}
 }
@@ -99,6 +165,8 @@ void cpu_notify_state_exit(enum pm_state state)
 #endif
 
 #ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+		/* Resume all DAI components after exiting D3 state. */
+		resume_dais();
 		/* free global_imr_ram_storage */
 		rfree(global_imr_ram_storage);
 		global_imr_ram_storage = NULL;
