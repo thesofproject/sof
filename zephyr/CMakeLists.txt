@@ -262,8 +262,8 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 			${SOF_PLATFORM_PATH}/lunarlake/lib/clk.c
 		)
 
-	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE30_PTL
-			${SOF_PLATFORM_PATH}/pantherlake/lib/clk.c
+	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE30
+			${SOF_PLATFORM_PATH}/ace30/lib/clk.c
 		)
 
 	# SOF core infrastructure - runs on top of Zephyr
@@ -292,8 +292,8 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		set(PLATFORM "meteorlake")
 	elseif(CONFIG_SOC_INTEL_ACE20_LNL)
 		set(PLATFORM "lunarlake")
-	elseif(CONFIG_SOC_INTEL_ACE30_PTL)
-		set(PLATFORM "pantherlake")
+	elseif(CONFIG_SOC_INTEL_ACE30)
+		set(PLATFORM "ace30")
 	endif()
 
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/ace/include)
