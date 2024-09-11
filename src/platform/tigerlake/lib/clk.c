@@ -9,6 +9,40 @@
 #include <sof/drivers/ssp.h>
 #include <rtos/clk.h>
 
+/** \brief Request HP RING Oscillator Clock */
+#define SHIM_CLKCTL_RHROSCC	BIT(31)
+
+/** \brief Request WOVCRO Clock */
+#define SHIM_CLKCTL_WOV_CRO_REQUEST	BIT(4)
+
+/** \brief Request LP RING Oscillator Clock */
+#define SHIM_CLKCTL_RLROSCC	BIT(29)
+
+/** \brief Oscillator Clock Select*/
+#define SHIM_CLKCTL_OCS_HP_RING		BIT(2)
+#define SHIM_CLKCTL_OCS_LP_RING		0
+#define SHIM_CLKCTL_WOVCROSC		BIT(3)
+
+/** \brief LP Memory Clock Select */
+#define SHIM_CLKCTL_LMCS_DIV2	0
+#define SHIM_CLKCTL_LMCS_DIV4	BIT(1)
+
+/** \brief HP Memory Clock Select */
+#define SHIM_CLKCTL_HMCS_DIV2	0
+#define SHIM_CLKCTL_HMCS_DIV4	BIT(0)
+
+/** \brief HP RING Oscillator Clock Status */
+#define SHIM_CLKSTS_HROSCCS	BIT(31)
+
+/** \brief WOVCRO Clock Status */
+#define SHIM_CLKSTS_WOV_CRO	BIT(4)
+
+/** \brief XTAL Oscillator Clock Status */
+#define SHIM_CLKSTS_XOSCCS	BIT(30)
+
+/** \brief LP RING Oscillator Clock Status */
+#define SHIM_CLKSTS_LROSCCS	BIT(29)
+
 static const struct freq_table platform_cpu_freq[] = {
 	{ 38400000, 38400 },
 	{ 120000000, 120000 },
