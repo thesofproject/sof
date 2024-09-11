@@ -81,6 +81,17 @@ static const struct sof_ipc_fw_ready ready
 #define CAVS_DEFAULT_RO_FOR_MEM	SHIM_CLKCTL_OCS_HP_RING
 #endif
 
+#include <cavs/drivers/sideband-ipc.h>
+
+/* DSP IPC for Host Registers */
+#define IPC_DIPCIDR		0x10
+#define IPC_DIPCIDD		0x18
+
+static inline void ipc_write(uint32_t reg, uint32_t val)
+{
+	*((volatile uint32_t*)(IPC_HOST_BASE + reg)) = val;
+}
+
 int platform_boot_complete(uint32_t boot_message)
 {
 	struct ipc_cmd_hdr header;
