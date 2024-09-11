@@ -11,6 +11,8 @@ manifest:
       url-base: https://github.com/thesofproject
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
+    - name: pillo79
+      url-base: https://github.com/pillo79
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -43,8 +45,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: aaa119d75729410ae70fc8ba188634c23214f804
-      remote: zephyrproject
+      revision: pr-llext-inspect-api-merged
+      remote: pillo79
 
       # Import some projects listed in zephyr/west.yml@revision
       #
