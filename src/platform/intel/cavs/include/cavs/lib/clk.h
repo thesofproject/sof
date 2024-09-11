@@ -21,7 +21,6 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/shim.h>
 #include <stdint.h>
 
 struct sof;
