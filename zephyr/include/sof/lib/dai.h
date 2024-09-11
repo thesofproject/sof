@@ -6,12 +6,10 @@
 #ifndef __SOF_LIB_DAI_H__
 #define __SOF_LIB_DAI_H__
 
-/* no-op on Zephyr */
-
 #ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <sof/lib/dai-zephyr.h>
 #else
 #include <sof/lib/dai-legacy.h>
 #endif
 
-#endif /* __SOF_LIB_MEMORY_H__ */
+#endif /* __SOF_LIB_DAI_H__ */
