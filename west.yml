@@ -9,8 +9,8 @@ manifest:
   remotes:
     - name: thesofproject
       url-base: https://github.com/thesofproject
-    - name: zephyrproject
-      url-base: https://github.com/zephyrproject-rtos
+    - name: lyakh
+      url-base: https://github.com/lyakh
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -43,8 +43,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: 689d1edee1d57f052b1d4572d67618c0b0e2b8a4
-      remote: zephyrproject
+      revision: 46392caab0ad766e08a624c5ff71393a8a202971
+      remote: lyakh
 
       # Import some projects listed in zephyr/west.yml@revision
       #
