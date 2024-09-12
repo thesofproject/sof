@@ -9,6 +9,10 @@
 #ifndef __SOF_LIB_MM_HEAP_H__
 #define __SOF_LIB_MM_HEAP_H__
 
+#ifdef __ZEPHYR__
+#error "Please use zephyr/include/sof/lib/mm_heap.h instead"
+#endif
+
 #include <sof/common.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
