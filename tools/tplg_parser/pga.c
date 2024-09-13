@@ -73,7 +73,7 @@ static int pga_ipc3_build(struct tplg_context *ctx, void *_pga)
 
 		/* call ctl creation callback if needed */
 		if (ctx->ctl_cb)
-			ctx->ctl_cb(ctl, volume, ctx->ctl_arg);
+			ctx->ctl_cb(ctl, volume, ctx->ctl_arg, 0);
 
 		/* we only care about the volume ctl - ignore others atm */
 		if (ctl->ops.get != 256)

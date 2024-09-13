@@ -91,6 +91,10 @@ int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 	struct snd_soc_tplg_mixer_control *mixer_ctl;
 	struct snd_soc_tplg_enum_control *enum_ctl;
 	struct snd_soc_tplg_bytes_control *bytes_ctl;
+	int num_mixers = 0;
+	int num_enums = 0;
+	int num_byte_controls = 0;
+	int index;
 	int j, ret = 0;
 
 	for (j = 0; j < num_kcontrols; j++) {
@@ -105,6 +109,7 @@ int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 		case SND_SOC_TPLG_CTL_VOLSW_XR_SX:
 		case SND_SOC_TPLG_CTL_RANGE:
 		case SND_SOC_TPLG_DAPM_CTL_VOLSW:
+			index = num_mixers++;
 			/* load mixer type control */
 			mixer_ctl = (struct snd_soc_tplg_mixer_control *)ctl_hdr;
 			/* ctl is after private data */
@@ -116,6 +121,7 @@ int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 		case SND_SOC_TPLG_DAPM_CTL_ENUM_DOUBLE:
 		case SND_SOC_TPLG_DAPM_CTL_ENUM_VIRT:
 		case SND_SOC_TPLG_DAPM_CTL_ENUM_VALUE:
+			index = num_enums++;
 			/* load enum_ctl type control */
 			enum_ctl = (struct snd_soc_tplg_enum_control *)ctl_hdr;
 			/* ctl is after private data */
@@ -123,6 +129,7 @@ int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 			break;
 
 		case SND_SOC_TPLG_CTL_BYTES:
+			index = num_byte_controls++;
 			/* load bytes_ctl type control */
 			bytes_ctl = (struct snd_soc_tplg_bytes_control *)ctl_hdr;
 			/* ctl is after private data */
@@ -135,7 +142,7 @@ int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 		}
 
 		if (ctx->ctl_cb && object)
-			ctx->ctl_cb(ctl_hdr, object, ctx->ctl_arg);
+			ctx->ctl_cb(ctl_hdr, object, ctx->ctl_arg, index);
 	}
 
 	if (rctl && ctl_hdr) {

@@ -225,7 +225,7 @@ int tplg_new_process(struct tplg_context *ctx, void *process, size_t process_siz
 
 		/* call ctl creation callback if needed */
 		if (ctx->ctl_cb)
-			ctx->ctl_cb(ctl, process, ctx->ctl_arg);
+			ctx->ctl_cb(ctl, process, ctx->ctl_arg, 0);
 
 		/* Merge process and priv_data into process_ipc */
 		if (!priv_data)

@@ -141,7 +141,7 @@ static uint32_t vol_compute_gain(uint32_t value, struct snd_soc_tplg_tlv_dbscale
 }
 
 /* helper function to add new kcontrols to the list of kcontrols in the global context */
-int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, void *arg)
+int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, void *arg, int index)
 {
 	snd_sof_plug_t *plug = arg;
 	struct plug_shm_glb_state *glb = plug->glb_ctx.addr;
@@ -169,6 +169,7 @@ int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, voi
 		ctl->module_id = comp_info->module_id;
 		ctl->instance_id = comp_info->instance_id;
 		ctl->mixer_ctl = *tplg_mixer;
+		ctl->index = index;
 		tlv = &tplg_ctl->tlv;
 		scale = &tlv->scale;
 
