@@ -152,7 +152,7 @@ int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, voi
 		return -EINVAL;
 	}
 
-	switch (tplg_ctl->type) {
+	switch (tplg_ctl->ops.info) {
 	case SND_SOC_TPLG_CTL_VOLSW:
 	case SND_SOC_TPLG_CTL_VOLSW_SX:
 	case SND_SOC_TPLG_CTL_VOLSW_XR_SX:
