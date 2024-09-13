@@ -143,6 +143,7 @@ static uint32_t vol_compute_gain(uint32_t value, struct snd_soc_tplg_tlv_dbscale
 /* helper function to add new kcontrols to the list of kcontrols in the global context */
 int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, void *arg, int index)
 {
+	struct tplg_comp_info *comp_info = _comp;
 	snd_sof_plug_t *plug = arg;
 	struct plug_shm_glb_state *glb = plug->glb_ctx.addr;
 	struct plug_shm_ctl *ctl;
@@ -159,7 +160,6 @@ int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, voi
 	{
 		struct snd_soc_tplg_mixer_control *tplg_mixer =
 			(struct snd_soc_tplg_mixer_control *)tplg_ctl;
-		struct tplg_comp_info *comp_info = _comp;
 		struct snd_soc_tplg_ctl_tlv *tlv;
 		struct snd_soc_tplg_tlv_dbscale *scale;
 		int i;
@@ -187,6 +187,18 @@ int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, voi
 	}
 	case SND_SOC_TPLG_CTL_ENUM:
 	case SND_SOC_TPLG_CTL_ENUM_VALUE:
+	{
+		struct snd_soc_tplg_enum_control *tplg_enum =
+			(struct snd_soc_tplg_enum_control *)tplg_ctl;
+
+		glb->size += sizeof(struct plug_shm_ctl);
+		ctl = &glb->ctl[glb->num_ctls++];
+		ctl->module_id = comp_info->module_id;
+		ctl->instance_id = comp_info->instance_id;
+		ctl->enum_ctl = *tplg_enum;
+		ctl->index = index;
+		break;
+	}
 	case SND_SOC_TPLG_CTL_BYTES:
 		break;
 	case SND_SOC_TPLG_CTL_RANGE:
