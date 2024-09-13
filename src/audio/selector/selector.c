@@ -180,7 +180,7 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, cd);
 
-	ret = memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data, bs);
+	ret = memcpy_s(&cd->config, sizeof(cd->config), &ipc_process->data, bs);
 	if (ret) {
 		rfree(cd);
 		rfree(dev);
