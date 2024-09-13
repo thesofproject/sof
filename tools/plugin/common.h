@@ -66,6 +66,7 @@ struct plug_shm_ctl {
 	unsigned int instance_id;
 	unsigned int type;
 	unsigned int volume_table[MAX_VOLUME_SIZE];
+	unsigned int index;
 	union {
 		struct snd_soc_tplg_mixer_control mixer_ctl;
 		struct snd_soc_tplg_enum_control enum_ctl;

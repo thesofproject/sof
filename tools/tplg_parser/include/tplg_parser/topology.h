@@ -181,7 +181,7 @@ struct tplg_context {
 	/* kcontrol creation */
 	void *ctl_arg;
 	int (*ctl_cb)(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
-		      void *comp, void *arg);
+		      void *comp, void *arg, int index);
 };
 
 #define tplg_get(ctx) ((void *)(ctx->tplg_base + ctx->tplg_offset))

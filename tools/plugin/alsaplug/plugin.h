@@ -64,6 +64,6 @@ int plug_parse_topology(snd_sof_plug_t *plug);
 int plug_set_up_pipelines(snd_sof_plug_t *plug, int dir);
 int plug_free_pipelines(snd_sof_plug_t *plug, struct tplg_pipeline_list *pipeline_list, int dir);
 void plug_free_topology(snd_sof_plug_t *plug);
-int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, void *arg);
+int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, void *arg, int index);
 
 #endif
