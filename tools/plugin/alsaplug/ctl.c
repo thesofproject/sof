@@ -198,6 +198,20 @@ static int plug_ctl_get_integer_info(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, 
 	return err;
 }
 
+static void plug_ctl_ipc_message(struct ipc4_module_large_config *config, int param_id,
+				 size_t size, uint32_t module_id, uint32_t instance_id,
+				 uint32_t type)
+{
+	config->primary.r.type = type;
+	config->primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+	config->primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	config->primary.r.module_id = module_id;
+	config->primary.r.instance_id = instance_id;
+
+	config->extension.r.data_off_size = size;
+	config->extension.r.large_param_id = param_id;
+}
+
 static int plug_ctl_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, long *value)
 {
 	snd_sof_ctl_t *ctl = ext->private_data;
@@ -212,14 +226,9 @@ static int plug_ctl_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, long
 	int i, err;
 
 	/* configure the IPC message */
-	config.primary.r.type = SOF_IPC4_MOD_LARGE_CONFIG_GET;
-	config.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
-	config.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-	config.primary.r.module_id = ctl->glb->ctl[key].module_id;
-	config.primary.r.instance_id = ctl->glb->ctl[key].instance_id;
+	plug_ctl_ipc_message(&config, IPC4_VOLUME, sizeof(volume), ctl->glb->ctl[key].module_id,
+			     ctl->glb->ctl[key].instance_id, SOF_IPC4_MOD_LARGE_CONFIG_GET);
 
-	config.extension.r.data_off_size = sizeof(volume);
-	config.extension.r.large_param_id = IPC4_VOLUME;
 	config.extension.r.final_block = 1;
 	config.extension.r.init_block = 1;
 
@@ -316,14 +325,9 @@ static int plug_ctl_write_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, lon
 		volume.curve_duration = 200000;
 
 		/* configure the IPC message */
-		config.primary.r.type = SOF_IPC4_MOD_LARGE_CONFIG_SET;
-		config.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
-		config.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-		config.primary.r.module_id = ctl->glb->ctl[key].module_id;
-		config.primary.r.instance_id = ctl->glb->ctl[key].instance_id;
-
-		config.extension.r.data_off_size = sizeof(volume);
-		config.extension.r.large_param_id = IPC4_VOLUME;
+		plug_ctl_ipc_message(&config, IPC4_VOLUME, sizeof(volume),
+				     ctl->glb->ctl[key].module_id, ctl->glb->ctl[key].instance_id,
+				     SOF_IPC4_MOD_LARGE_CONFIG_SET);
 		config.extension.r.final_block = 1;
 		config.extension.r.init_block = 1;
 
