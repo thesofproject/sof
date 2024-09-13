@@ -119,7 +119,7 @@ static int plug_ctl_get_attribute(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 	struct snd_soc_tplg_bytes_control *bytes_ctl;
 	int err = 0;
 
-	switch (hdr->type) {
+	switch (hdr->ops.info) {
 	case SND_SOC_TPLG_CTL_VOLSW:
 	case SND_SOC_TPLG_CTL_VOLSW_SX:
 	case SND_SOC_TPLG_CTL_VOLSW_XR_SX:
@@ -138,7 +138,7 @@ static int plug_ctl_get_attribute(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 	case SND_SOC_TPLG_CTL_ENUM_VALUE:
 		enum_ctl = (struct snd_soc_tplg_enum_control *)hdr;
 		*type = SND_CTL_ELEM_TYPE_ENUMERATED;
-		*count = enum_ctl->num_channels;
+		*count = enum_ctl->items;
 		break;
 	case SND_SOC_TPLG_CTL_RANGE:
 	case SND_SOC_TPLG_CTL_STROBE:
@@ -373,7 +373,7 @@ static int plug_ctl_get_enumerated_info(snd_ctl_ext_t *ext, snd_ctl_ext_key_t ke
 			(struct snd_soc_tplg_enum_control *)hdr;
 	int err = 0;
 
-	switch (hdr->type) {
+	switch (hdr->ops.info) {
 	case SND_SOC_TPLG_CTL_ENUM:
 	case SND_SOC_TPLG_CTL_ENUM_VALUE:
 		*items = enum_ctl->items;
@@ -395,10 +395,8 @@ static int plug_ctl_get_enumerated_name(snd_ctl_ext_t *ext, snd_ctl_ext_key_t ke
 	struct snd_soc_tplg_enum_control *enum_ctl =
 			(struct snd_soc_tplg_enum_control *)hdr;
 
-	printf("%s %d\n", __func__, __LINE__);
-
-	if (item >= enum_ctl->count) {
-		SNDERR("invalid item %d for enum using key %d", item, key);
+	if (item >= enum_ctl->items) {
+		SNDERR("invalid item %d for enum using key %d\n", item, key);
 		return -EINVAL;
 	}
 
@@ -409,12 +407,143 @@ static int plug_ctl_get_enumerated_name(snd_ctl_ext_t *ext, snd_ctl_ext_key_t ke
 static int plug_ctl_read_enumerated(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 				    unsigned int *items)
 {
+	snd_sof_ctl_t *ctl = ext->private_data;
+	struct snd_soc_tplg_enum_control *enum_ctl = CTL_GET_TPLG_ENUM(ctl, key);
+	struct ipc4_module_large_config config = {{ 0 }};
+	struct ipc4_module_large_config_reply *reply;
+	struct sof_ipc4_control_msg_payload *data;
+	char *reply_data;
+	void *msg;
+	int size, reply_data_size;
+	int i, err;
+
+	/* configure the IPC message */
+	plug_ctl_ipc_message(&config, SOF_IPC4_ENUM_CONTROL_PARAM_ID, 0,
+			     ctl->glb->ctl[key].module_id, ctl->glb->ctl[key].instance_id,
+			     SOF_IPC4_MOD_LARGE_CONFIG_GET);
+
+	config.extension.r.final_block = 1;
+	config.extension.r.init_block = 1;
+
+	size = sizeof(config);
+	msg = calloc(size, 1);
+	if (!msg)
+		return -ENOMEM;
+
+	/* reply contains both the requested data and the reply status */
+	reply_data_size = sizeof(*reply) + sizeof(*data) +
+		enum_ctl->num_channels * sizeof(data->chanv[0]);
+	reply_data = calloc(reply_data_size, 1);
+	if (!reply_data_size) {
+		free(msg);
+		return -ENOMEM;
+	}
+
+	/* send the IPC message */
+	memcpy(msg, &config, sizeof(config));
+	err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx,
+				msg, size, reply_data, reply_data_size);
+	free(msg);
+	if (err < 0) {
+		SNDERR("failed to get enum items for control %s\n", enum_ctl->hdr.name);
+		goto out;
+	}
+
+	reply = (struct ipc4_module_large_config_reply *)reply_data;
+	if (reply->primary.r.status != IPC4_SUCCESS) {
+		SNDERR("enum control %s get failed with status %d\n",
+		       enum_ctl->hdr.name, reply->primary.r.status);
+		err = -EINVAL;
+		goto out;
+	}
+
+	/* check data sanity */
+	data = (struct sof_ipc4_control_msg_payload *)(reply_data + sizeof(*reply));
+	if (data->num_elems != enum_ctl->num_channels) {
+		SNDERR("Channel count %d doesn't match the expected value %d for enum ctl %s\n",
+		       data->num_elems, enum_ctl->num_channels, enum_ctl->hdr.name);
+		err = -EINVAL;
+		goto out;
+	}
+
+	/* set the enum items based on the received data */
+	for (i = 0; i < enum_ctl->num_channels; i++)
+		items[i] = data->chanv[i].value;
+out:
+	free(reply_data);
 	return 0;
 }
 
 static int plug_ctl_write_enumerated(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 				     unsigned int *items)
 {
+	snd_sof_ctl_t *ctl = ext->private_data;
+	struct snd_soc_tplg_enum_control *enum_ctl = CTL_GET_TPLG_ENUM(ctl, key);
+	struct ipc4_module_large_config config = {{ 0 }};
+	struct sof_ipc4_control_msg_payload *data;
+	struct ipc4_message_reply reply;
+	void *msg;
+	int data_size, msg_size;
+	int err, i;
+
+	/* size of control data */
+	data_size = enum_ctl->num_channels * sizeof(struct sof_ipc4_ctrl_value_chan) +
+			sizeof(*data);
+
+	/* allocate memory for control data */
+	data = calloc(data_size, 1);
+	if (!data)
+		return -ENOMEM;
+
+	/* set param ID and number of channels */
+	data->id = ctl->glb->ctl[key].index;
+	data->num_elems = enum_ctl->num_channels;
+
+	/* set the enum values */
+	for (i = 0; i < data->num_elems; i++) {
+		data->chanv[i].channel = i;
+		data->chanv[i].value = items[i];
+	}
+
+	/* configure the IPC message */
+	plug_ctl_ipc_message(&config, SOF_IPC4_ENUM_CONTROL_PARAM_ID, data_size,
+			     ctl->glb->ctl[key].module_id, ctl->glb->ctl[key].instance_id,
+			     SOF_IPC4_MOD_LARGE_CONFIG_SET);
+
+	/*
+	 * enum controls can have a maximum of 16 texts/values. So the entire data can be sent
+	 * in a single IPC message
+	 */
+	config.extension.r.final_block = 1;
+	config.extension.r.init_block = 1;
+
+	/* allocate memory for IPC message */
+	msg_size = sizeof(config) + data_size;
+	msg = calloc(msg_size, 1);
+	if (!msg) {
+		free(data);
+		return -ENOMEM;
+	}
+
+	/* set the IPC message data */
+	memcpy(msg, &config, sizeof(config));
+	memcpy(msg + sizeof(config), data, data_size);
+	free(data);
+
+	/* send the message and check status */
+	err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx, msg, msg_size, &reply, sizeof(reply));
+	free(msg);
+	if (err < 0) {
+		SNDERR("failed to set enum control %s\n", enum_ctl->hdr.name);
+		return err;
+	}
+
+	if (reply.primary.r.status != IPC4_SUCCESS) {
+		SNDERR("enum control %s set failed with status %d\n",
+		       enum_ctl->hdr.name, reply.primary.r.status);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
