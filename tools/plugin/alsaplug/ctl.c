@@ -229,7 +229,7 @@ static int plug_ctl_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, long
 		return -ENOMEM;
 
 	/* reply contains both the requested data and the reply status */
-	reply_data_size = sizeof(reply) + mixer_ctl->num_channels * sizeof(*volume);
+	reply_data_size = sizeof(*reply) + mixer_ctl->num_channels * sizeof(*volume);
 	reply_data = calloc(reply_data_size, 1);
 	if (!reply_data_size) {
 		free(msg);
