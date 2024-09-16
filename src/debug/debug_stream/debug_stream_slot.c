@@ -32,7 +32,6 @@ struct debug_stream_circular_buf *
 debug_stream_get_circular_buffer(struct debug_stream_section_descriptor *desc, unsigned int core)
 {
 	struct debug_stream_slot_hdr *hdr = debug_stream_get_slot();
-	void *ptr;
 
 	if (hdr->hdr.magic != DEBUG_STREAM_IDENTIFIER) {
 		LOG_ERR("Debug stream slot not initialized.");
@@ -47,7 +46,7 @@ debug_stream_get_circular_buffer(struct debug_stream_section_descriptor *desc, u
 
 int debug_stream_slot_send_record(struct debug_stream_record *rec)
 {
-	struct debug_stream_section_descriptor desc;
+	struct debug_stream_section_descriptor desc = { 0 };
 	struct debug_stream_circular_buf *buf =
 		debug_stream_get_circular_buffer(&desc, arch_proc_id());
 	uint32_t record_size = rec->size_words;
@@ -134,7 +133,7 @@ static int debug_stream_slot_init(void)
 		offset += section_size;
 	}
 	for (i = 0; i < CONFIG_MP_MAX_NUM_CPUS; i++) {
-		struct debug_stream_section_descriptor desc;
+		struct debug_stream_section_descriptor desc = { 0 };
 		struct debug_stream_circular_buf *buf =
 			debug_stream_get_circular_buffer(&desc, i);
 
