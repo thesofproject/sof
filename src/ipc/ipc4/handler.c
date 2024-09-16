@@ -1615,7 +1615,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	/* FW sends an ipc message to host if request bit is clear */
 	if (in->primary.r.rsp == SOF_IPC4_MESSAGE_DIR_MSG_REQUEST) {
 		struct ipc *ipc = ipc_get();
-		struct ipc4_message_reply reply;
+		struct ipc4_message_reply reply = {{0}};
 
 		/* Process flow and time stamp for IPC4 msg processed on secondary core :
 		 * core 0 (primary core)				core x (secondary core)
