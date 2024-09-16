@@ -210,7 +210,7 @@ static void fill_source_s16(struct test_data *td, int frames_max)
 	int i;
 	int samples_processed = 0;
 
-	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sb = comp_dev_get_first_data_producer(dev);
 	ss = &sb->stream;
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * audio_stream_get_channels(ss);
@@ -273,7 +273,7 @@ static void fill_source_s24(struct test_data *td, int frames_max)
 	int i;
 	int samples_processed = 0;
 
-	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sb = comp_dev_get_first_data_producer(dev);
 	ss = &sb->stream;
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * audio_stream_get_channels(ss);
@@ -336,7 +336,7 @@ static void fill_source_s32(struct test_data *td, int frames_max)
 	int i;
 	int samples_processed = 0;
 
-	sb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sb = comp_dev_get_first_data_producer(dev);
 	ss = &sb->stream;
 	frames = MIN(audio_stream_get_free_frames(ss), frames_max);
 	samples = frames * audio_stream_get_channels(ss);

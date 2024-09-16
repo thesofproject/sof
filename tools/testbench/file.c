@@ -695,7 +695,7 @@ static int file_process(struct processing_module *mod,
 		break;
 	case FILE_WRITE:
 		/* write PCM samples into file */
-		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		buffer = comp_dev_get_first_data_producer(dev);
 		source = &buffer->stream;
 		frames = audio_stream_get_avail_frames(source);
 		frames = MIN(frames, cd->max_frames);
@@ -738,7 +738,7 @@ static int file_prepare(struct processing_module *mod,
 		buffer = comp_dev_get_first_data_consumer(dev);
 		break;
 	case FILE_WRITE:
-		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		buffer = comp_dev_get_first_data_producer(dev);
 		break;
 	default:
 		/* TODO: duplex mode */

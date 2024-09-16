@@ -536,7 +536,7 @@ static int crossover_prepare(struct processing_module *mod,
 
 	/* Crossover has a variable number of sinks */
 	mod->max_sinks = SOF_CROSSOVER_MAX_STREAMS;
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source = comp_dev_get_first_data_producer(dev);
 
 	/* Get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&source->stream);

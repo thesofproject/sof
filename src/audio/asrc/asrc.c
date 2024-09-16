@@ -396,8 +396,7 @@ static int asrc_params(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	/* update the source/sink buffer formats. Sink rate will be modified below */
@@ -469,7 +468,7 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 	} else {
 		/* In pull mode check if source component is DAI */
 		do {
-			sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+			sourceb = comp_dev_get_first_data_producer(dev);
 
 			dev = sourceb->source;
 
@@ -544,8 +543,7 @@ static int asrc_prepare(struct processing_module *mod,
 		return ret;
 
 	/* SRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	/* get source data format and period bytes */
@@ -794,8 +792,7 @@ static int asrc_process(struct processing_module *mod,
 		return ret;
 
 	/* asrc component needs 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+	source = comp_dev_get_first_data_producer(dev);
 	sink = comp_dev_get_first_data_consumer(dev);
 
 	frames_src = audio_stream_get_avail_frames(source_s);

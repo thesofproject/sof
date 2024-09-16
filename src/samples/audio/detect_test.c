@@ -818,8 +818,7 @@ static int test_keyword_params(struct comp_dev *dev,
 	cd->sample_valid_bytes = params->sample_valid_bytes;
 
 	/* keyword components will only ever have 1 source */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	channels = audio_stream_get_channels(&sourceb->stream);
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
 	rate = audio_stream_get_rate(&sourceb->stream);
@@ -895,8 +894,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 	comp_dbg(dev, "test_keyword_copy()");
 
 	/* keyword components will only ever have 1 source */
-	source = list_first_item(&dev->bsource_list,
-				 struct comp_buffer, sink_list);
+	source = comp_dev_get_first_data_producer(dev);
 
 	if (!audio_stream_get_avail(&source->stream))
 		return PPL_STATUS_PATH_STOP;

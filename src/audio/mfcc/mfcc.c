@@ -192,7 +192,7 @@ static int mfcc_prepare(struct processing_module *mod,
 	comp_info(dev, "mfcc_prepare()");
 
 	/* MFCC component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	/* get source data format */

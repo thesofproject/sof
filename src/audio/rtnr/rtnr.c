@@ -781,7 +781,7 @@ static void rtnr_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 
 	sinkb = comp_dev_get_first_data_consumer(dev);
@@ -817,7 +817,7 @@ static int rtnr_prepare(struct processing_module *mod,
 	sinkb = comp_dev_get_first_data_consumer(dev);
 	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
 	cd->sink_stream.frame_fmt = audio_stream_get_frm_fmt(&sinkb->stream);
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	ret = rtnr_check_params(mod, &sourceb->stream, &sinkb->stream);
 	if (ret)
 		goto err;

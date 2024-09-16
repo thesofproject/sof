@@ -689,8 +689,7 @@ static int volume_prepare(struct processing_module *mod,
 
 	/* volume component will only ever have 1 sink and source buffer */
 	sinkb = comp_dev_get_first_data_consumer(dev);
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 
 	volume_set_alignment(&sourceb->stream, &sinkb->stream);
 

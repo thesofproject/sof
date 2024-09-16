@@ -39,8 +39,7 @@ void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_o
 	struct comp_buffer *bufferb;
 
 	if (source_or_sink)
-		bufferb = list_first_item(&dev->bsource_list,
-					  struct comp_buffer, sink_list);
+		bufferb = comp_dev_get_first_data_producer(dev);
 	else
 		bufferb = comp_dev_get_first_data_consumer(dev);
 

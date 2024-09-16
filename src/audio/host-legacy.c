@@ -714,9 +714,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		hd->local_buffer = comp_dev_get_first_data_consumer(dev);
 	else
-		hd->local_buffer = list_first_item(&dev->bsource_list,
-						   struct comp_buffer,
-						   sink_list);
+		hd->local_buffer = comp_dev_get_first_data_producer(dev);
 
 	period_bytes = dev->frames *
 		audio_stream_frame_bytes(&hd->local_buffer->stream);

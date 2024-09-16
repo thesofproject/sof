@@ -354,7 +354,7 @@ static int ctc_prepare(struct processing_module *mod,
 
 	comp_info(mod->dev, "ctc_prepare()");
 
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	source = comp_dev_get_first_data_producer(dev);
 	switch (audio_stream_get_frm_fmt(&source->stream)) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:

@@ -460,8 +460,7 @@ static int aplay_params(struct comp_dev *dev, struct sof_ipc_stream_params *para
 	memcpy(&cd->params, params, sizeof(*params));
 
 	/* file component sink/source buffer period count */
-	buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+	buffer = comp_dev_get_first_data_producer(dev);
 	buffer_reset_pos(buffer, NULL);
 
 	comp_dbg(dev, "prepare done ret = %d", ret);
@@ -587,8 +586,7 @@ static int aplay_copy(struct comp_dev *dev)
 	}
 
 	/* file component source buffer */
-	buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+	buffer = comp_dev_get_first_data_producer(dev);
 	source = &buffer->stream;
 	pos = source->r_ptr;
 	avail = audio_stream_get_avail_frames(source);
