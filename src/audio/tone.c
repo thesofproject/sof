@@ -428,8 +428,7 @@ static int tone_params(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sourceb, *sinkb;
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
@@ -673,8 +672,7 @@ static int tone_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 
 	cd->channels = audio_stream_get_channels(&sourceb->stream);
 	comp_info(dev, "tone_prepare(), cd->channels = %u, cd->rate = %u",

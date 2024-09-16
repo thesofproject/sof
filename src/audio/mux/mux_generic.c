@@ -549,8 +549,7 @@ demux_func demux_get_processing_function(struct processing_module *mod)
 	if (list_is_empty(&dev->bsource_list))
 		return NULL;
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
 		enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&sourceb->stream);

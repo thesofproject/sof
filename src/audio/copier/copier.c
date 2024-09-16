@@ -388,7 +388,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 			return -EINVAL;
 		}
 
-		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
+		buffer = comp_dev_get_first_data_producer(dai_copier);
 		pipe_reg.stream_start_offset = posn.dai_posn +
 			latency * audio_stream_period_bytes(&buffer->stream, dev->frames);
 		pipe_reg.stream_end_offset = 0;
@@ -412,7 +412,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 			return -EINVAL;
 		}
 
-		buffer = list_first_item(&dai_copier->bsource_list, struct comp_buffer, sink_list);
+		buffer = comp_dev_get_first_data_producer(dai_copier);
 		pipe_reg.stream_start_offset += latency *
 			audio_stream_period_bytes(&buffer->stream, dev->frames);
 		mailbox_sw_regs_write(cd->pipeline_reg_offset, &pipe_reg.stream_start_offset,
@@ -561,7 +561,7 @@ static int copier_multi_endpoint_dai_copy(struct copier_data *cd, struct comp_de
 		return -EINVAL;
 	}
 
-	src = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	src = comp_dev_get_first_data_producer(dev);
 
 	/* gateway(s) on output */
 	ret = do_conversion_copy(dev, cd, src, cd->multi_endpoint_buffer, &processed_data);

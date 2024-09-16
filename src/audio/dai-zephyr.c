@@ -848,8 +848,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 	comp_dbg(dev, "dai_set_dma_buffer()");
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dd->local_buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
-						   sink_list);
+		dd->local_buffer = comp_dev_get_first_data_producer(dev);
 	else
 		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
 
@@ -1519,9 +1518,7 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 	uint32_t local_fmt;
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dd->local_buffer = list_first_item(&dev->bsource_list,
-						   struct comp_buffer,
-						   sink_list);
+		dd->local_buffer = comp_dev_get_first_data_producer(dev);
 	else
 		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
 

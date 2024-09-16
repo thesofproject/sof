@@ -493,9 +493,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	}
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-		dd->local_buffer = list_first_item(&dev->bsource_list,
-						   struct comp_buffer,
-						   sink_list);
+		dd->local_buffer = comp_dev_get_first_data_producer(dev);
 	else
 		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
 

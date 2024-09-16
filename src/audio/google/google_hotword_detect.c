@@ -170,8 +170,7 @@ static int ghd_params(struct comp_dev *dev,
 	}
 
 	/* This detector component will only ever have 1 source */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 
 	if (audio_stream_get_channels(sourceb->stream) != 1) {
 		comp_err(dev, "ghd_params(): Only single-channel supported");
@@ -391,8 +390,7 @@ static int ghd_copy(struct comp_dev *dev)
 	}
 
 	/* keyword components will only ever have 1 source */
-	source = list_first_item(&dev->bsource_list,
-				 struct comp_buffer, sink_list);
+	source = comp_dev_get_first_data_producer(dev);
 	stream = &sourceb->stream;
 
 	bytes = audio_stream_get_avail_bytes(stream);

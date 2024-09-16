@@ -90,8 +90,7 @@ static int selector_verify_params(struct comp_dev *dev,
 		params->channels = out_channels;
 	} else {
 		/* fetch source buffer for capture */
-		buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
-					 sink_list);
+		buffer = comp_dev_get_first_data_producer(dev);
 		if (cd->config.out_channels_count &&
 		    cd->config.out_channels_count != params->channels) {
 			comp_err(dev, "selector_verify_params(): src in_channels_count does not match pcm channels");
@@ -353,8 +352,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 
 	comp_dbg(dev, "selector_trigger()");
 
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 
 	ret = comp_set_state(dev, cmd);
 
@@ -383,8 +381,7 @@ static int selector_copy(struct comp_dev *dev)
 	comp_dbg(dev, "selector_copy()");
 
 	/* selector component will have 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+	source = comp_dev_get_first_data_producer(dev);
 	sink = comp_dev_get_first_data_consumer(dev);
 
 	if (!audio_stream_get_avail(&source->stream))
@@ -431,8 +428,7 @@ static int selector_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	/* selector component will have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
-				  sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	/* get source data format and period bytes */
@@ -677,7 +673,7 @@ static void set_selector_params(struct processing_module *mod,
 	 * for a short time when the second pipeline already started
 	 * and the first one is not ready yet along with sink buffers params
 	 */
-	src_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	src_buf = comp_dev_get_first_data_producer(dev);
 
 	if (!src_buf->hw_params_configured)
 		ipc4_update_buffer_format(src_buf, &mod->priv.cfg.base_cfg.audio_fmt);
@@ -712,7 +708,7 @@ static int selector_verify_params(struct processing_module *mod,
 		buffer = comp_dev_get_first_data_consumer(dev);
 	} else {
 		params->channels = in_channels;
-		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		buffer = comp_dev_get_first_data_producer(dev);
 	}
 	buffer_set_params(buffer, params, BUFFER_UPDATE_FORCE);
 
@@ -837,7 +833,7 @@ static int selector_prepare(struct processing_module *mod,
 		return PPL_STATUS_PATH_STOP;
 
 	/* selector component will have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	audio_stream_set_align(4, 1, &sourceb->stream);

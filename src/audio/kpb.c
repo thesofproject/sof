@@ -1182,8 +1182,7 @@ static int kpb_copy(struct comp_dev *dev)
 	}
 
 	/* Get source and sink buffers */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+	source = comp_dev_get_first_data_producer(dev);
 
 	/* Validate source */
 	if (!audio_stream_get_rptr(&source->stream)) {

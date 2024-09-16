@@ -193,7 +193,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 		return ret;
 
 	/* EQ component will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 	eq_iir_set_alignment(&sourceb->stream, &sinkb->stream);
 

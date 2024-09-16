@@ -739,7 +739,7 @@ static int tdfb_prepare(struct processing_module *mod,
 	}
 
 	/* Find source and sink buffers */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 	tdfb_set_alignment(&sourceb->stream, &sinkb->stream);
 

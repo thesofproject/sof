@@ -76,8 +76,7 @@ static int dts_effect_convert_sof_interface_result(struct comp_dev *dev,
 static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	DtsSofInterfaceBufferConfiguration *buffer_config)
 {
-	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
-						     sink_list);
+	struct comp_buffer *source = comp_dev_get_first_data_producer(dev);
 	const struct audio_stream *stream;
 	DtsSofInterfaceBufferLayout buffer_layout;
 	DtsSofInterfaceBufferFormat buffer_format;

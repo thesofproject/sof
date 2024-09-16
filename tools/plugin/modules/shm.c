@@ -247,8 +247,7 @@ static int shmread_copy(struct comp_dev *dev)
 	void *dest;
 
 	/* local SOF source buffer */
-	buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
+	buffer = comp_dev_get_first_data_producer(dev);
 	source = &buffer->stream;
 	rptr = source->r_ptr;
 
