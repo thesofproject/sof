@@ -75,7 +75,7 @@ static inline struct comp_buffer *get_buffer(struct comp_dev *dev)
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (list_is_empty(&dev->bsink_list))
 			return NULL;
-		return list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		return comp_dev_get_first_data_consumer(dev);
 	}
 
 	assert(dev->direction == SOF_IPC_STREAM_CAPTURE);

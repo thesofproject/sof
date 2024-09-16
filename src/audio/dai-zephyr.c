@@ -855,8 +855,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 		dd->local_buffer = list_first_item(&dev->bsource_list, struct comp_buffer,
 						   sink_list);
 	else
-		dd->local_buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
-						   source_list);
+		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
@@ -1528,9 +1527,7 @@ static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
 						   struct comp_buffer,
 						   sink_list);
 	else
-		dd->local_buffer = list_first_item(&dev->bsink_list,
-						   struct comp_buffer,
-						   source_list);
+		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
 
 	local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
 

@@ -527,8 +527,7 @@ mux_func mux_get_processing_function(struct processing_module *mod)
 	if (list_is_empty(&dev->bsink_list))
 		return NULL;
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	for (i = 0; i < ARRAY_SIZE(mux_func_map); i++) {
 		enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&sinkb->stream);

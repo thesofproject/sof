@@ -306,8 +306,7 @@ static int shmwrite_copy(struct comp_dev *dev)
 	void *src;
 
 	/* local SOF sink buffer */
-	buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
-				 source_list);
+	buffer = comp_dev_get_first_data_consumer(dev);
 	sink = &buffer->stream;
 	wptr = sink->w_ptr;
 

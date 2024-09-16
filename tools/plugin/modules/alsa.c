@@ -428,7 +428,7 @@ static int arecord_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	memcpy(&cd->params, params, sizeof(*params));
 
 	/* file component sink/source buffer period count */
-	buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	buffer = comp_dev_get_first_data_consumer(dev);
 	buffer_reset_pos(buffer, NULL);
 
 	comp_dbg(dev, "prepare done ret = %d", ret);
@@ -529,7 +529,7 @@ static int arecord_copy(struct comp_dev *dev)
 	}
 
 	/* file component sink buffer */
-	buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	buffer = comp_dev_get_first_data_consumer(dev);
 	sink = &buffer->stream;
 	pos = sink->w_ptr;
 

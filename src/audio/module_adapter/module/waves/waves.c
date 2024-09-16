@@ -215,8 +215,7 @@ static int waves_effect_allocate(struct processing_module *mod)
 /* checks if sink/source parameters fit MaxxEffect */
 static int waves_effect_check(struct comp_dev *dev)
 {
-	struct comp_buffer *sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-						    source_list);
+	struct comp_buffer *sink = comp_dev_get_first_data_consumer(dev);
 	struct comp_buffer *source = list_first_item(&dev->bsource_list, struct comp_buffer,
 						     sink_list);
 	const struct audio_stream *src_fmt = &source->stream;
