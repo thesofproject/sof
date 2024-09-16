@@ -122,7 +122,6 @@ static uint8_t thread_info_cpu_utilization(struct k_thread *thread,
 {
 	k_thread_runtime_stats_t thread_stats;
 	uint32_t cycles;
-	int ret;
 
 	if (!ud->stats_valid)
 		return 0;
