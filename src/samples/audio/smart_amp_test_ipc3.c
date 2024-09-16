@@ -511,8 +511,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 			sad->source_buf = source_buffer;
 	}
 
-	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
-					source_list);
+	sad->sink_buf = comp_dev_get_first_data_consumer(dev);
 
 	sad->out_channels = audio_stream_get_channels(&sad->sink_buf->stream);
 

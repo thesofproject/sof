@@ -98,7 +98,7 @@ int multiband_drc_params(struct processing_module *mod)
 		comp_params.chmap[i] = (mod->priv.cfg.base_cfg.audio_fmt.ch_map >> i * 4) & 0xf;
 
 	component_set_nearest_period_frames(dev, comp_params.rate);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sinkb = comp_dev_get_first_data_consumer(dev);
 	ret = buffer_set_params(sinkb, &comp_params, true);
 
 	return ret;

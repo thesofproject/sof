@@ -740,7 +740,7 @@ static int tdfb_prepare(struct processing_module *mod,
 
 	/* Find source and sink buffers */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sinkb = comp_dev_get_first_data_consumer(dev);
 	tdfb_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);

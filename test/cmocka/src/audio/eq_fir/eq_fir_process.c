@@ -246,7 +246,7 @@ static void verify_sink_s16(struct test_data *td)
 	int samples;
 	int i;
 
-	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sb = comp_dev_get_first_data_consumer(dev);
 	ss = &sb->stream;
 	samples = mod->output_buffers[0].size >> 1;
 	for (i = 0; i < samples; i++) {
@@ -312,7 +312,7 @@ static void verify_sink_s24(struct test_data *td)
 	int samples;
 	int i;
 
-	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sb = comp_dev_get_first_data_consumer(dev);
 	ss = &sb->stream;
 	samples = mod->output_buffers[0].size >> 2;
 	for (i = 0; i < samples; i++) {
@@ -378,7 +378,7 @@ static void verify_sink_s32(struct test_data *td)
 	int samples;
 	int i;
 
-	sb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sb = comp_dev_get_first_data_consumer(dev);
 	ss = &sb->stream;
 	samples = mod->output_buffers[0].size >> 2;
 	for (i = 0; i < samples; i++) {

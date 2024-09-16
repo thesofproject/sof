@@ -62,7 +62,7 @@ int eq_fir_params(struct processing_module *mod)
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sinkb = comp_dev_get_first_data_consumer(dev);
 	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 
 	return 0;

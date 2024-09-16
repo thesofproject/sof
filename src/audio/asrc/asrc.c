@@ -398,8 +398,7 @@ static int asrc_params(struct processing_module *mod)
 
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	/* update the source/sink buffer formats. Sink rate will be modified below */
 	asrc_update_buffer_format(sourceb, cd);
@@ -452,7 +451,7 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 	if (cd->mode == ASRC_OM_PUSH) {
 		/* In push mode check if sink component is DAI */
 		do {
-			sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+			sinkb = comp_dev_get_first_data_consumer(dev);
 
 			dev = sinkb->sink;
 
@@ -547,8 +546,7 @@ static int asrc_prepare(struct processing_module *mod,
 	/* SRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list,
 				  struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
+	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -798,8 +796,7 @@ static int asrc_process(struct processing_module *mod,
 	/* asrc component needs 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
+	sink = comp_dev_get_first_data_consumer(dev);
 
 	frames_src = audio_stream_get_avail_frames(source_s);
 	frames_snk = audio_stream_get_free_frames(sink_s);

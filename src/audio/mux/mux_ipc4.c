@@ -94,7 +94,7 @@ static void set_mux_params(struct processing_module *mod)
 
 	/* update sink format */
 	if (!list_is_empty(&dev->bsink_list)) {
-		sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		sink = comp_dev_get_first_data_consumer(dev);
 
 		if (!sink->hw_params_configured) {
 			ipc4_update_buffer_format(sink, &cd->md.output_format);

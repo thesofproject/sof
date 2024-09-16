@@ -497,9 +497,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 						   struct comp_buffer,
 						   sink_list);
 	else
-		dd->local_buffer = list_first_item(&dev->bsink_list,
-						   struct comp_buffer,
-						   source_list);
+		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {

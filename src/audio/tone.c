@@ -431,8 +431,7 @@ static int tone_params(struct comp_dev *dev,
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
 				  sink_list);
 
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-				source_list);
+	sinkb = comp_dev_get_first_data_consumer(dev);
 
 	comp_info(dev, "tone_params(), config->frame_fmt = %u",
 		  dev->ipc_config.frame_fmt);

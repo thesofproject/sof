@@ -42,8 +42,7 @@ void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_o
 		bufferb = list_first_item(&dev->bsource_list,
 					  struct comp_buffer, sink_list);
 	else
-		bufferb = list_first_item(&dev->bsink_list,
-					  struct comp_buffer, source_list);
+		bufferb = comp_dev_get_first_data_consumer(dev);
 
 	cd->scale_vol = vol_get_processing_function(dev, bufferb, cd);
 }

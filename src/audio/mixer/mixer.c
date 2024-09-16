@@ -216,8 +216,7 @@ static int mixer_prepare(struct processing_module *mod,
 	struct comp_buffer *sink;
 	struct list_item *blist;
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
+	sink = comp_dev_get_first_data_consumer(dev);
 	md->mix_func = mixer_get_processing_function(dev, sink);
 	mixer_set_frame_alignment(&sink->stream);
 
