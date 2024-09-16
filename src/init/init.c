@@ -26,6 +26,7 @@
 #include <sof/trace/trace.h>
 #include <rtos/idc.h>
 #include <rtos/string_macro.h>
+#include <rtos/symbol.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/dp_schedule.h>
@@ -53,6 +54,7 @@ struct sof *sof_get(void)
 {
 	return &sof;
 }
+EXPORT_SYMBOL(sof_get);
 
 #if CONFIG_NO_SECONDARY_CORE_ROM
 /**

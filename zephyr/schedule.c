@@ -9,6 +9,7 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <rtos/alloc.h>
+#include <rtos/symbol.h>
 #include <sof/lib/cpu.h>
 #include <ipc/topology.h>
 
@@ -22,3 +23,4 @@ struct schedulers **arch_schedulers_get(void)
 {
 	return _schedulers + cpu_get_id();
 }
+EXPORT_SYMBOL(arch_schedulers_get);
