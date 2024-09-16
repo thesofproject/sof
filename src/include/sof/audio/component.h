@@ -634,6 +634,64 @@ struct comp_dev {
 #endif
 };
 
+/**
+ * Get a pointer to a first comp_buffer object providing data to the component
+ * The procedure will return NULL if there's no data provider
+ */
+static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_dev *component)
+{
+	return list_is_empty(&component->bsource_list) ? NULL :
+	       list_first_item(&component->bsource_list, struct comp_buffer, sink_list);
+}
+
+/**
+ * Get a pointer to a next comp_buffer object providing data to the component
+ * The procedure will return NULL if there're no more data providers
+ */
+static inline struct comp_buffer *comp_dev_get_next_data_producer(struct comp_dev *component,
+								  struct comp_buffer *producer)
+{
+	return producer->sink_list.next == &component->bsource_list ? NULL :
+	       list_item(producer->sink_list.next, struct comp_buffer, sink_list);
+}
+
+/**
+ * Get a pointer to a first comp_buffer object receiving data from the component
+ * The procedure will return NULL if there's no data consumers
+ */
+static inline struct comp_buffer *comp_dev_get_first_data_consumer(struct comp_dev *component)
+{
+	return list_is_empty(&component->bsink_list) ? NULL :
+	       list_first_item(&component->bsink_list, struct comp_buffer, source_list);
+}
+
+/**
+ * Get a pointer to a next comp_buffer object receiving data from the component
+ * The procedure will return NULL if there're no more data consumers
+ */
+static inline struct comp_buffer *comp_dev_get_next_data_consumer(struct comp_dev *component,
+								  struct comp_buffer *consumer)
+{
+	return consumer->source_list.next == &component->bsink_list ? NULL :
+			list_item(consumer->source_list.next, struct comp_buffer, source_list);
+}
+
+/*
+ * a macro for easy iteration through component's list of producers
+ */
+#define comp_dev_for_each_producer(_dev, _producer)			\
+	for (_producer = comp_dev_get_first_data_producer(_dev);	\
+	     _producer != NULL;						\
+	     _producer = comp_dev_get_next_data_producer(_dev, _producer))
+
+/*
+ * a macro for easy iteration through component's list of consumers
+ */
+#define comp_dev_for_each_consumer(_dev, _consumer)			\
+	for (_consumer = comp_dev_get_first_data_consumer(_dev);	\
+	     _consumer != NULL;						\
+	     _consumer = comp_dev_get_next_data_consumer(_dev, _consumer))
+
 /** @}*/
 
 /* Common helper function used internally by the component implementations
