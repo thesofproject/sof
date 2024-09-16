@@ -100,6 +100,7 @@ static int perf_bitmap_setbit(struct perf_bitmap * const bitmap, size_t bit)
 	return sys_bitarray_set_bit(bitmap->array, bit);
 }
 
+__attribute__((unused))
 static int perf_bitmap_clearbit(struct perf_bitmap * const bitmap, size_t bit)
 {
 	return sys_bitarray_clear_bit(bitmap->array, bit);
@@ -145,12 +146,8 @@ struct perf_data_item_comp *perf_data_getnext(void)
 int perf_data_free(struct perf_data_item_comp * const item)
 {
 	/* find index of item */
-	int idx = (item - perf_data) / sizeof(*item);
-	int ret = perf_bitmap_clearbit(&performance_data_bitmap, idx);
-
-	if (ret < 0)
-		return ret;
-	ret = perf_bitmap_free(&performance_data_bitmap, idx);
+	int idx = (item - perf_data);
+	int ret = perf_bitmap_free(&performance_data_bitmap, idx);
 	if (ret < 0)
 		return ret;
 
@@ -473,10 +470,6 @@ int io_perf_monitor_release_slot(struct io_perf_data_item *item)
 	k_spin_unlock(&self->lock, key);
 
 	/* we assign data items ourselves so neither of those should ever fail */
-	ret = perf_bitmap_clearbit(&self->io_performance_data_bitmap, idx);
-	assert(!ret);
-	if (ret < 0)
-		return ret;
 	ret = perf_bitmap_free(&self->io_performance_data_bitmap, idx);
 	assert(!ret);
 	return ret;
