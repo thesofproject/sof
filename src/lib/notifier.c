@@ -16,6 +16,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/sof.h>
+#include <rtos/symbol.h>
 #include <ipc/topology.h>
 #include <stdint.h>
 
@@ -78,6 +79,7 @@ out:
 	k_spin_unlock(&notify->lock, key);
 	return ret;
 }
+EXPORT_SYMBOL(notifier_register);
 
 void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 {
@@ -114,6 +116,7 @@ void notifier_unregister(void *receiver, void *caller, enum notify_id type)
 
 	k_spin_unlock(&notify->lock, key);
 }
+EXPORT_SYMBOL(notifier_unregister);
 
 void notifier_unregister_all(void *receiver, void *caller)
 {

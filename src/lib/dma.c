@@ -13,6 +13,7 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <rtos/spinlock.h>
+#include <rtos/symbol.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -278,6 +279,8 @@ void dma_put(struct dma *dma)
 	k_spin_unlock(&dma->lock, key);
 }
 #endif
+EXPORT_SYMBOL(dma_get);
+EXPORT_SYMBOL(dma_put);
 
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 		 enum mem_zone zone,
@@ -318,6 +321,7 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 	rfree(elem_array->elems);
 	dma_sg_init(elem_array);
 }
+EXPORT_SYMBOL(dma_sg_free);
 
 int dma_buffer_copy_from(struct comp_buffer *source,
 			 struct comp_buffer *sink,

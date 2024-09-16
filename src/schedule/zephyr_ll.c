@@ -6,6 +6,7 @@
 
 #include <sof/list.h>
 #include <rtos/spinlock.h>
+#include <rtos/symbol.h>
 #include <sof/audio/component.h>
 #include <rtos/interrupt.h>
 #include <sof/lib/notifier.h>
@@ -522,6 +523,7 @@ int zephyr_ll_task_init(struct task *task,
 
 	return 0;
 }
+EXPORT_SYMBOL(zephyr_ll_task_init);
 
 /* TODO: low-power mode clock support */
 /* Runs on each core during initialisation with the same domain argument */

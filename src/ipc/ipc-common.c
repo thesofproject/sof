@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <rtos/idc.h>
+#include <rtos/symbol.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
@@ -95,6 +96,7 @@ struct ipc_comp_dev *ipc_get_comp_dev(struct ipc *ipc, uint16_t type, uint32_t i
 
 	return NULL;
 }
+EXPORT_SYMBOL(ipc_get_comp_dev);
 
 /* Walks through the list of components looking for a sink/source endpoint component
  * of the given pipeline
