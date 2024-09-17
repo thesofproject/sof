@@ -62,7 +62,6 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 			  struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sink;
-	struct list_item *sink_list;
 
 	memset(params, 0, sizeof(*params));
 	params->direction = cd->direction;
@@ -80,11 +79,8 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 	params->no_stream_position = 1;
 
 	/* update each sink format */
-	list_for_item(sink_list, &dev->bsink_list) {
+	comp_dev_for_each_consumer(dev, sink) {
 		int j;
-
-		sink = container_of(sink_list, struct comp_buffer, source_list);
-
 		j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 
 		ipc4_update_buffer_format(sink, &cd->out_fmt[j]);

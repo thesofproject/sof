@@ -644,7 +644,6 @@ static void set_selector_params(struct processing_module *mod,
 	const struct sof_selector_ipc4_config *sel_cfg = &cd->sel_ipc4_cfg;
 	const struct ipc4_audio_format *out_fmt = NULL;
 	struct comp_buffer *src_buf;
-	struct list_item *sink_list;
 	int i;
 
 	if (cd->sel_ipc4_cfg.init_payload_fmt == IPC4_SEL_INIT_PAYLOAD_BASE_WITH_EXT)
@@ -664,10 +663,9 @@ static void set_selector_params(struct processing_module *mod,
 		params->chmap[i] = (out_fmt->ch_map >> i * 4) & 0xf;
 
 	/* update each sink format */
-	list_for_item(sink_list, &dev->bsink_list) {
-		struct comp_buffer *sink_buf =
-			container_of(sink_list, struct comp_buffer, source_list);
+	struct comp_buffer *sink_buf;
 
+	comp_dev_for_each_consumer(dev, sink_buf) {
 		ipc4_update_buffer_format(sink_buf, out_fmt);
 		audio_stream_set_channels(&sink_buf->stream, params->channels);
 		audio_stream_set_rate(&sink_buf->stream, params->rate);

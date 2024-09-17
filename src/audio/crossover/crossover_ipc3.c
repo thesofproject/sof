@@ -37,15 +37,13 @@ int crossover_check_sink_assign(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
-	struct list_item *sink_list;
 	int num_assigned_sinks = 0;
 	uint8_t assigned_sinks[SOF_CROSSOVER_MAX_STREAMS] = {0};
 	int i;
 
-	list_for_item(sink_list, &dev->bsink_list) {
+	comp_dev_for_each_consumer(dev, sink) {
 		unsigned int pipeline_id;
 
-		sink = container_of(sink_list, struct comp_buffer, source_list);
 		pipeline_id = buffer_pipeline_id(sink);
 
 		i = crossover_get_stream_index(mod, config, pipeline_id);
