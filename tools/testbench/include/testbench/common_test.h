@@ -32,6 +32,28 @@ struct file_comp_lookup {
 	struct file_state *state;
 };
 
+#if CONFIG_IPC_MAJOR_4
+
+#define TB_NAME_SIZE		256
+#define TB_MAX_CONFIG_COUNT	2
+#define TB_MAX_CONFIG_NAME_SIZE	64
+
+struct tb_mq_desc {
+	char queue_name[TB_NAME_SIZE];
+};
+
+struct tb_config {
+	char name[TB_MAX_CONFIG_NAME_SIZE];
+	unsigned long buffer_frames;
+	unsigned long buffer_time;
+	unsigned long period_frames;
+	unsigned long period_time;
+	int rate;
+	int channels;
+	unsigned long format;
+};
+#endif
+
 /*
  * Global testbench data.
  *
@@ -78,6 +100,21 @@ struct testbench_prm {
 
 	/* topology */
 	struct tplg_context tplg;
+
+#if CONFIG_IPC_MAJOR_4
+	struct list_item widget_list;
+	struct list_item route_list;
+	struct list_item pcm_list;
+	struct list_item pipeline_list;
+	int instance_ids[SND_SOC_TPLG_DAPM_LAST];
+	struct tb_mq_desc ipc_tx;
+	struct tb_mq_desc ipc_rx;
+	int pcm_id;	// TODO: This needs to be cleaned up
+	struct tplg_pcm_info *pcm_info;
+	struct tb_config config[TB_MAX_CONFIG_COUNT];
+	int num_configs;
+	size_t period_size;
+#endif
 };
 
 extern int debug;

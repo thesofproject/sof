@@ -24,6 +24,9 @@
 #include <stdlib.h>
 #include "testbench/common_test.h"
 #include "testbench/file.h"
+#include "testbench/file_ipc4.h"
+#include "../../src/audio/copier/copier.h"
+
 
 SOF_DEFINE_REG_UUID(file);
 DECLARE_TR_CTX(file_tr, SOF_UUID(file_uuid), LOG_LEVEL_INFO);
@@ -524,9 +527,37 @@ static enum file_format get_file_format(char *filename)
 	return FILE_RAW;
 }
 
-static int file_init_set_dai_data(struct comp_dev *dev)
+#if CONFIG_IPC_MAJOR_4
+/* Minimal support for IPC4 pipeline_comp_trigger()'s dai_get_init_delay_ms() */
+static int file_init_set_dai_data(struct processing_module *mod)
 {
 	struct dai_data *dd;
+	struct copier_data *ccd = module_get_private_data(mod);
+
+	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	if (!dd)
+		return -ENOMEM;
+
+	/* Member dd->dai remains NULL. It's sufficient for dai_get_init_delay_ms().
+	 * In such case the functions returns zero delay. Testbench currently has
+	 * no use for the feature.
+	 */
+	ccd->dd[0] = dd;
+	return 0;
+}
+
+static void file_free_dai_data(struct processing_module *mod)
+{
+	struct copier_data *ccd = module_get_private_data(mod);
+
+	free(ccd->dd[0]);
+}
+#else
+/* Minimal support for IPC3 pipeline_comp_trigger()'s dai_get_init_delay_ms() */
+static int file_init_set_dai_data(struct processing_module *mod)
+{
+	struct dai_data *dd;
+	struct comp_dev *dev = mod->dev;
 
 	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd)
@@ -540,30 +571,50 @@ static int file_init_set_dai_data(struct comp_dev *dev)
 	return 0;
 }
 
-static void file_free_dai_data(struct comp_dev *dev)
+static void file_free_dai_data(struct processing_module *mod)
 {
 	struct dai_data *dd;
+	struct comp_dev *dev = mod->dev;
 
 	dd = comp_get_drvdata(dev);
 	free(dd);
 }
+#endif
 
 static int file_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *mod_data = &mod->priv;
-	const struct ipc_comp_file *ipc_file =
-		(const struct ipc_comp_file *)mod_data->cfg.init_data;
+	struct copier_data *ccd;
 	struct file_comp_data *cd;
 	int ret;
 
+#if CONFIG_IPC_MAJOR_4
+	const struct ipc4_file_module_cfg *module_cfg =
+		(const struct ipc4_file_module_cfg *)mod_data->cfg.init_data;
+
+	const struct ipc4_file_config *ipc_file = &module_cfg->config;
+#else
+	const struct ipc_comp_file *ipc_file =
+		(const struct ipc_comp_file *)mod_data->cfg.init_data;
+#endif
+
 	tb_debug_print("file_init()\n");
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd)
+	ccd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*ccd));
+	if (!ccd)
 		return -ENOMEM;
 
-	mod_data->private = cd;
+	mod_data->private = ccd;
+
+	/* File component data is placed to copier's ipcgtw_data */
+	cd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	if (!cd) {
+		free(ccd);
+		return -ENOMEM;
+	}
+
+	file_set_comp_data(ccd, cd);
 
 	/* default function for processing samples */
 	cd->file_func = file_default;
@@ -581,53 +632,54 @@ static int file_init(struct processing_module *mod)
 
 	/* set file comp mode */
 	cd->fs.mode = ipc_file->mode;
-
 	cd->rate = ipc_file->rate;
 	cd->channels = ipc_file->channels;
 	cd->frame_fmt = ipc_file->frame_fmt;
 	dev->direction = ipc_file->direction;
+	dev->direction_set = true;
 
 	/* open file handle(s) depending on mode */
 	switch (cd->fs.mode) {
 	case FILE_READ:
-		/* Change to DAI type is needed to avoid uninitialized hw params in
-		 * pipeline_params, A file host can be left as SOF_COMP_MODULE_ADAPTER
-		 */
-		if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
-			dev->ipc_config.type = SOF_COMP_DAI;
-			ret = file_init_set_dai_data(dev);
-			if (ret) {
-				fprintf(stderr, "error: failed set dai data.\n");
-				goto error;
-			}
-		}
-
 		cd->fs.rfh = fopen(cd->fs.fn, "r");
 		if (!cd->fs.rfh) {
 			fprintf(stderr, "error: opening file %s for reading - %s\n",
 				cd->fs.fn, strerror(errno));
 			goto error;
 		}
-		break;
-	case FILE_WRITE:
+
 		/* Change to DAI type is needed to avoid uninitialized hw params in
 		 * pipeline_params, A file host can be left as SOF_COMP_MODULE_ADAPTER
 		 */
-		if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
 			dev->ipc_config.type = SOF_COMP_DAI;
-			ret = file_init_set_dai_data(dev);
+			ret = file_init_set_dai_data(mod);
 			if (ret) {
 				fprintf(stderr, "error: failed set dai data.\n");
 				goto error;
 			}
 		}
-
+		break;
+	case FILE_WRITE:
 		cd->fs.wfh = fopen(cd->fs.fn, "w+");
 		if (!cd->fs.wfh) {
 			fprintf(stderr, "error: opening file %s for writing - %s\n",
 				cd->fs.fn, strerror(errno));
 			goto error;
 		}
+
+		/* Change to DAI type is needed to avoid uninitialized hw params in
+		 * pipeline_params, A file host can be left as SOF_COMP_MODULE_ADAPTER
+		 */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+			dev->ipc_config.type = SOF_COMP_DAI;
+			ret = file_init_set_dai_data(mod);
+			if (ret) {
+				fprintf(stderr, "error: failed set dai data.\n");
+				goto error;
+			}
+		}
+
 		break;
 	default:
 		/* TODO: duplex mode */
@@ -637,20 +689,22 @@ static int file_init(struct processing_module *mod)
 
 	cd->fs.reached_eof = false;
 	cd->fs.write_failed = false;
+	cd->fs.copy_timeout = false;
 	cd->fs.n = 0;
 	cd->fs.copy_count = 0;
 	cd->fs.cycles_count = 0;
-
 	return 0;
 
 error:
 	free(cd);
+	free(ccd);
 	return -EINVAL;
 }
 
 static int file_free(struct processing_module *mod)
 {
-	struct file_comp_data *cd = module_get_private_data(mod);
+	struct copier_data *ccd = module_get_private_data(mod);
+	struct file_comp_data *cd = get_file_comp_data(ccd);
 
 	tb_debug_print("file_free()");
 
@@ -659,9 +713,10 @@ static int file_free(struct processing_module *mod)
 	else
 		fclose(cd->fs.wfh);
 
+	file_free_dai_data(mod);
 	free(cd->fs.fn);
 	free(cd);
-	file_free_dai_data(mod->dev);
+	free(ccd);
 	return 0;
 }
 
@@ -674,13 +729,13 @@ static int file_process(struct processing_module *mod,
 			struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct comp_dev *dev = mod->dev;
-	struct file_comp_data *cd = module_get_private_data(mod);
+	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
 	struct audio_stream *source;
 	struct audio_stream *sink;
 	struct comp_buffer *buffer;
 	uint32_t frames;
 	uint64_t cycles0, cycles1;
-	int samples;
+	int samples = 0;
 	int ret = 0;
 
 	if (cd->fs.reached_eof)
@@ -715,9 +770,18 @@ static int file_process(struct processing_module *mod,
 
 	cd->fs.copy_count++;
 	if (cd->fs.reached_eof || (cd->max_copies && cd->fs.copy_count >= cd->max_copies)) {
-		cd->fs.reached_eof = 1;
+		cd->fs.reached_eof = true;
 		tb_debug_print("file_process(): reached EOF");
-		schedule_task_cancel(mod->dev->pipeline->pipe_task);
+	}
+
+	if (samples) {
+		cd->copies_timeout_count = 0;
+	} else {
+		cd->copies_timeout_count++;
+		if (cd->copies_timeout_count == FILE_MAX_COPIES_TIMEOUT) {
+			tb_debug_print("file_process(): copies_timeout reached\n");
+			cd->fs.copy_timeout = true;
+		}
 	}
 
 	tb_getcycles(&cycles1);
@@ -732,7 +796,7 @@ static int file_prepare(struct processing_module *mod,
 	struct audio_stream *stream;
 	struct comp_buffer *buffer;
 	struct comp_dev *dev = mod->dev;
-	struct file_comp_data *cd = module_get_private_data(mod);
+	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
 
 	tb_debug_print("file_prepare()");
 
@@ -774,15 +838,16 @@ static int file_prepare(struct processing_module *mod,
 
 static int file_reset(struct processing_module *mod)
 {
-	tb_debug_print("file_reset()");
+	struct file_comp_data *cd = module_get_private_data(mod);
 
+	tb_debug_print("file_reset()");
+	cd->copies_timeout_count = 0;
 	return 0;
 }
 
 static int file_trigger(struct comp_dev *dev, int cmd)
 {
-	tb_debug_print("asrc_trigger()");
-
+	tb_debug_print("file_trigger()");
 	return comp_set_state(dev, cmd);
 }
 
@@ -790,7 +855,7 @@ static int file_get_hw_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params, int dir)
 {
 	struct processing_module *mod = comp_mod(dev);
-	struct file_comp_data *cd = module_get_private_data(mod);
+	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
 
 	tb_debug_print("file_hw_params()");
 	params->direction = dir;
