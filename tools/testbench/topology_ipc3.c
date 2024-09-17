@@ -7,6 +7,8 @@
 
 /* Topology loader to set up components and pipeline */
 
+#if CONFIG_IPC_MAJOR_3
+
 #include <sof/audio/component.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/topology.h>
@@ -15,12 +17,14 @@
 #include <sof/lib/uuid.h>
 #include <tplg_parser/tokens.h>
 #include <tplg_parser/topology.h>
+
+#include "testbench/common_test.h"
+#include "testbench/file.h"
+
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "testbench/common_test.h"
-#include "testbench/file.h"
 
 #define MAX_TPLG_OBJECT_SIZE	4096
 
@@ -376,12 +380,13 @@ static int tb_register_fileread(struct testbench_prm *tp,
 
 	/* configure fileread */
 	fileread->fn = strdup(tp->input_file[tp->input_file_index]);
-	if (tp->input_file_index == 0)
-		tp->fr_id = ctx->comp_id;
+	tp->fr[tp->input_file_index].id = ctx->comp_id;
+	tp->fr[tp->input_file_index].instance_id = ctx->comp_id;
+	tp->fr[tp->input_file_index].pipeline_id = ctx->pipeline_id;
+	tp->input_file_index++;
 
 	/* use fileread comp as scheduling comp */
 	ctx->sched_id = ctx->comp_id;
-	tp->input_file_index++;
 
 	/* Set format from testbench command line*/
 	fileread->rate = tp->fs_in;
@@ -428,8 +433,9 @@ static int tb_register_filewrite(struct testbench_prm *tp,
 		return -EINVAL;
 	}
 	filewrite->fn = strdup(tp->output_file[tp->output_file_index]);
-	if (tp->output_file_index == 0)
-		tp->fw_id = ctx->comp_id;
+	tp->fw[tp->output_file_index].id = ctx->comp_id;
+	tp->fw[tp->output_file_index].instance_id = ctx->comp_id;
+	tp->fw[tp->output_file_index].pipeline_id = ctx->pipeline_id;
 	tp->output_file_index++;
 
 	/* Set format from testbench command line*/
@@ -626,9 +632,10 @@ exit:
 }
 
 /* parse topology file and set up pipeline */
-int tb_parse_topology(struct testbench_prm *tb, struct tplg_context *ctx)
+int tb_parse_topology(struct testbench_prm *tb)
 
 {
+	struct tplg_context *ctx = &tb->tplg;
 	struct snd_soc_tplg_hdr *hdr;
 	struct tplg_comp_info *comp_list_realloc = NULL;
 	char pipeline_string[256] = {0};
@@ -636,6 +643,8 @@ int tb_parse_topology(struct testbench_prm *tb, struct tplg_context *ctx)
 	int ret = 0;
 	FILE *file;
 	size_t size;
+
+	ctx->ipc_major = 3;
 
 	/* open topology file */
 	file = fopen(ctx->tplg_file, "rb");
@@ -752,3 +761,4 @@ out:
 	return ret;
 }
 
+#endif /* CONFIG_IPC_MAJOR_3 */
