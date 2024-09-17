@@ -557,7 +557,7 @@ static int file_init(struct processing_module *mod)
 	struct file_comp_data *cd;
 	int ret;
 
-	debug_print("file_init()\n");
+	tb_debug_print("file_init()\n");
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
@@ -647,7 +647,7 @@ static int file_free(struct processing_module *mod)
 {
 	struct file_comp_data *cd = module_get_private_data(mod);
 
-	debug_print("file_free()");
+	tb_debug_print("file_free()");
 
 	if (cd->fs.mode == FILE_READ)
 		fclose(cd->fs.rfh);
@@ -711,7 +711,7 @@ static int file_process(struct processing_module *mod,
 	cd->fs.copy_count++;
 	if (cd->fs.reached_eof || (cd->max_copies && cd->fs.copy_count >= cd->max_copies)) {
 		cd->fs.reached_eof = 1;
-		debug_print("file_process(): reached EOF");
+		tb_debug_print("file_process(): reached EOF");
 		schedule_task_cancel(mod->dev->pipeline->pipe_task);
 	}
 
@@ -729,7 +729,7 @@ static int file_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct file_comp_data *cd = module_get_private_data(mod);
 
-	debug_print("file_prepare()");
+	tb_debug_print("file_prepare()");
 
 	/* file component sink/source buffer period count */
 	cd->max_frames = dev->frames;
@@ -769,14 +769,14 @@ static int file_prepare(struct processing_module *mod,
 
 static int file_reset(struct processing_module *mod)
 {
-	debug_print("file_reset()");
+	tb_debug_print("file_reset()");
 
 	return 0;
 }
 
 static int file_trigger(struct comp_dev *dev, int cmd)
 {
-	debug_print("asrc_trigger()");
+	tb_debug_print("asrc_trigger()");
 
 	return comp_set_state(dev, cmd);
 }
@@ -787,7 +787,7 @@ static int file_get_hw_params(struct comp_dev *dev,
 	struct processing_module *mod = comp_mod(dev);
 	struct file_comp_data *cd = module_get_private_data(mod);
 
-	debug_print("file_hw_params()");
+	tb_debug_print("file_hw_params()");
 	params->direction = dir;
 	params->rate = cd->rate;
 	params->channels = cd->channels;
