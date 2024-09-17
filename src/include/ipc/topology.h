@@ -243,8 +243,16 @@ struct sof_ipc_comp_process {
 
 /* IPC file component used by testbench only */
 struct sof_ipc_comp_file {
+	/* These need to be the same as in above sof_ipc_comp_process */
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
+	uint32_t size;	/**< size of bespoke data section in bytes */
+	uint32_t type;	/**< sof_ipc_process_type */
+
+	/* reserved for future use */
+	uint32_t reserved[7];
+
+	/* These are additional parameters for file */
 	uint32_t rate;
 	uint32_t channels;
 	char *fn;

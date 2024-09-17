@@ -14,7 +14,16 @@ add_executable(testbench
 	common_test.c
 	file.c
 	topology.c
+        topology_ipc4.c
 )
+
+# TODO
+#if(CONFIG_IPC_MAJOR_3)
+#	add_local_sources(testbench topology_ipc3.c)
+#elseif(CONFIG_IPC_MAJOR_4)
+#	add_local_sources(testbench topology_ipc4.c)
+#endif()
+
 
 sof_append_relative_path_definitions(testbench)
 
@@ -41,7 +50,7 @@ if (supports_implicit_fallthrough)
     set(implicit_fallthrough -Wimplicit-fallthrough)
 endif()
 
-target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wmissing-prototypes
+target_compile_options(testbench PRIVATE -g -Wall -Werror -Wmissing-prototypes
   ${implicit_fallthrough} -DCONFIG_LIBRARY -DCONFIG_LIBRARY_STATIC -imacros${config_h})
 
 target_link_libraries(testbench PRIVATE -lm)

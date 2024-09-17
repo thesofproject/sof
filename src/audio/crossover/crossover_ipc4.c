@@ -29,7 +29,7 @@ int crossover_get_sink_id(struct comp_data *cd, uint32_t pipeline_id, uint32_t i
  * kernel know that the base_cfg_ext needs to be appended to the IPC payload. The
  * Extension is needed to know the output pin indices.
  */
-int crossover_init_output_pins(struct processing_module *mod)
+static int crossover_init_output_pins(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;

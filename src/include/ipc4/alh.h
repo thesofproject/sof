@@ -24,6 +24,7 @@
 #ifndef __SOF_IPC4_ALH_H__
 #define __SOF_IPC4_ALH_H__
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <ipc4/gateway.h>
