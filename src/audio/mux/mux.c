@@ -231,7 +231,6 @@ static int demux_process(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct list_item *clist;
 	struct comp_buffer *sink;
 	struct audio_stream *sinks_stream[MUX_MAX_STREAMS] = { NULL };
 	struct mux_look_up *look_ups[MUX_MAX_STREAMS] = { NULL };
@@ -243,8 +242,7 @@ static int demux_process(struct processing_module *mod,
 	comp_dbg(dev, "demux_process()");
 
 	/* align sink streams with their respective configurations */
-	list_for_item(clist, &dev->bsink_list) {
-		sink = container_of(clist, struct comp_buffer, source_list);
+	comp_dev_for_each_consumer(dev, sink) {
 		if (sink->sink->state == dev->state) {
 			i = get_stream_index(dev, cd, buffer_pipeline_id(sink));
 			/* return if index wrong */

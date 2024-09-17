@@ -271,17 +271,15 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 #if CONFIG_IPC_MAJOR_4
-		struct list_item *sink_list;
 		/*
 		 * copy from local buffer to all sinks that are not gateway buffers
 		 * using the right PCM converter function.
 		 */
-		list_for_item(sink_list, &dev->bsink_list) {
-			struct comp_dev *sink_dev;
-			struct comp_buffer *sink;
-			int j;
+		struct comp_buffer *sink;
 
-			sink = container_of(sink_list, struct comp_buffer, source_list);
+		comp_dev_for_each_consumer(dev, sink) {
+			struct comp_dev *sink_dev;
+			int j;
 
 			if (sink == dd->dma_buffer)
 				continue;
@@ -321,19 +319,17 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		ret = stream_copy_from_no_consume(dd->dma_buffer, dd->local_buffer,
 						  dd->process, bytes, dd->chmap);
 #if CONFIG_IPC_MAJOR_4
-		struct list_item *sink_list;
 		/* Skip in case of endpoint DAI devices created by the copier */
 		if (converter) {
 			/*
 			 * copy from DMA buffer to all sink buffers using the right PCM converter
 			 * function
 			 */
-			list_for_item(sink_list, &dev->bsink_list) {
-				struct comp_dev *sink_dev;
-				struct comp_buffer *sink;
-				int j;
+			struct comp_buffer *sink;
 
-				sink = container_of(sink_list, struct comp_buffer, source_list);
+			comp_dev_for_each_consumer(dev, sink) {
+				struct comp_dev *sink_dev;
+				int j;
 
 				/* this has been handled above already */
 				if (sink == dd->local_buffer)
@@ -1644,17 +1640,16 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		sink_frames = free_bytes / audio_stream_frame_bytes(&dd->dma_buffer->stream);
 		frames = MIN(src_frames, sink_frames);
 
-		struct list_item *sink_list;
 		/*
 		 * In the case of playback DAI's with multiple sink buffers, compute the
 		 * minimum number of frames based on the DMA avail_bytes and the free
 		 * samples in all active sink buffers.
 		 */
-		list_for_item(sink_list, &dev->bsink_list) {
-			struct comp_dev *sink_dev;
-			struct comp_buffer *sink;
+		struct comp_buffer *sink;
 
-			sink = container_of(sink_list, struct comp_buffer, source_list);
+		comp_dev_for_each_consumer(dev, sink) {
+			struct comp_dev *sink_dev;
+
 			sink_dev = sink->sink;
 
 			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
@@ -1665,8 +1660,6 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 			}
 		}
 	} else {
-		struct list_item *sink_list;
-
 		src_frames = avail_bytes / audio_stream_frame_bytes(&dd->dma_buffer->stream);
 
 		/*
@@ -1682,11 +1675,11 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 			 * minimum number of samples based on the DMA avail_bytes and the free
 			 * samples in all active sink buffers.
 			 */
-			list_for_item(sink_list, &dev->bsink_list) {
-				struct comp_dev *sink_dev;
-				struct comp_buffer *sink;
+			struct comp_buffer *sink;
 
-				sink = container_of(sink_list, struct comp_buffer, source_list);
+			comp_dev_for_each_consumer(dev, sink) {
+				struct comp_dev *sink_dev;
+
 				sink_dev = sink->sink;
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&

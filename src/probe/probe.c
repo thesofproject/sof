@@ -1061,7 +1061,7 @@ static bool probe_purpose_needs_ext_dma(uint32_t purpose)
 static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point_id_t probe_point)
 {
 	struct comp_buffer *buf;
-	struct list_item *sink_list, *source_list;
+	struct list_item *source_list;
 	unsigned int queue_id;
 
 	switch (probe_point.fields.type) {
@@ -1075,8 +1075,7 @@ static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point
 		}
 		break;
 	case PROBE_TYPE_OUTPUT:
-		list_for_item(sink_list, &dev->cd->bsink_list) {
-			buf = container_of(sink_list, struct comp_buffer, source_list);
+		comp_dev_for_each_consumer(dev->cd, buf) {
 			queue_id = IPC4_SINK_QUEUE_ID(buf_get_id(buf));
 
 			if (queue_id == probe_point.fields.index)

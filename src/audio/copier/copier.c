@@ -455,15 +455,13 @@ static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
 				struct comp_buffer *src_c,
 				struct comp_copy_limits *processed_data)
 {
-	struct list_item *sink_list;
 	struct comp_buffer *sink;
 	int ret = 0;
 
 	/* module copy, one source to multiple sink buffers */
-	list_for_item(sink_list, &dev->bsink_list) {
+	comp_dev_for_each_consumer(dev, sink) {
 		struct comp_dev *sink_dev;
 
-		sink = container_of(sink_list, struct comp_buffer, source_list);
 		sink_dev = sink->sink;
 		processed_data->sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
@@ -1066,14 +1064,14 @@ static int copier_bind(struct processing_module *mod, void *data)
 	const uint32_t src_queue_id = bu->extension.r.src_queue;
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct list_item *list;
 
 	if (dev->ipc_config.id != src_id)
 		return 0; /* Another component is a data producer */
 
 	/* update sink format */
-	list_for_item(list, &dev->bsink_list) {
-		struct comp_buffer *buffer = container_of(list, struct comp_buffer, source_list);
+	struct comp_buffer *buffer;
+
+	comp_dev_for_each_consumer(dev, buffer) {
 		uint32_t id = IPC4_SRC_QUEUE_ID(buf_get_id(buffer));
 
 		if (src_queue_id == id) {

@@ -328,7 +328,6 @@ static int kpb_bind(struct comp_dev *dev, void *data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct ipc4_module_bind_unbind *bu;
-	struct list_item *blist;
 	int buf_id;
 	int ret = 0;
 
@@ -343,9 +342,9 @@ static int kpb_bind(struct comp_dev *dev, void *data)
 	 * (Detector/MicSel has one input pin). To properly connect KPB sink
 	 * with Detector source we're looking for buffer with id=0.
 	 */
+	struct comp_buffer *sink;
 
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink = container_of(blist, struct comp_buffer, source_list);
+	comp_dev_for_each_consumer(dev, sink) {
 		int sink_buf_id;
 
 		if (!sink->sink) {
@@ -858,10 +857,9 @@ static int kpb_prepare(struct comp_dev *dev)
 	 * NOTE! We assume here that channel selector component device
 	 * is connected to the KPB sinks as well as host device.
 	 */
-	struct list_item *blist;
+	struct comp_buffer *sink;
 
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink = container_of(blist, struct comp_buffer, source_list);
+	comp_dev_for_each_consumer(dev, sink) {
 		enum sof_comp_type type;
 
 		if (!sink->sink) {
@@ -888,13 +886,11 @@ static int kpb_prepare(struct comp_dev *dev)
 	 * If OBS is not equal to IBS it means that KPB will work in micselector mode.
 	 */
 	if (kpb->ipc4_cfg.base_cfg.ibs != kpb->ipc4_cfg.base_cfg.obs) {
-		struct list_item *sink_list;
 		uint32_t sink_id;
 
-		list_for_item(sink_list, &dev->bsink_list) {
-			struct comp_buffer *sink =
-				container_of(sink_list, struct comp_buffer, source_list);
+		struct comp_buffer *sink;
 
+		comp_dev_for_each_consumer(dev, sink) {
 			sink_id = buf_get_id(sink);
 
 			if (sink_id == 0)

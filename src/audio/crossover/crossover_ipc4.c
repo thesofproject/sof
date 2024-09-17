@@ -111,7 +111,6 @@ void crossover_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_buffer *sinkb, *sourceb;
-	struct list_item *sink_list;
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "crossover_params()");
@@ -122,8 +121,7 @@ void crossover_params(struct processing_module *mod)
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 
-	list_for_item(sink_list, &dev->bsink_list) {
-		sinkb = container_of(sink_list, struct comp_buffer, source_list);
+	comp_dev_for_each_consumer(dev, sinkb) {
 		ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 	}
 }
