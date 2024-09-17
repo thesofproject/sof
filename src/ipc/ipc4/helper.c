@@ -755,27 +755,6 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	return IPC4_SUCCESS;
 }
 
-/* dma index may be for playback or capture. Current hw supports PLATFORM_MAX_DMA_CHAN playback
- * channels and the rest are for capture. This function converts DMA ID to DMA channel.
- */
-static inline int process_dma_index(uint32_t dma_id, uint32_t *dir, uint32_t *chan)
-{
-	if (dma_id > DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN) {
-		tr_err(&ipc_tr, "dma id %d is out of range", dma_id);
-		return IPC4_INVALID_NODE_ID;
-	}
-
-	if (dma_id >= PLATFORM_MAX_DMA_CHAN) {
-		*dir = SOF_IPC_STREAM_CAPTURE;
-		*chan = dma_id - PLATFORM_MAX_DMA_CHAN;
-	} else {
-		*dir = SOF_IPC_STREAM_PLAYBACK;
-		*chan = dma_id;
-	}
-
-	return IPC4_SUCCESS;
-}
-
 #if CONFIG_COMP_CHAIN_DMA
 int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 {
