@@ -8,9 +8,9 @@
 
 #include <stdbool.h>
 
-#ifndef _TRACE_H
-#define _TRACE_H
+#ifndef _TESTBENCH_TRACE_H
+#define _TESTBENCH_TRACE_H
 
 void tb_enable_trace(unsigned int log_level);
 
-#endif
+#endif /* _TESTBENCH_TRACE_H */

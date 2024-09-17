@@ -3,8 +3,8 @@
  * Copyright(c) 2018 Intel Corporation. All rights reserved.
  */
 
-#ifndef _COMMON_TEST_H
-#define _COMMON_TEST_H
+#ifndef _TESTBENCH_COMMON_TEST_H
+#define _TESTBENCH_COMMON_TEST_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -18,14 +18,14 @@
 
 #include <sof/lib/uuid.h>
 
-#define DEBUG_MSG_LEN		1024
-#define MAX_LIB_NAME_LEN	1024
+#define TB_DEBUG_MSG_LEN		1024
+#define TB_MAX_LIB_NAME_LEN		1024
 
-#define MAX_INPUT_FILE_NUM	16
-#define MAX_OUTPUT_FILE_NUM	16
+#define TB_MAX_INPUT_FILE_NUM		16
+#define TB_MAX_OUTPUT_FILE_NUM		16
 
 /* number of widgets types supported in testbench */
-#define NUM_WIDGETS_SUPPORTED	16
+#define TB_NUM_WIDGETS_SUPPORTED	16
 
 struct tplg_context;
 
@@ -38,12 +38,12 @@ struct tplg_context;
 struct testbench_prm {
 	long long total_cycles;
 	char *tplg_file; /* topology file to use */
-	char *input_file[MAX_INPUT_FILE_NUM]; /* input file names */
-	char *output_file[MAX_OUTPUT_FILE_NUM]; /* output file names */
+	char *input_file[TB_MAX_INPUT_FILE_NUM]; /* input file names */
+	char *output_file[TB_MAX_OUTPUT_FILE_NUM]; /* output file names */
 	int input_file_num; /* number of input files */
 	int output_file_num; /* number of output files */
 	char *bits_in; /* input bit format */
-	int pipelines[MAX_OUTPUT_FILE_NUM]; /* output file names */
+	int pipelines[TB_MAX_OUTPUT_FILE_NUM]; /* output file names */
 	int pipeline_num;
 	struct tplg_context *ctx;
 
@@ -105,4 +105,4 @@ void tb_gettime(struct timespec *td);
 
 void tb_getcycles(uint64_t *cycles);
 
-#endif
+#endif /* _TESTBENCH_COMMON_TEST_H */
