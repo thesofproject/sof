@@ -74,7 +74,6 @@ static void set_mux_params(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink, *source;
-	struct list_item *source_list;
 	int j;
 
 	params->direction = dev->direction;
@@ -106,9 +105,7 @@ static void set_mux_params(struct processing_module *mod)
 	if (!list_is_empty(&dev->bsource_list)) {
 		struct ipc4_audio_format *audio_fmt;
 
-		list_for_item(source_list, &dev->bsource_list)
-		{
-			source = container_of(source_list, struct comp_buffer, sink_list);
+		comp_dev_for_each_producer(dev, source) {
 			j = buf_get_id(source);
 			cd->config.streams[j].pipeline_id = buffer_pipeline_id(source);
 			if (j == BASE_CFG_QUEUED_ID)

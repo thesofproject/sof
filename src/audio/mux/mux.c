@@ -289,7 +289,6 @@ static int mux_process(struct processing_module *mod,
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source;
-	struct list_item *clist;
 	const struct audio_stream *sources_stream[MUX_MAX_STREAMS] = { NULL };
 	int frames = 0;
 	int sink_bytes;
@@ -300,8 +299,7 @@ static int mux_process(struct processing_module *mod,
 
 	/* align source streams with their respective configurations */
 	j = 0;
-	list_for_item(clist, &dev->bsource_list) {
-		source = container_of(clist, struct comp_buffer, sink_list);
+	comp_dev_for_each_producer(dev, source) {
 		if (source->source->state == dev->state) {
 			if (frames)
 				frames = MIN(frames, input_buffers[j].size);
@@ -332,8 +330,7 @@ static int mux_process(struct processing_module *mod,
 
 	/* Update consumed and produced */
 	j = 0;
-	list_for_item(clist, &dev->bsource_list) {
-		source = container_of(clist, struct comp_buffer, sink_list);
+	comp_dev_for_each_producer(dev, source) {
 		if (source->source->state == dev->state)
 			mod->input_buffers[j].consumed = source_bytes;
 		j++;
@@ -344,7 +341,7 @@ static int mux_process(struct processing_module *mod,
 
 static int mux_reset(struct processing_module *mod)
 {
-	struct list_item *blist;
+	struct comp_buffer *source;
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	int dir = dev->pipeline->source_comp->direction;
@@ -352,9 +349,7 @@ static int mux_reset(struct processing_module *mod)
 	comp_dbg(dev, "mux_reset()");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
-		list_for_item(blist, &dev->bsource_list) {
-			struct comp_buffer *source = container_of(blist, struct comp_buffer,
-								  sink_list);
+		comp_dev_for_each_producer(dev, source) {
 			int state = source->source->state;
 
 			/* only mux the sources with the same state with mux */
@@ -434,9 +429,6 @@ static int mux_set_config(struct processing_module *mod, uint32_t config_id,
 
 static int demux_trigger(struct processing_module *mod, int cmd)
 {
-	struct list_item *li;
-	struct comp_buffer *b;
-
 	/* Check for cross-pipeline sinks: in general foreign
 	 * pipelines won't be started synchronously with ours (it's
 	 * under control of host software), so output can't be
@@ -446,8 +438,9 @@ static int demux_trigger(struct processing_module *mod, int cmd)
 	 * themselves.
 	 */
 	if (cmd == COMP_TRIGGER_PRE_START) {
-		list_for_item(li, &mod->dev->bsink_list) {
-			b = container_of(li, struct comp_buffer, source_list);
+		struct comp_buffer *b;
+
+		comp_dev_for_each_producer(mod->dev, b) {
 			if (b->sink->pipeline != mod->dev->pipeline)
 				audio_stream_set_overrun(&b->stream, true);
 		}

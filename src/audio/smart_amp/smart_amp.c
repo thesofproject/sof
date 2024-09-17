@@ -731,7 +731,6 @@ static int smart_amp_resolve_mod_fmt(struct comp_dev *dev, uint32_t least_req_de
 static int smart_amp_prepare(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct list_item *blist;
 	uint16_t ff_src_fmt, fb_src_fmt, resolved_mod_fmt;
 	uint32_t least_req_depth;
 	uint32_t rate;
@@ -744,10 +743,9 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		return ret;
 
 	/* searching for stream and feedback source buffers */
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source_buffer = container_of(blist, struct comp_buffer,
-								 sink_list);
+	struct comp_buffer *source_buffer;
 
+	comp_dev_for_each_producer(dev, source_buffer) {
 		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else

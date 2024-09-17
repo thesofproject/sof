@@ -487,7 +487,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	struct comp_buffer *source_buffer;
-	struct list_item *blist;
 	int ret;
 
 	comp_info(dev, "smart_amp_prepare()");
@@ -500,10 +499,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	/* searching for stream and feedback source buffers */
-	list_for_item(blist, &dev->bsource_list) {
-		source_buffer = container_of(blist, struct comp_buffer,
-					     sink_list);
-
+	comp_dev_for_each_producer(dev, source_buffer) {
 		/* FIXME: how often can this loop be run? */
 		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;

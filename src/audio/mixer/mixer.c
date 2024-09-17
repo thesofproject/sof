@@ -163,16 +163,15 @@ static int mixer_reset(struct processing_module *mod)
 {
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct list_item *blist;
 	int dir = dev->pipeline->source_comp->direction;
 
 	comp_dbg(dev, "mixer_reset()");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
-		list_for_item(blist, &dev->bsource_list) {
+		struct comp_buffer *source;
+
+		comp_dev_for_each_producer(dev, source) {
 			/* FIXME: this is racy and implicitly protected by serialised IPCs */
-			struct comp_buffer *source = container_of(blist, struct comp_buffer,
-								  sink_list);
 			bool stop = false;
 
 			if (source->source && source->source->state > COMP_STATE_READY)
@@ -214,15 +213,15 @@ static int mixer_prepare(struct processing_module *mod,
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sink;
-	struct list_item *blist;
 
 	sink = comp_dev_get_first_data_consumer(dev);
 	md->mix_func = mixer_get_processing_function(dev, sink);
 	mixer_set_frame_alignment(&sink->stream);
 
 	/* check each mixer source state */
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source;
+	struct comp_buffer *source;
+
+	comp_dev_for_each_producer(dev, source) {
 		bool stop;
 
 		/*
@@ -233,7 +232,6 @@ static int mixer_prepare(struct processing_module *mod,
 		 * preparing the mixer, so they shouldn't touch it until we're
 		 * done.
 		 */
-		source = container_of(blist, struct comp_buffer, sink_list);
 		mixer_set_frame_alignment(&source->stream);
 		stop = source->source && (source->source->state == COMP_STATE_PAUSED ||
 					    source->source->state == COMP_STATE_ACTIVE);
