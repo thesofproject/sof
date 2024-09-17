@@ -204,7 +204,7 @@ int tb_pipeline_params(struct testbench_prm *tp, struct ipc *ipc, struct pipelin
 {
 	struct comp_dev *cd;
 	struct sof_ipc_pcm_params params = {{0}};
-	char message[DEBUG_MSG_LEN];
+	char message[TB_DEBUG_MSG_LEN];
 	int fs_period;
 	int period;
 	int ret = 0;

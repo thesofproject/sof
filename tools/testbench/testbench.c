@@ -33,7 +33,7 @@ static int parse_output_files(char *outputs, struct testbench_prm *tp)
 	char *token = strtok_r(outputs, ",", &output_token);
 	int index;
 
-	for (index = 0; index < MAX_OUTPUT_FILE_NUM && token; index++) {
+	for (index = 0; index < TB_MAX_OUTPUT_FILE_NUM && token; index++) {
 		/* get output file name with current index */
 		tp->output_file[index] = strdup(token);
 
@@ -41,10 +41,10 @@ static int parse_output_files(char *outputs, struct testbench_prm *tp)
 		token = strtok_r(NULL, ",", &output_token);
 	}
 
-	if (index == MAX_OUTPUT_FILE_NUM && token) {
+	if (index == TB_MAX_OUTPUT_FILE_NUM && token) {
 		fprintf(stderr, "error: max output file number is %d\n",
-			MAX_OUTPUT_FILE_NUM);
-		for (index = 0; index < MAX_OUTPUT_FILE_NUM; index++)
+			TB_MAX_OUTPUT_FILE_NUM);
+		for (index = 0; index < TB_MAX_OUTPUT_FILE_NUM; index++)
 			free(tp->output_file[index]);
 		return -EINVAL;
 	}
@@ -63,7 +63,7 @@ static int parse_input_files(char *inputs, struct testbench_prm *tp)
 	char *token = strtok_r(inputs, ",", &input_token);
 	int index;
 
-	for (index = 0; index < MAX_INPUT_FILE_NUM && token; index++) {
+	for (index = 0; index < TB_MAX_INPUT_FILE_NUM && token; index++) {
 		/* get input file name with current index */
 		tp->input_file[index] = strdup(token);
 
@@ -71,10 +71,10 @@ static int parse_input_files(char *inputs, struct testbench_prm *tp)
 		token = strtok_r(NULL, ",", &input_token);
 	}
 
-	if (index == MAX_INPUT_FILE_NUM && token) {
+	if (index == TB_MAX_INPUT_FILE_NUM && token) {
 		fprintf(stderr, "error: max input file number is %d\n",
-			MAX_INPUT_FILE_NUM);
-		for (index = 0; index < MAX_INPUT_FILE_NUM; index++)
+			TB_MAX_INPUT_FILE_NUM);
+		for (index = 0; index < TB_MAX_INPUT_FILE_NUM; index++)
 			free(tp->input_file[index]);
 		return -EINVAL;
 	}
@@ -90,7 +90,7 @@ static int parse_pipelines(char *pipelines, struct testbench_prm *tp)
 	char *token = strtok_r(pipelines, ",", &output_token);
 	int index;
 
-	for (index = 0; index < MAX_OUTPUT_FILE_NUM && token; index++) {
+	for (index = 0; index < TB_MAX_OUTPUT_FILE_NUM && token; index++) {
 		/* get output file name with current index */
 		tp->pipelines[index] = atoi(token);
 
@@ -98,9 +98,9 @@ static int parse_pipelines(char *pipelines, struct testbench_prm *tp)
 		token = strtok_r(NULL, ",", &output_token);
 	}
 
-	if (index == MAX_OUTPUT_FILE_NUM && token) {
+	if (index == TB_MAX_OUTPUT_FILE_NUM && token) {
 		fprintf(stderr, "error: max output file number is %d\n",
-			MAX_OUTPUT_FILE_NUM);
+			TB_MAX_OUTPUT_FILE_NUM);
 		return -EINVAL;
 	}
 
@@ -743,10 +743,10 @@ int main(int argc, char **argv)
 	tp.tplg_file = NULL;
 	tp.input_file_num = 0;
 	tp.output_file_num = 0;
-	for (i = 0; i < MAX_OUTPUT_FILE_NUM; i++)
+	for (i = 0; i < TB_MAX_OUTPUT_FILE_NUM; i++)
 		tp.output_file[i] = NULL;
 
-	for (i = 0; i < MAX_INPUT_FILE_NUM; i++)
+	for (i = 0; i < TB_MAX_INPUT_FILE_NUM; i++)
 		tp.input_file[i] = NULL;
 
 	tp.channels_in = TESTBENCH_NCH;
@@ -755,7 +755,7 @@ int main(int argc, char **argv)
 	tp.copy_check = false;
 	tp.quiet = 0;
 	tp.dynamic_pipeline_iterations = 1;
-	tp.pipeline_string = calloc(1, DEBUG_MSG_LEN);
+	tp.pipeline_string = calloc(1, TB_DEBUG_MSG_LEN);
 	tp.pipelines[0] = 1;
 	tp.pipeline_num = 1;
 	tp.tick_period_us = 0; /* Execute fast non-real time, for 1 ms tick use -T 1000 */
