@@ -11,10 +11,12 @@ set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
 
 add_executable(testbench
 	testbench.c
+	file.c
 	common_test.c
 	common_test_ipc3.c
-	file.c
+	common_test_ipc4.c
 	topology_ipc3.c
+	topology_ipc4.c
 )
 
 sof_append_relative_path_definitions(testbench)

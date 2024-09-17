@@ -72,7 +72,7 @@ static int tb_find_file_helper(struct testbench_prm *tp, struct file_comp_lookup
 			fprintf(stderr, "error: null module.\n");
 			return -EINVAL;
 		}
-		fcd = module_get_private_data(mod);
+		fcd = get_file_comp_data(module_get_private_data(mod));
 		fcl[i].state = &fcd->fs;
 	}
 
@@ -101,7 +101,7 @@ static bool tb_is_file_component_at_eof(struct testbench_prm *tp)
 		if (!tp->fr[i].state)
 			continue;
 
-		if (tp->fr[i].state->reached_eof)
+		if (tp->fr[i].state->reached_eof || tp->fr[i].state->copy_timeout)
 			return true;
 	}
 
@@ -109,7 +109,8 @@ static bool tb_is_file_component_at_eof(struct testbench_prm *tp)
 		if (!tp->fw[i].state)
 			continue;
 
-		if (tp->fw[i].state->reached_eof || tp->fw[i].state->write_failed)
+		if (tp->fw[i].state->reached_eof || tp->fw[i].state->copy_timeout ||
+		    tp->fw[i].state->write_failed)
 			return true;
 	}
 
@@ -134,7 +135,7 @@ void tb_show_file_stats(struct testbench_prm *tp, int pipeline_id)
 
 		dev = icd->cd;
 		mod = comp_mod(dev);
-		fcd = module_get_private_data(mod);
+		fcd = get_file_comp_data(module_get_private_data(mod));
 		printf("file %s: id %d: type %d: samples %d copies %d\n",
 		       fcd->fs.fn, dev->ipc_config.id, dev->drv->type, fcd->fs.n,
 		       fcd->fs.copy_count);
@@ -150,7 +151,7 @@ void tb_show_file_stats(struct testbench_prm *tp, int pipeline_id)
 
 		dev = icd->cd;
 		mod = comp_mod(dev);
-		fcd = module_get_private_data(mod);
+		fcd = get_file_comp_data(module_get_private_data(mod));
 		printf("file %s: id %d: type %d: samples %d copies %d\n",
 		       fcd->fs.fn, dev->ipc_config.id, dev->drv->type, fcd->fs.n,
 		       fcd->fs.copy_count);
