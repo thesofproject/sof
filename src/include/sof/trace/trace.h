@@ -393,7 +393,7 @@ struct tr_ctx {
 	uint32_t level;				/**< Default log level */
 };
 
-#if defined(UNIT_TEST)
+#if defined(UNIT_TEST) || !defined(CONFIG_TRACE)
 #define TRACE_CONTEXT_SECTION
 #else
 #define TRACE_CONTEXT_SECTION __section(".trace_ctx")
