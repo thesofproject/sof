@@ -1,23 +1,15 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2019 Intel Corporation. All rights reserved.
- *
- * Author: Karol Trzcinski <karolx.trzcinski@linux.intel.com>
+ * Copyright(c) 2024 Intel Corporation.
  */
 
 #ifndef __SOF_COMPILER_ATTRIBUTES_H__
 #define __SOF_COMPILER_ATTRIBUTES_H__
 
-#define __sparse_cache
-#define __sparse_force
+#include <zephyr/toolchain.h>
 
-#ifndef __packed
-#define __packed __attribute__((packed))
-#endif
-
-#ifndef __unused
-#define __unused __attribute__((unused))
-#endif
+/* Get __sparse_cache and __sparse_force definitions if __CHECKER__ is defined */
+#include <zephyr/debug/sparse.h>
 
 #ifndef __aligned
 #define __aligned(x) __attribute__((__aligned__(x)))
