@@ -312,7 +312,6 @@ if (CONFIG_SOC_MIMX8QM6_ADSP OR CONFIG_SOC_MIMX8QX6_ADSP)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/imx8/platform.c
 		${SOF_PLATFORM_PATH}/imx8/lib/clk.c
-		${SOF_PLATFORM_PATH}/imx8/lib/memory.c
 	)
 
 	# SOF core infrastructure - runs on top of Zephyr
@@ -339,7 +338,6 @@ if (CONFIG_SOC_MIMX8ML8_ADSP)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/imx8m/platform.c
 		${SOF_PLATFORM_PATH}/imx8m/lib/clk.c
-		${SOF_PLATFORM_PATH}/imx8m/lib/memory.c
 		${SOF_PLATFORM_PATH}/imx8m/lib/dai.c
 		${SOF_PLATFORM_PATH}/imx8m/lib/dma.c
 	)
@@ -363,7 +361,6 @@ if (CONFIG_SOC_MIMX8UD7_ADSP)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/imx8ulp/platform.c
 		${SOF_PLATFORM_PATH}/imx8ulp/lib/clk.c
-		${SOF_PLATFORM_PATH}/imx8ulp/lib/memory.c
 	)
 
 	# SOF core infrastructure - runs on top of Zephyr
