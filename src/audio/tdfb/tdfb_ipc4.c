@@ -27,12 +27,6 @@
 #include "tdfb.h"
 #include "tdfb_comp.h"
 
-struct tdfb_notification_payload {
-	struct sof_ipc4_notify_module_data module_data;
-	struct sof_ipc4_control_msg_payload control_msg;
-	struct sof_ipc4_ctrl_value_chan control_value; /* One channel value */
-};
-
 LOG_MODULE_DECLARE(tdfb, CONFIG_SOF_LOG_LEVEL);
 
 static struct ipc_msg *tdfb_notification_init(struct processing_module *mod,
@@ -44,8 +38,9 @@ static struct ipc_msg *tdfb_notification_init(struct processing_module *mod,
 	struct comp_ipc_config *ipc_config = &dev->ipc_config;
 	union ipc4_notification_header *primary =
 		(union ipc4_notification_header *)&msg_proto.header;
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	struct sof_ipc4_control_msg_payload *msg_payload;
 	struct ipc_msg *msg;
-	struct tdfb_notification_payload *payload;
 
 	/* Clear header, extension, and other ipc_msg members */
 	memset_s(&msg_proto, sizeof(msg_proto), 0, sizeof(msg_proto));
@@ -54,32 +49,38 @@ static struct ipc_msg *tdfb_notification_init(struct processing_module *mod,
 	primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
 	msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
-				 sizeof(struct tdfb_notification_payload));
+				 sizeof(struct sof_ipc4_notify_module_data) +
+				 sizeof(struct sof_ipc4_control_msg_payload) +
+				 sizeof(struct sof_ipc4_ctrl_value_chan));
 	if (!msg)
 		return NULL;
 
-	payload = (struct tdfb_notification_payload *)msg->tx_data;
-	payload->module_data.instance_id = IPC4_INST_ID(ipc_config->id);
-	payload->module_data.module_id = IPC4_MOD_ID(ipc_config->id);
-	payload->module_data.event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
+	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
+	msg_module_data->instance_id = IPC4_INST_ID(ipc_config->id);
+	msg_module_data->module_id = IPC4_MOD_ID(ipc_config->id);
+	msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
 		control_type_param_id;
-	payload->module_data.event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
+	msg_module_data->event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
 		sizeof(struct sof_ipc4_ctrl_value_chan);
-	payload->control_msg.id = control_id;
-	payload->control_msg.num_elems = 1;
-	payload->control_value.channel = 0;
+
+	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
+	msg_payload->id = control_id;
+	msg_payload->num_elems = 1;
+	msg_payload->chanv[0].channel = 0;
 
 	comp_dbg(dev, "instance_id = 0x%08x, module_id = 0x%08x",
-		 payload->module_data.instance_id, payload->module_data.module_id);
+		 msg_module_data->instance_id, msg_module_data->module_id);
 	return msg;
 }
 
 static void tdfb_send_notification(struct ipc_msg *msg, uint32_t val)
 {
-	struct tdfb_notification_payload *ipc_payload;
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	struct sof_ipc4_control_msg_payload *msg_payload;
 
-	ipc_payload = (struct tdfb_notification_payload *)msg->tx_data;
-	ipc_payload->control_value.value = val;
+	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
+	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
+	msg_payload->chanv[0].value = val;
 	ipc_msg_send(msg, NULL, false);
 }
 
