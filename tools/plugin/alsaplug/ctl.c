@@ -198,20 +198,6 @@ static int plug_ctl_get_integer_info(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, 
 	return err;
 }
 
-static void plug_ctl_ipc_message(struct ipc4_module_large_config *config, int param_id,
-				 size_t size, uint32_t module_id, uint32_t instance_id,
-				 uint32_t type)
-{
-	config->primary.r.type = type;
-	config->primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
-	config->primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-	config->primary.r.module_id = module_id;
-	config->primary.r.instance_id = instance_id;
-
-	config->extension.r.data_off_size = size;
-	config->extension.r.large_param_id = param_id;
-}
-
 static int plug_ctl_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, long *value)
 {
 	snd_sof_ctl_t *ctl = ext->private_data;

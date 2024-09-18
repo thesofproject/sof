@@ -317,4 +317,8 @@ static inline void data_dump(void *vdata, size_t bytes)
 	printf("\n");
 }
 
+void plug_ctl_ipc_message(struct ipc4_module_large_config *config, int param_id,
+			  size_t size, uint32_t module_id, uint32_t instance_id,
+			  uint32_t type);
+
 #endif
