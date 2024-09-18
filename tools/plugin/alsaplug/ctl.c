@@ -145,10 +145,9 @@ static int plug_ctl_get_attribute(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 		// TODO: ??
 		break;
 	case SND_SOC_TPLG_CTL_BYTES:
-		printf("%s %d\n", __func__, __LINE__);
 		bytes_ctl = (struct snd_soc_tplg_bytes_control *)hdr;
 		*type = SND_CTL_ELEM_TYPE_BYTES;
-		*count = bytes_ctl->size; // Not sure if size is correct
+		*count = bytes_ctl->max;
 		break;
 	}
 
@@ -536,36 +535,147 @@ static int plug_ctl_write_enumerated(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 /*
  * Bytes ops
  */
+static int plug_ctl_get_bytes_data(snd_sof_ctl_t *ctl, snd_ctl_ext_key_t key,
+				   struct sof_abi_hdr *abi, unsigned int max_bytes)
+{
+	struct snd_soc_tplg_bytes_control *bytes_ctl = CTL_GET_TPLG_BYTES(ctl, key);
+	struct ipc4_module_large_config config = {{ 0 }};
+	struct ipc4_module_large_config_reply *reply;
+	char *reply_data, *data;
+	void *msg;
+	uint32_t data_size;
+	int size, reply_data_size;
+	int err;
+
+	/* configure the IPC message */
+	plug_ctl_ipc_message(&config, abi->type, 0,
+			     ctl->glb->ctl[key].module_id, ctl->glb->ctl[key].instance_id,
+			     SOF_IPC4_MOD_LARGE_CONFIG_GET);
+
+	config.extension.r.final_block = 1;
+	config.extension.r.init_block = 1;
+
+	size = sizeof(config);
+	msg = calloc(size, 1);
+	if (!msg)
+		return -ENOMEM;
+
+	/*
+	 * reply contains both the requested data and the reply status. Allocate enough memory
+	 * for max data
+	 */
+	reply_data_size = sizeof(*reply) + sizeof(*data) + bytes_ctl->max;
+	reply_data = calloc(reply_data_size, 1);
+	if (!reply_data_size) {
+		free(msg);
+		return -ENOMEM;
+	}
+
+	/* send the IPC message */
+	memcpy(msg, &config, sizeof(config));
+	err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx,
+				msg, size, reply_data, reply_data_size);
+	free(msg);
+	if (err < 0) {
+		SNDERR("failed to get bytes data for control %s\n", bytes_ctl->hdr.name);
+		goto out;
+	}
+
+	reply = (struct ipc4_module_large_config_reply *)reply_data;
+	if (reply->primary.r.status != IPC4_SUCCESS) {
+		SNDERR("bytes control %s get failed with status %d\n",
+		       bytes_ctl->hdr.name, reply->primary.r.status);
+		err = -EINVAL;
+		goto out;
+	}
+
+	/* check data sanity */
+	data = (char *)(reply_data + sizeof(*reply));
+	data_size = reply->extension.r.data_off_size;
+	if (data_size > bytes_ctl->max) {
+		SNDERR("received data size %d is larger than max %d for bytes control %s\n",
+		       data_size, bytes_ctl->max, bytes_ctl->hdr.name);
+		err = -EINVAL;
+		goto out;
+	}
+
+	abi->size = data_size;
+
+	if (data_size)
+		memcpy(abi->data, data, MIN(data_size, max_bytes));
+
+	err = data_size;
+out:
+	free(reply_data);
+	return err;
+}
+
 static int plug_ctl_read_bytes(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 			       unsigned char *data, size_t max_bytes)
 {
+	snd_sof_ctl_t *ctl = ext->private_data;
+	struct sof_abi_hdr *abi = (struct sof_abi_hdr *)data;
+	int data_size;
+
+	data_size = plug_ctl_get_bytes_data(ctl, key, abi, max_bytes);
+	if (data_size < 0)
+		return data_size;
+
 	return 0;
 }
 
 static int plug_ctl_write_bytes(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 				unsigned char *data, size_t max_bytes)
 {
+	snd_sof_ctl_t *ctl = ext->private_data;
+	struct snd_soc_tplg_bytes_control *bytes_ctl = CTL_GET_TPLG_BYTES(ctl, key);
+	struct sof_abi_hdr *abi = (struct sof_abi_hdr *)data;
+	int err;
+
+	/* send IPC with kcontrol data */
+	err = plug_send_bytes_data(&ctl->ipc_tx, &ctl->ipc_rx,
+				   ctl->glb->ctl[key].module_id, ctl->glb->ctl[key].instance_id,
+				   abi);
+	if (err < 0) {
+		SNDERR("failed to set bytes data for control %s\n", bytes_ctl->hdr.name);
+		return err;
+	}
+
 	return 0;
 }
 
-/*
- * TLV ops
- *
- * The format of an array of \a tlv argument is:
- *   tlv[0]:   Type. One of SND_CTL_TLVT_XXX.
- *   tlv[1]:   Length. The length of value in units of byte.
- *   tlv[2..]: Value. Depending on the type.
- */
+/* TLV ops used for TLV bytes control callback */
 static int plug_tlv_rw(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, int op_flag,
 		       unsigned int numid, unsigned int *tlv, unsigned int tlv_size)
 {
 	snd_sof_ctl_t *ctl = ext->private_data;
-	struct snd_soc_tplg_ctl_hdr *hdr = CTL_GET_TPLG_HDR(ctl, key);
+	struct snd_soc_tplg_bytes_control *bytes_ctl = CTL_GET_TPLG_BYTES(ctl, key);
+	struct sof_abi_hdr *abi = (struct sof_abi_hdr *)(tlv + 2); /* skip TLV header */
+	int data_size;
 
-	//TODO: alsamixer showing wrong dB scales
-	tlv[0] = hdr->tlv.type;
-	tlv[1] = hdr->tlv.size - sizeof(uint32_t) * 2;
-	memcpy(&tlv[2], hdr->tlv.data, hdr->tlv.size - sizeof(uint32_t) * 2);
+	/* send IPC with kcontrol data if op_flag is > 0 else send IPC to get kcontrol data */
+	if (op_flag) {
+		int err;
+
+		err = plug_send_bytes_data(&ctl->ipc_tx, &ctl->ipc_rx,
+					   ctl->glb->ctl[key].module_id,
+					   ctl->glb->ctl[key].instance_id, abi);
+		if (err < 0) {
+			SNDERR("failed to set bytes data for control %s\n", bytes_ctl->hdr.name);
+			return err;
+		}
+
+		return 0;
+	}
+
+	/* read kcontrol data */
+	data_size = plug_ctl_get_bytes_data(ctl, key, abi, tlv_size);
+	if (data_size < 0)
+		return data_size;
+
+	/* set data size and numid */
+	tlv[0] = numid;
+	tlv[1] = data_size + sizeof(*abi);
 
 	return 0;
 }

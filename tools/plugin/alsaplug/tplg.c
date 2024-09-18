@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <kernel/header.h>
 
 #include <ipc4/error_status.h>
 
@@ -1105,7 +1106,9 @@ static int plug_set_up_route(snd_sof_plug_t *plug, struct tplg_route_info *route
 static int plug_set_up_widget(snd_sof_plug_t *plug, struct tplg_comp_info *comp_info)
 {
 	struct tplg_pipeline_info *pipe_info = comp_info->pipe_info;
-	int ret;
+	struct plug_shm_glb_state *glb = plug->glb_ctx.addr;
+	struct plug_shm_ctl *ctl;
+	int ret, i;
 
 	pipe_info->usage_count++;
 
@@ -1122,6 +1125,33 @@ static int plug_set_up_widget(snd_sof_plug_t *plug, struct tplg_comp_info *comp_
 	ret = plug_set_up_widget_ipc(plug, comp_info);
 	if (ret < 0)
 		return ret;
+
+	/* send kcontrol bytes data */
+	for (i = 0; i < glb->num_ctls; i++) {
+		struct snd_soc_tplg_bytes_control *tplg_bytes;
+		struct sof_abi_hdr *abi;
+		int priv_size;
+
+		ctl = &glb->ctl[i];
+
+		/* send the bytes data from kcontrols associated with current widget */
+		if (ctl->module_id != comp_info->module_id ||
+		    ctl->instance_id != comp_info->instance_id ||
+		    ctl->type != SND_SOC_TPLG_TYPE_BYTES)
+			continue;
+
+		tplg_bytes = &ctl->bytes_ctl;
+		priv_size = tplg_bytes->priv.size;
+		abi = (struct sof_abi_hdr *)ctl->data;
+
+		/* send IPC with kcontrol data */
+		ret = plug_send_bytes_data(&plug->ipc_tx, &plug->ipc_rx,
+					   comp_info->module_id, comp_info->instance_id, abi);
+		if (ret < 0) {
+			SNDERR("failed to set bytes data for widget %s\n", comp_info->name);
+			return ret;
+		}
+	}
 
 	tplg_debug("widget %s set up\n", comp_info->name);
 
