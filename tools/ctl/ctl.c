@@ -508,6 +508,8 @@ static int ctl_set_get(struct ctl_data *ctl_data)
 		fprintf(stdout, "Retrieving configuration for ");
 		fprintf(stdout, "device %s control %s.\n",
 			ctl_data->dev, ctl_data->cname);
+		/* set the ABI header to pass the param ID */
+		header_init(ctl_data);
 		ctl_data->buffer[BUFFER_SIZE_OFFSET] = ctl_data->ctrl_size;
 		ret = snd_ctl_elem_tlv_read(ctl_data->ctl, ctl_data->id,
 					    ctl_data->buffer,
