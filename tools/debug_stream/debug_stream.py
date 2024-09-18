@@ -10,6 +10,7 @@ For receiving, decoding and printing debug-stream records over debug window slot
 import argparse
 import ctypes
 import time
+import sys
 
 import logging
 
@@ -18,6 +19,7 @@ logging.basicConfig(
 )
 
 DEBUG_STREAM_PAYLOAD_MAGIC = 0x1ED15EED
+DEBUG_SLOT_SIZE = 4096
 
 # TODO: python construct would probably be cleaner than ctypes structs
 
@@ -225,7 +227,7 @@ class CircularBufferDecoder:
                 slot[self.boffset + pos * WSIZE :], ctypes.POINTER(DebugStreamRecord)
             ).contents
         if header.id > 100 or header.size_words >= self.buf_words:
-            logging.warning(
+            logging.info(
                 "Broken record id %u seqno %u size %u",
                 header.id,
                 header.seqno,
@@ -286,7 +288,7 @@ class CircularBufferDecoder:
         self.decode_past_records(slot, circ.w_ptr, circ.next_seqno)
         self.prev_w_ptr = circ.w_ptr
         self.prev_seqno = circ.next_seqno - 1
-        logging.info("seqno %u w_ptr %u", self.prev_seqno, self.prev_w_ptr)
+        logging.debug("seqno %u w_ptr %u", self.prev_seqno, self.prev_w_ptr)
 
     def decode_past_records(self, slot, pos, seqno):
         """
@@ -373,7 +375,7 @@ class DebugStreamDecoder:
     Class for decoding debug-stream slot contents
     """
 
-    file_size = 4096  # ADSP debug slot size
+    file_size = DEBUG_SLOT_SIZE
     file = None
     slot = None
     descs = []
@@ -393,6 +395,12 @@ class DebugStreamDecoder:
         self.file.seek(0)
         self.slot = self.file.read(self.file_size)
 
+    def set_slot(self, buf):
+        """
+        Update slot contents
+        """
+        self.slot = buf
+
     def get_descriptors(self):
         """
         Read the core specific descriptors and initialize core
@@ -403,15 +411,26 @@ class DebugStreamDecoder:
             return False
         hdr = ctypes.cast(self.slot, ctypes.POINTER(DebugStreamSlotHdr))
         if hdr.contents.hdr.magic != DEBUG_STREAM_PAYLOAD_MAGIC:
-            logging.warning("Debug Slot has bad magic 0x%08x", hdr.contents.hdr.magic)
+            logging.info("Debug Slot has bad magic 0x%08x", hdr.contents.hdr.magic)
             return False
         num_sections = hdr.contents.num_sections
         if num_sections == len(self.descs):
             return True
+        if num_sections > 32:
+            logging.info("Suspiciously many sections %u", num_sections)
+            return False
         hsize = ctypes.sizeof(DebugStreamSlotHdr)
         self.descs = (DebugStreamSectionDescriptor * num_sections).from_buffer_copy(
             self.slot, hsize
         )
+        for i in range(len(self.descs)):
+            if (self.descs[i].core_id > 32 or
+                self.descs[i].buf_words > DEBUG_SLOT_SIZE // WSIZE or
+                self.descs[i].offset > DEBUG_SLOT_SIZE):
+             logging.info("Suspicious descriptor %u values %u %u %u", i,
+                          self.descs[i].core_id, self.descs[i].buf_words,
+                          self.descs[i].offset)
+             return False
         self.circdec = [
             CircularBufferDecoder(self.descs[i], i, self.rec_printer)
             for i in range(len(self.descs))
@@ -473,6 +492,33 @@ class DebugStreamDecoder:
         self.file = None
         self.slot = None
 
+def cavstool_main_loop(my_args):
+    import cavstool
+    try:
+        (hda, sd, dsp, hda_ostream_id) = cavstool.map_regs(True)
+    except Exception as e:
+        logging.error("Could not map device in sysfs; run as root?")
+        logging.error(e)
+        sys.exit(1)
+    ADSP_DW_SLOT_DEBUG_STREAM = 0x53523134
+    decoder = DebugStreamDecoder()
+    while True:
+        if not cavstool.fw_is_alive(dsp):
+            cavstool.wait_fw_entered(dsp, timeout_s=None)
+        offset = cavstool.debug_slot_offset(my_args.direct_access_slot)
+        buf = cavstool.win_read(offset, 0, DEBUG_SLOT_SIZE)
+        decoder.set_slot(buf)
+        if not decoder.get_descriptors():
+            time.sleep(my_args.update_interval)
+            continue
+        decoder.catch_up_all()
+        while True:
+            if decoder.poll():
+                time.sleep(my_args.update_interval)
+            buf = cavstool.win_read(offset, 0, DEBUG_SLOT_SIZE)
+            decoder.set_slot(buf)
+            if not decoder.check_slot():
+                break
 
 def main_f(my_args):
     """
@@ -483,6 +529,8 @@ def main_f(my_args):
     about the host CPU load. That is why there where no synchronous mechanism
     done and the host simply polls for new records.
     """
+    if my_args.direct_access_slot >= 0:
+	    return cavstool_main_loop(my_args)
     decoder = DebugStreamDecoder()
     prev_error = None
     while True:
@@ -491,7 +539,8 @@ def main_f(my_args):
                 decoder.set_file(file)
                 decoder.update_slot()
                 if not decoder.get_descriptors():
-                    break
+                    time.sleep(my_args.update_interval)
+                    continue
                 decoder.catch_up_all()
                 while True:
                     if decoder.poll():
@@ -526,6 +575,13 @@ def parse_params():
         "--debugstream-file",
         help="File to read the DebugStream data from, default /sys/kernel/debug/sof/debug_stream",
         default="/sys/kernel/debug/sof/debug_stream",
+    )
+    parser.add_argument(
+        "-c",
+        "--direct-access-slot",
+        help="Access specified debug window slot directly, no need for debugfs file",
+        type=int,
+        default=-1,
     )
     parsed_args = parser.parse_args()
     return parsed_args
