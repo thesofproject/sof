@@ -264,3 +264,45 @@ void plug_ctl_ipc_message(struct ipc4_module_large_config *config, int param_id,
 	config->extension.r.data_off_size = size;
 	config->extension.r.large_param_id = param_id;
 }
+
+int plug_send_bytes_data(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx,
+			 uint32_t module_id, uint32_t instance_id, struct sof_abi_hdr *abi)
+{
+	struct ipc4_module_large_config config = {{ 0 }};
+	struct ipc4_message_reply reply;
+	void *msg;
+	int msg_size;
+	int err;
+
+	/* configure the IPC message */
+	plug_ctl_ipc_message(&config, abi->type, abi->size, module_id, instance_id,
+			     SOF_IPC4_MOD_LARGE_CONFIG_SET);
+
+	config.extension.r.final_block = 1;
+	config.extension.r.init_block = 1;
+
+	/* allocate memory for IPC message */
+	msg_size = sizeof(config) + abi->size;
+	msg = calloc(msg_size, 1);
+	if (!msg)
+		return -ENOMEM;
+
+	/* set the IPC message data */
+	memcpy(msg, &config, sizeof(config));
+	memcpy(msg + sizeof(config), abi->data, abi->size);
+
+	/* send the message and check status */
+	err = plug_mq_cmd_tx_rx(ipc_tx, ipc_rx, msg, msg_size, &reply, sizeof(reply));
+	free(msg);
+	if (err < 0) {
+		SNDERR("failed to send IPC to set bytes data\n");
+		return err;
+	}
+
+	if (reply.primary.r.status != IPC4_SUCCESS) {
+		SNDERR("IPC failed with status %d\n", reply.primary.r.status);
+		return -EINVAL;
+	}
+
+	return 0;
+}

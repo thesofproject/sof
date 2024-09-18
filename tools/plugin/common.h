@@ -12,6 +12,8 @@
 #include <mqueue.h>
 #include <semaphore.h>
 #include <alsa/asoundlib.h>
+#include <ipc/control.h>
+#include <tplg_parser/topology.h>
 
 /* temporary - current MAXLEN is not define in UAPI header - fix pending */
 #ifndef SNDRV_CTL_ELEM_ID_NAME_MAXLEN
@@ -52,6 +54,7 @@
 
 #define SOF_MAGIC	"sofpipe"
 #define MAX_VOLUME_SIZE 120
+#define MAX_DATA_SIZE	512
 
 enum plugin_state {
 	SOF_PLUGIN_STATE_INIT	= 0,
@@ -67,6 +70,7 @@ struct plug_shm_ctl {
 	unsigned int type;
 	unsigned int volume_table[MAX_VOLUME_SIZE];
 	unsigned int index;
+	char data[MAX_DATA_SIZE];
 	union {
 		struct snd_soc_tplg_mixer_control mixer_ctl;
 		struct snd_soc_tplg_enum_control enum_ctl;
@@ -320,5 +324,7 @@ static inline void data_dump(void *vdata, size_t bytes)
 void plug_ctl_ipc_message(struct ipc4_module_large_config *config, int param_id,
 			  size_t size, uint32_t module_id, uint32_t instance_id,
 			  uint32_t type);
+int plug_send_bytes_data(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx,
+			 uint32_t module_id, uint32_t instance_id, struct sof_abi_hdr *abi);
 
 #endif

@@ -79,7 +79,21 @@ or
 ```
 amixer -Dsof:plugin cset numid=1 20
 ```
-Right now, only volume controls are supported. Support for bytes and enum controls is pending.
+Bytes control data can be set using sof-ctl as follows:
+
+```
+./sof-ctl -Dsof:plugin -n 4 -r -i 4 -p 2 -s ~/data.txt
+```
+where -n is the numid of the kcontrol, -i is the IPC version, -p is the param ID and -s specifies
+the data in csv format.
+
+Bytes control data can be read using sof-ctl as follows:
+```
+./sof-ctl -Dsof:plugin -n 4 -i 4 -p 2
+```
+where -n is the numid of the kcontrol, -i is the IPC version and -p is the param ID.
+
+Note: Bytes controls must have tlv_read/tlv_write and tlv_callback access.
 
 # Instructions for testing OpenVino noise suppression model with the SOF plugin:
 1. Fetch the model from the Open Model zoo repository ex: noise-suppression-poconetlike-0001.xml

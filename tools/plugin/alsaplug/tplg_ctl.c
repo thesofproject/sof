@@ -202,7 +202,20 @@ int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, voi
 		break;
 	}
 	case SND_SOC_TPLG_CTL_BYTES:
+	{
+		struct snd_soc_tplg_bytes_control *tplg_bytes =
+			(struct snd_soc_tplg_bytes_control *)tplg_ctl;
+
+		glb->size += sizeof(struct plug_shm_ctl);
+		ctl = &glb->ctl[glb->num_ctls++];
+		ctl->module_id = comp_info->module_id;
+		ctl->instance_id = comp_info->instance_id;
+		ctl->bytes_ctl = *tplg_bytes;
+		ctl->index = index;
+		ctl->type = tplg_ctl->type;
+		memcpy(ctl->data, tplg_bytes->priv.data, tplg_bytes->priv.size);
 		break;
+	}
 	case SND_SOC_TPLG_CTL_RANGE:
 	case SND_SOC_TPLG_CTL_STROBE:
 	default:
