@@ -659,7 +659,7 @@ static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 		goto error_cd;
 
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-	cd->msg_xrun = ipc_msg_init(header.dat,
+	cd->msg_xrun = ipc_msg_init(cdma->primary.dat,
 				    sizeof(struct ipc4_resource_event_data_notification));
 	if (!cd->msg_xrun)
 		goto error_cd;
