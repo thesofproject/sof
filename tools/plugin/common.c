@@ -178,3 +178,75 @@ int plug_shm_open(struct plug_shm_desc *shm)
 	return 0;
 }
 
+int plug_mq_cmd_tx_rx(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx,
+		      void *msg, size_t len, void *reply, size_t rlen)
+{
+	struct timespec ts;
+	ssize_t ipc_size;
+	char mailbox[IPC3_MAX_MSG_SIZE];
+	int err;
+
+	if (len > IPC3_MAX_MSG_SIZE) {
+		SNDERR("ipc: message too big %d\n", len);
+		return -EINVAL;
+	}
+	memset(mailbox, 0, IPC3_MAX_MSG_SIZE);
+	memcpy(mailbox, msg, len);
+
+	/* wait for sof-pipe reader to consume data or timeout */
+	err = clock_gettime(CLOCK_REALTIME, &ts);
+	if (err == -1) {
+		SNDERR("ipc: cant get time: %s", strerror(errno));
+		return -errno;
+	}
+
+	/* IPCs should be read under 10ms */
+	plug_timespec_add_ms(&ts, 10);
+
+	/* now return message completion status */
+	err = mq_timedsend(ipc_tx->mq, mailbox, IPC3_MAX_MSG_SIZE, 0, &ts);
+	if (err == -1) {
+		SNDERR("error: timeout can't send IPC message queue %s : %s\n",
+		       ipc_tx->queue_name, strerror(errno));
+		return -errno;
+	}
+
+	/* wait for sof-pipe reader to consume data or timeout */
+	err = clock_gettime(CLOCK_REALTIME, &ts);
+	if (err == -1) {
+		SNDERR("ipc: cant get time: %s", strerror(errno));
+		return -errno;
+	}
+
+	/* IPCs should be processed under 20ms, but wait longer as
+	 * some can take longer especially in valgrind
+	 */
+	plug_timespec_add_ms(&ts, 20);
+
+	ipc_size = mq_timedreceive(ipc_rx->mq, mailbox, IPC3_MAX_MSG_SIZE, NULL, &ts);
+	if (ipc_size == -1) {
+		//fprintf(stderr, "dbg: timeout can't read IPC message queue %s : %s retrying\n",
+		//	ipc->queue_name, strerror(errno));
+
+		/* ok, its a long IPC or valgrind, wait longer */
+		plug_timespec_add_ms(&ts, 800);
+
+		ipc_size = mq_timedreceive(ipc_rx->mq, mailbox, IPC3_MAX_MSG_SIZE, NULL, &ts);
+		if (ipc_size == -1) {
+			SNDERR("error: timeout can't read IPC message queue %s : %s\n",
+			       ipc_rx->queue_name, strerror(errno));
+			return -errno;
+		}
+
+		/* needed for valgrind to complete MQ op before next client IPC */
+		ts.tv_nsec = 20 * 1000 * 1000;
+		ts.tv_sec = 0;
+		nanosleep(&ts, NULL);
+	}
+
+	/* do the message work */
+	if (rlen && reply)
+		memcpy(reply, mailbox, rlen);
+
+	return 0;
+}
