@@ -312,7 +312,22 @@ static int plug_new_process(snd_sof_plug_t *plug)
 
 	plug_setup_widget_ipc_msg(comp_info);
 
-	return 0;
+	tplg_ctl = calloc(ctx->hdr->payload_size, 1);
+	if (!tplg_ctl) {
+		free(comp_info->ipc_payload);
+		return -ENOMEM;
+	}
+
+	/* set up kcontrols */
+	ret = tplg_create_controls(ctx, ctx->widget->num_kcontrols,
+				   tplg_ctl, ctx->hdr->payload_size, comp_info);
+	if (ret  < 0) {
+		SNDERR("failed to create controls for process comp\n");
+		free(comp_info->ipc_payload);
+	}
+
+	free(tplg_ctl);
+	return ret;
 }
 
 static int plug_new_pipeline(snd_sof_plug_t *plug)
