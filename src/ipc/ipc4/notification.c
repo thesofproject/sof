@@ -8,6 +8,7 @@
 #include <sof/common.h>
 #include <stdbool.h>
 #include <ipc4/notification.h>
+#include <sof/ipc/msg.h>
 
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 void xrun_notif_msg_init(struct ipc_msg *msg_xrun, uint32_t resource_id, uint32_t event_type)

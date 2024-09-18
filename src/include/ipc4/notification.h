@@ -255,3 +255,7 @@ struct ipc4_resource_event_data_notification {
 	/* Detailed event data */
 	union ipc4_resource_event_data event_data;
 } __packed __aligned(8);
+
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+void xrun_notif_msg_init(struct ipc_msg *msg_xrun, uint32_t resource_id, uint32_t event_type);
+#endif
