@@ -170,6 +170,7 @@ int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, voi
 		ctl->instance_id = comp_info->instance_id;
 		ctl->mixer_ctl = *tplg_mixer;
 		ctl->index = index;
+		ctl->type = tplg_ctl->type;
 		tlv = &tplg_ctl->tlv;
 		scale = &tlv->scale;
 
@@ -197,6 +198,7 @@ int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, voi
 		ctl->instance_id = comp_info->instance_id;
 		ctl->enum_ctl = *tplg_enum;
 		ctl->index = index;
+		ctl->type = tplg_ctl->type;
 		break;
 	}
 	case SND_SOC_TPLG_CTL_BYTES:
