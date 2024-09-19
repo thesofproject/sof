@@ -134,7 +134,7 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 		info = container_of(clist, struct comp_driver_info,
 				    list);
 		if (!memcmp(info->drv->uid, comp_ext->uuid,
-			    UUID_SIZE)) {
+			    UUID_SIZE) && comp->type == info->drv->type) {
 			drv = info->drv;
 			break;
 		}
