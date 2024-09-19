@@ -12,9 +12,9 @@ set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
 add_executable(testbench
 	testbench.c
 	file.c
-	common_test.c
-	common_test_ipc3.c
-	common_test_ipc4.c
+	utils.c
+	utils_ipc3.c
+	utils_ipc4.c
 	topology_ipc3.c
 	topology_ipc4.c
 )

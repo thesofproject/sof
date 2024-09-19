@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "testbench/common_test.h"
+#include "testbench/utils.h"
 #include "testbench/file.h"
 #include "testbench/file_ipc4.h"
 #include "../../src/audio/copier/copier.h"

@@ -3,8 +3,8 @@
  * Copyright(c) 2018 Intel Corporation. All rights reserved.
  */
 
-#ifndef _TESTBENCH_COMMON_TEST_H
-#define _TESTBENCH_COMMON_TEST_H
+#ifndef _TESTBENCH_UTILS_H
+#define _TESTBENCH_UTILS_H
 
 #include <tplg_parser/topology.h>
 #include <stdint.h>
@@ -140,4 +140,4 @@ void tb_getcycles(uint64_t *cycles);
 void tb_gettime(struct timespec *td);
 void tb_show_file_stats(struct testbench_prm *tp, int pipeline_id);
 
-#endif /* _TESTBENCH_COMMON_TEST_H */
+#endif /* _TESTBENCH_UTILS_H */

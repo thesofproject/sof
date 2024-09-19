@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "testbench/common_test.h"
+#include "testbench/utils.h"
 #include "testbench/file.h"
 #include "testbench/topology_ipc4.h"
 

@@ -7,7 +7,7 @@
 #define _TESTBENCH_TOPOLOGY_IPC4_H
 
 #include <module/ipc4/base-config.h>
-#include "testbench/common_test.h"
+#include "testbench/utils.h"
 
 #define TB_IPC4_MAX_TPLG_OBJECT_SIZE	4096
 #define TB_IPC4_MAX_MSG_SIZE		384

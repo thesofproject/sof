@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "testbench/common_test.h"
+#include "testbench/utils.h"
 #include "testbench/trace.h"
 #include "testbench/file.h"
 
