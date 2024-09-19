@@ -64,7 +64,7 @@ const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 }
 #endif /* CONFIG_PM_POLICY_CUSTOM */
 
-void platform_pm_runtime_enable(uint32_t context, uint32_t index)
+void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 {
 	switch (context) {
 	case PM_RUNTIME_DSP:
@@ -77,7 +77,8 @@ void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 	}
 }
 
-void platform_pm_runtime_disable(uint32_t context, uint32_t index)
+/** Disables power _management_. The management, not the power. */
+void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
 {
 	switch (context) {
 	case PM_RUNTIME_DSP:
@@ -89,19 +90,18 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index)
 	}
 }
 
-void platform_pm_runtime_init(struct pm_runtime_data *prd)
-{ }
-
-void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
-			     uint32_t flags)
-{ }
-
-void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
-			     uint32_t flags)
-{ }
-
-void platform_pm_runtime_prepare_d0ix_en(uint32_t index)
-{ }
-
-void platform_pm_runtime_power_off(void)
-{ }
+/** Is the _power_ active. The power, not its management. */
+bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
+{
+	switch (context) {
+	case PM_RUNTIME_DSP:
+#if defined(CONFIG_PM)
+		return pm_policy_state_lock_is_active(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+#else
+		return true;
+#endif
+	default:
+		break;
+	}
+	return false;
+}

@@ -231,7 +231,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
 		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
-		lib/pm_runtime.c
 		lib/clk.c
 		lib/dma.c
 	)
@@ -251,7 +250,6 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/ace/platform.c
-		lib/pm_runtime.c
 		lib/clk.c
 		lib/dma.c
 	)
@@ -428,7 +426,6 @@ zephyr_library_sources(
 	# SOF library - parts to transition to Zephyr over time
 	${SOF_LIB_PATH}/clk.c
 	${SOF_LIB_PATH}/notifier.c
-	${SOF_LIB_PATH}/pm_runtime.c
 	${SOF_LIB_PATH}/cpu-clk-manager.c
 	${SOF_LIB_PATH}/dma.c
 	${SOF_LIB_PATH}/dai.c
@@ -461,6 +458,7 @@ zephyr_library_sources(
 	schedule.c
 	lib/alloc.c
 	lib/cpu.c
+	lib/pm_runtime.c
 
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
