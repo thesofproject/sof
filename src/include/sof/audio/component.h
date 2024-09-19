@@ -635,8 +635,8 @@ struct comp_dev {
 };
 
 /**
- * Get a pointer to a first comp_buffer object providing data to the component
- * The procedure will return NULL if there's no data provider
+ * Get a pointer to the first comp_buffer object providing data to the component
+ * The function will return NULL if there's no data provider
  */
 static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_dev *component)
 {
@@ -645,8 +645,8 @@ static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_d
 }
 
 /**
- * Get a pointer to a next comp_buffer object providing data to the component
- * The procedure will return NULL if there're no more data providers
+ * Get a pointer to the next comp_buffer object providing data to the component
+ * The function will return NULL if there're no more data providers
  */
 static inline struct comp_buffer *comp_dev_get_next_data_producer(struct comp_dev *component,
 								  struct comp_buffer *producer)
@@ -656,8 +656,8 @@ static inline struct comp_buffer *comp_dev_get_next_data_producer(struct comp_de
 }
 
 /**
- * Get a pointer to a first comp_buffer object receiving data from the component
- * The procedure will return NULL if there's no data consumers
+ * Get a pointer to the first comp_buffer object receiving data from the component
+ * The function will return NULL if there's no data consumers
  */
 static inline struct comp_buffer *comp_dev_get_first_data_consumer(struct comp_dev *component)
 {
@@ -666,8 +666,8 @@ static inline struct comp_buffer *comp_dev_get_first_data_consumer(struct comp_d
 }
 
 /**
- * Get a pointer to a next comp_buffer object receiving data from the component
- * The procedure will return NULL if there're no more data consumers
+ * Get a pointer to the next comp_buffer object receiving data from the component
+ * The function will return NULL if there're no more data consumers
  */
 static inline struct comp_buffer *comp_dev_get_next_data_consumer(struct comp_dev *component,
 								  struct comp_buffer *consumer)
