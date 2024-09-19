@@ -218,7 +218,6 @@ set(TPLGS
 	"sof-jsl-rt5682\;sof-jsl-rt5682-rt1015\;-DPLATFORM=jsl-rt1015"
 	"sof-jsl-rt5682\;sof-jsl-rt5682-rt1015-xperi\;-DPLATFORM=jsl-rt1015\;-DINCLUDE_IIR_EQ=1"
 	"sof-jsl-rt5682\;sof-jsl-rt5682-mx98360a\;-DPLATFORM=jsl-dedede"
-	"sof-jsl-rt5682\;sof-jsl-cs42l42-mx98360a\;-DPLATFORM=jsl-dedede"
 	"sof-jsl-rt5682\;sof-jsl-rt5682\;-DHEADPHONE=rt5682\;-DPLATFORM=icl\;-DNO_AMP"
 
 	## DRC/EQ topologies
