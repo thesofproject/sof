@@ -18,7 +18,7 @@
 #include <tplg_parser/tokens.h>
 #include <tplg_parser/topology.h>
 
-#include "testbench/common_test.h"
+#include "testbench/utils.h"
 #include "testbench/file.h"
 
 #include <errno.h>

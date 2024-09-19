@@ -13,7 +13,7 @@
 
 #include "testbench/trace.h"
 #include "testbench/file.h"
-#include "testbench/common_test.h"
+#include "testbench/utils.h"
 
 #include <getopt.h>
 #include <limits.h>
