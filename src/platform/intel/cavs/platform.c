@@ -26,7 +26,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/notifier.h>
-#include <sof/lib/pm_runtime.h>
 #include <rtos/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
@@ -96,11 +95,6 @@ int platform_boot_complete(uint32_t boot_message)
 {
 	struct ipc_cmd_hdr header;
 
-#if CONFIG_TIGERLAKE
-	/* TGL specific HW recommended flow */
-	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_HPRO | (CONFIG_CORE_COUNT - 1));
-#endif
-
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
 	/* get any IPC specific boot message and optional data */
@@ -138,15 +132,6 @@ int platform_init(struct sof *sof)
 
 	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
-
-#if CONFIG_TIGERLAKE
-	/* prevent DSP Common power gating */
-	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
-
-#if CONFIG_DSP_RESIDENCY_COUNTERS
-	init_dsp_r_state(r0_r_state);
-#endif /* CONFIG_DSP_RESIDENCY_COUNTERS */
-#endif /* CONFIG_TIGERLAKE */
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
