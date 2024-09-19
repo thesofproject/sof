@@ -121,17 +121,6 @@ static struct pm_notifier pm_state_notifier = {
 int platform_init(struct sof *sof)
 {
 	int ret;
-	int i;
-
-	/* Turn off memory for all unused cores */
-	for (i = 0; i < CONFIG_CORE_COUNT; i++)
-		if (i != PLATFORM_PRIMARY_CORE_ID)
-			pm_runtime_put(CORE_MEMORY_POW, i);
-
-	/* pm runtime already initialized, request the DSP to stay in D0
-	 * until we are allowed to do full power gating (by the IPC req).
-	 */
-	pm_runtime_disable(PM_RUNTIME_DSP, 0);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
