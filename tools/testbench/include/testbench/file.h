@@ -19,6 +19,11 @@
 #define FILE_BYTES_TO_S16_SAMPLES(s)	((s) >> 1)
 #define FILE_BYTES_TO_S32_SAMPLES(s)	((s) >> 2)
 
+/* bfc7488c-75aa-4ce8-9dbed8da08a698c2 */
+static const struct sof_uuid tb_file_uuid = {
+	0xbfc7488c, 0x75aa, 0x4ce8, {0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2}
+};
+
 /* file component modes */
 enum file_mode {
 	FILE_READ = 0,
