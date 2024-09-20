@@ -426,7 +426,8 @@ dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t fr
 
 	/* copy all channels one by one */
 	for (i = 0; i < audio_stream_get_channels(&dd->dma_buffer->stream); i++) {
-		uint32_t multi_buf_channel = dd->dma_buffer->chmap[i];
+		uint32_t multi_buf_channel = audio_buffer_get_chmap(&dd->dma_buffer->audio_buffer,
+								    i);
 
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 			dd->channel_copy(&multi_endpoint_buffer->stream, multi_buf_channel,

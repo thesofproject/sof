@@ -121,7 +121,7 @@ static void pipeline_update_buffer_pcm_params(struct comp_buffer *buffer,
 	params->rate = audio_stream_get_rate(&buffer->stream);
 	params->channels = audio_stream_get_channels(&buffer->stream);
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		params->chmap[i] = buffer->chmap[i];
+		params->chmap[i] = audio_buffer_get_chmap(&buffer->audio_buffer, i);
 }
 
 /* fetch hardware stream parameters from DAI  */

@@ -194,6 +194,17 @@ static inline void audio_buffer_reset_params(struct sof_audio_buffer *buffer)
 	buffer->audio_stream_params->hw_params_configured = false;
 }
 
+static inline uint16_t audio_buffer_get_chmap(struct sof_audio_buffer *buffer, size_t index)
+{
+	return buffer->audio_stream_params->chmap[index];
+}
+
+static inline void audio_buffer_set_chmap(struct sof_audio_buffer *buffer, size_t index,
+					  uint16_t value)
+{
+	buffer->audio_stream_params->chmap[index] = value;
+}
+
 /**
  * @brief return a handler to stream params structure
  */

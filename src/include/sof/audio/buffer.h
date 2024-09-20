@@ -141,9 +141,6 @@ struct comp_buffer {
 	/* lists */
 	struct list_item source_list;	/* list in comp buffers */
 	struct list_item sink_list;	/* list in comp buffers */
-
-	/* runtime stream params */
-	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 };
 
 /* Only to be used for synchronous same-core notifications! */

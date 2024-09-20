@@ -51,6 +51,8 @@ struct sof_audio_stream_params {
 
 	uint32_t buffer_fmt; /**< enum sof_ipc_buffer_format */
 
+	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
+
 	bool hw_params_configured; /**< indicates whether hw params were set */
 };
 
