@@ -336,11 +336,12 @@ int schedulers_info_get(uint32_t *data_off_size,
 			char *data,
 			uint32_t core_id)
 {
-	/* TODO
-	 * Core id parameter is not yet used. For now we only get scheduler info from current core
-	 * Other cores info can be added by implementing idc request for this data.
-	 * Do this if Schedulers info get ipc has uses for accurate info per core
-	 */
+	/* Check if the requested core_id is valid and within the number of configured cores */
+	if (core_id >= CONFIG_CORE_COUNT)
+		return IPC4_ERROR_INVALID_PARAM;
+
+	if (!cpu_is_me(core_id))
+		return ipc4_process_on_core(core_id, false);
 
 	struct scheduler_props *scheduler_props;
 	/* the internal structs have irregular sizes so we cannot use indexing, and have to
