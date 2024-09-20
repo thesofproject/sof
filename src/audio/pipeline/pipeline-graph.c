@@ -415,7 +415,7 @@ int pipeline_for_each_comp(struct comp_dev *current,
 		 * across CPUs. See further comment below.
 		 */
 		dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
-		if (buffer->walking)
+		if (buffer->audio_buffer.walking)
 			continue;
 
 		buffer_comp = buffer_get_comp(buffer, dir);
@@ -428,12 +428,12 @@ int pipeline_for_each_comp(struct comp_dev *current,
 		if (buffer_comp &&
 		    (!ctx->skip_incomplete || buffer_comp->pipeline) &&
 		    ctx->comp_func) {
-			buffer->walking = true;
+			buffer->audio_buffer.walking = true;
 
 			err = ctx->comp_func(buffer_comp, buffer,
 					     ctx, dir);
 
-			buffer->walking = false;
+			buffer->audio_buffer.walking = false;
 		}
 
 		if (err < 0 || err == PPL_STATUS_PATH_STOP)

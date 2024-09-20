@@ -144,8 +144,6 @@ struct comp_buffer {
 
 	/* runtime stream params */
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
-
-	bool walking;		/**< indicates if the buffer is being walked */
 };
 
 /* Only to be used for synchronous same-core notifications! */
