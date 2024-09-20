@@ -95,7 +95,7 @@ static void set_mux_params(struct processing_module *mod)
 	if (!list_is_empty(&dev->bsink_list)) {
 		sink = comp_dev_get_first_data_consumer(dev);
 
-		if (!sink->hw_params_configured) {
+		if (!audio_buffer_hw_params_configured(&sink->audio_buffer)) {
 			ipc4_update_buffer_format(sink, &cd->md.output_format);
 			params->frame_fmt = audio_stream_get_frm_fmt(&sink->stream);
 		}

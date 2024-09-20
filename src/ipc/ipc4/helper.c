@@ -1196,7 +1196,7 @@ void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buf_c->chmap[i] = (fmt->ch_map >> i * 4) & 0xf;
 
-	buf_c->hw_params_configured = true;
+	audio_buffer_set_hw_params_configured(&buf_c->audio_buffer);
 }
 
 void ipc4_update_source_format(struct sof_source *source,

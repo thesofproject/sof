@@ -431,7 +431,8 @@ static int do_conversion_copy(struct comp_dev *dev,
 	int i;
 
 	/* buffer params might be not yet configured by component on another pipeline */
-	if (!src->hw_params_configured || !sink->hw_params_configured)
+	if (!audio_buffer_hw_params_configured(&src->audio_buffer) ||
+	    !audio_buffer_hw_params_configured(&sink->audio_buffer))
 		return 0;
 
 	comp_get_copy_limits(src, sink, processed_data);

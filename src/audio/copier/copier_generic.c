@@ -194,7 +194,7 @@ int create_endpoint_buffer(struct comp_dev *dev,
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buffer->chmap[i] = (chan_map >> i * 4) & 0xf;
 
-	buffer->hw_params_configured = true;
+	audio_buffer_set_hw_params_configured(&buffer->audio_buffer);
 
 	if (create_multi_endpoint_buffer)
 		cd->multi_endpoint_buffer = buffer;

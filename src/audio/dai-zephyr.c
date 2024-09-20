@@ -302,7 +302,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 			}
 
 			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE  &&
-			    sink->hw_params_configured) {
+			    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
 				ret = stream_copy_from_no_consume(dd->local_buffer, sink,
 								  converter[j], bytes, dd->chmap);
 			}
@@ -353,7 +353,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 				}
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
-				    sink->hw_params_configured)
+				    audio_buffer_hw_params_configured(&sink->audio_buffer))
 					ret = stream_copy_from_no_consume(dd->dma_buffer,
 									  sink, converter[j],
 									  bytes, dd->chmap);
@@ -1650,7 +1650,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 			sink_dev = sink->sink;
 
 			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
-			    sink->hw_params_configured) {
+			    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
 				sink_frames =
 					audio_stream_get_free_frames(&sink->stream);
 				frames = MIN(frames, sink_frames);
@@ -1680,7 +1680,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 				sink_dev = sink->sink;
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
-				    sink->hw_params_configured) {
+				    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
 					sink_frames =
 						audio_stream_get_free_frames(&sink->stream);
 					frames = MIN(frames, sink_frames);

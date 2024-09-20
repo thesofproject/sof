@@ -50,6 +50,8 @@ struct sof_audio_stream_params {
 	bool underrun_permitted; /**< indicates whether underrun is permitted */
 
 	uint32_t buffer_fmt; /**< enum sof_ipc_buffer_format */
+
+	bool hw_params_configured; /**< indicates whether hw params were set */
 };
 
 #endif /* __MODULE_AUDIO_AUDIO_STREAM_H__ */

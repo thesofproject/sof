@@ -224,7 +224,8 @@ static int ring_buffer_set_ipc_params(struct ring_buffer *ring_buffer,
 				      bool force_update)
 {
 	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
-	if (ring_buffer->_hw_params_configured && !force_update)
+
+	if (audio_buffer_hw_params_configured(&ring_buffer->audio_buffer) && !force_update)
 		return 0;
 
 	struct sof_audio_stream_params *audio_stream_params =
@@ -235,7 +236,7 @@ static int ring_buffer_set_ipc_params(struct ring_buffer *ring_buffer,
 	audio_stream_params->channels = params->channels;
 	audio_stream_params->buffer_fmt = params->buffer_fmt;
 
-	ring_buffer->_hw_params_configured = true;
+	audio_buffer_set_hw_params_configured(&ring_buffer->audio_buffer);
 
 	return 0;
 }

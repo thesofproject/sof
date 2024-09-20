@@ -110,8 +110,6 @@ struct ring_buffer {
 	uint8_t __sparse_cache *_data_buffer;
 	size_t _write_offset;		/* private: to be modified by data producer using API */
 	size_t _read_offset;		/* private: to be modified by data consumer using API */
-
-	bool _hw_params_configured;
 };
 
 /**
