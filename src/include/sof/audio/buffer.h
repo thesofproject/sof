@@ -145,7 +145,6 @@ struct comp_buffer {
 	/* runtime stream params */
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 
-	bool hw_params_configured; /**< indicates whether hw params were set */
 	bool walking;		/**< indicates if the buffer is being walked */
 };
 
@@ -285,7 +284,7 @@ static inline void buffer_init_stream(struct comp_buffer *buffer, size_t size)
 
 static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
 {
-	buffer->hw_params_configured = false;
+	audio_buffer_reset_params(&buffer->audio_buffer);
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */

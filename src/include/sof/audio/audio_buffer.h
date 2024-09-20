@@ -173,6 +173,21 @@ static inline bool audio_buffer_is_shared(struct sof_audio_buffer *buffer)
 	return buffer->is_shared;
 }
 
+static inline bool audio_buffer_hw_params_configured(struct sof_audio_buffer *buffer)
+{
+	return buffer->audio_stream_params->hw_params_configured;
+}
+
+static inline void audio_buffer_set_hw_params_configured(struct sof_audio_buffer *buffer)
+{
+	buffer->audio_stream_params->hw_params_configured = true;
+}
+
+static inline void audio_buffer_reset_params(struct sof_audio_buffer *buffer)
+{
+	buffer->audio_stream_params->hw_params_configured = false;
+}
+
 /**
  * @brief return a handler to stream params structure
  */

@@ -669,7 +669,7 @@ static void set_selector_params(struct processing_module *mod,
 	 */
 	src_buf = comp_dev_get_first_data_producer(dev);
 
-	if (!src_buf->hw_params_configured)
+	if (!audio_buffer_hw_params_configured(&src_buf->audio_buffer))
 		ipc4_update_buffer_format(src_buf, &mod->priv.cfg.base_cfg.audio_fmt);
 }
 

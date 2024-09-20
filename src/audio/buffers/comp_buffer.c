@@ -429,7 +429,7 @@ int buffer_set_params(struct comp_buffer *buffer,
 		return -EINVAL;
 	}
 
-	if (buffer->hw_params_configured && !force_update)
+	if (audio_buffer_hw_params_configured(&buffer->audio_buffer) && !force_update)
 		return 0;
 
 	ret = audio_stream_set_params(&buffer->stream, params);
@@ -442,7 +442,7 @@ int buffer_set_params(struct comp_buffer *buffer,
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		buffer->chmap[i] = params->chmap[i];
 
-	buffer->hw_params_configured = true;
+	audio_buffer_set_hw_params_configured(&buffer->audio_buffer);
 
 	return 0;
 }
