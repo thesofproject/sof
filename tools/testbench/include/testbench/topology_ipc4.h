@@ -12,6 +12,13 @@
 #define TB_IPC4_MAX_TPLG_OBJECT_SIZE	4096
 #define TB_IPC4_MAX_MSG_SIZE		384
 
+#define TB_PROCESS_MODULE_ID		0x95
+#define TB_PGA_MODULE_ID		0x6
+#define TB_FILE_OUT_AIF_MODULE_ID	0x9a
+#define TB_FILE_IN_AIF_MODULE_ID	0x9b
+#define TB_FILE_OUT_DAI_MODULE_ID	0x9c
+#define TB_FILE_IN_DAI_MODULE_ID	0x9d
+
 int tb_delete_pipeline(struct testbench_prm *tp, struct tplg_pipeline_info *pipe_info);
 int tb_free_all_pipelines(struct testbench_prm *tp);
 int tb_free_route(struct testbench_prm *tp, struct tplg_route_info *route_info);

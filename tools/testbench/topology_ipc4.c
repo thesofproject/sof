@@ -581,11 +581,10 @@ int tb_new_aif_in_out(struct testbench_prm *tp, int dir)
 	if (ret < 0)
 		return ret;
 
-	comp_info->ipc_payload =  calloc(sizeof(struct ipc4_file_module_cfg), 1);
+	comp_info->ipc_size = sizeof(struct ipc4_file_module_cfg) + sizeof(struct sof_uuid);
+	comp_info->ipc_payload =  calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
-
-	comp_info->ipc_size = sizeof(struct ipc4_file_module_cfg);
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		/* Set from testbench command line*/
@@ -597,7 +596,7 @@ int tb_new_aif_in_out(struct testbench_prm *tp, int dir)
 		file->config.direction = dir;
 
 		comp_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_AIF_IN]++;
-		comp_info->module_id = 0x9a;
+		comp_info->module_id = TB_FILE_OUT_AIF_MODULE_ID;
 		if (tb_is_pipeline_enabled(tp, ctx->pipeline_id)) {
 			if (tp->input_file_index >= tp->input_file_num) {
 				fprintf(stderr, "error: not enough input files for aif\n");
@@ -620,7 +619,7 @@ int tb_new_aif_in_out(struct testbench_prm *tp, int dir)
 		file->config.direction = dir;
 
 		comp_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_AIF_OUT]++;
-		comp_info->module_id = 0x9b;
+		comp_info->module_id = TB_FILE_IN_AIF_MODULE_ID;
 		if (tb_is_pipeline_enabled(tp, ctx->pipeline_id)) {
 			if (tp->output_file_index >= tp->output_file_num) {
 				fprintf(stderr, "error: not enough output files for aif\n");
@@ -632,9 +631,11 @@ int tb_new_aif_in_out(struct testbench_prm *tp, int dir)
 			tp->fw[tp->output_file_index].pipeline_id = ctx->pipeline_id;
 			tp->output_file_index++;
 		}
-		tb_setup_widget_ipc_msg(comp_info);
 	}
 
+	tb_setup_widget_ipc_msg(comp_info);
+	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_file_module_cfg), &tb_file_uuid,
+	       sizeof(struct sof_uuid));
 	return 0;
 }
 
@@ -649,11 +650,10 @@ int tb_new_dai_in_out(struct testbench_prm *tp, int dir)
 	if (ret < 0)
 		return ret;
 
-	comp_info->ipc_payload =  calloc(sizeof(struct ipc4_file_module_cfg), 1);
+	comp_info->ipc_size = sizeof(struct ipc4_file_module_cfg) + sizeof(struct sof_uuid);
+	comp_info->ipc_payload =  calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
-
-	comp_info->ipc_size = sizeof(struct ipc4_file_module_cfg);
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		/* Set from testbench command line*/
@@ -665,7 +665,7 @@ int tb_new_dai_in_out(struct testbench_prm *tp, int dir)
 		file->config.direction = dir;
 
 		comp_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_DAI_OUT]++;
-		comp_info->module_id = 0x9c;
+		comp_info->module_id = TB_FILE_OUT_DAI_MODULE_ID;
 		if (tb_is_pipeline_enabled(tp, ctx->pipeline_id)) {
 			if (tp->output_file_index >= tp->output_file_num) {
 				fprintf(stderr, "error: not enough output files for dai\n");
@@ -687,7 +687,7 @@ int tb_new_dai_in_out(struct testbench_prm *tp, int dir)
 		file->config.direction = dir;
 
 		comp_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_DAI_IN]++;
-		comp_info->module_id = 0x9d;
+		comp_info->module_id = TB_FILE_IN_DAI_MODULE_ID;
 		if (tb_is_pipeline_enabled(tp, ctx->pipeline_id)) {
 			if (tp->input_file_index >= tp->input_file_num) {
 				fprintf(stderr, "error: not enough input files for dai\n");
@@ -699,9 +699,11 @@ int tb_new_dai_in_out(struct testbench_prm *tp, int dir)
 			tp->fr[tp->input_file_index].pipeline_id = ctx->pipeline_id;
 			tp->input_file_index++;
 		}
-		tb_setup_widget_ipc_msg(comp_info);
 	}
 
+	tb_setup_widget_ipc_msg(comp_info);
+	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_file_module_cfg), &tb_file_uuid,
+	       sizeof(struct sof_uuid));
 	return 0;
 }
 
@@ -711,17 +713,20 @@ int tb_new_pga(struct testbench_prm *tp)
 	struct tplg_comp_info *comp_info = ctx->current_comp_info;
 	struct ipc4_peak_volume_config volume;
 	struct snd_soc_tplg_ctl_hdr *tplg_ctl;
+	size_t uuid_offset;
 	int ret;
 
-	comp_info->ipc_size =
-		sizeof(struct ipc4_peak_volume_config) + sizeof(struct ipc4_base_module_cfg);
+	comp_info->ipc_size = sizeof(struct ipc4_peak_volume_config);
+	comp_info->ipc_size += sizeof(struct ipc4_base_module_cfg);
+	uuid_offset = comp_info->ipc_size;
+	comp_info->ipc_size += sizeof(struct sof_uuid);
 	comp_info->ipc_payload = calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
 
 	/* FIXME: move this to when the widget is actually set up */
 	comp_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_PGA]++;
-	comp_info->module_id = 0x6;
+	comp_info->module_id = TB_PGA_MODULE_ID;
 
 	tplg_ctl = calloc(ctx->hdr->payload_size, 1);
 	if (!tplg_ctl) {
@@ -739,6 +744,9 @@ int tb_new_pga(struct testbench_prm *tp)
 	/* copy volume data to ipc_payload */
 	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg),
 	       &volume, sizeof(struct ipc4_peak_volume_config));
+
+	/* copy uuid to the end of the payload */
+	memcpy(comp_info->ipc_payload + uuid_offset, &comp_info->uuid, sizeof(struct sof_uuid));
 
 	/* skip kcontrols for now */
 	ret = tplg_create_controls(ctx, ctx->widget->num_kcontrols, tplg_ctl,
@@ -773,8 +781,8 @@ int tb_new_process(struct testbench_prm *tp)
 	if (!tplg_ctl)
 		return -ENOMEM;
 
-	/* only base config supported for now. extn support will be added later */
-	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg);
+	/* use base config variant with uuid */
+	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg) + sizeof(struct sof_uuid);
 	comp_info->ipc_payload = calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload) {
 		ret = ENOMEM;
@@ -783,7 +791,7 @@ int tb_new_process(struct testbench_prm *tp)
 
 	/* FIXME: move this to when the widget is actually set up */
 	comp_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_EFFECT]++;
-	comp_info->module_id = 0x9e; /* dcblock */
+	comp_info->module_id = TB_PROCESS_MODULE_ID;
 
 	/* skip kcontrols for now, set object to NULL */
 	ret = tplg_create_controls(ctx, ctx->widget->num_kcontrols, tplg_ctl,
@@ -794,6 +802,10 @@ int tb_new_process(struct testbench_prm *tp)
 	}
 
 	tb_setup_widget_ipc_msg(comp_info);
+
+	/* copy uuid to the end of the payload */
+	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg), &comp_info->uuid,
+	       sizeof(struct sof_uuid));
 
 	/* TODO: drop tplg_ctl to avoid memory leak. Need to store and handle this
 	 * to support controls.
