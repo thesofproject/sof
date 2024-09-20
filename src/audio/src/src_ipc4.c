@@ -186,10 +186,12 @@ int src_init(struct processing_module *mod)
 	struct module_config *cfg = &md->cfg;
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = NULL;
+	const size_t cfg_size_expect = sizeof(cd->ipc_config) -
+		sizeof(struct ipc4_base_module_cfg);
 
 	comp_dbg(dev, "src_init()");
 
-	if (!cfg->init_data || cfg->size != sizeof(cd->ipc_config)) {
+	if (!cfg->init_data || cfg->size != cfg_size_expect) {
 		comp_err(dev, "src_init(): Missing or bad size (%u) init data",
 			 cfg->size);
 		return -EINVAL;

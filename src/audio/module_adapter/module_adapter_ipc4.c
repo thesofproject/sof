@@ -48,7 +48,7 @@ int module_adapter_init_data(struct comp_dev *dev,
 		return -EINVAL;
 
 	dst->base_cfg = cfg->base_cfg;
-	dst->size = cfgsz;
+	dst->size = cfgsz - sizeof(cfg->base_cfg);
 
 	if (cfgsz >= sizeof(*cfg)) {
 		int n_in = cfg->base_cfg_ext.nb_input_pins;
