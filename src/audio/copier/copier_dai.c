@@ -540,7 +540,8 @@ int copier_dai_params(struct copier_data *cd, struct comp_dev *dev,
 		return ret;
 
 	for (j = 0; j < SOF_IPC_MAX_CHANNELS; j++)
-		cd->dd[dai_index]->dma_buffer->chmap[j] = (cd->chan_map[dai_index] >> j * 4) & 0xf;
+		audio_buffer_set_chmap(&cd->dd[dai_index]->dma_buffer->audio_buffer,
+				       j, (cd->chan_map[dai_index] >> j * 4) & 0xf);
 
 	/* set channel copy func */
 	container_size = audio_stream_sample_bytes(&cd->multi_endpoint_buffer->stream);

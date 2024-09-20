@@ -23,9 +23,6 @@
 /*
  * Stream configuration.
  */
-
-#define SOF_IPC_MAX_CHANNELS			8
-
 /* common sample rates for use in masks */
 #define SOF_RATE_8000		(1 <<  0) /**< 8000Hz  */
 #define SOF_RATE_11025		(1 <<  1) /**< 11025Hz */

@@ -192,7 +192,7 @@ int create_endpoint_buffer(struct comp_dev *dev,
 				    copier_cfg->base.audio_fmt.interleaving_style);
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buffer->chmap[i] = (chan_map >> i * 4) & 0xf;
+		audio_buffer_set_chmap(&buffer->audio_buffer, i, (chan_map >> i * 4) & 0xf);
 
 	audio_buffer_set_hw_params_configured(&buffer->audio_buffer);
 

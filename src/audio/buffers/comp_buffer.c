@@ -440,7 +440,7 @@ int buffer_set_params(struct comp_buffer *buffer,
 
 	audio_stream_set_buffer_fmt(&buffer->stream, params->buffer_fmt);
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		buffer->chmap[i] = params->chmap[i];
+		audio_buffer_set_chmap(&buffer->audio_buffer, i, params->chmap[i]);
 
 	audio_buffer_set_hw_params_configured(&buffer->audio_buffer);
 

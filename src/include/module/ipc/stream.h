@@ -10,6 +10,8 @@
 #ifndef __MODULE_IPC_STREAM_H__
 #define __MODULE_IPC_STREAM_H__
 
+#define SOF_IPC_MAX_CHANNELS			8
+
 /* stream PCM frame format */
 enum sof_ipc_frame {
 	SOF_IPC_FRAME_S16_LE = 0,
