@@ -71,6 +71,12 @@ struct sof_audio_buffer {
 
 	/* virtual methods */
 	const struct audio_buffer_ops *ops;
+
+	/*
+	 * legacy params, needed for pipeline binding/iterating, not for data buffering
+	 * should not be in struct sof_audio_buffer at all, kept for pipeline2.0 transition
+	 */
+	bool walking;		/**< indicates if the buffer is being walked */
 };
 
 #if CONFIG_PIPELINE_2_0

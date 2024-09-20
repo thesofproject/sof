@@ -751,7 +751,7 @@ static int trigger_handler(struct processing_module *mod, int cmd)
 	/* Ignore and halt propagation if we get a trigger from the
 	 * playback pipeline: not for us. (Never happens on IPC4)
 	 */
-	if (cd->ref_comp_buffer->walking)
+	if (cd->ref_comp_buffer->audio_buffer.walking)
 		return PPL_STATUS_PATH_STOP;
 #endif
 
