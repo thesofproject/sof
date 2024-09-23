@@ -256,9 +256,12 @@ static enum task_state chain_task_run(void *data)
 				chain_get_transferred_data_size(link_read_pos,
 								host_read_pos,
 								buff_size);
+			size_t host_consume = MIN(transferred, host_avail_bytes);
+
+			host_avail_bytes -= host_consume;
 
 			ret = dma_reload(cd->chan_host->dma->z_dev, cd->chan_host->index,
-					 0, 0, transferred);
+					 0, 0, host_consume);
 			if (ret < 0) {
 				tr_err(&chain_dma_tr,
 				       "chain_task_run(): dma_reload() host error, ret = %u", ret);
