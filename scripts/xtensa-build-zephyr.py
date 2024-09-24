@@ -957,8 +957,11 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 			rimage_cmd = shlex.split(platform_wconfig.get('rimage.path'))[0]
 			sign_cmd = [rimage_cmd, "-o", str(llext_output),
 				    "-e", "-c", str(rimage_cfg),
-				    "-k", str(signing_key), "-l", "-r",
-				    str(llext_input)]
+				    "-k", str(signing_key), "-l", "-r"]
+			_ws_args = platform_wconfig.get("rimage.extra-args")
+			if _ws_args is not None:
+				sign_cmd.extend(shlex.split(_ws_args))
+			sign_cmd.append(str(llext_input))
 			execute_command(sign_cmd, cwd=west_top)
 
 			# An intuitive way to make this multiline would be
