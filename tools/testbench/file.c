@@ -569,7 +569,12 @@ static int file_init(struct processing_module *mod)
 	cd->file_func = file_default;
 
 	/* get filename from IPC and open file */
-	cd->fs.fn = strdup(ipc_file->fn);
+	if (ipc_file->fn) {
+		cd->fs.fn = strdup(ipc_file->fn);
+	} else {
+		fprintf(stderr, "error: no filename set\n");
+		goto error;
+	}
 
 	/* set file format */
 	cd->fs.f_format = get_file_format(cd->fs.fn);
