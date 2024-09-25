@@ -194,12 +194,6 @@ static int boot_complete(void)
 
 int start_complete(void)
 {
-#if defined(CONFIG_IMX)
-#define SOF_IPC_QUEUED_DOMAIN SOF_SCHEDULE_LL_DMA
-#else
-#define SOF_IPC_QUEUED_DOMAIN SOF_SCHEDULE_LL_TIMER
-#endif
-
 	/*
 	 * called from primary_core_init(), track state here
 	 * (only called from single core, no RMW lock)
