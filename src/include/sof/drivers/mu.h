@@ -19,7 +19,7 @@ enum imx_mu_type {
 	IMX_MU_V2,
 };
 
-#if defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55)
+#if defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55) || defined(CONFIG_IMX95)
 #define IMX_MU_VERSION IMX_MU_V2
 #else
 #define IMX_MU_VERSION IMX_MU_V1
