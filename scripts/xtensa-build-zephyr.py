@@ -164,6 +164,10 @@ platform_configs_all = {
 		"hifi4_nxp2_s7_v2_1a_prod",
 		RIMAGE_KEY = "key param ignored by imx8ulp"
 	),
+	"imx95" : PlatformConfig(
+		"imx", "imx95_evk/mimx9596/m7/ddr",
+		"", "", "", ""
+	),
 }
 
 platform_configs = platform_configs_all.copy()
@@ -1160,7 +1164,7 @@ def gzip_compress(fname, gzdst=None):
 # Don't run sof_ri_info and ignore silently .ri files that don't have one.
 RI_INFO_UNSUPPORTED = []
 
-RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp']
+RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp', 'imx95']
 RI_INFO_UNSUPPORTED += ['rn']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
 
