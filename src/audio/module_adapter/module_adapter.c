@@ -60,7 +60,6 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 		return NULL;
 	}
 	dev->ipc_config = *config;
-	dev->drv = drv;
 
 	/* allocate module information.
 	 * for DP shared modules this struct must be accessible from all cores

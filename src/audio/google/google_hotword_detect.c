@@ -99,7 +99,6 @@ static struct comp_dev *ghd_create(const struct comp_driver *drv,
 	if (!dev)
 		return NULL;
 
-	dev->drv = drv;
 	dev->ipc_config = *config;
 
 	/* Create private component data */
