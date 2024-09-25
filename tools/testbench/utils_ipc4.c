@@ -251,7 +251,10 @@ static int tb_prepare_widgets_capture(struct testbench_prm *tp, struct tplg_pcm_
 static int tb_set_up_widget(struct testbench_prm *tp, struct tplg_comp_info *comp_info)
 {
 	struct tplg_pipeline_info *pipe_info = comp_info->pipe_info;
+	struct tb_glb_state *glb = &tp->glb_ctx;
+	struct tb_ctl *ctl;
 	int ret;
+	int i;
 
 	pipe_info->usage_count++;
 
@@ -265,7 +268,35 @@ static int tb_set_up_widget(struct testbench_prm *tp, struct tplg_comp_info *com
 	}
 
 	/* now set up the widget */
-	return tb_set_up_widget_ipc(tp, comp_info);
+	ret = tb_set_up_widget_ipc(tp, comp_info);
+	if (ret < 0)
+		return ret;
+
+	/* send kcontrol bytes data */
+	for (i = 0; i < glb->num_ctls; i++) {
+		struct sof_abi_hdr *abi;
+
+		ctl = &glb->ctl[i];
+
+		/* send the bytes data from kcontrols associated with current widget */
+		if (ctl->module_id != comp_info->module_id ||
+		    ctl->instance_id != comp_info->instance_id ||
+		    ctl->type != SND_SOC_TPLG_TYPE_BYTES)
+			continue;
+
+		abi = (struct sof_abi_hdr *)ctl->data;
+
+		/* send IPC with kcontrol data */
+		ret = tb_send_bytes_data(&tp->ipc_tx, &tp->ipc_rx,
+					 comp_info->module_id, comp_info->instance_id, abi);
+		if (ret < 0) {
+			fprintf(stderr, "Error: Failed to set bytes data for widget %s.\n",
+				comp_info->name);
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
 static int tb_set_up_widgets_playback(struct testbench_prm *tp,
@@ -589,6 +620,7 @@ void tb_free_topology(struct testbench_prm *tp)
 	}
 
 	free(ctx->tplg_base);
+	free(tp->glb_ctx.ctl);
 	tb_debug_print("freed all pipelines, widgets, routes and pcms\n");
 }
 
