@@ -109,7 +109,7 @@ static int debug_stream_slot_init(void)
 	size_t offset = hdr_size;
 	int i;
 
-	LOG_INF("%u sections of %u bytes, hdr %u, secton area %u\n",
+	LOG_INF("%u sections of %u bytes, hdr %u, section area %u\n",
 		CONFIG_MP_MAX_NUM_CPUS, section_size, hdr_size,
 		section_area_size);
 
