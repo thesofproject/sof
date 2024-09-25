@@ -90,6 +90,11 @@ static inline char *ipc4_get_comp_new_data(void)
 
 	return data;
 }
+
+static const struct comp_driver *ipc4_library_get_comp_drv(char *data)
+{
+	return ipc4_get_drv((const uint8_t *)data);
+}
 #else
 static inline char *ipc4_get_comp_new_data(void)
 {
@@ -107,9 +112,6 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 
 	comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
 			       module_init->primary.r.instance_id);
-	drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
-	if (!drv)
-		return NULL;
 
 	if (ipc4_get_comp_dev(comp_id)) {
 		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
@@ -127,6 +129,20 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	ipc_config.core = module_init->extension.r.core_id;
 	ipc_config.ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
 
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 MAILBOX_HOSTBOX_SIZE);
+
+	data = ipc4_get_comp_new_data();
+
+#if CONFIG_LIBRARY
+	ipc_config.ipc_config_size -= sizeof(struct sof_uuid);
+	drv = ipc4_library_get_comp_drv(data + ipc_config.ipc_config_size);
+#else
+	drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
+#endif
+	if (!drv)
+		return NULL;
+
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	if (module_init->extension.r.proc_domain)
 		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
@@ -140,15 +156,10 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-				 MAILBOX_HOSTBOX_SIZE);
-
-	data = ipc4_get_comp_new_data();
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
 			.data = (const unsigned char *)data,
-			/* spec_size in IPC4 is in DW. Convert to bytes. */
-			.size = module_init->extension.r.param_block_size * sizeof(uint32_t),
+			.size = ipc_config.ipc_config_size,
 		};
 
 		dev = drv->ops.create(drv, &ipc_config, (const void *)&spec);
@@ -936,69 +947,12 @@ out:
 	return drv;
 }
 
-#if CONFIG_LIBRARY
-struct ipc4_module_uuid {
-	int module_id;
-	struct sof_uuid uuid;
-};
-
-/* Hardcoded table mapping UUIDs with module ID's. TODO: replace this with a scalable solution */
-static const struct ipc4_module_uuid uuid_map[] = {
-	{0x6, {.a = 0x61bca9a8,	.b = 0x18d0, .c = 0x4a18,
-	       .d = { 0x8e, 0x7b, 0x26, 0x39, 0x21, 0x98, 0x04, 0xb7 }}}, /* gain */
-	{0x2, {.a = 0x39656eb2, .b = 0x3b71, .c = 0x4049,
-	       .d = { 0x8d, 0x3f, 0xf9, 0x2c, 0xd5, 0xc4, 0x3c, 0x09 }}}, /* mixin */
-	{0x3, {.a = 0x3c56505a, .b = 0x24d7, .c = 0x418f,
-		.d = { 0xbd, 0xdc, 0xc1, 0xf5, 0xa3, 0xac, 0x2a, 0xe0 }}}, /* mixout */
-	{0x95, {.a = 0x7ae671a7, .b = 0x4617, .c = 0x4a09,
-		.d = { 0xbf, 0x6d, 0x9d, 0x29, 0xc9, 0x98, 0xdb, 0xc1 }}}, /* noise suppresion */
-	{0x96, {.a = 0xe2b6031c, .b = 0x47e8, .c = 0x11ed,
-		.d = { 0x07, 0xa9, 0x7f, 0x80, 0x1b, 0x6e, 0xfa, 0x6c }}}, /* host SHM write */
-	{0x98, {.a = 0xdabe8814, .b = 0x47e8, .c = 0x11ed,
-		.d = { 0xa5, 0x8b, 0xb3, 0x09, 0x97, 0x4f, 0xec, 0xce }}}, /* host SHM read */
-	{0x97, {.a = 0x72cee996, .b = 0x39f2, .c = 0x11ed,
-		.d = { 0xa0, 0x8f, 0x97, 0xfc, 0xc4, 0x2e, 0xaa, 0xeb }}}, /* ALSA aplay */
-	{0x99, {.a = 0x66def9f0, .b = 0x39f2, .c = 0x11ed,
-		.d = { 0xf7, 0x89, 0xaf, 0x98, 0xa6, 0x44, 0x0c, 0xc4 }}}, /* ALSA arecord */
-	{0x9a, {.a = 0xbfc7488c, .b = 0x75aa, .c = 0x4ce8,
-		.d = { 0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2 }}}, /* file read aif */
-	{0x9b, {.a = 0xbfc7488c, .b = 0x75aa, .c = 0x4ce8,
-		.d = { 0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2 }}}, /* file write aif */
-	{0x9c, {.a = 0xbfc7488c, .b = 0x75aa, .c = 0x4ce8,
-		.d = { 0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2 }}}, /* file read dai */
-	{0x9d, {.a = 0xbfc7488c, .b = 0x75aa, .c = 0x4ce8,
-		.d = { 0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2 }}}, /* file write dai */
-	{0x9e, {.a = 0xb809efaf, .b = 0x5681, .c = 0x42b1,
-		.d = { 0x9e, 0xd6, 0x04, 0xbb, 0x01, 0x2d, 0xd3, 0x84 }}}, /* process: dcblock */
-};
-
-static const struct comp_driver *ipc4_library_get_drv(int module_id)
-{
-	const struct ipc4_module_uuid *mod_uuid;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(uuid_map); i++) {
-		mod_uuid = &uuid_map[i];
-
-		if (mod_uuid->module_id == module_id)
-			return ipc4_get_drv((const uint8_t *)&mod_uuid->uuid);
-	}
-
-	tr_err(&comp_tr, "ipc4_library_get_drv(): Unsupported module ID %#x\n", module_id);
-	return NULL;
-}
-#endif
-
 const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 {
 	const struct sof_man_fw_desc *desc = NULL;
 	const struct comp_driver *drv;
 	const struct sof_man_module *mod;
 	uint32_t entry_index;
-
-#if CONFIG_LIBRARY
-	return ipc4_library_get_drv(module_id);
-#endif
 
 #ifdef RIMAGE_MANIFEST
 	desc = (const struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;

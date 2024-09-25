@@ -1064,13 +1064,6 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	tr_dbg(&ipc_tr, "ipc4_get_large_config_module_instance %x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
-	drv = ipc4_get_comp_drv(config.primary.r.module_id);
-	if (!drv)
-		return IPC4_MOD_INVALID_ID;
-
-	if (!drv->ops.get_large_config)
-		return IPC4_INVALID_REQUEST;
-
 	/* get component dev for non-basefw since there is no
 	 * component dev for basefw
 	 */
@@ -1083,10 +1076,20 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
 
+		drv = dev->drv;
+
 		/* Pass IPC to target core */
 		if (!cpu_is_me(dev->ipc_config.core))
 			return ipc4_process_on_core(dev->ipc_config.core, false);
+	} else {
+		drv = ipc4_get_comp_drv(config.primary.r.module_id);
 	}
+
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	if (!drv->ops.get_large_config)
+		return IPC4_INVALID_REQUEST;
 
 	data_offset =  config.extension.r.data_off_size;
 
@@ -1222,13 +1225,6 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
-	drv = ipc4_get_comp_drv(config.primary.r.module_id);
-	if (!drv)
-		return IPC4_MOD_INVALID_ID;
-
-	if (!drv->ops.set_large_config)
-		return IPC4_INVALID_REQUEST;
-
 	if (config.primary.r.module_id) {
 		uint32_t comp_id;
 
@@ -1237,10 +1233,20 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
 
+		drv = dev->drv;
+
 		/* Pass IPC to target core */
 		if (!cpu_is_me(dev->ipc_config.core))
 			return ipc4_process_on_core(dev->ipc_config.core, false);
+	} else {
+		drv = ipc4_get_comp_drv(config.primary.r.module_id);
 	}
+
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	if (!drv->ops.set_large_config)
+		return IPC4_INVALID_REQUEST;
 
 	/* check for vendor param first */
 	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
