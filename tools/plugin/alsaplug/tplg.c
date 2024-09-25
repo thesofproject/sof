@@ -101,19 +101,29 @@ static int plug_aif_in_out(snd_sof_plug_t *plug, int dir)
 	if (ret < 0)
 		return ret;
 
-	comp_info->ipc_payload =  calloc(sizeof(struct ipc4_base_module_cfg), 1);
+	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg) + sizeof(struct sof_uuid);
+	comp_info->ipc_payload =  calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
 
-	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg);
-
+	/* overwrite the topology UUIDs with the SHM module UUID for the host components */
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		struct sof_uuid uuid = {.a = 0xe2b6031c, .b = 0x47e8, .c = 0x11ed,
+					.d = { 0x07, 0xa9, 0x7f, 0x80, 0x1b, 0x6e, 0xfa, 0x6c }};
 		comp_info->module_id = 0x96;
 		plug_setup_widget_ipc_msg(comp_info);
+		comp_info->uuid = uuid;
 	} else {
+		struct sof_uuid uuid = {.a = 0xdabe8814, .b = 0x47e8, .c = 0x11ed,
+					.d = { 0xa5, 0x8b, 0xb3, 0x09, 0x97, 0x4f, 0xec, 0xce }};
 		comp_info->module_id = 0x98;
 		plug_setup_widget_ipc_msg(comp_info);
+		comp_info->uuid = uuid;
 	}
+
+	/* copy uuid to the end of the payload */
+	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg), &comp_info->uuid,
+	       sizeof(struct sof_uuid));
 
 	return 0;
 }
@@ -128,19 +138,31 @@ static int plug_dai_in_out(snd_sof_plug_t *plug, int dir)
 	if (ret < 0)
 		return ret;
 
-	comp_info->ipc_payload =  calloc(sizeof(struct ipc4_base_module_cfg), 1);
+	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg) + sizeof(struct sof_uuid);
+	comp_info->ipc_payload =  calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
 
-	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg);
-
+	/* overwrite the topology UUIDs with the ALSA module UUID for the DAI components */
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
+		struct sof_uuid uuid = {.a = 0x72cee996, .b = 0x39f2, .c = 0x11ed,
+					.d = { 0xa0, 0x8f, 0x97, 0xfc, 0xc4, 0x2e, 0xaa, 0xeb }};
+
 		comp_info->module_id = 0x97;
 		plug_setup_widget_ipc_msg(comp_info);
+		comp_info->uuid = uuid;
 	} else {
+		struct sof_uuid uuid = {.a = 0x66def9f0, .b = 0x39f2, .c = 0x11ed,
+					.d = { 0xf7, 0x89, 0xaf, 0x98, 0xa6, 0x44, 0x0c, 0xc4 }};
+
 		comp_info->module_id = 0x99;
 		plug_setup_widget_ipc_msg(comp_info);
+		comp_info->uuid = uuid;
 	}
+
+	/* copy uuid to the end of the payload */
+	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg), &comp_info->uuid,
+	       sizeof(struct sof_uuid));
 
 	return 0;
 }
@@ -210,7 +232,7 @@ static int plug_new_mixer(snd_sof_plug_t *plug)
 		return -ENOMEM;
 
 	comp_info->instance_id = plug->instance_ids[SND_SOC_TPLG_DAPM_MIXER]++;
-	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg);
+	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg) + sizeof(struct sof_uuid);
 	comp_info->ipc_payload = calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
@@ -229,6 +251,10 @@ static int plug_new_mixer(snd_sof_plug_t *plug)
 		comp_info->module_id = 0x3;
 		plug_setup_widget_ipc_msg(comp_info);
 	}
+
+	/* copy uuid to the end of the payload */
+	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg), &comp_info->uuid,
+	       sizeof(struct sof_uuid));
 out:
 	free(tplg_ctl);
 	return ret;
@@ -240,10 +266,13 @@ static int plug_new_pga(snd_sof_plug_t *plug)
 	struct tplg_comp_info *comp_info = ctx->current_comp_info;
 	struct ipc4_peak_volume_config volume;
 	struct snd_soc_tplg_ctl_hdr *tplg_ctl;
+	uint32_t uuid_offset;
 	int ret;
 
-	comp_info->ipc_size =
-		sizeof(struct ipc4_peak_volume_config) + sizeof(struct ipc4_base_module_cfg);
+	comp_info->ipc_size = sizeof(struct ipc4_peak_volume_config);
+	comp_info->ipc_size += sizeof(struct ipc4_base_module_cfg);
+	uuid_offset = comp_info->ipc_size;
+	comp_info->ipc_size += sizeof(struct sof_uuid);
 	comp_info->ipc_payload = calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
@@ -268,6 +297,9 @@ static int plug_new_pga(snd_sof_plug_t *plug)
 	/* copy volume data to ipc_payload */
 	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg),
 	       &volume, sizeof(struct ipc4_peak_volume_config));
+
+	/* copy uuid to the end of the payload */
+	memcpy(comp_info->ipc_payload + uuid_offset, &comp_info->uuid, sizeof(struct sof_uuid));
 
 	/* skip kcontrols for now */
 	if (tplg_create_controls(ctx, ctx->widget->num_kcontrols,
@@ -302,7 +334,7 @@ static int plug_new_process(snd_sof_plug_t *plug)
 		return ret;
 
 	/* only base config supported for now. extn support will be added later */
-	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg);
+	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg) + sizeof(struct sof_uuid);
 	comp_info->ipc_payload = calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
@@ -318,6 +350,10 @@ static int plug_new_process(snd_sof_plug_t *plug)
 		free(comp_info->ipc_payload);
 		return -ENOMEM;
 	}
+
+	/* copy uuid to the end of the payload */
+	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg), &comp_info->uuid,
+	       sizeof(struct sof_uuid));
 
 	/* set up kcontrols */
 	ret = tplg_create_controls(ctx, ctx->widget->num_kcontrols,
