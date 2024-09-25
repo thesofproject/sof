@@ -136,8 +136,8 @@ int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
 
 		array = MOVE_POINTER_BY_BYTES(array, array->size);
 
-		if (found >= count) {
-			total += found;
+		if (found > 0) {
+			total += count;
 			offset += object_size;
 			found = 0;
 		}
