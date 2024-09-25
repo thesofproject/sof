@@ -59,6 +59,7 @@ manifest:
           - mipi-sys-t
           - lz4
           - tinycrypt
+          - cmsis
 
   self:
     # Changes to submanifests/*.yml files _are_ effective; these have no
