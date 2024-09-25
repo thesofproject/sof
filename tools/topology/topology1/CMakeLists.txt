@@ -70,6 +70,11 @@ set(TPLGS
 	"sof-imx93-wm8962\;sof-imx93-wm8962\;-DPPROC=volume"
 	## end i.MX93 topologies
 
+	## i.MX95 topologies
+	"sof-imx95-wm8962\;sof-imx95-wm8962\;-DPPROC=volume"
+	"sof-imx95-wm8962\;sof-imx95-passthrough-wm8962\;-DPPROC=passthrough"
+	## end i.MX95 topologies
+
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682"
 	"sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-rt1019-rt5682-dts\;-DDTS=`DTS'"
         "sof-mt8195-mt6359-rt1019-rt5682\;sof-mt8195-mt6359-max98390-rt5682"
