@@ -1,0 +1,5 @@
+SECTION_PROLOGUE(.fw_metadata,,)
+{
+	KEEP (*(*.fw_metadata))
+	. = ALIGN(16);
+} GROUP_ROM_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
