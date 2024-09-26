@@ -11,6 +11,7 @@ import argparse
 import ctypes
 import time
 import sys
+import os
 
 import logging
 
@@ -505,7 +506,15 @@ def cavstool_main_loop(my_args):
     while True:
         if not cavstool.fw_is_alive(dsp):
             cavstool.wait_fw_entered(dsp, timeout_s=None)
-        offset = cavstool.debug_slot_offset(my_args.direct_access_slot)
+        if my_args.direct_access_slot < 0:
+            offset = cavstool.debug_slot_offset_by_type(ADSP_DW_SLOT_DEBUG_STREAM)
+            if offset is None:
+                logging.error("Could not find debug_stream slot")
+                sys.exit(1)
+            logging.info("Got offset 0x%08x by type 0x%08x", offset,
+                         ADSP_DW_SLOT_DEBUG_STREAM)
+        else:
+            offset = cavstool.debug_slot_offset(my_args.direct_access_slot)
         buf = cavstool.win_read(offset, 0, DEBUG_SLOT_SIZE)
         decoder.set_slot(buf)
         if not decoder.get_descriptors():
@@ -529,7 +538,7 @@ def main_f(my_args):
     about the host CPU load. That is why there where no synchronous mechanism
     done and the host simply polls for new records.
     """
-    if my_args.direct_access_slot >= 0:
+    if my_args.direct_access_slot >= 0 or not os.path.isfile(my_args.debugstream_file):
 	    return cavstool_main_loop(my_args)
     decoder = DebugStreamDecoder()
     prev_error = None
