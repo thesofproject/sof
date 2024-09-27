@@ -46,13 +46,14 @@ struct dai_ts_data;
 /** \name Audio Component States
  *  @{
  */
-#define COMP_STATE_INIT		0	/**< Component being initialised */
-#define COMP_STATE_READY	1	/**< Component inactive, but ready */
-#define COMP_STATE_SUSPEND	2	/**< Component suspended */
-#define COMP_STATE_PREPARE	3	/**< Component prepared */
-#define COMP_STATE_PAUSED	4	/**< Component paused */
-#define COMP_STATE_ACTIVE	5	/**< Component active */
-#define COMP_STATE_PRE_ACTIVE	6	/**< Component after early initialisation */
+#define COMP_STATE_NOT_EXIST    0	/**< Component does not exist */
+#define COMP_STATE_INIT		1	/**< Component being initialised */
+#define COMP_STATE_READY	2	/**< Component inactive, but ready */
+#define COMP_STATE_SUSPEND	3	/**< Component suspended */
+#define COMP_STATE_PREPARE	4	/**< Component prepared */
+#define COMP_STATE_PAUSED	5	/**< Component paused */
+#define COMP_STATE_ACTIVE	6	/**< Component active */
+#define COMP_STATE_PRE_ACTIVE	7	/**< Component after early initialisation */
 /** @}*/
 
 /** \name Standard Component Stream Commands
@@ -987,10 +988,41 @@ void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
  * Get component state.
  *
  * @param dev Component from which user wants to read status.
+ *
+ * @retval COMP_STATE_NOT_EXIST if there's no connected component
+ * @return state of the component
  */
-static inline int comp_get_state(struct comp_dev *dev)
+static inline int comp_get_state(const struct comp_dev *dev)
 {
+	if (!dev)
+		return COMP_STATE_NOT_EXIST;
 	return dev->state;
+}
+
+/**
+ * @brief helper, provide state of a component connected to a buffer as a data provider
+ *
+ * @param buffer a buffer to be checked
+ *
+ * @retval COMP_STATE_NOT_EXIST if there's no connected component
+ * @return state of the component
+ */
+static inline int comp_buffer_get_source_state(const struct comp_buffer *buffer)
+{
+	return comp_get_state(comp_buffer_get_source_component(buffer));
+}
+
+/**
+ * @brief helper, provide state of a component connected to a buffer as a data consumer
+ *
+ * @param buffer a buffer to be checked
+ *
+ * @retval COMP_STATE_NOT_EXIST if there's no connected component
+ * @return state of the component
+ */
+static inline int comp_buffer_get_sink_state(const struct comp_buffer *buffer)
+{
+	return comp_get_state(comp_buffer_get_sink_component(buffer));
 }
 
 /**
