@@ -787,8 +787,7 @@ static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
 static bool ref_stream_active(struct google_rtc_audio_processing_comp_data *cd)
 {
 #ifdef CONFIG_IPC_MAJOR_3
-	return cd->ref_comp_buffer->source &&
-		cd->ref_comp_buffer->source->state == COMP_STATE_ACTIVE;
+	return (comp_buffer_get_source_state(cd->ref_comp_buffer) == COMP_STATE_ACTIVE);
 #else
 	return true;
 #endif

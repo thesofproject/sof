@@ -429,7 +429,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	if (sad->feedback_buf) {
 		struct comp_buffer *buf = sad->feedback_buf;
 
-		if (buf->source && comp_get_state(buf->source) == dev->state) {
+		if (comp_buffer_get_source_state(buf) == dev->state) {
 			/* feedback */
 			avail_feedback_frames =
 				audio_stream_get_avail_frames(&buf->stream);
@@ -501,7 +501,8 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	/* searching for stream and feedback source buffers */
 	comp_dev_for_each_producer(dev, source_buffer) {
 		/* FIXME: how often can this loop be run? */
-		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
+		if (comp_buffer_get_source_component(source_buffer)->ipc_config.type ==
+				SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;
