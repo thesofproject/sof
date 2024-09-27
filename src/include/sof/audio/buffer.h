@@ -269,7 +269,7 @@ void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir);
 static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
 {
 	struct comp_dev *comp = (dir == PPL_DIR_DOWNSTREAM) ?
-					buffer->sink :
+					comp_buffer_get_sink_component(buffer) :
 					comp_buffer_get_source_component(buffer);
 	return comp;
 }

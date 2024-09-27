@@ -347,7 +347,7 @@ static int kpb_bind(struct comp_dev *dev, void *data)
 	comp_dev_for_each_consumer(dev, sink) {
 		int sink_buf_id;
 
-		if (!sink->sink) {
+		if (!comp_buffer_get_sink_component(sink)) {
 			ret = -EINVAL;
 			break;
 		}
@@ -862,11 +862,11 @@ static int kpb_prepare(struct comp_dev *dev)
 	comp_dev_for_each_consumer(dev, sink) {
 		enum sof_comp_type type;
 
-		if (!sink->sink) {
+		if (!comp_buffer_get_sink_component(sink)) {
 			ret = -EINVAL;
 			break;
 		}
-		type = dev_comp_type(sink->sink);
+		type = dev_comp_type(comp_buffer_get_sink_component(sink));
 
 		switch (type) {
 		case SOF_COMP_SELECTOR:
@@ -1562,7 +1562,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	bool is_sink_ready = (kpb->host_sink->sink->state == COMP_STATE_ACTIVE);
+	bool is_sink_ready = (comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
 	size_t drain_req = cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
@@ -1691,15 +1691,15 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.sync_mode_on = kpb->sync_draining_mode;
 
 		/* save current sink copy type */
-		comp_get_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
-				   &kpb->draining_task_data.copy_type);
+		comp_get_attribute(comp_buffer_get_sink_component(kpb->host_sink),
+				   COMP_ATTR_COPY_TYPE, &kpb->draining_task_data.copy_type);
 
 		if (kpb->force_copy_type != COMP_COPY_INVALID)
-			comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
-					   &kpb->force_copy_type);
+			comp_set_attribute(comp_buffer_get_sink_component(kpb->host_sink),
+					   COMP_ATTR_COPY_TYPE, &kpb->force_copy_type);
 
 		/* Pause selector copy. */
-		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
+		comp_buffer_get_sink_component(kpb->sel_sink)->state = COMP_STATE_PAUSED;
 
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0);
@@ -1827,13 +1827,13 @@ static enum task_state kpb_draining_task(void *arg)
 
 		if (size_to_copy) {
 			comp_update_buffer_produce(sink, size_to_copy);
-			comp_copy(sink->sink);
+			comp_copy(comp_buffer_get_sink_component(sink));
 		} else if (!audio_stream_get_free_bytes(&sink->stream)) {
 			/* There is no free space in sink buffer.
 			 * Call .copy() on sink component so it can
 			 * process its data further.
 			 */
-			comp_copy(sink->sink);
+			comp_copy(comp_buffer_get_sink_component(sink));
 		}
 
 		if (sync_mode_on && period_bytes >= period_bytes_limit) {
@@ -1870,7 +1870,7 @@ out:
 	draining_time_end = sof_cycle_get_64();
 
 	/* Reset host-sink copy mode back to its pre-draining value */
-	comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
+	comp_set_attribute(comp_buffer_get_sink_component(kpb->host_sink), COMP_ATTR_COPY_TYPE,
 			   &kpb->draining_task_data.copy_type);
 
 	draining_time_ms = k_cyc_to_ms_near64(draining_time_end - draining_time_start);

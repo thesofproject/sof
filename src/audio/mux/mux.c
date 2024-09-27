@@ -244,7 +244,7 @@ static int demux_process(struct processing_module *mod,
 
 	/* align sink streams with their respective configurations */
 	comp_dev_for_each_consumer(dev, sink) {
-		if (sink->sink->state == dev->state) {
+		if (comp_buffer_get_sink_state(sink) == dev->state) {
 			i = get_stream_index(dev, cd, buffer_pipeline_id(sink));
 			/* return if index wrong */
 			if (i < 0) {
@@ -440,7 +440,7 @@ static int demux_trigger(struct processing_module *mod, int cmd)
 		struct comp_buffer *b;
 
 		comp_dev_for_each_producer(mod->dev, b) {
-			if (b->sink->pipeline != mod->dev->pipeline)
+			if (comp_buffer_get_sink_component(b)->pipeline != mod->dev->pipeline)
 				audio_stream_set_overrun(&b->stream, true);
 		}
 

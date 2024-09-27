@@ -463,7 +463,7 @@ static int copier_copy_to_sinks(struct copier_data *cd, struct comp_dev *dev,
 	comp_dev_for_each_consumer(dev, sink) {
 		struct comp_dev *sink_dev;
 
-		sink_dev = sink->sink;
+		sink_dev = comp_buffer_get_sink_component(sink);
 		processed_data->sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
 			ret = do_conversion_copy(dev, cd, src_c, sink, processed_data);
@@ -508,7 +508,7 @@ static int copier_module_copy(struct processing_module *mod,
 		struct comp_dev *sink_dev;
 
 		sink_c = container_of(output_buffers[i].data, struct comp_buffer, stream);
-		sink_dev = sink_c->sink;
+		sink_dev = comp_buffer_get_sink_component(sink_c);
 		processed_data.sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
 			uint32_t source_samples;
