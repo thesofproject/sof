@@ -1,5 +1,7 @@
 # Sound Open Firmware
 
+TEST IGNORE - need different SHA1 to trigger rebuild
+
 ### Status
 [![Daily Actions](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml/badge.svg)](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml)
 
