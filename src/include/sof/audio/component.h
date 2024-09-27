@@ -986,10 +986,9 @@ void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
 /**
  * Get component state.
  *
- * @param req_dev Requesting component
  * @param dev Component from which user wants to read status.
  */
-static inline int comp_get_state(struct comp_dev *req_dev, struct comp_dev *dev)
+static inline int comp_get_state(struct comp_dev *dev)
 {
 	return dev->state;
 }
