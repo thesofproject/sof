@@ -143,6 +143,22 @@ struct comp_buffer {
 	struct list_item sink_list;	/* list in comp buffers */
 };
 
+/*
+ * get a component providing data to the buffer
+ */
+static inline struct comp_dev *comp_buffer_get_source_component(const struct comp_buffer *buffer)
+{
+	return buffer->source;
+}
+
+/*
+ * get a component consuming data from the buffer
+ */
+static inline struct comp_dev *comp_buffer_get_sink_component(const struct comp_buffer *buffer)
+{
+	return buffer->sink;
+}
+
 /* Only to be used for synchronous same-core notifications! */
 struct buffer_cb_transact {
 	struct comp_buffer *buffer;
