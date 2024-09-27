@@ -485,7 +485,7 @@ static int mixout_process(struct processing_module *mod,
 		 * sof_source implementation.
 		 */
 		unused_in_between_buf = comp_buffer_get_from_source(sources[i]);
-		mixin = unused_in_between_buf->source;
+		mixin = comp_buffer_get_source_component(unused_in_between_buf);
 
 		pending_frames = get_mixin_pending_frames(md, mixin);
 		if (!pending_frames)
@@ -501,7 +501,7 @@ static int mixout_process(struct processing_module *mod,
 			struct comp_dev *mixin;
 
 			unused_in_between_buf = comp_buffer_get_from_source(sources[i]);
-			mixin = unused_in_between_buf->source;
+			mixin = comp_buffer_get_source_component(unused_in_between_buf);
 
 			pending_frames = get_mixin_pending_frames(md, mixin);
 			if (!pending_frames)
@@ -569,8 +569,9 @@ static int mixout_reset(struct processing_module *mod)
 			 * sof_source implementation.
 			 */
 			source_buf = comp_buffer_get_from_source(mod->sources[i]);
-			stop = (dev->pipeline == source_buf->source->pipeline &&
-					source_buf->source->state > COMP_STATE_PAUSED);
+			stop = (dev->pipeline ==
+					comp_buffer_get_source_component(source_buf)->pipeline &&
+				comp_buffer_get_source_state(source_buf) > COMP_STATE_PAUSED);
 
 			if (stop)
 				/* should not reset the downstream components */

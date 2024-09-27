@@ -298,7 +298,7 @@ static int mux_process(struct processing_module *mod,
 	/* align source streams with their respective configurations */
 	j = 0;
 	comp_dev_for_each_producer(dev, source) {
-		if (source->source->state == dev->state) {
+		if (comp_buffer_get_source_state(source) == dev->state) {
 			if (frames)
 				frames = MIN(frames, input_buffers[j].size);
 			else
@@ -329,7 +329,7 @@ static int mux_process(struct processing_module *mod,
 	/* Update consumed and produced */
 	j = 0;
 	comp_dev_for_each_producer(dev, source) {
-		if (source->source->state == dev->state)
+		if (comp_buffer_get_source_state(source) == dev->state)
 			mod->input_buffers[j].consumed = source_bytes;
 		j++;
 	}
@@ -348,7 +348,7 @@ static int mux_reset(struct processing_module *mod)
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		comp_dev_for_each_producer(dev, source) {
-			int state = source->source->state;
+			int state = comp_buffer_get_source_state(source);
 
 			/* only mux the sources with the same state with mux */
 			if (state > COMP_STATE_READY)

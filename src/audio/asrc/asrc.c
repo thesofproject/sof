@@ -470,7 +470,7 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 		do {
 			sourceb = comp_dev_get_first_data_producer(dev);
 
-			dev = sourceb->source;
+			dev = comp_buffer_get_source_component(sourceb);
 
 			if (!dev) {
 				comp_err(asrc_dev, "At beginning, no DAI found.");

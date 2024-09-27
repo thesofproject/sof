@@ -174,7 +174,7 @@ static int mixer_reset(struct processing_module *mod)
 			/* FIXME: this is racy and implicitly protected by serialised IPCs */
 			bool stop = false;
 
-			if (source->source && source->source->state > COMP_STATE_READY)
+			if (comp_buffer_get_source_state(source) > COMP_STATE_READY)
 				stop = true;
 
 			/* only mix the sources with the same state with mixer */
@@ -233,8 +233,8 @@ static int mixer_prepare(struct processing_module *mod,
 		 * done.
 		 */
 		mixer_set_frame_alignment(&source->stream);
-		stop = source->source && (source->source->state == COMP_STATE_PAUSED ||
-					    source->source->state == COMP_STATE_ACTIVE);
+		stop = comp_buffer_get_source_state(source) == COMP_STATE_PAUSED ||
+		       comp_buffer_get_source_state(source) == COMP_STATE_ACTIVE;
 
 		/* only prepare downstream if we have no active sources */
 		if (stop)
