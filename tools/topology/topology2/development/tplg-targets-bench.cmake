@@ -27,7 +27,7 @@ set(component_parameters
 	"BENCH_DCBLOCK_PARAMS=default"
 	"BENCH_DRC_PARAMS=enabled"
 	"BENCH_DRC_MULTIBAND_PARAMS=default"
-	"BENCH_EQIIR_PARAMS=highpass_50hz_0db_48khz"
+	"BENCH_EQIIR_PARAMS=loudness"
 	"BENCH_EQFIR_PARAMS=loudness"
 	"BENCH_GAIN_PARAMS=default"
 	"BENCH_IGO_NR_PARAMS=default"
