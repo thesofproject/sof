@@ -13,9 +13,18 @@
 import struct
 import os
 import sys
+import argparse
 
 READ_BUFFER = 16384
 MTRACE_FILE = "/sys/kernel/debug/sof/mtrace/core0"
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', '--mark-chunks',
+                    action='store_true')
+
+args = parser.parse_args()
+
+chunk_idx = 0
 
 fd = os.open(MTRACE_FILE, os.O_RDONLY)
 while fd >= 0:
@@ -35,4 +44,10 @@ while fd >= 0:
     data_len = header[0]
     data = read_bytes[4:4+data_len]
 
-    os.write(sys.stdout.fileno(), data)
+    if (args.mark_chunks):
+        chunk_msg = "\n--- Chunk #{} start (size: {}) ---\n" .format(chunk_idx, data_len)
+        sys.stdout.write(chunk_msg)
+
+    sys.stdout.buffer.write(data)
+    sys.stdout.flush()
+    chunk_idx += 1
