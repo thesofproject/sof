@@ -73,8 +73,11 @@ def main():
 
 	command = [args.command]
 
+	executable = []
 	writable = []
 	readonly = []
+
+	text_found = False
 
 	elf = ELFFile(open(args.file, 'rb'))
 
@@ -102,13 +105,14 @@ def main():
 			# In general additional executable sections are possible, e.g.
 			# .init. In the future support for arbitrary such sections can be
 			# added, similar to writable and read-only data below.
-			if s_name != '.text':
-				print(f"Warning! Non-standard executable section {s_name}")
-
-			text_addr = max_alignment(text_addr, 0x1000, s_alignment)
-			text_size = s_size
-
-			command.append(f'-Wl,-Ttext=0x{text_addr:x}')
+			if s_name == '.text':
+				text_found = True
+				text_addr = max_alignment(text_addr, 0x1000, s_alignment)
+				text_size = s_size
+				command.append(f'-Wl,-Ttext=0x{text_addr:x}')
+			else:
+				# Any additional executable sections are intended for IMR
+				executable.append(section)
 
 			continue
 
@@ -122,6 +126,24 @@ def main():
 			# .rodata or other read-only sections
 			readonly.append(section)
 
+	if not text_found:
+		raise RuntimeError('No .text section found in the object file')
+
+	# IMR sections don't need to be linked with SRAM addresses
+	imr_addr = 0
+
+	for section in executable:
+		s_alignment = section.header['sh_addralign']
+		s_name = section.name
+
+		imr_addr = align_up(imr_addr, s_alignment)
+
+		command.append(f'-Wl,--section-start={s_name}=0x{imr_addr:x}')
+
+		imr_addr += section.header['sh_size']
+
+	# So far there doesn't seem to be any reason to align additional
+	# executable sections after .text
 	start_addr = align_up(text_addr + text_size, 0x1000)
 
 	for section in readonly:
