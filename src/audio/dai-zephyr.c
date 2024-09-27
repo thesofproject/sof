@@ -284,7 +284,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 			if (sink == dd->dma_buffer)
 				continue;
 
-			sink_dev = sink->sink;
+			sink_dev = comp_buffer_get_sink_component(sink);
 
 			j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
 
@@ -335,7 +335,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 				if (sink == dd->local_buffer)
 					continue;
 
-				sink_dev = sink->sink;
+				sink_dev = comp_buffer_get_sink_component(sink);
 
 				j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 
@@ -1648,7 +1648,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		comp_dev_for_each_consumer(dev, sink) {
 			struct comp_dev *sink_dev;
 
-			sink_dev = sink->sink;
+			sink_dev = comp_buffer_get_sink_component(sink);
 
 			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
 			    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
@@ -1678,7 +1678,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 			comp_dev_for_each_consumer(dev, sink) {
 				struct comp_dev *sink_dev;
 
-				sink_dev = sink->sink;
+				sink_dev = comp_buffer_get_sink_component(sink);
 
 				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
 				    audio_buffer_hw_params_configured(&sink->audio_buffer)) {

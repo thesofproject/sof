@@ -300,7 +300,7 @@ static int mixin_process(struct processing_module *mod,
 		 */
 		/* unused buffer between mixin and mixout */
 		unused_in_between_buf = comp_buffer_get_from_sink(sinks[i]);
-		mixout = unused_in_between_buf->sink;
+		mixout = comp_buffer_get_sink_component(unused_in_between_buf);
 
 		/* Skip non-active mixout like it is not connected so it does not
 		 * block other possibly connected mixouts. In addition, non-active

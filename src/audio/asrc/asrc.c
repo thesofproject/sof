@@ -452,7 +452,7 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 		do {
 			sinkb = comp_dev_get_first_data_consumer(dev);
 
-			dev = sinkb->sink;
+			dev = comp_buffer_get_sink_component(sinkb);
 
 			if (!dev) {
 				comp_err(asrc_dev, "At end, no DAI found.");
