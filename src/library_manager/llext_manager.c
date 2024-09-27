@@ -17,6 +17,7 @@
 
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
+#include <rtos/symbol.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/llext_manager.h>
@@ -381,3 +382,20 @@ bool comp_is_llext(struct comp_dev *comp)
 
 	return mod && module_is_llext(mod);
 }
+
+void *my_addr(void)
+{
+	uintptr_t reta;
+
+	__asm__ __volatile__("mov %0, a0" : "=r"(reta));
+	tr_info(&lib_manager_tr, "caller %#lx", reta);
+
+	return __builtin_return_address(0);
+}
+EXPORT_SYMBOL(my_addr);
+
+void sof_addr_assign(const void *src, const void **tgt)
+{
+	*tgt = src;
+}
+EXPORT_SYMBOL(sof_addr_assign);
