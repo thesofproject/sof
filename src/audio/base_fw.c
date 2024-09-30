@@ -125,7 +125,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 
 	*data_offset = (int)((char *)tuple - data) + plat_data_offset;
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 static int basefw_hw_config(uint32_t *data_offset, char *data)
@@ -149,7 +149,7 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
 
 	*data_offset = (int)((char *)tuple - data) + plat_data_offset;
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 struct ipc4_system_time_info *basefw_get_system_time_info(void)
@@ -217,21 +217,21 @@ static int basefw_register_kcps(bool first_block,
 				const char *data)
 {
 	if (!(first_block && last_block))
-		return -EINVAL;
+		return IPC4_ERROR_INVALID_PARAM;
 
 	/* value of kcps to request on core 0. Can be negative */
 	if (core_kcps_adjust(0, *(int32_t *)data))
-		return -EINVAL;
+		return IPC4_ERROR_INVALID_PARAM;
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 static int basefw_kcps_allocation_request(struct ipc4_resource_kcps *request)
 {
 	if (core_kcps_adjust(request->core_id, request->kcps))
-		return -EINVAL;
+		return IPC4_ERROR_INVALID_PARAM;
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 static int basefw_resource_allocation_request(bool first_block,
@@ -242,7 +242,7 @@ static int basefw_resource_allocation_request(bool first_block,
 	struct ipc4_resource_request *request;
 
 	if (!(first_block && last_block))
-		return -EINVAL;
+		return IPC4_ERROR_INVALID_PARAM;
 
 	request = (struct ipc4_resource_request *)data;
 
@@ -250,9 +250,9 @@ static int basefw_resource_allocation_request(bool first_block,
 	case IPC4_RAT_DSP_KCPS:
 		return basefw_kcps_allocation_request(&request->ra_data.kcps);
 	case IPC4_RAT_MEMORY:
-		return -EINVAL;
+		return IPC4_ERROR_INVALID_PARAM;
 	default:
-		return -EINVAL;
+		return IPC4_ERROR_INVALID_PARAM;
 	}
 }
 
@@ -273,7 +273,7 @@ static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 	tlv_value_set(tuple, IPC4_CORE_KCPS, sizeof(core_kcps), core_kcps);
 	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
@@ -282,7 +282,7 @@ static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 		    LIB_MANAGER_MAX_LIBS * sizeof(struct ipc4_library_props) >
 	    SOF_IPC_MSG_MAX_SIZE) {
 		tr_err(&basefw_comp_tr, "Error with message size");
-		return -ENOMEM;
+		return IPC4_OUT_OF_MEMORY;
 	}
 
 	struct ipc4_libraries_info *const libs_info = (struct ipc4_libraries_info *)data;
@@ -324,7 +324,7 @@ static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 	*data_offset =
 		sizeof(libs_info) + libs_info->library_count * sizeof(libs_info->libraries[0]);
 
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 static int basefw_modules_info_get(uint32_t *data_offset, char *data)
@@ -366,7 +366,7 @@ int schedulers_info_get(uint32_t *data_off_size,
 	scheduler_props = (struct scheduler_props *)(data + *data_off_size);
 	scheduler_get_task_info_dp(scheduler_props, data_off_size);
 #endif
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *data)
@@ -391,7 +391,7 @@ static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *data)
 
 	*data_offset = sizeof(ppl_data->pipelines_count) +
 		       ppl_data->pipelines_count * sizeof(ppl_data->ppl_id[0]);
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 int set_perf_meas_state(const char *data)
@@ -418,7 +418,7 @@ int set_perf_meas_state(const char *data)
 		perf_meas_set_state(IPC4_PERF_MEASUREMENTS_PAUSED);
 		break;
 	default:
-		return -EINVAL;
+		return IPC4_ERROR_INVALID_PARAM;
 	}
 #endif
 	return IPC4_SUCCESS;
@@ -517,7 +517,7 @@ static int basefw_get_large_config(struct comp_dev *dev,
 		break;
 	default:
 		if (!first_block)
-			return -EINVAL;
+			return IPC4_ERROR_INVALID_PARAM;
 	}
 
 	switch (extended_param_id.part.parameter_type) {
