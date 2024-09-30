@@ -174,6 +174,7 @@ struct comp_data {
 	struct mux_look_up lookup[MUX_MAX_STREAMS];
 	struct mux_look_up active_lookup;
 	struct comp_data_blob_handler *model_handler;
+	enum sof_comp_type comp_type;
 	struct sof_mux_config config; /* Keep last due to flexible array member in end */
 };
 
