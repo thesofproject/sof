@@ -81,7 +81,7 @@ static struct sof_ipc_comp_process *create_eq_fir_comp_ipc(struct test_data *td)
 	memcpy_s(ipc + 1, SOF_UUID_SIZE, &uuid, SOF_UUID_SIZE);
 	eq = (struct sof_eq_fir_config *)((char *)(ipc + 1) + SOF_UUID_SIZE);
 	ipc->comp.hdr.size = ipc_size + SOF_UUID_SIZE;
-	ipc->comp.type = SOF_COMP_EQ_FIR;
+	ipc->comp.type = SOF_COMP_MODULE_ADAPTER;
 	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	ipc->size = blob->size;
 	ipc->comp.ext_data_length = SOF_UUID_SIZE;

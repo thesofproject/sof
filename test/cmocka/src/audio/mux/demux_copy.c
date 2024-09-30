@@ -106,7 +106,7 @@ static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 	memcpy_s(ipc + 1, SOF_UUID_SIZE, &uuid, SOF_UUID_SIZE);
 	mux = (struct sof_mux_config *)((char *)(ipc + 1) + SOF_UUID_SIZE);
 	ipc->comp.hdr.size = ipc_size + SOF_UUID_SIZE;
-	ipc->comp.type = SOF_COMP_DEMUX;
+	ipc->comp.type = SOF_COMP_MODULE_ADAPTER;
 	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	ipc->size = mux_size;
 	ipc->comp.ext_data_length = SOF_UUID_SIZE;
