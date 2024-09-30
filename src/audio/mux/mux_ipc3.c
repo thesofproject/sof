@@ -68,7 +68,7 @@ static int mux_set_values(struct processing_module *mod)
 		}
 	}
 
-	if (dev->ipc_config.type == SOF_COMP_MUX) {
+	if (cd->comp_type == SOF_COMP_MUX) {
 		if (mux_mix_check(cfg))
 			comp_err(dev, "mux_set_values(): mux component is not able to mix channels");
 	}
@@ -81,13 +81,13 @@ static int mux_set_values(struct processing_module *mod)
 
 	cd->config.num_streams = cfg->num_streams;
 
-	if (dev->ipc_config.type == SOF_COMP_MUX)
+	if (cd->comp_type == SOF_COMP_MUX)
 		mux_prepare_look_up_table(mod);
 	else
 		demux_prepare_look_up_table(mod);
 
 	if (dev->state > COMP_STATE_INIT) {
-		if (dev->ipc_config.type == SOF_COMP_MUX)
+		if (cd->comp_type == SOF_COMP_MUX)
 			cd->mux = mux_get_processing_function(mod);
 		else
 			cd->demux = demux_get_processing_function(mod);

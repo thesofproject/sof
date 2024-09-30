@@ -38,7 +38,6 @@ static int build_config(struct processing_module *mod)
 	int mask = 1;
 	int i;
 
-	dev->ipc_config.type = SOF_COMP_MUX;
 	cd->config.num_streams = MUX_MAX_STREAMS;
 
 	/* clear masks */

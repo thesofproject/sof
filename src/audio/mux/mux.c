@@ -79,7 +79,7 @@ bool mux_mix_check(struct sof_mux_config *cfg)
 	return false;
 }
 
-static int mux_demux_common_init(struct processing_module *mod)
+static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_type type)
 {
 	struct module_data *module_data = &mod->priv;
 	struct comp_dev *dev = mod->dev;
@@ -116,6 +116,7 @@ static int mux_demux_common_init(struct processing_module *mod)
 
 	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
 	mod->no_pause = true;
+	cd->comp_type = type;
 	return 0;
 
 err_init:
@@ -130,14 +131,14 @@ static int mux_init(struct processing_module *mod)
 {
 	mod->max_sources = MUX_MAX_STREAMS;
 
-	return mux_demux_common_init(mod);
+	return mux_demux_common_init(mod, SOF_COMP_MUX);
 }
 
 static int demux_init(struct processing_module *mod)
 {
 	mod->max_sinks = MUX_MAX_STREAMS;
 
-	return mux_demux_common_init(mod);
+	return mux_demux_common_init(mod, SOF_COMP_DEMUX);
 }
 
 static int mux_free(struct processing_module *mod)
@@ -386,7 +387,7 @@ static int mux_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	if (dev->ipc_config.type == SOF_COMP_MUX)
+	if (cd->comp_type == SOF_COMP_MUX)
 		cd->mux = mux_get_processing_function(mod);
 	else
 		cd->demux = demux_get_processing_function(mod);
