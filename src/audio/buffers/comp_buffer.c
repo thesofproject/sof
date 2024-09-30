@@ -218,6 +218,8 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, u
 	}
 
 	buffer->caps = caps;
+	/* Force channels to 2 for init to prevent bad call to clz in buffer_init_stream */
+	buffer->stream.runtime_stream_params.channels = 2;
 
 	audio_buffer_init(&buffer->audio_buffer, BUFFER_TYPE_LEGACY_BUFFER, is_shared,
 			  &comp_buffer_source_ops, &comp_buffer_sink_ops, &audio_buffer_ops,
