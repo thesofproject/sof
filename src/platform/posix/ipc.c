@@ -30,7 +30,7 @@ extern uint8_t *posix_fuzz_buf, posix_fuzz_sz;
 // thinking/experimentation about how much fuzzing we want to do at a
 // time...
 static uint8_t fuzz_in[65536];
-static uint8_t fuzz_in_sz;
+static size_t fuzz_in_sz;
 
 // The protocol here is super simple: the first byte is a message size
 // in units of 16 bits (the buffer maximum defaults to 384 bytes, and
