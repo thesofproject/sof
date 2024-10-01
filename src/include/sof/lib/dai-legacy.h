@@ -210,6 +210,9 @@ struct dai_data {
 
 	/* llp slot info in memory windows */
 	struct llp_slot_info slot_info;
+
+	/* Copier gain params */
+	struct copier_gain_params *gain_data;
 };
 
 struct dai {
