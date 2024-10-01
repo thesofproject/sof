@@ -241,26 +241,6 @@ struct sof_ipc_comp_process {
 	unsigned char data[];
 } __attribute__((packed, aligned(4)));
 
-/* IPC file component used by testbench only */
-struct sof_ipc_comp_file {
-	/* These need to be the same as in above sof_ipc_comp_process */
-	struct sof_ipc_comp comp;
-	struct sof_ipc_comp_config config;
-	uint32_t size;	/**< size of bespoke data section in bytes */
-	uint32_t type;	/**< sof_ipc_process_type */
-
-	/* reserved for future use */
-	uint32_t reserved[7];
-
-	/* These are additional parameters for file */
-	uint32_t rate;
-	uint32_t channels;
-	char *fn;
-	uint32_t mode;
-	uint32_t frame_fmt;
-	uint32_t direction;	/**< SOF_IPC_STREAM_ */
-} __attribute__((packed, aligned(4)));
-
 /* frees components, buffers and pipelines
  * SOF_IPC_TPLG_COMP_FREE, SOF_IPC_TPLG_PIPE_FREE, SOF_IPC_TPLG_BUFFER_FREE
  */
