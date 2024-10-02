@@ -247,6 +247,13 @@ enum {
 
 /** @}*/
 
+/** \brief Helper macro for IPC3 init shims */
+#ifdef CONFIG_IPC_MAJOR_3
+  #define IPC3_SHIM(init) init##_shim
+#else
+  #define IPC3_SHIM(init) init
+#endif
+
 /** \brief Type of endpoint this component is connected to in a pipeline */
 enum comp_endpoint_type {
 	COMP_ENDPOINT_HOST,	/**< Connected to host dma */
