@@ -280,6 +280,44 @@ static bool vmh_get_map_region_boundaries(struct sys_mem_blocks *blocks, const v
 }
 
 /**
+ * @brief Determine the size of the mapped memory region.
+ *
+ * This function calculates the size of a mapped memory region starting from the given address.
+ * It uses a binary search algorithm to find the boundary of the mapped region by checking if
+ * pages are mapped or not.
+ *
+ * @param addr  Starting address of the memory region.
+ * @param size  Pointer to the size of the memory region. This value will be updated to reflect
+ *		the size of the mapped region.
+ *
+ * @retval None
+ */
+static void vmh_get_mapped_size(void *addr, size_t *size)
+{
+	int ret;
+	uintptr_t check, unused;
+	uintptr_t bottom, top;
+
+	if (*size <= CONFIG_MM_DRV_PAGE_SIZE)
+		return;
+
+	bottom = (POINTER_TO_UINT(addr));
+	top = bottom + *size;
+	check = top - CONFIG_MM_DRV_PAGE_SIZE;
+	while (top - bottom > CONFIG_MM_DRV_PAGE_SIZE) {
+		ret = sys_mm_drv_page_phys_get(UINT_TO_POINTER(check), &unused);
+		if (!ret)
+			bottom = check;	/* Page is mapped */
+		else
+			top = check;	/* Page is unmapped */
+
+		check = ALIGN_DOWN(bottom / 2 + top / 2, CONFIG_MM_DRV_PAGE_SIZE);
+	}
+
+	*size = top - POINTER_TO_UINT(addr);
+}
+
+/**
  * @brief Maps memory pages for a memory region if they have not been previously mapped for other
  *	  allocations.
  *
@@ -326,8 +364,11 @@ static int vmh_unmap_region(struct sys_mem_blocks *region, void *ptr, size_t siz
 	const size_t block_size = 1 << region->info.blk_sz_shift;
 	uintptr_t begin;
 
-	if (block_size >= CONFIG_MM_DRV_PAGE_SIZE)
-		return sys_mm_drv_unmap_region(ptr, ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE));
+	if (block_size >= CONFIG_MM_DRV_PAGE_SIZE) {
+		size = ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE);
+		vmh_get_mapped_size(ptr, &size);
+		return sys_mm_drv_unmap_region(ptr, size);
+	}
 
 	if (vmh_get_map_region_boundaries(region, ptr, size, &begin, &size))
 		return sys_mm_drv_unmap_region((void *)begin, size);
