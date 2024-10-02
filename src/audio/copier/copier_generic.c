@@ -10,7 +10,6 @@
 #include <sof/common.h>
 #include <ipc/dai.h>
 #include "copier.h"
-#include <sof/lib/dai-zephyr.h>
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
