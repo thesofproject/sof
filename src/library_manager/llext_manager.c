@@ -17,6 +17,7 @@
 
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
+#include <rtos/symbol.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/llext_manager.h>
@@ -219,6 +220,13 @@ static int llext_manager_unload_module(uint32_t module_id, const struct sof_man_
 	return err;
 }
 
+#define LLEXT_SECTION_MIN_ADDR 0x10000
+
+static bool llext_manager_section_detached(const elf_shdr_t *shdr)
+{
+	return shdr->sh_addr < LLEXT_SECTION_MIN_ADDR;
+}
+
 static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_module *mod,
 			      uint32_t module_id, struct module_data *md, const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
@@ -232,6 +240,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	struct llext_load_param ldr_parm = {
 		.relocate_local = !ctx->segment[LIB_MANAGER_TEXT].size,
 		.pre_located = true,
+		.section_detached = llext_manager_section_detached,
 	};
 	int ret = llext_load(&ebl.loader, mod->name, &md->llext, &ldr_parm);
 
@@ -373,3 +382,20 @@ bool comp_is_llext(struct comp_dev *comp)
 
 	return mod && module_is_llext(mod);
 }
+
+void *my_addr(void)
+{
+	uintptr_t reta;
+
+	__asm__ __volatile__("mov %0, a0" : "=r"(reta));
+	tr_info(&lib_manager_tr, "caller %#lx", reta);
+
+	return __builtin_return_address(0);
+}
+EXPORT_SYMBOL(my_addr);
+
+void sof_addr_assign(const void *src, const void **tgt)
+{
+	*tgt = src;
+}
+EXPORT_SYMBOL(sof_addr_assign);

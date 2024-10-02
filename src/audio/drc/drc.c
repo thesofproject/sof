@@ -311,6 +311,27 @@ static void drc_params(struct processing_module *mod)
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+void *my_addr(void);
+
+void *drc_who_called(void)
+{
+	return my_addr();
+	//return __builtin_return_address(0);
+}
+void sof_addr_assign(const void *src, const void **tgt);
+
+__attribute__((section(".text.imr")))
+int drc_test_imr(struct processing_module *mod, void **addr, void **addr2)
+{
+	void *(*fn)(void) = my_addr;
+
+	*addr = drc_who_called();
+	*addr2 = fn();
+	comp_info(mod->dev, "%p", *addr);
+
+	return mod->period_bytes;
+}
+
 static int drc_prepare(struct processing_module *mod,
 		       struct sof_source **sources, int num_of_sources,
 		       struct sof_sink **sinks, int num_of_sinks)
@@ -322,7 +343,15 @@ static int drc_prepare(struct processing_module *mod,
 	int rate;
 	int ret;
 
-	comp_info(dev, "drc_prepare()");
+	const int (*fptr)(struct processing_module *mod, void **addr, void **addr2);
+	const void *pfptr;
+	void *addr = drc_test_imr, *addr2 = NULL;
+
+	sof_addr_assign(drc_test_imr, &pfptr);
+	fptr = pfptr;
+	comp_info(dev, "IMR test %p %p", (void *)addr, (void *)fptr);
+	ret = fptr(mod, &addr, &addr2);
+	comp_info(dev, "IMR test %p: %d, %p %p", fptr, ret, addr, addr2);
 
 #if CONFIG_IPC_MAJOR_4
 	drc_params(mod);
