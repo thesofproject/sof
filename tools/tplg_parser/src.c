@@ -17,6 +17,7 @@
 #include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
 #include <tplg_parser/tokens.h>
+#include <src/src_ipc.h>
 
 /* SRC - IPC3 */
 static const struct sof_topology_token src3_tokens[] = {
@@ -55,7 +56,9 @@ static int src_ipc3_build(struct tplg_context *ctx, void *_src)
 
 /* ASRC - IPC4 */
 static const struct sof_topology_token src4_tokens[] = {
-	/* TODO */
+	{SOF_TKN_SRC_RATE_OUT, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		tplg_token_get_uint32_t,
+		offsetof(struct ipc4_config_src, sink_rate), 0},
 };
 
 static const struct sof_topology_token_group src_ipc4_tokens[] = {
