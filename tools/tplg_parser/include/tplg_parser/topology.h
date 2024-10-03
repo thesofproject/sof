@@ -20,6 +20,7 @@
 #include <kernel/tokens.h>
 #include <sof/list.h>
 #include <volume/peak_volume.h>
+#include <src/src_ipc.h>
 
 #include "copier/copier.h"
 
