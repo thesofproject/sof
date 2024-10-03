@@ -21,7 +21,7 @@
 #if CONFIG_VIRTUAL_HEAP
 #include <sof/lib/regions_mm.h>
 
-struct vmh_heap *virtual_buffers_heap;
+struct vmh_heap *virtual_buffers_heap[CONFIG_MP_MAX_NUM_CPUS];
 struct k_spinlock vmh_lock;
 
 #undef	HEAPMEM_SIZE
@@ -211,10 +211,10 @@ static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, uint32_t 
 {
 	void *mem;
 
-	K_SPINLOCK(&vmh_lock) {
-		heap->core_id = cpu_get_id();
+	//K_SPINLOCK(&vmh_lock) {
+	//	heap->core_id = cpu_get_id();
 		mem = vmh_alloc(heap, bytes);
-	}
+	//}
 
 	if (!mem)
 		return NULL;
@@ -247,14 +247,15 @@ static bool is_virtual_heap_pointer(void *ptr)
 
 static void virtual_heap_free(void *ptr)
 {
+	struct vmh_heap *const heap = virtual_buffers_heap[cpu_get_id()];
 	int ret;
 
 	ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
 
-	K_SPINLOCK(&vmh_lock) {
-		virtual_buffers_heap->core_id = cpu_get_id();
-		ret = vmh_free(virtual_buffers_heap, ptr);
-	}
+	//K_SPINLOCK(&vmh_lock) {
+		//virtual_buffers_heap->core_id = cpu_get_id();
+		ret = vmh_free(heap, ptr);
+	//}
 
 	if (ret)
 		tr_err(&zephyr_tr, "Unable to free %p! %d", ptr, ret);
@@ -276,12 +277,18 @@ static const struct vmh_heap_config static_hp_buffers = {
 
 static int virtual_heap_init(void)
 {
+	int core;
+
 	k_spinlock_init(&vmh_lock);
 
-	virtual_buffers_heap = vmh_init_heap(&static_hp_buffers, MEM_REG_ATTR_SHARED_HEAP, 0,
-					     false);
-	if (!virtual_buffers_heap)
-		tr_err(&zephyr_tr, "Unable to init virtual buffers heap!");
+	for (core = 0; core < CONFIG_MP_MAX_NUM_CPUS; core++) {
+		struct vmh_heap *heap = vmh_init_heap(&static_hp_buffers, MEM_REG_ATTR_CORE_HEAP,
+						      core, false);
+		if (!heap)
+			tr_err(&zephyr_tr, "Unable to init virtual heap for core %d!", core);
+
+		virtual_buffers_heap[core] = heap;
+	}
 
 	return 0;
 }
@@ -481,6 +488,9 @@ EXPORT_SYMBOL(rzalloc);
 void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		    uint32_t align)
 {
+#if CONFIG_VIRTUAL_HEAP
+	struct vmh_heap *virtual_heap;
+#endif
 	struct k_heap *heap;
 
 	/* choose a heap */
@@ -498,8 +508,10 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 
 #if CONFIG_VIRTUAL_HEAP
 	/* Use virtual heap if it is available */
-	if (virtual_buffers_heap)
-		return virtual_heap_alloc(virtual_buffers_heap, flags, caps, bytes, align);
+	virtual_heap = virtual_buffers_heap[cpu_get_id()];
+	if (virtual_heap) {
+		return virtual_heap_alloc(virtual_heap, flags, caps, bytes, align);
+	}
 #endif /* CONFIG_VIRTUAL_HEAP */
 
 	if (flags & SOF_MEM_FLAG_COHERENT)
