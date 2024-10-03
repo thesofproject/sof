@@ -64,7 +64,10 @@ static int asrc_ipc3_build(struct tplg_context *ctx, void *_asrc)
 
 /* ASRC - IPC4 */
 static const struct sof_topology_token asrc4_tokens[] = {
-	/* TODO */
+	{SOF_TKN_ASRC_RATE_OUT, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		tplg_token_get_uint32_t, offsetof(struct ipc4_asrc_module_cfg, out_freq), 0},
+	{SOF_TKN_ASRC_OPERATION_MODE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		tplg_token_get_uint32_t, offsetof(struct ipc4_asrc_module_cfg, asrc_mode), 0},
 };
 
 static const struct sof_topology_token_group asrc_ipc4_tokens[] = {
