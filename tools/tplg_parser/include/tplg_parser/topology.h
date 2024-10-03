@@ -21,6 +21,7 @@
 #include <sof/list.h>
 #include <volume/peak_volume.h>
 #include <src/src_ipc.h>
+#include <asrc/asrc_ipc4.h>
 
 #include "copier/copier.h"
 
