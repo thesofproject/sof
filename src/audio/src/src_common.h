@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2017 Intel Corporation. All rights reserved.
+ * Copyright(c) 2017-2024 Intel Corporation.
  *
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef __SOF_AUDIO_SRC_SRC_H__
-#define __SOF_AUDIO_SRC_SRC_H__
+#ifndef __SOF_AUDIO_SRC_SRC_COMMON_H__
+#define __SOF_AUDIO_SRC_SRC_COMMON_H__
 
 #include <stddef.h>
 #include <stdint.h>
@@ -15,6 +15,7 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/component.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include "src_ipc.h"
 
 struct src_stage {
 	const int idm;
@@ -144,14 +145,6 @@ int32_t src_output_rates(void);
 
 void src_set_alignment(struct sof_source *source, struct sof_sink *sink);
 
-#if CONFIG_IPC_MAJOR_4
-/* src component private data */
-struct ipc4_config_src {
-	struct ipc4_base_module_cfg base;
-	uint32_t sink_rate;
-};
-#endif
-
 struct comp_data {
 #if CONFIG_IPC_MAJOR_4
 	struct ipc4_config_src ipc_config;
@@ -175,8 +168,6 @@ struct comp_data {
 			struct sof_sink *sink);
 	void (*polyphase_func)(struct src_stage_prm *s);
 };
-
-#endif /* __SOF_AUDIO_SRC_SRC_H__ */
 
 #if CONFIG_IPC_MAJOR_4
 
@@ -265,3 +256,4 @@ extern struct tr_ctx src_tr;
 #endif
 extern const struct sof_uuid SRC_UUID;
 
+#endif /* __SOF_AUDIO_SRC_SRC_COMMON_H__ */
