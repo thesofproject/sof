@@ -706,12 +706,37 @@ static int tone_reset(struct comp_dev *dev)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static struct comp_dev *tone_new_shim(const struct comp_driver *drv,
+				      const struct comp_ipc_config *config,
+				      const void *spec)
+{
+	const struct sof_ipc_comp_tone *comp = spec;
+	struct ipc_config_tone tone;
+
+	if (IPC_TAIL_IS_SIZE_INVALID(*comp))
+		return NULL;
+
+	tone.ampl_mult = comp->ampl_mult;
+	tone.amplitude = comp->amplitude;
+	tone.freq_mult = comp->freq_mult;
+	tone.frequency = comp->frequency;
+	tone.length = comp->length;
+	tone.period = comp->period;
+	tone.ramp_step = comp->ramp_step;
+	tone.repeats = comp->repeats;
+	tone.sample_rate = comp->sample_rate;
+
+	return tone_new(drv, config, &tone);
+}
+#endif
+
 static const struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
 	.uid = SOF_RT_UUID(tone_uuid),
 	.tctx = &tone_tr,
 	.ops = {
-		.create = tone_new,
+		.create = IPC3_SHIM(tone_new),
 		.free = tone_free,
 		.params = tone_params,
 #if CONFIG_IPC_MAJOR_3

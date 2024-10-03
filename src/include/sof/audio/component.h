@@ -254,6 +254,23 @@ enum {
   #define IPC3_SHIM(init) init
 #endif
 
+/** \brief Helper to convert sof_ipc_comp_process to ipc_config_process in components */
+static inline int comp_sof_process_to_ipc_process(const struct sof_ipc_comp_process *comp,
+						  struct ipc_config_process *proc)
+{
+	if (comp->comp.hdr.size < sizeof(*comp) ||
+	    comp->comp.hdr.size + comp->size > SOF_IPC_MSG_MAX_SIZE)
+		return -EBADMSG;
+	proc->type = comp->type;
+	proc->size = comp->size;
+#if CONFIG_LIBRARY || UNIT_TEST
+	proc->data = comp->data + comp->comp.ext_data_length;
+#else
+	proc->data = comp->data;
+#endif
+	return 0;
+}
+
 /** \brief Type of endpoint this component is connected to in a pipeline */
 enum comp_endpoint_type {
 	COMP_ENDPOINT_HOST,	/**< Connected to host dma */

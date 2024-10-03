@@ -599,6 +599,25 @@ e_data:
 	return NULL;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static struct comp_dev *host_new_shim(const struct comp_driver *drv,
+				      const struct comp_ipc_config *config,
+				      const void *spec)
+{
+	const struct sof_ipc_comp_host *comp = spec;
+	struct ipc_config_host host;
+
+	if (IPC_TAIL_IS_SIZE_INVALID(*comp))
+		return NULL;
+
+	host.direction   = comp->direction;
+	host.no_irq      = comp->no_irq;
+	host.dmac_config = comp->dmac_config;
+
+	return host_new(drv, config, &host);
+}
+#endif
+
 void host_common_free(struct host_data *hd)
 {
 	dma_put(hd->dma);
@@ -1004,7 +1023,7 @@ static const struct comp_driver comp_host = {
 	.uid	= SOF_RT_UUID(host_uuid),
 	.tctx	= &host_tr,
 	.ops	= {
-		.create				= host_new,
+		.create				= IPC3_SHIM(host_new),
 		.free				= host_free,
 		.params				= host_params,
 		.reset				= host_reset,

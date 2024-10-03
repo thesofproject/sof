@@ -577,6 +577,25 @@ e_data:
 	return NULL;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static struct comp_dev *dai_new_shim(const struct comp_driver *drv,
+				     const struct comp_ipc_config *config,
+				     const void *spec)
+{
+	const struct sof_ipc_comp_dai *comp = spec;
+	struct ipc_config_dai dai;
+
+	if (IPC_TAIL_IS_SIZE_INVALID(*comp))
+		return NULL;
+
+	dai.dai_index = comp->dai_index;
+	dai.direction = comp->direction;
+	dai.type      = comp->type;
+
+	return dai_new(drv, config, &dai);
+}
+#endif
+
 void dai_common_free(struct dai_data *dd)
 {
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
@@ -1919,7 +1938,7 @@ static const struct comp_driver comp_dai = {
 	.uid	= SOF_RT_UUID(dai_uuid),
 	.tctx	= &dai_comp_tr,
 	.ops	= {
-		.create				= dai_new,
+		.create				= IPC3_SHIM(dai_new),
 		.free				= dai_free,
 		.params				= dai_params,
 		.dai_get_hw_params		= dai_comp_get_hw_params,
