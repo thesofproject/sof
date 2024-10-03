@@ -780,6 +780,20 @@ static void test_keyword_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
+#if CONFIG_IPC_MAJOR_3
+static struct comp_dev *test_keyword_new_shim(const struct comp_driver *drv,
+					      const struct comp_ipc_config *config,
+					      const void *spec)
+{
+	struct ipc_config_process proc;
+
+	if (comp_sof_process_to_ipc_process(spec, &proc) < 0)
+		return NULL;
+
+	return test_keyword_new(drv, config, &proc)
+}
+#endif
+
 static int test_keyword_verify_params(struct comp_dev *dev,
 				      struct sof_ipc_stream_params *params)
 {
@@ -1066,7 +1080,7 @@ static const struct comp_driver comp_keyword = {
 	.uid	= SOF_RT_UUID(keyword_uuid),
 	.tctx	= &keyword_tr,
 	.ops	= {
-		.create			= test_keyword_new,
+		.create			= IPC3_SHIM(test_keyword_new),
 		.free			= test_keyword_free,
 		.params			= test_keyword_params,
 #if CONFIG_IPC_MAJOR_4

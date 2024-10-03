@@ -525,6 +525,20 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 	return dev;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static struct comp_dev *kpb_new_shim(const struct comp_driver *drv,
+				     const struct comp_ipc_config *config,
+				     const void *spec)
+{
+	struct ipc_config_process proc;
+
+	if (comp_sof_process_to_ipc_process(spec, &proc) < 0)
+		return NULL;
+
+	return kpb_new(drv, config, &proc);
+}
+#endif
+
 /**
  * \brief Allocate history buffer.
  * \param[in] kpb - KPB component data pointer.
@@ -2591,7 +2605,7 @@ static const struct comp_driver comp_kpb = {
 	.uid = SOF_RT_UUID(KPB_UUID),
 	.tctx = &kpb_tr,
 	.ops = {
-		.create		= kpb_new,
+		.create		= IPC3_SHIM(kpb_new),
 		.free		= kpb_free,
 		.trigger	= kpb_trigger,
 		.copy		= kpb_copy,

@@ -859,8 +859,35 @@ static int asrc_reset(struct processing_module *mod)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static int asrc_init_shim(struct processing_module *mod)
+{
+	struct ipc_config_asrc *ipc_asrc;
+	struct module_data *mod_data = &mod->priv;
+	const struct sof_ipc_comp_asrc *asrc =
+		(const struct sof_ipc_comp_asrc *)mod_data->cfg.init_data;
+
+	if (IPC_TAIL_IS_SIZE_INVALID(*asrc))
+		return -EBADMSG;
+
+	ipc_asrc = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(*ipc_asrc));
+	if (!ipc_asrc)
+		return -ENOMEM;
+
+	ipc_asrc->source_rate       = asrc->source_rate;
+	ipc_asrc->sink_rate         = asrc->sink_rate;
+	ipc_asrc->asynchronous_mode = asrc->asynchronous_mode;
+	ipc_asrc->operation_mode    = asrc->operation_mode;
+
+	rfree(mod_data->cfg.data);
+	mod_data->cfg.init_data = ipc_asrc;
+	mod_data->cfg.data      = ipc_asrc;
+	return asrc_init(mod);
+}
+#endif
+
 static const struct module_interface asrc_interface = {
-	.init = asrc_init,
+	.init = IPC3_SHIM(asrc_init),
 	.prepare = asrc_prepare,
 	.process_audio_stream = asrc_process,
 	.trigger = asrc_trigger,

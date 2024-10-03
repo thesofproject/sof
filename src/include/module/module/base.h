@@ -180,4 +180,30 @@ struct processing_module {
 #endif /* SOF_MODULE_PRIVATE */
 };
 
+/** \brief Helper to convert sof_ipc_comp_process to ipc_config_process in modules */
+static inline int mod_sof_process_to_ipc_process(struct processing_module *mod)
+{
+	struct ipc_config_process *proc;
+	struct module_data *mod_data = &mod->priv;
+	const struct sof_ipc_comp_process *comp =
+		(const struct sof_ipc_comp_process *)mod_data->cfg.init_data;
+
+	if (comp->comp.hdr.size < sizeof(*comp) ||
+	    comp->comp.hdr.size + comp->size > SOF_IPC_MSG_MAX_SIZE)
+		return -EBADMSG;
+
+	proc = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(*proc) + comp->size);
+	if (!proc)
+		return -ENOMEM;
+
+	memcpy_s(proc + 1, comp->size, comp->data, comp->size);
+
+	proc->type = comp->type;
+	proc->size = comp->size;
+	proc->data = (uint8_t *)(proc + 1);
+	mod_data->cfg.init_data = proc;
+	mod_data->cfg.data      = proc;
+	return 0;
+}
+
 #endif /* __MODULE_MODULE_BASE__ */

@@ -137,18 +137,32 @@ error:
 	return NULL;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static struct comp_dev *shm_new_shim(const struct comp_driver *drv,
+				     const struct comp_ipc_config *config,
+				     const void *spec, int direction)
+{
+	struct ipc_config_process proc;
+
+	if (comp_sof_process_to_ipc_process(spec, &proc) < 0)
+		return NULL;
+
+	return shm_new(drv, config, &proc);
+}
+#endif
+
 static struct comp_dev *shmwrite_new(const struct comp_driver *drv,
 				     const struct comp_ipc_config *config,
 				     const void *spec)
 {
-	return shm_new(drv, config, spec, SOF_IPC_STREAM_PLAYBACK);
+	return IPC3_SHIM(shm_new)(drv, config, spec, SOF_IPC_STREAM_PLAYBACK);
 }
 
 static struct comp_dev *shmread_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config,
 				    const void *spec)
 {
-	return shm_new(drv, config, spec, SOF_IPC_STREAM_CAPTURE);
+	return IPC3_SHIM(shm_new)(drv, config, spec, SOF_IPC_STREAM_CAPTURE);
 }
 
 /**

@@ -701,6 +701,36 @@ error:
 	return -EINVAL;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static int file_init_shim(struct processing_module *mod)
+{
+	struct ipc_comp_file *ipc_file;
+	struct module_data *mod_data = &mod->priv;
+	const struct sof_ipc_comp_file *file =
+		(const struct sof_ipc_comp_file *)mod_data->cfg.init_data;
+
+	if (IPC_TAIL_IS_SIZE_INVALID(*file))
+		return -EBADMSG;
+
+	// TODO fix for bespoke data
+	ipc_file = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(*ipc_file));
+	if (!ipc_file)
+		return -ENOMEM;
+
+	ipc_file->channels  = file->channels;
+	ipc_file->fn        = file->fn;
+	ipc_file->frame_fmt = file->frame_fmt;
+	ipc_file->mode      = file->mode;
+	ipc_file->rate      = file->rate;
+	ipc_file->direction = file->direction;
+
+	rfree(mod_data->cfg.init_data);
+	mod_data->cfg.init_data = ipc_file;
+	mod_data->cfg.data      = ipc_file;
+	return file_init(mod);
+}
+#endif
+
 static int file_free(struct processing_module *mod)
 {
 	struct copier_data *ccd = module_get_private_data(mod);
@@ -873,7 +903,7 @@ static struct module_endpoint_ops file_endpoint_ops = {
 };
 
 static const struct module_interface file_interface = {
-	.init = file_init,
+	.init = IPC3_SHIM(file_init),
 	.prepare = file_prepare,
 	.process_audio_stream = file_process,
 	.reset = file_reset,

@@ -38,73 +38,8 @@ int module_adapter_init_data(struct comp_dev *dev,
 			     const struct comp_ipc_config *config,
 			     const void *spec)
 {
-	int ret;
-
-	const unsigned char *data = NULL;
-	uint32_t size = 0;
-
-	switch (config->type) {
-	case SOF_COMP_VOLUME:
-	{
-		const struct ipc_config_volume *ipc_volume = spec;
-
-		size = sizeof(*ipc_volume);
-		data = spec;
-		break;
-	}
-	case SOF_COMP_SRC:
-	{
-		const struct ipc_config_src *ipc_src = spec;
-
-		size = sizeof(*ipc_src);
-		data = spec;
-		break;
-	}
-	case SOF_COMP_ASRC:
-	{
-		const struct ipc_config_asrc *ipc_asrc = spec;
-
-		size = sizeof(*ipc_asrc);
-		data = spec;
-		break;
-	}
-	case SOF_COMP_MIXER:
-		break;
-	case SOF_COMP_EQ_IIR:
-	case SOF_COMP_EQ_FIR:
-	case SOF_COMP_KEYWORD_DETECT:
-	case SOF_COMP_KPB:
-	case SOF_COMP_SELECTOR:
-	case SOF_COMP_DEMUX:
-	case SOF_COMP_MUX:
-	case SOF_COMP_DCBLOCK:
-	case SOF_COMP_SMART_AMP:
-	case SOF_COMP_MODULE_ADAPTER:
-	case SOF_COMP_FILEREAD:
-	case SOF_COMP_FILEWRITE:
-	case SOF_COMP_NONE:
-	{
-		const struct ipc_config_process *ipc_module_adapter = spec;
-
-		size = ipc_module_adapter->size;
-		data = ipc_module_adapter->data;
-		break;
-	}
-	default:
-		comp_err(dev, "module_adapter_init_data() unsupported comp type %d", config->type);
-		return -EINVAL;
-	}
-
-	/* Copy initial config */
-	if (size) {
-		ret = module_load_config(dev, data, size);
-		if (ret < 0) {
-			comp_err(dev, "module_adapter_init_data() error %d: config loading has failed.",
-				 ret);
-			return ret;
-		}
-		dst->init_data = dst->data;
-	}
+	// Downstream shim will copy and alloc the correct data
+	dst->init_data = dst->data;
 
 	return 0;
 }

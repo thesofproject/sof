@@ -774,8 +774,35 @@ static int volume_reset(struct processing_module *mod)
 	return 0;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static int volume_init_shim(struct processing_module *mod)
+{
+	struct ipc_config_volume *ipc_volume;
+	struct module_data *mod_data = &mod->priv;
+	const struct sof_ipc_comp_volume *volume =
+		(const struct sof_ipc_comp_volume *)mod_data->cfg.init_data;
+
+	if (IPC_TAIL_IS_SIZE_INVALID(*volume))
+		return -EBADMSG;
+
+	ipc_volume = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(*ipc_volume));
+	if (!ipc_volume)
+		return -ENOMEM;
+
+	ipc_volume->channels     = volume->channels;
+	ipc_volume->initial_ramp = volume->initial_ramp;
+	ipc_volume->max_value    = volume->max_value;
+	ipc_volume->min_value    = volume->min_value;
+	ipc_volume->ramp         = volume->ramp;
+
+	mod_data->cfg.init_data = ipc_volume;
+	mod_data->cfg.data      = ipc_volume;
+	return volume_init(mod);
+}
+#endif
+
 static const struct module_interface volume_interface = {
-	.init = volume_init,
+	.init = IPC3_SHIM(volume_init),
 	.prepare = volume_prepare,
 	.process_audio_stream = volume_process,
 	.set_configuration = volume_set_config,
@@ -789,7 +816,7 @@ SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
 
 #if CONFIG_COMP_GAIN
 static const struct module_interface gain_interface = {
-	.init = volume_init,
+	.init = IPC3_SHIM(volume_init),
 	.prepare = volume_prepare,
 	.process_audio_stream = volume_process,
 	.set_configuration = volume_set_config,
