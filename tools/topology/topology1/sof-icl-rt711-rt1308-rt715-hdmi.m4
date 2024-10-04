@@ -40,6 +40,36 @@ ifdef(`MIC_LINK',`',
 # HDMI ID calculated based on the configuraiton
 define(HDMI_BE_ID_BASE, `0')
 
+# SDW Pin as DAIs index starts from 2 on each SDW link
+define(`ALH_JACK_OUT_PIN', `2')
+define(`ALH_JACK_IN_PIN', `3')
+define(`ALH_AMP_OUT_PIN', `2')
+define(`ALH_DMIC_IN_PIN', `2')
+
+define(`ALH_JACK_OUT_NAME', `SDW'eval(UAJ_LINK)`-Playback')
+define(`ALH_JACK_IN_NAME', `SDW'eval(UAJ_LINK)`-Capture')
+define(`ALH_AMP_OUT_NAME', `SDW'eval(AMP_1_LINK)`-Playback')
+define(`ALH_DMIC_IN_NAME', `SDW'eval(MIC_LINK)`-Capture')
+
+ifdef(`MFC', `
+undefine(`ALH_JACK_IN_PIN')
+undefine(`ALH_AMP_OUT_PIN')
+undefine(`ALH_DMIC_IN_PIN')
+define(`ALH_JACK_IN_PIN', `4')
+define(`ALH_AMP_OUT_PIN', `5')
+define(`ALH_DMIC_IN_PIN', `3')
+
+# align the partial string match of full dai link name
+undefine(`ALH_JACK_OUT_NAME')
+undefine(`ALH_JACK_IN_NAME')
+undefine(`ALH_AMP_OUT_NAME')
+undefine(`ALH_DMIC_IN_NAME')
+define(`ALH_JACK_OUT_NAME', `Playback-SimpleJack')
+define(`ALH_JACK_IN_NAME', `Capture-SimpleJack')
+define(`ALH_AMP_OUT_NAME', `Playback-SmartAmp')
+define(`ALH_DMIC_IN_NAME', `Capture-SmartMic')'
+)
+
 ifdef(`NO_JACK', `',
 	`undefine(`HDMI_BE_ID_BASE')
 	 define(HDMI_BE_ID_BASE, `2')'
@@ -106,16 +136,16 @@ ifdef(`NOJACK', `',
 `
 # PCM0 ---> volume ----> mixer --->ALH 2 BE UAJ_LINK
 # PCM31 ---> volume ------^
-# PCM1 <--- volume <---- ALH 3 BE UAJ_LINK
+# PCM1 <--- volume <---- ALH 3/4 BE UAJ_LINK
 ')
 ifdef(`NOAMP', `',
 `
-# PCM2 ---> volume ----> ALH 2 BE AMP_1_LINK
+# PCM2 ---> volume ----> ALH 2/5 BE AMP_1_LINK
 ifdef(`MONO', `',
-`# PCM40 ---> volume ----> ALH 2 BE AMP_2_LINK')
+`# PCM40 ---> volume ----> ALH 2/5 BE AMP_2_LINK')
 ')
 ifdef(`NO_LOCAL_MIC', `',
-`# PCM4 <--- volume <---- ALH 2 BE MIC_LINK')
+`# PCM4 <--- volume <---- ALH 2/3 BE MIC_LINK')
 
 ifdef(`NOHDMI', `',
 `
@@ -215,14 +245,14 @@ ifdef(`NOJACK', `',
 # The NOT_USED_IGNORED is due to dependencies and is adjusted later with an explicit dapm line.
 
 DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
-	1, ALH, eval(UAJ_LINK * 256 + 2), `SDW'eval(UAJ_LINK)`-Playback',
+	1, ALH, eval(UAJ_LINK * 256 + ALH_JACK_OUT_PIN), ALH_JACK_OUT_NAME,
 	NOT_USE_IGNORED, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER, 2, 48000)
 
 # capture DAI is ALH(UAJ_LINK PIN3) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, ALH, eval(UAJ_LINK * 256 + 3), `SDW'eval(UAJ_LINK)`-Capture',
+	2, ALH, eval(UAJ_LINK * 256 + ALH_JACK_IN_PIN), ALH_JACK_IN_NAME,
 	PIPELINE_SINK_2, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
@@ -271,13 +301,13 @@ ifdef(`NOAMP', `',
 # playback DAI is ALH(AMP_1_LINK PIN2/AMP_2_LINK PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	3, ALH, eval(AMP_1_LINK * 256 + 2), `SDW'eval(AMP_1_LINK)`-Playback',
+	3, ALH, eval(AMP_1_LINK * 256 + ALH_AMP_OUT_PIN), ALH_AMP_OUT_NAME,
 	PIPELINE_SOURCE_3, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 ifdef(`MONO', `',
 `DAI_ADD_SCHED(sof/pipe-dai-sched-playback.m4,
-	4, ALH, eval(AMP_2_LINK * 256 + 2), `SDW'eval(AMP_1_LINK)`-Playback',
+	4, ALH, eval(AMP_2_LINK * 256 + ALH_AMP_OUT_PIN), ALH_AMP_OUT_NAME,
 	PIPELINE_SOURCE_4, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_3)
@@ -299,7 +329,7 @@ ifdef(`NO_LOCAL_MIC', `',
 # capture DAI is ALH(MIC_LINK PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	5, ALH, eval(MIC_LINK * 256 + 2), `SDW'eval(MIC_LINK)`-Capture',
+	5, ALH, eval(MIC_LINK * 256 + ALH_DMIC_IN_PIN), ALH_DMIC_IN_NAME,
 	PIPELINE_SINK_5, 2, s24le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 ')
@@ -362,26 +392,26 @@ ifdef(`NOJACK', `',
 `
 #ALH dai index = ((link_id << 8) | PDI id)
 #ALH UAJ_LINK Pin2 (ID: 0)
-DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 2), 0, `SDW'eval(UAJ_LINK)`-Playback',
-	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + 2), 48000, 2)))
+DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + ALH_JACK_OUT_PIN), 0, ALH_JACK_OUT_NAME,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + ALH_JACK_OUT_PIN), 48000, 2)))
 
-#ALH UAJ_LINK Pin3 (ID: 1)
-DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + 3), 1, `SDW'eval(UAJ_LINK)`-Capture',
-	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + 3), 48000, 2)))
+#ALH UAJ_LINK Pin3/4 (ID: 1)
+DAI_CONFIG(ALH, eval(UAJ_LINK * 256 + ALH_JACK_IN_PIN), 1, ALH_JACK_IN_NAME,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(UAJ_LINK * 256 + ALH_JACK_IN_PIN), 48000, 2)))
 ')
 
 ifdef(`NOAMP', `',
 `
-#ALH AMP_1_LINK Pin2 (ID: 2)
-DAI_CONFIG(ALH, eval(AMP_1_LINK * 256 + 2), 2, `SDW'eval(AMP_1_LINK)`-Playback',
-	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(AMP_1_LINK * 256 + 2), 48000, 2)))
+#ALH AMP_1_LINK Pin2/5 (ID: 2)
+DAI_CONFIG(ALH, eval(AMP_1_LINK * 256 + ALH_AMP_OUT_PIN), 2, ALH_AMP_OUT_NAME,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(AMP_1_LINK * 256 + ALH_AMP_OUT_PIN), 48000, 2)))
 ')
 
 ifdef(`NO_LOCAL_MIC', `',
 `
-#ALH MIC_LINK Pin2 (ID: 4)
-DAI_CONFIG(ALH, eval(MIC_LINK * 256 + 2), 4, `SDW'eval(MIC_LINK)`-Capture',
-	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(MIC_LINK * 256 + 2), 48000, 2)))
+#ALH MIC_LINK Pin2/3 (ID: 4)
+DAI_CONFIG(ALH, eval(MIC_LINK * 256 + ALH_DMIC_IN_PIN), 4, ALH_DMIC_IN_NAME,
+	ALH_CONFIG(ALH_CONFIG_DATA(ALH, eval(MIC_LINK * 256 + ALH_DMIC_IN_PIN), 48000, 2)))
 ')
 
 ifdef(`NOHDMI', `',
