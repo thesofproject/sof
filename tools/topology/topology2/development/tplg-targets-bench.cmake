@@ -37,11 +37,11 @@ set(component_parameters
 	"BENCH_TDFB_PARAMS=default"
 )
 
-set(components_s32
+set(components_s24
 	"aria"
 )
 
-set(component_parameters_s32
+set(component_parameters_s24
 	"BENCH_ARIA_PARAMS=default"
 )
 
@@ -55,8 +55,8 @@ foreach(sf ${sampleformats})
 endforeach()
 
 # Add components with single format
-set (sf "32")
-foreach(comp bench_param IN ZIP_LISTS components_s32 component_parameters_s32)
+set (sf "24")
+foreach(comp bench_param IN ZIP_LISTS components_s24 component_parameters_s24)
 	set(item "sof-hda-generic\;sof-hda-benchmark-${comp}${sf}\;HDA_CONFIG=benchmark,BENCH_CONFIG=${comp}${sf},${bench_param}")
 	#message(STATUS "Item=" ${item})
 	list(APPEND TPLGS "${item}")
