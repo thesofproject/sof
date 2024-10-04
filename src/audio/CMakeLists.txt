@@ -1,11 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_IPC_MAJOR_3)
-	set(mixer_src mixer/mixer.c mixer/mixer_generic.c mixer/mixer_hifi3.c)
-elseif(CONFIG_IPC_MAJOR_4)
-	set(mixer_src mixin_mixout/mixin_mixout.c mixin_mixout/mixin_mixout_generic.c mixin_mixout/mixin_mixout_hifi3.c)
-endif()
-
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_local_sources(sof
 		host-legacy.c
@@ -52,9 +46,10 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		)
 	endif()
 	if(CONFIG_COMP_MIXER)
-		add_local_sources(sof
-			${mixer_src}
-		)
+                add_subdirectory(mixer)
+	endif()
+	if(CONFIG_COMP_MIXIN_MIXOUT)
+                add_subdirectory(mixin_mixout)
 	endif()
 	if(CONFIG_COMP_MUX)
 		add_subdirectory(mux)
@@ -200,6 +195,13 @@ elseif(CONFIG_IPC_MAJOR_4)
 	set(mux_sources mux/mux_ipc4.c)
 	set(crossover_sources crossover/crossover_ipc4.c)
 endif()
+
+if(CONFIG_IPC_MAJOR_3)
+	set(mixer_src mixer/mixer.c mixer/mixer_generic.c mixer/mixer_hifi3.c)
+elseif(CONFIG_IPC_MAJOR_4)
+	set(mixer_src mixin_mixout/mixin_mixout.c mixin_mixout/mixin_mixout_generic.c mixin_mixout/mixin_mixout_hifi3.c)
+endif()
+
 set(mixer_sources ${mixer_src})
 set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
 set(eq-fir_sources eq_fir/eq_fir.c eq_fir/eq_fir_generic.c)
