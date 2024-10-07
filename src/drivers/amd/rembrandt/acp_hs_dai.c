@@ -21,6 +21,10 @@
 SOF_DEFINE_REG_UUID(hsdai);
 DECLARE_TR_CTX(hsdai_tr, SOF_UUID(hsdai_uuid), LOG_LEVEL_INFO);
 
+#if defined(__ZEPHYR__)
+#define interrupt_get_irq mux_interrupt_get_irq
+#endif
+
 static inline int hsdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 				   const void *spec_config)
 {

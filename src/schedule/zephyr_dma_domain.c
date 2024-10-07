@@ -24,7 +24,7 @@
 
 LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
-#ifdef CONFIG_IMX
+#if defined(CONFIG_IMX) || defined(CONFIG_AMD)
 #define interrupt_get_irq mux_interrupt_get_irq
 #define interrupt_register mux_interrupt_register
 #define interrupt_unregister mux_interrupt_unregister
