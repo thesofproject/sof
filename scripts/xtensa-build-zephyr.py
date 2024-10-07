@@ -103,6 +103,13 @@ extra_platform_configs = {
 		"ace30_LX7HiFi4_PIF",
 		ipc4 = True
 	),
+	# AMD platforms
+	"acp_6_0" : PlatformConfig(
+		"amd", "amd_acp_6_0_adsp/acp_6_0",
+		f"RI-2019.1{xtensa_tools_version_postfix}",
+		"rmb_LX7_HiFi5_PROD",
+		RIMAGE_KEY = "key param ignored by acp_6_0"
+	),
 }
 
 # These can all be built out of the box. --all builds all these.
@@ -1165,7 +1172,7 @@ def gzip_compress(fname, gzdst=None):
 RI_INFO_UNSUPPORTED = []
 
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp', 'imx95']
-RI_INFO_UNSUPPORTED += ['rn']
+RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
 
 # For temporary workarounds. Unlike _UNSUPPORTED above, the platforms below will print a warning.
