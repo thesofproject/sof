@@ -539,7 +539,7 @@ int host_common_new(struct host_data *hd, struct comp_dev *dev,
 
 	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
 	if (!hd->dma) {
-		comp_err(dev, "host_new(): dma_get() returned NULL");
+		comp_err(dev, "host_common_new(): dma_get() returned NULL");
 		return -ENODEV;
 	}
 
@@ -552,7 +552,7 @@ int host_common_new(struct host_data *hd, struct comp_dev *dev,
 
 	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, hd->posn.rhdr.hdr.size);
 	if (!hd->msg) {
-		comp_err(dev, "host_new(): ipc_msg_init failed");
+		comp_err(dev, "host_common_new(): ipc_msg_init failed");
 		dma_put(hd->dma);
 		return -ENOMEM;
 	}

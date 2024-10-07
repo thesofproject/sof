@@ -154,7 +154,7 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev, const struct ipc_c
 
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (!dd->dai) {
-		comp_cl_err(&comp_dai, "dai_new(): dai_get() failed to create DAI.");
+		comp_cl_err(&comp_dai, "dai_common_new(): dai_get() failed to create DAI.");
 		return -ENODEV;
 	}
 	dd->dai->dd = dd;
@@ -169,7 +169,7 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev, const struct ipc_c
 
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (!dd->dma) {
-		comp_cl_err(&comp_dai, "dai_new(): dma_get() failed to get shared access to DMA.");
+		comp_cl_err(&comp_dai, "dai_common_new(): dma_get() failed to get shared access to DMA.");
 		return -ENODEV;
 	}
 
