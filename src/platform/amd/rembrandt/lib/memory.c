@@ -10,7 +10,7 @@
 #include <sof/platform.h>
 #include <rtos/sof.h>
 #include <ipc/topology.h>
-
+#ifndef __ZEPHYR__
 /* Heap blocks for system runtime */
 static SHARED_DATA struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];
 static SHARED_DATA struct block_hdr sys_rt_block512[HEAP_SYS_RT_COUNT512];
@@ -93,3 +93,4 @@ void platform_init_memmap(struct sof *sof)
 	/* memmap has been initialized statically as a part of .data */
 	sof->memory_map = &memmap;
 }
+#endif
