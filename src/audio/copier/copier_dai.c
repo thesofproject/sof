@@ -229,7 +229,9 @@ static int copier_dai_init(struct comp_dev *dev,
 		}
 		cd->dd[index]->gain_data = gain_data;
 
-		ret = copier_gain_set_params(dev, cd->dd[index]);
+		ret = copier_gain_set_params(dev, cd->dd[index]->gain_data,
+					     GAIN_DEFAULT_FADE_PERIOD,
+					     cd->dd[index]->dai->type);
 		if (ret < 0) {
 			comp_err(dev, "Failed to set gain params!");
 			goto gain_free;
