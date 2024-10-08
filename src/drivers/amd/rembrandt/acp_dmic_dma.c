@@ -47,10 +47,13 @@ int acp_dmic_dma_start(struct dma_chan_data *channel)
 	acp_hstdm_iter_t	hs_iter;
 	acp_hstdm_irer_t	hs_irer;
 	uint32_t		acp_pdm_en;
+#ifdef __ZEPHYR__
+	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(500);
+#else
 	struct timer *timer = timer_get();
 	uint64_t deadline = platform_timer_get(timer) +
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 500 / 1000;
-
+#endif
 	hs_iter = (acp_hstdm_iter_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_ITER));
 	hs_irer = (acp_hstdm_irer_t)io_reg_read((PU_REGISTER_BASE + ACP_HSTDM_IRER));
 	acp_pdm_en = (uint32_t)io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_ENABLE);
@@ -82,13 +85,18 @@ int acp_dmic_dma_start(struct dma_chan_data *channel)
 		pdm_dma_enable = (acp_wov_pdm_dma_enable_t)
 			io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_DMA_ENABLE);
 		while (!(uint32_t)pdm_dma_enable.bits.pdm_dma_en_status) {
-			if (deadline < platform_timer_get(timer)) {
-				/* safe check in case we've got preempted after read */
-				if ((uint32_t)pdm_dma_enable.bits.pdm_dma_en_status)
-					return 0;
-				tr_err(&acp_dmic_dma_rmb_tr, "timed out for dma start");
-				return -ETIME;
-			}
+#ifdef __ZEPHYR__
+			if (deadline < sof_cycle_get_64())
+#else
+			if (deadline < platform_timer_get(timer))
+#endif
+				{
+					/* safe check in case we've got preempted after read */
+					if ((uint32_t)pdm_dma_enable.bits.pdm_dma_en_status)
+						return 0;
+					tr_err(&acp_dmic_dma_rmb_tr, "timed out for dma start");
+					return -ETIME;
+				}
 			pdm_dma_enable = (acp_wov_pdm_dma_enable_t)
 					io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_DMA_ENABLE);
 		}
@@ -102,9 +110,13 @@ int acp_dmic_dma_stop(struct dma_chan_data *channel)
 	acp_hstdm_iter_t	hs_iter;
 	acp_hstdm_irer_t	hs_irer;
 	uint32_t acp_pdm_en;
+#ifdef __ZEPHYR__
+	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(500);
+#else
 	struct timer *timer = timer_get();
 	uint64_t deadline = platform_timer_get(timer) +
 			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * 500 / 1000;
+#endif
 	switch (channel->status) {
 	case COMP_STATE_READY:
 	case COMP_STATE_PREPARE:
@@ -123,7 +135,12 @@ int acp_dmic_dma_stop(struct dma_chan_data *channel)
 		io_reg_read(PU_REGISTER_BASE + ACP_WOV_PDM_DMA_ENABLE);
 	/* Check PDM DMA Status */
 	while ((uint32_t)pdm_dma_enable.bits.pdm_dma_en_status) {
-		if (deadline < platform_timer_get(timer)) {
+#ifdef __ZEPHYR__
+		if (deadline < sof_cycle_get_64())
+#else
+		if (deadline < platform_timer_get(timer))
+#endif
+		{
 			/* safe check in case we've got preempted after read */
 			if ((uint32_t)pdm_dma_enable.bits.pdm_dma_en_status)
 				return 0;
