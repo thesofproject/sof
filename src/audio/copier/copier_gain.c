@@ -15,20 +15,22 @@
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
-int copier_gain_set_params(struct comp_dev *dev, struct dai_data *dd)
+int copier_gain_set_params(struct comp_dev *dev,
+			   struct copier_gain_params *gain_params,
+			   uint32_t fade_period,
+			   enum sof_ipc_dai_type dai_type)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_base_module_cfg *ipc4_cfg = &cd->config.base;
 	uint32_t sampling_freq = ipc4_cfg->audio_fmt.sampling_frequency;
 	uint32_t frames = sampling_freq / dev->pipeline->period;
-	uint32_t fade_period = GAIN_DEFAULT_FADE_PERIOD;
 	int ret;
 
 	/* Set basic gain parameters */
-	copier_gain_set_basic_params(dev, dd, ipc4_cfg);
+	copier_gain_set_basic_params(dev, gain_params, ipc4_cfg);
 
-	switch (dd->dai->type) {
+	switch (dai_type) {
 	case SOF_DAI_INTEL_DMIC:
 		{
 			struct dmic_config_data *dmic_cfg = cd->gtw_cfg;
@@ -43,18 +45,18 @@ int copier_gain_set_params(struct comp_dev *dev, struct dai_data *dd)
 			/* Get fade period from DMIC blob */
 			fade_period = dmic_glb_cfg->ext_global_cfg.fade_in_period;
 			/* Convert and assign silence and fade length values */
-			dd->gain_data->silence_sg_length =
+			gain_params->silence_sg_length =
 				frames * dmic_glb_cfg->ext_global_cfg.silence_period;
-			dd->gain_data->fade_sg_length = frames * fade_period;
+			gain_params->fade_sg_length = frames * fade_period;
 		}
 		break;
 	default:
-		comp_info(dev, "Apply default fade period for dai type %d", dd->dai->type);
+		comp_info(dev, "Apply default fade period for dai type %d", dai_type);
 		break;
 	}
 
 	/* Set fade parameters */
-	ret = copier_gain_set_fade_params(dev, dd, ipc4_cfg, fade_period, frames);
+	ret = copier_gain_set_fade_params(dev, gain_params, ipc4_cfg, fade_period, frames);
 	if (ret)
 		comp_err(dev, "Failed to set fade params");
 
@@ -150,7 +152,10 @@ int copier_gain_dma_control(union ipc4_connector_node_id node, const char *confi
 			break;
 		}
 
-		ret = copier_set_gain(dev, cd->dd[0], gain_data);
+		struct ipc4_copier_module_cfg *copier_cfg = cd->dd[0]->dai_spec_config;
+		const int channels = copier_cfg->base.audio_fmt.channels_count;
+
+		ret = copier_set_gain(dev, cd->dd[0]->gain_data, gain_data, channels);
 		if (ret)
 			comp_err(dev, "Gain DMA control: failed to set gain");
 		return ret;
@@ -159,12 +164,9 @@ int copier_gain_dma_control(union ipc4_connector_node_id node, const char *confi
 	return -ENODEV;
 }
 
-int copier_set_gain(struct comp_dev *dev, struct dai_data *dd,
-		    struct gain_dma_control_data *gain_data)
+int copier_set_gain(struct comp_dev *dev, struct copier_gain_params *gain_params,
+		    struct gain_dma_control_data *gain_data, int channels)
 {
-	struct copier_gain_params *gain_params = dd->gain_data;
-	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
-	const int channels = copier_cfg->base.audio_fmt.channels_count;
 	uint16_t static_gain[MAX_GAIN_COEFFS_CNT];
 	int ret;
 

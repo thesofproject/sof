@@ -10,6 +10,7 @@
 
 #include <sof/audio/buffer.h>
 #include <ipc4/base_fw.h>
+#include <ipc4/gateway.h>
 #include <ipc/dai.h>
 #if SOF_USE_HIFI(3, COPIER) || SOF_USE_HIFI(4, COPIER) || SOF_USE_HIFI(5, COPIER)
 #include <xtensa/tie/xt_hifi3.h>
@@ -117,10 +118,13 @@ struct gain_dma_control_data {
  * the given device and DAI data.
  *
  * @param dev The pointer to the component device structure.
- * @param dd The pointer to the DAI data structure.
+ * @param gain_params The pointer to gain params structure.
+ * @param fade_period The fade period in milliseconds.
+ * @param dai_type DAI type
  * @return 0 on success, negative error code on failure.
  */
-int copier_gain_set_params(struct comp_dev *dev, struct dai_data *dd);
+int copier_gain_set_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
+			   uint32_t fade_period, enum sof_ipc_dai_type dai_type);
 
 /**
  * @brief Sets the basic gain parameters.
@@ -129,10 +133,10 @@ int copier_gain_set_params(struct comp_dev *dev, struct dai_data *dd);
  * by the given device and DAI data.
  *
  * @param dev The pointer to the component device structure.
- * @param dd The pointer to the DAI data structure.
+ * @param gain_params The pointer to gain params structure.
  * @param ipc4_cfg The pointer to the IPC4 base module config.
  */
-void copier_gain_set_basic_params(struct comp_dev *dev, struct dai_data *dd,
+void copier_gain_set_basic_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
 				  struct ipc4_base_module_cfg *ipc4_cfg);
 
 /**
@@ -142,13 +146,13 @@ void copier_gain_set_basic_params(struct comp_dev *dev, struct dai_data *dd,
  * by the given device and DAI data.
  *
  * @param dev The pointer to the component device structure.
- * @param dd The pointer to the DAI data structure.
+ * @param gain_params The pointer to gain params structure.
  * @param ipc4_cfg The pointer to the IPC4 base module config.
  * @param fade_period The fade period in milliseconds.
  * @param frames The number of frames to fade.
  * @return 0 on success, negative error code on failure.
  */
-int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
+int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
 				struct ipc4_base_module_cfg *ipc4_cfg,
 				uint32_t fade_period, uint32_t frames);
 
@@ -209,12 +213,13 @@ enum copier_gain_state copier_gain_eval_state(struct copier_gain_params *gain_pa
  * Sets/modify gain for a copier module in runtime.
  *
  * @param dev The copier device structure.
- * @param dd The DAI data structure.
+ * @param gain_params The pointer to the copier_gain_params structure.
  * @param gain_data The gain control data structure.
+ * @param channels Number of audio channels.
  * @return 0 on success, otherwise a negative error code.
  */
-int copier_set_gain(struct comp_dev *dev, struct dai_data *dd,
-		    struct gain_dma_control_data *gain_data);
+int copier_set_gain(struct comp_dev *dev, struct copier_gain_params *gain_params,
+		    struct gain_dma_control_data *gain_data, int channels);
 
 /**
  * Checks for unity gain mode.
