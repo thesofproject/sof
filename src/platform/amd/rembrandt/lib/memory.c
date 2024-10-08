@@ -10,10 +10,7 @@
 #include <sof/platform.h>
 #include <rtos/sof.h>
 #include <ipc/topology.h>
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
 #ifndef __ZEPHYR__
 /* Heap blocks for system runtime */
 static SHARED_DATA struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];
