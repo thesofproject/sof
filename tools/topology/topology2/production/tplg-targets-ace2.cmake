@@ -37,6 +37,13 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
+"cavs-sdw\;sof-lnl-cs42l43-l0-cs35l56-l3-2ch\;PLATFORM=lnl,\
+NUM_DMICS=2,PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=sof-lnl-cs42l43-l0-cs35l56-l3-2ch.bin,\
+NUM_SDW_AMP_LINKS=1,SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+HDMI1_ID=6,HDMI2_ID=7,HDMI3_ID=8"
+
 "cavs-sdw\;sof-lnl-cs42l43-l0-cs35l56-l23\;PLATFORM=lnl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
