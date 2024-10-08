@@ -35,7 +35,6 @@
 
 #include <rtos/atomic.h>
 #include <rtos/kernel.h>
-#include <sof/trace/dma-trace.h>
 #include <sof/lib_manager.h>
 
 #if CONFIG_SOF_BOOT_TEST

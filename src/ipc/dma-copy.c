@@ -9,7 +9,6 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/uuid.h>
 #include <sof/platform.h>
-#include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 
