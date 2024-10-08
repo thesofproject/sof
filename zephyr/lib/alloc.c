@@ -52,7 +52,7 @@ extern struct tr_ctx zephyr_tr;
 
 /* The Zephyr heap */
 
-#ifdef CONFIG_IMX
+#if defined(CONFIG_IMX)  ||  defined(CONFIG_AMD)
 
 #ifdef CONFIG_XTENSA
 #define HEAPMEM_SIZE		(HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE)
