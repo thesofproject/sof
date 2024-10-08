@@ -5,7 +5,6 @@
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
 #include <sof/lib/uuid.h>
-#include <sof/lib/memory.h>
 #include <sof/ut.h>
 #include <rtos/init.h>
 #include "copier.h"

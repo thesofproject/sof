@@ -12,7 +12,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/memory.h> /* for SHARED_DATA */
 #include <sof/list.h>
 #include <rtos/sof.h>
 #include <rtos/string.h>

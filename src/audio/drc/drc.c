@@ -12,7 +12,6 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>

@@ -26,7 +26,7 @@
 #include <rtos/alloc.h>
 #include <rtos/clk.h>
 #include <rtos/init.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/memory.h> /* for SHARED_DATA */
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
