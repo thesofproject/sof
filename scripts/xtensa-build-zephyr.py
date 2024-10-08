@@ -168,6 +168,12 @@ platform_configs_all = {
 		"imx", "imx95_evk/mimx9596/m7/ddr",
 		"", "", "", ""
 	),
+	"acp_6_0" : PlatformConfig(
+		"amd", "amd_acp_6_0_adsp/acp_6_0",
+		f"RI-2019.1{xtensa_tools_version_postfix}",
+		"rmb_LX7_HiFi5_PROD",
+		RIMAGE_KEY = "key param ignored by acp_6_0"
+	),
 }
 
 platform_configs = platform_configs_all.copy()
@@ -1165,7 +1171,7 @@ def gzip_compress(fname, gzdst=None):
 RI_INFO_UNSUPPORTED = []
 
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp', 'imx95']
-RI_INFO_UNSUPPORTED += ['rn']
+RI_INFO_UNSUPPORTED += ['rn','acp_6_0']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
 
 # For temporary workarounds. Unlike _UNSUPPORTED above, the platforms below will print a warning.
