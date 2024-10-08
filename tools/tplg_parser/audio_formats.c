@@ -68,6 +68,13 @@ static const struct sof_topology_token ipc4_out_audio_format_tokens[] = {
 	 offsetof(struct sof_ipc4_pin_format, buffer_size)},
 };
 
+static const struct sof_topology_token ipc4_comp_pin_tokens[] = {
+	{SOF_TKN_COMP_NUM_INPUT_PINS, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		tplg_token_get_uint32_t, offsetof(struct tplg_pins_info, num_input_pins)},
+	{SOF_TKN_COMP_NUM_OUTPUT_PINS, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		tplg_token_get_uint32_t, offsetof(struct tplg_pins_info, num_output_pins)},
+};
+
 int tplg_parse_widget_audio_formats(struct tplg_context *ctx)
 {
 	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
@@ -146,5 +153,11 @@ int tplg_parse_widget_audio_formats(struct tplg_context *ctx)
 			   pin_fmt[i].buffer_size);
 	}
 
-	return 0;
+	ret = sof_parse_token_sets(&comp_info->pins_info, ipc4_comp_pin_tokens,
+				   ARRAY_SIZE(ipc4_comp_pin_tokens), array, size, 1, 0);
+	if (ret < 0)
+		fprintf(stderr, "widget: %s: Failed to parse ipc4_comp_pin_tokens\n",
+			ctx->widget->name);
+
+	return ret;
 }

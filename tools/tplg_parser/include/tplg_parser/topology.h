@@ -111,6 +111,11 @@ struct tplg_pipeline_info {
 	struct list_item item; /* item in a list */
 };
 
+struct tplg_pins_info {
+	uint32_t num_input_pins;
+	uint32_t num_output_pins;
+};
+
 struct tplg_comp_info {
 	struct list_item item; /* item in a list */
 	struct sof_ipc4_available_audio_format available_fmt; /* available formats in tplg */
@@ -118,6 +123,7 @@ struct tplg_comp_info {
 	struct ipc4_base_module_cfg basecfg;
 	struct tplg_pipeline_info *pipe_info;
 	struct sof_uuid uuid;
+	struct tplg_pins_info pins_info;
 	char *name;
 	char *stream_name;
 	int id;
