@@ -39,8 +39,8 @@ function(sof_append_relative_path_definitions target)
 endfunction()
 
 define_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET
-  BRIEF_DOCS "Last LLEXT target"
-  FULL_DOCS "\
+	BRIEF_DOCS "Last LLEXT target"
+	FULL_DOCS "\
 Building LLEXT targets must be serialized. This property contains the \
 previously added LLEXT module for the establishment of a dependency chain."
 )
@@ -151,7 +151,7 @@ set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
 # Save path to rimage configuration files in cmake cache for later use by
 # rimage during the "west sign" stage
 set(RIMAGE_CONFIG_PATH ${RIMAGE_TOP}/config CACHE PATH
-    " Path to rimage board configuration files")
+	" Path to rimage board configuration files")
 
 # default SOF includes
 target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
@@ -413,6 +413,59 @@ if (CONFIG_SOC_MIMX9596_M7)
 	set(PLATFORM "imx95")
 endif()
 
+# AMD RMB platforms
+if (CONFIG_SOC_ACP_6_0)
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/amd/common/acp_bt_dai.c
+		${SOF_DRIVERS_PATH}/amd/common/acp_dma.c
+		${SOF_DRIVERS_PATH}/amd/common/acp_dmic_dai.c
+		${SOF_DRIVERS_PATH}/amd/common/acp_dmic_dma.c
+		${SOF_DRIVERS_PATH}/amd/common/acp_sp_dma.c
+		${SOF_DRIVERS_PATH}/amd/common/ipc.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/acp_bt_dma.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/acp_dma.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/acp_dmic_dma.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/acp_hs_dai.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/acp_hs_dma.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/acp_sp_dai.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/acp_sp_dma.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/interrupt.c
+		${SOF_DRIVERS_PATH}/amd/rembrandt/ipc.c
+	)
+
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/amd/rembrandt/platform.c
+		${SOF_PLATFORM_PATH}/amd/rembrandt/lib/clk.c
+		${SOF_PLATFORM_PATH}/amd/rembrandt/lib/dai.c
+		${SOF_PLATFORM_PATH}/amd/rembrandt/lib/dma.c
+		${SOF_PLATFORM_PATH}/amd/rembrandt/lib/memory.c
+	)
+
+	# SOF core infrastructure - runs on top of Zephyr
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/drivers/interrupt.c
+	)
+
+	# Zephyr DMA domain should only be used with zephyr_ll
+
+	if (NOT(CONFIG_DMA_DOMAIN))
+		zephyr_library_sources(
+			${SOF_SRC_PATH}/schedule/ll_schedule.c
+			)
+	else()
+		zephyr_library_sources(
+			${SOF_SRC_PATH}/schedule/zephyr_ll.c
+			)
+	endif()
+
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/rembrandt/include)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/common/include)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/rembrandt/include/arch)
+
+	set(PLATFORM "acp_6_0")
+endif()
+
 # Building for native_posix-based whole-OS host emulator
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_SRC_PATH}/schedule/zephyr_ll.c
@@ -492,49 +545,49 @@ zephyr_library_sources_ifdef(CONFIG_MATH_LUT_SINE_FIXED
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_FFT
-        ${SOF_MATH_PATH}/fft/fft_common.c
+		${SOF_MATH_PATH}/fft/fft_common.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_FFT
-        ${SOF_MATH_PATH}/fft/fft_16.c
-        ${SOF_MATH_PATH}/fft/fft_16_hifi3.c
+		${SOF_MATH_PATH}/fft/fft_16.c
+		${SOF_MATH_PATH}/fft/fft_16_hifi3.c
 )
 
 zephyr_library_sources_ifdef(ONFIG_MATH_32BIT_FFT
-        ${SOF_MATH_PATH}/fft/fft_32.c
-        ${SOF_MATH_PATH}/fft/fft_32_hifi3.c
+		${SOF_MATH_PATH}/fft/fft_32.c
+		${SOF_MATH_PATH}/fft/fft_32_hifi3.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_DCT
-        ${SOF_MATH_PATH}/dct.c
+		${SOF_MATH_PATH}/dct.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_WINDOW
-        ${SOF_MATH_PATH}/window.c
+		${SOF_MATH_PATH}/window.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_MATRIX
-        ${SOF_MATH_PATH}/matrix.c
+		${SOF_MATH_PATH}/matrix.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_AUDITORY
-        ${SOF_MATH_PATH}/auditory/auditory.c
+		${SOF_MATH_PATH}/auditory/auditory.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_MEL_FILTERBANK
-        ${SOF_MATH_PATH}/auditory/mel_filterbank_16.c
+		${SOF_MATH_PATH}/auditory/mel_filterbank_16.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_MATH_32BIT_MEL_FILTERBANK
-        ${SOF_MATH_PATH}/auditory/mel_filterbank_32.c
+		${SOF_MATH_PATH}/auditory/mel_filterbank_32.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_NATURAL_LOGARITHM_FIXED
-        ${SOF_MATH_PATH}/log_e.c
+		${SOF_MATH_PATH}/log_e.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_BINARY_LOGARITHM_FIXED
-        ${SOF_MATH_PATH}/base2log.c
+		${SOF_MATH_PATH}/base2log.c
 )
 
 # SOF module interface functions
@@ -575,7 +628,7 @@ zephyr_library_sources_ifdef(CONFIG_TRACE
 	${SOF_SRC_PATH}/trace/trace.c)
 
 zephyr_library_sources_ifdef(CONFIG_LOG_BACKEND_SOF_PROBE
-      ${SOF_SRC_PATH}/logging/log_backend_probe.c)
+		${SOF_SRC_PATH}/logging/log_backend_probe.c)
 
 # Optional SOF sources - depends on Kconfig - WIP
 
@@ -1109,11 +1162,11 @@ zephyr_library_sources_ifdef(CONFIG_DW_DMA
 )
 
 zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
-       boot_test.c
+		boot_test.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_SHELL
-       sof_shell.c
+		sof_shell.c
 )
 
 zephyr_library_link_libraries(SOF)
