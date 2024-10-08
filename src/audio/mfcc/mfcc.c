@@ -15,7 +15,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>

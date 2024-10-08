@@ -8,7 +8,6 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
-#include <sof/lib/memory.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
