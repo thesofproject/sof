@@ -1,16 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2016 Intel Corporation. All rights reserved.
- *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
- */
-
-/**
- * \file xtos/include/sof/lib/dma.h
- * \brief DMA Drivers definition
- * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
- * \author Keyon Jie <yang.jie@linux.intel.com>
+ * Copyright(c) 2016,2024 Intel Corporation.
  */
 
 #ifndef __SOF_LIB_DMA_H__
@@ -28,9 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __ZEPHYR__
-#error "Please use zephyr/include/sof/lib/dma.h instead"
-#endif
+#include <zephyr/device.h>
+#include <zephyr/drivers/dma.h>
 
 struct comp_buffer;
 
@@ -105,11 +94,16 @@ enum dma_irq_cmd {
 #define DMA_CHAN_INVALID	0xFFFFFFFF
 #define DMA_CORE_INVALID	0xFFFFFFFF
 
+/* Attributes have been ported to Zephyr. This condition is necessary until full support of
+ * CONFIG_SOF_ZEPHYR_STRICT_HEADERS.
+ */
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 /* DMA attributes */
 #define DMA_ATTR_BUFFER_ALIGNMENT		0
 #define DMA_ATTR_COPY_ALIGNMENT			1
 #define DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT	2
 #define DMA_ATTR_BUFFER_PERIOD_COUNT		3
+#endif
 
 struct dma;
 
@@ -209,6 +203,7 @@ struct dma_plat_data {
 	const char *irq_name;
 	uint32_t chan_size;
 	const void *drv_plat_data;
+	uint32_t period_count;
 };
 
 struct dma {
@@ -218,6 +213,7 @@ struct dma {
 	const struct dma_ops *ops;
 	atomic_t num_channels_busy; /* number of busy channels */
 	struct dma_chan_data *chan; /* channels array */
+	const struct device *z_dev; /* Zephyr driver */
 	void *priv_data;
 };
 
