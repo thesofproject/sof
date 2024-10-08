@@ -123,17 +123,24 @@ const struct ext_man_windows xsram_window
 	},
 };
 
+#ifndef __ZEPHYR__
 static SHARED_DATA struct timer timer = {
 	.id = TIMER0,
 	.irq = IRQ_NUM_TIMER0,
-};
+	};
+#endif
 
 int platform_init(struct sof *sof)
 {
 	int ret;
-
+#ifndef __ZEPHYR__
 	sof->platform_timer = &timer;
 	sof->cpu_timers = &timer;
+#endif
+#ifdef __ZEPHYR__
+	/* initialize cascade interrupts before any usage */
+	interrupt_init(sof);
+#endif
 	/* to view system memory */
 	platform_interrupt_init();
 	platform_clock_init(sof);
@@ -143,7 +150,9 @@ int platform_init(struct sof *sof)
 	sof->platform_timer_domain = timer_domain_init(sof->platform_timer,
 						PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
+#ifndef __ZEPHYR__
 	platform_timer_start(sof->platform_timer);
+#endif
 	/*CONFIG_SYSTICK_PERIOD hardcoded as 200000*/
 	sa_init(sof, 200000);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
@@ -199,7 +208,9 @@ int platform_context_save(struct sof *sof)
 	return 0;
 }
 
+#ifndef __ZEPHYR__
 void platform_wait_for_interrupt(int level)
 {
 	arch_wait_for_interrupt(level);
 }
+#endif
