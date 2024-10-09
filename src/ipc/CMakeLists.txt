@@ -15,9 +15,12 @@ add_local_sources(sof
 is_zephyr(it_is)
 if(it_is) ###  Zephyr ###
 
-zephyr_library_sources(
-	dma-copy.c
-)
+if (NOT CONFIG_ZEPHYR_NATIVE_DRIVERS)
+	# XTOS DMA drivers used in Zephyr build
+	zephyr_library_sources(
+		dma-copy.c
+	)
+endif()
 
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25 OR CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	zephyr_library_sources(
