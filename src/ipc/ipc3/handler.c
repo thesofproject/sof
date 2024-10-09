@@ -34,7 +34,9 @@
 #include <sof/platform.h>
 #include <rtos/string.h>
 #include <rtos/string_macro.h>
+#if CONFIG_TRACE
 #include <sof/trace/dma-trace.h>
+#endif
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/dai.h>
