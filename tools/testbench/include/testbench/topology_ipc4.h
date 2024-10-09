@@ -27,6 +27,11 @@
 #define TB_FILE_OUT_DAI_MODULE_ID	0x9c
 #define TB_FILE_IN_DAI_MODULE_ID	0x9d
 
+enum tb_pin_type {
+	TB_PIN_TYPE_INPUT = 0,
+	TB_PIN_TYPE_OUTPUT,
+};
+
 int tb_delete_pipeline(struct testbench_prm *tp, struct tplg_pipeline_info *pipe_info);
 int tb_free_all_pipelines(struct testbench_prm *tp);
 int tb_free_route(struct testbench_prm *tp, struct tplg_route_info *route_info);
