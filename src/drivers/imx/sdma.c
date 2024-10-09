@@ -308,6 +308,7 @@ static int sdma_probe(struct dma *dma)
 	dma_set_drvdata(dma, pdata);
 
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
+		dma->chan[channel].status = COMP_STATE_INIT;
 		dma->chan[channel].index = channel;
 		dma->chan[channel].dma = dma;
 	}
