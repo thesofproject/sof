@@ -18,16 +18,6 @@ config ZEPHYR_NATIVE_DRIVERS
 	  dai-zephyr
 	  will be used instead of legacy xtos version.
 
-config SOF_ZEPHYR_STRICT_HEADERS
-	bool "Experimental: Force build with Zephyr RTOS headers only"
-	default n
-	help
-	  This is a transitional option that allows developers to test builds
-	  only using the Zephyr RTOS headers. This will eventually become the
-	  default header configuration when native Zephyr is ready and this menu
-	  choice will be removed.
-	  If unsure, say n.
-
 config DMA_DOMAIN
 	bool "Enable the usage of DMA domain."
 	default y if IMX8M

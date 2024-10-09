@@ -158,15 +158,7 @@ target_include_directories(SOF INTERFACE ${RIMAGE_TOP}/src/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
-
-# TODO: Zephyr should not need xtos headers: FIX.
-if (CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
-	target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
-else()
-	# include Zephyr before xtos to flag up any errors in SOF
-	target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
-	target_include_directories(SOF INTERFACE ${sof_top_dir}/${PLATFORM_HEADERS}/include)
-endif()
+target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
 
 # SOF module init
 zephyr_library_named(modules_sof)
