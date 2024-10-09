@@ -25,7 +25,9 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/sof.h>
+#if CONFIG_TRACE
 #include <sof/trace/dma-trace.h>
+#endif
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/info.h>
