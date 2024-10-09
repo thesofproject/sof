@@ -32,8 +32,6 @@ target_include_directories(smex PRIVATE
 )
 
 # TODO: smex should not need RTOS headers: FIX.
-if (NOT CONFIG_SOF_ZEPHYR_STRICT_HEADERS)
 target_include_directories(smex PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}/xtos/include"
 )
-endif()
