@@ -24,8 +24,29 @@
 struct comp_buffer;
 
 /** \addtogroup sof_dma_drivers DMA Drivers
- *  DMA Drivers API specification.
+ *  SOF DMA Drivers API specification (deprecated interface, to be
+ *  replaced by Zephyr zephyr/drivers/dma.h interface).
  *  @{
+ */
+
+/*
+ * There is significant overlap with SOF DMA interface and
+ * Zephyr zephyr/drivers/dma.h. Neither uses a unique namespace
+ * prefix, leading to at times confusing mix of DMA_ and dma_
+ * definitions, some coming from legacy SOF definitions, while
+ * some from Zephyr.
+ *
+ * Definitions in this file are used by following SOF code:
+ *  - Some use of SOF DMA data types and definitions exists in
+ *    generic application code (in IPC, host handling and a few other
+ *    places). To support both XTOS and Zephyr builds, these
+ *    definitions must be provided by the RTOS layer.
+ *  - SOF builds where Zephyr is used but platform has not yet
+ *    moved to native Zephyr drivers, so legacy/XTOS DMA are used.
+ *  - Linking DMA resources to audio usages. Even SOF builds with
+ *    native Zephyr build still use some SOF side DMA definitions
+ *    to describe system DMA resources in terms of their capabilities
+ *    for audio use. See sof/zephyr/lib/dma.c for most of this logic.
  */
 
 /* DMA direction bitmasks used to define DMA copy direction */
