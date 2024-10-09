@@ -794,7 +794,9 @@ static int mux_sink_status_count(struct comp_dev *mux, uint32_t status)
 							source_list);
 		struct comp_buffer __sparse_cache *sink_c = buffer_acquire(sink);
 
-		if (sink_c->sink && sink_c->sink->state == status)
+		/* ignore active sink on other pipeline */
+		if (sink_c->sink && sink_c->sink->state == status &&
+		    sink_c->sink->pipeline->pipeline_id == mux->pipeline->pipeline_id)
 			count++;
 		buffer_release(sink_c);
 	}
