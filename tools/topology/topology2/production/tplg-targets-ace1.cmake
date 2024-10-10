@@ -96,6 +96,11 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
+"cavs-sdw\;sof-mtl-cs35l56-l01-fb8\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
+SDW_AMP_FEEDBACK=true,SDW_SPK_STREAM=Playback,SDW_SPK_IN_STREAM=Capture,\
+AMP_FEEDBACK_CH=8,AMP_FEEDBACK_CH_PER_LINK=4,SDW_JACK=false,NUM_DMICS=0,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6"
+
 # ARL has the same DSP generation. So reuse the platform = mtl.
 "cavs-sdw\;sof-arl-cs42l43-l0\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
