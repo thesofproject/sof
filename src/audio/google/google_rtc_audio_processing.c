@@ -838,7 +838,7 @@ static int mod_process(struct processing_module *mod, struct sof_source **source
 	return 0;
 }
 
-static struct module_interface google_rtc_audio_processing_interface = {
+static const struct module_interface google_rtc_audio_processing_interface = {
 	.init  = google_rtc_audio_processing_init,
 	.free = google_rtc_audio_processing_free,
 	.process = mod_process,

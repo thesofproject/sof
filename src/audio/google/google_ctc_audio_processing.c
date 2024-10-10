@@ -444,7 +444,7 @@ static int ctc_process(struct processing_module *mod,
 	return 0;
 }
 
-static struct module_interface google_ctc_audio_processing_interface = {
+static const struct module_interface google_ctc_audio_processing_interface = {
 	.init  = ctc_init,
 	.free = ctc_free,
 	.process_audio_stream = ctc_process,
