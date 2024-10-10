@@ -30,6 +30,9 @@
 
 #define NUM_SSP_FREQ		3
 
+#define PRIMARY_CORE_BASE_CPS_USAGE 20000
+#define SECONDARY_CORE_BASE_CPS_USAGE 10000
+
 #endif /* __PLATFORM_LIB_CLK_H__ */
 
 #else
