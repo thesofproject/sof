@@ -217,6 +217,7 @@ struct dai_data {
 
 struct dai {
 	uint32_t index;		/**< index */
+	uint32_t type;		/**< added for dai-zephyr.h compatibility */
 	struct k_spinlock lock;	/**< locking mechanism */
 	int sref;		/**< simple ref counter, guarded by lock */
 	struct dai_plat_data plat_data;
