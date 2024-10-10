@@ -1,4 +1,4 @@
-% bf = bf_array_rect(bf)
+% bf = sof_bf_array_lshape(bf)
 %
 % Inputs
 % bf.mic_nxy ... vector of two with number of microphones along x and y
@@ -15,24 +15,30 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_array_rect(bf)
+function bf = sof_bf_array_lshape(bf)
 
 bf.mic_x = [];
 bf.mic_y = [];
 
-bf.mic_n = prod(bf.mic_nxy);
+bf.mic_n = sum(bf.mic_nxy) -1;
 bf.mic_z = zeros(1, bf.mic_n);
-for y = 1:bf.mic_nxy(2)
-	for x = 1:bf.mic_nxy(1)
-		n = x + bf.mic_nxy(1) * (y - 1);
-		bf.mic_y(n) = -x * bf.mic_dxy(1);
-		bf.mic_x(n) = y * bf.mic_dxy(2);
-	end
+n = 1;
+for x = 0:(bf.mic_nxy(1) -1)
+	bf.mic_x(n) = 0;
+	bf.mic_y(n) = -x * bf.mic_dxy(1);
+	n = n + 1;
+end
+
+for y = 1:(bf.mic_nxy(2) -1)
+	bf.mic_x(n) = y * bf.mic_dxy(2);
+	bf.mic_y(n) = 0;
+	n = n + 1;
 end
 
 bf.mic_x = bf.mic_x - mean(bf.mic_x);
 bf.mic_y = bf.mic_y - mean(bf.mic_y);
 bf.mic_z = bf.mic_z - mean(bf.mic_z);
+
 bf.mic_d = max(bf.mic_dxy);
 
 end

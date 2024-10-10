@@ -1,4 +1,4 @@
-function example_two_beams()
+function sof_example_two_beams()
 
 % example_two_beams()
 %
@@ -129,7 +129,7 @@ end
 function line2_two_beams(fs, d, a1, a2, fn, add_beam_off);
 
 % Get defaults
-bf1 = bf_defaults();
+bf1 = sof_bf_defaults();
 bf1.fs = fs;
 bf1.beam_off_defined = add_beam_off;
 
@@ -151,8 +151,8 @@ bf1.output_channel_mix_beam_off = [1 2];  % Filter 1 to channel 2^0, etc.
 bf1.output_stream_mix           = [0 0];  % Mix both filters to stream 0
 bf1.num_output_channels = 2;
 bf1.fn = 10;                              % Figs 10....
-bf1 = bf_filenames_helper(bf1);
-bf1 = bf_design(bf1);
+bf1 = sof_bf_filenames_helper(bf1);
+bf1 = sof_bf_design(bf1);
 
 % Design beamformer 2 (right)
 bf2.steer_az = a2;
@@ -163,27 +163,27 @@ bf2.output_channel_mix_beam_off = [0 0];  % Filters omitted
 bf2.output_stream_mix           = [0 0];  % Mix both filters to stream 0
 bf2.num_output_channels = 2;
 bf2.fn = 20;                              % Figs 20....
-bf2 = bf_filenames_helper(bf2);
-bf2 = bf_design(bf2);
+bf2 = sof_bf_filenames_helper(bf2);
+bf2 = sof_bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
-bfm = bf_merge(bf1, bf2);
+bfm = sof_bf_merge(bf1, bf2);
 bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, fn.sofctl3_fn);
 bfm.tplg1_fn = fullfile(bfm.tplg1_path, fn.tplg1_fn);
 bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, fn.sofctl4_fn);
 bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
-bfm.export_note = 'Created with script example_two_beams.m';
-bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r example_two_beams';
-bf_export(bfm);
+bfm.export_note = 'Created with script sof_example_two_beams.m';
+bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r sof_example_two_beams';
+sof_bf_export(bfm);
 
 end
 
 function line4_two_beams(fs, d, a1, a2, fn, add_beam_off);
 
 % Get defaults
-bf1 = bf_defaults();
+bf1 = sof_bf_defaults();
 bf1.fs = fs;
 bf1.beam_off_defined = add_beam_off;
 
@@ -204,8 +204,8 @@ bf1.output_channel_mix_beam_off = [1 0 0 2];  % Filter 1 to channel 2^0, filter 
 bf1.output_stream_mix           = [0 0 0 0];  % Mix filters to stream 0
 bf1.num_output_channels = 2;
 bf1.fn = 10;                                  % Figs 10....
-bf1 = bf_filenames_helper(bf1);
-bf1 = bf_design(bf1);
+bf1 = sof_bf_filenames_helper(bf1);
+bf1 = sof_bf_design(bf1);
 
 % Design beamformer 2 (right)
 bf2.steer_az = a2;
@@ -216,27 +216,27 @@ bf2.output_channel_mix_beam_off = [0 0 0 0];  % Filters omitted
 bf2.output_stream_mix           = [0 0 0 0];  % Mix filters to stream 0
 bf2.num_output_channels = 2;
 bf2.fn = 20;                                      % Figs 20....
-bf2 = bf_filenames_helper(bf2);
-bf2 = bf_design(bf2);
+bf2 = sof_bf_filenames_helper(bf2);
+bf2 = sof_bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
-bfm = bf_merge(bf1, bf2);
+bfm = sof_bf_merge(bf1, bf2);
 bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, fn.sofctl3_fn);
 bfm.tplg1_fn = fullfile(bfm.tplg1_path, fn.tplg1_fn);
 bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, fn.sofctl4_fn);
 bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
-bfm.export_note = 'Created with script example_two_beams.m';
-bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r example_two_beams';
-bf_export(bfm);
+bfm.export_note = 'Created with script sof_example_two_beams.m';
+bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r sof_example_two_beams';
+sof_bf_export(bfm);
 
 end
 
 function circular_two_beams(fs, r, n, a1, a2, fn, add_beam_off)
 
 % Get defaults and common settings
-bf1 = bf_defaults();
+bf1 = sof_bf_defaults();
 bf1.beam_off_defined = add_beam_off;
 bf1.fs = fs;
 bf1.mic_r = r;
@@ -256,34 +256,34 @@ bf1.output_channel_mix_beam_off(2) = 1;        % Mic2 to channel 2^0
 bf1.output_channel_mix_beam_off(n) = 2;        % Mic2 to channel 2^1
 bf1.output_channel_mix = 1 * ones(1, n);       % Mix all filters to channel 1
 bf1.steer_az = a1;
-bf1 = bf_filenames_helper(bf1);
-bf1 = bf_design(bf1);
+bf1 = sof_bf_filenames_helper(bf1);
+bf1 = sof_bf_design(bf1);
 
 % Design beamformer 2 (right)
 bf2.output_channel_mix_beam_off = zeros(1, n); % No channels input
 bf2.output_channel_mix = 2 * ones(1, n);       % Mix all filters to channel 2
 bf2.steer_az = a2;
-bf2 = bf_filenames_helper(bf2);
-bf2 = bf_design(bf2);
+bf2 = sof_bf_filenames_helper(bf2);
+bf2 = sof_bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
-bfm = bf_merge(bf1, bf2);
+bfm = sof_bf_merge(bf1, bf2);
 bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, fn.sofctl3_fn);
 bfm.tplg1_fn = fullfile(bfm.tplg1_path, fn.tplg1_fn);
 bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, fn.sofctl4_fn);
 bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
-bfm.export_note = 'Created with script example_two_beams.m';
-bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r example_two_beams';
-bf_export(bfm);
+bfm.export_note = 'Created with script sof_example_two_beams.m';
+bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r sof_example_two_beams';
+sof_bf_export(bfm);
 
 end
 
 function line_xyz(fs)
 
 % Get defaults
-bf1 = bf_defaults();
+bf1 = sof_bf_defaults();
 bf1.fs = fs;
 bf1.beta = 5;
 
@@ -330,8 +330,8 @@ bf1.output_channel_mix_beam_off = [1 0 0 2];  % Filter 1 to channel 2^0, filter 
 bf1.output_stream_mix           = [0 0 0 0];  % Mix filters to stream 0
 bf1.num_output_channels = 2;                  % Stereo
 bf1.fn = 10;                                  % Figs 10....
-bf1 = bf_filenames_helper(bf1);
-bf1 = bf_design(bf1);
+bf1 = sof_bf_filenames_helper(bf1);
+bf1 = sof_bf_design(bf1);
 
 % Design beamformer 2 (right)
 bf2.steer_az = a2;
@@ -342,19 +342,19 @@ bf2.output_channel_mix_beam_off = [0 0 0 0];  % Filters omitted
 bf2.output_stream_mix           = [0 0 0 0];  % Mix filters to stream 0
 bf2.num_output_channels = 2;                  % Stereo
 bf2.fn = 20;                                  % Figs 20....
-bf2 = bf_filenames_helper(bf2);
-bf2 = bf_design(bf2);
+bf2 = sof_bf_filenames_helper(bf2);
+bf2 = sof_bf_design(bf2);
 
 % Merge two beamformers into single description, set file names
-bfm = bf_merge(bf1, bf2);
+bfm = sof_bf_merge(bf1, bf2);
 bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, sofctl3_fn);
 bfm.tplg1_fn = fullfile(bfm.tplg1_path, tplg1_fn);
 bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, sofctl4_fn);
 bfm.tplg2_fn = fullfile(bfm.tplg2_path, tplg2_fn);
 
 % Export files for topology and sof-ctl
-bfm.export_note = 'Created with script example_two_beams.m';
-bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r example_two_beams';
-bf_export(bfm);
+bfm.export_note = 'Created with script sof_example_two_beams.m';
+bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -r sof_example_two_beams';
+sof_bf_export(bfm);
 
 end

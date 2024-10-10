@@ -1,4 +1,4 @@
-function example_pass_config()
+function sof_example_pass_config()
 
 % example_pass_config()
 %
@@ -13,7 +13,7 @@ function example_pass_config()
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 % Setup for two channels
-bf = bf_defaults();
+bf = sof_bf_defaults();
 bf.input_channel_select = [0 1]; % Input two channels
 bf.output_channel_mix   = [1 2]; % Filter1 -> ch0, filter2 -> ch1
 bf.output_stream_mix    = [0 0]; % Mix both filters to stream 0
@@ -27,13 +27,13 @@ bf.num_filters          = 2;     % Two filters
 bf.w = [1 0 0 0; 1 0 0 0]'; % Two FIR filters with first tap set to one
 
 % Files
-bf.export_note = 'Exported with script example_pass_config.m';
-bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system example_pass_config.m';
+bf.export_note = 'Exported with script sof_example_pass_config.m';
+bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system sof_example_pass_config.m';
 bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line2_pass.txt');
 bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line2_pass.m4');
 bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line2_pass.txt');
 bf.tplg2_fn = fullfile(bf.tplg2_path, 'line2_pass.conf');
-bf_export(bf);
+sof_bf_export(bf);
 
 % Setup for four channels
 bf.input_channel_select = [0 1 2 3]; % Input two channels
@@ -51,6 +51,6 @@ bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line4_pass.txt');
 bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line4_pass.m4');
 bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line4_pass.txt');
 bf.tplg2_fn = fullfile(bf.tplg2_path, 'line4_pass.conf');
-bf_export(bf);
+sof_bf_export(bf);
 
 end

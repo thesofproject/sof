@@ -1,4 +1,4 @@
-% bf = bf_array_circ(bf)
+% bf = sof_bf_array_circ(bf)
 %
 % Inputs
 % bf.mic_n ... number of microphones
@@ -15,7 +15,7 @@
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-function bf = bf_array_circ(bf)
+function bf = sof_bf_array_circ(bf)
 
 bf.mic_angle = (0:bf.mic_n-1)*360/bf.mic_n; % Mic 1 at 0 deg
 idx = find(bf.mic_angle > 180); % wrap > 180 deg to -180 .. 0

@@ -1,4 +1,4 @@
-function example_line_0mm36mm146mm182mm()
+function sof_example_line_0mm36mm146mm182mm()
 
 % Creates beamformer for device with device with microphones
 % at 0, 36, 146, 182mm locations
@@ -23,7 +23,7 @@ sofctl4_fn = sprintf('line4_0mm36mm146mm182mm_%dkhz.txt', fs/1e3);
 
 % Get defaults
 close all;
-bf = bf_defaults();
+bf = sof_bf_defaults();
 bf.fs = fs;
 bf.beta = 5;
 
@@ -50,12 +50,12 @@ bf.num_output_channels = 2;                  % Stereo
 
 %bf.sofctl_fn = fullfile(bf.sofctl_path, sofctl_fn);
 %bf.tplg_fn = fullfile(bf.tplg_path, tplg_fn);
-bf = bf_filenames_helper(bf, 'line4_0mm36mm146mm182mm');
-bf = bf_design(bf);
+bf = sof_bf_filenames_helper(bf, 'line4_0mm36mm146mm182mm');
+bf = sof_bf_design(bf);
 
 % Export files for topology and sof-ctl
 bf.export_note = 'Created with script example_line_0mm36mm146mm182mm.m';
 bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system example_line_0mm36mm146mm182mm.m';
-bf_export(bf);
+sof_bf_export(bf);
 
 end
