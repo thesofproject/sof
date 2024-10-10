@@ -22,9 +22,8 @@ static struct comp_dev *mock_comp_new(const struct comp_driver *drv,
 				      const struct comp_ipc_config *config,
 				      const void *spec)
 {
-	struct comp_dev *dev = calloc(1, sizeof(struct comp_dev));
+	struct comp_dev *dev = comp_alloc(drv, sizeof(*dev));
 
-	dev->drv = drv;
 	return dev;
 }
 
