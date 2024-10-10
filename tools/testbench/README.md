@@ -44,7 +44,7 @@ sox --encoding signed-integer /usr/share/sounds/alsa/Front_Left.wav -L -r 48000 
 tools/testbench/build_testbench/install/bin/testbench -r 48000 -R 48000 -c 2 -n 2 -b S32_LE \
    -t tools/build_tools/test/topology/test-playback-ssp5-mclk-0-I2S-dcblock-s32le-s32le-48k-24576k-codec.tplg \
    -i in.raw -o out.raw
-sox --encoding signed-integer -L -r 48000 -c 2 -b 32 in.raw out.wav
+sox --encoding signed-integer -L -r 48000 -c 2 -b 32 out.raw out.wav
 aplay out.wav
 ```
 
@@ -138,7 +138,7 @@ sox --encoding signed-integer /usr/share/sounds/alsa/Front_Center.wav -L -r 4800
 tools/testbench/build_testbench/install/bin/testbench -r 48000 -R 48000 -c 2 -n 2 -b S32_LE -p 1,2 \
    -t tools/build_tools/topology/topology2/development/sof-hda-benchmark-dcblock32.tplg \
    -i in.raw -o out.raw
-sox --encoding signed-integer -L -r 48000 -c 2 -b 32 in.raw out.wav
+sox --encoding signed-integer -L -r 48000 -c 2 -b 32 out.raw out.wav
 aplay out.wav
 ```
 
