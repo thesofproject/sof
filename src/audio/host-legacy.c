@@ -194,6 +194,8 @@ static uint32_t host_get_copy_bytes_one_shot(struct host_data *hd, struct comp_d
  */
 static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_callback_t cb)
 {
+    struct comp_buffer *source;
+    struct comp_buffer *sink;
 	uint32_t copy_bytes = 0;
 	int ret = 0;
 
@@ -212,6 +214,17 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 		return ret;
 	}
 
+    if (dev->direction == SOF_IPC_STREAM_CAPTURE)
+    {
+            source = hd->local_buffer;
+            sink = hd->dma_buffer;
+			comp_info(dev, "bf cp local buf addr %p end %p w %p r %p", source->stream.addr, source->stream.end_addr, source->stream.w_ptr, source->stream.r_ptr);
+			comp_info(dev, "bf cp dma addr %p end %p w %p r %p", sink->stream.addr, sink->stream.end_addr, sink->stream.w_ptr, sink->stream.r_ptr);
+            ret = dma_buffer_copy_to(source, sink, hd->process, copy_bytes);
+			comp_info(dev, "af cp local buf addr %p end %p w %p r %p", source->stream.addr, source->stream.end_addr, source->stream.w_ptr, source->stream.r_ptr);
+			comp_info(dev, "af cp dma addr %p end %p w %p r %p", sink->stream.addr, sink->stream.end_addr, sink->stream.w_ptr, sink->stream.r_ptr);
+    }
+
 	ret = dma_copy_legacy(hd->chan, copy_bytes, DMA_COPY_ONE_SHOT);
 	if (ret < 0) {
 		comp_err(dev, "host_copy_one_shot(): dma_copy() failed, ret = %u", ret);
@@ -226,7 +239,7 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 {
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	int ret;
+	int ret = 0;
 	bool update_mailbox = false;
 	bool send_ipc = false;
 
@@ -234,10 +247,6 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 		source = hd->dma_buffer;
 		sink = hd->local_buffer;
 		ret = dma_buffer_copy_from(source, sink, hd->process, bytes, DUMMY_CHMAP);
-	} else {
-		source = hd->local_buffer;
-		sink = hd->dma_buffer;
-		ret = dma_buffer_copy_to(source, sink, hd->process, bytes, DUMMY_CHMAP);
 	}
 
 	/* assert dma_buffer_copy succeed */
