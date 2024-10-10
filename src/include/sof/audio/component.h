@@ -282,7 +282,8 @@ struct comp_ops {
 	/**
 	 * Creates a new component device.
 	 * @param drv Parent component driver.
-	 * @param comp Component parameters.
+	 * @param ipc_config Component parameters.
+	 * @param spec Pointer to initialization data
 	 * @return Pointer to the new component device.
 	 *
 	 * All required data objects should be allocated from the run-time
@@ -295,7 +296,7 @@ struct comp_ops {
 	 */
 	struct comp_dev *(*create)(const struct comp_driver *drv,
 				   const struct comp_ipc_config *ipc_config,
-				   const void *ipc_specific_config);
+				   const void *spec);
 
 	/**
 	 * Called to delete the specified component device.
