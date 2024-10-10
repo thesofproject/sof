@@ -15,6 +15,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/ut.h>
+#include <sof/lib/memory.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include "module_interface.h"

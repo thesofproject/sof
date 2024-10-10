@@ -19,7 +19,7 @@
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <sof/lib/dai.h>
-#include <sof/lib/memory.h> /* for SHARED_DATA */
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/dma.h>

@@ -15,7 +15,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
-#include <sof/lib/memory.h> /* for SHARED_DATA */
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
 #include <sof/lib/uuid.h>

@@ -19,6 +19,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>

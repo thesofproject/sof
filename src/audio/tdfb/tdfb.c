@@ -16,6 +16,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/fir_generic.h>
 #include <sof/math/fir_hifi2ep.h>

@@ -18,6 +18,7 @@
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/string.h>
