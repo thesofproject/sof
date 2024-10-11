@@ -90,6 +90,12 @@ SDW_JACK_IN_STREAM=Capture-SimpleJack"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
+# CS42L43 speaker output aggregated with two buses of CS35L56, so total
+# number of amp links is 3.
+"cavs-sdw\;sof-mtl-cs42l43-l3-cs35l56-l01-spkagg\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=3,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
+
 # ARL has the same DSP generation. So reuse the platform = mtl.
 "cavs-sdw\;sof-arl-cs42l43-l0\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
