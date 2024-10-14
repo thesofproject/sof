@@ -706,7 +706,7 @@ static int file_free(struct processing_module *mod)
 	struct copier_data *ccd = module_get_private_data(mod);
 	struct file_comp_data *cd = get_file_comp_data(ccd);
 
-	tb_debug_print("file_free()");
+	tb_debug_print("file_free()\n");
 
 	if (cd->fs.mode == FILE_READ)
 		fclose(cd->fs.rfh);
@@ -771,7 +771,7 @@ static int file_process(struct processing_module *mod,
 	cd->fs.copy_count++;
 	if (cd->fs.reached_eof || (cd->max_copies && cd->fs.copy_count >= cd->max_copies)) {
 		cd->fs.reached_eof = true;
-		tb_debug_print("file_process(): reached EOF");
+		tb_debug_print("file_process(): reached EOF\n");
 	}
 
 	if (samples) {
@@ -798,7 +798,7 @@ static int file_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
 
-	tb_debug_print("file_prepare()");
+	tb_debug_print("file_prepare()\n");
 
 	/* file component sink/source buffer period count */
 	cd->max_frames = dev->frames;
@@ -840,14 +840,14 @@ static int file_reset(struct processing_module *mod)
 {
 	struct file_comp_data *cd = module_get_private_data(mod);
 
-	tb_debug_print("file_reset()");
+	tb_debug_print("file_reset()\n");
 	cd->copies_timeout_count = 0;
 	return 0;
 }
 
 static int file_trigger(struct comp_dev *dev, int cmd)
 {
-	tb_debug_print("file_trigger()");
+	tb_debug_print("file_trigger()\n");
 	return comp_set_state(dev, cmd);
 }
 
@@ -857,7 +857,7 @@ static int file_get_hw_params(struct comp_dev *dev,
 	struct processing_module *mod = comp_mod(dev);
 	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
 
-	tb_debug_print("file_hw_params()");
+	tb_debug_print("file_hw_params()\n");
 	params->direction = dir;
 	params->rate = cd->rate;
 	params->channels = cd->channels;

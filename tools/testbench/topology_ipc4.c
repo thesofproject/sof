@@ -20,6 +20,7 @@
 #include "testbench/topology_ipc4.h"
 #include "testbench/file.h"
 #include "testbench/file_ipc4.h"
+#include "testbench/trace.h"
 #include "ipc4/pipeline.h"
 
 #define SOF_IPC4_FW_PAGE(x) ((((x) + BIT(12) - 1) & ~(BIT(12) - 1)) >> 12)
@@ -1150,9 +1151,10 @@ static int tb_load_widget(struct testbench_prm *tp)
 
 	/* unsupported widgets */
 	default:
-		printf("info: Widget %s id %d unsupported and skipped: size %d priv size %d\n",
-		       ctx->widget->name, ctx->widget->id,
-		       ctx->widget->size, ctx->widget->priv.size);
+		if (tb_check_trace(LOG_LEVEL_DEBUG))
+			printf("Widget %s id %d unsupported and skipped: size %d priv size %d\n",
+			       ctx->widget->name, ctx->widget->id,
+			       ctx->widget->size, ctx->widget->priv.size);
 		break;
 	}
 
@@ -1518,7 +1520,7 @@ int tb_set_running_state(struct testbench_prm *tp)
 		return ret;
 	}
 
-	fprintf(stdout, "pipelines are set to paused state\n");
+	tb_debug_print("pipelines are set to paused state\n");
 	ret = tb_pipelines_set_state(tp, SOF_IPC4_PIPELINE_STATE_RUNNING, SOF_IPC_STREAM_PLAYBACK);
 	if (ret) {
 		fprintf(stderr, "error: failed to set state to running\n");
@@ -1529,7 +1531,7 @@ int tb_set_running_state(struct testbench_prm *tp)
 	if (ret)
 		fprintf(stderr, "error: failed to set state to running\n");
 
-	fprintf(stdout, "pipelines are set to running state\n");
+	tb_debug_print("pipelines are set to running state\n");
 	return ret;
 }
 
