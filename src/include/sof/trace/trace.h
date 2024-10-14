@@ -245,10 +245,12 @@ do {								\
 	(void)id_1;						\
 	(void)id_2;						\
 	struct timeval tv;					\
+	char slevel[5][4] = {"dis", "err", "wrn", "inf", "dbg"}; \
 	char *msg = "(%s:%d) " format;				\
-	if (level >= host_trace_level) {			\
+	if (level <= host_trace_level) {			\
 		gettimeofday(&tv, NULL);				\
-		fprintf(stderr, "%ld.%6.6ld:", tv.tv_sec, tv.tv_usec);	\
+		fprintf(stderr, "trace: [%ld.%6.6ld] <%s> ", tv.tv_sec, tv.tv_usec, \
+			slevel[level]);					\
 		fprintf(stderr, msg, strrchr(__FILE__, '/') + 1,	\
 			__LINE__, ##__VA_ARGS__);			\
 		fprintf(stderr, "\n");					\
