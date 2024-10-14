@@ -228,10 +228,14 @@ void tb_debug_print(char *message)
 void tb_enable_trace(unsigned int log_level)
 {
 	host_trace_level = log_level;
-	if (host_trace_level)
-		tb_debug_print("trace print enabled\n");
-	else
-		tb_debug_print("trace print disabled\n");
+	if (host_trace_level >= LOG_LEVEL_DEBUG)
+		tb_debug_print("Verbose trace print enabled\n");
+}
+
+/* Helper to control messages print */
+bool tb_check_trace(unsigned int log_level)
+{
+	return host_trace_level >= log_level;
 }
 
 void tb_gettime(struct timespec *td)

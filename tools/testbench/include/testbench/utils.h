@@ -98,7 +98,7 @@ struct testbench_prm {
 	int pipeline_num;
 	int copy_iterations;
 	bool copy_check;
-	bool quiet;
+	int trace_level;
 	int dynamic_pipeline_iterations;
 	int tick_period_us;
 	int pipeline_duration_ms;
