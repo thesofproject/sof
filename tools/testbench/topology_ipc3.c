@@ -20,6 +20,7 @@
 
 #include "testbench/utils.h"
 #include "testbench/file.h"
+#include "testbench/trace.h"
 
 #include <errno.h>
 #include <math.h>
@@ -614,9 +615,10 @@ static int tb_load_widget(struct testbench_prm *tb, struct tplg_context *ctx)
 		break;
 	/* unsupported widgets */
 	default:
-		printf("info: Widget %s id %d unsupported and skipped: size %d priv size %d\n",
-		       ctx->widget->name, ctx->widget->id,
-		       ctx->widget->size, ctx->widget->priv.size);
+		if (tb_check_trace(LOG_LEVEL_DEBUG))
+			printf("debug: Widget %s id %d unsupported and skipped: size %d priv size %d\n",
+			       ctx->widget->name, ctx->widget->id,
+			       ctx->widget->size, ctx->widget->priv.size);
 		break;
 	}
 
@@ -687,8 +689,8 @@ int tb_parse_topology(struct testbench_prm *tb)
 		/* read next topology header */
 		hdr = tplg_get_hdr(ctx);
 
-		fprintf(stdout, "type: %x, size: 0x%x count: %d index: %d\n",
-			hdr->type, hdr->payload_size, hdr->count, hdr->index);
+		tplg_debug("type: %x, size: 0x%x count: %d index: %d\n",
+			   hdr->type, hdr->payload_size, hdr->count, hdr->index);
 
 		ctx->hdr = hdr;
 

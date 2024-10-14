@@ -118,8 +118,7 @@ static void print_usage(char *executable)
 	printf("Usage: %s <options> -i <input_file> ", executable);
 	printf("-o <output_file1,output_file2,...>\n\n");
 	printf("Options for processing:\n");
-	printf("  -t <topology file>\n");
-	printf("  -a <comp1=comp1_library,comp2=comp2_library>, override default library\n\n");
+	printf("  -t <topology file>\n\n");
 	printf("Options to control test:\n");
 	printf("  -d <level> Sets the traces print level:\n");
 	printf("     0 all traces are suppressed\n");
@@ -128,25 +127,20 @@ static void print_usage(char *executable)
 	printf("     3 shows info traces and previous\n");
 	printf("     4 shows debug traces and previous, plus other testbench  debug messages\n");
 	printf("  -p <pipeline1,pipeline2,...>\n");
-	printf("  -s Use real time priorities for threads (needs sudo)\n");
 	printf("  -C <number of copy() iterations>\n");
 	printf("  -D <pipeline duration in ms>\n");
 	printf("  -P <number of dynamic pipeline iterations>\n");
-	printf("  -T <microseconds for tick, 0 for batch mode>\n");
+	printf("  -T <microseconds for tick, 0 for batch mode>\n\n");
 	printf("Options for input and output format override:\n");
 	printf("  -b <input_format>, S16_LE, S24_LE, or S32_LE\n");
 	printf("  -c <input channels>\n");
 	printf("  -n <output channels>\n");
 	printf("  -r <input rate>\n");
 	printf("  -R <output rate>\n\n");
-	printf("Environment variables\n");
-	printf("  SOF_HOST_CORE0=<i> - Map DSP core 0..N to host i..i+N\n");
 	printf("Help:\n");
 	printf("  -h\n\n");
 	printf("Example Usage:\n");
-	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
-	printf("-r 48000 -R 96000 -c 2 ");
-	printf("-b S16_LE -a volume=libsof_volume.so\n");
+	printf("%s -r 48000 -c 2 -b S16_LE -i in.raw -o out.raw -t <test.tplg>\n\n", executable);
 }
 
 static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)

@@ -459,7 +459,7 @@ int tb_set_up_all_pipelines(struct testbench_prm *tp)
 		return ret;
 	}
 
-	fprintf(stdout, "pipelines set up complete\n");
+	tb_debug_print("pipelines set up complete\n");
 	return 0;
 }
 
