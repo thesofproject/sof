@@ -16,6 +16,7 @@
 
 #include "testbench/utils.h"
 #include "testbench/file.h"
+#include "testbench/trace.h"
 
 /* testbench helper functions for pipeline setup and trigger */
 
@@ -51,6 +52,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	/* other necessary initializations, todo: follow better SOF init */
 	pipeline_posn_init(sof);
 	init_system_notify(sof);
+	tb_enable_trace(tp->trace_level);
 
 	/* init IPC */
 	if (ipc_init(sof) < 0) {

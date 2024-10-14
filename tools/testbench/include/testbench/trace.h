@@ -13,4 +13,6 @@
 
 void tb_enable_trace(unsigned int log_level);
 
+bool tb_check_trace(unsigned int log_level);
+
 #endif /* _TESTBENCH_TRACE_H */

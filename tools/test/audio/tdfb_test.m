@@ -72,7 +72,7 @@ test.nch_in = max(bf.input_channel_select) + 1;
 test.nch_out = bf.num_output_channels;
 test.ch_in = 1:test.nch_in;
 test.ch_out = 1:test.nch_out;
-test.extra_opts='-q'; % Quiet mode, comment out to debug with testbench traces
+test.extra_opts='';
 if length(arrayid)
 	test.comp = sprintf('tdfb_%s', arrayid);
 end

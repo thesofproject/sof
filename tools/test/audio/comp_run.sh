@@ -43,7 +43,7 @@ parse_args ()
     FS_IN=48000
     FS_OUT=
     VALGRIND=true
-    DEBUG=-q
+    DEBUG=
     SOURCED_CONFIG=false
     FN_TRACE=
     EXTRA_OPTS=

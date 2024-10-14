@@ -20,6 +20,7 @@
 #include "testbench/utils.h"
 #include "testbench/file.h"
 #include "testbench/topology_ipc4.h"
+#include "testbench/trace.h"
 
 #if defined __XCC__
 #include <xtensa/tie/xt_timer.h>
@@ -66,6 +67,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	/* other necessary initializations */
 	pipeline_posn_init(sof);
 	init_system_notify(sof);
+	tb_enable_trace(tp->trace_level);
 
 	/* init IPC */
 	if (ipc_init(sof) < 0) {

@@ -15,6 +15,7 @@
 #include "testbench/file.h"
 #include "testbench/utils.h"
 
+#include <ctype.h>
 #include <getopt.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -120,8 +121,12 @@ static void print_usage(char *executable)
 	printf("  -t <topology file>\n");
 	printf("  -a <comp1=comp1_library,comp2=comp2_library>, override default library\n\n");
 	printf("Options to control test:\n");
-	printf("  -d Run in debug mode\n");
-	printf("  -q Run in quiet mode, suppress traces output\n");
+	printf("  -d <level> Sets the traces print level:\n");
+	printf("     0 all traces are suppressed\n");
+	printf("     1 shows error traces\n");
+	printf("     2 shows warning traces and previous\n");
+	printf("     3 shows info traces and previous\n");
+	printf("     4 shows debug traces and previous, plus other testbench  debug messages\n");
 	printf("  -p <pipeline1,pipeline2,...>\n");
 	printf("  -s Use real time priorities for threads (needs sudo)\n");
 	printf("  -C <number of copy() iterations>\n");
@@ -149,7 +154,7 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 	int option = 0;
 	int ret = 0;
 
-	while ((option = getopt(argc, argv, "hd:qi:o:t:b:r:R:c:n:C:P:p:T:D:")) != -1) {
+	while ((option = getopt(argc, argv, "hd:i:o:t:b:r:R:c:n:C:P:p:T:D:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
@@ -194,17 +199,19 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 
 		/* set debug log level */
 		case 'd':
-			host_trace_level = atoi(optarg);
+			if (isdigit((int)*optarg)) {
+				tp->trace_level = atoi(optarg);
+			} else {
+				fprintf(stderr, "Error: Debug level must be a digit.\n");
+				print_usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
 			break;
 
 		/* number of pipeline copy() iterations */
 		case 'C':
 			tp->copy_iterations = atoi(optarg);
 			tp->copy_check = true;
-			break;
-
-		case 'q':
-			tp->quiet = true;
 			break;
 
 		/* number of dynamic pipeline iterations */
@@ -296,8 +303,8 @@ static void test_pipeline_stats(struct testbench_prm *tp, long long delta_t)
 		printf("File component cycles: %lld\n", file_cycles);
 		printf("Pipeline cycles: %lld\n", pipeline_cycles);
 		printf("Pipeline MCPS: %6.2f\n", pipeline_mcps);
-		if (!tp->quiet)
-			printf("Warning: Use -q to avoid printing to increase MCPS.\n");
+		if (tb_check_trace(LOG_LEVEL_DEBUG))
+			printf("Warning: Use -d 3 or smaller value to avoid traces to increase MCPS.\n");
 	}
 
 	if (delta_t)
@@ -439,6 +446,7 @@ int main(int argc, char **argv)
 	tp->pipeline_num = 1;
 	tp->pipeline_duration_ms = 5000;
 	tp->copy_iterations = 1;
+	tp->trace_level = LOG_LEVEL_INFO;
 
 	/* command line arguments*/
 	ret = parse_input_args(argc, argv, tp);
@@ -476,12 +484,6 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto out;
 	}
-
-	if (tp->quiet)
-		tb_enable_trace(0); /* reduce trace output */
-	else
-		tb_enable_trace(1);
-
 
 	/* initialize ipc and scheduler */
 	if (tb_setup(sof_get(), tp) < 0) {
