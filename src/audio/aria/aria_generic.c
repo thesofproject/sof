@@ -47,8 +47,8 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 	cd->gains[gain_idx] = (int32_t)(gain >> (att + 1));
 }
 
-void aria_algo_get_data(struct processing_module *mod,
-			struct audio_stream *sink, int frames)
+static void aria_algo_get_data(struct processing_module *mod,
+			       struct audio_stream *sink, int frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);
 	int32_t step, in_sample;
