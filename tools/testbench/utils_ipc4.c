@@ -44,6 +44,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_init(sof);
 
 	/* Module adapter components */
+	sys_comp_module_aria_interface_init();
 	sys_comp_module_crossover_interface_init();
 	sys_comp_module_dcblock_interface_init();
 	sys_comp_module_demux_interface_init();
