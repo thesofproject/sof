@@ -152,6 +152,19 @@ static int comp_buffer_sink_set_alignment_constants(struct sof_sink *sink,
 	return 0;
 }
 
+static void comp_buffer_clean(struct sof_audio_buffer *audio_buffer)
+{
+	if (!audio_buffer)
+		return;
+
+	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
+
+	/* reset rw pointers and avail/free bytes counters */
+	audio_stream_reset(&buffer->stream);
+	/* clear buffer contents */
+	buffer_zero(buffer);
+}
+
 /* free component in the pipeline */
 static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 {
@@ -197,6 +210,7 @@ static const struct sink_ops comp_buffer_sink_ops = {
 
 static const struct audio_buffer_ops audio_buffer_ops = {
 	.free = comp_buffer_free,
+	.clean = comp_buffer_clean,
 };
 
 static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, uint32_t caps,
