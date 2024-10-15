@@ -18,6 +18,8 @@
  */
 #define TB_IPC4_MAX_MSG_SIZE	(MAILBOX_DSPBOX_SIZE + sizeof(struct ipc4_module_large_config))
 
+#define TB_MIXIN_MODULE_ID		0x2
+#define TB_MIXOUT_MODULE_ID		0x3
 #define TB_PGA_MODULE_ID		0x6
 #define TB_SRC_MODULE_ID		0x7
 #define TB_ASRC_MODULE_ID		0x8
