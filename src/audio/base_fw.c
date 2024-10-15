@@ -340,9 +340,6 @@ int schedulers_info_get(uint32_t *data_off_size,
 	if (core_id >= CONFIG_CORE_COUNT)
 		return IPC4_ERROR_INVALID_PARAM;
 
-	if (!cpu_is_me(core_id))
-		return ipc4_process_on_core(core_id, false);
-
 	struct scheduler_props *scheduler_props;
 	/* the internal structs have irregular sizes so we cannot use indexing, and have to
 	 *  reassign pointers for each element
@@ -350,11 +347,16 @@ int schedulers_info_get(uint32_t *data_off_size,
 	struct schedulers_info *schedulers_info = (struct schedulers_info *)data;
 
 	schedulers_info->scheduler_count = 0;
-
 	/* smallest response possible is just zero schedulers count
 	 * here we replace max_len from data_off_size to serve as output size
 	 */
 	*data_off_size = sizeof(struct schedulers_info);
+	/* return empty scheduler_props if core is not active */
+	if (!cpu_is_core_enabled(core_id))
+		return IPC4_SUCCESS;
+
+	if (!cpu_is_me(core_id))
+		return ipc4_process_on_core(core_id, false);
 
 	/* ===================== LL_TIMER SCHEDULER INFO ============================ */
 	schedulers_info->scheduler_count++;
