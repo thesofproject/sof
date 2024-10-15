@@ -56,6 +56,8 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_module_google_rtc_audio_processing_interface_init();
 	sys_comp_module_igo_nr_interface_init();
 	sys_comp_module_mfcc_interface_init();
+	sys_comp_module_mixin_interface_init();
+	sys_comp_module_mixout_interface_init();
 	sys_comp_module_multiband_drc_interface_init();
 	sys_comp_module_mux_interface_init();
 	sys_comp_module_rtnr_interface_init();

@@ -634,7 +634,7 @@ static int tb_new_mixer(struct testbench_prm *tp)
 		return -ENOMEM;
 
 	comp_info->instance_id = tp->instance_ids[SND_SOC_TPLG_DAPM_MIXER]++;
-	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg);
+	comp_info->ipc_size = sizeof(struct ipc4_base_module_cfg) + sizeof(struct sof_uuid);
 	comp_info->ipc_payload = calloc(comp_info->ipc_size, 1);
 	if (!comp_info->ipc_payload)
 		return -ENOMEM;
@@ -647,12 +647,17 @@ static int tb_new_mixer(struct testbench_prm *tp)
 	}
 
 	if (strstr(comp_info->name, "mixin")) {
-		comp_info->module_id = 0x2;
+		comp_info->module_id = TB_MIXIN_MODULE_ID;
 		tb_setup_widget_ipc_msg(comp_info);
 	} else {
-		comp_info->module_id = 0x3;
+		comp_info->module_id = TB_MIXOUT_MODULE_ID;
 		tb_setup_widget_ipc_msg(comp_info);
 	}
+
+	/* copy uuid to the end of the payload */
+	memcpy(comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg), &comp_info->uuid,
+	       sizeof(struct sof_uuid));
+
 out:
 	free(tplg_ctl);
 	return ret;
