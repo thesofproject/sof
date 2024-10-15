@@ -99,7 +99,7 @@ static inline void aria_process_data(struct processing_module *mod,
 	cd->data_ptr = cir_buf_wrap(cd->data_ptr + sample_size, cd->data_addr, cd->data_end);
 }
 
-int aria_init(struct processing_module *mod)
+static int aria_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *mod_data = &mod->priv;

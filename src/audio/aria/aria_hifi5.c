@@ -76,9 +76,9 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 	cd->gains[gain_idx] = (int32_t)(gain >> (att + 1));
 }
 
-void aria_algo_get_data_odd_channel(struct processing_module *mod,
-				    struct audio_stream *sink,
-				    int frames)
+static void aria_algo_get_data_odd_channel(struct processing_module *mod,
+					   struct audio_stream *sink,
+					   int frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);
 	size_t i, n, ch;
@@ -125,9 +125,9 @@ void aria_algo_get_data_odd_channel(struct processing_module *mod,
 	cd->gain_state = index_tab[cd->gain_state + 1];
 }
 
-void aria_algo_get_data_even_channel(struct processing_module *mod,
-				     struct audio_stream *sink,
-				     int frames)
+static void aria_algo_get_data_even_channel(struct processing_module *mod,
+					    struct audio_stream *sink,
+					    int frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);
 	size_t i, m, n, ch;
