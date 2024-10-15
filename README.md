@@ -1,5 +1,7 @@
 # Sound Open Firmware
 
+CI test ignore
+
 ### Status
 [![GitHub Actions](https://github.com/thesofproject/sof/workflows/GitHub%20Actions/badge.svg)](https://github.com/thesofproject/sof/actions)
 [![Build Status](https://travis-ci.org/thesofproject/sof.svg?branch=master)](https://travis-ci.org/thesofproject/sof/branches)
