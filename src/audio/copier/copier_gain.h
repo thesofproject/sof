@@ -78,7 +78,7 @@ enum copier_gain_envelope_dir {
 struct copier_gain_params {
 #if SOF_USE_HIFI(3, COPIER) || SOF_USE_HIFI(4, COPIER) || SOF_USE_HIFI(5, COPIER)
 	/**< Input gain coefficients in Q10 format */
-	ae_int16x4 gain_coeffs[ROUND_UP(MAX_GAIN_COEFFS_CNT, 4) >> 2];
+	ae_int16x4 gain_coeffs[SOF_DIV_ROUND_UP(MAX_GAIN_COEFFS_CNT, 4)];
 	/**< Step for fade-in lower precision */
 	ae_f16x4 step_f16;
 	/**< Initial gain depending on the number of channels */
