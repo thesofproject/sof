@@ -803,6 +803,7 @@ void sys_comp_host_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_selector_init(void);
 
+void sys_comp_module_aria_interface_init(void);
 void sys_comp_module_copier_interface_init(void);
 void sys_comp_module_crossover_interface_init(void);
 void sys_comp_module_dcblock_interface_init(void);
