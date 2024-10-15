@@ -367,6 +367,11 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	return pipeline_for_each_comp(current, ctx, dir);
 }
 
+static inline void buffer_reset_params(struct comp_buffer *buffer, void *data)
+{
+	audio_buffer_reset_params(&buffer->audio_buffer);
+}
+
 /* reset the whole pipeline */
 int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 {

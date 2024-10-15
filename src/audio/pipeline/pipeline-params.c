@@ -289,6 +289,11 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 	return pipeline_for_each_comp(current, ctx, dir);
 }
 
+static void buffer_reset_pos(struct comp_buffer *buffer, void *data)
+{
+	audio_buffer_reset(&buffer->audio_buffer);
+}
+
 /* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {

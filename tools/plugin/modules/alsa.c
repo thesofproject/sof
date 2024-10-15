@@ -429,7 +429,7 @@ static int arecord_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 
 	/* file component sink/source buffer period count */
 	buffer = comp_dev_get_first_data_consumer(dev);
-	buffer_reset_pos(buffer, NULL);
+	audio_buffer_reset(&buffer->audio_buffer);
 
 	comp_dbg(dev, "prepare done ret = %d", ret);
 
@@ -461,7 +461,7 @@ static int aplay_params(struct comp_dev *dev, struct sof_ipc_stream_params *para
 
 	/* file component sink/source buffer period count */
 	buffer = comp_dev_get_first_data_producer(dev);
-	buffer_reset_pos(buffer, NULL);
+	audio_buffer_reset(&buffer->audio_buffer);
 
 	comp_dbg(dev, "prepare done ret = %d", ret);
 	return 0;
