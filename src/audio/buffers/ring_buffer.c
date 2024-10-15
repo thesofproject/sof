@@ -32,16 +32,6 @@ static inline struct ring_buffer *ring_buffer_from_source(struct sof_source *sou
 }
 
 /**
- * @brief remove the queue from the list, free memory
- */
-static void ring_buffer_free(struct sof_audio_buffer *buffer)
-{
-	struct ring_buffer *ring_buffer = (struct ring_buffer *)buffer;
-
-	rfree((__sparse_force void *)ring_buffer->_data_buffer);
-}
-
-/**
  * @brief return true if the ring buffer is shared between 2 cores
  */
 static inline
@@ -91,6 +81,36 @@ static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
 	}
 	/* writeback rest of data */
 	dcache_writeback_region(ptr, size);
+}
+
+
+/**
+ * @brief remove the queue from the list, free memory
+ */
+static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
+{
+	if (!audio_buffer)
+		return;
+
+	struct ring_buffer *ring_buffer =
+			container_of(audio_buffer, struct ring_buffer, audio_buffer);
+
+	rfree((__sparse_force void *)ring_buffer->_data_buffer);
+}
+
+static void ring_buffer_reset(struct sof_audio_buffer *audio_buffer)
+{
+	struct ring_buffer *ring_buffer =
+			container_of(audio_buffer, struct ring_buffer, audio_buffer);
+
+	ring_buffer->_write_offset = 0;
+	ring_buffer->_read_offset = 0;
+
+	ring_buffer_invalidate_shared(ring_buffer, ring_buffer->_data_buffer,
+				      ring_buffer->data_buffer_size);
+	bzero((__sparse_force void *)ring_buffer->_data_buffer, ring_buffer->data_buffer_size);
+	ring_buffer_writeback_shared(ring_buffer, ring_buffer->_data_buffer,
+				     ring_buffer->data_buffer_size);
 }
 
 static inline
@@ -277,6 +297,7 @@ static const struct sink_ops ring_buffer_sink_ops = {
 
 static const struct audio_buffer_ops audio_buffer_ops = {
 	.free = ring_buffer_free,
+	.reset = ring_buffer_reset
 };
 
 struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, bool is_shared,

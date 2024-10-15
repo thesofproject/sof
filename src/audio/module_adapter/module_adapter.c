@@ -385,7 +385,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 			irq_local_enable(flags);
 
 			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
-			buffer_reset_pos(buffer, NULL);
+			audio_buffer_reset(&buffer->audio_buffer);
 		}
 	} else {
 		list_for_item(blist, &mod->sink_buffer_list) {
@@ -400,7 +400,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 			}
 
 			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
-			buffer_reset_pos(buffer, NULL);
+			audio_buffer_reset(&buffer->audio_buffer);
 		}
 	}
 

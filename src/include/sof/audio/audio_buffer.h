@@ -25,6 +25,13 @@ struct audio_buffer_ops {
 	 *	  OPTIONAL
 	 */
 	void (*free)(struct sof_audio_buffer *buffer);
+
+	/**
+	 * @brief clean all buffer data, set buffer positions to initial, leaving config as is
+	 *	  the procedure is to be called only when buffer is not in use
+	 *	  OPTIONAL
+	 */
+	void (*reset)(struct sof_audio_buffer *buffer);
 };
 
 /* base class for all buffers, all buffers must inherit from it */
@@ -266,5 +273,16 @@ void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bo
  * @brief free buffer and all allocated resources
  */
 void audio_buffer_free(struct sof_audio_buffer *buffer);
+
+/**
+ * @brief clean all buffer data, set buffer positions to initial, leaving config as is
+ *	  the procedure is to be called only when buffer is not in use
+ */
+static inline
+void audio_buffer_reset(struct sof_audio_buffer *buffer)
+{
+	if (buffer->ops->reset)
+		buffer->ops->reset(buffer);
+}
 
 #endif /* __SOF_AUDIO_BUFFER__ */
