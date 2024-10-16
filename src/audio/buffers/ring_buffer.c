@@ -19,14 +19,14 @@ DECLARE_TR_CTX(ring_buffer_tr, SOF_UUID(ring_buffer_uuid), LOG_LEVEL_INFO);
 
 static inline struct ring_buffer *ring_buffer_from_sink(struct sof_sink *sink)
 {
-	struct sof_audio_buffer *audio_buffer = sof_audo_buffer_from_sink(sink);
+	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_sink(sink);
 
 	return container_of(audio_buffer, struct ring_buffer, audio_buffer);
 }
 
 static inline struct ring_buffer *ring_buffer_from_source(struct sof_source *source)
 {
-	struct sof_audio_buffer *audio_buffer = sof_audo_buffer_from_source(source);
+	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_source(source);
 
 	return container_of(audio_buffer, struct ring_buffer, audio_buffer);
 }
