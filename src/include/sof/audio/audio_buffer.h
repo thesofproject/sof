@@ -221,6 +221,32 @@ struct sof_audio_stream_params *audio_buffer_get_stream_params(struct sof_audio_
 	return buffer->audio_stream_params;
 }
 
+/** set of functions for retrieve audio parameters */
+static inline enum sof_ipc_frame audio_buffer_get_valid_fmt(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->valid_sample_fmt;
+}
+
+static inline uint32_t audio_buffer_get_rate(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->rate;
+}
+
+static inline uint32_t audio_buffer_get_buffer_fmt(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->buffer_fmt;
+}
+
+static inline enum sof_ipc_frame audio_buffer_get_frm_fmt(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->frame_fmt;
+}
+
+static inline uint32_t audio_buffer_get_channels(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->channels;
+}
+
 /**
  * @brief return a pointer to struct sof_audio_buffer from sink pointer
  *	  NOTE! ensure that sink is really provided by sof_audio_buffer
