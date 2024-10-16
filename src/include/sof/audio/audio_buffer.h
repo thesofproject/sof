@@ -219,7 +219,7 @@ struct sof_audio_stream_params *audio_buffer_get_stream_params(struct sof_audio_
  *	  NOTE! ensure that sink is really provided by sof_audio_buffer
  *	  otherwise a random value will be returned
  */
-static inline struct sof_audio_buffer *sof_audo_buffer_from_sink(struct sof_sink *sink)
+static inline struct sof_audio_buffer *sof_audio_buffer_from_sink(struct sof_sink *sink)
 {
 	return container_of(sink, struct sof_audio_buffer, _sink_api);
 }
@@ -229,7 +229,7 @@ static inline struct sof_audio_buffer *sof_audo_buffer_from_sink(struct sof_sink
  *	  NOTE! ensure that source is really provided by sof_audio_buffer
  *	  otherwise a random value will be returned
  */
-static inline struct sof_audio_buffer *sof_audo_buffer_from_source(struct sof_source *source)
+static inline struct sof_audio_buffer *sof_audio_buffer_from_source(struct sof_source *source)
 {
 	return container_of(source, struct sof_audio_buffer, _source_api);
 }
