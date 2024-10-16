@@ -585,18 +585,19 @@ static int file_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *mod_data = &mod->priv;
+	struct module_config *cfg = &mod_data->cfg;
 	struct copier_data *ccd;
 	struct file_comp_data *cd;
 	int ret;
 
 #if CONFIG_IPC_MAJOR_4
 	const struct ipc4_file_module_cfg *module_cfg =
-		(const struct ipc4_file_module_cfg *)mod_data->cfg.init_data;
-
-	const struct ipc4_file_config *ipc_file = &module_cfg->config;
+		(const struct ipc4_file_module_cfg *)cfg->init_data;
+	const struct sof_file_config *ipc_file = &module_cfg->config;
+	const size_t init_data_size = sizeof(struct ipc4_file_module_cfg);
 #else
-	const struct ipc_comp_file *ipc_file =
-		(const struct ipc_comp_file *)mod_data->cfg.init_data;
+	const struct sof_file_config *ipc_file = (const struct sof_file_config *)cfg->init_data;
+	const size_t init_data_size = sizeof(struct sof_file_config);
 #endif
 
 	tb_debug_print("file_init()\n");
@@ -604,6 +605,11 @@ static int file_init(struct processing_module *mod)
 	ccd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*ccd));
 	if (!ccd)
 		return -ENOMEM;
+
+	if (cfg->size != init_data_size) {
+		fprintf(stderr, "error: missing file setup from init IPC.\n");
+		return -EINVAL;
+	}
 
 	mod_data->private = ccd;
 
@@ -615,6 +621,8 @@ static int file_init(struct processing_module *mod)
 	}
 
 	file_set_comp_data(ccd, cd);
+
+	memcpy_s(&cd->config, sizeof(cd->config), ipc_file, sizeof(*ipc_file));
 
 	/* default function for processing samples */
 	cd->file_func = file_default;
@@ -631,11 +639,8 @@ static int file_init(struct processing_module *mod)
 	cd->fs.f_format = get_file_format(cd->fs.fn);
 
 	/* set file comp mode */
-	cd->fs.mode = ipc_file->mode;
-	cd->rate = ipc_file->rate;
-	cd->channels = ipc_file->channels;
-	cd->frame_fmt = ipc_file->frame_fmt;
-	dev->direction = ipc_file->direction;
+	cd->fs.mode = cd->config.mode;
+	dev->direction = cd->config.direction;
 	dev->direction_set = true;
 
 	/* open file handle(s) depending on mode */
@@ -859,10 +864,10 @@ static int file_get_hw_params(struct comp_dev *dev,
 
 	tb_debug_print("file_hw_params()");
 	params->direction = dir;
-	params->rate = cd->rate;
-	params->channels = cd->channels;
+	params->rate = cd->config.rate;
+	params->channels = cd->config.channels;
 	params->buffer_fmt = 0;
-	params->frame_fmt = cd->frame_fmt;
+	params->frame_fmt = cd->config.frame_fmt;
 	return 0;
 }
 

@@ -50,14 +50,21 @@ struct file_state {
 	bool copy_timeout;
 };
 
+struct sof_file_config {
+	uint32_t rate;
+	uint32_t channels;
+	char *fn;
+	uint32_t mode;
+	uint32_t frame_fmt;
+	uint32_t direction;	/**< SOF_IPC_STREAM_ */
+} __attribute__((packed, aligned(4)));
+
 struct file_comp_data;
 
 /* file comp data */
 struct file_comp_data {
+	struct sof_file_config config;
 	struct file_state fs;
-	enum sof_ipc_frame frame_fmt;
-	uint32_t channels;
-	uint32_t rate;
 	int sample_container_bytes;
 	int (*file_func)(struct file_comp_data *cd, struct audio_stream *sink,
 			 struct audio_stream *source, uint32_t frames);

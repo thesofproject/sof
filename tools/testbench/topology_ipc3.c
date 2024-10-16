@@ -246,7 +246,7 @@ static int tb_register_src(struct testbench_prm *tp, struct tplg_context *ctx)
 
 /* load fileread component */
 static int tb_new_fileread(struct tplg_context *ctx,
-			   struct sof_ipc_comp_file *fileread)
+			   struct sof_ipc_comp_process *fileread)
 {
 	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
 	size_t total_array_size = 0;
@@ -287,14 +287,13 @@ static int tb_new_fileread(struct tplg_context *ctx,
 	}
 
 	/* configure fileread */
-	fileread->mode = FILE_READ;
 	fileread->comp.id = comp_id;
 
 	/* use fileread comp as scheduling comp */
-	fileread->size = sizeof(struct ipc_comp_file);
+	fileread->size = sizeof(*fileread);
 	fileread->comp.core = ctx->core_id;
-	fileread->comp.hdr.size = sizeof(struct sof_ipc_comp_file) + UUID_SIZE;
-	fileread->comp.type = SOF_COMP_FILEREAD;
+	fileread->comp.hdr.size = sizeof(*fileread) + UUID_SIZE;
+	fileread->comp.type = SOF_COMP_MODULE_ADAPTER;
 	fileread->comp.pipeline_id = ctx->pipeline_id;
 	fileread->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	fileread->comp.ext_data_length = UUID_SIZE;
@@ -303,7 +302,7 @@ static int tb_new_fileread(struct tplg_context *ctx,
 
 /* load filewrite component */
 static int tb_new_filewrite(struct tplg_context *ctx,
-			    struct sof_ipc_comp_file *filewrite)
+			    struct sof_ipc_comp_process *filewrite)
 {
 	struct snd_soc_tplg_vendor_array *array = &ctx->widget->priv.array[0];
 	size_t total_array_size = 0;
@@ -344,10 +343,9 @@ static int tb_new_filewrite(struct tplg_context *ctx,
 	/* configure filewrite */
 	filewrite->comp.core = ctx->core_id;
 	filewrite->comp.id = comp_id;
-	filewrite->mode = FILE_WRITE;
 	filewrite->size = sizeof(struct ipc_comp_file);
-	filewrite->comp.hdr.size = sizeof(struct sof_ipc_comp_file) + UUID_SIZE;
-	filewrite->comp.type = SOF_COMP_FILEWRITE;
+	filewrite->comp.hdr.size = sizeof(*filewrite) + UUID_SIZE;
+	filewrite->comp.type = SOF_COMP_MODULE_ADAPTER;
 	filewrite->comp.pipeline_id = ctx->pipeline_id;
 	filewrite->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	filewrite->comp.ext_data_length = UUID_SIZE;
@@ -359,7 +357,8 @@ static int tb_register_fileread(struct testbench_prm *tp,
 				struct tplg_context *ctx, int dir)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_comp_file *fileread;
+	struct sof_ipc_comp_process *fileread;
+	struct sof_file_config *config;
 	struct sof_uuid *file_uuid;
 	int ret;
 
@@ -373,35 +372,37 @@ static int tb_register_fileread(struct testbench_prm *tp,
 	if (ret < 0)
 		return ret;
 
+	file_uuid = (struct sof_uuid *)(fileread + 1);
+	memcpy(file_uuid, &tb_file_uuid, sizeof(*file_uuid));
+
 	/* configure fileread */
-	fileread->fn = strdup(tp->input_file[tp->input_file_index]);
+	config = (struct sof_file_config *)(file_uuid + 1);
+	config->fn = strdup(tp->input_file[tp->input_file_index]);
 	tp->fr[tp->input_file_index].id = ctx->comp_id;
 	tp->fr[tp->input_file_index].instance_id = ctx->comp_id;
 	tp->fr[tp->input_file_index].pipeline_id = ctx->pipeline_id;
 	tp->input_file_index++;
+	fileread->size = sizeof(*config);
 
 	/* use fileread comp as scheduling comp */
 	ctx->sched_id = ctx->comp_id;
 
 	/* Set format from testbench command line*/
-	fileread->rate = tp->fs_in;
-	fileread->channels = tp->channels_in;
-	fileread->frame_fmt = tp->frame_fmt;
-	fileread->direction = dir;
-
-	file_uuid = (struct sof_uuid *)((uint8_t *)fileread + sizeof(struct sof_ipc_comp_file));
-	memcpy(file_uuid, &tb_file_uuid, sizeof(*file_uuid));
+	config->rate = tp->fs_in;
+	config->channels = tp->channels_in;
+	config->frame_fmt = tp->frame_fmt;
+	config->direction = dir;
+	config->mode = FILE_READ;
 
 	/* create fileread component */
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(fileread)) < 0) {
 		fprintf(stderr, "error: file read\n");
-		free(fileread->fn);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	free(fileread->fn);
+	free(config->fn);
 	free(fileread);
-	return 0;
+	return ret;
 }
 
 /* load filewrite component */
@@ -409,7 +410,8 @@ static int tb_register_filewrite(struct testbench_prm *tp,
 				 struct tplg_context *ctx, int dir)
 {
 	struct sof *sof = ctx->sof;
-	struct sof_ipc_comp_file *filewrite;
+	struct sof_ipc_comp_process *filewrite;
+	struct sof_file_config *config;
 	struct sof_uuid *file_uuid;
 	int ret;
 
@@ -421,37 +423,40 @@ static int tb_register_filewrite(struct testbench_prm *tp,
 	if (ret < 0)
 		return ret;
 
+	file_uuid = (struct sof_uuid *)(filewrite + 1);
+	memcpy(file_uuid, &tb_file_uuid, sizeof(*file_uuid));
+
 	/* configure filewrite (multiple output files are supported.) */
+	config = (struct sof_file_config *)(file_uuid + 1);
+	filewrite->size = sizeof(*config);
 	if (!tp->output_file[tp->output_file_index]) {
 		fprintf(stderr, "error: output[%d] file name is null\n",
 			tp->output_file_index);
 		return -EINVAL;
 	}
-	filewrite->fn = strdup(tp->output_file[tp->output_file_index]);
+
+	config->fn = strdup(tp->output_file[tp->output_file_index]);
 	tp->fw[tp->output_file_index].id = ctx->comp_id;
 	tp->fw[tp->output_file_index].instance_id = ctx->comp_id;
 	tp->fw[tp->output_file_index].pipeline_id = ctx->pipeline_id;
 	tp->output_file_index++;
 
 	/* Set format from testbench command line*/
-	filewrite->rate = tp->fs_out;
-	filewrite->channels = tp->channels_out;
-	filewrite->frame_fmt = tp->frame_fmt;
-	filewrite->direction = dir;
-
-	file_uuid = (struct sof_uuid *)((uint8_t *)filewrite + sizeof(struct sof_ipc_comp_file));
-	memcpy(file_uuid, &tb_file_uuid, sizeof(*file_uuid));
+	config->rate = tp->fs_out;
+	config->channels = tp->channels_out;
+	config->frame_fmt = tp->frame_fmt;
+	config->direction = dir;
+	config->mode = FILE_WRITE;
 
 	/* create filewrite component */
 	if (ipc_comp_new(sof->ipc, ipc_to_comp_new(filewrite)) < 0) {
 		fprintf(stderr, "error: new file write\n");
-		free(filewrite->fn);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	free(filewrite->fn);
+	free(config->fn);
 	free(filewrite);
-	return 0;
+	return ret;
 }
 
 static int tb_register_aif_in_out(struct testbench_prm *tb,

@@ -200,9 +200,6 @@ union ipc_config_specific {
 static int comp_specific_builder(struct sof_ipc_comp *comp,
 				 union ipc_config_specific *config)
 {
-#if CONFIG_LIBRARY
-	struct sof_ipc_comp_file *file = (struct sof_ipc_comp_file *)comp;
-#endif
 	struct sof_ipc_comp_host *host = (struct sof_ipc_comp_host *)comp;
 	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)comp;
 	struct sof_ipc_comp_volume *vol = (struct sof_ipc_comp_volume *)comp;
@@ -214,27 +211,6 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 	memset(config, 0, sizeof(*config));
 
 	switch (comp->type) {
-#if CONFIG_LIBRARY
-	/* test bench maps host and DAIs to a file */
-	case SOF_COMP_FILEREAD:
-	case SOF_COMP_FILEWRITE:
-		if (IPC_TAIL_IS_SIZE_INVALID(*file))
-			return -EBADMSG;
-
-		config->file.channels = file->channels;
-		config->file.fn = file->fn;
-		config->file.frame_fmt = file->frame_fmt;
-		config->file.mode = file->mode;
-		config->file.rate = file->rate;
-		config->file.direction = file->direction;
-
-		/* For module_adapter_init_data() ipc_module_adapter compatibility */
-		config->file.module_header.type = proc->type;
-		config->file.module_header.size = proc->size;
-		config->file.module_header.data = (uint8_t *)proc->data -
-			sizeof(struct ipc_config_process);
-		break;
-#endif
 	case SOF_COMP_HOST:
 	case SOF_COMP_SG_HOST:
 		if (IPC_TAIL_IS_SIZE_INVALID(*host))
@@ -299,6 +275,8 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 	case SOF_COMP_SMART_AMP:
 	case SOF_COMP_MODULE_ADAPTER:
 	case SOF_COMP_NONE:
+	case SOF_COMP_FILEREAD:
+	case SOF_COMP_FILEWRITE:
 		if (IPC_TAIL_IS_SIZE_INVALID(*proc))
 			return -EBADMSG;
 
