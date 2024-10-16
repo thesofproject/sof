@@ -386,6 +386,13 @@ static int ipc_stream_pcm_free(uint32_t header)
 		return -EINVAL;
 	}
 
+	/* pipeline_reset() crashes if source_comp is NULL */
+	if (!pcm_dev->cd->pipeline->source_comp) {
+		ipc_cmd_err(&ipc_tr, "ipc: comp %d source comp not found",
+			    free_req.comp_id);
+		return -EINVAL;
+	}
+
 	/* reset the pipeline */
 	ret = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 
