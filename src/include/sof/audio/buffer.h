@@ -200,14 +200,14 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 /* legacy wrappers, to be removed. Don't use them if possible */
 static inline struct comp_buffer *comp_buffer_get_from_source(struct sof_source *source)
 {
-	struct sof_audio_buffer *audio_buffer = sof_audo_buffer_from_source(source);
+	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_source(source);
 
 	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
 }
 
 static inline struct comp_buffer *comp_buffer_get_from_sink(struct sof_sink *sink)
 {
-	struct sof_audio_buffer *audio_buffer = sof_audo_buffer_from_sink(sink);
+	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_sink(sink);
 
 	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
 }
