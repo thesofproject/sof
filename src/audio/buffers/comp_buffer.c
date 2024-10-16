@@ -187,7 +187,7 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 	rfree(buffer->stream.addr);
 }
 
-static const struct source_ops comp_buffer_source_ops = {
+static struct source_ops comp_buffer_source_ops = {
 	.get_data_available = comp_buffer_get_data_available,
 	.get_data = comp_buffer_get_data,
 	.release_data = comp_buffer_release_data,
@@ -196,7 +196,7 @@ static const struct source_ops comp_buffer_source_ops = {
 	.set_alignment_constants = comp_buffer_source_set_alignment_constants
 };
 
-static const struct sink_ops comp_buffer_sink_ops = {
+static struct sink_ops comp_buffer_sink_ops = {
 	.get_free_size = comp_buffer_get_free_size,
 	.get_buffer = comp_buffer_get_buffer,
 	.commit_buffer = comp_buffer_commit_buffer,
