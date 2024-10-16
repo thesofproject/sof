@@ -181,6 +181,20 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 	return dev;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static struct comp_dev *selector_new_shim(const struct comp_driver *drv,
+					  const struct comp_ipc_config *config,
+					  const void *spec)
+{
+	struct ipc_config_process proc;
+
+	if (comp_sof_process_to_ipc_process(spec, &proc) < 0)
+		return NULL;
+
+	return selector_new(drv, config, &proc);
+}
+#endif
+
 /**
  * \brief Frees selector component.
  * \param[in,out] dev Selector base component device.
