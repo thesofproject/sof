@@ -239,60 +239,16 @@ static int ring_buffer_release_data(struct sof_source *source, size_t free_size)
 	return 0;
 }
 
-static int ring_buffer_set_ipc_params(struct ring_buffer *ring_buffer,
-				      struct sof_ipc_stream_params *params,
-				      bool force_update)
-{
-	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
-
-	if (audio_buffer_hw_params_configured(&ring_buffer->audio_buffer) && !force_update)
-		return 0;
-
-	struct sof_audio_stream_params *audio_stream_params =
-		audio_buffer_get_stream_params(&ring_buffer->audio_buffer);
-
-	audio_stream_params->frame_fmt = params->frame_fmt;
-	audio_stream_params->rate = params->rate;
-	audio_stream_params->channels = params->channels;
-	audio_stream_params->buffer_fmt = params->buffer_fmt;
-
-	audio_buffer_set_hw_params_configured(&ring_buffer->audio_buffer);
-
-	return 0;
-}
-
-static int ring_buffer_set_ipc_params_source(struct sof_source *source,
-					     struct sof_ipc_stream_params *params,
-					     bool force_update)
-{
-	struct ring_buffer *ring_buffer = ring_buffer_from_source(source);
-
-	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
-	return ring_buffer_set_ipc_params(ring_buffer, params, force_update);
-}
-
-static int ring_buffer_set_ipc_params_sink(struct sof_sink *sink,
-					   struct sof_ipc_stream_params *params,
-					   bool force_update)
-{
-	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
-
-	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
-	return ring_buffer_set_ipc_params(ring_buffer, params, force_update);
-}
-
 static struct source_ops ring_buffer_source_ops = {
 	.get_data_available = ring_buffer_get_data_available,
 	.get_data = ring_buffer_get_data,
 	.release_data = ring_buffer_release_data,
-	.audio_set_ipc_params = ring_buffer_set_ipc_params_source,
 };
 
 static struct sink_ops ring_buffer_sink_ops = {
 	.get_free_size = ring_buffer_get_free_size,
 	.get_buffer = ring_buffer_get_buffer,
 	.commit_buffer = ring_buffer_commit_buffer,
-	.audio_set_ipc_params = ring_buffer_set_ipc_params_sink,
 };
 
 static const struct audio_buffer_ops audio_buffer_ops = {
