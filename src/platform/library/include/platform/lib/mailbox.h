@@ -59,6 +59,11 @@ static inline uint32_t mailbox_sw_reg_read(size_t offset)
 	return 0;
 }
 
+static inline uint64_t mailbox_sw_reg_read64(size_t offset)
+{
+	return 0;
+}
+
 #endif /* __PLATFORM_LIB_MAILBOX_H__ */
 
 #else
