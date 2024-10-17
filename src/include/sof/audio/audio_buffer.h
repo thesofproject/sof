@@ -25,6 +25,40 @@ struct audio_buffer_ops {
 	 *	  OPTIONAL
 	 */
 	void (*free)(struct sof_audio_buffer *buffer);
+
+	/**
+	 * @brief clean all buffer data leaving config as is
+	 *	  the procedure is to be called only when buffer is not in use
+	 *	  OPTIONAL
+	 */
+	void (*clean)(struct sof_audio_buffer *buffer);
+
+
+	/**
+	 * OPTIONAL: Notification to the sink implementation about changes in audio format
+	 *
+	 * Once any of *audio_stream_params elements changes, the implementation of
+	 * sink may need to perform some extra operations.
+	 * This callback will be called immediately after any change
+	 *
+	 * @retval 0 if success, negative if new parameters are not supported
+	 */
+	int (*on_audio_format_set)(struct sof_audio_buffer *buffer);
+
+	/**
+	 * OPTIONAL
+	 * see sink_set_params comments
+	 */
+	int (*audio_set_ipc_params)(struct sof_audio_buffer *buffer,
+				    struct sof_ipc_stream_params *params, bool force_update);
+
+	/**
+	 * OPTIONAL
+	 * see comment for sink_set_alignment_constants
+	 */
+	int (*set_alignment_constants)(struct sof_audio_buffer *buffer,
+				       const uint32_t byte_align,
+				       const uint32_t frame_align_req);
 };
 
 /* base class for all buffers, all buffers must inherit from it */
@@ -214,12 +248,38 @@ struct sof_audio_stream_params *audio_buffer_get_stream_params(struct sof_audio_
 	return buffer->audio_stream_params;
 }
 
+/** set of functions for retrieve audio parameters */
+static inline enum sof_ipc_frame audio_buffer_get_valid_fmt(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->valid_sample_fmt;
+}
+
+static inline uint32_t audio_buffer_get_rate(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->rate;
+}
+
+static inline uint32_t audio_buffer_get_buffer_fmt(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->buffer_fmt;
+}
+
+static inline enum sof_ipc_frame audio_buffer_get_frm_fmt(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->frame_fmt;
+}
+
+static inline uint32_t audio_buffer_get_channels(struct sof_audio_buffer *buffer)
+{
+	return audio_buffer_get_stream_params(buffer)->channels;
+}
+
 /**
  * @brief return a pointer to struct sof_audio_buffer from sink pointer
  *	  NOTE! ensure that sink is really provided by sof_audio_buffer
  *	  otherwise a random value will be returned
  */
-static inline struct sof_audio_buffer *sof_audo_buffer_from_sink(struct sof_sink *sink)
+static inline struct sof_audio_buffer *sof_audio_buffer_from_sink(struct sof_sink *sink)
 {
 	return container_of(sink, struct sof_audio_buffer, _sink_api);
 }
@@ -229,7 +289,7 @@ static inline struct sof_audio_buffer *sof_audo_buffer_from_sink(struct sof_sink
  *	  NOTE! ensure that source is really provided by sof_audio_buffer
  *	  otherwise a random value will be returned
  */
-static inline struct sof_audio_buffer *sof_audo_buffer_from_source(struct sof_source *source)
+static inline struct sof_audio_buffer *sof_audio_buffer_from_source(struct sof_source *source)
 {
 	return container_of(source, struct sof_audio_buffer, _source_api);
 }
@@ -245,26 +305,25 @@ static inline struct sof_audio_buffer *sof_audo_buffer_from_source(struct sof_so
  * @param audio_buffer_ops pointer to required buffer virtual methods implementation
  * @param audio_stream_params pointer to audio stream (currently kept in buffer implementation)
  */
-static inline
 void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bool is_shared,
-		       const struct source_ops *source_ops, const struct sink_ops *sink_ops,
+		       struct source_ops *source_ops, struct sink_ops *sink_ops,
 		       const struct audio_buffer_ops *audio_buffer_ops,
-		       struct sof_audio_stream_params *audio_stream_params)
-{
-	CORE_CHECK_STRUCT_INIT(&buffer, is_shared);
-	buffer->buffer_type = buffer_type;
-	buffer->ops = audio_buffer_ops;
-	buffer->audio_stream_params = audio_stream_params;
-	buffer->is_shared = is_shared;
-	source_init(audio_buffer_get_source(buffer), source_ops,
-		    audio_buffer_get_stream_params(buffer));
-	sink_init(audio_buffer_get_sink(buffer), sink_ops,
-		  audio_buffer_get_stream_params(buffer));
-}
+		       struct sof_audio_stream_params *audio_stream_params);
 
 /**
  * @brief free buffer and all allocated resources
  */
 void audio_buffer_free(struct sof_audio_buffer *buffer);
+
+/**
+ * @brief clean all buffer data leaving config as is
+ *	  the procedure is to be called only when buffer is not in use
+ */
+static inline
+void audio_buffer_clean(struct sof_audio_buffer *buffer)
+{
+	if (buffer->ops->clean)
+		buffer->ops->clean(buffer);
+}
 
 #endif /* __SOF_AUDIO_BUFFER__ */
