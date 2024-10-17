@@ -321,12 +321,19 @@ static int pipeline_comp_reset(struct comp_dev *current,
 {
 	struct pipeline *p = ctx->comp_data;
 	struct pipeline *p_current = current->pipeline;
-	int is_single_ppl = comp_is_single_pipeline(current, p->source_comp);
 	int is_same_sched = pipeline_is_same_sched_comp(p_current, p);
+	int is_single_ppl;
 	int err;
 
 	pipe_dbg(p_current, "pipeline_comp_reset(), current->comp.id = 0x%x, dir = %u",
 		 dev_comp_id(current), dir);
+
+	if (!p->source_comp) {
+		pipe_err(p, "pipeline_comp_reset(): source_comp is NULL");
+		return -EINVAL;
+	}
+
+	is_single_ppl = comp_is_single_pipeline(current, p->source_comp);
 
 	/*
 	 * Reset should propagate to the connected pipelines, which need to be
