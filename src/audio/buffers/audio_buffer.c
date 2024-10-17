@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <rtos/alloc.h>
+#include <ipc/stream.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
