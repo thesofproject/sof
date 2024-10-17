@@ -92,7 +92,7 @@ export_xtensa_setup()
 {
     export_dir=$TESTBENCH_DIR/$BUILD_DIR_NAME
     export_script=$export_dir/xtrun_env.sh
-    xtbench=$export_dir/testbench
+    xtbench=$export_dir/sof-testbench4
     xtbench_run="XTENSA_CORE=$XTENSA_CORE \$XTENSA_TOOLS_ROOT/$install_bin/xt-run $xtbench"
     cat <<EOFSETUP > "$export_script"
 export XTENSA_TOOLS_ROOT=$XTENSA_TOOLS_ROOT
