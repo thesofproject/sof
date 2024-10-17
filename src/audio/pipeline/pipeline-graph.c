@@ -409,17 +409,7 @@ int pipeline_for_each_comp(struct comp_dev *current,
 			continue;
 
 		/* don't go back to the buffer which already walked */
-		/*
-		 * Note, that this access must be performed unlocked via
-		 * uncached address. Trying to lock before checking the flag
-		 * understandably leads to a deadlock when this function is
-		 * called recursively from .comp_func() below. We do it in a
-		 * safe way: this flag must *only* be accessed in this function
-		 * only in these three cases: testing, setting and clearing.
-		 * Note, that it is also assumed that buffers aren't shared
-		 * across CPUs. See further comment below.
-		 */
-		dcache_writeback_invalidate_region(uncache_to_cache(buffer), sizeof(*buffer));
+
 		if (buffer->audio_buffer.walking)
 			continue;
 
