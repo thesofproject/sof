@@ -72,10 +72,6 @@ void mailbox_dspbox_read(void *dest, size_t dest_size,
 #define mailbox_hostbox_write(_offset, _src, _bytes) \
 	memcpy((char *)ipc->comp_data + _offset, _src, _bytes)
 
-static inline uint64_t mailbox_sw_reg_read64(uint32_t offset)
-{
-	return 0;
-}
 #else
 
 static inline
