@@ -64,33 +64,6 @@ static int comp_buffer_release_data(struct sof_source *source, size_t free_size)
 	return 0;
 }
 
-static int comp_buffer_set_ipc_params_source(struct sof_source *source,
-					     struct sof_ipc_stream_params *params,
-					     bool force_update)
-{
-	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
-
-	return buffer_set_params(buffer, params, force_update);
-}
-
-static int comp_buffer_source_format_set(struct sof_source *source)
-{
-	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
-
-	audio_stream_recalc_align(&buffer->stream);
-	return 0;
-}
-
-static int comp_buffer_source_set_alignment_constants(struct sof_source *source,
-						      const uint32_t byte_align,
-						      const uint32_t frame_align_req)
-{
-	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
-
-	audio_stream_set_align(byte_align, frame_align_req, &buffer->stream);
-	return 0;
-}
-
 static size_t comp_buffer_get_free_size(struct sof_sink *sink)
 {
 	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
@@ -125,28 +98,28 @@ static int comp_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
 	return 0;
 }
 
-static int comp_buffer_set_ipc_params_sink(struct sof_sink *sink,
-					   struct sof_ipc_stream_params *params,
-					   bool force_update)
+static int comp_buffer_set_ipc_params(struct sof_audio_buffer *audio_buffer,
+				      struct sof_ipc_stream_params *params,
+				      bool force_update)
 {
-	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
 
 	return buffer_set_params(buffer, params, force_update);
 }
 
-static int comp_buffer_sink_format_set(struct sof_sink *sink)
+static int comp_buffer_format_set(struct sof_audio_buffer *audio_buffer)
 {
-	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
 
 	audio_stream_recalc_align(&buffer->stream);
 	return 0;
 }
 
-static int comp_buffer_sink_set_alignment_constants(struct sof_sink *sink,
-						    const uint32_t byte_align,
-						    const uint32_t frame_align_req)
+static int comp_buffer_set_alignment_constants(struct sof_audio_buffer *audio_buffer,
+					       const uint32_t byte_align,
+					       const uint32_t frame_align_req)
 {
-	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
 
 	audio_stream_set_align(byte_align, frame_align_req, &buffer->stream);
 	return 0;
@@ -191,23 +164,20 @@ static struct source_ops comp_buffer_source_ops = {
 	.get_data_available = comp_buffer_get_data_available,
 	.get_data = comp_buffer_get_data,
 	.release_data = comp_buffer_release_data,
-	.audio_set_ipc_params = comp_buffer_set_ipc_params_source,
-	.on_audio_format_set = comp_buffer_source_format_set,
-	.set_alignment_constants = comp_buffer_source_set_alignment_constants
 };
 
 static struct sink_ops comp_buffer_sink_ops = {
 	.get_free_size = comp_buffer_get_free_size,
 	.get_buffer = comp_buffer_get_buffer,
 	.commit_buffer = comp_buffer_commit_buffer,
-	.audio_set_ipc_params = comp_buffer_set_ipc_params_sink,
-	.on_audio_format_set = comp_buffer_sink_format_set,
-	.set_alignment_constants = comp_buffer_sink_set_alignment_constants
 };
 
 static const struct audio_buffer_ops audio_buffer_ops = {
 	.free = comp_buffer_free,
 	.reset = comp_buffer_reset,
+	.audio_set_ipc_params = comp_buffer_set_ipc_params,
+	.on_audio_format_set = comp_buffer_format_set,
+	.set_alignment_constants = comp_buffer_set_alignment_constants
 };
 
 static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, uint32_t caps,
