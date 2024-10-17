@@ -35,7 +35,7 @@ DECLARE_TR_CTX(irq_tr, SOF_UUID(irq_uuid), LOG_LEVEL_INFO);
  * handling go through interrupt-irqsteer.c define macros to
  * rename the duplicated functions.
  */
-#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+#if defined(__ZEPHYR__) && (defined(CONFIG_IMX) || defined(CONFIG_AMD))
 #define interrupt_get_irq mux_interrupt_get_irq
 #define interrupt_register mux_interrupt_register
 #define interrupt_unregister mux_interrupt_unregister
@@ -377,7 +377,7 @@ static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 	/* no parent means we are registering DSP internal IRQ */
 	cascade = interrupt_get_parent(irq);
 	if (!cascade) {
-#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+#if defined(__ZEPHYR__) && (defined(CONFIG_IMX) || defined(CONFIG_AMD))
 /* undefine the macro so that interrupt_register()
  * is resolved to the one from wrapper.c
  */
@@ -410,7 +410,7 @@ static void interrupt_unregister_internal(uint32_t irq, const void *arg,
 	/* no parent means we are unregistering DSP internal IRQ */
 	cascade = interrupt_get_parent(irq);
 	if (!cascade) {
-#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+#if defined(__ZEPHYR__) && (defined(CONFIG_IMX) || defined(CONFIG_AMD))
 /* undefine the macro so that interrupt_unregister()
  * is resolved to the one from wrapper.c
  */
@@ -437,7 +437,7 @@ uint32_t interrupt_enable(uint32_t irq, void *arg)
 	if (cascade)
 		return irq_enable_child(cascade, irq, arg);
 
-#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+#if defined(__ZEPHYR__) && (defined(CONFIG_IMX) || defined(CONFIG_AMD))
 /* undefine the macro so that interrupt_enable()
  * is resolved to the one from wrapper.c
  */
@@ -458,7 +458,7 @@ uint32_t interrupt_disable(uint32_t irq, void *arg)
 	if (cascade)
 		return irq_disable_child(cascade, irq, arg);
 
-#if defined(__ZEPHYR__) && defined(CONFIG_IMX)
+#if defined(__ZEPHYR__) && (defined(CONFIG_IMX) || defined(CONFIG_AMD))
 /* undefine the macro so that interrupt_disable()
  * is resolved to the one from wrapper.c
  */
