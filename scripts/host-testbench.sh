@@ -50,7 +50,7 @@ function die() {
 }
 
 process_test_cmd() {
-  octave -q --eval "pkg load signal io; [n_fail]=process_test('$1', $2, $3, $4, $5);exit(n_fail)"
+  octave -q --eval "pkg load signal; [n_fail]=process_test('$1', $2, $3, $4, $5);exit(n_fail)"
 }
 
 # function test_component()
@@ -86,17 +86,17 @@ head -c ${INPUT_FILE_SIZE} < /dev/zero > zeros_in.raw
 FullTest=${FullTest:-0}
 
 # test with volume
-test_component volume 16 16 48000 "$FullTest"
-test_component volume 24 24 48000 "$FullTest"
-test_component volume 32 32 48000 "$FullTest"
+test_component gain 16 16 48000 "$FullTest"
+test_component gain 24 24 48000 "$FullTest"
+test_component gain 32 32 48000 "$FullTest"
 
 # test with eq-iir
-test_component eq-iir 16 16 48000 "$FullTest"
-test_component eq-iir 24 24 48000 "$FullTest"
-test_component eq-iir 32 32 48000 "$FullTest"
+test_component eqiir 16 16 48000 "$FullTest"
+test_component eqiir 24 24 48000 "$FullTest"
+test_component eqiir 32 32 48000 "$FullTest"
 
 # test with eq-fir
-test_component eq-fir 32 32 48000 "$FullTest"
+test_component eqfir 32 32 48000 "$FullTest"
 
 # test with dcblock
 test_component dcblock 32 32 48000 "$FullTest"
@@ -105,7 +105,7 @@ test_component dcblock 32 32 48000 "$FullTest"
 test_component drc 32 32 48000 "$FullTest"
 
 # test with multiband-drc
-test_component multiband-drc 32 32 48000 "$FullTest"
+test_component drc_multiband 32 32 48000 "$FullTest"
 
 # test with src
 test_component src 24 24 48000 "$FullTest"
