@@ -189,6 +189,12 @@ HDMI_IN_CAPTURE=true"
 NHLT_BIN=nhlt-sof-mtl-hdmi-ssp02.bin,HEADSET_CODEC=false,HDMI_IN_CAPTURE=true,\
 HDMI_IN_1_ID=0,HDMI_IN_2_ID=1"
 
+#ES83x6 codec alone without HDMI-in capture
+"cavs-es83x6\;sof-mtl-es83x6-ssp1\;PLATFORM=mtl,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-mtl-es83x6-ssp1.bin,HEADSET_SSP_DAI_INDEX=1,\
+HEADSET_CODEC=true,HEADSET_CODEC_NAME=SSP1-Codec,HDMI1_ID=3,HDMI2_ID=4,HDMI3_ID=5,\
+HDMI_IN_CAPTURE=false"
+
 # SDW + DMIC + HDMI
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
 PDM1_MIC_B_ENABLE=1,DMIC0_ID=3,DMIC1_ID=4,\
