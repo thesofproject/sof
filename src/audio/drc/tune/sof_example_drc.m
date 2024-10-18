@@ -1,6 +1,6 @@
 function sof_example_drc()
 
-sof_drc_paths(1);
+sof_drc_paths(true);
 
 % The parameters of the DRC compressor
 % enabled: 1 to enable the compressor, 0 to disable it
@@ -47,7 +47,7 @@ params.ratio = 10;
 params.post_gain = 0;
 drc_coefs_and_config_export(params, 'dmic_default');
 
-sof_drc_paths(0);
+sof_drc_paths(false);
 
 end
 

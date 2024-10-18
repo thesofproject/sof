@@ -1,4 +1,4 @@
-function example_multiband_drc()
+function sof_example_multiband_drc()
 
 prm.name = "default";
 prm.sample_rate = 48000;
@@ -19,7 +19,7 @@ end
 
 function export_multiband_drc(prm)
 
-multiband_drc_paths(true);
+sof_multiband_drc_paths(true);
 
 % Set the parameters here
 sof_tools = '../../../../tools';
@@ -121,34 +121,34 @@ drc_params(4).band_lower_freq = prm.band_lower_freq(4) / nyquist;
 % Generate Emphasis/Deemphasis IIR filter quantized coefs struct from parameters
 
 
-[emp_coefs, deemp_coefs] = iir_gen_quant_coefs(iir_params);
+[emp_coefs, deemp_coefs] = sof_iir_gen_quant_coefs(iir_params);
 
 % Generate Crossover quantized coefs struct from parameters
-crossover_coefs = crossover_gen_quant_coefs(num_bands, sample_rate, ...
-					    drc_params(2).band_lower_freq, ...
-					    drc_params(3).band_lower_freq, ...
-					    drc_params(4).band_lower_freq);
+crossover_coefs = sof_crossover_gen_quant_coefs(num_bands, sample_rate, ...
+						drc_params(2).band_lower_freq, ...
+						drc_params(3).band_lower_freq, ...
+						drc_params(4).band_lower_freq);
 
 % Generate DRC quantized coefs struct from parameters
-drc_coefs = drc_gen_quant_coefs(num_bands, sample_rate, drc_params);
+drc_coefs = sof_drc_gen_quant_coefs(num_bands, sample_rate, drc_params);
 
 % Generate output files
 
 % Convert quantized coefs structs to binary blob
-blob8 = multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
-				 deemp_coefs, crossover_coefs, drc_coefs, ...
-				 endian, 3);
-blob8_ipc4 = multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
-				      deemp_coefs, crossover_coefs, drc_coefs, ...
-				      endian, 4);
+blob8 = sof_multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
+				     deemp_coefs, crossover_coefs, drc_coefs, ...
+				     endian, 3);
+blob8_ipc4 = sof_multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
+					  deemp_coefs, crossover_coefs, drc_coefs, ...
+					  endian, 4);
 
 tplg_write(tplg1_fn, blob8, "MULTIBAND_DRC");
-tplg2_write(tplg2_fn, blob8_ipc4, "multiband_drc_config", "Exported with script example_multiband_drc.m");
+tplg2_write(tplg2_fn, blob8_ipc4, "multiband_drc_config", "Exported with script sof_example_multiband_drc.m");
 sof_ucm_blob_write(blob3_fn, blob8);
 alsactl_write(alsa3_fn, blob8);
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
 alsactl_write(alsa4_fn, blob8_ipc4);
 
-multiband_drc_paths(false);
+sof_multiband_drc_paths(false);
 
 end
