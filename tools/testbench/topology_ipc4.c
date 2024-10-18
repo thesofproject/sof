@@ -905,7 +905,7 @@ int tb_new_pga(struct testbench_prm *tp)
 
 	/* skip kcontrols for now */
 	ret = tplg_create_controls(ctx, ctx->widget->num_kcontrols, tplg_ctl,
-				   ctx->hdr->payload_size, &volume);
+				   ctx->hdr->payload_size, comp_info);
 	if (ret < 0) {
 		fprintf(stderr, "error: loading controls\n");
 		goto out;
