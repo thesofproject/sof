@@ -1,4 +1,4 @@
-function [emp_coefs, deemp_coefs] = iir_gen_quant_coefs(params)
+function [emp_coefs, deemp_coefs] = sof_iir_gen_quant_coefs(params)
 
 stage_gain = params.stage_gain;
 stage_ratio = params.stage_ratio;
@@ -79,8 +79,8 @@ qf_gain = 14;
 quant_coefs = cell(1, 2);
 for i = 1:length(coefs)
 	coef = cell2mat(coefs(i));
-	quant_ab = eq_coef_quant(coef(1:5), bits_iir, qf_iir);
-	quant_gain = eq_coef_quant(coef(7), bits_gain, qf_gain);
+	quant_ab = sof_eq_coef_quant(coef(1:5), bits_iir, qf_iir);
+	quant_gain = sof_eq_coef_quant(coef(7), bits_gain, qf_gain);
 	quant_coefs(i) = [quant_ab coef(6) quant_gain];
 end
 

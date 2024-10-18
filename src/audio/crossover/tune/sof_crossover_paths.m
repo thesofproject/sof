@@ -10,9 +10,7 @@ function sof_crossover_paths(enable)
 % Copyright (c) 2024, Intel Corporation. All rights reserved.
 
 	common = '../../../../tools/tune/common';
-	eq = '../../../../tools/tune/eq';
-	# After #9187 merge use this:
-	# eq = '../../eq_iir/tune';
+	eq = '../../eq_iir/tune';
 	if enable
 		addpath(common);
 		addpath(eq);

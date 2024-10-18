@@ -10,10 +10,7 @@ function sof_drc_paths(enable)
 % Copyright (c) 2024, Intel Corporation. All rights reserved.
 
 	common = '../../../../tools/tune/common';
-	% After #9187 use this
-	%eq = '../../eq_iir/tune';
-	% and remove this
-	eq = '../../../../tools/tune/eq';
+	eq = '../../eq_iir/tune';
 	if enable
 		addpath(common);
 		addpath(eq);
