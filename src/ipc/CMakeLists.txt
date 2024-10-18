@@ -15,9 +15,8 @@ add_local_sources(sof
 is_zephyr(it_is)
 if(it_is) ###  Zephyr ###
 
-zephyr_library_sources(
-	dma-copy.c
-)
+# dma-copy only used for dma-trace
+zephyr_library_sources_ifdef(CONFIG_TRACE dma-copy.c)
 
 if (CONFIG_SOC_SERIES_INTEL_CAVS_V25 OR CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	zephyr_library_sources(
