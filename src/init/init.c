@@ -34,7 +34,7 @@
 #include <ipc/trace.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/fw_reg.h>
-#include <platform/lib/mailbox.h>
+#include <sof/lib/mailbox.h>
 #endif
 #ifdef CONFIG_ZEPHYR_LOG
 #include <zephyr/logging/log_ctrl.h>
