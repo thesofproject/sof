@@ -8,6 +8,7 @@
 
 #include <rtos/bit.h>
 #include <rtos/string.h>
+#include <sof/lib/memory.h> /* PLATFORM_DCACHE_ALIGN */
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 
