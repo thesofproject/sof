@@ -96,7 +96,7 @@ end
 
 % Generate Emphasis/Deemphasis IIR filter quantized coefs struct from parameters
 
-[emp_coefs, deemp_coefs] = sof_iir_gen_quant_coefs(iir_params);
+[emp_coefs, deemp_coefs] = sof_iir_gen_quant_coefs(iir_params, sample_rate, enable_emp_deemp);
 
 % Generate Crossover quantized coefs struct from parameters
 crossover_coefs = sof_crossover_gen_quant_coefs(num_bands, sample_rate, ...
