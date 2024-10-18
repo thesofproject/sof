@@ -1,4 +1,4 @@
-function [emp_coefs, deemp_coefs] = sof_iir_gen_quant_coefs(params)
+function [emp_coefs, deemp_coefs] = sof_iir_gen_quant_coefs(params, sample_rate, enable)
 
 stage_gain = params.stage_gain;
 stage_ratio = params.stage_ratio;
@@ -19,9 +19,10 @@ anchor_freq = anchor_freq / (stage_ratio * stage_ratio);
 % Adjust the stage gain (push gains to the last stage) of emphasis filter
 [emp(1), emp(2)] = stage_gain_adjust(emp(1), emp(2));
 
-% Print emp and deemp
-%emp
-%deemp
+% Plot emp and deemp
+if enable
+	plot_emp_deem(emp, deemp, sample_rate);
+end
 
 % Convert the coefficients to values usable with SOF
 emp_coefs = iir_coef_quant(emp);
@@ -110,4 +111,48 @@ while (abs(gain) >= max_abs_val)
 	rshift = rshift - 1; % left-shift in shift stage
 end
 
+end
+
+function plot_emp_deem(emp, deemp, fs)
+
+f = logspace(log10(10), log10(fs/2), 100);
+
+[eb1, ea1] = get_biquad(cell2mat(emp(1)));
+[eb2, ea2] = get_biquad(cell2mat(emp(2)));
+eb = conv(eb1, eb2);
+ea = conv(ea1, ea2);
+he = freqz(eb, ea, f, fs);
+
+[db1, da1] = get_biquad(cell2mat(deemp(1)));
+[db2, da2] = get_biquad(cell2mat(deemp(2)));
+db = conv(db1, db2);
+da = conv(da1, da2);
+hd = freqz(db, da, f, fs);
+hed = he .* hd;
+
+figure
+subplot(3,1,1);
+semilogx(f, 20*log10(he));
+grid on;
+ylabel('Emp (dB)');
+title('Emphasis, de-emphasis responses');
+subplot(3,1,2);
+semilogx(f, 20*log10(hd));
+grid on;
+ylabel('De-emp (dB)');
+subplot(3,1,3);
+semilogx(f, 20*log10(hed));
+grid on;
+ylabel('Combined (dB)')
+xlabel('Frequency (Hz)');
+
+end
+
+function [b, a] = get_biquad(bq)
+
+	a = [1 -bq(2:-1:1)];
+	b = [bq(5:-1:3)];
+	shift = bq(6);
+	gain = bq(7) * 2^(-shift);
+	b = b * gain;
 end
