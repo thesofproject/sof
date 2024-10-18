@@ -1,7 +1,7 @@
-function blob8 = multiband_drc_build_blob(num_bands, enable_emp_deemp,
-					  emp_coefs, deemp_coefs,
-					  crossover_coefs, drc_coefs,
-					  endian, ipc_ver)
+function blob8 = sof_multiband_drc_build_blob(num_bands, enable_emp_deemp,
+					      emp_coefs, deemp_coefs,
+					      crossover_coefs, drc_coefs,
+					      endian, ipc_ver)
 
 if nargin < 7
         endian = 'little'

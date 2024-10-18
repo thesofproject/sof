@@ -1,11 +1,24 @@
-function example_multiband_drc()
+function sof_example_multiband_drc()
+
+rz1 = [0.09 0.16 0.42 0.98];
 
 prm.name = "default";
 prm.sample_rate = 48000;
 prm.enable_emp_deemp = 1;
+prm.stage_gain = 0.01;
+prm.stage_ratio = 2
 prm.num_bands = 3;
-prm.enable_bands = [1 2 3 0];
-prm.band_lower_freq = [0 200 2000 10000];
+prm.enable_bands     = [     1      2      3      0 ];
+prm.band_lower_freq  = [     0   2000   8000  16000 ];
+prm.threshold        = [   -30    -30    -30    -30 ];
+prm.knee             = [    20     20     20     20 ];
+prm.ratio            = [    10     10     10     10 ];
+prm.attack           = [ 0.003  0.003  0.003  0.003 ];
+prm.release          = [   0.2    0.2    0.2    0.2 ];
+prm.pre_delay        = [ 0.006  0.006  0.006  0.006 ];
+prm.release_spacing  = [     5      5      5      5 ];
+prm.post_gain        = [     0      0      0      0 ];
+prm.release_zone     = [   rz1'   rz1'   rz1'   rz1'];
 export_multiband_drc(prm)
 
 prm.name = "passthrough";
@@ -19,7 +32,7 @@ end
 
 function export_multiband_drc(prm)
 
-multiband_drc_paths(true);
+sof_multiband_drc_paths(true);
 
 % Set the parameters here
 sof_tools = '../../../../tools';
@@ -44,10 +57,10 @@ enable_emp_deemp = prm.enable_emp_deemp;
 
 % The parameters of Emphasis IIR filter
 % stage_gain: The gain of each emphasis filter stage
-iir_params.stage_gain = 4.4;
+iir_params.stage_gain = prm.stage_gain;
 % stage_ratio: The frequency ratio for each emphasis filter stage to the
 %              previous stage
-iir_params.stage_ratio = 2;
+iir_params.stage_ratio = prm.stage_ratio;
 % anchor: The frequency of the first emphasis filter, in normalized frequency
 %         (in [0, 1], relative to half of the sample rate)
 iir_params.anchor = 15000 / nyquist;
@@ -66,89 +79,51 @@ iir_params.anchor = 15000 / nyquist;
 %   band_lower_freq: The lower frequency of the band, in normalized frequency
 %                    (in [0, 1], relative to half of the sample rate)
 
-% Band 1 DRC parameter
-drc_params(1).enabled = prm.enable_bands(1);
-drc_params(1).threshold = -24;
-drc_params(1).knee = 30;
-drc_params(1).ratio = 12;
-drc_params(1).attack = 0.003;
-drc_params(1).release = 0.2;
-drc_params(1).pre_delay = 0.006;
-drc_params(1).release_zone = [0.09 0.16 0.42 0.98];
-drc_params(1).release_spacing = 5;
-drc_params(1).post_gain = 0;
-drc_params(1).band_lower_freq = prm.band_lower_freq(1) / nyquist;
-
-% Band 2 DRC parameter (only valid if num_bands > 1)
-drc_params(2).enabled = prm.enable_bands(2);
-drc_params(2).threshold = -24;
-drc_params(2).knee = 30;
-drc_params(2).ratio = 12;
-drc_params(2).attack = 0.003;
-drc_params(2).release = 0.2;
-drc_params(2).pre_delay = 0.006;
-drc_params(2).release_zone = [0.09 0.16 0.42 0.98];
-drc_params(2).release_spacing = 5;
-drc_params(2).post_gain = 0;
-drc_params(2).band_lower_freq = prm.band_lower_freq(2) / nyquist;
-
-% Band 3 DRC parameter (only valid if num_bands > 2)
-drc_params(3).enabled = prm.enable_bands(3);
-drc_params(3).threshold = -24;
-drc_params(3).knee = 30;
-drc_params(3).ratio = 12;
-drc_params(3).attack = 0.003;
-drc_params(3).release = 0.2;
-drc_params(3).pre_delay = 0.006;
-drc_params(3).release_zone = [0.09 0.16 0.42 0.98];
-drc_params(3).release_spacing = 5;
-drc_params(3).post_gain = 0;
-drc_params(3).band_lower_freq = prm.band_lower_freq(3) / nyquist;
-
-% Band 4 DRC parameter (only valid if num_bands > 3)
-drc_params(4).enabled = prm.enable_bands(4);
-drc_params(4).threshold = -24;
-drc_params(4).knee = 30;
-drc_params(4).ratio = 12;
-drc_params(4).attack = 0.003;
-drc_params(4).release = 0.2;
-drc_params(4).pre_delay = 0.006;
-drc_params(4).release_zone = [0.09 0.16 0.42 0.98];
-drc_params(4).release_spacing = 5;
-drc_params(4).post_gain = 0;
-drc_params(4).band_lower_freq = prm.band_lower_freq(4) / nyquist;
+for i = 1:4
+	% Band n DRC parameter, (only valid if num_bands >= i)
+	drc_params(i).enabled = prm.enable_bands(i);
+	drc_params(i).threshold = prm.threshold(i);
+	drc_params(i).knee = prm.knee(i);
+	drc_params(i).ratio = prm.ratio(i);
+	drc_params(i).attack = prm.attack(i);
+	drc_params(i).release = prm.release(i);
+	drc_params(i).pre_delay = prm.pre_delay(i);
+	drc_params(i).release_zone = prm.release_zone(:, i)';
+	drc_params(i).release_spacing = prm.release_spacing(i);
+	drc_params(i).post_gain = prm.post_gain(i);
+	drc_params(i).band_lower_freq = prm.band_lower_freq(i) / nyquist;
+end
 
 % Generate Emphasis/Deemphasis IIR filter quantized coefs struct from parameters
 
-
-[emp_coefs, deemp_coefs] = iir_gen_quant_coefs(iir_params);
+[emp_coefs, deemp_coefs] = sof_iir_gen_quant_coefs(iir_params, sample_rate, enable_emp_deemp);
 
 % Generate Crossover quantized coefs struct from parameters
-crossover_coefs = crossover_gen_quant_coefs(num_bands, sample_rate, ...
-					    drc_params(2).band_lower_freq, ...
-					    drc_params(3).band_lower_freq, ...
-					    drc_params(4).band_lower_freq);
+crossover_coefs = sof_crossover_gen_quant_coefs(num_bands, sample_rate, ...
+						drc_params(2).band_lower_freq, ...
+						drc_params(3).band_lower_freq, ...
+						drc_params(4).band_lower_freq);
 
 % Generate DRC quantized coefs struct from parameters
-drc_coefs = drc_gen_quant_coefs(num_bands, sample_rate, drc_params);
+drc_coefs = sof_drc_gen_quant_coefs(num_bands, sample_rate, drc_params);
 
 % Generate output files
 
 % Convert quantized coefs structs to binary blob
-blob8 = multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
-				 deemp_coefs, crossover_coefs, drc_coefs, ...
-				 endian, 3);
-blob8_ipc4 = multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
-				      deemp_coefs, crossover_coefs, drc_coefs, ...
-				      endian, 4);
+blob8 = sof_multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
+				     deemp_coefs, crossover_coefs, drc_coefs, ...
+				     endian, 3);
+blob8_ipc4 = sof_multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs, ...
+					  deemp_coefs, crossover_coefs, drc_coefs, ...
+					  endian, 4);
 
 tplg_write(tplg1_fn, blob8, "MULTIBAND_DRC");
-tplg2_write(tplg2_fn, blob8_ipc4, "multiband_drc_config", "Exported with script example_multiband_drc.m");
+tplg2_write(tplg2_fn, blob8_ipc4, "multiband_drc_config", "Exported with script sof_example_multiband_drc.m");
 sof_ucm_blob_write(blob3_fn, blob8);
 alsactl_write(alsa3_fn, blob8);
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
 alsactl_write(alsa4_fn, blob8_ipc4);
 
-multiband_drc_paths(false);
+sof_multiband_drc_paths(false);
 
 end
