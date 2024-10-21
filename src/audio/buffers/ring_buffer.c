@@ -19,26 +19,16 @@ DECLARE_TR_CTX(ring_buffer_tr, SOF_UUID(ring_buffer_uuid), LOG_LEVEL_INFO);
 
 static inline struct ring_buffer *ring_buffer_from_sink(struct sof_sink *sink)
 {
-	struct sof_audio_buffer *audio_buffer = sof_audo_buffer_from_sink(sink);
+	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_sink(sink);
 
 	return container_of(audio_buffer, struct ring_buffer, audio_buffer);
 }
 
 static inline struct ring_buffer *ring_buffer_from_source(struct sof_source *source)
 {
-	struct sof_audio_buffer *audio_buffer = sof_audo_buffer_from_source(source);
+	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_source(source);
 
 	return container_of(audio_buffer, struct ring_buffer, audio_buffer);
-}
-
-/**
- * @brief remove the queue from the list, free memory
- */
-static void ring_buffer_free(struct sof_audio_buffer *buffer)
-{
-	struct ring_buffer *ring_buffer = (struct ring_buffer *)buffer;
-
-	rfree((__sparse_force void *)ring_buffer->_data_buffer);
 }
 
 /**
@@ -91,6 +81,39 @@ static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
 	}
 	/* writeback rest of data */
 	dcache_writeback_region(ptr, size);
+}
+
+
+/**
+ * @brief remove the queue from the list, free memory
+ */
+static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
+{
+	if (!audio_buffer)
+		return;
+
+	struct ring_buffer *ring_buffer =
+			container_of(audio_buffer, struct ring_buffer, audio_buffer);
+
+	rfree((__sparse_force void *)ring_buffer->_data_buffer);
+}
+
+static void ring_buffer_clean(struct sof_audio_buffer *audio_buffer)
+{
+	if (!audio_buffer)
+		return;
+
+	struct ring_buffer *ring_buffer =
+			container_of(audio_buffer, struct ring_buffer, audio_buffer);
+
+	ring_buffer->_write_offset = 0;
+	ring_buffer->_read_offset = 0;
+
+	ring_buffer_invalidate_shared(ring_buffer, ring_buffer->_data_buffer,
+				      ring_buffer->data_buffer_size);
+	bzero((__sparse_force void *)ring_buffer->_data_buffer, ring_buffer->data_buffer_size);
+	ring_buffer_writeback_shared(ring_buffer, ring_buffer->_data_buffer,
+				     ring_buffer->data_buffer_size);
 }
 
 static inline
@@ -219,64 +242,21 @@ static int ring_buffer_release_data(struct sof_source *source, size_t free_size)
 	return 0;
 }
 
-static int ring_buffer_set_ipc_params(struct ring_buffer *ring_buffer,
-				      struct sof_ipc_stream_params *params,
-				      bool force_update)
-{
-	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
-
-	if (audio_buffer_hw_params_configured(&ring_buffer->audio_buffer) && !force_update)
-		return 0;
-
-	struct sof_audio_stream_params *audio_stream_params =
-		audio_buffer_get_stream_params(&ring_buffer->audio_buffer);
-
-	audio_stream_params->frame_fmt = params->frame_fmt;
-	audio_stream_params->rate = params->rate;
-	audio_stream_params->channels = params->channels;
-	audio_stream_params->buffer_fmt = params->buffer_fmt;
-
-	audio_buffer_set_hw_params_configured(&ring_buffer->audio_buffer);
-
-	return 0;
-}
-
-static int ring_buffer_set_ipc_params_source(struct sof_source *source,
-					     struct sof_ipc_stream_params *params,
-					     bool force_update)
-{
-	struct ring_buffer *ring_buffer = ring_buffer_from_source(source);
-
-	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
-	return ring_buffer_set_ipc_params(ring_buffer, params, force_update);
-}
-
-static int ring_buffer_set_ipc_params_sink(struct sof_sink *sink,
-					   struct sof_ipc_stream_params *params,
-					   bool force_update)
-{
-	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
-
-	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
-	return ring_buffer_set_ipc_params(ring_buffer, params, force_update);
-}
-
-static const struct source_ops ring_buffer_source_ops = {
+static struct source_ops ring_buffer_source_ops = {
 	.get_data_available = ring_buffer_get_data_available,
 	.get_data = ring_buffer_get_data,
 	.release_data = ring_buffer_release_data,
-	.audio_set_ipc_params = ring_buffer_set_ipc_params_source,
 };
 
-static const struct sink_ops ring_buffer_sink_ops = {
+static struct sink_ops ring_buffer_sink_ops = {
 	.get_free_size = ring_buffer_get_free_size,
 	.get_buffer = ring_buffer_get_buffer,
 	.commit_buffer = ring_buffer_commit_buffer,
-	.audio_set_ipc_params = ring_buffer_set_ipc_params_sink,
 };
 
 static const struct audio_buffer_ops audio_buffer_ops = {
 	.free = ring_buffer_free,
+	.clean = ring_buffer_clean
 };
 
 struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, bool is_shared,

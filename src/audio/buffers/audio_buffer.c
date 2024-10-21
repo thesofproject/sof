@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <rtos/alloc.h>
+#include <ipc/stream.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
@@ -94,4 +95,129 @@ void audio_buffer_free(struct sof_audio_buffer *buffer)
 	if (buffer->ops->free)
 		buffer->ops->free(buffer);
 	rfree(buffer);
+}
+
+static
+int audio_buffer_source_set_ipc_params_default(struct sof_audio_buffer *buffer,
+					       struct sof_ipc_stream_params *params,
+					       bool force_update)
+{
+	CORE_CHECK_STRUCT(buffer);
+
+	if (audio_buffer_hw_params_configured(buffer) && !force_update)
+		return 0;
+
+	struct sof_audio_stream_params *audio_stream_params =
+		audio_buffer_get_stream_params(buffer);
+
+	audio_stream_params->frame_fmt = params->frame_fmt;
+	audio_stream_params->rate = params->rate;
+	audio_stream_params->channels = params->channels;
+	audio_stream_params->buffer_fmt = params->buffer_fmt;
+
+	audio_buffer_set_hw_params_configured(buffer);
+
+	if (buffer->ops->on_audio_format_set)
+		return buffer->ops->on_audio_format_set(buffer);
+	return 0;
+}
+
+static
+int audio_buffer_sink_set_ipc_params(struct sof_sink *sink, struct sof_ipc_stream_params *params,
+				     bool force_update)
+{
+	struct sof_audio_buffer *buffer = sof_audio_buffer_from_sink(sink);
+
+	if (buffer->ops->audio_set_ipc_params)
+		return buffer->ops->audio_set_ipc_params(buffer, params, force_update);
+	return audio_buffer_source_set_ipc_params_default(buffer, params, force_update);
+}
+
+static
+int audio_buffer_sink_on_audio_format_set(struct sof_sink *sink)
+{
+	struct sof_audio_buffer *buffer = sof_audio_buffer_from_sink(sink);
+
+	if (buffer->ops->on_audio_format_set)
+		return buffer->ops->on_audio_format_set(buffer);
+	return 0;
+}
+
+static
+int audio_buffer_sink_set_alignment_constants(struct sof_sink *sink,
+					      const uint32_t byte_align,
+					      const uint32_t frame_align_req)
+{
+	struct sof_audio_buffer *buffer = sof_audio_buffer_from_sink(sink);
+
+	if (buffer->ops->set_alignment_constants)
+		return buffer->ops->set_alignment_constants(buffer, byte_align, frame_align_req);
+	return 0;
+}
+
+static
+int audio_buffer_source_set_ipc_params(struct sof_source *source,
+				       struct sof_ipc_stream_params *params, bool force_update)
+{
+	struct sof_audio_buffer *buffer = sof_audio_buffer_from_source(source);
+
+	if (buffer->ops->audio_set_ipc_params)
+		return buffer->ops->audio_set_ipc_params(buffer, params, force_update);
+	return audio_buffer_source_set_ipc_params_default(buffer, params, force_update);
+}
+
+static
+int audio_buffer_source_on_audio_format_set(struct sof_source *source)
+{
+	struct sof_audio_buffer *buffer = sof_audio_buffer_from_source(source);
+
+	if (buffer->ops->on_audio_format_set)
+		return buffer->ops->on_audio_format_set(buffer);
+	return 0;
+}
+
+static
+int audio_buffer_source_set_alignment_constants(struct sof_source *source,
+						const uint32_t byte_align,
+						const uint32_t frame_align_req)
+{
+	struct sof_audio_buffer *buffer = sof_audio_buffer_from_source(source);
+
+	if (buffer->ops->set_alignment_constants)
+		return buffer->ops->set_alignment_constants(buffer, byte_align, frame_align_req);
+	return 0;
+}
+
+void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bool is_shared,
+		       struct source_ops *source_ops, struct sink_ops *sink_ops,
+		       const struct audio_buffer_ops *audio_buffer_ops,
+		       struct sof_audio_stream_params *audio_stream_params)
+{
+	CORE_CHECK_STRUCT_INIT(&buffer, is_shared);
+	buffer->buffer_type = buffer_type;
+	buffer->ops = audio_buffer_ops;
+	buffer->audio_stream_params = audio_stream_params;
+	buffer->is_shared = is_shared;
+
+	/* set default implementations of sink/source methods, if there's no
+	 * specific implementation provided
+	 */
+	if (!sink_ops->audio_set_ipc_params)
+		sink_ops->audio_set_ipc_params = audio_buffer_sink_set_ipc_params;
+	if (!sink_ops->on_audio_format_set  && buffer->ops->on_audio_format_set)
+		sink_ops->on_audio_format_set = audio_buffer_sink_on_audio_format_set;
+	if (!sink_ops->set_alignment_constants && buffer->ops->set_alignment_constants)
+		sink_ops->set_alignment_constants = audio_buffer_sink_set_alignment_constants;
+
+	if (!source_ops->audio_set_ipc_params)
+		source_ops->audio_set_ipc_params = audio_buffer_source_set_ipc_params;
+	if (!source_ops->on_audio_format_set  && buffer->ops->on_audio_format_set)
+		source_ops->on_audio_format_set = audio_buffer_source_on_audio_format_set;
+	if (!source_ops->set_alignment_constants && buffer->ops->set_alignment_constants)
+		source_ops->set_alignment_constants = audio_buffer_source_set_alignment_constants;
+
+	source_init(audio_buffer_get_source(buffer), source_ops,
+		    audio_buffer_get_stream_params(buffer));
+	sink_init(audio_buffer_get_sink(buffer), sink_ops,
+		  audio_buffer_get_stream_params(buffer));
 }
