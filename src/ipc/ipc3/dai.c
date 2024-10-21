@@ -203,7 +203,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 			void *spec_config)
 {
-	struct sof_ipc_dai_config *config = spec_config;
+	struct sof_ipc_dai_config __maybe_unused *config = spec_config;
 	bool comp_on_core[CONFIG_CORE_COUNT] = { false };
 	struct sof_ipc_reply reply;
 	struct ipc_comp_dev *icd;
