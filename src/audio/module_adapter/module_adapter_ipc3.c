@@ -239,7 +239,7 @@ static int module_adapter_ctrl_get_set_data(struct comp_dev *dev, struct sof_ipc
 					    bool set)
 {
 	int ret;
-	struct processing_module *mod = comp_mod(dev);
+	struct processing_module __maybe_unused *mod = comp_mod(dev);
 
 	comp_dbg(dev, "module_adapter_ctrl_set_data() start, state %d, cmd %d",
 		 mod->priv.state, cdata->cmd);

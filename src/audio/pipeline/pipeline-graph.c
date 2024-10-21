@@ -283,9 +283,9 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 	};
 
 #if !UNIT_TEST && !CONFIG_LIBRARY
-	int freq = clock_get_freq(cpu_get_id());
+	int __maybe_unused freq = clock_get_freq(cpu_get_id());
 #else
-	int freq = 0;
+	int __maybe_unused freq = 0;
 #endif
 	int ret;
 
