@@ -23,6 +23,10 @@
 #define __unused __attribute__((unused))
 #endif
 
+#ifndef __maybe_unused
+#define __maybe_unused __attribute__((unused))
+#endif
+
 #endif
 
 #ifndef __aligned
