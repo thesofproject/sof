@@ -136,9 +136,9 @@ int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
 	return ret;
 }
 
-inline ae_int16x4 copier_load_slots_and_gain16(ae_int16x4 **addr,
-					       ae_valign *align_in,
-					       const ae_int16x4 gains)
+static inline ae_int16x4 copier_load_slots_and_gain16(ae_int16x4 **addr,
+						      ae_valign *align_in,
+						      const ae_int16x4 gains)
 {
 	ae_int16x4 d16_1 = AE_ZERO16();
 	ae_int32x2 d32_1 = AE_ZERO32();
@@ -155,9 +155,9 @@ inline ae_int16x4 copier_load_slots_and_gain16(ae_int16x4 **addr,
 	return AE_TRUNC16X4F32(d32_1, d32_2);
 }
 
-inline void copier_load_slots_and_gain32(ae_int32x2 **addr, ae_valign *align_in,
-					 const ae_int16x4 gains, ae_int32x2 *out_d32_h,
-					 ae_int32x2 *out_d32_l)
+static inline void copier_load_slots_and_gain32(ae_int32x2 **addr, ae_valign *align_in,
+						const ae_int16x4 gains, ae_int32x2 *out_d32_h,
+						ae_int32x2 *out_d32_l)
 {
 	ae_int32x2 d32tmp_h = AE_ZERO32();
 	ae_int32x2 d32tmp_l = AE_ZERO32();
