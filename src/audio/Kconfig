@@ -279,6 +279,27 @@ config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 	  Mock Google real-time communication audio processing.
 	  It allows for compilation check and basic audio flow checking.
 
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	bool "Google Crosstalk Cancellation Audio processing"
+	default n
+	help
+	  Select for Google crosstalk cancellation audio processing. It
+	  uses the Google real-time audio processing library to perform
+	  crosstalk cancellation.
+	  Select for Google crosstalk cancellation audio processing. It
+	  uses the Google real-time audio processing library to perform
+	  crosstalk cancellation.
+
+config GOOGLE_CTC_AUDIO_PROCESSING_MOCK
+	bool "Google Crosstalk Cancellation Audio processing mock"
+	default n
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	help
+	  Mock Google crosstalk cancellation audio processing.
+	  It allows for compilation check and basic audio flow checking.
+	  Select for Google crosstalk cancellation audio processing. It
+	  uses the Google real-time audio processing library to perform
+	  crosstalk cancellation.
 
 config COMP_SEL
 	bool "Channel selector component"
