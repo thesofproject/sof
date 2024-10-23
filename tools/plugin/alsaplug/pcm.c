@@ -449,7 +449,7 @@ static int plug_pcm_prepare(snd_pcm_ioplug_t *io)
 	return err;
 }
 
-static int plug_init_shm_ctx(snd_sof_plug_t *plug);
+static int plug_init_shm_ctx(snd_sof_plug_t *plug, snd_pcm_hw_params_t *params);
 
 static int plug_pcm_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
 {
@@ -565,7 +565,7 @@ static int plug_pcm_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
 	}
 
 	/* set up the endpoint configs */
-	err = plug_init_shm_ctx(plug);
+	err = plug_init_shm_ctx(plug, params);
 	if (err < 0) {
 		SNDERR("error: failed to init sof-pipe ep context: %s:%s",
 		       pcm->shm_pcm.name, strerror(err));
@@ -838,7 +838,7 @@ static int plug_create(snd_sof_plug_t *plug, snd_pcm_t **pcmp, const char *name,
 	return 0;
 }
 
-static int plug_init_shm_ctx(snd_sof_plug_t *plug)
+static int plug_init_shm_ctx(snd_sof_plug_t *plug, snd_pcm_hw_params_t *params)
 {
 	struct plug_shm_glb_state *glb = plug->glb_ctx.addr;
 	struct endpoint_hw_config *ep;
@@ -871,21 +871,38 @@ static int plug_init_shm_ctx(snd_sof_plug_t *plug)
 			ep->period_frames = pc->period_frames;
 			ep->period_time = pc->period_time;
 			ep->rate = pc->rate;
-			ep->pipeline = ci->pcm;
-			strncpy(ep->card_name, ci->card_name,
-				sizeof(ep->card_name));
-			strncpy(ep->dev_name, ci->dev_name,
-				sizeof(ep->dev_name));
-			strncpy(ep->config_name, ci->config_name,
-				sizeof(ep->config_name));
+			strncpy(ep->config_name, ci->config_name, sizeof(ep->config_name));
 			found = true;
 			break;
 		}
 
+		/* use hw_params if no matching config found or config missing in command line */
 		if (!found) {
-			SNDERR("error: config %s not found\n", ci->config_name);
-			return -EINVAL;
+			unsigned int channels, rate, dir, buffer_time, period_time;
+			snd_pcm_uframes_t buffer_size, period_size;
+			snd_pcm_format_t format;
+
+			snd_pcm_hw_params_get_channels(params, &channels);
+			snd_pcm_hw_params_get_rate(params, &rate, &dir);
+			snd_pcm_hw_params_get_buffer_size(params, &buffer_size);
+			snd_pcm_hw_params_get_period_size(params, &period_size, &dir);
+			snd_pcm_hw_params_get_buffer_time(params, &buffer_time, &dir);
+			snd_pcm_hw_params_get_period_time(params, &period_time, &dir);
+			snd_pcm_hw_params_get_format(params, &format);
+
+			ep = &glb->ep_config[glb->num_ep_configs++];
+			ep->buffer_frames = buffer_size;
+			ep->buffer_time = buffer_time;
+			ep->channels = channels;
+			ep->format = format;
+			ep->period_frames = period_size;
+			ep->period_time = period_time;
+			ep->rate = rate;
 		}
+
+		ep->pipeline = ci->pcm;
+		strncpy(ep->card_name, ci->card_name, sizeof(ep->card_name));
+		strncpy(ep->dev_name, ci->dev_name, sizeof(ep->dev_name));
 	}
 
 	return 0;
