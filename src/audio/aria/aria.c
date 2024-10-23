@@ -276,16 +276,24 @@ static int aria_set_config(struct processing_module *mod, uint32_t param_id,
 			   size_t response_size)
 {
 	struct aria_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
+	comp_info(dev, "aria_set_config()");
 	if (param_id == ARIA_SET_ATTENUATION) {
 		if (fragment_size != sizeof(uint32_t)) {
-			comp_err(mod->dev, "Illegal fragment_size = %d", fragment_size);
+			comp_err(dev, "Illegal fragment_size = %d", fragment_size);
 			return -EINVAL;
 		}
 		memcpy_s(&cd->att, sizeof(uint32_t), fragment, sizeof(uint32_t));
+		if (cd->att > ARIA_MAX_ATT) {
+			comp_warn(dev,
+				  "aria_set_config(): Attenuation parameter %d is limited to %d",
+				  cd->att, ARIA_MAX_ATT);
+			cd->att = ARIA_MAX_ATT;
+		}
 		aria_set_gains(cd);
 	} else {
-		comp_err(mod->dev, "Illegal param_id = %d", param_id);
+		comp_err(dev, "Illegal param_id = %d", param_id);
 		return -EINVAL;
 	}
 

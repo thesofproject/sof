@@ -64,7 +64,7 @@ struct aria_data {
 	/* current data position in circular buffer */
 	size_t buff_pos;
 	/* Attenuation parameter */
-	size_t att;
+	uint32_t att;
 	/* Gain states */
 	int32_t gains[ARIA_MAX_GAIN_STATES];
 	/* cyclic buffer pointer data */
