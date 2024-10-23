@@ -61,7 +61,7 @@ int sofplug_load_hook(snd_config_t *root, snd_config_t *config,
 int plug_parse_conf(snd_sof_plug_t *plug, const char *name,
 		    snd_config_t *root, snd_config_t *conf, bool just_tplg);
 int plug_parse_topology(snd_sof_plug_t *plug);
-int plug_set_up_pipelines(snd_sof_plug_t *plug, int dir);
+int plug_set_up_pipelines(snd_sof_plug_t *plug, int dir, snd_pcm_hw_params_t *params);
 int plug_free_pipelines(snd_sof_plug_t *plug, struct tplg_pipeline_list *pipeline_list, int dir);
 void plug_free_topology(snd_sof_plug_t *plug);
 int plug_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl, void *_comp, void *arg, int index);

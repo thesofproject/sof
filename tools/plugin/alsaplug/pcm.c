@@ -467,7 +467,7 @@ static int plug_pcm_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
 	pcm->frame_us = ceil(1000000.0 / io->rate);
 
 	/* now send IPCs to set up widgets */
-	err = plug_set_up_pipelines(plug, pcm->capture);
+	err = plug_set_up_pipelines(plug, pcm->capture, params);
 	if (err < 0) {
 		fprintf(stderr, "error setting up pipelines\n");
 		return err;
