@@ -13,10 +13,10 @@ crossover_quant.hp_coef = cell(1,n);
 for i = 1:n
 	lp = lowpass(i);
 	hp = highpass(i);
-	lp_a = eq_coef_quant(-lp.a(3:-1:2), bits_iir, qf_iir);
-	lp_b = eq_coef_quant(lp.b(3:-1:1), bits_iir, qf_iir);
-	hp_a = eq_coef_quant(-hp.a(3:-1:2), bits_iir, qf_iir);
-	hp_b = eq_coef_quant(hp.b(3:-1:1), bits_iir, qf_iir);
+	lp_a = sof_eq_coef_quant(-lp.a(3:-1:2), bits_iir, qf_iir);
+	lp_b = sof_eq_coef_quant(lp.b(3:-1:1), bits_iir, qf_iir);
+	hp_a = sof_eq_coef_quant(-hp.a(3:-1:2), bits_iir, qf_iir);
+	hp_b = sof_eq_coef_quant(hp.b(3:-1:1), bits_iir, qf_iir);
 
 	crossover_quant.lp_coef(i) = [lp_a lp_b 0 16384];
 	crossover_quant.hp_coef(i) = [hp_a hp_b 0 16384];

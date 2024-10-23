@@ -1,12 +1,10 @@
-function crossover_coefs = crossover_gen_quant_coefs(num_bands, sample_rate,
-						     fc_low, fc_med, fc_high);
+function crossover_coefs = sof_crossover_gen_quant_coefs(num_bands, sample_rate,
+							 fc_low, fc_med, fc_high);
 
 % De-normalize cutoff frequencies in respect to nyquist (half of sample rate)
 fc_low = fc_low * sample_rate / 2;
 fc_med = fc_med * sample_rate / 2;
 fc_high = fc_high * sample_rate / 2;
-
-addpath ../crossover
 
 filter_len = 3;
 crossover.lp = cell(1:filter_len);
@@ -19,15 +17,15 @@ if (num_bands == 1)
 	crossover.hp = [flat_filter() flat_filter() flat_filter()];
 elseif (num_bands == 2)
 	% 2-way crossover
-	crossover = crossover_gen_coefs(sample_rate, fc_low);
+	crossover = sof_crossover_gen_coefs(sample_rate, fc_low);
 	crossover.lp = [crossover.lp(1) flat_filter() flat_filter()];
 	crossover.hp = [crossover.hp(1) flat_filter() flat_filter()];
 elseif (num_bands == 3)
 	% 3-way crossover
-	crossover = crossover_gen_coefs(sample_rate, fc_low, fc_med);
+	crossover = sof_crossover_gen_coefs(sample_rate, fc_low, fc_med);
 else % (num_bands == 4)
 	% 4-way crossover
-	crossover = crossover_gen_coefs(sample_rate, fc_low, fc_med, fc_high);
+	crossover = sof_crossover_gen_coefs(sample_rate, fc_low, fc_med, fc_high);
 end
 
 assert(length(crossover.lp) == filter_len && length(crossover.hp) == filter_len);
@@ -39,9 +37,7 @@ for i = 1:filter_len
 end
 
 % Convert the [a,b] coefficients to values usable with SOF
-crossover_bqs = crossover_coef_quant(crossover.lp, crossover.hp);
-
-rmpath ../crossover
+crossover_bqs = sof_crossover_coef_quant(crossover.lp, crossover.hp);
 
 j = 1;
 k = 1;

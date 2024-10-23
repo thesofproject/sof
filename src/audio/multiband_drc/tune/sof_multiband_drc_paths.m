@@ -1,6 +1,6 @@
-function multiband_drc_paths(enable)
+function sof_multiband_drc_paths(enable)
 
-% multiband_drc_paths(enable)
+% sof_multiband_drc_paths(enable)
 % enable - set to true to enable needed search path
 %          set to false to disable the search paths
 %
@@ -10,15 +10,9 @@ function multiband_drc_paths(enable)
 % Copyright (c) 2024, Intel Corporation. All rights reserved.
 
 	common = '../../../../tools/tune/common';
-	crossover = '../../../../tools/tune/crossover';
-	drc = '../../../../tools/tune/drc';
-	eq = '../../../../tools/tune/eq';
-	# After #9215 merge use this:
-	# crossover = '../../crossover/tune';
-	# After #9188 merge use this:
-	# drc = '../../drc/tune';
-	# After #9187 merge use this:
-	# eq = '../../eq_iir/tune';
+	crossover = '../../crossover/tune';
+	drc = '../../drc/tune';
+	eq = '../../eq_iir/tune';
 	if enable
 		addpath(common);
 		addpath(crossover);
