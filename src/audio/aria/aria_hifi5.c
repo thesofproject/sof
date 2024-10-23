@@ -8,17 +8,7 @@
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi5.h>
 
-/**
- * \brief Aria gain index mapping table
- */
-static const int32_t index_tab[] = {
-		0,    1,    2,    3,
-		4,    5,    6,    7,
-		8,    9,    0,    1,
-		2,    3,    4,    5,
-		6,    7,    8,    9,
-		0,    1,    2,    3
-};
+extern const int32_t sof_aria_index_tab[];
 
 /* Setup circular buffer 0 */
 static inline void set_circular_buf0(const void *start, const void *end)
@@ -47,7 +37,7 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 	int32_t *max_ptr = (int32_t *)&max_data;
 	int32_t max;
 	int samples = frames * audio_stream_get_channels(source);
-	ae_int32x2 *in = audio_stream_get_rptr(source);
+	ae_int32x4 *in = audio_stream_get_rptr(source);
 	int i, n, left;
 
 	while (samples) {
@@ -81,13 +71,13 @@ static void aria_algo_get_data_odd_channel(struct processing_module *mod,
 					   int frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);
-	size_t i, n, ch;
+	size_t i, ch;
 	ae_int32x2 step;
 	int32_t gain_state_add_2 = cd->gain_state + 2;
 	int32_t gain_state_add_3 = cd->gain_state + 3;
-	int32_t gain_begin = cd->gains[index_tab[gain_state_add_2]];
+	int32_t gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2]];
 	/* do linear approximation between points gain_begin and gain_end */
-	int32_t gain_end = cd->gains[index_tab[gain_state_add_3]];
+	int32_t gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3]];
 	ae_int32 *out = audio_stream_get_wptr(sink);
 	ae_int32 *in = (ae_int32 *)cd->data_ptr;
 	ae_int32x2 in_sample, out_sample;
@@ -98,10 +88,10 @@ static void aria_algo_get_data_odd_channel(struct processing_module *mod,
 	ae_int64 out1;
 
 	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
-		if (cd->gains[index_tab[gain_state_add_2 + i]] < gain_begin)
-			gain_begin = cd->gains[index_tab[gain_state_add_2 + i]];
-		if (cd->gains[index_tab[gain_state_add_3 + i]] < gain_end)
-			gain_end = cd->gains[index_tab[gain_state_add_3 + i]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + i]] < gain_begin)
+			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + i]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + i]] < gain_end)
+			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + i]];
 	}
 
 	step = (gain_end - gain_begin) / frames;
@@ -122,7 +112,7 @@ static void aria_algo_get_data_odd_channel(struct processing_module *mod,
 		gain = AE_ADD32S(gain, step);
 	}
 
-	cd->gain_state = index_tab[cd->gain_state + 1];
+	cd->gain_state = sof_aria_index_tab[cd->gain_state + 1];
 }
 
 static void aria_algo_get_data_even_channel(struct processing_module *mod,
@@ -130,14 +120,13 @@ static void aria_algo_get_data_even_channel(struct processing_module *mod,
 					    int frames)
 {
 	struct aria_data *cd = module_get_private_data(mod);
-	size_t i, m, n, ch;
+	size_t i, ch;
 	ae_int32x2 step;
 	int32_t gain_state_add_2 = cd->gain_state + 2;
 	int32_t gain_state_add_3 = cd->gain_state + 3;
-	int32_t gain_begin = cd->gains[index_tab[gain_state_add_2]];
+	int32_t gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2]];
 	/* do linear approximation between points gain_begin and gain_end */
-	int32_t gain_end = cd->gains[index_tab[gain_state_add_3]];
-	size_t samples = frames * audio_stream_get_channels(sink);
+	int32_t gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3]];
 	ae_int32x2 *out = audio_stream_get_wptr(sink);
 	ae_int32x2 *in = (ae_int32x2 *)cd->data_ptr;
 	ae_int32x2 in_sample, out_sample;
@@ -148,10 +137,10 @@ static void aria_algo_get_data_even_channel(struct processing_module *mod,
 	ae_int64 out1, out2;
 
 	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
-		if (cd->gains[index_tab[gain_state_add_2 + i]] < gain_begin)
-			gain_begin = cd->gains[index_tab[gain_state_add_2 + i]];
-		if (cd->gains[index_tab[gain_state_add_3 + i]] < gain_end)
-			gain_end = cd->gains[index_tab[gain_state_add_3 + i]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + i]] < gain_begin)
+			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + i]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + i]] < gain_end)
+			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + i]];
 	}
 
 	step = (gain_end - gain_begin) / frames;
@@ -173,7 +162,7 @@ static void aria_algo_get_data_even_channel(struct processing_module *mod,
 		}
 		gain = AE_ADD32S(gain, step);
 	}
-	cd->gain_state = index_tab[cd->gain_state + 1];
+	cd->gain_state = sof_aria_index_tab[cd->gain_state + 1];
 }
 
 aria_get_data_func aria_algo_get_data_func(struct processing_module *mod)

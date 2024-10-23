@@ -80,8 +80,6 @@ struct aria_data {
 	aria_get_data_func aria_get_data;
 };
 
-extern const uint8_t INDEX_TAB[];
-
 struct ipc4_aria_module_cfg {
 	struct ipc4_base_module_cfg base_cfg;
 	uint32_t attenuation;

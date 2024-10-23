@@ -6,17 +6,7 @@
 
 #if SOF_USE_HIFI(NONE, ARIA)
 
-/**
- * \brief Aria gain index mapping table
- */
-const uint8_t INDEX_TAB[] = {
-		0,    1,    2,    3,
-		4,    5,    6,    7,
-		8,    9,    0,    1,
-		2,    3,    4,    5,
-		6,    7,    8,    9,
-		0,    1,    2,    3
-};
+extern const int32_t sof_aria_index_tab[];
 
 inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 				struct audio_stream *source, int frames)
@@ -54,9 +44,9 @@ static void aria_algo_get_data(struct processing_module *mod,
 	int32_t step, in_sample;
 	int32_t gain_state_add_2 = cd->gain_state + 2;
 	int32_t gain_state_add_3 = cd->gain_state + 3;
-	int32_t gain_begin = cd->gains[INDEX_TAB[gain_state_add_2]];
+	int32_t gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2]];
 	/* do linear approximation between points gain_begin and gain_end */
-	int32_t gain_end = cd->gains[INDEX_TAB[gain_state_add_3]];
+	int32_t gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3]];
 	int32_t m, n, i, ch;
 	int32_t samples = frames * audio_stream_get_channels(sink);
 	int32_t *out = audio_stream_get_wptr(sink);
@@ -66,10 +56,10 @@ static void aria_algo_get_data(struct processing_module *mod,
 	const int shift = 31 - cd->att;
 
 	for (i = 1; i < ARIA_MAX_GAIN_STATES - 1; i++) {
-		if (cd->gains[INDEX_TAB[gain_state_add_2 + i]] < gain_begin)
-			gain_begin = cd->gains[INDEX_TAB[gain_state_add_2 + i]];
-		if (cd->gains[INDEX_TAB[gain_state_add_3 + i]] < gain_end)
-			gain_end = cd->gains[INDEX_TAB[gain_state_add_3 + i]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_2 + i]] < gain_begin)
+			gain_begin = cd->gains[sof_aria_index_tab[gain_state_add_2 + i]];
+		if (cd->gains[sof_aria_index_tab[gain_state_add_3 + i]] < gain_end)
+			gain_end = cd->gains[sof_aria_index_tab[gain_state_add_3 + i]];
 	}
 	step = (gain_end - gain_begin) / frames;
 	gain = gain_begin;
@@ -91,7 +81,7 @@ static void aria_algo_get_data(struct processing_module *mod,
 		in = cir_buf_wrap(in, cd->data_addr, cd->data_end);
 		out = audio_stream_wrap(sink, out);
 	}
-	cd->gain_state = INDEX_TAB[cd->gain_state + 1];
+	cd->gain_state = sof_aria_index_tab[cd->gain_state + 1];
 }
 
 aria_get_data_func aria_algo_get_data_func(struct processing_module *mod)
