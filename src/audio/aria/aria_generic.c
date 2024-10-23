@@ -23,7 +23,7 @@ inline void aria_algo_calc_gain(struct aria_data *cd, size_t gain_idx,
 		n = audio_stream_samples_without_wrap_s32(source, src);
 		n = MIN(samples, n);
 		for (i = 0; i < n; i++) {
-			sample_abs = ABS(src[i]);
+			sample_abs = ABS(sign_extend_s24(src[i]));
 			max_data = MAX(max_data, sample_abs);
 		}
 
@@ -71,7 +71,7 @@ static void aria_algo_get_data(struct processing_module *mod,
 		n = MIN(m, n);
 		for (i = 0; i < n; i += ch_n) {
 			for (ch = 0; ch < ch_n; ch++) {
-				in_sample = *in++;
+				in_sample = sign_extend_s24(*in++);
 				out[ch] = q_multsr_sat_32x32_24(in_sample, gain, shift);
 			}
 			gain += step;
