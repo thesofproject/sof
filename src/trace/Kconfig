@@ -6,9 +6,12 @@ menu "Trace"
 
 config TRACE
 	bool "Trace"
+	default n if ZEPHYR_SOF_MODULE
 	default y
 	help
-	  Enabling traces. All traces (normal and error) are sent by dma.
+	  Enable SOF DMA based traces compatible with the sof-logger tool.
+	  With Zephyr, RTOS side events are not seen in the SOF trace, so native
+	  Zephyr logging (CONFIG_ZEPHYR_LOG) is recommended instead.
 
 config TRACEV
 	bool "Trace verbose"

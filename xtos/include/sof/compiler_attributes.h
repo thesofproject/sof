@@ -19,6 +19,10 @@
 #define __unused __attribute__((unused))
 #endif
 
+#ifndef __maybe_unused
+#define __maybe_unused __attribute__((unused))
+#endif
+
 #ifndef __aligned
 #define __aligned(x) __attribute__((__aligned__(x)))
 #endif
