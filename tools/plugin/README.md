@@ -60,6 +60,19 @@ The command line is parsed as follows:
 - "default": The second default is the device name
 - "48k2c16b" is the config name for 48K, stereo, 16bit
 
+Config name is optional in the command line. When it is not provided, hw_params will be used to
+configure the endpoint. In this case, the command line can be simplified to:
+
+```
+aplay -Dsof:plugin:1:default:default
+```
+
+When using the default device, the command line can be further simplified to:
+
+```
+aplay -Dsof:plugin:1
+```
+
 This renders audio to the sof-pipe daemon using the sof-plugin topology playback PCM ID 1.
 The above example needs to be 48k as example pipe has no SRC/ASRC.
 

@@ -688,23 +688,29 @@ static int plug_is_single_format(struct sof_ipc4_pin_format *fmts, int num_forma
 }
 
 static int plug_match_audio_format(snd_sof_plug_t *plug, struct tplg_comp_info *comp_info,
-				   struct plug_config *config)
+				   snd_pcm_hw_params_t *params)
 {
 	struct sof_ipc4_available_audio_format *available_fmt = &comp_info->available_fmt;
 	struct ipc4_base_module_cfg *base_cfg = &comp_info->basecfg;
 	struct sof_ipc4_pin_format *fmt;
-	int config_valid_bits;
+	snd_pcm_format_t params_format;
+	unsigned int params_channels, params_rate, dir;
+	int params_valid_bits;
 	int i;
 
-	switch (config->format) {
+	snd_pcm_hw_params_get_channels(params, &params_channels);
+	snd_pcm_hw_params_get_rate(params, &params_rate, &dir);
+	snd_pcm_hw_params_get_format(params, &params_format);
+
+	switch (params_format) {
 	case SND_PCM_FORMAT_S16_LE:
-		config_valid_bits = 16;
+		params_valid_bits = 16;
 		break;
 	case SND_PCM_FORMAT_S32_LE:
-		config_valid_bits = 32;
+		params_valid_bits = 32;
 		break;
 	case SND_PCM_FORMAT_S24_LE:
-		config_valid_bits = 24;
+		params_valid_bits = 24;
 		break;
 	default:
 		break;
@@ -725,14 +731,14 @@ static int plug_match_audio_format(snd_sof_plug_t *plug, struct tplg_comp_info *
 		channels = fmt->audio_fmt.fmt_cfg & MASK(7, 0);
 		valid_bits = (fmt->audio_fmt.fmt_cfg & MASK(15, 8)) >> 8;
 
-		if (rate == config->rate && channels == config->channels &&
-		    valid_bits == config_valid_bits)
+		if (rate == params_rate && channels == params_channels &&
+		    valid_bits == params_valid_bits)
 			break;
 	}
 
 	if (i == available_fmt->num_input_formats) {
 		SNDERR("Cannot find matching format for rate %d channels %d valid_bits %d for %s\n",
-		       config->rate, config->channels, config_valid_bits, comp_info->name);
+		       params_rate, params_channels, params_valid_bits, comp_info->name);
 		return -EINVAL;
 	}
 out:
@@ -755,29 +761,13 @@ out:
 	return 0;
 }
 
-static int plug_set_up_widget_base_config(snd_sof_plug_t *plug, struct tplg_comp_info *comp_info)
+static int plug_set_up_widget_base_config(snd_sof_plug_t *plug, struct tplg_comp_info *comp_info,
+					  snd_pcm_hw_params_t *params)
 {
-	struct plug_cmdline_item *cmd_item = &plug->cmdline[0];
-	struct plug_config *config;
-	bool config_found = false;
 	int ret, i;
 
-	for (i < 0; i < plug->num_configs; i++) {
-		config = &plug->config[i];
-
-		if (!strcmp(config->name, cmd_item->config_name)) {
-			config_found = true;
-			break;
-		}
-	}
-
-	if (!config_found) {
-		SNDERR("unsupported config requested %s\n", cmd_item->config_name);
-		return -ENOTSUP;
-	}
-
 	/* match audio formats and populate base config */
-	ret = plug_match_audio_format(plug, comp_info, config);
+	ret = plug_match_audio_format(plug, comp_info, params);
 	if (ret < 0)
 		return ret;
 
@@ -985,7 +975,8 @@ static int plug_set_up_pipeline(snd_sof_plug_t *plug, struct tplg_pipeline_info 
 }
 
 static int plug_prepare_widget(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_info,
-			       struct tplg_comp_info *comp_info, int dir)
+			       struct tplg_comp_info *comp_info, int dir,
+			       snd_pcm_hw_params_t *params)
 {
 	struct tplg_pipeline_list *pipeline_list;
 	int ret, i;
@@ -996,7 +987,7 @@ static int plug_prepare_widget(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_i
 		pipeline_list = &pcm_info->playback_pipeline_list;
 
 	/* populate base config */
-	ret = plug_set_up_widget_base_config(plug, comp_info);
+	ret = plug_set_up_widget_base_config(plug, comp_info, params);
 	if (ret < 0)
 		return ret;
 
@@ -1021,7 +1012,8 @@ static int plug_prepare_widget(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_i
 
 static int plug_prepare_widgets(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_info,
 				struct tplg_comp_info *starting_comp_info,
-				struct tplg_comp_info *current_comp_info)
+				struct tplg_comp_info *current_comp_info,
+				snd_pcm_hw_params_t *params)
 {
 	struct list_item *item;
 	int ret;
@@ -1036,13 +1028,13 @@ static int plug_prepare_widgets(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_
 
 		/* set up source widget if it is the starting widget */
 		if (starting_comp_info == current_comp_info) {
-			ret = plug_prepare_widget(plug, pcm_info, current_comp_info, 0);
+			ret = plug_prepare_widget(plug, pcm_info, current_comp_info, 0, params);
 			if (ret < 0)
 				return ret;
 		}
 
 		/* set up the sink widget */
-		ret = plug_prepare_widget(plug, pcm_info, route_info->sink, 0);
+		ret = plug_prepare_widget(plug, pcm_info, route_info->sink, 0, params);
 		if (ret < 0)
 			return ret;
 
@@ -1050,7 +1042,7 @@ static int plug_prepare_widgets(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_
 		if (route_info->sink->type != SND_SOC_TPLG_DAPM_DAI_IN ||
 		    route_info->sink->type != SND_SOC_TPLG_DAPM_DAI_OUT) {
 			ret = plug_prepare_widgets(plug, pcm_info, starting_comp_info,
-						   route_info->sink);
+						   route_info->sink, params);
 			if (ret < 0)
 				return ret;
 		}
@@ -1061,7 +1053,8 @@ static int plug_prepare_widgets(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_
 
 static int plug_prepare_widgets_capture(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_info,
 					struct tplg_comp_info *starting_comp_info,
-					struct tplg_comp_info *current_comp_info)
+					struct tplg_comp_info *current_comp_info,
+					snd_pcm_hw_params_t *params)
 {
 	struct list_item *item;
 	int ret;
@@ -1076,13 +1069,13 @@ static int plug_prepare_widgets_capture(snd_sof_plug_t *plug, struct tplg_pcm_in
 
 		/* set up sink widget if it is the starting widget */
 		if (starting_comp_info == current_comp_info) {
-			ret = plug_prepare_widget(plug, pcm_info, current_comp_info, 1);
+			ret = plug_prepare_widget(plug, pcm_info, current_comp_info, 1, params);
 			if (ret < 0)
 				return ret;
 		}
 
 		/* set up the source widget */
-		ret = plug_prepare_widget(plug, pcm_info, route_info->source, 1);
+		ret = plug_prepare_widget(plug, pcm_info, route_info->source, 1, params);
 		if (ret < 0)
 			return ret;
 
@@ -1090,7 +1083,7 @@ static int plug_prepare_widgets_capture(snd_sof_plug_t *plug, struct tplg_pcm_in
 		if (route_info->source->type != SND_SOC_TPLG_DAPM_DAI_IN &&
 		    route_info->source->type != SND_SOC_TPLG_DAPM_DAI_OUT) {
 			ret = plug_prepare_widgets_capture(plug, pcm_info, starting_comp_info,
-							   route_info->source);
+							   route_info->source, params);
 			if (ret < 0)
 				return ret;
 		}
@@ -1282,7 +1275,7 @@ static int plug_set_up_widgets_capture(snd_sof_plug_t *plug,
 	return 0;
 }
 
-int plug_set_up_pipelines(snd_sof_plug_t *plug, int dir)
+int plug_set_up_pipelines(snd_sof_plug_t *plug, int dir, snd_pcm_hw_params_t *params)
 {
 	struct tplg_comp_info *host = NULL;
 	struct tplg_pcm_info *pcm_info;
@@ -1309,7 +1302,7 @@ int plug_set_up_pipelines(snd_sof_plug_t *plug, int dir)
 	plug->pcm_info = pcm_info;
 
 	if (dir) {
-		ret = plug_prepare_widgets_capture(plug, pcm_info, host, host);
+		ret = plug_prepare_widgets_capture(plug, pcm_info, host, host, params);
 		if (ret < 0)
 			return ret;
 
@@ -1322,7 +1315,7 @@ int plug_set_up_pipelines(snd_sof_plug_t *plug, int dir)
 		return 0;
 	}
 
-	ret = plug_prepare_widgets(plug, pcm_info, host, host);
+	ret = plug_prepare_widgets(plug, pcm_info, host, host, params);
 	if (ret < 0)
 		return ret;
 

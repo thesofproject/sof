@@ -270,28 +270,29 @@ static int parse_client_cmdline(snd_sof_plug_t *plug, char *cmdline, bool just_t
 
 	cmd_item = &plug->cmdline[plug->num_cmdline];
 	card = strtok_r(next, ":", &next);
+	/* card/dev names and config are all optional */
 	if (!card) {
-		SNDERR("Invalid card name\n");
-		return -EINVAL;
-	}
-	dev = strtok_r(next, ":", &next);
-	if (!dev) {
-		SNDERR("Invalid dev name\n");
-		return -EINVAL;
-	}
-	config = strtok_r(next, ":", &next);
-
-	/* tuple needs all three, any missing ? */
-	if (!config) {
-		SNDERR("invalid cmdline, expected pcm(%s):card(%s):dev(%s):config(%s) from %s",
-		       pcm, card, dev, config, tplg);
-		return -EINVAL;
+		strncpy(cmd_item->card_name, "default", sizeof(cmd_item->card_name));
+		strncpy(cmd_item->dev_name, "default", sizeof(cmd_item->dev_name));
+		fprintf(stdout, "no config name provided, will use hw_params\n");
+	} else {
+		strncpy(cmd_item->card_name, card, sizeof(cmd_item->card_name));
+		dev = strtok_r(next, ":", &next);
+		/* dev name must be provided along with card name */
+		if (!dev) {
+			SNDERR("Invalid dev name\n");
+			return -EINVAL;
+		}
+		strncpy(cmd_item->dev_name, dev, sizeof(cmd_item->dev_name));
+		config = strtok_r(next, ":", &next);
+		/* config name is optional */
+		if (!config)
+			fprintf(stdout, "no config name provided, will use hw_params\n");
+		else
+			strncpy(cmd_item->config_name, config, sizeof(cmd_item->config_name));
 	}
 
 	cmd_item->pcm = atoi(pcm);
-	strncpy(cmd_item->card_name, card, sizeof(cmd_item->card_name));
-	strncpy(cmd_item->dev_name, dev, sizeof(cmd_item->dev_name));
-	strncpy(cmd_item->config_name, config, sizeof(cmd_item->config_name));
 
 	/*
 	 * dev name is special, we cant use "," in the command line
