@@ -1,0 +1,25 @@
+/*
+ * Copyright 2024 NXP
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	host_dma: dma {
+		compatible = "nxp,sof-host-dma";
+		dma-channels = <32>;
+		#dma-cells = <0>;
+	};
+};
+
+&sdma3 {
+	status = "okay";
+};
+
+&sai3 {
+	rx-fifo-watermark = <65>;
+	tx-fifo-watermark = <65>;
+	fifo-depth = <128>;
+	rx-sync-mode = <1>;
+	status = "okay";
+};
