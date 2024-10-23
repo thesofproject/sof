@@ -37,16 +37,21 @@ jobs:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0, filter: 'tree:0'}
 
+      - name: docker
+        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+
       - name: apt get
         run: sudo apt-get update &&
              sudo apt-get -y install valgrind alsa-utils libasound2-dev ninja-build
-             octave octave-io octave-signal
+             octave octave-signal
 
       # testbench needs some topologies.
       - name: build test topologies
-        run: ./scripts/build-tools.sh -t ||
+        run: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
+          ./scripts/build-tools.sh -Y ||
              VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
-             ./scripts/build-tools.sh -t
+             CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
+          ./scripts/build-tools.sh -Y
 
       - name: build testbench
         run: ./scripts/rebuild-testbench.sh ||

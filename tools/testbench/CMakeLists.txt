@@ -9,7 +9,17 @@ include(CheckCCompilerFlag)
 
 set(default_asoc_h "/usr/include/alsa/sound/uapi/asoc.h")
 
-add_executable(testbench
+file(READ "../../src/arch/host/configs/library_defconfig" library_defconfig)
+
+if(library_defconfig MATCHES "CONFIG_IPC_MAJOR_4=y")
+    message("-- Selected IPC4 build for testbench")
+    set(testbench "sof-testbench4")
+else()
+    message("-- Selected IPC3 build for testbench")
+    set(testbench "sof-testbench3")
+endif()
+
+add_executable(${testbench}
 	testbench.c
 	file.c
 	utils.c
@@ -19,9 +29,9 @@ add_executable(testbench
 	topology_ipc4.c
 )
 
-sof_append_relative_path_definitions(testbench)
+sof_append_relative_path_definitions(${testbench})
 
-target_include_directories(testbench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(${testbench} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 set(sof_source_directory "${PROJECT_SOURCE_DIR}/../..")
 set(sof_install_directory "${PROJECT_BINARY_DIR}/sof_ep/install")
@@ -29,14 +39,14 @@ set(sof_binary_directory "${PROJECT_BINARY_DIR}/sof_ep/build")
 
 set(config_h ${sof_binary_directory}/library_autoconfig.h)
 
-target_include_directories(testbench PRIVATE "${sof_source_directory}/src/platform/library/include")
-target_include_directories(testbench PRIVATE "${sof_source_directory}/src/audio")
+target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/platform/library/include")
+target_include_directories(${testbench} PRIVATE "${sof_source_directory}/src/audio")
 
 # Configuration time, make copy
 configure_file(${default_asoc_h} ${CMAKE_CURRENT_BINARY_DIR}/include/alsa/sound/asoc.h)
 
 # Build time
-target_include_directories(testbench PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/include")
+target_include_directories(${testbench} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/include")
 
 # -Wimplicit-fallthrough is preferred, check if it's supported
 check_c_compiler_flag(-Wimplicit-fallthrough supports_implicit_fallthrough)
@@ -44,12 +54,12 @@ if (supports_implicit_fallthrough)
     set(implicit_fallthrough -Wimplicit-fallthrough)
 endif()
 
-target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wmissing-prototypes
+target_compile_options(${testbench} PRIVATE -g -O3 -Wall -Werror -Wmissing-prototypes
   ${implicit_fallthrough} -DCONFIG_LIBRARY -DCONFIG_LIBRARY_STATIC -imacros${config_h})
 
-target_link_libraries(testbench PRIVATE -lm)
+target_link_libraries(${testbench} PRIVATE -lm)
 
-install(TARGETS testbench DESTINATION bin)
+install(TARGETS ${testbench} DESTINATION bin)
 
 include(ExternalProject)
 
@@ -94,14 +104,14 @@ add_library(sof_parser_lib STATIC IMPORTED)
 set_target_properties(sof_parser_lib PROPERTIES IMPORTED_LOCATION "${parser_install_dir}/lib/libsof_tplg_parser.a")
 add_dependencies(sof_parser_lib parser_ep)
 
-add_dependencies(testbench sof_parser_lib)
-target_link_libraries(testbench PRIVATE sof_library)
-target_link_libraries(testbench PRIVATE sof_parser_lib)
-target_link_libraries(testbench PRIVATE m)
-target_include_directories(testbench PRIVATE ${sof_install_directory}/include)
-target_include_directories(testbench PRIVATE ${parser_install_dir}/include)
+add_dependencies(${testbench} sof_parser_lib)
+target_link_libraries(${testbench} PRIVATE sof_library)
+target_link_libraries(${testbench} PRIVATE sof_parser_lib)
+target_link_libraries(${testbench} PRIVATE m)
+target_include_directories(${testbench} PRIVATE ${sof_install_directory}/include)
+target_include_directories(${testbench} PRIVATE ${parser_install_dir}/include)
 
-set_target_properties(testbench
+set_target_properties(${testbench}
 	PROPERTIES
 	INSTALL_RPATH "${sof_install_directory}/lib"
 	INSTALL_RPATH_USE_LINK_PATH TRUE
