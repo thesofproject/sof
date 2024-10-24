@@ -105,7 +105,7 @@ extra_platform_configs = {
 	),
 	# AMD platforms
 	"acp_6_0" : PlatformConfig(
-		"amd", "amd_acp_6_0_adsp/acp_6_0",
+		"amd", "acp_6_0_adsp/acp_6_0",
 		f"RI-2019.1{xtensa_tools_version_postfix}",
 		"rmb_LX7_HiFi5_PROD",
 		RIMAGE_KEY = "key param ignored by acp_6_0"
