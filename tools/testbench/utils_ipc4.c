@@ -125,7 +125,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	tp->config[0].rate = tp->fs_in;
 	tp->config[0].channels = tp->channels_in;
 	tp->config[0].format = tp->frame_fmt;
-	tp->period_size = 2 * krate;
+	tp->period_frames = krate;
 
 	/* TODO: Need to set this later for larger topologies with multiple PCMs. The
 	 * pipelines are determined based on just the PCM ID for the device that we

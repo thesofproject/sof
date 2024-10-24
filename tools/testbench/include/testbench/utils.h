@@ -137,7 +137,7 @@ struct testbench_prm {
 	struct tplg_pcm_info *pcm_info;
 	struct tb_config config[TB_MAX_CONFIG_COUNT];
 	int num_configs;
-	size_t period_size;
+	int period_frames;
 	struct tb_glb_state glb_ctx;
 #endif
 };

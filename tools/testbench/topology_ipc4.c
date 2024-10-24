@@ -272,6 +272,7 @@ int tb_match_audio_format(struct testbench_prm *tp, struct tplg_comp_info *comp_
 	struct ipc4_base_module_cfg *base_cfg = &comp_info->basecfg;
 	struct sof_ipc4_pin_format *fmt;
 	int config_valid_bits;
+	int sample_bytes;
 	int i;
 
 	switch (config->format) {
@@ -326,8 +327,9 @@ out:
 		(fmt->audio_fmt.fmt_cfg & MASK(15, 8)) >> 8;
 	base_cfg->audio_fmt.s_type =
 		(fmt->audio_fmt.fmt_cfg & MASK(23, 16)) >> 16;
-	base_cfg->ibs = tp->period_size * 2;
-	base_cfg->obs = tp->period_size * 2;
+	sample_bytes = fmt->audio_fmt.bit_depth >> 3;
+	base_cfg->ibs = 2 * tp->period_frames * base_cfg->audio_fmt.channels_count * sample_bytes;
+	base_cfg->obs = base_cfg->ibs;
 
 	return 0;
 }
