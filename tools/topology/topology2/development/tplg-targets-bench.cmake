@@ -42,7 +42,7 @@ set(components_s24
 )
 
 set(component_parameters_s24
-	"BENCH_ARIA_PARAMS=default"
+	"BENCH_ARIA_PARAMS=param_2"
 )
 
 # Add components with all sample formats
