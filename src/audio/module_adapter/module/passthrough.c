@@ -26,8 +26,11 @@ static int passthrough_codec_prepare(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
+	struct comp_buffer *source = comp_dev_get_first_data_producer(dev);
 
 	comp_info(dev, "passthrough_codec_prepare()");
+
+	mod->period_bytes =  audio_stream_period_bytes(&source->stream, dev->frames);
 
 	codec->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
 	if (!codec->mpd.in_buff) {
