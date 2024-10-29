@@ -125,6 +125,7 @@ main()
   case $SANITIZER in
       address) conf_files_list+=";configs/fuzz_asan.conf";;
       undefined) conf_files_list+=";configs/fuzz_ubsan.conf";;
+      coverage) conf_files_list+=";configs/fuzz_coverage.conf";;
       *) echo "Unknown fuzzer type"; print_help; exit 1;;
   esac
 
