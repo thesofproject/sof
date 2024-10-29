@@ -278,6 +278,18 @@ static int drc_process(struct processing_module *mod,
 			comp_err(dev, "drc_copy(), failed DRC setup");
 			return ret;
 		}
+
+		/* If new configuration blob is received in pass-through mode, and it
+		 * has params.enabled true, then find the DRC processing function.
+		 */
+		if (cd->drc_func == drc_default_pass && cd->config->params.enabled)
+			cd->drc_func = drc_find_proc_func(cd->source_format);
+
+		/* If new configuration blob has params.enabled false, then it is safe
+		 * to switch to pass-through mode.
+		 */
+		if (!cd->config->params.enabled)
+			cd->drc_func = drc_default_pass;
 	}
 
 	/* Control pass-though in processing function with switch control */
@@ -351,6 +363,15 @@ static int drc_prepare(struct processing_module *mod,
 			comp_err(dev, "drc_prepare(), No proc func");
 			return -EINVAL;
 		}
+
+		/* Params.enabled in the configuration blob is the master switch of DRC.
+		 * The enable switch control does not have impact if this is not set to
+		 * true. When false it is safe to use fast pass-through copy. A
+		 * non-enabled blob can be used when same pipeline is used for both
+		 * headphone and speaker where DRC should be off for headphone mode.
+		 */
+		if (!cd->config->params.enabled)
+			cd->drc_func = drc_default_pass;
 	} else {
 		/* Generic function for all formats */
 		cd->drc_func = drc_default_pass;
