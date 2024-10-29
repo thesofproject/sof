@@ -77,7 +77,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 2);
 
-	/** to ensure the adsress is 8-byte aligned and avoid risk of
+	/* to ensure the address is 8-byte aligned and avoid risk of
 	 * error loading of volume gain while the cd->vol would be set
 	 * as circular buffer
 	 */
@@ -244,7 +244,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 2);
 
-	/** to ensure the address is 8-byte aligned and avoid risk of
+	/* to ensure the address is 8-byte aligned and avoid risk of
 	 * error loading of volume gain while the cd->vol would be set
 	 * as circular buffer
 	 */
@@ -413,7 +413,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 4);
 
-	/** to ensure the adsress is 8-byte aligned and avoid risk of
+	/* to ensure the address is 8-byte aligned and avoid risk of
 	 * error loading of volume gain while the cd->vol would be set
 	 * as circular buffer
 	 */
