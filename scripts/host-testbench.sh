@@ -113,4 +113,10 @@ test_component src 24 24 48000 "$FullTest"
 # test with tdfb
 test_component tdfb 32 32 48000 "$FullTest"
 
+# test with aria
+test_component aria 24 24 48000 "$FullTest"
+
+# test with asrc
+test_component asrc 32 32 48000 "$FullTest"
+
 echo "All tests are done!"
