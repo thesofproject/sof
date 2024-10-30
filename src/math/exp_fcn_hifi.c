@@ -280,52 +280,6 @@ int32_t sofm_exp_int32(int32_t x)
 	return AE_MOVAD32_L(AE_MOVINT32X2_FROMINT64(ts));
 }
 
-/* Fractional multiplication with shift and round
- * Note that the parameters px and py must be cast to (int64_t) if other type.
- */
-static inline int exp_hifi_q_multsr_32x32(int a, int b, int c, int d, int e)
-{
-	ae_int64 res;
-	int xt_o;
-	int shift;
-
-	res = AE_MUL32_LL(a, b);
-	shift = XT_SUB(XT_ADD(c, d), XT_ADD(e, 1));
-	res = AE_SRAA64(res, shift);
-	res = AE_ADD64(res, 1);
-	res = AE_SRAI64(res, 1);
-	xt_o = AE_MOVINT32_FROMINT64(res);
-
-	return xt_o;
-}
-
-/* A macro for Q-shifts */
-static inline int exp_hifi_q_shift_rnd(int a, int b, int c)
-{
-	ae_int32 res;
-	int shift;
-
-	shift = XT_SUB(b, XT_ADD(c, 1));
-	res = AE_SRAA32(a, shift);
-	res = AE_ADD32(res, 1);
-	res = AE_SRAI32(res, 1);
-
-	return res;
-}
-
-/* Alternative version since compiler does not allow (x >> -1) */
-static inline int exp_hifi_q_shift_left(int a, int b, int c)
-{
-	ae_int32 xt_o;
-	int shift;
-
-	shift = XT_SUB(c, b);
-	xt_o = AE_SLAA32(a, shift);
-
-	return xt_o;
-}
-
-#define q_mult(a, b, qa, qb, qy) ((int32_t)exp_hifi_q_multsr_32x32((int64_t)(a), b, qa, qb, qy))
 /* Fixed point exponent function for approximate range -11.5 .. 7.6
  * that corresponds to decibels range -100 .. +66 dB.
  *
@@ -341,11 +295,13 @@ static inline int exp_hifi_q_shift_left(int a, int b, int c)
 
 int32_t sofm_exp_fixed(int32_t x)
 {
-	int32_t xs;
-	int32_t y;
-	int32_t y0;
+	ae_f64 p;
+	ae_int32 y0;
+	ae_int32 y;
+	ae_int32 xs;
+	int32_t n;
+	int shift;
 	int i;
-	int n = 0;
 
 	if (x < SOFM_EXP_FIXED_INPUT_MIN)
 		return 0;
@@ -353,21 +309,45 @@ int32_t sofm_exp_fixed(int32_t x)
 	if (x > SOFM_EXP_FIXED_INPUT_MAX)
 		return INT32_MAX;
 
-	/* x is Q5.27 */
-	xs = x;
-	while (xs >= SOFM_EXP_TWO_Q27 || xs <= SOFM_EXP_MINUS_TWO_Q27) {
-		xs >>= 1;
-		n++;
-	}
+	/* This returns number of right shifts needed to scale value x to |x| < 2.
+	 * The behavior differs slightly for positive and negative values but it
+	 * is not problem for sofm_exp_int32() function. E.g.
+	 *
+	 * x =  268435455 (1.9999999925), shift = 0
+	 * x =  268435456 (2.0000000000), shift = 1
+	 * x =  268435457 (2.0000000075), shift = 1
+	 *
+	 * x = -268435457 (-2.0000000075), shift = 1
+	 * x = -268435456 (-2.0000000000), shift = 0
+	 * x = -268435455 (-1.9999999925), shift = 0
+	 *
+	 * If the shift is zero, just return result from sofm_exp_int32() with
+	 * input Q format and output Q format adjusts.
+	 */
+	shift = (int)AE_MAX32(0, 3 - AE_NSAZ32_L(x));
+	if (!shift)
+		return AE_SRAI32R(sofm_exp_int32(AE_MOVAD32_L(AE_SLAI32S(x, 1))), 3);
+
+	/* Shifting x one less right to save an additional Q27 to Q28 conversion
+	 * shift for sofm_exp_int32()
+	 */
+	n = 1 << shift;
+	xs = AE_SRAA32RS(x, shift - 1);
 
 	/* sofm_exp_int32() input is Q4.28, while x1 is Q5.27
 	 * sofm_exp_int32() output is Q9.23, while y0 is Q12.20
 	 */
-	y0 = exp_hifi_q_shift_rnd(sofm_exp_int32(exp_hifi_q_shift_left(xs, 27, 28)),
-				  23, 20);
+	y0 = AE_SRAI32R(sofm_exp_int32(xs), 3);
 	y = SOFM_EXP_ONE_Q20;
-	for (i = 0; i < (1 << n); i++)
-		y = (int32_t)exp_hifi_q_multsr_32x32((int64_t)y, y0, 20, 20, 20);
+
+	/* AE multiply returns Q41 from Q20 * Q20. To get Q20 it need to be
+	 * shifted right by 21. Since the used round instruction is aligned
+	 * to the high 32 bits it is shifted instead left by 32 - 21 = 11:
+	 */
+	for (i = 0; i < n; i++) {
+		p = AE_SLAI64S(AE_MULF32S_LL(y, y0), 11);
+		y = AE_ROUND32F64SASYM(p);
+	}
 
 	return y;
 }
