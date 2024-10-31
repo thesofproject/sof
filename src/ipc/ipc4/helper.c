@@ -1112,7 +1112,7 @@ void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *ba
 				    base_cfg->audio_fmt.valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
 				    base_cfg->audio_fmt.s_type);
-	params->frame_fmt = valid_fmt;
+	params->frame_fmt = frame_fmt;
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
