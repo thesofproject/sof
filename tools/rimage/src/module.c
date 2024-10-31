@@ -121,7 +121,7 @@ void module_print_zones(const struct module *module)
 
 /**
  * Print a list of valid program headers
- * 
+ *
  * @param module pointer to a module structure
  */
 static void module_print_programs(const struct module *module)
@@ -143,7 +143,7 @@ static void module_print_programs(const struct module *module)
 
 /**
  * Goes through program headers array to find the physical address based on the virtual address.
- * 
+ *
  * @param elf elf file structure
  * @param vaddr virtual address
  * @return physical address when success, virtual address on error
@@ -173,7 +173,7 @@ unsigned long uncache_to_cache(const struct memory_alias *alias, unsigned long a
 
 /**
  * Checks if the section is placed in the rom memory address space
- * 
+ *
  * @param config Memory configuration structure
  * @param section section to be checked
  * @return true if section is placed in rom memory address space
@@ -201,7 +201,7 @@ static bool section_is_rom(const struct memory_config *config,
 
 /**
  * Initialize module_sections_info structure
- * 
+ *
  * @param info Pointer to a module_sections_info structure
  */
 static void sections_info_init(struct module_sections_info *info)
@@ -213,7 +213,7 @@ static void sections_info_init(struct module_sections_info *info)
 
 /**
  * Adds section to module_sections_info structure
- * 
+ *
  * @param info Pointer to a module_sections_info structure
  * @param section module_section structure
  */
@@ -244,7 +244,7 @@ static void sections_info_add(struct module_sections_info *info, struct module_s
 
 /**
  * Calculates file size after adding all sections
- * 
+ *
  * @param info Pointer to a module_sections_info structure
  */
 static void sections_info_finalize(struct module_sections_info *info)
@@ -257,7 +257,7 @@ static void sections_info_finalize(struct module_sections_info *info)
 
 /**
  * Checks the section header (type and flags) to determine the section type.
- * 
+ *
  * @param section section header
  * @return enum module_section_type
  */
@@ -430,7 +430,7 @@ void module_close(struct module *module)
 
 /**
  * Checks if the contents of the section overlaps
- * 
+ *
  * @param a first section to check
  * @param b second section to check
  * @return true if space of a sections overlap
@@ -451,7 +451,7 @@ static bool section_check_overlap(const struct module_section *a, const struct m
 
 /**
  * Checks if the contents of the modules overlaps
- * 
+ *
  * @param mod first module to check
  * @param mod2 second module to check
  * @return error code
