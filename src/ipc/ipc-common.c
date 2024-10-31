@@ -214,6 +214,15 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	    msg->tx_data != data) {
 		ret = memcpy_s(msg->tx_data, msg->tx_size, data, msg->tx_size);
 		assert(!ret);
+		if (!cpu_is_primary(cpu_get_id())) {
+			/* Write back data to memory to maintain coherence between cores.
+			 * The response was prepared on a secondary core but will be sent
+			 * to the host from the primary core.
+			 */
+			dcache_writeback_region((__sparse_force void __sparse_cache *)msg->tx_data,
+						msg->tx_size);
+			msg->is_shared = true;
+		}
 	}
 
 	/*
