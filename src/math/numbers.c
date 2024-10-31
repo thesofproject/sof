@@ -149,6 +149,7 @@ int norm_int32(int32_t val)
 
 	return 31 - c;
 }
+EXPORT_SYMBOL(norm_int32);
 
 #endif /* CONFIG_NORM */
 
