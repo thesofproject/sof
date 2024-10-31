@@ -23,6 +23,7 @@
 #include <rtos/task.h>
 #include <rtos/string_macro.h>
 #if CONFIG_IPC_MAJOR_4
+#include <sof/audio/module_adapter/module/generic.h>
 #include <ipc4/gateway.h>
 #include <ipc4/module.h>
 #include <sof/audio/component.h>
@@ -32,7 +33,6 @@
 SOF_DEFINE_REG_UUID(probe4);
 #define PROBE_UUID probe4_uuid
 
-static const struct comp_driver comp_probe;
 #elif CONFIG_IPC_MAJOR_3
 SOF_DEFINE_REG_UUID(probe);
 #define PROBE_UUID probe_uuid
@@ -1438,91 +1438,79 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 }
 
 #if CONFIG_IPC_MAJOR_4
-static struct comp_dev *probe_new(const struct comp_driver *drv,
-				  const struct comp_ipc_config *config, const void *spec)
+static int probe_mod_init(struct processing_module *mod)
 {
-	const struct ipc4_probe_module_cfg *probe_cfg = spec;
-	struct comp_dev *dev;
+	struct comp_dev *dev = mod->dev;
+	struct module_data *mod_data = &mod->priv;
+	const struct ipc4_probe_module_cfg *probe_cfg = mod_data->cfg.init_data;
 	int ret;
 
-	comp_cl_info(&comp_probe, "probe_new()");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-
-	dev->ipc_config = *config;
+	comp_info(dev, "probe_mod_init()");
 
 	ret = probe_init(&probe_cfg->gtw_cfg);
-	if (ret < 0) {
-		comp_free(dev);
-		return NULL;
-	}
-	dev->state = COMP_STATE_READY;
+	if (ret < 0)
+		return -EINVAL;
 
-	return dev;
+	return 0;
 }
 
-static void probe_free(struct comp_dev *dev)
+static int probe_free(struct processing_module *mod)
 {
+	struct comp_dev *dev = mod->dev;
+
+	comp_info(dev, "probe_free()");
+
 	probe_deinit();
-	rfree(dev);
+
+	return 0;
 }
 
-static int probe_set_large_config(struct comp_dev *dev, uint32_t param_id,
-				  bool first_block,
-				  bool last_block,
-				  uint32_t data_offset,
-				  const char *data)
+static int probe_set_config(struct processing_module *mod, uint32_t param_id,
+			    enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			    const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			    size_t response_size)
 {
-	comp_dbg(dev, "probe_set_large_config()");
+	struct comp_dev *dev = mod->dev;
+
+	comp_info(dev, "probe_set_config()");
 
 	switch (param_id) {
 	case IPC4_PROBE_MODULE_PROBE_POINTS_ADD:
-		return probe_point_add(data_offset / sizeof(struct probe_point),
-				       (const struct probe_point *)data);
+		return probe_point_add(fragment_size / sizeof(struct probe_point),
+				       (const struct probe_point *)fragment);
 	case IPC4_PROBE_MODULE_DISCONNECT_PROBE_POINTS:
-		return probe_point_remove(data_offset / sizeof(uint32_t), (const uint32_t *)data);
+		return probe_point_remove(fragment_size / sizeof(uint32_t),
+					  (const uint32_t *)fragment);
 	case IPC4_PROBE_MODULE_INJECTION_DMA_ADD:
-		return probe_dma_add(data_offset / (2 * sizeof(uint32_t)),
-				     (const struct probe_dma *)data);
+		return probe_dma_add(fragment_size / (2 * sizeof(uint32_t)),
+				     (const struct probe_dma *)fragment);
 	case IPC4_PROBE_MODULE_INJECTION_DMA_DETACH:
-		return probe_dma_remove(data_offset / sizeof(uint32_t), (const uint32_t *)data);
+		return probe_dma_remove(fragment_size / sizeof(uint32_t),
+					(const uint32_t *)fragment);
 	default:
 		return -EINVAL;
 	}
 }
 
-static int probe_get_large_config(struct comp_dev *dev, uint32_t param_id,
-				  bool first_block,
-				  bool last_block,
-				  uint32_t *data_offset,
-				  char *data)
+static int probe_dummy_process(struct processing_module *mod,
+			       struct input_stream_buffer *input_buffers, int num_input_buffers,
+			       struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
+	struct comp_dev *dev = mod->dev;
+
+	comp_warn(dev, "probe_dummy_process() called");
+
 	return 0;
 }
 
-static const struct comp_driver comp_probe = {
-	.uid	= SOF_RT_UUID(PROBE_UUID),
-	.tctx	= &pr_tr,
-	.ops	= {
-		.create			= probe_new,
-		.free			= probe_free,
-		.set_large_config	= probe_set_large_config,
-		.get_large_config	= probe_get_large_config,
-	},
+static const struct module_interface probe_interface = {
+	.init = probe_mod_init,
+	.process_audio_stream = probe_dummy_process,
+	.set_configuration = probe_set_config,
+	.free = probe_free,
 };
 
-static SHARED_DATA struct comp_driver_info comp_probe_info = {
-	.drv = &comp_probe,
-};
+DECLARE_MODULE_ADAPTER(probe_interface, PROBE_UUID, pr_tr);
+SOF_MODULE_INIT(asrc, sys_comp_module_probe_interface_init);
 
-UT_STATIC void sys_comp_probe_init(void)
-{
-	comp_register(platform_shared_get(&comp_probe_info,
-					  sizeof(comp_probe_info)));
-}
-
-DECLARE_MODULE(sys_comp_probe_init);
-SOF_MODULE_INIT(probe, sys_comp_probe_init);
 #endif
