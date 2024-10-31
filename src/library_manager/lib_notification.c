@@ -73,6 +73,7 @@ struct ipc_msg *lib_notif_msg_init(uint32_t header, uint32_t size)
 	/* Update header and size, since message handle can be reused */
 	msg->header = header;
 	msg->tx_size = size;
+	msg->is_shared = !cpu_is_primary(cpu_get_id());
 	return msg;
 }
 

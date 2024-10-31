@@ -35,6 +35,7 @@ struct ipc_msg {
 	uint32_t extension;	/* extension specific to platform */
 	uint32_t tx_size;	/* payload size in bytes */
 	void *tx_data;		/* pointer to payload data */
+	bool is_shared;		/* the message is shared cross-core */
 	struct list_item list;
 };
 
