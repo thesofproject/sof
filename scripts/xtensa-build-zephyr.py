@@ -186,6 +186,12 @@ platform_configs_all = {
 		"ace4px_HiFi5MMU_PIF_nlib",
 		ipc4 = True
 	),
+	"nvl-s" : PlatformConfig(
+		"intel", "intel_adsp/ace40/nvls",
+		f"RI-2022.10{xtensa_tools_version_postfix}",
+		"ace4px_HiFi5MMU_PIF_nlib",
+		ipc4 = True
+	),
 
 	#  NXP platforms
 	"imx8" : PlatformConfig(
