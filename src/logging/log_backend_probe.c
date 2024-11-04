@@ -109,6 +109,7 @@ void probe_logging_init(probe_logging_hook_t fn)
 {
 	probe_hook = fn;
 }
+EXPORT_SYMBOL(probe_logging_init);
 
 const struct log_backend *log_backend_probe_get(void)
 {

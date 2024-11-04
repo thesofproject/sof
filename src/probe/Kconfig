@@ -5,10 +5,13 @@
 menu "Probe"
 
 config PROBE
-	bool "Probes enabled"
+	tristate "Probes enabled"
+	default m if LIBRARY_DEFAULT_MODULAR
 	default y if CAVS
 	help
 	  Select for enabling debug probes to extract/inject buffers
+
+if PROBE != n
 
 config PROBE_POINTS_MAX
 	int "Maximum probe points"
@@ -23,4 +26,7 @@ config PROBE_DMA_MAX
 	default 0
 	help
 	  Define maximum number of injection DMAs.
+
+endif
+
 endmenu
