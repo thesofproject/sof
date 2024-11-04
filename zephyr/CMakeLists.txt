@@ -1129,9 +1129,13 @@ zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC_STUB
 	${SOF_AUDIO_PATH}/module_adapter/module/waves/maxx_stub.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_PROBE
-	${SOF_SRC_PATH}/probe/probe.c
-)
+if(CONFIG_PROBE STREQUAL "m")
+	add_subdirectory(${SOF_SRC_PATH}/probe/llext
+			 ${PROJECT_BINARY_DIR}/probe_llext)
+	add_dependencies(app probe)
+elseif(CONFIG_PROBE)
+	zephyr_library_sources(${SOF_SRC_PATH}/probe/probe.c)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_MULTICORE
 	${SOF_SRC_PATH}/idc/idc.c

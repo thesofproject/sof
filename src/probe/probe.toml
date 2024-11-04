@@ -1,10 +1,14 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
 	[[module.entry]]
 	name = "PROBE"
 	uuid = "7CAD0808-AB10-CD23-EF45-12AB34CD56EF"
 	affinity_mask = "0x1"
 	instance_count = "1"
 	domain_types = "0"
-	load_type = "0"
+	load_type = LOAD_TYPE
 	module_type = "9"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
