@@ -73,8 +73,11 @@ def main():
 
 	command = [args.command]
 
+	executable = []
 	writable = []
 	readonly = []
+
+	text_found = False
 
 	elf = ELFFile(open(args.file, 'rb'))
 
@@ -102,13 +105,13 @@ def main():
 			# In general additional executable sections are possible, e.g.
 			# .init. In the future support for arbitrary such sections can be
 			# added, similar to writable and read-only data below.
-			if s_name != '.text':
-				print(f"Warning! Non-standard executable section {s_name}")
-
-			text_addr = max_alignment(text_addr, 0x1000, s_alignment)
-			text_size = s_size
-
-			command.append(f'-Wl,-Ttext=0x{text_addr:x}')
+			if s_name == '.text':
+				text_found = True
+				text_addr = max_alignment(text_addr, 0x1000, s_alignment)
+				text_size = s_size
+				command.append(f'-Wl,-Ttext=0x{text_addr:x}')
+			else:
+				executable.append(section)
 
 			continue
 
@@ -121,6 +124,36 @@ def main():
 		if s_type == 'SHT_PROGBITS' and s_flags & SH_FLAGS.SHF_ALLOC:
 			# .rodata or other read-only sections
 			readonly.append(section)
+
+	if not text_found:
+		raise RuntimeError('No .text section found in the object file')
+
+	# The original LLEXT support in SOF linked all LLEXT modules with pre-
+	# calculated addresses. Such modules can only be used at those exact
+	# addresses, so we map memory buffers for such modules to those
+	# addresses and copy them there.
+	# Now we also need to be able to re-link parts of modules at run-time to
+	# run at arbitrary memory locations. One of the use-cases is running
+	# parts of the module directly in DRAM - sacrificing performance but
+	# saving scarce SRAM. We achieve this by placing non-performance
+	# critical functions in a .text.dram ELF section. When compiling and
+	# linking such functions, an additional .literal.dram section is
+	# automatically created. Note, that for some reason the compiler also
+	# marks that section as executable.
+	# This script links those sections at address 0. We could hard-code
+	# section names, but so far we choose to only link .text the "original"
+	# way and all other executable sections we link at 0.
+	exe_addr = 0
+
+	for section in executable:
+		s_alignment = section.header['sh_addralign']
+		s_name = section.name
+
+		exe_addr = align_up(exe_addr, s_alignment)
+
+		command.append(f'-Wl,--section-start={s_name}=0x{exe_addr:x}')
+
+		exe_addr += section.header['sh_size']
 
 	start_addr = align_up(text_addr + text_size, 0x1000)
 
