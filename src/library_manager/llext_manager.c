@@ -144,7 +144,8 @@ static int llext_manager_load_module(uint32_t module_id, const struct sof_man_mo
 			/* .bss directly in front of writable data and properly aligned, prepend */
 			va_base_data = bss_addr;
 			data_size += bss_size;
-		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data + data_size) {
+		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data +
+			   ALIGN_UP(data_size, 4)) {
 			/* .bss directly behind writable data, append */
 			data_size += bss_size;
 		} else {
