@@ -195,10 +195,14 @@ cd_fail:
 	return ret;
 }
 
+/* test .bss */
+static unsigned int config_count;
+
 static int drc_free(struct processing_module *mod)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 
+	comp_info(mod->dev, "configured %u times", config_count);
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
 	return 0;
@@ -212,6 +216,7 @@ static int drc_set_config(struct processing_module *mod, uint32_t param_id,
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
+	config_count++;
 	comp_dbg(dev, "drc_set_config()");
 
 #if CONFIG_IPC_MAJOR_4
