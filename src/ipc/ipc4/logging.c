@@ -185,7 +185,7 @@ int ipc4_logging_enable_logs(bool first_block,
 		if (!probe_is_backend_configured())
 			return -EINVAL;
 
-		log_backend_activate(log_backend, probe_logging_hook);
+		log_backend_activate(log_backend, NULL);
 
 	} else  {
 		log_backend_deactivate(log_backend);

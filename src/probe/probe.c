@@ -836,7 +836,7 @@ static void kick_probe_task(struct probe_pdata *_probe)
 }
 
 #if CONFIG_LOG_BACKEND_SOF_PROBE
-void probe_logging_hook(uint8_t *buffer, size_t length)
+static void probe_logging_hook(uint8_t *buffer, size_t length)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint64_t checksum;
