@@ -104,7 +104,8 @@ static int llext_manager_load_data_from_storage(void __sparse_cache *vma, void *
 	return ret;
 }
 
-static int llext_manager_load_module(uint32_t module_id, const struct sof_man_module *mod)
+static int llext_manager_load_module(const struct llext_buf_loader *ebl,
+				     uint32_t module_id, const struct sof_man_module *mod)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	uint8_t *load_base = (uint8_t *)ctx->base_addr;
@@ -144,7 +145,8 @@ static int llext_manager_load_module(uint32_t module_id, const struct sof_man_mo
 			/* .bss directly in front of writable data and properly aligned, prepend */
 			va_base_data = bss_addr;
 			data_size += bss_size;
-		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data + data_size) {
+		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data +
+			   ALIGN_UP(data_size, ebl->loader.sects[LLEXT_MEM_BSS].sh_addralign)) {
 			/* .bss directly behind writable data, append */
 			data_size += bss_size;
 		} else {
@@ -219,29 +221,27 @@ static int llext_manager_unload_module(uint32_t module_id, const struct sof_man_
 	return err;
 }
 
-static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_module *mod,
-			      uint32_t module_id, struct module_data *md, const void **buildinfo,
+static int llext_manager_link(struct llext_buf_loader *ebl, struct sof_man_fw_desc *desc,
+			      struct sof_man_module *mod, uint32_t module_id, struct module_data *md,
+			      const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
-	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
 	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + FILE_TEXT_OFFSET_V1_8,
-						       mod_size);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Identify if this is the first time loading this module */
 	struct llext_load_param ldr_parm = {
 		.relocate_local = !ctx->segment[LIB_MANAGER_TEXT].size,
 		.pre_located = true,
 	};
-	int ret = llext_load(&ebl.loader, mod->name, &md->llext, &ldr_parm);
+	int ret = llext_load(&ebl->loader, mod->name, &md->llext, &ldr_parm);
 
 	if (ret)
 		return ret;
 
-	ctx->segment[LIB_MANAGER_TEXT].addr = ebl.loader.sects[LLEXT_MEM_TEXT].sh_addr;
+	ctx->segment[LIB_MANAGER_TEXT].addr = ebl->loader.sects[LLEXT_MEM_TEXT].sh_addr;
 	ctx->segment[LIB_MANAGER_TEXT].file_offset =
 		(uintptr_t)md->llext->mem[LLEXT_MEM_TEXT] - dram_base;
-	ctx->segment[LIB_MANAGER_TEXT].size = ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
+	ctx->segment[LIB_MANAGER_TEXT].size = ebl->loader.sects[LLEXT_MEM_TEXT].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x offset %#x",
 	       ctx->segment[LIB_MANAGER_TEXT].addr,
@@ -250,10 +250,10 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 
 	/* This contains all other sections, except .text, it might contain .bss too */
 	ctx->segment[LIB_MANAGER_RODATA].addr =
-		ebl.loader.sects[LLEXT_MEM_RODATA].sh_addr;
+		ebl->loader.sects[LLEXT_MEM_RODATA].sh_addr;
 	ctx->segment[LIB_MANAGER_RODATA].file_offset =
 		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] - dram_base;
-	ctx->segment[LIB_MANAGER_RODATA].size = ebl.loader.sects[LLEXT_MEM_RODATA].sh_size;
+	ctx->segment[LIB_MANAGER_RODATA].size = ebl->loader.sects[LLEXT_MEM_RODATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x offset %#x",
 	       ctx->segment[LIB_MANAGER_RODATA].addr,
@@ -261,32 +261,32 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	       ctx->segment[LIB_MANAGER_RODATA].file_offset);
 
 	ctx->segment[LIB_MANAGER_DATA].addr =
-		ebl.loader.sects[LLEXT_MEM_DATA].sh_addr;
+		ebl->loader.sects[LLEXT_MEM_DATA].sh_addr;
 	ctx->segment[LIB_MANAGER_DATA].file_offset =
 		(uintptr_t)md->llext->mem[LLEXT_MEM_DATA] - dram_base;
-	ctx->segment[LIB_MANAGER_DATA].size = ebl.loader.sects[LLEXT_MEM_DATA].sh_size;
+	ctx->segment[LIB_MANAGER_DATA].size = ebl->loader.sects[LLEXT_MEM_DATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x offset %#x",
 	       ctx->segment[LIB_MANAGER_DATA].addr,
 	       ctx->segment[LIB_MANAGER_DATA].size,
 	       ctx->segment[LIB_MANAGER_DATA].file_offset);
 
-	ctx->segment[LIB_MANAGER_BSS].addr = ebl.loader.sects[LLEXT_MEM_BSS].sh_addr;
-	ctx->segment[LIB_MANAGER_BSS].size = ebl.loader.sects[LLEXT_MEM_BSS].sh_size;
+	ctx->segment[LIB_MANAGER_BSS].addr = ebl->loader.sects[LLEXT_MEM_BSS].sh_addr;
+	ctx->segment[LIB_MANAGER_BSS].size = ebl->loader.sects[LLEXT_MEM_BSS].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".bss: start: %#lx size %#x",
 	       ctx->segment[LIB_MANAGER_BSS].addr,
 	       ctx->segment[LIB_MANAGER_BSS].size);
 
-	ssize_t binfo_o = llext_find_section(&ebl.loader, ".mod_buildinfo");
+	ssize_t binfo_o = llext_find_section(&ebl->loader, ".mod_buildinfo");
 
 	if (binfo_o >= 0)
-		*buildinfo = llext_peek(&ebl.loader, binfo_o);
+		*buildinfo = llext_peek(&ebl->loader, binfo_o);
 
-	ssize_t mod_o = llext_find_section(&ebl.loader, ".module");
+	ssize_t mod_o = llext_find_section(&ebl->loader, ".module");
 
 	if (mod_o >= 0)
-		*mod_manifest = llext_peek(&ebl.loader, mod_o);
+		*mod_manifest = llext_peek(&ebl->loader, mod_o);
 
 	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
 }
@@ -295,19 +295,22 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 					const struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config)
 {
-	struct sof_man_fw_desc *desc;
+	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
+	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
 	struct sof_man_module *mod_array;
 	int ret;
-	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const struct sof_module_api_build_info *buildinfo;
 	const struct sof_man_module_manifest *mod_manifest;
+	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
+	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
+	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + FILE_TEXT_OFFSET_V1_8,
+						       mod_size);
 
 	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
 	       ipc_config->id);
 
-	desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
 	if (!ctx || !desc) {
 		tr_err(&lib_manager_tr,
 		       "llext_manager_allocate_module(): failed to get module descriptor");
@@ -317,10 +320,12 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
 
 	/* LLEXT linking is only needed once for all the modules in the library */
-	ret = llext_manager_link(desc, mod_array, module_id, &proc->priv, (const void **)&buildinfo,
-				 &mod_manifest);
-	if (ret < 0)
+	ret = llext_manager_link(&ebl, desc, mod_array, module_id, &proc->priv,
+				 (const void **)&buildinfo, &mod_manifest);
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "linking failed: %d", ret);
 		return 0;
+	}
 
 	if (!ret) {
 		/* First instance: check that the module is native */
@@ -332,7 +337,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		}
 
 		/* Map executable code and data */
-		ret = llext_manager_load_module(module_id, mod_array);
+		ret = llext_manager_load_module(&ebl, module_id, mod_array);
 		if (ret < 0)
 			return 0;
 
