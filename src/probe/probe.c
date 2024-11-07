@@ -1511,6 +1511,6 @@ static const struct module_interface probe_interface = {
 };
 
 DECLARE_MODULE_ADAPTER(probe_interface, PROBE_UUID, pr_tr);
-SOF_MODULE_INIT(asrc, sys_comp_module_probe_interface_init);
+SOF_MODULE_INIT(probe, sys_comp_module_probe_interface_init);
 
 #endif
