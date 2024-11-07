@@ -132,7 +132,7 @@ void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_str
 {
 }
 
-static int module_source_status_count(struct comp_dev *dev, uint32_t status)
+static int module_source_state_count(struct comp_dev *dev, uint32_t state)
 {
 	struct list_item *blist;
 	int count = 0;
@@ -149,7 +149,7 @@ static int module_source_status_count(struct comp_dev *dev, uint32_t status)
 		struct comp_buffer *source = container_of(blist, struct comp_buffer,
 							  sink_list);
 
-		if (source->source && source->source->state == status)
+		if (source->source && source->source->state == state)
 			count++;
 	}
 
@@ -163,8 +163,8 @@ int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev
 		bool sources_active;
 		int ret;
 
-		sources_active = module_source_status_count(dev, COMP_STATE_ACTIVE) ||
-				 module_source_status_count(dev, COMP_STATE_PAUSED);
+		sources_active = module_source_state_count(dev, COMP_STATE_ACTIVE) ||
+				 module_source_state_count(dev, COMP_STATE_PAUSED);
 
 		/* don't stop/start module if one of the sources is active/paused */
 		if ((cmd == COMP_TRIGGER_STOP || cmd == COMP_TRIGGER_PRE_START) && sources_active) {
