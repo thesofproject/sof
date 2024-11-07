@@ -13,7 +13,7 @@
 #include <xtensa/tie/xt_hifi3.h>
 
 #define ONE_OVER_SQRT2_Q30 759250112 /* Q_CONVERT_FLOAT(0.70710678118654752f, 30); 1/sqrt(2) */
-#define LOG10_FUNC_A5_Q26 75959200 /* Q_CONVERT_FLOAT(1.131880283355712890625f, 26) */ 
+#define LOG10_FUNC_A5_Q26 75959200 /* Q_CONVERT_FLOAT(1.131880283355712890625f, 26) */
 #define LOG10_FUNC_A4_Q26 -285795039 /* Q_CONVERT_FLOAT(-4.258677959442138671875f, 26) */
 #define LOG10_FUNC_A3_Q26 457435200 /* Q_CONVERT_FLOAT(6.81631565093994140625f, 26) */
 #define LOG10_FUNC_A2_Q26 -410610303 /* Q_CONVERT_FLOAT(-6.1185703277587890625f, 26) */
@@ -39,12 +39,22 @@
 #define INV_FUNC_A2_Q25 1126492160 /* Q_CONVERT_FLOAT(33.57208251953125f, 25) */
 #define INV_FUNC_A1_Q25 -713042175 /* Q_CONVERT_FLOAT(-21.25031280517578125f, 25) */
 #define INV_FUNC_A0_Q25 239989712 /* Q_CONVERT_FLOAT(7.152250766754150390625f, 25) */
+#define INV_FUNC_ONE_Q30 1073741824 /* Q_CONVERT_FLOAT(1, 30) */
 #define SHIFT_IDX_QX30_QY30_QZ30 1 /* drc_get_lshift(30, 30, 30) */
 #define SHIFT_IDX_QX26_QY30_QZ26 1 /* drc_get_lshift(26, 30, 26) */
 #define SHIFT_IDX_QX25_QY30_QZ25 1 /* drc_get_lshift(25, 30, 25) */
 #define SHIFT_IDX_QX29_QY26_QZ26 2 /* drc_get_lshift(29, 26, 26) */
 #define SHIFT_IDX_QX25_QY26_QZ26 6 /* drc_get_lshift(25, 26, 26) */
 #define DRC_TWENTY_Q26 1342177280   /* Q_CONVERT_FLOAT(20, 26) */
+
+#define DRC_PACK_INT32X2_TO_UINT64(a, b) (((uint64_t)((int64_t)(a) & 0xffffffff) << 32) | \
+						((uint64_t)((int64_t)(b) & 0xffffffff)))
+
+static const uint64_t drc_inv_func_coefficients[] = {
+	DRC_PACK_INT32X2_TO_UINT64(INV_FUNC_A2_Q25, INV_FUNC_A5_Q25),
+	DRC_PACK_INT32X2_TO_UINT64(INV_FUNC_A1_Q25, INV_FUNC_A4_Q25),
+	DRC_PACK_INT32X2_TO_UINT64(INV_FUNC_A0_Q25, INV_FUNC_A3_Q25)
+};
 
 /*
  * Input is Q6.26: max 32.0
@@ -220,17 +230,28 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 	 * fpminimax(1/x, 5, [|SG...|], [sqrt(2)/2;1], absolute);
 	 * max err ~= 1.00388e-6
 	 */
-	ae_f32 in;
-	int32_t in_abs;
-	int32_t bit = 31 - AE_NSAZ32_L(x);
-	int32_t e = bit - precision_x;
-	int32_t precision_inv;
-	int32_t sqrt2_extracted = 0;
-	ae_f32 acc;
+	__aligned(8) ae_f32 coef[2];
 	ae_f64 tmp;
+	ae_f32x2 in;
+	ae_f32x2 p1p0;
+	ae_f32 acc;
+	ae_f32x2 *coefp;
+	int32_t in_abs;
+	int shift_input;
+	int shift_output;
+	int sqrt2_extracted = 0;
 
-	/*Output range [0.5, 1); regulated to Q2.30 */
-	in = AE_SRAA32(x, bit - 30);
+	/* Output range [0.5, 1); regulated to Q2.30
+	 *
+	 * Note: input and output shift code was originally as more self-documenting
+	 *   bit = 31 - AE_NSAZ32_L(x); input_shift = bit - 30;
+	 *   e = bit - precision_x; precision_inv = e + 25;
+	 *   output_shift = precision_y - precision_inv;
+	 */
+
+	shift_input = 1 - AE_NSAZ32_L(x);
+	shift_output = precision_y + precision_x - shift_input - 55;
+	in = AE_SRAA32(x, shift_input);
 	in_abs = AE_MOVAD32_L(AE_ABS32S(in));
 
 	if (in_abs < ONE_OVER_SQRT2_Q30) {
@@ -240,26 +261,38 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 		sqrt2_extracted = 1;
 	}
 
-	tmp = AE_MULF32R_LL(in, INV_FUNC_A5_Q25);
-	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
-	acc = AE_ROUND32F48SSYM(tmp);
-	acc = AE_ADD32(acc, INV_FUNC_A4_Q25);
-	tmp = AE_MULF32R_LL(in, acc);
-	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
-	acc = AE_ROUND32F48SSYM(tmp);
-	acc = AE_ADD32(acc, INV_FUNC_A3_Q25);
-	tmp = AE_MULF32R_LL(in, acc);
-	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
-	acc = AE_ROUND32F48SSYM(tmp);
-	acc = AE_ADD32(acc, INV_FUNC_A2_Q25);
-	tmp = AE_MULF32R_LL(in, acc);
-	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
-	acc = AE_ROUND32F48SSYM(tmp);
-	acc = AE_ADD32(acc, INV_FUNC_A1_Q25);
-	tmp = AE_MULF32R_LL(in, acc);
-	tmp = AE_SLAI64S(tmp, SHIFT_IDX_QX25_QY30_QZ25);
-	acc = AE_ROUND32F48SSYM(tmp);
-	acc = AE_ADD32(acc, INV_FUNC_A0_Q25);
+	/* calculate p00(x) = a1 + a2 * x, p11(x) = a4 + a5 * x
+	 *
+	 * In Q25 coef * Q30 in 32 bit AE multiply the result is Q24 (25 + 30 + 1 - 32),
+	 * so every multiply is shifted left by one to keep results as Q25.
+	 */
+	coefp = (ae_f32x2 *)drc_inv_func_coefficients;
+	p1p0 = AE_SLAI32S(AE_MULFP32X2RS(*coefp, in), SHIFT_IDX_QX25_QY30_QZ25);
+	coefp++;
+	p1p0 = AE_ADD32S(p1p0, *coefp);
+
+	/* calculate p0(x) = a0 + p00(x) * x, p1(x) = a3 + p11(x) * x */
+	p1p0 = AE_SLAI32S(AE_MULFP32X2RS(p1p0, in), SHIFT_IDX_QX25_QY30_QZ25);
+	coefp++;
+	p1p0 = AE_ADD32S(p1p0, *coefp);
+
+	/* calculate p1(x) * x^3
+	 *
+	 * Q30 * Q30 AE multiply gives Q61. shifting it low 32 bits as Q30 would
+	 * need right shift by 31. For Q17,47 AE round instead it is shifted 16 bits
+	 * less, so shift right by 15.
+	 */
+	acc = AE_ROUND32F48SASYM(AE_SRAA64(AE_MULF32S_HH(in, in), 15));
+	acc = AE_ROUND32F48SASYM(AE_SRAA64(AE_MULF32S_HH(acc, in), 15));
+	coef[1] = INV_FUNC_ONE_Q30;
+	coef[0] = acc;
+	p1p0 = AE_SLAI32S(AE_MULFP32X2RS(p1p0, *(ae_int32x2 *)coef), SHIFT_IDX_QX25_QY30_QZ25);
+
+	/* calculate p(x) = p0(x) + p1(x) * x^3
+	 * p1p0.l holds p0(x) after multiply with one
+	 * p1p0.h holds p1(x) * x^3
+	 */
+	acc = AE_MOVAD32_L(AE_ADD32_HL_LH(p1p0, p1p0));
 
 	if (sqrt2_extracted) {
 		tmp = AE_MULF32R_LL(SQRT2_Q30, acc);
@@ -267,8 +300,7 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
 		acc = AE_ROUND32F48SSYM(tmp);
 	}
 
-	precision_inv = e + 25;
-	acc = AE_SLAA32S(acc, precision_y - precision_inv);
+	acc = AE_SLAA32S(acc, shift_output);
 	return AE_MOVAD32_L(acc);
 }
 
