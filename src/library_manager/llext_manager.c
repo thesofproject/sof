@@ -356,15 +356,8 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		if (ret < 0)
 			return 0;
 
-		/* Manifest is in read-only data */
-		uintptr_t dram_rodata = (uintptr_t)ctx->base_addr +
-			ctx->segment[LIB_MANAGER_RODATA].file_offset;
-		uintptr_t va_rodata_base = ctx->segment[LIB_MANAGER_RODATA].addr;
-		size_t offset = (uintptr_t)mod_manifest - dram_rodata;
-
-		/* ctx->mod_manifest points to an array of module manifests */
-		ctx->mod_manifest = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)
-							       (va_rodata_base + offset));
+		/* ctx->mod_manifest points to a const array of module manifests */
+		ctx->mod_manifest = mod_manifest;
 	}
 
 	return ctx->mod_manifest[entry_index].module.entry_point;
