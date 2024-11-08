@@ -48,6 +48,7 @@ config ZEPHYR_DP_SCHEDULER
 	depends on ZEPHYR_SOF_MODULE
 	depends on ACE
 	depends on PIPELINE_2_0
+	imply XTENSA_HIFI_SHARING if XTENSA_HIFI
 	help
 	  Enable Data Processing preemptive scheduler based on
 	  Zephyr preemptive threads.
