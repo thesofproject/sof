@@ -236,19 +236,18 @@ static int llext_manager_unload_module(uint32_t module_id, const struct sof_man_
 	return err;
 }
 
-static int llext_manager_link(struct llext_buf_loader *ebl, struct sof_man_fw_desc *desc,
-			      struct sof_man_module *mod, uint32_t module_id, struct module_data *md,
+static int llext_manager_link(struct llext_buf_loader *ebl, uintptr_t dram_base,
+			      const char *name, uint32_t module_id, struct module_data *md,
 			      const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
-	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Identify if this is the first time loading this module */
 	struct llext_load_param ldr_parm = {
 		.relocate_local = !ctx->segment[LIB_MANAGER_TEXT].size,
 		.pre_located = true,
 	};
-	int ret = llext_load(&ebl->loader, mod->name, &md->llext, &ldr_parm);
+	int ret = llext_load(&ebl->loader, name, &md->llext, &ldr_parm);
 
 	if (ret)
 		return ret;
@@ -336,7 +335,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
 
 	/* LLEXT linking is only needed once for all the modules in the library */
-	ret = llext_manager_link(&ebl, desc, mod_array, module_id, md,
+	ret = llext_manager_link(&ebl, dram_base, mod_array[0].name, module_id, md,
 				 (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
