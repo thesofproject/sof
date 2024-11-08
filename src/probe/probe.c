@@ -759,7 +759,6 @@ static uint32_t probe_gen_format(uint32_t frame_fmt, uint32_t rate,
 	default:
 		tr_err(&pr_tr, "probe_gen_format(): Invalid frame format specified = 0x%08x",
 		       frame_fmt);
-		assert(false);
 		return 0;
 	}
 
