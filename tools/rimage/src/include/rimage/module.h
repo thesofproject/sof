@@ -24,6 +24,8 @@ struct module_section {
 
 	/* The contents of the section lie in the rom memory space */
 	bool rom;
+	/* The section is detached from the main part of the module */
+	bool detached;
 
 	/* ADSP devices have their RAM regions mapped twice. The first mapping is set in the CPU
 	 * to bypass the L1 cache, and so access through pointers in that region is coherent between

@@ -15,6 +15,7 @@
 #include <rimage/file_utils.h>
 #include <rimage/rimage.h>
 #include <rimage/misc_utils.h>
+#include <rimage/sof/user/manifest.h>
 
 int module_read_section(const struct module *module, const struct module_section *section,
 			void *buffer, const size_t size)
@@ -200,6 +201,33 @@ static bool section_is_rom(const struct memory_config *config,
 }
 
 /**
+ * Checks if the section is detached from the main module
+ *
+ * Some sections can be detached from the main module, e.g. for running in DRAM
+ *
+ * @param config Memory configuration structure
+ * @param section section to be checked
+ * @return true if section is detached
+ */
+static bool section_is_detached(const struct memory_config *config,
+				const struct elf_section_header *section)
+{
+	uint32_t sect_start, sect_end;
+	const uint32_t start = SOF_MODULE_DRAM_LINK_START, end = SOF_MODULE_DRAM_LINK_END;
+
+	sect_start = section->data.vaddr;
+	sect_end = sect_start + section->data.size;
+
+	if (sect_end <= start || sect_start >= end)
+		return false;
+	if (sect_start >= start && sect_end <= end)
+		return true;
+
+	fprintf(stderr, "Warning! Section %s partially overlaps with dram memory.\n", section->name);
+	return false;
+}
+
+/**
  * Initialize module_sections_info structure
  *
  * @param info Pointer to a module_sections_info structure
@@ -315,11 +343,12 @@ void module_parse_sections(struct module *module, const struct memory_config *me
 		out_section->size = sect->data.size;
 		out_section->type = get_section_type(sect);
 		out_section->rom = section_is_rom(mem_cfg, sect);
+		out_section->detached = section_is_detached(mem_cfg, sect);
 		out_section->address = sect->data.vaddr;
 		out_section->load_address = find_physical_address(&module->elf, sect->data.vaddr);
 
 		/* Don't convert ROM addresses, ROM sections aren't included in the output image */
-		if (!out_section->rom) {
+		if (!out_section->rom && !out_section->detached) {
 			/* Walk the sections in the ELF file, changing the VMA/LMA of each uncached section
 			 * to the equivalent address in the cached area of memory. */
 			out_section->address = uncache_to_cache(&mem_cfg->alias,
@@ -357,7 +386,10 @@ void module_parse_sections(struct module *module, const struct memory_config *me
 			break;
 		}
 
-		if (out_section->rom) {
+		if (out_section->detached) {
+			/* Detached sections are copied as is and don't contribute to metadata */
+			fprintf(stdout, " detached");
+		} else if (out_section->rom) {
 			/* ROM sections aren't included in the output image */
 			fprintf(stdout, " ROM");
 		} else {
