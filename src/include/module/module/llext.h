@@ -34,4 +34,10 @@ static const struct sof_module_api_build_info buildinfo __section(".mod_buildinf
 	.api_version_number.full = SOF_MODULE_API_CURRENT_VERSION, \
 }
 
+#if CONFIG_LLEXT_TYPE_ELF_RELOCATABLE && defined(LL_EXTENSION_BUILD)
+#define __cold __section(".text.dram")
+#else
+#define __cold
+#endif
+
 #endif
