@@ -104,6 +104,12 @@ NHLT_BIN=nhlt-sof-ptl-max98357a-rt5682-ssp2-ssp0.bin,DEEPBUFFER_FW_DMA_MS=10,HEA
 SPK_ID=6,SPEAKER_SSP_DAI_INDEX=0,HEADSET_CODEC_NAME=SSP2-Codec,SPEAKER_CODEC_NAME=SSP0-Codec,\
 BT_NAME=SSP1-BT,BT_INDEX=1,BT_ID=7,BT_PCM_NAME=Bluetooth,INCLUDE_ECHO_REF=true,DEEP_BUF_SPK=true"
 
+# Topology for PTL with rt5682 (SSP 0), max98360a (SSP 1), BT (SSP 2) and PDM0, PDM1 enabled
+"cavs-rt5682\;sof-ptl-max98360a-rt5682\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-max98360a-rt5682.bin,SPK_ID=6,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+BT_NAME=SSP2-BT,BT_ID=7,BT_PCM_NAME=Bluetooth,DEEP_BUF_SPK=true"
+
 # CAVS HDA topology with mixer-based efx eq pipelines for HDA and passthrough pipelines for HDMI
 "sof-hda-generic\;sof-hda-efx-generic\;HDA_CONFIG=efx,HDA_MIC_ENHANCED_CAPTURE=true,\
 EFX_FIR_PARAMS=passthrough,EFX_IIR_PARAMS=passthrough,EFX_DRC_PARAMS=passthrough,\
