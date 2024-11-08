@@ -224,8 +224,8 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 			      const struct sof_man_module_manifest **mod_manifest)
 {
 	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
-	uintptr_t imr_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)imr_base + FILE_TEXT_OFFSET_V1_8,
+	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
+	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + FILE_TEXT_OFFSET_V1_8,
 						       mod_size);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Identify if this is the first time loading this module */
@@ -240,7 +240,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 
 	ctx->segment[LIB_MANAGER_TEXT].addr = ebl.loader.sects[LLEXT_MEM_TEXT].sh_addr;
 	ctx->segment[LIB_MANAGER_TEXT].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_TEXT] - imr_base;
+		(uintptr_t)md->llext->mem[LLEXT_MEM_TEXT] - dram_base;
 	ctx->segment[LIB_MANAGER_TEXT].size = ebl.loader.sects[LLEXT_MEM_TEXT].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x offset %#x",
@@ -252,7 +252,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	ctx->segment[LIB_MANAGER_RODATA].addr =
 		ebl.loader.sects[LLEXT_MEM_RODATA].sh_addr;
 	ctx->segment[LIB_MANAGER_RODATA].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] - imr_base;
+		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] - dram_base;
 	ctx->segment[LIB_MANAGER_RODATA].size = ebl.loader.sects[LLEXT_MEM_RODATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x offset %#x",
@@ -263,7 +263,7 @@ static int llext_manager_link(struct sof_man_fw_desc *desc, struct sof_man_modul
 	ctx->segment[LIB_MANAGER_DATA].addr =
 		ebl.loader.sects[LLEXT_MEM_DATA].sh_addr;
 	ctx->segment[LIB_MANAGER_DATA].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_DATA] - imr_base;
+		(uintptr_t)md->llext->mem[LLEXT_MEM_DATA] - dram_base;
 	ctx->segment[LIB_MANAGER_DATA].size = ebl.loader.sects[LLEXT_MEM_DATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x offset %#x",
@@ -337,10 +337,10 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 			return 0;
 
 		/* Manifest is in read-only data */
-		uintptr_t imr_rodata = (uintptr_t)ctx->base_addr +
+		uintptr_t dram_rodata = (uintptr_t)ctx->base_addr +
 			ctx->segment[LIB_MANAGER_RODATA].file_offset;
 		uintptr_t va_rodata_base = ctx->segment[LIB_MANAGER_RODATA].addr;
-		size_t offset = (uintptr_t)mod_manifest - imr_rodata;
+		size_t offset = (uintptr_t)mod_manifest - dram_rodata;
 
 		/* ctx->mod_manifest points to an array of module manifests */
 		ctx->mod_manifest = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)
