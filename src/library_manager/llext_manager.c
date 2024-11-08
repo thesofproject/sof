@@ -236,6 +236,11 @@ static int llext_manager_unload_module(uint32_t module_id, const struct sof_man_
 	return err;
 }
 
+static bool llext_manager_section_detached(const elf_shdr_t *shdr)
+{
+	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
+}
+
 static int llext_manager_link(struct llext_buf_loader *ebl, uintptr_t dram_base,
 			      const char *name, uint32_t module_id, struct module_data *md,
 			      const void **buildinfo,
@@ -246,6 +251,7 @@ static int llext_manager_link(struct llext_buf_loader *ebl, uintptr_t dram_base,
 	struct llext_load_param ldr_parm = {
 		.relocate_local = !ctx->segment[LIB_MANAGER_TEXT].size,
 		.pre_located = true,
+		.section_detached = llext_manager_section_detached,
 	};
 	int ret = llext_load(&ebl->loader, name, &md->llext, &ldr_parm);
 
@@ -262,7 +268,7 @@ static int llext_manager_link(struct llext_buf_loader *ebl, uintptr_t dram_base,
 	       ctx->segment[LIB_MANAGER_TEXT].size,
 	       ctx->segment[LIB_MANAGER_TEXT].file_offset);
 
-	/* This contains all other sections, except .text, it might contain .bss too */
+	/* All read-only data sections */
 	ctx->segment[LIB_MANAGER_RODATA].addr =
 		ebl->loader.sects[LLEXT_MEM_RODATA].sh_addr;
 	ctx->segment[LIB_MANAGER_RODATA].file_offset =
@@ -274,6 +280,7 @@ static int llext_manager_link(struct llext_buf_loader *ebl, uintptr_t dram_base,
 	       ctx->segment[LIB_MANAGER_RODATA].size,
 	       ctx->segment[LIB_MANAGER_RODATA].file_offset);
 
+	/* All writable data sections */
 	ctx->segment[LIB_MANAGER_DATA].addr =
 		ebl->loader.sects[LLEXT_MEM_DATA].sh_addr;
 	ctx->segment[LIB_MANAGER_DATA].file_offset =
