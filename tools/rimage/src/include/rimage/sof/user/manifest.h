@@ -250,4 +250,13 @@ struct sof_man_module_manifest {
 	(sizeof(struct sof_man_fw_header) + \
 		(index) * sizeof(struct sof_man_module))
 
+/*
+ * LLEXT module link area for detached sections. When an LLEXT module contains
+ * detached sections, they will be linked with addresses in this range. The
+ * upper limit has no special meaning, simply assuming that 128MiB should be
+ * enough and that SRAM will not use these addresses.
+ */
+#define SOF_MODULE_DRAM_LINK_START	0
+#define SOF_MODULE_DRAM_LINK_END	0x08000000
+
 #endif /* __RIMAGE_USER_MANIFEST_H__ */
