@@ -1088,7 +1088,7 @@ static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point
 static bool enable_logs(const struct probe_point *probe)
 {
 #if CONFIG_IPC_MAJOR_4
-	return probe->buffer_id.fields.module_id == 0;
+	return probe->buffer_id.full_id == 0;
 #else
 	return probe->purpose == PROBE_PURPOSE_LOGGING;
 #endif
