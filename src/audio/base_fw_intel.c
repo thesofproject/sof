@@ -47,6 +47,10 @@ struct ipc4_modules_info {
 #define PLATFORM_LPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram1)) / SRAM_BANK_SIZE)
 #define PLATFORM_HPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram0)) / SRAM_BANK_SIZE)
 
+#define DT_NUM_SSP_BASE		DT_NUM_INST_STATUS_OKAY(intel_ssp)
+#define DT_NUM_HDA_IN			DT_PROP(DT_INST(0, intel_adsp_hda_link_in), dma_channels)
+#define DT_NUM_HDA_OUT		DT_PROP(DT_INST(0, intel_adsp_hda_link_out), dma_channels)
+
 LOG_MODULE_REGISTER(basefw_intel, CONFIG_SOF_LOG_LEVEL);
 
 int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
@@ -83,7 +87,7 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 
 	tuple = tlv_next(tuple);
 	/* 2 DMIC dais */
-	value =  DAI_NUM_SSP_BASE + DAI_NUM_HDA_IN + DAI_NUM_HDA_OUT +
+	value =  DT_NUM_SSP_BASE + DT_NUM_HDA_IN + DT_NUM_HDA_OUT +
 			DAI_NUM_ALH_BI_DIR_LINKS + 2;
 	tlv_value_uint32_set(tuple, IPC4_GATEWAY_COUNT_HW_CFG, value);
 
