@@ -36,10 +36,19 @@
 #define IPC4_ALH_DAI_INDEX_OFFSET 0
 #endif
 
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_CAVS) || \
+	defined(CONFIG_SOC_INTEL_ACE15_MTPM)
+#define IPC4_DAI_NUM_ALH_BI_DIR_LINKS	16
+#define IPC4_DAI_NUM_ALH_BI_DIR_LINKS_GROUP	4
+#else
+#define IPC4_DAI_NUM_ALH_BI_DIR_LINKS	0
+#define IPC4_DAI_NUM_ALH_BI_DIR_LINKS_GROUP	0
+#endif
+
 /* copier id = (group id << 4) + codec id + IPC4_ALH_DAI_INDEX_OFFSET
  * dai_index = (group id << 8) + codec id;
  */
-#define IPC4_ALH_DAI_INDEX(x) ((((x) & 0xF0) << DAI_NUM_ALH_BI_DIR_LINKS_GROUP) + \
+#define IPC4_ALH_DAI_INDEX(x) ((((x) & 0xF0) << IPC4_DAI_NUM_ALH_BI_DIR_LINKS_GROUP) + \
 				(((x) & 0xF) - IPC4_ALH_DAI_INDEX_OFFSET))
 
 /* Multi-gateways addressing starts from IPC4_ALH_MULTI_GTW_BASE */
