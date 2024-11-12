@@ -255,7 +255,7 @@ int32_t sofm_exp_int32(int32_t x)
 
 	mp = lomul_s64_sr_sat_near(mp, (int64_t)x);
 
-	for (b_n = 0; b_n < 64;) {
+	for (b_n = 0; b_n < 2;) {
 		AE_L64_IP(onebyfact, ponebyfact_Q63, 8);
 
 		mul_s64(mp, onebyfact, &outhi, &outlo);
