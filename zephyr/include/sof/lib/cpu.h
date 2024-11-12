@@ -14,7 +14,15 @@
 #ifndef __SOF_LIB_CPU_H__
 #define __SOF_LIB_CPU_H__
 
-#include <platform/lib/cpu.h>
+/**
+ * \brief Id of primary DSP core
+ *
+ * SOF IPC protocols make a distinction between primary
+ * and secondary cores. In Zephyr, primary core id concept
+ * is not present in public OS interface, but in implementation
+ * zero is the boot core (see z_smp_init() in Zephyr).
+ */
+#define PLATFORM_PRIMARY_CORE_ID	0
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
