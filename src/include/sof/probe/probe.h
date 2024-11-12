@@ -8,8 +8,6 @@
 #ifndef __SOF_PROBE_PROBE_H__
 #define __SOF_PROBE_PROBE_H__
 
-#if CONFIG_PROBE
-
 #include <ipc/probe.h>
 
 /**
@@ -105,7 +103,5 @@ static inline struct probe_pdata *probe_get(void)
 {
 	return sof_get()->probe;
 }
-
-#endif /* CONFIG_PROBE */
 
 #endif /* __SOF_PROBE_PROBE_H__ */
