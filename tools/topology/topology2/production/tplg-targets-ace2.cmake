@@ -16,7 +16,9 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
 "cavs-sdw\;sof-lnl-rt722-l0\;PLATFORM=lnl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
-SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+EFX_SPK_IIR_PARAMS=highpass_100hz_0db_48khz,EFX_SPK_DRC_PARAMS=speaker_default,\
+SDW_SPK_ENHANCED_PLAYBACK=true"
 
 "cavs-sdw\;sof-lnl-rt712-l2-rt1320-l1\;PLATFORM=lnl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
