@@ -52,6 +52,7 @@ config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  default n
 	  depends on IPC_MAJOR_4
+	  depends on DMA_INTEL_ADSP_HDA
 	  help
 	    Chain DMA support in hardware
 
