@@ -16,7 +16,6 @@
 #ifndef __SOF_LIB_DAI_ZEPHYR_H__
 #define __SOF_LIB_DAI_ZEPHYR_H__
 
-#include <platform/lib/dai.h>
 #include <rtos/bit.h>
 #include <sof/list.h>
 #include <sof/lib/io.h>
