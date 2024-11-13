@@ -24,6 +24,7 @@
 #include <sof/lib/memory.h>
 
 #include <ipc4/base_fw.h>
+#include <ipc4/alh.h>
 #include <rimage/sof/user/manifest.h>
 #include "copier/copier_gain.h"
 
@@ -88,7 +89,7 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 	/* 2 DMIC dais */
 	value =  DT_NUM_SSP_BASE + DT_NUM_HDA_IN + DT_NUM_HDA_OUT +
-			DAI_NUM_ALH_BI_DIR_LINKS + 2;
+			IPC4_DAI_NUM_ALH_BI_DIR_LINKS + 2;
 	tlv_value_uint32_set(tuple, IPC4_GATEWAY_COUNT_HW_CFG, value);
 
 	tuple = tlv_next(tuple);
