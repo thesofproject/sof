@@ -30,8 +30,11 @@
 #include <ipc/header.h>
 #endif
 
+#define DT_NUM_HDA_IN		DT_PROP(DT_INST(0, intel_adsp_hda_link_in), dma_channels)
+#define DT_NUM_HDA_OUT		DT_PROP(DT_INST(0, intel_adsp_hda_link_out), dma_channels)
+
 static const struct comp_driver comp_chain_dma;
-static const uint32_t max_chain_number = DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN;
+static const uint32_t max_chain_number = DT_NUM_HDA_OUT + DT_NUM_HDA_IN;
 
 LOG_MODULE_REGISTER(chain_dma, CONFIG_SOF_LOG_LEVEL);
 
@@ -405,10 +408,10 @@ static int get_connector_node_id(uint32_t dma_id, bool host_type,
 {
 	uint8_t type = host_type ? ipc4_hda_host_output_class : ipc4_hda_link_output_class;
 
-	if (dma_id >= DAI_NUM_HDA_OUT) {
+	if (dma_id >= DT_NUM_HDA_OUT) {
 		type = host_type ? ipc4_hda_host_input_class : ipc4_hda_link_input_class;
-		dma_id -= DAI_NUM_HDA_OUT;
-		if (dma_id >= DAI_NUM_HDA_IN)
+		dma_id -= DT_NUM_HDA_OUT;
+		if (dma_id >= DT_NUM_HDA_IN)
 			return -EINVAL;
 	}
 	connector_node_id->dw = 0;
