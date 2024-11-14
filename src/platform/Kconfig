@@ -339,11 +339,7 @@ config CAVS
 	bool
 	default n
 	select INTEL
-	select XT_INTERRUPT_LEVEL_2
-	select XT_INTERRUPT_LEVEL_5
 	select INTEL_MN
-	select WAKEUP_HOOK
-	select SCHEDULE_DMA_SINGLE_CHANNEL
 
 config CAVS_VERSION_2_5
 	depends on CAVS
