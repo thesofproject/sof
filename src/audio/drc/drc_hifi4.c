@@ -607,7 +607,7 @@ static void drc_s16_default(struct processing_module *mod,
 	const int sample_inc = nch * sizeof(ae_int16);
 	const int delay_inc = sizeof(ae_int16);
 
-	if (!p->enabled) {
+	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case.
@@ -748,7 +748,7 @@ static void drc_s24_default(struct processing_module *mod,
 	const int sample_inc = nch * sizeof(int32_t);
 	const int delay_inc = sizeof(int32_t);
 
-	if (!p->enabled) {
+	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case. Note: use 32 bit delay function.
@@ -835,7 +835,7 @@ static void drc_s32_default(struct processing_module *mod,
 	const int sample_inc = nch * sizeof(int32_t);
 	const int delay_inc = sizeof(int32_t);
 
-	if (!p->enabled) {
+	if (!cd->enabled) {
 		/* Delay the input sample only and don't do other processing. This is used when the
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case.
