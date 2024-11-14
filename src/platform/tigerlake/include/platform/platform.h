@@ -41,9 +41,6 @@ struct timer;
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	(HOST_PAGE_SIZE * 2)
 
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
-
 extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;
 
