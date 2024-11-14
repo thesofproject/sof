@@ -34,9 +34,6 @@
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	(HOST_PAGE_SIZE * 2)
 
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
-
 #endif /* __PLATFORM_PLATFORM_H__ */
 
 #else
