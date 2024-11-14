@@ -6,7 +6,18 @@
 #ifndef __SOF_LIB_DMA_H__
 #define __SOF_LIB_DMA_H__
 
+#if defined(CONFIG_SCHEDULE_DMA_MULTI_CHANNEL) || \
+	defined(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL)
+/*
+ * The platform/lib/dma.h definitions are only needed
+ * when using old dma_{single,multi}_chan_domain
+ * implementations. For new SOF build targets, it is
+ * recommended to use CONFIG_DMA_DOMAIN instead if
+ * DMA-driven scheduling is needed.
+ */
 #include <platform/lib/dma.h>
+#endif
+
 #include <rtos/atomic.h>
 #include <rtos/bit.h>
 #include <rtos/alloc.h>
