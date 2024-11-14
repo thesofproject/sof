@@ -1491,6 +1491,37 @@ static int probe_set_config(struct processing_module *mod, uint32_t param_id,
 	}
 }
 
+static int probe_get_config(struct processing_module *mod,
+			    uint32_t config_id, uint32_t *data_offset_size,
+			    uint8_t *fragment, size_t fragment_size)
+{
+	struct sof_ipc_probe_info_params *info =
+		(struct sof_ipc_probe_info_params *)ASSUME_ALIGNED(fragment, 8);
+	struct probe_pdata *_probe = probe_get();
+	struct comp_dev *dev = mod->dev;
+	int i, j;
+
+	comp_dbg(dev, "config_id %u", config_id);
+	switch (config_id) {
+	case IPC4_PROBE_MODULE_PROBE_POINTS_ADD:
+		for (i = 0, j = 0; i < ARRAY_SIZE(_probe->probe_points); i++) {
+			if (_probe->probe_points[i].stream_tag == PROBE_POINT_INVALID)
+				continue;
+			if (offsetof(struct sof_ipc_probe_info_params, probe_point[j]) +
+			    sizeof(info->probe_point[0]) > fragment_size)
+				break;
+			info->probe_point[j++] = _probe->probe_points[i];
+		}
+		info->num_elems = j;
+		comp_info(dev, "%u probe points sent", j);
+		break;
+	default:
+		comp_err(dev, "unknown config_id %u", config_id);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static int probe_dummy_process(struct processing_module *mod,
 			       struct input_stream_buffer *input_buffers, int num_input_buffers,
 			       struct output_stream_buffer *output_buffers, int num_output_buffers)
@@ -1506,6 +1537,7 @@ static const struct module_interface probe_interface = {
 	.init = probe_mod_init,
 	.process_audio_stream = probe_dummy_process,
 	.set_configuration = probe_set_config,
+	.get_configuration = probe_get_config,
 	.free = probe_free,
 };
 
