@@ -11,34 +11,22 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/time_units.h>
 #include <rtos/timer.h>
 
-/* TODO: use equivalent Zephyr */
-static inline void idelay(int n)
+static inline void wait_delay_us(uint64_t us)
 {
-	while (n--)
-		__asm__ volatile("nop");
+	k_busy_wait(us);
 }
-
-/* DSP default delay in cycles - all platforms use this today */
-#define PLATFORM_DEFAULT_DELAY	12
 
 static inline void wait_delay(uint64_t number_of_clks)
 {
-	uint64_t timeout = sof_cycle_get_64() + number_of_clks;
-
-	while (sof_cycle_get_64() < timeout)
-		idelay(PLATFORM_DEFAULT_DELAY);
+	k_busy_wait(k_cyc_to_us_floor64(number_of_clks));
 }
 
 static inline void wait_delay_ms(uint64_t ms)
 {
-	wait_delay(k_ms_to_cyc_ceil64(ms));
-}
-
-static inline void wait_delay_us(uint64_t us)
-{
-	wait_delay(k_us_to_cyc_ceil64(us));
+	k_busy_wait(ms * 1000);
 }
 
 int poll_for_register_delay(uint32_t reg, uint32_t mask,
