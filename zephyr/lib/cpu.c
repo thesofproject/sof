@@ -235,7 +235,7 @@ void cpu_disable_core(int id)
 
 	/* Waiting for secondary core to enter idle state */
 	while (arch_cpu_active(id) && (k_cycle_get_64() < timeout))
-		idelay(PLATFORM_DEFAULT_DELAY);
+		k_busy_wait(1);
 
 	if (arch_cpu_active(id)) {
 		tr_err(&zephyr_tr, "core %d did not enter idle state", id);
