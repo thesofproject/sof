@@ -88,7 +88,7 @@ int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
 
 	while (!cond(target_core)) {
 		/* spin here so other core can access IO and timers freely */
-		idelay(8192);
+		wait_delay(8192);
 
 		if (deadline < sof_cycle_get_64())
 			break;
