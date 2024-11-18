@@ -58,21 +58,38 @@ struct zephyr_domain {
 };
 
 /* perf measurement windows size 2^x */
-#define CYCLES_WINDOW_SIZE	10
+#define CYCLES_WINDOW_SIZE	CONFIG_SCHEDULE_LL_STATS_LOG_WINDOW_SIZE
+
+#ifdef CONFIG_SCHEDULE_LL_STATS_LOG
+static inline void stats_report(unsigned int runs, int core, unsigned int cycles_sum,
+				unsigned int cycles_max, unsigned int overruns)
+{
+#ifdef CONFIG_SCHEDULE_LL_STATS_LOG_EVERY_OTHER_WINDOW
+	if (runs & BIT(CYCLES_WINDOW_SIZE))
+		return;
+#endif
+	tr_info(&ll_tr, "ll core %u timer avg %u, max %u, overruns %u",
+		core, cycles_sum, cycles_max, overruns);
+}
+#endif /* CONFIG_SCHEDULE_LL_STATS_LOG */
 
 static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct zephyr_domain *zephyr_domain = p1;
 	int core = cpu_get_id();
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+#ifdef CONFIG_SCHEDULE_LL_STATS_LOG
 	unsigned int runs = 0, overruns = 0, cycles_sum = 0, cycles_max = 0;
 	unsigned int cycles0, cycles1, diff, timer_fired;
+#endif
 
 	for (;;) {
 		/* immediately go to sleep, waiting to be woken up by the timer */
 		k_sem_take(&dt->sem, K_FOREVER);
 
+#ifdef CONFIG_SCHEDULE_LL_STATS_LOG
 		cycles0 = k_cycle_get_32();
+#endif
 
 #if CONFIG_CROSS_CORE_STREAM
 		/*
@@ -95,6 +112,8 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 #endif
 
 		dt->handler(dt->arg);
+
+#ifdef CONFIG_SCHEDULE_LL_STATS_LOG
 		cycles1 = k_cycle_get_32();
 
 		/* This handles wrapping correctly too */
@@ -107,15 +126,14 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 		cycles_sum += diff;
 		cycles_max = diff > cycles_max ? diff : cycles_max;
 
-		if (++runs == 1 << CYCLES_WINDOW_SIZE) {
+		if (!(++runs & MASK(CYCLES_WINDOW_SIZE - 1, 0))) {
 			cycles_sum >>= CYCLES_WINDOW_SIZE;
-			tr_info(&ll_tr, "ll core %u timer avg %u, max %u, overruns %u",
-				core, cycles_sum, cycles_max, overruns);
+			stats_report(runs, core, cycles_sum, cycles_max, overruns);
 			cycles_sum = 0;
 			cycles_max = 0;
-			runs = 0;
 			overruns = 0;
 		}
+#endif /* CONFIG_SCHEDULE_LL_STATS_LOG */
 
 		/* Feed the watchdog */
 		watchdog_feed(core);

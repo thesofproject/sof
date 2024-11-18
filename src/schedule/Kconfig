@@ -11,3 +11,32 @@ config SCHEDULE_DMA_MULTI_CHANNEL
 	default n
 	help
 	  Enable multi-channel DMA scheduler
+
+config SCHEDULE_LL_STATS_LOG
+	bool "Log low-latency scheduler statistics"
+	default y
+	help
+	  Log statistics from low-latency scheduler. This is a low overhead
+	  mechanism to gather average and worst-case execution times of
+	  the low-latency scheduler invocations. A report is printed to
+	  logging subsystem (rate defined via SCHEDULE_LL_STATS_LOG_WINDOW_SIZE).
+
+config SCHEDULE_LL_STATS_LOG_EVERY_OTHER_WINDOW
+	bool "Log only every other low-latency report"
+	depends on SCHEDULE_LL_STATS_LOG
+	help
+	  Output statistics for every other statistics gathering window.
+	  This is useful to filter out impact of the reporting itself. With many
+	  logging implementations, the first iteration has a spike in
+	  execution caused by logging out results for the previous statistics
+	  window. By skipping every other window, the reporting overhead
+	  can be excluded.
+
+config SCHEDULE_LL_STATS_LOG_WINDOW_SIZE
+	int "Low latency statistics window size"
+	default 10
+	depends on SCHEDULE_LL_STATS_LOG
+	help
+	  Size of the statistics window as a power of two. The window size
+	  setting also impacts the rate of reporting. With 1ms scheduler tick,
+	  default of 10 results in 1024msec window size.
