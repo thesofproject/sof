@@ -309,9 +309,6 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		buffer->sink = NULL;
-		/* Also if it isn't shared - we are about to modify uncached data */
-		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
-						   sizeof(*buffer));
 		/* This breaks the list, but we anyway delete all buffers */
 		list_init(clist);
 	}
@@ -320,9 +317,6 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, source_list);
 
 		buffer->source = NULL;
-		/* Also if it isn't shared - we are about to modify uncached data */
-		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
-						   sizeof(*buffer));
 		/* This breaks the list, but we anyway delete all buffers */
 		list_init(clist);
 	}
