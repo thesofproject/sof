@@ -131,7 +131,6 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 			stats_report(runs, core, cycles_sum, cycles_max, overruns);
 			cycles_sum = 0;
 			cycles_max = 0;
-			overruns = 0;
 		}
 #endif /* CONFIG_SCHEDULE_LL_STATS_LOG */
 
