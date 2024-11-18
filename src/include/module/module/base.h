@@ -86,7 +86,10 @@ struct processing_module {
 	 */
 #ifdef SOF_MODULE_API_PRIVATE
 	struct sof_ipc_stream_params *stream_params;
-	struct list_item sink_buffer_list; /* list of sink buffers to save produced output */
+	/* list of sink buffers to save produced output, to be used in Raw data
+	 * processing mode
+	 */
+	struct list_item raw_data_buffers_list;
 
 	/*
 	 * This is a temporary change in order to support the trace messages in the modules. This

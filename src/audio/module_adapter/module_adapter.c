@@ -81,7 +81,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	mod->dev = dev;
 	dev->mod = mod;
 
-	list_init(&mod->sink_buffer_list);
+	list_init(&mod->raw_data_buffers_list);
 
 	ret = module_adapter_init_data(dev, dst, config, spec);
 	if (ret) {
@@ -367,7 +367,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* allocate buffer for all sinks */
-	if (list_is_empty(&mod->sink_buffer_list)) {
+	if (list_is_empty(&mod->raw_data_buffers_list)) {
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
 			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
@@ -381,16 +381,16 @@ int module_adapter_prepare(struct comp_dev *dev)
 			}
 
 			irq_local_disable(flags);
-			buffer_attach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+			buffer_attach(buffer, &mod->raw_data_buffers_list, PPL_DIR_UPSTREAM);
 			irq_local_enable(flags);
 
 			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
 			audio_buffer_reset(&buffer->audio_buffer);
 		}
 	} else {
-		list_for_item(blist, &mod->sink_buffer_list) {
+		list_for_item(blist, &mod->raw_data_buffers_list) {
 			struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-								  sink_list);
+								  buffers_list);
 
 			ret = buffer_set_size(buffer, buff_size, 0);
 			if (ret < 0) {
@@ -409,13 +409,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 	return 0;
 
 free:
-	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
+	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  buffers_list);
 		uint32_t flags;
 
 		irq_local_disable(flags);
-		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+		buffer_detach(buffer, &mod->raw_data_buffers_list, PPL_DIR_UPSTREAM);
 		irq_local_enable(flags);
 		buffer_free(buffer);
 	}
@@ -606,11 +606,11 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	 * copy all produced output samples to output buffers. This loop will do nothing when
 	 * there are no samples produced.
 	 */
-	list_for_item(blist, &mod->sink_buffer_list) {
+	list_for_item(blist, &mod->raw_data_buffers_list) {
 		if (mod->output_buffers[i].size > 0) {
 			struct comp_buffer *buffer;
 
-			buffer = container_of(blist, struct comp_buffer, sink_list);
+			buffer = container_of(blist, struct comp_buffer, buffers_list);
 
 			ca_copy_from_module_to_sink(&buffer->stream, mod->output_buffers[i].data,
 						    mod->output_buffers[i].size);
@@ -625,12 +625,12 @@ static void module_adapter_process_output(struct comp_dev *dev)
 		struct list_item *_blist;
 		int j = 0;
 
-		list_for_item(_blist, &mod->sink_buffer_list) {
+		list_for_item(_blist, &mod->raw_data_buffers_list) {
 			if (i == j) {
 				struct comp_buffer *source;
 
 				sink = container_of(blist, struct comp_buffer, source_list);
-				source = container_of(_blist, struct comp_buffer, sink_list);
+				source = container_of(_blist, struct comp_buffer, buffers_list);
 
 				module_copy_samples(dev, source, sink,
 						    mod->output_buffers[i].size);
@@ -1013,8 +1013,8 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "module_adapter_raw_data_type_copy(): start");
 
-	list_for_item(blist, &mod->sink_buffer_list) {
-		sink = container_of(blist, struct comp_buffer, sink_list);
+	list_for_item(blist, &mod->raw_data_buffers_list) {
+		sink = container_of(blist, struct comp_buffer, buffers_list);
 
 		min_free_frames = MIN(min_free_frames,
 				      audio_stream_get_free_frames(&sink->stream));
@@ -1179,9 +1179,9 @@ int module_adapter_reset(struct comp_dev *dev)
 	mod->total_data_consumed = 0;
 	mod->total_data_produced = 0;
 
-	list_for_item(blist, &mod->sink_buffer_list) {
+	list_for_item(blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  buffers_list);
 		buffer_zero(buffer);
 	}
 
@@ -1206,13 +1206,13 @@ void module_adapter_free(struct comp_dev *dev)
 	if (ret)
 		comp_err(dev, "module_adapter_free(): failed with error: %d", ret);
 
-	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
+	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  buffers_list);
 		uint32_t flags;
 
 		irq_local_disable(flags);
-		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+		buffer_detach(buffer, &mod->raw_data_buffers_list, PPL_DIR_UPSTREAM);
 		irq_local_enable(flags);
 		buffer_free(buffer);
 	}
