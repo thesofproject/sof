@@ -23,6 +23,7 @@ config SCHEDULE_LL_STATS_LOG
 
 config SCHEDULE_LL_STATS_LOG_EVERY_OTHER_WINDOW
 	bool "Log only every other low-latency report"
+	default y
 	depends on SCHEDULE_LL_STATS_LOG
 	help
 	  Output statistics for every other statistics gathering window.
