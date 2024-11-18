@@ -133,11 +133,11 @@ void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_str
 
 static int module_source_state_count(struct comp_dev *dev, uint32_t state)
 {
-	struct list_item *blist;
 	int count = 0;
+	struct comp_buffer *source;
 
 	/* count source with state == status */
-	list_for_item(blist, &dev->bsource_list) {
+	comp_dev_for_each_producer(dev, source)
 		/*
 		 * FIXME: this is racy, state can be changed by another core.
 		 * This is implicitly protected by serialised IPCs. Even when
@@ -145,12 +145,8 @@ static int module_source_state_count(struct comp_dev *dev, uint32_t state)
 		 * not be sent until the thread has processed and replied to the
 		 * current one.
 		 */
-		struct comp_buffer *source = container_of(blist, struct comp_buffer,
-							  Xsink_list);
-
 		if (comp_buffer_get_source_state(source) == state)
 			count++;
-	}
 
 	return count;
 }

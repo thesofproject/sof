@@ -127,7 +127,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		comp_err(dev, "comp_verify_params(): !params");
 		return -EINVAL;
 	}
-
+//tu jest magiA
 	source_list = comp_buffer_list(dev, PPL_DIR_UPSTREAM);
 	sink_list = comp_buffer_list(dev, PPL_DIR_DOWNSTREAM);
 
@@ -138,11 +138,11 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		if (list_is_empty(sink_list))
 			buf = list_first_item(source_list,
 					      struct comp_buffer,
-					      Xsink_list);
+					      Xsink_list); //tu jest magiA
 		else
 			buf = list_first_item(sink_list,
 					      struct comp_buffer,
-					      Xsource_list);
+					      Xsource_list); //tu jest magiA
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
@@ -307,9 +307,9 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	while(buffer) {
 		struct comp_buffer *next_buffer = comp_dev_get_next_data_producer(icd->cd, buffer);
 
-		buffer->sinkX = NULL; //api
+		comp_buffer_set_sink_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		list_init(&buffer->Xsink_list);
+		list_init(&buffer->Xsink_list); //TU tez magia
 
 		buffer = next_buffer;
 	}
@@ -318,9 +318,9 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	while(buffer) {
 		struct comp_buffer *next_buffer = comp_dev_get_next_data_consumer(icd->cd, buffer);
 
-		buffer->sourceX = NULL; //api
+		comp_buffer_set_source_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		list_init(&buffer->Xsource_list);
+		list_init(&buffer->Xsource_list); //TU tez magia
 
 		buffer = next_buffer;
 	}

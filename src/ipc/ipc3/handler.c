@@ -167,6 +167,7 @@ static bool is_hostless_downstream(struct comp_dev *current)
 static bool is_hostless_upstream(struct comp_dev *current)
 {
 	struct list_item *clist;
+	struct comp_buffer *buffer;
 
 	/* check if current is a HOST comp */
 	if (current->ipc_config.type == SOF_COMP_HOST ||
@@ -174,11 +175,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 		return false;
 
 	/* check if the pipeline has a HOST comp upstream */
-	list_for_item(clist, &current->bsource_list) {  //msz
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer, Xsink_list);
-
+	comp_dev_for_each_producer(current, buffer) {
 		/* don't go upstream if this component is not connected */
 		if (!comp_buffer_get_source_component(buffer))
 			continue;

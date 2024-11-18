@@ -621,17 +621,14 @@ static void module_adapter_process_output(struct comp_dev *dev)
 
 	/* copy from all output local buffers to sink buffers */
 	i = 0;
-	list_for_item(blist, &dev->bsink_list) {  //msz tutaj do nowych
-		struct list_item *_blist;
+	comp_dev_for_each_consumer(dev, sink) {
 		int j = 0;
 
-		list_for_item(_blist, &mod->raw_data_buffers_list) {
+		list_for_item(blist, &mod->raw_data_buffers_list) {
 			if (i == j) {
 				struct comp_buffer *source;
 
-				sink = container_of(blist, struct comp_buffer, Xsource_list);  //tu
-				source = container_of(_blist, struct comp_buffer, Xsink_list); //i tu
-
+				source = container_of(blist, struct comp_buffer, buffers_list);
 				module_copy_samples(dev, source, sink,
 						    mod->output_buffers[i].size);
 
@@ -1011,11 +1008,9 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 	}
 
 	/* copy source samples into input buffer */
-	list_for_item(blist, &dev->bsource_list) {
+	comp_dev_for_each_producer(dev, source) {
 		uint32_t bytes_to_process;
 		int frames, source_frame_bytes;
-
-		source = container_of(blist, struct comp_buffer, Xsink_list);
 
 		/* check if the source dev is in the same state as the dev */
 		if (comp_buffer_get_source_state(source) != dev->state)
@@ -1051,10 +1046,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 
 	i = 0;
 	/* consume from all input buffers */
-	list_for_item(blist, &dev->bsource_list) {
-
-		source = container_of(blist, struct comp_buffer, Xsink_list);
-
+	comp_dev_for_each_producer(dev, source) {
 		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
 
 		bzero((__sparse_force void *)mod->input_buffers[i].data, size);
