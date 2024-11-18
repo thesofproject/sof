@@ -187,24 +187,20 @@ EXPORT_SYMBOL(module_adapter_get_attribute);
 static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
+	struct comp_buffer *sink_buffer;
+	struct comp_buffer *source_buffer;
 	int i;
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
 	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink_buffer =
-				container_of(blist, struct comp_buffer, source_list);
+	comp_dev_for_each_consumer(dev, sink_buffer) {
 		mod->sinks[i] = audio_buffer_get_sink(&sink_buffer->audio_buffer);
 		i++;
 	}
 	mod->num_of_sinks = i;
 
 	i = 0;
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source_buffer =
-				container_of(blist, struct comp_buffer, sink_list);
-
+	comp_dev_for_each_producer(dev, source_buffer) {
 		mod->sources[i] = audio_buffer_get_source(&source_buffer->audio_buffer);
 		i++;
 	}
@@ -216,9 +212,8 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 		return true;
 
 	/* re-assign the source/sink modules */
-	mod->sink_comp_buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	mod->source_comp_buffer = list_first_item(&dev->bsource_list,
-						  struct comp_buffer, sink_list);
+	mod->sink_comp_buffer = comp_dev_get_first_data_consumer(dev);;
+	mod->source_comp_buffer = comp_dev_get_first_data_producer(dev);
 
 	return false;
 }
