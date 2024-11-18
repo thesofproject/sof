@@ -135,7 +135,7 @@ static void test_audio_pipeline_complete_connect_upstream_ignore_source
 					 &test_data->second->bsink_list);
 	list_item_append(&test_data->second->bsource_list,
 					 &test_data->b2->Xsink_list);
-	test_data->b2->sink = test_data->second;
+	test_data->b2->sinkX = test_data->second;
 
 	/*Testing component*/
 	pipeline_complete(&result, test_data->first, test_data->second);
