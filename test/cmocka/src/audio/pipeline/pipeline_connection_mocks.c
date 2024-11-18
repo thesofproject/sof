@@ -17,12 +17,12 @@ void cleanup_test_data(struct pipeline_connect_data *data)
 {
 	list_init(&data->first->bsource_list);
 	list_init(&data->second->bsource_list);
-	list_init(&data->b1->sink_list);
-	list_init(&data->b1->source_list);
+	list_init(&data->b1->Xsink_list);
+	list_init(&data->b1->Xsource_list);
 	list_init(&data->first->bsink_list);
 	list_init(&data->second->bsink_list);
-	list_init(&data->b2->sink_list);
-	list_init(&data->b2->source_list);
+	list_init(&data->b2->Xsink_list);
+	list_init(&data->b2->Xsource_list);
 }
 
 struct pipeline_connect_data *get_standard_connect_objects(void)
@@ -72,15 +72,15 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 	buffer->source = first;
 	buffer->sink = second;
-	list_init(&buffer->sink_list);
-	list_init(&buffer->source_list);
+	list_init(&buffer->Xsink_list);
+	list_init(&buffer->Xsource_list);
 	pipeline_connect_data->b1 = buffer;
 
 	struct comp_buffer *buffer_2 = calloc(sizeof(struct comp_buffer), 1);
 
 	buffer_2->source = second;
-	list_init(&buffer_2->sink_list);
-	list_init(&buffer_2->source_list);
+	list_init(&buffer_2->Xsink_list);
+	list_init(&buffer_2->Xsource_list);
 	pipeline_connect_data->b2 = buffer_2;
 
 	pipeline_connect_data->p = *pipe;

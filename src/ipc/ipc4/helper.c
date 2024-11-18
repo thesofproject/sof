@@ -680,7 +680,6 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	struct comp_buffer *buffer = NULL;
 	struct comp_buffer *buf;
 	struct comp_dev *src, *sink;
-	struct list_item *sink_list;
 	uint32_t src_id, sink_id, buffer_id;
 	uint32_t flags = 0;
 	int ret, ret1;
