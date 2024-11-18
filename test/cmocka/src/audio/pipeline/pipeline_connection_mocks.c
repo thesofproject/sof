@@ -70,8 +70,8 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 	struct comp_buffer *buffer = calloc(sizeof(struct comp_buffer), 1);
 
-	buffer->source = first;
-	buffer->sink = second;
+	buffer->sourceX = first;
+	buffer->sinkX = second;
 	list_init(&buffer->Xsink_list);
 	list_init(&buffer->Xsource_list);
 	pipeline_connect_data->b1 = buffer;

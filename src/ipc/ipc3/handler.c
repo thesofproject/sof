@@ -166,7 +166,6 @@ static bool is_hostless_downstream(struct comp_dev *current)
 /* check if a pipeline is hostless when walking upstream */
 static bool is_hostless_upstream(struct comp_dev *current)
 {
-	struct list_item *clist;
 	struct comp_buffer *buffer;
 
 	/* check if current is a HOST comp */
@@ -181,7 +180,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 			continue;
 
 		/* dont go upstream if this comp belongs to another pipeline */
-		if (comp_buffer_get_source_state(buffer)->ipc_config.pipeline_id !=
+		if (comp_buffer_get_source_component(buffer)->ipc_config.pipeline_id !=
 		    current->ipc_config.pipeline_id)
 			continue;
 
