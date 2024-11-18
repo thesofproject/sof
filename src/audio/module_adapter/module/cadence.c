@@ -778,7 +778,7 @@ cadence_codec_process(struct processing_module *mod,
 	}
 
 	/* do not proceed with processing if not enough free space left in the local buffer */
-	local_buff = list_first_item(&mod->sink_buffer_list, struct comp_buffer, sink_list);
+	local_buff = list_first_item(&mod->raw_data_buffers_list, struct comp_buffer, buffers_list);
 	free_bytes = audio_stream_get_free(&local_buff->stream);
 	if (free_bytes < output_bytes)
 		return -ENOSPC;

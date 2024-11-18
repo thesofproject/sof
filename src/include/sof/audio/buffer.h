@@ -141,6 +141,9 @@ struct comp_buffer {
 	/* lists */
 	struct list_item source_list;	/* list in comp buffers */
 	struct list_item sink_list;	/* list in comp buffers */
+
+	/* list of buffers, to be used i.e. in raw data processing mode*/
+	struct list_item buffers_list;
 };
 
 /*
