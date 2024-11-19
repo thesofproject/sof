@@ -200,6 +200,26 @@ config PERFORMANCE_COUNTERS
 	  use the stamp() macro periodically to find out how long the cpu
 	  was in active/sleep state between the calls and estimate the cpu load.
 
+config PERFORMANCE_COUNTERS_COMPONENT
+	bool "Use performance counters to track component execution"
+	default n
+	depends on PERFORMANCE_COUNTERS
+	help
+	  Use performance counters to trace low-latency task execution.
+	  This enables to observe average and peak execution times at
+	  audio component level granularity.
+	  Results are reported via logging subsystem.
+
+config PERFORMANCE_COUNTERS_LL_TASKS
+	bool "Use performance counters to track LL task execution"
+	default n
+	depends on PERFORMANCE_COUNTERS
+	help
+	  Use performance counters to trace low-latency task execution.
+	  This enables to observe average and peak execution times at
+	  task level granularity.
+	  Results are reported via logging subsystem.
+
 config DSP_RESIDENCY_COUNTERS
 	bool "DSP residency counters"
 	default n

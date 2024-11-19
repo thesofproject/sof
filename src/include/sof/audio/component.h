@@ -627,7 +627,7 @@ struct comp_dev {
 	/* private data - core does not touch this */
 	void *priv_data;	/**< private data */
 
-#if CONFIG_PERFORMANCE_COUNTERS
+#if CONFIG_PERFORMANCE_COUNTERS_COMPONENT
 	struct perf_cnt_data pcd;
 #endif
 
