@@ -95,11 +95,11 @@ struct perf_cnt_data {
 		  (uint32_t)((pcd)->cpu_delta_peak))
 #define task_perf_cnt_avg(pcd, trace_m, arg, class) do {                             \
 		(pcd)->cpu_delta_sum += (pcd)->cpu_delta_last;          \
-		if (++(pcd)->period_cnt == 1 << PERF_CNT_CHECK_WINDOW_SIZE) { \
+		if (!(++(pcd)->period_cnt & MASK(PERF_CNT_CHECK_WINDOW_SIZE - 1, 0))) { \
 			(pcd)->cpu_delta_sum >>= PERF_CNT_CHECK_WINDOW_SIZE;      \
-			trace_m(pcd, arg, class);                                 \
+			if ((pcd)->period_cnt & BIT(PERF_CNT_CHECK_WINDOW_SIZE)) \
+				trace_m(pcd, arg, class);			\
 			(pcd)->cpu_delta_sum = 0;                                 \
-			(pcd)->period_cnt = 0;                                    \
 			(pcd)->plat_delta_peak = 0;                               \
 			(pcd)->cpu_delta_peak = 0;                                \
 		}                                                             \
@@ -115,11 +115,13 @@ struct perf_cnt_data {
  */
 #define perf_cnt_average(pcd, trace_m, arg) do {                             \
 		(pcd)->cpu_delta_sum += (pcd)->cpu_delta_last;               \
-		if (++(pcd)->period_cnt == 1 << PERF_CNT_CHECK_WINDOW_SIZE) {\
+		if (!(++(pcd)->period_cnt & MASK(PERF_CNT_CHECK_WINDOW_SIZE - 1, 0))) { \
 			(pcd)->cpu_delta_sum >>= PERF_CNT_CHECK_WINDOW_SIZE; \
-			trace_m(pcd, arg);                                   \
+			(pcd)->peak_mcps_period_cnt &= MASK(PERF_CNT_CHECK_WINDOW_SIZE - 1, 0); \
+			if ((pcd)->period_cnt & BIT(PERF_CNT_CHECK_WINDOW_SIZE)) { \
+				trace_m(pcd, arg);                                 \
+			} \
 			(pcd)->cpu_delta_sum = 0;                            \
-			(pcd)->period_cnt = 0;                               \
 			(pcd)->plat_delta_peak = 0;                          \
 			(pcd)->cpu_delta_peak = 0;                           \
 			(pcd)->peak_mcps_period_cnt = 0;			     \
