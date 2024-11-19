@@ -1491,6 +1491,69 @@ static int probe_set_config(struct processing_module *mod, uint32_t param_id,
 	}
 }
 
+static int probe_add_point_info_params(struct sof_ipc_probe_info_params *info,
+				       probe_point_id_t id, int index, size_t max_size)
+{
+	struct probe_pdata *_probe = probe_get();
+	struct probe_point pp = {
+		.buffer_id = id,
+		.purpose = PROBE_PURPOSE_EXTRACTION,
+	};
+	int i;
+
+	if (offsetof(struct sof_ipc_probe_info_params, probe_point[index]) +
+	    sizeof(pp) > max_size) {
+		info->num_elems = index;
+		return -ENOENT;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(_probe->probe_points); i++)
+		if (_probe->probe_points[i].stream_tag != PROBE_POINT_INVALID &&
+		    _probe->probe_points[i].buffer_id.full_id == id.full_id)
+			pp.stream_tag = _probe->probe_points[i].stream_tag;
+
+	info->probe_point[index] = pp;
+	return 0;
+}
+
+static int probe_get_available_points(struct processing_module *mod,
+				      struct sof_ipc_probe_info_params *info,
+				      size_t max_size)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+	int i = 0;
+
+	list_for_item(clist, &ipc_get()->comp_list) {
+		struct comp_buffer *buf;
+		probe_point_id_t id;
+
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		id.fields.module_id = IPC4_MOD_ID(icd->id);
+		id.fields.instance_id = IPC4_INST_ID(icd->id);
+
+		id.fields.type = PROBE_TYPE_INPUT;
+		comp_dev_for_each_producer(icd->cd, buf) {
+			id.fields.index = IPC4_SRC_QUEUE_ID(buf_get_id(buf));
+			if (probe_add_point_info_params(info, id, i, max_size))
+				return 0;
+			i++;
+		}
+		id.fields.type = PROBE_TYPE_OUTPUT;
+		comp_dev_for_each_consumer(icd->cd, buf) {
+			id.fields.index = IPC4_SINK_QUEUE_ID(buf_get_id(buf));
+			if (probe_add_point_info_params(info, id, i, max_size))
+				return 0;
+			i++;
+		}
+	}
+	info->num_elems = i;
+	return 0;
+}
+
 static int probe_get_config(struct processing_module *mod,
 			    uint32_t config_id, uint32_t *data_offset_size,
 			    uint8_t *fragment, size_t fragment_size)
@@ -1514,6 +1577,11 @@ static int probe_get_config(struct processing_module *mod,
 		}
 		info->num_elems = j;
 		comp_info(dev, "%u probe points sent", j);
+		break;
+	case IPC4_PROBE_MODULE_AVAILABLE_PROBE_POINTS:
+		probe_get_available_points(mod, info, fragment_size);
+		comp_info(dev, "%u available probe points sent",
+			  info->num_elems);
 		break;
 	default:
 		comp_err(dev, "unknown config_id %u", config_id);
