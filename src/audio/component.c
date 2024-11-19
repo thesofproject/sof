@@ -490,7 +490,7 @@ int comp_copy(struct comp_dev *dev)
 	 */
 	if (cpu_is_me(dev->ipc_config.core) ||
 	    dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-#if CONFIG_PERFORMANCE_COUNTERS
+#if CONFIG_PERFORMANCE_COUNTERS_COMPONENT
 		perf_cnt_init(&dev->pcd);
 #endif
 
@@ -506,7 +506,7 @@ int comp_copy(struct comp_dev *dev)
 		comp_update_performance_data(dev, cycles_consumed);
 #endif
 
-#if CONFIG_PERFORMANCE_COUNTERS
+#if CONFIG_PERFORMANCE_COUNTERS_COMPONENT
 		perf_cnt_stamp(&dev->pcd, perf_trace_null, dev);
 		perf_cnt_average(&dev->pcd, comp_perf_avg_info, dev);
 #endif

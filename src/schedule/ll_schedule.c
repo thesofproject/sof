@@ -68,7 +68,7 @@ DECLARE_TR_CTX(ll_tr, SOF_UUID(ll_sched_uuid), LOG_LEVEL_INFO);
 struct ll_schedule_data {
 	struct list_item tasks;			/* list of ll tasks */
 	atomic_t num_tasks;			/* number of ll tasks */
-#if CONFIG_PERFORMANCE_COUNTERS
+#if CONFIG_PERFORMANCE_COUNTERS__LL_TASKS
 	struct perf_cnt_data pcd;
 #endif
 	struct ll_schedule_domain *domain;	/* scheduling domain */
@@ -76,7 +76,7 @@ struct ll_schedule_data {
 
 static const struct scheduler_ops schedule_ll_ops;
 
-#if CONFIG_PERFORMANCE_COUNTERS
+#if CONFIG_PERFORMANCE_COUNTERS__LL_TASKS
 static void perf_ll_sched_trace(struct perf_cnt_data *pcd, int ignored)
 {
 	tr_info(&ll_tr, "perf ll_work peak plat %u cpu %u",
