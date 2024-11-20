@@ -237,7 +237,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 
 	/* get SSP wallclock - DAI sets this to stream start value */
 	posn->wallclock = sof_cycle_get_64() - posn->wallclock;
-	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
+	posn->wallclock_hz = sys_cycle_get_64_rate();
 	posn->flags |= SOF_TIME_WALL_VALID;
 }
 

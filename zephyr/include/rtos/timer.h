@@ -23,6 +23,11 @@ static inline uint64_t sof_cycle_get_64(void)
 		return k_ticks_to_cyc_floor64(k_uptime_ticks());
 }
 
+static inline uint64_t sys_cycle_get_64_rate(void)
+{
+	return CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
+}
+
 #define sof_cycle_get_64_safe()		sof_cycle_get_64()
 #define sof_cycle_get_64_atomic()	sof_cycle_get_64()
 #define platform_timer_stop(x)
