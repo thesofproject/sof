@@ -6,9 +6,10 @@
 #ifndef __ZEPHYR_RTOS_CLK_H__
 #define __ZEPHYR_RTOS_CLK_H__
 
+#ifndef CONFIG_SOF_ZEPHYR_NO_SOF_CLOCK
+
 #include <zephyr/kernel.h>
 
-/* TODO remove once drivers upstream */
 #define __SOF_LIB_CLK_H__
 #include <platform/lib/clk.h>
 
@@ -76,5 +77,7 @@ static inline struct clock_info *clocks_get(void)
 {
 	return sof_get()->clocks;
 }
+
+#endif /* CONFIG_SOF_ZEPHYR_NO_SOF_CLOCK */
 
 #endif /* __ZEPHYR_RTOS_CLK_H__ */

@@ -58,6 +58,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_MEMORY_RECLAIMED_FW_CFG, 1);
 
+#ifndef CONFIG_SOF_ZEPHYR_NO_SOF_CLOCK
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_FAST_CLOCK_FREQ_HZ_FW_CFG, CLK_MAX_CPU_HZ);
 
@@ -65,6 +66,7 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	tlv_value_uint32_set(tuple,
 			     IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG,
 			     clock_get_freq(CPU_LOWEST_FREQ_IDX));
+#endif
 
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_DL_MAILBOX_BYTES_FW_CFG, MAILBOX_HOSTBOX_SIZE);
@@ -220,17 +222,21 @@ static int basefw_register_kcps(bool first_block,
 	if (!(first_block && last_block))
 		return IPC4_ERROR_INVALID_PARAM;
 
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	/* value of kcps to request on core 0. Can be negative */
 	if (core_kcps_adjust(0, *(int32_t *)data))
 		return IPC4_ERROR_INVALID_PARAM;
+#endif
 
 	return IPC4_SUCCESS;
 }
 
 static int basefw_kcps_allocation_request(struct ipc4_resource_kcps *request)
 {
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	if (core_kcps_adjust(request->core_id, request->kcps))
 		return IPC4_ERROR_INVALID_PARAM;
+#endif
 
 	return IPC4_SUCCESS;
 }
@@ -259,6 +265,7 @@ static int basefw_resource_allocation_request(bool first_block,
 
 static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 {
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	uint32_t core_kcps[CONFIG_CORE_COUNT] = {0};
 	int core_id;
@@ -275,6 +282,9 @@ static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 	*data_offset = (int)((char *)tuple - data);
 	return IPC4_SUCCESS;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
 }
 
 static int basefw_libraries_info_get(uint32_t *data_offset, char *data)

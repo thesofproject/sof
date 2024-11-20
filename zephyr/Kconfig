@@ -76,4 +76,10 @@ config SOF_BOOT_TEST
 	  initialized. After that SOF will continue running and be usable as
 	  usual.
 
+config SOF_ZEPHYR_NO_SOF_CLOCK
+	bool
+	help
+	  Do not use SOF clk.h interface to set the DSP clock frequency.
+	  Requires implementation of platform/lib/clk.h.
+
 endif
