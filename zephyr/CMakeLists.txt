@@ -490,9 +490,7 @@ zephyr_library_sources(
 	${SOF_MATH_PATH}/exp_fcn_hifi.c
 
 	# SOF library - parts to transition to Zephyr over time
-	${SOF_LIB_PATH}/clk.c
 	${SOF_LIB_PATH}/notifier.c
-	${SOF_LIB_PATH}/cpu-clk-manager.c
 	${SOF_LIB_PATH}/dma.c
 	${SOF_LIB_PATH}/dai.c
 
@@ -528,6 +526,14 @@ zephyr_library_sources(
 
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
+)
+
+if(NOT CONFIG_SOF_ZEPHYR_NO_SOF_CLOCK)
+	zephyr_library_sources(${SOF_LIB_PATH}/clk.c)
+endif()
+
+zephyr_library_sources_ifdef(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	${SOF_LIB_PATH}/cpu-clk-manager.c
 )
 
 # Optional math utility

@@ -282,7 +282,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 		.comp_data = &data,
 	};
 
-#if !UNIT_TEST && !CONFIG_LIBRARY
+#if !UNIT_TEST && !CONFIG_LIBRARY && CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	int __maybe_unused freq = clock_get_freq(cpu_get_id());
 #else
 	int __maybe_unused freq = 0;
