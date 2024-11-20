@@ -57,4 +57,13 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 "cavs-sdw\;sof-ptl-cs42l43-l2-cs35l56x6-l13\;NUM_SDW_AMP_LINKS=3,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
+
+# Split topologies
+"cavs-sdw\;sof-ptl-dmic-2ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
+PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-dmic-2ch-id5.bin"
+
+"cavs-sdw\;sof-ptl-dmic-4ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-dmic-4ch-id5.bin"
 )
