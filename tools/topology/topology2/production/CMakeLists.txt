@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 include(tplg-targets-hda-generic.cmake)
+include(tplg-targets-sdca-generic.cmake)
 include(tplg-targets-cavs25.cmake)
 include(tplg-targets-ace1.cmake)
 include(tplg-targets-ace2.cmake)
