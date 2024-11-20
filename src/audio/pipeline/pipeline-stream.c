@@ -14,6 +14,7 @@
 #include <rtos/interrupt.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
+#include <rtos/clk.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc4/module.h>

@@ -15,6 +15,7 @@
 #include <sof/compiler_attributes.h>
 #include <sof/ipc/topology.h>
 
+#include <rtos/clk.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <sof/lib/cpu-clk-manager.h>
