@@ -90,15 +90,14 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);
-	kcps_budget_init();
 
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	kcps_budget_init();
+
 	ret = core_kcps_adjust(cpu_get_id(), PRIMARY_CORE_BASE_CPS_USAGE);
-#else
-	ret = core_kcps_adjust(cpu_get_id(), CLK_MAX_CPU_HZ / 1000);
-#endif
 	if (ret < 0)
 		return ret;
+#endif
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
