@@ -963,6 +963,7 @@ static int lib_manager_setup(uint32_t dma_id)
 
 	dma_block_cfg.dest_address = dma_ext->dma_addr;
 
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	/*
 	 * make sure that the DSP is running full speed for the duration of
 	 * library loading
@@ -970,6 +971,7 @@ static int lib_manager_setup(uint32_t dma_id)
 	ret = core_kcps_adjust(cpu_get_id(), CLK_MAX_CPU_HZ / 1000);
 	if (ret < 0)
 		goto err_dma_buffer;
+#endif
 
 	ret = dma_config(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &config);
 	if (ret < 0)
@@ -984,7 +986,9 @@ static int lib_manager_setup(uint32_t dma_id)
 	return 0;
 
 err_dma:
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
+#endif
 
 err_dma_buffer:
 	lib_manager_dma_deinit(dma_ext, dma_id);
@@ -1062,7 +1066,9 @@ stop_dma:
 	rfree((__sparse_force void *)man_tmp_buffer);
 
 cleanup:
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
+#endif
 	rfree((void *)dma_ext->dma_addr);
 	lib_manager_dma_deinit(dma_ext, dma_id);
 	rfree(dma_ext);
