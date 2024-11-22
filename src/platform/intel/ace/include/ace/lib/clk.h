@@ -20,29 +20,15 @@
 
 #include <ace/version.h>
 #include <sof/lib/cpu.h>
-#include <sof/lib/io.h>
-#include <sof/lib/memory.h>
-#include <stdint.h>
 
 struct sof;
 
-/** \brief Core(s) settings, up to CONFIG_CORE_COUNT */
-#define CLK_CPU(x)	(x)
-
-/** \brief SSP clock r-t settings are after the core(s) settings */
-#define CLK_SSP		CONFIG_CORE_COUNT
-
-/* SSP clock run-time data is the last one, so total number is ssp idx +1 */
-
 /** \brief Total number of clocks */
-#define NUM_CLOCKS	(CLK_SSP + 1)
+#define NUM_CLOCKS	CONFIG_CORE_COUNT
 
 extern const struct freq_table *cpu_freq;
 
 void platform_clock_init(struct sof *sof);
-
-void platform_clock_on_waiti(void);
-void platform_clock_on_wakeup(void);
 
 #endif /* __ACE_LIB_CLK_H__ */
 

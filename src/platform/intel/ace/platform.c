@@ -103,7 +103,8 @@ int platform_init(struct sof *sof)
 	scheduler_init_edf();
 
 	/* init low latency timer domain and scheduler. Any failure is fatal */
-	sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
+	/* clk is ignored on Zephyr so pass 0 */
+	sof->platform_timer_domain = zephyr_domain_init(0);
 	ret = scheduler_init_ll(sof->platform_timer_domain);
 	if (ret < 0)
 		return ret;
