@@ -213,7 +213,7 @@ static int memif_status(struct dma_chan_data *channel, struct dma_chan_status *s
 	if (!hw_ptr) {
 		status->r_pos = 0;
 		status->w_pos = 0;
-		status->timestamp = timer_get_system(timer_get());
+		status->timestamp = sof_cycle_get_64();
 		return -EINVAL;
 	}
 	hw_ptr -= memif->dma_base;
@@ -224,7 +224,7 @@ static int memif_status(struct dma_chan_data *channel, struct dma_chan_status *s
 
 	status->r_pos = memif->rptr + memif->dma_base;
 	status->w_pos = memif->wptr + memif->dma_base;
-	status->timestamp = timer_get_system(timer_get());
+	status->timestamp = sof_cycle_get_64();
 	return 0;
 }
 
