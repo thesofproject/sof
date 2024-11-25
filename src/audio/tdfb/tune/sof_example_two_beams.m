@@ -29,65 +29,37 @@ prm.add_beam_off = 1;
 for fs = [16e3 48e3]
 	%% Close all plots to avoid issues with large number of windows
 	close all;
-
-	%% 2 mic 50 mm array
-	fn.tplg1_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	fn.sofctl3_fn = sprintf('coef_line2_50mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	fn.tplg2_fn = sprintf('line2_50mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
-	fn.sofctl4_fn = sprintf('line2_50mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	d = 50e-3;  % 50 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
+
+	%% 2 mic 50 mm array
+	d = 50e-3;  % 50 mm spacing
+	fn = export_names_helper('line2', azstr, d, fs);
 	sof_bf_line2_two_beams(fs, d, a1, a2, fn, prm);
 
 	%% 2 mic 68 mm array
-	fn.tplg1_fn = sprintf('coef_line2_68mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	fn.sofctl3_fn = sprintf('coef_line2_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	fn.tplg2_fn = sprintf('line2_68mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
-	fn.sofctl4_fn = sprintf('line2_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 68e-3;  % 68 mm spacing
-	a1 = az;   % Azimuth +az deg
-	a2 = -az;  % Azimuth -az deg
+	fn = export_names_helper('line2', azstr, d, fs);
 	sof_bf_line2_two_beams(fs, d, a1, a2, fn, prm);
 
 	%% 2 mic 73.5 mm array
-	fn.tplg1_fn = sprintf('coef_line2_74mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	fn.sofctl3_fn = sprintf('coef_line2_74mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	fn.tplg2_fn = sprintf('line2_74mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
-	fn.sofctl4_fn = sprintf('line2_74mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 73.5e-3;  % 73.5 mm spacing
-	a1 = az;   % Azimuth +az deg
-	a2 = -az;  % Azimuth -az deg
+	fn = export_names_helper('line2', azstr, d, fs);
 	sof_bf_line2_two_beams(fs, d, a1, a2, fn, prm);
 
 	%% 4 mic 28 mm spaced array
-	fn.tplg1_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	fn.sofctl3_fn = sprintf('coef_line4_28mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	fn.tplg2_fn = sprintf('line4_28mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
-	fn.sofctl4_fn = sprintf('line4_28mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 28e-3;  % 28 mm spacing
-	a1 = az;   % Azimuth +az deg
-	a2 = -az;  % Azimuth -az deg
+	fn = export_names_helper('line4', azstr, d, fs);
 	sof_bf_line4_two_beams(fs, d, a1, a2, fn, prm);
 
 	%% 4 mic 68 mm spaced array
-	fn.tplg1_fn = sprintf('coef_line4_68mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	fn.sofctl3_fn = sprintf('coef_line4_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	fn.tplg2_fn = sprintf('line4_68mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
-	fn.sofctl4_fn = sprintf('line4_68mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 68e-3;  % 68 mm spacing
-	a1 = az;   % Azimuth +az deg
-	a2 = -az;  % Azimuth -az deg
+	fn = export_names_helper('line4', azstr, d, fs);
 	sof_bf_line4_two_beams(fs, d, a1, a2, fn, prm);
 
 	%% 4 mic 78 mm spaced array
-	fn.tplg1_fn = sprintf('coef_line4_78mm_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
-	fn.sofctl3_fn = sprintf('coef_line4_78mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	fn.tplg2_fn = sprintf('line4_78mm_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
-	fn.sofctl4_fn = sprintf('line4_78mm_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	d = 78e-3;  % 78 mm spacing
-	a1 = az;   % Azimuth +az deg
-	a2 = -az;  % Azimuth -az deg
+	fn = export_names_helper('line4', azstr, d, fs);
 	sof_bf_line4_two_beams(fs, d, a1, a2, fn, prm);
 end
 
@@ -268,3 +240,17 @@ bfm.export_howto = 'cd tools/tune/tdfb; matlab -nodisplay -nosplash -nodesktop -
 sof_bf_export(bfm);
 
 end
+
+function fn = export_names_helper(arrayname, azstr, d, fs)
+
+mmstr = sprintf('%dmm', round(d * 1e3));
+fsstr = sprintf('%dkhz', round(fs/1e3));
+fn.tplg1_fn = sprintf('coef_%s_%s_pm%sdeg_%s.m4', arrayname, mmstr, azstr, fsstr);
+fn.tplg2_fn = sprintf('%s_%s_pm%sdeg_%s.conf', arrayname, mmstr, azstr, fsstr);
+fn.sofctl3_fn = sprintf('%s_%s_pm%sdeg_%s.txt', arrayname, mmstr, azstr, fsstr);
+fn.sofctl4_fn = sprintf('%s_%s_pm%sdeg_%s.txt', arrayname, mmstr, azstr, fsstr);
+fn.ucmbin3_fn = sprintf('%s_%s_pm%sdeg_%s.bin', arrayname, mmstr, azstr, fsstr);
+fn.ucmbin4_fn = sprintf('%s_%s_pm%sdeg_%s.bin', arrayname, mmstr, azstr, fsstr);
+
+end
+

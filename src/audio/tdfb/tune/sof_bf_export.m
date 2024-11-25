@@ -3,6 +3,8 @@
 % Inputs
 % bf.sofctl3_fn .... filename of ascii text format blob
 % bf.sofctl4_fn .... filename of ascii text format blob
+% bf.ucmbin3_fn .... filename of binary format blob for UCM (IPC3)
+% bf.ucmbin4_fn .... filename of binary format blob for UCM (IPC4)
 % bf.tplg1_fn ...... filename of topology m4 format blob
 % bf.tplg2_fn ...... filename of topology m4 format blob
 % bf ............... the design procedure output
@@ -114,6 +116,18 @@ else
 	fprintf(1, 'Exporting to %s\n', bf.tplg2_fn);
 	mkdir_check(bf.tplg2_path);
 	tplg2_write(bf.tplg2_fn, bp4, "tdfb_config", export_note, bf.export_howto);
+end
+
+if ~isempty(bf.ucmbin3_fn)
+	fprintf(1, 'Exporting to %s\n', bf.ucmbin3_fn);
+	mkdir_check(bf.sofctl3_path);
+	sof_ucm_blob_write(bf.ucmbin3_fn, bp3);
+end
+
+if ~isempty(bf.ucmbin4_fn)
+	fprintf(1, 'Exporting to %s\n', bf.ucmbin4_fn);
+	mkdir_check(bf.sofctl4_path);
+	sof_ucm_blob_write(bf.ucmbin4_fn, bp4);
 end
 
 sof_bf_paths(false);
