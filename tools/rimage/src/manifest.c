@@ -195,29 +195,11 @@ static int man_copy_elf_sections(struct image *image, struct manifest_module *mo
 	return 0;
 }
 
-static int man_get_module_manifest(struct image *image, struct manifest_module *module,
-				   struct sof_man_module *man_module)
+static void man_get_section_manifest(struct image *image,
+				     const struct sof_man_module_manifest *sof_mod,
+				     struct sof_man_module *man_module)
 {
-	struct elf_section section;
 	struct sof_man_segment_desc *segment;
-	const struct sof_man_module_manifest *sof_mod;
-	int ret;
-
-	fprintf(stdout, "Module Write: %s\n", module->file.elf.filename);
-
-	/* load in module manifest data */
-	ret = elf_section_read_by_name(&module->file.elf, ".module", &section);
-	if (ret) {
-		fprintf(stderr, "error: can't read module manifest from '.module' section.\n");
-		return ret;
-	}
-
-	if (sizeof(*sof_mod) > section.header.data.size) {
-		fprintf(stderr, "error: Invalid module manifest in '.module' section.\n");
-		ret = -ENODATA;
-		goto error;
-	}
-	sof_mod = section.data;
 
 	/* configure man_module with sofmod data */
 	memcpy(man_module->struct_id, "$AME", 4);
@@ -229,9 +211,6 @@ static int man_get_module_manifest(struct image *image, struct manifest_module *
 	man_module->type.domain_dp = sof_mod->module.type.domain_dp;
 	man_module->type.domain_ll = sof_mod->module.type.domain_ll;
 	man_module->type.load_type = sof_mod->module.type.load_type;
-
-	/* read out text_fixup_size from memory mapping */
-	module->text_fixup_size = sof_mod->text_size;
 
 	/* text segment */
 	segment = &man_module->segment[SOF_MAN_SEGMENT_TEXT];
@@ -257,6 +236,35 @@ static int man_get_module_manifest(struct image *image, struct manifest_module *
 	segment->flags.r.type = SOF_MAN_SEGMENT_BSS;
 
 	fprintf(stdout, " Entry point 0x%8.8x\n", man_module->entry_point);
+}
+
+static int man_get_module_manifest(struct image *image, struct manifest_module *module,
+				   struct sof_man_module *man_module)
+{
+	struct elf_section section;
+	const struct sof_man_module_manifest *sof_mod;
+	int ret;
+
+	fprintf(stdout, "Module Write: %s\n", module->file.elf.filename);
+
+	/* load in module manifest data */
+	ret = elf_section_read_by_name(&module->file.elf, ".module", &section);
+	if (ret) {
+		fprintf(stderr, "error: can't read module manifest from '.module' section.\n");
+		return ret;
+	}
+
+	if (sizeof(*sof_mod) > section.header.data.size) {
+		fprintf(stderr, "error: Invalid module manifest in '.module' section.\n");
+		ret = -ENODATA;
+		goto error;
+	}
+
+	sof_mod = section.data;
+	man_get_section_manifest(image, sof_mod, man_module);
+
+	/* read out text_fixup_size from memory mapping */
+	module->text_fixup_size = sof_mod->text_size;
 
 error:
 	elf_section_free(&section);
