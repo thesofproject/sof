@@ -146,8 +146,8 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 
 	/* .bss, should be within writable data above */
 	void __sparse_cache *bss_addr = (void __sparse_cache *)
-		ctx->segment[LIB_MANAGER_BSS].addr;
-	size_t bss_size = ctx->segment[LIB_MANAGER_BSS].size;
+		ebl->loader.sects[LLEXT_MEM_BSS].sh_addr;
+	size_t bss_size = ebl->loader.sects[LLEXT_MEM_BSS].sh_size;
 	int ret;
 
 	/* Check, that .bss is within .data */
@@ -281,13 +281,6 @@ static int llext_manager_link(struct llext_buf_loader *ebl, uintptr_t dram_base,
 	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
 	       ctx->segment[LIB_MANAGER_DATA].addr,
 	       ctx->segment[LIB_MANAGER_DATA].size);
-
-	ctx->segment[LIB_MANAGER_BSS].addr = ebl->loader.sects[LLEXT_MEM_BSS].sh_addr;
-	ctx->segment[LIB_MANAGER_BSS].size = ebl->loader.sects[LLEXT_MEM_BSS].sh_size;
-
-	tr_dbg(&lib_manager_tr, ".bss: start: %#lx size %#x",
-	       ctx->segment[LIB_MANAGER_BSS].addr,
-	       ctx->segment[LIB_MANAGER_BSS].size);
 
 	ssize_t binfo_o = llext_find_section(&ebl->loader, ".mod_buildinfo");
 
