@@ -53,6 +53,8 @@ end
 bf.sofctl3_fn = fullfile(bf.sofctl3_path, sprintf('coef_%s.txt', idstr));
 bf.tplg1_fn = fullfile(bf.tplg1_path, sprintf('coef_%s.m4', idstr));
 bf.sofctl4_fn = fullfile(bf.sofctl4_path, sprintf('%s.txt', idstr));
+bf.ucmbin3_fn = fullfile(bf.sofctl3_path, sprintf('%s.bin', idstr));
+bf.ucmbin4_fn = fullfile(bf.sofctl4_path, sprintf('%s.bin', idstr));
 bf.tplg2_fn = fullfile(bf.tplg2_path, sprintf('%s.conf', idstr));
 
 

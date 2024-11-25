@@ -34,6 +34,8 @@ bf.export_howto = 'cd tools/tune/tdfb; octave --no-window-system sof_example_pas
 bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line2_pass.txt');
 bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line2_pass.m4');
 bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line2_pass.txt');
+bf.ucmbin3_fn = fullfile(bf.sofctl3_path, 'line2_pass.bin');
+bf.ucmbin4_fn = fullfile(bf.sofctl4_path, 'line2_pass.bin');
 bf.tplg2_fn = fullfile(bf.tplg2_path, 'line2_pass.conf');
 sof_bf_export(bf);
 
@@ -52,6 +54,8 @@ bf.w = [1 0 0 0; 1 0 0 0; 1 0 0 0; 1 0 0 0]'; % Four FIR filters with first tap 
 bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line4_pass.txt');
 bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line4_pass.m4');
 bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line4_pass.txt');
+bf.ucmbin3_fn = fullfile(bf.sofctl3_path, 'line4_pass.bin');
+bf.ucmbin4_fn = fullfile(bf.sofctl4_path, 'line4_pass.bin');
 bf.tplg2_fn = fullfile(bf.tplg2_path, 'line4_pass.conf');
 sof_bf_export(bf);
 
@@ -72,6 +76,8 @@ bf.w = [1 0 0 0; 1 0 0 0]'; % Two FIR filters with first tap set to one
 bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line4to2_pass.txt');
 bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line4to2_pass.m4');
 bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line4to2_pass.txt');
+bf.ucmbin3_fn = fullfile(bf.sofctl3_path, 'line4to2_pass.bin');
+bf.ucmbin4_fn = fullfile(bf.sofctl4_path, 'line4to2_pass.bin');
 bf.tplg2_fn = fullfile(bf.tplg2_path, 'line4to2_pass.conf');
 sof_bf_export(bf);
 

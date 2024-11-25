@@ -63,6 +63,8 @@ bfm = sof_bf_merge(bf1, bf2);
 bfm.sofctl3_fn = fullfile(bfm.sofctl3_path, fn.sofctl3_fn);
 bfm.tplg1_fn = fullfile(bfm.tplg1_path, fn.tplg1_fn);
 bfm.sofctl4_fn = fullfile(bfm.sofctl4_path, fn.sofctl4_fn);
+bfm.ucmbin3_fn = fullfile(bfm.sofctl3_path, fn.ucmbin3_fn);
+bfm.ucmbin4_fn = fullfile(bfm.sofctl4_path, fn.ucmbin4_fn);
 bfm.tplg2_fn = fullfile(bfm.tplg2_path, fn.tplg2_fn);
 
 % Export files for topology and sof-ctl
