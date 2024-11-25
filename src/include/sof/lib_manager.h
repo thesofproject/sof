@@ -94,7 +94,6 @@ enum {
 struct lib_manager_segment_desc {
 	uintptr_t addr;
 	size_t size;
-	size_t file_offset;
 };
 
 struct lib_manager_mod_ctx {

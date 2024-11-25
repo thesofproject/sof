@@ -258,38 +258,29 @@ static int llext_manager_link(struct llext_buf_loader *ebl, uintptr_t dram_base,
 		return ret;
 
 	ctx->segment[LIB_MANAGER_TEXT].addr = ebl->loader.sects[LLEXT_MEM_TEXT].sh_addr;
-	ctx->segment[LIB_MANAGER_TEXT].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_TEXT] - dram_base;
 	ctx->segment[LIB_MANAGER_TEXT].size = ebl->loader.sects[LLEXT_MEM_TEXT].sh_size;
 
-	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x offset %#x",
+	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x",
 	       ctx->segment[LIB_MANAGER_TEXT].addr,
-	       ctx->segment[LIB_MANAGER_TEXT].size,
-	       ctx->segment[LIB_MANAGER_TEXT].file_offset);
+	       ctx->segment[LIB_MANAGER_TEXT].size);
 
 	/* All read-only data sections */
 	ctx->segment[LIB_MANAGER_RODATA].addr =
 		ebl->loader.sects[LLEXT_MEM_RODATA].sh_addr;
-	ctx->segment[LIB_MANAGER_RODATA].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_RODATA] - dram_base;
 	ctx->segment[LIB_MANAGER_RODATA].size = ebl->loader.sects[LLEXT_MEM_RODATA].sh_size;
 
-	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x offset %#x",
+	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x",
 	       ctx->segment[LIB_MANAGER_RODATA].addr,
-	       ctx->segment[LIB_MANAGER_RODATA].size,
-	       ctx->segment[LIB_MANAGER_RODATA].file_offset);
+	       ctx->segment[LIB_MANAGER_RODATA].size);
 
 	/* All writable data sections */
 	ctx->segment[LIB_MANAGER_DATA].addr =
 		ebl->loader.sects[LLEXT_MEM_DATA].sh_addr;
-	ctx->segment[LIB_MANAGER_DATA].file_offset =
-		(uintptr_t)md->llext->mem[LLEXT_MEM_DATA] - dram_base;
 	ctx->segment[LIB_MANAGER_DATA].size = ebl->loader.sects[LLEXT_MEM_DATA].sh_size;
 
-	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x offset %#x",
+	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
 	       ctx->segment[LIB_MANAGER_DATA].addr,
-	       ctx->segment[LIB_MANAGER_DATA].size,
-	       ctx->segment[LIB_MANAGER_DATA].file_offset);
+	       ctx->segment[LIB_MANAGER_DATA].size);
 
 	ctx->segment[LIB_MANAGER_BSS].addr = ebl->loader.sects[LLEXT_MEM_BSS].sh_addr;
 	ctx->segment[LIB_MANAGER_BSS].size = ebl->loader.sects[LLEXT_MEM_BSS].sh_size;
