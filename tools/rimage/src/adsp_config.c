@@ -2359,23 +2359,12 @@ void adsp_free(struct adsp *adsp)
 	if (!adsp)
 		return;
 
-	if (adsp->man_v1_5)
-		free(adsp->man_v1_5);
-
-	if (adsp->man_v1_5_sue)
-		free(adsp->man_v1_5_sue);
-
-	if (adsp->man_v1_8)
-		free(adsp->man_v1_8);
-
-	if (adsp->man_v2_5)
-		free(adsp->man_v2_5);
-
-	if (adsp->modules)
-		free(adsp->modules);
-
-	if (adsp->name)
-		free((char *)adsp->name);
+	free(adsp->man_v1_5);
+	free(adsp->man_v1_5_sue);
+	free(adsp->man_v1_8);
+	free(adsp->man_v2_5);
+	free(adsp->modules);
+	free((void *)adsp->name);
 
 	free(adsp);
 }
