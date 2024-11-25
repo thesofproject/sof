@@ -80,10 +80,8 @@ static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
 static int llext_manager_load_data_from_storage(const struct llext *ext,
 						void __sparse_cache *vma,
 						const uint8_t *load_base,
-						size_t region_offset,
 						size_t size, uint32_t flags)
 {
-	const uint8_t *s_addr = load_base + region_offset;
 	unsigned int i;
 	int ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
 	const elf_shdr_t *shdr;
@@ -93,17 +91,22 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 		return ret;
 	}
 
+	size_t init_offset = 0;
+
 	/* Need to copy sections within regions individually, offsets may differ */
 	for (i = 0, shdr = llext_section_headers(ext); i < llext_section_count(ext); i++, shdr++) {
 		if ((uintptr_t)shdr->sh_addr < (uintptr_t)vma ||
 		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size)
 			continue;
 
-		size_t offset = shdr->sh_offset + FILE_TEXT_OFFSET_V1_8 - region_offset;
+		if (!init_offset)
+			init_offset = shdr->sh_offset;
 
 		/* found a section within the region */
+		size_t offset = shdr->sh_offset - init_offset;
+
 		ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - offset,
-			       s_addr + offset, shdr->sh_size);
+			       load_base + offset, shdr->sh_size);
 		if (ret < 0)
 			return ret;
 	}
@@ -125,7 +128,6 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 				     uint32_t module_id, const struct sof_man_module *mod)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	const uint8_t *load_base = (const uint8_t *)ctx->base_addr;
 
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
@@ -170,22 +172,19 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 	}
 
 	/* Copy Code */
-	ret = llext_manager_load_data_from_storage(ext, va_base_text, load_base,
-						   ctx->segment[LIB_MANAGER_TEXT].file_offset,
+	ret = llext_manager_load_data_from_storage(ext, va_base_text, ext->mem[LLEXT_MEM_TEXT],
 						   text_size, SYS_MM_MEM_PERM_EXEC);
 	if (ret < 0)
 		return ret;
 
 	/* Copy read-only data */
-	ret = llext_manager_load_data_from_storage(ext, va_base_rodata, load_base,
-						   ctx->segment[LIB_MANAGER_RODATA].file_offset,
+	ret = llext_manager_load_data_from_storage(ext, va_base_rodata, ext->mem[LLEXT_MEM_RODATA],
 						   rodata_size, 0);
 	if (ret < 0)
 		goto e_text;
 
 	/* Copy writable data */
-	ret = llext_manager_load_data_from_storage(ext, va_base_data, load_base,
-						   ctx->segment[LIB_MANAGER_DATA].file_offset,
+	ret = llext_manager_load_data_from_storage(ext, va_base_data, ext->mem[LLEXT_MEM_DATA],
 						   data_size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0)
 		goto e_rodata;
