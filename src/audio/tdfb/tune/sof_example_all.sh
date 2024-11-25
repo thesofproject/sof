@@ -1,12 +1,13 @@
 #!/bin/bash
 
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2022 Intel Corporation. All rights reserved.
+# Copyright(c) 2022-2024 Intel Corporation.
 
 set -e
 
 CONFIG_LIST=( sof_example_pass_config sof_example_line_array
-	      sof_example_line_0mm36mm146mm182mm sof_example_circular_array sof_example_two_beams )
+	      sof_example_line_0mm36mm146mm182mm sof_example_circular_array
+	      sof_example_two_beams sof_example_two_beams_default )
 OCTAVE_CMD=( octave --no-window-system )
 MATLAB_CMD=( matlab -nodisplay -batch )
 

@@ -16,8 +16,10 @@ function sof_example_line_array()
 az = -90:15:90;
 close all; line_one_beam(48e3, 50e-3, az, 2, 64);
 close all; line_one_beam(48e3, 68e-3, az, 2, 64);
+close all; line_one_beam(48e3, 73.5e-3, az, 2, 64);
 close all; line_one_beam(16e3, 50e-3, az, 2, 40);
 close all; line_one_beam(16e3, 68e-3, az, 2, 40);
+close all; line_one_beam(16e3, 73.5e-3, az, 2, 40);
 
 %% 4 mic arrays
 close all; line_one_beam(48e3, 28e-3, az, 4, 80);
