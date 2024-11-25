@@ -20,7 +20,9 @@ bf.output_stream_mix    = [0 0]; % Mix both filters to stream 0
 bf.num_output_channels  = 2;     % Two channels
 bf.num_output_streams   = 1;     % One sink stream
 bf.beam_off_defined     = 0;     % No need for separate bypass definition
-bf.num_angles           = 0;     % No beams defined
+bf.num_angles           = 1;     % Need at least one beam defined even
+bf.steer_az             = 0;     %   if no processing happens, claim it's
+bf.steer_el             = 0;     %   angle (0, 0).
 bf.num_filters          = 2;     % Two filters
 
 % Minimal manual design fields for successful export
@@ -36,8 +38,8 @@ bf.tplg2_fn = fullfile(bf.tplg2_path, 'line2_pass.conf');
 sof_bf_export(bf);
 
 % Setup for four channels
-bf.input_channel_select = [0 1 2 3]; % Input two channels
-bf.output_channel_mix   = [1 2 4 8]; % Filter1 -> ch0, filter2 -> ch1
+bf.input_channel_select = [0 1 2 3]; % Input four channels
+bf.output_channel_mix   = [1 2 4 8]; % Filter1 -> ch0, filter2 -> ch1, ...
 bf.output_stream_mix    = [0 0 0 0]; % Mix both filters to stream 0
 bf.num_output_channels  = 4;         % Four channels
 bf.num_output_streams   = 1;         % One sink stream
@@ -51,6 +53,26 @@ bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line4_pass.txt');
 bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line4_pass.m4');
 bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line4_pass.txt');
 bf.tplg2_fn = fullfile(bf.tplg2_path, 'line4_pass.conf');
+sof_bf_export(bf);
+
+
+% Setup for four channels to two channels passthrough
+
+bf.input_channel_select = [0 3]; % Input two channels, leftmost, rightmost mic of 4
+bf.output_channel_mix   = [1 2]; % Filter1 -> ch0, filter2 -> ch1
+bf.output_stream_mix    = [0 0]; % Mix both filters to stream 0
+bf.num_output_channels  = 2;     % Two channels
+bf.num_output_streams   = 1;     % One sink stream
+
+% Minimal manual design fields for successful export
+bf.num_filters = 2;
+bf.w = [1 0 0 0; 1 0 0 0]'; % Two FIR filters with first tap set to one
+
+% Files
+bf.sofctl3_fn = fullfile(bf.sofctl3_path, 'coef_line4to2_pass.txt');
+bf.tplg1_fn = fullfile(bf.tplg1_path, 'coef_line4to2_pass.m4');
+bf.sofctl4_fn = fullfile(bf.sofctl4_path, 'line4to2_pass.txt');
+bf.tplg2_fn = fullfile(bf.tplg2_path, 'line4to2_pass.conf');
 sof_bf_export(bf);
 
 end
