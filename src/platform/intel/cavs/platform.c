@@ -116,14 +116,12 @@ int platform_init(struct sof *sof)
 {
 	int ret;
 
-	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	platform_clock_init(sof);
-
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf();
 
 	/* init low latency timer domain and scheduler */
-	sof->platform_timer_domain = timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK);
+	/* clk is ignored on Zephyr so pass 0 */
+	sof->platform_timer_domain = timer_domain_init(sof->platform_timer, 0);
 	scheduler_init_ll(sof->platform_timer_domain);
 
 	/* init the system agent */

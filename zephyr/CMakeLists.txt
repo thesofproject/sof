@@ -222,8 +222,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	# Platform sources
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
-		${SOF_PLATFORM_PATH}/tigerlake/lib/clk.c
-		lib/clk.c
 		lib/dma.c
 	)
 
