@@ -457,22 +457,11 @@ out:
 	return 0;
 }
 
-static int man_module_create_reloc(struct image *image, struct manifest_module *module,
-				   struct sof_man_module *man_module)
+static void man_module_fill_reloc(const struct manifest_module *module,
+				  struct sof_man_module *man_module)
 {
-	/* create module and segments */
-	int err;
-
-	image->image_end = 0;
-
-	err = man_get_module_manifest(image, module, man_module);
-	if (err < 0)
-		return err;
-
 	/* stack size ??? convert sizes to PAGES */
 	man_module->instance_bss_size = 1;
-
-	module_print_zones(&module->file);
 
 	/* main module */
 	/* text section is first */
@@ -491,6 +480,23 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 	man_module->segment[SOF_MAN_SEGMENT_BSS].file_offset = 0;
 	man_module->segment[SOF_MAN_SEGMENT_BSS].v_base_addr = 0;
 	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = 0;
+}
+
+static int man_module_create_reloc(struct image *image, struct manifest_module *module,
+				   struct sof_man_module *man_module)
+{
+	/* create module and segments */
+	int err;
+
+	image->image_end = 0;
+
+	err = man_get_module_manifest(image, module, man_module);
+	if (err < 0)
+		return err;
+
+	module_print_zones(&module->file);
+
+	man_module_fill_reloc(module, man_module);
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\tType\n");
 
