@@ -335,7 +335,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
 		    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
 			tr_err(&lib_manager_tr, "Unsupported module API version");
-			return -ENOEXEC;
+			return 0;
 		}
 
 		/* Map executable code and data */
