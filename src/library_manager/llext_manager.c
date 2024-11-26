@@ -316,26 +316,26 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 {
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
-	struct sof_man_module *mod_array;
-	int ret;
-	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	const struct sof_module_api_build_info *buildinfo;
-	const struct sof_man_module_manifest *mod_manifest;
-	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
-	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + FILE_TEXT_OFFSET_V1_8,
-						       mod_size);
-	struct module_data *md = &proc->priv;
-
-	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
 	if (!ctx || !desc) {
 		tr_err(&lib_manager_tr, "failed to get module descriptor");
 		return 0;
 	}
 
-	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
+	struct sof_man_module *mod_array = (struct sof_man_module *)((char *)desc +
+								     SOF_MAN_MODULE_OFFSET(0));
+	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
+	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
+	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + FILE_TEXT_OFFSET_V1_8,
+						       mod_size);
+	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	const struct sof_man_module_manifest *mod_manifest;
+	const struct sof_module_api_build_info *buildinfo;
+	struct module_data *md = &proc->priv;
+	int ret;
+
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
 	if (!ctx->mod)
 		llext_manager_mod_init(ctx, desc, mod_array);
