@@ -19,6 +19,7 @@ add_library(audio_for_eq_iir STATIC
 	${PROJECT_SOURCE_DIR}/src/math/iir_df1_generic.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df1_hifi3.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df1_hifi4.c
+	${PROJECT_SOURCE_DIR}/src/math/iir_df1_hifi5.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df2t.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df2t_generic.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df2t_hifi3.c

@@ -39,7 +39,7 @@ add_local_sources_ifdef(CONFIG_MATH_IIR_DF2T sof
 	iir_df2t_generic.c iir_df2t_hifi3.c iir_df2t.c)
 
 add_local_sources_ifdef(CONFIG_MATH_IIR_DF1 sof
-	iir_df1_generic.c iir_df1_hifi3.c iir_df1_hifi4.c iir_df1.c)
+	iir_df1_generic.c iir_df1_hifi3.c iir_df1_hifi4.c iir_df1_hifi5.c iir_df1.c)
 
 if(CONFIG_MATH_WINDOW)
 	 add_local_sources(sof window.c)
