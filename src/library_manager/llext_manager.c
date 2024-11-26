@@ -125,24 +125,22 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 }
 
 static int llext_manager_load_module(const struct llext *ext, const struct llext_buf_loader *ebl,
-				     uint32_t module_id)
+				     const struct lib_manager_module *mctx)
 {
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
-		ctx->segment[LIB_MANAGER_TEXT].addr;
-	size_t text_size = ctx->segment[LIB_MANAGER_TEXT].size;
+		mctx->segment[LIB_MANAGER_TEXT].addr;
+	size_t text_size = mctx->segment[LIB_MANAGER_TEXT].size;
 
 	/* Read-only data (.rodata and others) */
 	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
-		ctx->segment[LIB_MANAGER_RODATA].addr;
-	size_t rodata_size = ctx->segment[LIB_MANAGER_RODATA].size;
+		mctx->segment[LIB_MANAGER_RODATA].addr;
+	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
 
 	/* Writable data (.data, .bss and others) */
 	void __sparse_cache *va_base_data = (void __sparse_cache *)
-		ctx->segment[LIB_MANAGER_DATA].addr;
-	size_t data_size = ctx->segment[LIB_MANAGER_DATA].size;
+		mctx->segment[LIB_MANAGER_DATA].addr;
+	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
 
 	/* .bss, should be within writable data above */
 	void __sparse_cache *bss_addr = (void __sparse_cache *)
@@ -201,23 +199,22 @@ e_text:
 	return ret;
 }
 
-static int llext_manager_unload_module(uint32_t module_id)
+static int llext_manager_unload_module(const struct lib_manager_module *mctx)
 {
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
-		ctx->segment[LIB_MANAGER_TEXT].addr;
-	size_t text_size = ctx->segment[LIB_MANAGER_TEXT].size;
+		mctx->segment[LIB_MANAGER_TEXT].addr;
+	size_t text_size = mctx->segment[LIB_MANAGER_TEXT].size;
 
 	/* Read-only data (.rodata, etc.) */
 	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
-		ctx->segment[LIB_MANAGER_RODATA].addr;
-	size_t rodata_size = ctx->segment[LIB_MANAGER_RODATA].size;
+		mctx->segment[LIB_MANAGER_RODATA].addr;
+	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
 
 	/* Writable data (.data, .bss, etc.) */
 	void __sparse_cache *va_base_data = (void __sparse_cache *)
-		ctx->segment[LIB_MANAGER_DATA].addr;
-	size_t data_size = ctx->segment[LIB_MANAGER_DATA].size;
+		mctx->segment[LIB_MANAGER_DATA].addr;
+	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
 	int err = 0, ret;
 
 	ret = llext_manager_align_unmap(va_base_text, text_size);
@@ -240,15 +237,14 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
-static int llext_manager_link(struct llext_buf_loader *ebl,
-			      const char *name, uint32_t module_id, struct module_data *md,
+static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
+			      struct lib_manager_module *mctx, struct module_data *md,
 			      const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Identify if this is the first time loading this module */
 	struct llext_load_param ldr_parm = {
-		.relocate_local = !ctx->segment[LIB_MANAGER_TEXT].size,
+		.relocate_local = !mctx->segment[LIB_MANAGER_TEXT].size,
 		.pre_located = true,
 		.section_detached = llext_manager_section_detached,
 	};
@@ -257,30 +253,30 @@ static int llext_manager_link(struct llext_buf_loader *ebl,
 	if (ret)
 		return ret;
 
-	ctx->segment[LIB_MANAGER_TEXT].addr = ebl->loader.sects[LLEXT_MEM_TEXT].sh_addr;
-	ctx->segment[LIB_MANAGER_TEXT].size = ebl->loader.sects[LLEXT_MEM_TEXT].sh_size;
+	mctx->segment[LIB_MANAGER_TEXT].addr = ebl->loader.sects[LLEXT_MEM_TEXT].sh_addr;
+	mctx->segment[LIB_MANAGER_TEXT].size = ebl->loader.sects[LLEXT_MEM_TEXT].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x",
-	       ctx->segment[LIB_MANAGER_TEXT].addr,
-	       ctx->segment[LIB_MANAGER_TEXT].size);
+	       mctx->segment[LIB_MANAGER_TEXT].addr,
+	       mctx->segment[LIB_MANAGER_TEXT].size);
 
 	/* All read-only data sections */
-	ctx->segment[LIB_MANAGER_RODATA].addr =
+	mctx->segment[LIB_MANAGER_RODATA].addr =
 		ebl->loader.sects[LLEXT_MEM_RODATA].sh_addr;
-	ctx->segment[LIB_MANAGER_RODATA].size = ebl->loader.sects[LLEXT_MEM_RODATA].sh_size;
+	mctx->segment[LIB_MANAGER_RODATA].size = ebl->loader.sects[LLEXT_MEM_RODATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x",
-	       ctx->segment[LIB_MANAGER_RODATA].addr,
-	       ctx->segment[LIB_MANAGER_RODATA].size);
+	       mctx->segment[LIB_MANAGER_RODATA].addr,
+	       mctx->segment[LIB_MANAGER_RODATA].size);
 
 	/* All writable data sections */
-	ctx->segment[LIB_MANAGER_DATA].addr =
+	mctx->segment[LIB_MANAGER_DATA].addr =
 		ebl->loader.sects[LLEXT_MEM_DATA].sh_addr;
-	ctx->segment[LIB_MANAGER_DATA].size = ebl->loader.sects[LLEXT_MEM_DATA].sh_size;
+	mctx->segment[LIB_MANAGER_DATA].size = ebl->loader.sects[LLEXT_MEM_DATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
-	       ctx->segment[LIB_MANAGER_DATA].addr,
-	       ctx->segment[LIB_MANAGER_DATA].size);
+	       mctx->segment[LIB_MANAGER_DATA].addr,
+	       mctx->segment[LIB_MANAGER_DATA].size);
 
 	ssize_t binfo_o = llext_find_section(&ebl->loader, ".mod_buildinfo");
 
@@ -293,6 +289,25 @@ static int llext_manager_link(struct llext_buf_loader *ebl,
 		*mod_manifest = llext_peek(&ebl->loader, mod_o);
 
 	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
+}
+
+static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
+				  const struct sof_man_fw_desc *desc,
+				  const struct sof_man_module *mod_array)
+{
+	/*
+	 * Loadable modules are loaded to DRAM once and never unloaded from it.
+	 * Context, related to them, is never freed
+	 */
+	ctx->mod = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, SOF_MEM_FLAG_COHERENT,
+			   SOF_MEM_CAPS_RAM, sizeof(ctx->mod[0]));
+	if (!ctx->mod)
+		return -ENOMEM;
+
+	ctx->n_mod = 1;
+	ctx->mod[0].start_idx = 0;
+
+	return 0;
 }
 
 uintptr_t llext_manager_allocate_module(struct processing_module *proc,
@@ -322,6 +337,11 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 
 	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
 
+	if (!ctx->mod)
+		llext_manager_mod_init(ctx, desc, mod_array);
+
+	struct lib_manager_module *mctx = ctx->mod;
+
 	/* LLEXT linking is only needed once for all the modules in the library */
 	ret = llext_manager_link(&ebl, mod_array[0].name, module_id, md,
 				 (const void **)&buildinfo, &mod_manifest);
@@ -339,26 +359,28 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		}
 
 		/* Map executable code and data */
-		ret = llext_manager_load_module(md->llext, &ebl, module_id);
+		ret = llext_manager_load_module(md->llext, &ebl, mctx);
 		if (ret < 0)
 			return 0;
 
-		/* ctx->mod_manifest points to a const array of module manifests */
-		ctx->mod_manifest = mod_manifest;
+		/* mctx->mod_manifest points to a const array of module manifests */
+		mctx->mod_manifest = mod_manifest;
 	}
 
-	return ctx->mod_manifest[entry_index].module.entry_point;
+	return mctx->mod_manifest[entry_index].module.entry_point;
 }
 
 int llext_manager_free_module(const uint32_t component_id)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
 		LIB_MANAGER_LIB_ID_SHIFT;
+	struct lib_manager_module *mctx = ctx->mod;
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
-	return llext_manager_unload_module(base_module_id);
+	return llext_manager_unload_module(mctx);
 }
 
 bool comp_is_llext(struct comp_dev *comp)

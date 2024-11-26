@@ -95,10 +95,16 @@ struct lib_manager_segment_desc {
 	size_t size;
 };
 
-struct lib_manager_mod_ctx {
-	void *base_addr;
+struct lib_manager_module {
+	unsigned int start_idx;
 	const struct sof_man_module_manifest *mod_manifest;
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
+};
+
+struct lib_manager_mod_ctx {
+	void *base_addr;
+	unsigned int n_mod;
+	struct lib_manager_module *mod;
 };
 
 struct ext_library {
