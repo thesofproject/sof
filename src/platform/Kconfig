@@ -339,7 +339,6 @@ config CAVS
 	bool
 	default n
 	select INTEL
-	select INTEL_MN
 	select SOF_ZEPHYR_NO_SOF_CLOCK
 
 config CAVS_VERSION_2_5
