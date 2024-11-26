@@ -2,8 +2,6 @@
 
 menu "Drivers"
 
-rsource "intel/Kconfig"
-
 rsource "dw/Kconfig"
 
 rsource "imx/Kconfig"
