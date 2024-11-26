@@ -328,12 +328,10 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 						       mod_size);
 	struct module_data *md = &proc->priv;
 
-	tr_dbg(&lib_manager_tr, "llext_manager_allocate_module(): mod_id: %#x",
-	       ipc_config->id);
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
 	if (!ctx || !desc) {
-		tr_err(&lib_manager_tr,
-		       "llext_manager_allocate_module(): failed to get module descriptor");
+		tr_err(&lib_manager_tr, "failed to get module descriptor");
 		return 0;
 	}
 
@@ -356,8 +354,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		/* First instance: check that the module is native */
 		if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
 		    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
-			tr_err(&lib_manager_tr,
-			       "llext_manager_allocate_module(): Unsupported module API version");
+			tr_err(&lib_manager_tr, "Unsupported module API version");
 			return -ENOEXEC;
 		}
 
@@ -381,7 +378,7 @@ int llext_manager_free_module(const uint32_t component_id)
 		LIB_MANAGER_LIB_ID_SHIFT;
 	struct lib_manager_module *mctx = ctx->mod;
 
-	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", component_id);
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
 	return llext_manager_unload_module(mctx);
 }
