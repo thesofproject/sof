@@ -37,14 +37,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/*
- * FIXME: this definition is copied from tools/rimage/src/include/rimage/manifest.h
- * which we cannot easily include here, because it also pulls in
- * tools/rimage/src/include/rimage/elf.h which then conflicts with
- * zephyr/include/zephyr/llext/elf.h
- */
-#define FILE_TEXT_OFFSET_V1_8		0x8000
-
 LOG_MODULE_DECLARE(lib_manager, CONFIG_SOF_LOG_LEVEL);
 
 extern struct tr_ctx lib_manager_tr;
@@ -295,19 +287,46 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 				  const struct sof_man_fw_desc *desc,
 				  const struct sof_man_module *mod_array)
 {
+	unsigned int i, n_mod;
+	size_t offs;
+
+	/* count modules */
+	for (i = 0, n_mod = 0, offs = ~0; i < desc->header.num_module_entries; i++)
+		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != offs) {
+			offs = mod_array[i].segment[LIB_MANAGER_TEXT].file_offset;
+			n_mod++;
+		}
+
 	/*
 	 * Loadable modules are loaded to DRAM once and never unloaded from it.
 	 * Context, related to them, is never freed
 	 */
 	ctx->mod = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, SOF_MEM_FLAG_COHERENT,
-			   SOF_MEM_CAPS_RAM, sizeof(ctx->mod[0]));
+			   SOF_MEM_CAPS_RAM, n_mod * sizeof(ctx->mod[0]));
 	if (!ctx->mod)
 		return -ENOMEM;
 
-	ctx->n_mod = 1;
-	ctx->mod[0].start_idx = 0;
+	ctx->n_mod = n_mod;
+
+	for (i = 0, n_mod = 0, offs = ~0; i < desc->header.num_module_entries; i++)
+		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != offs) {
+			offs = mod_array[i].segment[LIB_MANAGER_TEXT].file_offset;
+			ctx->mod[n_mod].segment[LIB_MANAGER_TEXT].size = 0;
+			ctx->mod[n_mod++].start_idx = i;
+		}
 
 	return 0;
+}
+
+static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
+{
+	unsigned int i;
+
+	for (i = 0; i < ctx->n_mod; i++)
+		if (ctx->mod[i].start_idx > idx)
+			break;
+
+	return i - 1;
 }
 
 uintptr_t llext_manager_allocate_module(struct processing_module *proc,
@@ -325,14 +344,13 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 
 	struct sof_man_module *mod_array = (struct sof_man_module *)((char *)desc +
 								     SOF_MAN_MODULE_OFFSET(0));
-	size_t mod_size = desc->header.preload_page_count * PAGE_SZ - FILE_TEXT_OFFSET_V1_8;
-	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + FILE_TEXT_OFFSET_V1_8,
-						       mod_size);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	size_t mod_offset = mod_array[entry_index].segment[LIB_MANAGER_TEXT].file_offset;
 	const struct sof_man_module_manifest *mod_manifest;
 	const struct sof_module_api_build_info *buildinfo;
 	struct module_data *md = &proc->priv;
+	size_t mod_size;
+	int i, inst_idx;
 	int ret;
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
@@ -340,10 +358,56 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	if (!ctx->mod)
 		llext_manager_mod_init(ctx, desc, mod_array);
 
-	struct lib_manager_module *mctx = ctx->mod;
+	if (entry_index >= desc->header.num_module_entries) {
+		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
+		       entry_index, desc->header.num_module_entries - 1);
+		return 0;
+	}
 
-	/* LLEXT linking is only needed once for all the modules in the library */
-	ret = llext_manager_link(&ebl, mod_array[0].name, module_id, md,
+	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+	struct lib_manager_module *mctx = ctx->mod + mod_idx;
+
+	/*
+	 * We don't know the number of ELF files that this library is built of.
+	 * We know the number of module drivers, but each of those ELF files can
+	 * also contain multiple such drivers. Each driver brings two copies of
+	 * its manifest with it: one in the ".module" ELF section and one in an
+	 * array of manifests at the beginning of the library. This latter array
+	 * is created from a TOML configuration file. The order is preserved -
+	 * this is guaranteed by rimage.
+	 * All module drivers within a single ELF file have equal .file_offset,
+	 * this makes it possible to find borders between them.
+	 * We know the global index of the requested driver in that array, but
+	 * we need to find the matching manifest in ".module" because only it
+	 * contains the entry point. For safety we calculate the ELF driver
+	 * index and then also check the driver name.
+	 * We also need the driver size. For this we search the manifest array
+	 * for the next ELF file, then the difference between offsets gives us
+	 * the driver size.
+	 */
+	for (i = entry_index - 1; i >= 0; i--)
+		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != mod_offset)
+			break;
+
+	/* Driver index within a single module */
+	inst_idx = entry_index - i - 1;
+
+	/* Find the next module or stop at the end */
+	for (i = entry_index + 1; i < desc->header.num_module_entries; i++)
+		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != mod_offset)
+			break;
+
+	if (i == desc->header.num_module_entries)
+		mod_size = desc->header.preload_page_count * PAGE_SZ - mod_offset;
+	else
+		mod_size = ALIGN_UP(mod_array[i].segment[LIB_MANAGER_TEXT].file_offset - mod_offset,
+				    PAGE_SZ);
+
+	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
+	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
+
+	/* LLEXT linking is only needed once for all the drivers in each module */
+	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx, md,
 				 (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
@@ -367,16 +431,31 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		mctx->mod_manifest = mod_manifest;
 	}
 
-	return mctx->mod_manifest[entry_index].module.entry_point;
+	if (strncmp(mod_array[entry_index].name, mctx->mod_manifest[inst_idx].module.name,
+		    sizeof(mod_array[0].name))) {
+		tr_err(&lib_manager_tr, "Name mismatch %s vs. %s",
+		       mod_array[entry_index].name, mctx->mod_manifest[inst_idx].module.name);
+		return 0;
+	}
+
+	return mctx->mod_manifest[inst_idx].module.entry_point;
 }
 
 int llext_manager_free_module(const uint32_t component_id)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
+	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
-		LIB_MANAGER_LIB_ID_SHIFT;
-	struct lib_manager_module *mctx = ctx->mod;
+	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+
+	if (entry_index >= desc->header.num_module_entries) {
+		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
+		       entry_index, desc->header.num_module_entries - 1);
+		return -ENOENT;
+	}
+
+	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+	struct lib_manager_module *mctx = ctx->mod + mod_idx;
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 

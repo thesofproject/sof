@@ -519,6 +519,9 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 				/* Found a TOML manifest, matching ELF */
 				if (i)
 					(*man_module)++;
+				/* Use manifest created using toml files as template */
+				**man_module = image->adsp->modules->mod_man[j];
+				/* Use .manifest to update individual fields */
 				man_get_section_manifest(image, sof_mod, *man_module);
 				man_module_fill_reloc(module, *man_module);
 				break;
@@ -648,10 +651,12 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 		if (image->reloc) {
 			err = man_module_create_reloc(image, module, &man_module);
 		} else {
-			/* Some platforms dont have modules configuration in toml file */
+			/* Some platforms don't have modules configuration in toml file */
 			if (image->adsp->modules) {
+				/* Use manifest created using toml files as template */
 				assert(i < image->adsp->modules->mod_man_count);
-				memcpy(man_module, &image->adsp->modules->mod_man[i], sizeof(*man_module));
+				memcpy(man_module, &image->adsp->modules->mod_man[i],
+				       sizeof(*man_module));
 			}
 
 			err = man_module_create(image, module, man_module);
