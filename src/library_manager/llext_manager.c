@@ -125,7 +125,7 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 }
 
 static int llext_manager_load_module(const struct llext *ext, const struct llext_buf_loader *ebl,
-				     uint32_t module_id, const struct sof_man_module *mod)
+				     uint32_t module_id)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 
@@ -201,7 +201,7 @@ e_text:
 	return ret;
 }
 
-static int llext_manager_unload_module(uint32_t module_id, const struct sof_man_module *mod)
+static int llext_manager_unload_module(uint32_t module_id)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	/* Executable code (.text) */
@@ -240,7 +240,7 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
-static int llext_manager_link(struct llext_buf_loader *ebl, uintptr_t dram_base,
+static int llext_manager_link(struct llext_buf_loader *ebl,
 			      const char *name, uint32_t module_id, struct module_data *md,
 			      const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
@@ -325,7 +325,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	mod_array = (struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(0));
 
 	/* LLEXT linking is only needed once for all the modules in the library */
-	ret = llext_manager_link(&ebl, dram_base, mod_array[0].name, module_id, md,
+	ret = llext_manager_link(&ebl, mod_array[0].name, module_id, md,
 				 (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
@@ -342,7 +342,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		}
 
 		/* Map executable code and data */
-		ret = llext_manager_load_module(md->llext, &ebl, module_id, mod_array);
+		ret = llext_manager_load_module(md->llext, &ebl, module_id);
 		if (ret < 0)
 			return 0;
 
@@ -355,16 +355,13 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 
 int llext_manager_free_module(const uint32_t component_id)
 {
-	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
 		LIB_MANAGER_LIB_ID_SHIFT;
 
 	tr_dbg(&lib_manager_tr, "llext_manager_free_module(): mod_id: %#x", component_id);
 
-	mod = lib_manager_get_module_manifest(base_module_id);
-
-	return llext_manager_unload_module(base_module_id, mod);
+	return llext_manager_unload_module(base_module_id);
 }
 
 bool comp_is_llext(struct comp_dev *comp)
