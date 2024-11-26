@@ -37,7 +37,7 @@ void iir_reset_df1(struct iir_state_df1 *iir);
 int32_t iir_df1(struct iir_state_df1 *iir, int32_t x);
 
 /* Inline functions */
-#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
+#if SOF_USE_MIN_HIFI(3, FILTER)
 #include "iir_df1_hifi3.h"
 #else
 #include "iir_df1_generic.h"

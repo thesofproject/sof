@@ -668,6 +668,7 @@ zephyr_library_sources_ifdef(CONFIG_MATH_FIR
 zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
 	${SOF_MATH_PATH}/iir_df1_generic.c
 	${SOF_MATH_PATH}/iir_df1_hifi3.c
+	${SOF_MATH_PATH}/iir_df1_hifi4.c
 	${SOF_MATH_PATH}/iir_df1.c
 )
 
