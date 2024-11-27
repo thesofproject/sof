@@ -263,6 +263,7 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 		goto e_ipcgtw;
 	}
 
+	printk("ipcgtwcreate: ep create %d\n", cd->endpoint_num);
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_buffer_connect(dev, config->core,
 				    cd->endpoint_buffer[cd->endpoint_num],
