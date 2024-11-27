@@ -28,6 +28,14 @@ void platform_clock_init(struct sof *sof)
 
 	sof->clocks = platform_clocks_info;
 
+	/*
+	 * plafforms using this clk.c implementation must
+	 * declare the CPU clocks first, and there must be at least
+	 * one clock per core. If this model doesn't fit, platform
+	 * needs a custom platform_clock_init.
+	 */
+	BUILD_ASSERT(NUM_CLOCKS >= CONFIG_CORE_COUNT, "Invalid NUM_CLOCKS");
+
 	for (i = 0; i < CONFIG_CORE_COUNT; i++) {
 		sof->clocks[i] = (struct clock_info) {
 			.freqs_num = NUM_CPU_FREQ,
