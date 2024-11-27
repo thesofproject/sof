@@ -13,8 +13,8 @@
 %   xtrun - set to 'xt-run' or 'xt-run --turbo' to test with xt-testbench
 %
 % E.g.
-% process_test('eq-iir', 32, 32, 48000, 0, 0, 'xt-run --turbo');
-% process_test('eq-iir', 32, 32);
+% process_test('eqiir', 32, 32, 48000, 0, 0, 'xt-run --turbo');
+% process_test('eqiir', 32, 32);
 
 % SPDX-License-Identifier: BSD-3-Clause
 % Copyright(c) 2017-2022 Intel Corporation. All rights reserved.
@@ -23,7 +23,7 @@
 function  [n_fail, n_pass, n_na] = process_test(comp, bits_in_list, bits_out_list, fs, fulltest, show_plots, xtrun)
 	%% Defaults for call parameters
 	if nargin < 1
-		comp = 'EQIIR';
+		comp = 'eqiir';
 	end
 
 	if nargin < 2
@@ -340,10 +340,10 @@ end
 
 function test = g_spec(test, prm)
 	switch lower(test.comp)
-		case 'eq-iir'
+		case {'eq-iir', 'eqiir'}
 			blob = fullfile(prm.blobpath, prm.iirblob);
 			h = sof_eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
-		case 'eq-fir'
+		case {'eq-fir', 'eqfir'}
 			blob = fullfile(prm.blobpath, prm.firblob);
 			h = sof_eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
 		otherwise
@@ -356,10 +356,10 @@ end
 
 function test = fr_mask(test, prm)
 	switch lower(test.comp)
-		case 'eq-iir'
+		case {'eq-iir', 'eqiir'}
 			blob = fullfile(prm.blobpath, prm.iirblob);
 			h = sof_eq_blob_plot(blob, 'iir', test.fs, test.f, 0);
-		case 'eq-fir'
+		case {'eq-fir', 'eqfir'}
 			blob = fullfile(prm.blobpath, prm.firblob);
 			h = sof_eq_blob_plot(blob, 'fir', test.fs, test.f, 0);
 		otherwise
