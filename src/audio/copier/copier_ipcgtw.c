@@ -223,22 +223,13 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 
 	cd->ipc_gtw = true;
 
-	/* create_endpoint_buffer() uses this value to choose between input and
-	 * output formats in copier config to setup buffer. For this purpose
-	 * IPC gateway should be handled similarly as host gateway.
-	 */
+	/* The IPC gateway is treated as a host gateway */
 	config->type = SOF_COMP_HOST;
 	cd->gtw_type = ipc4_gtw_host;
 
-	ret = create_endpoint_buffer(dev, cd, copier, false);
-	if (ret < 0)
-		return ret;
-
 	ipcgtw_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*ipcgtw_data));
-	if (!ipcgtw_data) {
-		ret = -ENOMEM;
-		goto e_buf;
-	}
+	if (!ipcgtw_data)
+		return -ENOMEM;
 
 	ipcgtw_data->node_id = gtw_cfg->node_id;
 	ipcgtw_data->dev = dev;
@@ -246,8 +237,8 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	blob = (const struct ipc4_ipc_gateway_config_blob *)
 		((const struct ipc4_gateway_config_data *)gtw_cfg->config_data)->config_blob;
 
-	/* Endpoint buffer is created in copier with size specified in copier config. That buffer
-	 * will be resized to size specified in IPC gateway blob later in ipcgtw_params().
+	/* The buffer connected to the IPC gateway will be resized later in ipcgtw_params()
+	 * to the size specified in the IPC gateway blob.
 	 */
 	comp_dbg(dev, "ipcgtw_create(): buffer_size: %u", blob->buffer_size);
 	ipcgtw_data->buf_size = blob->buffer_size;
@@ -264,15 +255,9 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	}
 
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_buffer_connect(dev, config->core,
-				    cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_COMP_TO_BUFFER);
 		cd->bsource_buffer = false;
 		pipeline->source_comp = dev;
 	} else {
-		comp_buffer_connect(dev, config->core,
-				    cd->endpoint_buffer[cd->endpoint_num],
-				    PPL_CONN_DIR_BUFFER_TO_COMP);
 		cd->bsource_buffer = true;
 		pipeline->sink_comp = dev;
 	}
@@ -285,8 +270,6 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 
 e_ipcgtw:
 	rfree(ipcgtw_data);
-e_buf:
-	buffer_free(cd->endpoint_buffer[cd->endpoint_num]);
 	return ret;
 }
 
@@ -294,5 +277,4 @@ void copier_ipcgtw_free(struct copier_data *cd)
 {
 	list_item_del(&cd->ipcgtw_data->item);
 	rfree(cd->ipcgtw_data);
-	buffer_free(cd->endpoint_buffer[0]);
 }
