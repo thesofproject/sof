@@ -246,10 +246,9 @@ struct copier_data {
 	void *gtw_cfg;
 	enum ipc4_gateway_type gtw_type;
 	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
-	struct comp_buffer *endpoint_buffer[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	uint32_t endpoint_num;
 
-	/* buffer to mux/demux data from/to multiple endpoint buffers for ALH multi-gateway case */
+	/* buffer to mux/demux data from/to multiple endpoints for ALH multi-gateway case */
 	struct comp_buffer *multi_endpoint_buffer;
 
 	bool bsource_buffer;
@@ -284,10 +283,9 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 				      uint32_t chmap);
 
 struct comp_ipc_config;
-int create_endpoint_buffer(struct comp_dev *dev,
-			   struct copier_data *cd,
-			   const struct ipc4_copier_module_cfg *copier_cfg,
-			   bool create_multi_endpoint_buffer);
+int create_multi_endpoint_buffer(struct comp_dev *dev,
+				 struct copier_data *cd,
+				 const struct ipc4_copier_module_cfg *copier_cfg);
 
 enum sof_ipc_stream_direction
 	get_gateway_direction(enum ipc4_connector_node_id_type node_id_type);
