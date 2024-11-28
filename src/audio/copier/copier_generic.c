@@ -347,10 +347,9 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 	}
 }
 
-int create_endpoint_buffer(struct comp_dev *dev,
-			   struct copier_data *cd,
-			   const struct ipc4_copier_module_cfg *copier_cfg,
-			   bool create_multi_endpoint_buffer)
+int create_multi_endpoint_buffer(struct comp_dev *dev,
+				 struct copier_data *cd,
+				 const struct ipc4_copier_module_cfg *copier_cfg)
 {
 	struct comp_ipc_config *config = &dev->ipc_config;
 	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
@@ -438,10 +437,7 @@ int create_endpoint_buffer(struct comp_dev *dev,
 
 	audio_buffer_set_hw_params_configured(&buffer->audio_buffer);
 
-	if (create_multi_endpoint_buffer)
-		cd->multi_endpoint_buffer = buffer;
-	else
-		cd->endpoint_buffer[cd->endpoint_num] = buffer;
+	cd->multi_endpoint_buffer = buffer;
 
 	return 0;
 }
