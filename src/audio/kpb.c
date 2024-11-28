@@ -2405,11 +2405,11 @@ static void devicelist_reset(struct device_list *devlist, bool remove_items)
 {
 	/* clear items */
 	if (remove_items) {
-		for (int i = 0; i < DEVICE_LIST_SIZE; i++)
+		for (int i = 0; i < devlist->count; i++)
 			*devlist->devs[i] = NULL;
 	}
 	/* zero the pointers */
-	for (int i = 0; i < DEVICE_LIST_SIZE; i++)
+	for (int i = 0; i < devlist->count; i++)
 		devlist->devs[i] = NULL;
 
 	devlist->count = 0;
