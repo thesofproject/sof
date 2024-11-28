@@ -308,6 +308,8 @@ class CircularBufferDecoder:
         if bpos < 0:
             bpos = self.buf_words + pos - bsize
         rec = self.get_hdr(slot, bpos)
+        if rec == None:
+                return
         if bsize != rec.size_words:
             return
         if seqno is not None:
