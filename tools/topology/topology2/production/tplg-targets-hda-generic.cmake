@@ -67,4 +67,24 @@ EFX_DMIC0_DRC_PARAMS=dmic_default"
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-4ch.bin,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
+
+# Topologies for ACE3 architecture
+# HDMI + DMICs
+"sof-hda-generic\;sof-hda-generic-ace3-idisp-2ch\;PLATFORM=ptl,NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-idisp-2ch.bin"
+
+"sof-hda-generic\;sof-hda-generic-ace3-idisp-4ch\;PLATFORM=ptl,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-idisp-4ch.bin"
+
+# HDA + HDMI + DMICs
+"sof-hda-generic\;sof-hda-generic-ace3-2ch\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-2ch.bin,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
+EFX_DMIC0_DRC_PARAMS=dmic_default"
+
+"sof-hda-generic\;sof-hda-generic-ace3-4ch\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-4ch.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 )
