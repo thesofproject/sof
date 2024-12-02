@@ -62,6 +62,7 @@ endfunction()
 # of the .text section as arguments.
 function(sof_llext_build module)
 	set(multi_args SOURCES)
+	set(single_args LIB)
 	cmake_parse_arguments(PARSE_ARGV 1 SOF_LLEXT "${options}" "${single_args}" "${multi_args}")
 
 	cmake_path(SET SOF_BASE NORMALIZE ${APPLICATION_SOURCE_DIR}/..)
@@ -72,6 +73,10 @@ function(sof_llext_build module)
 		OUTPUT  ${PROJECT_BINARY_DIR}/${module}_llext/${module}.llext
 		SOURCES ${SOF_LLEXT_SOURCES}
 	)
+
+	if(CONFIG_LIBRARY_BUILD_LIB AND NOT("${SOF_LLEXT_LIB}" STREQUAL ""))
+		file(WRITE ${PROJECT_BINARY_DIR}/${module}_llext/lib_name.txt ${SOF_LLEXT_LIB})
+	endif()
 
 	target_include_directories(${module}_llext_lib PRIVATE
 		"${SOF_BASE}/xtos/include"
