@@ -11,6 +11,7 @@ sof_llext_build("src"
 		../src_common.c
 		../src_ipc4.c
 		../src_lite.c
+	LIB openmodules
 )
 else()
 sof_llext_build("src"
@@ -21,5 +22,6 @@ sof_llext_build("src"
 		../src.c
 		../src_common.c
 		../src_ipc4.c
+	LIB openmodules
 )
 endif()

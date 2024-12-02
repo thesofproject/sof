@@ -5,4 +5,5 @@ sof_llext_build("crossover"
 	SOURCES ../crossover.c
 		../crossover_generic.c
 		../crossover_ipc4.c
+	LIB openmodules
 )

@@ -5,4 +5,5 @@ sof_llext_build("mux"
 	SOURCES ../mux.c
 		../mux_generic.c
 		../mux_ipc4.c
+	LIB openmodules
 )
