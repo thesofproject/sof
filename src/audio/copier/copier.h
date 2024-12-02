@@ -245,7 +245,6 @@ struct copier_data {
 	struct ipc4_copier_module_cfg config;
 	void *gtw_cfg;
 	enum ipc4_gateway_type gtw_type;
-	struct comp_dev *endpoint[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	uint32_t endpoint_num;
 
 	/* buffer to mux/demux data from/to multiple endpoints for ALH multi-gateway case */

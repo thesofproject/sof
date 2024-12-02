@@ -956,8 +956,8 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 					ret = cd->dd[0]->total_data_processed;
 				break;
 			default:
-				ret = comp_get_total_data_processed(cd->endpoint[stream_no],
-								    0, input);
+				comp_err(dev, "Unexpected gateway type encountered: %d",
+					 dev->ipc_config.type);
 				break;
 			}
 		}
