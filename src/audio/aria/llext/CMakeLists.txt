@@ -6,4 +6,5 @@ sof_llext_build("aria"
 		../aria_hifi5.c
 		../aria_hifi3.c
 		../aria_generic.c
+	LIB openmodules
 )
