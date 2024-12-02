@@ -948,19 +948,26 @@ def build_platforms():
 			symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True)
 
 
-def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
+def install_lib(platform, sof_output_dir, abs_build_dir, platform_wconfig):
 	"""[summary] Sign loadable llext modules, if any, copy them to the
 	deployment tree and create UUID links for the kernel to find and load
 	them."""
 
 	global signing_key
 
+	libs = dict()
+	lib_uuids = dict()
+	rimage_cmd = shlex.split(platform_wconfig.get('rimage.path'))[0]
+	_ws_args = platform_wconfig.get("rimage.extra-args")
+
+	sof_lib_dir = sof_output_dir / '..' / 'sof-ipc4-lib' / platform
+
+	if args.key_type_subdir != "none":
+		sof_lib_dir = sof_lib_dir / args.key_type_subdir
+
+	sof_lib_dir.mkdir(parents=True, exist_ok=True)
+
 	with os.scandir(str(abs_build_dir)) as iter:
-		if args.key_type_subdir != "none":
-			sof_lib_dir = sof_lib_dir / args.key_type_subdir
-
-		sof_lib_dir.mkdir(parents=True, exist_ok=True)
-
 		for entry in iter:
 			if (not entry.is_dir or
 			    not entry.name.endswith('_llext')):
@@ -977,45 +984,87 @@ def install_lib(sof_lib_dir, abs_build_dir, platform_wconfig):
 			# eq_iir_llext/eq_iir.llext
 			llext_base = entry.name[:-6]
 			llext_file = llext_base + '.llext'
+			lib_name = ''
 
-			dst = sof_lib_dir / llext_file
+			lib_fname = entry_path / 'lib_name.txt'
+			if os.path.exists(lib_fname):
+				with open(lib_fname, 'r') as libs_f:
+					lib_name = libs_f.read()
+					if lib_name not in libs.keys():
+						libs[lib_name] = []
+					libs[lib_name].append(str(entry_path / llext_file))
+			else:
+				dst = sof_lib_dir / llext_file
 
-			rimage_cfg = entry_path / 'rimage_config.toml'
-			llext_input = entry_path / (llext_base + '.llext')
-			llext_output = entry_path / (llext_file + '.ri')
+				rimage_cfg = entry_path / 'rimage_config.toml'
+				llext_input = entry_path / (llext_base + '.llext')
+				llext_output = entry_path / (llext_file + '.ri')
 
-			# See why the shlex() parsing step is required at
-			# https://docs.zephyrproject.org/latest/develop/west/sign.html#rimage
-			# and in Zephyr commit 030b740bd1ec
-			rimage_cmd = shlex.split(platform_wconfig.get('rimage.path'))[0]
-			sign_cmd = [rimage_cmd, "-o", str(llext_output),
-				    "-e", "-c", str(rimage_cfg),
-				    "-k", str(signing_key), "-l", "-r"]
-			_ws_args = platform_wconfig.get("rimage.extra-args")
-			if _ws_args is not None:
-				sign_cmd.extend(shlex.split(_ws_args))
-			sign_cmd.append(str(llext_input))
-			execute_command(sign_cmd, cwd=west_top)
+				# See why the shlex() parsing step is required at
+				# https://docs.zephyrproject.org/latest/develop/west/sign.html#rimage
+				# and in Zephyr commit 030b740bd1ec
+				sign_cmd = [rimage_cmd, "-o", str(llext_output),
+					    "-e", "-c", str(rimage_cfg),
+					    "-k", str(signing_key), "-l", "-r"]
+				if _ws_args is not None:
+					sign_cmd.extend(shlex.split(_ws_args))
+				sign_cmd.append(str(llext_input))
+				execute_command(sign_cmd, cwd=west_top)
 
-			# An intuitive way to make this multiline would be
-			# with (open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext,
-			#	open(llext_output.with_suffix('.llext.xman'), 'rb') as fman):
-			# but a Python version, used on Windows errored out on this.
-			# Thus we're left with a choice between a 150-character
-			# long line and an illogical split like this
-			with open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext, open(
-				  llext_output.with_suffix('.ri.xman'), 'rb') as fman:
-				# Concatenate the manifest and the llext
-				shutil.copyfileobj(fman, fdst)
-				shutil.copyfileobj(fllext, fdst)
+				# An intuitive way to make this multiline would be
+				# with (open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext,
+				#	open(llext_output.with_suffix('.llext.xman'), 'rb') as fman):
+				# but a Python version, used on Windows errored out on this.
+				# Thus we're left with a choice between a 150-character
+				# long line and an illogical split like this
+				with open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext, open(
+					  llext_output.with_suffix('.ri.xman'), 'rb') as fman:
+					# Concatenate the manifest and the llext
+					shutil.copyfileobj(fman, fdst)
+					shutil.copyfileobj(fllext, fdst)
 
 			# Create symbolic links for all UUIDs
 			with open(uuids, 'r') as uuids_f:
 				for uuid in uuids_f:
-					linkname = uuid.strip() + '.bin'
-					symlink_or_copy(sof_lib_dir, llext_file,
-							sof_lib_dir, linkname)
+					if os.path.exists(lib_fname):
+						if lib_name not in lib_uuids.keys():
+							lib_uuids[lib_name] = []
+						lib_uuids[lib_name].append(uuid.strip())
+					else:
+						linkname = uuid.strip() + '.bin'
+						symlink_or_copy(sof_lib_dir, llext_file,
+								sof_lib_dir, linkname)
 
+	lib_install_dir = sof_output_dir / platform
+	if args.key_type_subdir != "none":
+		lib_install_dir = lib_install_dir / args.key_type_subdir
+
+	for key in libs.keys():
+		lib_path = abs_build_dir / ''.join(['lib', key, '.ri'])
+		sign_cmd = [rimage_cmd, "-o", str(lib_path), "-e",
+			    "-c", str(abs_build_dir / 'misc' / 'generated' / 'rimage_config_full.toml'),
+			    "-k", str(signing_key), "-l", "-r"]
+		if _ws_args is not None:
+			sign_cmd.extend(shlex.split(_ws_args))
+		sign_cmd.extend(libs[key])
+		execute_command(sign_cmd, cwd=west_top)
+		lib_name = ''.join(['sof-', platform, '-', key, '.ri'])
+		dst = lib_install_dir / lib_name
+		with open(dst, 'wb') as fdst, open(lib_path, 'rb') as fllext, open(
+			  lib_path.with_suffix('.ri.xman'), 'rb') as fman:
+			# Concatenate the manifest and the llext
+			shutil.copyfileobj(fman, fdst)
+			shutil.copyfileobj(fllext, fdst)
+
+			for p_alias in platform_configs[platform].aliases:
+				lib_dir = sof_output_dir / p_alias
+
+				if args.key_type_subdir != "none":
+					lib_dir = lib_dir / args.key_type_subdir
+				lib_dir.mkdir(parents=True, exist_ok=True)
+				alias_libname = ''.join(['sof-', p_alias, '-', key, '.ri'])
+				symlink_or_copy(lib_install_dir, lib_name,
+						lib_dir, alias_libname)
 
 def install_platform(platform, sof_output_dir, platf_build_environ, platform_wconfig):
 
@@ -1064,8 +1113,7 @@ def install_platform(platform, sof_output_dir, platf_build_environ, platform_wco
 				symlink_or_copy(install_key_dir, output_fwname, install_key_dir, f"sof-{p_alias}.ri")
 
 	if args.deployable_build and platform_configs[platform].ipc4:
-		install_lib(sof_output_dir / '..' / 'sof-ipc4-lib' / platform, abs_build_dir,
-			    platform_wconfig)
+		install_lib(platform, sof_output_dir, abs_build_dir, platform_wconfig)
 
 
 	# sof-info/ directory
