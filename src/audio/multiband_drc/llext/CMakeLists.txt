@@ -5,4 +5,5 @@ sof_llext_build("multiband_drc"
 	SOURCES ../multiband_drc.c
 		../multiband_drc_generic.c
 		../multiband_drc_ipc4.c
+	LIB openmodules
 )

@@ -7,4 +7,5 @@ sof_llext_build("dcblock"
 		../dcblock_hifi3.c
 		../dcblock_hifi4.c
 		../dcblock_ipc4.c
+	LIB openmodules
 )

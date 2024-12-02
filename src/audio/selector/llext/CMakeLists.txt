@@ -4,4 +4,5 @@
 sof_llext_build("selector"
 	SOURCES ../selector.c
 		../selector_generic.c
+	LIB openmodules
 )

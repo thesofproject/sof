@@ -10,4 +10,5 @@ sof_llext_build("volume"
 		../volume_hifi4_with_peakvol.c
 		../volume.c
 		../volume_ipc4.c
+	LIB openmodules
 )

@@ -7,4 +7,5 @@ sof_llext_build("asrc"
 		../asrc_farrow.c
 		../asrc_farrow_generic.c
 		../asrc_ipc4.c
+	LIB openmodules
 )
