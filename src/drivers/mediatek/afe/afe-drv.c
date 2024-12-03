@@ -380,7 +380,7 @@ int afe_probe(struct mtk_base_afe *afe)
 	afe->irqs_size = platform->irqs_size;
 	afe->irqs = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(struct mtk_base_afe_irq) * afe->irqs_size);
-	if (!afe->irqs)
+	if (!afe->irqs && afe->irqs_size)
 		goto err_alloc_dais;
 
 	for (i = 0; i < afe->irqs_size; i++)
