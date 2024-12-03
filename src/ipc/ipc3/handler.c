@@ -967,9 +967,11 @@ static int ipc_glb_trace_message(uint32_t header)
 #else
 static int ipc_glb_trace_message(uint32_t header)
 {
-	/* traces are disabled - CONFIG_TRACE is not set */
-
-	return -EINVAL;
+	/* Return success, as the protocol provides no way to inform
+	 * the kernel that we don't support dtrace.  It will just see
+	 * no output.
+	 */
+	return 0;
 }
 #endif
 
