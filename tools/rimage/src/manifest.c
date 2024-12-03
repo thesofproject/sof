@@ -195,29 +195,11 @@ static int man_copy_elf_sections(struct image *image, struct manifest_module *mo
 	return 0;
 }
 
-static int man_get_module_manifest(struct image *image, struct manifest_module *module,
-				   struct sof_man_module *man_module)
+static void man_get_section_manifest(struct image *image,
+				     const struct sof_man_module_manifest *sof_mod,
+				     struct sof_man_module *man_module)
 {
-	struct elf_section section;
 	struct sof_man_segment_desc *segment;
-	const struct sof_man_module_manifest *sof_mod;
-	int ret;
-
-	fprintf(stdout, "Module Write: %s\n", module->file.elf.filename);
-
-	/* load in module manifest data */
-	ret = elf_section_read_by_name(&module->file.elf, ".module", &section);
-	if (ret) {
-		fprintf(stderr, "error: can't read module manifest from '.module' section.\n");
-		return ret;
-	}
-
-	if (sizeof(*sof_mod) > section.header.data.size) {
-		fprintf(stderr, "error: Invalid module manifest in '.module' section.\n");
-		ret = -ENODATA;
-		goto error;
-	}
-	sof_mod = section.data;
 
 	/* configure man_module with sofmod data */
 	memcpy(man_module->struct_id, "$AME", 4);
@@ -225,13 +207,11 @@ static int man_get_module_manifest(struct image *image, struct manifest_module *
 	memcpy(man_module->name, sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
 	memcpy(man_module->uuid, sof_mod->module.uuid, 16);
 	man_module->affinity_mask = sof_mod->module.affinity_mask;
+	man_module->instance_max_count = sof_mod->module.instance_max_count;
 	man_module->type.auto_start = sof_mod->module.type.auto_start;
 	man_module->type.domain_dp = sof_mod->module.type.domain_dp;
 	man_module->type.domain_ll = sof_mod->module.type.domain_ll;
 	man_module->type.load_type = sof_mod->module.type.load_type;
-
-	/* read out text_fixup_size from memory mapping */
-	module->text_fixup_size = sof_mod->text_size;
 
 	/* text segment */
 	segment = &man_module->segment[SOF_MAN_SEGMENT_TEXT];
@@ -257,6 +237,35 @@ static int man_get_module_manifest(struct image *image, struct manifest_module *
 	segment->flags.r.type = SOF_MAN_SEGMENT_BSS;
 
 	fprintf(stdout, " Entry point 0x%8.8x\n", man_module->entry_point);
+}
+
+static int man_get_module_manifest(struct image *image, struct manifest_module *module,
+				   struct sof_man_module *man_module)
+{
+	struct elf_section section;
+	const struct sof_man_module_manifest *sof_mod;
+	int ret;
+
+	fprintf(stdout, "Module Write: %s\n", module->file.elf.filename);
+
+	/* load in module manifest data */
+	ret = elf_section_read_by_name(&module->file.elf, ".module", &section);
+	if (ret) {
+		fprintf(stderr, "error: can't read module manifest from '.module' section.\n");
+		return ret;
+	}
+
+	if (sizeof(*sof_mod) > section.header.data.size) {
+		fprintf(stderr, "error: Invalid module manifest in '.module' section.\n");
+		ret = -ENODATA;
+		goto error;
+	}
+
+	sof_mod = section.data;
+	man_get_section_manifest(image, sof_mod, man_module);
+
+	/* read out text_fixup_size from memory mapping */
+	module->text_fixup_size = sof_mod->text_size;
 
 error:
 	elf_section_free(&section);
@@ -449,22 +458,11 @@ out:
 	return 0;
 }
 
-static int man_module_create_reloc(struct image *image, struct manifest_module *module,
-				   struct sof_man_module *man_module)
+static void man_module_fill_reloc(const struct manifest_module *module,
+				  struct sof_man_module *man_module)
 {
-	/* create module and segments */
-	int err;
-
-	image->image_end = 0;
-
-	err = man_get_module_manifest(image, module, man_module);
-	if (err < 0)
-		return err;
-
 	/* stack size ??? convert sizes to PAGES */
 	man_module->instance_bss_size = 1;
-
-	module_print_zones(&module->file);
 
 	/* main module */
 	/* text section is first */
@@ -483,6 +481,64 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 	man_module->segment[SOF_MAN_SEGMENT_BSS].file_offset = 0;
 	man_module->segment[SOF_MAN_SEGMENT_BSS].v_base_addr = 0;
 	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = 0;
+}
+
+static int man_module_create_reloc(struct image *image, struct manifest_module *module,
+				   struct sof_man_module **man_module)
+{
+	/* create module and segments */
+	const struct sof_man_module_manifest *sof_mod;
+	struct elf_section section;
+	int err;
+
+	/* load in module manifest data */
+	err = elf_section_read_by_name(&module->file.elf, ".module", &section);
+	if (err) {
+		fprintf(stderr, "error: can't read module manifest from '.module' section.\n");
+		return err;
+	}
+
+	unsigned int n_mod = section.header.data.size / sizeof(*sof_mod);
+
+	if (!n_mod || n_mod * sizeof(*sof_mod) != section.header.data.size) {
+		fprintf(stderr, "error: Invalid module manifests in '.module' section.\n");
+		return -ENOEXEC;
+	}
+
+	unsigned int i;
+
+	for (i = 0, sof_mod = section.data; i < n_mod; i++, sof_mod++) {
+		char name[SOF_MAN_MOD_NAME_LEN + 1];
+		unsigned int j;
+
+		strncpy(name, (char *)sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
+
+		for (j = 0; j < image->adsp->modules->mod_man_count; j++) {
+			if (!strncmp(name, (char *)image->adsp->modules->mod_man[j].name,
+				     SOF_MAN_MOD_NAME_LEN)) {
+				/* Found a TOML manifest, matching ELF */
+				if (i)
+					(*man_module)++;
+				man_get_section_manifest(image, sof_mod, *man_module);
+				man_module_fill_reloc(module, *man_module);
+				break;
+			}
+		}
+
+		if (j == image->adsp->modules->mod_man_count) {
+			fprintf(stderr, "error: cannot find %s in manifest.\n", name);
+			return -ENOEXEC;
+		}
+	}
+
+	elf_section_free(&section);
+
+	module_print_zones(&module->file);
+
+	image->image_end = module->foffset + module->file.elf.file_size;
+
+	/* round module end up to nearest page */
+	image->image_end = ALIGN_UP(image->image_end, MAN_PAGE_SIZE);
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\tType\n");
 
@@ -496,15 +552,11 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 		0, module->file.elf.file_size, 0, "DATA");
 
 	fprintf(stdout, "\n");
-	image->image_end = module->foffset + module->file.elf.file_size;
-
-	/* round module end up to nearest page */
-	image->image_end = ALIGN_UP(image->image_end, MAN_PAGE_SIZE);
 
 	fprintf(stdout, " Total pages text %d data %d bss %d module file limit: 0x%x\n\n",
-		man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length,
-		man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length,
-		man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length,
+		(*man_module)->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length,
+		(*man_module)->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length,
+		(*man_module)->segment[SOF_MAN_SEGMENT_BSS].flags.r.length,
 		image->image_end);
 	return 0;
 }
@@ -581,16 +633,11 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 		offset = 1;
 	}
 
-	for (; i < image->num_modules; i++) {
-		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i - offset);
+	image->image_end = 0;
 
-		/* Some platforms dont have modules configuration in toml file */
-		if (image->adsp->modules) {
-			/* Use manifest created using toml files as template */
-			assert(i < image->adsp->modules->mod_man_count);
-			memcpy(man_module, &image->adsp->modules->mod_man[i], sizeof(*man_module));
-		}
-
+	for (man_module = (struct sof_man_module *)((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i - offset));
+	     i < image->num_modules;
+	     i++, man_module++) {
 		module = &image->module[i];
 
 		if (i == 0)
@@ -598,11 +645,17 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 		else
 			module->foffset = image->image_end;
 
-		if (image->reloc)
-			err = man_module_create_reloc(image, module,
-						      man_module);
-		else
+		if (image->reloc) {
+			err = man_module_create_reloc(image, module, &man_module);
+		} else {
+			/* Some platforms dont have modules configuration in toml file */
+			if (image->adsp->modules) {
+				assert(i < image->adsp->modules->mod_man_count);
+				memcpy(man_module, &image->adsp->modules->mod_man[i], sizeof(*man_module));
+			}
+
 			err = man_module_create(image, module, man_module);
+		}
 
 		if (err < 0)
 			return err;
@@ -622,12 +675,15 @@ static void man_create_modules_in_config(struct image *image, struct sof_man_fw_
 	if (!modules)
 		return;
 
-	/* skip modules passed as parameters. Their manifests have already been copied by the
-	 * man_create_modules function. */
-	for (i = image->num_modules; i < modules->mod_man_count; i++) {
-		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
-		memcpy(man_module, &modules->mod_man[i], sizeof(*man_module));
-	}
+	if (!image->loadable_module)
+		/* skip modules passed as parameters. Their manifests have
+		 * already been copied by the man_create_modules function. */
+		for (i = image->num_modules; i < modules->mod_man_count; i++) {
+			man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
+			memcpy(man_module, &modules->mod_man[i], sizeof(*man_module));
+		}
+	else
+		i = modules->mod_man_count;
 
 	/* We need to copy the configurations for all modules. */
 	cfg_start = (void *)desc + SOF_MAN_MODULE_OFFSET(i);

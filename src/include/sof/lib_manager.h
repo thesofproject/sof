@@ -87,20 +87,24 @@ enum {
 	LIB_MANAGER_TEXT,
 	LIB_MANAGER_DATA,
 	LIB_MANAGER_RODATA,
-	LIB_MANAGER_BSS,
 	LIB_MANAGER_N_SEGMENTS,
 };
 
 struct lib_manager_segment_desc {
 	uintptr_t addr;
 	size_t size;
-	size_t file_offset;
+};
+
+struct lib_manager_module {
+	unsigned int start_idx;
+	const struct sof_man_module_manifest *mod_manifest;
+	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
 };
 
 struct lib_manager_mod_ctx {
 	void *base_addr;
-	const struct sof_man_module_manifest *mod_manifest;
-	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
+	unsigned int n_mod;
+	struct lib_manager_module *mod;
 };
 
 struct ext_library {
