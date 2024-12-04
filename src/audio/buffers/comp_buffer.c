@@ -544,6 +544,10 @@ void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *list = buffer_comp_list(buffer, dir);
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
+	if (!head || !head->next)
+		printk("E: attach head=%p next=%p\n", head, head ? head->next : 0);
+	if (!list || !list->next)
+		printk("E: attach list=%p next=%p\n", list, list ? list->next : 0);
 	list_item_prepend(list, head);
 }
 

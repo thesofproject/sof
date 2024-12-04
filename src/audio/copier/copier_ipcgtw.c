@@ -254,6 +254,7 @@ int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 		goto e_ipcgtw;
 	}
 
+	printk("ipcgtwcreate: ep create %d\n", cd->endpoint_num);
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 		cd->bsource_buffer = false;
 		pipeline->source_comp = dev;
