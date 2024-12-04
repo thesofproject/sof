@@ -154,7 +154,7 @@ static int pzdma_init(const struct device *dev)
 
 /* Zephyr device definition */
 
-static const struct dma_driver_api pzdma_api = {
+static DEVICE_API(dma, pzdma_api) = {
 	.config = pzdma_config,
 	.reload = pzdma_reload,
 	.start = pzdma_start,
