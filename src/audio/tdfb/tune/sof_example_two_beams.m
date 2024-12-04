@@ -249,8 +249,8 @@ fn.tplg1_fn = sprintf('coef_%s_%s_pm%sdeg_%s.m4', arrayname, mmstr, azstr, fsstr
 fn.tplg2_fn = sprintf('%s_%s_pm%sdeg_%s.conf', arrayname, mmstr, azstr, fsstr);
 fn.sofctl3_fn = sprintf('%s_%s_pm%sdeg_%s.txt', arrayname, mmstr, azstr, fsstr);
 fn.sofctl4_fn = sprintf('%s_%s_pm%sdeg_%s.txt', arrayname, mmstr, azstr, fsstr);
-fn.ucmbin3_fn = sprintf('%s_%s_pm%sdeg_%s.bin', arrayname, mmstr, azstr, fsstr);
-fn.ucmbin4_fn = sprintf('%s_%s_pm%sdeg_%s.bin', arrayname, mmstr, azstr, fsstr);
+fn.ucmbin3_fn = sprintf('%s_%s_pm%sdeg_%s.blob', arrayname, mmstr, azstr, fsstr);
+fn.ucmbin4_fn = sprintf('%s_%s_pm%sdeg_%s.blob', arrayname, mmstr, azstr, fsstr);
 
 end
 
