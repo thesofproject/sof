@@ -18,7 +18,7 @@ function sof_example_two_beams()
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 %% Stereo capture blobs with two beams
-az = [0 30 90];
+az = [5 15 30 90];
 azstr = az_to_string(az);
 
 prm.export_note = 'Created with script example_two_beams.m';
