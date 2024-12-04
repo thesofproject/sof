@@ -63,7 +63,11 @@ static const struct sof_ipc_fw_ready ready
 #define NUM_ACP_WINDOWS		6
 
 const struct ext_man_windows xsram_window
+#ifdef CONFIG_AMD_BINARY_BUILD
+		__aligned(EXT_MAN_ALIGN) __unused = {
+#else
 		__aligned(EXT_MAN_ALIGN) __section(".fw_metadata") __unused = {
+#endif
 	.hdr = {
 		.type = EXT_MAN_ELEM_WINDOW,
 		.elem_size = ALIGN_UP_COMPILE(sizeof(struct ext_man_windows), EXT_MAN_ALIGN),
@@ -188,6 +192,9 @@ int platform_boot_complete(uint32_t boot_message)
 	volatile acp_scratch_mem_config_t *pscratch_mem_cfg =
 		(volatile acp_scratch_mem_config_t *)(PU_SCRATCH_REG_BASE + SCRATCH_REG_OFFSET);
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
+#ifdef CONFIG_AMD_BINARY_BUILD
+	mailbox_dspbox_write(sizeof(ready), &xsram_window.window, sizeof(xsram_window.window));
+#endif
 	pscratch_mem_cfg->acp_dsp_msg_write = 1;
 	acp_dsp_to_host_intr_trig();
 	/* Configures the trigger bit in ACP_DSP_SW_INTR_TRIG register */
