@@ -40,6 +40,30 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-lnl-rt713-l0-rt1318-l1-2ch.bin,\
 HDMI1_ID=6,HDMI2_ID=7,HDMI3_ID=8,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
+#SDCA multi-function
+"cavs-sdw\;sof-lnl-sdca-jack-id0\;PLATFORM=lnl,SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
+SDW_JACK_IN_STREAM=Capture-SimpleJack,NUM_HDMIS=0"
+
+"cavs-sdw\;sof-lnl-sdca-1amp-id2\;PLATFORM=lnl,NUM_SDW_AMP_LINKS=1,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0"
+
+"cavs-sdw\;sof-lnl-sdca-2amp-id2\;PLATFORM=lnl,NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0"
+
+"cavs-sdw\;sof-lnl-sdca-mic-id4\;PLATFORM=lnl,SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
+SDW_DMIC_STREAM=Capture-SmartMic"
+
+"cavs-sdw\;sof-lnl-sdca-hdmi-id5\;PLATFORM=lnl,SDW_JACK=false"
+"cavs-sdw\;sof-lnl-sdca-hdmi-id7\;PLATFORM=lnl,SDW_JACK=false,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9"
+
+"cavs-sdw\;sof-lnl-dmic-2ch-id5\;PLATFORM=lnl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
+PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-lnl-dmic-2ch-id5.bin"
+
+"cavs-sdw\;sof-lnl-dmic-4ch-id5\;PLATFORM=lnl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-lnl-dmic-4ch-id5.bin"
+
 # No SDW Jack. SDW DMIC+SPK
 "cavs-sdw\;sof-lnl-rt1318-l12-rt714-l0\;PLATFORM=lnl,SDW_JACK=false,SDW_DMIC=1,\
 NUM_SDW_AMP_LINKS=2,SDW_DMIC_STREAM=SDW0-Capture"
