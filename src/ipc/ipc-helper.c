@@ -127,7 +127,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		comp_err(dev, "comp_verify_params(): !params");
 		return -EINVAL;
 	}
-
+//tu jest magiA
 	source_list = comp_buffer_list(dev, PPL_DIR_UPSTREAM);
 	sink_list = comp_buffer_list(dev, PPL_DIR_DOWNSTREAM);
 
@@ -138,11 +138,11 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		if (list_is_empty(sink_list))
 			buf = list_first_item(source_list,
 					      struct comp_buffer,
-					      sink_list);
+					      Xsink_list); //tu jest magiA
 		else
 			buf = list_first_item(sink_list,
 					      struct comp_buffer,
-					      source_list);
+					      Xsource_list); //tu jest magiA
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
@@ -169,9 +169,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		}
 
 		/* fetch sink buffer in order to calculate period frames */
-		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-					source_list);
-
+		sinkb = comp_dev_get_first_data_consumer(dev);
 		component_set_nearest_period_frames(dev, audio_stream_get_rate(&sinkb->stream));
 	}
 
@@ -263,7 +261,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd;
-	struct list_item *clist, *tmp;
+	struct comp_buffer *buffer;
 	uint32_t flags;
 
 	/* check whether component exists */
@@ -305,27 +303,28 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	}
 
 	irq_local_disable(flags);
-	list_for_item_safe(clist, tmp, &icd->cd->bsource_list) {
-		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, sink_list);
+	buffer = comp_dev_get_first_data_producer(icd->cd);
+	while(buffer) {
+		struct comp_buffer *next_buffer = comp_dev_get_next_data_producer(icd->cd, buffer);
 
-		buffer->sink = NULL;
-		/* Also if it isn't shared - we are about to modify uncached data */
-		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
-						   sizeof(*buffer));
+		comp_buffer_set_sink_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		list_init(clist);
+		list_init(&buffer->Xsink_list); //TU tez magia
+
+		buffer = next_buffer;
 	}
 
-	list_for_item_safe(clist, tmp, &icd->cd->bsink_list) {
-		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, source_list);
+	buffer = comp_dev_get_first_data_consumer(icd->cd);
+	while(buffer) {
+		struct comp_buffer *next_buffer = comp_dev_get_next_data_consumer(icd->cd, buffer);
 
-		buffer->source = NULL;
-		/* Also if it isn't shared - we are about to modify uncached data */
-		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
-						   sizeof(*buffer));
+		comp_buffer_set_source_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		list_init(clist);
+		list_init(&buffer->Xsource_list); //TU tez magia
+
+		buffer = next_buffer;
 	}
+
 	irq_local_enable(flags);
 
 	/* free component and remove from list */

@@ -643,7 +643,7 @@ struct comp_dev {
 static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_dev *component)
 {
 	return list_is_empty(&component->bsource_list) ? NULL :
-	       list_first_item(&component->bsource_list, struct comp_buffer, sink_list);
+	       list_first_item(&component->bsource_list, struct comp_buffer, Xsink_list);
 }
 
 /**
@@ -653,8 +653,8 @@ static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_d
 static inline struct comp_buffer *comp_dev_get_next_data_producer(struct comp_dev *component,
 								  struct comp_buffer *producer)
 {
-	return producer->sink_list.next == &component->bsource_list ? NULL :
-	       list_item(producer->sink_list.next, struct comp_buffer, sink_list);
+	return producer->Xsink_list.next == &component->bsource_list ? NULL :
+	       list_item(producer->Xsink_list.next, struct comp_buffer, Xsink_list);
 }
 
 /**
@@ -664,7 +664,7 @@ static inline struct comp_buffer *comp_dev_get_next_data_producer(struct comp_de
 static inline struct comp_buffer *comp_dev_get_first_data_consumer(struct comp_dev *component)
 {
 	return list_is_empty(&component->bsink_list) ? NULL :
-	       list_first_item(&component->bsink_list, struct comp_buffer, source_list);
+	       list_first_item(&component->bsink_list, struct comp_buffer, Xsource_list);
 }
 
 /**
@@ -674,8 +674,8 @@ static inline struct comp_buffer *comp_dev_get_first_data_consumer(struct comp_d
 static inline struct comp_buffer *comp_dev_get_next_data_consumer(struct comp_dev *component,
 								  struct comp_buffer *consumer)
 {
-	return consumer->source_list.next == &component->bsink_list ? NULL :
-			list_item(consumer->source_list.next, struct comp_buffer, source_list);
+	return consumer->Xsource_list.next == &component->bsink_list ? NULL :
+			list_item(consumer->Xsource_list.next, struct comp_buffer, Xsource_list);
 }
 
 /*
