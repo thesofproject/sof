@@ -18,7 +18,7 @@ function sof_example_two_beams()
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 %% Stereo capture blobs with two beams
-az = [0 30 90];
+az = [5 15 30 90];
 azstr = az_to_string(az);
 
 prm.export_note = 'Created with script example_two_beams.m';
@@ -249,8 +249,8 @@ fn.tplg1_fn = sprintf('coef_%s_%s_pm%sdeg_%s.m4', arrayname, mmstr, azstr, fsstr
 fn.tplg2_fn = sprintf('%s_%s_pm%sdeg_%s.conf', arrayname, mmstr, azstr, fsstr);
 fn.sofctl3_fn = sprintf('%s_%s_pm%sdeg_%s.txt', arrayname, mmstr, azstr, fsstr);
 fn.sofctl4_fn = sprintf('%s_%s_pm%sdeg_%s.txt', arrayname, mmstr, azstr, fsstr);
-fn.ucmbin3_fn = sprintf('%s_%s_pm%sdeg_%s.bin', arrayname, mmstr, azstr, fsstr);
-fn.ucmbin4_fn = sprintf('%s_%s_pm%sdeg_%s.bin', arrayname, mmstr, azstr, fsstr);
+fn.ucmbin3_fn = sprintf('%s_%s_pm%sdeg_%s.blob', arrayname, mmstr, azstr, fsstr);
+fn.ucmbin4_fn = sprintf('%s_%s_pm%sdeg_%s.blob', arrayname, mmstr, azstr, fsstr);
 
 end
 

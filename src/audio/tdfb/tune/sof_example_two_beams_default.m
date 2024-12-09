@@ -31,12 +31,12 @@ for fs = [16e3 48e3]
 	close all;
 
 	%% 2 mic array
-	fn.tplg1_fn = sprintf('coef_line2_generic_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
+	%fn.tplg1_fn = sprintf('coef_line2_generic_pm%sdeg_%dkhz.m4', azstr, fs/1e3);
 	fn.sofctl3_fn = sprintf('coef_line2_generic_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	fn.tplg2_fn = sprintf('line2_generic_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
 	fn.sofctl4_fn = sprintf('line2_generic_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	fn.ucmbin3_fn = sprintf('line2_generic_pm%sdeg_%dkhz.bin', azstr, fs/1e3);
-	fn.ucmbin4_fn = sprintf('line2_generic_pm%sdeg_%dkhz.bin', azstr, fs/1e3);
+	fn.ucmbin3_fn = sprintf('line2_generic_pm%sdeg_%dkhz.blob', azstr, fs/1e3);
+	fn.ucmbin4_fn = sprintf('line2_generic_pm%sdeg_%dkhz.blob', azstr, fs/1e3);
 	d = 50e-3;  % 50 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
@@ -47,8 +47,8 @@ for fs = [16e3 48e3]
 	fn.sofctl3_fn = sprintf('coef_line4_generic_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
 	fn.tplg2_fn = sprintf('line4_generic_pm%sdeg_%dkhz.conf', azstr, fs/1e3);
 	fn.sofctl4_fn = sprintf('line4_generic_pm%sdeg_%dkhz.txt', azstr, fs/1e3);
-	fn.ucmbin3_fn = sprintf('line4_generic_pm%sdeg_%dkhz.bin', azstr, fs/1e3);
-	fn.ucmbin4_fn = sprintf('line4_generic_pm%sdeg_%dkhz.bin', azstr, fs/1e3);
+	fn.ucmbin3_fn = sprintf('line4_generic_pm%sdeg_%dkhz.blob', azstr, fs/1e3);
+	fn.ucmbin4_fn = sprintf('line4_generic_pm%sdeg_%dkhz.blob', azstr, fs/1e3);
 	d = 40e-3; % 40 mm spacing
 	a1 = az;   % Azimuth +az deg
 	a2 = -az;  % Azimuth -az deg
