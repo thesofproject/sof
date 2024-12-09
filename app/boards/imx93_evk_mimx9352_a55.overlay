@@ -9,7 +9,7 @@
 	/* Inmate memory, reserved through "mem=1248MB" boot argument,
 	 * starts at 0xce000000.
 	 */
-	sram0: memory@ce000000 {
+	dram: memory@ce000000 {
 		reg = <0xce000000 DT_SIZE_M(1)>;
 	};
 
