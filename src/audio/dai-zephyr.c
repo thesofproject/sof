@@ -1292,7 +1292,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		 * Only applies to non HD-DMA links as HD-DMA read/write pointer
 		 * is not reset during stop/config/start
 		 */
-		if (!(dd->dai->dma_caps & DMA_CAP_HDA))
+		if (!(dd->dai->dma_caps & SOF_DMA_CAP_HDA))
 			audio_stream_reset(&dd->dma_buffer->stream);
 
 		/* only start the DAI if we are not XRUN handling */

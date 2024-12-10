@@ -422,12 +422,12 @@ int spi_probe(struct spi *spi)
 {
 	int ret;
 
-	spi->dma[SPI_DIR_RX] = dma_get(DMA_DIR_DEV_TO_MEM, DMA_CAP_GP_LP,
+	spi->dma[SPI_DIR_RX] = dma_get(DMA_DIR_DEV_TO_MEM, SOF_DMA_CAP_GP_LP,
 				       DMA_DEV_SSI, DMA_ACCESS_SHARED);
 	if (!spi->dma[SPI_DIR_RX])
 		return -ENODEV;
 
-	spi->dma[SPI_DIR_TX] = dma_get(DMA_DIR_MEM_TO_DEV, DMA_CAP_GP_LP,
+	spi->dma[SPI_DIR_TX] = dma_get(DMA_DIR_MEM_TO_DEV, SOF_DMA_CAP_GP_LP,
 				       DMA_DEV_SSI, DMA_ACCESS_SHARED);
 	if (!spi->dma[SPI_DIR_TX])
 		return -ENODEV;

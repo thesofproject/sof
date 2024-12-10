@@ -26,7 +26,7 @@ SHARED_DATA struct dma dma[] = {
 	.plat_data = {
 		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
-		.caps		= DMA_CAP_GP_LP,
+		.caps		= SOF_DMA_CAP_GP_LP,
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC |
 				  DMA_DEV_ALH,
 		.channels	= 8,
@@ -40,7 +40,7 @@ SHARED_DATA struct dma dma[] = {
 	.plat_data = {
 		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
-		.caps		= DMA_CAP_GP_LP,
+		.caps		= SOF_DMA_CAP_GP_LP,
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC |
 				  DMA_DEV_ALH,
 		.channels	= 8,
@@ -53,7 +53,7 @@ SHARED_DATA struct dma dma[] = {
 {	/* Host In DMAC */
 	.plat_data = {
 		.dir		= DMA_DIR_LMEM_TO_HMEM,
-		.caps		= DMA_CAP_HDA,
+		.caps		= SOF_DMA_CAP_HDA,
 		.devs		= DMA_DEV_HOST,
 		.channels	= DT_PROP(DT_NODELABEL(hda_host_in), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
@@ -65,7 +65,7 @@ SHARED_DATA struct dma dma[] = {
 {	/* Host out DMAC */
 	.plat_data = {
 		.dir		= DMA_DIR_HMEM_TO_LMEM,
-		.caps		= DMA_CAP_HDA,
+		.caps		= SOF_DMA_CAP_HDA,
 		.devs		= DMA_DEV_HOST,
 		.channels	= DT_PROP(DT_NODELABEL(hda_host_out), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
@@ -77,7 +77,7 @@ SHARED_DATA struct dma dma[] = {
 {	/* Link In DMAC */
 	.plat_data = {
 		.dir		= DMA_DIR_DEV_TO_MEM,
-		.caps		= DMA_CAP_HDA,
+		.caps		= SOF_DMA_CAP_HDA,
 #if defined(CONFIG_SOC_INTEL_ACE20_LNL) || defined(CONFIG_SOC_INTEL_ACE30)
 		.devs		= DMA_DEV_HDA | DMA_DEV_SSP |
 					  DMA_DEV_DMIC | DMA_DEV_ALH,
@@ -94,7 +94,7 @@ SHARED_DATA struct dma dma[] = {
 {	/* Link out DMAC */
 	.plat_data = {
 		.dir		= DMA_DIR_MEM_TO_DEV,
-		.caps		= DMA_CAP_HDA,
+		.caps		= SOF_DMA_CAP_HDA,
 #if defined(CONFIG_SOC_INTEL_ACE20_LNL) || defined(CONFIG_SOC_INTEL_ACE30)
 		.devs		= DMA_DEV_HDA | DMA_DEV_SSP |
 					  DMA_DEV_DMIC | DMA_DEV_ALH,
