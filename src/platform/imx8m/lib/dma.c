@@ -18,8 +18,8 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_HOST,
-		.dir		= DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
-		.devs		= DMA_DEV_HOST,
+		.dir		= SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
+		.devs		= SOF_DMA_DEV_HOST,
 		.channels	= 16,
 	},
 	.ops	= &dummy_dma_ops,
@@ -30,8 +30,8 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 		/* Note: support is available for MEM_TO_MEM but not
 		 * enabled as it is unneeded
 		 */
-		.dir		= DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
-		.devs		= DMA_DEV_SAI | DMA_DEV_MICFIL,
+		.dir		= SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.devs		= SOF_DMA_DEV_SAI | SOF_DMA_DEV_MICFIL,
 		.base		= SDMA3_BASE,
 		.channels	= 32,
 		.irq		= SDMA3_IRQ,

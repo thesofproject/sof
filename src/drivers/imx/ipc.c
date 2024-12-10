@@ -207,8 +207,8 @@ int platform_ipc_init(struct ipc *ipc)
 					     PLATFORM_PAGE_TABLE_SIZE);
 	if (iipc->dh_buffer.page_table)
 		bzero(iipc->dh_buffer.page_table, PLATFORM_PAGE_TABLE_SIZE);
-	iipc->dh_buffer.dmac = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST,
-				       DMA_ACCESS_SHARED);
+	iipc->dh_buffer.dmac = dma_get(SOF_DMA_DIR_HMEM_TO_LMEM, 0, SOF_DMA_DEV_HOST,
+				       SOF_DMA_ACCESS_SHARED);
 	if (!iipc->dh_buffer.dmac) {
 		tr_err(&ipc_tr, "Unable to find DMA for host page table");
 		sof_panic(SOF_IPC_PANIC_IPC);

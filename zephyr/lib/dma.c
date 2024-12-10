@@ -24,11 +24,11 @@ SHARED_DATA struct dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpgpdma0), okay)
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
-		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
-				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
-		.caps		= DMA_CAP_GP_LP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC |
-				  DMA_DEV_ALH,
+		.dir		= SOF_DMA_DIR_MEM_TO_MEM | SOF_DMA_DIR_MEM_TO_DEV |
+				  SOF_DMA_DIR_DEV_TO_MEM | SOF_DMA_DIR_DEV_TO_DEV,
+		.caps		= SOF_DMA_CAP_GP_LP,
+		.devs		= SOF_DMA_DEV_SSP | SOF_DMA_DEV_DMIC |
+				  SOF_DMA_DEV_ALH,
 		.channels	= 8,
 		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
 	},
@@ -38,11 +38,11 @@ SHARED_DATA struct dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpgpdma1), okay)
 {	/* Low Power GP DMAC 1 */
 	.plat_data = {
-		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
-				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
-		.caps		= DMA_CAP_GP_LP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC |
-				  DMA_DEV_ALH,
+		.dir		= SOF_DMA_DIR_MEM_TO_MEM | SOF_DMA_DIR_MEM_TO_DEV |
+				  SOF_DMA_DIR_DEV_TO_MEM | SOF_DMA_DIR_DEV_TO_DEV,
+		.caps		= SOF_DMA_CAP_GP_LP,
+		.devs		= SOF_DMA_DEV_SSP | SOF_DMA_DEV_DMIC |
+				  SOF_DMA_DEV_ALH,
 		.channels	= 8,
 		.period_count	= DW_DMA_BUFFER_PERIOD_COUNT,
 	},
@@ -52,9 +52,9 @@ SHARED_DATA struct dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(hda_host_in), okay)
 {	/* Host In DMAC */
 	.plat_data = {
-		.dir		= DMA_DIR_LMEM_TO_HMEM,
-		.caps		= DMA_CAP_HDA,
-		.devs		= DMA_DEV_HOST,
+		.dir		= SOF_DMA_DIR_LMEM_TO_HMEM,
+		.caps		= SOF_DMA_CAP_HDA,
+		.devs		= SOF_DMA_DEV_HOST,
 		.channels	= DT_PROP(DT_NODELABEL(hda_host_in), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 	},
@@ -64,9 +64,9 @@ SHARED_DATA struct dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(hda_host_out), okay)
 {	/* Host out DMAC */
 	.plat_data = {
-		.dir		= DMA_DIR_HMEM_TO_LMEM,
-		.caps		= DMA_CAP_HDA,
-		.devs		= DMA_DEV_HOST,
+		.dir		= SOF_DMA_DIR_HMEM_TO_LMEM,
+		.caps		= SOF_DMA_CAP_HDA,
+		.devs		= SOF_DMA_DEV_HOST,
 		.channels	= DT_PROP(DT_NODELABEL(hda_host_out), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
 	},
@@ -76,13 +76,13 @@ SHARED_DATA struct dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(hda_link_in), okay)
 {	/* Link In DMAC */
 	.plat_data = {
-		.dir		= DMA_DIR_DEV_TO_MEM,
-		.caps		= DMA_CAP_HDA,
+		.dir		= SOF_DMA_DIR_DEV_TO_MEM,
+		.caps		= SOF_DMA_CAP_HDA,
 #if defined(CONFIG_SOC_INTEL_ACE20_LNL) || defined(CONFIG_SOC_INTEL_ACE30)
-		.devs		= DMA_DEV_HDA | DMA_DEV_SSP |
-					  DMA_DEV_DMIC | DMA_DEV_ALH,
+		.devs		= SOF_DMA_DEV_HDA | SOF_DMA_DEV_SSP |
+					  SOF_DMA_DEV_DMIC | SOF_DMA_DEV_ALH,
 #else
-		.devs		= DMA_DEV_HDA,
+		.devs		= SOF_DMA_DEV_HDA,
 #endif /* CONFIG_SOC_INTEL_ACE20_LNL || CONFIG_SOC_INTEL_ACE30 */
 		.channels	= DT_PROP(DT_NODELABEL(hda_link_in), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
@@ -93,13 +93,13 @@ SHARED_DATA struct dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(hda_link_out), okay)
 {	/* Link out DMAC */
 	.plat_data = {
-		.dir		= DMA_DIR_MEM_TO_DEV,
-		.caps		= DMA_CAP_HDA,
+		.dir		= SOF_DMA_DIR_MEM_TO_DEV,
+		.caps		= SOF_DMA_CAP_HDA,
 #if defined(CONFIG_SOC_INTEL_ACE20_LNL) || defined(CONFIG_SOC_INTEL_ACE30)
-		.devs		= DMA_DEV_HDA | DMA_DEV_SSP |
-					  DMA_DEV_DMIC | DMA_DEV_ALH,
+		.devs		= SOF_DMA_DEV_HDA | SOF_DMA_DEV_SSP |
+					  SOF_DMA_DEV_DMIC | SOF_DMA_DEV_ALH,
 #else
-		.devs		= DMA_DEV_HDA,
+		.devs		= SOF_DMA_DEV_HDA,
 #endif /* CONFIG_SOC_INTEL_ACE20_LNL || CONFIG_SOC_INTEL_ACE30 */
 		.channels	= DT_PROP(DT_NODELABEL(hda_link_out), dma_channels),
 		.period_count	= HDA_DMA_BUFFER_PERIOD_COUNT,
@@ -110,8 +110,8 @@ SHARED_DATA struct dma dma[] = {
 #ifdef CONFIG_SOC_MIMX9352_A55
 {
 	.plat_data = {
-		.dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
-		.devs = DMA_DEV_SAI,
+		.dir = SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.devs = SOF_DMA_DEV_SAI,
 		/* TODO: might be worth using `dma-channels` here
 		 * (needs to become a mandatory property)
 		 */
@@ -122,8 +122,8 @@ SHARED_DATA struct dma dma[] = {
 },
 {
 	.plat_data = {
-		.dir = DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
-		.devs = DMA_DEV_HOST,
+		.dir = SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
+		.devs = SOF_DMA_DEV_HOST,
 		.channels = DT_PROP(DT_NODELABEL(host_dma), dma_channels),
 		.period_count = 2,
 	},
@@ -133,8 +133,8 @@ SHARED_DATA struct dma dma[] = {
 #if defined(CONFIG_SOC_MIMX8QM6_ADSP) || defined(CONFIG_SOC_MIMX8QX6_ADSP)
 {
 	.plat_data = {
-		.dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
-		.devs = DMA_DEV_SAI | DMA_DEV_ESAI,
+		.dir = SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.devs = SOF_DMA_DEV_SAI | SOF_DMA_DEV_ESAI,
 		.channels = 32,
 		.period_count = 2,
 	},
@@ -142,8 +142,8 @@ SHARED_DATA struct dma dma[] = {
 },
 {
 	.plat_data = {
-		.dir = DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
-		.devs = DMA_DEV_HOST,
+		.dir = SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
+		.devs = SOF_DMA_DEV_HOST,
 		.channels = DT_PROP(DT_NODELABEL(host_dma), dma_channels),
 		.period_count = 2,
 	},
@@ -153,8 +153,8 @@ SHARED_DATA struct dma dma[] = {
 #ifdef CONFIG_SOC_MIMX8UD7_ADSP
 {
 	.plat_data = {
-		.dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
-		.devs = DMA_DEV_SAI,
+		.dir = SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.devs = SOF_DMA_DEV_SAI,
 		.channels = 32,
 		.period_count = 2,
 	},
@@ -162,8 +162,8 @@ SHARED_DATA struct dma dma[] = {
 },
 {
 	.plat_data = {
-		.dir = DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
-		.devs = DMA_DEV_HOST,
+		.dir = SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
+		.devs = SOF_DMA_DEV_HOST,
 		.channels = DT_PROP(DT_NODELABEL(host_dma), dma_channels),
 		.period_count = 2,
 	},
@@ -173,8 +173,8 @@ SHARED_DATA struct dma dma[] = {
 #ifdef CONFIG_SOC_MIMX9596_M7
 {
 	.plat_data = {
-		.dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
-		.devs = DMA_DEV_SAI,
+		.dir = SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.devs = SOF_DMA_DEV_SAI,
 		.channels = 64,
 		.period_count = 2,
 	},
@@ -182,8 +182,8 @@ SHARED_DATA struct dma dma[] = {
 },
 {
 	.plat_data = {
-		.dir = DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
-		.devs = DMA_DEV_HOST,
+		.dir = SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
+		.devs = SOF_DMA_DEV_HOST,
 		.channels = DT_PROP(DT_NODELABEL(host_dma), dma_channels),
 		.period_count = 2,
 	},

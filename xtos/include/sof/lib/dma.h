@@ -46,6 +46,12 @@ struct comp_buffer;
 #define DMA_DIR_MEM_TO_DEV	BIT(3) /**< local mem to dev copy */
 #define DMA_DIR_DEV_TO_MEM	BIT(4) /**< dev to local mem copy */
 #define DMA_DIR_DEV_TO_DEV	BIT(5) /**< dev to dev copy */
+#define SOF_DMA_DIR_MEM_TO_MEM		DMA_DIR_MEM_TO_MEM
+#define SOF_DMA_DIR_HMEM_TO_LMEM	DMA_DIR_HMEM_TO_LMEM
+#define SOF_DMA_DIR_LMEM_TO_HMEM	DMA_DIR_LMEM_TO_HMEM
+#define SOF_DMA_DIR_MEM_TO_DEV		DMA_DIR_MEM_TO_DEV
+#define SOF_DMA_DIR_DEV_TO_MEM		DMA_DIR_DEV_TO_MEM
+#define SOF_DMA_DIR_DEV_TO_DEV		DMA_DIR_DEV_TO_DEV
 
 /* DMA capabilities bitmasks used to define the type of DMA */
 #define DMA_CAP_HDA		BIT(0) /**< HDA DMA */
@@ -77,10 +83,16 @@ struct comp_buffer;
 #define DMA_DEV_HS		BIT(13) /**< connectable to ACP HS I2S */
 #define DMA_DEV_MICFIL		BIT(14) /**< connectable to MICFIL fifo */
 #define DMA_DEV_SW		BIT(15) /**< connectable to ACP SW */
+#define SOF_DMA_DEV_HOST	DMA_DEV_HOST
+#define SOF_DMA_DEV_SAI	DMA_DEV_SAI
+#define SOF_DMA_DEV_ESAI	DMA_DEV_ESAI
+#define SOF_DMA_DEV_MICFIL	DMA_DEV_MICFIL
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1
 #define DMA_ACCESS_SHARED	0
+#define SOF_DMA_ACCESS_EXCLUSIVE	DMA_ACCESS_EXCLUSIVE
+#define SOF_DMA_ACCESS_SHARED		DMA_ACCESS_SHARED
 
 /* DMA copy flags */
 #define DMA_COPY_BLOCKING	BIT(0)
@@ -104,6 +116,8 @@ enum dma_irq_cmd {
 
 #define DMA_CHAN_INVALID	0xFFFFFFFF
 #define DMA_CORE_INVALID	0xFFFFFFFF
+#define SOF_DMA_CHAN_INVALID	DMA_CHAN_INVALID
+#define SOF_DMA_CORE_INVALID	DMA_CORE_INVALID
 
 /* DMA attributes */
 #define DMA_ATTR_BUFFER_ALIGNMENT		0

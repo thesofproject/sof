@@ -92,10 +92,10 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 
 			if (!cd->gtw_cfg) {
 				comp_err(dev, "No gateway config found!");
-				return DMA_CHAN_INVALID;
+				return SOF_DMA_CHAN_INVALID;
 			}
 
-			channel = DMA_CHAN_INVALID;
+			channel = SOF_DMA_CHAN_INVALID;
 			const struct sof_alh_configuration_blob *alh_blob = cd->gtw_cfg;
 
 			for (int i = 0; i < alh_blob->alh_cfg.count; i++) {
@@ -118,7 +118,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	default:
 		/* other types of DAIs not handled for now */
 		comp_err(dev, "dai_config_dma_channel(): Unknown dai type %d", dai->type);
-		channel = DMA_CHAN_INVALID;
+		channel = SOF_DMA_CHAN_INVALID;
 		break;
 	}
 
@@ -367,7 +367,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 	}
 #endif
 	/* do nothing for asking for channel free, for compatibility. */
-	if (dai_config_dma_channel(dd, dev, spec_config) == DMA_CHAN_INVALID)
+	if (dai_config_dma_channel(dd, dev, spec_config) == SOF_DMA_CHAN_INVALID)
 		return 0;
 
 	dd->dai_dev = dev;

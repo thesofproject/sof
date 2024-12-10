@@ -173,32 +173,32 @@ static void dai_set_device_params(struct dai *d)
 {
 	switch (d->type) {
 	case SOF_DAI_INTEL_SSP:
-		d->dma_dev = DMA_DEV_SSP;
+		d->dma_dev = SOF_DMA_DEV_SSP;
 #ifdef CONFIG_DMA_INTEL_ADSP_GPDMA
-		d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+		d->dma_caps = SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP;
 #else
-		d->dma_caps = DMA_CAP_HDA;
+		d->dma_caps = SOF_DMA_CAP_HDA;
 #endif
 		break;
 	case SOF_DAI_INTEL_DMIC:
-		d->dma_dev = DMA_DEV_DMIC;
+		d->dma_dev = SOF_DMA_DEV_DMIC;
 #ifdef CONFIG_DMA_INTEL_ADSP_GPDMA
-		d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+		d->dma_caps = SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP;
 #else
-		d->dma_caps = DMA_CAP_HDA;
+		d->dma_caps = SOF_DMA_CAP_HDA;
 #endif
 		break;
 	case SOF_DAI_INTEL_ALH:
-		d->dma_dev = DMA_DEV_ALH;
+		d->dma_dev = SOF_DMA_DEV_ALH;
 #ifdef CONFIG_DMA_INTEL_ADSP_GPDMA
-		d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+		d->dma_caps = SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP;
 #else
-		d->dma_caps = DMA_CAP_HDA;
+		d->dma_caps = SOF_DMA_CAP_HDA;
 #endif
 		break;
 	case SOF_DAI_INTEL_HDA:
-		d->dma_dev = DMA_DEV_HDA;
-		d->dma_caps = DMA_CAP_HDA;
+		d->dma_dev = SOF_DMA_DEV_HDA;
+		d->dma_caps = SOF_DMA_CAP_HDA;
 		break;
 	default:
 		break;
