@@ -547,7 +547,7 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 	dir = (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) ?
 		DMA_DIR_MEM_TO_DEV : DMA_DIR_DEV_TO_MEM;
 
-	cd->dma_link = dma_get(dir, DMA_CAP_HDA, DMA_DEV_HDA, DMA_ACCESS_SHARED);
+	cd->dma_link = dma_get(dir, SOF_DMA_CAP_HDA, DMA_DEV_HDA, DMA_ACCESS_SHARED);
 	if (!cd->dma_link) {
 		dma_put(cd->dma_host);
 		comp_err(dev, "chain_task_init(): dma_get() returned NULL");

@@ -69,16 +69,16 @@ struct comp_buffer;
 #define DMA_DIR_DEV_TO_DEV	BIT(5) /**< dev to dev copy */
 
 /* DMA capabilities bitmasks used to define the type of DMA */
-#define DMA_CAP_HDA		BIT(0) /**< HDA DMA */
-#define DMA_CAP_GP_LP		BIT(1) /**< GP LP DMA */
-#define DMA_CAP_GP_HP		BIT(2) /**< GP HP DMA */
-#define DMA_CAP_BT              BIT(3) /**< BT DMA */
-#define DMA_CAP_SP              BIT(4) /**< SP DMA */
-#define DMA_CAP_DMIC            BIT(5) /**< ACP DMA DMIC > */
-#define DMA_CAP_SP_VIRTUAL      BIT(6) /**< SP VIRTUAL DMA */
-#define DMA_CAP_HS_VIRTUAL      BIT(7) /**< HS VIRTUAL DMA */
-#define DMA_CAP_HS		BIT(8) /**< HS DMA */
-#define DMA_CAP_SW		BIT(9) /**< SW DMA */
+#define SOF_DMA_CAP_HDA	BIT(0) /**< HDA DMA */
+#define SOF_DMA_CAP_GP_LP	BIT(1) /**< GP LP DMA */
+#define SOF_DMA_CAP_GP_HP	BIT(2) /**< GP HP DMA */
+#define SOF_DMA_CAP_BT		BIT(3) /**< BT DMA */
+#define SOF_DMA_CAP_SP		BIT(4) /**< SP DMA */
+#define SOF_DMA_CAP_DMIC	BIT(5) /**< ACP DMA DMIC > */
+#define SOF_DMA_CAP_SP_VIRTUAL	BIT(6) /**< SP VIRTUAL DMA */
+#define SOF_DMA_CAP_HS_VIRTUAL	BIT(7) /**< HS VIRTUAL DMA */
+#define SOF_DMA_CAP_HS		BIT(8) /**< HS DMA */
+#define SOF_DMA_CAP_SW		BIT(9) /**< SW DMA */
 
 /* DMA dev type bitmasks used to define the type of DMA */
 
