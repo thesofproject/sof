@@ -18,15 +18,15 @@
 #include "src_ipc.h"
 
 struct src_stage {
-	const int idm;
-	const int odm;
-	const int num_of_subfilters;
-	const int subfilter_length;
-	const int filter_length;
-	const int blk_in;
-	const int blk_out;
-	const int halfband;
-	const int shift;
+	int idm;
+	int odm;
+	int num_of_subfilters;
+	int subfilter_length;
+	int filter_length;
+	int blk_in;
+	int blk_out;
+	int halfband;
+	int shift;
 	const void *coefs; /* Can be int16_t or int32_t depending on config */
 };
 
@@ -215,6 +215,9 @@ static inline int src_fallback(struct comp_data *cd,
 	return 0;
 }
 
+int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
+			     const struct src_stage *stage_src1,
+			     const struct src_stage *stage_src2);
 int src_rate_check(const void *spec);
 int src_set_params(struct processing_module *mod, struct sof_sink *sink);
 
