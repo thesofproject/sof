@@ -348,8 +348,8 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 
 	channel->direction = config->direction;
 
-	if (config->direction != DMA_DIR_HMEM_TO_LMEM &&
-	    config->direction != DMA_DIR_LMEM_TO_HMEM) {
+	if (config->direction != SOF_DMA_DIR_HMEM_TO_LMEM &&
+	    config->direction != SOF_DMA_DIR_LMEM_TO_HMEM) {
 		/* Shouldn't even happen though */
 		tr_err(&ddma_tr, "dummy-dmac: %d channel %d invalid direction %d",
 		       channel->dma->plat_data.id, channel->index,
@@ -490,10 +490,10 @@ static int dummy_dma_get_data_size(struct dma_chan_data *channel,
 	uint32_t size = dummy_dma_compute_avail_data(pdata);
 
 	switch (channel->direction) {
-	case DMA_DIR_HMEM_TO_LMEM:
+	case SOF_DMA_DIR_HMEM_TO_LMEM:
 		*avail = size;
 		break;
-	case DMA_DIR_LMEM_TO_HMEM:
+	case SOF_DMA_DIR_LMEM_TO_HMEM:
 		*free = size;
 		break;
 	default:

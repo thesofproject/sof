@@ -664,20 +664,20 @@ static int sdma_read_config(struct dma_chan_data *channel,
 	uint32_t dma_dev = dd->dai->drv->dma_dev;
 
 	switch (config->direction) {
-	case DMA_DIR_MEM_TO_DEV:
+	case SOF_DMA_DIR_MEM_TO_DEV:
 		pdata->hw_event = config->dest_dev;
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_MCU2SHP;
 		pdata->fifo_paddr = config->elem_array.elems[0].dest;
 		break;
-	case DMA_DIR_DEV_TO_MEM:
+	case SOF_DMA_DIR_DEV_TO_MEM:
 		pdata->hw_event = config->src_dev;
-		if (dma_dev == DMA_DEV_MICFIL)
+		if (dma_dev == SOF_DMA_DEV_MICFIL)
 			pdata->sdma_chan_type = SDMA_CHAN_TYPE_SAI2MCU;
 		else
 			pdata->sdma_chan_type = SDMA_CHAN_TYPE_SHP2MCU;
 		pdata->fifo_paddr = config->elem_array.elems[0].src;
 		break;
-	case DMA_DIR_MEM_TO_MEM:
+	case SOF_DMA_DIR_MEM_TO_MEM:
 		pdata->sdma_chan_type = SDMA_CHAN_TYPE_AP2AP;
 		/* Fallthrough, TODO: implement to support m2m */
 	default:
@@ -687,13 +687,13 @@ static int sdma_read_config(struct dma_chan_data *channel,
 	}
 
 	for (i = 0; i < config->elem_array.count; i++) {
-		if (config->direction == DMA_DIR_MEM_TO_DEV &&
+		if (config->direction == SOF_DMA_DIR_MEM_TO_DEV &&
 		    pdata->fifo_paddr != config->elem_array.elems[i].dest) {
 			tr_err(&sdma_tr, "sdma_read_config: FIFO changes address!");
 			return -EINVAL;
 		}
 
-		if (config->direction == DMA_DIR_DEV_TO_MEM &&
+		if (config->direction == SOF_DMA_DIR_DEV_TO_MEM &&
 		    pdata->fifo_paddr != config->elem_array.elems[i].src) {
 			tr_err(&sdma_tr, "sdma_read_config: FIFO changes address!");
 			return -EINVAL;
@@ -768,15 +768,15 @@ static int sdma_prep_desc(struct dma_chan_data *channel,
 		 * is in buf_xaddr.
 		 */
 		switch (config->direction) {
-		case DMA_DIR_MEM_TO_DEV:
+		case SOF_DMA_DIR_MEM_TO_DEV:
 			bd->buf_addr = config->elem_array.elems[i].src;
 			width = config->src_width;
 			break;
-		case DMA_DIR_DEV_TO_MEM:
+		case SOF_DMA_DIR_DEV_TO_MEM:
 			bd->buf_addr = config->elem_array.elems[i].dest;
 			width = config->dest_width;
 			break;
-		case DMA_DIR_MEM_TO_MEM:
+		case SOF_DMA_DIR_MEM_TO_MEM:
 			bd->buf_addr = config->elem_array.elems[i].src;
 			bd->buf_xaddr = config->elem_array.elems[i].dest;
 			width = config->dest_width;
@@ -985,10 +985,10 @@ static int sdma_get_data_size(struct dma_chan_data *channel, uint32_t *avail,
 
 	*avail = *free = 0;
 	switch (channel->direction) {
-	case DMA_DIR_MEM_TO_DEV:
+	case SOF_DMA_DIR_MEM_TO_DEV:
 		*free = result_data;
 		break;
-	case DMA_DIR_DEV_TO_MEM:
+	case SOF_DMA_DIR_DEV_TO_MEM:
 		*avail = result_data;
 		break;
 	default:

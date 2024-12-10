@@ -102,7 +102,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		/* other types of DAIs not handled for now */
 		comp_err(dev, "dai_config_dma_channel(): Unknown dai type %d",
 			 config->type);
-		channel = DMA_CHAN_INVALID;
+		channel = SOF_DMA_CHAN_INVALID;
 		break;
 	}
 
@@ -367,7 +367,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 	}
 #endif
 	/* do nothing for asking for channel free, for compatibility. */
-	if (dai_config_dma_channel(dd, dev, spec_config) == DMA_CHAN_INVALID)
+	if (dai_config_dma_channel(dd, dev, spec_config) == SOF_DMA_CHAN_INVALID)
 		return 0;
 
 	/* allocated dai_config if not yet */

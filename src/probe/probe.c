@@ -142,8 +142,8 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	channel = dma->stream_tag;
 #endif
 	/* request DMA in the dir LMEM->HMEM with shared access */
-	dma->dc.dmac = dma_get(direction, 0, DMA_DEV_HOST,
-			       DMA_ACCESS_SHARED);
+	dma->dc.dmac = dma_get(direction, 0, SOF_DMA_DEV_HOST,
+			       SOF_DMA_ACCESS_SHARED);
 	if (!dma->dc.dmac) {
 		tr_err(&pr_tr, "probe_dma_init(): dma->dc.dmac = NULL");
 		return -ENODEV;
@@ -198,8 +198,8 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	channel = ((union ipc4_connector_node_id)dma->stream_tag).f.v_index;
 
 	/* request DMA in the dir LMEM->HMEM with shared access */
-	dma->dc.dmac = dma_get(direction, 0, DMA_DEV_HOST,
-			       DMA_ACCESS_SHARED);
+	dma->dc.dmac = dma_get(direction, 0, SOF_DMA_DEV_HOST,
+			       SOF_DMA_ACCESS_SHARED);
 	if (!dma->dc.dmac) {
 		tr_err(&pr_tr, "probe_dma_init(): dma->dc.dmac = NULL");
 		return -ENODEV;
@@ -230,11 +230,11 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	dma_block_cfg.block_size = (uint32_t)dma->dmapb.size;
 
 	switch (direction) {
-	case DMA_DIR_LMEM_TO_HMEM:
+	case SOF_DMA_DIR_LMEM_TO_HMEM:
 		dma_cfg.channel_direction = MEMORY_TO_HOST;
 		dma_block_cfg.source_address = (uint32_t)dma->dmapb.addr;
 		break;
-	case DMA_DIR_HMEM_TO_LMEM:
+	case SOF_DMA_DIR_HMEM_TO_LMEM:
 		dma_cfg.channel_direction = HOST_TO_MEMORY;
 		dma_block_cfg.dest_address = (uint32_t)dma->dmapb.addr;
 		break;
@@ -368,7 +368,7 @@ int probe_init(const struct probe_dma *probe_dma)
 		_probe->ext_dma.stream_tag = probe_dma->stream_tag;
 		_probe->ext_dma.dma_buffer_size = probe_dma->dma_buffer_size;
 
-		err = probe_dma_init(&_probe->ext_dma, DMA_DIR_LMEM_TO_HMEM);
+		err = probe_dma_init(&_probe->ext_dma, SOF_DMA_DIR_LMEM_TO_HMEM);
 		if (err < 0) {
 			tr_err(&pr_tr, "probe_init(): probe_dma_init() failed");
 			_probe->ext_dma.stream_tag = PROBE_DMA_INVALID;
@@ -506,7 +506,7 @@ int probe_dma_add(uint32_t count, const struct probe_dma *probe_dma)
 			probe_dma[i].dma_buffer_size;
 
 		err = probe_dma_init(&_probe->inject_dma[first_free],
-				     DMA_DIR_HMEM_TO_LMEM);
+				     SOF_DMA_DIR_HMEM_TO_LMEM);
 		if (err < 0) {
 			tr_err(&pr_tr, "probe_dma_add(): probe_dma_init() failed");
 			_probe->inject_dma[first_free].stream_tag =

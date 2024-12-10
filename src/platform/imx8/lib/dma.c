@@ -26,8 +26,8 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_EDMA0,
-		.dir		= DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
-		.devs		= DMA_DEV_ESAI | DMA_DEV_SAI,
+		.dir		= SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.devs		= SOF_DMA_DEV_ESAI | SOF_DMA_DEV_SAI,
 		.base		= EDMA0_BASE,
 		.chan_size	= EDMA0_SIZE,
 		.channels	= 32,
@@ -38,8 +38,8 @@ static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_HOST,
-		.dir		= DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
-		.devs		= DMA_DEV_HOST,
+		.dir		= SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
+		.devs		= SOF_DMA_DEV_HOST,
 		.channels	= 16,
 	},
 	.ops	= &dummy_dma_ops,

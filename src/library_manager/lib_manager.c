@@ -746,8 +746,8 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 	/* Initialize dma_ext with zeros */
 	memset(dma_ext, 0, sizeof(struct lib_manager_dma_ext));
 	/* request DMA in the dir HMEM->LMEM */
-	dma_ext->dma = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST,
-			       DMA_ACCESS_EXCLUSIVE);
+	dma_ext->dma = dma_get(SOF_DMA_DIR_HMEM_TO_LMEM, 0, SOF_DMA_DEV_HOST,
+			       SOF_DMA_ACCESS_EXCLUSIVE);
 	if (!dma_ext->dma) {
 		tr_err(&lib_manager_tr,
 		       "lib_manager_dma_init(): dma_ext->dma = NULL");

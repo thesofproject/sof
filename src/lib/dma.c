@@ -59,7 +59,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 			continue;
 
 		/* if exclusive access is requested */
-		if (flags & DMA_ACCESS_EXCLUSIVE) {
+		if (flags & SOF_DMA_ACCESS_EXCLUSIVE) {
 			/* ret DMA with no users */
 			if (!d->sref) {
 				dmin = d;
@@ -299,8 +299,8 @@ int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 		elem_array->elems[i].size = buffer_bytes;
 		// TODO: may count offsets once
 		switch (direction) {
-		case DMA_DIR_MEM_TO_DEV:
-		case DMA_DIR_LMEM_TO_HMEM:
+		case SOF_DMA_DIR_MEM_TO_DEV:
+		case SOF_DMA_DIR_LMEM_TO_HMEM:
 			elem_array->elems[i].src = dma_buffer_addr;
 			elem_array->elems[i].dest = external_addr;
 			break;

@@ -243,11 +243,11 @@ static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 }
 
 /* this is called by DMA driver every time descriptor has completed */
-static enum dma_cb_status
+static enum sof_dma_cb_status
 dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 	   pcm_converter_func *converter)
 {
-	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
+	enum sof_dma_cb_status dma_status = SOF_DMA_CB_STATUS_RELOAD;
 	int ret;
 
 	comp_dbg(dev, "dai_dma_cb()");
@@ -258,7 +258,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		dai_trigger_op(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 
 		/* tell DMA not to reload */
-		dma_status = DMA_CB_STATUS_END;
+		dma_status = SOF_DMA_CB_STATUS_END;
 	}
 
 	/* is our pipeline handling an XRUN ? */
@@ -401,11 +401,11 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 }
 
 /* this is called by DMA driver every time descriptor has completed */
-static enum dma_cb_status
+static enum sof_dma_cb_status
 dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t frames,
 			  struct comp_buffer *multi_endpoint_buffer)
 {
-	enum dma_cb_status dma_status = DMA_CB_STATUS_RELOAD;
+	enum sof_dma_cb_status dma_status = SOF_DMA_CB_STATUS_RELOAD;
 	uint32_t i, bytes;
 
 	comp_dbg(dev, "dai_dma_multi_endpoint_cb()");
@@ -416,7 +416,7 @@ dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t fr
 		dai_trigger_op(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 
 		/* tell DMA not to reload */
-		dma_status = DMA_CB_STATUS_END;
+		dma_status = SOF_DMA_CB_STATUS_END;
 	}
 
 	/* is our pipeline handling an XRUN ? */
@@ -477,9 +477,9 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 
 	/* request GP LP DMA with shared access privilege */
 	dir = dai_cfg->direction == SOF_IPC_STREAM_PLAYBACK ?
-		DMA_DIR_MEM_TO_DEV : DMA_DIR_DEV_TO_MEM;
+		SOF_DMA_DIR_MEM_TO_DEV : SOF_DMA_DIR_DEV_TO_MEM;
 
-	dd->dma = dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, DMA_ACCESS_SHARED);
+	dd->dma = dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, SOF_DMA_ACCESS_SHARED);
 	if (!dd->dma) {
 		dai_put(dd->dai);
 		comp_err(dev, "dma_get() failed to get shared access to DMA.");
@@ -730,13 +730,13 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 	/* set up DMA configuration */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
-		config->direction = DMA_DIR_MEM_TO_DEV;
+		config->direction = SOF_DMA_DIR_MEM_TO_DEV;
 		err = dai_get_dma_slot(dd, dev, &config->dest_dev);
 		if (err < 0)
 			return err;
 	} else {
 		dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
-		config->direction = DMA_DIR_DEV_TO_MEM;
+		config->direction = SOF_DMA_DIR_DEV_TO_MEM;
 		err = dai_get_dma_slot(dd, dev, &config->src_dev);
 		if (err < 0)
 			return err;
@@ -1123,7 +1123,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	comp_dbg(dev, "channel = %d", channel);
 
 	/* do nothing for asking for channel free, for compatibility. */
-	if (channel == DMA_CHAN_INVALID) {
+	if (channel == SOF_DMA_CHAN_INVALID) {
 		comp_err(dev, "dai_config is not set yet!");
 		return -EINVAL;
 	}
@@ -1292,7 +1292,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		 * Only applies to non HD-DMA links as HD-DMA read/write pointer
 		 * is not reset during stop/config/start
 		 */
-		if (!(dd->dai->dma_caps & DMA_CAP_HDA))
+		if (!(dd->dai->dma_caps & SOF_DMA_CAP_HDA))
 			audio_stream_reset(&dd->dma_buffer->stream);
 
 		/* only start the DAI if we are not XRUN handling */
@@ -1543,7 +1543,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 	}
 
 	for (i = 0; i < num_endpoints; i++) {
-		enum dma_cb_status status;
+		enum sof_dma_cb_status status;
 		uint32_t copy_bytes;
 
 		/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
@@ -1552,7 +1552,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 			comp_warn(dev, "dai trigger copy failed");
 
 		status = dai_dma_multi_endpoint_cb(dd[i], dev, frames, multi_endpoint_buffer);
-		if (status == DMA_CB_STATUS_END)
+		if (status == SOF_DMA_CB_STATUS_END)
 			dma_stop(dd[i]->chan->dma->z_dev, dd[i]->chan->index);
 
 		copy_bytes = frames * audio_stream_frame_bytes(&dd[i]->dma_buffer->stream);
@@ -1742,7 +1742,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	if (ret < 0)
 		comp_warn(dev, "dai trigger copy failed");
 
-	if (dai_dma_cb(dd, dev, copy_bytes, converter) == DMA_CB_STATUS_END)
+	if (dai_dma_cb(dd, dev, copy_bytes, converter) == SOF_DMA_CB_STATUS_END)
 		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
 	ret = dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, copy_bytes);

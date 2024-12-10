@@ -512,7 +512,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32
 	int err;
 
 	dir = direction == SOF_IPC_STREAM_PLAYBACK ?
-		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
+		SOF_DMA_DIR_HMEM_TO_LMEM : SOF_DMA_DIR_LMEM_TO_HMEM;
 
 	/* if host buffer set we need to allocate local buffer */
 	if (hd->host.elem_array.count) {
@@ -612,9 +612,9 @@ int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	hd->ipc_host = *ipc_host;
 	/* request HDA DMA with shared access privilege */
 	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
-		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
+		SOF_DMA_DIR_HMEM_TO_LMEM : SOF_DMA_DIR_LMEM_TO_HMEM;
 
-	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
+	hd->dma = dma_get(dir, 0, SOF_DMA_DEV_HOST, SOF_DMA_ACCESS_SHARED);
 	if (!hd->dma) {
 		comp_err(dev, "dma_get() returned NULL");
 		return -ENODEV;
@@ -806,11 +806,11 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 	/* determine source and sink buffer elements */
 	if (params->direction == SOF_IPC_STREAM_PLAYBACK) {
-		config->direction = DMA_DIR_HMEM_TO_LMEM;
+		config->direction = SOF_DMA_DIR_HMEM_TO_LMEM;
 		hd->source = &hd->host;
 		hd->sink = &hd->local;
 	} else {
-		config->direction = DMA_DIR_LMEM_TO_HMEM;
+		config->direction = SOF_DMA_DIR_LMEM_TO_HMEM;
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
 	}
@@ -923,8 +923,8 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	for (i = 0; i < config->elem_array.count; i++) {
 		sg_elem = config->elem_array.elems + i;
 
-		if (config->direction == DMA_DIR_HMEM_TO_LMEM ||
-		    config->direction == DMA_DIR_DEV_TO_MEM)
+		if (config->direction == SOF_DMA_DIR_HMEM_TO_LMEM ||
+		    config->direction == SOF_DMA_DIR_DEV_TO_MEM)
 			addr = sg_elem->dest;
 		else
 			addr = sg_elem->src;
@@ -938,12 +938,12 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	dma_block_cfg->block_size = buffer_bytes;
 
 	switch (config->direction) {
-	case DMA_DIR_LMEM_TO_HMEM:
+	case SOF_DMA_DIR_LMEM_TO_HMEM:
 		dma_cfg->channel_direction = MEMORY_TO_HOST;
 		dma_block_cfg->source_address = buffer_addr;
 		dma_block_cfg->dest_address = hd->config.elem_array.elems[0].dest;
 		break;
-	case DMA_DIR_HMEM_TO_LMEM:
+	case SOF_DMA_DIR_HMEM_TO_LMEM:
 		dma_cfg->channel_direction = HOST_TO_MEMORY;
 		dma_block_cfg->dest_address = buffer_addr;
 		dma_block_cfg->source_address = hd->config.elem_array.elems[0].src;

@@ -61,62 +61,62 @@ struct comp_buffer;
  */
 
 /* DMA direction bitmasks used to define DMA copy direction */
-#define DMA_DIR_MEM_TO_MEM	BIT(0) /**< local memory copy */
-#define DMA_DIR_HMEM_TO_LMEM	BIT(1) /**< host memory to local mem copy */
-#define DMA_DIR_LMEM_TO_HMEM	BIT(2) /**< local mem to host mem copy */
-#define DMA_DIR_MEM_TO_DEV	BIT(3) /**< local mem to dev copy */
-#define DMA_DIR_DEV_TO_MEM	BIT(4) /**< dev to local mem copy */
-#define DMA_DIR_DEV_TO_DEV	BIT(5) /**< dev to dev copy */
+#define SOF_DMA_DIR_MEM_TO_MEM		BIT(0) /**< local memory copy */
+#define SOF_DMA_DIR_HMEM_TO_LMEM	BIT(1) /**< host memory to local mem copy */
+#define SOF_DMA_DIR_LMEM_TO_HMEM	BIT(2) /**< local mem to host mem copy */
+#define SOF_DMA_DIR_MEM_TO_DEV		BIT(3) /**< local mem to dev copy */
+#define SOF_DMA_DIR_DEV_TO_MEM		BIT(4) /**< dev to local mem copy */
+#define SOF_DMA_DIR_DEV_TO_DEV		BIT(5) /**< dev to dev copy */
 
 /* DMA capabilities bitmasks used to define the type of DMA */
-#define DMA_CAP_HDA		BIT(0) /**< HDA DMA */
-#define DMA_CAP_GP_LP		BIT(1) /**< GP LP DMA */
-#define DMA_CAP_GP_HP		BIT(2) /**< GP HP DMA */
-#define DMA_CAP_BT              BIT(3) /**< BT DMA */
-#define DMA_CAP_SP              BIT(4) /**< SP DMA */
-#define DMA_CAP_DMIC            BIT(5) /**< ACP DMA DMIC > */
-#define DMA_CAP_SP_VIRTUAL      BIT(6) /**< SP VIRTUAL DMA */
-#define DMA_CAP_HS_VIRTUAL      BIT(7) /**< HS VIRTUAL DMA */
-#define DMA_CAP_HS		BIT(8) /**< HS DMA */
-#define DMA_CAP_SW		BIT(9) /**< SW DMA */
+#define SOF_DMA_CAP_HDA	BIT(0) /**< HDA DMA */
+#define SOF_DMA_CAP_GP_LP	BIT(1) /**< GP LP DMA */
+#define SOF_DMA_CAP_GP_HP	BIT(2) /**< GP HP DMA */
+#define SOF_DMA_CAP_BT		BIT(3) /**< BT DMA */
+#define SOF_DMA_CAP_SP		BIT(4) /**< SP DMA */
+#define SOF_DMA_CAP_DMIC	BIT(5) /**< ACP DMA DMIC > */
+#define SOF_DMA_CAP_SP_VIRTUAL	BIT(6) /**< SP VIRTUAL DMA */
+#define SOF_DMA_CAP_HS_VIRTUAL	BIT(7) /**< HS VIRTUAL DMA */
+#define SOF_DMA_CAP_HS		BIT(8) /**< HS DMA */
+#define SOF_DMA_CAP_SW		BIT(9) /**< SW DMA */
 
 /* DMA dev type bitmasks used to define the type of DMA */
 
-#define DMA_DEV_HOST		BIT(0) /**< connectable to host */
-#define DMA_DEV_HDA		BIT(1) /**< connectable to HD/A link */
-#define DMA_DEV_SSP		BIT(2) /**< connectable to SSP fifo */
-#define DMA_DEV_DMIC		BIT(3) /**< connectable to DMIC fifo */
-#define DMA_DEV_SSI		BIT(4) /**< connectable to SSI / SPI fifo */
-#define DMA_DEV_ALH		BIT(5) /**< connectable to ALH link */
-#define DMA_DEV_SAI		BIT(6) /**< connectable to SAI fifo */
-#define DMA_DEV_ESAI		BIT(7) /**< connectable to ESAI fifo */
-#define DMA_DEV_BT		BIT(8) /**< connectable to ACP BT I2S */
-#define DMA_DEV_SP		BIT(9) /**< connectable to ACP SP I2S */
-#define DMA_DEV_AFE_MEMIF	BIT(10) /**< connectable to AFE fifo */
-#define DMA_DEV_SP_VIRTUAL	BIT(11) /**< connectable to ACP SP VIRTUAL I2S */
-#define DMA_DEV_HS_VIRTUAL	BIT(12) /**< connectable to ACP HS VIRTUAL I2S */
-#define DMA_DEV_HS		BIT(13) /**< connectable to ACP HS I2S */
-#define DMA_DEV_MICFIL		BIT(14) /**< connectable to MICFIL fifo */
-#define DMA_DEV_SW		BIT(15) /**< connectable to ACP SW */
+#define SOF_DMA_DEV_HOST	BIT(0) /**< connectable to host */
+#define SOF_DMA_DEV_HDA	BIT(1) /**< connectable to HD/A link */
+#define SOF_DMA_DEV_SSP	BIT(2) /**< connectable to SSP fifo */
+#define SOF_DMA_DEV_DMIC	BIT(3) /**< connectable to DMIC fifo */
+#define SOF_DMA_DEV_SSI	BIT(4) /**< connectable to SSI / SPI fifo */
+#define SOF_DMA_DEV_ALH	BIT(5) /**< connectable to ALH link */
+#define SOF_DMA_DEV_SAI	BIT(6) /**< connectable to SAI fifo */
+#define SOF_DMA_DEV_ESAI	BIT(7) /**< connectable to ESAI fifo */
+#define SOF_DMA_DEV_BT		BIT(8) /**< connectable to ACP BT I2S */
+#define SOF_DMA_DEV_SP		BIT(9) /**< connectable to ACP SP I2S */
+#define SOF_DMA_DEV_AFE_MEMIF	BIT(10) /**< connectable to AFE fifo */
+#define SOF_DMA_DEV_SP_VIRTUAL	BIT(11) /**< connectable to ACP SP VIRTUAL I2S */
+#define SOF_DMA_DEV_HS_VIRTUAL	BIT(12) /**< connectable to ACP HS VIRTUAL I2S */
+#define SOF_DMA_DEV_HS		BIT(13) /**< connectable to ACP HS I2S */
+#define SOF_DMA_DEV_MICFIL	BIT(14) /**< connectable to MICFIL fifo */
+#define SOF_DMA_DEV_SW		BIT(15) /**< connectable to ACP SW */
 
 /* DMA access privilege flag */
-#define DMA_ACCESS_EXCLUSIVE	1
-#define DMA_ACCESS_SHARED	0
+#define SOF_DMA_ACCESS_EXCLUSIVE	1
+#define SOF_DMA_ACCESS_SHARED	0
 
 /* DMA copy flags */
-#define DMA_COPY_BLOCKING	BIT(0)
-#define DMA_COPY_ONE_SHOT	BIT(1)
+#define SOF_DMA_COPY_BLOCKING	BIT(0)
+#define SOF_DMA_COPY_ONE_SHOT	BIT(1)
 
 /* We will use this enum in cb handler to inform dma what
  * action we need to perform.
  */
-enum dma_cb_status {
-	DMA_CB_STATUS_RELOAD = 0,
-	DMA_CB_STATUS_END,
+enum sof_dma_cb_status {
+	SOF_DMA_CB_STATUS_RELOAD = 0,
+	SOF_DMA_CB_STATUS_END,
 };
 
-#define DMA_CHAN_INVALID	0xFFFFFFFF
-#define DMA_CORE_INVALID	0xFFFFFFFF
+#define SOF_DMA_CHAN_INVALID	0xFFFFFFFF
+#define SOF_DMA_CORE_INVALID	0xFFFFFFFF
 
 /* Attributes have been ported to Zephyr. This condition is necessary until full support of
  * CONFIG_SOF_ZEPHYR_STRICT_HEADERS.
@@ -138,7 +138,7 @@ struct dma_sg_elem {
 struct dma_cb_data {
 	struct dma_chan_data *channel;
 	struct dma_sg_elem elem;
-	enum dma_cb_status status;
+	enum sof_dma_cb_status status;
 };
 
 /**
