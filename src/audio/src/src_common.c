@@ -16,6 +16,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
+#include <sof/lib/fast-get.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
@@ -592,6 +593,57 @@ int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
+int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
+			     const struct src_stage *stage_src1,
+			     const struct src_stage *stage_src2)
+{
+#if CONFIG_FAST_GET
+	struct src_stage *stage_dst1;
+	struct src_stage *stage_dst2;
+	size_t coef_size1;
+	size_t coef_size2;
+	char *coef_dst;
+	const char *coef_src;
+#if SRC_SHORT
+	size_t tap_size = sizeof(int16_t);
+#else
+	size_t tap_size = sizeof(int32_t);
+#endif
+	int ret;
+
+	stage_dst1 = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			     2 * sizeof(*stage_dst1));
+	if (!stage_dst1) {
+		comp_err(dev, "failed allocate stages");
+		return -ENOMEM;
+	}
+
+	/* Make local copies of the src_stages */
+	stage_dst2 = stage_dst1 + 1;
+	ret = memcpy_s(stage_dst1, sizeof(*stage_dst1), stage_src1, sizeof(*stage_src1));
+	ret = memcpy_s(stage_dst2, sizeof(*stage_dst2), stage_src2, sizeof(*stage_src2));
+
+	coef_size1 = tap_size * stage_src1->filter_length;
+	coef_size2 = tap_size * stage_src2->filter_length;
+
+	stage_dst1->coefs = fast_get(stage_src1->coefs, coef_size1);
+	stage_dst2->coefs = fast_get(stage_src2->coefs, coef_size2);
+
+	if (!stage_dst1->coefs || !stage_dst2->coefs)  {
+		comp_err(dev, "failed allocate coefficients");
+		return -ENOMEM;
+	}
+
+	prm->stage1 = stage_dst1;
+	prm->stage2 = stage_dst2;
+#else
+	prm->stage1 = stage_src1;
+	prm->stage2 = stage_src2;
+#endif
+
+	return 0;
+}
+
 bool src_is_ready_to_process(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,
 			     struct sof_sink **sinks, int num_of_sinks)
@@ -652,7 +704,9 @@ __cold int src_free(struct processing_module *mod)
 
 	/* Free dynamically reserved buffers for SRC algorithm */
 	rfree(cd->delay_lines);
-
+	fast_put((void *)cd->param.stage1->coefs);
+	fast_put((void *)cd->param.stage2->coefs);
+	rfree((void *)cd->param.stage1);
 	rfree(cd);
 	return 0;
 }

@@ -215,6 +215,9 @@ static inline int src_fallback(struct comp_data *cd,
 	return 0;
 }
 
+int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
+			     const struct src_stage *stage_src1,
+			     const struct src_stage *stage_src2);
 int src_rate_check(const void *spec);
 int src_set_params(struct processing_module *mod, struct sof_sink *sink);
 
