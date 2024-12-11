@@ -36,8 +36,10 @@ static const struct sof_module_api_build_info buildinfo __section(".mod_buildinf
 
 #if CONFIG_LLEXT_TYPE_ELF_RELOCATABLE && defined(LL_EXTENSION_BUILD)
 #define __cold __section(".text.dram")
+#define __cold_data __section(".rodata.dram")
 #else
 #define __cold
+#define __cold_data
 #endif
 
 #endif
