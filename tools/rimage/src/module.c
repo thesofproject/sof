@@ -500,7 +500,7 @@ static int module_check_overlap(const struct module *mod, const struct module *m
 			const struct module_section *section2 = &mod2->sections[j];
 
 			/* don't compare section with itself */
-			if (section == section2)
+			if (section == section2 || section->detached || section2->detached)
 				continue;
 
 			/* check section overlapping */
