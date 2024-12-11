@@ -179,7 +179,7 @@ out:
 	return ret;
 }
 
-int src_init(struct processing_module *mod)
+__cold int src_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct module_config *cfg = &md->cfg;
