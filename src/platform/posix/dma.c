@@ -4,14 +4,6 @@
 #include <zephyr/drivers/dma.h>
 #include <sof/lib/dma.h>
 
-/* SOF and Zephyr's API seems to have diverged here.  But this seems
- * like dead code; nothing passes these?
- */
-#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
-#define DMA_ATTR_BUFFER_ALIGNMENT DMA_ATTR_BUFFER_SIZE_ALIGNMENT
-#define DMA_ATTR_BUFFER_PERIOD_COUNT 3
-#endif
-
 /* Zephyr "DMA" stub device */
 
 #define NUM_CHANS 2
@@ -184,33 +176,6 @@ DEVICE_DEFINE(pzdma2, "pzdma2", pzdma_init, NULL, &pzdma2_data, &pzdma2_cfg,
 DEVICE_DEFINE(pzdma3, "pzdma3", pzdma_init, NULL, &pzdma3_data, &pzdma3_cfg,
 	      POST_KERNEL, 0, &pzdma_api);
 
-/* SOF DMA device definition */
-
-static int posix_dma_get_attribute(struct dma *dma, uint32_t type, uint32_t *val)
-{
-	if (type == DMA_ATTR_BUFFER_ALIGNMENT) {
-		*val = 4;
-	} else if (type == DMA_ATTR_COPY_ALIGNMENT) {
-		*val = 4;
-	} else if (type == DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT) {
-		*val = 4;
-	} else if (type == DMA_ATTR_BUFFER_PERIOD_COUNT) {
-		/* Not sure clear what this means, seems like a
-		 * built-in lever to control "make the buffer this
-		 * many periods long", not really a hardware
-		 * attribute...
-		 */
-		*val = 2;
-	} else {
-		return -EINVAL;
-	}
-	return 0;
-}
-
-const struct dma_ops posix_sof_dma_ops = {
-	.get_attribute = posix_dma_get_attribute,
-};
-
 struct dma posix_sof_dma[4];
 
 const struct dma_info posix_sof_dma_info = {
@@ -234,7 +199,6 @@ void posix_dma_init(struct sof *sof)
 		posix_sof_dma[i].plat_data.caps = 0xffffffff;
 		posix_sof_dma[i].plat_data.devs = 0xffffffff;
 		posix_sof_dma[i].plat_data.channels = NUM_CHANS;
-		posix_sof_dma[i].ops = &posix_sof_dma_ops;
 		posix_sof_dma[i].z_dev = devs[i];
 	};
 
