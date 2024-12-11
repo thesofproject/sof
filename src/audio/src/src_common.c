@@ -644,7 +644,7 @@ int src_reset(struct processing_module *mod)
 	return 0;
 }
 
-int src_free(struct processing_module *mod)
+__cold int src_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
