@@ -7,7 +7,7 @@
 /** \cond GENERATED_BY_TOOLS_TUNE_SRC */
 #include <stdint.h>
 
-const int32_t src_int32_3_2_4535_5000_fir[276] = {
+__cold_rodata static const int32_t src_int32_3_2_4535_5000_fir[276] = {
 	-98079,
 	150065,
 	-205969,

@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 
-static const int32_t src_int32_1_3_4535_5000_fir[268] = {
+__cold_rodata static const int32_t src_int32_1_3_4535_5000_fir[268] = {
 	53316,
 	-3193,
 	-78263,
