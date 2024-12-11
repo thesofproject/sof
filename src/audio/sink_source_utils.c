@@ -73,3 +73,63 @@ int source_to_sink_copy(struct sof_source *source,
 	return 0;
 }
 EXPORT_SYMBOL(source_to_sink_copy);
+
+int sink_fill_with_silence(struct sof_sink *sink, size_t size)
+{
+	uint8_t *dst_ptr;
+	uint8_t *dst_begin;
+	uint8_t *dst_end;
+	size_t dst_size;
+	int ret;
+
+	if (!size)
+		return 0;
+	if (size > sink_get_free_size(sink))
+		return -ENOSPC;
+
+	ret = sink_get_buffer(sink, size, (void **)&dst_ptr, (void **)&dst_begin, &dst_size);
+	if (ret)
+		return ret;
+
+	dst_end = dst_begin + dst_size;
+	while (size) {
+		uint32_t dst_to_buf_overlap = (uintptr_t)dst_end - (uintptr_t)dst_ptr;
+		uint32_t to_fill = MIN(dst_to_buf_overlap, size);
+
+		ret = memset_s(dst_ptr, dst_to_buf_overlap, 0, to_fill);
+		assert(!ret);
+
+		size -= to_fill;
+		dst_ptr += to_fill;
+		if (to_fill == dst_to_buf_overlap)
+			dst_ptr = dst_begin;
+	}
+
+	sink_commit_buffer(sink, INT_MAX);
+	return 0;
+}
+EXPORT_SYMBOL(sink_fill_with_silence);
+
+int source_drop_data(struct sof_source *source, size_t size)
+{
+	uint8_t const *src_ptr;
+	uint8_t const *src_begin;
+	size_t src_size;
+	int ret;
+
+	if (!size)
+		return 0;
+	if (size > source_get_data_available(source))
+		return -EFBIG;
+
+	ret = source_get_data(source, size,
+			      (void const **)&src_ptr,
+			      (void const **)&src_begin,
+			      &src_size);
+	if (ret)
+		return ret;
+
+	source_release_data(source, INT_MAX);
+	return 0;
+}
+EXPORT_SYMBOL(source_drop_data);
