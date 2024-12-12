@@ -68,8 +68,34 @@ static int src_prepare(struct processing_module *mod,
 	return src_prepare_general(mod, sources[0], sinks[0]);
 }
 
+#if CONFIG_IPC_MAJOR_3
+static int src_init_shim(struct processing_module *mod)
+{
+	struct ipc_config_src *ipc_src;
+	struct module_data *mod_data = &mod->priv;
+	const struct sof_ipc_comp_src *src =
+		(const struct sof_ipc_comp_src *)mod_data->cfg.init_data;
+
+	if (IPC_TAIL_IS_SIZE_INVALID(*src))
+		return -EBADMSG;
+
+	ipc_src = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(*ipc_src));
+	if (!ipc_src)
+		return -ENOMEM;
+
+	ipc_src->source_rate = src->source_rate;
+	ipc_src->sink_rate   = src->sink_rate;
+	ipc_src->rate_mask   = src->rate_mask;
+
+	rfree(mod_data->cfg.data);
+	mod_data->cfg.init_data = ipc_src;
+	mod_data->cfg.data = ipc_src;
+	return src_init(mod);
+}
+#endif
+
 static const struct module_interface src_interface = {
-	.init = src_init,
+	.init = IPC3_SHIM(src_init),
 	.prepare = src_prepare,
 	.process = src_process,
 	.is_ready_to_process = src_is_ready_to_process,
