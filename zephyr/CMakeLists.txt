@@ -637,6 +637,8 @@ zephyr_library_sources_ifdef(CONFIG_TRACE
 zephyr_library_sources_ifdef(CONFIG_LOG_BACKEND_SOF_PROBE
       ${SOF_SRC_PATH}/logging/log_backend_probe.c)
 
+zephyr_library_sources_ifdef(CONFIG_FAST_GET lib/fast-get.c)
+
 # Optional SOF sources - depends on Kconfig - WIP
 
 if(CONFIG_IPC_MAJOR_3)
