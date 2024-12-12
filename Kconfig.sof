@@ -130,6 +130,17 @@ config COLD_STORE_EXECUTE_DRAM
 	  option to enable this feature to save SRAM and to speed up SRAM
 	  copying of performance-critical data and code.
 
+config FAST_GET
+	bool "Enable simple refcounting dram data copier"
+	default n
+	help
+	  Enable simple refcounting DRAM data copier for copying processing
+	  module data from DRAM to SRAM when the data is needed and freeing
+	  the SRAM when the data is not needed anymore. If multiple module
+	  instances need the same chunk the same copy is used with reference
+	  counting. Source is src/lib/fast-get.c. The option should be selected
+	  by the modules using it.
+
 rsource "src/Kconfig"
 
 # See zephyr/modules/Kconfig
