@@ -135,12 +135,15 @@ struct comp_buffer {
 	struct tr_ctx tctx;			/* trace settings */
 
 	/* connected components */
-	struct comp_dev *source;	/* source component */
-	struct comp_dev *sink;		/* sink component */
+	struct comp_dev *sourceX;	/* source component */
+	struct comp_dev *sinkX;		/* sink component */
 
 	/* lists */
-	struct list_item source_list;	/* list in comp buffers */
-	struct list_item sink_list;	/* list in comp buffers */
+	struct list_item Xsource_list;	/* list in comp buffers */
+	struct list_item Xsink_list;	/* list in comp buffers */
+
+	/* list of buffers, to be used i.e. in raw data processing mode*/
+	struct list_item buffers_list;
 };
 
 /*
@@ -148,7 +151,7 @@ struct comp_buffer {
  */
 static inline struct comp_dev *comp_buffer_get_source_component(const struct comp_buffer *buffer)
 {
-	return buffer->source;
+	return buffer->sourceX;
 }
 
 /*
@@ -156,7 +159,20 @@ static inline struct comp_dev *comp_buffer_get_source_component(const struct com
  */
 static inline struct comp_dev *comp_buffer_get_sink_component(const struct comp_buffer *buffer)
 {
-	return buffer->sink;
+	return buffer->sinkX;
+}
+
+static inline
+void comp_buffer_set_source_component(struct comp_buffer *buffer, struct comp_dev *comp)
+{
+	buffer->sourceX = comp;
+}
+
+
+static inline
+void comp_buffer_set_sink_component(struct comp_buffer *buffer, struct comp_dev *comp)
+{
+	buffer->sinkX = comp;
 }
 
 /* Only to be used for synchronous same-core notifications! */
@@ -171,13 +187,13 @@ struct buffer_cb_free {
 };
 
 #define buffer_comp_list(buffer, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->source_list : \
-	 &buffer->sink_list)
+	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->Xsource_list : \
+	 &buffer->Xsink_list)
 
 #define buffer_from_list(ptr, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? \
-	 container_of(ptr, struct comp_buffer, source_list) : \
-	 container_of(ptr, struct comp_buffer, sink_list))
+	 container_of(ptr, struct comp_buffer, Xsource_list) : \
+	 container_of(ptr, struct comp_buffer, Xsink_list))
 
 #define buffer_set_cb(buffer, func, data, type) \
 	do {				\

@@ -535,15 +535,15 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 			continue;
 
 		/* check comp state if sink and source are valid */
-		if (ibd->cb->sink == icd->cd) {
-			sink = ibd->cb->sink;
-			if (ibd->cb->sink->state != COMP_STATE_READY)
+		if (comp_buffer_get_sink_component(ibd->cb) == icd->cd) {
+			sink = comp_buffer_get_sink_component(ibd->cb);
+			if (comp_buffer_get_sink_state(ibd->cb) != COMP_STATE_READY)
 				sink_active = true;
 		}
 
-		if (ibd->cb->source == icd->cd) {
-			source = ibd->cb->source;
-			if (ibd->cb->source->state != COMP_STATE_READY)
+		if (comp_buffer_get_source_component(ibd->cb) == icd->cd) {
+			source = comp_buffer_get_source_component(ibd->cb);
+			if (comp_buffer_get_source_state(ibd->cb) != COMP_STATE_READY)
 				source_active = true;
 		}
 	}
