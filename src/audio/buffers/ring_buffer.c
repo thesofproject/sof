@@ -289,8 +289,49 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 
 	uint32_t max_ibs_obs = MAX(min_available, min_free_space);
 
-	/* calculate required buffer size */
-	ring_buffer->data_buffer_size = 2 * max_ibs_obs;
+	/* Calculate required buffer size. This buffer must hold at least three times max_ibs_obs
+	 * bytes to avoid starving the DP modules that process different block sizes in different
+	 * periods (44.1 kHz case).
+	 *
+	 * The following example consists of one pipeline processed on core 0. One of the modules
+	 * of this pipeline is a DP module, which processing is performed on core 1.
+	 * DP module threads are started after LL processing on a given core is completed.
+	 *
+	 * An example of a DP module is src lite, which converts a 32-bit stereo stream with
+	 * a sampling rate of 44.1 kHz to a rate of 16 kHz. With a period of 1 ms, the module should
+	 * process 44.1 frames. In reality, this module processes 42 frames (336 bytes) for
+	 * 9 periods and then processes 63 frames (504 bytes) for the tenth period. In this way,
+	 * on average, over 10 periods, the module processes 44.1 frames.
+	 *
+	 * Consider the case of a 768-byte buffer (max_ibs_obs = 384) that is completely filled
+	 * with samples. In the first period, the module consumes 336 bytes. The buffer is not
+	 * replenished because the consumption occurred in the DP cycle, which is executed after
+	 * the LL cycle. Data is transferred between modules in the pipeline during the LL cycle.
+	 * The figure below shows the next period of the ongoing processing.
+	 *
+	 *	/-----------------------------------------------------------------\
+	 *	| Core 0 | [              LL 0    (B)         ] [ DP 0 ]          |
+	 *	|------------------------------------------------------------------
+	 *	| Core 1 | [ LL 1 ] (A) [         DP 1         ] (C)              |
+	 *	\-----------------------------------------------------------------/
+	 *
+	 * A.	The DP module on core 1 has 432 bytes available in the input buffer, so it can only
+	 *	process a block of 336 bytes. It is unable to process a block of 502 bytes.
+	 *	The module starts processing data.
+	 *
+	 * B.	Pipeline processing on core 0 reaches the point where more data is delivered to
+	 *	the DP module source buffer, and processed data is received from the sink buffer.
+	 *	The source buffer has 336 free bytes, and that is how many are copied.
+	 *
+	 * C.	The DP module finishes processing data and flushes 336 bytes from the source buffer.
+	 *	Since this buffer has just been completely filled, there are again left only
+	 *	432 bytes available at the end of the period.
+	 *
+	 * As shown in the above example, the DP module will eventually be starved, causing a glitch
+	 * in the output signal. To resolve this situation and allow the module to process
+	 * correctly, it is necessary to allocate a buffer three times larger than max_ibs_obs.
+	 */
+	ring_buffer->data_buffer_size = 3 * max_ibs_obs;
 
 	/* allocate data buffer - always in cached memory alias */
 	ring_buffer->data_buffer_size =
