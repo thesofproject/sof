@@ -59,13 +59,13 @@ struct chain_dma_data {
 #endif
 
 	/* local host DMA config */
-	struct dma *dma_host;
+	struct sof_dma *dma_host;
 	struct dma_chan_data *chan_host;
 	struct dma_config z_config_host;
 	struct dma_block_config dma_block_cfg_host;
 
 	/* local link DMA config */
-	struct dma *dma_link;
+	struct sof_dma *dma_link;
 	struct dma_chan_data *chan_link;
 	struct dma_config z_config_link;
 	struct dma_block_config dma_block_cfg_link;
@@ -392,9 +392,9 @@ static void chain_release(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 
 	dma_release_channel(cd->chan_host->dma->z_dev, cd->chan_host->index);
-	dma_put(cd->dma_host);
+	sof_dma_put(cd->dma_host);
 	dma_release_channel(cd->chan_link->dma->z_dev, cd->chan_link->index);
-	dma_put(cd->dma_link);
+	sof_dma_put(cd->dma_link);
 
 	if (cd->dma_buffer) {
 		buffer_free(cd->dma_buffer);
@@ -538,7 +538,7 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 	dir = (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) ?
 		SOF_DMA_DIR_HMEM_TO_LMEM : SOF_DMA_DIR_LMEM_TO_HMEM;
 
-	cd->dma_host = dma_get(dir, 0, SOF_DMA_DEV_HOST, SOF_DMA_ACCESS_SHARED);
+	cd->dma_host = sof_dma_get(dir, 0, SOF_DMA_DEV_HOST, SOF_DMA_ACCESS_SHARED);
 	if (!cd->dma_host) {
 		comp_err(dev, "chain_task_init(): dma_get() returned NULL");
 		return -EINVAL;
@@ -547,9 +547,9 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 	dir = (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) ?
 		SOF_DMA_DIR_MEM_TO_DEV : SOF_DMA_DIR_DEV_TO_MEM;
 
-	cd->dma_link = dma_get(dir, SOF_DMA_CAP_HDA, SOF_DMA_DEV_HDA, SOF_DMA_ACCESS_SHARED);
+	cd->dma_link = sof_dma_get(dir, SOF_DMA_CAP_HDA, SOF_DMA_DEV_HDA, SOF_DMA_ACCESS_SHARED);
 	if (!cd->dma_link) {
-		dma_put(cd->dma_host);
+		sof_dma_put(cd->dma_host);
 		comp_err(dev, "chain_task_init(): dma_get() returned NULL");
 		return -EINVAL;
 	}
@@ -610,8 +610,8 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 
 	return 0;
 error:
-	dma_put(cd->dma_host);
-	dma_put(cd->dma_link);
+	sof_dma_put(cd->dma_host);
+	sof_dma_put(cd->dma_link);
 	return ret;
 }
 

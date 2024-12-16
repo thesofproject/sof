@@ -121,7 +121,7 @@ enum sof_dma_cb_status {
 /* Attributes have been ported to Zephyr. This condition is necessary until full support of
  * CONFIG_SOF_ZEPHYR_STRICT_HEADERS.
  */
-struct dma;
+struct sof_dma;
 
 /**
  *  \brief Element of SG list (as array item).
@@ -193,7 +193,7 @@ struct dma_plat_data {
 	uint32_t period_count;
 };
 
-struct dma {
+struct sof_dma {
 	struct dma_plat_data plat_data;
 	struct k_spinlock lock;	/**< locking mechanism */
 	int sref;		/**< simple ref counter, guarded by lock */
@@ -204,8 +204,20 @@ struct dma {
 	void *priv_data;
 };
 
+/*
+ * Note: typedef use like this is generally avoided in SOF,
+ *       but this is an exceptional case to handle SOF platforms
+ *       that can be built with both Zephyr and XTOS drivers (like imx8).
+ *       Once no users left, this can be removed.
+ */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+typedef struct sof_dma sof_dma;
+#else
+typedef struct dma sof_dma;
+#endif
+
 struct dma_chan_data {
-	struct dma *dma;
+	sof_dma *dma;
 
 	uint32_t status;
 	uint32_t direction;
@@ -223,14 +235,14 @@ struct dma_chan_data {
 };
 
 struct dma_info {
-	struct dma *dma_array;
+	sof_dma *dma_array;
 	size_t num_dmas;
 };
 
 /* generic DMA DSP <-> Host copier */
 struct dma_copy {
 	struct dma_chan_data *chan;
-	struct dma *dmac;
+	struct sof_dma *dmac;
 };
 
 struct audio_stream;
@@ -253,14 +265,14 @@ int dmac_init(struct sof *sof);
  * For exclusive access, ret DMAC with no channels draining.
  * For shared access, ret DMAC with the least number of channels draining.
  */
-struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
+struct sof_dma *sof_dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 
 /**
  * \brief API to release a platform DMAC.
  *
  * @param[in] dma DMAC to relese.
  */
-void dma_put(struct dma *dma);
+void sof_dma_put(struct sof_dma *dma);
 
 #ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include "dma-legacy.h"

@@ -614,7 +614,7 @@ int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	dir = hd->ipc_host.direction == SOF_IPC_STREAM_PLAYBACK ?
 		SOF_DMA_DIR_HMEM_TO_LMEM : SOF_DMA_DIR_LMEM_TO_HMEM;
 
-	hd->dma = dma_get(dir, 0, SOF_DMA_DEV_HOST, SOF_DMA_ACCESS_SHARED);
+	hd->dma = sof_dma_get(dir, 0, SOF_DMA_DEV_HOST, SOF_DMA_ACCESS_SHARED);
 	if (!hd->dma) {
 		comp_err(dev, "dma_get() returned NULL");
 		return -ENODEV;
@@ -630,7 +630,7 @@ int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
 	if (!hd->msg) {
 		comp_err(dev, "ipc_msg_init failed");
-		dma_put(hd->dma);
+		sof_dma_put(hd->dma);
 		return -ENOMEM;
 	}
 	hd->chan = NULL;
@@ -678,7 +678,7 @@ e_data:
 
 void host_common_free(struct host_data *hd)
 {
-	dma_put(hd->dma);
+	sof_dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
 	dma_sg_free(&hd->config.elem_array);

@@ -120,7 +120,11 @@ void ipc_free(struct ipc *ipc);
  */
 struct ipc_data_host_buffer {
 	/* DMA */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	struct sof_dma *dmac;
+#else
 	struct dma *dmac;
+#endif
 	uint8_t *page_table;
 };
 
