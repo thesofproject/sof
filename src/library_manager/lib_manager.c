@@ -53,7 +53,7 @@ SOF_DEFINE_REG_UUID(lib_manager);
 DECLARE_TR_CTX(lib_manager_tr, SOF_UUID(lib_manager_uuid), LOG_LEVEL_INFO);
 
 struct lib_manager_dma_ext {
-	struct dma *dma;
+	struct sof_dma *dma;
 	struct dma_chan_data *chan;
 	uintptr_t dma_addr;		/**< buffer start pointer */
 	uint32_t addr_align;

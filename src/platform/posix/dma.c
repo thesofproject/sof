@@ -176,7 +176,7 @@ DEVICE_DEFINE(pzdma2, "pzdma2", pzdma_init, NULL, &pzdma2_data, &pzdma2_cfg,
 DEVICE_DEFINE(pzdma3, "pzdma3", pzdma_init, NULL, &pzdma3_data, &pzdma3_cfg,
 	      POST_KERNEL, 0, &pzdma_api);
 
-struct dma posix_sof_dma[4];
+struct sof_dma posix_sof_dma[4];
 
 const struct dma_info posix_sof_dma_info = {
 	.dma_array = posix_sof_dma,
@@ -194,7 +194,7 @@ void posix_dma_init(struct sof *sof)
 	};
 
 	for (int i = 0; i < ARRAY_SIZE(posix_sof_dma); i++) {
-		posix_sof_dma[i] = (struct dma) {};
+		posix_sof_dma[i] = (struct sof_dma) {};
 		posix_sof_dma[i].plat_data.dir = 0xffffffff;
 		posix_sof_dma[i].plat_data.caps = 0xffffffff;
 		posix_sof_dma[i].plat_data.devs = 0xffffffff;
