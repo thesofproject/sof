@@ -9,10 +9,7 @@ HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-lnl-rt711-l0-rt1316-l23-rt714-l1\;PLATFORM=lnl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
-SDW_SPK_STREAM=SDW2-Playback,SDW_SPK_IN_STREAM=SDW2-Capture,SDW_DMIC_STREAM=SDW1-Capture,\
-EFX_SPK_IIR_PARAMS=highpass_100hz_0db_48khz,EFX_SPK_DRC_PARAMS=speaker_default,\
-EFX_MIC_TDFB_PARAMS=line2_generic_pm10deg,EFX_MIC_DRC_PARAMS=dmic_default.conf,\
-SDW_SPK_ENHANCED_PLAYBACK=true,SDW_DMIC_ENHANCED_CAPTURE=true"
+SDW_SPK_STREAM=SDW2-Playback,SDW_SPK_IN_STREAM=SDW2-Capture,SDW_DMIC_STREAM=SDW1-Capture"
 
 "cavs-sdw\;sof-lnl-rt712-l2-rt1712-l3\;PLATFORM=lnl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
@@ -20,10 +17,7 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
 "cavs-sdw\;sof-lnl-rt722-l0\;PLATFORM=lnl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
-SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
-EFX_SPK_IIR_PARAMS=highpass_100hz_0db_48khz,EFX_SPK_DRC_PARAMS=speaker_default,\
-EFX_MIC_TDFB_PARAMS=line2_generic_pm10deg,EFX_MIC_DRC_PARAMS=dmic_default.conf,\
-SDW_SPK_ENHANCED_PLAYBACK=true,SDW_DMIC_ENHANCED_CAPTURE=true"
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
 "cavs-sdw\;sof-lnl-rt712-l2-rt1320-l1\;PLATFORM=lnl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
