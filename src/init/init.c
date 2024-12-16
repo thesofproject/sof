@@ -287,7 +287,7 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	interrupt_init(sof);
 #endif /* __ZEPHYR__ */
 
-#ifdef CONFIG_ZEPHYR_LOG
+#if defined(CONFIG_ZEPHYR_LOG) && !defined(CONFIG_LOG_MODE_MINIMAL)
 	log_set_timestamp_func(default_get_timestamp,
 			       sys_clock_hw_cycles_per_sec());
 #endif
