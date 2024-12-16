@@ -87,60 +87,22 @@ static void crossover_generic_split_4way(int32_t in,
 				    z2, &out[2], &out[3]);
 }
 
-#if CONFIG_FORMAT_S16LE
-static void crossover_s16_default_pass(struct comp_data *cd,
-				       struct input_stream_buffer *bsource,
-				       struct output_stream_buffer **bsinks,
-				       int32_t num_sinks,
-				       uint32_t frames)
+static void crossover_default_pass(struct comp_data *cd,
+				   struct input_stream_buffer *bsource,
+				   struct output_stream_buffer **bsinks,
+				   int32_t num_sinks,
+				   uint32_t frames)
 {
-	const struct audio_stream *sink_stream;
 	const struct audio_stream *source_stream = bsource->data;
-	int16_t *x;
-	int32_t *y;
-	int i, j;
-	int n = audio_stream_get_channels(source_stream) * frames;
+	uint32_t samples = audio_stream_get_channels(source_stream) * frames;
+	int i;
 
-	for (i = 0; i < n; i++) {
-		x = audio_stream_read_frag_s16(source_stream, i);
-		for (j = 0; j < num_sinks; j++) {
-			if (!bsinks[j])
-				continue;
-
-			sink_stream = bsinks[j]->data;
-			y = audio_stream_write_frag_s16(sink_stream, i);
-			*y = *x;
-		}
+	for (i = 0; i < num_sinks; i++) {
+		if (!bsinks[i])
+			continue;
+		audio_stream_copy(source_stream, 0, bsinks[i]->data, 0, samples);
 	}
 }
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static void crossover_s32_default_pass(struct comp_data *cd,
-				       struct input_stream_buffer *bsource,
-				       struct output_stream_buffer **bsinks,
-				       int32_t num_sinks,
-				       uint32_t frames)
-{
-	const struct audio_stream *sink_stream;
-	const struct audio_stream *source_stream = bsource->data;
-	int32_t *x, *y;
-	int i, j;
-	int n = audio_stream_get_channels(source_stream) * frames;
-
-	for (i = 0; i < n; i++) {
-		x = audio_stream_read_frag_s32(source_stream, i);
-		for (j = 0; j < num_sinks; j++) {
-			if (!bsinks[j])
-				continue;
-
-			sink_stream = bsinks[j]->data;
-			y = audio_stream_write_frag_s32(sink_stream, i);
-			*y = *x;
-		}
-	}
-}
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S16LE
 static void crossover_s16_default(struct comp_data *cd,
@@ -305,15 +267,15 @@ const struct crossover_proc_fnmap crossover_proc_fnmap[] = {
 const struct crossover_proc_fnmap crossover_proc_fnmap_pass[] = {
 /* { SOURCE_FORMAT , PROCESSING FUNCTION } */
 #if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, crossover_s16_default_pass },
+	{ SOF_IPC_FRAME_S16_LE, crossover_default_pass },
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, crossover_s32_default_pass },
+	{ SOF_IPC_FRAME_S24_4LE, crossover_default_pass },
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, crossover_s32_default_pass },
+	{ SOF_IPC_FRAME_S32_LE, crossover_default_pass },
 #endif /* CONFIG_FORMAT_S32LE */
 };
 
