@@ -61,13 +61,13 @@ struct chain_dma_data {
 #endif
 
 	/* local host DMA config */
-	struct dma *dma_host;
+	struct sof_dma *dma_host;
 	struct dma_chan_data *chan_host;
 	struct dma_config z_config_host;
 	struct dma_block_config dma_block_cfg_host;
 
 	/* local link DMA config */
-	struct dma *dma_link;
+	struct sof_dma *dma_link;
 	struct dma_chan_data *chan_link;
 	struct dma_config z_config_link;
 	struct dma_block_config dma_block_cfg_link;
