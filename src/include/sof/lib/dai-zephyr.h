@@ -125,7 +125,7 @@ struct dai_data {
 	struct comp_buffer *local_buffer;
 	struct dai_ts_cfg ts_config;
 	struct dai *dai;
-	struct dma *dma;
+	struct sof_dma *dma;
 	struct dai_group *group;		/* NULL if no group assigned */
 	int xrun;				/* true if we are doing xrun recovery */
 
