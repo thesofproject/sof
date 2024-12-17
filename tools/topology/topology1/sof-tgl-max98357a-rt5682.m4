@@ -223,7 +223,8 @@ PIPELINE_PCM_ADD(
 		    sof/pipe-demux-eq-iir-playback.m4),
 	      ifdef(`WAVES', sof/pipe-waves-codec-demux-playback.m4,
 		    ifdef(`DRC_EQ', sof/pipe-drc-eq-volume-demux-playback.m4,
-			  sof/pipe-volume-demux-playback.m4))),
+			ifdef(`DTS', sof/pipe-eq-iir-dts-codec-demux-playback.m4,
+				sof/pipe-volume-demux-playback.m4)))),
 	1, 0, ifdef(`4CH_PASSTHROUGH', `4', `2'), s32le,
 	SPK_MIC_PERIOD_US, 0, SPK_PLAYBACK_CORE,
 	48000, 48000, 48000)
@@ -237,7 +238,8 @@ ifdef(`WAVES', `ifdef(`WAVES_SPK_ONLY', `', `define(`WAVES_HEADPHONE')')', `')
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 define(`ENDPOINT_NAME', `Headphones')
 PIPELINE_PCM_ADD(
-	ifdef(`WAVES_HEADPHONE', sof/pipe-waves-codec-playback.m4, sof/pipe-volume-playback.m4),
+	ifdef(`WAVES_HEADPHONE', sof/pipe-waves-codec-playback.m4,
+	ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4, sof/pipe-volume-playback.m4)),
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
