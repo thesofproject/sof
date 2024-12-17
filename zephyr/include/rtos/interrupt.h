@@ -30,6 +30,7 @@ static inline int interrupt_register(uint32_t irq, void(*handler)(void *arg), vo
 	return arch_irq_connect_dynamic(irq, 0, (void (*)(const void *))handler,
 					arg, 0);
 #else
+	LOG_MODULE_DECLARE(zephyr, CONFIG_SOF_LOG_LEVEL);
 	tr_err(&zephyr_tr, "Cannot register handler for IRQ %u: dynamic IRQs are disabled",
 		irq);
 	return -EOPNOTSUPP;
@@ -48,17 +49,15 @@ static inline void interrupt_unregister(uint32_t irq, const void *arg)
 
 static inline int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
-#if defined(CONFIG_LIBRARY) || defined(CONFIG_ACE) || defined(CONFIG_CAVS) || \
-	defined(CONFIG_ZEPHYR_POSIX) || (defined(CONFIG_IMX) && !defined(CONFIG_IMX8M)) || \
-	defined(CONFIG_AMD)
-	return irq;
-#else
+#ifdef CONFIG_IMX8M
 	if (cascade == irq_name_level2)
 		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL2);
 	if (cascade == irq_name_level5)
 		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL5);
 
 	return SOC_AGGREGATE_IRQ(0, irq);
+#else
+	return irq;
 #endif
 }
 
