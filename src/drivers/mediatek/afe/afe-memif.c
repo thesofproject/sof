@@ -370,6 +370,7 @@ static int memif_probe(struct dma *dma)
 		dma->chan[channel].dma = dma;
 		/* TODO need divide to UL and DL for different index */
 		dma->chan[channel].index = channel;
+		dma->chan[channel].status = COMP_STATE_INIT;
 
 		memif = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 				sizeof(struct afe_memif_dma));
