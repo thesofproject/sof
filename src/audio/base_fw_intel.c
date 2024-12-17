@@ -23,6 +23,10 @@
 
 #include <sof/lib/memory.h>
 
+#if CONFIG_UAOL_INTEL_ADSP
+#include <zephyr/drivers/uaol.h>
+#endif
+
 #include <ipc4/base_fw.h>
 #include <ipc4/alh.h>
 #include <rimage/sof/user/manifest.h>
@@ -31,6 +35,20 @@
 struct ipc4_modules_info {
 	uint32_t modules_count;
 	struct sof_man_module modules[0];
+} __packed __aligned(4);
+
+struct ipc4_uaol_link_capabilities {
+	uint32_t input_streams_supported          : 4;
+	uint32_t output_streams_supported         : 4;
+	uint32_t bidirectional_streams_supported  : 5;
+	uint32_t rsvd                             : 19;
+	uint32_t max_tx_fifo_size;
+	uint32_t max_rx_fifo_size;
+} __packed __aligned(4);
+
+struct ipc4_uaol_capabilities {
+	uint32_t link_count;
+	struct ipc4_uaol_link_capabilities link_caps[];
 } __packed __aligned(4);
 
 /*
@@ -61,7 +79,7 @@ int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
 	tlv_value_uint32_set(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
 
 	tuple = tlv_next(tuple);
-	tlv_value_uint32_set(tuple, IPC4_UAOL_SUPPORT, 0);
+	tlv_value_uint32_set(tuple, IPC4_UAOL_SUPPORT, 1);
 
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_ALH_SUPPORT_LEVEL_FW_CFG, IPC4_ALH_CAVS_1_8);
@@ -71,6 +89,41 @@ int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
 
 	return 0;
 }
+
+#if CONFIG_UAOL_INTEL_ADSP
+
+#define UAOL_DEV(node) DEVICE_DT_GET(node),
+static const struct device *uaol_devs[] = {
+	DT_FOREACH_STATUS_OKAY(intel_adsp_uaol, UAOL_DEV)
+};
+
+static void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type)
+{
+	const unsigned int dev_count = ARRAY_SIZE(uaol_devs);
+	struct uaol_capabilities dev_cap;
+	struct ipc4_uaol_capabilities *caps = (struct ipc4_uaol_capabilities *)tuple->value;
+	size_t caps_size = offsetof(struct ipc4_uaol_capabilities, link_caps[dev_count]);
+	unsigned int i;
+	int ret;
+
+	memset(caps, 0, caps_size);
+
+	caps->link_count = dev_count;
+	for (i = 0; i < dev_count; i++) {
+		ret = uaol_get_capabilities(uaol_devs[i], &dev_cap);
+		if (ret)
+			continue;
+
+		caps->link_caps[i].input_streams_supported = dev_cap.input_streams;
+		caps->link_caps[i].output_streams_supported = dev_cap.output_streams;
+		caps->link_caps[i].bidirectional_streams_supported = dev_cap.bidirectional_streams;
+		caps->link_caps[i].max_tx_fifo_size = dev_cap.max_tx_fifo_size;
+		caps->link_caps[i].max_rx_fifo_size = dev_cap.max_rx_fifo_size;
+	}
+
+	tlv_value_set(tuple, type, caps_size, caps);
+}
+#endif
 
 int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 {
@@ -98,6 +151,11 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 #ifdef CONFIG_SOC_INTEL_ACE30
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_I2S_CAPS_HW_CFG, I2S_VER_30_PTL);
+#endif
+
+#if CONFIG_UAOL_INTEL_ADSP
+	tuple = tlv_next(tuple);
+	tlv_value_set_uaol_caps(tuple, IPC4_UAOL_CAPS_HW_CFG);
 #endif
 
 	tuple = tlv_next(tuple);
@@ -375,6 +433,10 @@ int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, size_t 
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
 		type = DAI_INTEL_SSP;
+		break;
+	case ipc4_alh_uaol_stream_link_output_class:
+	case ipc4_alh_uaol_stream_link_input_class:
+		type = DAI_INTEL_UAOL;
 		break;
 	default:
 		return IPC4_INVALID_RESOURCE_ID;

@@ -140,6 +140,7 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 {
 	const struct device *dev = dai->dev;
 	const struct sof_ipc_dai_config *sof_cfg = spec_config;
+	const struct ipc4_copier_gateway_cfg *gtw_cfg = spec_config;
 	struct dai_config cfg;
 	const void *cfg_params;
 	bool is_blob;
@@ -149,11 +150,13 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	cfg.format = sof_cfg->format;
 	cfg.options = sof_cfg->flags;
 	cfg.rate = common_config->sampling_frequency;
+	cfg.channels = common_config->out_fmt->channels_count;
+	cfg.word_size = common_config->out_fmt->valid_bit_depth;
 
 	switch (common_config->type) {
 	case SOF_DAI_INTEL_SSP:
 		cfg.type = is_blob ? DAI_INTEL_SSP_NHLT : DAI_INTEL_SSP;
-		cfg_params = is_blob ? spec_config : &sof_cfg->ssp;
+		cfg_params = is_blob ? (void *)&gtw_cfg->config_data : (void *)&sof_cfg->ssp;
 		dai_set_link_hda_config(&cfg.link_config,
 					common_config, cfg_params);
 		/* Store tdm slot group index*/
@@ -161,17 +164,17 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		break;
 	case SOF_DAI_INTEL_ALH:
 		cfg.type = is_blob ? DAI_INTEL_ALH_NHLT : DAI_INTEL_ALH;
-		cfg_params = is_blob ? spec_config : &sof_cfg->alh;
+		cfg_params = is_blob ? (void *)&gtw_cfg->config_data : (void *)&sof_cfg->alh;
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		cfg.type = is_blob ? DAI_INTEL_DMIC_NHLT : DAI_INTEL_DMIC;
-		cfg_params = is_blob ? spec_config : &sof_cfg->dmic;
+		cfg_params = is_blob ? (void *)&gtw_cfg->config_data : (void *)&sof_cfg->dmic;
 		dai_set_link_hda_config(&cfg.link_config,
 					common_config, cfg_params);
 		break;
 	case SOF_DAI_INTEL_HDA:
 		cfg.type = is_blob ? DAI_INTEL_HDA_NHLT : DAI_INTEL_HDA;
-		cfg_params = is_blob ? spec_config : &sof_cfg->hda;
+		cfg_params = is_blob ? (void *)&gtw_cfg->config_data : (void *)&sof_cfg->hda;
 		break;
 	case SOF_DAI_IMX_SAI:
 		cfg.type = DAI_IMX_SAI;
@@ -180,6 +183,11 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	case SOF_DAI_IMX_ESAI:
 		cfg.type = DAI_IMX_ESAI;
 		cfg_params = &sof_cfg->esai;
+		break;
+	case SOF_DAI_INTEL_UAOL:
+		cfg.type = DAI_INTEL_UAOL;
+		cfg_params = gtw_cfg;
+		dai_set_link_hda_config(&cfg.link_config, common_config, &gtw_cfg->config_data);
 		break;
 	default:
 		return -EINVAL;
