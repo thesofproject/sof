@@ -87,6 +87,7 @@ struct comp_buffer;
 #define SOF_DMA_DEV_SAI	DMA_DEV_SAI
 #define SOF_DMA_DEV_ESAI	DMA_DEV_ESAI
 #define SOF_DMA_DEV_MICFIL	DMA_DEV_MICFIL
+#define SOF_DMA_DEV_AFE_MEMIF	DMA_DEV_AFE_MEMIF
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1
@@ -105,6 +106,9 @@ enum dma_cb_status {
 	DMA_CB_STATUS_RELOAD = 0,
 	DMA_CB_STATUS_END,
 };
+
+#define SOF_DMA_CB_STATUS_RELOAD DMA_CB_STATUS_RELOAD
+#define SOF_DMA_CB_STATUS_END    DMA_CB_STATUS_END
 
 /* DMA interrupt commands */
 enum dma_irq_cmd {

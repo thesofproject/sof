@@ -99,7 +99,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 
 	comp_dbg(dev, "dai_dma_cb()");
 
-	next->status = DMA_CB_STATUS_RELOAD;
+	next->status = SOF_DMA_CB_STATUS_RELOAD;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -107,7 +107,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->direction);
 
 		/* tell DMA not to reload */
-		next->status = DMA_CB_STATUS_END;
+		next->status = SOF_DMA_CB_STATUS_END;
 	}
 
 	/* is our pipeline handling an XRUN ? */
