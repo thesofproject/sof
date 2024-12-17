@@ -97,6 +97,9 @@ enum dma_cb_status {
 	DMA_CB_STATUS_END,
 };
 
+#define SOF_DMA_CB_STATUS_RELOAD	DMA_CB_STATUS_RELOAD
+#define SOF_DMA_CB_STATUS_END		DMA_CB_STATUS_END
+
 /* DMA interrupt commands */
 enum dma_irq_cmd {
 	DMA_IRQ_STATUS_GET = 0,
