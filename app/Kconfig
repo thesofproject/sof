@@ -1,0 +1,8 @@
+config SCHED_CPU_MASK_PIN_ONLY
+	default y if SMP
+
+config SMP_BOOT_DELAY
+	default y if SMP
+
+source "Kconfig.zephyr"
+
