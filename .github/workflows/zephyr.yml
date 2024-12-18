@@ -110,7 +110,7 @@ jobs:
           # - IPC3 default
           imx8 imx8x imx8m imx8ulp,
           # - IPC4 default
-          mtl, lnl,
+          mtl, lnl, ptl,
           # Temporary testbed for Zephyr development.
           tgl tgl-h,
         ]
