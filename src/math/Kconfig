@@ -128,9 +128,7 @@ endmenu
 # this choice covers math iir, math fir, tdfb, and eqfir, eqiir.
 choice "FILTER_SIMD_LEVEL_SELECT"
 	prompt "choose which SIMD level used for IIR/FIR/TDFB module"
-	depends on COMP_FIR
-	depends on COMP_IIR
-	depends on COMP_TDFB
+	depends on COMP_FIR || COMP_IIR || COMP_TDFB
 	default FILTER_HIFI_MAX
 
 	config FILTER_HIFI_MAX
