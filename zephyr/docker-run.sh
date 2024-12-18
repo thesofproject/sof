@@ -54,7 +54,7 @@ main()
 
 run_command()
 {
-    # zephyr-build:v0.26.6 has /opt/toolchains/zephyr-sdk-0.16.4
+    # zephyr-build:v0.27.4 has /opt/toolchains/zephyr-sdk-0.17.0
     # https://hub.docker.com/r/zephyrprojectrtos/zephyr-build/tags
     #
     # Keep this SDK version identical to the one in
@@ -63,7 +63,7 @@ run_command()
            --workdir /zep_workspace \
            $SOF_DOCKER_RUN \
            --env REAL_CC --env http_proxy --env https_proxy \
-           ghcr.io/zephyrproject-rtos/zephyr-build:v0.26.6 \
+           ghcr.io/zephyrproject-rtos/zephyr-build:v0.27.4 \
            ./sof/scripts/sudo-cwd.sh "$@"
 }
 
