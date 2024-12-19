@@ -8,4 +8,5 @@ sof_llext_build("tdfb"
 		../tdfb_hifiep.c
 		../tdfb_hifi3.c
 		../tdfb_ipc4.c
+	LIB openmodules
 )

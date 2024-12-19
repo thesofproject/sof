@@ -41,6 +41,14 @@ config LIBRARY_DEFAULT_MODULAR
 	  code has tristate Kconfig entries, they will default to "m" if this
 	  option is selected.
 
+config LIBRARY_BUILD_LIB
+	bool "Pack LLEXT modules into a library"
+	depends on LLEXT
+	help
+	  The first option to build LLEXT modules is to pack one module per
+	  file. This option enables packing of all enabled modules into a single
+	  module library.
+
 config LIBRARY_BASE_ADDRESS
 	hex "Base address for memory, dedicated to loadable modules"
 	default 0
