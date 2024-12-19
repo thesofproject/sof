@@ -5,6 +5,7 @@ if(CONFIG_DTS_CODEC_STUB)
 sof_llext_build("dts"
 	SOURCES ../dts.c
 		../dts_stub.c
+	LIB openmodules
 )
 target_include_directories(dts_llext_lib PRIVATE
 	"../../../../../third_party/include"
