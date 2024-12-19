@@ -85,7 +85,7 @@ if isempty(bf.sofctl3_fn)
 else
 	fprintf(1, 'Exporting to %s\n', bf.sofctl3_fn);
 	mkdir_check(bf.sofctl3_path);
-	alsactl_write(bf.sofctl3_fn, bp3);
+	sof_alsactl_write(bf.sofctl3_fn, bp3);
 end
 
 if isempty(bf.sofctl4_fn)
@@ -93,7 +93,7 @@ if isempty(bf.sofctl4_fn)
 else
 	fprintf(1, 'Exporting to %s\n', bf.sofctl4_fn);
 	mkdir_check(bf.sofctl4_path);
-	alsactl_write(bf.sofctl4_fn, bp4);
+	sof_alsactl_write(bf.sofctl4_fn, bp4);
 end
 
 if isempty(bf.export_note)
@@ -107,7 +107,7 @@ if isempty(bf.tplg1_fn)
 else
 	fprintf(1, 'Exporting to %s\n', bf.tplg1_fn);
 	mkdir_check(bf.tplg1_path);
-	tplg_write(bf.tplg1_fn, bp3, 'DEF_TDFB_PRIV', export_note, bf.export_howto);
+	sof_tplg_write(bf.tplg1_fn, bp3, 'DEF_TDFB_PRIV', export_note, bf.export_howto);
 end
 
 if isempty(bf.tplg2_fn)
@@ -115,7 +115,7 @@ if isempty(bf.tplg2_fn)
 else
 	fprintf(1, 'Exporting to %s\n', bf.tplg2_fn);
 	mkdir_check(bf.tplg2_path);
-	tplg2_write(bf.tplg2_fn, bp4, "tdfb_config", export_note, bf.export_howto);
+	sof_tplg2_write(bf.tplg2_fn, bp4, "tdfb_config", export_note, bf.export_howto);
 end
 
 if ~isempty(bf.ucmbin3_fn)

@@ -1,4 +1,4 @@
-function [bytes, nbytes] = get_abi(setsize, ipc_ver, type, param_id)
+function [bytes, nbytes] = sof_get_abi(setsize, ipc_ver, type, param_id)
 
 %% Return current SOF ABI header
 %

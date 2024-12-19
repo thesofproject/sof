@@ -89,12 +89,12 @@ mkdir_check(tpath1);
 mkdir_check(tpath2);
 mkdir_check(ctlpath3);
 mkdir_check(ctlpath4);
-tplg_write(tplg1_fn, blob8, "CROSSOVER");
-tplg2_write(tplg2_fn, blob8_ipc4, "crossover_config", 'Exported Control Bytes');
+sof_tplg_write(tplg1_fn, blob8, "CROSSOVER");
+sof_tplg2_write(tplg2_fn, blob8_ipc4, "crossover_config", 'Exported Control Bytes');
 sof_ucm_blob_write(blob3_fn, blob8);
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
-alsactl_write(alsa3_fn, blob8);
-alsactl_write(alsa4_fn, blob8_ipc4);
+sof_alsactl_write(alsa3_fn, blob8);
+sof_alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot Magnitude and Phase Response of each sink
 sof_crossover_plot_freq(crossover.lp, crossover.hp, cr.fs, cr.num_sinks);
