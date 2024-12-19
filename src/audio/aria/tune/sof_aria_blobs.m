@@ -20,17 +20,17 @@ function sof_aria_blobs()
 
 	blob8 = sof_aria_build_blob(0);
 	tplg2_fn = sprintf("%s/passthrough.conf", sof_tplg_aria);
-	check_create_dir(tplg2_fn);
-	tplg2_write(tplg2_fn, blob8, "aria_config", ...
-		    "Exported with script sof_aria_blobs.m" , ...
-		    "cd tools/tune/aria; octave sof_aria_blobs.m");
+	sof_check_create_dir(tplg2_fn);
+	sof_tplg2_write(tplg2_fn, blob8, "aria_config", ...
+			"Exported with script sof_aria_blobs.m" , ...
+			"cd tools/tune/aria; octave sof_aria_blobs.m");
 
 	for param = 1:3
 		blob8 = sof_aria_build_blob(param);
 		tplg2_fn = sprintf("%s/param_%d.conf", sof_tplg_aria, param);
-		tplg2_write(tplg2_fn, blob8, "aria_config", ...
-			    "Exported with script sof_aria_blobs.m" , ...
-			    "cd tools/tune/aria; octave sof_aria_blobs.m");
+		sof_tplg2_write(tplg2_fn, blob8, "aria_config", ...
+				"Exported with script sof_aria_blobs.m" , ...
+				"cd tools/tune/aria; octave sof_aria_blobs.m");
 	end
 
 	sof_aria_paths(false);
@@ -53,7 +53,7 @@ function blob8 = sof_aria_build_blob(param_values)
 	data_length = length(param_values);
 	data_size = 4 * data_length;
 	ipc_ver = 4;
-	[abi_bytes, abi_size] = get_abi(data_size, ipc_ver, blob_type, blob_param_id);
+	[abi_bytes, abi_size] = sof_get_abi(data_size, ipc_ver, blob_type, blob_param_id);
 	blob_size = data_size + abi_size;
 	blob8 = uint8(zeros(1, blob_size));
 	blob8(1:abi_size) = abi_bytes;

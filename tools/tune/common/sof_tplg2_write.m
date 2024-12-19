@@ -1,4 +1,4 @@
-function tplg2_write(fn, blob8, component, comment, howto)
+function sof_tplg2_write(fn, blob8, component, comment, howto)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %

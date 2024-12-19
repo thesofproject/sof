@@ -22,7 +22,7 @@ end
 % refer to sof/src/include/user/drc.h for the config struct.
 num_coefs = length(fieldnames(blob_struct));
 data_size = 4 * (1 + 4 + num_coefs);
-[abi_bytes, abi_size] = get_abi(data_size, ipc_ver);
+[abi_bytes, abi_size] = sof_get_abi(data_size, ipc_ver);
 
 blob_size = data_size + abi_size;
 blob8 = uint8(zeros(1, blob_size));
