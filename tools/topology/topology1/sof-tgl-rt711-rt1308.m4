@@ -150,12 +150,15 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
+ifdef(`NOHDMI4', `',
+`
 # Low Latency playback pipeline 9 on PCM 8 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
         9, 8, 2, s32le,
         1000, 0, 0,
         48000, 48000, 48000)
+')
 
 #
 # DAIs configuration
@@ -252,12 +255,15 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_8, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
+ifdef(`NOHDMI4', `',
+`
 # playback DAI is iDisp4 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         9, HDA, 3, iDisp4,
         PIPELINE_SOURCE_9, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+')
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
@@ -278,7 +284,10 @@ PCM_PLAYBACK_ADD(Speaker, 2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI 1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI 2, 6, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_8)
+ifdef(`NOHDMI4', `',
+`
 PCM_PLAYBACK_ADD(HDMI 4, 8, PIPELINE_PCM_9)
+')
 #
 # BE configurations - overrides config in ACPI if present
 #
@@ -309,7 +318,10 @@ DAI_CONFIG(HDA, 1, eval(HDMI_BE_ID_BASE + 1), iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
 DAI_CONFIG(HDA, 2, eval(HDMI_BE_ID_BASE + 2), iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
+ifdef(`NOHDMI4', `',
+`
 DAI_CONFIG(HDA, 3, eval(HDMI_BE_ID_BASE + 3), iDisp4,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 3, 48000, 2)))
+')
 
 DEBUG_END
