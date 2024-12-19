@@ -354,6 +354,7 @@ end
 % Pack and write file common function for all exports
 function sof_eq_pack_export(bm, fn, note)
 
+howto = 'cd src/audio/eq_iir/tune; octave --no-window-system sof_example_iir_eq.m';
 bp = sof_eq_iir_blob_pack(bm, 3); % IPC3
 if ~isempty(fn.bin)
 	sof_ucm_blob_write(fullfile(fn.cpath3, fn.bin), bp);
@@ -362,7 +363,7 @@ if ~isempty(fn.txt)
 	sof_alsactl_write(fullfile(fn.cpath3, fn.txt), bp);
 end
 if ~isempty(fn.tplg1)
-	sof_tplg_write(fullfile(fn.tpath1, fn.tplg1), bp, fn.priv, note);
+	sof_tplg_write(fullfile(fn.tpath1, fn.tplg1), bp, fn.priv, note, howto);
 end
 
 bp = sof_eq_iir_blob_pack(bm, 4); % IPC4
@@ -373,7 +374,7 @@ if ~isempty(fn.txt)
 	sof_alsactl_write(fullfile(fn.cpath4, fn.txt), bp);
 end
 if ~isempty(fn.tplg2)
-	sof_tplg2_write(fullfile(fn.tpath2, fn.tplg2), bp, 'iir_eq', note);
+	sof_tplg2_write(fullfile(fn.tpath2, fn.tplg2), bp, 'iir_eq', note, howto);
 end
 
 end
