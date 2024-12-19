@@ -1,4 +1,4 @@
-function check_create_dir(fn)
+function sof_check_create_dir(fn)
 
 %% Check path of filename create directory if missing
 %
