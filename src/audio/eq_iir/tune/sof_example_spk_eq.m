@@ -142,13 +142,13 @@ if eq.enable_fir
                 assign_response, ...
                 [ bq_fir ]);
         bp_fir = sof_eq_fir_blob_pack(bm_fir, 3); % IPC3
-        sof_eq_alsactl_write(fullfile(fir.cpath3, fir.txt), bp_fir);
+        sof_alsactl_write(fullfile(fir.cpath3, fir.txt), bp_fir);
         sof_ucm_blob_write(fullfile(fir.cpath3, fir.bin), bp_fir);
-	sof_eq_tplg_write(fullfile(fn.tpath1, fir.tplg1), bp_fir, fir.priv, fir.comment);
+	sof_tplg_write(fullfile(fn.tpath1, fir.tplg1), bp_fir, fir.priv, fir.comment);
         bp_fir = sof_eq_fir_blob_pack(bm_fir, 4); % IPC4
-        sof_eq_alsactl_write(fullfile(fir.cpath4, fir.txt), bp_fir);
+        sof_alsactl_write(fullfile(fir.cpath4, fir.txt), bp_fir);
         sof_ucm_blob_write(fullfile(fir.cpath4, fir.bin), bp_fir);
-	sof_eq_tplg2_write(fullfile(fir.tpath2, fir.tplg2), bp_fir, 'eq_fir', fir.comment);
+	sof_tplg2_write(fullfile(fir.tpath2, fir.tplg2), bp_fir, 'eq_fir', fir.comment);
 end
 
 %% Export IIR part
@@ -159,13 +159,13 @@ if eq.enable_iir
                 assign_response, ...
                 [ bq_iir ]);
         bp_iir = sof_eq_iir_blob_pack(bm_iir, 3); % IPC3
-        sof_eq_alsactl_write(fullfile(iir.cpath3, iir.txt), bp_iir);
+        sof_alsactl_write(fullfile(iir.cpath3, iir.txt), bp_iir);
         sof_ucm_blob_write(fullfile(iir.cpath3, iir.bin), bp_iir);
-	sof_eq_tplg_write(fullfile(fn.tpath1, iir.tplg1), bp_iir, iir.priv, iir.comment);
+	sof_tplg_write(fullfile(fn.tpath1, iir.tplg1), bp_iir, iir.priv, iir.comment);
         bp_iir = sof_eq_iir_blob_pack(bm_iir, 4); % IPC4
-        sof_eq_alsactl_write(fullfile(iir.cpath4, iir.txt), bp_iir);
+        sof_alsactl_write(fullfile(iir.cpath4, iir.txt), bp_iir);
         sof_ucm_blob_write(fullfile(iir.cpath4, iir.bin), bp_iir);
-	sof_eq_tplg2_write(fullfile(iir.tpath2, iir.tplg2), bp_iir, 'eq_iir', iir.comment);
+	sof_tplg2_write(fullfile(iir.tpath2, iir.tplg2), bp_iir, 'eq_iir', iir.comment);
 end
 
 sof_eq_paths(0);

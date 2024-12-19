@@ -89,7 +89,7 @@ blob16(nh16+1:nh16+nc16) = int16(bs.all_coefficients);
 nbytes_data = nb16 * 2;
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = sof_eq_get_abi(nbytes_data, ipc_ver);
+[abi_bytes, nbytes_abi] = sof_get_abi(nbytes_data, ipc_ver);
 
 %% Initialize uint8 array with correct size
 nbytes = nbytes_abi + nbytes_data;

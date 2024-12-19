@@ -133,11 +133,11 @@ if ~isempty(bin_fn)
 end
 
 if ~isempty(ascii_fn)
-	sof_eq_alsactl_write(ascii_fn, bp);
+	sof_alsactl_write(ascii_fn, bp);
 end
 
 if ~isempty(tplg_fn)
-	sof_eq_tplg_write(tplg_fn, bp, priv, note);
+	sof_tplg_write(tplg_fn, bp, priv, note);
 end
 
 end
