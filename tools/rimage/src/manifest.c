@@ -512,6 +512,8 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 		unsigned int j;
 
 		strncpy(name, (char *)sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
+		/* Ensure null termination */
+		name[SOF_MAN_MOD_NAME_LEN] = '\0';
 
 		for (j = 0; j < image->adsp->modules->mod_man_count; j++) {
 			if (!strncmp(name, (char *)image->adsp->modules->mod_man[j].name,
