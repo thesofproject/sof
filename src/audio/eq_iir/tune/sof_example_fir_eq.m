@@ -24,7 +24,7 @@ sof_eq_paths(1);
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-fn.bin = 'loudness.blob';
+fn.bin = 'loudness.bin';
 fn.txt = 'loudness.txt';
 fn.tplg1 = 'eq_fir_coef_loudness.m4';
 fn.tplg2 = 'loudness.conf';
@@ -55,7 +55,7 @@ sof_eq_pack_export(bm, fn, comment);
 %% -------------------
 %% Example 2: Mid boost
 %% -------------------
-fn.bin = 'mid.blob';
+fn.bin = 'mid.bin';
 fn.txt = 'mid.txt';
 fn.tplg1 = 'eq_fir_coef_mid.m4';
 fn.tplg2 = 'midboost.conf';
@@ -82,7 +82,7 @@ sof_eq_pack_export(bm, fn, comment);
 %% -------------------
 %% Example 3: Flat EQ
 %% -------------------
-fn.bin = 'flat.blob';
+fn.bin = 'flat.bin';
 fn.txt = 'flat.txt';
 fn.tplg1 = 'eq_fir_coef_flat.m4';
 fn.tplg2 = 'flat.conf';
@@ -109,7 +109,7 @@ sof_eq_pack_export(bm, fn, comment);
 %% --------------------------
 %% Example 4: Pass-through EQ
 %% --------------------------
-fn.bin = 'pass.blob';
+fn.bin = 'pass.bin';
 fn.txt = 'pass.txt';
 fn.tplg1 = 'eq_fir_coef_pass.m4';
 fn.tplg2 = 'passthrough.conf';

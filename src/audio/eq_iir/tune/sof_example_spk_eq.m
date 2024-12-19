@@ -34,11 +34,11 @@ howto = 'cd src/audio/eq_iir/tune; octave --no-window-system sof_example_spk_eq.
 
 %% File names
 fir.txt = 'spk.txt';
-fir.bin = 'spk.blob';
+fir.bin = 'spk.bin';
 fir.tplg1 = 'eq_fir_coef_spk.m4';
 fir.tplg2 = 'example_speaker.conf';
 iir.txt = 'spk.txt';
-iir.bin = 'spk.blob';
+iir.bin = 'spk.bin';
 iir.tplg1 = 'eq_iir_coef_spk.m4';
 iir.tplg2 = 'example_speaker.conf';
 

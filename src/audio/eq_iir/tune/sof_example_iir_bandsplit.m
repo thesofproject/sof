@@ -20,7 +20,7 @@ sof_eq_paths(1);
 %% --------------------------------------------------
 %% Example: Band-split 2ch to 4ch low and high bands
 %% --------------------------------------------------
-blob_fn = fullfile(cpath, 'bandsplit.blob');
+blob_fn = fullfile(cpath, 'bandsplit.bin');
 alsa_fn = fullfile(cpath, 'bandsplit.txt');
 tplg_fn = fullfile(tpath, 'eq_iir_bandsplit.m4');
 comment = 'Bandsplit, created with example_iir_bandsplit.m';
