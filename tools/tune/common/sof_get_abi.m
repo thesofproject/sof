@@ -1,8 +1,8 @@
-function [bytes, nbytes] = sof_eq_get_abi(setsize, ipc_ver, type, param_id)
+function [bytes, nbytes] = sof_get_abi(setsize, ipc_ver, type, param_id)
 
 %% Return current SOF ABI header
 %
-% [bytes, nbytes] = sof_eq_get_abi(setsize, ipc_ver, type, param_id)
+% [bytes, nbytes] = get_abi(setsize, ipc_ver, type, param_id)
 % Input
 %	setsize - size of the payload blob
 %	ipc_ver - 3 or 4, defaults to 3

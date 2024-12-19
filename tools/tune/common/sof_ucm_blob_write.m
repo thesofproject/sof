@@ -23,7 +23,7 @@ ublob8(5:8) = w32b(nb);
 ublob8(9:end) = blob8;
 
 %% Write blob
-check_create_dir(fn);
+sof_check_create_dir(fn);
 fh = fopen(fn, 'wb');
 if fh < 0
 	fprintf(1, 'Error: Could not open file %s\n', fn);

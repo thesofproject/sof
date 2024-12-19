@@ -1,4 +1,4 @@
-function tplg_write(fn, blob8, name, comment, howto)
+function sof_tplg_write(fn, blob8, name, comment, howto)
 
 if nargin < 4
 	comment = 'Exported Control Bytes';
