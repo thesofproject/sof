@@ -112,10 +112,13 @@ ifdef(`BT_OFFLOAD',
 
 # Low Latency capture pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
+ifdef(`NOJACK', `',
+`
 PIPELINE_PCM_ADD(sof/pipe-volume-switch-capture.m4,
 	2, 1, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
+')
 
 ifdef(`EXT_AMP',
 `
@@ -147,12 +150,15 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
+ifdef(`NOHDMI4', `',
+`
 # Low Latency playback pipeline 9 on PCM 8 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline with priority 0 on core 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
         9, 8, 2, s32le,
         1000, 0, 0,
         48000, 48000, 48000)
+')
 
 #
 # DAIs configuration
@@ -163,6 +169,8 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core, time_domain)
 
+ifdef(`NOJACK', `',
+`
 # playback DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
@@ -214,6 +222,7 @@ ifdef(`HEADSET_DEEP_BUFFER',
 )
 	]
 }
+')
 
 ifdef(`EXT_AMP',
 `
@@ -246,15 +255,20 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_8, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
+ifdef(`NOHDMI4', `',
+`
 # playback DAI is iDisp4 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         9, HDA, 3, iDisp4,
         PIPELINE_SOURCE_9, 2, s32le,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+')
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
+ifdef(`NOJACK', `',
+`
 PCM_PLAYBACK_ADD(Jack Out, 0, PIPELINE_PCM_30)
 ifdef(`HEADSET_DEEP_BUFFER',
 `
@@ -262,6 +276,7 @@ PCM_PLAYBACK_ADD(Jack Out DeepBuffer, 31, PIPELINE_PCM_31)
 '
 )
 PCM_CAPTURE_ADD(Jack In, 1, PIPELINE_PCM_2)
+')
 ifdef(`EXT_AMP',
 `
 PCM_PLAYBACK_ADD(Speaker, 2, PIPELINE_PCM_3)
@@ -269,19 +284,25 @@ PCM_PLAYBACK_ADD(Speaker, 2, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI 1, 5, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI 2, 6, PIPELINE_PCM_7)
 PCM_PLAYBACK_ADD(HDMI 3, 7, PIPELINE_PCM_8)
+ifdef(`NOHDMI4', `',
+`
 PCM_PLAYBACK_ADD(HDMI 4, 8, PIPELINE_PCM_9)
+')
 #
 # BE configurations - overrides config in ACPI if present
 #
 
 #ALH dai index = ((link_id << 8) | PDI id)
 #ALH SDW0 Pin2 (ID: 0)
+ifdef(`NOJACK', `',
+`
 DAI_CONFIG(ALH, 2, 0, SDW0-Playback,
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 2, 48000, 2)))
 
 #ALH SDW0 Pin3 (ID: 1)
 DAI_CONFIG(ALH, 3, 1, SDW0-Capture,
 	ALH_CONFIG(ALH_CONFIG_DATA(ALH, 3, 48000, 2)))
+')
 
 ifdef(`EXT_AMP',
 `
@@ -297,7 +318,10 @@ DAI_CONFIG(HDA, 1, eval(HDMI_BE_ID_BASE + 1), iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 1, 48000, 2)))
 DAI_CONFIG(HDA, 2, eval(HDMI_BE_ID_BASE + 2), iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 2, 48000, 2)))
+ifdef(`NOHDMI4', `',
+`
 DAI_CONFIG(HDA, 3, eval(HDMI_BE_ID_BASE + 3), iDisp4,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, 3, 48000, 2)))
+')
 
 DEBUG_END
