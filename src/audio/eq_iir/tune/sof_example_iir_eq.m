@@ -24,7 +24,7 @@ sof_eq_paths(1);
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-fn.bin = 'loudness.blob';
+fn.bin = 'loudness.bin';
 fn.txt = 'loudness.txt';
 fn.tplg1 = 'eq_iir_coef_loudness.m4';
 fn.tplg2 = 'loudness.conf';
@@ -55,7 +55,7 @@ sof_eq_pack_export(bm, fn, comment)
 %% ------------------------------------
 %% Example 2: Bass boost
 %% ------------------------------------
-fn.bin = 'bassboost.blob';
+fn.bin = 'bassboost.bin';
 fn.txt = 'bassboost.txt';
 fn.tplg1 = 'eq_iir_coef_bassboost.m4';
 fn.tplg2 = 'bassboost.conf';
@@ -82,7 +82,7 @@ sof_eq_pack_export(bm, fn, comment)
 %% ------------------------------------
 %% Example 3: Band-pass
 %% ------------------------------------
-fn.bin = 'bandpass.blob';
+fn.bin = 'bandpass.bin';
 fn.txt = 'bandpass.txt';
 fn.tplg1 = 'eq_iir_coef_bandpass.m4';
 fn.tplg2 = 'bandpass.conf';
@@ -109,7 +109,7 @@ sof_eq_pack_export(bm, fn, comment)
 %% -------------------
 %% Example 4: Flat IIR
 %% -------------------
-fn.bin = 'flat.blob';
+fn.bin = 'flat.bin';
 fn.txt = 'flat.txt';
 fn.tplg1 = 'eq_iir_coef_flat.m4';
 fn.tplg2 = 'flat.conf';
@@ -136,7 +136,7 @@ sof_eq_pack_export(bm, fn, comment)
 %% ---------------------------
 %% Example 5: Pass-through IIR
 %% ---------------------------
-fn.bin = 'pass.blob';
+fn.bin = 'pass.bin';
 fn.txt = 'pass.txt';
 fn.tplg1 = 'eq_iir_coef_pass.m4';
 fn.tplg2 = 'passthrough.conf';
@@ -180,7 +180,7 @@ for i = 1:length(fs_list)
 			fn.txt = sprintf('highpass_%dhz_%ddb_%dkhz.txt', fc, g, fsk);
 			comment = sprintf('%d Hz second order high-pass, gain %d dB, created with sof_example_iir_eq.m', ...
 					  fc, g);
-			fn.bin = sprintf('highpass_%dhz_%ddb_%dkhz.blob', fc, g, fsk);
+			fn.bin = sprintf('highpass_%dhz_%ddb_%dkhz.bin', fc, g, fsk);
 
 			%% Design IIR high-pass
 			eq_hp = hp_iir_eq(fs, fc, g);
@@ -207,7 +207,7 @@ end
 %% Example 7: Merge previous desigs to single blob for use as presets
 %% ------------------------------------------------------------------
 
-fn.bin = 'bundle.blob';
+fn.bin = 'bundle.bin';
 fn.txt = 'bundle.txt';
 fn.tplg1 = 'eq_iir_bundle.m4';
 fn.tplg2 = 'bundle.conf';
