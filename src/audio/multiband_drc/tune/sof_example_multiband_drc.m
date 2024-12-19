@@ -39,9 +39,9 @@ sof_tools = '../../../../tools';
 tplg1_fn = sprintf("%s/topology/topology1/m4/multiband_drc_coef_%s.m4", sof_tools, prm.name); % Control Bytes File
 tplg2_fn = sprintf("%s/topology/topology2/include/components/multiband_drc/%s.conf", sof_tools, prm.name); % Control Bytes File
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf("%s/ctl/ipc3/multiband_drc/%s.blob", sof_tools, prm.name); % Blob binary file
+blob3_fn = sprintf("%s/ctl/ipc3/multiband_drc/%s.bin", sof_tools, prm.name); % Blob binary file
 alsa3_fn = sprintf("%s/ctl/ipc3/multiband_drc/%s.txt", sof_tools, prm.name); % ALSA CSV format file
-blob4_fn = sprintf("%s/ctl/ipc4/multiband_drc/%s.blob", sof_tools, prm.name); % Blob binary file
+blob4_fn = sprintf("%s/ctl/ipc4/multiband_drc/%s.bin", sof_tools, prm.name); % Blob binary file
 alsa4_fn = sprintf("%s/ctl/ipc4/multiband_drc/%s.txt", sof_tools, prm.name); % ALSA CSV format file
 
 endian = "little";
