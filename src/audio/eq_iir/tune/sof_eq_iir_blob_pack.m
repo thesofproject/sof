@@ -43,7 +43,7 @@ nbytes_coef = length(bs.all_coefficients)*4;
 nbytes_data = nbytes_head + nbytes_coef;
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = sof_eq_get_abi(nbytes_data, ipc_ver);
+[abi_bytes, nbytes_abi] = sof_get_abi(nbytes_data, ipc_ver);
 
 %% Initialize correct size uint8 array
 nbytes = nbytes_abi + nbytes_data;

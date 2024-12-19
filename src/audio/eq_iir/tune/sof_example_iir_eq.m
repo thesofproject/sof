@@ -359,10 +359,10 @@ if ~isempty(fn.bin)
 	sof_ucm_blob_write(fullfile(fn.cpath3, fn.bin), bp);
 end
 if ~isempty(fn.txt)
-	sof_eq_alsactl_write(fullfile(fn.cpath3, fn.txt), bp);
+	sof_alsactl_write(fullfile(fn.cpath3, fn.txt), bp);
 end
 if ~isempty(fn.tplg1)
-	sof_eq_tplg_write(fullfile(fn.tpath1, fn.tplg1), bp, fn.priv, note);
+	sof_tplg_write(fullfile(fn.tpath1, fn.tplg1), bp, fn.priv, note);
 end
 
 bp = sof_eq_iir_blob_pack(bm, 4); % IPC4
@@ -370,10 +370,10 @@ if ~isempty(fn.bin)
 	sof_ucm_blob_write(fullfile(fn.cpath4, fn.bin), bp);
 end
 if ~isempty(fn.txt)
-	sof_eq_alsactl_write(fullfile(fn.cpath4, fn.txt), bp);
+	sof_alsactl_write(fullfile(fn.cpath4, fn.txt), bp);
 end
 if ~isempty(fn.tplg2)
-	sof_eq_tplg2_write(fullfile(fn.tpath2, fn.tplg2), bp, 'iir_eq', note);
+	sof_tplg2_write(fullfile(fn.tpath2, fn.tplg2), bp, 'iir_eq', note);
 end
 
 end
