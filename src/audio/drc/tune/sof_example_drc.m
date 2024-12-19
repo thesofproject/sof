@@ -82,12 +82,12 @@ blob8_ipc4 = sof_drc_build_blob(config, endian, 4);
 my_name = mfilename();
 drc_note = sprintf("Exported with script %s.m", my_name);
 drc_howto = sprintf("cd tools/tune/drc; octave --no-window-system %s.m", my_name);
-tplg_write(tplg1_fn, blob8, "DRC", drc_note, drc_howto);
-tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", drc_note, drc_howto);
+sof_tplg_write(tplg1_fn, blob8, "DRC", drc_note, drc_howto);
+sof_tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", drc_note, drc_howto);
 sof_ucm_blob_write(blob3_fn, blob8);
-alsactl_write(alsa3_fn, blob8);
+sof_alsactl_write(alsa3_fn, blob8);
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
-alsactl_write(alsa4_fn, blob8_ipc4);
+sof_alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot x-y response in dB
 sof_drc_plot_db_curve(coefs);

@@ -143,7 +143,7 @@ end
 nbytes_data = nb16 * 2;
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = get_abi(nbytes_data, ipc_version);
+[abi_bytes, nbytes_abi] = sof_get_abi(nbytes_data, ipc_version);
 
 %% Initialize uint8 array with correct size
 nbytes = nbytes_abi + nbytes_data;

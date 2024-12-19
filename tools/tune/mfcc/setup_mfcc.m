@@ -70,7 +70,7 @@ sh32 = [0 -8 -16 -24];
 sh16 = [0 -8];
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = get_abi(nbytes_data, cfg.ipc_ver);
+[abi_bytes, nbytes_abi] = sof_get_abi(nbytes_data, cfg.ipc_ver);
 
 %% Initialize correct size uint8 array
 nbytes = nbytes_abi + nbytes_data;
@@ -120,13 +120,13 @@ v = cfg.use_energy;                              [b8, j] = add_w8b(v, b8, j); % 
 %% Export
 switch cfg.tplg_ver
        case 1
-	       tplg_write(cfg.tplg_fn, b8, "DEF_MFCC_PRIV", ...
-			  "Exported with script setup_mfcc.m", ...
-			  "cd tools/tune/mfcc; octave setup_mfcc.m");
+	       sof_tplg_write(cfg.tplg_fn, b8, "DEF_MFCC_PRIV", ...
+			      "Exported with script setup_mfcc.m", ...
+			      "cd tools/tune/mfcc; octave setup_mfcc.m");
        case 2
-	       tplg2_write(cfg.tplg_fn, b8, "mfcc_config", ...
-			   "Exported MFCC configuration", ...
-			   "cd tools/tune/mfcc; octave setup_mfcc.m");
+	       sof_tplg2_write(cfg.tplg_fn, b8, "mfcc_config", ...
+			       "Exported MFCC configuration", ...
+			       "cd tools/tune/mfcc; octave setup_mfcc.m");
        otherwise
 	       error("Illegal cfg.tplg_ver, use 1 for topology v1 or 2 topology v2.");
 end

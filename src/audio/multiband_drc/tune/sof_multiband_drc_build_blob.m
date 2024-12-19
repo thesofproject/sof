@@ -28,7 +28,7 @@ deemp_data_num = numel(deemp_coefs);
 crossover_data_num = numel(crossover_coefs);
 drc_data_num = numel(fieldnames(drc_coefs(1))) * length(drc_coefs);
 data_size = 4 * (1 + 1 + 1 + 8 + emp_data_num + deemp_data_num + crossover_data_num + drc_data_num);
-[abi_bytes, abi_size] = get_abi(data_size, ipc_ver);
+[abi_bytes, abi_size] = sof_get_abi(data_size, ipc_ver);
 
 blob_size = data_size + abi_size;
 blob8 = uint8(zeros(1, blob_size));
