@@ -49,9 +49,9 @@ str_pid = get_str_pid(cr);
 tplg1_fn = sprintf('%s/coef_%s_%s_%s.m4', tpath1, str_way, str_freq, str_pid); % Control Bytes File
 tplg2_fn = sprintf('%s/coef_%s_%s_%s.conf', tpath2, str_way, str_freq, str_pid);
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf('%s/coef_%dway.blob', ctlpath3, cr.num_sinks); % Blob binary file
+blob3_fn = sprintf('%s/coef_%dway.bin', ctlpath3, cr.num_sinks); % Blob binary file
 alsa3_fn = sprintf('%s/coef_%dway.txt', ctlpath3, cr.num_sinks); % ALSA CSV format file
-blob4_fn = sprintf('%s/coef_%dway.blob', ctlpath4, cr.num_sinks); % Blob binary file
+blob4_fn = sprintf('%s/coef_%dway.bin', ctlpath4, cr.num_sinks); % Blob binary file
 alsa4_fn = sprintf('%s/coef_%dway.txt', ctlpath4, cr.num_sinks); % ALSA CSV format file
 
 % This array is an example on how to assign a buffer from pipeline 1 to output 0,
