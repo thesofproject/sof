@@ -37,9 +37,9 @@ sof_ctl = fullfile(sof_tools, 'ctl');
 tplg1_fn = sprintf("%s/topology1/m4/dcblock_coef_%s.m4", sof_tplg, prm.id); % Control Bytes File
 tplg2_fn = sprintf("%s/topology2/include/components/dcblock/%s.conf", sof_tplg, prm.id);
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf("%s/ipc3/dcblock/coef_%s.blob", sof_ctl, prm.id); % Blob binary file
+blob3_fn = sprintf("%s/ipc3/dcblock/coef_%s.bin", sof_ctl, prm.id); % Blob binary file
 alsa3_fn = sprintf("%s/ipc3/dcblock/coef_%s.txt", sof_ctl, prm.id); % ALSA CSV format file
-blob4_fn = sprintf("%s/ipc4/dcblock/coef_%s.blob", sof_ctl, prm.id); % Blob binary file
+blob4_fn = sprintf("%s/ipc4/dcblock/coef_%s.bin", sof_ctl, prm.id); % Blob binary file
 alsa4_fn = sprintf("%s/ipc4/dcblock/coef_%s.txt", sof_ctl, prm.id); % ALSA CSV format file
 
 endian = "little";
