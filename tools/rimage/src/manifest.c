@@ -502,6 +502,7 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 
 	if (!n_mod || n_mod * sizeof(*sof_mod) != section.header.data.size) {
 		fprintf(stderr, "error: Invalid module manifests in '.module' section.\n");
+		elf_section_free(&section);
 		return -ENOEXEC;
 	}
 
@@ -532,6 +533,7 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 
 		if (j == image->adsp->modules->mod_man_count) {
 			fprintf(stderr, "error: cannot find %s in manifest.\n", name);
+			elf_section_free(&section);
 			return -ENOEXEC;
 		}
 	}
