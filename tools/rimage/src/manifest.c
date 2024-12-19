@@ -502,6 +502,7 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 
 	if (!n_mod || n_mod * sizeof(*sof_mod) != section.header.data.size) {
 		fprintf(stderr, "error: Invalid module manifests in '.module' section.\n");
+		elf_section_free(&section);
 		return -ENOEXEC;
 	}
 
@@ -512,6 +513,8 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 		unsigned int j;
 
 		strncpy(name, (char *)sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
+		/* Ensure null termination */
+		name[SOF_MAN_MOD_NAME_LEN] = '\0';
 
 		for (j = 0; j < image->adsp->modules->mod_man_count; j++) {
 			if (!strncmp(name, (char *)image->adsp->modules->mod_man[j].name,
@@ -530,6 +533,7 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 
 		if (j == image->adsp->modules->mod_man_count) {
 			fprintf(stderr, "error: cannot find %s in manifest.\n", name);
+			elf_section_free(&section);
 			return -ENOEXEC;
 		}
 	}
