@@ -29,6 +29,7 @@
 SOF_DEFINE_REG_UUID(memif);
 
 DECLARE_TR_CTX(memif_tr, SOF_UUID(memif_uuid), LOG_LEVEL_INFO);
+LOG_MODULE_REGISTER(mtk_afe, CONFIG_SOF_LOG_LEVEL);
 
 struct afe_memif_dma {
 	int direction; /* 1 downlink, 0 uplink */
