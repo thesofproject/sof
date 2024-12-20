@@ -104,6 +104,23 @@ extra_platform_configs = {
 		"rmb_LX7_HiFi5_PROD",
 		RIMAGE_KEY = "key param ignored by acp_6_0"
 	),
+	# MediaTek platforms
+	# (move to platform_configs_all on next Zephyr SDK release after 0.17.0)
+	"mt8195" : PlatformConfig(
+		"mtk", "mt8195/mt8195/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"hifi4_8195_PROD",
+	),
+	"mt8186" : PlatformConfig(
+		"mtk", "mt8186/mt8186/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"hifi5_7stg_I64D128",
+	),
+	"mt8188" : PlatformConfig(
+		"mtk", "mt8188/mt8188/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"hifi5_7stg_I64D128",
+	),
 }
 
 # These can all be built out of the box. --all builds all these.
@@ -1173,7 +1190,7 @@ RI_INFO_UNSUPPORTED = []
 
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp', 'imx95']
 RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0']
-RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
+RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195']
 
 # For temporary workarounds. Unlike _UNSUPPORTED above, the platforms below will print a warning.
 RI_INFO_FIXME = [ ]

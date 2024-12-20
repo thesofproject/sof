@@ -105,6 +105,15 @@ __section(".heap_mem") static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[H
 #define HEAPMEM_SIZE (256 * 1024)
 char __aligned(8) heapmem[HEAPMEM_SIZE];
 
+#elif defined(CONFIG_SOC_FAMILY_MTK)
+
+extern char _mtk_adsp_sram_end;
+#define SRAM_START DT_REG_ADDR(DT_NODELABEL(sram0))
+#define SRAM_SIZE  DT_REG_SIZE(DT_NODELABEL(sram0))
+#define SRAM_END   (SRAM_START + SRAM_SIZE)
+#define heapmem ((uint8_t *)ALIGN_UP((uintptr_t)&_mtk_adsp_sram_end, PLATFORM_DCACHE_ALIGN))
+#define HEAPMEM_SIZE ((uint8_t *)SRAM_END - heapmem)
+
 #else
 
 extern char _end[], _heap_sentry[];
