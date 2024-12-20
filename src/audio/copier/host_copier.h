@@ -48,7 +48,11 @@ struct hc_buf {
  */
 struct host_data {
 	/* local DMA config */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	struct sof_dma *dma;
+#else
 	struct dma *dma;
+#endif
 	struct dma_chan_data *chan;
 	struct dma_sg_config config;
 #ifdef __ZEPHYR__

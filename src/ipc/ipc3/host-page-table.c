@@ -85,7 +85,7 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 /*
  * Copy the audio buffer page tables from the host to the DSP max of 4K.
  */
-static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
+static int ipc_get_page_descriptors(struct sof_dma *dmac, uint8_t *page_table,
 				    struct sof_ipc_host_buffer *ring)
 {
 	struct dma_config cfg;
