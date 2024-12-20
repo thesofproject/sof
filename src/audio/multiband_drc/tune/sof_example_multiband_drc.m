@@ -39,9 +39,9 @@ sof_tools = '../../../../tools';
 tplg1_fn = sprintf("%s/topology/topology1/m4/multiband_drc_coef_%s.m4", sof_tools, prm.name); % Control Bytes File
 tplg2_fn = sprintf("%s/topology/topology2/include/components/multiband_drc/%s.conf", sof_tools, prm.name); % Control Bytes File
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf("%s/ctl/ipc3/multiband_drc/%s.blob", sof_tools, prm.name); % Blob binary file
+blob3_fn = sprintf("%s/ctl/ipc3/multiband_drc/%s.bin", sof_tools, prm.name); % Blob binary file
 alsa3_fn = sprintf("%s/ctl/ipc3/multiband_drc/%s.txt", sof_tools, prm.name); % ALSA CSV format file
-blob4_fn = sprintf("%s/ctl/ipc4/multiband_drc/%s.blob", sof_tools, prm.name); % Blob binary file
+blob4_fn = sprintf("%s/ctl/ipc4/multiband_drc/%s.bin", sof_tools, prm.name); % Blob binary file
 alsa4_fn = sprintf("%s/ctl/ipc4/multiband_drc/%s.txt", sof_tools, prm.name); % ALSA CSV format file
 
 endian = "little";
@@ -117,12 +117,12 @@ blob8_ipc4 = sof_multiband_drc_build_blob(num_bands, enable_emp_deemp, emp_coefs
 					  deemp_coefs, crossover_coefs, drc_coefs, ...
 					  endian, 4);
 
-tplg_write(tplg1_fn, blob8, "MULTIBAND_DRC");
-tplg2_write(tplg2_fn, blob8_ipc4, "multiband_drc_config", "Exported with script sof_example_multiband_drc.m");
+sof_tplg_write(tplg1_fn, blob8, "MULTIBAND_DRC");
+sof_tplg2_write(tplg2_fn, blob8_ipc4, "multiband_drc_config", "Exported with script sof_example_multiband_drc.m");
 sof_ucm_blob_write(blob3_fn, blob8);
-alsactl_write(alsa3_fn, blob8);
+sof_alsactl_write(alsa3_fn, blob8);
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
-alsactl_write(alsa4_fn, blob8_ipc4);
+sof_alsactl_write(alsa4_fn, blob8_ipc4);
 
 sof_multiband_drc_paths(false);
 

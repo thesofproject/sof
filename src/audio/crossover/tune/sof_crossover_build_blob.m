@@ -1,4 +1,4 @@
-function blob8 = crossover_build_blob(blob_struct, endian, ipc_ver)
+function blob8 = sof_crossover_build_blob(blob_struct, endian, ipc_ver)
 
 if nargin < 2
         endian = 'little';
@@ -21,7 +21,7 @@ end
 %% Build Blob
 % refer to sof/src/include/user/crossover.h for the config struct.
 data_size = 4 * (2 + 4 + 4 + numel(blob_struct.all_coef));
-[abi_bytes, abi_size] = get_abi(data_size, ipc_ver);
+[abi_bytes, abi_size] = sof_get_abi(data_size, ipc_ver);
 
 blob_size = data_size + abi_size;
 blob8 = uint8(zeros(1, blob_size));

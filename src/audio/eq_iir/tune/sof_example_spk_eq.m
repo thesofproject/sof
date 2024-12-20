@@ -30,14 +30,15 @@ iir.priv = 'DEF_EQIIR_PRIV';
 fir.priv = 'DEF_EQFIR_PRIV';
 iir.comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
 fir.comment = 'Speaker FIR+IIR EQ created with example_spk_eq.m';
+howto = 'cd src/audio/eq_iir/tune; octave --no-window-system sof_example_spk_eq.m';
 
 %% File names
 fir.txt = 'spk.txt';
-fir.bin = 'spk.blob';
+fir.bin = 'spk.bin';
 fir.tplg1 = 'eq_fir_coef_spk.m4';
 fir.tplg2 = 'example_speaker.conf';
 iir.txt = 'spk.txt';
-iir.bin = 'spk.blob';
+iir.bin = 'spk.bin';
 iir.tplg1 = 'eq_iir_coef_spk.m4';
 iir.tplg2 = 'example_speaker.conf';
 
@@ -142,13 +143,13 @@ if eq.enable_fir
                 assign_response, ...
                 [ bq_fir ]);
         bp_fir = sof_eq_fir_blob_pack(bm_fir, 3); % IPC3
-        sof_eq_alsactl_write(fullfile(fir.cpath3, fir.txt), bp_fir);
+        sof_alsactl_write(fullfile(fir.cpath3, fir.txt), bp_fir);
         sof_ucm_blob_write(fullfile(fir.cpath3, fir.bin), bp_fir);
-	sof_eq_tplg_write(fullfile(fn.tpath1, fir.tplg1), bp_fir, fir.priv, fir.comment);
+	sof_tplg_write(fullfile(fn.tpath1, fir.tplg1), bp_fir, fir.priv, fir.comment, howto);
         bp_fir = sof_eq_fir_blob_pack(bm_fir, 4); % IPC4
-        sof_eq_alsactl_write(fullfile(fir.cpath4, fir.txt), bp_fir);
+        sof_alsactl_write(fullfile(fir.cpath4, fir.txt), bp_fir);
         sof_ucm_blob_write(fullfile(fir.cpath4, fir.bin), bp_fir);
-	sof_eq_tplg2_write(fullfile(fir.tpath2, fir.tplg2), bp_fir, 'eq_fir', fir.comment);
+	sof_tplg2_write(fullfile(fir.tpath2, fir.tplg2), bp_fir, 'eq_fir', fir.comment, howto);
 end
 
 %% Export IIR part
@@ -159,13 +160,13 @@ if eq.enable_iir
                 assign_response, ...
                 [ bq_iir ]);
         bp_iir = sof_eq_iir_blob_pack(bm_iir, 3); % IPC3
-        sof_eq_alsactl_write(fullfile(iir.cpath3, iir.txt), bp_iir);
+        sof_alsactl_write(fullfile(iir.cpath3, iir.txt), bp_iir);
         sof_ucm_blob_write(fullfile(iir.cpath3, iir.bin), bp_iir);
-	sof_eq_tplg_write(fullfile(fn.tpath1, iir.tplg1), bp_iir, iir.priv, iir.comment);
+	sof_tplg_write(fullfile(fn.tpath1, iir.tplg1), bp_iir, iir.priv, iir.comment, howto);
         bp_iir = sof_eq_iir_blob_pack(bm_iir, 4); % IPC4
-        sof_eq_alsactl_write(fullfile(iir.cpath4, iir.txt), bp_iir);
+        sof_alsactl_write(fullfile(iir.cpath4, iir.txt), bp_iir);
         sof_ucm_blob_write(fullfile(iir.cpath4, iir.bin), bp_iir);
-	sof_eq_tplg2_write(fullfile(iir.tpath2, iir.tplg2), bp_iir, 'eq_iir', iir.comment);
+	sof_tplg2_write(fullfile(iir.tpath2, iir.tplg2), bp_iir, 'eq_iir', iir.comment, howto);
 end
 
 sof_eq_paths(0);

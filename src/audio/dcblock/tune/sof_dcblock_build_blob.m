@@ -27,7 +27,7 @@ R_coeffs = int32(R_coeffs * bitshift(1, qy_R) + 0.5);
 
 %% Build Blob
 data_size = (num_of_coeffs)*4;
-[abi_bytes, abi_size] = get_abi(data_size, ipc_ver);
+[abi_bytes, abi_size] = sof_get_abi(data_size, ipc_ver);
 
 blob_size = data_size + abi_size;
 blob8 = uint8(zeros(1, blob_size));

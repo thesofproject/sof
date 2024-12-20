@@ -1,4 +1,4 @@
-function blob_write(fn, blob8)
+function sof_blob_write(fn, blob8)
 
 
 %% Write blob
