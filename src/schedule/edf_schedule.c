@@ -11,6 +11,7 @@
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <rtos/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>
@@ -33,7 +34,7 @@ struct edf_schedule_data {
 	int irq;
 };
 
-static const struct scheduler_ops schedule_edf_ops;
+__cold_rodata static const struct scheduler_ops schedule_edf_ops;
 
 static int schedule_edf_task_complete(void *data, struct task *task);
 static int schedule_edf_task_running(void *data, struct task *task);

@@ -21,6 +21,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/math/numbers.h>
 #include <sof/tlv.h>
@@ -131,14 +132,14 @@ static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(
 /*
  * Global IPC Operations.
  */
-static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
+__cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
 
 	return ipc_pipeline_new(ipc, (ipc_pipe_new *)ipc4);
 }
 
-static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
+__cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_pipeline_delete *pipe;
 	struct ipc *ipc = ipc_get();
@@ -149,7 +150,7 @@ static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 	return ipc_pipeline_free(ipc, pipe->primary.r.instance_id);
 }
 
-static int ipc4_comp_params(struct comp_dev *current,
+__cold static int ipc4_comp_params(struct comp_dev *current,
 			    struct comp_buffer *calling_buf,
 			    struct pipeline_walk_context *ctx, int dir)
 {
@@ -171,7 +172,7 @@ static int ipc4_comp_params(struct comp_dev *current,
 	return pipeline_for_each_comp(current, ctx, dir);
 }
 
-static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host)
+__cold static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host)
 {
 	struct sof_ipc_pcm_params hw_params = {{ 0 }};
 	struct pipeline_data data = {
@@ -189,7 +190,7 @@ static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host)
 	return param_ctx.comp_func(host, NULL, &param_ctx, host->direction);
 }
 
-static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
+__cold static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 {
 	int err, reset_err;
 
@@ -229,7 +230,7 @@ error:
 	return err;
 }
 
-static bool is_any_ppl_active(void)
+__cold static bool is_any_ppl_active(void)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -246,7 +247,7 @@ static bool is_any_ppl_active(void)
 	return false;
 }
 
-static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
+__cold static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
 {
 	struct ipc_comp_dev *host_dev;
 	struct ipc *ipc = ipc_get();
@@ -315,7 +316,7 @@ static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
  *                                      /
  */
 
-int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
+__cold int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 {
 	struct ipc_comp_dev *host = NULL;
 	struct ipc *ipc = ipc_get();
@@ -404,7 +405,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 	return ret;
 }
 
-int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *delayed)
+__cold int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *delayed)
 {
 	struct ipc_comp_dev *host;
 	int status;
@@ -496,7 +497,7 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 	return ret;
 }
 
-static void ipc_compound_pre_start(int msg_id)
+__cold static void ipc_compound_pre_start(int msg_id)
 {
 	/* ipc thread will wait for all scheduled tasks to be complete
 	 * Use a reference count to check status of these tasks.
@@ -504,7 +505,7 @@ static void ipc_compound_pre_start(int msg_id)
 	atomic_add(&msg_data.delayed_reply, 1);
 }
 
-static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
+__cold static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 {
 	if (ret) {
 		ipc_cmd_err(&ipc_tr, "failed to process msg %d status %d", msg_id, ret);
@@ -517,7 +518,7 @@ static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 		atomic_sub(&msg_data.delayed_reply, 1);
 }
 
-static void ipc_compound_msg_done(uint32_t msg_id, int error)
+__cold static void ipc_compound_msg_done(uint32_t msg_id, int error)
 {
 	if (!atomic_read(&msg_data.delayed_reply)) {
 		ipc_cmd_err(&ipc_tr, "unexpected delayed reply");
@@ -544,7 +545,7 @@ static int ipc_wait_for_compound_msg(void)
 	return IPC4_SUCCESS;
 }
 #else
-static int ipc_wait_for_compound_msg(void)
+__cold static int ipc_wait_for_compound_msg(void)
 {
 	int try_count = 30;
 
@@ -562,7 +563,7 @@ static int ipc_wait_for_compound_msg(void)
 }
 #endif
 
-const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper(void)
+__cold const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper(void)
 {
 	const struct ipc4_pipeline_set_state_data *ppl_data;
 
@@ -571,7 +572,7 @@ const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper(void)
 	return ppl_data;
 }
 
-static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
+__cold static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 {
 	const struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
@@ -700,7 +701,7 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 }
 
 #if CONFIG_LIBRARY_MANAGER
-static int ipc4_load_library(struct ipc4_message_request *ipc4)
+__cold static int ipc4_load_library(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_load_library library;
 	int ret;
@@ -716,7 +717,7 @@ static int ipc4_load_library(struct ipc4_message_request *ipc4)
 }
 #endif
 
-static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
+__cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 {
 #if CONFIG_COMP_CHAIN_DMA
 	struct ipc_comp_dev *cdma_comp;
@@ -771,7 +772,7 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 #endif
 }
 
-static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
+__cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 {
 #if CONFIG_IPC4_GATEWAY
 	struct ipc *ipc = ipc_get();
@@ -810,7 +811,7 @@ static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 #endif
 }
 
-static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
+__cold static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 {
 	uint32_t type;
 	int ret;
@@ -891,7 +892,7 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
  * delete module <-------> free component
  */
 
-static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_init_instance module_init;
 	struct comp_dev *dev;
@@ -921,7 +922,7 @@ static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 	return 0;
 }
 
-static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
@@ -937,7 +938,7 @@ static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
@@ -953,7 +954,7 @@ static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
+__cold static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 						   const struct comp_driver *drv,
 						   bool init_block,
 						   bool final_block,
@@ -1046,7 +1047,7 @@ static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 	return IPC4_SUCCESS;
 }
 
-static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config_reply reply;
 	struct ipc4_module_large_config config;
@@ -1085,7 +1086,7 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	}
 
 	if (!drv)
-		return IPC4_MOD_INVALID_ID;
+		return IPC4_MOD_INVALID_ID + (config.primary.r.module_id ? 7 : 8);
 
 	if (!drv->ops.get_large_config)
 		return IPC4_INVALID_REQUEST;
@@ -1146,7 +1147,7 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	return ret;
 }
 
-static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
+__cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 						  const struct comp_driver *drv,
 						  uint32_t module_id,
 						  uint32_t instance_id,
@@ -1209,7 +1210,7 @@ static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 					 data_off_size, data);
 }
 
-static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config config;
 	struct comp_dev *dev = NULL;
