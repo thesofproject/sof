@@ -20,6 +20,8 @@
 #define BUFFER_SIZE_OFFSET	1
 #define BUFFER_ABI_OFFSET	2
 
+#define BUFFER_TLV_HEADER_BYTES ((BUFFER_ABI_OFFSET) * sizeof(uint32_t))
+
 /* Definitions for multiple IPCs */
 enum sof_ipc_type {
 	SOF_IPC_TYPE_3,
@@ -103,6 +105,7 @@ static void header_init(struct ctl_data *ctl_data)
 	hdr->magic = ctl_data->magic;
 	hdr->type = ctl_data->type;
 	hdr->abi = SOF_ABI_VERSION;
+	ctl_data->buffer[BUFFER_TAG_OFFSET] = SOF_CTRL_CMD_BINARY;
 }
 
 /* Returns the number of bytes written to the control buffer */
@@ -117,7 +120,7 @@ static int read_setup(struct ctl_data *ctl_data)
 	int separator;
 	int n = 0;
 	FILE *fh;
-	int data_start_int_index = BUFFER_ABI_OFFSET;
+	int data_start_int_index = 0;
 	int data_int_index;
 
 	/* open input file */
@@ -131,7 +134,7 @@ static int read_setup(struct ctl_data *ctl_data)
 	if (ctl_data->no_abi) {
 		header_init(ctl_data);
 		abi_size = sizeof(struct sof_abi_hdr);
-		data_start_int_index += abi_size / sizeof(uint32_t);
+		data_start_int_index += (abi_size + BUFFER_TLV_HEADER_BYTES) / sizeof(uint32_t);
 	}
 
 	if (ctl_data->binary) {
@@ -163,6 +166,8 @@ read_done:
 	if (ctl_data->no_abi) {
 		hdr->size = n;
 		n += abi_size;
+		ctl_data->buffer[BUFFER_SIZE_OFFSET] = n;
+		n += BUFFER_TLV_HEADER_BYTES;
 	}
 
 	if (n > n_max) {
@@ -206,16 +211,16 @@ static void hex_data_dump(struct ctl_data *ctl_data)
 	int i;
 
 	/* calculate the dumping units */
-	n = ctl_data->buffer[BUFFER_SIZE_OFFSET] / sizeof(uint16_t);
+	n = (ctl_data->buffer[BUFFER_SIZE_OFFSET] + BUFFER_TLV_HEADER_BYTES) / sizeof(uint16_t);
 
 	/* exclude the type and size header */
-	int_offset = 2;
+	int_offset = 0;
 
 	/* exclude abi header if '-r' specified */
 	if (ctl_data->no_abi) {
-		int_offset += sizeof(struct sof_abi_hdr) /
+		int_offset += (sizeof(struct sof_abi_hdr) + BUFFER_TLV_HEADER_BYTES) /
 			      sizeof(uint32_t);
-		n -= sizeof(struct sof_abi_hdr) /
+		n -= (sizeof(struct sof_abi_hdr) + BUFFER_TLV_HEADER_BYTES) /
 		     sizeof(uint16_t);
 	}
 
@@ -242,11 +247,11 @@ static void csv_data_dump(struct ctl_data *ctl_data, FILE *fh)
 	int i;
 	int s = 0;
 
-	config = &ctl_data->buffer[BUFFER_ABI_OFFSET];
-	n = ctl_data->buffer[BUFFER_SIZE_OFFSET] / sizeof(uint32_t);
+	config = &ctl_data->buffer[0];
+	n = (ctl_data->buffer[BUFFER_SIZE_OFFSET] + BUFFER_TLV_HEADER_BYTES) / sizeof(uint32_t);
 
 	if (ctl_data->no_abi)
-		s = sizeof(struct sof_abi_hdr) / sizeof(uint32_t);
+		s = (sizeof(struct sof_abi_hdr) + BUFFER_TLV_HEADER_BYTES) / sizeof(uint32_t);
 
 	/* Print out in CSV txt formal */
 	for (i = s; i < n; i++) {
@@ -298,10 +303,7 @@ static int buffer_alloc(struct ctl_data *ctl_data)
 		return -EINVAL;
 	}
 
-	ctl_data->buffer[BUFFER_TAG_OFFSET] = SOF_CTRL_CMD_BINARY;
-
 	ctl_data->buffer_size = buffer_size;
-
 	return 0;
 }
 
@@ -429,7 +431,7 @@ static int ctl_free(struct ctl_data *ctl_data)
 	return ret;
 }
 
-static void ctl_dump(struct ctl_data *ctl_data)
+static void ctl_dump(struct ctl_data *ctl_data, size_t dump_size)
 {
 	FILE *fh;
 	int offset = 0;
@@ -445,13 +447,16 @@ static void ctl_dump(struct ctl_data *ctl_data)
 				return;
 			}
 
-			offset = BUFFER_ABI_OFFSET;
-			n = ctl_data->buffer[BUFFER_SIZE_OFFSET];
+			if (dump_size)
+				n  = dump_size;
+			else
+				n = ctl_data->buffer[BUFFER_SIZE_OFFSET] + BUFFER_TLV_HEADER_BYTES;
 
 			if (ctl_data->no_abi) {
-				offset += sizeof(struct sof_abi_hdr) /
-					  sizeof(int);
+				offset = sizeof(struct sof_abi_hdr) / sizeof(int) +
+					BUFFER_ABI_OFFSET;
 				n -= sizeof(struct sof_abi_hdr);
+				n -= BUFFER_ABI_OFFSET * sizeof(uint32_t);
 			}
 			n = fwrite(&ctl_data->buffer[offset],
 				   1, n, fh);
@@ -476,7 +481,7 @@ static void ctl_dump(struct ctl_data *ctl_data)
 static int ctl_set_get(struct ctl_data *ctl_data)
 {
 	int ret;
-	size_t n;
+	size_t read_size, ref_size;
 
 	if (!ctl_data->buffer) {
 		fprintf(stderr, "Error: No buffer for set/get!\n");
@@ -488,14 +493,22 @@ static int ctl_set_get(struct ctl_data *ctl_data)
 			ctl_data->input_file);
 		fprintf(stdout, "into device %s control %s.\n",
 			ctl_data->dev, ctl_data->cname);
-		n = read_setup(ctl_data);
-		if (n < 1) {
+		read_size = read_setup(ctl_data);
+		if (read_size < 1) {
 			fprintf(stderr, "Error: failed data read from %s.\n",
 				ctl_data->input_file);
 			return -EINVAL;
 		}
 
-		ctl_data->buffer[BUFFER_SIZE_OFFSET] = n;
+		ref_size = ctl_data->buffer[BUFFER_SIZE_OFFSET] + BUFFER_TLV_HEADER_BYTES;
+		if (read_size != ref_size) {
+			fprintf(stderr,
+				"Error: Blob TLV header size %u (plus %lu) does not match with read bytes count %zu.\n",
+				ctl_data->buffer[BUFFER_SIZE_OFFSET], BUFFER_TLV_HEADER_BYTES,
+				read_size);
+			return -EINVAL;
+		}
+
 		ret = snd_ctl_elem_tlv_write(ctl_data->ctl, ctl_data->id,
 					     ctl_data->buffer);
 		if (ret < 0) {
@@ -629,8 +642,8 @@ int main(int argc, char *argv[])
 		hdr = (struct sof_abi_hdr *)
 			&ctl_data->buffer[BUFFER_ABI_OFFSET];
 		hdr->size = ctl_data->print_abi_size;
-		ctl_data->buffer[BUFFER_SIZE_OFFSET] = ctl_data->ctrl_size;
-		ctl_dump(ctl_data);
+		ctl_data->buffer[BUFFER_SIZE_OFFSET] = ctl_data->ctrl_size + hdr->size;
+		ctl_dump(ctl_data, sizeof(struct sof_abi_hdr) + BUFFER_TLV_HEADER_BYTES);
 		buffer_free(ctl_data);
 		goto out_fd_close;
 	}
@@ -668,7 +681,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* dump the tlv buffer to a file or stdout */
-	ctl_dump(ctl_data);
+	ctl_dump(ctl_data, 0);
 
 data_free:
 	ret = ctl_free(ctl_data);
