@@ -29,6 +29,7 @@ static struct mtk_base_afe mtk_afe;
 SOF_DEFINE_REG_UUID(afedrv);
 
 DECLARE_TR_CTX(afedrv_tr, SOF_UUID(afedrv_uuid), LOG_LEVEL_INFO);
+LOG_MODULE_DECLARE(mtk_afe, CONFIG_SOF_LOG_LEVEL);
 
 static inline void afe_reg_read(struct mtk_base_afe *afe, uint32_t reg, uint32_t *value)
 {
