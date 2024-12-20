@@ -1,5 +1,7 @@
 function sof_blob_write(fn, blob8)
 
+%% Check that blob header is sane
+sof_check_blob_header(blob8);
 
 %% Write blob
 check_create_dir(fn);
