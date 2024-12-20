@@ -27,6 +27,9 @@
 #define DMA_CHAN_INVALID	SOF_DMA_CHAN_INVALID
 #define DMA_CORE_INVALID	SOF_DMA_CORE_INVALID
 
+struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
+void dma_put(struct dma *dma);
+
 enum dma_cb_status {
 	DMA_CB_STATUS_RELOAD = 0,
 	DMA_CB_STATUS_END,

@@ -479,7 +479,7 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	dir = dai_cfg->direction == SOF_IPC_STREAM_PLAYBACK ?
 		SOF_DMA_DIR_MEM_TO_DEV : SOF_DMA_DIR_DEV_TO_MEM;
 
-	dd->dma = dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, SOF_DMA_ACCESS_SHARED);
+	dd->dma = sof_dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, SOF_DMA_ACCESS_SHARED);
 	if (!dd->dma) {
 		dai_put(dd->dai);
 		comp_err(dev, "dma_get() failed to get shared access to DMA.");
@@ -591,7 +591,7 @@ void dai_common_free(struct dai_data *dd)
 		dd->chan->dev_data = NULL;
 	}
 
-	dma_put(dd->dma);
+	sof_dma_put(dd->dma);
 
 	dai_release_llp_slot(dd);
 
