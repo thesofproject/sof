@@ -966,9 +966,9 @@ const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 	uint32_t lib_idx = LIB_MANAGER_GET_LIB_ID(module_id);
 
 	if (lib_idx == 0) {
-		/* module_id 0 is used for base fw which is in entry 1 */
+		/* module_id 0 is used for base fw which is in entry 1 or 2 */
 		if (!module_id)
-			entry_index = 1;
+			entry_index = 1 + IS_ENABLED(CONFIG_COLD_STORE_EXECUTE_DRAM);
 		else
 			entry_index = module_id;
 

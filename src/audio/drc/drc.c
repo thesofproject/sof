@@ -304,7 +304,7 @@ static int drc_process(struct processing_module *mod,
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void drc_params(struct processing_module *mod)
+__cold static void drc_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_buffer *sinkb, *sourceb;
@@ -323,9 +323,9 @@ static void drc_params(struct processing_module *mod)
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
-static int drc_prepare(struct processing_module *mod,
-		       struct sof_source **sources, int num_of_sources,
-		       struct sof_sink **sinks, int num_of_sinks)
+__cold static int drc_prepare(struct processing_module *mod,
+			      struct sof_source **sources, int num_of_sources,
+			      struct sof_sink **sinks, int num_of_sinks)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
