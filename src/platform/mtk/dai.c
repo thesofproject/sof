@@ -16,6 +16,8 @@
 #define MTK_AFE_BASE 0x10b10000
 #elif defined(CONFIG_SOC_MT8195)
 #define MTK_AFE_BASE 0x10890000
+#elif defined(CONFIG_SOC_MT8196)
+#define MTK_AFE_BASE 0x1a110000
 #else
 #error Unrecognized device
 #endif
