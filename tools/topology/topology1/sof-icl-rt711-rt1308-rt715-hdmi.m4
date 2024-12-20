@@ -2,6 +2,10 @@
 # Topology for Icelake with rt711 + rt1308 (x2) + rt715.
 #
 
+# if XPROC is not defined, define with default pipe
+ifdef(`DMICPROC', , `define(DMICPROC, eq-iir-volume)')
+ifdef(`DMIC16KPROC', , `define(DMIC16KPROC, eq-iir-volume)')
+
 # Include topology builder
 include(`utils.m4')
 include(`dai.m4')
@@ -9,6 +13,7 @@ include(`pipeline.m4')
 include(`alh.m4')
 include(`muxdemux.m4')
 include(`hda.m4')
+include(`platform/intel/dmic.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -18,6 +23,9 @@ include(`sof/tokens.m4')
 
 # Include Platform specific DSP configuration
 include(`platform/intel/'PLATFORM`.m4')
+
+ifdef(`CHANNELS',`',
+`define(CHANNELS, `0')')
 
 ifdef(`UAJ_LINK',`',
 `define(UAJ_LINK, `0')')
@@ -90,6 +98,27 @@ ifdef(`NO_LOCAL_MIC', `',
 	`undefine(`HDMI_BE_ID_BASE')
 	 define(HDMI_BE_ID_BASE, `5')'
 )
+
+# Define pipeline id for intel-generic-dmic.m4
+# to generate dmic setting
+ifelse(CHANNELS, `0',
+`
+'
+,
+`
+define(DMIC_PCM_48k_ID, `10')
+define(DMIC_PCM_16k_ID, `11')
+define(DMIC_PIPELINE_48k_ID, `10')
+define(DMIC_PIPELINE_16k_ID, `11')
+
+define(DMIC_DAI_LINK_48k_ID, `4')
+define(DMIC_DAI_LINK_16k_ID, eval(DMIC_DAI_LINK_48k_ID+1))
+include(`platform/intel/intel-generic-dmic.m4')
+undefine(`HDMI_BE_ID_BASE')
+define(HDMI_BE_ID_BASE,  eval(DMIC_DAI_LINK_16k_ID+1))
+'
+)
+
 
 DEBUG_START
 
