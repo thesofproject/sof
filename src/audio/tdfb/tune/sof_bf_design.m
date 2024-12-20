@@ -374,73 +374,74 @@ if bf.do_plots
 end
 
 %% Create data for simulation 1s per angle
-
-if isempty(bf.sinerot_fn)
-	fprintf(1, 'No file for 360 degree sine source rotate specified\n');
-else
-	rotate_sound_source(bf, bf.sinerot_fn, 'sine');
-end
-
-if isempty(bf.noiserot_fn)
-	fprintf(1, 'No file for 360 degree random noise source rotate specified\n');
-else
-	rotate_sound_source(bf, bf.noiserot_fn, 'noise');
-end
-
-
-if isempty(bf.diffuse_fn)
-	fprintf(1, 'No file for diffuse noise field specified\n');
-else
-	fprintf(1, 'Creating diffuse noise field...\n');
-	fsi = 384e3; % Target interpolated rate
-	p = round(fsi / bf.fs); % Interpolation factor
-	fsi = p * bf.fs; % Recalculate high rate
-	ti = 1/fsi;  % period at higher rate
-	t_add = 10.0/bf.c; % Additional signal time for max 20m propagation
-	t0 = bf.diffuse_t + t_add; % Total sine length per angle
-	n0 = floor(bf.fs * t0);
-	nt = floor(bf.fs * bf.diffuse_t); % Number samples output per angle
-	nti = p * nt; % Number samples output per angle at high rate
-	el = 0;
-	for az_deg = -160:20:180 % Azimuth plane only noise with sources
-		az = az_deg * pi/180;
-		[nx, ny, nz] = source_xyz(bf.steer_r, az, el);
-		dt = delay_from_source(bf, nx, ny, nz);
-		dn = round(dt / ti);
-		ns = rand(n0, 1) + rand(n0, 1) - 1;
-		nsi = interp(ns, p);
-		nmi = zeros(nti, bf.mic_n);
-		for j = 1:bf.mic_n
-			nmi(:,j) = nmi(:,j) + nsi(end-dn(j)-nti+1:end-dn(j));
-		end
+if bf.create_simulation_data
+	if isempty(bf.sinerot_fn)
+		fprintf(1, 'No file for 360 degree sine source rotate specified\n');
+	else
+		rotate_sound_source(bf, bf.sinerot_fn, 'sine');
 	end
-	nm = nmi(1:p:end, :);
-	nlev = level_dbfs(nm(:,1));
-	nm = nm * 10^((bf.diffuse_lev - nlev)/20);
-	myaudiowrite(bf.diffuse_fn, nm, bf.fs);
-end
 
-if isempty(bf.random_fn)
-	fprintf(1, 'No file for random noise specified\n');
-else
-	fprintf(1, 'Creating random noise ...\n');
-	nt = bf.fs * bf.random_t;
-	rn = rand(nt, bf.num_filters) + rand(nt, bf.num_filters) - 1;
+	if isempty(bf.noiserot_fn)
+		fprintf(1, 'No file for 360 degree random noise source rotate specified\n');
+	else
+		rotate_sound_source(bf, bf.noiserot_fn, 'noise');
+	end
 
-	nlev = level_dbfs(rn(:,1));
-	rn = rn * 10^((bf.random_lev - nlev)/20);
-	myaudiowrite(bf.random_fn, rn, bf.fs);
-end
 
-if isempty(bf.mat_fn)
-	fprintf(1, 'No file for beam pattern simulation data specified.\n');
-else
-	fprintf(1, 'Saving design to %s\n', bf.mat_fn);
-	bf_copy = bf;
-	bf.fh = []; % Don't save the large figures, this avoids a warning print too
-	mkdir_check(bf.data_path);
-	save(bf.mat_fn, 'bf');
-	bf = bf_copy;
+	if isempty(bf.diffuse_fn)
+		fprintf(1, 'No file for diffuse noise field specified\n');
+	else
+		fprintf(1, 'Creating diffuse noise field...\n');
+		fsi = 384e3; % Target interpolated rate
+		p = round(fsi / bf.fs); % Interpolation factor
+		fsi = p * bf.fs; % Recalculate high rate
+		ti = 1/fsi;  % period at higher rate
+		t_add = 10.0/bf.c; % Additional signal time for max 20m propagation
+		t0 = bf.diffuse_t + t_add; % Total sine length per angle
+		n0 = floor(bf.fs * t0);
+		nt = floor(bf.fs * bf.diffuse_t); % Number samples output per angle
+		nti = p * nt; % Number samples output per angle at high rate
+		el = 0;
+		for az_deg = -160:20:180 % Azimuth plane only noise with sources
+			az = az_deg * pi/180;
+			[nx, ny, nz] = source_xyz(bf.steer_r, az, el);
+			dt = delay_from_source(bf, nx, ny, nz);
+			dn = round(dt / ti);
+			ns = rand(n0, 1) + rand(n0, 1) - 1;
+			nsi = interp(ns, p);
+			nmi = zeros(nti, bf.mic_n);
+			for j = 1:bf.mic_n
+				nmi(:,j) = nmi(:,j) + nsi(end-dn(j)-nti+1:end-dn(j));
+			end
+		end
+		nm = nmi(1:p:end, :);
+		nlev = level_dbfs(nm(:,1));
+		nm = nm * 10^((bf.diffuse_lev - nlev)/20);
+		myaudiowrite(bf.diffuse_fn, nm, bf.fs);
+	end
+
+	if isempty(bf.random_fn)
+		fprintf(1, 'No file for random noise specified\n');
+	else
+		fprintf(1, 'Creating random noise ...\n');
+		nt = bf.fs * bf.random_t;
+		rn = rand(nt, bf.num_filters) + rand(nt, bf.num_filters) - 1;
+
+		nlev = level_dbfs(rn(:,1));
+		rn = rn * 10^((bf.random_lev - nlev)/20);
+		myaudiowrite(bf.random_fn, rn, bf.fs);
+	end
+
+	if isempty(bf.mat_fn)
+		fprintf(1, 'No file for beam pattern simulation data specified.\n');
+	else
+		fprintf(1, 'Saving design to %s\n', bf.mat_fn);
+		bf_copy = bf;
+		bf.fh = []; % Don't save the large figures, this avoids a warning print too
+		mkdir_check(bf.data_path);
+		save(bf.mat_fn, 'bf');
+		bf = bf_copy;
+	end
 end
 
 fprintf(1, 'Done.\n');

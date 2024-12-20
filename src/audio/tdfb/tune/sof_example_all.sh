@@ -12,14 +12,14 @@ OCTAVE_CMD=( octave --no-window-system )
 MATLAB_CMD=( matlab -nodisplay -batch )
 
 main () {
-    if command -v matlab &> /dev/null; then
-	echo "Using Matlab"
-	CMD=( "${MATLAB_CMD[@]}" )
-	EXT=
-    elif command -v octave &> /dev/null; then
+    if command -v octave &> /dev/null; then
 	echo "Using Octave"
 	CMD=( "${OCTAVE_CMD[@]}" )
 	EXT=".m"
+    elif command -v matlab &> /dev/null; then
+	echo "Using Matlab"
+	CMD=( "${MATLAB_CMD[@]}" )
+	EXT=
     else
 	echo "Please install Matlab or Octave to run this script."
 	exit 1
