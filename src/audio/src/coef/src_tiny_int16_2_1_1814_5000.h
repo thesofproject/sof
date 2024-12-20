@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 
-static const int16_t src_int16_2_1_1814_5000_fir[32] = {
+__cold_data static const int16_t src_int16_2_1_1814_5000_fir[32] = {
 	-7,
 	63,
 	-62,

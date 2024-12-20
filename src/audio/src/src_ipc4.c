@@ -32,6 +32,7 @@
 #include <ipc/topology.h>
 #include <ipc4/base-config.h>
 #include <user/trace.h>
+#include <module/module/llext.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -179,7 +180,7 @@ out:
 	return ret;
 }
 
-int src_init(struct processing_module *mod)
+__cold int src_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct module_config *cfg = &md->cfg;
