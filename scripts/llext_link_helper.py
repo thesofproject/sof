@@ -136,10 +136,10 @@ def main():
 	# run at arbitrary memory locations. One of the use-cases is running
 	# parts of the module directly in DRAM - sacrificing performance but
 	# saving scarce SRAM. We achieve this by placing non-performance
-	# critical functions in a .text.dram ELF section. When compiling and
-	# linking such functions, an additional .literal.dram section is
-	# automatically created. Note, that for some reason the compiler also
-	# marks that section as executable.
+	# critical functions in a .cold ELF section. When compiling and linking
+	# such functions, an additional .cold.literal section is automatically
+	# created. Note, that for some reason the compiler also marks that
+	# section as executable.
 	# This script links those sections at address 0. We could hard-code
 	# section names, but so far we choose to only link .text the "original"
 	# way and all other executable sections we link at 0.
