@@ -253,14 +253,14 @@ int dmac_init(struct sof *sof);
  * For exclusive access, ret DMAC with no channels draining.
  * For shared access, ret DMAC with the least number of channels draining.
  */
-struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
+struct dma *sof_dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 
 /**
  * \brief API to release a platform DMAC.
  *
  * @param[in] dma DMAC to relese.
  */
-void dma_put(struct dma *dma);
+void sof_dma_put(struct dma *dma);
 
 #ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include "dma-legacy.h"
