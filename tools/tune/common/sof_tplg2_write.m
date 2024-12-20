@@ -13,6 +13,12 @@ if nargin < 5
 	howto = [];
 end
 
+%% Check that blob header is sane
+sof_check_blob_header(blob8);
+
+%% Drop the 8 bytes TLV header from topology embedded blop
+blob8 = blob8(9:end);
+
 %% Check that blob length is multiple of 32 bits
 n_blob = length(blob8);
 n_test = ceil(n_blob/4)*4;
