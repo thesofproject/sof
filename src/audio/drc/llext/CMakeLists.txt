@@ -8,4 +8,5 @@ sof_llext_build("drc"
 		../drc_hifi3.c
 		../drc_hifi4.c
 		../drc_math_hifi3.c
+	LIB openmodules
 )
