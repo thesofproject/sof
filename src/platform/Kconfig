@@ -231,7 +231,7 @@ config ACP_7_0
 	 Select if your target platform is acp_7_0-compatible
 
 config MT8186
-	bool "Build for MTK MT8186"
+	bool "Build for MTK MT8186 (XTOS)"
 	select XT_INTERRUPT_LEVEL_1
 	select XT_INTERRUPT_LEVEL_2
 	select XT_INTERRUPT_LEVEL_3
@@ -244,9 +244,10 @@ config MT8186
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	 Select if your target platform is mt8186-compatible
+	 Builds legacy/xtos firmware
 
 config MT8188
-	bool "Build for MTK MT8188"
+	bool "Build for MTK MT8188 (XTOS)"
 	select XT_INTERRUPT_LEVEL_1
 	select XT_INTERRUPT_LEVEL_2
 	select XT_INTERRUPT_LEVEL_3
@@ -259,9 +260,10 @@ config MT8188
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	 Select if your target platform is mt8188-compatible.
+	 Builds legacy/xtos firmware
 
 config MT8195
-	bool "Build for MTK MT8195"
+	bool "Build for MTK MT8195 (XTOS)"
 	select XT_INTERRUPT_LEVEL_1
 	select XT_INTERRUPT_LEVEL_2
 	select XT_INTERRUPT_LEVEL_3
@@ -272,6 +274,14 @@ config MT8195
 	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	  Select if your target platform is mt8195-compatible
+	  Builds legacy/xtos firmware
+
+config MTK
+	bool "Build for Mediatek (Zephyr)"
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	select HOST_PTABLE
+	help
+	  Select if your target is a Mediatek DSP.  Builds Zephyr firmware.
 
 endchoice
 
