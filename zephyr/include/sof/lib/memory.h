@@ -8,4 +8,12 @@
 
 #include <platform/lib/memory.h>
 
+#ifndef __cold
+#define __cold
+#endif
+
+#ifndef __cold_rodata
+#define __cold_rodata
+#endif
+
 #endif /* __SOF_LIB_MEMORY_H__ */
