@@ -17,6 +17,9 @@ DEFAULT_PLATFORMS=(
 # the -a option for everyone.
 SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
 
+# Waiting for container work in progress
+SUPPORTED_PLATFORMS+=( mt8365 )
+
 # Container work is in progress
 SUPPORTED_PLATFORMS+=( acp_6_3 acp_7_0 mt8196)
 

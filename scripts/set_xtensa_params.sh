@@ -140,6 +140,12 @@ case "$platform" in
 	HOST="xtensa-mt8196-elf"
 	TOOLCHAIN_VER="RI-2023.11-linux"
 	;;
+    mt8365)
+	PLATFORM="mt8365"
+	XTENSA_CORE="hifi4_Aquila_E2_PROD"
+	HOST="xtensa-mt8365-elf"
+	TOOLCHAIN_VER="RG-2018.9-linux"
+	;;
     *)
 	>&2 printf 'Unknown xtensa platform=%s\n' "$platform"
 	return 1
