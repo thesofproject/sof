@@ -38,7 +38,7 @@ C_CONTROLMIXER(Master Capture Switch, PIPELINE_ID,
 	,
 	Channel register and shift for Front Left/Right,
 	LIST(`	', KCONTROL_CHANNEL(FL, 2, 0), KCONTROL_CHANNEL(FR, 2, 1)),
-	"1", "1")
+	"0", "0")
 #
 # Volume Configuration
 #
