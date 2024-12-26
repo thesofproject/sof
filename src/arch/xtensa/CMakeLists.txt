@@ -26,6 +26,8 @@ elseif(CONFIG_MT8188)
         set(platform_folder mt8188)
 elseif(CONFIG_MT8195)
 	set(platform_folder mt8195)
+elseif(CONFIG_MT8196)
+	set(platform_folder mt8196)
 else()
 	message(FATAL_ERROR "Platform not defined, check your Kconfiguration?")
 endif()
@@ -477,7 +479,7 @@ set(UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
 list(APPEND UNSIGNED_RI rn rmb vangogh acp_6_3 acp_7_0)
 # MediaTek
-list(APPEND UNSIGNED_RI mt8186 mt8188 mt8195)
+list(APPEND UNSIGNED_RI mt8186 mt8188 mt8195 mt8196)
 
 if(${fw_name} IN_LIST UNSIGNED_RI) # mere copy
 	add_custom_command(OUTPUT reproducible.ri
