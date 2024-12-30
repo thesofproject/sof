@@ -602,6 +602,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/* All arguments are switches, error if something still remains in command line */
+	if (optind < argc) {
+		fprintf(stderr, "Error: Non-supported argument %s.\n",
+			argv[optind]);
+		return -EINVAL;
+	}
+
 	switch (ipc_type) {
 	case 3:
 		ctl_data->ipc_type = SOF_IPC_TYPE_3;
