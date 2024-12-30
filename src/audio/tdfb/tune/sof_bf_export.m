@@ -84,7 +84,6 @@ if isempty(bf.sofctl3_fn)
 	fprintf(1, 'No sof-ctl3 output file specified.\n');
 else
 	fprintf(1, 'Exporting to %s\n', bf.sofctl3_fn);
-	mkdir_check(bf.sofctl3_path);
 	sof_alsactl_write(bf.sofctl3_fn, bp3);
 end
 
@@ -92,7 +91,6 @@ if isempty(bf.sofctl4_fn)
 	fprintf(1, 'No sof-ctl4 output file specified.\n');
 else
 	fprintf(1, 'Exporting to %s\n', bf.sofctl4_fn);
-	mkdir_check(bf.sofctl4_path);
 	sof_alsactl_write(bf.sofctl4_fn, bp4);
 end
 
@@ -106,7 +104,6 @@ if isempty(bf.tplg1_fn)
 	fprintf(1, 'No topology1 output file specified.\n');
 else
 	fprintf(1, 'Exporting to %s\n', bf.tplg1_fn);
-	mkdir_check(bf.tplg1_path);
 	sof_tplg_write(bf.tplg1_fn, bp3, 'DEF_TDFB_PRIV', export_note, bf.export_howto);
 end
 
@@ -114,19 +111,16 @@ if isempty(bf.tplg2_fn)
 	fprintf(1, 'No topology2 output file specified.\n');
 else
 	fprintf(1, 'Exporting to %s\n', bf.tplg2_fn);
-	mkdir_check(bf.tplg2_path);
 	sof_tplg2_write(bf.tplg2_fn, bp4, "tdfb_config", export_note, bf.export_howto);
 end
 
 if ~isempty(bf.ucmbin3_fn)
 	fprintf(1, 'Exporting to %s\n', bf.ucmbin3_fn);
-	mkdir_check(bf.sofctl3_path);
 	sof_ucm_blob_write(bf.ucmbin3_fn, bp3);
 end
 
 if ~isempty(bf.ucmbin4_fn)
 	fprintf(1, 'Exporting to %s\n', bf.ucmbin4_fn);
-	mkdir_check(bf.sofctl4_path);
 	sof_ucm_blob_write(bf.ucmbin4_fn, bp4);
 end
 
