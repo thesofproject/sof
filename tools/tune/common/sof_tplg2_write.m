@@ -23,6 +23,7 @@ if (n_blob ~= n_test)
 end
 
 %% Write blob
+sof_check_create_dir(fn);
 fh = fopen(fn, 'w');
 if fh < 0
 	fprintf(1, 'Error: Could not open file %s\n', fn);

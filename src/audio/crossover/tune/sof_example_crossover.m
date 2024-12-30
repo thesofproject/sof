@@ -85,10 +85,6 @@ blob8_ipc4 = sof_crossover_build_blob(config, endian, 4);
 
 % Generate output files
 
-mkdir_check(tpath1);
-mkdir_check(tpath2);
-mkdir_check(ctlpath3);
-mkdir_check(ctlpath4);
 sof_tplg_write(tplg1_fn, blob8, "CROSSOVER");
 sof_tplg2_write(tplg2_fn, blob8_ipc4, "crossover_config", 'Exported Control Bytes');
 sof_ucm_blob_write(blob3_fn, blob8);
@@ -123,14 +119,5 @@ str = sprintf('%d', cr.sinks(1));
 for i = 2:cr.num_sinks
 	str = sprintf('%s_%d', str, cr.sinks(i));
 end
-
-end
-
-% Check if directory exists, avoid warning print for existing
-function mkdir_check(new_dir)
-
-	if ~exist(new_dir, 'dir')
-		mkdir(new_dir);
-	end
 
 end
