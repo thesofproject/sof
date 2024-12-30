@@ -14,6 +14,7 @@ blob8_new = zeros(1, n_new);
 blob8_new(1:n_orig) = blob8;
 
 %% Write blob
+sof_check_create_dir(fn);
 fh = fopen(fn, 'w');
 if fh < 0
 	fprintf(1, 'Error: Could not open file %s\n', fn);
