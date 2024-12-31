@@ -10,9 +10,23 @@ if [ -z "${SOF_WORKSPACE}" ]; then
 fi
 
 if ! command -v octave &> /dev/null; then
-    echo "Error: this scrip needs GNU Octave, see https://octave.org/"
+    echo "Error: this script needs GNU Octave, see https://octave.org/"
     exit 1
 fi
+
+"$SOF_WORKSPACE"/sof/scripts/build-tools.sh -c
+
+if ! command -v sof-ctl &> /dev/null; then
+    echo "Error: The sof-ctl utility is not found from path for executables. It is needed"
+    echo "       to retrieve SOF ABI header It can be added with e.g. symlink to user's binaries:"
+    echo "       ln -s $SOF_WORKSPACE/sof/tools/build_tools/ctl/sof-ctl $HOME/bin/sof-ctl"
+    exit 1
+fi
+
+cmp --quiet "$(which sof-ctl)" "$SOF_WORKSPACE"/sof/tools/build_tools/ctl/sof-ctl || {
+    echo "Error: The sof-ctl in user's path is not the same as sof-ctl build from tools."
+    exit 1
+}
 
 OCTAVE="octave --quiet --no-window-system"
 cd "$SOF_WORKSPACE"/sof/src/audio/aria/tune; $OCTAVE sof_aria_blobs.m
