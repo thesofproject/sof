@@ -1,4 +1,4 @@
-function tplg2_write(fn, blob8, component, comment, howto)
+function sof_tplg2_write(fn, blob8, component, comment, howto)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
@@ -23,6 +23,7 @@ if (n_blob ~= n_test)
 end
 
 %% Write blob
+sof_check_create_dir(fn);
 fh = fopen(fn, 'w');
 if fh < 0
 	fprintf(1, 'Error: Could not open file %s\n', fn);

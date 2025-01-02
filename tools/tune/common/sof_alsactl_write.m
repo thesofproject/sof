@@ -1,7 +1,7 @@
-function alsactl_write(fn, blob8)
+function sof_alsactl_write(fn, blob8)
 
 %% Write blob
-check_create_dir(fn);
+sof_check_create_dir(fn);
 fh = fopen(fn, 'w');
 if fh < 0
 	fprintf(1, 'Error: Could not open file %s\n', fn);

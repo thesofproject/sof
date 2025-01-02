@@ -37,9 +37,9 @@ sof_ctl = fullfile(sof_tools, 'ctl');
 tplg1_fn = sprintf("%s/topology1/m4/dcblock_coef_%s.m4", sof_tplg, prm.id); % Control Bytes File
 tplg2_fn = sprintf("%s/topology2/include/components/dcblock/%s.conf", sof_tplg, prm.id);
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf("%s/ipc3/dcblock/coef_%s.blob", sof_ctl, prm.id); % Blob binary file
+blob3_fn = sprintf("%s/ipc3/dcblock/coef_%s.bin", sof_ctl, prm.id); % Blob binary file
 alsa3_fn = sprintf("%s/ipc3/dcblock/coef_%s.txt", sof_ctl, prm.id); % ALSA CSV format file
-blob4_fn = sprintf("%s/ipc4/dcblock/coef_%s.blob", sof_ctl, prm.id); % Blob binary file
+blob4_fn = sprintf("%s/ipc4/dcblock/coef_%s.bin", sof_ctl, prm.id); % Blob binary file
 alsa4_fn = sprintf("%s/ipc4/dcblock/coef_%s.txt", sof_ctl, prm.id); % ALSA CSV format file
 
 endian = "little";
@@ -58,17 +58,17 @@ blob8 = sof_dcblock_build_blob(R_coeffs, endian);
 blob8_ipc4 = sof_dcblock_build_blob(R_coeffs, endian, 4);
 
 % Generate output files
-tplg_write(tplg1_fn, blob8, "DCBLOCK", ...
-	   "Exported with script sof_example_dcblock.m", ...
-	   "cd tools/tune/dcblock; octave sof_example_dcblock.m");
+sof_tplg_write(tplg1_fn, blob8, "DCBLOCK", ...
+	       "Exported with script sof_example_dcblock.m", ...
+	       "cd tools/tune/dcblock; octave sof_example_dcblock.m");
 sof_ucm_blob_write(blob3_fn, blob8);
-alsactl_write(alsa3_fn, blob8);
+sof_alsactl_write(alsa3_fn, blob8);
 
-tplg2_write(tplg2_fn, blob8_ipc4, "dcblock_config", ...
-	    "Exported with script sof_example_dcblock.m" , ...
-	    "cd tools/tune/dcblock; octave sof_example_dcblock.m");
+sof_tplg2_write(tplg2_fn, blob8_ipc4, "dcblock_config", ...
+		"Exported with script sof_example_dcblock.m" , ...
+		"cd tools/tune/dcblock; octave sof_example_dcblock.m");
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
-alsactl_write(alsa4_fn, blob8_ipc4);
+sof_alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot Filter's Transfer Function and Step Response
 % As an example, plot the graphs of the first coefficient
