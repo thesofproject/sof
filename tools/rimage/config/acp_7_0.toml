@@ -16,5 +16,5 @@ host_offset = "0x0"
 [[adsp.mem_zone]]
 type = "SRAM"
 base = "0x6000C000"
-size = "0x27A000"
+size = "0x274000"
 host_offset = "0x0"
