@@ -10,7 +10,7 @@ set -e
 DEFAULT_PLATFORMS=(
     imx8m
     rn rmb vangogh
-    mt8186 mt8195 mt8188
+    mt8186 mt8195 mt8188 mt8196
 )
 
 # Work in progress can be added to this "staging area" without breaking

@@ -273,6 +273,27 @@ config MT8195
 	help
 	  Select if your target platform is mt8195-compatible
 
+config MT8196
+	bool "Build for MTK MT8196"
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_4
+	select DUMMY_DMA
+	select HOST_PTABLE
+	select XT_WAITI_DELAY
+	select MEDIATEK
+	select XTENSA_EXCLUSIVE
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	help
+          This configuration enables support for the MediaTek MT8196 platform.
+          It includes necessary interrupt levels, DMA support, and other
+          platform-specific features required for the proper functioning of
+          the MT8196 SoC. Enabling this option will ensure that the build
+          system includes all relevant drivers and configurations for MT8196.
+
+          Select this option if your target platform is MT8196-compatible.
+
 endchoice
 
 config MAX_CORE_COUNT
@@ -476,6 +497,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "mt8186" if MT8186
 	default "mt8188" if MT8188
 	default "mt8195" if MT8195
+	default "mt8196" if MT8196
 	default ""
 	help
 	  Signing schema name used by rimage to decide how to build final binary
