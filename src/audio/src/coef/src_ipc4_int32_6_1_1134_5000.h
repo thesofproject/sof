@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 
-static const int32_t src_int32_6_1_1134_5000_fir[96] = {
+__cold_data static const int32_t src_int32_6_1_1134_5000_fir[96] = {
 	141841,
 	2137064,
 	-10649573,

@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-static const int32_t src_int32_40_21_3968_5000_fir[1600] = {
+__cold_data static const int32_t src_int32_40_21_3968_5000_fir[1600] = {
 	-168855,
 	272170,
 	-146895,
