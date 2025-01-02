@@ -12,11 +12,17 @@
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
 
-#ifdef CONFIG_ACP_6_3
+#if defined(CONFIG_ACP_6_3) || defined(CONFIG_ACP_7_0)
 
 SOF_DEFINE_REG_UUID(acp_sw_audio);
 
 DECLARE_TR_CTX(acp_sw_audio_tr, SOF_UUID(acp_sw_audio_uuid), LOG_LEVEL_INFO);
+
+#if defined(CONFIG_ACP_6_3)
+#define DMA_CH_COUNT			8
+#elif defined(CONFIG_ACP_7_0)
+#define DMA_CH_COUNT			12
+#endif
 
 //initialization of soundwire-0 fifos(Audio, BT and HS)
 #define SW0_AUDIO_FIFO_SIZE			128
@@ -31,10 +37,18 @@ DECLARE_TR_CTX(acp_sw_audio_tr, SOF_UUID(acp_sw_audio_uuid), LOG_LEVEL_INFO);
 #define SW0_HS_TX_FIFO_ADDR		(SW0_BT_RX_FIFO_ADDR + SW0_BT_FIFO_SIZE)
 #define SW0_HS_RX_FIFO_ADDR		(SW0_HS_TX_FIFO_ADDR + SW0_HS_FIFO_SIZE)
 
-//initialization of soundwire-1 fifo
-#define SW1_FIFO_SIZE			128
-#define SW1_TX_FIFO_ADDR		(SW0_HS_RX_FIFO_ADDR + SW1_FIFO_SIZE)
-#define SW1_RX_FIFO_ADDR		(SW1_TX_FIFO_ADDR + SW1_FIFO_SIZE)
+//initialization of soundwire-1 fifos(Audio, BT and HS)
+#define SW1_AUDIO_FIFO_SIZE			128
+#define SW1_AUDIO_TX_FIFO_ADDR		(SW0_HS_RX_FIFO_ADDR + SW0_HS_FIFO_SIZE)
+#define SW1_AUDIO_RX_FIFO_ADDR		(SW1_AUDIO_TX_FIFO_ADDR + SW1_AUDIO_FIFO_SIZE)
+
+#define SW1_BT_FIFO_SIZE		128
+#define SW1_BT_TX_FIFO_ADDR		(SW1_AUDIO_RX_FIFO_ADDR + SW1_AUDIO_FIFO_SIZE)
+#define SW1_BT_RX_FIFO_ADDR		(SW1_BT_TX_FIFO_ADDR + SW1_BT_FIFO_SIZE)
+
+#define SW1_HS_FIFO_SIZE		128
+#define SW1_HS_TX_FIFO_ADDR		(SW1_BT_RX_FIFO_ADDR + SW1_BT_FIFO_SIZE)
+#define SW1_HS_RX_FIFO_ADDR		(SW1_HS_TX_FIFO_ADDR + SW1_HS_FIFO_SIZE)
 
 static uint32_t sw_audio_buff_size_playback;
 static uint32_t sw_audio_buff_size_capture;
@@ -55,7 +69,7 @@ struct sw_dev_register {
 	uint32_t	statusindex;
 };
 
-static struct sw_dev_register sw_dev[8] = {
+static struct sw_dev_register sw_dev[DMA_CH_COUNT] = {
 {ACP_SW_HS_RX_EN, ACP_SW_HS_RX_EN_STATUS, ACP_HS_RX_FIFOADDR, SW0_HS_RX_FIFO_ADDR,
 ACP_HS_RX_FIFOSIZE, SW0_HS_FIFO_SIZE, ACP_HS_RX_RINGBUFADDR, ACP_HS_RX_RINGBUFSIZE,
 ACP_HS_RX_DMA_SIZE, ACP_HS_RX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT, ACP_DSP0_INTR_CNTL, 0},
@@ -64,13 +78,13 @@ ACP_HS_RX_DMA_SIZE, ACP_HS_RX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT, ACP_DSP0_
 ACP_HS_TX_FIFOSIZE, SW0_HS_FIFO_SIZE, ACP_HS_TX_RINGBUFADDR, ACP_HS_TX_RINGBUFSIZE,
 ACP_HS_TX_DMA_SIZE, ACP_HS_TX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT, ACP_DSP0_INTR_CNTL, 1},
 
-{ACP_P1_SW_BT_RX_EN, ACP_P1_SW_BT_RX_EN_STATUS, ACP_P1_BT_RX_FIFOADDR, SW1_RX_FIFO_ADDR,
-ACP_P1_BT_RX_FIFOSIZE, SW1_FIFO_SIZE, ACP_P1_BT_RX_RINGBUFADDR, ACP_P1_BT_RX_RINGBUFSIZE,
+{ACP_P1_SW_BT_RX_EN, ACP_P1_SW_BT_RX_EN_STATUS, ACP_P1_BT_RX_FIFOADDR, SW1_BT_RX_FIFO_ADDR,
+ACP_P1_BT_RX_FIFOSIZE, SW1_BT_FIFO_SIZE, ACP_P1_BT_RX_RINGBUFADDR, ACP_P1_BT_RX_RINGBUFSIZE,
 ACP_P1_BT_RX_DMA_SIZE, ACP_P1_BT_RX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT1, ACP_DSP0_INTR_CNTL1,
 2},
 
-{ACP_P1_SW_BT_TX_EN, ACP_P1_SW_BT_TX_EN_STATUS, ACP_P1_BT_TX_FIFOADDR, SW1_TX_FIFO_ADDR,
-ACP_P1_BT_TX_FIFOSIZE, SW1_FIFO_SIZE, ACP_P1_BT_TX_RINGBUFADDR, ACP_P1_BT_TX_RINGBUFSIZE,
+{ACP_P1_SW_BT_TX_EN, ACP_P1_SW_BT_TX_EN_STATUS, ACP_P1_BT_TX_FIFOADDR, SW1_BT_TX_FIFO_ADDR,
+ACP_P1_BT_TX_FIFOSIZE, SW1_BT_FIFO_SIZE, ACP_P1_BT_TX_RINGBUFADDR, ACP_P1_BT_TX_RINGBUFSIZE,
 ACP_P1_BT_TX_DMA_SIZE, ACP_P1_BT_TX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT1, ACP_DSP0_INTR_CNTL1,
 3},
 
@@ -88,7 +102,29 @@ ACP_BT_RX_DMA_SIZE, ACP_BT_RX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT, ACP_DSP0_
 
 {ACP_SW_BT_TX_EN, ACP_SW_BT_TX_EN_STATUS, ACP_BT_TX_FIFOADDR, SW0_BT_TX_FIFO_ADDR,
 ACP_BT_TX_FIFOSIZE, SW0_BT_FIFO_SIZE, ACP_BT_TX_RINGBUFADDR, ACP_BT_TX_RINGBUFSIZE,
-ACP_BT_TX_DMA_SIZE, ACP_BT_TX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT, ACP_DSP0_INTR_CNTL, 3}
+ACP_BT_TX_DMA_SIZE, ACP_BT_TX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT, ACP_DSP0_INTR_CNTL, 3},
+
+#if defined(CONFIG_ACP_7_0)
+{ACP_P1_SW_AUDIO_RX_EN, ACP_P1_SW_AUDIO_RX_EN_STATUS, ACP_P1_AUDIO_RX_FIFOADDR,
+SW1_AUDIO_RX_FIFO_ADDR, ACP_P1_AUDIO_RX_FIFOSIZE, SW1_AUDIO_FIFO_SIZE,
+ACP_P1_AUDIO_RX_RINGBUFADDR, ACP_P1_AUDIO_RX_RINGBUFSIZE, ACP_P1_AUDIO_RX_DMA_SIZE,
+ACP_P1_AUDIO_RX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT1, ACP_DSP0_INTR_CNTL1, 4},
+
+{ACP_P1_SW_AUDIO_TX_EN, ACP_P1_SW_AUDIO_TX_EN_STATUS, ACP_P1_AUDIO_TX_FIFOADDR,
+SW1_AUDIO_TX_FIFO_ADDR, ACP_P1_AUDIO_TX_FIFOSIZE, SW1_AUDIO_FIFO_SIZE,
+ACP_P1_AUDIO_TX_RINGBUFADDR, ACP_P1_AUDIO_TX_RINGBUFSIZE, ACP_P1_AUDIO_TX_DMA_SIZE,
+ACP_P1_AUDIO_TX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT1, ACP_DSP0_INTR_CNTL1, 5},
+
+{ACP_P1_SW_HEADSET_RX_EN, ACP_P1_SW_HEADSET_RX_EN_STATUS, ACP_P1_HS_RX_FIFOADDR,
+SW1_HS_RX_FIFO_ADDR, ACP_P1_HS_RX_FIFOSIZE, SW1_HS_FIFO_SIZE,
+ACP_P1_HS_RX_RINGBUFADDR, ACP_P1_HS_RX_RINGBUFSIZE, ACP_P1_HS_RX_DMA_SIZE,
+ACP_P1_HS_RX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT1, ACP_DSP0_INTR_CNTL1, 0},
+
+{ACP_P1_SW_HEADSET_TX_EN, ACP_P1_SW_HEADSET_TX_EN_STATUS, ACP_P1_HS_TX_FIFOADDR,
+SW1_HS_TX_FIFO_ADDR, ACP_P1_HS_TX_FIFOSIZE, SW1_HS_FIFO_SIZE,
+ACP_P1_HS_TX_RINGBUFADDR, ACP_P1_HS_TX_RINGBUFSIZE, ACP_P1_HS_TX_DMA_SIZE,
+ACP_P1_HS_TX_INTR_WATERMARK_SIZE, ACP_DSP0_INTR_STAT1, ACP_DSP0_INTR_CNTL1, 1},
+#endif
 };
 
 /* allocate next free DMA channel */
@@ -136,7 +172,7 @@ static int acp_dai_sw_audio_dma_start(struct dma_chan_data *channel)
 	uint32_t		acp_pdm_en;
 	int i;
 
-	for (i = 0; i < 8; i += 2) {
+	for (i = 0; i < DMA_CH_COUNT; i += 2) {
 		sw0_audio_tx_en |= io_reg_read(PU_REGISTER_BASE + sw_dev[i].sw_dev_en);
 		sw0_audio_rx_en |= io_reg_read(PU_REGISTER_BASE + sw_dev[i + 1].sw_dev_en);
 	}
@@ -208,7 +244,7 @@ static int acp_dai_sw_audio_dma_stop(struct dma_chan_data *channel)
 		return -EINVAL;
 	}
 
-	for (i = 0; i < 8; i += 2) {
+	for (i = 0; i < DMA_CH_COUNT; i += 2) {
 		sw0_audio_tx_en |= io_reg_read(PU_REGISTER_BASE + sw_dev[i].sw_dev_en);
 		sw0_audio_rx_en |= io_reg_read(PU_REGISTER_BASE + sw_dev[i + 1].sw_dev_en);
 	}
@@ -420,6 +456,10 @@ static int acp_dai_sw_audio_dma_interrupt(struct dma_chan_data *channel, enum dm
 		switch (channel->index) {
 		case SDW1_ACP_P1_SW_BT_TX_EN_CH:
 		case SDW1_ACP_P1_SW_BT_RX_EN_CH:
+		case SDW1_ACP_P1_SW_AUDIO_RX_EN_CH:
+		case SDW1_ACP_P1_SW_AUDIO_TX_EN_CH:
+		case SDW1_ACP_P1_SW_HS_RX_EN_CH:
+		case SDW1_ACP_P1_SW_HS_TX_EN_CH:
 			acp_intr_stat1 = (acp_dsp0_intr_stat1_t)dma_reg_read(channel->dma,
 			sw_dev[channel->index].sw_dev_dma_intr_status);
 			status = acp_intr_stat1.bits.audio_buffer_int_stat;
@@ -435,6 +475,10 @@ static int acp_dai_sw_audio_dma_interrupt(struct dma_chan_data *channel, enum dm
 		switch (channel->index) {
 		case SDW1_ACP_P1_SW_BT_TX_EN_CH:
 		case SDW1_ACP_P1_SW_BT_RX_EN_CH:
+		case SDW1_ACP_P1_SW_AUDIO_RX_EN_CH:
+		case SDW1_ACP_P1_SW_AUDIO_TX_EN_CH:
+		case SDW1_ACP_P1_SW_HS_RX_EN_CH:
+		case SDW1_ACP_P1_SW_HS_TX_EN_CH:
 			acp_intr_stat1.u32all = 0;
 			acp_intr_stat1.bits.audio_buffer_int_stat =
 						(1 << sw_dev[channel->index].statusindex);
@@ -456,6 +500,10 @@ static int acp_dai_sw_audio_dma_interrupt(struct dma_chan_data *channel, enum dm
 		switch (channel->index) {
 		case SDW1_ACP_P1_SW_BT_TX_EN_CH:
 		case SDW1_ACP_P1_SW_BT_RX_EN_CH:
+		case SDW1_ACP_P1_SW_AUDIO_RX_EN_CH:
+		case SDW1_ACP_P1_SW_AUDIO_TX_EN_CH:
+		case SDW1_ACP_P1_SW_HS_RX_EN_CH:
+		case SDW1_ACP_P1_SW_HS_TX_EN_CH:
 			acp_intr_cntl1 = (acp_dsp0_intr_cntl1_t)dma_reg_read(channel->dma,
 			sw_dev[channel->index].sw_dev_dma_intr_cntl);
 			acp_intr_cntl1.bits.audio_buffer_int_mask &=
@@ -479,6 +527,10 @@ static int acp_dai_sw_audio_dma_interrupt(struct dma_chan_data *channel, enum dm
 		switch (channel->index) {
 		case SDW1_ACP_P1_SW_BT_TX_EN_CH:
 		case SDW1_ACP_P1_SW_BT_RX_EN_CH:
+		case SDW1_ACP_P1_SW_AUDIO_RX_EN_CH:
+		case SDW1_ACP_P1_SW_AUDIO_TX_EN_CH:
+		case SDW1_ACP_P1_SW_HS_RX_EN_CH:
+		case SDW1_ACP_P1_SW_HS_TX_EN_CH:
 			acp_intr_cntl1 = (acp_dsp0_intr_cntl1_t)dma_reg_read(channel->dma,
 				sw_dev[channel->index].sw_dev_dma_intr_cntl);
 			acp_intr_cntl1.bits.audio_buffer_int_mask  |=
