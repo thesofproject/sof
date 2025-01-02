@@ -16,6 +16,8 @@ EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
 # HDA topology with mixer-based pipelines for HDA and
 # passthrough pipelines for HDMI and
 # 2 or 4 DMIC, no NHLT blob included in topology
+"sof-hda-generic\;sof-hda-generic-1ch\;HDA_CONFIG=mix,NUM_DMICS=1,PDM0_MIC_B_ENABLE=0"
+
 "sof-hda-generic\;sof-hda-generic-2ch\;HDA_CONFIG=mix,NUM_DMICS=2,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
 EFX_DMIC0_DRC_PARAMS=dmic_default"
@@ -39,6 +41,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-idisp-2ch.bin"
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-idisp-4ch.bin"
 # HDA + HDMI + DMICs
+"sof-hda-generic\;sof-hda-generic-cavs25-1ch\;HDA_CONFIG=mix,NUM_DMICS=1,PDM0_MIC_B_ENABLE=0,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-1ch.bin"
+
 "sof-hda-generic\;sof-hda-generic-cavs25-2ch\;HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-2ch.bin,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
@@ -58,6 +63,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-idisp-2ch.bin"
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-idisp-4ch.bin"
 # HDA + HDMI + DMICs
+"sof-hda-generic\;sof-hda-generic-ace1-1ch\;PLATFORM=mtl,HDA_CONFIG=mix,NUM_DMICS=1,PDM0_MIC_B_ENABLE=0,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-1ch.bin"
+
 "sof-hda-generic\;sof-hda-generic-ace1-2ch\;PLATFORM=mtl,HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace1-2ch.bin,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
@@ -78,6 +86,9 @@ PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-idisp-4ch.bin"
 
 # HDA + HDMI + DMICs
+"sof-hda-generic\;sof-hda-generic-ace3-1ch\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=1,PDM0_MIC_B_ENABLE=0,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-1ch.bin"
+
 "sof-hda-generic\;sof-hda-generic-ace3-2ch\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=2,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-2ch.bin,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
