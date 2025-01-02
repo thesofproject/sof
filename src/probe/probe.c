@@ -198,8 +198,8 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	channel = ((union ipc4_connector_node_id)dma->stream_tag).f.v_index;
 
 	/* request DMA in the dir LMEM->HMEM with shared access */
-	dma->dc.dmac = dma_get(direction, 0, SOF_DMA_DEV_HOST,
-			       SOF_DMA_ACCESS_SHARED);
+	dma->dc.dmac = sof_dma_get(direction, 0, SOF_DMA_DEV_HOST,
+				   SOF_DMA_ACCESS_SHARED);
 	if (!dma->dc.dmac) {
 		tr_err(&pr_tr, "probe_dma_init(): dma->dc.dmac = NULL");
 		return -ENODEV;
@@ -267,10 +267,11 @@ static int probe_dma_deinit(struct probe_dma_ext *dma)
 	}
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	dma_release_channel(dma->dc.dmac->z_dev, dma->dc.chan->index);
+	sof_dma_put(dma->dc.dmac);
 #else
 	dma_channel_put_legacy(dma->dc.chan);
-#endif
 	dma_put(dma->dc.dmac);
+#endif
 
 	rfree((void *)dma->dmapb.addr);
 	dma->dmapb.addr = 0;

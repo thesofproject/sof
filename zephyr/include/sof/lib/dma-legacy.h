@@ -27,6 +27,21 @@
 #define DMA_CHAN_INVALID	SOF_DMA_CHAN_INVALID
 #define DMA_CORE_INVALID	SOF_DMA_CORE_INVALID
 
+/* Compatibility for drivers using legacy DMA dma_get/put() */
+struct dma {
+	struct dma_plat_data plat_data;
+	struct k_spinlock lock;	/**< locking mechanism */
+	int sref;		/**< simple ref counter, guarded by lock */
+	const struct dma_ops *ops;
+	atomic_t num_channels_busy; /* number of busy channels */
+	struct dma_chan_data *chan; /* channels array */
+	const struct device *z_dev; /* Zephyr driver */
+	void *priv_data;
+};
+
+struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
+void dma_put(struct dma *dma);
+
 enum dma_cb_status {
 	DMA_CB_STATUS_RELOAD = 0,
 	DMA_CB_STATUS_END,
