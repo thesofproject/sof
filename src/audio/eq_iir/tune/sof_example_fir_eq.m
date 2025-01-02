@@ -24,7 +24,7 @@ sof_eq_paths(1);
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-fn.bin = 'loudness.blob';
+fn.bin = 'loudness.bin';
 fn.txt = 'loudness.txt';
 fn.tplg1 = 'eq_fir_coef_loudness.m4';
 fn.tplg2 = 'loudness.conf';
@@ -55,7 +55,7 @@ sof_eq_pack_export(bm, fn, comment);
 %% -------------------
 %% Example 2: Mid boost
 %% -------------------
-fn.bin = 'mid.blob';
+fn.bin = 'mid.bin';
 fn.txt = 'mid.txt';
 fn.tplg1 = 'eq_fir_coef_mid.m4';
 fn.tplg2 = 'midboost.conf';
@@ -82,7 +82,7 @@ sof_eq_pack_export(bm, fn, comment);
 %% -------------------
 %% Example 3: Flat EQ
 %% -------------------
-fn.bin = 'flat.blob';
+fn.bin = 'flat.bin';
 fn.txt = 'flat.txt';
 fn.tplg1 = 'eq_fir_coef_flat.m4';
 fn.tplg2 = 'flat.conf';
@@ -109,7 +109,7 @@ sof_eq_pack_export(bm, fn, comment);
 %% --------------------------
 %% Example 4: Pass-through EQ
 %% --------------------------
-fn.bin = 'pass.blob';
+fn.bin = 'pass.bin';
 fn.txt = 'pass.txt';
 fn.tplg1 = 'eq_fir_coef_pass.m4';
 fn.tplg2 = 'passthrough.conf';
@@ -226,15 +226,16 @@ end
 % Pack and write file common function for all exports
 function sof_eq_pack_export(bm, fn, note)
 
+howto = 'cd src/audio/eq_iir/tune; octave --no-window-system sof_example_fir_eq.m';
 bp = sof_eq_fir_blob_pack(bm, 3); % IPC3
 if ~isempty(fn.bin)
 	sof_ucm_blob_write(fullfile(fn.cpath3, fn.bin), bp);
 end
 if ~isempty(fn.txt)
-	sof_eq_alsactl_write(fullfile(fn.cpath3, fn.txt), bp);
+	sof_alsactl_write(fullfile(fn.cpath3, fn.txt), bp);
 end
 if ~isempty(fn.tplg1)
-	sof_eq_tplg_write(fullfile(fn.tpath1, fn.tplg1), bp, fn.priv, note);
+	sof_tplg_write(fullfile(fn.tpath1, fn.tplg1), bp, fn.priv, note, howto);
 end
 
 bp = sof_eq_fir_blob_pack(bm, 4); % IPC4
@@ -242,10 +243,10 @@ if ~isempty(fn.bin)
 	sof_ucm_blob_write(fullfile(fn.cpath4, fn.bin), bp);
 end
 if ~isempty(fn.txt)
-	sof_eq_alsactl_write(fullfile(fn.cpath4, fn.txt), bp);
+	sof_alsactl_write(fullfile(fn.cpath4, fn.txt), bp);
 end
 if ~isempty(fn.tplg2)
-	sof_eq_tplg2_write(fullfile(fn.tpath2, fn.tplg2), bp, 'fir_eq', note);
+	sof_tplg2_write(fullfile(fn.tpath2, fn.tplg2), bp, 'fir_eq', note, howto);
 end
 
 end

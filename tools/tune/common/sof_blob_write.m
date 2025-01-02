@@ -1,23 +1,10 @@
-function sof_ucm_blob_write(fn, blob8)
-
-% Export blob to UCM2 cset-tlv binary format
-%
-% sof_ucm_blob_write(fn, blob)
-%
-% Input parameters
-%  fn - Filename for the blob
-%  blob - Vector of data with uint8 type
-%
-
-% SPDX-License-Identifier: BSD-3-Clause
-%
-% Copyright (c) 2024, Intel Corporation. All rights reserved.
+function sof_blob_write(fn, blob8)
 
 %% Check that blob header is sane
 sof_check_blob_header(blob8);
 
 %% Write blob
-sof_check_create_dir(fn);
+check_create_dir(fn);
 fh = fopen(fn, 'wb');
 if fh < 0
 	fprintf(1, 'Error: Could not open file %s\n', fn);
@@ -39,4 +26,5 @@ for i = 1:nl
 end
 
 fprintf(1, "\n");
+
 end

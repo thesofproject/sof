@@ -60,9 +60,9 @@ sof_ctl = fullfile(sof_tools, 'ctl');
 tplg1_fn = sprintf("%s/topology1/m4/drc_coef_%s.m4", sof_tplg, id); % Control Bytes File
 tplg2_fn = sprintf("%s/topology2/include/components/drc/%s.conf", sof_tplg, id); % Control Bytes File
 % Use those files with sof-ctl to update the component's configuration
-blob3_fn = sprintf("%s/ipc3/drc_coef_%s.blob", sof_ctl, id); % Blob binary file
+blob3_fn = sprintf("%s/ipc3/drc_coef_%s.bin", sof_ctl, id); % Blob binary file
 alsa3_fn = sprintf("%s/ipc3/drc_coef_%s.txt", sof_ctl, id); % ALSA CSV format file
-blob4_fn = sprintf("%s/ipc4/drc/%s.blob", sof_ctl, id); % Blob binary file
+blob4_fn = sprintf("%s/ipc4/drc/%s.bin", sof_ctl, id); % Blob binary file
 alsa4_fn = sprintf("%s/ipc4/drc/%s.txt", sof_ctl, id); % ALSA CSV format file
 
 endian = "little";
@@ -82,12 +82,12 @@ blob8_ipc4 = sof_drc_build_blob(config, endian, 4);
 my_name = mfilename();
 drc_note = sprintf("Exported with script %s.m", my_name);
 drc_howto = sprintf("cd tools/tune/drc; octave --no-window-system %s.m", my_name);
-tplg_write(tplg1_fn, blob8, "DRC", drc_note, drc_howto);
-tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", drc_note, drc_howto);
+sof_tplg_write(tplg1_fn, blob8, "DRC", drc_note, drc_howto);
+sof_tplg2_write(tplg2_fn, blob8_ipc4, "drc_config", drc_note, drc_howto);
 sof_ucm_blob_write(blob3_fn, blob8);
-alsactl_write(alsa3_fn, blob8);
+sof_alsactl_write(alsa3_fn, blob8);
 sof_ucm_blob_write(blob4_fn, blob8_ipc4);
-alsactl_write(alsa4_fn, blob8_ipc4);
+sof_alsactl_write(alsa4_fn, blob8_ipc4);
 
 % Plot x-y response in dB
 sof_drc_plot_db_curve(coefs);
