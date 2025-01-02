@@ -27,6 +27,7 @@
 SOF_DEFINE_REG_UUID(afe_dai);
 
 DECLARE_TR_CTX(afe_dai_tr, SOF_UUID(afe_dai_uuid), LOG_LEVEL_INFO);
+LOG_MODULE_DECLARE(mtk_afe, CONFIG_SOF_LOG_LEVEL);
 
 static int afe_dai_drv_trigger(struct dai *dai, int cmd, int direction)
 {
