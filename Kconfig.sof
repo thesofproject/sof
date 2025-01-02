@@ -122,6 +122,14 @@ config COMPILER_INLINE_FUNCTION_OPTION
         help
           When enabled, -fno-inline-function option is not passed to compiler
 
+config COLD_STORE_EXECUTE_DRAM
+        bool "Execute and use cold data and code in DRAM"
+        help
+	  Non-performance critical data and code can be kept in DRAM to be
+	  accessed and executed there without copying to SRAM. Select this
+	  option to enable this feature to save SRAM and to speed up SRAM
+	  copying of performance-critical data and code.
+
 rsource "src/Kconfig"
 
 # See zephyr/modules/Kconfig
