@@ -483,10 +483,32 @@ static void man_module_fill_reloc(const struct manifest_module *module,
 	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = 0;
 }
 
+/* Look for a name among module TOML manifests */
+static int man_module_find_cfg(const struct fw_image_manifest_module *modules,
+			       const struct sof_man_module *module)
+{
+	unsigned int i;
+	char name[SOF_MAN_MOD_NAME_LEN + 1];
+
+	strncpy(name, (const char *)module->name, SOF_MAN_MOD_NAME_LEN);
+	/* Ensure null termination */
+	name[SOF_MAN_MOD_NAME_LEN] = '\0';
+
+	for (i = 0; i < modules->mod_man_count; i++) {
+		if (!strncmp(name, (const char *)modules->mod_man[i].name, SOF_MAN_MOD_NAME_LEN))
+			return i;
+	}
+
+	fprintf(stderr, "error: Module %s not found in TOML.\n", name);
+
+	return -ENOEXEC;
+}
+
 static int man_module_create_reloc(struct image *image, struct manifest_module *module,
 				   struct sof_man_module **man_module)
 {
 	/* create module and segments */
+	struct fw_image_manifest_module *modules = image->adsp->modules;
 	const struct sof_man_module_manifest *sof_mod;
 	struct elf_section section;
 	int err;
@@ -509,33 +531,21 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 	unsigned int i;
 
 	for (i = 0, sof_mod = section.data; i < n_mod; i++, sof_mod++) {
-		char name[SOF_MAN_MOD_NAME_LEN + 1];
-		unsigned int j;
+		int j = man_module_find_cfg(modules, &sof_mod->module);
 
-		strncpy(name, (char *)sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
-		/* Ensure null termination */
-		name[SOF_MAN_MOD_NAME_LEN] = '\0';
-
-		for (j = 0; j < image->adsp->modules->mod_man_count; j++) {
-			if (!strncmp(name, (char *)image->adsp->modules->mod_man[j].name,
-				     SOF_MAN_MOD_NAME_LEN)) {
-				/* Found a TOML manifest, matching ELF */
-				if (i)
-					(*man_module)++;
-				/* Use manifest created using toml files as template */
-				**man_module = image->adsp->modules->mod_man[j];
-				/* Use .manifest to update individual fields */
-				man_get_section_manifest(image, sof_mod, *man_module);
-				man_module_fill_reloc(module, *man_module);
-				break;
-			}
-		}
-
-		if (j == image->adsp->modules->mod_man_count) {
-			fprintf(stderr, "error: cannot find %s in manifest.\n", name);
+		if (j < 0) {
 			elf_section_free(&section);
-			return -ENOEXEC;
+			return j;
 		}
+
+		/* Found a TOML manifest, matching ELF */
+		if (i)
+			(*man_module)++;
+		/* Use manifest created using toml files as template */
+		**man_module = modules->mod_man[j];
+		/* Use .manifest to update individual fields */
+		man_get_section_manifest(image, sof_mod, *man_module);
+		man_module_fill_reloc(module, *man_module);
 	}
 
 	elf_section_free(&section);
