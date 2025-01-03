@@ -104,6 +104,7 @@ struct fw_image_manifest_module {
 	struct sof_man_mod_config *mod_cfg;
 	uint32_t mod_man_count;
 	struct sof_man_module *mod_man;
+	unsigned int output_mod_cfg_count;
 };
 
 /*
