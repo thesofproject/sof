@@ -1680,7 +1680,7 @@ static int parse_scheduling(const toml_table_t *mod_entry, struct parse_ctx *ctx
 	ext_mod_config->sched_caps.multiples_supported.ul = val;
 
 	ext_mod_config->header.num_scheduling_capabilities = 1;
-	*ext_length = sizeof(const struct mod_scheduling_caps);
+	*ext_length = sizeof(struct mod_scheduling_caps);
 
 	return 0;
 }
@@ -1708,7 +1708,7 @@ static int parse_pin(const toml_table_t *mod_entry, struct parse_ctx *ctx,
 	ctx->array_cnt++;
 
 	ext_mod_config->header.num_pin_entries = toml_array_nelem(arr) / 6;
-	ext_mod_config->pin_desc = calloc(sizeof(const struct fw_pin_description),
+	ext_mod_config->pin_desc = calloc(sizeof(struct fw_pin_description),
 					  toml_array_nelem(arr) / 6);
 
 	if(!ext_mod_config->pin_desc)
@@ -1756,8 +1756,7 @@ static int parse_pin(const toml_table_t *mod_entry, struct parse_ctx *ctx,
 		ext_mod_config->pin_desc[j].ch_cfg.ul = (uint32_t)val;
 	}
 
-	*ext_length = ext_mod_config->header.num_pin_entries *
-			sizeof(const struct fw_pin_description);
+	*ext_length = ext_mod_config->header.num_pin_entries * sizeof(struct fw_pin_description);
 
 	return 0;
 }
@@ -1866,14 +1865,14 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 		return err_key_parse("entry", "wrong array type or length != %d", entry_count);
 
 	modules->mod_ext.mod_conf_count = entry_count;
-	modules->mod_man = calloc(sizeof(const struct sof_man_module), entry_count);
+	modules->mod_man = calloc(sizeof(struct sof_man_module), entry_count);
 	if (!modules->mod_man)
 		return -ENOMEM;
 
 	modules->mod_man_count = toml_array_nelem(mod_entry_array);
 
 	tmp_cfg_count = entry_count * 32;
-	modules->mod_cfg = calloc(sizeof(const struct sof_man_mod_config), tmp_cfg_count);
+	modules->mod_cfg = calloc(sizeof(struct sof_man_mod_config), tmp_cfg_count);
 
 	/* parse entry array elements */
 	for (i = 0; i < toml_array_nelem(mod_entry_array); ++i) {
