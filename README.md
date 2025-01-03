@@ -3,9 +3,11 @@
 ### Status
 [![Daily Actions](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml/badge.svg)](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml)
 
+### Community
+
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/thesofproject/community)
 
-[#sof channel on discord.com](https://discord.com/channels/720317445772017664/930855494472589362)
+Additional community support is available via the `#sof` channel in the Zephyr Project Discord server. See the [Resources section of the @zephyrproject-rtos GitHub organization README](https://github.com/zephyrproject-rtos#resources) for Discord access information.
 
 ### Documentation
 
