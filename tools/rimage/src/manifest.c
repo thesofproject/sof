@@ -693,32 +693,71 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 	return 0;
 }
 
-static void man_create_modules_in_config(struct image *image, struct sof_man_fw_desc *desc)
+static int man_create_modules_in_config(struct image *image, struct sof_man_fw_desc *desc)
 {
 	struct fw_image_manifest_module *modules;
 	struct sof_man_module *man_module;
-	void *cfg_start;
+	uint8_t *cfg_start;
 	int i;
 
 	modules = image->adsp->modules;
 	if (!modules)
-		return;
+		return 0;
 
-	if (!image->loadable_module)
+	if (image->loadable_module) {
+		/* Number of struct sof_man_mod_config entries for the current module */
+		unsigned int offset = 0;
+
+		cfg_start = (uint8_t *)desc + SOF_MAN_MODULE_OFFSET(modules->output_mod_cfg_count);
+
+		for (i = 0, man_module = (struct sof_man_module *)((uint8_t *)desc +
+								   SOF_MAN_MODULE_OFFSET(0));
+		     i < modules->output_mod_cfg_count;
+		     i++, man_module++) {
+			char name[SOF_MAN_MOD_NAME_LEN + 1];
+
+			strncpy(name, (const char *)man_module->name, SOF_MAN_MOD_NAME_LEN);
+			name[SOF_MAN_MOD_NAME_LEN] = '\0';
+
+			int j = man_module_find_cfg(modules, name);
+
+			if (j < 0) {
+				fprintf(stderr, "error: cannot find %s in manifest.\n", name);
+				return -ENOEXEC;
+			}
+
+			man_module->cfg_offset = offset;
+
+			/* Copy configuration for the module */
+			size_t size = modules->mod_man[j].cfg_count *
+				sizeof(struct sof_man_mod_config);
+
+			memcpy(cfg_start, modules->mod_cfg + modules->mod_man[j].cfg_offset, size);
+
+			cfg_start += size;
+			offset += modules->mod_man[j].cfg_count;
+		}
+
+		/* Update module count */
+		desc->header.num_module_entries = modules->output_mod_cfg_count;
+	} else {
 		/* skip modules passed as parameters. Their manifests have
 		 * already been copied by the man_create_modules function. */
 		for (i = image->num_modules; i < modules->mod_man_count; i++) {
 			man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
 			memcpy(man_module, &modules->mod_man[i], sizeof(*man_module));
 		}
-	else
-		i = modules->mod_man_count;
 
-	/* We need to copy the configurations for all modules. */
-	cfg_start = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
-	memcpy(cfg_start, modules->mod_cfg, modules->mod_cfg_count * sizeof(struct sof_man_mod_config));
+		/* We need to copy the configurations for all modules. */
+		cfg_start = (uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i);
+		memcpy(cfg_start, modules->mod_cfg,
+		       modules->mod_cfg_count * sizeof(struct sof_man_mod_config));
 
-	desc->header.num_module_entries = modules->mod_man_count;
+		/* Update module count */
+		desc->header.num_module_entries = modules->mod_man_count;
+	}
+
+	return 0;
 }
 
 static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
@@ -1473,7 +1512,9 @@ int man_write_fw_ace_v1_5(struct image *image)
 		goto err;
 
 	/* platform config defines some modules except bringup & base modules */
-	man_create_modules_in_config(image, desc);
+	ret = man_create_modules_in_config(image, desc);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, "Firmware completing manifest v2.5\n");
 
