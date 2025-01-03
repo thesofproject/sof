@@ -520,6 +520,11 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 		return err;
 	}
 
+	/*
+	 * number of manifests in .module, one module can contain several manifests
+	 * e.g. when a module defines multiple Module Adapter interfaces like
+	 * volume for PEAKVOL and GAIN, mixin_mixout for MIXIN and MIXOUT etc.
+	 */
 	unsigned int n_mod = section.header.data.size / sizeof(*sof_mod);
 
 	if (!n_mod || n_mod * sizeof(*sof_mod) != section.header.data.size) {
@@ -547,6 +552,9 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 		man_get_section_manifest(image, sof_mod, *man_module);
 		man_module_fill_reloc(module, *man_module);
 	}
+
+	module->file.n_modules = n_mod;
+	modules->output_mod_cfg_count += n_mod;
 
 	elf_section_free(&section);
 
@@ -651,6 +659,7 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 	}
 
 	image->image_end = 0;
+	unsigned int n_mod = 0;
 
 	for (man_module = (struct sof_man_module *)((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i - offset));
 	     i < image->num_modules;
@@ -663,7 +672,9 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 			module->foffset = image->image_end;
 
 		if (image->reloc) {
+			module->file.first_module_idx = n_mod;
 			err = man_module_create_reloc(image, module, &man_module);
+			n_mod += module->file.n_modules;
 		} else {
 			/* Some platforms don't have modules configuration in toml file */
 			if (image->adsp->modules) {

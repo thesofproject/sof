@@ -76,6 +76,9 @@ struct module_sections_info {
 struct module {
 	struct elf_file elf;
 
+	unsigned short first_module_idx;
+	unsigned short n_modules;
+
 	/* Array of valid sections */
 	struct module_section *sections;
 
