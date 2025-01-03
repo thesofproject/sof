@@ -483,10 +483,24 @@ static void man_module_fill_reloc(const struct manifest_module *module,
 	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = 0;
 }
 
+/* Look for a name among module TOML manifests */
+static int man_module_find_cfg(const struct fw_image_manifest_module *modules, const char *name)
+{
+	unsigned int i;
+
+	for (i = 0; i < modules->mod_man_count; i++) {
+		if (!strncmp(name, (const char *)modules->mod_man[i].name, SOF_MAN_MOD_NAME_LEN))
+			return i;
+	}
+
+	return -ENOENT;
+}
+
 static int man_module_create_reloc(struct image *image, struct manifest_module *module,
 				   struct sof_man_module **man_module)
 {
 	/* create module and segments */
+	struct fw_image_manifest_module *modules = image->adsp->modules;
 	const struct sof_man_module_manifest *sof_mod;
 	struct elf_section section;
 	int err;
@@ -498,6 +512,11 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 		return err;
 	}
 
+	/*
+	 * number of manifests in .module, one module can contain several manifests
+	 * e.g. when a module defines multiple Module Adapter interfaces like
+	 * volume for PEAKVOL and GAIN, mixin_mixout for MIXIN and MIXOUT etc.
+	 */
 	unsigned int n_mod = section.header.data.size / sizeof(*sof_mod);
 
 	if (!n_mod || n_mod * sizeof(*sof_mod) != section.header.data.size) {
@@ -510,33 +529,31 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 
 	for (i = 0, sof_mod = section.data; i < n_mod; i++, sof_mod++) {
 		char name[SOF_MAN_MOD_NAME_LEN + 1];
-		unsigned int j;
 
 		strncpy(name, (char *)sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
 		/* Ensure null termination */
 		name[SOF_MAN_MOD_NAME_LEN] = '\0';
 
-		for (j = 0; j < image->adsp->modules->mod_man_count; j++) {
-			if (!strncmp(name, (char *)image->adsp->modules->mod_man[j].name,
-				     SOF_MAN_MOD_NAME_LEN)) {
-				/* Found a TOML manifest, matching ELF */
-				if (i)
-					(*man_module)++;
-				/* Use manifest created using toml files as template */
-				**man_module = image->adsp->modules->mod_man[j];
-				/* Use .manifest to update individual fields */
-				man_get_section_manifest(image, sof_mod, *man_module);
-				man_module_fill_reloc(module, *man_module);
-				break;
-			}
-		}
+		int j = man_module_find_cfg(modules, name);
 
-		if (j == image->adsp->modules->mod_man_count) {
+		if (j < 0) {
 			fprintf(stderr, "error: cannot find %s in manifest.\n", name);
 			elf_section_free(&section);
 			return -ENOEXEC;
 		}
+
+		/* Found a TOML manifest, matching ELF */
+		if (i)
+			(*man_module)++;
+		/* Use manifest created using toml files as template */
+		**man_module = modules->mod_man[j];
+		/* Use .manifest to update individual fields */
+		man_get_section_manifest(image, sof_mod, *man_module);
+		man_module_fill_reloc(module, *man_module);
 	}
+
+	module->file.n_modules = n_mod;
+	modules->output_mod_cfg_count += n_mod;
 
 	elf_section_free(&section);
 
@@ -641,6 +658,7 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 	}
 
 	image->image_end = 0;
+	unsigned int n_mod = 0;
 
 	for (man_module = (struct sof_man_module *)((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i - offset));
 	     i < image->num_modules;
@@ -653,7 +671,9 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 			module->foffset = image->image_end;
 
 		if (image->reloc) {
+			module->file.first_module_idx = n_mod;
 			err = man_module_create_reloc(image, module, &man_module);
+			n_mod += module->file.n_modules;
 		} else {
 			/* Some platforms don't have modules configuration in toml file */
 			if (image->adsp->modules) {
@@ -673,42 +693,85 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 	return 0;
 }
 
-static void man_create_modules_in_config(struct image *image, struct sof_man_fw_desc *desc)
+static int man_create_modules_in_config(struct image *image, struct sof_man_fw_desc *desc)
 {
 	struct fw_image_manifest_module *modules;
 	struct sof_man_module *man_module;
-	void *cfg_start;
+	uint8_t *cfg_start;
 	int i;
 
 	modules = image->adsp->modules;
 	if (!modules)
-		return;
+		return 0;
 
-	if (!image->loadable_module)
+	if (image->loadable_module) {
+		/* Number of struct sof_man_mod_config entries for the current module */
+		unsigned int offset = 0;
+
+		cfg_start = (uint8_t *)desc + SOF_MAN_MODULE_OFFSET(modules->output_mod_cfg_count);
+
+		for (i = 0, man_module = (struct sof_man_module *)((uint8_t *)desc +
+								   SOF_MAN_MODULE_OFFSET(0));
+		     i < modules->output_mod_cfg_count;
+		     i++, man_module++) {
+			char name[SOF_MAN_MOD_NAME_LEN + 1];
+
+			strncpy(name, (const char *)man_module->name, SOF_MAN_MOD_NAME_LEN);
+			name[SOF_MAN_MOD_NAME_LEN] = '\0';
+
+			int j = man_module_find_cfg(modules, name);
+
+			if (j < 0) {
+				fprintf(stderr, "error: cannot find %s in manifest.\n", name);
+				return -ENOEXEC;
+			}
+
+			man_module->cfg_offset = offset;
+
+			/* Copy configuration for the module */
+			size_t size = modules->mod_man[j].cfg_count *
+				sizeof(struct sof_man_mod_config);
+
+			memcpy(cfg_start, modules->mod_cfg + modules->mod_man[j].cfg_offset, size);
+
+			cfg_start += size;
+			offset += modules->mod_man[j].cfg_count;
+		}
+
+		/* Update module count */
+		desc->header.num_module_entries = modules->output_mod_cfg_count;
+	} else {
 		/* skip modules passed as parameters. Their manifests have
 		 * already been copied by the man_create_modules function. */
 		for (i = image->num_modules; i < modules->mod_man_count; i++) {
 			man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
 			memcpy(man_module, &modules->mod_man[i], sizeof(*man_module));
 		}
-	else
-		i = modules->mod_man_count;
 
-	/* We need to copy the configurations for all modules. */
-	cfg_start = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
-	memcpy(cfg_start, modules->mod_cfg, modules->mod_cfg_count * sizeof(struct sof_man_mod_config));
+		/* We need to copy the configurations for all modules. */
+		cfg_start = (uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i);
+		memcpy(cfg_start, modules->mod_cfg,
+		       modules->mod_cfg_count * sizeof(struct sof_man_mod_config));
 
-	desc->header.num_module_entries = modules->mod_man_count;
+		/* Update module count */
+		desc->header.num_module_entries = modules->mod_man_count;
+	}
+
+	return 0;
 }
 
 static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 {
-	struct sof_man_module *man_module;
+	struct sof_man_module *man_module, *man;
+	struct manifest_module *mod_file;
 	size_t mod_offset, mod_size;
-	int i, ret = 0;
+	int i, j, idx, ret = 0;
 
-	for (i = 0; i < image->num_modules; i++) {
-		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
+	for (i = 0, mod_file = image->module;
+	     i < image->num_modules;
+	     i++, mod_file++) {
+		man_module = (struct sof_man_module *)
+			((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(mod_file->file.first_module_idx));
 
 		if (image->adsp->exec_boot_ldr && i == 0) {
 			fprintf(stdout, " module: no need to hash %s\n as its exec header\n",
@@ -726,6 +789,13 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 		ret = hash_sha256(image->fw_image + mod_offset, mod_size, man_module->hash, sizeof(man_module->hash));
 		if (ret)
 			break;
+
+		for (j = 1, idx = mod_file->file.first_module_idx + 1; j < mod_file->file.n_modules;
+		     j++, idx++) {
+			man = (struct sof_man_module *)
+				((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(idx));
+			memcpy(man->hash, man_module->hash, sizeof(man->hash));
+		}
 	}
 
 	return ret;
@@ -1453,7 +1523,9 @@ int man_write_fw_ace_v1_5(struct image *image)
 		goto err;
 
 	/* platform config defines some modules except bringup & base modules */
-	man_create_modules_in_config(image, desc);
+	ret = man_create_modules_in_config(image, desc);
+	if (ret)
+		goto err;
 
 	fprintf(stdout, "Firmware completing manifest v2.5\n");
 
