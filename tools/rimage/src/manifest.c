@@ -762,12 +762,16 @@ static int man_create_modules_in_config(struct image *image, struct sof_man_fw_d
 
 static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 {
-	struct sof_man_module *man_module;
+	struct sof_man_module *man_module, *man;
+	struct manifest_module *mod_file;
 	size_t mod_offset, mod_size;
-	int i, ret = 0;
+	int i, j, idx, ret = 0;
 
-	for (i = 0; i < image->num_modules; i++) {
-		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
+	for (i = 0, mod_file = image->module;
+	     i < image->num_modules;
+	     i++, mod_file++) {
+		man_module = (struct sof_man_module *)
+			((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(mod_file->file.first_module_idx));
 
 		if (image->adsp->exec_boot_ldr && i == 0) {
 			fprintf(stdout, " module: no need to hash %s\n as its exec header\n",
@@ -785,6 +789,13 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 		ret = hash_sha256(image->fw_image + mod_offset, mod_size, man_module->hash, sizeof(man_module->hash));
 		if (ret)
 			break;
+
+		for (j = 1, idx = mod_file->file.first_module_idx + 1; j < mod_file->file.n_modules;
+		     j++, idx++) {
+			man = (struct sof_man_module *)
+				((uint8_t *)desc + SOF_MAN_MODULE_OFFSET(idx));
+			memcpy(man->hash, man_module->hash, sizeof(man->hash));
+		}
 	}
 
 	return ret;
