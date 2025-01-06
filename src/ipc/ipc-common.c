@@ -170,6 +170,11 @@ out:
 	k_spin_unlock(&ipc->lock, key);
 }
 
+#ifdef __ZEPHYR__
+static struct k_work_q ipc_send_wq;
+static K_THREAD_STACK_DEFINE(ipc_send_wq_stack, CONFIG_STACK_SIZE_IPC_TX);
+#endif
+
 static void schedule_ipc_worker(void)
 {
 	/*
@@ -179,7 +184,7 @@ static void schedule_ipc_worker(void)
 #ifdef __ZEPHYR__
 	struct ipc *ipc = ipc_get();
 
-	k_work_schedule(&ipc->z_delayed_work, K_USEC(IPC_PERIOD_USEC));
+	k_work_schedule_for_queue(&ipc_send_wq, &ipc->z_delayed_work, K_USEC(IPC_PERIOD_USEC));
 #endif
 }
 
@@ -296,6 +301,20 @@ int ipc_init(struct sof *sof)
 #endif
 
 #ifdef __ZEPHYR__
+	struct k_thread *thread = &ipc_send_wq.thread;
+
+	k_work_queue_start(&ipc_send_wq,
+		       ipc_send_wq_stack,
+		       K_THREAD_STACK_SIZEOF(ipc_send_wq_stack),
+		       1, NULL);
+
+	k_thread_suspend(thread);
+
+	k_thread_cpu_pin(thread, PLATFORM_PRIMARY_CORE_ID);
+	k_thread_name_set(thread, "ipc_send_wq");
+
+	k_thread_resume(thread);
+
 	k_work_init_delayable(&sof->ipc->z_delayed_work, ipc_work_handler);
 #endif
 
