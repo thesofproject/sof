@@ -102,7 +102,7 @@ static inline char *ipc4_get_comp_new_data(void)
 }
 #endif
 
-struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
+__cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 {
 	struct comp_ipc_config ipc_config;
 	const struct comp_driver *drv;
