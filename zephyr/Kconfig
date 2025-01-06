@@ -96,4 +96,10 @@ config STACK_SIZE_EDF
 	help
 	  EDF scheduler work-queue thread stack size. Keep a power of 2.
 
+config STACK_SIZE_IPC_TX
+	int "IPC sender stack size"
+	default 2048
+	help
+	  IPC sender work-queue thread stack size. Keep a power of 2.
+
 endif
