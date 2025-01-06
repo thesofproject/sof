@@ -193,8 +193,12 @@ static uint32_t vol_zc_get_s32(const struct audio_stream *source,
 
 #endif /* CONFIG_FORMAT_S32LE */
 
-/** \brief Map of formats with dedicated zc functions. */
-static const struct comp_zc_func_map zc_func_map[] = {
+/**
+ * \brief Map of formats with dedicated zc functions.
+ *
+ * This is only used during @c .prepare() so it isn't performance-critical.
+ */
+__cold_rodata static const struct comp_zc_func_map zc_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, vol_zc_get_s16 },
 #endif /* CONFIG_FORMAT_S16LE */

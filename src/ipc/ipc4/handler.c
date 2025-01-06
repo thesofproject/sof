@@ -891,7 +891,7 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
  * delete module <-------> free component
  */
 
-static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_init_instance module_init;
 	struct comp_dev *dev;

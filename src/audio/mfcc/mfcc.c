@@ -38,7 +38,7 @@ SOF_DEFINE_REG_UUID(mfcc);
 
 DECLARE_TR_CTX(mfcc_tr, SOF_UUID(mfcc_uuid), LOG_LEVEL_INFO);
 
-const struct mfcc_func_map mfcc_fm[] = {
+__cold_rodata const struct mfcc_func_map mfcc_fm[] = {
 #if CONFIG_FORMAT_S16LE
 	{SOF_IPC_FRAME_S16_LE,  mfcc_s16_default},
 #endif /* CONFIG_FORMAT_S16LE */
