@@ -76,7 +76,7 @@ static int lib_manager_auth_init(void)
 	ret = auth_api_init(&ext_lib->auth_ctx, ext_lib->auth_buffer,
 			    AUTH_SCRATCH_BUFF_SZ, IMG_TYPE_LIB);
 	if (ret != 0) {
-		tr_err(&lib_manager_tr, "lib_manager_auth_init() failed with error: %d", ret);
+		tr_err(&lib_manager_tr, "auth_api_init() failed with error: %d", ret);
 		rfree(ext_lib->auth_buffer);
 		ret = -EACCES;
 	}
@@ -105,7 +105,7 @@ static int lib_manager_auth_proc(const void *buffer_data,
 	ret = auth_api_init_auth_proc(&ext_lib->auth_ctx, buffer_data, buffer_size, phase);
 
 	if (ret != 0) {
-		tr_err(&lib_manager_tr, "lib_manager_auth_proc() failed with error: %d", ret);
+		tr_err(&lib_manager_tr, "auth_api_init_auth_proc() failed with error: %d", ret);
 		return -ENOTSUP;
 	}
 
@@ -116,7 +116,7 @@ static int lib_manager_auth_proc(const void *buffer_data,
 	ret = auth_api_result(&ext_lib->auth_ctx);
 
 	if (ret != AUTH_IMAGE_TRUSTED) {
-		tr_err(&lib_manager_tr, "lib_manager_auth_proc() Untrasted library!");
+		tr_err(&lib_manager_tr, "Untrusted library!");
 		return -EACCES;
 	}
 
@@ -291,8 +291,7 @@ static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module
 		(void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
 					inst_offset);
 
-	tr_dbg(&lib_manager_tr,
-	       "lib_manager_get_instance_bss_address(): instance_bss_size: %#x, pointer: %p",
+	tr_dbg(&lib_manager_tr, "instance_bss_size: %#x, pointer: %p",
 	       instance_bss_size, (__sparse_force void *)va_base);
 
 	return va_base;
@@ -308,8 +307,7 @@ static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t ins
 									    instance_id, mod);
 
 	if ((is_pages * PAGE_SZ) > bss_size) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_allocate_module_instance(): invalid is_pages: %u, required: %u",
+		tr_err(&lib_manager_tr, "invalid is_pages: %u, required: %u",
 		       is_pages, bss_size / PAGE_SZ);
 		return -ENOMEM;
 	}
@@ -349,13 +347,11 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 	int ret;
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 
-	tr_dbg(&lib_manager_tr, "lib_manager_allocate_module(): mod_id: %#x",
-	       ipc_config->id);
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
 	mod = lib_manager_get_module_manifest(module_id);
 	if (!mod) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_allocate_module(): failed to get module descriptor");
+		tr_err(&lib_manager_tr, "failed to get module descriptor");
 		return 0;
 	}
 
@@ -375,8 +371,7 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 	ret = lib_manager_allocate_module_instance(module_id, IPC4_INST_ID(ipc_config->id),
 						   base_cfg->is_pages, mod);
 	if (ret < 0) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_allocate_module(): module allocation failed: %d", ret);
+		tr_err(&lib_manager_tr, "module allocation failed: %d", ret);
 #ifdef CONFIG_LIBCODE_MODULE_SUPPORT
 		lib_manager_unload_libcode_modules(module_id);
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
@@ -395,7 +390,7 @@ int lib_manager_free_module(const uint32_t component_id)
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	int ret;
 
-	tr_dbg(&lib_manager_tr, "lib_manager_free_module(): mod_id: %#x", component_id);
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
 	mod = lib_manager_get_module_manifest(module_id);
 
@@ -414,8 +409,7 @@ int lib_manager_free_module(const uint32_t component_id)
 
 	ret = lib_manager_free_module_instance(module_id, IPC4_INST_ID(component_id), mod);
 	if (ret < 0) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_free_module(): free module instance failed: %d", ret);
+		tr_err(&lib_manager_tr, "free module instance failed: %d", ret);
 		return ret;
 	}
 	return 0;
@@ -429,16 +423,14 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 				      const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config, const void **buildinfo)
 {
-	tr_err(&lib_manager_tr,
-	       "lib_manager_allocate_module(): Dynamic module allocation is not supported");
+	tr_err(&lib_manager_tr, "Dynamic module allocation is not supported");
 	return 0;
 }
 
 int lib_manager_free_module(const uint32_t component_id)
 {
 	/* Since we cannot allocate the freeing is not considered to be an error */
-	tr_warn(&lib_manager_tr,
-		"lib_manager_free_module(): Dynamic module freeing is not supported");
+	tr_warn(&lib_manager_tr, "Dynamic module freeing is not supported");
 	return 0;
 }
 #endif /* CONFIG_MM_DRV */
@@ -527,11 +519,10 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 									args->data);
 
 	if (!module_entry_point) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_module_create(), lib_manager_allocate_module() failed!");
+		tr_err(&lib_manager_tr, "lib_manager_allocate_module() failed!");
 		return NULL;
 	}
-	tr_info(&lib_manager_tr, "lib_manager_module_create() start");
+	tr_dbg(&lib_manager_tr, "start");
 
 	mod_cfg.data = (uint8_t *)args->data;
 	/* Intel modules expects DW size here */
@@ -544,8 +535,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 
 	if (!drv->adapter_ops) {
 		lib_manager_free_module(module_id);
-		tr_err(&lib_manager_tr,
-		       "lib_manager_module_create(), native_system_agent_start failed!");
+		tr_err(&lib_manager_tr, "native_system_agent_start failed!");
 		return NULL;
 	}
 
@@ -575,7 +565,7 @@ static void lib_manager_module_free(struct comp_dev *dev)
 		/* Free module resources allocated in L2 memory. */
 		ret = lib_manager_free_module(module_id);
 		if (ret < 0)
-			comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
+			comp_err(dev, "lib_manager_free_module() failed!");
 	}
 }
 
@@ -636,8 +626,7 @@ int lib_manager_register_module(const uint32_t component_id)
 			       sizeof(struct comp_driver_info));
 
 	if (!new_drv_info) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_register_module(): failed to allocate comp_driver_info");
+		tr_err(&lib_manager_tr, "failed to allocate comp_driver_info");
 		ret = -ENOMEM;
 		goto cleanup;
 	}
@@ -646,8 +635,7 @@ int lib_manager_register_module(const uint32_t component_id)
 		      SOF_MEM_CAPS_RAM | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct comp_driver));
 	if (!drv) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_register_module(): failed to allocate comp_driver");
+		tr_err(&lib_manager_tr, "failed to allocate comp_driver");
 		ret = -ENOMEM;
 		goto cleanup;
 	}
@@ -665,8 +653,7 @@ int lib_manager_register_module(const uint32_t component_id)
 			     SOF_MAN_ELF_TEXT_OFFSET +
 			     mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);
 
-		tr_info(&lib_manager_tr,
-			"lib_manager_register_module(): Module API version: %u.%u.%u, format: 0x%x",
+		tr_info(&lib_manager_tr, "Module API version: %u.%u.%u, format: 0x%x",
 			build_info->api_version_number.fields.major,
 			build_info->api_version_number.fields.middle,
 			build_info->api_version_number.fields.minor,
@@ -682,8 +669,7 @@ int lib_manager_register_module(const uint32_t component_id)
 			/* Check if module is NOT native */
 			if (build_info->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
 			    build_info->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
-				tr_err(&lib_manager_tr,
-				       "lib_manager_register_module(): Unsupported module API version");
+				tr_err(&lib_manager_tr, "Unsupported module API version");
 				return -ENOEXEC;
 			}
 		}
@@ -707,8 +693,7 @@ cleanup:
 #else /* CONFIG_INTEL_MODULES */
 int lib_manager_register_module(const uint32_t component_id)
 {
-	tr_err(&lib_manager_tr,
-	       "lib_manager_register_module(): Dynamic module loading is not supported");
+	tr_err(&lib_manager_tr, "Dynamic module loading is not supported");
 	return -ENOTSUP;
 }
 #endif /* CONFIG_INTEL_MODULES */
@@ -723,13 +708,11 @@ static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
 	dma_ext->dma_addr = (uintptr_t)rballoc_align(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_DMA, size,
 						     dma_ext->addr_align);
 	if (!dma_ext->dma_addr) {
-		tr_err(&lib_manager_tr, "lib_manager_dma_buffer_alloc(): alloc failed");
+		tr_err(&lib_manager_tr, "alloc failed");
 		return -ENOMEM;
 	}
 
-	tr_dbg(&lib_manager_tr,
-	       "lib_manager_dma_buffer_alloc(): address: %#lx, size: %u",
-	       dma_ext->dma_addr, size);
+	tr_dbg(&lib_manager_tr, "address: %#lx, size: %u", dma_ext->dma_addr, size);
 
 	return 0;
 }
@@ -749,8 +732,7 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 	dma_ext->dma = sof_dma_get(SOF_DMA_DIR_HMEM_TO_LMEM, 0, SOF_DMA_DEV_HOST,
 				   SOF_DMA_ACCESS_EXCLUSIVE);
 	if (!dma_ext->dma) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_dma_init(): dma_ext->dma = NULL");
+		tr_err(&lib_manager_tr, "dma_ext->dma = NULL");
 		return -ENODEV;
 	}
 
@@ -800,8 +782,7 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 		k_usleep(100);
 	}
 
-	tr_err(&lib_manager_tr,
-	       "lib_manager_load_data_from_host(): timeout during DMA transfer");
+	tr_err(&lib_manager_tr, "timeout during DMA transfer");
 	return -ETIMEDOUT;
 }
 
@@ -847,7 +828,7 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 	local_add = (__sparse_force void __sparse_cache *)rballoc_align(0, caps, size, addr_align);
 
 	if (!local_add) {
-		tr_err(&lib_manager_tr, "lib_manager_allocate_store_mem(): alloc failed");
+		tr_err(&lib_manager_tr, "alloc failed");
 		return NULL;
 	}
 
@@ -882,8 +863,7 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	if (!library_base_address)
 		return -ENOMEM;
 
-	tr_dbg(&lib_manager_tr, "lib_manager_store_library(): pointer: %p",
-	       (__sparse_force void *)library_base_address);
+	tr_dbg(&lib_manager_tr, "pointer: %p", (__sparse_force void *)library_base_address);
 
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 	/* AUTH_PHASE_FIRST - checks library manifest only. */
@@ -1007,8 +987,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 
 	if (type == SOF_IPC4_GLB_LOAD_LIBRARY &&
 	    (lib_id == 0 || lib_id >= LIB_MANAGER_MAX_LIBS)) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_load_library(): invalid lib_id: %u", lib_id);
+		tr_err(&lib_manager_tr, "invalid lib_id: %u", lib_id);
 		return -EINVAL;
 	}
 
@@ -1057,8 +1036,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 stop_dma:
 	ret2 = dma_stop(dma_ext->chan->dma->z_dev, dma_ext->chan->index);
 	if (ret2 < 0) {
-		tr_err(&lib_manager_tr,
-		       "lib_manager_load_library(): error stopping DMA: %d", ret);
+		tr_err(&lib_manager_tr, "error stopping DMA: %d", ret);
 		if (!ret)
 			ret = ret2;
 	}

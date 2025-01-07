@@ -44,7 +44,7 @@ struct ipc_msg *lib_notif_msg_init(uint32_t header, uint32_t size)
 		k_spinlock_key_t key;
 		/* No free element or list empty, create new handle  */
 		if (ext_lib->lib_notif_count > LIB_MANAGER_LIB_NOTIX_MAX_COUNT) {
-			tr_dbg(&lib_manager_tr, "lib_nofig_msg_init() LIB_MANAGER_LIB_NOTIX_MAX_COUNT < %d",
+			tr_dbg(&lib_manager_tr, "LIB_MANAGER_LIB_NOTIX_MAX_COUNT < %d",
 			       ext_lib->lib_notif_count);
 			return NULL;
 		}
