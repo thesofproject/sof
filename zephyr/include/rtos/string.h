@@ -8,6 +8,7 @@
 
 /* Zephyr uses a C library so lets use it */
 #include <string.h>
+#include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
 
@@ -40,11 +41,19 @@ static inline int memcpy_s(void *dest, size_t dest_size,
 	if (!dest || !src)
 		return -EINVAL;
 
-	if ((dest >= src && (char *)dest < ((char *)src + count)) ||
-	    (src >= dest && (char *)src < ((char *)dest + dest_size)))
+	if (count > dest_size)
 		return -EINVAL;
 
-	if (count > dest_size)
+	uintptr_t dest_addr = (uintptr_t)dest;
+	uintptr_t src_addr = (uintptr_t)src;
+
+	/* Check for overflow in pointer arithmetic */
+	if ((dest_addr + dest_size < dest_addr) || (src_addr + count < src_addr))
+		return -EINVAL;
+
+	/* Check for overlap without causing overflow */
+	if ((dest_addr >= src_addr && dest_addr < src_addr + count) ||
+	    (src_addr >= dest_addr && src_addr < dest_addr + dest_size))
 		return -EINVAL;
 
 	memcpy(dest, src, count);
