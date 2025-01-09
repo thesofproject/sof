@@ -73,6 +73,11 @@ jobs:
           path: ./workspace/sof
           filter: 'tree:0'
 
+      - name: free space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+
       - name: west clones
         run: pip3 install west && cd workspace/sof/ && west init -l &&
                west update --narrow --fetch-opt=--filter=tree:0
