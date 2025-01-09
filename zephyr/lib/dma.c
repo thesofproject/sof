@@ -153,8 +153,8 @@ SHARED_DATA struct dma dma[] = {
 #if defined(CONFIG_SOC_MIMX8ML8_ADSP)
 {
 	.plat_data = {
-		.dir = SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
-		.devs = SOF_DMA_DEV_SAI,
+		.dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
+		.devs = DMA_DEV_SAI,
 		.channels = 32,
 		.period_count = 2,
 	},
@@ -162,8 +162,8 @@ SHARED_DATA struct dma dma[] = {
 },
 {
 	.plat_data = {
-		.dir = SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
-		.devs = SOF_DMA_DEV_HOST,
+		.dir = DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
+		.devs = DMA_DEV_HOST,
 		.channels = 32,
 		.period_count = 2,
 	},
