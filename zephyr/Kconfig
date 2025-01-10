@@ -90,4 +90,11 @@ config VIRTUAL_HEAP
 	help
 	  Enabling this option will use the virtual memory heap allocator to allocate buffers.
 	  It is based on a set of buffers whose size is predetermined.
+
+config STACK_SIZE_EDF
+	int "EDF scheduler stack size"
+	default 8192
+	help
+	  EDF scheduler work-queue thread stack size. Keep a power of 2.
+
 endif
