@@ -8,10 +8,8 @@
 #ifndef __SOF_AUDIO_SMART_AMP_H__
 #define __SOF_AUDIO_SMART_AMP_H__
 
-#ifndef __SOF_MODULE_SERVICE_BUILD__
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
-#endif
 
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/base-config.h>
@@ -21,19 +19,9 @@
 
 #define SMART_AMP_MAX_STREAM_CHAN   8
 
-/* Max channels for all intel platforms are 8 */
-#define MAX_CHANNELS	8
-
 /** IPC blob types */
 #define SOF_SMART_AMP_CONFIG	0
 #define SOF_SMART_AMP_MODEL	1
-
-#ifdef __SOF_MODULE_SERVICE_BUILD__
-#define LOG_ERR(...)
-#define LOG_WRN(...)
-#define LOG_DBG(...)
-#define LOG_INF(...)
-#endif
 
 struct smart_amp_model_data {
 	uint32_t data_size;
@@ -95,8 +83,8 @@ struct smart_amp_model_data {
 struct sof_smart_amp_config {
 	uint32_t size;
 	uint32_t feedback_channels;
-	int8_t source_ch_map[MAX_CHANNELS];
-	int8_t feedback_ch_map[MAX_CHANNELS];
+	int8_t source_ch_map[PLATFORM_MAX_CHANNELS];
+	int8_t feedback_ch_map[PLATFORM_MAX_CHANNELS];
 };
 
 #if CONFIG_IPC_MAJOR_4
