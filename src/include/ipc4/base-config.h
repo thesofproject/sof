@@ -23,9 +23,8 @@
 
 #ifndef __SOF_IPC4_BASE_CONFIG_H__
 #define __SOF_IPC4_BASE_CONFIG_H__
-#ifndef __SOF_MODULE_SERVICE_BUILD__
+
 #include <sof/compiler_attributes.h>
-#endif
 #include <module/ipc4/base-config.h>
 
 struct sof_ipc_stream_params;
