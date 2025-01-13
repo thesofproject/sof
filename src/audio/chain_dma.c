@@ -187,13 +187,13 @@ static enum task_state chain_task_run(void *data)
 		break;
 	case -EPIPE:
 		tr_warn(&chain_dma_tr, "chain_task_run(): dma_get_status() link xrun occurred,"
-			" ret = %u", ret);
+			" ret = %d", ret);
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 		handle_xrun(cd);
 #endif
 		break;
 	default:
-		tr_err(&chain_dma_tr, "chain_task_run(): dma_get_status() error, ret = %u", ret);
+		tr_err(&chain_dma_tr, "chain_task_run(): dma_get_status() error, ret = %d", ret);
 		return SOF_TASK_STATE_COMPLETED;
 	}
 
@@ -204,7 +204,7 @@ static enum task_state chain_task_run(void *data)
 	/* Host DMA does not report xruns. All error values will be treated as critical. */
 	ret = dma_get_status(cd->chan_host->dma->z_dev, cd->chan_host->index, &stat);
 	if (ret < 0) {
-		tr_err(&chain_dma_tr, "chain_task_run(): dma_get_status() error, ret = %u", ret);
+		tr_err(&chain_dma_tr, "chain_task_run(): dma_get_status() error, ret = %d", ret);
 		return SOF_TASK_STATE_COMPLETED;
 	}
 
@@ -223,14 +223,14 @@ static enum task_state chain_task_run(void *data)
 		ret = dma_reload(cd->chan_host->dma->z_dev, cd->chan_host->index, 0, 0, increment);
 		if (ret < 0) {
 			tr_err(&chain_dma_tr,
-			       "chain_task_run(): dma_reload() host error, ret = %u", ret);
+			       "chain_task_run(): dma_reload() host error, ret = %d", ret);
 			return SOF_TASK_STATE_COMPLETED;
 		}
 
 		ret = dma_reload(cd->chan_link->dma->z_dev, cd->chan_link->index, 0, 0, increment);
 		if (ret < 0) {
 			tr_err(&chain_dma_tr,
-			       "chain_task_run(): dma_reload() link error, ret = %u", ret);
+			       "chain_task_run(): dma_reload() link error, ret = %d", ret);
 			return SOF_TASK_STATE_COMPLETED;
 		}
 	} else {
@@ -248,7 +248,7 @@ static enum task_state chain_task_run(void *data)
 					 half_buff_size);
 			if (ret < 0) {
 				tr_err(&chain_dma_tr,
-				       "chain_task_run(): dma_reload() link error, ret = %u",
+				       "chain_task_run(): dma_reload() link error, ret = %d",
 					ret);
 				return SOF_TASK_STATE_COMPLETED;
 			}
@@ -264,7 +264,7 @@ static enum task_state chain_task_run(void *data)
 					 0, 0, transferred);
 			if (ret < 0) {
 				tr_err(&chain_dma_tr,
-				       "chain_task_run(): dma_reload() host error, ret = %u", ret);
+				       "chain_task_run(): dma_reload() host error, ret = %d", ret);
 				return SOF_TASK_STATE_COMPLETED;
 			}
 
@@ -274,7 +274,7 @@ static enum task_state chain_task_run(void *data)
 						 0, 0, half_buff_size);
 				if (ret < 0) {
 					tr_err(&chain_dma_tr, "chain_task_run(): dma_reload() "
-					       "link error, ret = %u", ret);
+					       "link error, ret = %d", ret);
 					return SOF_TASK_STATE_COMPLETED;
 				}
 			}
