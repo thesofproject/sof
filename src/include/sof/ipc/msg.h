@@ -34,8 +34,7 @@ struct ipc_msg {
 	uint32_t header;	/* specific to platform */
 	uint32_t extension;	/* extension specific to platform */
 	uint32_t tx_size;	/* payload size in bytes */
-	void *tx_data;		/* pointer to payload data */
-	bool is_shared;		/* the message is shared cross-core */
+	void *tx_data;		/* pointer to payload data, must be in a non-cached memory */
 	struct list_item list;
 };
 
