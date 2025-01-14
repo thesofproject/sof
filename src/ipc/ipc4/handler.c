@@ -72,9 +72,9 @@ struct ipc4_msg_data {
 static struct ipc4_msg_data msg_data;
 
 /* fw sends a fw ipc message to send the status of the last host ipc message */
-static struct ipc_msg msg_reply = {0, 0, 0, 0, false, LIST_INIT(msg_reply.list)};
+static struct ipc_msg msg_reply = {0, 0, 0, 0, LIST_INIT(msg_reply.list)};
 
-static struct ipc_msg msg_notify = {0, 0, 0, 0, false, LIST_INIT(msg_notify.list)};
+static struct ipc_msg msg_notify = {0, 0, 0, 0, LIST_INIT(msg_notify.list)};
 
 #if CONFIG_LIBRARY
 static inline struct ipc4_message_request *ipc4_get_message_request(void)
@@ -1471,18 +1471,8 @@ struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 	msg_data.msg_out.pri = msg->header;
 	msg_data.msg_out.ext = msg->extension;
 
-	if (msg->tx_size) {
-		/* Invalidate cache to ensure we read the latest data from memory.
-		 * The response was prepared on a secondary core but will be sent
-		 * to the host from the primary core.
-		 */
-		if (msg->is_shared) {
-			dcache_invalidate_region((__sparse_force void __sparse_cache *)msg->tx_data,
-						 msg->tx_size);
-		}
-
+	if (msg->tx_size)
 		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
-	}
 
 	return &msg_data.msg_out;
 }
@@ -1515,7 +1505,6 @@ void ipc_send_panic_notification(void)
 {
 	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_EXCEPTION_CAUGHT);
 	msg_notify.extension = cpu_get_id();
-	msg_notify.is_shared = !cpu_is_primary(cpu_get_id());
 	msg_notify.tx_size = 0;
 	msg_notify.tx_data = NULL;
 	list_init(&msg_notify.list);
@@ -1548,7 +1537,6 @@ void ipc_send_buffer_status_notify(void)
 	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
 	msg_notify.extension = 0;
 	msg_notify.tx_size = 0;
-	msg_notify.is_shared = false;
 
 	tr_dbg(&ipc_tr, "tx-notify\t: %#x|%#x", msg_notify.header, msg_notify.extension);
 
