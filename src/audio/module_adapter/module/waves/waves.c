@@ -19,7 +19,9 @@
 #define NUM_IO_STREAMS (1)
 
 SOF_DEFINE_REG_UUID(waves);
+
 DECLARE_TR_CTX(waves_tr, SOF_UUID(waves_uuid), LOG_LEVEL_INFO);
+LOG_MODULE_REGISTER(waves, CONFIG_SOF_LOG_LEVEL);
 
 struct waves_codec_data {
 	uint32_t                sample_rate;
@@ -248,7 +250,8 @@ static int waves_effect_check(struct comp_dev *dev)
 
 	/* different interleaving is not supported */
 	if (audio_stream_get_buffer_fmt(src_fmt) != audio_stream_get_buffer_fmt(snk_fmt)) {
-		comp_err(dev, "waves_effect_check() source %d sink %d buffer format mismatch");
+		comp_err(dev, "waves_effect_check() source %d sink %d buffer format mismatch",
+			 audio_stream_get_buffer_fmt(src_fmt), audio_stream_get_buffer_fmt(snk_fmt));
 		return -EINVAL;
 	}
 
@@ -896,3 +899,24 @@ static const struct module_interface waves_interface = {
 
 DECLARE_MODULE_ADAPTER(waves_interface, waves_uuid, waves_tr);
 SOF_MODULE_INIT(waves, sys_comp_module_waves_interface_init);
+
+#if CONFIG_WAVES_CODEC_MODULE && CONFIG_WAVES_CODEC_STUB
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+/* d944281a-afe9-4695-a043-d7f62b89538e */
+#define UUID_WAVES_CODEC 0x1A, 0x28, 0x44, 0xD9, 0xE9, 0xAF, 0x95, 0x46, \
+		0xA0, 0x43, 0xD7, 0xF6, 0x2B, 0x89, 0x53, 0x8E
+
+SOF_LLEXT_MOD_ENTRY(waves, &waves_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("WAVES", waves_llext_entry,
+				  7, UUID_WAVES_CODEC, 8);
+
+SOF_LLEXT_BUILDINFO;
+
+#endif

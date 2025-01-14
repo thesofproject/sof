@@ -134,6 +134,10 @@
 #include <audio/module_adapter/module/cadence.toml>
 #endif
 
+#if defined(CONFIG_WAVES_CODEC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/module_adapter/module/waves/waves.toml>
+#endif
+
 #if defined(CONFIG_COMP_RTNR) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/rtnr/rtnr.toml>
 #endif
