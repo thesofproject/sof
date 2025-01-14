@@ -778,29 +778,14 @@ static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 	uint32_t reply_size = 0;
 	int err;
 
-	/* NOTE: reply implementation is messy! First, reply payload is copied
-	 * to ipc->comp_data buffer. Then, new buffer is allocated and assigned
-	 * to msg_reply.tx_data. ipc_msg_send() copies payload from ipc->comp_data
-	 * to msg_reply.tx_data. Then, ipc_prepare_to_send() copies payload from
-	 * msg_reply.tx_data to memory window and frees msg_reply.tx_data. That is
-	 * quite weird: seems one extra copying can be eliminated.
-	 */
-
 	err = copier_ipcgtw_process((const struct ipc4_ipcgtw_cmd *)ipc4, ipc->comp_data,
 				    &reply_size);
 	/* reply size is returned in header extension dword */
 	msg_reply.extension = reply_size;
 
 	if (reply_size > 0) {
-		msg_reply.tx_data = rballoc(0, SOF_MEM_CAPS_RAM, reply_size);
-		if (msg_reply.tx_data) {
-			msg_reply.tx_size = reply_size;
-		} else {
-			ipc_cmd_err(&ipc_tr, "failed to allocate %u bytes for msg_reply.tx_data",
-				    reply_size);
-			msg_reply.extension = 0;
-			return IPC4_OUT_OF_MEMORY;
-		}
+		msg_reply.tx_data = ipc->comp_data;
+		msg_reply.tx_size = reply_size;
 	}
 
 	return err < 0 ? IPC4_FAILURE : IPC4_SUCCESS;
@@ -1054,7 +1039,6 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	const struct comp_driver *drv;
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
-	void *response_buffer;
 	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
@@ -1134,15 +1118,8 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 		return ret;
 
 	msg_reply.extension = reply.extension.dat;
-	response_buffer = rballoc(0, SOF_MEM_CAPS_RAM, data_offset);
-	if (response_buffer) {
-		msg_reply.tx_size = data_offset;
-		msg_reply.tx_data = response_buffer;
-	} else {
-		ipc_cmd_err(&ipc_tr, "error: failed to allocate tx_data");
-		ret = IPC4_OUT_OF_MEMORY;
-	}
-
+	msg_reply.tx_size = data_offset;
+	msg_reply.tx_data = data;
 	return ret;
 }
 
@@ -1507,14 +1484,6 @@ struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
 	}
 
-	/* free memory for get config function */
-	if (msg == &msg_reply && msg_reply.tx_size > 0) {
-		rfree(msg_reply.tx_data);
-		msg_reply.tx_data = NULL;
-		msg_reply.tx_size = 0;
-		msg_reply.is_shared = false;
-	}
-
 	return &msg_data.msg_out;
 }
 
@@ -1607,6 +1576,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	/* no process on scheduled thread */
 	atomic_set(&msg_data.delayed_reply, 0);
 	msg_data.delayed_error = 0;
+	msg_reply.tx_data = NULL;
 	msg_reply.tx_size = 0;
 	msg_reply.header = in->primary.dat;
 	msg_reply.extension = in->extension.dat;
