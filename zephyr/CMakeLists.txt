@@ -1139,13 +1139,18 @@ elseif(CONFIG_DTS_CODEC)
 	endif()
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/waves/waves.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC_STUB
-	${SOF_AUDIO_PATH}/module_adapter/module/waves/maxx_stub.c
-)
+if(CONFIG_WAVES_CODEC STREQUAL "m")
+	add_subdirectory(${SOF_AUDIO_PATH}/module_adapter/module/waves/llext
+			 ${PROJECT_BINARY_DIR}/waves_llext)
+	add_dependencies(app waves)
+elseif(CONFIG_WAVES_CODEC)
+	zephyr_library_sources(
+		${SOF_AUDIO_PATH}/module_adapter/module/waves/waves.c
+	)
+	zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC_STUB
+		${SOF_AUDIO_PATH}/module_adapter/module/waves/maxx_stub.c
+	)
+endif()
 
 if(CONFIG_PROBE STREQUAL "m")
 	add_subdirectory(${SOF_SRC_PATH}/probe/llext
