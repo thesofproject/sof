@@ -257,8 +257,10 @@ static void virtual_heap_free(void *ptr)
 	ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
 
 	ret = vmh_free(heap, ptr);
-	if (ret)
+	if (ret) {
 		tr_err(&zephyr_tr, "Unable to free %p! %d", ptr, ret);
+		k_panic();
+	}
 }
 
 static const struct vmh_heap_config static_hp_buffers = {
