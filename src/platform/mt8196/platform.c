@@ -3,6 +3,7 @@
  * Copyright(c) 2024 MediaTek. All rights reserved.
  *
  * Author: Hailong Fan <hailong.fan@mediatek.com>
+ *         Darren Ye <darren.ye@mediatek.com>
  */
 
 #include <errno.h>
@@ -21,6 +22,7 @@
 #include <sof/fw-ready-metadata.h>
 #include <sof/lib/agent.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
@@ -139,9 +141,9 @@ const struct xthal_MPU_entry __xt_mpu_init_table[] __section(".ResetVector.text"
 	XTHAL_MPU_ENTRY(0x1a110000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_DEVICE),		// audio
 	XTHAL_MPU_ENTRY(0x4e100000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_WRITEBACK),		// sram
 	XTHAL_MPU_ENTRY(0x4e180000, 1, XTHAL_AR_NONE, XTHAL_MEM_DEVICE),		// unused
-	XTHAL_MPU_ENTRY(0x90000000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_WRITEBACK_NOALLOC),	// dram
+	XTHAL_MPU_ENTRY(0x90000000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_WRITEBACK),	// dram
 	XTHAL_MPU_ENTRY(0x90500000, 1, XTHAL_AR_RWXrwx, XTHAL_MEM_NON_CACHEABLE),	// dram
-	XTHAL_MPU_ENTRY(0x91100000, 1, XTHAL_AR_NONE, XTHAL_MEM_DEVICE),		// unused
+	XTHAL_MPU_ENTRY(0x90900000, 1, XTHAL_AR_NONE, XTHAL_MEM_DEVICE),		// unused
 };
 
 const unsigned int __xt_mpu_init_table_size __section(".ResetVector.text") =
@@ -187,6 +189,10 @@ int platform_init(struct sof *sof)
 	/* initialize the host IPC mechanisms */
 	ipc_init(sof);
 
+	ret = dai_init(sof);
+	if (ret < 0)
+		return ret;
+
 #if CONFIG_TRACE
 	/* Initialize DMA for Trace*/
 	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
@@ -201,7 +207,6 @@ int platform_init(struct sof *sof)
 
 int platform_context_save(struct sof *sof)
 {
-	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_DEFAULT_CPU_HZ);
 	return 0;
 }
 
