@@ -79,7 +79,7 @@ dnl     deadline, priority, core)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SAI, 2, sai2-bt-sco-pcm-wb,
 	PIPELINE_SOURCE_1, 2, s16le,
-	DEADLINE, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	DEADLINE, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI SAI2 using 2 periods
 DAI_ADD(sof/pipe-dai-capture.m4,
@@ -91,7 +91,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	3, SAI, 3, sai3-bt-sco-pcm-wb,
 	PIPELINE_SOURCE_3, 2, s16le,
-	DEADLINE, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	DEADLINE, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # capture DAI SAI3 using 2 periods
 DAI_ADD(sof/pipe-dai-capture.m4,
