@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2022 Intel Corporation. All rights reserved.
+ * Copyright(c) 2022-2025 Intel Corporation.
  *
  * Author: Shriram Shastry <malladi.sastry@linux.intel.com>
+ *         Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  *
  */
 #ifndef __SOFM_EXP_FCN_H__
@@ -26,40 +27,40 @@
 
 #endif
 
-/* TODO: Is there a MCPS difference */
-#define USING_QCONVERT	1
+/* Q5.27 int32(round(log((2^31 - 1)/2^20) * 2^27)) */
+#define SOFM_EXP_FIXED_INPUT_MAX	1023359037
 
-#if USING_QCONVERT
+/* Q8.24 int32(round((log((2^31 - 1)/2^20) * 20 / log(10)) * 2^24)) */
+#define SOFM_DB2LIN_INPUT_MAX		1111097957
 
-#include <sof/audio/format.h>
-#define SOFM_EXP_FIXED_INPUT_MIN	Q_CONVERT_FLOAT(-11.5, 27)		/* Q5.27 */
-#define SOFM_EXP_FIXED_INPUT_MAX	Q_CONVERT_FLOAT(7.6245, 27)		/* Q5.27 */
-#define SOFM_EXP_TWO_Q27		Q_CONVERT_FLOAT(2.0, 27)		/* Q5.27 */
-#define SOFM_EXP_MINUS_TWO_Q27		Q_CONVERT_FLOAT(-2.0, 27)		/* Q5.27 */
-#define SOFM_EXP_ONE_Q20		Q_CONVERT_FLOAT(1.0, 20)		/* Q12.20 */
-#define SOFM_EXP_MINUS_100_Q24		Q_CONVERT_FLOAT(-100.0, 24)		/* Q8.24 */
-#define SOFM_EXP_LOG10_DIV20_Q27	Q_CONVERT_FLOAT(0.1151292546, 27)	/* Q5.27 */
+/**
+ * Calculates exponent function exp(x) = e^x with accurate and efficient technique that
+ * includes range reduction operations, approximation with Taylor series, and reconstruction
+ * operations to compensate the range reductions.
+ * @param	x	The input argument as Q4.28 from -8 to +8
+ * @return		The calculated e^x value as Q13.19 from 3.3546e-04 to 2981.0
+ */
+int32_t sofm_exp_approx(int32_t x);
 
-#else
-
-#define SOFM_EXP_FIXED_INPUT_MIN	-1543503872	/* Q_CONVERT_FLOAT(-11.5, 27) */
-#define SOFM_EXP_FIXED_INPUT_MAX	 1023343067	/* Q_CONVERT_FLOAT(7.6245, 27) */
-#define SOFM_EXP_TWO_Q27		 268435456	/* Q_CONVERT_FLOAT(2.0, 27) */
-#define SOFM_EXP_MINUS_TWO_Q27		-268435456	/* Q_CONVERT_FLOAT(-2.0, 27) */
-#define SOFM_EXP_ONE_Q20		 1048576	/* Q_CONVERT_FLOAT(1.0, 20) */
-#define SOFM_EXP_MINUS_100_Q24		-1677721600	/* Q_CONVERT_FLOAT(-100.0, 24) */
-#define SOFM_EXP_LOG10_DIV20_Q27	 15452387	/* Q_CONVERT_FLOAT(0.1151292546, 27) */
-
-#endif
-
-#define SOFM_EXP_BIT_MASK_LOW_Q27P5 0x0000000008000000
-#define SOFM_EXP_BIT_MASK_Q62P2 0x4000000000000000LL
-#define SOFM_EXP_QUOTIENT_SCALE 0x40000000
-#define SOFM_EXP_TERMS_Q23P9 0x800000
-#define SOFM_EXP_LSHIFT_BITS 0x2000
-
-int32_t sofm_exp_int32(int32_t x);
+/**
+ * Calculated exponent function exp(x) = e^x by using sofm_exp_approx(). The input range for
+ * large arguments is internally reduced to -8 to +8 with rule exp(x) = exp(x/2) * exp(x/2)
+ * and reconstructed back. This function is essentially a wrapper for compatibility with
+ * existing usage of exp() function and Q-format choice. Note that the return value saturates
+ * to INT32_MAX with input arguments larger than 7.6246.
+ * @param	x	The input argument as Q5.27 from -16 to +16
+ * @return		The calculated e^x value as Q12.20
+ */
 int32_t sofm_exp_fixed(int32_t x);
+
+
+/**
+ * Converts a decibels value to liner amplitude lin = 10^(db/20) value with optimized
+ * equation exp(db * log(10)/20). Note that due to range limitation of sofm_exp_fixed()
+ * the output saturates to maximum with about +66 dB input.
+ * @param	db	Decibels value in Q8.24 format, from -128 to +66.226
+ * @return		Linear value in Q12.20 format, from 3.9811e-07 to 2048
+ */
 int32_t sofm_db2lin_fixed(int32_t db);
 
 #endif /* __SOFM_EXP_FCN_H__ */
