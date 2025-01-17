@@ -230,10 +230,10 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 }
 
 static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
-			      struct lib_manager_module *mctx, struct llext **llext,
-			      const void **buildinfo,
+			      struct lib_manager_module *mctx, const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
+	struct llext **llext = &mctx->llext;
 	/* Identify if this is the first time loading this module */
 	struct llext_load_param ldr_parm = {
 		.relocate_local = !mctx->segment[LIB_MANAGER_TEXT].size,
@@ -283,6 +283,7 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
 }
 
+/* Count "module files" in the library, allocate and initialize memory for their descriptors */
 static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 				  const struct sof_man_fw_desc *desc)
 {
@@ -320,6 +321,7 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 	return 0;
 }
 
+/* Find a module context, containing the driver with the supplied index */
 static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
 {
 	unsigned int i;
@@ -331,29 +333,18 @@ static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx
 	return i - 1;
 }
 
-uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
-					const void *ipc_specific_config)
+static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw_desc *desc,
+				     struct lib_manager_mod_ctx *ctx, struct llext_buf_loader *ebl,
+				     const void **buildinfo,
+				     const struct sof_man_module_manifest **mod_manifest)
 {
-	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
-	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-
-	if (!ctx || !desc) {
-		tr_err(&lib_manager_tr, "failed to get module descriptor");
-		return 0;
-	}
-
-	struct sof_man_module *mod_array = (struct sof_man_module *)((char *)desc +
+	struct sof_man_module *mod_array = (struct sof_man_module *)((uint8_t *)desc +
 								     SOF_MAN_MODULE_OFFSET(0));
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	size_t mod_offset = mod_array[entry_index].segment[LIB_MANAGER_TEXT].file_offset;
-	const struct sof_man_module_manifest *mod_manifest;
-	const struct sof_module_api_build_info *buildinfo;
-	size_t mod_size;
-	int i, inst_idx;
 	int ret;
 
-	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
+	tr_dbg(&lib_manager_tr, "mod_id: %u", module_id);
 
 	if (!ctx->mod)
 		llext_manager_mod_init(ctx, desc);
@@ -361,11 +352,13 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 	if (entry_index >= desc->header.num_module_entries) {
 		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
 		       entry_index, desc->header.num_module_entries - 1);
-		return 0;
+		return -EINVAL;
 	}
 
-	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
-	struct lib_manager_module *mctx = ctx->mod + mod_idx;
+	unsigned int mod_ctx_idx = llext_manager_mod_find(ctx, entry_index);
+	struct lib_manager_module *mctx = ctx->mod + mod_ctx_idx;
+	size_t mod_size;
+	int i, inst_idx;
 
 	/*
 	 * We don't know the number of ELF files that this library is built of.
@@ -381,9 +374,9 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 	 * we need to find the matching manifest in ".module" because only it
 	 * contains the entry point. For safety we calculate the ELF driver
 	 * index and then also check the driver name.
-	 * We also need the driver size. For this we search the manifest array
-	 * for the next ELF file, then the difference between offsets gives us
-	 * the driver size.
+	 * We also need a module size. For this we search the manifest array for
+	 * the next ELF file, then the difference between offsets gives us the
+	 * module size.
 	 */
 	for (i = entry_index - 1; i >= 0; i--)
 		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != mod_offset)
@@ -404,17 +397,71 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 				    PAGE_SZ);
 
 	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
 
-	/* LLEXT linking is only needed once for all the drivers in each module */
-	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx,
-				 &mctx->llext, (const void **)&buildinfo, &mod_manifest);
+	*ebl = (struct llext_buf_loader)LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset,
+							 mod_size);
+
+	/*
+	 * LLEXT linking is only needed once for all the "drivers" in the
+	 * module. This calls llext_load(), which also takes references to any
+	 * dependencies, sets up sections and retrieves buildinfo and
+	 * mod_manifest
+	 */
+	ret = llext_manager_link(ebl, mod_array[entry_index - inst_idx].name, mctx,
+				 buildinfo, mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
+		return ret;
+	}
+
+	/* if ret > 0, then the "driver" is already loaded */
+	if (!ret)
+		/* mctx->mod_manifest points to a const array of module manifests */
+		mctx->mod_manifest = *mod_manifest;
+
+	/* Return the manifest, related to the specific instance */
+	*mod_manifest = mctx->mod_manifest + inst_idx;
+
+	if (strncmp(mod_array[entry_index].name, (*mod_manifest)->module.name,
+		    sizeof(mod_array[0].name))) {
+		tr_err(&lib_manager_tr, "Name mismatch %s vs. %s",
+		       mod_array[entry_index].name, (*mod_manifest)->module.name);
+		return -ENOEXEC;
+	}
+
+	return mod_ctx_idx;
+}
+
+uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
+					const void *ipc_specific_config)
+{
+	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
+	/* Library manifest */
+	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)
+		lib_manager_get_library_manifest(module_id);
+	/* Library context */
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+
+	if (!ctx || !desc) {
+		tr_err(&lib_manager_tr, "failed to get module descriptor");
 		return 0;
 	}
 
-	if (!ret) {
+	/* Array of all "module drivers" (manifests) in the library */
+	const struct sof_man_module_manifest *mod_manifest;
+	const struct sof_module_api_build_info *buildinfo = NULL;
+	struct llext_buf_loader ebl;
+
+	/* "module file" index in the ctx->mod array */
+	int mod_ctx_idx = llext_manager_link_single(module_id, desc, ctx, &ebl,
+						    (const void **)&buildinfo, &mod_manifest);
+
+	if (mod_ctx_idx < 0)
+		return 0;
+
+	struct lib_manager_module *mctx = ctx->mod + mod_ctx_idx;
+
+	if (buildinfo) {
 		/* First instance: check that the module is native */
 		if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
 		    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
@@ -423,22 +470,13 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 		}
 
 		/* Map executable code and data */
-		ret = llext_manager_load_module(mctx->llext, &ebl, mctx);
+		int ret = llext_manager_load_module(mctx->llext, &ebl, mctx);
+
 		if (ret < 0)
 			return 0;
-
-		/* mctx->mod_manifest points to a const array of module manifests */
-		mctx->mod_manifest = mod_manifest;
 	}
 
-	if (strncmp(mod_array[entry_index].name, mctx->mod_manifest[inst_idx].module.name,
-		    sizeof(mod_array[0].name))) {
-		tr_err(&lib_manager_tr, "Name mismatch %s vs. %s",
-		       mod_array[entry_index].name, mctx->mod_manifest[inst_idx].module.name);
-		return 0;
-	}
-
-	return mctx->mod_manifest[inst_idx].module.entry_point;
+	return mod_manifest->module.entry_point;
 }
 
 int llext_manager_unload(uint32_t module_id)
