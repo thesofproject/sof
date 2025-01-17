@@ -280,6 +280,13 @@ PLATFORM=mtl"
 "cavs-nocodec-bt\;sof-nocodec-bt-mtl-lbm\;BT_LOOPBACK_MODE=true,PLATFORM=mtl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-mtl-lbm.bin"
 
+# BT offload for ptl
+"cavs-nocodec-bt\;sof-nocodec-bt-ptl\;PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-ptl.bin,\
+PLATFORM=ptl"
+# BT offload loopback test topology (lbm) for ptl
+"cavs-nocodec-bt\;sof-nocodec-bt-ptl-lbm\;BT_LOOPBACK_MODE=true,PLATFORM=ptl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-ptl-lbm.bin"
+
 # CAVS HDA topology for benchmarking performance
 # Copier - peak volume - mixin - mixout - aria - peak volume - mixin - mixout - copier
 "sof-hda-generic\;sof-hda-benchmark-generic\;HDA_CONFIG=benchmark,BENCH_CONFIG=benchmark,BENCH_ARIA_PARAMS=param_1"
