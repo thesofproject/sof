@@ -1,20 +1,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- *Copyright(c) 2023 Intel Corporation. All rights reserved.
+ *Copyright(c) 2023-2025 Intel Corporation.
  *
  * Author: Shriram Shastry <malladi.sastry@linux.intel.com>
- *
+ *         Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
+#include <sof/audio/format.h>
 #include <sof/math/exp_fcn.h>
 #include <sof/common.h>
 #include <rtos/symbol.h>
-#include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
 
 #if defined(SOFM_EXPONENTIAL_HIFI3) || defined(SOFM_EXPONENTIAL_HIFI4) || \
 	    defined(SOFM_EXPONENTIAL_HIFI5)
@@ -27,330 +23,219 @@
 #include <xtensa/tie/xt_hifi3.h>
 #endif
 
-#include <xtensa/tie/xt_hifi2.h>
-#include <xtensa/tie/xt_FP.h>
+#define SOFM_EXP_ONE_OVER_LOG2_Q30	 1549082005	/* Q2.30 int32(round(1/log(2) * 2^30)) */
+#define SOFM_EXP_LOG2_Q31		 1488522236	/* Q1.31 int32(round(log(2) * 2^31)) */
+#define SOFM_EXP_FIXED_INPUT_MINUS8	-1073741824	/* Q5.27 int32(-8 * 2^27) */
+#define SOFM_EXP_FIXED_INPUT_PLUS8	 1073741823	/* Q5.27 int32(8 * 2^27) */
+#define SOFM_EXP_LOG10_DIV20_Q27	 15452387	/* Q5.27 int32(round(log(10)/20*2^27)) */
 
-#define SOFM_CONVERG_ERROR 28823037624320LL /* error smaller than 1e-4,1/2 ^ -44.7122876209085 */
-
-/*
- * Arguments	: int64_t in_0
- *		  int64_t in_1
- *		  uint64_t *ptroutbitshi
- *		  uint64_t *ptroutbitslo
- * Return Type	: void
- * Description:Perform element-wise multiplication on in_0 and in_1
- * while keeping the required product word length and fractional
- * length in mind. mul_s64 function divide the 64-bit quantities
- * into two 32-bit words,multiply the low words to produce the
- * lowest and second-lowest words in the result, then both pairs
- * of low and high words from different numbers to produce the
- * second and third lowest words in the result, and finally both
- * high words to produce the two highest words in the outcome.
- * Add them all up, taking carry into consideration.
+/* The table contains exponents of value v, where values of v
+ * are the 3 bit 2's complement signed values presented by bits
+ * of index 0..7.
  *
- * The 64 x 64 bit multiplication of operands in_0 and in_1 is
- * shown in the image below. The 64-bit operand in_0,in_1 is
- * represented by the notation in0_H, in1_H for the top 32 bits
- * and in0_L, in1_L for the bottom 32 bits.
- *
- *				in0_H : in0_L
- *			x	in1_H : in1_L
- *			---------------------
- *	P0			in0_L x in1_L
- *	P1		in0_H x in1_L		64 bit inner multiplication
- *	P2		in0_L x in1_H		64 bit inner multiplication
- *	P3	in0_H x in1_H
- *			--------------------
- *			[64 x 64 bit multiplication] sum of inner products
- * All combinations are multiplied by one another and then added.
- * Each inner product is moved into its proper power location.given the names
- * of the inner products, redoing the addition where 000 represents 32 zero
- * bits.The inner products can be added together in 64 bit addition.The sum
- * of two 64-bit numbers yields a 65-bit output.
- *		   (P0H:P0L)
- *		P1H(P1L:000)
- *		P2H(P2L:000)
- *	P3H:P3L(000:000)
- *	.......(aaa:P0L)
- * By combining P0H:P0L and P1L:000. This can lead to a carry, denote as CRY0.
- * The partial result is then multiplied by P2L:000.
- * We call it CRY1 because it has the potential to carry again.
- *	(CRY0 + CRY1)P0H:P0L
- *	(	 P1H)P1L:000
- *	(	 P2H)P2L:000
- *	(P3H:	 P3L)000:000
- *	--------------------
- *	(ccc:bbb)aaa:P0L
- * P1H, P2H, and P3H:P3L are added to the carry CRY0 + CRY1.This increase will
- * not result in an overflow.
- *
+ * v = [(0:3)/8 (-4:-1)/8];
+ * uint32(round(exp(v) * 2^31))
  */
-static void mul_s64(ae_int64 in_0, ae_int64 in_1, ae_int64 *__restrict__ ptroutbitshi,
-		    ae_int64 *__restrict__ ptroutbitslo)
-{
-	ae_int64 producthihi, producthilo, productlolo;
-	ae_int64 producthi, product_hl_lh_h, product_hl_lh_l, carry;
-
-#if (SOFM_EXPONENTIAL_HIFI4 == 1 || SOFM_EXPONENTIAL_HIFI5 == 1)
-
-	ae_int32x2 in0_32 = AE_MOVINT32X2_FROMINT64(in_0);
-	ae_int32x2 in1_32 = AE_MOVINT32X2_FROMINT64(in_1);
-
-	ae_ep ep_lolo = AE_MOVEA(0);
-	ae_ep ep_hilo = AE_MOVEA(0);
-	ae_ep ep_HL_LH = AE_MOVEA(0);
-
-	producthihi = AE_MUL32_HH(in0_32, in1_32);
-
-	/* AE_MULZAAD32USEP.HL.LH - Unsigned lower parts and signed higher 32-bit parts dual */
-	/* multiply and accumulate operation on two 32x2 operands with 72-bit output */
-	/* Input-32x32-bit(in1_32xin0_32)into 72-bit multiplication operations */
-	/* Output-lower 64 bits of the result are stored in producthilo */
-	/* Output-upper eight bits are stored in ep_hilo */
-	AE_MULZAAD32USEP_HL_LH(ep_hilo, producthilo, in1_32, in0_32);
-	productlolo = AE_MUL32U_LL(in0_32, in1_32);
-
-	product_hl_lh_h = AE_SRAI72(ep_hilo, producthilo, 32);
-	product_hl_lh_l = AE_SLAI64(producthilo, 32);
-
-	/* The AE_ADD72 procedure adds two 72-bit elements. The first 72-bit value is created */
-	/* by concatenating the MSBs and LSBs of operands ep[7:0] and d[63:0]. Similarly, the */
-	/* second value is created by concatenating bits from operands ep1[7:0] and d1[63:0]. */
-	AE_ADD72(ep_lolo, productlolo, ep_HL_LH, product_hl_lh_l);
-
-	carry = AE_SRAI72(ep_lolo, productlolo, 32);
-
-	carry = AE_SRLI64(carry, 32);
-	producthi = AE_ADD64(producthihi, carry);
-
-	producthi = AE_ADD64(producthi, product_hl_lh_h);
-	*ptroutbitslo = productlolo;
-#elif SOFM_EXPONENTIAL_HIFI3 == 1
-
-	ae_int64 producthi_1c;
-	ae_int64 producthi_2c;
-	ae_int64 productlo_2c;
-	ae_int64 productlo;
-
-	ae_int64 s0 = AE_SRLI64(in_0, 63);
-	ae_int64 s1 = AE_SRLI64(in_1, 63);
-	bool x_or = (bool)((int)(int64_t)s0 ^ (int)(int64_t)s1);
-
-	ae_int32x2 in0_32 = AE_MOVINT32X2_FROMINT64(AE_ABS64(in_0));
-	ae_int32x2 in1_32 = AE_MOVINT32X2_FROMINT64(AE_ABS64(in_1));
-
-	producthihi = AE_MUL32_HH(in0_32, in1_32);
-	producthilo = AE_MUL32U_LL(in1_32, AE_MOVINT32X2_FROMINT64
-				  ((AE_MOVINT64_FROMINT32X2(in0_32) >> 32)));
-	producthilo += AE_MUL32U_LL(AE_MOVINT32X2_FROMINT64
-				  ((AE_MOVINT64_FROMINT32X2(in1_32) >> 32)), in0_32);
-	productlolo = AE_MUL32U_LL(in0_32, in1_32);
-
-	product_hl_lh_h = AE_SRAI64(producthilo, 32);
-	product_hl_lh_l = AE_SLAI64(producthilo, 32);
-
-	productlo = AE_ADD64(productlolo, product_hl_lh_l);
-	producthi = AE_ADD64(producthihi, product_hl_lh_h);
-
-	carry = AE_ADD64(AE_SRLI64(productlolo, 1), AE_SRLI64(product_hl_lh_l, 1));
-	carry = AE_SRLI64(carry, 63);
-	producthi = AE_ADD64(producthi, carry);
-
-	producthi_1c = AE_NOT64(producthi);
-	producthi_2c = AE_NEG64(producthi);
-	productlo_2c = AE_NEG64(productlo);
-
-	if (x_or) {
-		if (productlo == (ae_int64)0) {
-			producthi = producthi_2c;
-		} else {
-			producthi = producthi_1c;
-			productlo = productlo_2c;
-		}
-	}
-	*ptroutbitslo = productlo;
-#endif //(XCHAL_HAVE_HIFI4 || XCHAL_HAVE_HIFI5)
-
-	*ptroutbitshi = producthi;
-}
-
-/*
- * Arguments	: int64_t a
- *		  int64_t b
- * Return Type	: int64_t
- */
-static int64_t lomul_s64_sr_sat_near(int64_t a, int64_t b)
-{
-	ae_int64 u64_chi;
-	ae_int64 u64_clo;
-	ae_int64 temp;
-
-	mul_s64(a, b, &u64_chi, &u64_clo);
-
-	ae_int64 roundup = AE_AND64(u64_clo, SOFM_EXP_BIT_MASK_LOW_Q27P5);
-
-	roundup = AE_SRLI64(roundup, 27);
-	temp = AE_OR64(AE_SLAI64(u64_chi, 36), AE_SRLI64(u64_clo, 28));
-
-	return AE_ADD64(temp, roundup);
-}
-
-static const int64_t onebyfact_Q63[19] = {
-		4611686018427387904LL,
-		1537228672809129301LL,
-		384307168202282325LL,
-		76861433640456465LL,
-		12810238940076077LL,
-		1830034134296582LL,
-		228754266787072LL,
-		25417140754119LL,
-		2541714075411LL,
-		231064915946LL,
-		19255409662LL,
-		1481185358LL,
-		105798954LL,
-		7053264LL,
-		440829LL,
-		25931LL,
-		1441LL,
-		76LL,
-		4LL
+static const uint32_t sofm_exp_3bit_lookup[8] = {
+	2147483648, 2433417774, 2757423586, 3124570271,
+	1302514674, 1475942488, 1672461947, 1895147668
 };
 
-/* f(x) = a^x, x is variable and a is base
- *
- * Arguments	: int32_t x(Q4.28)
- * input range -5 to 5
- *
- * Return Type	: int32_t ts(Q9.23)
- * output range 0.0067465305 to 148.4131488800
- *+------------------+-----------------+--------+--------+
- *| x		     | ts (returntype) |   x	|  ts	 |
- *+----+-----+-------+----+----+-------+--------+--------+
- *|WLen| FLen|Signbit|WLen|FLen|Signbit| Qformat| Qformat|
- *+----+-----+-------+----+----+-------+--------+--------+
- *| 32 | 28  |	1    | 32 | 23 |   0   | 4.28	| 9.23	 |
- *+------------------+-----------------+--------+--------+
+/* Taylor polynomial coefficients for x^3..x^6, calculated
+ * uint32(round(1 ./ factorial(3:6) * 2^32))
  */
-int32_t sofm_exp_int32(int32_t x)
+static const uint32_t sofm_exp_taylor_coeffs[4] = {
+	715827883, 178956971, 35791394, 5965232
+};
+
+/* function f(x) = e^x
+ *
+ * Arguments	: int32_t x (Q4.28)
+ * input range -8 to 8
+ *
+ * Return Type	: int32_t (Q13.19)
+ * output range 3.3546e-04 to 2981.0
+ */
+int32_t sofm_exp_approx(int32_t x)
 {
-	ae_int64 outhi;
-	ae_int64 outlo;
-	ae_int64 qt;
-	ae_int64 onebyfact;
-	ae_int64 temp;
+	ae_int64 p;
+	uint32_t taylor_first_2;
+	uint32_t taylor_extra;
+	uint32_t b_f32;
+	uint32_t b_pow;
+	uint32_t exp_a;
+	uint32_t exp_b;
+	uint32_t term;
+	uint32_t b;
+	int32_t x_times_one_over_log2;
+	int32_t e_times_log2;
+	int32_t x_32bit;
+	int32_t y_32bit;
+	int32_t e;
+	int32_t r;
+	int a;
 
-	ae_int64 *ponebyfact_Q63 = (ae_int64 *)onebyfact_Q63;
-	ae_int64 ts = SOFM_EXP_TERMS_Q23P9;
-	ae_int64 mp = (x + SOFM_EXP_LSHIFT_BITS) >> 14; /* x in Q50.14 */;
-	xtbool flag;
-	int64_t b_n;
+	//x = 843314857;
 
-	mul_s64(mp, SOFM_EXP_BIT_MASK_Q62P2, &outhi, &outlo);
-	qt = AE_OR64(AE_SLAI64(outhi, 46), AE_SRLI64(outlo, 18));
+	/* -------------------------------------------------------------------------
+	 * FIRST RANGE REDUCTION ---------------------------------------------------
+	 * -------------------------------------------------------------------------
+	 * Multiply gives q28 * q30 -> q58, without shift the rounded value
+	 * would be q42 (58 - 16). For q26 result, shift right by 16 (42 - 26).
+	 */
+	p = AE_MUL32_LL(x, SOFM_EXP_ONE_OVER_LOG2_Q30);
+	x_times_one_over_log2 = (ae_int32)AE_ROUND32F48SASYM(AE_SRAI64(p, 16));
 
-	temp = AE_SRAI64(AE_ADD64(qt, SOFM_EXP_QUOTIENT_SCALE), 35);
+	/* Shift, round to q0 */
+	e = AE_SRAI32R(x_times_one_over_log2, 26);
 
-	ts = AE_ADD64(ts, temp);
 
-	mp = lomul_s64_sr_sat_near(mp, (int64_t)x);
+	/* Q6.31, but we only keep the bottom 31 bits */
+	e_times_log2 = (uint32_t)e * SOFM_EXP_LOG2_Q31;
 
-	for (b_n = 0; b_n < 64;) {
-		AE_L64_IP(onebyfact, ponebyfact_Q63, 8);
+	/* -------------------------------------------------------------------------
+	 * SECOND RANGE REDUCTION --------------------------------------------------
+	 * y = a + b
+	 * -------------------------------------------------------------------------
+	 */
+	x_32bit = AE_SLAI32(x, 3);		/* S4.31, overflow to S1.31 */
+	y_32bit = x_32bit - e_times_log2;	/* S0.31, in ~[-0.34, +0.34] */
+	a = (y_32bit >> 28) & 7;		/* just the 3 top bits of "y" */
+	b = y_32bit & 0x0FFFFFFF;		/* bottom 31-3 = 28 bits. format U-3.31 */
+	exp_a = sofm_exp_3bit_lookup[a];
+	b_f32 = (b << 1) | 0x4;			/* U0.32, align b on 32-bits of fraction */
 
-		mul_s64(mp, onebyfact, &outhi, &outlo);
-		qt = AE_OR64(AE_SLAI64(outhi, 45), AE_SRLI64(outlo, 19));
+	/* Taylor approximation : base part + iterations
+	 * Base part      : 1 + b + b^2/2!
+	 * Iterative part : b^3/3! + b^4/4! + b^5/5! + b^6/6!
+	 *                : Term count determined dynamically using e.
+	 *
+	 * Base part: NOTE: delay adding the "1" in "1 + b + b^2/2" until after we
+	 * add the iterative part in. This gives us one more guard bit.
+	 * NOTE: u_int32 x u_int32 => {hi, lo}. We only need {hi} for b_pow.
+	 */
+	b_pow = (uint64_t)b_f32 * b_f32 >> 32;
+	taylor_first_2 = b_f32 + (b_pow >> 1); /* 0.32 */
+	taylor_extra = 0;
+	term = 1;
+	if (e < -10)
+		goto ITER_END;
 
-		temp = AE_SRAI64(AE_ADD64(qt, SOFM_EXP_QUOTIENT_SCALE), 35);
-		ts = AE_ADD64(ts, temp);
+	b_pow = (uint64_t)b_f32 * b_pow >> 32;
+	term = (uint64_t)b_pow * sofm_exp_taylor_coeffs[0] >> 32;
+	taylor_extra += term;
+	if (e < -5)
+		goto ITER_END;
 
-		mp = lomul_s64_sr_sat_near(mp, (int64_t)x);
+	b_pow = (uint64_t)b_f32 * b_pow >> 32;
+	term = (uint64_t)b_pow * sofm_exp_taylor_coeffs[1] >> 32;
+	taylor_extra += term;
+	if (e < 0)
+		goto ITER_END;
 
-		const ae_int64 sign = AE_NEG64(qt);
+	b_pow = (uint64_t)b_f32 * b_pow >> 32;
+	term = (uint64_t)b_pow * sofm_exp_taylor_coeffs[2] >> 32;
+	taylor_extra += term;
+	if (e < 6)
+		goto ITER_END;
 
-		flag = AE_LT64(qt, 0);
-		AE_MOVT64(qt, sign, flag);
+	b_pow = (uint64_t)b_f32 * b_pow >> 32;
+	term = (uint64_t)b_pow * sofm_exp_taylor_coeffs[3] >> 32;
+	taylor_extra += term;
 
-		if (!(qt < (ae_int64)SOFM_CONVERG_ERROR))
-			b_n++;
-		else
-			b_n = 64;
-	}
+ITER_END:
 
-	return AE_MOVAD32_L(AE_MOVINT32X2_FROMINT64(ts));
+	/* Implement rounding to 31 fractional bits.. */
+	taylor_first_2 = taylor_first_2 + taylor_extra + 1;
+
+	/* Add the missing "1" for the Taylor series "1+b+b^2/2+...." */
+	exp_b = ((uint32_t)1 << 31) + (taylor_first_2 >> 1); /* U1.31 */
+
+	/* -------------------------------------------------------------------------
+	 * FIRST RECONSTRUCTION ----------------------------------------------------
+	 * -------------------------------------------------------------------------
+	 */
+
+	/* U1.31 * U1.31 = U2.62 */
+	p = (ae_int64)((uint64_t)exp_a * exp_b);
+
+	/* -------------------------------------------------------------------------
+	 * SECOND RECONSTRUCTION ---------------------------------------------------
+	 * -------------------------------------------------------------------------
+	 */
+
+	/* Rounding to nearest,
+	 * using f48 round with shift value for right shift is negative
+	 * q62 to q31 shift right is -31, for round instruction shift left is +16,
+	 * compensate shift e by right shift is -12: 16 - 31 - 12 = -27
+	 */
+	p = AE_SLAA64(p, e - 27);
+	r = (ae_int32)AE_ROUND32F48SASYM(p);
+	return r;
 }
 
-/* Fixed point exponent function for approximate range -11.5 .. 7.6
- * that corresponds to decibels range -100 .. +66 dB.
+/* Fixed point exponent function for approximate range -16 .. 7.6246.
  *
  * The functions uses rule exp(x) = exp(x/2) * exp(x/2) to reduce
- * the input argument for private small value exp() function that is
- * accurate with input range -2.0 .. +2.0. The number of possible
- * divisions by 2 is computed into variable n. The returned value is
- * exp()^(2^n).
+ * the input argument for function sofm_exp_approx() with input
+ * range from -8 to +8.
  *
  * Input  is Q5.27, -16.0 .. +16.0, but note the input range limitation
  * Output is Q12.20, 0.0 .. +2048.0
  */
-
 int32_t sofm_exp_fixed(int32_t x)
 {
-	ae_f64 p;
-	ae_int32 y0;
-	ae_int32 y;
-	ae_int32 xs;
-	int32_t n;
-	int shift;
-	int i;
-
-	if (x < SOFM_EXP_FIXED_INPUT_MIN)
-		return 0;
+	ae_int32 x0, y0, y1;
 
 	if (x > SOFM_EXP_FIXED_INPUT_MAX)
 		return INT32_MAX;
 
-	/* This returns number of right shifts needed to scale value x to |x| < 2.
-	 * The behavior differs slightly for positive and negative values but it
-	 * is not problem for sofm_exp_int32() function. E.g.
-	 *
-	 * x =  268435455 (1.9999999925), shift = 0
-	 * x =  268435456 (2.0000000000), shift = 1
-	 * x =  268435457 (2.0000000075), shift = 1
-	 *
-	 * x = -268435457 (-2.0000000075), shift = 1
-	 * x = -268435456 (-2.0000000000), shift = 0
-	 * x = -268435455 (-1.9999999925), shift = 0
-	 *
-	 * If the shift is zero, just return result from sofm_exp_int32() with
-	 * input Q format and output Q format adjusts.
-	 */
-	shift = (int)AE_MAX32(0, 3 - AE_NSAZ32_L(x));
-	if (!shift)
-		return AE_SRAI32R(sofm_exp_int32(AE_MOVAD32_L(AE_SLAI32S(x, 1))), 3);
-
-	/* Shifting x one less right to save an additional Q27 to Q28 conversion
-	 * shift for sofm_exp_int32()
-	 */
-	n = 1 << shift;
-	xs = AE_SRAA32RS(x, shift - 1);
-
-	/* sofm_exp_int32() input is Q4.28, while x1 is Q5.27
-	 * sofm_exp_int32() output is Q9.23, while y0 is Q12.20
-	 */
-	y0 = AE_SRAI32R(sofm_exp_int32(xs), 3);
-	y = SOFM_EXP_ONE_Q20;
-
-	/* AE multiply returns Q41 from Q20 * Q20. To get Q20 it need to be
-	 * shifted right by 21. Since the used round instruction is aligned
-	 * to the high 32 bits it is shifted instead left by 32 - 21 = 11:
-	 */
-	for (i = 0; i < n; i++) {
-		p = AE_SLAI64S(AE_MULF32S_LL(y, y0), 11);
-		y = AE_ROUND32F64SASYM(p);
+	/* No need to check for > 8, the input max is lower, about 7.6 */
+	if (x < SOFM_EXP_FIXED_INPUT_MINUS8) {
+		/* Divide by 2, convert Q27 to Q28 is x as such */
+		y0 = sofm_exp_approx(x);
+		/* Multiply gives q19 * q19 -> q38, without shift the rounded value
+		 * would be q22 (38 - 16). For q20 shift right by 2.
+		 */
+		y1 = (ae_int32)AE_ROUND32F48SASYM(AE_SRAI64(AE_MUL32_LL(y0, y0), 2));
+		return y1;
 	}
 
-	return y;
+	x0 = AE_SLAI32S(x, 1);
+	y0 = sofm_exp_approx((int32_t)x0);
+	return (ae_int32)AE_SLAI32S(y0, 1);
 }
 EXPORT_SYMBOL(sofm_exp_fixed);
+
+/* Decibels to linear conversion: The function uses exp() to calculate
+ * the linear value. The argument is multiplied by log(10)/20 to
+ * calculate equivalent of 10^(db/20).
+ *
+ * The error in conversion is less than 0.1 dB for -89..+66 dB range. Do not
+ * use the code for argument less than -100 dB. The code simply returns zero
+ * as linear value for such very small value.
+ *
+ * Input is Q8.24 (max 128.0)
+ * output is Q12.20 (max 2048.0)
+ */
+
+int32_t sofm_db2lin_fixed(int32_t db)
+{
+	ae_int64 p;
+	ae_int32 arg;
+
+	if (db > SOFM_DB2LIN_INPUT_MAX)
+		return INT32_MAX;
+
+	/* Multiply gives Q8.24 * Q5.27 -> Q13.51 */
+	p = AE_MUL32_LL(db, SOFM_EXP_LOG10_DIV20_Q27);
+
+	/* Without shift the f48 rounded value would be Q35 (51 - 16).
+	 * For Q5.27 result, shift right by 8 (35 - 27).
+	 */
+	arg = AE_ROUND32F48SASYM(AE_SRAI64(p, 8));
+	return sofm_exp_fixed((int32_t)arg);
+}
+EXPORT_SYMBOL(sofm_db2lin_fixed);
 
 #endif
