@@ -116,8 +116,7 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 	return ret;
 }
 
-static int llext_manager_load_module(const struct llext *ext, const struct llext_buf_loader *ebl,
-				     const struct lib_manager_module *mctx)
+static int llext_manager_load_module(const struct llext *ext, const struct lib_manager_module *mctx)
 {
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
@@ -144,13 +143,15 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 	if (bss_size &&
 	    ((uintptr_t)bss_addr + bss_size <= (uintptr_t)va_base_data ||
 	     (uintptr_t)bss_addr >= (uintptr_t)va_base_data + data_size)) {
+		size_t bss_align = MIN(PAGE_SZ, BIT(__builtin_ctz((uintptr_t)bss_addr)));
+
 		if ((uintptr_t)bss_addr + bss_size == (uintptr_t)va_base_data &&
 		    !((uintptr_t)bss_addr & (PAGE_SZ - 1))) {
 			/* .bss directly in front of writable data and properly aligned, prepend */
 			va_base_data = bss_addr;
 			data_size += bss_size;
 		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data +
-			   ALIGN_UP(data_size, ebl->loader.sects[LLEXT_MEM_BSS].sh_addralign)) {
+			   ALIGN_UP(data_size, bss_align)) {
 			/* .bss directly behind writable data, append */
 			data_size += bss_size;
 		} else {
@@ -339,8 +340,7 @@ static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx
 }
 
 static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw_desc *desc,
-				     struct lib_manager_mod_ctx *ctx, struct llext_buf_loader *ebl,
-				     const void **buildinfo,
+				     struct lib_manager_mod_ctx *ctx, const void **buildinfo,
 				     const struct sof_man_module_manifest **mod_manifest)
 {
 	struct sof_man_module *mod_array = (struct sof_man_module *)((uint8_t *)desc +
@@ -402,9 +402,7 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 				    PAGE_SZ);
 
 	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-
-	*ebl = (struct llext_buf_loader)LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset,
-							 mod_size);
+	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
 
 	/*
 	 * LLEXT linking is only needed once for all the "drivers" in the
@@ -412,7 +410,7 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 	 * dependencies, sets up sections and retrieves buildinfo and
 	 * mod_manifest
 	 */
-	ret = llext_manager_link(ebl, mod_array[entry_index - inst_idx].name, mctx,
+	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx,
 				 buildinfo, mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
@@ -455,10 +453,9 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 	/* Array of all "module drivers" (manifests) in the library */
 	const struct sof_man_module_manifest *mod_manifest;
 	const struct sof_module_api_build_info *buildinfo = NULL;
-	struct llext_buf_loader ebl;
 
 	/* "module file" index in the ctx->mod array */
-	int mod_ctx_idx = llext_manager_link_single(module_id, desc, ctx, &ebl,
+	int mod_ctx_idx = llext_manager_link_single(module_id, desc, ctx,
 						    (const void **)&buildinfo, &mod_manifest);
 
 	if (mod_ctx_idx < 0)
@@ -475,7 +472,7 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 		}
 
 		/* Map executable code and data */
-		int ret = llext_manager_load_module(mctx->llext, &ebl, mctx);
+		int ret = llext_manager_load_module(mctx->llext, mctx);
 
 		if (ret < 0)
 			return 0;
