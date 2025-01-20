@@ -363,6 +363,26 @@ static int basefw_set_mic_priv_policy(bool first_block,
 #endif
 }
 
+static int basefw_mic_priv_state_changed(bool first_block,
+					 bool last_block,
+					 uint32_t data_offset_or_size,
+					 const char *data)
+{
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	tr_info(&basefw_comp_tr, "state changed to %d", *data);
+
+	uint32_t mic_disable_status = (uint32_t)(*data);
+	struct mic_privacy_settings settings;
+
+	mic_privacy_fill_settings(&settings, mic_disable_status);
+	mic_privacy_propagate_settings(&settings);
+
+	return 0;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 int basefw_vendor_set_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -375,6 +395,8 @@ int basefw_vendor_set_large_config(struct comp_dev *dev,
 		return basefw_set_fw_config(first_block, last_block, data_offset, data);
 	case IPC4_SET_MIC_PRIVACY_FW_MANAGED_POLICY_MASK:
 		return basefw_set_mic_priv_policy(first_block, last_block, data_offset, data);
+	case IPC4_MIC_PRIVACY_HW_MANAGED_STATE_CHANGE:
+		return basefw_mic_priv_state_changed(first_block, last_block, data_offset, data);
 	default:
 		break;
 	}
