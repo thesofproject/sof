@@ -95,6 +95,7 @@ int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev
 {
 	return comp_set_state(dev, cmd);
 }
+EXPORT_SYMBOL(module_adapter_set_state);
 
 int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t data_offset_size, const char *data)
