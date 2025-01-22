@@ -93,7 +93,7 @@ static inline char *ipc4_get_comp_new_data(void)
 
 static const struct comp_driver *ipc4_library_get_comp_drv(char *data)
 {
-	return ipc4_get_drv((const uint8_t *)data);
+	return ipc4_get_drv(data);
 }
 #else
 static inline char *ipc4_get_comp_new_data(void)
@@ -773,7 +773,7 @@ int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
 
-	drv = ipc4_get_drv((const uint8_t *)&uuid);
+	drv = ipc4_get_drv(&uuid);
 	if (!drv)
 		return -EINVAL;
 
@@ -912,8 +912,9 @@ int ipc4_process_on_core(uint32_t core, bool blocking)
 	return IPC4_SUCCESS;
 }
 
-const struct comp_driver *ipc4_get_drv(const uint8_t *uuid)
+const struct comp_driver *ipc4_get_drv(const void *uuid)
 {
+	const struct sof_uuid *const sof_uuid = (const struct sof_uuid *)uuid;
 	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
@@ -936,11 +937,11 @@ const struct comp_driver *ipc4_get_drv(const uint8_t *uuid)
 		}
 	}
 
-	tr_warn(&comp_tr, "get_drv(): the provided UUID (%08x %08x %08x %08x) can't be found!",
-		*(uint32_t *)(&uuid[0]),
-		*(uint32_t *)(&uuid[4]),
-		*(uint32_t *)(&uuid[8]),
-		*(uint32_t *)(&uuid[12]));
+	tr_warn(&comp_tr,
+		"get_drv(): the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
+		sof_uuid->a, sof_uuid->b, sof_uuid->c, sof_uuid->d[0], sof_uuid->d[1],
+		sof_uuid->d[2], sof_uuid->d[3], sof_uuid->d[4], sof_uuid->d[5], sof_uuid->d[6],
+		sof_uuid->d[7]);
 
 out:
 	irq_local_enable(flags);
@@ -998,13 +999,13 @@ const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 #endif
 	}
 	/* Check already registered components */
-	drv = ipc4_get_drv(mod->uuid);
+	drv = ipc4_get_drv(&mod->uuid);
 
 #if CONFIG_LIBRARY_MANAGER
 	if (!drv) {
 		/* New module not registered yet. */
 		lib_manager_register_module(module_id);
-		drv = ipc4_get_drv(mod->uuid);
+		drv = ipc4_get_drv(&mod->uuid);
 	}
 #endif
 
