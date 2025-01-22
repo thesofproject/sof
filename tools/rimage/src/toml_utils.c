@@ -290,7 +290,7 @@ void parse_str_key(const toml_table_t *table, struct parse_ctx *ctx, const char 
 	dst[capacity - 1] = 0;
 }
 
-void parse_uuid(const char *buf, uint8_t *uuid)
+void parse_uuid(const char *buf, void *uuid)
 {
 	struct uuid_t id;
 	uint32_t d[11];
