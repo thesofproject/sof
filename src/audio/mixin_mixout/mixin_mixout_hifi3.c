@@ -255,6 +255,9 @@ static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 			AE_LA32X2_IP(in_sample, inu, in);
 			AE_LA32X2_IP(out_sample, outu1, out);
 			out--;
+			/* sign extent in_sample as AE_ADD24S expects Q9.23 arguments */
+			in_sample = AE_SLAI24S(AE_MOVF24X2_FROMINT32X2(in_sample), 0);
+			/* out_sample is already sign extended by other mixin in a loop below */
 			out_sample = AE_ADD24S(in_sample, out_sample);
 			AE_SA32X2_IP(out_sample, outu2, out);
 		}
@@ -264,6 +267,8 @@ static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		if (left) {
 			AE_L32_IP(in_sample, (ae_int32 *)in, sizeof(ae_int32));
 			AE_L32_IP(out_sample, (ae_int32 *)out, 0);
+			/* sign extension */
+			in_sample = AE_SLAI24S(AE_MOVF24X2_FROMINT32X2(in_sample), 0);
 			out_sample = AE_ADD24S(in_sample, out_sample);
 			AE_S32_L_IP(out_sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
@@ -283,12 +288,16 @@ static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		left = n & 1;
 		for (i = 0; i < m; i++) {
 			AE_LA32X2_IP(in_sample, inu, in);
+			/* sign extension */
+			in_sample = AE_SLAI24S(AE_MOVF24X2_FROMINT32X2(in_sample), 0);
 			AE_SA32X2_IP(in_sample, outu2, out);
 		}
 		AE_SA64POS_FP(outu2, out);
 		/* process the left sample to avoid memory access overrun */
 		if (left) {
 			AE_L32_IP(in_sample, (ae_int32 *)in, sizeof(ae_int32));
+			/* sign extension */
+			in_sample = AE_SLAI24S(AE_MOVF24X2_FROMINT32X2(in_sample), 0);
 			AE_S32_L_IP(in_sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
 	}
