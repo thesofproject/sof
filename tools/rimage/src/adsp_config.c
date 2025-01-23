@@ -1910,7 +1910,7 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 		if (ret < 0)
 			return err_key_parse("uuid", NULL);
 
-		parse_uuid(buf, mod_man->uuid);
+		parse_uuid(buf, &mod_man->uuid);
 
 		mod_man->affinity_mask = parse_uint32_hex_key(mod_entry, &ctx_entry,
 							      "affinity_mask", 1, &ret);
@@ -1952,7 +1952,7 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 		header->version_major = 2;
 		header->version_minor = 5;
 		header->ext_module_config_length = sizeof(struct fw_ext_mod_config_header);
-		memcpy(header->guid, mod_man->uuid, sizeof(mod_man->uuid));
+		memcpy(header->guid, &mod_man->uuid, sizeof(mod_man->uuid));
 
 		type = parse_uint32_hex_key(mod_entry, &ctx_entry, "module_type", 1, &ret);
 		if (ret < 0)
