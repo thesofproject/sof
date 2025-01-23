@@ -132,6 +132,14 @@ struct sof_uuid_entry {
 	_DEF_UUID(entity_name, uuid_name,			\
 		  _UUID_INIT(va, vb, vc, vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7))
 
+/** \brief Get UUID value sourced from the fixed SOF registry
+ *
+ * The ID value is sourced by name from the uuid-registry.txt file distributed with the source tree.
+ *
+ * \param name Name of the UUID, must match an entry in uuid-registry.txt
+ */
+#define SOF_REG_UUID(name) _UUIDREG_##name
+
 /** \brief Defines UUID sourced from the fixed SOF registry
  *
  * As for SOF_DEFINE_UUID(), but the ID value is sourced by name from
@@ -142,7 +150,7 @@ struct sof_uuid_entry {
  *
  * \param name Name of the UUID, must match an entry in uuid-registry.txt
  */
-#define SOF_DEFINE_REG_UUID(name) _DEF_UUID(#name, name##_uuid, _UUIDREG_##name)
+#define SOF_DEFINE_REG_UUID(name) _DEF_UUID(#name, name##_uuid, SOF_REG_UUID(name))
 
 /** \brief Creates local unique 32-bit representation of UUID structure.
  *
