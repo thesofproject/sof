@@ -60,7 +60,7 @@ count = 1
 
 	[[module.entry]]
 	name = "DUMMY"
-	uuid = "01010101-0101-0101-0101-010101010101"
+	uuid = "01234567-89AB-CDEF-0102-030405060708"
 	affinity_mask = "0x1"
 	instance_count = "15"
 	domain_types = "0"

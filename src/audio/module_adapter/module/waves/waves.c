@@ -907,15 +907,10 @@ SOF_MODULE_INIT(waves, sys_comp_module_waves_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-/* d944281a-afe9-4695-a043-d7f62b89538e */
-#define UUID_WAVES_CODEC 0x1A, 0x28, 0x44, 0xD9, 0xE9, 0xAF, 0x95, 0x46, \
-		0xA0, 0x43, 0xD7, 0xF6, 0x2B, 0x89, 0x53, 0x8E
-
 SOF_LLEXT_MOD_ENTRY(waves, &waves_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("WAVES", waves_llext_entry,
-				  7, UUID_WAVES_CODEC, 8);
+	SOF_LLEXT_MODULE_MANIFEST("WAVES", waves_llext_entry, 7, SOF_REG_UUID(waves), 8);
 
 SOF_LLEXT_BUILDINFO;
 

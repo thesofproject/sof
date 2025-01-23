@@ -879,12 +879,10 @@ SOF_MODULE_INIT(asrc, sys_comp_module_asrc_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_ASRC 0x2d, 0x40, 0xb4, 0x66, 0x68, 0xb4, 0xf2, 0x42, \
-		  0x81, 0xa7, 0xb3, 0x71, 0x21, 0x86, 0x3d, 0xd4
 SOF_LLEXT_MOD_ENTRY(asrc, &asrc_interface);
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
-	SOF_LLEXT_MODULE_MANIFEST("ASRC", asrc_llext_entry, 1, UUID_ASRC, 2),
+	SOF_LLEXT_MODULE_MANIFEST("ASRC", asrc_llext_entry, 1, SOF_REG_UUID(asrc4), 2),
 };
 
 SOF_LLEXT_BUILDINFO;

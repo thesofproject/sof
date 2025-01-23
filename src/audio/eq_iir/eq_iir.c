@@ -258,13 +258,10 @@ SOF_MODULE_INIT(eq_iir, sys_comp_module_eq_iir_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_EQIIR 0xE6, 0xC0, 0x50, 0x51, 0xF9, 0x27, 0xC8, 0x4E, \
-		0x83, 0x51, 0xC7, 0x05, 0xB6, 0x42, 0xD1, 0x2F
-
 SOF_LLEXT_MOD_ENTRY(eq_iir, &eq_iir_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("EQIIR", eq_iir_llext_entry, 1, UUID_EQIIR, 40);
+	SOF_LLEXT_MODULE_MANIFEST("EQIIR", eq_iir_llext_entry, 1, SOF_REG_UUID(eq_iir), 40);
 
 SOF_LLEXT_BUILDINFO;
 

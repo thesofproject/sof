@@ -86,13 +86,20 @@ struct sof_man_segment_desc {
 #define SOF_MAN_MOD_SHA384_LEN		48
 #define SOF_MAN_MOD_ID			{'$', 'A', 'M', 'E'}
 
+struct sof_man_uuid {
+	uint32_t a;
+	uint16_t b;
+	uint16_t c;
+	uint8_t  d[8];
+};
+
 /*
  * Each module has an entry in the FW header. Used by ROM - Immutable.
  */
 struct sof_man_module {
 	uint8_t struct_id[SOF_MAN_MOD_ID_LEN];	/* SOF_MAN_MOD_ID */
 	uint8_t name[SOF_MAN_MOD_NAME_LEN];
-	uint8_t uuid[16];
+	struct sof_man_uuid uuid;
 	struct sof_man_module_type type;
 	uint8_t hash[SOF_MAN_MOD_SHA256_LEN];
 	uint32_t entry_point;

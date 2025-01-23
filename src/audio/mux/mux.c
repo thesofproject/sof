@@ -482,24 +482,20 @@ SOF_MODULE_INIT(demux, sys_comp_module_demux_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_MUX 0x35, 0x6E, 0xCE, 0x64, 0x7A, 0x85, 0x78, 0x48, 0xE8, 0xAC, \
-		0xE2, 0xA2, 0xF4, 0x2E, 0x30, 0x69
 SOF_LLEXT_MOD_ENTRY(mux, &mux_interface);
 
 /*
  * The demux entry is removed because mtl.toml doesn't have an entry
  * for it. Once that is fixed, the manifest line below can be
  * re-activated:
- * #define UUID_DEMUX 0x68, 0x68, 0xB2, 0xC4, 0x30, 0x14, 0x0E, 0x47, 0x89, 0xA0, \
- *		0x15, 0xD1, 0xC7, 0x7F, 0x85, 0x1A
  * SOF_LLEXT_MOD_ENTRY(demux, &demux_interface);
  */
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
-	SOF_LLEXT_MODULE_MANIFEST("MUX", mux_llext_entry, 1, UUID_MUX, 15),
+	SOF_LLEXT_MODULE_MANIFEST("MUX", mux_llext_entry, 1, SOF_REG_UUID(mux4), 15),
 	/*
 	 * See comment above for a demux deactivation reason
-	 * SOF_LLEXT_MODULE_MANIFEST("DEMUX", demux_llext_entry, 1, UUID_DEMUX, 15),
+	 * SOF_LLEXT_MODULE_MANIFEST("DEMUX", demux_llext_entry, 1, SOF_REG_UUID(demux), 15),
 	 */
 };
 

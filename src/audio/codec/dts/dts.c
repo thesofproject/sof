@@ -478,13 +478,10 @@ SOF_MODULE_INIT(dts, sys_comp_module_dts_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_DTS 0x4F, 0xC3, 0x5F, 0xD9, 0x0F, 0x37, 0xC7, 0x4A, 0x86, 0xBC, \
-		0xBF, 0xDC, 0x5B, 0xE2, 0x41, 0xE6
-
 SOF_LLEXT_MOD_ENTRY(dts, &dts_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("DTS", dts_llext_entry, 1, UUID_DTS, 40);
+	SOF_LLEXT_MODULE_MANIFEST("DTS", dts_llext_entry, 1, SOF_REG_UUID(dts), 40);
 
 SOF_LLEXT_BUILDINFO;
 

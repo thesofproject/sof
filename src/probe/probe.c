@@ -1620,13 +1620,10 @@ SOF_MODULE_INIT(probe, sys_comp_module_probe_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_PROBE 0x08, 0x08, 0xAD, 0x7C, 0x10, 0xAB, 0x23, 0xCD, 0xEF, 0x45, \
-		0x12, 0xAB, 0x34, 0xCD, 0x56, 0xEF,
-
 SOF_LLEXT_MOD_ENTRY(probe, &probe_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("PROBE", probe_llext_entry, 1, UUID_PROBE, 40);
+	SOF_LLEXT_MODULE_MANIFEST("PROBE", probe_llext_entry, 1, SOF_REG_UUID(probe4), 40);
 
 SOF_LLEXT_BUILDINFO;
 

@@ -319,13 +319,10 @@ SOF_MODULE_INIT(aria, sys_comp_module_aria_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_ARIA 0x6D, 0x16, 0xF7, 0x99, 0x2C, 0x37, 0xEF, 0x43, 0xF6, 0x81, \
-	0x22, 0x00, 0x7A, 0xA1, 0x5F, 0x03
-
 SOF_LLEXT_MOD_ENTRY(aria, &aria_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("ARIA", aria_llext_entry, 1, UUID_ARIA, 8);
+	SOF_LLEXT_MODULE_MANIFEST("ARIA", aria_llext_entry, 1, SOF_REG_UUID(aria), 8);
 
 SOF_LLEXT_BUILDINFO;
 
