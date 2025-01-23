@@ -831,6 +831,7 @@ void sys_comp_module_selector_interface_init(void);
 void sys_comp_module_src_interface_init(void);
 void sys_comp_module_tdfb_interface_init(void);
 void sys_comp_module_volume_interface_init(void);
+void sys_comp_module_tester_interface_init(void);
 
 #elif CONFIG_LIBRARY
 /* In case of shared libs components are initialised in dlopen */
