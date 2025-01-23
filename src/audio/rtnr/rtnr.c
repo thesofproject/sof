@@ -876,14 +876,10 @@ SOF_MODULE_INIT(rtnr, sys_comp_module_rtnr_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-/* 5c7ca334-e15d-11eb-ba800242ac130004 */
-#define UUID_RTNR 0x34, 0xA3, 0x7C, 0x5C, 0x5D, 0xE1, 0xEB, 0x11, \
-		0xBA, 0x80, 0x02, 0x42, 0xAC, 0x13, 0x00, 0x04
-
 SOF_LLEXT_MOD_ENTRY(rtnr, &rtnr_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("RTNR", rtnr_llext_entry, 1, UUID_RTNR, 40);
+	SOF_LLEXT_MODULE_MANIFEST("RTNR", rtnr_llext_entry, 1, SOF_REG_UUID(rtnr), 40);
 
 SOF_LLEXT_BUILDINFO;
 

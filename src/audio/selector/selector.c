@@ -923,13 +923,11 @@ SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_SELECTOR 0x32, 0xFE, 0x92, 0xC1, 0x17, 0x1E, 0xC2, 0x4F, 0x58, 0x97, \
-		0xC7, 0xF3, 0x54, 0x2E, 0x98, 0x0A
-
 SOF_LLEXT_MOD_ENTRY(selector, &selector_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("MICSEL", selector_llext_entry, 1, UUID_SELECTOR, 8);
+	SOF_LLEXT_MODULE_MANIFEST("MICSEL", selector_llext_entry, 1, SOF_REG_UUID(selector4),
+				  8);
 
 SOF_LLEXT_BUILDINFO;
 

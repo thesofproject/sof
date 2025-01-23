@@ -949,18 +949,13 @@ SOF_MODULE_INIT(mixout, sys_comp_module_mixout_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_MIXIN 0xB2, 0x6E, 0x65, 0x39, 0x71, 0x3B, 0x49, 0x40, \
-		0x8D, 0x3F, 0xF9, 0x2C, 0xD5, 0xC4, 0x3C, 0x09
-#define UUID_MIXOUT 0x5A, 0x50, 0x56, 0x3C, 0xD7, 0x24, 0x8F, 0x41, \
-		0xBD, 0xDC, 0xC1, 0xF5, 0xA3, 0xAC, 0x2A, 0xE0
-
 SOF_LLEXT_MOD_ENTRY(mixin, &mixin_interface);
 SOF_LLEXT_MOD_ENTRY(mixout, &mixout_interface);
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used =
 {
-	SOF_LLEXT_MODULE_MANIFEST("MIXIN", mixin_llext_entry, 1, UUID_MIXIN, 30),
-	SOF_LLEXT_MODULE_MANIFEST("MIXOUT", mixout_llext_entry, 1, UUID_MIXOUT, 30),
+	SOF_LLEXT_MODULE_MANIFEST("MIXIN", mixin_llext_entry, 1, SOF_REG_UUID(mixin), 30),
+	SOF_LLEXT_MODULE_MANIFEST("MIXOUT", mixout_llext_entry, 1, SOF_REG_UUID(mixout), 30),
 };
 
 SOF_LLEXT_BUILDINFO;

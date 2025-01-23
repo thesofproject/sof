@@ -466,14 +466,11 @@ SOF_MODULE_INIT(google_ctc_audio_processing,
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_GOOGLE_CTC 0xBC, 0x1B, 0x0E, 0xBF, 0x6A, 0xDC, 0xFE, 0x45, 0x90, 0xBC, \
-	 0x25, 0x54, 0xCB, 0x13, 0x7A, 0xB4
-
 SOF_LLEXT_MOD_ENTRY(google_ctc_audio_processing, &google_ctc_audio_processing_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
 	SOF_LLEXT_MODULE_MANIFEST("CTC", google_ctc_audio_processing_llext_entry,
-				  1, UUID_GOOGLE_CTC, 40);
+				  1, SOF_REG_UUID(google_ctc_audio_processing), 40);
 
 SOF_LLEXT_BUILDINFO;
 
