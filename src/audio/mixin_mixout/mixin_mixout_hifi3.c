@@ -47,7 +47,7 @@ static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		outu1 = AE_LA64_PP(out);
 		m = n >> 2;
 		left = n & 0x03;
-		/* process 4 frames per loop */
+		/* process 4 samples per loop */
 		for (i = 0; i < m; i++) {
 			AE_LA16X4_IP(in_sample, inu, in);
 			AE_LA16X4_IP(out_sample, outu1, out);
@@ -81,7 +81,7 @@ static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 		inu = AE_LA64_PP(in);
 		m = n >> 2;
 		left = n & 0x03;
-		/* process 4 frames per loop */
+		/* process 4 samples per loop */
 		for (i = 0; i < m; i++) {
 			AE_LA16X4_IP(in_sample, inu, in);
 			AE_SA16X4_IP(in_sample, outu2, out);
@@ -141,7 +141,7 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		outu1 = AE_LA64_PP(out);
 		m = n >> 2;
 		left = n & 0x03;
-		/* process 4 frames per loop */
+		/* process 4 samples per loop */
 		for (i = 0; i < m; i++) {
 			AE_LA16X4_IP(in_sample, inu, in);
 			/* apply gain to in_sample */
@@ -178,7 +178,7 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		inu = AE_LA64_PP(in);
 		m = n >> 2;
 		left = n & 0x03;
-		/* process 4 frames per loop */
+		/* process 4 samples per loop */
 		for (i = 0; i < m; i++) {
 			AE_LA16X4_IP(in_sample, inu, in);
 			in_sample = AE_MULFP16X4S(in_sample, gain_vec);
