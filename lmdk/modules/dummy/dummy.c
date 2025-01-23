@@ -18,7 +18,8 @@ __attribute__((section(".module")))
 const struct sof_man_module_manifest dummy_module_manifest = {
 	.module = {
 		.name = "DUMMY",
-		.uuid = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+		.uuid = { 0x01234567, 0x89AB, 0xCDEF, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+			  0x08 }},
 		.entry_point = (uint32_t)dummyPackageEntryPoint,
 		.type = {
 			.load_type = SOF_MAN_MOD_TYPE_MODULE,

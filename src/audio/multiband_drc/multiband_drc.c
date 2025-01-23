@@ -426,13 +426,11 @@ SOF_MODULE_INIT(multiband_drc, sys_comp_module_multiband_drc_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_MULTIBAND_DRC 0x56, 0x22, 0x9F, 0x0D, 0x4F, 0x8E, 0xB3, 0x47, 0x48, 0x84, \
-		0x23, 0x9A, 0x33, 0x4F, 0x11, 0x91
-
 SOF_LLEXT_MOD_ENTRY(multiband_drc, &multiband_drc_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("MB_DRC", multiband_drc_llext_entry, 1, UUID_MULTIBAND_DRC, 40);
+	SOF_LLEXT_MODULE_MANIFEST("MB_DRC", multiband_drc_llext_entry, 1,
+				  SOF_REG_UUID(multiband_drc), 40);
 
 SOF_LLEXT_BUILDINFO;
 

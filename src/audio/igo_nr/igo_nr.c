@@ -893,13 +893,10 @@ SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_IGO_NR 0xBC, 0xE2, 0x6A, 0x69, 0x77, 0x28, 0xEB, 0x11, 0xC1, 0xAD, \
-		0x02, 0x42, 0xAC, 0x12, 0x00, 0x02
-
 SOF_LLEXT_MOD_ENTRY(igo_nr, &igo_nr_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("IGO_NR", igo_nr_llext_entry, 1, UUID_IGO_NR, 40);
+	SOF_LLEXT_MODULE_MANIFEST("IGO_NR", igo_nr_llext_entry, 1, SOF_REG_UUID(igo_nr), 40);
 
 SOF_LLEXT_BUILDINFO;
 

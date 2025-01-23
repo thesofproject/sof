@@ -10,7 +10,7 @@
 { \
 	.module = { \
 		.name = manifest_name, \
-		.uuid = {mod_uuid},			  \
+		.uuid = mod_uuid, \
 		.entry_point = (uint32_t)(entry), \
 		.instance_max_count = instances, \
 		.type = { \
