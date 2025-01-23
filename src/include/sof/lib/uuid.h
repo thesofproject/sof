@@ -50,13 +50,19 @@
  * pass UUIDs as a linear array of bytes, only one endianness will
  * work.  If SOF ever ships on a BE system all use of sof_uuid will
  * need to be modified to byte swap the a/b/c values.
+ *
+ * Some identifiers are taken from the module manifest. Since the module
+ * manifest structure (sof_man_module) is marked as packed, the pointer
+ * to the sof_uuid structure may not be properly aligned. To avoid possible
+ * problems with accessing fields of this structure from unaligned addresses,
+ * it has been marked as packed.
  */
 struct sof_uuid {
 	uint32_t a;
 	uint16_t b;
 	uint16_t c;
 	uint8_t  d[8];
-};
+} __packed;
 
 #define _UUID_INIT(va, vb, vc, d0, d1, d2, d3, d4, d5, d6, d7) \
 	{ va, vb, vc, { d0, d1, d2, d3, d4, d5, d6, d7 } }
