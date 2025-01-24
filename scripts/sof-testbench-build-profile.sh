@@ -46,28 +46,29 @@ shift $((OPTIND-1))
 SCRIPTS=$SOF_WORKSPACE/sof/scripts
 mkdir -p "$PDIR"
 "$SCRIPTS"/rebuild-testbench.sh -p "$PLATFORM"
+HELPER="$SCRIPTS"/sof-testbench-helper.sh
 
 echo "Profiler reports are stored to $PDIR"
 
 # Run sof-hda-generic.tplg playback
 echo "Profiling sof-hda-generic.tplg ..."
-sof-testbench-helper.sh -x -t production/sof-hda-generic.tplg -n 1,2 \
-			-p "$PDIR/profile-$PLATFORM-generic.txt" > "$PDIR/log-$PLATFORM-generic.txt"
+$HELPER -x -t production/sof-hda-generic.tplg -n 1,2 \
+	-p "$PDIR/profile-$PLATFORM-generic.txt" > "$PDIR/log-$PLATFORM-generic.txt"
 
 # Run sof-hda-benchmark-generic.tplg playback
 echo "Profiling sof-hda-benchmark-generic.tplg  ..."
-sof-testbench-helper.sh -x -t development/sof-hda-benchmark-generic.tplg -n 1,2,3 \
-			-p "$PDIR/profile-$PLATFORM-benchmark.txt" > "$PDIR/log-$PLATFORM-benchmark.txt"
+$HELPER -x -t development/sof-hda-benchmark-generic.tplg -n 1,2,3 \
+	-p "$PDIR/profile-$PLATFORM-benchmark.txt" > "$PDIR/log-$PLATFORM-benchmark.txt"
 
 # Profile modules
 for mod in $MODULES_S32
 do
     echo "Profiling $mod ..."
-    sof-testbench-helper.sh -x -m "$mod" -p "$PDIR/profile-$PLATFORM-$mod.txt" > "$PDIR/log-$PLATFORM-$mod.txt"
+    $HELPER -x -m "$mod" -p "$PDIR/profile-$PLATFORM-$mod.txt" > "$PDIR/log-$PLATFORM-$mod.txt"
 done
 
 for mod in $MODULES_S24
 do
     echo "Profiling $mod ..."
-    sof-testbench-helper.sh -b 24 -x -m "$mod" -p "$PDIR/profile-$PLATFORM-$mod.txt" > "$PDIR/log-$PLATFORM-$mod.txt"
+    $HELPER -b 24 -x -m "$mod" -p "$PDIR/profile-$PLATFORM-$mod.txt" > "$PDIR/log-$PLATFORM-$mod.txt"
 done
