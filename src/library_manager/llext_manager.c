@@ -284,9 +284,10 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 }
 
 static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
-				  const struct sof_man_fw_desc *desc,
-				  const struct sof_man_module *mod_array)
+				  const struct sof_man_fw_desc *desc)
 {
+	struct sof_man_module *mod_array = (struct sof_man_module *)((uint8_t *)desc +
+								     SOF_MAN_MODULE_OFFSET(0));
 	unsigned int i, n_mod;
 	size_t offs;
 
@@ -356,7 +357,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
 	if (!ctx->mod)
-		llext_manager_mod_init(ctx, desc, mod_array);
+		llext_manager_mod_init(ctx, desc);
 
 	if (entry_index >= desc->header.num_module_entries) {
 		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
