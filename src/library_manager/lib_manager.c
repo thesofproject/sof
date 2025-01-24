@@ -1033,13 +1033,21 @@ stop_dma:
 	rfree((__sparse_force void *)man_tmp_buffer);
 
 cleanup:
-#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
-#endif
 	rfree((void *)dma_ext->dma_addr);
 	lib_manager_dma_deinit(dma_ext, dma_id);
 	rfree(dma_ext);
 	_ext_lib->runtime_data = NULL;
+
+	uint32_t module_id = lib_id << LIB_MANAGER_LIB_ID_SHIFT;
+	const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id);
+
+	if (module_is_llext(mod) && !ret)
+		/* LLEXT libraries need to be initialized upon loading */
+		ret = llext_manager_add_library(lib_id);
+
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
+#endif
 
 	if (!ret)
 		tr_info(&ipc_tr, "loaded library id: %u", lib_id);

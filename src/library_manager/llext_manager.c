@@ -352,9 +352,6 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 
 	tr_dbg(&lib_manager_tr, "mod_id: %u", module_id);
 
-	if (!ctx->mod)
-		llext_manager_mod_init(ctx, desc);
-
 	if (entry_index >= desc->header.num_module_entries) {
 		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
 		       entry_index, desc->header.num_module_entries - 1);
@@ -510,6 +507,22 @@ int llext_manager_free_module(const uint32_t component_id)
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
 	return llext_manager_unload_module(mctx);
+}
+
+/* A library has been loaded, need to initialize its context */
+int llext_manager_add_library(uint32_t lib_id)
+{
+	uint32_t module_id = lib_id << LIB_MANAGER_LIB_ID_SHIFT;
+	struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+	const struct sof_man_fw_desc *desc = lib_manager_get_library_manifest(module_id);
+	unsigned int i;
+
+	if (ctx->mod) {
+		tr_err(&lib_manager_tr, "lib_id: %u: repeated load!", lib_id);
+		return -EBUSY;
+	}
+
+	return llext_manager_mod_init(ctx, desc);
 }
 
 bool comp_is_llext(struct comp_dev *comp)
