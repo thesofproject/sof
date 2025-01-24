@@ -99,14 +99,15 @@ struct lib_manager_segment_desc {
 struct llext;
 
 struct lib_manager_module {
-	unsigned int start_idx;
+	unsigned int start_idx;	/* Index of the first driver from this module in
+				 * the library-global driver list */
 	const struct sof_man_module_manifest *mod_manifest;
 	struct llext *llext; /* Zephyr loadable extension context */
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
 };
 
 struct lib_manager_mod_ctx {
-	void *base_addr;
+	void *base_addr;	/* library storage address (DRAM) */
 	unsigned int n_mod;
 	struct lib_manager_module *mod;
 };
