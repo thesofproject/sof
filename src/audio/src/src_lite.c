@@ -43,8 +43,11 @@ static int src_lite_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	a->stage1 = src_table1[a->idx_out][a->idx_in];
-	a->stage2 = src_table2[a->idx_out][a->idx_in];
+	ret = src_allocate_copy_stages(mod->dev, a,
+				       src_table1[a->idx_out][a->idx_in],
+				       src_table2[a->idx_out][a->idx_in]);
+	if (ret < 0)
+		return ret;
 
 	ret = src_params_general(mod, sources[0], sinks[0]);
 	if (ret < 0)
