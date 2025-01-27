@@ -1,6 +1,6 @@
 	[[module.entry]]
 	name = "FIR"
-	uuid = "93446E12-1864-4E04-AFE0-3B1D778FFB79"
+	uuid = UUIDREG_STR_FIR
 	load_type = "3"
 
 	index = __COUNTER__

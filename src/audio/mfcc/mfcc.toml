@@ -5,7 +5,7 @@
 REM # MFCC module config
 [[module.entry]]
 name = "MFCC"
-uuid = "DB10A773-1AA4-4CEA-A21F-2D57A5C982EB"
+uuid = UUIDREG_STR_MFCC
 affinity_mask = "0x1"
 instance_count = "40"
 domain_types = "0"

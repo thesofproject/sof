@@ -4,7 +4,7 @@
 
 	[[module.entry]]
 	name = "RTC_AEC"
-	uuid = "B780A0A6-269F-466F-B477-23DFA05AF758"
+	uuid = UUIDREG_STR_GOOGLE_RTC_AUDIO_PROCESSING
 	REM # bit #i = 1 means core #i is allowed.
 	affinity_mask = "0x7"
 	instance_count = "1"

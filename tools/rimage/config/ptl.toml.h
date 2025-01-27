@@ -2,7 +2,7 @@
 
 [[module.entry]]
 name = "BRNGUP"
-uuid = "2B79E4F3-4675-F649-89DF-3BC194A91AEB"
+uuid = UUIDREG_STR_BRNGUP
 affinity_mask = "0x1"
 instance_count = "1"
 domain_types = "0"
@@ -15,7 +15,7 @@ index = __COUNTER__
 #if CONFIG_COLD_STORE_EXECUTE_DRAM
 [[module.entry]]
 name = "COLD"
-uuid = "D406D134-C3C1-402C-8AEC-6821C0C2B0E6"
+uuid = UUIDREG_STR_COLD
 affinity_mask = "3"
 instance_count = "1"
 domain_types = "0"
@@ -28,7 +28,7 @@ index = __COUNTER__
 
 [[module.entry]]
 name = "BASEFW"
-uuid = "0E398C32-5ADE-BA4B-93B1-C50432280EE4"
+uuid = UUIDREG_STR_BASEFW
 affinity_mask = "3"
 instance_count = "1"
 domain_types = "0"

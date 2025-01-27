@@ -4,7 +4,7 @@
 
 	[[module.entry]]
 	name = "MICSEL"
-	uuid = "32FE92C1-1E17-4FC2-9758-C7F3542E980A"
+	uuid = UUIDREG_STR_SELECTOR4
 	affinity_mask = "0x1"
 	instance_count = "8"
 	domain_types = "0"

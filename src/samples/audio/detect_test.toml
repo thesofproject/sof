@@ -1,6 +1,6 @@
 	[[module.entry]]
 	name = "KDTEST"
-	uuid = "EBA8D51F-7827-47B5-82EE-DE6E7743AF67"
+	uuid = UUIDREG_STR_KEYWORD
 	affinity_mask = "0x1"
 	instance_count = "1"
 	domain_types = "0"
