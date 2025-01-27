@@ -1,6 +1,6 @@
 	[[module.entry]]
 	name = "KPB"
-	uuid = "A8A0CB32-4A77-4DB1-85C7-53D7EE07BCE6"
+	uuid = UUIDREG_STR_KPB4
 	affinity_mask = "0x1"
 	instance_count = "1"
 	domain_types = "0"

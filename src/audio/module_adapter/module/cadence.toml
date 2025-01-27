@@ -1,7 +1,7 @@
 	REM # Cadence module config
 	[[module.entry]]
 	name = "CADENCE"
-	uuid = "D8218443-5FF3-4A4C-B388-6CFE07B956AA"
+	uuid = UUIDREG_STR_CADENCE_CODEC
 	affinity_mask = "0x3"
 	instance_count = "1"
 	domain_types = "0"
