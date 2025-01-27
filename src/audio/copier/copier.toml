@@ -1,6 +1,6 @@
 	[[module.entry]]
 	name = "COPIER"
-	uuid = "9BA00C83-CA12-4A83-943C-1FA2E82F9DDA"
+	uuid = UUIDREG_STR_COPIER
 	affinity_mask = "0x1"
 	instance_count = "32"
 	domain_types = "0"

@@ -5,7 +5,7 @@
 	REM # eq iir module config
 	[[module.entry]]
 	name = "EQIIR"
-	uuid = "5150C0E6-27F9-4EC8-8351-C705B642D12F"
+	uuid = UUIDREG_STR_EQ_IIR
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"
