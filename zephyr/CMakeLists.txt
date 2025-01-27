@@ -91,6 +91,7 @@ function(sof_llext_build module)
 		COMMAND ${CMAKE_C_COMPILER} -E ${CMAKE_CURRENT_LIST_DIR}/llext.toml.h -P -DREM=
 			-I${SOF_BASE} -I${SOF_BASE}src
 			-imacros ../include/generated/zephyr/autoconf.h
+			-imacros ../include/generated/uuid-registry.h
 			-o rimage_config.toml
 	)
 
