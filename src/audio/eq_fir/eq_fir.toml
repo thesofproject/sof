@@ -5,7 +5,7 @@
 	REM # eq fir module config
 	[[module.entry]]
 	name = "EQFIR"
-	uuid = "43A90CE7-F3A5-41DF-AC06-BA98651AE6A3"
+	uuid = UUIDREG_STR_EQ_FIR
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"
