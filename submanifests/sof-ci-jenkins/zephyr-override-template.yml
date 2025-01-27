@@ -25,3 +25,4 @@ manifest:
         name-allowlist:
           - hal_xtensa
           - hal_nxp
+          - cmsis
