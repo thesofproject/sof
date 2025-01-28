@@ -230,7 +230,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
 	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
 	 */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink = comp_dev_get_first_data_consumer(dev);
 
 	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
 	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
@@ -621,17 +621,14 @@ static void module_adapter_process_output(struct comp_dev *dev)
 
 	/* copy from all output local buffers to sink buffers */
 	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
-		struct list_item *_blist;
+	comp_dev_for_each_consumer(dev, sink) {
 		int j = 0;
 
-		list_for_item(_blist, &mod->raw_data_buffers_list) {
+		list_for_item(blist, &mod->raw_data_buffers_list) {
 			if (i == j) {
 				struct comp_buffer *source;
 
-				sink = container_of(blist, struct comp_buffer, source_list);
-				source = container_of(_blist, struct comp_buffer, buffers_list);
-
+				source = container_of(blist, struct comp_buffer, buffers_list);
 				module_copy_samples(dev, source, sink,
 						    mod->output_buffers[i].size);
 
@@ -756,7 +753,7 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	/* Note: Source buffer state is not checked to enable mixout to generate zero
 	 * PCM codes when source is not active.
 	 */
-	if (mod->sink_comp_buffer->sink->state == dev->state)
+	if (comp_buffer_get_sink_state(mod->sink_comp_buffer) == dev->state)
 		num_output_buffers = 1;
 
 	ret = module_process_legacy(mod, mod->input_buffers, 1,
@@ -783,10 +780,11 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
 	struct comp_buffer *sinks[PLATFORM_MAX_STREAMS];
+	struct comp_buffer *sink;
+	struct comp_buffer *source;
 	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
 	uint32_t num_input_buffers, num_output_buffers;
-	int ret, i = 0;
+	int ret, i;
 
 	/* handle special case of HOST/DAI type components */
 	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
@@ -796,12 +794,9 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 		return module_adapter_audio_stream_copy_1to1(dev);
 
 	/* acquire all sink and source buffers */
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink;
-
-		sink = container_of(blist, struct comp_buffer, source_list);
+	i = 0;
+	comp_dev_for_each_consumer(dev, sink)
 		sinks[i++] = sink;
-	}
 	num_output_buffers = i;
 	if (num_output_buffers > mod->max_sinks) {
 		comp_err(dev, "Invalid number of sinks %d\n", num_output_buffers);
@@ -809,12 +804,8 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	}
 
 	i = 0;
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source;
-
-		source = container_of(blist, struct comp_buffer, sink_list);
+	comp_dev_for_each_producer(dev, source)
 		sources[i++] = source;
-	}
 	num_input_buffers = i;
 	if (num_input_buffers > mod->max_sources) {
 		comp_err(dev, "Invalid number of sources %d\n", num_input_buffers);
@@ -824,11 +815,11 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	/* setup active input/output buffers for processing */
 	if (num_output_buffers == 1) {
 		module_single_sink_setup(dev, sources, sinks);
-		if (sinks[0]->sink->state != dev->state)
+		if (comp_buffer_get_sink_state(sinks[0]) != dev->state)
 			num_output_buffers = 0;
 	} else if (num_input_buffers == 1) {
 		module_single_source_setup(dev, sources, sinks);
-		if (sources[0]->source->state != dev->state) {
+		if (comp_buffer_get_source_state(sources[0]) != dev->state) {
 			num_input_buffers = 0;
 		}
 	} else {
@@ -910,15 +901,13 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 	 * This is an adapter, to be removed when pipeline2.0 is ready
 	 */
 	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
+	struct comp_buffer *buffer;
 	int err;
 
-	list_for_item(blist, &dev->bsource_list) {
+	comp_dev_for_each_producer(dev, buffer) {
 		/* input - we need to copy data from audio_stream (as source)
 		 * to ring_buffer (as sink)
 		 */
-		struct comp_buffer *buffer =
-				container_of(blist, struct comp_buffer, sink_list);
 		err = audio_buffer_sync_secondary_buffer(&buffer->audio_buffer, UINT_MAX);
 
 		if (err) {
@@ -930,7 +919,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 	if (mod->dp_startup_delay)
 		return 0;
 
-	list_for_item(blist, &dev->bsink_list) {
+	comp_dev_for_each_consumer(dev, buffer) {
 		/* output - we need to copy data from ring_buffer (as source)
 		 * to audio_stream (as sink)
 		 *
@@ -943,8 +932,6 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		 *
 		 * FIX: copy only the following module's IBS in each LL cycle
 		 */
-		struct comp_buffer *buffer =
-				container_of(blist, struct comp_buffer, source_list);
 		struct sof_source *following_mod_data_source =
 				audio_buffer_get_source(&buffer->audio_buffer);
 
@@ -1021,14 +1008,12 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 	}
 
 	/* copy source samples into input buffer */
-	list_for_item(blist, &dev->bsource_list) {
+	comp_dev_for_each_producer(dev, source) {
 		uint32_t bytes_to_process;
 		int frames, source_frame_bytes;
 
-		source = container_of(blist, struct comp_buffer, sink_list);
-
 		/* check if the source dev is in the same state as the dev */
-		if (!source->source || source->source->state != dev->state)
+		if (comp_buffer_get_source_state(source) != dev->state)
 			continue;
 
 		frames = MIN(min_free_frames,
@@ -1061,10 +1046,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 
 	i = 0;
 	/* consume from all input buffers */
-	list_for_item(blist, &dev->bsource_list) {
-
-		source = container_of(blist, struct comp_buffer, sink_list);
-
+	comp_dev_for_each_producer(dev, source) {
 		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
 
 		bzero((__sparse_force void *)mod->input_buffers[i].data, size);
