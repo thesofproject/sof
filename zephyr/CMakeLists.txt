@@ -45,19 +45,6 @@ Building LLEXT targets must be serialized. This property contains the \
 previously added LLEXT module for the establishment of a dependency chain."
 )
 
-# Used by LLEXT modules to create a file with module UUIDs
-function(sof_llext_write_uuids module)
-	file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/../${module}.toml uuids REGEX "^[ \t]*uuid *=")
-
-	set(UUIDS_LIST_FILE ${ZEPHYR_BINARY_DIR}/${module}_llext/llext.uuid)
-	file(REMOVE ${UUIDS_LIST_FILE})
-	foreach(line IN LISTS uuids)
-		# extract UUID value - drop the 'uuid = ' part of the assignment line
-		string(REGEX REPLACE "^[ \t]*uuid *= \"([0-9A-F\-]*)\"" "\\1" uuid ${line})
-		file(APPEND ${UUIDS_LIST_FILE} "${uuid}\n")
-	endforeach()
-endfunction()
-
 # Build an LLEXT module. Provice a module name, a list of sources and an address
 # of the .text section as arguments.
 function(sof_llext_build module)
@@ -66,8 +53,6 @@ function(sof_llext_build module)
 	cmake_parse_arguments(PARSE_ARGV 1 SOF_LLEXT "${options}" "${single_args}" "${multi_args}")
 
 	cmake_path(SET SOF_BASE NORMALIZE ${APPLICATION_SOURCE_DIR}/..)
-
-	sof_llext_write_uuids(${module})
 
 	add_llext_target(${module}
 		OUTPUT  ${PROJECT_BINARY_DIR}/${module}_llext/${module}.llext
@@ -111,6 +96,12 @@ function(sof_llext_build module)
 		add_dependencies(${module}_llext_proc ${last_target})
 	endif()
 	set_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET ${module})
+
+	add_llext_command(TARGET ${module}
+		POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -DMODULE=${module} -DZEPHYR_BINARY_DIR=${ZEPHYR_BINARY_DIR}
+			-P ${SOF_BASE}scripts/cmake/llext_write_uuids.cmake
+	)
 
 	add_llext_command(TARGET ${module}
 		POST_BUILD
