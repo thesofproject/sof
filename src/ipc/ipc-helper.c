@@ -115,10 +115,8 @@ static void comp_update_params(uint32_t flag,
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params)
 {
-	struct list_item *buffer_list;
 	struct list_item *source_list;
 	struct list_item *sink_list;
-	struct list_item *clist;
 	struct comp_buffer *sinkb;
 	struct comp_buffer *buf;
 	int dir = dev->direction;
@@ -136,13 +134,9 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	 */
 	if (list_is_empty(source_list) != list_is_empty(sink_list)) {
 		if (list_is_empty(sink_list))
-			buf = list_first_item(source_list,
-					      struct comp_buffer,
-					      sink_list);
+			buf = comp_dev_get_first_data_producer(dev);
 		else
-			buf = list_first_item(sink_list,
-					      struct comp_buffer,
-					      source_list);
+			buf = comp_dev_get_first_data_consumer(dev);
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
@@ -160,18 +154,22 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		/* for other components we iterate over all downstream buffers
 		 * (for playback) or upstream buffers (for capture).
 		 */
-		buffer_list = comp_buffer_list(dev, dir);
-
-		list_for_item(clist, buffer_list) {
-			buf = buffer_from_list(clist, dir);
-			comp_update_params(flag, params, buf);
-			buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
+		if (dir == PPL_DIR_DOWNSTREAM) {
+			comp_dev_for_each_consumer(dev, buf) {
+				comp_update_params(flag, params, buf);
+				buffer_set_params(buf, params,
+						  BUFFER_UPDATE_FORCE);
+			}
+		} else {
+			comp_dev_for_each_producer(dev, buf) {
+				comp_update_params(flag, params, buf);
+				buffer_set_params(buf, params,
+						  BUFFER_UPDATE_FORCE);
+			}
 		}
 
 		/* fetch sink buffer in order to calculate period frames */
-		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-					source_list);
-
+		sinkb = comp_dev_get_first_data_consumer(dev);
 		component_set_nearest_period_frames(dev, audio_stream_get_rate(&sinkb->stream));
 	}
 
@@ -263,7 +261,8 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd;
-	struct list_item *clist, *tmp;
+	struct comp_buffer *buffer;
+	struct comp_buffer *safe;
 	uint32_t flags;
 
 	/* check whether component exists */
@@ -305,21 +304,18 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	}
 
 	irq_local_disable(flags);
-	list_for_item_safe(clist, tmp, &icd->cd->bsource_list) {
-		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, sink_list);
-
-		buffer->sink = NULL;
+	comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
+		comp_buffer_set_sink_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		list_init(clist);
+		comp_buffer_reset_sink_list(buffer);
 	}
 
-	list_for_item_safe(clist, tmp, &icd->cd->bsink_list) {
-		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, source_list);
-
-		buffer->source = NULL;
+	comp_dev_for_each_consumer_safe(icd->cd, buffer, safe) {
+		comp_buffer_set_source_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		list_init(clist);
+		comp_buffer_reset_source_list(buffer);
 	}
+
 	irq_local_enable(flags);
 
 	/* free component and remove from list */

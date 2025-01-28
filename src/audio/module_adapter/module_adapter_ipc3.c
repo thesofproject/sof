@@ -121,8 +121,7 @@ void module_adapter_check_data(struct processing_module *mod, struct comp_dev *d
 	 */
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->num_of_sources == 1 &&
 	    mod->num_of_sinks == 1) {
-		mod->source_comp_buffer = list_first_item(&dev->bsource_list,
-							  struct comp_buffer, sink_list);
+		mod->source_comp_buffer = comp_dev_get_first_data_producer(dev);
 		mod->sink_comp_buffer = sink;
 		mod->stream_copy_single_to_single = true;
 	}
@@ -134,11 +133,11 @@ void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_str
 
 static int module_source_state_count(struct comp_dev *dev, uint32_t state)
 {
-	struct list_item *blist;
 	int count = 0;
+	struct comp_buffer *source;
 
 	/* count source with state == status */
-	list_for_item(blist, &dev->bsource_list) {
+	comp_dev_for_each_producer(dev, source)
 		/*
 		 * FIXME: this is racy, state can be changed by another core.
 		 * This is implicitly protected by serialised IPCs. Even when
@@ -146,12 +145,8 @@ static int module_source_state_count(struct comp_dev *dev, uint32_t state)
 		 * not be sent until the thread has processed and replied to the
 		 * current one.
 		 */
-		struct comp_buffer *source = container_of(blist, struct comp_buffer,
-							  sink_list);
-
-		if (source->source && source->source->state == state)
+		if (comp_buffer_get_source_state(source) == state)
 			count++;
-	}
 
 	return count;
 }
@@ -324,25 +319,21 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 int module_adapter_sink_src_prepare(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
+	struct comp_buffer *sink_buffer;
+	struct comp_buffer *source_buffer;
 	int ret;
 	int i;
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
 	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink_buffer =
-				container_of(blist, struct comp_buffer, source_list);
+	comp_dev_for_each_consumer(dev, sink_buffer) {
 		mod->sinks[i] = audio_buffer_get_sink(&sink_buffer->audio_buffer);
 		i++;
 	}
 	mod->num_of_sinks = i;
 
 	i = 0;
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source_buffer =
-				container_of(blist, struct comp_buffer, sink_list);
-
+	comp_dev_for_each_producer(dev, source_buffer) {
 		mod->sources[i] = audio_buffer_get_source(&source_buffer->audio_buffer);
 		i++;
 	}

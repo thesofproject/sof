@@ -296,16 +296,12 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
 	while (icd) {
-		struct list_item *list, *_list;
 		struct comp_buffer *buffer;
+		struct comp_buffer *safe;
 
 		/* free sink buffer allocated by current component in bind function */
-		list_for_item_safe(list, _list, &icd->cd->bsink_list) {
-			struct comp_dev *sink;
-
-			buffer = container_of(list, struct comp_buffer, source_list);
-			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
-			sink = buffer->sink;
+		comp_dev_for_each_consumer_safe(icd->cd, buffer, safe) {
+			struct comp_dev *sink = comp_buffer_get_sink_component(buffer);
 
 			/* free the buffer only when the sink module has also been disconnected */
 			if (!sink)
@@ -313,12 +309,9 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		}
 
 		/* free source buffer allocated by current component in bind function */
-		list_for_item_safe(list, _list, &icd->cd->bsource_list) {
-			struct comp_dev *source;
-
-			buffer = container_of(list, struct comp_buffer, sink_list);
+		comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
-			source = buffer->source;
+			struct comp_dev *source = comp_buffer_get_source_component(buffer);
 
 			/* free the buffer only when the source module has also been disconnected */
 			if (!source)
@@ -677,8 +670,8 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer = NULL;
+	struct comp_buffer *buf;
 	struct comp_dev *src, *sink;
-	struct list_item *sink_list;
 	uint32_t src_id, sink_id, buffer_id;
 	uint32_t flags = 0;
 	int ret, ret1;
@@ -708,10 +701,8 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return ipc4_process_on_core(src->ipc_config.core, false);
 
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
-	list_for_item(sink_list, &src->bsink_list) {
-		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
+	comp_dev_for_each_consumer(src, buf) {
 		bool found = buf_get_id(buf) == buffer_id;
-
 		if (found) {
 			buffer = buf;
 			break;
@@ -851,9 +842,9 @@ static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 		if (list_is_empty(&icd->cd->bsource_list))
 			continue;
 
-		src_buf = list_first_item(&icd->cd->bsource_list, struct comp_buffer, sink_list);
-		if (src_buf->source->direction_set) {
-			icd->cd->direction = src_buf->source->direction;
+		src_buf = comp_dev_get_first_data_producer(icd->cd);
+		if (comp_buffer_get_source_component(src_buf)->direction_set) {
+			icd->cd->direction = comp_buffer_get_source_component(src_buf)->direction;
 			icd->cd->direction_set = true;
 			continue;
 		}
