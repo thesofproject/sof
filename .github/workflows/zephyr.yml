@@ -154,8 +154,8 @@ jobs:
                time west update --narrow --fetch-opt=--filter=tree:0
 
       - name: select zephyr revision
+        working-directory: ${{ github.workspace }}/workspace
         run: |
-          cd workspace
           if [ 'mnfst' =  '${{ matrix.zephyr_revision }}' ]; then
              rem_rev=$(git -C zephyr rev-parse HEAD)
           else
@@ -170,6 +170,11 @@ jobs:
              time west update --narrow  --fetch-opt=--filter=tree:0
           fi
 
+      # Get some tags to fix `git describe` hence BUILD_VERSION, etc.
+      # Keep in sync with build-windows below
+      - name: Fetch tags for git describe
+        working-directory: ${{ github.workspace }}/workspace/zephyr
+        run: |
           # Because we used git tricks to speed things up, we now have two git
           # problems:
           #
@@ -179,19 +184,24 @@ jobs:
           # does not use --tags.
           #
           # 2. west fetches using the remote URL, not the remote name. So remote
-          # branches (if any) are missing from --decorate below
-          #
-          #  => an "empty" and quick fetch _with_ a refspec and the remote name fixes
-          #     both issues in no time.
-
-          cd zephyr
-          time git fetch --filter=tree:0 "$(git remote |head -n1)" "$rem_rev":_branch_placeholder
-          git branch -D _branch_placeholder
+          # branches are missing from --decorate below. Cosmetic but annoying;
+          # especially in the "zmain" case.
 
           set -x
+          # Fix problem 2. Do NOT assume anything about remote names: nothing is guaranteed.
+          _zurl=$(west list -f '{url}' zephyr)
+          # Use an ugly remote name to avoid a collision
+          git remote add sof_zep_rem "$_zurl"
+          time git fetch --filter=tree:0 sof_zep_rem "$rem_rev"
+          # Fix problem 1. Indirectly fetches useless branches but is very quick thanks to
+          # the --filter
+          time git fetch --filter=tree:0 --tags sof_zep_rem
+
           west list
           west status
           git   log --oneline -n 5 --decorate --graph --no-abbrev-commit
+          git describe --long --always --dirty
+          git describe --long --always --dirty --tags
 
       # Not strictly necessary but saves a lot of scrolling in the next step
       # Caching a 12G image is unfortunately not possible:
@@ -327,12 +337,25 @@ jobs:
           west init -l sof
           west update --narrow --fetch-opt=--filter=tree:0
 
-          # Get some tags to fix `git describe`, see build-linux comments above.
-          cd zephyr
+      # Get some tags to fix `git describe` etc., see detailed build-linux comments above.
+      - name: Fetch tags for git describe
+        working-directory: ${{ github.workspace }}/workspace/zephyr
+        # Keep in sync with build-linux above
+        run: |
+          # Set-PSDebug -Trace 2
           $_rev = "$(git rev-parse HEAD)"
-          git fetch --filter=tree:0 "$(west list -f '{url}' zephyr)" "${_rev}:_branch_placeholder"
-          git branch -D _branch_placeholder
+          $_zurl = "$(west list -f '{url}' zephyr)"
+          git remote add sof_zep_rem "${_zurl}"
+          # Unlike Linux above, hardcode "main" for now. Will make no difference most
+          # of the time but keeps this bit consistent with Linux, tested and ready to use.
+          git fetch --filter=tree:0        sof_zep_rem main
+          git fetch --filter=tree:0 --tags sof_zep_rem
 
+          west list
+          west status
+          git   log --oneline -n 5 --decorate --graph --no-abbrev-commit
+          git describe --long --always --dirty
+          git describe --long --always --dirty --tags
 
       # Call Setup Python again to save the PIP packages in cache
       - name: Setup Python
