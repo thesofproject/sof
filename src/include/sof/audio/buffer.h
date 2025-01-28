@@ -162,6 +162,28 @@ static inline struct comp_dev *comp_buffer_get_sink_component(const struct comp_
 	return buffer->sink;
 }
 
+static inline
+void comp_buffer_set_source_component(struct comp_buffer *buffer, struct comp_dev *comp)
+{
+	buffer->source = comp;
+}
+
+static inline
+void comp_buffer_set_sink_component(struct comp_buffer *buffer, struct comp_dev *comp)
+{
+	buffer->sink = comp;
+}
+
+static inline void comp_buffer_reset_source_list(struct comp_buffer *buffer)
+{
+	list_init(&buffer->source_list);
+}
+
+static inline void comp_buffer_reset_sink_list(struct comp_buffer *buffer)
+{
+	list_init(&buffer->sink_list);
+}
+
 /* Only to be used for synchronous same-core notifications! */
 struct buffer_cb_transact {
 	struct comp_buffer *buffer;
@@ -172,10 +194,6 @@ struct buffer_cb_transact {
 struct buffer_cb_free {
 	struct comp_buffer *buffer;
 };
-
-#define buffer_comp_list(buffer, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->source_list : \
-	 &buffer->sink_list)
 
 #define buffer_from_list(ptr, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? \

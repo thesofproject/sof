@@ -534,6 +534,13 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 #endif
 }
 
+static inline struct list_item *buffer_comp_list(struct comp_buffer *buffer,
+						 int dir)
+{
+	return dir == PPL_DIR_DOWNSTREAM ?
+			&buffer->source_list :  &buffer->sink_list;
+}
+
 /*
  * Locking: must be called with interrupts disabled! Serialized IPCs protect us
  * from racing attach / detach calls, but the scheduler can interrupt the IPC
