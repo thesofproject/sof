@@ -1,0 +1,57 @@
+---
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - 'main'
+      - 'stable-**'
+      - '**-stable'
+  pull_request:
+    branches:
+      - 'main'
+      - 'stable-**'
+      - '**-stable'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  # Allows to call this forkflow from other workflows
+  workflow_call:
+
+jobs:
+
+  # This is unfortunately a mix of sof-docs/.github/ + pull-request.yml#doxygen
+  # duplicating a bit of both: please keep in sync with both. We
+  # build sof-docs here too because waiting for sof-docs CI to find
+  # regressions introduced in sof.git is very time-consuming, see
+  # example in
+  # https://github.com/thesofproject/sof/pull/5731#issuecomment-1175630147
+  sof-docs:
+    runs-on: ubuntu-20.04  # sof-docs is still stuck to this for now
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: 'tree:0'
+
+      - name: apt-get update
+        run: sudo apt-get update
+
+      - name: apt-get install
+        run: sudo apt-get -y install
+             doxygen make default-jre graphviz cmake ninja-build
+
+      - name: doxygen
+        run: cmake -GNinja -S doc/ -B doxybuild/ && ninja -C doxybuild/ -v doc
+
+        # Nested git clone, this is fine
+      - name: clone sof-docs
+        run: git clone https://github.com/thesofproject/sof-docs sof-docs/
+
+      - name: PATH += .local/bin
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: 'pip install -r sof-docs/scripts/requirements.txt'
+        run: pip install -r sof-docs/scripts/requirements.txt
+
+      - name: build sof-docs
+        run: make -C sof-docs/ html SOF_DOC_BUILD="$(pwd)"/doxybuild/
