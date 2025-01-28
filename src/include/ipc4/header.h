@@ -215,4 +215,8 @@ struct sof_ipc4_notify_module_data {
 	uint8_t event_data[];
 } __attribute((packed, aligned(4)));
 
+enum sof_ipc4_kcontrol_global_id {
+	SOF_IPC4_KCONTROL_GLOBAL_CAPTURE_HW_MUTE = 1,
+};
+
 #endif
