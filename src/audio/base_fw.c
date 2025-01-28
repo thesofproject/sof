@@ -121,6 +121,10 @@ static int basefw_config(uint32_t *data_offset, char *data)
 			     IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE));
 
 	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_FW_GLOBAL_KCONTROL_MASK,
+			     BIT(SOF_IPC4_KCONTROL_GLOBAL_CAPTURE_HW_MUTE));
+
+	tuple = tlv_next(tuple);
 
 	/* add platform specific tuples */
 	basefw_vendor_fw_config(&plat_data_offset, (char *)tuple);
