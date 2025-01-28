@@ -450,6 +450,9 @@ int main(int argc, char **argv)
 	if (!tp->channels_out)
 		tp->channels_out = tp->channels_in;
 
+	if (!tp->fs_out)
+		tp->fs_out = tp->fs_in;
+
 	/* check mandatory args */
 	if (!tp->tplg_file) {
 		fprintf(stderr, "topology file not specified, use -t file.tplg\n");
