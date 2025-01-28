@@ -114,8 +114,10 @@ jobs:
         IPC_platforms: [
           # - IPC3 default
           imx8 imx8x imx8m imx8ulp,
-          # - IPC4 default
-          mtl, lnl, ptl,
+          # - IPC4 default, released
+          mtl lnl,
+          # active development
+          ptl,
           # Temporary testbed for Zephyr development.
           tgl tgl-h,
         ]
@@ -126,7 +128,7 @@ jobs:
           # specify one extra -d combination without affecting the main matrix
           - build_opts: -d
             zephyr_revision: mnfst
-            IPC_platforms: mtl
+            IPC_platforms: lnl
 
           # This is "duplication of effort" but it makes sure no one
           # breaks --all, see for instance #9262 and previous commit.
@@ -243,15 +245,18 @@ jobs:
         platforms: [
           # - IPC3 default
           imx8 imx8x imx8m imx8ulp,
-          # - IPC4 default
-          mtl,
+          # - IPC4 default, released
+          mtl lnl,
+          # active development
+          ptl,
+          # legacy
           tgl tgl-h,
         ]
         build_opts: [""]
         # Sparse matrices are complicated, see comments on Linux matrix above.
         include:
           - build_opts: -d
-            platforms: mtl
+            platforms: lnl
 
 
     steps:
@@ -451,10 +456,12 @@ jobs:
         run: |
           diffs=0; ls -l
 
-          # Check not too much is missing (it happened!)
+          # Look for a few samples to
+          # check not too much is missing (it happened!)
           # http://mywiki.wooledge.org/ParsingLs
-          for regdir in 'linux-build *mtl' \
-                        'windows-build *mtl' \
+          for regdir in 'linux-build *-d *.*' \
+                        'linux-build *.*lnl.*' \
+                        'windows-build *.*mtl.*' \
                         'windows-build *tgl tgl-h'; do
             find . -maxdepth 1 | grep -q "\./${regdir}\$" ||
               { >&2 printf 'Missing %s\n' "${regdir}"; exit 1; }
