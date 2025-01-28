@@ -1055,8 +1055,8 @@ static inline int tb_insert_comp(struct testbench_prm *tp)
 
 	list_item_append(&comp_info->item, &tp->widget_list);
 
-	printf("debug: loading comp_id %d: widget %s type %d size %d at offset %ld is_pages %d\n",
-	       comp_id, ctx->widget->name, ctx->widget->id, ctx->widget->size,
+	printf("debug: loading comp_id %d: pipeline_id %d: widget %s type %d size %d at offset %ld is_pages %d\n",
+	       comp_id, ctx->pipeline_id, ctx->widget->name, ctx->widget->id, ctx->widget->size,
 	       ctx->tplg_offset, comp_info->basecfg.is_pages);
 
 	return 0;
