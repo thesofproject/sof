@@ -17,12 +17,12 @@ void cleanup_test_data(struct pipeline_connect_data *data)
 {
 	list_init(&data->first->bsource_list);
 	list_init(&data->second->bsource_list);
-	list_init(&data->b1->sink_list);
-	list_init(&data->b1->source_list);
+	comp_buffer_reset_sink_list(data->b1);
+	comp_buffer_reset_source_list(data->b1);
 	list_init(&data->first->bsink_list);
 	list_init(&data->second->bsink_list);
-	list_init(&data->b2->sink_list);
-	list_init(&data->b2->source_list);
+	comp_buffer_reset_sink_list(data->b2);
+	comp_buffer_reset_source_list(data->b2);
 }
 
 struct pipeline_connect_data *get_standard_connect_objects(void)
@@ -70,17 +70,17 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 	struct comp_buffer *buffer = calloc(sizeof(struct comp_buffer), 1);
 
-	buffer->source = first;
-	buffer->sink = second;
-	list_init(&buffer->sink_list);
-	list_init(&buffer->source_list);
+	comp_buffer_set_source_component(buffer, first);
+	comp_buffer_set_sink_component(buffer, second);
+	comp_buffer_reset_sink_list(buffer);
+	comp_buffer_reset_source_list(buffer);
 	pipeline_connect_data->b1 = buffer;
 
 	struct comp_buffer *buffer_2 = calloc(sizeof(struct comp_buffer), 1);
 
-	buffer_2->source = second;
-	list_init(&buffer_2->sink_list);
-	list_init(&buffer_2->source_list);
+	comp_buffer_set_source_component(buffer_2, second);
+	comp_buffer_reset_sink_list(buffer_2);
+	comp_buffer_reset_source_list(buffer_2);
 	pipeline_connect_data->b2 = buffer_2;
 
 	pipeline_connect_data->p = *pipe;
