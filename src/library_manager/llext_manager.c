@@ -28,6 +28,7 @@
 #include <zephyr/llext/buf_loader.h>
 #include <zephyr/llext/loader.h>
 #include <zephyr/llext/llext.h>
+#include <zephyr/logging/log_ctrl.h>
 
 #include <rimage/sof/user/manifest.h>
 #include <module/module/api_ver.h>
@@ -116,7 +117,7 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 	return ret;
 }
 
-static int llext_manager_load_module(const struct lib_manager_module *mctx)
+static int llext_manager_load_module(struct lib_manager_module *mctx)
 {
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
@@ -183,6 +184,7 @@ static int llext_manager_load_module(const struct lib_manager_module *mctx)
 		goto e_rodata;
 
 	memset((__sparse_force void *)bss_addr, 0, bss_size);
+	mctx->mapped = true;
 
 	return 0;
 
@@ -194,7 +196,7 @@ e_text:
 	return ret;
 }
 
-static int llext_manager_unload_module(const struct lib_manager_module *mctx)
+static int llext_manager_unload_module(struct lib_manager_module *mctx)
 {
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
@@ -224,6 +226,8 @@ static int llext_manager_unload_module(const struct lib_manager_module *mctx)
 	if (ret < 0 && !err)
 		err = ret;
 
+	mctx->mapped = false;
+
 	return err;
 }
 
@@ -237,16 +241,35 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
 	struct llext **llext = &mctx->llext;
-	/* Identify if this is the first time loading this module */
-	struct llext_load_param ldr_parm = {
-		.relocate_local = !mctx->segment[LIB_MANAGER_TEXT].size,
-		.pre_located = true,
-		.section_detached = llext_manager_section_detached,
-	};
-	int ret = llext_load(&ebl->loader, name, llext, &ldr_parm);
+	int ret;
 
-	if (ret)
-		return ret;
+	if (*llext && !mctx->mapped) {
+		/*
+		 * All module instances have been terminated, so we freed SRAM,
+		 * but we kept the full Zephyr LLEXT context. Now a new instance
+		 * is starting, so we just re-use all the configuration and only
+		 * re-allocate SRAM and copy the module into it
+		 */
+		*mod_manifest = mctx->mod_manifest;
+
+		return 0;
+	}
+
+	if (!*llext || mctx->mapped) {
+		/*
+		 * Either the very first time loading this module, or the module
+		 * is already mapped, we just call llext_load() to refcount it
+		 */
+		struct llext_load_param ldr_parm = {
+			.relocate_local = !*llext,
+			.pre_located = true,
+			.section_detached = llext_manager_section_detached,
+		};
+
+		ret = llext_load(&ebl->loader, name, llext, &ldr_parm);
+		if (ret)
+			return ret;
+	}
 
 	mctx->segment[LIB_MANAGER_TEXT].addr = ebl->loader.sects[LLEXT_MEM_TEXT].sh_addr;
 	mctx->segment[LIB_MANAGER_TEXT].size = ebl->loader.sects[LLEXT_MEM_TEXT].sh_size;
@@ -323,7 +346,7 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 	for (i = 0, n_mod = 0, offs = ~0; i < desc->header.num_module_entries; i++)
 		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != offs) {
 			offs = mod_array[i].segment[LIB_MANAGER_TEXT].file_offset;
-			ctx->mod[n_mod].segment[LIB_MANAGER_TEXT].size = 0;
+			ctx->mod[n_mod].mapped = false;
 			ctx->mod[n_mod].llext = NULL;
 			ctx->mod[n_mod++].start_idx = i;
 		}
@@ -474,7 +497,9 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 			tr_err(&lib_manager_tr, "Unsupported module API version");
 			return 0;
 		}
+	}
 
+	if (!mctx->mapped) {
 		/* Map executable code and data */
 		int ret = llext_manager_load_module(mctx);
 
@@ -506,11 +531,30 @@ int llext_manager_free_module(const uint32_t component_id)
 	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
 	struct lib_manager_module *mctx = ctx->mod + mod_idx;
 
-	if (llext_unload(&mctx->llext))
+	/* Protected by IPC serialization */
+	if (mctx->llext->use_count > 1) {
+		/* llext_unload() will return a positive number */
+		int ret = llext_unload(&mctx->llext);
+
+		if (ret <= 0) {
+			tr_err(&lib_manager_tr,
+			       "mod_id: %#x: invalid return code from llext_unload(): %d",
+			       component_id, ret);
+			return ret ? : -EPROTO;
+		}
+
 		/* More users are active */
 		return 0;
+	}
 
+	/*
+	 * The last instance of the module has been destroyed and it can now be
+	 * unloaded from SRAM
+	 */
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
+
+	/* Since the LLEXT context now is preserved, we have to flush logs ourselves */
+	log_flush();
 
 	return llext_manager_unload_module(mctx);
 }
