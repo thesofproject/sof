@@ -103,6 +103,7 @@ struct lib_manager_module {
 				 * the library-global driver list */
 	const struct sof_man_module_manifest *mod_manifest;
 	struct llext *llext; /* Zephyr loadable extension context */
+	bool mapped;
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
 };
 
