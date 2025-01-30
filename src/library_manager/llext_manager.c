@@ -378,9 +378,6 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 
 	tr_dbg(&lib_manager_tr, "mod_id: %u", module_id);
 
-	if (!ctx->mod)
-		llext_manager_mod_init(ctx, desc);
-
 	if (entry_index >= desc->header.num_module_entries) {
 		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
 		       entry_index, desc->header.num_module_entries - 1);
@@ -462,12 +459,41 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 	return mod_ctx_idx;
 }
 
+static int llext_lib_find(const struct llext *llext, struct lib_manager_module **dep_ctx)
+{
+	struct ext_library *_ext_lib = ext_lib_get();
+	unsigned int i, j;
+
+	if (!llext)
+		return -EINVAL;
+
+	for (i = 0; i < ARRAY_SIZE(_ext_lib->desc); i++) {
+		if (!_ext_lib->desc[i])
+			continue;
+
+		for (j = 0; j < _ext_lib->desc[i]->n_mod; j++)
+			if (_ext_lib->desc[i]->mod[j].llext == llext) {
+				*dep_ctx = _ext_lib->desc[i]->mod + j;
+				return i;
+			}
+	}
+
+	return -ENOENT;
+}
+
+static void llext_depend_unlink(struct lib_manager_module *dep_ctx[], int n)
+{
+	for (; n >= 0; n--)
+		if (dep_ctx[n] && dep_ctx[n]->llext->use_count == 1)
+			llext_manager_unload_module(dep_ctx[n]);
+}
+
 uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config)
 {
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	/* Library manifest */
-	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)
+	const struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)
 		lib_manager_get_library_manifest(module_id);
 	/* Library context */
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
@@ -500,9 +526,50 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 	}
 
 	if (!mctx->mapped) {
-		/* Map executable code and data */
-		int ret = llext_manager_load_module(mctx);
+		int i, ret;
 
+		/*
+		 * Check if any dependencies need to be mapped - collect
+		 * pointers to library contexts
+		 */
+		struct lib_manager_module *dep_ctx[LLEXT_MAX_DEPENDENCIES] = {};
+
+		for (i = 0; i < ARRAY_SIZE(mctx->llext->dependency); i++) {
+			/* Dependencies are filled from the beginning of the array upwards */
+			if (!mctx->llext->dependency[i])
+				break;
+
+			/*
+			 * Protected by the IPC serialization, but maybe we should protect the
+			 * use-count explicitly too. Currently the use-count is first incremented
+			 * when an auxiliary library is loaded, it was then additionally incremented
+			 * when the current dependent module was mapped. If it's higher than two,
+			 * then some other modules also depend on it and have already mapped it.
+			 */
+			if (mctx->llext->dependency[i]->use_count > 2)
+				continue;
+
+			/* First user of this dependency, load it into SRAM */
+			ret = llext_lib_find(mctx->llext->dependency[i], &dep_ctx[i]);
+			if (ret < 0) {
+				tr_err(&lib_manager_tr,
+				       "Unmet dependency: cannot find dependency %u", i);
+				continue;
+			}
+
+			tr_dbg(&lib_manager_tr, "%s depending on %s index %u, %u users",
+			       mctx->llext->name, mctx->llext->dependency[i]->name,
+			       dep_ctx[i]->start_idx, mctx->llext->dependency[i]->use_count);
+
+			ret = llext_manager_load_module(dep_ctx[i]);
+			if (ret < 0) {
+				llext_depend_unlink(dep_ctx, i - 1);
+				return 0;
+			}
+		}
+
+		/* Map executable code and data */
+		ret = llext_manager_load_module(mctx);
 		if (ret < 0)
 			return 0;
 	}
@@ -547,6 +614,17 @@ int llext_manager_free_module(const uint32_t component_id)
 		return 0;
 	}
 
+	struct lib_manager_module *dep_ctx[LLEXT_MAX_DEPENDENCIES] = {};
+	int i;	/* signed to match llext_depend_unlink() */
+
+	for (i = 0; i < ARRAY_SIZE(mctx->llext->dependency); i++)
+		if (llext_lib_find(mctx->llext->dependency[i], &dep_ctx[i]) < 0)
+			break;
+
+	/* Last user cleaning up, put dependencies */
+	if (i)
+		llext_depend_unlink(dep_ctx, i - 1);
+
 	/*
 	 * The last instance of the module has been destroyed and it can now be
 	 * unloaded from SRAM
@@ -557,6 +635,39 @@ int llext_manager_free_module(const uint32_t component_id)
 	log_flush();
 
 	return llext_manager_unload_module(mctx);
+}
+
+/* An auxiliary library has been loaded, need to read in its exported symbols */
+int llext_manager_add_library(uint32_t module_id)
+{
+	struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+
+	if (ctx->mod) {
+		tr_err(&lib_manager_tr, "module_id: %#x: repeated load!", module_id);
+		return -EBUSY;
+	}
+
+	const struct sof_man_fw_desc *desc = lib_manager_get_library_manifest(module_id);
+	unsigned int i;
+
+	if (!ctx->mod)
+		llext_manager_mod_init(ctx, desc);
+
+	for (i = 0; i < ctx->n_mod; i++) {
+		const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id + i);
+
+		if (mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX) {
+			const struct sof_man_module_manifest *mod_manifest;
+			const struct sof_module_api_build_info *buildinfo;
+			int ret = llext_manager_link_single(module_id + i, desc, ctx,
+							(const void **)&buildinfo, &mod_manifest);
+
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
 }
 
 bool comp_is_llext(struct comp_dev *comp)
