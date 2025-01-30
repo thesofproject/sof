@@ -21,8 +21,8 @@ static void mix_s16(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 	ae_int16x4 out_sample, out_sample1;
 	ae_int16x8 *in;
 	ae_int16x8 *out;
-	ae_valignx2 inu = AE_ZALIGN128();
-	ae_valignx2 outu1 = AE_ZALIGN128();
+	ae_valignx2 inu;
+	ae_valignx2 outu1;
 	ae_valignx2 outu2 = AE_ZALIGN128();
 	/* cir_buf_wrap() is required and is done below in a loop */
 	ae_int16 *dst = (ae_int16 *)sink->ptr + start_sample;
@@ -111,8 +111,8 @@ static void mix_s24(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 	ae_int32x2 out_sample, out_sample1;
 	ae_int32x4 *in;
 	ae_int32x4 *out;
-	ae_valignx2 inu = AE_ZALIGN128();
-	ae_valignx2 outu1 = AE_ZALIGN128();
+	ae_valignx2 inu;
+	ae_valignx2 outu1;
 	ae_valignx2 outu2 = AE_ZALIGN128();
 	/* cir_buf_wrap() is required and is done below in a loop */
 	int32_t *dst = (int32_t *)sink->ptr + start_sample;
@@ -195,8 +195,8 @@ static void mix_s32(struct cir_buf_ptr *sink, int32_t start_sample, int32_t mixe
 	ae_int32x2 out_sample, out_sample1;
 	ae_int32x4 *in;
 	ae_int32x4 *out;
-	ae_valignx2 inu = AE_ZALIGN128();
-	ae_valignx2 outu1 = AE_ZALIGN128();
+	ae_valignx2 inu;
+	ae_valignx2 outu1;
 	ae_valignx2 outu2 = AE_ZALIGN128();
 	/* cir_buf_wrap() is required and is done below in a loop */
 	int32_t *dst = (int32_t *)sink->ptr + start_sample;
