@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #include <sof/audio/format.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 
 #include "multiband_drc.h"
 #include "../drc/drc_algorithm.h"
@@ -27,7 +27,7 @@ static void multiband_drc_process_emp_crossover(struct multiband_drc_state *stat
 						int nch,
 						int nband)
 {
-	struct iir_state_df2t *emp_s;
+	struct iir_state_df1 *emp_s;
 	struct crossover_state *crossover_s;
 	int32_t *buf_sink_band;
 	int ch, band;
@@ -39,7 +39,7 @@ static void multiband_drc_process_emp_crossover(struct multiband_drc_state *stat
 		crossover_s = &state->crossover[ch];
 
 		if (enable_emp)
-			emp_out = iir_df2t(emp_s, *buf_src);
+			emp_out = iir_df1(emp_s, *buf_src);
 		else
 			emp_out = *buf_src;
 
@@ -162,7 +162,7 @@ static void multiband_drc_process_deemp(struct multiband_drc_state *state,
 					int nch,
 					int nband)
 {
-	struct iir_state_df2t *deemp_s;
+	struct iir_state_df1 *deemp_s;
 	int32_t *buf_src_band;
 	int ch, band;
 	int32_t mix_out;
@@ -178,7 +178,7 @@ static void multiband_drc_process_deemp(struct multiband_drc_state *state,
 		}
 
 		if (enable_deemp)
-			*buf_sink = iir_df2t(deemp_s, mix_out);
+			*buf_sink = iir_df1(deemp_s, mix_out);
 		else
 			*buf_sink = mix_out;
 
