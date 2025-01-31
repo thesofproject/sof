@@ -18,7 +18,7 @@
 #include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/string.h>
@@ -157,13 +157,13 @@ static int crossover_assign_sinks(struct processing_module *mod,
  * \param[out] lr4 initialized struct
  */
 static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
-				   struct iir_state_df2t *lr4)
+				   struct iir_state_df1 *lr4)
 {
 	int ret;
 
 	/* Only one set of coefficients is stored in config for both biquads
 	 * in series due to identity. To maintain the structure of
-	 * iir_state_df2t, it requires two copies of coefficients in a row.
+	 * iir_state_df1, it requires two copies of coefficients in a row.
 	 */
 	lr4->coef = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(struct sof_eq_iir_biquad) * 2);
