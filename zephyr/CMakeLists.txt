@@ -650,7 +650,7 @@ endif()
 if(CONFIG_COMP_FIR STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/eq_fir/llext
 			 ${PROJECT_BINARY_DIR}/eq_fir_llext)
-	add_dependencies(app eq_iir)
+	add_dependencies(app eq_fir)
 elseif(CONFIG_COMP_FIR)
 	zephyr_library_sources(
 		${SOF_AUDIO_PATH}/eq_fir/eq_fir_hifi3.c
