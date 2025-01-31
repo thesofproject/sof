@@ -62,7 +62,7 @@ static void multiband_drc_reset_state(struct multiband_drc_state *state)
 }
 
 static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
-					 struct iir_state_df2t *eq)
+					 struct iir_state_df1 *eq)
 {
 	int ret;
 
