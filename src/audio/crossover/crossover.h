@@ -8,7 +8,7 @@
 #define __SOF_AUDIO_CROSSOVER_CROSSOVER_H__
 
 #include <sof/audio/module_adapter/module/module_interface.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <module/crossover/crossover_common.h>
 #include <sof/platform.h>
 #include <stdint.h>
@@ -119,10 +119,10 @@ extern const size_t crossover_split_fncount;
  * \brief Runs input in through the LR4 filter and returns it's output.
  */
 static inline int32_t crossover_generic_process_lr4(int32_t in,
-						    struct iir_state_df2t *lr4)
+						    struct iir_state_df1 *lr4)
 {
 	/* Cascade two biquads with same coefficients in series. */
-	return iir_df2t(lr4, in);
+	return iir_df1(lr4, in);
 }
 
 static inline void crossover_free_config(struct sof_crossover_config **config)

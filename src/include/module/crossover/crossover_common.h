@@ -8,7 +8,7 @@
 #ifndef __SOF_CROSSOVER_COMMON_H__
 #define __SOF_CROSSOVER_COMMON_H__
 
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <user/eq.h>
 
 /* Number of sinks for a 2 way crossover filter */
@@ -29,8 +29,8 @@
  */
 struct crossover_state {
 	/* Store the state for each LR4 filter. */
-	struct iir_state_df2t lowpass[CROSSOVER_MAX_LR4];
-	struct iir_state_df2t highpass[CROSSOVER_MAX_LR4];
+	struct iir_state_df1 lowpass[CROSSOVER_MAX_LR4];
+	struct iir_state_df1 highpass[CROSSOVER_MAX_LR4];
 };
 
 typedef void (*crossover_split)(int32_t in, int32_t out[],
@@ -46,7 +46,7 @@ int crossover_init_coef_ch(struct sof_eq_iir_biquad *coef,
 /**
  * \brief Reset the state of an LR4 filter.
  */
-static inline void crossover_reset_state_lr4(struct iir_state_df2t *lr4)
+static inline void crossover_reset_state_lr4(struct iir_state_df1 *lr4)
 {
 	rfree(lr4->coef);
 	rfree(lr4->delay);
