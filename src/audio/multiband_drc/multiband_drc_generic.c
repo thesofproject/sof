@@ -39,7 +39,7 @@ static void multiband_drc_process_emp_crossover(struct multiband_drc_state *stat
 		crossover_s = &state->crossover[ch];
 
 		if (enable_emp)
-			emp_out = iir_df1(emp_s, *buf_src);
+			emp_out = iir_df1_4th(emp_s, *buf_src);
 		else
 			emp_out = *buf_src;
 
@@ -178,7 +178,7 @@ static void multiband_drc_process_deemp(struct multiband_drc_state *state,
 		}
 
 		if (enable_deemp)
-			*buf_sink = iir_df1(deemp_s, mix_out);
+			*buf_sink = iir_df1_4th(deemp_s, mix_out);
 		else
 			*buf_sink = mix_out;
 
