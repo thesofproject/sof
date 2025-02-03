@@ -109,4 +109,58 @@ int32_t iir_df1(struct iir_state_df1 *iir, int32_t x)
 }
 EXPORT_SYMBOL(iir_df1);
 
+int32_t iir_df1_4th(struct iir_state_df1 *iir, int32_t x)
+{
+	int32_t in;
+	int32_t tmp;
+	int64_t acc;
+	int i;
+	int d = 0; /* Index to state */
+	int c = 0; /* Index to coefficient a2 */
+	int32_t *coefp = iir->coef;
+	int32_t *delay = iir->delay;
+
+	/* Coefficients order in coef[] is {a2, a1, b2, b1, b0, shift, gain} */
+	/* Delay order in state[] is {y(n - 2), y(n - 1), x(n - 2), x(n - 1)} */
+	in = x;
+	for (i = 0; i < SOF_IIR_DF1_4TH_NUM_BIQUADS; i++) {
+		/* Compute output: Delay is Q3.61
+		 * Q2.30 x Q1.31 -> Q3.61
+		 * Shift Q3.61 to Q3.31 with rounding, saturate to Q1.31
+		 */
+		acc = ((int64_t)coefp[c]) * delay[d]; /* a2 * y(n - 2) */
+		acc += ((int64_t)coefp[c + 1]) * delay[d + 1]; /* a1 * y(n - 1) */
+		acc += ((int64_t)coefp[c + 2]) * delay[d + 2]; /* b2 * x(n - 2) */
+		acc += ((int64_t)coefp[c + 3]) * delay[d + 3]; /* b1 * x(n - 1) */
+		acc += ((int64_t)coefp[c + 4]) * in; /* b0 * x */
+		tmp = (int32_t)sat_int32(Q_SHIFT_RND(acc, 61, 31));
+
+		/* update the delay value */
+		delay[d] = delay[d + 1];
+		delay[d + 1] = tmp;
+		delay[d + 2] = delay[d + 3];
+		delay[d + 3] = in;
+
+		/* Apply gain Q2.14 x Q1.31 -> Q3.45 */
+		acc = ((int64_t)coefp[c + 6]) * tmp; /* Gain */
+
+		/* Apply biquad output shift right parameter
+		 * simultaneously with Q3.45 to Q3.31 conversion. Then
+		 * saturate to 32 bits Q1.31 and prepare for next
+		 * biquad.
+		 */
+		acc = Q_SHIFT_RND(acc, 45 + coefp[c + 5], 31);
+		in = sat_int32(acc);
+
+		/* Proceed to next biquad coefficients and delay
+		 * lines.
+		 */
+		c += SOF_EQ_IIR_NBIQUAD;
+		d += IIR_DF1_NUM_STATE;
+	}
+	/* Output of previous section is in variable in */
+	return in;
+}
+EXPORT_SYMBOL(iir_df1_4th);
+
 #endif
