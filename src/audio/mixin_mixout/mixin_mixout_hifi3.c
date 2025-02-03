@@ -114,10 +114,13 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 	/* cir_buf_wrap() is required and is done below in a loop */
 	ae_int16 *dst = (ae_int16 *)sink->ptr + start_sample;
 	ae_int16 *src = source->ptr;
-	ae_int16x4 gain_vec;
-	ae_int32x2 tmpl, tmph;
+	ae_f16x4 gain_vec;
+
+	/* this func does not support unity gain as 1 cannot be represented as Q1.15 value */
+	assert(gain < IPC4_MIXIN_UNITY_GAIN);
 
 	gain_vec = AE_L16_I((ae_int16 *)&gain, 0);
+	gain_vec = AE_SLAI16S(gain_vec, 5);	/* convert to Q1.15 */
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = AE_MIN_32_signed(mixed_samples - start_sample, sample_count);
@@ -141,13 +144,8 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		/* process 4 frames per loop */
 		for (i = 0; i < m; i++) {
 			AE_LA16X4_IP(in_sample, inu, in);
-
 			/* apply gain to in_sample */
-			AE_MUL16X4(tmph, tmpl, in_sample, gain_vec);
-			tmpl = AE_SRAI32(tmpl, IPC4_MIXIN_GAIN_SHIFT);
-			tmph = AE_SRAI32(tmph, IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_CVT16X4(tmph, tmpl);
-
+			in_sample = AE_MULFP16X4S(in_sample, gain_vec);
 			AE_LA16X4_IP(out_sample, outu1, out);
 			out--;
 			out_sample = AE_ADD16S(in_sample, out_sample);
@@ -160,11 +158,7 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		 */
 		for (i = 0; i < left ; i++) {
 			AE_L16_IP(in_sample, (ae_int16 *)in, sizeof(ae_int16));
-
-			AE_MUL16X4(tmph, tmpl, in_sample, gain_vec);
-			tmpl = AE_SRAI32(tmpl, IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_CVT16X4(tmpl, tmpl);
-
+			in_sample = AE_MULFP16X4S(in_sample, gain_vec);
 			AE_L16_IP(out_sample, (ae_int16 *)out, 0);
 			out_sample = AE_ADD16S(in_sample, out_sample);
 			AE_S16_0_IP(out_sample, (ae_int16 *)out, sizeof(ae_int16));
@@ -187,12 +181,7 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		/* process 4 frames per loop */
 		for (i = 0; i < m; i++) {
 			AE_LA16X4_IP(in_sample, inu, in);
-
-			AE_MUL16X4(tmph, tmpl, in_sample, gain_vec);
-			tmpl = AE_SRAI32(tmpl, IPC4_MIXIN_GAIN_SHIFT);
-			tmph = AE_SRAI32(tmph, IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_CVT16X4(tmph, tmpl);
-
+			in_sample = AE_MULFP16X4S(in_sample, gain_vec);
 			AE_SA16X4_IP(in_sample, outu2, out);
 		}
 		AE_SA64POS_FP(outu2, out);
@@ -202,11 +191,7 @@ static void mix_s16_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		 */
 		for (i = 0; i < left ; i++) {
 			AE_L16_IP(in_sample, (ae_int16 *)in, sizeof(ae_int16));
-
-			AE_MUL16X4(tmph, tmpl, in_sample, gain_vec);
-			tmpl = AE_SRAI32(tmpl, IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_CVT16X4(tmpl, tmpl);
-
+			in_sample = AE_MULFP16X4S(in_sample, gain_vec);
 			AE_S16_0_IP(in_sample, (ae_int16 *)out, sizeof(ae_int16));
 		}
 	}
@@ -309,7 +294,7 @@ static void mix_s24_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 {
 	int samples_to_mix, samples_to_copy, left_samples;
 	int n, nmax, i, m, left;
-	ae_int32x2 in_sample, in_sample32;
+	ae_int32x2 in_sample;
 	ae_int32x2 out_sample;
 	ae_int32x2 *in;
 	ae_int32x2 *out;
@@ -319,10 +304,14 @@ static void mix_s24_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 	/* cir_buf_wrap() is required and is done below in a loop */
 	int32_t *dst = (int32_t *)sink->ptr + start_sample;
 	int32_t *src = source->ptr;
-	ae_int16x4 gain_vec;
-	ae_int64 tmph, tmpl;
+	ae_f24x2 gain_vec;
+	ae_int32 gain32 = (ae_int32)gain;
 
-	gain_vec = AE_L16_I((ae_int16 *)&gain, 0);
+	/* this func does not support unity gain as 1 cannot be represented as Q1.23 value */
+	assert(gain < IPC4_MIXIN_UNITY_GAIN);
+
+	gain_vec = AE_MOVF24X2_FROMINT32X2(AE_L32_I(&gain32, 0));
+	gain_vec = AE_SLAI24S(gain_vec, 13);	/* convert to Q1.23 */
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = AE_MIN_32_signed(mixed_samples - start_sample, sample_count);
@@ -346,18 +335,10 @@ static void mix_s24_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		/* process 2 samples per time */
 		for (i = 0; i < m; i++) {
 			AE_LA32X2_IP(in_sample, inu, in);
-
-			/* apply gain to in_sample */
-			in_sample32 = AE_SLAI32(in_sample, 8);	/* sign extension */
-			tmpl = AE_MUL32X16_L0(in_sample32, gain_vec);
-			tmph = AE_MUL32X16_H0(in_sample32, gain_vec);
-			tmpl = AE_SRAI64(tmpl, 8 + IPC4_MIXIN_GAIN_SHIFT);
-			tmph = AE_SRAI64(tmph, 8 + IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(tmph),
-						AE_MOVINT32X2_FROMINT64(tmpl));
-
+			in_sample = AE_MULFP24X2R(AE_MOVF24X2_FROMINT32X2(in_sample), gain_vec);
 			AE_LA32X2_IP(out_sample, outu1, out);
 			out--;
+			/* out samples are already sign extended by other mixin in a loop below */
 			out_sample = AE_ADD24S(in_sample, out_sample);
 			AE_SA32X2_IP(out_sample, outu2, out);
 		}
@@ -366,13 +347,9 @@ static void mix_s24_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		/* process the left sample to avoid memory access overrun */
 		if (left) {
 			AE_L32_IP(in_sample, (ae_int32 *)in, sizeof(ae_int32));
-
-			in_sample32 = AE_SLAI32(in_sample, 8);	/* sign extension */
-			tmpl = AE_MUL32X16_L0(in_sample32, gain_vec);
-			tmpl = AE_SRAI64(tmpl, 8 + IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_MOVINT32X2_FROMINT64(tmpl);
-
+			in_sample = AE_MULFP24X2R(AE_MOVF24X2_FROMINT32X2(in_sample), gain_vec);
 			AE_L32_IP(out_sample, (ae_int32 *)out, 0);
+			/* out samples are already sign extended by other mixin in a loop below */
 			out_sample = AE_ADD24S(in_sample, out_sample);
 			AE_S32_L_IP(out_sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
@@ -392,27 +369,14 @@ static void mix_s24_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		left = n & 1;
 		for (i = 0; i < m; i++) {
 			AE_LA32X2_IP(in_sample, inu, in);
-
-			in_sample32 = AE_SLAI32(in_sample, 8);	/* sign extension */
-			tmpl = AE_MUL32X16_L0(in_sample32, gain_vec);
-			tmph = AE_MUL32X16_H0(in_sample32, gain_vec);
-			tmpl = AE_SRAI64(tmpl, 8 + IPC4_MIXIN_GAIN_SHIFT);
-			tmph = AE_SRAI64(tmph, 8 + IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(tmph),
-						AE_MOVINT32X2_FROMINT64(tmpl));
-
+			in_sample = AE_MULFP24X2R(AE_MOVF24X2_FROMINT32X2(in_sample), gain_vec);
 			AE_SA32X2_IP(in_sample, outu2, out);
 		}
 		AE_SA64POS_FP(outu2, out);
 		/* process the left sample to avoid memory access overrun */
 		if (left) {
 			AE_L32_IP(in_sample, (ae_int32 *)in, sizeof(ae_int32));
-
-			in_sample32 = AE_SLAI32(in_sample, 8);	/* sign extension */
-			tmpl = AE_MUL32X16_L0(in_sample32, gain_vec);
-			tmpl = AE_SRAI64(tmpl, 8 + IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_MOVINT32X2_FROMINT64(tmpl);
-
+			in_sample = AE_MULFP24X2R(AE_MOVF24X2_FROMINT32X2(in_sample), gain_vec);
 			AE_S32_L_IP(in_sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
 	}
@@ -518,10 +482,13 @@ static void mix_s32_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 	/* cir_buf_wrap() is required and is done below in a loop */
 	int32_t *dst = (int32_t *)sink->ptr + start_sample;
 	int32_t *src = source->ptr;
-	ae_int16x4 gain_vec;
-	ae_int64 tmpl, tmph;
+	ae_f16x4 gain_vec;
+
+	/* this func does not support unity gain as 1 cannot be represented as Q1.15 value */
+	assert(gain < IPC4_MIXIN_UNITY_GAIN);
 
 	gain_vec = AE_L16_I((ae_int16 *)&gain, 0);
+	gain_vec = AE_SLAI16S(gain_vec, 5);	/* convert to Q1.15 */
 
 	assert(mixed_samples >= start_sample);
 	samples_to_mix = AE_MIN_32_signed(mixed_samples - start_sample, sample_count);
@@ -544,18 +511,9 @@ static void mix_s32_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		left = n & 1;
 		for (i = 0; i < m; i++) {
 			AE_LA32X2_IP(in_sample, inu, in);
-
-			/* apply gain to in_sample */
-			tmpl = AE_MUL32X16_L0(in_sample, gain_vec);
-			tmph = AE_MUL32X16_H0(in_sample, gain_vec);
-			tmpl = AE_SRAI64(tmpl, IPC4_MIXIN_GAIN_SHIFT);
-			tmph = AE_SRAI64(tmph, IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(tmph),
-						AE_MOVINT32X2_FROMINT64(tmpl));
-
 			AE_LA32X2_IP(out_sample, outu1, out);
 			out--;
-			out_sample = AE_ADD32S(in_sample, out_sample);
+			AE_MULAFP32X16X2RS_L(out_sample, in_sample, gain_vec);
 			AE_SA32X2_IP(out_sample, outu2, out);
 		}
 		AE_SA64POS_FP(outu2, out);
@@ -563,13 +521,8 @@ static void mix_s32_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		/* process the left sample to avoid memory access overrun */
 		if (left) {
 			AE_L32_IP(in_sample, (ae_int32 *)in, sizeof(ae_int32));
-
-			tmpl = AE_MUL32X16_L0(in_sample, gain_vec);
-			tmpl = AE_SRAI64(tmpl, IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_MOVINT32X2_FROMINT64(tmpl);
-
 			AE_L32_IP(out_sample, (ae_int32 *)out, 0);
-			out_sample = AE_ADD32S(in_sample, out_sample);
+			AE_MULAFP32X16X2RS_L(out_sample, in_sample, gain_vec);
 			AE_S32_L_IP(out_sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
 	}
@@ -589,14 +542,7 @@ static void mix_s32_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		left = n & 1;
 		for (i = 0; i < m; i++) {
 			AE_LA32X2_IP(in_sample, inu, in);
-
-			tmpl = AE_MUL32X16_L0(in_sample, gain_vec);
-			tmph = AE_MUL32X16_H0(in_sample, gain_vec);
-			tmpl = AE_SRAI64(tmpl, IPC4_MIXIN_GAIN_SHIFT);
-			tmph = AE_SRAI64(tmph, IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(tmph),
-						AE_MOVINT32X2_FROMINT64(tmpl));
-
+			in_sample = AE_MULFP32X16X2RS_L(in_sample, gain_vec);
 			AE_SA32X2_IP(in_sample, outu2, out);
 		}
 		AE_SA64POS_FP(outu2, out);
@@ -604,11 +550,7 @@ static void mix_s32_gain(struct cir_buf_ptr *sink, int32_t start_sample, int32_t
 		/* process the left sample to avoid memory access overrun */
 		if (left) {
 			AE_L32_IP(in_sample, (ae_int32 *)in, sizeof(ae_int32));
-
-			tmpl = AE_MUL32X16_L0(in_sample, gain_vec);
-			tmpl = AE_SRAI64(tmpl, IPC4_MIXIN_GAIN_SHIFT);
-			in_sample = AE_MOVINT32X2_FROMINT64(tmpl);
-
+			in_sample = AE_MULFP32X16X2RS_L(in_sample, gain_vec);
 			AE_S32_L_IP(in_sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
 	}
