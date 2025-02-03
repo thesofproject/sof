@@ -151,18 +151,61 @@ const struct device *zephyr_dev[] = {
 #endif
 };
 
+/* convert sof_ipc_dai_type to Zephyr dai_type */
+static int sof_dai_type_to_zephyr(uint32_t type)
+{
+	switch (type) {
+	case SOF_DAI_INTEL_SSP:
+		return DAI_INTEL_SSP;
+	case SOF_DAI_INTEL_DMIC:
+		return DAI_INTEL_DMIC;
+	case SOF_DAI_INTEL_HDA:
+		return DAI_INTEL_HDA;
+	case SOF_DAI_INTEL_ALH:
+		return DAI_INTEL_ALH;
+	case SOF_DAI_IMX_SAI:
+		return DAI_IMX_SAI;
+	case SOF_DAI_IMX_ESAI:
+		return DAI_IMX_ESAI;
+	case SOF_DAI_AMD_BT:
+		return DAI_AMD_BT;
+	case SOF_DAI_AMD_SP:
+		return DAI_AMD_SP;
+	case SOF_DAI_AMD_DMIC:
+		return DAI_AMD_DMIC;
+	case SOF_DAI_MEDIATEK_AFE:
+		return DAI_MEDIATEK_AFE;
+	case SOF_DAI_AMD_HS:
+	case SOF_DAI_AMD_SP_VIRTUAL:
+	case SOF_DAI_AMD_HS_VIRTUAL:
+	case SOF_DAI_IMX_MICFIL:
+	case SOF_DAI_AMD_SW_AUDIO:
+		return -ENOTSUP;
+	default:
+		return -EINVAL;
+	}
+}
+
 const struct device *dai_get_device(uint32_t type, uint32_t index)
 {
 	struct dai_config cfg;
+	int z_type;
 	int dir;
 	int i;
 
 	dir = (type == SOF_DAI_INTEL_DMIC) ? DAI_DIR_RX : DAI_DIR_BOTH;
 
+	z_type = sof_dai_type_to_zephyr(type);
+	if (z_type < 0) {
+		tr_err(&dai_tr, "dai_get_device: no matching zephyr DAI type for %d ret = %d",
+		       type, z_type);
+		return NULL;
+	}
+
 	for (i = 0; i < ARRAY_SIZE(zephyr_dev); i++) {
 		if (dai_config_get(zephyr_dev[i], &cfg, dir))
 			continue;
-		if (cfg.type == type && cfg.dai_index == index)
+		if (cfg.type == z_type && cfg.dai_index == index)
 			return zephyr_dev[i];
 	}
 
