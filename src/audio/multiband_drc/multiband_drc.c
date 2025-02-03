@@ -66,6 +66,10 @@ static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
 {
 	int ret;
 
+	/* Ensure the LR4 can be processed with the simplified 4th order IIR */
+	if (SOF_EMP_DEEMP_BIQUADS != SOF_IIR_DF1_4TH_NUM_BIQUADS)
+		return -EINVAL;
+
 	eq->coef = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			   sizeof(struct sof_eq_iir_biquad) * SOF_EMP_DEEMP_BIQUADS);
 	if (!eq->coef)
