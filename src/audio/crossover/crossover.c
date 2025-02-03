@@ -161,6 +161,10 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
 {
 	int ret;
 
+	/* Ensure the LR4 can be processed with the simplified 4th order IIR */
+	if (CROSSOVER_LR4_NUM_BIQUADS != SOF_IIR_DF1_4TH_NUM_BIQUADS)
+		return -EINVAL;
+
 	/* Only one set of coefficients is stored in config for both biquads
 	 * in series due to identity. To maintain the structure of
 	 * iir_state_df1, it requires two copies of coefficients in a row.
@@ -190,8 +194,8 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
 	if (!lr4->delay)
 		return -ENOMEM;
 
-	lr4->biquads = 2;
-	lr4->biquads_in_series = 2;
+	lr4->biquads = CROSSOVER_LR4_NUM_BIQUADS;
+	lr4->biquads_in_series = CROSSOVER_LR4_NUM_BIQUADS;
 
 	return 0;
 }

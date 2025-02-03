@@ -15,6 +15,8 @@
 
 #include "crossover_user.h"
 
+#define CROSSOVER_LR4_NUM_BIQUADS 2
+
 struct comp_buffer;
 struct comp_dev;
 
@@ -122,7 +124,7 @@ static inline int32_t crossover_generic_process_lr4(int32_t in,
 						    struct iir_state_df1 *lr4)
 {
 	/* Cascade two biquads with same coefficients in series. */
-	return iir_df1(lr4, in);
+	return iir_df1_4th(lr4, in);
 }
 
 static inline void crossover_free_config(struct sof_crossover_config **config)
