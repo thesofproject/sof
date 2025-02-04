@@ -252,6 +252,7 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 
 	k_spin_unlock(&ipc->lock, key);
 }
+EXPORT_SYMBOL(ipc_msg_send);
 
 #ifdef __ZEPHYR__
 static void ipc_work_handler(struct k_work *work)
