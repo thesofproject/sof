@@ -6,6 +6,7 @@
 //
 //
 
+#include <rtos/symbol.h>
 #include <sof/math/sqrt.h>
 
 #define SQRT_WRAP_SCHAR_BITS 0xFF
@@ -145,3 +146,4 @@ uint16_t sqrt_int16(uint16_t u)
 
 	return y;
 }
+EXPORT_SYMBOL(sqrt_int16);
