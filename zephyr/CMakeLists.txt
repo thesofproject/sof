@@ -867,6 +867,7 @@ elseif(CONFIG_COMP_SRC)
 		${SOF_AUDIO_PATH}/src/src_generic.c
 		${SOF_AUDIO_PATH}/src/src_hifi3.c
 		${SOF_AUDIO_PATH}/src/src_hifi4.c
+		${SOF_AUDIO_PATH}/src/src_hifi5.c
 		${SOF_AUDIO_PATH}/src/src_common.c
 		${SOF_AUDIO_PATH}/src/src.c
 		${SOF_AUDIO_PATH}/src/src_${ipc_suffix}.c
