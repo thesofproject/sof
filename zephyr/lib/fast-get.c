@@ -38,33 +38,27 @@ LOG_MODULE_REGISTER(fast_get, CONFIG_SOF_LOG_LEVEL);
 static int fast_get_realloc(struct sof_fast_get_data *data)
 {
 	struct sof_fast_get_entry *entries;
+	/*
+	 * Allocate 8 entries for the beginning. Currently we only use 2 entries
+	 * at most, so this should provide a reasonable first allocation.
+	 */
+	const unsigned int init_n_entries = 8;
+	unsigned int n_entries = data->num_entries ? data->num_entries * 2 : init_n_entries;
 
-	if (!data->num_entries) {
-		/*
-		 * Allocate 8 entries for the beginning. Currently we only use
-		 * 2 entries at most, so this should provide a reasonable first
-		 * allocation.
-		 */
-		const unsigned int n_entries = 8;
-
-		data->entries = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-					n_entries * sizeof(*entries));
-		if (!data->entries)
-			return -ENOMEM;
-		data->num_entries = n_entries;
-		return 0;
-	}
-
-	entries = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-			  2 * data->num_entries * sizeof(*entries));
+	entries = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
+			  n_entries * sizeof(*entries));
 	if (!entries)
 		return -ENOMEM;
 
-	memcpy_s(entries, 2 * data->num_entries * sizeof(*entries), data->entries,
-		 data->num_entries * sizeof(*entries));
-	rfree(data->entries);
+	if (data->num_entries) {
+		memcpy_s(entries, n_entries * sizeof(*entries), data->entries,
+			 data->num_entries * sizeof(*entries));
+		rfree(data->entries);
+	}
+
 	data->entries = entries;
-	data->num_entries = 2 * data->num_entries;
+	data->num_entries = n_entries;
+
 	return 0;
 }
 
