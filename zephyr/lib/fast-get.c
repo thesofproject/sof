@@ -159,10 +159,10 @@ void fast_put(const void *sram_ptr)
 		goto out;
 	}
 	entry->refcount--;
-	if (entry->refcount > 0)
-		goto out;
-	rfree(entry->sram_ptr);
-	memset(entry, 0, sizeof(*entry));
+	if (!entry->refcount) {
+		rfree(entry->sram_ptr);
+		memset(entry, 0, sizeof(*entry));
+	}
 out:
 	tr_dbg(fast_get, "put %p, DRAM %p size %u refcnt %u", sram_ptr, entry ? entry->dram_ptr : 0,
 	       entry ? entry->size : 0, entry ? entry->refcount : 0);
