@@ -10,6 +10,7 @@
 
 #include <sof/lib/fast-get.h>
 #include <rtos/alloc.h>
+#include <rtos/cache.h>
 #include <rtos/spinlock.h>
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
@@ -113,6 +114,11 @@ const void *fast_get(const void *dram_ptr, size_t size)
 
 		ret = entry->sram_ptr;
 		entry->refcount++;
+		/*
+		 * The data is constant, so it's safe to use cached access to
+		 * it, but initially we have to invalidate cached
+		 */
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)ret, size);
 		goto out;
 	}
 
