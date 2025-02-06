@@ -109,6 +109,10 @@ class MyWindow(Gtk.Window):
         self.stop_button.connect("clicked", self.on_stop_clicked)
         control_grid.attach(self.stop_button, 1, 1, 1, 1)
 
+        self.mute_button = Gtk.Button(label="Mute")
+        self.mute_button.connect("clicked", self.on_mute_clicked)
+        control_grid.attach(self.mute_button, 0, 2, 2, 1)
+
         return control_frame
 
     def create_file_frame(self):
@@ -195,6 +199,17 @@ class MyWindow(Gtk.Window):
     def on_stop_clicked(self, widget):
         self.play_pause_button.set_active(False)
         sof_ctl.execute_command(command="stop")
+
+    def on_mute_clicked(self, widget):
+        if not self.is_muted:
+            self.previous_volume = self.volume_button.get_value()
+            self.volume_button.set_value(0)
+            self.is_muted = True
+            widget.set_label("Unmute")
+        else:
+            self.volume_button.set_value(self.previous_volume)
+            self.is_muted = False
+            widget.set_label("Mute")
 
     def on_record_toggled(self, widget):
         if widget.get_active():

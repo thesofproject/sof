@@ -14,7 +14,8 @@ current_file = None
 device_string = None
 volume_control = None
 eq_numid = None
-
+is_muted = False
+previous_volume = 50  # Store the previous volume level
 extra_audio_paths = []
 
 def initialize_device():
@@ -88,6 +89,7 @@ def execute_command(command: str, data: int = 0, file_name: str = None):
         'play': lambda x: handle_play(file_name),
         'pause': lambda x: handle_pause(),
         'stop': lambda x: handle_stop(),
+        'mute': lambda x: handle_mute(),
         'record': lambda x: handle_record(start=data, filename=file_name)
     }
 
@@ -194,6 +196,17 @@ def handle_stop():
         print("Playback stopped.")
     except Exception as e:
         print(f"Failed to stop playback: {e}")
+
+def handle_mute():
+    if not is_muted:
+        previous_volume = scale_volume(50)  # Assume 50 is the current volume
+        handle_volume(0)
+        is_muted = True
+        print("Audio muted.")
+    else:
+        handle_volume(previous_volume)
+        is_muted = False
+        print("Audio unmuted.")
 
 def handle_record(start: bool, filename: str):
     global arecord_process
