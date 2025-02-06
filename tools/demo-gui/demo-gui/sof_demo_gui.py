@@ -12,7 +12,13 @@ class MyWindow(Gtk.Window):
         super().__init__(title="SOF Demo Gui")
         self.set_resizable(False)
         self.set_border_width(10)
+        self.apply_css()
+        self.init_ui(audio_paths, config_paths)
+        sof_ctl.initialize_device()
+        self.is_muted = False
+        self.previous_volume = 50  # Store the previous volume level
 
+    def apply_css(self):
         css_provider = Gtk.CssProvider()
         css = """
         * {
@@ -64,35 +70,49 @@ class MyWindow(Gtk.Window):
         screen = Gdk.Screen.get_default()
         Gtk.StyleContext.add_provider_for_screen(screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
+    def init_ui(self, audio_paths, config_paths):
         main_grid = Gtk.Grid()
         main_grid.set_row_spacing(10)
         main_grid.set_column_spacing(10)
         self.add(main_grid)
 
+        control_frame = self.create_control_frame()
+        main_grid.attach(control_frame, 0, 0, 1, 1)
+
+        file_frame = self.create_file_frame()
+        main_grid.attach(file_frame, 0, 1, 1, 1)
+
+        record_frame = self.create_record_frame()
+        main_grid.attach(record_frame, 0, 2, 1, 1)
+
+        self.scan_and_populate_dropdowns(audio_paths, config_paths)
+
+    def create_control_frame(self):
         control_frame = Gtk.Frame(label="Playback and Volume Control")
         control_grid = Gtk.Grid()
         control_grid.set_row_spacing(10)
         control_grid.set_column_spacing(10)
         control_frame.add(control_grid)
-        main_grid.attach(control_frame, 0, 0, 1, 1)
-
-        self.play_pause_button = Gtk.ToggleButton(label="Play")
-        self.play_pause_button.connect("toggled", self.on_play_pause_toggled)
-        control_grid.attach(self.play_pause_button, 0, 0, 1, 1)
 
         volume_adjustment = Gtk.Adjustment(value=100, lower=0, upper=100, step_increment=1, page_increment=5, page_size=0)
         self.volume_button = Gtk.Scale(name="volume", orientation=Gtk.Orientation.HORIZONTAL, adjustment=volume_adjustment)
         self.volume_button.set_digits(0)
         self.volume_button.set_hexpand(True)
         self.volume_button.connect("value-changed", self.on_volume_changed)
-        control_grid.attach(self.volume_button, 1, 0, 1, 1)
+        control_grid.attach(self.volume_button, 0, 0, 2, 1)
 
+        self.play_pause_button = Gtk.ToggleButton(label="Play")
+        self.play_pause_button.connect("toggled", self.on_play_pause_toggled)
+        control_grid.attach(self.play_pause_button, 0, 1, 1, 1)
+
+        return control_frame
+
+    def create_file_frame(self):
         file_frame = Gtk.Frame(label="File Selection")
         file_grid = Gtk.Grid()
         file_grid.set_row_spacing(10)
         file_grid.set_column_spacing(10)
         file_frame.add(file_grid)
-        main_grid.attach(file_frame, 0, 1, 1, 1)
 
         self.wav_dropdown = Gtk.ComboBoxText()
         self.wav_dropdown.connect("changed", self.on_wav_file_selected)
@@ -113,6 +133,9 @@ class MyWindow(Gtk.Window):
         self.apply_eq_button.connect("clicked", self.on_apply_eq_clicked)
         file_grid.attach(self.apply_eq_button, 1, 2, 1, 1)
 
+        return file_frame
+
+    def create_record_frame(self):
         record_frame = Gtk.Frame(label="Recording Control")
         record_grid = Gtk.Grid()
         record_grid.set_row_spacing(10)
@@ -120,7 +143,6 @@ class MyWindow(Gtk.Window):
         record_grid.set_hexpand(True)
         record_grid.set_vexpand(True)
         record_frame.add(record_grid)
-        main_grid.attach(record_frame, 0, 2, 1, 1)
 
         self.record_button = Gtk.ToggleButton(label="Record")
         self.record_button.connect("toggled", self.on_record_toggled)
@@ -130,8 +152,7 @@ class MyWindow(Gtk.Window):
 
         self.record_index = 1
 
-        self.scan_and_populate_dropdowns(audio_paths, config_paths)
-        sof_ctl.initialize_device()
+        return record_frame
 
     def scan_and_populate_dropdowns(self, audio_paths, config_paths):
         wav_files = sof_ctl.scan_for_files('audios', '.wav', extra_paths=audio_paths)
