@@ -684,6 +684,11 @@ static int schedule_ll_task_cancel(void *data, struct task *task)
 	return 0;
 }
 
+#if CONFIG_SCHEDULE_LL_NO_RESCHEDULE_TASK
+/* As a null function pointer */
+#define reschedule_ll_task ((void*)0)
+
+#else
 static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 {
 	struct ll_schedule_data *sch = data;
@@ -717,6 +722,7 @@ out:
 
 	return 0;
 }
+#endif
 
 static void scheduler_free_ll(void *data, uint32_t flags)
 {
