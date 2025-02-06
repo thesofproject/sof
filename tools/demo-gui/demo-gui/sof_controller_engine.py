@@ -87,6 +87,7 @@ def execute_command(command: str, data: int = 0, file_name: str = None):
         'eq': lambda x: handle_eq(file_name),
         'play': lambda x: handle_play(file_name),
         'pause': lambda x: handle_pause(),
+        'stop': lambda x: handle_stop(),
         'record': lambda x: handle_record(start=data, filename=file_name)
     }
 
@@ -173,6 +174,26 @@ def handle_pause():
         print("Playback paused.")
     except Exception as e:
         print(f"Failed to pause playback: {e}")
+
+def handle_stop():
+    global aplay_process, paused, current_file
+
+    if aplay_process is None:
+        print("No playback process to stop.")
+        return
+
+    if aplay_process.poll() is not None:
+        print("Playback process has already finished.")
+        return
+
+    try:
+        os.kill(aplay_process.pid, signal.SIGKILL)
+        aplay_process = None
+        paused = False
+        current_file = None
+        print("Playback stopped.")
+    except Exception as e:
+        print(f"Failed to stop playback: {e}")
 
 def handle_record(start: bool, filename: str):
     global arecord_process

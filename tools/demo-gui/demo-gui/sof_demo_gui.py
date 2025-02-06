@@ -105,6 +105,10 @@ class MyWindow(Gtk.Window):
         self.play_pause_button.connect("toggled", self.on_play_pause_toggled)
         control_grid.attach(self.play_pause_button, 0, 1, 1, 1)
 
+        self.stop_button = Gtk.Button(label="Stop")
+        self.stop_button.connect("clicked", self.on_stop_clicked)
+        control_grid.attach(self.stop_button, 1, 1, 1, 1)
+
         return control_frame
 
     def create_file_frame(self):
@@ -187,6 +191,10 @@ class MyWindow(Gtk.Window):
         else:
             widget.set_label("Play")
             sof_ctl.execute_command(command="pause")
+
+    def on_stop_clicked(self, widget):
+        self.play_pause_button.set_active(False)
+        sof_ctl.execute_command(command="stop")
 
     def on_record_toggled(self, widget):
         if widget.get_active():
