@@ -41,3 +41,13 @@ config SCHEDULE_LL_STATS_LOG_WINDOW_SIZE
 	  Size of the statistics window as a power of two. The window size
 	  setting also impacts the rate of reporting. With 1ms scheduler tick,
 	  default of 10 results in 1024msec window size.
+
+config SCHEDULE_LL_NO_RESCHEDULE_TASK
+	bool "Low-latency scheduler skips task rescheduling"
+	default n
+	help
+	  Select this to instantiate the low-latency scheduler without task
+	  rescheduling, given that the operation is optional. Under such cases,
+	  scheduler_ops::reschedule_task will set to NULL instead, tasks with
+	  the attempt to reschedule (e.g. DMA trace works) will be relinguished
+	  directly and return no error.
