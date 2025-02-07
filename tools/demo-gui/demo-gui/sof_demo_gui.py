@@ -24,7 +24,7 @@ class MyWindow(Gtk.Window):
         * {
             font-family: "Segoe UI", "Arial", sans-serif;
             font-size: 14px;
-            color: #FFFFFF;
+            color: #020202;
         }
         window {
             background-color: #2C3E50;
@@ -38,29 +38,29 @@ class MyWindow(Gtk.Window):
         }
         button, togglebutton {
             background-color: #3b3b3b;
-            background: #3b3b3b;
             border: none;
             padding: 10px;
-            color: #3b3b3b;
+            color: #020202;
         }
         button:hover, togglebutton:hover {
             background-color: #A9A9A9;
-            color: #A9A9A9;
+            color: #020202;
         }
         togglebutton:checked {
             background-color: #A9A9A9;
-            color: #A9A9A9;
+            color: #020202;
         }
         scale {
             background-color: #34495E;
             border-radius: 5px;
+            color: #FFFFFF;
         }
         label {
-            color: #A9A9A9;
+            color: #020202;
         }
         headerbar {
             background-color: #2C3E50;
-            color: #2C3E50;
+            color: #FFFFFF;
         }
         headerbar.titlebar {
             background: #2C3E50;
