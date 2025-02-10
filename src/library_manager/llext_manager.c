@@ -238,7 +238,7 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
-static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
+static int llext_manager_link(struct llext_loader *ldr, const char *name,
 			      struct lib_manager_module *mctx, const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
@@ -268,13 +268,13 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 			.section_detached = llext_manager_section_detached,
 		};
 
-		ret = llext_load(&ebl->loader, name, llext, &ldr_parm);
+		ret = llext_load(ldr, name, llext, &ldr_parm);
 		if (ret)
 			return ret;
 	}
 
-	mctx->segment[LIB_MANAGER_TEXT].addr = ebl->loader.sects[LLEXT_MEM_TEXT].sh_addr;
-	mctx->segment[LIB_MANAGER_TEXT].size = ebl->loader.sects[LLEXT_MEM_TEXT].sh_size;
+	mctx->segment[LIB_MANAGER_TEXT].addr = ldr->sects[LLEXT_MEM_TEXT].sh_addr;
+	mctx->segment[LIB_MANAGER_TEXT].size = ldr->sects[LLEXT_MEM_TEXT].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_TEXT].addr,
@@ -282,8 +282,8 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 
 	/* All read-only data sections */
 	mctx->segment[LIB_MANAGER_RODATA].addr =
-		ebl->loader.sects[LLEXT_MEM_RODATA].sh_addr;
-	mctx->segment[LIB_MANAGER_RODATA].size = ebl->loader.sects[LLEXT_MEM_RODATA].sh_size;
+		ldr->sects[LLEXT_MEM_RODATA].sh_addr;
+	mctx->segment[LIB_MANAGER_RODATA].size = ldr->sects[LLEXT_MEM_RODATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_RODATA].addr,
@@ -291,31 +291,33 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 
 	/* All writable data sections */
 	mctx->segment[LIB_MANAGER_DATA].addr =
-		ebl->loader.sects[LLEXT_MEM_DATA].sh_addr;
-	mctx->segment[LIB_MANAGER_DATA].size = ebl->loader.sects[LLEXT_MEM_DATA].sh_size;
+		ldr->sects[LLEXT_MEM_DATA].sh_addr;
+	mctx->segment[LIB_MANAGER_DATA].size = ldr->sects[LLEXT_MEM_DATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_DATA].addr,
 	       mctx->segment[LIB_MANAGER_DATA].size);
 
-	mctx->segment[LIB_MANAGER_BSS].addr = ebl->loader.sects[LLEXT_MEM_BSS].sh_addr;
-	mctx->segment[LIB_MANAGER_BSS].size = ebl->loader.sects[LLEXT_MEM_BSS].sh_size;
+	mctx->segment[LIB_MANAGER_BSS].addr = ldr->sects[LLEXT_MEM_BSS].sh_addr;
+	mctx->segment[LIB_MANAGER_BSS].size = ldr->sects[LLEXT_MEM_BSS].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".bss: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_BSS].addr,
 	       mctx->segment[LIB_MANAGER_BSS].size);
 
-	ssize_t binfo_o = llext_find_section(&ebl->loader, ".mod_buildinfo");
+	*buildinfo = NULL;
+	ssize_t binfo_o = llext_find_section(ldr, ".mod_buildinfo");
 
 	if (binfo_o >= 0)
-		*buildinfo = llext_peek(&ebl->loader, binfo_o);
+		*buildinfo = llext_peek(ldr, binfo_o);
 
-	ssize_t mod_o = llext_find_section(&ebl->loader, ".module");
+	*mod_manifest = NULL;
+	ssize_t mod_o = llext_find_section(ldr, ".module");
 
 	if (mod_o >= 0)
-		*mod_manifest = llext_peek(&ebl->loader, mod_o);
+		*mod_manifest = llext_peek(ldr, mod_o);
 
-	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
+	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
 }
 
 /* Count "module files" in the library, allocate and initialize memory for their descriptors */
@@ -427,8 +429,8 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 		mod_size = ALIGN_UP(mod_array[i].segment[LIB_MANAGER_TEXT].file_offset - mod_offset,
 				    PAGE_SZ);
 
-	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
+	uint8_t *dram_base = (uint8_t *)desc - SOF_MAN_ELF_TEXT_OFFSET;
+	struct llext_buf_loader ebl = LLEXT_BUF_LOADER(dram_base + mod_offset, mod_size);
 
 	/*
 	 * LLEXT linking is only needed once for all the "drivers" in the
@@ -436,7 +438,7 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 	 * dependencies, sets up sections and retrieves buildinfo and
 	 * mod_manifest
 	 */
-	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx,
+	ret = llext_manager_link(&ebl.loader, mod_array[entry_index - inst_idx].name, mctx,
 				 buildinfo, mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
