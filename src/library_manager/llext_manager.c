@@ -75,9 +75,10 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 						size_t size, uint32_t flags)
 {
 	unsigned int i;
-	int ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
+	int ret;
 	const elf_shdr_t *shdr;
 
+	ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "cannot map %u of %p", size, (__sparse_force void *)vma);
 		return ret;
@@ -240,8 +241,9 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 		.pre_located = true,
 		.section_detached = llext_manager_section_detached,
 	};
-	int ret = llext_load(&ebl->loader, name, llext, &ldr_parm);
+	int ret;
 
+	ret = llext_load(&ebl->loader, name, llext, &ldr_parm);
 	if (ret)
 		return ret;
 
@@ -270,17 +272,19 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 	       mctx->segment[LIB_MANAGER_DATA].addr,
 	       mctx->segment[LIB_MANAGER_DATA].size);
 
+	*buildinfo = NULL;
 	ssize_t binfo_o = llext_find_section(&ebl->loader, ".mod_buildinfo");
 
 	if (binfo_o >= 0)
 		*buildinfo = llext_peek(&ebl->loader, binfo_o);
 
+	*mod_manifest = NULL;
 	ssize_t mod_o = llext_find_section(&ebl->loader, ".module");
 
 	if (mod_o >= 0)
 		*mod_manifest = llext_peek(&ebl->loader, mod_o);
 
-	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
+	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
 }
 
 static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
