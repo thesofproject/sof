@@ -181,6 +181,10 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_IMX_ESAI;
 		cfg_params = &sof_cfg->esai;
 		break;
+	case SOF_DAI_IMX_MICFIL:
+		cfg.type = DAI_IMX_MICFIL;
+		cfg_params = &sof_cfg->micfil;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -708,6 +712,7 @@ static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 	switch (cfg.type) {
 	case DAI_IMX_SAI:
 	case DAI_IMX_ESAI:
+	case DAI_IMX_MICFIL:
 		*slot = (hs & GENMASK(15, 8)) >> 8;
 		break;
 	default:

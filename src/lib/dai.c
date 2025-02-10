@@ -149,6 +149,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_NXP_ESAI
 	DT_FOREACH_STATUS_OKAY(nxp_dai_esai, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_NXP_MICFIL
+	DT_FOREACH_STATUS_OKAY(nxp_dai_micfil, GET_DEVICE_LIST)
+#endif
 };
 
 /* convert sof_ipc_dai_type to Zephyr dai_type */
@@ -175,10 +178,11 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 		return DAI_AMD_DMIC;
 	case SOF_DAI_MEDIATEK_AFE:
 		return DAI_MEDIATEK_AFE;
+	case SOF_DAI_IMX_MICFIL:
+		return DAI_IMX_MICFIL;
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_SP_VIRTUAL:
 	case SOF_DAI_AMD_HS_VIRTUAL:
-	case SOF_DAI_IMX_MICFIL:
 	case SOF_DAI_AMD_SW_AUDIO:
 		return -ENOTSUP;
 	default:
