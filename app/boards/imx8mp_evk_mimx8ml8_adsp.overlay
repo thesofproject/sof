@@ -23,3 +23,7 @@
 	rx-sync-mode = <1>;
 	status = "okay";
 };
+
+&micfil {
+	status = "okay";
+};
