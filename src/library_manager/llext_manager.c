@@ -75,9 +75,10 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 						size_t size, uint32_t flags)
 {
 	unsigned int i;
-	int ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
+	int ret;
 	const elf_shdr_t *shdr;
 
+	ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "cannot map %u of %p", size, (__sparse_force void *)vma);
 		return ret;
@@ -116,7 +117,7 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 	return ret;
 }
 
-static int llext_manager_load_module(const struct llext *ext, const struct llext_buf_loader *ebl,
+static int llext_manager_load_module(const struct llext *ext, const struct llext_loader *ldr,
 				     const struct lib_manager_module *mctx)
 {
 	/* Executable code (.text) */
@@ -136,8 +137,8 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 
 	/* .bss, should be within writable data above */
 	void __sparse_cache *bss_addr = (void __sparse_cache *)
-		ebl->loader.sects[LLEXT_MEM_BSS].sh_addr;
-	size_t bss_size = ebl->loader.sects[LLEXT_MEM_BSS].sh_size;
+		ldr->sects[LLEXT_MEM_BSS].sh_addr;
+	size_t bss_size = ldr->sects[LLEXT_MEM_BSS].sh_size;
 	int ret;
 
 	/* Check, that .bss is within .data */
@@ -150,7 +151,7 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 			va_base_data = bss_addr;
 			data_size += bss_size;
 		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data +
-			   ALIGN_UP(data_size, ebl->loader.sects[LLEXT_MEM_BSS].sh_addralign)) {
+			   ALIGN_UP(data_size, ldr->sects[LLEXT_MEM_BSS].sh_addralign)) {
 			/* .bss directly behind writable data, append */
 			data_size += bss_size;
 		} else {
@@ -229,7 +230,7 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
-static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
+static int llext_manager_link(struct llext_loader *ldr, const char *name,
 			      struct lib_manager_module *mctx, struct llext **llext,
 			      const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
@@ -240,13 +241,14 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 		.pre_located = true,
 		.section_detached = llext_manager_section_detached,
 	};
-	int ret = llext_load(&ebl->loader, name, llext, &ldr_parm);
+	int ret;
 
+	ret = llext_load(ldr, name, llext, &ldr_parm);
 	if (ret)
 		return ret;
 
-	mctx->segment[LIB_MANAGER_TEXT].addr = ebl->loader.sects[LLEXT_MEM_TEXT].sh_addr;
-	mctx->segment[LIB_MANAGER_TEXT].size = ebl->loader.sects[LLEXT_MEM_TEXT].sh_size;
+	mctx->segment[LIB_MANAGER_TEXT].addr = ldr->sects[LLEXT_MEM_TEXT].sh_addr;
+	mctx->segment[LIB_MANAGER_TEXT].size = ldr->sects[LLEXT_MEM_TEXT].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_TEXT].addr,
@@ -254,8 +256,8 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 
 	/* All read-only data sections */
 	mctx->segment[LIB_MANAGER_RODATA].addr =
-		ebl->loader.sects[LLEXT_MEM_RODATA].sh_addr;
-	mctx->segment[LIB_MANAGER_RODATA].size = ebl->loader.sects[LLEXT_MEM_RODATA].sh_size;
+		ldr->sects[LLEXT_MEM_RODATA].sh_addr;
+	mctx->segment[LIB_MANAGER_RODATA].size = ldr->sects[LLEXT_MEM_RODATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_RODATA].addr,
@@ -263,24 +265,26 @@ static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
 
 	/* All writable data sections */
 	mctx->segment[LIB_MANAGER_DATA].addr =
-		ebl->loader.sects[LLEXT_MEM_DATA].sh_addr;
-	mctx->segment[LIB_MANAGER_DATA].size = ebl->loader.sects[LLEXT_MEM_DATA].sh_size;
+		ldr->sects[LLEXT_MEM_DATA].sh_addr;
+	mctx->segment[LIB_MANAGER_DATA].size = ldr->sects[LLEXT_MEM_DATA].sh_size;
 
 	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_DATA].addr,
 	       mctx->segment[LIB_MANAGER_DATA].size);
 
-	ssize_t binfo_o = llext_find_section(&ebl->loader, ".mod_buildinfo");
+	*buildinfo = NULL;
+	ssize_t binfo_o = llext_find_section(ldr, ".mod_buildinfo");
 
 	if (binfo_o >= 0)
-		*buildinfo = llext_peek(&ebl->loader, binfo_o);
+		*buildinfo = llext_peek(ldr, binfo_o);
 
-	ssize_t mod_o = llext_find_section(&ebl->loader, ".module");
+	*mod_manifest = NULL;
+	ssize_t mod_o = llext_find_section(ldr, ".module");
 
 	if (mod_o >= 0)
-		*mod_manifest = llext_peek(&ebl->loader, mod_o);
+		*mod_manifest = llext_peek(ldr, mod_o);
 
-	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
+	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
 }
 
 static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
@@ -408,8 +412,8 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
 
 	/* LLEXT linking is only needed once for all the drivers in each module */
-	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx, &md->llext,
-				 (const void **)&buildinfo, &mod_manifest);
+	ret = llext_manager_link(&ebl.loader, mod_array[entry_index - inst_idx].name, mctx,
+				 &md->llext, (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
 		return 0;
@@ -424,7 +428,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		}
 
 		/* Map executable code and data */
-		ret = llext_manager_load_module(md->llext, &ebl, mctx);
+		ret = llext_manager_load_module(md->llext, &ebl.loader, mctx);
 		if (ret < 0)
 			return 0;
 
