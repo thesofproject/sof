@@ -1,9 +1,9 @@
-function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots, comp)
+function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots, comp, xtrun)
 
 %%
 % src_test - test with SRC test bench objective audio quality parameters
 %
-% src_test(bits_in, bits_out, fs_in, fs_out)
+% src_test(bits_in, bits_out, fs_in, fs_out, full_test, show_plots, comp, xtrun)
 %
 % bits_in    - input word length
 % bits_out   - output word length
@@ -12,13 +12,17 @@ function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out
 % full_test  - set to 0 for chirp only, 1 for all, default 1
 % show_plots - set to 1 to see plots, default 0
 % comp       - set to 'src' or 'asrc', default 'src'
+% xtrun      - set to 'xt-run' or 'xt-run --turbo' to test with xt-testbench
+%
+% E.g.
+% src_test(32, 32, 44100, 48000, 1, 1, 'src', 'xt-run --turbo');
 %
 % A default in-out matrix with 32 bits data is tested if the
 % parameters are omitted.
 %
 
 % SPDX-License-Identifier: BSD-3-Clause
-% Copyright(c) 2016 Intel Corporation. All rights reserved.
+% Copyright(c) 2016-2025 Intel Corporation.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 addpath('std_utils');
@@ -51,13 +55,15 @@ end
 if nargin < 7
 	comp = 'src';
 end
+if nargin < 8
+	xtrun = '';
+end
 if isempty(fs_in_list)
 	fs_in_list = default_in;
 end
 if isempty(fs_out_list)
 	fs_out_list = default_out;
 end
-
 
 %% Generic test pass/fail criteria
 %  Note that AAP and AIP are relaxed a bit from THD+N due to inclusion
@@ -80,6 +86,7 @@ t.bits_in = bits_in;    % Input word length
 t.bits_out = bits_out;  % Output word length
 t.full_test = full_test; % 0 is quick check only, 1 is full set
 t.comp = comp;          % Component to test
+t.xtrun = xtrun;
 
 %% Show graphics or not. With visible plot windows Octave may freeze if too
 %  many windows are kept open. As workaround setting close windows to
@@ -450,6 +457,7 @@ test.ch = t.ch;
 test.fs = t.fs1;
 test.fs1 = t.fs1;
 test.fs2 = t.fs2;
+test.xtrun = t.xtrun;
 test.coef_bits = 24; % No need to use actual word length in test
 test.att_rec_db = 0; % Not used in simulation test
 test.quick = 0;      % Test speed is no issue in simulation
