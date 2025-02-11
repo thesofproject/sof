@@ -69,16 +69,26 @@ struct sof_sink;
 /**
  * \struct module_interface
  * \brief 3rd party processing module interface
+ *
+ * Module operations can be optimized for performance (default - no action) or
+ * for memory and power efficiency (opt in using __cold). It is recommended that
+ * module authors review their modules for non time sensitive code and mark it
+ * using __cold based on the descriptions below. This will ensure modules
+ * maintain peak performance and peak power/memory efficiency. Similarly cold
+ * read-only data can be marked with __cold_rodata. In cases where a subset of
+ * cold data has to be accessed from hot paths, it can be copied to fast memory,
+ * using the \c fast_get() API and then released using \c fast_put().
  */
 struct module_interface {
 	/**
 	 * Module specific initialization procedure, called as part of
-	 * module_adapter component creation in .new()
+	 * module_adapter component creation in .new(). Usually can be __cold
 	 */
 	int (*init)(struct processing_module *mod);
+
 	/**
 	 * (optional) Module specific prepare procedure, called as part of module_adapter
-	 * component preparation in .prepare()
+	 * component preparation in .prepare(). Usually can be __cold
 	 */
 	int (*prepare)(struct processing_module *mod,
 		       struct sof_source **sources, int num_of_sources,
@@ -97,7 +107,7 @@ struct module_interface {
 	 * at least IBS bytes of data on first source and at least OBS free space on first sink
 	 *
 	 * In case more sophisticated check is needed the method should be implemented in
-	 * the module
+	 * the module. Usually shouldn't be __cold
 	 */
 	bool (*is_ready_to_process)(struct processing_module *mod,
 				    struct sof_source **sources, int num_of_sources,
@@ -121,6 +131,8 @@ struct module_interface {
 	 * process
 	 *	- sources are handlers to source API struct source*[]
 	 *	- sinks are handlers to sink API struct sink*[]
+	 *
+	 * Usually shouldn't be __cold
 	 */
 	int (*process)(struct processing_module *mod,
 		       struct sof_source **sources, int num_of_sources,
@@ -134,6 +146,8 @@ struct module_interface {
 	 *	    - sinks[].data is a pointer to audio_stream structure
 	 *
 	 * It can be used by modules that support 1:1, 1:N, N:1 sources:sinks configuration.
+	 *
+	 * Usually shouldn't be __cold
 	 */
 	int (*process_audio_stream)(struct processing_module *mod,
 				    struct input_stream_buffer *input_buffers,
@@ -147,6 +161,8 @@ struct module_interface {
 	 *	    - sources[].data is a pointer to raw audio data
 	 *	- sinks are output_stream_buffer[]
 	 *	    - sinks[].data is a pointer to raw audio data
+	 *
+	 * Usually shouldn't be __cold
 	 */
 	int (*process_raw_data)(struct processing_module *mod,
 				struct input_stream_buffer *input_buffers,
@@ -162,7 +178,7 @@ struct module_interface {
 	 * In this case the ADSP System will perform multiple calls to SetConfiguration() until
 	 * completion of the configuration message sending.
 	 * \note config_id indicates ID of the configuration message only on the first fragment
-	 * sending, otherwise it is set to 0.
+	 * sending, otherwise it is set to 0. Usually can be __cold
 	 */
 	int (*set_configuration)(struct processing_module *mod,
 				 uint32_t config_id,
@@ -178,7 +194,7 @@ struct module_interface {
 	 * In this case the ADSP System will perform multiple calls to GetConfiguration() until
 	 * completion of the configuration message retrieval.
 	 * \note config_id indicates ID of the configuration message only on the first fragment
-	 * retrieval, otherwise it is set to 0.
+	 * retrieval, otherwise it is set to 0. Usually can be __cold
 	 */
 	int (*get_configuration)(struct processing_module *mod,
 				 uint32_t config_id, uint32_t *data_offset_size,
@@ -198,26 +214,32 @@ struct module_interface {
 	/**
 	 * (optional) Module specific reset procedure, called as part of module_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
-	 * and free all memory allocated during prepare().
+	 * and free all memory allocated during prepare(). Usually can be __cold
 	 */
 	int (*reset)(struct processing_module *mod);
+
 	/**
 	 * (optional) Module specific free procedure, called as part of module_adapter component
 	 * free in .free(). This should free all memory allocated during module initialization.
+	 * Usually can be __cold
 	 */
 	int (*free)(struct processing_module *mod);
+
 	/**
-	 * (optional) Module specific bind procedure, called when modules are bound with each other
+	 * (optional) Module specific bind procedure, called when modules are bound with each other.
+	 * Usually can be __cold
 	 */
 	int (*bind)(struct processing_module *mod, void *data);
+
 	/**
 	 * (optional) Module specific unbind procedure, called when modules are disconnected from
-	 * one another
+	 * one another. Usually can be __cold
 	 */
 	int (*unbind)(struct processing_module *mod, void *data);
 
 	/**
-	 * (optional) Module specific trigger procedure, called when modules are triggered
+	 * (optional) Module specific trigger procedure, called when modules are triggered. Usually
+	 * can be __cold
 	 */
 	int (*trigger)(struct processing_module *mod, int cmd);
 
