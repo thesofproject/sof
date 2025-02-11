@@ -4,7 +4,7 @@
 
 	[[module.entry]]
 	name = "SRC"
-	uuid = "E61BB28D-149A-4C1F-B709-46823EF5F5AE"
+	uuid = UUIDREG_STR_SRC4
 	affinity_mask = "0x1"
 	REM #instance_count = "10"
 	domain_types = "0"
@@ -77,7 +77,7 @@
 	REM # SRC lite module config
 	[[module.entry]]
 	name = "SRC_LITE"
-	uuid = "33441051-44CD-466A-83A3-178478708AEA"
+	uuid = UUIDREG_STR_SRC_LITE
 	affinity_mask = "0x1"
 	REM #instance_count = "10"
 	domain_types = "0"
