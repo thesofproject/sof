@@ -564,6 +564,7 @@ static void lib_manager_module_free(struct comp_dev *dev)
 
 	if (mod->priv.llext) {
 		ret = llext_unload(&mod->priv.llext);
+		tr_info(&lib_manager_tr, "llext_unload(): %i", ret);
 	}
 	if (!ret) {
 		/* Free module resources allocated in L2 memory. */
