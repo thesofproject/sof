@@ -555,15 +555,17 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 static void lib_manager_module_free(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
-	struct llext *llext = mod->priv.llext;
 	const struct comp_ipc_config *const config = &mod->dev->ipc_config;
 	const uint32_t module_id = config->id;
-	int ret;
+	int ret = 0;
 
 	/* This call invalidates dev, mod and config pointers! */
 	module_adapter_free(dev);
 
-	if (!llext || !llext_unload(&llext)) {
+	if (mod->priv.llext) {
+		ret = llext_unload(&mod->priv.llext);
+	}
+	if (!ret) {
 		/* Free module resources allocated in L2 memory. */
 		ret = lib_manager_free_module(module_id);
 		if (ret < 0)
