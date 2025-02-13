@@ -515,6 +515,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	tmp_proc.priv.llext = NULL;
+	tmp_proc.priv.ebl = NULL;
 	const uint32_t module_entry_point = lib_manager_allocate_module(&tmp_proc, config,
 									args->data);
 
@@ -544,6 +545,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 		struct processing_module *mod = comp_mod(dev);
 
 		mod->priv.llext = tmp_proc.priv.llext;
+		mod->priv.ebl = tmp_proc.priv.ebl;
 	} else {
 		lib_manager_free_module(module_id);
 	}

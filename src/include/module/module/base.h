@@ -38,6 +38,7 @@ struct module_config {
 };
 
 struct llext;
+struct llext_buf_loader;
 
 /*
  * A structure containing a module's private data, intended for its exclusive use.
@@ -61,6 +62,7 @@ struct module_data {
 	struct module_memory memory; /**< memory allocated by module */
 	struct module_processing_data mpd; /**< shared data comp <-> module */
 	struct llext *llext; /**< Zephyr loadable extension context */
+	struct llext_buf_loader *ebl; /** Zephyr loadable extension buffer loader */
 #endif /* SOF_MODULE_PRIVATE */
 };
 

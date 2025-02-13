@@ -409,10 +409,25 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 				    PAGE_SZ);
 
 	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
+
+	if (!md->ebl) {
+		/* allocate once, never freed */
+		md->ebl = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
+				  SOF_MEM_CAPS_RAM, sizeof(struct llext_buf_loader));
+		if (!md->ebl) {
+			tr_err(&lib_manager_tr, "loader alloc failed");
+			return 0;
+		}
+
+		/* initialize via a temporary */
+		struct llext_buf_loader tmp_ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base +
+								   mod_offset, mod_size);
+
+		*md->ebl = tmp_ebl;
+	}
 
 	/* LLEXT linking is only needed once for all the drivers in each module */
-	ret = llext_manager_link(&ebl.loader, mod_array[entry_index - inst_idx].name, mctx,
+	ret = llext_manager_link(&md->ebl->loader, mod_array[entry_index - inst_idx].name, mctx,
 				 &md->llext, (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
@@ -428,7 +443,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		}
 
 		/* Map executable code and data */
-		ret = llext_manager_load_module(md->llext, &ebl.loader, mctx);
+		ret = llext_manager_load_module(md->llext, &md->ebl->loader, mctx);
 		if (ret < 0)
 			return 0;
 
