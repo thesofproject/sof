@@ -649,7 +649,6 @@ int lib_manager_register_module(const uint32_t component_id)
 		    build_info->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
 			/* Use module_adapter functions */
 			drv->ops.create = module_adapter_new;
-			drv->ops.prepare = module_adapter_prepare;
 		} else {
 			/* Check if module is NOT native */
 			if (build_info->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
