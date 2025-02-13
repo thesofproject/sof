@@ -280,31 +280,27 @@ static int lib_manager_unload_libcode_modules(const uint32_t module_id)
 }
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 
-static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module_id,
-								 uint32_t instance_id,
-								 const struct sof_man_module *mod)
+static void lib_manager_get_instance_bss_address(uint32_t instance_id,
+						 const struct sof_man_module *mod,
+						 void __sparse_cache **va_addr, size_t *size)
 {
-	uint32_t instance_bss_size =
-		 mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count;
-	uint32_t inst_offset = instance_bss_size * PAGE_SZ * instance_id;
-	void __sparse_cache *va_base =
-		(void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
-					inst_offset);
+	*size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count *
+		PAGE_SZ;
+	size_t inst_offset = *size * instance_id;
+	*va_addr = (void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
+					   inst_offset);
 
-	tr_dbg(&lib_manager_tr, "instance_bss_size: %#x, pointer: %p",
-	       instance_bss_size, (__sparse_force void *)va_base);
-
-	return va_base;
+	tr_dbg(&lib_manager_tr, "instance_bss_size: %#zx, pointer: %p", *size,
+	       (__sparse_force void *)*va_addr);
 }
 
-static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t instance_id,
-						uint32_t is_pages, const struct sof_man_module *mod)
+static int lib_manager_allocate_module_instance(uint32_t instance_id, uint32_t is_pages,
+						const struct sof_man_module *mod)
 {
-	uint32_t bss_size =
-			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
-			 * PAGE_SZ;
-	void __sparse_cache *va_base = lib_manager_get_instance_bss_address(module_id,
-									    instance_id, mod);
+	size_t bss_size;
+	void __sparse_cache *va_base;
+
+	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &bss_size);
 
 	if ((is_pages * PAGE_SZ) > bss_size) {
 		tr_err(&lib_manager_tr, "invalid is_pages: %u, required: %u",
@@ -324,14 +320,12 @@ static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t ins
 	return 0;
 }
 
-static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instance_id,
-					    const struct sof_man_module *mod)
+static int lib_manager_free_module_instance(uint32_t instance_id, const struct sof_man_module *mod)
 {
-	uint32_t bss_size =
-			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
-			 * PAGE_SZ;
-	void __sparse_cache *va_base = lib_manager_get_instance_bss_address(module_id,
-									    instance_id, mod);
+	size_t bss_size;
+	void __sparse_cache *va_base;
+
+	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &bss_size);
 	/*
 	 * Unmap bss memory.
 	 */
@@ -343,8 +337,8 @@ uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 {
 	const struct sof_man_module *mod;
 	const struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
+	const uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	int ret;
-	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
@@ -367,8 +361,8 @@ uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 		goto err;
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 
-	ret = lib_manager_allocate_module_instance(module_id, IPC4_INST_ID(ipc_config->id),
-						   base_cfg->is_pages, mod);
+	ret = lib_manager_allocate_module_instance(IPC4_INST_ID(ipc_config->id), base_cfg->is_pages,
+						   mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "module allocation failed: %d", ret);
 #ifdef CONFIG_LIBCODE_MODULE_SUPPORT
@@ -406,7 +400,7 @@ int lib_manager_free_module(const uint32_t component_id)
 		return ret;
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 
-	ret = lib_manager_free_module_instance(module_id, IPC4_INST_ID(component_id), mod);
+	ret = lib_manager_free_module_instance(IPC4_INST_ID(component_id), mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "free module instance failed: %d", ret);
 		return ret;
