@@ -126,6 +126,10 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
 err:
+#if CONFIG_IPC_MAJOR_4
+	if (mod)
+		rfree(mod->priv.cfg.input_pins);
+#endif
 	rfree(mod);
 	rfree(dev);
 	return NULL;
