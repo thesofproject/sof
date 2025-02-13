@@ -145,11 +145,6 @@ static int modules_free(struct processing_module *mod)
 	if (ret)
 		comp_err(dev, "modules_free(): iadk_wrapper_free failed with error: %d", ret);
 
-	/* Free module resources allocated in L2 memory. */
-	ret = lib_manager_free_module(dev->ipc_config.id);
-	if (ret < 0)
-		comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
-
 	return ret;
 }
 
