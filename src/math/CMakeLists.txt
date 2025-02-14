@@ -29,7 +29,7 @@ add_local_sources_ifdef(CONFIG_POWER_FIXED sof power.c)
 
 add_local_sources_ifdef(CONFIG_BINARY_LOGARITHM_FIXED sof base2log.c)
 
-add_local_sources_ifdef(CONFIG_MATH_FIR sof fir_generic.c fir_hifi2ep.c fir_hifi3.c)
+add_local_sources_ifdef(CONFIG_MATH_FIR sof fir_generic.c fir_hifi2ep.c fir_hifi3.c fir_hifi5.c)
 
 if(CONFIG_MATH_FFT)
 	add_subdirectory(fft)
