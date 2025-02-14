@@ -70,7 +70,7 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 				/* Load two input samples via input pointer x */
 				AE_L32_XP(d0, x, inc_nch_s);
 				AE_L32_XP(d1, x, inc_nch_s);
-				fir_32x16_2x_hifi3(f, d0, d1, y0, y1, shift);
+				fir_32x16_2x(f, d0, d1, y0, y1, shift);
 				AE_L32_XC(d0, y0, inc_2nch_s);
 				AE_L32_XC(d1, y1, inc_2nch_s);
 			}
@@ -131,7 +131,7 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 				d0 = AE_SLAA32(d0, 8);
 				d1 = AE_SLAA32(d1, 8);
 
-				fir_32x16_2x_hifi3(f, d0, d1,  &z0, &z1, shift);
+				fir_32x16_2x(f, d0, d1,  &z0, &z1, shift);
 
 				/* Shift and round to Q1.23 format */
 				d0 = AE_SRAI32R(z0, 8);
@@ -205,7 +205,7 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 				x0 = AE_CVT32X2F16_32(d0);
 				x1 = AE_CVT32X2F16_32(d1);
 
-				fir_32x16_2x_hifi3(f, x0, x1,  &z0, &z1, shift);
+				fir_32x16_2x(f, x0, x1,  &z0, &z1, shift);
 
 				/* Round to Q1.15 format */
 				d0 = AE_ROUND16X4F32SSYM(z0, z0);

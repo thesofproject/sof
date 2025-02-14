@@ -76,8 +76,7 @@ void tdfb_fir_s16(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 
 				/* Compute FIR and mix as Q5.27*/
 				fir_core_setup_circular(f);
-				fir_32x16_2x_hifi3(f, cd->in[is], cd->in[is2], &y0, &y1,
-						   shift);
+				fir_32x16_2x(f, cd->in[is], cd->in[is2], &y0, &y1, shift);
 				for (k = 0; k < out_nch; k++) {
 					if (om & 1) {
 						cd->out[k] += (int32_t)y0 >> 4;
@@ -167,8 +166,7 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 
 				/* Compute FIR and mix as Q5.27*/
 				fir_core_setup_circular(f);
-				fir_32x16_2x_hifi3(f, cd->in[is], cd->in[is2], &y0, &y1,
-						   shift);
+				fir_32x16_2x(f, cd->in[is], cd->in[is2], &y0, &y1, shift);
 				for (k = 0; k < out_nch; k++) {
 					if (om & 1) {
 						cd->out[k] += (int32_t)y0 >> 4;
@@ -257,8 +255,7 @@ void tdfb_fir_s32(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource
 
 				/* Compute FIR and mix as Q5.27*/
 				fir_core_setup_circular(f);
-				fir_32x16_2x_hifi3(f, cd->in[is], cd->in[is2], &y0, &y1,
-						   shift);
+				fir_32x16_2x(f, cd->in[is], cd->in[is2], &y0, &y1, shift);
 				for (k = 0; k < out_nch; k++) {
 					if (om & 1) {
 						cd->out[k] += (int32_t)y0 >> 4;

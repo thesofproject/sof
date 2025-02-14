@@ -42,7 +42,7 @@ static inline void tdfb_core(struct tdfb_comp_data *cd, int in_nch, int out_nch)
 		fir_hifiep_setup_circular(f);
 		fir_get_lrshifts(f, &lshift, &rshift);
 		/* Process two samples */
-		fir_32x16_2x_hifiep(f, cd->in[is], cd->in[is2], &y0, &y1, lshift, rshift);
+		fir_32x16_2x(f, cd->in[is], cd->in[is2], &y0, &y1, lshift, rshift);
 		/* Mix as Q5.27 */
 		for (k = 0; k < out_nch; k++) {
 			if (om & 1) {

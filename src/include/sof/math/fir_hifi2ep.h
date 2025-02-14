@@ -53,10 +53,10 @@ static inline void fir_hifiep_setup_circular(struct fir_state_32x16 *fir)
 void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
 		      int *rshift);
 
-void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int lshift, int rshift);
+void fir_32x16(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int lshift, int rshift);
 
-void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
-			 int32_t *y0, int32_t *y1, int lshift, int rshift);
+void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
+		  int32_t *y0, int32_t *y1, int lshift, int rshift);
 
 #endif
 #endif /* __SOF_MATH_FIR_HIFI2EP_H__ */
