@@ -30,7 +30,6 @@ struct fir_state_32x16 {
 	ae_p16x2s *coef; /* Pointer to FIR coefficients */
 	int taps; /* Number of FIR taps */
 	int length; /* Number of FIR taps plus input length (even) */
-	int in_shift; /* Amount of right shifts at input */
 	int out_shift; /* Amount of right shifts at output */
 };
 
