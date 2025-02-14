@@ -61,8 +61,7 @@ void eq_fir_2x_s32(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 		for (i = 0; i < (frames >> 1); i++) {
 			x1 = x0 + nch;
 			y1 = y0 + nch;
-			fir_32x16_2x_hifiep(f, *x0, *x1, y0, y1,
-					    lshift, rshift);
+			fir_32x16_2x(f, *x0, *x1, y0, y1, lshift, rshift);
 			x0 += inc;
 			y0 += inc;
 		}
@@ -107,8 +106,7 @@ void eq_fir_2x_s24(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 		for (i = 0; i < (frames >> 1); i++) {
 			x1 = x0 + nch;
 			y1 = y0 + nch;
-			fir_32x16_2x_hifiep(f, *x0 << 8, *x1 << 8, &z0, &z1,
-					    lshift, rshift);
+			fir_32x16_2x(f, *x0 << 8, *x1 << 8, &z0, &z1, lshift, rshift);
 			*y0 = sat_int24(Q_SHIFT_RND(z0, 31, 23));
 			*y1 = sat_int24(Q_SHIFT_RND(z1, 31, 23));
 			x0 += inc;
@@ -155,8 +153,7 @@ void eq_fir_2x_s16(struct fir_state_32x16 fir[], struct input_stream_buffer *bso
 		for (i = 0; i < (frames >> 1); i++) {
 			x1 = x0 + nch;
 			y1 = y0 + nch;
-			fir_32x16_2x_hifiep(f, *x0 << 16, *x1 << 16, &z0, &z1,
-					    lshift, rshift);
+			fir_32x16_2x(f, *x0 << 16, *x1 << 16, &z0, &z1, lshift, rshift);
 			*y0 = sat_int16(Q_SHIFT_RND(z0, 31, 15));
 			*y1 = sat_int16(Q_SHIFT_RND(z1, 31, 15));
 			x0 += inc;
