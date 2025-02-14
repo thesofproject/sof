@@ -7,13 +7,13 @@
 #include <sof/math/fir_config.h>
 #include <sof/common.h>
 
-#if SOF_USE_HIFI(3, FILTER) || SOF_USE_HIFI(4, FILTER)
+#if SOF_USE_MIN_HIFI(5, FILTER)
 
 #include <sof/audio/buffer.h>
 #include <sof/math/fir_hifi3.h>
 #include <user/fir.h>
 #include <xtensa/config/defs.h>
-#include <xtensa/tie/xt_hifi3.h>
+#include <xtensa/tie/xt_hifi5.h>
 #include <rtos/symbol.h>
 #include <errno.h>
 #include <stddef.h>
