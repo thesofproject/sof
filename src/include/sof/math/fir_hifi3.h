@@ -55,14 +55,12 @@ static inline void fir_comp_setup_circular(const struct audio_stream *buffer)
 	AE_SETCEND0(audio_stream_get_end_addr(buffer));
 }
 
-void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
-		      int *rshift);
+void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift, int *rshift);
 
-void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x, ae_int32 *y,
-		     int shift);
+void fir_32x16(struct fir_state_32x16 *fir, ae_int32 x, ae_int32 *y, int shift);
 
-void fir_32x16_2x_hifi3(struct fir_state_32x16 *fir, ae_int32 x0, ae_int32 x1,
-			ae_int32 *y0, ae_int32 *y1, int shift);
+void fir_32x16_2x(struct fir_state_32x16 *fir, ae_int32 x0, ae_int32 x1,
+		  ae_int32 *y0, ae_int32 *y1, int shift);
 
 #endif
 #endif /* __SOF_MATH_FIR_HIFI3_H__ */
