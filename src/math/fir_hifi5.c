@@ -85,11 +85,6 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
 }
 EXPORT_SYMBOL(fir_get_lrshifts);
 
-/* HiFi EP has the follow number of reqisters that should not be exceeded
- * 4x 56 bit registers in register file Q
- * 8x 48 bit registers in register file P
- */
-
 void fir_32x16(struct fir_state_32x16 *fir, ae_int32 x, ae_int32 *y, int shift)
 {
 	/* This function uses
@@ -163,31 +158,26 @@ void fir_32x16(struct fir_state_32x16 *fir, ae_int32 x, ae_int32 *y, int shift)
 }
 EXPORT_SYMBOL(fir_32x16);
 
-/* HiFi EP has the follow number of reqisters that should not be exceeded
- * 4x 56 bit registers in register file Q
- * 8x 48 bit registers in register file P
- */
-
 void fir_32x16_2x(struct fir_state_32x16 *fir, ae_int32 x0, ae_int32 x1,
 		  ae_int32 *y0, ae_int32 *y1, int shift)
 {
 	/* This function uses
-	 * 2x 56 bit registers Q,
-	 * 4x 48 bit registers P
+	 * 7x 64 bit AE registers
 	 * 3x integers
 	 * 2x address pointers,
 	 */
-	ae_f64 a;
-	ae_f64 b;
 	ae_valign u;
+	ae_f64 a = AE_ZERO64();
+	ae_f64 b = AE_ZERO64();
 	ae_f32x2 d0;
 	ae_f32x2 d1;
+	ae_f32x2 d2;
 	ae_f16x4 coefs;
-	int i;
 	ae_f32x2 *dp;
 	ae_f16x4 *coefp = fir->coef;
 	const int taps_div_4 = fir->taps >> 2;
 	const int inc = 2 * sizeof(int32_t);
+	int i;
 
 	/* Bypass samples if taps count is zero. */
 	if (!taps_div_4) {
@@ -201,18 +191,11 @@ void fir_32x16_2x(struct fir_state_32x16 *fir, ae_int32 x0, ae_int32 x1,
 	dp = (ae_f32x2 *)fir->rwp;
 	AE_S32_L_XC(x1, fir->rwp, -sizeof(int32_t));
 
-	/* Note: If the next function is converted to handle two samples
-	 * per call the data load can be done with single instruction
-	 * AE_LP24X2F_C(data2, dp, sizeof(ae_p24x2f));
-	 */
-	a = AE_ZERO64();
-	b = AE_ZERO64();
-
 	/* Prime the coefficients stream */
 	u = AE_LA64_PP(coefp);
 
-	/* Load two data samples and pack to d0 to data2_h and
-	 * d1 to data2_l.
+	/* Load two samples, two newest samples and proceed
+	 * to elder input samples in delay line.
 	 */
 	AE_L32X2_XC(d0, dp, inc);
 	for (i = 0; i < taps_div_4; i++) {
@@ -222,34 +205,34 @@ void fir_32x16_2x(struct fir_state_32x16 *fir, ae_int32 x0, ae_int32 x1,
 		 */
 		AE_LA16X4_IP(coefs, u, coefp);
 
-		/* Load two data samples. Upper part d1_h is x[n+1] and
-		 * lower part d1_l is x[n].
+		/* Load two data samples more.
+		 * d0.H is x[n] the newest sample
+		 * d0.L is x[n-1]
+		 * d1.H is x[n-2]
+		 * d1.L is x[n-3]
+		 * d2.H is x[n-4]
 		 */
 		AE_L32X2_XC(d1, dp, inc);
+		AE_L32X2_XC(d2, dp, inc);
 
-		/* Quad MAC (HH)
-		 * b += d0_h * coefs_3 + d0_l * coefs_2
-		 * a += d0_l * coefs_3 + d1_h * coefs_2
+		/* Calculate four FIR taps for current (x1 -> a) and previous input (x0 -> b)
+		 * b = b  + d0.H * c.3  + d0.L * c.2  + d1.H * c.1  + d1.L * c.0
+		 * a = a  + d0.L * c.3  + d1.H * c.2  + d1.L * c.1  + d2.H * c.0
 		 */
-		AE_MULAFD32X16X2_FIR_HH(b, a, d0, d1, coefs);
-		d0 = d1;
+		AE_MULA2Q32X16_FIR_H(b, a, d0, d1, d2, coefs);
 
-		/* Repeat the same for next two taps and increase coefp. */
-		AE_L32X2_XC(d1, dp, inc);
-
-		/* Quad MAC (HL)
-		 * b += d0_h * coefs_1 + d0_l * coefs_0
-		 * a += d0_l * coefs_1 + d1_h * coefs_0
-		 */
-		AE_MULAFD32X16X2_FIR_HL(b, a, d0, d1, coefs);
-		d0 = d1;
+		/* Prepare for next four taps, d2 overlaps to next loop iteration as d0 */
+		d0 = d2;
 	}
 
-	/* Do scaling shifts and store sample. */
-	b = AE_SLAA64S(b, shift);
-	a = AE_SLAA64S(a, shift);
-	AE_S32_L_I(AE_ROUND32F48SSYM(b), (ae_int32 *)y1, 0);
-	AE_S32_L_I(AE_ROUND32F48SSYM(a), (ae_int32 *)y0, 0);
+	/* Shift left by one Q1.31 x Q1.15 -> Q2.46 format for Q2.47 round and
+	 * store output samples.
+	 */
+	b = AE_SLAA64S(b, shift + 1);
+	a = AE_SLAA64S(a, shift + 1);
+	d0 = AE_ROUND32X2F48SASYM(b, a);
+	AE_S32_H_I(d0, (ae_int32 *)y1, 0);
+	AE_S32_L_I(d0, (ae_int32 *)y0, 0);
 }
 EXPORT_SYMBOL(fir_32x16_2x);
 
