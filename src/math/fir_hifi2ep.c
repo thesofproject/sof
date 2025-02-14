@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2017 Intel Corporation. All rights reserved.
+// Copyright(c) 2017-2025 Intel Corporation.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -89,7 +89,7 @@ EXPORT_SYMBOL(fir_get_lrshifts);
  * 8x 48 bit registers in register file P
  */
 
-void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int lshift, int rshift)
+void fir_32x16(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int lshift, int rshift)
 {
 	/* This function uses
 	 * 1x 56 bit registers Q,
@@ -163,8 +163,8 @@ EXPORT_SYMBOL(fir_32x16_hifiep);
  * 8x 48 bit registers in register file P
  */
 
-void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
-			 int32_t *y0, int32_t *y1, int lshift, int rshift)
+void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
+		  int32_t *y0, int32_t *y1, int lshift, int rshift)
 {
 	/* This function uses
 	 * 2x 56 bit registers Q,
