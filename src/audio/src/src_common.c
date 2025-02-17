@@ -44,7 +44,7 @@
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
 /* Calculates buffers to allocate for a SRC mode */
-static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)
+__cold static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
@@ -183,8 +183,8 @@ static int init_stages(const struct src_stage *stage1, const struct src_stage *s
 	return 0;
 }
 
-static int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
-			      int32_t *delay_lines_start)
+__cold static int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
+				     int32_t *delay_lines_start)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
@@ -392,7 +392,7 @@ void src_set_alignment(struct sof_source *source, struct sof_sink *sink)
 	sink_set_alignment_constants(sink, byte_align, frame_align_req);
 }
 
-static int src_verify_params(struct processing_module *mod)
+__cold static int src_verify_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
@@ -473,9 +473,9 @@ static bool src_get_copy_limits(struct comp_data *cd,
 	return true;
 }
 
-int src_params_general(struct processing_module *mod,
-		       struct sof_source *source,
-		       struct sof_sink *sink)
+__cold int src_params_general(struct processing_module *mod,
+			      struct sof_source *source,
+			      struct sof_sink *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -574,7 +574,7 @@ int src_params_general(struct processing_module *mod,
 	return 0;
 }
 
-int src_param_set(struct comp_dev *dev, struct comp_data *cd)
+__cold int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 {
 	struct src_param *a = &cd->param;
 	int fs_in = cd->source_rate;
@@ -593,9 +593,9 @@ int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
-int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
-			     const struct src_stage *stage_src1,
-			     const struct src_stage *stage_src2)
+__cold int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
+				    const struct src_stage *stage_src1,
+				    const struct src_stage *stage_src2)
 {
 #if CONFIG_FAST_GET
 	struct src_stage *stage_dst;
@@ -666,21 +666,21 @@ int src_process(struct processing_module *mod,
 	return cd->src_func(cd, sources[0], sinks[0]);
 }
 
-int src_set_config(struct processing_module *mod, uint32_t config_id,
-		   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-		   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-		   size_t response_size)
+__cold int src_set_config(struct processing_module *mod, uint32_t config_id,
+			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			  size_t response_size)
 {
 	return -EINVAL;
 }
 
-int src_get_config(struct processing_module *mod, uint32_t config_id,
-		   uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size)
+__cold int src_get_config(struct processing_module *mod, uint32_t config_id,
+			  uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size)
 {
 	return -EINVAL;
 }
 
-int src_reset(struct processing_module *mod)
+__cold int src_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
