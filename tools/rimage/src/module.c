@@ -316,6 +316,7 @@ void module_parse_sections(struct module *module, const struct memory_config *me
 	uint16_t i;
 
 	struct module_section *out_section = module->sections;
+	size_t cold_text_size = 0, cold_data_size = 0;
 
 	fprintf(stdout, "  Found %d sections, listing valid sections...\n",
 		module->elf.sections_count);
@@ -361,15 +362,18 @@ void module_parse_sections(struct module *module, const struct memory_config *me
 			out_section->load_address, out_section->address,
 			out_section->address + out_section->size, out_section->size);
 
-
 		switch (out_section->type) {
 		case MST_DATA:
 			info = &module->data;
+			if (out_section->detached)
+				cold_data_size += out_section->size;
 			fprintf(stdout, "\tDATA");
 			break;
 
 		case MST_TEXT:
 			info = &module->text;
+			if (out_section->detached)
+				cold_text_size += out_section->size;
 			fprintf(stdout, "\tTEXT");
 			break;
 
@@ -415,14 +419,33 @@ void module_parse_sections(struct module *module, const struct memory_config *me
 	sections_info_finalize(&module->bss);
 
 	size_t fw_size = module->data.size + module->text.size;
+	size_t rounded, start, end, size;
 
 	fprintf(stdout, " module: input size %zd (0x%zx) bytes %d sections\n",
 		fw_size, fw_size, module->num_sections);
-	fprintf(stdout, " module: text %zu (0x%zx) bytes\n"
-		"\tdata %zu (0x%zx) bytes\n"
-		"\tbss  %zu (0x%zx) bytes\n\n",
-		module->text.size, module->text.size,
-		module->data.size, module->data.size,
+
+	/* MST_TEXT */
+	start = module->text.start;
+	end = module->text.end + cold_text_size;
+	size = module->text.size + cold_text_size;
+	rounded = ALIGN_UP(end, MAN_PAGE_SIZE) - start;
+	fprintf(stdout,
+		" module: text %zu (0x%zx) bytes, including %zu (0x%zx) %zu%% efficiency bytes\n",
+		size, size, cold_text_size, cold_text_size,
+		rounded ? (cold_text_size * 100 + rounded / 2) / rounded : 0);
+
+	/* MST_DATA */
+	start = module->data.start;
+	end = module->data.end + cold_data_size;
+	size = module->data.size + cold_data_size;
+	rounded = ALIGN_UP(end, MAN_PAGE_SIZE) - start;
+	fprintf(stdout,
+		"\tdata %zu (0x%zx) bytes, including %zu (0x%zx) %zu%% efficiency bytes\n",
+		size, size, cold_data_size, cold_data_size,
+		rounded ? (cold_data_size * 100 + rounded / 2) / rounded : 0);
+
+	/* MST_BSS */
+	fprintf(stdout, "\tbss  %zu (0x%zx) bytes\n",
 		module->bss.size, module->bss.size);
 }
 
