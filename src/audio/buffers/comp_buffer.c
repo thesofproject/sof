@@ -212,8 +212,8 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, u
 	audio_stream_set_underrun(&buffer->stream, !!(flags & SOF_BUF_UNDERRUN_PERMITTED));
 	audio_stream_set_overrun(&buffer->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
 
-	list_init(&buffer->source_list);
-	list_init(&buffer->sink_list);
+	comp_buffer_reset_source_list(buffer);
+	comp_buffer_reset_sink_list(buffer);
 
 	return buffer;
 }
@@ -532,6 +532,13 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		((char *)audio_stream_get_wptr(&buffer->stream) -
 		 (char *)audio_stream_get_addr(&buffer->stream)));
 #endif
+}
+
+static inline struct list_item *buffer_comp_list(struct comp_buffer *buffer,
+						 int dir)
+{
+	return dir == PPL_DIR_DOWNSTREAM ?
+			&buffer->source_list :  &buffer->sink_list;
 }
 
 /*

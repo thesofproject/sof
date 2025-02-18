@@ -632,9 +632,7 @@ static int tone_copy(struct comp_dev *dev)
 	comp_dbg(dev, "tone_copy()");
 
 	/* tone component sink buffer */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
+	sink = comp_dev_get_first_data_consumer(dev);
 	free = audio_stream_get_free_bytes(&sink->stream);
 
 	/* Test that sink has enough free frames. Then run once to maintain
