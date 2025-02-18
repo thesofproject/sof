@@ -81,4 +81,9 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,NU
 DMIC0_ID=3,DMIC1_ID=4,HDMI1_ID=5,HDMI2_ID=6,HDMI3_ID=7,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=sof-lnl-cs42l43-l0-cs35l56-l23-2ch.bin"
+
+"cavs-sdw\;sof-lnl-cs42l43-l2-cs35l56x6-l13\;NUM_SDW_AMP_LINKS=3,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
+
 )
