@@ -195,7 +195,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 				 ll_sched_stack[core],
 				 ZEPHYR_LL_STACK_SIZE,
 				 zephyr_domain_thread_fn, zephyr_domain, NULL, NULL,
-				 -CONFIG_NUM_COOP_PRIORITIES, 0, K_FOREVER);
+				 CONFIG_LL_THREAD_PRIORITY, 0, K_FOREVER);
 
 	k_thread_cpu_mask_clear(thread);
 	k_thread_cpu_mask_enable(thread, core);
