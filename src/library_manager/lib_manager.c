@@ -493,6 +493,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	const uint32_t instance_id = IPC4_INST_ID(config->id);
 	const uint32_t log_handle = (uint32_t)drv->tctx;
 	byte_array_t mod_cfg;
+	int ret;
 
 	/*
 	 * Variable used by llext_manager to temporary store llext handle before creation
@@ -514,12 +515,11 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	/* Intel modules expects DW size here */
 	mod_cfg.size = args->size >> 2;
 
-	((struct comp_driver *)drv)->adapter_ops = native_system_agent_start(module_entry_point,
-									     module_id,	instance_id,
-									     0, log_handle,
-									     &mod_cfg);
+	ret = native_system_agent_start(module_entry_point, module_id, instance_id, 0, log_handle,
+					&mod_cfg,
+					(void **)&((struct comp_driver *)drv)->adapter_ops);
 
-	if (!drv->adapter_ops) {
+	if (ret) {
 		lib_manager_free_module(module_id);
 		tr_err(&lib_manager_tr, "native_system_agent_start failed!");
 		return NULL;
