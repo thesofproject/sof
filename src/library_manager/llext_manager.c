@@ -28,6 +28,7 @@
 #include <zephyr/llext/buf_loader.h>
 #include <zephyr/llext/loader.h>
 #include <zephyr/llext/llext.h>
+#include <zephyr/llext/inspect.h>
 
 #include <rimage/sof/user/manifest.h>
 #include <module/module/api_ver.h>
@@ -69,21 +70,25 @@ static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
 	return sys_mm_drv_unmap_region(aligned_vma, ALIGN_UP(pre_pad_size + size, PAGE_SZ));
 }
 
-static int llext_manager_load_data_from_storage(const struct llext *ext,
+static int llext_manager_load_data_from_storage(const struct llext_loader *ldr,
+						const struct llext *ext,
+						enum llext_mem region,
 						void __sparse_cache *vma,
-						const uint8_t *load_base,
 						size_t size, uint32_t flags)
 {
 	unsigned int i;
-	int ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
-	const elf_shdr_t *shdr;
+	const void *region_addr;
+	int ret;
 
+	ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "cannot map %u of %p", size, (__sparse_force void *)vma);
 		return ret;
 	}
 
+	/* DEBUG */
 	size_t init_offset = 0;
+	const elf_shdr_t *shdr;
 
 	/* Need to copy sections within regions individually, offsets may differ */
 	for (i = 0, shdr = llext_section_headers(ext); i < llext_section_count(ext); i++, shdr++) {
@@ -97,8 +102,29 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 		/* found a section within the region */
 		size_t offset = shdr->sh_offset - init_offset;
 
-		ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - offset,
-			       load_base + offset, shdr->sh_size);
+		tr_info(&lib_manager_tr, "[%i OLD]: %u, %p <- %p, %u", region, i,
+			(void *)shdr->sh_addr,
+			(void *)((uint8_t *)ext->mem[region] + offset), shdr->sh_size);
+	}
+
+	llext_get_region_info(ldr, ext, region, NULL, &region_addr, NULL);
+
+	/* Need to copy sections within regions individually, offsets may differ */
+	for (i = 0; i < llext_section_count(ext); i++) {
+		enum llext_mem s_region = LLEXT_MEM_COUNT;
+		size_t s_offset = 0;
+
+		llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
+
+		if (s_region != region)
+			continue;
+
+		tr_info(&lib_manager_tr, "[%i NEW]: %u, %p <- %p, %u", region, i,
+			(void *)shdr->sh_addr,
+			(void *)((uint8_t *)region_addr + s_offset), shdr->sh_size);
+
+		ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - s_offset,
+			       (const uint8_t *)region_addr + s_offset, shdr->sh_size);
 		if (ret < 0)
 			return ret;
 	}
@@ -116,9 +142,13 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 	return ret;
 }
 
-static int llext_manager_load_module(const struct llext *ext, const struct llext_buf_loader *ebl,
+static int llext_manager_load_module(const struct llext *ext, const struct llext_loader *ldr,
 				     const struct lib_manager_module *mctx)
 {
+	const elf_shdr_t *bss_hdr;
+
+	llext_get_region_info(ldr, ext, LLEXT_MEM_BSS, &bss_hdr, NULL, NULL);
+
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
 		mctx->segment[LIB_MANAGER_TEXT].addr;
@@ -136,8 +166,8 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 
 	/* .bss, should be within writable data above */
 	void __sparse_cache *bss_addr = (void __sparse_cache *)
-		ebl->loader.sects[LLEXT_MEM_BSS].sh_addr;
-	size_t bss_size = ebl->loader.sects[LLEXT_MEM_BSS].sh_size;
+		bss_hdr->sh_addr;
+	size_t bss_size = bss_hdr->sh_size;
 	int ret;
 
 	/* Check, that .bss is within .data */
@@ -150,7 +180,7 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 			va_base_data = bss_addr;
 			data_size += bss_size;
 		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data +
-			   ALIGN_UP(data_size, ebl->loader.sects[LLEXT_MEM_BSS].sh_addralign)) {
+			   ALIGN_UP(data_size, bss_hdr->sh_addralign)) {
 			/* .bss directly behind writable data, append */
 			data_size += bss_size;
 		} else {
@@ -162,20 +192,20 @@ static int llext_manager_load_module(const struct llext *ext, const struct llext
 	}
 
 	/* Copy Code */
-	ret = llext_manager_load_data_from_storage(ext, va_base_text, ext->mem[LLEXT_MEM_TEXT],
-						   text_size, SYS_MM_MEM_PERM_EXEC);
+	ret = llext_manager_load_data_from_storage(ldr, ext, LLEXT_MEM_TEXT,
+						   va_base_text, text_size, SYS_MM_MEM_PERM_EXEC);
 	if (ret < 0)
 		return ret;
 
 	/* Copy read-only data */
-	ret = llext_manager_load_data_from_storage(ext, va_base_rodata, ext->mem[LLEXT_MEM_RODATA],
-						   rodata_size, 0);
+	ret = llext_manager_load_data_from_storage(ldr, ext, LLEXT_MEM_RODATA,
+						   va_base_rodata, rodata_size, 0);
 	if (ret < 0)
 		goto e_text;
 
 	/* Copy writable data */
-	ret = llext_manager_load_data_from_storage(ext, va_base_data, ext->mem[LLEXT_MEM_DATA],
-						   data_size, SYS_MM_MEM_PERM_RW);
+	ret = llext_manager_load_data_from_storage(ldr, ext, LLEXT_MEM_DATA,
+						   va_base_data, data_size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0)
 		goto e_rodata;
 
@@ -229,58 +259,69 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
-static int llext_manager_link(struct llext_buf_loader *ebl, const char *name,
+static int llext_manager_link(struct llext_loader *ldr, const char *name,
 			      struct lib_manager_module *mctx, struct llext **llext,
 			      const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
+	tr_info(&lib_manager_tr, "reloc %i", !mctx->segment[LIB_MANAGER_TEXT].size);
+
 	/* Identify if this is the first time loading this module */
 	struct llext_load_param ldr_parm = {
 		.relocate_local = !mctx->segment[LIB_MANAGER_TEXT].size,
 		.pre_located = true,
 		.section_detached = llext_manager_section_detached,
+		.keep_section_info = true,
 	};
-	int ret = llext_load(&ebl->loader, name, llext, &ldr_parm);
+	const elf_shdr_t *hdr;
+	int ret;
 
+	ret = llext_load(ldr, name, llext, &ldr_parm);
 	if (ret)
 		return ret;
 
-	mctx->segment[LIB_MANAGER_TEXT].addr = ebl->loader.sects[LLEXT_MEM_TEXT].sh_addr;
-	mctx->segment[LIB_MANAGER_TEXT].size = ebl->loader.sects[LLEXT_MEM_TEXT].sh_size;
+	/* All code sections */
+	llext_get_region_info(ldr, *llext, LLEXT_MEM_TEXT, &hdr, NULL, NULL);
+	mctx->segment[LIB_MANAGER_TEXT].addr = hdr->sh_addr;
+	mctx->segment[LIB_MANAGER_TEXT].size = hdr->sh_size;
 
-	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x",
-	       mctx->segment[LIB_MANAGER_TEXT].addr,
-	       mctx->segment[LIB_MANAGER_TEXT].size);
+	tr_info(&lib_manager_tr, ".text: start: %#lx size %#x",
+		mctx->segment[LIB_MANAGER_TEXT].addr,
+		mctx->segment[LIB_MANAGER_TEXT].size);
 
 	/* All read-only data sections */
-	mctx->segment[LIB_MANAGER_RODATA].addr =
-		ebl->loader.sects[LLEXT_MEM_RODATA].sh_addr;
-	mctx->segment[LIB_MANAGER_RODATA].size = ebl->loader.sects[LLEXT_MEM_RODATA].sh_size;
+	llext_get_region_info(ldr, *llext, LLEXT_MEM_RODATA, &hdr, NULL, NULL);
+	mctx->segment[LIB_MANAGER_RODATA].addr = hdr->sh_addr;
+	mctx->segment[LIB_MANAGER_RODATA].size = hdr->sh_size;
 
-	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x",
-	       mctx->segment[LIB_MANAGER_RODATA].addr,
-	       mctx->segment[LIB_MANAGER_RODATA].size);
+	tr_info(&lib_manager_tr, ".rodata: start: %#lx size %#x",
+		mctx->segment[LIB_MANAGER_RODATA].addr,
+		mctx->segment[LIB_MANAGER_RODATA].size);
 
 	/* All writable data sections */
-	mctx->segment[LIB_MANAGER_DATA].addr =
-		ebl->loader.sects[LLEXT_MEM_DATA].sh_addr;
-	mctx->segment[LIB_MANAGER_DATA].size = ebl->loader.sects[LLEXT_MEM_DATA].sh_size;
+	llext_get_region_info(ldr, *llext, LLEXT_MEM_DATA, &hdr, NULL, NULL);
+	mctx->segment[LIB_MANAGER_DATA].addr = hdr->sh_addr;
+	mctx->segment[LIB_MANAGER_DATA].size = hdr->sh_size;
 
-	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
-	       mctx->segment[LIB_MANAGER_DATA].addr,
-	       mctx->segment[LIB_MANAGER_DATA].size);
+	tr_info(&lib_manager_tr, ".data: start: %#lx size %#x",
+		mctx->segment[LIB_MANAGER_DATA].addr,
+		mctx->segment[LIB_MANAGER_DATA].size);
 
-	ssize_t binfo_o = llext_find_section(&ebl->loader, ".mod_buildinfo");
+	*buildinfo = NULL;
+	ret = llext_section_shndx(ldr, *llext, ".mod_buildinfo");
+	if (ret >= 0) {
+		llext_get_section_info(ldr, *llext, ret, &hdr, NULL, NULL);
+		*buildinfo = llext_peek(ldr, hdr->sh_offset);
+	}
 
-	if (binfo_o >= 0)
-		*buildinfo = llext_peek(&ebl->loader, binfo_o);
+	*mod_manifest = NULL;
+	ret = llext_section_shndx(ldr, *llext, ".module");
+	if (ret >= 0) {
+		llext_get_section_info(ldr, *llext, ret, &hdr, NULL, NULL);
+		*mod_manifest = llext_peek(ldr, hdr->sh_offset);
+	}
 
-	ssize_t mod_o = llext_find_section(&ebl->loader, ".module");
-
-	if (mod_o >= 0)
-		*mod_manifest = llext_peek(&ebl->loader, mod_o);
-
-	return binfo_o >= 0 && mod_o >= 0 ? 0 : -EPROTO;
+	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
 }
 
 static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
@@ -405,11 +446,26 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 				    PAGE_SZ);
 
 	uintptr_t dram_base = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base + mod_offset, mod_size);
+
+	if (!md->ebl) {
+		/* allocate once, never freed */
+		md->ebl = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
+				  SOF_MEM_CAPS_RAM, sizeof(struct llext_buf_loader));
+		if (!md->ebl) {
+			tr_err(&lib_manager_tr, "loader alloc failed");
+			return 0;
+		}
+
+		/* initialize via a temporary */
+		struct llext_buf_loader tmp_ebl = LLEXT_BUF_LOADER((uint8_t *)dram_base +
+								   mod_offset, mod_size);
+
+		*md->ebl = tmp_ebl;
+	}
 
 	/* LLEXT linking is only needed once for all the drivers in each module */
-	ret = llext_manager_link(&ebl, mod_array[entry_index - inst_idx].name, mctx, &md->llext,
-				 (const void **)&buildinfo, &mod_manifest);
+	ret = llext_manager_link(&md->ebl->loader, mod_array[entry_index - inst_idx].name, mctx,
+				 &md->llext, (const void **)&buildinfo, &mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);
 		return 0;
@@ -424,7 +480,7 @@ uintptr_t llext_manager_allocate_module(struct processing_module *proc,
 		}
 
 		/* Map executable code and data */
-		ret = llext_manager_load_module(md->llext, &ebl, mctx);
+		ret = llext_manager_load_module(md->llext, &md->ebl->loader, mctx);
 		if (ret < 0)
 			return 0;
 

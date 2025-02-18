@@ -515,6 +515,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	tmp_proc.priv.llext = NULL;
+	tmp_proc.priv.ebl = NULL;
 	const uint32_t module_entry_point = lib_manager_allocate_module(&tmp_proc, config,
 									args->data);
 
@@ -544,6 +545,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 		struct processing_module *mod = comp_mod(dev);
 
 		mod->priv.llext = tmp_proc.priv.llext;
+		mod->priv.ebl = tmp_proc.priv.ebl;
 	} else {
 		lib_manager_free_module(module_id);
 	}
@@ -553,15 +555,18 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 static void lib_manager_module_free(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
-	struct llext *llext = mod->priv.llext;
 	const struct comp_ipc_config *const config = &mod->dev->ipc_config;
 	const uint32_t module_id = config->id;
-	int ret;
+	int ret = 0;
 
 	/* This call invalidates dev, mod and config pointers! */
 	module_adapter_free(dev);
 
-	if (!llext || !llext_unload(&llext)) {
+	if (mod->priv.llext) {
+		ret = llext_unload(&mod->priv.llext);
+		tr_info(&lib_manager_tr, "llext_unload(): %i", ret);
+	}
+	if (!ret) {
 		/* Free module resources allocated in L2 memory. */
 		ret = lib_manager_free_module(module_id);
 		if (ret < 0)
