@@ -35,7 +35,7 @@ struct native_system_agent {
  *
  * @return Returns 0 on success or an error code on failure.
  */
-int native_system_agent_start(uint32_t entry_point, uint32_t module_id, uint32_t instance_id,
+int native_system_agent_start(uintptr_t entry_point, uint32_t module_id, uint32_t instance_id,
 			      uint32_t core_id, uint32_t log_handle, void *mod_cfg,
 			      const void **iface);
 
