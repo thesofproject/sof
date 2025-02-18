@@ -19,7 +19,7 @@ typedef void* (*native_create_instance_f)(void *mod_cfg, void *parent_ppl,
 
 struct native_system_agent native_sys_agent;
 
-int native_system_agent_start(uint32_t entry_point, uint32_t module_id, uint32_t instance_id,
+int native_system_agent_start(uintptr_t entry_point, uint32_t module_id, uint32_t instance_id,
 			      uint32_t core_id, uint32_t log_handle, void *mod_cfg,
 			      const void **iface)
 {
