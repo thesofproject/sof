@@ -10,6 +10,7 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <module/crossover/crossover_common.h>
@@ -40,6 +41,7 @@ SOF_DEFINE_REG_UUID(multiband_drc);
 
 DECLARE_TR_CTX(multiband_drc_tr, SOF_UUID(multiband_drc_uuid), LOG_LEVEL_INFO);
 
+/* Called from multiband_drc_setup() from multiband_drc_process(), so cannot be __cold */
 static void multiband_drc_reset_state(struct multiband_drc_state *state)
 {
 	int i;
@@ -204,7 +206,9 @@ err:
 	return ret;
 }
 
-static int multiband_drc_setup(struct processing_module *mod, int16_t channels, uint32_t rate)
+/* Called from multiband_drc_process(), so cannot be __cold */
+static int multiband_drc_setup(struct processing_module *mod, int16_t channels,
+			       uint32_t rate)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
@@ -277,7 +281,7 @@ cd_fail:
 	return ret;
 }
 
-static int multiband_drc_free(struct processing_module *mod)
+__cold static int multiband_drc_free(struct processing_module *mod)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
@@ -289,11 +293,11 @@ static int multiband_drc_free(struct processing_module *mod)
 	return 0;
 }
 
-static int multiband_drc_set_config(struct processing_module *mod, uint32_t param_id,
-				    enum module_cfg_fragment_position pos,
-				    uint32_t data_offset_size, const uint8_t *fragment,
-				    size_t fragment_size, uint8_t *response,
-				    size_t response_size)
+__cold static int multiband_drc_set_config(struct processing_module *mod, uint32_t param_id,
+					   enum module_cfg_fragment_position pos,
+					   uint32_t data_offset_size, const uint8_t *fragment,
+					   size_t fragment_size, uint8_t *response,
+					   size_t response_size)
 {
 	struct comp_dev *dev = mod->dev;
 
@@ -303,9 +307,9 @@ static int multiband_drc_set_config(struct processing_module *mod, uint32_t para
 					    fragment, pos, data_offset_size, fragment_size);
 }
 
-static int multiband_drc_get_config(struct processing_module *mod,
-				    uint32_t config_id, uint32_t *data_offset_size,
-				    uint8_t *fragment, size_t fragment_size)
+__cold static int multiband_drc_get_config(struct processing_module *mod,
+					   uint32_t config_id, uint32_t *data_offset_size,
+					   uint8_t *fragment, size_t fragment_size)
 {
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 
@@ -349,9 +353,9 @@ static int multiband_drc_process(struct processing_module *mod,
 	return 0;
 }
 
-static int multiband_drc_prepare(struct processing_module *mod,
-				 struct sof_source **sources, int num_of_sources,
-				 struct sof_sink **sinks, int num_of_sinks)
+__cold static int multiband_drc_prepare(struct processing_module *mod,
+					struct sof_source **sources, int num_of_sources,
+					struct sof_sink **sinks, int num_of_sinks)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -395,7 +399,7 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	return ret;
 }
 
-static int multiband_drc_reset(struct processing_module *mod)
+__cold static int multiband_drc_reset(struct processing_module *mod)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
