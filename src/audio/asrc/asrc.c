@@ -321,6 +321,7 @@ static int asrc_free(struct processing_module *mod)
 
 	rfree(cd->buf);
 	asrc_release_buffers(cd->asrc_obj);
+	asrc_free_polyphase_filter(cd->asrc_obj);
 	rfree(cd->asrc_obj);
 	rfree(cd);
 	return 0;
@@ -851,6 +852,7 @@ static int asrc_reset(struct processing_module *mod)
 
 	/* Free the allocations those were done in prepare() */
 	asrc_release_buffers(cd->asrc_obj);
+	asrc_free_polyphase_filter(cd->asrc_obj);
 	rfree(cd->asrc_obj);
 	rfree(cd->buf);
 	cd->asrc_obj = NULL;
