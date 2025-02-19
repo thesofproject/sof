@@ -26,7 +26,9 @@
 #include <kernel/abi.h>
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
-
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include "sof/audio/mic_privacy_manager.h"
+#endif
 #include <sof_versions.h>
 #include <stdint.h>
 
@@ -136,6 +138,13 @@ int platform_init(struct sof *sof)
 	idc_init();
 
 	watchdog_init();
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	/* Init mic privacy manager */
+	ret = mic_privacy_manager_init();
+	if (ret < 0)
+		return ret;
+#endif
 
 	/* show heap status */
 	heap_trace_all(1);
