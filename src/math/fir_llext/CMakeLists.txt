@@ -6,5 +6,6 @@ sof_llext_build("fir"
 		../fir_generic.c
 		../fir_hifi2ep.c
 		../fir_hifi3.c
+		../fir_hifi5.c
 	LIB openmodules
 )
