@@ -98,10 +98,12 @@ static int llext_manager_load_data_from_storage(const struct llext *ext,
 		/* found a section within the region */
 		size_t offset = shdr->sh_offset - init_offset;
 
-		ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - offset,
-			       load_base + offset, shdr->sh_size);
-		if (ret < 0)
-			return ret;
+		if (shdr->sh_type != SHT_NOBITS) {
+			ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - offset,
+				       load_base + offset, shdr->sh_size);
+			if (ret < 0)
+				return ret;
+		}
 	}
 
 	/*
