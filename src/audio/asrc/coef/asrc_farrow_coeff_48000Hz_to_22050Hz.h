@@ -6,7 +6,7 @@
 /* Conversion from 48000 Hz to 22050 Hz */
 /* NUM_FILTERS=5, FILTER_LENGTH=80, alpha=6.900000, gamma=0.440000 */
 
-static const int32_t coeff48000to22050[] = {
+__cold_rodata static const int32_t coeff48000to22050[] = {
 /* Filter #5, conversion from 48000 Hz to 22050 Hz */
 
 CONVERT_COEFF(7662), /* Filter:5, Coefficient: 1 */
