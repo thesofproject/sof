@@ -80,7 +80,9 @@ uint64_t platform_timer_get(struct timer *timer)
 	if (timer->id >= NR_TMRS)
 		return -EINVAL;
 
-	/* must read 'low' first, and 'high' next */
+	/* CNTCV_H is only updated when the CNTCV_L is read.
+	 * Always read CNTCV_L before CNTCV_H to get a valid 64-bit timestamp.
+	 */
 	low = io_reg_read(CNTCV_L);
 	high = io_reg_read(CNTCV_H);
 	time = ((uint64_t)high << 32) | low;
