@@ -128,6 +128,7 @@ bool comp_is_current_data_blob_valid(struct comp_data_blob_handler
 {
 	return !!blob_handler->data;
 }
+EXPORT_SYMBOL(comp_is_current_data_blob_valid);
 
 int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 			uint32_t size, const void *init_data)
