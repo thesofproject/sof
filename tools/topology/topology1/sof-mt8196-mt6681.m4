@@ -37,7 +37,12 @@ dnl     time_domain, sched_comp)
 define(`ENDPOINT_NAME', `Speakers')
 # Low Latency playback pipeline 1 on PCM 16 using max 2 channels of s16le
 # Set 1000us deadline with priority 0 on core 0
-PIPELINE_PCM_ADD(ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4, ifdef(`WAVES', sof/pipe-waves-codec-playback.m4, sof/pipe-passthrough-playback.m4)),
+PIPELINE_PCM_ADD(
+	ifdef(`DTS', sof/pipe-eq-iir-dts-codec-playback.m4,
+	ifdef(`WAVES', ifdef(`GOOGLE_CTC', sof/pipe-waves-codec-ctc-playback.m4,
+		       sof/pipe-waves-codec-playback.m4),
+	ifdef(`GOOGLE_CTC', sof/pipe-ctc-playback.m4,
+	sof/pipe-passthrough-playback.m4))),
 	1, 0, 2, s16le,
 	1000, 0, 0,
 	48000, 48000, 48000)
