@@ -1218,6 +1218,7 @@ void ipc4_update_source_format(struct sof_source *source,
 	source_set_valid_fmt(source, valid_fmt);
 	source_set_buffer_fmt(source, fmt->interleaving_style);
 }
+EXPORT_SYMBOL(ipc4_update_source_format);
 
 void ipc4_update_sink_format(struct sof_sink *sink,
 			     const struct ipc4_audio_format *fmt)
