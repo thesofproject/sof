@@ -164,7 +164,7 @@ static int secondary_core_restore(void)
 
 #endif
 
-int secondary_core_init(struct sof *sof)
+__cold int secondary_core_init(struct sof *sof)
 {
 	int err;
 	struct ll_schedule_domain *dma_domain;
@@ -237,7 +237,7 @@ int secondary_core_init(struct sof *sof)
 
 #endif
 
-static void print_version_banner(void)
+__cold static void print_version_banner(void)
 {
 	/*
 	 * Non-Zephyr builds emit the version banner in DMA-trace
@@ -267,7 +267,7 @@ static log_timestamp_t default_get_timestamp(void)
 }
 #endif
 
-static int primary_core_init(int argc, char *argv[], struct sof *sof)
+__cold static int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
 	/* setup context */
 	sof->argc = argc;

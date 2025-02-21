@@ -61,7 +61,7 @@ static const struct sof_ipc_fw_ready ready
 	.flags = DEBUG_SET_FW_READY_FLAGS,
 };
 
-int platform_boot_complete(uint32_t boot_message)
+__cold int platform_boot_complete(uint32_t boot_message)
 {
 	struct ipc_cmd_hdr header;
 
@@ -87,7 +87,7 @@ static struct pm_notifier pm_state_notifier = {
 #endif
 
 /* Runs on the primary core only */
-int platform_init(struct sof *sof)
+__cold int platform_init(struct sof *sof)
 {
 	int ret;
 
