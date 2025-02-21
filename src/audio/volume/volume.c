@@ -829,7 +829,7 @@ SOF_LLEXT_MOD_ENTRY(gain, &gain_interface);
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
 #if CONFIG_COMP_PEAK_VOL
-	SOF_LLEXT_MODULE_MANIFEST("PEAKVOL", peakvol_llext_entry, 1, SOF_REG_UUID(volume), 10),
+	SOF_LLEXT_MODULE_MANIFEST("PEAKVOL", peakvol_llext_entry, 1, SOF_REG_UUID(volume4), 10),
 #endif
 #if CONFIG_COMP_GAIN
 	SOF_LLEXT_MODULE_MANIFEST("GAIN", gain_llext_entry, 1, SOF_REG_UUID(gain), 40),
