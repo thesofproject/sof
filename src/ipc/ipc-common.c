@@ -20,6 +20,7 @@
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
@@ -41,7 +42,7 @@ SOF_DEFINE_REG_UUID(ipc);
 
 DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
 
-int ipc_process_on_core(uint32_t core, bool blocking)
+__cold int ipc_process_on_core(uint32_t core, bool blocking)
 {
 	struct ipc *ipc = ipc_get();
 	struct idc_msg msg = { .header = IDC_MSG_IPC, .core = core, };
@@ -83,7 +84,7 @@ int ipc_process_on_core(uint32_t core, bool blocking)
  * Components, buffers and pipelines are stored in the same lists, hence
  * type and ID have to be used for the identification.
  */
-struct ipc_comp_dev *ipc_get_comp_dev(struct ipc *ipc, uint16_t type, uint32_t id)
+__cold struct ipc_comp_dev *ipc_get_comp_dev(struct ipc *ipc, uint16_t type, uint32_t id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -101,7 +102,7 @@ EXPORT_SYMBOL(ipc_get_comp_dev);
 /* Walks through the list of components looking for a sink/source endpoint component
  * of the given pipeline
  */
-struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int dir)
+__cold struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int dir)
 {
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
@@ -140,7 +141,7 @@ struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc, uint32_t pipeline_id, int
 	return next_ppl_icd;
 }
 
-void ipc_send_queued_msg(void)
+__cold void ipc_send_queued_msg(void)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_msg *msg;
@@ -175,7 +176,7 @@ static struct k_work_q ipc_send_wq;
 static K_THREAD_STACK_DEFINE(ipc_send_wq_stack, CONFIG_STACK_SIZE_IPC_TX);
 #endif
 
-static void schedule_ipc_worker(void)
+__cold static void schedule_ipc_worker(void)
 {
 	/*
 	 * note: in XTOS builds, this is handled in
@@ -188,7 +189,7 @@ static void schedule_ipc_worker(void)
 #endif
 }
 
-void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
+__cold void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
@@ -208,7 +209,7 @@ void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 	k_spin_unlock(&ipc->lock, key);
 }
 
-void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+__cold void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
@@ -255,7 +256,7 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 EXPORT_SYMBOL(ipc_msg_send);
 
 #ifdef __ZEPHYR__
-static void ipc_work_handler(struct k_work *work)
+__cold static void ipc_work_handler(struct k_work *work)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
@@ -271,12 +272,12 @@ static void ipc_work_handler(struct k_work *work)
 }
 #endif
 
-void ipc_schedule_process(struct ipc *ipc)
+__cold void ipc_schedule_process(struct ipc *ipc)
 {
 	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);
 }
 
-int ipc_init(struct sof *sof)
+__cold int ipc_init(struct sof *sof)
 {
 	tr_dbg(&ipc_tr, "ipc_init()");
 
@@ -323,7 +324,7 @@ int ipc_init(struct sof *sof)
 }
 
 /* Locking: call with ipc->lock held and interrupts disabled */
-void ipc_complete_cmd(struct ipc *ipc)
+__cold void ipc_complete_cmd(struct ipc *ipc)
 {
 	/*
 	 * We have up to three contexts, attempting to complete IPC processing:
@@ -343,7 +344,7 @@ void ipc_complete_cmd(struct ipc *ipc)
 	ipc_platform_complete_cmd(ipc);
 }
 
-static void ipc_complete_task(void *data)
+__cold static void ipc_complete_task(void *data)
 {
 	struct ipc *ipc = data;
 	k_spinlock_key_t key;
@@ -354,7 +355,7 @@ static void ipc_complete_task(void *data)
 	k_spin_unlock(&ipc->lock, key);
 }
 
-static enum task_state ipc_do_cmd(void *data)
+__cold static enum task_state ipc_do_cmd(void *data)
 {
 	struct ipc *ipc = data;
 
