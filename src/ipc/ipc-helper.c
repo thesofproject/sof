@@ -21,6 +21,7 @@
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
@@ -37,8 +38,10 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
-static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
+__cold static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
 {
+	assert_can_be_cold();
+
 	if (desc->caps >= SOF_MEM_CAPS_LOWEST_INVALID)
 		return false;
 
@@ -47,9 +50,11 @@ static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
 }
 
 /* create a new component in the pipeline */
-struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
+__cold struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
 {
 	struct comp_buffer *buffer;
+
+	assert_can_be_cold();
 
 	tr_info(&buffer_tr, "buffer new size 0x%x id %d.%d flags 0x%x",
 		desc->size, desc->comp.pipeline_id, desc->comp.id, desc->flags);
@@ -75,6 +80,7 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared
 	return buffer;
 }
 
+/* Called from multiple locations, including ipc_get_comp_by_ppl_id(), so cannot be cold */
 int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
 {
 	switch (icd->type) {
@@ -177,9 +183,11 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 }
 EXPORT_SYMBOL(comp_verify_params);
 
-int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
-			struct comp_buffer *buffer, uint32_t dir)
+__cold int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
+			       struct comp_buffer *buffer, uint32_t dir)
 {
+	assert_can_be_cold();
+
 	/* check if it's a connection between cores */
 	if (buffer->core != comp_core) {
 #if CONFIG_INCOHERENT
@@ -258,12 +266,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 				 ipc_ppl_sink->cd);
 }
 
-int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
+__cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
 	struct comp_buffer *safe;
 	uint32_t flags;
+
+	assert_can_be_cold();
 
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
