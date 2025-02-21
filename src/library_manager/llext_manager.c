@@ -238,11 +238,12 @@ static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
 }
 
-static int llext_manager_link(struct llext_loader *ldr, const char *name,
+static int llext_manager_link(const char *name,
 			      struct lib_manager_module *mctx, const void **buildinfo,
 			      const struct sof_man_module_manifest **mod_manifest)
 {
 	struct llext **llext = &mctx->llext;
+	struct llext_loader *ldr = &mctx->ebl->loader;
 	int ret;
 
 	if (*llext && !mctx->mapped) {
@@ -352,6 +353,7 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 			offs = mod_array[i].segment[LIB_MANAGER_TEXT].file_offset;
 			ctx->mod[n_mod].mapped = false;
 			ctx->mod[n_mod].llext = NULL;
+			ctx->mod[n_mod].ebl = NULL;
 			ctx->mod[n_mod++].start_idx = i;
 		}
 
@@ -429,8 +431,20 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 		mod_size = ALIGN_UP(mod_array[i].segment[LIB_MANAGER_TEXT].file_offset - mod_offset,
 				    PAGE_SZ);
 
-	uint8_t *dram_base = (uint8_t *)desc - SOF_MAN_ELF_TEXT_OFFSET;
-	struct llext_buf_loader ebl = LLEXT_BUF_LOADER(dram_base + mod_offset, mod_size);
+	if (!mctx->ebl) {
+		/* allocate once, never freed */
+		mctx->ebl = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+				    sizeof(struct llext_buf_loader));
+		if (!mctx->ebl) {
+			tr_err(&lib_manager_tr, "loader alloc failed");
+			return 0;
+		}
+
+		uint8_t *dram_base = (uint8_t *)desc - SOF_MAN_ELF_TEXT_OFFSET;
+
+		*mctx->ebl = (struct llext_buf_loader)LLEXT_BUF_LOADER(dram_base + mod_offset,
+								       mod_size);
+	}
 
 	/*
 	 * LLEXT linking is only needed once for all the "drivers" in the
@@ -438,7 +452,7 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 	 * dependencies, sets up sections and retrieves buildinfo and
 	 * mod_manifest
 	 */
-	ret = llext_manager_link(&ebl.loader, mod_array[entry_index - inst_idx].name, mctx,
+	ret = llext_manager_link(mod_array[entry_index - inst_idx].name, mctx,
 				 buildinfo, mod_manifest);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "linking failed: %d", ret);

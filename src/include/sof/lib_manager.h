@@ -97,12 +97,14 @@ struct lib_manager_segment_desc {
 };
 
 struct llext;
+struct llext_buf_loader;
 
 struct lib_manager_module {
 	unsigned int start_idx;	/* Index of the first driver from this module in
 				 * the library-global driver list */
 	const struct sof_man_module_manifest *mod_manifest;
 	struct llext *llext; /* Zephyr loadable extension context */
+	struct llext_buf_loader *ebl; /* Zephyr loadable extension buffer loader */
 	bool mapped;
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
 };
