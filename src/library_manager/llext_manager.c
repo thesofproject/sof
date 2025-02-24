@@ -523,7 +523,7 @@ static int llext_lib_find(const struct llext *llext, struct lib_manager_module *
 	return -ENOENT;
 }
 
-static void llext_depend_unlink(struct lib_manager_module *dep_ctx[], int n)
+static void llext_manager_depend_unlink_rollback(struct lib_manager_module *dep_ctx[], int n)
 {
 	for (; n >= 0; n--)
 		if (dep_ctx[n] && dep_ctx[n]->llext->use_count == 1)
@@ -605,7 +605,7 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 
 			ret = llext_manager_load_module(dep_ctx[i]);
 			if (ret < 0) {
-				llext_depend_unlink(dep_ctx, i - 1);
+				llext_manager_depend_unlink_rollback(dep_ctx, i - 1);
 				return 0;
 			}
 		}
@@ -664,7 +664,7 @@ int llext_manager_free_module(const uint32_t component_id)
 	}
 
 	struct lib_manager_module *dep_ctx[LLEXT_MAX_DEPENDENCIES] = {};
-	int i;	/* signed to match llext_depend_unlink() */
+	int i;	/* signed to match llext_manager_depend_unlink_rollback() */
 
 	for (i = 0; i < ARRAY_SIZE(mctx->llext->dependency); i++)
 		if (llext_lib_find(mctx->llext->dependency[i], &dep_ctx[i]) < 0)
@@ -672,7 +672,7 @@ int llext_manager_free_module(const uint32_t component_id)
 
 	/* Last user cleaning up, put dependencies */
 	if (i)
-		llext_depend_unlink(dep_ctx, i - 1);
+		llext_manager_depend_unlink_rollback(dep_ctx, i - 1);
 
 	/*
 	 * The last instance of the module has been destroyed and it can now be
