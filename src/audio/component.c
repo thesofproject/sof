@@ -420,6 +420,7 @@ void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
 
 #endif
 EXPORT_SYMBOL(audio_stream_copy);
+EXPORT_SYMBOL(cir_buf_copy);
 
 void audio_stream_copy_from_linear(const void *linear_source, int ioffset,
 				   struct audio_stream *sink, int ooffset,

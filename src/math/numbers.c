@@ -183,4 +183,10 @@ EXPORT_SYMBOL(__udivdi3);
 
 int64_t __divdi3(int64_t a, int64_t b);
 EXPORT_SYMBOL(__divdi3);
+
+long __ashldi3(long a, int b);
+EXPORT_SYMBOL(__ashldi3);
+
+long __lshrdi3(long a, int b);
+EXPORT_SYMBOL(__lshrdi3);
 #endif
