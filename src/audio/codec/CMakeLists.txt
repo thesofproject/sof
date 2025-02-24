@@ -8,5 +8,6 @@ if(CONFIG_DTS_CODEC)
         else()
                 sof_add_static_library(DtsCodec
                        ${SOF_ROOT_SOURCE_DIRECTORY}/third_party/lib/libdts-sof-interface-i32.a)
+	        target_include_directories(sof PRIVATE ${CMAKE_SOURCE_DIR}/third_party/include)
         endif()
 endif()
