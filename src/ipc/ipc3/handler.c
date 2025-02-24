@@ -137,7 +137,7 @@ struct ipc_cmd_hdr *mailbox_validate(void)
 /* check if a pipeline is hostless when walking downstream */
 static bool is_hostless_downstream(struct comp_dev *current)
 {
-	struct list_item *clist;
+	struct comp_buffer *buffer;
 
 	/* check if current is a HOST comp */
 	if (current->ipc_config.type == SOF_COMP_HOST ||
@@ -145,22 +145,18 @@ static bool is_hostless_downstream(struct comp_dev *current)
 		return false;
 
 	/* check if the pipeline has a HOST comp downstream */
-	list_for_item(clist, &current->bsink_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer, source_list);
-
+	comp_dev_for_each_consumer(current, buffer) {
 		/* don't go downstream if this component is not connected */
-		if (!buffer->sink)
+		if (!comp_buffer_get_sink_component(buffer))
 			continue;
 
 		/* dont go downstream if this comp belongs to another pipe */
-		if (buffer->sink->ipc_config.pipeline_id !=
+		if (comp_buffer_get_sink_component(buffer)->ipc_config.pipeline_id !=
 			current->ipc_config.pipeline_id)
 			continue;
 
 		/* return if there's a host comp downstream */
-		if (!is_hostless_downstream(buffer->sink))
+		if (!is_hostless_downstream(comp_buffer_get_sink_component(buffer)))
 			return false;
 	}
 
@@ -170,7 +166,7 @@ static bool is_hostless_downstream(struct comp_dev *current)
 /* check if a pipeline is hostless when walking upstream */
 static bool is_hostless_upstream(struct comp_dev *current)
 {
-	struct list_item *clist;
+	struct comp_buffer *buffer;
 
 	/* check if current is a HOST comp */
 	if (current->ipc_config.type == SOF_COMP_HOST ||
@@ -178,22 +174,18 @@ static bool is_hostless_upstream(struct comp_dev *current)
 		return false;
 
 	/* check if the pipeline has a HOST comp upstream */
-	list_for_item(clist, &current->bsource_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer, sink_list);
-
+	comp_dev_for_each_producer(current, buffer) {
 		/* don't go upstream if this component is not connected */
-		if (!buffer->source)
+		if (!comp_buffer_get_source_component(buffer))
 			continue;
 
 		/* dont go upstream if this comp belongs to another pipeline */
-		if (buffer->source->ipc_config.pipeline_id !=
+		if (comp_buffer_get_source_component(buffer)->ipc_config.pipeline_id !=
 		    current->ipc_config.pipeline_id)
 			continue;
 
 		/* return if there is a host comp upstream */
-		if (!is_hostless_upstream(buffer->source))
+		if (!is_hostless_upstream(comp_buffer_get_source_component(buffer)))
 			return false;
 	}
 

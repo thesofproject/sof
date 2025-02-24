@@ -42,7 +42,7 @@ static inline struct comp_buffer *create_test_sink(struct comp_dev *dev,
 
 static inline void free_test_sink(struct comp_buffer *buffer)
 {
-	free(buffer->sink);
+	free(comp_buffer_get_sink_component(buffer));
 	buffer_free(buffer);
 }
 
