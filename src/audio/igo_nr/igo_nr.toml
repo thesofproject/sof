@@ -5,7 +5,7 @@
 	REM # IGO_NR module config
 	[[module.entry]]
 	name = "IGO_NR"
-	uuid = "696AE2BC-2877-11EB-ADC1-0242AC120002"
+	uuid = UUIDREG_STR_IGO_NR
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"

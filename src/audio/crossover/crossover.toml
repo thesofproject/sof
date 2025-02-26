@@ -7,7 +7,7 @@
 	REM # be appended to the IPC payload. The Extension is needed to know the output pin indices.
 	[[module.entry]]
 	name = "XOVER"
-	uuid = "948C9AD1-806A-4131-AD6C-B2BDA9E35A9F"
+	uuid = UUIDREG_STR_CROSSOVER
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"

@@ -5,7 +5,7 @@
 	REM # smart amp test module config
 	[[module.entry]]
 	name = "SMATEST"
-	uuid = "167A961E-8AE4-11EA-89F1-000C29CE1635"
+	uuid = UUIDREG_STR_SMART_AMP_TEST
 	affinity_mask = "0x1"
 	instance_count = "1"
 	domain_types = "0"

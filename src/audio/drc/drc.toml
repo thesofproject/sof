@@ -5,7 +5,7 @@
 	REM # DRC module config
 	[[module.entry]]
 	name = "DRC"
-	uuid = "B36EE4DA-006F-47F9-A06D-FECBE2D8B6CE"
+	uuid = UUIDREG_STR_DRC
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"
