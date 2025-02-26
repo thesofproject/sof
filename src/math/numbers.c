@@ -177,6 +177,7 @@ uint32_t crc32(uint32_t base, const void *data, uint32_t bytes)
 	return ~crc;
 }
 
+/* Below we export compiler builtin functions to be used by LLEXT modules */
 #if !CONFIG_64BIT
 uint64_t __udivdi3(uint64_t a, uint64_t b);
 EXPORT_SYMBOL(__udivdi3);
