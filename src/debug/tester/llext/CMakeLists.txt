@@ -4,4 +4,5 @@
 sof_llext_build("tester"
 	SOURCES ../tester.c
 		../tester_dummy_test.c
+		../tester_simple_dram_test.c
 )
