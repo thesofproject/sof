@@ -759,8 +759,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 #if CONFIG_COMP_CHAIN_DMA
 int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 {
-	const struct sof_uuid uuid = {0x6a0a274f, 0x27cc, 0x4afb, {0xa3, 0xe7, 0x34,
-			0x44, 0x72, 0x3f, 0x43, 0x2e}};
+	const struct sof_uuid uuid = SOF_REG_UUID(chain_dma);
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
 
