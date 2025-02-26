@@ -271,6 +271,10 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 
 		buffer_stream_writeback(cd->hd->local_buffer, bytes);
 	}
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	if (cd->mic_priv)
+		mic_privacy_process(dev, cd->mic_priv, cd->hd->local_buffer, bytes);
+#endif
 }
 
 static void copier_notifier_cb(void *arg, enum notify_id type, void *data)
