@@ -38,6 +38,10 @@ enum {
 				  *  and will be unified with SOF_SCHEDULE_EDF for Zephyr builds
 				  *  current implementation of Zephyr based EDF is depreciated now
 				  */
+	SOF_SCHEDULE_TWB,	/**< Tasks With Budget scheduler based on Zephyr peemptive threads
+				  * for each SOF task that has pre-allocated MCPS budget
+				  * renewed with every system tick.
+				  */
 	SOF_SCHEDULE_COUNT	/**< indicates number of scheduler types */
 };
 
