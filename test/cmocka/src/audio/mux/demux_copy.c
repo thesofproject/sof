@@ -96,10 +96,7 @@ static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 	size_t ipc_size = sizeof(struct sof_ipc_comp_process);
 	size_t mux_size = sizeof(struct sof_mux_config) +
 		MUX_MAX_STREAMS * sizeof(struct mux_stream_data);
-	const struct sof_uuid uuid = {
-		.a = 0xc4b26868, .b = 0x1430, .c = 0x470e,
-		.d = {0xa0, 0x89, 0x15, 0xd1, 0xc7, 0x7f, 0x85, 0x1a}
-	};
+	const struct sof_uuid uuid = SOF_REG_UUID(demux);
 	int i, j;
 
 	ipc = calloc(1, ipc_size + mux_size + SOF_UUID_SIZE);
