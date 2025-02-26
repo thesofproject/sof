@@ -697,19 +697,25 @@ elseif(CONFIG_MATH_FIR)
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
-	${SOF_MATH_PATH}/iir_df1_generic.c
-	${SOF_MATH_PATH}/iir_df1_hifi3.c
-	${SOF_MATH_PATH}/iir_df1_hifi4.c
-	${SOF_MATH_PATH}/iir_df1_hifi5.c
-	${SOF_MATH_PATH}/iir_df1.c
-)
+if(CONFIG_MATH_IIR STREQUAL "m")
+	add_subdirectory(${SOF_MATH_PATH}/iir_llext
+			 ${PROJECT_BINARY_DIR}/iir_llext)
+	add_dependencies(app fir)
+elseif(CONFIG_MATH_IIR)
+	zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
+		${SOF_MATH_PATH}/iir_df1_generic.c
+		${SOF_MATH_PATH}/iir_df1_hifi3.c
+		${SOF_MATH_PATH}/iir_df1_hifi4.c
+		${SOF_MATH_PATH}/iir_df1_hifi5.c
+		${SOF_MATH_PATH}/iir_df1.c
+	)
 
-zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF2T
-	${SOF_MATH_PATH}/iir_df2t_generic.c
-	${SOF_MATH_PATH}/iir_df2t_hifi3.c
-	${SOF_MATH_PATH}/iir_df2t.c
-)
+	zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF2T
+		${SOF_MATH_PATH}/iir_df2t_generic.c
+		${SOF_MATH_PATH}/iir_df2t_hifi3.c
+		${SOF_MATH_PATH}/iir_df2t.c
+	)
+endif()
 
 if(CONFIG_COMP_ASRC STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/asrc/llext
