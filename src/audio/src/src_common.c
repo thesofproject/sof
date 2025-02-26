@@ -17,6 +17,7 @@
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
 #include <sof/lib/fast-get.h>
+#include <sof/lib/memory.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
