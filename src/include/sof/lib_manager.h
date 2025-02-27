@@ -63,6 +63,8 @@
 #define __SOF_LIB_MANAGER_H__
 
 #include <stdint.h>
+#include <sof/list.h>
+#include <sof/audio/component.h>
 #include <rimage/sof/user/manifest.h>
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 #include <sof/auth_api_iface.h>
