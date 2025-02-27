@@ -275,6 +275,19 @@ config MT8195
 	  Select if your target platform is mt8195-compatible
 	  Builds legacy/xtos firmware
 
+config MT8365
+	bool "Build for MTK MT8365"
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_2
+	select XT_INTERRUPT_LEVEL_3
+	select DUMMY_DMA
+	select HOST_PTABLE
+	select MEDIATEK
+	select XTENSA_EXCLUSIVE
+	select SCHEDULE_DMA_MULTI_CHANNEL
+	help
+	  Select if your target platform is mt8365-compatible
+
 config MTK
 	bool "Build for Mediatek (Zephyr)"
 	select SCHEDULE_DMA_MULTI_CHANNEL
@@ -507,6 +520,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "mt8188" if MT8188
 	default "mt8195" if MT8195
 	default "mt8196" if MT8196
+	default "mt8365" if MT8365
 	default ""
 	help
 	  Signing schema name used by rimage to decide how to build final binary
@@ -556,6 +570,7 @@ config XTENSA_EXCLUSIVE
 config FORCE_DMA_COPY_WHOLE_BLOCK
 	bool
 	default y if MT8195
+	default y if MT8365
 	default n
 	depends on HOST_PTABLE
 	help
