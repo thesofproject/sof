@@ -686,6 +686,7 @@ elseif(CONFIG_MATH_FIR)
 		${SOF_MATH_PATH}/fir_generic.c
 		${SOF_MATH_PATH}/fir_hifi2ep.c
 		${SOF_MATH_PATH}/fir_hifi3.c
+		${SOF_MATH_PATH}/fir_hifi5.c
 	)
 endif()
 
