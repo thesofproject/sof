@@ -60,10 +60,9 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 	}
 }
 
-void copier_gain_set_basic_params(struct comp_dev *dev, struct dai_data *dd,
+void copier_gain_set_basic_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
 				  struct ipc4_base_module_cfg *ipc4_cfg)
 {
-	struct copier_gain_params *gain_params = dd->gain_data;
 
 	gain_params->channels_count = ipc4_cfg->audio_fmt.channels_count;
 
@@ -71,11 +70,10 @@ void copier_gain_set_basic_params(struct comp_dev *dev, struct dai_data *dd,
 		gain_params->gain_coeffs[i] = UNITY_GAIN_GENERIC;
 }
 
-int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
+int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
 				struct ipc4_base_module_cfg *ipc4_cfg,
 				uint32_t fade_period, uint32_t frames)
 {
-	struct copier_gain_params *gain_params = dd->gain_data;
 	uint16_t step_i64_to_i16;
 
 	if (fade_period == GAIN_DEFAULT_FADE_PERIOD) {
@@ -88,6 +86,8 @@ int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
 		/* Special case for GAIN_ZERO_TRANS_MS to support zero fade-in transition time */
 		gain_params->fade_sg_length = 0;
 		return 0;
+	} else {
+		gain_params->fade_sg_length = frames * fade_period;
 	}
 
 	/* High precision step for fade-in calculation, keeps accurate precision */
