@@ -6,7 +6,7 @@
 /* Conversion from 48000 Hz to 32000 Hz */
 /* NUM_FILTERS=6, FILTER_LENGTH=80, alpha=8.000000, gamma=0.452000 */
 
-static const int32_t coeff48000to32000[] = {
+__cold_rodata static const int32_t coeff48000to32000[] = {
 /* Filter #6, conversion from 48000 Hz to 32000 Hz */
 
 CONVERT_COEFF(-11561), /* Filter:6, Coefficient: 1 */
