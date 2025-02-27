@@ -21,6 +21,7 @@
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
@@ -37,7 +38,7 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
-static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
+__cold static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
 {
 	if (desc->caps >= SOF_MEM_CAPS_LOWEST_INVALID)
 		return false;
@@ -47,7 +48,7 @@ static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
 }
 
 /* create a new component in the pipeline */
-struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
+__cold struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
 {
 	struct comp_buffer *buffer;
 
@@ -75,7 +76,7 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared
 	return buffer;
 }
 
-int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
+__cold int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
 {
 	switch (icd->type) {
 	case COMP_TYPE_COMPONENT:
@@ -95,9 +96,9 @@ int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
 /* Function overwrites PCM parameters (frame_fmt, buffer_fmt, channels, rate)
  * with buffer parameters when specific flag is set.
  */
-static void comp_update_params(uint32_t flag,
-			       struct sof_ipc_stream_params *params,
-			       struct comp_buffer *buffer)
+__cold static void comp_update_params(uint32_t flag,
+				      struct sof_ipc_stream_params *params,
+				      struct comp_buffer *buffer)
 {
 	if (flag & BUFF_PARAMS_FRAME_FMT)
 		params->frame_fmt = audio_stream_get_frm_fmt(&buffer->stream);
@@ -112,8 +113,8 @@ static void comp_update_params(uint32_t flag,
 		params->rate = audio_stream_get_rate(&buffer->stream);
 }
 
-int comp_verify_params(struct comp_dev *dev, uint32_t flag,
-		       struct sof_ipc_stream_params *params)
+__cold int comp_verify_params(struct comp_dev *dev, uint32_t flag,
+			      struct sof_ipc_stream_params *params)
 {
 	struct list_item *source_list;
 	struct list_item *sink_list;
@@ -177,8 +178,8 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 }
 EXPORT_SYMBOL(comp_verify_params);
 
-int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
-			struct comp_buffer *buffer, uint32_t dir)
+__cold int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
+			       struct comp_buffer *buffer, uint32_t dir)
 {
 	/* check if it's a connection between cores */
 	if (buffer->core != comp_core) {
@@ -195,7 +196,7 @@ int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
 	return pipeline_connect(comp, buffer, dir);
 }
 
-int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
+__cold int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	struct ipc_comp_dev *icd;
@@ -258,7 +259,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 				 ipc_ppl_sink->cd);
 }
 
-int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
+__cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
