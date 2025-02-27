@@ -200,6 +200,18 @@ uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config);
 
 /*
+ * \brief Get address and size of the bss section for given module instance
+ *
+ * param[in] instance_id - instance id
+ * param[in] mod - module manifest
+ * param[out] va_addr - address of the bss section
+ * param[out] size - size of the bss section
+ */
+void lib_manager_get_instance_bss_address(uint32_t instance_id,
+					  const struct sof_man_module *mod,
+					  void __sparse_cache **va_addr, size_t *size);
+
+/*
  * \brief Free module
  *
  * param[in] component_id - component id coming from ipc config. This function reguires valid
