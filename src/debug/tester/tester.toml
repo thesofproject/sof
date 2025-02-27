@@ -4,7 +4,7 @@
 
 	[[module.entry]]
 	name = "TESTER"
-	uuid = "08AEB4FF-7F68-4C71-86C3-C842B4262898"
+	uuid = UUIDREG_STR_TESTER
 	affinity_mask = "0x1"
 	REM #instance_count = "10"
 	domain_types = "0"

@@ -5,7 +5,7 @@
 	REM # RTNR module config
 	[[module.entry]]
 	name = "RTNR"
-	uuid = "5C7CA334-E15D-11EB-BA80-0242AC130004"
+	uuid = UUIDREG_STR_RTNR
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"
