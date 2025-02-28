@@ -186,21 +186,6 @@ int lib_manager_register_module(const uint32_t component_id);
  */
 const struct sof_man_fw_desc *lib_manager_get_library_manifest(int module_id);
 
-struct processing_module;
-struct comp_ipc_config;
-/*
- * \brief Allocate module
- *
- * param[in] drv - component driver
- * param[in] ipc_config - audio component base configuration from IPC at creation
- * param[in] ipc_specific_config - ipc4 base configuration
- *
- * Function is responsible to allocate module in available free memory and assigning proper address.
- * (WIP) These feature will contain module validation and proper memory management.
- */
-uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
-				      const void *ipc_specific_config);
-
 /*
  * \brief Free module
  *
