@@ -73,9 +73,9 @@
 
 #define LIB_MANAGER_MAX_LIBS				16
 #define LIB_MANAGER_LIB_ID_SHIFT			12
-#define LIB_MANAGER_LIB_NOTIX_MAX_COUNT		4
+#define LIB_MANAGER_LIB_NOTIX_MAX_COUNT			4
 
-#define LIB_MANAGER_GET_LIB_ID(module_id) ((module_id) >> LIB_MANAGER_LIB_ID_SHIFT)
+#define LIB_MANAGER_GET_LIB_ID(module_id) (((module_id) & 0xF000) >> LIB_MANAGER_LIB_ID_SHIFT)
 #define LIB_MANAGER_GET_MODULE_INDEX(module_id) ((module_id) & 0xFFF)
 
 #ifdef CONFIG_LIBRARY_MANAGER
