@@ -108,7 +108,7 @@ extern "C" {
  * the agent system. The system_agent_start function returns it in the variable adapter.
  */
 int system_agent_start(uintptr_t entry_point, uint32_t module_id, uint32_t instance_id,
-		       uint32_t core_id, uint32_t log_handle, void *mod_cfg, void **adapter);
+		       uint32_t core_id, uint32_t log_handle, void *mod_cfg, const void **adapter);
 #ifdef __cplusplus
 }
 #endif
