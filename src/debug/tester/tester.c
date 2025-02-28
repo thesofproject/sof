@@ -16,6 +16,7 @@
 #include <sof/audio/sink_source_utils.h>
 #include "tester.h"
 #include "tester_dummy_test.h"
+#include "tester_simple_dram_test.h"
 
 /**
  * Tester module is a framework for a runtime testing that need a special test code
@@ -75,6 +76,9 @@ static int tester_init(struct processing_module *mod)
 	switch (cd->test_case_type) {
 	case TESTER_MODULE_CASE_DUMMY_TEST:
 		cd->tester_case_interface = &tester_interface_dummy_test;
+		break;
+	case TESTER_MODULE_CASE_SIMPLE_DRAM_TEST:
+		cd->tester_case_interface = &tester_interface_simple_dram_test;
 		break;
 
 	default:

@@ -212,6 +212,7 @@ elseif(CONFIG_COMP_TESTER)
 	zephyr_library_sources_ifdef(CONFIG_COMP_TESTER
 		${SOF_DEBUG_PATH}/tester/tester.c
 		${SOF_DEBUG_PATH}/tester/tester_dummy_test.c
+		${SOF_DEBUG_PATH}/tester/tester_simple_dram_test.c
 	)
 endif()
 
