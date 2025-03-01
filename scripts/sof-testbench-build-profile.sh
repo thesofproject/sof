@@ -9,18 +9,32 @@ usage() {
     echo "  -h shows this text"
     echo "  -p <platform> sets platform for scripts/rebuild-testbench.sh"
     echo
+    echo "This script must be run from the sof firmware toplevel or workspace directory"
 }
 
 MODULES_S32="asrc dcblock drc drc_multiband eqfir eqiir gain src tdfb"
 MODULES_S24="aria"
 
-if [ -z "${SOF_WORKSPACE}" ]; then
-    echo "Error: environment variable SOF_WORKSPACE need to be set to top level sof directory"
+# This script can be executed from the sof firmware toplevel or workspace directory
+# First check for the worksapce environment variable
+if [ -z "$SOF_WORKSPACE" ]; then
+    # Environment variable is empty or unset so use default
+    BASE_DIR="$HOME/work/sof"
+else
+    # Environment variable exists and has a value
+    BASE_DIR="$SOF_WORKSPACE"
+fi
+cd "$BASE_DIR"
+
+# check we are in the workspace directory
+if [ ! -d "sof" ]; then
+    echo "Error: can't find SOF firmware directory. Please check your installation."
     exit 1
 fi
 
+#set default values
 PLATFORM=none
-PDIR=$SOF_WORKSPACE/sof/tools/testbench/profile
+PDIR=$PWD/sof/tools/testbench/profile
 
 while getopts "hp:d:" opt; do
     case "${opt}" in
@@ -43,7 +57,7 @@ done
 shift $((OPTIND-1))
 
 # Build
-SCRIPTS=$SOF_WORKSPACE/sof/scripts
+SCRIPTS=$PWD/sof/scripts
 mkdir -p "$PDIR"
 "$SCRIPTS"/rebuild-testbench.sh -p "$PLATFORM"
 HELPER="$SCRIPTS"/sof-testbench-helper.sh
