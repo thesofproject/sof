@@ -6,8 +6,10 @@
 # According to instructions:
 # https://thesofproject.github.io/latest/howtos/process/docbuild.html
 
-# fail immediately on any errors
-set -e
+# this needs to run from the Zephyr python virtual environment
+# so that the python packages are available (and more up to date than
+# the system packages).
+source ~/zephyrproject/.venv/bin/activate
 
 function print_usage()
 {
@@ -133,3 +135,6 @@ then
 	cd "$DOCS_REPO"
 	make publish
 fi
+
+# cleanup
+deactivate
