@@ -29,10 +29,22 @@ usage() {
     echo "Example: check component eqiir with valgrind"
     echo "$0 -v -m eqiir"
     echo
+    echo This script must be run from the sof firmware toplevel or workspace directory
 }
 
-if [ -z "${SOF_WORKSPACE}" ]; then
-    echo "Error: environment variable SOF_WORKSPACE need to be set to top level sof directory"
+# First check for the workspace environment variable
+if [ -z "$SOF_WORKSPACE" ]; then
+    # Environment variable is empty or unset so use default
+    BASE_DIR="$HOME/work/sof"
+else
+    # Environment variable exists and has a value
+    BASE_DIR="$SOF_WORKSPACE"
+fi
+cd "$BASE_DIR"
+
+# check we are in the workspace directory
+if [ ! -d "sof" ]; then
+    echo "Error: can't find SOF firmware directory. Please check your installation."
     exit 1
 fi
 
@@ -119,13 +131,13 @@ else
     sox --encoding signed-integer "$CLIP" -L -r "$RATE_IN" -c "$CHANNELS_IN" -b "$BITS" "$INFILE1"
 fi
 
-TB4="$SOF_WORKSPACE/sof/tools/testbench/build_testbench/install/bin/sof-testbench4"
-XTB4="$SOF_WORKSPACE/sof/tools/testbench/build_xt_testbench/sof-testbench4"
-XTB4_SETUP="$SOF_WORKSPACE/sof/tools/testbench/build_xt_testbench/xtrun_env.sh"
+TB4="$PWD/sof/tools/testbench/build_testbench/install/bin/sof-testbench4"
+XTB4="$PWD/sof/tools/testbench/build_xt_testbench/sof-testbench4"
+XTB4_SETUP="$PWD/sof/tools/testbench/build_xt_testbench/xtrun_env.sh"
 if [ -z "$TPLG0" ]; then
-    TPLG="$SOF_WORKSPACE/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-${MODULE}${BITS}.tplg"
+    TPLG="$PWD/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-${MODULE}${BITS}.tplg"
 else
-    TPLG="$SOF_WORKSPACE/sof/tools/build_tools/topology/topology2/$TPLG0"
+    TPLG="$PWD/sof/tools/build_tools/topology/topology2/$TPLG0"
 fi
 FMT="S${BITS}_LE"
 OPTS="-r $RATE_IN -R $RATE_OUT -c $CHANNELS_IN -c $CHANNELS_OUT -b $FMT -p $PIPELINES -t $TPLG -i $INFILE1 -o $OUTFILE1"
