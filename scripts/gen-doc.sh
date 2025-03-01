@@ -6,8 +6,25 @@
 # According to instructions:
 # https://thesofproject.github.io/latest/howtos/process/docbuild.html
 
-# fail immediately on any errors
-set -e
+# this needs to run from the Zephyr python virtual environment
+# so that the python packages are available (and more up to date than
+# the system packages).
+
+# check if Zephyr environment is set up
+if [ ! -z "$ZEPHYR_BASE" ]; then
+    VENV_DIR="$ZEPHYR_BASE/.venv"
+    echo "Using Zephyr environment at $ZEPHYR_BASE"
+elif [ ! -z "$SOF_WORKSPACE" ]; then
+    VENV_DIR="$SOF_WORKSPACE/zephyr/.venv"
+    echo "Using SOF/Zephyr environment at $SOF_WORKSPACE"
+else
+    # fallback to the zephyr default from the getting started guide
+    VENV_DIR="$HOME/zephyrproject/.venv"
+    echo "Using default Zephyr environment at $VENV_DIR"
+fi
+
+# start the virtual environment
+source ${VENV_DIR}/bin/activate
 
 function print_usage()
 {
@@ -133,3 +150,6 @@ then
 	cd "$DOCS_REPO"
 	make publish
 fi
+
+# cleanup
+deactivate
