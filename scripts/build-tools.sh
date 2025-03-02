@@ -98,7 +98,7 @@ main()
                 CMAKE_ONLY BUILD_ALL
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
         SOF_REPO=$(dirname "$SCRIPT_DIR")
-        : "${BUILD_TOOLS_DIR:=$SOF_REPO/tools/build_tools}"
+        : "${BUILD_TOOLS_DIR:=$SOF_REPO/../build-tools-tplg}"
         : "${NO_PROCESSORS:=$(nproc)}"
         BUILD_ALL=false
 
