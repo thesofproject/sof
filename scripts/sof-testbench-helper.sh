@@ -79,7 +79,7 @@ while getopts "b:c:hi:km:n:o:p:r:t:vx" opt; do
         i)
 	    CLIP=${OPTARG}
 	    ;;
-	k)
+        k)
 	    KEEP_TMP=true
 	    ;;
         m)
@@ -105,7 +105,7 @@ while getopts "b:c:hi:km:n:o:p:r:t:vx" opt; do
         v)
 	    VALGRIND=valgrind
 	    ;;
-	x)
+        x)
 	    XTRUN=true
 	    ;;
         *)
