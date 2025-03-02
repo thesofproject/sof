@@ -1,18 +1,19 @@
 set(SOF_TOPOLOGY_BINARY_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
-
+set(SOF_ALSA_TOOLS_DIR "${SOF_ROOT_SOURCE_DIRECTORY}/../tools/bin")
+set(ALSATPLG_CMD "${SOF_ALSA_TOOLS_DIR}/alsatplg")
 
 function(alsatplg_version  OUT_STATUS  OUT_VERSION)
-	execute_process(COMMAND alsatplg --version
+	execute_process(COMMAND ${ALSATPLG_CMD} --version
 	  RESULT_VARIABLE status
 	  OUTPUT_VARIABLE stdout
 	  OUTPUT_STRIP_TRAILING_WHITESPACE)
-	message(DEBUG "alsatplg --version: status=${status}, output=${stdout}")
+	message(DEBUG "${ALSATPLG_CMD} --version: status=${status}, output=${stdout}")
 
 	set(${OUT_STATUS} "${status}" PARENT_SCOPE)
 
         # Some error messages have already been printed on stderr
 	if(NOT status EQUAL 0)
-	  message(WARNING "alsatplg --version returned status: ${status},
+	  message(WARNING "${ALSATPLG_CMD} --version returned status: ${status},
 ${stdout}")
 	  return()
 	endif()
@@ -32,7 +33,7 @@ endfunction()
 # Longer story in #5192.
 alsatplg_version(STATUS ALSATPLG_VERSION_NUMBER)
 if(NOT STATUS EQUAL 0)
-	message(WARNING "alsatplg failed: ${STATUS}; all topologies skipped")
+	message(WARNING "${ALSATPLG_CMD} failed: ${STATUS}; all topologies skipped")
 	return()
 else()
 	if(${ALSATPLG_VERSION_NUMBER} VERSION_LESS "1.2.5")
@@ -67,7 +68,7 @@ macro(add_alsatplg_command)
 		# permissions are hardcoded and only the user can read
 		# the -o(utput) file.
 		# See bug https://github.com/alsa-project/alsa-utils/issues/126
-		COMMAND alsatplg \$\${VERBOSE:+-v 1} -c ${ARGV0} -o ${ARGV1}
+		COMMAND ${ALSATPLG_CMD} \$\${VERBOSE:+-v 1} -c ${ARGV0} -o ${ARGV1}
 		USES_TERMINAL
 	)
 endmacro()
@@ -94,7 +95,7 @@ macro(add_alsatplg2_command conf_header conf_target input_name output_name inclu
 		COMMAND cat ${conf_header} ${input_name}.conf > ${output_name}.conf
 
 		# -p to pre-process Topology2.0 conf file
-		COMMAND ALSA_CONFIG_DIR=${CMAKE_SOURCE_DIR}/topology/topology2 alsatplg \$\${VERBOSE:+-v 1}
+		COMMAND ALSA_CONFIG_DIR=${CMAKE_SOURCE_DIR}/topology/topology2 ${ALSATPLG_CMD} \$\${VERBOSE:+-v 1}
 		        -I ${include_path} -D "'${defines}'" -p -c ${output_name}.conf -o ${output_name}.tplg
 		USES_TERMINAL
 		)
