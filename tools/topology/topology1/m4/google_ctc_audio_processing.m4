@@ -60,6 +60,9 @@ define(`W_GOOGLE_CTC_AUDIO_PROCESSING',
 `	bytes ['
 		$6
 `	]'
+`	mixer ['
+		$7
+`	]'
 `}')
 
 divert(0)dnl
