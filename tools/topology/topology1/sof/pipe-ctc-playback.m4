@@ -10,6 +10,7 @@ include(`buffer.m4')
 include(`pcm.m4')
 include(`dai.m4')
 include(`bytecontrol.m4')
+include(`mixercontrol.m4')
 include(`pipeline.m4')
 include(`google_ctc_audio_processing.m4')
 
@@ -37,12 +38,25 @@ C_CONTROLBYTES(DEF_CTC_BYTES, PIPELINE_ID,
 	,
 	DEF_CTC_PRIV)
 
+define(DEF_CTC_SWITCH, concat(`ctc_enable_', PIPELINE_ID))
+define(`CONTROL_NAME', `DEF_CTC_SWITCH')
+C_CONTROLMIXER(DEF_CTC_SWITCH, PIPELINE_ID,
+	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
+	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
+	false,
+	,
+	Channel register and shift for Front Center,
+	LIST(`	', KCONTROL_CHANNEL(FC, 3, 0)),
+	"1")
+undefine(`CONTROL_NAME')
+
 #
 # Components and Buffers
 #
 
 W_GOOGLE_CTC_AUDIO_PROCESSING(0, PIPELINE_FORMAT, 2, 2, SCHEDULE_CORE,
-    LIST(`      ', "DEF_CTC_BYTES"))
+    LIST(`      ', "DEF_CTC_BYTES"),
+    LIST(`      ', "DEF_CTC_SWITCH"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -77,3 +91,4 @@ PCM_CAPABILITIES(CTC Processing Playback PCM_ID, CAPABILITY_FORMAT_NAME(PIPELINE
 
 undefine(`DEF_CTC_PRIV')
 undefine(`DEF_CTC_BYTES')
+undefine(`DEF_CTC_SWITCH')
