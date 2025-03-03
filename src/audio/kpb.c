@@ -1721,9 +1721,8 @@ static enum task_state kpb_draining_task(void *arg)
 	struct history_buffer *buff = draining_data->hb;
 	size_t drain_req = draining_data->drain_req;
 	size_t sample_width = draining_data->sample_width;
-	size_t size_to_read;
+	size_t avail;
 	size_t size_to_copy;
-	bool move_buffer = false;
 	uint32_t drained = 0;
 	uint64_t draining_time_start;
 	uint64_t draining_time_end;
@@ -1791,21 +1790,9 @@ static enum task_state kpb_draining_task(void *arg)
 			period_copy_start = sof_cycle_get_64();
 		}
 
-		size_to_read = (uintptr_t)buff->end_addr - (uintptr_t)buff->r_ptr;
-
-		if (size_to_read > audio_stream_get_free_bytes(&sink->stream)) {
-			if (audio_stream_get_free_bytes(&sink->stream) >= drain_req)
-				size_to_copy = drain_req;
-			else
-				size_to_copy = audio_stream_get_free_bytes(&sink->stream);
-		} else {
-			if (size_to_read > drain_req) {
-				size_to_copy = drain_req;
-			} else {
-				size_to_copy = size_to_read;
-				move_buffer = true;
-			}
-		}
+		avail = (uintptr_t)buff->end_addr - (uintptr_t)buff->r_ptr;
+		size_to_copy = MIN(avail,
+				   MIN(drain_req, audio_stream_get_free_bytes(&sink->stream)));
 
 		kpb_drain_samples(buff->r_ptr, &sink->stream, size_to_copy,
 				  sample_width);
@@ -1817,10 +1804,10 @@ static enum task_state kpb_draining_task(void *arg)
 		kpb->hd.free += MIN(kpb->hd.buffer_size -
 				    kpb->hd.free, size_to_copy);
 
-		if (move_buffer) {
+		/* no data left in the current buffer -- switch to the next buffer */
+		if (size_to_copy == avail) {
 			buff->r_ptr = buff->start_addr;
 			buff = buff->next;
-			move_buffer = false;
 		}
 
 		if (size_to_copy) {
