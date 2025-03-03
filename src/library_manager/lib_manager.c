@@ -628,8 +628,9 @@ int lib_manager_register_module(const uint32_t component_id)
 		goto cleanup;
 	}
 
-	mod = (struct sof_man_module *)((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
-	const struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid;
+	mod = (const struct sof_man_module *)((const uint8_t *)desc +
+					      SOF_MAN_MODULE_OFFSET(entry_index));
+	const struct sof_uuid *uid = (const struct sof_uuid *)&mod->uuid;
 
 	lib_manager_prepare_module_adapter(drv, uid);
 
