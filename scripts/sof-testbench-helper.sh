@@ -10,10 +10,9 @@ usage() {
     echo "  -c <channels>, default 2"
     echo "  -h shows this text"
     echo "  -i <input wav>, default /usr/share/sounds/alsa/Front_Center.wav"
-    echo "  -k keep temporary files in /tmp"
+    echo "  -k keep temporary files in data directory"
     echo "  -m <module>, default gain"
     echo "  -n <pipelines>, default 1,2"
-    echo "  -o <output wav>, default none"
     echo "  -p <profiling result text>, use with -x, default none"
     echo "  -r <rate>, default 48000"
     echo "  -t <force topology>, default none, e.g. production/sof-hda-generic.tplg"
@@ -48,7 +47,6 @@ if [ ! -d "sof" ]; then
     exit 1
 fi
 
-OUTWAV=
 CLIP=/usr/share/sounds/alsa/Front_Center.wav
 MODULE=gain
 BITS=32
@@ -57,10 +55,6 @@ RATE_OUT=48000
 CHANNELS_IN=2
 CHANNELS_OUT=2
 PIPELINES="1,2"
-INFILE1=$(mktemp --tmpdir=/tmp in-XXXX.raw)
-OUTFILE1=$(mktemp --tmpdir=/tmp out-XXXX.raw)
-TRACEFILE=$(mktemp --tmpdir=/tmp trace-XXXX.txt)
-PROFILEOUT=$(mktemp --tmpdir=/tmp profile-XXXX.out)
 KEEP_TMP=false
 XTRUN=false
 PROFILE=false
@@ -119,6 +113,19 @@ while getopts "b:c:hi:km:n:o:p:r:t:vx" opt; do
     esac
 done
 shift $((OPTIND-1))
+
+# Get the current date and time in a specific format (YYYYMMDD_HHMMSS)
+timestamp=$(date +"%Y%m%d_%H%M%S")
+
+# Combine the prefix and timestamp to create the filename
+INFILE1="$PWD/testbench_data/in-${MODULE}-${timestamp}.raw"
+OUTFILE1="$PWD/testbench_data/out-${MODULE}-${timestamp}.raw"
+TRACEFILE="$PWD/testbench_data/trace-${MODULE}-${timestamp}.txt"
+PROFILEOUT="$PWD/testbench_data/profile-${MODULE}-${timestamp}.out"
+OUTWAV="$PWD/testbench_data/outwav-${MODULE}-${timestamp}.wav"
+
+# make the data directory if it doesn't exist
+mkdir -p $PWD/testbench_data
 
 echo Converting clip "$CLIP" to raw input
 if [[ "$BITS" == "24" ]]; then
@@ -181,16 +188,17 @@ else
     fi
 fi
 
-if [ -n "$OUTWAV" ]; then
-    echo Converting raw output to "$OUTWAV"
-    if [[ "$BITS" == "24" ]]; then
-	sox --encoding signed-integer -L -r "$RATE_OUT" -c "$CHANNELS_OUT" -b 32 "$OUTFILE1" "$OUTWAV" vol 256
-    else
-	sox --encoding signed-integer -L -r "$RATE_OUT" -c "$CHANNELS_OUT" -b "$BITS" "$OUTFILE1" "$OUTWAV"
-    fi
-fi
-
+# Generate the outwav if we are keeping our data files for inspection.
 if [[ "$KEEP_TMP" == false ]]; then
     echo Deleting temporary files
     rm -f "$INFILE1" "$OUTFILE1" "$TRACEFILE" "$PROFILEOUT"
+else
+    echo Converting raw output to "$OUTWAV"
+    if [[ "$BITS" == "24" ]]; then
+        sox --encoding signed-integer -L -r "$RATE_OUT" -c "$CHANNELS_OUT" -b 32 \
+            "$OUTFILE1" "$OUTWAV" vol 256
+    else
+        sox --encoding signed-integer -L -r "$RATE_OUT" -c "$CHANNELS_OUT" -b "$BITS" \
+            "$OUTFILE1" "$OUTWAV"
+    fi
 fi
