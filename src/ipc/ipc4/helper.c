@@ -20,6 +20,7 @@
 #include <ipc/dai.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -60,23 +61,23 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 extern struct tr_ctx comp_tr;
 
-void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
-			   uint32_t id)
+__cold void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
+				  uint32_t id)
 {
 	memset(posn, 0, sizeof(*posn));
 }
 
-void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
-			  uint32_t id)
+__cold void ipc_build_comp_event(struct sof_ipc_comp_event *event, uint32_t type,
+				 uint32_t id)
 {
 }
 
-bool ipc_trigger_trace_xfer(uint32_t avail)
+__cold bool ipc_trigger_trace_xfer(uint32_t avail)
 {
 	return avail >= DMA_TRACE_LOCAL_SIZE / 2;
 }
 
-void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
+__cold void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 {
 	posn->rhdr.hdr.cmd =  SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
 	posn->rhdr.hdr.size = 0;
@@ -96,7 +97,7 @@ static const struct comp_driver *ipc4_library_get_comp_drv(char *data)
 	return ipc4_get_drv(data);
 }
 #else
-static inline char *ipc4_get_comp_new_data(void)
+__cold static inline char *ipc4_get_comp_new_data(void)
 {
 	return (char *)MAILBOX_HOSTBOX_BASE;
 }
@@ -190,9 +191,9 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 	return dev;
 }
 
-struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
-					    uint32_t ppl_id,
-					    uint32_t ignore_remote)
+__cold struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
+						   uint32_t ppl_id,
+						   uint32_t ignore_remote)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -218,7 +219,7 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 	return NULL;
 }
 
-static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
+__cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
@@ -267,7 +268,7 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	return IPC4_SUCCESS;
 }
 
-int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
+__cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
 	struct ipc4_pipeline_create *pipe_desc = ipc_from_pipe_new(_pipe_desc);
 
@@ -280,7 +281,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	return ipc4_create_pipeline(pipe_desc);
 }
 
-static inline int ipc_comp_free_remote(struct comp_dev *dev)
+__cold static inline int ipc_comp_free_remote(struct comp_dev *dev)
 {
 	struct idc_msg msg = { IDC_MSG_FREE, IDC_MSG_FREE_EXT(dev->ipc_config.id),
 		dev->ipc_config.core,};
@@ -288,7 +289,7 @@ static inline int ipc_comp_free_remote(struct comp_dev *dev)
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
-static int ipc_pipeline_module_free(uint32_t pipeline_id)
+__cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
@@ -332,7 +333,7 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 	return IPC4_SUCCESS;
 }
 
-int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
+__cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	int ret;
@@ -366,9 +367,9 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	return IPC4_SUCCESS;
 }
 
-static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
-					      uint32_t buf_size, uint32_t src_queue,
-					      uint32_t dst_queue)
+__cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
+						     uint32_t buf_size, uint32_t src_queue,
+						     uint32_t dst_queue)
 {
 	struct sof_ipc_buffer ipc_buf;
 
@@ -448,7 +449,7 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 #endif
 
-int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+__cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer;
@@ -666,7 +667,7 @@ free:
  * during run-time. The only way to change pipeline topology is to delete the whole
  * pipeline and create it in modified form.
  */
-int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+__cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer = NULL;
@@ -757,7 +758,7 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 }
 
 #if CONFIG_COMP_CHAIN_DMA
-int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
+__cold int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 {
 	const struct sof_uuid uuid = SOF_REG_UUID(chain_dma);
 	const struct comp_driver *drv;
@@ -781,7 +782,7 @@ int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 	return ipc4_add_comp_dev(dev);
 }
 
-int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
+__cold int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 {
 	const bool allocate = cdma->primary.r.allocate;
 	const bool enable = cdma->primary.r.enable;
@@ -821,7 +822,7 @@ int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 }
 #endif
 
-static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
+__cold static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
@@ -853,7 +854,7 @@ static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 	return 0;
 }
 
-int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id, uint32_t cmd)
+__cold int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id, uint32_t cmd)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	int ret;
@@ -881,7 +882,7 @@ int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id, uint32_t cmd)
 	return ipc_pipeline_complete(ipc, comp_id);
 }
 
-int ipc4_process_on_core(uint32_t core, bool blocking)
+__cold int ipc4_process_on_core(uint32_t core, bool blocking)
 {
 	int ret;
 
@@ -902,7 +903,7 @@ int ipc4_process_on_core(uint32_t core, bool blocking)
 	return IPC4_SUCCESS;
 }
 
-const struct comp_driver *ipc4_get_drv(const void *uuid)
+__cold const struct comp_driver *ipc4_get_drv(const void *uuid)
 {
 	const struct sof_uuid *const sof_uuid = (const struct sof_uuid *)uuid;
 	struct comp_driver_list *drivers = comp_drivers_get();
@@ -938,7 +939,7 @@ out:
 	return drv;
 }
 
-const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
+__cold const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 {
 	const struct sof_man_fw_desc *desc = NULL;
 	const struct comp_driver *drv;
@@ -1002,7 +1003,7 @@ const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 	return drv;
 }
 
-struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
+__cold struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd = ipc_get_comp_by_id(ipc_get(), comp_id);
 
@@ -1010,7 +1011,7 @@ struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 }
 EXPORT_SYMBOL(ipc4_get_comp_dev);
 
-int ipc4_add_comp_dev(struct comp_dev *dev)
+__cold int ipc4_add_comp_dev(struct comp_dev *dev)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
@@ -1043,7 +1044,7 @@ int ipc4_add_comp_dev(struct comp_dev *dev)
 	return IPC4_SUCCESS;
 };
 
-int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size)
+__cold int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint32_t size)
 {
 #if ACE_VERSION > ACE_VERSION_1_5
 	uint32_t *dma_config_id = GET_IPC_DMA_CONFIG_ID(data_buffer, size);
@@ -1056,8 +1057,8 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
 	return IPC4_SUCCESS;
 }
 
-int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
-				  uint32_t size, uint32_t device_id, int dma_cfg_idx)
+__cold int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
+					 uint32_t size, uint32_t device_id, int dma_cfg_idx)
 {
 	uint32_t end_addr = (uint32_t)data_buffer + size;
 	struct ipc_dma_config *dma_cfg;
@@ -1085,8 +1086,8 @@ int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buff
 	return IPC4_INVALID_REQUEST;
 }
 
-void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
-					   struct sof_ipc_stream_params *params)
+__cold void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
+						  struct sof_ipc_stream_params *params)
 {
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 	int i;
@@ -1110,7 +1111,7 @@ void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *ba
 }
 EXPORT_SYMBOL(ipc4_base_module_cfg_to_stream_params);
 
-void ipc4_update_buffer_format(struct comp_buffer *buf_c,
+__cold void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 			       const struct ipc4_audio_format *fmt)
 {
 	enum sof_ipc_frame valid_fmt, frame_fmt;
@@ -1133,8 +1134,8 @@ void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 	audio_buffer_set_hw_params_configured(&buf_c->audio_buffer);
 }
 
-void ipc4_update_source_format(struct sof_source *source,
-			       const struct ipc4_audio_format *fmt)
+__cold void ipc4_update_source_format(struct sof_source *source,
+				      const struct ipc4_audio_format *fmt)
 {
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 
@@ -1150,8 +1151,8 @@ void ipc4_update_source_format(struct sof_source *source,
 	source_set_buffer_fmt(source, fmt->interleaving_style);
 }
 
-void ipc4_update_sink_format(struct sof_sink *sink,
-			     const struct ipc4_audio_format *fmt)
+__cold void ipc4_update_sink_format(struct sof_sink *sink,
+				    const struct ipc4_audio_format *fmt)
 {
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 
