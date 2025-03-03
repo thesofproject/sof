@@ -1733,7 +1733,7 @@ static enum task_state kpb_draining_task(void *arg)
 	uint64_t current_time;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->pb_limit;
-	size_t period_copy_start;
+	uint64_t period_copy_start;
 	size_t time_taken;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
