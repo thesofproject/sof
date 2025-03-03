@@ -28,6 +28,10 @@
 #include <rimage/sof/user/manifest.h>
 #include "copier/copier_gain.h"
 
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include <sof/audio/mic_privacy_manager.h>
+#endif
+
 struct ipc4_modules_info {
 	uint32_t modules_count;
 	struct sof_man_module modules[0];
@@ -98,6 +102,18 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 #ifdef CONFIG_SOC_INTEL_ACE30
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_I2S_CAPS_HW_CFG, I2S_VER_30_PTL);
+#endif
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	struct privacy_capabilities priv_caps;
+
+	tuple = tlv_next(tuple);
+
+	priv_caps.privacy_version = 1;
+	priv_caps.capabilities_length = 1;
+	priv_caps.capabilities[0] = mic_privacy_get_policy_register();
+
+	tlv_value_set(tuple, IPC4_INTEL_MIC_PRIVACY_CAPS_HW_CFG, sizeof(priv_caps), &priv_caps);
 #endif
 
 	tuple = tlv_next(tuple);
@@ -335,6 +351,38 @@ static int basefw_set_fw_config(bool first_block,
 	return 0;
 }
 
+static int basefw_set_mic_priv_policy(bool first_block,
+				      bool last_block,
+				      uint32_t data_offset_or_size,
+				      const char *data)
+{
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	return 0;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+static int basefw_mic_priv_state_changed(bool first_block,
+					 bool last_block,
+					 uint32_t data_offset_or_size,
+					 const char *data)
+{
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	tr_info(&basefw_comp_tr, "state changed to %d", *data);
+
+	uint32_t mic_disable_status = (uint32_t)(*data);
+	struct mic_privacy_settings settings;
+
+	mic_privacy_fill_settings(&settings, mic_disable_status);
+	mic_privacy_propagate_settings(&settings);
+
+	return 0;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 int basefw_vendor_set_large_config(struct comp_dev *dev,
 				   uint32_t param_id,
 				   bool first_block,
@@ -345,6 +393,10 @@ int basefw_vendor_set_large_config(struct comp_dev *dev,
 	switch (param_id) {
 	case IPC4_FW_CONFIG:
 		return basefw_set_fw_config(first_block, last_block, data_offset, data);
+	case IPC4_SET_MIC_PRIVACY_FW_MANAGED_POLICY_MASK:
+		return basefw_set_mic_priv_policy(first_block, last_block, data_offset, data);
+	case IPC4_MIC_PRIVACY_HW_MANAGED_STATE_CHANGE:
+		return basefw_mic_priv_state_changed(first_block, last_block, data_offset, data);
 	default:
 		break;
 	}
