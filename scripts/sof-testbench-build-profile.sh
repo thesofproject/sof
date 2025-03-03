@@ -34,7 +34,7 @@ fi
 
 #set default values
 PLATFORM=none
-PDIR=$PWD/sof/tools/testbench/profile
+PDIR=$PWD/testbench/profile
 
 while getopts "hp:d:" opt; do
     case "${opt}" in

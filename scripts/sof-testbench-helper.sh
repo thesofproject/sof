@@ -130,14 +130,14 @@ if [[ "$BITS" == "24" ]]; then
 else
     sox --encoding signed-integer "$CLIP" -L -r "$RATE_IN" -c "$CHANNELS_IN" -b "$BITS" "$INFILE1"
 fi
-
-TB4="$PWD/sof/tools/testbench/build_testbench/install/bin/sof-testbench4"
-XTB4="$PWD/sof/tools/testbench/build_xt_testbench/sof-testbench4"
-XTB4_SETUP="$PWD/sof/tools/testbench/build_xt_testbench/xtrun_env.sh"
+TOOLSDIR="$PWD/build_tools/testbench"
+TB4="$PWD/build-testbench/install/bin/sof-testbench4"
+XTB4="$PWD/build-xt-testbench/sof-testbench4"
+XTB4_SETUP="$PWD/build-xt-testbench/xtrun_env.sh"
 if [ -z "$TPLG0" ]; then
-    TPLG="$PWD/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-${MODULE}${BITS}.tplg"
+    TPLG="$PWD/build_tools/topology/topology2/development/sof-hda-benchmark-${MODULE}${BITS}.tplg"
 else
-    TPLG="$PWD/sof/tools/build_tools/topology/topology2/$TPLG0"
+    TPLG="$PWD/build_tools/topology/topology2/$TPLG0"
 fi
 FMT="S${BITS}_LE"
 OPTS="-r $RATE_IN -R $RATE_OUT -c $CHANNELS_IN -c $CHANNELS_OUT -b $FMT -p $PIPELINES -t $TPLG -i $INFILE1 -o $OUTFILE1"
