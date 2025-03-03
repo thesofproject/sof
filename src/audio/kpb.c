@@ -1730,11 +1730,9 @@ static enum task_state kpb_draining_task(void *arg)
 	uint64_t draining_time_ms;
 	uint64_t drain_interval = draining_data->drain_interval;
 	uint64_t next_copy_time = 0;
-	uint64_t current_time;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->pb_limit;
 	uint64_t period_copy_start;
-	size_t time_taken;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = draining_data->sync_mode_on;
@@ -1836,12 +1834,8 @@ static enum task_state kpb_draining_task(void *arg)
 			comp_copy(comp_buffer_get_sink_component(sink));
 		}
 
-		if (sync_mode_on && period_bytes >= period_bytes_limit) {
-			current_time = sof_cycle_get_64();
-			time_taken = current_time - period_copy_start;
-			next_copy_time = current_time + drain_interval -
-					 time_taken;
-		}
+		if (sync_mode_on && period_bytes >= period_bytes_limit)
+			next_copy_time = period_copy_start + drain_interval;
 
 		if (drain_req == 0) {
 		/* We have finished draining of requested data however
