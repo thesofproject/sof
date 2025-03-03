@@ -15,8 +15,8 @@
 #include <ipc4/error_status.h>
 #include <ipc4/logging.h>
 #if !CONFIG_LIBRARY
-#include <zephyr/logging/log_backend.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #endif
 #if CONFIG_LOG_BACKEND_SOF_PROBE
 #include <sof/probe/probe.h>
@@ -135,8 +135,7 @@ int ipc4_logging_enable_logs(bool first_block,
 
 	if (log_state->enable) {
 		adsp_mtrace_log_init(mtrace_log_hook);
-
-		log_backend_activate(log_backend, mtrace_log_hook);
+		log_backend_enable(log_backend, mtrace_log_hook, CONFIG_SOF_LOG_LEVEL);
 
 		mtrace_aging_timer = log_state->aging_timer_period;
 		if (mtrace_aging_timer < IPC4_MTRACE_AGING_TIMER_MIN_MS) {
@@ -150,7 +149,7 @@ int ipc4_logging_enable_logs(bool first_block,
 		schedule_task(&mtrace_task, mtrace_aging_timer * 1000, 0);
 	} else  {
 		adsp_mtrace_log_init(NULL);
-		log_backend_deactivate(log_backend);
+		log_backend_disable(log_backend);
 		schedule_task_cancel(&mtrace_task);
 	}
 
