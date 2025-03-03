@@ -12,6 +12,7 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
@@ -41,6 +42,7 @@ LOG_MODULE_DECLARE(drc, CONFIG_SOF_LOG_LEVEL);
 extern const struct sof_uuid drc_uuid;
 extern struct tr_ctx drc_tr;
 
+/* Called from drc_setup() from drc_process(), so cannot be __cold */
 void drc_reset_state(struct drc_state *state)
 {
 	int i;
@@ -118,6 +120,7 @@ int drc_set_pre_delay_time(struct drc_state *state,
 	return 0;
 }
 
+/* Called from drc_process(), so cannot be __cold */
 static int drc_setup(struct drc_comp_data *cd, uint16_t channels, uint32_t rate)
 {
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
@@ -205,10 +208,10 @@ __cold static int drc_free(struct processing_module *mod)
 	return 0;
 }
 
-static int drc_set_config(struct processing_module *mod, uint32_t param_id,
-			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-			  size_t response_size)
+__cold static int drc_set_config(struct processing_module *mod, uint32_t param_id,
+				 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				 size_t response_size)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -243,9 +246,9 @@ static int drc_set_config(struct processing_module *mod, uint32_t param_id,
 				  fragment_size);
 }
 
-static int drc_get_config(struct processing_module *mod,
-			  uint32_t config_id, uint32_t *data_offset_size,
-			  uint8_t *fragment, size_t fragment_size)
+__cold static int drc_get_config(struct processing_module *mod,
+				 uint32_t config_id, uint32_t *data_offset_size,
+				 uint8_t *fragment, size_t fragment_size)
 {
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct drc_comp_data *cd = module_get_private_data(mod);
