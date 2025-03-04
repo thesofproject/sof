@@ -898,7 +898,7 @@ int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id, uint32_t cmd)
 
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, comp_id);
 	if (!ipc_pipe)
-		return -IPC4_INVALID_RESOURCE_ID;
+		return -EINVAL;
 
 	/* Pass IPC to target core */
 	if (!cpu_is_me(ipc_pipe->core))
