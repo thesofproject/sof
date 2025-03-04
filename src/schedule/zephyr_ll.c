@@ -555,3 +555,11 @@ void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
 	scheduler_get_task_info(scheduler_props, data_off_size, &ll_sch->tasks);
 	zephyr_ll_unlock(ll_sch, &flags);
 }
+
+/* Return a pointer to the LL scheduler timer domain */
+struct ll_schedule_domain *zephyr_ll_domain(void)
+{
+	struct zephyr_ll *ll_sch = scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+
+	return ll_sch->ll_domain;
+}

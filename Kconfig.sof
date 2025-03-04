@@ -130,6 +130,13 @@ config COLD_STORE_EXECUTE_DRAM
 	  option to enable this feature to save SRAM and to speed up SRAM
 	  copying of performance-critical data and code.
 
+
+config COLD_STORE_EXECUTE_DEBUG
+	bool "Enable checks for cold code on hot paths"
+	help
+	  This enables an assert_can_be_cold() check, which causes an exception
+	  if called in the LL task context and assert() evaluation is enabled.
+
 config FAST_GET
 	bool "Enable simple refcounting DRAM data copier"
 	default n
