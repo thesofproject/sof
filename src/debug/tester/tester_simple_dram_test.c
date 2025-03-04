@@ -36,6 +36,8 @@ __cold static int simple_dram_test_case_init(struct processing_module *mod, void
 	struct tester_module_simple_dram_test_data *data =
 		rzalloc(0, 0, SOF_MEM_CAPS_L3, sizeof(*data));
 
+	assert_can_be_cold();
+
 	if (!data)
 		return -ENOMEM;
 
@@ -63,6 +65,8 @@ __cold static int simple_dram_test_case_process(void *ctx, struct processing_mod
 {
 	struct tester_module_simple_dram_test_data *data = ctx;
 
+	assert_can_be_cold();
+
 	/* copy every second cycle */
 	*do_copy = data->do_copy_data;
 	data->do_copy_data = !data->do_copy_data;
@@ -72,6 +76,8 @@ __cold static int simple_dram_test_case_process(void *ctx, struct processing_mod
 
 __cold static int simple_dram_test_free(void *ctx, struct processing_module *mod)
 {
+	assert_can_be_cold();
+
 	rfree(ctx);
 	return 0;
 }

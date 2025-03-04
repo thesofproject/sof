@@ -42,6 +42,8 @@ __cold static int src_prepare(struct processing_module *mod,
 	struct src_param *a = &cd->param;
 	int ret;
 
+	assert_can_be_cold();
+
 	comp_info(mod->dev, "src_prepare()");
 
 	if (num_of_sources != 1 || num_of_sinks != 1)
