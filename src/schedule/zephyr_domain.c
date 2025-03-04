@@ -6,6 +6,7 @@
 
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
+#include <rtos/symbol.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/watchdog.h>
@@ -321,3 +322,17 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 
 	return domain;
 }
+
+/* Check if currently running in the LL scheduler thread context */
+bool ll_sch_is_current(void)
+{
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(zephyr_ll_domain());
+
+	if (!zephyr_domain)
+		return false;
+
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + cpu_get_id();
+
+	return k_current_get() == &dt->ll_thread;
+}
+EXPORT_SYMBOL(ll_sch_is_current);
