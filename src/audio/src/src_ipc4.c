@@ -86,6 +86,8 @@ __cold int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
+	assert_can_be_cold();
+
 	src_params = *params;
 	src_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	src_params.buffer_fmt = mod->priv.cfg.base_cfg.audio_fmt.interleaving_style;
@@ -124,6 +126,8 @@ __cold void src_get_source_sink_params(struct comp_dev *dev, struct sof_source *
 	struct comp_data *cd = module_get_private_data(mod);
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 
+	assert_can_be_cold();
+
 	/* convert IPC4 config to format used by the module */
 	audio_stream_fmt_conversion(cd->ipc_config.base.audio_fmt.depth,
 				    cd->ipc_config.base.audio_fmt.valid_bit_depth,
@@ -143,6 +147,8 @@ __cold int src_prepare_general(struct processing_module *mod,
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	/* set align requirements */
 	src_set_alignment(source, sink);
@@ -186,6 +192,8 @@ __cold int src_init(struct processing_module *mod)
 	struct module_config *cfg = &md->cfg;
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = NULL;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "src_init()");
 

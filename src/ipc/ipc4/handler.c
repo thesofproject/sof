@@ -886,6 +886,8 @@ __cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 	if (ret < 0)
 		return IPC4_FAILURE;
 
+	assert_can_be_cold();
+
 	tr_dbg(&ipc_tr,
 		"ipc4_init_module_instance %x : %x",
 		(uint32_t)module_init.primary.r.module_id,

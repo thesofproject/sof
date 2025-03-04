@@ -110,6 +110,8 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 	uint32_t comp_id;
 	char *data;
 
+	assert_can_be_cold();
+
 	comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
 			       module_init->primary.r.instance_id);
 

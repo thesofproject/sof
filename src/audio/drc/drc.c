@@ -151,6 +151,8 @@ __cold static int drc_init(struct processing_module *mod)
 	size_t bs = cfg->size;
 	int ret;
 
+	assert_can_be_cold();
+
 	comp_info(dev, "drc_init()");
 
 	/* Check first before proceeding with dev and cd that coefficients
@@ -203,6 +205,8 @@ __cold static int drc_free(struct processing_module *mod)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 
+	assert_can_be_cold();
+
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
 	return 0;
@@ -215,6 +219,8 @@ __cold static int drc_set_config(struct processing_module *mod, uint32_t param_i
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "drc_set_config()");
 
@@ -252,6 +258,8 @@ __cold static int drc_get_config(struct processing_module *mod,
 {
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct drc_comp_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	comp_info(mod->dev, "drc_get_config()");
 
