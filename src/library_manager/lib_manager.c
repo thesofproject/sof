@@ -641,7 +641,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	if (ops && comp_set_adapter_ops(drv, ops) < 0)
 		goto err;
 
-	dev = module_adapter_new_ext(drv, config, spec, adapter_priv);
+	dev = module_adapter_new_ext(drv, config, spec, adapter_priv, NULL);
 	if (!dev)
 		goto err;
 
