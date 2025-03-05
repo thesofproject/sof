@@ -41,7 +41,7 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config, const void *spec)
 {
-	return module_adapter_new_ext(drv, config, spec, NULL);
+	return module_adapter_new_ext(drv, config, spec, NULL, NULL);
 }
 
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
@@ -108,7 +108,7 @@ static void module_adapter_mem_free(struct processing_module *mod)
  */
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config, const void *spec,
-					void *mod_priv)
+					void *mod_priv, struct userspace_context *user_ctx)
 {
 	int ret;
 	struct module_config *dst;
@@ -127,14 +127,16 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	if (!mod)
 		return NULL;
 
-	dst = &mod->priv.cfg;
 
 	module_set_private_data(mod, mod_priv);
+	list_init(&mod->raw_data_buffers_list);
+#if CONFIG_USERSPACE
+	mod->user_ctx = user_ctx;
+#endif /* CONFIG_USERSPACE */
 
 	struct comp_dev *dev = mod->dev;
 
-	list_init(&mod->raw_data_buffers_list);
-
+	dst = &mod->priv.cfg;
 	ret = module_adapter_init_data(dev, dst, config, spec);
 	if (ret) {
 		comp_err(dev, "%d: module init data failed",
