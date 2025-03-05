@@ -41,7 +41,7 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config, const void *spec)
 {
-	return module_adapter_new_ext(drv, config, spec, NULL);
+	return module_adapter_new_ext(drv, config, spec, NULL, NULL);
 }
 
 /*
@@ -58,7 +58,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
  */
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config, const void *spec,
-					void *mod_priv)
+					void *mod_priv, struct userspace_context* user_ctx)
 {
 	int ret;
 	struct comp_dev *dev;
@@ -100,6 +100,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	module_set_private_data(mod, mod_priv);
 	mod->dev = dev;
+	mod->user_ctx = user_ctx;
 	dev->mod = mod;
 
 	list_init(&mod->raw_data_buffers_list);
