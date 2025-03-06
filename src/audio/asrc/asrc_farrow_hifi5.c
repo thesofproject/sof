@@ -4,10 +4,10 @@
 
 #include <sof/common.h>
 
-#if SOF_USE_HIFI(3, ASRC) || SOF_USE_HIFI(4, ASRC)
+#if SOF_USE_MIN_HIFI(5, ASRC)
 
 #include "asrc_farrow.h"
-#include <xtensa/tie/xt_hifi3.h>
+#include <xtensa/tie/xt_hifi5.h>
 
 LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
 
@@ -401,4 +401,4 @@ void asrc_calc_impulse_response_n7(struct asrc_farrow *src_obj)
 	AE_SA64POS_FP(align_out, result_P);
 }
 
-#endif /* ASRC_HIFI_3 */
+#endif /* ASRC_HIFI_5 */
