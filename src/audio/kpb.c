@@ -1850,9 +1850,15 @@ static enum task_state kpb_draining_task(void *arg)
 out:
 	draining_time_end = sof_cycle_get_64();
 
-	/* Reset host-sink copy mode back to its pre-draining value */
-	comp_set_attribute(comp_buffer_get_sink_component(kpb->host_sink), COMP_ATTR_COPY_TYPE,
-			   &kpb->draining_task_data.copy_type);
+	/* Reset host-sink copy mode back to its pre-draining value.
+	 * kpb->host_sink is NULL after a reset or unbind.
+	 */
+	if (kpb->host_sink)
+		comp_set_attribute(comp_buffer_get_sink_component(kpb->host_sink),
+				   COMP_ATTR_COPY_TYPE,
+				   &kpb->draining_task_data.copy_type);
+	else
+		comp_cl_err(&comp_kpb, "Failed to restore host copy mode!");
 
 	draining_time_ms = k_cyc_to_ms_near64(draining_time_end - draining_time_start);
 	if (draining_time_ms <= UINT_MAX)
