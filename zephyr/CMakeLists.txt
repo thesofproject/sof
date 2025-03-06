@@ -716,6 +716,7 @@ if(CONFIG_COMP_ASRC STREQUAL "m")
 elseif(CONFIG_COMP_ASRC)
 	zephyr_library_sources(
 		${SOF_AUDIO_PATH}/asrc/asrc.c
+		${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi5.c
 		${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
 		${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
 		${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
