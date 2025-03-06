@@ -181,27 +181,29 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 void asrc_calc_impulse_response_n4(struct asrc_farrow *src_obj)
 {
 	ae_f32x2 time_x2;
-	ae_f32x2 accum20 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 accum31 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 *filter_P;
-	ae_f32x2 *result_P;
-	ae_valign align_f;
-	ae_valign align_out;
-	int index_filter;
-	int index_limit;
+	ae_f32x2 a10;
+	ae_f32x2 a32;
+	ae_f32x2 b10;
+	ae_f32x2 b32;
+	ae_int32x4 *filter_P;
+	ae_int32x4 *result_P;
+	ae_valignx2 align_f;
+	ae_valignx2 align_out;
+	int i;
+	int n;
 
 	/* Set the pointer tot the polyphase filters */
-	filter_P = (ae_f32x2 *)&src_obj->polyphase_filters[0];
+	filter_P = (ae_int32x4 *)&src_obj->polyphase_filters[0];
 
 	/*
 	 * Set the pointer to the impulse response.
 	 * This is where the result is stored.
 	 */
-	result_P = (ae_f32x2 *)&src_obj->impulse_response[0];
+	result_P = (ae_int32x4 *)&src_obj->impulse_response[0];
 
 	/* allow unaligned load of 64 bit of polyphase filter coefficients */
-	align_f = AE_LA64_PP(filter_P);
-	align_out = AE_ZALIGN64();
+	align_f = AE_LA128_PP(filter_P);
+	align_out = AE_ZALIGN128();
 
 	/* Get the current fractional time */
 	time_x2 = AE_L32_X((ae_f32 *)&src_obj->time_value, 0);
@@ -212,24 +214,25 @@ void asrc_calc_impulse_response_n4(struct asrc_farrow *src_obj)
 	 * 'index_limit' is therefore stored to reduce redundant
 	 * calculations.
 	 */
-	index_limit = src_obj->filter_length >> 1;
-	for (index_filter = 0; index_filter < index_limit; index_filter++) {
+	n = src_obj->filter_length >> 2;
+	for (i = 0; i < n; i++) {
 		/*
 		 * The polyphase filters lie in storage as follows
 		 * (For N = 4, M = 64):
-		 * [g3,0][g3,1][g2,0][g2,1]
-		 * ...[g0,0][g0,1][g3,2][g3,3]...[g0,62][g0,63].
+		 * [g3,0][g3,1][g3,2][g3,3][g2,0][g2,1][g2,2][g2,3]...
+		 * [g0,0][g0,1][g0,2][g0,3][g3,4][g3,5][g3,6][g3,7]...
+		 * [g0,60][g0,61][g0,62][g0,63]
 		 *
 		 * Since the polyphase filter coefficients are stored
 		 * in an appropriate order, we can just load them up,
 		 * one after another.
 		 */
 
-		/* Load two coefficients of the 4th polyphase filter */
-		AE_LA32X2_IP(accum31, align_f, filter_P);
+		/* Load coefficients g3,4*i g3,4*i+1 g3,4*i+2, g3,4*i+3 */
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
 
-		/* Load two coefficients of the 3rd polyphase filter */
-		AE_LA32X2_IP(accum20, align_f, filter_P);
+		/* Load coefficients g2,4*i g2,4*i+1 g2,4*i+2, g2,4*i+3 */
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
 
 		/*
 		 * Use the 'Horner's Method' to calculate the result
@@ -238,23 +241,24 @@ void asrc_calc_impulse_response_n4(struct asrc_farrow *src_obj)
 		 * Example for one coefficient (N = 4):
 		 * g_out,m = ((g3,m*t + g2,m)*t + g1,m)*t + g0,m
 		 */
-		AE_MULAFP32X2RS(accum20, accum31, time_x2);
+		AE_MULAFP32X2RS(a10, b10, time_x2);	/* Dual-MAC, could not find */
+		AE_MULAFP32X2RS(a32, b32, time_x2);	/* suitable HiFi5 quad-MAC */
 
-		/* Load two coefficients of the second polyphase filter */
-		AE_LA32X2_IP(accum31, align_f, filter_P);
-		/* Multiply and accumulate */
-		AE_MULAFP32X2RS(accum31, accum20, time_x2);
+		/* Load coefficients g1,4*i g1,4*i+1 g1,4*i+2, g1,4*i+3 */
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_MULAFP32X2RS(b10, a10, time_x2);
+		AE_MULAFP32X2RS(b32, a32, time_x2);
 
-		/* Load two coefficients of the first polyphase filter */
-		AE_LA32X2_IP(accum20, align_f, filter_P);
-		/* Multiply and accumulate */
-		AE_MULAFP32X2RS(accum20, accum31, time_x2);
+		/* Load coefficients g0,4*i g0,4*i+1 g0,4*i+2, g0,4*i+3 */
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
 		/* Store the result */
-		AE_SA32X2_IP(accum20, align_out, result_P);
+		AE_SA32X2X2_IP(a10, a32, align_out, result_P);
 	}
 
-	AE_SA64POS_FP(align_out, result_P);
+	AE_SA128POS_FP(align_out, result_P);
 }
 
 void asrc_calc_impulse_response_n5(struct asrc_farrow *src_obj)
@@ -264,42 +268,49 @@ void asrc_calc_impulse_response_n5(struct asrc_farrow *src_obj)
 	 * of the algorithm and data handling
 	 */
 	ae_f32x2 time_x2;
-	ae_f32x2 accum31 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 accum420 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 *filter_P;
-	ae_f32x2 *result_P;
-	ae_valign align_f;
-	ae_valign align_out;
-	int index_filter;
-	int index_limit;
+	ae_f32x2 a10;
+	ae_f32x2 a32;
+	ae_f32x2 b10;
+	ae_f32x2 b32;
+	ae_int32x4 *filter_P;
+	ae_int32x4 *result_P;
+	ae_valignx2 align_f;
+	ae_valignx2 align_out;
+	int i;
+	int n;
 
-	filter_P = (ae_f32x2 *)&src_obj->polyphase_filters[0];
-	result_P = (ae_f32x2 *)&src_obj->impulse_response[0];
+	filter_P = (ae_int32x4 *)&src_obj->polyphase_filters[0];
+	result_P = (ae_int32x4 *)&src_obj->impulse_response[0];
 
-	align_f = AE_LA64_PP(filter_P);
-	align_out = AE_ZALIGN64();
+	align_f = AE_LA128_PP(filter_P);
+	align_out = AE_ZALIGN128();
 
 	time_x2 = AE_L32_X((ae_f32 *)&src_obj->time_value, 0);
 	time_x2 = AE_SLAI32S(time_x2, 4);
 
-	index_limit = src_obj->filter_length >> 1;
-	for (index_filter = 0; index_filter < index_limit; index_filter++) {
-		AE_LA32X2_IP(accum420, align_f, filter_P);
-		AE_LA32X2_IP(accum31, align_f, filter_P);
-		AE_MULAFP32X2RS(accum31, accum420, time_x2);
+	n = src_obj->filter_length >> 2;
+	for (i = 0; i < n; i++) {
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
-		AE_LA32X2_IP(accum420, align_f, filter_P);
-		AE_MULAFP32X2RS(accum420, accum31, time_x2);
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_MULAFP32X2RS(b10, a10, time_x2);
+		AE_MULAFP32X2RS(b32, a32, time_x2);
 
-		AE_LA32X2_IP(accum31, align_f, filter_P);
-		AE_MULAFP32X2RS(accum31, accum420, time_x2);
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
-		AE_LA32X2_IP(accum420, align_f, filter_P);
-		AE_MULAFP32X2RS(accum420, accum31, time_x2);
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_MULAFP32X2RS(b10, a10, time_x2);
+		AE_MULAFP32X2RS(b32, a32, time_x2);
 
-		AE_SA32X2_IP(accum420, align_out, result_P);
+		AE_SA32X2X2_IP(b10, b32, align_out, result_P);
+
 	}
-	AE_SA64POS_FP(align_out, result_P);
+	AE_SA128POS_FP(align_out, result_P);
 }
 
 void asrc_calc_impulse_response_n6(struct asrc_farrow *src_obj)
@@ -309,45 +320,53 @@ void asrc_calc_impulse_response_n6(struct asrc_farrow *src_obj)
 	 * of the algorithm and data handling
 	 */
 	ae_f32x2 time_x2;
-	ae_f32x2 accum531 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 accum420 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 *filter_P;
-	ae_f32x2 *result_P;
-	ae_valign align_f;
-	ae_valign align_out;
-	int index_filter;
-	int index_limit;
+	ae_f32x2 a10;
+	ae_f32x2 a32;
+	ae_f32x2 b10;
+	ae_f32x2 b32;
+	ae_int32x4 *filter_P;
+	ae_int32x4 *result_P;
+	ae_valignx2 align_f;
+	ae_valignx2 align_out;
+	int i;
+	int n;
 
-	filter_P = (ae_f32x2 *)&src_obj->polyphase_filters[0];
-	result_P = (ae_f32x2 *)&src_obj->impulse_response[0];
+	filter_P = (ae_int32x4 *)&src_obj->polyphase_filters[0];
+	result_P = (ae_int32x4 *)&src_obj->impulse_response[0];
 
-	align_f = AE_LA64_PP(filter_P);
-	align_out = AE_ZALIGN64();
+	align_f = AE_LA128_PP(filter_P);
+	align_out = AE_ZALIGN128();
 
 	time_x2 = AE_L32_X((ae_f32 *)&src_obj->time_value, 0);
 	time_x2 = AE_SLAI32S(time_x2, 4);
 
-	index_limit = src_obj->filter_length >> 1;
-	for (index_filter = 0; index_filter < index_limit; index_filter++) {
-		AE_LA32X2_IP(accum531, align_f, filter_P);
-		AE_LA32X2_IP(accum420, align_f, filter_P);
-		AE_MULAFP32X2RS(accum420, accum531, time_x2);
+	n = src_obj->filter_length >> 2;
+	for (i = 0; i < n; i++) {
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
-		AE_LA32X2_IP(accum531, align_f, filter_P);
-		AE_MULAFP32X2RS(accum531, accum420, time_x2);
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_MULAFP32X2RS(b10, a10, time_x2);
+		AE_MULAFP32X2RS(b32, a32, time_x2);
 
-		AE_LA32X2_IP(accum420, align_f, filter_P);
-		AE_MULAFP32X2RS(accum420, accum531, time_x2);
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
-		AE_LA32X2_IP(accum531, align_f, filter_P);
-		AE_MULAFP32X2RS(accum531, accum420, time_x2);
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_MULAFP32X2RS(b10, a10, time_x2);
+		AE_MULAFP32X2RS(b32, a32, time_x2);
 
-		AE_LA32X2_IP(accum420, align_f, filter_P);
-		AE_MULAFP32X2RS(accum420, accum531, time_x2);
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
-		AE_SA32X2_IP(accum420, align_out, result_P);
+		AE_SA32X2X2_IP(a10, a32, align_out, result_P);
+
 	}
-	AE_SA64POS_FP(align_out, result_P);
+	AE_SA128POS_FP(align_out, result_P);
 }
 
 void asrc_calc_impulse_response_n7(struct asrc_farrow *src_obj)
@@ -357,48 +376,56 @@ void asrc_calc_impulse_response_n7(struct asrc_farrow *src_obj)
 	 * of the algorithm and data handling
 	 */
 	ae_f32x2 time_x2;
-	ae_f32x2 accum6420 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 accum531 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 *filter_P;
-	ae_f32x2 *result_P;
-	ae_valign align_f;
-	ae_valign align_out;
-	int index_filter;
-	int index_limit;
+	ae_f32x2 a10;
+	ae_f32x2 a32;
+	ae_f32x2 b10;
+	ae_f32x2 b32;
+	ae_int32x4 *filter_P;
+	ae_int32x4 *result_P;
+	ae_valignx2 align_f;
+	ae_valignx2 align_out;
+	int i;
+	int n;
 
-	filter_P = (ae_f32x2 *)&src_obj->polyphase_filters[0];
-	result_P = (ae_f32x2 *)&src_obj->impulse_response[0];
+	filter_P = (ae_int32x4 *)&src_obj->polyphase_filters[0];
+	result_P = (ae_int32x4 *)&src_obj->impulse_response[0];
 
-	align_f = AE_LA64_PP(filter_P);
-	align_out = AE_ZALIGN64();
+	align_f = AE_LA128_PP(filter_P);
+	align_out = AE_ZALIGN128();
 
 	time_x2 = AE_L32_X((ae_f32 *)&src_obj->time_value, 0);
 	time_x2 = AE_SLAI32S(time_x2, 4);
 
-	index_limit = src_obj->filter_length >> 1;
-	for (index_filter = 0; index_filter < index_limit; index_filter++) {
-		AE_LA32X2_IP(accum6420, align_f, filter_P);
-		AE_LA32X2_IP(accum531, align_f, filter_P);
-		AE_MULAFP32X2RS(accum531, accum6420, time_x2);
+	n = src_obj->filter_length >> 2;
+	for (i = 0; i < n; i++) {
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
-		AE_LA32X2_IP(accum6420, align_f, filter_P);
-		AE_MULAFP32X2RS(accum6420, accum531, time_x2);
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_MULAFP32X2RS(b10, a10, time_x2);
+		AE_MULAFP32X2RS(b32, a32, time_x2);
 
-		AE_LA32X2_IP(accum531, align_f, filter_P);
-		AE_MULAFP32X2RS(accum531, accum6420, time_x2);
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
-		AE_LA32X2_IP(accum6420, align_f, filter_P);
-		AE_MULAFP32X2RS(accum6420, accum531, time_x2);
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_MULAFP32X2RS(b10, a10, time_x2);
+		AE_MULAFP32X2RS(b32, a32, time_x2);
 
-		AE_LA32X2_IP(accum531, align_f, filter_P);
-		AE_MULAFP32X2RS(accum531, accum6420, time_x2);
+		AE_LA32X2X2_IP(a10, a32, align_f, filter_P);
+		AE_MULAFP32X2RS(a10, b10, time_x2);
+		AE_MULAFP32X2RS(a32, b32, time_x2);
 
-		AE_LA32X2_IP(accum6420, align_f, filter_P);
-		AE_MULAFP32X2RS(accum6420, accum531, time_x2);
+		AE_LA32X2X2_IP(b10, b32, align_f, filter_P);
+		AE_MULAFP32X2RS(b10, a10, time_x2);
+		AE_MULAFP32X2RS(b32, a32, time_x2);
 
-		AE_SA32X2_IP(accum6420, align_out, result_P);
+		AE_SA32X2X2_IP(b10, b32, align_out, result_P);
 	}
-	AE_SA64POS_FP(align_out, result_P);
+	AE_SA128POS_FP(align_out, result_P);
 }
 
 #endif /* ASRC_HIFI_5 */
