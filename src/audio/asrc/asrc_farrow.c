@@ -145,6 +145,51 @@ static const struct asrc_filter_params c_filter_params[CR_NUM] = {
  * coefficients will be attached to the _Src_farrow struct via the
  * initialise_filter function.
  */
+
+#if SOF_USE_MIN_HIFI(5, ASRC)
+#include "coef/asrc_farrow_coeff_4x_44100Hz_to_48000Hz.h"
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_48000Hz.h"
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_08000)
+#include "coef/asrc_farrow_coeff_4x_24000Hz_to_08000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_16000)
+#include "coef/asrc_farrow_coeff_4x_24000Hz_to_16000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_08000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_08000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_11025)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_11025Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_12000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_12000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_16000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_16000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_22050)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_22050Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_24000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_24000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_32000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_32000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_44100)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_44100Hz.h"
+#endif
+#else
 #include "coef/asrc_farrow_coeff_44100Hz_to_48000Hz.h"
 
 #include "coef/asrc_farrow_coeff_48000Hz_to_48000Hz.h"
@@ -187,6 +232,7 @@ static const struct asrc_filter_params c_filter_params[CR_NUM] = {
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_44100)
 #include "coef/asrc_farrow_coeff_48000Hz_to_44100Hz.h"
+#endif
 #endif
 
 /*
