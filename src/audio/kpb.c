@@ -1705,6 +1705,9 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.next_copy_time = 0;
 		kpb->draining_task_data.dev = dev;
 		kpb->draining_task_data.sync_mode_on = kpb->sync_draining_mode;
+		kpb->draining_task_data.task_iteration = 0;
+		kpb->draining_task_data.prev_adjustment_time = 0;
+		kpb->draining_task_data.prev_adjustment_drained = 0;
 
 		/* save current sink copy type */
 		comp_get_attribute(comp_buffer_get_sink_component(kpb->host_sink),
@@ -1732,6 +1735,52 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	}
 }
 
+static void adjust_drain_interval(struct comp_data *kpb, struct draining_data *dd)
+{
+	uint64_t now;	/* timestamp in wall-clock cycles */
+
+	/* readjast drain_interval every 32 task iterations */
+	if (dd->task_iteration++ % 32)
+		return;
+
+	now = sof_cycle_get_64();
+
+	if (dd->prev_adjustment_time) {
+		size_t drained;
+		size_t elapsed;
+		size_t actual_pace, optimal_pace;
+		size_t pipeline_period;
+
+		drained = dd->drained - dd->prev_adjustment_drained;
+		elapsed = now - dd->prev_adjustment_time;
+		assert(elapsed);
+		/* average drained bytes per second */
+		actual_pace = (size_t)k_ms_to_cyc_ceil64(1000) / elapsed * drained;
+
+		pipeline_period = KPB_SAMPLES_PER_MS *
+			(KPB_SAMPLE_CONTAINER_SIZE(dd->sample_width) / 8) * kpb->config.channels;
+		/* desired draining pace in bytes per second */
+		optimal_pace = pipeline_period * KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE * 1000;
+
+		/* just in case to prevent div by 0 if draining is stuck (e.g. because of host) */
+		if (actual_pace) {
+			if (actual_pace < optimal_pace) {
+				dd->drain_interval /= optimal_pace / actual_pace;
+				dd->drain_interval -= dd->drain_interval / 8;
+			} else if (actual_pace > optimal_pace) {
+				dd->drain_interval *= actual_pace / optimal_pace;
+				dd->drain_interval += dd->drain_interval / 8;
+			}
+			/* the above algorithm will get stuck if the drain_interval is below 8 */
+			if (dd->drain_interval < 8)
+				dd->drain_interval = 8;
+		}
+	}
+
+	dd->prev_adjustment_time = now;
+	dd->prev_adjustment_drained = dd->drained;
+}
+
 /**
  * \brief Draining task.
  *
@@ -1750,7 +1799,6 @@ static enum task_state kpb_draining_task(void *arg)
 	size_t size_to_copy;
 	uint64_t draining_time_end;
 	uint64_t draining_time_ms;
-	uint64_t drain_interval = draining_data->drain_interval;
 	size_t period_bytes_limit = draining_data->pb_limit;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
@@ -1776,6 +1824,8 @@ static enum task_state kpb_draining_task(void *arg)
 		draining_data->drain_req = 0;
 		goto out;
 	}
+
+	adjust_drain_interval(kpb, draining_data);
 
 	if (draining_data->drain_req > 0) {
 		/* Are we ready to drain further or host still need some time
@@ -1829,7 +1879,7 @@ static enum task_state kpb_draining_task(void *arg)
 
 		if (sync_mode_on && draining_data->period_bytes >= period_bytes_limit) {
 			draining_data->next_copy_time = draining_data->period_copy_start +
-				drain_interval;
+				draining_data->drain_interval;
 			draining_data->period_copy_start = 0;
 		} else {
 			draining_data->next_copy_time = 0;
