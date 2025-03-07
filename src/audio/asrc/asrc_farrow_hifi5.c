@@ -56,7 +56,7 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 		/* Iterate over the filter bins */
 		for (n = 0; n < n_limit; n++) {
 			/* Read four buffered samples at once */
-			AE_LA16X4_RIP(buffer0123, align_buffer, buffer_p);
+			AE_LA16X4_IP(buffer0123, align_buffer, buffer_p);
 
 			/* Store four bins of the impulse response */
 			AE_LA32X2_IP(filter01, align_filter, filter_p);
@@ -141,7 +141,7 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 		/* Iterate over the filter bins */
 		for (n = 0; n < n_limit; n++) {
 			/* Read two buffered samples at once */
-			AE_LA32X2_RIP(buffer01, align_buffer, buffer_p);
+			AE_LA32X2_IP(buffer01, align_buffer, buffer_p);
 
 			/* Store two bins of the impulse response */
 			AE_LA32X2_IP(filter01, align_filter, filter_p);

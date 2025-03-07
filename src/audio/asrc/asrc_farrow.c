@@ -882,11 +882,11 @@ void asrc_write_to_ring_buffer16(struct asrc_farrow  *src_obj,
 	int m;
 
 	/* update the buffer_write_position */
-	(src_obj->buffer_write_position)++;
+	(src_obj->buffer_write_position)--;
 
 	/* since it's a ring buffer we need a wrap around */
-	if (src_obj->buffer_write_position >= src_obj->buffer_length)
-		src_obj->buffer_write_position -= (src_obj->buffer_length >> 1);
+	if (src_obj->buffer_write_position < 0)
+		src_obj->buffer_write_position += (src_obj->buffer_length >> 1);
 
 	/* handle input format */
 	if (src_obj->input_format == ASRC_IOF_INTERLEAVED)
@@ -896,7 +896,7 @@ void asrc_write_to_ring_buffer16(struct asrc_farrow  *src_obj,
 
 	/* write data to each channel */
 	j = src_obj->buffer_write_position;
-	k = j - (src_obj->buffer_length >> 1);
+	k = j + (src_obj->buffer_length >> 1);
 	for (ch = 0; ch < src_obj->num_channels; ch++) {
 		/*
 		 * Since we want the filter function to load 64 bit of
@@ -924,11 +924,11 @@ void asrc_write_to_ring_buffer32(struct asrc_farrow  *src_obj,
 	int m;
 
 	/* update the buffer_write_position */
-	(src_obj->buffer_write_position)++;
+	(src_obj->buffer_write_position)--;
 
 	/* since it's a ring buffer we need a wrap around */
-	if (src_obj->buffer_write_position >= src_obj->buffer_length)
-		src_obj->buffer_write_position -= (src_obj->buffer_length >> 1);
+	if (src_obj->buffer_write_position < 0)
+		src_obj->buffer_write_position += (src_obj->buffer_length >> 1);
 
 	/* handle input format */
 	if (src_obj->input_format == ASRC_IOF_INTERLEAVED)
@@ -938,7 +938,7 @@ void asrc_write_to_ring_buffer32(struct asrc_farrow  *src_obj,
 
 	/* write data to each channel */
 	j = src_obj->buffer_write_position;
-	k = j - (src_obj->buffer_length >> 1);
+	k = j + (src_obj->buffer_length >> 1);
 	for (ch = 0; ch < src_obj->num_channels; ch++) {
 		/*
 		 * Since we want the filter function to load 64 bit of
