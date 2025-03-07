@@ -92,6 +92,20 @@ fail:
 	return NULL;
 }
 
+#if CONFIG_IPC_MAJOR_3
+static struct comp_dev *smart_amp_new_shim(const struct comp_driver *drv,
+					   const struct comp_ipc_config *config,
+					   const void *spec)
+{
+	struct ipc_config_process proc;
+
+	if (comp_sof_process_to_ipc_process(spec, &proc) < 0)
+		return NULL;
+
+	return smart_amp_new(drv, config, &proc);
+}
+#endif
+
 static void smart_amp_set_params(struct comp_dev *dev,
 				 struct sof_ipc_stream_params *params)
 {
@@ -534,7 +548,7 @@ static const struct comp_driver comp_smart_amp = {
 	.uid = SOF_RT_UUID(smart_amp_test_uuid),
 	.tctx = &smart_amp_test_comp_tr,
 	.ops = {
-		.create			= smart_amp_new,
+		.create			= IPC3_SHIM(smart_amp_new),
 		.free			= smart_amp_free,
 		.params			= smart_amp_params,
 		.prepare		= smart_amp_prepare,
