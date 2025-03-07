@@ -159,6 +159,9 @@ struct draining_data {
 	struct comp_dev *dev;
 	bool sync_mode_on;
 	enum comp_copy_type copy_type;
+	size_t task_iteration;
+	uint64_t prev_adjustment_time;
+	size_t prev_adjustment_drained;
 };
 
 struct history_data {
