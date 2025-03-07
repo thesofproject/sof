@@ -1,11 +1,11 @@
-##ALSA Plugin
+# ALSA Plugin
 
 The SOF ALSA plugin allows SOF topologies to be run on the host. The plugin
 is still WIP with many rough edges that need refined before production
 deployment, however the plugin is usable today as a rapid development
 framework for SOF infrastructure and processing.
 
-#Features
+### Features
  * aplay & arecord usage working today
  * alsamixer & amixer usage not working today
  * modules are loaded as SO shared libraries.
@@ -16,10 +16,10 @@ framework for SOF infrastructure and processing.
  * alsa sink and alsa source modules available.
  * pipelines can block (non blocking and mmap todo)
 
-#License
+### License
 Code is a mixture of LGPL and BSD 3c.
 
-#Usage
+### Usage
 Please build as cmake project, for IPC4 (functional)
 IPC3 is not functional and not supported
 
@@ -108,10 +108,10 @@ where -n is the numid of the kcontrol, -i is the IPC version and -p is the param
 
 Note: Bytes controls must have tlv_read/tlv_write and tlv_callback access.
 
-# Instructions for testing OpenVino noise suppression model with the SOF plugin:
+## Instructions for testing OpenVino noise suppression model with the SOF plugin:
 1. Fetch the model from the Open Model zoo repository ex: noise-suppression-poconetlike-0001.xml
 
-https://docs.openvino.ai/archive/2023.0/omz_demos.html#build-the-demo-applications-on-linux
+   https://docs.openvino.ai/archive/2023.0/omz_demos.html#build-the-demo-applications-on-linux
 
 2. Source OpenVino environment and get OpenCV
 https://www.intel.com/content/www/us/en/developer/tools/openvino-toolkit-download.html
@@ -133,7 +133,7 @@ to work with 48K capture.
 arecord -Dsof:plugin:1:0:7:16k2c16b -f dat -r 16000 --period-size=2048 file_ns_16k.wa
 ```
 
-#TODO Items (and T-shirt size) for single pipeline E2E audio
+### TODO Items (and T-shirt size) for single pipeline E2E audio
  * IPC4 support in tplg parser (M)
  * IPC4 support in plugin (pipe/ipc4.c) (M)
  * Fix ALSA -Dhw: device support (S), currently only default ALSA device works
