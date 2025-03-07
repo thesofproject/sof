@@ -31,8 +31,7 @@
 typedef struct snd_sof_ctl {
 	struct plug_shm_glb_state *glb;
 	snd_ctl_ext_t ext;
-	struct plug_mq_desc ipc_tx;
-	struct plug_mq_desc ipc_rx;
+	struct plug_socket_desc ipc;
 	struct plug_shm_desc shm_ctx;
 	int subscribed;
 	int updated[MAX_CTLS];
@@ -232,8 +231,7 @@ static int plug_ctl_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, long
 
 	/* send the IPC message */
 	memcpy(msg, &config, sizeof(config));
-	err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx,
-				msg, size, reply_data, reply_data_size);
+	err = plug_ipc_cmd_tx_rx(&ctl->ipc, msg, size, reply_data, reply_data_size);
 	free(msg);
 	if (err < 0) {
 		SNDERR("failed to set volume for control %s\n", mixer_ctl->hdr.name);
@@ -325,8 +323,7 @@ static int plug_ctl_write_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, lon
 		memcpy(msg + sizeof(config), &volume, sizeof(volume));
 
 		/* send the message and check status */
-		err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx,
-					msg, size, &reply, sizeof(reply));
+		err = plug_ipc_cmd_tx_rx(&ctl->ipc, msg, size, &reply, sizeof(reply));
 		free(msg);
 		if (err < 0) {
 			SNDERR("failed to set volume control %s\n", mixer_ctl->hdr.name);
@@ -426,8 +423,7 @@ static int plug_ctl_read_enumerated(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 
 	/* send the IPC message */
 	memcpy(msg, &config, sizeof(config));
-	err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx,
-				msg, size, reply_data, reply_data_size);
+	err = plug_ipc_cmd_tx_rx(&ctl->ipc, msg, size, reply_data, reply_data_size);
 	free(msg);
 	if (err < 0) {
 		SNDERR("failed to get enum items for control %s\n", enum_ctl->hdr.name);
@@ -516,7 +512,7 @@ static int plug_ctl_write_enumerated(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 	free(data);
 
 	/* send the message and check status */
-	err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx, msg, msg_size, &reply, sizeof(reply));
+	err = plug_ipc_cmd_tx_rx(&ctl->ipc, msg, msg_size, &reply, sizeof(reply));
 	free(msg);
 	if (err < 0) {
 		SNDERR("failed to set enum control %s\n", enum_ctl->hdr.name);
@@ -573,8 +569,7 @@ static int plug_ctl_get_bytes_data(snd_sof_ctl_t *ctl, snd_ctl_ext_key_t key,
 
 	/* send the IPC message */
 	memcpy(msg, &config, sizeof(config));
-	err = plug_mq_cmd_tx_rx(&ctl->ipc_tx, &ctl->ipc_rx,
-				msg, size, reply_data, reply_data_size);
+	err = plug_ipc_cmd_tx_rx(&ctl->ipc, msg, size, reply_data, reply_data_size);
 	free(msg);
 	if (err < 0) {
 		SNDERR("failed to get bytes data for control %s\n", bytes_ctl->hdr.name);
@@ -633,9 +628,8 @@ static int plug_ctl_write_bytes(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 	int err;
 
 	/* send IPC with kcontrol data */
-	err = plug_send_bytes_data(&ctl->ipc_tx, &ctl->ipc_rx,
-				   ctl->glb->ctl[key].module_id, ctl->glb->ctl[key].instance_id,
-				   abi);
+	err = plug_send_bytes_data(&ctl->ipc, ctl->glb->ctl[key].module_id,
+				   ctl->glb->ctl[key].instance_id, abi);
 	if (err < 0) {
 		SNDERR("failed to set bytes data for control %s\n", bytes_ctl->hdr.name);
 		return err;
@@ -673,8 +667,7 @@ static int plug_tlv_rw(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, int op_flag,
 	if (op_flag) {
 		int err;
 
-		err = plug_send_bytes_data(&ctl->ipc_tx, &ctl->ipc_rx,
-					   ctl->glb->ctl[key].module_id,
+		err = plug_send_bytes_data(&ctl->ipc, ctl->glb->ctl[key].module_id,
 					   ctl->glb->ctl[key].instance_id, abi);
 		if (err < 0) {
 			SNDERR("failed to set bytes data for control %s\n", bytes_ctl->hdr.name);
@@ -747,6 +740,7 @@ static void plug_ctl_close(snd_ctl_ext_t *ext)
 	snd_sof_ctl_t *ctl = ext->private_data;
 
 	/* TODO: munmap */
+	close(ctl->ipc.socket_fd);
 	free(ctl);
 }
 
@@ -793,34 +787,17 @@ SND_CTL_PLUGIN_DEFINE_FUNC(sof)
 		goto error;
 	}
 
-	/* init IPC tx message queue name */
-	err = plug_mq_init(&ctl->ipc_tx, "sof", "ipc-tx", 0);
+	/* init IPC socket name */
+	err = plug_socket_path_init(&ctl->ipc, "sof", "ipc", 0);
 	if (err < 0) {
 		SNDERR("error: invalid name for IPC tx mq %s\n", plug->tplg_file);
 		goto error;
 	}
 
-	/* open the sof-pipe IPC tx message queue */
-	err = plug_mq_open(&ctl->ipc_tx);
+	err = plug_create_client_socket(&ctl->ipc);
 	if (err < 0) {
-		SNDERR("error: failed to open sof-pipe IPC mq %s: %s",
-		       ctl->ipc_tx.queue_name, strerror(err));
-		goto error;
-	}
-
-	/* init IPC rx message queue name */
-	err = plug_mq_init(&ctl->ipc_rx, "sof", "ipc-rx", 0);
-	if (err < 0) {
-		SNDERR("error: invalid name for IPC rx mq %s\n", plug->tplg_file);
-		goto error;
-	}
-
-	/* open the sof-pipe IPC rx message queue */
-	err = plug_mq_open(&ctl->ipc_rx);
-	if (err < 0) {
-		SNDERR("error: failed to open sof-pipe IPC mq %s: %s",
-		       ctl->ipc_rx.queue_name, strerror(err));
-		goto error;
+		SNDERR("failed to connect to SOF pipe IPC socket : %s", strerror(err));
+		return -errno;
 	}
 
 	/* create a SHM mapping for low latency stream position */
@@ -846,9 +823,6 @@ SND_CTL_PLUGIN_DEFINE_FUNC(sof)
 	strncpy(ctl->ext.name, "SOF", sizeof(ctl->ext.name) - 1);
 	strncpy(ctl->ext.mixername, "SOF",
 		sizeof(ctl->ext.mixername) - 1);
-
-	/* polling on message queue - supported on Linux but not portable */
-	ctl->ext.poll_fd = ctl->ipc_tx.mq;
 
 	ctl->ext.callback = &sof_ext_callback;
 	ctl->ext.private_data = ctl;

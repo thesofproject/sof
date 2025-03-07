@@ -16,7 +16,6 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <mqueue.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <semaphore.h>
@@ -926,8 +925,7 @@ static int plug_set_up_widget_ipc(snd_sof_plug_t *plug, struct tplg_comp_info *c
 	memcpy(msg, module_init, sizeof(*module_init));
 	memcpy(msg + sizeof(*module_init), comp_info->ipc_payload, comp_info->ipc_size);
 
-	ret = plug_mq_cmd_tx_rx(&plug->ipc_tx, &plug->ipc_rx,
-				msg, size, &reply, sizeof(reply));
+	ret = plug_ipc_cmd_tx_rx(&plug->ipc, msg, size, &reply, sizeof(reply));
 	free(msg);
 	if (ret < 0) {
 		SNDERR("error: can't set up widget %s\n", comp_info->name);
@@ -955,8 +953,7 @@ static int plug_set_up_pipeline(snd_sof_plug_t *plug, struct tplg_pipeline_info 
 	msg.primary.r.instance_id = pipe_info->instance_id;
 	msg.primary.r.ppl_mem_size = pipe_info->mem_usage;
 
-	ret = plug_mq_cmd_tx_rx(&plug->ipc_tx, &plug->ipc_rx,
-				&msg, sizeof(msg), &reply, sizeof(reply));
+	ret = plug_ipc_cmd_tx_rx(&plug->ipc, &msg, sizeof(msg), &reply, sizeof(reply));
 	if (ret < 0) {
 		SNDERR("error: can't set up pipeline %s\n", pipe_info->name);
 		return ret;
@@ -1113,8 +1110,7 @@ static int plug_set_up_route(snd_sof_plug_t *plug, struct tplg_route_info *route
 	bu.extension.r.dst_queue = 0;
 	bu.extension.r.src_queue = 0;
 
-	ret = plug_mq_cmd_tx_rx(&plug->ipc_tx, &plug->ipc_rx,
-				&bu, sizeof(bu), &reply, sizeof(reply));
+	ret = plug_ipc_cmd_tx_rx(&plug->ipc, &bu, sizeof(bu), &reply, sizeof(reply));
 	if (ret < 0) {
 		SNDERR("error: can't set up route %s -> %s\n", src_comp_info->name,
 		       sink_comp_info->name);
@@ -1174,8 +1170,8 @@ static int plug_set_up_widget(snd_sof_plug_t *plug, struct tplg_comp_info *comp_
 		abi = (struct sof_abi_hdr *)ctl->data;
 
 		/* send IPC with kcontrol data */
-		ret = plug_send_bytes_data(&plug->ipc_tx, &plug->ipc_rx,
-					   comp_info->module_id, comp_info->instance_id, abi);
+		ret = plug_send_bytes_data(&plug->ipc, comp_info->module_id,
+					   comp_info->instance_id, abi);
 		if (ret < 0) {
 			SNDERR("failed to set bytes data for widget %s\n", comp_info->name);
 			return ret;
@@ -1339,8 +1335,7 @@ static int plug_delete_pipeline(snd_sof_plug_t *plug, struct tplg_pipeline_info 
 	msg.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	msg.primary.r.instance_id = pipe_info->instance_id;
 
-	ret = plug_mq_cmd_tx_rx(&plug->ipc_tx, &plug->ipc_rx,
-				&msg, sizeof(msg), &reply, sizeof(reply));
+	ret = plug_ipc_cmd_tx_rx(&plug->ipc, &msg, sizeof(msg), &reply, sizeof(reply));
 	if (ret < 0) {
 		SNDERR("error: can't delete pipeline %s\n", pipe_info->name);
 		return ret;
@@ -1383,8 +1378,7 @@ static int plug_free_route(snd_sof_plug_t *plug, struct tplg_route_info *route_i
 	bu.extension.r.dst_queue = 0;
 	bu.extension.r.src_queue = 0;
 
-	ret = plug_mq_cmd_tx_rx(&plug->ipc_tx, &plug->ipc_rx,
-				&bu, sizeof(bu), &reply, sizeof(reply));
+	ret = plug_ipc_cmd_tx_rx(&plug->ipc, &bu, sizeof(bu), &reply, sizeof(reply));
 	if (ret < 0) {
 		SNDERR("error: can't set up route %s -> %s\n", src_comp_info->name,
 		       sink_comp_info->name);

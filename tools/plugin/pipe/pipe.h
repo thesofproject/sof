@@ -10,7 +10,6 @@
 
 #include <stdatomic.h>
 #include <stdint.h>
-#include <mqueue.h>
 #include <pthread.h>
 #include <signal.h>
 
@@ -29,8 +28,6 @@ struct pipethread_data {
 	pthread_t pcm_thread;
 	pthread_t ipc_thread;
 	struct sof_pipe *sp;
-	struct plug_mq_desc ipc_tx_mq;
-	struct plug_mq_desc ipc_rx_mq;
 	struct pipeline *pcm_pipeline;
 	/* PCM flow control */
 	struct plug_sem_desc ready;
@@ -72,8 +69,10 @@ struct sof_pipe {
 
 	/* IPC */
 	pthread_t ipc_pcm_thread;
-	struct plug_mq_desc ipc_tx_mq; /* queue used by plugin to send IPCs */
-	struct plug_mq_desc ipc_rx_mq; /* queue used by plugin to receive the IPC response */
+	struct plug_socket_desc ipc_socket; /* queue used by plugin to send IPCs */
+	int client_sock_ids[MAX_IPC_CLIENTS];
+	int client_count;
+	int new_client_id;
 
 	/* module SO handles */
 	struct sof_pipe_module module[MAX_MODULE_ID];
@@ -100,7 +99,7 @@ int pipe_set_rt(struct sof_pipe *sp);
 /* set ipc thread to low priority */
 int pipe_set_ipc_lowpri(struct sof_pipe *sp);
 
-int pipe_ipc_process(struct sof_pipe *sp, struct plug_mq_desc *tx_mq, struct plug_mq_desc *rx_mq);
+int pipe_ipc_process(struct sof_pipe *sp, struct plug_socket_desc *ipc_socket);
 
 int pipe_ipc_new(struct sof_pipe *sp, int pri, int core);
 void pipe_ipc_free(struct sof_pipe *sp);

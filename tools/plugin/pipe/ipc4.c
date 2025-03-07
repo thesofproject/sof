@@ -14,12 +14,12 @@
 #include <sys/poll.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <mqueue.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <semaphore.h>
@@ -311,58 +311,36 @@ int pipe_ipc_do(struct sof_pipe *sp, void *mailbox, size_t bytes)
 	return err;
 }
 
-int pipe_ipc_process(struct sof_pipe *sp, struct plug_mq_desc *tx_mq, struct plug_mq_desc *rx_mq)
+static void *handle_ipc_client(void *data)
 {
-	ssize_t ipc_size;
-	char mailbox[IPC3_MAX_MSG_SIZE] = {0};
-	int err;
+	struct sof_pipe *sp = data;
+	struct plug_socket_desc *ipc_socket = &sp->ipc_socket;
 	struct timespec ts;
+	int client_id = sp->new_client_id;
+	int clientfd = sp->client_sock_ids[client_id];
+	char mailbox[IPC3_MAX_MSG_SIZE] = {0};
+	ssize_t ipc_size;
+	int err;
 
-	/* IPC thread should not preempt processing thread */
-	err = pipe_set_ipc_lowpri(sp);
-	if (err < 0)
-		fprintf(sp->log, "error: cant set PCM IPC thread to low priority");
-
-	/* create the IPC message queue */
-	err = plug_mq_create(tx_mq);
-	if (err < 0) {
-		fprintf(sp->log, "error: can't create TX IPC message queue : %s\n",
-			strerror(errno));
-		return -errno;
-	}
-
-	/* create the IPC message queue */
-	err = plug_mq_create(rx_mq);
-	if (err < 0) {
-		fprintf(sp->log, "error: can't create PCM IPC message queue : %s\n",
-			strerror(errno));
-		return -errno;
-	}
-
-	/* let main() know we are ready */
-	fprintf(sp->log, "sof-pipe: IPC TX %s thread ready\n", tx_mq->queue_name);
-	fprintf(sp->log, "sof-pipe: IPC RX %s thread ready\n", rx_mq->queue_name);
-
-	/* main PCM IPC handling loop */
 	while (1) {
 		memset(mailbox, 0, IPC3_MAX_MSG_SIZE);
 
-		/* is client dead ? */
-		if (sp->glb->state == SOF_PLUGIN_STATE_DEAD) {
-			fprintf(sp->log, "sof-pipe: IPC %s client complete\n", tx_mq->queue_name);
+		ipc_size = recv(clientfd, mailbox, IPC3_MAX_MSG_SIZE, 0);
+		if (ipc_size < 0) {
+			fprintf(sp->log, "error: can't read IPC socket %s : %s\n",
+				ipc_socket->path, strerror(errno));
 			break;
 		}
 
-		ipc_size = mq_receive(tx_mq->mq, mailbox, IPC3_MAX_MSG_SIZE, NULL);
-		if (ipc_size < 0) {
-			fprintf(sp->log, "error: can't read PCM IPC message queue %s : %s\n",
-				tx_mq->queue_name, strerror(errno));
+		/* connection lost */
+		if (ipc_size == 0) {
+			close(clientfd);
 			break;
 		}
 
 		/* TODO: properly validate message and continue if garbage */
 		if (*((uint32_t *)mailbox) == 0) {
-			fprintf(sp->log, "sof-pipe: IPC %s garbage read\n", tx_mq->queue_name);
+			fprintf(sp->log, "sof-pipe: IPC %s garbage read\n", ipc_socket->path);
 			ts.tv_sec = 0;
 			ts.tv_nsec = 20 * 1000 * 1000; /* 20 ms */
 			nanosleep(&ts, NULL);
@@ -371,77 +349,78 @@ int pipe_ipc_process(struct sof_pipe *sp, struct plug_mq_desc *tx_mq, struct plu
 
 		/* do the message work */
 		//data_dump(mailbox, IPC3_MAX_MSG_SIZE);
-
 		err = pipe_ipc_do(sp, mailbox, ipc_size);
 		if (err < 0)
 			fprintf(sp->log, "error: local IPC processing failed\n");
 
 		/* now return message completion status found in mailbox */
-		err = mq_send(rx_mq->mq, mailbox, IPC3_MAX_MSG_SIZE, 0);
+		err = send(clientfd, mailbox, IPC3_MAX_MSG_SIZE, 0);
 		if (err < 0) {
-			fprintf(sp->log, "error: can't send PCM IPC message queue %s : %s\n",
-				rx_mq->queue_name, strerror(errno));
+			close(clientfd);
 			break;
 		}
 	}
 
-	fprintf(sp->log, "***sof-pipe: IPC %s thread finished !!\n", tx_mq->queue_name);
-	return 0;
+	close(clientfd);
+	sp->client_sock_ids[client_id] = 0;
+	return NULL;
 }
 
-int plug_mq_cmd(struct plug_mq_desc *ipc, void *msg, size_t len, void *reply, size_t rlen)
+int pipe_ipc_process(struct sof_pipe *sp, struct plug_socket_desc *ipc_socket)
 {
-	struct timespec ts;
-	ssize_t ipc_size;
-	char mailbox[IPC3_MAX_MSG_SIZE];
+	pthread_t thread_id;
 	int err;
 
-	if (len > IPC3_MAX_MSG_SIZE) {
-		SNDERR("ipc: message too big %d\n", len);
-		return -EINVAL;
-	}
-	memset(mailbox, 0, IPC3_MAX_MSG_SIZE);
-	memcpy(mailbox, msg, len);
+	/* IPC thread should not preempt processing thread */
+	err = pipe_set_ipc_lowpri(sp);
+	if (err < 0)
+		fprintf(sp->log, "error: cant set PCM IPC thread to low priority");
 
-	/* wait for sof-pipe reader to consume data or timeout */
-	err = clock_gettime(CLOCK_REALTIME, &ts);
-	if (err == -1) {
-		SNDERR("ipc: cant get time: %s", strerror(errno));
-		return -errno;
-	}
-
-	/* IPCs should be read under 10ms */
-	plug_timespec_add_ms(&ts, 10);
-
-	/* now return message completion status */
-	err = mq_timedsend(ipc->mq, mailbox, IPC3_MAX_MSG_SIZE, 0, &ts);
+	/* create the IPC socket */
+	err = plug_socket_create(ipc_socket);
 	if (err < 0) {
-		SNDERR("error: can't send IPC message queue %s : %s\n",
-		       ipc->queue_name, strerror(errno));
+		fprintf(sp->log, "error: can't create TX IPC socket : %s\n",
+			strerror(errno));
 		return -errno;
 	}
 
-	/* wait for sof-pipe reader to consume data or timeout */
-	err = clock_gettime(CLOCK_REALTIME, &ts);
-	if (err == -1) {
-		SNDERR("ipc: cant get time: %s", strerror(errno));
-		return -errno;
+	/* let main() know we are ready */
+	fprintf(sp->log, "sof-pipe: IPC %s socket ready\n", ipc_socket->path);
+
+	/* main PCM IPC handling loop */
+	while (1) {
+		int clientfd, i;
+
+		/* Accept a connection from a client */
+		clientfd = accept(ipc_socket->socket_fd, NULL, NULL);
+		if (clientfd == -1) {
+			fprintf(sp->log, "IPC %s socket accept failed\n", ipc_socket->path);
+			return -errno;
+		}
+
+		for (i = 0; i < MAX_IPC_CLIENTS; i++) {
+			if (!sp->client_sock_ids[i]) {
+				sp->client_sock_ids[i] = clientfd;
+				sp->new_client_id = i;
+				break;
+			}
+		}
+
+		/* create a new thread for each new IPC client */
+		if (pthread_create(&thread_id, NULL, handle_ipc_client, sp) != 0) {
+			fprintf(sp->log, "Client IPC thread creation failed");
+			close(clientfd);
+			sp->client_sock_ids[i] = 0;
+			continue;
+		}
+
+		fprintf(sp->log, "Client IPC thread created client id %d\n", clientfd);
+		/* Detach the thread */
+		pthread_detach(thread_id);
 	}
 
-	/* IPCs should be processed under 20ms */
-	plug_timespec_add_ms(&ts, 20);
+	close(ipc_socket->socket_fd);
 
-	ipc_size = mq_timedreceive(ipc->mq, mailbox, IPC3_MAX_MSG_SIZE, NULL, &ts);
-	if (ipc_size < 0) {
-		SNDERR("error: can't read IPC message queue %s : %s\n",
-		       ipc->queue_name, strerror(errno));
-		return -errno;
-	}
-
-	/* do the message work */
-	//printf("cmd got IPC %ld reply bytes\n", ipc_size);
-	if (rlen && reply)
-		memcpy(reply, mailbox, rlen);
-
+	fprintf(sp->log, "***sof-pipe: IPC %s thread finished !!\n", ipc_socket->path);
 	return 0;
 }
