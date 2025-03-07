@@ -146,11 +146,16 @@ struct draining_data {
 	struct comp_buffer *sink;
 	struct history_buffer *hb;
 	size_t drain_req;
+	size_t drained;
 	uint8_t is_draining_active;
 	size_t sample_width;
 	size_t buffered_while_draining;
+	uint64_t draining_time_start;
 	size_t drain_interval;
+	uint64_t period_copy_start;
 	size_t pb_limit; /**< Period bytes limit */
+	size_t period_bytes;
+	uint64_t next_copy_time;
 	struct comp_dev *dev;
 	bool sync_mode_on;
 	enum comp_copy_type copy_type;

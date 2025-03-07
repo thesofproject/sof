@@ -160,7 +160,19 @@ static void devicelist_reset(struct device_list *devlist, bool remove_items);
 
 static uint64_t kpb_task_deadline(void *data)
 {
+#ifndef __ZEPHYR__
 	return SOF_TASK_DEADLINE_ALMOST_IDLE;
+#else
+	struct draining_data *dd = (struct draining_data *)data;
+	uint64_t now;
+
+	if (dd->next_copy_time == 0)
+		return 0;	/* run immediately */
+
+	now = sof_cycle_get_64();
+	return dd->next_copy_time > now ?
+		k_uptime_ticks() + k_cyc_to_ticks_near64(dd->next_copy_time - now) : 0;
+#endif
 }
 
 #if CONFIG_AMS
@@ -1684,9 +1696,13 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.sink = kpb->host_sink;
 		kpb->draining_task_data.hb = buff;
 		kpb->draining_task_data.drain_req = drain_req;
+		kpb->draining_task_data.drained = 0;
 		kpb->draining_task_data.sample_width = sample_width;
 		kpb->draining_task_data.drain_interval = drain_interval;
+		kpb->draining_task_data.period_copy_start = 0;
 		kpb->draining_task_data.pb_limit = period_bytes_limit;
+		kpb->draining_task_data.period_bytes = 0;
+		kpb->draining_task_data.next_copy_time = 0;
 		kpb->draining_task_data.dev = dev;
 		kpb->draining_task_data.sync_mode_on = kpb->sync_draining_mode;
 
@@ -1700,6 +1716,16 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		/* Pause selector copy. */
 		comp_buffer_get_sink_component(kpb->sel_sink)->state = COMP_STATE_PAUSED;
+
+		if (!pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID))
+			pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+
+		comp_info(dev, "Scheduling draining task");
+
+		/* Change KPB internal state to DRAINING */
+		kpb_change_state(kpb, KPB_STATE_DRAINING);
+
+		kpb->draining_task_data.draining_time_start = sof_cycle_get_64();
 
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0);
@@ -1719,23 +1745,16 @@ static enum task_state kpb_draining_task(void *arg)
 	struct draining_data *draining_data = (struct draining_data *)arg;
 	struct comp_buffer *sink = draining_data->sink;
 	struct history_buffer *buff = draining_data->hb;
-	size_t drain_req = draining_data->drain_req;
 	size_t sample_width = draining_data->sample_width;
 	size_t avail;
 	size_t size_to_copy;
-	uint32_t drained = 0;
-	uint64_t draining_time_start;
 	uint64_t draining_time_end;
 	uint64_t draining_time_ms;
 	uint64_t drain_interval = draining_data->drain_interval;
-	uint64_t next_copy_time = 0;
-	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->pb_limit;
-	uint64_t period_copy_start;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 	bool sync_mode_on = draining_data->sync_mode_on;
-	bool pm_is_active;
 
 	/*
 	 * WORKAROUND: The code below accesses KPB sink buffer and calls comp_copy() on
@@ -1748,66 +1767,53 @@ static enum task_state kpb_draining_task(void *arg)
 	k_sched_lock();
 #endif
 
-	comp_cl_info(&comp_kpb, "kpb_draining_task(), start.");
+	comp_cl_dbg(&comp_kpb, "kpb_draining_task()");
 
-	pm_is_active = pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+	/* Have we received reset request? */
+	if (kpb->state == KPB_STATE_RESETTING) {
+		kpb_change_state(kpb, KPB_STATE_RESET_FINISHING);
+		kpb_reset(draining_data->dev);
+		draining_data->drain_req = 0;
+		goto out;
+	}
 
-	if (!pm_is_active)
-		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
-
-	/* Change KPB internal state to DRAINING */
-	kpb_change_state(kpb, KPB_STATE_DRAINING);
-
-	draining_time_start = sof_cycle_get_64();
-	period_copy_start = draining_time_start;
-
-	while (drain_req > 0) {
-		/*
-		 * Draining task usually runs for quite a lot of time (could be few seconds).
-		 * LL should not be blocked for such a long time.
-		 */
-#ifdef __ZEPHYR__
-		k_sched_unlock();
-		k_yield();
-		k_sched_lock();
-#endif
-
-		/* Have we received reset request? */
-		if (kpb->state == KPB_STATE_RESETTING) {
-			kpb_change_state(kpb, KPB_STATE_RESET_FINISHING);
-			kpb_reset(draining_data->dev);
-			goto out;
-		}
+	if (draining_data->drain_req > 0) {
 		/* Are we ready to drain further or host still need some time
 		 * to read the data already provided?
 		 */
-		if (sync_mode_on &&
-		    next_copy_time > sof_cycle_get_64()) {
-			period_bytes = 0;
-			period_copy_start = sof_cycle_get_64();
-			continue;
-		} else if (next_copy_time == 0) {
-			period_copy_start = sof_cycle_get_64();
+		if (sync_mode_on && draining_data->next_copy_time > sof_cycle_get_64()) {
+			/* Restore original EDF thread priority */
+#ifdef __ZEPHYR__
+			k_sched_unlock();
+#endif
+			return SOF_TASK_STATE_RESCHEDULE;
+		}
+
+		if (draining_data->period_copy_start == 0) {
+			/* starting new draining period */
+			draining_data->period_copy_start = sof_cycle_get_64();
+			draining_data->period_bytes = 0;
 		}
 
 		avail = (uintptr_t)buff->end_addr - (uintptr_t)buff->r_ptr;
 		size_to_copy = MIN(avail,
-				   MIN(drain_req, audio_stream_get_free_bytes(&sink->stream)));
+				   MIN(draining_data->drain_req,
+				       audio_stream_get_free_bytes(&sink->stream)));
 
 		kpb_drain_samples(buff->r_ptr, &sink->stream, size_to_copy,
 				  sample_width);
 
 		buff->r_ptr = (char *)buff->r_ptr + (uint32_t)size_to_copy;
-		drain_req -= size_to_copy;
-		drained += size_to_copy;
-		period_bytes += size_to_copy;
+		draining_data->drain_req -= size_to_copy;
+		draining_data->drained += size_to_copy;
+		draining_data->period_bytes += size_to_copy;
 		kpb->hd.free += MIN(kpb->hd.buffer_size -
 				    kpb->hd.free, size_to_copy);
 
 		/* no data left in the current buffer -- switch to the next buffer */
 		if (size_to_copy == avail) {
 			buff->r_ptr = buff->start_addr;
-			buff = buff->next;
+			draining_data->hb = buff->next;
 		}
 
 		if (size_to_copy) {
@@ -1821,10 +1827,15 @@ static enum task_state kpb_draining_task(void *arg)
 			comp_copy(comp_buffer_get_sink_component(sink));
 		}
 
-		if (sync_mode_on && period_bytes >= period_bytes_limit)
-			next_copy_time = period_copy_start + drain_interval;
+		if (sync_mode_on && draining_data->period_bytes >= period_bytes_limit) {
+			draining_data->next_copy_time = draining_data->period_copy_start +
+				drain_interval;
+			draining_data->period_copy_start = 0;
+		} else {
+			draining_data->next_copy_time = 0;
+		}
 
-		if (drain_req == 0) {
+		if (draining_data->drain_req == 0) {
 		/* We have finished draining of requested data however
 		 * while we were draining real time stream could provided
 		 * new data which needs to be copy to host.
@@ -1832,9 +1843,9 @@ static enum task_state kpb_draining_task(void *arg)
 			comp_cl_info(&comp_kpb, "kpb: update drain_req by %zu",
 				     *rt_stream_update);
 			kpb_lock(kpb);
-			drain_req += *rt_stream_update;
+			draining_data->drain_req += *rt_stream_update;
 			*rt_stream_update = 0;
-			if (!drain_req && kpb->state == KPB_STATE_DRAINING) {
+			if (!draining_data->drain_req && kpb->state == KPB_STATE_DRAINING) {
 			/* Draining is done. Now switch KPB to copy real time
 			 * stream to client's sink. This state is called
 			 * "draining on demand"
@@ -1848,6 +1859,17 @@ static enum task_state kpb_draining_task(void *arg)
 	}
 
 out:
+	if (draining_data->drain_req > 0) {
+		/* Restore original EDF thread priority */
+#ifdef __ZEPHYR__
+		k_sched_unlock();
+#endif
+
+		/* continue drainig on next task iteration */
+		return SOF_TASK_STATE_RESCHEDULE;
+	}
+
+	/* finished drainig */
 	draining_time_end = sof_cycle_get_64();
 
 	/* Reset host-sink copy mode back to its pre-draining value.
@@ -1860,13 +1882,14 @@ out:
 	else
 		comp_cl_err(&comp_kpb, "Failed to restore host copy mode!");
 
-	draining_time_ms = k_cyc_to_ms_near64(draining_time_end - draining_time_start);
+	draining_time_ms = k_cyc_to_ms_near64(draining_time_end -
+			draining_data->draining_time_start);
 	if (draining_time_ms <= UINT_MAX)
-		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in %u ms",
-			     drained, (unsigned int)draining_time_ms);
+		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %zu drained in %u ms",
+			     draining_data->drained, (unsigned int)draining_time_ms);
 	else
-		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %u drained in > %u ms",
-			     drained, UINT_MAX);
+		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %zu drained in > %u ms",
+			     draining_data->drained, UINT_MAX);
 
 	/* Restore original EDF thread priority */
 #ifdef __ZEPHYR__
