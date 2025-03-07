@@ -944,7 +944,7 @@ static int plug_set_up_widget_ipc(snd_sof_plug_t *plug, struct tplg_comp_info *c
 
 static int plug_set_up_pipeline(snd_sof_plug_t *plug, struct tplg_pipeline_info *pipe_info)
 {
-	struct ipc4_pipeline_create msg;
+	struct ipc4_pipeline_create msg = {{ 0 }};
 	struct ipc4_message_reply reply;
 	int ret;
 
