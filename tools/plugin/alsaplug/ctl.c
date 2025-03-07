@@ -645,6 +645,7 @@ static int plug_ctl_write_bytes(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 }
 
 /* TLV ops used for TLV bytes control callback */
+/* TLV ops used for TLV bytes control callback */
 static int plug_tlv_rw(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, int op_flag,
 		       unsigned int numid, unsigned int *tlv, unsigned int tlv_size)
 {
@@ -652,6 +653,21 @@ static int plug_tlv_rw(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key, int op_flag,
 	struct snd_soc_tplg_bytes_control *bytes_ctl = CTL_GET_TPLG_BYTES(ctl, key);
 	struct sof_abi_hdr *abi = (struct sof_abi_hdr *)(tlv + 2); /* skip TLV header */
 	int data_size;
+
+	/* only bytes and volume controls have tlv callback set */
+	if (bytes_ctl->hdr.ops.info != SND_SOC_TPLG_CTL_BYTES) {
+		struct snd_soc_tplg_mixer_control *mixer_ctl = CTL_GET_TPLG_MIXER(ctl, key);
+		struct snd_soc_tplg_ctl_hdr *hdr = &mixer_ctl->hdr;
+		struct snd_soc_tplg_ctl_tlv *mixer_tlv = &hdr->tlv;
+
+		/* set the dbscale values */
+		tlv[0] = SND_CTL_TLVT_DB_SCALE;
+		tlv[1] = sizeof(int) * 2;
+		tlv[2] = mixer_tlv->scale.min;
+		tlv[3] = mixer_tlv->scale.mute << 16 | mixer_tlv->scale.step;
+
+		return 0;
+	}
 
 	/* send IPC with kcontrol data if op_flag is > 0 else send IPC to get kcontrol data */
 	if (op_flag) {
