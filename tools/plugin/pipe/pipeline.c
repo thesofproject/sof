@@ -17,7 +17,6 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <mqueue.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <semaphore.h>
@@ -181,12 +180,6 @@ static void *pipe_ipc_process_thread(void *arg)
 		return NULL;
 	}
 
-	err = pipe_ipc_process(pd->sp, &pd->ipc_tx_mq, &pd->ipc_rx_mq);
-	if (err < 0) {
-		fprintf(_sp->log, "pipe IPC thread error for pipeline %d\n",
-			pd->pcm_pipeline->pipeline_id);
-	}
-
 	return NULL;
 }
 
@@ -297,18 +290,6 @@ int pipe_thread_new(struct sof_pipe *sp, struct pipeline *p)
 	pd->sp = _sp;
 	pd->pcm_pipeline = p;
 
-	/* initialise global IPC data */
-	/* TODO: change the PCM name to tplg or make it per PID*/
-	ret = plug_mq_init(&pd->ipc_tx_mq, pd->sp->topology_name, "pcm-tx", p->pipeline_id);
-	if (ret < 0)
-		return -EINVAL;
-	mq_unlink(pd->ipc_tx_mq.queue_name);
-
-	ret = plug_mq_init(&pd->ipc_rx_mq, pd->sp->topology_name, "pcm-rx", p->pipeline_id);
-	if (ret < 0)
-		return -EINVAL;
-	mq_unlink(pd->ipc_rx_mq.queue_name);
-
 	/* init names of shared resources */
 	ret = plug_lock_init(&pd->ready, _sp->topology_name, "ready", p->pipeline_id);
 	if (ret < 0)
@@ -366,11 +347,6 @@ int pipe_thread_free(struct sof_pipe *sp, int pipeline_id)
 		fprintf(_sp->log, "failed to create IPC thread: %s\n", strerror(errno));
 		return -errno;
 	}
-
-	plug_mq_free(&pd->ipc_tx_mq);
-	mq_unlink(pd->ipc_tx_mq.queue_name);
-	plug_mq_free(&pd->ipc_rx_mq);
-	mq_unlink(pd->ipc_rx_mq.queue_name);
 
 	plug_lock_free(&pd->ready);
 	plug_lock_free(&pd->done);
