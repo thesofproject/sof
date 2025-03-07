@@ -84,6 +84,7 @@ b780a0a6-269f-466f-b47723dfa05af758 google_rtc_audio_processing
 a5dacb0e-88dc-415c-a1b53e8df77f1976 idc_cmd_task
 b90f5a4e-5537-4375-a1df95485472ff9e idc_task
 696ae2bc-2877-11eb-adc10242ac120002 igo_nr
+b0cdcd9e-ef8b-404f-84800f287fc9d44d iir
 fa00558c-d653-4851-a03ab21f125a9524 interrupt
 2f520e85-49ba-4284-90d83def24af313b intc_mt8196
 be60f97d-78df-4796-a0ee435cb56b720a ipc
