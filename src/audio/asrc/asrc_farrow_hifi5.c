@@ -100,11 +100,16 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 		       int index_output_frame)
 {
-	ae_f32x2 prod;
-	ae_f32x2 buffer01 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 filter01 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 *filter_p;
-	ae_f32x2 *buffer_p;
+	ae_valignx2 align_filter;
+	ae_valignx2 align_buffer;
+	ae_f64 prod0;
+	ae_f64 prod1;
+	ae_f32x2 buffer23;
+	ae_f32x2 buffer01;
+	ae_f32x2 filter01;
+	ae_f32x2 filter23;
+	const ae_int32x4 *filter_p;
+	const ae_int32x4 *buffer_p;
 	int n_limit;
 	int ch;
 	int n;
@@ -115,7 +120,7 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 	 * 'n_limit' is therefore stored to reduce redundant
 	 * calculations. Also handle possible interleaved output.
 	 */
-	n_limit = src_obj->filter_length >> 1;
+	n_limit = src_obj->filter_length >> 2;
 	if (src_obj->output_format == ASRC_IOF_INTERLEAVED)
 		i = src_obj->num_channels * index_output_frame;
 	else
@@ -124,55 +129,41 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 	/* Iterate over each channel */
 	for (ch = 0; ch < src_obj->num_channels; ch++) {
 		/* Pointer to the beginning of the impulse response */
-		filter_p = (ae_f32x2 *)&src_obj->impulse_response[0];
+		filter_p = (ae_int32x4 *)&src_obj->impulse_response[0];
 
 		/* Pointer to the buffered input data */
 		buffer_p =
-			(ae_f32x2 *)&src_obj->ring_buffers32[ch]
+			(ae_int32x4 *)&src_obj->ring_buffers32[ch]
 			[src_obj->buffer_write_position];
 
 		/* Allows unaligned load of 64 bit per cycle */
-		ae_valign align_filter = AE_LA64_PP(filter_p);
-		ae_valign align_buffer = AE_LA64_PP(buffer_p);
+		align_filter = AE_LA128_PP(filter_p);
+		align_buffer = AE_LA128_PP(buffer_p);
 
-		/* Initialise the accumulator */
-		prod = AE_ZERO32();
+		/* Initialise the accumulators */
+		prod0 = AE_ZERO64();
+		prod1 = AE_ZERO64();
 
 		/* Iterate over the filter bins */
 		for (n = 0; n < n_limit; n++) {
-			/* Read two buffered samples at once */
-			AE_LA32X2_IP(buffer01, align_buffer, buffer_p);
+			/* Read four buffered samples */
+			AE_LA32X2X2_IP(buffer01, buffer23, align_buffer, buffer_p);
 
-			/* Store two bins of the impulse response */
-			AE_LA32X2_IP(filter01, align_filter, filter_p);
+			/* Load four coefficients of the impulse response */
+			AE_LA32X2X2_IP(filter01, filter23, align_filter, filter_p);
 
 			/* Multiply and accumulate */
-			AE_MULAFP32X2RS(prod, buffer01, filter01);
+			AE_MULAAF2D32RA_HH_LL(prod0, prod1, buffer01, buffer23, filter01, filter23);
 		}
 
-		/* Shift left after accumulation, because interim
-		 * results might saturate during filtering prod = prod
-		 * << 1; will shift after last addition
-		 */
-
-		/* swap LL and HH reusing filter01 to perform
-		 * saturated addition of both halves
-		 */
-		filter01 = AE_SEL32_LH(prod, prod);
-
-		/* Add up the lower and upper 32 bit data of the
-		 * 'prod' prod = AE_ADD32_HL_LH(prod, prod); fix using
-		 * saturated addition
-		 */
-		prod = AE_ADD32S(prod, filter01);
+		/* Add up the two accumulators */
+		prod0 = AE_ADD64S(prod0, prod1);
 
 		/* Shift with saturation */
-		prod = AE_SLAI32S(prod, 1);
+		buffer01 = AE_SLAI32S(AE_ROUND32F48SASYM(prod0), 1);
 
-		/* Store 'prod' in (de-)interleaved format in the output
-		 * buffers
-		 */
-		AE_S32_L_X(prod, (ae_f32 *)&output_buffers[ch][i], 0);
+		/* Store 'buffer01' in (de-)interleaved format in the output buffers */
+		AE_S32_L_X(buffer01, (ae_f32 *)&output_buffers[ch][i], 0);
 	}
 }
 
