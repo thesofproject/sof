@@ -1212,6 +1212,10 @@ zephyr_library_sources_ifdef(CONFIG_SHELL
        sof_shell.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_INTEL_ADSP_MIC_PRIVACY
+	${SOF_AUDIO_PATH}/mic_privacy_manager/mic_privacy_manager_intel.c
+)
+
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 

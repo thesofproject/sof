@@ -39,6 +39,9 @@
 #include "host_copier.h"
 #include "dai_copier.h"
 #include "ipcgtw_copier.h"
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include <zephyr/drivers/mic_privacy/intel/mic_privacy.h>
+#endif
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/drivers/dai.h>
@@ -50,6 +53,79 @@ LOG_MODULE_REGISTER(copier, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(copier);
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_uuid), LOG_LEVEL_INFO);
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+static void mic_privacy_event(void *arg, enum notify_id type, void *data)
+{
+	struct mic_privacy_data *mic_priv_data = arg;
+	struct mic_privacy_settings *mic_privacy_settings = data;
+
+	if (type == NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE) {
+		LOG_INF("mic_privacy_event, state1 = %d, state2 = %d ",
+			mic_privacy_settings->mic_privacy_state, mic_priv_data->mic_privacy_state);
+
+		if (mic_privacy_settings->mic_privacy_state == MIC_PRIV_UNMUTED) {
+			if (mic_priv_data->mic_privacy_state == MIC_PRIV_MUTED) {
+				mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_IN;
+				LOG_INF("mic_privacy_event switch to FADE_IN");
+			}
+		} else {
+			/* In case when mute would be triggered before copier instantiation. */
+			if (mic_priv_data->mic_privacy_state != MIC_PRIV_MUTED) {
+				mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_OUT;
+				LOG_INF("mic_privacy_event switch to FADE_OUT");
+			}
+		}
+		mic_priv_data->max_ramp_time_in_ms = (mic_privacy_settings->max_ramp_time * 1000) /
+						     ADSP_RTC_FREQUENCY;
+	}
+}
+
+static int mic_privacy_configure(struct comp_dev *dev, struct copier_data *cd)
+{
+	struct mic_privacy_data *mic_priv_data;
+	int ret;
+
+	mic_priv_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				sizeof(struct mic_privacy_data));
+	if (!mic_priv_data)
+		return -ENOMEM;
+
+	if (cd->gtw_type == ipc4_gtw_dmic)
+		mic_privacy_enable_dmic_irq(true);
+
+	mic_priv_data->audio_freq =  cd->config.base.audio_fmt.sampling_frequency;
+
+	uint32_t zeroing_wait_time = (mic_privacy_get_dma_zeroing_wait_time() * 1000) /
+				     ADSP_RTC_FREQUENCY;
+
+	ret = copier_gain_set_params(dev, &mic_priv_data->mic_priv_gain_params,
+				     zeroing_wait_time, SOF_DAI_INTEL_NONE);
+	if (ret != 0) {
+		rfree(mic_priv_data);
+		return ret;
+	}
+
+	cd->mic_priv = mic_priv_data;
+
+	ret = notifier_register(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,
+				mic_privacy_event, 0);
+	if (ret != 0)
+		rfree(mic_priv_data);
+
+	return ret;
+}
+
+static void mic_privacy_free(struct copier_data *cd)
+{
+	if (cd->gtw_type == ipc4_gtw_dmic)
+		mic_privacy_enable_dmic_irq(false);
+
+	notifier_unregister(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE);
+
+	rfree(cd->mic_priv);
+}
+#endif
 
 static int copier_init(struct processing_module *mod)
 {
@@ -131,6 +207,16 @@ static int copier_init(struct processing_module *mod)
 				comp_err(dev, "unable to create host");
 				goto error;
 			}
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+			if (cd->direction == SOF_IPC_STREAM_CAPTURE &&
+			    node_id.f.dma_type == ipc4_hda_host_output_class) {
+				ret = mic_privacy_configure(dev, cd);
+				if (ret < 0) {
+					comp_err(dev, "unable to configure mic privacy");
+					goto error;
+				}
+			}
+#endif
 			break;
 		case ipc4_hda_link_output_class:
 		case ipc4_hda_link_input_class:
@@ -144,6 +230,15 @@ static int copier_init(struct processing_module *mod)
 				comp_err(dev, "unable to create dai");
 				goto error;
 			}
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+			if (cd->direction == SOF_IPC_STREAM_CAPTURE) {
+				ret = mic_privacy_configure(dev, cd);
+				if (ret < 0) {
+					comp_err(dev, "unable to configure mic privacy");
+					goto error;
+				}
+			}
+#endif
 			break;
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
@@ -183,6 +278,10 @@ static int copier_free(struct processing_module *mod)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	mic_privacy_free(cd);
+#endif
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
