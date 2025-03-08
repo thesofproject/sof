@@ -251,10 +251,11 @@ static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
 
 	/* Set buffer_length to filter_length * 2 to compensate for
 	 * missing element wise wrap around while loading but allowing
-	 * aligned loads.
+	 * aligned loads. FIR delay line write is initialized to last
+	 * position of first copy block for reverse direction write.
 	 */
 	src_obj->buffer_length = src_obj->filter_length * 2;
-	src_obj->buffer_write_position = src_obj->filter_length;
+	src_obj->buffer_write_position = src_obj->filter_length - 1;
 
 	if (src_obj->bit_depth == 32) {
 		buffer_size = src_obj->buffer_length * sizeof(int32_t);
