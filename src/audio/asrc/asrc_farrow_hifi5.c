@@ -14,11 +14,13 @@ LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
 void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 		       int index_output_frame)
 {
-	ae_f32x2 prod;
-	ae_f32x2 filter01 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f32x2 filter23 = AE_ZERO32(); /* Note: Init is not needed */
-	ae_f16x4 buffer0123 = AE_ZERO16(); /* Note: Init is not needed */
-	ae_f32x2 *filter_p;
+	ae_valignx2 align_filter;
+	ae_valign align_buffer;
+	ae_int64 prod;
+	ae_f32x2 filter01;
+	ae_f32x2 filter23;
+	ae_f16x4 buffer0123;
+	ae_int32x4 *filter_p;
 	ae_f16x4 *buffer_p;
 	int n_limit;
 	int ch;
@@ -39,7 +41,7 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 	/* Iterate over each channel */
 	for (ch = 0; ch < src_obj->num_channels; ch++) {
 		/* Pointer to the beginning of the impulse response */
-		filter_p = (ae_f32x2 *)&src_obj->impulse_response[0];
+		filter_p = (ae_int32x4 *)&src_obj->impulse_response[0];
 
 		/* Pointer to the buffered input data */
 		buffer_p =
@@ -47,11 +49,11 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 			[src_obj->buffer_write_position];
 
 		/* Allows unaligned load of 64 bit per cycle */
-		ae_valign align_filter = AE_LA64_PP(filter_p);
-		ae_valign align_buffer = AE_LA64_PP(buffer_p);
+		align_filter = AE_LA128_PP(filter_p);
+		align_buffer = AE_LA64_PP(buffer_p);
 
 		/* Initialise the accumulator */
-		prod = AE_ZERO32();
+		prod = AE_ZERO64();
 
 		/* Iterate over the filter bins */
 		for (n = 0; n < n_limit; n++) {
@@ -59,40 +61,19 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 			AE_LA16X4_IP(buffer0123, align_buffer, buffer_p);
 
 			/* Store four bins of the impulse response */
-			AE_LA32X2_IP(filter01, align_filter, filter_p);
-			AE_LA32X2_IP(filter23, align_filter, filter_p);
+			AE_LA32X2X2_IP(filter01, filter23, align_filter, filter_p);
 
-			/* Multiply and accumulate
-			 * the lower half bits in 'buffer0123' are used
-			 */
-			AE_MULAFP32X16X2RS_L(prod, filter23, buffer0123);
-			/* the upper half bits in 'buffer0123' are used */
-			AE_MULAFP32X16X2RS_H(prod, filter01, buffer0123);
+			/* Multiply and accumulate */
+			AE_MULAAAAFQ32X16(prod, filter01, filter23, buffer0123);
 		}
 
-		/* Shift left after accumulation, because interim
-		 * results might saturate during filtering prod = prod
-		 * << 1; will shift after last addition
-		 */
-
-		/* swap LL and HH reusing filter01 to perform
-		 * saturated addition of both halves
-		 */
-		filter01 = AE_SEL32_LH(prod, prod);
-
-		/* Add up the lower and upper 32 bit data of the
-		 * 'prod' prod = AE_ADD32_HL_LH(prod, prod); fix using
-		 * saturated addition
-		 */
-		prod = AE_ADD32S(prod, filter01);
-
-		/* Shift with saturation */
-		prod = AE_SLAI32S(prod, 1);
+		/* Shift with saturation, use filter01 as scratch */
+		filter01 = AE_SLAI32S(AE_ROUND32F48SASYM(prod), 1);
 
 		/* Round 'prod' to 16 bit and store it in
 		 * (de-)interleaved format in the output buffers
 		 */
-		AE_S16_0_X(AE_ROUND16X4F32SSYM(prod, prod),
+		AE_S16_0_X(AE_ROUND16X4F32SSYM(filter01, filter01),
 			   (ae_f16 *)&output_buffers[ch][i], 0);
 	}
 }
