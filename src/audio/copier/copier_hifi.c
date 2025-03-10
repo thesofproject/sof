@@ -13,6 +13,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
+#include <sof/lib/memory.h>
 #include <module/module/base.h>
 #include <stddef.h>
 #include <errno.h>
@@ -75,9 +76,11 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 	}
 }
 
-void copier_gain_set_basic_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
-				  struct ipc4_base_module_cfg *ipc4_cfg)
+__cold void copier_gain_set_basic_params(struct comp_dev *dev,
+					 struct copier_gain_params *gain_params,
+					 struct ipc4_base_module_cfg *ipc4_cfg)
 {
+	assert_can_be_cold();
 
 	/* Set default gain coefficients */
 	for (int i = 0; i < ARRAY_SIZE(gain_params->gain_coeffs); ++i)
@@ -90,13 +93,15 @@ void copier_gain_set_basic_params(struct comp_dev *dev, struct copier_gain_param
 	gain_params->channels_count = ipc4_cfg->audio_fmt.channels_count;
 }
 
-int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
-				struct ipc4_base_module_cfg *ipc4_cfg,
-				uint32_t fade_period, uint32_t frames)
+__cold int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
+				       struct ipc4_base_module_cfg *ipc4_cfg,
+				       uint32_t fade_period, uint32_t frames)
 {
 	uint16_t init_gain[MAX_GAIN_COEFFS_CNT];
 	uint16_t step_i64_to_i16;
 	ae_f16 step_f16;
+
+	assert_can_be_cold();
 
 	/* For backward compatibility add a case with default fade transition.
 	 * Backward compatibility is referring to clock_on_delay in DMIC blob.
