@@ -44,13 +44,15 @@ DECLARE_TR_CTX(basefw_comp_tr, SOF_UUID(basefw_uuid), LOG_LEVEL_INFO);
 static struct ipc4_system_time_info global_system_time_info;
 static uint64_t global_cycle_delta;
 
-static int basefw_config(uint32_t *data_offset, char *data)
+__cold static int basefw_config(uint32_t *data_offset, char *data)
 {
 	uint16_t version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	struct ipc4_scheduler_config sche_cfg;
 	uint32_t plat_data_offset = 0;
 	uint32_t log_bytes_size = 0;
+
+	assert_can_be_cold();
 
 	tlv_value_set(tuple, IPC4_FW_VERSION_FW_CFG, sizeof(version), version);
 
@@ -130,10 +132,12 @@ static int basefw_config(uint32_t *data_offset, char *data)
 	return IPC4_SUCCESS;
 }
 
-static int basefw_hw_config(uint32_t *data_offset, char *data)
+__cold static int basefw_hw_config(uint32_t *data_offset, char *data)
 {
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	uint32_t plat_data_offset = 0;
+
+	assert_can_be_cold();
 
 	tlv_value_uint32_set(tuple, IPC4_CAVS_VER_HW_CFG, HW_CFG_VERSION);
 
@@ -154,26 +158,28 @@ static int basefw_hw_config(uint32_t *data_offset, char *data)
 	return IPC4_SUCCESS;
 }
 
-struct ipc4_system_time_info *basefw_get_system_time_info(void)
+__cold struct ipc4_system_time_info *basefw_get_system_time_info(void)
 {
+	assert_can_be_cold();
+
 	return &global_system_time_info;
 }
 
+/* Cannot be cold - this function is called from the logger per log_set_timestamp_func() below */
 static log_timestamp_t basefw_get_timestamp(void)
 {
 	return sof_cycle_get_64() + global_cycle_delta;
 }
 
-static uint32_t basefw_set_system_time(uint32_t param_id,
-				       bool first_block,
-				       bool last_block,
-				       uint32_t data_offset,
-				       const char *data)
+__cold static uint32_t basefw_set_system_time(uint32_t param_id, bool first_block, bool last_block,
+					      uint32_t data_offset, const char *data)
 {
 	uint64_t dsp_time;
 	uint64_t dsp_cycle;
 	uint64_t host_time;
 	uint64_t host_cycle;
+
+	assert_can_be_cold();
 
 	if (!(first_block && last_block))
 		return IPC4_INVALID_REQUEST;
@@ -203,9 +209,11 @@ static uint32_t basefw_set_system_time(uint32_t param_id,
 	return IPC4_SUCCESS;
 }
 
-static uint32_t basefw_get_system_time(uint32_t *data_offset, char *data)
+__cold static uint32_t basefw_get_system_time(uint32_t *data_offset, char *data)
 {
 	struct ipc4_system_time *system_time = (struct ipc4_system_time *)data;
+
+	assert_can_be_cold();
 
 	system_time->val_l = global_system_time_info.host_time.val_l;
 	system_time->val_u = global_system_time_info.host_time.val_u;
@@ -213,11 +221,11 @@ static uint32_t basefw_get_system_time(uint32_t *data_offset, char *data)
 	return IPC4_SUCCESS;
 }
 
-static int basefw_register_kcps(bool first_block,
-				bool last_block,
-				uint32_t data_offset_or_size,
-				const char *data)
+__cold static int basefw_register_kcps(bool first_block, bool last_block,
+				       uint32_t data_offset_or_size, const char *data)
 {
+	assert_can_be_cold();
+
 	if (!(first_block && last_block))
 		return IPC4_ERROR_INVALID_PARAM;
 
@@ -230,8 +238,10 @@ static int basefw_register_kcps(bool first_block,
 	return IPC4_SUCCESS;
 }
 
-static int basefw_kcps_allocation_request(struct ipc4_resource_kcps *request)
+__cold static int basefw_kcps_allocation_request(struct ipc4_resource_kcps *request)
 {
+	assert_can_be_cold();
+
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	if (core_kcps_adjust(request->core_id, request->kcps))
 		return IPC4_ERROR_INVALID_PARAM;
@@ -240,12 +250,12 @@ static int basefw_kcps_allocation_request(struct ipc4_resource_kcps *request)
 	return IPC4_SUCCESS;
 }
 
-static int basefw_resource_allocation_request(bool first_block,
-					      bool last_block,
-					      uint32_t data_offset_or_size,
-					      const char *data)
+__cold static int basefw_resource_allocation_request(bool first_block, bool last_block,
+						     uint32_t data_offset_or_size, const char *data)
 {
 	struct ipc4_resource_request *request;
+
+	assert_can_be_cold();
 
 	if (!(first_block && last_block))
 		return IPC4_ERROR_INVALID_PARAM;
@@ -262,8 +272,10 @@ static int basefw_resource_allocation_request(bool first_block,
 	}
 }
 
-static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
+__cold static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 {
+	assert_can_be_cold();
+
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	uint32_t core_kcps[CONFIG_CORE_COUNT] = {0};
@@ -286,8 +298,10 @@ static int basefw_power_state_info_get(uint32_t *data_offset, char *data)
 #endif
 }
 
-static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
+__cold static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 {
+	assert_can_be_cold();
+
 	if (sizeof(struct ipc4_libraries_info) +
 		    LIB_MANAGER_MAX_LIBS * sizeof(struct ipc4_library_props) >
 	    SOF_IPC_MSG_MAX_SIZE) {
@@ -337,15 +351,17 @@ static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 	return IPC4_SUCCESS;
 }
 
-static int basefw_modules_info_get(uint32_t *data_offset, char *data)
+__cold static int basefw_modules_info_get(uint32_t *data_offset, char *data)
 {
+	assert_can_be_cold();
+
 	return basefw_vendor_modules_info_get(data_offset, data);
 }
 
-int schedulers_info_get(uint32_t *data_off_size,
-			char *data,
-			uint32_t core_id)
+__cold int schedulers_info_get(uint32_t *data_off_size, char *data, uint32_t core_id)
 {
+	assert_can_be_cold();
+
 	/* Check if the requested core_id is valid and within the number of configured cores */
 	if (core_id >= CONFIG_CORE_COUNT)
 		return IPC4_ERROR_INVALID_PARAM;
@@ -382,13 +398,15 @@ int schedulers_info_get(uint32_t *data_off_size,
 	return IPC4_SUCCESS;
 }
 
-static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *data)
+__cold static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *data)
 {
 	struct ipc4_pipeline_set_state_data *ppl_data = (struct ipc4_pipeline_set_state_data *)data;
 
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *ipc_pipe;
 	const struct ipc4_pipeline_set_state_data *pipeline_data;
+
+	assert_can_be_cold();
 
 	pipeline_data = ipc4_get_pipeline_data_wrapper();
 	ppl_data->pipelines_count = 0;
@@ -407,8 +425,10 @@ static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *data)
 	return IPC4_SUCCESS;
 }
 
-int set_perf_meas_state(const char *data)
+__cold int set_perf_meas_state(const char *data)
 {
+	assert_can_be_cold();
+
 #ifdef CONFIG_SOF_TELEMETRY
 	enum ipc4_perf_measurements_state_set state = *data;
 
@@ -437,8 +457,10 @@ int set_perf_meas_state(const char *data)
 	return IPC4_SUCCESS;
 }
 
-static int extended_global_perf_data_get(uint32_t *data_off_size, char *data)
+__cold static int extended_global_perf_data_get(uint32_t *data_off_size, char *data)
 {
+	assert_can_be_cold();
+
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	int ret;
 	struct extended_global_perf_data *perf_data = (struct extended_global_perf_data *)data;
@@ -455,8 +477,10 @@ static int extended_global_perf_data_get(uint32_t *data_off_size, char *data)
 #endif
 }
 
-static int global_perf_data_get(uint32_t *data_off_size, char *data)
+__cold static int global_perf_data_get(uint32_t *data_off_size, char *data)
 {
+	assert_can_be_cold();
+
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	int ret;
 	struct global_perf_data *perf_data = (struct global_perf_data *)data;
@@ -473,8 +497,10 @@ static int global_perf_data_get(uint32_t *data_off_size, char *data)
 #endif
 }
 
-static int io_global_perf_state_get(uint32_t *data_off_size, char *data)
+__cold static int io_global_perf_state_get(uint32_t *data_off_size, char *data)
 {
+	assert_can_be_cold();
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	*data = io_perf_monitor_get_state();
 	*data_off_size = sizeof(enum ipc4_perf_measurements_state_set);
@@ -485,8 +511,10 @@ static int io_global_perf_state_get(uint32_t *data_off_size, char *data)
 #endif
 }
 
-static int io_global_perf_data_get(uint32_t *data_off_size, char *data)
+__cold static int io_global_perf_data_get(uint32_t *data_off_size, char *data)
 {
+	assert_can_be_cold();
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	int ret;
 	struct io_global_perf_data *perf_data = (struct io_global_perf_data *)data;
@@ -503,8 +531,10 @@ static int io_global_perf_data_get(uint32_t *data_off_size, char *data)
 #endif
 }
 
-static int io_perf_monitor_state_set(const char *data)
+__cold static int io_perf_monitor_state_set(const char *data)
 {
+	assert_can_be_cold();
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	return io_perf_monitor_set_state((enum ipc4_perf_measurements_state_set)*data);
 #else
@@ -512,15 +542,14 @@ static int io_perf_monitor_state_set(const char *data)
 #endif
 }
 
-static int basefw_get_large_config(struct comp_dev *dev,
-				   uint32_t param_id,
-				   bool first_block,
-				   bool last_block,
-				   uint32_t *data_offset,
-				   char *data)
+__cold static int basefw_get_large_config(struct comp_dev *dev, uint32_t param_id,
+					  bool first_block, bool last_block,
+					  uint32_t *data_offset, char *data)
 {
 	/* We can use extended param id for both extended and standard param id */
 	union ipc4_extended_param_id extended_param_id;
+
+	assert_can_be_cold();
 
 	extended_param_id.full = param_id;
 
@@ -584,14 +613,14 @@ static int basefw_get_large_config(struct comp_dev *dev,
  * @param data Pointer to the data buffer containing the DMA Control message.
  * @return 0 on success, error code on failure.
  */
-static int basefw_dma_control(bool first_block,
-			      bool last_block,
-			      uint32_t data_offset,
-			      const char *data)
+__cold static int basefw_dma_control(bool first_block, bool last_block, uint32_t data_offset,
+				     const char *data)
 {
 	struct ipc4_dma_control *dma_control;
 	size_t data_size;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* Ensure that the message is atomic and contains all necessary information */
 	if (!first_block || !last_block) {
@@ -619,13 +648,12 @@ static int basefw_dma_control(bool first_block,
 	return IPC4_SUCCESS;
 }
 
-static int basefw_set_large_config(struct comp_dev *dev,
-				   uint32_t param_id,
-				   bool first_block,
-				   bool last_block,
-				   uint32_t data_offset,
-				   const char *data)
+__cold static int basefw_set_large_config(struct comp_dev *dev, uint32_t param_id,
+					  bool first_block, bool last_block,
+					  uint32_t data_offset, const char *data)
 {
+	assert_can_be_cold();
+
 	switch (param_id) {
 	case IPC4_DMA_CONTROL:
 		return basefw_dma_control(first_block, last_block, data_offset, data);

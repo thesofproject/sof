@@ -58,9 +58,11 @@ struct ipc4_modules_info {
 
 LOG_MODULE_REGISTER(basefw_intel, CONFIG_SOF_LOG_LEVEL);
 
-int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
+__cold int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
 {
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
+
+	assert_can_be_cold();
 
 	tlv_value_uint32_set(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
 
@@ -76,10 +78,12 @@ int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
 	return 0;
 }
 
-int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
+__cold int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 {
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	uint32_t value;
+
+	assert_can_be_cold();
 
 	tlv_value_uint32_set(tuple, IPC4_HP_EBB_COUNT_HW_CFG, PLATFORM_HPSRAM_EBB_COUNT);
 
@@ -122,18 +126,23 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 	return 0;
 }
 
-struct sof_man_fw_desc *basefw_vendor_get_manifest(void)
+__cold struct sof_man_fw_desc *basefw_vendor_get_manifest(void)
 {
+	assert_can_be_cold();
+
 	return (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
 }
 
-int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
+__cold int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
 {
-	struct ipc4_modules_info *const module_info = (struct ipc4_modules_info *)data;
+	assert_can_be_cold();
+
 	struct sof_man_fw_desc *desc = basefw_vendor_get_manifest();
 
 	if (!desc)
 		return IPC4_ERROR_INVALID_PARAM;
+
+	struct ipc4_modules_info *const module_info = (struct ipc4_modules_info *)data;
 
 	module_info->modules_count = desc->header.num_module_entries;
 
@@ -153,7 +162,7 @@ int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
  * low power mode sram. This function retures memory size in page
  * , memory bank power and usage status of each sram to host driver
  */
-static int basefw_mem_state_info(uint32_t *data_offset, char *data)
+__cold static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 {
 	struct sof_tlv *tuple = (struct sof_tlv *)data;
 	struct ipc4_sram_state_info info;
@@ -162,6 +171,8 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	uint32_t size;
 	uint16_t *ptr;
 	int i;
+
+	assert_can_be_cold();
 
 	/* set hpsram */
 	info.free_phys_mem_pages = SRAM_BANK_SIZE * PLATFORM_HPSRAM_EBB_COUNT / HOST_PAGE_SIZE;
@@ -220,8 +231,10 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	return IPC4_SUCCESS;
 }
 
-static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
+__cold static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
 {
+	assert_can_be_cold();
+
 #if CONFIG_ACE_V1X_ART_COUNTER && CONFIG_ACE_V1X_RTC_COUNTER
 	struct ipc4_ext_system_time *ext_system_time = (struct ipc4_ext_system_time *)(data);
 	struct ipc4_ext_system_time ext_system_time_data = {0};
@@ -278,13 +291,12 @@ static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
 #endif
 }
 
-int basefw_vendor_get_large_config(struct comp_dev *dev,
-				   uint32_t param_id,
-				   bool first_block,
-				   bool last_block,
-				   uint32_t *data_offset,
-				   char *data)
+__cold int basefw_vendor_get_large_config(struct comp_dev *dev, uint32_t param_id,
+					  bool first_block, bool last_block,
+					  uint32_t *data_offset, char *data)
 {
+	assert_can_be_cold();
+
 	/* We can use extended param id for both extended and standard param id */
 	union ipc4_extended_param_id extended_param_id;
 
@@ -312,8 +324,10 @@ int basefw_vendor_get_large_config(struct comp_dev *dev,
 	return ret;
 }
 
-static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
+__cold static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
 {
+	assert_can_be_cold();
+
 #if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	const uint32_t force = tlv->value[0];
 
@@ -331,12 +345,12 @@ static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
 #endif
 }
 
-static int basefw_set_fw_config(bool first_block,
-				bool last_block,
-				uint32_t data_offset,
-				const char *data)
+__cold static int basefw_set_fw_config(bool first_block, bool last_block,
+				       uint32_t data_offset, const char *data)
 {
 	const struct sof_tlv *tlv = (const struct sof_tlv *)data;
+
+	assert_can_be_cold();
 
 	switch (tlv->type) {
 	case IPC4_DMI_FORCE_L1_EXIT:
@@ -380,13 +394,12 @@ static int basefw_mic_priv_state_changed(bool first_block,
 #endif
 }
 
-int basefw_vendor_set_large_config(struct comp_dev *dev,
-				   uint32_t param_id,
-				   bool first_block,
-				   bool last_block,
-				   uint32_t data_offset,
-				   const char *data)
+__cold int basefw_vendor_set_large_config(struct comp_dev *dev, uint32_t param_id,
+					  bool first_block, bool last_block,
+					  uint32_t data_offset, const char *data)
 {
+	assert_can_be_cold();
+
 	switch (param_id) {
 	case IPC4_FW_CONFIG:
 		return basefw_set_fw_config(first_block, last_block, data_offset, data);
@@ -401,11 +414,13 @@ int basefw_vendor_set_large_config(struct comp_dev *dev,
 	return IPC4_UNKNOWN_MESSAGE_TYPE;
 }
 
-int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, size_t data_size)
+__cold int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, size_t data_size)
 {
 	union ipc4_connector_node_id node = (union ipc4_connector_node_id)node_id;
 	int ret, result;
 	enum dai_type type;
+
+	assert_can_be_cold();
 
 	tr_info(&basefw_comp_tr, "node_id 0x%x, config_data 0x%x, data_size %u",
 		node_id, (uint32_t)config_data, data_size);
