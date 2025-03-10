@@ -34,9 +34,11 @@ struct dai_group_list {
 
 static struct dai_group_list *groups[CONFIG_CORE_COUNT];
 
-static struct dai_group_list *dai_group_list_get(int core_id)
+__cold static struct dai_group_list *dai_group_list_get(int core_id)
 {
 	struct dai_group_list *group_list = groups[core_id];
+
+	assert_can_be_cold();
 
 	if (!group_list) {
 		group_list = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
@@ -49,11 +51,13 @@ static struct dai_group_list *dai_group_list_get(int core_id)
 	return group_list;
 }
 
-static struct dai_group *dai_group_find(uint32_t group_id)
+__cold static struct dai_group *dai_group_find(uint32_t group_id)
 {
 	struct list_item *dai_groups;
 	struct list_item *group_item;
 	struct dai_group *group = NULL;
+
+	assert_can_be_cold();
 
 	dai_groups = &dai_group_list_get(cpu_get_id())->list;
 
@@ -69,10 +73,12 @@ static struct dai_group *dai_group_find(uint32_t group_id)
 	return group;
 }
 
-static struct dai_group *dai_group_alloc()
+__cold static struct dai_group *dai_group_alloc(void)
 {
 	struct list_item *dai_groups = &dai_group_list_get(cpu_get_id())->list;
 	struct dai_group *group;
+
+	assert_can_be_cold();
 
 	group = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
 			sizeof(*group));
@@ -82,9 +88,11 @@ static struct dai_group *dai_group_alloc()
 	return group;
 }
 
-struct dai_group *dai_group_get(uint32_t group_id, uint32_t flags)
+__cold struct dai_group *dai_group_get(uint32_t group_id, uint32_t flags)
 {
 	struct dai_group *group;
+
+	assert_can_be_cold();
 
 	if (!group_id) {
 		tr_err(&dai_tr, "dai_group_get(): invalid group_id %u",
@@ -117,8 +125,10 @@ struct dai_group *dai_group_get(uint32_t group_id, uint32_t flags)
 	return group;
 }
 
-void dai_group_put(struct dai_group *group)
+__cold void dai_group_put(struct dai_group *group)
 {
+	assert_can_be_cold();
+
 	group->num_dais--;
 
 	/* Mark as unused if there are no more DAIs in this group */
