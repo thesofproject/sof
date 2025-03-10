@@ -5,6 +5,7 @@
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
 #include <sof/audio/component_ext.h>
+#include <sof/lib/memory.h>
 #include <sof/tlv.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -28,9 +29,11 @@ struct fpi_sync_group {
 
 static struct list_item group_list_head = LIST_INIT(group_list_head);
 
-static struct fpi_sync_group *find_group_by_id(uint32_t id)
+__cold static struct fpi_sync_group *find_group_by_id(uint32_t id)
 {
 	struct list_item *item;
+
+	assert_can_be_cold();
 
 	list_for_item(item, &group_list_head) {
 		struct fpi_sync_group *group = list_item(item, struct fpi_sync_group, item);
@@ -42,11 +45,13 @@ static struct fpi_sync_group *find_group_by_id(uint32_t id)
 	return NULL;
 }
 
-int add_to_fpi_sync_group(struct comp_dev *parent_dev,
-			  struct host_data *hd,
-			  struct ipc4_copier_sync_group *sync_group)
+__cold static int add_to_fpi_sync_group(struct comp_dev *parent_dev,
+					struct host_data *hd,
+					struct ipc4_copier_sync_group *sync_group)
 {
 	struct fpi_sync_group *group = find_group_by_id(sync_group->group_id);
+
+	assert_can_be_cold();
 
 	if (group) {
 		if (group->period != sync_group->fpi_update_period_usec) {
@@ -76,9 +81,11 @@ int add_to_fpi_sync_group(struct comp_dev *parent_dev,
 	return 0;
 }
 
-void delete_from_fpi_sync_group(struct host_data *hd)
+__cold static void delete_from_fpi_sync_group(struct host_data *hd)
 {
 	struct fpi_sync_group *group = find_group_by_id(hd->group_id);
+
+	assert_can_be_cold();
 
 	if (!group)
 		return;
@@ -92,12 +99,14 @@ void delete_from_fpi_sync_group(struct host_data *hd)
 #endif
 
 /* Playback only */
-static int init_pipeline_reg(struct comp_dev *dev)
+__cold static int init_pipeline_reg(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_pipeline_registers pipe_reg;
 	uint32_t gateway_id;
+
+	assert_can_be_cold();
 
 	gateway_id = cd->config.gtw_cfg.node_id.f.v_index;
 	if (gateway_id >= IPC4_MAX_PIPELINE_REG_SLOTS) {
@@ -122,9 +131,9 @@ static int init_pipeline_reg(struct comp_dev *dev)
  * Sof host component can support this case so copier reuses host
  * component to support host gateway.
  */
-int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
-		       const struct ipc4_copier_module_cfg *copier_cfg,
-		       struct pipeline *pipeline)
+__cold int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
+			      const struct ipc4_copier_module_cfg *copier_cfg,
+			      struct pipeline *pipeline)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct comp_ipc_config *config = &dev->ipc_config;
@@ -134,6 +143,8 @@ int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 	int ret;
 	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
 	enum sof_ipc_frame in_valid_fmt, out_valid_fmt;
+
+	assert_can_be_cold();
 
 	config->type = SOF_COMP_HOST;
 	cd->gtw_type = ipc4_gtw_host;
@@ -230,8 +241,10 @@ e_data:
 	return ret;
 }
 
-void copier_host_free(struct copier_data *cd)
+__cold void copier_host_free(struct copier_data *cd)
 {
+	assert_can_be_cold();
+
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
 	if (cd->hd->is_grouped)
 		delete_from_fpi_sync_group(cd->hd);
