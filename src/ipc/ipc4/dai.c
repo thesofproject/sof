@@ -12,6 +12,7 @@
 #include <rtos/idc.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
@@ -331,12 +332,14 @@ static int dai_init_llp_info(struct dai_data *dd, struct comp_dev *dev)
 	return 0;
 }
 
-int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai *common_config,
-	       const void *spec_config)
+__cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
+		      struct ipc_config_dai *common_config, const void *spec_config)
 {
 	const struct ipc4_copier_module_cfg *copier_cfg = spec_config;
 	int size;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* ignore if message not for this DAI id/type */
 	if (dd->ipc_config.dai_index != common_config->dai_index ||
