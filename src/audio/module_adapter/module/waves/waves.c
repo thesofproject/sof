@@ -43,6 +43,7 @@ struct waves_codec_data {
 	void                    *response;
 	uint32_t                config_blob_size;
 	void                    *config_blob;
+	bool                    initialized;
 };
 
 enum waves_codec_params {
@@ -353,6 +354,7 @@ static int waves_effect_init(struct processing_module *mod)
 		comp_err(dev, "waves_effect_init() MaxxEffect_Initialize returned %d", status);
 		return -EINVAL;
 	}
+	waves_codec->initialized = true;
 
 	comp_dbg(dev, "waves_effect_init() done");
 	return 0;
@@ -509,14 +511,17 @@ static int waves_effect_message(struct processing_module *mod, void *data, uint3
 	MaxxStatus_t status;
 	uint32_t response_size = 0;
 
-	comp_info(dev, "waves_effect_message() start data %p size %d", data, size);
+	if (waves_codec->initialized) {
+		comp_info(dev, "waves_effect_message() start data %p size %d", data, size);
 
-	status = MaxxEffect_Message(waves_codec->effect, data, size,
-				    waves_codec->response, &response_size);
+		status = MaxxEffect_Message(waves_codec->effect, data, size,
+									waves_codec->response, &response_size);
 
-	if (status) {
-		comp_err(dev, "waves_effect_message() MaxxEffect_Message returned %d", status);
-		return -EINVAL;
+		if (status) {
+			comp_err(dev, "waves_effect_message() MaxxEffect_Message returned %d",
+					status);
+			return -EINVAL;
+		}
 	}
 
 #if CONFIG_TRACEV
@@ -693,6 +698,7 @@ static int waves_codec_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 	waves_codec->response = response;
+	waves_codec->initialized = false;
 
 	comp_dbg(dev, "waves_codec_init() done");
 	return ret;
@@ -844,6 +850,7 @@ static int waves_codec_reset(struct processing_module *mod)
 	if (codec->mpd.out_buff)
 		module_free_memory(mod, codec->mpd.out_buff);
 
+	waves_codec->initialized = false;
 	comp_dbg(dev, "waves_codec_reset() done");
 	return ret;
 }
