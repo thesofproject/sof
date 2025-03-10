@@ -76,8 +76,10 @@ static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
 }
 
 /* Assign DAI to a group */
-int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_id)
+__cold int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_id)
 {
+	assert_can_be_cold();
+
 	if (dd->group) {
 		if (dd->group->group_id != group_id) {
 			comp_err(dev, "DAI already in group %d, requested %d",
@@ -135,14 +137,16 @@ static int dai_trigger_op(struct dai *dai, int cmd, int direction)
 }
 
 /* called from src/ipc/ipc3/handler.c and src/ipc/ipc4/dai.c */
-int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-		   const void *spec_config)
+__cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+			  const void *spec_config)
 {
 	const struct device *dev = dai->dev;
 	const struct sof_ipc_dai_config *sof_cfg = spec_config;
 	struct dai_config cfg;
 	const void *cfg_params;
 	bool is_blob;
+
+	assert_can_be_cold();
 
 	cfg.dai_index = common_config->dai_index;
 	is_blob = common_config->is_config_blob;
@@ -193,12 +197,14 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 }
 
 /* called from ipc/ipc3/dai.c */
-int dai_get_handshake(struct dai *dai, int direction, int stream_id)
+__cold int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	k_spinlock_key_t key = k_spin_lock(&dai->lock);
 	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
 								stream_id);
 	int hs_id = props->dma_hs_id;
+
+	assert_can_be_cold();
 
 	k_spin_unlock(&dai->lock, key);
 
@@ -206,11 +212,13 @@ int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 }
 
 /* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
-int dai_get_fifo_depth(struct dai *dai, int direction)
+__cold int dai_get_fifo_depth(struct dai *dai, int direction)
 {
 	const struct dai_properties *props;
 	k_spinlock_key_t key;
 	int fifo_depth;
+
+	assert_can_be_cold();
 
 	if (!dai)
 		return 0;
@@ -223,23 +231,27 @@ int dai_get_fifo_depth(struct dai *dai, int direction)
 	return fifo_depth;
 }
 
-int dai_get_stream_id(struct dai *dai, int direction)
+__cold int dai_get_stream_id(struct dai *dai, int direction)
 {
 	k_spinlock_key_t key = k_spin_lock(&dai->lock);
 	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
 	int stream_id = props->stream_id;
+
+	assert_can_be_cold();
 
 	k_spin_unlock(&dai->lock, key);
 
 	return stream_id;
 }
 
-static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
+__cold static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
 	k_spinlock_key_t key = k_spin_lock(&dai->lock);
 	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
 								stream_id);
 	int fifo_address = props->fifo_address;
+
+	assert_can_be_cold();
 
 	k_spin_unlock(&dai->lock, key);
 
@@ -467,10 +479,12 @@ dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t fr
 	return dma_status;
 }
 
-int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
-		   const struct ipc_config_dai *dai_cfg)
+__cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
+			  const struct ipc_config_dai *dai_cfg)
 {
 	uint32_t dir;
+
+	assert_can_be_cold();
 
 	dd->dai = dai_get(dai_cfg->type, dai_cfg->dai_index, DAI_CREAT);
 	if (!dd->dai) {
@@ -542,14 +556,16 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	return 0;
 }
 
-static struct comp_dev *dai_new(const struct comp_driver *drv,
-				const struct comp_ipc_config *config,
-				const void *spec)
+__cold static struct comp_dev *dai_new(const struct comp_driver *drv,
+				       const struct comp_ipc_config *config,
+				       const void *spec)
 {
 	struct comp_dev *dev;
 	const struct ipc_config_dai *dai_cfg = spec;
 	struct dai_data *dd;
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_cl_dbg(&comp_dai, "dai_new()");
 
@@ -582,8 +598,10 @@ e_data:
 	return NULL;
 }
 
-void dai_common_free(struct dai_data *dd)
+__cold void dai_common_free(struct dai_data *dd)
 {
+	assert_can_be_cold();
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	io_perf_monitor_release_slot(dd->io_perf_bytes_count);
 #endif
@@ -605,9 +623,11 @@ void dai_common_free(struct dai_data *dd)
 	rfree(dd->dai_spec_config);
 }
 
-static void dai_free(struct comp_dev *dev)
+__cold static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	if (dd->group)
 		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
@@ -618,11 +638,13 @@ static void dai_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
-			     struct sof_ipc_stream_params *params, int dir)
+__cold int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params, int dir)
 {
 	struct dai_config cfg;
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "dai_common_get_hw_params()");
 
@@ -645,20 +667,24 @@ int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 	return ret;
 }
 
-static int dai_comp_get_hw_params(struct comp_dev *dev,
-				  struct sof_ipc_stream_params *params,
-				  int dir)
+__cold static int dai_comp_get_hw_params(struct comp_dev *dev,
+					 struct sof_ipc_stream_params *params,
+					 int dir)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
-static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
-			     struct sof_ipc_stream_params *params)
+__cold static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params)
 {
 	struct sof_ipc_stream_params hw_params;
 	int ret;
+
+	assert_can_be_cold();
 
 	memset(&hw_params, 0, sizeof(hw_params));
 
@@ -692,11 +718,13 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 	return 0;
 }
 
-static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t *slot)
+__cold static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t *slot)
 {
 	struct dai_config cfg;
 	int ret;
 	int hs;
+
+	assert_can_be_cold();
 
 	ret = dai_config_get(dd->dai->dev, &cfg, dev->direction);
 	if (ret < 0) {
@@ -724,14 +752,16 @@ static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 	return 0;
 }
 
-static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
-			     uint32_t period_count)
+__cold static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev,
+				    uint32_t period_bytes, uint32_t period_count)
 {
 	struct dma_sg_config *config = &dd->config;
 	uint32_t local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
 	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
 	uint32_t fifo, max_block_count, buf_size;
 	int err = 0;
+
+	assert_can_be_cold();
 
 	/* set up DMA configuration */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -823,13 +853,15 @@ out:
 	return err;
 }
 
-static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
+__cold static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct dma_sg_config *config = &dd->config;
 	struct dma_config *dma_cfg;
 	struct dma_block_config *dma_block_cfg;
 	struct dma_block_config *prev = NULL;
 	int i;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "dai_set_dma_config()");
 
@@ -901,9 +933,9 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	return 0;
 }
 
-static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
-			      const struct sof_ipc_stream_params *params,
-			      uint32_t *pb, uint32_t *pc)
+__cold static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
+				     const struct sof_ipc_stream_params *params,
+				     uint32_t *pb, uint32_t *pc)
 {
 	struct sof_ipc_stream_params hw_params = *params;
 	uint32_t frame_size;
@@ -914,6 +946,8 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 	uint32_t addr_align;
 	uint32_t align;
 	int err;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "dai_set_dma_buffer()");
 
@@ -1022,8 +1056,8 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 	return 0;
 }
 
-int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
-		      struct sof_ipc_stream_params *base_cfg_params)
+__cold int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
+			     struct sof_ipc_stream_params *base_cfg_params)
 {
 	struct sof_ipc_stream_params params = *base_cfg_params;
 	struct sof_ipc_stream_params hw_params;
@@ -1031,6 +1065,8 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	uint32_t period_bytes = 0;
 	uint32_t period_count = 0;
 	int err = 0;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "dai_zephyr_params()");
 
@@ -1095,18 +1131,22 @@ out:
 	return err;
 }
 
-static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+__cold static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "dai_params()");
 
 	return dai_common_params(dd, dev, params);
 }
 
-int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
+__cold int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
 	int channel;
+
+	assert_can_be_cold();
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
@@ -1151,9 +1191,11 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	return 0;
 }
 
-int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
+__cold int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 {
 	int ret;
+
+	assert_can_be_cold();
 
 	dd->total_data_processed = 0;
 
@@ -1186,10 +1228,12 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 	return ret;
 }
 
-static int dai_prepare(struct comp_dev *dev)
+__cold static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "dai_prepare()");
 
@@ -1901,10 +1945,12 @@ static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no,
 }
 
 #ifdef CONFIG_IPC_MAJOR_4
-int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data)
+__cold int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	int buf_id;
+
+	assert_can_be_cold();
 
 	bu = (struct ipc4_module_bind_unbind *)data;
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
