@@ -4,6 +4,7 @@
 
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/ut.h>
 #include <rtos/init.h>
@@ -169,11 +170,13 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 	return 0;
 }
 
-int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
-			 struct sof_ipc_stream_params *params)
+__cold int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
+				struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *buf;
 	int err;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "ipcgtw_params()");
 
@@ -206,14 +209,17 @@ void copier_ipcgtw_reset(struct comp_dev *dev)
 	}
 }
 
-int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
-			 const struct ipc4_copier_module_cfg *copier, struct pipeline *pipeline)
+__cold int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
+				const struct ipc4_copier_module_cfg *copier,
+				struct pipeline *pipeline)
 {
 	struct comp_ipc_config *config = &dev->ipc_config;
 	struct ipcgtw_data *ipcgtw_data;
 	const struct ipc4_copier_gateway_cfg *gtw_cfg;
 	const struct ipc4_ipc_gateway_config_blob *blob;
 	int ret;
+
+	assert_can_be_cold();
 
 	gtw_cfg = &copier->gtw_cfg;
 	if (!gtw_cfg->config_length) {
@@ -273,8 +279,10 @@ e_ipcgtw:
 	return ret;
 }
 
-void copier_ipcgtw_free(struct copier_data *cd)
+__cold void copier_ipcgtw_free(struct copier_data *cd)
 {
+	assert_can_be_cold();
+
 	list_item_del(&cd->ipcgtw_data->item);
 	rfree(cd->ipcgtw_data);
 }

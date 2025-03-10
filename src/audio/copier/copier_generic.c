@@ -6,6 +6,7 @@
 
 #include <ipc4/base-config.h>
 #include <sof/audio/component_ext.h>
+#include <sof/lib/memory.h>
 #include <module/module/base.h>
 #include <sof/common.h>
 #include <ipc/dai.h>
@@ -60,9 +61,11 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 	}
 }
 
-void copier_gain_set_basic_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
-				  struct ipc4_base_module_cfg *ipc4_cfg)
+__cold void copier_gain_set_basic_params(struct comp_dev *dev,
+					 struct copier_gain_params *gain_params,
+					 struct ipc4_base_module_cfg *ipc4_cfg)
 {
+	assert_can_be_cold();
 
 	gain_params->channels_count = ipc4_cfg->audio_fmt.channels_count;
 
@@ -70,11 +73,13 @@ void copier_gain_set_basic_params(struct comp_dev *dev, struct copier_gain_param
 		gain_params->gain_coeffs[i] = UNITY_GAIN_GENERIC;
 }
 
-int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
-				struct ipc4_base_module_cfg *ipc4_cfg,
-				uint32_t fade_period, uint32_t frames)
+__cold int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
+				       struct ipc4_base_module_cfg *ipc4_cfg,
+				       uint32_t fade_period, uint32_t frames)
 {
 	uint16_t step_i64_to_i16;
+
+	assert_can_be_cold();
 
 	if (fade_period == GAIN_DEFAULT_FADE_PERIOD) {
 		/* Set fade transition delay to default value*/
@@ -300,10 +305,12 @@ bool copier_is_unity_gain(struct copier_gain_params *gain_params)
 
 #endif
 
-void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
-			  struct sof_ipc_stream_params *params)
+__cold void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
+				 struct sof_ipc_stream_params *params)
 {
 	struct comp_buffer *sink;
+
+	assert_can_be_cold();
 
 	memset(params, 0, sizeof(*params));
 	params->direction = cd->direction;
@@ -347,9 +354,9 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 	}
 }
 
-int create_multi_endpoint_buffer(struct comp_dev *dev,
-				 struct copier_data *cd,
-				 const struct ipc4_copier_module_cfg *copier_cfg)
+__cold int create_multi_endpoint_buffer(struct comp_dev *dev,
+					struct copier_data *cd,
+					const struct ipc4_copier_module_cfg *copier_cfg)
 {
 	struct comp_ipc_config *config = &dev->ipc_config;
 	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
@@ -360,6 +367,8 @@ int create_multi_endpoint_buffer(struct comp_dev *dev,
 	uint32_t buf_size;
 	uint32_t chan_map;
 	int i;
+
+	assert_can_be_cold();
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
 				    copier_cfg->base.audio_fmt.valid_bit_depth,
@@ -442,9 +451,11 @@ int create_multi_endpoint_buffer(struct comp_dev *dev,
 	return 0;
 }
 
-enum sof_ipc_stream_direction
+__cold enum sof_ipc_stream_direction
 	get_gateway_direction(enum ipc4_connector_node_id_type node_id_type)
 {
+	assert_can_be_cold();
+
 	/* WARNING: simple "% 2" formula that was used before does not work for all
 	 * interfaces: at least it does not work for IPC gateway. But it may also
 	 * does not work for other not yet supported interfaces. And so additional
@@ -467,11 +478,13 @@ enum sof_ipc_stream_direction
  * size can be different with container size. This function is used to
  * check conversion mode.
  */
-static bool use_no_container_convert_function(enum sof_ipc_frame in,
-					      enum sof_ipc_frame valid_in_bits,
-					      enum sof_ipc_frame out,
-					      enum sof_ipc_frame valid_out_bits)
+__cold static bool use_no_container_convert_function(enum sof_ipc_frame in,
+						     enum sof_ipc_frame valid_in_bits,
+						     enum sof_ipc_frame out,
+						     enum sof_ipc_frame valid_out_bits)
 {
+	assert_can_be_cold();
+
 	/* valid sample size is equal to container size, go normal path */
 	if (in == valid_in_bits && out == valid_out_bits) {
 		if (in == SOF_IPC_FRAME_S24_3LE || out == SOF_IPC_FRAME_S24_3LE)
@@ -483,9 +496,11 @@ static bool use_no_container_convert_function(enum sof_ipc_frame in,
 	return false;
 }
 
-static bool is_remapping_chmap(uint32_t chmap, size_t out_channel_count)
+__cold static bool is_remapping_chmap(uint32_t chmap, size_t out_channel_count)
 {
 	size_t i;
+
+	assert_can_be_cold();
 
 	assert(out_channel_count <= 8);
 
@@ -498,13 +513,15 @@ static bool is_remapping_chmap(uint32_t chmap, size_t out_channel_count)
 	return false;
 }
 
-pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
-				      const struct ipc4_audio_format *out_fmt,
-				      enum ipc4_gateway_type type,
-				      enum ipc4_direction_type dir,
-				      uint32_t chmap)
+__cold pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
+					     const struct ipc4_audio_format *out_fmt,
+					     enum ipc4_gateway_type type,
+					     enum ipc4_direction_type dir,
+					     uint32_t chmap)
 {
 	enum sof_ipc_frame in, in_valid, out, out_valid;
+
+	assert_can_be_cold();
 
 	audio_stream_fmt_conversion(in_fmt->depth, in_fmt->valid_bit_depth, &in, &in_valid,
 				    in_fmt->s_type);
