@@ -124,11 +124,7 @@ int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 
 struct sof_man_fw_desc *basefw_vendor_get_manifest(void)
 {
-	struct sof_man_fw_desc *desc;
-
-	desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
-
-	return desc;
+	return (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
 }
 
 int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
@@ -137,7 +133,7 @@ int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
 	struct sof_man_fw_desc *desc = basefw_vendor_get_manifest();
 
 	if (!desc)
-		return -EINVAL;
+		return IPC4_ERROR_INVALID_PARAM;
 
 	module_info->modules_count = desc->header.num_module_entries;
 
@@ -150,7 +146,7 @@ int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
 
 	*data_offset = sizeof(*module_info) +
 				module_info->modules_count * sizeof(module_info->modules[0]);
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 /* There are two types of sram memory : high power mode sram and
@@ -221,7 +217,7 @@ static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	*data_offset = (int)((char *)tuple - data);
 
 	rfree(tuple_data);
-	return 0;
+	return IPC4_SUCCESS;
 }
 
 static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
@@ -277,8 +273,9 @@ static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
 	*data_offset = sizeof(struct ipc4_ext_system_time);
 
 	return IPC4_SUCCESS;
-#endif
+#else
 	return IPC4_UNAVAILABLE;
+#endif
 }
 
 int basefw_vendor_get_large_config(struct comp_dev *dev,
@@ -293,7 +290,7 @@ int basefw_vendor_get_large_config(struct comp_dev *dev,
 
 	extended_param_id.full = param_id;
 
-	uint32_t ret = -EINVAL;
+	uint32_t ret = IPC4_ERROR_INVALID_PARAM;
 
 	switch (extended_param_id.part.parameter_type) {
 	case IPC4_MEMORY_STATE_INFO_GET:
@@ -303,7 +300,7 @@ int basefw_vendor_get_large_config(struct comp_dev *dev,
 		if (ret == IPC4_UNAVAILABLE) {
 			tr_warn(&basefw_comp_tr,
 				"returning success for get host EXTENDED_SYSTEM_TIME without handling it");
-			return 0;
+			return IPC4_SUCCESS;
 		} else {
 			return ret;
 		}
