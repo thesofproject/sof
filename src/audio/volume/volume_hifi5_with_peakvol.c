@@ -60,7 +60,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_int32x2 volume, volume1;
 	int i, n, m;
 	ae_int32x4 *vol;
-	ae_valignx2 inu = AE_ZALIGN128();
+	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	ae_int32x4 *in = (ae_int32x4 *)audio_stream_wrap(source,
 							 (char *)audio_stream_get_rptr(source)
@@ -165,7 +165,7 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 	struct audio_stream *sink = bsink->data;
 	ae_int32x2 in_sample, in_sample1;
 	int i, n, m;
-	ae_valignx2 inu = AE_ZALIGN128();
+	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	ae_int32x4 *in = (ae_int32x4 *)audio_stream_wrap(source,
 							 (char *)audio_stream_get_rptr(source)
@@ -243,7 +243,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_int32x4 *buf;
 	ae_int32x4 *buf_end;
 	ae_int32x4 *vol;
-	ae_valignx2 inu = AE_ZALIGN128();
+	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	const int channels_count = audio_stream_get_channels(sink);
 	const int inc = sizeof(ae_int32x4);
@@ -358,7 +358,7 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 	struct audio_stream *sink = bsink->data;
 	ae_int32x2 in_sample, in_sample1;
 	int i, n, m;
-	ae_valignx2 inu = AE_ZALIGN128();
+	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	const int channels_count = audio_stream_get_channels(sink);
 	const int inc = sizeof(ae_int32x4);
@@ -434,7 +434,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	ae_int32x4 *buf;
 	ae_int32x4 *buf_end;
 	ae_int32x4 *vol;
-	ae_valignx2 inu = AE_ZALIGN128();
+	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	ae_int16x8 *in = (ae_int16x8 *)audio_stream_wrap(source,
 							 (char *)audio_stream_get_rptr(source)
@@ -551,7 +551,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	struct audio_stream *sink = bsink->data;
 	ae_int16x4 in_sample, in_sample1;
 	int i, n, m;
-	ae_valignx2 inu = AE_ZALIGN128();
+	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
 	ae_int16x8 *in = (ae_int16x8 *)audio_stream_wrap(source,
 							 (char *)audio_stream_get_rptr(source)

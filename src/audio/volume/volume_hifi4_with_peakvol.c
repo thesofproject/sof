@@ -61,7 +61,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 volume = AE_ZERO32();
 	int i, n, m;
 	ae_f32x2 *vol;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
@@ -155,7 +155,7 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 	ae_f32x2 in_sample = AE_ZERO32();
 
 	int i, n, m;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
@@ -228,7 +228,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	const int channels_count = audio_stream_get_channels(sink);
 	const int inc = sizeof(ae_f32x2);
@@ -325,7 +325,7 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample = AE_ZERO32();
 	int i, n, m;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	const int channels_count = audio_stream_get_channels(sink);
 	const int inc = sizeof(ae_f32x2);
@@ -397,7 +397,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
@@ -531,7 +531,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	struct audio_stream *sink = bsink->data;
 	ae_f16x4 in_sample = AE_ZERO16();
 	int i, n, m, left;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
