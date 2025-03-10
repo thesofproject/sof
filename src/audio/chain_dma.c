@@ -30,11 +30,14 @@
 #include <ipc/header.h>
 #endif
 
-#define DT_NUM_HDA_IN		DT_PROP(DT_INST(0, intel_adsp_hda_link_in), dma_channels)
-#define DT_NUM_HDA_OUT		DT_PROP(DT_INST(0, intel_adsp_hda_link_out), dma_channels)
+#define DT_NUM_HDA_HOST_IN	DT_PROP(DT_INST(0, intel_adsp_hda_host_in), dma_channels)
+#define DT_NUM_HDA_HOST_OUT	DT_PROP(DT_INST(0, intel_adsp_hda_host_out), dma_channels)
+
+#define DT_NUM_HDA_LINK_IN	DT_PROP(DT_INST(0, intel_adsp_hda_link_in), dma_channels)
+#define DT_NUM_HDA_LINK_OUT	DT_PROP(DT_INST(0, intel_adsp_hda_link_out), dma_channels)
 
 static const struct comp_driver comp_chain_dma;
-static const uint32_t max_chain_number = DT_NUM_HDA_OUT + DT_NUM_HDA_IN;
+static const uint32_t max_chain_number = DT_NUM_HDA_HOST_OUT + DT_NUM_HDA_HOST_IN;
 
 LOG_MODULE_REGISTER(chain_dma, CONFIG_SOF_LOG_LEVEL);
 
@@ -404,14 +407,27 @@ static void chain_release(struct comp_dev *dev)
 
 /* Retrieves host connector node id from dma id */
 static int get_connector_node_id(uint32_t dma_id, bool host_type,
-			  union ipc4_connector_node_id *connector_node_id)
+				 union ipc4_connector_node_id *connector_node_id)
 {
-	uint8_t type = host_type ? ipc4_hda_host_output_class : ipc4_hda_link_output_class;
+	uint32_t max_out, max_in;
+	uint8_t type, type2;
 
-	if (dma_id >= DT_NUM_HDA_OUT) {
-		type = host_type ? ipc4_hda_host_input_class : ipc4_hda_link_input_class;
-		dma_id -= DT_NUM_HDA_OUT;
-		if (dma_id >= DT_NUM_HDA_IN)
+	if (host_type) {
+		type = ipc4_hda_host_output_class;
+		type2 = ipc4_hda_host_input_class;
+		max_out = DT_NUM_HDA_HOST_OUT;
+		max_in = DT_NUM_HDA_HOST_IN;
+	} else {
+		type = ipc4_hda_link_output_class;
+		type2 = ipc4_hda_link_input_class;
+		max_out = DT_NUM_HDA_LINK_OUT;
+		max_in = DT_NUM_HDA_LINK_IN;
+	}
+
+	if (dma_id >= max_out) {
+		type = type2;
+		dma_id -= max_out;
+		if (dma_id >= max_in)
 			return -EINVAL;
 	}
 	connector_node_id->dw = 0;
