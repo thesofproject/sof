@@ -524,8 +524,9 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	return ret;
 }
 
-static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32_t buffer_count,
-			      uint32_t buffer_bytes, uint32_t direction)
+static int create_local_elems(struct host_data *hd, struct comp_dev *dev,
+			      uint32_t buffer_count, uint32_t buffer_bytes,
+			      uint32_t direction)
 {
 	struct dma_sg_elem_array *elem_array;
 	uint32_t dir;
@@ -624,10 +625,12 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	return host_common_trigger(hd, dev, cmd);
 }
 
-int host_common_new(struct host_data *hd, struct comp_dev *dev,
-		    const struct ipc_config_host *ipc_host, uint32_t config_id)
+__cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
+			   const struct ipc_config_host *ipc_host, uint32_t config_id)
 {
 	uint32_t dir;
+
+	assert_can_be_cold();
 
 	hd->ipc_host = *ipc_host;
 	/* request HDA DMA with shared access privilege */
@@ -659,14 +662,16 @@ int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	return 0;
 }
 
-static struct comp_dev *host_new(const struct comp_driver *drv,
-				 const struct comp_ipc_config *config,
-				 const void *spec)
+__cold static struct comp_dev *host_new(const struct comp_driver *drv,
+					const struct comp_ipc_config *config,
+					const void *spec)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;
 	const struct ipc_config_host *ipc_host = spec;
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_cl_dbg(&comp_host, "host_new()");
 
@@ -697,17 +702,21 @@ e_data:
 	return NULL;
 }
 
-void host_common_free(struct host_data *hd)
+__cold void host_common_free(struct host_data *hd)
 {
+	assert_can_be_cold();
+
 	sof_dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
 	dma_sg_free(&hd->config.elem_array);
 }
 
-static void host_free(struct comp_dev *dev)
+__cold static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "host_free()");
 	host_common_free(hd);
@@ -1113,10 +1122,12 @@ static int host_copy(struct comp_dev *dev)
 	return host_common_copy(hd, dev, host_dma_cb);
 }
 
-static int host_get_attribute(struct comp_dev *dev, uint32_t type,
-			      void *value)
+__cold static int host_get_attribute(struct comp_dev *dev, uint32_t type,
+				     void *value)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	switch (type) {
 	case COMP_ATTR_COPY_TYPE:
@@ -1132,10 +1143,12 @@ static int host_get_attribute(struct comp_dev *dev, uint32_t type,
 	return 0;
 }
 
-static int host_set_attribute(struct comp_dev *dev, uint32_t type,
-			      void *value)
+__cold static int host_set_attribute(struct comp_dev *dev, uint32_t type,
+				     void *value)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	switch (type) {
 	case COMP_ATTR_COPY_TYPE:
