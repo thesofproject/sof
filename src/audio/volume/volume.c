@@ -222,7 +222,7 @@ static inline int32_t volume_linear_ramp(struct vol_data *cd, int32_t ramp_time,
 	if (!cd->initial_ramp)
 		return cd->tvolume[channel];
 
-	return cd->rvolume[channel] + ramp_time * cd->ramp_coef[channel];
+	return sat_int32((int64_t)ramp_time * cd->ramp_coef[channel] + cd->rvolume[channel]);
 }
 #endif
 
@@ -469,7 +469,7 @@ static void set_linear_ramp_coef(struct vol_data *cd, int chan, bool constant_ra
 	 * be some accumulated error in ramp time the longer
 	 * the ramp and the smaller the transition is.
 	 */
-	coef = (2 * coef / cd->initial_ramp + 1) >> 1;
+	coef = ((int64_t)coef * 2 / cd->initial_ramp + 1) >> 1;
 
 	/* Scale coefficient by 1/8, round */
 	coef = ((coef >> 2) + 1) >> 1;

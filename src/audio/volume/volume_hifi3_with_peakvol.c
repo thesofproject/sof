@@ -78,18 +78,21 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 				AE_L32_XP(in_sample, in, inc);
 				/* calc peak vol */
 				peak_vol = AE_MAXABS32S(in_sample, peak_vol);
-#if COMP_VOLUME_Q8_16
+
 				/* Multiply the input sample */
+#if COMP_VOLUME_Q8_16
 				out_sample = AE_MULFP32X2RS(AE_SLAI32S(volume, 7),
 							    AE_SLAI32(in_sample, 8));
-#elif COMP_VOLUME_Q1_23
-				out_sample = AE_MULFP32X2RS(volume, AE_SLAI32S(in_sample, 8));
-#else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
-#endif
-				/* Shift for S24_LE */
 				out_sample = AE_SLAI32S(out_sample, 8);
-				out_sample = AE_SRAI32(out_sample, 8);
+#elif COMP_VOLUME_Q1_23
+				out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
+				out_sample = AE_SLAI32S(out_sample, 8);
+#elif COMP_VOLUME_Q1_31
+				out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
+#endif
+
+				/* Shift and round for S24_LE */
+				out_sample = AE_SRAI32R(out_sample, 8);
 				/* Store the output sample */
 				AE_S32_L_XP(out_sample, out, inc);
 			}
@@ -182,7 +185,6 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
 	int i, n, channel, m;
-	ae_f64 mult0;
 	const int channels_count = audio_stream_get_channels(sink);
 	const int inc = sizeof(ae_f32) * channels_count;
 	int samples = channels_count * frames;
@@ -214,19 +216,20 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 				AE_L32_XP(in_sample, in, inc);
 				/* calc peak vol */
 				peak_vol = AE_MAXABS32S(in_sample, peak_vol);
-#if COMP_VOLUME_Q8_16
-				/* Q8.16 x Q1.31 << 1 -> Q9.48 */
-				mult0 = AE_MULF32S_HH(volume, in_sample);
-				mult0 = AE_SRAI64(mult0, 1);			/* Q9.47 */
-				out_sample = AE_ROUND32F48SASYM(mult0);	/* Q9.47 -> Q1.31 */
-#elif COMP_VOLUME_Q1_23
-				/* Q1.23 x Q1.31 << 1 -> Q2.55 */
-				mult0 = AE_MULF32S_HH(volume, in_sample);
-				mult0 = AE_SRAI64(mult0, 8);			/* Q2.47 */
-				out_sample = AE_ROUND32F48SSYM(mult0);	/* Q2.47 -> Q1.31 */
+
+#if COMP_VOLUME_Q1_31
+				out_sample = AE_MULFP32X2RS(volume, in_sample);
 #else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
+				/* With Q1.31 x Q1.31 -> Q17.47 HiFi multiplications the result is
+				 * Q8.16 x Q1.31 << 1 >> 16 -> Q9.32, shift left by 15 for Q17.47
+				 * Q1.23 x Q1.31 << 1 >> 16 -> Q2.39, shift left by 8 for Q17.47
+				 */
+				ae_f64 mult0 = AE_MULF32R_HH(volume, in_sample);
+
+				mult0 = AE_SLAI64(mult0, VOLUME_Q17_47_SHIFT);
+				out_sample = AE_ROUND32F48SSYM(mult0);	/* Q2.47 -> Q1.31 */
 #endif
+
 				AE_S32_L_XP(out_sample, out, inc);
 			}
 			peak_vol = AE_SLAA32S(peak_vol, attenuation);
@@ -345,12 +348,10 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			/* Load volume */
 			volume = (ae_f32x2)cd->volume[channel];
 #if COMP_VOLUME_Q8_16
-			/* Q8.16 to Q9.23 */
+			/* Shift Q8.16 to Q9.23
+			 * No need to shift Q1.23, it is OK as such
+			 */
 			volume = AE_SLAI32S(volume, 7);
-#elif COMP_VOLUME_Q1_23
-			/* No need to shift, Q1.23 is OK as such */
-#else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
 #endif
 			for (i = 0; i < n; i += channels_count) {
 				/* Load the input sample */
@@ -361,8 +362,12 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 				/* Multiply the input sample */
 				out_sample0 = AE_MULFP32X16X2RS_H(volume, in_sample);
 
+#if COMP_VOLUME_Q1_31
+				/* No shift need, the product is Q1.31 */
+#else
 				/* Q9.23 to Q1.31 */
 				out_sample0 = AE_SLAI32S(out_sample0, 8);
+#endif
 
 				/* store the output */
 				out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample0);
