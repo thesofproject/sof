@@ -21,6 +21,13 @@ LOG_MODULE_DECLARE(volume, CONFIG_SOF_LOG_LEVEL);
 
 #include "volume.h"
 
+/* With Q1.31 x Q1.31 -> Q17.47 HiFi multiplications the result is
+ * Q8.16 x Q1.31 << 1 >> 16 -> Q9.32, shift left by 15 for Q17.47
+ *
+ * With Q1.31 x Q1.31 -> Q17.47 HiFi multiplications the result is
+ * Q1.23 x Q1.31 << 1 >> 16 -> Q2.39, shift left by 8 for Q17.47
+ */
+
 #if SOF_USE_HIFI(5, VOLUME)
 
 #if CONFIG_COMP_PEAK_VOL
@@ -111,23 +118,26 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 			temp = AE_MAXABS32S(in_sample, temp);
 			temp1 = AE_MAXABS32S(in_sample1, temp1);
 			AE_S32X2X2_XC1(temp, temp1, peakvol, inc);
+
 			/* Multiply the input sample */
 #if COMP_VOLUME_Q8_16
-			AE_MULF2P32X4RS(out_sample, out_sample1, AE_SLAI32S(volume, 7),
-					AE_SLAI32S(volume1, 7),
+			AE_MULF2P32X4RS(out_sample, out_sample1,
+					AE_SLAI32S(volume, 7), AE_SLAI32S(volume1, 7),
 					AE_SLAI32(in_sample, 8), AE_SLAI32(in_sample1, 8));
+			out_sample = AE_SLAI32S(out_sample, 8);
+			out_sample1 = AE_SLAI32S(out_sample1, 8);
 #elif COMP_VOLUME_Q1_23
 			AE_MULF2P32X4RS(out_sample, out_sample1, volume, volume1,
-					AE_SLAI32(in_sample, 8),
-					AE_SLAI32(in_sample1, 8));
-#else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
+					AE_SLAI32(in_sample, 8), AE_SLAI32(in_sample1, 8));
+			out_sample = AE_SLAI32S(out_sample, 8);
+			out_sample1 = AE_SLAI32S(out_sample1, 8);
+#elif COMP_VOLUME_Q1_31
+			AE_MULF2P32X4RS(out_sample, out_sample1, volume, volume1,
+					AE_SLAI32(in_sample, 8), AE_SLAI32(in_sample1, 8));
 #endif
 
 			/* Shift for S24_LE */
-			out_sample = AE_SLAI32S(out_sample, 8);
 			out_sample = AE_SRAI32(out_sample, 8);
-			out_sample1 = AE_SLAI32S(out_sample1, 8);
 			out_sample1 = AE_SRAI32(out_sample1, 8);
 
 			/* Store the output sample */
@@ -238,8 +248,6 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_int32x2 out_sample, out_sample1;
 	ae_int32x2 volume, volume1;
 	int i, n, m;
-	ae_int64 mult0;
-	ae_int64 mult1;
 	ae_int32x4 *buf;
 	ae_int32x4 *buf_end;
 	ae_int32x4 *vol;
@@ -296,34 +304,26 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 			temp = AE_MAXABS32S(in_sample, temp);
 			temp1 = AE_MAXABS32S(in_sample1, temp1);
 			AE_S32X2X2_XC1(temp, temp1, peakvol, inc);
-#if COMP_VOLUME_Q8_16
-			/* Q8.16 x Q1.31 << 1 -> Q9.48 */
-			mult0 = AE_MULF32S_HH(volume, in_sample);
-			mult0 = AE_SRAI64(mult0, 1);			/* Q9.47 */
-			mult1 = AE_MULF32S_LL(volume, in_sample);
-			mult1 = AE_SRAI64(mult1, 1);
-			out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q9.47 -> Q1.31 */
+#if COMP_VOLUME_Q1_31
+			AE_MULF2P32X4RS(out_sample, out_sample1,
+					volume, volume1,
+					in_sample, in_sample1);
+#else
+			/* With Q1.31 x Q1.31 -> Q17.47 HiFi multiplications the result is
+			 * Q8.16 x Q1.31 << 1 >> 16 -> Q9.32, shift left by 15 for Q17.47
+			 * Q1.23 x Q1.31 << 1 >> 16 -> Q2.39, shift left by 8 for Q17.47
+			 */
+			ae_f64 mult0, mult1;
 
-			mult0 = AE_MULF32S_HH(volume1, in_sample1);
-			mult0 = AE_SRAI64(mult0, 1);			/* Q9.47 */
-			mult1 = AE_MULF32S_LL(volume1, in_sample1);
-			mult1 = AE_SRAI64(mult1, 1);
-			out_sample1 = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q9.47 -> Q1.31 */
-#elif COMP_VOLUME_Q1_23
-			/* Q1.23 x Q1.31 << 1 -> Q2.55 */
-			mult0 = AE_MULF32S_HH(volume, in_sample);
-			mult0 = AE_SRAI64(mult0, 8);			/* Q2.47 */
-			mult1 = AE_MULF32S_LL(volume, in_sample);
-			mult1 = AE_SRAI64(mult1, 8);
+			AE_MULF32X2R_HH_LL(mult0, mult1, volume, in_sample);
+			mult0 = AE_SLAI64(mult0, VOLUME_Q17_47_SHIFT);
+			mult1 = AE_SLAI64(mult1, VOLUME_Q17_47_SHIFT);
 			out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q2.47 -> Q1.31 */
 
-			mult0 = AE_MULF32S_HH(volume1, in_sample1);
-			mult0 = AE_SRAI64(mult0, 8);			/* Q2.47 */
-			mult1 = AE_MULF32S_LL(volume1, in_sample1);
-			mult1 = AE_SRAI64(mult1, 8);
-			out_sample1 = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q2.47 -> Q1.31 */
-#else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
+			AE_MULF32X2R_HH_LL(mult0, mult1, volume1, in_sample1);
+			mult0 = AE_SLAI64(mult0, VOLUME_Q17_47_SHIFT);
+			mult1 = AE_SLAI64(mult1, VOLUME_Q17_47_SHIFT);
+			out_sample1 = AE_ROUND32X2F48SSYM(mult0, mult1); /* Q2.47 -> Q1.31 */
 #endif
 			AE_SA32X2X2_IP(out_sample, out_sample1, outu, out);
 		}
@@ -478,17 +478,6 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			AE_L32X2X2_XC(volume, volume1, vol, inc);
 			AE_L32X2X2_XC(volume2, volume3, vol, inc);
 
-#if COMP_VOLUME_Q8_16
-			/* Q8.16 to Q9.23 */
-			volume = AE_SLAI32S(volume, 7);
-			volume1 = AE_SLAI32S(volume1, 7);
-			volume2 = AE_SLAI32S(volume2, 7);
-			volume3 = AE_SLAI32S(volume3, 7);
-#elif COMP_VOLUME_Q1_23
-			/* No need to shift, Q1.23 is OK as such */
-#else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
-#endif
 			/* Load the input sample */
 			AE_LA16X4X2_IP(in_sample, in_sample1, inu, in);
 			/* calculate the peak volume*/
@@ -502,7 +491,22 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			temp1 = AE_MAXABS32S(AE_SEXT32X2D16_10(in_sample1), temp1);
 			AE_S32X2X2_XC1(temp, temp1, peakvol, inc);
 
-			/* Multiply the input sample */
+#if COMP_VOLUME_Q1_31
+			AE_MULF2P32X16X4RS(out_temp, out_temp1, volume, volume1, in_sample);
+			out_sample = AE_ROUND16X4F32SSYM(out_temp, out_temp1);
+			AE_MULF2P32X16X4RS(out_temp, out_temp1, volume2, volume3, in_sample1);
+			out_sample1 = AE_ROUND16X4F32SSYM(out_temp, out_temp1);
+#else
+#if COMP_VOLUME_Q8_16
+			/* Shift Q8.16 to Q9.23
+			 * No need to shift Q1.23, it is OK as such
+			 */
+			volume = AE_SLAI32S(volume, 7);
+			volume1 = AE_SLAI32S(volume1, 7);
+			volume2 = AE_SLAI32S(volume2, 7);
+			volume3 = AE_SLAI32S(volume3, 7);
+#endif
+
 			AE_MULF2P32X16X4RS(out_temp, out_temp1, volume, volume1, in_sample);
 			/* Q9.23 to Q1.31 */
 			out_temp = AE_SLAI32S(out_temp, 8);
@@ -513,9 +517,9 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			/* Q9.23 to Q1.31 */
 			out_temp = AE_SLAI32S(out_temp, 8);
 			out_temp1 = AE_SLAI32S(out_temp1, 8);
-			/* store the output */
 			out_sample1 = AE_ROUND16X4F32SSYM(out_temp, out_temp1);
-
+#endif
+			/* store the output */
 			AE_SA16X4X2_IP(out_sample, out_sample1, outu, out);
 		}
 		AE_SA128POS_FP(outu, out);

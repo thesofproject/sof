@@ -43,17 +43,24 @@ struct sof_ipc_ctrl_value_chan;
 //** \brief Volume gain Qx.y */
 #define COMP_VOLUME_Q8_16 1
 
-//** \brief Volume gain Qx.y integer x number of bits including sign bit. */
-#define VOL_QXY_X 8
-
-//** \brief Volume gain Qx.y fractional y number of bits. */
-#define VOL_QXY_Y 16
-
 #else
 
 //** \brief Volume gain Qx.y */
-#define COMP_VOLUME_Q1_23 1
+#define COMP_VOLUME_Q1_31	1
 
+#endif
+
+#if COMP_VOLUME_Q1_31
+/** \brief Volume gain Qx.y integer x number of bits including sign bit.
+ * With Q8.23 format the gain range is -138.47 to +42.14 dB.
+ */
+#define VOL_QXY_X 1
+
+//** \brief Volume gain Qx.y fractional y number of bits. */
+#define VOL_QXY_Y 31
+
+#define VOLUME_Q17_47_SHIFT 0
+#elif COMP_VOLUME_Q1_23
 /** \brief Volume gain Qx.y integer x number of bits including sign bit.
  * With Q8.23 format the gain range is -138.47 to +42.14 dB.
  */
@@ -62,6 +69,19 @@ struct sof_ipc_ctrl_value_chan;
 //** \brief Volume gain Qx.y fractional y number of bits. */
 #define VOL_QXY_Y 23
 
+#define VOLUME_Q17_47_SHIFT 8
+
+#elif COMP_VOLUME_Q8_16
+//** \brief Volume gain Qx.y integer x number of bits including sign bit. */
+#define VOL_QXY_X 8
+
+//** \brief Volume gain Qx.y fractional y number of bits. */
+#define VOL_QXY_Y 16
+
+#define VOLUME_Q17_47_SHIFT 15
+
+#else
+#error "Need CONFIG_COMP_VOLUME_Qx_y"
 #endif
 
 /**
@@ -92,15 +112,21 @@ struct sof_ipc_ctrl_value_chan;
  */
 #define PEAK_16S_32C_ADJUST 16
 
-/**
- * \brief Volume maximum value.
- * TODO: This should be 1 << (VOL_QX_BITS + VOL_QY_BITS - 1) - 1 but
- * the current volume code cannot handle the full Q1.16 range correctly.
- */
+#if COMP_VOLUME_Q1_31
+/** \brief Volume maximum value. */
+#define VOL_MAX		INT32_MAX
+
+/** \brief Volume 0dB value. */
+#define VOL_ZERO_DB	INT32_MAX
+
+#else
+/** \brief Volume maximum value. */
 #define VOL_MAX		((1 << (VOL_QXY_X + VOL_QXY_Y - 1)) - 1)
 
 /** \brief Volume 0dB value. */
 #define VOL_ZERO_DB	BIT(VOL_QXY_Y)
+
+#endif
 
 /** \brief Volume minimum value. */
 #define VOL_MIN		0

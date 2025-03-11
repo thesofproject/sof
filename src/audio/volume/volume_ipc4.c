@@ -65,7 +65,11 @@ static int set_volume_ipc4(struct vol_data *cd, uint32_t const channel,
  */
 static uint32_t convert_volume_ipc4_to_ipc3(struct comp_dev *dev, uint32_t volume)
 {
+#if COMP_VOLUME_Q1_31
+	return volume;
+#else
 	return sat_int32(Q_SHIFT_RND((int64_t)volume, 31, VOL_QXY_Y));
+#endif
 }
 
 static uint32_t convert_volume_ipc3_to_ipc4(uint32_t volume)
@@ -73,7 +77,11 @@ static uint32_t convert_volume_ipc3_to_ipc4(uint32_t volume)
 	/* In IPC4 volume is converted into Q1.23 format to be processed by firmware.
 	 * Now convert it back to Q1.31
 	 */
+#if COMP_VOLUME_Q1_31
+	return volume;
+#else
 	return sat_int32(Q_SHIFT_LEFT((int64_t)volume, VOL_QXY_Y, 31));
+#endif
 }
 
 static void init_ramp(struct vol_data *cd, uint32_t curve_duration, uint32_t target_volume)
