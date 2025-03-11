@@ -205,6 +205,19 @@ config DEBUG_IPC_COUNTERS
 	help
 	  Select for enabling tracing IPC counter in SRAM_REG mailbox
 
+config DEBUG_IPC_TIMINGS
+	bool "Enable IPC message handling time logging"
+	depends on DEBUG
+	default n
+	help
+	  Adds a logging after IPC handling before putting IPC reply
+	  to send queue. The logging contains both the reply and the
+	  original request message headers and the time that it took
+	  to process the request in micro seconds. The value can be
+	  used to collect statistics on changes in firmware response
+	  times. This also disables the logging of the received
+	  request on core 0 to avoid flooding the logs too much.
+
 config SCHEDULE_LOG_CYCLE_STATISTICS
 	bool "Log cycles per tick statistics for each task separately"
 	default y

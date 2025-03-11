@@ -1558,11 +1558,19 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 {
 	struct ipc4_message_request *in = ipc4_get_message_request();
 	enum ipc4_message_target target;
+#ifdef CONFIG_DEBUG_IPC_TIMINGS
+	struct ipc4_message_request req;
+	uint64_t tstamp;
+#endif
 	int err;
 
+#ifdef CONFIG_DEBUG_IPC_TIMINGS
+	req = *in;
+	tstamp = sof_cycle_get_64();
+#else
 	if (cpu_is_primary(cpu_get_id()))
 		tr_info(&ipc_tr, "rx\t: %#x|%#x", in->primary.dat, in->extension.dat);
-
+#endif
 	/* no process on scheduled thread */
 	atomic_set(&msg_data.delayed_reply, 0);
 	msg_data.delayed_error = 0;
@@ -1676,9 +1684,14 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 
 		msg_reply.header = reply.primary.dat;
 
+#ifdef CONFIG_DEBUG_IPC_TIMINGS
+		tr_info(&ipc_tr, "tx-reply\t: %#x|%#x to %#x|%#x in %llu us", msg_reply.header,
+			msg_reply.extension, req.primary.dat, req.extension.dat,
+			k_cyc_to_us_near64(sof_cycle_get_64() - tstamp));
+#else
 		tr_dbg(&ipc_tr, "tx-reply\t: %#x|%#x", msg_reply.header,
 		       msg_reply.extension);
-
+#endif
 		ipc4_send_reply(&reply);
 	}
 }
