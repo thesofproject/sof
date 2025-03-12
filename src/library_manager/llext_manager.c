@@ -110,6 +110,10 @@ static int llext_manager_load_data_from_storage(const struct llext_loader *ldr,
 		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size)
 			continue;
 
+		tr_info(&lib_manager_tr, "reg %i: sect %u, %p <- %p, %u", region, i,
+			(void *)shdr->sh_addr,
+			(void *)((uintptr_t)region_addr + s_offset), shdr->sh_size);
+
 		ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - s_offset,
 			       (const uint8_t *)region_addr + s_offset, shdr->sh_size);
 		if (ret < 0)
@@ -263,6 +267,8 @@ static int llext_manager_link(const char *name,
 	const elf_shdr_t *hdr;
 	int ret;
 
+	tr_info(&lib_manager_tr, "%s: reloc %i mapped %i", name, !*llext, mctx->mapped);
+
 	if (*llext && !mctx->mapped) {
 		/*
 		 * All module instances have been terminated, so we freed SRAM,
@@ -297,27 +303,27 @@ static int llext_manager_link(const char *name,
 	mctx->segment[LIB_MANAGER_TEXT].addr = hdr->sh_addr;
 	mctx->segment[LIB_MANAGER_TEXT].size = hdr->sh_size;
 
-	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x",
-	       mctx->segment[LIB_MANAGER_TEXT].addr,
-	       mctx->segment[LIB_MANAGER_TEXT].size);
+	tr_info(&lib_manager_tr, ".text: start: %#lx size %#x",
+		mctx->segment[LIB_MANAGER_TEXT].addr,
+		mctx->segment[LIB_MANAGER_TEXT].size);
 
 	/* All read-only data sections */
 	llext_get_region_info(ldr, *llext, LLEXT_MEM_RODATA, &hdr, NULL, NULL);
 	mctx->segment[LIB_MANAGER_RODATA].addr = hdr->sh_addr;
 	mctx->segment[LIB_MANAGER_RODATA].size = hdr->sh_size;
 
-	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x",
-	       mctx->segment[LIB_MANAGER_RODATA].addr,
-	       mctx->segment[LIB_MANAGER_RODATA].size);
+	tr_info(&lib_manager_tr, ".rodata: start: %#lx size %#x",
+		mctx->segment[LIB_MANAGER_RODATA].addr,
+		mctx->segment[LIB_MANAGER_RODATA].size);
 
 	/* All writable data sections */
 	llext_get_region_info(ldr, *llext, LLEXT_MEM_DATA, &hdr, NULL, NULL);
 	mctx->segment[LIB_MANAGER_DATA].addr = hdr->sh_addr;
 	mctx->segment[LIB_MANAGER_DATA].size = hdr->sh_size;
 
-	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
-	       mctx->segment[LIB_MANAGER_DATA].addr,
-	       mctx->segment[LIB_MANAGER_DATA].size);
+	tr_info(&lib_manager_tr, ".data: start: %#lx size %#x",
+		mctx->segment[LIB_MANAGER_DATA].addr,
+		mctx->segment[LIB_MANAGER_DATA].size);
 
 	/* Writable uninitialized data section */
 	llext_get_region_info(ldr, *llext, LLEXT_MEM_BSS, &hdr, NULL, NULL);
@@ -652,6 +658,9 @@ int llext_manager_free_module(const uint32_t component_id)
 		 */
 		int ret = llext_unload(&mctx->llext);
 
+		tr_info(&lib_manager_tr,
+			"mod_id: %#x: llext_unload(): %d",
+			component_id, ret);
 		if (ret <= 0) {
 			tr_err(&lib_manager_tr,
 			       "mod_id: %#x: invalid return code from llext_unload(): %d",
