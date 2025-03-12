@@ -30,6 +30,7 @@
 #include <zephyr/llext/llext.h>
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/llext/inspect.h>
+#include <kernel_arch_interface.h>
 
 #include <rimage/sof/user/manifest.h>
 #include <module/module/api_ver.h>
@@ -71,6 +72,20 @@ static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
 	return sys_mm_drv_unmap_region(aligned_vma, ALIGN_UP(pre_pad_size + size, PAGE_SZ));
 }
 
+static void llext_manager_detached_update_flags(void __sparse_cache *vma,
+						size_t size, uint32_t flags)
+{
+#ifdef CONFIG_MMU
+	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
+	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+
+	/* Use cached virtual address */
+	uintptr_t va = POINTER_TO_UINT(sys_cache_cached_ptr_get(aligned_vma));
+
+	arch_mem_map(aligned_vma, va, ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
+#endif
+}
+
 /*
  * Map the memory range covered by 'vma' and 'size' as writable, copy all
  * sections that belong to the specified 'region' and are contained in the
@@ -107,8 +122,16 @@ static int llext_manager_load_data_from_storage(const struct llext_loader *ldr,
 
 		/* skip detached sections (will be outside requested VMA area) */
 		if ((uintptr_t)shdr->sh_addr < (uintptr_t)vma ||
-		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size)
+		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size) {
+			llext_manager_detached_update_flags((__sparse_cache void *)
+							    ((uint8_t *)region_addr + s_offset),
+							    shdr->sh_size, flags);
+			if (flags & SYS_MM_MEM_PERM_EXEC)
+				icache_invalidate_region((__sparse_cache void *)
+							 ((uint8_t *)region_addr + s_offset),
+							 shdr->sh_size);
 			continue;
+		}
 
 		ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - s_offset,
 			       (const uint8_t *)region_addr + s_offset, shdr->sh_size);
@@ -127,6 +150,39 @@ static int llext_manager_load_data_from_storage(const struct llext_loader *ldr,
 		icache_invalidate_region(vma, size);
 
 	return ret;
+}
+
+static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr,
+						  const struct llext *ext,
+						  enum llext_mem region,
+						  void __sparse_cache *vma,
+						  size_t size)
+{
+#ifdef CONFIG_MMU
+	unsigned int i;
+	const void *region_addr;
+
+	llext_get_region_info(ldr, ext, region, NULL, &region_addr, NULL);
+
+	for (i = 0; i < llext_section_count(ext); i++) {
+		const elf_shdr_t *shdr;
+		enum llext_mem s_region = LLEXT_MEM_COUNT;
+		size_t s_offset = 0;
+
+		llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
+
+		/* skip sections not in the requested region */
+		if (s_region != region)
+			continue;
+
+		/* unmap detached sections (will be outside requested VMA area) */
+		if ((uintptr_t)shdr->sh_addr < (uintptr_t)vma ||
+		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size)
+			llext_manager_detached_update_flags((__sparse_force void *)
+							    ((uint8_t *)region_addr + s_offset),
+							    shdr->sh_size, 0);
+	}
+#endif
 }
 
 static int llext_manager_load_module(struct lib_manager_module *mctx)
@@ -216,6 +272,9 @@ e_text:
 
 static int llext_manager_unload_module(struct lib_manager_module *mctx)
 {
+	const struct llext_loader *ldr = &mctx->ebl->loader;
+	const struct llext *ext = mctx->llext;
+
 	/* Executable code (.text) */
 	void __sparse_cache *va_base_text = (void __sparse_cache *)
 		mctx->segment[LIB_MANAGER_TEXT].addr;
@@ -232,14 +291,20 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
 	int err = 0, ret;
 
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_TEXT,
+					      va_base_text, text_size);
 	ret = llext_manager_align_unmap(va_base_text, text_size);
 	if (ret < 0)
 		err = ret;
 
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_DATA,
+					      va_base_data, data_size);
 	ret = llext_manager_align_unmap(va_base_data, data_size);
 	if (ret < 0 && !err)
 		err = ret;
 
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_RODATA,
+					      va_base_rodata, rodata_size);
 	ret = llext_manager_align_unmap(va_base_rodata, rodata_size);
 	if (ret < 0 && !err)
 		err = ret;
