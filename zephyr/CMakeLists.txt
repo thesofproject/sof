@@ -107,9 +107,9 @@ function(sof_llext_build module)
 		POST_BUILD
 		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py -s ${size_file}
 			--text-addr=${CONFIG_LIBRARY_BASE_ADDRESS}
-			-f ${proc_in_file} ${CMAKE_C_COMPILER} --
-			-o ${proc_out_file} ${EXTRA_LINKER_PARAMS}
-	                $<TARGET_OBJECTS:${module}_llext_lib>
+			-c $<TARGET_PROPERTY:bintools,elfconvert_command>
+			-f ${proc_in_file} -o ${proc_out_file} ${CMAKE_C_COMPILER} --
+			${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib>
 	)
 
 	add_llext_command(TARGET ${module}

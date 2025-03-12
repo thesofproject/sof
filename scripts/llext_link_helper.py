@@ -26,6 +26,10 @@ def parse_args():
 	parser.add_argument('params', nargs='+', help='Additional linker parameters')
 	parser.add_argument("-f", "--file", required=True, type=str,
 						help='Object file name')
+	parser.add_argument("-c", "--copy", required=True, type=str,
+						help='Objcopy command')
+	parser.add_argument("-o", "--output", required=True, type=str,
+						help='Output file name')
 	parser.add_argument("-t", "--text-addr", required=True, type=str,
 						help='.text section address')
 	parser.add_argument("-s", "--size-file", required=True, type=str,
@@ -148,10 +152,15 @@ def main():
 	# we accept only the .coldrodata name for now.
 
 	dram_addr = 0
+	first_dram_text = None
+	first_dram_rodata = None
 
 	for section in executable:
 		s_alignment = section.header['sh_addralign']
 		s_name = section.name
+
+		if not first_dram_text:
+			first_dram_text = s_name
 
 		dram_addr = align_up(dram_addr, s_alignment)
 
@@ -162,6 +171,9 @@ def main():
 	for section in readonly_dram:
 		s_alignment = section.header['sh_addralign']
 		s_name = section.name
+
+		if not first_dram_rodata:
+			first_dram_rodata = s_name
 
 		dram_addr = align_up(dram_addr, s_alignment)
 
@@ -196,9 +208,20 @@ def main():
 
 		start_addr += section.header['sh_size']
 
+	command.extend(['-o', f'{args.file}.tmp'])
 	command.extend(args.params)
 
 	subprocess.run(command)
+
+	copy_command = [args.copy]
+
+	if first_dram_text:
+		copy_command.extend(['--set-section-alignment', f'{first_dram_text}=4096'])
+	if first_dram_rodata:
+		copy_command.extend(['--set-section-alignment', f'{first_dram_rodata}=4096'])
+
+	copy_command.extend([f'{args.file}.tmp', f'{args.output}'])
+	subprocess.run(copy_command)
 
 if __name__ == "__main__":
 	main()
