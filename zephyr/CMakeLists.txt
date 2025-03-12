@@ -203,6 +203,7 @@ add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
 add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
+add_subdirectory(../src/schedule/  schedule_unused_install/)
 
 if(CONFIG_COMP_TESTER STREQUAL "m")
 	add_subdirectory(${SOF_DEBUG_PATH}/tester/llext
@@ -235,11 +236,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 		lib/dma.c
 	)
 
-	# SOF core infrastructure - runs on top of Zephyr
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-	)
-
 	set(PLATFORM "tigerlake")
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/intel/cavs/include)
 endif()
@@ -269,14 +265,6 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
 		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
-		${SOF_SRC_PATH}/schedule/zephyr_dp_schedule.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_TWB_SCHEDULER
-		${SOF_SRC_PATH}/schedule/zephyr_twb_schedule.c
 	)
 
 	# Sources for virtual heap management
@@ -321,8 +309,6 @@ if (CONFIG_SOC_MIMX8QM6_ADSP OR CONFIG_SOC_MIMX8QX6_ADSP)
 		lib/dma.c
 	)
 
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
-
 	set(PLATFORM "imx8")
 endif()
 
@@ -341,8 +327,6 @@ if (CONFIG_SOC_MIMX8ML8_ADSP)
 	zephyr_library_sources(
 		lib/dma.c
 	)
-
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
 
 	set(PLATFORM "imx8m")
 endif()
@@ -363,8 +347,6 @@ if (CONFIG_SOC_MIMX8UD7_ADSP)
 		lib/dma.c
 	)
 
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
-
 	set(PLATFORM "imx8ulp")
 endif()
 
@@ -381,10 +363,6 @@ if (CONFIG_SOC_MIMX9352_A55)
 		${SOF_DRIVERS_PATH}/imx/ipc.c
 	)
 
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-	)
-
 	set(PLATFORM "imx93_a55")
 endif()
 
@@ -398,10 +376,6 @@ if (CONFIG_SOC_MIMX9596_M7)
 
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/imx/ipc.c
-	)
-
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
 	# SOF-specific linker script additions
@@ -444,17 +418,6 @@ if (CONFIG_SOC_ACP_6_0)
 		${SOF_SRC_PATH}/drivers/interrupt.c
 	)
 
-	# Zephyr DMA domain should only be used with zephyr_ll
-	if (CONFIG_DMA_DOMAIN)
-		zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-			)
-	else()
-		zephyr_library_sources(
-			${SOF_SRC_PATH}/schedule/ll_schedule.c
-			)
-	endif()
-
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/rembrandt/include)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/common/include)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/rembrandt/include/arch)
@@ -468,7 +431,6 @@ if (CONFIG_SOC_FAMILY_MTK)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/mtk/platform.c
 		${SOF_PLATFORM_PATH}/mtk/dai.c
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-memif.c
 		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-dai.c
@@ -478,7 +440,6 @@ endif()
 
 # Building for native_posix-based whole-OS host emulator
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
-	${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	${SOF_PLATFORM_PATH}/posix/dma.c
 	${SOF_PLATFORM_PATH}/posix/dai.c
 	${SOF_PLATFORM_PATH}/posix/ipc.c
@@ -530,8 +491,6 @@ zephyr_library_sources(
 
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
-	${SOF_SRC_PATH}/schedule/zephyr_domain.c
-	${SOF_SRC_PATH}/schedule/schedule.c
 
 	${SOF_SRC_PATH}/idc/zephyr_idc.c
 
@@ -611,15 +570,6 @@ add_subdirectory(../src/module module_unused_install/)
 
 if(CONFIG_PIPELINE_2_0)
 	zephyr_library_sources(${SOF_AUDIO_PATH}/buffers/ring_buffer.c)
-endif()
-if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c)
-endif()
-if(CONFIG_SCHEDULE_DMA_MULTI_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c)
-endif()
-if (CONFIG_DMA_DOMAIN)
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_dma_domain.c)
 endif()
 
 if(CONFIG_COMP_BLOB)
