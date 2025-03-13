@@ -14,6 +14,15 @@
  * Allows easy use of conventional debugger, profiler, leak and memory check
    tools usage for DSP firmware code.
 
+### Prerequisites
+
+Before running the SOF testbench, install the required dependencies:
+
+```
+sudo apt install valgrind octave-signal octave # For Ubuntu/Debian
+sudo dnf install valgrind octave-signal octave # For Fedora
+```
+
 ### Quick how-to
 
 The simplest way to build and execute testbench is with supplied
