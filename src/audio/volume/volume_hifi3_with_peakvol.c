@@ -43,9 +43,9 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 in_sample = AE_ZERO32();
-	ae_f32x2 out_sample = AE_ZERO32();
-	ae_f32x2 volume = AE_ZERO32();
+	ae_f32x2 in_sample;
+	ae_f32x2 out_sample;
+	ae_f32x2 volume;
 	int channel, n, i, m;
 	ae_f32 *in0 = (ae_f32 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						  + bsource->consumed);
@@ -118,7 +118,7 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 in_sample = AE_ZERO32();
+	ae_f32x2 in_sample;
 	int channel, n, i, m;
 	ae_f32 *in0 = (ae_f32 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						  + bsource->consumed);
@@ -178,9 +178,9 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 in_sample = AE_ZERO32();
-	ae_f32x2 out_sample = AE_ZERO32();
-	ae_f32x2 volume = AE_ZERO32();
+	ae_f32x2 in_sample;
+	ae_f32x2 out_sample;
+	ae_f32x2 volume;
 	int i, n, channel, m;
 	ae_f64 mult0;
 	const int channels_count = audio_stream_get_channels(sink);
@@ -254,7 +254,7 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 in_sample = AE_ZERO32();
+	ae_f32x2 in_sample;
 	int i, n, channel, m;
 	const int channels_count = audio_stream_get_channels(sink);
 	const int inc = sizeof(ae_f32) * channels_count;
@@ -314,10 +314,10 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 volume = AE_ZERO32();
-	ae_f32x2 out_sample0 = AE_ZERO32();
-	ae_f16x4 in_sample = AE_ZERO16();
-	ae_f16x4 out_sample = AE_ZERO16();
+	ae_f32x2 volume;
+	ae_f32x2 out_sample0;
+	ae_f16x4 in_sample;
+	ae_f16x4 out_sample;
 	int i, n, channel, m;
 	ae_f16 *in;
 	ae_f16 *out;
@@ -396,7 +396,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f16x4 in_sample = AE_ZERO16();
+	ae_f16x4 in_sample;
 	int i, n, channel, m;
 	ae_f16 *in;
 	ae_f16 *out;
