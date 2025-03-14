@@ -203,20 +203,8 @@ add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
 add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
+add_subdirectory(../src/debug/tester/  debug_tester_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
-
-if(CONFIG_COMP_TESTER STREQUAL "m")
-	add_subdirectory(${SOF_DEBUG_PATH}/tester/llext
-			 ${PROJECT_BINARY_DIR}/tester_llext)
-	add_dependencies(app tester)
-elseif(CONFIG_COMP_TESTER)
-	zephyr_library_sources_ifdef(CONFIG_COMP_TESTER
-		${SOF_DEBUG_PATH}/tester/tester.c
-		${SOF_DEBUG_PATH}/tester/tester_dummy_test.c
-		${SOF_DEBUG_PATH}/tester/tester_simple_dram_test.c
-	)
-endif()
-
 add_subdirectory(test/)
 
 
@@ -514,57 +502,6 @@ zephyr_library_sources_ifdef(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	${SOF_LIB_PATH}/cpu-clk-manager.c
 )
 
-# Optional math utility
-zephyr_library_sources_ifdef(CONFIG_MATH_LUT_SINE_FIXED
-	${SOF_MATH_PATH}/lut_trig.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_FFT
-        ${SOF_MATH_PATH}/fft/fft_common.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_FFT
-        ${SOF_MATH_PATH}/fft/fft_16.c
-        ${SOF_MATH_PATH}/fft/fft_16_hifi3.c
-)
-
-zephyr_library_sources_ifdef(ONFIG_MATH_32BIT_FFT
-        ${SOF_MATH_PATH}/fft/fft_32.c
-        ${SOF_MATH_PATH}/fft/fft_32_hifi3.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_DCT
-        ${SOF_MATH_PATH}/dct.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_WINDOW
-        ${SOF_MATH_PATH}/window.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_MATRIX
-        ${SOF_MATH_PATH}/matrix.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_AUDITORY
-        ${SOF_MATH_PATH}/auditory/auditory.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_MEL_FILTERBANK
-        ${SOF_MATH_PATH}/auditory/mel_filterbank_16.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_32BIT_MEL_FILTERBANK
-        ${SOF_MATH_PATH}/auditory/mel_filterbank_32.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_NATURAL_LOGARITHM_FIXED
-        ${SOF_MATH_PATH}/log_e.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_BINARY_LOGARITHM_FIXED
-        ${SOF_MATH_PATH}/base2log.c
-)
-
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
@@ -629,19 +566,6 @@ elseif(CONFIG_COMP_IIR)
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir.c
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_${ipc_suffix}.c
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
-	)
-endif()
-
-if(CONFIG_MATH_FIR STREQUAL "m")
-	add_subdirectory(${SOF_MATH_PATH}/fir_llext
-			 ${PROJECT_BINARY_DIR}/fir_llext)
-	add_dependencies(app fir)
-elseif(CONFIG_MATH_FIR)
-	zephyr_library_sources(
-		${SOF_MATH_PATH}/fir_generic.c
-		${SOF_MATH_PATH}/fir_hifi2ep.c
-		${SOF_MATH_PATH}/fir_hifi3.c
-		${SOF_MATH_PATH}/fir_hifi5.c
 	)
 endif()
 
