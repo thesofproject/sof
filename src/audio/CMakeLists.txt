@@ -1,14 +1,30 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+set(base_files
+	channel_map.c
+	component.c
+	source_api_helper.c
+	sink_api_helper.c
+	sink_source_utils.c
+	audio_stream.c
+	channel_map.c
+)
+
+
+is_zephyr(it_is)
+if(it_is) ###  Zephyr ###
+
+	zephyr_library_sources(
+		${base_files}
+	)
+
+	return()
+endif()
+
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_local_sources(sof
 		host-legacy.c
-		component.c
-		source_api_helper.c
-		sink_api_helper.c
-		sink_source_utils.c
-		audio_stream.c
-		channel_map.c
+		${base_files}
 	)
 
 	add_subdirectory(buffers)
@@ -125,15 +141,10 @@ if(CONFIG_COMP_MODULE_ADAPTER)
 endif()
 
 add_local_sources(sof
-	component.c
 	data_blob.c
 	buffers/comp_buffer.c
 	buffers/audio_buffer.c
-	source_api_helper.c
-	sink_api_helper.c
-	sink_source_utils.c
-	audio_stream.c
-	channel_map.c
+	${base_files}
 )
 
 # Audio Modules with various optimizaitons

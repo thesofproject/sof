@@ -198,6 +198,7 @@ macro(add_local_sources_ifdef condition target)
 	zephyr_library_sources_ifdef(${condition} ${ARGN})
 endmacro()
 
+add_subdirectory(../src/audio/ audio_unused_install/)
 add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
 add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
 add_subdirectory(../src/debug/tester/  debug_tester_unused_install/)
@@ -456,14 +457,8 @@ zephyr_library_sources(
 	${SOF_LIB_PATH}/dai.c
 
 	# SOF mandatory audio processing
-	${SOF_AUDIO_PATH}/channel_map.c
 	${SOF_AUDIO_PATH}/buffers/comp_buffer.c
 	${SOF_AUDIO_PATH}/buffers/audio_buffer.c
-	${SOF_AUDIO_PATH}/source_api_helper.c
-	${SOF_AUDIO_PATH}/sink_api_helper.c
-	${SOF_AUDIO_PATH}/sink_source_utils.c
-	${SOF_AUDIO_PATH}/audio_stream.c
-	${SOF_AUDIO_PATH}/component.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-graph.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-params.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-schedule.c
