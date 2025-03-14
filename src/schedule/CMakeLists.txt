@@ -39,11 +39,11 @@ else()
 endif()
 
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
-	${SOF_SRC_PATH}/schedule/zephyr_dp_schedule.c
+	zephyr_dp_schedule.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_TWB_SCHEDULER
-	${SOF_SRC_PATH}/schedule/zephyr_twb_schedule.c
+	zephyr_twb_schedule.c
 )
 
 else() ###  Not Zephyr ###
