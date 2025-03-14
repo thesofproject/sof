@@ -12,6 +12,7 @@
 #include <rtos/idc.h>
 #include <rtos/alloc.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
@@ -125,13 +126,15 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	return channel;
 }
 
-int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
+__cold int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
 #ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	struct dai *dai_p = dd->dai;
 #endif
+
+	assert_can_be_cold();
 
 	if (!dai) {
 		comp_err(dev, "dai_data_config(): no dai!\n");
@@ -200,7 +203,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 {
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_config(): Component is in active state. Ignore resetting");
+		comp_info(dev, "Component is in active state. Ignore release");
 		return;
 	}
 
@@ -331,12 +334,14 @@ static int dai_init_llp_info(struct dai_data *dd, struct comp_dev *dev)
 	return 0;
 }
 
-int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai *common_config,
-	       const void *spec_config)
+__cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
+		      struct ipc_config_dai *common_config, const void *spec_config)
 {
 	const struct ipc4_copier_module_cfg *copier_cfg = spec_config;
 	int size;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* ignore if message not for this DAI id/type */
 	if (dd->ipc_config.dai_index != common_config->dai_index ||
