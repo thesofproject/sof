@@ -178,8 +178,16 @@ config MATH_FIR
 	  filter calculates a convolution of input PCM sample and a configurable
 	  impulse response.
 
+config MATH_IIR
+	tristate "Select IIR filter library build method"
+	default m if LIBRARY_DEFAULT_MODULAR
+	default y
+	help
+	  A helper option for MATH_IIR_DF2T and MATH_IIR_DF1
+
 config MATH_IIR_DF2T
 	bool "IIR DF2T filter library"
+	depends on MATH_IIR != "n"
 	default n
 	help
 	  Select this to build IIR (Infinite Impulse Response) filter
@@ -187,6 +195,7 @@ config MATH_IIR_DF2T
 
 config MATH_IIR_DF1
 	bool "IIR DF1 filter library"
+	depends on MATH_IIR != "n"
 	default n
 	help
 	  Select this to build IIR (Infinite Impulse Response) filter
