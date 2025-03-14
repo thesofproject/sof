@@ -140,7 +140,6 @@ set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
 set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
-set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
@@ -203,19 +202,9 @@ add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
 add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
-
-if(CONFIG_COMP_TESTER STREQUAL "m")
-	add_subdirectory(${SOF_DEBUG_PATH}/tester/llext
-			 ${PROJECT_BINARY_DIR}/tester_llext)
-	add_dependencies(app tester)
-elseif(CONFIG_COMP_TESTER)
-	zephyr_library_sources_ifdef(CONFIG_COMP_TESTER
-		${SOF_DEBUG_PATH}/tester/tester.c
-		${SOF_DEBUG_PATH}/tester/tester_dummy_test.c
-		${SOF_DEBUG_PATH}/tester/tester_simple_dram_test.c
-	)
-endif()
-
+add_subdirectory(../src/debug/tester/  debug_tester_unused_install/)
+add_subdirectory(../src/math/  math_unused_install/)
+add_subdirectory(../src/schedule/  schedule_unused_install/)
 add_subdirectory(test/)
 
 
@@ -233,11 +222,6 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/intel/cavs/platform.c
 		lib/dma.c
-	)
-
-	# SOF core infrastructure - runs on top of Zephyr
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
 	set(PLATFORM "tigerlake")
@@ -269,14 +253,6 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	# SOF core infrastructure - runs on top of Zephyr
 	zephyr_library_sources(
 		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
-		${SOF_SRC_PATH}/schedule/zephyr_dp_schedule.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_TWB_SCHEDULER
-		${SOF_SRC_PATH}/schedule/zephyr_twb_schedule.c
 	)
 
 	# Sources for virtual heap management
@@ -321,8 +297,6 @@ if (CONFIG_SOC_MIMX8QM6_ADSP OR CONFIG_SOC_MIMX8QX6_ADSP)
 		lib/dma.c
 	)
 
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
-
 	set(PLATFORM "imx8")
 endif()
 
@@ -341,8 +315,6 @@ if (CONFIG_SOC_MIMX8ML8_ADSP)
 	zephyr_library_sources(
 		lib/dma.c
 	)
-
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
 
 	set(PLATFORM "imx8m")
 endif()
@@ -363,8 +335,6 @@ if (CONFIG_SOC_MIMX8UD7_ADSP)
 		lib/dma.c
 	)
 
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_ll.c)
-
 	set(PLATFORM "imx8ulp")
 endif()
 
@@ -381,10 +351,6 @@ if (CONFIG_SOC_MIMX9352_A55)
 		${SOF_DRIVERS_PATH}/imx/ipc.c
 	)
 
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-	)
-
 	set(PLATFORM "imx93_a55")
 endif()
 
@@ -398,10 +364,6 @@ if (CONFIG_SOC_MIMX9596_M7)
 
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/imx/ipc.c
-	)
-
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	)
 
 	# SOF-specific linker script additions
@@ -444,17 +406,6 @@ if (CONFIG_SOC_ACP_6_0)
 		${SOF_SRC_PATH}/drivers/interrupt.c
 	)
 
-	# Zephyr DMA domain should only be used with zephyr_ll
-	if (CONFIG_DMA_DOMAIN)
-		zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-			)
-	else()
-		zephyr_library_sources(
-			${SOF_SRC_PATH}/schedule/ll_schedule.c
-			)
-	endif()
-
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/rembrandt/include)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/common/include)
 	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/rembrandt/include/arch)
@@ -468,7 +419,6 @@ if (CONFIG_SOC_FAMILY_MTK)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/mtk/platform.c
 		${SOF_PLATFORM_PATH}/mtk/dai.c
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
 		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
 		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-memif.c
 		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-dai.c
@@ -478,7 +428,6 @@ endif()
 
 # Building for native_posix-based whole-OS host emulator
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
-	${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	${SOF_PLATFORM_PATH}/posix/dma.c
 	${SOF_PLATFORM_PATH}/posix/dai.c
 	${SOF_PLATFORM_PATH}/posix/ipc.c
@@ -500,13 +449,6 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Mandatory Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
-
-	# SOF math utilities
-	${SOF_MATH_PATH}/decibels.c
-	${SOF_MATH_PATH}/numbers.c
-	${SOF_MATH_PATH}/trig.c
-	${SOF_MATH_PATH}/exp_fcn.c
-	${SOF_MATH_PATH}/exp_fcn_hifi.c
 
 	# SOF library - parts to transition to Zephyr over time
 	${SOF_LIB_PATH}/notifier.c
@@ -530,8 +472,6 @@ zephyr_library_sources(
 
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
-	${SOF_SRC_PATH}/schedule/zephyr_domain.c
-	${SOF_SRC_PATH}/schedule/schedule.c
 
 	${SOF_SRC_PATH}/idc/zephyr_idc.c
 
@@ -555,71 +495,11 @@ zephyr_library_sources_ifdef(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	${SOF_LIB_PATH}/cpu-clk-manager.c
 )
 
-# Optional math utility
-zephyr_library_sources_ifdef(CONFIG_MATH_LUT_SINE_FIXED
-	${SOF_MATH_PATH}/lut_trig.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_FFT
-        ${SOF_MATH_PATH}/fft/fft_common.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_FFT
-        ${SOF_MATH_PATH}/fft/fft_16.c
-        ${SOF_MATH_PATH}/fft/fft_16_hifi3.c
-)
-
-zephyr_library_sources_ifdef(ONFIG_MATH_32BIT_FFT
-        ${SOF_MATH_PATH}/fft/fft_32.c
-        ${SOF_MATH_PATH}/fft/fft_32_hifi3.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_DCT
-        ${SOF_MATH_PATH}/dct.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_WINDOW
-        ${SOF_MATH_PATH}/window.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_MATRIX
-        ${SOF_MATH_PATH}/matrix.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_AUDITORY
-        ${SOF_MATH_PATH}/auditory/auditory.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_MEL_FILTERBANK
-        ${SOF_MATH_PATH}/auditory/mel_filterbank_16.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_32BIT_MEL_FILTERBANK
-        ${SOF_MATH_PATH}/auditory/mel_filterbank_32.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_NATURAL_LOGARITHM_FIXED
-        ${SOF_MATH_PATH}/log_e.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_BINARY_LOGARITHM_FIXED
-        ${SOF_MATH_PATH}/base2log.c
-)
-
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
 if(CONFIG_PIPELINE_2_0)
 	zephyr_library_sources(${SOF_AUDIO_PATH}/buffers/ring_buffer.c)
-endif()
-if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_single_chan_domain.c)
-endif()
-if(CONFIG_SCHEDULE_DMA_MULTI_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/dma_multi_chan_domain.c)
-endif()
-if (CONFIG_DMA_DOMAIN)
-	zephyr_library_sources(${SOF_SRC_PATH}/schedule/zephyr_dma_domain.c)
 endif()
 
 if(CONFIG_COMP_BLOB)
@@ -681,33 +561,6 @@ elseif(CONFIG_COMP_IIR)
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
 	)
 endif()
-
-if(CONFIG_MATH_FIR STREQUAL "m")
-	add_subdirectory(${SOF_MATH_PATH}/fir_llext
-			 ${PROJECT_BINARY_DIR}/fir_llext)
-	add_dependencies(app fir)
-elseif(CONFIG_MATH_FIR)
-	zephyr_library_sources(
-		${SOF_MATH_PATH}/fir_generic.c
-		${SOF_MATH_PATH}/fir_hifi2ep.c
-		${SOF_MATH_PATH}/fir_hifi3.c
-		${SOF_MATH_PATH}/fir_hifi5.c
-	)
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
-	${SOF_MATH_PATH}/iir_df1_generic.c
-	${SOF_MATH_PATH}/iir_df1_hifi3.c
-	${SOF_MATH_PATH}/iir_df1_hifi4.c
-	${SOF_MATH_PATH}/iir_df1_hifi5.c
-	${SOF_MATH_PATH}/iir_df1.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF2T
-	${SOF_MATH_PATH}/iir_df2t_generic.c
-	${SOF_MATH_PATH}/iir_df2t_hifi3.c
-	${SOF_MATH_PATH}/iir_df2t.c
-)
 
 if(CONFIG_COMP_ASRC STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/asrc/llext
@@ -1095,15 +948,6 @@ elseif(CONFIG_COMP_TDFB)
 		${SOF_AUDIO_PATH}/tdfb/tdfb_${ipc_suffix}.c
 	)
 endif()
-
-zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
-	${SOF_MATH_PATH}/sqrt_int16.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_EXP
-	${SOF_MATH_PATH}/exp_fcn.c
-	${SOF_MATH_PATH}/exp_fcn_hifi.c
-)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
 	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.c
