@@ -21,6 +21,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/math/numbers.h>
 #include <sof/tlv.h>
@@ -131,17 +132,21 @@ static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(
 /*
  * Global IPC Operations.
  */
-static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
+__cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
+
+	assert_can_be_cold();
 
 	return ipc_pipeline_new(ipc, (ipc_pipe_new *)ipc4);
 }
 
-static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
+__cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_pipeline_delete *pipe;
 	struct ipc *ipc = ipc_get();
+
+	assert_can_be_cold();
 
 	pipe = (struct ipc4_pipeline_delete *)ipc4;
 	tr_dbg(&ipc_tr, "ipc4 delete pipeline %x:", (uint32_t)pipe->primary.r.instance_id);
@@ -229,10 +234,12 @@ error:
 	return err;
 }
 
-static bool is_any_ppl_active(void)
+__cold static bool is_any_ppl_active(void)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
+
+	assert_can_be_cold();
 
 	list_for_item(clist, &ipc_get()->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
@@ -246,11 +253,13 @@ static bool is_any_ppl_active(void)
 	return false;
 }
 
-static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
+__cold static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
 {
 	struct ipc_comp_dev *host_dev;
 	struct ipc *ipc = ipc_get();
 	int host_id;
+
+	assert_can_be_cold();
 
 	/* If the source component's direction is not set but the sink's direction is,
 	 * this block will copy the direction from the sink to the source component and
@@ -496,16 +505,20 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 	return ret;
 }
 
-static void ipc_compound_pre_start(int msg_id)
+__cold static void ipc_compound_pre_start(int msg_id)
 {
+	assert_can_be_cold();
+
 	/* ipc thread will wait for all scheduled tasks to be complete
 	 * Use a reference count to check status of these tasks.
 	 */
 	atomic_add(&msg_data.delayed_reply, 1);
 }
 
-static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
+__cold static void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 {
+	assert_can_be_cold();
+
 	if (ret) {
 		ipc_cmd_err(&ipc_tr, "failed to process msg %d status %d", msg_id, ret);
 		atomic_set(&msg_data.delayed_reply, 0);
@@ -562,13 +575,11 @@ static int ipc_wait_for_compound_msg(void)
 }
 #endif
 
-const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper(void)
+__cold const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper(void)
 {
-	const struct ipc4_pipeline_set_state_data *ppl_data;
+	assert_can_be_cold();
 
-	ppl_data = ipc4_get_pipeline_data();
-
-	return ppl_data;
+	return ipc4_get_pipeline_data();
 }
 
 static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
@@ -700,10 +711,12 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 }
 
 #if CONFIG_LIBRARY_MANAGER
-static int ipc4_load_library(struct ipc4_message_request *ipc4)
+__cold static int ipc4_load_library(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_load_library library;
 	int ret;
+
+	assert_can_be_cold();
 
 	library.header.dat = ipc4->primary.dat;
 
@@ -716,8 +729,10 @@ static int ipc4_load_library(struct ipc4_message_request *ipc4)
 }
 #endif
 
-static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
+__cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 {
+	assert_can_be_cold();
+
 #if CONFIG_COMP_CHAIN_DMA
 	struct ipc_comp_dev *cdma_comp;
 	struct ipc *ipc = ipc_get();
@@ -771,8 +786,10 @@ static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 #endif
 }
 
-static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
+__cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 {
+	assert_can_be_cold();
+
 #if CONFIG_IPC4_GATEWAY
 	struct ipc *ipc = ipc_get();
 	uint32_t reply_size = 0;
@@ -880,13 +897,14 @@ __cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_init_instance module_init;
 	struct comp_dev *dev;
+
+	assert_can_be_cold();
+
 	/* we only need the common header here, all we have from the IPC */
 	int ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
 		return IPC4_FAILURE;
-
-	assert_can_be_cold();
 
 	tr_dbg(&ipc_tr,
 		"ipc4_init_module_instance %x : %x",
@@ -908,10 +926,13 @@ __cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 	return 0;
 }
 
-static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
+
+	assert_can_be_cold();
+
 	int ret = memcpy_s(&bu, sizeof(bu), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
@@ -924,10 +945,13 @@ static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
 	struct ipc *ipc = ipc_get();
+
+	assert_can_be_cold();
+
 	int ret = memcpy_s(&bu, sizeof(bu), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
@@ -940,7 +964,7 @@ static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
+__cold static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 						   const struct comp_driver *drv,
 						   bool init_block,
 						   bool final_block,
@@ -951,6 +975,8 @@ static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 	const struct sof_tl * const input_tl = (struct sof_tl *)data_in;
 	int ret;
 	struct ipc4_vendor_error *error;
+
+	assert_can_be_cold();
 
 	if (init_block && final_block) {
 		/* we use data_off_size as in/out,
@@ -1033,7 +1059,7 @@ static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 	return IPC4_SUCCESS;
 }
 
-static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config_reply reply;
 	struct ipc4_module_large_config config;
@@ -1041,6 +1067,9 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	const struct comp_driver *drv;
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
+
+	assert_can_be_cold();
+
 	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
@@ -1125,7 +1154,7 @@ static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ip
 	return ret;
 }
 
-static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
+__cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 						  const struct comp_driver *drv,
 						  uint32_t module_id,
 						  uint32_t instance_id,
@@ -1135,6 +1164,8 @@ static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 						  const char *data)
 {
 	int ret;
+
+	assert_can_be_cold();
 
 	/* Old FW comment: bursted configs */
 	if (init_block && final_block) {
@@ -1188,11 +1219,14 @@ static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 					 data_off_size, data);
 }
 
-static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config config;
 	struct comp_dev *dev = NULL;
 	const struct comp_driver *drv;
+
+	assert_can_be_cold();
+
 	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
@@ -1256,11 +1290,14 @@ static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ip
 	return ret;
 }
 
-static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
+__cold static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_delete_instance module;
 	struct ipc *ipc = ipc_get();
 	uint32_t comp_id;
+
+	assert_can_be_cold();
+
 	int ret = memcpy_s(&module, sizeof(module), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
@@ -1282,10 +1319,13 @@ static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 }
 
 /* disable power gating on core 0 */
-static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
+__cold static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_set_d0ix d0ix;
 	uint32_t module_id, instance_id;
+
+	assert_can_be_cold();
+
 	int ret = memcpy_s(&d0ix, sizeof(d0ix), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
@@ -1311,12 +1351,15 @@ static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 }
 
 /* enable/disable cores according to the state mask */
-static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
+__cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_set_dx dx;
 	struct ipc4_dx_state_info dx_info;
 	uint32_t module_id, instance_id;
 	uint32_t core_id;
+
+	assert_can_be_cold();
+
 	int ret = memcpy_s(&dx, sizeof(dx), ipc4, sizeof(*ipc4));
 
 	if (ret < 0)
@@ -1402,10 +1445,12 @@ static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 	return IPC4_SUCCESS;
 }
 
-static int ipc4_process_module_message(struct ipc4_message_request *ipc4)
+__cold static int ipc4_process_module_message(struct ipc4_message_request *ipc4)
 {
 	uint32_t type;
 	int ret;
+
+	assert_can_be_cold();
 
 	type = ipc4->primary.r.type;
 
@@ -1451,15 +1496,20 @@ static int ipc4_process_module_message(struct ipc4_message_request *ipc4)
 	return ret;
 }
 
-struct ipc_cmd_hdr *mailbox_validate(void)
+__cold struct ipc_cmd_hdr *mailbox_validate(void)
 {
 	struct ipc_cmd_hdr *hdr = ipc_get()->comp_data;
+
+	assert_can_be_cold();
+
 	return hdr;
 }
 
-struct ipc_cmd_hdr *ipc_compact_read_msg(void)
+__cold struct ipc_cmd_hdr *ipc_compact_read_msg(void)
 {
 	int words;
+
+	assert_can_be_cold();
 
 	words = ipc_platform_compact_read_msg(&msg_data.msg_in, 2);
 	if (!words)
@@ -1468,8 +1518,10 @@ struct ipc_cmd_hdr *ipc_compact_read_msg(void)
 	return &msg_data.msg_in;
 }
 
-struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
+__cold struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 {
+	assert_can_be_cold();
+
 	msg_data.msg_out.pri = msg->header;
 	msg_data.msg_out.ext = msg->extension;
 
@@ -1479,17 +1531,21 @@ struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 	return &msg_data.msg_out;
 }
 
-void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
+__cold void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
 {
+	assert_can_be_cold();
+
 	header->pri = SOF_IPC4_FW_READY;
 	header->ext = 0;
 }
 
 #if defined(CONFIG_PM_DEVICE) && defined(CONFIG_INTEL_ADSP_IPC)
-void ipc_send_failed_power_transition_response(void)
+__cold void ipc_send_failed_power_transition_response(void)
 {
 	struct ipc4_message_request *request = ipc_from_hdr(&msg_data.msg_in);
 	struct ipc4_message_reply response;
+
+	assert_can_be_cold();
 
 	response.primary.r.status = IPC4_POWER_TRANSITION_FAILED;
 	response.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REPLY;
@@ -1503,8 +1559,10 @@ void ipc_send_failed_power_transition_response(void)
 }
 #endif /* defined(CONFIG_PM_DEVICE) && defined(CONFIG_INTEL_ADSP_IPC) */
 
-void ipc_send_panic_notification(void)
+__cold void ipc_send_panic_notification(void)
 {
+	assert_can_be_cold();
+
 	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_EXCEPTION_CAUGHT);
 	msg_notify.extension = cpu_get_id();
 	msg_notify.tx_size = 0;
@@ -1516,11 +1574,13 @@ void ipc_send_panic_notification(void)
 
 #ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
 
-static bool is_notification_queued(struct ipc_msg *msg)
+__cold static bool is_notification_queued(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
 	bool queued = false;
+
+	assert_can_be_cold();
 
 	key = k_spin_lock(&ipc->lock);
 	if (!list_is_empty(&msg->list))

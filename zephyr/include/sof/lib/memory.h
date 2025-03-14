@@ -25,10 +25,11 @@ bool ll_sch_is_current(void);
 #define ll_sch_is_current() false
 #endif
 
-static inline void assert_can_be_cold(void)
+static inline void __assert_can_be_cold(const char *fn)
 {
-	assert(!ll_sch_is_current());
+	__ASSERT(!ll_sch_is_current(), "%s() called from an LL thread!", fn);
 }
+#define assert_can_be_cold() __assert_can_be_cold(__func__)
 #else
 #define assert_can_be_cold() do {} while (0)
 #endif

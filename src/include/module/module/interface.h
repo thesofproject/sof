@@ -239,7 +239,9 @@ struct module_interface {
 
 	/**
 	 * (optional) Module specific trigger procedure, called when modules are triggered. Usually
-	 * can be __cold
+	 * shouldn't be __cold. If a module implements this method, even if it only handles
+	 * commands, running in non-LL context, it will still be called from the high priority
+	 * LL context, which will cause a short jump to DRAM to check for supported commands.
 	 */
 	int (*trigger)(struct processing_module *mod, int cmd);
 
