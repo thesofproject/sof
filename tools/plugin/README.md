@@ -111,7 +111,7 @@ Note: Bytes controls must have tlv_read/tlv_write and tlv_callback access.
 ## Instructions for testing OpenVino noise suppression model with the SOF plugin:
 1. Fetch the model from the Open Model zoo repository ex: noise-suppression-poconetlike-0001.xml
 
-   https://docs.openvino.ai/archive/2023.0/omz_demos.html#build-the-demo-applications-on-linux
+   https://docs.openvino.ai/2023.3/omz_demos.html#a-name-build-demos-linux-a-build-the-demo-applications-on-linux
 
 2. Source OpenVino environment and get OpenCV
 https://www.intel.com/content/www/us/en/developer/tools/openvino-toolkit-download.html
