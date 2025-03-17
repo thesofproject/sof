@@ -214,7 +214,8 @@ struct module_interface {
 	/**
 	 * (optional) Module specific reset procedure, called as part of module_adapter component
 	 * reset in .reset(). This should reset all parameters to their initial stage
-	 * and free all memory allocated during prepare(). Usually can be __cold
+	 * and free all memory allocated during prepare(). Usually shouldn't be __cold since it's
+	 * called from pipeline_reset() from ipc4_pipeline_trigger()
 	 */
 	int (*reset)(struct processing_module *mod);
 

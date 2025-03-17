@@ -407,11 +407,9 @@ __cold static int multiband_drc_prepare(struct processing_module *mod,
 	return ret;
 }
 
-__cold static int multiband_drc_reset(struct processing_module *mod)
+static int multiband_drc_reset(struct processing_module *mod)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
-
-	assert_can_be_cold();
 
 	comp_info(mod->dev, "multiband_drc_reset()");
 
