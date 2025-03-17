@@ -1316,6 +1316,8 @@ static int tb_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
 		ctl->type = tplg_ctl->type;
 		tlv = &tplg_ctl->tlv;
 		scale = &tlv->scale;
+		ctl->comp_info = comp_info;
+		strncpy(ctl->name, tplg_ctl->name, TB_MAX_CTL_NAME_CHARS);
 
 		/* populate the volume table */
 		for (i = 0; i < tplg_mixer->max + 1 ; i++) {
@@ -1338,6 +1340,8 @@ static int tb_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
 		ctl->enum_ctl = *tplg_enum;
 		ctl->index = index;
 		ctl->type = tplg_ctl->type;
+		ctl->comp_info = comp_info;
+		strncpy(ctl->name, tplg_ctl->name, TB_MAX_CTL_NAME_CHARS);
 		break;
 	case SND_SOC_TPLG_CTL_BYTES:
 	{
@@ -1350,6 +1354,8 @@ static int tb_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
 		ctl->index = index;
 		ctl->type = tplg_ctl->type;
 		memcpy(ctl->data, tplg_bytes->priv.data, tplg_bytes->priv.size);
+		ctl->comp_info = comp_info;
+		strncpy(ctl->name, tplg_ctl->name, TB_MAX_CTL_NAME_CHARS);
 		break;
 	}
 	default:
@@ -1733,6 +1739,148 @@ int tb_send_bytes_data(struct tb_mq_desc *ipc_tx, struct tb_mq_desc *ipc_rx,
 out:
 	free(msg);
 	return ret;
+}
+
+int tb_send_volume_control(struct tb_mq_desc *ipc_tx, struct tb_mq_desc *ipc_rx,
+			   struct tb_ctl *ctl, int *control_values, int num_values)
+{
+	struct ipc4_module_large_config config = {{ 0 }};
+	struct ipc4_peak_volume_config volume;
+	struct ipc4_message_reply reply;
+	struct ipc4_peak_volume_config *volume_config;
+	void *msg;
+	bool all_channels_equal = true;
+	int max_val;
+	int size;
+	int ret;
+	int val;
+	int i;
+
+	volume_config = ctl->comp_info->ipc_payload + sizeof(struct ipc4_base_module_cfg);
+	max_val = ctl->mixer_ctl.max;
+	val = control_values[0];
+	for (i = 0; i < num_values; i++) {
+		if (i > 0 && control_values[i] != val)
+			all_channels_equal = false;
+
+		if (control_values[i] < 0 || control_values[i] > max_val) {
+			fprintf(stderr, "error: control value %d is illegal.\n", control_values[i]);
+			return -EINVAL;
+		}
+	}
+
+	for (i = 0; i < num_values; i++) {
+		if (all_channels_equal) {
+			volume.channel_id = IPC4_ALL_CHANNELS_MASK;
+			volume.target_volume = ctl->volume_table[val];
+		} else {
+			volume.channel_id = i;
+			volume.target_volume = ctl->volume_table[control_values[i]];
+		}
+
+		/* get curve duration and type from topology */
+		volume.curve_type = volume_config->curve_type;
+		volume.curve_duration = volume_config->curve_duration;
+
+		/* configure the IPC message */
+		tb_ctl_ipc_message(&config, IPC4_VOLUME, sizeof(volume), ctl->module_id,
+				   ctl->instance_id, SOF_IPC4_MOD_LARGE_CONFIG_SET);
+		config.extension.r.final_block = 1;
+		config.extension.r.init_block = 1;
+
+		size = sizeof(config) + sizeof(volume);
+		msg = calloc(size, 1);
+		if (!msg)
+			return -ENOMEM;
+
+		memcpy(msg, &config, sizeof(config));
+		memcpy(msg + sizeof(config), &volume, sizeof(volume));
+
+		/* send the message and check status */
+		ret = tb_mq_cmd_tx_rx(ipc_tx, ipc_rx, msg, size, &reply, sizeof(reply));
+		free(msg);
+		if (ret < 0) {
+			fprintf(stderr, "failed to set volume control %s\n", ctl->name);
+			return ret;
+		}
+
+		if (reply.primary.r.status != IPC4_SUCCESS) {
+			fprintf(stderr, "volume control %s set failed with status %d\n",
+				ctl->name, reply.primary.r.status);
+			return -EINVAL;
+		}
+
+		if (all_channels_equal)
+			break;
+	}
+
+	return 0;
+}
+
+int tb_send_alsa_control(struct tb_mq_desc *ipc_tx, struct tb_mq_desc *ipc_rx,
+			 struct tb_ctl *ctl, int *control_values, int num_values, int param_id)
+{
+	struct ipc4_module_large_config config = {{ 0 }};
+	struct sof_ipc4_control_msg_payload *data;
+	struct ipc4_message_reply reply;
+	void *msg;
+	int data_size;
+	int msg_size;
+	int ret;
+	int i;
+
+	/* size of control data */
+	data_size = num_values * sizeof(struct sof_ipc4_ctrl_value_chan) + sizeof(*data);
+
+	/* allocate memory for control data */
+	data = calloc(data_size, 1);
+	if (!data)
+		return -ENOMEM;
+
+	/* set param ID and number of channels */
+	data->id = ctl->index;
+	data->num_elems = num_values;
+
+	/* set the enum values */
+	for (i = 0; i < data->num_elems; i++) {
+		data->chanv[i].channel = i;
+		data->chanv[i].value = control_values[i];
+	}
+
+	/* configure the IPC message */
+	tb_ctl_ipc_message(&config, param_id, data_size, ctl->module_id, ctl->instance_id,
+			   SOF_IPC4_MOD_LARGE_CONFIG_SET);
+	config.extension.r.final_block = 1;
+	config.extension.r.init_block = 1;
+
+	/* allocate memory for IPC message */
+	msg_size = sizeof(config) + data_size;
+	msg = calloc(msg_size, 1);
+	if (!msg) {
+		free(data);
+		return -ENOMEM;
+	}
+
+	/* set the IPC message data */
+	memcpy(msg, &config, sizeof(config));
+	memcpy(msg + sizeof(config), data, data_size);
+	free(data);
+
+	/* send the message and check status */
+	ret = tb_mq_cmd_tx_rx(ipc_tx, ipc_rx, msg, msg_size, &reply, sizeof(reply));
+	free(msg);
+	if (ret < 0) {
+		fprintf(stderr, "error: failed to set control %s\n", ctl->name);
+		return ret;
+	}
+
+	if (reply.primary.r.status != IPC4_SUCCESS) {
+		fprintf(stderr, "error: control %s set failed with status %d\n",
+			ctl->name, reply.primary.r.status);
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 #endif /* CONFIG_IPC_MAJOR_4 */
