@@ -697,11 +697,9 @@ __cold int src_get_config(struct processing_module *mod, uint32_t config_id,
 	return -EINVAL;
 }
 
-__cold int src_reset(struct processing_module *mod)
+int src_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-
-	assert_can_be_cold();
 
 	comp_info(mod->dev, "src_reset()");
 
