@@ -424,4 +424,15 @@ int tb_set_up_all_pipelines(struct testbench_prm *tp)
 	return 0;
 }
 
+/* No support in IPC3 version */
+int tb_set_enum_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params)
+{
+	return 0;
+}
+
+int tb_set_mixer_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params)
+{
+	return 0;
+}
+
 #endif /* CONFIG_IPC_MAJOR_3 */

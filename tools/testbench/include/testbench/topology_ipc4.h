@@ -48,6 +48,10 @@ int tb_new_process(struct testbench_prm *tp);
 int tb_pipelines_set_state(struct testbench_prm *tp, int state, int dir);
 int tb_send_bytes_data(struct tb_mq_desc *ipc_tx, struct tb_mq_desc *ipc_rx,
 		       uint32_t module_id, uint32_t instance_id, struct sof_abi_hdr *abi);
+int tb_send_volume_control(struct tb_mq_desc *ipc_tx, struct tb_mq_desc *ipc_rx,
+			   struct tb_ctl *ctl, int *control_values, int num_values);
+int tb_send_alsa_control(struct tb_mq_desc *ipc_tx, struct tb_mq_desc *ipc_rx, struct tb_ctl *ctl,
+			 int *control_values, int num_values, int param_id);
 int tb_set_reset_state(struct testbench_prm *tp);
 int tb_set_running_state(struct testbench_prm *tp);
 int tb_set_up_pipeline(struct testbench_prm *tp, struct tplg_pipeline_info *pipe_info);
