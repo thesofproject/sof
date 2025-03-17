@@ -627,4 +627,67 @@ void tb_free_topology(struct testbench_prm *tp)
 	tb_debug_print("freed all pipelines, widgets, routes and pcms\n");
 }
 
+int tb_set_enum_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params)
+{
+	int control_values[PLATFORM_MAX_CHANNELS];
+	char *token, *rest;
+	int ret = 0;
+	int n = 0;
+
+	rest = control_params;
+	while ((token = strtok_r(rest, ",", &rest))) {
+		if (n == PLATFORM_MAX_CHANNELS) {
+			fprintf(stderr,
+				"error: number of control values exceeds max channels count.\n");
+			return -EINVAL;
+		}
+
+		control_values[n] = tb_decode_enum(&ctl->enum_ctl, token);
+		if (control_values[n] < 0) {
+			fprintf(stderr,
+				"error: not able to decode enum %s.\n", token);
+			return -EINVAL;
+		}
+		n++;
+	}
+
+	ret = tb_send_alsa_control(&tp->ipc_tx, &tp->ipc_rx, ctl, control_values, n,
+				   SOF_IPC4_ENUM_CONTROL_PARAM_ID);
+	return ret;
+}
+
+int tb_set_mixer_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params)
+{
+	int control_values[PLATFORM_MAX_CHANNELS];
+	char *token, *rest;
+	int n = 0;
+	int ret;
+
+	rest = control_params;
+	while ((token = strtok_r(rest, ",", &rest))) {
+		if (n == PLATFORM_MAX_CHANNELS) {
+			fprintf(stderr,
+				"error: number of control values exceeds max channels count.\n");
+			return -EINVAL;
+		}
+
+		if (strcmp(token, "on") == 0)
+			control_values[n] = 1;
+		else if (strcmp(token, "off") == 0)
+			control_values[n] = 0;
+		else
+			control_values[n] = atoi(token);
+
+		n++;
+	}
+
+	if (ctl->mixer_ctl.max == 1)
+		ret = tb_send_alsa_control(&tp->ipc_tx, &tp->ipc_rx, ctl, control_values, n,
+					   SOF_IPC4_SWITCH_CONTROL_PARAM_ID);
+	else
+		ret = tb_send_volume_control(&tp->ipc_tx, &tp->ipc_rx, ctl, control_values, n);
+
+	return ret;
+}
+
 #endif /* CONFIG_IPC_MAJOR_4 */
