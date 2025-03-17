@@ -155,10 +155,7 @@ to work with 48K capture.
 arecord -Dsof:plugin:1:0:7:16k2c16b -f dat -r 16000 --period-size=2048 file_ns_16k.wav
 ```
 
-### TODO Items (and T-shirt size) for single pipeline E2E audio
- * IPC4 support in tplg parser (M)
- * IPC4 support in plugin (pipe/ipc4.c) (M)
- * Fix ALSA -Dhw: device support (S), currently only default ALSA device works
- * Deprecate POSIX message queues for IPC and use UNIX sockets.(S)
- * Make better build system for modules i.e. remove hack-install.sh (S)
- * Need a simpler aplay/arecord cmd line.
+### TODO Items for single pipeline E2E audio
+Use hw_params instead of hardcoded config
+Add support for 24-bit and 16-bit audio
+Remove duplication of kcontrols when alsamixer is opened/closed repeatedly
