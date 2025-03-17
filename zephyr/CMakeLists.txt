@@ -140,7 +140,6 @@ set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
 set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
-set(SOF_MATH_PATH "${SOF_SRC_PATH}/math")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
@@ -204,6 +203,7 @@ add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
 add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
 add_subdirectory(../src/debug/tester/  debug_tester_unused_install/)
+add_subdirectory(../src/math/  math_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
 add_subdirectory(test/)
 
@@ -450,13 +450,6 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
 
-	# SOF math utilities
-	${SOF_MATH_PATH}/decibels.c
-	${SOF_MATH_PATH}/numbers.c
-	${SOF_MATH_PATH}/trig.c
-	${SOF_MATH_PATH}/exp_fcn.c
-	${SOF_MATH_PATH}/exp_fcn_hifi.c
-
 	# SOF library - parts to transition to Zephyr over time
 	${SOF_LIB_PATH}/notifier.c
 	${SOF_LIB_PATH}/dma.c
@@ -500,57 +493,6 @@ endif()
 
 zephyr_library_sources_ifdef(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	${SOF_LIB_PATH}/cpu-clk-manager.c
-)
-
-# Optional math utility
-zephyr_library_sources_ifdef(CONFIG_MATH_LUT_SINE_FIXED
-	${SOF_MATH_PATH}/lut_trig.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_FFT
-        ${SOF_MATH_PATH}/fft/fft_common.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_FFT
-        ${SOF_MATH_PATH}/fft/fft_16.c
-        ${SOF_MATH_PATH}/fft/fft_16_hifi3.c
-)
-
-zephyr_library_sources_ifdef(ONFIG_MATH_32BIT_FFT
-        ${SOF_MATH_PATH}/fft/fft_32.c
-        ${SOF_MATH_PATH}/fft/fft_32_hifi3.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_DCT
-        ${SOF_MATH_PATH}/dct.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_WINDOW
-        ${SOF_MATH_PATH}/window.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_MATRIX
-        ${SOF_MATH_PATH}/matrix.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_AUDITORY
-        ${SOF_MATH_PATH}/auditory/auditory.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_16BIT_MEL_FILTERBANK
-        ${SOF_MATH_PATH}/auditory/mel_filterbank_16.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_32BIT_MEL_FILTERBANK
-        ${SOF_MATH_PATH}/auditory/mel_filterbank_32.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_NATURAL_LOGARITHM_FIXED
-        ${SOF_MATH_PATH}/log_e.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_BINARY_LOGARITHM_FIXED
-        ${SOF_MATH_PATH}/base2log.c
 )
 
 # SOF module interface functions
@@ -619,33 +561,6 @@ elseif(CONFIG_COMP_IIR)
 		${SOF_AUDIO_PATH}/eq_iir/eq_iir_generic.c
 	)
 endif()
-
-if(CONFIG_MATH_FIR STREQUAL "m")
-	add_subdirectory(${SOF_MATH_PATH}/fir_llext
-			 ${PROJECT_BINARY_DIR}/fir_llext)
-	add_dependencies(app fir)
-elseif(CONFIG_MATH_FIR)
-	zephyr_library_sources(
-		${SOF_MATH_PATH}/fir_generic.c
-		${SOF_MATH_PATH}/fir_hifi2ep.c
-		${SOF_MATH_PATH}/fir_hifi3.c
-		${SOF_MATH_PATH}/fir_hifi5.c
-	)
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF1
-	${SOF_MATH_PATH}/iir_df1_generic.c
-	${SOF_MATH_PATH}/iir_df1_hifi3.c
-	${SOF_MATH_PATH}/iir_df1_hifi4.c
-	${SOF_MATH_PATH}/iir_df1_hifi5.c
-	${SOF_MATH_PATH}/iir_df1.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_IIR_DF2T
-	${SOF_MATH_PATH}/iir_df2t_generic.c
-	${SOF_MATH_PATH}/iir_df2t_hifi3.c
-	${SOF_MATH_PATH}/iir_df2t.c
-)
 
 if(CONFIG_COMP_ASRC STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/asrc/llext
@@ -1033,15 +948,6 @@ elseif(CONFIG_COMP_TDFB)
 		${SOF_AUDIO_PATH}/tdfb/tdfb_${ipc_suffix}.c
 	)
 endif()
-
-zephyr_library_sources_ifdef(CONFIG_SQRT_FIXED
-	${SOF_MATH_PATH}/sqrt_int16.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_MATH_EXP
-	${SOF_MATH_PATH}/exp_fcn.c
-	${SOF_MATH_PATH}/exp_fcn_hifi.c
-)
 
 zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
 	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.c
