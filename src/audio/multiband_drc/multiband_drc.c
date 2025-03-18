@@ -359,9 +359,9 @@ static int multiband_drc_process(struct processing_module *mod,
 	return 0;
 }
 
-__cold static int multiband_drc_prepare(struct processing_module *mod,
-					struct sof_source **sources, int num_of_sources,
-					struct sof_sink **sinks, int num_of_sinks)
+static int multiband_drc_prepare(struct processing_module *mod,
+				 struct sof_source **sources, int num_of_sources,
+				 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -369,8 +369,6 @@ __cold static int multiband_drc_prepare(struct processing_module *mod,
 	int channels;
 	int rate;
 	int ret = 0;
-
-	assert_can_be_cold();
 
 	comp_info(dev, "multiband_drc_prepare()");
 
