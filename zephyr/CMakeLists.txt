@@ -461,13 +461,6 @@ zephyr_library_sources(
 	${SOF_LIB_PATH}/dma.c
 	${SOF_LIB_PATH}/dai.c
 
-	# SOF mandatory audio processing
-	${SOF_AUDIO_PATH}/pipeline/pipeline-graph.c
-	${SOF_AUDIO_PATH}/pipeline/pipeline-params.c
-	${SOF_AUDIO_PATH}/pipeline/pipeline-schedule.c
-	${SOF_AUDIO_PATH}/pipeline/pipeline-stream.c
-	${SOF_AUDIO_PATH}/pipeline/pipeline-xrun.c
-
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
 
