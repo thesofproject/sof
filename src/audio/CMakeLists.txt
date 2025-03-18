@@ -16,6 +16,8 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_subdirectory(pipeline)
 endif()
 
+sof_list_append_ifdef(CONFIG_COMP_BLOB base_files data_blob.c)
+
 is_zephyr(it_is)
 if(it_is) ###  Zephyr ###
 
@@ -32,10 +34,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		${base_files}
 	)
 
-
-	if(CONFIG_COMP_BLOB)
-		add_local_sources(sof data_blob.c)
-	endif()
 	if(CONFIG_COMP_SRC)
 		add_subdirectory(src)
 	endif()

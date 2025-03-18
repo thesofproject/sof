@@ -489,12 +489,6 @@ zephyr_library_sources_ifdef(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
-if(CONFIG_COMP_BLOB)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/data_blob.c
-	)
-endif()
-
 if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 	zephyr_library_sources(
 		${SOF_AUDIO_PATH}/host-zephyr.c
