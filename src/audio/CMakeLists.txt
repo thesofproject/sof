@@ -13,6 +13,7 @@ set(base_files
 ### Common actions for Zephyr/XTOS ###
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_subdirectory(buffers)
+	add_subdirectory(pipeline)
 endif()
 
 is_zephyr(it_is)
@@ -125,7 +126,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_INTEL_ADSP_MIC_PRIVACY)
 		add_subdirectory(mic_privacy_manager)
 	endif()
-	subdirs(pipeline)
 	add_subdirectory(google)
 	if(CONFIG_COMP_CHAIN_DMA)
 		add_local_sources(sof chain_dma.c)
