@@ -477,6 +477,15 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		return IPC4_INVALID_REQUEST;
 	}
 
+	/*
+	 * We're handling a pipeline-trigger event, this means that we're in a
+	 * performance-critical context. Set a marker, so that if any cold code,
+	 * calling assert_can_be_cold() is called on this flow between the
+	 * mem_hot_path_start_watching() - mem_hot_path_stop_watching()
+	 * brackets, the latter will generate an error / trigger a panic.
+	 */
+	mem_hot_path_confirm();
+
 	/* trigger the component */
 	ret = pipeline_trigger(host->cd->pipeline, host->cd, cmd);
 	if (ret < 0) {
