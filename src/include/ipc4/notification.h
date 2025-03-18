@@ -243,6 +243,19 @@ struct ipc4_process_data_error_event_data {
 };
 
 /**
+ * \brief This notification is sent by the mixer on stream underrun detection. The frequency of
+ * sending this notification by Mixer depends on the MixIn settings.
+ */
+struct ipc4_mixer_underrun_event_data {
+	/* Indicates EndOfStream */
+	uint32_t eos_flag;
+	/* Data processed by module (in bytes) */
+	uint32_t data_mixed;
+	/* Expected data to be processed (in bytes) */
+	uint32_t expected_data_mixed;
+};
+
+/**
  * \brief Input data payload is reserved field in parent technical spec which can be easily
  * extendable if needed by specific resource event types in the future. For backward compatibility
  * the size of this structure is 6 dw.
@@ -252,6 +265,8 @@ union ipc4_resource_event_data {
 	uint32_t dws[6];
 	/* Process Data Error Data (res type = MODULE_INSTANCE) */
 	struct ipc4_process_data_error_event_data process_data_error;
+	/* Mixer Underrun Detected Data (res type = PIPELINE) */
+	struct ipc4_mixer_underrun_event_data mixer_underrun;
 };
 
 struct ipc4_resource_event_data_notification {
@@ -278,5 +293,8 @@ void copier_gateway_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t pipeli
 void copier_gateway_overrun_notif_msg_init(struct ipc_msg *msg, uint32_t pipeline_id);
 void gateway_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id);
 void gateway_overrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id);
+
+void mixer_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id, uint32_t eos_flag,
+				   uint32_t data_mixed, uint32_t expected_data_mixed);
 
 #endif /* __IPC4_NOTIFICATION_H__ */
