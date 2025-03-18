@@ -489,17 +489,6 @@ zephyr_library_sources_ifdef(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
-if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/host-zephyr.c
-	)
-else()
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/host-legacy.c
-	)
-endif()
-
-
 zephyr_library_sources_ifdef(CONFIG_TRACE
 	${SOF_SRC_PATH}/trace/dma-trace.c
 	${SOF_SRC_PATH}/trace/trace.c)
@@ -609,16 +598,6 @@ endif()
 zephyr_library_sources_ifdef(CONFIG_COMP_TONE
 	${SOF_AUDIO_PATH}/tone.c
 )
-
-if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
-	zephyr_library_sources_ifdef(CONFIG_COMP_DAI
-		${SOF_AUDIO_PATH}/dai-zephyr.c
-)
-else()
-	zephyr_library_sources_ifdef(CONFIG_COMP_DAI
-		${SOF_AUDIO_PATH}/dai-legacy.c
-)
-endif()
 
 zephyr_library_sources_ifdef(CONFIG_IPC4_GATEWAY
 	${SOF_AUDIO_PATH}/copier/copier_ipcgtw.c
