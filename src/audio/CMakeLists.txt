@@ -39,6 +39,8 @@ if(it_is) ###  Zephyr ###
 	return()
 endif()
 
+### XTOS normal build (not shared library) ###
+
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_local_sources(sof
 		host-legacy.c
@@ -142,6 +144,8 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 
 	return()
 endif()
+
+### Shared library build (CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD) ###
 
 subdirs(pipeline)
 
