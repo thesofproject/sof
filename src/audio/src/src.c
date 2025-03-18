@@ -34,15 +34,13 @@
 
 LOG_MODULE_DECLARE(src, CONFIG_SOF_LOG_LEVEL);
 
-__cold static int src_prepare(struct processing_module *mod,
-			      struct sof_source **sources, int num_of_sources,
-			      struct sof_sink **sinks, int num_of_sinks)
+static int src_prepare(struct processing_module *mod,
+		       struct sof_source **sources, int num_of_sources,
+		       struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct src_param *a = &cd->param;
 	int ret;
-
-	assert_can_be_cold();
 
 	comp_info(mod->dev, "src_prepare()");
 

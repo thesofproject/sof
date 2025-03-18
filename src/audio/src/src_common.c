@@ -45,7 +45,7 @@
 LOG_MODULE_REGISTER(src, CONFIG_SOF_LOG_LEVEL);
 
 /* Calculates buffers to allocate for a SRC mode */
-__cold static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)
+static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nch)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
@@ -53,8 +53,6 @@ __cold static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd,
 	int fs_in, fs_out;
 	int source_frames;
 	int r1, n;
-
-	assert_can_be_cold();
 
 	a = &cd->param;
 	fs_in = cd->source_rate;
@@ -186,15 +184,13 @@ static int init_stages(const struct src_stage *stage1, const struct src_stage *s
 	return 0;
 }
 
-__cold static int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
-				     int32_t *delay_lines_start)
+static int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
+			      int32_t *delay_lines_start)
 {
 	const struct src_stage *stage1;
 	const struct src_stage *stage2;
 	int n_stages;
 	int ret;
-
-	assert_can_be_cold();
 
 	if (p->idx_in < 0 || p->idx_out < 0)
 		return -EINVAL;
@@ -397,14 +393,12 @@ void src_set_alignment(struct sof_source *source, struct sof_sink *sink)
 	sink_set_alignment_constants(sink, byte_align, frame_align_req);
 }
 
-__cold static int src_verify_params(struct processing_module *mod)
+static int src_verify_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	int ret;
-
-	assert_can_be_cold();
 
 	comp_dbg(dev, "src_verify_params()");
 
@@ -480,9 +474,9 @@ static bool src_get_copy_limits(struct comp_data *cd,
 	return true;
 }
 
-__cold int src_params_general(struct processing_module *mod,
-			      struct sof_source *source,
-			      struct sof_sink *sink)
+int src_params_general(struct processing_module *mod,
+		       struct sof_source *source,
+		       struct sof_sink *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -490,8 +484,6 @@ __cold int src_params_general(struct processing_module *mod,
 	int32_t *buffer_start;
 	int n;
 	int err;
-
-	assert_can_be_cold();
 
 	comp_info(dev, "src_params()");
 
@@ -583,13 +575,11 @@ __cold int src_params_general(struct processing_module *mod,
 	return 0;
 }
 
-__cold int src_param_set(struct comp_dev *dev, struct comp_data *cd)
+int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 {
 	struct src_param *a = &cd->param;
 	int fs_in = cd->source_rate;
 	int fs_out = cd->sink_rate;
-
-	assert_can_be_cold();
 
 	a->idx_in = src_find_fs(a->in_fs, a->num_in_fs, fs_in);
 	a->idx_out = src_find_fs(a->out_fs, a->num_out_fs, fs_out);
@@ -604,9 +594,9 @@ __cold int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
-__cold int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
-				    const struct src_stage *stage_src1,
-				    const struct src_stage *stage_src2)
+int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
+			     const struct src_stage *stage_src1,
+			     const struct src_stage *stage_src2)
 {
 #if CONFIG_FAST_GET
 	struct src_stage *stage_dst;
@@ -616,8 +606,6 @@ __cold int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
 #else
 	size_t tap_size = sizeof(int32_t);
 #endif
-
-	assert_can_be_cold();
 
 	stage_dst = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    2 * sizeof(*stage_dst));

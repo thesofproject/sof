@@ -73,7 +73,7 @@ __cold int multiband_drc_get_ipc_config(struct processing_module *mod,
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-__cold int multiband_drc_params(struct processing_module *mod)
+int multiband_drc_params(struct processing_module *mod)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct sof_ipc_stream_params comp_params;

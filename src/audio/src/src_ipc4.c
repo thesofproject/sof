@@ -77,7 +77,7 @@ int src_stream_pcm_sink_rate_check(struct ipc4_config_src cfg,
  * set up param then verify param. BTW for IPC3 path, the param is sent by
  * host driver.
  */
-__cold int src_set_params(struct processing_module *mod, struct sof_sink *sink)
+int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 {
 	struct sof_ipc_stream_params src_params;
 	struct sof_ipc_stream_params *params = mod->stream_params;
@@ -85,8 +85,6 @@ __cold int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 	struct comp_dev *dev = mod->dev;
 	int ret;
-
-	assert_can_be_cold();
 
 	src_params = *params;
 	src_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
@@ -119,14 +117,12 @@ __cold int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 	return ret;
 }
 
-__cold void src_get_source_sink_params(struct comp_dev *dev, struct sof_source *source,
-				       struct sof_sink *sink)
+void src_get_source_sink_params(struct comp_dev *dev, struct sof_source *source,
+				struct sof_sink *sink)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct comp_data *cd = module_get_private_data(mod);
 	enum sof_ipc_frame frame_fmt, valid_fmt;
-
-	assert_can_be_cold();
 
 	/* convert IPC4 config to format used by the module */
 	audio_stream_fmt_conversion(cd->ipc_config.base.audio_fmt.depth,
@@ -140,15 +136,13 @@ __cold void src_get_source_sink_params(struct comp_dev *dev, struct sof_source *
 	sink_set_rate(sink, cd->ipc_config.sink_rate);
 }
 
-__cold int src_prepare_general(struct processing_module *mod,
-			       struct sof_source *source,
-			       struct sof_sink *sink)
+int src_prepare_general(struct processing_module *mod,
+			struct sof_source *source,
+			struct sof_sink *sink)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	int ret = 0;
-
-	assert_can_be_cold();
 
 	/* set align requirements */
 	src_set_alignment(source, sink);
