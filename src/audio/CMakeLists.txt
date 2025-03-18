@@ -14,6 +14,9 @@ set(base_files
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_subdirectory(buffers)
 	add_subdirectory(pipeline)
+	if(CONFIG_COMP_SRC)
+		add_subdirectory(src)
+	endif()
 endif()
 
 sof_list_append_ifdef(CONFIG_COMP_BLOB base_files data_blob.c)
@@ -34,9 +37,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		${base_files}
 	)
 
-	if(CONFIG_COMP_SRC)
-		add_subdirectory(src)
-	endif()
 	if(CONFIG_COMP_FIR)
 		add_subdirectory(eq_fir)
 	endif()
