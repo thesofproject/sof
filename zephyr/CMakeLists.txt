@@ -462,8 +462,6 @@ zephyr_library_sources(
 	${SOF_LIB_PATH}/dai.c
 
 	# SOF mandatory audio processing
-	${SOF_AUDIO_PATH}/buffers/comp_buffer.c
-	${SOF_AUDIO_PATH}/buffers/audio_buffer.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-graph.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-params.c
 	${SOF_AUDIO_PATH}/pipeline/pipeline-schedule.c
@@ -497,10 +495,6 @@ zephyr_library_sources_ifdef(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
-
-if(CONFIG_PIPELINE_2_0)
-	zephyr_library_sources(${SOF_AUDIO_PATH}/buffers/ring_buffer.c)
-endif()
 
 if(CONFIG_COMP_BLOB)
 	zephyr_library_sources(

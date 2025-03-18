@@ -10,6 +10,10 @@ set(base_files
 	channel_map.c
 )
 
+### Common actions for Zephyr/XTOS ###
+if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
+	add_subdirectory(buffers)
+endif()
 
 is_zephyr(it_is)
 if(it_is) ###  Zephyr ###
@@ -27,7 +31,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		${base_files}
 	)
 
-	add_subdirectory(buffers)
 
 	if(CONFIG_COMP_BLOB)
 		add_local_sources(sof data_blob.c)
