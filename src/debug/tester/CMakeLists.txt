@@ -22,6 +22,8 @@ if(it_is) ###  Zephyr ###
 
 else() ### XTOS ###
 
-  add_local_sources(sof ${base_files})
+  if(CONFIG_COMP_TESTER)
+    add_local_sources(sof ${base_files})
+  endif()
 
 endif()

@@ -139,7 +139,6 @@ set(SOF_AUDIO_MODULES_PATH "${SOF_SRC_PATH}/audio/module_adapter/module")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
-set(SOF_DEBUG_PATH "${SOF_SRC_PATH}/debug")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
 set(RIMAGE_TOP ${sof_top_dir}/tools/rimage)
@@ -204,9 +203,7 @@ macro(sof_list_append_ifdef feature_toggle list)
 endmacro()
 
 add_subdirectory(../src/audio/ audio_unused_install/)
-add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
-add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
-add_subdirectory(../src/debug/tester/  debug_tester_unused_install/)
+add_subdirectory(../src/debug/ debug_unused_install/)
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/math/  math_unused_install/)
@@ -907,11 +904,6 @@ zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT
 
 zephyr_library_sources_ifdef(CONFIG_AMS
 	${SOF_LIB_PATH}/ams.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_GDB_DEBUG
-	${SOF_DEBUG_PATH}/gdb/gdb.c
-	${SOF_DEBUG_PATH}/gdb/ringbuffer.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_DW_DMA
