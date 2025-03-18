@@ -117,8 +117,6 @@ enum sof_ipc4_resource_type {
 		((notif_type) << (SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT) | \
 		((SOF_IPC4_GLB_NOTIFICATION) << (SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT)))
 
-#endif
-
 /**
  * \brief IPC MAJOR 4 notification header. All IPC4 notifications use this header.
  */
@@ -255,3 +253,5 @@ struct ipc4_resource_event_data_notification {
 	/* Detailed event data */
 	union ipc4_resource_event_data event_data;
 } __packed __aligned(8);
+
+#endif /* __IPC4_NOTIFICATION_H__ */
