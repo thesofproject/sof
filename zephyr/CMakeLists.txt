@@ -506,21 +506,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-if(CONFIG_COMP_ASRC STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/asrc/llext
-			 ${PROJECT_BINARY_DIR}/asrc_llext)
-	add_dependencies(app asrc)
-elseif(CONFIG_COMP_ASRC)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/asrc/asrc.c
-		${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi5.c
-		${SOF_AUDIO_PATH}/asrc/asrc_farrow_hifi3.c
-		${SOF_AUDIO_PATH}/asrc/asrc_farrow.c
-		${SOF_AUDIO_PATH}/asrc/asrc_farrow_generic.c
-		${SOF_AUDIO_PATH}/asrc/asrc_${ipc_suffix}.c
-	)
-endif()
-
 if(CONFIG_COMP_DCBLOCK STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/dcblock/llext
 			 ${PROJECT_BINARY_DIR}/dcblock_llext)
