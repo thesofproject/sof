@@ -43,7 +43,11 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_COMP_SRC)
 		add_subdirectory(src)
 	endif()
-
+	if(CONFIG_COMP_TONE)
+		add_local_sources(sof
+			tone.c
+		)
+	endif()
 	if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 		list(APPEND base_files host-zephyr.c)
 		sof_list_append_ifdef(CONFIG_COMP_DAI base_files dai-zephyr.c)
@@ -84,11 +88,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	endif()
 	if(CONFIG_COMP_MULTIBAND_DRC)
 		add_subdirectory(multiband_drc)
-	endif()
-	if(CONFIG_COMP_TONE)
-		add_local_sources(sof
-			tone.c
-		)
 	endif()
 	if(CONFIG_COMP_MUX)
 		add_subdirectory(mux)
