@@ -12,9 +12,12 @@ set(base_files
 
 ### Common actions for Zephyr/XTOS ###
 if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
+	# directories included unconditionally (alphabetical order)
 	add_subdirectory(buffers)
 	add_subdirectory(pcm_converter)
 	add_subdirectory(pipeline)
+
+	# directories and files included conditionally (alphabetical order)
 	if(CONFIG_COMP_ASRC)
 		add_subdirectory(asrc)
 	endif()
@@ -71,7 +74,11 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	endif()
 endif()
 
+### Common files (also used in shared library build)
+
 sof_list_append_ifdef(CONFIG_COMP_BLOB base_files data_blob.c)
+
+### (end of common files)
 
 is_zephyr(it_is)
 if(it_is) ###  Zephyr ###
