@@ -514,25 +514,6 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
 
-if(CONFIG_COMP_VOLUME STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/volume/llext
-			 ${PROJECT_BINARY_DIR}/volume_llext)
-	add_dependencies(app volume)
-elseif(CONFIG_COMP_VOLUME)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/volume/volume_hifi5.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi4.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi3.c
-		${SOF_AUDIO_PATH}/volume/volume_generic.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi5_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi4_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi3_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_generic_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume.c
-		${SOF_AUDIO_PATH}/volume/volume_${ipc_suffix}.c
-	)
-endif()
-
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter_${ipc_suffix}.c
