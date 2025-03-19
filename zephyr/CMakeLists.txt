@@ -510,14 +510,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_IPC4_GATEWAY
-	${SOF_AUDIO_PATH}/copier/copier_ipcgtw.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COPIER_GAIN
-	${SOF_AUDIO_PATH}/copier/copier_gain.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
@@ -604,14 +596,6 @@ zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
 
 zephyr_library_sources_ifdef(CONFIG_IPC4_BASE_FW_INTEL
 	${SOF_AUDIO_PATH}/base_fw_intel.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
-	${SOF_AUDIO_PATH}/copier/copier_generic.c
-	${SOF_AUDIO_PATH}/copier/copier_hifi.c
-	${SOF_AUDIO_PATH}/copier/copier.c
-	${SOF_AUDIO_PATH}/copier/copier_host.c
-	${SOF_AUDIO_PATH}/copier/copier_dai.c
 )
 
 zephyr_library_sources(
