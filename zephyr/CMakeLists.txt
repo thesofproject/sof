@@ -506,12 +506,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
-	${SOF_AUDIO_PATH}/mixer/mixer.c
-	${SOF_AUDIO_PATH}/mixer/mixer_generic.c
-	${SOF_AUDIO_PATH}/mixer/mixer_hifi3.c
-)
-
 if(CONFIG_COMP_MIXIN_MIXOUT STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/mixin_mixout/llext
 			 ${PROJECT_BINARY_DIR}/mixin_mixout_llext)
