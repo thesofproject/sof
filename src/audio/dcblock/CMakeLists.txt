@@ -1,10 +1,16 @@
+if(CONFIG_COMP_DCBLOCK STREQUAL "m")
+  add_subdirectory(llext ${PROJECT_BINARY_DIR}/dcblock_llext)
+  add_dependencies(app dcblock)
+  return()
+endif()
+
 add_local_sources(sof dcblock.c)
 add_local_sources(sof dcblock_generic.c)
 add_local_sources(sof dcblock_hifi3.c)
 add_local_sources(sof dcblock_hifi4.c)
 
 if(CONFIG_IPC_MAJOR_3)
-	add_local_sources(sof dcblock_ipc3.c)
+  add_local_sources(sof dcblock_ipc3.c)
 elseif(CONFIG_IPC_MAJOR_4)
-	add_local_sources(sof dcblock_ipc4.c)
+  add_local_sources(sof dcblock_ipc4.c)
 endif()

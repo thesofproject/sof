@@ -506,20 +506,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-if(CONFIG_COMP_DCBLOCK STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/dcblock/llext
-			 ${PROJECT_BINARY_DIR}/dcblock_llext)
-	add_dependencies(app dcblock)
-elseif(CONFIG_COMP_DCBLOCK)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/dcblock/dcblock_generic.c
-		${SOF_AUDIO_PATH}/dcblock/dcblock.c
-		${SOF_AUDIO_PATH}/dcblock/dcblock_hifi3.c
-		${SOF_AUDIO_PATH}/dcblock/dcblock_hifi4.c
-		${SOF_AUDIO_PATH}/dcblock/dcblock_${ipc_suffix}.c
-	)
-endif()
-
 if(CONFIG_COMP_SEL STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/selector/llext
 			 ${PROJECT_BINARY_DIR}/selector_llext)
