@@ -563,18 +563,6 @@ zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
 )
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_CHAIN_DMA
-	${SOF_AUDIO_PATH}/chain_dma.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
-	${SOF_AUDIO_PATH}/base_fw.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_IPC4_BASE_FW_INTEL
-	${SOF_AUDIO_PATH}/base_fw_intel.c
-)
-
 zephyr_library_sources(
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_hifi3.c
 	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter.c
