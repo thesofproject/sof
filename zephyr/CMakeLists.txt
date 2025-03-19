@@ -567,15 +567,6 @@ zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
 )
 endif()
 
-zephyr_library_sources(
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_hifi3.c
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter.c
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
-)
-zephyr_library_sources_ifdef(CONFIG_PCM_REMAPPING_CONVERTERS
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_remap.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM
 	${SOF_AUDIO_PATH}/smart_amp/smart_amp.c
 	${SOF_AUDIO_PATH}/smart_amp/smart_amp_generic.c
