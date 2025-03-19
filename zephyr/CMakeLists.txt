@@ -506,19 +506,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-if(CONFIG_COMP_MIXIN_MIXOUT STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/mixin_mixout/llext
-			 ${PROJECT_BINARY_DIR}/mixin_mixout_llext)
-	add_dependencies(app mixin_mixout)
-elseif(CONFIG_COMP_MIXIN_MIXOUT)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout.c
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_generic.c
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi3.c
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi5.c
-	)
-endif()
-
 zephyr_library_sources_ifdef(CONFIG_COMP_TONE
 	${SOF_AUDIO_PATH}/tone.c
 )
