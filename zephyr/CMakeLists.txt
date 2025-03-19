@@ -506,10 +506,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_TONE
-	${SOF_AUDIO_PATH}/tone.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_IPC4_GATEWAY
 	${SOF_AUDIO_PATH}/copier/copier_ipcgtw.c
 )
