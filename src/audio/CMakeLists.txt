@@ -26,6 +26,11 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_COMP_IIR)
 		add_subdirectory(eq_iir)
 	endif()
+	if(CONFIG_COMP_KPB AND NOT CONFIG_LIBRARY_STATIC)
+		add_local_sources(sof
+			kpb.c
+		)
+	endif()
 	if(CONFIG_COMP_SEL)
 		add_subdirectory(selector)
 	endif()
@@ -91,11 +96,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_COMP_DAI)
 		add_local_sources(sof
 			dai-legacy.c
-		)
-	endif()
-	if(CONFIG_COMP_KPB AND NOT CONFIG_LIBRARY_STATIC)
-		add_local_sources(sof
-			kpb.c
 		)
 	endif()
 	if(CONFIG_COMP_SMART_AMP)

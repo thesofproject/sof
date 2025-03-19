@@ -506,10 +506,6 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_KPB
-	${SOF_AUDIO_PATH}/kpb.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
 	${SOF_AUDIO_PATH}/mixer/mixer.c
 	${SOF_AUDIO_PATH}/mixer/mixer_generic.c
