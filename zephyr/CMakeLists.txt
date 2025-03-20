@@ -666,21 +666,6 @@ elseif(CONFIG_SAMPLE_SMART_AMP)
 	)
 endif()
 
-if(CONFIG_COMP_MFCC STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/mfcc/llext
-			 ${PROJECT_BINARY_DIR}/mfcc_llext)
-	add_dependencies(app mfcc)
-elseif(CONFIG_COMP_MFCC)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MFCC
-		${SOF_AUDIO_PATH}/mfcc/mfcc.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_setup.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_common.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_generic.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_hifi3.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_hifi4.c
-	)
-endif()
-
 zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
 	${SOF_AUDIO_PATH}/google/google_hotword_detect.c
 )
