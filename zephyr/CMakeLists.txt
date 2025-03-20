@@ -511,12 +511,6 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
-	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
-	${SOF_AUDIO_PATH}/module_adapter/module_adapter_${ipc_suffix}.c
-	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/lib_manager.c
 	${SOF_SRC_PATH}/library_manager/lib_notification.c
