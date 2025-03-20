@@ -100,8 +100,6 @@ struct testbench_prm {
 	bool copy_check;
 	int trace_level;
 	int dynamic_pipeline_iterations;
-	int tick_period_us;
-	int pipeline_duration_ms;
 	char *pipeline_string;
 	int output_file_index;
 	int input_file_index;
