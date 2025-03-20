@@ -66,6 +66,9 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_COMP_SRC)
 		add_subdirectory(src)
 	endif()
+	if(CONFIG_COMP_TDFB)
+		add_subdirectory(tdfb)
+	endif()
 	if(CONFIG_COMP_TONE)
 		add_local_sources(sof
 			tone.c
@@ -107,9 +110,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		${base_files}
 	)
 
-	if(CONFIG_COMP_TDFB)
-		add_subdirectory(tdfb)
-	endif()
 	if(CONFIG_COMP_MULTIBAND_DRC)
 		add_subdirectory(multiband_drc)
 	endif()
