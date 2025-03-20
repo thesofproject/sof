@@ -678,11 +678,6 @@ elseif(CONFIG_SAMPLE_SMART_AMP)
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
-	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.c
-	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer_hifi3.c
-)
-
 if(CONFIG_COMP_MUX STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/mux/llext
 			 ${PROJECT_BINARY_DIR}/mux_llext)
