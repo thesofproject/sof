@@ -24,8 +24,6 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 {
 	struct ll_schedule_domain domain = {0};
 
-	domain.next_tick = tp->tick_period_us;
-
 	/* init components */
 	sys_comp_init(sof);
 	sys_comp_selector_init();
