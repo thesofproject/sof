@@ -38,8 +38,6 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	int bits;
 	int krate;
 
-	domain.next_tick = tp->tick_period_us;
-
 	/* init components */
 	sys_comp_init(sof);
 
