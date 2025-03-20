@@ -581,18 +581,6 @@ zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM_STUB
 	${SOF_AUDIO_PATH}/smart_amp/maxim_dsm_stub.c
 )
 
-if(CONFIG_COMP_MULTIBAND_DRC STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/multiband_drc/llext
-			 ${PROJECT_BINARY_DIR}/multiband_drc_llext)
-	add_dependencies(app multiband_drc)
-elseif(CONFIG_COMP_MULTIBAND_DRC)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
-		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
-		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
-		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_${ipc_suffix}.c
-	)
-endif()
-
 if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/google/llext_rtc
 			 ${PROJECT_BINARY_DIR}/google_rtc_audio_processing_llext)
