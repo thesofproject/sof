@@ -60,6 +60,9 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_COMP_MIXIN_MIXOUT)
                 add_subdirectory(mixin_mixout)
 	endif()
+	if(CONFIG_COMP_MULTIBAND_DRC)
+		add_subdirectory(multiband_drc)
+	endif()
 	if(CONFIG_COMP_MUX)
 		add_subdirectory(mux)
 	endif()
@@ -116,9 +119,6 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		${base_files}
 	)
 
-	if(CONFIG_COMP_MULTIBAND_DRC)
-		add_subdirectory(multiband_drc)
-	endif()
 	if(CONFIG_COMP_DAI)
 		add_local_sources(sof
 			dai-legacy.c
