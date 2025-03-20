@@ -128,9 +128,7 @@ static void print_usage(char *executable)
 	printf("     4 shows debug traces and previous, plus other testbench  debug messages\n");
 	printf("  -p <pipeline1,pipeline2,...>\n");
 	printf("  -C <number of copy() iterations>\n");
-	printf("  -D <pipeline duration in ms>\n");
 	printf("  -P <number of dynamic pipeline iterations>\n");
-	printf("  -T <microseconds for tick, 0 for batch mode>\n\n");
 	printf("Options for input and output format override:\n");
 	printf("  -b <input_format>, S16_LE, S24_LE, or S32_LE\n");
 	printf("  -c <input channels>\n");
@@ -148,7 +146,7 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 	int option = 0;
 	int ret = 0;
 
-	while ((option = getopt(argc, argv, "hd:i:o:t:b:r:R:c:n:C:P:p:T:D:")) != -1) {
+	while ((option = getopt(argc, argv, "hd:i:o:t:b:r:R:c:n:C:P:p:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
@@ -216,16 +214,6 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		/* output sample files */
 		case 'p':
 			ret = parse_pipelines(optarg, tp);
-			break;
-
-		/* Microseconds for tick, 0 = batch (tickless) */
-		case 'T':
-			tp->tick_period_us = atoi(optarg);
-			break;
-
-		/* pipeline duration in millisec, 0 = realtime (tickless) */
-		case 'D':
-			tp->pipeline_duration_ms = atoi(optarg);
 			break;
 
 		/* print usage */
@@ -315,12 +303,9 @@ static void test_pipeline_stats(struct testbench_prm *tp, long long delta_t)
 static int pipline_test(struct testbench_prm *tp)
 {
 	int dp_count = 0;
-	struct timespec ts;
 	struct timespec td0, td1;
 	long long delta_t;
 	int err;
-	int nsleep_time;
-	int nsleep_limit;
 
 	/* build, run and teardown pipelines */
 	while (dp_count < tp->dynamic_pipeline_iterations) {
@@ -358,37 +343,14 @@ static int pipline_test(struct testbench_prm *tp)
 
 		tb_gettime(&td0);
 
-		/* sleep to let the pipeline work - we exit at timeout OR
-		 * if copy iterations OR max_samples is reached (whatever first)
-		 */
-		nsleep_time = 0;
-		ts.tv_sec = tp->tick_period_us / 1000000;
-		ts.tv_nsec = (tp->tick_period_us % 1000000) * 1000;
-		if (!tp->copy_check)
-			nsleep_limit = INT_MAX;
-		else
-			nsleep_limit = tp->copy_iterations *
-				       tp->pipeline_duration_ms;
-
-		while (nsleep_time < nsleep_limit) {
-#if defined __XCC__
-			err = 0;
-#else
-			/* wait for next tick */
-			err = nanosleep(&ts, &ts);
-#endif
-			if (err == 0) {
-				nsleep_time += tp->tick_period_us; /* sleep fully completed */
-				if (tb_schedule_pipeline_check_state(tp))
+		while (true) {
+			if (tp->copy_check) {
+				if (tp->copy_iterations-- <= 0)
 					break;
-			} else {
-				if (err == EINTR) {
-					continue; /* interrupted - keep going */
-				} else {
-					printf("error: sleep failed: %s\n", strerror(err));
-					break;
-				}
 			}
+
+			if (tb_schedule_pipeline_check_state(tp))
+				break;
 		}
 
 		tb_schedule_pipeline_check_state(tp); /* Once more to flush out remaining data */
@@ -438,7 +400,6 @@ int main(int argc, char **argv)
 	tp->pipeline_string = calloc(1, TB_DEBUG_MSG_LEN);
 	tp->pipelines[0] = 1;
 	tp->pipeline_num = 1;
-	tp->pipeline_duration_ms = 5000;
 	tp->copy_iterations = 1;
 	tp->trace_level = LOG_LEVEL_INFO;
 
