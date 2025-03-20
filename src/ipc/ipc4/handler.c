@@ -685,17 +685,6 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 			ipc_compound_pre_start(state.primary.r.type);
 			ret = ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
 			ipc_compound_post_start(state.primary.r.type, ret, delayed);
-			if (delayed) {
-				/* To maintain pipeline order for triggers, we must
-				 * do a blocking wait until trigger is processed.
-				 * This will add a max delay of 'ppl_count' LL ticks
-				 * to process the full trigger list.
-				 */
-				if (ipc_wait_for_compound_msg() != 0) {
-					ipc_cmd_err(&ipc_tr, "ipc4: fail with delayed trigger");
-					return IPC4_FAILURE;
-				}
-			}
 		}
 
 		if (ret != 0)
