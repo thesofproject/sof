@@ -577,27 +577,6 @@ zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM_STUB
 	${SOF_AUDIO_PATH}/smart_amp/maxim_dsm_stub.c
 )
 
-if(CONFIG_COMP_DRC STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/drc/llext
-			 ${PROJECT_BINARY_DIR}/drc_llext)
-	add_dependencies(app drc)
-elseif(CONFIG_COMP_DRC)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/drc/drc.c
-		${SOF_AUDIO_PATH}/drc/drc_generic.c
-		${SOF_AUDIO_PATH}/drc/drc_math_generic.c
-		${SOF_AUDIO_PATH}/drc/drc_hifi3.c
-		${SOF_AUDIO_PATH}/drc/drc_hifi4.c
-		${SOF_AUDIO_PATH}/drc/drc_math_hifi3.c
-	)
-endif()
-
-if(NOT CONFIG_COMP_DRC STREQUAL "n")
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/drc/drc_log.c
-	)
-endif()
-
 if(CONFIG_COMP_MULTIBAND_DRC STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/multiband_drc/llext
 			 ${PROJECT_BINARY_DIR}/multiband_drc_llext)
