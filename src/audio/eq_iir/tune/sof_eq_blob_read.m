@@ -2,7 +2,7 @@ function blob = sof_eq_blob_read(blobfn, fntype)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright (c) 2020, Intel Corporation. All rights reserved.
+% Copyright (c) 2020-2025, Intel Corporation.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -13,6 +13,7 @@ if nargin < 2
 end
 
 %% Read the file
+add_tlv_header = false;
 switch lower(fntype)
 	case 'bin'
 		fh = fopen(blobfn, 'rb');
@@ -23,13 +24,21 @@ switch lower(fntype)
 		tmp = fscanf(fh, '%u,', Inf);
 		fclose(fh);
 	case 'm4'
+		% The blobs in topology are without TLV header. For simplicity
+		% add to beginning two 32 bit words (zeros) to be compatible
+		% with other blob formats.
 		tmp = get_parse_m4(blobfn);
+		add_tlv_header = true;
 	otherwise
 		error('Illegal file type, please give fntype argument');
 
 end
 
-blob = uint32(tmp);
+if add_tlv_header
+	blob = uint32([0 0 tmp']');
+else
+	blob = uint32(tmp);
+end
 
 end
 
