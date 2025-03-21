@@ -134,7 +134,6 @@ cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
 
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
-set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
@@ -569,10 +568,6 @@ zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
 
 zephyr_library_sources_ifdef(CONFIG_SHELL
        sof_shell.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_INTEL_ADSP_MIC_PRIVACY
-	${SOF_AUDIO_PATH}/mic_privacy_manager/mic_privacy_manager_intel.c
 )
 
 zephyr_library_link_libraries(SOF)
