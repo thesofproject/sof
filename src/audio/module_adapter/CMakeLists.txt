@@ -8,7 +8,41 @@ endif()
 
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
-	# codec build rules still in sof/zephyr/CMakeLists.txt
+
+	# modules and codecs in alphabetical order
+
+	zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC module/cadence.c)
+
+	if (CONFIG_CADENCE_CODEC_AAC_DEC)
+		zephyr_library_import(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
+	endif()
+
+	if (CONFIG_CADENCE_CODEC_MP3_DEC)
+		zephyr_library_import(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
+	endif()
+
+	if (CONFIG_CADENCE_CODEC_MP3_ENC)
+		zephyr_library_import(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
+	endif()
+
+	zephyr_include_directories_ifdef(CONFIG_INTEL_MODULES
+		${SOF_SRC_PATH}/include/sof/audio/module_adapter/iadk/
+		${SOF_SRC_PATH}/include/sof/audio/module_adapter/library/
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_INTEL_MODULES
+		module/modules.c
+		iadk/module_initial_settings_concrete.cpp
+		iadk/iadk_module_adapter.cpp
+		iadk/system_agent.cpp
+		library/native_system_agent.c
+		library/native_system_service.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
+		module/passthrough.c
+	)
+
 	return()
 endif()
 

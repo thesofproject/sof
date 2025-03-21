@@ -135,7 +135,6 @@ set(SOF_SRC_PATH "${sof_top_dir}/src")
 
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
-set(SOF_AUDIO_MODULES_PATH "${SOF_SRC_PATH}/audio/module_adapter/module")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
@@ -519,42 +518,6 @@ zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 if (CONFIG_MM_DRV AND CONFIG_LLEXT)
 zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/llext_manager.c
-)
-endif()
-
-zephyr_include_directories_ifdef(CONFIG_INTEL_MODULES
-	${SOF_SRC_PATH}/include/sof/audio/module_adapter/iadk/
-	${SOF_SRC_PATH}/include/sof/audio/module_adapter/library/
-)
-
-zephyr_library_sources_ifdef(CONFIG_INTEL_MODULES
-	${SOF_AUDIO_PATH}/module_adapter/module/modules.c
-	${SOF_AUDIO_PATH}/module_adapter/iadk/module_initial_settings_concrete.cpp
-	${SOF_AUDIO_PATH}/module_adapter/iadk/iadk_module_adapter.cpp
-	${SOF_AUDIO_PATH}/module_adapter/iadk/system_agent.cpp
-	${SOF_AUDIO_PATH}/module_adapter/library/native_system_agent.c
-	${SOF_AUDIO_PATH}/module_adapter/library/native_system_service.c
-)
-
-if (CONFIG_COMP_MODULE_ADAPTER)
-zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/cadence.c
-)
-
-if (CONFIG_CADENCE_CODEC_MP3_DEC)
-zephyr_library_import(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
-endif()
-
-if (CONFIG_CADENCE_CODEC_MP3_ENC)
-zephyr_library_import(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
-endif()
-
-if (CONFIG_CADENCE_CODEC_AAC_DEC)
-zephyr_library_import(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
-	${SOF_AUDIO_MODULES_PATH}/passthrough.c
 )
 endif()
 
