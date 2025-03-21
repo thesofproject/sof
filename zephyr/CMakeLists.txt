@@ -162,9 +162,9 @@ zephyr_library_named(modules_sof)
 # Zephyr C++ code requires 14 or newer standard
 set_property(TARGET modules_sof PROPERTY CXX_STANDARD 17)
 
-zephyr_include_directories(
-	include
-)
+zephyr_include_directories(include)
+zephyr_include_directories(${ZEPHYR_BASE}/kernel/include)
+zephyr_include_directories(${ZEPHYR_BASE}/arch/${ARCH}/include)
 
 # SOC level sources
 # Files that are commented may not be needed.
