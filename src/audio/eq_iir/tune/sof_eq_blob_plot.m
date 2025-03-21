@@ -26,13 +26,13 @@ function eq = sof_eq_blob_plot(blobfn, eqtype, fs, f, doplot)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright (c) 2016-2022, Intel Corporation. All rights reserved.
+% Copyright (c) 2016-2025, Intel Corporation.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 %% Handle input parameters
 if nargin < 2
-	if findstr(blobfn, '_fir_')
+	if findstr(blobfn, '_fir')
 		eqtype = 'FIR';
 	else
 		eqtype = 'IIR';
