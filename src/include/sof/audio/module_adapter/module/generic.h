@@ -61,6 +61,7 @@ static const struct comp_driver comp_##adapter##_module = { \
 		.set_large_config = module_set_large_config,\
 		.get_large_config = module_get_large_config,\
 		.get_attribute = module_adapter_get_attribute,\
+		.set_attribute = module_adapter_set_attribute,\
 		.bind = module_adapter_bind,\
 		.unbind = module_adapter_unbind,\
 		.get_total_data_processed = module_adapter_get_total_data_processed,\
@@ -225,6 +226,12 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 }
 
 static inline
+int module_adapter_set_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	return -EINVAL;
+}
+
+static inline
 int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t data_offset, const char *data)
 {
@@ -273,6 +280,7 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t *data_offset, char *data);
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value);
+int module_adapter_set_attribute(struct comp_dev *dev, uint32_t type, void *value);
 int module_adapter_bind(struct comp_dev *dev, void *data);
 int module_adapter_unbind(struct comp_dev *dev, void *data);
 uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
