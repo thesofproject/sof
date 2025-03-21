@@ -425,7 +425,9 @@ void idc_cmd(struct idc_msg *msg)
 		notifier_notify_remote();
 		break;
 	case iTS(IDC_MSG_IPC):
+		mem_hot_path_start_watching();
 		idc_ipc();
+		mem_hot_path_stop_watching();
 		break;
 #if CONFIG_IPC_MAJOR_4
 	case iTS(IDC_MSG_BIND):
