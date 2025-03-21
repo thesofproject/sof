@@ -13,49 +13,68 @@ name: testbench
 
 # yamllint disable-line rule:truthy
 on:
-  push:
-    branches:
-      - 'main'
-      - 'stable-**'
-      - '**-stable'
   pull_request:
     branches:
-      - 'main'
-      - 'stable-**'
-      - '**-stable'
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-  workflow_call:
+      - main
 
 jobs:
-
-  build-run:
-    runs-on: ubuntu-22.04
+  build-and-test:
+    runs-on: ubuntu-24.10
 
     steps:
-      - uses: actions/checkout@v4
-        with: {fetch-depth: 0, filter: 'tree:0'}
-
-      - name: docker
-        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+      - name: Checkout SOF repository (PR source)
+        uses: actions/checkout@v4
+        with:
+          path: sof
 
       - name: apt get
         run: sudo apt-get update &&
-             sudo apt-get -y install valgrind alsa-utils libasound2-dev ninja-build
-             octave octave-signal
+               sudo apt-get -y install valgrind ninja-build
+                  octave octave-signal automake autoconf libtool
+                  gettext linux-headers-6.11.0-8
+
+      - name: Build Alsa-lib
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          git clone https://github.com/thesofproject/alsa-lib.git
+          cd alsa-lib
+          git checkout df8f1cc1ec9d9ee15be5e2c23ad25b9389fd8766 -b build
+          ./gitcompile --prefix=${GITHUB_WORKSPACE}/tools
+          make install
+
+      - name: Build Alsa-utils
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          git clone https://github.com/thesofproject/alsa-utils.git
+          cd alsa-utils
+          git checkout 0ffa105942a06cdfa98e5918b8dc82e3cac12792 -b build
+          ./gitcompile --prefix=${GITHUB_WORKSPACE}/tools \
+             --with-alsa-prefix=${GITHUB_WORKSPACE}/tools \
+             --with-alsa-inc-prefix=${GITHUB_WORKSPACE}/tools/include \
+             --with-sysroot=${GITHUB_WORKSPACE}/tools \
+             --with-udev-rules-dir=${GITHUB_WORKSPACE}/tools \
+             PKG_CONFIG_PATH=${GITHUB_WORKSPACE}/tools \
+             LDFLAGS=-L${GITHUB_WORKSPACE}/tools/lib \
+             --disable-old-symbols \
+             --enable-alsatopology \
+             --with-asound-state-dir=${GITHUB_WORKSPACE}/tools/var/lib/alsa \
+             --with-systemdsystemunitdir=${GITHUB_WORKSPACE}/tools/lib/systemd/system
+          make install
 
       # testbench needs some topologies.
       - name: build test topologies
-        run: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
-          ./scripts/build-tools.sh -Y ||
+        run: |
+          CMAKE_BUILD_TYPE=Release ./sof/scripts/build-tools.sh -Y ||
              VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
-             CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
-          ./scripts/build-tools.sh -Y
+          CMAKE_BUILD_TYPE=Release ./sof/scripts/build-tools.sh -Y
 
+      # build testbench
       - name: build testbench
-        run: ./scripts/rebuild-testbench.sh ||
-             ./scripts/rebuild-testbench.sh -j 1
+        run: |
+          ./sof/scripts/rebuild-testbench.sh ||
+          ./sof/scripts/rebuild-testbench.sh -j 1
 
+      # run testbench
       - name: run testbench
-        run: ./scripts/host-testbench.sh
+        run: |
+          ./sof/scripts/host-testbench.sh
