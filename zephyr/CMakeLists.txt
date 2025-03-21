@@ -521,21 +521,6 @@ zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 )
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM
-	${SOF_AUDIO_PATH}/smart_amp/smart_amp.c
-	${SOF_AUDIO_PATH}/smart_amp/smart_amp_generic.c
-	${SOF_AUDIO_PATH}/smart_amp/smart_amp_maxim_dsm.c
-)
-
-zephyr_include_directories_ifdef(CONFIG_MAXIM_DSM
-	${SOF_AUDIO_PATH}/smart_amp/include/dsm_api/inc/
-)
-
-zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM_STUB
-	${SOF_AUDIO_PATH}/smart_amp/maxim_dsm_stub.c
-)
-
-
 if(CONFIG_COMP_IGO_NR STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/igo_nr/llext
 			 ${PROJECT_BINARY_DIR}/igo_nr_llext)
