@@ -632,8 +632,8 @@ static int file_init(struct processing_module *mod)
 
 	/* set file comp mode */
 	cd->fs.mode = ipc_file->mode;
-	cd->rate = ipc_file->rate;
-	cd->channels = ipc_file->channels;
+	cd->fs.rate = ipc_file->rate;
+	cd->fs.channels = ipc_file->channels;
 	cd->frame_fmt = ipc_file->frame_fmt;
 	dev->direction = ipc_file->direction;
 	dev->direction_set = true;
@@ -859,8 +859,8 @@ static int file_get_hw_params(struct comp_dev *dev,
 
 	tb_debug_print("file_hw_params()\n");
 	params->direction = dir;
-	params->rate = cd->rate;
-	params->channels = cd->channels;
+	params->rate = cd->fs.rate;
+	params->channels = cd->fs.channels;
 	params->buffer_fmt = 0;
 	params->frame_fmt = cd->frame_fmt;
 	return 0;
