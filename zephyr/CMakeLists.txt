@@ -521,20 +521,6 @@ zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 )
 endif()
 
-if(CONFIG_COMP_IGO_NR STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/igo_nr/llext
-			 ${PROJECT_BINARY_DIR}/igo_nr_llext)
-	add_dependencies(app igo_nr)
-elseif(CONFIG_COMP_IGO_NR)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR_STUB
-		${SOF_AUDIO_PATH}/igo_nr/igo_nr_stub.c
-	)
-endif()
-
 if(CONFIG_COMP_RTNR STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/rtnr/llext
 			 ${PROJECT_BINARY_DIR}/rtnr_llext)
