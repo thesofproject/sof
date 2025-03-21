@@ -4,6 +4,7 @@
 //
 // Author: Baofeng Tian <baofeng.tian@intel.com>
 
+#include <sof/lib/memory.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/component_ext.h>
 #include <ipc/dai.h>
@@ -155,19 +156,21 @@ static int copier_alh_assign_dai_index(struct comp_dev *dev,
 	return 0;
 }
 
-static int copier_dai_init(struct comp_dev *dev,
-			   struct comp_ipc_config *config,
-			   const struct ipc4_copier_module_cfg *copier,
-			   struct pipeline *pipeline,
-			   struct ipc_config_dai *dai,
-			   enum ipc4_gateway_type type,
-			   int index, int dai_count)
+__cold static int copier_dai_init(struct comp_dev *dev,
+				  struct comp_ipc_config *config,
+				  const struct ipc4_copier_module_cfg *copier,
+				  struct pipeline *pipeline,
+				  struct ipc_config_dai *dai,
+				  enum ipc4_gateway_type type,
+				  int index, int dai_count)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	uint32_t chmap;
 	struct dai_data *dd;
 	int ret;
+
+	assert_can_be_cold();
 
 	if (cd->direction == SOF_IPC_STREAM_PLAYBACK) {
 		enum sof_ipc_frame out_frame_fmt, out_valid_fmt;
@@ -254,9 +257,9 @@ free_dd:
  * ssp, dmic or alh. Sof dai component can support this case so copier
  * reuses dai component to support non-host gateway.
  */
-int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
-		      const struct ipc4_copier_module_cfg *copier,
-		      struct pipeline *pipeline)
+__cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
+			     const struct ipc4_copier_module_cfg *copier,
+			     struct pipeline *pipeline)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct comp_ipc_config *config = &dev->ipc_config;
@@ -265,6 +268,8 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	struct ipc_config_dai dai;
 	int dai_count;
 	int i, ret;
+
+	assert_can_be_cold();
 
 	config->type = SOF_COMP_DAI;
 
@@ -370,8 +375,10 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	return 0;
 }
 
-void copier_dai_free(struct copier_data *cd)
+__cold void copier_dai_free(struct copier_data *cd)
 {
+	assert_can_be_cold();
+
 	for (int i = 0; i < cd->endpoint_num; i++) {
 		dai_common_free(cd->dd[i]);
 		rfree(cd->dd[i]->gain_data);

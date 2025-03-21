@@ -293,6 +293,7 @@ struct comp_ops {
 	 * comp_set_drvdata() and later retrieved by comp_get_drvdata().
 	 *
 	 * All parameters should be initialized to their default values.
+	 * Usually can be __cold.
 	 */
 	struct comp_dev *(*create)(const struct comp_driver *drv,
 				   const struct comp_ipc_config *ipc_config,
@@ -304,6 +305,7 @@ struct comp_ops {
 	 *
 	 * All data structures previously allocated on the run-time heap
 	 * must be freed by the implementation of <code>free()</code>.
+	 * Usually can be __cold.
 	 */
 	void (*free)(struct comp_dev *dev);
 
@@ -315,6 +317,7 @@ struct comp_ops {
 	 * Infrastructure calls comp_verify_params() if this handler is not
 	 * defined, therefore it should be left NULL if no extra steps are
 	 * required.
+	 * Usually shouldn't be __cold.
 	 */
 	int (*params)(struct comp_dev *dev,
 		      struct sof_ipc_stream_params *params);
@@ -327,6 +330,7 @@ struct comp_ops {
 	 * @param dir Stream direction (see enum sof_ipc_stream_direction).
 	 *
 	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
 	 */
 	int (*dai_get_hw_params)(struct comp_dev *dev,
 				 struct sof_ipc_stream_params *params, int dir);
@@ -337,6 +341,7 @@ struct comp_ops {
 	 * @param dai_config DAI configuration.
 	 *
 	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
 	 */
 	int (*dai_config)(struct dai_data *dd, struct comp_dev *dev,
 			  struct ipc_config_dai *dai_config, const void *dai_spec_config);
@@ -358,6 +363,8 @@ struct comp_ops {
 	 * Trigger, atomic - used to start/stop/pause stream operations.
 	 * @param dev Component device.
 	 * @param cmd Command, one of COMP_TRIGGER_...
+	 *
+	 * Usually shouldn't be __cold.
 	 */
 	int (*trigger)(struct comp_dev *dev, int cmd);
 
@@ -367,6 +374,7 @@ struct comp_ops {
 	 *
 	 * Prepare should be used to get the component ready for starting
 	 * processing after it's hw_params are known or after an XRUN.
+	 * Usually shouldn't be __cold.
 	 */
 	int (*prepare)(struct comp_dev *dev);
 
@@ -376,6 +384,7 @@ struct comp_ops {
 	 *
 	 * Resets the component state and any hw_params to default component
 	 * state. Should also free any resources acquired during hw_params.
+	 * Usually shouldn't be __cold.
 	 */
 	int (*reset)(struct comp_dev *dev);
 
@@ -383,6 +392,8 @@ struct comp_ops {
 	 * Copy and process stream data from source to sink buffers.
 	 * @param dev Component device.
 	 * @return Number of copied frames.
+	 *
+	 * Usually shouldn't be __cold.
 	 */
 	int (*copy)(struct comp_dev *dev);
 
@@ -390,6 +401,8 @@ struct comp_ops {
 	 * Retrieves component rendering position.
 	 * @param dev Component device.
 	 * @param posn Receives reported position.
+	 *
+	 * Usually shouldn't be __cold.
 	 */
 	int (*position)(struct comp_dev *dev,
 		struct sof_ipc_stream_posn *posn);
@@ -400,6 +413,8 @@ struct comp_ops {
 	 * @param type Attribute type.
 	 * @param value Attribute value.
 	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * Usually can be __cold.
 	 */
 	int (*get_attribute)(struct comp_dev *dev, uint32_t type,
 			     void *value);
@@ -410,6 +425,8 @@ struct comp_ops {
 	 * @param type Attribute type.
 	 * @param value Attribute value.
 	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * Usually can be __cold.
 	 */
 	int (*set_attribute)(struct comp_dev *dev, uint32_t type,
 			     void *value);
@@ -419,6 +436,7 @@ struct comp_ops {
 	 * @param dev Component device.
 	 *
 	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
 	 */
 	int (*dai_ts_config)(struct comp_dev *dev);
 
@@ -427,6 +445,7 @@ struct comp_ops {
 	 * @param dev Component device.
 	 *
 	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
 	 */
 	int (*dai_ts_start)(struct comp_dev *dev);
 
@@ -435,6 +454,7 @@ struct comp_ops {
 	 * @param dev Component device.
 	 *
 	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
 	 */
 	int (*dai_ts_stop)(struct comp_dev *dev);
 
@@ -444,6 +464,7 @@ struct comp_ops {
 	 * @param tsd Receives timestamp data.
 	 *
 	 * Mandatory for components that allocate DAI.
+	 * Usually shouldn't be __cold.
 	 */
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	int (*dai_ts_get)(struct comp_dev *dev, struct dai_ts_data *tsd);
@@ -456,6 +477,8 @@ struct comp_ops {
 	 * Bind, atomic - used to notify component of bind event.
 	 * @param dev Component device.
 	 * @param data Bind info
+	 *
+	 * Usually can be __cold.
 	 */
 	int (*bind)(struct comp_dev *dev, void *data);
 
@@ -463,6 +486,8 @@ struct comp_ops {
 	 * Unbind, atomic - used to notify component of unbind event.
 	 * @param dev Component device.
 	 * @param data unBind info
+	 *
+	 * Usually can be __cold.
 	 */
 	int (*unbind)(struct comp_dev *dev, void *data);
 
@@ -478,6 +503,7 @@ struct comp_ops {
 	 *
 	 * Callee fills up *data with config data and save the config
 	 * size in *data_offset for host to reconstruct the config
+	 * Usually can be __cold.
 	 */
 	int (*get_large_config)(struct comp_dev *dev, uint32_t param_id,
 				bool first_block,
@@ -498,6 +524,7 @@ struct comp_ops {
 	 * Host divides large block into small blocks and sends them
 	 * to fw. The data_offset indicates the offset in the large
 	 * block data.
+	 * Usually can be __cold.
 	 */
 	int (*set_large_config)(struct comp_dev *dev, uint32_t param_id,
 				bool first_block,
@@ -511,6 +538,8 @@ struct comp_ops {
 	 * @param stream_no Index of input/output stream
 	 * @param input Selects between input (true) or output (false) stream direction
 	 * @return total data processed if succeeded, 0 otherwise.
+	 *
+	 * Usually shouldn't be __cold.
 	 */
 	uint64_t (*get_total_data_processed)(struct comp_dev *dev, uint32_t stream_no, bool input);
 };
