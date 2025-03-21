@@ -649,23 +649,6 @@ elseif(CONFIG_DTS_CODEC)
 	endif()
 endif()
 
-if(CONFIG_WAVES_CODEC)
-	set(WAVES_DIR ${SOF_AUDIO_PATH}/module_adapter/module/waves)
-	if(CONFIG_WAVES_CODEC STREQUAL "m")
-		add_subdirectory(${WAVES_DIR}/llext ${PROJECT_BINARY_DIR}/waves_llext)
-		add_dependencies(app waves)
-	else()
-		zephyr_library_sources(${WAVES_DIR}/waves.c)
-		if(CONFIG_WAVES_CODEC_STUB)
-			zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC_STUB
-						     ${WAVES_DIR}/maxx_stub.c)
-		else()
-			zephyr_library_import(waves_codec
-				${sof_top_dir}/third_party/lib/libMaxxChrome.a)
-		endif()
-	endif()
-endif()
-
 if(CONFIG_PROBE STREQUAL "m")
 	add_subdirectory(${SOF_SRC_PATH}/probe/llext
 			 ${PROJECT_BINARY_DIR}/probe_llext)
