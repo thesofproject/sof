@@ -7,6 +7,8 @@ manifest:
     remote: thesofproject
 
   remotes:
+    - name: pillo79
+      url-base: https://github.com/pillo79
     - name: thesofproject
       url-base: https://github.com/thesofproject
     - name: zephyrproject
@@ -43,8 +45,8 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr
-      revision: 218de8dc676c424d81c3402e6262e5e326b84b28
-      remote: zephyrproject
+      revision: pr-llext-storage
+      remote: pillo79
 
       # Import some projects listed in zephyr/west.yml@revision
       #
