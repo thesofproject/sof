@@ -545,10 +545,6 @@ elseif(CONFIG_SAMPLE_SMART_AMP)
 	)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
-	${SOF_AUDIO_PATH}/google/google_hotword_detect.c
-)
-
 if(CONFIG_PROBE STREQUAL "m")
 	add_subdirectory(${SOF_SRC_PATH}/probe/llext
 			 ${PROJECT_BINARY_DIR}/probe_llext)

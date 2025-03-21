@@ -10,6 +10,10 @@ if(zephyr) ###  Zephyr ###
 		set(ipc_suffix ipc4)
 	endif()
 
+	zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
+		google_hotword_detect.c
+	)
+
 	if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING STREQUAL "m")
 		add_subdirectory(llext_rtc
 				 ${PROJECT_BINARY_DIR}/google_rtc_audio_processing_llext)
