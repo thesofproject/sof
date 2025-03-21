@@ -8,7 +8,7 @@ function blob = sof_eq_blob_read(blobfn, fntype)
 
 %% Use file suffix as type
 if nargin < 2
-	idx = findstr(blobfn, '.');
+	idx = strfind(blobfn, '.');
 	fntype = blobfn(idx(end)+1:end);
 end
 
@@ -55,7 +55,7 @@ ln = fgets(fh);
 n = 1;
 ln = fgets(fh);
 while ln ~= -1
-	idx = findstr(ln, '0x');
+	idx = strfind(ln, '0x');
 	for i = 1:length(idx)
 		bytes(n) = hex2dec(ln(idx(i)+2:idx(i)+3));
 		n = n + 1;

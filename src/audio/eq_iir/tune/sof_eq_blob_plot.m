@@ -32,7 +32,7 @@ function eq = sof_eq_blob_plot(blobfn, eqtype, fs, f, doplot)
 
 %% Handle input parameters
 if nargin < 2
-	if findstr(blobfn, '_fir')
+	if strfind(blobfn, '_fir')
 		eqtype = 'FIR';
 	else
 		eqtype = 'IIR';

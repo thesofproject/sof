@@ -22,7 +22,7 @@ function [f, m_db] = sof_mls_freq_resp(id)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright (c) 2018-2020, Intel Corporation. All rights reserved.
+% Copyright (c) 2018-2025, Intel Corporation.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -332,12 +332,12 @@ function [f, m, sens, desc] = get_calibration(fn)
 	sens =[];
 	desc = '';
 	str = fgets(fh);
-	idx = findstr(str, '"');
+	idx = strfind(str, '"');
 	while length(idx) > 0
 		line = str(idx(1)+1:idx(2)-1);
 		desc = sprintf('%s%s ', desc, line);
 		str = fgets(fh);
-		idx = findstr(str, '"');
+		idx = strfind(str, '"');
 	end
 	if length(strfind(str, 'Sens'))
 		desc = str;
