@@ -43,6 +43,23 @@ if(zephyr) ###  Zephyr ###
 		module/passthrough.c
 	)
 
+	if(CONFIG_WAVES_CODEC)
+		set(WAVES_DIR module/waves)
+		if(CONFIG_WAVES_CODEC STREQUAL "m")
+			add_subdirectory(${WAVES_DIR}/llext ${PROJECT_BINARY_DIR}/waves_llext)
+			add_dependencies(app waves)
+		else()
+			zephyr_library_sources(${WAVES_DIR}/waves.c)
+			if(CONFIG_WAVES_CODEC_STUB)
+				zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC_STUB
+							     ${WAVES_DIR}/maxx_stub.c)
+			else()
+				zephyr_library_import(waves_codec
+					${sof_top_dir}/third_party/lib/libMaxxChrome.a)
+			endif()
+		endif()
+	endif()
+
 	return()
 endif()
 
