@@ -171,12 +171,17 @@ EXPORT_SYMBOL(module_get_large_config);
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 {
 	struct processing_module *mod = comp_mod(dev);
+	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
 	switch (type) {
 	case COMP_ATTR_BASE_CONFIG:
 		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
 			 &mod->priv.cfg.base_cfg, sizeof(mod->priv.cfg.base_cfg));
 		break;
+	case COMP_ATTR_IPC4_CONFIG:
+		if (interface->get_config_param)
+			return interface->get_config_param(mod, (uint32_t *)value);
+		return -ENOEXEC;
 	default:
 		return -EINVAL;
 	}
@@ -184,6 +189,24 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 	return 0;
 }
 EXPORT_SYMBOL(module_adapter_get_attribute);
+
+int module_adapter_set_attribute(struct comp_dev *dev, uint32_t type, void *value)
+{
+	struct processing_module *mod = comp_mod(dev);
+	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
+
+	switch (type) {
+	case COMP_ATTR_IPC4_CONFIG:
+		if (interface->set_config_param)
+			return interface->set_config_param(mod, *(uint32_t *)value);
+		return -ENOEXEC;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(module_adapter_set_attribute);
 
 static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 {

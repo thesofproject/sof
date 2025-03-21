@@ -572,6 +572,7 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 	drv->ops.set_large_config = module_set_large_config;
 	drv->ops.get_large_config = module_get_large_config;
 	drv->ops.get_attribute = module_adapter_get_attribute;
+	drv->ops.set_attribute = module_adapter_set_attribute;
 	drv->ops.bind = module_adapter_bind;
 	drv->ops.unbind = module_adapter_unbind;
 	drv->ops.get_total_data_processed = module_adapter_get_total_data_processed;
