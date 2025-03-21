@@ -506,59 +506,9 @@ elseif(CONFIG_IPC_MAJOR_4)
 set(ipc_suffix ipc4)
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
-	${SOF_AUDIO_PATH}/mixer/mixer.c
-	${SOF_AUDIO_PATH}/mixer/mixer_generic.c
-	${SOF_AUDIO_PATH}/mixer/mixer_hifi3.c
-)
-
-if(CONFIG_COMP_MIXIN_MIXOUT STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/mixin_mixout/llext
-			 ${PROJECT_BINARY_DIR}/mixin_mixout_llext)
-	add_dependencies(app mixin_mixout)
-elseif(CONFIG_COMP_MIXIN_MIXOUT)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout.c
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_generic.c
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi3.c
-		${SOF_AUDIO_PATH}/mixin_mixout/mixin_mixout_hifi5.c
-	)
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_COMP_TONE
-	${SOF_AUDIO_PATH}/tone.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_IPC4_GATEWAY
-	${SOF_AUDIO_PATH}/copier/copier_ipcgtw.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COPIER_GAIN
-	${SOF_AUDIO_PATH}/copier/copier_gain.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
-
-if(CONFIG_COMP_VOLUME STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/volume/llext
-			 ${PROJECT_BINARY_DIR}/volume_llext)
-	add_dependencies(app volume)
-elseif(CONFIG_COMP_VOLUME)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/volume/volume_hifi5.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi4.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi3.c
-		${SOF_AUDIO_PATH}/volume/volume_generic.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi5_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi4_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_hifi3_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume_generic_with_peakvol.c
-		${SOF_AUDIO_PATH}/volume/volume.c
-		${SOF_AUDIO_PATH}/volume/volume_${ipc_suffix}.c
-	)
-endif()
 
 zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
 	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
@@ -613,35 +563,6 @@ zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
 )
 endif()
 
-zephyr_library_sources_ifdef(CONFIG_COMP_CHAIN_DMA
-	${SOF_AUDIO_PATH}/chain_dma.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_BASEFW_IPC4
-	${SOF_AUDIO_PATH}/base_fw.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_IPC4_BASE_FW_INTEL
-	${SOF_AUDIO_PATH}/base_fw_intel.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_COPIER
-	${SOF_AUDIO_PATH}/copier/copier_generic.c
-	${SOF_AUDIO_PATH}/copier/copier_hifi.c
-	${SOF_AUDIO_PATH}/copier/copier.c
-	${SOF_AUDIO_PATH}/copier/copier_host.c
-	${SOF_AUDIO_PATH}/copier/copier_dai.c
-)
-
-zephyr_library_sources(
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_hifi3.c
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter.c
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_converter_generic.c
-)
-zephyr_library_sources_ifdef(CONFIG_PCM_REMAPPING_CONVERTERS
-	${SOF_AUDIO_PATH}/pcm_converter/pcm_remap.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM
 	${SOF_AUDIO_PATH}/smart_amp/smart_amp.c
 	${SOF_AUDIO_PATH}/smart_amp/smart_amp_generic.c
@@ -655,64 +576,6 @@ zephyr_include_directories_ifdef(CONFIG_MAXIM_DSM
 zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM_STUB
 	${SOF_AUDIO_PATH}/smart_amp/maxim_dsm_stub.c
 )
-
-if(CONFIG_COMP_ARIA STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/aria/llext
-			 ${PROJECT_BINARY_DIR}/aria_llext)
-	add_dependencies(app aria)
-elseif(CONFIG_COMP_ARIA)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/aria/aria.c
-		${SOF_AUDIO_PATH}/aria/aria_hifi5.c
-		${SOF_AUDIO_PATH}/aria/aria_hifi3.c
-		${SOF_AUDIO_PATH}/aria/aria_generic.c
-	)
-endif()
-
-if(CONFIG_COMP_CROSSOVER STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/crossover/llext
-			 ${PROJECT_BINARY_DIR}/crossover_llext)
-	add_dependencies(app crossover)
-elseif(CONFIG_COMP_CROSSOVER)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/crossover/crossover.c
-		${SOF_AUDIO_PATH}/crossover/crossover_generic.c
-		${SOF_AUDIO_PATH}/crossover/crossover_${ipc_suffix}.c
-	)
-endif()
-
-if(CONFIG_COMP_DRC STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/drc/llext
-			 ${PROJECT_BINARY_DIR}/drc_llext)
-	add_dependencies(app drc)
-elseif(CONFIG_COMP_DRC)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/drc/drc.c
-		${SOF_AUDIO_PATH}/drc/drc_generic.c
-		${SOF_AUDIO_PATH}/drc/drc_math_generic.c
-		${SOF_AUDIO_PATH}/drc/drc_hifi3.c
-		${SOF_AUDIO_PATH}/drc/drc_hifi4.c
-		${SOF_AUDIO_PATH}/drc/drc_math_hifi3.c
-	)
-endif()
-
-if(NOT CONFIG_COMP_DRC STREQUAL "n")
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/drc/drc_log.c
-	)
-endif()
-
-if(CONFIG_COMP_MULTIBAND_DRC STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/multiband_drc/llext
-			 ${PROJECT_BINARY_DIR}/multiband_drc_llext)
-	add_dependencies(app multiband_drc)
-elseif(CONFIG_COMP_MULTIBAND_DRC)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MULTIBAND_DRC
-		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc.c
-		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_generic.c
-		${SOF_AUDIO_PATH}/multiband_drc/multiband_drc_${ipc_suffix}.c
-	)
-endif()
 
 if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING STREQUAL "m")
 	add_subdirectory(${SOF_AUDIO_PATH}/google/llext_rtc
@@ -800,53 +663,6 @@ if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
 elseif(CONFIG_SAMPLE_SMART_AMP)
 	zephyr_library_sources(
 		${SOF_SAMPLES_PATH}/audio/smart_amp_test_${ipc_suffix}.c
-	)
-endif()
-
-if(CONFIG_COMP_TDFB STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/tdfb/llext
-			 ${PROJECT_BINARY_DIR}/tdfb_llext)
-	add_dependencies(app tdfb)
-elseif(CONFIG_COMP_TDFB)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/tdfb/tdfb.c
-		${SOF_AUDIO_PATH}/tdfb/tdfb_direction.c
-		${SOF_AUDIO_PATH}/tdfb/tdfb_generic.c
-		${SOF_AUDIO_PATH}/tdfb/tdfb_hifiep.c
-		${SOF_AUDIO_PATH}/tdfb/tdfb_hifi3.c
-		${SOF_AUDIO_PATH}/tdfb/tdfb_${ipc_suffix}.c
-	)
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_COMP_UP_DOWN_MIXER
-	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer.c
-	${SOF_AUDIO_PATH}/up_down_mixer/up_down_mixer_hifi3.c
-)
-
-if(CONFIG_COMP_MUX STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/mux/llext
-			 ${PROJECT_BINARY_DIR}/mux_llext)
-	add_dependencies(app mux)
-elseif(CONFIG_COMP_MUX)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MUX
-		${SOF_AUDIO_PATH}/mux/mux.c
-		${SOF_AUDIO_PATH}/mux/mux_generic.c
-		${SOF_AUDIO_PATH}/mux/mux_${ipc_suffix}.c
-	)
-endif()
-
-if(CONFIG_COMP_MFCC STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/mfcc/llext
-			 ${PROJECT_BINARY_DIR}/mfcc_llext)
-	add_dependencies(app mfcc)
-elseif(CONFIG_COMP_MFCC)
-	zephyr_library_sources_ifdef(CONFIG_COMP_MFCC
-		${SOF_AUDIO_PATH}/mfcc/mfcc.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_setup.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_common.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_generic.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_hifi3.c
-		${SOF_AUDIO_PATH}/mfcc/mfcc_hifi4.c
 	)
 endif()
 
