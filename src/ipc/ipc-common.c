@@ -20,7 +20,6 @@
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
@@ -189,13 +188,11 @@ static void schedule_ipc_worker(void)
 #endif
 }
 
-__cold void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
+void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
 	int ret;
-
-	assert_can_be_cold();
 
 	key = k_spin_lock(&ipc->lock);
 
@@ -283,10 +280,8 @@ void ipc_schedule_process(struct ipc *ipc)
 #endif
 }
 
-__cold int ipc_init(struct sof *sof)
+int ipc_init(struct sof *sof)
 {
-	assert_can_be_cold();
-
 	tr_dbg(&ipc_tr, "ipc_init()");
 
 	/* init ipc data */
