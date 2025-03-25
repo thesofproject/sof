@@ -4,6 +4,7 @@
  *
  * Author: Shriram Shastry <malladi.sastry@linux.intel.com>
  *         Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *	   Pasca, Bogdan <bogdan.pasca@intel.com>
  */
 
 #include <sof/audio/format.h>
