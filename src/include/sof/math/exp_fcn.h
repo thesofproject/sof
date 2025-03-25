@@ -4,8 +4,9 @@
  *
  * Author: Shriram Shastry <malladi.sastry@linux.intel.com>
  *         Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
- *
+ *	   Pasca, Bogdan <bogdan.pasca@intel.com>
  */
+
 #ifndef __SOFM_EXP_FCN_H__
 #define __SOFM_EXP_FCN_H__
 
