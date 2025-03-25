@@ -203,13 +203,17 @@ macro(sof_list_append_ifdef feature_toggle list)
   endif()
 endmacro()
 
+# directories with auxiliary modules need to be listed first
+# - llext dependencies need to added to linkage first
+add_subdirectory(../src/math/  math_unused_install/)
+
+# remaining directories (in alphabetical order)
 add_subdirectory(../src/audio/ audio_unused_install/)
 add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
 add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
 add_subdirectory(../src/debug/tester/  debug_tester_unused_install/)
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
-add_subdirectory(../src/math/  math_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
 add_subdirectory(test/)
 
