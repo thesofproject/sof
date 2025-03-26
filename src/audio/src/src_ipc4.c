@@ -16,6 +16,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
@@ -99,17 +100,20 @@ int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 
 	src_params.frame_fmt = valid_fmt;
 	ret = sink_set_params(sink, &src_params, true);
-
-	/* if module is to be run as DP, calculate module period
-	 * according to OBS size and data rate
-	 * as SRC uses period value to calculate its internal buffers,
-	 * it must be done here, right after setting sink parameters
-	 */
-	if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+	if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		/* if module is to be run as DP, calculate module period
+		 * according to OBS size and data rate
+		 * as SRC uses period value to calculate its internal buffers,
+		 * it must be done here, right after setting sink parameters
+		 */
 		dev->period = 1000000 * sink_get_min_free_space(sink) /
-		      (sink_get_frame_bytes(sink) * sink_get_rate(sink));
+			      (sink_get_frame_bytes(sink) * sink_get_rate(sink));
+		/* align down period to LL cycle time */
+		dev->period /= LL_TIMER_PERIOD_US;
+		dev->period *= LL_TIMER_PERIOD_US;
 
-	comp_info(dev, "SRC DP period calculated as: %u", dev->period);
+		comp_info(dev, "SRC DP period calculated as: %u us", dev->period);
+	}
 
 	component_set_nearest_period_frames(dev, src_params.rate);
 	/* Update module stream_params */
