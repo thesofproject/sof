@@ -359,6 +359,9 @@ static void host_dma_cb(struct comp_dev *dev, size_t bytes)
 		host_common_one_shot(hd, bytes);
 }
 
+/* Minimum time between 2 consecutive "no bytes to copy" messages in milliseconds */
+#define SOF_MIN_NO_BYTES_INTERVAL_MS 20
+
 /**
  * Calculates bytes to be copied in normal mode.
  * @param dev Host component device.
@@ -403,9 +406,26 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	if (!(hd->ipc_host.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
 		dma_copy_bytes = MIN(hd->period_bytes, dma_copy_bytes);
 
-	if (!dma_copy_bytes)
-		comp_info(dev, "no bytes to copy, available samples: %d, free_samples: %d",
-			  avail_samples, free_samples);
+	bool reset_skipped = false;
+	uint64_t now = k_uptime_get();
+	uint64_t delta = now - hd->nobytes_last_logged;
+
+	if (!dma_copy_bytes) {
+		if (delta > SOF_MIN_NO_BYTES_INTERVAL_MS) {
+			hd->nobytes_last_logged = now;
+			comp_warn(dev, "no bytes to copy, available samples: %d, free_samples: %d",
+				  avail_samples, free_samples);
+			reset_skipped = true;
+		} else {
+			hd->n_skipped++;
+		}
+	}
+
+	if (hd->n_skipped && (reset_skipped || dma_copy_bytes)) {
+		comp_warn(dev, "Skipped %u no-bytes events in last %llu ms",
+			  hd->n_skipped, delta);
+		hd->n_skipped = 0;
+	}
 
 	/* dma_copy_bytes should be aligned to minimum possible chunk of
 	 * data to be copied by dma.
@@ -659,6 +679,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	if (!hd)
 		goto e_data;
 
+	hd->nobytes_last_logged = k_uptime_get();
 	comp_set_drvdata(dev, hd);
 
 	ret = host_common_new(hd, dev, ipc_host, dev->ipc_config.id);

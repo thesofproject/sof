@@ -67,7 +67,9 @@ struct host_data {
 	uint16_t stream_tag;
 	uint16_t no_stream_position; /**< 1 means don't send stream position */
 	uint64_t total_data_processed;
-	uint8_t cont_update_posn; /**< 1 means continuous update stream position */
+	uint64_t nobytes_last_logged;	/**< uptime, when "no bytes" was last logged */
+	unsigned int n_skipped;		/**< number of "no bytes" skipped */
+	uint8_t cont_update_posn;	/**< 1 means continuous update stream position */
 
 	/* host component attributes */
 	enum comp_copy_type copy_type;	/**< Current host copy type */
