@@ -210,6 +210,7 @@ add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
 add_subdirectory(../src/library_manager/ library_manager_unused_install/)
 add_subdirectory(../src/logging/ logging_unused_install/)
+add_subdirectory(../src/probe/ probes_unused_install/)
 add_subdirectory(../src/samples/ samples_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
 add_subdirectory(../src/trace/ trace_unused_install/)
@@ -480,14 +481,6 @@ add_subdirectory(../src/module module_unused_install/)
 zephyr_library_sources_ifdef(CONFIG_FAST_GET lib/fast-get.c)
 
 # Optional SOF sources - depends on Kconfig - WIP
-
-if(CONFIG_PROBE STREQUAL "m")
-	add_subdirectory(${SOF_SRC_PATH}/probe/llext
-			 ${PROJECT_BINARY_DIR}/probe_llext)
-	add_dependencies(app probe)
-elseif(CONFIG_PROBE)
-	zephyr_library_sources(${SOF_SRC_PATH}/probe/probe.c)
-endif()
 
 zephyr_library_sources_ifdef(CONFIG_MULTICORE
 	${SOF_SRC_PATH}/idc/idc.c
