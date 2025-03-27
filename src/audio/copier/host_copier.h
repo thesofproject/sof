@@ -98,6 +98,9 @@ struct host_data {
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 	struct ipc_msg *msg;	/**< host notification */
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	bool xrun_notification_sent;
+#endif
 	uint32_t dma_buffer_size;	/* dma buffer size */
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
 	bool is_grouped;

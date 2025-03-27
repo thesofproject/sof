@@ -32,6 +32,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+#include <sof/ipc/notification_pool.h>
+#include <ipc4/notification.h>
+#endif
+
 #include "copier/copier.h"
 #include "copier/host_copier.h"
 
@@ -359,6 +364,32 @@ static void host_dma_cb(struct comp_dev *dev, size_t bytes)
 		host_common_one_shot(hd, bytes);
 }
 
+/* get status from dma and check for xrun */
+static int host_get_status(struct comp_dev *dev, struct host_data *hd, struct dma_status *stat)
+{
+	int ret = dma_get_status(hd->chan->dma->z_dev, hd->chan->index, stat);
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	if (ret == -EPIPE && !hd->xrun_notification_sent) {
+		struct ipc_msg *notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
+
+		if (notify) {
+			if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+				copier_gateway_underrun_notif_msg_init(notify,
+								       dev->pipeline->pipeline_id);
+			else
+				copier_gateway_overrun_notif_msg_init(notify,
+								      dev->pipeline->pipeline_id);
+
+			ipc_msg_send(notify, notify->tx_data, false);
+			hd->xrun_notification_sent = true;
+		}
+	} else if (!ret) {
+		hd->xrun_notification_sent = false;
+	}
+#endif
+	return ret;
+}
+
 /* Minimum time between 2 consecutive "no bytes to copy" messages in milliseconds */
 #define SOF_MIN_NO_BYTES_INTERVAL_MS 20
 
@@ -378,7 +409,7 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	int ret;
 
 	/* get data sizes from DMA */
-	ret = dma_get_status(hd->chan->dma->z_dev, hd->chan->index, &dma_stat);
+	ret = host_get_status(dev, hd, &dma_stat);
 	if (ret < 0) {
 		comp_err(dev, "dma_get_status() failed, ret = %u",
 			 ret);
