@@ -24,18 +24,6 @@ static void resource_notif_header_init(struct ipc_msg *msg)
 	memset(&notif_data->event_data, 0, sizeof(notif_data->event_data));
 }
 
-#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-void xrun_notif_msg_init(struct ipc_msg *msg_xrun, uint32_t resource_id, uint32_t event_type)
-{
-	struct ipc4_resource_event_data_notification *notif_data = msg_xrun->tx_data;
-
-	resource_notif_header_init(msg_xrun);
-	notif_data->resource_id = resource_id;
-	notif_data->event_type = event_type;
-	notif_data->resource_type = SOF_IPC4_GATEWAY;
-}
-#endif
-
 void copier_gateway_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t pipeline_id)
 {
 	struct ipc4_resource_event_data_notification *notif_data = msg->tx_data;
