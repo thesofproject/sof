@@ -32,6 +32,8 @@
 #include <stddef.h>
 
 enum ipc4_mixin_config_param {
+	/* config_param param id to set/get underrun notification period. */
+	IPC4_MIXER_UNDERRUN_NOTIF_PERIOD = 0,
 	/* large_config_set param id for ipc4_mixer_mode_config */
 	IPC4_MIXER_MODE = 1
 };
@@ -41,6 +43,13 @@ enum ipc4_mixin_config_param {
 
 /* Number of supported input pins that are mixed together */
 #define IPC4_MIXOUT_MODULE_MAX_INPUT_QUEUES 8
+
+/* Each mixin instance by default has set default notification
+ * period to avoid notification flooding.
+ */
+#define MIXIN_MODULE_DEFAULT_UNDERRUN_NOTIFICATION_PERIOD	10
+#define MIXIN_MODULE_MIN_UNDERRUN_NOTIFICATION_PERIOD		1
+#define MIXIN_MODULE_MAX_UNDERRUN_NOTIFICATION_PERIOD		65535
 
 enum ipc4_mixer_mode {
 	/* Normal mode, just mixing */
