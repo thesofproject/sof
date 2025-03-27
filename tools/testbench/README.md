@@ -64,6 +64,37 @@ directions, use -p 1,2,3,4 and provide multiple input and output
 files separated with comma. Use e.g. -i i1.raw,i2.raw
 -o o1.raw,o2.raw.
 
+### Apply controls to simulation
+
+The testbench supports shell script like amixer and sleep commands for
+the controls. Create e.g. this script file as controls.sh:
+
+```
+#!/bin/sh
+
+# Example test sequence for DRC and volume components
+
+amixer -c0 cset name='Post Mixer Analog Playback DRC switch' off
+amixer -c0 cset name='Post Mixer Analog Playback Volume' 40,30
+sleep 1
+amixer -c0 cset name='Post Mixer Analog Playback Volume' 0
+sleep 1
+amixer -c0 cset name='Post Mixer Analog Playback Volume' 45
+```
+
+Then generarate sine wave (997 Hz, -3 dB level, 3 seconds) with sox
+and check the impact to processed signal with next commands:
+
+```
+sox -n --encoding signed-integer -L -r 48000 -c 2 -b 32 in.raw synth 3 sine 997 norm -3
+
+tools/testbench/build_testbench/install/bin/sof-testbench4 -r 48000 -c 2 -b S32_LE   -p 1,2 \
+ -t tools/build_tools/topology/topology2/production/sof-hda-generic.tplg \
+-i in.raw -o out.raw -s controls.sh
+
+sox --encoding signed-integer -L -r 48000 -c 2 -b 32 out.raw out.wav
+```
+
 ### Run testbench with helper script
 
 The scripts/sof-testbench-helper.sh simplifies the task. See the help
