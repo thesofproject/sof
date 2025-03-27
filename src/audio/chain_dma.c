@@ -26,9 +26,8 @@
 #include <zephyr/pm/policy.h>
 #include <rtos/init.h>
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+#include <sof/ipc/notification_pool.h>
 #include <ipc4/notification.h>
-#include <sof/ipc/msg.h>
-#include <ipc/header.h>
 #endif
 
 #define DT_NUM_HDA_HOST_IN	DT_PROP(DT_INST(0, intel_adsp_hda_host_in), dma_channels)
@@ -59,7 +58,6 @@ struct chain_dma_data {
 	uint8_t cs;
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	bool xrun_notification_sent;
-	struct ipc_msg *msg_xrun;
 #endif
 
 	/* local host DMA config */
@@ -145,33 +143,32 @@ static size_t chain_get_transferred_data_size(const uint32_t out_read_pos, const
 	return buff_size - in_read_pos + out_read_pos;
 }
 
-#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-static void handle_xrun(struct chain_dma_data *cd)
+/* get status from dma and check for xrun */
+static int chain_get_dma_status(struct chain_dma_data *cd, struct dma_chan_data *chan,
+				struct dma_status *stat)
 {
-	int ret;
+	int ret = dma_get_status(chan->dma->z_dev, chan->index, stat);
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	if (ret == -EPIPE && !cd->xrun_notification_sent) {
+		struct ipc_msg *notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
 
-	if (cd->link_connector_node_id.f.dma_type == ipc4_hda_link_output_class &&
-	    !cd->xrun_notification_sent) {
-		tr_warn(&chain_dma_tr, "handle_xrun(): underrun detected");
-		xrun_notif_msg_init(cd->msg_xrun, cd->link_connector_node_id.dw,
-				    SOF_IPC4_GATEWAY_UNDERRUN_DETECTED);
-		ipc_msg_send(cd->msg_xrun, NULL, true);
-		cd->xrun_notification_sent = true;
-	} else if (cd->link_connector_node_id.f.dma_type == ipc4_hda_link_input_class &&
-		   !cd->xrun_notification_sent) {
-		tr_warn(&chain_dma_tr, "handle_xrun(): overrun detected");
-		xrun_notif_msg_init(cd->msg_xrun, cd->link_connector_node_id.dw,
-				    SOF_IPC4_GATEWAY_OVERRUN_DETECTED);
-		ipc_msg_send(cd->msg_xrun, NULL, true);
-		cd->xrun_notification_sent = true;
-	} else {
-		/* if xrun_notification_sent is already set, then it means that link was
-		 * able to reach stability therefore next underrun/overrun should be reported.
-		 */
+		if (notify) {
+			if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK)
+				gateway_underrun_notif_msg_init(notify,
+								cd->link_connector_node_id.dw);
+			else
+				gateway_overrun_notif_msg_init(notify,
+							       cd->link_connector_node_id.dw);
+
+			ipc_msg_send(notify, notify->tx_data, false);
+			cd->xrun_notification_sent = true;
+		}
+	} else if (!ret) {
 		cd->xrun_notification_sent = false;
 	}
-}
 #endif
+	return ret;
+}
 
 static enum task_state chain_task_run(void *data)
 {
@@ -185,16 +182,13 @@ static enum task_state chain_task_run(void *data)
 	/* Link DMA can return -EPIPE and current status if xrun occurs, then it is not critical
 	 * and flow shall continue. Other error values will be treated as critical.
 	 */
-	ret = dma_get_status(cd->chan_link->dma->z_dev, cd->chan_link->index, &stat);
+	ret = chain_get_dma_status(cd, cd->chan_link, &stat);
 	switch (ret) {
 	case 0:
 		break;
 	case -EPIPE:
 		tr_warn(&chain_dma_tr, "chain_task_run(): dma_get_status() link xrun occurred,"
 			" ret = %d", ret);
-#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-		handle_xrun(cd);
-#endif
 		break;
 	default:
 		tr_err(&chain_dma_tr, "chain_task_run(): dma_get_status() error, ret = %d", ret);
@@ -206,7 +200,7 @@ static enum task_state chain_task_run(void *data)
 	link_read_pos = stat.read_position;
 
 	/* Host DMA does not report xruns. All error values will be treated as critical. */
-	ret = dma_get_status(cd->chan_host->dma->z_dev, cd->chan_host->index, &stat);
+	ret = chain_get_dma_status(cd, cd->chan_host, &stat);
 	if (ret < 0) {
 		tr_err(&chain_dma_tr, "chain_task_run(): dma_get_status() error, ret = %d", ret);
 		return SOF_TASK_STATE_COMPLETED;
@@ -685,20 +679,9 @@ __cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 	comp_set_drvdata(dev, cd);
 
 	ret = chain_task_init(dev, host_dma_id, link_dma_id, fifo_size);
-	if (ret)
-		goto error_cd;
+	if (!ret)
+		return dev;
 
-#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-	cd->msg_xrun = ipc_msg_init(header.dat,
-				    sizeof(struct ipc4_resource_event_data_notification));
-	if (!cd->msg_xrun)
-		goto error_cd;
-	cd->xrun_notification_sent = false;
-#endif
-
-	return dev;
-
-error_cd:
 	rfree(cd);
 error:
 	rfree(dev);
@@ -710,10 +693,6 @@ __cold static void chain_task_free(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 
 	assert_can_be_cold();
-
-#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-	ipc_msg_free(cd->msg_xrun);
-#endif
 
 	chain_release(dev);
 	rfree(cd);
