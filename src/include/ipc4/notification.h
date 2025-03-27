@@ -274,4 +274,9 @@ struct ipc4_resource_event_data_notification {
 void process_data_error_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id,
 				       uint32_t error_code);
 
+void copier_gateway_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t pipeline_id);
+void copier_gateway_overrun_notif_msg_init(struct ipc_msg *msg, uint32_t pipeline_id);
+void gateway_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id);
+void gateway_overrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id);
+
 #endif /* __IPC4_NOTIFICATION_H__ */
