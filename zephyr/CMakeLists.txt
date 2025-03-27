@@ -208,6 +208,7 @@ add_subdirectory(../src/audio/ audio_unused_install/)
 add_subdirectory(../src/debug/debug_stream/  debug_stream_unused_install/)
 add_subdirectory(../src/debug/telemetry/  telemetry_unused_install/)
 add_subdirectory(../src/debug/tester/  debug_tester_unused_install/)
+add_subdirectory(../src/idc/ idc_unused_install/)
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
@@ -464,8 +465,6 @@ zephyr_library_sources(
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
 
-	${SOF_SRC_PATH}/idc/zephyr_idc.c
-
 	# Bridge wrapper between SOF and Zephyr APIs - Will shrink over time.
 	wrapper.c
 	edf_schedule.c
@@ -484,10 +483,6 @@ add_subdirectory(../src/module module_unused_install/)
 zephyr_library_sources_ifdef(CONFIG_FAST_GET lib/fast-get.c)
 
 # Optional SOF sources - depends on Kconfig - WIP
-
-zephyr_library_sources_ifdef(CONFIG_MULTICORE
-	${SOF_SRC_PATH}/idc/idc.c
-)
 
 zephyr_library_sources_ifdef(CONFIG_GDB_DEBUG
 	${SOF_DEBUG_PATH}/gdb/gdb.c
