@@ -36,6 +36,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+#include <sof/ipc/notification_pool.h>
+#include <ipc4/notification.h>
+#endif
+
 #include "copier/copier.h"
 #include "copier/dai_copier.h"
 #include "copier/copier_gain.h"
@@ -1462,6 +1467,32 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	return dai_common_trigger(dd, dev, cmd);
 }
 
+/* get status from dma and check for xrun */
+static int dai_get_status(struct comp_dev *dev, struct dai_data *dd, struct dma_status *stat)
+{
+	int ret = dma_get_status(dd->chan->dma->z_dev, dd->chan->index, stat);
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	if (ret == -EPIPE && !dd->xrun_notification_sent) {
+		struct ipc_msg *notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
+
+		if (notify) {
+			if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+				copier_gateway_underrun_notif_msg_init(notify,
+								       dev->pipeline->pipeline_id);
+			else
+				copier_gateway_overrun_notif_msg_init(notify,
+								      dev->pipeline->pipeline_id);
+
+			ipc_msg_send(notify, notify->tx_data, false);
+			dd->xrun_notification_sent = true;
+		}
+	} else if (!ret) {
+		dd->xrun_notification_sent = false;
+	}
+#endif
+	return ret;
+}
+
 /* report xrun occurrence */
 static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
 {
@@ -1499,7 +1530,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 		struct dma_status stat;
 
 		/* get data sizes from DMA */
-		ret = dma_get_status(dd[i]->chan->dma->z_dev, dd[i]->chan->index, &stat);
+		ret = dai_get_status(dev, dd[i], &stat);
 		switch (ret) {
 		case 0:
 			break;
@@ -1633,7 +1664,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	int ret;
 
 	/* get data sizes from DMA */
-	ret = dma_get_status(dd->chan->dma->z_dev, dd->chan->index, &stat);
+	ret = dai_get_status(dev, dd, &stat);
 	switch (ret) {
 	case 0:
 		break;
