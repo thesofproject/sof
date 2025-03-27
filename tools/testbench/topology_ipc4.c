@@ -1358,7 +1358,7 @@ static int tb_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
 				tplg_bytes->priv.size);
 			return -EINVAL;
 		}
-		memcpy(ctl->data, tplg_bytes->priv.data, tplg_bytes->priv.size);
+		ctl->data = tplg_bytes->priv.data;
 		ctl->comp_info = comp_info;
 		strncpy(ctl->name, tplg_ctl->name, TB_MAX_CTL_NAME_CHARS);
 		break;

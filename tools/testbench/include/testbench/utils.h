@@ -22,7 +22,7 @@
 #define TB_MAX_CMD_CHARS		256
 #define TB_MAX_CTL_NAME_CHARS		128
 #define TB_MAX_VOLUME_SIZE		120
-#define TB_MAX_BYTES_DATA_SIZE		512
+#define TB_MAX_BYTES_DATA_SIZE		8192
 
 /* number of widgets types supported in testbench */
 #define TB_NUM_WIDGETS_SUPPORTED	16
@@ -43,7 +43,7 @@ struct tb_ctl {
 	unsigned int type;
 	unsigned int volume_table[TB_MAX_VOLUME_SIZE];
 	unsigned int index;
-	char data[TB_MAX_BYTES_DATA_SIZE];
+	char *data;
 	char name[TB_MAX_CTL_NAME_CHARS];
 	union {
 		struct snd_soc_tplg_mixer_control mixer_ctl;
