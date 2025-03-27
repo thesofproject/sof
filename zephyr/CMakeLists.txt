@@ -134,7 +134,6 @@ cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
 
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
-set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
@@ -211,6 +210,7 @@ add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
 add_subdirectory(../src/library_manager/ library_manager_unused_install/)
 add_subdirectory(../src/logging/ logging_unused_install/)
+add_subdirectory(../src/samples/ samples_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
 add_subdirectory(../src/trace/ trace_unused_install/)
 add_subdirectory(test/)
@@ -480,26 +480,6 @@ add_subdirectory(../src/module module_unused_install/)
 zephyr_library_sources_ifdef(CONFIG_FAST_GET lib/fast-get.c)
 
 # Optional SOF sources - depends on Kconfig - WIP
-
-if(CONFIG_IPC_MAJOR_3)
-set(ipc_suffix ipc3)
-elseif(CONFIG_IPC_MAJOR_4)
-set(ipc_suffix ipc4)
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
-	${SOF_SAMPLES_PATH}/audio/detect_test.c
-)
-
-if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
-	add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_test_llext
-			 ${PROJECT_BINARY_DIR}/smart_amp_test_llext)
-	add_dependencies(app smart_amp_test)
-elseif(CONFIG_SAMPLE_SMART_AMP)
-	zephyr_library_sources(
-		${SOF_SAMPLES_PATH}/audio/smart_amp_test_${ipc_suffix}.c
-	)
-endif()
 
 if(CONFIG_PROBE STREQUAL "m")
 	add_subdirectory(${SOF_SRC_PATH}/probe/llext
