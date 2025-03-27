@@ -1,3 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-add_local_sources(sof dma-trace.c trace.c)
+if(CONFIG_TRACE)
+  add_local_sources(sof dma-trace.c trace.c)
+endif()

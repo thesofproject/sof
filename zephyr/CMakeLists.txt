@@ -211,8 +211,8 @@ add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
 add_subdirectory(../src/library_manager/ library_manager_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
+add_subdirectory(../src/trace/ trace_unused_install/)
 add_subdirectory(test/)
-
 
 # Old way below: all .c files added by this giant CMake file.
 
@@ -475,10 +475,6 @@ zephyr_library_sources(
 
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
-
-zephyr_library_sources_ifdef(CONFIG_TRACE
-	${SOF_SRC_PATH}/trace/dma-trace.c
-	${SOF_SRC_PATH}/trace/trace.c)
 
 zephyr_library_sources_ifdef(CONFIG_LOG_BACKEND_SOF_PROBE
       ${SOF_SRC_PATH}/logging/log_backend_probe.c)
