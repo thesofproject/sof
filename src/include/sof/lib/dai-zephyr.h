@@ -158,6 +158,9 @@ struct dai_data {
 	struct llp_slot_info slot_info;
 	/* fast mode, use one byte memory to save repreated cycles */
 	bool fast_mode;
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	bool xrun_notification_sent;
+#endif
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	/* io performance measurement */
 	struct io_perf_data_item *io_perf_bytes_count;
