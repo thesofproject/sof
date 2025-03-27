@@ -141,8 +141,13 @@ int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 			return -EINVAL;
 		}
 
-		if (ctx->ctl_cb && object)
-			ctx->ctl_cb(ctl_hdr, object, ctx->ctl_arg, index);
+		if (ctx->ctl_cb && object) {
+			ret = ctx->ctl_cb(ctl_hdr, object, ctx->ctl_arg, index);
+			if (ret) {
+				fprintf(stderr, "error: failed control callback\n");
+				goto err;
+			}
+		}
 	}
 
 	if (rctl && ctl_hdr) {
