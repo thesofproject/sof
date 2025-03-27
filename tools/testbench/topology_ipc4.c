@@ -1353,6 +1353,11 @@ static int tb_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
 		ctl->bytes_ctl = *tplg_bytes;
 		ctl->index = index;
 		ctl->type = tplg_ctl->type;
+		if (tplg_bytes->priv.size > TB_MAX_BYTES_DATA_SIZE) {
+			fprintf(stderr, "Error: Too large bytes data size %d\n",
+				tplg_bytes->priv.size);
+			return -EINVAL;
+		}
 		memcpy(ctl->data, tplg_bytes->priv.data, tplg_bytes->priv.size);
 		ctl->comp_info = comp_info;
 		strncpy(ctl->name, tplg_ctl->name, TB_MAX_CTL_NAME_CHARS);
