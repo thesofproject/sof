@@ -209,6 +209,7 @@ add_subdirectory(../src/debug/ debug_unused_install/)
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
+add_subdirectory(../src/library_manager/ library_manager_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
 add_subdirectory(test/)
 
@@ -495,17 +496,6 @@ endif()
 zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
-
-zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
-	${SOF_SRC_PATH}/library_manager/lib_manager.c
-	${SOF_SRC_PATH}/library_manager/lib_notification.c
-)
-
-if (CONFIG_MM_DRV AND CONFIG_LLEXT)
-zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
-	${SOF_SRC_PATH}/library_manager/llext_manager.c
-)
-endif()
 
 if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
 	add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_test_llext
