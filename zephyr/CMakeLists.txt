@@ -210,6 +210,7 @@ add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
 add_subdirectory(../src/lib/ lib_unused_install/)
 add_subdirectory(../src/library_manager/ library_manager_unused_install/)
+add_subdirectory(../src/logging/ logging_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
 add_subdirectory(../src/trace/ trace_unused_install/)
 add_subdirectory(test/)
@@ -475,9 +476,6 @@ zephyr_library_sources(
 
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
-
-zephyr_library_sources_ifdef(CONFIG_LOG_BACKEND_SOF_PROBE
-      ${SOF_SRC_PATH}/logging/log_backend_probe.c)
 
 zephyr_library_sources_ifdef(CONFIG_FAST_GET lib/fast-get.c)
 
