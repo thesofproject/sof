@@ -82,6 +82,7 @@ struct ipc {
 
 #ifdef __ZEPHYR__
 	struct k_work_delayable z_delayed_work;
+	struct k_work_q ipc_send_wq;
 #endif
 
 	void *private;
