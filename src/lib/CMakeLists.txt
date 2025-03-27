@@ -1,31 +1,46 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+set(common_files notifier.c dma.c dai.c)
+
 if(CONFIG_LIBRARY)
-	add_local_sources(sof
-		lib.c
-		dai.c
-		dma.c
-		notifier.c
-                agent.c)
-	return()
+  add_local_sources(sof
+    lib.c
+    agent.c
+    ${common_files}
+    )
+  return()
 endif()
 
 if(CONFIG_HAVE_AGENT)
-	add_local_sources(sof agent.c)
+  add_local_sources(sof agent.c)
 endif()
 
-add_local_sources(sof
-	lib.c
-	alloc.c
-	notifier.c
-	pm_runtime.c
-	clk.c
-	dma.c
-	dai.c
-	wait.c
-	cpu-clk-manager.c
-)
-
 if(CONFIG_AMS)
-add_local_sources(sof ams.c)
+  add_local_sources(sof ams.c)
+endif()
+
+if(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL)
+  add_local_sources(sof cpu-clk-manager.c)
+endif()
+
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
+
+  add_local_sources(sof ${common_files})
+
+  if(NOT CONFIG_SOF_ZEPHYR_NO_SOF_CLOCK)
+    add_local_sources(sof clk.c)
+  endif()
+
+else() ### XTOS ###
+
+  add_local_sources(sof
+    ${common_files}
+    lib.c
+    alloc.c
+    pm_runtime.c
+    clk.c
+    wait.c
+    )
+
 endif()
