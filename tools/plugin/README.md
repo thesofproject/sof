@@ -121,7 +121,7 @@ repository to make sure OpenVino and OpenCV are configured properly.
 
 4. Set environment variable NOISE_SUPPRESSION_MODEL_NAME to point to the model file
 ```
-export NOISE_SUPPRESSION_MODEL_NAME="~/open_model_zoo/demos/noise_suppression_demo/cpp/intel/noise-suppression-poconetlike-0001/FP16/noise-suppression-poconetlike-0001.xml"
+export NOISE_SUPPRESSION_MODEL_NAME=~/open_model_zoo/demos/noise_suppression_demo/cpp/intel/noise-suppression-poconetlike-0001/FP16/noise-suppression-poconetlike-0001.xml
 
 ```
 5. Enable noise suppression by setting NOISE_SUPPRESSION=true in the tplg-targets for the sof-plugin topology
