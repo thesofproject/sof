@@ -139,8 +139,10 @@ static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 	unsigned int period = UINT32_MAX;
 
 	for (int i = 0; i < mod->num_of_sinks; i++) {
-		/* calculate time required the module to provide OBS data portion - a period */
-		unsigned int sink_period = 1000000 * sink_get_min_free_space(mod->sinks[i]) /
+		/* calculate time required the module to provide OBS data portion - a period
+		 * use 64bit integers to avoid overflows
+		 */
+		unsigned int sink_period = 1000000ULL * sink_get_min_free_space(mod->sinks[i]) /
 					   (sink_get_frame_bytes(mod->sinks[i]) *
 					   sink_get_rate(mod->sinks[i]));
 		/* note the minimal period for the module */

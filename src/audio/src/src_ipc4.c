@@ -105,8 +105,10 @@ int src_set_params(struct processing_module *mod, struct sof_sink *sink)
 		 * according to OBS size and data rate
 		 * as SRC uses period value to calculate its internal buffers,
 		 * it must be done here, right after setting sink parameters
+		 *
+		 * calculate period using 64bit integer to avoid overflows
 		 */
-		dev->period = 1000000 * sink_get_min_free_space(sink) /
+		dev->period = 1000000ULL * sink_get_min_free_space(sink) /
 			      (sink_get_frame_bytes(sink) * sink_get_rate(sink));
 		/* align down period to LL cycle time */
 		dev->period /= LL_TIMER_PERIOD_US;
