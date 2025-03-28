@@ -68,6 +68,7 @@ struct pipeline {
 	int32_t xrun_bytes;		/* last xrun length */
 	uint32_t status;		/* pipeline status */
 	struct tr_ctx tctx;		/* trace settings */
+	bool expect_eos;		/* pipeline is expecting end of stream */
 
 	/* scheduling */
 	struct task *pipe_task;		/* pipeline processing task */
