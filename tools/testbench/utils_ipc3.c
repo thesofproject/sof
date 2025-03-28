@@ -24,8 +24,6 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 {
 	struct ll_schedule_domain domain = {0};
 
-	domain.next_tick = tp->tick_period_us;
-
 	/* init components */
 	sys_comp_init(sof);
 	sys_comp_selector_init();
@@ -423,6 +421,17 @@ int tb_set_up_all_pipelines(struct testbench_prm *tp)
 		return ret;
 	}
 
+	return 0;
+}
+
+/* No support in IPC3 version */
+int tb_set_enum_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params)
+{
+	return 0;
+}
+
+int tb_set_mixer_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params)
+{
 	return 0;
 }
 
