@@ -7,14 +7,14 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/__assert.h>
 
-LOG_MODULE_REGISTER(dram_debug, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_REGISTER(dbg_path, CONFIG_SOF_LOG_LEVEL);
 
 static struct k_spinlock hot_path_lock;
 static unsigned int hot_path_depth;
 static const char *cold_path_fn;
 static bool hot_path_confirmed;
 
-void mem_cold_path_enter(const char *fn)
+void dbg_path_cold_enter(const char *fn)
 {
 	k_spinlock_key_t key = k_spin_lock(&hot_path_lock);
 
@@ -22,9 +22,9 @@ void mem_cold_path_enter(const char *fn)
 
 	k_spin_unlock(&hot_path_lock, key);
 }
-EXPORT_SYMBOL(mem_cold_path_enter);
+EXPORT_SYMBOL(dbg_path_cold_enter);
 
-void mem_hot_path_start_watching(void)
+void dbg_path_hot_start_watching(void)
 {
 	k_spinlock_key_t key = k_spin_lock(&hot_path_lock);
 
@@ -36,7 +36,7 @@ void mem_hot_path_start_watching(void)
 	k_spin_unlock(&hot_path_lock, key);
 }
 
-void mem_hot_path_confirm(void)
+void dbg_path_hot_confirm(void)
 {
 	k_spinlock_key_t key = k_spin_lock(&hot_path_lock);
 
@@ -45,7 +45,7 @@ void mem_hot_path_confirm(void)
 	k_spin_unlock(&hot_path_lock, key);
 }
 
-void mem_hot_path_stop_watching(void)
+void dbg_path_hot_stop_watching(void)
 {
 	bool underrun, error;
 	k_spinlock_key_t key = k_spin_lock(&hot_path_lock);

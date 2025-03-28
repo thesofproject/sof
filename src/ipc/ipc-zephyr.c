@@ -217,14 +217,14 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct ipc_cmd_hdr *hdr;
 
-	mem_hot_path_start_watching();
+	dbg_path_hot_start_watching();
 
 	hdr = ipc_compact_read_msg();
 
 	/* perform command */
 	ipc_cmd(hdr);
 
-	mem_hot_path_stop_watching();
+	dbg_path_hot_stop_watching();
 
 	if (ipc->task_mask & IPC_TASK_POWERDOWN ||
 	    ipc_get()->pm_prepare_D3) {

@@ -484,7 +484,7 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 	 * mem_hot_path_start_watching() - mem_hot_path_stop_watching()
 	 * brackets, the latter will generate an error / trigger a panic.
 	 */
-	mem_hot_path_confirm();
+	dbg_path_hot_confirm();
 
 	/* trigger the component */
 	ret = pipeline_trigger(host->cd->pipeline, host->cd, cmd);
