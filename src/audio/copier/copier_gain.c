@@ -4,6 +4,7 @@
 //
 // Author: Ievgen Ganakov <ievgen.ganakov@intel.com>
 
+#include <sof/lib/memory.h>
 #include <sof/trace/trace.h>
 #include <ipc4/base-config.h>
 #include <sof/audio/component_ext.h>
@@ -15,10 +16,8 @@
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
-int copier_gain_set_params(struct comp_dev *dev,
-			   struct copier_gain_params *gain_params,
-			   uint32_t fade_period,
-			   enum sof_ipc_dai_type dai_type)
+__cold int copier_gain_set_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
+				  uint32_t fade_period, enum sof_ipc_dai_type dai_type)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
@@ -26,6 +25,8 @@ int copier_gain_set_params(struct comp_dev *dev,
 	uint32_t sampling_freq = ipc4_cfg->audio_fmt.sampling_frequency;
 	uint32_t frames = sampling_freq / dev->pipeline->period;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* Set basic gain parameters */
 	copier_gain_set_basic_params(dev, gain_params, ipc4_cfg);
