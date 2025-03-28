@@ -25,9 +25,13 @@ if(zephyr) ###  Zephyr ###
 		zephyr_library_import(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
 	endif()
 
-	zephyr_include_directories_ifdef(CONFIG_INTEL_MODULES
+	zephyr_include_directories_ifdef(CONFIG_LIBRARY_MANAGER
 		${SOF_SRC_PATH}/include/sof/audio/module_adapter/iadk/
 		${SOF_SRC_PATH}/include/sof/audio/module_adapter/library/
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
+		library/native_system_agent.c
 	)
 
 	zephyr_library_sources_ifdef(CONFIG_INTEL_MODULES
@@ -35,7 +39,6 @@ if(zephyr) ###  Zephyr ###
 		iadk/module_initial_settings_concrete.cpp
 		iadk/iadk_module_adapter.cpp
 		iadk/system_agent.cpp
-		library/native_system_agent.c
 		library/native_system_service.c
 	)
 
