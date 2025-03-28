@@ -18,6 +18,7 @@
 #include <sof/audio/source_api.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
@@ -138,8 +139,10 @@ static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 	unsigned int period = UINT32_MAX;
 
 	for (int i = 0; i < mod->num_of_sinks; i++) {
-		/* calculate time required the module to provide OBS data portion - a period */
-		unsigned int sink_period = 1000000 * sink_get_min_free_space(mod->sinks[i]) /
+		/* calculate time required the module to provide OBS data portion - a period
+		 * use 64bit integers to avoid overflows
+		 */
+		unsigned int sink_period = 1000000ULL * sink_get_min_free_space(mod->sinks[i]) /
 					   (sink_get_frame_bytes(mod->sinks[i]) *
 					   sink_get_rate(mod->sinks[i]));
 		/* note the minimal period for the module */
@@ -198,9 +201,21 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * but events and therefore don't have any deadline for processing
 	 * Second example is a module with variable data rate on output (like MPEG encoder)
 	 */
-	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && !dev->period) {
-		module_adapter_calculate_dp_period(dev);
-		comp_info(dev, "DP Module period set to %u", dev->period);
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		/* calculate DP period if a module didn't */
+		if (!dev->period)
+			module_adapter_calculate_dp_period(dev);
+
+		if (dev->period < LL_TIMER_PERIOD_US) {
+			comp_err(dev, "DP Module period too short (%u us), must be at least 1LL cycle (%llu us)",
+				 dev->period, LL_TIMER_PERIOD_US);
+			return -EINVAL;
+		}
+
+		/* align down period to LL cycle time */
+		dev->period /= LL_TIMER_PERIOD_US;
+		dev->period *= LL_TIMER_PERIOD_US;
+		comp_info(dev, "DP Module period set to %u us", dev->period);
 	}
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
