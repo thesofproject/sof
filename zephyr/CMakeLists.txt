@@ -134,8 +134,6 @@ cmake_path(SET sof_top_dir NORMALIZE "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(SOF_SRC_PATH "${sof_top_dir}/src")
 
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
-set(SOF_AUDIO_PATH "${SOF_SRC_PATH}/audio")
-set(SOF_AUDIO_MODULES_PATH "${SOF_SRC_PATH}/audio/module_adapter/module")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
 set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
@@ -511,12 +509,6 @@ zephyr_library_sources_ifdef(CONFIG_SAMPLE_KEYPHRASE
 	${SOF_SAMPLES_PATH}/audio/detect_test.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_COMP_MODULE_ADAPTER
-	${SOF_AUDIO_PATH}/module_adapter/module_adapter.c
-	${SOF_AUDIO_PATH}/module_adapter/module_adapter_${ipc_suffix}.c
-	${SOF_AUDIO_PATH}/module_adapter/module/generic.c
-)
-
 zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 	${SOF_SRC_PATH}/library_manager/lib_manager.c
 	${SOF_SRC_PATH}/library_manager/lib_notification.c
@@ -528,135 +520,6 @@ zephyr_library_sources_ifdef(CONFIG_LIBRARY_MANAGER
 )
 endif()
 
-zephyr_include_directories_ifdef(CONFIG_INTEL_MODULES
-	${SOF_SRC_PATH}/include/sof/audio/module_adapter/iadk/
-	${SOF_SRC_PATH}/include/sof/audio/module_adapter/library/
-)
-
-zephyr_library_sources_ifdef(CONFIG_INTEL_MODULES
-	${SOF_AUDIO_PATH}/module_adapter/module/modules.c
-	${SOF_AUDIO_PATH}/module_adapter/iadk/module_initial_settings_concrete.cpp
-	${SOF_AUDIO_PATH}/module_adapter/iadk/iadk_module_adapter.cpp
-	${SOF_AUDIO_PATH}/module_adapter/iadk/system_agent.cpp
-	${SOF_AUDIO_PATH}/module_adapter/library/native_system_agent.c
-	${SOF_AUDIO_PATH}/module_adapter/library/native_system_service.c
-)
-
-if (CONFIG_COMP_MODULE_ADAPTER)
-zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC
-	${SOF_AUDIO_PATH}/module_adapter/module/cadence.c
-)
-
-if (CONFIG_CADENCE_CODEC_MP3_DEC)
-zephyr_library_import(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
-endif()
-
-if (CONFIG_CADENCE_CODEC_MP3_ENC)
-zephyr_library_import(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
-endif()
-
-if (CONFIG_CADENCE_CODEC_AAC_DEC)
-zephyr_library_import(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
-	${SOF_AUDIO_MODULES_PATH}/passthrough.c
-)
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM
-	${SOF_AUDIO_PATH}/smart_amp/smart_amp.c
-	${SOF_AUDIO_PATH}/smart_amp/smart_amp_generic.c
-	${SOF_AUDIO_PATH}/smart_amp/smart_amp_maxim_dsm.c
-)
-
-zephyr_include_directories_ifdef(CONFIG_MAXIM_DSM
-	${SOF_AUDIO_PATH}/smart_amp/include/dsm_api/inc/
-)
-
-zephyr_library_sources_ifdef(CONFIG_MAXIM_DSM_STUB
-	${SOF_AUDIO_PATH}/smart_amp/maxim_dsm_stub.c
-)
-
-if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/google/llext_rtc
-			 ${PROJECT_BINARY_DIR}/google_rtc_audio_processing_llext)
-	add_dependencies(app google_rtc_audio_processing)
-elseif(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/google/google_rtc_audio_processing.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK
-		${SOF_AUDIO_PATH}/google/google_rtc_audio_processing_mock.c
-	)
-
-	if(NOT CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK)
-		zephyr_include_directories(../third_party/include)
-		target_link_directories(SOF INTERFACE ../third_party/lib)
-		target_link_libraries(SOF INTERFACE google_rtc_audio_processing)
-		target_link_libraries(SOF INTERFACE c++)
-		target_link_libraries(SOF INTERFACE c++abi)
-		target_link_libraries(SOF INTERFACE m)
-		target_link_libraries(SOF INTERFACE c)
-		target_link_libraries(SOF INTERFACE gcc)
-	endif()
-endif()
-
-if(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/google/llext_ctc
-			 ${PROJECT_BINARY_DIR}/google_ctc_audio_processing_llext)
-	add_dependencies(app google_ctc_audio_processing)
-elseif(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/google/google_ctc_audio_processing.c
-		${SOF_AUDIO_PATH}/google/google_ctc_audio_processing_${ipc_suffix}.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_GOOGLE_CTC_AUDIO_PROCESSING_MOCK
-		${SOF_AUDIO_PATH}/google/google_ctc_audio_processing_mock.c
-	)
-
-	if(NOT CONFIG_GOOGLE_CTC_AUDIO_PROCESSING_MOCK)
-		zephyr_include_directories(../third_party/include)
-		target_link_directories(SOF INTERFACE ../third_party/lib)
-		target_link_libraries(SOF INTERFACE google_ctc_audio_processing)
-		target_link_libraries(SOF INTERFACE c++)
-		target_link_libraries(SOF INTERFACE c++abi)
-		target_link_libraries(SOF INTERFACE m)
-		target_link_libraries(SOF INTERFACE c)
-		target_link_libraries(SOF INTERFACE gcc)
-	endif()
-endif()
-
-if(CONFIG_COMP_IGO_NR STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/igo_nr/llext
-			 ${PROJECT_BINARY_DIR}/igo_nr_llext)
-	add_dependencies(app igo_nr)
-elseif(CONFIG_COMP_IGO_NR)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/igo_nr/igo_nr.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_COMP_IGO_NR_STUB
-		${SOF_AUDIO_PATH}/igo_nr/igo_nr_stub.c
-	)
-endif()
-
-if(CONFIG_COMP_RTNR STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/rtnr/llext
-			 ${PROJECT_BINARY_DIR}/rtnr_llext)
-	add_dependencies(app rtnr)
-elseif(CONFIG_COMP_RTNR)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/rtnr/rtnr.c
-	)
-
-	zephyr_library_sources_ifdef(CONFIG_COMP_RTNR_STUB
-		${SOF_AUDIO_PATH}/rtnr/rtnr_stub.c
-	)
-endif()
-
 if(CONFIG_SAMPLE_SMART_AMP STREQUAL "m")
 	add_subdirectory(${SOF_SAMPLES_PATH}/audio/smart_amp_test_llext
 			 ${PROJECT_BINARY_DIR}/smart_amp_test_llext)
@@ -665,45 +528,6 @@ elseif(CONFIG_SAMPLE_SMART_AMP)
 	zephyr_library_sources(
 		${SOF_SAMPLES_PATH}/audio/smart_amp_test_${ipc_suffix}.c
 	)
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_COMP_GOOGLE_HOTWORD_DETECT
-	${SOF_AUDIO_PATH}/google/google_hotword_detect.c
-)
-
-if(CONFIG_DTS_CODEC STREQUAL "m")
-	add_subdirectory(${SOF_AUDIO_PATH}/codec/dts/llext
-			 ${PROJECT_BINARY_DIR}/dts_llext)
-	add_dependencies(app dts)
-elseif(CONFIG_DTS_CODEC)
-	zephyr_library_sources(
-		${SOF_AUDIO_PATH}/codec/dts/dts.c
-	)
-	if (CONFIG_DTS_CODEC_STUB)
-		zephyr_library_sources(
-			${SOF_AUDIO_PATH}/codec/dts/dts_stub.c
-		)
-	else()
-		zephyr_library_import(DtsCodec
-			${sof_top_dir}/third_party/lib/libdts-sof-interface-i32.a)
-	endif()
-endif()
-
-if(CONFIG_WAVES_CODEC)
-	set(WAVES_DIR ${SOF_AUDIO_PATH}/module_adapter/module/waves)
-	if(CONFIG_WAVES_CODEC STREQUAL "m")
-		add_subdirectory(${WAVES_DIR}/llext ${PROJECT_BINARY_DIR}/waves_llext)
-		add_dependencies(app waves)
-	else()
-		zephyr_library_sources(${WAVES_DIR}/waves.c)
-		if(CONFIG_WAVES_CODEC_STUB)
-			zephyr_library_sources_ifdef(CONFIG_WAVES_CODEC_STUB
-						     ${WAVES_DIR}/maxx_stub.c)
-		else()
-			zephyr_library_import(waves_codec
-				${sof_top_dir}/third_party/lib/libMaxxChrome.a)
-		endif()
-	endif()
 endif()
 
 if(CONFIG_PROBE STREQUAL "m")
@@ -736,10 +560,6 @@ zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
 
 zephyr_library_sources_ifdef(CONFIG_SHELL
        sof_shell.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_INTEL_ADSP_MIC_PRIVACY
-	${SOF_AUDIO_PATH}/mic_privacy_manager/mic_privacy_manager_intel.c
 )
 
 zephyr_library_link_libraries(SOF)
