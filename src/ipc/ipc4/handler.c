@@ -300,8 +300,6 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 
 			tr_dbg(&ipc_tr, "pipeline %d: set params", ppl_icd->id);
 			ret = ipc4_pcm_params(host);
-			if (ret < 0)
-				return IPC4_INVALID_REQUEST;
 			break;
 		default:
 			ipc_cmd_err(&ipc_tr,
@@ -315,9 +313,6 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		case COMP_STATE_INIT:
 			tr_dbg(&ipc_tr, "pipeline %d: reset from init", ppl_icd->id);
 			ret = ipc4_pipeline_complete(ipc, ppl_icd->id, cmd);
-			if (ret < 0)
-				ret = IPC4_INVALID_REQUEST;
-
 			break;
 		case COMP_STATE_READY:
 		case COMP_STATE_ACTIVE:
@@ -337,9 +332,6 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		case COMP_STATE_INIT:
 			tr_dbg(&ipc_tr, "pipeline %d: pause from init", ppl_icd->id);
 			ret = ipc4_pipeline_complete(ipc, ppl_icd->id, cmd);
-			if (ret < 0)
-				ret = IPC4_INVALID_REQUEST;
-
 			break;
 		default:
 			/* No action needed */
@@ -360,6 +352,8 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		return IPC4_INVALID_REQUEST;
 	}
 
+	if (ret < 0)
+		return IPC4_INVALID_REQUEST;
 	return ret;
 }
 
