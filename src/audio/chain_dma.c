@@ -18,6 +18,7 @@
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <ipc4/error_status.h>
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>
@@ -390,9 +391,11 @@ static int chain_task_pause(struct comp_dev *dev)
 	return ret;
 }
 
-static void chain_release(struct comp_dev *dev)
+__cold static void chain_release(struct comp_dev *dev)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 	dma_release_channel(cd->chan_host->dma->z_dev, cd->chan_host->index);
 	sof_dma_put(cd->dma_host);
@@ -406,11 +409,13 @@ static void chain_release(struct comp_dev *dev)
 }
 
 /* Retrieves host connector node id from dma id */
-static int get_connector_node_id(uint32_t dma_id, bool host_type,
-				 union ipc4_connector_node_id *connector_node_id)
+__cold static int get_connector_node_id(uint32_t dma_id, bool host_type,
+					union ipc4_connector_node_id *connector_node_id)
 {
 	uint32_t max_out, max_in;
 	uint8_t type, type2;
+
+	assert_can_be_cold();
 
 	if (host_type) {
 		type = ipc4_hda_host_output_class;
@@ -437,7 +442,7 @@ static int get_connector_node_id(uint32_t dma_id, bool host_type,
 	return 0;
 }
 
-static int chain_init(struct comp_dev *dev, void *addr, size_t length)
+__cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	struct dma_block_config *dma_block_cfg_host = &cd->dma_block_cfg_host;
@@ -446,6 +451,8 @@ static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 	struct dma_config *dma_cfg_link = &cd->z_config_link;
 	int channel;
 	int err;
+
+	assert_can_be_cold();
 
 	memset(dma_cfg_host, 0, sizeof(*dma_cfg_host));
 	memset(dma_block_cfg_host, 0, sizeof(*dma_block_cfg_host));
@@ -520,8 +527,8 @@ error_host:
 	return err;
 }
 
-static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t link_dma_id,
-		    uint32_t fifo_size)
+__cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t link_dma_id,
+				  uint32_t fifo_size)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	uint32_t addr_align;
@@ -529,6 +536,8 @@ static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t li
 	void *buff_addr;
 	uint32_t dir;
 	int ret;
+
+	assert_can_be_cold();
 
 	ret = get_connector_node_id(host_dma_id, true, &cd->host_connector_node_id);
 	if (ret < 0)
@@ -643,9 +652,9 @@ static int chain_task_trigger(struct comp_dev *dev, int cmd)
 	}
 }
 
-static struct comp_dev *chain_task_create(const struct comp_driver *drv,
-					  const struct comp_ipc_config *ipc_config,
-					  const void *ipc_specific_config)
+__cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
+						 const struct comp_ipc_config *ipc_config,
+						 const void *ipc_specific_config)
 {
 	const struct ipc4_chain_dma *cdma = (struct ipc4_chain_dma *)ipc_specific_config;
 	const uint32_t host_dma_id = cdma->primary.r.host_dma_id;
@@ -655,6 +664,8 @@ static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 	struct chain_dma_data *cd;
 	struct comp_dev *dev;
 	int ret;
+
+	assert_can_be_cold();
 
 	if (host_dma_id >= max_chain_number)
 		return NULL;
@@ -694,9 +705,11 @@ error:
 	return NULL;
 }
 
-static void chain_task_free(struct comp_dev *dev)
+__cold static void chain_task_free(struct comp_dev *dev)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
 
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	ipc_msg_free(cd->msg_xrun);
