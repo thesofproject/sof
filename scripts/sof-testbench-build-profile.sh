@@ -9,18 +9,28 @@ usage() {
     echo "  -h shows this text"
     echo "  -p <platform> sets platform for scripts/rebuild-testbench.sh"
     echo
+    echo "This script must be run from the sof firmware toplevel or workspace directory"
 }
 
 MODULES_S32="asrc dcblock drc drc_multiband eqfir eqiir gain src tdfb"
 MODULES_S24="aria"
 
-if [ -z "${SOF_WORKSPACE}" ]; then
-    echo "Error: environment variable SOF_WORKSPACE need to be set to top level sof directory"
+
+# check if we are in the sof FW directory
+if [ -f "Kconfig.sof" ]; then
+    # now got to parent sof workspace directory
+    cd ..
+fi
+
+# check we are in the workspace directory
+if [ ! -d "sof" ]; then
+    echo "Error: This script must be run from the sof firmware toplevel or workspace directory"
     exit 1
 fi
 
+#set default values
 PLATFORM=none
-PDIR=$SOF_WORKSPACE/sof/tools/testbench/profile
+PDIR=$PWD/testbench/profile
 
 while getopts "hp:d:" opt; do
     case "${opt}" in
@@ -43,7 +53,7 @@ done
 shift $((OPTIND-1))
 
 # Build
-SCRIPTS=$SOF_WORKSPACE/sof/scripts
+SCRIPTS=$PWD/sof/scripts
 mkdir -p "$PDIR"
 "$SCRIPTS"/rebuild-testbench.sh -p "$PLATFORM"
 HELPER="$SCRIPTS"/sof-testbench-helper.sh
