@@ -313,12 +313,12 @@ static void schedule_ll_tasks_run(void *data)
 
 	perf_cnt_init(&sch->pcd);
 
+	notifier_event(sch, NOTIFIER_ID_LL_PRE_RUN,
+		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
+
 	/* run tasks if there are any pending */
 	if (schedule_ll_is_pending(sch))
 		schedule_ll_tasks_execute(sch);
-
-	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
-		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 
 	perf_cnt_stamp(&sch->pcd, perf_ll_sched_trace, 0 /* ignored */);
 	perf_cnt_average(&sch->pcd, perf_avg_ll_sched_trace, 0 /* ignored */);

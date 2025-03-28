@@ -176,6 +176,9 @@ static void zephyr_ll_run(void *data)
 	struct list_item *list, *tmp, task_head = LIST_INIT(task_head);
 	uint32_t flags;
 
+	notifier_event(sch, NOTIFIER_ID_LL_PRE_RUN,
+		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
+
 	zephyr_ll_lock(sch, &flags);
 
 	/*
@@ -185,7 +188,6 @@ static void zephyr_ll_run(void *data)
 	 * always consistent and contains the tasks, that we haven't run in this
 	 * cycle yet.
 	 */
-
 	for (list = sch->tasks.next; !list_is_empty(&sch->tasks); list = sch->tasks.next) {
 		enum task_state state;
 		struct zephyr_ll_pdata *pdata;
@@ -247,9 +249,6 @@ static void zephyr_ll_run(void *data)
 	}
 
 	zephyr_ll_unlock(sch, &flags);
-
-	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
-		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 }
 
 static void schedule_ll_callback(void *data)
