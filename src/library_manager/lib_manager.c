@@ -485,7 +485,6 @@ const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t modu
 					       SOF_MAN_MODULE_OFFSET(entry_index));
 }
 
-#if CONFIG_INTEL_MODULES
 /*
  * \brief Load module code, allocate its instance and create a module adapter component.
  * \param[in] drv - component driver pointer.
@@ -584,7 +583,9 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 	drv->ops.dai_ts_start = module_adapter_ts_start_op;
 	drv->ops.dai_ts_stop = module_adapter_ts_stop_op;
 	drv->ops.dai_ts_get = module_adapter_ts_get_op;
+#if CONFIG_INTEL_MODULES
 	drv->adapter_ops = &processing_module_adapter_interface;
+#endif
 }
 
 int lib_manager_register_module(const uint32_t component_id)
@@ -649,7 +650,8 @@ int lib_manager_register_module(const uint32_t component_id)
 			build_info->format);
 
 		/* Check if module is IADK */
-		if (build_info->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
+		if (IS_ENABLED(CONFIG_INTEL_MODULES) &&
+		    build_info->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
 		    build_info->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
 			/* Use module_adapter functions */
 			drv->ops.create = module_adapter_new;
@@ -678,14 +680,6 @@ cleanup:
 
 	return ret;
 }
-
-#else /* CONFIG_INTEL_MODULES */
-int lib_manager_register_module(const uint32_t component_id)
-{
-	tr_err(&lib_manager_tr, "Dynamic module loading is not supported");
-	return -ENOTSUP;
-}
-#endif /* CONFIG_INTEL_MODULES */
 
 static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
 					uint32_t size)
