@@ -14,6 +14,7 @@
 #include <ipc4/base_fw.h>
 #include <ipc4/error_status.h>
 #include <ipc4/logging.h>
+#include <rtos/kernel.h>
 #if !CONFIG_LIBRARY
 #include <zephyr/logging/log_backend.h>
 #include <zephyr/logging/log.h>
@@ -51,19 +52,18 @@ LOG_MODULE_REGISTER(mtrace, CONFIG_SOF_LOG_LEVEL);
  */
 #define IPC4_MTRACE_AGING_TIMER_MIN_MS 100
 
-SOF_DEFINE_REG_UUID(mtrace_task);
-
 static uint64_t mtrace_notify_last_sent;
 
 static uint32_t mtrace_bytes_pending;
 
 static uint32_t mtrace_aging_timer = IPC4_MTRACE_NOTIFY_AGING_TIMER_MS;
 
-struct task mtrace_task;
-
 #define MTRACE_IPC_CORE	PLATFORM_PRIMARY_CORE_ID
 
-static void mtrace_log_hook(size_t written, size_t space_left)
+static struct k_mutex log_mutex;
+static struct k_work_delayable log_work;
+
+static void mtrace_log_hook_unlocked(size_t written, size_t space_left)
 {
 	uint64_t delta;
 
@@ -84,23 +84,33 @@ static void mtrace_log_hook(size_t written, size_t space_left)
 		ipc_send_buffer_status_notify();
 		mtrace_notify_last_sent = k_uptime_get();
 		mtrace_bytes_pending = 0;
+	} else if (mtrace_bytes_pending) {
+		k_work_schedule_for_queue(&ipc_get()->ipc_send_wq, &log_work,
+					  K_MSEC(mtrace_aging_timer - delta));
 	}
 }
 
-static enum task_state mtrace_task_run(void *data)
+static void mtrace_log_hook(size_t written, size_t space_left)
 {
+	k_mutex_lock(&log_mutex, K_FOREVER);
+
+	mtrace_log_hook_unlocked(written, space_left);
+
+	k_mutex_unlock(&log_mutex);
+}
+
+static void log_work_handler(struct k_work *work)
+{
+	k_mutex_lock(&log_mutex, K_FOREVER);
+
 	if (k_uptime_get() - mtrace_notify_last_sent >= mtrace_aging_timer &&
 	    mtrace_bytes_pending)
-		mtrace_log_hook(0, 0);
+		mtrace_log_hook_unlocked(0, 0);
 
-	/* task will be re-run based on mtrace_task_deadline() */
-	return SOF_TASK_STATE_RESCHEDULE;
+	k_mutex_unlock(&log_mutex);
 }
 
-static uint64_t mtrace_task_deadline(void *data)
-{
-	return k_uptime_ticks() + k_ms_to_ticks_ceil64(mtrace_aging_timer);
-}
+static struct k_work_sync ipc4_log_work_sync;
 
 int ipc4_logging_enable_logs(bool first_block,
 			     bool last_block,
@@ -109,11 +119,6 @@ int ipc4_logging_enable_logs(bool first_block,
 {
 	const struct log_backend *log_backend = log_backend_adsp_mtrace_get();
 	const struct ipc4_log_state_info *log_state;
-	struct task_ops ops = {
-		.run = mtrace_task_run,
-		.get_deadline = mtrace_task_deadline,
-		.complete = NULL,
-	};
 
 	if (!(first_block && last_block)) {
 		LOG_ERR("log_state data is expected to be sent as one chunk");
@@ -136,6 +141,9 @@ int ipc4_logging_enable_logs(bool first_block,
 	if (log_state->enable) {
 		adsp_mtrace_log_init(mtrace_log_hook);
 
+		k_mutex_init(&log_mutex);
+		k_work_init_delayable(&log_work, log_work_handler);
+
 		log_backend_activate(log_backend, mtrace_log_hook);
 
 		mtrace_aging_timer = log_state->aging_timer_period;
@@ -144,14 +152,10 @@ int ipc4_logging_enable_logs(bool first_block,
 			LOG_WRN("Too small aging timer value, limiting to %u\n",
 				mtrace_aging_timer);
 		}
-
-		schedule_task_init_edf(&mtrace_task, SOF_UUID(mtrace_task_uuid),
-				       &ops, NULL, MTRACE_IPC_CORE, 0);
-		schedule_task(&mtrace_task, mtrace_aging_timer * 1000, 0);
 	} else  {
+		k_work_flush_delayable(&log_work, &ipc4_log_work_sync);
 		adsp_mtrace_log_init(NULL);
 		log_backend_deactivate(log_backend);
-		schedule_task_cancel(&mtrace_task);
 	}
 
 	return 0;
@@ -208,9 +212,7 @@ int ipc4_logging_enable_logs(bool first_block,
 
 int ipc4_logging_shutdown(void)
 {
-	struct ipc4_log_state_info log_state = { 0 };
-
-	/* log_state.enable set to 0 above */
+	struct ipc4_log_state_info log_state = { .enable = 0, };
 
 	return ipc4_logging_enable_logs(true, true, sizeof(log_state), (char *)&log_state);
 }
