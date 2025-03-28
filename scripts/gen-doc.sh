@@ -6,8 +6,10 @@
 # According to instructions:
 # https://thesofproject.github.io/latest/howtos/process/docbuild.html
 
-# fail immediately on any errors
-set -e
+# this needs to run from the Zephyr python virtual environment
+# so that the python packages are available (and more up to date than
+# the system packages).
+source ~/zephyrproject/.venv/bin/activate
 
 function print_usage()
 {
@@ -21,11 +23,11 @@ function print_usage()
 # make it runnable from any location
 # user shouldn't be confused from which dir this script has to be run
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-
 # expected paths of repositories needed for documentation process
 SOF_REPO=$(dirname "$SCRIPT_DIR")
 DOCS_REPO="$(dirname "$SOF_REPO")/sof-docs"
 PUBLISH_REPO="$(dirname "$SOF_REPO")/thesofproject.github.io"
+BUILD_DIR="$(dirname "$SOF_REPO")/build-sof-docs"
 
 # parse arguments
 DO_BUILD=false
@@ -73,12 +75,10 @@ then
 	fi
 fi
 
-cd "$SOF_REPO/doc"
-
 if "$DO_CLEAN"
 then
 	echo "Cleaning $SOF_REPO"
-	cmake .
+	cd ${BUILD_DIR}
 	make clean
 	make doc-clean
 fi
@@ -86,7 +86,8 @@ fi
 if "$DO_BUILD"
 then
 	echo "Building $SOF_REPO"
-	cmake .
+	cd "$SOF_REPO/doc"
+	cmake -S . -B ${BUILD_DIR}
 	make doc
 fi
 
@@ -133,3 +134,6 @@ then
 	cd "$DOCS_REPO"
 	make publish
 fi
+
+# cleanup
+deactivate
