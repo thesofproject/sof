@@ -5,7 +5,7 @@ if(BUILD_LIBRARY)
   return()
 endif()
 
-set(base_files numbers.c)
+set(base_files numbers.c gcc-builtins.c)
 
 if(CONFIG_CORDIC_FIXED)
   list(APPEND base_files trig.c)
