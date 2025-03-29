@@ -48,7 +48,7 @@ previously added LLEXT module for the establishment of a dependency chain."
 # Build an LLEXT module. Provice a module name, a list of sources and an address
 # of the .text section as arguments.
 function(sof_llext_build module)
-	set(multi_args SOURCES)
+	set(multi_args SOURCES INCLUDES CFLAGS LIBS LIBS_PATH)
 	set(single_args LIB)
 	cmake_parse_arguments(PARSE_ARGV 1 SOF_LLEXT "${options}" "${single_args}" "${multi_args}")
 
@@ -69,6 +69,22 @@ function(sof_llext_build module)
 		"${SOF_BASE}/tools/rimage/src/include"
 	)
 
+	target_include_directories(${module}_llext_lib PRIVATE
+		"${SOF_LLEXT_INCLUDES}"
+	)
+
+	target_compile_options(${module}_llext_lib PRIVATE
+		"${SOF_LLEXT_CFLAGS}"
+	)
+
+	target_link_libraries(${module}_llext_lib PRIVATE
+		"${SOF_LLEXT_LIBS}"
+	)
+
+	foreach(lib ${SOF_LLEXT_LIBS})
+		set(EXTRA_LIBS ${EXTRA_LIBS} -l${lib})
+	endforeach()
+
 	sof_append_relative_path_definitions(${module}_llext_lib)
 
 	add_llext_command(TARGET ${module}
@@ -85,6 +101,11 @@ function(sof_llext_build module)
 	else()
 		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared)
 	endif()
+
+	foreach(path ${SOF_LLEXT_LIBS_PATH})
+		llext_link_options(${module} -L${path})
+		set(EXTRA_LINKER_PARAMS ${EXTRA_LINKER_PARAMS} -L${path})
+	endforeach()
 
 	get_target_property(proc_in_file ${module} lib_output)
 	get_target_property(proc_out_file ${module} pkg_input)
@@ -109,7 +130,7 @@ function(sof_llext_build module)
 			--text-addr=${CONFIG_LIBRARY_BASE_ADDRESS}
 			-c $<TARGET_PROPERTY:bintools,elfconvert_command>
 			-f ${proc_in_file} -o ${proc_out_file} ${CMAKE_C_COMPILER} --
-			${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib>
+			${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib> ${EXTRA_LIBS}
 	)
 
 	add_llext_command(TARGET ${module}
