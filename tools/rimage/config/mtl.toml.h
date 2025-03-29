@@ -154,5 +154,9 @@
 #include <audio/mfcc/mfcc.toml>
 #endif
 
+#if defined(CONFIG_COMP_TFMICRO) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/tfmicro/tfmicro.toml>
+#endif
+
 [module]
 count = __COUNTER__
