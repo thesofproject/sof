@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_TENSORFLOW
+	tristate "Tensorflow Micro component"
+	default n
+	depends on SOF_STAGING
+	depends on CPP
+	depends on STD_CPP17
+	help
+	  Select for Tensorflow component support. This module supports
+	  Tensorflow Micro library. It is used for running machine learning
+	  models on DSP. It is a lightweight version of Tensorflow library
+	  designed for microcontrollers and embedded systems.

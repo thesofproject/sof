@@ -143,6 +143,8 @@ rsource "asrc/Kconfig"
 
 rsource "tdfb/Kconfig"
 
+rsource "tensorflow/Kconfig"
+
 config COMP_MODULE_ADAPTER
 	bool "Module adapter"
 	default y
