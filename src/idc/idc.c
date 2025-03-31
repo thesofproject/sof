@@ -111,7 +111,6 @@ static void idc_ipc(void)
 	ipc_cmd(ipc->comp_data);
 }
 
-#if CONFIG_IPC_MAJOR_4
 static int idc_ipc4_bind(uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_dev;
@@ -159,7 +158,6 @@ static int idc_get_attribute(uint32_t comp_id)
 
 	return comp_get_attribute(ipc_dev->cd, get_attr_payload->type, get_attr_payload->value);
 }
-#endif	/* CONFIG_IPC_MAJOR_4 */
 
 /**
  * \brief Executes IDC component params message.
@@ -326,7 +324,6 @@ static int idc_comp_free(uint32_t comp_id)
  */
 static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 {
-#if CONFIG_IPC_MAJOR_4
 	struct ipc *ipc = ipc_get();
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
@@ -357,7 +354,6 @@ static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 		return ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
 	}
 
-#endif
 	return 0;
 }
 
@@ -425,7 +421,6 @@ void idc_cmd(struct idc_msg *msg)
 		idc_ipc();
 		dbg_path_hot_stop_watching();
 		break;
-#if CONFIG_IPC_MAJOR_4
 	case iTS(IDC_MSG_BIND):
 		ret = idc_ipc4_bind(msg->extension);
 		break;
@@ -438,7 +433,6 @@ void idc_cmd(struct idc_msg *msg)
 	case iTS(IDC_MSG_FREE):
 		ret = idc_comp_free(msg->extension);
 		break;
-#endif
 	case iTS(IDC_MSG_PARAMS):
 		ret = idc_params(msg->extension);
 		break;
