@@ -46,10 +46,6 @@ DECLARE_TR_CTX(idc_tr, SOF_UUID(idc_uuid), LOG_LEVEL_INFO);
 
 SOF_DEFINE_REG_UUID(idc_task);
 
-#ifndef __ZEPHYR__
-SOF_DEFINE_REG_UUID(idc_cmd_task);
-#endif
-
 /**
  * \brief Sets IDC command status after execution.
  * \param[in] status Status to be set.
@@ -476,43 +472,10 @@ void idc_cmd(struct idc_msg *msg)
 	idc_msg_status_set(ret, cpu_get_id());
 }
 
-#ifndef __ZEPHYR__
-static void idc_complete(void *data)
-{
-	struct ipc *ipc = ipc_get();
-	struct idc *idc = data;
-	uint32_t type = iTS(idc->received_msg.header);
-	k_spinlock_key_t key;
-
-#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
-	/* Increment performance counters */
-	io_perf_monitor_update_data(idc->io_perf_out_msg_count, 1);
-#endif
-
-	switch (type) {
-	case iTS(IDC_MSG_IPC):
-		/* Signal the host */
-		key = k_spin_lock(&ipc->lock);
-		ipc->task_mask &= ~IPC_TASK_SECONDARY_CORE;
-		ipc_complete_cmd(ipc);
-		k_spin_unlock(&ipc->lock, key);
-	}
-}
-#endif
-
 /* Runs on each CPU */
 int idc_init(void)
 {
 	struct idc **idc = idc_get();
-#ifndef __ZEPHYR__
-	struct task_ops ops = {
-		.run = idc_do_cmd,
-		.get_deadline = ipc_task_deadline,
-		.complete = idc_complete,
-	};
-
-	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
-#endif
 
 	tr_dbg(&idc_tr, "idc_init()");
 
@@ -532,16 +495,9 @@ int idc_init(void)
 #endif
 
 	/* process task */
-#ifndef __ZEPHYR__
-	schedule_task_init_edf(&(*idc)->idc_task, SOF_UUID(idc_cmd_task_uuid),
-			       &ops, *idc, cpu_get_id(), 0);
-
-	return platform_idc_init();
-#else
 	idc_init_thread();
 
 	return 0;
-#endif
 }
 
 int idc_restore(void)
@@ -556,10 +512,6 @@ int idc_restore(void)
 	 * memory has not been powered off).
 	 */
 	assert(*idc);
-
-#ifndef __ZEPHYR__
-	return platform_idc_restore();
-#endif
 
 	return 0;
 }
