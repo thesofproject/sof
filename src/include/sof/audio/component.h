@@ -640,10 +640,16 @@ struct comp_dev {
  * Get a pointer to the first comp_buffer object providing data to the component
  * The function will return NULL if there's no data provider
  */
-static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_dev *component)
+static inline struct sof_audio_buffer *Xcomp_dev_get_first_data_producer(struct comp_dev *component)
 {
 	return list_is_empty(&component->bsource_list) ? NULL :
-	       list_first_item(&component->bsource_list, struct comp_buffer, sink_list);
+	       list_first_item(&component->bsource_list, struct sof_audio_buffer, Xsink_list);
+}
+
+static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_dev *component)
+{
+	struct sof_audio_buffer *audio_buffer = Xcomp_dev_get_first_data_producer(component);
+	return comp_buffer_from_audio_buffer(audio_buffer);
 }
 
 /**
@@ -651,11 +657,18 @@ static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_d
  * The function will return NULL if there're no more data providers
  * _save version also checks if producer != NULL
  */
+static inline struct sof_audio_buffer *Xcomp_dev_get_next_data_producer(struct comp_dev *component,
+								        struct sof_audio_buffer *producer)
+{
+	return producer->Xsink_list.next == &component->bsource_list ? NULL :
+	       list_item(producer->Xsink_list.next, struct sof_audio_buffer, Xsink_list);
+	return NULL;
+}
 static inline struct comp_buffer *comp_dev_get_next_data_producer(struct comp_dev *component,
 								  struct comp_buffer *producer)
 {
-	return producer->sink_list.next == &component->bsource_list ? NULL :
-	       list_item(producer->sink_list.next, struct comp_buffer, sink_list);
+	struct sof_audio_buffer *audio_buffer = Xcomp_dev_get_next_data_producer(component, &producer->audio_buffer);
+	return comp_buffer_from_audio_buffer(audio_buffer);
 }
 
 static inline struct comp_buffer *comp_dev_get_next_data_producer_safe(struct comp_dev *component,
@@ -668,22 +681,36 @@ static inline struct comp_buffer *comp_dev_get_next_data_producer_safe(struct co
  * Get a pointer to the first comp_buffer object receiving data from the component
  * The function will return NULL if there's no data consumers
  */
-static inline struct comp_buffer *comp_dev_get_first_data_consumer(struct comp_dev *component)
+static inline struct sof_audio_buffer *Xcomp_dev_get_first_data_consumer(struct comp_dev *component)
 {
 	return list_is_empty(&component->bsink_list) ? NULL :
-	       list_first_item(&component->bsink_list, struct comp_buffer, source_list);
+	       list_first_item(&component->bsink_list, struct sof_audio_buffer, Xsource_list);
 }
+
+static inline struct comp_buffer *comp_dev_get_first_data_consumer(struct comp_dev *component)
+{
+	struct sof_audio_buffer *audio_buffer = Xcomp_dev_get_first_data_consumer(component);
+	return comp_buffer_from_audio_buffer(audio_buffer);
+}
+
 
 /**
  * Get a pointer to the next comp_buffer object receiving data from the component
  * The function will return NULL if there're no more data consumers
  * _safe version also checks if consumer is != NULL
  */
+static inline struct sof_audio_buffer *Xcomp_dev_get_next_data_consumer(struct comp_dev *component,
+								  struct sof_audio_buffer *consumer)
+{
+	return consumer->Xsource_list.next == &component->bsink_list ? NULL :
+			list_item(consumer->Xsource_list.next, struct sof_audio_buffer, Xsource_list);
+}
+
 static inline struct comp_buffer *comp_dev_get_next_data_consumer(struct comp_dev *component,
 								  struct comp_buffer *consumer)
 {
-	return consumer->source_list.next == &component->bsink_list ? NULL :
-			list_item(consumer->source_list.next, struct comp_buffer, source_list);
+	struct sof_audio_buffer *audio_buffer = Xcomp_dev_get_next_data_consumer(component, &consumer->audio_buffer);
+	return comp_buffer_from_audio_buffer(audio_buffer);
 }
 
 static inline struct comp_buffer *comp_dev_get_next_data_consumer_safe(struct comp_dev *component,
