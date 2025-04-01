@@ -97,29 +97,29 @@ fprintf(fh,'\n');
 fprintf(fh, '/* SRC table */\n');
 switch ctype
         case 'float'
-                fprintf(fh, 'const %s fir_one = 1.0;\n', vtype);
-                fprintf(fh, 'const struct src_stage src_double_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, 1.0, &fir_one };\n');
-                fprintf(fh, 'const struct src_stage src_double_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0, 0.0, &fir_one };\n');
+                fprintf(fh, 'static const %s fir_one = 1.0;\n', vtype);
+                fprintf(fh, 'static const struct src_stage src_double_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, 1.0, &fir_one };\n');
+                fprintf(fh, 'static const struct src_stage src_double_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0, 0.0, &fir_one };\n');
         case 'int16'
                 scale16 = 2^15;
-                fprintf(fh, 'const %s fir_one = %d;\n', vtype, round(scale16*0.5));
-                fprintf(fh, 'const struct src_stage src_int16_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
-                fprintf(fh, 'const struct src_stage src_int16_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
+                fprintf(fh, 'static const %s fir_one = %d;\n', vtype, round(scale16*0.5));
+                fprintf(fh, 'static const struct src_stage src_int16_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
+                fprintf(fh, 'static const struct src_stage src_int16_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
         case 'int24'
                 scale24 = 2^23;
-                fprintf(fh, 'const %s fir_one = %d;\n', vtype, round(scale24*0.5));
-                fprintf(fh, 'const struct src_stage src_int24_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
-                fprintf(fh, 'const struct src_stage src_int24_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
+                fprintf(fh, 'static const %s fir_one = %d;\n', vtype, round(scale24*0.5));
+                fprintf(fh, 'static const struct src_stage src_int24_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
+                fprintf(fh, 'static const struct src_stage src_int24_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
         case 'int32'
                 scale32 = 2^31;
-                fprintf(fh, 'const %s fir_one = %d;\n', vtype, round(scale32*0.5));
-                fprintf(fh, 'const struct src_stage src_int32_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
-                fprintf(fh, 'const struct src_stage src_int32_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
+                fprintf(fh, 'static const %s fir_one = %d;\n', vtype, round(scale32*0.5));
+                fprintf(fh, 'static const struct src_stage src_int32_1_1_0_0 =  { 0, 0, 1, 1, 1, 1, 1, 0, -1, &fir_one };\n');
+                fprintf(fh, 'static const struct src_stage src_int32_0_0_0_0 =  { 0, 0, 0, 0, 0, 0, 0, 0,  0, &fir_one };\n');
         otherwise
                 error('Unknown coefficient type!');
 end
 
-fprintf(fh, 'const int src_in_fs[%d] = {', n_in);
+fprintf(fh, 'static const int src_in_fs[%d] = {', n_in);
 j = 1;
 for i=1:n_in
         fprintf(fh, ' %d', fs_in(i));
@@ -134,7 +134,7 @@ for i=1:n_in
 end
 fprintf(fh, '};\n');
 
-fprintf(fh, 'const int src_out_fs[%d] = {', n_out);
+fprintf(fh, 'static const int src_out_fs[%d] = {', n_out);
 j = 1;
 for i=1:n_out
         fprintf(fh, ' %d', fs_out(i));
@@ -150,7 +150,7 @@ end
 fprintf(fh, '};\n');
 
 for n = 1:2
-        fprintf(fh, 'const struct src_stage * const src_table%d[%d][%d] = {\n', ...
+        fprintf(fh, 'static const struct src_stage * const src_table%d[%d][%d] = {\n', ...
                 n, n_out, n_in);
 	i = 1;
         for b = 1:n_out
