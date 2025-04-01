@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2022 Intel Corporation. All rights reserved.
+ * Copyright(c) 2025 Intel Corporation. All rights reserved.
  *
  */
 
@@ -13,10 +13,10 @@
 #define MAX_BLK_IN 80
 #define MAX_BLK_OUT 40
 #define NUM_IN_FS 16
-#define NUM_OUT_FS 10
+#define NUM_OUT_FS 13
 #define STAGE1_TIMES_MAX 32
 #define STAGE2_TIMES_MAX 32
 #define STAGE_BUF_SIZE 672
-#define NUM_ALL_COEFFICIENTS 69224
+#define NUM_ALL_COEFFICIENTS 70008
 
 #endif /* __SOF_AUDIO_COEFFICIENTS_SRC_SRC_IPC4_INT32_DEFINE_H__ */
