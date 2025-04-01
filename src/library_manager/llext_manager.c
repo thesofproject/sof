@@ -444,6 +444,7 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 			ctx->mod[n_mod].mapped = false;
 			ctx->mod[n_mod].llext = NULL;
 			ctx->mod[n_mod].ebl = NULL;
+			ctx->mod[n_mod].n_dependent = 0;
 			ctx->mod[n_mod++].start_idx = i;
 		}
 
@@ -589,10 +590,13 @@ static int llext_lib_find(const struct llext *llext, struct lib_manager_module *
 	return -ENOENT;
 }
 
+/* n can be -1 */
 static void llext_manager_depend_unlink_rollback(struct lib_manager_module *dep_ctx[], int n)
 {
 	for (; n >= 0; n--)
-		if (dep_ctx[n] && dep_ctx[n]->llext->use_count == 1)
+		if (!dep_ctx[n])
+			tr_err(&lib_manager_tr, "dependency %d NULL", n);
+		else if (!--dep_ctx[n]->n_dependent)
 			llext_manager_unload_module(dep_ctx[n]);
 }
 
@@ -643,22 +647,13 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 		struct lib_manager_module *dep_ctx[LLEXT_MAX_DEPENDENCIES] = {};
 
 		for (i = 0; i < ARRAY_SIZE(mctx->llext->dependency); i++) {
+			struct lib_manager_module *dep;
+
 			/* Dependencies are filled from the beginning of the array upwards */
 			if (!mctx->llext->dependency[i])
 				break;
 
-			/*
-			 * Protected by the IPC serialization, but maybe we should protect the
-			 * use-count explicitly too. Currently the use-count is first incremented
-			 * when an auxiliary library is loaded, it was then additionally incremented
-			 * when the current dependent module was mapped. If it's higher than two,
-			 * then some other modules also depend on it and have already mapped it.
-			 */
-			if (mctx->llext->dependency[i]->use_count > 2)
-				continue;
-
-			/* First user of this dependency, load it into SRAM */
-			ret = llext_lib_find(mctx->llext->dependency[i], &dep_ctx[i]);
+			ret = llext_lib_find(mctx->llext->dependency[i], &dep);
 			if (ret < 0) {
 				tr_err(&lib_manager_tr,
 				       "Unmet dependency: cannot find dependency %u", i);
@@ -667,13 +662,26 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 
 			tr_dbg(&lib_manager_tr, "%s depending on %s index %u, %u users",
 			       mctx->llext->name, mctx->llext->dependency[i]->name,
-			       dep_ctx[i]->start_idx, mctx->llext->dependency[i]->use_count);
+			       dep->start_idx, dep->n_dependent);
 
-			ret = llext_manager_load_module(dep_ctx[i]);
+			/*
+			 * Protected by the IPC serialization, but maybe we should protect the
+			 * dependent-count explicitly too. It is incremented when a new dependent
+			 * is identified. If it's non-zero, then some other modules also depend
+			 * on it and have already mapped it.
+			 */
+			if (dep->n_dependent++)
+				continue;
+
+			/* First user of this dependency, load it into SRAM */
+			ret = llext_manager_load_module(dep);
 			if (ret < 0) {
+				dep->n_dependent--;
 				llext_manager_depend_unlink_rollback(dep_ctx, i - 1);
 				return 0;
 			}
+
+			dep_ctx[i] = dep;
 		}
 
 		/* Map executable code and data */
