@@ -70,7 +70,7 @@ struct afe_cfg {
  */
 static void cfg_convert(const struct afe_cfg *src, struct mtk_base_memif_data *dst)
 {
-#define REGCVT(R) (((R) > 0) ? ((R) - MTK_AFE_BASE) : -1)
+#define REGCVT(R) (((R) > 0) ? ((R) - MTK_AFE_BASE) : 0)
 
 #define COPYBIT(S, Dr, Ds) do {		\
 	dst->Dr = REGCVT(src->S.reg);	\
