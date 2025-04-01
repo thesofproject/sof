@@ -73,35 +73,6 @@ int idc_msg_status_get(uint32_t core)
 }
 
 /**
- * \brief Waits until status condition is true.
- * \param[in] target_core Id of the core receiving the message.
- * \param[in] cond Pointer to condition function.
- * \return Error code.
- */
-int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
-{
-	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(IDC_TIMEOUT);
-
-	while (!cond(target_core)) {
-		/* spin here so other core can access IO and timers freely */
-		wait_delay(8192);
-
-		if (deadline < sof_cycle_get_64())
-			break;
-	}
-
-	/* safe check in case we've got preempted
-	 * after read
-	 */
-	if (cond(target_core))
-		return 0;
-
-	tr_err(&idc_tr, "idc_wait_in_blocking_mode() error: timeout, target_core %u",
-	       target_core);
-	return -ETIME;
-}
-
-/**
  * \brief Executes IDC IPC processing message.
  */
 static void idc_ipc(void)
