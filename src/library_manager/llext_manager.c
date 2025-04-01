@@ -288,7 +288,8 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	/* Writable data (.data, .bss, etc.) */
 	void __sparse_cache *va_base_data = (void __sparse_cache *)
 		mctx->segment[LIB_MANAGER_DATA].addr;
-	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
+	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size +
+		mctx->segment[LIB_MANAGER_BSS].size;
 	int err = 0, ret;
 
 	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_TEXT,
