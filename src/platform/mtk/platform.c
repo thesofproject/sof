@@ -160,11 +160,11 @@ void clocks_init(struct sof *sof)
 int platform_init(struct sof *sof)
 {
 	clocks_init(sof);
+	scheduler_init_edf();
 	sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
+	scheduler_init_ll(sof->platform_timer_domain);
 	mtk_dai_init(sof);
 	ipc_init(sof);
-	scheduler_init_edf();
-	scheduler_init_ll(sof->platform_timer_domain);
 	sof->platform_dma_domain =
 		dma_multi_chan_domain_init(&sof->dma_info->dma_array[0],
 					   sof->dma_info->num_dmas,
