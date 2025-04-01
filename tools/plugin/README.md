@@ -37,7 +37,7 @@ then (use default ALSA prefix atm)
 sudo cmake --install build-plugin/
 
 Make sure to set the LD_LIBRARY_PATH to include directory where the SOF modules are installed
-Ex: "~/work/sof/sof/build_plugin/sof_ep/install/lib:~/work/sof/sof/build_plugin/modules/"
+Ex: "~/work/sof/sof/build-plugin/sof_ep/install/lib:~/work/sof/sof/build-plugin/modules/"
 And set the environment variable SOF_PLUGIN_TOPOLOGY_PATH to point to the directory containing the topology binary
 ```
 
@@ -109,28 +109,50 @@ where -n is the numid of the kcontrol, -i is the IPC version and -p is the param
 Note: Bytes controls must have tlv_read/tlv_write and tlv_callback access.
 
 ## Instructions for testing OpenVino noise suppression model with the SOF plugin:
-1. Fetch the model from the Open Model zoo repository ex: noise-suppression-poconetlike-0001.xml
+1. Prepare Open Model Zoo repository:
 
-   https://docs.openvino.ai/2023.3/omz_demos.html#a-name-build-demos-linux-a-build-the-demo-applications-on-linux
+   - Clone repo:
+     ```
+     git clone --recurse-submodules https://github.com/openvinotoolkit/open_model_zoo.git
+     ```
+
+   - Build demo applications:
+     https://docs.openvino.ai/2023.3/omz_demos.html#a-name-build-demos-linux-a-build-the-demo-applications-on-linux
 
 2. Source OpenVino environment and get OpenCV
 https://www.intel.com/content/www/us/en/developer/tools/openvino-toolkit-download.html
 
 3. Worth building and running the demo noise suppression application in the open model zoo
 repository to make sure OpenVino and OpenCV are configured properly.
+Fetch the model, e.g., `noise-suppression-poconetlike-0001.xml`, by running this demo:
+
+   https://docs.openvino.ai/2023.3/omz_demos_noise_suppression_demo_cpp.html
 
 4. Set environment variable NOISE_SUPPRESSION_MODEL_NAME to point to the model file
 ```
 export NOISE_SUPPRESSION_MODEL_NAME=~/open_model_zoo/demos/noise_suppression_demo/cpp/intel/noise-suppression-poconetlike-0001/FP16/noise-suppression-poconetlike-0001.xml
 
 ```
-5. Enable noise suppression by setting NOISE_SUPPRESSION=true in the tplg-targets for the sof-plugin topology
+5. Set environment variable OpenVINO_DIR to include CMake files (e.g., OpenVINOConfig.cmake) for building the plugin:
+```
+export OpenVINO_DIR=~/openvino_env/lib/python3.10/site-packages/openvino/cmake
 
-6. Start capture using the following command. This uses the 16K capture from the DMIC from
+```
+6. Update environment variable LD_LIBRARY_PATH to include necessary directories for the plugin:
+
+```
+export LD_LIBRARY_PATH=~/work/sof/sof/build-plugin/sof_ep/install/lib:~/work/sof/sof/build-plugin/modules/:~/work/sof/sof/build-plugin/modules/ov_noise_suppression/
+```
+
+7. Enable noise suppression by setting NOISE_SUPPRESSION=true in the tplg-targets for the sof-plugin topology
+
+8. Rebuild the plugin: Remove the previous build-build directory and rebuild it by following the usage steps above.
+
+9. Start capture using the following command. This uses the 16K capture from the DMIC from
 PCM hw device 0,7. Currently, only 16K capture is supported but in the future this will be expanded
 to work with 48K capture.
 ```
-arecord -Dsof:plugin:1:0:7:16k2c16b -f dat -r 16000 --period-size=2048 file_ns_16k.wa
+arecord -Dsof:plugin:1:0:7:16k2c16b -f dat -r 16000 --period-size=2048 file_ns_16k.wav
 ```
 
 ### TODO Items (and T-shirt size) for single pipeline E2E audio
