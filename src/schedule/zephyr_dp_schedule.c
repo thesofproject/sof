@@ -322,8 +322,9 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	struct task_dp_pdata *task_pdata = task->priv_data;
 	unsigned int lock_key;
 	enum task_state state;
+	bool task_stop;
 
-	while (1) {
+	do {
 		/*
 		 * the thread is started immediately after creation, it will stop on semaphore
 		 * Semaphore will be released once the task is ready to process
@@ -360,14 +361,13 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 			}
 		}
 
-		if (task->state == SOF_TASK_STATE_COMPLETED ||
-		    task->state == SOF_TASK_STATE_CANCEL)
-			break; /* exit the while loop, terminate the thread */
+		/* if true exit the while loop, terminate the thread */
+		task_stop = task->state == SOF_TASK_STATE_COMPLETED ||
+			task->state == SOF_TASK_STATE_CANCEL;
 
 		scheduler_dp_unlock(lock_key);
-	}
+	} while (!task_stop);
 
-	scheduler_dp_unlock(lock_key);
 	/* call task_complete  */
 	if (task->state == SOF_TASK_STATE_COMPLETED)
 		task_complete(task);
