@@ -79,6 +79,8 @@ struct mixin_data {
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	uint32_t last_reported_underrun;
 	uint32_t underrun_notification_period;
+	uint32_t eos_delay_periods;
+	bool eos_delay_configured;
 #endif
 };
 
@@ -248,23 +250,40 @@ static void silence(struct cir_buf_ptr *stream, uint32_t start_offset,
 
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 static void mixin_check_notify_underrun(struct comp_dev *dev, struct mixin_data *mixin_data,
+					enum sof_audio_buffer_state state,
 					size_t source_avail, size_t sinks_free)
 {
+	const bool eos_detected = state == AUDIOBUF_STATE_END_OF_STREAM_FLUSH ||
+				  state == AUDIOBUF_STATE_END_OF_STREAM;
+
 	struct ipc_msg *notify;
 
 	mixin_data->last_reported_underrun++;
 
-	if (!source_avail && mixin_data->last_reported_underrun >=
-	    mixin_data->underrun_notification_period) {
-		mixin_data->last_reported_underrun = 0;
+	if (!source_avail || eos_detected) {
+		if (eos_detected) {
+			if (mixin_data->eos_delay_configured) {
+				mixin_data->eos_delay_periods--;
+			} else {
+				pipeline_get_dai_comp_latency(dev->pipeline->pipeline_id,
+							      &mixin_data->eos_delay_periods);
+				mixin_data->eos_delay_configured = true;
+			}
+		}
 
-		notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
-		if (!notify)
-			return;
+		if ((!eos_detected && mixin_data->last_reported_underrun >=
+		    mixin_data->underrun_notification_period) ||
+		    (eos_detected && mixin_data->eos_delay_periods == 0)) {
+			mixin_data->last_reported_underrun = 0;
 
-		mixer_underrun_notif_msg_init(notify, dev->ipc_config.id, false,
-					      source_avail, sinks_free);
-		ipc_msg_send(notify, notify->tx_data, false);
+			notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
+			if (!notify)
+				return;
+
+			mixer_underrun_notif_msg_init(notify, dev->ipc_config.id, eos_detected,
+						      source_avail, sinks_free);
+			ipc_msg_send(notify, notify->tx_data, false);
+		}
 	}
 }
 #endif
@@ -294,9 +313,10 @@ static int mixin_process(struct processing_module *mod,
 	uint32_t source_avail_frames, sinks_free_frames;
 	struct processing_module *active_mixouts[MIXIN_MAX_SINKS];
 	uint16_t sinks_ids[MIXIN_MAX_SINKS];
+	struct pending_frames *pending_frames;
 	uint32_t bytes_to_consume = 0;
 	uint32_t frames_to_copy;
-	struct pending_frames *pending_frames;
+	size_t frame_bytes;
 	int i, ret;
 	struct cir_buf_ptr source_ptr;
 
@@ -389,10 +409,10 @@ static int mixin_process(struct processing_module *mod,
 		return 0;
 
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-	size_t frame_bytes = source_get_frame_bytes(sources[0]);
-	size_t min_frames = MIN(dev->frames, sinks_free_frames);
+	frame_bytes = source_get_frame_bytes(sources[0]);
+	const size_t min_frames = MIN(dev->frames, sinks_free_frames);
 
-	mixin_check_notify_underrun(dev, mixin_data,
+	mixin_check_notify_underrun(dev, mixin_data, source_get_state(sources[0]),
 				    source_avail_frames * frame_bytes,
 				    min_frames * frame_bytes);
 #endif
@@ -461,7 +481,7 @@ static int mixin_process(struct processing_module *mod,
 		 * silence instead of that source data
 		 */
 		if (source_avail_frames == 0) {
-			uint32_t frame_bytes = sink_get_frame_bytes(mixout_mod->sinks[0]);
+			frame_bytes = sink_get_frame_bytes(mixout_mod->sinks[0]);
 
 			/* generate silence */
 			silence(&mixout_data->acquired_buf, start_frame * frame_bytes,
@@ -698,6 +718,7 @@ static int mixin_prepare(struct processing_module *mod,
 	int ret;
 
 	comp_info(dev, "mixin_prepare()");
+	md->eos_delay_configured = false;
 
 	ret = mixin_params(mod);
 	if (ret < 0)
