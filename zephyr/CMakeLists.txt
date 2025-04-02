@@ -135,7 +135,6 @@ set(SOF_SRC_PATH "${sof_top_dir}/src")
 
 set(SOF_PLATFORM_PATH "${SOF_SRC_PATH}/platform")
 set(SOF_SAMPLES_PATH "${SOF_SRC_PATH}/samples")
-set(SOF_LIB_PATH "${SOF_SRC_PATH}/lib")
 set(SOF_DRIVERS_PATH "${SOF_SRC_PATH}/drivers")
 set(SOF_TRACE_PATH "${SOF_SRC_PATH}/trace")
 
@@ -209,6 +208,7 @@ add_subdirectory(../src/audio/ audio_unused_install/)
 add_subdirectory(../src/debug/ debug_unused_install/)
 add_subdirectory(../src/init/ init_unused_install/)
 add_subdirectory(../src/ipc/  ipc_unused_install/)
+add_subdirectory(../src/lib/ lib_unused_install/)
 add_subdirectory(../src/schedule/  schedule_unused_install/)
 add_subdirectory(test/)
 
@@ -455,11 +455,6 @@ zephyr_include_directories(${SOF_PLATFORM_PATH}/${PLATFORM}/include)
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
 
-	# SOF library - parts to transition to Zephyr over time
-	${SOF_LIB_PATH}/notifier.c
-	${SOF_LIB_PATH}/dma.c
-	${SOF_LIB_PATH}/dai.c
-
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/arch/xtensa/drivers/cache_attr.c
 
@@ -475,14 +470,6 @@ zephyr_library_sources(
 
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
-)
-
-if(NOT CONFIG_SOF_ZEPHYR_NO_SOF_CLOCK)
-	zephyr_library_sources(${SOF_LIB_PATH}/clk.c)
-endif()
-
-zephyr_library_sources_ifdef(CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-	${SOF_LIB_PATH}/cpu-clk-manager.c
 )
 
 # SOF module interface functions
@@ -540,14 +527,6 @@ endif()
 
 zephyr_library_sources_ifdef(CONFIG_MULTICORE
 	${SOF_SRC_PATH}/idc/idc.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_HAVE_AGENT
-	${SOF_LIB_PATH}/agent.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_AMS
-	${SOF_LIB_PATH}/ams.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_DW_DMA
