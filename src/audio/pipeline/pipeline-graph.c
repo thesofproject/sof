@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
 #include <rtos/interrupt.h>
+#include <rtos/symbol.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
@@ -551,4 +552,6 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 
 	return NULL;
 }
+EXPORT_SYMBOL(pipeline_get_dai_comp_latency);
+
 #endif
