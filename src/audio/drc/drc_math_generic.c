@@ -80,7 +80,7 @@ static inline int32_t log10_fixed(int32_t x)
  * Input is Q6.26: max 32.0
  * Output range ~ (-inf, 30.1030); regulated to Q11.21: (-1024.0, 1024.0)
  */
-inline int32_t drc_lin2db_fixed(int32_t linear)
+int32_t drc_lin2db_fixed(int32_t linear)
 {
 	int32_t log10_linear;
 
@@ -96,7 +96,7 @@ inline int32_t drc_lin2db_fixed(int32_t linear)
  * Input is Q6.26: max 32.0
  * Output range ~ (-inf, 3.4657); regulated to Q6.26: (-32.0, 32.0)
  */
-inline int32_t drc_log_fixed(int32_t x)
+int32_t drc_log_fixed(int32_t x)
 {
 	const int32_t LOG10 = Q_CONVERT_FLOAT(2.3025850929940457f, 29);
 	int32_t log10_x;
@@ -114,7 +114,7 @@ inline int32_t drc_log_fixed(int32_t x)
  * Input is Q2.30; valid range: [-1.0, 1.0]
  * Output range: [-1.0, 1.0]; regulated to Q2.30: (-2.0, 2.0)
  */
-inline int32_t drc_asin_fixed(int32_t x)
+int32_t drc_asin_fixed(int32_t x)
 {
 #define qcl 30
 #define qch 26
@@ -174,7 +174,7 @@ inline int32_t drc_asin_fixed(int32_t x)
  * Input depends on precision_x
  * Output depends on precision_y
  */
-inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y)
+int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y)
 {
 #define qc 25
 	/* Coefficients obtained from:
@@ -229,7 +229,7 @@ inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y
  *       y is Q2.30: (-2.0, 2.0)
  * Output is Q12.20: max 2048.0
  */
-inline int32_t drc_pow_fixed(int32_t x, int32_t y)
+int32_t drc_pow_fixed(int32_t x, int32_t y)
 {
 	/* Negative or zero input x is not supported, just return 0. */
 	if (x <= 0)
