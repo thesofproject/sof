@@ -212,8 +212,8 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, u
 	audio_stream_set_underrun(&buffer->stream, !!(flags & SOF_BUF_UNDERRUN_PERMITTED));
 	audio_stream_set_overrun(&buffer->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
 
-	comp_buffer_reset_source_list(buffer);
-	comp_buffer_reset_sink_list(buffer);
+	audio_buffer_reset_source_list(&buffer->audio_buffer);
+	audio_buffer_reset_sink_list(&buffer->audio_buffer);
 
 	return buffer;
 }
@@ -532,35 +532,4 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		((char *)audio_stream_get_wptr(&buffer->stream) -
 		 (char *)audio_stream_get_addr(&buffer->stream)));
 #endif
-}
-
-static inline struct list_item *buffer_comp_list(struct comp_buffer *buffer,
-						 int dir)
-{
-	return dir == PPL_DIR_DOWNSTREAM ?
-			&buffer->source_list :  &buffer->sink_list;
-}
-
-/*
- * Locking: must be called with interrupts disabled! Serialized IPCs protect us
- * from racing attach / detach calls, but the scheduler can interrupt the IPC
- * thread and begin using the buffer for streaming. FIXME: this is still a
- * problem with different cores.
- */
-void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
-{
-	struct list_item *list = buffer_comp_list(buffer, dir);
-	CORE_CHECK_STRUCT(&buffer->audio_buffer);
-	list_item_prepend(list, head);
-}
-
-/*
- * Locking: must be called with interrupts disabled! See buffer_attach() above
- * for details
- */
-void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir)
-{
-	struct list_item *buf_list = buffer_comp_list(buffer, dir);
-	CORE_CHECK_STRUCT(&buffer->audio_buffer);
-	list_item_del(buf_list);
 }

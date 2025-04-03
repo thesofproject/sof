@@ -69,6 +69,14 @@ struct sof_audio_buffer {
 
 	bool is_shared;   /* buffer structure is shared between 2 cores */
 
+	/* connected components */
+	struct comp_dev *Xsource;	/* source component */
+	struct comp_dev *Xsink;		/* sink component */
+
+	/* lists */
+	struct list_item Xsource_list;	/* list in comp buffers */
+	struct list_item Xsink_list;	/* list in comp buffers */
+
 #if CONFIG_PIPELINE_2_0
 	/**
 	 * sink API of an additional buffer
@@ -306,5 +314,61 @@ void audio_buffer_reset(struct sof_audio_buffer *buffer)
 	if (buffer->ops->reset)
 		buffer->ops->reset(buffer);
 }
+
+static inline
+struct comp_dev *audio_buffer_get_source_component(const struct sof_audio_buffer *buffer)
+{
+	return buffer->Xsource;
+}
+
+static inline
+struct comp_dev *audio_buffer_get_sink_component(const struct sof_audio_buffer *buffer)
+{
+	return buffer->Xsink;
+}
+
+static inline
+void audio_buffer_set_source_component(struct sof_audio_buffer *buffer, struct comp_dev *comp)
+{
+	buffer->Xsource = comp;
+}
+
+static inline
+void audio_buffer_set_sink_component(struct sof_audio_buffer *buffer, struct comp_dev *comp)
+{
+	buffer->Xsink = comp;
+}
+static inline void audio_buffer_reset_source_list(struct sof_audio_buffer *buffer)
+{
+	list_init(&buffer->Xsource_list);
+}
+
+static inline void audio_buffer_reset_sink_list(struct sof_audio_buffer *buffer)
+{
+	list_init(&buffer->Xsink_list);
+}
+
+#define audio_buffer_from_list(ptr, dir) \
+	((dir) == PPL_DIR_DOWNSTREAM ? \
+	 container_of(ptr, struct sof_audio_buffer, Xsource_list) : \
+	 container_of(ptr, struct sof_audio_buffer, Xsink_list))
+
+/*
+ * Attach a new buffer at the beginning of the list. Note, that "head" must
+ * really be the head of the list, not a list head within another buffer. We
+ * don't Synchronize its cache, so it must not be embedded in an object, using
+ * the coherent API. The caller takes care to protect list heads.
+ */
+void audio_buffer_attach(struct sof_audio_buffer *buffer, struct list_item *head, int dir);
+
+/*
+ * Detach a buffer from anywhere in the list. "head" is again the head of the
+ * list, we need it to verify, whether this buffer was the first or the last on
+ * the list. Again it is assumed that the head's cache doesn't need to be
+ * synchronized. The caller takes care to protect list heads.
+ */
+void audio_buffer_detach(struct sof_audio_buffer *buffer, struct list_item *head, int dir);
+
+
 
 #endif /* __SOF_AUDIO_BUFFER__ */

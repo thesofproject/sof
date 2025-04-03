@@ -315,15 +315,15 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	irq_local_disable(flags);
 	comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
-		comp_buffer_set_sink_component(buffer, NULL);
+		audio_buffer_set_sink_component(&buffer->audio_buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		comp_buffer_reset_sink_list(buffer);
+		audio_buffer_reset_sink_list(&buffer->audio_buffer);
 	}
 
 	comp_dev_for_each_consumer_safe(icd->cd, buffer, safe) {
 		comp_buffer_set_source_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		comp_buffer_reset_source_list(buffer);
+		audio_buffer_reset_source_list(&buffer->audio_buffer);
 	}
 
 	irq_local_enable(flags);
