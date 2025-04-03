@@ -164,6 +164,8 @@ rsource "mfcc/Kconfig"
 
 rsource "codec/Kconfig"
 
+rsource "template_comp/Kconfig"
+
 endmenu # "Audio components"
 
 menu "Data formats"
