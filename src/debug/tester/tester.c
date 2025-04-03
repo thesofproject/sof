@@ -236,9 +236,6 @@ static const struct module_interface tester_interface = {
 	.trigger = tester_trigger
 };
 
-DECLARE_MODULE_ADAPTER(tester_interface, tester_uuid, tester_tr);
-SOF_MODULE_INIT(tester, sys_comp_module_tester_interface_init);
-
 #if CONFIG_COMP_TESTER_MODULE
 /* modular: llext dynamic link */
 
@@ -252,5 +249,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("TESTER", tester_llext_entry, 1, SOF_REG_UUID(tester), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(tester_interface, tester_uuid, tester_tr);
+SOF_MODULE_INIT(tester, sys_comp_module_tester_interface_init);
 
 #endif

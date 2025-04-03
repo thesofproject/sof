@@ -1610,9 +1610,6 @@ static const struct module_interface probe_interface = {
 	.free = probe_free,
 };
 
-DECLARE_MODULE_ADAPTER(probe_interface, PROBE_UUID, pr_tr);
-SOF_MODULE_INIT(probe, sys_comp_module_probe_interface_init);
-
 #if CONFIG_PROBE_MODULE
 /* modular: llext dynamic link */
 
@@ -1626,6 +1623,11 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("PROBE", probe_llext_entry, 1, SOF_REG_UUID(probe4), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(probe_interface, PROBE_UUID, pr_tr);
+SOF_MODULE_INIT(probe, sys_comp_module_probe_interface_init);
 
 #endif /* CONFIG_COMP_PROBE_MODULE */
 

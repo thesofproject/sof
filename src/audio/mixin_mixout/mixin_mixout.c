@@ -926,9 +926,6 @@ static const struct module_interface mixin_interface = {
 	.free = mixin_free
 };
 
-DECLARE_MODULE_ADAPTER(mixin_interface, mixin_uuid, mixin_tr);
-SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
-
 static const struct module_interface mixout_interface = {
 	.init = mixout_init,
 	.prepare = mixout_prepare,
@@ -938,9 +935,6 @@ static const struct module_interface mixout_interface = {
 	.bind = mixout_bind,
 	.unbind = mixout_unbind
 };
-
-DECLARE_MODULE_ADAPTER(mixout_interface, mixout_uuid, mixout_tr);
-SOF_MODULE_INIT(mixout, sys_comp_module_mixout_interface_init);
 
 #if CONFIG_COMP_MIXIN_MIXOUT_MODULE
 /* modular: llext dynamic link */
@@ -959,5 +953,13 @@ static const struct sof_man_module_manifest mod_manifest[] __section(".module") 
 };
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(mixin_interface, mixin_uuid, mixin_tr);
+SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
+
+DECLARE_MODULE_ADAPTER(mixout_interface, mixout_uuid, mixout_tr);
+SOF_MODULE_INIT(mixout, sys_comp_module_mixout_interface_init);
 
 #endif

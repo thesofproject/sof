@@ -248,9 +248,6 @@ static const struct module_interface eq_iir_interface = {
 	.free = eq_iir_free
 };
 
-DECLARE_MODULE_ADAPTER(eq_iir_interface, eq_iir_uuid, eq_iir_tr);
-SOF_MODULE_INIT(eq_iir, sys_comp_module_eq_iir_interface_init);
-
 #if CONFIG_COMP_IIR_MODULE
 /* modular: llext dynamic link */
 
@@ -264,5 +261,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("EQIIR", eq_iir_llext_entry, 1, SOF_REG_UUID(eq_iir), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(eq_iir_interface, eq_iir_uuid, eq_iir_tr);
+SOF_MODULE_INIT(eq_iir, sys_comp_module_eq_iir_interface_init);
 
 #endif

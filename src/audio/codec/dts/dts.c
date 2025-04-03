@@ -468,9 +468,6 @@ static const struct module_interface dts_interface = {
 	.free = dts_codec_free
 };
 
-DECLARE_MODULE_ADAPTER(dts_interface, dts_uuid, dts_tr);
-SOF_MODULE_INIT(dts, sys_comp_module_dts_interface_init);
-
 #if CONFIG_DTS_CODEC_MODULE
 /* modular: llext dynamic link */
 
@@ -484,5 +481,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("DTS", dts_llext_entry, 1, SOF_REG_UUID(dts), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(dts_interface, dts_uuid, dts_tr);
+SOF_MODULE_INIT(dts, sys_comp_module_dts_interface_init);
 
 #endif

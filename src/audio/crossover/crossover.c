@@ -633,9 +633,6 @@ static const struct module_interface crossover_interface = {
 	.free = crossover_free
 };
 
-DECLARE_MODULE_ADAPTER(crossover_interface, crossover_uuid, crossover_tr);
-SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);
-
 #if CONFIG_COMP_CROSSOVER_MODULE
 /* modular: llext dynamic link */
 
@@ -649,5 +646,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("XOVER", crossover_llext_entry, 1, SOF_REG_UUID(crossover), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(crossover_interface, crossover_uuid, crossover_tr);
+SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);
 
 #endif

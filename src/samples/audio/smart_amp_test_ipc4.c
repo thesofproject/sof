@@ -374,9 +374,6 @@ static const struct module_interface smart_amp_test_interface = {
 	.free = smart_amp_free
 };
 
-DECLARE_MODULE_ADAPTER(smart_amp_test_interface, smart_amp_test_uuid, smart_amp_test_comp_tr);
-SOF_MODULE_INIT(smart_amp_test, sys_comp_module_smart_amp_test_interface_init);
-
 #if CONFIG_SAMPLE_SMART_AMP_MODULE
 /* modular: llext dynamic link */
 
@@ -392,4 +389,10 @@ static const struct sof_man_module_manifest mod_manifest[] __section(".module") 
 };
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(smart_amp_test_interface, smart_amp_test_uuid, smart_amp_test_comp_tr);
+SOF_MODULE_INIT(smart_amp_test, sys_comp_module_smart_amp_test_interface_init);
+
 #endif

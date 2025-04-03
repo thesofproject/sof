@@ -821,9 +821,6 @@ static const struct module_interface tdfb_interface = {
 	.reset = tdfb_reset,
 };
 
-DECLARE_MODULE_ADAPTER(tdfb_interface, tdfb_uuid, tdfb_tr);
-SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);
-
 #if CONFIG_COMP_TDFB_MODULE
 /* modular: llext dynamic link */
 
@@ -837,5 +834,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("TDFB", tdfb_llext_entry, 1, SOF_REG_UUID(tdfb), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(tdfb_interface, tdfb_uuid, tdfb_tr);
+SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);
 
 #endif

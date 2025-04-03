@@ -866,9 +866,6 @@ static const struct module_interface rtnr_interface = {
 	.free = rtnr_free
 };
 
-DECLARE_MODULE_ADAPTER(rtnr_interface, rtnr_uuid, rtnr_tr);
-SOF_MODULE_INIT(rtnr, sys_comp_module_rtnr_interface_init);
-
 #if CONFIG_COMP_RTNR_MODULE
 /* modular: llext dynamic link */
 
@@ -882,5 +879,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("RTNR", rtnr_llext_entry, 1, SOF_REG_UUID(rtnr), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(rtnr_interface, rtnr_uuid, rtnr_tr);
+SOF_MODULE_INIT(rtnr, sys_comp_module_rtnr_interface_init);
 
 #endif

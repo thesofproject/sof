@@ -883,9 +883,6 @@ static const struct module_interface igo_nr_interface = {
 	.free = igo_nr_free
 };
 
-DECLARE_MODULE_ADAPTER(igo_nr_interface, igo_nr_uuid, igo_nr_tr);
-SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
-
 #if CONFIG_COMP_IGO_NR_MODULE
 /* modular: llext dynamic link */
 
@@ -899,5 +896,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("IGO_NR", igo_nr_llext_entry, 1, SOF_REG_UUID(igo_nr), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(igo_nr_interface, igo_nr_uuid, igo_nr_tr);
+SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
 
 #endif

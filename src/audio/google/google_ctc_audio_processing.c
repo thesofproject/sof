@@ -454,11 +454,6 @@ static const struct module_interface google_ctc_audio_processing_interface = {
 	.reset = ctc_reset,
 };
 
-DECLARE_MODULE_ADAPTER(google_ctc_audio_processing_interface,
-		       google_ctc_audio_processing_uuid, google_ctc_audio_processing_tr);
-SOF_MODULE_INIT(google_ctc_audio_processing,
-		sys_comp_module_google_ctc_audio_processing_interface_init);
-
 #if CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING_MODULE
 /* modular: llext dynamic link */
 
@@ -473,5 +468,12 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 				  1, SOF_REG_UUID(google_ctc_audio_processing), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(google_ctc_audio_processing_interface,
+		       google_ctc_audio_processing_uuid, google_ctc_audio_processing_tr);
+SOF_MODULE_INIT(google_ctc_audio_processing,
+		sys_comp_module_google_ctc_audio_processing_interface_init);
 
 #endif

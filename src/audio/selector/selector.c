@@ -913,9 +913,6 @@ static const struct module_interface selector_interface = {
 	.free			= selector_free
 };
 
-DECLARE_MODULE_ADAPTER(selector_interface, selector4_uuid, selector_tr);
-SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
-
 #if CONFIG_COMP_SEL_MODULE
 /* modular: llext dynamic link */
 
@@ -930,6 +927,11 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 				  8);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(selector_interface, selector4_uuid, selector_tr);
+SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 
 #endif
 
