@@ -256,9 +256,6 @@ static const struct module_interface mfcc_interface = {
 	.reset = mfcc_reset,
 };
 
-DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);
-SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);
-
 #if CONFIG_COMP_MFCC_MODULE
 /* modular: llext dynamic link */
 
@@ -272,5 +269,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("MFCC", mfcc_llext_entry, 1, SOF_REG_UUID(mfcc), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);
+SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);
 
 #endif

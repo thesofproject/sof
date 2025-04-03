@@ -71,5 +71,7 @@ SOF_DEFINE_REG_UUID(src_lite);
 
 DECLARE_TR_CTX(src_lite_tr, SOF_UUID(src_lite_uuid), LOG_LEVEL_INFO);
 
+#if !CONFIG_COMP_SRC_MODULE
 DECLARE_MODULE_ADAPTER(src_lite_interface, src_lite_uuid, src_lite_tr);
 SOF_MODULE_INIT(src_lite, sys_comp_module_src_lite_interface_init);
+#endif

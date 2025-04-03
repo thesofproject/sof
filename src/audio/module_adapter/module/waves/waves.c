@@ -904,9 +904,6 @@ static const struct module_interface waves_interface = {
 	.free = waves_codec_free
 };
 
-DECLARE_MODULE_ADAPTER(waves_interface, waves_uuid, waves_tr);
-SOF_MODULE_INIT(waves, sys_comp_module_waves_interface_init);
-
 #if CONFIG_WAVES_CODEC_MODULE && CONFIG_WAVES_CODEC_STUB
 /* modular: llext dynamic link */
 
@@ -920,5 +917,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("WAVES", waves_llext_entry, 7, SOF_REG_UUID(waves), 8);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(waves_interface, waves_uuid, waves_tr);
+SOF_MODULE_INIT(waves, sys_comp_module_waves_interface_init);
 
 #endif

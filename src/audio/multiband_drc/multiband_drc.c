@@ -430,9 +430,6 @@ static const struct module_interface multiband_drc_interface = {
 	.free = multiband_drc_free
 };
 
-DECLARE_MODULE_ADAPTER(multiband_drc_interface, multiband_drc_uuid, multiband_drc_tr);
-SOF_MODULE_INIT(multiband_drc, sys_comp_module_multiband_drc_interface_init);
-
 #if CONFIG_COMP_MULTIBAND_DRC_MODULE
 /* modular: llext dynamic link */
 
@@ -447,5 +444,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 				  SOF_REG_UUID(multiband_drc), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(multiband_drc_interface, multiband_drc_uuid, multiband_drc_tr);
+SOF_MODULE_INIT(multiband_drc, sys_comp_module_multiband_drc_interface_init);
 
 #endif

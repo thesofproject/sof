@@ -84,9 +84,6 @@ static const struct module_interface src_interface = {
 	.free = src_free,
 };
 
-DECLARE_MODULE_ADAPTER(src_interface, SRC_UUID, src_tr);
-SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
-
 #if CONFIG_COMP_SRC_MODULE
 /* modular: llext dynamic link */
 
@@ -110,4 +107,10 @@ static const struct sof_man_module_manifest mod_manifest[] __section(".module") 
 };
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(src_interface, SRC_UUID, src_tr);
+SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
+
 #endif

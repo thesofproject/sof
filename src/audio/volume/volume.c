@@ -49,6 +49,8 @@ LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
 #include "volume_uuid.h"
 #include "volume.h"
 
+#if CONFIG_COMP_PEAK_VOL || CONFIG_COMP_GAIN
+
 #if CONFIG_FORMAT_S16LE
 /**
  * \brief Used to find nearest zero crossing frame for 16 bit format.
@@ -209,6 +211,8 @@ __cold_rodata static const struct comp_zc_func_map zc_func_map[] = {
 	{ SOF_IPC_FRAME_S32_LE, vol_zc_get_s32 },
 #endif /* CONFIG_FORMAT_S32LE */
 };
+
+#endif /* CONFIG_COMP_PEAK_VOL || CONFIG_COMP_GAIN */
 
 #if CONFIG_COMP_VOLUME_LINEAR_RAMP
 /**
@@ -415,24 +419,6 @@ void volume_prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
 		cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
 }
 
-/**
- * \brief Frees volume component.
- * \param[in,out] mod Volume processing module handle
-
- */
-static int volume_free(struct processing_module *mod)
-{
-	struct vol_data *cd = module_get_private_data(mod);
-
-	comp_dbg(mod->dev, "volume_free()");
-
-	volume_peak_free(cd);
-	rfree(cd->vol);
-	rfree(cd);
-
-	return 0;
-}
-
 static void set_linear_ramp_coef(struct vol_data *cd, int chan, bool constant_rate_ramp)
 {
 	int32_t delta;
@@ -537,7 +523,6 @@ int volume_set_chan(struct processing_module *mod, int chan,
 /**
  * \brief Mutes channel.
  * \param[in,out] mod Volume processing module handle
-
  * \param[in] chan Channel number.
  */
 void volume_set_chan_mute(struct processing_module *mod, int chan)
@@ -554,7 +539,6 @@ void volume_set_chan_mute(struct processing_module *mod, int chan)
 /**
  * \brief Unmutes channel.
  * \param[in,out] mod Volume processing module handle
-
  * \param[in] chan Channel number.
  */
 void volume_set_chan_unmute(struct processing_module *mod, int chan)
@@ -567,10 +551,10 @@ void volume_set_chan_unmute(struct processing_module *mod, int chan)
 	}
 }
 
+#if CONFIG_COMP_PEAK_VOL || CONFIG_COMP_GAIN
 /*
  * \brief Copies and processes stream data.
  * \param[in,out] mod Volume processing module handle
-
  * \return Error code.
  */
 static int volume_process(struct processing_module *mod,
@@ -772,7 +756,6 @@ err:
 /**
  * \brief Resets volume component.
  * \param[in,out] mod Volume processing module handle
-
  * \return Error code.
  */
 static int volume_reset(struct processing_module *mod)
@@ -784,6 +767,25 @@ static int volume_reset(struct processing_module *mod)
 	return 0;
 }
 
+/**
+ * \brief Frees volume component.
+ * \param[in,out] mod Volume processing module handle
+ */
+static int volume_free(struct processing_module *mod)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+
+	comp_dbg(mod->dev, "volume_free()");
+
+	volume_peak_free(cd);
+	rfree(cd->vol);
+	rfree(cd);
+
+	return 0;
+}
+#endif
+
+#if CONFIG_COMP_PEAK_VOL
 static const struct module_interface volume_interface = {
 	.init = volume_init,
 	.prepare = volume_prepare,
@@ -793,9 +795,7 @@ static const struct module_interface volume_interface = {
 	.reset = volume_reset,
 	.free = volume_free
 };
-
-DECLARE_MODULE_ADAPTER(volume_interface, volume_uuid, volume_tr);
-SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
+#endif
 
 #if CONFIG_COMP_GAIN
 static const struct module_interface gain_interface = {
@@ -807,9 +807,6 @@ static const struct module_interface gain_interface = {
 	.reset = volume_reset,
 	.free = volume_free
 };
-
-DECLARE_MODULE_ADAPTER(gain_interface, gain_uuid, gain_tr);
-SOF_MODULE_INIT(gain, sys_comp_module_gain_interface_init);
 #endif
 
 #if CONFIG_COMP_VOLUME_MODULE
@@ -837,4 +834,17 @@ static const struct sof_man_module_manifest mod_manifest[] __section(".module") 
 };
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+#if CONFIG_COMP_PEAK_VOL
+DECLARE_MODULE_ADAPTER(volume_interface, volume_uuid, volume_tr);
+SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
+#endif
+
+#if CONFIG_COMP_GAIN
+DECLARE_MODULE_ADAPTER(gain_interface, gain_uuid, gain_tr);
+SOF_MODULE_INIT(gain, sys_comp_module_gain_interface_init);
+#endif
+
 #endif

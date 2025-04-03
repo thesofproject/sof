@@ -849,11 +849,6 @@ static const struct module_interface google_rtc_audio_processing_interface = {
 	.reset = google_rtc_audio_processing_reset,
 };
 
-DECLARE_MODULE_ADAPTER(google_rtc_audio_processing_interface,
-		       google_rtc_audio_processing_uuid, google_rtc_audio_processing_tr);
-SOF_MODULE_INIT(google_rtc_audio_processing,
-		sys_comp_module_google_rtc_audio_processing_interface_init);
-
 #if CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MODULE
 /* modular: llext dynamic link */
 
@@ -868,5 +863,12 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 				  7, SOF_REG_UUID(google_rtc_audio_processing), 1);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(google_rtc_audio_processing_interface,
+		       google_rtc_audio_processing_uuid, google_rtc_audio_processing_tr);
+SOF_MODULE_INIT(google_rtc_audio_processing,
+		sys_comp_module_google_rtc_audio_processing_interface_init);
 
 #endif

@@ -309,9 +309,6 @@ static const struct module_interface aria_interface = {
 	.set_configuration = aria_set_config,
 };
 
-DECLARE_MODULE_ADAPTER(aria_interface, aria_uuid, aria_comp_tr);
-SOF_MODULE_INIT(aria, sys_comp_module_aria_interface_init);
-
 #if CONFIG_COMP_ARIA_MODULE
 /* modular: llext dynamic link */
 
@@ -325,5 +322,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("ARIA", aria_llext_entry, 1, SOF_REG_UUID(aria), 8);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(aria_interface, aria_uuid, aria_comp_tr);
+SOF_MODULE_INIT(aria, sys_comp_module_aria_interface_init);
 
 #endif

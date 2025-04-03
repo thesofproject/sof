@@ -478,9 +478,6 @@ static const struct module_interface eq_fir_interface = {
 		.reset = eq_fir_reset,
 };
 
-DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
-SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
-
 #if CONFIG_COMP_FIR_MODULE
 /* modular: llext dynamic link */
 
@@ -494,5 +491,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("EQFIR", eq_fir_llext_entry, 1, SOF_REG_UUID(eq_fir), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
+SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
 
 #endif

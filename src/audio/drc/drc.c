@@ -412,9 +412,6 @@ static const struct module_interface drc_interface = {
 	.free = drc_free
 };
 
-DECLARE_MODULE_ADAPTER(drc_interface, drc_uuid, drc_tr);
-SOF_MODULE_INIT(drc, sys_comp_module_drc_interface_init);
-
 #if CONFIG_COMP_DRC_MODULE
 /* modular: llext dynamic link */
 
@@ -427,5 +424,10 @@ static const struct sof_man_module_manifest mod_manifest __section(".module") __
 	SOF_LLEXT_MODULE_MANIFEST("DRC", drc_llext_entry, 1, SOF_REG_UUID(drc), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(drc_interface, drc_uuid, drc_tr);
+SOF_MODULE_INIT(drc, sys_comp_module_drc_interface_init);
 
 #endif
