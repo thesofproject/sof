@@ -49,6 +49,11 @@ if (length(fs_in) ~= sio(1)) ||  (length(fs_out) ~= sio(2))
 	error('Sample rates in/out matrix size mismatch!');
 end
 
+if exist('OCTAVE_VERSION', 'builtin')
+  pkg load signal
+end
+
+
 %% Exported coefficients type int16, int24, int32, float
 
 switch cfg.ctype
