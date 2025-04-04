@@ -9,6 +9,7 @@ config COMP_DRC
 	select NUMBERS_NORM
 	select MATH_EXP
 	select COMP_BLOB
+	default m if LIBRARY_DEFAULT_MODULAR
 	default n
 	help
 	  Select for Dynamic Range Compressor (DRC) component. A DRC can be used

@@ -5,6 +5,7 @@ config COMP_MULTIBAND_DRC
 	tristate "Multiband Dynamic Range Compressor component"
 	select CORDIC_FIXED
 	select COMP_BLOB
+	default m if LIBRARY_DEFAULT_MODULAR
 	default n
 	help
 	  Select for Multiband Dynamic Range Compressor (DRC) component. It
