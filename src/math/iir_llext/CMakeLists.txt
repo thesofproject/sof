@@ -15,7 +15,7 @@ else()
 endif()
 
 if(CONFIG_MATH_IIR_DF1 OR CONFIG_MATH_IIR_DF2T)
-  sof_llext_build("iir"
+  sof_llext_build("aux1_iir"
 		  SOURCES iir.c ${df1} ${df2t}
 		  LIB openmodules
   )
