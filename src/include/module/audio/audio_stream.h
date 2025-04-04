@@ -13,6 +13,20 @@
 #include <stdbool.h>
 #include "../ipc/stream.h"
 
+
+/**
+ * @enum sof_audio_buffer_state
+ * @brief Define states of an audio stream buffer connecting two components.
+ *
+ * This enum represents the lifecycle of an audio stream, including its
+ * initialization, readiness, and end-of-stream handling. It is used to
+ * track and manage the state transitions of the stream during audio processing.
+ */
+enum sof_audio_buffer_state {
+	AUDIOBUF_STATE_INITIAL,			/* Initial state, hw params not configured. */
+	AUDIOBUF_STATE_READY,			/* Stream ready, hw params configured */
+};
+
 /**
  * set of parameters describing audio stream
  * this structure is shared between audio_stream.h and sink/source interface
@@ -53,7 +67,7 @@ struct sof_audio_stream_params {
 
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 
-	bool hw_params_configured; /**< indicates whether hw params were set */
+	enum sof_audio_buffer_state state;	/**< audio stream state */
 };
 
 #endif /* __MODULE_AUDIO_AUDIO_STREAM_H__ */
