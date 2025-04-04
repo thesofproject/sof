@@ -40,6 +40,7 @@ import gzip
 import dataclasses
 import concurrent.futures as concurrent
 import tarfile
+import re
 
 from west import configuration as west_config
 
@@ -967,73 +968,77 @@ def install_lib(platform, sof_output_dir, abs_build_dir, platform_wconfig):
 
 	sof_lib_dir.mkdir(parents=True, exist_ok=True)
 
-	with os.scandir(str(abs_build_dir)) as iter:
-		for entry in iter:
-			if (not entry.is_dir or
-			    not entry.name.endswith('_llext')):
-				continue
+	dirlist = [d for d in os.listdir(str(abs_build_dir)) if os.path.isdir(abs_build_dir / d)]
+	# Find all auxiliary modules, they're called "aux1_", "aux2_", etc.,
+	# where lower numbers mean fewer dependent levels, so we need to sort
+	# them in reversed order to have all dependencies satisfied
+	pattern_aux = re.compile(r'^aux\d_.+_llext$')
+	aux = sorted([d for d in dirlist if pattern_aux.match(d)], reverse=True)
+	llext_dirs = [d for d in dirlist if d.endswith('_llext') and d not in aux]
+	final_list = aux + llext_dirs
 
-			entry_path = pathlib.Path(entry.path)
+	for entry in final_list:
+		entry_path = abs_build_dir / entry
 
-			uuids = entry_path / 'llext.uuid'
-			if not os.path.exists(uuids):
-				print(f"Directory {entry.name} has no llext.uuid file. Skipping.")
-				continue
+		uuids = entry_path / 'llext.uuid'
+		if not os.path.exists(uuids):
+			print(f"Directory {entry} has no llext.uuid file. Skipping.")
+			continue
 
-			# replace '_llext' with '.llext', e.g.
-			# eq_iir_llext/eq_iir.llext
-			llext_base = entry.name[:-6]
-			llext_file = llext_base + '.llext'
-			lib_name = ''
+		# replace '_llext' with '.llext', e.g.
+		# eq_iir_llext/eq_iir.llext
+		llext_base = entry[:-6]
+		llext_file = llext_base + '.llext'
+		lib_name = ''
 
-			lib_fname = entry_path / 'lib_name.txt'
-			if os.path.exists(lib_fname):
-				with open(lib_fname, 'r') as libs_f:
-					lib_name = libs_f.read()
-					if lib_name not in libs.keys():
-						libs[lib_name] = []
-					libs[lib_name].append(str(entry_path / llext_file))
-			else:
-				dst = sof_lib_dir / llext_file
+		lib_fname = entry_path / 'lib_name.txt'
+		if os.path.exists(lib_fname):
+			with open(lib_fname, 'r') as libs_f:
+				lib_name = libs_f.read()
+				if lib_name not in libs.keys():
+					libs[lib_name] = []
+				libs[lib_name].append(str(entry_path / llext_file))
+		else:
+			dst = sof_lib_dir / llext_file
 
-				rimage_cfg = entry_path / 'rimage_config.toml'
-				llext_input = entry_path / (llext_base + '.llext')
-				llext_output = entry_path / (llext_file + '.ri')
+			rimage_cfg = entry_path / 'rimage_config.toml'
+			llext_input = entry_path / (llext_base + '.llext')
+			llext_output = entry_path / (llext_file + '.ri')
 
-				# See why the shlex() parsing step is required at
-				# https://docs.zephyrproject.org/latest/develop/west/sign.html#rimage
-				# and in Zephyr commit 030b740bd1ec
-				sign_cmd = [rimage_cmd, "-o", str(llext_output),
-					    "-e", "-c", str(rimage_cfg),
-					    "-k", str(signing_key), "-l", "-r"]
-				if _ws_args is not None:
-					sign_cmd.extend(shlex.split(_ws_args))
-				sign_cmd.append(str(llext_input))
-				execute_command(sign_cmd, cwd=west_top)
+			# See why the shlex() parsing step is required at
+			# https://docs.zephyrproject.org/latest/develop/west/sign.html#rimage
+			# and in Zephyr commit 030b740bd1ec
+			sign_cmd = [rimage_cmd, "-o", str(llext_output),
+				    "-e", "-c", str(rimage_cfg),
+				    "-k", str(signing_key), "-l", "-r"]
+			if _ws_args is not None:
+				sign_cmd.extend(shlex.split(_ws_args))
+			sign_cmd.append(str(llext_input))
+			execute_command(sign_cmd, cwd=west_top)
 
-				# An intuitive way to make this multiline would be
-				# with (open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext,
-				#	open(llext_output.with_suffix('.llext.xman'), 'rb') as fman):
-				# but a Python version, used on Windows errored out on this.
-				# Thus we're left with a choice between a 150-character
-				# long line and an illogical split like this
-				with open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext, open(
-					  llext_output.with_suffix('.ri.xman'), 'rb') as fman:
-					# Concatenate the manifest and the llext
-					shutil.copyfileobj(fman, fdst)
-					shutil.copyfileobj(fllext, fdst)
+			# An intuitive way to make this multiline would be
+			# with (open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext,
+			#	open(llext_output.with_suffix('.llext.xman'), 'rb') as fman):
+			# but a Python version, used on Windows errored out on this.
+			# Thus we're left with a choice between a 150-character
+			# long line and an illogical split like this
+			with open(dst, 'wb') as fdst, open(llext_output, 'rb') as fllext, open(
+				  llext_output.with_suffix('.ri.xman'), 'rb') as fman:
+				# Concatenate the manifest and the llext
+				shutil.copyfileobj(fman, fdst)
+				shutil.copyfileobj(fllext, fdst)
 
-			# Create symbolic links for all UUIDs
-			with open(uuids, 'r') as uuids_f:
-				for uuid in uuids_f:
-					if os.path.exists(lib_fname):
-						if lib_name not in lib_uuids.keys():
-							lib_uuids[lib_name] = []
-						lib_uuids[lib_name].append(uuid.strip())
-					else:
-						linkname = uuid.strip() + '.bin'
-						symlink_or_copy(sof_lib_dir, llext_file,
-								sof_lib_dir, linkname)
+		# Create symbolic links for all UUIDs
+		with open(uuids, 'r') as uuids_f:
+			for uuid in uuids_f:
+				if os.path.exists(lib_fname):
+					if lib_name not in lib_uuids.keys():
+						lib_uuids[lib_name] = []
+					lib_uuids[lib_name].append(uuid.strip())
+				else:
+					linkname = uuid.strip() + '.bin'
+					symlink_or_copy(sof_lib_dir, llext_file,
+							sof_lib_dir, linkname)
 
 	lib_install_dir = sof_output_dir / platform
 	if args.key_type_subdir != "none":
