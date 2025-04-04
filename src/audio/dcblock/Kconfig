@@ -2,6 +2,7 @@
 
 config COMP_DCBLOCK
 	tristate "DC Blocking Filter component"
+	default m if LIBRARY_DEFAULT_MODULAR
 	default y
 	help
 	  Select for DC Blocking Filter component. This component filters out
