@@ -13,6 +13,11 @@
 #include <stdbool.h>
 #include "../ipc/stream.h"
 
+enum sof_audio_stream_state {
+	STREAM_STATE_INITIAL,			/* Initial state, hw params not configured. */
+	STREAM_STATE_READY,			/* Stream ready, hw params configured */
+};
+
 /**
  * set of parameters describing audio stream
  * this structure is shared between audio_stream.h and sink/source interface
@@ -53,7 +58,7 @@ struct sof_audio_stream_params {
 
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 
-	bool hw_params_configured; /**< indicates whether hw params were set */
+	enum sof_audio_stream_state state;	/**< stream state */
 };
 
 #endif /* __MODULE_AUDIO_AUDIO_STREAM_H__ */
