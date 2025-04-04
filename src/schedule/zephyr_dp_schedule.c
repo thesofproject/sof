@@ -464,7 +464,7 @@ int scheduler_dp_init(void)
 	if (ret)
 		return ret;
 
-	notifier_register(NULL, NULL, NOTIFIER_ID_LL_POST_RUN, scheduler_dp_ll_tick, 0);
+	notifier_register(NULL, NULL, NOTIFIER_ID_LL_PRE_RUN, scheduler_dp_ll_tick, 0);
 
 	return 0;
 }
