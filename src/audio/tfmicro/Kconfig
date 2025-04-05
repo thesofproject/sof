@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_TFMICRO
+	tristate "Tensorflow Micro component"
+	default n
+	help
+	  Select for Tensorflow component support.
