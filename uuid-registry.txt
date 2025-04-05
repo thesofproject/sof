@@ -154,6 +154,7 @@ e61bb28d-149a-4c1f-b70946823ef5f5ae src4
 33441051-44cd-466a-83a3178478708aea src_lite
 eb0bd14b-7d5e-4dfa-bbe27762adb279f0 swaudiodai
 dd511749-d9fa-455c-b3a713585693f1af tdfb
+a62de1af-5964-4e2e-b1677fdc97279a29 template_comp
 37c196ae-3532-4282-8a78dd9d50cc7123 testbench
 08aeb4ff-7f68-4c71-86c3c842b4262898 tester
 04e3f894-2c5c-4f2e-8dc1694eeaab53fa tone
