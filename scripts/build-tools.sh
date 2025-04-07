@@ -26,6 +26,7 @@ usage: $0 [-c|-f|-h|-l|-p|-t|-T|-X|-Y]
        -X Rebuild topology1 only
        -Y Rebuild topology2 only
        -t Rebuild test/topology/ (or tools/test/topology/tplg-build.sh directly)
+       -d Deployment build
 
        -C No build, only CMake re-configuration. Shows CMake targets.
 EOFUSAGE
@@ -99,6 +100,7 @@ main()
         SOF_REPO=$(dirname "$SCRIPT_DIR")
         : "${BUILD_TOOLS_DIR:=$SOF_REPO/../build-tools-tplg}"
         : "${NO_PROCESSORS:=$(nproc)}"
+        DEPLOY_DIR="$SOF_REPO/../build-sof-staging"
         BUILD_ALL=false
 
         if [ $# -eq 0 ]; then
@@ -111,6 +113,7 @@ main()
         DO_BUILD_tests=false
         DO_BUILD_topologies1=false
         DO_BUILD_topologies2=false
+        DO_DEPLOYMENT=false
         CMAKE_ONLY=false
 
         # better safe than sorry
@@ -118,7 +121,7 @@ main()
 
         # eval is a sometimes necessary evil
         # shellcheck disable=SC2034
-        while getopts "cfhlptTCXY" OPTION; do
+        while getopts "cfhlptTCXYd" OPTION; do
                 case "$OPTION" in
                 c) DO_BUILD_ctl=true ;;
                 l) DO_BUILD_logger=true ;;
@@ -128,6 +131,7 @@ main()
                 X) DO_BUILD_topologies1=true ;;
                 Y) DO_BUILD_topologies2=true ;;
                 C) CMAKE_ONLY=true ;;
+                d) DO_DEPLOYMENT=true ;;
                 h) print_usage; exit 1;;
                 *) print_usage; exit 1;;
                 esac
@@ -166,6 +170,14 @@ main()
                         make_tool sof-$tool
                 fi
         done
+
+        if "$DO_DEPLOYMENT"; then
+                # copy Intel topology2 files to output directory
+                # This will need updated when other uses topology2
+                cp -ap "$BUILD_TOOLS_DIR"/topology/topology2/production/*.tplg \
+                        $DEPLOY_DIR/lib/firmware/intel/sof-ipc4-tplg/
+                echo "Deployment build done"
+        fi
 
         warn_if_incremental_build
 }
