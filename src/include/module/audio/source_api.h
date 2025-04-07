@@ -323,4 +323,9 @@ static inline struct processing_module *source_get_bound_module(struct sof_sourc
 	return source->bound_module;
 }
 
+static inline enum sof_audio_buffer_state source_get_state(const struct sof_source *source)
+{
+	return source->audio_stream_params->state;
+}
+
 #endif /* __MODULE_AUDIO_SOURCE_API_H__ */
