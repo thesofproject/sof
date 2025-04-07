@@ -49,8 +49,6 @@ LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
 #include "volume_uuid.h"
 #include "volume.h"
 
-#if CONFIG_COMP_PEAK_VOL || CONFIG_COMP_GAIN
-
 #if CONFIG_FORMAT_S16LE
 /**
  * \brief Used to find nearest zero crossing frame for 16 bit format.
@@ -211,8 +209,6 @@ __cold_rodata static const struct comp_zc_func_map zc_func_map[] = {
 	{ SOF_IPC_FRAME_S32_LE, vol_zc_get_s32 },
 #endif /* CONFIG_FORMAT_S32LE */
 };
-
-#endif /* CONFIG_COMP_PEAK_VOL || CONFIG_COMP_GAIN */
 
 #if CONFIG_COMP_VOLUME_LINEAR_RAMP
 /**
@@ -551,7 +547,6 @@ void volume_set_chan_unmute(struct processing_module *mod, int chan)
 	}
 }
 
-#if CONFIG_COMP_PEAK_VOL || CONFIG_COMP_GAIN
 /*
  * \brief Copies and processes stream data.
  * \param[in,out] mod Volume processing module handle
@@ -783,9 +778,7 @@ static int volume_free(struct processing_module *mod)
 
 	return 0;
 }
-#endif
 
-#if CONFIG_COMP_PEAK_VOL
 static const struct module_interface volume_interface = {
 	.init = volume_init,
 	.prepare = volume_prepare,
@@ -795,7 +788,6 @@ static const struct module_interface volume_interface = {
 	.reset = volume_reset,
 	.free = volume_free
 };
-#endif
 
 #if CONFIG_COMP_GAIN
 static const struct module_interface gain_interface = {
@@ -837,10 +829,8 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
-#if CONFIG_COMP_PEAK_VOL
 DECLARE_MODULE_ADAPTER(volume_interface, volume_uuid, volume_tr);
 SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
-#endif
 
 #if CONFIG_COMP_GAIN
 DECLARE_MODULE_ADAPTER(gain_interface, gain_uuid, gain_tr);
