@@ -25,6 +25,10 @@
 enum sof_audio_buffer_state {
 	AUDIOBUF_STATE_INITIAL,			/* Initial state, hw params not configured. */
 	AUDIOBUF_STATE_READY,			/* Stream ready, hw params configured */
+	AUDIOBUF_STATE_END_OF_STREAM,		/* Detected End Of Stream */
+	AUDIOBUF_STATE_END_OF_STREAM_FLUSH,	/* Detected End Of Stream, generating silence
+						 * to flush buffers in dp modules.
+						 */
 };
 
 /**
