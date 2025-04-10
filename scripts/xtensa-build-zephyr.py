@@ -372,6 +372,8 @@ IPC4
 			    help="""Do not create a tar file of the installed firmware files under build-sof-staging.""")
 	parser.add_argument("--version", required=False, action="store_true",
 			    help="Prints version of this script.")
+	parser.add_argument("-m", "--menuconfig", required=False, action="store_true",
+				help="Build menuconfig for target")
 
 	args = parser.parse_args()
 
@@ -854,7 +856,10 @@ def build_platforms():
 		PLAT_CONFIG = platform_dict["PLAT_CONFIG"]
 		build_cmd = ["west"]
 		build_cmd += ["-v"] * args.verbose
-		build_cmd += ["build", "--build-dir", platform_build_dir_name]
+		if args.menuconfig:
+			build_cmd += ["build", "-t", "menuconfig", "--build-dir", platform_build_dir_name]
+		else:
+			build_cmd += ["build", "--build-dir", platform_build_dir_name]
 		source_dir = pathlib.Path(SOF_TOP, "app")
 		build_cmd += ["--board", PLAT_CONFIG, str(source_dir)]
 		if args.pristine:
@@ -916,6 +921,10 @@ def build_platforms():
 				sys.exit("Zephyr project not found. Please run this script with -u flag or `west update zephyr` manually.")
 			else: # unknown failure
 				raise cpe
+
+		# no output to display if building menuconfig
+		if args.menuconfig:
+			return
 
 		# reproducible-zephyr.ri is less useful now that show_installed_files() shows
 		# checksums too. However: - it's still useful when only the .ri file is
@@ -1307,6 +1316,8 @@ def main():
 
 	build_rimage()
 	build_platforms()
+	if args.menuconfig:
+		return
 	if not args.no_tarball:
 		create_tarball()
 	show_installed_files()
