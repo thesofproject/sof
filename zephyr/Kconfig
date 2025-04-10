@@ -1,4 +1,14 @@
 if SOF
+
+config SOF_STAGING
+	bool "Enable SOF staging features and modules"
+	default n
+	help
+	  SOF staging features are not ready for production but are
+	  upstream to enable developers to continue development in order
+	  to bring the feature to production level faster using the
+	  upstream codebase.
+
 rsource "../Kconfig.sof"
 
 config SOF_ZEPHYR_HEAP_CACHED
