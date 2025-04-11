@@ -154,5 +154,9 @@
 #include <audio/mfcc/mfcc.toml>
 #endif
 
+#if defined(CONFIG_COMP_TEMPLATE_COMP) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/template_comp/template_comp.toml>
+#endif
+
 [module]
 count = __COUNTER__
