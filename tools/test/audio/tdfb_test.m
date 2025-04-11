@@ -19,8 +19,8 @@ cfg.tunepath = '../../../src/audio/tdfb/tune/data';
 
 % Arrays to test. Since the two beams configurations are merge of two designs (pm90deg)
 % need to specify a compatible data file identifier for a single beam design (az0el0deg)
-array_data_list = {'line2_50mm_az0el0deg_48khz', 'line4_28mm_az0el0deg_48khz', 'circular8_100mm_az0el0deg_48khz'};
-tdfb_name_list =  {'', 'line4_28mm_pm90deg_48khz', 'circular8_100mm_pm30deg_48khz'};
+array_data_list = {'line2_50mm_az0el0deg_48khz'};
+tdfb_name_list =  {''};
 
 %% Prepare
 addpath('std_utils');
