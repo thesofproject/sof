@@ -9,13 +9,13 @@ function tdfb_test()
 %   determine. So far only visual check enabled.
 
 % SPDX-License-Identifier: BSD-3-Clause
-% Copyright(c) 2020 Intel Corporation. All rights reserved.
+% Copyright(c) 2020-2025 Intel Corporation.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 % General settings
 cfg.delete_files = 1;
 cfg.do_plots = 1;
-cfg.tunepath = '../../tune/tdfb/data';
+cfg.tunepath = '../../../src/audio/tdfb/tune/data';
 
 % Arrays to test. Since the two beams configurations are merge of two designs (pm90deg)
 % need to specify a compatible data file identifier for a single beam design (az0el0deg)
@@ -25,7 +25,7 @@ tdfb_name_list =  {'', 'line4_28mm_pm90deg_48khz', 'circular8_100mm_pm30deg_48kh
 %% Prepare
 addpath('std_utils');
 addpath('test_utils');
-addpath('../../tune/tdfb');
+addpath('../../../src/audio/tdfb/tune');
 
 for i = 1:length(array_data_list)
 
