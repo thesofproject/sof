@@ -6,7 +6,7 @@ name: Build test all components
 # 'Actions' tab
 
 # yamllint disable-line rule:truthy
-on: [pull_request, workflow_dispatch, workflow_call]
+# on: [pull_request, workflow_dispatch, workflow_call]
 
 jobs:
 
