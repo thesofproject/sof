@@ -102,10 +102,10 @@ static void test_audio_pipeline_complete_connect_downstream_ignore_sink
 	 *and first has no upstream components
 	 */
 	list_item_append(&result.sched_comp->bsink_list,
-					 &test_data->b1->source_list);
-	list_item_append(&test_data->b1->source_list,
+					 &test_data->b1->audio_buffer.Xsource_list);
+	list_item_append(&test_data->b1->audio_buffer.Xsource_list,
 					 &result.sched_comp->bsink_list);
-	list_item_append(&test_data->b1->sink_list,
+	list_item_append(&test_data->b1->audio_buffer.Xsink_list,
 					 &test_data->second->bsource_list);
 
 	/*Testing component*/
@@ -128,13 +128,13 @@ static void test_audio_pipeline_complete_connect_upstream_ignore_source
 	 *and first has no downstream components
 	 */
 	list_item_append(&result.sched_comp->bsource_list,
-					 &test_data->b1->sink_list);
+					 &test_data->b1->audio_buffer.Xsink_list);
 	comp_buffer_set_sink_component(test_data->b1, result.sched_comp);
 	comp_buffer_set_source_component(test_data->b1, test_data->second);
-	list_item_append(&test_data->b1->source_list,
+	list_item_append(&test_data->b1->audio_buffer.Xsource_list,
 					 &test_data->second->bsink_list);
 	list_item_append(&test_data->second->bsource_list,
-					 &test_data->b2->sink_list);
+					 &test_data->b2->audio_buffer.Xsink_list);
 	comp_buffer_set_sink_component(test_data->b2, test_data->second);
 
 	/*Testing component*/
@@ -156,11 +156,14 @@ static void test_audio_pipeline_complete_connect_downstream_full(void **state)
 	/*Connecting first comp to second*/
 	comp = &test_data->second->ipc_config;
 	comp->pipeline_id = PIPELINE_ID_SAME;
-	list_item_append(&result.sched_comp->bsink_list, &test_data->b1->source_list);
+	list_item_append(&result.sched_comp->bsink_list, 
+		&test_data->b1->audio_buffer.Xsource_list);
 	comp_buffer_set_source_component(test_data->b1, result.sched_comp);
-	list_item_append(&test_data->b1->source_list, &result.sched_comp->bsink_list);
+	list_item_append(&test_data->b1->audio_buffer.Xsource_list, 
+		&result.sched_comp->bsink_list);
 	comp_buffer_set_sink_component(test_data->b1, test_data->second);
-	list_item_append(&test_data->b1->sink_list, &test_data->second->bsource_list);
+	list_item_append(&test_data->b1->audio_buffer.Xsink_list, 
+		&test_data->second->bsource_list);
 
 	test_data->first->frames = 0;
 	test_data->second->frames = 0;
@@ -185,7 +188,7 @@ static void test_audio_pipeline_complete_connect_upstream_full(void **state)
 	comp = &test_data->second->ipc_config;
 	comp->pipeline_id = PIPELINE_ID_SAME;
 	list_item_append(&result.sched_comp->bsource_list,
-					 &test_data->b1->sink_list);
+			 &test_data->b1->audio_buffer.Xsink_list);
 	comp_buffer_set_sink_component(test_data->b1, test_data->first);
 	comp_buffer_set_source_component(test_data->b1, test_data->second);
 
@@ -209,10 +212,12 @@ static void test_audio_pipeline_complete_connect_upstream_other_pipeline
 	/*Connecting first comp to second*/
 	comp = &test_data->second->ipc_config;
 	comp->pipeline_id = PIPELINE_ID_DIFFERENT;
-	list_item_append(&result.sched_comp->bsource_list, &test_data->b1->sink_list);
+	list_item_append(&result.sched_comp->bsource_list, 
+		&test_data->b1->audio_buffer.Xsink_list);
 	comp_buffer_set_sink_component(test_data->b1, test_data->first);
 	comp_buffer_set_source_component(test_data->b1, test_data->second);
-	list_item_append(&test_data->second->bsource_list, &test_data->b1->source_list);
+	list_item_append(&test_data->second->bsource_list, 
+		&test_data->b1->audio_buffer.Xsource_list);
 
 	/*Testing component*/
 	pipeline_complete(&result, test_data->first, test_data->second);

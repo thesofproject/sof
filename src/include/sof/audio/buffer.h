@@ -134,14 +134,6 @@ struct comp_buffer {
 	uint32_t core;
 	struct tr_ctx tctx;			/* trace settings */
 
-	/* connected components */
-	struct comp_dev *source;	/* source component */
-	struct comp_dev *sink;		/* sink component */
-
-	/* lists */
-	struct list_item source_list;	/* list in comp buffers */
-	struct list_item sink_list;	/* list in comp buffers */
-
 	/* list of buffers, to be used i.e. in raw data processing mode*/
 	struct list_item buffers_list;
 };
@@ -149,39 +141,45 @@ struct comp_buffer {
 /*
  * get a component providing data to the buffer
  */
+//msz
 static inline struct comp_dev *comp_buffer_get_source_component(const struct comp_buffer *buffer)
 {
-	return buffer->source;
+	return audio_buffer_get_source_component(&buffer->audio_buffer);
 }
 
 /*
  * get a component consuming data from the buffer
  */
+//msz
 static inline struct comp_dev *comp_buffer_get_sink_component(const struct comp_buffer *buffer)
 {
-	return buffer->sink;
+	return audio_buffer_get_sink_component(&buffer->audio_buffer);
 }
 
+//msz
 static inline
 void comp_buffer_set_source_component(struct comp_buffer *buffer, struct comp_dev *comp)
 {
-	buffer->source = comp;
+	audio_buffer_set_source_component(&buffer->audio_buffer, comp);
+}
+
+static inline
+struct comp_buffer *comp_buffer_from_audio_buffer(struct sof_audio_buffer *audio_buffer)
+{
+	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
 }
 
 static inline
 void comp_buffer_set_sink_component(struct comp_buffer *buffer, struct comp_dev *comp)
 {
-	buffer->sink = comp;
+	audio_buffer_set_sink_component(&buffer->audio_buffer, comp);
 }
 
-static inline void comp_buffer_reset_source_list(struct comp_buffer *buffer)
+static inline
+struct comp_buffer *buffer_from_list(struct list_item *ptr, int dir)
 {
-	list_init(&buffer->source_list);
-}
-
-static inline void comp_buffer_reset_sink_list(struct comp_buffer *buffer)
-{
-	list_init(&buffer->sink_list);
+	struct sof_audio_buffer *audio_buffer = audio_buffer_from_list(ptr, dir);
+	return comp_buffer_from_audio_buffer(audio_buffer);
 }
 
 /* Only to be used for synchronous same-core notifications! */
@@ -194,11 +192,6 @@ struct buffer_cb_transact {
 struct buffer_cb_free {
 	struct comp_buffer *buffer;
 };
-
-#define buffer_from_list(ptr, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? \
-	 container_of(ptr, struct comp_buffer, source_list) : \
-	 container_of(ptr, struct comp_buffer, sink_list))
 
 #define buffer_set_cb(buffer, func, data, type) \
 	do {				\
@@ -269,23 +262,6 @@ static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t 
 		audio_stream_writeback(&buffer->stream, bytes);
 #endif
 }
-
-
-/*
- * Attach a new buffer at the beginning of the list. Note, that "head" must
- * really be the head of the list, not a list head within another buffer. We
- * don't synchronise its cache, so it must not be embedded in an object, using
- * the coherent API. The caller takes care to protect list heads.
- */
-void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir);
-
-/*
- * Detach a buffer from anywhere in the list. "head" is again the head of the
- * list, we need it to verify, whether this buffer was the first or the last on
- * the list. Again it is assumed that the head's cache doesn't need to be
- * synchronized. The caller takes care to protect list heads.
- */
-void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir);
 
 static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
 {

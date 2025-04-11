@@ -17,12 +17,12 @@ void cleanup_test_data(struct pipeline_connect_data *data)
 {
 	list_init(&data->first->bsource_list);
 	list_init(&data->second->bsource_list);
-	comp_buffer_reset_sink_list(data->b1);
-	comp_buffer_reset_source_list(data->b1);
+	audio_buffer_reset_sink_list(&data->b1->audio_buffer);
+	audio_buffer_reset_source_list(&data->b1->audio_buffer);
 	list_init(&data->first->bsink_list);
 	list_init(&data->second->bsink_list);
-	comp_buffer_reset_sink_list(data->b2);
-	comp_buffer_reset_source_list(data->b2);
+	audio_buffer_reset_sink_list(&data->b2->audio_buffer);
+	audio_buffer_reset_source_list(&data->b2->audio_buffer);
 }
 
 struct pipeline_connect_data *get_standard_connect_objects(void)
@@ -72,15 +72,15 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 	comp_buffer_set_source_component(buffer, first);
 	comp_buffer_set_sink_component(buffer, second);
-	comp_buffer_reset_sink_list(buffer);
-	comp_buffer_reset_source_list(buffer);
+	audio_buffer_reset_sink_list(&buffer->audio_buffer);
+	audio_buffer_reset_source_list(&buffer->audio_buffer);
 	pipeline_connect_data->b1 = buffer;
 
 	struct comp_buffer *buffer_2 = calloc(sizeof(struct comp_buffer), 1);
 
 	comp_buffer_set_source_component(buffer_2, second);
-	comp_buffer_reset_sink_list(buffer_2);
-	comp_buffer_reset_source_list(buffer_2);
+	audio_buffer_reset_sink_list(&buffer_2->audio_buffer);
+	audio_buffer_reset_source_list(&buffer_2->audio_buffer);
 	pipeline_connect_data->b2 = buffer_2;
 
 	pipeline_connect_data->p = *pipe;
