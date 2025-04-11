@@ -63,7 +63,7 @@ class MyWindow(Gtk.Window):
             color: #FFFFFF;
         }
         headerbar.titlebar {
-            background: #2C3E50;
+            background-color: #2C3E50;
         }
         """
         css_provider.load_from_data(css.encode('utf-8'))
