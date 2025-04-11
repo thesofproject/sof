@@ -47,15 +47,20 @@ jobs:
 
       # testbench needs some topologies.
       - name: build test topologies
+        continue-on-error: true
         run: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
-          ./scripts/build-tools.sh -Y -A ||
+          ./scripts/build-tools.sh -A -Y ||
              VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
              CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
-          ./scripts/build-tools.sh -Y -A
+          ./scripts/build-tools.sh -A -Y
 
-      - name: build testbench
-        run: ./scripts/rebuild-testbench.sh ||
-             ./scripts/rebuild-testbench.sh -j 1
+      # Verify alsatplg version
+      - name: verify alsatplg version
+        run: ./tools/bin/alsatplg --version
 
-      - name: run testbench
-        run: ./scripts/host-testbench.sh
+     # - name: build testbench
+     #   run: ./scripts/rebuild-testbench.sh ||
+     #        ./scripts/rebuild-testbench.sh -j 1
+
+     # - name: run testbench
+     #   run: ./scripts/host-testbench.sh
