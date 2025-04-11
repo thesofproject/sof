@@ -1,8 +1,8 @@
-function tdfb_test()
+function tdfb_test(xtrun)
 
-% tdfb_test()
+% tdfb_test(xtrun)
 % Inputs
-%   None
+%   xtrun - set to 'xt-run' or 'xt-run --turbo' to test with xt-testbench
 %
 % Outputs
 %   None, to be added later when automatic pass/fail is possible to
@@ -12,10 +12,15 @@ function tdfb_test()
 % Copyright(c) 2020-2025 Intel Corporation.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+if nargin < 1
+	xtrun = '';
+end
+
 % General settings
 cfg.delete_files = 1;
 cfg.do_plots = 1;
 cfg.tunepath = '../../../src/audio/tdfb/tune/data';
+cfg.xtrun = xtrun;
 
 % Arrays to test. Since the two beams configurations are merge of two designs (pm90deg)
 % need to specify a compatible data file identifier for a single beam design (az0el0deg)
@@ -119,6 +124,7 @@ end
 test = test_defaults(bf, tdfb);
 test.fn_in = fullfile(cfg.tunepath, simcap_fn);
 test.fn_out = 'sinerot.raw';
+test.xtrun = cfg.xtrun;
 
 % Run test
 test = test_run_comp(test);
