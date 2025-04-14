@@ -20,6 +20,7 @@ set(components
 	"src"
 	"src_lite"
 	"tdfb"
+	"template_comp"
 )
 
 set(component_parameters
@@ -35,6 +36,7 @@ set(component_parameters
 	"BENCH_SRC_PARAMS=default"
 	"BENCH_SRC_LITE_PARAMS=default"
 	"BENCH_TDFB_PARAMS=default"
+	"BENCH_TEMPLATE_COMP_PARAMS=default"
 )
 
 set(components_s24
