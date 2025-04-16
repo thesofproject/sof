@@ -393,6 +393,32 @@ static int host_get_status(struct comp_dev *dev, struct host_data *hd, struct dm
 /* Minimum time between 2 consecutive "no bytes to copy" messages in milliseconds */
 #define SOF_MIN_NO_BYTES_INTERVAL_MS 20
 
+static inline bool host_handle_eos(struct host_data *hd, struct comp_dev *dev,
+				   uint32_t avail_samples)
+{
+	struct sof_audio_buffer *buffer = &hd->local_buffer->audio_buffer;
+	enum sof_audio_buffer_state state = audio_buffer_get_state(buffer);
+
+	if (!dev->pipeline->expect_eos)
+		return false;
+
+	if (!avail_samples) {
+		/* EOS is detected, so we need to set the sink
+		 * state to AUDIOBUF_STATE_END_OF_STREAM.
+		 */
+		if (state != AUDIOBUF_STATE_END_OF_STREAM) {
+			audio_buffer_set_eos(buffer);
+			comp_info(dev, "host_handle_eos() - EOS detected");
+		}
+		return true;
+	}
+
+	if (state == AUDIOBUF_STATE_END_OF_STREAM)
+		comp_warn(dev, "Data available after reporting end of stream!");
+
+	return false;
+}
+
 /**
  * Calculates bytes to be copied in normal mode.
  * @param dev Host component device.
@@ -440,6 +466,9 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		avail_samples = (dma_stat.pending_length - hd->partial_size) / dma_sample_bytes;
 		free_samples = audio_stream_get_free_samples(&buffer->stream);
+
+		if (host_handle_eos(hd, dev, avail_samples))
+			return 0;
 	} else {
 		avail_samples = audio_stream_get_avail_samples(&buffer->stream);
 		free_samples = (dma_stat.free - hd->partial_size) / dma_sample_bytes;
