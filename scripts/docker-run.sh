@@ -42,6 +42,5 @@ docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
 	--env VERBOSE \
 	--env http_proxy="$http_proxy" \
 	--env https_proxy="$https_proxy" \
-	--env SOF_WORKSPACE="$SOF_WORKSPACE" \
 	$SOF_DOCKER_RUN \
 	thesofproject/sof:20250410_no-alsa ./scripts/sudo-cwd.sh "$@"

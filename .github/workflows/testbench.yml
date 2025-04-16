@@ -49,6 +49,16 @@ jobs:
       - name: Set SOF_WORKSPACE
         run: echo "SOF_WORKSPACE=/home/sof/work/sof.git" >> $GITHUB_ENV
 
+      # Set environment variables for ALSA tools
+      - name: Set ALSA tools environment
+        run: |
+          export PATH=/home/sof/work/sof.git/tools/bin:$PATH
+          export PKG_CONFIG_PATH=/home/sof/work/sof.git/tools/lib/pkgconfig:$PKG_CONFIG_PATH
+          export LD_LIBRARY_PATH=/home/sof/work/sof.git/tools/lib:$LD_LIBRARY_PATH
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
       # testbench needs some topologies.
       - name: build test topologies
         continue-on-error: true
