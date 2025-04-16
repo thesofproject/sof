@@ -372,8 +372,10 @@ static enum task_state dp_task_run(void *data)
 {
 	struct processing_module *mod = data;
 
-	module_process_sink_src(mod, mod->sources, mod->num_of_sources,
-				mod->sinks, mod->num_of_sinks);
+	int ret = module_process_sink_src(mod, mod->sources, mod->num_of_sources,
+					  mod->sinks, mod->num_of_sinks);
+	if (ret)
+		pipeline_comp_copy_error_notify(mod->dev, ret);
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }

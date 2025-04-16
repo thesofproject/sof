@@ -431,4 +431,11 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
  */
 int pipeline_xrun_set_limit(struct pipeline *p, uint32_t xrun_limit_usecs);
 
+/**
+ * \brief Sends an ipc notification that an error occurred in the module's processing function.
+ * \param[in] component The component in which the error occurred.
+ * \param[in] error_code Error code.
+ */
+void pipeline_comp_copy_error_notify(const struct comp_dev *component, int error_code);
+
 #endif /* __SOF_AUDIO_PIPELINE_H__ */
