@@ -16,7 +16,7 @@ Attention: the list of selected shortcuts below is _not_ exhaustive. To
 build _everything_ don't select any particular target; this will build
 CMake's default target "ALL".
 
-usage: $0 [-c|-f|-h|-l|-p|-t|-T|-X|-Y]
+usage: $0 [-c|-f|-h|-l|-p|-t|-T|-X|-Y|-A]
        -h Display help
 
        -c Rebuild ctl/
@@ -26,6 +26,7 @@ usage: $0 [-c|-f|-h|-l|-p|-t|-T|-X|-Y]
        -X Rebuild topology1 only
        -Y Rebuild topology2 only
        -t Rebuild test/topology/ (or tools/test/topology/tplg-build.sh directly)
+       -A Clone and rebuild local ALSA lib and utils.
 
        -C No build, only CMake re-configuration. Shows CMake targets.
 EOFUSAGE
@@ -106,6 +107,7 @@ main()
         fi
 
         DO_BUILD_ctl=false
+        DO_BUILD_alsa=false
         DO_BUILD_logger=false
         DO_BUILD_probes=false
         DO_BUILD_tests=false
@@ -118,7 +120,7 @@ main()
 
         # eval is a sometimes necessary evil
         # shellcheck disable=SC2034
-        while getopts "cfhlptTCXY" OPTION; do
+        while getopts "cfhlptTCXYA" OPTION; do
                 case "$OPTION" in
                 c) DO_BUILD_ctl=true ;;
                 l) DO_BUILD_logger=true ;;
@@ -128,11 +130,16 @@ main()
                 X) DO_BUILD_topologies1=true ;;
                 Y) DO_BUILD_topologies2=true ;;
                 C) CMAKE_ONLY=true ;;
+                A) DO_BUILD_alsa=true ;;
                 h) print_usage; exit 1;;
                 *) print_usage; exit 1;;
                 esac
         done
         shift "$((OPTIND - 1))"
+
+        if "$DO_BUILD_alsa"; then
+                $SOF_TOP/scripts/build-alsa-tools.sh
+        fi
 
         if "$CMAKE_ONLY"; then
                 reconfigure_build

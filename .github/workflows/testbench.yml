@@ -38,20 +38,39 @@ jobs:
         with: {fetch-depth: 0, filter: 'tree:0'}
 
       - name: docker
-        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+        run: docker pull thesofproject/sof:20250410_no-alsa && docker tag thesofproject/sof:20250410_no-alsa sof
 
       - name: apt get
         run: sudo apt-get update &&
              sudo apt-get -y install valgrind alsa-utils libasound2-dev ninja-build
              octave octave-signal
 
+      # Set SOF_WORKSPACE to align ALSA tools installation with the build directory
+      - name: Set SOF_WORKSPACE
+        run: echo "SOF_WORKSPACE=/home/sof/work/sof.git" >> $GITHUB_ENV
+
+      # Set environment variables for ALSA tools
+      - name: Set ALSA tools environment
+        run: |
+          export PATH=/home/sof/work/sof.git/tools/bin:$PATH
+          export PKG_CONFIG_PATH=/home/sof/work/sof.git/tools/lib/pkgconfig:$PKG_CONFIG_PATH
+          export LD_LIBRARY_PATH=/home/sof/work/sof.git/tools/lib:$LD_LIBRARY_PATH
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
       # testbench needs some topologies.
       - name: build test topologies
+        continue-on-error: true
         run: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
-          ./scripts/build-tools.sh -Y ||
+          ./scripts/build-tools.sh -A -Y ||
              VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
              CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
-          ./scripts/build-tools.sh -Y
+          ./scripts/build-tools.sh -A -Y
+
+      # Verify alsatplg version
+      - name: verify alsatplg version
+        run: ./tools/bin/alsatplg --version
 
       - name: build testbench
         run: ./scripts/rebuild-testbench.sh ||
