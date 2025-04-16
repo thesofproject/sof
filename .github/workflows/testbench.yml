@@ -45,13 +45,9 @@ jobs:
              sudo apt-get -y install valgrind alsa-utils libasound2-dev ninja-build
              octave octave-signal
 
-      # Set environment variables for ALSA tools
-      - name: Set ALSA tools environment
-        run: |
-          export PATH=$HOME/work/sof/tools/bin:$PATH
-          export LD_LIBRARY_PATH=$HOME/work/sof/tools/lib:$LD_LIBRARY_PATH
-          echo "PATH=$PATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+      # Set SOF_WORKSPACE to align ALSA tools installation with the build directory
+      - name: Set SOF_WORKSPACE
+        run: echo "SOF_WORKSPACE=/home/sof/work/sof.git" >> $GITHUB_ENV
 
       # testbench needs some topologies.
       - name: build test topologies
