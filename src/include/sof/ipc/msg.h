@@ -36,6 +36,7 @@ struct ipc_msg {
 	uint32_t tx_size;	/* payload size in bytes */
 	void *tx_data;		/* pointer to payload data, must be in a non-cached memory */
 	struct list_item list;
+	void (*callback)(struct ipc_msg *msg); /* Function called after sending the message */
 };
 
 /**
