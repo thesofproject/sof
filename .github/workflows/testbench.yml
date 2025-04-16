@@ -72,9 +72,9 @@ jobs:
       - name: verify alsatplg version
         run: ./tools/bin/alsatplg --version
 
-     # - name: build testbench
-     #   run: ./scripts/rebuild-testbench.sh ||
-     #        ./scripts/rebuild-testbench.sh -j 1
+      - name: build testbench
+        run: ./scripts/rebuild-testbench.sh ||
+             ./scripts/rebuild-testbench.sh -j 1
 
-     # - name: run testbench
-     #   run: ./scripts/host-testbench.sh
+      - name: run testbench
+        run: ./scripts/host-testbench.sh
