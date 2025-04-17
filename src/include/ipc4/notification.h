@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <ipc/header.h>
+#include <sof/ipc/msg.h>
 #include <sof/compiler_attributes.h>
 
 /* ipc4 notification msg */
@@ -37,7 +38,7 @@ enum sof_ipc4_notification_type {
 	SOF_IPC4_FW_AUD_CLASS_RESULT		= 9,
 	SOF_IPC4_EXCEPTION_CAUGHT		= 10,
 	SOF_IPC4_MODULE_NOTIFICATION		= 12,
-	SOF_IPC4_UAOL_RSVD_		= 13,
+	SOF_IPC4_UAOL_EVENT			= 13,
 	SOF_IPC4_PROBE_DATA_AVAILABLE		= 14,
 	SOF_IPC4_WATCHDOG_TIMEOUT		= 15,
 	SOF_IPC4_MANAGEMENT_SERVICE		= 16,
@@ -116,8 +117,6 @@ enum sof_ipc4_resource_type {
 #define SOF_IPC4_NOTIF_HEADER(notif_type) \
 		((notif_type) << (SOF_IPC4_GLB_NOTIFY_TYPE_SHIFT) | \
 		((SOF_IPC4_GLB_NOTIFICATION) << (SOF_IPC4_GLB_NOTIFY_MSG_TYPE_SHIFT)))
-
-#endif
 
 /**
  * \brief IPC MAJOR 4 notification header. All IPC4 notifications use this header.
@@ -232,6 +231,19 @@ static inline void ipc4_notification_watchdog_init(struct ipc4_watchdog_timeout_
 }
 
 /**
+ * \brief This notification is sent by a shim of module instance on error raised by data processing
+ * function.
+ *
+ * In case of 3rd party IP error_code is set to its native error code returned by the 3rd party
+ * library.
+ */
+struct ipc4_process_data_error_event_data
+{
+	/* Error code returned by data processing function */
+	uint32_t error_code;
+};
+
+/**
  * \brief Input data payload is reserved field in parent technical spec which can be easily
  * extendable if needed by specific resource event types in the future. For backward compatibility
  * the size of this structure is 6 dw.
@@ -239,6 +251,8 @@ static inline void ipc4_notification_watchdog_init(struct ipc4_watchdog_timeout_
 union ipc4_resource_event_data {
 	/* Raw data */
 	uint32_t dws[6];
+	/* Process Data Error Data (res type = MODULE_INSTANCE) */
+	struct ipc4_process_data_error_event_data process_data_error;
 };
 
 struct ipc4_resource_event_data_notification {
@@ -255,3 +269,10 @@ struct ipc4_resource_event_data_notification {
 	/* Detailed event data */
 	union ipc4_resource_event_data event_data;
 } __packed __aligned(8);
+
+#define IPC4_RESOURCE_EVENT_SIZE	sizeof(struct ipc4_resource_event_data_notification)
+
+void process_data_error_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id,
+				       uint32_t error_code);
+
+#endif /* __IPC4_NOTIFICATION_H__ */
