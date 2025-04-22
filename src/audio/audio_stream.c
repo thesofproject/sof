@@ -20,7 +20,6 @@ static uint32_t audio_stream_frame_align_get(const uint32_t byte_align,
 	return frame_align_req * frame_num / gcd(frame_num, frame_align_req);
 }
 
-
 void audio_stream_recalc_align(struct audio_stream *stream)
 {
 	const uint32_t byte_align = stream->byte_align_req;
@@ -34,6 +33,7 @@ void audio_stream_recalc_align(struct audio_stream *stream)
 	stream->runtime_stream_params.align_shift_idx	=
 			(is_power_of_2(process_size) ? 31 : 32) - clz(process_size);
 }
+EXPORT_SYMBOL(audio_stream_recalc_align);
 
 void audio_stream_set_align(const uint32_t byte_align,
 					   const uint32_t frame_align_req,
@@ -44,6 +44,7 @@ void audio_stream_set_align(const uint32_t byte_align,
 	audio_stream_recalc_align(stream);
 }
 EXPORT_SYMBOL(audio_stream_set_align);
+
 void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint32_t size)
 {
 	audio_stream->size = size;
