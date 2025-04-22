@@ -299,6 +299,16 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
+# SSP test topology for Data Processing SRC on MTL
+"cavs-nocodec\;sof-mtl-nocodec-dp-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin,SRC_DOMAIN=DP"
+# SSP test topology for Data Processing SRC on LNL
+"cavs-nocodec\;sof-lnl-nocodec-dp-test\;PLATFORM=lnl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-lnl-nocodec.bin,SRC_DOMAIN=DP"
+# SSP test topology for Data Processing SRC on PTL
+"cavs-nocodec\;sof-ptl-nocodec-dp-test\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
+
 # Add MFCC to 16 kHz DMIC1, 2ch with NHLT - cAVS
 "sof-hda-generic\;sof-hda-generic-cavs25-2ch-mfcc\;HDA_CONFIG=mix,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-2ch-mfcc.bin,\
