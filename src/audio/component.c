@@ -5,6 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/audio/component_ext.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/common.h>
 #include <sof/debug/telemetry/performance_monitor.h>
 #include <rtos/panic.h>
@@ -496,6 +497,62 @@ void audio_stream_copy_to_linear(const struct audio_stream *source, int ioffset,
 	}
 }
 
+static bool comp_check_eos(struct comp_dev *dev)
+{
+	enum sof_audio_buffer_state sink_state = AUDIOBUF_STATE_INITIAL;
+	struct comp_buffer *buffer;
+
+	if (!dev->pipeline->expect_eos)
+		return false;
+
+	comp_dev_for_each_producer(dev, buffer) {
+		struct sof_source *source = audio_buffer_get_source(&buffer->audio_buffer);
+		enum sof_audio_buffer_state state = source_get_state(source);
+
+		if (source_get_pipeline_id(source) != dev->pipeline->pipeline_id)
+			continue;
+
+		if (state == AUDIOBUF_STATE_END_OF_STREAM_FLUSH) {
+			/* Earlier in the pipeline, there is a DP module that has reached
+			 * the EOS state. However, silence is generated to flush its internal
+			 * buffers, so pass this state to the output buffers.
+			 */
+			comp_dbg(dev, "comp_check_eos() - EOS flush detected");
+			sink_state = AUDIOBUF_STATE_END_OF_STREAM_FLUSH;
+			break;
+		} else if (state == AUDIOBUF_STATE_END_OF_STREAM) {
+			/* EOS is detected, so we need to set the sink state to AUDIOBUF_STATE_EOS. */
+			size_t min_avail = source_get_min_available(source);
+
+			if (source_get_data_available(source) < min_avail) {
+				comp_dbg(dev, "comp_check_eos() - EOS detected");
+				if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+					/* For DP modules, fill missing input data with silence to
+					 * allow it to process the remaining data.
+					 */
+					struct sof_sink *previous_mod_data_sink =
+						audio_buffer_get_sink(&buffer->audio_buffer);
+					sink_fill_with_silence(previous_mod_data_sink, min_avail);
+					sink_state = AUDIOBUF_STATE_END_OF_STREAM_FLUSH;
+				} else {
+					sink_state = AUDIOBUF_STATE_END_OF_STREAM;
+					break;
+				}
+			}
+		}
+	}
+
+	if (sink_state != AUDIOBUF_STATE_INITIAL) {
+		comp_dev_for_each_consumer(dev, buffer)
+			audio_buffer_set_state(&buffer->audio_buffer, sink_state);
+
+		/* For AUDIOBUF_STATE_END_OF_STREAM_FLUSH process data normally. */
+		return sink_state != AUDIOBUF_STATE_END_OF_STREAM_FLUSH;
+	}
+
+	return false;
+}
+
 /** See comp_ops::copy */
 int comp_copy(struct comp_dev *dev)
 {
@@ -529,6 +586,9 @@ int comp_copy(struct comp_dev *dev)
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 		const uint32_t begin_stamp = (uint32_t)telemetry_timestamp();
 #endif
+
+		if (comp_check_eos(dev))
+			return 0;
 
 		ret = dev->drv->ops.copy(dev);
 
