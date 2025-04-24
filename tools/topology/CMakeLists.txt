@@ -2,6 +2,8 @@ set(SOF_TOPOLOGY_BINARY_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 set(SOF_ALSA_TOOLS_DIR "${SOF_ROOT_SOURCE_DIRECTORY}/../tools/bin")
 set(ALSATPLG_CMD "${SOF_ALSA_TOOLS_DIR}/alsatplg")
 
+message(WARNING "DEBUG: alsatplg path=${ALSATPLG_CMD}")
+
 function(alsatplg_version  OUT_STATUS  OUT_VERSION)
 	execute_process(COMMAND ${ALSATPLG_CMD} --version
 	  RESULT_VARIABLE status
