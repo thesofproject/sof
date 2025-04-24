@@ -22,7 +22,7 @@ declare -a COMMIT_ID=(
 # Directory where repositories will be cloned/updated.
 if [[ -z "$SOF_WORKSPACE" ]]; then
   # Environment variable is empty or unset so use default
-  BASE_DIR="$HOME/work/sof"
+  BASE_DIR="$HOME/work"
 else
   # Environment variable exists and has a value
   BASE_DIR="$SOF_WORKSPACE"
