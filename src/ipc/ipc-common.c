@@ -162,6 +162,9 @@ void ipc_send_queued_msg(void)
 	if (ipc_platform_send_msg(msg) == 0) {
 		/* Remove the message from the list if it has been successfully sent. */
 		list_item_del(&msg->list);
+		/* Invoke a callback to notify that the message has been sent. */
+		if (msg->callback)
+			msg->callback(msg);
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 		/* Increment performance counters */
 		io_perf_monitor_update_data(ipc->io_perf_out_msg_count, 1);

@@ -21,6 +21,11 @@
 #include <rtos/kernel.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/lib/cpu-clk-manager.h>
+#include <sof/ipc/notification_pool.h>
+
+#ifdef CONFIG_IPC_MAJOR_4
+#include <ipc4/notification.h>
+#endif
 
 #include <errno.h>
 #include <stdbool.h>
@@ -88,6 +93,20 @@ pipeline_should_report_enodata_on_trigger(struct comp_dev *rsrc,
 	return false;
 }
 
+void pipeline_comp_copy_error_notify(const struct comp_dev *component, int err)
+{
+#ifdef CONFIG_IPC_MAJOR_4
+	struct ipc_msg *notify;
+
+	notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
+	if (!notify)
+		return;
+
+	process_data_error_notif_msg_init(notify, component->ipc_config.id, err);
+	ipc_msg_send(notify, notify->tx_data, false);
+#endif
+}
+
 static int pipeline_comp_copy(struct comp_dev *current,
 			      struct comp_buffer *calling_buf,
 			      struct pipeline_walk_context *ctx, int dir)
@@ -113,7 +132,11 @@ static int pipeline_comp_copy(struct comp_dev *current,
 	/* copy to downstream immediately */
 	if (dir == PPL_DIR_DOWNSTREAM) {
 		err = comp_copy(current);
-		if (err < 0 || err == PPL_STATUS_PATH_STOP)
+		if (err < 0) {
+			pipeline_comp_copy_error_notify(current, err);
+			return err;
+		}
+		if (err == PPL_STATUS_PATH_STOP)
 			return err;
 	}
 
@@ -121,8 +144,11 @@ static int pipeline_comp_copy(struct comp_dev *current,
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
-	if (dir == PPL_DIR_UPSTREAM)
+	if (dir == PPL_DIR_UPSTREAM) {
 		err = comp_copy(current);
+		if (err < 0)
+			pipeline_comp_copy_error_notify(current, err);
+	}
 
 	return err;
 }
