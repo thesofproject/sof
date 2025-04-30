@@ -97,7 +97,9 @@ enum ipc4_sample_type {
 	IPC4_TYPE_LSB_INTEGER = 1,	/**< integer with Least Significant Byte first */
 	IPC4_TYPE_SIGNED_INTEGER = 2,
 	IPC4_TYPE_UNSIGNED_INTEGER = 3,
-	IPC4_TYPE_FLOAT = 4
+	IPC4_TYPE_FLOAT = 4,
+	IPC4_TYPE_A_LAW = 5,
+	IPC4_TYPE_MU_LAW = 6,
 };
 
 enum ipc4_stream_type {
