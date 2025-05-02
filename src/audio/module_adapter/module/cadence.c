@@ -103,21 +103,6 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
-static int cadence_code_get_api_id(uint32_t compress_id)
-{
-	/* convert compress id to SOF cadence SOF id */
-	switch (compress_id) {
-	case SND_AUDIOCODEC_MP3:
-		return CADENCE_CODEC_MP3_DEC_ID;
-	case SND_AUDIOCODEC_AAC:
-		return CADENCE_CODEC_AAC_DEC_ID;
-	case SND_AUDIOCODEC_VORBIS:
-		return CADENCE_CODEC_VORBIS_DEC_ID;
-	default:
-		return -EINVAL;
-	}
-}
-
 #if CONFIG_IPC_MAJOR_4
 static int cadence_codec_resolve_api(struct processing_module *mod)
 {
@@ -159,8 +144,22 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 
 	return 0;
 }
-
 #elif CONFIG_IPC_MAJOR_3
+static int cadence_code_get_api_id(uint32_t compress_id)
+{
+	/* convert compress id to SOF cadence SOF id */
+	switch (compress_id) {
+	case SND_AUDIOCODEC_MP3:
+		return CADENCE_CODEC_MP3_DEC_ID;
+	case SND_AUDIOCODEC_AAC:
+		return CADENCE_CODEC_AAC_DEC_ID;
+	case SND_AUDIOCODEC_VORBIS:
+		return CADENCE_CODEC_VORBIS_DEC_ID;
+	default:
+		return -EINVAL;
+	}
+}
+
 static int cadence_codec_resolve_api(struct processing_module *mod)
 {
 	int ret;
