@@ -344,8 +344,14 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	comp_dbg(dev, "selector_trigger()");
 
 	sourceb = comp_dev_get_first_data_producer(dev);
+	if (!sourceb) {
+		comp_err(dev, "source disconnected");
+		return -ENODEV;
+	}
 
 	ret = comp_set_state(dev, cmd);
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		ret = 0;
 
 	/* TODO: remove in the future after adding support for case when
 	 * kpb_init_draining() and kpb_draining_task() are interrupted by
