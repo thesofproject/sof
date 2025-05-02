@@ -452,11 +452,14 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 		/* In push mode check if sink component is DAI */
 		do {
 			sinkb = comp_dev_get_first_data_consumer(dev);
+			if (!sinkb) {
+				comp_err(asrc_dev, "At end: NULL buffer, no DAI found.");
+				return -EINVAL;
+			}
 
 			dev = comp_buffer_get_sink_component(sinkb);
-
 			if (!dev) {
-				comp_err(asrc_dev, "At end, no DAI found.");
+				comp_err(asrc_dev, "At end: NULL device, no DAI found.");
 				return -EINVAL;
 			}
 
@@ -470,11 +473,14 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 		/* In pull mode check if source component is DAI */
 		do {
 			sourceb = comp_dev_get_first_data_producer(dev);
+			if (!sourceb) {
+				comp_err(asrc_dev, "At beginning: NULL buffer, no DAI found.");
+				return -EINVAL;
+			}
 
 			dev = comp_buffer_get_source_component(sourceb);
-
 			if (!dev) {
-				comp_err(asrc_dev, "At beginning, no DAI found.");
+				comp_err(asrc_dev, "At beginning: NULL device, no DAI found.");
 				return -EINVAL;
 			}
 
