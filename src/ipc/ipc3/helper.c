@@ -562,7 +562,13 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 	 * core, the free must be run in the context of the active
 	 * pipeline.
 	 */
-	active_comp = sink_active ? sink : source;
+	if (sink_active)
+		active_comp = sink;
+	else if (source_active)
+		active_comp = source;
+	else
+		active_comp = NULL;
+
 	if (active_comp) {
 		core = active_comp->ipc_config.core;
 
