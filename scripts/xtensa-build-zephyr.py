@@ -138,7 +138,7 @@ platform_configs_all = {
 		f"RG-2017.8{xtensa_tools_version_postfix}",
 		"cavs2x_LX6HiFi3_2017_8",
 		"xcc",
-		aliases = ['adl', 'adl-n', 'ehl', 'rpl'],
+		aliases = ['adl', 'adl-n', 'rpl'],
 		ipc4 = True
 	),
 	"tgl-h" : PlatformConfig(
