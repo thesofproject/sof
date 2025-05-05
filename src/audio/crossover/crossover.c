@@ -531,7 +531,6 @@ static int crossover_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source, *sink;
 	int channels;
-	int ret = 0;
 
 	comp_info(dev, "crossover_prepare()");
 
@@ -550,11 +549,8 @@ static int crossover_prepare(struct processing_module *mod,
 		if (cd->source_format != audio_stream_get_frm_fmt(&sink->stream)) {
 			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different.",
 				 cd->source_format, audio_stream_get_frm_fmt(&sink->stream));
-			ret = -EINVAL;
+			return -EINVAL;
 		}
-
-		if (ret < 0)
-			return ret;
 	}
 
 	comp_info(dev, "crossover_prepare(), source_format=%d, sink_formats=%d, nch=%d",
@@ -570,7 +566,8 @@ static int crossover_prepare(struct processing_module *mod,
 	}
 
 	if (cd->config) {
-		ret = crossover_setup(mod, channels);
+		int ret = crossover_setup(mod, channels);
+
 		if (ret < 0) {
 			comp_err(dev, "crossover_prepare(), setup failed");
 			return ret;

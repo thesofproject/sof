@@ -105,7 +105,7 @@ static int eq_iir_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
-	int i, ret;
+	int i;
 
 	comp_dbg(dev, "eq_iir_params()");
 	comp_params = *params;
@@ -125,8 +125,7 @@ static int eq_iir_params(struct processing_module *mod)
 
 	component_set_nearest_period_frames(dev, comp_params.rate);
 	sinkb = comp_dev_get_first_data_consumer(dev);
-	ret = buffer_set_params(sinkb, &comp_params, true);
-	return ret;
+	return buffer_set_params(sinkb, &comp_params, true);
 }
 
 void eq_iir_set_passthrough_func(struct comp_data *cd,

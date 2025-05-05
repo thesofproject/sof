@@ -321,7 +321,6 @@ int module_adapter_sink_src_prepare(struct comp_dev *dev)
 	struct processing_module *mod = comp_mod(dev);
 	struct comp_buffer *sink_buffer;
 	struct comp_buffer *source_buffer;
-	int ret;
 	int i;
 
 	/* acquire all sink and source buffers, get handlers to sink/source API */
@@ -340,7 +339,6 @@ int module_adapter_sink_src_prepare(struct comp_dev *dev)
 	mod->num_of_sources = i;
 
 	/* Prepare module */
-	ret = module_prepare(mod, mod->sources, mod->num_of_sources, mod->sinks, mod->num_of_sinks);
-
-	return ret;
+	return module_prepare(mod, mod->sources, mod->num_of_sources, mod->sinks,
+			      mod->num_of_sinks);
 }

@@ -177,7 +177,6 @@ int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
 		   struct sof_sink **sinks, int num_of_sinks)
 {
-	int ret = 0;
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	const struct module_interface *const ops = dev->drv->adapter_ops;
@@ -191,7 +190,8 @@ int module_prepare(struct processing_module *mod,
 		return -EPERM;
 #endif
 	if (ops->prepare) {
-		ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+		int ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+
 		if (ret) {
 			comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
 				 ret, dev_comp_id(dev));
@@ -213,7 +213,7 @@ int module_prepare(struct processing_module *mod,
 #endif
 	comp_dbg(dev, "module_prepare() done");
 
-	return ret;
+	return 0;
 }
 
 int module_process_legacy(struct processing_module *mod,
