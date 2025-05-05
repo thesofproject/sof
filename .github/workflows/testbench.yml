@@ -38,7 +38,7 @@ jobs:
         with: {fetch-depth: 0, filter: 'tree:0'}
 
       - name: docker
-        run: docker pull thesofproject/sof && docker tag thesofproject/sof sof
+        run: docker pull thesofproject/sof:20250410_no-alsa && docker tag thesofproject/sof:20250410_no-alsa sof
 
       - name: apt get
         run: sudo apt-get update &&
@@ -48,10 +48,10 @@ jobs:
       # testbench needs some topologies.
       - name: build test topologies
         run: CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
-          ./scripts/build-tools.sh -Y ||
+          ./scripts/build-tools.sh -Y -A ||
              VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
              CMAKE_BUILD_TYPE=Release ./scripts/docker-run.sh
-          ./scripts/build-tools.sh -Y
+          ./scripts/build-tools.sh -Y -A
 
       - name: build testbench
         run: ./scripts/rebuild-testbench.sh ||
