@@ -83,6 +83,10 @@ if(CONFIG_MATH_DCT)
   list(APPEND base_files dct.c)
 endif()
 
+if(CONFIG_MATH_A_LAW_CODEC)
+  list(APPEND base_files a_law.c)
+endif()
+
 is_zephyr(it_is)
 if(it_is) ###  Zephyr ###
 
