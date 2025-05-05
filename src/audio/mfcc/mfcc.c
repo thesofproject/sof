@@ -193,6 +193,10 @@ static int mfcc_prepare(struct processing_module *mod,
 	/* MFCC component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink");
+		return -ENOTCONN;
+	}
 
 	/* get source data format */
 	source_format = audio_stream_get_frm_fmt(&sourceb->stream);

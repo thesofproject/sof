@@ -156,6 +156,14 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 
 		/* set component period frames */
 		component_set_nearest_period_frames(dev, audio_stream_get_rate(&buf->stream));
+	} else if (list_is_empty(source_list)) {
+		/*
+		 * both lists are empty, e.g. if it's the single component in a
+		 * pipeline and no other pipelines are currently connected, then
+		 * there's just nothing to update
+		 */
+		comp_dbg(dev, "no connected buffers");
+		return 0;
 	} else {
 		/* for other components we iterate over all downstream buffers
 		 * (for playback) or upstream buffers (for capture).

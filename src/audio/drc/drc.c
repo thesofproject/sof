@@ -326,6 +326,8 @@ static void drc_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
+	/* The caller has verified, that sink and source buffers are connected */
+
 	sinkb = comp_dev_get_first_data_consumer(dev);
 	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 
@@ -347,13 +349,17 @@ static int drc_prepare(struct processing_module *mod,
 
 	comp_info(dev, "drc_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
-	drc_params(mod);
-#endif
-
 	/* DRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
+#if CONFIG_IPC_MAJOR_4
+	drc_params(mod);
+#endif
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

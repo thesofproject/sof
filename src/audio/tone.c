@@ -429,8 +429,11 @@ static int tone_params(struct comp_dev *dev,
 	struct comp_buffer *sourceb, *sinkb;
 
 	sourceb = comp_dev_get_first_data_producer(dev);
-
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
 
 	comp_info(dev, "tone_params(), config->frame_fmt = %u",
 		  dev->ipc_config.frame_fmt);
@@ -671,6 +674,10 @@ static int tone_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	sourceb = comp_dev_get_first_data_producer(dev);
+	if (!sourceb) {
+		comp_err(dev, "no source buffer");
+		return -ENOTCONN;
+	}
 
 	cd->channels = audio_stream_get_channels(&sourceb->stream);
 	comp_info(dev, "tone_prepare(), cd->channels = %u, cd->rate = %u",

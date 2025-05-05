@@ -818,6 +818,11 @@ static int32_t igo_nr_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "igo_nr_prepare()");
 
+	if (!source || !sink) {
+		comp_err(dev, "no source or sink");
+		return -ENOTCONN;
+	}
+
 #if CONFIG_IPC_MAJOR_4
 	ret = igo_nr_ipc4_params(mod, source, sink);
 	if (ret) {

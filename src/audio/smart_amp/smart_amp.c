@@ -755,6 +755,10 @@ static int smart_amp_prepare(struct comp_dev *dev)
 
 	/* sink buffer */
 	sad->sink_buf = comp_dev_get_first_data_consumer(dev);
+	if (!sad->sink_buf) {
+		comp_err(dev, "no sink buffer");
+		return -ENOTCONN;
+	}
 
 	/* get frame format and channels param of stream and feedback source */
 	ff_src_fmt = audio_stream_get_frm_fmt(&sad->source_buf->stream);

@@ -427,6 +427,10 @@ static int selector_prepare(struct comp_dev *dev)
 	/* selector component will have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

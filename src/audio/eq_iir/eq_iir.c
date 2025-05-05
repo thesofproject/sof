@@ -187,13 +187,18 @@ static int eq_iir_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "eq_iir_prepare()");
 
+	/* EQ component will only ever have 1 source and 1 sink buffer */
+	sourceb = comp_dev_get_first_data_producer(dev);
+	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 	ret = eq_iir_prepare_sub(mod);
 	if (ret < 0)
 		return ret;
 
-	/* EQ component will only ever have 1 source and 1 sink buffer */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
 	eq_iir_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	/* get source and sink data format */

@@ -101,6 +101,10 @@ int multiband_drc_params(struct processing_module *mod)
 
 	component_set_nearest_period_frames(dev, comp_params.rate);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sinkb) {
+		comp_err(dev, "no sink buffer");
+		return -ENOTCONN;
+	}
 
 	return buffer_set_params(sinkb, &comp_params, true);
 }
