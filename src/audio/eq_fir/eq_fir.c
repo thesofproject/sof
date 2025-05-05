@@ -416,15 +416,20 @@ static int eq_fir_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "eq_fir_prepare()");
 
+	/* EQ component will only ever have 1 source and 1 sink buffer. */
+	sourceb = comp_dev_get_first_data_producer(dev);
+	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 	ret = eq_fir_params(mod);
 	if (ret < 0) {
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return ret;
 	}
 
-	/* EQ component will only ever have 1 source and 1 sink buffer. */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
 	eq_fir_set_alignment(&sourceb->stream, &sinkb->stream);
 	channels = audio_stream_get_channels(&sinkb->stream);
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);

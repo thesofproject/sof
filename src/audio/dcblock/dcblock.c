@@ -195,11 +195,15 @@ static int dcblock_prepare(struct processing_module *mod,
 
 	comp_info(dev, "dcblock_prepare()");
 
-	dcblock_params(mod);
-
 	/* DC Filter component will only ever have one source and sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
+	dcblock_params(mod);
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

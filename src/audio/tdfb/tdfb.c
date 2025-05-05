@@ -731,15 +731,20 @@ static int tdfb_prepare(struct processing_module *mod,
 
 	comp_info(dev, "tdfb_prepare()");
 
+	/* Find source and sink buffers */
+	sourceb = comp_dev_get_first_data_producer(dev);
+	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 	ret = tdfb_params(mod);
 	if (ret) {
 		comp_err(dev, "Failed tdfb_params()");
 		return ret;
 	}
 
-	/* Find source and sink buffers */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
 	tdfb_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);

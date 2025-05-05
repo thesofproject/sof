@@ -673,11 +673,15 @@ static int volume_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "volume_prepare()");
 
-	ret = volume_peak_prepare(cd, mod);
-
 	/* volume component will only ever have 1 sink and source buffer */
 	sinkb = comp_dev_get_first_data_consumer(dev);
 	sourceb = comp_dev_get_first_data_producer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
+	ret = volume_peak_prepare(cd, mod);
 
 	volume_set_alignment(&sourceb->stream, &sinkb->stream);
 

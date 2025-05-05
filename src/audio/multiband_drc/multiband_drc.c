@@ -378,6 +378,10 @@ static int multiband_drc_prepare(struct processing_module *mod,
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
+	if (!sourceb) {
+		comp_err(dev, "no source buffer");
+		return -ENOTCONN;
+	}
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

@@ -226,6 +226,11 @@ static int waves_effect_check(struct comp_dev *dev)
 	/* Init sink & source buffers */
 	comp_dbg(dev, "waves_effect_check() start");
 
+	if (!source || !sink) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 	/* todo use fallback to comp_verify_params when ready */
 
 	/* resampling not supported */

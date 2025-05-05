@@ -399,6 +399,10 @@ static int asrc_params(struct processing_module *mod)
 
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
 
 	/* update the source/sink buffer formats. Sink rate will be modified below */
 	asrc_update_buffer_format(sourceb, cd);
@@ -549,7 +553,10 @@ static int asrc_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	/* SRC component will only ever have 1 source and 1 sink buffer */
+	/*
+	 * SRC component will only ever have 1 source and 1 sink buffer,
+	 * asrc_params() has checked their validity already
+	 */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
