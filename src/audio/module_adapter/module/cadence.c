@@ -106,8 +106,6 @@ static struct cadence_api cadence_api_table[] = {
 #if CONFIG_IPC_MAJOR_4
 static int cadence_codec_resolve_api(struct processing_module *mod)
 {
-	int ret;
-	struct snd_codec codec_params;
 	struct comp_dev *dev = mod->dev;
 	struct cadence_codec_data *cd = module_get_private_data(mod);
 	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
