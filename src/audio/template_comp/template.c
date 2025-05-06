@@ -69,8 +69,8 @@ static int template_comp_process(struct processing_module *mod,
 {
 	struct template_comp_comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct sof_source *source = sources[0];
-	struct sof_sink *sink = sinks[0];
+	struct sof_source *source = sources[0]; /* One input in this example */
+	struct sof_sink *sink = sinks[0]; /* One output in this example */
 	int frames = source_get_data_frames_available(source);
 	int sink_frames = sink_get_free_frames(sink);
 
@@ -112,6 +112,9 @@ static int template_comp_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "template_comp_prepare()");
 
+	/* The processing example in this component supports one input and one
+	 * output. Generally there can be more.
+	 */
 	if (num_of_sources != 1 || num_of_sinks != 1)
 		return -EINVAL;
 
