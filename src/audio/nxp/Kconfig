@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_NXP_EAP
+	tristate "NXP EAP Component"
+	default n
+	help
+	  Select for NXP Essential Audio Processing Component.
+	  The EAP is a bundle of audio processing blocks for enhancing the tonal
+	  and spatial perception of sound in audio applications.

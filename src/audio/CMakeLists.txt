@@ -111,6 +111,7 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_DTS_CODEC)
 		add_subdirectory(codec)
 	endif()
+	add_subdirectory(nxp)
 
 	return()
 endif()
