@@ -108,6 +108,8 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		add_subdirectory(codec)
 	endif()
 	add_subdirectory(google)
+	add_subdirectory(nxp)
+
 	if(CONFIG_INTEL_ADSP_MIC_PRIVACY)
 		add_subdirectory(mic_privacy_manager)
 	endif()
