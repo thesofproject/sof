@@ -23,6 +23,7 @@
 #define TB_MAX_CTL_NAME_CHARS		128
 #define TB_MAX_VOLUME_SIZE		120
 #define TB_MAX_BYTES_DATA_SIZE		8192
+#define TB_MAX_BLOB_CONTENT_CHARS	32768
 
 /* number of widgets types supported in testbench */
 #define TB_NUM_WIDGETS_SUPPORTED	16
@@ -159,6 +160,7 @@ int tb_pipeline_reset(struct ipc *ipc, struct pipeline *p);
 int tb_pipeline_start(struct ipc *ipc, struct pipeline *p);
 int tb_pipeline_stop(struct ipc *ipc, struct pipeline *p);
 int tb_read_controls(struct testbench_prm *tp, int64_t *sleep_ns);
+int tb_set_bytes_control(struct testbench_prm *tp, struct tb_ctl *ctl, uint32_t *data);
 int tb_set_enum_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params);
 int tb_set_reset_state(struct testbench_prm *tp);
 int tb_set_mixer_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *control_params);
