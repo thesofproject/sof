@@ -49,7 +49,8 @@ exec_as_cwd_uid()
         getent group "$cwd_guid" ||
             sudo groupadd -g  "$cwd_guid" 'cwd_group'
 
-        sudo useradd -m -u "$cwd_uid" -g "$cwd_guid" "$cwd_user"
+        # Always set home directory to /home/sof for the new user
+        sudo useradd -m -u "$cwd_uid" -g "$cwd_guid" -d /home/sof "$cwd_user"
 
         # Add cwd_user to the sof group for group write access
         sudo usermod -aG sof "$cwd_user"
