@@ -15,9 +15,9 @@ name: rimage
 on:
   workflow_call:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - tools/rimage/**
+#  pull_request:
+ #   paths:
+ #     - tools/rimage/**
   push:
     paths:
       - tools/rimage/**
