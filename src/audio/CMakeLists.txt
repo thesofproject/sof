@@ -115,6 +115,7 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		list(APPEND base_files host-legacy.c)
 		sof_list_append_ifdef(CONFIG_COMP_DAI base_files dai-legacy.c)
 	endif()
+	add_subdirectory(nxp)
 endif()
 
 ### Common files (also used in shared library build)
