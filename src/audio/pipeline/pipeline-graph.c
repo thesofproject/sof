@@ -167,9 +167,9 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 			    int dir)
 {
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
-		comp_buffer_set_source_component(buffer, comp);
+		audio_buffer_set_source_component(&buffer->audio_buffer, comp);
 	else
-		comp_buffer_set_sink_component(buffer, comp);
+		audio_buffer_set_sink_component(&buffer->audio_buffer, comp);
 }
 
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
@@ -186,7 +186,7 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	irq_local_disable(flags);
 
 	comp_list = comp_buffer_list(comp, dir);
-	buffer_attach(buffer, comp_list, dir);
+	audio_buffer_attach(&buffer->audio_buffer, comp_list, dir); //msz bez funkcji
 	buffer_set_comp(buffer, comp, dir);
 
 	irq_local_enable(flags);
@@ -207,7 +207,7 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 	irq_local_disable(flags);
 
 	comp_list = comp_buffer_list(comp, dir);
-	buffer_detach(buffer, comp_list, dir);
+	audio_buffer_detach(&buffer->audio_buffer, comp_list, dir); //msz bez funkcji
 	buffer_set_comp(buffer, NULL, dir);
 
 	irq_local_enable(flags);

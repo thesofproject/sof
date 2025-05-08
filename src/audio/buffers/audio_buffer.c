@@ -13,6 +13,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
+#include <sof/audio/pipeline.h>
 
 #if CONFIG_PIPELINE_2_0
 
@@ -220,4 +221,26 @@ void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bo
 		    audio_buffer_get_stream_params(buffer));
 	sink_init(audio_buffer_get_sink(buffer), sink_ops,
 		  audio_buffer_get_stream_params(buffer));
+}
+
+
+static inline struct list_item *buffer_comp_list(struct sof_audio_buffer *buffer,
+						 int dir)
+{
+	return dir == PPL_DIR_DOWNSTREAM ?
+			&buffer->Xsource_list :  &buffer->Xsink_list;
+}
+
+void audio_buffer_attach(struct sof_audio_buffer *buffer, struct list_item *head, int dir)
+{
+	struct list_item *list = buffer_comp_list(buffer, dir);
+	CORE_CHECK_STRUCT(buffer);
+	list_item_prepend(list, head);
+}
+
+void audio_buffer_detach(struct sof_audio_buffer *buffer, struct list_item *head, int dir)
+{
+	struct list_item *buf_list = buffer_comp_list(buffer, dir);
+	CORE_CHECK_STRUCT(buffer);
+	list_item_del(buf_list);
 }
