@@ -161,6 +161,7 @@ a62de1af-5964-4e2e-b1677fdc97279a29 template_comp
 e93326d8-0d14-4bf0-bcb9e063d3d80136 twb_sched
 42f8060c-832f-4dbf-b24751e961997b34 up_down_mixer
 b77e677e-5ff4-4188-af14fba8bdbf8682 volume
+127f4eec-23fa-11f0-a4a6bf0cd6b4583b nxp_eap
 8a171323-94a3-4e1d-afe9fe5dbaa4c393 volume4
 1028070e-04e8-46ab-8d8110a0116ce738 wait
 d944281a-afe9-4695-a043d7f62b89538e waves
