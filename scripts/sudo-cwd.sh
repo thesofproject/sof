@@ -51,6 +51,9 @@ exec_as_cwd_uid()
 
         sudo useradd -m -u "$cwd_uid" -g "$cwd_guid" "$cwd_user"
 
+        # Add cwd_user to the sof group for group write access
+        sudo usermod -aG sof "$cwd_user"
+
         local current_user; current_user="$(id -un)"
 
         # Copy sudo permissions just in case the build needs it
