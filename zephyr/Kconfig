@@ -19,6 +19,20 @@ config SOF_ZEPHYR_HEAP_CACHED
 	  Enable cached heap by mapping cached SOF memory zones to different
 	  Zephyr sys_heap objects and enable caching for non-shared zones.
 
+config SOF_ZEPHYR_HEAP_SIZE
+	hex "Size of the Zephyr heap for SOF"
+	default 0xF0000 if SOC_INTEL_ACE15_MTPM || SOC_INTEL_ACE20_LNL
+	default 0xD0000 if SOC_INTEL_ACE30
+	default 0x0
+	help
+	 Support scaling of the heap size for different platforms and different types
+	 of heaps. This is the default heap size for most users.
+	 TODO: Currently this setting is only available on platforms with a
+	 simplified heap size configuration. i.e. a single macro that defines the
+	 heap size. This is not the case for all platforms.
+	 NOTE: Keep in mind that the heap size should not be greater than the physical
+	 memory size of the system defined in DT (and this includes baseFW text/data).
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	default n
