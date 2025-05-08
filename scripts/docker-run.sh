@@ -42,5 +42,6 @@ docker run -i -v "${SOF_TOP}":/home/sof/work/sof.git \
 	--env VERBOSE \
 	--env http_proxy="$http_proxy" \
 	--env https_proxy="$https_proxy" \
+	--env SOF_WORKSPACE="/home/sof/work" \
 	$SOF_DOCKER_RUN \
 	thesofproject/sof:latest ./scripts/sudo-cwd.sh "$@"
