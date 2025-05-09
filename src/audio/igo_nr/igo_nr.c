@@ -675,7 +675,7 @@ static int igo_nr_set_config(struct processing_module *mod, uint32_t param_id,
 
 static void igo_nr_print_config(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_data __maybe_unused *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "  igo_params_ver		%d",
