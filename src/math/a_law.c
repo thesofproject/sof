@@ -8,9 +8,13 @@
 #include <sof/math/a_law.h>
 #include <stdint.h>
 
+/* TODO: Some found encoders invert the sign bit, check this. */
+#define SOFM_ALAW_SIGN_BIT_POS		0x80
+#define SOFM_ALAW_SIGN_BIT_NEG		0x00
+#define SOFM_ALAW_SIGN_BIT		0x80
+
 #define SOFM_ALAW_MAX			4095
 #define SOFM_ALAW_TOGGLE_EVEN_BITS	0x55
-#define SOFM_ALAW_SIGN_BIT		0x80
 #define SOFM_ALAW_MANTISSA_MASK		0x0f
 #define SOFM_ALAW_MANTISSA_BITS		4
 #define SOFM_ALAW_SHIFT_MASK		0x07
@@ -82,19 +86,21 @@ static uint8_t alaw_encode_shifts[128] = {
  */
 uint8_t sofm_a_law_encode(int16_t sample)
 {
-	int sign = 0;
+	int32_t tmp;
+	int sign = SOFM_ALAW_SIGN_BIT_POS;
 	int shift = 0;
 	int low_bits;
 	uint8_t byte;
 
-	/* Round 16 bit Q1.15 to 13 bit Q1.12 */
-	sample = ((sample >> 2) + 1) >> 1;
-
 	/* Convert to sign and magnitude */
-	if (sample < 0) {
-		sign = SOFM_ALAW_SIGN_BIT;
-		sample = -sample;
+	tmp = sample;
+	if (tmp < 0) {
+		sign = SOFM_ALAW_SIGN_BIT_NEG;
+		tmp = -tmp;
 	}
+
+	/* Convert to 13 bits with shift. Note: There is no rounding in references. */
+	sample = (int16_t)(tmp >> 3);
 
 	if (sample > SOFM_ALAW_MAX)
 		sample = SOFM_ALAW_MAX;
@@ -138,7 +144,7 @@ int16_t sofm_a_law_decode(int8_t byte)
 	else
 		value = (low_bits << 1) | 1;
 
-	if (sign)
+	if (!sign)
 		value = -value;
 
 	/* Shift 13 bit Q1.12 to 16 bit Q1.15 */
