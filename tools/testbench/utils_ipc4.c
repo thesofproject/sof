@@ -691,4 +691,11 @@ int tb_set_mixer_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *con
 	return ret;
 }
 
+int tb_set_bytes_control(struct testbench_prm *tp, struct tb_ctl *ctl, uint32_t *data)
+{
+	return tb_send_bytes_data(&tp->ipc_tx, &tp->ipc_rx,
+				  ctl->module_id, ctl->instance_id,
+				  (struct sof_abi_hdr *)data);
+}
+
 #endif /* CONFIG_IPC_MAJOR_4 */

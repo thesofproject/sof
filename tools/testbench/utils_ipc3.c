@@ -435,4 +435,9 @@ int tb_set_mixer_control(struct testbench_prm *tp, struct tb_ctl *ctl, char *con
 	return 0;
 }
 
+int tb_set_bytes_control(struct testbench_prm *tp, struct tb_ctl *ctl, uint32_t *data)
+{
+	return 0;
+}
+
 #endif /* CONFIG_IPC_MAJOR_3 */

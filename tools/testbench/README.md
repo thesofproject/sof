@@ -95,6 +95,41 @@ tools/testbench/build_testbench/install/bin/sof-testbench4 -r 48000 -c 2 -b S32_
 sox --encoding signed-integer -L -r 48000 -c 2 -b 32 out.raw out.wav
 ```
 
+As second example apply in one second intervals bytes control blobs
+for IIR equalizer. The impact is easiest to hear with pink noise
+signal. Create the control script below and run the following commands
+to create the input, run testbench, and convert to wav for examining
+the output.
+
+```
+#!/bin/sh
+
+# Example test sequence for IIR equalizer, switch other processing off
+
+amixer -c0 cset name='Post Mixer Analog Playback DRC switch' off
+amixer -c0 cset name='Post Mixer Analog Playback Volume' 45
+sof-ctl -c name='Post Mixer Analog Playback FIR Eq bytes' -s tools/ctl/ipc4/eq_fir/pass.txt
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/pass.txt
+sleep 1
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/loudness.txt
+sleep 1
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/bandpass.txt
+sleep 1
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/bassboost.txt
+sleep 1
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/highpass_50hz_0db_48khz.txt
+```
+
+```
+sox -n --encoding signed-integer -L -r 48000 -c 2 -b 32 in.raw synth 5 pinknoise norm -20
+
+tools/testbench/build_testbench/install/bin/sof-testbench4 -r 48000 -c 2 -b S32_LE -p 1,2 \
+ -t tools/build_tools/topology/topology2/production/sof-hda-generic.tplg \
+ -i in.raw -o out.raw -s controls.sh
+
+sox --encoding signed-integer -L -r 48000 -c 2 -b 32 out.raw out.wav
+```
+
 ### Run testbench with helper script
 
 The scripts/sof-testbench-helper.sh simplifies the task. See the help
