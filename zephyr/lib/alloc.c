@@ -98,7 +98,13 @@ static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
  * to allow memory management driver to control unused
  * memory pages.
  */
-__section(".heap_mem") static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
+
+__section(".heap_mem") static uint8_t __aligned(HOST_PAGE_SIZE) heapmem[HEAPMEM_SIZE];
+
+#if CONFIG_SOF_USERSPACE
+#define USER_HEAP_MEM_SIZE CONFIG_SOF_ZEPHYR_USER_HEAP_SIZE
+__section(".heap_mem") static uint8_t __aligned(HOST_PAGE_SIZE) user_heapmem[USER_HEAP_MEM_SIZE];
+#endif
 
 #elif defined(CONFIG_ARCH_POSIX)
 
@@ -124,6 +130,35 @@ extern char _end[], _heap_sentry[];
 #endif
 
 static struct k_heap sof_heap;
+
+#if CONFIG_SOF_USERSPACE
+static struct k_heap sof_user_heap;
+
+/**
+ * Returns the start of user memory heap.
+ * @return Pointer to the user memory heap start address.
+ */
+bool s_heap_user_is_pointer(void *ptr)
+{
+	if (is_cached(ptr))
+		ptr = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)ptr);
+
+	if ((POINTER_TO_UINT(ptr) >= (uintptr_t)&user_heapmem[0]) &&
+	    (POINTER_TO_UINT(ptr) < (uintptr_t)&user_heapmem[CONFIG_SOF_ZEPHYR_USER_HEAP_SIZE]))
+		return true;
+
+	return false;
+}
+
+/**
+ * Returns the start of user memory heap.
+ * @return Pointer to the user memory heap start address.
+ */
+uintptr_t s_heap_user_get_start(void)
+{
+	return (uintptr_t)ROUND_UP(&user_heapmem[0], CONFIG_MMU_PAGE_SIZE);
+}
+#endif
 
 #if CONFIG_L3_HEAP
 static struct k_heap l3_heap;
@@ -402,6 +437,10 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 #else
 		k_panic();
 #endif
+#if CONFIG_USERSPACE
+	} else if (caps & SOF_MEM_CAPS_MMU_SHD) {
+		heap = &sof_user_heap;
+#endif
 	} else {
 		heap = &sof_heap;
 	}
@@ -504,6 +543,11 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 		return virtual_heap_alloc(virtual_buffers_heap, flags, caps, bytes, align);
 #endif /* CONFIG_VIRTUAL_HEAP */
 
+#if CONFIG_SOF_USERSPACE
+	if (caps & SOF_MEM_CAPS_MMU_SHD)
+		heap = &sof_user_heap;
+#endif
+
 	if (flags & SOF_MEM_FLAG_COHERENT)
 		return heap_alloc_aligned(heap, align, bytes);
 
@@ -541,6 +585,9 @@ static int heap_init(void)
 {
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
 
+#if CONFIG_SOF_USERSPACE
+	sys_heap_init(&sof_user_heap.heap, user_heapmem, USER_HEAP_MEM_SIZE);
+#endif
 #if CONFIG_L3_HEAP
 	sys_heap_init(&l3_heap.heap, UINT_TO_POINTER(get_l3_heap_start()), get_l3_heap_size());
 #endif

@@ -51,6 +51,18 @@ config SOF_ZEPHYR_VIRTUAL_HEAP_SIZE
 	 NOTE: Keep in mind that the heap size should not be greater than the physical
 	 memory size of the system defined in DT (and this includes baseFW text/data).
 
+config SOF_ZEPHYR_USER_HEAP_SIZE
+	hex "Size of the Zephyr userspace heap for SOF"
+	depends on SOF_STAGING
+	depends on SOF_USERSPACE
+	default 0x20000 if SOC_INTEL_ACE30
+	default 0x0
+	help
+	 Support scaling of the userspace address heap size for different platforms.
+	 NOTE: Keep in mind that the heap size should not be greater than the physical
+	 memory size of the system defined in DT (and this includes baseFW text/data
+	 alongside the default SOF heap size).
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	default n

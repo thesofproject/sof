@@ -139,6 +139,46 @@ void rfree(void *ptr);
 /* TODO: remove - debug only - only needed for linking */
 static inline void heap_trace_all(int force) {}
 
+#if CONFIG_SOF_USERSPACE
+
+/**
+ * Returns whether pointer is in userspace heap.
+ * @return True is userspace pointer.
+ */
+bool s_heap_user_is_pointer(void *ptr);
+
+/**
+ * Returns the start of user memory heap.
+ * @return Pointer to the user memory heap start address.
+ */
+uintptr_t s_heap_user_get_start(void);
+
+/**
+ * Returns the size of user memory heap.
+ * @return Size of the user memory region which can be used for user heap.
+ */
+static inline size_t s_get_heap_get_user_size(void)
+{
+	return ROUND_DOWN(CONFIG_SOF_ZEPHYR_USER_HEAP_SIZE, CONFIG_MMU_PAGE_SIZE);
+}
+#else
+
+static inline bool s_heap_user_is_pointer(void *ptr)
+{
+	return false;
+}
+
+static inline uintptr_t s_heap_user_get_start(void)
+{
+	return 0;
+}
+
+static inline size_t s_get_heap_get_user_size(void)
+{
+	return 0;
+}
+#endif
+
 /** @}*/
 
 #endif /* __ZEPHYR_RTOS_ALLOC_H__ */
