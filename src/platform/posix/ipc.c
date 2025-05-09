@@ -87,8 +87,6 @@ static void fuzz_isr(const void *arg)
 	// on only rarely, fill it in manually.
 	*(uint32_t *)global_ipc->comp_data = msgsz;
 
-	struct sof_ipc_comp *cc = global_ipc->comp_data;
-
 	// "Adjust" the command to represent a "comp new" command per
 	// above.  Basically we want to copy in the UUID value for one
 	// of the runtime-enumerated drivers based on data already
