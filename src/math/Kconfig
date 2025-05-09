@@ -269,4 +269,16 @@ config MATH_DCT
 	  transform for data is done as matrix multiply with the
 	  returned DCT matrix.
 
+config MATH_A_LAW_CODEC
+	bool "A-law encoder and decoder"
+	default n
+	help
+	  This option enables functions sofm_a_law_encode() and
+	  sofm_a_law_decode(). The A-law codec is defined in
+	  ITU-T G.701 standard and has been used in telecommunications
+	  in e.g. Europe. In SOF the main purpose is support for wav
+	  format. The A-law coding compresses 13 bit samples to 8 bit
+	  coded data.
+
+
 endmenu

@@ -22,7 +22,8 @@ enum sof_ipc_frame {
 	SOF_IPC_FRAME_S24_3LE,
 	SOF_IPC_FRAME_S24_4LE_MSB,
 	SOF_IPC_FRAME_U8,
-	SOF_IPC_FRAME_S16_4LE		/* 16-bit in 32-bit container */
+	SOF_IPC_FRAME_S16_4LE,		/* 16-bit in 32-bit container */
+	SOF_IPC_FRAME_A_LAW,
 };
 
 #endif /* __MODULE_IPC_STREAM_H__ */
