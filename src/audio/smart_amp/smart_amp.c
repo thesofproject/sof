@@ -733,7 +733,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	uint16_t ff_src_fmt, fb_src_fmt, resolved_mod_fmt;
 	uint32_t least_req_depth;
-	uint32_t rate;
 	int ret;
 
 	comp_dbg(dev, "smart_amp_prepare()");
