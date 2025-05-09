@@ -949,6 +949,8 @@ __cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
 	struct comp_driver_info *info;
 	uint32_t flags;
 
+	(void)sof_uuid; /* Avoid possible warning of unused */
+
 	assert_can_be_cold();
 
 	irq_local_disable(flags);
