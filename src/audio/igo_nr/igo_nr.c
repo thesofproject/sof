@@ -678,6 +678,8 @@ static void igo_nr_print_config(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
+	(void)cd; /* Avoid possible warn about unused */
+
 	comp_dbg(dev, "  igo_params_ver		%d",
 		 cd->config.igo_params.igo_params_ver);
 	comp_dbg(dev, "  dump_data			%d",
