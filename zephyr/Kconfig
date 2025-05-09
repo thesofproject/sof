@@ -11,6 +11,14 @@ config SOF_STAGING
 
 rsource "../Kconfig.sof"
 
+config SOF_USERSPACE
+	bool "Enable SOF support for userspace modules"
+	default n
+	help
+	  SOF userspace modules support will enable modules to run in DP
+	  processing mode as userspace code and data. This feature is WIP
+	  and is not yest ready for production, for developers only.
+
 config SOF_ZEPHYR_HEAP_CACHED
 	bool "Cached Zephyr heap for SOF memory non-shared zones"
 	default y if CAVS || ACE
