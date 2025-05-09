@@ -31,3 +31,8 @@ cmocka_test(base_e_logarithm
 	${PROJECT_SOURCE_DIR}/src/math/log_e.c
 	${PROJECT_SOURCE_DIR}/src/math/base2log.c
 )
+
+cmocka_test(a_law_codec
+	a_law_codec.c
+	${PROJECT_SOURCE_DIR}/src/math/a_law.c
+)
