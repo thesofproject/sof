@@ -33,6 +33,16 @@ config SOF_ZEPHYR_HEAP_SIZE
 	 NOTE: Keep in mind that the heap size should not be greater than the physical
 	 memory size of the system defined in DT (and this includes baseFW text/data).
 
+config SOF_ZEPHYR_VIRTUAL_HEAP_SIZE
+	hex "Size of the Zephyr virtual heap for SOF"
+	depends on VIRTUAL_HEAP
+	default 0x40000 if SOC_INTEL_ACE30
+	default 0x0
+	help
+	 Support scaling of the virtual address heap size for different platforms.
+	 NOTE: Keep in mind that the heap size should not be greater than the physical
+	 memory size of the system defined in DT (and this includes baseFW text/data).
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	default n

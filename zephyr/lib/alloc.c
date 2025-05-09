@@ -18,6 +18,7 @@
 #include <sof/trace/trace.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
+
 #if CONFIG_VIRTUAL_HEAP
 #include <sof/lib/regions_mm.h>
 
@@ -27,7 +28,7 @@ struct vmh_heap *virtual_buffers_heap;
 #undef	HEAPMEM_SIZE
 /* Buffers are allocated from virtual space so we can safely reduce the heap size.
  */
-#define	HEAPMEM_SIZE 0x40000
+#define	HEAPMEM_SIZE CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_SIZE
 #endif /* CONFIG_VIRTUAL_HEAP */
 
 
