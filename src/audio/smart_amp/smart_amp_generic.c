@@ -221,7 +221,6 @@ static void feed_s32_to_s24(const struct smart_amp_mod_stream *sink_mod, uint32_
 			    const struct audio_stream __sparse_cache *sink)
 {
 	int i;
-	int sink_ch = audio_stream_get_channels(sink);
 	int n_mod = frames * sink_mod->channels;
 	int32_t *mod_ptr = (int32_t *)sink_mod->buf.data;
 
