@@ -88,9 +88,11 @@ enum ipc4_message_type {
 	/**< Notification (FW to SW driver) */
 	SOF_IPC4_GLB_NOTIFICATION = 27,
 	/* GAP HERE- DO NOT USE - size 3 (28 .. 30)  */
+	/**< Enter GDB stub to wait for commands in memory window */
+	SOF_IPC4_GLB_ENTER_GDB = 31,
 
 	/**< Maximum message number */
-	SOF_IPC4_GLB_MAX_IXC_MESSAGE_TYPE = 31
+	SOF_IPC4_GLB_MAX_IXC_MESSAGE_TYPE = 32
 };
 
 /**
