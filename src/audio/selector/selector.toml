@@ -22,7 +22,7 @@
 	mod_cfg = [0, 0, 0, 0, 960, 488500, 16, 16, 0, 0, 0,
 			1, 0, 0, 0, 960, 964500, 16, 16, 0, 0, 0,
 			2, 0, 0, 0, 960, 2003000, 16, 16, 0, 0, 0]
-#elif defined(CONFIG_LUNARLAKE) || defined(CONFIG_PANTHERLAKE)
+#elif defined(CONFIG_LUNARLAKE) || defined(CONFIG_SOC_INTEL_ACE30)
 	mod_cfg = [0, 0, 0, 0, 216, 706000, 12, 16, 0, 0, 0,
 			1, 0, 0, 0, 216, 1271000, 8, 8, 0, 0, 0,
 			2, 0, 0, 0, 216, 1839000, 89, 118, 0, 0, 0,
