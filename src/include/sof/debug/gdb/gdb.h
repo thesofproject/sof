@@ -38,8 +38,9 @@
 void gdb_handle_exception(void);
 void gdb_debug_info(unsigned char *str);
 void gdb_init_debug_exception(void);
-void gdb_init(void);
 
 #endif /* CONFIG_GDB_DEBUG */
+
+void gdb_init(void);
 
 #endif /* __SOF_DEBUG_GDB_GDB_H__ */
