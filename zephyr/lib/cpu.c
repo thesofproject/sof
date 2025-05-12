@@ -26,6 +26,7 @@
 #include <zephyr/kernel/smp.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
+#include <zephyr/sys/poweroff.h>
 
 #if CONFIG_MULTICORE && CONFIG_SMP
 
@@ -216,17 +217,21 @@ void cpu_disable_core(int id)
 		tr_warn(&zephyr_tr, "core %d is already disabled", id);
 		return;
 	}
+
 #if defined(CONFIG_PM)
+#if defined(CONFIG_POWEROFF)
+	/* Primary core will be turned off by the host. This does not return. */
+	if (cpu_is_primary(id)) {
+		cpu_notify_state_entry(PM_STATE_SOFT_OFF);
+		sys_poweroff();
+	}
+#endif
+
 	/* TODO: before requesting core shut down check if it's not actively used */
 	if (!pm_state_force(id, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0})) {
 		tr_err(&zephyr_tr, "failed to set PM_STATE_SOFT_OFF on core %d", id);
 		return;
 	}
-
-	/* Primary core will be turn off by the host after it enter SOFT_OFF state */
-	if (cpu_is_primary(id))
-		return;
-
 	/* Broadcasting interrupts to other cores. */
 	arch_sched_broadcast_ipi();
 
