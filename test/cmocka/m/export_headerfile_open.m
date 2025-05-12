@@ -9,7 +9,7 @@
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright(c) 2022 Intel Corporation. All rights reserved.
+% Copyright(c) 2022-2025 Intel Corporation.
 
 function fh = export_headerfile_open(headerfn, corp)
 
@@ -23,7 +23,7 @@ function fh = export_headerfile_open(headerfn, corp)
 	end
 	fprintf(fh, '/* SPDX-License-Identifier: BSD-3-Clause\n');
 	fprintf(fh, ' *\n');
-	fprintf(fh, ' * Copyright(c) %s %s. All rights reserved.\n', ...
+	fprintf(fh, ' * Copyright(c) %s %s.\n', ...
 		datestr(now, 'yyyy'), corp);
 	fprintf(fh, ' */\n\n');
 end
