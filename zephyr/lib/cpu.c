@@ -218,10 +218,7 @@ void cpu_disable_core(int id)
 	}
 #if defined(CONFIG_PM)
 	/* TODO: before requesting core shut down check if it's not actively used */
-	if (!pm_state_force(id, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0})) {
-		tr_err(&zephyr_tr, "failed to set PM_STATE_SOFT_OFF on core %d", id);
-		return;
-	}
+	pm_state_force(id, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
 
 	/* Primary core will be turn off by the host after it enter SOFT_OFF state */
 	if (cpu_is_primary(id))
