@@ -9,6 +9,7 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
+#include <sof/debug/gdb/gdb.h>
 #include <rtos/idc.h>
 #include <rtos/symbol.h>
 #include <sof/ipc/topology.h>
@@ -352,6 +353,8 @@ void ipc_complete_cmd(struct ipc *ipc)
 	ipc_platform_complete_cmd(ipc);
 }
 
+bool ipc_enter_gdb;
+
 static void ipc_complete_task(void *data)
 {
 	struct ipc *ipc = data;
@@ -361,6 +364,13 @@ static void ipc_complete_task(void *data)
 	ipc->task_mask &= ~IPC_TASK_INLINE;
 	ipc_complete_cmd(ipc);
 	k_spin_unlock(&ipc->lock, key);
+#if CONFIG_GDBSTUB
+	if (ipc_enter_gdb) {
+		ipc_enter_gdb = false;
+		k_msleep(5);
+		gdb_init();
+	}
+#endif
 }
 
 static enum task_state ipc_do_cmd(void *data)
