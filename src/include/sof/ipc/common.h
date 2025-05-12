@@ -247,4 +247,7 @@ void ipc_msg_reply(struct sof_ipc_reply *reply);
  */
 void ipc_complete_cmd(struct ipc *ipc);
 
+/* GDB stub: should enter GDB after completing the IPC processing */
+extern bool ipc_enter_gdb;
+
 #endif /* __SOF_DRIVERS_IPC_H__ */

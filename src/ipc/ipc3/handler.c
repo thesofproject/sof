@@ -973,7 +973,7 @@ static int ipc_glb_gdb_debug(uint32_t header)
 	(void) header;
 
 #if CONFIG_GDBSTUB
-	gdb_init();
+	ipc_enter_gdb = true;
 	return 0;
 // TODO: remove old GDB stub?
 #elif CONFIG_GDB_DEBUG
