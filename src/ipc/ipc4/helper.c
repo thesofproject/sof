@@ -942,7 +942,7 @@ int ipc4_process_on_core(uint32_t core, bool blocking)
 
 __cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
 {
-	const struct sof_uuid *const sof_uuid = (const struct sof_uuid *)uuid;
+	const struct sof_uuid *const sof_uuid __maybe_unused = (const struct sof_uuid *)uuid;
 	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
