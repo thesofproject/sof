@@ -229,12 +229,11 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 	if (ipc->task_mask & IPC_TASK_POWERDOWN ||
 	    ipc_get()->pm_prepare_D3) {
 #if defined(CONFIG_PM)
-		/**
-		 * @note For primary core this function
-		 * will only force set lower power state
-		 * in power management settings.
-		 * Core will enter D3 state after exit
-		 * IPC thread during idle.
+		/* force device suspend */
+		ipc_device_suspend_handler(NULL, ipc);
+		/*
+		 * When context save is not enabled, this function will never return but if it is
+		 * enabled, this function will return during context restore
 		 */
 		cpu_disable_core(PLATFORM_PRIMARY_CORE_ID);
 #else

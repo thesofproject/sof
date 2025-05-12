@@ -32,6 +32,8 @@ static uint32_t mic_disable_status;
 #include <zephyr/kernel/smp.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
+#include <zephyr/sys/poweroff.h>
+#include <zephyr/sys/hibernate.h>
 
 #if CONFIG_MULTICORE && CONFIG_SMP
 
@@ -255,6 +257,7 @@ void cpu_disable_core(int id)
 		tr_warn(&zephyr_tr, "core %d is already disabled", id);
 		return;
 	}
+
 #if defined(CONFIG_PM)
 	/* TODO: before requesting core shut down check if it's not actively used */
 	if (!pm_state_force(id, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0})) {
@@ -262,9 +265,21 @@ void cpu_disable_core(int id)
 		return;
 	}
 
-	/* Primary core will be turn off by the host after it enter SOFT_OFF state */
-	if (cpu_is_primary(id))
+	if (cpu_is_primary(id)) {
+		cpu_notify_state_entry(PM_STATE_SOFT_OFF);
+#if defined(CONFIG_POWEROFF)
+		/* Primary core will be turned off by the host. This does not return. */
+		sys_poweroff();
+#elif defined(CONFIG_HIBERNATE)
+		/*
+		 * Primary core will be turned off by the host. This function returns during
+		 * context restore.
+		 */
+		sys_hibernate();
 		return;
+#endif
+	}
+
 
 	/* Broadcasting interrupts to other cores. */
 	arch_sched_broadcast_ipi();
