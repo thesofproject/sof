@@ -16,6 +16,8 @@ tests:
       - intel_adsp/ace20_lnl
       - intel_adsp/ace30/ptl
       - intel_adsp/ace30/ptl/sim
+      - intel_adsp/ace30/wcl
+      - intel_adsp/ace30/wcl/sim
       - imx8qm_mek/mimx8qm6/adsp
       - imx8qxp_mek/mimx8qx6/adsp
       - imx8mp_evk/mimx8ml8/adsp

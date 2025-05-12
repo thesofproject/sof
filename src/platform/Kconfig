@@ -37,6 +37,13 @@ config PANTHERLAKE
 	help
 	  Select if your target platform is Pantherlake-compatible
 
+config WILDCATLAKE
+	bool "Build for Wildcatlake"
+	select ACE
+	select ACE_VERSION_3_0
+	help
+	  Select if your target platform is Wildcatlake-compatible
+
 config LIBRARY
 	bool "Build Library"
 	help
@@ -324,6 +331,7 @@ config MAX_CORE_COUNT
 	default 5 if PANTHERLAKE
 	default 4 if TIGERLAKE
 	default 3 if METEORLAKE
+	default 3 if WILDCATLAKE
 	default 1
 	help
 	  Maximum number of cores per configuration
