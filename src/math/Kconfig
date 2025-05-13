@@ -279,4 +279,14 @@ config MATH_A_LAW_CODEC
 	  to 8 bit coded data. A-law codec can be used in VoIP and
 	  8-bit wav formats.
 
+config MATH_MU_LAW_CODEC
+	bool "mu-law encoder and decoder"
+	help
+	  This option enables functions sofm_mu_law_encode() and
+	  sofm_mu_law_decode(). The mu-law codec is defined in
+	  ITU-T G.711 standard and has been used in telecommunications
+	  in USA and Japan. The mu-law coding compresses 14 bit samples
+	  to 8 bit coded data. Mu-law codec can be used in VoIP and
+	  8-bit wav formats.
+
 endmenu
