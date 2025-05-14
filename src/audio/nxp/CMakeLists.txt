@@ -7,5 +7,6 @@ if(CONFIG_COMP_NXP_EAP)
 	else()
 		zephyr_library_import(EAPLibrary
 			${sof_top_dir}/eap_sdk/EAP_Library/libEAP16_3_0_13_FP1_RT600.a)
+		zephyr_include_directories(${sof_top_dir}/eap_sdk)
 	endif()
 endif()

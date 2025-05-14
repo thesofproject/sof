@@ -1,6 +1,16 @@
 #ifndef EAP_PARAMETER_PRESETS_H_
 #define EAP_PARAMETER_PRESETS_H_
 
+#ifdef CONFIG_COMP_NXP_EAP_CUSTOM_PRESETS
+#include <Example_Application/CONFIG_HEADER/EAP_Parameter_AllEffectOff.h>
+#include <Example_Application/CONFIG_HEADER/EAP_Parameter_AutoVolumeLeveler.h>
+#include <Example_Application/CONFIG_HEADER/EAP_Parameter_ConcertSound.h>
+#include <Example_Application/CONFIG_HEADER/EAP_Parameter_LoudnessMaximiser.h>
+#include <Example_Application/CONFIG_HEADER/EAP_Parameter_MusicEnhancerRMSLimiter.h>
+#include <Example_Application/CONFIG_HEADER/EAP_Parameter_VoiceEnhancer.h>
+
+#else
+
 uint8_t InstParams_allEffectOff[28] = {
     0x00, 0x00, 0x00, 0x00, 0xE0, 0x01, 0x0A, 0x00,
     0x0A, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
@@ -188,4 +198,5 @@ uint8_t ControlParamSet_voiceEnhancer[216] = {
     0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00
 };
 
+#endif
 #endif /* EAP_PARAMETER_PRESETS_H_ */

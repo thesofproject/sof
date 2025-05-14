@@ -8,6 +8,14 @@ config COMP_NXP_EAP
 	  The EAP is a bundle of audio processing blocks for enhancing the tonal
 	  and spatial perception of sound in audio applications.
 
+config COMP_NXP_EAP_CUSTOM_PRESETS
+	tristate "NXP EAP custom configuration presets"
+	depends on COMP_NXP_EAP
+	default n
+	help
+	  Select this in order to use NXP custom configuration parameters. Otherwise,
+	  some simple empty defaults will be used only for CI build purposes.
+
 config COMP_NXP_EAP_STUB
 	tristate "NXP EAP Component stub"
 	default n
