@@ -1035,6 +1035,13 @@ static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 	}
 #endif
 
+#ifdef CONFIG_FORMAT_MU_LAW
+	if (type == IPC4_TYPE_MU_LAW && depth == 8) {
+		*frame_fmt = SOF_IPC_FRAME_MU_LAW;
+		*valid_fmt = SOF_IPC_FRAME_MU_LAW;
+	}
+#endif
+
 	if (valid == 24) {
 #ifdef CONFIG_FORMAT_S24_3LE
 		if (depth == 24) {
