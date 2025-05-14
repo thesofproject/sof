@@ -22,6 +22,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/math/a_law.h>
+#include <sof/math/mu_law.h>
 #include <rtos/bit.h>
 #include <sof/common.h>
 #include <sof/compiler_attributes.h>
@@ -153,6 +154,66 @@ static int pcm_convert_s32_to_alaw(const struct audio_stream *source,
 	return samples;
 }
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_A_LAW && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
+
+#if CONFIG_PCM_CONVERTER_FORMAT_MU_LAW && CONFIG_PCM_CONVERTER_FORMAT_S32LE
+static int pcm_convert_mulaw_to_s32(const struct audio_stream *source,
+				    uint32_t ioffset, struct audio_stream *sink,
+				    uint32_t ooffset, uint32_t samples, uint32_t chmap)
+{
+	const uint8_t *src = audio_stream_get_rptr(source);
+	int32_t *dst = audio_stream_get_wptr(sink);
+	uint32_t processed;
+	uint32_t nmax, i, n;
+
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, (void *)src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_U8_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sofm_mu_law_decode(*src) << 16;
+			src++;
+			dst++;
+		}
+	}
+
+	return samples;
+}
+
+static int pcm_convert_s32_to_mulaw(const struct audio_stream *source,
+				    uint32_t ioffset, struct audio_stream *sink,
+				    uint32_t ooffset, uint32_t samples, uint32_t chmap)
+{
+	const int32_t *src = audio_stream_get_rptr(source);
+	uint8_t *dst = audio_stream_get_wptr(sink);
+	uint32_t processed;
+	uint32_t nmax, i, n;
+
+	src += ioffset;
+	dst += ooffset;
+	for (processed = 0; processed < samples; processed += n) {
+		src = audio_stream_wrap(source, (void *)src);
+		dst = audio_stream_wrap(sink, dst);
+		n = samples - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) >> BYTES_TO_S32_SAMPLES;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dst) >> BYTES_TO_U8_SAMPLES;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			*dst = sofm_mu_law_encode(*src >> 16);
+			src++;
+			dst++;
+		}
+	}
+
+	return samples;
+}
+#endif /* CONFIG_PCM_CONVERTER_FORMAT_MU_LAW && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_S16LE && CONFIG_PCM_CONVERTER_FORMAT_S24LE
 
@@ -622,6 +683,13 @@ const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_A_LAW && CONFIG_PCM_CONVERTER_FORMAT_S32LE
 	{ SOF_IPC_FRAME_A_LAW, SOF_IPC_FRAME_S32_LE, pcm_convert_alaw_to_s32 },
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_A_LAW, pcm_convert_s32_to_alaw },
+#endif /* CONFIG_PCM_CONVERTER_FORMAT_A_LAW && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
+#if CONFIG_PCM_CONVERTER_FORMAT_MU_LAW
+	{ SOF_IPC_FRAME_MU_LAW, SOF_IPC_FRAME_MU_LAW, just_copy },
+#endif /* CONFIG_PCM_CONVERTER_FORMAT_MU_LAW */
+#if CONFIG_PCM_CONVERTER_FORMAT_MU_LAW && CONFIG_PCM_CONVERTER_FORMAT_S32LE
+	{ SOF_IPC_FRAME_MU_LAW, SOF_IPC_FRAME_S32_LE, pcm_convert_mulaw_to_s32 },
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_MU_LAW, pcm_convert_s32_to_mulaw },
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_A_LAW && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
 #if CONFIG_PCM_CONVERTER_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, just_copy },
