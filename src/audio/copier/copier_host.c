@@ -149,15 +149,28 @@ __cold int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 	config->type = SOF_COMP_HOST;
 	cd->gtw_type = ipc4_gtw_host;
 
-	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
-				    copier_cfg->base.audio_fmt.valid_bit_depth,
-				    &in_frame_fmt, &in_valid_fmt,
-				    copier_cfg->base.audio_fmt.s_type);
+	ret = audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
+					  copier_cfg->base.audio_fmt.valid_bit_depth,
+					  &in_frame_fmt, &in_valid_fmt,
+					  copier_cfg->base.audio_fmt.s_type);
+	if (ret) {
+		comp_err(dev, "failed with input format: depth %d, valid %d, type %d",
+			 copier_cfg->base.audio_fmt.depth,
+			 copier_cfg->base.audio_fmt.valid_bit_depth,
+			 copier_cfg->base.audio_fmt.s_type);
+		return ret;
+	}
 
-	audio_stream_fmt_conversion(copier_cfg->out_fmt.depth,
-				    copier_cfg->out_fmt.valid_bit_depth,
-				    &out_frame_fmt, &out_valid_fmt,
-				    copier_cfg->out_fmt.s_type);
+	ret = audio_stream_fmt_conversion(copier_cfg->out_fmt.depth,
+					  copier_cfg->out_fmt.valid_bit_depth,
+					  &out_frame_fmt, &out_valid_fmt,
+					  copier_cfg->out_fmt.s_type);
+	if (ret) {
+		comp_err(dev, "failed with output format: depth %d, valid %d, type %d",
+			 copier_cfg->out_fmt.depth, copier_cfg->out_fmt.valid_bit_depth,
+			 copier_cfg->out_fmt.s_type);
+		return ret;
+	}
 
 	memset(&ipc_host, 0, sizeof(ipc_host));
 	ipc_host.direction = dir;

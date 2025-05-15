@@ -1007,54 +1007,74 @@ static inline void cir_buf_set_zero(void *ptr, void *buf_addr, void *buf_end, ui
 		memset(buf_addr, 0, tail_size);
 }
 
-static inline void audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
-					       enum ipc4_bit_depth valid,
-					       enum sof_ipc_frame *frame_fmt,
-					       enum sof_ipc_frame *valid_fmt,
-					       enum ipc4_sample_type type)
+static inline int audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
+					      enum ipc4_bit_depth valid,
+					      enum sof_ipc_frame *frame_fmt,
+					      enum sof_ipc_frame *valid_fmt,
+					      enum ipc4_sample_type type)
 {
-	/* IPC4_DEPTH_16BIT (16) <---> SOF_IPC_FRAME_S16_LE (0)
-	 * IPC4_DEPTH_24BIT (24) <---> SOF_IPC_FRAME_S24_4LE (1)
-	 * IPC4_DEPTH_32BIT (32) <---> SOF_IPC_FRAME_S32_LE (2)
-	 */
-	*frame_fmt = (enum sof_ipc_frame)((depth >> 3) - 2);
-	*valid_fmt = (enum sof_ipc_frame)((valid >> 3) - 2);
+	int ret = -EINVAL;
+	*frame_fmt = SOF_IPC_FRAME_INVALID;
+	*valid_fmt = SOF_IPC_FRAME_INVALID;
 
-#ifdef CONFIG_FORMAT_U8
-	if (depth == 8)
-		*frame_fmt = SOF_IPC_FRAME_U8;
-
-	if (valid == 8)
-		*valid_fmt = SOF_IPC_FRAME_U8;
-#endif /* CONFIG_FORMAT_U8 */
-
-#ifdef CONFIG_FORMAT_A_LAW
-	if (type == IPC4_TYPE_A_LAW && depth == 8) {
-		*frame_fmt = SOF_IPC_FRAME_A_LAW;
-		*valid_fmt = SOF_IPC_FRAME_A_LAW;
-	}
-#endif
-
-#ifdef CONFIG_FORMAT_MU_LAW
-	if (type == IPC4_TYPE_MU_LAW && depth == 8) {
-		*frame_fmt = SOF_IPC_FRAME_MU_LAW;
-		*valid_fmt = SOF_IPC_FRAME_MU_LAW;
-	}
-#endif
-
-	if (valid == 24) {
-#ifdef CONFIG_FORMAT_S24_3LE
-		if (depth == 24) {
-			*frame_fmt = SOF_IPC_FRAME_S24_3LE;
-			*valid_fmt = SOF_IPC_FRAME_S24_3LE;
+	switch (type) {
+	case IPC4_TYPE_FLOAT:
+#ifdef CONFIG_FORMAT_FLOAT
+		if (depth == 32 && valid == 32) {
+			*frame_fmt = SOF_IPC_FRAME_FLOAT;
+			*valid_fmt = SOF_IPC_FRAME_FLOAT;
+			ret = 0;
 		}
 #endif
+		break;
+	case IPC4_TYPE_MSB_INTEGER:
+	case IPC4_TYPE_LSB_INTEGER:
+	case IPC4_TYPE_SIGNED_INTEGER:
+		if (depth == 24 && valid == 24) {
+#ifdef CONFIG_FORMAT_S24_3LE
+			*frame_fmt = SOF_IPC_FRAME_S24_3LE;
+			*valid_fmt = SOF_IPC_FRAME_S24_3LE;
+			ret = 0;
+#endif
+		} else {
+			/* IPC4_DEPTH_16BIT (16) <---> SOF_IPC_FRAME_S16_LE (0)
+			 * IPC4_DEPTH_24BIT (24) <---> SOF_IPC_FRAME_S24_4LE (1)
+			 * IPC4_DEPTH_32BIT (32) <---> SOF_IPC_FRAME_S32_LE (2)
+			 */
+			*frame_fmt = (enum sof_ipc_frame)((depth >> 3) - 2);
+			*valid_fmt = (enum sof_ipc_frame)((valid >> 3) - 2);
+			ret = 0;
+		}
+		break;
+	case IPC4_TYPE_UNSIGNED_INTEGER:
+#ifdef CONFIG_FORMAT_U8
+		if (depth == 8 && valid == 8) {
+			*frame_fmt = SOF_IPC_FRAME_U8;
+			*valid_fmt = SOF_IPC_FRAME_U8;
+			ret = 0;
+		}
+#endif /* CONFIG_FORMAT_U8 */
+		break;
+	case IPC4_TYPE_A_LAW:
+#ifdef CONFIG_FORMAT_A_LAW
+		if (depth == 8 && valid == 8) {
+			*frame_fmt = SOF_IPC_FRAME_A_LAW;
+			*valid_fmt = SOF_IPC_FRAME_A_LAW;
+			ret = 0;
+		}
+#endif
+		break;
+	case IPC4_TYPE_MU_LAW:
+#ifdef CONFIG_FORMAT_MU_LAW
+		if (depth == 8 && valid == 8) {
+			*frame_fmt = SOF_IPC_FRAME_MU_LAW;
+			*valid_fmt = SOF_IPC_FRAME_MU_LAW;
+			ret = 0;
+		}
+#endif
+		break;
 	}
-
-	if (type == IPC4_TYPE_FLOAT && depth == 32) {
-		*frame_fmt = SOF_IPC_FRAME_FLOAT;
-		*valid_fmt = SOF_IPC_FRAME_FLOAT;
-	}
+	return ret;
 }
 /** @}*/
 
