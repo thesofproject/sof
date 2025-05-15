@@ -30,9 +30,8 @@ static int template_comp_s16(const struct processing_module *mod,
 			     uint32_t frames)
 {
 	struct template_comp_comp_data *cd = module_get_private_data(mod);
-	int16_t *x, *x_start, *x_end;
+	int16_t const *x, *x_start, *x_end;
 	int16_t *y, *y_start, *y_end;
-	size_t size;
 	int x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
@@ -47,18 +46,14 @@ static int template_comp_s16(const struct processing_module *mod,
 	 * control the samples process loop. If the number of bytes requested is not
 	 * possible, an error is returned.
 	 */
-	ret = source_get_data(source, bytes, (void const **)&x, (void const **)&x_start, &size);
+	ret = source_get_data_s16(source, bytes, &x, &x_start, &x_size);
 	if (ret)
 		return ret;
-
-	x_size = size >> 1; /* Bytes to number of s16 samples */
 
 	/* Similarly get pointer to sink data in circular buffer, buffer start and size. */
-	ret = sink_get_buffer(sink, bytes, (void **)&y, (void **)&y_start, &size);
+	ret = sink_get_buffer_s16(sink, bytes, &y, &y_start, &y_size);
 	if (ret)
 		return ret;
-
-	y_size = size >> 1; /* Bytes to number of s16 samples */
 
 	/* Set helper pointers to buffer end for wrap check. Then loop until all
 	 * samples are processed.
@@ -122,9 +117,8 @@ static int template_comp_s32(const struct processing_module *mod,
 			     uint32_t frames)
 {
 	struct template_comp_comp_data *cd = module_get_private_data(mod);
-	int32_t *x, *x_start, *x_end;
+	int32_t const *x, *x_start, *x_end;
 	int32_t *y, *y_start, *y_end;
-	size_t size;
 	int x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
@@ -139,18 +133,14 @@ static int template_comp_s32(const struct processing_module *mod,
 	 * control the samples process loop. If the number of bytes requested is not
 	 * possible, an error is returned.
 	 */
-	ret = source_get_data(source, bytes, (void const **)&x, (void const **)&x_start, &size);
+	ret = source_get_data_s32(source, bytes, &x, &x_start, &x_size);
 	if (ret)
 		return ret;
-
-	x_size = size >> 2; /* Bytes to number of s32 samples */
 
 	/* Similarly get pointer to sink data in circular buffer, buffer start and size. */
-	ret = sink_get_buffer(sink, bytes, (void **)&y, (void **)&y_start, &size);
+	ret = sink_get_buffer_s32(sink, bytes, &y, &y_start, &y_size);
 	if (ret)
 		return ret;
-
-	y_size = size >> 2; /* Bytes to number of s32 samples */
 
 	/* Set helper pointers to buffer end for wrap check. Then loop until all
 	 * samples are processed.
