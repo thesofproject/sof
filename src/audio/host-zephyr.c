@@ -386,6 +386,23 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 		return 0;
 	}
 
+	/* HDA DMA Write and Read Position registers are not cleared by hardware on
+	 * dma_stop() or dma_start(). However, the dma_buffer is recreated after a reset
+	 * with its w_ptr and r_ptr set to NULL. The w_ptr and r_ptr must be kept in sync
+	 * with the hardware DMA Write and Read Positions.
+	 * Other types of DMA clear their hardware Read/Write Positions upon dma_stop()
+	 * or dma_start(). Additionally, some DMAs, such as GPDMA, do not populate
+	 * dma_status::write_position and read_position. Therefore, synchronization is
+	 * done here only for HDA DMA.
+	 *
+	 * For deep buffers, dma_reload() is called less frequently than consume/produce
+	 * on dma_buffer. Replicate the hardware state of the DMA buffer to the dma_buffer
+	 * struct only when no consume/produce operations on dma_buffer have been called
+	 * since the last dma_reload() (hence hd->partial_size == 0 check here).
+	 */
+	if ((hd->dma->plat_data.caps & SOF_DMA_CAP_HDA) && hd->partial_size == 0)
+		audio_stream_sync_to_hw(&hd->dma_buffer->stream, &dma_stat);
+
 	dma_sample_bytes = hd->config.src_width;
 
 	/* calculate minimum size to copy */
