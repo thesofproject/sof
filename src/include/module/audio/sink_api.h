@@ -171,6 +171,44 @@ int sink_get_buffer(struct sof_sink *sink, size_t req_size, void **data_ptr, voi
 		    size_t *buffer_size);
 
 /**
+ * Get a circular buffer to operate on (to write).
+ *
+ * Same as sink_get_buffer() except that the size of circular buffer is returned as
+ * 16 bit samples count. The returned samples count simplifies pointer arithmetic in a
+ * samples process function. The data pointers are int16_t type.
+ *
+ * @param sink a handler to sink
+ * @param [in] req_size requested size of space
+ * @param [out] data_ptr a pointer to the space will be provided there
+ * @param [out] buffer_start pointer to circular buffer start
+ * @param [out] buffer_samples number of s16 samples total in circular buffer
+ *
+ * @retval -ENODATA if req_size is bigger than free space
+ *
+ */
+int sink_get_buffer_s16(struct sof_sink *sink, size_t req_size, int16_t **data_ptr,
+			int16_t **buffer_start, int *buffer_samples);
+
+/**
+ * Get a circular buffer to operate on (to write).
+ *
+ * Same as sink_get_buffer() except that the size of circular buffer is returned as
+ * 32 bit samples count. The returned samples count simplifies pointer arithmetic in a
+ * samples process function. The data pointers are int32_t type.
+ *
+ * @param sink a handler to sink
+ * @param [in] req_size requested size of space
+ * @param [out] data_ptr a pointer to the space will be provided there
+ * @param [out] buffer_start pointer to circular buffer start
+ * @param [out] buffer_samples number of s32 samples total in circular buffer
+ *
+ * @retval -ENODATA if req_size is bigger than free space
+ *
+ */
+int sink_get_buffer_s32(struct sof_sink *sink, size_t req_size, int32_t **data_ptr,
+			int32_t **buffer_start, int *buffer_samples);
+
+/**
  * Commits that the buffer previously obtained by get_buffer is filled with data
  * and ready to be used
  *
