@@ -35,6 +35,38 @@ int source_get_data(struct sof_source *source, size_t req_size,
 }
 EXPORT_SYMBOL(source_get_data);
 
+int source_get_data_s16(struct sof_source *source, size_t req_size, int16_t const **data_ptr,
+			int16_t const **buffer_start, int *buffer_samples)
+{
+	size_t buffer_size;
+	int ret;
+
+	ret = source_get_data(source, req_size, (void const **)data_ptr,
+			      (void const **)buffer_start, &buffer_size);
+	if (ret)
+		return ret;
+
+	*buffer_samples = buffer_size >> 1;
+	return 0;
+}
+EXPORT_SYMBOL(source_get_data_s16);
+
+int source_get_data_s32(struct sof_source *source, size_t req_size, int32_t const **data_ptr,
+			int32_t const **buffer_start, int *buffer_samples)
+{
+	size_t buffer_size;
+	int ret;
+
+	ret = source_get_data(source, req_size, (void const **)data_ptr,
+			      (void const **)buffer_start, &buffer_size);
+	if (ret)
+		return ret;
+
+	*buffer_samples = buffer_size >> 2;
+	return 0;
+}
+EXPORT_SYMBOL(source_get_data_s32);
+
 int source_release_data(struct sof_source *source, size_t free_size)
 {
 	int ret;

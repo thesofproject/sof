@@ -185,6 +185,42 @@ int source_get_data(struct sof_source *source, size_t req_size, void const **dat
 		    void const **buffer_start, size_t *buffer_size);
 
 /**
+ * Retrieves a fragment of circular data (to read)
+ *
+ * Same as source_get_data() except that the size of circular buffer is returned as
+ * 16 bit samples count. The returned samples count simplifies pointer arithmetic in a
+ * samples process function. The data pointers are int16_t type.
+ *
+ * @param source a handler to source
+ * @param [in] req_size requested size of data.
+ * @param [out] data_ptr a pointer to data will be provided there
+ * @param [out] buffer_start pointer to circular buffer start
+ * @param [out] buffer_samples number of 16 bit samples total in circular buffer
+ *
+ * @retval -ENODATA if req_size is bigger than available data
+ */
+int source_get_data_s16(struct sof_source *source, size_t req_size, int16_t const **data_ptr,
+			int16_t const **buffer_start, int *buffer_samples);
+
+/**
+ * Retrieves a fragment of circular data (to read)
+ *
+ * Same as source_get_data() except that the size of circular buffer is returned as
+ * 32 bit samples count. The returned samples count simplifies pointer arithmetic in a
+ * samples process function. The data pointers are int32_t type.
+ *
+ * @param source a handler to source
+ * @param [in] req_size requested size of data.
+ * @param [out] data_ptr a pointer to data will be provided there
+ * @param [out] buffer_start pointer to circular buffer start
+ * @param [out] buffer_samples number of 32 bit samples total in circular buffer
+ *
+ * @retval -ENODATA if req_size is bigger than available data
+ */
+int source_get_data_s32(struct sof_source *source, size_t req_size, int32_t const **data_ptr,
+			int32_t const **buffer_start, int *buffer_samples);
+
+/**
  * Releases fragment previously obtained by source_get_data()
  * Once called, the data are no longer available for the caller
  *

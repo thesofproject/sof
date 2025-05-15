@@ -36,6 +36,38 @@ int sink_get_buffer(struct sof_sink *sink, size_t req_size,
 }
 EXPORT_SYMBOL(sink_get_buffer);
 
+int sink_get_buffer_s16(struct sof_sink *sink, size_t req_size,
+			int16_t **data_ptr, int16_t **buffer_start, int *buffer_samples)
+{
+	size_t buffer_size;
+	int ret;
+
+	ret = sink_get_buffer(sink, req_size, (void **)data_ptr, (void **)buffer_start,
+			      &buffer_size);
+	if (ret)
+		return ret;
+
+	*buffer_samples = buffer_size >> 1;
+	return 0;
+}
+EXPORT_SYMBOL(sink_get_buffer_s16);
+
+int sink_get_buffer_s32(struct sof_sink *sink, size_t req_size,
+			int32_t **data_ptr, int32_t **buffer_start, int *buffer_samples)
+{
+	size_t buffer_size;
+	int ret;
+
+	ret = sink_get_buffer(sink, req_size, (void **)data_ptr, (void **)buffer_start,
+			      &buffer_size);
+	if (ret)
+		return ret;
+
+	*buffer_samples = buffer_size >> 2;
+	return 0;
+}
+EXPORT_SYMBOL(sink_get_buffer_s32);
+
 int sink_commit_buffer(struct sof_sink *sink, size_t commit_size)
 {
 	int ret;
