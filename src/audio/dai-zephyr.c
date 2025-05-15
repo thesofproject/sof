@@ -1516,6 +1516,9 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 			return ret;
 		}
 
+		if (dd[i]->dma->plat_data.caps & SOF_DMA_CAP_HDA)
+			audio_stream_sync_to_hw(&dd[i]->dma_buffer->stream, &stat);
+
 		avail_bytes = MIN(avail_bytes, stat.pending_length);
 		free_bytes = MIN(free_bytes, stat.free);
 	}
@@ -1646,6 +1649,18 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	default:
 		return ret;
 	}
+
+	/* HDA DMA Write and Read Position registers are not cleared by hardware on
+	 * dma_stop() or dma_start(). However, the dma_buffer is recreated after a reset
+	 * with its w_ptr and r_ptr set to NULL. The w_ptr and r_ptr must be kept in sync
+	 * with the hardware DMA Write and Read Positions.
+	 * Other types of DMA clear their hardware Read/Write Positions upon dma_stop()
+	 * or dma_start(). Additionally, some DMAs, such as GPDMA, do not populate
+	 * dma_status::write_position and read_position. Therefore, synchronization is
+	 * done here only for HDA DMA.
+	 */
+	if (dd->dma->plat_data.caps & SOF_DMA_CAP_HDA)
+		audio_stream_sync_to_hw(&dd->dma_buffer->stream, &stat);
 
 	avail_bytes = stat.pending_length;
 	free_bytes = stat.free;
