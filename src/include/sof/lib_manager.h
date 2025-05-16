@@ -126,10 +126,6 @@ struct ext_library {
 	uint32_t lib_notif_count;
 
 	void *runtime_data;
-#if CONFIG_LIBRARY_AUTH_SUPPORT
-	struct auth_api_ctx auth_ctx;
-	void *auth_buffer;
-#endif
 };
 
 /* lib manager context, used by lib_notification */
