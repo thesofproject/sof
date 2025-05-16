@@ -20,6 +20,7 @@
 #include <sof/compiler_attributes.h>
 #include <rtos/panic.h>
 #include <sof/math/numbers.h>
+#include <sof/lib/dma.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <ipc/stream.h>
@@ -660,6 +661,35 @@ static inline void audio_stream_consume(struct audio_stream *buffer, uint32_t by
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 }
+
+#ifdef __ZEPHYR__
+/**
+ * Replicates the hardware state of the DMA buffer as a struct audio_stream.
+ * @param stream Stream to update.
+ * @param dma_status DMA buffer hardware state (struct dma_status from Zephyr).
+ */
+static inline void audio_stream_sync_to_hw(struct audio_stream *stream,
+					   const struct dma_status *dma_status)
+{
+	uintptr_t buf_start = (uintptr_t)audio_stream_get_addr(stream);
+
+	/* Note: It is assumed here that dma_status values are reported as bytes. However,
+	 * this is actually platform-specific. Although unlikely, they could be, for example,
+	 * words on some particular platform, and changes should be made here to address
+	 * such case.
+	 */
+
+	assert(dma_status->write_position < audio_stream_get_size(stream));
+	assert(dma_status->read_position < audio_stream_get_size(stream));
+	assert(dma_status->pending_length <= audio_stream_get_size(stream));
+	assert(dma_status->free <= audio_stream_get_size(stream));
+
+	audio_stream_set_wptr(stream, (void *)(buf_start + dma_status->write_position));
+	audio_stream_set_rptr(stream, (void *)(buf_start + dma_status->read_position));
+	audio_stream_set_avail(stream, dma_status->pending_length);
+	audio_stream_set_free(stream, dma_status->free);
+}
+#endif	/* __ZEPHYR__ */
 
 /**
  * Resets the buffer.
