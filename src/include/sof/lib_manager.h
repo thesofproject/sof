@@ -87,6 +87,7 @@ enum {
 	LIB_MANAGER_TEXT,
 	LIB_MANAGER_DATA,
 	LIB_MANAGER_RODATA,
+	LIB_MANAGER_BSS,
 	LIB_MANAGER_N_SEGMENTS,
 };
 
@@ -95,14 +96,22 @@ struct lib_manager_segment_desc {
 	size_t size;
 };
 
+struct llext;
+struct llext_buf_loader;
+
 struct lib_manager_module {
-	unsigned int start_idx;
+	unsigned int start_idx;	/* Index of the first driver from this module in
+				 * the library-global driver list */
 	const struct sof_man_module_manifest *mod_manifest;
+	struct llext *llext; /* Zephyr loadable extension context */
+	struct llext_buf_loader *ebl; /* Zephyr loadable extension buffer loader */
+	unsigned int n_dependent; /* For auxiliary modules: number of dependents */
+	bool mapped;
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
 };
 
 struct lib_manager_mod_ctx {
-	void *base_addr;
+	void *base_addr;	/* library cold storage address (e.g. DRAM) */
 	unsigned int n_mod;
 	struct lib_manager_module *mod;
 };
@@ -136,7 +145,7 @@ static inline struct lib_manager_mod_ctx *lib_manager_get_mod_ctx(int module_id)
 	uint32_t lib_id = LIB_MANAGER_GET_LIB_ID(module_id);
 	struct ext_library *_ext_lib = ext_lib_get();
 
-	if (!_ext_lib)
+	if (!_ext_lib || lib_id >= LIB_MANAGER_MAX_LIBS)
 		return NULL;
 
 	return _ext_lib->desc[lib_id];
@@ -188,8 +197,7 @@ struct processing_module;
  * Function is responsible to allocate module in available free memory and assigning proper address.
  * (WIP) These feature will contain module validation and proper memory management.
  */
-uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      const struct comp_ipc_config *ipc_config,
+uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config);
 
 /*

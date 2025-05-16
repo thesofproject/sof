@@ -10,6 +10,8 @@
  */
 
 #include <rtos/init.h>
+#include <sof/lib/memory.h>
+#include <module/module/llext.h>
 
 #include "src_common.h"
 #include "src_config.h"
@@ -58,8 +60,11 @@ static int src_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	a->stage1 = src_table1[a->idx_out][a->idx_in];
-	a->stage2 = src_table2[a->idx_out][a->idx_in];
+	ret = src_allocate_copy_stages(mod->dev, a,
+				       src_table1[a->idx_out][a->idx_in],
+				       src_table2[a->idx_out][a->idx_in]);
+	if (ret < 0)
+		return ret;
 
 	ret = src_params_general(mod, sources[0], sinks[0]);
 	if (ret < 0)
@@ -79,9 +84,6 @@ static const struct module_interface src_interface = {
 	.free = src_free,
 };
 
-DECLARE_MODULE_ADAPTER(src_interface, SRC_UUID, src_tr);
-SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
-
 #if CONFIG_COMP_SRC_MODULE
 /* modular: llext dynamic link */
 
@@ -89,23 +91,26 @@ SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_SRC 0x8D, 0xB2, 0x1B, 0xE6, 0x9A, 0x14, 0x1F, 0x4C, \
-		 0xB7, 0x09, 0x46, 0x82, 0x3E, 0xF5, 0xF5, 0xAE
 SOF_LLEXT_MOD_ENTRY(src, &src_interface);
 
 #if CONFIG_COMP_SRC_LITE
-#define UUID_SRC_LITE 0x51, 0x10, 0x44, 0x33, 0xCD, 0x44, 0x6A, 0x46, \
-		      0x83, 0xA3, 0x17, 0x84, 0x78, 0x70, 0x8A, 0xEA
 extern const struct module_interface src_lite_interface;
 SOF_LLEXT_MOD_ENTRY(src_lite, &src_lite_interface);
 #endif
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
-	SOF_LLEXT_MODULE_MANIFEST("SRC", src_llext_entry, 1, UUID_SRC, 1),
+	SOF_LLEXT_MODULE_MANIFEST("SRC", src_llext_entry, 1, SOF_REG_UUID(src4), 1),
 #if CONFIG_COMP_SRC_LITE
-	SOF_LLEXT_MODULE_MANIFEST("SRC_LITE", src_lite_llext_entry, 1, UUID_SRC_LITE, 1),
+	SOF_LLEXT_MODULE_MANIFEST("SRC_LITE", src_lite_llext_entry, 1, SOF_REG_UUID(src_lite),
+				  1),
 #endif
 };
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(src_interface, SRC_UUID, src_tr);
+SOF_MODULE_INIT(src, sys_comp_module_src_interface_init);
+
 #endif

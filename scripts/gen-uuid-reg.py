@@ -31,6 +31,9 @@ def emit_uuid_rec(uu, sym):
     uuidinit = "{ " + ", ".join(wrecs) + ", { " + ", ".join(byts) + " } }"
     out_recs.append(f"#define _UUIDREG_{sym} {uuidinit}")
 
+    uuidstr = uu[:23] + '-' + uu[23:]
+    out_recs.append(f'#define UUIDREG_STR_{sym.upper()} "{uuidstr}"')
+
 def main():
     with open(sys.argv[1]) as f:
         for line in f.readlines():

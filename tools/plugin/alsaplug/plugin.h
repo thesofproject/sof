@@ -39,8 +39,7 @@ typedef struct snd_sof_plug {
 	struct list_item pcm_list;
 	struct list_item pipeline_list;
 	int instance_ids[SND_SOC_TPLG_DAPM_LAST];
-	struct plug_mq_desc ipc_tx;
-	struct plug_mq_desc ipc_rx;
+	struct plug_socket_desc ipc;
 
 	struct plug_shm_desc glb_ctx;
 

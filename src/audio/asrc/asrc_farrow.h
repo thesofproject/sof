@@ -282,6 +282,13 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
 				     enum asrc_operation_mode operation_mode);
 
 /*
+ * @brief Free polyphase filters
+ *
+ * @param[in] src_obj        Pointer to the ias_src_farrow.
+ */
+void asrc_free_polyphase_filter(struct asrc_farrow *src_obj);
+
+/*
  * @brief Process the sample rate converter for one frame; the frame
  *        consists of @p input_num_frames samples within @p num_channels
  *        channels.

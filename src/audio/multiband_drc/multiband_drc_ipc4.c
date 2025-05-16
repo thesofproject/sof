@@ -16,6 +16,7 @@
 #include <ipc/stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/audio_stream.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 
 #include "multiband_drc.h"
@@ -27,9 +28,10 @@ void multiband_drc_process_enable(bool *process_enabled)
 	*process_enabled = true;
 }
 
-int multiband_drc_set_ipc_config(struct processing_module *mod, uint32_t param_id,
-				 const uint8_t *fragment, enum module_cfg_fragment_position pos,
-				 uint32_t data_offset_size, size_t fragment_size)
+__cold int multiband_drc_set_ipc_config(struct processing_module *mod, uint32_t param_id,
+					const uint8_t *fragment,
+					enum module_cfg_fragment_position pos,
+					uint32_t data_offset_size, size_t fragment_size)
 {
 	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
@@ -61,8 +63,8 @@ int multiband_drc_set_ipc_config(struct processing_module *mod, uint32_t param_i
 				  fragment_size);
 }
 
-int multiband_drc_get_ipc_config(struct processing_module *mod, struct sof_ipc_ctrl_data *cdata,
-				 size_t fragment_size)
+__cold int multiband_drc_get_ipc_config(struct processing_module *mod,
+					struct sof_ipc_ctrl_data *cdata, size_t fragment_size)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
@@ -78,7 +80,7 @@ int multiband_drc_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sinkb;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
-	int i, ret;
+	int i;
 
 	comp_dbg(dev, "multiband_drc_params()");
 
@@ -99,8 +101,11 @@ int multiband_drc_params(struct processing_module *mod)
 
 	component_set_nearest_period_frames(dev, comp_params.rate);
 	sinkb = comp_dev_get_first_data_consumer(dev);
-	ret = buffer_set_params(sinkb, &comp_params, true);
+	if (!sinkb) {
+		comp_err(dev, "no sink buffer");
+		return -ENOTCONN;
+	}
 
-	return ret;
+	return buffer_set_params(sinkb, &comp_params, true);
 }
 

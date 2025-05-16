@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2017 Intel Corporation. All rights reserved.
+// Copyright(c) 2017-2025 Intel Corporation.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -89,7 +89,7 @@ EXPORT_SYMBOL(fir_get_lrshifts);
  * 8x 48 bit registers in register file P
  */
 
-void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int lshift, int rshift)
+void fir_32x16(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int lshift, int rshift)
 {
 	/* This function uses
 	 * 1x 56 bit registers Q,
@@ -156,14 +156,15 @@ void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x, int32_t *y, int ls
 	a = AE_SRAAQ56(AE_SLLASQ56S(a, lshift), rshift);
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y, 0);
 }
+EXPORT_SYMBOL(fir_32x16_hifiep);
 
 /* HiFi EP has the follow number of reqisters that should not be exceeded
  * 4x 56 bit registers in register file Q
  * 8x 48 bit registers in register file P
  */
 
-void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
-			 int32_t *y0, int32_t *y1, int lshift, int rshift)
+void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
+		  int32_t *y0, int32_t *y1, int lshift, int rshift)
 {
 	/* This function uses
 	 * 2x 56 bit registers Q,
@@ -249,5 +250,6 @@ void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0, int32_t x1,
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(b), (ae_q32s *)y1, 0);
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y0, 0);
 }
+EXPORT_SYMBOL(fir_32x16_2x_hifiep);
 
 #endif

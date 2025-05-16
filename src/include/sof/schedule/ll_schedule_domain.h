@@ -240,6 +240,7 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 						  uint32_t num_dma,
 						  int clk);
 #endif /* CONFIG_DMA_DOMAIN */
+struct ll_schedule_domain *zephyr_ll_domain(void);
 struct ll_schedule_domain *zephyr_domain_init(int clk);
 #define timer_domain_init(timer, clk) zephyr_domain_init(clk)
 #endif

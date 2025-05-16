@@ -251,10 +251,11 @@ static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
 
 	/* Set buffer_length to filter_length * 2 to compensate for
 	 * missing element wise wrap around while loading but allowing
-	 * aligned loads.
+	 * aligned loads. FIR delay line write is initialized to last
+	 * position of first copy block for reverse direction write.
 	 */
 	src_obj->buffer_length = src_obj->filter_length * 2;
-	src_obj->buffer_write_position = src_obj->filter_length;
+	src_obj->buffer_write_position = src_obj->filter_length - 1;
 
 	if (src_obj->bit_depth == 32) {
 		buffer_size = src_obj->buffer_length * sizeof(int32_t);
@@ -321,6 +322,7 @@ static int asrc_free(struct processing_module *mod)
 
 	rfree(cd->buf);
 	asrc_release_buffers(cd->asrc_obj);
+	asrc_free_polyphase_filter(cd->asrc_obj);
 	rfree(cd->asrc_obj);
 	rfree(cd);
 	return 0;
@@ -397,6 +399,10 @@ static int asrc_params(struct processing_module *mod)
 
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
 
 	/* update the source/sink buffer formats. Sink rate will be modified below */
 	asrc_update_buffer_format(sourceb, cd);
@@ -450,11 +456,14 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 		/* In push mode check if sink component is DAI */
 		do {
 			sinkb = comp_dev_get_first_data_consumer(dev);
+			if (!sinkb) {
+				comp_err(asrc_dev, "At end: NULL buffer, no DAI found.");
+				return -EINVAL;
+			}
 
 			dev = comp_buffer_get_sink_component(sinkb);
-
 			if (!dev) {
-				comp_err(asrc_dev, "At end, no DAI found.");
+				comp_err(asrc_dev, "At end: NULL device, no DAI found.");
 				return -EINVAL;
 			}
 
@@ -468,11 +477,14 @@ static int asrc_dai_find(struct comp_dev *dev, struct comp_data *cd)
 		/* In pull mode check if source component is DAI */
 		do {
 			sourceb = comp_dev_get_first_data_producer(dev);
+			if (!sourceb) {
+				comp_err(asrc_dev, "At beginning: NULL buffer, no DAI found.");
+				return -EINVAL;
+			}
 
 			dev = comp_buffer_get_source_component(sourceb);
-
 			if (!dev) {
-				comp_err(asrc_dev, "At beginning, no DAI found.");
+				comp_err(asrc_dev, "At beginning: NULL device, no DAI found.");
 				return -EINVAL;
 			}
 
@@ -541,7 +553,10 @@ static int asrc_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	/* SRC component will only ever have 1 source and 1 sink buffer */
+	/*
+	 * SRC component will only ever have 1 source and 1 sink buffer,
+	 * asrc_params() has checked their validity already
+	 */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
@@ -851,6 +866,7 @@ static int asrc_reset(struct processing_module *mod)
 
 	/* Free the allocations those were done in prepare() */
 	asrc_release_buffers(cd->asrc_obj);
+	asrc_free_polyphase_filter(cd->asrc_obj);
 	rfree(cd->asrc_obj);
 	rfree(cd->buf);
 	cd->asrc_obj = NULL;
@@ -869,9 +885,6 @@ static const struct module_interface asrc_interface = {
 	.free = asrc_free,
 };
 
-DECLARE_MODULE_ADAPTER(asrc_interface, ASRC_UUID, asrc_tr);
-SOF_MODULE_INIT(asrc, sys_comp_module_asrc_interface_init);
-
 #if CONFIG_COMP_ASRC_MODULE
 /* modular: llext dynamic link */
 
@@ -879,13 +892,17 @@ SOF_MODULE_INIT(asrc, sys_comp_module_asrc_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_ASRC 0x2d, 0x40, 0xb4, 0x66, 0x68, 0xb4, 0xf2, 0x42, \
-		  0x81, 0xa7, 0xb3, 0x71, 0x21, 0x86, 0x3d, 0xd4
 SOF_LLEXT_MOD_ENTRY(asrc, &asrc_interface);
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
-	SOF_LLEXT_MODULE_MANIFEST("ASRC", asrc_llext_entry, 1, UUID_ASRC, 2),
+	SOF_LLEXT_MODULE_MANIFEST("ASRC", asrc_llext_entry, 1, SOF_REG_UUID(asrc4), 2),
 };
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(asrc_interface, ASRC_UUID, asrc_tr);
+SOF_MODULE_INIT(asrc, sys_comp_module_asrc_interface_init);
+
 #endif

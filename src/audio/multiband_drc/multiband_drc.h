@@ -9,7 +9,7 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <module/crossover/crossover_common.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <sof/audio/component.h>
 #include <sof/audio/data_blob.h>
 #include <sof/platform.h>
@@ -22,10 +22,10 @@
  * Stores the state of the sub-components in Multiband DRC
  */
 struct multiband_drc_state {
-	struct iir_state_df2t emphasis[PLATFORM_MAX_CHANNELS];
+	struct iir_state_df1 emphasis[PLATFORM_MAX_CHANNELS];
 	struct crossover_state crossover[PLATFORM_MAX_CHANNELS];
 	struct drc_state drc[SOF_MULTIBAND_DRC_MAX_BANDS];
-	struct iir_state_df2t deemphasis[PLATFORM_MAX_CHANNELS];
+	struct iir_state_df1 deemphasis[PLATFORM_MAX_CHANNELS];
 };
 
 typedef void (*multiband_drc_func)(const struct processing_module *mod,
@@ -89,7 +89,7 @@ static inline multiband_drc_func multiband_drc_find_proc_func_pass(enum sof_ipc_
 	return NULL;
 }
 
-static inline void multiband_drc_iir_reset_state_ch(struct iir_state_df2t *iir)
+static inline void multiband_drc_iir_reset_state_ch(struct iir_state_df1 *iir)
 {
 	rfree(iir->coef);
 	rfree(iir->delay);

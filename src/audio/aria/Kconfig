@@ -2,6 +2,7 @@
 
 config COMP_ARIA
 	tristate "ARIA component"
+	default m if LIBRARY_DEFAULT_MODULAR
 	default n
 	depends on IPC_MAJOR_4
 	help

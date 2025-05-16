@@ -68,7 +68,11 @@ struct ipc {
 	struct list_item comp_list;	/* list of component devices */
 
 	/* processing task */
+#if CONFIG_TWB_IPC_TASK
+	struct task *ipc_task;
+#else
 	struct task ipc_task;
+#endif
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	/* io performance measurement */
@@ -78,6 +82,7 @@ struct ipc {
 
 #ifdef __ZEPHYR__
 	struct k_work_delayable z_delayed_work;
+	struct k_work_q ipc_send_wq;
 #endif
 
 	void *private;

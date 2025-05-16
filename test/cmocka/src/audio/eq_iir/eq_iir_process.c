@@ -71,10 +71,7 @@ static struct sof_ipc_comp_process *create_eq_iir_comp_ipc(struct test_data *td)
 	struct sof_eq_iir_config *eq;
 	size_t ipc_size = sizeof(struct sof_ipc_comp_process);
 	struct sof_abi_hdr *blob = (struct sof_abi_hdr *)iir_coef_2ch;
-	const struct sof_uuid uuid = {
-		.a = 0x5150c0e6, .b = 0x27f9, .c = 0x4ec8,
-		.d = {0x83, 0x51, 0xc7, 0x05, 0xb6, 0x42, 0xd1, 0x2f}
-	};
+	const struct sof_uuid uuid = SOF_REG_UUID(eq_iir);
 
 	ipc = calloc(1, ipc_size + blob->size + SOF_UUID_SIZE);
 	memcpy_s(ipc + 1, SOF_UUID_SIZE, &uuid, SOF_UUID_SIZE);

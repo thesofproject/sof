@@ -344,8 +344,14 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	comp_dbg(dev, "selector_trigger()");
 
 	sourceb = comp_dev_get_first_data_producer(dev);
+	if (!sourceb) {
+		comp_err(dev, "source disconnected");
+		return -ENODEV;
+	}
 
 	ret = comp_set_state(dev, cmd);
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		ret = 0;
 
 	/* TODO: remove in the future after adding support for case when
 	 * kpb_init_draining() and kpb_draining_task() are interrupted by
@@ -421,6 +427,10 @@ static int selector_prepare(struct comp_dev *dev)
 	/* selector component will have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -913,9 +923,6 @@ static const struct module_interface selector_interface = {
 	.free			= selector_free
 };
 
-DECLARE_MODULE_ADAPTER(selector_interface, selector4_uuid, selector_tr);
-SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
-
 #if CONFIG_COMP_SEL_MODULE
 /* modular: llext dynamic link */
 
@@ -923,15 +930,18 @@ SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_SELECTOR 0x32, 0xFE, 0x92, 0xC1, 0x17, 0x1E, 0xC2, 0x4F, 0x58, 0x97, \
-		0xC7, 0xF3, 0x54, 0x2E, 0x98, 0x0A
-
 SOF_LLEXT_MOD_ENTRY(selector, &selector_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("MICSEL", selector_llext_entry, 1, UUID_SELECTOR, 8);
+	SOF_LLEXT_MODULE_MANIFEST("MICSEL", selector_llext_entry, 1, SOF_REG_UUID(selector4),
+				  8);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(selector_interface, selector4_uuid, selector_tr);
+SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 
 #endif
 

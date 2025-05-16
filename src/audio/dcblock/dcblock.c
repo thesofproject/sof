@@ -195,11 +195,15 @@ static int dcblock_prepare(struct processing_module *mod,
 
 	comp_info(dev, "dcblock_prepare()");
 
-	dcblock_params(mod);
-
 	/* DC Filter component will only ever have one source and sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
+	dcblock_params(mod);
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -254,9 +258,6 @@ static const struct module_interface dcblock_interface = {
 	.free = dcblock_free,
 };
 
-DECLARE_MODULE_ADAPTER(dcblock_interface, dcblock_uuid, dcblock_tr);
-SOF_MODULE_INIT(dcblock, sys_comp_module_dcblock_interface_init);
-
 #if CONFIG_COMP_DCBLOCK_MODULE
 /* modular: llext dynamic link */
 
@@ -264,14 +265,16 @@ SOF_MODULE_INIT(dcblock, sys_comp_module_dcblock_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_DCBLOCK 0xAF, 0xEF, 0x09, 0xB8, 0x81, 0x56, 0xB1, 0x42, 0xD6, 0x9E, \
-		0x04, 0xBB, 0x01, 0x2D, 0xD3, 0x84
-
 SOF_LLEXT_MOD_ENTRY(dcblock, &dcblock_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("DCBLOCK", dcblock_llext_entry, 1, UUID_DCBLOCK, 40);
+	SOF_LLEXT_MODULE_MANIFEST("DCBLOCK", dcblock_llext_entry, 1, SOF_REG_UUID(dcblock), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(dcblock_interface, dcblock_uuid, dcblock_tr);
+SOF_MODULE_INIT(dcblock, sys_comp_module_dcblock_interface_init);
 
 #endif

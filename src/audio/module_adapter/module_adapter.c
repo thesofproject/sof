@@ -18,6 +18,7 @@
 #include <sof/audio/source_api.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
@@ -81,7 +82,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	mod->dev = dev;
 	dev->mod = mod;
 
-	list_init(&mod->sink_buffer_list);
+	list_init(&mod->raw_data_buffers_list);
 
 	ret = module_adapter_init_data(dev, dst, config, spec);
 	if (ret) {
@@ -125,6 +126,10 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
 err:
+#if CONFIG_IPC_MAJOR_4
+	if (mod)
+		rfree(mod->priv.cfg.input_pins);
+#endif
 	rfree(mod);
 	rfree(dev);
 	return NULL;
@@ -138,8 +143,10 @@ static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 	unsigned int period = UINT32_MAX;
 
 	for (int i = 0; i < mod->num_of_sinks; i++) {
-		/* calculate time required the module to provide OBS data portion - a period */
-		unsigned int sink_period = 1000000 * sink_get_min_free_space(mod->sinks[i]) /
+		/* calculate time required the module to provide OBS data portion - a period
+		 * use 64bit integers to avoid overflows
+		 */
+		unsigned int sink_period = 1000000ULL * sink_get_min_free_space(mod->sinks[i]) /
 					   (sink_get_frame_bytes(mod->sinks[i]) *
 					   sink_get_rate(mod->sinks[i]));
 		/* note the minimal period for the module */
@@ -198,9 +205,21 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * but events and therefore don't have any deadline for processing
 	 * Second example is a module with variable data rate on output (like MPEG encoder)
 	 */
-	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && !dev->period) {
-		module_adapter_calculate_dp_period(dev);
-		comp_info(dev, "DP Module period set to %u", dev->period);
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		/* calculate DP period if a module didn't */
+		if (!dev->period)
+			module_adapter_calculate_dp_period(dev);
+
+		if (dev->period < LL_TIMER_PERIOD_US) {
+			comp_err(dev, "DP Module period too short (%u us), must be at least 1LL cycle (%llu us)",
+				 dev->period, LL_TIMER_PERIOD_US);
+			return -EINVAL;
+		}
+
+		/* align down period to LL cycle time */
+		dev->period /= LL_TIMER_PERIOD_US;
+		dev->period *= LL_TIMER_PERIOD_US;
+		comp_info(dev, "DP Module period set to %u us", dev->period);
 	}
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
@@ -230,7 +249,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
 	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
 	 */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink = comp_dev_get_first_data_consumer(dev);
 
 	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
 	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
@@ -367,7 +386,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	}
 
 	/* allocate buffer for all sinks */
-	if (list_is_empty(&mod->sink_buffer_list)) {
+	if (list_is_empty(&mod->raw_data_buffers_list)) {
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
 			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
@@ -381,16 +400,16 @@ int module_adapter_prepare(struct comp_dev *dev)
 			}
 
 			irq_local_disable(flags);
-			buffer_attach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+			list_item_prepend(&buffer->buffers_list, &mod->raw_data_buffers_list);
 			irq_local_enable(flags);
 
 			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
 			audio_buffer_reset(&buffer->audio_buffer);
 		}
 	} else {
-		list_for_item(blist, &mod->sink_buffer_list) {
+		list_for_item(blist, &mod->raw_data_buffers_list) {
 			struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-								  sink_list);
+								  buffers_list);
 
 			ret = buffer_set_size(buffer, buff_size, 0);
 			if (ret < 0) {
@@ -409,13 +428,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 	return 0;
 
 free:
-	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
+	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  buffers_list);
 		uint32_t flags;
 
 		irq_local_disable(flags);
-		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+		list_item_del(&buffer->buffers_list);
 		irq_local_enable(flags);
 		buffer_free(buffer);
 	}
@@ -606,11 +625,11 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	 * copy all produced output samples to output buffers. This loop will do nothing when
 	 * there are no samples produced.
 	 */
-	list_for_item(blist, &mod->sink_buffer_list) {
+	list_for_item(blist, &mod->raw_data_buffers_list) {
 		if (mod->output_buffers[i].size > 0) {
 			struct comp_buffer *buffer;
 
-			buffer = container_of(blist, struct comp_buffer, sink_list);
+			buffer = container_of(blist, struct comp_buffer, buffers_list);
 
 			ca_copy_from_module_to_sink(&buffer->stream, mod->output_buffers[i].data,
 						    mod->output_buffers[i].size);
@@ -621,17 +640,14 @@ static void module_adapter_process_output(struct comp_dev *dev)
 
 	/* copy from all output local buffers to sink buffers */
 	i = 0;
-	list_for_item(blist, &dev->bsink_list) {
-		struct list_item *_blist;
+	comp_dev_for_each_consumer(dev, sink) {
 		int j = 0;
 
-		list_for_item(_blist, &mod->sink_buffer_list) {
+		list_for_item(blist, &mod->raw_data_buffers_list) {
 			if (i == j) {
 				struct comp_buffer *source;
 
-				sink = container_of(blist, struct comp_buffer, source_list);
-				source = container_of(_blist, struct comp_buffer, sink_list);
-
+				source = container_of(blist, struct comp_buffer, buffers_list);
 				module_copy_samples(dev, source, sink,
 						    mod->output_buffers[i].size);
 
@@ -756,7 +772,7 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	/* Note: Source buffer state is not checked to enable mixout to generate zero
 	 * PCM codes when source is not active.
 	 */
-	if (mod->sink_comp_buffer->sink->state == dev->state)
+	if (comp_buffer_get_sink_state(mod->sink_comp_buffer) == dev->state)
 		num_output_buffers = 1;
 
 	ret = module_process_legacy(mod, mod->input_buffers, 1,
@@ -783,10 +799,11 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 {
 	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
 	struct comp_buffer *sinks[PLATFORM_MAX_STREAMS];
+	struct comp_buffer *sink;
+	struct comp_buffer *source;
 	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
 	uint32_t num_input_buffers, num_output_buffers;
-	int ret, i = 0;
+	int ret, i;
 
 	/* handle special case of HOST/DAI type components */
 	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
@@ -796,12 +813,9 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 		return module_adapter_audio_stream_copy_1to1(dev);
 
 	/* acquire all sink and source buffers */
-	list_for_item(blist, &dev->bsink_list) {
-		struct comp_buffer *sink;
-
-		sink = container_of(blist, struct comp_buffer, source_list);
+	i = 0;
+	comp_dev_for_each_consumer(dev, sink)
 		sinks[i++] = sink;
-	}
 	num_output_buffers = i;
 	if (num_output_buffers > mod->max_sinks) {
 		comp_err(dev, "Invalid number of sinks %d\n", num_output_buffers);
@@ -809,12 +823,8 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	}
 
 	i = 0;
-	list_for_item(blist, &dev->bsource_list) {
-		struct comp_buffer *source;
-
-		source = container_of(blist, struct comp_buffer, sink_list);
+	comp_dev_for_each_producer(dev, source)
 		sources[i++] = source;
-	}
 	num_input_buffers = i;
 	if (num_input_buffers > mod->max_sources) {
 		comp_err(dev, "Invalid number of sources %d\n", num_input_buffers);
@@ -824,11 +834,11 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 	/* setup active input/output buffers for processing */
 	if (num_output_buffers == 1) {
 		module_single_sink_setup(dev, sources, sinks);
-		if (sinks[0]->sink->state != dev->state)
+		if (comp_buffer_get_sink_state(sinks[0]) != dev->state)
 			num_output_buffers = 0;
 	} else if (num_input_buffers == 1) {
 		module_single_source_setup(dev, sources, sinks);
-		if (sources[0]->source->state != dev->state) {
+		if (comp_buffer_get_source_state(sources[0]) != dev->state) {
 			num_input_buffers = 0;
 		}
 	} else {
@@ -910,15 +920,13 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 	 * This is an adapter, to be removed when pipeline2.0 is ready
 	 */
 	struct processing_module *mod = comp_mod(dev);
-	struct list_item *blist;
+	struct comp_buffer *buffer;
 	int err;
 
-	list_for_item(blist, &dev->bsource_list) {
+	comp_dev_for_each_producer(dev, buffer) {
 		/* input - we need to copy data from audio_stream (as source)
 		 * to ring_buffer (as sink)
 		 */
-		struct comp_buffer *buffer =
-				container_of(blist, struct comp_buffer, sink_list);
 		err = audio_buffer_sync_secondary_buffer(&buffer->audio_buffer, UINT_MAX);
 
 		if (err) {
@@ -930,7 +938,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 	if (mod->dp_startup_delay)
 		return 0;
 
-	list_for_item(blist, &dev->bsink_list) {
+	comp_dev_for_each_consumer(dev, buffer) {
 		/* output - we need to copy data from ring_buffer (as source)
 		 * to audio_stream (as sink)
 		 *
@@ -943,8 +951,6 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		 *
 		 * FIX: copy only the following module's IBS in each LL cycle
 		 */
-		struct comp_buffer *buffer =
-				container_of(blist, struct comp_buffer, source_list);
 		struct sof_source *following_mod_data_source =
 				audio_buffer_get_source(&buffer->audio_buffer);
 
@@ -1013,22 +1019,20 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 
 	comp_dbg(dev, "module_adapter_raw_data_type_copy(): start");
 
-	list_for_item(blist, &mod->sink_buffer_list) {
-		sink = container_of(blist, struct comp_buffer, sink_list);
+	list_for_item(blist, &mod->raw_data_buffers_list) {
+		sink = container_of(blist, struct comp_buffer, buffers_list);
 
 		min_free_frames = MIN(min_free_frames,
 				      audio_stream_get_free_frames(&sink->stream));
 	}
 
 	/* copy source samples into input buffer */
-	list_for_item(blist, &dev->bsource_list) {
+	comp_dev_for_each_producer(dev, source) {
 		uint32_t bytes_to_process;
 		int frames, source_frame_bytes;
 
-		source = container_of(blist, struct comp_buffer, sink_list);
-
 		/* check if the source dev is in the same state as the dev */
-		if (!source->source || source->source->state != dev->state)
+		if (comp_buffer_get_source_state(source) != dev->state)
 			continue;
 
 		frames = MIN(min_free_frames,
@@ -1061,10 +1065,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 
 	i = 0;
 	/* consume from all input buffers */
-	list_for_item(blist, &dev->bsource_list) {
-
-		source = container_of(blist, struct comp_buffer, sink_list);
-
+	comp_dev_for_each_producer(dev, source) {
 		comp_update_buffer_consume(source, mod->input_buffers[i].consumed);
 
 		bzero((__sparse_force void *)mod->input_buffers[i].data, size);
@@ -1179,9 +1180,9 @@ int module_adapter_reset(struct comp_dev *dev)
 	mod->total_data_consumed = 0;
 	mod->total_data_produced = 0;
 
-	list_for_item(blist, &mod->sink_buffer_list) {
+	list_for_item(blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  buffers_list);
 		buffer_zero(buffer);
 	}
 
@@ -1206,13 +1207,13 @@ void module_adapter_free(struct comp_dev *dev)
 	if (ret)
 		comp_err(dev, "module_adapter_free(): failed with error: %d", ret);
 
-	list_for_item_safe(blist, _blist, &mod->sink_buffer_list) {
+	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
-							  sink_list);
+							  buffers_list);
 		uint32_t flags;
 
 		irq_local_disable(flags);
-		buffer_detach(buffer, &mod->sink_buffer_list, PPL_DIR_UPSTREAM);
+		list_item_del(&buffer->buffers_list);
 		irq_local_enable(flags);
 		buffer_free(buffer);
 	}

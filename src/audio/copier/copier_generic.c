@@ -6,6 +6,7 @@
 
 #include <ipc4/base-config.h>
 #include <sof/audio/component_ext.h>
+#include <sof/lib/memory.h>
 #include <module/module/base.h>
 #include <sof/common.h>
 #include <ipc/dai.h>
@@ -60,10 +61,11 @@ int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
 	}
 }
 
-void copier_gain_set_basic_params(struct comp_dev *dev, struct dai_data *dd,
-				  struct ipc4_base_module_cfg *ipc4_cfg)
+__cold void copier_gain_set_basic_params(struct comp_dev *dev,
+					 struct copier_gain_params *gain_params,
+					 struct ipc4_base_module_cfg *ipc4_cfg)
 {
-	struct copier_gain_params *gain_params = dd->gain_data;
+	assert_can_be_cold();
 
 	gain_params->channels_count = ipc4_cfg->audio_fmt.channels_count;
 
@@ -71,12 +73,13 @@ void copier_gain_set_basic_params(struct comp_dev *dev, struct dai_data *dd,
 		gain_params->gain_coeffs[i] = UNITY_GAIN_GENERIC;
 }
 
-int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
-				struct ipc4_base_module_cfg *ipc4_cfg,
-				uint32_t fade_period, uint32_t frames)
+__cold int copier_gain_set_fade_params(struct comp_dev *dev, struct copier_gain_params *gain_params,
+				       struct ipc4_base_module_cfg *ipc4_cfg,
+				       uint32_t fade_period, uint32_t frames)
 {
-	struct copier_gain_params *gain_params = dd->gain_data;
 	uint16_t step_i64_to_i16;
+
+	assert_can_be_cold();
 
 	if (fade_period == GAIN_DEFAULT_FADE_PERIOD) {
 		/* Set fade transition delay to default value*/
@@ -88,6 +91,8 @@ int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
 		/* Special case for GAIN_ZERO_TRANS_MS to support zero fade-in transition time */
 		gain_params->fade_sg_length = 0;
 		return 0;
+	} else {
+		gain_params->fade_sg_length = frames * fade_period;
 	}
 
 	/* High precision step for fade-in calculation, keeps accurate precision */
@@ -347,9 +352,9 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 	}
 }
 
-int create_multi_endpoint_buffer(struct comp_dev *dev,
-				 struct copier_data *cd,
-				 const struct ipc4_copier_module_cfg *copier_cfg)
+__cold int create_multi_endpoint_buffer(struct comp_dev *dev,
+					struct copier_data *cd,
+					const struct ipc4_copier_module_cfg *copier_cfg)
 {
 	struct comp_ipc_config *config = &dev->ipc_config;
 	enum sof_ipc_frame in_frame_fmt, out_frame_fmt;
@@ -360,6 +365,8 @@ int create_multi_endpoint_buffer(struct comp_dev *dev,
 	uint32_t buf_size;
 	uint32_t chan_map;
 	int i;
+
+	assert_can_be_cold();
 
 	audio_stream_fmt_conversion(copier_cfg->base.audio_fmt.depth,
 				    copier_cfg->base.audio_fmt.valid_bit_depth,
@@ -442,9 +449,11 @@ int create_multi_endpoint_buffer(struct comp_dev *dev,
 	return 0;
 }
 
-enum sof_ipc_stream_direction
+__cold enum sof_ipc_stream_direction
 	get_gateway_direction(enum ipc4_connector_node_id_type node_id_type)
 {
+	assert_can_be_cold();
+
 	/* WARNING: simple "% 2" formula that was used before does not work for all
 	 * interfaces: at least it does not work for IPC gateway. But it may also
 	 * does not work for other not yet supported interfaces. And so additional

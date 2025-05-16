@@ -205,7 +205,7 @@ static void man_get_section_manifest(struct image *image,
 	memcpy(man_module->struct_id, "$AME", 4);
 	man_module->entry_point = sof_mod->module.entry_point;
 	memcpy(man_module->name, sof_mod->module.name, SOF_MAN_MOD_NAME_LEN);
-	memcpy(man_module->uuid, sof_mod->module.uuid, 16);
+	memcpy(&man_module->uuid, &sof_mod->module.uuid, sizeof(man_module->uuid));
 	man_module->affinity_mask = sof_mod->module.affinity_mask;
 	man_module->instance_max_count = sof_mod->module.instance_max_count;
 	man_module->type.auto_start = sof_mod->module.type.auto_start;
@@ -536,18 +536,20 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 	unsigned int i;
 
 	for (i = 0, sof_mod = section.data; i < n_mod; i++, sof_mod++) {
-		int j = man_module_find_cfg(modules, &sof_mod->module);
-
-		if (j < 0) {
-			elf_section_free(&section);
-			return j;
-		}
-
-		/* Found a TOML manifest, matching ELF */
 		if (i)
 			(*man_module)++;
-		/* Use manifest created using toml files as template */
-		**man_module = modules->mod_man[j];
+
+		if (sof_mod->module.type.load_type != SOF_MAN_MOD_TYPE_LLEXT_AUX) {
+			int j = man_module_find_cfg(modules, &sof_mod->module);
+
+			if (j < 0) {
+				elf_section_free(&section);
+				return j;
+			}
+
+			/* Found a TOML manifest, matching ELF: use as a template */
+			**man_module = modules->mod_man[j];
+		}
 		/* Use .manifest to update individual fields */
 		man_get_section_manifest(image, sof_mod, *man_module);
 		man_module_fill_reloc(module, *man_module);
@@ -723,6 +725,9 @@ static int man_create_modules_in_config(struct image *image, struct sof_man_fw_d
 								   SOF_MAN_MODULE_OFFSET(0));
 		     i < modules->output_mod_cfg_count;
 		     i++, man_module++) {
+			if (man_module->type.load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX)
+				continue;
+
 			int j = man_module_find_cfg(modules, man_module);
 
 			if (j < 0)

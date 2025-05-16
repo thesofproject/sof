@@ -26,6 +26,10 @@ def parse_args():
 	parser.add_argument('params', nargs='+', help='Additional linker parameters')
 	parser.add_argument("-f", "--file", required=True, type=str,
 						help='Object file name')
+	parser.add_argument("-c", "--copy", required=True, type=str,
+						help='Objcopy command')
+	parser.add_argument("-o", "--output", required=True, type=str,
+						help='Output file name')
 	parser.add_argument("-t", "--text-addr", required=True, type=str,
 						help='.text section address')
 	parser.add_argument("-s", "--size-file", required=True, type=str,
@@ -76,6 +80,7 @@ def main():
 	executable = []
 	writable = []
 	readonly = []
+	readonly_dram = []
 
 	text_found = False
 
@@ -101,10 +106,7 @@ def main():
 		if (s_flags & (SH_FLAGS.SHF_ALLOC | SH_FLAGS.SHF_EXECINSTR) ==
                     SH_FLAGS.SHF_ALLOC | SH_FLAGS.SHF_EXECINSTR and
 		    s_type == 'SHT_PROGBITS'):
-			# An executable section, currently only a single .text is supported.
-			# In general additional executable sections are possible, e.g.
-			# .init. In the future support for arbitrary such sections can be
-			# added, similar to writable and read-only data below.
+			# An executable section.
 			if s_name == '.text':
 				text_found = True
 				text_addr = max_alignment(text_addr, 0x1000, s_alignment)
@@ -123,7 +125,10 @@ def main():
 
 		if s_type == 'SHT_PROGBITS' and s_flags & SH_FLAGS.SHF_ALLOC:
 			# .rodata or other read-only sections
-			readonly.append(section)
+			if s_name == '.coldrodata':
+				readonly_dram.append(section)
+			else:
+				readonly.append(section)
 
 	if not text_found:
 		raise RuntimeError('No .text section found in the object file')
@@ -136,24 +141,45 @@ def main():
 	# run at arbitrary memory locations. One of the use-cases is running
 	# parts of the module directly in DRAM - sacrificing performance but
 	# saving scarce SRAM. We achieve this by placing non-performance
-	# critical functions in a .cold ELF section. When compiling and linking
-	# such functions, an additional .cold.literal section is automatically
-	# created. Note, that for some reason the compiler also marks that
-	# section as executable.
+	# critical functions in a .cold ELF section, read-only data in a
+	# .coldrodata ELF section, etc. When compiling and linking such
+	# functions, an additional .cold.literal section is automatically
+	# created. Note, that for some reason the compiler also marks .cold as
+	# executable.
 	# This script links those sections at address 0. We could hard-code
 	# section names, but so far we choose to only link .text the "original"
-	# way and all other executable sections we link at 0.
-	exe_addr = 0
+	# way and all other executable sections we link at 0. For data sections
+	# we accept only the .coldrodata name for now.
+
+	dram_addr = 0
+	first_dram_text = None
+	first_dram_rodata = None
 
 	for section in executable:
 		s_alignment = section.header['sh_addralign']
 		s_name = section.name
 
-		exe_addr = align_up(exe_addr, s_alignment)
+		if not first_dram_text:
+			first_dram_text = s_name
 
-		command.append(f'-Wl,--section-start={s_name}=0x{exe_addr:x}')
+		dram_addr = align_up(dram_addr, s_alignment)
 
-		exe_addr += section.header['sh_size']
+		command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
+
+		dram_addr += section.header['sh_size']
+
+	for section in readonly_dram:
+		s_alignment = section.header['sh_addralign']
+		s_name = section.name
+
+		if not first_dram_rodata:
+			first_dram_rodata = s_name
+
+		dram_addr = align_up(dram_addr, s_alignment)
+
+		command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
+
+		dram_addr += section.header['sh_size']
 
 	start_addr = align_up(text_addr + text_size, 0x1000)
 
@@ -182,9 +208,20 @@ def main():
 
 		start_addr += section.header['sh_size']
 
+	command.extend(['-o', f'{args.file}.tmp'])
 	command.extend(args.params)
 
 	subprocess.run(command)
+
+	copy_command = [args.copy]
+
+	if first_dram_text:
+		copy_command.extend(['--set-section-alignment', f'{first_dram_text}=4096'])
+	if first_dram_rodata:
+		copy_command.extend(['--set-section-alignment', f'{first_dram_rodata}=4096'])
+
+	copy_command.extend([f'{args.file}.tmp', f'{args.output}'])
+	subprocess.run(copy_command)
 
 if __name__ == "__main__":
 	main()

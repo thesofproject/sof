@@ -12,6 +12,7 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/trace/trace.h>
@@ -41,6 +42,7 @@ LOG_MODULE_DECLARE(drc, CONFIG_SOF_LOG_LEVEL);
 extern const struct sof_uuid drc_uuid;
 extern struct tr_ctx drc_tr;
 
+/* Called from drc_setup() from drc_process(), so cannot be __cold */
 void drc_reset_state(struct drc_state *state)
 {
 	int i;
@@ -118,6 +120,7 @@ int drc_set_pre_delay_time(struct drc_state *state,
 	return 0;
 }
 
+/* Called from drc_process(), so cannot be __cold */
 static int drc_setup(struct drc_comp_data *cd, uint16_t channels, uint32_t rate)
 {
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
@@ -147,6 +150,8 @@ __cold static int drc_init(struct processing_module *mod)
 	struct drc_comp_data *cd;
 	size_t bs = cfg->size;
 	int ret;
+
+	assert_can_be_cold();
 
 	comp_info(dev, "drc_init()");
 
@@ -200,18 +205,22 @@ __cold static int drc_free(struct processing_module *mod)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 
+	assert_can_be_cold();
+
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
 	return 0;
 }
 
-static int drc_set_config(struct processing_module *mod, uint32_t param_id,
-			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-			  size_t response_size)
+__cold static int drc_set_config(struct processing_module *mod, uint32_t param_id,
+				 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				 size_t response_size)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "drc_set_config()");
 
@@ -243,12 +252,14 @@ static int drc_set_config(struct processing_module *mod, uint32_t param_id,
 				  fragment_size);
 }
 
-static int drc_get_config(struct processing_module *mod,
-			  uint32_t config_id, uint32_t *data_offset_size,
-			  uint8_t *fragment, size_t fragment_size)
+__cold static int drc_get_config(struct processing_module *mod,
+				 uint32_t config_id, uint32_t *data_offset_size,
+				 uint8_t *fragment, size_t fragment_size)
 {
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct drc_comp_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	comp_info(mod->dev, "drc_get_config()");
 
@@ -315,6 +326,8 @@ static void drc_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
+	/* The caller has verified, that sink and source buffers are connected */
+
 	sinkb = comp_dev_get_first_data_consumer(dev);
 	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 
@@ -336,13 +349,17 @@ static int drc_prepare(struct processing_module *mod,
 
 	comp_info(dev, "drc_prepare()");
 
-#if CONFIG_IPC_MAJOR_4
-	drc_params(mod);
-#endif
-
 	/* DRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
+#if CONFIG_IPC_MAJOR_4
+	drc_params(mod);
+#endif
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -401,23 +418,22 @@ static const struct module_interface drc_interface = {
 	.free = drc_free
 };
 
-DECLARE_MODULE_ADAPTER(drc_interface, drc_uuid, drc_tr);
-SOF_MODULE_INIT(drc, sys_comp_module_drc_interface_init);
-
 #if CONFIG_COMP_DRC_MODULE
 /* modular: llext dynamic link */
 
 #include <module/module/api_ver.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_DRC 0xda, 0xe4, 0x6e, 0xb3, 0x6f, 0x00, 0xf9, 0x47, \
-		 0xa0, 0x6d, 0xfe, 0xcb, 0xe2, 0xd8, 0xb6, 0xce
-
 SOF_LLEXT_MOD_ENTRY(drc, &drc_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("DRC", drc_llext_entry, 1, UUID_DRC, 40);
+	SOF_LLEXT_MODULE_MANIFEST("DRC", drc_llext_entry, 1, SOF_REG_UUID(drc), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(drc_interface, drc_uuid, drc_tr);
+SOF_MODULE_INIT(drc, sys_comp_module_drc_interface_init);
 
 #endif

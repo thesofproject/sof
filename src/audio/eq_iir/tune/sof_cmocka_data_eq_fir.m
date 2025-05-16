@@ -9,6 +9,8 @@
 
 function sof_cmocka_data_eq_fir()
 
+sof_eq_paths(true);
+
 % Output files and paths
 sof_cmocka = '../../../../test/cmocka';
 
@@ -43,6 +45,8 @@ grid on;
 figure;
 plot(refi / scale)
 grid on;
+
+sof_eq_paths(false);
 
 end
 

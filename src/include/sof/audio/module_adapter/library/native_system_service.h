@@ -7,7 +7,6 @@
 #define NATIVE_SYSTEM_SERVICE_H
 
 #include <stdint.h>
-#include <adsp_stddef.h>
 
 #ifdef __cplusplus
 extern "C" {

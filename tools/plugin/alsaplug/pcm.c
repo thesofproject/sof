@@ -8,11 +8,12 @@
 #include <sys/poll.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <mqueue.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <semaphore.h>
@@ -42,10 +43,6 @@ typedef struct snd_sof_pcm {
 	/* PCM flow control */
 	struct plug_sem_desc ready[TPLG_MAX_PCM_PIPELINES];
 	struct plug_sem_desc done[TPLG_MAX_PCM_PIPELINES];
-	/* pipeline IPC tx queues */
-	struct plug_mq_desc pipeline_ipc_tx[TPLG_MAX_PCM_PIPELINES];
-	 /* pipeline IPC response queues */
-	struct plug_mq_desc pipeline_ipc_rx[TPLG_MAX_PCM_PIPELINES];
 
 	struct plug_shm_desc shm_pcm;
 
@@ -55,15 +52,15 @@ typedef struct snd_sof_pcm {
 static int plug_pipeline_set_state(snd_sof_plug_t *plug, int state,
 				   struct ipc4_pipeline_set_state *pipe_state,
 				   struct tplg_pipeline_info *pipe_info,
-				   struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx)
+				   struct plug_socket_desc *ipc)
 {
 	struct ipc4_message_reply reply = {{ 0 }};
 	int ret;
 
 	pipe_state->primary.r.ppl_id = pipe_info->instance_id;
 
-	ret = plug_mq_cmd_tx_rx(ipc_tx, ipc_rx, pipe_state, sizeof(*pipe_state),
-				&reply, sizeof(reply));
+	ret = plug_ipc_cmd_tx_rx(ipc, pipe_state, sizeof(*pipe_state),
+				 &reply, sizeof(reply));
 	if (ret < 0)
 		SNDERR("failed pipeline %d set state %d\n", pipe_info->instance_id, state);
 
@@ -97,8 +94,7 @@ static int plug_pipelines_set_state(snd_sof_plug_t *plug, int state)
 			int ret;
 
 			ret = plug_pipeline_set_state(plug, state, &pipe_state, pipe_info,
-						      &pcm->pipeline_ipc_tx[i],
-						      &pcm->pipeline_ipc_rx[i]);
+						      &plug->ipc);
 			if (ret < 0)
 				return ret;
 		}
@@ -111,7 +107,7 @@ static int plug_pipelines_set_state(snd_sof_plug_t *plug, int state)
 		int ret;
 
 		ret = plug_pipeline_set_state(plug, state, &pipe_state, pipe_info,
-					      &pcm->pipeline_ipc_tx[i], &pcm->pipeline_ipc_rx[i]);
+					      &plug->ipc);
 		if (ret < 0)
 			return ret;
 	}
@@ -482,38 +478,6 @@ static int plug_pcm_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params)
 	for (i = 0; i < pipeline_list->count; i++) {
 		struct tplg_pipeline_info *pipe_info = pipeline_list->pipelines[i];
 
-		/* init IPC message queue name */
-		err = plug_mq_init(&pcm->pipeline_ipc_tx[i], plug->tplg_file, "pcm-tx",
-				   pipe_info->instance_id);
-		if (err < 0) {
-			SNDERR("error: invalid name for pipeline IPC mq %s\n", plug->tplg_file);
-			return err;
-		}
-
-		/* open the sof-pipe IPC message queue */
-		err = plug_mq_open(&pcm->pipeline_ipc_tx[i]);
-		if (err < 0) {
-			SNDERR("error: failed to open sof-pipe IPC mq %s: %s",
-			       pcm->pipeline_ipc_tx[i].queue_name, strerror(err));
-			return -errno;
-		}
-
-		/* init IPC message queue name */
-		err = plug_mq_init(&pcm->pipeline_ipc_rx[i], plug->tplg_file, "pcm-rx",
-				   pipe_info->instance_id);
-		if (err < 0) {
-			SNDERR("error: invalid name for pipeline IPC mq %s\n", plug->tplg_file);
-			return err;
-		}
-
-		/* open the sof-pipe IPC message queue */
-		err = plug_mq_open(&pcm->pipeline_ipc_rx[i]);
-		if (err < 0) {
-			SNDERR("error: failed to open sof-pipe IPC mq %s: %s",
-			       pcm->pipeline_ipc_tx[i].queue_name, strerror(err));
-			return -errno;
-		}
-
 		/* init name for pipeline ready lock */
 		err = plug_lock_init(&pcm->ready[i], plug->tplg_file, "ready",
 				     pipe_info->instance_id);
@@ -671,8 +635,6 @@ static int plug_pcm_hw_free(snd_pcm_ioplug_t *io)
 		pipeline_list = &plug->pcm_info->playback_pipeline_list;
 
 	ret = plug_free_pipelines(plug, pipeline_list, pcm->capture);
-	if (ret < 0)
-		return ret;
 
 	close(pcm->shm_pcm.fd);
 	close(plug->glb_ctx.fd);
@@ -680,11 +642,10 @@ static int plug_pcm_hw_free(snd_pcm_ioplug_t *io)
 	for (i = 0; i < pipeline_list->count; i++) {
 		struct tplg_pipeline_info *pipe_info = pipeline_list->pipelines[i];
 
-		mq_close(pcm->pipeline_ipc_tx[pipe_info->instance_id].mq);
-		mq_close(pcm->pipeline_ipc_rx[pipe_info->instance_id].mq);
 		sem_close(pcm->ready[pipe_info->instance_id].sem);
 		sem_close(pcm->done[pipe_info->instance_id].sem);
 	}
+	close(plug->ipc.socket_fd);
 
 	return 0;
 }
@@ -957,31 +918,15 @@ static int plug_init_sof_pipe(snd_sof_plug_t *plug, snd_pcm_t **pcmp,
 	fprintf(stdout, "topology parsing complete\n");
 
 	/* init IPC message queue name */
-	err = plug_mq_init(&plug->ipc_tx, "sof", "ipc-tx", 0);
+	err = plug_socket_path_init(&plug->ipc, "sof", "ipc", 0);
 	if (err < 0) {
-		SNDERR("error: invalid name for IPC mq %s\n", plug->tplg_file);
+		SNDERR("error: invalid name for IPC socket %s\n", plug->tplg_file);
 		return err;
 	}
 
-	/* open the sof-pipe IPC message queue */
-	err = plug_mq_open(&plug->ipc_tx);
+	err = plug_create_client_socket(&plug->ipc);
 	if (err < 0) {
-		SNDERR("error: failed to open sof-pipe IPC mq %s: %s",
-		       plug->ipc_tx.queue_name, strerror(err));
-		return -errno;
-	}
-
-	err = plug_mq_init(&plug->ipc_rx, "sof", "ipc-rx", 0);
-	if (err < 0) {
-		SNDERR("error: invalid name for IPC mq %s\n", plug->tplg_file);
-		return err;
-	}
-
-	/* open the sof-pipe IPC message queue */
-	err = plug_mq_open(&plug->ipc_rx);
-	if (err < 0) {
-		SNDERR("error: failed to open sof-pipe IPC mq %s: %s",
-		       plug->ipc_rx.queue_name, strerror(err));
+		SNDERR("failed to connect to SOF pipe IPC socket : %s", strerror(err));
 		return -errno;
 	}
 

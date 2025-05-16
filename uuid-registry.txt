@@ -46,6 +46,8 @@ ec290e95-4a20-47eb-bbffd9c888431831 chmap
 53863428-9a72-44df-af0ffe45ea2348ba clkdrv_mt8186
 19d4e680-4479-48cc-af869f63d8b0098b clkdrv_mt8188
 23b12fd5-c2a9-41a8-a2b3231ab7dcdc70 clkdrv_mt8195
+e87bf747-e574-4362-bf2cc015d2859dd9 clkdrv_mt8196
+de358908-c146-4411-98b430ebd002957f clkdrv_mt8365
 8890ea76-0df9-44ae-87e6994f4c15e9fa clock
 7c42ce8b-0108-43d0-913756d660478c5f component
 9ba00c83-ca12-4a83-943c1fa2e82f9dda copier
@@ -71,6 +73,7 @@ f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
 5150c0e6-27f9-4ec8-8351c705b642d12f eq_iir
 889f6dcd-ddcd-4e05-aa5b0d39f8bca961 esai
 bfc7488c-75aa-4ce8-9dbed8da08a698c2 file
+93446e12-1864-4e04-afe03b1d778ffb79 fir
 61bca9a8-18d0-4a18-8e7b2639219804b7 gain
 c3c74249-058e-414f-82404da5f3fc2389 google_hotword
 bf0e1bbc-dc6a-45fe-bc902554cb137ab4 google_ctc_audio_processing
@@ -81,16 +84,20 @@ b780a0a6-269f-466f-b47723dfa05af758 google_rtc_audio_processing
 a5dacb0e-88dc-415c-a1b53e8df77f1976 idc_cmd_task
 b90f5a4e-5537-4375-a1df95485472ff9e idc_task
 696ae2bc-2877-11eb-adc10242ac120002 igo_nr
+b0cdcd9e-ef8b-404f-84800f287fc9d44d iir
 fa00558c-d653-4851-a03ab21f125a9524 interrupt
+2f520e85-49ba-4284-90d83def24af313b intc_mt8196
 be60f97d-78df-4796-a0ee435cb56b720a ipc
 a814a1ca-0b83-466c-95872f35ff8d12e8 ipcgw
 389c9186-5a7d-4ad1-a02ca02ecdadfb33 ipc_task
 49be8ff3-71a3-4456-bb7e4723f2e5730c ipc_task_amd
 a3fe3bf2-39a4-4fc3-b3418a96e0a26759 ipc_task_mt818x
+caef4bd7-7a2e-4039-9b061f5ff9ec3899 ipc_task_mt8196
 6c8f0d53-ff77-4ca1-b825c0c4e1b0d322 ipc_task_posix
 1862d39a-3a84-4d64-8c91dce1dfc122db irq
 6533d0eb-b785-4709-84f5347c81720189 irq_acp
 d2e3f730-df39-42ee-81a839bfb4d024c2 irq_mt818x
+7eb28333-f08f-436f-bbbd764ac21fc2f1 irq_mt8196
 eba8d51f-7827-47b5-82eede6e7743af67 keyword
 d8218443-5ff3-4a4c-b3886cfe07b9562e kpb
 a8a0cb32-4a77-4db1-85c753d7ee07bce6 kpb4
@@ -109,7 +116,6 @@ bc06c037-12aa-417c-9a9789282e321a76 mixer
 39656eb2-3b71-4049-8d3ff92cd5c43c09 mixin
 3c56505a-24d7-418f-bddcc1f5a3ac2ae0 mixout
 ee2585f2-e7d8-43dc-90ab4224e00c3e84 modules
-bb2aa22e-1ab6-4650-85016e67fcc04f4e mtrace_task
 0d9f2256-8e4f-47b3-8448239a334f1191 multiband_drc
 c607ff4d-9cb6-49dc-b6787da3c63ea557 mux
 64ce6e35-857a-4878-ace8e2a2f42e3069 mux4
@@ -135,6 +141,8 @@ d7f6712d-131c-45a7-82ed6aa9dc2291ea pm_runtime
 cf90d851-68a2-4987-a2de85aed0c8531c sgen_mt8186
 99316bd9-07b9-4665-81796e048d67cb45 sgen_mt8188
 9eb1a55b-fc20-4442-96131ff1023be493 sgen_mt8195
+bcf54c06-5702-4a60-ac4abb509123c649 sgen_mt8196
+654ef011-6d79-414a-9c1b15e72c0be321 sgen_mt8365
 dabe8814-47e8-11ed-a58bb309974fecce shmread
 e2b6031c-47e8-11ed-07a97f801b6efa6c shmwrite
 167a961e-8ae4-11ea-89f1000c29ce1635 smart_amp_test
@@ -145,9 +153,12 @@ c1c5326d-8390-46b4-aa4795c3beca6550 src
 e61bb28d-149a-4c1f-b70946823ef5f5ae src4
 33441051-44cd-466a-83a3178478708aea src_lite
 eb0bd14b-7d5e-4dfa-bbe27762adb279f0 swaudiodai
-37c196ae-3532-4282-8a78dd9d50cc7123 testbench
 dd511749-d9fa-455c-b3a713585693f1af tdfb
+a62de1af-5964-4e2e-b1677fdc97279a29 template_comp
+37c196ae-3532-4282-8a78dd9d50cc7123 testbench
+08aeb4ff-7f68-4c71-86c3c842b4262898 tester
 04e3f894-2c5c-4f2e-8dc1694eeaab53fa tone
+e93326d8-0d14-4bf0-bcb9e063d3d80136 twb_sched
 42f8060c-832f-4dbf-b24751e961997b34 up_down_mixer
 b77e677e-5ff4-4188-af14fba8bdbf8682 volume
 127f4eec-23fa-11f0-a4a6bf0cd6b4583b nxp_eap
@@ -159,3 +170,7 @@ d944281a-afe9-4695-a043d7f62b89538e waves
 5f1ec3f8-faaf-4099-903ccee98351f169 zephyr_idc
 8fa1d42f-bc6f-464b-867f547af08834da zipc_task
 1547fe68-de0c-11eb-84613158a1294853 zll_sched
+2B79E4F3-4675-F649-89DF3BC194A91AEB brngup
+D406D134-C3C1-402C-8AEC6821C0C2B0E6 cold
+c51dc642-a2e1-48df-a490e2748cb6363e tflmcly
+f36BF24B-9AAF-83f4-8677E072E8AEADB7 notification_pool

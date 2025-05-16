@@ -133,13 +133,6 @@ static int mux_init(struct processing_module *mod)
 	return mux_demux_common_init(mod, SOF_COMP_MUX);
 }
 
-static int demux_init(struct processing_module *mod)
-{
-	mod->max_sinks = MUX_MAX_STREAMS;
-
-	return mux_demux_common_init(mod, SOF_COMP_DEMUX);
-}
-
 static int mux_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
@@ -162,20 +155,6 @@ static int get_stream_index(struct comp_dev *dev, struct comp_data *cd, uint32_t
 	comp_err(dev, "get_stream_index(): couldn't find configuration for connected pipeline %u",
 		 pipe_id);
 	return -EINVAL;
-}
-
-static struct mux_look_up *get_lookup_table(struct comp_dev *dev, struct comp_data *cd,
-					    uint32_t pipe_id)
-{
-	int i;
-
-	for (i = 0; i < MUX_MAX_STREAMS; i++)
-		if (cd->config.streams[i].pipeline_id == pipe_id)
-			return &cd->lookup[i];
-
-	comp_err(dev, "get_lookup_table(): couldn't find configuration for connected pipeline %u",
-		 pipe_id);
-	return 0;
 }
 
 static void mux_prepare_active_look_up(struct comp_data *cd,
@@ -201,6 +180,28 @@ static void mux_prepare_active_look_up(struct comp_data *cd,
 	}
 
 	cd->active_lookup.num_elems = active_elem;
+}
+
+#if !CONFIG_COMP_MUX_MODULE
+static int demux_init(struct processing_module *mod)
+{
+	mod->max_sinks = MUX_MAX_STREAMS;
+
+	return mux_demux_common_init(mod, SOF_COMP_DEMUX);
+}
+
+static struct mux_look_up *get_lookup_table(struct comp_dev *dev, struct comp_data *cd,
+					    uint32_t pipe_id)
+{
+	int i;
+
+	for (i = 0; i < MUX_MAX_STREAMS; i++)
+		if (cd->config.streams[i].pipeline_id == pipe_id)
+			return &cd->lookup[i];
+
+	comp_err(dev, "get_lookup_table(): couldn't find configuration for connected pipeline %u",
+		 pipe_id);
+	return 0;
 }
 
 static void demux_prepare_active_look_up(struct comp_data *cd,
@@ -278,6 +279,29 @@ static int demux_process(struct processing_module *mod,
 	mod->input_buffers[0].consumed = source_bytes;
 	return 0;
 }
+
+static int demux_trigger(struct processing_module *mod, int cmd)
+{
+	/* Check for cross-pipeline sinks: in general foreign
+	 * pipelines won't be started synchronously with ours (it's
+	 * under control of host software), so output can't be
+	 * guaranteed not to overflow.  Always set the
+	 * overrun_permitted flag.  These sink components are assumed
+	 * responsible for flushing/synchronizing the stream
+	 * themselves.
+	 */
+	if (cmd == COMP_TRIGGER_PRE_START) {
+		struct comp_buffer *b;
+
+		comp_dev_for_each_producer(mod->dev, b) {
+			if (comp_buffer_get_sink_component(b)->pipeline != mod->dev->pipeline)
+				audio_stream_set_overrun(&b->stream, true);
+		}
+	}
+
+	return module_adapter_set_state(mod, mod->dev, cmd);
+}
+#endif
 
 /* process and copy stream data from source to sink buffers */
 static int mux_process(struct processing_module *mod,
@@ -425,29 +449,6 @@ static int mux_set_config(struct processing_module *mod, uint32_t config_id,
 				  fragment, fragment_size);
 }
 
-static int demux_trigger(struct processing_module *mod, int cmd)
-{
-	/* Check for cross-pipeline sinks: in general foreign
-	 * pipelines won't be started synchronously with ours (it's
-	 * under control of host software), so output can't be
-	 * guaranteed not to overflow.  Always set the
-	 * overrun_permitted flag.  These sink components are assumed
-	 * responsible for flushing/synchronizing the stream
-	 * themselves.
-	 */
-	if (cmd == COMP_TRIGGER_PRE_START) {
-		struct comp_buffer *b;
-
-		comp_dev_for_each_producer(mod->dev, b) {
-			if (comp_buffer_get_sink_component(b)->pipeline != mod->dev->pipeline)
-				audio_stream_set_overrun(&b->stream, true);
-		}
-
-	}
-
-	return module_adapter_set_state(mod, mod->dev, cmd);
-}
-
 static const struct module_interface mux_interface = {
 	.init = mux_init,
 	.set_configuration = mux_set_config,
@@ -458,9 +459,7 @@ static const struct module_interface mux_interface = {
 	.free = mux_free,
 };
 
-DECLARE_MODULE_ADAPTER(mux_interface, MUX_UUID, mux_tr);
-SOF_MODULE_INIT(mux, sys_comp_module_mux_interface_init);
-
+#if !CONFIG_COMP_MUX_MODULE
 static const struct module_interface demux_interface = {
 	.init = demux_init,
 	.set_configuration = mux_set_config,
@@ -471,9 +470,7 @@ static const struct module_interface demux_interface = {
 	.reset = mux_reset,
 	.free = mux_free,
 };
-
-DECLARE_MODULE_ADAPTER(demux_interface, demux_uuid, demux_tr);
-SOF_MODULE_INIT(demux, sys_comp_module_demux_interface_init);
+#endif
 
 #if CONFIG_COMP_MUX_MODULE
 /* modular: llext dynamic link */
@@ -482,26 +479,31 @@ SOF_MODULE_INIT(demux, sys_comp_module_demux_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_MUX 0x35, 0x6E, 0xCE, 0x64, 0x7A, 0x85, 0x78, 0x48, 0xE8, 0xAC, \
-		0xE2, 0xA2, 0xF4, 0x2E, 0x30, 0x69
 SOF_LLEXT_MOD_ENTRY(mux, &mux_interface);
 
 /*
  * The demux entry is removed because mtl.toml doesn't have an entry
  * for it. Once that is fixed, the manifest line below can be
  * re-activated:
- * #define UUID_DEMUX 0x68, 0x68, 0xB2, 0xC4, 0x30, 0x14, 0x0E, 0x47, 0x89, 0xA0, \
- *		0x15, 0xD1, 0xC7, 0x7F, 0x85, 0x1A
  * SOF_LLEXT_MOD_ENTRY(demux, &demux_interface);
  */
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
-	SOF_LLEXT_MODULE_MANIFEST("MUX", mux_llext_entry, 1, UUID_MUX, 15),
+	SOF_LLEXT_MODULE_MANIFEST("MUX", mux_llext_entry, 1, SOF_REG_UUID(mux4), 15),
 	/*
 	 * See comment above for a demux deactivation reason
-	 * SOF_LLEXT_MODULE_MANIFEST("DEMUX", demux_llext_entry, 1, UUID_DEMUX, 15),
+	 * SOF_LLEXT_MODULE_MANIFEST("DEMUX", demux_llext_entry, 1, SOF_REG_UUID(demux), 15),
 	 */
 };
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(mux_interface, MUX_UUID, mux_tr);
+SOF_MODULE_INIT(mux, sys_comp_module_mux_interface_init);
+
+DECLARE_MODULE_ADAPTER(demux_interface, demux_uuid, demux_tr);
+SOF_MODULE_INIT(demux, sys_comp_module_demux_interface_init);
+
 #endif

@@ -2,3 +2,4 @@
 
 add_subdirectory(alloc)
 add_subdirectory(lib)
+add_subdirectory(fast-get)

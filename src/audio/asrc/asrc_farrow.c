@@ -11,6 +11,8 @@
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/format.h>
+#include <sof/lib/fast-get.h>
+#include <sof/lib/memory.h>
 #include <user/trace.h>
 #include "asrc_farrow.h"
 
@@ -143,6 +145,51 @@ static const struct asrc_filter_params c_filter_params[CR_NUM] = {
  * coefficients will be attached to the _Src_farrow struct via the
  * initialise_filter function.
  */
+
+#if SOF_USE_MIN_HIFI(5, ASRC)
+#include "coef/asrc_farrow_coeff_4x_44100Hz_to_48000Hz.h"
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_48000Hz.h"
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_08000)
+#include "coef/asrc_farrow_coeff_4x_24000Hz_to_08000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_16000)
+#include "coef/asrc_farrow_coeff_4x_24000Hz_to_16000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_08000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_08000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_11025)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_11025Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_12000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_12000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_16000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_16000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_22050)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_22050Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_24000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_24000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_32000)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_32000Hz.h"
+#endif
+
+#if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_44100)
+#include "coef/asrc_farrow_coeff_4x_48000Hz_to_44100Hz.h"
+#endif
+#else
 #include "coef/asrc_farrow_coeff_44100Hz_to_48000Hz.h"
 
 #include "coef/asrc_farrow_coeff_48000Hz_to_48000Hz.h"
@@ -185,6 +232,7 @@ static const struct asrc_filter_params c_filter_params[CR_NUM] = {
 
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_44100)
 #include "coef/asrc_farrow_coeff_48000Hz_to_44100Hz.h"
+#endif
 #endif
 
 /*
@@ -506,6 +554,31 @@ enum asrc_error_code asrc_set_output_format(struct comp_dev *dev,
 	return ASRC_EC_OK;
 }
 
+static const int32_t *__get_polyphase_filter(const int32_t *filter, size_t size)
+{
+#if CONFIG_FAST_GET
+	return fast_get(filter, size);
+#else
+	return filter;
+#endif
+}
+
+#define get_polyphase_filter(f) __get_polyphase_filter(f, sizeof(f))
+
+static void put_polyphase_filter(const int32_t *filter)
+{
+#if CONFIG_FAST_GET
+	fast_put(filter);
+#endif
+}
+
+void asrc_free_polyphase_filter(struct asrc_farrow *src_obj)
+{
+	if (src_obj && src_obj->polyphase_filters) {
+		put_polyphase_filter(src_obj->polyphase_filters);
+		src_obj->polyphase_filters = NULL;
+	}
+}
 
 /*
  * FILTER FUNCTIONS
@@ -533,7 +606,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 	/* Reset coefficients for possible exit with error. */
 	src_obj->filter_length = 0;
 	src_obj->num_filters = 0;
-	src_obj->polyphase_filters = NULL;
+	asrc_free_polyphase_filter(src_obj);
 
 	if (fs_in == 0 || fs_out == 0) {
 		/* Avoid possible divisions by zero. */
@@ -549,7 +622,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 			c_filter_params[CR_48000TO48000].filter_length;
 		src_obj->num_filters =
 			c_filter_params[CR_48000TO48000].num_filters;
-		src_obj->polyphase_filters = &coeff48000to48000[0];
+		src_obj->polyphase_filters = get_polyphase_filter(coeff48000to48000);
 	} else if (fs_in <= fs_out) {
 		/* All upsampling use cases can share the same set of
 		 * filter coefficients.
@@ -558,7 +631,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 			c_filter_params[CR_44100TO48000].filter_length;
 		src_obj->num_filters =
 			c_filter_params[CR_44100TO48000].num_filters;
-		src_obj->polyphase_filters = &coeff44100to48000[0];
+		src_obj->polyphase_filters = get_polyphase_filter(coeff44100to48000);
 	} else if (fs_in == 48000) {
 		switch (fs_out) {
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_08000)
@@ -567,7 +640,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO08000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO08000].num_filters;
-			src_obj->polyphase_filters = &coeff48000to08000[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to08000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_11025)
@@ -576,7 +649,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO11025].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO11025].num_filters;
-			src_obj->polyphase_filters = &coeff48000to11025[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to11025);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_12000)
@@ -585,7 +658,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO12000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO12000].num_filters;
-			src_obj->polyphase_filters = &coeff48000to12000[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to12000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_16000)
@@ -594,7 +667,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO16000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO16000].num_filters;
-			src_obj->polyphase_filters = &coeff48000to16000[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to16000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_22050)
@@ -603,7 +676,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO22050].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO22050].num_filters;
-			src_obj->polyphase_filters = &coeff48000to22050[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to22050);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_24000)
@@ -612,7 +685,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO24000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO24000].num_filters;
-			src_obj->polyphase_filters = &coeff48000to24000[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to24000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_32000)
@@ -621,7 +694,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO32000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO32000].num_filters;
-			src_obj->polyphase_filters = &coeff48000to32000[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to32000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_44100)
@@ -630,7 +703,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO44100].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO44100].num_filters;
-			src_obj->polyphase_filters = &coeff48000to44100[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to44100);
 			break;
 #endif
 		default:
@@ -646,7 +719,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_24000TO08000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_24000TO08000].num_filters;
-			src_obj->polyphase_filters = &coeff24000to08000[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff24000to08000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_16000)
@@ -655,7 +728,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_24000TO16000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_24000TO16000].num_filters;
-			src_obj->polyphase_filters = &coeff24000to16000[0];
+			src_obj->polyphase_filters = get_polyphase_filter(coeff24000to16000);
 			break;
 #endif
 		default:
@@ -809,11 +882,11 @@ void asrc_write_to_ring_buffer16(struct asrc_farrow  *src_obj,
 	int m;
 
 	/* update the buffer_write_position */
-	(src_obj->buffer_write_position)++;
+	(src_obj->buffer_write_position)--;
 
 	/* since it's a ring buffer we need a wrap around */
-	if (src_obj->buffer_write_position >= src_obj->buffer_length)
-		src_obj->buffer_write_position -= (src_obj->buffer_length >> 1);
+	if (src_obj->buffer_write_position < 0)
+		src_obj->buffer_write_position += (src_obj->buffer_length >> 1);
 
 	/* handle input format */
 	if (src_obj->input_format == ASRC_IOF_INTERLEAVED)
@@ -823,7 +896,7 @@ void asrc_write_to_ring_buffer16(struct asrc_farrow  *src_obj,
 
 	/* write data to each channel */
 	j = src_obj->buffer_write_position;
-	k = j - (src_obj->buffer_length >> 1);
+	k = j + (src_obj->buffer_length >> 1);
 	for (ch = 0; ch < src_obj->num_channels; ch++) {
 		/*
 		 * Since we want the filter function to load 64 bit of
@@ -851,11 +924,11 @@ void asrc_write_to_ring_buffer32(struct asrc_farrow  *src_obj,
 	int m;
 
 	/* update the buffer_write_position */
-	(src_obj->buffer_write_position)++;
+	(src_obj->buffer_write_position)--;
 
 	/* since it's a ring buffer we need a wrap around */
-	if (src_obj->buffer_write_position >= src_obj->buffer_length)
-		src_obj->buffer_write_position -= (src_obj->buffer_length >> 1);
+	if (src_obj->buffer_write_position < 0)
+		src_obj->buffer_write_position += (src_obj->buffer_length >> 1);
 
 	/* handle input format */
 	if (src_obj->input_format == ASRC_IOF_INTERLEAVED)
@@ -865,7 +938,7 @@ void asrc_write_to_ring_buffer32(struct asrc_farrow  *src_obj,
 
 	/* write data to each channel */
 	j = src_obj->buffer_write_position;
-	k = j - (src_obj->buffer_length >> 1);
+	k = j + (src_obj->buffer_length >> 1);
 	for (ch = 0; ch < src_obj->num_channels; ch++) {
 		/*
 		 * Since we want the filter function to load 64 bit of

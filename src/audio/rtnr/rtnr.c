@@ -780,6 +780,8 @@ static void rtnr_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
+	/* The caller has checked validity of source and sink buffers */
+
 	sourceb = comp_dev_get_first_data_producer(dev);
 	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 
@@ -799,6 +801,13 @@ static int rtnr_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "rtnr_prepare()");
 
+	sinkb = comp_dev_get_first_data_consumer(dev);
+	sourceb = comp_dev_get_first_data_producer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 #if CONFIG_IPC_MAJOR_4
 	rtnr_params(mod);
 #endif
@@ -813,10 +822,8 @@ static int rtnr_prepare(struct processing_module *mod,
 	/* Initialize RTNR */
 
 	/* Get sink data format */
-	sinkb = comp_dev_get_first_data_consumer(dev);
 	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
 	cd->sink_stream.frame_fmt = audio_stream_get_frm_fmt(&sinkb->stream);
-	sourceb = comp_dev_get_first_data_producer(dev);
 	ret = rtnr_check_params(mod, &sourceb->stream, &sinkb->stream);
 	if (ret)
 		goto err;
@@ -866,9 +873,6 @@ static const struct module_interface rtnr_interface = {
 	.free = rtnr_free
 };
 
-DECLARE_MODULE_ADAPTER(rtnr_interface, rtnr_uuid, rtnr_tr);
-SOF_MODULE_INIT(rtnr, sys_comp_module_rtnr_interface_init);
-
 #if CONFIG_COMP_RTNR_MODULE
 /* modular: llext dynamic link */
 
@@ -876,15 +880,16 @@ SOF_MODULE_INIT(rtnr, sys_comp_module_rtnr_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-/* 5c7ca334-e15d-11eb-ba800242ac130004 */
-#define UUID_RTNR 0x34, 0xA3, 0x7C, 0x5C, 0x5D, 0xE1, 0xEB, 0x11, \
-		0xBA, 0x80, 0x02, 0x42, 0xAC, 0x13, 0x00, 0x04
-
 SOF_LLEXT_MOD_ENTRY(rtnr, &rtnr_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("RTNR", rtnr_llext_entry, 1, UUID_RTNR, 40);
+	SOF_LLEXT_MODULE_MANIFEST("RTNR", rtnr_llext_entry, 1, SOF_REG_UUID(rtnr), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(rtnr_interface, rtnr_uuid, rtnr_tr);
+SOF_MODULE_INIT(rtnr, sys_comp_module_rtnr_interface_init);
 
 #endif

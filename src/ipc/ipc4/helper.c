@@ -20,6 +20,7 @@
 #include <ipc/dai.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -60,6 +61,9 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 extern struct tr_ctx comp_tr;
 
+static const struct comp_driver *ipc4_get_drv(const void *uuid);
+static int ipc4_add_comp_dev(struct comp_dev *dev);
+
 void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 			   uint32_t id)
 {
@@ -93,15 +97,18 @@ static inline char *ipc4_get_comp_new_data(void)
 
 static const struct comp_driver *ipc4_library_get_comp_drv(char *data)
 {
-	return ipc4_get_drv((const uint8_t *)data);
+	return ipc4_get_drv(data);
 }
 #else
-static inline char *ipc4_get_comp_new_data(void)
+__cold static inline char *ipc4_get_comp_new_data(void)
 {
+	assert_can_be_cold();
+
 	return (char *)MAILBOX_HOSTBOX_BASE;
 }
 #endif
 
+/* Only called from ipc4_init_module_instance(), which is __cold */
 __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
 {
 	struct comp_ipc_config ipc_config;
@@ -109,6 +116,8 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 	struct comp_dev *dev;
 	uint32_t comp_id;
 	char *data;
+
+	assert_can_be_cold();
 
 	comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
 			       module_init->primary.r.instance_id);
@@ -190,6 +199,7 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 	return dev;
 }
 
+/* Called from ipc4_set_pipeline_state(), so cannot be cold */
 struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 					    uint32_t ppl_id,
 					    uint32_t ignore_remote)
@@ -218,11 +228,13 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 	return NULL;
 }
 
-static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
+__cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc *ipc = ipc_get();
+
+	assert_can_be_cold();
 
 	/* check whether pipeline id is already taken or in use */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipe_desc->primary.r.instance_id);
@@ -267,9 +279,12 @@ static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	return IPC4_SUCCESS;
 }
 
-int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
+/* Only called from ipc4_new_pipeline(), which is __cold */
+__cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
 	struct ipc4_pipeline_create *pipe_desc = ipc_from_pipe_new(_pipe_desc);
+
+	assert_can_be_cold();
 
 	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
 
@@ -280,32 +295,32 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	return ipc4_create_pipeline(pipe_desc);
 }
 
-static inline int ipc_comp_free_remote(struct comp_dev *dev)
+__cold static inline int ipc_comp_free_remote(struct comp_dev *dev)
 {
 	struct idc_msg msg = { IDC_MSG_FREE, IDC_MSG_FREE_EXT(dev->ipc_config.id),
 		dev->ipc_config.core,};
 
+	assert_can_be_cold();
+
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 
-static int ipc_pipeline_module_free(uint32_t pipeline_id)
+__cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
 	int ret;
 
+	assert_can_be_cold();
+
 	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
 	while (icd) {
-		struct list_item *list, *_list;
 		struct comp_buffer *buffer;
+		struct comp_buffer *safe;
 
 		/* free sink buffer allocated by current component in bind function */
-		list_for_item_safe(list, _list, &icd->cd->bsink_list) {
-			struct comp_dev *sink;
-
-			buffer = container_of(list, struct comp_buffer, source_list);
-			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
-			sink = buffer->sink;
+		comp_dev_for_each_consumer_safe(icd->cd, buffer, safe) {
+			struct comp_dev *sink = comp_buffer_get_sink_component(buffer);
 
 			/* free the buffer only when the sink module has also been disconnected */
 			if (!sink)
@@ -313,12 +328,9 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		}
 
 		/* free source buffer allocated by current component in bind function */
-		list_for_item_safe(list, _list, &icd->cd->bsource_list) {
-			struct comp_dev *source;
-
-			buffer = container_of(list, struct comp_buffer, sink_list);
+		comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
-			source = buffer->source;
+			struct comp_dev *source = comp_buffer_get_source_component(buffer);
 
 			/* free the buffer only when the source module has also been disconnected */
 			if (!source)
@@ -339,10 +351,13 @@ static int ipc_pipeline_module_free(uint32_t pipeline_id)
 	return IPC4_SUCCESS;
 }
 
-int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
+/* Only called from ipc4_delete_pipeline(), which is __cold */
+__cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	int ret;
+
+	assert_can_be_cold();
 
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, comp_id);
@@ -373,11 +388,13 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	return IPC4_SUCCESS;
 }
 
-static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
-					      uint32_t buf_size, uint32_t src_queue,
-					      uint32_t dst_queue)
+__cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
+						     uint32_t buf_size, uint32_t src_queue,
+						     uint32_t dst_queue)
 {
 	struct sof_ipc_buffer ipc_buf;
+
+	assert_can_be_cold();
 
 	memset(&ipc_buf, 0, sizeof(ipc_buf));
 	ipc_buf.size = buf_size;
@@ -455,7 +472,8 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 #endif
 
-int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+/* Only called from ipc4_bind_module_instance(), which is __cold */
+__cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer;
@@ -469,6 +487,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	uint32_t buf_size;
 	int src_id, sink_id;
 	int ret;
+
+	assert_can_be_cold();
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -673,16 +693,19 @@ free:
  * during run-time. The only way to change pipeline topology is to delete the whole
  * pipeline and create it in modified form.
  */
-int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+/* Only called from ipc4_unbind_module_instance(), which is __cold */
+__cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer = NULL;
+	struct comp_buffer *buf;
 	struct comp_dev *src, *sink;
-	struct list_item *sink_list;
 	uint32_t src_id, sink_id, buffer_id;
 	uint32_t flags = 0;
 	int ret, ret1;
 	bool cross_core_unbind;
+
+	assert_can_be_cold();
 
 	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -708,10 +731,8 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return ipc4_process_on_core(src->ipc_config.core, false);
 
 	buffer_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
-	list_for_item(sink_list, &src->bsink_list) {
-		struct comp_buffer *buf = container_of(sink_list, struct comp_buffer, source_list);
+	comp_dev_for_each_consumer(src, buf) {
 		bool found = buf_get_id(buf) == buffer_id;
-
 		if (found) {
 			buffer = buf;
 			break;
@@ -766,14 +787,16 @@ int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 }
 
 #if CONFIG_COMP_CHAIN_DMA
-int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
+/* Only called from ipc4_process_chain_dma(), which is __cold */
+__cold int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 {
-	const struct sof_uuid uuid = {0x6a0a274f, 0x27cc, 0x4afb, {0xa3, 0xe7, 0x34,
-			0x44, 0x72, 0x3f, 0x43, 0x2e}};
+	const struct sof_uuid uuid = SOF_REG_UUID(chain_dma);
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
 
-	drv = ipc4_get_drv((const uint8_t *)&uuid);
+	assert_can_be_cold();
+
+	drv = ipc4_get_drv(&uuid);
 	if (!drv)
 		return -EINVAL;
 
@@ -791,7 +814,8 @@ int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 	return ipc4_add_comp_dev(dev);
 }
 
-int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
+/* Only called from ipc4_process_chain_dma(), which is __cold */
+__cold int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 {
 	const bool allocate = cdma->primary.r.allocate;
 	const bool enable = cdma->primary.r.enable;
@@ -799,6 +823,8 @@ int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 	struct ipc_comp_dev *icd;
 	struct list_item *clist, *_tmp;
 	int ret;
+
+	assert_can_be_cold();
 
 	if (!dev)
 		return -EINVAL;
@@ -831,11 +857,13 @@ int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
 }
 #endif
 
-static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
+__cold static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 	struct comp_buffer *src_buf;
+
+	assert_can_be_cold();
 
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
@@ -851,9 +879,9 @@ static int ipc4_update_comps_direction(struct ipc *ipc, uint32_t ppl_id)
 		if (list_is_empty(&icd->cd->bsource_list))
 			continue;
 
-		src_buf = list_first_item(&icd->cd->bsource_list, struct comp_buffer, sink_list);
-		if (src_buf->source->direction_set) {
-			icd->cd->direction = src_buf->source->direction;
+		src_buf = comp_dev_get_first_data_producer(icd->cd);
+		if (comp_buffer_get_source_component(src_buf)->direction_set) {
+			icd->cd->direction = comp_buffer_get_source_component(src_buf)->direction;
 			icd->cd->direction_set = true;
 			continue;
 		}
@@ -870,7 +898,7 @@ int ipc4_pipeline_complete(struct ipc *ipc, uint32_t comp_id, uint32_t cmd)
 
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, comp_id);
 	if (!ipc_pipe)
-		return -IPC4_INVALID_RESOURCE_ID;
+		return -EINVAL;
 
 	/* Pass IPC to target core */
 	if (!cpu_is_me(ipc_pipe->core))
@@ -912,13 +940,16 @@ int ipc4_process_on_core(uint32_t core, bool blocking)
 	return IPC4_SUCCESS;
 }
 
-const struct comp_driver *ipc4_get_drv(const uint8_t *uuid)
+__cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
 {
+	const struct sof_uuid *const __maybe_unused sof_uuid = (const struct sof_uuid *)uuid;
 	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
 	uint32_t flags;
+
+	assert_can_be_cold();
 
 	irq_local_disable(flags);
 
@@ -936,23 +967,32 @@ const struct comp_driver *ipc4_get_drv(const uint8_t *uuid)
 		}
 	}
 
-	tr_warn(&comp_tr, "get_drv(): the provided UUID (%08x %08x %08x %08x) can't be found!",
-		*(uint32_t *)(&uuid[0]),
-		*(uint32_t *)(&uuid[4]),
-		*(uint32_t *)(&uuid[8]),
-		*(uint32_t *)(&uuid[12]));
+	tr_warn(&comp_tr,
+		"get_drv(): the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
+		sof_uuid->a, sof_uuid->b, sof_uuid->c, sof_uuid->d[0], sof_uuid->d[1],
+		sof_uuid->d[2], sof_uuid->d[3], sof_uuid->d[4], sof_uuid->d[5], sof_uuid->d[6],
+		sof_uuid->d[7]);
 
 out:
 	irq_local_enable(flags);
 	return drv;
 }
 
-const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
+/*
+ * Called from
+ * - ipc4_get_large_config_module_instance()
+ * - ipc4_set_large_config_module_instance()
+ * - comp_new_ipc4()
+ * all of which are __cold
+ */
+__cold const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 {
 	const struct sof_man_fw_desc *desc = NULL;
 	const struct comp_driver *drv;
 	const struct sof_man_module *mod;
 	uint32_t entry_index;
+
+	assert_can_be_cold();
 
 #ifdef RIMAGE_MANIFEST
 	desc = (const struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
@@ -998,13 +1038,13 @@ const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 #endif
 	}
 	/* Check already registered components */
-	drv = ipc4_get_drv(mod->uuid);
+	drv = ipc4_get_drv(&mod->uuid);
 
 #if CONFIG_LIBRARY_MANAGER
 	if (!drv) {
 		/* New module not registered yet. */
 		lib_manager_register_module(module_id);
-		drv = ipc4_get_drv(mod->uuid);
+		drv = ipc4_get_drv(&mod->uuid);
 	}
 #endif
 
@@ -1019,10 +1059,12 @@ struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 }
 EXPORT_SYMBOL(ipc4_get_comp_dev);
 
-int ipc4_add_comp_dev(struct comp_dev *dev)
+__cold static int ipc4_add_comp_dev(struct comp_dev *dev)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
+
+	assert_can_be_cold();
 
 	/* check id for duplicates */
 	icd = ipc_get_comp_by_id(ipc, dev->ipc_config.id);

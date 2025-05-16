@@ -18,7 +18,7 @@
 #include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/string.h>
@@ -157,13 +157,17 @@ static int crossover_assign_sinks(struct processing_module *mod,
  * \param[out] lr4 initialized struct
  */
 static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
-				   struct iir_state_df2t *lr4)
+				   struct iir_state_df1 *lr4)
 {
 	int ret;
 
+	/* Ensure the LR4 can be processed with the simplified 4th order IIR */
+	if (CROSSOVER_LR4_NUM_BIQUADS != SOF_IIR_DF1_4TH_NUM_BIQUADS)
+		return -EINVAL;
+
 	/* Only one set of coefficients is stored in config for both biquads
 	 * in series due to identity. To maintain the structure of
-	 * iir_state_df2t, it requires two copies of coefficients in a row.
+	 * iir_state_df1, it requires two copies of coefficients in a row.
 	 */
 	lr4->coef = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(struct sof_eq_iir_biquad) * 2);
@@ -190,8 +194,8 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
 	if (!lr4->delay)
 		return -ENOMEM;
 
-	lr4->biquads = 2;
-	lr4->biquads_in_series = 2;
+	lr4->biquads = CROSSOVER_LR4_NUM_BIQUADS;
+	lr4->biquads_in_series = CROSSOVER_LR4_NUM_BIQUADS;
 
 	return 0;
 }
@@ -527,15 +531,19 @@ static int crossover_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source, *sink;
 	int channels;
-	int ret = 0;
 
 	comp_info(dev, "crossover_prepare()");
+
+	source = comp_dev_get_first_data_producer(dev);
+	if (!source) {
+		comp_err(dev, "no source buffer");
+		return -ENOTCONN;
+	}
 
 	crossover_params(mod);
 
 	/* Crossover has a variable number of sinks */
 	mod->max_sinks = SOF_CROSSOVER_MAX_STREAMS;
-	source = comp_dev_get_first_data_producer(dev);
 
 	/* Get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&source->stream);
@@ -546,11 +554,8 @@ static int crossover_prepare(struct processing_module *mod,
 		if (cd->source_format != audio_stream_get_frm_fmt(&sink->stream)) {
 			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different.",
 				 cd->source_format, audio_stream_get_frm_fmt(&sink->stream));
-			ret = -EINVAL;
+			return -EINVAL;
 		}
-
-		if (ret < 0)
-			return ret;
 	}
 
 	comp_info(dev, "crossover_prepare(), source_format=%d, sink_formats=%d, nch=%d",
@@ -566,7 +571,8 @@ static int crossover_prepare(struct processing_module *mod,
 	}
 
 	if (cd->config) {
-		ret = crossover_setup(mod, channels);
+		int ret = crossover_setup(mod, channels);
+
 		if (ret < 0) {
 			comp_err(dev, "crossover_prepare(), setup failed");
 			return ret;
@@ -629,9 +635,6 @@ static const struct module_interface crossover_interface = {
 	.free = crossover_free
 };
 
-DECLARE_MODULE_ADAPTER(crossover_interface, crossover_uuid, crossover_tr);
-SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);
-
 #if CONFIG_COMP_CROSSOVER_MODULE
 /* modular: llext dynamic link */
 
@@ -639,14 +642,16 @@ SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_CROSSOVER 0xD1, 0x9A, 0x8C, 0x94, 0x6A, 0x80, 0x31, 0x41, 0x6C, 0xAD, \
-		0xB2, 0xBD, 0xA9, 0xE3, 0x5A, 0x9F
-
 SOF_LLEXT_MOD_ENTRY(crossover, &crossover_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("XOVER", crossover_llext_entry, 1, UUID_CROSSOVER, 40);
+	SOF_LLEXT_MODULE_MANIFEST("XOVER", crossover_llext_entry, 1, SOF_REG_UUID(crossover), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(crossover_interface, crossover_uuid, crossover_tr);
+SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);
 
 #endif

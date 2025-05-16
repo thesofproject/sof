@@ -19,7 +19,6 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <mqueue.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <semaphore.h>
@@ -53,15 +52,12 @@ static void shutdown(struct sof_pipe *sp)
 
 		pthread_cancel(pd->ipc_thread);
 		pthread_cancel(pd->pcm_thread);
-		plug_mq_free(&pd->ipc_tx_mq);
-		plug_mq_free(&pd->ipc_rx_mq);
 		plug_lock_free(&pd->ready);
 		plug_lock_free(&pd->done);
 	}
 
 	/* free the sof-pipe IPC tx/rx message queues */
-	plug_mq_free(&sp->ipc_tx_mq);
-	plug_mq_free(&sp->ipc_rx_mq);
+	plug_socket_free(&sp->ipc_socket);
 
 	pthread_mutex_destroy(&sp->ipc_lock);
 
@@ -211,37 +207,13 @@ void plug_shm_free(struct plug_shm_desc *shm)
 	shm_unlink(shm->name);
 }
 
-/*
- * Create and open a new message queue using the IPC object.
- */
-int plug_mq_create(struct plug_mq_desc *ipc)
-{
-	/* delete any old stale resources that use our resource name */
-	mq_unlink(ipc->queue_name);
-
-	memset(&ipc->attr, 0, sizeof(ipc->attr));
-	ipc->attr.mq_msgsize = IPC3_MAX_MSG_SIZE;
-	ipc->attr.mq_maxmsg = 1;
-
-	/* now open new queue for Tx/Rx */
-	ipc->mq = mq_open(ipc->queue_name, O_CREAT | O_RDWR | O_EXCL,
-			  S_IRWXU | S_IRWXG, &ipc->attr);
-	if (ipc->mq < 0) {
-		fprintf(stderr, "failed to create IPC queue %s: %s\n",
-			ipc->queue_name, strerror(errno));
-		return -errno;
-	}
-
-	return 0;
-}
 
 /*
  * Free and delete message queue resources in IPC object.
  */
-void plug_mq_free(struct plug_mq_desc *ipc)
+void plug_socket_free(struct plug_socket_desc *ipc)
 {
-	mq_close(ipc->mq);
-	mq_unlink(ipc->queue_name);
+	unlink(ipc->path);
 }
 
 /*
@@ -359,16 +331,12 @@ int main(int argc, char *argv[], char *env[])
 	/* sofpipe is now ready */
 	sp.glb->state = SOF_PLUGIN_STATE_INIT;
 
-	ret = plug_mq_init(&sp.ipc_tx_mq, "sof", "ipc-tx", 0);
-	if (ret < 0)
-		goto out;
-
-	ret = plug_mq_init(&sp.ipc_rx_mq, "sof", "ipc-rx", 0);
+	ret = plug_socket_path_init(&sp.ipc_socket, "sof", "ipc", 0);
 	if (ret < 0)
 		goto out;
 
 	/* now process IPCs as they arrive from plugins */
-	ret = pipe_ipc_process(&sp, &sp.ipc_tx_mq, &sp.ipc_rx_mq);
+	ret = pipe_ipc_process(&sp, &sp.ipc_socket);
 
 out:
 	fprintf(sp.log, "shutdown main\n");

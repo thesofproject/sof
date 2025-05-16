@@ -2,6 +2,7 @@
 
 config COMP_SEL
 	tristate "Channel selector component"
+	default m if LIBRARY_DEFAULT_MODULAR
 	default y
 	help
 	  Select for SEL component

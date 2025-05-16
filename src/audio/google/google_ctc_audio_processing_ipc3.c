@@ -56,7 +56,7 @@ int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 	case SOF_CTRL_CMD_SWITCH:
 		if (cdata->num_elems == 1) {
 			cd->enabled = cdata->chanv[0].value;
-			comp_info(dev, "ctc_set_config(), enabled = %d",
+			comp_info(mod->dev, "ctc_set_config(), enabled = %d",
 				  cd->enabled);
 			return 0;
 		}

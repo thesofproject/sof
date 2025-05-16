@@ -73,6 +73,10 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	case SOF_DAI_IMX_MICFIL:
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
+/* TODO: remove ifdef when transitioning to native drivers is complete on all NXP platforms */
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+		channel = channel & GENMASK(7, 0);
+#endif
 		break;
 	case SOF_DAI_AMD_BT:
 		channel = dai_get_handshake(dd->dai, dai->direction,

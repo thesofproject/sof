@@ -731,15 +731,20 @@ static int tdfb_prepare(struct processing_module *mod,
 
 	comp_info(dev, "tdfb_prepare()");
 
+	/* Find source and sink buffers */
+	sourceb = comp_dev_get_first_data_producer(dev);
+	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 	ret = tdfb_params(mod);
 	if (ret) {
 		comp_err(dev, "Failed tdfb_params()");
 		return ret;
 	}
 
-	/* Find source and sink buffers */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
 	tdfb_set_alignment(&sourceb->stream, &sinkb->stream);
 
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -821,9 +826,6 @@ static const struct module_interface tdfb_interface = {
 	.reset = tdfb_reset,
 };
 
-DECLARE_MODULE_ADAPTER(tdfb_interface, tdfb_uuid, tdfb_tr);
-SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);
-
 #if CONFIG_COMP_TDFB_MODULE
 /* modular: llext dynamic link */
 
@@ -831,14 +833,16 @@ SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_TDFB 0x49, 0x17, 0x51, 0xdd, 0xfa, 0xd9, 0x5c, 0x45, 0xb3, 0xa7, \
-		  0x13, 0x58, 0x56, 0x93, 0xf1, 0xaf
-
 SOF_LLEXT_MOD_ENTRY(tdfb, &tdfb_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("TDFB", tdfb_llext_entry, 1, UUID_TDFB, 40);
+	SOF_LLEXT_MODULE_MANIFEST("TDFB", tdfb_llext_entry, 1, SOF_REG_UUID(tdfb), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(tdfb_interface, tdfb_uuid, tdfb_tr);
+SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);
 
 #endif

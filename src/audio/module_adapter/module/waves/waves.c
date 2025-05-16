@@ -19,7 +19,9 @@
 #define NUM_IO_STREAMS (1)
 
 SOF_DEFINE_REG_UUID(waves);
+
 DECLARE_TR_CTX(waves_tr, SOF_UUID(waves_uuid), LOG_LEVEL_INFO);
+LOG_MODULE_REGISTER(waves, CONFIG_SOF_LOG_LEVEL);
 
 struct waves_codec_data {
 	uint32_t                sample_rate;
@@ -41,6 +43,7 @@ struct waves_codec_data {
 	void                    *response;
 	uint32_t                config_blob_size;
 	void                    *config_blob;
+	bool                    initialized;
 };
 
 enum waves_codec_params {
@@ -223,6 +226,11 @@ static int waves_effect_check(struct comp_dev *dev)
 	/* Init sink & source buffers */
 	comp_dbg(dev, "waves_effect_check() start");
 
+	if (!source || !sink) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 	/* todo use fallback to comp_verify_params when ready */
 
 	/* resampling not supported */
@@ -248,7 +256,8 @@ static int waves_effect_check(struct comp_dev *dev)
 
 	/* different interleaving is not supported */
 	if (audio_stream_get_buffer_fmt(src_fmt) != audio_stream_get_buffer_fmt(snk_fmt)) {
-		comp_err(dev, "waves_effect_check() source %d sink %d buffer format mismatch");
+		comp_err(dev, "waves_effect_check() source %d sink %d buffer format mismatch",
+			 audio_stream_get_buffer_fmt(src_fmt), audio_stream_get_buffer_fmt(snk_fmt));
 		return -EINVAL;
 	}
 
@@ -350,6 +359,7 @@ static int waves_effect_init(struct processing_module *mod)
 		comp_err(dev, "waves_effect_init() MaxxEffect_Initialize returned %d", status);
 		return -EINVAL;
 	}
+	waves_codec->initialized = true;
 
 	comp_dbg(dev, "waves_effect_init() done");
 	return 0;
@@ -506,14 +516,17 @@ static int waves_effect_message(struct processing_module *mod, void *data, uint3
 	MaxxStatus_t status;
 	uint32_t response_size = 0;
 
-	comp_info(dev, "waves_effect_message() start data %p size %d", data, size);
+	if (waves_codec->initialized) {
+		comp_info(dev, "waves_effect_message() start data %p size %d", data, size);
 
-	status = MaxxEffect_Message(waves_codec->effect, data, size,
-				    waves_codec->response, &response_size);
+		status = MaxxEffect_Message(waves_codec->effect, data, size,
+									waves_codec->response, &response_size);
 
-	if (status) {
-		comp_err(dev, "waves_effect_message() MaxxEffect_Message returned %d", status);
-		return -EINVAL;
+		if (status) {
+			comp_err(dev, "waves_effect_message() MaxxEffect_Message returned %d",
+					status);
+			return -EINVAL;
+		}
 	}
 
 #if CONFIG_TRACEV
@@ -690,6 +703,7 @@ static int waves_codec_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 	waves_codec->response = response;
+	waves_codec->initialized = false;
 
 	comp_dbg(dev, "waves_codec_init() done");
 	return ret;
@@ -841,6 +855,7 @@ static int waves_codec_reset(struct processing_module *mod)
 	if (codec->mpd.out_buff)
 		module_free_memory(mod, codec->mpd.out_buff);
 
+	waves_codec->initialized = false;
 	comp_dbg(dev, "waves_codec_reset() done");
 	return ret;
 }
@@ -894,5 +909,23 @@ static const struct module_interface waves_interface = {
 	.free = waves_codec_free
 };
 
+#if CONFIG_WAVES_CODEC_MODULE && CONFIG_WAVES_CODEC_STUB
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+SOF_LLEXT_MOD_ENTRY(waves, &waves_interface);
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("WAVES", waves_llext_entry, 7, SOF_REG_UUID(waves), 8);
+
+SOF_LLEXT_BUILDINFO;
+
+#else
+
 DECLARE_MODULE_ADAPTER(waves_interface, waves_uuid, waves_tr);
 SOF_MODULE_INIT(waves, sys_comp_module_waves_interface_init);
+
+#endif

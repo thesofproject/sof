@@ -20,6 +20,7 @@
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
@@ -161,6 +162,9 @@ void ipc_send_queued_msg(void)
 	if (ipc_platform_send_msg(msg) == 0) {
 		/* Remove the message from the list if it has been successfully sent. */
 		list_item_del(&msg->list);
+		/* Invoke a callback to notify that the message has been sent. */
+		if (msg->callback)
+			msg->callback(msg);
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 		/* Increment performance counters */
 		io_perf_monitor_update_data(ipc->io_perf_out_msg_count, 1);
@@ -169,6 +173,10 @@ void ipc_send_queued_msg(void)
 out:
 	k_spin_unlock(&ipc->lock, key);
 }
+
+#ifdef __ZEPHYR__
+static K_THREAD_STACK_DEFINE(ipc_send_wq_stack, CONFIG_STACK_SIZE_IPC_TX);
+#endif
 
 static void schedule_ipc_worker(void)
 {
@@ -179,15 +187,17 @@ static void schedule_ipc_worker(void)
 #ifdef __ZEPHYR__
 	struct ipc *ipc = ipc_get();
 
-	k_work_schedule(&ipc->z_delayed_work, K_USEC(IPC_PERIOD_USEC));
+	k_work_schedule_for_queue(&ipc->ipc_send_wq, &ipc->z_delayed_work, K_USEC(IPC_PERIOD_USEC));
 #endif
 }
 
-void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
+__cold void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
 	int ret;
+
+	assert_can_be_cold();
 
 	key = k_spin_lock(&ipc->lock);
 
@@ -216,15 +226,6 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	    msg->tx_data != data) {
 		ret = memcpy_s(msg->tx_data, msg->tx_size, data, msg->tx_size);
 		assert(!ret);
-		if (!cpu_is_primary(cpu_get_id())) {
-			/* Write back data to memory to maintain coherence between cores.
-			 * The response was prepared on a secondary core but will be sent
-			 * to the host from the primary core.
-			 */
-			dcache_writeback_region((__sparse_force void __sparse_cache *)msg->tx_data,
-						msg->tx_size);
-			msg->is_shared = true;
-		}
 	}
 
 	/*
@@ -256,6 +257,7 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 
 	k_spin_unlock(&ipc->lock, key);
 }
+EXPORT_SYMBOL(ipc_msg_send);
 
 #ifdef __ZEPHYR__
 static void ipc_work_handler(struct k_work *work)
@@ -276,11 +278,17 @@ static void ipc_work_handler(struct k_work *work)
 
 void ipc_schedule_process(struct ipc *ipc)
 {
+#if CONFIG_TWB_IPC_TASK
+	schedule_task(ipc->ipc_task, 0, IPC_PERIOD_USEC);
+#else
 	schedule_task(&ipc->ipc_task, 0, IPC_PERIOD_USEC);
+#endif
 }
 
-int ipc_init(struct sof *sof)
+__cold int ipc_init(struct sof *sof)
 {
+	assert_can_be_cold();
+
 	tr_dbg(&ipc_tr, "ipc_init()");
 
 	/* init ipc data */
@@ -305,6 +313,18 @@ int ipc_init(struct sof *sof)
 #endif
 
 #ifdef __ZEPHYR__
+	struct k_thread *thread = &sof->ipc->ipc_send_wq.thread;
+
+	k_work_queue_start(&sof->ipc->ipc_send_wq, ipc_send_wq_stack,
+			   K_THREAD_STACK_SIZEOF(ipc_send_wq_stack), 1, NULL);
+
+	k_thread_suspend(thread);
+
+	k_thread_cpu_pin(thread, PLATFORM_PRIMARY_CORE_ID);
+	k_thread_name_set(thread, "ipc_send_wq");
+
+	k_thread_resume(thread);
+
 	k_work_init_delayable(&sof->ipc->z_delayed_work, ipc_work_handler);
 #endif
 

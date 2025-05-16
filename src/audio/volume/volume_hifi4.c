@@ -63,14 +63,14 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 in_sample = AE_ZERO32();
-	ae_f32x2 out_sample = AE_ZERO32();
-	ae_f32x2 volume = AE_ZERO32();
+	ae_f32x2 in_sample;
+	ae_f32x2 out_sample;
+	ae_f32x2 volume;
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	int i, n, m;
 	ae_f32x2 *vol;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
@@ -114,15 +114,16 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 			/* Multiply the input sample */
 #if COMP_VOLUME_Q8_16
 			out_sample = AE_MULFP32X2RS(AE_SLAI32S(volume, 7), AE_SLAI32(in_sample, 8));
+			out_sample = AE_SLAI32S(out_sample, 8);
 #elif COMP_VOLUME_Q1_23
 			out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
-#else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
+			out_sample = AE_SLAI32S(out_sample, 8);
+#elif COMP_VOLUME_Q1_31
+			out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
 #endif
 
-			/* Shift for S24_LE */
-			out_sample = AE_SLAI32S(out_sample, 8);
-			out_sample = AE_SRAI32(out_sample, 8);
+			/* Shift and round for S24_LE */
+			out_sample = AE_SRAI32R(out_sample, 8);
 
 			/* Store the output sample */
 			AE_SA32X2_IP(out_sample, outu, out);
@@ -149,9 +150,9 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 {
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 in_sample = AE_ZERO32();
+	ae_f32x2 in_sample;
 	int i, n, m;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
@@ -200,16 +201,14 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 in_sample = AE_ZERO32();
-	ae_f32x2 out_sample = AE_ZERO32();
-	ae_f32x2 volume = AE_ZERO32();
+	ae_f32x2 in_sample;
+	ae_f32x2 out_sample;
+	ae_f32x2 volume;
 	int i, n, m;
-	ae_f64 mult0;
-	ae_f64 mult1;
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	const int channels_count = audio_stream_get_channels(sink);
 	const int inc = sizeof(ae_f32x2);
@@ -250,23 +249,21 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 			/* Load the input sample */
 			AE_LA32X2_IP(in_sample, inu, in);
 
-#if COMP_VOLUME_Q8_16
-			/* Q8.16 x Q1.31 << 1 -> Q9.48 */
-			mult0 = AE_MULF32S_HH(volume, in_sample);
-			mult0 = AE_SRAI64(mult0, 1);			/* Q9.47 */
-			mult1 = AE_MULF32S_LL(volume, in_sample);
-			mult1 = AE_SRAI64(mult1, 1);
-			out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q9.47 -> Q1.31 */
-#elif COMP_VOLUME_Q1_23
-			/* Q1.23 x Q1.31 << 1 -> Q2.55 */
-			mult0 = AE_MULF32S_HH(volume, in_sample);
-			mult0 = AE_SRAI64(mult0, 8);			/* Q2.47 */
-			mult1 = AE_MULF32S_LL(volume, in_sample);
-			mult1 = AE_SRAI64(mult1, 8);
-			out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q2.47 -> Q1.31 */
+#if COMP_VOLUME_Q1_31
+			out_sample = AE_MULFP32X2RS(volume, in_sample);
 #else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
+			/* With Q1.31 x Q1.31 -> Q17.47 HiFi multiplications the result is
+			 * Q8.16 x Q1.31 << 1 >> 16 -> Q9.32, shift left by 15 for Q17.47
+			 * Q1.23 x Q1.31 << 1 >> 16 -> Q2.39, shift left by 8 for Q17.47
+			 */
+			ae_f64 mult0 = AE_MULF32R_HH(volume, in_sample);
+			ae_f64 mult1 = AE_MULF32R_LL(volume, in_sample);
+
+			mult0 = AE_SLAI64(mult0, VOLUME_Q17_47_SHIFT);
+			mult1 = AE_SLAI64(mult1, VOLUME_Q17_47_SHIFT);
+			out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q2.47 -> Q1.31 */
 #endif
+
 			AE_SA32X2_IP(out_sample, outu, out);
 		}
 		AE_SA64POS_FP(outu, out);
@@ -291,9 +288,9 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 {
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 in_sample = AE_ZERO32();
+	ae_f32x2 in_sample;
 	int i, n, m;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	const int channels_count = audio_stream_get_channels(sink);
 	int samples = channels_count * frames;
@@ -340,17 +337,17 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	struct vol_data *cd = module_get_private_data(mod);
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f32x2 volume0 = AE_ZERO32();
-	ae_f32x2 volume1 = AE_ZERO32();
-	ae_f32x2 out_sample0 = AE_ZERO32();
-	ae_f32x2 out_sample1 = AE_ZERO32();
-	ae_f16x4 in_sample = AE_ZERO16();
-	ae_f16x4 out_sample = AE_ZERO16();
+	ae_f32x2 volume0;
+	ae_f32x2 volume1;
+	ae_f32x2 out_sample0;
+	ae_f32x2 out_sample1;
+	ae_f16x4 in_sample;
+	ae_f16x4 out_sample;
 	int i, n, m, left;
 	ae_f32x2 *buf;
 	ae_f32x2 *buf_end;
 	ae_f32x2 *vol;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);
@@ -391,18 +388,20 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			/* load second two volume gain */
 			AE_L32X2_XC(volume1, vol, inc);
 
-#if COMP_VOLUME_Q8_16
-			/* Q8.16 to Q9.23 */
-			volume0 = AE_SLAI32S(volume0, 7);
-			volume1 = AE_SLAI32S(volume1, 7);
-#elif COMP_VOLUME_Q1_23
-			/* No need to shift, Q1.23 is OK as such */
-#else
-#error "Need CONFIG_COMP_VOLUME_Qx_y"
-#endif
 			/* Load the input sample */
 			AE_LA16X4_IP(in_sample, inu, in);
 
+#if COMP_VOLUME_Q1_31
+			out_sample0 = AE_MULFP32X16X2RS_H(volume0, in_sample);
+			out_sample1 = AE_MULFP32X16X2RS_L(volume1, in_sample);
+#else
+#if COMP_VOLUME_Q8_16
+			/* Shift Q8.16 to Q9.23
+			 * No need to shift Q1.23, it is OK as such
+			 */
+			volume0 = AE_SLAI32S(volume0, 7);
+			volume1 = AE_SLAI32S(volume1, 7);
+#endif
 			/* Multiply the input sample */
 			out_sample0 = AE_MULFP32X16X2RS_H(volume0, in_sample);
 			out_sample1 = AE_MULFP32X16X2RS_L(volume1, in_sample);
@@ -410,6 +409,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			/* Q9.23 to Q1.31 */
 			out_sample0 = AE_SLAI32S(out_sample0, 8);
 			out_sample1 = AE_SLAI32S(out_sample1, 8);
+#endif
 
 			/* store the output */
 			out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample1);
@@ -421,16 +421,21 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		for (i = 0; i < left; i++) {
 			/* load volume gain */
 			AE_L32_XC(volume0, (ae_f32 *)vol, sizeof(ae_f32));
+			/* Load the input sample */
+			AE_L16_IP(in_sample, (ae_f16 *)in, sizeof(ae_f16));
+#if COMP_VOLUME_Q1_31
+			/* Multiply the input sample */
+			out_sample0 = AE_MULFP32X16X2RS_H(volume0, in_sample);
+#else
 #if COMP_VOLUME_Q8_16
 			/* Q8.16 to Q9.23 */
 			volume0 = AE_SLAI32S(volume0, 7);
 #endif
-			/* Load the input sample */
-			AE_L16_IP(in_sample, (ae_f16 *)in, sizeof(ae_f16));
 			/* Multiply the input sample */
 			out_sample0 = AE_MULFP32X16X2RS_H(volume0, in_sample);
 			/* Q9.23 to Q1.31 */
 			out_sample0 = AE_SLAI32S(out_sample0, 8);
+#endif
 			/* store the output */
 			out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample0);
 			AE_S16_0_IP(out_sample, (ae_f16 *)out, sizeof(ae_f16));
@@ -459,9 +464,9 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 {
 	struct audio_stream *source = bsource->data;
 	struct audio_stream *sink = bsink->data;
-	ae_f16x4 in_sample = AE_ZERO16();
+	ae_f16x4 in_sample;
 	int i, n, m, left;
-	ae_valign inu = AE_ZALIGN64();
+	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
 	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
 						     + bsource->consumed);

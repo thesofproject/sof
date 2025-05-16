@@ -37,8 +37,6 @@ struct module_config {
 #endif
 };
 
-struct llext;
-
 /*
  * A structure containing a module's private data, intended for its exclusive use.
  *
@@ -60,7 +58,6 @@ struct module_data {
 	void *runtime_params;
 	struct module_memory memory; /**< memory allocated by module */
 	struct module_processing_data mpd; /**< shared data comp <-> module */
-	struct llext *llext; /**< Zephyr loadable extension context */
 #endif /* SOF_MODULE_PRIVATE */
 };
 
@@ -86,7 +83,10 @@ struct processing_module {
 	 */
 #ifdef SOF_MODULE_API_PRIVATE
 	struct sof_ipc_stream_params *stream_params;
-	struct list_item sink_buffer_list; /* list of sink buffers to save produced output */
+	/* list of sink buffers to save produced output, to be used in Raw data
+	 * processing mode
+	 */
+	struct list_item raw_data_buffers_list;
 
 	/*
 	 * This is a temporary change in order to support the trace messages in the modules. This

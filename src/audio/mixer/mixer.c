@@ -214,6 +214,11 @@ static int mixer_prepare(struct processing_module *mod,
 	struct comp_buffer *sink;
 
 	sink = comp_dev_get_first_data_consumer(dev);
+	if (!sink) {
+		comp_err(dev, "no sink");
+		return -ENOTCONN;
+	}
+
 	md->mix_func = mixer_get_processing_function(dev, sink);
 	mixer_set_frame_alignment(&sink->stream);
 

@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <mqueue.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <semaphore.h>

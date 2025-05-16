@@ -86,7 +86,9 @@ extern uint32_t _memmap_cacheattr_reset;
 			    (_addr_attr(address) == 4))
 #endif /* CONFIG_COMPILER_WORKAROUND_CACHE_ATTR */
 
-#else /* CONFIG_IMX */
+#elif defined(CONFIG_MEDIATEK)
+#define is_cached(address) (1)
+#else
 #define is_cached(address) (!!((uintptr_t)(address) & SRAM_UNCACHED_ALIAS))
 #endif
 

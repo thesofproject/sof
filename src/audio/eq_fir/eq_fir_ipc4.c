@@ -59,6 +59,8 @@ int eq_fir_params(struct processing_module *mod)
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
+	/* The caller has verified, that sink and source buffers are connected */
+
 	sourceb = comp_dev_get_first_data_producer(dev);
 	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 

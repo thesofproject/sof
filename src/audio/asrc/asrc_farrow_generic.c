@@ -44,7 +44,7 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 		 * Data is Q1.15, coefficients are Q1.30. Prod will be Qx.45.
 		 */
 		for (n = 0; n < src_obj->filter_length; n++)
-			prod += (int64_t)(*buffer_p--) * (*filter_p++);
+			prod += (int64_t)(*buffer_p++) * (*filter_p++);
 
 		/* Shift left after accumulation, because interim
 		 * results might saturate during filtering prod = prod
@@ -96,7 +96,7 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 		 * quality. The product is Qx.54.
 		 */
 		for (n = 0; n < src_obj->filter_length; n++)
-			prod += (int64_t)(*buffer_p--) * (*filter_p++ >> 8);
+			prod += (int64_t)(*buffer_p++) * (*filter_p++ >> 8);
 
 		/* Shift left after accumulation, because interim
 		 * results might saturate during filtering prod = prod

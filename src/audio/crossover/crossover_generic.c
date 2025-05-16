@@ -8,7 +8,7 @@
 #include <sof/audio/module_adapter/module/module_interface.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/math/iir_df2t.h>
+#include <sof/math/iir_df1.h>
 #include <stdint.h>
 
 #include "crossover.h"
@@ -21,8 +21,8 @@
  * As a side effect, this function mutates the delay values of both
  * filters.
  */
-static inline void crossover_generic_lr4_split(struct iir_state_df2t *lp,
-					       struct iir_state_df2t *hp,
+static inline void crossover_generic_lr4_split(struct iir_state_df1 *lp,
+					       struct iir_state_df1 *hp,
 					       int32_t x, int32_t *y1,
 					       int32_t *y2)
 {
@@ -39,8 +39,8 @@ static inline void crossover_generic_lr4_split(struct iir_state_df2t *lp,
  * to be out of phase. We need to pass the signal through another set of LR4
  * filters to align back the phase.
  */
-static inline void crossover_generic_lr4_merge(struct iir_state_df2t *lp,
-					       struct iir_state_df2t *hp,
+static inline void crossover_generic_lr4_merge(struct iir_state_df1 *lp,
+					       struct iir_state_df1 *hp,
 					       int32_t x, int32_t *y)
 {
 	int32_t z1, z2;

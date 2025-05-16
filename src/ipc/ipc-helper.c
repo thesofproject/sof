@@ -21,6 +21,7 @@
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <rtos/sof.h>
@@ -37,8 +38,10 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
-static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
+__cold static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
 {
+	assert_can_be_cold();
+
 	if (desc->caps >= SOF_MEM_CAPS_LOWEST_INVALID)
 		return false;
 
@@ -47,9 +50,11 @@ static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
 }
 
 /* create a new component in the pipeline */
-struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
+__cold struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
 {
 	struct comp_buffer *buffer;
+
+	assert_can_be_cold();
 
 	tr_info(&buffer_tr, "buffer new size 0x%x id %d.%d flags 0x%x",
 		desc->size, desc->comp.pipeline_id, desc->comp.id, desc->flags);
@@ -75,6 +80,7 @@ struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared
 	return buffer;
 }
 
+/* Called from multiple locations, including ipc_get_comp_by_ppl_id(), so cannot be cold */
 int32_t ipc_comp_pipe_id(const struct ipc_comp_dev *icd)
 {
 	switch (icd->type) {
@@ -115,10 +121,8 @@ static void comp_update_params(uint32_t flag,
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		       struct sof_ipc_stream_params *params)
 {
-	struct list_item *buffer_list;
 	struct list_item *source_list;
 	struct list_item *sink_list;
-	struct list_item *clist;
 	struct comp_buffer *sinkb;
 	struct comp_buffer *buf;
 	int dir = dev->direction;
@@ -136,13 +140,9 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	 */
 	if (list_is_empty(source_list) != list_is_empty(sink_list)) {
 		if (list_is_empty(sink_list))
-			buf = list_first_item(source_list,
-					      struct comp_buffer,
-					      sink_list);
+			buf = comp_dev_get_first_data_producer(dev);
 		else
-			buf = list_first_item(sink_list,
-					      struct comp_buffer,
-					      source_list);
+			buf = comp_dev_get_first_data_consumer(dev);
 
 		/* update specific pcm parameter with buffer parameter if
 		 * specific flag is set.
@@ -156,22 +156,34 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 
 		/* set component period frames */
 		component_set_nearest_period_frames(dev, audio_stream_get_rate(&buf->stream));
+	} else if (list_is_empty(source_list)) {
+		/*
+		 * both lists are empty, e.g. if it's the single component in a
+		 * pipeline and no other pipelines are currently connected, then
+		 * there's just nothing to update
+		 */
+		comp_dbg(dev, "no connected buffers");
+		return 0;
 	} else {
 		/* for other components we iterate over all downstream buffers
 		 * (for playback) or upstream buffers (for capture).
 		 */
-		buffer_list = comp_buffer_list(dev, dir);
-
-		list_for_item(clist, buffer_list) {
-			buf = buffer_from_list(clist, dir);
-			comp_update_params(flag, params, buf);
-			buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
+		if (dir == PPL_DIR_DOWNSTREAM) {
+			comp_dev_for_each_consumer(dev, buf) {
+				comp_update_params(flag, params, buf);
+				buffer_set_params(buf, params,
+						  BUFFER_UPDATE_FORCE);
+			}
+		} else {
+			comp_dev_for_each_producer(dev, buf) {
+				comp_update_params(flag, params, buf);
+				buffer_set_params(buf, params,
+						  BUFFER_UPDATE_FORCE);
+			}
 		}
 
 		/* fetch sink buffer in order to calculate period frames */
-		sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
-					source_list);
-
+		sinkb = comp_dev_get_first_data_consumer(dev);
 		component_set_nearest_period_frames(dev, audio_stream_get_rate(&sinkb->stream));
 	}
 
@@ -179,9 +191,11 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 }
 EXPORT_SYMBOL(comp_verify_params);
 
-int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
-			struct comp_buffer *buffer, uint32_t dir)
+__cold int comp_buffer_connect(struct comp_dev *comp, uint32_t comp_core,
+			       struct comp_buffer *buffer, uint32_t dir)
 {
+	assert_can_be_cold();
+
 	/* check if it's a connection between cores */
 	if (buffer->core != comp_core) {
 #if CONFIG_INCOHERENT
@@ -260,11 +274,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 				 ipc_ppl_sink->cd);
 }
 
-int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
+__cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd;
-	struct list_item *clist, *tmp;
+	struct comp_buffer *buffer;
+	struct comp_buffer *safe;
 	uint32_t flags;
+
+	assert_can_be_cold();
 
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
@@ -305,27 +322,18 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	}
 
 	irq_local_disable(flags);
-	list_for_item_safe(clist, tmp, &icd->cd->bsource_list) {
-		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, sink_list);
-
-		buffer->sink = NULL;
-		/* Also if it isn't shared - we are about to modify uncached data */
-		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
-						   sizeof(*buffer));
+	comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
+		comp_buffer_set_sink_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		list_init(clist);
+		comp_buffer_reset_sink_list(buffer);
 	}
 
-	list_for_item_safe(clist, tmp, &icd->cd->bsink_list) {
-		struct comp_buffer *buffer = container_of(clist, struct comp_buffer, source_list);
-
-		buffer->source = NULL;
-		/* Also if it isn't shared - we are about to modify uncached data */
-		dcache_writeback_invalidate_region(uncache_to_cache(buffer),
-						   sizeof(*buffer));
+	comp_dev_for_each_consumer_safe(icd->cd, buffer, safe) {
+		comp_buffer_set_source_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
-		list_init(clist);
+		comp_buffer_reset_source_list(buffer);
 	}
+
 	irq_local_enable(flags);
 
 	/* free component and remove from list */

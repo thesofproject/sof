@@ -7,6 +7,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Shriram Shastry <malladi.sastry@linux.intel.com>
 
+#include <rtos/symbol.h>
 #include <sof/audio/format.h>
 #include <sof/math/trig.h>
 #include <sof/math/cordic.h>
@@ -99,6 +100,7 @@ void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_
 	/* Q2.30 format -sine, cosine*/
 	*th_cdc_fxp = th_rad_fxp;
 }
+EXPORT_SYMBOL(cordic_approx);
 
 /**
  * CORDIC-based approximation for inverse cosine

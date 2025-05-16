@@ -571,6 +571,10 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 	for (mem_block_iter = 0, ptr_range_found = false;
 		mem_block_iter < MAX_MEMORY_ALLOCATORS_COUNT;
 		mem_block_iter++) {
+		/* continiue so we do not check mem blocks that do not exist */
+		if (!heap->physical_blocks_allocators[mem_block_iter])
+			continue;
+
 		block_size =
 			1 << heap->physical_blocks_allocators[mem_block_iter]->info.blk_sz_shift;
 

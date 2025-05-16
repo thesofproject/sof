@@ -118,6 +118,7 @@ int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	/* Q2.46 -> Q2.31, saturate to Q1.31 */
 	return sat_int32(y >> shift);
 }
+EXPORT_SYMBOL(fir_32x16);
 
 void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1, int32_t *y0, int32_t *y1)
 {
@@ -184,5 +185,6 @@ void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1, int32_t *
 	*y0 = sat_int32(a0 >> shift);
 	*y1 = sat_int32(a1 >> shift);
 }
+EXPORT_SYMBOL(fir_32x16_2x);
 
 #endif

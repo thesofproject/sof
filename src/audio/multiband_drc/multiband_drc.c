@@ -10,6 +10,7 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <module/crossover/crossover_common.h>
@@ -40,6 +41,7 @@ SOF_DEFINE_REG_UUID(multiband_drc);
 
 DECLARE_TR_CTX(multiband_drc_tr, SOF_UUID(multiband_drc_uuid), LOG_LEVEL_INFO);
 
+/* Called from multiband_drc_setup() from multiband_drc_process(), so cannot be __cold */
 static void multiband_drc_reset_state(struct multiband_drc_state *state)
 {
 	int i;
@@ -62,9 +64,13 @@ static void multiband_drc_reset_state(struct multiband_drc_state *state)
 }
 
 static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
-					 struct iir_state_df2t *eq)
+					 struct iir_state_df1 *eq)
 {
 	int ret;
+
+	/* Ensure the LR4 can be processed with the simplified 4th order IIR */
+	if (SOF_EMP_DEEMP_BIQUADS != SOF_IIR_DF1_4TH_NUM_BIQUADS)
+		return -EINVAL;
 
 	eq->coef = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
 			   sizeof(struct sof_eq_iir_biquad) * SOF_EMP_DEEMP_BIQUADS);
@@ -200,7 +206,9 @@ err:
 	return ret;
 }
 
-static int multiband_drc_setup(struct processing_module *mod, int16_t channels, uint32_t rate)
+/* Called from multiband_drc_process(), so cannot be __cold */
+static int multiband_drc_setup(struct processing_module *mod, int16_t channels,
+			       uint32_t rate)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
@@ -273,9 +281,11 @@ cd_fail:
 	return ret;
 }
 
-static int multiband_drc_free(struct processing_module *mod)
+__cold static int multiband_drc_free(struct processing_module *mod)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	comp_info(mod->dev, "multiband_drc_free()");
 
@@ -285,13 +295,15 @@ static int multiband_drc_free(struct processing_module *mod)
 	return 0;
 }
 
-static int multiband_drc_set_config(struct processing_module *mod, uint32_t param_id,
-				    enum module_cfg_fragment_position pos,
-				    uint32_t data_offset_size, const uint8_t *fragment,
-				    size_t fragment_size, uint8_t *response,
-				    size_t response_size)
+__cold static int multiband_drc_set_config(struct processing_module *mod, uint32_t param_id,
+					   enum module_cfg_fragment_position pos,
+					   uint32_t data_offset_size, const uint8_t *fragment,
+					   size_t fragment_size, uint8_t *response,
+					   size_t response_size)
 {
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "multiband_drc_set_config()");
 
@@ -299,11 +311,13 @@ static int multiband_drc_set_config(struct processing_module *mod, uint32_t para
 					    fragment, pos, data_offset_size, fragment_size);
 }
 
-static int multiband_drc_get_config(struct processing_module *mod,
-				    uint32_t config_id, uint32_t *data_offset_size,
-				    uint8_t *fragment, size_t fragment_size)
+__cold static int multiband_drc_get_config(struct processing_module *mod,
+					   uint32_t config_id, uint32_t *data_offset_size,
+					   uint8_t *fragment, size_t fragment_size)
 {
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+
+	assert_can_be_cold();
 
 	comp_dbg(mod->dev, "multiband_drc_get_config()");
 
@@ -364,6 +378,10 @@ static int multiband_drc_prepare(struct processing_module *mod,
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
+	if (!sourceb) {
+		comp_err(dev, "no source buffer");
+		return -ENOTCONN;
+	}
 
 	/* get source data format */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -416,9 +434,6 @@ static const struct module_interface multiband_drc_interface = {
 	.free = multiband_drc_free
 };
 
-DECLARE_MODULE_ADAPTER(multiband_drc_interface, multiband_drc_uuid, multiband_drc_tr);
-SOF_MODULE_INIT(multiband_drc, sys_comp_module_multiband_drc_interface_init);
-
 #if CONFIG_COMP_MULTIBAND_DRC_MODULE
 /* modular: llext dynamic link */
 
@@ -426,14 +441,17 @@ SOF_MODULE_INIT(multiband_drc, sys_comp_module_multiband_drc_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_MULTIBAND_DRC 0x56, 0x22, 0x9F, 0x0D, 0x4F, 0x8E, 0xB3, 0x47, 0x48, 0x84, \
-		0x23, 0x9A, 0x33, 0x4F, 0x11, 0x91
-
 SOF_LLEXT_MOD_ENTRY(multiband_drc, &multiband_drc_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("MB_DRC", multiband_drc_llext_entry, 1, UUID_MULTIBAND_DRC, 40);
+	SOF_LLEXT_MODULE_MANIFEST("MB_DRC", multiband_drc_llext_entry, 1,
+				  SOF_REG_UUID(multiband_drc), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(multiband_drc_interface, multiband_drc_uuid, multiband_drc_tr);
+SOF_MODULE_INIT(multiband_drc, sys_comp_module_multiband_drc_interface_init);
 
 #endif

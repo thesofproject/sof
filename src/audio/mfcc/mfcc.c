@@ -193,6 +193,10 @@ static int mfcc_prepare(struct processing_module *mod,
 	/* MFCC component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink");
+		return -ENOTCONN;
+	}
 
 	/* get source data format */
 	source_format = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -256,9 +260,6 @@ static const struct module_interface mfcc_interface = {
 	.reset = mfcc_reset,
 };
 
-DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);
-SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);
-
 #if CONFIG_COMP_MFCC_MODULE
 /* modular: llext dynamic link */
 
@@ -266,14 +267,16 @@ SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_MFCC 0x73, 0xA7, 0x10, 0xDB, 0xA4, 0x1A, 0xEA, 0x4C, 0x1F, 0xA2, \
-		0x2D, 0x57, 0xA5, 0xC9, 0x82, 0xEB
-
 SOF_LLEXT_MOD_ENTRY(mfcc, &mfcc_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("MFCC", mfcc_llext_entry, 1, UUID_MFCC, 40);
+	SOF_LLEXT_MODULE_MANIFEST("MFCC", mfcc_llext_entry, 1, SOF_REG_UUID(mfcc), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);
+SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);
 
 #endif

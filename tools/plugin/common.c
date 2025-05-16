@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -94,14 +96,10 @@ static const char *suffix_name(const char *longname)
 /*
  * Initialise the IPC object.
  */
-int plug_mq_init(struct plug_mq_desc *ipc, const char *tplg, const char *type, int index)
+int plug_socket_path_init(struct plug_socket_desc *ipc, const char *tplg, const char *type,
+			  int index)
 {
-	const char *name = suffix_name(tplg);
-
-	if (!name)
-		return -EINVAL;
-
-	snprintf(ipc->queue_name, NAME_SIZE, "/mq-%s-%s-%d", type, name, index);
+	snprintf(ipc->path, NAME_SIZE, "/tmp/%s-%s", tplg, type);
 	return 0;
 }
 
@@ -178,12 +176,45 @@ int plug_shm_open(struct plug_shm_desc *shm)
 	return 0;
 }
 
-int plug_mq_cmd_tx_rx(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx,
-		      void *msg, size_t len, void *reply, size_t rlen)
+static int plug_socket_timed_wait(struct plug_socket_desc *ipc, fd_set *fds, int timeout_ms,
+				  bool write)
 {
-	struct timespec ts;
-	ssize_t ipc_size;
+	struct timeval timeout;
+	int result;
+
+	/* Set the timeout for select */
+	timeout.tv_sec = 0;
+	timeout.tv_usec = timeout_ms * 1000;
+
+	/* now wait for socket to be readable/writable */
+	if (write)
+		result = select(ipc->socket_fd + 1, NULL, fds, NULL, &timeout);
+	else
+		result = select(ipc->socket_fd + 1, fds, NULL, NULL, &timeout);
+
+	if (result == -1) {
+		SNDERR("error waiting for socket to be %s\n", write ? "writable" : "readable");
+		return result;
+	}
+
+	if (result == 0) {
+		SNDERR("IPC Socket %s timeout\n", write ? "write" : "read");
+		return -ETIMEDOUT;
+	}
+
+	/* socket ready for read/write */
+	if (FD_ISSET(ipc->socket_fd, fds))
+		return 0;
+
+	/* socket not ready */
+	return -EINVAL;
+}
+
+static int plug_ipc_cmd_tx(struct plug_socket_desc *ipc, void *msg, size_t len)
+{
+	fd_set write_fds;
 	char mailbox[IPC3_MAX_MSG_SIZE];
+	ssize_t bytes;
 	int err;
 
 	if (len > IPC3_MAX_MSG_SIZE) {
@@ -193,55 +224,90 @@ int plug_mq_cmd_tx_rx(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx,
 	memset(mailbox, 0, IPC3_MAX_MSG_SIZE);
 	memcpy(mailbox, msg, len);
 
-	/* wait for sof-pipe reader to consume data or timeout */
-	err = clock_gettime(CLOCK_REALTIME, &ts);
-	if (err == -1) {
-		SNDERR("ipc: cant get time: %s", strerror(errno));
+	/* Wait for the socket to be writable */
+	FD_ZERO(&write_fds);
+	FD_SET(ipc->socket_fd, &write_fds);
+
+	err = plug_socket_timed_wait(ipc, &write_fds, 20, true);
+	if (err < 0)
+		return err;
+
+	bytes = send(ipc->socket_fd, mailbox, IPC3_MAX_MSG_SIZE, 0);
+	if (bytes == -1) {
+		SNDERR("failed to send IPC message : %s\n", strerror(errno));
 		return -errno;
 	}
 
-	/* IPCs should be read under 10ms */
-	plug_timespec_add_ms(&ts, 10);
+	return bytes;
+}
 
-	/* now return message completion status */
-	err = mq_timedsend(ipc_tx->mq, mailbox, IPC3_MAX_MSG_SIZE, 0, &ts);
-	if (err == -1) {
-		SNDERR("error: timeout can't send IPC message queue %s : %s\n",
-		       ipc_tx->queue_name, strerror(errno));
+static int plug_ipc_cmd_rx(struct plug_socket_desc *ipc, char mailbox[IPC3_MAX_MSG_SIZE])
+{
+	fd_set read_fds;
+	int err;
+
+	/* Wait for the socket to be readable */
+	FD_ZERO(&read_fds);
+	FD_SET(ipc->socket_fd, &read_fds);
+
+	err = plug_socket_timed_wait(ipc, &read_fds, 200, false);
+	if (err < 0)
+		return err;
+
+	memset(mailbox, 0, IPC3_MAX_MSG_SIZE);
+	return recv(ipc->socket_fd, mailbox, IPC3_MAX_MSG_SIZE, 0);
+}
+
+int plug_ipc_cmd_tx_rx(struct plug_socket_desc *ipc, void *msg, size_t len, void *reply,
+		       size_t rlen)
+{
+	char mailbox[IPC3_MAX_MSG_SIZE];
+	ssize_t bytes;
+	int err;
+
+	/* send IPC message */
+	bytes = plug_ipc_cmd_tx(ipc, msg, len);
+	if (bytes == -1) {
+		SNDERR("failed to send IPC message : %s\n", strerror(errno));
 		return -errno;
 	}
 
-	/* wait for sof-pipe reader to consume data or timeout */
-	err = clock_gettime(CLOCK_REALTIME, &ts);
-	if (err == -1) {
-		SNDERR("ipc: cant get time: %s", strerror(errno));
+	/* wait for response */
+	memset(mailbox, 0, IPC3_MAX_MSG_SIZE);
+	bytes = plug_ipc_cmd_rx(ipc, mailbox);
+	if (bytes == -1) {
+		SNDERR("failed to read IPC message reply %s\n", strerror(errno));
 		return -errno;
 	}
 
-	/* IPCs should be processed under 20ms, but wait longer as
-	 * some can take longer especially in valgrind
-	 */
-	plug_timespec_add_ms(&ts, 20);
-
-	ipc_size = mq_timedreceive(ipc_rx->mq, mailbox, IPC3_MAX_MSG_SIZE, NULL, &ts);
-	if (ipc_size == -1) {
-		//fprintf(stderr, "dbg: timeout can't read IPC message queue %s : %s retrying\n",
-		//	ipc->queue_name, strerror(errno));
-
-		/* ok, its a long IPC or valgrind, wait longer */
-		plug_timespec_add_ms(&ts, 800);
-
-		ipc_size = mq_timedreceive(ipc_rx->mq, mailbox, IPC3_MAX_MSG_SIZE, NULL, &ts);
-		if (ipc_size == -1) {
-			SNDERR("error: timeout can't read IPC message queue %s : %s\n",
-			       ipc_rx->queue_name, strerror(errno));
+	/* no response or connection lost, try to restablish connection */
+	if (bytes == 0) {
+		close(ipc->socket_fd);
+		err = plug_create_client_socket(ipc);
+		if (err < 0) {
+			SNDERR("failed to reestablish connection to SOF pipe IPC socket : %s",
+			       strerror(err));
 			return -errno;
 		}
 
-		/* needed for valgrind to complete MQ op before next client IPC */
-		ts.tv_nsec = 20 * 1000 * 1000;
-		ts.tv_sec = 0;
-		nanosleep(&ts, NULL);
+		/* send IPC message again */
+		bytes = plug_ipc_cmd_tx(ipc, msg, len);
+		if (bytes == -1) {
+			SNDERR("failed to send IPC message : %s\n", strerror(errno));
+			return -errno;
+		}
+
+		/* wait for response */
+		memset(mailbox, 0, IPC3_MAX_MSG_SIZE);
+		bytes = plug_ipc_cmd_rx(ipc, mailbox);
+		if (bytes == -1) {
+			SNDERR("failed to read IPC message reply %s\n", strerror(errno));
+			return -errno;
+		}
+
+		/* connection lost again, quit now */
+		if (bytes == 0)
+			return -errno;
 	}
 
 	/* do the message work */
@@ -265,8 +331,8 @@ void plug_ctl_ipc_message(struct ipc4_module_large_config *config, int param_id,
 	config->extension.r.large_param_id = param_id;
 }
 
-int plug_send_bytes_data(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx,
-			 uint32_t module_id, uint32_t instance_id, struct sof_abi_hdr *abi)
+int plug_send_bytes_data(struct plug_socket_desc *ipc, uint32_t module_id, uint32_t instance_id,
+			 struct sof_abi_hdr *abi)
 {
 	struct ipc4_module_large_config config = {{ 0 }};
 	struct ipc4_message_reply reply;
@@ -292,7 +358,7 @@ int plug_send_bytes_data(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_r
 	memcpy(msg + sizeof(config), abi->data, abi->size);
 
 	/* send the message and check status */
-	err = plug_mq_cmd_tx_rx(ipc_tx, ipc_rx, msg, msg_size, &reply, sizeof(reply));
+	err = plug_ipc_cmd_tx_rx(ipc, msg, msg_size, &reply, sizeof(reply));
 	free(msg);
 	if (err < 0) {
 		SNDERR("failed to send IPC to set bytes data\n");
@@ -305,4 +371,96 @@ int plug_send_bytes_data(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_r
 	}
 
 	return 0;
+}
+
+int plug_socket_create(struct plug_socket_desc *ipc)
+{
+	struct sockaddr_un addr;
+	int sockfd;
+
+	/* Check if the socket path already exists */
+	if (access(ipc->path, F_OK) != -1) {
+		/* If it exists, remove it */
+		if (unlink(ipc->path) == -1) {
+			SNDERR("unlink previous socket file");
+			return -EINVAL;
+		}
+	}
+
+	/* Create the socket */
+	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sockfd == -1) {
+		SNDERR("failed to create new socket");
+		return sockfd;
+	}
+
+	ipc->socket_fd = sockfd;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strncpy(addr.sun_path, ipc->path, sizeof(addr.sun_path) - 1);
+
+	/* Bind the socket to the address */
+	if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+		SNDERR("failed to bind new socket for IPC path\n");
+		close(sockfd);
+		return -EINVAL;
+	}
+
+	if (listen(sockfd, MAX_IPC_CLIENTS) == -1) {
+		SNDERR("failed to listen on socket for IPC\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int set_socket_nonblocking(int sockfd)
+{
+	int flags = fcntl(sockfd, F_GETFL, 0);
+
+	if (flags == -1) {
+		SNDERR("fcntl(F_GETFL) failed");
+		return -EINVAL;
+	}
+
+	flags |= O_NONBLOCK;
+	if (fcntl(sockfd, F_SETFL, flags) == -1) {
+		SNDERR("fcntl(F_SETFL) failed");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int plug_create_client_socket(struct plug_socket_desc *ipc)
+{
+	struct sockaddr_un addr;
+	int sockfd;
+
+	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sockfd == -1) {
+		SNDERR("error: failed to create sof-pipe IPC socket\n");
+		return sockfd;
+	}
+
+	if (set_socket_nonblocking(sockfd) < 0) {
+		close(sockfd);
+		return -EINVAL;
+	}
+	ipc->socket_fd = sockfd;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strncpy(addr.sun_path, ipc->path, sizeof(addr.sun_path) - 1);
+
+	/* Connect to the server (non-blocking) */
+	if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+		if (errno != EINPROGRESS) {
+			SNDERR("failed to connect to ipc socket");
+			return -errno;
+		}
+	}
+
+	return sockfd;
 }

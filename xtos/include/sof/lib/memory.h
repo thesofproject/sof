@@ -18,4 +18,7 @@
 #define __cold_rodata
 #endif
 
+#define assert_can_be_cold() do {} while (0)
+#define dbg_path_hot_confirm() do {} while (0)
+
 #endif /* __SOF_LIB_MEMORY_H__ */

@@ -18,6 +18,7 @@
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/dp_schedule.h>
+#include <sof/schedule/twb_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/trace/trace.h>
@@ -26,7 +27,9 @@
 #include <kernel/abi.h>
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
-
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include "sof/audio/mic_privacy_manager.h"
+#endif
 #include <sof_versions.h>
 #include <stdint.h>
 
@@ -58,7 +61,7 @@ static const struct sof_ipc_fw_ready ready
 	.flags = DEBUG_SET_FW_READY_FLAGS,
 };
 
-int platform_boot_complete(uint32_t boot_message)
+__cold int platform_boot_complete(uint32_t boot_message)
 {
 	struct ipc_cmd_hdr header;
 
@@ -84,7 +87,7 @@ static struct pm_notifier pm_state_notifier = {
 #endif
 
 /* Runs on the primary core only */
-int platform_init(struct sof *sof)
+__cold int platform_init(struct sof *sof)
 {
 	int ret;
 
@@ -115,6 +118,12 @@ int platform_init(struct sof *sof)
 		return ret;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
+#if CONFIG_ZEPHYR_TWB_SCHEDULER
+	ret = scheduler_twb_init();
+	if (ret < 0)
+		return ret;
+#endif
+
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
@@ -136,6 +145,13 @@ int platform_init(struct sof *sof)
 	idc_init();
 
 	watchdog_init();
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	/* Init mic privacy manager */
+	ret = mic_privacy_manager_init();
+	if (ret < 0)
+		return ret;
+#endif
 
 	/* show heap status */
 	heap_trace_all(1);

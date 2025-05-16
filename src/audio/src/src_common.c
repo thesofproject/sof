@@ -16,6 +16,8 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
+#include <sof/lib/fast-get.h>
+#include <sof/lib/memory.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
@@ -592,6 +594,53 @@ int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
+int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
+			     const struct src_stage *stage_src1,
+			     const struct src_stage *stage_src2)
+{
+#if CONFIG_FAST_GET
+	struct src_stage *stage_dst;
+	size_t coef_size[2];
+#if SRC_SHORT
+	size_t tap_size = sizeof(int16_t);
+#else
+	size_t tap_size = sizeof(int32_t);
+#endif
+
+	stage_dst = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			    2 * sizeof(*stage_dst));
+	if (!stage_dst) {
+		comp_err(dev, "failed to allocate stages");
+		return -ENOMEM;
+	}
+
+	/* Make local copies of the src_stages */
+	stage_dst[0] = *stage_src1;
+	stage_dst[1] = *stage_src2;
+
+	coef_size[0] = tap_size * stage_src1->filter_length;
+	coef_size[1] = tap_size * stage_src2->filter_length;
+
+	stage_dst[0].coefs = fast_get(stage_src1->coefs, coef_size[0]);
+	stage_dst[1].coefs = fast_get(stage_src2->coefs, coef_size[1]);
+
+	if (!stage_dst[0].coefs || !stage_dst[1].coefs)  {
+		comp_err(dev, "failed to allocate coefficients");
+		fast_put(stage_dst[0].coefs);
+		rfree(stage_dst);
+		return -ENOMEM;
+	}
+
+	prm->stage1 = stage_dst;
+	prm->stage2 = stage_dst + 1;
+#else
+	prm->stage1 = stage_src1;
+	prm->stage2 = stage_src2;
+#endif
+
+	return 0;
+}
+
 bool src_is_ready_to_process(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,
 			     struct sof_sink **sinks, int num_of_sinks)
@@ -618,17 +667,21 @@ int src_process(struct processing_module *mod,
 	return cd->src_func(cd, sources[0], sinks[0]);
 }
 
-int src_set_config(struct processing_module *mod, uint32_t config_id,
-		   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-		   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-		   size_t response_size)
+__cold int src_set_config(struct processing_module *mod, uint32_t config_id,
+			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			  size_t response_size)
 {
+	assert_can_be_cold();
+
 	return -EINVAL;
 }
 
-int src_get_config(struct processing_module *mod, uint32_t config_id,
-		   uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size)
+__cold int src_get_config(struct processing_module *mod, uint32_t config_id,
+			  uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size)
 {
+	assert_can_be_cold();
+
 	return -EINVAL;
 }
 
@@ -644,15 +697,23 @@ int src_reset(struct processing_module *mod)
 	return 0;
 }
 
-int src_free(struct processing_module *mod)
+__cold int src_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+
+	assert_can_be_cold();
 
 	comp_info(mod->dev, "src_free()");
 
 	/* Free dynamically reserved buffers for SRC algorithm */
 	rfree(cd->delay_lines);
-
+#if CONFIG_FAST_GET
+	if (cd->param.stage1) {
+		fast_put(cd->param.stage1->coefs);
+		fast_put(cd->param.stage2->coefs);
+	}
+	rfree((void *)cd->param.stage1);
+#endif
 	rfree(cd);
 	return 0;
 }

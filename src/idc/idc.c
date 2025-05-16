@@ -46,10 +46,6 @@ DECLARE_TR_CTX(idc_tr, SOF_UUID(idc_uuid), LOG_LEVEL_INFO);
 
 SOF_DEFINE_REG_UUID(idc_task);
 
-#ifndef __ZEPHYR__
-SOF_DEFINE_REG_UUID(idc_cmd_task);
-#endif
-
 /**
  * \brief Sets IDC command status after execution.
  * \param[in] status Status to be set.
@@ -77,35 +73,6 @@ int idc_msg_status_get(uint32_t core)
 }
 
 /**
- * \brief Waits until status condition is true.
- * \param[in] target_core Id of the core receiving the message.
- * \param[in] cond Pointer to condition function.
- * \return Error code.
- */
-int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int))
-{
-	uint64_t deadline = sof_cycle_get_64() + k_us_to_cyc_ceil64(IDC_TIMEOUT);
-
-	while (!cond(target_core)) {
-		/* spin here so other core can access IO and timers freely */
-		wait_delay(8192);
-
-		if (deadline < sof_cycle_get_64())
-			break;
-	}
-
-	/* safe check in case we've got preempted
-	 * after read
-	 */
-	if (cond(target_core))
-		return 0;
-
-	tr_err(&idc_tr, "idc_wait_in_blocking_mode() error: timeout, target_core %u",
-	       target_core);
-	return -ETIME;
-}
-
-/**
  * \brief Executes IDC IPC processing message.
  */
 static void idc_ipc(void)
@@ -115,7 +82,6 @@ static void idc_ipc(void)
 	ipc_cmd(ipc->comp_data);
 }
 
-#if CONFIG_IPC_MAJOR_4
 static int idc_ipc4_bind(uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_dev;
@@ -163,7 +129,6 @@ static int idc_get_attribute(uint32_t comp_id)
 
 	return comp_get_attribute(ipc_dev->cd, get_attr_payload->type, get_attr_payload->value);
 }
-#endif	/* CONFIG_IPC_MAJOR_4 */
 
 /**
  * \brief Executes IDC component params message.
@@ -330,7 +295,6 @@ static int idc_comp_free(uint32_t comp_id)
  */
 static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 {
-#if CONFIG_IPC_MAJOR_4
 	struct ipc *ipc = ipc_get();
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
@@ -361,7 +325,6 @@ static int idc_ppl_state(uint32_t ppl_id, uint32_t phase)
 		return ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
 	}
 
-#endif
 	return 0;
 }
 
@@ -425,9 +388,10 @@ void idc_cmd(struct idc_msg *msg)
 		notifier_notify_remote();
 		break;
 	case iTS(IDC_MSG_IPC):
+		dbg_path_hot_start_watching();
 		idc_ipc();
+		dbg_path_hot_stop_watching();
 		break;
-#if CONFIG_IPC_MAJOR_4
 	case iTS(IDC_MSG_BIND):
 		ret = idc_ipc4_bind(msg->extension);
 		break;
@@ -440,7 +404,6 @@ void idc_cmd(struct idc_msg *msg)
 	case iTS(IDC_MSG_FREE):
 		ret = idc_comp_free(msg->extension);
 		break;
-#endif
 	case iTS(IDC_MSG_PARAMS):
 		ret = idc_params(msg->extension);
 		break;
@@ -474,43 +437,10 @@ void idc_cmd(struct idc_msg *msg)
 	idc_msg_status_set(ret, cpu_get_id());
 }
 
-#ifndef __ZEPHYR__
-static void idc_complete(void *data)
-{
-	struct ipc *ipc = ipc_get();
-	struct idc *idc = data;
-	uint32_t type = iTS(idc->received_msg.header);
-	k_spinlock_key_t key;
-
-#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
-	/* Increment performance counters */
-	io_perf_monitor_update_data(idc->io_perf_out_msg_count, 1);
-#endif
-
-	switch (type) {
-	case iTS(IDC_MSG_IPC):
-		/* Signal the host */
-		key = k_spin_lock(&ipc->lock);
-		ipc->task_mask &= ~IPC_TASK_SECONDARY_CORE;
-		ipc_complete_cmd(ipc);
-		k_spin_unlock(&ipc->lock, key);
-	}
-}
-#endif
-
 /* Runs on each CPU */
 int idc_init(void)
 {
 	struct idc **idc = idc_get();
-#ifndef __ZEPHYR__
-	struct task_ops ops = {
-		.run = idc_do_cmd,
-		.get_deadline = ipc_task_deadline,
-		.complete = idc_complete,
-	};
-
-	*idc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(**idc));
-#endif
 
 	tr_dbg(&idc_tr, "idc_init()");
 
@@ -530,16 +460,9 @@ int idc_init(void)
 #endif
 
 	/* process task */
-#ifndef __ZEPHYR__
-	schedule_task_init_edf(&(*idc)->idc_task, SOF_UUID(idc_cmd_task_uuid),
-			       &ops, *idc, cpu_get_id(), 0);
-
-	return platform_idc_init();
-#else
 	idc_init_thread();
 
 	return 0;
-#endif
 }
 
 int idc_restore(void)
@@ -554,10 +477,6 @@ int idc_restore(void)
 	 * memory has not been powered off).
 	 */
 	assert(*idc);
-
-#ifndef __ZEPHYR__
-	return platform_idc_restore();
-#endif
 
 	return 0;
 }

@@ -416,15 +416,20 @@ static int eq_fir_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "eq_fir_prepare()");
 
+	/* EQ component will only ever have 1 source and 1 sink buffer. */
+	sourceb = comp_dev_get_first_data_producer(dev);
+	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
 	ret = eq_fir_params(mod);
 	if (ret < 0) {
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return ret;
 	}
 
-	/* EQ component will only ever have 1 source and 1 sink buffer. */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
 	eq_fir_set_alignment(&sourceb->stream, &sinkb->stream);
 	channels = audio_stream_get_channels(&sinkb->stream);
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
@@ -478,9 +483,6 @@ static const struct module_interface eq_fir_interface = {
 		.reset = eq_fir_reset,
 };
 
-DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
-SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
-
 #if CONFIG_COMP_FIR_MODULE
 /* modular: llext dynamic link */
 
@@ -488,14 +490,16 @@ SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_EQFIR 0xe7, 0x0c, 0xa9, 0x43, 0xa5, 0xf3, 0xdf, 0x41, \
-		 0xac, 0x06, 0xba, 0x98, 0x65, 0x1a, 0xe6, 0xa3
-
 SOF_LLEXT_MOD_ENTRY(eq_fir, &eq_fir_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("EQFIR", eq_fir_llext_entry, 1, UUID_EQFIR, 40);
+	SOF_LLEXT_MODULE_MANIFEST("EQFIR", eq_fir_llext_entry, 1, SOF_REG_UUID(eq_fir), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
+SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
 
 #endif

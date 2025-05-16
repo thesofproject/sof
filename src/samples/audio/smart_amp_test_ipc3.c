@@ -509,6 +509,10 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	}
 
 	sad->sink_buf = comp_dev_get_first_data_consumer(dev);
+	if (!sad->sink_buf) {
+		comp_err(dev, "no sink buffer");
+		return -ENOTCONN;
+	}
 
 	sad->out_channels = audio_stream_get_channels(&sad->sink_buf->stream);
 

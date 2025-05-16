@@ -41,3 +41,32 @@ config SCHEDULE_LL_STATS_LOG_WINDOW_SIZE
 	  Size of the statistics window as a power of two. The window size
 	  setting also impacts the rate of reporting. With 1ms scheduler tick,
 	  default of 10 results in 1024msec window size.
+
+config SCHEDULE_LL_NO_RESCHEDULE_TASK
+	bool "Low-latency scheduler skips task rescheduling"
+	default n
+	help
+	  Select this to instantiate the low-latency scheduler without task
+	  rescheduling, given that the operation is optional. Under such cases,
+	  scheduler_ops::reschedule_task will set to NULL instead, tasks with
+	  the attempt to reschedule (e.g. DMA trace works) will be relinguished
+	  directly and return no error.
+
+config ZEPHYR_TWB_SCHEDULER
+	bool "use Zephyr thread based TWB scheduler"
+	default n
+	depends on ZEPHYR_SOF_MODULE
+	depends on TIMESLICE_PER_THREAD
+	depends on THREAD_RUNTIME_STATS
+	depends on SCHED_THREAD_USAGE
+	help
+	  Enable Tasks with Budget preemptive scheduler based on
+	  Zephyr preemptive threads for each SOF task that has pre-allocated
+	  MCPS budget renewed with every system tick.
+
+config TWB_IPC_TASK
+	bool "use TWB scheduler for IPC task"
+	default n
+	depends on ZEPHYR_TWB_SCHEDULER
+	help
+	  Switch IPC task to TWB scheduler.

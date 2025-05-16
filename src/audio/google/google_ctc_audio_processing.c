@@ -355,6 +355,11 @@ static int ctc_prepare(struct processing_module *mod,
 	comp_info(mod->dev, "ctc_prepare()");
 
 	source = comp_dev_get_first_data_producer(dev);
+	if (!source) {
+		comp_err(dev, "no source buffer");
+		return -ENOTCONN;
+	}
+
 	switch (audio_stream_get_frm_fmt(&source->stream)) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
@@ -454,11 +459,6 @@ static const struct module_interface google_ctc_audio_processing_interface = {
 	.reset = ctc_reset,
 };
 
-DECLARE_MODULE_ADAPTER(google_ctc_audio_processing_interface,
-		       google_ctc_audio_processing_uuid, google_ctc_audio_processing_tr);
-SOF_MODULE_INIT(google_ctc_audio_processing,
-		sys_comp_module_google_ctc_audio_processing_interface_init);
-
 #if CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING_MODULE
 /* modular: llext dynamic link */
 
@@ -466,15 +466,19 @@ SOF_MODULE_INIT(google_ctc_audio_processing,
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_GOOGLE_CTC 0xBC, 0x1B, 0x0E, 0xBF, 0x6A, 0xDC, 0xFE, 0x45, 0x90, 0xBC, \
-	 0x25, 0x54, 0xCB, 0x13, 0x7A, 0xB4
-
 SOF_LLEXT_MOD_ENTRY(google_ctc_audio_processing, &google_ctc_audio_processing_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
 	SOF_LLEXT_MODULE_MANIFEST("CTC", google_ctc_audio_processing_llext_entry,
-				  1, UUID_GOOGLE_CTC, 40);
+				  1, SOF_REG_UUID(google_ctc_audio_processing), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(google_ctc_audio_processing_interface,
+		       google_ctc_audio_processing_uuid, google_ctc_audio_processing_tr);
+SOF_MODULE_INIT(google_ctc_audio_processing,
+		sys_comp_module_google_ctc_audio_processing_interface_init);
 
 #endif

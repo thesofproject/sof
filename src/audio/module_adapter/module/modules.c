@@ -62,7 +62,7 @@ static int modules_init(struct processing_module *mod)
 	void *adapter;
 	int ret;
 
-	uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, src_cfg);
+	uintptr_t module_entry_point = lib_manager_allocate_module(config, src_cfg);
 
 	if (module_entry_point == 0) {
 		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
@@ -144,11 +144,6 @@ static int modules_free(struct processing_module *mod)
 	ret = iadk_wrapper_free(module_get_private_data(mod));
 	if (ret)
 		comp_err(dev, "modules_free(): iadk_wrapper_free failed with error: %d", ret);
-
-	/* Free module resources allocated in L2 memory. */
-	ret = lib_manager_free_module(dev->ipc_config.id);
-	if (ret < 0)
-		comp_err(dev, "modules_free(), lib_manager_free_module() failed!");
 
 	return ret;
 }

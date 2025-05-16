@@ -9,7 +9,6 @@
 #define __SOF_PLUGIN_COMMON_H__
 
 #include <stdint.h>
-#include <mqueue.h>
 #include <semaphore.h>
 #include <alsa/asoundlib.h>
 #include <ipc/control.h>
@@ -38,6 +37,8 @@
 #define SHM_SIZE	(4096 * 64)	/* get from topology - and set for context */
 
 #define NUM_EP_CONFIGS		8
+
+#define MAX_IPC_CLIENTS	5
 
 /*
  * Run with valgrind
@@ -161,11 +162,9 @@ struct plug_shm_desc {
 	void *addr;
 };
 
-struct plug_mq_desc {
-	/* IPC message queue */
-	mqd_t mq;
-	struct mq_attr attr;
-	char queue_name[NAME_SIZE];
+struct plug_socket_desc {
+	int socket_fd;
+	char path[NAME_SIZE];
 };
 
 struct plug_sem_desc {
@@ -265,18 +264,13 @@ void plug_shm_free(struct plug_shm_desc *shm);
 /*
  * IPC
  */
-int plug_mq_create(struct plug_mq_desc *ipc);
+int plug_socket_path_init(struct plug_socket_desc *ipc, const char *tplg, const char *type,
+			  int index);
 
-int plug_mq_open(struct plug_mq_desc *ipc);
+void plug_socket_free(struct plug_socket_desc *ipc);
 
-int plug_mq_init(struct plug_mq_desc *ipc, const char *tplg, const char *type, int index);
-
-void plug_mq_free(struct plug_mq_desc *ipc);
-
-int plug_mq_cmd(struct plug_mq_desc *ipc, void *msg, size_t len, void *reply, size_t rlen);
-
-int plug_mq_cmd_tx_rx(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx,
-		      void *msg, size_t len, void *reply, size_t rlen);
+int plug_ipc_cmd_tx_rx(struct plug_socket_desc *ipc, void *msg, size_t len, void *reply,
+		       size_t rlen);
 
 /*
  * Locking
@@ -324,7 +318,11 @@ static inline void data_dump(void *vdata, size_t bytes)
 void plug_ctl_ipc_message(struct ipc4_module_large_config *config, int param_id,
 			  size_t size, uint32_t module_id, uint32_t instance_id,
 			  uint32_t type);
-int plug_send_bytes_data(struct plug_mq_desc *ipc_tx, struct plug_mq_desc *ipc_rx,
-			 uint32_t module_id, uint32_t instance_id, struct sof_abi_hdr *abi);
+int plug_send_bytes_data(struct plug_socket_desc *ipc, uint32_t module_id, uint32_t instance_id,
+			 struct sof_abi_hdr *abi);
+
+int plug_socket_create(struct plug_socket_desc *ipc);
+
+int plug_create_client_socket(struct plug_socket_desc *ipc);
 
 #endif

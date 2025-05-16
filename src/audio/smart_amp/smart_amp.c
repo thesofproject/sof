@@ -733,7 +733,6 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	uint16_t ff_src_fmt, fb_src_fmt, resolved_mod_fmt;
 	uint32_t least_req_depth;
-	uint32_t rate;
 	int ret;
 
 	comp_dbg(dev, "smart_amp_prepare()");
@@ -746,7 +745,8 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	struct comp_buffer *source_buffer;
 
 	comp_dev_for_each_producer(dev, source_buffer) {
-		if (source_buffer->source->ipc_config.type == SOF_COMP_DEMUX)
+		if (comp_buffer_get_source_component(source_buffer)->ipc_config.type
+				== SOF_COMP_DEMUX)
 			sad->feedback_buf = source_buffer;
 		else
 			sad->source_buf = source_buffer;
@@ -754,6 +754,10 @@ static int smart_amp_prepare(struct comp_dev *dev)
 
 	/* sink buffer */
 	sad->sink_buf = comp_dev_get_first_data_consumer(dev);
+	if (!sad->sink_buf) {
+		comp_err(dev, "no sink buffer");
+		return -ENOTCONN;
+	}
 
 	/* get frame format and channels param of stream and feedback source */
 	ff_src_fmt = audio_stream_get_frm_fmt(&sad->source_buf->stream);

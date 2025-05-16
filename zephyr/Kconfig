@@ -1,4 +1,14 @@
 if SOF
+
+config SOF_STAGING
+	bool "Enable SOF staging features and modules"
+	default n
+	help
+	  SOF staging features are not ready for production but are
+	  upstream to enable developers to continue development in order
+	  to bring the feature to production level faster using the
+	  upstream codebase.
+
 rsource "../Kconfig.sof"
 
 config SOF_ZEPHYR_HEAP_CACHED
@@ -48,6 +58,7 @@ config ZEPHYR_DP_SCHEDULER
 	depends on ZEPHYR_SOF_MODULE
 	depends on ACE
 	depends on PIPELINE_2_0
+	imply XTENSA_HIFI_SHARING if XTENSA_HIFI
 	help
 	  Enable Data Processing preemptive scheduler based on
 	  Zephyr preemptive threads.
@@ -89,4 +100,17 @@ config VIRTUAL_HEAP
 	help
 	  Enabling this option will use the virtual memory heap allocator to allocate buffers.
 	  It is based on a set of buffers whose size is predetermined.
+
+config STACK_SIZE_EDF
+	int "EDF scheduler stack size"
+	default 8192
+	help
+	  EDF scheduler work-queue thread stack size. Keep a power of 2.
+
+config STACK_SIZE_IPC_TX
+	int "IPC sender stack size"
+	default 2048
+	help
+	  IPC sender work-queue thread stack size. Keep a power of 2.
+
 endif

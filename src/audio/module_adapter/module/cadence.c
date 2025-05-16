@@ -103,26 +103,9 @@ static struct cadence_api cadence_api_table[] = {
 #endif
 };
 
-static int cadence_code_get_api_id(uint32_t compress_id)
-{
-	/* convert compress id to SOF cadence SOF id */
-	switch (compress_id) {
-	case SND_AUDIOCODEC_MP3:
-		return CADENCE_CODEC_MP3_DEC_ID;
-	case SND_AUDIOCODEC_AAC:
-		return CADENCE_CODEC_AAC_DEC_ID;
-	case SND_AUDIOCODEC_VORBIS:
-		return CADENCE_CODEC_VORBIS_DEC_ID;
-	default:
-		return -EINVAL;
-	}
-}
-
 #if CONFIG_IPC_MAJOR_4
 static int cadence_codec_resolve_api(struct processing_module *mod)
 {
-	int ret;
-	struct snd_codec codec_params;
 	struct comp_dev *dev = mod->dev;
 	struct cadence_codec_data *cd = module_get_private_data(mod);
 	uint32_t api_id = CODEC_GET_API_ID(DEFAULT_CODEC_ID);
@@ -159,8 +142,22 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 
 	return 0;
 }
-
 #elif CONFIG_IPC_MAJOR_3
+static int cadence_code_get_api_id(uint32_t compress_id)
+{
+	/* convert compress id to SOF cadence SOF id */
+	switch (compress_id) {
+	case SND_AUDIOCODEC_MP3:
+		return CADENCE_CODEC_MP3_DEC_ID;
+	case SND_AUDIOCODEC_AAC:
+		return CADENCE_CODEC_AAC_DEC_ID;
+	case SND_AUDIOCODEC_VORBIS:
+		return CADENCE_CODEC_VORBIS_DEC_ID;
+	default:
+		return -EINVAL;
+	}
+}
+
 static int cadence_codec_resolve_api(struct processing_module *mod)
 {
 	int ret;
@@ -778,7 +775,7 @@ cadence_codec_process(struct processing_module *mod,
 	}
 
 	/* do not proceed with processing if not enough free space left in the local buffer */
-	local_buff = list_first_item(&mod->sink_buffer_list, struct comp_buffer, sink_list);
+	local_buff = list_first_item(&mod->raw_data_buffers_list, struct comp_buffer, buffers_list);
 	free_bytes = audio_stream_get_free(&local_buff->stream);
 	if (free_bytes < output_bytes)
 		return -ENOSPC;

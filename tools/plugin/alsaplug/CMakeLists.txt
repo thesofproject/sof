@@ -17,7 +17,7 @@ target_include_directories(asound_module_pcm_sof PRIVATE
 	${sof_source_directory}/src/audio)
 
 target_compile_options(asound_module_pcm_sof PRIVATE -DPIC -g -O3 -Wmissing-prototypes
-  -Wimplicit-fallthrough -DCONFIG_LIBRARY -imacros${config_h})
+  -Wno-stringop-truncation -Wimplicit-fallthrough -DCONFIG_LIBRARY -imacros${config_h})
 
 install(TARGETS asound_module_pcm_sof DESTINATION /usr/lib/x86_64-linux-gnu/alsa-lib)
 
@@ -49,7 +49,7 @@ target_include_directories(asound_module_ctl_sof PRIVATE
 	${sof_source_directory}/src/audio)
 
 target_compile_options(asound_module_ctl_sof PRIVATE -DPIC -g -O3 -Wmissing-prototypes
-  -Wimplicit-fallthrough -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
+  -Wimplicit-fallthrough -Wno-stringop-truncation -Wall -Werror -DCONFIG_LIBRARY -imacros${config_h})
 
 install(TARGETS asound_module_ctl_sof DESTINATION /usr/lib/x86_64-linux-gnu/alsa-lib)
 

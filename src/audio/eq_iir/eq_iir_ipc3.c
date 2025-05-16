@@ -272,6 +272,8 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 
 	comp_dbg(dev, "eq_iir_verify_params()");
 
+	/* The caller has verified, that sink and source buffers are connected */
+
 	/* EQ component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);

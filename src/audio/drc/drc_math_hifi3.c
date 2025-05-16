@@ -116,7 +116,7 @@ static inline ae_f32 log10_fixed(ae_f32 x)
  * Input is Q6.26: max 32.0
  * Output range ~ (-inf, 30.1030); regulated to Q11.21: (-1024.0, 1024.0)
  */
-inline int32_t drc_lin2db_fixed(int32_t linear)
+int32_t drc_lin2db_fixed(int32_t linear)
 {
 	ae_f32 log10_linear;
 	ae_f64 tmp;
@@ -138,7 +138,7 @@ inline int32_t drc_lin2db_fixed(int32_t linear)
  * Input is Q6.26: max 32.0
  * Output range ~ (-inf, 3.4657); regulated to Q6.26: (-32.0, 32.0)
  */
-inline int32_t drc_log_fixed(int32_t x)
+int32_t drc_log_fixed(int32_t x)
 {
 	ae_f32 log10_x;
 	ae_f64 tmp;
@@ -160,7 +160,7 @@ inline int32_t drc_log_fixed(int32_t x)
  * Input is Q2.30; valid range: [-1.0, 1.0]
  * Output range: [-1.0, 1.0]; regulated to Q2.30: (-2.0, 2.0)
  */
-inline int32_t drc_asin_fixed(int32_t x)
+int32_t drc_asin_fixed(int32_t x)
 {
 	/* Coefficients obtained from:
 	 * If x <= 1/sqrt(2), then
@@ -224,7 +224,7 @@ inline int32_t drc_asin_fixed(int32_t x)
  * Input depends on precision_x
  * Output depends on precision_y
  */
-inline int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y)
+int32_t drc_inv_fixed(int32_t x, int32_t precision_x, int32_t precision_y)
 {
 	/* Coefficients obtained from:
 	 * fpminimax(1/x, 5, [|SG...|], [sqrt(2)/2;1], absolute);

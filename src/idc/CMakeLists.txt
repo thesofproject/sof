@@ -1,3 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-add_local_sources(sof idc.c )
+is_zephyr(zephyr)
+if(zephyr)
+  add_local_sources_ifdef(CONFIG_SMP sof idc.c)
+  add_local_sources(sof zephyr_idc.c)
+else()
+  add_local_sources(sof idc.c)
+endif()

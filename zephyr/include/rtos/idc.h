@@ -201,8 +201,6 @@ enum task_state idc_do_cmd(void *data);
 
 void idc_cmd(struct idc_msg *msg);
 
-int idc_wait_in_blocking_mode(uint32_t target_core, bool (*cond)(int));
-
 int idc_msg_status_get(uint32_t core);
 
 int idc_init(void);

@@ -280,31 +280,27 @@ static int lib_manager_unload_libcode_modules(const uint32_t module_id)
 }
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 
-static void __sparse_cache *lib_manager_get_instance_bss_address(uint32_t module_id,
-								 uint32_t instance_id,
-								 const struct sof_man_module *mod)
+static void lib_manager_get_instance_bss_address(uint32_t instance_id,
+						 const struct sof_man_module *mod,
+						 void __sparse_cache **va_addr, size_t *size)
 {
-	uint32_t instance_bss_size =
-		 mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count;
-	uint32_t inst_offset = instance_bss_size * PAGE_SZ * instance_id;
-	void __sparse_cache *va_base =
-		(void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
-					inst_offset);
+	*size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count *
+		PAGE_SZ;
+	size_t inst_offset = *size * instance_id;
+	*va_addr = (void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
+					   inst_offset);
 
-	tr_dbg(&lib_manager_tr, "instance_bss_size: %#x, pointer: %p",
-	       instance_bss_size, (__sparse_force void *)va_base);
-
-	return va_base;
+	tr_dbg(&lib_manager_tr, "instance_bss_size: %#zx, pointer: %p", *size,
+	       (__sparse_force void *)*va_addr);
 }
 
-static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t instance_id,
-						uint32_t is_pages, const struct sof_man_module *mod)
+static int lib_manager_allocate_module_instance(uint32_t instance_id, uint32_t is_pages,
+						const struct sof_man_module *mod)
 {
-	uint32_t bss_size =
-			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
-			 * PAGE_SZ;
-	void __sparse_cache *va_base = lib_manager_get_instance_bss_address(module_id,
-									    instance_id, mod);
+	size_t bss_size;
+	void __sparse_cache *va_base;
+
+	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &bss_size);
 
 	if ((is_pages * PAGE_SZ) > bss_size) {
 		tr_err(&lib_manager_tr, "invalid is_pages: %u, required: %u",
@@ -324,28 +320,25 @@ static int lib_manager_allocate_module_instance(uint32_t module_id, uint32_t ins
 	return 0;
 }
 
-static int lib_manager_free_module_instance(uint32_t module_id, uint32_t instance_id,
-					    const struct sof_man_module *mod)
+static int lib_manager_free_module_instance(uint32_t instance_id, const struct sof_man_module *mod)
 {
-	uint32_t bss_size =
-			(mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count)
-			 * PAGE_SZ;
-	void __sparse_cache *va_base = lib_manager_get_instance_bss_address(module_id,
-									    instance_id, mod);
+	size_t bss_size;
+	void __sparse_cache *va_base;
+
+	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &bss_size);
 	/*
 	 * Unmap bss memory.
 	 */
 	return sys_mm_drv_unmap_region((__sparse_force void *)va_base, bss_size);
 }
 
-uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      const struct comp_ipc_config *ipc_config,
+uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config)
 {
 	const struct sof_man_module *mod;
 	const struct ipc4_base_module_cfg *base_cfg = ipc_specific_config;
+	const uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 	int ret;
-	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", ipc_config->id);
 
@@ -356,7 +349,7 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 	}
 
 	if (module_is_llext(mod))
-		return llext_manager_allocate_module(proc, ipc_config, ipc_specific_config);
+		return llext_manager_allocate_module(ipc_config, ipc_specific_config);
 
 	ret = lib_manager_load_module(module_id, mod);
 	if (ret < 0)
@@ -368,8 +361,8 @@ uintptr_t lib_manager_allocate_module(struct processing_module *proc,
 		goto err;
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 
-	ret = lib_manager_allocate_module_instance(module_id, IPC4_INST_ID(ipc_config->id),
-						   base_cfg->is_pages, mod);
+	ret = lib_manager_allocate_module_instance(IPC4_INST_ID(ipc_config->id), base_cfg->is_pages,
+						   mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "module allocation failed: %d", ret);
 #ifdef CONFIG_LIBCODE_MODULE_SUPPORT
@@ -393,6 +386,10 @@ int lib_manager_free_module(const uint32_t component_id)
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
 	mod = lib_manager_get_module_manifest(module_id);
+	if (!mod) {
+		tr_err(&lib_manager_tr, "failed to get module descriptor");
+		return -EINVAL;
+	}
 
 	if (module_is_llext(mod))
 		return llext_manager_free_module(component_id);
@@ -407,7 +404,7 @@ int lib_manager_free_module(const uint32_t component_id)
 		return ret;
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 
-	ret = lib_manager_free_module_instance(module_id, IPC4_INST_ID(component_id), mod);
+	ret = lib_manager_free_module_instance(IPC4_INST_ID(component_id), mod);
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "free module instance failed: %d", ret);
 		return ret;
@@ -419,8 +416,7 @@ int lib_manager_free_module(const uint32_t component_id)
 
 #define PAGE_SZ		4096 /* equals to MAN_PAGE_SIZE used by rimage */
 
-uintptr_t lib_manager_allocate_module(struct processing_module *proc,
-				      const struct comp_ipc_config *ipc_config,
+uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
 				      const void *ipc_specific_config, const void **buildinfo)
 {
 	tr_err(&lib_manager_tr, "Dynamic module allocation is not supported");
@@ -487,7 +483,6 @@ const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t modu
 					       SOF_MAN_MODULE_OFFSET(entry_index));
 }
 
-#if CONFIG_INTEL_MODULES
 /*
  * \brief Load module code, allocate its instance and create a module adapter component.
  * \param[in] drv - component driver pointer.
@@ -510,12 +505,10 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	 * Variable used by llext_manager to temporary store llext handle before creation
 	 * a instance of processing_module.
 	 */
-	struct processing_module tmp_proc;
 	struct comp_dev *dev;
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
-	tmp_proc.priv.llext = NULL;
-	const uint32_t module_entry_point = lib_manager_allocate_module(&tmp_proc, config,
+	const uint32_t module_entry_point = lib_manager_allocate_module(config,
 									args->data);
 
 	if (!module_entry_point) {
@@ -540,33 +533,25 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	}
 
 	dev = module_adapter_new(drv, config, spec);
-	if (dev) {
-		struct processing_module *mod = comp_mod(dev);
-
-		mod->priv.llext = tmp_proc.priv.llext;
-	} else {
+	if (!dev)
 		lib_manager_free_module(module_id);
-	}
+
 	return dev;
 }
 
 static void lib_manager_module_free(struct comp_dev *dev)
 {
 	struct processing_module *mod = comp_mod(dev);
-	struct llext *llext = mod->priv.llext;
 	const struct comp_ipc_config *const config = &mod->dev->ipc_config;
-	const uint32_t module_id = config->id;
 	int ret;
 
 	/* This call invalidates dev, mod and config pointers! */
 	module_adapter_free(dev);
 
-	if (!llext || !llext_unload(&llext)) {
-		/* Free module resources allocated in L2 memory. */
-		ret = lib_manager_free_module(module_id);
-		if (ret < 0)
-			comp_err(dev, "lib_manager_free_module() failed!");
-	}
+	/* Free module resources allocated in L2 memory. */
+	ret = lib_manager_free_module(config->id);
+	if (ret < 0)
+		comp_err(dev, "lib_manager_free_module() failed!");
 }
 
 static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const struct sof_uuid *uuid)
@@ -596,7 +581,9 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 	drv->ops.dai_ts_start = module_adapter_ts_start_op;
 	drv->ops.dai_ts_stop = module_adapter_ts_stop_op;
 	drv->ops.dai_ts_get = module_adapter_ts_get_op;
+#if CONFIG_INTEL_MODULES
 	drv->adapter_ops = &processing_module_adapter_interface;
+#endif
 }
 
 int lib_manager_register_module(const uint32_t component_id)
@@ -640,8 +627,9 @@ int lib_manager_register_module(const uint32_t component_id)
 		goto cleanup;
 	}
 
-	mod = (struct sof_man_module *)((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
-	const struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid[0];
+	mod = (const struct sof_man_module *)((const uint8_t *)desc +
+					      SOF_MAN_MODULE_OFFSET(entry_index));
+	const struct sof_uuid *uid = (const struct sof_uuid *)&mod->uuid;
 
 	lib_manager_prepare_module_adapter(drv, uid);
 
@@ -660,17 +648,18 @@ int lib_manager_register_module(const uint32_t component_id)
 			build_info->format);
 
 		/* Check if module is IADK */
-		if (build_info->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
+		if (IS_ENABLED(CONFIG_INTEL_MODULES) &&
+		    build_info->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
 		    build_info->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
 			/* Use module_adapter functions */
 			drv->ops.create = module_adapter_new;
-			drv->ops.prepare = module_adapter_prepare;
 		} else {
 			/* Check if module is NOT native */
 			if (build_info->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
 			    build_info->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
 				tr_err(&lib_manager_tr, "Unsupported module API version");
-				return -ENOEXEC;
+				ret = -ENOEXEC;
+				goto cleanup;
 			}
 		}
 	}
@@ -689,14 +678,6 @@ cleanup:
 
 	return ret;
 }
-
-#else /* CONFIG_INTEL_MODULES */
-int lib_manager_register_module(const uint32_t component_id)
-{
-	tr_err(&lib_manager_tr, "Dynamic module loading is not supported");
-	return -ENOTSUP;
-}
-#endif /* CONFIG_INTEL_MODULES */
 
 static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
 					uint32_t size)
@@ -1044,13 +1025,21 @@ stop_dma:
 	rfree((__sparse_force void *)man_tmp_buffer);
 
 cleanup:
-#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
-#endif
 	rfree((void *)dma_ext->dma_addr);
 	lib_manager_dma_deinit(dma_ext, dma_id);
 	rfree(dma_ext);
 	_ext_lib->runtime_data = NULL;
+
+	uint32_t module_id = lib_id << LIB_MANAGER_LIB_ID_SHIFT;
+	const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id);
+
+	if (module_is_llext(mod) && !ret)
+		/* Auxiliary LLEXT libraries need to be linked upon loading */
+		ret = llext_manager_add_library(module_id);
+
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	core_kcps_adjust(cpu_get_id(), -(CLK_MAX_CPU_HZ / 1000));
+#endif
 
 	if (!ret)
 		tr_info(&ipc_tr, "loaded library id: %u", lib_id);

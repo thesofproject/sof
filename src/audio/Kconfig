@@ -145,6 +145,8 @@ rsource "asrc/Kconfig"
 
 rsource "tdfb/Kconfig"
 
+rsource "tensorflow/Kconfig"
+
 config COMP_MODULE_ADAPTER
 	bool "Module adapter"
 	default y
@@ -165,6 +167,8 @@ rsource "rtnr/Kconfig"
 rsource "mfcc/Kconfig"
 
 rsource "codec/Kconfig"
+
+rsource "template_comp/Kconfig"
 
 endmenu # "Audio components"
 

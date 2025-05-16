@@ -18,6 +18,7 @@
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/string.h>
@@ -39,6 +40,9 @@
 #include "host_copier.h"
 #include "dai_copier.h"
 #include "ipcgtw_copier.h"
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include <zephyr/drivers/mic_privacy/intel/mic_privacy.h>
+#endif
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/drivers/dai.h>
@@ -51,7 +55,80 @@ SOF_DEFINE_REG_UUID(copier);
 
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_uuid), LOG_LEVEL_INFO);
 
-static int copier_init(struct processing_module *mod)
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+static void mic_privacy_event(void *arg, enum notify_id type, void *data)
+{
+	struct mic_privacy_data *mic_priv_data = arg;
+	struct mic_privacy_settings *mic_privacy_settings = data;
+
+	if (type == NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE) {
+		LOG_INF("mic_privacy_event, state1 = %d, state2 = %d ",
+			mic_privacy_settings->mic_privacy_state, mic_priv_data->mic_privacy_state);
+
+		if (mic_privacy_settings->mic_privacy_state == MIC_PRIV_UNMUTED) {
+			if (mic_priv_data->mic_privacy_state == MIC_PRIV_MUTED) {
+				mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_IN;
+				LOG_INF("mic_privacy_event switch to FADE_IN");
+			}
+		} else {
+			/* In case when mute would be triggered before copier instantiation. */
+			if (mic_priv_data->mic_privacy_state != MIC_PRIV_MUTED) {
+				mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_OUT;
+				LOG_INF("mic_privacy_event switch to FADE_OUT");
+			}
+		}
+		mic_priv_data->max_ramp_time_in_ms = (mic_privacy_settings->max_ramp_time * 1000) /
+						     ADSP_RTC_FREQUENCY;
+	}
+}
+
+static int mic_privacy_configure(struct comp_dev *dev, struct copier_data *cd)
+{
+	struct mic_privacy_data *mic_priv_data;
+	int ret;
+
+	mic_priv_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+				sizeof(struct mic_privacy_data));
+	if (!mic_priv_data)
+		return -ENOMEM;
+
+	if (cd->gtw_type == ipc4_gtw_dmic)
+		mic_privacy_enable_dmic_irq(true);
+
+	mic_priv_data->audio_freq =  cd->config.base.audio_fmt.sampling_frequency;
+
+	uint32_t zeroing_wait_time = (mic_privacy_get_dma_zeroing_wait_time() * 1000) /
+				     ADSP_RTC_FREQUENCY;
+
+	ret = copier_gain_set_params(dev, &mic_priv_data->mic_priv_gain_params,
+				     zeroing_wait_time, SOF_DAI_INTEL_NONE);
+	if (ret != 0) {
+		rfree(mic_priv_data);
+		return ret;
+	}
+
+	cd->mic_priv = mic_priv_data;
+
+	ret = notifier_register(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,
+				mic_privacy_event, 0);
+	if (ret != 0)
+		rfree(mic_priv_data);
+
+	return ret;
+}
+
+static void mic_privacy_free(struct copier_data *cd)
+{
+	if (cd->gtw_type == ipc4_gtw_dmic)
+		mic_privacy_enable_dmic_irq(false);
+
+	notifier_unregister(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE);
+
+	rfree(cd->mic_priv);
+}
+#endif
+
+__cold static int copier_init(struct processing_module *mod)
 {
 	union ipc4_connector_node_id node_id;
 	struct ipc_comp_dev *ipc_pipe;
@@ -64,6 +141,8 @@ static int copier_init(struct processing_module *mod)
 	void *gtw_cfg = NULL;
 	size_t gtw_cfg_size;
 	int i, ret = 0;
+
+	assert_can_be_cold();
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd)
@@ -131,6 +210,16 @@ static int copier_init(struct processing_module *mod)
 				comp_err(dev, "unable to create host");
 				goto error;
 			}
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+			if (cd->direction == SOF_IPC_STREAM_CAPTURE &&
+			    node_id.f.dma_type == ipc4_hda_host_output_class) {
+				ret = mic_privacy_configure(dev, cd);
+				if (ret < 0) {
+					comp_err(dev, "unable to configure mic privacy");
+					goto error;
+				}
+			}
+#endif
 			break;
 		case ipc4_hda_link_output_class:
 		case ipc4_hda_link_input_class:
@@ -144,6 +233,15 @@ static int copier_init(struct processing_module *mod)
 				comp_err(dev, "unable to create dai");
 				goto error;
 			}
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+			if (cd->direction == SOF_IPC_STREAM_CAPTURE) {
+				ret = mic_privacy_configure(dev, cd);
+				if (ret < 0) {
+					comp_err(dev, "unable to configure mic privacy");
+					goto error;
+				}
+			}
+#endif
 			break;
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
@@ -179,10 +277,16 @@ error_cd:
 	return ret;
 }
 
-static int copier_free(struct processing_module *mod)
+__cold static int copier_free(struct processing_module *mod)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	mic_privacy_free(cd);
+#endif
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -653,13 +757,15 @@ static int copier_params(struct processing_module *mod)
 	return ret;
 }
 
-static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
-			       int max_data_size)
+__cold static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
+				      int max_data_size)
 {
 	const struct ipc4_copier_config_set_sink_format *sink_fmt = data;
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	uint32_t chmap;
+
+	assert_can_be_cold();
 
 	if (max_data_size < sizeof(*sink_fmt)) {
 		comp_err(dev, "error: max_data_size %d should be bigger than %d", max_data_size,
@@ -698,12 +804,14 @@ static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	return 0;
 }
 
-static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const char *data)
+__cold static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const char *data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	uint32_t attenuation;
 	enum sof_ipc_frame valid_fmt, frame_fmt;
+
+	assert_can_be_cold();
 
 	/* only support attenuation in format of 32bit */
 	if (data_offset > sizeof(uint32_t)) {
@@ -733,7 +841,7 @@ static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, const cha
 	return 0;
 }
 
-static int set_chmap(struct comp_dev *dev, const void *data, size_t data_size)
+__cold static int set_chmap(struct comp_dev *dev, const void *data, size_t data_size)
 {
 	const struct ipc4_copier_config_channel_map *chmap_cfg = data;
 	struct processing_module *mod = comp_mod(dev);
@@ -745,6 +853,8 @@ static int set_chmap(struct comp_dev *dev, const void *data, size_t data_size)
 	pcm_converter_func converters[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	int i;
 	uint32_t irq_flags;
+
+	assert_can_be_cold();
 
 	if (data_size < sizeof(*chmap_cfg)) {
 		comp_err(dev, "Wrong payload size: %d", data_size);
@@ -809,15 +919,17 @@ static int set_chmap(struct comp_dev *dev, const void *data, size_t data_size)
 	return 0;
 }
 
-static int copier_set_configuration(struct processing_module *mod,
-				    uint32_t config_id,
-				    enum module_cfg_fragment_position pos,
-				    uint32_t data_offset_size,
-				    const uint8_t *fragment, size_t fragment_size,
-				    uint8_t *response,
-				    size_t response_size)
+__cold static int copier_set_configuration(struct processing_module *mod,
+					   uint32_t config_id,
+					   enum module_cfg_fragment_position pos,
+					   uint32_t data_offset_size,
+					   const uint8_t *fragment, size_t fragment_size,
+					   uint8_t *response,
+					   size_t response_size)
 {
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	comp_dbg(dev, "copier_set_config()");
 
@@ -839,15 +951,17 @@ static inline void convert_u64_to_u32s(uint64_t val, uint32_t *val_l, uint32_t *
 	*val_h = (uint32_t)((val >> 32) & 0xffffffff);
 }
 
-static int copier_get_configuration(struct processing_module *mod,
-				    uint32_t config_id, uint32_t *data_offset_size,
-				    uint8_t *fragment, size_t fragment_size)
+__cold static int copier_get_configuration(struct processing_module *mod,
+					   uint32_t config_id, uint32_t *data_offset_size,
+					   uint8_t *fragment, size_t fragment_size)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_llp_reading_extended llp_ext;
 	struct comp_dev *dev = mod->dev;
 	struct sof_ipc_stream_posn posn;
 	struct ipc4_llp_reading llp;
+
+	assert_can_be_cold();
 
 	if (cd->ipc_gtw)
 		return 0;
@@ -1044,12 +1158,14 @@ static int copier_dai_ts_stop_op(struct comp_dev *dev)
 	return dai_common_ts_stop(dd, dev);
 }
 
-static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,
-				int dir)
+__cold static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_params *params,
+				       int dir)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
 	struct dai_data *dd = cd->dd[0];
+
+	assert_can_be_cold();
 
 	if (dev->ipc_config.type != SOF_COMP_DAI)
 		return -EINVAL;
@@ -1057,13 +1173,15 @@ static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_para
 	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
-static int copier_bind(struct processing_module *mod, void *data)
+__cold static int copier_bind(struct processing_module *mod, void *data)
 {
 	const struct ipc4_module_bind_unbind *const bu = (struct ipc4_module_bind_unbind *)data;
 	const uint32_t src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
 	const uint32_t src_queue_id = bu->extension.r.src_queue;
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	if (dev->ipc_config.id != src_id)
 		return 0; /* Another component is a data producer */
@@ -1084,10 +1202,12 @@ static int copier_bind(struct processing_module *mod, void *data)
 	return -ENODEV;
 }
 
-static int copier_unbind(struct processing_module *mod, void *data)
+__cold static int copier_unbind(struct processing_module *mod, void *data)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	assert_can_be_cold();
 
 	if (dev->ipc_config.type == SOF_COMP_DAI) {
 		struct dai_data *dd = cd->dd[0];

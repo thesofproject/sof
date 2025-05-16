@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <mqueue.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <semaphore.h>
@@ -40,27 +39,6 @@
 
 #include "plugin.h"
 #include "common.h"
-
-int plug_mq_cmd(struct plug_mq_desc *ipc, void *msg, size_t len, void *reply, size_t rlen)
-{
-	return plug_mq_cmd_tx_rx(ipc, ipc, msg, len, reply, rlen);
-}
-
-/*
- * Open an existing message queue using IPC object.
- */
-int plug_mq_open(struct plug_mq_desc *ipc)
-{
-	/* now open new queue for Tx and Rx */
-	ipc->mq = mq_open(ipc->queue_name,  O_RDWR);
-	if (ipc->mq < 0) {
-	//	SNDERR("failed to open IPC queue %s: %s\n",
-	//		ipc->queue_name, strerror(errno));
-		return -errno;
-	}
-
-	return 0;
-}
 
 /*
  * Open an existing semaphore using lock object.

@@ -3,6 +3,11 @@
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 list(APPEND TPLGS
 # SDW + DMIC topology with passthrough pipelines
+"cavs-sdw\;sof-mtl-rt711-2ch\;PLATFORM=mtl,NUM_DMICS=2,PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,\
+DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-rt711-2ch.bin,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
+
 "cavs-sdw\;sof-mtl-rt711-4ch\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-rt711-4ch.bin,\
 HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,DMIC0_ENHANCED_CAPTURE=true,\
@@ -127,9 +132,32 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
+# Split topologies
+"cavs-sdw\;sof-arl-dmic-2ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
+PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-arl-dmic-2ch-id5.bin"
+
+"cavs-sdw\;sof-arl-dmic-4ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-arl-dmic-4ch-id5.bin"
+
+"cavs-sdw\;sof-mtl-dmic-2ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
+PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id5.bin"
+
+"cavs-sdw\;sof-mtl-dmic-4ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id5.bin"
+
 # Below topologies are used on Chromebooks
 
 "cavs-rt5682\;sof-mtl-max98357a-rt5682\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
+PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-mtl-max98357a-rt5682.bin,SPK_ID=6,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+BT_ID=7,BT_PCM_NAME=Bluetooth,DEEP_BUF_SPK=true"
+
+# Note this is same as above but different tplg name
+"cavs-rt5682\;sof-mtl-max98360a-rt5682\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,\
 PDM1_MIC_B_ENABLE=1,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-mtl-max98357a-rt5682.bin,SPK_ID=6,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
 BT_ID=7,BT_PCM_NAME=Bluetooth,DEEP_BUF_SPK=true"

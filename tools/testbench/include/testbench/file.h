@@ -42,6 +42,8 @@ struct file_state {
 	FILE *rfh, *wfh; /* read/write file handle */
 	char *fn;
 	int copy_count;
+	int channels;
+	int rate;
 	int n;
 	enum file_mode mode;
 	enum file_format f_format;
@@ -56,8 +58,6 @@ struct file_comp_data;
 struct file_comp_data {
 	struct file_state fs;
 	enum sof_ipc_frame frame_fmt;
-	uint32_t channels;
-	uint32_t rate;
 	int sample_container_bytes;
 	int (*file_func)(struct file_comp_data *cd, struct audio_stream *sink,
 			 struct audio_stream *source, uint32_t frames);

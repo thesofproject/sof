@@ -5,7 +5,7 @@
 	REM # CTC module config
 	[[module.entry]]
 	name = "CTC"
-	uuid = "BF0E1BBC-DC6A-45FE-BC90-2554CB137AB4"
+	uuid = UUIDREG_STR_GOOGLE_CTC_AUDIO_PROCESSING
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"

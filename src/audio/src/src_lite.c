@@ -43,8 +43,11 @@ static int src_lite_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	a->stage1 = src_table1[a->idx_out][a->idx_in];
-	a->stage2 = src_table2[a->idx_out][a->idx_in];
+	ret = src_allocate_copy_stages(mod->dev, a,
+				       src_table1[a->idx_out][a->idx_in],
+				       src_table2[a->idx_out][a->idx_in]);
+	if (ret < 0)
+		return ret;
 
 	ret = src_params_general(mod, sources[0], sinks[0]);
 	if (ret < 0)
@@ -68,5 +71,7 @@ SOF_DEFINE_REG_UUID(src_lite);
 
 DECLARE_TR_CTX(src_lite_tr, SOF_UUID(src_lite_uuid), LOG_LEVEL_INFO);
 
+#if !CONFIG_COMP_SRC_MODULE
 DECLARE_MODULE_ADAPTER(src_lite_interface, src_lite_uuid, src_lite_tr);
 SOF_MODULE_INIT(src_lite, sys_comp_module_src_lite_interface_init);
+#endif

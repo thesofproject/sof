@@ -280,6 +280,13 @@ PLATFORM=mtl"
 "cavs-nocodec-bt\;sof-nocodec-bt-mtl-lbm\;BT_LOOPBACK_MODE=true,PLATFORM=mtl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-mtl-lbm.bin"
 
+# BT offload for ptl
+"cavs-nocodec-bt\;sof-nocodec-bt-ptl\;PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-ptl.bin,\
+PLATFORM=ptl"
+# BT offload loopback test topology (lbm) for ptl
+"cavs-nocodec-bt\;sof-nocodec-bt-ptl-lbm\;BT_LOOPBACK_MODE=true,PLATFORM=ptl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-ptl-lbm.bin"
+
 # CAVS HDA topology for benchmarking performance
 # Copier - peak volume - mixin - mixout - aria - peak volume - mixin - mixout - copier
 "sof-hda-generic\;sof-hda-benchmark-generic\;HDA_CONFIG=benchmark,BENCH_CONFIG=benchmark,BENCH_ARIA_PARAMS=param_1"
@@ -291,6 +298,16 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 # Topology to test RTC AEC
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
+
+# SSP test topology for Data Processing SRC on MTL
+"cavs-nocodec\;sof-mtl-nocodec-dp-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin,SRC_DOMAIN=DP"
+# SSP test topology for Data Processing SRC on LNL
+"cavs-nocodec\;sof-lnl-nocodec-dp-test\;PLATFORM=lnl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-lnl-nocodec.bin,SRC_DOMAIN=DP"
+# SSP test topology for Data Processing SRC on PTL
+"cavs-nocodec\;sof-ptl-nocodec-dp-test\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
 
 # Add MFCC to 16 kHz DMIC1, 2ch with NHLT - cAVS
 "sof-hda-generic\;sof-hda-generic-cavs25-2ch-mfcc\;HDA_CONFIG=mix,\

@@ -174,8 +174,7 @@ endif # Cadence
 		  files specific to PASSTHROUGH base codecs.
 
 	config WAVES_CODEC
-	bool "Waves codec"
-	select WAVES_CODEC_STUB if COMP_STUBS
+	tristate "Waves codec"
 	default n
 	help
 		Select to include Waves codec. Waves codec implements MaxxEffect API.
@@ -185,7 +184,8 @@ endif # Cadence
 
 	config WAVES_CODEC_STUB
 	bool "Waves codec stub"
-	depends on WAVES_CODEC
+	depends on WAVES_CODEC != "n"
+	default y if COMP_STUBS
 	default n
 	help
 		Select to build the waves codec with a stub file. This should only be used for

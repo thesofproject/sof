@@ -70,6 +70,141 @@ static struct dai hsdai[] = {
 	}
 };
 
+static struct dai swaudiodai[] = {
+	{
+		.index = DI_SDW0_ACP_SW_AUDIO_TX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset         = DAI_BASE_REM + SW0_AUDIO_TX_FIFO_OFFST,
+			.handshake      = SDW0_ACP_SW_AUDIO_TX_EN_CH,
+			}
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW0_ACP_SW_AUDIO_RX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset         = DAI_BASE_REM + SW0_AUDIO_RX_FIFO_OFFST,
+			.handshake      = SDW0_ACP_SW_AUDIO_RX_EN_CH,
+			},
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW0_ACP_SW_BT_TX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset         = DAI_BASE_REM + BT0_TX_FIFO_OFFST,
+			.handshake      = SDW0_ACP_SW_BT_TX_EN_CH,
+			}
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW0_ACP_SW_BT_RX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset         = DAI_BASE_REM + BT0_RX_FIFO_OFFST,
+			.handshake      = SDW0_ACP_SW_BT_RX_EN_CH,
+			},
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW0_ACP_SW_HS_TX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset         = DAI_BASE_REM + HS0_TX_FIFO_OFFST,
+			.handshake      = SDW0_ACP_SW_HS_TX_EN_CH,
+			}
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW0_ACP_SW_HS_RX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset         = DAI_BASE_REM + HS0_RX_FIFO_OFFST,
+			.handshake      = SDW0_ACP_SW_HS_RX_EN_CH,
+			},
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW1_ACP_P1_SW_BT_TX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset         = DAI_BASE_REM + BT_TX_FIFO_OFFST,
+			.handshake      = SDW1_ACP_P1_SW_BT_TX_EN_CH,
+			}
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW1_ACP_P1_SW_BT_RX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset         = DAI_BASE_REM + BT_RX_FIFO_OFFST,
+			.handshake      = SDW1_ACP_P1_SW_BT_RX_EN_CH,
+			},
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW1_ACP_P1_SW_AUDIO_TX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset         = DAI_BASE_REM + SW1_AUDIO_TX_FIFO_OFFST,
+			.handshake      = SDW1_ACP_P1_SW_AUDIO_TX_EN_CH,
+			}
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW1_ACP_P1_SW_AUDIO_RX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset         = DAI_BASE_REM + SW1_AUDIO_RX_FIFO_OFFST,
+			.handshake      = SDW1_ACP_P1_SW_AUDIO_RX_EN_CH,
+			},
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW1_ACP_P1_SW_HS_TX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset         = DAI_BASE_REM + SW1_HS_TX_FIFO_OFFST,
+			.handshake      = SDW1_ACP_P1_SW_HS_TX_EN_CH,
+			},
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+	{
+		.index = DI_SDW1_ACP_P1_SW_HS_RX,
+		.plat_data = {
+			.base = DAI_BASE_REM,
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset         = DAI_BASE_REM + SW1_HS_RX_FIFO_OFFST,
+			.handshake      = SDW1_ACP_P1_SW_HS_RX_EN_CH,
+			},
+		},
+		.drv = &acp_swaudiodai_driver,
+	},
+};
+
 #ifdef ACP_SP_ENABLE
 static struct dai spdai[] = {
 	{
@@ -163,6 +298,11 @@ const struct dai_type_info dti[] = {
 		.num_dais = ARRAY_SIZE(btdai)
 	},
 #endif
+	{
+		.type		= SOF_DAI_AMD_SW_AUDIO,
+		.dai_array	= swaudiodai,
+		.num_dais	= ARRAY_SIZE(swaudiodai)
+	},
 };
 
 const struct dai_info lib_dai = {
@@ -179,6 +319,8 @@ int dai_init(struct sof *sof)
 		k_spinlock_init(&acp_dmic_dai[i].lock);
 	for (i = 0; i < ARRAY_SIZE(hsdai); i++)
 		k_spinlock_init(&hsdai[i].lock);
+	for (i = 0; i < ARRAY_SIZE(swaudiodai); i++)
+		k_spinlock_init(&swaudiodai[i].lock);
 #ifdef ACP_SP_ENABLE
 	for (i = 0; i < ARRAY_SIZE(spdai); i++)
 		k_spinlock_init(&spdai[i].lock);

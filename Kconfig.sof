@@ -130,6 +130,24 @@ config COLD_STORE_EXECUTE_DRAM
 	  option to enable this feature to save SRAM and to speed up SRAM
 	  copying of performance-critical data and code.
 
+
+config COLD_STORE_EXECUTE_DEBUG
+	bool "Enable checks for cold code on hot paths"
+	help
+	  This enables an assert_can_be_cold() check, which causes an exception
+	  if called in the LL task context and assert() evaluation is enabled.
+
+config FAST_GET
+	bool "Enable simple refcounting DRAM data copier"
+	default n
+	help
+	  Enable simple refcounting DRAM data copier for copying processing
+	  module data from DRAM to SRAM when the data is needed and freeing
+	  the SRAM when the data is not needed anymore. If multiple module
+	  instances need the same chunk the same copy is used with reference
+	  counting. Source is src/lib/fast-get.c. The option should be selected
+	  on platforms, where __cold_rodata is supported.
+
 rsource "src/Kconfig"
 
 # See zephyr/modules/Kconfig
@@ -186,6 +204,19 @@ config DEBUG_IPC_COUNTERS
 	default n
 	help
 	  Select for enabling tracing IPC counter in SRAM_REG mailbox
+
+config DEBUG_IPC_TIMINGS
+	bool "Enable IPC message handling time logging"
+	depends on DEBUG
+	default n
+	help
+	  Adds a logging after IPC handling before putting IPC reply
+	  to send queue. The logging contains both the reply and the
+	  original request message headers and the time that it took
+	  to process the request in micro seconds. The value can be
+	  used to collect statistics on changes in firmware response
+	  times. This also disables the logging of the received
+	  request on core 0 to avoid flooding the logs too much.
 
 config SCHEDULE_LOG_CYCLE_STATISTICS
 	bool "Log cycles per tick statistics for each task separately"

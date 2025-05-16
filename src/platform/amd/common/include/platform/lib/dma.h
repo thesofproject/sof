@@ -13,7 +13,7 @@
 #define PLATFORM_NUM_DMACS	4
 
 /* max number of supported DMA channels */
-#define PLATFORM_MAX_DMA_CHAN	8
+#define PLATFORM_MAX_DMA_CHAN	12
 
 #define DMA_ID_DMA0		0
 #define DMA_ID_HOST		1

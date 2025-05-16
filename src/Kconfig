@@ -15,6 +15,7 @@ rsource "probe/Kconfig"
 rsource "samples/Kconfig"
 
 rsource "schedule/Kconfig"
+rsource "schedule/Kconfig.threads_prio"
 
 rsource "ipc/Kconfig"
 
@@ -25,3 +26,5 @@ rsource "library_manager/Kconfig"
 rsource "debug/telemetry/Kconfig"
 
 rsource "debug/debug_stream/Kconfig"
+
+rsource "debug/tester/Kconfig"

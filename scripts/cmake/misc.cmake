@@ -58,6 +58,14 @@ macro(add_local_sources_ifdef condition target)
 	endif()
 endmacro()
 
+# helper macro used similarly as add_local_sources_ifdef
+# Zephyr duplicate in sof/zephyr/CMakeLists.txt; keep in sync
+macro(sof_list_append_ifdef feature_toggle list)
+  if(${${feature_toggle}})
+    list(APPEND ${list} ${ARGN})
+  endif()
+endmacro()
+
 # Adds sources to target like target_sources, but assumes that
 # paths are relative to subdirectory.
 # Works like:

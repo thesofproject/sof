@@ -45,8 +45,6 @@ static size_t fuzz_in_sz;
 static void fuzz_isr(const void *arg)
 {
 	size_t rem, i, n = MIN(posix_fuzz_sz, sizeof(fuzz_in) - fuzz_in_sz);
-	bool comp_new = false;
-	int comp_idx = 0;
 
 	for (i = 0; i < n; i++)
 		fuzz_in[fuzz_in_sz++] = posix_fuzz_buf[i];
@@ -68,6 +66,9 @@ static void fuzz_isr(const void *arg)
 	fuzz_in_sz = rem;
 
 #ifdef CONFIG_IPC_MAJOR_3
+	bool comp_new = false;
+	int comp_idx = 0;
+
 	// One special case: a first byte of 0xff (which is in the
 	// otherwise-ignored size value at the front of the command --
 	// we rewrite those) is interpreted as a "component new"
@@ -85,8 +86,6 @@ static void fuzz_isr(const void *arg)
 	// The first dword is a size value which fuzzing will stumble
 	// on only rarely, fill it in manually.
 	*(uint32_t *)global_ipc->comp_data = msgsz;
-
-	struct sof_ipc_comp *cc = global_ipc->comp_data;
 
 	// "Adjust" the command to represent a "comp new" command per
 	// above.  Basically we want to copy in the UUID value for one

@@ -675,7 +675,7 @@ static int igo_nr_set_config(struct processing_module *mod, uint32_t param_id,
 
 static void igo_nr_print_config(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_data __maybe_unused *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "  igo_params_ver		%d",
@@ -818,6 +818,11 @@ static int32_t igo_nr_prepare(struct processing_module *mod,
 
 	comp_dbg(dev, "igo_nr_prepare()");
 
+	if (!source || !sink) {
+		comp_err(dev, "no source or sink");
+		return -ENOTCONN;
+	}
+
 #if CONFIG_IPC_MAJOR_4
 	ret = igo_nr_ipc4_params(mod, source, sink);
 	if (ret) {
@@ -883,9 +888,6 @@ static const struct module_interface igo_nr_interface = {
 	.free = igo_nr_free
 };
 
-DECLARE_MODULE_ADAPTER(igo_nr_interface, igo_nr_uuid, igo_nr_tr);
-SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
-
 #if CONFIG_COMP_IGO_NR_MODULE
 /* modular: llext dynamic link */
 
@@ -893,14 +895,16 @@ SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-#define UUID_IGO_NR 0xBC, 0xE2, 0x6A, 0x69, 0x77, 0x28, 0xEB, 0x11, 0xC1, 0xAD, \
-		0x02, 0x42, 0xAC, 0x12, 0x00, 0x02
-
 SOF_LLEXT_MOD_ENTRY(igo_nr, &igo_nr_interface);
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("IGO_NR", igo_nr_llext_entry, 1, UUID_IGO_NR, 40);
+	SOF_LLEXT_MODULE_MANIFEST("IGO_NR", igo_nr_llext_entry, 1, SOF_REG_UUID(igo_nr), 40);
 
 SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(igo_nr_interface, igo_nr_uuid, igo_nr_tr);
+SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
 
 #endif

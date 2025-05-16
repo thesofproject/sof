@@ -117,6 +117,7 @@ ENV PATH="/home/sof/work/xtensa-imx8ulp-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-mt8186-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-mt8195-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-mt8188-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-mt8196-elf/bin:${PATH}"
 
 ARG NEWLIB_REPO=https://github.com/jcmvbkbc/newlib-xtensa.git
 RUN cd "$HOME" && \

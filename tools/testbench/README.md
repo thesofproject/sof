@@ -14,6 +14,15 @@
  * Allows easy use of conventional debugger, profiler, leak and memory check
    tools usage for DSP firmware code.
 
+### Prerequisites
+
+Before running the SOF testbench, install the required dependencies:
+
+```
+sudo apt install valgrind octave-signal octave # For Ubuntu/Debian
+sudo dnf install valgrind octave-signal octave # For Fedora
+```
+
 ### Quick how-to
 
 The simplest way to build and execute testbench is with supplied
@@ -54,6 +63,72 @@ To test capture use -p 3,4 with same topologies. To run both
 directions, use -p 1,2,3,4 and provide multiple input and output
 files separated with comma. Use e.g. -i i1.raw,i2.raw
 -o o1.raw,o2.raw.
+
+### Apply controls to simulation
+
+The testbench supports shell script like amixer and sleep commands for
+the controls. Create e.g. this script file as controls.sh:
+
+```
+#!/bin/sh
+
+# Example test sequence for DRC and volume components
+
+amixer -c0 cset name='Post Mixer Analog Playback DRC switch' off
+amixer -c0 cset name='Post Mixer Analog Playback Volume' 40,30
+sleep 1
+amixer -c0 cset name='Post Mixer Analog Playback Volume' 0
+sleep 1
+amixer -c0 cset name='Post Mixer Analog Playback Volume' 45
+```
+
+Then generarate sine wave (997 Hz, -3 dB level, 3 seconds) with sox
+and check the impact to processed signal with next commands:
+
+```
+sox -n --encoding signed-integer -L -r 48000 -c 2 -b 32 in.raw synth 3 sine 997 norm -3
+
+tools/testbench/build_testbench/install/bin/sof-testbench4 -r 48000 -c 2 -b S32_LE   -p 1,2 \
+ -t tools/build_tools/topology/topology2/production/sof-hda-generic.tplg \
+-i in.raw -o out.raw -s controls.sh
+
+sox --encoding signed-integer -L -r 48000 -c 2 -b 32 out.raw out.wav
+```
+
+As second example apply in one second intervals bytes control blobs
+for IIR equalizer. The impact is easiest to hear with pink noise
+signal. Create the control script below and run the following commands
+to create the input, run testbench, and convert to wav for examining
+the output.
+
+```
+#!/bin/sh
+
+# Example test sequence for IIR equalizer, switch other processing off
+
+amixer -c0 cset name='Post Mixer Analog Playback DRC switch' off
+amixer -c0 cset name='Post Mixer Analog Playback Volume' 45
+sof-ctl -c name='Post Mixer Analog Playback FIR Eq bytes' -s tools/ctl/ipc4/eq_fir/pass.txt
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/pass.txt
+sleep 1
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/loudness.txt
+sleep 1
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/bandpass.txt
+sleep 1
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/bassboost.txt
+sleep 1
+sof-ctl -c name='Post Mixer Analog Playback IIR Eq bytes' -s tools/ctl/ipc4/eq_iir/highpass_50hz_0db_48khz.txt
+```
+
+```
+sox -n --encoding signed-integer -L -r 48000 -c 2 -b 32 in.raw synth 5 pinknoise norm -20
+
+tools/testbench/build_testbench/install/bin/sof-testbench4 -r 48000 -c 2 -b S32_LE -p 1,2 \
+ -t tools/build_tools/topology/topology2/production/sof-hda-generic.tplg \
+ -i in.raw -o out.raw -s controls.sh
+
+sox --encoding signed-integer -L -r 48000 -c 2 -b 32 out.raw out.wav
+```
 
 ### Run testbench with helper script
 

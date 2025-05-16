@@ -14,6 +14,7 @@ config COMP_MFCC
 	select NATURAL_LOGARITHM_FIXED
 	select NUMBERS_NORM
 	select SQRT_FIXED
+	default m if LIBRARY_DEFAULT_MODULAR
 	default y
 	help
 	  This option enables build of a Mel-frequency cepstral coefficients
