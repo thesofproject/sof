@@ -178,6 +178,18 @@ config FORMAT_U8
 	help
 	  Support unsigned 8 bit processing data format
 
+config FORMAT_A_LAW
+	bool "Support A-law"
+	default n
+	help
+	  Support 8 bit A-law processing data format.
+
+config FORMAT_MU_LAW
+	bool "Support mu-law"
+	default n
+	help
+	  Support 8 bit mu-law processing data format.
+
 config FORMAT_S16LE
 	bool "Support S16LE"
 	default y
@@ -225,6 +237,20 @@ config PCM_CONVERTER_FORMAT_U8
 	default n
 	help
 	  Support 8 bit processing data format without sign
+
+config PCM_CONVERTER_FORMAT_A_LAW
+	bool "Support A-law"
+	default n
+	select MATH_A_LAW_CODEC
+	help
+	  Support 8 bit A-law data format.
+
+config PCM_CONVERTER_FORMAT_MU_LAW
+	bool "Support mu-law"
+	default n
+	select MATH_MU_LAW_CODEC
+	help
+	  Support 8 bit mu-law data format.
 
 config PCM_CONVERTER_FORMAT_S16LE
 	bool "Support S16LE"
