@@ -36,6 +36,8 @@
 
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 #include <auth/intel_auth_api.h>
+#else
+struct auth_api_ctx;
 #endif
 
 #include <errno.h>
@@ -60,49 +62,40 @@ struct lib_manager_dma_ext {
 static struct ext_library loader_ext_lib;
 
 #if CONFIG_LIBRARY_AUTH_SUPPORT
-static int lib_manager_auth_init(void)
+static int lib_manager_auth_init(struct auth_api_ctx *auth_ctx, void **auth_buffer)
 {
-	struct ext_library *ext_lib = ext_lib_get();
 	int ret;
 
 	if (auth_api_version().major != AUTH_API_VERSION_MAJOR)
 		return -EINVAL;
 
-	ext_lib->auth_buffer = rballoc_align(0, SOF_MEM_CAPS_RAM,
-					     AUTH_SCRATCH_BUFF_SZ, CONFIG_MM_DRV_PAGE_SIZE);
-	if (!ext_lib->auth_buffer)
+	*auth_buffer = rballoc_align(0, SOF_MEM_CAPS_RAM,
+				     AUTH_SCRATCH_BUFF_SZ, CONFIG_MM_DRV_PAGE_SIZE);
+	if (!*auth_buffer)
 		return -ENOMEM;
 
-	ret = auth_api_init(&ext_lib->auth_ctx, ext_lib->auth_buffer,
-			    AUTH_SCRATCH_BUFF_SZ, IMG_TYPE_LIB);
+	ret = auth_api_init(auth_ctx, *auth_buffer, AUTH_SCRATCH_BUFF_SZ, IMG_TYPE_LIB);
 	if (ret != 0) {
 		tr_err(&lib_manager_tr, "auth_api_init() failed with error: %d", ret);
-		rfree(ext_lib->auth_buffer);
-		ret = -EACCES;
+		rfree(*auth_buffer);
+		return -EACCES;
 	}
 
-	return ret;
+	return 0;
 }
 
-static void lib_manager_auth_deinit(void)
+static void lib_manager_auth_deinit(struct auth_api_ctx *auth_ctx, void *auth_buffer)
 {
-	struct ext_library *ext_lib = ext_lib_get();
-
-	if (ext_lib->auth_buffer)
-		memset(ext_lib->auth_buffer, 0, AUTH_SCRATCH_BUFF_SZ);
-
-	rfree(ext_lib->auth_buffer);
-	ext_lib->auth_buffer = NULL;
-	memset(&ext_lib->auth_ctx, 0, sizeof(struct auth_api_ctx));
+	ARG_UNUSED(auth_ctx);
+	rfree(auth_buffer);
 }
 
-static int lib_manager_auth_proc(const void *buffer_data,
-				 size_t buffer_size, enum auth_phase phase)
+static int lib_manager_auth_proc(const void *buffer_data, size_t buffer_size,
+				 enum auth_phase phase, struct auth_api_ctx *auth_ctx)
 {
-	struct ext_library *ext_lib = ext_lib_get();
 	int ret;
 
-	ret = auth_api_init_auth_proc(&ext_lib->auth_ctx, buffer_data, buffer_size, phase);
+	ret = auth_api_init_auth_proc(auth_ctx, buffer_data, buffer_size, phase);
 
 	if (ret != 0) {
 		tr_err(&lib_manager_tr, "auth_api_init_auth_proc() failed with error: %d", ret);
@@ -110,10 +103,10 @@ static int lib_manager_auth_proc(const void *buffer_data,
 	}
 
 	/* The auth_api_busy() will timeouts internally in case of failure */
-	while (auth_api_busy(&ext_lib->auth_ctx))
+	while (auth_api_busy(auth_ctx))
 		;
 
-	ret = auth_api_result(&ext_lib->auth_ctx);
+	ret = auth_api_result(auth_ctx);
 
 	if (ret != AUTH_IMAGE_TRUSTED) {
 		tr_err(&lib_manager_tr, "Untrusted library!");
@@ -121,7 +114,7 @@ static int lib_manager_auth_proc(const void *buffer_data,
 	}
 
 	if (phase == AUTH_PHASE_LAST)
-		auth_api_cleanup(&ext_lib->auth_ctx);
+		auth_api_cleanup(auth_ctx);
 
 	return 0;
 }
@@ -819,7 +812,7 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 
 static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 				     const void __sparse_cache *man_buffer,
-				     uint32_t lib_id)
+				     uint32_t lib_id, struct auth_api_ctx *auth_ctx)
 {
 	void __sparse_cache *library_base_address;
 	const struct sof_man_fw_desc *man_desc = (struct sof_man_fw_desc *)
@@ -850,7 +843,7 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 	/* AUTH_PHASE_FIRST - checks library manifest only. */
 	ret = lib_manager_auth_proc((__sparse_force const void *)man_buffer,
-				    MAN_MAX_SIZE_V1_8, AUTH_PHASE_FIRST);
+				    MAN_MAX_SIZE_V1_8, AUTH_PHASE_FIRST, auth_ctx);
 	if (ret < 0) {
 		rfree((__sparse_force void *)library_base_address);
 		return ret;
@@ -872,7 +865,7 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 	/* AUTH_PHASE_LAST - do final library authentication checks */
 	ret = lib_manager_auth_proc((__sparse_force void *)library_base_address,
-				    preload_size - MAN_MAX_SIZE_V1_8, AUTH_PHASE_LAST);
+				    preload_size - MAN_MAX_SIZE_V1_8, AUTH_PHASE_LAST, auth_ctx);
 	if (ret < 0) {
 		rfree((__sparse_force void *)library_base_address);
 		return ret;
@@ -1003,16 +996,19 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 		goto stop_dma;
 
 #if CONFIG_LIBRARY_AUTH_SUPPORT
+	struct auth_api_ctx auth_ctx;
+	void *auth_buffer;
+
 	/* Initialize authentication support */
-	ret = lib_manager_auth_init();
+	ret = lib_manager_auth_init(&auth_ctx, &auth_buffer);
 	if (ret < 0)
 		goto stop_dma;
-#endif /* CONFIG_LIBRARY_AUTH_SUPPORT */
 
-	ret = lib_manager_store_library(dma_ext, man_tmp_buffer, lib_id);
+	ret = lib_manager_store_library(dma_ext, man_tmp_buffer, lib_id, &auth_ctx);
 
-#if CONFIG_LIBRARY_AUTH_SUPPORT
-	lib_manager_auth_deinit();
+	lib_manager_auth_deinit(&auth_ctx, auth_buffer);
+#else
+	ret = lib_manager_store_library(dma_ext, man_tmp_buffer, lib_id, NULL);
 #endif /* CONFIG_LIBRARY_AUTH_SUPPORT */
 
 stop_dma:
