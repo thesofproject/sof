@@ -127,6 +127,8 @@ endif # COMP_KPB
 
 rsource "google/Kconfig"
 
+rsource "nxp/Kconfig"
+
 rsource "selector/Kconfig"
 
 rsource "crossover/Kconfig"
