@@ -225,6 +225,80 @@ struct ipc4_module_bind_unbind {
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+/*
+ * Using Module Config Get / Set command, host driver may send a parameter
+ * that fits into the header (a very short one), packed along with parameter id.
+ * Larger parameters require fragmentation and a series of Large Config Set
+ * commands.
+ *
+ * param_id_data specifies both ID of the parameter, defined by the module
+ * and value of the parameter.
+ * It is up to the module how to distribute bits to ID and value of the parameter.
+ * If there are more bits required than available to value, then Input Data may
+ * be used to pass the value
+ *
+ * NOTE: Module Config Get/Set commands are used internally by the driver
+ * for small parameters defined by Intel components. While all externally
+ * developed components communicates with host using Large Config commands
+ * no matter what the size of parameter is.
+ */
+struct ipc4_module_config {
+	union {
+		uint32_t dat;
+
+		struct {
+			uint32_t module_id      : 16;	/* module id */
+			uint32_t instance_id    : 8;	/* instance id */
+			/* SOF_IPC4_MOD_CONFIG_GET / SOF_IPC4_MOD_CONFIG_SET */
+			uint32_t type           : 5;
+			uint32_t rsp            : 1;	/* SOF_IPC4_MESSAGE_DIR_MSG_REQUEST */
+			uint32_t msg_tgt        : 1;	/* SOF_IPC4_MESSAGE_TARGET_MODULE_MSG */
+			uint32_t _reserved_0    : 1;
+		} r;
+	} primary;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			/* Param id and data */
+			uint32_t param_id_data  : 30;
+			uint32_t _reserved_2    : 2;
+		} r;
+	} extension;
+} __attribute__((packed, aligned(4)));
+
+/*
+ * Sent by FW in response to Module Config Get.
+ */
+struct ipc4_module_config_reply {
+	union {
+		uint32_t dat;
+
+		struct {
+			uint32_t status		: IPC4_IXC_STATUS_BITS;
+			uint32_t type		: 5;	/* SOF_IPC4_MOD_CONFIG_GET */
+			uint32_t rsp		: 1;	/* SOF_IPC4_MESSAGE_DIR_MSG_REPLY */
+			uint32_t msg_tgt	: 1;	/* SOF_IPC4_MESSAGE_TARGET_MODULE_MSG */
+			uint32_t _reserved_0	: 1;
+		} r;
+	} primary;
+
+	union {
+		uint32_t dat;
+
+		struct {
+			/*
+			 * Value of this field may be changed by the module
+			 * if parameter value fits into the available bits,
+			 * or stay intact if the value is copied to the Output Data.
+			 */
+			uint32_t param_id_data	: 30;
+			uint32_t _reserved_2	: 2;
+		} r;
+	} extension;
+} __attribute__((packed, aligned(4)));
+
 struct ipc4_module_large_config {
 	union {
 		uint32_t dat;
