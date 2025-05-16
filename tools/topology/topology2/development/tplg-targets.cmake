@@ -58,7 +58,7 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 # HDA topology with passthrough analog codec pipelines
 "sof-hda-generic\;sof-hda-passthrough\;HDA_CONFIG=passthrough"
 # HDA topology with passthrough analog codec pipelines using CHAIN_DMA
-"sof-hda-generic\;sof-hda-passthrough-chain-dma\;HDA_CONFIG=passthrough\;CODEC_HDA_CHAIN_DMA=true"
+"sof-hda-generic\;sof-hda-passthrough-chain-dma\;HDA_CONFIG=passthrough,CODEC_HDA_CHAIN_DMA=true"
 
 # SSP topology for PTL
 "cavs-nocodec\;sof-ptl-nocodec\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
