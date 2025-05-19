@@ -335,12 +335,16 @@ static int up_down_mixer_free(struct processing_module *mod)
 
 static int up_down_mixer_init(struct processing_module *mod)
 {
+	struct up_down_mixer_config default_config;
 	struct module_config *dst = &mod->priv.cfg;
-	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer = dst->init_data;
+	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer_init = dst->init_data;
+	const struct up_down_mixer_config *up_down_mixer = &up_down_mixer_init->config;
 	struct module_data *mod_data = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct up_down_mixer_data *cd;
+	size_t min_size;
 	int ret;
+	int i;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -355,6 +359,47 @@ static int up_down_mixer_init(struct processing_module *mod)
 	if (!cd->buf_in || !cd->buf_out) {
 		ret = -ENOMEM;
 		goto err;
+	}
+
+	comp_info(dev, "nb_input_pins = %d, nb_output_pins = %d",
+		  dst->nb_input_pins, dst->nb_output_pins);
+
+	min_size = sizeof(struct ipc4_base_module_cfg);
+	if (dst->nb_input_pins > 0 && dst->nb_output_pins > 0)
+		min_size += ipc4_calc_base_module_cfg_ext_size(dst->nb_input_pins,
+							       dst->nb_output_pins);
+	comp_info(dev, "ipc_config_size = %d, min_size = %d",
+		  dev->ipc_config.ipc_config_size, min_size);
+
+	if (dev->ipc_config.ipc_config_size > min_size) {
+		comp_info(dev, "init configuration found");
+		cd->has_init_mix_configuration = true;
+		comp_info(dev, "init data: %d, %d, 0x%08x", up_down_mixer->out_channel_config,
+			  up_down_mixer->coefficients_select, up_down_mixer->channel_map);
+#if UP_DOWN_MIX_COEFFS_LENGTH == 8
+		comp_info(dev, "coef[0..3]: %d, %d, %d, %d",
+			  up_down_mixer->coefficients[0], up_down_mixer->coefficients[1],
+			  up_down_mixer->coefficients[2], up_down_mixer->coefficients[3]);
+		comp_info(dev, "coef[4..7]: %d, %d, %d, %d",
+			  up_down_mixer->coefficients[4], up_down_mixer->coefficients[5],
+			  up_down_mixer->coefficients[6], up_down_mixer->coefficients[7]);
+#endif
+	} else {
+		comp_info(dev, "no configuration in init, using default");
+		cd->has_init_mix_configuration = false;
+#if FORCE_REQUEST_MONO
+		default_config.out_channel_config = 0;
+		default_config.coefficients_select = 2;
+		default_config.channel_map = -15;
+		for (i = 0; i < UP_DOWN_MIX_COEFFS_LENGTH; i++)
+			default_config.coefficients[i] = 0;
+#else
+		default_config.out_channel_config = up_down_mixer_init->base_cfg.audio_fmt.ch_cfg;
+		default_config.coefficients_select = DEFAULT_COEFFICIENTS;
+		for (i = 0; i < UP_DOWN_MIX_COEFFS_LENGTH; i++)
+			default_config.coefficients[i] = 0;
+#endif
+		up_down_mixer = &default_config;
 	}
 
 	switch (up_down_mixer->coefficients_select) {
