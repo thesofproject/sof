@@ -13,3 +13,19 @@ config COMP_UP_DOWN_MIXER
          2 -> 7.1
          Downmixing for mono output:
          4.0, Quatro, 3.1, 2 -> 1
+
+choice
+	prompt "Up_down_mixer HIFI level"
+	depends on COMP_UP_DOWN_MIXER
+	default UP_DOWN_MIXER_HIFI_MAX
+
+config UP_DOWN_MIXER_HIFI_MAX
+	bool "Max level available in the toolchain"
+
+config UP_DOWN_MIXER_HIFI_3
+	bool "HIFI3 UP_DOWN_MIXER"
+
+config UP_DOWN_MIXER_HIFI_NONE
+	bool "Generic UP_DOWN_MIXER, no HIFI"
+
+endchoice
