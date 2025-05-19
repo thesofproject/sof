@@ -450,40 +450,57 @@ up_down_mixer_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 
 	size_t output_frames, input_frames, ret, input_cirbuf_size, output_cirbuf_size;
-	const uint8_t *input0_pos, *input0_start;
-	uint8_t *output_pos, *output_start;
+	const uint8_t *input_pos, *input_start, *input_end;
+	uint8_t *output_pos, *output_start, *output_end;
+	int output_frames_without_wrap;
+	int frames_without_wrap, frames, frames_remain;
+	uint32_t input_bytes;
 
 	comp_dbg(dev, "up_down_mixer_process()");
 
 	output_frames = sink_get_free_frames(output_buffers[0]);
 	input_frames = source_get_data_frames_available(input_buffers[0]);
+	frames = MIN(input_frames, output_frames);
 
 	const size_t output_frame_bytes = sink_get_frame_bytes(output_buffers[0]);
 
-	ret = sink_get_buffer(output_buffers[0], output_frames * output_frame_bytes,
+	ret = sink_get_buffer(output_buffers[0], frames * output_frame_bytes,
 			      (void **)&output_pos, (void **)&output_start, &output_cirbuf_size);
 	if (ret)
 		return -ENODATA;
 
-	const size_t input0_frame_bytes = source_get_frame_bytes(input_buffers[0]);
+	const size_t input_frame_bytes = source_get_frame_bytes(input_buffers[0]);
 
-	ret = source_get_data(input_buffers[0], input_frames * input0_frame_bytes,
-			      (const void **)&input0_pos, (const void **)&input0_start,
+	ret = source_get_data(input_buffers[0], frames * input_frame_bytes,
+			      (const void **)&input_pos, (const void **)&input_start,
 			      &input_cirbuf_size);
 	if (ret) {
 		sink_commit_buffer(output_buffers[0], 0);
 		return -ENODATA;
 	}
 
-	cd->mix_routine(cd, (const void *)input0_start, input_cirbuf_size, (void *)output_start);
+	input_end = input_start + input_cirbuf_size;
+	output_end = output_start + output_cirbuf_size;
+	frames_remain = frames;
+	while (frames_remain) {
+		frames_without_wrap = (input_end - input_pos) / input_frame_bytes;
+		frames_without_wrap = MIN(frames_without_wrap, frames);
+		output_frames_without_wrap = (output_end - output_pos) / output_frame_bytes;
+		frames_without_wrap = MIN(frames_without_wrap, output_frames_without_wrap);
+		input_bytes = input_frame_bytes * frames_without_wrap;
+		cd->mix_routine(cd, (const void *)input_pos, input_bytes, (void *)output_pos);
 
-	ret = sink_commit_buffer(output_buffers[0], output_frames * output_frame_bytes);
-	if (ret)
-		return ret;
+		input_pos += input_bytes;
+		output_pos += frames_without_wrap * output_frame_bytes;
+		input_pos = (input_pos >= input_end) ? input_pos - input_cirbuf_size : input_pos;
+		output_pos = (output_pos >= output_end) ?
+			output_pos - output_cirbuf_size : output_pos;
+		frames_remain -= frames_without_wrap;
+	}
 
-	ret = source_release_data(input_buffers[0], input_frames * input0_frame_bytes);
-	if (ret)
-		return ret;
+	/* Ignore possible -ENODATA, can happen in start with zero frames to process */
+	sink_commit_buffer(output_buffers[0], frames * output_frame_bytes);
+	source_release_data(input_buffers[0], frames * input_frame_bytes);
 	return 0;
 }
 
