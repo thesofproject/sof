@@ -42,7 +42,7 @@ static inline void *platform_shared_get(void *ptr, int bytes)
  * validation that the kernel driver interprets the manifest
  * correctly.  Right now we're using the historical addresses.
  */
-#ifdef CONFIG_SOC_MT8195
+#if defined(CONFIG_SOC_MT8195) || defined(CONFIG_SOC_MT8365)
 #define MTK_IPC_BASE (DT_REG_ADDR(DT_NODELABEL(dram0)) + 0x800000)
 #else
 #define MTK_IPC_BASE (DT_REG_ADDR(DT_NODELABEL(dram0)) + 0x500000)
