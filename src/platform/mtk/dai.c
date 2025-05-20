@@ -203,6 +203,42 @@ static const struct dai_info mtk_dai_info = {
 static unsigned int mtk_afe_fs_timing(unsigned int rate)
 {
 	static const struct { int hz, reg; } rate2reg[] = {
+#if defined(CONFIG_SOC_MT8188) || defined(CONFIG_SOC_MT8195)
+		{   7350, 16 },
+		{   8000,  0 },
+		{  11025, 17 },
+		{  12000,  1 },
+		{  14700, 18 },
+		{  16000,  2 },
+		{  22050, 19 },
+		{  24000,  3 },
+		{  29400, 20 },
+		{  32000,  4 },
+		{  44100, 21 },
+		{  48000,  5 },
+		{  88200, 22 },
+		{  96000,  6 },
+		{ 176400, 23 },
+		{ 192000,  7 },
+		{ 352800, 24 },
+		{ 384000,  8 },
+#elif defined(CONFIG_SOC_MT8186)
+		{   8000,  0 },
+		{  11025,  1 },
+		{  12000,  2 },
+		{  16000,  4 },
+		{  22050,  5 },
+		{  24000,  6 },
+		{  32000,  8 },
+		{  44100,  9 },
+		{  48000, 10 },
+		{  88200, 11 },
+		{  96000, 12 },
+		{ 176400, 13 },
+		{ 192000, 14 },
+		{ 352800,  7 },
+		{ 384000,  3 },
+#else
 		{   8000,  0 },
 		{  11025,  1 },
 		{  12000,  2 },
@@ -218,6 +254,7 @@ static unsigned int mtk_afe_fs_timing(unsigned int rate)
 		{ 192000, 18 },
 		{ 352800, 21 },
 		{ 384000, 22 },
+#endif
 	};
 
 	for (int i = 0; i < ARRAY_SIZE(rate2reg); i++)
