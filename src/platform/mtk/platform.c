@@ -24,12 +24,25 @@
 
 void mtk_dai_init(struct sof *sof);
 
+#ifndef CONFIG_SOC_MT8365
 #define MBOX0 DEVICE_DT_GET(DT_INST(0, mediatek_mbox))
 #define MBOX1 DEVICE_DT_GET(DT_INST(1, mediatek_mbox))
+#else
+#define IPI DEVICE_DT_GET(DT_INST(0, mediatek_ipi))
+
+#define MAILBOX_DEBUG_BASE MTK_IPC_WIN_BASE(DEBUG)
+
+#define SRAM_REG_OP_CPU2DSP		0x8
+#define SRAM_REG_OP_DSP2CPU		0xC
+
+#define ADSP_IPI_OP_REQ		0x1
+#define ADSP_IPI_OP_RSP		0x2
+#endif
 
 /* Use the same UUID as in "ipc-zephyr.c", which is actually an Intel driver */
 SOF_DEFINE_REG_UUID(zipc_task);
 
+#ifndef CONFIG_SOC_MT8365
 static void mbox_cmd_fn(const struct device *mbox, void *arg)
 {
 	/* We're in ISR context.  This unblocks the IPC task thread,
@@ -38,6 +51,7 @@ static void mbox_cmd_fn(const struct device *mbox, void *arg)
 	 */
 	ipc_schedule_process(ipc_get());
 }
+#endif
 
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
@@ -54,13 +68,23 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
+#ifndef CONFIG_SOC_MT8365
 	mtk_adsp_mbox_signal(MBOX0, 1);
+#else
+	*(uint32_t *)(MAILBOX_DEBUG_BASE + SRAM_REG_OP_DSP2CPU) = ADSP_IPI_OP_RSP;
+	mtk_adsp_ipi_signal(IPI, 1);
+#endif
 }
 
 static void mtk_ipc_send(const void *msg, size_t sz)
 {
 	mailbox_dspbox_write(0, msg, sz);
+#ifndef CONFIG_SOC_MT8365
 	mtk_adsp_mbox_signal(MBOX1, 0);
+#else
+	*(uint32_t *)(MAILBOX_DEBUG_BASE + SRAM_REG_OP_DSP2CPU) = ADSP_IPI_OP_REQ;
+	mtk_adsp_ipi_signal(IPI, 1);
+#endif
 }
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
@@ -75,10 +99,35 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	return 0;
 }
 
+#ifndef CONFIG_SOC_MT8365
 static void mbox_reply_fn(const struct device *mbox, void *arg)
 {
 	ipc_get()->is_notification_pending = false;
 }
+
+#else
+
+static void ipi_handler_fn(const struct device *ipi, void *arg)
+{
+	uint32_t op;
+
+	op = *(uint32_t *)(MAILBOX_DEBUG_BASE + SRAM_REG_OP_CPU2DSP);
+
+	switch (op) {
+	case ADSP_IPI_OP_REQ:
+		/* new message from host */
+		ipc_schedule_process(ipc_get());
+		break;
+	case ADSP_IPI_OP_RSP:
+		/* reply message(done) from host */
+		ipc_get()->is_notification_pending = false;
+		break;
+	default:
+		/* do nothing */
+		break;
+	}
+}
+#endif
 
 /* "Host Page Table" support.  The platform is responsible for
  * providing a buffer into which the IPC layer reads a DMA "page
@@ -114,8 +163,12 @@ int platform_ipc_init(struct ipc *ipc)
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
+#ifndef CONFIG_SOC_MT8365
 	mtk_adsp_mbox_set_handler(MBOX0, 0, mbox_cmd_fn, NULL);
 	mtk_adsp_mbox_set_handler(MBOX1, 1, mbox_reply_fn, NULL);
+#else
+	mtk_adsp_ipi_set_handler(IPI, 0, ipi_handler_fn, NULL);
+#endif
 	return 0;
 }
 
