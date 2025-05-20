@@ -17,7 +17,7 @@ config COMP_UP_DOWN_MIXER
 choice
 	prompt "Up_down_mixer HIFI level"
 	depends on COMP_UP_DOWN_MIXER
-	default UP_DOWN_MIXER_HIFI_MAX
+	default UP_DOWN_MIXER_HIFI_NONE
 
 config UP_DOWN_MIXER_HIFI_MAX
 	bool "Max level available in the toolchain"
