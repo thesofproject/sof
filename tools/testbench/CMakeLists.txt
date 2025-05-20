@@ -54,7 +54,7 @@ if (supports_implicit_fallthrough)
     set(implicit_fallthrough -Wimplicit-fallthrough)
 endif()
 
-target_compile_options(${testbench} PRIVATE -g -O3 -Wall -Werror -Wmissing-prototypes
+target_compile_options(${testbench} PRIVATE -g -Wall -Werror -Wmissing-prototypes
   ${implicit_fallthrough} -DCONFIG_LIBRARY -DCONFIG_LIBRARY_STATIC -imacros${config_h})
 
 target_link_libraries(${testbench} PRIVATE -lm)
