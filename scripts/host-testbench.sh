@@ -119,4 +119,7 @@ test_component aria 24 24 48000 "$FullTest"
 # test with asrc
 test_component asrc 32 32 48000 "$FullTest"
 
+# test with template component
+test_component template_comp 32 32 48000 "$FullTest"
+
 echo "All tests are done!"
