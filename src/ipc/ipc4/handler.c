@@ -23,6 +23,7 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/llext_manager.h>
 #include <sof/math/numbers.h>
 #include <sof/tlv.h>
 #include <sof/trace/trace.h>
@@ -1433,6 +1434,11 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 			return IPC4_BUSY;
 		}
 
+		ret = llext_manager_store_to_dram();
+		if (ret < 0)
+			ipc_cmd_err(&ipc_tr, "Error %d saving LLEXT context. Resume might fail.",
+				    ret);
+		l3_heap_save();
 #if defined(CONFIG_PM)
 		ipc_get()->task_mask |= IPC_TASK_POWERDOWN;
 #endif

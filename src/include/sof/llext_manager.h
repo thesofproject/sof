@@ -30,12 +30,17 @@ int llext_manager_free_module(const uint32_t component_id);
 int llext_manager_add_library(uint32_t module_id);
 
 bool comp_is_llext(struct comp_dev *comp);
+
+int llext_manager_store_to_dram(void);
+int llext_manager_restore_from_dram(void);
 #else
 #define module_is_llext(mod) false
 #define llext_manager_allocate_module(ipc_config, ipc_specific_config) 0
 #define llext_manager_free_module(component_id) 0
 #define llext_manager_add_library(module_id) 0
 #define comp_is_llext(comp) false
+#define llext_manager_store_to_dram() 0
+#define llext_manager_restore_from_dram() 0
 #endif
 
 #endif
