@@ -47,6 +47,8 @@ static int set_downmix_coefficients(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
+	comp_info(dev, "set_downmix_coefficients()");
+
 	if (cd->downmix_coefficients) {
 		ret = memcpy_s(&custom_coeffs, sizeof(custom_coeffs), downmix_coefficients,
 			       sizeof(int32_t) * UP_DOWN_MIX_COEFFS_LENGTH);
@@ -110,6 +112,8 @@ static int set_downmix_coefficients(struct processing_module *mod,
 static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
 						   const struct ipc4_audio_format *format)
 {
+	comp_info(dev, "select_mix_out_stereo()");
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_MONO:
@@ -175,6 +179,8 @@ static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
 static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
 						 const struct ipc4_audio_format *format)
 {
+	comp_info(dev, "select_mix_out_mono(");
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_STEREO:
@@ -226,6 +232,8 @@ static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
 static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 						const struct ipc4_audio_format *format)
 {
+	comp_info(dev, "select_mix_out_5_1()");
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_MONO:
@@ -264,6 +272,8 @@ static int init_mix(struct processing_module *mod,
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	comp_info(dev, "init_mix()");
 
 	if (!format)
 		return -EINVAL;
@@ -325,6 +335,8 @@ static int init_mix(struct processing_module *mod,
 static int up_down_mixer_free(struct processing_module *mod)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
+
+	comp_info(mod->dev, "up_down_mixer_free()");
 
 	rfree(cd->buf_in);
 	rfree(cd->buf_out);
@@ -405,23 +417,31 @@ static int up_down_mixer_init(struct processing_module *mod)
 	switch (up_down_mixer->coefficients_select) {
 	case DEFAULT_COEFFICIENTS:
 		cd->out_channel_map = create_channel_map(up_down_mixer->out_channel_config);
+		comp_info(dev, "c1 out_channel map = 0x%08x", cd->out_channel_map);
 		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
 			       up_down_mixer->out_channel_config, NULL);
+		comp_info(dev, "c1 init_mix() done");
 		break;
 	case CUSTOM_COEFFICIENTS:
 		cd->out_channel_map = create_channel_map(up_down_mixer->out_channel_config);
+		comp_info(dev, "c2 out_channel map = 0x%08x", cd->out_channel_map);
 		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
 			       up_down_mixer->out_channel_config, up_down_mixer->coefficients);
+		comp_info(dev, "c2 init_mix() done");
 		break;
 	case DEFAULT_COEFFICIENTS_WITH_CHANNEL_MAP:
 		cd->out_channel_map = up_down_mixer->channel_map;
+		comp_info(dev, "c3 out_channel map = 0x%08x", cd->out_channel_map);
 		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
 			       up_down_mixer->out_channel_config, NULL);
+		comp_info(dev, "c3 init_mix() done");
 		break;
 	case CUSTOM_COEFFICIENTS_WITH_CHANNEL_MAP:
 		cd->out_channel_map = up_down_mixer->channel_map;
+		comp_info(dev, "c4 out_channel map = 0x%08x", cd->out_channel_map);
 		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
 			       up_down_mixer->out_channel_config, up_down_mixer->coefficients);
+		comp_info(dev, "c4 init_mix() done");
 		break;
 	default:
 		comp_err(dev, "up_down_mixer_init(): unsupported coefficient type");
@@ -434,9 +454,11 @@ static int up_down_mixer_init(struct processing_module *mod)
 		goto err;
 	}
 
+	comp_info(dev, "up_down_mixer_init() ready");
 	return 0;
 
 err:
+	comp_err(dev, "up_down_mixer_init() error");
 	up_down_mixer_free(mod);
 	return ret;
 }
