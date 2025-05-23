@@ -11,6 +11,12 @@
  */
 
 #include <sof/audio/component.h>
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include <sof/audio/mic_privacy_manager.h>
+#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
+static uint32_t mic_disable_status;
+#endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
+#endif /* CONFIG_INTEL_ADSP_MIC_PRIVACY */
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/pm_runtime.h>
@@ -64,6 +70,7 @@ extern void *global_imr_ram_storage;
  * data integrity across D3 transitions, which is critical for SOF's operation
  * and currently outside the scope of Zephyr's device-level PM capabilities.
  */
+
 static void suspend_dais(void)
 {
 	struct ipc_comp_dev *icd;
@@ -79,6 +86,10 @@ static void suspend_dais(void)
 
 		mod = comp_mod(icd->cd);
 		cd = module_get_private_data(mod);
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+		if (cd->mic_priv)
+			mic_disable_status = mic_privacy_get_mic_disable_status();
+#endif
 		dd = cd->dd[0];
 		if (dai_remove(dd->dai->dev) < 0) {
 			tr_err(&zephyr_tr, "DAI suspend failed, type %d index %d",
@@ -95,6 +106,11 @@ static void resume_dais(void)
 	struct copier_data *cd;
 	struct dai_data *dd;
 
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	/* Re-initialize mic privacy manager first to ensure proper state before DAI resume */
+	mic_privacy_manager_init();
+#endif
+
 	list_for_item(clist, &ipc_get()->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != COMP_TYPE_COMPONENT || dev_comp_type(icd->cd) != SOF_COMP_DAI)
@@ -107,6 +123,29 @@ static void resume_dais(void)
 			tr_err(&zephyr_tr, "DAI resume failed, type %d index %d",
 			       dd->dai->type, dd->dai->index);
 		}
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+		if (cd->mic_priv) {
+			uint32_t current_mic_status = mic_privacy_get_mic_disable_status();
+
+			if (mic_disable_status != current_mic_status) {
+				tr_dbg(&zephyr_tr, "MIC privacy settings cheange after D3");
+				struct mic_privacy_settings settings;
+
+				/* Update privacy settings based on new state */
+				mic_privacy_fill_settings(&settings, current_mic_status);
+				mic_privacy_propagate_settings(&settings);
+				/* Ensure we're starting from a clean state with no fade effects */
+				if (cd->mic_priv->mic_privacy_state) {
+					/* Force immediate mute without fade effect */
+					cd->mic_priv->mic_privacy_state = MIC_PRIV_MUTED;
+					cd->mic_priv->fade_in_out_bytes = 0;
+					cd->mic_priv->mic_priv_gain_params.gain_env = 0;
+					cd->mic_priv->mic_priv_gain_params.fade_in_sg_count = 0;
+				}
+			}
+		}
+#endif
 	}
 }
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
