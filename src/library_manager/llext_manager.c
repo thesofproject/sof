@@ -113,8 +113,12 @@ static int llext_manager_load_data_from_storage(const struct llext_loader *ldr,
 		const elf_shdr_t *shdr;
 		enum llext_mem s_region = LLEXT_MEM_COUNT;
 		size_t s_offset = 0;
+		int ret = llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
 
-		llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
+		if (ret < 0) {
+			tr_err(lib_manager_tr, "no section info: %d", ret);
+			continue;
+		}
 
 		/* skip sections not in the requested region */
 		if (s_region != region)
