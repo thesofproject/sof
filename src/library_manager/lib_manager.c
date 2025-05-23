@@ -1030,7 +1030,7 @@ cleanup:
 	uint32_t module_id = lib_id << LIB_MANAGER_LIB_ID_SHIFT;
 	const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id);
 
-	if (module_is_llext(mod) && !ret)
+	if (!ret && module_is_llext(mod))
 		/* Auxiliary LLEXT libraries need to be linked upon loading */
 		ret = llext_manager_add_library(module_id);
 
@@ -1039,7 +1039,7 @@ cleanup:
 #endif
 
 	if (!ret)
-		tr_info(&ipc_tr, "loaded library id: %u", lib_id);
+		tr_info(&lib_manager_tr, "loaded library id: %u", lib_id);
 
 	return ret;
 }
