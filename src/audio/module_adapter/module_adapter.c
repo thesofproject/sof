@@ -993,7 +993,8 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 	if (ret != -ENOSPC && ret != -ENODATA && ret) {
 		comp_err(dev, "module_adapter_sink_source_copy() process failed with error: %x",
 			 ret);
-	}
+	} else
+		ret = 0;
 
 	/* count number of processed data. To be removed in pipeline 2.0 */
 	for (i = 0; i < mod->num_of_sources; i++)
