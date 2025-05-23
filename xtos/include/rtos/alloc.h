@@ -167,6 +167,8 @@ int rstrlen(const char *s);
  */
 int rstrcmp(const char *s1, const char *s2);
 
+static inline void l3_heap_save(void) {}
+
 /** @}*/
 
 #endif /* __SOF_LIB_ALLOC_H__ */
