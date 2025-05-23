@@ -357,6 +357,17 @@ static int up_down_mixer_init(struct processing_module *mod)
 		goto err;
 	}
 
+	comp_info(dev, "init data: %d, %d, 0x%08x", up_down_mixer->out_channel_config,
+		  up_down_mixer->coefficients_select, up_down_mixer->channel_map);
+#if UP_DOWN_MIX_COEFFS_LENGTH == 8
+	comp_info(dev, "coef[0..3]: %d, %d, %d, %d",
+		  up_down_mixer->coefficients[0], up_down_mixer->coefficients[1],
+		  up_down_mixer->coefficients[2], up_down_mixer->coefficients[3]);
+	comp_info(dev, "coef[4..7]: %d, %d, %d, %d",
+		  up_down_mixer->coefficients[4], up_down_mixer->coefficients[5],
+		  up_down_mixer->coefficients[6], up_down_mixer->coefficients[7]);
+#endif
+
 	switch (up_down_mixer->coefficients_select) {
 	case DEFAULT_COEFFICIENTS:
 		cd->out_channel_map = create_channel_map(up_down_mixer->out_channel_config);
