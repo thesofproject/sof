@@ -64,6 +64,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_module_asrc_interface_init();
 	sys_comp_module_tdfb_interface_init();
 	sys_comp_module_template_comp_interface_init();
+	sys_comp_module_up_down_mixer_interface_init();
 	sys_comp_module_volume_interface_init();
 
 	/* other necessary initializations */
