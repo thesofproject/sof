@@ -51,6 +51,7 @@ uint32_t mic_privacy_get_policy_register(void);
 void mic_privacy_propagate_settings(struct mic_privacy_settings *settings);
 uint32_t mic_privacy_get_dma_zeroing_wait_time(void);
 uint32_t mic_privacy_get_privacy_mask(void);
+uint32_t mic_privacy_get_mic_disable_status(void);
 void mic_privacy_enable_dmic_irq(bool enable_irq);
 void mic_privacy_fill_settings(struct mic_privacy_settings *settings, uint32_t mic_disable_status);
 void mic_privacy_set_gtw_mic_state(struct mic_privacy_data *mic_priv_data,

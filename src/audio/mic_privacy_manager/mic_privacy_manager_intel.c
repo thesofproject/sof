@@ -62,11 +62,29 @@ static void enable_fw_managed_irq(bool enable_irq)
 
 void mic_privacy_enable_dmic_irq(bool enable_irq)
 {
+	/* Only proceed if we have a valid device and API */
+	if (!mic_priv_dev || !mic_privacy_api) {
+		LOG_ERR("mic_privacy device or API not initialized");
+		return;
+	}
+
 	if (mic_privacy_api->get_policy() == MIC_PRIVACY_HW_MANAGED) {
-		if (enable_irq)
+		if (enable_irq) {
 			mic_privacy_api->enable_dmic_irq(true, handle_dmic_irq);
-		else
+
+			/* Check current status immediately to handle any transitions during D3 */
+			if (mic_privacy_api->get_dmic_irq_status()) {
+				struct mic_privacy_settings settings;
+				uint32_t mic_disable_status =
+					mic_privacy_api->get_dmic_mic_disable_status();
+
+				mic_privacy_fill_settings(&settings, mic_disable_status);
+				mic_privacy_propagate_settings(&settings);
+				mic_privacy_api->clear_dmic_irq_status();
+			}
+		} else {
 			mic_privacy_api->enable_dmic_irq(false, NULL);
+		}
 	}
 }
 
@@ -234,4 +252,18 @@ void mic_privacy_process(struct comp_dev *dev, struct mic_privacy_data *mic_priv
 		LOG_ERR("invalid state %x", mic_priv->mic_privacy_state);
 		break;
 	}
+}
+
+uint32_t mic_privacy_get_mic_disable_status(void)
+{
+	if (!mic_priv_dev) {
+		LOG_ERR("mic_privacy device not initialized");
+		return 0;
+	}
+
+	mic_privacy_api = (struct mic_privacy_api_funcs *)mic_priv_dev->api;
+	if (mic_privacy_api->get_policy() == MIC_PRIVACY_FW_MANAGED)
+		return mic_privacy_api->get_fw_managed_mic_disable_status();
+
+	return mic_privacy_api->get_dmic_mic_disable_status();
 }
