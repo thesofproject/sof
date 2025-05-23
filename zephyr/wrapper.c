@@ -6,6 +6,7 @@
  */
 
 #include <sof/init.h>
+#include <sof/llext_manager.h>
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
@@ -187,6 +188,9 @@ static int boot_complete(void)
 	 */
 	return 0;
 #else
+	if (llext_manager_restore_from_dram() < 0)
+		LOG_ERR("LLEXT restore failed");
+
 	/* let host know DSP boot is complete */
 	return platform_boot_complete(0);
 #endif /* CONFIG_IMX93_A55 */
