@@ -67,6 +67,7 @@
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 #include <sof/auth_api_iface.h>
 #endif
+#include <sof/list.h>
 
 #define LIB_MANAGER_MAX_LIBS				16
 #define LIB_MANAGER_LIB_ID_SHIFT			12
@@ -125,6 +126,7 @@ struct ext_library {
 	struct ipc_lib_msg *lib_notif_pool;
 	uint32_t lib_notif_count;
 
+	/* Only needed from SOF_IPC4_GLB_LOAD_LIBRARY_PREPARE to SOF_IPC4_GLB_LOAD_LIBRARY */
 	void *runtime_data;
 };
 
@@ -183,6 +185,7 @@ int lib_manager_register_module(const uint32_t component_id);
 const struct sof_man_fw_desc *lib_manager_get_library_manifest(int module_id);
 
 struct processing_module;
+struct comp_ipc_config;
 /*
  * \brief Allocate module
  *
