@@ -66,6 +66,18 @@ struct processing_module;
 struct sof_source;
 struct sof_sink;
 
+/*
+ * This structure may be used by modules to carry short 16bit parameters.
+ */
+union config_param_id_data {
+	uint32_t dw;
+	struct {
+		uint32_t data16	: 16;	/* Input/Output small config data */
+		uint32_t id	: 14;	/* input parameter ID */
+		uint32_t _rsvd	: 2;
+	} f;
+};
+
 /**
  * \struct module_interface
  * \brief 3rd party processing module interface
@@ -169,6 +181,30 @@ struct module_interface {
 				int num_input_buffers,
 				struct output_stream_buffer *output_buffers,
 				int num_output_buffers);
+
+	/**
+	 * (optional) Set module configuration parameter
+	 *
+	 * Using Module Config Set command, host driver may send a parameter
+	 * that fits into the header (a very short one), packed along with parameter id.
+	 *
+	 * param_id_data specifies both ID of the parameter, defined by the module
+	 * and value of the parameter.
+	 * It is up to the module how to distribute bits to ID and value of the parameter.
+	 */
+	int (*set_config_param)(struct processing_module *mod, uint32_t param_id_data);
+
+	/**
+	 * (optional) Get module configuration parameter
+	 *
+	 * Using Module Config Get command, host driver may send a parameter
+	 * that fits into the header (a very short one), packed along with parameter id.
+	 *
+	 * param_id_data specifies both ID of the parameter, defined by the module
+	 * and value of the parameter.
+	 * It is up to the module how to distribute bits to ID and value of the parameter.
+	 */
+	int (*get_config_param)(struct processing_module *mod, uint32_t *param_id_data);
 
 	/**
 	 * (optional) Set module configuration for the given configuration ID

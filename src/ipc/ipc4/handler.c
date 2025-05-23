@@ -968,6 +968,58 @@ __cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
+static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4, bool set)
+{
+	struct ipc4_module_config *config = (struct ipc4_module_config *)ipc4;
+	int (*function)(struct comp_dev *dev, uint32_t type, void *value);
+	const struct comp_driver *drv;
+	struct comp_dev *dev = NULL;
+	int ret;
+
+	tr_dbg(&ipc_tr, "ipc4_set_get_config_module_instance %x : %x, set %d",
+	       (uint32_t)config->primary.r.module_id, (uint32_t)config->primary.r.instance_id,
+	       !!set);
+
+	/* get component dev for non-basefw since there is no component dev for basefw */
+	if (config->primary.r.module_id) {
+		uint32_t comp_id;
+
+		comp_id = IPC4_COMP_ID(config->primary.r.module_id, config->primary.r.instance_id);
+		dev = ipc4_get_comp_dev(comp_id);
+		if (!dev)
+			return IPC4_MOD_INVALID_ID;
+
+		drv = dev->drv;
+
+		/* Pass IPC to target core */
+		if (!cpu_is_me(dev->ipc_config.core))
+			return ipc4_process_on_core(dev->ipc_config.core, false);
+	} else {
+		drv = ipc4_get_comp_drv(config->primary.r.module_id);
+	}
+
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	function = set ? drv->ops.set_attribute : drv->ops.get_attribute;
+	if (!function)
+		return IPC4_INVALID_REQUEST;
+
+	ret = function(dev, COMP_ATTR_IPC4_CONFIG, &config->extension.dat);
+	if (ret < 0) {
+		ipc_cmd_err(&ipc_tr, "ipc4_set_get_config_module_instance %x : %x failed %d, set %u, param %x",
+			    (uint32_t)config->primary.r.module_id,
+			    (uint32_t)config->primary.r.instance_id, ret, !!set,
+			    (uint32_t)config->extension.dat);
+		ret = IPC4_INVALID_CONFIG_PARAM_ID;
+	}
+
+	if (!set)
+		msg_reply.extension = config->extension.dat;
+
+	return ret;
+}
+
 __cold static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 						   const struct comp_driver *drv,
 						   bool init_block,
@@ -1463,9 +1515,10 @@ __cold static int ipc4_process_module_message(struct ipc4_message_request *ipc4)
 		ret = ipc4_init_module_instance(ipc4);
 		break;
 	case SOF_IPC4_MOD_CONFIG_GET:
+		ret = ipc4_set_get_config_module_instance(ipc4, false);
+		break;
 	case SOF_IPC4_MOD_CONFIG_SET:
-		ret = IPC4_UNAVAILABLE;
-		tr_info(&ipc_tr, "unsupported module CONFIG_GET");
+		ret = ipc4_set_get_config_module_instance(ipc4, true);
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
 		ret = ipc4_get_large_config_module_instance(ipc4);
