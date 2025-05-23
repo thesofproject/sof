@@ -6,6 +6,7 @@
  */
 
 #include <sof/init.h>
+#include <sof/llext_manager.h>
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
@@ -20,6 +21,9 @@
 #include <sof/trace/trace.h>
 #include <rtos/wait.h>
 #include <rtos/clk.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/notification.h>
+#endif
 
 /* Zephyr includes */
 #include <zephyr/arch/cpu.h>
@@ -187,8 +191,25 @@ static int boot_complete(void)
 	 */
 	return 0;
 #else
+	unsigned int status;
+	int ret = llext_manager_restore_from_dram();
+
+	switch (ret) {
+#if CONFIG_IPC_MAJOR_4
+	case 0:
+		status = SOF_IPC4_FW_READY_LIB_RESTORED;
+		break;
+#endif
+	case -ENOSYS:
+		status = 0;
+		break;
+	default:
+		status = 0;
+		LOG_ERR("LLEXT restore failed: %d", ret);
+	}
+
 	/* let host know DSP boot is complete */
-	return platform_boot_complete(0);
+	return platform_boot_complete(status);
 #endif /* CONFIG_IMX93_A55 */
 }
 
