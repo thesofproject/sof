@@ -1730,7 +1730,7 @@ int resign_image(struct image *image)
 		goto out;
 	}
 
-	image->image_end = size;
+	image->image_end = size - i;
 
 	/* check that key size matches */
 	if (image->adsp->man_v2_5 || image->adsp->man_ace_v1_5) {
