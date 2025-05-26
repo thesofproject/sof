@@ -1733,7 +1733,7 @@ int resign_image(struct image *image)
 	image->image_end = size;
 
 	/* check that key size matches */
-	if (image->adsp->man_v2_5) {
+	if (image->adsp->man_v2_5 || image->adsp->man_ace_v1_5) {
 		key_size = 384;
 	} else {
 		key_size = 256;
@@ -1755,6 +1755,8 @@ int resign_image(struct image *image)
 		ret = ri_manifest_sign_v1_8(image);
 	else if (image->adsp->man_v2_5)
 		ret = ri_manifest_sign_v2_5(image);
+	else if (image->adsp->man_ace_v1_5)
+		ret = ri_manifest_sign_ace_v1_5(image);
 	else
 		ret = -EINVAL;
 
