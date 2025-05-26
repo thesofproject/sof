@@ -1773,6 +1773,13 @@ int resign_image(struct image *image)
 		goto out;
 	}
 
+	/* Rewrite content before CSE header */
+	size = fwrite(buffer, 1, i, image->out_fd);
+	if (size != i) {
+		ret = file_error("Extended manifest write error", image->out_file);
+		goto out;
+	}
+
 	man_write_fw_mod(image);
 
 out:
