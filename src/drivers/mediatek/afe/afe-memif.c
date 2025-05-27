@@ -437,7 +437,11 @@ static int memif_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
 		*value = 4;
 		break;
 	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
+#if defined(CONFIG_SOC_SERIES_MT818X) || defined(CONFIG_SOC_MT8195)
+		*value = 64;
+#else
 		*value = 16;
+#endif
 		break;
 	case DMA_ATTR_BUFFER_PERIOD_COUNT:
 		*value = 4;
