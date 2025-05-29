@@ -300,7 +300,7 @@ int module_process_sink_src(struct processing_module *mod,
 	/* reset state to idle */
 	md->state = MODULE_IDLE;
 #endif
-	return ret;
+	return 0;
 }
 
 int module_reset(struct processing_module *mod)
