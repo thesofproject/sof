@@ -377,6 +377,7 @@ count = 27
 	instance_count = "8"
 	domain_types = "0"
 	load_type = "0"
+	init_config = "1"
 	module_type = "0xC"
 	auto_start = "0"
 	sched_caps = [1, 0x00008000]
