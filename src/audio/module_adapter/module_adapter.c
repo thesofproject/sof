@@ -990,13 +990,9 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 	ret = module_process_sink_src(mod, mod->sources, mod->num_of_sources,
 				      mod->sinks, mod->num_of_sinks);
 
-	if (ret) {
-		if (ret != -ENOSPC && ret != -ENODATA)
-			comp_err(dev, "module_adapter_sink_source_copy() process failed with error: %d",
-				 ret);
-		else
-			ret = 0;
-	}
+	if (ret)
+		comp_err(dev, "module_adapter_sink_source_copy() process failed with error: %d",
+			 ret);
 
 	/* count number of processed data. To be removed in pipeline 2.0 */
 	for (i = 0; i < mod->num_of_sources; i++)
