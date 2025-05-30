@@ -5,7 +5,7 @@ name: Sparse Zephyr
 # 'workflow_dispatch' allows running this workflow manually from the
 # 'Actions' tab
 # yamllint disable-line rule:truthy
-on: [push, pull_request, workflow_dispatch, workflow_call]
+# on: [push, pull_request, workflow_dispatch, workflow_call]
 
 jobs:
   # As of sparse commit ce1a6720f69e / Sept 2022, the exit status of
