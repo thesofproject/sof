@@ -47,6 +47,8 @@ static int set_downmix_coefficients(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
+	comp_info(dev, "set_downmix_coefficients()");
+
 	if (cd->downmix_coefficients) {
 		ret = memcpy_s(&custom_coeffs, sizeof(custom_coeffs), downmix_coefficients,
 			       sizeof(int32_t) * UP_DOWN_MIX_COEFFS_LENGTH);
@@ -110,6 +112,8 @@ static int set_downmix_coefficients(struct processing_module *mod,
 static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
 						   const struct ipc4_audio_format *format)
 {
+	comp_info(dev, "select_mix_out_stereo()");
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_MONO:
@@ -175,6 +179,8 @@ static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
 static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
 						 const struct ipc4_audio_format *format)
 {
+	comp_info(dev, "select_mix_out_mono(");
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_STEREO:
@@ -226,6 +232,8 @@ static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
 static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 						const struct ipc4_audio_format *format)
 {
+	comp_info(dev, "select_mix_out_5_1()");
+
 	if (format->depth == IPC4_DEPTH_16BIT) {
 		switch (format->ch_cfg) {
 		case IPC4_CHANNEL_CONFIG_MONO:
@@ -264,6 +272,8 @@ static int init_mix(struct processing_module *mod,
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+
+	comp_info(dev, "init_mix()");
 
 	if (!format)
 		return -EINVAL;
@@ -326,6 +336,8 @@ static int up_down_mixer_free(struct processing_module *mod)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 
+	comp_info(mod->dev, "up_down_mixer_free()");
+
 	rfree(cd->buf_in);
 	rfree(cd->buf_out);
 	rfree(cd);
@@ -335,12 +347,16 @@ static int up_down_mixer_free(struct processing_module *mod)
 
 static int up_down_mixer_init(struct processing_module *mod)
 {
+	struct up_down_mixer_config default_config;
 	struct module_config *dst = &mod->priv.cfg;
-	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer = dst->init_data;
+	const struct ipc4_up_down_mixer_module_cfg *up_down_mixer_init = dst->init_data;
+	const struct up_down_mixer_config *up_down_mixer = &up_down_mixer_init->config;
 	struct module_data *mod_data = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct up_down_mixer_data *cd;
+	size_t min_size;
 	int ret;
+	int i;
 
 	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -357,26 +373,75 @@ static int up_down_mixer_init(struct processing_module *mod)
 		goto err;
 	}
 
+	comp_info(dev, "nb_input_pins = %d, nb_output_pins = %d",
+		  dst->nb_input_pins, dst->nb_output_pins);
+
+	min_size = sizeof(struct ipc4_base_module_cfg);
+	if (dst->nb_input_pins > 0 && dst->nb_output_pins > 0)
+		min_size += ipc4_calc_base_module_cfg_ext_size(dst->nb_input_pins,
+							       dst->nb_output_pins);
+	comp_info(dev, "ipc_config_size = %d, min_size = %d",
+		  dev->ipc_config.ipc_config_size, min_size);
+
+	if (dev->ipc_config.ipc_config_size > min_size) {
+		comp_info(dev, "init configuration found");
+		cd->has_init_mix_configuration = true;
+		comp_info(dev, "init data: %d, %d, 0x%08x", up_down_mixer->out_channel_config,
+			  up_down_mixer->coefficients_select, up_down_mixer->channel_map);
+#if UP_DOWN_MIX_COEFFS_LENGTH == 8
+		comp_info(dev, "coef[0..3]: %d, %d, %d, %d",
+			  up_down_mixer->coefficients[0], up_down_mixer->coefficients[1],
+			  up_down_mixer->coefficients[2], up_down_mixer->coefficients[3]);
+		comp_info(dev, "coef[4..7]: %d, %d, %d, %d",
+			  up_down_mixer->coefficients[4], up_down_mixer->coefficients[5],
+			  up_down_mixer->coefficients[6], up_down_mixer->coefficients[7]);
+#endif
+	} else {
+		comp_info(dev, "no configuration in init, using default");
+		cd->has_init_mix_configuration = false;
+#if FORCE_REQUEST_MONO
+		default_config.out_channel_config = 0;
+		default_config.coefficients_select = 2;
+		default_config.channel_map = -15;
+		for (i = 0; i < UP_DOWN_MIX_COEFFS_LENGTH; i++)
+			default_config.coefficients[i] = 0;
+#else
+		default_config.out_channel_config = up_down_mixer_init->base_cfg.audio_fmt.ch_cfg;
+		default_config.coefficients_select = DEFAULT_COEFFICIENTS;
+		for (i = 0; i < UP_DOWN_MIX_COEFFS_LENGTH; i++)
+			default_config.coefficients[i] = 0;
+#endif
+		up_down_mixer = &default_config;
+	}
+
 	switch (up_down_mixer->coefficients_select) {
 	case DEFAULT_COEFFICIENTS:
 		cd->out_channel_map = create_channel_map(up_down_mixer->out_channel_config);
+		comp_info(dev, "c1 out_channel map = 0x%08x", cd->out_channel_map);
 		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
 			       up_down_mixer->out_channel_config, NULL);
+		comp_info(dev, "c1 init_mix() done");
 		break;
 	case CUSTOM_COEFFICIENTS:
 		cd->out_channel_map = create_channel_map(up_down_mixer->out_channel_config);
+		comp_info(dev, "c2 out_channel map = 0x%08x", cd->out_channel_map);
 		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
 			       up_down_mixer->out_channel_config, up_down_mixer->coefficients);
+		comp_info(dev, "c2 init_mix() done");
 		break;
 	case DEFAULT_COEFFICIENTS_WITH_CHANNEL_MAP:
 		cd->out_channel_map = up_down_mixer->channel_map;
+		comp_info(dev, "c3 out_channel map = 0x%08x", cd->out_channel_map);
 		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
 			       up_down_mixer->out_channel_config, NULL);
+		comp_info(dev, "c3 init_mix() done");
 		break;
 	case CUSTOM_COEFFICIENTS_WITH_CHANNEL_MAP:
 		cd->out_channel_map = up_down_mixer->channel_map;
+		comp_info(dev, "c4 out_channel map = 0x%08x", cd->out_channel_map);
 		ret = init_mix(mod, &mod->priv.cfg.base_cfg.audio_fmt,
 			       up_down_mixer->out_channel_config, up_down_mixer->coefficients);
+		comp_info(dev, "c4 init_mix() done");
 		break;
 	default:
 		comp_err(dev, "up_down_mixer_init(): unsupported coefficient type");
@@ -389,9 +454,11 @@ static int up_down_mixer_init(struct processing_module *mod)
 		goto err;
 	}
 
+	comp_info(dev, "up_down_mixer_init() ready");
 	return 0;
 
 err:
+	comp_err(dev, "up_down_mixer_init() error");
 	up_down_mixer_free(mod);
 	return ret;
 }
@@ -405,40 +472,57 @@ up_down_mixer_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 
 	size_t output_frames, input_frames, ret, input_cirbuf_size, output_cirbuf_size;
-	const uint8_t *input0_pos, *input0_start;
-	uint8_t *output_pos, *output_start;
+	const uint8_t *input_pos, *input_start, *input_end;
+	uint8_t *output_pos, *output_start, *output_end;
+	int output_frames_without_wrap;
+	int frames_without_wrap, frames, frames_remain;
+	uint32_t input_bytes;
 
 	comp_dbg(dev, "up_down_mixer_process()");
 
 	output_frames = sink_get_free_frames(output_buffers[0]);
 	input_frames = source_get_data_frames_available(input_buffers[0]);
+	frames = MIN(input_frames, output_frames);
 
 	const size_t output_frame_bytes = sink_get_frame_bytes(output_buffers[0]);
 
-	ret = sink_get_buffer(output_buffers[0], output_frames * output_frame_bytes,
+	ret = sink_get_buffer(output_buffers[0], frames * output_frame_bytes,
 			      (void **)&output_pos, (void **)&output_start, &output_cirbuf_size);
 	if (ret)
 		return -ENODATA;
 
-	const size_t input0_frame_bytes = source_get_frame_bytes(input_buffers[0]);
+	const size_t input_frame_bytes = source_get_frame_bytes(input_buffers[0]);
 
-	ret = source_get_data(input_buffers[0], input_frames * input0_frame_bytes,
-			      (const void **)&input0_pos, (const void **)&input0_start,
+	ret = source_get_data(input_buffers[0], frames * input_frame_bytes,
+			      (const void **)&input_pos, (const void **)&input_start,
 			      &input_cirbuf_size);
 	if (ret) {
 		sink_commit_buffer(output_buffers[0], 0);
 		return -ENODATA;
 	}
 
-	cd->mix_routine(cd, (const void *)input0_start, input_cirbuf_size, (void *)output_start);
+	input_end = input_start + input_cirbuf_size;
+	output_end = output_start + output_cirbuf_size;
+	frames_remain = frames;
+	while (frames_remain) {
+		frames_without_wrap = (input_end - input_pos) / input_frame_bytes;
+		frames_without_wrap = MIN(frames_without_wrap, frames);
+		output_frames_without_wrap = (output_end - output_pos) / output_frame_bytes;
+		frames_without_wrap = MIN(frames_without_wrap, output_frames_without_wrap);
+		input_bytes = input_frame_bytes * frames_without_wrap;
+		cd->mix_routine(cd, (const void *)input_pos, input_bytes, (void *)output_pos);
 
-	ret = sink_commit_buffer(output_buffers[0], output_frames * output_frame_bytes);
-	if (ret)
-		return ret;
+		input_pos += input_bytes;
+		output_pos += frames_without_wrap * output_frame_bytes;
+		input_pos = (input_pos >= input_end) ? input_pos - input_cirbuf_size : input_pos;
+		output_pos = (output_pos >= output_end) ?
+			output_pos - output_cirbuf_size : output_pos;
+		frames_remain -= frames_without_wrap;
+	}
 
-	ret = source_release_data(input_buffers[0], input_frames * input0_frame_bytes);
-	if (ret)
-		return ret;
+	/* Ignore possible -ENODATA, can happen in start with zero frames to process */
+	sink_commit_buffer(output_buffers[0], frames * output_frame_bytes);
+	source_release_data(input_buffers[0], frames * input_frame_bytes);
 	return 0;
 }
 
