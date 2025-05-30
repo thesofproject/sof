@@ -136,6 +136,11 @@ static inline void *rbrealloc(void *ptr, uint32_t flags, uint32_t caps,
  */
 void rfree(void *ptr);
 
+/**
+ * Save L3 heap over DSP reset
+ */
+void l3_heap_save(void);
+
 /* TODO: remove - debug only - only needed for linking */
 static inline void heap_trace_all(int force) {}
 
