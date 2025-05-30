@@ -12,6 +12,7 @@
 #include <sof/compiler_attributes.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
+#include <sof/ipc/notification_pool.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
@@ -24,6 +25,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc4/base-config.h>
+#include <ipc4/notification.h>
 #include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -74,6 +76,10 @@ struct mixin_data {
 	mix_func mix;
 	mix_func gain_mix;
 	struct mixin_sink_config sink_config[MIXIN_MAX_SINKS];
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	uint32_t last_reported_underrun;
+	uint32_t underrun_notification_period;
+#endif
 };
 
 /*
@@ -138,6 +144,9 @@ static int mixin_init(struct processing_module *mod)
 		return -ENOMEM;
 
 	mod_data->private = md;
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	md->underrun_notification_period = MIXIN_MODULE_DEFAULT_UNDERRUN_NOTIFICATION_PERIOD;
+#endif
 
 	for (i = 0; i < MIXIN_MAX_SINKS; i++) {
 		md->sink_config[i].mixer_mode = IPC4_MIXER_NORMAL_MODE;
@@ -236,6 +245,29 @@ static void silence(struct cir_buf_ptr *stream, uint32_t start_offset,
 		ptr += n;
 	}
 }
+
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+static void mixin_check_notify_underrun(struct comp_dev *dev, struct mixin_data *mixin_data,
+					size_t source_avail, size_t sinks_free)
+{
+	struct ipc_msg *notify;
+
+	mixin_data->last_reported_underrun++;
+
+	if (!source_avail && mixin_data->last_reported_underrun >=
+	    mixin_data->underrun_notification_period) {
+		mixin_data->last_reported_underrun = 0;
+
+		notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
+		if (!notify)
+			return;
+
+		mixer_underrun_notif_msg_init(notify, dev->ipc_config.id, false,
+					      source_avail, sinks_free);
+		ipc_msg_send(notify, notify->tx_data, false);
+	}
+}
+#endif
 
 /* Most of the mixing is done here on mixin side. mixin mixes its source data
  * into each connected mixout sink buffer. Basically, if mixout sink buffer has
@@ -355,6 +387,15 @@ static int mixin_process(struct processing_module *mod,
 
 	if (sinks_free_frames == 0 || sinks_free_frames == INT32_MAX)
 		return 0;
+
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	size_t frame_bytes = source_get_frame_bytes(sources[0]);
+	size_t min_frames = MIN(dev->frames, sinks_free_frames);
+
+	mixin_check_notify_underrun(dev, mixin_data,
+				    source_avail_frames * frame_bytes,
+				    min_frames * frame_bytes);
+#endif
 
 	if (source_avail_frames > 0) {
 		size_t buf_size;
@@ -917,11 +958,49 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 	return 0;
 }
 
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+static int mixin_set_config_param(struct processing_module *mod, uint32_t param_id_data)
+{
+	struct mixin_data *mixin_data = module_get_private_data(mod);
+	union config_param_id_data cfg;
+
+	cfg.dw = param_id_data;
+
+	if (cfg.f.id == IPC4_MIXER_UNDERRUN_NOTIF_PERIOD) {
+		if (cfg.f.data16 < MIXIN_MODULE_MIN_UNDERRUN_NOTIFICATION_PERIOD)
+			return -EINVAL;
+
+		mixin_data->underrun_notification_period = cfg.f.data16;
+		return 0;
+	}
+	return -EINVAL;
+}
+
+static int mixin_get_config_param(struct processing_module *mod, uint32_t *param_id_data)
+{
+	struct mixin_data *mixin_data = module_get_private_data(mod);
+	union config_param_id_data cfg;
+
+	cfg.dw = *param_id_data;
+
+	if (cfg.f.id == IPC4_MIXER_UNDERRUN_NOTIF_PERIOD) {
+		cfg.f.data16 = mixin_data->underrun_notification_period;
+		*param_id_data = cfg.dw;
+		return 0;
+	}
+	return -EINVAL;
+}
+#endif
+
 static const struct module_interface mixin_interface = {
 	.init = mixin_init,
 	.prepare = mixin_prepare,
 	.process = mixin_process,
 	.set_configuration = mixin_set_config,
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	.set_config_param = mixin_set_config_param,
+	.get_config_param = mixin_get_config_param,
+#endif
 	.reset = mixin_reset,
 	.free = mixin_free
 };

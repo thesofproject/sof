@@ -24,17 +24,59 @@ static void resource_notif_header_init(struct ipc_msg *msg)
 	memset(&notif_data->event_data, 0, sizeof(notif_data->event_data));
 }
 
-#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-void xrun_notif_msg_init(struct ipc_msg *msg_xrun, uint32_t resource_id, uint32_t event_type)
+void copier_gateway_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t pipeline_id)
 {
-	struct ipc4_resource_event_data_notification *notif_data = msg_xrun->tx_data;
+	struct ipc4_resource_event_data_notification *notif_data = msg->tx_data;
 
-	resource_notif_header_init(msg_xrun);
+	resource_notif_header_init(msg);
+	notif_data->resource_id = pipeline_id;
+	notif_data->event_type = SOF_IPC4_GATEWAY_UNDERRUN_DETECTED;
+	notif_data->resource_type = SOF_IPC4_PIPELINE;
+}
+
+void gateway_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id)
+{
+	struct ipc4_resource_event_data_notification *notif_data = msg->tx_data;
+
+	resource_notif_header_init(msg);
 	notif_data->resource_id = resource_id;
-	notif_data->event_type = event_type;
+	notif_data->event_type = SOF_IPC4_GATEWAY_UNDERRUN_DETECTED;
 	notif_data->resource_type = SOF_IPC4_GATEWAY;
 }
-#endif
+
+void copier_gateway_overrun_notif_msg_init(struct ipc_msg *msg, uint32_t pipeline_id)
+{
+	struct ipc4_resource_event_data_notification *notif_data = msg->tx_data;
+
+	resource_notif_header_init(msg);
+	notif_data->resource_id = pipeline_id;
+	notif_data->event_type = SOF_IPC4_GATEWAY_OVERRUN_DETECTED;
+	notif_data->resource_type = SOF_IPC4_PIPELINE;
+}
+
+void gateway_overrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id)
+{
+	struct ipc4_resource_event_data_notification *notif_data = msg->tx_data;
+
+	resource_notif_header_init(msg);
+	notif_data->resource_id = resource_id;
+	notif_data->event_type = SOF_IPC4_GATEWAY_OVERRUN_DETECTED;
+	notif_data->resource_type = SOF_IPC4_GATEWAY;
+}
+
+void mixer_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id, uint32_t eos_flag,
+				   uint32_t data_mixed, uint32_t expected_data_mixed)
+{
+	struct ipc4_resource_event_data_notification *notif_data = msg->tx_data;
+
+	resource_notif_header_init(msg);
+	notif_data->resource_id = resource_id;
+	notif_data->event_type = SOF_IPC4_MIXER_UNDERRUN_DETECTED;
+	notif_data->resource_type = SOF_IPC4_PIPELINE;
+	notif_data->event_data.mixer_underrun.eos_flag = eos_flag;
+	notif_data->event_data.mixer_underrun.data_mixed = data_mixed;
+	notif_data->event_data.mixer_underrun.expected_data_mixed = expected_data_mixed;
+}
 
 void process_data_error_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id,
 				       uint32_t error_code)

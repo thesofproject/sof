@@ -58,7 +58,7 @@ config COMP_CHAIN_DMA
 
 config XRUN_NOTIFICATIONS_ENABLE
 	bool "Enable xrun notification"
-	default n
+	default y
 	depends on IPC_MAJOR_4
 	help
 	  Enable xrun notifications sending to host
