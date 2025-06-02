@@ -87,7 +87,7 @@ static void suspend_dais(void)
 		mod = comp_mod(icd->cd);
 		cd = module_get_private_data(mod);
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
-		if (cd->mic_priv)
+		if (cd->mic_priv && mic_privacy_manager_get_policy() == MIC_PRIVACY_FW_MANAGED)
 			mic_disable_status = mic_privacy_get_mic_disable_status();
 #endif
 		dd = cd->dd[0];
@@ -125,7 +125,7 @@ static void resume_dais(void)
 		}
 
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
-		if (cd->mic_priv) {
+		if (cd->mic_priv && mic_privacy_manager_get_policy() == MIC_PRIVACY_FW_MANAGED) {
 			uint32_t current_mic_status = mic_privacy_get_mic_disable_status();
 
 			if (mic_disable_status != current_mic_status) {
