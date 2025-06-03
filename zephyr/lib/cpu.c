@@ -219,6 +219,11 @@ void cpu_disable_core(int id)
 	}
 
 #if defined(CONFIG_PM)
+	/* TODO: before requesting core shut down check if it's not actively used */
+	if (!pm_state_force(id, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0})) {
+		tr_err(&zephyr_tr, "failed to set PM_STATE_SOFT_OFF on core %d", id);
+		return;
+	}
 #if defined(CONFIG_POWEROFF)
 	/* Primary core will be turned off by the host. This does not return. */
 	if (cpu_is_primary(id)) {
@@ -227,11 +232,6 @@ void cpu_disable_core(int id)
 	}
 #endif
 
-	/* TODO: before requesting core shut down check if it's not actively used */
-	if (!pm_state_force(id, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0})) {
-		tr_err(&zephyr_tr, "failed to set PM_STATE_SOFT_OFF on core %d", id);
-		return;
-	}
 	/* Broadcasting interrupts to other cores. */
 	arch_sched_broadcast_ipi();
 
