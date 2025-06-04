@@ -271,6 +271,40 @@ enum comp_copy_type {
 struct comp_driver;
 struct comp_ipc_config;
 union ipc_config_specific;
+struct ipc4_module_bind_unbind;
+
+enum bind_type {
+	COMP_BIND_TYPE_SOURCE,
+	COMP_BIND_TYPE_SINK
+};
+
+struct bind_info {
+	/* pointer to IPC4 bind data */
+	struct ipc4_module_bind_unbind *ipc4_data;
+
+	/* type of binding
+	 * bind call will be called twice for every component, first when binding a data source,
+	 * than when binding data sink.
+	 *
+	 * bind_type is indicating type of binding
+	 */
+	enum bind_type bind_type;
+
+	/* pointers to sink or source API of the data provider/consumer
+	 * that is being bound to the module
+	 *
+	 * if bind_type == COMP_BIND_TYPE_SOURCE, the pointer below points to source
+	 * if bind_type == COMP_BIND_TYPE_SINK, the pointer below points to sink
+	 *
+	 * NOTE! As in pipeline2.0 there may be a binding between modules,
+	 * without a buffer in between, it cannot be a pointer to any buffer type, module should
+	 * use sink/source API
+	 */
+	union {
+		struct sof_source *source;
+		struct sof_sink *sink;
+	};
+};
 
 /**
  * Audio component operations.
@@ -481,7 +515,7 @@ struct comp_ops {
 	 *
 	 * Usually can be __cold.
 	 */
-	int (*bind)(struct comp_dev *dev, void *data);
+	int (*bind)(struct comp_dev *dev, struct bind_info *bind_data);
 
 	/**
 	 * Unbind, atomic - used to notify component of unbind event.
