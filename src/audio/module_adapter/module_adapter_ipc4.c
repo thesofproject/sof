@@ -234,12 +234,12 @@ int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
 }
 EXPORT_SYMBOL(module_adapter_bind);
 
-int module_adapter_unbind(struct comp_dev *dev, void *data)
+int module_adapter_unbind(struct comp_dev *dev, struct unbind_info *unbind_data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	int ret;
 
-	ret = module_unbind(mod, data);
+	ret = module_unbind(mod, unbind_data);
 	if (ret < 0)
 		return ret;
 
