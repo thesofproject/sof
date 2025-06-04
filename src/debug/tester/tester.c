@@ -188,13 +188,13 @@ static int tester_free(struct processing_module *mod)
 	return ret;
 }
 
-static int tester_bind(struct processing_module *mod, void *data)
+static int tester_bind(struct processing_module *mod, struct bind_info *bind_data)
 {
 	struct tester_module_data *cd = module_get_private_data(mod);
 	int ret = 0;
 
 	if (cd->tester_case_interface->bind)
-		ret = cd->tester_case_interface->bind(cd->test_case_ctx, mod, data);
+		ret = cd->tester_case_interface->bind(cd->test_case_ctx, mod, bind_data);
 
 	return ret;
 }
