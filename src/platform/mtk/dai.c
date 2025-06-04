@@ -12,15 +12,24 @@
  */
 #if defined(CONFIG_SOC_MT8186)
 #define MTK_AFE_BASE 0x11210000
+#define SRAM_CPU_START 0x10800000
 #elif defined(CONFIG_SOC_SERIES_MT818X)
 #define MTK_AFE_BASE 0x10b10000
+#define SRAM_CPU_START 0x10d00000
 #elif defined(CONFIG_SOC_MT8195)
 #define MTK_AFE_BASE 0x10890000
+#define SRAM_CPU_START 0x10840000
 #elif defined(CONFIG_SOC_MT8196)
 #define MTK_AFE_BASE 0x1a110000
+#define SRAM_CPU_START 0x1a210000
 #else
 #error Unrecognized device
 #endif
+
+#define SRAM_ADSP_START	DT_REG_ADDR(DT_NODELABEL(sram0))
+#define SRAM_SIZE		DT_REG_SIZE(DT_NODELABEL(sram0))
+#define SRAM_ADSP_END	(SRAM_ADSP_START + SRAM_SIZE)
+#define SRAM_CPU_END	(SRAM_CPU_START + SRAM_SIZE)
 
 /* Bitfield register: address, left shift amount, and number of bits */
 struct afe_bitfld {
@@ -199,6 +208,28 @@ static const struct dai_info mtk_dai_info = {
 	.num_dai_types = ARRAY_SIZE(mtk_dai_types),
 };
 
+#if defined(CONFIG_SOC_SERIES_MT818X) || defined(CONFIG_SOC_MT8195)
+static unsigned int mtk_afe2adsp_addr(unsigned int addr)
+{
+	/* CPU -> ADSP address remap */
+	if ((addr >=  SRAM_CPU_START) && (addr <  SRAM_CPU_END)) {
+		addr = SRAM_ADSP_START + (addr -  SRAM_CPU_START);
+	}
+
+	return addr;
+}
+
+static unsigned int mtk_adsp2afe_addr(unsigned int addr)
+{
+	/* ADSP -> CPU address remap */
+	if ((addr >=  SRAM_ADSP_START) && (addr <  SRAM_ADSP_END)) {
+		addr = SRAM_CPU_START + (addr -  SRAM_ADSP_START);
+	}
+
+	return addr;
+}
+#endif
+
 /* Static table of fs register values.  TODO: binary search */
 static unsigned int mtk_afe_fs_timing(unsigned int rate)
 {
@@ -279,6 +310,10 @@ struct mtk_base_afe_platform mtk_afe_platform = {
 	.dais_size = ARRAY_SIZE(mtk_dais),
 	.afe_fs = mtk_afe_fs,
 	.irq_fs = mtk_afe_fs_timing,
+#if defined(CONFIG_SOC_SERIES_MT818X) || defined(CONFIG_SOC_MT8195)
+	.afe2adsp_addr = mtk_afe2adsp_addr,
+	.adsp2afe_addr = mtk_adsp2afe_addr,
+#endif
 };
 
 int mtk_dai_init(struct sof *sof)
