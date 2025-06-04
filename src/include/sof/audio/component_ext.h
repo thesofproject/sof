@@ -461,29 +461,30 @@ static inline int comp_bind(struct comp_dev *dev, struct bind_info *bind_data)
 }
 
 #if CONFIG_IPC_MAJOR_4
-static inline int comp_ipc4_unbind_remote(struct comp_dev *dev, void *data)
+static inline int comp_ipc4_unbind_remote(struct comp_dev *dev, struct bind_info *unbind_data)
 {
 	struct idc_msg msg = { IDC_MSG_UNBIND,
 		IDC_EXTENSION(dev->ipc_config.id), dev->ipc_config.core,
-		sizeof(struct ipc4_module_bind_unbind), data};
+		sizeof(*unbind_data), unbind_data};
 
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 #endif
 
-static inline int comp_unbind(struct comp_dev *dev, void *data)
+static inline int comp_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
 {
 #if CONFIG_IPC_MAJOR_4
 	if (dev->drv->ops.unbind)
 		return cpu_is_me(dev->ipc_config.core) ?
-			dev->drv->ops.unbind(dev, data) : comp_ipc4_unbind_remote(dev, data);
+			dev->drv->ops.unbind(dev, unbind_data) :
+			comp_ipc4_unbind_remote(dev, unbind_data);
 
 	return 0;
 #else
 	int ret = 0;
 
 	if (dev->drv->ops.unbind)
-		ret = dev->drv->ops.unbind(dev, data);
+		ret = dev->drv->ops.unbind(dev, unbind_data);
 
 	return ret;
 #endif

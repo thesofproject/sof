@@ -502,12 +502,12 @@ int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 	return 0;
 }
 
-int module_unbind(struct processing_module *mod, void *data)
+int module_unbind(struct processing_module *mod, struct bind_info *unbind_data)
 {
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
 	if (ops->unbind)
-		return ops->unbind(mod, data);
+		return ops->unbind(mod, unbind_data);
 	return 0;
 }
 
