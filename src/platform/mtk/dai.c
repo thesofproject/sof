@@ -24,7 +24,7 @@
 #define SRAM_CPU_START 0x1a210000
 #elif defined(CONFIG_SOC_MT8365)
 #define MTK_AFE_BASE 0x11220000
-#define SRAM_CPU_START 0x40020000
+#define SRAM_CPU_START 0x1e000000
 #else
 #error Unrecognized device
 #endif
