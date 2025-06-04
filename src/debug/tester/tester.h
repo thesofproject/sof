@@ -75,7 +75,7 @@ struct tester_test_case_interface {
 	/**
 	 * copy of module bind method, with additional ctx param
 	 */
-	int (*bind)(void *ctx, struct processing_module *mod, void *data);
+	int (*bind)(void *ctx, struct processing_module *mod, struct bind_info *bind_data);
 
 	/**
 	 * copy of module unbind method, with additional ctx param
