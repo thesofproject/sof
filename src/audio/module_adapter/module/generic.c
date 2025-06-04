@@ -495,20 +495,50 @@ EXPORT_SYMBOL(module_set_configuration);
 
 int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 {
+	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
+	switch (bind_data->bind_type) {
+	case COMP_BIND_TYPE_SINK:
+		ret = sink_bind(bind_data->sink, mod);
+		break;
+	case COMP_BIND_TYPE_SOURCE:
+		ret = source_bind(bind_data->source, mod);
+		break;
+	default:
+		ret = -EINVAL;
+	}
+	if (ret)
+		return ret;
+
 	if (ops->bind)
-		return ops->bind(mod, bind_data);
-	return 0;
+		ret = ops->bind(mod, bind_data);
+
+	return ret;
 }
 
 int module_unbind(struct processing_module *mod, struct bind_info *unbind_data)
 {
+	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
+	switch (unbind_data->bind_type) {
+	case COMP_BIND_TYPE_SINK:
+		ret = sink_unbind(unbind_data->sink);
+		break;
+	case COMP_BIND_TYPE_SOURCE:
+		ret = source_unbind(unbind_data->source);
+		break;
+	default:
+		ret = -EINVAL;
+	}
+	if (ret)
+		return ret;
+
 	if (ops->unbind)
-		return ops->unbind(mod, unbind_data);
-	return 0;
+		ret = ops->unbind(mod, unbind_data);
+
+	return ret;
 }
 
 void module_update_buffer_position(struct input_stream_buffer *input_buffers,
