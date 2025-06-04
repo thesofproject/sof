@@ -241,7 +241,80 @@ static void sel_s16le(struct processing_module *mod, struct input_stream_buffer 
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+#if CONFIG_FORMAT_S24LE
+/**
+ * \brief Mixing routine for 24-bit, m channel input x n channel output single frame.
+ * \param[out] dst Sink buffer.
+ * \param[in] dst_channels Number of sink channels.
+ * \param[in] src Source data.
+ * \param[in] src_channels Number of source channels.
+ * \param[in] coeffs_config IPC4 micsel config with Q10 coefficients.
+ */
+static void process_frame_s24le(int32_t dst[], int dst_channels,
+				int32_t src[], int src_channels,
+				struct ipc4_selector_coeffs_config *coeffs_config)
+{
+	int64_t accum;
+	int i, j;
+
+	for (i = 0; i < dst_channels; i++) {
+		accum = 0;
+		for (j = 0; j < src_channels; j++)
+			accum += (int64_t)src[j] * (int64_t)coeffs_config->coeffs[i][j];
+
+		/* accum is Q1.23 * Q6.10 --> Q7.33, shift right by 10 and
+		 * saturate to get Q1.23.
+		 */
+		dst[i] = sat_int24((accum + (1 << 9)) >> 10);
+	}
+}
+
+/**
+ * \brief Channel selection for 24-bit, m channel input x n channel output data format.
+ * \param[in] mod Selector base module device.
+ * \param[in,out] bsource Source buffer.
+ * \param[in,out] bsink Sink buffer.
+ * \param[in] frames Number of frames to process.
+ */
+static void sel_s24le(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, uint32_t frames)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
+	int32_t *src = audio_stream_get_rptr(source);
+	int32_t *dest = audio_stream_get_wptr(sink);
+	int nmax;
+	int i;
+	int n;
+	int processed = 0;
+	int source_frame_bytes = audio_stream_frame_bytes(source);
+	int sink_frame_bytes = audio_stream_frame_bytes(sink);
+	int n_chan_source = MIN(SEL_SOURCE_CHANNELS_MAX, audio_stream_get_channels(source));
+	int n_chan_sink = MIN(SEL_SINK_CHANNELS_MAX, audio_stream_get_channels(sink));
+
+	while (processed < frames) {
+		n = frames - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dest) / sink_frame_bytes;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			process_frame_s24le(dest, n_chan_sink, src, n_chan_source,
+					    &cd->coeffs_config);
+			src += audio_stream_get_channels(source);
+			dest += audio_stream_get_channels(sink);
+		}
+		src = audio_stream_wrap(source, src);
+		dest = audio_stream_wrap(sink, dest);
+		processed += n;
+	}
+
+	module_update_buffer_position(bsource, bsink, frames);
+}
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
 /**
  * \brief Mixing routine for 32-bit, m channel input x n channel output single frame.
  * \param[out] dst Sink buffer.
@@ -310,7 +383,7 @@ static void sel_s32le(struct processing_module *mod, struct input_stream_buffer 
 
 	module_update_buffer_position(bsource, bsink, frames);
 }
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
+#endif /* CONFIG_FORMAT_S32LE */
 #endif
 
 const struct comp_func_map func_table[] = {
@@ -335,7 +408,7 @@ const struct comp_func_map func_table[] = {
 	{SOF_IPC_FRAME_S16_LE, 0, sel_s16le},
 #endif
 #if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, 0, sel_s32le},
+	{SOF_IPC_FRAME_S24_4LE, 0, sel_s24le},
 #endif
 #if CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE, 0, sel_s32le},
