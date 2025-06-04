@@ -831,7 +831,7 @@ static int mixout_bind(struct processing_module *mod, struct bind_info *bind_dat
 	return 0;
 }
 
-static int mixout_unbind(struct processing_module *mod, void *data)
+static int mixout_unbind(struct processing_module *mod, struct bind_info *unbind_data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *mixin;
@@ -841,7 +841,7 @@ static int mixout_unbind(struct processing_module *mod, void *data)
 
 	comp_dbg(mod->dev, "mixout_unbind()");
 
-	bu = (struct ipc4_module_bind_unbind *)data;
+	bu = unbind_data->ipc4_data;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
 
 	/* we are only interested in unbind for mixin -> mixout pair */
