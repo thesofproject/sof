@@ -120,10 +120,17 @@ char __aligned(8) heapmem[HEAPMEM_SIZE];
 #elif defined(CONFIG_SOC_FAMILY_MTK)
 
 extern char _mtk_adsp_sram_end;
+#if defined(CONFIG_SOC_MT8365)
+#define SRAM_START DT_REG_ADDR(DT_NODELABEL(sram1))
+#define SRAM_SIZE  DT_REG_SIZE(DT_NODELABEL(sram1))
+#define heapmem ((uint8_t *)SRAM_START)
+#else
 #define SRAM_START DT_REG_ADDR(DT_NODELABEL(sram0))
 #define SRAM_SIZE  DT_REG_SIZE(DT_NODELABEL(sram0))
-#define SRAM_END   (SRAM_START + SRAM_SIZE)
 #define heapmem ((uint8_t *)ALIGN_UP((uintptr_t)&_mtk_adsp_sram_end, PLATFORM_DCACHE_ALIGN))
+#endif /* CONFIG_SOC_MT8365 */
+
+#define SRAM_END   (SRAM_START + SRAM_SIZE)
 
 /* Heap size is limited to 0x7fffU chunk units when CONFIG_SYS_HEAP_SMALL_ONLY is set */
 #if defined(CONFIG_SYS_HEAP_SMALL_ONLY)
