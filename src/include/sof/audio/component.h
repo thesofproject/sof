@@ -279,7 +279,7 @@ enum bind_type {
 };
 
 struct bind_info {
-	/* pointer to IPC4 bind data */
+	/* pointer to IPC4 bind/unbind data */
 	struct ipc4_module_bind_unbind *ipc4_data;
 
 	/* type of binding
@@ -293,8 +293,8 @@ struct bind_info {
 	/* pointers to sink or source API of the data provider/consumer
 	 * that is being bound to the module
 	 *
-	 * if bind_type == COMP_BIND_TYPE_SOURCE, the pointer below points to source
-	 * if bind_type == COMP_BIND_TYPE_SINK, the pointer below points to sink
+	 * if bind_type == COMP_BIND_TYPE_SOURCE, the pointer points to source being bound/unbound
+	 * if bind_type == COMP_BIND_TYPE_SINK, the pointer points to sink being bound/unbound
 	 *
 	 * NOTE! As in pipeline2.0 there may be a binding between modules,
 	 * without a buffer in between, it cannot be a pointer to any buffer type, module should
@@ -524,7 +524,7 @@ struct comp_ops {
 	 *
 	 * Usually can be __cold.
 	 */
-	int (*unbind)(struct comp_dev *dev, void *data);
+	int (*unbind)(struct comp_dev *dev, struct bind_info *unbind_data);
 
 	/**
 	 * Gets config in component.

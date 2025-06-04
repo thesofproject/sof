@@ -1202,7 +1202,7 @@ __cold static int copier_bind(struct processing_module *mod, struct bind_info *b
 	return -ENODEV;
 }
 
-__cold static int copier_unbind(struct processing_module *mod, void *data)
+__cold static int copier_unbind(struct processing_module *mod, struct bind_info *unbind_data)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -1212,7 +1212,7 @@ __cold static int copier_unbind(struct processing_module *mod, void *data)
 	if (dev->ipc_config.type == SOF_COMP_DAI) {
 		struct dai_data *dd = cd->dd[0];
 
-		return dai_zephyr_unbind(dd, dev, data);
+		return dai_zephyr_unbind(dd, dev, unbind_data);
 	}
 
 	return 0;

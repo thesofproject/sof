@@ -1961,14 +1961,15 @@ static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no,
 }
 
 #ifdef CONFIG_IPC_MAJOR_4
-__cold int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data)
+__cold
+int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, struct bind_info *unbind_data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	int buf_id;
 
 	assert_can_be_cold();
 
-	bu = (struct ipc4_module_bind_unbind *)data;
+	bu = unbind_data->ipc4_data;
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 
 	if (dd && dd->local_buffer) {

@@ -683,7 +683,10 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	return IPC4_SUCCESS;
 
 e_sink_bind:
-	comp_unbind(source, bu);
+	/* sink bind was already called */
+	bind_data.bind_type = COMP_BIND_TYPE_SINK;
+	bind_data.sink = audio_buffer_get_sink(&buffer->audio_buffer);
+	comp_unbind(source, &bind_data);
 e_src_bind:
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 e_sink_connect:
@@ -710,6 +713,7 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	uint32_t flags = 0;
 	int ret, ret1;
 	bool cross_core_unbind;
+	struct bind_info unbind_data;
 
 	assert_can_be_cold();
 
@@ -779,8 +783,14 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 	/* these might call comp_ipc4_bind_remote() if necessary */
-	ret = comp_unbind(src, bu);
-	ret1 = comp_unbind(sink, bu);
+	unbind_data.ipc4_data = bu;
+	unbind_data.bind_type = COMP_BIND_TYPE_SINK;
+	unbind_data.sink = audio_buffer_get_sink(&buffer->audio_buffer);
+	ret = comp_unbind(src, &unbind_data);
+
+	unbind_data.bind_type = COMP_BIND_TYPE_SOURCE;
+	unbind_data.source = audio_buffer_get_source(&buffer->audio_buffer);
+	ret1 = comp_unbind(sink, &unbind_data);
 
 	ll_unblock(cross_core_unbind, flags);
 

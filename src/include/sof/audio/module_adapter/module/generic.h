@@ -206,7 +206,7 @@ int module_set_configuration(struct processing_module *mod,
 			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			     size_t response_size);
 int module_bind(struct processing_module *mod, struct bind_info *bind_data);
-int module_unbind(struct processing_module *mod, void *data);
+int module_unbind(struct processing_module *mod, struct bind_info *unbind_data);
 
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config, const void *spec);
@@ -252,7 +252,7 @@ int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
 }
 
 static inline
-int module_adapter_unbind(struct comp_dev *dev, void *data)
+int module_adapter_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
 {
 	return 0;
 }
@@ -282,7 +282,7 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value);
 int module_adapter_set_attribute(struct comp_dev *dev, uint32_t type, void *value);
 int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data);
-int module_adapter_unbind(struct comp_dev *dev, void *data);
+int module_adapter_unbind(struct comp_dev *dev, struct bind_info *unbind_data);
 uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 						 uint32_t stream_no, bool input);
 
