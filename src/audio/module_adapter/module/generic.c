@@ -493,12 +493,12 @@ int module_set_configuration(struct processing_module *mod,
 }
 EXPORT_SYMBOL(module_set_configuration);
 
-int module_bind(struct processing_module *mod, void *data)
+int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 {
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
 	if (ops->bind)
-		return ops->bind(mod, data);
+		return ops->bind(mod, bind_data);
 	return 0;
 }
 

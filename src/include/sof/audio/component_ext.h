@@ -432,29 +432,29 @@ static inline struct comp_driver_list *comp_drivers_get(void)
 }
 
 #if CONFIG_IPC_MAJOR_4
-static inline int comp_ipc4_bind_remote(struct comp_dev *dev, void *data)
+static inline int comp_ipc4_bind_remote(struct comp_dev *dev, struct bind_info *bind_data)
 {
 	struct idc_msg msg = { IDC_MSG_BIND,
 		IDC_EXTENSION(dev->ipc_config.id), dev->ipc_config.core,
-		sizeof(struct ipc4_module_bind_unbind), data};
+		sizeof(*bind_data), bind_data};
 
 	return idc_send_msg(&msg, IDC_BLOCKING);
 }
 #endif
 
-static inline int comp_bind(struct comp_dev *dev, void *data)
+static inline int comp_bind(struct comp_dev *dev, struct bind_info *bind_data)
 {
 #if CONFIG_IPC_MAJOR_4
 	if (dev->drv->ops.bind)
 		return cpu_is_me(dev->ipc_config.core) ?
-			dev->drv->ops.bind(dev, data) : comp_ipc4_bind_remote(dev, data);
+			dev->drv->ops.bind(dev, bind_data) : comp_ipc4_bind_remote(dev, bind_data);
 
 	return 0;
 #else
 	int ret = 0;
 
 	if (dev->drv->ops.bind)
-		ret = dev->drv->ops.bind(dev, data);
+		ret = dev->drv->ops.bind(dev, bind_data);
 
 	return ret;
 #endif
