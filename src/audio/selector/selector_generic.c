@@ -12,6 +12,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/format.h>
 #include <sof/audio/selector.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
@@ -191,7 +192,7 @@ static void process_frame_s16le(int16_t dst[], int dst_channels,
 			accum += (int32_t)src[j] * (int32_t)coeffs_config->coeffs[i][j];
 
 		/* shift out 10 LSbits with rounding to get 16-bit result */
-		dst[i] = (int16_t)((accum + (1 << 9)) >> 10);
+		dst[i] = sat_int16((accum + (1 << 9)) >> 10);
 	}
 }
 
@@ -262,7 +263,7 @@ static void process_frame_s32le(int32_t dst[], int dst_channels,
 			accum += (int64_t)src[j] * (int64_t)coeffs_config->coeffs[i][j];
 
 		/* shift out 10 LSbits with rounding to get 32-bit result */
-		dst[i] = (int32_t)((accum + (1 << 9)) >> 10);
+		dst[i] = sat_int32((accum + (1 << 9)) >> 10);
 	}
 }
 
