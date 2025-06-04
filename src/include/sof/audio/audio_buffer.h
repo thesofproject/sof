@@ -294,7 +294,7 @@ void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bo
 /**
  * @brief free buffer and all allocated resources
  */
-void audio_buffer_free(struct sof_audio_buffer *buffer);
+int audio_buffer_free(struct sof_audio_buffer *buffer);
 
 /**
  * @brief clean all buffer data, set buffer positions to initial, leaving config as is

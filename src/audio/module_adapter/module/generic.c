@@ -520,14 +520,14 @@ int module_unbind(struct processing_module *mod, struct unbind_info *unbind_data
 	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
-	if (bind_data->from_sink) {
-		ret = sink_unbind(bind_data->from_sink);
+	if (unbind_data->from_sink) {
+		ret = sink_unbind(unbind_data->from_sink);
 		if (ret)
 			return ret;
 	}
 
-	if (bind_data->from_source) {
-		ret = source_unbind(bind_data->from_source);
+	if (unbind_data->from_source) {
+		ret = source_unbind(unbind_data->from_source);
 		if (ret)
 			return ret;
 	}
