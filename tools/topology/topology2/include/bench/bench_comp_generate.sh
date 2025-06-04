@@ -28,41 +28,41 @@ generate_comp ()
     cat > "$fn" <<EOF_COMP
 		# Created with script "${FULL_CMD[@]}"
 		Object.Widget.${comp}.1 {
-			index 1
+			index \$BENCH_PLAYBACK_HOST_PIPELINE
 			<include/bench/one_input_output_format_${format}.conf>
 			<include/bench/${comp}_controls_playback.conf>
 		}
 		Object.Widget.${comp}.2 {
-			index 3
+			index \$BENCH_CAPTURE_HOST_PIPELINE
 			<include/bench/one_input_output_format_${format}.conf>
 			<include/bench/${comp}_controls_capture.conf>
 		}
-		<include/bench/host_io_gateway_pipelines_${format}.conf>
-		<include/bench/${comp}_hda_route.conf>
+		<include/bench/host_gateway_pipelines_${format}.conf>
+		<include/bench/${comp}_route.conf>
 EOF_COMP
 }
 
 generate_route ()
 {
-    fn=${comp}_hda_route.conf
+    fn=${comp}_route.conf
     echo Creating file "$fn"
     cat > "$fn" <<EOF_ROUTE
 		# Created with script "${FULL_CMD[@]}"
 		Object.Base.route [
 			{
-				sink 'dai-copier.HDA.\$HDA_ANALOG_DAI_NAME.playback'
-				source '${comp}.1.1'
+				sink '\$BENCH_PLAYBACK_DAI_COPIER'
+				source '${comp}.\$BENCH_PLAYBACK_HOST_PIPELINE.1'
 			}
 			{
-				sink '${comp}.1.1'
+				sink '${comp}.\$BENCH_PLAYBACK_HOST_PIPELINE.1'
 				source 'host-copier.0.playback'
 			}
 			{
-				source 'dai-copier.HDA.\$HDA_ANALOG_DAI_NAME.capture'
-				sink '${comp}.3.2'
+				source '\$BENCH_CAPTURE_DAI_COPIER'
+				sink '${comp}.\$BENCH_CAPTURE_HOST_PIPELINE.2'
 			}
 			{
-				source '${comp}.3.2'
+				source '${comp}.\$BENCH_CAPTURE_HOST_PIPELINE.2'
 				sink 'host-copier.0.capture'
 			}
 		]
