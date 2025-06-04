@@ -291,6 +291,25 @@ struct bind_info {
 	struct sof_sink *as_sink;
 };
 
+struct unbind_info {
+	/* pointer to IPC4 bind data */
+	struct ipc4_module_bind_unbind *ipc4_data;	/* pointer to IPC4 bind data */
+	/* pointers to sink or source API of the data provider/consumer
+	 * that is being unbound from the module
+	 *
+	 * As in pipeline2.0 there may be a binding between modules, without a buffer in between,
+	 * it cannot be a pointer to any buffer type
+	 *
+	 * from_source points to source API if a data source is being disconnected to the module in
+	 * this unbind operation, otherwise is NULL
+	 *
+	 * from_sink points to sink API if a data sink is being disconnected from the module in
+	 * this unbind operation, otherwise is NULL
+	 */
+	struct sof_source *from_source;
+	struct sof_sink *from_sink;
+};
+
 /**
  * Audio component operations.
  *
@@ -509,7 +528,7 @@ struct comp_ops {
 	 *
 	 * Usually can be __cold.
 	 */
-	int (*unbind)(struct comp_dev *dev, void *data);
+	int (*unbind)(struct comp_dev *dev, struct unbind_info *unbind_data);
 
 	/**
 	 * Gets config in component.
