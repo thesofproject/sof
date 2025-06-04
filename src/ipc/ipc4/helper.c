@@ -476,6 +476,7 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
+	struct bind_info bind_data;
 	struct comp_buffer *buffer;
 	struct comp_dev *source;
 	struct comp_dev *sink;
@@ -652,11 +653,16 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 	/* these might call comp_ipc4_bind_remote() if necessary */
-	ret = comp_bind(source, bu);
+	bind_data.ipc4_data = bu;
+	bind_data.bind_type = COMP_BIND_TYPE_SINK;
+	bind_data.sink = audio_buffer_get_sink(&buffer->audio_buffer);
+	ret = comp_bind(source, &bind_data);
 	if (ret < 0)
 		goto e_src_bind;
 
-	ret = comp_bind(sink, bu);
+	bind_data.bind_type = COMP_BIND_TYPE_SOURCE;
+	bind_data.source = audio_buffer_get_source(&buffer->audio_buffer);
+	ret = comp_bind(sink, &bind_data);
 	if (ret < 0)
 		goto e_sink_bind;
 
