@@ -493,21 +493,47 @@ int module_set_configuration(struct processing_module *mod,
 }
 EXPORT_SYMBOL(module_set_configuration);
 
-int module_bind(struct processing_module *mod, void *data)
+int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 {
+	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
+	if (bind_data->as_sink) {
+		ret = sink_bind(bind_data->as_sink, mod);
+		if (ret)
+			return ret;
+	}
+
+	if (bind_data->as_source) {
+		ret = source_bind(bind_data->as_source, mod);
+		if (ret)
+			return ret;
+	}
+
 	if (ops->bind)
-		return ops->bind(mod, data);
+		return ops->bind(mod, bind_data);
 	return 0;
 }
 
-int module_unbind(struct processing_module *mod, void *data)
+int module_unbind(struct processing_module *mod, struct unbind_info *unbind_data)
 {
+	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
+	if (bind_data->from_sink) {
+		ret = sink_unbind(bind_data->from_sink);
+		if (ret)
+			return ret;
+	}
+
+	if (bind_data->from_source) {
+		ret = source_unbind(bind_data->from_source);
+		if (ret)
+			return ret;
+	}
+
 	if (ops->unbind)
-		return ops->unbind(mod, data);
+		return ops->unbind(mod, unbind_data);
 	return 0;
 }
 
