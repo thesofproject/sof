@@ -110,6 +110,8 @@ int audio_buffer_free(struct sof_audio_buffer *buffer)
 	if (buffer->ops->free)
 		buffer->ops->free(buffer);
 	rfree(buffer);
+
+	return 0;
 }
 
 static
