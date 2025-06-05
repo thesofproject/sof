@@ -84,8 +84,6 @@ int audio_buffer_sync_secondary_buffer(struct sof_audio_buffer *buffer, size_t l
 
 int audio_buffer_free(struct sof_audio_buffer *buffer)
 {
-	int ret;
-
 	/* free of NULL is allowed */
 	if (!buffer)
 		return 0;
@@ -98,6 +96,8 @@ int audio_buffer_free(struct sof_audio_buffer *buffer)
 	   return -EINVAL;
 
 #if CONFIG_PIPELINE_2_0
+	int ret;
+
 	ret = audio_buffer_free(buffer->secondary_buffer_sink);
 	if (ret)
 		return ret;
