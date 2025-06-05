@@ -727,11 +727,6 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	if (src->pipeline == sink->pipeline) {
-		tr_warn(&ipc_tr, "ignoring unbinding of src %x and dst %x", src_id, sink_id);
-		return 0;
-	}
-
 	cross_core_unbind = src->ipc_config.core != sink->ipc_config.core;
 
 	/* Pass IPC to target core if both modules has the same target core,
