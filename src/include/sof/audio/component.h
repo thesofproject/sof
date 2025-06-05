@@ -617,6 +617,7 @@ struct comp_ipc_config {
 	uint32_t frame_fmt;		/**< SOF_IPC_FRAME_ */
 	uint32_t xrun_action;		/**< action we should take on XRUN */
 #if CONFIG_IPC_MAJOR_4
+	bool ipc_extended_init;		/**< true if extended init is included in ipc payload */
 	uint32_t ipc_config_size;	/**< size of a config received by ipc */
 #endif
 };
