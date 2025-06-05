@@ -82,19 +82,36 @@ int audio_buffer_sync_secondary_buffer(struct sof_audio_buffer *buffer, size_t l
 
 #endif /* CONFIG_PIPELINE_2_0 */
 
-void audio_buffer_free(struct sof_audio_buffer *buffer)
+int audio_buffer_free(struct sof_audio_buffer *buffer)
 {
+	/* free of NULL is allowed */
 	if (!buffer)
-		return;
+		return 0;
 
 	CORE_CHECK_STRUCT(buffer);
+
+	/* cannot free buffer if any of APIs is still connected */
+	if ((sink_get_bound_module(&buffer->_sink_api)) ||
+	   (source_get_bound_module(&buffer->_source_api)))
+		return -EINVAL;
+
 #if CONFIG_PIPELINE_2_0
-	audio_buffer_free(buffer->secondary_buffer_sink);
-	audio_buffer_free(buffer->secondary_buffer_source);
+	int ret;
+
+	ret = audio_buffer_free(buffer->secondary_buffer_sink);
+	if (ret)
+		return ret;
+
+	ret = audio_buffer_free(buffer->secondary_buffer_source);
+	if (ret)
+		return ret;
+
 #endif /* CONFIG_PIPELINE_2_0 */
 	if (buffer->ops->free)
 		buffer->ops->free(buffer);
 	rfree(buffer);
+
+	return 0;
 }
 
 static

@@ -1173,9 +1173,9 @@ __cold static int copier_get_hw_params(struct comp_dev *dev, struct sof_ipc_stre
 	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
-__cold static int copier_bind(struct processing_module *mod, void *data)
+__cold static int copier_bind(struct processing_module *mod, struct bind_info *bind_data)
 {
-	const struct ipc4_module_bind_unbind *const bu = (struct ipc4_module_bind_unbind *)data;
+	const struct ipc4_module_bind_unbind *const bu = bind_data->ipc4_data;
 	const uint32_t src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
 	const uint32_t src_queue_id = bu->extension.r.src_queue;
 	struct copier_data *cd = module_get_private_data(mod);
@@ -1202,7 +1202,7 @@ __cold static int copier_bind(struct processing_module *mod, void *data)
 	return -ENODEV;
 }
 
-__cold static int copier_unbind(struct processing_module *mod, void *data)
+__cold static int copier_unbind(struct processing_module *mod, struct unbind_info *unbind_data)
 {
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
@@ -1212,7 +1212,7 @@ __cold static int copier_unbind(struct processing_module *mod, void *data)
 	if (dev->ipc_config.type == SOF_COMP_DAI) {
 		struct dai_data *dd = cd->dd[0];
 
-		return dai_zephyr_unbind(dd, dev, data);
+		return dai_zephyr_unbind(dd, dev, unbind_data);
 	}
 
 	return 0;

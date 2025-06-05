@@ -28,14 +28,14 @@ static struct list_item vmh_list = LIST_INIT(vmh_list);
  * @retval NULL on creation failure.
  */
 struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
-	int memory_region_attribute, int core_id, bool allocating_continuously)
+	int memory_region_attribute, bool allocating_continuously)
 {
 	const struct sys_mm_drv_region *virtual_memory_regions =
 		sys_mm_drv_query_memory_regions();
 	int i;
 
 	/* Check if we haven't created heap for this region already */
-	if (vmh_get_heap_by_attribute(memory_region_attribute, core_id))
+	if (vmh_get_heap_by_attribute(memory_region_attribute))
 		return NULL;
 
 	struct vmh_heap *new_heap =
@@ -44,7 +44,6 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 	if (!new_heap)
 		return NULL;
 
-	new_heap->core_id = core_id;
 	list_init(&new_heap->node);
 	struct vmh_heap_config new_config = {0};
 
@@ -54,7 +53,7 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
 	 * available cores
 	 */
 	if (memory_region_attribute == MEM_REG_ATTR_CORE_HEAP) {
-		new_heap->virtual_region = &virtual_memory_regions[core_id];
+		new_heap->virtual_region = &virtual_memory_regions[0];
 	} else {
 		for (i = CONFIG_MP_MAX_NUM_CPUS;
 			i < CONFIG_MP_MAX_NUM_CPUS + VIRTUAL_REGION_COUNT; i++) {
@@ -393,8 +392,6 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 	if (!alloc_size)
 		return NULL;
 	/* Only operations on the same core are allowed */
-	if (heap->core_id != cpu_get_id())
-		return NULL;
 
 	void *ptr = NULL;
 	int mem_block_iterator, allocation_error_code = -ENOMEM;
@@ -560,9 +557,6 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 {
 	int retval;
 
-	if (heap->core_id != cpu_get_id())
-		return -EINVAL;
-
 	size_t mem_block_iter, i, size_to_free, block_size, ptr_bit_array_offset,
 		ptr_bit_array_position, blocks_to_free;
 	bool ptr_range_found;
@@ -691,15 +685,14 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
  * @retval NULL when reconfiguration failed
  */
 struct vmh_heap *vmh_reconfigure_heap(
-	struct vmh_heap *heap, struct vmh_heap_config *cfg,
-	int core_id, bool allocating_continuously)
+	struct vmh_heap *heap, struct vmh_heap_config *cfg, bool allocating_continuously)
 {
 	uint32_t region_attribute = heap->virtual_region->attr;
 
 	if (vmh_free_heap(heap))
 		return NULL;
 
-	return vmh_init_heap(cfg, region_attribute, core_id, allocating_continuously);
+	return vmh_init_heap(cfg, region_attribute, allocating_continuously);
 }
 
 /**
@@ -740,7 +733,7 @@ void vmh_get_default_heap_config(const struct sys_mm_drv_region *region,
  * @retval heap ptr on success
  * @retval NULL if there was no heap created fitting the attr.
  */
-struct vmh_heap *vmh_get_heap_by_attribute(uint32_t attr, uint32_t core_id)
+struct vmh_heap *vmh_get_heap_by_attribute(uint32_t attr)
 {
 	struct list_item *vm_heaps_iterator;
 	struct vmh_heap *retval;
@@ -753,7 +746,7 @@ struct vmh_heap *vmh_get_heap_by_attribute(uint32_t attr, uint32_t core_id)
 		const struct sys_mm_drv_region *virtual_memory_region =
 			sys_mm_drv_query_memory_regions();
 		/* we move ptr to cpu vmr */
-		virtual_memory_region = &virtual_memory_region[core_id];
+		virtual_memory_region = &virtual_memory_region[0];
 
 		list_for_item(vm_heaps_iterator, &vmh_list) {
 			retval =
