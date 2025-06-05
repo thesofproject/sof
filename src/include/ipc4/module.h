@@ -73,6 +73,28 @@ struct ipc4_vendor_error {
 	uint32_t err_code;
 };
 
+/* IDs for all global object types in struct ipc4_module_init_ext_object */
+enum ipc4_mod_init_data_glb_id {
+	IPC4_MOD_INIT_DATA_ID_INVALID = 0,
+	IPC4_MOD_INIT_DATA_ID_DP_DATA = 1,
+	IPC4_MOD_INIT_DATA_ID_MAX = IPC4_MOD_INIT_DATA_ID_DP_DATA,
+};
+
+/* data object for vendor bespoke data with ABI growth and backwards compat */
+struct ipc4_module_init_ext_object {
+	uint32_t last_object : 1;	/* object is last in array if 1 else object follows. */
+	uint32_t object_id : 15;	/* unique ID for this object or globally */
+	uint32_t object_words : 16;	/* size in dwords (excluding this structure) */
+} __attribute__((packed, aligned(4)));
+/* the object data will be placed in memory here and will have size "object_words" */
+
+/* Ext init array data object for Data Processing module memory requirements */
+struct ipc4_module_init_ext_obj_dp_data {
+	uint32_t domain_id;	/* userspace domain ID */
+	uint32_t stack_bytes;	/* required stack size in bytes, 0 means default size */
+	uint32_t heap_bytes;	/* required heap size in bytes, 0 means default size */
+} __attribute__((packed, aligned(4)));
+
 /*
  * Host Driver sends this message to create a new module instance.
  */
@@ -83,7 +105,8 @@ struct ipc4_module_init_ext_init {
 	/**< Indicates that GNA is used by a module and additional information */
 	/* (gna_config) is passed after ExtendedData. */
 	uint32_t gna_used    : 1;
-	uint32_t rsvd_0      : 30;
+	uint32_t data_obj_array : 1;	/* struct ipc4_module_init_ext_object data */
+	uint32_t rsvd_0      : 29;
 	uint32_t rsvd_1[2];
 } __attribute__((packed, aligned(4)));
 
