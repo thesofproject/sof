@@ -239,13 +239,13 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 }
 
 static inline
-int module_adapter_bind(struct comp_dev *dev, void *data)
+int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
 {
 	return 0;
 }
 
 static inline
-int module_adapter_unbind(struct comp_dev *dev, void *data)
+int module_adapter_unbind(struct comp_dev *dev, struct unbind_info *unbind_data)
 {
 	return 0;
 }

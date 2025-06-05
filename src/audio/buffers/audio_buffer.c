@@ -93,7 +93,7 @@ int audio_buffer_free(struct sof_audio_buffer *buffer)
 	/* cannot free buffer if any of APIs is still connected */
 	if ((sink_get_bound_module(&buffer->_sink_api)) ||
 	   (source_get_bound_module(&buffer->_source_api)))
-	   return -EINVAL;
+		return -EINVAL;
 
 #if CONFIG_PIPELINE_2_0
 	int ret;
