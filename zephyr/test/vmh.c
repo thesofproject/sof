@@ -21,12 +21,11 @@ LOG_MODULE_DECLARE(sof_boot_test, CONFIG_SOF_LOG_LEVEL);
 /* Test creating and freeing a virtual memory heap */
 static void test_vmh_init_and_free_heap(int memory_region_attribute,
 					struct vmh_heap_config *config,
-					int core_id,
 					bool allocating_continuously,
 					bool expect_success)
 {
 	struct vmh_heap *heap = vmh_init_heap(config, memory_region_attribute,
-		core_id, allocating_continuously);
+					      allocating_continuously);
 	if (expect_success) {
 		zassert_not_null(heap,
 		"Heap initialization expected to succeed but failed");
@@ -146,7 +145,7 @@ static void test_vmh_multiple_allocs(struct vmh_heap *heap, int num_allocs,
 static void test_vmh_alloc_multiple_times(bool allocating_continuously)
 {
 	struct vmh_heap *heap =
-	vmh_init_heap(NULL, MEM_REG_ATTR_CORE_HEAP, 0, allocating_continuously);
+	vmh_init_heap(NULL, MEM_REG_ATTR_SHARED_HEAP, allocating_continuously);
 
 	zassert_not_null(heap, "Heap initialization failed");
 
@@ -170,7 +169,7 @@ static void test_vmh_alloc_multiple_times(bool allocating_continuously)
 static void test_vmh_alloc_free(bool allocating_continuously)
 {
 	struct vmh_heap *heap =
-	vmh_init_heap(NULL, MEM_REG_ATTR_CORE_HEAP, 0, allocating_continuously);
+	vmh_init_heap(NULL, MEM_REG_ATTR_SHARED_HEAP, allocating_continuously);
 
 	zassert_not_null(heap, "Heap initialization failed");
 
@@ -194,7 +193,7 @@ static void test_vmh_alloc_free(bool allocating_continuously)
 /* Test case for vmh_alloc and vmh_free with and without config */
 static void test_heap_creation(void)
 {
-	test_vmh_init_and_free_heap(MEM_REG_ATTR_CORE_HEAP, NULL, 0, false, true);
+	test_vmh_init_and_free_heap(MEM_REG_ATTR_SHARED_HEAP, NULL, 0, false, true);
 
 	/* Try to setup with pre defined heap config */
 	struct vmh_heap_config config = {0};
@@ -207,7 +206,7 @@ static void test_heap_creation(void)
 
 	config.block_bundles_table[1].number_of_blocks = 512;
 
-	test_vmh_init_and_free_heap(MEM_REG_ATTR_CORE_HEAP, &config, 0, false, true);
+	test_vmh_init_and_free_heap(MEM_REG_ATTR_SHARED_HEAP, &config, 0, false, true);
 }
 
 /* Test case for alloc/free on configured heap */
@@ -223,7 +222,7 @@ static void test_alloc_on_configured_heap(bool allocating_continuously)
 
 	/* Create continuous allocation heap for success test */
 	struct vmh_heap *heap =
-	vmh_init_heap(&config, MEM_REG_ATTR_CORE_HEAP, 0, allocating_continuously);
+	vmh_init_heap(&config, MEM_REG_ATTR_SHARED_HEAP, allocating_continuously);
 
 	/* Will succeed on continuous and fail with single block alloc */
 	test_vmh_alloc_free_check(heap, 512, allocating_continuously);
@@ -248,8 +247,7 @@ static void test_vmh_init_all_heaps(void)
 		if (!virtual_memory_region[i].size)
 			break;
 
-		struct vmh_heap *heap = vmh_init_heap(NULL, virtual_memory_region[i].attr,
-		i, true);
+		struct vmh_heap *heap = vmh_init_heap(NULL, virtual_memory_region[i].attr, true);
 
 		zassert_not_null(heap, "Heap initialization expected to succeed but failed");
 
