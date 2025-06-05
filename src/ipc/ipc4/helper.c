@@ -137,6 +137,7 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 	ipc_config.pipeline_id = module_init->extension.r.ppl_instance_id;
 	ipc_config.core = module_init->extension.r.core_id;
 	ipc_config.ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
+	ipc_config.ipc_extended_init = module_init->extension.r.extended_init;
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 MAILBOX_HOSTBOX_SIZE);
