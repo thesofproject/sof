@@ -30,7 +30,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-24.10
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout SOF repository (PR source)
@@ -38,11 +38,13 @@ jobs:
         with:
           path: sof
 
+      # note: libasound-dev needed for testbench build which still
+      #       requires system ALSA headers to be present
       - name: apt get
         run: sudo apt-get update &&
                sudo apt-get -y install valgrind ninja-build
                   octave octave-signal automake autoconf libtool
-                  gettext linux-headers-6.11.0-8
+                  gettext libasound2-dev
 
       - name: Build Alsa-lib
         run: |
