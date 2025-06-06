@@ -65,6 +65,8 @@ struct output_stream_buffer {
 struct processing_module;
 struct sof_source;
 struct sof_sink;
+struct bind_info;
+struct unbind_info;
 
 /**
  * \struct module_interface
@@ -230,13 +232,13 @@ struct module_interface {
 	 * (optional) Module specific bind procedure, called when modules are bound with each other.
 	 * Usually can be __cold
 	 */
-	int (*bind)(struct processing_module *mod, void *data);
+	int (*bind)(struct processing_module *mod, struct bind_info *bind_data);
 
 	/**
 	 * (optional) Module specific unbind procedure, called when modules are disconnected from
 	 * one another. Usually can be __cold
 	 */
-	int (*unbind)(struct processing_module *mod, void *data);
+	int (*unbind)(struct processing_module *mod, struct unbind_info *unbind_data);
 
 	/**
 	 * (optional) Module specific trigger procedure, called when modules are triggered. Usually
