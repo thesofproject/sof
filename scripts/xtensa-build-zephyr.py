@@ -824,10 +824,20 @@ def build_platforms():
 		_dict = dataclasses.asdict(platform_configs[platform])
 		platform_dict = { k:v for (k,v) in _dict.items() if _dict[k] is not None }
 
+		xtensa_tools_version = os.getenv("XTENSA_TOOLS_VERSION")
+		if not xtensa_tools_version:
+			xtesna_tools_version = platform_dict["XTENSA_TOOLS_VERSION"]
 		xtensa_tools_root_dir = os.getenv("XTENSA_TOOLS_ROOT")
+
 		# when XTENSA_TOOLS_ROOT environmental variable is set,
 		# use user installed Xtensa tools not Zephyr SDK
-		if "XTENSA_TOOLS_VERSION" in platform_dict and xtensa_tools_root_dir:
+		if xtensa_tools_version and xtensa_tools_root_dir:
+			# These are external input, so log for posterity (and
+			# build dependency tracking)
+			print("Building using Cadence Xtensa Tools")
+			print(f"  XTENSA_TOOLS_VERSION = {xtensa_tools_version}")
+			print(f"  XTENSA_TOOLS_ROOT = {xtensa_tools_root_dir}")
+
 			xtensa_tools_root_dir = pathlib.Path(xtensa_tools_root_dir)
 			if not xtensa_tools_root_dir.is_dir():
 				raise RuntimeError(f"Platform {platform} uses Xtensa toolchain."
@@ -848,7 +858,7 @@ def build_platforms():
 				xtensa_tools_root_dir / "install" / "tools"
 			)
 			# Toolchain sub-directory
-			TOOLCHAIN_VER = platform_dict["XTENSA_TOOLS_VERSION"]
+			TOOLCHAIN_VER = xtensa_tools_version
 			platf_build_environ["TOOLCHAIN_VER"] = TOOLCHAIN_VER
 
 			# This XTENSA_SYSTEM variable was copied as is from XTOS
