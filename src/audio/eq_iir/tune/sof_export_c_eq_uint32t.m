@@ -1,4 +1,4 @@
-function sof_export_c_eq_uint32t(fn, blob8, vn, justeq)
+function sof_export_c_eq_uint32t(fn, blob8, vn, justeq, howto)
 
 % sof_export_c_eq_uint32t(fn, blob8, vn)
 %
@@ -8,6 +8,7 @@ function sof_export_c_eq_uint32t(fn, blob8, vn, justeq)
 % blob8 - blob data from EQ design
 % vn - variable name
 % justeq - export just the EQ wihtout ABI headers for direct use in FW
+% howto - add a comment how the header file was created
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
@@ -26,6 +27,12 @@ function sof_export_c_eq_uint32t(fn, blob8, vn, justeq)
 	fprintf(fh, ' * Copyright(c) %s Intel Corporation.\n', year);
 	fprintf(fh, ' */\n');
 	fprintf(fh, '\n');
+
+	if nargin == 5
+		fprintf(fh, '/* Created %s with command:\n', datestr(now, 'yyyy-mm-dd'));
+		fprintf(fh, ' * %s\n */\n\n', howto);
+	end
+
 	fprintf(fh, '#include <stdint.h>\n\n');
 
 	% Drop 8 bytes TLV header
