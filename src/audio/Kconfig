@@ -178,6 +178,8 @@ rsource "mfcc/Kconfig"
 
 rsource "codec/Kconfig"
 
+rsource "sound_dose/Kconfig"
+
 rsource "template_comp/Kconfig"
 
 rsource "level_multiplier/Kconfig"
