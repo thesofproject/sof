@@ -495,6 +495,7 @@ int ipc_buffer_new(struct ipc *ipc, const struct sof_ipc_buffer *desc)
 		      sizeof(struct ipc_comp_dev));
 	if (!ibd) {
 		buffer_free(buffer);
+		rfree(buffer);
 		return -ENOMEM;
 	}
 	ibd->cb = buffer;
