@@ -398,6 +398,7 @@ __cold static void chain_release(struct comp_dev *dev)
 
 	if (cd->dma_buffer) {
 		buffer_free(cd->dma_buffer);
+		rfree(cd->dma_buffer);
 		cd->dma_buffer = NULL;
 	}
 }
@@ -621,6 +622,7 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 	ret = chain_init(dev, buff_addr, buff_size);
 	if (ret < 0) {
 		buffer_free(cd->dma_buffer);
+		rfree(cd->dma_buffer);
 		cd->dma_buffer = NULL;
 		goto error;
 	}
