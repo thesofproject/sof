@@ -1105,6 +1105,7 @@ out:
 	 */
 	if (err < 0) {
 		buffer_free(dd->dma_buffer);
+		rfree(dd->dma_buffer);
 		dd->dma_buffer = NULL;
 		dma_sg_free(&config->elem_array);
 		rfree(dd->z_config);
@@ -1246,6 +1247,7 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 
 	if (dd->dma_buffer) {
 		buffer_free(dd->dma_buffer);
+		rfree(dd->dma_buffer);
 		dd->dma_buffer = NULL;
 	}
 
