@@ -911,6 +911,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 	/* free DMA buffer */
 	if (hd->dma_buffer) {
 		buffer_free(hd->dma_buffer);
+		rfree(hd->dma_buffer);
 		hd->dma_buffer = NULL;
 	}
 
