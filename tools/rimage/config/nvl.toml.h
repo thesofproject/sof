@@ -124,5 +124,9 @@ index = __COUNTER__
 #include <audio/mfcc/mfcc.toml>
 #endif
 
+#if defined(CONFIG_COMP_SOUND_DOSE)
+#include <audio/sound_dose/sound_dose.toml>
+#endif
+
 [module]
 count = __COUNTER__

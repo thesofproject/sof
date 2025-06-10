@@ -937,6 +937,7 @@ void sys_comp_module_mux_interface_init(void);
 void sys_comp_module_nxp_eap_interface_init(void);
 void sys_comp_module_rtnr_interface_init(void);
 void sys_comp_module_selector_interface_init(void);
+void sys_comp_module_sound_dose_interface_init(void);
 void sys_comp_module_src_interface_init(void);
 void sys_comp_module_src_lite_interface_init(void);
 void sys_comp_module_tdfb_interface_init(void);
