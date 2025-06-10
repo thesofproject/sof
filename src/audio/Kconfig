@@ -182,6 +182,8 @@ rsource "mfcc/Kconfig"
 
 rsource "codec/Kconfig"
 
+rsource "sound_dose/Kconfig"
+
 rsource "template_comp/Kconfig"
 
 endmenu # "Audio components"
