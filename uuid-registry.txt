@@ -153,6 +153,7 @@ bcf54c06-5702-4a60-ac4abb509123c649 sgen_mt8196
 dabe8814-47e8-11ed-a58bb309974fecce shmread
 e2b6031c-47e8-11ed-07a97f801b6efa6c shmwrite
 167a961e-8ae4-11ea-89f1000c29ce1635 smart_amp_test
+a43f9d7c-ea75-44d5-942d967991a33809 sound_dose
 4abd71ba-8619-458a-b33f160fc0cf809b spdai
 a417b6fb-459d-4cf9-be65d38dc9057b80 spi_completion
 9d346d98-203d-4791-baee1770a03d4a71 spinlock
