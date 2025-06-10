@@ -385,8 +385,11 @@ __cold void copier_dai_free(struct copier_data *cd)
 		rfree(cd->dd[i]);
 	}
 	/* only dai have multi endpoint case */
-	if (cd->multi_endpoint_buffer)
+	if (cd->multi_endpoint_buffer) {
 		buffer_free(cd->multi_endpoint_buffer);
+		rfree(cd->multi_endpoint_buffer);
+		cd->multi_endpoint_buffer = NULL;
+	}
 }
 
 int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd)
