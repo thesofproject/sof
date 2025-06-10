@@ -60,7 +60,7 @@ name = "ADSPFW"
 load_offset = "0x30000"
 
 [module]
-count = 28
+count = 29
 	[[module.entry]]
 	name = "BRNGUP"
 	uuid = "61EB0CB9-34D8-4F59-A21D-04C54C21D3A4"
@@ -612,6 +612,22 @@ count = 28
 	[[module.entry]]
 	name = "LVLMULT"
 	uuid = "30397456-4661-4644-97e5-39a9e5ab1778"
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = "0"
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	# pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x1ff]
+	# mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 1000000, 128, 128, 0, 0, 0]
+
+	# Sound Dose component module config
+	[[module.entry]]
+	name = "SNDDOSE"
+	uuid = "A43F9D7C-EA75-44D5-942D-967991A33809"
 	affinity_mask = "0x1"
 	instance_count = "40"
 	domain_types = "0"

@@ -61,3 +61,6 @@ config PCM_CONVERTER_FORMAT_U8
 
 config PIPELINE_2_0
 	default y
+
+config COMP_SOUND_DOSE
+	default y
