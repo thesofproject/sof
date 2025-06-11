@@ -28,6 +28,9 @@ function sof_export_c_eq_uint32t(fn, blob8, vn, justeq)
 	fprintf(fh, '\n');
 	fprintf(fh, '#include <stdint.h>\n\n');
 
+	% Drop 8 bytes TLV header
+	blob8 = blob8(9:end);
+
 	% Pad blob length to multiple of four bytes
 	n_orig = length(blob8);
 	n_new = ceil(n_orig/4);
