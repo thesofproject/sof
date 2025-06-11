@@ -96,6 +96,7 @@ static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
 			container_of(audio_buffer, struct ring_buffer, audio_buffer);
 
 	rfree((__sparse_force void *)ring_buffer->_data_buffer);
+	rfree(ring_buffer);
 }
 
 static void ring_buffer_reset(struct sof_audio_buffer *audio_buffer)
