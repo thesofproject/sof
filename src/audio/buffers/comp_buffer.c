@@ -158,6 +158,7 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 	notifier_unregister_all(NULL, buffer);
 
 	rfree(buffer->stream.addr);
+	rfree(buffer);
 }
 
 static struct source_ops comp_buffer_source_ops = {
