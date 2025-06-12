@@ -25,6 +25,76 @@
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
+static const struct ipc4_base_module_extended_cfg *
+module_ext_init_decode(struct comp_dev *dev, struct module_config *dst,
+		       const unsigned char *data, size_t *size)
+{
+	const struct ipc4_module_init_ext_init *ext_init =
+		(const struct ipc4_module_init_ext_init *)data;
+	bool last_object = !ext_init->data_obj_array;
+	const struct ipc4_module_init_ext_object *obj;
+
+	if (*size < sizeof(ext_init)) {
+		comp_err(dev, "Size too small for ext init  %u < %u",
+			 *size, sizeof(ext_init));
+		return NULL;
+	}
+	/* TODO: Handle ext_init->gna_used and ext_init->rtos_domain here */
+	/* Get the first obj struct right after ext_init struct */
+	obj = (const struct ipc4_module_init_ext_object *)(ext_init + 1);
+	while (!last_object) {
+		const struct ipc4_module_init_ext_object *next_obj;
+
+		/* Check if there is space for the object header */
+		if ((unsigned char *)(obj + 1) - data > *size) {
+			comp_err(dev, "ext init obj overflow, %u > %u",
+				 (unsigned char *)(obj + 1) - data, *size);
+			return NULL;
+		}
+		/* Calculate would be next object position and check if current object fits */
+		next_obj = (const struct ipc4_module_init_ext_object *)
+			(((uint32_t *) (obj + 1)) + obj->object_words);
+		if ((unsigned char *)next_obj - data > *size) {
+			comp_err(dev, "ext init object array overflow, %u > %u",
+				 (unsigned char *)obj - data, *size);
+			return NULL;
+		}
+		switch (obj->object_id) {
+		case IPC4_MOD_INIT_DATA_ID_DP_DATA:
+		{
+			/* Get dp_data struct that follows the obj struct */
+			const struct ipc4_module_init_ext_obj_dp_data *dp_data =
+				(const struct ipc4_module_init_ext_obj_dp_data *)(obj + 1);
+
+			if (obj->object_words * sizeof(uint32_t) < sizeof(*dp_data)) {
+				comp_err(dev, "dp_data object too small %u < %u",
+					 obj->object_words * sizeof(uint32_t), sizeof(*dp_data));
+				return NULL;
+			}
+			dst->domain_id = dp_data->domain_id;
+			dst->stack_bytes = dp_data->stack_bytes;
+			dst->heap_bytes = dp_data->heap_bytes;
+			comp_info(dev, "init_ext_obj_dp_data domain %u stack %u heap %u",
+				  dp_data->domain_id, dp_data->stack_bytes, dp_data->heap_bytes);
+			break;
+		}
+		default:
+			comp_info(dev, "Unknown ext init object id %u of %u words",
+				  obj->object_id, obj->object_words);
+		}
+		/* Read the last object flag from obj header */
+		last_object = obj->last_object;
+		/* Move to next object */
+		obj = next_obj;
+	}
+
+	/* Remove decoded ext_init payload from the size */
+	*size -= (unsigned char *) obj - data;
+
+	/* return remaining payload */
+	return (const struct ipc4_base_module_extended_cfg *)obj;
+}
+
 /*
  * \module adapter data initialize.
  * \param[in] dev - device.
@@ -39,11 +109,18 @@ int module_adapter_init_data(struct comp_dev *dev,
 			     const struct comp_ipc_config *config,
 			     const void *spec)
 {
+	const struct ipc4_base_module_extended_cfg *cfg;
 	const struct ipc_config_process *args = spec;
-	const struct ipc4_base_module_extended_cfg *cfg = (void *)args->data;
 	size_t cfgsz = args->size;
 
 	assert(dev->drv->type == SOF_COMP_MODULE_ADAPTER);
+	if (config->ipc_extended_init)
+		cfg = module_ext_init_decode(dev, dst, args->data, &cfgsz);
+	else
+		cfg = (const struct ipc4_base_module_extended_cfg *)args->data;
+
+	if (cfg == NULL)
+		return -EINVAL;
 	if (cfgsz < sizeof(cfg->base_cfg))
 		return -EINVAL;
 
