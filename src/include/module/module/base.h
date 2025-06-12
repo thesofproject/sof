@@ -34,6 +34,8 @@ struct module_config {
 	uint8_t nb_output_pins;
 	struct ipc4_input_pin_format *input_pins;
 	struct ipc4_output_pin_format *output_pins;
+	uint32_t stack_size;	/* stack size in bytes, 0 means default value */
+	uint32_t heap_size;	/* stack size in bytes, 0 means default value */
 #endif
 };
 
