@@ -11,7 +11,7 @@ function sof_export_c_eq_uint32t(fn, blob8, vn, justeq)
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright (c) 2021, Intel Corporation. All rights reserved.
+% Copyright (c) 2021-2025, Intel Corporation.
 
 	% Write blob
 	fh = fopen(fn, 'w');
@@ -23,9 +23,10 @@ function sof_export_c_eq_uint32t(fn, blob8, vn, justeq)
 	year = datestr(now, 'yyyy');
 	fprintf(fh, '/* SPDX-License-Identifier: BSD-3-Clause\n');
 	fprintf(fh, ' *\n');
-	fprintf(fh, ' * Copyright(c) %s Intel Corporation. All rights reserved.\n', year);
+	fprintf(fh, ' * Copyright(c) %s Intel Corporation.\n', year);
 	fprintf(fh, ' */\n');
 	fprintf(fh, '\n');
+	fprintf(fh, '#include <stdint.h>\n\n');
 
 	% Pad blob length to multiple of four bytes
 	n_orig = length(blob8);
@@ -53,7 +54,7 @@ function sof_export_c_eq_uint32t(fn, blob8, vn, justeq)
 	numbers_remain = n_new - numbers_in_line * full_lines;
 
 	n = 1;
-	fprintf(fh, 'uint32_t %s[%d] = {\n', vn, n_new);
+	fprintf(fh, 'static const uint32_t %s[%d] = {\n', vn, n_new);
 	for i = 1:full_lines
 		fprintf(fh, '\t');
 		for j = 1:numbers_in_line
