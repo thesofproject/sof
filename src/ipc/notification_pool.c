@@ -10,6 +10,8 @@
 #include <sof/list.h>
 #include <sof/ipc/notification_pool.h>
 
+#include <rtos/symbol.h>
+
 #define NOTIFICATION_POOL_MAX_PAYLOAD_SIZE	40	/* IPC4 Resource Event needs 10dw */
 #define NOTIFICATION_POOL_MAX_DEPTH		8	/* Maximum number of notifications
 							 * in the pool
@@ -98,3 +100,4 @@ struct ipc_msg *ipc_notification_pool_get(size_t size)
 	item->msg.tx_size = size;
 	return &item->msg;
 }
+EXPORT_SYMBOL(ipc_notification_pool_get);
