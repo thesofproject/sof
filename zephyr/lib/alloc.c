@@ -126,6 +126,7 @@ static struct k_heap sof_heap;
 
 #if CONFIG_L3_HEAP
 static struct k_heap l3_heap;
+static struct k_heap l3_heap_copy __imrdata;
 
 /**
  * Returns the start of L3 memory heap.
@@ -156,6 +157,16 @@ static inline size_t get_l3_heap_size(void)
 	  * - actual IMR heap start
 	  */
 	return ROUND_DOWN(IMR_L3_HEAP_SIZE, L3_MEM_PAGE_SIZE);
+}
+
+void l3_heap_save(void)
+{
+	l3_heap_copy = l3_heap;
+	LOG_DBG("L3 heap copy: %p", (void *)l3_heap_copy.heap.heap);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)&l3_heap_copy,
+				sizeof(l3_heap_copy));
+	dcache_writeback_region((__sparse_force void __sparse_cache *)get_l3_heap_start(),
+				get_l3_heap_size());
 }
 
 /**
@@ -395,7 +406,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 	if (caps & SOF_MEM_CAPS_L3) {
 #if CONFIG_L3_HEAP
 		heap = &l3_heap;
-		/* Uncached L3_HEAP should be not used */
+		/* Uncached L3_HEAP should not be used */
 		if (!zone_is_cached(zone)) {
 			tr_err(&zephyr_tr, "L3_HEAP available for cached zones only!");
 			return NULL;
@@ -553,7 +564,11 @@ static int heap_init(void)
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE);
 
 #if CONFIG_L3_HEAP
-	sys_heap_init(&l3_heap.heap, UINT_TO_POINTER(get_l3_heap_start()), get_l3_heap_size());
+	if (l3_heap_copy.heap.heap)
+		l3_heap = l3_heap_copy;
+	else
+		sys_heap_init(&l3_heap.heap, UINT_TO_POINTER(get_l3_heap_start()),
+			      get_l3_heap_size());
 #endif
 
 	return 0;
