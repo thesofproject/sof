@@ -11,6 +11,8 @@
 #include <stdbool.h>
 #include <ipc4/notification.h>
 
+#include <rtos/symbol.h>
+
 static void resource_notif_header_init(struct ipc_msg *msg)
 {
 	struct ipc4_resource_event_data_notification *notif_data = msg->tx_data;
@@ -77,6 +79,7 @@ void mixer_underrun_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id, ui
 	notif_data->event_data.mixer_underrun.data_mixed = data_mixed;
 	notif_data->event_data.mixer_underrun.expected_data_mixed = expected_data_mixed;
 }
+EXPORT_SYMBOL(mixer_underrun_notif_msg_init);
 
 void process_data_error_notif_msg_init(struct ipc_msg *msg, uint32_t resource_id,
 				       uint32_t error_code)
