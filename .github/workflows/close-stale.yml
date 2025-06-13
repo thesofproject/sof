@@ -1,0 +1,29 @@
+---
+name: "Close stale issues"
+on:
+  schedule:
+    - cron: "30 1 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    name: Find stale issues
+    runs-on: ubuntu-24.04
+    if: github.repository == 'thesofproject/sof'
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639  # v9.1.0
+        with:
+          stale-issue-message: 'This issue has been marked as stale because it has been open (more
+            than) 60 days with no activity. Remove the stale label or add a comment saying that you
+            would like to have the label removed otherwise this issue will automatically be closed
+            in 14 days. Note, that you can always re-open a closed issue at any time.'
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: 'stale'
+          exempt-issue-labels: 'metabug,in progress,enhancement'
+          operations-per-run: 400
