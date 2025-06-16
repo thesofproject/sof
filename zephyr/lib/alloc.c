@@ -21,6 +21,7 @@
 #if CONFIG_VIRTUAL_HEAP
 #include <sof/lib/regions_mm.h>
 
+struct vmh_heap;
 struct vmh_heap *virtual_buffers_heap[CONFIG_MP_MAX_NUM_CPUS];
 struct k_spinlock vmh_lock;
 
