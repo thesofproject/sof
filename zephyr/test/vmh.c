@@ -17,6 +17,7 @@
 #include <zephyr/ztest.h>
 
 LOG_MODULE_DECLARE(sof_boot_test, CONFIG_SOF_LOG_LEVEL);
+struct vmh_heap;
 
 /* Test creating and freeing a virtual memory heap */
 static void test_vmh_init_and_free_heap(int memory_region_attribute,
