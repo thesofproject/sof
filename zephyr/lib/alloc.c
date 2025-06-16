@@ -23,7 +23,6 @@
 
 struct vmh_heap;
 struct vmh_heap *virtual_buffers_heap;
-struct k_spinlock vmh_lock;
 
 #undef	HEAPMEM_SIZE
 /* Buffers are allocated from virtual space so we can safely reduce the heap size.
@@ -279,8 +278,6 @@ static const struct vmh_heap_config static_hp_buffers = {
 
 static int virtual_heap_init(void)
 {
-	k_spinlock_init(&vmh_lock);
-
 	virtual_buffers_heap = vmh_init_heap(&static_hp_buffers, false);
 	if (!virtual_buffers_heap) {
 		tr_err(&zephyr_tr, "Unable to init virtual heap");
