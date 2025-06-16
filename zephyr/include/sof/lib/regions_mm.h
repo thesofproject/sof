@@ -77,16 +77,12 @@ struct vmh_heap_config {
 	struct vmh_block_bundle_descriptor block_bundles_table[MAX_MEMORY_ALLOCATORS_COUNT];
 };
 
-struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
-		int memory_region_attribute, int core_id, bool allocating_continuously);
+struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocating_continuously);
 void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size);
 int vmh_free_heap(struct vmh_heap *heap);
 int vmh_free(struct vmh_heap *heap, void *ptr);
-struct vmh_heap *vmh_reconfigure_heap(struct vmh_heap *heap,
-		struct vmh_heap_config *cfg, int core_id, bool allocating_continuously);
 void vmh_get_default_heap_config(const struct sys_mm_drv_region *region,
 		struct vmh_heap_config *cfg);
-struct vmh_heap *vmh_get_heap_by_attribute(uint32_t attr, uint32_t core_id);
 /**
  * @brief Checks if ptr is in range of given memory range
  *
