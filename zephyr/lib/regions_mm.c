@@ -28,6 +28,7 @@
  *  will be contiguous or single block.
  */
 struct vmh_heap {
+	struct k_mutex lock;
 	const struct sys_mm_drv_region *virtual_region;
 	struct sys_mem_blocks *physical_blocks_allocators[MAX_MEMORY_ALLOCATORS_COUNT];
 	struct sys_bitarray *allocation_sizes[MAX_MEMORY_ALLOCATORS_COUNT];
@@ -58,6 +59,7 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 	if (!new_heap)
 		return NULL;
 
+	k_mutex_init(&new_heap->lock);
 	struct vmh_heap_config new_config = {0};
 
 	/* Search for matching attribute so we place heap on shared virtual region */
@@ -378,7 +380,7 @@ static int vmh_unmap_region(struct sys_mem_blocks *region, void *ptr, size_t siz
 }
 
 /**
- * @brief Alloc function
+ * @brief Alloc function, not reentrant
  *
  * Allocates memory on heap from provided heap pointer.
  * Check if we need to map physical memory for given allocation
@@ -389,7 +391,7 @@ static int vmh_unmap_region(struct sys_mem_blocks *region, void *ptr, size_t siz
  * @retval ptr to allocated memory if successful
  * @retval NULL on allocation failure
  */
-void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
+static void *_vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 {
 	if (!alloc_size)
 		return NULL;
@@ -508,6 +510,20 @@ void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 }
 
 /**
+ *  @brief Alloc function, reentrant
+ *	   see _vmh_alloc comment for details
+ */
+void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
+{
+	k_mutex_lock(&heap->lock, K_FOREVER);
+
+	void *ret = _vmh_alloc(heap, alloc_size);
+
+	k_mutex_unlock(&heap->lock);
+	return ret;
+}
+
+/**
  * @brief Free virtual memory heap
  *
  * Free the virtual memory heap object and its child allocations
@@ -542,7 +558,7 @@ int vmh_free_heap(struct vmh_heap *heap)
 }
 
 /**
- * @brief Free ptr allocated on given heap
+ * @brief Free ptr allocated on given heap, not reentrant
  *
  * Free the ptr allocation. After free action is complete
  * check if any physical memory block can be freed up as
@@ -553,7 +569,7 @@ int vmh_free_heap(struct vmh_heap *heap)
  * @retval 0 on success;
  * @retval -ENOTEMPTY on heap having active allocations.
  */
-int vmh_free(struct vmh_heap *heap, void *ptr)
+static int _vmh_free(struct vmh_heap *heap, void *ptr)
 {
 	int retval;
 
@@ -668,6 +684,20 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 
 	return vmh_unmap_region(heap->physical_blocks_allocators[mem_block_iter], ptr,
 				size_to_free);
+}
+
+/**
+ *  @brief Free ptr function, reentrant
+ *	   see _vmh_free comment for details
+ */
+int vmh_free(struct vmh_heap *heap, void *ptr)
+{
+	k_mutex_lock(&heap->lock, K_FOREVER);
+
+	int ret = _vmh_free(heap, ptr);
+
+	k_mutex_unlock(&heap->lock);
+	return ret;
 }
 
 /**
