@@ -75,20 +75,32 @@ if eq.enable_fir && eq.enable_iir
                 eq.f, eq.iir_eq_db + offs_iir, '--',...
                 eq.f, eq.fir_eq_db + offs_fir, '--');
         legend('Target', 'Combined', 'IIR', 'FIR', 'Location', 'NorthWest');
+	eq.diff_db = eq.tot_eq_db + offs_tot - eq.err_db_s;
 end
 if eq.enable_fir && eq.enable_iir == 0
         semilogx(eq.f, eq.err_db_s, eq.f, eq.fir_eq_db + offs_fir);
         legend('Target', 'FIR', 'Location', 'NorthWest');
+	eq.diff_db = eq.fir_eq_db + offs_fir - eq.err_db_s;
 end
 if eq.enable_fir == 0 && eq.enable_iir
         semilogx(eq.f, eq.err_db_s, eq.f, eq.iir_eq_db + offs_iir);
         legend('Target', 'IIR', 'Location', 'NorthWest');
+	eq.diff_db = eq.iir_eq_db + offs_iir - eq.err_db_s;
 end
 grid on;
 ax=axis; axis([eq.p_fmin eq.p_fmax min(max(ax(3:4), -40), 40)]);
 xlabel('Frequency (Hz)');
 ylabel('Magnitude (dB)');
 tstr = sprintf('Filter target vs. achieved response: %s', eq.name);
+title(tstr);
+
+fh=figure(fn); fn = fn+1;
+semilogx(eq.f, eq.diff_db)
+grid on;
+ax=axis; axis([eq.p_fmin eq.p_fmax -5 5]);
+xlabel('Frequency (Hz)');
+ylabel('Magnitude (dB)');
+tstr = sprintf('Response difference mean abs %.4f dB: %s', mean(abs(eq.diff_db)), eq.name);
 title(tstr);
 
 %% FIR filter
