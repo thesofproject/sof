@@ -553,8 +553,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 	/*! Current allocation size */
 	size_t ca_size = hb_size;
 	/*! Memory caps priorites for history buffer */
-	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP,
-					   SOF_MEM_CAPS_RAM };
+	int hb_mcp[] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP, SOF_MEM_CAPS_RAM};
 	void *new_mem_block = NULL;
 	size_t temp_ca_size;
 	int i = 0;

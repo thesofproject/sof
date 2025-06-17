@@ -46,7 +46,6 @@ struct comp_buffer;
 #define KPB_MAX_SINK_CNT (1 + KPB_MAX_NO_OF_CLIENTS)
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
 #define KPB_ALLOCATION_STEP 0x100
-#define KPB_NO_OF_MEM_POOLS 5
 #define KPB_BYTES_TO_FRAMES(bytes, sample_width, channels_number) \
 	((bytes) / ((KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) * \
 	 (channels_number)))
