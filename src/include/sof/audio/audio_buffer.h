@@ -21,8 +21,8 @@ struct sof_audio_buffer;
 struct audio_buffer_ops {
 	/**
 	 * @brief this method must free all structures allocated by buffer implementation
-	 *	  it must not free the buffer memory itself
-	 *	  OPTIONAL
+	 *	  and the buffer itself
+	 *	  OBLIGATORY
 	 */
 	void (*free)(struct sof_audio_buffer *buffer);
 
