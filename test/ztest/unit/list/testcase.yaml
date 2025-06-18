@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2025 Intel Corporation. All rights reserved.
+#
+# These contents may have been developed with support from one or more Intel-operated
+# generative artificial intelligence solutions.
+
+tests:
+  sof.list:
+    platform_allow: native_sim
+    harness: ztest
+    tags: unit
