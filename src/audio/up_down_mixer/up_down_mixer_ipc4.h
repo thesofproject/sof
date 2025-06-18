@@ -28,9 +28,7 @@ enum up_down_mix_coeff_select {
 #define UP_DOWN_MIX_COEFFS_LENGTH       8
 #define IPC4_UP_DOWN_MIXER_MODULE_OUTPUT_PINS_COUNT	1
 
-struct ipc4_up_down_mixer_module_cfg {
-	struct ipc4_base_module_cfg base_cfg;
-
+struct up_down_mixer_config {
 	/*
 	 * Output Channel Configuration.
 	 * Together with audio_fmt.channel_config determines module conversion ratio.
@@ -64,6 +62,11 @@ struct ipc4_up_down_mixer_module_cfg {
 	 * channel decoding.
 	 */
 	channel_map channel_map;
+};
+
+struct ipc4_up_down_mixer_module_cfg {
+	struct ipc4_base_module_cfg base_cfg;
+	struct up_down_mixer_config config;
 } __packed __aligned(8);
 
 #endif /* __SOF_IPC4_UP_DOWN_MIXER_H__ */
