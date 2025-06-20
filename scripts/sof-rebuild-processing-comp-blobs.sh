@@ -39,4 +39,5 @@ cd "$SOF_WORKSPACE"/sof/src/audio/eq_iir/tune; $OCTAVE sof_example_iir_bandsplit
 cd "$SOF_WORKSPACE"/sof/src/audio/eq_iir/tune; $OCTAVE sof_example_spk_eq.m
 cd "$SOF_WORKSPACE"/sof/src/audio/multiband_drc/tune; $OCTAVE sof_example_multiband_drc.m
 cd "$SOF_WORKSPACE"/sof/src/audio/tdfb/tune; ./sof_example_all.sh
+cd "$SOF_WORKSPACE"/sof/src/audio/selector/tune; $OCTAVE ./sof_selector_blobs.m
 cd "$SOF_WORKSPACE"/sof/tools/tune/mfcc; $OCTAVE setup_mfcc.m
