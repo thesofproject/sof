@@ -21,6 +21,7 @@ set(components
 	"src_lite"
 	"tdfb"
 	"template_comp"
+	"up_down_mixer"
 )
 
 set(component_parameters
@@ -37,6 +38,7 @@ set(component_parameters
 	"BENCH_SRC_LITE_PARAMS=default"
 	"BENCH_TDFB_PARAMS=default"
 	"BENCH_TEMPLATE_COMP_PARAMS=default"
+	"BENCH_UP_DOWN_MIXER_COMP_PARAMS=default"
 )
 
 set(components_s24

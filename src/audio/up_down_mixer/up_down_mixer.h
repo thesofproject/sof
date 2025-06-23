@@ -14,6 +14,7 @@
 #include <ipc/stream.h>
 #include <ipc4/module.h>
 #include <ipc4/base-config.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -142,6 +143,8 @@ struct up_down_mixer_data {
 	/** In/out internal buffers */
 	int32_t *buf_in;
 	int32_t *buf_out;
+
+	bool has_init_mix_configuration;
 };
 
 /**
