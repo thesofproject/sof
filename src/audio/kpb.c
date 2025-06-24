@@ -254,17 +254,17 @@ static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 	kpb->host_sink = NULL;
 
 	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
-		comp_err(dev, "kpb_set_verify_ipc_params(): requested sampling width not supported");
+		comp_err(dev, "requested sampling width not supported");
 		return -EINVAL;
 	}
 
 	if (kpb->config.channels > KPB_MAX_SUPPORTED_CHANNELS) {
-		comp_err(dev, "kpb_set_verify_ipc_params(): no of channels exceeded the limit");
+		comp_err(dev, "no of channels exceeded the limit");
 		return -EINVAL;
 	}
 
 	if (kpb->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
-		comp_err(dev, "kpb_set_verify_ipc_params(): requested sampling frequency not supported");
+		comp_err(dev, "requested sampling frequency not supported");
 		return -EINVAL;
 	}
 
@@ -389,7 +389,7 @@ static int kpb_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
 	struct ipc4_module_bind_unbind *bu;
 	int buf_id;
 
-	comp_dbg(dev, "kpb_bind()");
+	comp_dbg(dev, "kpb_unbind()");
 
 	bu = unbind_data->ipc4_data;
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
@@ -421,7 +421,7 @@ static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 		       ipc_config->size);
 
 	if (ret) {
-		comp_err(dev, "kpb_new(): cannot memcpy_s %d bytes into sof_kpb_config (%zu)\n",
+		comp_err(dev, "cannot memcpy_s %d bytes into sof_kpb_config (%zu)\n",
 			 ipc_config->size, sizeof(kpb->config));
 		return -EINVAL;
 	}
@@ -431,17 +431,17 @@ static int kpb_set_verify_ipc_params(struct comp_dev *dev,
 	kpb->host_sink = NULL;
 
 	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
-		comp_err(dev, "kpb_set_verify_ipc_params(): requested sampling width not supported");
+		comp_err(dev, "requested sampling width not supported");
 		return -EINVAL;
 	}
 
 	if (kpb->config.channels > KPB_MAX_SUPPORTED_CHANNELS) {
-		comp_err(dev, "kpb_set_verify_ipc_params(): no of channels exceeded the limit");
+		comp_err(dev, "no of channels exceeded the limit");
 		return -EINVAL;
 	}
 
 	if (kpb->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
-		comp_err(dev, "kpb_set_verify_ipc_params(): requested sampling frequency not supported");
+		comp_err(dev, "requested sampling frequency not supported");
 		return -EINVAL;
 	}
 
@@ -485,7 +485,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 
 	/* make sure data size is not bigger than config space */
 	if (ipc_config_size > kpb_config_size) {
-		comp_cl_err(&comp_kpb, "kpb_new(): ipc config size %zu too big",
+		comp_cl_err(&comp_kpb, "ipc config size %zu too big",
 			    ipc_config_size);
 		return NULL;
 	}
@@ -635,7 +635,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 		}
 	}
 
-	comp_cl_info(&comp_kpb, "kpb_allocate_history_buffer(): allocated %zu bytes",
+	comp_cl_info(&comp_kpb, "allocated %zu bytes for history buffer",
 		     allocated_size);
 
 	return allocated_size;
@@ -688,7 +688,7 @@ static void kpb_free(struct comp_dev *dev)
 	ret = ams_helper_unregister_consumer(dev, kpb->kpd_uuid_id,
 					     kpb_ams_kpd_notification);
 	if (ret)
-		comp_err(dev, "kpb_free(): AMS unregister error %d", ret);
+		comp_err(dev, "AMS unregister error %d", ret);
 #else
 	/* Unregister KPB from notifications */
 	notifier_unregister(dev, NULL, NOTIFIER_ID_KPB_CLIENT_EVT);
@@ -732,7 +732,7 @@ static int kbp_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "kpb_verify_params(): comp_verify_params() failed");
+		comp_err(dev, "comp_verify_params() failed");
 		return ret;
 	}
 
@@ -752,7 +752,7 @@ static int kpb_params(struct comp_dev *dev,
 	int err;
 
 	if (dev->state == COMP_STATE_PREPARE) {
-		comp_err(dev, "kpb_params(): kpb has been already configured.");
+		comp_err(dev, "kpb has been already configured.");
 		return PPL_STATUS_PATH_STOP;
 	}
 
@@ -760,7 +760,7 @@ static int kpb_params(struct comp_dev *dev,
 
 	err = kbp_verify_params(dev, params);
 	if (err < 0) {
-		comp_err(dev, "kpb_params(): pcm params verification failed");
+		comp_err(dev, "pcm params verification failed");
 		return -EINVAL;
 	}
 
@@ -794,7 +794,7 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	if (kpb->state == KPB_STATE_RESETTING ||
 	    kpb->state == KPB_STATE_RESET_FINISHING) {
-		comp_cl_err(&comp_kpb, "kpb_prepare(): can not prepare KPB due to ongoing reset, state log %x",
+		comp_cl_err(&comp_kpb, "can not prepare KPB due to ongoing reset, state log %x",
 			    kpb->state_log);
 		return -EBUSY;
 	}
@@ -830,7 +830,7 @@ static int kpb_prepare(struct comp_dev *dev)
 
 		/* Have we allocated what we requested? */
 		if (kpb->hd.buffer_size < hb_size_req) {
-			comp_cl_err(&comp_kpb, "kpb_prepare(): failed to allocate space for KPB buffer");
+			comp_cl_err(&comp_kpb, "failed to allocate space for KPB buffer");
 			kpb_free_history_buffer(kpb->hd.c_hb);
 			kpb->hd.c_hb = NULL;
 			kpb->hd.buffer_size = 0;
@@ -914,7 +914,7 @@ static int kpb_prepare(struct comp_dev *dev)
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 	if (!kpb->sel_sink) {
-		comp_err(dev, "kpb_prepare(): could not find sink: sel_sink %p",
+		comp_err(dev, "could not find sink: sel_sink %p",
 			 kpb->sel_sink);
 		ret = -EIO;
 	}
@@ -952,7 +952,7 @@ static int kpb_reset(struct comp_dev *dev)
 	int ret = 0;
 	int i;
 
-	comp_cl_info(&comp_kpb, "kpb_reset(): resetting from state %d, state log %x",
+	comp_cl_info(&comp_kpb, "resetting from state %d, state log %x",
 		     kpb->state, kpb->state_log);
 
 	switch (kpb->state) {
@@ -1189,7 +1189,7 @@ static int kpb_copy(struct comp_dev *dev)
 	comp_dbg(dev, "kpb_copy()");
 
 	if (list_is_empty(&dev->bsource_list)) {
-		comp_err(dev, "kpb_copy(): no source.");
+		comp_err(dev, "no source.");
 		return -EINVAL;
 	}
 
@@ -1198,7 +1198,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 	/* Validate source */
 	if (!audio_stream_get_rptr(&source->stream)) {
-		comp_err(dev, "kpb_copy(): invalid source pointers.");
+		comp_err(dev, "invalid source pointers.");
 		ret = -EINVAL;
 		return ret;
 	}
@@ -1210,7 +1210,7 @@ static int kpb_copy(struct comp_dev *dev)
 		ret = PPL_STATUS_PATH_STOP;
 
 		if (!sink) {
-			comp_err(dev, "kpb_copy(): no sink.");
+			comp_err(dev, "no sink.");
 			ret = -EINVAL;
 			break;
 		}
@@ -1225,14 +1225,14 @@ static int kpb_copy(struct comp_dev *dev)
 
 		/* Validate sink */
 		if (!audio_stream_get_wptr(&sink->stream)) {
-			comp_err(dev, "kpb_copy(): invalid selector sink pointers.");
+			comp_err(dev, "invalid selector sink pointers.");
 			ret = -EINVAL;
 			break;
 		}
 
 		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
-			comp_err(dev, "kpb_copy(): nothing to copy sink->free %u source->avail %u",
+			comp_err(dev, "nothing to copy sink->free %u source->avail %u",
 				 audio_stream_get_free_bytes(&sink->stream),
 				 audio_stream_get_avail_bytes(&source->stream));
 			ret = PPL_STATUS_PATH_STOP;
@@ -1253,7 +1253,7 @@ static int kpb_copy(struct comp_dev *dev)
 			produced_bytes = copy_bytes * kpb->num_of_sel_mic / channels;
 			produced_bytes = ROUND_DOWN(produced_bytes, total_bytes_per_sample);
 			if (!copy_bytes) {
-				comp_err(dev, "kpb_copy(): nothing to copy sink->free %u source->avail %u",
+				comp_err(dev, "nothing to copy sink->free %u source->avail %u",
 					 free,
 					 avail);
 				ret = PPL_STATUS_PATH_STOP;
@@ -1268,7 +1268,7 @@ static int kpb_copy(struct comp_dev *dev)
 			ret = kpb_buffer_data(dev, source, copy_bytes);
 
 			if (ret) {
-				comp_err(dev, "kpb_copy(): internal buffering failed.");
+				comp_err(dev, "internal buffering failed.");
 				break;
 			}
 			ret = PPL_STATUS_PATH_STOP;
@@ -1280,7 +1280,7 @@ static int kpb_copy(struct comp_dev *dev)
 						kpb->hd.buffered,
 						copy_bytes);
 		} else {
-			comp_err(dev, "kpb_copy(): too much data to buffer.");
+			comp_err(dev, "too much data to buffer.");
 		}
 
 		if (kpb->num_of_sel_mic == 0)
@@ -1296,21 +1296,21 @@ static int kpb_copy(struct comp_dev *dev)
 		sink = kpb->host_sink;
 
 		if (!sink) {
-			comp_err(dev, "kpb_copy(): no sink.");
+			comp_err(dev, "no sink.");
 			ret = -EINVAL;
 			break;
 		}
 
 		/* Validate sink */
 		if (!audio_stream_get_wptr(&sink->stream)) {
-			comp_err(dev, "kpb_copy(): invalid host sink pointers.");
+			comp_err(dev, "invalid host sink pointers.");
 			ret = -EINVAL;
 			break;
 		}
 
 		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
-			comp_err(dev, "kpb_copy(): nothing to copy sink->free %u source->avail %u",
+			comp_err(dev, "nothing to copy sink->free %u source->avail %u",
 				 audio_stream_get_free_bytes(&sink->stream),
 				 audio_stream_get_avail_bytes(&source->stream));
 			/* NOTE! We should stop further pipeline copy due to
@@ -1342,20 +1342,20 @@ static int kpb_copy(struct comp_dev *dev)
 			kpb->hd.free -= copy_bytes;
 
 			if (ret) {
-				comp_err(dev, "kpb_copy(): internal buffering failed.");
+				comp_err(dev, "internal buffering failed.");
 				break;
 			}
 
 			comp_update_buffer_consume(source, copy_bytes);
 		} else {
-			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %u, free %zu",
+			comp_warn(dev, "buffering skipped (no data to copy, avail %u, free %zu",
 				  audio_stream_get_avail_bytes(&source->stream),
 				  kpb->hd.free);
 		}
 
 		break;
 	default:
-		comp_cl_err(&comp_kpb, "kpb_copy(): wrong state (state %d, state log %x)",
+		comp_cl_err(&comp_kpb, "wrong state (state %d, state log %x)",
 			    kpb->state, kpb->state_log);
 		ret = -EIO;
 		break;
@@ -1395,7 +1395,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	if (kpb->state != KPB_STATE_RUN &&
 	    kpb->state != KPB_STATE_DRAINING &&
 	    kpb->state != KPB_STATE_INIT_DRAINING) {
-		comp_err(dev, "kpb_buffer_data(): wrong state! (current state %d, state log %x)",
+		comp_err(dev, "wrong state! (current state %d, state log %x)",
 			 kpb->state, kpb->state_log);
 		return PPL_STATUS_PATH_STOP;
 	}
@@ -1420,12 +1420,12 @@ static int kpb_buffer_data(struct comp_dev *dev,
 			timeout = k_cyc_to_ms_near64(current_time - timeout);
 			if (timeout <= UINT_MAX)
 				comp_err(dev,
-					 "kpb_buffer_data(): timeout of %u [ms] (current state %d, state log %x)",
+					 "timeout of %u [ms] (current state %d, state log %x)",
 					 (unsigned int)(timeout), kpb->state,
 					 kpb->state_log);
 			else
 				comp_err(dev,
-					 "kpb_buffer_data(): timeout > %u [ms] (current state %d, state log %x)",
+					 "timeout > %u [ms] (current state %d, state log %x)",
 					 UINT_MAX, kpb->state,
 					 kpb->state_log);
 			return -ETIME;
@@ -1505,7 +1505,7 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 	struct kpb_event_data *evd = event_data;
 	struct kpb_client *cli = evd->client_data;
 
-	comp_info(dev, "kpb_event_handler(): received event with ID: %d ",
+	comp_info(dev, "received event with ID: %d ",
 		  evd->event_id);
 
 	switch (evd->event_id) {
@@ -1522,7 +1522,7 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 		/*TODO*/
 		break;
 	default:
-		comp_err(dev, "kpb_cmd(): unsupported command");
+		comp_err(dev, "unsupported command");
 		break;
 	}
 }
@@ -1544,17 +1544,17 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 	comp_cl_info(&comp_kpb, "kpb_register_client()");
 
 	if (!cli) {
-		comp_cl_err(&comp_kpb, "kpb_register_client(): no client data");
+		comp_cl_err(&comp_kpb, "no client data");
 		return -EINVAL;
 	}
 	/* Do we have a room for a new client? */
 	if (kpb->kpb_no_of_clients >= KPB_MAX_NO_OF_CLIENTS ||
 	    cli->id >= KPB_MAX_NO_OF_CLIENTS) {
-		comp_cl_err(&comp_kpb, "kpb_register_client(): no free room for client = %u ",
+		comp_cl_err(&comp_kpb, "no free room for client = %u",
 			    cli->id);
 		ret = -EINVAL;
 	} else if (kpb->clients[cli->id].state != KPB_CLIENT_UNREGISTERED) {
-		comp_cl_err(&comp_kpb, "kpb_register_client(): client = %u already registered",
+		comp_cl_err(&comp_kpb, "client = %u already registered",
 			    cli->id);
 		ret = -EINVAL;
 	} else {
@@ -1598,19 +1598,19 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      kpb->config.channels;
 	size_t period_bytes_limit;
 
-	comp_info(dev, "kpb_init_draining(): requested draining of %d [ms] from history buffer",
+	comp_info(dev, "requested draining of %d [ms] from history buffer",
 		  cli->drain_req);
 
 	if (kpb->state != KPB_STATE_RUN) {
-		comp_err(dev, "kpb_init_draining(): wrong KPB state");
+		comp_err(dev, "wrong KPB state");
 	} else if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
-		comp_err(dev, "kpb_init_draining(): wrong client id");
+		comp_err(dev, "wrong client id");
 	/* TODO: check also if client is registered */
 	} else if (!is_sink_ready) {
-		comp_err(dev, "kpb_init_draining(): sink not ready for draining");
+		comp_err(dev, "sink not ready for draining");
 	} else if (kpb->hd.buffered < drain_req ||
 		   cli->drain_req > KPB_MAX_DRAINING_REQ) {
-		comp_cl_err(&comp_kpb, "kpb_init_draining(): not enough data in history buffer");
+		comp_cl_err(&comp_kpb, "not enough data in history buffer");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
 		 * At this point we are guaranteed that there is enough data
@@ -1641,7 +1641,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 						 (uintptr_t)buff->start_addr;
 				buffered += local_buffered;
 			} else {
-				comp_err(dev, "kpb_init_draining(): incorrect buffer label");
+				comp_err(dev, "incorrect buffer label");
 			}
 			/* Check if this is already sufficient to start draining
 			 * if not, go to previous buffer and continue
@@ -1689,7 +1689,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			drain_interval = k_ms_to_cyc_ceil64(host_period_size / bytes_per_ms) /
 					 KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE;
 			period_bytes_limit = host_period_size;
-			comp_info(dev, "kpb_init_draining(): sync_draining_mode selected with interval %u [uS].",
+			comp_info(dev, "sync_draining_mode selected with interval %u [uS].",
 				  (unsigned int)k_cyc_to_us_near64(drain_interval));
 		} else {
 			/* Unlimited draining */
@@ -2423,7 +2423,7 @@ static inline bool validate_host_params(struct comp_dev *dev,
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state)
 {
-	comp_cl_dbg(&comp_kpb, "kpb_change_state(): from %d to %d",
+	comp_cl_dbg(&comp_kpb, "change state from %d to %d",
 		    kpb->state, state);
 	kpb->state = state;
 	kpb->state_log = (kpb->state_log << 4) | state;
