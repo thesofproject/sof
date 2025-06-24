@@ -561,12 +561,18 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	/* create a buffer
 	 * in case of LL -> LL or LL->DP
-	 *	size = 2*obs of source module (obs is single buffer size)
+	 *	The ibs / obs should be equal between components. However, some modules
+	 *	(like kpb) produce different data sizes on output pins. Unfortunately, only
+	 *	one ibs/obs can be specified in the modules configuration. To avoid creating
+	 *	too small a buffer, we choose the maximum value between ibs and obs.
+	 *
+	 *	size = 2*max(obs of source module, ibs of destination module)
+	 *	(obs and ibs is single buffer size)
 	 * in case of DP -> LL
 	 *	size = 2*ibs of destination (LL) module. DP queue will handle obs of DP module
 	 */
 	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
-		buf_size = obs * 2;
+		buf_size = MAX(ibs, obs) * 2;
 	else
 		buf_size = ibs * 2;
 
