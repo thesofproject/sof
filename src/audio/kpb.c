@@ -1232,7 +1232,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
-			comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
+			comp_err(dev, "kpb_copy(): nothing to copy sink->free %u source->avail %u",
 				 audio_stream_get_free_bytes(&sink->stream),
 				 audio_stream_get_avail_bytes(&source->stream));
 			ret = PPL_STATUS_PATH_STOP;
@@ -1253,7 +1253,7 @@ static int kpb_copy(struct comp_dev *dev)
 			produced_bytes = copy_bytes * kpb->num_of_sel_mic / channels;
 			produced_bytes = ROUND_DOWN(produced_bytes, total_bytes_per_sample);
 			if (!copy_bytes) {
-				comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
+				comp_err(dev, "kpb_copy(): nothing to copy sink->free %u source->avail %u",
 					 free,
 					 avail);
 				ret = PPL_STATUS_PATH_STOP;
@@ -1310,7 +1310,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 		copy_bytes = audio_stream_get_copy_bytes(&source->stream, &sink->stream);
 		if (!copy_bytes) {
-			comp_err(dev, "kpb_copy(): nothing to copy sink->free %d source->avail %d",
+			comp_err(dev, "kpb_copy(): nothing to copy sink->free %u source->avail %u",
 				 audio_stream_get_free_bytes(&sink->stream),
 				 audio_stream_get_avail_bytes(&source->stream));
 			/* NOTE! We should stop further pipeline copy due to
@@ -1348,7 +1348,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 			comp_update_buffer_consume(source, copy_bytes);
 		} else {
-			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %d, free %zu",
+			comp_warn(dev, "kpb_copy(): buffering skipped (no data to copy, avail %u, free %zu",
 				  audio_stream_get_avail_bytes(&source->stream),
 				  kpb->hd.free);
 		}
