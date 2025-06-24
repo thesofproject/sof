@@ -1215,6 +1215,14 @@ static int kpb_copy(struct comp_dev *dev)
 			break;
 		}
 
+		/* Discard data if sink is not active */
+		if (comp_buffer_get_sink_component(sink)->state != COMP_STATE_ACTIVE) {
+			copy_bytes = audio_stream_get_avail_bytes(&source->stream);
+			comp_update_buffer_consume(source, copy_bytes);
+			comp_dbg(dev, "KD not active, dropping %zu bytes...", copy_bytes);
+			break;
+		}
+
 		/* Validate sink */
 		if (!audio_stream_get_wptr(&sink->stream)) {
 			comp_err(dev, "kpb_copy(): invalid selector sink pointers.");
