@@ -1671,10 +1671,10 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	case -EPIPE:
 		/* DMA status can return -EPIPE and current status content if xrun occurs */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-			comp_dbg(dev, "dma_get_status() underrun occurred, ret = %u",
+			comp_dbg(dev, "dma_get_status() underrun occurred, ret = %d",
 				 ret);
 		else
-			comp_dbg(dev, "dma_get_status() overrun occurred, ret = %u",
+			comp_dbg(dev, "dma_get_status() overrun occurred, ret = %d",
 				 ret);
 		break;
 	default:
