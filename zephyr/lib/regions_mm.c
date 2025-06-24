@@ -61,17 +61,14 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 
 	k_mutex_init(&new_heap->lock);
 	struct vmh_heap_config new_config = {0};
+	const struct sys_mm_drv_region *region;
 
-	/* Search for matching attribute so we place heap on shared virtual region */
-	for (i = CONFIG_MP_MAX_NUM_CPUS;
-		i < CONFIG_MP_MAX_NUM_CPUS + VIRTUAL_REGION_COUNT; i++) {
-
-		if (virtual_memory_regions[i].attr == MEM_REG_ATTR_SHARED_HEAP) {
-			new_heap->virtual_region = &virtual_memory_regions[i];
+	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, region) {
+		if (region->attr == MEM_REG_ATTR_SHARED_HEAP) {
+			new_heap->virtual_region = region;
 			break;
 		}
 	}
-
 	if (!new_heap->virtual_region)
 		goto fail;
 
