@@ -454,25 +454,24 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	if (!(hd->ipc_host.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
 		dma_copy_bytes = MIN(hd->period_bytes, dma_copy_bytes);
 
-	bool reset_skipped = false;
-	uint64_t now = k_uptime_get();
-	uint64_t delta = now - hd->nobytes_last_logged;
+	const uint64_t now = k_uptime_get();
+	const uint64_t delta = now - hd->nobytes_last_logged;
+	const bool reset_skipped = delta > SOF_MIN_NO_BYTES_INTERVAL_MS;
 
-	if (!dma_copy_bytes) {
-		if (delta > SOF_MIN_NO_BYTES_INTERVAL_MS) {
-			hd->nobytes_last_logged = now;
-			comp_warn(dev, "no bytes to copy, available samples: %d, free_samples: %d",
-				  avail_samples, free_samples);
-			reset_skipped = true;
-		} else {
-			hd->n_skipped++;
-		}
+	if (hd->n_skipped > 1 && (dma_copy_bytes || reset_skipped)) {
+		comp_warn(dev, "Skipped %u no-bytes events in last %llu ms, bytes %u",
+			  hd->n_skipped - 1, delta, dma_copy_bytes);
+		hd->n_skipped = 0;
 	}
 
-	if (hd->n_skipped && (reset_skipped || dma_copy_bytes)) {
-		comp_warn(dev, "Skipped %u no-bytes events in last %llu ms",
-			  hd->n_skipped, delta);
-		hd->n_skipped = 0;
+	if (!dma_copy_bytes) {
+		if (!hd->n_skipped || reset_skipped) {
+			hd->nobytes_last_logged = now;
+			hd->n_skipped = 0;
+			comp_warn(dev, "no bytes to copy, available samples: %u, free_samples: %u",
+				  avail_samples, free_samples);
+		}
+		hd->n_skipped++;
 	}
 
 	/* dma_copy_bytes should be aligned to minimum possible chunk of
