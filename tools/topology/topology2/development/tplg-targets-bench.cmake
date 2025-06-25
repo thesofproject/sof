@@ -47,19 +47,25 @@ set(component_parameters_s24
 	"BENCH_ARIA_PARAMS=param_2"
 )
 
+set (plat "mtl")
+
 # Add components with all sample formats
 foreach(sf ${sampleformats})
 	foreach(comp bench_param IN ZIP_LISTS components component_parameters)
-		set(item "sof-hda-generic\;sof-hda-benchmark-${comp}${sf}\;HDA_CONFIG=benchmark,BENCH_CONFIG=${comp}${sf},${bench_param}")
-		#message(STATUS "Item=" ${item})
+		set(item "cavs-benchmark-hda\;sof-hda-benchmark-${comp}${sf}\;PLATFORM=${plat},BENCH_MODULE_FORMAT=s${sf},BENCH_CONFIG=${comp}${sf},${bench_param}")
 		list(APPEND TPLGS "${item}")
+		set(item "cavs-benchmark-sdw\;sof-${plat}-sdw-benchmark-${comp}${sf}\;PLATFORM=${plat},BENCH_MODULE_FORMAT=s${sf},BENCH_CONFIG=${comp}${sf},${bench_param}")
+		list(APPEND TPLGS "${item}")
+#		#message(STATUS "Item=" ${item})
 	endforeach()
 endforeach()
 
 # Add components with single format
 set (sf "24")
 foreach(comp bench_param IN ZIP_LISTS components_s24 component_parameters_s24)
-	set(item "sof-hda-generic\;sof-hda-benchmark-${comp}${sf}\;HDA_CONFIG=benchmark,BENCH_CONFIG=${comp}${sf},${bench_param}")
-	#message(STATUS "Item=" ${item})
+	set(item "cavs-benchmark-hda\;sof-hda-benchmark-${comp}${sf}\;PLATFORM=${plat},BENCH_MODULE_FORMAT=s${sf},BENCH_CONFIG=${comp}${sf},${bench_param}")
 	list(APPEND TPLGS "${item}")
+	set(item "cavs-benchmark-sdw\;sof-${plat}-sdw-benchmark-${comp}${sf}\;PLATFORM=${plat},BENCH_MODULE_FORMAT=s${sf},BENCH_CONFIG=${comp}${sf},${bench_param}")
+	list(APPEND TPLGS "${item}")
+	#message(STATUS "Item=" ${item})
 endforeach()
