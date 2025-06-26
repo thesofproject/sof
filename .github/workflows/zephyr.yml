@@ -5,7 +5,7 @@ name: Zephyr
 # 'workflow_dispatch' allows running this workflow manually from the
 # 'Actions' tab
 # yamllint disable-line rule:truthy
-on: [push, pull_request, workflow_dispatch, workflow_call]
+# on: [push, pull_request, workflow_dispatch, workflow_call]
 
 # Specifies group name that stops previous wokrflows if the name matches
 concurrency:

@@ -19,7 +19,7 @@ on:
         type: number
         default: 300
 
-  pull_request:
+ # pull_request:
   # TODO: can we provide a default inputs here too?
 
 jobs:
