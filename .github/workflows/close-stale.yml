@@ -1,6 +1,7 @@
 ---
 name: "Close stale issues"
-on:
+# yamllint disable-line rule:truthy
+on: [true]
   schedule:
     - cron: "30 1 * * *"
 
