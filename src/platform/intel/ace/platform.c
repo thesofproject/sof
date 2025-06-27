@@ -67,6 +67,7 @@ __cold int platform_boot_complete(uint32_t boot_message)
 
 	/* get any IPC specific boot message and optional data */
 	ipc_boot_complete_msg(&header, 0);
+	header.pri |= boot_message;
 
 	struct ipc_msg msg = {
 		.header = header.pri,
