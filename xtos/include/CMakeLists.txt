@@ -1,1 +1,0 @@
-target_include_directories(sof_public_headers INTERFACE include)
