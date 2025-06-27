@@ -150,11 +150,6 @@ config FAST_GET
 
 rsource "src/Kconfig"
 
-# See zephyr/modules/Kconfig
-if !ZEPHYR_SOF_MODULE
-	rsource "Kconfig.xtos-build"
-endif
-
 if ZEPHYR_SOF_MODULE
 	rsource "Kconfig.zephyr-log"
 endif
@@ -266,9 +261,5 @@ config DSP_RESIDENCY_COUNTERS
 	  Enables simple DSP residency counters in SRAM_REG mailbox.
 	  R0, R1, R2 are abstract states which can be used differently
 	  based on platform implementation.
-
-if !ZEPHYR_SOF_MODULE
-	rsource "Kconfig.xtos-dbg"
-endif
 
 endmenu
