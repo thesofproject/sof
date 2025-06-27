@@ -309,6 +309,16 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-lnl-nocodec.bin,SRC_DOMAIN=DP"
 "cavs-nocodec\;sof-ptl-nocodec-dp-test\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
 
+# SSP test topology for Data Processing on core 1 SRC for MTL
+"cavs-nocodec\;sof-mtl-nocodec-dp-core-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin,SRC_DOMAIN=DP,DP_SRC_CORE_ID=1"
+# SSP test topology for Data Processing on core 1 SRC for LNL
+"cavs-nocodec\;sof-lnl-nocodec-dp-core-test\;PLATFORM=lnl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-lnl-nocodec.bin,SRC_DOMAIN=DP,DP_SRC_CORE_ID=1"
+# SSP test topology for Data Processing on core 1 SRC for PTL
+"cavs-nocodec\;sof-ptl-nocodec-dp-core-test\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP,DP_SRC_CORE_ID=1"
+
 # Add MFCC to 16 kHz DMIC1, 2ch with NHLT - cAVS
 "sof-hda-generic\;sof-hda-generic-cavs25-2ch-mfcc\;HDA_CONFIG=mix,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-cavs25-2ch-mfcc.bin,\
