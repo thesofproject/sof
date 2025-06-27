@@ -190,4 +190,6 @@ main()
     printf "\n\n ---- FAIL: differences found between %s/b0/ and b1/ --- \n\n" "$(pwd)"
 }
 
+test -x "${SOF_TOP}"/scripts/xtensa-build-all.sh || exit 0
+
 main "$@"

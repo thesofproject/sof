@@ -9,7 +9,6 @@
 
 # These variables are currently used in/by:
 #
-# - xtensa-build-all.sh (XTOS)
 # - script/rebuild-testbench.sh
 # - before Zephyr's `twister` or `west build`
 #
