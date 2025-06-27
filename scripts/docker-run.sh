@@ -5,8 +5,6 @@
 # Runs a given script in the docker container you can generate from the
 # docker_build directory.
 # Example:
-#  To build sof for tigerlake:
-#  ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh tgl
 #  To build topology:
 #  ./scripts/docker-run.sh ./scripts/build-tools.sh
 
