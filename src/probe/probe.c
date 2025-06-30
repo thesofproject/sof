@@ -867,27 +867,32 @@ static void kick_probe_task(struct probe_pdata *_probe)
 }
 
 #if CONFIG_LOG_BACKEND_SOF_PROBE
-static void probe_logging_hook(uint8_t *buffer, size_t length)
+static ssize_t probe_logging_hook(uint8_t *buffer, size_t length)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint64_t checksum;
+	size_t max_len;
 	int ret;
+
+	max_len = _probe->ext_dma.dmapb.avail - sizeof(struct probe_data_packet) - sizeof(checksum);
+	length = MIN(max_len, length);
 
 	ret = probe_gen_header(PROBE_LOGGING_BUFFER_ID, length, 0, &checksum);
 	if (ret < 0)
-		return;
+		return ret;
 
 	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
 			      buffer, length);
 	if (ret < 0)
-		return;
+		return ret;
 
 	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
 			      &checksum, sizeof(checksum));
 	if (ret < 0)
-		return;
+		return ret;
 
 	kick_probe_task(_probe);
+	return length;
 }
 #endif
 
