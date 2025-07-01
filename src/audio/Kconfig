@@ -72,6 +72,13 @@ config IPC4_GATEWAY
 	  host and DSP without using DMA: via memory window (audio payload) and
 	  IPC4 messages (set/get/flush commands).
 
+config MODULE_MAX_CONNECTIONS
+	int "Module maximum number of connected sink/source modules"
+	default 8
+	help
+	  Specifies the maximum number of sink and source connections a module
+	  may have to other modules.
+
 rsource "up_down_mixer/Kconfig"
 
 config COMP_BLOB
