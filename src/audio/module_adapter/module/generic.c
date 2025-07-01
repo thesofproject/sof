@@ -437,9 +437,9 @@ int module_set_configuration(struct processing_module *mod,
 		if (!md->new_cfg_size)
 			return 0;
 
-		if (md->new_cfg_size > MAX_BLOB_SIZE) {
+		if (md->new_cfg_size > CONFIG_MODULE_MAX_BLOB_SIZE) {
 			comp_err(dev, "module_set_configuration(): error: blob size is too big cfg size %zu, allowed %d",
-				 md->new_cfg_size, MAX_BLOB_SIZE);
+				 md->new_cfg_size, CONFIG_MODULE_MAX_BLOB_SIZE);
 			return -EINVAL;
 		}
 
