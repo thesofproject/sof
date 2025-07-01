@@ -30,14 +30,6 @@
 #define MAX_BLOB_SIZE 8192
 #define MODULE_MAX_SOURCES 8
 
-#define API_CALL(cd, cmd, sub_cmd, value, ret) \
-	do { \
-		ret = (cd)->api((cd)->self, \
-				(cmd), \
-				(sub_cmd), \
-				(value)); \
-	} while (0)
-
 #if CONFIG_IPC_MAJOR_4
 #define IPC_MOD_CMD(v)
 #elif CONFIG_IPC_MAJOR_3
