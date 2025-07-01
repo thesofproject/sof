@@ -89,6 +89,13 @@ config COMP_BLOB
 	 multiple IPC messages. Not all components or modules need
 	 this. If unsure, say yes.
 
+config MODULE_MAX_BLOB_SIZE
+	int "Maximum IPC blob size in bytes"
+	default 8192
+	help
+	  Specify the maximum size of IPC4 module blob data that can be
+	  appended to each message.
+
 rsource "src/Kconfig"
 
 config COMP_STUBS
