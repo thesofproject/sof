@@ -33,6 +33,16 @@
 #define IPC_MOD_CMD(v) .cmd = v,
 #endif
 
+/*
+ * \brief Macro to declare a module adapter component.
+ * \param adapter - name of the module.
+ * \param uuid - UUID of the module.
+ * \param tr - trace context for the module.
+ *
+ * This macro declares a module component with the specified name, UUID, and trace context.
+ * It initializes the component module structure with the appropriate type, UID, and
+ * struct module_interface operations.
+ */
 #define DECLARE_MODULE_ADAPTER(adapter, uuid, tr) \
 static const struct comp_driver comp_##adapter##_module = { \
 	.type = SOF_COMP_MODULE_ADAPTER, \
@@ -81,10 +91,10 @@ DECLARE_MODULE(sys_comp_module_##adapter##_init)
  * \brief Module-specific states
  */
 enum module_state {
-	MODULE_DISABLED, /**< Module isn't initialized yet or has been freed.*/
-	MODULE_INITIALIZED, /**< Module initialized or reset. */
-	MODULE_IDLE, /**< Module is idle now. */
-	MODULE_PROCESSING, /**< Module is processing samples now. */
+	MODULE_DISABLED,	/**< Module isn't initialized yet or has been freed.*/
+	MODULE_INITIALIZED,	/**< Module initialized or reset. */
+	MODULE_IDLE,		/**< Module is idle now. */
+	MODULE_PROCESSING,	/**< Module is processing samples now. */
 };
 
 /**
@@ -101,8 +111,8 @@ struct module_param {
 	 * sample_rate may have an id of 0x01.
 	 */
 	uint32_t id;
-	uint32_t size; /**< The size of whole parameter - id + size + data */
-	int32_t data[]; /**< A pointer to memory where config is stored.*/
+	uint32_t size;		/**< The size of whole parameter - id + size + data */
+	int32_t data[];		/**< A pointer to memory where config is stored.*/
 };
 
 /**
