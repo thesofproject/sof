@@ -32,6 +32,14 @@ extern xa_codec_func_t xa_sbc_dec;
 extern xa_codec_func_t xa_vorbis_dec;
 extern xa_codec_func_t xa_src_pp;
 
+#define API_CALL(cd, cmd, sub_cmd, value, ret) \
+	do { \
+		ret = (cd)->api((cd)->self, \
+				(cmd), \
+				(sub_cmd), \
+				(value)); \
+	} while (0)
+
 /*****************************************************************************/
 /* Cadence private data types						     */
 /*****************************************************************************/
