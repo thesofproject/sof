@@ -272,6 +272,12 @@ int module_adapter_prepare(struct comp_dev *dev)
 		comp_err(dev, "module_adapter_prepare(): no source and sink buffers connected!");
 		return -EINVAL;
 	}
+	if (mod->num_of_sources > CONFIG_MODULE_MAX_CONNECTIONS ||
+	    mod->num_of_sinks > CONFIG_MODULE_MAX_CONNECTIONS) {
+		comp_err(dev, "module_adapter_prepare(): too many connected sinks %d or sources %d!",
+			 mod->num_of_sinks, mod->num_of_sources);
+		return -EINVAL;
+	}
 
 	/* check processing mode */
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->max_sources > 1 && mod->max_sinks > 1) {

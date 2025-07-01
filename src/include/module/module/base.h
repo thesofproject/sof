@@ -101,8 +101,8 @@ struct processing_module {
 	uint32_t num_of_sinks;
 
 	/* sink and source handlers for the module */
-	struct sof_sink *sinks[MODULE_MAX_SOURCES];
-	struct sof_source *sources[MODULE_MAX_SOURCES];
+	struct sof_sink *sinks[CONFIG_MODULE_MAX_CONNECTIONS];
+	struct sof_source *sources[CONFIG_MODULE_MAX_CONNECTIONS];
 
 	/* this is used in case of raw data or audio_stream mode
 	 * number of buffers described by fields:
