@@ -11,7 +11,7 @@
 #include <user/debug_stream.h>
 #include <user/debug_stream_slot.h>
 
-LOG_MODULE_REGISTER(debug_strem_slot);
+LOG_MODULE_REGISTER(debug_stream_slot);
 
 struct cpu_mutex {
 	struct k_mutex m;
@@ -52,7 +52,7 @@ int debug_stream_slot_send_record(struct debug_stream_record *rec)
 	uint32_t record_size = rec->size_words;
 	uint32_t record_start, buf_remain;
 
-	LOG_DBG("Sending record %u id %u len %u\n", rec->seqno, rec->id, rec->size_words);
+	LOG_DBG("Sending record %u id %u len %u", rec->seqno, rec->id, rec->size_words);
 
 	if (!buf)
 		return -ENODEV;
@@ -92,7 +92,7 @@ int debug_stream_slot_send_record(struct debug_stream_record *rec)
 
 	k_mutex_unlock(&cpu_mutex[arch_proc_id()].m);
 
-	LOG_DBG("Record %u id %u len %u sent\n", rec->seqno, rec->id, record_size);
+	LOG_DBG("Record %u id %u len %u sent", rec->seqno, rec->id, record_size);
 	return 0;
 }
 
@@ -109,7 +109,7 @@ static int debug_stream_slot_init(void)
 	size_t offset = hdr_size;
 	int i;
 
-	LOG_INF("%u sections of %u bytes, hdr %u, section area %u\n",
+	LOG_INF("%u sections of %u bytes, hdr %u, section area %u",
 		CONFIG_MP_MAX_NUM_CPUS, section_size, hdr_size,
 		section_area_size);
 
@@ -128,7 +128,7 @@ static int debug_stream_slot_init(void)
 			(section_size - offsetof(struct debug_stream_circular_buf, data[0]))/
 			sizeof(uint32_t);
 		hdr->section_desc[i].offset = offset;
-		LOG_INF("sections %u, size %u, offset %u\n",
+		LOG_INF("sections %u, size %u, offset %u",
 			i, section_size, offset);
 		offset += section_size;
 	}
@@ -148,7 +148,7 @@ static int debug_stream_slot_init(void)
 		 * sys_cache_data_flush_range(&cpu_mutex[i], sizeof(cpu_mutex[i]));
 		 */
 	}
-	LOG_INF("Debug stream slot initialized\n");
+	LOG_INF("Debug stream slot initialized");
 
 	return 0;
 }
