@@ -6,8 +6,8 @@ set(base_files
   tester_simple_dram_test.c
 )
 
-is_zephyr(it_is)
-if(it_is) ###  Zephyr ###
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
 
   if(CONFIG_COMP_TESTER STREQUAL "m")
 
@@ -18,12 +18,6 @@ if(it_is) ###  Zephyr ###
 
     zephyr_library_sources(${base_files})
 
-  endif()
-
-else() ### XTOS ###
-
-  if(CONFIG_COMP_TESTER)
-    add_local_sources(sof ${base_files})
   endif()
 
 endif()

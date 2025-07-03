@@ -10,8 +10,8 @@ endif()
 
 sof_list_append_ifdef(CONFIG_COMP_SRC_LITE base_files src_lite.c)
 
-is_zephyr(it_is)
-if(it_is) ###  Zephyr ###
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
 
   if(CONFIG_COMP_SRC STREQUAL "m")
 
@@ -24,7 +24,7 @@ if(it_is) ###  Zephyr ###
 
   endif()
 
-else() ### XTOS ###
+else() ### library, e.g. testbench or plugin ###
 
   add_local_sources(sof ${base_files})
 

@@ -12,8 +12,8 @@ if(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL AND NOT(CONFIG_DMA_DOMAIN))
 	list(APPEND base_files dma_single_chan_domain.c)
 endif()
 
-is_zephyr(it_is)
-if(it_is) ###  Zephyr ###
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
 
 zephyr_library_sources(
 	${base_files}
@@ -44,16 +44,6 @@ zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
 
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_TWB_SCHEDULER
 	zephyr_twb_schedule.c
-)
-
-else() ###  Not Zephyr ###
-
-add_local_sources(sof
-	${base_files}
-	edf_schedule.c
-	ll_schedule.c
-	task.c
-	timer_domain.c
 )
 
 endif()
