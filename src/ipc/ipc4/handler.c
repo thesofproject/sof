@@ -1503,10 +1503,6 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		/* do platform specific suspending */
 		platform_context_save(sof_get());
 
-#if !defined(CONFIG_LIBRARY) && !defined(CONFIG_ZEPHYR_NATIVE_DRIVERS)
-		arch_irq_lock();
-		platform_timer_stop(timer_get());
-#endif
 		ipc_get()->pm_prepare_D3 = 1;
 	}
 

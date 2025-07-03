@@ -44,9 +44,7 @@
 #include <zephyr/drivers/mic_privacy/intel/mic_privacy.h>
 #endif
 
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/drivers/dai.h>
-#endif
 
 LOG_MODULE_REGISTER(copier, CONFIG_SOF_LOG_LEVEL);
 
@@ -1132,11 +1130,7 @@ static int copier_dai_ts_start_op(struct comp_dev *dev)
 	return dai_common_ts_start(dd, dev);
 }
 
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 static int copier_dai_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd)
-#else
-static int copier_dai_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
-#endif
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);

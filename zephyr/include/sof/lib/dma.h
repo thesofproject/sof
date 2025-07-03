@@ -263,10 +263,6 @@ struct dma *sof_dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flag
  */
 void sof_dma_put(struct dma *dma);
 
-#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
-#include "dma-legacy.h"
-#endif /* !CONFIG_ZEPHYR_NATIVE_DRIVERS */
-
 #if defined(CONFIG_SCHEDULE_DMA_MULTI_CHANNEL) || \
 	defined(CONFIG_SCHEDULE_DMA_SINGLE_CHANNEL)
 

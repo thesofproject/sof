@@ -501,12 +501,7 @@ struct comp_ops {
 	 * Mandatory for components that allocate DAI.
 	 * Usually shouldn't be __cold.
 	 */
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	int (*dai_ts_get)(struct comp_dev *dev, struct dai_ts_data *tsd);
-#else
-	int (*dai_ts_get)(struct comp_dev *dev,
-			  struct timestamp_data *tsd);
-#endif
 
 	/**
 	 * Bind, atomic - used to notify component of bind event.

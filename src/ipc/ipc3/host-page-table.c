@@ -81,7 +81,6 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	return 0;
 }
 
-#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 /*
  * Copy the audio buffer page tables from the host to the DSP max of 4K.
  */
@@ -144,67 +143,6 @@ out_release_channel:
 
 	return ret;
 }
-#else
-static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
-				    struct sof_ipc_host_buffer *ring)
-{
-	struct dma_sg_config config;
-	struct dma_sg_elem elem;
-	struct dma_chan_data *chan;
-	uint32_t dma_copy_align;
-	int ret = 0;
-
-	/* get DMA channel from DMAC */
-	chan = dma_channel_get_legacy(dmac, 0);
-	if (!chan) {
-		tr_err(&ipc_tr, "ipc_get_page_descriptors(): chan is NULL");
-		return -ENODEV;
-	}
-
-	/* set up DMA configuration */
-	config.direction = DMA_DIR_HMEM_TO_LMEM;
-	config.src_width = sizeof(uint32_t);
-	config.dest_width = sizeof(uint32_t);
-	config.cyclic = 0;
-	config.irq_disabled = false;
-	dma_sg_init(&config.elem_array);
-
-	ring->phy_addr = host_to_local(ring->phy_addr);
-	/* set up DMA descriptor */
-	elem.dest = (uintptr_t)page_table;
-	elem.src = ring->phy_addr;
-
-	/* source buffer size is always PAGE_SIZE bytes */
-	/* 20 bits for each page, round up to minimum DMA copy size */
-	ret = dma_get_attribute_legacy(dmac, DMA_ATTR_COPY_ALIGNMENT, &dma_copy_align);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_get_attribute() failed");
-		goto out;
-	}
-	elem.size = SOF_DIV_ROUND_UP(ring->pages * 20, 8);
-	elem.size = ALIGN_UP(elem.size, dma_copy_align);
-	config.elem_array.elems = &elem;
-	config.elem_array.count = 1;
-
-	ret = dma_set_config_legacy(chan, &config);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_set_config() failed");
-		goto out;
-	}
-
-	/* start the copy of page table to DSP */
-	ret = dma_copy_legacy(chan, elem.size, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
-	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_start() failed");
-		goto out;
-	}
-
-	/* compressed page tables now in buffer at _ipc->page_table */
-out:
-	dma_channel_put_legacy(chan);
-	return ret;
-}
-#endif /* CONFIG_ZEPHYR_NATIVE_DRIVERS */
 
 int ipc_process_host_buffer(struct ipc *ipc,
 			    struct sof_ipc_host_buffer *ring,

@@ -43,7 +43,6 @@ static void secondary_init(void *arg)
 	secondary_core_init(sof_get());
 }
 
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <sof/trace/trace.h>
 #include <rtos/wait.h>
 
@@ -302,61 +301,6 @@ int cpu_enabled_cores(void)
 
 	return mask;
 }
-#else
-static int w_core_enable_mask = 0x1; /*Core 0 is always active*/
-
-int cpu_enable_core(int id)
-{
-	pm_runtime_get(PM_RUNTIME_DSP, PWRD_BY_TPLG | id);
-
-	/* only called from single core, no RMW lock */
-	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
-
-	w_core_enable_mask |= BIT(id);
-
-	return 0;
-}
-
-int cpu_enable_secondary_core(int id)
-{
-	if (arch_cpu_active(id))
-		return 0;
-
-	/* During kernel initialization, the next pm state is set to ACTIVE. By checking this
-	 * value, we determine if this is the first core boot, if not, we need to skip idle thread
-	 * initialization. By reinitializing the idle thread, we would overwrite the kernel structs
-	 * and the idle thread stack.
-	 */
-	if (pm_state_next_get(id)->state == PM_STATE_ACTIVE) {
-		k_smp_cpu_start(id, secondary_init, NULL);
-		return 0;
-	}
-
-	k_smp_cpu_resume(id, secondary_init, NULL, true, false);
-
-	return 0;
-}
-
-void cpu_disable_core(int id)
-{
-	/* TODO: call Zephyr API */
-
-	/* only called from single core, no RMW lock */
-	__ASSERT_NO_MSG(cpu_get_id() == PLATFORM_PRIMARY_CORE_ID);
-
-	w_core_enable_mask &= ~BIT(id);
-}
-
-int cpu_is_core_enabled(int id)
-{
-	return w_core_enable_mask & BIT(id);
-}
-
-int cpu_enabled_cores(void)
-{
-	return w_core_enable_mask;
-}
-#endif /* CONFIG_ZEPHYR_NATIVE_DRIVERS */
 
 void cpu_power_down_core(uint32_t flags)
 {

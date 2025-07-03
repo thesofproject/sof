@@ -196,13 +196,8 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 			      "dma_trace_init_complete(): dma_copy_new() failed: %d", ret);
 		goto out;
 	}
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	ret = dma_get_attribute(d->dc.dmac->z_dev, DMA_ATTR_COPY_ALIGNMENT,
 				&d->dma_copy_align);
-#else
-	ret = dma_get_attribute_legacy(d->dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
-				       &d->dma_copy_align);
-#endif
 	if (ret < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR,
 			      "dma_trace_init_complete(): dma_get_attribute() failed: %d", ret);
@@ -273,13 +268,8 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 			      "dma_trace_buffer_init() failed, no DMAC! d=%p", d);
 		return -ENODEV;
 	}
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	err = dma_get_attribute(d->dc.dmac->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				&addr_align);
-#else
-	err = dma_get_attribute_legacy(d->dc.dmac, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				       &addr_align);
-#endif
 	if (err < 0)
 		return err;
 
