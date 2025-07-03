@@ -155,46 +155,6 @@ __cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 	return ipc_pipeline_free(ipc, pipe->primary.r.instance_id);
 }
 
-static int ipc4_comp_params(struct comp_dev *current,
-			    struct comp_buffer *calling_buf,
-			    struct pipeline_walk_context *ctx, int dir)
-{
-	struct pipeline_data *ppl_data = ctx->comp_data;
-	int err;
-
-	/* don't do any params if current is running */
-	if (current->state == COMP_STATE_ACTIVE)
-		return 0;
-
-	/* Stay on the current pipeline */
-	if (current->pipeline != ((struct pipeline_data *)ctx->comp_data)->p)
-		return 0;
-
-	err = comp_params(current, &ppl_data->params->params);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP)
-		return err;
-
-	return pipeline_for_each_comp(current, ctx, dir);
-}
-
-static int ipc4_pipeline_params(struct pipeline *p, struct comp_dev *host)
-{
-	struct sof_ipc_pcm_params hw_params = {{ 0 }};
-	struct pipeline_data data = {
-		.start = host,
-		.params = &hw_params,
-		.p = p,
-	};
-
-	struct pipeline_walk_context param_ctx = {
-		.comp_func = ipc4_comp_params,
-		.comp_data = &data,
-		.skip_incomplete = true,
-	};
-
-	return param_ctx.comp_func(host, NULL, &param_ctx, host->direction);
-}
-
 static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 {
 	int err, reset_err;
@@ -203,15 +163,6 @@ static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 	if (!pcm_dev->cd->pipeline) {
 		ipc_cmd_err(&ipc_tr, "ipc: comp %d pipeline not found", pcm_dev->id);
 		return -EINVAL;
-	}
-
-	/* configure pipeline audio params */
-	err = ipc4_pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd);
-	if (err < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc: pipe %d comp %d params failed %d",
-			    pcm_dev->cd->pipeline->pipeline_id,
-			    pcm_dev->cd->pipeline->comp_id, err);
-		goto error;
 	}
 
 	/* prepare pipeline audio params */

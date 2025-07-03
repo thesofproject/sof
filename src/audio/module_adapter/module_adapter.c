@@ -143,6 +143,20 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	dev->state = COMP_STATE_READY;
 
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc_stream_params params;
+
+	/*
+	 * retrieve the stream params based on the module base cfg. There's no need to initialize
+	 * params here because it will be filled in based on the module base_cfg.
+	 */
+	ret = module_adapter_params(dev, &params);
+	if (ret) {
+		comp_err(dev, "module_adapter_new() %d: module params failed", ret);
+		goto err;
+	}
+#endif
+
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
 err:
@@ -199,7 +213,28 @@ int module_adapter_prepare(struct comp_dev *dev)
 	int i = 0;
 
 	comp_dbg(dev, "module_adapter_prepare() start");
+#if CONFIG_IPC_MAJOR_4
+	/*
+	 * if the stream_params are valid, just update the sink/source buffer params. If not,
+	 * retrieve the params from the basecfg, allocate stream_params and then update the
+	 * sink/source buffer params.
+	 */
+	if (!mod->stream_params) {
+		struct sof_ipc_stream_params params;
 
+		ret = module_adapter_params(dev, &params);
+		if (ret) {
+			comp_err(dev, "module_adapter_new() %d: module params failed", ret);
+			return ret;
+		}
+	} else {
+		ret = comp_verify_params(dev, mod->verify_params_flags, mod->stream_params);
+		if (ret < 0) {
+			comp_err(dev, "module_adapter_params(): comp_verify_params() failed.");
+			return ret;
+		}
+	}
+#endif
 	/* Prepare module */
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
 		ret = module_adapter_sink_src_prepare(dev);

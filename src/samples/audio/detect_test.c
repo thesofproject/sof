@@ -650,6 +650,7 @@ static int test_keyword_cmd(struct comp_dev *dev, int cmd, void *data,
 	}
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
+static int test_keyword_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 
 static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 					 const struct comp_ipc_config *config,
@@ -749,6 +750,16 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	dev->direction = SOF_IPC_STREAM_CAPTURE;
 	dev->direction_set = true;
 	dev->state = COMP_STATE_READY;
+
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc_stream_params params;
+
+	/* retrieve params based on base config for IPC4 */
+	ret = test_keyword_params(dev, &params);
+	if (ret < 0)
+		goto cd_fail;
+#endif
+
 	return dev;
 
 cd_fail:
@@ -816,30 +827,6 @@ static int test_keyword_params(struct comp_dev *dev,
 
 	cd->sample_valid_bytes = params->sample_valid_bytes;
 
-	/* keyword components will only ever have 1 source */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	channels = audio_stream_get_channels(&sourceb->stream);
-	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
-	rate = audio_stream_get_rate(&sourceb->stream);
-
-	if (channels != 1) {
-		comp_err(dev, "test_keyword_params(): only single-channel supported");
-		return -EINVAL;
-	}
-
-	if (!detector_is_sample_width_supported(frame_fmt)) {
-		comp_err(dev, "test_keyword_params(): only 16-bit format supported");
-		return -EINVAL;
-	}
-
-	/* calculate the length of the preamble */
-	if (cd->config.preamble_time) {
-		cd->keyphrase_samples = cd->config.preamble_time *
-					(rate / 1000);
-	} else {
-		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
-	}
-
 	/*
 	 * Threshold might be already set via IPC4_DETECT_TEST_SET_CONFIG,
 	 * otherwise apply default value.
@@ -853,6 +840,32 @@ static int test_keyword_params(struct comp_dev *dev,
 		}
 
 		cd->config.activation_threshold = err;
+	}
+
+	/* keyword components will only ever have 1 source */
+	sourceb = comp_dev_get_first_data_producer(dev);
+	if (sourceb) {
+		channels = audio_stream_get_channels(&sourceb->stream);
+		frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
+		rate = audio_stream_get_rate(&sourceb->stream);
+
+		if (channels != 1) {
+			comp_err(dev, "test_keyword_params(): only single-channel supported");
+			return -EINVAL;
+		}
+
+		if (!detector_is_sample_width_supported(frame_fmt)) {
+			comp_err(dev, "test_keyword_params(): only 16-bit format supported");
+			return -EINVAL;
+		}
+
+		/* calculate the length of the preamble */
+		if (cd->config.preamble_time) {
+			cd->keyphrase_samples = cd->config.preamble_time *
+						(rate / 1000);
+		} else {
+			cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
+		}
 	}
 
 #if CONFIG_AMS
@@ -926,6 +939,7 @@ static int test_keyword_reset(struct comp_dev *dev)
 static int test_keyword_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_stream_params params;
 	uint16_t valid_bits = cd->sample_valid_bytes * 8;
 	uint16_t sample_width;
 	int ret;
@@ -937,6 +951,12 @@ static int test_keyword_prepare(struct comp_dev *dev)
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 	comp_info(dev, "test_keyword_prepare()");
+
+	ret = test_keyword_params(dev, &params);
+	if (ret < 0) {
+		comp_err(dev, "test_keyword_prepare(): params config failed.");
+		return ret;
+	}
 
 	/*
 	 * FIXME: this condition is always "false" for IPC4 as audio format cannot be changed
