@@ -453,6 +453,8 @@ static void kpb_set_params(struct comp_dev *dev,
 {}
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+static int kpb_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
+
 /*
  * \brief Create a key phrase buffer component.
  * \param[in] config - generic ipc component pointer.
@@ -533,6 +535,17 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 	/* Kpb has been created successfully */
 	dev->state = COMP_STATE_READY;
 	kpb_change_state(kpb, KPB_STATE_CREATED);
+
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc_stream_params params;
+
+	/* retrieve params from the base config for IPC4 */
+	ret = kpb_params(dev, &params);
+	if (ret < 0) {
+		rfree(dev);
+		return NULL;
+	}
+#endif
 
 	return dev;
 }
@@ -784,11 +797,21 @@ static int kpb_params(struct comp_dev *dev,
 static int kpb_prepare(struct comp_dev *dev)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
+	struct sof_ipc_stream_params params;
 	int ret = 0;
 	int i;
 	size_t hb_size_req = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width, kpb->config.channels);
 
 	comp_dbg(dev, "kpb_prepare()");
+
+	/* retrieve the params from the base_cfg and update the source/sink buffer params */
+	kpb_set_params(dev, &params);
+
+	ret = kpb_verify_params(dev, &params);
+	if (ret < 0) {
+		comp_err(dev, "pcm params verification failed");
+		return -EINVAL;
+	}
 
 	if (kpb->state == KPB_STATE_RESETTING ||
 	    kpb->state == KPB_STATE_RESET_FINISHING) {
