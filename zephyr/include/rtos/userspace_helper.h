@@ -165,4 +165,13 @@ void module_driver_heap_free(struct sys_heap *mod_drv_heap, void *mem);
  */
 void module_driver_heap_remove(struct sys_heap *mod_drv_heap);
 
+void dump_memory_domain(struct k_mem_domain *domain);
+void dump_page_tables(uint32_t *ptables, void *test, bool kernel);
+void dump_page_table(uint32_t *ptables, void *test);
+
+static inline void dump_domain_entry(struct k_mem_domain *domain, void *test)
+{
+	dump_page_tables(domain->arch.ptables, test, false);
+}
+
 #endif /* __ZEPHYR_LIB_USERSPACE_HELPER_H__ */

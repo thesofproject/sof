@@ -24,6 +24,7 @@
 /* Zephyr includes */
 #include <zephyr/kernel.h>
 #include <zephyr/app_memory/app_memdomain.h>
+#include <../../../../../zephyr/zephyr/arch/xtensa/include/xtensa_mmu_priv.h>
 
 #if CONFIG_USERSPACE
 
@@ -187,6 +188,114 @@ int user_remove_memory(struct k_mem_domain *domain, uintptr_t addr, size_t size)
 		return 0;
 
 	return ret;
+}
+
+extern struct tr_ctx userspace_proxy_tr;
+
+LOG_MODULE_DECLARE(userspace_proxy, CONFIG_SOF_LOG_LEVEL);
+
+static void dump_pte_attr(char *attr_s, uint32_t attr)
+{
+	attr_s[0] = attr & XTENSA_MMU_CACHED_WT ? 'T' : '-';
+	attr_s[1] = attr & XTENSA_MMU_CACHED_WB ? 'B' : '-';
+	attr_s[2] = attr & XTENSA_MMU_PERM_W ? 'W' : '-';
+	attr_s[3] = attr & XTENSA_MMU_PERM_X ? 'X' : '-';
+	attr_s[4] = '\0';
+}
+
+static uint32_t *dump_pte(uint32_t pte)
+{
+	uint32_t ppn = pte & XTENSA_MMU_PTE_PPN_MASK;
+	uint32_t ring = XTENSA_MMU_PTE_RING_GET(pte);
+	uint32_t sw = XTENSA_MMU_PTE_SW_GET(pte);
+	uint32_t sw_ring = XTENSA_MMU_PTE_SW_RING_GET(sw);
+	uint32_t sw_attr = XTENSA_MMU_PTE_SW_ATTR_GET(sw);
+	uint32_t attr = XTENSA_MMU_PTE_ATTR_GET(pte);
+
+	char attr_s[5];
+	dump_pte_attr(attr_s, attr);
+
+	char sw_attr_s[5];
+	dump_pte_attr(sw_attr_s, sw_attr);
+
+	tr_err(&userspace_proxy_tr, "PPN %#x, sw %#x (ring: %u, %s), ring %u %s",
+	       ppn, sw, sw_ring, sw_attr_s, ring, attr_s);
+
+	if ((attr & XTENSA_MMU_PTE_ATTR_ILLEGAL) == XTENSA_MMU_PTE_ATTR_ILLEGAL) {
+		tr_err(&userspace_proxy_tr, "ILLEGAL PTE");
+		return NULL;
+	}
+
+	return (uint32_t *)ppn;
+}
+
+void dump_page_table(uint32_t *ptables, void *test)
+{
+	const uint32_t l1_index = XTENSA_MMU_L1_POS(POINTER_TO_UINT(test));
+	const uint32_t l2_index = XTENSA_MMU_L2_POS(POINTER_TO_UINT(test));
+	const uint32_t test_aligned = POINTER_TO_UINT(test) & ~(CONFIG_MMU_PAGE_SIZE - 1);
+
+	tr_err(&userspace_proxy_tr, "test %p, ptables = %p, L1 = %#x, L2 = %#x", test,
+	       (void *)ptables, l1_index, l2_index);
+
+	uint32_t *const l1_entry = ptables + l1_index;
+	tr_err(&userspace_proxy_tr, "l1 @ %p = %p", (void *)l1_entry, *l1_entry);
+
+	uint32_t* l1_ppn = dump_pte(*l1_entry);
+	if (!l1_ppn) {
+		tr_err(&userspace_proxy_tr, "INVALID L1 PTE!");
+		return;
+	}
+
+	uint32_t *const l2_entry = l1_ppn + l2_index;
+	tr_err(&userspace_proxy_tr, "l2 @ %p = %p", (void *)l2_entry, *l2_entry);
+	uint32_t *l2_ppn = dump_pte(*l2_entry);
+
+	if (test_aligned != POINTER_TO_UINT(l2_ppn)) {
+		tr_err(&userspace_proxy_tr, "INVALID L2 PTE!");
+		return;
+	}
+}
+
+extern uint32_t *xtensa_kernel_ptables;
+
+void dump_page_tables(uint32_t *ptables, void *test, bool kernel)
+{
+	if (ptables) {
+		tr_err(&userspace_proxy_tr, "Dump for %p in user table", test);
+		dump_page_table(ptables, sys_cache_cached_ptr_get(test));
+		dump_page_table(ptables, sys_cache_uncached_ptr_get(test));
+	}
+
+	if (kernel) {
+		tr_err(&userspace_proxy_tr, "Kernel table", test);
+		dump_page_table(xtensa_kernel_ptables, sys_cache_cached_ptr_get(test));
+		dump_page_table(xtensa_kernel_ptables, sys_cache_uncached_ptr_get(test));
+	}
+}
+
+static void dump_domain_attr(char *attr_s, uint32_t attr)
+{
+	attr_s[0] = attr & XTENSA_MMU_MAP_SHARED ? 'S' : '-';
+	attr_s[1] = K_MEM_PARTITION_IS_USER(attr) ? 'U' : '-';
+	dump_pte_attr(attr_s + 2, attr);
+}
+
+void dump_memory_domain(struct k_mem_domain *domain)
+{
+	int i;
+	char attrs[7];
+
+	for (i = 0; i < domain->num_partitions; i++) {
+		dump_domain_attr(attrs, domain->partitions[i].attr);
+
+		tr_err(&userspace_proxy_tr, "partitions[%d]: %p + %#zx %s", i,
+		       UINT_TO_POINTER(domain->partitions[i].start),
+		       domain->partitions[i].size, attrs);
+	}
+
+	tr_err(&userspace_proxy_tr, "ptables = %p, asid = %u, dirty = %u",
+	       (void *)domain->arch.ptables, domain->arch.asid, domain->arch.dirty);
 }
 
 #else /* CONFIG_USERSPACE */
