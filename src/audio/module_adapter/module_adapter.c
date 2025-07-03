@@ -123,6 +123,20 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 
 	dev->state = COMP_STATE_READY;
 
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc_stream_params params;
+
+	/*
+	 * set the stream params based on the module base cfg. There's no need to initialize
+	 * params here because it will be filled in based on the module base_cfg.
+	 */
+	ret = module_adapter_params(dev, &params);
+	if (ret) {
+		comp_err(dev, "module_adapter_new() %d: module params failed", ret);
+		goto err;
+	}
+#endif
+
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
 err:
@@ -179,7 +193,14 @@ int module_adapter_prepare(struct comp_dev *dev)
 	int i = 0;
 
 	comp_dbg(dev, "module_adapter_prepare() start");
+#if CONFIG_IPC_MAJOR_4
+	/* verify params */
+	ret = comp_verify_params(dev, mod->verify_params_flags, mod->stream_params);
+	if (ret < 0)
+		comp_err(dev, "module_adapter_params(): comp_verify_params() failed.");
 
+	return ret;
+#endif
 	/* Prepare module */
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
 		ret = module_adapter_sink_src_prepare(dev);
@@ -468,7 +489,6 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	struct processing_module *mod = comp_mod(dev);
 
 	module_adapter_set_params(mod, params);
-
 	ret = comp_verify_params(dev, mod->verify_params_flags, params);
 	if (ret < 0) {
 		comp_err(dev, "module_adapter_params(): comp_verify_params() failed.");
@@ -479,7 +499,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	if (mod->stream_params)
 		rfree(mod->stream_params);
 
-	mod->stream_params = rzalloc(SOF_MEM_FLAG_USER,
+	mod->stream_params = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 				     sizeof(*mod->stream_params) + params->ext_data_length);
 	if (!mod->stream_params)
 		return -ENOMEM;
@@ -1191,8 +1211,10 @@ int module_adapter_reset(struct comp_dev *dev)
 		buffer_zero(buffer);
 	}
 
+#if CONFIG_IPC_MAJOR_3
 	rfree(mod->stream_params);
 	mod->stream_params = NULL;
+#endif
 
 	comp_dbg(dev, "module_adapter_reset(): done");
 
@@ -1225,6 +1247,7 @@ void module_adapter_free(struct comp_dev *dev)
 
 #if CONFIG_IPC_MAJOR_4
 	rfree(mod->priv.cfg.input_pins);
+	rfree(mod->stream_params);
 #endif
 
 	rfree(mod);
