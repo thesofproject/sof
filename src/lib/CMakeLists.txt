@@ -32,15 +32,4 @@ if(zephyr) ###  Zephyr ###
     add_local_sources(sof clk.c)
   endif()
 
-else() ### XTOS ###
-
-  add_local_sources(sof
-    ${common_files}
-    lib.c
-    alloc.c
-    pm_runtime.c
-    clk.c
-    wait.c
-    )
-
 endif()

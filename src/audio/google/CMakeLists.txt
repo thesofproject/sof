@@ -65,8 +65,8 @@ if(zephyr) ###  Zephyr ###
 	return()
 endif()
 
-### XTOS build rules ###
-if((NOT CONFIG_LIBRARY) OR CONFIG_LIBRARY_STATIC)
+### Library build rules ###
+if(CONFIG_LIBRARY_STATIC)
 	if(CONFIG_COMP_GOOGLE_HOTWORD_DETECT)
 		add_local_sources(sof
 			google_hotword_detect.c

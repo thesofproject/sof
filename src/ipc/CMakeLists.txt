@@ -13,8 +13,8 @@ add_local_sources(sof
 	notification_pool.c
 )
 
-is_zephyr(it_is)
-if(it_is) ###  Zephyr ###
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
 
 # dma-copy only used for dma-trace
 zephyr_library_sources_ifdef(CONFIG_TRACE dma-copy.c)
@@ -25,18 +25,11 @@ if (CONFIG_SOC_SERIES_INTEL_CAVS_V25 OR CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	)
 endif()
 
-
 else() ###  Not Zephyr ###
-
 
 if (CONFIG_TRACE)
 	add_local_sources(sof
 		dma-copy.c)
 endif()
-
-if (CONFIG_LIBRARY)
-	return()
-endif()
-
 
 endif() # Zephyr

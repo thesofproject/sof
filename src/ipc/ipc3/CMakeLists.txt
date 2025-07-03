@@ -7,18 +7,11 @@ add_local_sources(sof
 		dai.c
 )
 
-is_zephyr(it_is)
-if(it_is) ###  Zephyr ###
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
 
 zephyr_library_sources(
 	host-page-table.c
 )
-
-else()  ### Not Zephyr ###
-
-if (CONFIG_HOST_PTABLE)
-	add_local_sources(sof
-		host-page-table.c)
-endif()
 
 endif() # Zephyr
