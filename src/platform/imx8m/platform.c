@@ -127,13 +127,6 @@ const struct ext_man_windows xsram_window
 	},
 };
 
-#ifndef __ZEPHYR__
-static SHARED_DATA struct timer timer_shared = {
-	.id = TIMER0, /* internal timer */
-	.irq = IRQ_NUM_TIMER0,
-};
-#endif
-
 int platform_boot_complete(uint32_t boot_message)
 {
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
@@ -154,11 +147,6 @@ int platform_init(struct sof *sof)
 {
 	int ret;
 
-#ifndef __ZEPHYR__
-	sof->platform_timer = platform_shared_get(&timer_shared, sizeof(timer_shared));
-	sof->cpu_timers = sof->platform_timer;
-#endif
-
 	platform_interrupt_init();
 	platform_clock_init(sof);
 	scheduler_init_edf();
@@ -167,10 +155,6 @@ int platform_init(struct sof *sof)
 	sof->platform_timer_domain =
 		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
-
-#ifndef __ZEPHYR__
-	platform_timer_start(sof->platform_timer);
-#endif
 
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
@@ -204,10 +188,3 @@ int platform_context_save(struct sof *sof)
 {
 	return 0;
 }
-
-#ifndef __ZEPHYR__
-void platform_wait_for_interrupt(int level)
-{
-	arch_wait_for_interrupt(level);
-}
-#endif

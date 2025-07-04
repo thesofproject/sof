@@ -33,9 +33,7 @@
 
 /* global contexts */
 WEAK struct ipc *_ipc;
-#ifndef __ZEPHYR__
 WEAK struct timer *platform_timer;
-#endif
 WEAK struct schedulers *schedulers;
 WEAK struct sof sof;
 WEAK struct tr_ctx buffer_tr;
@@ -152,7 +150,6 @@ volatile void * WEAK task_context_get(void)
 	return NULL;
 }
 
-#ifndef __ZEPHYR__
 uint32_t WEAK _k_spin_lock_irq(struct k_spinlock *lock)
 {
 	(void)lock;
@@ -166,7 +163,6 @@ void WEAK _k_spin_unlock_irq(struct k_spinlock *lock, uint32_t flags, int line)
 	(void)flags;
 	(void)line;
 }
-#endif
 
 uint64_t WEAK platform_timer_get(struct timer *timer)
 {
@@ -332,7 +328,6 @@ int WEAK comp_set_state(struct comp_dev *dev, int cmd)
 	return 0;
 }
 
-#ifndef __ZEPHYR__
 uint64_t WEAK clock_ms_to_ticks(int clock, uint64_t ms)
 {
 	(void)clock;
@@ -356,7 +351,6 @@ uint64_t WEAK clock_ns_to_ticks(int clock, uint64_t us)
 
 	return 0;
 }
-#endif /* __ZEPHYR__ */
 
 #if CONFIG_MULTICORE && !CONFIG_LIBRARY
 
