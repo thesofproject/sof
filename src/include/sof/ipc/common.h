@@ -247,4 +247,12 @@ void ipc_msg_reply(struct sof_ipc_reply *reply);
  */
 void ipc_complete_cmd(struct ipc *ipc);
 
+/**
+ * \brief Send emergency IPC message.
+ *
+ * @param[in] data IPC data to be sent.
+ * @param[in] ext_data Extended data to be sent.
+ */
+void ipc_send_message_emergency(uint32_t data, uint32_t ext_data);
+
 #endif /* __SOF_DRIVERS_IPC_H__ */
