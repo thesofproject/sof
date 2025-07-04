@@ -43,11 +43,7 @@ int asrc_dai_stop_timestamp(struct comp_data *cd)
 	return -EINVAL;
 }
 
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 int asrc_dai_get_timestamp(struct comp_data *cd, struct dai_ts_data *tsd)
-#else
-int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd)
-#endif
 {
 	if (!cd->dai_dev)
 		return -EINVAL;

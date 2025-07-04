@@ -130,9 +130,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 {
 	struct ipc_config_dai *dai = &dd->ipc_config;
 	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
-#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	struct dai *dai_p = dd->dai;
-#endif
 
 	if (!dai) {
 		comp_err(dev, "dai_data_config(): no dai!\n");
@@ -161,12 +159,8 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 	case SOF_DAI_INTEL_HDA:
 		break;
 	case SOF_DAI_INTEL_ALH:
-#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 		dd->stream_id = dai_get_stream_id(dai_p, dai->direction);
-#else
-		/* only native Zephyr driver supported */
-		return -EINVAL;
-#endif
+
 		/* SDW HW FIFO always requires 32bit MSB aligned sample data for
 		 * all formats, such as 8/16/24/32 bits.
 		 */
@@ -226,15 +220,11 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		 * pause to stop.
 		 * TODO: refine power management when stream is paused
 		 */
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 		/* if reset is after pause dma has already been stopped */
 		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
 
 		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
-#else
-		dma_stop_legacy(dd->chan);
-		dma_channel_put_legacy(dd->chan);
-#endif
+
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
@@ -399,7 +389,6 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 	return dai_set_config(dd->dai, common_config, copier_cfg->gtw_cfg.config_data);
 }
 
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
 			struct sof_ipc_stream_posn *posn)
 {
@@ -451,51 +440,3 @@ void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
 
 	mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
 }
-#else
-int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
-			struct sof_ipc_stream_posn *posn)
-{
-	struct dma_chan_status status;
-
-	/* total processed bytes count */
-	posn->dai_posn = dd->total_data_processed;
-
-	platform_dai_wallclock(dev, &dd->wallclock);
-	posn->wallclock = dd->wallclock;
-
-	status.ipc_posn_data = &posn->comp_posn;
-	dma_status_legacy(dd->chan, &status, dev->direction);
-
-	return 0;
-}
-
-int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	return dai_common_position(dd, dev, posn);
-}
-
-void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
-{
-	struct ipc4_llp_reading_slot slot;
-	struct dma_chan_status status;
-	uint32_t llp_data[2];
-
-	if (!dd->slot_info.node_id)
-		return;
-
-	status.ipc_posn_data = llp_data;
-	dma_status_legacy(dd->chan, &status, dev->direction);
-
-	platform_dai_wallclock(dev, &dd->wallclock);
-
-	slot.node_id = dd->slot_info.node_id;
-	slot.reading.llp_l = llp_data[0];
-	slot.reading.llp_u = llp_data[1];
-	slot.reading.wclk_l = (uint32_t)dd->wallclock;
-	slot.reading.wclk_u = (uint32_t)(dd->wallclock >> 32);
-
-	mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
-}
-#endif

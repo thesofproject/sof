@@ -305,11 +305,7 @@ int module_adapter_position(struct comp_dev *dev, struct sof_ipc_stream_posn *po
 int module_adapter_ts_config_op(struct comp_dev *dev);
 int module_adapter_ts_start_op(struct comp_dev *dev);
 int module_adapter_ts_stop_op(struct comp_dev *dev);
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 int module_adapter_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd);
-#else
-int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd);
-#endif
 
 void module_update_buffer_position(struct input_stream_buffer *input_buffers,
 				   struct output_stream_buffer *output_buffers,

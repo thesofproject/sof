@@ -63,20 +63,12 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	case SOF_DAI_IMX_ESAI:
 		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
-/* TODO: remove this when transition to native drivers is complete on all NXP platforms */
-#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
-		channel = EDMA_HS_GET_CHAN(handshake);
-#else
 		channel = handshake & GENMASK(7, 0);
-#endif /* CONFIG_ZEPHYR_NATIVE_DRIVERS */
 		break;
 	case SOF_DAI_IMX_MICFIL:
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
-/* TODO: remove ifdef when transitioning to native drivers is complete on all NXP platforms */
-#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 		channel = channel & GENMASK(7, 0);
-#endif
 		break;
 	case SOF_DAI_AMD_BT:
 		channel = dai_get_handshake(dd->dai, dai->direction,
@@ -289,11 +281,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 	if (dd->chan) {
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
-#else
-		dma_channel_put_legacy(dd->chan);
-#endif
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
@@ -339,11 +327,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 
 		/* stop DMA and reset config for two-step stop DMA */
 		if (dd->delayed_dma_stop) {
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
-#else
-			ret = dma_stop_delayed_legacy(dd->chan);
-#endif
 			if (ret < 0)
 				return ret;
 
@@ -354,11 +338,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 	case SOF_DAI_CONFIG_FLAGS_PAUSE:
 		if (!dd->chan)
 			return 0;
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
 		return dma_stop(dd->chan->dma->z_dev, dd->chan->index);
-#else
-		return dma_stop_delayed_legacy(dd->chan);
-#endif
 	default:
 		break;
 	}
