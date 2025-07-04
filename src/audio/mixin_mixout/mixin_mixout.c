@@ -784,7 +784,7 @@ static int mixout_prepare(struct processing_module *mod,
 	return 0;
 }
 
-static int mixout_bind(struct processing_module *mod, struct bind_info *bind_data)
+static int mixout_bind(struct processing_module *mod, void *data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *mixin;
@@ -792,7 +792,9 @@ static int mixout_bind(struct processing_module *mod, struct bind_info *bind_dat
 	int src_id;
 	struct mixout_data *mixout_data;
 
-	bu = bind_data->ipc4_data;
+	comp_dbg(mod->dev, "mixout_bind() %p", data);
+
+	bu = (struct ipc4_module_bind_unbind *)data;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
 
 	/* we are only interested in bind for mixin -> mixout pair */
@@ -831,7 +833,7 @@ static int mixout_bind(struct processing_module *mod, struct bind_info *bind_dat
 	return 0;
 }
 
-static int mixout_unbind(struct processing_module *mod, struct bind_info *unbind_data)
+static int mixout_unbind(struct processing_module *mod, void *data)
 {
 	struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *mixin;
@@ -841,7 +843,7 @@ static int mixout_unbind(struct processing_module *mod, struct bind_info *unbind
 
 	comp_dbg(mod->dev, "mixout_unbind()");
 
-	bu = unbind_data->ipc4_data;
+	bu = (struct ipc4_module_bind_unbind *)data;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
 
 	/* we are only interested in unbind for mixin -> mixout pair */

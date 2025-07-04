@@ -476,7 +476,6 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 {
 	struct ipc4_module_bind_unbind *bu;
-	struct bind_info bind_data;
 	struct comp_buffer *buffer;
 	struct comp_dev *source;
 	struct comp_dev *sink;
@@ -659,16 +658,11 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 	/* these might call comp_ipc4_bind_remote() if necessary */
-	bind_data.ipc4_data = bu;
-	bind_data.bind_type = COMP_BIND_TYPE_SINK;
-	bind_data.sink = audio_buffer_get_sink(&buffer->audio_buffer);
-	ret = comp_bind(source, &bind_data);
+	ret = comp_bind(source, bu);
 	if (ret < 0)
 		goto e_src_bind;
 
-	bind_data.bind_type = COMP_BIND_TYPE_SOURCE;
-	bind_data.source = audio_buffer_get_source(&buffer->audio_buffer);
-	ret = comp_bind(sink, &bind_data);
+	ret = comp_bind(sink, bu);
 	if (ret < 0)
 		goto e_sink_bind;
 
@@ -689,10 +683,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	return IPC4_SUCCESS;
 
 e_sink_bind:
-	/* sink bind was already called */
-	bind_data.bind_type = COMP_BIND_TYPE_SINK;
-	bind_data.sink = audio_buffer_get_sink(&buffer->audio_buffer);
-	comp_unbind(source, &bind_data);
+	comp_unbind(source, bu);
 e_src_bind:
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 e_sink_connect:
@@ -719,7 +710,6 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	uint32_t flags = 0;
 	int ret, ret1;
 	bool cross_core_unbind;
-	struct bind_info unbind_data;
 
 	assert_can_be_cold();
 
@@ -731,6 +721,11 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!src || !sink) {
 		tr_err(&ipc_tr, "failed to find src %x, or dst %x", src_id, sink_id);
 		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	if (src->pipeline == sink->pipeline) {
+		tr_warn(&ipc_tr, "ignoring unbinding of src %x and dst %x", src_id, sink_id);
+		return 0;
 	}
 
 	cross_core_unbind = src->ipc_config.core != sink->ipc_config.core;
@@ -784,14 +779,8 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 	/* these might call comp_ipc4_bind_remote() if necessary */
-	unbind_data.ipc4_data = bu;
-	unbind_data.bind_type = COMP_BIND_TYPE_SINK;
-	unbind_data.sink = audio_buffer_get_sink(&buffer->audio_buffer);
-	ret = comp_unbind(src, &unbind_data);
-
-	unbind_data.bind_type = COMP_BIND_TYPE_SOURCE;
-	unbind_data.source = audio_buffer_get_source(&buffer->audio_buffer);
-	ret1 = comp_unbind(sink, &unbind_data);
+	ret = comp_unbind(src, bu);
+	ret1 = comp_unbind(sink, bu);
 
 	ll_unblock(cross_core_unbind, flags);
 

@@ -51,7 +51,6 @@
 struct sof_sink;
 struct sof_audio_stream_params;
 struct sof_ipc_stream_params;
-struct processing_module;
 
 /**
  * this is a definition of internals of sink API
@@ -102,14 +101,6 @@ struct sink_ops {
 	int (*set_alignment_constants)(struct sof_sink *sink,
 				       const uint32_t byte_align,
 				       const uint32_t frame_align_req);
-
-	/**
-	 * OPTIONAL
-	 * events called when a module is starting / finishing using of the API
-	 * on the core that the module and API will executed on
-	 */
-	int (*on_bind)(struct sof_sink *sink, struct processing_module *module);
-	int (*on_unbind)(struct sof_sink *sink);
 };
 
 /** internals of sink API. NOT TO BE MODIFIED OUTSIDE OF sink_api.c */
@@ -120,7 +111,6 @@ struct sof_sink {
 	size_t min_free_space;		  /** minimum buffer space required by the module using sink
 					    *  it is module's OBS as declared in module bind IPC
 					    */
-	struct processing_module *bound_module; /* a pointer module that is using sink API */
 	struct sof_audio_stream_params *audio_stream_params; /** pointer to audio params */
 };
 
@@ -299,53 +289,6 @@ static inline uint32_t sink_get_id(struct sof_sink *sink)
 static inline uint32_t sink_get_pipeline_id(struct sof_sink *sink)
 {
 	return sink->audio_stream_params->pipeline_id;
-}
-
-/**
- * @brief hook to be called when a module connects to the API
- *
- * NOTE! it MUST be called at core that a module is bound to
- */
-static inline int sink_bind(struct sof_sink *sink, struct processing_module *module)
-{
-	int ret = 0;
-
-	if (sink->bound_module)
-		return -EBUSY;
-
-	if (sink->ops->on_bind)
-		ret = sink->ops->on_bind(sink, module);
-
-	if (!ret)
-		sink->bound_module = module;
-
-	return ret;
-}
-
-/**
- * @brief hook to be called when a module disconnects from the API
- *
- * NOTE! it MUST be called at core that a module is bound to
- */
-static inline int sink_unbind(struct sof_sink *sink)
-{
-	int ret = 0;
-
-	if (!sink->bound_module)
-		return -EINVAL;
-
-	if (sink->ops->on_unbind)
-		ret = sink->ops->on_unbind(sink);
-
-	if (!ret)
-		sink->bound_module = NULL;
-
-	return ret;
-}
-
-static inline struct processing_module *sink_get_bound_module(struct sof_sink *sink)
-{
-	return sink->bound_module;
 }
 
 #endif /* __MODULE_AUDIO_SINK_API_H__ */

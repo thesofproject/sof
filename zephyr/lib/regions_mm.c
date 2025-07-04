@@ -10,30 +10,8 @@
 #if defined(CONFIG_MM_DRV)
 #include <sof/lib/regions_mm.h>
 
-
-/** @struct vmh_heap
- *
- *  @brief This structure holds all information about virtual memory heap
- *  it aggregates information about its allocations and
- *  physical mappings.
- *
- *  @var virtual_region pointer to virtual region information, it holds its
- *  attributes size and beginning ptr provided by zephyr.
- *  @var physical_blocks_allocators[] a table of block allocators
- *  each representing a virtual regions part in blocks of a given size
- *  governed by sys_mem_blocks API.
- *  @var allocation_sizes[] a table of bit arrays representing sizes of allocations
- *  made in physical_blocks_allocators directly related to physical_blocks_allocators
- *  @var allocating_continuously configuration value deciding if heap allocations
- *  will be contiguous or single block.
- */
-struct vmh_heap {
-	struct k_mutex lock;
-	const struct sys_mm_drv_region *virtual_region;
-	struct sys_mem_blocks *physical_blocks_allocators[MAX_MEMORY_ALLOCATORS_COUNT];
-	struct sys_bitarray *allocation_sizes[MAX_MEMORY_ALLOCATORS_COUNT];
-	bool allocating_continuously;
-};
+/* list of vmh_heap objects created */
+static struct list_item vmh_list = LIST_INIT(vmh_list);
 
 /**
  * @brief Initialize new heap
@@ -42,16 +20,23 @@ struct vmh_heap {
  * and config. The heap size overall must be aligned to physical page
  * size.
  * @param cfg Configuration structure with block structure for the heap
+ * @param memory_region_attribute A zephyr defined virtual region identifier
+ * @param core_id Core id of a heap that will be created
  * @param allocating_continuously Flag deciding if heap can do contiguous allocation.
  *
  * @retval ptr to a new heap if successful.
  * @retval NULL on creation failure.
  */
-struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocating_continuously)
+struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
+	int memory_region_attribute, int core_id, bool allocating_continuously)
 {
 	const struct sys_mm_drv_region *virtual_memory_regions =
 		sys_mm_drv_query_memory_regions();
 	int i;
+
+	/* Check if we haven't created heap for this region already */
+	if (vmh_get_heap_by_attribute(memory_region_attribute, core_id))
+		return NULL;
 
 	struct vmh_heap *new_heap =
 		rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*new_heap));
@@ -59,16 +44,28 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 	if (!new_heap)
 		return NULL;
 
-	k_mutex_init(&new_heap->lock);
+	new_heap->core_id = core_id;
+	list_init(&new_heap->node);
 	struct vmh_heap_config new_config = {0};
-	const struct sys_mm_drv_region *region;
 
-	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, region) {
-		if (region->attr == MEM_REG_ATTR_SHARED_HEAP) {
-			new_heap->virtual_region = region;
-			break;
+	/* Search for matching attribute so we place heap on right
+	 * virtual region.
+	 * In case of core heaps regions we count theme from 0 to max
+	 * available cores
+	 */
+	if (memory_region_attribute == MEM_REG_ATTR_CORE_HEAP) {
+		new_heap->virtual_region = &virtual_memory_regions[core_id];
+	} else {
+		for (i = CONFIG_MP_MAX_NUM_CPUS;
+			i < CONFIG_MP_MAX_NUM_CPUS + VIRTUAL_REGION_COUNT; i++) {
+
+			if (memory_region_attribute == virtual_memory_regions[i].attr) {
+				new_heap->virtual_region = &virtual_memory_regions[i];
+				break;
+			}
 		}
 	}
+
 	if (!new_heap->virtual_region)
 		goto fail;
 
@@ -195,6 +192,9 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 	}
 
 	new_heap->allocating_continuously = allocating_continuously;
+
+	/* Save the new heap pointer to a linked list */
+	list_item_append(&vmh_list, &new_heap->node);
 
 	return new_heap;
 fail:
@@ -377,7 +377,7 @@ static int vmh_unmap_region(struct sys_mem_blocks *region, void *ptr, size_t siz
 }
 
 /**
- * @brief Alloc function, not reentrant
+ * @brief Alloc function
  *
  * Allocates memory on heap from provided heap pointer.
  * Check if we need to map physical memory for given allocation
@@ -388,9 +388,12 @@ static int vmh_unmap_region(struct sys_mem_blocks *region, void *ptr, size_t siz
  * @retval ptr to allocated memory if successful
  * @retval NULL on allocation failure
  */
-static void *_vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
+void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 {
 	if (!alloc_size)
+		return NULL;
+	/* Only operations on the same core are allowed */
+	if (heap->core_id != cpu_get_id())
 		return NULL;
 
 	void *ptr = NULL;
@@ -507,20 +510,6 @@ static void *_vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 }
 
 /**
- *  @brief Alloc function, reentrant
- *	   see _vmh_alloc comment for details
- */
-void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
-{
-	k_mutex_lock(&heap->lock, K_FOREVER);
-
-	void *ret = _vmh_alloc(heap, alloc_size);
-
-	k_mutex_unlock(&heap->lock);
-	return ret;
-}
-
-/**
  * @brief Free virtual memory heap
  *
  * Free the virtual memory heap object and its child allocations
@@ -550,12 +539,13 @@ int vmh_free_heap(struct vmh_heap *heap)
 			rfree(heap->allocation_sizes[i]);
 		}
 	}
+	list_item_del(&heap->node);
 	rfree(heap);
 	return 0;
 }
 
 /**
- * @brief Free ptr allocated on given heap, not reentrant
+ * @brief Free ptr allocated on given heap
  *
  * Free the ptr allocation. After free action is complete
  * check if any physical memory block can be freed up as
@@ -566,9 +556,12 @@ int vmh_free_heap(struct vmh_heap *heap)
  * @retval 0 on success;
  * @retval -ENOTEMPTY on heap having active allocations.
  */
-static int _vmh_free(struct vmh_heap *heap, void *ptr)
+int vmh_free(struct vmh_heap *heap, void *ptr)
 {
 	int retval;
+
+	if (heap->core_id != cpu_get_id())
+		return -EINVAL;
 
 	size_t mem_block_iter, i, size_to_free, block_size, ptr_bit_array_offset,
 		ptr_bit_array_position, blocks_to_free;
@@ -684,17 +677,29 @@ static int _vmh_free(struct vmh_heap *heap, void *ptr)
 }
 
 /**
- *  @brief Free ptr function, reentrant
- *	   see _vmh_free comment for details
+ * @brief Reconfigure heap with given config
+ *
+ * This will destroy the heap from the pointer and recreate it
+ * using provided config. Individual region attribute is the
+ * "anchor" to the virtual space we use.
+ *
+ * @param heap Ptr to the heap that should be reconfigured
+ * @param cfg heap blocks configuration
+ * @param allocating_continuously allow contiguous on the reconfigured heap
+ *
+ * @retval heap_pointer Returns new heap pointer on success
+ * @retval NULL when reconfiguration failed
  */
-int vmh_free(struct vmh_heap *heap, void *ptr)
+struct vmh_heap *vmh_reconfigure_heap(
+	struct vmh_heap *heap, struct vmh_heap_config *cfg,
+	int core_id, bool allocating_continuously)
 {
-	k_mutex_lock(&heap->lock, K_FOREVER);
+	uint32_t region_attribute = heap->virtual_region->attr;
 
-	int ret = _vmh_free(heap, ptr);
+	if (vmh_free_heap(heap))
+		return NULL;
 
-	k_mutex_unlock(&heap->lock);
-	return ret;
+	return vmh_init_heap(cfg, region_attribute, core_id, allocating_continuously);
 }
 
 /**
@@ -723,6 +728,49 @@ void vmh_get_default_heap_config(const struct sys_mm_drv_region *region,
 		cfg->block_bundles_table[i].block_size = block_size;
 		cfg->block_bundles_table[i].number_of_blocks = block_count;
 	}
+}
+
+/**
+ * @brief Gets pointer to already created heap identified by
+ * provided attribute.
+ *
+ * @param attr Virtual memory region attribute.
+ * @param core_id id of the core that heap was created for (core heap specific).
+ *
+ * @retval heap ptr on success
+ * @retval NULL if there was no heap created fitting the attr.
+ */
+struct vmh_heap *vmh_get_heap_by_attribute(uint32_t attr, uint32_t core_id)
+{
+	struct list_item *vm_heaps_iterator;
+	struct vmh_heap *retval;
+
+	if (attr == MEM_REG_ATTR_CORE_HEAP) {
+		/* if we look up cpu heap we need to match its cpuid with addr
+		 * we know that regions keep cpu heaps from 0 to max so we match
+		 * the region of the cpu id with lists one to find match
+		 */
+		const struct sys_mm_drv_region *virtual_memory_region =
+			sys_mm_drv_query_memory_regions();
+		/* we move ptr to cpu vmr */
+		virtual_memory_region = &virtual_memory_region[core_id];
+
+		list_for_item(vm_heaps_iterator, &vmh_list) {
+			retval =
+			    CONTAINER_OF(vm_heaps_iterator, struct vmh_heap, node);
+
+			if (retval->virtual_region->addr == virtual_memory_region->addr)
+				return retval;
+		}
+	} else {
+		list_for_item(vm_heaps_iterator, &vmh_list) {
+			retval =
+			    CONTAINER_OF(vm_heaps_iterator, struct vmh_heap, node);
+			if (retval->virtual_region->attr == attr)
+				return retval;
+		}
+	}
+	return NULL;
 }
 
 #endif /* if defined (CONFIG_MM_DRV) */

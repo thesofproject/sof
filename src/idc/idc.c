@@ -86,14 +86,14 @@ static int idc_ipc4_bind(uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_dev;
 	struct idc_payload *payload;
-	struct bind_info *bu;
+	struct ipc4_module_bind_unbind *bu;
 
 	ipc_dev = ipc_get_comp_by_id(ipc_get(), comp_id);
 	if (!ipc_dev)
 		return -ENODEV;
 
 	payload = idc_payload_get(*idc_get(), cpu_get_id());
-	bu = (struct bind_info *)payload;
+	bu = (struct ipc4_module_bind_unbind *)payload;
 
 	return comp_bind(ipc_dev->cd, bu);
 }
@@ -102,14 +102,14 @@ static int idc_ipc4_unbind(uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_dev;
 	struct idc_payload *payload;
-	struct bind_info *bu;
+	struct ipc4_module_bind_unbind *bu;
 
 	ipc_dev = ipc_get_comp_by_id(ipc_get(), comp_id);
 	if (!ipc_dev)
 		return -ENODEV;
 
 	payload = idc_payload_get(*idc_get(), cpu_get_id());
-	bu = (struct bind_info *)payload;
+	bu = (struct ipc4_module_bind_unbind *)payload;
 
 	return comp_unbind(ipc_dev->cd, bu);
 }

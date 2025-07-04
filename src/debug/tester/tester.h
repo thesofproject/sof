@@ -75,12 +75,12 @@ struct tester_test_case_interface {
 	/**
 	 * copy of module bind method, with additional ctx param
 	 */
-	int (*bind)(void *ctx, struct processing_module *mod, struct bind_info *bind_data);
+	int (*bind)(void *ctx, struct processing_module *mod, void *data);
 
 	/**
 	 * copy of module unbind method, with additional ctx param
 	 */
-	int (*unbind)(void *ctx, struct processing_module *mod, struct bind_info *unbind_data);
+	int (*unbind)(void *ctx, struct processing_module *mod, void *data);
 
 	/**
 	 * copy of module trigger method, with additional ctx param

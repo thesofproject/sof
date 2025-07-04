@@ -69,7 +69,7 @@ static inline int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, v
 int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 				   struct comp_buffer *multi_endpoint_buffer,
 				   int num_endpoints);
-int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, struct bind_info *unbind_data);
+int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, void *data);
 #endif
 
 

@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <ipc/stream.h>
 #include <sof/audio/audio_buffer.h>
@@ -93,8 +92,9 @@ void audio_buffer_free(struct sof_audio_buffer *buffer)
 	audio_buffer_free(buffer->secondary_buffer_sink);
 	audio_buffer_free(buffer->secondary_buffer_source);
 #endif /* CONFIG_PIPELINE_2_0 */
-	/* "virtual destructor": free the buffer internals and buffer memory */
-	buffer->ops->free(buffer);
+	if (buffer->ops->free)
+		buffer->ops->free(buffer);
+	rfree(buffer);
 }
 
 static
@@ -196,7 +196,6 @@ void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bo
 	CORE_CHECK_STRUCT_INIT(&buffer, is_shared);
 	buffer->buffer_type = buffer_type;
 	buffer->ops = audio_buffer_ops;
-	assert(audio_buffer_ops->free);
 	buffer->audio_stream_params = audio_stream_params;
 	buffer->is_shared = is_shared;
 

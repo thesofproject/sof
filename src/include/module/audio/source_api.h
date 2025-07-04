@@ -51,7 +51,6 @@
 struct sof_source;
 struct sof_audio_stream_params;
 struct sof_ipc_stream_params;
-struct processing_module;
 
 /**
  * this is a definition of internals of source API
@@ -102,14 +101,6 @@ struct source_ops {
 	int (*set_alignment_constants)(struct sof_source *source,
 				       const uint32_t byte_align,
 				       const uint32_t frame_align_req);
-
-	/**
-	 * OPTIONAL
-	 * events called when a module is starting / finishing using of the API
-	 * on the core that the module and API will executed on
-	 */
-	int (*on_bind)(struct sof_source *source, struct processing_module *module);
-	int (*on_unbind)(struct sof_source *source);
 };
 
 /** internals of source API. NOT TO BE MODIFIED OUTSIDE OF source_api.c */
@@ -121,7 +112,7 @@ struct sof_source {
 					  * source
 					  * it is module's IBS as declared in module bind IPC
 					  */
-	struct processing_module *bound_module; /* a pointer module that is using source API */
+
 	struct sof_audio_stream_params *audio_stream_params;
 };
 
@@ -274,53 +265,6 @@ static inline uint32_t source_get_id(struct sof_source *source)
 static inline uint32_t source_get_pipeline_id(struct sof_source *source)
 {
 	return source->audio_stream_params->pipeline_id;
-}
-
-/**
- * @brief hook to be called when a module connects to the API
- *
- * NOTE! it MUST be called at core that a module is bound to
- */
-static inline int source_bind(struct sof_source *source, struct processing_module *module)
-{
-	int ret = 0;
-
-	if (source->bound_module)
-		return -EBUSY;
-
-	if (source->ops->on_bind)
-		ret = source->ops->on_bind(source, module);
-
-	if (!ret)
-		source->bound_module = module;
-
-	return ret;
-}
-
-/**
- * @brief hook to be called when a module disconnects from the API
- *
- * NOTE! it MUST be called at core that a module is bound to
- */
-static inline int source_unbind(struct sof_source *source)
-{
-	int ret = 0;
-
-	if (!source->bound_module)
-		return -EINVAL;
-
-	if (source->ops->on_unbind)
-		ret = source->ops->on_unbind(source);
-
-	if (!ret)
-		source->bound_module = NULL;
-
-	return ret;
-}
-
-static inline struct processing_module *source_get_bound_module(struct sof_source *source)
-{
-	return source->bound_module;
 }
 
 #endif /* __MODULE_AUDIO_SOURCE_API_H__ */

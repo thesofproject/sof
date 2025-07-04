@@ -44,6 +44,33 @@
  */
 #define DEFAULT_CONFIG_ALOCATORS_COUNT 5
 
+/** @struct vmh_heap
+ *
+ *  @brief This structure holds all information about virtual memory heap
+ *  it aggregates information about its allocations and
+ *  physical mappings.
+ *
+ *  @var node generic list member used for list operations
+ *  @var virtual_region pointer to virtual region information, it holds its
+ *  attributes size and beginning ptr provided by zephyr.
+ *  @var physical_blocks_allocators[] a table of block allocators
+ *  each representing a virtual regions part in blocks of a given size
+ *  governed by sys_mem_blocks API.
+ *  @var allocation_sizes[] a table of bit arrays representing sizes of allocations
+ *  made in physical_blocks_allocators directly related to physical_blocks_allocators
+ *  @var core_id id of the core that heap was created on
+ *  @var allocating_continuously configuration value deciding if heap allocations
+ *  will be contiguous or single block.
+ */
+struct vmh_heap {
+	struct list_item node;
+	const struct sys_mm_drv_region *virtual_region;
+	struct sys_mem_blocks *physical_blocks_allocators[MAX_MEMORY_ALLOCATORS_COUNT];
+	struct sys_bitarray *allocation_sizes[MAX_MEMORY_ALLOCATORS_COUNT];
+	int core_id;
+	bool allocating_continuously;
+};
+
 /** @struct vmh_block_bundle_descriptor
  *
  *  @brief This is a struct describing one bundle of blocks
@@ -77,12 +104,16 @@ struct vmh_heap_config {
 	struct vmh_block_bundle_descriptor block_bundles_table[MAX_MEMORY_ALLOCATORS_COUNT];
 };
 
-struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocating_continuously);
+struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg,
+		int memory_region_attribute, int core_id, bool allocating_continuously);
 void *vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size);
 int vmh_free_heap(struct vmh_heap *heap);
 int vmh_free(struct vmh_heap *heap, void *ptr);
+struct vmh_heap *vmh_reconfigure_heap(struct vmh_heap *heap,
+		struct vmh_heap_config *cfg, int core_id, bool allocating_continuously);
 void vmh_get_default_heap_config(const struct sys_mm_drv_region *region,
 		struct vmh_heap_config *cfg);
+struct vmh_heap *vmh_get_heap_by_attribute(uint32_t attr, uint32_t core_id);
 /**
  * @brief Checks if ptr is in range of given memory range
  *

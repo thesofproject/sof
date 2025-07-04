@@ -242,12 +242,12 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 	return false;
 }
 
-int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
+int module_adapter_bind(struct comp_dev *dev, void *data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	int ret;
 
-	ret = module_bind(mod, bind_data);
+	ret = module_bind(mod, data);
 	if (ret < 0)
 		return ret;
 
@@ -257,12 +257,12 @@ int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
 }
 EXPORT_SYMBOL(module_adapter_bind);
 
-int module_adapter_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
+int module_adapter_unbind(struct comp_dev *dev, void *data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	int ret;
 
-	ret = module_unbind(mod, unbind_data);
+	ret = module_unbind(mod, data);
 	if (ret < 0)
 		return ret;
 

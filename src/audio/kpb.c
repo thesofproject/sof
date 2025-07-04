@@ -333,10 +333,10 @@ static int kpb_get_attribute(struct comp_dev *dev,
 /**
  * \brief Initialize KPB sinks when binding.
  * \param[in] dev - component device pointer.
- * \param[in] bind_data - bind/unbind data.
+ * \param[in] data - ipc4 bind/unbind data.
  * \return: none.
  */
-static int kpb_bind(struct comp_dev *dev, struct bind_info *bind_data)
+static int kpb_bind(struct comp_dev *dev, void *data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct ipc4_module_bind_unbind *bu;
@@ -345,7 +345,7 @@ static int kpb_bind(struct comp_dev *dev, struct bind_info *bind_data)
 
 	comp_dbg(dev, "kpb_bind()");
 
-	bu = bind_data->ipc4_data;
+	bu = (struct ipc4_module_bind_unbind *)data;
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 
 	/* We're assuming here that KPB Real Time sink (kpb->sel_sink) is
@@ -383,7 +383,7 @@ static int kpb_bind(struct comp_dev *dev, struct bind_info *bind_data)
  * \param[in] data - ipc4 bind/unbind data.
  * \return: none.
  */
-static int kpb_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
+static int kpb_unbind(struct comp_dev *dev, void *data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct ipc4_module_bind_unbind *bu;
@@ -391,7 +391,7 @@ static int kpb_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
 
 	comp_dbg(dev, "kpb_unbind()");
 
-	bu = unbind_data->ipc4_data;
+	bu = (struct ipc4_module_bind_unbind *)data;
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
 
 	/* Reset sinks when unbinding */

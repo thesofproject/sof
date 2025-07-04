@@ -96,7 +96,6 @@ static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
 			container_of(audio_buffer, struct ring_buffer, audio_buffer);
 
 	rfree((__sparse_force void *)ring_buffer->_data_buffer);
-	rfree(ring_buffer);
 }
 
 static void ring_buffer_reset(struct sof_audio_buffer *audio_buffer)
@@ -240,21 +239,6 @@ static int ring_buffer_release_data(struct sof_source *source, size_t free_size)
 	return 0;
 }
 
-int ring_buffer_module_unbind(struct sof_sink *sink)
-{
-	struct ring_buffer *ring_buffer = ring_buffer_from_sink(sink);
-
-	CORE_CHECK_STRUCT(&ring_buffer->audio_buffer);
-
-	/* in case of disconnection, invalidate all cache. This method is guaranteed be called on
-	 * core that have been using sink API
-	 */
-	ring_buffer_invalidate_shared(ring_buffer, ring_buffer->_data_buffer,
-				      ring_buffer->data_buffer_size);
-
-	return 0;
-}
-
 static struct source_ops ring_buffer_source_ops = {
 	.get_data_available = ring_buffer_get_data_available,
 	.get_data = ring_buffer_get_data,
@@ -265,7 +249,6 @@ static struct sink_ops ring_buffer_sink_ops = {
 	.get_free_size = ring_buffer_get_free_size,
 	.get_buffer = ring_buffer_get_buffer,
 	.commit_buffer = ring_buffer_commit_buffer,
-	.on_unbind = ring_buffer_module_unbind,
 };
 
 static const struct audio_buffer_ops audio_buffer_ops = {
