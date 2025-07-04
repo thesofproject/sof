@@ -200,7 +200,7 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 	}
 
 	fb->data_length = &fb->scratch_data2[base_idx] - &fb->scratch_data2[0];
-	fb->data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	fb->data = rzalloc(SOF_MEM_FLAG_USER,
 			   sizeof(int16_t) * fb->data_length);
 	if (!fb->data)
 		return -ENOMEM;

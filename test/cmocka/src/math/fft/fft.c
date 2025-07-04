@@ -59,11 +59,11 @@ static void fft_real(struct comp_buffer *src, struct comp_buffer *dst, uint32_t 
 	    dst->stream.size < size * sizeof(struct icomplex32))
 		return;
 
-	inb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	inb = rzalloc(SOF_MEM_FLAG_USER,
 		      size * sizeof(struct icomplex32));
 	if (!inb)
 		return;
-	outb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	outb = rzalloc(SOF_MEM_FLAG_USER,
 		       size * sizeof(struct icomplex32));
 	if (!outb)
 		goto err_outb;
@@ -113,12 +113,12 @@ static void ifft_complex(struct comp_buffer *src, struct comp_buffer *dst, uint3
 	    dst->stream.size < size * sizeof(struct icomplex32))
 		return;
 
-	inb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	inb = rzalloc(SOF_MEM_FLAG_USER,
 		      size * sizeof(struct icomplex32));
 	if (!inb)
 		return;
 
-	outb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	outb = rzalloc(SOF_MEM_FLAG_USER,
 		       size * sizeof(struct icomplex32));
 	if (!outb)
 		goto err_outb;
@@ -171,12 +171,12 @@ static void fft_real_2(struct comp_buffer *src, struct comp_buffer *dst1,
 	    dst2->stream.size < size * sizeof(struct icomplex32))
 		return;
 
-	inb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	inb = rzalloc(SOF_MEM_FLAG_USER,
 		      size * sizeof(struct icomplex32));
 	if (!inb)
 		return;
 
-	outb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	outb = rzalloc(SOF_MEM_FLAG_USER,
 		       size * sizeof(struct icomplex32));
 	if (!outb)
 		goto err_outb;
@@ -489,11 +489,11 @@ static void fft_real_16(struct comp_buffer *src, struct comp_buffer *dst, uint32
 	    dst->stream.size < size * sizeof(struct icomplex16))
 		return;
 
-	inb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	inb = rzalloc(SOF_MEM_FLAG_USER,
 		      size * sizeof(struct icomplex16));
 	if (!inb)
 		return;
-	outb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	outb = rzalloc(SOF_MEM_FLAG_USER,
 		       size * sizeof(struct icomplex16));
 	if (!outb)
 		goto err_outb;
@@ -543,12 +543,12 @@ static void ifft_complex_16(struct comp_buffer *src, struct comp_buffer *dst, ui
 	    dst->stream.size < size * sizeof(struct icomplex16))
 		return;
 
-	inb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	inb = rzalloc(SOF_MEM_FLAG_USER,
 		      size * sizeof(struct icomplex16));
 	if (!inb)
 		return;
 
-	outb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	outb = rzalloc(SOF_MEM_FLAG_USER,
 		       size * sizeof(struct icomplex16));
 	if (!outb)
 		goto err_outb;

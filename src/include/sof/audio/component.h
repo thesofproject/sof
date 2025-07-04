@@ -863,7 +863,7 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 	 * Use uncached address everywhere to access components to rule out
 	 * multi-core failures. TODO: verify if cached alias may be used in some cases
 	 */
-	dev = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, bytes);
+	dev = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, bytes);
 	if (!dev)
 		return NULL;
 	dev->size = bytes;

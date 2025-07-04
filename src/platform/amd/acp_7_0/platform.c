@@ -172,7 +172,7 @@ int platform_init(struct sof *sof)
 	/* Initialize DMA for Trace*/
 	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
 	sof->dmat->config.elem_array.elems =
-		rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		rzalloc(SOF_MEM_FLAG_KERNEL,
 			sizeof(struct dma_sg_elem) * 1);
 	sof->dmat->config.elem_array.count = 1;
 	sof->dmat->config.elem_array.elems->dest = 0x03800000;

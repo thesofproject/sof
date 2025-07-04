@@ -46,7 +46,7 @@ static struct ipc_msg *ipc_notif_new(size_t size)
 {
 	struct ipc_notif_pool_item *item;
 
-	item = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*item));
+	item = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*item));
 	if (!item) {
 		tr_err(&notif_tr, "Unable to allocate memory for notification message");
 		return NULL;

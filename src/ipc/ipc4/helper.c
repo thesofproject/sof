@@ -261,7 +261,7 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	pipe->core = pipe_desc->extension.r.core_id;
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	ipc_pipe = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			   sizeof(struct ipc_comp_dev));
 	if (!ipc_pipe) {
 		pipeline_free(pipe);
@@ -1092,7 +1092,7 @@ __cold static int ipc4_add_comp_dev(struct comp_dev *dev)
 	}
 
 	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	icd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct ipc_comp_dev));
 	if (!icd) {
 		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");

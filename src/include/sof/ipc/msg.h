@@ -51,12 +51,12 @@ static inline struct ipc_msg *ipc_msg_w_ext_init(uint32_t header, uint32_t exten
 {
 	struct ipc_msg *msg;
 
-	msg = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*msg));
+	msg = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*msg));
 	if (!msg)
 		return NULL;
 
 	if (size) {
-		msg->tx_data = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, size);
+		msg->tx_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, size);
 		if (!msg->tx_data) {
 			rfree(msg);
 			return NULL;

@@ -137,7 +137,7 @@ struct smart_amp_mod_data_base *mod_data_create(const struct comp_dev *dev)
 {
 	struct passthru_mod_data *mod;
 
-	mod = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*mod));
+	mod = rzalloc(SOF_MEM_FLAG_USER, sizeof(*mod));
 	if (!mod)
 		return NULL;
 

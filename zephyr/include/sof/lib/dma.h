@@ -283,7 +283,7 @@ static inline void dma_sg_init(struct dma_sg_elem_array *ea)
 }
 
 int dma_sg_alloc(struct dma_sg_elem_array *ea,
-		 enum mem_zone zone,
+		 uint32_t flags,
 		 uint32_t direction,
 		 uint32_t buffer_count, uint32_t buffer_bytes,
 		 uintptr_t dma_buffer_addr, uintptr_t external_addr);

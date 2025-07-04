@@ -150,7 +150,7 @@ static int dma_init(struct sof_dma *dma)
 	int i;
 
 	/* allocate dma channels */
-	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			    sizeof(struct dma_chan_data) * dma->plat_data.channels);
 
 	if (!dma->chan) {
@@ -291,14 +291,14 @@ EXPORT_SYMBOL(dma_put);
 #endif
 
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
-		 enum mem_zone zone,
+		 uint32_t flags,
 		 uint32_t direction,
 		 uint32_t buffer_count, uint32_t buffer_bytes,
 		 uintptr_t dma_buffer_addr, uintptr_t external_addr)
 {
 	int i;
 
-	elem_array->elems = rzalloc(zone, 0, SOF_MEM_CAPS_RAM,
+	elem_array->elems = rzalloc(SOF_MEM_FLAG_USER,
 				    sizeof(struct dma_sg_elem) * buffer_count);
 	if (!elem_array->elems)
 		return -ENOMEM;

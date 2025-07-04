@@ -156,16 +156,14 @@ int main(void)
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
 
-void *__wrap_rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
-void *__wrap_rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
+void *__wrap_rzalloc(uint32_t flags, size_t bytes);
+void *__wrap_rmalloc(uint32_t flags, size_t bytes);
 void __wrap_rfree(void *ptr);
 
-void *__wrap_rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *__wrap_rzalloc(uint32_t flags, size_t bytes)
 {
 	void *ret;
-	(void)zone;
 	(void)flags;
-	(void)caps;
 
 	ret = malloc(bytes);
 
@@ -176,12 +174,10 @@ void *__wrap_rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t b
 	return ret;
 }
 
-void *__wrap_rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *__wrap_rmalloc(uint32_t flags, size_t bytes)
 {
 	void *ret;
-	(void)zone;
 	(void)flags;
-	(void)caps;
 
 	ret = malloc(bytes);
 

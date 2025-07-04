@@ -121,9 +121,7 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 			     &zephyr_dma_domain_ops);
 
 	/* initialize domain pdata */
-	zephyr_dma_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED,
-				    0,
-				    SOF_MEM_CAPS_RAM,
+	zephyr_dma_domain = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 				    sizeof(*zephyr_dma_domain));
 
 	zephyr_dma_domain->dma_array = dma_array;
@@ -308,8 +306,8 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 				 * that IRQ hasn't been allocated yet so we need to do
 				 * so here.
 				 */
-				crt_irq_data = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0,
-						SOF_MEM_CAPS_RAM, sizeof(*crt_irq_data));
+				crt_irq_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+						       sizeof(*crt_irq_data));
 				if (!crt_irq_data)
 					return -ENOMEM;
 
@@ -321,8 +319,8 @@ static int register_dma_irq(struct zephyr_dma_domain *domain,
 				list_item_append(&crt_irq_data->list, &domain->irqs);
 			}
 
-			chan_data = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0,
-				SOF_MEM_CAPS_RAM, sizeof(*chan_data));
+			chan_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					    sizeof(*chan_data));
 			if (!chan_data)
 				return -ENOMEM;
 

@@ -76,7 +76,7 @@ int drc_init_pre_delay_buffers(struct drc_state *state,
 	int i;
 
 	/* Allocate pre-delay (lookahead) buffers */
-	state->pre_delay_buffers[0] = rballoc(0, SOF_MEM_CAPS_RAM, bytes_total);
+	state->pre_delay_buffers[0] = rballoc(SOF_MEM_FLAG_USER, bytes_total);
 	if (!state->pre_delay_buffers[0])
 		return -ENOMEM;
 
@@ -164,7 +164,7 @@ __cold static int drc_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 

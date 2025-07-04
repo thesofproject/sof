@@ -42,30 +42,26 @@ WEAK struct tr_ctx ipc_tr;
 
 int host_trace_level = LOG_LEVEL_ERROR;
 
-void WEAK *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
+void WEAK *rballoc_align(uint32_t flags, size_t bytes,
 			 uint32_t alignment)
 {
 	(void)flags;
-	(void)caps;
 
 	return calloc(bytes, 1);
 }
 
-void WEAK *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps,
+void WEAK *rzalloc(uint32_t flags,
 		   size_t bytes)
 {
-	(void)zone;
 	(void)flags;
-	(void)caps;
 
 	return calloc(bytes, 1);
 }
 
-void WEAK *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps,
+void WEAK *rbrealloc_align(void *ptr, uint32_t flags,
 			   size_t bytes, size_t old_bytes, uint32_t alignment)
 {
 	(void)flags;
-	(void)caps;
 	(void)old_bytes;
 
 	return realloc(ptr, bytes);

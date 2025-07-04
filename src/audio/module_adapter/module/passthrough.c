@@ -32,14 +32,14 @@ static int passthrough_codec_prepare(struct processing_module *mod,
 
 	mod->period_bytes =  audio_stream_period_bytes(&source->stream, dev->frames);
 
-	codec->mpd.in_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
+	codec->mpd.in_buff = rballoc(SOF_MEM_FLAG_USER, mod->period_bytes);
 	if (!codec->mpd.in_buff) {
 		comp_err(dev, "passthrough_codec_prepare(): Failed to alloc in_buff");
 		return -ENOMEM;
 	}
 	codec->mpd.in_buff_size = mod->period_bytes;
 
-	codec->mpd.out_buff = rballoc(0, SOF_MEM_CAPS_RAM, mod->period_bytes);
+	codec->mpd.out_buff = rballoc(SOF_MEM_FLAG_USER, mod->period_bytes);
 	if (!codec->mpd.out_buff) {
 		comp_err(dev, "passthrough_codec_prepare(): Failed to alloc out_buff");
 		rfree(codec->mpd.in_buff);

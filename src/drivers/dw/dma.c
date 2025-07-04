@@ -545,8 +545,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 		if (dw_chan->lli)
 			rfree(dw_chan->lli);
 
-		dw_chan->lli = rmalloc(SOF_MEM_ZONE_RUNTIME, SOF_MEM_FLAG_COHERENT,
-				       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+		dw_chan->lli = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
 				       sizeof(struct dw_lli) * channel->desc_count);
 		if (!dw_chan->lli) {
 			tr_err(&dwdma_tr, "dw_dma_set_config(): dma %d channel %d lli alloc failed",
@@ -937,7 +936,7 @@ static int dw_dma_probe(struct dma *dma)
 	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
 
 	/* allocate dma channels */
-	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			    sizeof(struct dma_chan_data) * dma->plat_data.channels);
 
 	if (!dma->chan) {
@@ -958,7 +957,7 @@ static int dw_dma_probe(struct dma *dma)
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
 
-		dw_chan = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+		dw_chan = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 				  sizeof(*dw_chan));
 
 		if (!dw_chan) {

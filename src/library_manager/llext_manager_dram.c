@@ -69,7 +69,7 @@ int llext_manager_store_to_dram(void)
 		sizeof(lib_manager_dram.sym[0]) * n_sym +
 		(sizeof(lib_manager_dram.llext[0]) + sizeof(lib_manager_dram.bldr[0])) * n_llext;
 
-	lib_manager_dram.ctx = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_L3,
+	lib_manager_dram.ctx = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_L3,
 				       buf_size);
 	if (!lib_manager_dram.ctx)
 		return -ENOMEM;
@@ -171,7 +171,7 @@ int llext_manager_restore_from_dram(void)
 	}
 
 	/* arrays of pointers for llext_restore() */
-	void **ptr_array = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	void **ptr_array = rmalloc(SOF_MEM_FLAG_KERNEL,
 				   sizeof(*ptr_array) * lib_manager_dram.n_llext * 2);
 
 	if (!ptr_array)
@@ -191,15 +191,14 @@ int llext_manager_restore_from_dram(void)
 		}
 
 		/* Panics on failure - use the same zone as during the first boot */
-		struct lib_manager_mod_ctx *ctx = rmalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_COHERENT,
-							  SOF_MEM_CAPS_RAM, sizeof(*ctx));
+		struct lib_manager_mod_ctx *ctx = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+							  sizeof(*ctx));
 
 		/* Restore the library context */
 		*ctx = lib_manager_dram.ctx[j++];
 
 		/* Allocate and restore all the modules in the library */
-		struct lib_manager_module *mod = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
-							 SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
+		struct lib_manager_module *mod = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 							 ctx->n_mod * sizeof(ctx->mod[0]));
 
 		if (!mod) {
@@ -220,8 +219,8 @@ int llext_manager_restore_from_dram(void)
 				continue;
 
 			/* Loaders are supplied by the caller */
-			struct llext_buf_loader *bldr = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
-								0, SOF_MEM_CAPS_RAM, sizeof(*bldr));
+			struct llext_buf_loader *bldr = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+								sizeof(*bldr));
 
 			if (!bldr) {
 				tr_err(&lib_manager_tr, "loader allocation failure");

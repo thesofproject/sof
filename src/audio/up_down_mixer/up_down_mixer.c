@@ -342,7 +342,7 @@ static int up_down_mixer_init(struct processing_module *mod)
 	struct up_down_mixer_data *cd;
 	int ret;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
 		comp_free(dev);
 		return -ENOMEM;
@@ -350,8 +350,8 @@ static int up_down_mixer_init(struct processing_module *mod)
 
 	mod_data->private = cd;
 
-	cd->buf_in = rballoc(0, SOF_MEM_CAPS_RAM, mod->priv.cfg.base_cfg.ibs);
-	cd->buf_out = rballoc(0, SOF_MEM_CAPS_RAM, mod->priv.cfg.base_cfg.obs);
+	cd->buf_in = rballoc(SOF_MEM_FLAG_USER, mod->priv.cfg.base_cfg.ibs);
+	cd->buf_out = rballoc(SOF_MEM_FLAG_USER, mod->priv.cfg.base_cfg.obs);
 	if (!cd->buf_in || !cd->buf_out) {
 		ret = -ENOMEM;
 		goto err;

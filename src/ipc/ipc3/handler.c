@@ -1422,85 +1422,12 @@ static int ipc_glb_tplg_message(uint32_t header)
 	}
 }
 
-#if CONFIG_DEBUG_MEMORY_USAGE_SCAN
-static int fill_mem_usage_elems(enum mem_zone zone, enum sof_ipc_dbg_mem_zone ipc_zone,
-				int elem_number, struct sof_ipc_dbg_mem_usage_elem *elems)
-{
-	struct mm_info info;
-	int ret;
-	int i;
-
-	for (i = 0; i < elem_number; ++i) {
-		ret = heap_info(zone, i, &info);
-		elems[i].zone = ipc_zone;
-		elems[i].id = i;
-		elems[i].used = ret < 0 ? UINT32_MAX : info.used;
-		elems[i].free = ret < 0 ? 0 : info.free;
-	}
-
-	return elem_number;
-}
-
-#if CONFIG_CORE_COUNT > 1
-#define PLATFORM_HEAP_SYSTEM_SHARED_CNT (PLATFORM_HEAP_SYSTEM_SHARED + PLATFORM_HEAP_RUNTIME_SHARED)
-#else
-#define PLATFORM_HEAP_SYSTEM_SHARED_CNT 0
-#endif
-
-static int ipc_glb_test_mem_usage(uint32_t header)
-{
-	/* count number heaps */
-	int elem_cnt = PLATFORM_HEAP_SYSTEM + PLATFORM_HEAP_SYSTEM_RUNTIME +
-		       PLATFORM_HEAP_RUNTIME + PLATFORM_HEAP_BUFFER +
-		       PLATFORM_HEAP_SYSTEM_SHARED_CNT;
-	size_t size = sizeof(struct sof_ipc_dbg_mem_usage) +
-		      elem_cnt * sizeof(struct sof_ipc_dbg_mem_usage_elem);
-	struct sof_ipc_dbg_mem_usage_elem *elems;
-	struct sof_ipc_dbg_mem_usage *mem_usage;
-
-	mem_usage = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, 0, size);
-	if (!mem_usage)
-		return -ENOMEM;
-
-	mem_usage->rhdr.hdr.cmd = header;
-	mem_usage->rhdr.hdr.size = size;
-	mem_usage->num_elems = elem_cnt;
-
-	/* fill list of elems */
-	elems = mem_usage->elems;
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS, SOF_IPC_MEM_ZONE_SYS,
-				      PLATFORM_HEAP_SYSTEM, elems);
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS_RUNTIME, SOF_IPC_MEM_ZONE_SYS_RUNTIME,
-				      PLATFORM_HEAP_SYSTEM_RUNTIME, elems);
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_RUNTIME, SOF_IPC_MEM_ZONE_RUNTIME,
-				      PLATFORM_HEAP_RUNTIME, elems);
-	/* cppcheck-suppress unreadVariable */
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_BUFFER, SOF_IPC_MEM_ZONE_BUFFER,
-				      PLATFORM_HEAP_BUFFER, elems);
-#if CONFIG_CORE_COUNT > 1
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS_SHARED, SOF_IPC_MEM_ZONE_SYS_SHARED,
-				      PLATFORM_HEAP_SYSTEM_SHARED, elems);
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_RUNTIME_SHARED, SOF_IPC_MEM_ZONE_RUNTIME_SHARED,
-				      PLATFORM_HEAP_RUNTIME_SHARED, elems);
-#endif
-
-	/* write component values to the outbox */
-	mailbox_hostbox_write(0, mem_usage, mem_usage->rhdr.hdr.size);
-
-	rfree(mem_usage);
-	return 1;
-}
-#endif
-
 static int ipc_glb_debug_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
 
 	switch (cmd) {
-#if CONFIG_DEBUG_MEMORY_USAGE_SCAN
-	case SOF_IPC_DEBUG_MEM_USAGE:
-		return ipc_glb_test_mem_usage(header);
-#endif
+	/* TODO: Zephyr heap debug needs to added for IPC3 using Zephyr APIs. */
 	default:
 		ipc_cmd_err(&ipc_tr, "ipc: unknown debug header 0x%x", header);
 		return -EINVAL;

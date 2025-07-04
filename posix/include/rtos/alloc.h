@@ -28,47 +28,24 @@
  *  @{
  */
 
-/**
- * \brief Heap Memory Zones
- *
- * The heap has three different zones from where memory can be allocated :-
- *
- * 1) System Zone. Fixed size heap where alloc always succeeds and is never
- * freed. Used by any init code that will never give up the memory.
- *
- * 2) System Runtime Zone. Heap zone intended for runtime objects allocated
- * by the kernel part of the code.
- *
- * 3) Runtime Zone. Main and larger heap zone where allocs are not guaranteed to
- * succeed. Memory can be freed here.
- *
- * 4) Buffer Zone. Largest heap zone intended for audio buffers.
- *
- * 5) Runtime Shared Zone. Similar to Runtime Zone, but content may be used and
- * fred from any enabled core.
- *
- * 6) System Shared Zone. Similar to System Zone, but content may be used from
- * any enabled core.
- *
- * See platform/memory.h for heap size configuration and mappings.
- */
-enum mem_zone {
-	SOF_MEM_ZONE_SYS = 0,		/**< System zone */
-	SOF_MEM_ZONE_SYS_RUNTIME,	/**< System-runtime zone */
-	SOF_MEM_ZONE_RUNTIME,		/**< Runtime zone */
-	SOF_MEM_ZONE_BUFFER,		/**< Buffer zone */
-	SOF_MEM_ZONE_RUNTIME_SHARED,	/**< Runtime shared zone */
-	SOF_MEM_ZONE_SYS_SHARED,	/**< System shared zone */
-};
-
 /** \name Heap zone flags
  *  @{
  */
 
+ /** \brief Indicates we should return DMA-able memory. */
+#define SOF_MEM_FLAG_DMA	BIT(0)
 /** \brief Indicates that original content should not be copied by realloc. */
 #define SOF_MEM_FLAG_NO_COPY	BIT(1)
 /** \brief Indicates that if we should return uncached address. */
-#define SOF_MEM_FLAG_COHERENT  BIT(2)
+#define SOF_MEM_FLAG_COHERENT	BIT(2)
+/** \brief Indicates that if we should return L3 address. */
+#define SOF_MEM_FLAG_L3		BIT(3)
+/** \brief Indicates that if we should return Low power memory address. */
+#define SOF_MEM_FLAG_LOW_POWER	BIT(4)
+/** \brief Indicates that if we should return kernel memory address. */
+#define SOF_MEM_FLAG_KERNEL	BIT(5)
+/** \brief Indicates that if we should return user memory address. */
+#define SOF_MEM_FLAG_USER	BIT(6)
 
 /** @} */
 
@@ -83,7 +60,7 @@ enum mem_zone {
  * @note Do not use for buffers (SOF_MEM_ZONE_BUFFER zone).
  *       Use rballoc(), rballoc_align() to allocate memory for buffers.
  */
-void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
+void *rmalloc(uint32_t flags, size_t bytes);
 
 /**
  * Similar to rmalloc(), guarantees that returned block is zeroed.
@@ -91,7 +68,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
  * @note Do not use  for buffers (SOF_MEM_ZONE_BUFFER zone).
  *       rballoc(), rballoc_align() to allocate memory for buffers.
  */
-void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
+void *rzalloc(uint32_t flags, size_t bytes);
 
 /**
  * Allocates memory block from SOF_MEM_ZONE_BUFFER.
@@ -101,15 +78,15 @@ void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes);
  * @param alignment Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  */
-void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
+void *rballoc_align(uint32_t flags, size_t bytes,
 		    uint32_t alignment);
 
 /**
  * Similar to rballoc_align(), returns buffer aligned to PLATFORM_DCACHE_ALIGN.
  */
-static inline void *rballoc(uint32_t flags, uint32_t caps, size_t bytes)
+static inline void *rballoc(uint32_t flags, size_t bytes)
 {
-	return rballoc_align(flags, caps, bytes, PLATFORM_DCACHE_ALIGN);
+	return rballoc_align(flags, bytes, PLATFORM_DCACHE_ALIGN);
 }
 
 /**
@@ -122,17 +99,17 @@ static inline void *rballoc(uint32_t flags, uint32_t caps, size_t bytes)
  * @param alignment Alignment in bytes.
  * @return Pointer to the resized memory of NULL if failed.
  */
-void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
 		      size_t old_bytes, uint32_t alignment);
 
 /**
  * Similar to rballoc_align(), returns resized buffer aligned to
  * PLATFORM_DCACHE_ALIGN.
  */
-static inline void *rbrealloc(void *ptr, uint32_t flags, uint32_t caps,
+static inline void *rbrealloc(void *ptr, uint32_t flags,
 			      size_t bytes, size_t old_bytes)
 {
-	return rbrealloc_align(ptr, flags, caps, bytes, old_bytes,
+	return rbrealloc_align(ptr, flags, bytes, old_bytes,
 			       PLATFORM_DCACHE_ALIGN);
 }
 

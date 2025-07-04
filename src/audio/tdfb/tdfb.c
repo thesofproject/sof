@@ -514,7 +514,7 @@ static int tdfb_setup(struct processing_module *mod, int source_nch, int sink_nc
 		tdfb_free_delaylines(cd);
 
 		/* Allocate all FIR channels data in a big chunk and clear it */
-		cd->fir_delay = rballoc(0, SOF_MEM_CAPS_RAM, delay_size);
+		cd->fir_delay = rballoc(SOF_MEM_FLAG_USER, delay_size);
 		if (!cd->fir_delay) {
 			comp_err(mod->dev, "tdfb_setup(), delay allocation failed for size %d",
 				 delay_size);
@@ -554,7 +554,7 @@ static int tdfb_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 

@@ -445,7 +445,7 @@ static struct scheduler_ops schedule_dp_ops = {
 int scheduler_dp_init(void)
 {
 	int ret;
-	struct scheduler_dp_data *dp_sch = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	struct scheduler_dp_data *dp_sch = rzalloc(SOF_MEM_FLAG_KERNEL,
 						   sizeof(struct scheduler_dp_data));
 	if (!dp_sch)
 		return -ENOMEM;
@@ -496,7 +496,7 @@ int scheduler_dp_task_init(struct task **task,
 	 * As the structure contains zephyr kernel specific data, it must be located in
 	 * shared, non cached memory
 	 */
-	task_memory = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	task_memory = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			      sizeof(*task_memory));
 	if (!task_memory) {
 		tr_err(&dp_tr, "zephyr_dp_task_init(): memory alloc failed");
@@ -506,7 +506,7 @@ int scheduler_dp_task_init(struct task **task,
 	/* allocate stack - must be aligned and cached so a separate alloc */
 	stack_size = Z_KERNEL_STACK_SIZE_ADJUST(stack_size);
 	p_stack = (__sparse_force void __sparse_cache *)
-		rballoc_align(0, SOF_MEM_CAPS_RAM, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);
+		rballoc_align(SOF_MEM_FLAG_KERNEL, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);
 	if (!p_stack) {
 		tr_err(&dp_tr, "zephyr_dp_task_init(): stack alloc failed");
 		ret = -ENOMEM;

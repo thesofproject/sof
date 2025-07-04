@@ -107,7 +107,7 @@ static void *cached_ptr(void *p)
 
 void *GoogleRtcMalloc(size_t size)
 {
-	return rballoc(0, SOF_MEM_CAPS_RAM, size);
+	return rballoc(SOF_MEM_FLAG_USER, size);
 }
 
 void GoogleRtcFree(void *ptr)
@@ -512,7 +512,7 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	comp_info(dev, "google_rtc_audio_processing_init()");
 
 	/* Create private component data */
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
 		ret = -ENOMEM;
 		goto fail;

@@ -200,7 +200,7 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 
 	/* Allocate delay lines for IIR filters and initialize them */
 	size = ch_count * iir_delay_size_df1(filt);
-	delay = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
+	delay = rzalloc(SOF_MEM_FLAG_USER, size);
 	if (!delay)
 		return -ENOMEM;
 
@@ -225,7 +225,7 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 	cd->direction.max_lag = Q_MULTSR_32X32((int64_t)fs, t_max, 0, 15, 0) + 1;
 	n = (cd->max_frames + (2 * cd->direction.max_lag + 1)) * ch_count;
 	cd->direction.d_size =  n * sizeof(int16_t);
-	cd->direction.d = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, cd->direction.d_size);
+	cd->direction.d = rzalloc(SOF_MEM_FLAG_USER, cd->direction.d_size);
 	if (!cd->direction.d)
 		goto err_free_iir;
 
@@ -238,7 +238,7 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 
 	/* xcorr result is temporary but too large for stack so it is allocated here */
 	cd->direction.r_size = (2 * cd->direction.max_lag + 1) * sizeof(int32_t);
-	cd->direction.r = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, cd->direction.r_size);
+	cd->direction.r = rzalloc(SOF_MEM_FLAG_USER, cd->direction.r_size);
 	if (!cd->direction.r)
 		goto err_free_all;
 

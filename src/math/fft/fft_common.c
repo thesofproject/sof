@@ -21,7 +21,7 @@ struct fft_plan *fft_plan_new(void *inb, void *outb, uint32_t size, int bits)
 	if (!inb || !outb)
 		return NULL;
 
-	plan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct fft_plan));
+	plan = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct fft_plan));
 	if (!plan)
 		return NULL;
 
@@ -48,7 +48,7 @@ struct fft_plan *fft_plan_new(void *inb, void *outb, uint32_t size, int bits)
 	plan->size = lim;
 	plan->len = len;
 
-	plan->bit_reverse_idx = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	plan->bit_reverse_idx = rzalloc(SOF_MEM_FLAG_USER,
 					plan->size * sizeof(uint16_t));
 	if (!plan->bit_reverse_idx) {
 		rfree(plan);

@@ -62,7 +62,7 @@ static int smart_amp_init(struct processing_module *mod)
 
 	comp_dbg(dev, "entry");
 
-	sad = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sad));
+	sad = rzalloc(SOF_MEM_FLAG_USER, sizeof(*sad));
 	if (!sad)
 		return -ENOMEM;
 

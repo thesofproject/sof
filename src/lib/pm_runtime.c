@@ -30,7 +30,7 @@ DECLARE_TR_CTX(pm_tr, SOF_UUID(pm_runtime_uuid), LOG_LEVEL_INFO);
 
 void pm_runtime_init(struct sof *sof)
 {
-	sof->prd = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->prd));
+	sof->prd = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*sof->prd));
 	k_spinlock_init(&sof->prd->lock);
 
 	platform_pm_runtime_init(sof->prd);
@@ -146,7 +146,7 @@ void init_dsp_r_state(enum dsp_r_state r_state)
 	struct pm_runtime_data *prd = pm_runtime_data_get();
 	struct r_counters_data *r_counters;
 
-	r_counters = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*r_counters));
+	r_counters = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*r_counters));
 	prd->r_counters = r_counters;
 
 	r_counters->ts = sof_cycle_get_64();

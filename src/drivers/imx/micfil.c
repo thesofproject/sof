@@ -290,7 +290,7 @@ static int micfil_probe(struct dai *dai)
 
 	dai_info(dai, "micfil_probe()");
 
-	micfil = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*micfil));
+	micfil = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*micfil));
 	if (!micfil) {
 		dai_err(dai, "micfil probe failed");
 		return -ENOMEM;

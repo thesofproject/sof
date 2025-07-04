@@ -94,7 +94,7 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	cd = rzalloc(SOF_MEM_FLAG_USER,
 		     sizeof(*cd) + MUX_BLOB_STREAMS_SIZE);
 	if (!cd)
 		return -ENOMEM;

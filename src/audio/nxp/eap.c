@@ -93,7 +93,7 @@ static int nxp_eap_init(struct processing_module *mod)
 	tr_info(mod->dev, "NXP EAP library, platform: %s version:%s",
 		info.pPlatform, info.pVersionNumber);
 
-	eap = rballoc(0, SOF_MEM_CAPS_RAM, sizeof(*eap));
+	eap = rballoc(SOF_MEM_FLAG_USER, sizeof(*eap));
 	if (!eap) {
 		comp_err(dev, "nxp_eap_init() failed to allocate module private data");
 		return -ENOMEM;
@@ -115,7 +115,7 @@ static int nxp_eap_init(struct processing_module *mod)
 		eap->mem_tab.Region[i].pBaseAddress = NULL;
 
 	for (int i = 0; i < LVM_NR_MEMORY_REGIONS; i++) {
-		eap->mem_tab.Region[i].pBaseAddress = rballoc(0, SOF_MEM_CAPS_RAM,
+		eap->mem_tab.Region[i].pBaseAddress = rballoc(SOF_MEM_FLAG_USER,
 							      eap->mem_tab.Region[i].Size);
 		if (!eap->mem_tab.Region[i].pBaseAddress) {
 			comp_err(dev, "nxp_eap_init() failed to allocate memory for region %d", i);
@@ -189,11 +189,11 @@ static int nxp_eap_prepare(struct processing_module *mod,
 	 */
 	eap->buffer_bytes = NXP_EAP_DEFAULT_MAX_BLOCK_SIZE;
 
-	md->mpd.in_buff = rballoc_align(0, SOF_MEM_CAPS_RAM, eap->buffer_bytes, 32);
+	md->mpd.in_buff = rballoc_align(SOF_MEM_FLAG_USER, eap->buffer_bytes, 32);
 	if (!md->mpd.in_buff)
 		return -ENOMEM;
 
-	md->mpd.out_buff = rballoc_align(0, SOF_MEM_CAPS_RAM, eap->buffer_bytes, 32);
+	md->mpd.out_buff = rballoc_align(SOF_MEM_FLAG_USER, eap->buffer_bytes, 32);
 	if (!md->mpd.out_buff) {
 		rfree(md->mpd.in_buff);
 		return -ENOMEM;

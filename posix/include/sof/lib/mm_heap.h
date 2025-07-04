@@ -88,7 +88,7 @@ uint32_t mm_pm_context_size(void);
 void init_heap(struct sof *sof);
 
 /* frees entire heap (supported for secondary core system heap atm) */
-void free_heap(enum mem_zone zone);
+void free_heap(void);
 
 /* status */
 void heap_trace_all(int force);
@@ -101,7 +101,7 @@ void heap_trace(struct mm_heap *heap, int size);
  * @param out output variable
  * @return error code or zero
  */
-int heap_info(enum mem_zone zone, int index, struct mm_info *out);
+int heap_info(int index, struct mm_info *out);
 #endif
 
 /* retrieve memory map pointer */

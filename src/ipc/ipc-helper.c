@@ -53,6 +53,7 @@ __cold static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
 __cold struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
 {
 	struct comp_buffer *buffer;
+	uint32_t flags = desc->flags;
 
 	assert_can_be_cold();
 
@@ -65,8 +66,19 @@ __cold struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is
 		return NULL;
 	}
 
+	/* memory zones and caps are deprecated - convert to flags */
+	if (desc->caps & SOF_MEM_CAPS_DMA)
+		flags |= SOF_MEM_FLAG_DMA;
+	if (desc->caps & SOF_MEM_CAPS_LP)
+		flags |= SOF_MEM_FLAG_LOW_POWER;
+	if (desc->caps & SOF_MEM_CAPS_L3)
+		flags |= SOF_MEM_FLAG_L3;
+	if (desc->caps)
+		tr_warn(&buffer_tr, "Deprecated buffer caps 0x%x used, convert to flags 0x%x",
+			desc->caps, flags);
+
 	/* allocate buffer */
-	buffer = buffer_alloc(desc->size, desc->caps, desc->flags, PLATFORM_DCACHE_ALIGN,
+	buffer = buffer_alloc(desc->size, flags, PLATFORM_DCACHE_ALIGN,
 			      is_shared);
 	if (buffer) {
 		buffer->stream.runtime_stream_params.id = desc->comp.id;
