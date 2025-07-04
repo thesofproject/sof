@@ -8,12 +8,3 @@ config NO_SECONDARY_CORE_ROM
 	help
 	  Indicates that secondary core have rom, alternate reset vector
 	  is needed if not
-
-config WAKEUP_HOOK
-	bool
-	default n
-	help
-	  Enables hook that is called and after coming back from WAITI.
-	  This config should be selected by other platform-level configs.
-	  Platforms that use it, have to implement hook function
-	  platform_interrupt_on_wakeup.
