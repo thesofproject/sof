@@ -91,14 +91,14 @@ if(CONFIG_MATH_MU_LAW_CODEC)
   list(APPEND base_files mu_law.c)
 endif()
 
-is_zephyr(it_is)
-if(it_is) ###  Zephyr ###
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
 
   zephyr_library_sources(
     ${base_files}
   )
 
-else() ### XTOS ###
+else() ### library, e.g. testbench or plugin ###
 
   add_local_sources(sof ${base_files})
 

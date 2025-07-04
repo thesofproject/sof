@@ -131,19 +131,17 @@ sof_list_append_ifdef(CONFIG_COMP_BLOB base_files data_blob.c)
 
 ### (end of common files)
 
-is_zephyr(it_is)
-if(it_is) ###  Zephyr ###
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
 
 	zephyr_library_sources(
 		${base_files}
 	)
 
 	return()
-endif()
+elseif(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
+	### not shared library, e.g. testbench ###
 
-### XTOS normal build (not shared library) ###
-
-if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_local_sources(sof
 		host-legacy.c
 		${base_files}

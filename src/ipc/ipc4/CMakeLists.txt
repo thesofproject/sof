@@ -9,23 +9,15 @@ add_local_sources(sof
 	notification.c
 )
 
-
-is_zephyr(it_is)
-if(it_is) ###  Zephyr ###
+is_zephyr(zephyr)
+if(zephyr) ###  Zephyr ###
 
 zephyr_library_sources_ifdef(CONFIG_AMS
 	ams_helpers.c
 )
 
-
 else()  ### Not Zephyr ####
 
-
-add_local_sources(sof
-	ams_helpers.c
-)
-
 target_include_directories(sof_options INTERFACE ${RIMAGE_TOP}/src/include)
-
 
 endif() # Zephyr

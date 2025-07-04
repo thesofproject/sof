@@ -5,8 +5,8 @@
 # Simple target.  FOUR (really 4.5, as LIBRARY builds use the same
 # CMakeLists.txt but differ significantly in how it executes)
 # different cmake environments into which it needs to build.
-is_zephyr(zephyr_is)
-if(zephyr_is)
+is_zephyr(zephyr)
+if(zephyr)
   set(TOPDIR ${sof_top_dir})
   set(UUID_REG_H ${PROJECT_BINARY_DIR}/include/generated/uuid-registry.h)
   set(DEP_TARGET zephyr_interface)
