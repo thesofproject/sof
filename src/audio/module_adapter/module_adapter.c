@@ -123,6 +123,17 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 
 	dev->state = COMP_STATE_READY;
 
+#if CONFIG_IPC_MAJOR_4
+	struct sof_ipc_stream_params params = {{ 0 }};
+
+	/* set the stream params based on the module base cfg */
+	ret = module_adapter_params(dev, &params);
+	if (ret) {
+		comp_err(dev, "module_adapter_new() %d: module params failed", ret);
+		goto err;
+	}
+#endif
+
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
 err:
