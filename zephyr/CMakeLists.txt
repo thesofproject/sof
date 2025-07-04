@@ -4,12 +4,7 @@
 # https://docs.zephyrproject.org/latest/develop/modules.html
 if(CONFIG_SOF)
 
-if(CONFIG_LIBRARY)
-	set(PLATFORM "library")
-	set(ARCH host)
-	set(PLATFORM_HEADERS "posix")
-	zephyr_include_directories(../src/platform/library/include)
-elseif(CONFIG_ZEPHYR_POSIX)
+if(CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 	set(PLATFORM "posix")
 	set(PLATFORM_HEADERS "posix")
@@ -463,12 +458,6 @@ zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_PLATFORM_PATH}/posix/ipc.c
 	${SOF_PLATFORM_PATH}/posix/posix.c
 	${SOF_PLATFORM_PATH}/posix/fuzz.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_LIBRARY
-	${SOF_PLATFORM_PATH}/library/platform.c
-	${SOF_PLATFORM_PATH}/library/lib/dai.c
-	${SOF_DRIVERS_PATH}/host/ipc.c
 )
 
 if(NOT DEFINED PLATFORM)

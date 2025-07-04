@@ -11,9 +11,7 @@
 #define __PLATFORM_LIB_MEMORY_H__
 
 /* prioritize definitions in Zephyr SoC layer */
-#ifdef __ZEPHYR__
 #include <adsp_memory.h>
-#endif
 
 #include <ace/lib/memory.h>
 #include <mem_window.h>

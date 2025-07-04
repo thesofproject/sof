@@ -11,9 +11,7 @@
 #include <rtos/clk.h>
 #include <sof/math/numbers.h>
 #include <errno.h>
-#ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
-#endif /* __ZEPHYR__ */
 
 static struct kcps_budget_data kcps_data;
 
