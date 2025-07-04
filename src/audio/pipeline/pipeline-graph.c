@@ -120,7 +120,7 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	heap_trace_all(0);
 
 	/* allocate new pipeline */
-	p = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*p));
+	p = rzalloc(SOF_MEM_FLAG_USER, sizeof(*p));
 	if (!p) {
 		pipe_cl_err("pipeline_new(): Out of Memory");
 		return NULL;

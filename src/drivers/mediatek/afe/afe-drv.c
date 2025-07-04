@@ -362,7 +362,7 @@ int afe_probe(struct mtk_base_afe *afe)
 	tr_dbg(&afedrv_tr, "afe_base:0x%x\n", afe->base);
 	/* TODO how to get the memif number, how to sync with dmac lib */
 	afe->memifs_size = platform->memif_size;
-	afe->memif = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	afe->memif = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			     sizeof(struct mtk_base_afe_memif) * afe->memifs_size);
 	if (!afe->memif)
 		return -ENOMEM;
@@ -372,14 +372,14 @@ int afe_probe(struct mtk_base_afe *afe)
 
 	/* TODO how to get the dai number, how to sync with dai lib*/
 	afe->dais_size = platform->dais_size;
-	afe->dais = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	afe->dais = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			    sizeof(struct mtk_base_afe_dai) * afe->dais_size);
 	if (!afe->dais)
 		goto err_alloc_memif;
 
 	/* TODO how to get the irq number */
 	afe->irqs_size = platform->irqs_size;
-	afe->irqs = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	afe->irqs = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			    sizeof(struct mtk_base_afe_irq) * afe->irqs_size);
 	if (!afe->irqs && afe->irqs_size)
 		goto err_alloc_dais;

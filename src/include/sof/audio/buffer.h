@@ -130,7 +130,7 @@ struct comp_buffer {
 	struct audio_stream stream;
 
 	/* configuration */
-	uint32_t caps;
+	uint32_t flags;
 	uint32_t core;
 	struct tr_ctx tctx;			/* trace settings */
 
@@ -208,9 +208,9 @@ struct buffer_cb_free {
 	} while (0)
 
 /* pipeline buffer creation and destruction */
-struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uint32_t align,
+struct comp_buffer *buffer_alloc(size_t size, uint32_t flags, uint32_t align,
 				 bool is_shared);
-struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size, uint32_t caps,
+struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size,
 				       uint32_t flags, uint32_t align, bool is_shared);
 struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared);
 

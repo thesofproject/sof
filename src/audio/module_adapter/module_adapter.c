@@ -68,10 +68,10 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	 * will be bound to. So we need to allocate shared memory for each DP module
 	 * To be removed when pipeline 2.0 is ready
 	 */
-	enum mem_zone zone = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
-			     SOF_MEM_ZONE_RUNTIME_SHARED : SOF_MEM_ZONE_RUNTIME;
+	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
+			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 
-	mod = rzalloc(zone, 0, SOF_MEM_CAPS_RAM, sizeof(*mod));
+	mod = rzalloc(flags, sizeof(*mod));
 	if (!mod) {
 		comp_err(dev, "module_adapter_new(), failed to allocate memory for module");
 		goto err;
@@ -290,7 +290,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for input buffers */
 	if (mod->max_sources) {
 		mod->input_buffers =
-			rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			rzalloc(SOF_MEM_FLAG_USER,
 				sizeof(*mod->input_buffers) * mod->max_sources);
 		if (!mod->input_buffers) {
 			comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
@@ -303,7 +303,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffers */
 	if (mod->max_sinks) {
 		mod->output_buffers =
-			rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+			rzalloc(SOF_MEM_FLAG_USER,
 				sizeof(*mod->output_buffers) * mod->max_sinks);
 		if (!mod->output_buffers) {
 			comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
@@ -370,7 +370,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
-		mod->input_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+		mod->input_buffers[i].data = rballoc(SOF_MEM_FLAG_USER, size);
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -382,7 +382,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = rballoc(0, SOF_MEM_CAPS_RAM, md->mpd.out_buff_size);
+		mod->output_buffers[i].data = rballoc(SOF_MEM_FLAG_USER, md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -395,8 +395,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (list_is_empty(&mod->raw_data_buffers_list)) {
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
-			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_CAPS_RAM,
-								  0, PLATFORM_DCACHE_ALIGN, false);
+			struct comp_buffer *buffer = buffer_alloc(buff_size, SOF_MEM_FLAG_USER,
+								  PLATFORM_DCACHE_ALIGN, false);
 			uint32_t flags;
 
 			if (!buffer) {
@@ -479,7 +479,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	if (mod->stream_params)
 		rfree(mod->stream_params);
 
-	mod->stream_params = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	mod->stream_params = rzalloc(SOF_MEM_FLAG_USER,
 				     sizeof(*mod->stream_params) + params->ext_data_length);
 	if (!mod->stream_params)
 		return -ENOMEM;

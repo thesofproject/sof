@@ -21,7 +21,7 @@ struct tester_module_dummy_test_data {
 static int dummy_test_case_init(struct processing_module *mod, void **ctx)
 {
 	struct tester_module_dummy_test_data *data =
-		rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*data));
+		rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*data));
 
 	if (!data)
 		return -ENOMEM;

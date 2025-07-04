@@ -495,7 +495,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	kpb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*kpb));
+	kpb = rzalloc(SOF_MEM_FLAG_USER, sizeof(*kpb));
 	if (!kpb) {
 		rfree(dev);
 		return NULL;
@@ -553,8 +553,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 	/*! Current allocation size */
 	size_t ca_size = hb_size;
 	/*! Memory caps priorites for history buffer */
-	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP,
-					   SOF_MEM_CAPS_RAM };
+	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LOW_POWER, SOF_MEM_FLAG_USER};
 	void *new_mem_block = NULL;
 	size_t temp_ca_size;
 	int i = 0;
@@ -563,7 +562,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 	comp_cl_info(&comp_kpb, "kpb_allocate_history_buffer()");
 
 	/* Initialize history buffer */
-	kpb->hd.c_hb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	kpb->hd.c_hb = rzalloc(SOF_MEM_FLAG_USER,
 			       sizeof(struct history_buffer));
 	if (!kpb->hd.c_hb)
 		return 0;
@@ -580,7 +579,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 		/* Try to allocate ca_size (current allocation size). At first
 		 * attempt it will be equal to hb_size (history buffer size).
 		 */
-		new_mem_block = rballoc(0, hb_mcp[i], ca_size);
+		new_mem_block = rballoc(hb_mcp[i], ca_size);
 
 		if (new_mem_block) {
 			/* We managed to allocate a block of ca_size.
@@ -602,8 +601,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 				/* Yes, we still need at least one more buffer.
 				 * Let's first create new container for it.
 				 */
-				new_hb = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
-						 SOF_MEM_CAPS_RAM,
+				new_hb = rzalloc(SOF_MEM_FLAG_USER,
 						 sizeof(struct history_buffer));
 				if (!new_hb)
 					return 0;

@@ -105,7 +105,7 @@ void rtnr_printf(int a, int b, int c, int d, int e)
 
 void *rtk_rballoc(unsigned int flags, unsigned int caps, unsigned int bytes)
 {
-	return rballoc(flags, caps, bytes);
+	return rballoc(flags, bytes);
 }
 
 void rtk_rfree(void *ptr)
@@ -241,7 +241,7 @@ static int rtnr_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 

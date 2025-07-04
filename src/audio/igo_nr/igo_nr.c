@@ -421,7 +421,7 @@ static int igo_nr_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -433,7 +433,7 @@ static int igo_nr_init(struct processing_module *mod)
 		goto cd_fail;
 	}
 
-	cd->p_handle = rballoc(0, SOF_MEM_CAPS_RAM, cd->igo_lib_info.handle_size);
+	cd->p_handle = rballoc(SOF_MEM_FLAG_USER, cd->igo_lib_info.handle_size);
 	if (!cd->p_handle) {
 		comp_err(dev, "igo_nr_init(): igo_handle memory rballoc error for size %d",
 			 cd->igo_lib_info.handle_size);

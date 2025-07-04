@@ -623,7 +623,7 @@ EXPORT_SYMBOL(comp_data_blob_get_cmd);
 
 static void *default_alloc(size_t size)
 {
-	return rballoc(0, SOF_MEM_CAPS_RAM, size);
+	return rballoc(SOF_MEM_FLAG_USER, size);
 }
 
 static void default_free(void *buf)
@@ -640,7 +640,7 @@ comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 
 	comp_dbg(dev, "comp_data_blob_handler_new_ext()");
 
-	handler = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	handler = rzalloc(SOF_MEM_FLAG_USER,
 			  sizeof(struct comp_data_blob_handler));
 
 	if (handler) {

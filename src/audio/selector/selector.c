@@ -162,7 +162,7 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
 		rfree(dev);
 		return NULL;
@@ -613,7 +613,7 @@ static int selector_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 

@@ -605,7 +605,8 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 
 	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
 	/* allocate not shared buffer */
-	cd->dma_buffer = buffer_alloc(fifo_size, SOF_MEM_CAPS_DMA, 0, addr_align, false);
+	cd->dma_buffer = buffer_alloc(fifo_size, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
+				      addr_align, false);
 
 	if (!cd->dma_buffer) {
 		comp_err(dev, "chain_task_init(): failed to alloc dma buffer");
@@ -668,7 +669,7 @@ __cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 	if (!dev)
 		return NULL;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		goto error;
 

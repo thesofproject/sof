@@ -289,7 +289,7 @@ static int sdma_probe(struct dma *dma)
 
 	tr_info(&sdma_tr, "SDMA: probe");
 
-	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_FLAG_KERNEL,
 			    dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
@@ -297,7 +297,7 @@ static int sdma_probe(struct dma *dma)
 		return -ENOMEM;
 	}
 
-	pdata = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	pdata = rzalloc(SOF_MEM_FLAG_KERNEL,
 			sizeof(*pdata));
 	if (!pdata) {
 		rfree(dma->chan);
@@ -313,7 +313,7 @@ static int sdma_probe(struct dma *dma)
 		dma->chan[channel].dma = dma;
 	}
 
-	pdata->chan_pdata = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	pdata->chan_pdata = rzalloc(SOF_MEM_FLAG_KERNEL,
 				    dma->plat_data.channels *
 				    sizeof(struct sdma_chan));
 	if (!pdata->chan_pdata) {
@@ -322,7 +322,7 @@ static int sdma_probe(struct dma *dma)
 		goto err;
 	}
 
-	pdata->contexts = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	pdata->contexts = rzalloc(SOF_MEM_FLAG_KERNEL,
 				  dma->plat_data.channels *
 				  sizeof(struct sdma_context));
 	if (!pdata->contexts) {
@@ -331,7 +331,7 @@ static int sdma_probe(struct dma *dma)
 		goto err;
 	}
 
-	pdata->ccb_array = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	pdata->ccb_array = rzalloc(SOF_MEM_FLAG_KERNEL,
 				   dma->plat_data.channels *
 				   sizeof(struct sdma_ccb));
 	if (!pdata->ccb_array) {

@@ -95,7 +95,7 @@ static inline void smart_amp_free_mod_memories(struct smart_amp_data *sad)
 
 static inline int smart_amp_buf_alloc(struct smart_amp_buf *buf, size_t size)
 {
-	buf->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+	buf->data = rballoc(SOF_MEM_FLAG_USER, size);
 	if (!buf->data)
 		return -ENOMEM;
 	buf->size = size;
@@ -189,7 +189,7 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 
 	dev->ipc_config = *config;
 
-	sad = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sad));
+	sad = rzalloc(SOF_MEM_FLAG_USER, sizeof(*sad));
 	if (!sad) {
 		rfree(dev);
 		return NULL;

@@ -209,7 +209,7 @@ __cold int src_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 

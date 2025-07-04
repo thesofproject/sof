@@ -378,7 +378,7 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 	/* allocated dai_config if not yet */
 	if (!dd->dai_spec_config) {
 		size = sizeof(*copier_cfg);
-		dd->dai_spec_config = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
+		dd->dai_spec_config = rzalloc(SOF_MEM_FLAG_USER, size);
 		if (!dd->dai_spec_config) {
 			comp_err(dev, "dai_config(): No memory for dai_config size %d", size);
 			return -ENOMEM;

@@ -26,44 +26,43 @@ enum test_type {
 
 struct test_case {
 	size_t alloc_size;
-	int alloc_zone;
-	uint32_t alloc_caps;
+	uint32_t alloc_flags;
 	uint16_t alloc_num;
 	enum test_type type;
 	const char *name;
 };
 
-#define TEST_CASE(bytes, zone, caps, num, type, name_base) \
-	{(bytes), (zone), (caps), (num), (type), \
-	("test_lib_alloc_" name_base "__" #zone "__" #bytes "x" #num)}
+#define TEST_CASE(bytes, flags, num, type, name_base) \
+	{(bytes), (flags), (num),  (type), \
+	("test_lib_alloc_" name_base "__" #flags "__" #bytes "x" #num)}
 
 static struct test_case test_cases[] = {
 	/*
 	 * rmalloc tests
 	 */
 
-	TEST_CASE(1,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 2, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 2, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
-		  "rmalloc"),
-
-	TEST_CASE(1,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
-		  "rmalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
-		  "rmalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 2, TEST_BULK,
 		  "rmalloc"),
 
-	TEST_CASE(1,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 4, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 4, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 4, TEST_BULK,
 		  "rmalloc"),
 
-	TEST_CASE(16,  SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 128, TEST_BULK,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 8, TEST_BULK,
+		  "rmalloc"),
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 8, TEST_BULK,
+		  "rmalloc"),
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 8, TEST_BULK,
+		  "rmalloc"),
+
+	TEST_CASE(16,  SOF_MEM_FLAG_USER, 128, TEST_BULK,
 		  "rmalloc"),
 
 	/*
@@ -71,135 +70,95 @@ static struct test_case test_cases[] = {
 	 * the RZONE_BUFFER and RZONE_RUNTIME tests will not work.
 	 */
 
-	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 2, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 2, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
-		  "rmalloc"),
-
-	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
-		  "rmalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
-		  "rmalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 2, TEST_BULK,
 		  "rmalloc"),
 
-	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 4, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 4, TEST_BULK,
 		  "rmalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
-		  "rmalloc"),
-
-	TEST_CASE(16,  SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 128, TEST_BULK,
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 4, TEST_BULK,
 		  "rmalloc"),
 
-	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM |
-		  SOF_MEM_CAPS_DMA, 2, TEST_BULK, "rmalloc_dma"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM |
-		  SOF_MEM_CAPS_DMA, 2, TEST_BULK, "rmalloc_dma"),
-	TEST_CASE(256, SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM |
-		  SOF_MEM_CAPS_DMA, 2, TEST_BULK, "rmalloc_dma"),
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 8, TEST_BULK,
+		  "rmalloc"),
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 8, TEST_BULK,
+		  "rmalloc"),
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 8, TEST_BULK,
+		  "rmalloc"),
+
+	TEST_CASE(16,  SOF_MEM_FLAG_USER, 128, TEST_BULK,
+		  "rmalloc"),
+
+	TEST_CASE(1,  (SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA),
+		  2, TEST_BULK, "rmalloc_dma"),
+	TEST_CASE(4, (SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA),
+		  2, TEST_BULK, "rmalloc_dma"),
+	TEST_CASE(256, (SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA),
+		  2, TEST_BULK, "rmalloc_dma"),
 
 	/*
 	 * rzalloc tests
 	 */
 
-	TEST_CASE(1,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 2, TEST_ZERO,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 2, TEST_ZERO,
 		  "rzalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 2, TEST_ZERO,
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 2, TEST_ZERO,
 		  "rzalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 2, TEST_ZERO,
-		  "rzalloc"),
-
-	TEST_CASE(1,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 4, TEST_ZERO,
-		  "rzalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 4, TEST_ZERO,
-		  "rzalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 4, TEST_ZERO,
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 2, TEST_ZERO,
 		  "rzalloc"),
 
-	TEST_CASE(1,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 8, TEST_ZERO,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 4, TEST_ZERO,
 		  "rzalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 8, TEST_ZERO,
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 4, TEST_ZERO,
 		  "rzalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 8, TEST_ZERO,
-		  "rzalloc"),
-
-	TEST_CASE(16,  SOF_MEM_ZONE_SYS, SOF_MEM_CAPS_RAM, 128, TEST_ZERO,
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 4, TEST_ZERO,
 		  "rzalloc"),
 
-	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 2, TEST_ZERO,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 8, TEST_ZERO,
 		  "rzalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 2, TEST_ZERO,
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 8, TEST_ZERO,
 		  "rzalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 2, TEST_ZERO,
-		  "rzalloc"),
-
-	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 4, TEST_ZERO,
-		  "rzalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 4, TEST_ZERO,
-		  "rzalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 4, TEST_ZERO,
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 8, TEST_ZERO,
 		  "rzalloc"),
 
-	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 8, TEST_ZERO,
-		  "rzalloc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 8, TEST_ZERO,
-		  "rzalloc"),
-	TEST_CASE(256, SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 8, TEST_ZERO,
+	TEST_CASE(16,  SOF_MEM_FLAG_USER, 128, TEST_ZERO,
 		  "rzalloc"),
 
-	TEST_CASE(16,  SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM, 128, TEST_ZERO,
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 2, TEST_ZERO,
+		  "rzalloc"),
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 2, TEST_ZERO,
+		  "rzalloc"),
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 2, TEST_ZERO,
 		  "rzalloc"),
 
-	TEST_CASE(1,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM |
-		  SOF_MEM_CAPS_DMA, 2, TEST_ZERO, "rzalloc_dma"),
-	TEST_CASE(4,   SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM |
-		  SOF_MEM_CAPS_DMA, 2, TEST_ZERO, "rzalloc_dma"),
-	TEST_CASE(256, SOF_MEM_ZONE_RUNTIME, SOF_MEM_CAPS_RAM |
-		  SOF_MEM_CAPS_DMA, 2, TEST_ZERO, "rzalloc_dma"),
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 4, TEST_ZERO,
+		  "rzalloc"),
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 4, TEST_ZERO,
+		  "rzalloc"),
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 4, TEST_ZERO,
+		  "rzalloc"),
 
-	/*
-	 * rballoc tests
-	 */
+	TEST_CASE(1,   SOF_MEM_FLAG_USER, 8, TEST_ZERO,
+		  "rzalloc"),
+	TEST_CASE(4,   SOF_MEM_FLAG_USER, 8, TEST_ZERO,
+		  "rzalloc"),
+	TEST_CASE(256, SOF_MEM_FLAG_USER, 8, TEST_ZERO,
+		  "rzalloc"),
 
-	TEST_CASE(4,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 1024,
-		  TEST_IMMEDIATE_FREE, "rballoc"),
+	TEST_CASE(16,  SOF_MEM_FLAG_USER, 128, TEST_ZERO,
+		  "rzalloc"),
 
-	TEST_CASE(1,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
-		  "rballoc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
-		  "rballoc"),
-	TEST_CASE(256, SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 2, TEST_BULK,
-		  "rballoc"),
-
-	TEST_CASE(1,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
-		  "rballoc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
-		  "rballoc"),
-	TEST_CASE(256, SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 4, TEST_BULK,
-		  "rballoc"),
-
-	TEST_CASE(1,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
-		  "rballoc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
-		  "rballoc"),
-	TEST_CASE(256, SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
-		  "rballoc"),
-
-	TEST_CASE(16,  SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 64, TEST_BULK,
-		  "rballoc"),
-	TEST_CASE(4,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM, 64, TEST_BULK,
-		  "rballoc"),
-
-	TEST_CASE(1,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-		  2, TEST_BULK, "rballoc_dma"),
-	TEST_CASE(4,   SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-		  2, TEST_BULK, "rballoc_dma"),
-	TEST_CASE(256, SOF_MEM_ZONE_BUFFER, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-		  2, TEST_BULK, "rballoc_dma"),
+	TEST_CASE(1,	(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA),
+		  2, TEST_ZERO, "rzalloc_dma"),
+	TEST_CASE(4,	(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA),
+		 2, TEST_ZERO, "rzalloc_dma"),
+	TEST_CASE(256,	(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA),
+		  2, TEST_ZERO, "rzalloc_dma"),
 };
 
 static int setup(void **state)
@@ -234,11 +193,8 @@ static void *alloc(struct test_case *tc)
 {
 	void *mem;
 
-	if (tc->alloc_zone == SOF_MEM_ZONE_BUFFER)
-		mem = rballoc(0, tc->alloc_caps, tc->alloc_size);
-	else
-		mem = rmalloc(tc->alloc_zone, 0, tc->alloc_caps,
-			      tc->alloc_size);
+	mem = rmalloc(tc->alloc_flags,
+			tc->alloc_size);
 
 	return mem;
 }
@@ -247,10 +203,8 @@ static void alloc_free(void **mem, struct test_case *tc)
 {
 	int i;
 
-	if (tc->alloc_zone != SOF_MEM_ZONE_SYS) {
-		for (i = 0; i < tc->alloc_num; ++i)
-			rfree(mem[i]);
-	}
+	for (i = 0; i < tc->alloc_num; ++i)
+		rfree(mem[i]);
 }
 
 static void test_lib_alloc_bulk_free(struct test_case *tc)
@@ -288,7 +242,7 @@ static void test_lib_alloc_zero(struct test_case *tc)
 	int i;
 
 	for (i = 0; i < tc->alloc_num; ++i) {
-		char *mem = rzalloc(tc->alloc_zone, 0, tc->alloc_caps,
+		char *mem = rzalloc(tc->alloc_flags,
 				    tc->alloc_size);
 		int j;
 

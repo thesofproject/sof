@@ -442,7 +442,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32
 		elem_array = &hd->local.elem_array;
 
 		/* config buffer will be used as proxy */
-		err = dma_sg_alloc(&hd->config.elem_array, SOF_MEM_ZONE_RUNTIME,
+		err = dma_sg_alloc(&hd->config.elem_array, SOF_MEM_FLAG_USER,
 				   dir, 1, 0, 0, 0);
 		if (err < 0) {
 			comp_err(dev, "create_local_elems(): dma_sg_alloc() failed");
@@ -452,7 +452,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev, uint32
 		elem_array = &hd->config.elem_array;
 	}
 
-	err = dma_sg_alloc(elem_array, SOF_MEM_ZONE_RUNTIME, dir, buffer_count,
+	err = dma_sg_alloc(elem_array, SOF_MEM_FLAG_USER, dir, buffer_count,
 			   buffer_bytes,
 			   (uintptr_t)(audio_stream_get_addr(&hd->dma_buffer->stream)), 0);
 	if (err < 0) {
@@ -578,7 +578,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	hd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*hd));
 	if (!hd)
 		goto e_data;
 
@@ -759,7 +759,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 			goto out;
 		}
 	} else {
-		hd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0,
+		hd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 					      addr_align, false);
 		if (!hd->dma_buffer) {
 			comp_err(dev, "host_params(): failed to alloc dma buffer");

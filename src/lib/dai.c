@@ -41,7 +41,7 @@ __cold static struct dai_group_list *dai_group_list_get(int core_id)
 	assert_can_be_cold();
 
 	if (!group_list) {
-		group_list = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+		group_list = rzalloc(SOF_MEM_FLAG_USER,
 				     sizeof(*group_list));
 
 		groups[core_id] = group_list;
@@ -80,7 +80,7 @@ __cold static struct dai_group *dai_group_alloc(void)
 
 	assert_can_be_cold();
 
-	group = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+	group = rzalloc(SOF_MEM_FLAG_USER,
 			sizeof(*group));
 
 	list_item_prepend(&group->list, dai_groups);
@@ -275,7 +275,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		return NULL;
 	}
 
-	d = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(struct dai));
+	d = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(struct dai));
 	if (!d)
 		return NULL;
 

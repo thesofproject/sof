@@ -139,7 +139,7 @@ static int mixin_init(struct processing_module *mod)
 
 	comp_dbg(dev, "mixin_init()");
 
-	md = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*md));
+	md = rzalloc(SOF_MEM_FLAG_USER, sizeof(*md));
 	if (!md)
 		return -ENOMEM;
 
@@ -166,7 +166,7 @@ static int mixout_init(struct processing_module *mod)
 
 	comp_dbg(dev, "mixout_new()");
 
-	mo_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*mo_data));
+	mo_data = rzalloc(SOF_MEM_FLAG_USER, sizeof(*mo_data));
 	if (!mo_data)
 		return -ENOMEM;
 

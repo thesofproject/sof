@@ -58,7 +58,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 	if (type >= NOTIFIER_ID_COUNT)
 		return -EINVAL;
 
-	handle = rzalloc(0, 0, 0, sizeof(struct callback_handle));
+	handle = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct callback_handle));
 
 	if (!handle)
 		return -ENOMEM;

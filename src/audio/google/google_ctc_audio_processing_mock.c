@@ -18,7 +18,7 @@ struct GoogleCtcAudioProcessingState {
 GoogleCtcAudioProcessingState *GoogleCtcAudioProcessingCreate(void)
 {
 	struct GoogleCtcAudioProcessingState *s =
-		rballoc(0, SOF_MEM_CAPS_RAM, sizeof(GoogleCtcAudioProcessingState));
+		rballoc(SOF_MEM_FLAG_USER, sizeof(GoogleCtcAudioProcessingState));
 	if (!s)
 		return NULL;
 
@@ -31,7 +31,7 @@ GoogleCtcAudioProcessingState *GoogleCtcAudioProcessingCreateWithConfig(int chun
 									int config_size)
 {
 	struct GoogleCtcAudioProcessingState *s =
-		rballoc(0, SOF_MEM_CAPS_RAM, sizeof(GoogleCtcAudioProcessingState));
+		rballoc(SOF_MEM_FLAG_USER, sizeof(GoogleCtcAudioProcessingState));
 	if (!s)
 		return NULL;
 

@@ -572,7 +572,7 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	dev->ipc_config = *config;
 
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd));
 	if (!dd)
 		goto e_data;
 
@@ -826,7 +826,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 			} while (--max_block_count > 0);
 		}
 
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_RUNTIME,
+		err = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
 				   period_count,
 				   period_bytes,
@@ -852,7 +852,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 
 	comp_dbg(dev, "dai_set_dma_config()");
 
-	dma_cfg = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+	dma_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
 			  sizeof(struct dma_config));
 	if (!dma_cfg) {
 		comp_err(dev, "dma_cfg allocation failed");
@@ -882,7 +882,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	else
 		dma_cfg->dma_slot = config->src_dev;
 
-	dma_block_cfg = rballoc(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+	dma_block_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
 				sizeof(struct dma_block_config) * dma_cfg->block_count);
 	if (!dma_block_cfg) {
 		rfree(dma_cfg);
@@ -1020,7 +1020,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 		}
 	} else {
 		dd->dma_buffer = buffer_alloc_range(buffer_size_preferred, buffer_size,
-						    SOF_MEM_CAPS_DMA, 0, addr_align, false);
+						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA, addr_align, false);
 		if (!dd->dma_buffer) {
 			comp_err(dev, "failed to alloc dma buffer");
 			return -ENOMEM;

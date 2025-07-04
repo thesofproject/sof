@@ -143,7 +143,7 @@ int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,
 	if (edf_sch_get_pdata(task))
 		return -EEXIST;
 
-	edf_pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	edf_pdata = rzalloc(SOF_MEM_FLAG_KERNEL,
 			    sizeof(*edf_pdata));
 	if (!edf_pdata) {
 		tr_err(&edf_tr, "schedule_task_init_edf(): alloc failed");
@@ -256,7 +256,7 @@ int scheduler_init_edf(void)
 
 	tr_info(&edf_tr, "edf_scheduler_init()");
 
-	edf_sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+	edf_sch = rzalloc(SOF_MEM_FLAG_KERNEL,
 			  sizeof(*edf_sch));
 	list_init(&edf_sch->list);
 	edf_sch->clock = PLATFORM_DEFAULT_CLOCK;

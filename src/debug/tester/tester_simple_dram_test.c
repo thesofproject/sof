@@ -34,7 +34,7 @@ __cold static int simple_dram_test_case_init(struct processing_module *mod, void
 	return -EINVAL;
 #endif
 	struct tester_module_simple_dram_test_data *data =
-		rzalloc(0, 0, SOF_MEM_CAPS_L3, sizeof(*data));
+		rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_L3, sizeof(*data));
 
 	assert_can_be_cold();
 

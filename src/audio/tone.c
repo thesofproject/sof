@@ -392,7 +392,7 @@ static struct comp_dev *tone_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
 		rfree(dev);
 		return NULL;

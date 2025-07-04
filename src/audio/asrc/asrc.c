@@ -217,7 +217,7 @@ static int asrc_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -261,7 +261,7 @@ static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
 		buffer_size = src_obj->buffer_length * sizeof(int32_t);
 
 		for (ch = 0; ch < src_obj->num_channels; ch++) {
-			buf_32 = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, buffer_size);
+			buf_32 = rzalloc(SOF_MEM_FLAG_USER, buffer_size);
 
 			if (!buf_32)
 				return -ENOMEM;
@@ -272,7 +272,7 @@ static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
 		buffer_size = src_obj->buffer_length * sizeof(int16_t);
 
 		for (ch = 0; ch < src_obj->num_channels; ch++) {
-			buf_16 = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, buffer_size);
+			buf_16 = rzalloc(SOF_MEM_FLAG_USER, buffer_size);
 
 			if (!buf_16)
 				return -ENOMEM;
@@ -614,7 +614,7 @@ static int asrc_prepare(struct processing_module *mod,
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
 		frame_bytes;
 
-	cd->buf = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	cd->buf = rzalloc(SOF_MEM_FLAG_USER,
 			  cd->buf_size);
 	if (!cd->buf) {
 		cd->buf_size = 0;
@@ -640,7 +640,7 @@ static int asrc_prepare(struct processing_module *mod,
 		goto err_free_buf;
 	}
 
-	cd->asrc_obj = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	cd->asrc_obj = rzalloc(SOF_MEM_FLAG_USER,
 			       cd->asrc_size);
 	if (!cd->asrc_obj) {
 		comp_err(dev, "asrc_prepare(), allocation fail for size %d",

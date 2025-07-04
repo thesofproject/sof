@@ -181,24 +181,25 @@ static const struct audio_buffer_ops audio_buffer_ops = {
 	.set_alignment_constants = comp_buffer_set_alignment_constants
 };
 
-static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, uint32_t caps,
+static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size,
 					       uint32_t flags, bool is_shared)
 {
 	struct comp_buffer *buffer;
 
 	tr_dbg(&buffer_tr, "buffer_alloc_struct()");
 
-	/* allocate new buffer	 */
-	enum mem_zone zone = is_shared ? SOF_MEM_ZONE_RUNTIME_SHARED : SOF_MEM_ZONE_RUNTIME;
+	/* allocate new buffer, but add coherent if shared with other cores */
+	if (is_shared)
+		flags |= SOF_MEM_FLAG_COHERENT;
 
-	buffer = rzalloc(zone, 0, SOF_MEM_CAPS_RAM, sizeof(*buffer));
+	buffer = rzalloc(flags, sizeof(*buffer));
 
 	if (!buffer) {
 		tr_err(&buffer_tr, "buffer_alloc_struct(): could not alloc structure");
 		return NULL;
 	}
 
-	buffer->caps = caps;
+	buffer->flags = flags;
 	/* Force channels to 2 for init to prevent bad call to clz in buffer_init_stream */
 	buffer->stream.runtime_stream_params.channels = 2;
 
@@ -219,7 +220,7 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, u
 	return buffer;
 }
 
-struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uint32_t align,
+struct comp_buffer *buffer_alloc(size_t size, uint32_t flags, uint32_t align,
 				 bool is_shared)
 {
 	struct comp_buffer *buffer;
@@ -233,14 +234,14 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uin
 		return NULL;
 	}
 
-	stream_addr = rballoc_align(0, caps, size, align);
+	stream_addr = rballoc_align(flags, size, align);
 	if (!stream_addr) {
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %zu bytes of type = %u",
-		       size, caps);
+		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %zu bytes of flags = 0x%x",
+		       size, flags);
 		return NULL;
 	}
 
-	buffer = buffer_alloc_struct(stream_addr, size, caps, flags, is_shared);
+	buffer = buffer_alloc_struct(stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc buffer structure");
 		rfree(stream_addr);
@@ -249,7 +250,7 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uin
 	return buffer;
 }
 
-struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size, uint32_t caps,
+struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size,
 				       uint32_t flags, uint32_t align, bool is_shared)
 {
 	struct comp_buffer *buffer;
@@ -270,7 +271,7 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 		preferred_size += minimum_size - preferred_size % minimum_size;
 
 	for (size = preferred_size; size >= minimum_size; size -= minimum_size) {
-		stream_addr = rballoc_align(0, caps, size, align);
+		stream_addr = rballoc_align(flags, size, align);
 		if (stream_addr)
 			break;
 	}
@@ -278,12 +279,12 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 	tr_dbg(&buffer_tr, "buffer_alloc_range(): allocated %zu bytes", size);
 
 	if (!stream_addr) {
-		tr_err(&buffer_tr, "buffer_alloc_range(): could not alloc size = %zu bytes of type = %u",
-		       minimum_size, caps);
+		tr_err(&buffer_tr, "buffer_alloc_range(): could not alloc size = %zu bytes of type = 0x%x",
+		       minimum_size, flags);
 		return NULL;
 	}
 
-	buffer = buffer_alloc_struct(stream_addr, size, caps, flags, is_shared);
+	buffer = buffer_alloc_struct(stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "buffer_alloc_range(): could not alloc buffer structure");
 		rfree(stream_addr);
@@ -298,7 +299,7 @@ void buffer_zero(struct comp_buffer *buffer)
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	bzero(audio_stream_get_addr(&buffer->stream), audio_stream_get_size(&buffer->stream));
-	if (buffer->caps & SOF_MEM_CAPS_DMA)
+	if (buffer->flags & SOF_MEM_FLAG_DMA)
 		dcache_writeback_region((__sparse_force void __sparse_cache *)
 					audio_stream_get_addr(&buffer->stream),
 					audio_stream_get_size(&buffer->stream));
@@ -320,16 +321,17 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 		return 0;
 
 	if (!alignment)
-		new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream), SOF_MEM_FLAG_NO_COPY,
-				    buffer->caps, size, audio_stream_get_size(&buffer->stream));
+		new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream),
+				    buffer->flags | SOF_MEM_FLAG_NO_COPY,
+				    size, audio_stream_get_size(&buffer->stream));
 	else
 		new_ptr = rbrealloc_align(audio_stream_get_addr(&buffer->stream),
-					  SOF_MEM_FLAG_NO_COPY, buffer->caps, size,
+					  buffer->flags | SOF_MEM_FLAG_NO_COPY, size,
 					  audio_stream_get_size(&buffer->stream), alignment);
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > audio_stream_get_size(&buffer->stream)) {
-		buf_err(buffer, "resize can't alloc %u bytes type %u",
-			audio_stream_get_size(&buffer->stream), buffer->caps);
+		buf_err(buffer, "resize can't alloc %u bytes type 0x%x",
+			audio_stream_get_size(&buffer->stream), buffer->flags);
 		return -ENOMEM;
 	}
 
@@ -369,16 +371,16 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	if (!alignment) {
 		for (new_size = preferred_size; new_size >= minimum_size;
 		     new_size -= minimum_size) {
-			new_ptr = rbrealloc(ptr, SOF_MEM_FLAG_NO_COPY, buffer->caps, new_size,
-					    actual_size);
+			new_ptr = rbrealloc(ptr, buffer->flags | SOF_MEM_FLAG_NO_COPY,
+					    new_size, actual_size);
 			if (new_ptr)
 				break;
 		}
 	} else {
 		for (new_size = preferred_size; new_size >= minimum_size;
 		     new_size -= minimum_size) {
-			new_ptr = rbrealloc_align(ptr, SOF_MEM_FLAG_NO_COPY, buffer->caps, new_size,
-						  actual_size, alignment);
+			new_ptr = rbrealloc_align(ptr, buffer->flags | SOF_MEM_FLAG_NO_COPY,
+						  new_size, actual_size, alignment);
 			if (new_ptr)
 				break;
 		}
@@ -386,7 +388,7 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && new_size > actual_size) {
-		buf_err(buffer, "resize can't alloc %zu bytes type %u", new_size, buffer->caps);
+		buf_err(buffer, "resize can't alloc %zu bytes type 0x%x", new_size, buffer->flags);
 		return -ENOMEM;
 	}
 

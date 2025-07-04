@@ -54,7 +54,7 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 	int i;
 
 	struct vmh_heap *new_heap =
-		rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*new_heap));
+		rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*new_heap));
 
 	if (!new_heap)
 		return NULL;
@@ -126,8 +126,8 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 		 * them in memory on sys_heap.
 		 * First create allocator - instance of sys_mem_blocks struct.
 		 */
-		struct sys_mem_blocks *new_allocator = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
-			0, SOF_MEM_CAPS_RAM, sizeof(sys_mem_blocks_t));
+		struct sys_mem_blocks *new_allocator = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+			sizeof(sys_mem_blocks_t));
 
 		if (!new_allocator)
 			goto fail;
@@ -141,8 +141,8 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 		new_allocator->buffer =	(uint8_t *)new_heap->virtual_region->addr + offset;
 
 		/* Create bit array that is a part of mem_block kept as a ptr */
-		struct sys_bitarray *allocators_bitarray = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
-			0, SOF_MEM_CAPS_RAM, sizeof(sys_bitarray_t));
+		struct sys_bitarray *allocators_bitarray = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+			sizeof(sys_bitarray_t));
 
 		if (!allocators_bitarray)
 			goto fail;
@@ -158,8 +158,8 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 		 * Mechanism explained in detail in free and alloc function.
 		 */
 		struct sys_bitarray *allocation_sizes_bitarray =
-			rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
-				0, SOF_MEM_CAPS_RAM, sizeof(sys_bitarray_t));
+			rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+				sizeof(sys_bitarray_t));
 
 		if (!allocation_sizes_bitarray)
 			goto fail;
@@ -172,15 +172,15 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 		 * based on its size.
 		 */
 		uint32_t *allocator_bitarray_bitfield =
-			rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, bitfield_size);
+			rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, bitfield_size);
 
 		if (!allocator_bitarray_bitfield)
 			goto fail;
 
 		allocators_bitarray->bundles = allocator_bitarray_bitfield;
 
-		uint32_t *sizes_bitarray_bitfield = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
-			SOF_MEM_CAPS_RAM, bitfield_size);
+		uint32_t *sizes_bitarray_bitfield = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+			bitfield_size);
 
 		if (!sizes_bitarray_bitfield)
 			goto fail;

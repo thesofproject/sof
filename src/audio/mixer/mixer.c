@@ -47,7 +47,7 @@ static int mixer_init(struct processing_module *mod)
 
 	comp_dbg(dev, "mixer_init()");
 
-	md = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*md));
+	md = rzalloc(SOF_MEM_FLAG_USER, sizeof(*md));
 	if (!md)
 		return -ENOMEM;
 

@@ -418,7 +418,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	}
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	ipc_pipe = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			   sizeof(struct ipc_comp_dev));
 	if (!ipc_pipe) {
 		pipeline_free(pipe);
@@ -491,7 +491,7 @@ int ipc_buffer_new(struct ipc *ipc, const struct sof_ipc_buffer *desc)
 		return -ENOMEM;
 	}
 
-	ibd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	ibd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct ipc_comp_dev));
 	if (!ibd) {
 		buffer_free(buffer);
@@ -692,7 +692,7 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	}
 
 	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	icd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct ipc_comp_dev));
 	if (!icd) {
 		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");

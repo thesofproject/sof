@@ -40,7 +40,7 @@ __cold static int template_comp_init(struct processing_module *mod)
 
 	comp_info(dev, "template_comp_init()");
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 

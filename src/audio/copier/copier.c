@@ -87,7 +87,7 @@ static int mic_privacy_configure(struct comp_dev *dev, struct copier_data *cd)
 	struct mic_privacy_data *mic_priv_data;
 	int ret;
 
-	mic_priv_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	mic_priv_data = rzalloc(SOF_MEM_FLAG_USER,
 				sizeof(struct mic_privacy_data));
 	if (!mic_priv_data)
 		return -ENOMEM;
@@ -144,7 +144,7 @@ __cold static int copier_init(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -166,7 +166,7 @@ __cold static int copier_init(struct processing_module *mod)
 	 */
 	if (copier->gtw_cfg.config_length) {
 		gtw_cfg_size = copier->gtw_cfg.config_length << 2;
-		gtw_cfg = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		gtw_cfg = rmalloc(SOF_MEM_FLAG_USER,
 				  gtw_cfg_size);
 		if (!gtw_cfg) {
 			ret = -ENOMEM;
