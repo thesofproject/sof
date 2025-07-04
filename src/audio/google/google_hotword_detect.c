@@ -102,7 +102,7 @@ static struct comp_dev *ghd_create(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	/* Create private component data */
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	cd = rzalloc(SOF_MEM_FLAG_USER,
 		     sizeof(*cd));
 	if (!cd)
 		goto fail;

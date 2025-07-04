@@ -1458,7 +1458,7 @@ static int ipc_glb_test_mem_usage(uint32_t header)
 	struct sof_ipc_dbg_mem_usage_elem *elems;
 	struct sof_ipc_dbg_mem_usage *mem_usage;
 
-	mem_usage = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, 0, size);
+	mem_usage = rzalloc(0, 0, size);
 	if (!mem_usage)
 		return -ENOMEM;
 
@@ -1468,19 +1468,19 @@ static int ipc_glb_test_mem_usage(uint32_t header)
 
 	/* fill list of elems */
 	elems = mem_usage->elems;
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS, SOF_IPC_MEM_ZONE_SYS,
+	elems += fill_mem_usage_elems( SOF_IPC_MEM_ZONE_SYS,
 				      PLATFORM_HEAP_SYSTEM, elems);
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS_RUNTIME, SOF_IPC_MEM_ZONE_SYS_RUNTIME,
+	elems += fill_mem_usage_elems( SOF_IPC_MEM_ZONE_SYS_RUNTIME,
 				      PLATFORM_HEAP_SYSTEM_RUNTIME, elems);
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_RUNTIME, SOF_IPC_MEM_ZONE_RUNTIME,
+	elems += fill_mem_usage_elems( SOF_IPC_MEM_ZONE_RUNTIME,
 				      PLATFORM_HEAP_RUNTIME, elems);
 	/* cppcheck-suppress unreadVariable */
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_BUFFER, SOF_IPC_MEM_ZONE_BUFFER,
+	elems += fill_mem_usage_elems( SOF_IPC_MEM_ZONE_BUFFER,
 				      PLATFORM_HEAP_BUFFER, elems);
 #if CONFIG_CORE_COUNT > 1
 	elems += fill_mem_usage_elems(SOF_MEM_ZONE_SYS_SHARED, SOF_IPC_MEM_ZONE_SYS_SHARED,
 				      PLATFORM_HEAP_SYSTEM_SHARED, elems);
-	elems += fill_mem_usage_elems(SOF_MEM_ZONE_RUNTIME_SHARED, SOF_IPC_MEM_ZONE_RUNTIME_SHARED,
+	elems += fill_mem_usage_elems(SOF_MEM_FLAG_COHERENT, SOF_IPC_MEM_ZONE_RUNTIME_SHARED,
 				      PLATFORM_HEAP_RUNTIME_SHARED, elems);
 #endif
 

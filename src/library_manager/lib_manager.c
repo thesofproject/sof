@@ -69,7 +69,7 @@ static int lib_manager_auth_init(struct auth_api_ctx *auth_ctx, void **auth_buff
 	if (auth_api_version().major != AUTH_API_VERSION_MAJOR)
 		return -EINVAL;
 
-	*auth_buffer = rballoc_align(0, SOF_MEM_CAPS_RAM,
+	*auth_buffer = rballoc_align(SOF_MEM_FLAG_KERNEL,
 				     AUTH_SCRATCH_BUFF_SZ, CONFIG_MM_DRV_PAGE_SIZE);
 	if (!*auth_buffer)
 		return -ENOMEM;
@@ -446,8 +446,8 @@ static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 {
 	struct ext_library *_ext_lib = ext_lib_get();
 	/* Never freed, will panic if fails */
-	struct lib_manager_mod_ctx *ctx = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_COHERENT,
-						  SOF_MEM_CAPS_RAM, sizeof(*ctx));
+	struct lib_manager_mod_ctx *ctx = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+						  sizeof(*ctx));
 
 	ctx->base_addr = base_addr;
 
@@ -602,8 +602,7 @@ int lib_manager_register_module(const uint32_t component_id)
 	}
 
 	/* allocate new comp_driver_info */
-	new_drv_info = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
-			       SOF_MEM_CAPS_RAM | SOF_MEM_FLAG_COHERENT,
+	new_drv_info = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			       sizeof(struct comp_driver_info));
 
 	if (!new_drv_info) {
@@ -612,8 +611,7 @@ int lib_manager_register_module(const uint32_t component_id)
 		goto cleanup;
 	}
 
-	drv = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
-		      SOF_MEM_CAPS_RAM | SOF_MEM_FLAG_COHERENT,
+	drv = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct comp_driver));
 	if (!drv) {
 		tr_err(&lib_manager_tr, "failed to allocate comp_driver");
@@ -680,7 +678,7 @@ static int lib_manager_dma_buffer_alloc(struct lib_manager_dma_ext *dma_ext,
 	 * allocate new buffer: this is the actual DMA buffer but we
 	 * traditionally allocate a cached address for it
 	 */
-	dma_ext->dma_addr = (uintptr_t)rballoc_align(SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_DMA, size,
+	dma_ext->dma_addr = (uintptr_t)rballoc_align(SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA, size,
 						     dma_ext->addr_align);
 	if (!dma_ext->dma_addr) {
 		tr_err(&lib_manager_tr, "alloc failed");
@@ -793,14 +791,14 @@ static void __sparse_cache *lib_manager_allocate_store_mem(uint32_t size,
 {
 	void __sparse_cache *local_add;
 #if CONFIG_L3_HEAP
-	uint32_t caps = SOF_MEM_CAPS_L3 | SOF_MEM_CAPS_DMA;
+	uint32_t flags = SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_L3 | SOF_MEM_FLAG_DMA;
 #else
-	uint32_t caps = SOF_MEM_CAPS_DMA;
+	uint32_t flags = SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_DMA;
 #endif
 
 	uint32_t addr_align = PAGE_SZ;
 	/* allocate new buffer: cached alias */
-	local_add = (__sparse_force void __sparse_cache *)rballoc_align(0, caps, size, addr_align);
+	local_add = (__sparse_force void __sparse_cache *)rballoc_align(flags, size, addr_align);
 
 	if (!local_add) {
 		tr_err(&lib_manager_tr, "alloc failed");
@@ -898,7 +896,7 @@ static int lib_manager_setup(uint32_t dma_id)
 	if (_ext_lib->runtime_data)
 		return 0;
 
-	dma_ext = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dma_ext = rzalloc(SOF_MEM_FLAG_KERNEL,
 			  sizeof(*dma_ext));
 	if (!dma_ext)
 		return -ENOMEM;
@@ -983,7 +981,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 
 	/* allocate temporary manifest buffer */
 	man_tmp_buffer = (__sparse_force void __sparse_cache *)
-			rballoc_align(0, SOF_MEM_CAPS_DMA,
+			rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 				      MAN_MAX_SIZE_V1_8, CONFIG_MM_DRV_PAGE_SIZE);
 	if (!man_tmp_buffer) {
 		ret = -ENOMEM;

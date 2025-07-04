@@ -87,7 +87,7 @@ static int acp_dmic_dai_probe(struct dai *dai)
 
 	dai_info(dai, "dmic dai probe");
 	/* allocate private data */
-	acp = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*acp));
+	acp = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*acp));
 	if (!acp) {
 		dai_err(dai, "dmic dai probe alloc failed");
 		return -ENOMEM;

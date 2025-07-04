@@ -173,7 +173,7 @@ static int thread_info_buf_realloc(struct record_buf *bufd, size_t req_size)
 		size *= 2;
 
 	if (size != bufd->size) {
-		uint8_t *buf = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
+		uint8_t *buf = rmalloc(SOF_MEM_FLAG_USER, size);
 
 		if (!buf)
 			return -ENOMEM;
@@ -321,7 +321,7 @@ static void thread_info_run(void *cnum, void *a, void *b)
 		.w_ptr = 0,
 	};
 
-	bufd.buf = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, bufd.size);
+	bufd.buf = rmalloc(SOF_MEM_FLAG_USER, bufd.size);
 	if (!bufd.buf) {
 		LOG_ERR("malloc failed");
 		return;

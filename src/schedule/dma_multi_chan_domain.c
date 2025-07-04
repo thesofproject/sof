@@ -371,7 +371,7 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk, true,
 			     &dma_multi_chan_domain_ops);
 
-	dma_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dma_domain));
+	dma_domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*dma_domain));
 	dma_domain->dma_array = dma_array;
 	dma_domain->num_dma = num_dma;
 	dma_domain->aggregated_irq = aggregated_irq;

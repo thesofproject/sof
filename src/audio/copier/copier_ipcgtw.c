@@ -231,7 +231,7 @@ __cold int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	config->type = SOF_COMP_HOST;
 	cd->gtw_type = ipc4_gtw_host;
 
-	ipcgtw_data = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*ipcgtw_data));
+	ipcgtw_data = rzalloc(SOF_MEM_FLAG_USER, sizeof(*ipcgtw_data));
 	if (!ipcgtw_data)
 		return -ENOMEM;
 

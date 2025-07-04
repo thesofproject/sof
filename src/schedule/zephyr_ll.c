@@ -510,7 +510,7 @@ int zephyr_ll_task_init(struct task *task,
 	if (ret < 0)
 		return ret;
 
-	pdata = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM,
+	pdata = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			sizeof(*pdata));
 	if (!pdata) {
 		tr_err(&ll_tr, "zephyr_ll_task_init(): alloc failed");
@@ -532,7 +532,7 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	struct zephyr_ll *sch;
 
 	/* initialize per-core scheduler private data */
-	sch = rmalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
+	sch = rmalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
 	list_init(&sch->tasks);
 	sch->ll_domain = domain;
 	sch->core = cpu_get_id();

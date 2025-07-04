@@ -299,7 +299,7 @@ static int acp_dma_probe(struct dma *dma)
 		tr_err(&acpdma_tr, "DMA: Already probe");
 		return -EEXIST;
 	}
-	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_FLAG_KERNEL,
 			    dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
@@ -310,8 +310,7 @@ static int acp_dma_probe(struct dma *dma)
 		dma->chan[channel].dma = dma;
 		dma->chan[channel].index = channel;
 		dma->chan[channel].status = COMP_STATE_INIT;
-		acp_dma_chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
-				       SOF_MEM_CAPS_RAM,
+		acp_dma_chan = rzalloc(SOF_MEM_FLAG_KERNEL,
 				   sizeof(struct acp_dma_chan_data));
 		if (!acp_dma_chan) {
 			rfree(dma->chan);

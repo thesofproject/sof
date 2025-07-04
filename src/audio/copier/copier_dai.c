@@ -204,7 +204,7 @@ __cold static int copier_dai_init(struct comp_dev *dev,
 			return ret;
 	}
 
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd));
 	if (!dd)
 		return -ENOMEM;
 
@@ -223,8 +223,7 @@ __cold static int copier_dai_init(struct comp_dev *dev,
 
 	/* Allocate gain data if selected for this dai type and set basic params */
 	if (dai->apply_gain) {
-		struct copier_gain_params *gain_data = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED,
-							       0, SOF_MEM_CAPS_RAM,
+		struct copier_gain_params *gain_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 							       sizeof(*gain_data));
 		if (!gain_data) {
 			ret = -ENOMEM;

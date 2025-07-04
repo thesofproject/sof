@@ -292,9 +292,9 @@ __cold int ipc_init(struct sof *sof)
 	tr_dbg(&ipc_tr, "ipc_init()");
 
 	/* init ipc data */
-	sof->ipc = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));
-	sof->ipc->comp_data = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0,
-				      SOF_MEM_CAPS_RAM, SOF_IPC_MSG_MAX_SIZE);
+	sof->ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->ipc));
+	sof->ipc->comp_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				      SOF_IPC_MSG_MAX_SIZE);
 
 	k_spinlock_init(&sof->ipc->lock);
 	list_init(&sof->ipc->msg_list);

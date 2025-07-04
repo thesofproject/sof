@@ -171,7 +171,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	comp_info(dev, "mfcc_setup(), buffer_size = %d, prev_size = %d",
 		  state->buffer_size, state->prev_data_size);
 
-	state->buffers = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	state->buffers = rzalloc(SOF_MEM_FLAG_USER,
 				 state->sample_buffers_size);
 	if (!state->buffers) {
 		comp_err(dev, "mfcc_setup(): Failed buffer allocate");
@@ -189,14 +189,14 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 #else
 	fft->fft_buffer_size = fft->fft_padded_size * sizeof(struct icomplex32);
 #endif
-	fft->fft_buf = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, fft->fft_buffer_size);
+	fft->fft_buf = rzalloc(SOF_MEM_FLAG_USER, fft->fft_buffer_size);
 	if (!fft->fft_buf) {
 		comp_err(dev, "mfcc_setup(): Failed FFT buffer allocate");
 		ret = -ENOMEM;
 		goto free_buffers;
 	}
 
-	fft->fft_out = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, fft->fft_buffer_size);
+	fft->fft_out = rzalloc(SOF_MEM_FLAG_USER, fft->fft_buffer_size);
 	if (!fft->fft_out) {
 		comp_err(dev, "mfcc_setup(): Failed FFT output allocate");
 		ret = -ENOMEM;

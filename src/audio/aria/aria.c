@@ -126,7 +126,7 @@ static int aria_init(struct processing_module *mod)
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
 		return -ENOMEM;
 	}
@@ -145,7 +145,7 @@ static int aria_init(struct processing_module *mod)
 	}
 	mod_data->private = cd;
 
-	buf = rballoc(0, SOF_MEM_CAPS_RAM, req_mem);
+	buf = rballoc(SOF_MEM_FLAG_USER, req_mem);
 
 	if (!buf) {
 		rfree(cd);

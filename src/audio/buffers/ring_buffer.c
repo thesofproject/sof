@@ -280,11 +280,10 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 
 	/* allocate ring_buffer structure */
 	if (is_shared)
-		ring_buffer = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+		ring_buffer = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 				      sizeof(*ring_buffer));
 	else
-		ring_buffer = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(*ring_buffer));
+		ring_buffer = rzalloc(SOF_MEM_FLAG_USER, sizeof(*ring_buffer));
 	if (!ring_buffer)
 		return NULL;
 
@@ -354,7 +353,7 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 	ring_buffer->data_buffer_size =
 			ALIGN_UP(ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
 	ring_buffer->_data_buffer = (__sparse_force __sparse_cache void *)
-			rballoc_align(0, 0, ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
+			rballoc_align(SOF_MEM_FLAG_USER, ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
 	if (!ring_buffer->_data_buffer)
 		goto err;
 

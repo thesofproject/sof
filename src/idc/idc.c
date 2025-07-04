@@ -184,7 +184,7 @@ static int idc_prepare(uint32_t comp_id)
 	/* we're running LL on different core, so allocate our own task */
 	if (!dev->task && dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
 		/* allocate task for shared component */
-		dev->task = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		dev->task = rzalloc(SOF_MEM_FLAG_USER,
 				    sizeof(*dev->task));
 		if (!dev->task) {
 			ret = -ENOMEM;

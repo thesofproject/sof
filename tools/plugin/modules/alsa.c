@@ -147,7 +147,7 @@ static struct comp_dev *alsa_new(const struct comp_driver *drv,
 	dev->ipc_config = *config;
 
 	/* allocate  memory for file comp data */
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		goto error;
 

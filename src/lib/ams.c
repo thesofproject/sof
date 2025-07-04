@@ -585,7 +585,7 @@ int ams_init(void)
 	struct sof *sof;
 	int ret = 0;
 
-	*ams = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
+	*ams = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 		       sizeof(**ams));
 	if (!*ams)
 		return -ENOMEM;

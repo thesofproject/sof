@@ -451,14 +451,14 @@ int spi_probe(struct spi *spi)
 	/* configure the spi clock */
 	io_reg_write(SSI_SLAVE_CLOCK_CTL, 0x00000001);
 
-	spi->rx_buffer = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_DMA,
+	spi->rx_buffer = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_DMA,
 				 SPI_BUFFER_SIZE);
 	if (!spi->rx_buffer) {
 		tr_err(&ipc_tr, "eSp");
 		return -ENOMEM;
 	}
 
-	spi->tx_buffer = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_DMA,
+	spi->tx_buffer = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_DMA,
 				 SPI_BUFFER_SIZE);
 	spi->buffer_size = SPI_BUFFER_SIZE;
 	if (!spi->tx_buffer) {
@@ -508,7 +508,7 @@ int spi_install(const struct spi_platform_data *plat, size_t n)
 		goto unlock;
 	}
 
-	spi_devices = rmalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+	spi_devices = rmalloc(SOF_MEM_FLAG_KERNEL,
 			      sizeof(*spi) * n);
 	if (!spi_devices) {
 		ret = -ENOMEM;

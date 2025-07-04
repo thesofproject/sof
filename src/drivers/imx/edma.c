@@ -420,7 +420,7 @@ static int edma_probe(struct dma *dma)
 	}
 	tr_info(&edma_tr, "EDMA: probe");
 
-	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_FLAG_KERNEL,
 			    dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {

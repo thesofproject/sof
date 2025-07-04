@@ -189,9 +189,9 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size, u
 	tr_dbg(&buffer_tr, "buffer_alloc_struct()");
 
 	/* allocate new buffer	 */
-	enum mem_zone zone = is_shared ? SOF_MEM_ZONE_RUNTIME_SHARED : SOF_MEM_ZONE_RUNTIME;
+	int alloc_flags = is_shared ? SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 
-	buffer = rzalloc(zone, 0, SOF_MEM_CAPS_RAM, sizeof(*buffer));
+	buffer = rzalloc(alloc_flags, sizeof(*buffer));
 
 	if (!buffer) {
 		tr_err(&buffer_tr, "buffer_alloc_struct(): could not alloc structure");
@@ -233,7 +233,7 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t caps, uint32_t flags, uin
 		return NULL;
 	}
 
-	stream_addr = rballoc_align(0, caps, size, align);
+	stream_addr = rballoc_align(SOF_MEM_FLAG_USER, size, align);
 	if (!stream_addr) {
 		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %zu bytes of type = %u",
 		       size, caps);
@@ -270,7 +270,7 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 		preferred_size += minimum_size - preferred_size % minimum_size;
 
 	for (size = preferred_size; size >= minimum_size; size -= minimum_size) {
-		stream_addr = rballoc_align(0, caps, size, align);
+		stream_addr = rballoc_align(SOF_MEM_FLAG_USER,  size, align);
 		if (stream_addr)
 			break;
 	}
@@ -321,10 +321,10 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 
 	if (!alignment)
 		new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream), SOF_MEM_FLAG_NO_COPY,
-				    buffer->caps, size, audio_stream_get_size(&buffer->stream));
+				    size, audio_stream_get_size(&buffer->stream));
 	else
 		new_ptr = rbrealloc_align(audio_stream_get_addr(&buffer->stream),
-					  SOF_MEM_FLAG_NO_COPY, buffer->caps, size,
+					  SOF_MEM_FLAG_NO_COPY, size,
 					  audio_stream_get_size(&buffer->stream), alignment);
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > audio_stream_get_size(&buffer->stream)) {
@@ -369,7 +369,7 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	if (!alignment) {
 		for (new_size = preferred_size; new_size >= minimum_size;
 		     new_size -= minimum_size) {
-			new_ptr = rbrealloc(ptr, SOF_MEM_FLAG_NO_COPY, buffer->caps, new_size,
+			new_ptr = rbrealloc(ptr, SOF_MEM_FLAG_NO_COPY, new_size,
 					    actual_size);
 			if (new_ptr)
 				break;
@@ -377,7 +377,7 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	} else {
 		for (new_size = preferred_size; new_size >= minimum_size;
 		     new_size -= minimum_size) {
-			new_ptr = rbrealloc_align(ptr, SOF_MEM_FLAG_NO_COPY, buffer->caps, new_size,
+			new_ptr = rbrealloc_align(ptr, SOF_MEM_FLAG_NO_COPY, new_size,
 						  actual_size, alignment);
 			if (new_ptr)
 				break;

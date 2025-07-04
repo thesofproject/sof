@@ -329,7 +329,7 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 		return 0;
 
 	/* Allocate all IIR channels data in a big chunk and clear it */
-	cd->iir_delay = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	cd->iir_delay = rzalloc(SOF_MEM_FLAG_USER,
 				delay_size);
 	if (!cd->iir_delay) {
 		comp_err(mod->dev, "eq_iir_setup(), delay allocation fail");

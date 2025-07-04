@@ -435,8 +435,8 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 	 * Loadable modules are loaded to DRAM once and never unloaded from it.
 	 * Context, related to them, is never freed
 	 */
-	ctx->mod = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, SOF_MEM_FLAG_COHERENT,
-			   SOF_MEM_CAPS_RAM, n_mod * sizeof(ctx->mod[0]));
+	ctx->mod = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+			   n_mod * sizeof(ctx->mod[0]));
 	if (!ctx->mod)
 		return -ENOMEM;
 
@@ -528,7 +528,7 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 
 	if (!mctx->ebl) {
 		/* allocate once, never freed */
-		mctx->ebl = rmalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+		mctx->ebl = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 				    sizeof(struct llext_buf_loader));
 		if (!mctx->ebl) {
 			tr_err(&lib_manager_tr, "loader alloc failed");

@@ -140,7 +140,7 @@ int platform_ipc_init(struct ipc *ipc)
 #if CONFIG_HOST_PTABLE
 	struct ipc_data *iipc;
 
-	iipc = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*iipc));
+	iipc = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*iipc));
 	if (!iipc) {
 		tr_err(&ipc_tr, "Unable to allocate IPC private data");
 		return -ENOMEM;
@@ -158,7 +158,7 @@ int platform_ipc_init(struct ipc *ipc)
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->dh_buffer.page_table =
-		rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, PLATFORM_PAGE_TABLE_SIZE);
+		rzalloc(SOF_MEM_FLAG_KERNEL, PLATFORM_PAGE_TABLE_SIZE);
 
 	iipc->dh_buffer.dmac = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
 	if (!iipc->dh_buffer.dmac) {

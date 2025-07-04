@@ -220,7 +220,7 @@ static int eq_fir_setup(struct comp_dev *dev, struct comp_data *cd, int nch)
 		return 0;
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	cd->fir_delay = rballoc(0, SOF_MEM_CAPS_RAM, delay_size);
+	cd->fir_delay = rballoc(SOF_MEM_FLAG_USER, delay_size);
 	if (!cd->fir_delay) {
 		comp_err(dev, "eq_fir_setup(), delay allocation failed for size %d", delay_size);
 		return -ENOMEM;
@@ -264,7 +264,7 @@ static int eq_fir_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 

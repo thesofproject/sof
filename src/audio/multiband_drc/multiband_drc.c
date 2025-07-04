@@ -72,7 +72,7 @@ static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
 	if (SOF_EMP_DEEMP_BIQUADS != SOF_IIR_DF1_4TH_NUM_BIQUADS)
 		return -EINVAL;
 
-	eq->coef = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	eq->coef = rzalloc(SOF_MEM_FLAG_USER,
 			   sizeof(struct sof_eq_iir_biquad) * SOF_EMP_DEEMP_BIQUADS);
 	if (!eq->coef)
 		return -ENOMEM;
@@ -86,7 +86,7 @@ static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
 	 * delay[0..1] -> state for first biquad
 	 * delay[2..3] -> state for second biquad
 	 */
-	eq->delay = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	eq->delay = rzalloc(SOF_MEM_FLAG_USER,
 			    sizeof(uint64_t) * CROSSOVER_NUM_DELAYS_LR4);
 	if (!eq->delay)
 		return -ENOMEM;
@@ -243,7 +243,7 @@ static int multiband_drc_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 

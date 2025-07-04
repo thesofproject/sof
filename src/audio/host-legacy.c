@@ -578,7 +578,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	hd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*hd));
 	if (!hd)
 		goto e_data;
 
@@ -759,7 +759,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 			goto out;
 		}
 	} else {
-		hd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0,
+		hd->dma_buffer = buffer_alloc(buffer_size, 0, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 					      addr_align, false);
 		if (!hd->dma_buffer) {
 			comp_err(dev, "host_params(): failed to alloc dma buffer");

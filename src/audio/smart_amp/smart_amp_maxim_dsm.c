@@ -838,7 +838,7 @@ struct smart_amp_mod_data_base *mod_data_create(const struct comp_dev *dev)
 {
 	struct smart_amp_mod_struct_t *hspk;
 
-	hspk = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hspk));
+	hspk = rzalloc(SOF_MEM_FLAG_USER, sizeof(*hspk));
 	if (!hspk)
 		return NULL;
 

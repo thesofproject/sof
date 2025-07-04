@@ -41,8 +41,7 @@ static void SetFormats(GoogleRtcAudioProcessingState *const state,
 
 	state->num_aec_reference_channels = num_render_channels;
 	rfree(state->aec_reference);
-	state->aec_reference = rballoc(0,
-				       SOF_MEM_CAPS_RAM,
+	state->aec_reference = rballoc(SOF_MEM_FLAG_USER,
 				       sizeof(state->aec_reference[0]) *
 				       state->num_frames *
 				       state->num_aec_reference_channels);
@@ -66,7 +65,7 @@ GoogleRtcAudioProcessingState *GoogleRtcAudioProcessingCreateWithConfig(int capt
 									int config_size)
 {
 	struct GoogleRtcAudioProcessingState *s =
-		rballoc(0, SOF_MEM_CAPS_RAM, sizeof(GoogleRtcAudioProcessingState));
+		rballoc(SOF_MEM_FLAG_USER, sizeof(GoogleRtcAudioProcessingState));
 	if (!s)
 		return NULL;
 

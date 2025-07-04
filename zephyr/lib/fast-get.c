@@ -45,7 +45,7 @@ static int fast_get_realloc(struct sof_fast_get_data *data)
 	const unsigned int init_n_entries = 8;
 	unsigned int n_entries = data->num_entries ? data->num_entries * 2 : init_n_entries;
 
-	entries = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
+	entries = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			  n_entries * sizeof(*entries));
 	if (!entries)
 		return -ENOMEM;
@@ -116,7 +116,7 @@ const void *fast_get(const void *dram_ptr, size_t size)
 		goto out;
 	}
 
-	ret = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, size);
+	ret = rmalloc(SOF_MEM_FLAG_USER, size);
 	if (!ret)
 		goto out;
 	entry->size = size;

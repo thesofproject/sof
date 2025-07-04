@@ -81,7 +81,7 @@ int volume_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct vol_data));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct vol_data));
 	if (!cd)
 		return -ENOMEM;
 
@@ -89,7 +89,7 @@ int volume_init(struct processing_module *mod)
 	 * malloc memory to store current volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
 	 */
-	cd->vol = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, vol_size);
+	cd->vol = rmalloc(SOF_MEM_FLAG_USER, vol_size);
 	if (!cd->vol) {
 		rfree(cd);
 		comp_err(dev, "volume_init(): Failed to allocate %zu", vol_size);
