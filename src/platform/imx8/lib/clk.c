@@ -11,9 +11,7 @@
 #include <sof/lib/notifier.h>
 #include <rtos/sof.h>
 
-#ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
-#endif
 
 const struct freq_table platform_cpu_freq[] = {
 #ifdef CONFIG_IMX8

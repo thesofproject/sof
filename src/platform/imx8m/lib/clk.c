@@ -10,9 +10,7 @@
 #include <sof/lib/notifier.h>
 #include <rtos/sof.h>
 
-#ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
-#endif
 
 const struct freq_table platform_cpu_freq[] = {
 	{ 800000000, 800000 },
