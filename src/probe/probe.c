@@ -338,6 +338,8 @@ static enum task_state probe_task(void *data)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
+static void probe_auto_enable_logs(uint32_t stream_tag);
+
 int probe_init(const struct probe_dma *probe_dma)
 {
 	struct probe_pdata *_probe = probe_get();
@@ -404,6 +406,10 @@ int probe_init(const struct probe_dma *probe_dma)
 	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++)
 		_probe->probe_points[i].stream_tag = PROBE_POINT_INVALID;
 
+#if LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
+	if (probe_dma)
+		probe_auto_enable_logs(probe_dma->stream_tag);
+#endif
 	return 0;
 }
 
@@ -836,27 +842,32 @@ static void kick_probe_task(struct probe_pdata *_probe)
 }
 
 #if CONFIG_LOG_BACKEND_SOF_PROBE
-static void probe_logging_hook(uint8_t *buffer, size_t length)
+static int probe_logging_hook(uint8_t *buffer, size_t length)
 {
 	struct probe_pdata *_probe = probe_get();
+	uint32_t max_len;
 	uint64_t checksum;
 	int ret;
 
+	max_len = _probe->ext_dma.dmapb.avail - sizeof(struct probe_data_packet) - sizeof(checksum);
+	length = MIN(max_len, (uint32_t)length);
+
 	ret = probe_gen_header(PROBE_LOGGING_BUFFER_ID, length, 0, &checksum);
 	if (ret < 0)
-		return;
+		return ret;
 
 	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
 			      buffer, length);
 	if (ret < 0)
-		return;
+		return ret;
 
 	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
 			      &checksum, sizeof(checksum));
 	if (ret < 0)
-		return;
+		return ret;
 
 	kick_probe_task(_probe);
+	return length;
 }
 #endif
 
@@ -1293,6 +1304,27 @@ int probe_point_add(uint32_t count, const struct probe_point *probe)
 	}
 
 	return 0;
+}
+
+static void probe_auto_enable_logs(uint32_t stream_tag)
+{
+	struct probe_point log_point = {
+#if CONFIG_IPC_MAJOR_4
+		.buffer_id = {
+			.full_id = 0,
+		},
+#else
+		.buffer_id = 0,
+#endif
+		.purpose = PROBE_PURPOSE_EXTRACTION,
+		.stream_tag = stream_tag,
+	};
+	int ret;
+
+	ret = probe_point_add(1, &log_point);
+
+	if (ret)
+		tr_err(&pr_tr, "probe_auto_enable_logs() failed");
 }
 
 #if CONFIG_IPC_MAJOR_3

@@ -33,4 +33,14 @@ config LOG_BACKEND_SOF_PROBE_OUTPUT
         help
                 Set the logging format for SOF probe output.
 
+config LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
+       bool "Automatically enable probes logging when probe dma is started"
+       depends on LOG_BACKEND_SOF_PROBE_OUTPUT
+       help
+                Automatically enable logging as soon as probes DMA
+                starts. This option simplifies probes logging back
+                end usage as there is no need to enable logs after
+                every boot. The probes DMA is still needed before the
+		log output can be enabled.
+
 endmenu
