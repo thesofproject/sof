@@ -265,7 +265,7 @@ static int ctc_init(struct processing_module *mod)
 	comp_info(dev, "ctc_init()");
 
 	/* Create private component data */
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
 		comp_err(dev, "ctc_init(): Failed to create component data");
 		ctc_free(mod);
@@ -277,13 +277,13 @@ static int ctc_init(struct processing_module *mod)
 	cd->chunk_frames = kChunkFrames;
 	buf_size = cd->chunk_frames * sizeof(cd->input[0]) * kMaxChannels;
 
-	cd->input = rballoc(0, SOF_MEM_CAPS_RAM, buf_size);
+	cd->input = rballoc(SOF_MEM_FLAG_USER, buf_size);
 	if (!cd->input) {
 		comp_err(dev, "ctc_init(): Failed to allocate input buffer");
 		ctc_free(mod);
 		return -ENOMEM;
 	}
-	cd->output = rballoc(0, SOF_MEM_CAPS_RAM, buf_size);
+	cd->output = rballoc(SOF_MEM_FLAG_USER, buf_size);
 	if (!cd->output) {
 		comp_err(dev, "ctc_init(): Failed to allocate output buffer");
 		ctc_free(mod);

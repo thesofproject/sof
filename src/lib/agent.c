@@ -102,7 +102,7 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	else
 		tr_info(&sa_tr, "sa_init(), timeout = %u", (unsigned int)timeout);
 
-	sof->sa = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->sa));
+	sof->sa = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->sa));
 
 	/* set default timeouts */
 	ticks = k_us_to_cyc_ceil64(timeout);

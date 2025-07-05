@@ -533,7 +533,7 @@ int src_params_general(struct processing_module *mod,
 	/* free any existing delay lines. TODO reuse if same size */
 	rfree(cd->delay_lines);
 
-	cd->delay_lines = rballoc(0, SOF_MEM_CAPS_RAM, delay_lines_size);
+	cd->delay_lines = rballoc(SOF_MEM_FLAG_USER, delay_lines_size);
 	if (!cd->delay_lines) {
 		comp_err(dev, "src_params(): failed to alloc cd->delay_lines, delay_lines_size = %zu",
 			 delay_lines_size);
@@ -607,7 +607,7 @@ int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
 	size_t tap_size = sizeof(int32_t);
 #endif
 
-	stage_dst = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	stage_dst = rmalloc(SOF_MEM_FLAG_USER,
 			    2 * sizeof(*stage_dst));
 	if (!stage_dst) {
 		comp_err(dev, "failed to allocate stages");

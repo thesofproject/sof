@@ -98,7 +98,7 @@ static int probe_dma_buffer_init(struct probe_dma_buf *buffer, uint32_t size,
 				 uint32_t align)
 {
 	/* allocate new buffer */
-	buffer->addr = (uintptr_t)rballoc_align(0, SOF_MEM_CAPS_DMA,
+	buffer->addr = (uintptr_t)rballoc_align(0 | SOF_MEM_FLAG_DMA,
 						size, align);
 
 	if (!buffer->addr) {
@@ -352,7 +352,7 @@ int probe_init(const struct probe_dma *probe_dma)
 	}
 
 	/* alloc probes main struct */
-	sof_get()->probe = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	sof_get()->probe = rzalloc(SOF_MEM_FLAG_USER,
 				   sizeof(*_probe));
 	_probe = probe_get();
 

@@ -64,7 +64,7 @@ static int tester_init(struct processing_module *mod)
 	/* allocate ctx for test module in shared memory - to allow all non-standard operations
 	 * without problems with cache
 	 */
-	cd = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*cd));
 	if (!cd) {
 		comp_err(dev, "Out of memory");
 		return -ENOMEM;

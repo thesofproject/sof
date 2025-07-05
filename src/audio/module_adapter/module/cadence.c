@@ -235,7 +235,7 @@ static int cadence_codec_post_init(struct processing_module *mod)
 		return ret;
 	}
 	/* Allocate space for codec object */
-	cd->self = rballoc(0, SOF_MEM_CAPS_RAM, obj_size);
+	cd->self = rballoc(SOF_MEM_FLAG_USER, obj_size);
 	if (!cd->self) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
 		return -ENOMEM;
@@ -268,7 +268,7 @@ static int cadence_codec_init(struct processing_module *mod)
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct cadence_codec_data));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct cadence_codec_data));
 	if (!cd) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
 		return -ENOMEM;
@@ -284,7 +284,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		cfg = (const struct ipc4_cadence_module_cfg *)codec->cfg.init_data;
 
 		/* allocate memory for set up config */
-		setup_cfg->data = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		setup_cfg->data = rmalloc(SOF_MEM_FLAG_USER,
 					  cfg->param_size);
 		if (!setup_cfg->data) {
 			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
@@ -293,7 +293,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		}
 
 		/* allocate memory for runtime set up config */
-		codec->cfg.data = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		codec->cfg.data = rmalloc(SOF_MEM_FLAG_USER,
 					  cfg->param_size);
 		if (!codec->cfg.data) {
 			comp_err(dev, "cadence_codec_init(): failed to alloc runtime setup config");
@@ -345,7 +345,7 @@ static int cadence_codec_init(struct processing_module *mod)
 
 	comp_dbg(dev, "cadence_codec_init() start");
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(struct cadence_codec_data));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct cadence_codec_data));
 	if (!cd) {
 		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
 		return -ENOMEM;
@@ -359,7 +359,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		setup_cfg = &cd->setup_cfg;
 
 		/* allocate memory for set up config */
-		setup_cfg->data = rmalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		setup_cfg->data = rmalloc(SOF_MEM_FLAG_USER,
 					  codec->cfg.size);
 		if (!setup_cfg->data) {
 			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");

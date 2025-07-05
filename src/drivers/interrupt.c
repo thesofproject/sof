@@ -73,7 +73,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 
 	}
 
-	*cascade = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(**cascade));
+	*cascade = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(**cascade));
 
 	k_spinlock_init(&(*cascade)->lock);
 
@@ -205,7 +205,7 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		/* init child from run-time, may be registered and unregistered
 		 * many times at run-time
 		 */
-		child = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+		child = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 				sizeof(struct irq_desc));
 		if (!child) {
 			ret = -ENOMEM;

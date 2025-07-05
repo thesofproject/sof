@@ -468,7 +468,7 @@ static int sai_probe(struct dai *dai)
 	dai_info(dai, "SAI: sai_probe");
 
 	/* allocate private data */
-	sai = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sai));
+	sai = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*sai));
 	if (!sai) {
 		dai_err(dai, "sai_probe(): alloc failed");
 		return -ENOMEM;

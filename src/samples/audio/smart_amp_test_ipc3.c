@@ -61,7 +61,7 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	sad = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*sad));
+	sad = rzalloc(SOF_MEM_FLAG_USER, sizeof(*sad));
 	if (!sad)
 		goto fail;
 

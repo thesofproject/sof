@@ -227,7 +227,7 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 	if (type != COMP_ATTR_BASE_CONFIG)
 		return -EINVAL;
 
-	base_cfg = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*base_cfg));
+	base_cfg = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*base_cfg));
 	if (!base_cfg)
 		return -ENOMEM;
 

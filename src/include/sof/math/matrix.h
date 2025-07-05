@@ -37,7 +37,7 @@ static inline struct mat_matrix_16b *mat_matrix_alloc_16b(int16_t rows, int16_t 
 	struct mat_matrix_16b *mat;
 	const int mat_size = sizeof(int16_t) * rows * columns + sizeof(struct mat_matrix_16b);
 
-	mat = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, mat_size);
+	mat = rzalloc(SOF_MEM_FLAG_USER, mat_size);
 	if (mat)
 		mat_init_16b(mat, rows, columns, fractions);
 

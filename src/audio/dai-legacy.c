@@ -196,7 +196,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd));
 	if (!dd) {
 		rfree(dev);
 		return NULL;
@@ -561,7 +561,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 			return err;
 		}
 	} else {
-		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_CAPS_DMA, 0,
+		dd->dma_buffer = buffer_alloc(buffer_size, 0, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 					      addr_align, false);
 		if (!dd->dma_buffer) {
 			comp_err(dev, "dai_params(): failed to alloc dma buffer");

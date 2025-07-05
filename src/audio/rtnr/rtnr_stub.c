@@ -73,7 +73,7 @@ void *RTKMA_API_Context_Create(int sample_rate)
 	/* Allocate something, to avoid return NULL and cause error
 	 * in check of success of this.
 	 */
-	return rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, RTNR_STUB_CONTEXT_SIZE);
+	return rzalloc(SOF_MEM_FLAG_USER, RTNR_STUB_CONTEXT_SIZE);
 }
 
 void RTKMA_API_Context_Free(void *Context)

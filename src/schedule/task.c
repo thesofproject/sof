@@ -74,7 +74,7 @@ void task_main_init(void)
 		.get_deadline = task_main_deadline,
 	};
 
-	*main_task = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM,
+	*main_task = rzalloc(SOF_MEM_FLAG_KERNEL,
 			     sizeof(**main_task));
 
 	ret = schedule_task_init_edf(*main_task, SOF_UUID(main_task_uuid),

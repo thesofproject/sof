@@ -360,7 +360,7 @@ static int memif_probe(struct dma *dma)
 		return ret;
 	}
 
-	dma->chan = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_FLAG_KERNEL,
 			    dma->plat_data.channels * sizeof(struct dma_chan_data));
 	if (!dma->chan) {
 		tr_err(&memif_tr, "MEMIF: Probe failure, unable to allocate channel descriptors");
@@ -373,7 +373,7 @@ static int memif_probe(struct dma *dma)
 		dma->chan[channel].index = channel;
 		dma->chan[channel].status = COMP_STATE_INIT;
 
-		memif = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+		memif = rzalloc(SOF_MEM_FLAG_KERNEL,
 				sizeof(struct afe_memif_dma));
 		if (!memif) {
 			tr_err(&memif_tr, "afe-memif: %d channel %d private data alloc failed",

@@ -621,7 +621,7 @@ int schedule_task_init_ll(struct task *task,
 	if (ll_sch_get_pdata(task))
 		return -EEXIST;
 
-	ll_pdata = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	ll_pdata = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			   sizeof(*ll_pdata));
 
 	if (!ll_pdata) {
@@ -781,7 +781,7 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	struct ll_schedule_data *sch;
 
 	/* initialize scheduler private data */
-	sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
+	sch = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*sch));
 	list_init(&sch->tasks);
 	atomic_init(&sch->num_tasks, 0);
 	sch->domain = domain;

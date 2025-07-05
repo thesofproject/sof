@@ -149,7 +149,7 @@ int dma_trace_init_early(struct sof *sof)
 	 */
 	assert(!dma_trace_initialized(sof->dmat));
 
-	sof->dmat = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*sof->dmat));
+	sof->dmat = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->dmat));
 
 	dma_sg_init(&sof->dmat->config.elem_array);
 	k_spinlock_init(&sof->dmat->lock);
@@ -284,7 +284,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 		return err;
 
 	/* For DMA to work properly the buffer must be correctly aligned */
-	buf = rballoc_align(0, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+	buf = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 			    DMA_TRACE_LOCAL_SIZE, addr_align);
 	if (!buf) {
 		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_buffer_init(): alloc failed");

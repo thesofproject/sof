@@ -587,7 +587,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev,
 		elem_array = &hd->local.elem_array;
 
 		/* config buffer will be used as proxy */
-		err = dma_sg_alloc(&hd->config.elem_array, SOF_MEM_ZONE_RUNTIME,
+		err = dma_sg_alloc(&hd->config.elem_array,
 				   dir, 1, 0, 0, 0);
 		if (err < 0) {
 			comp_err(dev, "dma_sg_alloc() failed");
@@ -597,7 +597,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev,
 		elem_array = &hd->config.elem_array;
 	}
 
-	err = dma_sg_alloc(elem_array, SOF_MEM_ZONE_RUNTIME, dir, buffer_count,
+	err = dma_sg_alloc(elem_array, dir, buffer_count,
 			   buffer_bytes,
 			   (uintptr_t)audio_stream_get_addr(&hd->dma_buffer->stream), 0);
 	if (err < 0) {
@@ -727,7 +727,7 @@ __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	hd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*hd));
 	if (!hd)
 		goto e_data;
 
@@ -982,8 +982,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 	memset(dma_cfg, 0, sizeof(*dma_cfg));
 
-	dma_block_cfg = rzalloc(SOF_MEM_ZONE_RUNTIME, 0,
-				SOF_MEM_CAPS_RAM,
+	dma_block_cfg = rzalloc(SOF_MEM_FLAG_USER,
 				sizeof(*dma_block_cfg));
 
 	if (!dma_block_cfg) {

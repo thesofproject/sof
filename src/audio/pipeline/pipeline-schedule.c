@@ -240,7 +240,7 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type)
 {
 	struct pipeline_task *task = NULL;
 
-	task = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	task = rzalloc(SOF_MEM_FLAG_USER,
 		       sizeof(*task));
 	if (!task)
 		return NULL;

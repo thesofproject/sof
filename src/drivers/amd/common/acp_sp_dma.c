@@ -113,8 +113,8 @@ static int acp_dai_sp_dma_probe(struct dma *dma)
 		tr_err(&acp_sp_tr, "Repeated probe");
 		return -EEXIST;
 	}
-	dma->chan = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0,
-			    SOF_MEM_CAPS_RAM, dma->plat_data.channels *
+	dma->chan = rzalloc(SOF_MEM_FLAG_KERNEL,
+			    dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
 		tr_err(&acp_sp_tr, "Probe failure,unable to allocate channel descriptors");

@@ -182,7 +182,7 @@ static inline void *__coherent_init(size_t offset, const size_t size)
 	 * line boundary to avoid sharing a cache line with the adjacent
 	 * allocation
 	 */
-	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	void *object = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			       ALIGN_UP(size, PLATFORM_DCACHE_ALIGN));
 	struct coherent *c;
 
@@ -272,7 +272,7 @@ static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 static inline void *__coherent_init_thread(size_t offset, const size_t size)
 {
 	/* As above - prevent cache line sharing */
-	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	void *object = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			       ALIGN_UP(size, PLATFORM_DCACHE_ALIGN));
 	struct coherent *c;
 
@@ -348,7 +348,7 @@ static inline void coherent_release(struct coherent __sparse_cache *c,
 static inline void *__coherent_init(size_t offset, const size_t size)
 {
 	/* As in CONFIG_INCOHERENT case - prevent cache line sharing */
-	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	void *object = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			       ALIGN_UP(size, PLATFORM_DCACHE_ALIGN));
 	struct coherent *c;
 
@@ -401,7 +401,7 @@ static inline void coherent_release_thread(struct coherent __sparse_cache *c,
 static inline void *__coherent_init_thread(size_t offset, const size_t size)
 {
 	/* As above - prevent cache line sharing */
-	void *object = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
+	void *object = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			       ALIGN_UP(size, PLATFORM_DCACHE_ALIGN));
 	struct coherent *c;
 

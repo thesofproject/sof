@@ -49,8 +49,8 @@ struct ipc_msg *lib_notif_msg_init(uint32_t header, uint32_t size)
 			return NULL;
 		}
 
-		msg_pool_elem = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0,
-					SOF_MEM_CAPS_RAM, sizeof(*msg_pool_elem));
+		msg_pool_elem = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					sizeof(*msg_pool_elem));
 		if (!msg_pool_elem)
 			return NULL;
 		msg = ipc_msg_init(header, SRAM_OUTBOX_SIZE);

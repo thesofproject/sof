@@ -673,7 +673,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 
 	if (!cd)
 		goto fail;
@@ -736,7 +736,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 #if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
 	/* global buffer to accumulate data for processing */
-	cd->input = rballoc_align(0, SOF_MEM_CAPS_RAM,
+	cd->input = rballoc_align(SOF_MEM_FLAG_USER,
 				  sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE, 64);
 	if (!cd->input) {
 		comp_err(dev, "test_keyword_new(): input alloc failed");

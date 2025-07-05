@@ -159,7 +159,7 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &timer_domain_ops);
 
-	timer_domain = rzalloc(SOF_MEM_ZONE_SYS_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*timer_domain));
+	timer_domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*timer_domain));
 	timer_domain->timer = timer;
 
 	ll_sch_domain_set_pdata(domain, timer_domain);

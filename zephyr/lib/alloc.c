@@ -226,7 +226,7 @@ static void l3_heap_free(struct k_heap *h, void *mem)
 #endif
 
 #if CONFIG_VIRTUAL_HEAP
-static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, uint32_t caps, size_t bytes,
+static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, size_t bytes,
 				uint32_t align)
 {
 	void *mem = vmh_alloc(heap, bytes);
@@ -372,41 +372,22 @@ static void heap_free(struct k_heap *h, void *mem)
 	k_spin_unlock(&h->lock, key);
 }
 
-static inline bool zone_is_cached(enum mem_zone zone)
-{
-#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
-	switch (zone) {
-	case SOF_MEM_ZONE_SYS:
-	case SOF_MEM_ZONE_SYS_RUNTIME:
-	case SOF_MEM_ZONE_RUNTIME:
-	case SOF_MEM_ZONE_BUFFER:
-		return true;
-	default:
-		break;
-	}
-#endif
 
-	return false;
-}
-
-void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *rmalloc(uint32_t flags, size_t bytes)
 {
 	void *ptr;
 	struct k_heap *heap;
 
 	/* choose a heap */
-	if (caps & SOF_MEM_CAPS_L3) {
+	if (flags & SOF_MEM_FLAG_L3) {
 #if CONFIG_L3_HEAP
 		heap = &l3_heap;
 		/* Uncached L3_HEAP should not be used */
-		if (!zone_is_cached(zone)) {
+		if (flags & SOF_MEM_FLAG_COHERENT) {
 			tr_err(&zephyr_tr, "L3_HEAP available for cached zones only!");
 			return NULL;
 		}
 		ptr = (__sparse_force void *)l3_heap_alloc_aligned(heap, 0, bytes);
-
-		if (!ptr && zone == SOF_MEM_ZONE_SYS)
-			k_panic();
 
 		return ptr;
 #else
@@ -416,7 +397,7 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		heap = &sof_heap;
 	}
 
-	if (zone_is_cached(zone) && !(flags & SOF_MEM_FLAG_COHERENT)) {
+	if (!(flags & SOF_MEM_FLAG_COHERENT)) {
 		ptr = (__sparse_force void *)heap_alloc_aligned_cached(heap, 0, bytes);
 	} else {
 		/*
@@ -426,22 +407,19 @@ void *rmalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
 		ptr = heap_alloc_aligned(heap, PLATFORM_DCACHE_ALIGN, bytes);
 	}
 
-	if (!ptr && zone == SOF_MEM_ZONE_SYS)
-		k_panic();
-
 	return ptr;
 }
 EXPORT_SYMBOL(rmalloc);
 
 /* Use SOF_MEM_ZONE_BUFFER at the moment */
-void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
+void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
 		      size_t old_bytes, uint32_t alignment)
 {
 	void *new_ptr;
 
 	if (!ptr) {
 		/* TODO: Use correct zone */
-		return rballoc_align(flags, caps, bytes, alignment);
+		return rballoc_align(flags, bytes, alignment);
 	}
 
 	/* Original version returns NULL without freeing this memory */
@@ -451,7 +429,7 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
 		return NULL;
 	}
 
-	new_ptr = rballoc_align(flags, caps, bytes, alignment);
+	new_ptr = rballoc_align(flags, bytes, alignment);
 	if (!new_ptr)
 		return NULL;
 
@@ -471,9 +449,9 @@ void *rbrealloc_align(void *ptr, uint32_t flags, uint32_t caps, size_t bytes,
  * @note Do not use  for buffers (SOF_MEM_ZONE_BUFFER zone).
  *       rballoc(), rballoc_align() to allocate memory for buffers.
  */
-void *rzalloc(enum mem_zone zone, uint32_t flags, uint32_t caps, size_t bytes)
+void *rzalloc(uint32_t flags, size_t bytes)
 {
-	void *ptr = rmalloc(zone, flags, caps, bytes);
+	void *ptr = rmalloc(flags, bytes);
 
 	if (ptr)
 		memset(ptr, 0, bytes);
@@ -490,13 +468,13 @@ EXPORT_SYMBOL(rzalloc);
  * @param align Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  */
-void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
+void *rballoc_align(uint32_t flags, size_t bytes,
 		    uint32_t align)
 {
 	struct k_heap *heap;
 
 	/* choose a heap */
-	if (caps & SOF_MEM_CAPS_L3) {
+	if (flags & SOF_MEM_FLAG_L3) {
 #if CONFIG_L3_HEAP
 		heap = &l3_heap;
 		return (__sparse_force void *)l3_heap_alloc_aligned(heap, align, bytes);
@@ -511,7 +489,7 @@ void *rballoc_align(uint32_t flags, uint32_t caps, size_t bytes,
 #if CONFIG_VIRTUAL_HEAP
 	/* Use virtual heap if it is available */
 	if (virtual_buffers_heap)
-		return virtual_heap_alloc(virtual_buffers_heap, flags, caps, bytes, align);
+		return virtual_heap_alloc(virtual_buffers_heap, flags, bytes, align);
 #endif /* CONFIG_VIRTUAL_HEAP */
 
 	if (flags & SOF_MEM_FLAG_COHERENT)

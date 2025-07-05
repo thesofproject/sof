@@ -86,7 +86,7 @@ struct inner_model_ops;
  *    struct smart_amp_mod_data_base *mod_data_create(const struct comp_dev *dev)
  *    {
  *            struct solution_foo_mod_data *foo;
- *            foo = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*foo));
+ *            foo = rzalloc(SOF_MEM_FLAG_USER, sizeof(*foo));
  *            assert(foo);
  *            foo->base.dev = dev;
  *            foo->base.mod_ops = foo_ops; // declared somewhere as static const

@@ -59,7 +59,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 		goto out;
 	}
 
-	handle = rzalloc(SOF_MEM_ZONE_SYS_RUNTIME, 0, SOF_MEM_CAPS_RAM,
+	handle = rzalloc(SOF_MEM_FLAG_USER,
 			 sizeof(*handle));
 
 	if (!handle) {
@@ -194,7 +194,7 @@ void init_system_notify(struct sof *sof)
 {
 	struct notify **notify = arch_notify_get();
 	int i;
-	*notify = rzalloc(SOF_MEM_ZONE_SYS, SOF_MEM_FLAG_COHERENT, SOF_MEM_CAPS_RAM,
+	*notify = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			  sizeof(**notify));
 
 	k_spinlock_init(&(*notify)->lock);

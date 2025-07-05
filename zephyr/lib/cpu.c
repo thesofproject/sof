@@ -173,7 +173,7 @@ void cpu_notify_state_entry(enum pm_state state)
 		storage_buffer_size += LP_SRAM_SIZE;
 
 		/* allocate IMR buffer and store it in the global pointer */
-		global_imr_ram_storage = rballoc_align(0, SOF_MEM_CAPS_L3,
+		global_imr_ram_storage = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_L3,
 						       storage_buffer_size,
 						       PLATFORM_DCACHE_ALIGN);
 

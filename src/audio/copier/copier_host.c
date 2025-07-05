@@ -62,7 +62,7 @@ __cold static int add_to_fpi_sync_group(struct comp_dev *parent_dev,
 
 		group->ref_count++;
 	} else {
-		group = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*group));
+		group = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*group));
 		if (!group) {
 			comp_err(parent_dev, "Failed to alloc memory for new group");
 			return -ENOMEM;
@@ -177,7 +177,7 @@ __cold int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 	ipc_host.feature_mask = copier_cfg->copier_feature_mask;
 
-	hd = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(*hd));
+	hd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*hd));
 	if (!hd)
 		return -ENOMEM;
 
