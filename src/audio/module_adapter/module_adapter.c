@@ -90,7 +90,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 
-	mod = rzalloc(flags, sizeof(*mod));
+	mod = drv_heap_rzalloc(drv->drv_heap, flags, sizeof(*mod));
 	if (!mod) {
 		comp_err(dev, "module_adapter_new(), failed to allocate memory for module");
 		goto err;
