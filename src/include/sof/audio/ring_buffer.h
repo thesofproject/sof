@@ -97,6 +97,7 @@
  *		always means "buffer full"
  */
 
+struct comp_dev;
 struct ring_buffer;
 struct sof_audio_stream_params;
 
@@ -114,6 +115,7 @@ struct ring_buffer {
 
 /**
  *
+ * @param dev pointer to the DP module device structure
  * @param min_available  minimum data available in queue required by the module using
  *			 ring_buffer's source api
  * @param min_free_space minimum buffer space in queue required by the module using
@@ -122,7 +124,8 @@ struct ring_buffer {
  * @param id a stream ID, accessible later by sink_get_id/source_get_id
  *
  */
-struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, bool is_shared,
+struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_available,
+				       size_t min_free_space, bool is_shared,
 				       uint32_t id);
 
 #endif /* __SOF_RING_BUFFER_H__ */

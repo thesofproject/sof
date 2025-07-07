@@ -603,25 +603,23 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
 	    source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-		struct sof_source *source = audio_buffer_get_source(&buffer->audio_buffer);
-		struct sof_sink *sink = audio_buffer_get_sink(&buffer->audio_buffer);
+		bool dp_on_source = source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP;
+		struct sof_source *src = audio_buffer_get_source(&buffer->audio_buffer);
+		struct sof_sink *snk = audio_buffer_get_sink(&buffer->audio_buffer);
 
-		ring_buffer = ring_buffer_create(source_get_min_available(source),
-						 sink_get_min_free_space(sink),
+		ring_buffer = ring_buffer_create(dp_on_source ? source : sink,
+						 source_get_min_available(src),
+						 sink_get_min_free_space(snk),
 						 audio_buffer_is_shared(&buffer->audio_buffer),
 						 buf_get_id(buffer));
 		if (!ring_buffer)
 			goto free;
+
+		/* data destination module needs to use ring_buffer */
+		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, dp_on_source,
+						     &ring_buffer->audio_buffer);
 	}
 
-	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		/* data destination module needs to use ring_buffer */
-		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, false, /* at_input */
-						     &ring_buffer->audio_buffer);
-	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		/* data source module needs to use ring_buffer */
-		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, true, /* at_input */
-						     &ring_buffer->audio_buffer);
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	/*
 	 * Connect and bind the buffer to both source and sink components with LL processing been
