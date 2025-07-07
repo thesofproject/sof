@@ -31,6 +31,10 @@ DECLARE_TR_CTX(pm_tr, SOF_UUID(pm_runtime_uuid), LOG_LEVEL_INFO);
 void pm_runtime_init(struct sof *sof)
 {
 	sof->prd = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*sof->prd));
+	if (!sof->prd) {
+		tr_err(&pm_tr, "pm_runtime_init(): allocation failed");
+		return;
+	}
 	k_spinlock_init(&sof->prd->lock);
 
 	platform_pm_runtime_init(sof->prd);
@@ -147,6 +151,10 @@ void init_dsp_r_state(enum dsp_r_state r_state)
 	struct r_counters_data *r_counters;
 
 	r_counters = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*r_counters));
+	if (!r_counters) {
+		tr_err(&pm_tr, "init_dsp_r_state(): allocation failed");
+		return;
+	}
 	prd->r_counters = r_counters;
 
 	r_counters->ts = sof_cycle_get_64();

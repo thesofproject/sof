@@ -74,6 +74,11 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	}
 
 	*cascade = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(**cascade));
+	if (!*cascade) {
+		ret = -ENOMEM;
+		tr_err(&irq_tr, "cascading IRQ controller allocation failed!");
+		goto unlock;
+	}
 
 	k_spinlock_init(&(*cascade)->lock);
 

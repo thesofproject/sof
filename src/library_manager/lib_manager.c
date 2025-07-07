@@ -448,6 +448,10 @@ static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 	/* Never freed, will panic if fails */
 	struct lib_manager_mod_ctx *ctx = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 						  sizeof(*ctx));
+	if (!ctx) {
+		tr_err(&lib_manager_tr, "lib_manager_update_sof_ctx(): allocation failed");
+		sof_panic(SOF_IPC_PANIC_IPC);
+	}
 
 	ctx->base_addr = base_addr;
 

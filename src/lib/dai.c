@@ -43,6 +43,11 @@ __cold static struct dai_group_list *dai_group_list_get(int core_id)
 	if (!group_list) {
 		group_list = rzalloc(SOF_MEM_FLAG_USER,
 				     sizeof(*group_list));
+		if (!group_list) {
+			tr_err(&dai_tr, "dai_group_list_get(): failed to allocate group_list for core %d",
+			       core_id);
+			return NULL;
+		}
 
 		groups[core_id] = group_list;
 		list_init(&group_list->list);
@@ -54,12 +59,19 @@ __cold static struct dai_group_list *dai_group_list_get(int core_id)
 __cold static struct dai_group *dai_group_find(uint32_t group_id)
 {
 	struct list_item *dai_groups;
+	struct dai_group_list *group_list;
 	struct list_item *group_item;
 	struct dai_group *group = NULL;
 
 	assert_can_be_cold();
 
-	dai_groups = &dai_group_list_get(cpu_get_id())->list;
+	group_list = dai_group_list_get(cpu_get_id());
+	if (!group_list) {
+		tr_err(&dai_tr, "dai_group_find(): failed to get group_list for core %d",
+		       cpu_get_id());
+		return NULL;
+	}
+	dai_groups = &group_list->list;
 
 	list_for_item(group_item, dai_groups) {
 		group = container_of(group_item, struct dai_group, list);
@@ -75,13 +87,24 @@ __cold static struct dai_group *dai_group_find(uint32_t group_id)
 
 __cold static struct dai_group *dai_group_alloc(void)
 {
-	struct list_item *dai_groups = &dai_group_list_get(cpu_get_id())->list;
+	struct dai_group_list *group_list = dai_group_list_get(cpu_get_id());
+	struct list_item *dai_groups;
 	struct dai_group *group;
 
 	assert_can_be_cold();
+	if (!group_list) {
+		tr_err(&dai_tr, "dai_group_alloc(): failed to get group_list for core %d",
+		       cpu_get_id());
+		return NULL;
+	}
+	dai_groups = &group_list->list;
 
 	group = rzalloc(SOF_MEM_FLAG_USER,
 			sizeof(*group));
+	if (!group) {
+		tr_err(&dai_tr, "dai_group_alloc(): failed to allocate dai group");
+		return NULL;
+	}
 
 	list_item_prepend(&group->list, dai_groups);
 

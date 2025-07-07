@@ -143,7 +143,7 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*iipc));
 	if (!iipc) {
 		tr_err(&ipc_tr, "Unable to allocate IPC private data");
-		return -ENOMEM;
+		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 	ipc_set_drvdata(ipc, iipc);
 #else
@@ -159,6 +159,10 @@ int platform_ipc_init(struct ipc *ipc)
 	/* allocate page table buffer */
 	iipc->dh_buffer.page_table =
 		rzalloc(SOF_MEM_FLAG_KERNEL, PLATFORM_PAGE_TABLE_SIZE);
+	if (!iipc->dh_buffer.page_table) {
+		tr_err(&ipc_tr, "Unable to allocate host page table buffer");
+		sof_panic(SOF_IPC_PANIC_IPC);
+	}
 
 	iipc->dh_buffer.dmac = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
 	if (!iipc->dh_buffer.dmac) {

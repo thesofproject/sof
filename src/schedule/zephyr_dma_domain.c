@@ -119,10 +119,19 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 			     clk,
 			     true,
 			     &zephyr_dma_domain_ops);
+	if (!domain) {
+		tr_err(&ll_tr, "zephyr_dma_domain_init(): domain init failed");
+		return NULL;
+	}
 
 	/* initialize domain pdata */
 	zephyr_dma_domain = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 				    sizeof(*zephyr_dma_domain));
+	if (!zephyr_dma_domain) {
+		tr_err(&ll_tr, "zephyr_dma_domain_init(): allocation failed");
+		rfree(domain);
+		return NULL;
+	}
 
 	zephyr_dma_domain->dma_array = dma_array;
 	zephyr_dma_domain->num_dma = num_dma;

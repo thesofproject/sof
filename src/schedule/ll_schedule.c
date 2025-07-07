@@ -782,6 +782,10 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 
 	/* initialize scheduler private data */
 	sch = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
+	if (!sch) {
+		tr_err(&ll_tr, "scheduler_init_ll(): allocation failed");
+		return -ENOMEM;
+	}
 	list_init(&sch->tasks);
 	atomic_init(&sch->num_tasks, 0);
 	sch->domain = domain;

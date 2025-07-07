@@ -532,7 +532,11 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	struct zephyr_ll *sch;
 
 	/* initialize per-core scheduler private data */
-	sch = rmalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
+	sch = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
+	if (!sch) {
+		tr_err(&ll_tr, "zephyr_ll_scheduler_init(): allocation failed");
+		return -ENOMEM;
+	}
 	list_init(&sch->tasks);
 	sch->ll_domain = domain;
 	sch->core = cpu_get_id();

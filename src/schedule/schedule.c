@@ -52,6 +52,10 @@ static void scheduler_register(struct schedule_data *scheduler)
 		/* init schedulers list */
 		*sch = rzalloc(SOF_MEM_FLAG_KERNEL,
 			       sizeof(**sch));
+		if (!*sch) {
+			tr_err(&sch_tr, "scheduler_register(): allocation failed");
+			return;
+		}
 		list_init(&(*sch)->list);
 	}
 
@@ -67,6 +71,10 @@ void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 		return;
 
 	sch = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
+	if (!sch) {
+		tr_err(&sch_tr, "scheduler_init(): allocation failed");
+		sof_panic(SOF_IPC_PANIC_IPC);
+	}
 	list_init(&sch->list);
 	sch->type = type;
 	sch->ops = ops;

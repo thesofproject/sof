@@ -499,6 +499,11 @@ void trace_off(void)
 void trace_init(struct sof *sof)
 {
 	sof->trace = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->trace));
+	if (!sof->trace) {
+		mtrace_printf(LOG_LEVEL_ERROR, "trace_init(): allocation failed");
+		sof_panic(SOF_IPC_PANIC_IPC);
+	}
+
 	sof->trace->enable = 1;
 	sof->trace->pos = 0;
 #if CONFIG_TRACE_FILTERING_ADAPTIVE

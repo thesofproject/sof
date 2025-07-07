@@ -196,6 +196,10 @@ void init_system_notify(struct sof *sof)
 	int i;
 	*notify = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			  sizeof(**notify));
+	if (!*notify) {
+		tr_err(&nt_tr, "init_system_notify(): allocation failed");
+		sof_panic(SOF_IPC_PANIC_IPC);
+	}
 
 	k_spinlock_init(&(*notify)->lock);
 	for (i = NOTIFIER_ID_CPU_FREQ; i < NOTIFIER_ID_COUNT; i++)
