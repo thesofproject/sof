@@ -474,6 +474,7 @@ zephyr_library_sources(
 	lib/alloc.c
 	lib/cpu.c
 	lib/pm_runtime.c
+	lib/userspace_helper.c
 
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
