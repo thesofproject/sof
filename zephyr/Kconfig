@@ -69,6 +69,14 @@ config SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE
 	help
 	  This config defines size of virtual heap region shared between all cores
 
+config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
+	hex "Size of the private heap created for each userspace module"
+	default 0x1000
+	help
+	 The size of the private heap created for each userspace module. Each userspace
+	 module has its own independent heap to which only it has access. This heap is
+	 shared between instances of the same module.
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	default n

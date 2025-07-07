@@ -136,7 +136,9 @@ int module_adapter_init_data(struct comp_dev *dev,
 		if (cfgsz == (sizeof(*cfg) + pinsz)) {
 			dst->nb_input_pins = n_in;
 			dst->nb_output_pins = n_out;
-			dst->input_pins = rmalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, pinsz);
+			dst->input_pins = module_driver_heap_rmalloc(dev->drv->user_heap,
+								     SOF_MEM_FLAG_USER |
+								     SOF_MEM_FLAG_COHERENT, pinsz);
 			if (!dst->input_pins)
 				return -ENOMEM;
 
