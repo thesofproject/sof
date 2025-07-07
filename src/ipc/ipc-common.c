@@ -293,8 +293,17 @@ __cold int ipc_init(struct sof *sof)
 
 	/* init ipc data */
 	sof->ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->ipc));
+	if (!sof->ipc) {
+		tr_err(&ipc_tr, "Unable to allocate IPC data");
+		return -ENOMEM;
+	}
 	sof->ipc->comp_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 				      SOF_IPC_MSG_MAX_SIZE);
+	if (!sof->ipc->comp_data) {
+		tr_err(&ipc_tr, "Unable to allocate IPC component data");
+		rfree(sof->ipc);
+		return -ENOMEM;
+	}
 
 	k_spinlock_init(&sof->ipc->lock);
 	list_init(&sof->ipc->msg_list);

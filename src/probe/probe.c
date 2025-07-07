@@ -354,6 +354,10 @@ int probe_init(const struct probe_dma *probe_dma)
 	/* alloc probes main struct */
 	sof_get()->probe = rzalloc(SOF_MEM_FLAG_USER,
 				   sizeof(*_probe));
+	if (!sof_get()->probe) {
+		tr_err(&pr_tr, "probe_init(): Alloc failed.");
+		return -ENOMEM;
+	}
 	_probe = probe_get();
 
 	if (!_probe) {

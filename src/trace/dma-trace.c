@@ -150,6 +150,11 @@ int dma_trace_init_early(struct sof *sof)
 	assert(!dma_trace_initialized(sof->dmat));
 
 	sof->dmat = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->dmat));
+	if (!sof->dmat) {
+		mtrace_printf(LOG_LEVEL_ERROR,
+			      "dma_trace_init_early(): alloc failed");
+		return -ENOMEM;
+	}
 
 	dma_sg_init(&sof->dmat->config.elem_array);
 	k_spinlock_init(&sof->dmat->lock);
@@ -168,9 +173,7 @@ err:
 	mtrace_printf(LOG_LEVEL_ERROR,
 		      "dma_trace_init_early() failed: %d", ret);
 
-	/* Cannot rfree(sof->dmat) from the system memory pool, see
-	 * comments in lib/alloc.c
-	 */
+	rfree(sof->dmat);
 	sof->dmat = NULL;
 
 	return ret;

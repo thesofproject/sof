@@ -306,9 +306,18 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &zephyr_domain_ops);
+	if (!domain) {
+		tr_err(&ll_tr, "zephyr_domain_init: domain init failed");
+		return NULL;
+	}
 
 	zephyr_domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 				sizeof(*zephyr_domain));
+	if (!zephyr_domain) {
+		tr_err(&ll_tr, "zephyr_domain_init: domain allocation failed");
+		rfree(domain);
+		return NULL;
+	}
 
 	zephyr_domain->ll_domain = domain;
 

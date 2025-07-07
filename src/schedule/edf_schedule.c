@@ -253,11 +253,17 @@ static int schedule_edf_task_free(void *data, struct task *task)
 int scheduler_init_edf(void)
 {
 	struct edf_schedule_data *edf_sch;
+	int ret;
 
 	tr_info(&edf_tr, "edf_scheduler_init()");
 
 	edf_sch = rzalloc(SOF_MEM_FLAG_KERNEL,
 			  sizeof(*edf_sch));
+	if (!edf_sch) {
+		tr_err(&edf_tr, "scheduler_init_edf(): allocation failed");
+		return -ENOMEM;
+	}
+
 	list_init(&edf_sch->list);
 	edf_sch->clock = PLATFORM_DEFAULT_CLOCK;
 
@@ -267,15 +273,18 @@ int scheduler_init_edf(void)
 	task_main_init();
 
 	/* configure EDF scheduler interrupt */
-	edf_sch->irq = interrupt_get_irq(PLATFORM_SCHEDULE_IRQ,
-					 PLATFORM_SCHEDULE_IRQ_NAME);
-	if (edf_sch->irq < 0)
-		return edf_sch->irq;
+	ret = interrupt_get_irq(PLATFORM_SCHEDULE_IRQ,
+				PLATFORM_SCHEDULE_IRQ_NAME);
+	if (ret < 0) {
+		free(edf_sch);
+		return ret;
+	}
 
+	edf_sch->irq = ret;
 	interrupt_register(edf_sch->irq, edf_scheduler_run, edf_sch);
 	interrupt_enable(edf_sch->irq, edf_sch);
 
-	return 0;
+	return ret;
 }
 
 static void scheduler_free_edf(void *data, uint32_t flags)

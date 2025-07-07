@@ -543,8 +543,17 @@ struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
 
 	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk, false,
 			     &dma_single_chan_domain_ops);
+	if (!domain) {
+		tr_err(&ll_tr, "dma_single_chan_domain_init(): domain init failed");
+		return NULL;
+	}
 
 	dma_domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*dma_domain));
+	if (!dma_domain) {
+		tr_err(&ll_tr, "dma_single_chan_domain_init(): allocation failed");
+		rfree(domain);
+		return NULL;
+	}
 	dma_domain->dma_array = dma_array;
 	dma_domain->num_dma = num_dma;
 	dma_domain->owner = DMA_DOMAIN_OWNER_INVALID;

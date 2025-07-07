@@ -99,6 +99,8 @@ static inline struct ll_schedule_domain *domain_init
 	struct ll_schedule_domain *domain;
 
 	domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*domain));
+	if (!domain)
+		return NULL;
 	domain->type = type;
 	domain->clk = clk;
 	domain->synchronous = synchronous;

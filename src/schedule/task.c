@@ -76,6 +76,8 @@ void task_main_init(void)
 
 	*main_task = rzalloc(SOF_MEM_FLAG_KERNEL,
 			     sizeof(**main_task));
+	if (!*main_task)
+		panic(SOF_IPC_PANIC_MEM);
 
 	ret = schedule_task_init_edf(*main_task, SOF_UUID(main_task_uuid),
 				     &ops, NULL, cpu, 0);

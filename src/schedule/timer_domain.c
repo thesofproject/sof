@@ -158,8 +158,17 @@ struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk)
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &timer_domain_ops);
+	if (!domain) {
+		r_err(&ll_tr, "timer_domain_init(): domain init failed");
+		return NULL;
+	}
 
 	timer_domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*timer_domain));
+	if (!timer_domain) {
+		tr_err(&ll_tr, "timer_domain_init(): allocation failed");
+		rfree(domain);
+		return NULL;
+	}
 	timer_domain->timer = timer;
 
 	ll_sch_domain_set_pdata(domain, timer_domain);
