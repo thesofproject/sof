@@ -289,7 +289,9 @@ static const struct vmh_heap_config static_hp_buffers = {
 
 static int virtual_heap_init(void)
 {
-	virtual_buffers_heap = vmh_init_heap(&static_hp_buffers, false);
+	if (!virtual_buffers_heap)
+		virtual_buffers_heap = vmh_init_heap(&static_hp_buffers, false);
+
 	if (!virtual_buffers_heap) {
 		tr_err(&zephyr_tr, "Unable to init virtual heap");
 		return -ENOMEM;
