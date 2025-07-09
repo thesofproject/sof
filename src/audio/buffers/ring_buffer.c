@@ -8,6 +8,7 @@
 #include <sof/lib/uuid.h>
 
 #include <sof/audio/ring_buffer.h>
+#include <sof/audio/component.h>
 
 #include <rtos/alloc.h>
 #include <ipc/topology.h>
@@ -273,18 +274,17 @@ static const struct audio_buffer_ops audio_buffer_ops = {
 	.reset = ring_buffer_reset
 };
 
-struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, bool is_shared,
+struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_available,
+				       size_t min_free_space, bool is_shared,
 				       uint32_t id)
 {
 	struct ring_buffer *ring_buffer;
+	enum mem_zone zone = is_shared ?
+		SOF_MEM_ZONE_RUNTIME_SHARED : SOF_MEM_ZONE_RUNTIME;
+	int memory_caps = SOF_MEM_CAPS_RAM | (dev->drv->drv_heap ? SOF_MEM_CAPS_MMU_SHD : 0);
 
 	/* allocate ring_buffer structure */
-	if (is_shared)
-		ring_buffer = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(*ring_buffer));
-	else
-		ring_buffer = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-				      sizeof(*ring_buffer));
+	ring_buffer = rzalloc(zone, 0, memory_caps, sizeof(*ring_buffer));
 	if (!ring_buffer)
 		return NULL;
 
@@ -354,7 +354,8 @@ struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_spa
 	ring_buffer->data_buffer_size =
 			ALIGN_UP(ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
 	ring_buffer->_data_buffer = (__sparse_force __sparse_cache void *)
-			rballoc_align(0, 0, ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
+			rballoc_align(0, memory_caps, ring_buffer->data_buffer_size,
+				      PLATFORM_DCACHE_ALIGN);
 	if (!ring_buffer->_data_buffer)
 		goto err;
 
