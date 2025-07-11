@@ -1,0 +1,61 @@
+---
+name: "Unit tests"
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+permissions:
+  contents: read
+
+# Specifies group name that stops previous workflows if the name matches
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zephyr-utests:
+    name: Zephyr Unit Tests (ZTest)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install clang llvm ninja-build device-tree-compiler \
+           python3-pyelftools
+          # Install multilib packages required for native_sim i386 target
+          sudo apt-get install gcc-multilib g++-multilib
+
+      - name: Checkout SOF repository
+        uses: actions/checkout@v4
+        with:
+          path: ./workspace/sof
+          fetch-depth: 2
+          filter: 'tree:0'
+
+      - name: West update
+        run: |
+          cd workspace/sof
+          pip3 install west
+          west init -l
+          west update --narrow --fetch-opt=--filter=tree:0
+
+      - name: Install Python dependencies
+        run: |
+          cd workspace/zephyr
+          pip3 install --user -r scripts/requirements.txt
+
+      - name: Build and run unit tests
+        run: |
+          cd workspace
+          export ZEPHYR_TOOLCHAIN_VARIANT=llvm
+          west twister --testsuite-root sof/test/ztest/unit/ --platform native_sim --verbose \
+           --inline-logs
+  # This part is commented out because it is not needed at the moment.
+  #    - name: Install Zephyr SDK
+  #      run: |
+  #        cd workspace/zephyr
+  #        west sdk install --version 0.16.9 -t xtensa-intel_ace30_ptl_zephyr-elf
