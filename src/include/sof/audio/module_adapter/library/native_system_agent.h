@@ -11,6 +11,10 @@
 #include <sof/audio/module_adapter/module/module_interface.h>
 #include <native_system_service.h>
 
+typedef int (*system_agent_start_fn)(uintptr_t entry_point, uint32_t module_id,
+				     uint32_t instance_id, uint32_t core_id, uint32_t log_handle,
+				     void *mod_cfg, void **adapter);
+
 struct native_system_agent {
 	struct system_service system_service;
 	uint32_t log_handle;
@@ -20,7 +24,7 @@ struct native_system_agent {
 	uint32_t module_size;
 };
 
-void *native_system_agent_start(uint32_t entry_point, uint32_t module_id, uint32_t instance_id,
-				uint32_t core_id, uint32_t log_handle, void *mod_cfg);
+int native_system_agent_start(uintptr_t entry_point, uint32_t module_id, uint32_t instance_id,
+			      uint32_t core_id, uint32_t log_handle, void *mod_cfg, void **iface);
 
 #endif /* __NATIVE_SYSTEM_AGENT_H__ */

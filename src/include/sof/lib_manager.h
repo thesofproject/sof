@@ -63,6 +63,8 @@
 #define __SOF_LIB_MANAGER_H__
 
 #include <stdint.h>
+#include <sof/list.h>
+#include <sof/audio/component.h>
 #include <rimage/sof/user/manifest.h>
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 #include <sof/auth_api_iface.h>
@@ -71,9 +73,9 @@
 
 #define LIB_MANAGER_MAX_LIBS				16
 #define LIB_MANAGER_LIB_ID_SHIFT			12
-#define LIB_MANAGER_LIB_NOTIX_MAX_COUNT		4
+#define LIB_MANAGER_LIB_NOTIX_MAX_COUNT			4
 
-#define LIB_MANAGER_GET_LIB_ID(module_id) ((module_id) >> LIB_MANAGER_LIB_ID_SHIFT)
+#define LIB_MANAGER_GET_LIB_ID(module_id) (((module_id) & 0xF000) >> LIB_MANAGER_LIB_ID_SHIFT)
 #define LIB_MANAGER_GET_MODULE_INDEX(module_id) ((module_id) & 0xFFF)
 
 #ifdef CONFIG_LIBRARY_MANAGER
@@ -183,21 +185,6 @@ int lib_manager_register_module(const uint32_t component_id);
  * Gets firmware manifest descriptor using module_id to locate it
  */
 const struct sof_man_fw_desc *lib_manager_get_library_manifest(int module_id);
-
-struct processing_module;
-struct comp_ipc_config;
-/*
- * \brief Allocate module
- *
- * param[in] drv - component driver
- * param[in] ipc_config - audio component base configuration from IPC at creation
- * param[in] ipc_specific_config - ipc4 base configuration
- *
- * Function is responsible to allocate module in available free memory and assigning proper address.
- * (WIP) These feature will contain module validation and proper memory management.
- */
-uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
-				      const void *ipc_specific_config);
 
 /*
  * \brief Free module
