@@ -275,11 +275,6 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 			${SOF_PLATFORM_PATH}/ace30/lib/clk.c
 		)
 
-	# SOF core infrastructure - runs on top of Zephyr
-	zephyr_library_sources(
-		${SOF_SRC_PATH}/schedule/zephyr_ll.c
-	)
-
 	# Sources for virtual heap management
 	zephyr_library_sources(
 		lib/regions_mm.c
