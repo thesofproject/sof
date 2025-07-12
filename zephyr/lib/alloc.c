@@ -18,6 +18,7 @@
 #include <sof/trace/trace.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
+
 #if CONFIG_VIRTUAL_HEAP
 #include <sof/lib/regions_mm.h>
 
@@ -27,7 +28,7 @@ struct vmh_heap *virtual_buffers_heap;
 #undef	HEAPMEM_SIZE
 /* Buffers are allocated from virtual space so we can safely reduce the heap size.
  */
-#define	HEAPMEM_SIZE 0x40000
+#define	HEAPMEM_SIZE CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_SIZE
 #endif /* CONFIG_VIRTUAL_HEAP */
 
 
@@ -384,7 +385,7 @@ void *rmalloc(uint32_t flags, size_t bytes)
 		heap = &l3_heap;
 		/* Uncached L3_HEAP should not be used */
 		if (flags & SOF_MEM_FLAG_COHERENT) {
-			tr_err(&zephyr_tr, "L3_HEAP available for cached zones only!");
+			tr_err(&zephyr_tr, "L3_HEAP available for cached addresses only!");
 			return NULL;
 		}
 		ptr = (__sparse_force void *)l3_heap_alloc_aligned(heap, 0, bytes);
@@ -411,14 +412,12 @@ void *rmalloc(uint32_t flags, size_t bytes)
 }
 EXPORT_SYMBOL(rmalloc);
 
-/* Use SOF_MEM_ZONE_BUFFER at the moment */
 void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
 		      size_t old_bytes, uint32_t alignment)
 {
 	void *new_ptr;
 
 	if (!ptr) {
-		/* TODO: Use correct zone */
 		return rballoc_align(flags, bytes, alignment);
 	}
 
@@ -445,9 +444,6 @@ void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
 
 /**
  * Similar to rmalloc(), guarantees that returned block is zeroed.
- *
- * @note Do not use  for buffers (SOF_MEM_ZONE_BUFFER zone).
- *       rballoc(), rballoc_align() to allocate memory for buffers.
  */
 void *rzalloc(uint32_t flags, size_t bytes)
 {
@@ -461,9 +457,8 @@ void *rzalloc(uint32_t flags, size_t bytes)
 EXPORT_SYMBOL(rzalloc);
 
 /**
- * Allocates memory block from SOF_MEM_ZONE_BUFFER.
+ * Allocates memory block.
  * @param flags see SOF_MEM_FLAG_...
- * @param caps Capabilities, see SOF_MEM_CAPS_...
  * @param bytes Size in bytes.
  * @param align Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
