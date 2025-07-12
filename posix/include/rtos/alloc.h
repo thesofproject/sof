@@ -51,29 +51,20 @@
 
 /**
  * Allocates memory block.
- * @param zone Zone to allocate memory from, see enum mem_zone.
  * @param flags Flags, see SOF_MEM_FLAG_...
- * @param caps Capabilities, see SOF_MEM_CAPS_...
  * @param bytes Size in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
- *
- * @note Do not use for buffers (SOF_MEM_ZONE_BUFFER zone).
- *       Use rballoc(), rballoc_align() to allocate memory for buffers.
  */
 void *rmalloc(uint32_t flags, size_t bytes);
 
 /**
  * Similar to rmalloc(), guarantees that returned block is zeroed.
- *
- * @note Do not use  for buffers (SOF_MEM_ZONE_BUFFER zone).
- *       rballoc(), rballoc_align() to allocate memory for buffers.
  */
 void *rzalloc(uint32_t flags, size_t bytes);
 
 /**
- * Allocates memory block from SOF_MEM_ZONE_BUFFER.
+ * Allocates memory block.
  * @param flags Flags, see SOF_MEM_FLAG_...
- * @param caps Capabilities, see SOF_MEM_CAPS_...
  * @param bytes Size in bytes.
  * @param alignment Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
@@ -90,10 +81,9 @@ static inline void *rballoc(uint32_t flags, size_t bytes)
 }
 
 /**
- * Changes size of the memory block allocated from SOF_MEM_ZONE_BUFFER.
+ * Changes size of the memory block allocated.
  * @param ptr Address of the block to resize.
  * @param flags Flags, see SOF_MEM_FLAG_...
- * @param caps Capabilities, see SOF_MEM_CAPS_...
  * @param bytes New size in bytes.
  * @param old_bytes Old size in bytes.
  * @param alignment Alignment in bytes.
@@ -116,9 +106,6 @@ static inline void *rbrealloc(void *ptr, uint32_t flags,
 /**
  * Frees the memory block.
  * @param ptr Pointer to the memory block.
- *
- * @note Blocks from SOF_MEM_ZONE_SYS cannot be freed, such a call causes
- *       panic.
  */
 void rfree(void *ptr);
 
