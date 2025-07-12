@@ -15,7 +15,7 @@ if [ ! -z "$ZEPHYR_BASE" ]; then
     VENV_DIR="$ZEPHYR_BASE/.venv"
     echo "Using Zephyr environment at $ZEPHYR_BASE"
 elif [ ! -z "$SOF_WORKSPACE" ]; then
-    VENV_DIR="$SOF_WORKSPACE/zephyr/.venv"
+    VENV_DIR="$SOF_WORKSPACE/.venv"
     echo "Using SOF/Zephyr environment at $SOF_WORKSPACE"
 else
     # fallback to the zephyr default from the getting started guide
