@@ -330,7 +330,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 					  audio_stream_get_size(&buffer->stream), alignment);
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > audio_stream_get_size(&buffer->stream)) {
-		buf_err(buffer, "resize can't alloc %u bytes type 0x%x",
+		buf_err(buffer, "resize can't alloc %u bytes of flags 0x%x",
 			audio_stream_get_size(&buffer->stream), buffer->flags);
 		return -ENOMEM;
 	}
@@ -388,7 +388,8 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && new_size > actual_size) {
-		buf_err(buffer, "resize can't alloc %zu bytes type 0x%x", new_size, buffer->flags);
+		buf_err(buffer, "resize can't alloc %zu bytes of flags 0x%x", new_size,
+			buffer->flags);
 		return -ENOMEM;
 	}
 
