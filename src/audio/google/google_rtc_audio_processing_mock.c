@@ -27,7 +27,7 @@ struct GoogleRtcAudioProcessingState {
 	float *aec_reference;
 };
 
-static void SetFormats(GoogleRtcAudioProcessingState *const state,
+static int SetFormats(GoogleRtcAudioProcessingState *const state,
 		       int capture_sample_rate_hz,
 		       int num_capture_input_channels,
 		       int num_capture_output_channels,
@@ -45,6 +45,9 @@ static void SetFormats(GoogleRtcAudioProcessingState *const state,
 				       sizeof(state->aec_reference[0]) *
 				       state->num_frames *
 				       state->num_aec_reference_channels);
+	if (!state->aec_reference)
+		return -ENOMEM;
+	return 0;
 }
 
 void GoogleRtcAudioProcessingAttachMemoryBuffer(uint8_t *const buffer,
@@ -64,20 +67,21 @@ GoogleRtcAudioProcessingState *GoogleRtcAudioProcessingCreateWithConfig(int capt
 									const uint8_t *const config,
 									int config_size)
 {
+	int err;
 	struct GoogleRtcAudioProcessingState *s =
 		rballoc(SOF_MEM_FLAG_USER, sizeof(GoogleRtcAudioProcessingState));
 	if (!s)
 		return NULL;
 
 	s->aec_reference = NULL;
-	SetFormats(s,
+	err = SetFormats(s,
 		   capture_sample_rate_hz,
 		   num_capture_input_channels,
 		   num_capture_output_channels,
 		   render_sample_rate_hz,
 		   num_render_channels);
 
-	if (!s->aec_reference) {
+	if (err) {
 		rfree(s);
 		return NULL;
 	}
