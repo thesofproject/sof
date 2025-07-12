@@ -76,7 +76,7 @@ struct sof_ipc_stream_params;
  * If a single DAI instance can have multiple DMA links and/or there is
  * some other possibility of the same instance being used in multiple
  * contexts at the same time, the private data should be allocated in the
- * SOF_MEM_ZONE_SHARED.
+ * SOF_MEM_FLAG_COHERENT.
  */
 struct dai_ops {
 	int (*set_config)(struct dai *dai, struct ipc_config_dai *config,
