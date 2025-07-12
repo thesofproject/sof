@@ -176,7 +176,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	dma->config.dest_width = sizeof(uint32_t);
 	dma->config.cyclic = 0;
 
-	err = dma_sg_alloc(&dma->config.elem_array, SOF_MEM_ZONE_RUNTIME,
+	err = dma_sg_alloc(&dma->config.elem_array, SOF_MEM_FLAG_USER,
 			   dma->config.direction, elem_num, elem_size, elem_addr, 0);
 	if (err < 0)
 		return err;

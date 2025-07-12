@@ -324,7 +324,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	config->dest_width = sizeof(uint32_t);
 	config->cyclic = 0;
 
-	ret = dma_sg_alloc(&config->elem_array, SOF_MEM_ZONE_SYS,
+	ret = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
 			   config->direction, elem_num, elem_size,
 			   elem_addr, 0);
 	if (ret < 0) {
