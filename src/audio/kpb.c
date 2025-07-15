@@ -721,12 +721,12 @@ static int kpb_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-static int kbp_verify_params(struct comp_dev *dev,
+static int kpb_verify_params(struct comp_dev *dev,
 			     struct sof_ipc_stream_params *params)
 {
 	int ret;
 
-	comp_dbg(dev, "kbp_verify_params()");
+	comp_dbg(dev, "kpb_verify_params()");
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
@@ -756,7 +756,7 @@ static int kpb_params(struct comp_dev *dev,
 
 	kpb_set_params(dev, params);
 
-	err = kbp_verify_params(dev, params);
+	err = kpb_verify_params(dev, params);
 	if (err < 0) {
 		comp_err(dev, "pcm params verification failed");
 		return -EINVAL;
