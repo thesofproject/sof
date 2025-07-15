@@ -13,6 +13,7 @@
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/memory.h> /* for SHARED_DATA */
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/sof.h>
 #include <rtos/string.h>
@@ -61,6 +62,36 @@ void comp_unregister(struct comp_driver_info *drv)
 	key = k_spin_lock(&drivers->lock);
 	list_item_del(&drv->list);
 	k_spin_unlock(&drivers->lock, key);
+}
+
+int comp_set_adapter_ops(const struct comp_driver *drv, const struct module_interface *ops)
+{
+	struct comp_driver_list *drivers = comp_drivers_get();
+	struct list_item *clist;
+
+	/* The list is only modified in IPC context, and we're in IPC context too */
+	list_for_item(clist, &drivers->list) {
+		struct comp_driver_info *info = container_of(clist, struct comp_driver_info, list);
+
+		if (!memcmp(info->drv->uid, drv->uid, UUID_SIZE)) {
+			/*
+			 * This function should only be called for dynamically
+			 * loaded component drivers and their driver info cannot
+			 * be NULL. Do a sanity check.
+			 */
+			if (!info->adapter_ops) {
+				tr_err(&comp_tr, "NULL adapter ops ptr for %pU!",
+				       info->drv->tctx->uuid_p);
+				return -EINVAL;
+			}
+
+			tr_dbg(&comp_tr, "update uuid %pU", info->drv->tctx->uuid_p);
+			*info->adapter_ops = ops;
+			return 0;
+		}
+	}
+
+	return -ENODEV;
 }
 
 /* NOTE: Keep the component state diagram up to date:
