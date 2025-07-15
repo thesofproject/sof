@@ -110,7 +110,6 @@ static void test_vmh_multiple_allocs(struct vmh_heap *heap, int num_allocs,
 {
 	void *ptrs[num_allocs];
 	uint32_t alloc_size;
-	bool success;
 	int ret;
 
 	/* Perform multiple allocations */
@@ -192,7 +191,7 @@ static void test_vmh_alloc_free(bool allocating_continuously)
 /* Test case for vmh_alloc and vmh_free with and without config */
 static void test_heap_creation(void)
 {
-	test_vmh_init_and_free_heap(NULL, 0, false, true);
+	test_vmh_init_and_free_heap(NULL, false, true);
 
 	/* Try to setup with pre defined heap config */
 	struct vmh_heap_config config = {0};
@@ -205,7 +204,7 @@ static void test_heap_creation(void)
 
 	config.block_bundles_table[1].number_of_blocks = 512;
 
-	test_vmh_init_and_free_heap(&config, 0, false, true);
+	test_vmh_init_and_free_heap(&config, false, true);
 }
 
 /* Test case for alloc/free on configured heap */
