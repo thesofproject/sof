@@ -164,3 +164,9 @@ config LOG_FUNC_NAME_PREFIX_DBG
 
 config LOG_TIMESTAMP_64BIT
 	default y
+
+# Zephyr / debugging
+# ----------------------------------------
+
+config ZTEST
+	default SOF_BOOT_TEST_SUPPORTED && SOF_BOOT_TEST_ALLOWED

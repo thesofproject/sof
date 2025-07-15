@@ -156,9 +156,21 @@ config CROSS_CORE_STREAM
 	  can be processed on different cores, however, each stream
 	  is processed entirely on single core.
 
+config SOF_BOOT_TEST_ALLOWED
+	bool "Enable SOF boot-time testing"
+	help
+	  boot-time testing enabled if supported by the platform
+
+config SOF_BOOT_TEST_SUPPORTED
+	bool "Platform supports boot-time testing"
+	default y
+	help
+	  boot-time testing supported by the platform
+
 config SOF_BOOT_TEST
-	bool "enable SOF run-time testing"
+	bool
 	depends on ZTEST
+	default y
 	help
 	  Run tests during boot. This enables an SOF boot-time self-test. When
 	  enabled, the resulting image will run a number of self-tests when the
