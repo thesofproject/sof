@@ -282,17 +282,13 @@ static enum task_state chain_task_run(void *data)
 
 static int chain_task_start(struct comp_dev *dev)
 {
-	struct comp_driver_list *drivers = comp_drivers_get();
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
-	k_spinlock_key_t key;
 	int ret;
 
 	comp_info(dev, "host_dma_id = 0x%08x", cd->host_connector_node_id.dw);
 
-	key = k_spin_lock(&drivers->lock);
 	switch (cd->chain_task.state) {
 	case SOF_TASK_STATE_QUEUED:
-		k_spin_unlock(&drivers->lock, key);
 		return 0;
 	case SOF_TASK_STATE_COMPLETED:
 		break;
@@ -302,27 +298,26 @@ static int chain_task_start(struct comp_dev *dev)
 		break;
 	default:
 		comp_err(dev, "bad state transition");
-		ret = -EINVAL;
-		goto error;
+		return -EINVAL;
 	}
 
 	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = chain_host_start(dev);
 		if (ret)
-			goto error;
+			return ret;
 		ret = chain_link_start(dev);
 		if (ret) {
 			chain_host_stop(dev);
-			goto error;
+			return ret;
 		}
 	} else {
 		ret = chain_link_start(dev);
 		if (ret)
-			goto error;
+			return ret;
 		ret = chain_host_start(dev);
 		if (ret) {
 			chain_link_stop(dev);
-			goto error;
+			return ret;
 		}
 	}
 
@@ -342,29 +337,24 @@ static int chain_task_start(struct comp_dev *dev)
 	}
 
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
-	k_spin_unlock(&drivers->lock, key);
 
 	return 0;
 
 error_task:
 	chain_host_stop(dev);
 	chain_link_stop(dev);
-error:
-	k_spin_unlock(&drivers->lock, key);
+
 	return ret;
 }
 
 static int chain_task_pause(struct comp_dev *dev)
 {
-	struct comp_driver_list *drivers = comp_drivers_get();
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
-	k_spinlock_key_t key;
 	int ret, ret2;
 
 	if (cd->chain_task.state == SOF_TASK_STATE_FREE)
 		return 0;
 
-	key = k_spin_lock(&drivers->lock);
 	cd->first_data_received = false;
 	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = chain_host_stop(dev);
@@ -375,8 +365,6 @@ static int chain_task_pause(struct comp_dev *dev)
 	}
 	if (!ret)
 		ret = ret2;
-
-	k_spin_unlock(&drivers->lock, key);
 
 	schedule_task_free(&cd->chain_task);
 	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
