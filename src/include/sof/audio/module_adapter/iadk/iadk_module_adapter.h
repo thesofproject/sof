@@ -91,9 +91,9 @@ namespace dsp_fw
 		AdspErrorCode
 		IadkModuleAdapter_GetConfiguration(uint32_t config_id,
 		                               enum module_cfg_fragment_position fragment_position,
-		                               uint32_t data_offset_size,
+		                               uint32_t &data_offset_size,
 		                               uint8_t *fragment_buffer,
-		                               size_t fragment_size);
+		                               size_t &fragment_size);
 		/**
 		 * Module specific reset procedure, called as part of codec_adapter component
 		 * reset in .reset(). This should reset all parameters to their initial stage
@@ -144,10 +144,22 @@ int iadk_wrapper_set_configuration(void *md, uint32_t config_id,
 				   const uint8_t *fragment, size_t fragment_size,
 				   uint8_t *response, size_t response_size);
 
+/*
+ * \brief Retrieve module configuration
+ * \param[in] md - struct IadkModuleAdapter pointer
+ * \param[in] config_id - Configuration ID
+ * \param[in] pos - position of the fragment in the large message
+ * \param[in] data_offset_size: size of the whole configuration if it is the first fragment or the
+ *	      only fragment. Otherwise, it is the offset of the fragment in the whole configuration.
+ * \param[in] fragment: configuration fragment buffer
+ * \param[in,out] fragment_size: size of @fragment
+ *
+ * \return: 0 upon success or error upon failure
+ */
 int iadk_wrapper_get_configuration(void *md, uint32_t config_id,
 				   enum module_cfg_fragment_position pos,
-				   uint32_t data_offset_size,
-				   uint8_t *fragment, size_t fragment_size);
+				   uint32_t *data_offset_size,
+				   uint8_t *fragment, size_t *fragment_size);
 
 int iadk_wrapper_process(void *md,
 			 struct sof_source **sources, int num_of_sources,
