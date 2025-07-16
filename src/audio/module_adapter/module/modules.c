@@ -9,7 +9,6 @@
 #include <sof/audio/module_adapter/module/modules.h>
 #include <utilities/array.h>
 #include <iadk_module_adapter.h>
-#include <system_agent.h>
 #include <sof/lib_manager.h>
 #include <sof/audio/module_adapter/module/module_interface.h>
 
@@ -56,46 +55,16 @@ static int modules_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	const struct comp_driver *const drv = dev->drv;
 	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
-	const struct comp_ipc_config *config = &dev->ipc_config;
-	void *adapter;
-	int ret;
-
-	uintptr_t module_entry_point = lib_manager_allocate_module(config, src_cfg);
-
-	if (module_entry_point == 0) {
-		comp_err(dev, "modules_init(), lib_manager_allocate_module() failed!");
-		return -EINVAL;
-	}
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	comp_info(dev, "modules_init() start");
-
-	const uint32_t module_id = IPC4_MOD_ID(config->id);
-	const uint32_t instance_id = IPC4_INST_ID(config->id);
-	const uint32_t log_handle = (uint32_t)drv->tctx;
-
-	byte_array_t mod_cfg = {
-		.data = (uint8_t *)md->cfg.init_data,
-		/* Intel modules expects DW size here */
-		.size = md->cfg.size >> 2,
-	};
-
-	ret = system_agent_start(module_entry_point, module_id, instance_id, 0, log_handle,
-				 &mod_cfg, &adapter);
-	if (ret) {
-		comp_info(dev, "System agent failed");
-		return ret;
-	}
-
-	module_set_private_data(mod, adapter);
 
 	md->mpd.in_buff_size = src_cfg->ibs;
 	md->mpd.out_buff_size = src_cfg->obs;
 
 	mod->proc_type = MODULE_PROCESS_TYPE_SOURCE_SINK;
-	return iadk_wrapper_init(adapter);
+	return iadk_wrapper_init(module_get_private_data(mod));
 }
 
 /**
