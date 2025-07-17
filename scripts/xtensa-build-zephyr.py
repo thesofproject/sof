@@ -398,6 +398,8 @@ IPC4
 			    help="Prints version of this script.")
 	parser.add_argument("-m", "--menuconfig", required=False, action="store_true",
 				help="Build menuconfig for target")
+	parser.add_argument("-z", "--zephyrsdk", required=False, action="store_true",
+				help="Force Build using Zephyr SDK for target")
 
 	args = parser.parse_args()
 
@@ -836,7 +838,12 @@ def build_platforms():
 		_dict = dataclasses.asdict(platform_configs[platform])
 		platform_dict = { k:v for (k,v) in _dict.items() if _dict[k] is not None }
 
-		xtensa_tools_root_dir = os.getenv("XTENSA_TOOLS_ROOT")
+		if args.zephyrsdk:
+			print("Using Zephyr SDK for building")
+			xtensa_tools_root_dir = None
+		else:
+			print("Using Xtensa tools for building")
+			xtensa_tools_root_dir = os.getenv("XTENSA_TOOLS_ROOT")
 		# when XTENSA_TOOLS_ROOT environmental variable is set,
 		# use user installed Xtensa tools not Zephyr SDK
 		if "XTENSA_TOOLS_VERSION" in platform_dict and xtensa_tools_root_dir:
