@@ -518,16 +518,18 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	/* Intel modules expects DW size here */
 	mod_cfg.size = args->size >> 2;
 
-	((struct comp_driver *)drv)->adapter_ops = native_system_agent_start(module_entry_point,
-									     module_id,	instance_id,
-									     0, log_handle,
-									     &mod_cfg);
+	const struct module_interface *ops = native_system_agent_start(module_entry_point,
+								       module_id, instance_id,
+								       0, log_handle, &mod_cfg);
 
-	if (!drv->adapter_ops) {
+	if (!ops) {
 		lib_manager_free_module(module_id);
 		tr_err(&lib_manager_tr, "native_system_agent_start failed!");
 		return NULL;
 	}
+
+	if (comp_set_adapter_ops(drv, ops) < 0)
+		return NULL;
 
 	dev = module_adapter_new(drv, config, spec);
 	if (!dev)
@@ -662,6 +664,7 @@ int lib_manager_register_module(const uint32_t component_id)
 
 	/* Fill the new_drv_info structure with already known parameters */
 	new_drv_info->drv = drv;
+	new_drv_info->adapter_ops = &drv->adapter_ops;
 
 	/* Register new driver in the list */
 	ret = comp_register(new_drv_info);

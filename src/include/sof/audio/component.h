@@ -594,8 +594,9 @@ struct comp_driver {
 
 /** \brief Holds constant pointer to component driver */
 struct comp_driver_info {
-	const struct comp_driver *drv;	/**< pointer to component driver */
-	struct list_item list;		/**< list of component drivers */
+	const struct comp_driver *drv;			/**< pointer to component driver */
+	const struct module_interface **adapter_ops;	/**< pointer for updating ops */
+	struct list_item list;				/**< list of component drivers */
 };
 
 #define COMP_PROCESSING_DOMAIN_LL 0
@@ -967,6 +968,15 @@ int comp_register(struct comp_driver_info *drv);
  * @param drv Component driver to be unregistered.
  */
 void comp_unregister(struct comp_driver_info *drv);
+
+/**
+ * Set adapter ops for a dynamically created driver.
+ *
+ * @param drv Component driver to update.
+ * @param ops Module interface operations.
+ * @return 0 or a negative error code
+ */
+int comp_set_adapter_ops(const struct comp_driver *drv, const struct module_interface *ops);
 
 /** @}*/
 
