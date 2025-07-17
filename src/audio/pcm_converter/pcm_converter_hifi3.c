@@ -1274,6 +1274,13 @@ const struct pcm_func_vc_map pcm_func_vc_map[] = {
 	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE_MSB, SOF_IPC_FRAME_S16_LE,
 		SOF_IPC_FRAME_S16_LE, pcm_convert_s32_to_s16 },
 #endif
+
+#if CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S24LE
+	{ SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_FLOAT,
+		SOF_IPC_FRAME_FLOAT, pcm_convert_s24_to_f },
+	{ SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_FLOAT, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S24_4LE, pcm_convert_f_to_s24 },
+#endif
 };
 
 const size_t pcm_func_vc_count = ARRAY_SIZE(pcm_func_vc_map);
