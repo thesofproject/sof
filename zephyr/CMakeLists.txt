@@ -479,6 +479,7 @@ zephyr_library_sources(
 	lib/alloc.c
 	lib/cpu.c
 	lib/pm_runtime.c
+	lib/userspace_helper.c
 
 	# Common library functions - Will be moved to Zephyr over time
 	lib.c
@@ -524,6 +525,10 @@ set(PYTHON3 "${Python3_EXECUTABLE}")
 
 if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
 target_compile_options(SOF INTERFACE -fno-inline-functions)
+endif()
+
+if (CONFIG_USERSPACE)
+target_compile_options(SOF INTERFACE -mno-global-merge)
 endif()
 
 # SOF needs `typeof`, `__VA_ARGS__` and maybe other GNU C99

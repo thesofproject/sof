@@ -21,6 +21,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/debug/telemetry/telemetry.h>
 #include <rtos/idc.h>
+#include <rtos/userspace_helper.h>
 #include <sof/lib/dai.h>
 #include <sof/schedule/schedule.h>
 #include <ipc/control.h>
@@ -590,6 +591,7 @@ struct comp_driver {
 							  * Intended to replace the ops field.
 							  * Currently used by module_adapter.
 							  */
+	struct sys_heap *drv_heap;			/**< Userspace heap */
 };
 
 /** \brief Holds constant pointer to component driver */
@@ -861,7 +863,8 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 	 * Use uncached address everywhere to access components to rule out
 	 * multi-core failures. TODO: verify if cached alias may be used in some cases
 	 */
-	dev = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, bytes);
+	dev = drv_heap_rzalloc(dev->drv->drv_heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+			       bytes);
 	if (!dev)
 		return NULL;
 	dev->size = bytes;

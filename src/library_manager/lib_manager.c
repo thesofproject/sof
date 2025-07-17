@@ -273,9 +273,9 @@ static int lib_manager_unload_libcode_modules(const uint32_t module_id)
 }
 #endif /* CONFIG_LIBCODE_MODULE_SUPPORT */
 
-static void lib_manager_get_instance_bss_address(uint32_t instance_id,
-						 const struct sof_man_module *mod,
-						 void __sparse_cache **va_addr, size_t *size)
+void lib_manager_get_instance_bss_address(uint32_t instance_id,
+					  const struct sof_man_module *mod,
+					  void __sparse_cache **va_addr, size_t *size)
 {
 	*size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count *
 		PAGE_SZ;
