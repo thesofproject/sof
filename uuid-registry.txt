@@ -1,9 +1,10 @@
 #
-# Global UUID/name registry for SOF components.  All IDs used in
-# shipped binary artifacts must appear in this list.  All names must
-# be unique.  All names must be legal C identifiers of at most 31
-# characters.  No change to a previously distributed mapping is
-# allowed, ever.
+# Global UUID/name registry for SOF components in alphabetical order.
+#
+# All IDs used in shipped binary artifacts must appear in this list.
+# All names must be unique.
+# All names must be legal C identifiers of at most 31 characters.
+# No change to a previously distributed mapping is allowed, ever.
 #
 # Simple format: "#" indicates a comment to end of line.  Remaining
 # lines must be entirely empty/whitespace, or two whitespace-separated
@@ -18,9 +19,9 @@
 # are just using random values and won't care about the byte swap.
 #
 
+
 ab01db67-84b0-4d2d-93d30e619680576e acp_bt_dma
 f8a7091c-7d2d-4410-9bb555278378d59f acp_clk
-70f2d3f2-cbb6-4984-a2d80dd514b80bc2 acpdma
 0ae40946-dfd2-4140-91520dd5a3eaae81 acp_dmic_dai
 109c7aba-a7ba-43c3-b94259e20a6611be acp_dmic_dma
 dc2199ea-cdae-4d23-a413ffe442f785f2 acp_dmic_dma_common
@@ -28,6 +29,7 @@ b414df09-9e31-4c59-86577afc8deba70c acp_hs
 3ac07334-41ce-4447-a2c5dff0d1fa1392 acp_sp
 2ef92c66-78a4-41f7-b52f5539707a9382 acp_sp_common
 5871f3ca-dd92-4edb-8a94d651dd208b1e acp_sw_audio
+70f2d3f2-cbb6-4984-a2d80dd514b80bc2 acpdma
 30290c76-6a05-4784-8464c21f09cee87e afe_dai
 4e8f16d1-e935-41f4-b99e42c57e745784 afedrv
 c63c4e75-8f61-4420-93191395932efa9e agent_work
@@ -38,6 +40,7 @@ ea9c4bca-5b7d-48c6-9586553e27235beb ams
 c8ec72f6-8526-4faf-9d39a23d0b541de2 asrc
 66b4402d-b468-42f2-81a7b37121863dd4 asrc4
 0e398c32-5ade-ba4b-93b1c50432280ee4 basefw
+2B79E4F3-4675-F649-89DF3BC194A91AEB brngup
 20865bfe-b833-4ff9-b22a0482c3477497 btdai
 42544c92-8e92-4e41-b67934519f1c1d28 buffer
 d8218443-5ff3-4a4c-b3886cfe07b956aa cadence_codec
@@ -49,6 +52,7 @@ ec290e95-4a20-47eb-bbffd9c888431831 chmap
 e87bf747-e574-4362-bf2cc015d2859dd9 clkdrv_mt8196
 de358908-c146-4411-98b430ebd002957f clkdrv_mt8365
 8890ea76-0df9-44ae-87e6994f4c15e9fa clock
+D406D134-C3C1-402C-8AEC6821C0C2B0E6 cold
 7c42ce8b-0108-43d0-913756d660478c5f component
 9ba00c83-ca12-4a83-943c1fa2e82f9dda copier
 948c9ad1-806a-4131-ad6cb2bda9e35a9f crossover
@@ -75,8 +79,8 @@ f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
 bfc7488c-75aa-4ce8-9dbed8da08a698c2 file
 93446e12-1864-4e04-afe03b1d778ffb79 fir
 61bca9a8-18d0-4a18-8e7b2639219804b7 gain
-c3c74249-058e-414f-82404da5f3fc2389 google_hotword
 bf0e1bbc-dc6a-45fe-bc902554cb137ab4 google_ctc_audio_processing
+c3c74249-058e-414f-82404da5f3fc2389 google_hotword
 b780a0a6-269f-466f-b47723dfa05af758 google_rtc_audio_processing
 8b9d100c-6d78-418f-90a3e0e805d0852b host
 8f00c3bb-e835-4767-9a34b8ec1041e56b hsdai
@@ -85,15 +89,15 @@ a5dacb0e-88dc-415c-a1b53e8df77f1976 idc_cmd_task
 b90f5a4e-5537-4375-a1df95485472ff9e idc_task
 696ae2bc-2877-11eb-adc10242ac120002 igo_nr
 b0cdcd9e-ef8b-404f-84800f287fc9d44d iir
-fa00558c-d653-4851-a03ab21f125a9524 interrupt
 2f520e85-49ba-4284-90d83def24af313b intc_mt8196
+fa00558c-d653-4851-a03ab21f125a9524 interrupt
 be60f97d-78df-4796-a0ee435cb56b720a ipc
-a814a1ca-0b83-466c-95872f35ff8d12e8 ipcgw
 389c9186-5a7d-4ad1-a02ca02ecdadfb33 ipc_task
 49be8ff3-71a3-4456-bb7e4723f2e5730c ipc_task_amd
 a3fe3bf2-39a4-4fc3-b3418a96e0a26759 ipc_task_mt818x
 caef4bd7-7a2e-4039-9b061f5ff9ec3899 ipc_task_mt8196
 6c8f0d53-ff77-4ca1-b825c0c4e1b0d322 ipc_task_posix
+a814a1ca-0b83-466c-95872f35ff8d12e8 ipcgw
 1862d39a-3a84-4d64-8c91dce1dfc122db irq
 6533d0eb-b785-4709-84f5347c81720189 irq_acp
 d2e3f730-df39-42ee-81a839bfb4d024c2 irq_mt818x
@@ -120,8 +124,10 @@ ee2585f2-e7d8-43dc-90ab4224e00c3e84 modules
 0d9f2256-8e4f-47b3-8448239a334f1191 multiband_drc
 c607ff4d-9cb6-49dc-b6787da3c63ea557 mux
 64ce6e35-857a-4878-ace8e2a2f42e3069 mux4
+f36BF24B-9AAF-83f4-8677E072E8AEADB7 notification_pool
 1fb15a7a-83cd-4c2e-8b324da1b2adeeaf notifier
 7ae671a7-4617-4a09-bf6d9d29c998dbc1 ns
+127f4eec-23fa-11f0-a4a6bf0cd6b4583b nxp_eap
 376b5e44-9c82-4ec2-bc8310ea101af88f passthrough
 64a794f0-55d3-4bca-9d5b7b588badd037 passthru_smart_amp
 4e934adb-b0ec-4d33-a086c1022f921321 pipe
@@ -158,11 +164,11 @@ dd511749-d9fa-455c-b3a713585693f1af tdfb
 a62de1af-5964-4e2e-b1677fdc97279a29 template_comp
 37c196ae-3532-4282-8a78dd9d50cc7123 testbench
 08aeb4ff-7f68-4c71-86c3c842b4262898 tester
+c51dc642-a2e1-48df-a490e2748cb6363e tflmcly
 04e3f894-2c5c-4f2e-8dc1694eeaab53fa tone
 e93326d8-0d14-4bf0-bcb9e063d3d80136 twb_sched
 42f8060c-832f-4dbf-b24751e961997b34 up_down_mixer
 b77e677e-5ff4-4188-af14fba8bdbf8682 volume
-127f4eec-23fa-11f0-a4a6bf0cd6b4583b nxp_eap
 8a171323-94a3-4e1d-afe9fe5dbaa4c393 volume4
 1028070e-04e8-46ab-8d8110a0116ce738 wait
 d944281a-afe9-4695-a043d7f62b89538e waves
@@ -171,7 +177,3 @@ d944281a-afe9-4695-a043d7f62b89538e waves
 5f1ec3f8-faaf-4099-903ccee98351f169 zephyr_idc
 8fa1d42f-bc6f-464b-867f547af08834da zipc_task
 1547fe68-de0c-11eb-84613158a1294853 zll_sched
-2B79E4F3-4675-F649-89DF3BC194A91AEB brngup
-D406D134-C3C1-402C-8AEC6821C0C2B0E6 cold
-c51dc642-a2e1-48df-a490e2748cb6363e tflmcly
-f36BF24B-9AAF-83f4-8677E072E8AEADB7 notification_pool
