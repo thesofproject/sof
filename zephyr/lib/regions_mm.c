@@ -64,7 +64,7 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 	const struct sys_mm_drv_region *region;
 
 	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, region) {
-		if (region->attr == MEM_REG_ATTR_SHARED_HEAP) {
+		if (region->attr == VIRTUAL_REGION_SHARED_HEAP_ATTR) {
 			new_heap->virtual_region = region;
 			break;
 		}

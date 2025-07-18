@@ -5,12 +5,14 @@
 #include <rtos/alloc.h>
 
 #include <sof/lib_manager.h>
+#include <sof/lib/regions_mm.h>
 #include <ipc/topology.h>
 
 #include <zephyr/llext/buf_loader.h>
 #include <zephyr/llext/llext.h>
 #include <zephyr/llext/llext_internal.h>
 #include <zephyr/logging/log_ctrl.h>
+#include <adsp_memory_regions.h>
 
 LOG_MODULE_DECLARE(lib_manager, CONFIG_SOF_LOG_LEVEL);
 
@@ -331,3 +333,18 @@ nomem:
 
 	return -ENOMEM;
 }
+
+static int llext_memory_region_init(void)
+{
+	int ret;
+
+	/* add a region for loadable libraries */
+	ret = adsp_add_virtual_memory_region(CONFIG_LIBRARY_BASE_ADDRESS,
+					     CONFIG_LIBRARY_REGION_SIZE,
+					     VIRTUAL_REGION_LOADABLE_LIBRARIES_ATTR);
+
+	return ret;
+}
+
+
+SYS_INIT(llext_memory_region_init, POST_KERNEL, 1);
