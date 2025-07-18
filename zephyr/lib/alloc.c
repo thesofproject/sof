@@ -13,6 +13,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
+#include <sof/lib/regions_mm.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
@@ -290,6 +291,18 @@ static const struct vmh_heap_config static_hp_buffers = {
 
 static int virtual_heap_init(void)
 {
+	int ret;
+
+	if (virtual_buffers_heap)
+		return -EEXIST;
+
+	/* add a virtual memory region */
+	ret = adsp_add_virtual_memory_region(adsp_mm_get_unused_l2_start_aligned(),
+					     CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE,
+					     VIRTUAL_REGION_SHARED_HEAP_ATTR);
+	if (ret)
+		return ret;
+
 	virtual_buffers_heap = vmh_init_heap(&static_hp_buffers, false);
 	if (!virtual_buffers_heap) {
 		tr_err(&zephyr_tr, "Unable to init virtual heap");
