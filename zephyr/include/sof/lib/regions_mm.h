@@ -19,6 +19,7 @@
 
 /* Attributes for memory regions */
 #define VIRTUAL_REGION_SHARED_HEAP_ATTR 1U	  /*< region dedicated for shared virtual heap */
+#define VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR 2U	  /*< region dedicated for LLEXT libraries */
 
 /* Dependency on ipc/topology.h created due to memory capability definitions
  * that are defined there
