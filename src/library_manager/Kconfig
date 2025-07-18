@@ -58,4 +58,10 @@ config LIBRARY_BASE_ADDRESS
 	  automatically but the beginning of that area is platform-specific and
 	  should be set by this option.
 
+config LIBRARY_REGION_SIZE
+	hex "Size of memory region dedicated to loadable modules"
+	default 0x100000
+	help
+	  Size of the virtual memory region dedicated for loadable modules
+
 endmenu

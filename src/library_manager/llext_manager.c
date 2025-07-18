@@ -19,6 +19,7 @@
 #include <rtos/spinlock.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
+#include <sof/lib/regions_mm.h>
 #include <sof/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
@@ -35,6 +36,7 @@
 #include <rimage/sof/user/manifest.h>
 #include <module/module/api_ver.h>
 
+#include <adsp_memory_regions.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -806,3 +808,18 @@ bool comp_is_llext(struct comp_dev *comp)
 
 	return mod && module_is_llext(mod);
 }
+
+static int llext_memory_region_init(void)
+{
+	int ret;
+
+	/* add a region for loadable libraries */
+	ret = adsp_add_virtual_memory_region(CONFIG_LIBRARY_BASE_ADDRESS,
+					     CONFIG_LIBRARY_REGION_SIZE,
+					     VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR);
+
+	return ret;
+}
+
+
+SYS_INIT(llext_memory_region_init, POST_KERNEL, 1);
