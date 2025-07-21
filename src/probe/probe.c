@@ -365,6 +365,14 @@ int probe_init(const struct probe_dma *probe_dma)
 		return -ENOMEM;
 	}
 
+	/* initialize injection DMAs as invalid */
+	for (i = 0; i < CONFIG_PROBE_DMA_MAX; i++)
+		_probe->inject_dma[i].stream_tag = PROBE_DMA_INVALID;
+
+	/* initialize probe points as invalid */
+	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++)
+		_probe->probe_points[i].stream_tag = PROBE_POINT_INVALID;
+
 	/* setup extraction dma if requested */
 	if (probe_dma) {
 		tr_dbg(&pr_tr, "\tstream_tag = %u, dma_buffer_size = %u",
@@ -399,14 +407,6 @@ int probe_init(const struct probe_dma *probe_dma)
 
 		_probe->ext_dma.stream_tag = PROBE_DMA_INVALID;
 	}
-
-	/* initialize injection DMAs as invalid */
-	for (i = 0; i < CONFIG_PROBE_DMA_MAX; i++)
-		_probe->inject_dma[i].stream_tag = PROBE_DMA_INVALID;
-
-	/* initialize probe points as invalid */
-	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++)
-		_probe->probe_points[i].stream_tag = PROBE_POINT_INVALID;
 
 	return 0;
 }
