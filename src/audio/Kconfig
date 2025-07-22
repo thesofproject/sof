@@ -2,9 +2,6 @@
 
 menu "Audio components"
 
-rsource "volume/Kconfig"
-rsource "aria/Kconfig"
-
 config COMP_BASEFW_IPC4
 	bool "BASEFW component"
 	default y
@@ -19,8 +16,6 @@ config IPC4_BASE_FW_INTEL
 	  Enable Intel vendor extensions for base firmware module.
 	  This implements a set of additional IPC4 properties that
 	  extend the base spec.
-
-rsource "copier/Kconfig"
 
 config HOST_DMA_RELOAD_DELAY_ENABLE
 	bool "Delay reloading DMA for host interfaces"
@@ -77,8 +72,6 @@ config MODULE_MAX_CONNECTIONS
 	  Specifies the maximum number of sink and source connections a module
 	  may have to other modules.
 
-rsource "up_down_mixer/Kconfig"
-
 config COMP_BLOB
 	bool "Large IPC data as compound message blobs"
 	default y
@@ -94,17 +87,11 @@ config MODULE_MAX_BLOB_SIZE
 	  Specify the maximum size of IPC4 module blob data that can be
 	  appended to each message.
 
-rsource "src/Kconfig"
-
 config COMP_STUBS
 	bool "Build all selected third-party (3P) components with stubs"
 	help
 	  Select to force all 3P blocks to link against stubs rather than their libraries. This
 	  should only be used in testing environments like fuzzers or CI.
-
-rsource "eq_fir/Kconfig"
-
-rsource "eq_iir/Kconfig"
 
 config COMP_TONE
 	bool "Tone component"
@@ -112,12 +99,6 @@ config COMP_TONE
 	help
 	  Select for Tone component.
 	  Warning: This component is deprecated and will be removed from SOF v2.8.
-
-rsource "mixer/Kconfig"
-
-rsource "mixin_mixout/Kconfig"
-
-rsource "mux/Kconfig"
 
 config COMP_KPB
 	bool "KPB component"
@@ -135,28 +116,6 @@ config KPB_FORCE_COPY_TYPE_NORMAL
 
 endif # COMP_KPB
 
-rsource "google/Kconfig"
-
-rsource "nxp/Kconfig"
-
-rsource "selector/Kconfig"
-
-rsource "crossover/Kconfig"
-
-rsource "drc/Kconfig"
-
-rsource "multiband_drc/Kconfig"
-
-rsource "dcblock/Kconfig"
-
-rsource "smart_amp/Kconfig"
-
-rsource "asrc/Kconfig"
-
-rsource "tdfb/Kconfig"
-
-rsource "tensorflow/Kconfig"
-
 config COMP_MODULE_ADAPTER
 	bool "Module adapter"
 	default y
@@ -168,17 +127,35 @@ config COMP_MODULE_ADAPTER
 	  "src\include\sof\audio\module_adapter\interfaces.h". It is possible to link several
 	  different codecs and use them in parallel.
 
-rsource "module_adapter/Kconfig"
-
-rsource "igo_nr/Kconfig"
-
-rsource "rtnr/Kconfig"
-
-rsource "mfcc/Kconfig"
-
+# --- Kconfig Sources (alphabetical order) ---
+rsource "aria/Kconfig"
+rsource "asrc/Kconfig"
 rsource "codec/Kconfig"
-
+rsource "copier/Kconfig"
+rsource "crossover/Kconfig"
+rsource "dcblock/Kconfig"
+rsource "drc/Kconfig"
+rsource "eq_fir/Kconfig"
+rsource "eq_iir/Kconfig"
+rsource "google/Kconfig"
+rsource "igo_nr/Kconfig"
+rsource "mfcc/Kconfig"
+rsource "mixer/Kconfig"
+rsource "mixin_mixout/Kconfig"
+rsource "module_adapter/Kconfig"
+rsource "multiband_drc/Kconfig"
+rsource "mux/Kconfig"
+rsource "nxp/Kconfig"
+rsource "rtnr/Kconfig"
+rsource "selector/Kconfig"
+rsource "smart_amp/Kconfig"
+rsource "src/Kconfig"
+rsource "tdfb/Kconfig"
 rsource "template_comp/Kconfig"
+rsource "tensorflow/Kconfig"
+rsource "up_down_mixer/Kconfig"
+rsource "volume/Kconfig"
+# --- End Kconfig Sources (alphabetical order) ---
 
 rsource "level_multiplier/Kconfig"
 
