@@ -53,6 +53,7 @@ def main():
             all_uuids.add(uu)
             all_syms.add(sym)
             emit_uuid_rec(uu, sym)
+            print(f"Added UUID {uu} with symbol {sym}")
 
     with open(sys.argv[2], "w") as f:
         f.write(header)
