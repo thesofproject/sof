@@ -621,6 +621,14 @@ int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
 	coef_size[0] = tap_size * stage_src1->filter_length;
 	coef_size[1] = tap_size * stage_src2->filter_length;
 
+	if (coef_size[0] == 0 || coef_size[1] == 0) {
+		comp_err(dev,
+			 "illegal zero coefficient vector size for unsupported conversion request %d to %d",
+			 prm->in_fs[prm->idx_in], prm->out_fs[prm->idx_out]);
+		rfree(stage_dst);
+		return -EINVAL;
+	}
+
 	stage_dst[0].coefs = fast_get(stage_src1->coefs, coef_size[0]);
 	stage_dst[1].coefs = fast_get(stage_src2->coefs, coef_size[1]);
 
