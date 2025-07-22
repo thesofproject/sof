@@ -1433,6 +1433,10 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 
 			if (_probe->probe_points[j].stream_tag != PROBE_POINT_INVALID &&
 			    buf_id->full_id == buffer_id[i]) {
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+				if (enable_logs(&_probe->probe_points[j]))
+					probe_logging_init(NULL);
+#endif
 #if CONFIG_IPC_MAJOR_4
 				dev = ipc_get_comp_by_id(ipc_get(),
 							 IPC4_COMP_ID(buf_id->fields.module_id,
@@ -1498,6 +1502,9 @@ static int probe_free(struct processing_module *mod)
 
 	probe_deinit();
 
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+	probe_logging_init(NULL);
+#endif
 	return 0;
 }
 
