@@ -9,11 +9,12 @@
 #define __SOF_PROBE_PROBE_H__
 
 #include <ipc/probe.h>
+#include <sys/types.h>
 
 /**
  * A buffer of logging data is available for processing.
  */
-typedef void(*probe_logging_hook_t)(uint8_t *buffer, size_t length);
+typedef ssize_t(*probe_logging_hook_t)(uint8_t *buffer, size_t length);
 
 #if CONFIG_LOG_BACKEND_SOF_PROBE
 const struct log_backend *log_backend_probe_get(void);

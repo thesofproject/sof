@@ -338,6 +338,29 @@ static enum task_state probe_task(void *data)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
+#if CONFIG_LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
+static void probe_auto_enable_logs(uint32_t stream_tag)
+{
+	struct probe_point log_point = {
+#if CONFIG_IPC_MAJOR_4
+		.buffer_id = {
+			.full_id = 0,
+		},
+#else
+		.buffer_id = 0,
+#endif
+		.purpose = PROBE_PURPOSE_EXTRACTION,
+		.stream_tag = stream_tag,
+	};
+	int ret;
+
+	ret = probe_point_add(1, &log_point);
+
+	if (ret)
+		tr_err(&pr_tr, "probe_auto_enable_logs() failed");
+}
+#endif
+
 int probe_init(const struct probe_dma *probe_dma)
 {
 	struct probe_pdata *_probe = probe_get();
@@ -364,6 +387,14 @@ int probe_init(const struct probe_dma *probe_dma)
 		tr_err(&pr_tr, "probe_init(): Alloc failed.");
 		return -ENOMEM;
 	}
+
+	/* initialize injection DMAs as invalid */
+	for (i = 0; i < CONFIG_PROBE_DMA_MAX; i++)
+		_probe->inject_dma[i].stream_tag = PROBE_DMA_INVALID;
+
+	/* initialize probe points as invalid */
+	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++)
+		_probe->probe_points[i].stream_tag = PROBE_POINT_INVALID;
 
 	/* setup extraction dma if requested */
 	if (probe_dma) {
@@ -394,19 +425,15 @@ int probe_init(const struct probe_dma *probe_dma)
 				      SOF_UUID(probe_task_uuid),
 				      SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_LOW,
 				      probe_task, _probe, 0, 0);
+
+#if CONFIG_LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
+		probe_auto_enable_logs(probe_dma->stream_tag);
+#endif
 	} else {
 		tr_dbg(&pr_tr, "\tno extraction DMA setup");
 
 		_probe->ext_dma.stream_tag = PROBE_DMA_INVALID;
 	}
-
-	/* initialize injection DMAs as invalid */
-	for (i = 0; i < CONFIG_PROBE_DMA_MAX; i++)
-		_probe->inject_dma[i].stream_tag = PROBE_DMA_INVALID;
-
-	/* initialize probe points as invalid */
-	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++)
-		_probe->probe_points[i].stream_tag = PROBE_POINT_INVALID;
 
 	return 0;
 }
@@ -840,27 +867,32 @@ static void kick_probe_task(struct probe_pdata *_probe)
 }
 
 #if CONFIG_LOG_BACKEND_SOF_PROBE
-static void probe_logging_hook(uint8_t *buffer, size_t length)
+static ssize_t probe_logging_hook(uint8_t *buffer, size_t length)
 {
 	struct probe_pdata *_probe = probe_get();
 	uint64_t checksum;
+	size_t max_len;
 	int ret;
+
+	max_len = _probe->ext_dma.dmapb.avail - sizeof(struct probe_data_packet) - sizeof(checksum);
+	length = MIN(max_len, length);
 
 	ret = probe_gen_header(PROBE_LOGGING_BUFFER_ID, length, 0, &checksum);
 	if (ret < 0)
-		return;
+		return ret;
 
 	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
 			      buffer, length);
 	if (ret < 0)
-		return;
+		return ret;
 
 	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
 			      &checksum, sizeof(checksum));
 	if (ret < 0)
-		return;
+		return ret;
 
 	kick_probe_task(_probe);
+	return length;
 }
 #endif
 
@@ -1401,6 +1433,10 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 
 			if (_probe->probe_points[j].stream_tag != PROBE_POINT_INVALID &&
 			    buf_id->full_id == buffer_id[i]) {
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+				if (enable_logs(&_probe->probe_points[j]))
+					probe_logging_init(NULL);
+#endif
 #if CONFIG_IPC_MAJOR_4
 				dev = ipc_get_comp_by_id(ipc_get(),
 							 IPC4_COMP_ID(buf_id->fields.module_id,
@@ -1466,6 +1502,9 @@ static int probe_free(struct processing_module *mod)
 
 	probe_deinit();
 
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+	probe_logging_init(NULL);
+#endif
 	return 0;
 }
 
