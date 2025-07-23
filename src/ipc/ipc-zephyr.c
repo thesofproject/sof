@@ -11,6 +11,8 @@
 
 #include <autoconf.h>
 
+#include <zephyr/kernel.h>
+
 #include <intel_adsp_ipc.h>
 #include <sof/ipc/common.h>
 
@@ -308,4 +310,24 @@ int platform_ipc_init(struct ipc *ipc)
 #endif
 
 	return 0;
+}
+
+static bool ipc_wait_complete(const struct device *dev, void *arg)
+{
+	k_sem_give(arg);
+	return false;
+}
+
+void ipc_platform_wait_ack(struct ipc *ipc)
+{
+	static struct k_sem ipc_wait_sem;
+
+	k_sem_init(&ipc_wait_sem, 0, 1);
+
+	intel_adsp_ipc_set_done_handler(INTEL_ADSP_IPC_HOST_DEV, ipc_wait_complete, &ipc_wait_sem);
+
+	if (k_sem_take(&ipc_wait_sem, Z_TIMEOUT_MS(10)) == -EAGAIN)
+		tr_err(&ipc_tr, "Timeout waiting for host ack!");
+
+	intel_adsp_ipc_set_done_handler(INTEL_ADSP_IPC_HOST_DEV, NULL, NULL);
 }

@@ -817,6 +817,16 @@ __cold static int ipc4_process_ipcgtw_cmd(struct ipc4_message_request *ipc4)
 #endif
 }
 
+static int ipc_glb_gdb_debug(struct ipc4_message_request *ipc4)
+{
+#if CONFIG_GDBSTUB
+	ipc_enter_gdb = true;
+	return IPC4_SUCCESS;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
 static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 {
 	uint32_t type;
@@ -879,6 +889,10 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 
 	case SOF_IPC4_GLB_IPCGATEWAY_CMD:
 		ret = ipc4_process_ipcgtw_cmd(ipc4);
+		break;
+
+	case SOF_IPC4_GLB_ENTER_GDB:
+		ret = ipc_glb_gdb_debug(ipc4);
 		break;
 
 	default:

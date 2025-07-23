@@ -112,4 +112,9 @@ int ipc_platform_poll_is_host_ready(void);
  */
 int ipc_platform_poll_tx_host_msg(struct ipc_msg *msg);
 
+/**
+ * \brief wait for host acknowledgment to an IPC message
+ */
+void ipc_platform_wait_ack(struct ipc *ipc);
+
 #endif
