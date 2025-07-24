@@ -25,7 +25,7 @@ static void *dts_effect_allocate_codec_memory(void *mod_void, unsigned int lengt
 
 	comp_dbg(dev, "dts_effect_allocate_codec_memory() start");
 
-	pMem = module_allocate_memory(mod, (uint32_t)length, (uint32_t)alignment);
+	pMem = mod_alloc(mod, (uint32_t)length, (uint32_t)alignment);
 
 	if (pMem == NULL)
 		comp_err(dev,
@@ -42,10 +42,10 @@ static void dts_effect_free_codec_memory(void *mod_void, void *pMem)
 
 	comp_dbg(dev, "dts_effect_free_codec_memory() start");
 
-	int ret = module_free_memory(mod, pMem);
+	int ret = mod_free(mod, pMem);
 
 	if (ret)
-		comp_err(dev, "dts_effect_free_codec_memory() module_free_memory failed %d", ret);
+		comp_err(dev, "dts_effect_free_codec_memory() mod_free failed %d", ret);
 
 	comp_dbg(dev, "dts_effect_free_codec_memory() done");
 }

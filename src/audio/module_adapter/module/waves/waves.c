@@ -200,7 +200,7 @@ static int waves_effect_allocate(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	waves_codec->effect = (MaxxEffect_t *)module_allocate_memory(mod,
+	waves_codec->effect = (MaxxEffect_t *)mod_alloc(mod,
 		waves_codec->effect_size, 16);
 
 	if (!waves_codec->effect) {
@@ -376,7 +376,7 @@ static int waves_effect_buffers(struct processing_module *mod)
 
 	comp_dbg(dev, "waves_effect_buffers() start");
 
-	i_buffer = module_allocate_memory(mod, waves_codec->buffer_bytes, 16);
+	i_buffer = mod_alloc(mod, waves_codec->buffer_bytes, 16);
 	if (!i_buffer) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for i_buffer",
 			 waves_codec->buffer_bytes);
@@ -384,7 +384,7 @@ static int waves_effect_buffers(struct processing_module *mod)
 		goto err;
 	}
 
-	o_buffer = module_allocate_memory(mod, waves_codec->buffer_bytes, 16);
+	o_buffer = mod_alloc(mod, waves_codec->buffer_bytes, 16);
 	if (!o_buffer) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for o_buffer",
 			 waves_codec->buffer_bytes);
@@ -407,9 +407,9 @@ static int waves_effect_buffers(struct processing_module *mod)
 
 err:
 	if (i_buffer)
-		module_free_memory(mod, i_buffer);
+		mod_free(mod, i_buffer);
 	if (o_buffer)
-		module_free_memory(mod, o_buffer);
+		mod_free(mod, o_buffer);
 	return ret;
 }
 
@@ -475,13 +475,13 @@ static int waves_effect_save_config_blob_to_cache(struct processing_module *mod,
 	/* release old cached config blob*/
 	if (waves_codec->config_blob && size != waves_codec->config_blob_size) {
 		comp_info(dev, "waves_effect_save_config_blob_to_cache() release blob");
-		module_free_memory(mod, waves_codec->config_blob);
+		mod_free(mod, waves_codec->config_blob);
 		waves_codec->config_blob = NULL;
 		waves_codec->config_blob_size = 0;
 	}
 
 	if (!waves_codec->config_blob) {
-		waves_codec->config_blob = module_allocate_memory(mod, size, 16);
+		waves_codec->config_blob = mod_alloc(mod, size, 16);
 		if (!waves_codec->config_blob) {
 			comp_err(dev,
 				"waves_effect_save_config_blob_to_cache() failed to allocate %d bytes for config blob",
@@ -497,7 +497,7 @@ static int waves_effect_save_config_blob_to_cache(struct processing_module *mod,
 		comp_err(dev,
 			"waves_effect_save_config_blob_to_cache(): failed to copy config blob %d",
 			ret);
-		module_free_memory(mod, waves_codec->config_blob);
+		mod_free(mod, waves_codec->config_blob);
 		waves_codec->config_blob = NULL;
 		waves_codec->config_blob_size = 0;
 		return ret;
@@ -668,7 +668,7 @@ static int waves_codec_init(struct processing_module *mod)
 
 	comp_dbg(dev, "waves_codec_init() start");
 
-	waves_codec = module_allocate_memory(mod, sizeof(struct waves_codec_data), 16);
+	waves_codec = mod_alloc(mod, sizeof(struct waves_codec_data), 16);
 	if (!waves_codec) {
 		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for waves_codec_data",
 			 sizeof(struct waves_codec_data));
@@ -678,7 +678,7 @@ static int waves_codec_init(struct processing_module *mod)
 		codec->private = waves_codec;
 		ret = waves_effect_allocate(mod);
 		if (ret) {
-			module_free_memory(mod, waves_codec);
+			mod_free(mod, waves_codec);
 			codec->private = NULL;
 		}
 	}
@@ -696,7 +696,7 @@ static int waves_codec_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	response = module_allocate_memory(mod, waves_codec->response_max_bytes, 16);
+	response = mod_alloc(mod, waves_codec->response_max_bytes, 16);
 	if (!response) {
 		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for response",
 			 waves_codec->response_max_bytes);
@@ -850,10 +850,10 @@ static int waves_codec_reset(struct processing_module *mod)
 		comp_err(dev, "waves_codec_reset() failed %d", ret);
 
 	if (codec->mpd.in_buff)
-		module_free_memory(mod, codec->mpd.in_buff);
+		mod_free(mod, codec->mpd.in_buff);
 
 	if (codec->mpd.out_buff)
-		module_free_memory(mod, codec->mpd.out_buff);
+		mod_free(mod, codec->mpd.out_buff);
 
 	waves_codec->initialized = false;
 	comp_dbg(dev, "waves_codec_reset() done");
