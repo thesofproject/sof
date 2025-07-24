@@ -16,8 +16,8 @@
 #include <ipc4/logging.h>
 #include <rtos/kernel.h>
 #if !CONFIG_LIBRARY
-#include <zephyr/logging/log_backend.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #endif
 #if CONFIG_LOG_BACKEND_SOF_PROBE
 #include <sof/probe/probe.h>
@@ -144,7 +144,7 @@ int ipc4_logging_enable_logs(bool first_block,
 		k_mutex_init(&log_mutex);
 		k_work_init_delayable(&log_work, log_work_handler);
 
-		log_backend_activate(log_backend, mtrace_log_hook);
+		log_backend_enable(log_backend, mtrace_log_hook, CONFIG_SOF_LOG_LEVEL);
 
 		mtrace_aging_timer = log_state->aging_timer_period;
 		if (mtrace_aging_timer < IPC4_MTRACE_AGING_TIMER_MIN_MS) {
@@ -155,7 +155,7 @@ int ipc4_logging_enable_logs(bool first_block,
 	} else  {
 		k_work_flush_delayable(&log_work, &ipc4_log_work_sync);
 		adsp_mtrace_log_init(NULL);
-		log_backend_deactivate(log_backend);
+		log_backend_disable(log_backend);
 	}
 
 	return 0;
@@ -189,10 +189,10 @@ int ipc4_logging_enable_logs(bool first_block,
 		if (!probe_is_backend_configured())
 			return -EINVAL;
 
-		log_backend_activate(log_backend, NULL);
+		log_backend_enable(log_backend, NULL, CONFIG_SOF_LOG_LEVEL);
 
 	} else  {
-		log_backend_deactivate(log_backend);
+		log_backend_disable(log_backend);
 	}
 
 	return 0;
