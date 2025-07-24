@@ -66,17 +66,17 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	struct module_config *dst;
 	const struct module_interface *const interface = drv->adapter_ops;
 
-	comp_cl_dbg(drv, "module_adapter_new() start");
+	comp_cl_dbg(drv, "start");
 
 	if (!config) {
-		comp_cl_err(drv, "module_adapter_new(), wrong input params! drv = %zx config = %zx",
+		comp_cl_err(drv, "wrong input params! drv = %zx config = %zx",
 			    (size_t)drv, (size_t)config);
 		return NULL;
 	}
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
-		comp_cl_err(drv, "module_adapter_new(), failed to allocate memory for comp_dev");
+		comp_cl_err(drv, "failed to allocate memory for comp_dev");
 		return NULL;
 	}
 	dev->ipc_config = *config;
@@ -92,7 +92,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	mod = rzalloc(flags, sizeof(*mod));
 	if (!mod) {
-		comp_err(dev, "module_adapter_new(), failed to allocate memory for module");
+		comp_err(dev, "failed to allocate memory for module");
 		goto err;
 	}
 
@@ -106,7 +106,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	ret = module_adapter_init_data(dev, dst, config, spec);
 	if (ret) {
-		comp_err(dev, "module_adapter_new() %d: module init data failed",
+		comp_err(dev, "%d: module init data failed",
 			 ret);
 		goto err;
 	}
@@ -128,7 +128,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	/* Init processing module */
 	ret = module_init(mod);
 	if (ret) {
-		comp_err(dev, "module_adapter_new() %d: module initialization failed",
+		comp_err(dev, "%d: module initialization failed",
 			 ret);
 		goto err;
 	}
@@ -152,12 +152,12 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	 */
 	ret = module_adapter_params(dev, &params);
 	if (ret) {
-		comp_err(dev, "module_adapter_new() %d: module params failed", ret);
+		comp_err(dev, "%d: module params failed", ret);
 		goto err;
 	}
 #endif
 
-	comp_dbg(dev, "module_adapter_new() done");
+	comp_dbg(dev, "done");
 	return dev;
 err:
 #if CONFIG_IPC_MAJOR_4
@@ -212,7 +212,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	uint32_t buff_size; /* size of local buffer */
 	int i = 0;
 
-	comp_dbg(dev, "module_adapter_prepare() start");
+	comp_dbg(dev, "start");
 #if CONFIG_IPC_MAJOR_4
 	/*
 	 * if the stream_params are valid, just update the sink/source buffer params. If not,
@@ -224,13 +224,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 		ret = module_adapter_params(dev, &params);
 		if (ret) {
-			comp_err(dev, "module_adapter_new() %d: module params failed", ret);
+			comp_err(dev, "%d: module params failed", ret);
 			return ret;
 		}
 	} else {
 		ret = comp_verify_params(dev, mod->verify_params_flags, mod->stream_params);
 		if (ret < 0) {
-			comp_err(dev, "module_adapter_params(): comp_verify_params() failed.");
+			comp_err(dev, "comp_verify_params() failed.");
 			return ret;
 		}
 	}
@@ -248,7 +248,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	if (ret) {
 		if (ret != PPL_STATUS_PATH_STOP)
-			comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",
+			comp_err(dev, "error %x: module prepare failed",
 				 ret);
 		return ret;
 	}
@@ -291,7 +291,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
-		comp_warn(dev, "module_adapter_prepare(): module has already been prepared");
+		comp_warn(dev, "module has already been prepared");
 		return PPL_STATUS_PATH_STOP;
 	}
 
@@ -307,7 +307,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	sink = comp_dev_get_first_data_consumer(dev);
 
 	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
-	comp_dbg(dev, "module_adapter_prepare(): got period_bytes = %u", mod->period_bytes);
+	comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
 
 	/* no more to do for sink/source mode */
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
@@ -324,19 +324,19 @@ int module_adapter_prepare(struct comp_dev *dev)
 		mod->num_of_sinks++;
 
 	if (!mod->num_of_sources && !mod->num_of_sinks) {
-		comp_err(dev, "module_adapter_prepare(): no source and sink buffers connected!");
+		comp_err(dev, "no source and sink buffers connected!");
 		return -EINVAL;
 	}
 	if (mod->num_of_sources > CONFIG_MODULE_MAX_CONNECTIONS ||
 	    mod->num_of_sinks > CONFIG_MODULE_MAX_CONNECTIONS) {
-		comp_err(dev, "module_adapter_prepare(): too many connected sinks %d or sources %d!",
+		comp_err(dev, "too many connected sinks %d or sources %d!",
 			 mod->num_of_sinks, mod->num_of_sources);
 		return -EINVAL;
 	}
 
 	/* check processing mode */
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->max_sources > 1 && mod->max_sinks > 1) {
-		comp_err(dev, "module_adapter_prepare(): Invalid use of simple_copy");
+		comp_err(dev, "Invalid use of simple_copy");
 		return -EINVAL;
 	}
 
@@ -348,7 +348,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 			rzalloc(SOF_MEM_FLAG_USER,
 				sizeof(*mod->input_buffers) * mod->max_sources);
 		if (!mod->input_buffers) {
-			comp_err(dev, "module_adapter_prepare(): failed to allocate input buffers");
+			comp_err(dev, "failed to allocate input buffers");
 			return -ENOMEM;
 		}
 	} else {
@@ -361,7 +361,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 			rzalloc(SOF_MEM_FLAG_USER,
 				sizeof(*mod->output_buffers) * mod->max_sinks);
 		if (!mod->output_buffers) {
-			comp_err(dev, "module_adapter_prepare(): failed to allocate output buffers");
+			comp_err(dev, "failed to allocate output buffers");
 			ret = -ENOMEM;
 			goto in_out_free;
 		}
@@ -427,7 +427,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 		mod->input_buffers[i].data = rballoc(SOF_MEM_FLAG_USER, size);
 		if (!mod->input_buffers[i].data) {
-			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc input buffer data");
+			comp_err(mod->dev, "Failed to alloc input buffer data");
 			ret = -ENOMEM;
 			goto in_data_free;
 		}
@@ -439,7 +439,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsink_list) {
 		mod->output_buffers[i].data = rballoc(SOF_MEM_FLAG_USER, md->mpd.out_buff_size);
 		if (!mod->output_buffers[i].data) {
-			comp_err(mod->dev, "module_adapter_prepare(): Failed to alloc output buffer data");
+			comp_err(mod->dev, "Failed to alloc output buffer data");
 			ret = -ENOMEM;
 			goto out_data_free;
 		}
@@ -455,7 +455,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 			uint32_t flags;
 
 			if (!buffer) {
-				comp_err(dev, "module_adapter_prepare(): failed to allocate local buffer");
+				comp_err(dev, "failed to allocate local buffer");
 				ret = -ENOMEM;
 				goto free;
 			}
@@ -474,7 +474,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 			ret = buffer_set_size(buffer, buff_size, 0);
 			if (ret < 0) {
-				comp_err(dev, "module_adapter_prepare(): buffer_set_size() failed, buff_size = %u",
+				comp_err(dev, "failed, buff_size = %u",
 					 buff_size);
 				goto free;
 			}
@@ -484,7 +484,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 		}
 	}
 
-	comp_dbg(dev, "module_adapter_prepare() done");
+	comp_dbg(dev, "done");
 
 	return 0;
 
@@ -526,7 +526,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 
 	ret = comp_verify_params(dev, mod->verify_params_flags, params);
 	if (ret < 0) {
-		comp_err(dev, "module_adapter_params(): comp_verify_params() failed.");
+		comp_err(dev, "failed.");
 		return ret;
 	}
 
@@ -564,9 +564,8 @@ EXPORT_SYMBOL(module_adapter_params);
  * @buff_size: size of the module input buffer
  * @bytes: number of bytes available in the source buffer
  */
-static void
-ca_copy_from_source_to_module(const struct audio_stream *source,
-			      void *buff, uint32_t buff_size, size_t bytes)
+static void ca_copy_from_source_to_module(const struct audio_stream *source,
+					  void *buff, uint32_t buff_size, size_t bytes)
 {
 	/* head_size - available data until end of source buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(source,
@@ -592,9 +591,8 @@ ca_copy_from_source_to_module(const struct audio_stream *source,
  * @buff: pointer to the module output buffer
  * @bytes: number of bytes available in the module output buffer
  */
-static void
-ca_copy_from_module_to_sink(const struct audio_stream *sink,
-			    void *buff, size_t bytes)
+static void ca_copy_from_module_to_sink(const struct audio_stream *sink,
+					void *buff, size_t bytes)
 {
 	/* head_size - free space until end of sink buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(sink, audio_stream_get_wptr(sink));
@@ -650,11 +648,11 @@ static void module_copy_samples(struct comp_dev *dev, struct comp_buffer *src_bu
 			return;
 		}
 
-		comp_dbg(dev, "module_copy_samples(): deep buffering has ended after gathering %d bytes of processed data",
+		comp_dbg(dev, "deep buffering has ended after gathering %d bytes of processed data",
 			 audio_stream_get_avail_bytes(&src_buffer->stream));
 		mod->deep_buff_bytes = 0;
 	} else if (!produced) {
-		comp_dbg(dev, "module_copy_samples(): nothing processed in this call");
+		comp_dbg(dev, "nothing processed in this call");
 		/*
 		 * No data produced anything in this period but there still be data in the buffer
 		 * to copy to sink
@@ -723,10 +721,9 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	mod->total_data_produced += mod->output_buffers[0].size;
 }
 
-static uint32_t
-module_single_sink_setup(struct comp_dev *dev,
-			 struct comp_buffer **source,
-			 struct comp_buffer **sinks)
+static uint32_t module_single_sink_setup(struct comp_dev *dev,
+					 struct comp_buffer **source,
+					 struct comp_buffer **sinks)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
@@ -764,10 +761,9 @@ module_single_sink_setup(struct comp_dev *dev,
 	return num_input_buffers;
 }
 
-static uint32_t
-module_single_source_setup(struct comp_dev *dev,
-			   struct comp_buffer **source,
-			   struct comp_buffer **sinks)
+static uint32_t module_single_source_setup(struct comp_dev *dev,
+					   struct comp_buffer **source,
+					   struct comp_buffer **sinks)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
@@ -911,9 +907,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 				    mod->output_buffers, num_output_buffers);
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
-			comp_err(dev,
-				 "module_adapter_audio_stream_type_copy() failed with error: %x",
-				 ret);
+			comp_err(dev, "failed with error: %x", ret);
 			goto out;
 		}
 
@@ -1039,7 +1033,7 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 	int ret;
 	int i = 0;
 
-	comp_dbg(dev, "module_adapter_sink_source_copy(): start");
+	comp_dbg(dev, "start");
 
 	/* reset number of processed bytes */
 	for (i = 0; i < mod->num_of_sources; i++)
@@ -1052,8 +1046,7 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 				      mod->sinks, mod->num_of_sinks);
 
 	if (ret)
-		comp_err(dev, "module_adapter_sink_source_copy() process failed with error: %d",
-			 ret);
+		comp_err(dev, "process failed with error: %d", ret);
 
 	/* count number of processed data. To be removed in pipeline 2.0 */
 	for (i = 0; i < mod->num_of_sources; i++)
@@ -1062,7 +1055,7 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 	for (i = 0; i < mod->num_of_sinks; i++)
 		mod->total_data_produced += sink_get_num_of_processed_bytes(mod->sinks[i]);
 
-	comp_dbg(dev, "module_adapter_sink_source_copy(): done");
+	comp_dbg(dev, "done");
 
 	return ret;
 }
@@ -1077,7 +1070,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 	uint32_t min_free_frames = UINT_MAX;
 	int ret, i = 0;
 
-	comp_dbg(dev, "module_adapter_raw_data_type_copy(): start");
+	comp_dbg(dev, "start");
 
 	list_for_item(blist, &mod->raw_data_buffers_list) {
 		sink = container_of(blist, struct comp_buffer, buffers_list);
@@ -1114,9 +1107,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 				    mod->output_buffers, mod->num_of_sinks);
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
-			comp_err(dev,
-				 "module_adapter_raw_data_type_copy() %x: module processing failed",
-				 ret);
+			comp_err(dev, "%x: module processing failed", ret);
 			goto out;
 		}
 
@@ -1139,7 +1130,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 
 	module_adapter_process_output(dev);
 
-	comp_dbg(dev, "module_adapter_raw_data_type_copy(): done");
+	comp_dbg(dev, "done");
 
 	return 0;
 
@@ -1152,13 +1143,13 @@ out:
 		mod->input_buffers[i].size = 0;
 		mod->input_buffers[i].consumed = 0;
 	}
-	comp_dbg(dev, "module_adapter_raw_data_type_copy(): error %x", ret);
+	comp_dbg(dev, "error %x", ret);
 	return ret;
 }
 
 int module_adapter_copy(struct comp_dev *dev)
 {
-	comp_dbg(dev, "module_adapter_copy(): start");
+	comp_dbg(dev, "start");
 
 	struct processing_module *mod = comp_mod(dev);
 
@@ -1176,7 +1167,7 @@ int module_adapter_copy(struct comp_dev *dev)
 
 	}
 
-	comp_err(dev, "module_adapter_copy(): unknown processing_data_type");
+	comp_err(dev, "unknown processing_data_type");
 	return -EINVAL;
 }
 EXPORT_SYMBOL(module_adapter_copy);
@@ -1186,7 +1177,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 	struct processing_module *mod = comp_mod(dev);
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 
-	comp_dbg(dev, "module_adapter_trigger(): cmd %d", cmd);
+	comp_dbg(dev, "cmd %d", cmd);
 
 	/* handle host/DAI gateway modules separately */
 	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
@@ -1213,12 +1204,12 @@ int module_adapter_reset(struct comp_dev *dev)
 	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
 
-	comp_dbg(dev, "module_adapter_reset(): resetting");
+	comp_dbg(dev, "resetting");
 
 	ret = module_reset(mod);
 	if (ret) {
 		if (ret != PPL_STATUS_PATH_STOP)
-			comp_err(dev, "module_adapter_reset(): failed with error: %d", ret);
+			comp_err(dev, "failed with error: %d", ret);
 		return ret;
 	}
 
@@ -1249,7 +1240,7 @@ int module_adapter_reset(struct comp_dev *dev)
 	rfree(mod->stream_params);
 	mod->stream_params = NULL;
 
-	comp_dbg(dev, "module_adapter_reset(): done");
+	comp_dbg(dev, "done");
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -1261,11 +1252,11 @@ void module_adapter_free(struct comp_dev *dev)
 	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist, *_blist;
 
-	comp_dbg(dev, "module_adapter_free(): start");
+	comp_dbg(dev, "start");
 
 	ret = module_free(mod);
 	if (ret)
-		comp_err(dev, "module_adapter_free(): failed with error: %d", ret);
+		comp_err(dev, "failed with error: %d", ret);
 
 	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
