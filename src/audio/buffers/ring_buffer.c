@@ -255,17 +255,23 @@ int ring_buffer_module_unbind(struct sof_sink *sink)
 	return 0;
 }
 
-static struct source_ops ring_buffer_source_ops = {
+static const struct source_ops ring_buffer_source_ops = {
 	.get_data_available = ring_buffer_get_data_available,
 	.get_data = ring_buffer_get_data,
 	.release_data = ring_buffer_release_data,
+	.audio_set_ipc_params = audio_buffer_source_set_ipc_params,
+	.on_audio_format_set = audio_buffer_source_on_audio_format_set,
+	.set_alignment_constants = audio_buffer_source_set_alignment_constants,
 };
 
-static struct sink_ops ring_buffer_sink_ops = {
+static const struct sink_ops ring_buffer_sink_ops = {
 	.get_free_size = ring_buffer_get_free_size,
 	.get_buffer = ring_buffer_get_buffer,
 	.commit_buffer = ring_buffer_commit_buffer,
 	.on_unbind = ring_buffer_module_unbind,
+	.audio_set_ipc_params = audio_buffer_sink_set_ipc_params,
+	.on_audio_format_set = audio_buffer_sink_on_audio_format_set,
+	.set_alignment_constants = audio_buffer_sink_set_alignment_constants,
 };
 
 static const struct audio_buffer_ops audio_buffer_ops = {
