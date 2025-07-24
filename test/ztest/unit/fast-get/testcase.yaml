@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2025 Intel Corporation. All rights reserved.
+#
+# These contents may have been developed with support from one or more Intel-operated
+# generative artificial intelligence solutions.
+
+tests:
+  fast_get.basic_functionality:
+    tags: fast_get memory cache
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    build_only: false
