@@ -110,14 +110,14 @@ int module_init(struct processing_module *mod)
 	return 0;
 }
 
-void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment)
+void *mod_alloc(struct processing_module *mod, uint32_t size, uint32_t alignment)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_memory *container;
 	void *ptr;
 
 	if (!size) {
-		comp_err(dev, "module_allocate_memory: requested allocation of 0 bytes.");
+		comp_err(dev, "mod_alloc: requested allocation of 0 bytes.");
 		return NULL;
 	}
 
@@ -125,7 +125,7 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 	container = rzalloc(SOF_MEM_FLAG_USER,
 			    sizeof(struct module_memory));
 	if (!container) {
-		comp_err(dev, "module_allocate_memory: failed to allocate memory container.");
+		comp_err(dev, "mod_alloc: failed to allocate memory container.");
 		return NULL;
 	}
 
@@ -136,7 +136,7 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 		ptr = rballoc(SOF_MEM_FLAG_USER, size);
 
 	if (!ptr) {
-		comp_err(dev, "module_allocate_memory: failed to allocate memory for comp %x.",
+		comp_err(dev, "mod_alloc: failed to allocate memory for comp %x.",
 			 dev_comp_id(dev));
 		return NULL;
 	}
@@ -146,8 +146,9 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 
 	return ptr;
 }
+EXPORT_SYMBOL(mod_alloc);
 
-int module_free_memory(struct processing_module *mod, void *ptr)
+int mod_free(struct processing_module *mod, void *ptr)
 {
 	struct module_memory *mem;
 	struct list_item *mem_list;
@@ -167,11 +168,12 @@ int module_free_memory(struct processing_module *mod, void *ptr)
 		}
 	}
 
-	comp_err(mod->dev, "module_free_memory: error: could not find memory pointed by %p",
+	comp_err(mod->dev, "mod_free: error: could not find memory pointed by %p",
 		 ptr);
 
 	return -EINVAL;
 }
+EXPORT_SYMBOL(mod_free);
 
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
