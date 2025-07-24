@@ -66,17 +66,17 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	struct module_config *dst;
 	const struct module_interface *const interface = drv->adapter_ops;
 
-	comp_cl_dbg(drv, "module_adapter_new() start");
+	comp_cl_dbg(drv, "start");
 
 	if (!config) {
-		comp_cl_err(drv, "module_adapter_new(), wrong input params! drv = %zx config = %zx",
+		comp_cl_err(drv, "wrong input params! drv = %zx config = %zx",
 			    (size_t)drv, (size_t)config);
 		return NULL;
 	}
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev) {
-		comp_cl_err(drv, "module_adapter_new(), failed to allocate memory for comp_dev");
+		comp_cl_err(drv, "failed to allocate memory for comp_dev");
 		return NULL;
 	}
 	dev->ipc_config = *config;
@@ -92,7 +92,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	mod = module_driver_heap_rzalloc(drv->user_heap, flags, sizeof(*mod));
 	if (!mod) {
-		comp_err(dev, "module_adapter_new(), failed to allocate memory for module");
+		comp_err(dev, "failed to allocate memory for module");
 		goto err;
 	}
 
@@ -106,7 +106,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	ret = module_adapter_init_data(dev, dst, config, spec);
 	if (ret) {
-		comp_err(dev, "module_adapter_new() %d: module init data failed",
+		comp_err(dev, "%d: module init data failed",
 			 ret);
 		goto err;
 	}
@@ -128,7 +128,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	/* Init processing module */
 	ret = module_init(mod);
 	if (ret) {
-		comp_err(dev, "module_adapter_new() %d: module initialization failed",
+		comp_err(dev, "%d: module initialization failed",
 			 ret);
 		goto err;
 	}
@@ -152,12 +152,12 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	 */
 	ret = module_adapter_params(dev, &params);
 	if (ret) {
-		comp_err(dev, "module_adapter_new() %d: module params failed", ret);
+		comp_err(dev, "%d: module params failed", ret);
 		goto err;
 	}
 #endif
 
-	comp_dbg(dev, "module_adapter_new() done");
+	comp_dbg(dev, "done");
 	return dev;
 err:
 #if CONFIG_IPC_MAJOR_4
@@ -213,7 +213,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	int memory_flags;
 	int i = 0;
 
-	comp_dbg(dev, "module_adapter_prepare() start");
+	comp_dbg(dev, "start");
 #if CONFIG_IPC_MAJOR_4
 	/*
 	 * if the stream_params are valid, just update the sink/source buffer params. If not,
@@ -249,8 +249,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	if (ret) {
 		if (ret != PPL_STATUS_PATH_STOP)
-			comp_err(dev, "module_adapter_prepare() error %x: module prepare failed",
-				 ret);
+			comp_err(dev, "error %d: module prepare failed", ret);
 		return ret;
 	}
 
@@ -484,7 +483,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 		}
 	}
 
-	comp_dbg(dev, "module_adapter_prepare() done");
+	comp_dbg(dev, "done");
 
 	return 0;
 
@@ -564,9 +563,8 @@ EXPORT_SYMBOL(module_adapter_params);
  * @buff_size: size of the module input buffer
  * @bytes: number of bytes available in the source buffer
  */
-static void
-ca_copy_from_source_to_module(const struct audio_stream *source,
-			      void *buff, uint32_t buff_size, size_t bytes)
+static void ca_copy_from_source_to_module(const struct audio_stream *source,
+					  void *buff, uint32_t buff_size, size_t bytes)
 {
 	/* head_size - available data until end of source buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(source,
@@ -592,9 +590,8 @@ ca_copy_from_source_to_module(const struct audio_stream *source,
  * @buff: pointer to the module output buffer
  * @bytes: number of bytes available in the module output buffer
  */
-static void
-ca_copy_from_module_to_sink(const struct audio_stream *sink,
-			    void *buff, size_t bytes)
+static void ca_copy_from_module_to_sink(const struct audio_stream *sink,
+					void *buff, size_t bytes)
 {
 	/* head_size - free space until end of sink buffer */
 	const int without_wrap = audio_stream_bytes_without_wrap(sink, audio_stream_get_wptr(sink));
@@ -723,10 +720,9 @@ static void module_adapter_process_output(struct comp_dev *dev)
 	mod->total_data_produced += mod->output_buffers[0].size;
 }
 
-static uint32_t
-module_single_sink_setup(struct comp_dev *dev,
-			 struct comp_buffer **source,
-			 struct comp_buffer **sinks)
+static uint32_t module_single_sink_setup(struct comp_dev *dev,
+					 struct comp_buffer **source,
+					 struct comp_buffer **sinks)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
@@ -764,10 +760,9 @@ module_single_sink_setup(struct comp_dev *dev,
 	return num_input_buffers;
 }
 
-static uint32_t
-module_single_source_setup(struct comp_dev *dev,
-			   struct comp_buffer **source,
-			   struct comp_buffer **sinks)
+static uint32_t module_single_source_setup(struct comp_dev *dev,
+					   struct comp_buffer **source,
+					   struct comp_buffer **sinks)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct list_item *blist;
@@ -911,9 +906,7 @@ static int module_adapter_audio_stream_type_copy(struct comp_dev *dev)
 				    mod->output_buffers, num_output_buffers);
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
-			comp_err(dev,
-				 "module_adapter_audio_stream_type_copy() failed with error: %x",
-				 ret);
+			comp_err(dev, "failed with error: %d", ret);
 			goto out;
 		}
 
@@ -1052,8 +1045,7 @@ static int module_adapter_sink_source_copy(struct comp_dev *dev)
 				      mod->sinks, mod->num_of_sinks);
 
 	if (ret)
-		comp_err(dev, "module_adapter_sink_source_copy() process failed with error: %d",
-			 ret);
+		comp_err(dev, "process failed with error: %d", ret);
 
 	/* count number of processed data. To be removed in pipeline 2.0 */
 	for (i = 0; i < mod->num_of_sources; i++)
@@ -1114,9 +1106,7 @@ static int module_adapter_raw_data_type_copy(struct comp_dev *dev)
 				    mod->output_buffers, mod->num_of_sinks);
 	if (ret) {
 		if (ret != -ENOSPC && ret != -ENODATA) {
-			comp_err(dev,
-				 "module_adapter_raw_data_type_copy() %x: module processing failed",
-				 ret);
+			comp_err(dev, "%d: module processing failed", ret);
 			goto out;
 		}
 
