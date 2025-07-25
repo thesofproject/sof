@@ -124,9 +124,9 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 typedef int (*create_instance_f)(uint32_t module_id, uint32_t instance_id, uint32_t core_id,
 				 void *mod_cfg, void *parent_ppl, void **mod_ptr);
 
-int system_agent_start(uint32_t entry_point, uint32_t module_id, uint32_t instance_id,
+int system_agent_start(uintptr_t entry_point, uint32_t module_id, uint32_t instance_id,
 		       uint32_t core_id, uint32_t log_handle, void* mod_cfg,
-		       void **adapter)
+		       const void **adapter)
 {
 	uint32_t ret;
 	SystemAgent system_agent(module_id, instance_id, core_id, log_handle);

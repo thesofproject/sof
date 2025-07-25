@@ -34,12 +34,31 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
  * \param[in] drv - component driver pointer.
  * \param[in] config - component ipc descriptor pointer.
  * \param[in] spec - passdowned data from driver.
+ * \param[in] mod_priv - Pointer to private data for processing module.
  *
  * \return: a pointer to newly created module adapter component on success. NULL on error.
  */
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
-				    const struct comp_ipc_config *config,
-				    const void *spec)
+				    const struct comp_ipc_config *config, const void *spec)
+{
+	return module_adapter_new_ext(drv, config, spec, NULL);
+}
+
+/*
+ * \brief Create a module adapter component.
+ * \param[in] drv - component driver pointer.
+ * \param[in] config - component ipc descriptor pointer.
+ * \param[in] spec - passdowned data from driver.
+ * \param[in] mod_priv - Pointer to private data for processing module.
+ *
+ * \return: a pointer to newly created module adapter component on success. NULL on error.
+ *
+ * Note: Use the ext version if you need to set the module's private data before calling
+ *	 the create method.
+ */
+struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
+					const struct comp_ipc_config *config, const void *spec,
+					void *mod_priv)
 {
 	int ret;
 	struct comp_dev *dev;
@@ -79,6 +98,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 
 	dst = &mod->priv.cfg;
 
+	module_set_private_data(mod, mod_priv);
 	mod->dev = dev;
 	dev->mod = mod;
 
