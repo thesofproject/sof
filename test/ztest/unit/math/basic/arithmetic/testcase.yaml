@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2025 Intel Corporation. All rights reserved.
+#
+# Math basic arithmetic unit tests converted from CMock to Ztest
+#
+# These contents may have been developed with support from one or more Intel-operated
+# generative artificial intelligence solutions.
+#
+
+tests:
+  math.basic.arithmetic:
+    tags: math arithmetic numbers
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    build_only: false
