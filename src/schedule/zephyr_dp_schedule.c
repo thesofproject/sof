@@ -391,11 +391,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		return -EINVAL;
 	}
 
-	/* create a zephyr thread for the task */
-	pdata->thread_id = k_thread_create(&pdata->thread, (__sparse_force void *)pdata->p_stack,
-					   pdata->stack_size, dp_thread_fn, task, NULL, NULL,
-					   CONFIG_DP_THREAD_PRIORITY, K_USER, K_FOREVER);
-
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, task->core);
 	if (ret < 0) {
@@ -521,22 +516,28 @@ int scheduler_dp_task_init(struct task **task,
 		goto err;
 	}
 
+	struct task_dp_pdata *pdata = &task_memory->pdata;
+
 	/* initialize other task structures */
 	task_memory->task.ops.complete = ops->complete;
 	task_memory->task.ops.get_deadline = ops->get_deadline;
 	task_memory->task.state = SOF_TASK_STATE_INIT;
 	task_memory->task.core = core;
+	task_memory->task.priv_data = pdata;
 
 	/* initialize semaprhore */
-	k_sem_init(&task_memory->pdata.sem, 0, 1);
+	k_sem_init(&pdata->sem, 0, 1);
 
 	/* success, fill the structures */
-	task_memory->task.priv_data = &task_memory->pdata;
-	task_memory->pdata.p_stack = p_stack;
-	task_memory->pdata.stack_size = stack_size;
-	task_memory->pdata.mod = mod;
+	pdata->p_stack = p_stack;
+	pdata->stack_size = stack_size;
+	pdata->mod = mod;
 	*task = &task_memory->task;
 
+	/* create a zephyr thread for the task */
+	pdata->thread_id = k_thread_create(&pdata->thread, (__sparse_force void *)p_stack,
+					   stack_size, dp_thread_fn, &task_memory->task, NULL, NULL,
+					   CONFIG_DP_THREAD_PRIORITY, K_USER, K_FOREVER);
 
 	return 0;
 err:
