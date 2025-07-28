@@ -531,9 +531,9 @@ int src_params_general(struct processing_module *mod,
 	}
 
 	/* free any existing delay lines. TODO reuse if same size */
-	rfree(cd->delay_lines);
+	mod_free(mod, cd->delay_lines);
 
-	cd->delay_lines = rballoc(SOF_MEM_FLAG_USER, delay_lines_size);
+	cd->delay_lines = mod_alloc(mod, delay_lines_size);
 	if (!cd->delay_lines) {
 		comp_err(dev, "src_params(): failed to alloc cd->delay_lines, delay_lines_size = %zu",
 			 delay_lines_size);
@@ -594,7 +594,7 @@ int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 	return 0;
 }
 
-int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
+int src_allocate_copy_stages(struct processing_module *mod, struct src_param *prm,
 			     const struct src_stage *stage_src1,
 			     const struct src_stage *stage_src2)
 {
@@ -607,10 +607,9 @@ int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
 	size_t tap_size = sizeof(int32_t);
 #endif
 
-	stage_dst = rmalloc(SOF_MEM_FLAG_USER,
-			    2 * sizeof(*stage_dst));
+	stage_dst = mod_alloc(mod, 2 * sizeof(*stage_dst));
 	if (!stage_dst) {
-		comp_err(dev, "failed to allocate stages");
+		comp_err(mod->dev, "failed to allocate stages");
 		return -ENOMEM;
 	}
 
@@ -622,10 +621,9 @@ int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
 	coef_size[1] = tap_size * stage_src2->filter_length;
 
 	if (coef_size[0] == 0 || coef_size[1] == 0) {
-		comp_err(dev,
+		comp_err(mod->dev,
 			 "illegal zero coefficient vector size for unsupported conversion request %d to %d",
 			 prm->in_fs[prm->idx_in], prm->out_fs[prm->idx_out]);
-		rfree(stage_dst);
 		return -EINVAL;
 	}
 
@@ -633,9 +631,8 @@ int src_allocate_copy_stages(struct comp_dev *dev, struct src_param *prm,
 	stage_dst[1].coefs = fast_get(stage_src2->coefs, coef_size[1]);
 
 	if (!stage_dst[0].coefs || !stage_dst[1].coefs)  {
-		comp_err(dev, "failed to allocate coefficients");
+		comp_err(mod->dev, "failed to allocate coefficients");
 		fast_put(stage_dst[0].coefs);
-		rfree(stage_dst);
 		return -ENOMEM;
 	}
 
@@ -707,21 +704,16 @@ int src_reset(struct processing_module *mod)
 
 __cold int src_free(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-
 	assert_can_be_cold();
 
 	comp_info(mod->dev, "src_free()");
 
-	/* Free dynamically reserved buffers for SRC algorithm */
-	rfree(cd->delay_lines);
 #if CONFIG_FAST_GET
+	struct comp_data *cd = module_get_private_data(mod);
 	if (cd->param.stage1) {
 		fast_put(cd->param.stage1->coefs);
 		fast_put(cd->param.stage2->coefs);
 	}
-	rfree((void *)cd->param.stage1);
 #endif
-	rfree(cd);
 	return 0;
 }
