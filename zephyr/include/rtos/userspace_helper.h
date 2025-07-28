@@ -16,6 +16,9 @@
 #define DRV_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
 				 CONFIG_MM_DRV_PAGE_SIZE)
 
+struct processing_module;
+struct userspace_context;
+
 /**
  * Initialize private processing module heap.
  * @param N/A.
@@ -29,7 +32,46 @@
  */
 struct sys_heap *module_driver_heap_init(void);
 
+/**
+ * Add DP scheduler created thread to module memory domain.
+ * @param thread_id - id of thread to be added to memory domain.
+ * @param module    - processing module structure
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ */
+int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod);
+
 #endif
+
+/**
+ * Allocates thread stack memory.
+ * @param stack_size Required stack size.
+ * @param options Stack configuration options
+ *        K_USER - when creating user thread
+ *        0      - when creating kernel thread
+ * @return pointer to the stack or NULL if not created.
+ *
+ * When CONFIG_USERSPACE not set function calls rballoc_align(),
+ * otherwise it uses k_thread_stack_alloc() routine.
+ *
+ */
+void *user_stack_allocate(size_t stack_size, uint32_t options);
+
+/**
+ * Free thread stack memory.
+ * @param p_stack Pointer to the stack.
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * When CONFIG_USERSPACE not set function calls rfree(),
+ * otherwise it uses k_thread_stack_free() routine.
+ *
+ */
+int user_stack_free(void *p_stack);
 
 /**
  * Allocates memory block from private module sys_heap if exists, otherwise call rballoc_align().
