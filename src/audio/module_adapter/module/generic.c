@@ -148,6 +148,16 @@ void *mod_alloc(struct processing_module *mod, uint32_t size, uint32_t alignment
 	return ptr;
 }
 
+void *mod_zalloc(struct processing_module *mod, uint32_t size, uint32_t alignment)
+{
+	void *ret = mod_alloc(mod, size, alignment);
+
+	if (ret)
+		memset(ret, 0, size);
+
+	return ret;
+}
+
 int mod_free(struct processing_module *mod, void *ptr)
 {
 	struct module_memory *mem;
