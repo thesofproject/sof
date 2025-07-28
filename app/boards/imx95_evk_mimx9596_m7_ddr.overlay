@@ -17,9 +17,19 @@
 	rx-fifo-watermark = <96>;
 	fifo-depth = <96>;
 	rx-sync-mode = <1>;
+	dmas = <&edma2 30 60>, <&edma2 31 61>;
 	status = "okay";
 };
 
 &edma2 {
+	compatible = "nxp,edma";
+	reg = <0x42000000 (DT_SIZE_K(64) * 33)>;
+	valid-channels = <30>, <31>;
+	interrupts = <143 0>, <143 0>;
+	/delete-property/ nxp,version;
+	/delete-property/ dma-channels;
+	/delete-property/ dma-requests;
+	/delete-property/ no-error-irq;
+	/delete-property/ channels-shared-irq-mask;
 	status = "okay";
 };
