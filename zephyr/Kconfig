@@ -46,6 +46,7 @@ config SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE
 	default 0x1E000 if SOC_INTEL_ACE15_MTPM || SOC_INTEL_ACE20_LNL
 	default 0x1A000 if SOC_INTEL_ACE30
 	default 0x0
+	depends on USERSPACE
 	help
 	 The size of the zephyr heap portion designated as the shared buffer heap.
 	 This heap is shared between the sof and userspace modules. It is used exclusively for
@@ -72,6 +73,7 @@ config SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE
 config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	hex "Size of the private heap created for each userspace module"
 	default 0x1000
+	depends on USERSPACE
 	help
 	 The size of the private heap created for each userspace module. Each userspace
 	 module has its own independent heap to which only it has access. This heap is
