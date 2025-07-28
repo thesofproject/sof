@@ -209,7 +209,7 @@ __cold int src_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -240,7 +240,6 @@ __cold int src_init(struct processing_module *mod)
 	default:
 		comp_err(dev, "src_init(): Illegal sample depth %d",
 			 cd->ipc_config.base.audio_fmt.depth);
-		rfree(cd);
 		return -EINVAL;
 	}
 
