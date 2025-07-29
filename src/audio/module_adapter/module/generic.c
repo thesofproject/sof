@@ -138,6 +138,7 @@ void *mod_alloc(struct processing_module *mod, uint32_t size, uint32_t alignment
 	if (!ptr) {
 		comp_err(dev, "mod_alloc: failed to allocate memory for comp %x.",
 			 dev_comp_id(dev));
+		rfree(container);
 		return NULL;
 	}
 	/* Store reference to allocated memory */
