@@ -49,7 +49,10 @@ struct vmh_heap {
  */
 struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocating_continuously)
 {
+	const struct sys_mm_drv_region *virtual_memory_regions =
+		sys_mm_drv_query_memory_regions();
 	int i;
+
 	struct vmh_heap *new_heap =
 		rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*new_heap));
 
@@ -58,13 +61,14 @@ struct vmh_heap *vmh_init_heap(const struct vmh_heap_config *cfg, bool allocatin
 
 	k_mutex_init(&new_heap->lock);
 	struct vmh_heap_config new_config = {0};
+	const struct sys_mm_drv_region *region;
 
-	/* Workaround - use the very first virtual memory region because of virt addresses
-	 * collision.
-	 * Fix will be provided ASAP, but removing MEM_REG_ATTR_SHARED_HEAP from SOF is required
-	 * to merge Zephyr changes
-	 */
-	new_heap->virtual_region = sys_mm_drv_query_memory_regions();
+	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, region) {
+		if (region->attr == VIRTUAL_REGION_SHARED_HEAP_ATTR) {
+			new_heap->virtual_region = region;
+			break;
+		}
+	}
 	if (!new_heap->virtual_region || !new_heap->virtual_region->size)
 		goto fail;
 
