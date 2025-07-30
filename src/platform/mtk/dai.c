@@ -136,7 +136,7 @@ static void cfg_convert(const struct afe_cfg *src, struct mtk_base_memif_data *d
 	.base = DT_PROP(n, base), \
 	.end = DT_PROP(n, end), \
 	.cur = DT_PROP(n, cur), \
-	.fs = DT_PROP(n, fs), \
+	COND_PROP(n, fs) \
 	.hd = DT_PROP(n, hd), \
 	.enable = DT_PROP(n, enable), \
 	COND_PROP(n, mono) \
