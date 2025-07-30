@@ -380,7 +380,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	struct task_dp_pdata *pdata = task->priv_data;
 	unsigned int lock_key;
 	uint64_t deadline_clock_ticks;
-	int ret;
 
 	lock_key = scheduler_dp_lock();
 
@@ -390,17 +389,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		scheduler_dp_unlock(lock_key);
 		return -EINVAL;
 	}
-
-	/* pin the thread to specific core */
-	ret = k_thread_cpu_pin(pdata->thread_id, task->core);
-	if (ret < 0) {
-		tr_err(&dp_tr, "zephyr task pin to core failed");
-		goto err;
-	}
-
-	/* start the thread,  it should immediately stop at a semaphore, so clean it */
-	k_sem_reset(&pdata->sem);
-	k_thread_start(pdata->thread_id);
 
 	/* if there's no DP tasks scheduled yet, run ll tick source task */
 	if (list_is_empty(&dp_sch->tasks))
@@ -424,11 +412,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	tr_dbg(&dp_tr, "DP task scheduled with period %u [us]", (uint32_t)period);
 	return 0;
 
-err:
-	/* cleanup - unlock and free all allocated resources */
-	scheduler_dp_unlock(lock_key);
-	k_thread_abort(pdata->thread_id);
-	return ret;
 }
 
 static struct scheduler_ops schedule_dp_ops = {
@@ -539,7 +522,19 @@ int scheduler_dp_task_init(struct task **task,
 					   stack_size, dp_thread_fn, &task_memory->task, NULL, NULL,
 					   CONFIG_DP_THREAD_PRIORITY, K_USER, K_FOREVER);
 
+	/* pin the thread to specific core */
+	ret = k_thread_cpu_pin(pdata->thread_id, core);
+	if (ret < 0) {
+		tr_err(&dp_tr, "zephyr_dp_task_init(): zephyr task pin to core failed");
+		goto e_thread;
+	}
+
+	k_thread_start(pdata->thread_id);
+
 	return 0;
+
+e_thread:
+	k_thread_abort(pdata->thread_id);
 err:
 	/* cleanup - free all allocated resources */
 	rfree((__sparse_force void *)p_stack);
