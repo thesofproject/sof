@@ -37,8 +37,10 @@ jobs:
         run: sudo apt-get update
 
       - name: apt-get install
-        run: sudo apt-get -y install
-             doxygen make default-jre graphviz cmake ninja-build
+        run: |
+          sudo apt-get -yq install doxygen make \
+            default-jre graphviz cmake ninja-build \
+            libjpeg-dev
 
       - name: doxygen
         run: cmake -GNinja -S doc/ -B doxybuild/ && ninja -C doxybuild/ -v doc
