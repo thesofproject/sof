@@ -470,7 +470,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	struct scheduler_dp_data *dp_sch = (struct scheduler_dp_data *)data;
 	struct task_dp_pdata *pdata = task->priv_data;
 	unsigned int lock_key;
-	int ret;
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
 
@@ -480,29 +479,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		scheduler_dp_unlock(lock_key);
 		return -EINVAL;
 	}
-
-	k_thread_access_grant(pdata->thread_id, pdata->sem);
-	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
-	/* pin the thread to specific core */
-	ret = k_thread_cpu_pin(pdata->thread_id, task->core);
-	if (ret < 0) {
-		tr_err(&dp_tr, "zephyr task pin to core failed");
-		goto err;
-	}
-
-#ifdef CONFIG_USERSPACE
-	if (task->flags & K_USER) {
-		ret = user_memory_init_shared(pdata->thread_id, pdata->mod);
-		if (ret < 0) {
-			tr_err(&dp_tr, "user_memory_init_shared() failed");
-			goto err;
-		}
-	}
-#endif /* CONFIG_USERSPACE */
-
-	/* start the thread, it should immediately stop at a semaphore, so clean it */
-	k_sem_init(pdata->sem, 0, 1);
-	k_thread_start(pdata->thread_id);
 
 	/* if there's no DP tasks scheduled yet, run ll tick source task */
 	if (list_is_empty(&dp_sch->tasks))
@@ -517,12 +493,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 
 	tr_dbg(&dp_tr, "DP task scheduled with period %u [us]", (uint32_t)period);
 	return 0;
-
-err:
-	/* cleanup - unlock and free all allocated resources */
-	scheduler_dp_unlock(lock_key);
-	k_thread_abort(pdata->thread_id);
-	return ret;
 }
 
 static struct scheduler_ops schedule_dp_ops = {
@@ -655,8 +625,34 @@ int scheduler_dp_task_init(struct task **task,
 					   stack_size, dp_thread_fn, *task, NULL, NULL,
 					   CONFIG_DP_THREAD_PRIORITY, (*task)->flags, K_FOREVER);
 
+	k_thread_access_grant(pdata->thread_id, pdata->sem);
+	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
+
+	/* pin the thread to specific core */
+	ret = k_thread_cpu_pin(pdata->thread_id, core);
+	if (ret < 0) {
+		tr_err(&dp_tr, "zephyr task pin to core failed");
+		goto e_thread;
+	}
+
+#ifdef CONFIG_USERSPACE
+	if ((*task)->flags & K_USER) {
+		ret = user_memory_init_shared(pdata->thread_id, pdata->mod);
+		if (ret < 0) {
+			tr_err(&dp_tr, "user_memory_init_shared() failed");
+			goto e_thread;
+		}
+	}
+#endif /* CONFIG_USERSPACE */
+
+	/* start the thread, it should immediately stop at a semaphore, so clean it */
+	k_sem_init(pdata->sem, 0, 1);
+	k_thread_start(pdata->thread_id);
+
 	return 0;
 
+e_thread:
+	k_thread_abort(pdata->thread_id);
 err:
 	/* cleanup - free all allocated resources */
 	if (user_stack_free((__sparse_force void *)p_stack))
