@@ -23,9 +23,6 @@ jobs:
   # TODO: separate "fetchPRcommits" which can't work in daily tests
   # uses: ./.github/workflows/codestyle.yml
 
-  XTOS-make-install:
-    uses: ./.github/workflows/installer.yml
-
   zephyr-fuzz-IPC:
     uses: ./.github/workflows/ipc_fuzzer.yml
     with:
