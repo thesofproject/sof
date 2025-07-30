@@ -21,6 +21,7 @@
 
 #if CONFIG_VIRTUAL_HEAP
 #include <sof/lib/regions_mm.h>
+#include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 
 struct vmh_heap;
 struct vmh_heap *virtual_buffers_heap;
@@ -288,8 +289,39 @@ static const struct vmh_heap_config static_hp_buffers = {
 	},
 };
 
+/* WA Stubs begin
+ *
+ * in order to merge a PR that moves initialization of virtual regions from Zephyr to SOF,
+ * we need to create weak stubs for 2 functions that will need to be called once the PR is merged
+ */
+
+__weak
+uintptr_t adsp_mm_get_unused_l2_start_aligned(void)
+{
+	return 0;
+}
+
+__weak
+int adsp_add_virtual_memory_region(uintptr_t region_address, uint32_t region_size, uint32_t attr)
+{
+	return 0;
+}
+/* WA Stubs end */
+
 static int virtual_heap_init(void)
 {
+	int ret;
+
+	if (virtual_buffers_heap)
+		return -EEXIST;
+
+	/* add a virtual memory region */
+	ret = adsp_add_virtual_memory_region(adsp_mm_get_unused_l2_start_aligned(),
+					     CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE,
+					     VIRTUAL_REGION_SHARED_HEAP_ATTR);
+	if (ret)
+		return ret;
+
 	virtual_buffers_heap = vmh_init_heap(&static_hp_buffers, false);
 	if (!virtual_buffers_heap) {
 		tr_err(&zephyr_tr, "Unable to init virtual heap");

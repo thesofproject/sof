@@ -17,6 +17,9 @@
 #include <zephyr/init.h>
 #include <zephyr/sys/mem_blocks.h>
 
+/* Attributes for memory regions */
+#define VIRTUAL_REGION_SHARED_HEAP_ATTR 1U	  /*< region dedicated for shared virtual heap */
+
 /* Dependency on ipc/topology.h created due to memory capability definitions
  * that are defined there
  */
