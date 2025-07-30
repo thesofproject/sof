@@ -327,7 +327,8 @@ static void vmh_get_mapped_size(void *addr, size_t *size)
  *
  * @retval 0 on success, error code otherwise.
  */
-static int vmh_map_region(struct sys_mem_blocks *region, void *ptr, size_t size)
+static int vmh_map_region(const struct sys_mm_drv_region *virtual_region,
+			  struct sys_mem_blocks *region, void *ptr, size_t size)
 {
 	const size_t block_size = 1 << region->info.blk_sz_shift;
 	uintptr_t begin;
@@ -340,8 +341,8 @@ static int vmh_map_region(struct sys_mem_blocks *region, void *ptr, size_t size)
 		if (!vmh_get_map_region_boundaries(region, ptr, size, &begin, &size))
 			return 0;
 	}
-
-	ret = sys_mm_drv_map_region(UINT_TO_POINTER(begin), 0, size, SYS_MM_MEM_PERM_RW);
+	ret = sys_mm_drv_map_region_safe(virtual_region, UINT_TO_POINTER(begin), 0, size,
+					 SYS_MM_MEM_PERM_RW);
 
 	/* In case of an error, the pages that were successfully mapped must be manually released */
 	if (ret)
@@ -495,7 +496,8 @@ static void *_vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 	if (!ptr)
 		return NULL;
 
-	allocation_error_code = vmh_map_region(heap->physical_blocks_allocators[mem_block_iterator],
+	allocation_error_code = vmh_map_region(heap->virtual_region,
+					       heap->physical_blocks_allocators[mem_block_iterator],
 					       ptr, alloc_size);
 	if (allocation_error_code) {
 		sys_mem_blocks_free_contiguous(heap->physical_blocks_allocators[mem_block_iterator],
