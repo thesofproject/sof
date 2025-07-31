@@ -862,7 +862,7 @@ static int waves_codec_reset(struct processing_module *mod)
 
 static int waves_codec_free(struct processing_module *mod)
 {
-	module_free_all_memory(mod);
+	mod_free_all(mod);
 	comp_dbg(mod->dev, "waves_codec_free()");
 	return 0;
 }

@@ -345,7 +345,7 @@ int module_reset(struct processing_module *mod)
 	return 0;
 }
 
-void module_free_all_memory(struct processing_module *mod)
+void mod_free_all(struct processing_module *mod)
 {
 	struct module_memory *mem;
 	struct list_item *mem_list;
@@ -359,6 +359,7 @@ void module_free_all_memory(struct processing_module *mod)
 		rfree(mem);
 	}
 }
+EXPORT_SYMBOL(mod_free_all);
 
 int module_free(struct processing_module *mod)
 {

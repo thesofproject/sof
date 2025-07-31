@@ -155,7 +155,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
 void *mod_alloc(struct processing_module *mod, uint32_t size, uint32_t alignment);
 int mod_free(struct processing_module *mod, void *ptr);
-void module_free_all_memory(struct processing_module *mod);
+void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
 		   struct sof_sink **sinks, int num_of_sinks);

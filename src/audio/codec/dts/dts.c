@@ -405,7 +405,7 @@ static int dts_codec_free(struct processing_module *mod)
 	if (ret)
 		comp_err(dev, "dts_codec_free() failed %d %d", ret, dts_result);
 
-	module_free_all_memory(mod);
+	mod_free_all(mod);
 
 	comp_dbg(dev, "dts_codec_free() done");
 
