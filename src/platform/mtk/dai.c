@@ -12,15 +12,24 @@
  */
 #if defined(CONFIG_SOC_MT8186)
 #define MTK_AFE_BASE 0x11210000
+#define SRAM_CPU_START 0x10800000
 #elif defined(CONFIG_SOC_SERIES_MT818X)
 #define MTK_AFE_BASE 0x10b10000
+#define SRAM_CPU_START 0x10d00000
 #elif defined(CONFIG_SOC_MT8195)
 #define MTK_AFE_BASE 0x10890000
+#define SRAM_CPU_START 0x10840000
 #elif defined(CONFIG_SOC_MT8196)
 #define MTK_AFE_BASE 0x1a110000
+#define SRAM_CPU_START 0x1a210000
 #else
 #error Unrecognized device
 #endif
+
+#define SRAM_ADSP_START	DT_REG_ADDR(DT_NODELABEL(sram0))
+#define SRAM_SIZE		DT_REG_SIZE(DT_NODELABEL(sram0))
+#define SRAM_ADSP_END	(SRAM_ADSP_START + SRAM_SIZE)
+#define SRAM_CPU_END	(SRAM_CPU_START + SRAM_SIZE)
 
 /* Bitfield register: address, left shift amount, and number of bits */
 struct afe_bitfld {
@@ -70,7 +79,7 @@ struct afe_cfg {
  */
 static void cfg_convert(const struct afe_cfg *src, struct mtk_base_memif_data *dst)
 {
-#define REGCVT(R) (((R) > 0) ? ((R) - MTK_AFE_BASE) : -1)
+#define REGCVT(R) (((R) > 0) ? ((R) - MTK_AFE_BASE) : 0)
 
 #define COPYBIT(S, Dr, Ds) do {		\
 	dst->Dr = REGCVT(src->S.reg);	\
@@ -199,10 +208,68 @@ static const struct dai_info mtk_dai_info = {
 	.num_dai_types = ARRAY_SIZE(mtk_dai_types),
 };
 
+#if defined(CONFIG_SOC_SERIES_MT818X) || defined(CONFIG_SOC_MT8195)
+static unsigned int mtk_afe2adsp_addr(unsigned int addr)
+{
+	/* CPU -> ADSP address remap */
+	if ((addr >=  SRAM_CPU_START) && (addr <  SRAM_CPU_END)) {
+		addr = SRAM_ADSP_START + (addr -  SRAM_CPU_START);
+	}
+
+	return addr;
+}
+
+static unsigned int mtk_adsp2afe_addr(unsigned int addr)
+{
+	/* ADSP -> CPU address remap */
+	if ((addr >=  SRAM_ADSP_START) && (addr <  SRAM_ADSP_END)) {
+		addr = SRAM_CPU_START + (addr -  SRAM_ADSP_START);
+	}
+
+	return addr;
+}
+#endif
+
 /* Static table of fs register values.  TODO: binary search */
 static unsigned int mtk_afe_fs_timing(unsigned int rate)
 {
 	static const struct { int hz, reg; } rate2reg[] = {
+#if defined(CONFIG_SOC_MT8188) || defined(CONFIG_SOC_MT8195)
+		{   7350, 16 },
+		{   8000,  0 },
+		{  11025, 17 },
+		{  12000,  1 },
+		{  14700, 18 },
+		{  16000,  2 },
+		{  22050, 19 },
+		{  24000,  3 },
+		{  29400, 20 },
+		{  32000,  4 },
+		{  44100, 21 },
+		{  48000,  5 },
+		{  88200, 22 },
+		{  96000,  6 },
+		{ 176400, 23 },
+		{ 192000,  7 },
+		{ 352800, 24 },
+		{ 384000,  8 },
+#elif defined(CONFIG_SOC_MT8186)
+		{   8000,  0 },
+		{  11025,  1 },
+		{  12000,  2 },
+		{  16000,  4 },
+		{  22050,  5 },
+		{  24000,  6 },
+		{  32000,  8 },
+		{  44100,  9 },
+		{  48000, 10 },
+		{  88200, 11 },
+		{  96000, 12 },
+		{ 176400, 13 },
+		{ 192000, 14 },
+		{ 352800,  7 },
+		{ 384000,  3 },
+#else
 		{   8000,  0 },
 		{  11025,  1 },
 		{  12000,  2 },
@@ -218,6 +285,7 @@ static unsigned int mtk_afe_fs_timing(unsigned int rate)
 		{ 192000, 18 },
 		{ 352800, 21 },
 		{ 384000, 22 },
+#endif
 	};
 
 	for (int i = 0; i < ARRAY_SIZE(rate2reg); i++)
@@ -242,6 +310,10 @@ struct mtk_base_afe_platform mtk_afe_platform = {
 	.dais_size = ARRAY_SIZE(mtk_dais),
 	.afe_fs = mtk_afe_fs,
 	.irq_fs = mtk_afe_fs_timing,
+#if defined(CONFIG_SOC_SERIES_MT818X) || defined(CONFIG_SOC_MT8195)
+	.afe2adsp_addr = mtk_afe2adsp_addr,
+	.adsp2afe_addr = mtk_adsp2afe_addr,
+#endif
 };
 
 int mtk_dai_init(struct sof *sof)
