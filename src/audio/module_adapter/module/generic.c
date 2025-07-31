@@ -110,7 +110,16 @@ int module_init(struct processing_module *mod)
 	return 0;
 }
 
-void *mod_alloc(struct processing_module *mod, uint32_t size, uint32_t alignment)
+/**
+ * Allocates aligned memory block for module.
+ * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param bytes		Size in bytes.
+ * @param alignment	Alignment in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * The allocated memory is automatically freed when the module is unloaded.
+ */
+void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t alignment)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_memory *container;
@@ -147,11 +156,34 @@ void *mod_alloc(struct processing_module *mod, uint32_t size, uint32_t alignment
 
 	return ptr;
 }
+EXPORT_SYMBOL(mod_alloc_align);
+
+/**
+ * Allocates memory block for module.
+ * @param mod	Pointer to module this memory block is allocated for.
+ * @param bytes	Size in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * Like mod_alloc_align() but the alignment can not be specified. However,
+ * rballoc() will always aligns the memory to PLATFORM_DCACHE_ALIGN.
+ */
+void *mod_alloc(struct processing_module *mod, uint32_t size)
+{
+	return mod_alloc_align(mod, size, 0);
+}
 EXPORT_SYMBOL(mod_alloc);
 
-void *mod_zalloc(struct processing_module *mod, uint32_t size, uint32_t alignment)
+/**
+ * Allocates memory block for module and initializes it to zero.
+ * @param mod	Pointer to module this memory block is allocated for.
+ * @param bytes	Size in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * Like mod_alloc() but the allocated memory is initialized to zero.
+ */
+void *mod_zalloc(struct processing_module *mod, uint32_t size)
 {
-	void *ret = mod_alloc(mod, size, alignment);
+	void *ret = mod_alloc(mod, size);
 
 	if (ret)
 		memset(ret, 0, size);
@@ -160,6 +192,11 @@ void *mod_zalloc(struct processing_module *mod, uint32_t size, uint32_t alignmen
 }
 EXPORT_SYMBOL(mod_zalloc);
 
+/**
+ * Frees the memory block removes it from module's book keeping.
+ * @param mod	Pointer to module this memory block was allocated for.
+ * @param ptr	Pointer to the memory block.
+ */
 int mod_free(struct processing_module *mod, void *ptr)
 {
 	struct module_memory *mem;
@@ -357,6 +394,12 @@ int module_reset(struct processing_module *mod)
 	return 0;
 }
 
+/**
+ * Frees all the memory allocated for this module
+ * @param mod	Pointer to module this memory block was allocated for.
+ *
+ * This function is called automatically when the module is unloaded.
+ */
 void mod_free_all(struct processing_module *mod)
 {
 	struct module_memory *mem;
