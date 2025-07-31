@@ -57,13 +57,13 @@ static int llext_manager_update_flags(void __sparse_cache *vma, size_t size, uin
 					      ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
 }
 
-static int llext_manager_align_map(void __sparse_cache *vma, size_t size, uint32_t flags)
+static int llext_manager_align_map(const struct sys_mm_drv_region *virtual_region,
+				   void __sparse_cache *vma, size_t size, uint32_t flags)
 {
 	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
 	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
-
-	return sys_mm_drv_map_region(aligned_vma, POINTER_TO_UINT(NULL),
-				     ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
+	return sys_mm_drv_map_region_safe(virtual_region, aligned_vma, POINTER_TO_UINT(NULL),
+					  ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
 }
 
 static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
@@ -93,7 +93,8 @@ static void llext_manager_detached_update_flags(void __sparse_cache *vma,
  * sections that belong to the specified 'region' and are contained in the
  * memory range, then remap the same area according to the 'flags' parameter.
  */
-static int llext_manager_load_data_from_storage(const struct llext_loader *ldr,
+static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *virtual_region,
+						const struct llext_loader *ldr,
 						const struct llext *ext,
 						enum llext_mem region,
 						void __sparse_cache *vma,
@@ -101,7 +102,12 @@ static int llext_manager_load_data_from_storage(const struct llext_loader *ldr,
 {
 	unsigned int i;
 	const void *region_addr;
-	int ret = llext_manager_align_map(vma, size, SYS_MM_MEM_PERM_RW);
+
+	/* check if there region to be mapped exists */
+	if (size == 0)
+		return 0;
+
+	int ret = llext_manager_align_map(virtual_region, vma, size, SYS_MM_MEM_PERM_RW);
 
 	if (ret < 0) {
 		tr_err(&lib_manager_tr, "cannot map %u of %p", size, (__sparse_force void *)vma);
@@ -240,14 +246,25 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	const struct llext_loader *ldr = &mctx->ebl->loader;
 	const struct llext *ext = mctx->llext;
 
+	/* find dedicated virtual memory zone */
+	const struct sys_mm_drv_region *virtual_memory_regions = sys_mm_drv_query_memory_regions();
+	const struct sys_mm_drv_region *virtual_region;
+
+	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, virtual_region) {
+		if (virtual_region->attr == VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR)
+			break;
+	}
+	if (!virtual_region || !virtual_region->size)
+		return -EFAULT;
+
 	/* Copy Code */
-	ret = llext_manager_load_data_from_storage(ldr, ext, LLEXT_MEM_TEXT,
+	ret = llext_manager_load_data_from_storage(virtual_region, ldr, ext, LLEXT_MEM_TEXT,
 						   va_base_text, text_size, SYS_MM_MEM_PERM_EXEC);
 	if (ret < 0)
 		return ret;
 
 	/* Copy read-only data */
-	ret = llext_manager_load_data_from_storage(ldr, ext, LLEXT_MEM_RODATA,
+	ret = llext_manager_load_data_from_storage(virtual_region, ldr, ext, LLEXT_MEM_RODATA,
 						   va_base_rodata, rodata_size, 0);
 	if (ret < 0)
 		goto e_text;
@@ -258,7 +275,7 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	 *       spans over the BSS area as well, so the mapping will cover
 	 *       both, but only LLEXT_MEM_DATA sections will be copied.
 	 */
-	ret = llext_manager_load_data_from_storage(ldr, ext, LLEXT_MEM_DATA,
+	ret = llext_manager_load_data_from_storage(virtual_region, ldr, ext, LLEXT_MEM_DATA,
 						   va_base_data, data_size, SYS_MM_MEM_PERM_RW);
 	if (ret < 0)
 		goto e_rodata;
@@ -820,6 +837,5 @@ static int llext_memory_region_init(void)
 
 	return ret;
 }
-
 
 SYS_INIT(llext_memory_region_init, POST_KERNEL, 1);
