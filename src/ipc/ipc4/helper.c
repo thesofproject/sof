@@ -963,13 +963,9 @@ __cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
 	const struct sof_uuid *const __maybe_unused sof_uuid = (const struct sof_uuid *)uuid;
 	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
-	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
-	uint32_t flags;
 
 	assert_can_be_cold();
-
-	irq_local_disable(flags);
 
 	/* search driver list with UUID */
 	list_for_item(clist, &drivers->list) {
@@ -980,20 +976,17 @@ __cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
 			       "found type %d, uuid %pU",
 			       info->drv->type,
 			       info->drv->tctx->uuid_p);
-			drv = info->drv;
-			goto out;
+			return info->drv;
 		}
 	}
 
 	tr_warn(&comp_tr,
-		"get_drv(): the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
+		"the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
 		sof_uuid->a, sof_uuid->b, sof_uuid->c, sof_uuid->d[0], sof_uuid->d[1],
 		sof_uuid->d[2], sof_uuid->d[3], sof_uuid->d[4], sof_uuid->d[5], sof_uuid->d[6],
 		sof_uuid->d[7]);
 
-out:
-	irq_local_enable(flags);
-	return drv;
+	return NULL;
 }
 
 /*
