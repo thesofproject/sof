@@ -27,3 +27,7 @@
 &micfil {
 	status = "okay";
 };
+
+&virtual_dai14 {
+	status = "okay";
+};
