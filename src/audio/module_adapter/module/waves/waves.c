@@ -200,7 +200,7 @@ static int waves_effect_allocate(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	waves_codec->effect = (MaxxEffect_t *)mod_alloc(mod,
+	waves_codec->effect = (MaxxEffect_t *)mod_alloc_align(mod,
 		waves_codec->effect_size, 16);
 
 	if (!waves_codec->effect) {
@@ -376,7 +376,7 @@ static int waves_effect_buffers(struct processing_module *mod)
 
 	comp_dbg(dev, "waves_effect_buffers() start");
 
-	i_buffer = mod_alloc(mod, waves_codec->buffer_bytes, 16);
+	i_buffer = mod_alloc_align(mod, waves_codec->buffer_bytes, 16);
 	if (!i_buffer) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for i_buffer",
 			 waves_codec->buffer_bytes);
@@ -384,7 +384,7 @@ static int waves_effect_buffers(struct processing_module *mod)
 		goto err;
 	}
 
-	o_buffer = mod_alloc(mod, waves_codec->buffer_bytes, 16);
+	o_buffer = mod_alloc_align(mod, waves_codec->buffer_bytes, 16);
 	if (!o_buffer) {
 		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for o_buffer",
 			 waves_codec->buffer_bytes);
@@ -481,7 +481,7 @@ static int waves_effect_save_config_blob_to_cache(struct processing_module *mod,
 	}
 
 	if (!waves_codec->config_blob) {
-		waves_codec->config_blob = mod_alloc(mod, size, 16);
+		waves_codec->config_blob = mod_alloc_align(mod, size, 16);
 		if (!waves_codec->config_blob) {
 			comp_err(dev,
 				"waves_effect_save_config_blob_to_cache() failed to allocate %d bytes for config blob",
@@ -668,7 +668,7 @@ static int waves_codec_init(struct processing_module *mod)
 
 	comp_dbg(dev, "waves_codec_init() start");
 
-	waves_codec = mod_alloc(mod, sizeof(struct waves_codec_data), 16);
+	waves_codec = mod_alloc_align(mod, sizeof(struct waves_codec_data), 16);
 	if (!waves_codec) {
 		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for waves_codec_data",
 			 sizeof(struct waves_codec_data));
@@ -696,7 +696,7 @@ static int waves_codec_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	response = mod_alloc(mod, waves_codec->response_max_bytes, 16);
+	response = mod_alloc_align(mod, waves_codec->response_max_bytes, 16);
 	if (!response) {
 		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for response",
 			 waves_codec->response_max_bytes);

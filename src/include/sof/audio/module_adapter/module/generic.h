@@ -153,8 +153,9 @@ struct module_processing_data {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
-void *mod_alloc(struct processing_module *mod, uint32_t size, uint32_t alignment);
-void *mod_zalloc(struct processing_module *mod, uint32_t size, uint32_t alignment);
+void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t alignment);
+void *mod_alloc(struct processing_module *mod, uint32_t size);
+void *mod_zalloc(struct processing_module *mod, uint32_t size);
 int mod_free(struct processing_module *mod, void *ptr);
 void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
