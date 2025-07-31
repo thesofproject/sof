@@ -1278,6 +1278,8 @@ void module_adapter_free(struct comp_dev *dev)
 		buffer_free(buffer);
 	}
 
+	mod_free_all(mod);
+
 #if CONFIG_IPC_MAJOR_4
 	rfree(mod->priv.cfg.input_pins);
 #endif
