@@ -1289,6 +1289,21 @@ void module_adapter_free(struct comp_dev *dev)
 }
 EXPORT_SYMBOL(module_adapter_free);
 
+size_t module_adapter_heap_usage(struct processing_module *mod)
+{
+	struct list_item *mem_list, *_mem_list;
+	size_t size = 0;
+
+	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
+		struct module_memory *mem = container_of(mem_list, struct module_memory, mem_list);
+
+		size += mem->size;
+	}
+
+	return size;
+}
+EXPORT_SYMBOL(module_adapter_heap_usage);
+
 /*
  * \brief Get DAI hw params
  * \param[in] dev - component device pointer
