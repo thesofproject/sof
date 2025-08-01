@@ -152,6 +152,7 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	}
 	/* Store reference to allocated memory */
 	container->ptr = ptr;
+	container->size = size;
 	list_item_prepend(&container->mem_list, &mod->priv.memory.mem_list);
 
 	return ptr;

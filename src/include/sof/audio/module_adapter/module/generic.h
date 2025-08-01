@@ -122,6 +122,7 @@ struct module_param {
 struct module_memory {
 	void *ptr; /**< A pointr to particular memory block */
 	struct list_item mem_list; /**< list of memory allocated by module */
+	size_t size;
 };
 
 /**
@@ -217,6 +218,7 @@ int module_adapter_copy(struct comp_dev *dev);
 int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_size);
 int module_adapter_trigger(struct comp_dev *dev, int cmd);
 void module_adapter_free(struct comp_dev *dev);
+size_t module_adapter_heap_usage(struct comp_dev *dev);
 int module_adapter_reset(struct comp_dev *dev);
 
 #if CONFIG_IPC_MAJOR_3
