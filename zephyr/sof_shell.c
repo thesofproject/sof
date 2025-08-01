@@ -12,6 +12,8 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/shell/shell.h>
 
+#include <stdlib.h>
+
 #define SOF_TEST_INJECT_SCHED_GAP_USEC 1500
 
 static int cmd_sof_test_inject_sched_gap(const struct shell *sh,
