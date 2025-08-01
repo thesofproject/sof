@@ -12,6 +12,12 @@
 	};
 };
 
+/ {
+	emul_dma: dma {
+		compatible = "zephyr,dma-emul";
+	};
+};
+
 &sdma3 {
 	status = "okay";
 };
@@ -25,5 +31,9 @@
 };
 
 &micfil {
+	status = "okay";
+};
+
+&virtual_dai14 {
 	status = "okay";
 };

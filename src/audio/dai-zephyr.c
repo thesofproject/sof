@@ -194,6 +194,10 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_IMX_MICFIL;
 		cfg_params = &sof_cfg->micfil;
 		break;
+	case SOF_DAI_VIRTUAL:
+		cfg.type = DAI_VIRTUAL;
+		cfg_params = &sof_cfg->virtual_dai;
+		break;
 	default:
 		return -EINVAL;
 	}

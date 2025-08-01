@@ -151,6 +151,17 @@ SHARED_DATA struct sof_dma dma[] = {
 },
 #endif
 #if defined(CONFIG_SOC_MIMX8ML8_ADSP)
+#if CONFIG_DAI_VIRTUAL
+{
+	.plat_data = {
+		.dir = SOF_DMA_DIR_MEM_TO_MEM,
+		.devs = SOF_DMA_DEV_DAI_VIRTUAL,
+		.channels = 32,
+		.period_count = 2,
+	},
+	.z_dev = DEVICE_DT_GET(DT_NODELABEL(emul_dma)),
+},
+#else
 {
 	.plat_data = {
 		.dir = SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
@@ -160,6 +171,7 @@ SHARED_DATA struct sof_dma dma[] = {
 	},
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(sdma3)),
 },
+#endif /* CONFIG_DAI_VIRTUAL */
 {
 	.plat_data = {
 		.dir = SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
