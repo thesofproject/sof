@@ -1278,6 +1278,8 @@ void module_adapter_free(struct comp_dev *dev)
 		buffer_free(buffer);
 	}
 
+	mod_free_all(mod);
+
 #if CONFIG_IPC_MAJOR_4
 	rfree(mod->priv.cfg.input_pins);
 #endif
@@ -1286,6 +1288,22 @@ void module_adapter_free(struct comp_dev *dev)
 	rfree(dev);
 }
 EXPORT_SYMBOL(module_adapter_free);
+
+size_t module_adapter_heap_usage(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_mod(dev);
+	struct list_item *mem_list, *_mem_list;
+	size_t size = 0;
+
+	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
+		struct module_memory *mem = container_of(mem_list, struct module_memory, mem_list);
+
+		size += mem->size;
+	}
+
+	return size;
+}
+EXPORT_SYMBOL(module_adapter_heap_usage);
 
 /*
  * \brief Get DAI hw params

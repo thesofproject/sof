@@ -519,7 +519,7 @@ static int init_memory_tables(struct processing_module *mod)
 			goto err;
 		}
 		/* Allocate memory for this type, taking alignment into account */
-		ptr = module_allocate_memory(mod, mem_size, mem_alignment);
+		ptr = mod_alloc_align(mod, mem_size, mem_alignment);
 		if (!ptr) {
 			comp_err(dev, "init_memory_tables() error %x: failed to allocate memory for %d",
 				 ret, mem_type);
@@ -563,13 +563,13 @@ static int init_memory_tables(struct processing_module *mod)
 	return 0;
 err:
 	if (scratch)
-		module_free_memory(mod, scratch);
+		mod_free(mod, scratch);
 	if (persistent)
-		module_free_memory(mod, persistent);
+		mod_free(mod, persistent);
 	if (codec->mpd.in_buff)
-		module_free_memory(mod, codec->mpd.in_buff);
+		mod_free(mod, codec->mpd.in_buff);
 	if (codec->mpd.out_buff)
-		module_free_memory(mod, codec->mpd.out_buff);
+		mod_free(mod, codec->mpd.out_buff);
 	return ret;
 }
 
@@ -688,7 +688,7 @@ static int cadence_codec_prepare(struct processing_module *mod,
 		return ret;
 	}
 
-	cd->mem_tabs = module_allocate_memory(mod, mem_tabs_size, 4);
+	cd->mem_tabs = mod_alloc(mod, mem_tabs_size);
 	if (!cd->mem_tabs) {
 		comp_err(dev, "cadence_codec_prepare() error: failed to allocate space for memtabs");
 		return -ENOMEM;
@@ -732,7 +732,7 @@ static int cadence_codec_prepare(struct processing_module *mod,
 	comp_dbg(dev, "cadence_codec_prepare() done");
 	return 0;
 free:
-	module_free_memory(mod, cd->mem_tabs);
+	mod_free(mod, cd->mem_tabs);
 	return ret;
 }
 
@@ -847,7 +847,7 @@ static int cadence_codec_reset(struct processing_module *mod)
 	 * So, free all memory associated with runtime params. These will be reallocated during
 	 * prepare.
 	 */
-	module_free_all_memory(mod);
+	mod_free_all(mod);
 
 	/* reset to default params */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS, NULL, ret);
@@ -867,7 +867,7 @@ static int cadence_codec_free(struct processing_module *mod)
 	struct cadence_codec_data *cd = module_get_private_data(mod);
 
 	rfree(cd->setup_cfg.data);
-	module_free_all_memory(mod);
+	mod_free_all(mod);
 	rfree(cd->self);
 	rfree(cd);
 	return 0;

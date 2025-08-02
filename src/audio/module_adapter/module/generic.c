@@ -110,14 +110,23 @@ int module_init(struct processing_module *mod)
 	return 0;
 }
 
-void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint32_t alignment)
+/**
+ * Allocates aligned memory block for module.
+ * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param bytes		Size in bytes.
+ * @param alignment	Alignment in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * The allocated memory is automatically freed when the module is unloaded.
+ */
+void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t alignment)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_memory *container;
 	void *ptr;
 
 	if (!size) {
-		comp_err(dev, "module_allocate_memory: requested allocation of 0 bytes.");
+		comp_err(dev, "mod_alloc: requested allocation of 0 bytes.");
 		return NULL;
 	}
 
@@ -125,7 +134,7 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 	container = rzalloc(SOF_MEM_FLAG_USER,
 			    sizeof(struct module_memory));
 	if (!container) {
-		comp_err(dev, "module_allocate_memory: failed to allocate memory container.");
+		comp_err(dev, "mod_alloc: failed to allocate memory container.");
 		return NULL;
 	}
 
@@ -136,18 +145,57 @@ void *module_allocate_memory(struct processing_module *mod, uint32_t size, uint3
 		ptr = rballoc(SOF_MEM_FLAG_USER, size);
 
 	if (!ptr) {
-		comp_err(dev, "module_allocate_memory: failed to allocate memory for comp %x.",
+		comp_err(dev, "mod_alloc: failed to allocate memory for comp %x.",
 			 dev_comp_id(dev));
+		rfree(container);
 		return NULL;
 	}
 	/* Store reference to allocated memory */
 	container->ptr = ptr;
+	container->size = size;
 	list_item_prepend(&container->mem_list, &mod->priv.memory.mem_list);
 
 	return ptr;
 }
 
-int module_free_memory(struct processing_module *mod, void *ptr)
+/**
+ * Allocates memory block for module.
+ * @param mod	Pointer to module this memory block is allocated for.
+ * @param bytes	Size in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * Like mod_alloc_align() but the alignment can not be specified. However,
+ * rballoc() will always aligns the memory to PLATFORM_DCACHE_ALIGN.
+ */
+void *mod_alloc(struct processing_module *mod, uint32_t size)
+{
+	return mod_alloc_align(mod, size, 0);
+}
+
+/**
+ * Allocates memory block for module and intializes it to zero.
+ * @param mod	Pointer to module this memory block is allocated for.
+ * @param bytes	Size in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * Like mod_alloc() but the allocated memory is initialized to zero.
+ */
+void *mod_zalloc(struct processing_module *mod, uint32_t size)
+{
+	void *ret = mod_alloc(mod, size);
+
+	if (ret)
+		memset(ret, 0, size);
+
+	return ret;
+}
+
+/**
+ * Frees the memory block removes it from module's book keeping.
+ * @param mod	Pointer to module this memory block was allocated for.
+ * @param ptr	Pointer to the memory block.
+ */
+int mod_free(struct processing_module *mod, void *ptr)
 {
 	struct module_memory *mem;
 	struct list_item *mem_list;
@@ -167,7 +215,7 @@ int module_free_memory(struct processing_module *mod, void *ptr)
 		}
 	}
 
-	comp_err(mod->dev, "module_free_memory: error: could not find memory pointed by %p",
+	comp_err(mod->dev, "mod_free: error: could not find memory pointed by %p",
 		 ptr);
 
 	return -EINVAL;
@@ -343,7 +391,13 @@ int module_reset(struct processing_module *mod)
 	return 0;
 }
 
-void module_free_all_memory(struct processing_module *mod)
+/**
+ * Frees all the memory allocated for this module
+ * @param mod	Pointer to module this memory block was allocated for.
+ *
+ * This function is called automatically when the module is unloaded.
+ */
+void mod_free_all(struct processing_module *mod)
 {
 	struct module_memory *mem;
 	struct list_item *mem_list;

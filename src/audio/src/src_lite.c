@@ -43,7 +43,7 @@ static int src_lite_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	ret = src_allocate_copy_stages(mod->dev, a,
+	ret = src_allocate_copy_stages(mod, a,
 				       src_table1[a->idx_out][a->idx_in],
 				       src_table2[a->idx_out][a->idx_in]);
 	if (ret < 0)
