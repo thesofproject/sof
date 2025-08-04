@@ -21,14 +21,5 @@
 };
 
 &edma2 {
-	compatible = "nxp,edma";
-	reg = <0x42000000 (DT_SIZE_K(64) * 33)>;
-	valid-channels = <30>, <31>;
-	interrupts = <143 0>, <143 0>;
-	/delete-property/nxp,version;
-	/delete-property/no-error-irq;
-	/delete-property/channels-shared-irq-mask;
-	/delete-property/dma-channels;
-	/delete-property/dma-requests;
 	status = "okay";
 };
