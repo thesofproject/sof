@@ -677,10 +677,8 @@ static int waves_codec_init(struct processing_module *mod)
 		memset(waves_codec, 0, sizeof(struct waves_codec_data));
 		codec->private = waves_codec;
 		ret = waves_effect_allocate(mod);
-		if (ret) {
-			mod_free(mod, waves_codec);
+		if (ret)
 			codec->private = NULL;
-		}
 	}
 
 	if (ret) {
@@ -862,7 +860,6 @@ static int waves_codec_reset(struct processing_module *mod)
 
 static int waves_codec_free(struct processing_module *mod)
 {
-	mod_free_all(mod);
 	comp_dbg(mod->dev, "waves_codec_free()");
 	return 0;
 }
