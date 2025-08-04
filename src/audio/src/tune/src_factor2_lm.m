@@ -53,7 +53,7 @@ m = fs1/k;
 
 %% Hand fixing for some ratios, guide to reuse some common filters
 if (l==147) && (m==640)
-        l01 = 7; m01 = 8; l02 = l/l01; m02 = m/m01; % 192 to 44.1
+        l01 = 7; m01 = 20; l02 = l/l01; m02 = m/m01; % 192 to 44.1, 48 to 11.025
 end
 if (l==147) && (m==320)
         l01 = 7; m01 = 8; l02 = l/l01; m02 = m/m01; % 96 to 44.1
