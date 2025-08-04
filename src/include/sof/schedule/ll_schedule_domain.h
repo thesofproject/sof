@@ -35,6 +35,7 @@ struct dma;
 struct ll_schedule_domain;
 struct task;
 struct timer;
+struct comp_dev;
 
 struct ll_schedule_domain_ops {
 	int (*domain_register)(struct ll_schedule_domain *domain,
