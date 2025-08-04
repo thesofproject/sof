@@ -164,6 +164,7 @@ struct comp_data {
 	int sink_frames;
 	int sample_container_bytes;
 	int channels_count;
+	bool start_with_no_output_produced;
 	int (*src_func)(struct comp_data *cd, struct sof_source *source,
 			struct sof_sink *sink);
 	void (*polyphase_func)(struct src_stage_prm *s);
