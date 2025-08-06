@@ -99,14 +99,14 @@ static int dcblock_init(struct processing_module *mod)
 	/* component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "dcblock_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto err_cd;
 	}
 
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_dcblock->data);
 	if (ret < 0) {
-		comp_err(dev, "dcblock_init(): comp_init_data_blob() failed with error: %d", ret);
+		comp_err(dev, "comp_init_data_blob() failed with error: %d", ret);
 		goto err_model_cd;
 	}
 

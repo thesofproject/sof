@@ -139,7 +139,7 @@ static int aria_init(struct processing_module *mod)
 	att = aria->attenuation;
 
 	if (aria->attenuation > ARIA_MAX_ATT) {
-		comp_warn(dev, "init_aria(): Attenuation value %d must not be greater than %d",
+		comp_warn(dev, "Attenuation value %d must not be greater than %d",
 			  att, ARIA_MAX_ATT);
 		att = ARIA_MAX_ATT;
 	}
@@ -149,7 +149,7 @@ static int aria_init(struct processing_module *mod)
 
 	if (!buf) {
 		rfree(cd);
-		comp_err(dev, "init_aria(): allocation failed for size %d", req_mem);
+		comp_err(dev, "allocation failed for size %d", req_mem);
 		return -ENOMEM;
 	}
 
@@ -201,12 +201,12 @@ static int aria_prepare(struct processing_module *mod,
 
 	if (audio_stream_get_valid_fmt(&source->stream) != SOF_IPC_FRAME_S24_4LE ||
 	    audio_stream_get_valid_fmt(&sink->stream) != SOF_IPC_FRAME_S24_4LE) {
-		comp_err(dev, "aria_prepare(): format is not supported");
+		comp_err(dev, "format is not supported");
 		return -EINVAL;
 	}
 
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "aria_prepare(): Component is in active state.");
+		comp_info(dev, "Component is in active state.");
 		return 0;
 	}
 
@@ -291,7 +291,7 @@ static int aria_set_config(struct processing_module *mod, uint32_t param_id,
 		memcpy_s(&cd->att, sizeof(uint32_t), fragment, sizeof(uint32_t));
 		if (cd->att > ARIA_MAX_ATT) {
 			comp_warn(dev,
-				  "aria_set_config(): Attenuation parameter %d is limited to %d",
+				  "Attenuation parameter %d is limited to %d",
 				  cd->att, ARIA_MAX_ATT);
 			cd->att = ARIA_MAX_ATT;
 		}
