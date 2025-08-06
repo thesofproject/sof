@@ -99,7 +99,7 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 		nch = cd->nch;
 	}
 
-	comp_info(dev, "eq_fir_init_coef(): %u responses, %u channels, stream %d channels",
+	comp_info(dev, "%u responses, %u channels, stream %d channels",
 		  config->number_of_responses, config->channels_in_config, nch);
 
 	/* Sanity checks */
@@ -259,7 +259,7 @@ static int eq_fir_init(struct processing_module *mod)
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		comp_err(dev, "eq_fir_init(): coefficients blob size = %zu > SOF_EQ_FIR_MAX_SIZE",
+		comp_err(dev, "coefficients blob size = %zu > SOF_EQ_FIR_MAX_SIZE",
 			 bs);
 		return -EINVAL;
 	}
@@ -276,7 +276,7 @@ static int eq_fir_init(struct processing_module *mod)
 	/* component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "eq_fir_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -288,7 +288,7 @@ static int eq_fir_init(struct processing_module *mod)
 	 */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->init_data);
 	if (ret < 0) {
-		comp_err(dev, "eq_fir_init(): comp_init_data_blob() failed.");
+		comp_err(dev, "comp_init_data_blob() failed.");
 		goto err_init;
 	}
 
@@ -439,11 +439,11 @@ static int eq_fir_prepare(struct processing_module *mod,
 	if (cd->config) {
 		ret = eq_fir_setup(dev, cd, channels);
 		if (ret < 0)
-			comp_err(dev, "eq_fir_prepare(): eq_fir_setup failed.");
+			comp_err(dev, "eq_fir_setup failed.");
 		else if (cd->fir_delay_size)
 			ret = set_fir_func(mod, frame_fmt);
 		else
-			comp_dbg(dev, "eq_fir_prepare(): pass-through");
+			comp_dbg(dev, "pass-through");
 	}
 
 	if (ret < 0)
