@@ -28,7 +28,7 @@ int schedule_task_init(struct task *task,
 		       void *data, uint16_t core, uint32_t flags)
 {
 	if (type >= SOF_SCHEDULE_COUNT) {
-		tr_err(&sch_tr, "schedule_task_init(): invalid task type");
+		tr_err(&sch_tr, "invalid task type");
 		return -EINVAL;
 	}
 
@@ -53,7 +53,7 @@ static void scheduler_register(struct schedule_data *scheduler)
 		*sch = rzalloc(SOF_MEM_FLAG_KERNEL,
 			       sizeof(**sch));
 		if (!*sch) {
-			tr_err(&sch_tr, "scheduler_register(): allocation failed");
+			tr_err(&sch_tr, "allocation failed");
 			return;
 		}
 		list_init(&(*sch)->list);
@@ -72,7 +72,7 @@ void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 
 	sch = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
 	if (!sch) {
-		tr_err(&sch_tr, "scheduler_init(): allocation failed");
+		tr_err(&sch_tr, "allocation failed");
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 	list_init(&sch->list);

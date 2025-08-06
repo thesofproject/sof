@@ -56,7 +56,7 @@ int32_t power_int32(int32_t b, int32_t e)
 			multiplier = (int32_t)((1LL << 50) / (int64_t)b);
 		} else {
 			multiplier = INT32_MAX;
-			tr_err(&math_power_tr, "power_int32(): Divide by zero error.");
+			tr_err(&math_power_tr, "Divide by zero error.");
 		}
 	} else {
 		multiplier = b;

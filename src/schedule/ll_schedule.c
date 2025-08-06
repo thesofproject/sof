@@ -365,7 +365,7 @@ static int schedule_ll_domain_set(struct ll_schedule_data *sch,
 
 	ret = domain_register(domain, task, &schedule_ll_tasks_run, sch);
 	if (ret < 0) {
-		tr_err(&ll_tr, "schedule_ll_domain_set: cannot register domain %d",
+		tr_err(&ll_tr, "cannot register domain %d",
 		       ret);
 		goto done;
 	}
@@ -548,7 +548,7 @@ static int schedule_ll_task_common(struct ll_schedule_data *sch, struct task *ta
 				 */
 				if (pdata->period < reg_pdata->period) {
 					tr_err(&ll_tr,
-					       "schedule_ll_task(): registrable task has a period longer than current task");
+					       "registrable task has a period longer than current task");
 					ret = -EINVAL;
 					goto out;
 				}
@@ -625,7 +625,7 @@ int schedule_task_init_ll(struct task *task,
 			   sizeof(*ll_pdata));
 
 	if (!ll_pdata) {
-		tr_err(&ll_tr, "schedule_task_init_ll(): alloc failed");
+		tr_err(&ll_tr, "alloc failed");
 		return -ENOMEM;
 	}
 
@@ -714,7 +714,7 @@ static int reschedule_ll_task(void *data, struct task *task, uint64_t start)
 		}
 	}
 
-	tr_err(&ll_tr, "reschedule_ll_task(): task not found");
+	tr_err(&ll_tr, "task not found");
 
 out:
 
@@ -783,7 +783,7 @@ int scheduler_init_ll(struct ll_schedule_domain *domain)
 	/* initialize scheduler private data */
 	sch = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
 	if (!sch) {
-		tr_err(&ll_tr, "scheduler_init_ll(): allocation failed");
+		tr_err(&ll_tr, "allocation failed");
 		return -ENOMEM;
 	}
 	list_init(&sch->tasks);

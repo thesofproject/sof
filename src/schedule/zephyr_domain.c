@@ -178,7 +178,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 	k_tid_t thread;
 	k_spinlock_key_t key;
 
-	tr_dbg(&ll_tr, "zephyr_domain_register()");
+	tr_dbg(&ll_tr, "entry");
 
 	/* domain work only needs registered once on each core */
 	if (dt->handler)
@@ -233,7 +233,7 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	int core = cpu_get_id();
 	k_spinlock_key_t key;
 
-	tr_dbg(&ll_tr, "zephyr_domain_unregister()");
+	tr_dbg(&ll_tr, "entry");
 
 	/* tasks still registered on this core */
 	if (num_tasks)
@@ -307,14 +307,14 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &zephyr_domain_ops);
 	if (!domain) {
-		tr_err(&ll_tr, "zephyr_domain_init: domain init failed");
+		tr_err(&ll_tr, "domain init failed");
 		return NULL;
 	}
 
 	zephyr_domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 				sizeof(*zephyr_domain));
 	if (!zephyr_domain) {
-		tr_err(&ll_tr, "zephyr_domain_init: domain allocation failed");
+		tr_err(&ll_tr, "domain allocation failed");
 		rfree(domain);
 		return NULL;
 	}
