@@ -69,7 +69,7 @@ static int eq_iir_init(struct processing_module *mod)
 	/* component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "eq_iir_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -79,7 +79,7 @@ static int eq_iir_init(struct processing_module *mod)
 	 */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
-		comp_err(dev, "eq_iir_init(): comp_init_data_blob() failed with error: %d", ret);
+		comp_err(dev, "comp_init_data_blob() failed with error: %d", ret);
 		comp_data_blob_handler_free(cd->model_handler);
 		goto err;
 	}

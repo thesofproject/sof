@@ -195,7 +195,7 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 	int j;
 	int s;
 
-	comp_info(mod->dev, "eq_iir_init_coef(): %u responses, %u channels, stream %d channels",
+	comp_info(mod->dev, "%u responses, %u channels, stream %d channels",
 		  config->number_of_responses, config->channels_in_config, nch);
 
 	/* Sanity checks */

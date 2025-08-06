@@ -291,7 +291,7 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, buffer_flag, params);
 	if (ret < 0) {
-		comp_err(dev, "eq_iir_verify_params(): comp_verify_params() failed.");
+		comp_err(dev, "comp_verify_params() failed.");
 		return ret;
 	}
 

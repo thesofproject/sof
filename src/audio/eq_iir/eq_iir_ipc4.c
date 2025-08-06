@@ -57,7 +57,7 @@ static eq_iir_func eq_iir_find_func(struct processing_module *mod)
 {
 	unsigned int valid_bit_depth = mod->priv.cfg.base_cfg.audio_fmt.valid_bit_depth;
 
-	comp_dbg(mod->dev, "eq_iir_find_func(): valid_bit_depth %d", valid_bit_depth);
+	comp_dbg(mod->dev, "valid_bit_depth %d", valid_bit_depth);
 	switch (valid_bit_depth) {
 #if CONFIG_FORMAT_S16LE
 	case IPC4_DEPTH_16BIT:

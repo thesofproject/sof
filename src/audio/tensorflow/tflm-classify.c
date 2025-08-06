@@ -70,7 +70,7 @@ __cold static int tflm_init(struct processing_module *mod)
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "tflm_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto cd_fail;
 	}
@@ -78,7 +78,7 @@ __cold static int tflm_init(struct processing_module *mod)
 	/* Get configuration data and reset DRC state */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
-		comp_err(dev, "tflm_init(): comp_init_data_blob() failed.");
+		comp_err(dev, "comp_init_data_blob() failed.");
 		goto cd_fail;
 	}
 
@@ -197,7 +197,7 @@ static int tflm_process(struct processing_module *mod,
 		cd->tfc.audio_data_size = TFLM_FEATURE_ELEM_COUNT;
 		ret = TF_ProcessClassify(&cd->tfc);
 		if (!ret) {
-			comp_err(dev, "tflm_process(): classify failed %s.",
+			comp_err(dev, "classify failed %s.",
 				 cd->tfc.error);
 			return ret;
 		}

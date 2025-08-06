@@ -40,13 +40,13 @@ int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 			config = comp_get_data_blob(cd->tuning_handler, &size, NULL);
 			if (size != CTC_BLOB_CONFIG_SIZE) {
 				comp_err(mod->dev,
-					 "ctc_set_config(): Invalid config size = %d",
+					 "Invalid config size = %d",
 					 size);
 				return -EINVAL;
 			}
 			if (config->size != CTC_BLOB_CONFIG_SIZE) {
 				comp_err(mod->dev,
-					 "ctc_set_config(): Invalid config->size = %d",
+					 "Invalid config->size = %d",
 					 config->size);
 				return -EINVAL;
 			}
@@ -61,12 +61,12 @@ int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 			return 0;
 		}
 		comp_err(mod->dev,
-			 "ctc_set_config(): Illegal num_elems = %d",
+			 "Illegal num_elems = %d",
 			 cdata->num_elems);
 		return -EINVAL;
 	default:
 		comp_err(mod->dev,
-			 "ctc_set_config(): Only binary and switch controls supported %d",
+			 "Only binary and switch controls supported %d",
 			 cdata->cmd);
 		return -EINVAL;
 	}
@@ -79,7 +79,7 @@ int ctc_get_config(struct processing_module *mod,
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "ctc_get_config(): %u", cdata->cmd);
+	comp_info(mod->dev, "%u", cdata->cmd);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
