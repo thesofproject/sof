@@ -38,7 +38,7 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	if ((ring->size <= HOST_PAGE_SIZE * (ring->pages - 1)) ||
 	    (ring->size > HOST_PAGE_SIZE * ring->pages)) {
 		/* error buffer size */
-		tr_err(&ipc_tr, "ipc_parse_page_descriptors(): error buffer size");
+		tr_err(&ipc_tr, "error buffer size");
 		return -EINVAL;
 	}
 
