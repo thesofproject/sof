@@ -164,7 +164,7 @@ static int smart_amp_alloc_data_buffers(struct comp_dev *dev,
 		goto error;
 	total_size += size;
 
-	comp_dbg(dev, "smart_amp_alloc(): used data buffer %zu bytes", total_size);
+	comp_dbg(dev, "used data buffer %zu bytes", total_size);
 	return 0;
 
 error:
@@ -202,7 +202,7 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	bs = ipc_sa->size;
 
 	if (bs > 0 && bs < sizeof(struct sof_smart_amp_config)) {
-		comp_err(dev, "smart_amp_new(): failed to apply config");
+		comp_err(dev, "failed to apply config");
 		goto error;
 	}
 
@@ -211,47 +211,47 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	/* allocate inner model data struct */
 	sad->mod_data = mod_data_create(dev);
 	if (!sad->mod_data) {
-		comp_err(dev, "smart_amp_new(): failed to allocate nner model data");
+		comp_err(dev, "failed to allocate nner model data");
 		goto error;
 	}
 
 	/* allocate stream buffers for mod */
 	ret = smart_amp_alloc_data_buffers(dev, sad);
 	if (ret) {
-		comp_err(dev, "smart_amp_new(): failed to allocate data buffers, ret:%d", ret);
+		comp_err(dev, "failed to allocate data buffers, ret:%d", ret);
 		goto error;
 	}
 
 	/* (before init) allocate mem block for mod private data usage */
 	ret = smart_amp_alloc_mod_memblk(sad, MOD_MEMBLK_PRIVATE);
 	if (ret < 0) {
-		comp_err(dev, "smart_amp_new(): failed to allocate mod private, ret:%d", ret);
+		comp_err(dev, "failed to allocate mod private, ret:%d", ret);
 		goto error;
 	}
-	comp_dbg(dev, "smart_amp_new(): used mod private buffer %d bytes", ret);
+	comp_dbg(dev, "used mod private buffer %d bytes", ret);
 
 	/* init model */
 	ret = sad->mod_data->mod_ops->init(sad->mod_data);
 	if (ret) {
-		comp_err(dev, "smart_amp_new(): failed to init inner model, ret:%d", ret);
+		comp_err(dev, "failed to init inner model, ret:%d", ret);
 		goto error;
 	}
 
 	/* (after init) allocate mem block for mod audio frame data usage */
 	ret = smart_amp_alloc_mod_memblk(sad, MOD_MEMBLK_FRAME);
 	if (ret < 0) {
-		comp_err(dev, "smart_amp_new(): failed to allocate mod buffer, ret:%d", ret);
+		comp_err(dev, "failed to allocate mod buffer, ret:%d", ret);
 		goto error;
 	}
-	comp_dbg(dev, "smart_amp_new(): used mod data buffer %d bytes", ret);
+	comp_dbg(dev, "used mod data buffer %d bytes", ret);
 
 	/* (after init) allocate mem block for mod parameter blob usage */
 	ret = smart_amp_alloc_mod_memblk(sad, MOD_MEMBLK_PARAM);
 	if (ret < 0) {
-		comp_err(dev, "smart_amp_new(): failed to allocate mod config, ret:%d", ret);
+		comp_err(dev, "failed to allocate mod config, ret:%d", ret);
 		goto error;
 	}
-	comp_dbg(dev, "smart_amp_new(): used mod config buffer %d bytes", ret);
+	comp_dbg(dev, "used mod config buffer %d bytes", ret);
 
 	dev->state = COMP_STATE_READY;
 
@@ -280,7 +280,7 @@ static int smart_amp_set_config(struct comp_dev *dev,
 		 bs, sizeof(struct sof_smart_amp_config));
 
 	if (bs != sizeof(struct sof_smart_amp_config)) {
-		comp_err(dev, "smart_amp_set_config(): invalid blob size, actual blob size = %zu, expected blob size = %zu",
+		comp_err(dev, "invalid blob size, actual blob size = %zu, expected blob size = %zu",
 			 bs, sizeof(struct sof_smart_amp_config));
 		return -EINVAL;
 	}
@@ -335,12 +335,12 @@ static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 	case SOF_SMART_AMP_MODEL:
 		ret = mod->mod_ops->get_config(mod, cdata, size);
 		if (ret < 0) {
-			comp_err(dev, "smart_amp_ctrl_get_bin_data(): failed to read inner model!");
+			comp_err(dev, "failed to read inner model!");
 			return ret;
 		}
 		break;
 	default:
-		comp_err(dev, "smart_amp_ctrl_get_bin_data(): unknown binary data type");
+		comp_err(dev, "unknown binary data type");
 		break;
 	}
 
@@ -359,7 +359,7 @@ static int smart_amp_ctrl_get_data(struct comp_dev *dev,
 		ret = smart_amp_ctrl_get_bin_data(dev, cdata, size);
 		break;
 	default:
-		comp_err(dev, "smart_amp_ctrl_get_data(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -377,7 +377,7 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 	mod = sad->mod_data;
 
 	if (dev->state < COMP_STATE_READY) {
-		comp_err(dev, "smart_amp_ctrl_set_bin_data(): driver in init!");
+		comp_err(dev, "driver in init!");
 		return -EBUSY;
 	}
 
@@ -388,12 +388,12 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 	case SOF_SMART_AMP_MODEL:
 		ret = mod->mod_ops->set_config(mod, cdata);
 		if (ret < 0) {
-			comp_err(dev, "smart_amp_ctrl_set_bin_data(): failed to write inner model!");
+			comp_err(dev, "failed to write inner model!");
 			return ret;
 		}
 		break;
 	default:
-		comp_err(dev, "smart_amp_ctrl_set_bin_data(): unknown binary data type");
+		comp_err(dev, "unknown binary data type");
 		break;
 	}
 
@@ -407,7 +407,7 @@ static int smart_amp_ctrl_set_data(struct comp_dev *dev,
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		comp_err(dev, "smart_amp_ctrl_set_data(): invalid version");
+		comp_err(dev, "invalid version");
 		return -EINVAL;
 	}
 
@@ -417,7 +417,7 @@ static int smart_amp_ctrl_set_data(struct comp_dev *dev,
 		ret = smart_amp_ctrl_set_bin_data(dev, cdata);
 		break;
 	default:
-		comp_err(dev, "smart_amp_ctrl_set_data(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -431,7 +431,7 @@ static int smart_amp_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
-	comp_dbg(dev, "smart_amp_cmd(): cmd: %d", cmd);
+	comp_dbg(dev, "cmd: %d", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -483,7 +483,7 @@ static int smart_amp_params(struct comp_dev *dev,
 
 	err = smart_amp_verify_params(dev, params);
 	if (err < 0) {
-		comp_err(dev, "smart_amp_params(): pcm params verification failed.");
+		comp_err(dev, "pcm params verification failed.");
 		return -EINVAL;
 	}
 
@@ -529,12 +529,12 @@ static int smart_amp_ff_process(struct comp_dev *dev,
 	sad->out_mod.produced = 0;
 
 	if (frames == 0) {
-		comp_warn(dev, "smart_amp_copy(): feed forward frame size zero warning.");
+		comp_warn(dev, "feed forward frame size zero warning.");
 		return 0;
 	}
 
 	if (frames > SMART_AMP_FF_BUF_DB_SZ) {
-		comp_err(dev, "smart_amp_copy(): feed forward frame size overflow: %u", frames);
+		comp_err(dev, "feed forward frame size overflow: %u", frames);
 		sad->ff_mod.consumed = frames;
 		return -EINVAL;
 	}
@@ -543,7 +543,7 @@ static int smart_amp_ff_process(struct comp_dev *dev,
 
 	ret = mod->mod_ops->ff_proc(mod, frames, &sad->ff_mod, &sad->out_mod);
 	if (ret) {
-		comp_err(dev, "smart_amp_copy(): feed forward inner model process error");
+		comp_err(dev, "feed forward inner model process error");
 		return ret;
 	}
 
@@ -563,12 +563,12 @@ static int smart_amp_fb_process(struct comp_dev *dev,
 	sad->fb_mod.consumed = 0;
 
 	if (frames == 0) {
-		comp_warn(dev, "smart_amp_copy(): feedback frame size zero warning.");
+		comp_warn(dev, "feedback frame size zero warning.");
 		return 0;
 	}
 
 	if (frames > SMART_AMP_FB_BUF_DB_SZ) {
-		comp_err(dev, "smart_amp_copy(): feedback frame size overflow: %u", frames);
+		comp_err(dev, "feedback frame size overflow: %u", frames);
 		sad->fb_mod.consumed = frames;
 		return -EINVAL;
 	}
@@ -577,7 +577,7 @@ static int smart_amp_fb_process(struct comp_dev *dev,
 
 	ret = mod->mod_ops->fb_proc(mod, frames, &sad->fb_mod);
 	if (ret) {
-		comp_err(dev, "smart_amp_copy(): feedback inner model process error");
+		comp_err(dev, "feedback inner model process error");
 		return ret;
 	}
 
@@ -618,7 +618,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 			feedback_bytes = avail_feedback_frames *
 				audio_stream_frame_bytes(&feedback_buf->stream);
 
-			comp_dbg(dev, "smart_amp_copy(): processing %u feedback frames (avail_passthrough_frames: %u)",
+			comp_dbg(dev, "processing %u feedback frames (avail_passthrough_frames: %u)",
 				 avail_feedback_frames, avail_passthrough_frames);
 
 			/* perform buffer writeback after source_buf process */
@@ -627,7 +627,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 					     avail_feedback_frames,
 					     sad->config.feedback_ch_map);
 
-			comp_dbg(dev, "smart_amp_copy(): consumed %u feedback frames",
+			comp_dbg(dev, "consumed %u feedback frames",
 				 sad->fb_mod.consumed);
 			if (sad->fb_mod.consumed < avail_feedback_frames) {
 				feedback_bytes = sad->fb_mod.consumed *
@@ -645,7 +645,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	smart_amp_ff_process(dev, &source_buf->stream, &sink_buf->stream,
 			     avail_frames, sad->config.source_ch_map);
 
-	comp_dbg(dev, "smart_amp_copy(): processing %u feed forward frames (consumed: %u, produced: %u)",
+	comp_dbg(dev, "processing %u feed forward frames (consumed: %u, produced: %u)",
 		 avail_frames, sad->ff_mod.consumed, sad->out_mod.produced);
 	if (sad->ff_mod.consumed < avail_frames)
 		source_bytes = sad->ff_mod.consumed * audio_stream_frame_bytes(&source_buf->stream);
@@ -702,7 +702,7 @@ static int smart_amp_resolve_mod_fmt(struct comp_dev *dev, uint32_t least_req_de
 	/* get supported formats from mod */
 	ret = mod->mod_ops->get_supported_fmts(mod, &mod_fmts, &num_mod_fmts);
 	if (ret) {
-		comp_err(dev, "smart_amp_resolve_mod_fmt(): failed to get supported formats");
+		comp_err(dev, "failed to get supported formats");
 		return ret;
 	}
 
@@ -710,12 +710,12 @@ static int smart_amp_resolve_mod_fmt(struct comp_dev *dev, uint32_t least_req_de
 		if (get_sample_bitdepth(mod_fmts[i]) >= least_req_depth &&
 		    is_supported_fmt(mod_fmts[i])) {
 			/* set frame format to inner model */
-			comp_dbg(dev, "smart_amp_resolve_mod_fmt(): set mod format to %u",
+			comp_dbg(dev, "set mod format to %u",
 				 mod_fmts[i]);
 			ret = mod->mod_ops->set_fmt(mod, mod_fmts[i]);
 			if (ret) {
 				comp_err(dev,
-					 "smart_amp_resolve_mod_fmt(): failed setting format %u",
+					 "failed setting format %u",
 					 mod_fmts[i]);
 				return ret;
 			}
@@ -724,7 +724,7 @@ static int smart_amp_resolve_mod_fmt(struct comp_dev *dev, uint32_t least_req_de
 		}
 	}
 
-	comp_err(dev, "smart_amp_resolve_mod_fmt(): failed to resolve the frame format for mod");
+	comp_err(dev, "failed to resolve the frame format for mod");
 	return -EINVAL;
 }
 
@@ -798,15 +798,15 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->out_mod.frame_fmt = resolved_mod_fmt;
 	sad->ff_get_frame = smart_amp_get_src_func(ff_src_fmt, sad->ff_mod.frame_fmt);
 	sad->ff_set_frame = smart_amp_get_sink_func(ff_src_fmt, sad->out_mod.frame_fmt);
-	comp_dbg(dev, "smart_amp_prepare(): ff mod buffer channels:%u fmt_conv:%u -> %u",
+	comp_dbg(dev, "ff mod buffer channels:%u fmt_conv:%u -> %u",
 		 sad->ff_mod.channels, ff_src_fmt, sad->ff_mod.frame_fmt);
-	comp_dbg(dev, "smart_amp_prepare(): output mod buffer channels:%u fmt_conv:%u -> %u",
+	comp_dbg(dev, "output mod buffer channels:%u fmt_conv:%u -> %u",
 		 sad->out_mod.channels, sad->out_mod.frame_fmt, ff_src_fmt);
 
 	if (sad->feedback_buf) {
 		sad->fb_mod.frame_fmt = resolved_mod_fmt;
 		sad->fb_get_frame = smart_amp_get_src_func(fb_src_fmt, sad->fb_mod.frame_fmt);
-		comp_dbg(dev, "smart_amp_prepare(): fb mod buffer channels:%u fmt_conv:%u -> %u",
+		comp_dbg(dev, "fb mod buffer channels:%u fmt_conv:%u -> %u",
 			 sad->fb_mod.channels, fb_src_fmt, sad->fb_mod.frame_fmt);
 	}
 	return 0;

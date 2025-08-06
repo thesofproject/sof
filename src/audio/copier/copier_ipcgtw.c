@@ -102,7 +102,7 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 	if (!dev)
 		return -ENODEV;
 
-	comp_dbg(dev, "copier_ipcgtw_process(): %x %x",
+	comp_dbg(dev, "%x %x",
 		 cmd->primary.dat, cmd->extension.dat);
 
 	buf = get_buffer(dev);
@@ -113,7 +113,7 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 		 * case do not report error but return 0 bytes available for GET_DATA and
 		 * 0 bytes free for SET_DATA.
 		 */
-		comp_warn(dev, "copier_ipcgtw_process(): no buffer found");
+		comp_warn(dev, "no buffer found");
 	}
 
 	out = (struct ipc4_ipc_gateway_cmd_data_reply *)reply_payload;
@@ -162,7 +162,7 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 		break;
 
 	default:
-		comp_err(dev, "copier_ipcgtw_process(): unexpected cmd: %u",
+		comp_err(dev, "unexpected cmd: %u",
 			 (unsigned int)cmd->primary.r.cmd);
 		return -EINVAL;
 	}
@@ -180,7 +180,7 @@ int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 
 	buf = get_buffer(dev);
 	if (!buf) {
-		comp_err(dev, "ipcgtw_params(): no buffer found");
+		comp_err(dev, "no buffer found");
 		return -EINVAL;
 	}
 
@@ -188,7 +188,7 @@ int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 	err = buffer_set_size(buf, ipcgtw_data->buf_size, 0);
 
 	if (err < 0) {
-		comp_err(dev, "ipcgtw_params(): failed to resize buffer to %u bytes",
+		comp_err(dev, "failed to resize buffer to %u bytes",
 			 ipcgtw_data->buf_size);
 		return err;
 	}
@@ -203,7 +203,7 @@ void copier_ipcgtw_reset(struct comp_dev *dev)
 	if (buf) {
 		audio_stream_reset(&buf->stream);
 	} else {
-		comp_warn(dev, "ipcgtw_reset(): no buffer found");
+		comp_warn(dev, "no buffer found");
 	}
 }
 
@@ -221,7 +221,7 @@ __cold int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 
 	gtw_cfg = &copier->gtw_cfg;
 	if (!gtw_cfg->config_length) {
-		comp_err(dev, "ipcgtw_create(): empty ipc4_gateway_config_data");
+		comp_err(dev, "empty ipc4_gateway_config_data");
 		return -EINVAL;
 	}
 
@@ -244,7 +244,7 @@ __cold int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	/* The buffer connected to the IPC gateway will be resized later in ipcgtw_params()
 	 * to the size specified in the IPC gateway blob.
 	 */
-	comp_dbg(dev, "ipcgtw_create(): buffer_size: %u", blob->buffer_size);
+	comp_dbg(dev, "buffer_size: %u", blob->buffer_size);
 	ipcgtw_data->buf_size = blob->buffer_size;
 
 	cd->converter[IPC4_COPIER_GATEWAY_PIN] =
