@@ -186,7 +186,7 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 	uint32_t data_offset_size;
 	static uint32_t size;
 
-	comp_dbg(dev, "module_adapter_set_params(): num_of_elem %d, elem remain %d msg_index %u",
+	comp_dbg(dev, "num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
 	/* set the fragment position, data offset and config data size */
@@ -216,7 +216,7 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 							    (const uint8_t *)cdata,
 							    cdata->num_elems, NULL, 0);
 
-		comp_warn(dev, "module_adapter_get_set_params(): no configuration op set for %d",
+		comp_warn(dev, "no configuration op set for %d",
 			  dev_comp_id(dev));
 		return 0;
 	}
@@ -225,7 +225,7 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 		return interface->get_configuration(mod, pos, &data_offset_size,
 						    (uint8_t *)cdata, cdata->num_elems);
 
-	comp_err(dev, "module_adapter_get_set_params(): no configuration op get for %d",
+	comp_err(dev, "no configuration op get for %d",
 		 dev_comp_id(dev));
 	return -EIO; /* non-implemented error */
 }
@@ -241,13 +241,13 @@ static int module_adapter_ctrl_get_set_data(struct comp_dev *dev, struct sof_ipc
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		comp_err(dev, "module_adapter_ctrl_set_data(): ABI mismatch!");
+		comp_err(dev, "ABI mismatch!");
 		return -EINVAL;
 	}
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		comp_err(dev, "module_adapter_ctrl_set_data(): set enum is not implemented");
+		comp_err(dev, "set enum is not implemented");
 		ret = -EIO;
 		break;
 	case SOF_CTRL_CMD_BINARY:

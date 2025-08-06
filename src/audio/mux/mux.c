@@ -89,7 +89,7 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 	comp_dbg(dev, "mux_init()");
 
 	if (cfg->size > MUX_BLOB_MAX_SIZE) {
-		comp_err(dev, "mux_init(): blob size %zu exceeds %zu",
+		comp_err(dev, "blob size %zu exceeds %zu",
 			 cfg->size, MUX_BLOB_MAX_SIZE);
 		return -EINVAL;
 	}
@@ -101,7 +101,7 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "mux_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -109,7 +109,7 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 	module_data->private = cd;
 	ret = comp_init_data_blob(cd->model_handler, cfg->size, cfg->init_data);
 	if (ret < 0) {
-		comp_err(dev, "mux_init(): comp_init_data_blob() failed.");
+		comp_err(dev, "comp_init_data_blob() failed.");
 		goto err_init;
 	}
 
@@ -152,7 +152,7 @@ static int get_stream_index(struct comp_dev *dev, struct comp_data *cd, uint32_t
 		if (cd->config.streams[idx].pipeline_id == pipe_id)
 			return idx;
 
-	comp_err(dev, "get_stream_index(): couldn't find configuration for connected pipeline %u",
+	comp_err(dev, "couldn't find configuration for connected pipeline %u",
 		 pipe_id);
 	return -EINVAL;
 }
@@ -199,7 +199,7 @@ static struct mux_look_up *get_lookup_table(struct comp_dev *dev, struct comp_da
 		if (cd->config.streams[i].pipeline_id == pipe_id)
 			return &cd->lookup[i];
 
-	comp_err(dev, "get_lookup_table(): couldn't find configuration for connected pipeline %u",
+	comp_err(dev, "couldn't find configuration for connected pipeline %u",
 		 pipe_id);
 	return 0;
 }
@@ -400,7 +400,7 @@ static int mux_prepare(struct processing_module *mod,
 
 	config = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
 	if (blob_size > MUX_BLOB_MAX_SIZE) {
-		comp_err(dev, "mux_prepare(): illegal blob size %zu", blob_size);
+		comp_err(dev, "illegal blob size %zu", blob_size);
 		return -EINVAL;
 	}
 
@@ -416,7 +416,7 @@ static int mux_prepare(struct processing_module *mod,
 		cd->demux = demux_get_processing_function(mod);
 
 	if (!cd->mux && !cd->demux) {
-		comp_err(dev, "mux_prepare(): Invalid configuration, couldn't find suitable processing function.");
+		comp_err(dev, "Invalid configuration, couldn't find suitable processing function.");
 		return -EINVAL;
 	}
 

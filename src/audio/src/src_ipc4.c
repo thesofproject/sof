@@ -173,7 +173,7 @@ int src_prepare_general(struct processing_module *mod,
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(dev, "src_prepare(): Invalid depth %d",
+		comp_err(dev, "Invalid depth %d",
 			 cd->ipc_config.base.audio_fmt.depth);
 		ret = -EINVAL;
 		goto out;
@@ -198,14 +198,14 @@ __cold int src_init(struct processing_module *mod)
 	comp_dbg(dev, "src_init()");
 
 	if (!cfg->init_data || cfg->size != sizeof(cd->ipc_config)) {
-		comp_err(dev, "src_init(): Missing or bad size (%u) init data",
+		comp_err(dev, "Missing or bad size (%u) init data",
 			 cfg->size);
 		return -EINVAL;
 	}
 
 	/* validate init data - either SRC sink or source rate must be set */
 	if (src_rate_check(cfg->init_data) < 0) {
-		comp_err(dev, "src_init(): SRC sink and source rate are not set");
+		comp_err(dev, "SRC sink and source rate are not set");
 		return -EINVAL;
 	}
 
@@ -238,7 +238,7 @@ __cold int src_init(struct processing_module *mod)
 		cd->sample_container_bytes = sizeof(int32_t);
 		break;
 	default:
-		comp_err(dev, "src_init(): Illegal sample depth %d",
+		comp_err(dev, "Illegal sample depth %d",
 			 cd->ipc_config.base.audio_fmt.depth);
 		return -EINVAL;
 	}

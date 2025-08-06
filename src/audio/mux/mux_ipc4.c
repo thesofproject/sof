@@ -57,7 +57,7 @@ static int build_config(struct processing_module *mod)
 
 	/* validation of matrix mixing */
 	if (mux_mix_check(&cd->config)) {
-		comp_err(dev, "build_config(): mux component is not able to mix channels");
+		comp_err(dev, "mux component is not able to mix channels");
 		return -EINVAL;
 	}
 	return 0;

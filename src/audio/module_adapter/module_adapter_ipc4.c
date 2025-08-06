@@ -200,7 +200,7 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 		fragment_size = md->new_cfg_size - data_offset_size;
 		break;
 	default:
-		comp_err(dev, "module_set_large_config(): invalid fragment position");
+		comp_err(dev, "invalid fragment position");
 		return -EINVAL;
 	}
 

@@ -34,14 +34,14 @@ static int passthrough_codec_prepare(struct processing_module *mod,
 
 	codec->mpd.in_buff = rballoc(SOF_MEM_FLAG_USER, mod->period_bytes);
 	if (!codec->mpd.in_buff) {
-		comp_err(dev, "passthrough_codec_prepare(): Failed to alloc in_buff");
+		comp_err(dev, "Failed to alloc in_buff");
 		return -ENOMEM;
 	}
 	codec->mpd.in_buff_size = mod->period_bytes;
 
 	codec->mpd.out_buff = rballoc(SOF_MEM_FLAG_USER, mod->period_bytes);
 	if (!codec->mpd.out_buff) {
-		comp_err(dev, "passthrough_codec_prepare(): Failed to alloc out_buff");
+		comp_err(dev, "Failed to alloc out_buff");
 		rfree(codec->mpd.in_buff);
 		return -ENOMEM;
 	}
@@ -74,7 +74,7 @@ passthrough_codec_process(struct processing_module *mod,
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
 	if (input_buffers[0].size < codec->mpd.in_buff_size) {
-		comp_dbg(dev, "passthrough_codec_process(): not enough data to process");
+		comp_dbg(dev, "not enough data to process");
 		return -ENODATA;
 	}
 
