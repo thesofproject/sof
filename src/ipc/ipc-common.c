@@ -51,7 +51,7 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 
 	/* check if requested core is enabled */
 	if (!cpu_is_core_enabled(core)) {
-		tr_err(&ipc_tr, "ipc_process_on_core(): core #%d is disabled", core);
+		tr_err(&ipc_tr, "core #%d is disabled", core);
 		return -EACCES;
 	}
 
@@ -290,7 +290,7 @@ __cold int ipc_init(struct sof *sof)
 {
 	assert_can_be_cold();
 
-	tr_dbg(&ipc_tr, "ipc_init()");
+	tr_dbg(&ipc_tr, "Initializing IPC");
 
 	/* init ipc data */
 	sof->ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->ipc));
