@@ -120,7 +120,7 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 			     true,
 			     &zephyr_dma_domain_ops);
 	if (!domain) {
-		tr_err(&ll_tr, "zephyr_dma_domain_init(): domain init failed");
+		tr_err(&ll_tr, "domain init failed");
 		return NULL;
 	}
 
@@ -128,7 +128,7 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 	zephyr_dma_domain = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 				    sizeof(*zephyr_dma_domain));
 	if (!zephyr_dma_domain) {
-		tr_err(&ll_tr, "zephyr_dma_domain_init(): allocation failed");
+		tr_err(&ll_tr, "allocation failed");
 		rfree(domain);
 		return NULL;
 	}
@@ -388,7 +388,7 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 	dt = zephyr_dma_domain->domain_thread + core;
 	pipe_task = pipeline_task_get(task);
 
-	tr_info(&ll_tr, "zephyr_dma_domain_register()");
+	tr_info(&ll_tr, "entry");
 
 	/* don't even bother trying to register DMA IRQ for
 	 * non-registrable tasks.
@@ -561,7 +561,7 @@ static int zephyr_dma_domain_unregister(struct ll_schedule_domain *domain,
 	core = cpu_get_id();
 	dt = zephyr_dma_domain->domain_thread + core;
 
-	tr_info(&ll_tr, "zephyr_dma_domain_unregister()");
+	tr_info(&ll_tr, "entry");
 
 	/* unregister the DMA IRQ only for PPL tasks marked as "registrable"
 	 *

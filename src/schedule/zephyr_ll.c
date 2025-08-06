@@ -342,7 +342,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 
 	ret = domain_register(sch->ll_domain, task, &schedule_ll_callback, sch);
 	if (ret < 0)
-		tr_err(&ll_tr, "zephyr_ll_task_schedule: cannot register domain %d",
+		tr_err(&ll_tr, "cannot register domain %d",
 		       ret);
 
 	return 0;
@@ -386,8 +386,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 	zephyr_ll_assert_core(sch);
 
 	if (k_is_in_isr()) {
-		tr_err(&ll_tr,
-		       "zephyr_ll_task_free: cannot free tasks from interrupt context!");
+		tr_err(&ll_tr, "cannot free tasks from interrupt context!");
 		return -EDEADLK;
 	}
 
@@ -481,7 +480,7 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 	zephyr_ll_assert_core(sch);
 
 	if (sch->n_tasks)
-		tr_err(&ll_tr, "zephyr_ll_scheduler_free: %u tasks are still active!",
+		tr_err(&ll_tr, "%u tasks are still active!",
 		       sch->n_tasks);
 }
 
@@ -513,7 +512,7 @@ int zephyr_ll_task_init(struct task *task,
 	pdata = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			sizeof(*pdata));
 	if (!pdata) {
-		tr_err(&ll_tr, "zephyr_ll_task_init(): alloc failed");
+		tr_err(&ll_tr, "alloc failed");
 		return -ENOMEM;
 	}
 
@@ -534,7 +533,7 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	/* initialize per-core scheduler private data */
 	sch = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
 	if (!sch) {
-		tr_err(&ll_tr, "zephyr_ll_scheduler_init(): allocation failed");
+		tr_err(&ll_tr, "allocation failed");
 		return -ENOMEM;
 	}
 	list_init(&sch->tasks);

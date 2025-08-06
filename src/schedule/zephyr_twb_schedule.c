@@ -395,7 +395,7 @@ int scheduler_twb_task_init(struct task **task,
 
 	twb_sch = scheduler_get_data(SOF_SCHEDULE_TWB);
 	if (!twb_sch) {
-		tr_err(&twb_tr, "scheduler_twb_task_init(): TWB not initialized");
+		tr_err(&twb_tr, "TWB not initialized");
 		return -EINVAL;
 	}
 
@@ -403,7 +403,7 @@ int scheduler_twb_task_init(struct task **task,
 	assert(cpu_get_id() == core);
 
 	if (thread_priority < 0) {
-		tr_err(&twb_tr, "scheduler_twb_task_init(): non preemptible priority");
+		tr_err(&twb_tr, "non preemptible priority");
 		return -EINVAL;
 	}
 
@@ -417,7 +417,7 @@ int scheduler_twb_task_init(struct task **task,
 	task_memory = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			      sizeof(*task_memory));
 	if (!task_memory) {
-		tr_err(&twb_tr, "scheduler_twb_task_init(): memory alloc failed");
+		tr_err(&twb_tr, "memory alloc failed");
 		return -ENOMEM;
 	}
 
@@ -426,7 +426,7 @@ int scheduler_twb_task_init(struct task **task,
 	p_stack = (__sparse_force void __sparse_cache *)
 		rballoc_align(SOF_MEM_FLAG_KERNEL, stack_size, Z_KERNEL_STACK_OBJ_ALIGN);
 	if (!p_stack) {
-		tr_err(&twb_tr, "scheduler_twb_task_init(): stack alloc failed");
+		tr_err(&twb_tr, "stack alloc failed");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -437,7 +437,7 @@ int scheduler_twb_task_init(struct task **task,
 				    thread_priority, K_USER, K_FOREVER);
 	if (!thread_id)	{
 		ret = -EFAULT;
-		tr_err(&twb_tr, "scheduler_twb_task_init(): zephyr thread create failed");
+		tr_err(&twb_tr, "zephyr thread create failed");
 		goto err;
 	}
 
@@ -445,7 +445,7 @@ int scheduler_twb_task_init(struct task **task,
 	ret = k_thread_cpu_pin(thread_id, core);
 	if (ret < 0) {
 		ret = -EFAULT;
-		tr_err(&twb_tr, "scheduler_twb_task_init(): zephyr task pin to core %d failed", core);
+		tr_err(&twb_tr, "zephyr task pin to core %d failed", core);
 		goto err;
 	}
 
@@ -453,14 +453,14 @@ int scheduler_twb_task_init(struct task **task,
 	if (name) {
 		ret = k_thread_name_set(thread_id, name);
 		if (ret < 0)
-			tr_warn(&twb_tr, "scheduler_twb_task_init(): failed to set thread name");
+			tr_warn(&twb_tr, "failed to set thread name");
 	}
 
 	/* internal SOF task init */
 	ret = schedule_task_init(&task_memory->task, uid, SOF_SCHEDULE_TWB, thread_priority,
 				 ops->run, data, core, 0);
 	if (ret < 0) {
-		tr_err(&twb_tr, "scheduler_twb_task_init(): schedule_task_init failed");
+		tr_err(&twb_tr, "schedule_task_init failed");
 		goto err;
 	}
 

@@ -343,7 +343,7 @@ static void idc_process_async_msg(uint32_t slot)
 #if CONFIG_AMS
 	process_incoming_message(slot);
 #else
-	tr_err(&idc_tr, "idc_cmd(): AMS not enabled");
+	tr_err(&idc_tr, "AMS not enabled");
 #endif
 }
 
@@ -430,7 +430,7 @@ void idc_cmd(struct idc_msg *msg)
 		idc_process_async_msg(IDC_HEADER_TO_AMS_SLOT_MASK(msg->header));
 		break;
 	default:
-		tr_err(&idc_tr, "idc_cmd(): invalid msg->header = %u",
+		tr_err(&idc_tr, "invalid msg->header = %u",
 		       msg->header);
 	}
 
@@ -442,7 +442,7 @@ int idc_init(void)
 {
 	struct idc **idc = idc_get();
 
-	tr_dbg(&idc_tr, "idc_init()");
+	tr_dbg(&idc_tr, "entry");
 
 	/* initialize idc data */
 	(*idc)->payload = platform_shared_get(static_payload, sizeof(static_payload));
@@ -469,7 +469,7 @@ int idc_restore(void)
 {
 	struct idc **idc __unused = idc_get();
 
-	tr_info(&idc_tr, "idc_restore()");
+	tr_info(&idc_tr, "entry");
 
 	/* idc_restore() is invoked during D0->D0ix/D0ix->D0 flow. In that
 	 * case basic core structures e.g. idc struct should be already
