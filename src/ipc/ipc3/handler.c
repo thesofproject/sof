@@ -996,10 +996,10 @@ static inline int ipc_probe_init(uint32_t header)
 	struct sof_ipc_probe_dma_add_params *params = ipc_get()->comp_data;
 	int dma_provided = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_init()");
+	tr_dbg(&ipc_tr, "Initializing probe");
 
 	if (dma_provided > 1 || dma_provided < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_init(): Invalid amount of extraction DMAs specified = %d",
+		ipc_cmd_err(&ipc_tr, "Invalid amount of extraction DMAs specified = %d",
 			    dma_provided);
 		return -EINVAL;
 	}
@@ -1009,7 +1009,7 @@ static inline int ipc_probe_init(uint32_t header)
 
 static inline int ipc_probe_deinit(uint32_t header)
 {
-	tr_dbg(&ipc_tr, "ipc_probe_deinit()");
+	tr_dbg(&ipc_tr, "Deinitializing probe");
 
 	return probe_deinit();
 }
@@ -1019,17 +1019,17 @@ static inline int ipc_probe_dma_add(uint32_t header)
 	struct sof_ipc_probe_dma_add_params *params = ipc_get()->comp_data;
 	int dmas_count = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_dma_add()");
+	tr_dbg(&ipc_tr, "Adding probe DMA");
 
 	if (dmas_count > CONFIG_PROBE_DMA_MAX) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_add(): Invalid amount of injection DMAs specified = %d. Max is "
+		ipc_cmd_err(&ipc_tr, "Invalid amount of injection DMAs specified = %d. Max is "
 			    STRINGIFY(CONFIG_PROBE_DMA_MAX) ".",
 			    dmas_count);
 		return -EINVAL;
 	}
 
 	if (dmas_count <= 0) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_add(): Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+		ipc_cmd_err(&ipc_tr, "Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
 			    dmas_count);
 		return -EINVAL;
 	}
@@ -1042,10 +1042,10 @@ static inline int ipc_probe_dma_remove(uint32_t header)
 	struct sof_ipc_probe_dma_remove_params *params = ipc_get()->comp_data;
 	int tags_count = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_dma_remove()");
+	tr_dbg(&ipc_tr, "Removing probe DMA");
 
 	if (tags_count > CONFIG_PROBE_DMA_MAX) {
-		ipc_cmd_err(&ipc_tr, "ipc_probe_dma_remove(): Invalid amount of injection DMAs specified = %d. Max is "
+		ipc_cmd_err(&ipc_tr, "Invalid amount of injection DMAs specified = %d. Max is "
 			    STRINGIFY(CONFIG_PROBE_DMA_MAX) ".",
 			    tags_count);
 		return -EINVAL;
@@ -1065,7 +1065,7 @@ static inline int ipc_probe_point_add(uint32_t header)
 	struct sof_ipc_probe_point_add_params *params = ipc_get()->comp_data;
 	int probes_count = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_point_add()");
+	tr_dbg(&ipc_tr, "Adding probe point");
 
 	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
 		ipc_cmd_err(&ipc_tr, "ipc_probe_point_add(): Invalid amount of Probe Points specified = %d. Max is "
@@ -1088,7 +1088,7 @@ static inline int ipc_probe_point_remove(uint32_t header)
 	struct sof_ipc_probe_point_remove_params *params = ipc_get()->comp_data;
 	int probes_count = params->num_elems;
 
-	tr_dbg(&ipc_tr, "ipc_probe_point_remove()");
+	tr_dbg(&ipc_tr, "Removing probe point");
 
 	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
 		ipc_cmd_err(&ipc_tr, "ipc_probe_point_remove(): Invalid amount of Probe Points specified = %d. Max is "
@@ -1111,7 +1111,7 @@ static int ipc_probe_info(uint32_t header)
 	struct sof_ipc_probe_info_params *params = ipc_get()->comp_data;
 	int ret;
 
-	tr_dbg(&ipc_tr, "ipc_probe_get_data()");
+	tr_dbg(&ipc_tr, "Getting probe data");
 
 	switch (cmd) {
 	case SOF_IPC_PROBE_DMA_INFO:

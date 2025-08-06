@@ -363,13 +363,13 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 
 	/* build the component */
 	if (comp_specific_builder(comp, &spec) < 0) {
-		comp_cl_err(drv, "comp_new(): component type not recognized");
+		comp_cl_err(drv, "component type not recognized");
 		return NULL;
 	}
 	comp_common_builder(comp, &config);
 	cdev = drv->ops.create(drv, &config, &spec);
 	if (!cdev) {
-		comp_cl_err(drv, "comp_new(): unable to create the new component");
+		comp_cl_err(drv, "unable to create the new component");
 		return NULL;
 	}
 
@@ -673,21 +673,21 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 
 	/* check core is valid */
 	if (comp->core >= CONFIG_CORE_COUNT) {
-		tr_err(&ipc_tr, "ipc_comp_new(): comp->core = %u", comp->core);
+		tr_err(&ipc_tr, "comp->core = %u", comp->core);
 		return -EINVAL;
 	}
 
 	/* check whether component already exists */
 	icd = ipc_get_comp_by_id(ipc, comp->id);
 	if (icd != NULL) {
-		tr_err(&ipc_tr, "ipc_comp_new(): comp->id = %u", comp->id);
+		tr_err(&ipc_tr, "comp->id = %u", comp->id);
 		return -EINVAL;
 	}
 
 	/* create component */
 	cd = comp_new(comp);
 	if (!cd) {
-		tr_err(&ipc_tr, "ipc_comp_new(): component cd = NULL");
+		tr_err(&ipc_tr, "component cd = NULL");
 		return -EINVAL;
 	}
 
@@ -695,7 +695,7 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	icd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct ipc_comp_dev));
 	if (!icd) {
-		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");
+		tr_err(&ipc_tr, "alloc failed");
 		rfree(cd);
 		return -ENOMEM;
 	}
