@@ -269,11 +269,11 @@ static int google_rtc_audio_processing_reconfigure(struct processing_module *mod
 	}
 
 	if (!config) {
-		comp_err(dev, "google_rtc_audio_processing_reconfigure(): Tuning config not set");
+		comp_err(dev, "Tuning config not set");
 		return -EINVAL;
 	}
 
-	comp_info(dev, "google_rtc_audio_processing_reconfigure(): New tuning config %p (%zu bytes)",
+	comp_info(dev, "New tuning config %p (%zu bytes)",
 		  config, size);
 
 	cd->reconfigure = false;
@@ -305,7 +305,7 @@ static int google_rtc_audio_processing_reconfigure(struct processing_module *mod
 
 	if (google_rtc_audio_processing_config_present) {
 		comp_info(dev,
-			  "google_rtc_audio_processing_reconfigure(): Applying config of size %zu bytes",
+			  "Applying config of size %zu bytes",
 			  google_rtc_audio_processing_config_size);
 
 		ret = GoogleRtcAudioProcessingReconfigure(cd->state,
@@ -331,7 +331,7 @@ static int google_rtc_audio_processing_reconfigure(struct processing_module *mod
 			cd->num_capture_channels = num_capture_output_channels;
 		}
 		comp_info(dev,
-			  "google_rtc_audio_processing_reconfigure(): Applying num capture channels %d",
+			  "Applying num capture channels %d",
 			  cd->num_capture_channels);
 
 
@@ -358,7 +358,7 @@ static int google_rtc_audio_processing_reconfigure(struct processing_module *mod
 
 			/* Logging of linear headroom, using integer workaround to the broken printout of floats */
 			comp_info(dev,
-				  "google_rtc_audio_processing_reconfigure(): Applying capture linear headroom: %d.%d",
+				  "Applying capture linear headroom: %d.%d",
 				  (int)mic_gain, (int)(100 * mic_gain) - 100 * ((int)mic_gain));
 		}
 		if (aec_reference_delay_present) {
@@ -366,7 +366,7 @@ static int google_rtc_audio_processing_reconfigure(struct processing_module *mod
 
 			/* Logging of delay, using integer workaround to the broken printout of floats */
 			comp_info(dev,
-				  "google_rtc_audio_processing_reconfigure(): Applying aec reference delay: %d.%d",
+				  "Applying aec reference delay: %d.%d",
 				  (int)aec_reference_delay,
 				  (int)(100 * aec_reference_delay) -
 				  100 * ((int)aec_reference_delay));
@@ -414,7 +414,7 @@ static int google_rtc_audio_processing_cmd_set_data(struct processing_module *mo
 		return 0;
 	default:
 		comp_err(mod->dev,
-			 "google_rtc_audio_processing_ctrl_set_data(): Only binary controls supported %d",
+			 "Only binary controls supported %d",
 			 cdata->cmd);
 		return -EINVAL;
 	}
@@ -426,14 +426,14 @@ static int google_rtc_audio_processing_cmd_get_data(struct processing_module *mo
 {
 	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "google_rtc_audio_processing_ctrl_get_data(): %u", cdata->cmd);
+	comp_info(mod->dev, "%u", cdata->cmd);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		return comp_data_blob_get_cmd(cd->tuning_handler, cdata, max_data_size);
 	default:
 		comp_err(mod->dev,
-			 "google_rtc_audio_processing_ctrl_get_data(): Only binary controls supported %d",
+			 "Only binary controls supported %d",
 			 cdata->cmd);
 		return -EINVAL;
 	}
@@ -454,7 +454,7 @@ static int google_rtc_audio_processing_set_config(struct processing_module *mod,
 	switch (param_id) {
 	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
 	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
-		comp_err(mod->dev, "google_rtc_audio_processing_ctrl_set_data(): Only binary controls supported");
+		comp_err(mod->dev, "Only binary controls supported");
 		return -EINVAL;
 	}
 
@@ -493,7 +493,7 @@ static int google_rtc_audio_processing_get_config(struct processing_module *mod,
 						  uint8_t *fragment, size_t fragment_size)
 {
 #if CONFIG_IPC_MAJOR_4
-	comp_err(mod->dev, "google_rtc_audio_processing_ctrl_get_config(): Not supported");
+	comp_err(mod->dev, "Not supported");
 	return -EINVAL;
 #elif CONFIG_IPC_MAJOR_3
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
@@ -575,11 +575,11 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	/* Mic and reference, needed for audio stream type copy module client */
 	mod->max_sources = 2;
 
-	comp_dbg(dev, "google_rtc_audio_processing_init(): Ready");
+	comp_dbg(dev, "Ready");
 	return 0;
 
 fail:
-	comp_err(dev, "google_rtc_audio_processing_init(): Failed");
+	comp_err(dev, "Failed");
 	if (cd) {
 		if (cd->state) {
 			GoogleRtcAudioProcessingFree(cd->state);

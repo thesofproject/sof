@@ -267,7 +267,7 @@ static int ctc_init(struct processing_module *mod)
 	/* Create private component data */
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
-		comp_err(dev, "ctc_init(): Failed to create component data");
+		comp_err(dev, "Failed to create component data");
 		ctc_free(mod);
 		return -ENOMEM;
 	}
@@ -279,27 +279,27 @@ static int ctc_init(struct processing_module *mod)
 
 	cd->input = rballoc(SOF_MEM_FLAG_USER, buf_size);
 	if (!cd->input) {
-		comp_err(dev, "ctc_init(): Failed to allocate input buffer");
+		comp_err(dev, "Failed to allocate input buffer");
 		ctc_free(mod);
 		return -ENOMEM;
 	}
 	cd->output = rballoc(SOF_MEM_FLAG_USER, buf_size);
 	if (!cd->output) {
-		comp_err(dev, "ctc_init(): Failed to allocate output buffer");
+		comp_err(dev, "Failed to allocate output buffer");
 		ctc_free(mod);
 		return -ENOMEM;
 	}
 
 	cd->tuning_handler = comp_data_blob_handler_new(dev);
 	if (!cd->tuning_handler) {
-		comp_err(dev, "ctc_init(): Failed to create tuning handler");
+		comp_err(dev, "Failed to create tuning handler");
 		ctc_free(mod);
 		return -ENOMEM;
 	}
 
 	cd->enabled = true;
 
-	comp_dbg(dev, "ctc_init(): Ready");
+	comp_dbg(dev, "Ready");
 
 	return 0;
 }
@@ -321,16 +321,16 @@ static int google_ctc_audio_processing_reconfigure(struct processing_module *mod
 	}
 
 	if (!config) {
-		comp_err(dev, "google_ctc_audio_processing_reconfigure(): Tuning config not set");
+		comp_err(dev, "Tuning config not set");
 		return -EINVAL;
 	}
 
-	comp_info(dev, "google_ctc_audio_processing_reconfigure(): New tuning config %p (%zu bytes)",
+	comp_info(dev, "New tuning config %p (%zu bytes)",
 		  config, size);
 
 	cd->reconfigure = false;
 	comp_info(dev,
-		  "google_ctc_audio_processing_reconfigure(): Applying config of size %zu bytes",
+		  "Applying config of size %zu bytes",
 		  size);
 	ret = GoogleCtcAudioProcessingReconfigure(cd->state, config, size);
 	if (ret) {
@@ -391,7 +391,7 @@ static int ctc_prepare(struct processing_module *mod,
 	config = comp_get_data_blob(cd->tuning_handler, &config_size, NULL);
 
 	if (config_size != CTC_BLOB_CONFIG_SIZE) {
-		comp_info(mod->dev, "ctc_prepare(): config_size not expected: %d", config_size);
+		comp_info(mod->dev, "config_size not expected: %d", config_size);
 		config = NULL;
 		config_size = 0;
 	}

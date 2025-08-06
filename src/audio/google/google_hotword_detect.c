@@ -115,19 +115,19 @@ static struct comp_dev *ghd_create(const struct comp_driver *drv,
 
 	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, cd->event.rhdr.hdr.size);
 	if (!cd->msg) {
-		comp_err(dev, "ghd_create(): ipc_msg_init failed");
+		comp_err(dev, "ipc_msg_init failed");
 		goto cd_fail;
 	}
 
 	/* Create component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "ghd_create(): comp_data_blob_handler_new failed");
+		comp_err(dev, "comp_data_blob_handler_new failed");
 		goto cd_fail;
 	}
 
 	dev->state = COMP_STATE_READY;
-	comp_dbg(dev, "ghd_create(): Ready");
+	comp_dbg(dev, "Ready");
 	return dev;
 
 cd_fail:
@@ -164,7 +164,7 @@ static int ghd_params(struct comp_dev *dev,
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "ghd_params(): comp_verify_params failed.");
+		comp_err(dev, "comp_verify_params failed.");
 		return -EINVAL;
 	}
 
@@ -172,13 +172,13 @@ static int ghd_params(struct comp_dev *dev,
 	sourceb = comp_dev_get_first_data_producer(dev);
 
 	if (audio_stream_get_channels(sourceb->stream) != 1) {
-		comp_err(dev, "ghd_params(): Only single-channel supported");
+		comp_err(dev, "Only single-channel supported");
 		ret = -EINVAL;
 	} else if (audio_stream_get_frm_fmt(&sourceb->stream) != SOF_IPC_FRAME_S16_LE) {
-		comp_err(dev, "ghd_params(): Only S16_LE supported");
+		comp_err(dev, "Only S16_LE supported");
 		ret = -EINVAL;
 	} else if (sourceb->stream.rate != KPB_SAMPLNG_FREQUENCY) {
-		comp_err(dev, "ghd_params(): Only 16KHz supported");
+		comp_err(dev, "Only 16KHz supported");
 		ret = -EINVAL;
 	}
 
@@ -229,11 +229,11 @@ static int ghd_ctrl_set_bin_data(struct comp_dev *dev,
 	switch (cdata->data->type) {
 	case GOOGLE_HOTWORD_DETECT_MODEL:
 		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
-		comp_dbg(dev, "ghd_ctrl_set_bin_data(): comp_data_blob_set_cmd=%d",
+		comp_dbg(dev, "comp_data_blob_set_cmd=%d",
 			 ret);
 		return ret;
 	default:
-		comp_err(dev, "ghd_ctrl_set_bin_data(): Unknown cdata->data->type %d",
+		comp_err(dev, "Unknown cdata->data->type %d",
 			 cdata->data->type);
 		return -EINVAL;
 	}
@@ -246,7 +246,7 @@ static int ghd_ctrl_set_data(struct comp_dev *dev,
 	case SOF_CTRL_CMD_BINARY:
 		return ghd_ctrl_set_bin_data(dev, cdata);
 	default:
-		comp_err(dev, "ghd_ctrl_set_data(): Only binary controls supported %d",
+		comp_err(dev, "Only binary controls supported %d",
 			 cdata->cmd);
 		return -EINVAL;
 	}
@@ -264,11 +264,11 @@ static int ghd_ctrl_get_bin_data(struct comp_dev *dev,
 		ret = comp_data_blob_get_cmd(cd->model_handler,
 					     cdata,
 					     max_data_size);
-		comp_dbg(dev, "ghd_ctrl_get_bin_data(): comp_data_blob_get_cmd=%d, size=%d",
+		comp_dbg(dev, "comp_data_blob_get_cmd=%d, size=%d",
 			 ret, max_data_size);
 		return ret;
 	default:
-		comp_err(dev, "ghd_ctrl_get_bin_data(): Unknown cdata->data->type %d",
+		comp_err(dev, "Unknown cdata->data->type %d",
 			 cdata->data->type);
 		return -EINVAL;
 	}
@@ -282,7 +282,7 @@ static int ghd_ctrl_get_data(struct comp_dev *dev,
 	case SOF_CTRL_CMD_BINARY:
 		return ghd_ctrl_get_bin_data(dev, cdata, max_data_size);
 	default:
-		comp_err(dev, "ghd_ctrl_get_data(): Only binary controls supported %d",
+		comp_err(dev, "Only binary controls supported %d",
 			 cdata->cmd);
 		return -EINVAL;
 	}
@@ -293,7 +293,7 @@ static int ghd_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
-	comp_dbg(dev, "ghd_cmd(): %d", cmd);
+	comp_dbg(dev, "%d", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -301,7 +301,7 @@ static int ghd_cmd(struct comp_dev *dev, int cmd, void *data,
 	case COMP_CMD_GET_DATA:
 		return ghd_ctrl_get_data(dev, cdata, max_data_size);
 	default:
-		comp_err(dev, "ghd_cmd(): Unknown cmd %d", cmd);
+		comp_err(dev, "Unknown cmd %d", cmd);
 		return -EINVAL;
 	}
 }
@@ -311,7 +311,7 @@ static int ghd_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "ghd_trigger(): %d", cmd);
+	comp_dbg(dev, "%d", cmd);
 
 	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) {
 		cd->detected = 0;
@@ -382,7 +382,7 @@ static int ghd_copy(struct comp_dev *dev)
 
 	/* Check for new model */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
-		comp_dbg(dev, "ghd_copy(): Switch to new model");
+		comp_dbg(dev, "Switch to new model");
 		ret = ghd_setup_model(dev);
 		if (ret)
 			return ret;

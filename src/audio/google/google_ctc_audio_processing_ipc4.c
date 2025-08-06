@@ -37,15 +37,15 @@ int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
 		if (ctl->id == 0 && ctl->num_elems == 1) {
 			cd->enabled = ctl->chanv[0].value;
-			comp_info(mod->dev, "ctc_set_config(): enabled = %d", cd->enabled);
+			comp_info(mod->dev, "enabled = %d", cd->enabled);
 			return 0;
 		}
-		comp_err(mod->dev, "ctc_set_config(): Illegal control id = %d, num_elems = %d",
+		comp_err(mod->dev, "Illegal control id = %d, num_elems = %d",
 			 ctl->id, ctl->num_elems);
 		return -EINVAL;
 	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
 	default:
-		comp_err(mod->dev, "ctc_set_config(): Only binary and switch controls supported");
+		comp_err(mod->dev, "Only binary and switch controls supported");
 		return -EINVAL;
 	}
 
@@ -58,13 +58,13 @@ int ctc_set_config(struct processing_module *mod, uint32_t param_id,
 		config = comp_get_data_blob(cd->tuning_handler, &size, NULL);
 		if (size != CTC_BLOB_CONFIG_SIZE) {
 			comp_err(mod->dev,
-				 "ctc_set_config(): Invalid config size = %d",
+				 "Invalid config size = %d",
 				 size);
 			return -EINVAL;
 		}
 		if (config->size != CTC_BLOB_CONFIG_SIZE) {
 			comp_err(mod->dev,
-				 "ctc_set_config(): Invalid config->size = %d",
+				 "Invalid config->size = %d",
 				 config->size);
 			return -EINVAL;
 		}
@@ -81,7 +81,7 @@ int ctc_get_config(struct processing_module *mod,
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "ctc_get_config(): %u", cdata->cmd);
+	comp_info(mod->dev, "%u", cdata->cmd);
 
 	return comp_data_blob_get_cmd(cd->tuning_handler, cdata, fragment_size);
 }
