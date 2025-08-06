@@ -354,14 +354,14 @@ static int asrc_verify_params(struct processing_module *mod,
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (asrc_get_source_rate(&cd->ipc_config) &&
 		    params->rate != asrc_get_source_rate(&cd->ipc_config)) {
-			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+			comp_err(dev, "runtime stream pcm rate %u does not match rate %u fetched from ipc.",
 				 params->rate, asrc_get_source_rate(&cd->ipc_config));
 			return -EINVAL;
 		}
 	} else {
 		if (asrc_get_sink_rate(&cd->ipc_config) &&
 		    params->rate != asrc_get_sink_rate(&cd->ipc_config)) {
-			comp_err(dev, "asrc_verify_params(): runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+			comp_err(dev, "runtime stream pcm rate %u does not match rate %u fetched from ipc.",
 				 params->rate, asrc_get_sink_rate(&cd->ipc_config));
 			return -EINVAL;
 		}
@@ -371,7 +371,7 @@ static int asrc_verify_params(struct processing_module *mod,
 	 */
 	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
 	if (ret < 0) {
-		comp_err(dev, "asrc_verify_params(): comp_verify_params() failed.");
+		comp_err(dev, "comp_verify_params() failed.");
 		return ret;
 	}
 
@@ -393,7 +393,7 @@ static int asrc_params(struct processing_module *mod)
 
 	err = asrc_verify_params(mod, pcm_params);
 	if (err < 0) {
-		comp_err(dev, "asrc_params(): pcm params verification failed.");
+		comp_err(dev, "pcm params verification failed.");
 		return -EINVAL;
 	}
 
@@ -572,7 +572,7 @@ static int asrc_prepare(struct processing_module *mod,
 
 	if (audio_stream_get_size(&sinkb->stream) <
 	    dev->ipc_config.periods_sink * sink_period_bytes) {
-		comp_err(dev, "asrc_prepare(): sink buffer size %d is insufficient < %d * %d",
+		comp_err(dev, "sink buffer size %d is insufficient < %d * %d",
 			 audio_stream_get_size(&sinkb->stream), dev->ipc_config.periods_sink,
 			 sink_period_bytes);
 		ret = -ENOMEM;
