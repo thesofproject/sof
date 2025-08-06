@@ -118,7 +118,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		break;
 	default:
 		/* other types of DAIs not handled for now */
-		comp_err(dev, "dai_config_dma_channel(): Unknown dai type %d", dai->type);
+		comp_err(dev, "Unknown dai type %d", dai->type);
 		channel = SOF_DMA_CHAN_INVALID;
 		break;
 	}
@@ -135,7 +135,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 #endif
 
 	if (!dai) {
-		comp_err(dev, "dai_data_config(): no dai!\n");
+		comp_err(dev, "no dai!\n");
 		return -EINVAL;
 	}
 
@@ -144,7 +144,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_data_config(): Component is in active state.");
+		comp_info(dev, "Component is in active state.");
 		return 0;
 	}
 
@@ -180,7 +180,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		break;
 	default:
 		/* other types of DAIs not handled for now */
-		comp_warn(dev, "dai_data_config(): Unknown dai type %d", dai->type);
+		comp_warn(dev, "Unknown dai type %d", dai->type);
 		return -EINVAL;
 	}
 
@@ -201,7 +201,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 {
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_config(): Component is in active state. Ignore resetting");
+		comp_info(dev, "Component is in active state. Ignore resetting");
 		return;
 	}
 
@@ -351,12 +351,12 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_config(): Component is in active state. Ignore config");
+		comp_info(dev, "Component is in active state. Ignore config");
 		return 0;
 	}
 
 	if (dd->chan) {
-		comp_info(dev, "dai_config(): Configured. dma channel index %d, ignore...",
+		comp_info(dev, "Configured. dma channel index %d, ignore...",
 			  dd->chan->index);
 		return 0;
 	}
@@ -380,7 +380,7 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 		size = sizeof(*copier_cfg);
 		dd->dai_spec_config = rzalloc(SOF_MEM_FLAG_USER, size);
 		if (!dd->dai_spec_config) {
-			comp_err(dev, "dai_config(): No memory for dai_config size %d", size);
+			comp_err(dev, "No memory for dai_config size %d", size);
 			return -ENOMEM;
 		}
 
