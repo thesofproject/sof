@@ -28,7 +28,7 @@ struct sof_ipc_channel_map *chmap_get(struct sof_ipc_stream_map *smap,
 	uint32_t byte = 0;
 
 	if (index >= smap->num_ch_map) {
-		tr_err(&chmap_tr, "chmap_get(): index %d out of bounds %d",
+		tr_err(&chmap_tr, "index %d out of bounds %d",
 		       index, smap->num_ch_map);
 
 		return NULL;

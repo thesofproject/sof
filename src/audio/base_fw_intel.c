@@ -184,7 +184,7 @@ __cold static int basefw_mem_state_info(uint32_t *data_offset, char *data)
 	/* size is also saved as tuple length */
 	tuple_data = rballoc(SOF_MEM_FLAG_USER, size);
 	if (!tuple_data) {
-		LOG_ERR("basefw_mem_state_info(): allocation failed");
+		LOG_ERR("allocation failed");
 		return IPC4_ERROR_INVALID_PARAM;
 	}
 

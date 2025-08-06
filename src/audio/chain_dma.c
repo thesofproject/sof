@@ -84,7 +84,7 @@ static int chain_host_start(struct comp_dev *dev)
 	if (err < 0)
 		return err;
 
-	comp_info(dev, "chain_host_start(): dma_start() host chan_index = %u",
+	comp_info(dev, "dma_start() host chan_index = %u",
 		  cd->chan_host->index);
 	return 0;
 }
@@ -470,7 +470,7 @@ __cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 	channel = cd->host_connector_node_id.f.v_index;
 	channel = dma_request_channel(cd->dma_host->z_dev, &channel);
 	if (channel < 0) {
-		comp_err(dev, "chain_init(): dma_request_channel() failed");
+		comp_err(dev, "dma_request_channel() failed");
 		return -EINVAL;
 	}
 
