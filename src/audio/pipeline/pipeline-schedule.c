@@ -100,7 +100,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 
 	err = pipeline_trigger_run(p, host, cmd);
 	if (err < 0) {
-		pipe_err(p, "pipeline_task_cmd(): failed to trigger components: %d", err);
+		pipe_err(p, "failed to trigger components: %d", err);
 		reply->error = err;
 		err = SOF_TASK_STATE_COMPLETED;
 	} else {
@@ -225,7 +225,7 @@ static enum task_state pipeline_task(void *arg)
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
 		if (err < 0) {
-			pipe_err(p, "pipeline_task(): xrun recovery failed! pipeline is stopped.");
+			pipe_err(p, "xrun recovery failed! pipeline is stopped.");
 			/* failed - host will stop this pipeline */
 			return SOF_TASK_STATE_COMPLETED;
 		}
@@ -359,7 +359,7 @@ int pipeline_comp_ll_task_init(struct pipeline *p)
 
 		p->pipe_task = pipeline_task_init(p, type);
 		if (!p->pipe_task) {
-			pipe_err(p, "pipeline_comp_task_init(): task init failed");
+			pipe_err(p, "task init failed");
 			return -ENOMEM;
 		}
 	}

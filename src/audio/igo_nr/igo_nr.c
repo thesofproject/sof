@@ -428,14 +428,14 @@ static int igo_nr_init(struct processing_module *mod)
 	md->private = cd;
 	ret = IgoLibGetInfo(&cd->igo_lib_info);
 	if (ret != IGO_RET_OK) {
-		comp_err(dev, "igo_nr_init(): IgoLibGetInfo() Failed.");
+		comp_err(dev, "IgoLibGetInfo() Failed.");
 		ret = -EINVAL;
 		goto cd_fail;
 	}
 
 	cd->p_handle = rballoc(SOF_MEM_FLAG_USER, cd->igo_lib_info.handle_size);
 	if (!cd->p_handle) {
-		comp_err(dev, "igo_nr_init(): igo_handle memory rballoc error for size %d",
+		comp_err(dev, "igo_handle memory rballoc error for size %d",
 			 cd->igo_lib_info.handle_size);
 		ret = -ENOMEM;
 		goto cd_fail;
@@ -444,7 +444,7 @@ static int igo_nr_init(struct processing_module *mod)
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "igo_nr_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto cd_fail2;
 	}
@@ -452,7 +452,7 @@ static int igo_nr_init(struct processing_module *mod)
 	/* Get configuration data */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
-		comp_err(dev, "igo_nr_init(): comp_init_data_blob() failed.");
+		comp_err(dev, "comp_init_data_blob() failed.");
 		ret = -ENOMEM;
 		goto cd_fail3;
 	}

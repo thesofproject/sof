@@ -576,7 +576,7 @@ static int tdfb_init(struct processing_module *mod)
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "tdfb_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -584,7 +584,7 @@ static int tdfb_init(struct processing_module *mod)
 	/* Get configuration data and reset FIR filters */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
-		comp_err(dev, "tdfb_init(): comp_init_data_blob() failed.");
+		comp_err(dev, "comp_init_data_blob() failed.");
 		goto err;
 	}
 

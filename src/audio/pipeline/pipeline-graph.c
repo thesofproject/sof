@@ -122,7 +122,7 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	/* allocate new pipeline */
 	p = rzalloc(SOF_MEM_FLAG_USER, sizeof(*p));
 	if (!p) {
-		pipe_cl_err("pipeline_new(): Out of Memory");
+		pipe_cl_err("Out of Memory");
 		return NULL;
 	}
 
@@ -135,13 +135,13 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
 	if (ret < 0) {
-		pipe_err(p, "pipeline_new(): failed to copy trace settings");
+		pipe_err(p, "failed to copy trace settings");
 		goto free;
 	}
 
 	ret = pipeline_posn_offset_get(&p->posn_offset);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_new(): pipeline_posn_offset_get failed %d",
+		pipe_err(p, "pipeline_posn_offset_get failed %d",
 			 ret);
 		goto free;
 	}
@@ -152,7 +152,7 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	if (posn.rhdr.hdr.size) {
 		p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, posn.rhdr.hdr.size);
 		if (!p->msg) {
-			pipe_err(p, "pipeline_new(): ipc_msg_init failed");
+			pipe_err(p, "ipc_msg_init failed");
 			goto free;
 		}
 	}
@@ -293,7 +293,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 
 	/* check whether pipeline is already completed */
 	if (p->status != COMP_STATE_INIT) {
-		pipe_err(p, "pipeline_complete(): Pipeline already completed");
+		pipe_err(p, "Pipeline already completed");
 		return -EINVAL;
 	}
 
@@ -329,7 +329,7 @@ static int pipeline_comp_reset(struct comp_dev *current,
 		 dev_comp_id(current), dir);
 
 	if (!p->source_comp) {
-		pipe_err(p, "pipeline_comp_reset(): source_comp is NULL");
+		pipe_err(p, "source_comp is NULL");
 		return -EINVAL;
 	}
 
@@ -354,10 +354,10 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	 * 2. trigger functon skipped due to error of other component's trigger function
 	 */
 	if (current->state == COMP_STATE_ACTIVE) {
-		pipe_warn(current->pipeline, "pipeline_comp_reset(): component is in active state, try to stop it");
+		pipe_warn(current->pipeline, "component is in active state, try to stop it");
 		err = comp_trigger(current, COMP_TRIGGER_STOP);
 		if (err)
-			pipe_err(current->pipeline, "pipeline_comp_reset(): failed to recover");
+			pipe_err(current->pipeline, "failed to recover");
 	}
 
 	err = comp_reset(current);
@@ -387,7 +387,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_reset(): ret = %d, host->comp.id = 0x%x",
+		pipe_err(p, "ret = %d, host->comp.id = 0x%x",
 			 ret, dev_comp_id(host));
 	} else {
 		 /* pipeline is reset to default state */

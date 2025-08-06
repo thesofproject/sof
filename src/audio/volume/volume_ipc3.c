@@ -76,7 +76,7 @@ int volume_init(struct processing_module *mod)
 	int i;
 
 	if (!vol || cfg->size != sizeof(*vol)) {
-		comp_err(dev, "volume_init(): No configuration data or bad data size %zu",
+		comp_err(dev, "No configuration data or bad data size %zu",
 			 cfg->size);
 		return -EINVAL;
 	}
@@ -92,7 +92,7 @@ int volume_init(struct processing_module *mod)
 	cd->vol = rmalloc(SOF_MEM_FLAG_USER, vol_size);
 	if (!cd->vol) {
 		rfree(cd);
-		comp_err(dev, "volume_init(): Failed to allocate %zu", vol_size);
+		comp_err(dev, "Failed to allocate %zu", vol_size);
 		return -ENOMEM;
 	}
 
@@ -108,7 +108,7 @@ int volume_init(struct processing_module *mod)
 		if (vol->min_value < VOL_MIN) {
 			/* Use VOL_MIN instead, no need to stop new(). */
 			cd->vol_min = VOL_MIN;
-			comp_err(dev, "volume_new(): vol->min_value was limited to VOL_MIN.");
+			comp_err(dev, "vol->min_value was limited to VOL_MIN.");
 		} else {
 			cd->vol_min = vol->min_value;
 		}
@@ -116,7 +116,7 @@ int volume_init(struct processing_module *mod)
 		if (vol->max_value > VOL_MAX) {
 			/* Use VOL_MAX instead, no need to stop new(). */
 			cd->vol_max = VOL_MAX;
-			comp_err(dev, "volume_new(): vol->max_value was limited to VOL_MAX.");
+			comp_err(dev, "vol->max_value was limited to VOL_MAX.");
 		} else {
 			cd->vol_max = vol->max_value;
 		}
@@ -157,7 +157,7 @@ int volume_init(struct processing_module *mod)
 		cd->initial_ramp = vol->initial_ramp;
 		break;
 	default:
-		comp_err(dev, "volume_new(): invalid ramp type %d", vol->ramp);
+		comp_err(dev, "invalid ramp type %d", vol->ramp);
 		rfree(cd);
 		rfree(cd->vol);
 		return -EINVAL;
@@ -189,7 +189,7 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "volume_set_config(): invalid cdata->num_elems");
+		comp_err(dev, "invalid cdata->num_elems");
 		return -EINVAL;
 	}
 
@@ -246,7 +246,7 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		break;
 
 	default:
-		comp_err(dev, "volume_set_config(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -266,7 +266,7 @@ int volume_get_config(struct processing_module *mod,
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "volume_get_config(): invalid cdata->num_elems %u",
+		comp_err(dev, "invalid cdata->num_elems %u",
 			 cdata->num_elems);
 		return -EINVAL;
 	}
@@ -291,7 +291,7 @@ int volume_get_config(struct processing_module *mod,
 		}
 		break;
 	default:
-		comp_err(dev, "volume_get_config(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		return -EINVAL;
 	}
 

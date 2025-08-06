@@ -124,7 +124,7 @@ int volume_init(struct processing_module *mod)
 	}
 	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	if (channels_count > SOF_IPC_MAX_CHANNELS || !channels_count) {
-		comp_err(dev, "volume_init(): Invalid channels count %u", channels_count);
+		comp_err(dev, "Invalid channels count %u", channels_count);
 		return -EINVAL;
 	}
 
@@ -139,7 +139,7 @@ int volume_init(struct processing_module *mod)
 	cd->vol = rmalloc(SOF_MEM_FLAG_USER, vol_size);
 	if (!cd->vol) {
 		rfree(cd);
-		comp_err(dev, "volume_init(): Failed to allocate %d", vol_size);
+		comp_err(dev, "Failed to allocate %d", vol_size);
 		return -ENOMEM;
 	}
 
@@ -150,7 +150,7 @@ int volume_init(struct processing_module *mod)
 	if (!cd->peak_vol) {
 		rfree(cd->vol);
 		rfree(cd);
-		comp_err(dev, "volume_init(): Failed to allocate %d for peak_vol", vol_size);
+		comp_err(dev, "Failed to allocate %d for peak_vol", vol_size);
 		return -ENOMEM;
 	}
 
