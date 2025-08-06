@@ -306,7 +306,7 @@ static int mixin_process(struct processing_module *mod,
 	sinks_free_frames = INT32_MAX;
 
 	if (num_of_sinks > MIXIN_MAX_SINKS) {
-		comp_err(dev, "mixin_process(): Invalid output sink count %d",
+		comp_err(dev, "Invalid output sink count %d",
 			 num_of_sinks);
 		return -EINVAL;
 	}
@@ -673,7 +673,7 @@ static int mixin_params(struct processing_module *mod)
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "mixin_params(): comp_verify_params() failed!");
+		comp_err(dev, "comp_verify_params() failed!");
 		return -EINVAL;
 	}
 
@@ -738,7 +738,7 @@ static int mixout_params(struct processing_module *mod)
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "mixout_params(): comp_verify_params() failed!");
+		comp_err(dev, "comp_verify_params() failed!");
 		return -EINVAL;
 	}
 
@@ -910,14 +910,14 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 	if (sizeof(struct ipc4_mixer_mode_config) +
 	    (cfg->mixer_mode_config_count - 1) * sizeof(struct ipc4_mixer_mode_sink_config) >
 	    data_offset_size) {
-		comp_err(dev, "mixin_set_config(): unexpected data size: %u", data_offset_size);
+		comp_err(dev, "unexpected data size: %u", data_offset_size);
 		return -EINVAL;
 	}
 
 	for (i = 0; i < cfg->mixer_mode_config_count; i++) {
 		sink_index = cfg->mixer_mode_sink_configs[i].output_queue_id;
 		if (sink_index >= MIXIN_MAX_SINKS) {
-			comp_err(dev, "mixin_set_config(): invalid sink index: %u", sink_index);
+			comp_err(dev, "invalid sink index: %u", sink_index);
 			return -EINVAL;
 		}
 
@@ -926,7 +926,7 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 			gain = IPC4_MIXIN_UNITY_GAIN;
 		mixin_data->sink_config[sink_index].gain = gain;
 
-		comp_dbg(dev, "mixin_set_config(): gain 0x%x will be applied for sink %u",
+		comp_dbg(dev, "gain 0x%x will be applied for sink %u",
 			 gain, sink_index);
 
 		if (cfg->mixer_mode_sink_configs[i].mixer_mode ==
@@ -934,7 +934,7 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 			uint32_t channel_count =
 				cfg->mixer_mode_sink_configs[i].output_channel_count;
 			if (channel_count < 1 || channel_count > 8) {
-				comp_err(dev, "mixin_set_config(): Invalid output_channel_count %u for sink %u",
+				comp_err(dev, "Invalid output_channel_count %u for sink %u",
 					 channel_count, sink_index);
 				return -EINVAL;
 			}
@@ -943,7 +943,7 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 			mixin_data->sink_config[sink_index].output_channel_map =
 				cfg->mixer_mode_sink_configs[i].output_channel_map;
 
-			comp_dbg(dev, "mixin_set_config(): output_channel_count: %u, chmap: 0x%x for sink: %u",
+			comp_dbg(dev, "output_channel_count: %u, chmap: 0x%x for sink: %u",
 				 channel_count,
 				 mixin_data->sink_config[sink_index].output_channel_map,
 				 sink_index);

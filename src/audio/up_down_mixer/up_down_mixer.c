@@ -100,7 +100,7 @@ static int set_downmix_coefficients(struct processing_module *mod,
 		cd->downmix_coefficients = k_scaled_lo_ro_downmix32bit;
 		break;
 	default:
-		comp_err(dev, "set_downmix_coefficients(): invalid channel config.");
+		comp_err(dev, "invalid channel config.");
 		return -EINVAL;
 	}
 
@@ -128,7 +128,7 @@ static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
 			return downmix16bit_5_1;
 		case IPC4_CHANNEL_CONFIG_INVALID:
 		default:
-			comp_err(dev, "select_mix_out_stereo(): invalid channel config.");
+			comp_err(dev, "invalid channel config.");
 			/*
 			 * This is a strange situation. We will allow to process it
 			 * in the release code (hoping for the best) with downmix16bit,
@@ -161,7 +161,7 @@ static up_down_mixer_routine select_mix_out_stereo(struct comp_dev *dev,
 			return downmix32bit_7_1;
 		case IPC4_CHANNEL_CONFIG_INVALID:
 		default:
-			comp_err(dev, "select_mix_out_stereo(): invalid channel config.");
+			comp_err(dev, "invalid channel config.");
 			/*
 			 * This is a strange situation. We will allow to process it
 			 * in the release code (hoping for the best) with downmix32bit,
@@ -185,7 +185,7 @@ static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
 			return downmix16bit_4ch_mono;
 		case IPC4_CHANNEL_CONFIG_INVALID:
 		default:
-			comp_err(dev, "select_mix_out_mono(): invalid channel config.");
+			comp_err(dev, "invalid channel config.");
 			/*
 			 * This is a strange situation. We will allow to process it
 			 * in the release code (hoping for the best) with downmix16bit,
@@ -212,7 +212,7 @@ static up_down_mixer_routine select_mix_out_mono(struct comp_dev *dev,
 			return downmix32bit_7_1_mono;
 		case IPC4_CHANNEL_CONFIG_INVALID:
 		default:
-			comp_err(dev, "select_mix_out_mono(): invalid channel config.");
+			comp_err(dev, "invalid channel config.");
 			/*
 			 * This is a strange situation. We will allow to process it
 			 * in the release code (hoping for the best) with downmix32bit,
@@ -234,7 +234,7 @@ static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 			return upmix16bit_2_0_to_5_1;
 		case IPC4_CHANNEL_CONFIG_INVALID:
 		default:
-			comp_err(dev, "select_mix_out_5_1(): invalid channel config.");
+			comp_err(dev, "invalid channel config.");
 			return NULL;
 		}
 	} else {
@@ -251,7 +251,7 @@ static up_down_mixer_routine select_mix_out_5_1(struct comp_dev *dev,
 			return downmix32bit_7_1_to_5_1;
 		case IPC4_CHANNEL_CONFIG_INVALID:
 		default:
-			comp_err(dev, "select_mix_out_5_1(): invalid channel config.");
+			comp_err(dev, "invalid channel config.");
 			return NULL;
 		}
 	}
@@ -379,13 +379,13 @@ static int up_down_mixer_init(struct processing_module *mod)
 			       up_down_mixer->out_channel_config, up_down_mixer->coefficients);
 		break;
 	default:
-		comp_err(dev, "up_down_mixer_init(): unsupported coefficient type");
+		comp_err(dev, "unsupported coefficient type");
 		ret = -EINVAL;
 		break;
 	}
 
 	if (ret < 0) {
-		comp_err(dev, "up_down_mixer_init(): failed to initialize up_down_mix");
+		comp_err(dev, "failed to initialize up_down_mix");
 		goto err;
 	}
 
