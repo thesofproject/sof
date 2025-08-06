@@ -1367,7 +1367,7 @@ enum asrc_error_code asrc_process_pull32(struct comp_dev *dev,
 			}
 
 			if (src_obj->time_value_pull > TIME_VALUE_LIMIT) {
-				comp_err(dev, "process_pull32(): Time value = %d",
+				comp_err(dev, "Time value = %d",
 					 src_obj->time_value_pull);
 				return ASRC_EC_FAILED_PULL_MODE;
 			}
