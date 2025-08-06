@@ -60,7 +60,7 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 			 * drop an error and reject the .params() command.
 			 */
 			pipe_err(current->pipeline,
-				 "pipeline_comp_params_neg(): params conflict with existing active pipeline!");
+				 "params conflict with existing active pipeline!");
 			err = -EINVAL;
 		}
 	}
@@ -144,7 +144,7 @@ static int pipeline_comp_hw_params(struct comp_dev *current,
 					     &ppl_data->params->params, dir);
 		if (ret < 0) {
 			pipe_err(current->pipeline,
-				 "pipeline_comp_hw_params(): failed getting DAI parameters: %d",
+				 "failed getting DAI parameters: %d",
 				 ret);
 			return ret;
 		}
@@ -170,7 +170,7 @@ static int pipeline_comp_hw_params_buf(struct comp_dev *current,
 					BUFFER_UPDATE_IF_UNSET);
 		if (ret < 0)
 			pipe_err(current->pipeline,
-				 "pipeline_comp_hw_params(): buffer_set_params(): %d", ret);
+				 "buffer_set_params(): %d", ret);
 	}
 
 	return ret;
@@ -226,14 +226,14 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = hw_param_ctx.comp_func(host, NULL, &hw_param_ctx, dir);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = 0x%x",
+		pipe_err(p, "ret = %d, dev->comp.id = 0x%x",
 			 ret, dev_comp_id(host));
 		return ret;
 	}
 
 	ret = buf_param_ctx.comp_func(host, NULL, &buf_param_ctx, dir);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_params(): ret = %d, dev->comp.id = 0x%x",
+		pipe_err(p, "ret = %d, dev->comp.id = 0x%x",
 			 ret, dev_comp_id(host));
 		return ret;
 	}
@@ -244,7 +244,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	ret = param_ctx.comp_func(host, NULL, &param_ctx, dir);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_params(): ret = %d, host->comp.id = 0x%x",
+		pipe_err(p, "ret = %d, host->comp.id = 0x%x",
 			 ret, dev_comp_id(host));
 	}
 
@@ -312,7 +312,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	ret = walk_ctx.comp_func(dev, NULL, &walk_ctx, dev->direction);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_prepare(): ret = %d, dev->comp.id = 0x%x",
+		pipe_err(p, "ret = %d, dev->comp.id = 0x%x",
 			 ret, dev_comp_id(dev));
 		return ret;
 	}

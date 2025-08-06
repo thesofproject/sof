@@ -183,7 +183,7 @@ int pipeline_copy(struct pipeline *p)
 
 	ret = walk_ctx.comp_func(start, NULL, &walk_ctx, dir);
 	if (ret < 0)
-		pipe_err(p, "pipeline_copy(): ret = %d, start->comp.id = %u, dir = %u",
+		pipe_err(p, "ret = %d, start->comp.id = %u, dir = %u",
 			 ret, dev_comp_id(start), dir);
 
 	return ret;
@@ -267,7 +267,7 @@ static int pipeline_trigger_list(struct pipeline *p, struct comp_dev *host, int 
 
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_trigger_list(): ret = %d, host->comp.id = %u, cmd = %d",
+		pipe_err(p, "ret = %d, host->comp.id = %u, cmd = %d",
 			 ret, dev_comp_id(host), cmd);
 	} else {
 		if (cmd == COMP_TRIGGER_PRE_START) {
@@ -595,7 +595,7 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_trigger_run(): ret = %d, host->comp.id = %u, cmd = %d",
+		pipe_err(p, "ret = %d, host->comp.id = %u, cmd = %d",
 			 ret, dev_comp_id(host), cmd);
 		goto out;
 	}
@@ -624,7 +624,7 @@ int pipeline_trigger_run(struct pipeline *p, struct comp_dev *host, int cmd)
 
 		ret = walk_ctx.comp_func(host, NULL, &walk_ctx, host->direction);
 		if (ret < 0)
-			pipe_err(p, "pipeline_trigger_run(): ret = %d, host->comp.id = %u, cmd = %d",
+			pipe_err(p, "ret = %d, host->comp.id = %u, cmd = %d",
 				 ret, dev_comp_id(host), cmd);
 		else if (ret == PPL_STATUS_PATH_STOP)
 			ret = 0;
@@ -658,7 +658,7 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 		dai = pipeline_get_dai_comp(host->pipeline->pipeline_id, PPL_DIR_UPSTREAM);
 
 	if (!dai) {
-		pipe_dbg(p, "pipeline_get_timestamp(): DAI position update failed");
+		pipe_dbg(p, "DAI position update failed");
 		return;
 	}
 

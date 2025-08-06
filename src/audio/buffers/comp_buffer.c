@@ -201,7 +201,7 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size,
 	buffer = rzalloc(flags, sizeof(*buffer));
 
 	if (!buffer) {
-		tr_err(&buffer_tr, "buffer_alloc_struct(): could not alloc structure");
+		tr_err(&buffer_tr, "could not alloc structure");
 		return NULL;
 	}
 
@@ -236,20 +236,20 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t flags, uint32_t align,
 
 	/* validate request */
 	if (size == 0) {
-		tr_err(&buffer_tr, "buffer_alloc(): new size = %zu is invalid", size);
+		tr_err(&buffer_tr, "new size = %zu is invalid", size);
 		return NULL;
 	}
 
 	stream_addr = rballoc_align(flags, size, align);
 	if (!stream_addr) {
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc size = %zu bytes of flags = 0x%x",
+		tr_err(&buffer_tr, "could not alloc size = %zu bytes of flags = 0x%x",
 		       size, flags);
 		return NULL;
 	}
 
 	buffer = buffer_alloc_struct(stream_addr, size, flags, is_shared);
 	if (!buffer) {
-		tr_err(&buffer_tr, "buffer_alloc(): could not alloc buffer structure");
+		tr_err(&buffer_tr, "could not alloc buffer structure");
 		rfree(stream_addr);
 	}
 
@@ -263,11 +263,11 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 	size_t size;
 	void *stream_addr = NULL;
 
-	tr_dbg(&buffer_tr, "buffer_alloc_range(): %zu -- %zu bytes", minimum_size, preferred_size);
+	tr_dbg(&buffer_tr, "%zu -- %zu bytes", minimum_size, preferred_size);
 
 	/* validate request */
 	if (minimum_size == 0 || preferred_size < minimum_size) {
-		tr_err(&buffer_tr, "buffer_alloc_range(): new size range %zu -- %zu is invalid",
+		tr_err(&buffer_tr, "new size range %zu -- %zu is invalid",
 		       minimum_size, preferred_size);
 		return NULL;
 	}
@@ -282,17 +282,17 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 			break;
 	}
 
-	tr_dbg(&buffer_tr, "buffer_alloc_range(): allocated %zu bytes", size);
+	tr_dbg(&buffer_tr, "allocated %zu bytes", size);
 
 	if (!stream_addr) {
-		tr_err(&buffer_tr, "buffer_alloc_range(): could not alloc size = %zu bytes of type = 0x%x",
+		tr_err(&buffer_tr, "could not alloc size = %zu bytes of type = 0x%x",
 		       minimum_size, flags);
 		return NULL;
 	}
 
 	buffer = buffer_alloc_struct(stream_addr, size, flags, is_shared);
 	if (!buffer) {
-		tr_err(&buffer_tr, "buffer_alloc_range(): could not alloc buffer structure");
+		tr_err(&buffer_tr, "could not alloc buffer structure");
 		rfree(stream_addr);
 	}
 

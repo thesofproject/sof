@@ -264,7 +264,7 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 		case IPC4_DEPTH_32BIT:
 			return volume_func_map[2].passthrough_func;
 		default:
-			comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
+			comp_err(dev, "unsupported depth %d",
 				 mod->priv.cfg.base_cfg.audio_fmt.depth);
 			return NULL;
 		}
@@ -277,7 +277,7 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev,
 		case IPC4_DEPTH_32BIT:
 			return volume_func_map[2].func;
 		default:
-			comp_err(dev, "vol_get_processing_function(): unsupported depth %d",
+			comp_err(dev, "unsupported depth %d",
 				 mod->priv.cfg.base_cfg.audio_fmt.depth);
 			return NULL;
 		}

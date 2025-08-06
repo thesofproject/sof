@@ -690,7 +690,7 @@ static int volume_prepare(struct processing_module *mod,
 						      dev->frames);
 
 	if (audio_stream_get_size(&sinkb->stream) < sink_period_bytes) {
-		comp_err(dev, "volume_prepare(): sink buffer size %d is insufficient < %d",
+		comp_err(dev, "sink buffer size %d is insufficient < %d",
 			 audio_stream_get_size(&sinkb->stream), sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;
@@ -699,7 +699,7 @@ static int volume_prepare(struct processing_module *mod,
 	set_volume_process(cd, dev, false);
 
 	if (!cd->scale_vol) {
-		comp_err(dev, "volume_prepare(): invalid cd->scale_vol");
+		comp_err(dev, "invalid cd->scale_vol");
 
 		ret = -EINVAL;
 		goto err;
@@ -707,7 +707,7 @@ static int volume_prepare(struct processing_module *mod,
 
 	cd->zc_get = vol_get_zc_function(dev, sinkb);
 	if (!cd->zc_get) {
-		comp_err(dev, "volume_prepare(): invalid cd->zc_get");
+		comp_err(dev, "invalid cd->zc_get");
 		ret = -EINVAL;
 		goto err;
 	}

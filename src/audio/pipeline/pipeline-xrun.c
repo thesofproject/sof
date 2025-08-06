@@ -68,7 +68,7 @@ int pipeline_xrun_recover(struct pipeline *p)
 	/* prepare the pipeline */
 	ret = pipeline_prepare(p, p->source_comp);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_xrun_recover(): pipeline_prepare() failed, ret = %d",
+		pipe_err(p, "pipeline_prepare() failed, ret = %d",
 			 ret);
 		return ret;
 	}
@@ -79,7 +79,7 @@ int pipeline_xrun_recover(struct pipeline *p)
 	/* restart pipeline comps */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_START);
 	if (ret < 0) {
-		pipe_err(p, "pipeline_xrun_recover(): pipeline_trigger() failed, ret = %d",
+		pipe_err(p, "pipeline_trigger() failed, ret = %d",
 			 ret);
 		return ret;
 	}
@@ -159,7 +159,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	/* notify all pipeline comps we are in XRUN, and stop copying */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);
 	if (ret < 0)
-		pipe_err(p, "pipeline_xrun(): Pipelines notification about XRUN failed, ret = %d",
+		pipe_err(p, "Pipelines notification about XRUN failed, ret = %d",
 			 ret);
 
 	memset(&posn, 0, sizeof(posn));
