@@ -38,14 +38,14 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	if ((ring->size <= HOST_PAGE_SIZE * (ring->pages - 1)) ||
 	    (ring->size > HOST_PAGE_SIZE * ring->pages)) {
 		/* error buffer size */
-		tr_err(&ipc_tr, "ipc_parse_page_descriptors(): error buffer size");
+		tr_err(&ipc_tr, "error buffer size");
 		return -EINVAL;
 	}
 
 	elem_array->elems = rzalloc(SOF_MEM_FLAG_USER,
 				    sizeof(struct dma_sg_elem) * ring->pages);
 	if (!elem_array->elems) {
-		tr_err(&ipc_tr, "ipc_parse_page_descriptors(): There is no heap free with this block size: %zu",
+		tr_err(&ipc_tr, "There is no heap free with this block size: %zu",
 		       sizeof(struct dma_sg_elem) * ring->pages);
 		return -ENOMEM;
 	}
@@ -157,7 +157,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	/* get DMA channel from DMAC */
 	chan = dma_channel_get_legacy(dmac, 0);
 	if (!chan) {
-		tr_err(&ipc_tr, "ipc_get_page_descriptors(): chan is NULL");
+		tr_err(&ipc_tr, "chan is NULL");
 		return -ENODEV;
 	}
 
@@ -178,7 +178,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	/* 20 bits for each page, round up to minimum DMA copy size */
 	ret = dma_get_attribute_legacy(dmac, DMA_ATTR_COPY_ALIGNMENT, &dma_copy_align);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_get_attribute() failed");
+		tr_err(&ipc_tr, "dma_get_attribute() failed");
 		goto out;
 	}
 	elem.size = SOF_DIV_ROUND_UP(ring->pages * 20, 8);
@@ -188,14 +188,14 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 
 	ret = dma_set_config_legacy(chan, &config);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_set_config() failed");
+		tr_err(&ipc_tr, "dma_set_config() failed");
 		goto out;
 	}
 
 	/* start the copy of page table to DSP */
 	ret = dma_copy_legacy(chan, elem.size, DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_start() failed");
+		tr_err(&ipc_tr, "dma_start() failed");
 		goto out;
 	}
 

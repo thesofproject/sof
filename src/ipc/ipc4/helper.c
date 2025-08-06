@@ -371,14 +371,14 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 
 	ret = ipc_pipeline_module_free(ipc_pipe->pipeline->pipeline_id);
 	if (ret != IPC4_SUCCESS) {
-		tr_err(&ipc_tr, "ipc_pipeline_free(): module free () failed");
+		tr_err(&ipc_tr, "module free () failed");
 		return ret;
 	}
 
 	/* free buffer, delete all tasks and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_pipeline_free(): pipeline_free() failed");
+		tr_err(&ipc_tr, "pipeline_free() failed");
 		return IPC4_INVALID_RESOURCE_STATE;
 	}
 
@@ -986,7 +986,7 @@ __cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
 	}
 
 	tr_warn(&comp_tr,
-		"get_drv(): the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
+		"the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
 		sof_uuid->a, sof_uuid->b, sof_uuid->c, sof_uuid->d[0], sof_uuid->d[1],
 		sof_uuid->d[2], sof_uuid->d[3], sof_uuid->d[4], sof_uuid->d[5], sof_uuid->d[6],
 		sof_uuid->d[7]);
@@ -1095,7 +1095,7 @@ __cold static int ipc4_add_comp_dev(struct comp_dev *dev)
 	icd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 		      sizeof(struct ipc_comp_dev));
 	if (!icd) {
-		tr_err(&ipc_tr, "ipc_comp_new(): alloc failed");
+		tr_err(&ipc_tr, "alloc failed");
 		rfree(icd);
 		return IPC4_OUT_OF_MEMORY;
 	}

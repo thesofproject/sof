@@ -104,7 +104,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		break;
 	default:
 		/* other types of DAIs not handled for now */
-		comp_err(dev, "dai_config_dma_channel(): Unknown dai type %d",
+		comp_err(dev, "Unknown dai type %d",
 			 config->type);
 		channel = SOF_DMA_CHAN_INVALID;
 		break;
@@ -119,7 +119,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 	struct sof_ipc_dai_config *config = ipc_from_dai_config(dd->dai_spec_config);
 
 	if (!config) {
-		comp_err(dev, "dai_data_config(): no config set for dai %d type %d",
+		comp_err(dev, "no config set for dai %d type %d",
 			 dai->dai_index, dai->type);
 		return -EINVAL;
 	}
@@ -129,14 +129,14 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_data_config(): Component is in active state.");
+		comp_info(dev, "Component is in active state.");
 		return 0;
 	}
 
 	/* validate direction */
 	if (dai->direction != SOF_IPC_STREAM_PLAYBACK &&
 	    dai->direction != SOF_IPC_STREAM_CAPTURE) {
-		comp_err(dev, "dai_data_config(): no direction set for dai %d type %d",
+		comp_err(dev, "no direction set for dai %d type %d",
 			 dai->dai_index, dai->type);
 		return -EINVAL;
 	}
@@ -195,7 +195,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		break;
 	default:
 		/* other types of DAIs not handled for now */
-		comp_warn(dev, "dai_data_config(): Unknown dai type %d",
+		comp_warn(dev, "Unknown dai type %d",
 			  config->type);
 		break;
 	}
@@ -241,7 +241,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	}
 
 	if (ret < 0) {
-		tr_err(&ipc_tr, "ipc_comp_dai_config(): comp_dai_config() failed");
+		tr_err(&ipc_tr, "comp_dai_config() failed");
 		return ret;
 	}
 
@@ -281,7 +281,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 {
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_config(): Component is in active state. Ignore resetting");
+		comp_info(dev, "Component is in active state. Ignore resetting");
 		return;
 	}
 
@@ -315,7 +315,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_config(): Component is in active state. Ignore config");
+		comp_info(dev, "Component is in active state. Ignore config");
 		return 0;
 	}
 
@@ -328,7 +328,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 			dd->delayed_dma_stop = true;
 
 		if (dd->chan) {
-			comp_info(dev, "dai_config(): Configured. dma channel index %d, ignore...",
+			comp_info(dev, "Configured. dma channel index %d, ignore...",
 				  dd->chan->index);
 			return 0;
 		}
@@ -379,7 +379,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 		dd->dai_spec_config = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 					      sizeof(struct sof_ipc_dai_config));
 		if (!dd->dai_spec_config) {
-			comp_err(dev, "dai_config(): No memory for dai_config.");
+			comp_err(dev, "No memory for dai_config.");
 			return -ENOMEM;
 		}
 	}
