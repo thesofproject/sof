@@ -72,7 +72,7 @@ void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
 
 	/* Function returns new data blob if available */
 	if (comp_is_new_data_blob_available(blob_handler)) {
-		comp_dbg(blob_handler->dev, "comp_get_data_blob(): new data available");
+		comp_dbg(blob_handler->dev, "new data available");
 
 		/* Free "old" data blob and set data to data_new pointer */
 		blob_handler->free(blob_handler->data);
@@ -95,7 +95,7 @@ void *comp_get_data_blob(struct comp_data_blob_handler *blob_handler,
 		 * data blob it means that component hasn't got any config yet.
 		 * Function returns NULL in that case.
 		 */
-		comp_warn(blob_handler->dev, "comp_get_data_blob(): blob_handler->data is not set.");
+		comp_warn(blob_handler->dev, "blob_handler->data is not set.");
 	}
 
 	if (size)
@@ -145,7 +145,7 @@ int comp_init_data_blob(struct comp_data_blob_handler *blob_handler,
 	/* Data blob allocation */
 	blob_handler->data = blob_handler->alloc(size);
 	if (!blob_handler->data) {
-		comp_err(blob_handler->dev, "comp_init_data_blob(): model->data allocation failed");
+		comp_err(blob_handler->dev, "model->data allocation failed");
 		return -ENOMEM;
 	}
 
@@ -243,7 +243,7 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		if (!blob_handler->data_new) {
 			blob_handler->data_new = blob_handler->alloc(data_offset_size);
 			if (!blob_handler->data_new) {
-				comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): blob_handler->data_new allocation failed.");
+				comp_err(blob_handler->dev, "blob_handler->data_new allocation failed.");
 				return -ENOMEM;
 			}
 		}
@@ -255,7 +255,7 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 	/* return an error in case when we do not have allocated memory for model data */
 	if (!blob_handler->data_new) {
-		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): buffer not allocated");
+		comp_err(blob_handler->dev, "buffer not allocated");
 		return -ENOMEM;
 	}
 
@@ -263,20 +263,20 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		       blob_handler->new_data_size - blob_handler->data_pos,
 		       fragment, fragment_size);
 	if (ret) {
-		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): failed to copy fragment");
+		comp_err(blob_handler->dev, "failed to copy fragment");
 		return ret;
 	}
 
 	blob_handler->data_pos += fragment_size;
 
 	if (pos == MODULE_CFG_FRAGMENT_SINGLE || pos == MODULE_CFG_FRAGMENT_LAST) {
-		comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): final package received");
+		comp_dbg(blob_handler->dev, "final package received");
 		if (blob_handler->validator) {
-			comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): validating new data...");
+			comp_dbg(blob_handler->dev, "validating new data...");
 			ret = blob_handler->validator(blob_handler->dev, blob_handler->data_new,
 						      blob_handler->new_data_size);
 			if (ret < 0) {
-				comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): new data is invalid! discarding it...");
+				comp_err(blob_handler->dev, "new data is invalid! discarding it...");
 				blob_handler->free(blob_handler->data_new);
 				blob_handler->data_new = NULL;
 				return ret;
@@ -327,7 +327,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 	assert(blob_handler);
 
 	comp_dbg(blob_handler->dev,
-		 "ipc4_comp_data_blob_set(): data_offset = %d",
+		 "data_offset = %d",
 		 data_offset);
 
 	/* in case when the current package is the first, we should allocate
@@ -353,7 +353,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 			if (!blob_handler->data_new) {
 				comp_err(blob_handler->dev,
-					 "ipc4_comp_data_blob_set(): blob_handler allocation failed!");
+					 "blob_handler allocation failed!");
 				return -ENOMEM;
 			}
 		}
@@ -375,13 +375,13 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		 */
 		if (!blob_handler->data_new) {
 			comp_err(blob_handler->dev,
-				 "ipc4_comp_data_blob_set(): Buffer not allocated!");
+				 "Buffer not allocated!");
 			return -ENOMEM;
 		}
 
 		if (blob_handler->data_pos != data_offset) {
 			comp_err(blob_handler->dev,
-				 "ipc4_comp_data_blob_set(): Wrong data offset received!");
+				 "Wrong data offset received!");
 			return -EINVAL;
 		}
 
@@ -399,7 +399,7 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 	if (last_block) {
 		comp_dbg(blob_handler->dev,
-			 "ipc4_comp_data_blob_set(): final package received");
+			 "final package received");
 
 		/* If component state is READY we can omit old
 		 * configuration immediately. When in playback/capture
@@ -497,7 +497,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 			blob_handler->data_new =
 				blob_handler->alloc(cdata->data->size);
 			if (!blob_handler->data_new) {
-				comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): blob_handler->data_new allocation failed.");
+				comp_err(blob_handler->dev, "blob_handler->data_new allocation failed.");
 				return -ENOMEM;
 			}
 		}
@@ -511,7 +511,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 	 * model data
 	 */
 	if (!blob_handler->data_new) {
-		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): buffer not allocated");
+		comp_err(blob_handler->dev, "buffer not allocated");
 		return -ENOMEM;
 	}
 
@@ -523,14 +523,14 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 	blob_handler->data_pos += cdata->num_elems;
 
 	if (!cdata->elems_remaining) {
-		comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): final package received");
+		comp_dbg(blob_handler->dev, "final package received");
 
 		if (blob_handler->validator) {
-			comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd(): validating new data blob");
+			comp_dbg(blob_handler->dev, "validating new data blob");
 			ret = blob_handler->validator(blob_handler->dev, blob_handler->data_new,
 						      blob_handler->new_data_size);
 			if (ret < 0) {
-				comp_err(blob_handler->dev, "comp_data_blob_set_cmd(): new data blob invalid, discarding");
+				comp_err(blob_handler->dev, "new data blob invalid, discarding");
 				blob_handler->free(blob_handler->data_new);
 				blob_handler->data_new = NULL;
 				return ret;
@@ -598,7 +598,7 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 		 * required size
 		 */
 		if (cdata->num_elems > size) {
-			comp_err(blob_handler->dev, "comp_data_blob_get_cmd(): invalid cdata->num_elems %d",
+			comp_err(blob_handler->dev, "invalid cdata->num_elems %d",
 				 cdata->num_elems);
 			return -EINVAL;
 		}
@@ -613,7 +613,7 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 		cdata->data->size = blob_handler->data_size;
 		blob_handler->data_pos += cdata->num_elems;
 	} else {
-		comp_warn(blob_handler->dev, "comp_data_blob_get_cmd(): model->data not allocated yet.");
+		comp_warn(blob_handler->dev, "model->data not allocated yet.");
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = 0;
 	}

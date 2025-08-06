@@ -115,14 +115,14 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		if (dev->state != COMP_STATE_PRE_ACTIVE) {
-			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_START",
+			comp_err(dev, "wrong state = %u, COMP_TRIGGER_START",
 				 dev->state);
 			return -EINVAL;
 		}
 		break;
 	case COMP_TRIGGER_RELEASE:
 		if (dev->state != COMP_STATE_PRE_ACTIVE) {
-			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_RELEASE",
+			comp_err(dev, "wrong state = %u, COMP_TRIGGER_RELEASE",
 				 dev->state);
 			return -EINVAL;
 		}
@@ -130,7 +130,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_STOP:
 		if (dev->state != COMP_STATE_ACTIVE &&
 		    dev->state != COMP_STATE_PAUSED) {
-			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_STOP",
+			comp_err(dev, "wrong state = %u, COMP_TRIGGER_STOP",
 				 dev->state);
 			return -EINVAL;
 		}
@@ -138,7 +138,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_PAUSE:
 		/* only support pausing for running */
 		if (dev->state != COMP_STATE_ACTIVE) {
-			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_PAUSE",
+			comp_err(dev, "wrong state = %u, COMP_TRIGGER_PAUSE",
 				 dev->state);
 			return -EINVAL;
 		}
@@ -146,15 +146,15 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_RESET:
 		/* reset always succeeds */
 		if (dev->state == COMP_STATE_ACTIVE)
-			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_RESET",
+			comp_err(dev, "wrong state = %u, COMP_TRIGGER_RESET",
 				 dev->state);
 		else if (dev->state == COMP_STATE_PAUSED)
-			comp_info(dev, "comp_set_state(): state = %u, COMP_TRIGGER_RESET",
+			comp_info(dev, "state = %u, COMP_TRIGGER_RESET",
 				  dev->state);
 		break;
 	case COMP_TRIGGER_PREPARE:
 		if (dev->state != COMP_STATE_READY) {
-			comp_err(dev, "comp_set_state(): wrong state = %u, COMP_TRIGGER_PREPARE",
+			comp_err(dev, "wrong state = %u, COMP_TRIGGER_PREPARE",
 				 dev->state);
 			return -EINVAL;
 		}
@@ -162,7 +162,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_PRE_START:
 		if (dev->state != COMP_STATE_PREPARE) {
 			comp_err(dev,
-				 "comp_set_state(): wrong state = %u, COMP_TRIGGER_PRE_START",
+				 "wrong state = %u, COMP_TRIGGER_PRE_START",
 				 dev->state);
 			return -EINVAL;
 		}
@@ -170,7 +170,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_PRE_RELEASE:
 		if (dev->state != COMP_STATE_PAUSED) {
 			comp_err(dev,
-				 "comp_set_state(): wrong state = %u, COMP_TRIGGER_PRE_RELEASE",
+				 "wrong state = %u, COMP_TRIGGER_PRE_RELEASE",
 				 dev->state);
 			return -EINVAL;
 		}

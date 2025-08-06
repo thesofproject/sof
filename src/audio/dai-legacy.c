@@ -154,7 +154,7 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev, const struct ipc_c
 
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (!dd->dai) {
-		comp_cl_err(&comp_dai, "dai_common_new(): dai_get() failed to create DAI.");
+		comp_cl_err(&comp_dai, "dai_get() failed to create DAI.");
 		return -ENODEV;
 	}
 	dd->dai->dd = dd;
@@ -169,7 +169,7 @@ int dai_common_new(struct dai_data *dd, struct comp_dev *dev, const struct ipc_c
 
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (!dd->dma) {
-		comp_cl_err(&comp_dai, "dai_common_new(): dma_get() failed to get shared access to DMA.");
+		comp_cl_err(&comp_dai, "dma_get() failed to get shared access to DMA.");
 		return -ENODEV;
 	}
 
@@ -263,7 +263,7 @@ int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 	/* fetching hw dai stream params */
 	ret = dai_get_hw_params(dd->dai, params, dir);
 	if (ret < 0) {
-		comp_err(dev, "dai_comp_get_hw_params(): dai_get_hw_params failed ret %d",
+		comp_err(dev, "dai_get_hw_params failed ret %d",
 			 ret);
 		return ret;
 	}
@@ -298,7 +298,7 @@ static int dai_comp_hw_params(struct comp_dev *dev,
 	/* configure hw dai stream params */
 	ret = dai_hw_params(dd->dai, params);
 	if (ret < 0) {
-		comp_err(dev, "dai_comp_hw_params(): dai_hw_params failed ret %d",
+		comp_err(dev, "dai_hw_params failed ret %d",
 			 ret);
 		return ret;
 	}
@@ -323,13 +323,13 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 	 * pcm_converter functions.
 	 */
 	if (hw_params.rate && hw_params.rate != params->rate) {
-		comp_err(dev, "dai_verify_params(): pcm rate parameter %d does not match hardware rate %d",
+		comp_err(dev, "pcm rate parameter %d does not match hardware rate %d",
 			 params->rate, hw_params.rate);
 		return -EINVAL;
 	}
 
 	if (hw_params.channels && hw_params.channels != params->channels) {
-		comp_err(dev, "dai_verify_params(): pcm channels parameter %d does not match hardware channels %d",
+		comp_err(dev, "pcm channels parameter %d does not match hardware channels %d",
 			 params->channels, hw_params.channels);
 		return -EINVAL;
 	}
@@ -355,7 +355,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
 
 	if (!dd->process) {
-		comp_err(dev, "dai_playback_params(): converter function NULL: local fmt %d dma fmt %d\n",
+		comp_err(dev, "converter function NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
 		return -EINVAL;
 	}
@@ -388,7 +388,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 				   (uintptr_t)(audio_stream_get_addr(&dd->dma_buffer->stream)),
 				   fifo);
 		if (err < 0)
-			comp_err(dev, "dai_playback_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
+			comp_err(dev, "dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
 				 period_count, period_bytes, err);
 	}
 
@@ -409,7 +409,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 	dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
 
 	if (!dd->process) {
-		comp_err(dev, "dai_capture_params(): converter function NULL: local fmt %d dma fmt %d\n",
+		comp_err(dev, "converter function NULL: local fmt %d dma fmt %d\n",
 			 local_fmt, dma_fmt);
 		return -EINVAL;
 	}
@@ -453,7 +453,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 				   (uintptr_t)(audio_stream_get_addr(&dd->dma_buffer->stream)),
 				   fifo);
 		if (err < 0)
-			comp_err(dev, "dai_capture_params(): dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
+			comp_err(dev, "dma_sg_alloc() for period_count %d period_bytes %d failed with err = %d",
 				 period_count, period_bytes, err);
 	}
 
@@ -481,14 +481,14 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 
 	err = dai_verify_params(dd, dev, params);
 	if (err < 0) {
-		comp_err(dev, "dai_params(): pcm params verification failed.");
+		comp_err(dev, "pcm params verification failed.");
 		return -EINVAL;
 	}
 
 	/* params verification passed, so now configure hw dai stream params */
 	err = dai_comp_hw_params(dev, params);
 	if (err < 0) {
-		comp_err(dev, "dai_params(): dai_comp_hw_params failed err %d", err);
+		comp_err(dev, "dai_comp_hw_params failed err %d", err);
 		return err;
 	}
 
@@ -505,7 +505,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		comp_err(dev, "dai_params(): Component is in state %d, expected COMP_STATE_READY.",
+		comp_err(dev, "Component is in state %d, expected COMP_STATE_READY.",
 			 dev->state);
 		return -EINVAL;
 	}
@@ -513,14 +513,14 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	err = dma_get_attribute_legacy(dd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
 				       &addr_align);
 	if (err < 0) {
-		comp_err(dev, "dai_params(): could not get dma buffer address alignment, err = %d",
+		comp_err(dev, "could not get dma buffer address alignment, err = %d",
 			 err);
 		return err;
 	}
 
 	err = dma_get_attribute_legacy(dd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
 	if (err < 0 || !align) {
-		comp_err(dev, "dai_params(): could not get valid dma buffer alignment, err = %d, align = %u",
+		comp_err(dev, "could not get valid dma buffer alignment, err = %d, align = %u",
 			 err, align);
 		return -EINVAL;
 	}
@@ -528,7 +528,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	err = dma_get_attribute_legacy(dd->dma, DMA_ATTR_BUFFER_PERIOD_COUNT,
 				       &period_count);
 	if (err < 0 || !period_count) {
-		comp_err(dev, "dai_params(): could not get valid dma buffer period count, err = %d, period_count = %u",
+		comp_err(dev, "could not get valid dma buffer period count, err = %d, period_count = %u",
 			 err, period_count);
 		return -EINVAL;
 	}
@@ -540,7 +540,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	/* calculate period size */
 	period_bytes = dev->frames * frame_size;
 	if (!period_bytes) {
-		comp_err(dev, "dai_params(): invalid period_bytes.");
+		comp_err(dev, "invalid period_bytes.");
 		return -EINVAL;
 	}
 
@@ -556,7 +556,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		err = buffer_set_size(dd->dma_buffer, buffer_size, addr_align);
 
 		if (err < 0) {
-			comp_err(dev, "dai_params(): buffer_set_size() failed, buffer_size = %u",
+			comp_err(dev, "buffer_set_size() failed, buffer_size = %u",
 				 buffer_size);
 			return err;
 		}
@@ -564,7 +564,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 		dd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 					      addr_align, false);
 		if (!dd->dma_buffer) {
-			comp_err(dev, "dai_params(): failed to alloc dma buffer");
+			comp_err(dev, "failed to alloc dma buffer");
 			return -ENOMEM;
 		}
 
@@ -599,7 +599,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
-		comp_info(dev, "dai_common_config_prepare(): Component is in active state.");
+		comp_info(dev, "Component is in active state.");
 		return 0;
 	}
 
@@ -609,7 +609,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	if (dd->chan) {
-		comp_info(dev, "dai_common_config_prepare(): dma channel index %d already configured",
+		comp_info(dev, "dma channel index %d already configured",
 			  dd->chan->index);
 		return 0;
 	}
@@ -626,14 +626,14 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	/* allocate DMA channel */
 	dd->chan = dma_channel_get_legacy(dd->dma, channel);
 	if (!dd->chan) {
-		comp_err(dev, "dai_common_config_prepare(): dma_channel_get() failed");
+		comp_err(dev, "dma_channel_get() failed");
 		dd->chan = NULL;
 		return -EIO;
 	}
 
 	dd->chan->dev_data = dd;
 
-	comp_info(dev, "dai_common_config_prepare(): new configured dma channel index %d",
+	comp_info(dev, "new configured dma channel index %d",
 		  dd->chan->index);
 
 	/* setup callback */
@@ -650,13 +650,13 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 	dd->total_data_processed = 0;
 
 	if (!dd->chan) {
-		comp_err(dev, "dai_prepare(): Missing dd->chan.");
+		comp_err(dev, "Missing dd->chan.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
 
 	if (!dd->config.elem_array.elems) {
-		comp_err(dev, "dai_prepare(): Missing dd->config.elem_array.elems.");
+		comp_err(dev, "Missing dd->config.elem_array.elems.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -902,10 +902,10 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		comp_err(dev, "dai_report_xrun(): underrun due to no data available");
+		comp_err(dev, "underrun due to no data available");
 		comp_underrun(dev, dd->local_buffer, bytes);
 	} else {
-		comp_err(dev, "dai_report_xrun(): overrun due to no space available");
+		comp_err(dev, "overrun due to no space available");
 		comp_overrun(dev, dd->local_buffer, bytes);
 	}
 }
@@ -958,16 +958,16 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 	/* Check possibility of glitch occurrence */
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
 	    copy_bytes + avail_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_common_copy(): Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, avail_bytes, dd->period_bytes);
 	else if (dev->direction == SOF_IPC_STREAM_CAPTURE &&
 		 copy_bytes + free_bytes < dd->period_bytes)
-		comp_warn(dev, "dai_common_copy(): Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
+		comp_warn(dev, "Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
 			  copy_bytes, free_bytes, dd->period_bytes);
 
 	/* return if nothing to copy */
 	if (!copy_bytes) {
-		comp_warn(dev, "dai_common_copy(): nothing to copy");
+		comp_warn(dev, "nothing to copy");
 		return 0;
 	}
 

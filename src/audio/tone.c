@@ -462,7 +462,7 @@ static int tone_cmd_get_value(struct comp_dev *dev,
 	comp_info(dev, "tone_cmd_get_value()");
 
 	if (cdata->type != SOF_CTRL_TYPE_VALUE_CHAN_GET) {
-		comp_err(dev, "tone_cmd_get_value(): wrong cdata->type: %u",
+		comp_err(dev, "wrong cdata->type: %u",
 			 cdata->type);
 		return -EINVAL;
 	}
@@ -487,7 +487,7 @@ static int tone_cmd_set_value(struct comp_dev *dev,
 	bool val;
 
 	if (cdata->type != SOF_CTRL_TYPE_VALUE_CHAN_SET) {
-		comp_err(dev, "tone_cmd_set_value(): wrong cdata->type: %u",
+		comp_err(dev, "wrong cdata->type: %u",
 			 cdata->type);
 		return -EINVAL;
 	}
@@ -500,7 +500,7 @@ static int tone_cmd_set_value(struct comp_dev *dev,
 			comp_info(dev, "tone_cmd_set_value(), SOF_CTRL_CMD_SWITCH, ch = %u, val = %u",
 				  ch, val);
 			if (ch >= PLATFORM_MAX_CHANNELS) {
-				comp_err(dev, "tone_cmd_set_value(): ch >= PLATFORM_MAX_CHANNELS");
+				comp_err(dev, "ch >= PLATFORM_MAX_CHANNELS");
 				return -EINVAL;
 			}
 
@@ -510,7 +510,7 @@ static int tone_cmd_set_value(struct comp_dev *dev,
 				tonegen_mute(&cd->sg[ch]);
 		}
 	} else {
-		comp_err(dev, "tone_cmd_set_value(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -529,7 +529,7 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 	comp_info(dev, "tone_cmd_set_data()");
 
 	if (cdata->type != SOF_CTRL_TYPE_VALUE_COMP_SET) {
-		comp_err(dev, "tone_cmd_set_data(): wrong cdata->type: %u",
+		comp_err(dev, "wrong cdata->type: %u",
 			 cdata->type);
 		return -EINVAL;
 	}
@@ -579,13 +579,13 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 				tonegen_set_linramp(&cd->sg[ch], val);
 				break;
 			default:
-				comp_err(dev, "tone_cmd_set_data(): invalid cdata->index");
+				comp_err(dev, "invalid cdata->index");
 				return -EINVAL;
 			}
 		}
 		break;
 	default:
-		comp_err(dev, "tone_cmd_set_data(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
