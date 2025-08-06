@@ -251,7 +251,7 @@ dts_codec_process(struct processing_module *mod,
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
 	if (input_buffers[0].size < codec->mpd.in_buff_size) {
-		comp_dbg(dev, "dts_codec_process(): not enough data to process");
+		comp_dbg(dev, "not enough data to process");
 		return -ENODATA;
 	}
 
@@ -425,21 +425,21 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
 				       fragment_size, response, response_size);
 	if (ret < 0) {
-		comp_err(dev, "dts_codec_set_configuration(): error %x from module_set_configuration()",
+		comp_err(dev, "error %x from module_set_configuration()",
 			 ret);
 		return ret;
 	}
 
 	/* return if more fragments are expected */
 	if (pos != MODULE_CFG_FRAGMENT_LAST && pos != MODULE_CFG_FRAGMENT_SINGLE) {
-		comp_err(dev, "dts_codec_set_configuration(): pos %d error", pos);
+		comp_err(dev, "pos %d error", pos);
 		return 0;
 	}
 
 #if CONFIG_IPC_MAJOR_3
 	// return if the module is not prepared
 	if (md->state < MODULE_INITIALIZED) {
-		comp_err(dev, "dts_codec_set_configuration(): state %d error", md->state);
+		comp_err(dev, "state %d error", md->state);
 		return 0;
 	}
 #endif
@@ -447,12 +447,12 @@ dts_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 	/* whole configuration received, apply it now */
 	ret = dts_codec_apply_config(mod);
 	if (ret) {
-		comp_err(dev, "dts_codec_set_configuration(): error %x: runtime config apply failed",
+		comp_err(dev, "error %x: runtime config apply failed",
 			 ret);
 		return ret;
 	}
 
-	comp_dbg(dev, "dts_codec_set_configuration(): config applied");
+	comp_dbg(dev, "config applied");
 
 	return 0;
 }

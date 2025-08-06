@@ -321,7 +321,7 @@ static int crossover_init(struct processing_module *mod)
 	/* Handler for configuration data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "crossover_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto cd_fail;
 	}
@@ -329,13 +329,13 @@ static int crossover_init(struct processing_module *mod)
 	/* Get configuration data and reset Crossover state */
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_crossover->data);
 	if (ret < 0) {
-		comp_err(dev, "crossover_init(): comp_init_data_blob() failed.");
+		comp_err(dev, "comp_init_data_blob() failed.");
 		goto cd_fail;
 	}
 
 	ret = crossover_output_pin_init(mod);
 	if (ret < 0) {
-		comp_err(dev, "crossover_init(): crossover_init_output_pins() failed.");
+		comp_err(dev, "crossover_init_output_pins() failed.");
 		goto cd_fail;
 	}
 
@@ -552,7 +552,7 @@ static int crossover_prepare(struct processing_module *mod,
 	/* Validate frame format and buffer size of sinks */
 	comp_dev_for_each_consumer(dev, sink) {
 		if (cd->source_format != audio_stream_get_frm_fmt(&sink->stream)) {
-			comp_err(dev, "crossover_prepare(): Source fmt %d and sink fmt %d are different.",
+			comp_err(dev, "Source fmt %d and sink fmt %d are different.",
 				 cd->source_format, audio_stream_get_frm_fmt(&sink->stream));
 			return -EINVAL;
 		}
