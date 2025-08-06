@@ -112,7 +112,7 @@ static int modules_free(struct processing_module *mod)
 	comp_info(dev, "modules_free()");
 	ret = iadk_wrapper_free(module_get_private_data(mod));
 	if (ret)
-		comp_err(dev, "modules_free(): iadk_wrapper_free failed with error: %d", ret);
+		comp_err(dev, "iadk_wrapper_free failed with error: %d", ret);
 
 	return ret;
 }

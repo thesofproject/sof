@@ -61,7 +61,7 @@ static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nc
 
 	if (nch > PLATFORM_MAX_CHANNELS) {
 		/* TODO: should be device, not class */
-		comp_err(dev, "src_buffer_lengths(): nch = %u > PLATFORM_MAX_CHANNELS",
+		comp_err(dev, "nch = %u > PLATFORM_MAX_CHANNELS",
 			 nch);
 		return -EINVAL;
 	}
@@ -73,7 +73,7 @@ static int src_buffer_lengths(struct comp_dev *dev, struct comp_data *cd, int nc
 
 	/* Check from stage1 parameter for a deleted in/out rate combination.*/
 	if (stage1->filter_length < 1) {
-		comp_err(dev, "src_buffer_lengths(): Non-supported combination sfs_in = %d, fs_out = %d",
+		comp_err(dev, "Non-supported combination sfs_in = %d, fs_out = %d",
 			 fs_in, fs_out);
 		return -EINVAL;
 	}
@@ -410,13 +410,13 @@ static int src_verify_params(struct processing_module *mod)
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = src_stream_pcm_sink_rate_check(cd->ipc_config, params);
 		if (ret < 0) {
-			comp_err(dev, "src_verify_params(): sink stream rate does not match rate fetched from ipc.");
+			comp_err(dev, "sink stream rate does not match rate fetched from ipc.");
 			return ret;
 		}
 	} else {
 		ret = src_stream_pcm_source_rate_check(cd->ipc_config, params);
 		if (ret < 0) {
-			comp_err(dev, "src_verify_params(): source stream rate does not match rate fetched from ipc.");
+			comp_err(dev, "source stream rate does not match rate fetched from ipc.");
 			return ret;
 		}
 	}
@@ -425,7 +425,7 @@ static int src_verify_params(struct processing_module *mod)
 	 */
 	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
 	if (ret < 0)
-		comp_err(dev, "src_verify_params(): comp_verify_params() failed.");
+		comp_err(dev, "comp_verify_params() failed.");
 
 	return ret;
 }
@@ -489,13 +489,13 @@ int src_params_general(struct processing_module *mod,
 
 	err = src_set_params(mod, sink);
 	if (err < 0) {
-		comp_err(dev, "src_params(): set params failed.");
+		comp_err(dev, "set params failed.");
 		return err;
 	}
 
 	err = src_verify_params(mod);
 	if (err < 0) {
-		comp_err(dev, "src_params(): pcm params verification failed.");
+		comp_err(dev, "pcm params verification failed.");
 		return err;
 	}
 
@@ -514,7 +514,7 @@ int src_params_general(struct processing_module *mod,
 	/* Allocate needed memory for delay lines */
 	err = src_buffer_lengths(dev, cd, cd->channels_count);
 	if (err < 0) {
-		comp_err(dev, "src_params(): src_buffer_lengths() failed");
+		comp_err(dev, "src_buffer_lengths() failed");
 		return err;
 	}
 
@@ -525,7 +525,7 @@ int src_params_general(struct processing_module *mod,
 	 */
 	delay_lines_size = ALIGN_UP(sizeof(int32_t) * cd->param.total, 8);
 	if (delay_lines_size == 0) {
-		comp_err(dev, "src_params(): delay_lines_size = 0");
+		comp_err(dev, "delay_lines_size = 0");
 
 		return  -EINVAL;
 	}
@@ -535,7 +535,7 @@ int src_params_general(struct processing_module *mod,
 
 	cd->delay_lines = mod_alloc(mod, delay_lines_size);
 	if (!cd->delay_lines) {
-		comp_err(dev, "src_params(): failed to alloc cd->delay_lines, delay_lines_size = %zu",
+		comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
 			 delay_lines_size);
 		return  -EINVAL;
 	}
@@ -586,7 +586,7 @@ int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 
 	/* Check that both in and out rates are supported */
 	if (a->idx_in < 0 || a->idx_out < 0) {
-		comp_err(dev, "src_buffer_lengths(): rates not supported, fs_in: %u, fs_out: %u",
+		comp_err(dev, "rates not supported, fs_in: %u, fs_out: %u",
 			 fs_in, fs_out);
 		return -EINVAL;
 	}

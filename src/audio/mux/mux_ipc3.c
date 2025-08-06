@@ -42,7 +42,7 @@ static int mux_set_values(struct processing_module *mod)
 
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {
-		comp_err(dev, "mux_set_values(): configured number of streams (%u) exceeds maximum = "
+		comp_err(dev, "configured number of streams (%u) exceeds maximum = "
 			    STRINGIFY(MUX_MAX_STREAMS), cfg->num_streams);
 		return -EINVAL;
 	}
@@ -52,7 +52,7 @@ static int mux_set_values(struct processing_module *mod)
 		for (j = i + 1; j < cfg->num_streams; j++) {
 			if (cfg->streams[i].pipeline_id ==
 				cfg->streams[j].pipeline_id) {
-				comp_err(dev, "mux_set_values(): multiple configured streams have same pipeline ID = %u",
+				comp_err(dev, "multiple configured streams have same pipeline ID = %u",
 					 cfg->streams[i].pipeline_id);
 				return -EINVAL;
 			}
@@ -62,7 +62,7 @@ static int mux_set_values(struct processing_module *mod)
 	for (i = 0; i < cfg->num_streams; i++) {
 		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
 			if (popcount(cfg->streams[i].mask[j]) > 1) {
-				comp_err(dev, "mux_set_values(): mux component is not able to mix channels");
+				comp_err(dev, "mux component is not able to mix channels");
 				return -EINVAL;
 			}
 		}
@@ -70,7 +70,7 @@ static int mux_set_values(struct processing_module *mod)
 
 	if (cd->comp_type == SOF_COMP_MUX) {
 		if (mux_mix_check(cfg))
-			comp_err(dev, "mux_set_values(): mux component is not able to mix channels");
+			comp_err(dev, "mux component is not able to mix channels");
 	}
 
 	for (i = 0; i < cfg->num_streams; i++) {

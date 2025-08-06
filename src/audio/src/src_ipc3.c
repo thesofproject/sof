@@ -113,7 +113,7 @@ int src_prepare_general(struct processing_module *mod,
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
 	if (source_format != sink_format) {
-		comp_err(dev, "src_prepare(): Source fmt %d and sink fmt %d are different.",
+		comp_err(dev, "Source fmt %d and sink fmt %d are different.",
 			 source_format, sink_format);
 		ret = -EINVAL;
 		goto out;
@@ -139,7 +139,7 @@ int src_prepare_general(struct processing_module *mod,
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(dev, "src_prepare(): invalid format %d", source_format);
+		comp_err(dev, "invalid format %d", source_format);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -161,20 +161,20 @@ int src_init(struct processing_module *mod)
 	comp_dbg(dev, "src_init()");
 
 	if (dev->ipc_config.type != SOF_COMP_SRC) {
-		comp_err(dev, "src_init(): Wrong IPC config type %u",
+		comp_err(dev, "Wrong IPC config type %u",
 			 dev->ipc_config.type);
 		return -EINVAL;
 	}
 
 	if (!cfg->init_data || cfg->size != sizeof(cd->ipc_config)) {
-		comp_err(dev, "src_init(): Missing or bad size (%zu) init data",
+		comp_err(dev, "Missing or bad size (%zu) init data",
 			 cfg->size);
 		return -EINVAL;
 	}
 
 	/* validate init data - either SRC sink or source rate must be set */
 	if (src_rate_check(cfg->init_data) < 0) {
-		comp_err(dev, "src_init(): SRC sink and source rate are not set");
+		comp_err(dev, "SRC sink and source rate are not set");
 		return -EINVAL;
 	}
 

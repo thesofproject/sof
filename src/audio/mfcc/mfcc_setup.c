@@ -112,19 +112,19 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 
 	/* Check size */
 	if (config->size != sizeof(struct sof_mfcc_config)) {
-		comp_err(dev, "mfcc_setup(): Illegal configuration size %d.", config->size);
+		comp_err(dev, "Illegal configuration size %d.", config->size);
 		return -EINVAL;
 	}
 
 	/* Check currently hard-coded features to match configuration request */
 	if (!config->round_to_power_of_two || !config->snip_edges ||
 	    config->subtract_mean || config->use_energy) {
-		comp_err(dev, "mfcc_setup(): Can't change currently hard-coded features");
+		comp_err(dev, "Can't change currently hard-coded features");
 		return -EINVAL;
 	}
 
 	if (config->sample_frequency != sample_rate) {
-		comp_err(dev, "mfcc_setup(): Config sample_frequency does not match stream");
+		comp_err(dev, "Config sample_frequency does not match stream");
 		return -EINVAL;
 	}
 
@@ -133,14 +133,14 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->low_freq = config->low_freq;
 	state->high_freq = (config->high_freq == 0) ? (sample_rate >> 1) : config->high_freq;
 	if (state->low_freq > state->high_freq) {
-		comp_err(dev, "mfcc_setup(): Config high_freq must be larger than low_freq");
+		comp_err(dev, "Config high_freq must be larger than low_freq");
 		return -EINVAL;
 	}
 
 	comp_info(dev, "mfcc_setup(), source_channel = %d, stream_channels = %d",
 		  config->channel, channels);
 	if (config->channel >= channels) {
-		comp_err(dev, "mfcc_setup(): Illegal channel");
+		comp_err(dev, "Illegal channel");
 		return -EINVAL;
 	}
 
@@ -174,7 +174,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->buffers = rzalloc(SOF_MEM_FLAG_USER,
 				 state->sample_buffers_size);
 	if (!state->buffers) {
-		comp_err(dev, "mfcc_setup(): Failed buffer allocate");
+		comp_err(dev, "Failed buffer allocate");
 		ret = -ENOMEM;
 		goto exit;
 	}
@@ -191,14 +191,14 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 #endif
 	fft->fft_buf = rzalloc(SOF_MEM_FLAG_USER, fft->fft_buffer_size);
 	if (!fft->fft_buf) {
-		comp_err(dev, "mfcc_setup(): Failed FFT buffer allocate");
+		comp_err(dev, "Failed FFT buffer allocate");
 		ret = -ENOMEM;
 		goto free_buffers;
 	}
 
 	fft->fft_out = rzalloc(SOF_MEM_FLAG_USER, fft->fft_buffer_size);
 	if (!fft->fft_out) {
-		comp_err(dev, "mfcc_setup(): Failed FFT output allocate");
+		comp_err(dev, "Failed FFT output allocate");
 		ret = -ENOMEM;
 		goto free_fft_buf;
 	}
@@ -209,7 +209,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	fft->fft_plan = fft_plan_new(fft->fft_buf, fft->fft_out, fft->fft_padded_size,
 				     MFCC_FFT_BITS);
 	if (!fft->fft_plan) {
-		comp_err(dev, "mfcc_setup(): Failed FFT init");
+		comp_err(dev, "Failed FFT init");
 		ret = -EINVAL;
 		goto free_fft_out;
 	}
@@ -222,7 +222,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	/* Setup window */
 	ret = mfcc_get_window(state, config->window);
 	if (ret < 0) {
-		comp_err(dev, "mfcc_setup(): Failed Window function");
+		comp_err(dev, "Failed Window function");
 		goto free_fft_out;
 	}
 
@@ -244,7 +244,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	fb->scratch_length2 = fft->fft_buffer_size / sizeof(int16_t);
 	ret = psy_get_mel_filterbank(fb);
 	if (ret < 0) {
-		comp_err(dev, "mfcc_setup(): Failed Mel filterbank");
+		comp_err(dev, "Failed Mel filterbank");
 		goto free_fft_out;
 	}
 
@@ -255,7 +255,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	dct->ortho = true;
 	ret = dct_initialize_16(dct);
 	if (ret < 0) {
-		comp_err(dev, "mfcc_setup(): Failed DCT init");
+		comp_err(dev, "Failed DCT init");
 		goto free_melfb_data;
 	}
 
@@ -263,7 +263,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->lifter.cepstral_lifter = config->cepstral_lifter; /* Q7.9 max 64.0*/
 	ret = mfcc_get_cepstral_lifter(&state->lifter);
 	if (ret < 0) {
-		comp_err(dev, "mfcc_setup(): Failed cepstral lifter");
+		comp_err(dev, "Failed cepstral lifter");
 		goto free_dct_matrix;
 	}
 

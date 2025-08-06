@@ -96,7 +96,7 @@ static int mfcc_init(struct processing_module *mod)
 	md->private = cd;
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "mfcc_init(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -104,7 +104,7 @@ static int mfcc_init(struct processing_module *mod)
 	/* Get configuration data */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->init_data);
 	if (ret < 0) {
-		comp_err(mod->dev, "mfcc_init(): comp_init_data_blob() failed.");
+		comp_err(mod->dev, "comp_init_data_blob() failed.");
 		goto err_init;
 	}
 
@@ -207,7 +207,7 @@ static int mfcc_prepare(struct processing_module *mod,
 	comp_info(dev, "mfcc_prepare(), source_format = %d, sink_format = %d",
 		  source_format, sink_format);
 	if (audio_stream_get_size(&sinkb->stream) < sink_period_bytes) {
-		comp_err(dev, "mfcc_prepare(): sink buffer size %d is insufficient < %d",
+		comp_err(dev, "sink buffer size %d is insufficient < %d",
 			 audio_stream_get_size(&sinkb->stream), sink_period_bytes);
 		ret = -ENOMEM;
 		goto err;

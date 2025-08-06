@@ -252,14 +252,14 @@ static int rtnr_init(struct processing_module *mod)
 	/* Handler for component data */
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_err(dev, "rtnr_new(): comp_data_blob_handler_new() failed.");
+		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto cd_fail;
 	}
 
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_rtnr->data);
 	if (ret < 0) {
-		comp_err(dev, "rtnr_init(): comp_init_data_blob() failed with error: %d", ret);
+		comp_err(dev, "comp_init_data_blob() failed with error: %d", ret);
 		goto cd_fail;
 	}
 
@@ -268,11 +268,11 @@ static int rtnr_init(struct processing_module *mod)
 
 	cd->rtk_agl = RTKMA_API_Context_Create(cd->process_sample_rate);
 	if (cd->rtk_agl == 0) {
-		comp_err(dev, "rtnr_new(): RTKMA_API_Context_Create failed.");
+		comp_err(dev, "RTKMA_API_Context_Create failed.");
 		ret = -EINVAL;
 		goto cd_fail;
 	}
-	comp_info(dev, "rtnr_new(): RTKMA_API_Context_Create succeeded.");
+	comp_info(dev, "RTKMA_API_Context_Create succeeded.");
 
 	/* comp_is_new_data_blob_available always returns false for the first
 	 * control write with non-empty config. The first non-empty write may
@@ -395,7 +395,7 @@ static int rtnr_get_comp_data(struct processing_module *mod, struct sof_ipc_ctrl
 			       max_data_size,
 			       config,
 			       size);
-		comp_info(mod->dev, "rtnr_get_comp_data(): size= %d, ret = %d",
+		comp_info(mod->dev, "size= %d, ret = %d",
 			  size, ret);
 		if (ret)
 			return ret;
@@ -415,18 +415,18 @@ static int rtnr_get_bin_data(struct processing_module *mod, struct sof_ipc_ctrl_
 	if (!dev)
 		return -ENODEV;
 
-	comp_err(dev, "rtnr_get_bin_data(): type = %u, index = %u, size = %d",
+	comp_err(dev, "type = %u, index = %u, size = %d",
 		 cdata->data->type, cdata->msg_index, cdata->num_elems);
 
 	switch (cdata->data->type) {
 	case SOF_RTNR_CONFIG:
-		comp_err(dev, "rtnr_get_bin_data(): SOF_RTNR_CONFIG");
+		comp_err(dev, "SOF_RTNR_CONFIG");
 		return rtnr_get_comp_config(mod, cdata, max_data_size);
 	case SOF_RTNR_DATA:
-		comp_err(dev, "rtnr_get_bin_data(): SOF_RTNR_DATA");
+		comp_err(dev, "SOF_RTNR_DATA");
 		return rtnr_get_comp_data(mod, cdata, max_data_size);
 	default:
-		comp_err(dev, "rtnr_get_bin_data(): unknown binary data type");
+		comp_err(dev, "unknown binary data type");
 		return -EINVAL;
 	}
 }
@@ -502,11 +502,11 @@ static int rtnr_reconfigure(struct processing_module *mod)
 	}
 
 	if (!config) {
-		comp_err(dev, "rtnr_reconfigure(): Config not set");
+		comp_err(dev, "Config not set");
 		return -EINVAL;
 	}
 
-	comp_info(dev, "rtnr_reconfigure(): New data applied %p (%zu bytes)",
+	comp_info(dev, "New data applied %p (%zu bytes)",
 		  config, size);
 
 	cd->reconfigure = false;
@@ -530,7 +530,7 @@ static int rtnr_set_config_bytes(struct processing_module *mod,
 	 * the whole config data is received.
 	 */
 	if (size < sizeof(cd->config)) {
-		comp_err(dev, "rtnr_set_config_data(): invalid size %u",
+		comp_err(dev, "invalid size %u",
 			 size);
 		return -EINVAL;
 	}
@@ -541,7 +541,7 @@ static int rtnr_set_config_bytes(struct processing_module *mod,
 		       sizeof(cd->config));
 
 	comp_info(dev,
-		  "rtnr_set_config_data(): sample_rate = %u, enabled=%d",
+		  "sample_rate = %u, enabled=%d",
 		  cd->config.params.sample_rate,
 		  cd->config.params.enabled);
 
@@ -566,10 +566,10 @@ static int32_t rtnr_set_value(struct processing_module *mod, void *ctl_data)
 	}
 
 	if (val) {
-		comp_info(dev, "rtnr_set_value(): enabled");
+		comp_info(dev, "enabled");
 		cd->process_enable = true;
 	} else {
-		comp_info(dev, "rtnr_set_value(): passthrough");
+		comp_info(dev, "passthrough");
 		cd->process_enable = false;
 	}
 
@@ -591,7 +591,7 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		if (dev->state < COMP_STATE_READY) {
-			comp_err(dev, "rtnr_set_config(): driver in init!");
+			comp_err(dev, "driver in init!");
 			return -EBUSY;
 		}
 
@@ -621,7 +621,7 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 			return 0;
 		}
 
-		comp_err(dev, "rtnr_set_config(): unknown binary data type");
+		comp_err(dev, "unknown binary data type");
 		return -EINVAL;
 
 	case SOF_CTRL_CMD_SWITCH:
@@ -642,7 +642,7 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 	case SOF_RTNR_CONFIG:
 		comp_dbg(dev, "rtnr_set_config(), SOF_RTNR_CONFIG");
 		if (dev->state < COMP_STATE_READY) {
-			comp_err(dev, "rtnr_set_config(): driver in init!");
+			comp_err(dev, "driver in init!");
 			return -EBUSY;
 		}
 
@@ -650,7 +650,7 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 	case SOF_RTNR_DATA:
 		comp_dbg(dev, "rtnr_set_config(), SOF_RTNR_DATA");
 		if (dev->state < COMP_STATE_READY) {
-			comp_err(dev, "rtnr_set_config(): driver in init!");
+			comp_err(dev, "driver in init!");
 			return -EBUSY;
 		}
 
@@ -815,7 +815,7 @@ static int rtnr_prepare(struct processing_module *mod,
 	/* Check config */
 	ret = rtnr_check_config_validity(mod);
 	if (ret < 0) {
-		comp_err(dev, "rtnr_prepare(): rtnr_check_config_validity() failed.");
+		comp_err(dev, "rtnr_check_config_validity() failed.");
 		goto err;
 	}
 
@@ -832,7 +832,7 @@ static int rtnr_prepare(struct processing_module *mod,
 	comp_info(dev, "rtnr_prepare(), sink_format=%d", cd->sink_format);
 	cd->rtnr_func = rtnr_find_func(cd->sink_format);
 	if (!cd->rtnr_func) {
-		comp_err(dev, "rtnr_prepare(): No suitable processing function found.");
+		comp_err(dev, "No suitable processing function found.");
 		ret = -EINVAL;
 		goto err;
 	}

@@ -495,7 +495,7 @@ static int waves_effect_save_config_blob_to_cache(struct processing_module *mod,
 			data, size);
 	if (ret) {
 		comp_err(dev,
-			"waves_effect_save_config_blob_to_cache(): failed to copy config blob %d",
+			"failed to copy config blob %d",
 			ret);
 		mod_free(mod, waves_codec->config_blob);
 		waves_codec->config_blob = NULL;
@@ -766,7 +766,7 @@ waves_codec_process(struct processing_module *mod,
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
 	if (input_buffers[0].size < codec->mpd.in_buff_size) {
-		comp_dbg(dev, "waves_codec_process(): not enough data to process");
+		comp_dbg(dev, "not enough data to process");
 		return -ENODATA;
 	}
 
@@ -887,12 +887,12 @@ waves_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 	/* whole configuration received, apply it now */
 	ret = waves_effect_apply_config(mod);
 	if (ret) {
-		comp_err(dev, "waves_codec_set_configuration(): error %x: runtime config apply failed",
+		comp_err(dev, "error %x: runtime config apply failed",
 			 ret);
 		return ret;
 	}
 
-	comp_dbg(dev, "waves_codec_set_configuration(): config applied");
+	comp_dbg(dev, "config applied");
 
 	return 0;
 }

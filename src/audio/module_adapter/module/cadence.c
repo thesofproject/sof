@@ -117,7 +117,7 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 
 	/* For ipc4 protocol codec parameters has to be retrieved from configuration */
 	if (!codec->cfg.data) {
-		comp_err(dev, "cadence_codec_resolve_api(): could not find cadence config");
+		comp_err(dev, "could not find cadence config");
 		return -EINVAL;
 	}
 	param = codec->cfg.data;
@@ -133,7 +133,7 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 
 	/* Verify API assignment */
 	if (!api) {
-		comp_err(dev, "cadence_codec_resolve_api(): could not find API function for id %x",
+		comp_err(dev, "could not find API function for id %x",
 			 api_id);
 		return -EINVAL;
 	}
@@ -193,7 +193,7 @@ static int cadence_codec_resolve_api(struct processing_module *mod)
 
 	/* Verify API assignment */
 	if (!api) {
-		comp_err(dev, "cadence_codec_resolve_api(): could not find API function for id %x",
+		comp_err(dev, "could not find API function for id %x",
 			 api_id);
 		return -EINVAL;
 	}
@@ -237,11 +237,11 @@ static int cadence_codec_post_init(struct processing_module *mod)
 	/* Allocate space for codec object */
 	cd->self = rballoc(SOF_MEM_FLAG_USER, obj_size);
 	if (!cd->self) {
-		comp_err(dev, "cadence_codec_init(): failed to allocate space for lib object");
+		comp_err(dev, "failed to allocate space for lib object");
 		return -ENOMEM;
 	}
 
-	comp_dbg(dev, "cadence_codec_post_init(): allocated %d bytes for lib object", obj_size);
+	comp_dbg(dev, "allocated %d bytes for lib object", obj_size);
 
 	/* Set all params to their default values */
 	API_CALL(cd, XA_API_CMD_INIT, XA_CMD_TYPE_INIT_API_PRE_CONFIG_PARAMS,
@@ -270,7 +270,7 @@ static int cadence_codec_init(struct processing_module *mod)
 
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct cadence_codec_data));
 	if (!cd) {
-		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
+		comp_err(dev, "failed to allocate memory for cadence codec data");
 		return -ENOMEM;
 	}
 
@@ -287,7 +287,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		setup_cfg->data = rmalloc(SOF_MEM_FLAG_USER,
 					  cfg->param_size);
 		if (!setup_cfg->data) {
-			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
+			comp_err(dev, "failed to alloc setup config");
 			ret = -ENOMEM;
 			goto free;
 		}
@@ -296,7 +296,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		codec->cfg.data = rmalloc(SOF_MEM_FLAG_USER,
 					  cfg->param_size);
 		if (!codec->cfg.data) {
-			comp_err(dev, "cadence_codec_init(): failed to alloc runtime setup config");
+			comp_err(dev, "failed to alloc runtime setup config");
 			ret = -ENOMEM;
 			goto free_cfg;
 		}
@@ -305,7 +305,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		ret = memcpy_s(codec->cfg.data, codec->cfg.size,
 			       cfg->param, cfg->param_size);
 		if (ret) {
-			comp_err(dev, "cadence_codec_init(): failed to init runtime config %d",
+			comp_err(dev, "failed to init runtime config %d",
 				 ret);
 			goto free_cfg2;
 		}
@@ -315,7 +315,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		ret = memcpy_s(setup_cfg->data, setup_cfg->size,
 			       cfg->param, cfg->param_size);
 		if (ret) {
-			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
+			comp_err(dev, "failed to copy setup config %d", ret);
 			goto free_cfg2;
 		}
 		setup_cfg->avail = true;
@@ -347,7 +347,7 @@ static int cadence_codec_init(struct processing_module *mod)
 
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct cadence_codec_data));
 	if (!cd) {
-		comp_err(dev, "cadence_codec_init(): failed to allocate memory for cadence codec data");
+		comp_err(dev, "failed to allocate memory for cadence codec data");
 		return -ENOMEM;
 	}
 
@@ -362,7 +362,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		setup_cfg->data = rmalloc(SOF_MEM_FLAG_USER,
 					  codec->cfg.size);
 		if (!setup_cfg->data) {
-			comp_err(dev, "cadence_codec_init(): failed to alloc setup config");
+			comp_err(dev, "failed to alloc setup config");
 			ret = -ENOMEM;
 			goto free;
 		}
@@ -372,7 +372,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		ret = memcpy_s(setup_cfg->data, setup_cfg->size,
 			       codec->cfg.init_data, setup_cfg->size);
 		if (ret) {
-			comp_err(dev, "cadence_codec_init(): failed to copy setup config %d", ret);
+			comp_err(dev, "failed to copy setup config %d", ret);
 			goto free_cfg;
 		}
 		setup_cfg->avail = true;
@@ -447,12 +447,12 @@ static int cadence_codec_apply_config(struct processing_module *mod)
 			 param->data, ret);
 		if (ret != LIB_NO_ERROR) {
 			if (LIB_IS_FATAL_ERROR(ret)) {
-				comp_err(dev, "cadence_codec_apply_config(): failed to apply parameter: %d value: %d error: %#x",
+				comp_err(dev, "failed to apply parameter: %d value: %d error: %#x",
 					 param->id, *(int32_t *)param->data, ret);
 
 				return ret;
 			}
-			comp_warn(dev, "cadence_codec_apply_config(): applied parameter %d value %d with return code: %#x",
+			comp_warn(dev, "applied parameter %d value %d with return code: %#x",
 				  param->id, *(int32_t *)param->data, ret);
 		}
 		/* Obtain next parameter, it starts right after the preceding one */
@@ -694,7 +694,7 @@ static int cadence_codec_prepare(struct processing_module *mod,
 		return -ENOMEM;
 	}
 
-	comp_dbg(dev, "cadence_codec_prepare(): allocated %d bytes for memtabs", mem_tabs_size);
+	comp_dbg(dev, "allocated %d bytes for memtabs", mem_tabs_size);
 
 	API_CALL(cd, XA_API_CMD_SET_MEMTABS_PTR, 0, cd->mem_tabs, ret);
 	if (ret != LIB_NO_ERROR) {
@@ -757,7 +757,7 @@ cadence_codec_process(struct processing_module *mod,
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
 	if (input_buffers[0].size < codec->mpd.in_buff_size) {
-		comp_dbg(dev, "cadence_codec_process(): not enough data to process");
+		comp_dbg(dev, "not enough data to process");
 		return -ENODATA;
 	}
 
@@ -896,12 +896,12 @@ cadence_codec_set_configuration(struct processing_module *mod, uint32_t config_i
 	/* whole configuration received, apply it now */
 	ret = cadence_codec_apply_config(mod);
 	if (ret) {
-		comp_err(dev, "cadence_codec_set_configuration(): error %x: runtime config apply failed",
+		comp_err(dev, "error %x: runtime config apply failed",
 			 ret);
 		return ret;
 	}
 
-	comp_dbg(dev, "cadence_codec_set_configuration(): config applied");
+	comp_dbg(dev, "config applied");
 
 	return 0;
 }

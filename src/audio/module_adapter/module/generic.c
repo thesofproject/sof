@@ -28,7 +28,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	comp_dbg(dev, "module_load_config() start");
 
 	if (!cfg || !size) {
-		comp_err(dev, "module_load_config(): wrong input params! dev %zx, cfg %zx size %zu",
+		comp_err(dev, "wrong input params! dev %zx, cfg %zx size %zu",
 			 (size_t)dev, (size_t)cfg, size);
 		return -EINVAL;
 	}
@@ -46,7 +46,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 		dst->data = rballoc(SOF_MEM_FLAG_USER, size);
 	}
 	if (!dst->data) {
-		comp_err(dev, "module_load_config(): failed to allocate space for setup config.");
+		comp_err(dev, "failed to allocate space for setup config.");
 		return -ENOMEM;
 	}
 
@@ -77,7 +77,7 @@ int module_init(struct processing_module *mod)
 		return -EPERM;
 #endif
 	if (!interface) {
-		comp_err(dev, "module_init(): module interface not defined for comp id %d",
+		comp_err(dev, "module interface not defined for comp id %d",
 			 dev_comp_id(dev));
 		return -EIO;
 	}
@@ -86,7 +86,7 @@ int module_init(struct processing_module *mod)
 	if (!interface->init ||
 	    (!!interface->process + !!interface->process_audio_stream +
 	     !!interface->process_raw_data < 1)) {
-		comp_err(dev, "module_init(): comp %d is missing mandatory interfaces",
+		comp_err(dev, "comp %d is missing mandatory interfaces",
 			 dev_comp_id(dev));
 		return -EIO;
 	}
@@ -283,7 +283,7 @@ int module_process_legacy(struct processing_module *mod,
 	struct module_data *md = &mod->priv;
 
 	if (md->state != MODULE_IDLE) {
-		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
+		comp_err(dev, "wrong state of comp_id %x, state %d",
 			 dev_comp_id(dev), md->state);
 		return -EPERM;
 	}
@@ -329,7 +329,7 @@ int module_process_sink_src(struct processing_module *mod,
 #if CONFIG_IPC_MAJOR_3
 	struct module_data *md = &mod->priv;
 	if (md->state != MODULE_IDLE) {
-		comp_err(dev, "module_process(): wrong state of comp_id %x, state %d",
+		comp_err(dev, "wrong state of comp_id %x, state %d",
 			 dev_comp_id(dev), md->state);
 		return -EPERM;
 	}
@@ -426,7 +426,7 @@ int module_free(struct processing_module *mod)
 	if (ops->free) {
 		ret = ops->free(mod);
 		if (ret)
-			comp_warn(mod->dev, "module_free(): error: %d for %d",
+			comp_warn(mod->dev, "error: %d for %d",
 				  ret, dev_comp_id(mod->dev));
 	}
 
@@ -489,7 +489,7 @@ int module_set_configuration(struct processing_module *mod,
 
 		/* Check that there is no previous request in progress */
 		if (md->runtime_params) {
-			comp_err(dev, "module_set_configuration(): error: busy with previous request");
+			comp_err(dev, "error: busy with previous request");
 			return -EBUSY;
 		}
 
@@ -497,7 +497,7 @@ int module_set_configuration(struct processing_module *mod,
 			return 0;
 
 		if (md->new_cfg_size > CONFIG_MODULE_MAX_BLOB_SIZE) {
-			comp_err(dev, "module_set_configuration(): error: blob size is too big cfg size %zu, allowed %d",
+			comp_err(dev, "error: blob size is too big cfg size %zu, allowed %d",
 				 md->new_cfg_size, CONFIG_MODULE_MAX_BLOB_SIZE);
 			return -EINVAL;
 		}
@@ -505,7 +505,7 @@ int module_set_configuration(struct processing_module *mod,
 		/* Allocate buffer for new params */
 		md->runtime_params = rballoc(SOF_MEM_FLAG_USER, md->new_cfg_size);
 		if (!md->runtime_params) {
-			comp_err(dev, "module_set_configuration(): space allocation for new params failed");
+			comp_err(dev, "space allocation for new params failed");
 			return -ENOMEM;
 		}
 
@@ -513,7 +513,7 @@ int module_set_configuration(struct processing_module *mod,
 		break;
 	default:
 		if (!md->runtime_params) {
-			comp_err(dev, "module_set_configuration(): error: no memory available for runtime params in consecutive load");
+			comp_err(dev, "error: no memory available for runtime params in consecutive load");
 			return -EIO;
 		}
 
@@ -526,7 +526,7 @@ int module_set_configuration(struct processing_module *mod,
 
 	ret = memcpy_s(dst, md->new_cfg_size - offset, fragment, fragment_size);
 	if (ret < 0) {
-		comp_err(dev, "module_set_configuration(): error: %d failed to copy fragment",
+		comp_err(dev, "error: %d failed to copy fragment",
 			 ret);
 		return ret;
 	}
@@ -538,9 +538,9 @@ int module_set_configuration(struct processing_module *mod,
 	/* config fully copied, now load it */
 	ret = module_load_config(dev, md->runtime_params, md->new_cfg_size);
 	if (ret)
-		comp_err(dev, "module_set_configuration(): error %d: config failed", ret);
+		comp_err(dev, "error %d: config failed", ret);
 	else
-		comp_dbg(dev, "module_set_configuration(): config load successful");
+		comp_dbg(dev, "config load successful");
 
 	md->new_cfg_size = 0;
 
