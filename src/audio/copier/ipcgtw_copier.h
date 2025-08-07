@@ -95,7 +95,7 @@ struct ipc4_ipc_gateway_cmd_data_reply {
 int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 			  void *reply_payload, uint32_t *reply_payload_size);
 
-int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
+int copier_ipcgtw_create(struct processing_module *mod, struct copier_data *cd,
 			 const struct ipc4_copier_module_cfg *copier, struct pipeline *pipeline);
 
 #if CONFIG_IPC4_GATEWAY
