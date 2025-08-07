@@ -164,7 +164,6 @@ static inline int comp_trigger_local(struct comp_dev *dev, int cmd)
 		case COMP_TRIGGER_XRUN:
 		case COMP_TRIGGER_PAUSE:
 		case COMP_TRIGGER_STOP:
-			schedule_task_cancel(dev->task);
 			break;
 		}
 	}

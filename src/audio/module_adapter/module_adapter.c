@@ -1270,6 +1270,9 @@ void module_adapter_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "start");
 
+	if (dev->task)
+		schedule_task_cancel(dev->task);
+
 	ret = module_free(mod);
 	if (ret)
 		comp_err(dev, "failed with error: %d", ret);
