@@ -9,7 +9,6 @@
 #include <sof/audio/pipeline.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <sof/lib/notifier.h>
@@ -126,7 +125,7 @@ static int aria_init(struct processing_module *mod)
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd) {
 		return -ENOMEM;
 	}
@@ -145,10 +144,9 @@ static int aria_init(struct processing_module *mod)
 	}
 	mod_data->private = cd;
 
-	buf = rballoc(SOF_MEM_FLAG_USER, req_mem);
+	buf = mod_alloc(mod, req_mem);
 
 	if (!buf) {
-		rfree(cd);
 		comp_err(dev, "allocation failed for size %d", req_mem);
 		return -ENOMEM;
 	}
@@ -158,10 +156,6 @@ static int aria_init(struct processing_module *mod)
 
 static int aria_free(struct processing_module *mod)
 {
-	struct aria_data *cd = module_get_private_data(mod);
-
-	rfree(cd->data_addr);
-	rfree(cd);
 	return 0;
 }
 
