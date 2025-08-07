@@ -11,9 +11,9 @@
 #include <rtos/string.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/format.h>
-#include <sof/lib/fast-get.h>
 #include <sof/lib/memory.h>
 #include <user/trace.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include "asrc_farrow.h"
 
 LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
@@ -243,7 +243,7 @@ static const struct asrc_filter_params c_filter_params[CR_NUM] = {
  * Initialise the pointers to the filters, set the number of filters
  * and their length
  */
-static enum asrc_error_code initialise_filter(struct comp_dev *dev,
+static enum asrc_error_code initialise_filter(struct processing_module *mod,
 					      struct asrc_farrow *src_obj);
 
 /*
@@ -268,11 +268,12 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
  * Pointers to each channels data. Buffers are allocated externally.
  */
 
-enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
+enum asrc_error_code asrc_get_required_size(struct processing_module *mod,
 					    int *required_size,
 					    int num_channels,
 					    int bit_depth)
 {
+	struct comp_dev *dev = mod->dev;
 	int size;
 
 	/* check for parameter errors */
@@ -318,7 +319,7 @@ enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_initialise(struct comp_dev *dev,
+enum asrc_error_code asrc_initialise(struct processing_module *mod,
 				     struct asrc_farrow *src_obj,
 				     int num_channels,
 				     int32_t fs_prim,
@@ -331,6 +332,7 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
 				     enum asrc_control_mode control_mode,
 				     enum asrc_operation_mode operation_mode)
 {
+	struct comp_dev *dev = mod->dev;
 	enum asrc_error_code error_code;
 
 	/* check for parameter errors */
@@ -410,7 +412,7 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
 	 * also sets the pointer to the corresponding
 	 * calc_impulse_response_nX function.
 	 */
-	error_code = initialise_filter(dev, src_obj);
+	error_code = initialise_filter(mod, src_obj);
 
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
@@ -438,10 +440,12 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
 	return ASRC_EC_OK;
 }
 
-enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
+enum asrc_error_code asrc_set_fs_ratio(struct processing_module *mod,
 				       struct asrc_farrow *src_obj,
 				       int32_t fs_prim, int32_t fs_sec)
 {
+	struct comp_dev *dev = mod->dev;
+
 	/* Check for parameter errors */
 	if (!src_obj) {
 		comp_err(dev, "asrc_set_fs_ratio(), null src_obj");
@@ -490,7 +494,7 @@ enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
 	/* See initialise_asrc(...) for further information
 	 * Update the filters accordingly
 	 */
-	enum asrc_error_code error_code = initialise_filter(dev, src_obj);
+	enum asrc_error_code error_code = initialise_filter(mod, src_obj);
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
 		comp_err(dev, "asrc_set_fs_ratio(), failed filter initialise");
@@ -554,28 +558,29 @@ enum asrc_error_code asrc_set_output_format(struct comp_dev *dev,
 	return ASRC_EC_OK;
 }
 
-static const int32_t *__get_polyphase_filter(const int32_t *filter, size_t size)
+static const int32_t *__get_polyphase_filter(struct processing_module *mod,
+					     const int32_t *filter, size_t size)
 {
 #if CONFIG_FAST_GET
-	return fast_get(filter, size);
+	return mod_fast_get(mod, filter, size);
 #else
 	return filter;
 #endif
 }
 
-#define get_polyphase_filter(f) __get_polyphase_filter(f, sizeof(f))
+#define get_polyphase_filter(m, f) __get_polyphase_filter(m, f, sizeof(f))
 
-static void put_polyphase_filter(const int32_t *filter)
+static void put_polyphase_filter(struct processing_module *mod, const int32_t *filter)
 {
 #if CONFIG_FAST_GET
-	fast_put(filter);
+	mod_fast_put(mod, filter);
 #endif
 }
 
-void asrc_free_polyphase_filter(struct asrc_farrow *src_obj)
+void asrc_free_polyphase_filter(struct processing_module *mod, struct asrc_farrow *src_obj)
 {
 	if (src_obj && src_obj->polyphase_filters) {
-		put_polyphase_filter(src_obj->polyphase_filters);
+		put_polyphase_filter(mod, src_obj->polyphase_filters);
 		src_obj->polyphase_filters = NULL;
 	}
 }
@@ -583,9 +588,10 @@ void asrc_free_polyphase_filter(struct asrc_farrow *src_obj)
 /*
  * FILTER FUNCTIONS
  */
-static enum asrc_error_code initialise_filter(struct comp_dev *dev,
+static enum asrc_error_code initialise_filter(struct processing_module *mod,
 					      struct asrc_farrow *src_obj)
 {
+	struct comp_dev *dev = mod->dev;
 	int fs_in;
 	int fs_out;
 
@@ -606,7 +612,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 	/* Reset coefficients for possible exit with error. */
 	src_obj->filter_length = 0;
 	src_obj->num_filters = 0;
-	asrc_free_polyphase_filter(src_obj);
+	asrc_free_polyphase_filter(mod, src_obj);
 
 	if (fs_in == 0 || fs_out == 0) {
 		/* Avoid possible divisions by zero. */
@@ -622,7 +628,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 			c_filter_params[CR_48000TO48000].filter_length;
 		src_obj->num_filters =
 			c_filter_params[CR_48000TO48000].num_filters;
-		src_obj->polyphase_filters = get_polyphase_filter(coeff48000to48000);
+		src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to48000);
 	} else if (fs_in <= fs_out) {
 		/* All upsampling use cases can share the same set of
 		 * filter coefficients.
@@ -631,7 +637,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 			c_filter_params[CR_44100TO48000].filter_length;
 		src_obj->num_filters =
 			c_filter_params[CR_44100TO48000].num_filters;
-		src_obj->polyphase_filters = get_polyphase_filter(coeff44100to48000);
+		src_obj->polyphase_filters = get_polyphase_filter(mod, coeff44100to48000);
 	} else if (fs_in == 48000) {
 		switch (fs_out) {
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_08000)
@@ -640,7 +646,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO08000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO08000].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to08000);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to08000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_11025)
@@ -649,7 +655,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO11025].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO11025].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to11025);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to11025);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_12000)
@@ -658,7 +664,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO12000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO12000].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to12000);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to12000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_16000)
@@ -667,7 +673,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO16000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO16000].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to16000);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to16000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_22050)
@@ -676,7 +682,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO22050].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO22050].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to22050);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to22050);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_24000)
@@ -685,7 +691,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO24000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO24000].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to24000);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to24000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_32000)
@@ -694,7 +700,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO32000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO32000].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to32000);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to32000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_48000_TO_44100)
@@ -703,7 +709,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_48000TO44100].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_48000TO44100].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff48000to44100);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff48000to44100);
 			break;
 #endif
 		default:
@@ -719,7 +725,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_24000TO08000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_24000TO08000].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff24000to08000);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff24000to08000);
 			break;
 #endif
 #if (CONFIG_ASRC_SUPPORT_CONVERSION_24000_TO_16000)
@@ -728,7 +734,7 @@ static enum asrc_error_code initialise_filter(struct comp_dev *dev,
 				c_filter_params[CR_24000TO16000].filter_length;
 			src_obj->num_filters =
 				c_filter_params[CR_24000TO16000].num_filters;
-			src_obj->polyphase_filters = get_polyphase_filter(coeff24000to16000);
+			src_obj->polyphase_filters = get_polyphase_filter(mod, coeff24000to16000);
 			break;
 #endif
 		default:
