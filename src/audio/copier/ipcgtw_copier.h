@@ -95,17 +95,17 @@ struct ipc4_ipc_gateway_cmd_data_reply {
 int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 			  void *reply_payload, uint32_t *reply_payload_size);
 
-int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
+int copier_ipcgtw_create(struct processing_module *mod,
 			 const struct ipc4_copier_module_cfg *copier, struct pipeline *pipeline);
 
 #if CONFIG_IPC4_GATEWAY
-void copier_ipcgtw_free(struct copier_data *cd);
+void copier_ipcgtw_free(struct processing_module *mod);
 int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params);
 
 void copier_ipcgtw_reset(struct comp_dev *dev);
 #else
-static inline void copier_ipcgtw_free(struct copier_data *cd) {}
+static inline void copier_ipcgtw_free(struct processing_module *mod) {}
 static inline void copier_ipcgtw_reset(struct comp_dev *dev) {}
 static inline int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 				       struct sof_ipc_stream_params *params)

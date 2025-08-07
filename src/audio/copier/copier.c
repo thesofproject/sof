@@ -15,7 +15,6 @@
 #include <sof/ipc/topology.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
-#include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <sof/lib/memory.h>
@@ -82,13 +81,12 @@ static void mic_privacy_event(void *arg, enum notify_id type, void *data)
 	}
 }
 
-static int mic_privacy_configure(struct comp_dev *dev, struct copier_data *cd)
+static int mic_privacy_configure(struct processing_module *mod, struct copier_data *cd)
 {
 	struct mic_privacy_data *mic_priv_data;
 	int ret;
 
-	mic_priv_data = rzalloc(SOF_MEM_FLAG_USER,
-				sizeof(struct mic_privacy_data));
+	mic_priv_data = mod_zalloc(mod, sizeof(struct mic_privacy_data));
 	if (!mic_priv_data)
 		return -ENOMEM;
 
@@ -100,10 +98,10 @@ static int mic_privacy_configure(struct comp_dev *dev, struct copier_data *cd)
 	uint32_t zeroing_wait_time = (mic_privacy_get_dma_zeroing_wait_time() * 1000) /
 				     ADSP_RTC_FREQUENCY;
 
-	ret = copier_gain_set_params(dev, &mic_priv_data->mic_priv_gain_params,
+	ret = copier_gain_set_params(mod->dev, &mic_priv_data->mic_priv_gain_params,
 				     zeroing_wait_time, SOF_DAI_INTEL_NONE);
 	if (ret != 0) {
-		rfree(mic_priv_data);
+		mod_free(mod, mic_priv_data);
 		return ret;
 	}
 
@@ -111,20 +109,23 @@ static int mic_privacy_configure(struct comp_dev *dev, struct copier_data *cd)
 
 	ret = notifier_register(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,
 				mic_privacy_event, 0);
+
 	if (ret != 0)
-		rfree(mic_priv_data);
+		mod_free(mod, mic_priv_data);
 
 	return ret;
 }
 
-static void mic_privacy_free(struct copier_data *cd)
+static void mic_privacy_free(struct processing_module *mod)
 {
+	struct copier_data *cd = module_get_private_data(mod);
+
 	if (cd->gtw_type == ipc4_gtw_dmic)
 		mic_privacy_enable_dmic_irq(false);
 
 	notifier_unregister(cd->mic_priv, NULL, NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE);
 
-	rfree(cd->mic_priv);
+	mod_free(mod, cd->mic_priv);
 }
 #endif
 
@@ -141,7 +142,7 @@ __cold static int copier_init(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -163,8 +164,7 @@ __cold static int copier_init(struct processing_module *mod)
 	 */
 	if (copier->gtw_cfg.config_length) {
 		gtw_cfg_size = copier->gtw_cfg.config_length << 2;
-		gtw_cfg = rmalloc(SOF_MEM_FLAG_USER,
-				  gtw_cfg_size);
+		gtw_cfg = mod_alloc(mod, gtw_cfg_size);
 		if (!gtw_cfg) {
 			ret = -ENOMEM;
 			goto error_cd;
@@ -191,7 +191,7 @@ __cold static int copier_init(struct processing_module *mod)
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			ret = copier_host_create(dev, cd, copier, dev->pipeline);
+			ret = copier_host_create(mod, copier, dev->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create host");
 				goto error;
@@ -199,7 +199,7 @@ __cold static int copier_init(struct processing_module *mod)
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 			if (cd->direction == SOF_IPC_STREAM_CAPTURE &&
 			    node_id.f.dma_type == ipc4_hda_host_output_class) {
-				ret = mic_privacy_configure(dev, cd);
+				ret = mic_privacy_configure(mod, cd);
 				if (ret < 0) {
 					comp_err(dev, "unable to configure mic privacy");
 					goto error;
@@ -221,7 +221,7 @@ __cold static int copier_init(struct processing_module *mod)
 			}
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 			if (cd->direction == SOF_IPC_STREAM_CAPTURE) {
-				ret = mic_privacy_configure(dev, cd);
+				ret = mic_privacy_configure(mod, cd);
 				if (ret < 0) {
 					comp_err(dev, "unable to configure mic privacy");
 					goto error;
@@ -232,7 +232,7 @@ __cold static int copier_init(struct processing_module *mod)
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
 		case ipc4_ipc_input_class:
-			ret = copier_ipcgtw_create(dev, cd, copier, dev->pipeline);
+			ret = copier_ipcgtw_create(mod, copier, dev->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create IPC gateway");
 				goto error;
@@ -257,9 +257,9 @@ __cold static int copier_init(struct processing_module *mod)
 	dev->state = COMP_STATE_READY;
 	return 0;
 error:
-	rfree(gtw_cfg);
+	mod_free(mod, gtw_cfg);
 error_cd:
-	rfree(cd);
+	mod_free(mod, cd);
 	return ret;
 }
 
@@ -271,16 +271,16 @@ __cold static int copier_free(struct processing_module *mod)
 	assert_can_be_cold();
 
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
-	mic_privacy_free(cd);
+	mic_privacy_free(mod);
 #endif
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw)
-			copier_host_free(cd);
+			copier_host_free(mod);
 		else
 			/* handle gtw case */
-			copier_ipcgtw_free(cd);
+			copier_ipcgtw_free(mod);
 		break;
 	case SOF_COMP_DAI:
 		copier_dai_free(cd);
@@ -290,8 +290,8 @@ __cold static int copier_free(struct processing_module *mod)
 	}
 
 	if (cd)
-		rfree(cd->gtw_cfg);
-	rfree(cd);
+		mod_free(mod, cd->gtw_cfg);
+	mod_free(mod, cd);
 
 	return 0;
 }

@@ -2,6 +2,7 @@
 //
 // Copyright 2023 Intel Corporation. All rights reserved.
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
 #include <sof/lib/memory.h>
@@ -207,10 +208,12 @@ void copier_ipcgtw_reset(struct comp_dev *dev)
 	}
 }
 
-__cold int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
+__cold int copier_ipcgtw_create(struct processing_module *mod,
 				const struct ipc4_copier_module_cfg *copier,
 				struct pipeline *pipeline)
 {
+	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct comp_ipc_config *config = &dev->ipc_config;
 	struct ipcgtw_data *ipcgtw_data;
 	const struct ipc4_copier_gateway_cfg *gtw_cfg;
@@ -231,7 +234,7 @@ __cold int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	config->type = SOF_COMP_HOST;
 	cd->gtw_type = ipc4_gtw_host;
 
-	ipcgtw_data = rzalloc(SOF_MEM_FLAG_USER, sizeof(*ipcgtw_data));
+	ipcgtw_data = mod_zalloc(mod, sizeof(*ipcgtw_data));
 	if (!ipcgtw_data)
 		return -ENOMEM;
 
@@ -273,14 +276,16 @@ __cold int copier_ipcgtw_create(struct comp_dev *dev, struct copier_data *cd,
 	return 0;
 
 e_ipcgtw:
-	rfree(ipcgtw_data);
+	mod_free(mod, ipcgtw_data);
 	return ret;
 }
 
-__cold void copier_ipcgtw_free(struct copier_data *cd)
+__cold void copier_ipcgtw_free(struct processing_module *mod)
 {
+	struct copier_data *cd = module_get_private_data(mod);
+
 	assert_can_be_cold();
 
 	list_item_del(&cd->ipcgtw_data->item);
-	rfree(cd->ipcgtw_data);
+	mod_free(mod, cd->ipcgtw_data);
 }
