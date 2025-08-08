@@ -355,6 +355,9 @@ static int copier_prepare(struct processing_module *mod,
 				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
 			return -EINVAL;
 		}
+
+		/* Debug: Log initial converter assignment */
+		comp_info(dev, "copier_prepare: set initial converter[0]=%p", cd->converter[0]);
 	}
 
 	return 0;
@@ -543,11 +546,16 @@ static int do_conversion_copy(struct comp_dev *dev,
 	i = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
 	if (i >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 		return -EINVAL;
+
+	/* Log buffer ID, sink_queue_id, and converter availability */
+	comp_info(dev, "do_conversion_copy: buf_id=0x%x, sink_queue_id=%d, converter[%d]=%p",
+		  buf_get_id(sink), i, i, cd->converter[i]);
+
 	buffer_stream_invalidate(src, processed_data->source_bytes);
 
 	/* Validate converter function pointer to prevent NULL dereference crash */
 	if (!cd->converter[i]) {
-		comp_err(mod->dev, "NULL converter function for sink_queue_id=%d", i);
+		comp_err(dev, "NULL converter function for sink_queue_id=%d", i);
 		return -EFAULT;
 	}
 
@@ -627,10 +635,16 @@ static int copier_module_copy(struct processing_module *mod,
 			if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 				return -EINVAL;
 
+			/* Log buffer ID, sink_queue_id, and converter availability */
+			comp_info(mod->dev, "copier_module_copy: output[%d] buf_id=0x%x, sink_queue_id=%d, converter[%d]=%p",
+				  i, buf_get_id(sink_c), sink_queue_id, sink_queue_id,
+				  cd->converter[sink_queue_id]);
+
 			comp_get_copy_limits(src_c, sink_c, &processed_data);
 
 			source_samples = processed_data.frames *
 					audio_stream_get_channels(input_buffers[0].data);
+
 			/* Validate converter function pointer to prevent NULL dereference crash */
 			if (!cd->converter[sink_queue_id]) {
 				comp_err(mod->dev, "NULL converter function for sink_queue_id=%d",
@@ -791,6 +805,10 @@ __cold static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 		return -EINVAL;
 	}
 
+	/* Debug: Log SET_SINK_FORMAT details */
+	comp_info(dev, "copier_set_sink_fmt: sink_id=%d, setting converter[%d]",
+		  sink_fmt->sink_id, sink_fmt->sink_id);
+
 	if (memcmp(&cd->config.base.audio_fmt, &sink_fmt->source_fmt,
 		   sizeof(sink_fmt->source_fmt))) {
 		comp_err(dev, "error: source fmt should be equal to input fmt");
@@ -813,6 +831,10 @@ __cold static int copier_set_sink_fmt(struct comp_dev *dev, const void *data,
 	cd->converter[sink_fmt->sink_id] = get_converter_func(&sink_fmt->source_fmt,
 							      &sink_fmt->sink_fmt, ipc4_gtw_none,
 							      ipc4_bidirection, chmap);
+
+	/* Debug: Log converter assignment result */
+	comp_info(dev, "copier_set_sink_fmt: assigned converter[%d]=%p",
+		  sink_fmt->sink_id, cd->converter[sink_fmt->sink_id]);
 
 	return 0;
 }
