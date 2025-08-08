@@ -319,6 +319,13 @@ static int src_2s(struct comp_data *cd,
 		n_written += s2.times * cd->src.stage2->blk_out;
 	}
 
+	if (n_written == 0) {
+		if (cd->start_with_no_output_produced)
+			n_written = cd->sink_frames;
+	} else {
+		cd->start_with_no_output_produced = false;
+	}
+
 	/* commit the processed data */
 	source_release_data(source, n_read * source_get_frame_bytes(source));
 	sink_commit_buffer(sink, n_written * sink_get_frame_bytes(sink));
@@ -562,6 +569,7 @@ int src_params_general(struct processing_module *mod,
 		break;
 	case 2:
 		cd->src_func = src_2s; /* Default 2 stage SRC */
+		cd->start_with_no_output_produced = true;
 		break;
 	default:
 		/* This is possibly due to missing coefficients for
