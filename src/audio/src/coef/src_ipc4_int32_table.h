@@ -50,6 +50,7 @@
 #include "src_ipc4_int32_7_8_2468_5000.h"
 #include "src_ipc4_int32_7_8_2721_5000.h"
 #include "src_ipc4_int32_7_8_4535_5000.h"
+#include "src_ipc4_int32_7_20_2976_5000.h"
 #include "src_ipc4_int32_7_40_2976_5000.h"
 #include "src_ipc4_int32_8_7_1361_5000.h"
 #include "src_ipc4_int32_8_7_2468_5000.h"
@@ -93,7 +94,6 @@
 #include "src_ipc4_int32_21_32_4535_5000.h"
 #include "src_ipc4_int32_21_40_2381_5000.h"
 #include "src_ipc4_int32_21_40_3968_5000.h"
-#include "src_ipc4_int32_21_80_3968_5000.h"
 #include "src_ipc4_int32_32_21_4535_5000.h"
 #include "src_ipc4_int32_40_7_2976_5000.h"
 #include "src_ipc4_int32_40_21_2381_5000.h"
@@ -127,7 +127,7 @@ static const struct src_stage * const src_table1[13][16] = {
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
-	 &src_int32_21_80_3968_5000, &src_int32_0_0_0_0,
+	 &src_int32_7_20_2976_5000, &src_int32_0_0_0_0,
 	 &src_int32_0_0_0_0, &src_int32_7_40_2976_5000,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0
 	},
@@ -146,7 +146,7 @@ static const struct src_stage * const src_table1[13][16] = {
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
 	 &src_int32_21_40_3968_5000, &src_int32_0_0_0_0,
-	 &src_int32_0_0_0_0, &src_int32_21_80_3968_5000,
+	 &src_int32_0_0_0_0, &src_int32_7_20_2976_5000,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0
 	},
 	{ &src_int32_3_1_4535_5000, &src_int32_8_7_4535_5000,
@@ -174,7 +174,7 @@ static const struct src_stage * const src_table1[13][16] = {
 	 &src_int32_7_3_4535_5000, &src_int32_1_1_0_0,
 	 &src_int32_21_20_4167_5000, &src_int32_21_20_3125_5000,
 	 &src_int32_1_2_4535_5000, &src_int32_21_40_3968_5000,
-	 &src_int32_1_2_2268_5000, &src_int32_21_80_3968_5000
+	 &src_int32_1_2_2268_5000, &src_int32_7_20_2976_5000
 	},
 	{ &src_int32_2_1_4535_5000, &src_int32_32_21_4535_5000,
 	 &src_int32_2_1_4535_5000, &src_int32_3_1_4535_5000,
@@ -247,7 +247,7 @@ static const struct src_stage * const src_table2[13][16] = {
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
-	 &src_int32_7_8_4535_5000, &src_int32_0_0_0_0,
+	 &src_int32_21_32_4535_5000, &src_int32_0_0_0_0,
 	 &src_int32_0_0_0_0, &src_int32_21_32_4535_5000,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0
 	},
@@ -266,7 +266,7 @@ static const struct src_stage * const src_table2[13][16] = {
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0,
 	 &src_int32_7_8_4535_5000, &src_int32_0_0_0_0,
-	 &src_int32_0_0_0_0, &src_int32_7_8_4535_5000,
+	 &src_int32_0_0_0_0, &src_int32_21_32_4535_5000,
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0
 	},
 	{ &src_int32_1_1_0_0, &src_int32_40_21_3968_5000,
@@ -294,7 +294,7 @@ static const struct src_stage * const src_table2[13][16] = {
 	 &src_int32_1_2_3887_5000, &src_int32_1_1_0_0,
 	 &src_int32_7_8_4535_5000, &src_int32_21_32_4535_5000,
 	 &src_int32_1_1_0_0, &src_int32_7_8_4535_5000,
-	 &src_int32_1_2_4535_5000, &src_int32_7_8_4535_5000
+	 &src_int32_1_2_4535_5000, &src_int32_21_32_4535_5000
 	},
 	{ &src_int32_3_1_2268_5000, &src_int32_20_7_2976_5000,
 	 &src_int32_2_1_2268_5000, &src_int32_1_1_0_0,
