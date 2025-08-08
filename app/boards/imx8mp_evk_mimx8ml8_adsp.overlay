@@ -12,6 +12,10 @@
 	};
 };
 
+&emul_dma {
+	status = "okay";
+};
+
 &sdma3 {
 	status = "okay";
 };
@@ -25,5 +29,9 @@
 };
 
 &micfil {
+	status = "okay";
+};
+
+&virtual_dai14 {
 	status = "okay";
 };
