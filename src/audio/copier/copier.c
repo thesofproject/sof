@@ -545,6 +545,12 @@ static int do_conversion_copy(struct comp_dev *dev,
 		return -EINVAL;
 	buffer_stream_invalidate(src, processed_data->source_bytes);
 
+	/* Validate converter function pointer to prevent NULL dereference crash */
+	if (!cd->converter[i]) {
+		comp_err(mod->dev, "NULL converter function for sink_queue_id=%d", i);
+		return -EFAULT;
+	}
+
 	cd->converter[i](&src->stream, 0, &sink->stream, 0,
 			 processed_data->frames * audio_stream_get_channels(&src->stream),
 			 DUMMY_CHMAP);
@@ -625,6 +631,13 @@ static int copier_module_copy(struct processing_module *mod,
 
 			source_samples = processed_data.frames *
 					audio_stream_get_channels(input_buffers[0].data);
+			/* Validate converter function pointer to prevent NULL dereference crash */
+			if (!cd->converter[sink_queue_id]) {
+				comp_err(mod->dev, "NULL converter function for sink_queue_id=%d",
+					 sink_queue_id);
+				return -EFAULT;
+			}
+
 			cd->converter[sink_queue_id](input_buffers[0].data, 0,
 						     output_buffers[i].data, 0,
 						     source_samples, DUMMY_CHMAP);
