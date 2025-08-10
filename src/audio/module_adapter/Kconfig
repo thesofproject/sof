@@ -3,6 +3,16 @@
 menu "Processing modules"
 	visible if COMP_MODULE_ADAPTER
 
+	config MODULE_MEMORY_API_CONTAINER_CHUNK_SIZE
+		int "Number of memory containers to allocate at once"
+		default 16
+		help
+		  The per module resource containers are allocated in
+		  chunks. The unused containers are kept in free
+		  list. When the free list is empty the amount of
+		  containers to allocate at once is selected by this
+		  config option.
+
 	config CADENCE_CODEC
 		bool "Cadence codec"
 		default n

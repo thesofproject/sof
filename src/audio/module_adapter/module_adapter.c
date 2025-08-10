@@ -1292,10 +1292,11 @@ EXPORT_SYMBOL(module_adapter_free);
 
 size_t module_adapter_heap_usage(struct processing_module *mod)
 {
+	struct module_resources *res = &mod->priv.resources;
 	struct list_item *mem_list, *_mem_list;
 	size_t size = 0;
 
-	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
+	list_for_item_safe(mem_list, _mem_list, &res->mem_list) {
 		struct module_memory *mem = container_of(mem_list, struct module_memory, mem_list);
 
 		size += mem->size;
