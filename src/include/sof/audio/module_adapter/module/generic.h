@@ -117,7 +117,17 @@ struct module_param {
 
 /**
  * \struct module_memory
- * \brief module memory block - used for every memory allocated by module
+ * \brief module resources block - used for module allocation records
+ */
+struct module_resources {
+	struct list_item mem_list;
+	struct list_item free_cont_list;
+	struct list_item cont_chunk_list;
+};
+
+/**
+ * \struct module_memory
+ * \brief module memory container - used for every memory allocated by module
  */
 struct module_memory {
 	void *ptr; /**< A pointr to particular memory block */
