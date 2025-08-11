@@ -14,10 +14,11 @@
 #include "drc.h"
 
 /* drc reset function */
-void drc_reset_state(struct drc_state *state);
+void drc_reset_state(struct processing_module *mod, struct drc_state *state);
 
 /* drc init functions */
-int drc_init_pre_delay_buffers(struct drc_state *state,
+int drc_init_pre_delay_buffers(struct processing_module *mod,
+			       struct drc_state *state,
 			       size_t sample_bytes,
 			       int channels);
 int drc_set_pre_delay_time(struct drc_state *state,
