@@ -64,7 +64,350 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
 }
 
 /*
- * function called after every LL tick
+ * DP with Earliest Deadline First scheduling
+ *
+ * DP a.k.a. "Data processing" is an async scheduling method of data processing modules.
+ * Each module works in a separate, preemptible thread with lower priority than LL thread.
+ * It allows processing with periods longer than 1ms, on-demand processing, etc.
+ *
+ * Unlike in LL "low latency" method where a module started every 1ms cycle and all of LL modules
+ * together MUST finish processing 1ms, DP works async and gets CPU when a module is "ready for
+ * processing", what means:
+ *  - on each module's input buffer there's at least IBS bytes of data and in each module's output
+ *    buffer there's at least OBS bytes of free space
+ *   OR
+ *  - a module declared readiness by itself by an optional API call "is_ready_to_process"
+ *
+ * Critical part is that the module MUST finish processing before its DEADLINE. A deadline is
+ * a time when the modules MUST provide a data chunk in order to keep next module(s) in the
+ * pipeline working.
+ *
+ * To ensure that all modules provide data on time - as long as CPU is not overloaded - regardless
+ * of modules' processing times and processing periods, a Earliest Deadline First (EDF) scheduling
+ * is used.
+ * https://en.wikipedia.org/wiki/Earliest_deadline_first_scheduling
+ *
+ * DEADLINE CALCULATIONS
+ * Lets go from the beginning, there are some DEFINITIONS
+ *
+ * def: buffers' Latest Feeding Time (LFT)
+ *	LFT is the latest moment when >>a buffer<< must be fed with a portion of data allowing its
+ *	data consumer to work and finish in its specific time
+ *
+ *    LFT is a parameter specific to a buffer and can be calculated based on:
+ *	- current amount of data in the buffer
+ *	- data reciever's consumption rate and period
+ *	- data source production rate and period
+ *	- data reciever's module's LST - latest start time
+ *
+ *	so LFT in high level is sum of:
+ *		- Latest start time (LST) of the data consumer
+ *			LST is defined later
+ *
+ *		- estimated time the consumer will drain the current data from the buffer
+ *			number_of_ms_in_buffer / consumer_period
+ *			i.e. if there's 5ms of data in the buffer and period of the consumer is
+ *			2ms, the calculated time is 4ms
+ *
+ *		- correction for multiple source cycle
+ *		  in case the producer period < consumer period the LFT time needs to be corrected,
+ *		  as the producer must process more than once to provide enough data.
+ *		  The correction will be calculated as:
+ *			producer_LPT * required_number_of_cycles
+ *			  where LPT is longest processing time, explained later
+ *
+ *			correction = producer_LPT *
+ *				((consumer_period - number_of_ms_in_buffer) / producer_period)
+ *		  if correction is < 0, it should be set to zero
+ *		  note that in case producer_period >= consumer_period correction is always 0
+ *
+ *		finally:
+ *			LFT = LST(consumer) + estimatet_drain_time - correction
+ *
+ *
+ * def: DP module's DEADLINE
+ *	a DEADLINE is the latest moment >>a module<< must finish processing to feed all target
+ *	buffers before their LFTs
+ *	Calculation is simple
+ *	  - module's deadline is the nearest LFT of all target buffers
+ *
+ * def: DP module's Longest Processing Time (LPT)
+ *	LPT is the longest time the module may process a portion of data, assuming it is scheduled
+ *	100% of CPU time
+ *	>> LPT cannot be measured in runtime << as processing may change from cycle to cycle, etc.
+ *	It can, however, be estimated based on:
+ *	 - declared (by a module vendor) number of CPU cycles required for processing.
+ *	   This declaration should be done separately for all combination of input/output data
+ *	   formats, platform, CPU type, using of HiFi etc.
+ *	 - If declaration is not available, we can take "a period" as an approximation of longest
+ *	   possible processing time. "A period" is a value calculated using IBS and data consumption
+ *	   rate of a module. A module cannot possibly processing longer than its period, because it
+ *	   would never provide data in time (if LPT = period that means a module required 100% of
+ *	   CPU for processing, so it is really the worst possible case)
+ *
+ *	   Example: if a data rate is 48samples/msec and OBS = 480samples, the "worst case" period
+ *	   should be calculated 10ms
+ *
+ *      NOTE: in case of sampling freq like 44.1 a round up should taken (like if freq was 45000)
+ *
+ *	The approximation above, however a correct, is assuming that a module is a heavy one and
+ *	it requires 100% of CPU time. Using it may lead to unnecessary buffering, see
+ *	"delayed start" section below.
+ *
+ * def: DP module's latest start time (LST)
+ *	LST is the latest moment >>a module<< must begin processing in order to finish within
+ *	its deadline.
+ *	Calculation: deadline - LPT
+ *
+ *
+ * >>>> Based on an above, it is clear that we do need to calculate first a deadline of the
+ *      very latest module in a chain, than go back and calculate LFTs and deadline
+ *      of each module separately <<<<
+ *
+ * Fortunate is that the last module of a pipeline is almost always an LL module (usually DAI).
+ * TODO: how to proceed in If there's no LL at the end of pipeline (i.e. in case when the last
+ * module is not producing samples - like speech recognition??
+ *
+ * note that in case if LL1 -> DP1 -> DP3 -> LL2 -> DP3 -> DP4 -> LL2
+ * there are 2 separate deadline calculation chains: DP4 than DP3, and (independent) DP2 than DP1
+ *
+ * also note that deadlines and other parameters may change, so re-calculation of all parameters
+ * should occur reasonable frequently and include all DP modules, regardless of a core it is
+ * run on
+
+ * for LL module deadline always is "now", so it is very easy to calculate LFTs for
+ * its input buffer(s)
+ * note: in case of data rates like 44.1, which cannot be divided to 1ms, a round up to 45
+ *	 should be used
+ *
+ *  - LL module always start in 1ms periods
+ *  - LL module always consume constant number of bytes in a cycle (with an exception for
+ *    frequencies like 44.1, a round up 45KHz should be taken for calculations)
+ * so LFT = number of data chunks in buffer * 1ms
+ *
+ *
+ * NOTE!!! "NOW" in all of the calculations is "last start of LL scheduler". It makes all
+ * calculations simpler, as in the examples below (calculating CPU cycles would require taking
+ * extra care for 32bit overflows or use slow 64bit operations). Also all modules have the same
+ * timestamp as "NOW", regardless of moment in the cycle the deadlines are calculated
+ *
+ * EXAMPLE1 (data source period is longer or equal to data source)
+ *  let's take a pipeline:
+ *  assuming
+ *   - the pipeline is in stable state (processing for a while, not in startup)
+ *   - no DP is currently processing
+ *   - whole CPU is dedicated to DP, like if LL is on core 0 and DPs on core 1
+ *
+ *  LL1 ->(buf1, 100ms data) ->  DP1 -> (buf2, 0ms data) -> DP2 -> (buf3, 18ms data) -> LL2
+ *				 period 100ms		    period: 20ms
+ *				 LPT:  5ms		    LPT: 10ms
+ *
+ * 1) 0ms time:
+ *     - DP1 is ready for processing
+ *     - DP2 is not ready for processing
+ *    calculate deadlines:
+ *     - buf3 LFT = 18ms ==> DP2 deadline = 18ms
+ *     - DP2 LST = DP2 deadline - DP2 LPT = 8ms
+ *     - buf2 LFT = 8ms ==> DP1 deadline = 8ms
+ *
+ *    DP1 will be scheduled
+ *
+ * 2) 5ms time, DP1 has finished processing
+ *
+ *  LL1 ->(buf1, 5ms data) ->  DP1 -> (buf2, 100ms data) -> DP2 -> (buf3, 13ms data) -> LL2
+ *			       period 100ms		    period: 20ms
+ *			       LPT:  5ms		    LPT: 10ms
+ *
+ *     - DP1 is not ready for processing
+ *     - DP2 is ready for processing
+ *    calculate deadlines:
+ *     - buf3 LFT = 13ms ==> DP2 deadline = 13ms
+ *     - DP2 LST = 3ms
+ *     - buf2 LFT = 5*20ms + 3 = 103ms ==> DP1 deadline = 103ms
+ *
+ *    DP2 will be scheduled
+ *
+ *
+ *
+ *
+ * EXAMPLE2 (data source period is shorter than data receiver)
+ *
+ *  LL1 ->(buf1, 5ms data)  ->  DP1 -> (buf2, 15ms data) -> DP2 -> (buf3, 18ms data) -> LL2
+ *				period 5ms		    period: 20ms
+ *				LPT:  2ms		    LPT: 10ms
+ *
+ * 1) 0ms time
+ *   - DP1 is ready for processing
+ *   - DP2 is ready for processing
+ *
+ *    calculate deadlines:
+ *     - buf3 LFT = 18ms ==> DP2 deadline = 18ms
+ *     - DP2 LST = 8ms
+ *     - buf2 LFT = 5 + 8 = 13ms. correction for multiple source cycle is negative => 0
+ *		==> DP1 deadline = 13ms
+ *
+ *    DP1 gets CPU for 2 ms
+ *
+ * 2) 2ms time
+ *  LL1 ->(buf1, 2ms data)  ->  DP1 -> (buf2, 20ms data) -> DP2 -> (buf3, 16ms data) -> LL2
+ *				period 5ms		    period: 20ms
+ *				LPT:  2ms		    LPT: 10ms
+ *
+ *   - DP1 is not ready for processing
+ *   - DP2 is ready for processing
+ *
+ *    calculate deadlines:
+ *     - buf3 LFT = 16ms ==> DP2 deadline = 16ms
+ *     - DP2 LST = 6ms
+ *     - buf2 LFT = 20ms (1 period) + 6ms = 26ms
+ *		==> DP1 deadline = 26ms
+ *
+ *
+ * 3) 12ms time
+ *  LL1 ->(buf1, 12ms data) ->  DP1 -> (buf2, 0ms data)  -> DP2 -> (buf3, 24ms data) -> LL2
+ *				period 5ms		    period: 20ms
+ *				LPT:  2ms		    LPT: 10ms
+ *
+ *   - DP1 is ready for processing
+ *   - DP2 is not ready for processing
+ *
+ *    calculate deadlines:
+ *     - buf3 LFT = 24ms ==> DP2 deadline = 24ms
+ *     - DP2 LST = 14ms
+ *     - buf2 LFT = 14ms - 4*2 (4 periods * LPT) = 6ms
+ *		==> DP1 deadline = 6ms
+ *
+ *	DP1 gets CPU for 2ms
+ *
+ * 4) 14ms time
+ *  LL1 ->(buf1, 9ms data)  ->  DP1 -> (buf2, 5ms data)  -> DP2 -> (buf3, 22ms data) -> LL2
+ *				period 5ms		    period: 20ms
+ *				LPT:  2ms		    LPT: 10ms
+ *
+ *   - DP1 is ready for processing
+ *   - DP2 is not ready for processing
+ *
+ *    calculate deadlines:
+ *     - buf3 LFT = 22ms ==> DP2 deadline = 22ms
+ *     - DP2 LST = 12ms
+ *     - buf2 LFT = 12ms -  correction for multiple source cycle
+ *		correction for multiple source cycle = 3*2 (3 periods * LPT) = 6ms
+ *     - DP1 deadline = 12ms - 6ms = 6ms
+ *
+ *	DP1 gets CPU for 2ms
+ *
+ * 5) 16ms time
+ *  LL1 ->(buf1, 6ms data)  ->  DP1 -> (buf2, 10ms data)  -> DP2 -> (buf3, 20ms data) -> LL2
+ *				period 5ms		    period: 20ms
+ *				LPT:  2ms		    LPT: 10ms
+ *
+ *   - DP1 is ready for processing
+ *   - DP2 is not ready for processing
+ *
+ *    calculate deadlines:
+ *     - buf3 LFT = 20ms ==> DP2 deadline = 20ms
+ *     - DP2 LST = 10ms
+ *     - buf2 LFT = 10ms - 2*2 (2 periods * LPT) = 6ms
+ *		==> DP1 deadline = 6ms
+ *
+ *	DP1 gets CPU for 2ms
+ *
+ * 6) 18ms time
+ *  LL1 ->(buf1, 3ms data)  ->  DP1 -> (buf2, 15ms data)  -> DP2 -> (buf3, 18ms data) -> LL2
+ *				period 5ms		    period: 20ms
+ *				LPT:  2ms		    LPT: 10ms
+ *
+ *   - DP1 is not ready for processing
+ *   - DP2 is not ready for processing
+ *
+ *    calculate deadlines - however pointless at when no DP is ready:
+ *     - buf3 LFT = 18ms ==> DP2 deadline = 18ms
+ *     - DP2 LST = 8ms
+ *     - buf2 LFT = 8ms - 1*2 (1 periods * LPT) = 6ms
+ *		==> DP1 deadline = 6ms
+ *
+ *	no DP is processing for 2 ms
+ *
+ * 7) 20ms time
+ *  LL1 ->(buf1, 5ms data)  ->  DP1 -> (buf2, 15ms data)  -> DP2 -> (buf3, 16ms data) -> LL2
+ *				period 5ms		    period: 20ms
+ *				LPT:  2ms		    LPT: 10ms
+ *
+ *   - DP1 is ready for processing
+ *   - DP2 is not ready for processing
+ *
+ *    calculate deadlines -
+ *     - buf3 LFT = 16ms ==> DP2 deadline = 16ms
+ *     - DP2 LST = 6ms
+ *     - buf2 LFT = 6ms - 1*2 (1 periods * LPT) = 4ms
+ *		==> DP1 deadline = 4ms
+ *
+ *	DP1 gets CPU for 2ms
+ *
+ * 8) 22ms time
+ *  LL1 ->(buf1, 2ms data)  ->  DP1 -> (buf2, 20ms data) -> DP2 -> (buf3, 14ms data) -> LL2
+ *				period 5ms		    period: 20ms
+ *				LPT:  2ms		    LPT: 10ms
+ *
+ *   - DP1 is ready for processing
+ *   - DP2 is not ready for processing
+ *
+ *    calculate deadlines -
+ *     - buf3 LFT = 14ms ==> DP2 deadline = 14ms
+ *     - DP2 LST = 4ms
+ *     - buf2 LFT = 4ms - 1*2 (1 periods * LPT) = 2ms
+ *		==> DP1 deadline = 2ms
+ *
+ *	DP1 gets CPU for 2ms
+ *
+ *
+ * STARTUP
+ * Special case is "pipeline startup". When a pipeline is starting, calculations make no sense,
+ * as all the modules are already late and deadlines are in the past
+ * To make startup possible DELAYED START mechanism needs to be introduced.
+ *
+ * Delayed start means that:
+ *  - when a DP module becomes ready for a first time, its deadline set to NOW
+ *  - even if DP module provides data early, the data will be hold in the buffer
+ *    till first LPT passes since DP become ready for the first time
+ *
+ * The purpose is that a DP may finish processing quicker than its longest processing time. It may
+ * be caused by many events, usually by lower CPU load during pipeline startup. If next module
+ * starts processing immediately in such situation, it may go into underrun when DP processing take
+ * longer in the future. Delaying to declared/estimated LongestProcessingTime (LPT) prevents this,
+ * as long as the processing cycles declaration is accurate.
+ *
+ * Delayed start makes EDF scheduling possible and ensures that even when CPU load close to 100%
+ * every module have enough processing time to finish within its deadline.
+ *
+ *
+ * DP SHEDULER
+ * A list of all DP tasks, regardless on core the task is on, is to be iterated every time
+ * the situation of DP readiness or deadline timing may change, that include
+ *  - finish of processing of LL pipeline (on any core)
+ *  - finish of processing of any DP module (on any core)
+ * TODO
+ *
+ * during the iteration, the following will be checked:
+ *  - Readiness of each DP module
+ *	as mentioned before,  module "is ready" when declared readiness by itself an API call
+ *	or when it has at least IBS of data on each input and at least OBS free space on each out
+ *
+ *  - deadline calculation of each DP module
+ *    LFTs and Deadlines are not constant, they may change when a module consume/produce
+ *    a portion of data. Therefore all LFTs and Deadlines must be re-calculated
+ *
+ * EXAMPLE
+ *
+ *  DP1 (20ms period) --(BUF1 10ms data)--> DP2 (10ms period) --(BUF2 3ms data)-->LL (1ms period)
+ *  11ms LPT				    1.5ms LPT
+ *
+ *      current time: 0.1ms before LL cycle
+ *
+ *  LFT of BUF2: buffer contains 3ms of data, data consumption period is 1ms, so
+ *	 LPT(BUF2) = NOW+3.1ms
+ *
+ *  deadline(DP2) = LFT(BUF2) - LPT(DP2) = NOW + 1.6ms
  *
  * This function checks if the queued DP tasks are ready to processing (meaning
  *    the module run by the task has enough data at all sources and enough free space
@@ -73,10 +416,7 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  *    if the task becomes ready, a deadline is set allowing Zephyr to schedule threads
  *    in right order
  *
- * TODO: currently there's a limitation - DP module must be surrounded by LL modules.
- * it simplifies algorithm - there's no need to browse through DP chains calculating
- * deadlines for each module in function of all modules execution status.
- * Now is simple - modules deadline is its start + tick time.
+ * EDF scheduling example
  *
  * example:
  *  Lets assume we do have a pipeline:
