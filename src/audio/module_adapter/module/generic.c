@@ -95,6 +95,8 @@ int module_init(struct processing_module *mod)
 	list_init(&md->resources.mem_list);
 	list_init(&md->resources.free_cont_list);
 	list_init(&md->resources.cont_chunk_list);
+	md->resources.heap_usage = 0;
+	md->resources.heap_high_water_mark = 0;
 
 	/* Now we can proceed with module specific initialization */
 	ret = interface->init(mod);
@@ -189,6 +191,10 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	container->size = size;
 	list_item_prepend(&container->mem_list, &res->mem_list);
 
+	res->heap_usage += size;
+	if (res->heap_usage > res->heap_high_water_mark)
+		res->heap_high_water_mark = res->heap_usage;
+
 	return ptr;
 }
 EXPORT_SYMBOL(mod_alloc_align);
@@ -247,6 +253,7 @@ int mod_free(struct processing_module *mod, void *ptr)
 		mem = container_of(mem_list, struct module_memory, mem_list);
 		if (mem->ptr == ptr) {
 			rfree(mem->ptr);
+			res->heap_usage -= mem->size;
 			list_item_del(&mem->mem_list);
 			container_put(mod, mem);
 			return 0;
