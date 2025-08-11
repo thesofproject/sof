@@ -142,7 +142,7 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	/* Crossover: collect the coef array and assign it to every channel */
 	crossover = config->crossover_coef;
 	for (ch = 0; ch < nch; ch++) {
-		ret = crossover_init_coef_ch(crossover, &state->crossover[ch],
+		ret = crossover_init_coef_ch(mod, crossover, &state->crossover[ch],
 					     config->num_bands);
 		/* Free all previously allocated blocks in case of an error */
 		if (ret < 0) {
