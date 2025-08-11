@@ -334,4 +334,25 @@ void module_adapter_set_params(struct processing_module *mod, struct sof_ipc_str
 int module_adapter_set_state(struct processing_module *mod, struct comp_dev *dev,
 			     int cmd);
 int module_adapter_sink_src_prepare(struct comp_dev *dev);
+
+/**
+ * Get a deadline based on current LFT reported by all sinks
+ *
+ * @return a deadline the module must finish processing since NOW [in us]
+ */
+uint32_t module_get_deadline(struct processing_module *mod);
+
+/**
+ * Get a Longest Processing Time estimation for the module, in us
+ * It is either
+ *  - a value taken from the manifest or estimated from module period (TODO)
+ *  - a worst case - module period
+ *    note that module period may be calculated reasonably late, i.e. in prepare() method
+ */
+static inline uint32_t module_get_LPT(struct processing_module *mod)
+{
+	/* return worst case of LPT - a module period. See zephyr_dp_schedule.c for description */
+	return mod->dev->period;
+}
+
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */
