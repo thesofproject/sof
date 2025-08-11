@@ -15,7 +15,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/iir_df1.h>
@@ -47,12 +46,13 @@ DECLARE_TR_CTX(crossover_tr, SOF_UUID(crossover_uuid), LOG_LEVEL_INFO);
  * \brief Reset the state (coefficients and delay) of the crossover filter
  *	  across all channels
  */
-static void crossover_reset_state(struct comp_data *cd)
+static void crossover_reset_state(struct processing_module *mod,
+				  struct comp_data *cd)
 {
 	int i;
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		crossover_reset_state_ch(&cd->state[i]);
+		crossover_reset_state_ch(mod, &cd->state[i]);
 }
 
 /**
@@ -156,7 +156,8 @@ static int crossover_assign_sinks(struct processing_module *mod,
  *	       high/low pass filter.
  * \param[out] lr4 initialized struct
  */
-static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
+static int crossover_init_coef_lr4(struct processing_module *mod,
+				   struct sof_eq_iir_biquad *coef,
 				   struct iir_state_df1 *lr4)
 {
 	int ret;
@@ -169,8 +170,7 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
 	 * in series due to identity. To maintain the structure of
 	 * iir_state_df1, it requires two copies of coefficients in a row.
 	 */
-	lr4->coef = rzalloc(SOF_MEM_FLAG_USER,
-			    sizeof(struct sof_eq_iir_biquad) * 2);
+	lr4->coef = mod_zalloc(mod, sizeof(struct sof_eq_iir_biquad) * 2);
 	if (!lr4->coef)
 		return -ENOMEM;
 
@@ -189,8 +189,7 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
 	 * delay[0..1] -> state for first biquad
 	 * delay[2..3] -> state for second biquad
 	 */
-	lr4->delay = rzalloc(SOF_MEM_FLAG_USER,
-			     sizeof(uint64_t) * CROSSOVER_NUM_DELAYS_LR4);
+	lr4->delay = mod_zalloc(mod, sizeof(uint64_t) * CROSSOVER_NUM_DELAYS_LR4);
 	if (!lr4->delay)
 		return -ENOMEM;
 
@@ -203,7 +202,8 @@ static int crossover_init_coef_lr4(struct sof_eq_iir_biquad *coef,
 /**
  * \brief Initializes the crossover coefficients for one channel
  */
-int crossover_init_coef_ch(struct sof_eq_iir_biquad *coef,
+int crossover_init_coef_ch(struct processing_module *mod,
+			   struct sof_eq_iir_biquad *coef,
 			   struct crossover_state *ch_state,
 			   int32_t num_sinks)
 {
@@ -214,12 +214,12 @@ int crossover_init_coef_ch(struct sof_eq_iir_biquad *coef,
 
 	for (i = 0; i < num_lr4s; i++) {
 		/* Get the low pass coefficients */
-		err = crossover_init_coef_lr4(&coef[j],
+		err = crossover_init_coef_lr4(mod, &coef[j],
 					      &ch_state->lowpass[i]);
 		if (err < 0)
 			return -EINVAL;
 		/* Get the high pass coefficients */
-		err = crossover_init_coef_lr4(&coef[j + 1],
+		err = crossover_init_coef_lr4(mod, &coef[j + 1],
 					      &ch_state->highpass[i]);
 		if (err < 0)
 			return -EINVAL;
@@ -259,13 +259,13 @@ static int crossover_init_coef(struct processing_module *mod, int nch)
 	/* Collect the coef array and assign it to every channel */
 	crossover = config->coef;
 	for (ch = 0; ch < nch; ch++) {
-		err = crossover_init_coef_ch(crossover, &cd->state[ch],
+		err = crossover_init_coef_ch(mod, crossover, &cd->state[ch],
 					     config->num_sinks);
 		/* Free all previously allocated blocks in case of an error */
 		if (err < 0) {
 			comp_err(mod->dev, "crossover_init_coef(), could not assign coefficients to ch %d",
 				 ch);
-			crossover_reset_state(cd);
+			crossover_reset_state(mod, cd);
 			return err;
 		}
 	}
@@ -282,7 +282,7 @@ static int crossover_setup(struct processing_module *mod, int nch)
 	int ret = 0;
 
 	/* Reset any previous state */
-	crossover_reset_state(cd);
+	crossover_reset_state(mod, cd);
 
 	/* Assign LR4 coefficients from config */
 	ret = crossover_init_coef(mod, nch);
@@ -312,40 +312,34 @@ static int crossover_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
 	md->private = cd;
 
 	/* Handler for configuration data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto cd_fail;
+		return -ENOMEM;
 	}
 
 	/* Get configuration data and reset Crossover state */
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_crossover->data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed.");
-		goto cd_fail;
+		return ret;
 	}
 
 	ret = crossover_output_pin_init(mod);
 	if (ret < 0) {
 		comp_err(dev, "crossover_init_output_pins() failed.");
-		goto cd_fail;
+		return ret;
 	}
 
-	crossover_reset_state(cd);
+	crossover_reset_state(mod, cd);
 	return 0;
-
-cd_fail:
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
-	return ret;
 }
 
 /**
@@ -357,11 +351,8 @@ static int crossover_free(struct processing_module *mod)
 
 	comp_info(mod->dev, "crossover_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
+	crossover_reset_state(mod, cd);
 
-	crossover_reset_state(cd);
-
-	rfree(cd);
 	return 0;
 }
 
@@ -616,7 +607,7 @@ static int crossover_reset(struct processing_module *mod)
 
 	comp_info(mod->dev, "crossover_reset()");
 
-	crossover_reset_state(cd);
+	crossover_reset_state(mod, cd);
 
 	cd->crossover_process = NULL;
 	cd->crossover_split = NULL;
