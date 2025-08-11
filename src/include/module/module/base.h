@@ -70,6 +70,8 @@ enum module_processing_type {
 	MODULE_PROCESS_TYPE_RAW,
 };
 
+struct rtio_sqe;
+
 /*
  * A pointer to this structure is passed to module API functions (from struct module_interface).
  * This structure should contain only fields that should be available to a module.
@@ -102,6 +104,10 @@ struct processing_module {
 	/* number of sinks / sources and (when in use) input_buffers / input_buffers */
 	uint32_t num_of_sources;
 	uint32_t num_of_sinks;
+
+	/* DP module RTIO SQE pointers, used to signal module's DP thread */
+	struct rtio_sqe *ipc_sqe;
+	struct rtio_sqe *audio_sqe;
 
 	/* sink and source handlers for the module */
 	struct sof_sink *sinks[CONFIG_MODULE_MAX_CONNECTIONS];

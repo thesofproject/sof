@@ -15,17 +15,27 @@
 #include <sof/trace/trace.h>
 #include <rtos/wait.h>
 #include <rtos/interrupt.h>
+#include <rtos/spinlock.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys_clock.h>
 #include <sof/lib/notifier.h>
 #include <ipc4/base_fw.h>
 
 #include <zephyr/kernel/thread.h>
+#include <zephyr/rtio/rtio.h>
 
 LOG_MODULE_REGISTER(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dp_sched);
 
 DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
+
+/* RTIO context with 2 submit and 2 complete entries for IPC and audio */
+// FIXME: should be per-DP task
+RTIO_DEFINE(dp_consumer, 2, 2);
+K_SEM_DEFINE(dp_rtio_ipc_sem, 0, K_SEM_MAX_LIMIT);
+K_SEM_DEFINE(dp_rtio_sync_sem, 0, 1);
+
+static struct k_spinlock rtio_lock;
 
 struct scheduler_dp_data {
 	struct list_item tasks;		/* list of active dp tasks */
@@ -38,7 +48,6 @@ struct task_dp_pdata {
 	uint32_t deadline_clock_ticks;	/* dp module deadline in Zephyr ticks */
 	k_thread_stack_t __sparse_cache *p_stack;	/* pointer to thread stack */
 	size_t stack_size;		/* size of the stack in bytes */
-	struct k_sem sem;		/* semaphore for task scheduling */
 	struct processing_module *mod;	/* the module to be scheduled */
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
 };
@@ -242,25 +251,39 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 				mod->dp_startup_delay = false;
 		}
 
-		if (curr_task->state == SOF_TASK_STATE_QUEUED) {
-			bool mod_ready;
+		if (curr_task->state != SOF_TASK_STATE_QUEUED ||
+		    mod->dev->state < COMP_STATE_ACTIVE)
+			continue;
 
-			mod_ready = module_is_ready_to_process(mod, mod->sources,
-							       mod->num_of_sources,
-							       mod->sinks,
-							       mod->num_of_sinks);
-			if (mod_ready) {
-				/* set a deadline for given num of ticks, starting now */
-				k_thread_deadline_set(pdata->thread_id,
-						      pdata->deadline_clock_ticks);
+		/* set a deadline for given num of ticks, starting now */
+		k_thread_deadline_set(pdata->thread_id,
+				      pdata->deadline_clock_ticks);
 
-				/* trigger the task */
-				curr_task->state = SOF_TASK_STATE_RUNNING;
-				k_sem_give(&pdata->sem);
-			}
+		/* trigger the task */
+		curr_task->state = SOF_TASK_STATE_RUNNING;
+
+		k_spinlock_key_t key = k_spin_lock(&rtio_lock);
+
+		struct rtio_sqe *sqe = mod->audio_sqe;
+
+		if (sqe) {
+			mod->audio_sqe = NULL;
+			rtio_iodev_sqe_ok(CONTAINER_OF(sqe, struct rtio_iodev_sqe, sqe), 0);
 		}
+		k_spin_unlock(&rtio_lock, key);
 	}
 	scheduler_dp_unlock(lock_key);
+}
+
+static void dp_rtio_drop_all(struct rtio *r)
+{
+	struct rtio_sqe_pool *pool = r->sqe_pool;
+
+	mpsc_init(&pool->free_q);
+	for (unsigned int i = 0; i < pool->pool_size; i++)
+		mpsc_push(&pool->free_q, &pool->pool[i].q);
+
+	pool->pool_free = pool->pool_size;
 }
 
 static int scheduler_dp_task_cancel(void *data, struct task *task)
@@ -269,6 +292,8 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 	struct scheduler_dp_data *dp_sch = (struct scheduler_dp_data *)data;
 	struct task_dp_pdata *pdata = task->priv_data;
 
+	if (!pdata->thread_id)
+		return 0;
 
 	/* this is asyn cancel - mark the task as canceled and remove it from scheduling */
 	lock_key = scheduler_dp_lock();
@@ -276,17 +301,21 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 	task->state = SOF_TASK_STATE_CANCEL;
 	list_item_del(&task->list);
 
-	/* if there're no more  DP task, stop LL tick source */
-	if (list_is_empty(&dp_sch->tasks))
+	/* if there're no more DP task, stop LL tick source */
+	if (list_is_empty(&dp_sch->tasks)) {
 		schedule_task_cancel(&dp_sch->ll_tick_src);
 
+		/* Move all SQEs to the free list */
+		dp_rtio_drop_all(&dp_consumer);
+	}
+
 	/* if the task is waiting on a semaphore - let it run and self-terminate */
-	k_sem_give(&pdata->sem);
 	scheduler_dp_unlock(lock_key);
 
 	/* wait till the task has finished, if there was any task created */
-	if (pdata->thread_id)
-		k_thread_join(pdata->thread_id, K_FOREVER);
+	k_thread_abort(pdata->thread_id);
+
+	pdata->thread_id = NULL;
 
 	return 0;
 }
@@ -297,13 +326,7 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 
 	scheduler_dp_task_cancel(data, task);
 
-	/* the thread should be terminated at this moment,
-	 * abort is safe and will ensure no use after free
-	 */
-	if (pdata->thread_id) {
-		k_thread_abort(pdata->thread_id);
-		pdata->thread_id = NULL;
-	}
+	pdata->thread_id = NULL;
 
 	/* free task stack */
 	rfree((__sparse_force void *)pdata->p_stack);
@@ -313,52 +336,322 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 	return 0;
 }
 
+/* TODO: make this a shared kernel->module buffer for IPC parameters */
+static uint8_t ipc_buf[4096];
+
+struct ipc4_mod_bind {
+	struct ipc4_module_bind_unbind bu;
+	enum bind_type type;
+};
+
+struct ipc4_flat {
+	unsigned int cmd;
+	int ret;
+	union {
+		struct ipc4_mod_bind bind;
+		struct {
+			unsigned int trigger_cmd;
+			enum ipc4_pipeline_state state;
+			int n_sources;
+			int n_sinks;
+			void *source_sink[];
+		} pipeline_state;
+	};
+};
+
+/* Pack IPC input data */
+static int ipc_rtio_flatten(unsigned int cmd, union scheduler_dp_rtio_ipc_param *param,
+			    struct rtio_iodev_sqe *iodev_sqe, struct ipc4_flat *flat)
+{
+	flat->cmd = cmd;
+
+	/*
+	 * FIXME: SOF_IPC4_MOD_* and SOF_IPC4_GLB_* aren't fully orthogonal, but
+	 * so far none of the used ones overlap
+	 */
+	switch (cmd) {
+	case SOF_IPC4_MOD_BIND:
+		flat->bind.bu = *param->bind_data->ipc4_data;
+		flat->bind.type = param->bind_data->bind_type;
+		break;
+	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
+		flat->pipeline_state.trigger_cmd = param->pipeline_state.trigger_cmd;
+		switch (param->pipeline_state.trigger_cmd) {
+		case COMP_TRIGGER_STOP:
+			break;
+		case COMP_TRIGGER_PREPARE:
+			if (sizeof(flat->cmd) + sizeof(flat->ret) + sizeof(flat->pipeline_state) +
+			    sizeof(void *) * (param->pipeline_state.n_sources +
+					      param->pipeline_state.n_sinks) >
+			    sizeof(ipc_buf))
+				return -ENOMEM;
+
+			flat->pipeline_state.state = param->pipeline_state.state;
+			flat->pipeline_state.n_sources = param->pipeline_state.n_sources;
+			flat->pipeline_state.n_sinks = param->pipeline_state.n_sinks;
+			memcpy(flat->pipeline_state.source_sink, param->pipeline_state.sources,
+			       flat->pipeline_state.n_sources *
+			       sizeof(flat->pipeline_state.source_sink[0]));
+			memcpy(flat->pipeline_state.source_sink + flat->pipeline_state.n_sources,
+			       param->pipeline_state.sinks,
+			       flat->pipeline_state.n_sinks *
+			       sizeof(flat->pipeline_state.source_sink[0]));
+		}
+	}
+
+	return 0;
+}
+
+/* Unpack IPC data and execute a callback */
+static void ipc_rtio_unflatten_run(struct processing_module *pmod, struct ipc4_flat *flat)
+{
+	const struct module_interface *const ops = pmod->dev->drv->adapter_ops;
+
+	switch (flat->cmd) {
+	case SOF_IPC4_MOD_BIND:
+		if (ops->bind) {
+			struct bind_info bind_data = {
+				.ipc4_data = &flat->bind.bu,
+				.bind_type = flat->bind.type,
+			};
+
+			flat->ret = ops->bind(pmod, &bind_data);
+		} else {
+			flat->ret = 0;
+		}
+		break;
+	case SOF_IPC4_MOD_DELETE_INSTANCE:
+		flat->ret = ops->free(pmod);
+		break;
+	case SOF_IPC4_MOD_INIT_INSTANCE:
+		flat->ret = ops->init(pmod);
+		break;
+	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
+		switch (flat->pipeline_state.trigger_cmd) {
+		case COMP_TRIGGER_STOP:
+			flat->ret = ops->reset(pmod);
+			break;
+		case COMP_TRIGGER_PREPARE:
+			flat->ret = ops->prepare(pmod,
+				(struct sof_source **)flat->pipeline_state.source_sink,
+				flat->pipeline_state.n_sources,
+				(struct sof_sink **)(flat->pipeline_state.source_sink +
+						     flat->pipeline_state.n_sources),
+				flat->pipeline_state.n_sinks);
+		}
+	}
+}
+
+/* Signal an IPC and wait for processing completion */
+int scheduler_dp_rtio_ipc(struct processing_module *pmod, enum sof_ipc4_module_type cmd,
+			  union scheduler_dp_rtio_ipc_param *param)
+{
+	int ret;
+
+	if (!pmod) {
+		tr_err(&dp_tr, "no RTIO mod");
+		return -EINVAL;
+	}
+
+	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
+		/* Wait for the DP thread to start */
+		ret = k_sem_take(&dp_rtio_sync_sem, K_MSEC(100));
+		if (ret == -EAGAIN)
+			return -ETIMEDOUT;
+	}
+
+	k_spinlock_key_t key = k_spin_lock(&rtio_lock);
+
+	struct rtio_sqe *sqe = pmod->ipc_sqe;
+	struct ipc4_flat *flat = (struct ipc4_flat *)ipc_buf;
+
+	if (!sqe) {
+		tr_err(&dp_tr, "no RTIO on %p", pmod);
+		ret = -ENOENT;
+	} else {
+		/* IPCs are serialised */
+		flat->ret = -ENOSYS;
+
+		pmod->ipc_sqe = NULL;
+
+		struct rtio_iodev_sqe *iodev_sqe = CONTAINER_OF(sqe, struct rtio_iodev_sqe, sqe);
+
+		tr_dbg(&dp_tr, "RTIO signal %p IPC cmd %d trig %d", pmod, cmd,
+		       param ? param->pipeline_state.trigger_cmd : -EINVAL);
+
+		ret = ipc_rtio_flatten(cmd, param, iodev_sqe, flat);
+		if (!ret)
+			rtio_iodev_sqe_ok(iodev_sqe, 0);
+	}
+
+	k_spin_unlock(&rtio_lock, key);
+
+	if (sqe && !ret) {
+		k_sem_take(&dp_rtio_ipc_sem, K_FOREVER);
+		ret = flat->ret;
+	}
+
+	return ret;
+}
+
+static void producer_submit(struct rtio_iodev_sqe *iodev_sqe)
+{
+}
+
+/* An API and a .submit method are compulsory */
+const struct rtio_iodev_api producer_api = {.submit = producer_submit};
+
+/* As long as .data == NULL one RTIO IO-device should suffice for all DP tasks */
+RTIO_IODEV_DEFINE(producer_iodev, &producer_api, NULL);
+
+enum sof_rtio_read_id {
+	IPC_READ_SQE,
+	AUDIO_READ_SQE,
+	N_READ_SQE,
+};
+
+struct sof_user_data {
+	enum sof_rtio_read_id id;
+};
+
+static struct rtio_sqe *zephyr_dp_rtio_handle(struct rtio_iodev_sqe *iodev_sqe,
+					      struct sof_user_data *udata, bool *new)
+{
+	struct rtio_sqe *sqe_handle = NULL;
+
+	rtio_sqe_prep_read(&iodev_sqe->sqe, &producer_iodev,
+			   RTIO_PRIO_NORM, NULL, 0, udata);
+
+	/* Copy sqe into the kernel mode and get a handle out */
+	int ret = rtio_sqe_copy_in_get_handles(&dp_consumer, &iodev_sqe->sqe,
+					       &sqe_handle, 1);
+	if (ret < 0)
+		tr_warn(&dp_tr, "DP RTIO: no SQE handle!");
+	else
+		*new = false;
+
+	return sqe_handle;
+}
+
 /* Thread function called in component context, on target core */
 static void dp_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct task *task = p1;
-	(void)p2;
-	(void)p3;
 	struct task_dp_pdata *task_pdata = task->priv_data;
+	struct processing_module *pmod = task_pdata->mod;
+	bool ipc_new = true, audio_new = true, first = true;
+	struct sof_user_data sof_rtio_ipc = {IPC_READ_SQE,};
+	struct sof_user_data sof_rtio_audio = {AUDIO_READ_SQE,};
+	struct rtio_iodev_sqe mod_sqe[N_READ_SQE];
 	unsigned int lock_key;
 	enum task_state state;
 	bool task_stop;
 
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	for (unsigned int i = 0; i < N_READ_SQE; i++) {
+		mod_sqe[i].next = NULL;
+		mod_sqe[i].r = &dp_consumer;
+		mod_sqe[i].q.next = NULL;
+	}
+
 	do {
+		k_spinlock_key_t key = k_spin_lock(&rtio_lock);
+		bool ready;
+
+		/* prepare and submit SQEs */
+		if (audio_new)
+			pmod->audio_sqe = zephyr_dp_rtio_handle(mod_sqe + AUDIO_READ_SQE,
+								&sof_rtio_audio, &audio_new);
+		if (ipc_new)
+			pmod->ipc_sqe = zephyr_dp_rtio_handle(mod_sqe + IPC_READ_SQE,
+							      &sof_rtio_ipc, &ipc_new);
+
+		k_spin_unlock(&rtio_lock, key);
+
+		/* Submit SQEs without waiting */
+		rtio_submit(&dp_consumer, 0);
+
+		if (first) {
+			/*
+			 * The IPC RTIO completion function is waiting for SQEs to be submitted,
+			 * it can proceed now.
+			 */
+			first = false;
+			k_sem_give(&dp_rtio_sync_sem);
+		}
+
 		/*
-		 * the thread is started immediately after creation, it will stop on semaphore
-		 * Semaphore will be released once the task is ready to process
+		 * The thread is started immediately after creation, it stops on
+		 * RTIO. RTIO is signaled once the task is ready to process
 		 */
-		k_sem_take(&task_pdata->sem, K_FOREVER);
+		struct rtio_cqe *cqe = rtio_cqe_consume_block(&dp_consumer);
+		struct sof_user_data *completion = cqe->userdata;
 
-		if (task->state == SOF_TASK_STATE_RUNNING)
-			state = task_run(task);
-		else
-			state = task->state;	/* to avoid undefined variable warning */
+		rtio_cqe_release(&dp_consumer, cqe);
 
-		lock_key = scheduler_dp_lock();
-		/*
-		 * check if task is still running, may have been canceled by external call
-		 * if not, set the state returned by run procedure
-		 */
-		if (task->state == SOF_TASK_STATE_RUNNING) {
-			task->state = state;
-			switch (state) {
-			case SOF_TASK_STATE_RESCHEDULE:
-				/* mark to reschedule, schedule time is already calculated */
-				task->state = SOF_TASK_STATE_QUEUED;
-				break;
+		if (!completion) {
+			tr_warn(&dp_tr, "No RTIO completion");
+			continue;
+		}
 
-			case SOF_TASK_STATE_CANCEL:
-			case SOF_TASK_STATE_COMPLETED:
-				/* remove from scheduling */
-				list_item_del(&task->list);
-				break;
+		switch (completion->id) {
+		case IPC_READ_SQE:
+			/* handle IPC */
+			tr_dbg(&dp_tr, "got IPC RTIO for %p state %d", pmod, task->state);
+			ipc_new = true;
+			ipc_rtio_unflatten_run(pmod, (struct ipc4_flat *)ipc_buf);
+			k_sem_give(&dp_rtio_ipc_sem);
 
-			default:
-				/* illegal state, serious defect, won't happen */
-				k_panic();
+			lock_key = scheduler_dp_lock();
+			break;
+		case AUDIO_READ_SQE:
+			/* handle audio */
+			audio_new = true;
+
+			ready = module_is_ready_to_process(pmod,
+							   pmod->sources, pmod->num_of_sources,
+							   pmod->sinks, pmod->num_of_sinks);
+
+			if (ready) {
+				if (task->state == SOF_TASK_STATE_RUNNING)
+					state = task_run(task);
+				else
+					state = task->state;	/* to avoid undefined variable warning */
 			}
+
+			lock_key = scheduler_dp_lock();
+
+			/*
+			 * check if task is still running, may have been canceled by external call
+			 * if not, set the state returned by run procedure
+			 */
+			if (ready && task->state == SOF_TASK_STATE_RUNNING) {
+				task->state = state;
+				switch (state) {
+				case SOF_TASK_STATE_RESCHEDULE:
+					/* mark to reschedule, schedule time is already calculated */
+					task->state = SOF_TASK_STATE_QUEUED;
+					break;
+
+				case SOF_TASK_STATE_CANCEL:
+				case SOF_TASK_STATE_COMPLETED:
+					/* remove from scheduling */
+					list_item_del(&task->list);
+					break;
+
+				default:
+					/* illegal state, serious defect, won't happen */
+					k_panic();
+				}
+			} else {
+				task->state = SOF_TASK_STATE_QUEUED;
+			}
+			break;
+		default:
+			tr_err(&dp_tr, "Invalid RTIO completion %d", completion->id);
+			continue;
 		}
 
 		/* if true exit the while loop, terminate the thread */
@@ -427,6 +720,8 @@ int scheduler_dp_init(void)
 						   sizeof(struct scheduler_dp_data));
 	if (!dp_sch)
 		return -ENOMEM;
+
+	k_spinlock_init(&rtio_lock);
 
 	list_init(&dp_sch->tasks);
 
@@ -507,9 +802,6 @@ int scheduler_dp_task_init(struct task **task,
 	task_memory->task.state = SOF_TASK_STATE_INIT;
 	task_memory->task.core = core;
 	task_memory->task.priv_data = pdata;
-
-	/* initialize semaprhore */
-	k_sem_init(&pdata->sem, 0, 1);
 
 	/* success, fill the structures */
 	pdata->p_stack = p_stack;
