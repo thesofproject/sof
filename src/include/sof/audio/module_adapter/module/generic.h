@@ -125,6 +125,8 @@ struct module_resources {
 	struct list_item mem_list;		/**< Allocad memory containers */
 	struct list_item free_cont_list;	/**< Unused memory containers */
 	struct list_item cont_chunk_list;	/**< Memory container chunks */
+	size_t heap_usage;
+	size_t heap_high_water_mark;
 };
 
 /**
@@ -235,7 +237,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd);
 void module_adapter_free(struct comp_dev *dev);
 int module_adapter_reset(struct comp_dev *dev);
 
-size_t module_adapter_heap_usage(struct processing_module *mod);
+size_t module_adapter_heap_usage(struct processing_module *mod, size_t *hwm);
 
 #if CONFIG_IPC_MAJOR_3
 static inline

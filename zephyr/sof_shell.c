@@ -55,13 +55,15 @@ static int cmd_sof_module_heap_usage(const struct shell *sh,
 	}
 
 	list_for_item_safe(clist, _clist, &ipc->comp_list) {
+		size_t usage, hwm;
+
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
 
-		shell_print(sh, "comp id 0x%08x\t%8zu bytes\t(%zu max)", icd->id,
-			    module_adapter_heap_usage(comp_mod(icd->cd)),
-			    comp_mod(icd->cd)->priv.cfg.heap_bytes);
+		usage = module_adapter_heap_usage(comp_mod(icd->cd), &hwm);
+		shell_print(sh, "comp id 0x%08x%9zu usage%9zu hwm %9zu max\tbytes",
+			    icd->id, usage, hwm, comp_mod(icd->cd)->priv.cfg.heap_bytes);
 	}
 	return 0;
 }
