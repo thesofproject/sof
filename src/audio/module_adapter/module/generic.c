@@ -35,7 +35,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	struct processing_module *mod = comp_mod(dev);
 	struct module_data *md = &mod->priv;
 
-	comp_dbg(dev, "module_load_config() start");
+	comp_dbg(dev, "entry");
 
 	if (!cfg || !size) {
 		comp_err(dev, "wrong input params! dev %zx, cfg %zx size %zu",
@@ -67,7 +67,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	dst->size = size;
 	dst->avail = true;
 
-	comp_dbg(dev, "module_load_config() done");
+	comp_dbg(dev, "done");
 	return ret;
 }
 
@@ -78,7 +78,7 @@ int module_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	const struct module_interface *const interface = dev->drv->adapter_ops;
 
-	comp_dbg(dev, "module_init() start");
+	comp_dbg(dev, "entry");
 
 #if CONFIG_IPC_MAJOR_3
 	if (mod->priv.state == MODULE_INITIALIZED)
@@ -87,8 +87,7 @@ int module_init(struct processing_module *mod)
 		return -EPERM;
 #endif
 	if (!interface) {
-		comp_err(dev, "module interface not defined for comp id %#x",
-			 dev_comp_id(dev));
+		comp_err(dev, "module interface not defined");
 		return -EIO;
 	}
 
@@ -96,8 +95,7 @@ int module_init(struct processing_module *mod)
 	if (!interface->init ||
 	    (!!interface->process + !!interface->process_audio_stream +
 	     !!interface->process_raw_data < 1)) {
-		comp_err(dev, "comp %#x is missing mandatory interfaces",
-			 dev_comp_id(dev));
+		comp_err(dev, "comp is missing mandatory interfaces");
 		return -EIO;
 	}
 
@@ -113,12 +111,11 @@ int module_init(struct processing_module *mod)
 	/* Now we can proceed with module specific initialization */
 	ret = interface->init(mod);
 	if (ret) {
-		comp_err(dev, "module_init() error %d: module specific init failed, comp id %#x",
-			 ret, dev_comp_id(dev));
+		comp_err(dev, "error %d: module specific init failed", ret);
 		return ret;
 	}
 
-	comp_dbg(dev, "module_init() done");
+	comp_dbg(dev, "done");
 #if CONFIG_IPC_MAJOR_3
 	md->state = MODULE_INITIALIZED;
 #endif
@@ -182,7 +179,7 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 		return NULL;
 
 	if (!size) {
-		comp_err(mod->dev, "mod_alloc: requested allocation of 0 bytes.");
+		comp_err(mod->dev, "requested allocation of 0 bytes.");
 		container_put(mod, container);
 		return NULL;
 	}
@@ -194,8 +191,7 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 		ptr = rballoc(SOF_MEM_FLAG_USER, size);
 
 	if (!ptr) {
-		comp_err(mod->dev, "mod_alloc: failed to allocate memory for comp %x.",
-			 dev_comp_id(mod->dev));
+		comp_err(mod->dev, "failed to allocate memory.");
 		container_put(mod, container);
 		return NULL;
 	}
@@ -368,8 +364,7 @@ int mod_free(struct processing_module *mod, const void *ptr)
 		}
 	}
 
-	comp_err(mod->dev, "mod_free: error: could not find memory pointed by %p",
-		 ptr);
+	comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
 
 	return -EINVAL;
 }
@@ -399,7 +394,7 @@ int module_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	const struct module_interface *const ops = dev->drv->adapter_ops;
 
-	comp_dbg(dev, "module_prepare() start");
+	comp_dbg(dev, "entry");
 
 #if CONFIG_IPC_MAJOR_3
 	if (mod->priv.state == MODULE_IDLE)
@@ -411,8 +406,7 @@ int module_prepare(struct processing_module *mod,
 		int ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 
 		if (ret) {
-			comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
-				 ret, dev_comp_id(dev));
+			comp_err(dev, "error %d: module specific prepare failed", ret);
 			return ret;
 		}
 	}
@@ -429,7 +423,7 @@ int module_prepare(struct processing_module *mod,
 #if CONFIG_IPC_MAJOR_3
 	md->state = MODULE_IDLE;
 #endif
-	comp_dbg(dev, "module_prepare() done");
+	comp_dbg(dev, "done");
 
 	return 0;
 }
@@ -443,14 +437,13 @@ int module_process_legacy(struct processing_module *mod,
 	const struct module_interface *const ops = dev->drv->adapter_ops;
 	int ret;
 
-	comp_dbg(dev, "module_process_legacy() start");
+	comp_dbg(dev, "entry");
 
 #if CONFIG_IPC_MAJOR_3
 	struct module_data *md = &mod->priv;
 
 	if (md->state != MODULE_IDLE) {
-		comp_err(dev, "wrong state of comp_id %x, state %d",
-			 dev_comp_id(dev), md->state);
+		comp_err(dev, "wrong state %d", md->state);
 		return -EPERM;
 	}
 
@@ -467,12 +460,11 @@ int module_process_legacy(struct processing_module *mod,
 		ret = -EOPNOTSUPP;
 
 	if (ret && ret != -ENOSPC && ret != -ENODATA) {
-		comp_err(dev, "module_process() error %d: for comp %#x",
-			 ret, dev_comp_id(dev));
+		comp_err(dev, "error %d", ret);
 		return ret;
 	}
 
-	comp_dbg(dev, "module_process_legacy() done");
+	comp_dbg(dev, "done");
 
 #if CONFIG_IPC_MAJOR_3
 	/* reset state to idle */
@@ -490,13 +482,12 @@ int module_process_sink_src(struct processing_module *mod,
 	const struct module_interface *const ops = dev->drv->adapter_ops;
 	int ret;
 
-	comp_dbg(dev, "module_process sink src() start");
+	comp_dbg(dev, "entry");
 
 #if CONFIG_IPC_MAJOR_3
 	struct module_data *md = &mod->priv;
 	if (md->state != MODULE_IDLE) {
-		comp_err(dev, "wrong state of comp_id %x, state %d",
-			 dev_comp_id(dev), md->state);
+		comp_err(dev, "wrong state %d", md->state);
 		return -EPERM;
 	}
 
@@ -507,12 +498,11 @@ int module_process_sink_src(struct processing_module *mod,
 	ret = ops->process(mod, sources, num_of_sources, sinks, num_of_sinks);
 
 	if (ret && ret != -ENOSPC && ret != -ENODATA) {
-		comp_err(dev, "module_process() error %d: for comp %#x",
-			 ret, dev_comp_id(dev));
+		comp_err(dev, "error %d", ret);
 		return ret;
 	}
 
-	comp_dbg(dev, "module_process sink src() done");
+	comp_dbg(dev, "done");
 
 #if CONFIG_IPC_MAJOR_3
 	/* reset state to idle */
@@ -540,8 +530,7 @@ int module_reset(struct processing_module *mod)
 		if (ret) {
 			if (ret != PPL_STATUS_PATH_STOP)
 				comp_err(mod->dev,
-					 "module_reset() error %d: module specific reset() failed for comp %#xd",
-					 ret, dev_comp_id(mod->dev));
+					 "error %d: module specific reset() failed", ret);
 			return ret;
 		}
 	}
@@ -602,8 +591,7 @@ int module_free(struct processing_module *mod)
 	if (ops->free) {
 		ret = ops->free(mod);
 		if (ret)
-			comp_warn(mod->dev, "error: %d for %d",
-				  ret, dev_comp_id(mod->dev));
+			comp_warn(mod->dev, "error: %d", ret);
 	}
 
 	/* Free all memory shared by module_adapter & module */
@@ -702,8 +690,7 @@ int module_set_configuration(struct processing_module *mod,
 
 	ret = memcpy_s(dst, md->new_cfg_size - offset, fragment, fragment_size);
 	if (ret < 0) {
-		comp_err(dev, "error: %d failed to copy fragment",
-			 ret);
+		comp_err(dev, "error: %d failed to copy fragment", ret);
 		return ret;
 	}
 
