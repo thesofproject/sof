@@ -15,6 +15,7 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
+#include <sof/lib/fast-get.h>
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
@@ -270,6 +271,39 @@ EXPORT_SYMBOL(mod_data_blob_handler_new);
 #endif
 
 /**
+ * Make a module associated shared SRAM copy of DRAM read-only data.
+ * @param mod	Pointer to module this copy is allocated for.
+ * @return Pointer to the SRAM copy.
+ *
+ * Like fast_get() but the handler is automatically freed.
+ */
+#if CONFIG_FAST_GET
+const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size)
+{
+	struct module_resources *res = &mod->priv.resources;
+	struct module_memory *container = container_get(mod);
+	const void *ptr;
+
+	if (!container)
+		return NULL;
+
+	ptr = fast_get(dram_ptr, size);
+	if (!ptr) {
+		container_put(mod, container);
+		return NULL;
+	}
+
+	container->ptr = (void *)ptr;
+	container->size = 0;
+	container->free = (void (*)(void *))fast_put;
+	list_item_prepend(&container->mem_list, &res->mem_list);
+
+	return ptr;
+}
+EXPORT_SYMBOL(mod_fast_get);
+#endif
+
+/**
  * Frees the memory block removes it from module's book keeping.
  * @param mod	Pointer to module this memory block was allocated for.
  * @param ptr	Pointer to the memory block.
@@ -313,6 +347,14 @@ void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_
 	mod_free(mod, (void *)dbh);
 }
 EXPORT_SYMBOL(mod_data_blob_handler_free);
+#endif
+
+#if CONFIG_FAST_GET
+void mod_fast_put(struct processing_module *mod, const void *sram_ptr)
+{
+	mod_free(mod, sram_ptr);
+}
+EXPORT_SYMBOL(mod_fast_put);
 #endif
 
 int module_prepare(struct processing_module *mod,
