@@ -14,6 +14,7 @@
 #include <rtos/symbol.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/data_blob.h>
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
@@ -189,6 +190,7 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	/* Store reference to allocated memory */
 	container->ptr = ptr;
 	container->size = size;
+	container->free = NULL;
 	list_item_prepend(&container->mem_list, &res->mem_list);
 
 	res->heap_usage += size;
@@ -234,11 +236,45 @@ void *mod_zalloc(struct processing_module *mod, uint32_t size)
 EXPORT_SYMBOL(mod_zalloc);
 
 /**
+ * Creates a blob handler and releases it when the module is unloaded
+ * @param mod	Pointer to module this memory block is allocated for.
+ * @return Pointer to the created data blob handler
+ *
+ * Like comp_data_blob_handler_new() but the handler is automatically freed.
+ */
+#if CONFIG_COMP_BLOB
+struct comp_data_blob_handler *
+mod_data_blob_handler_new(struct processing_module *mod)
+{
+	struct module_resources *res = &mod->priv.resources;
+	struct module_memory *container = container_get(mod);
+	struct comp_data_blob_handler *dbh;
+
+	if (!container)
+		return NULL;
+
+	dbh = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
+	if (!dbh) {
+		container_put(mod, container);
+		return NULL;
+	}
+
+	container->ptr = dbh;
+	container->size = 0;
+	container->free = (void (*)(void *))comp_data_blob_handler_free;
+	list_item_prepend(&container->mem_list, &res->mem_list);
+
+	return dbh;
+}
+EXPORT_SYMBOL(mod_data_blob_handler_new);
+#endif
+
+/**
  * Frees the memory block removes it from module's book keeping.
  * @param mod	Pointer to module this memory block was allocated for.
  * @param ptr	Pointer to the memory block.
  */
-int mod_free(struct processing_module *mod, void *ptr)
+int mod_free(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_memory *mem;
@@ -252,8 +288,12 @@ int mod_free(struct processing_module *mod, void *ptr)
 	list_for_item_safe(mem_list, _mem_list, &res->mem_list) {
 		mem = container_of(mem_list, struct module_memory, mem_list);
 		if (mem->ptr == ptr) {
-			rfree(mem->ptr);
-			res->heap_usage -= mem->size;
+			if (mem->free) {
+				mem->free(mem->ptr);
+			} else {
+				rfree(mem->ptr);
+				res->heap_usage -= mem->size;
+			}
 			list_item_del(&mem->mem_list);
 			container_put(mod, mem);
 			return 0;
@@ -266,6 +306,14 @@ int mod_free(struct processing_module *mod, void *ptr)
 	return -EINVAL;
 }
 EXPORT_SYMBOL(mod_free);
+
+#if CONFIG_COMP_BLOB
+void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
+{
+	mod_free(mod, (void *)dbh);
+}
+EXPORT_SYMBOL(mod_data_blob_handler_free);
+#endif
 
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
@@ -453,7 +501,10 @@ void mod_free_all(struct processing_module *mod)
 	list_for_item_safe(list, _list, &res->mem_list) {
 		struct module_memory *mem = container_of(list, struct module_memory, mem_list);
 
-		rfree(mem->ptr);
+		if (mem->free)
+			mem->free(mem->ptr);
+		else
+			rfree(mem->ptr);
 		list_item_del(&mem->mem_list);
 	}
 
