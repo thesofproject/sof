@@ -116,27 +116,37 @@ struct module_param {
 };
 
 /**
- * \struct module_memory
+ * \struct module_resources
  * \brief module resources block - used for module allocation records
  * The allocations are recorded so that they can be automatically freed
  * when the module unloads.
  */
 struct module_resources {
-	struct list_item mem_list;		/**< Allocad memory containers */
+	struct list_item res_list;		/**< Allocad resource containers */
 	struct list_item free_cont_list;	/**< Unused memory containers */
 	struct list_item cont_chunk_list;	/**< Memory container chunks */
 	size_t heap_usage;
 	size_t heap_high_water_mark;
 };
 
+enum mod_resource_type {
+	MOD_RES_UNINITIALIZED = 0,
+	MOD_RES_HEAP,
+	MOD_RES_BLOB_HANDLER,
+};
+
 /**
- * \struct module_memory
+ * \struct module_resource
  * \brief module memory container - used for every memory allocated by module
  */
-struct module_memory {
-	void *ptr; /**< A pointr to particular memory block */
-	struct list_item mem_list; /**< list of memory allocated by module */
-	size_t size;
+struct module_resource {
+	union {
+		void *ptr; /**< Pointer to heap allocated memory */
+		struct comp_data_blob_handler *bhp; /**< Blob handler ptr */
+	};
+	struct list_item list; /**< list element */
+	size_t size; /**< Size of allocated heap memory, 0 if not from heap */
+	enum mod_resource_type type; /**< Resource type */
 };
 
 /**
@@ -171,7 +181,11 @@ int module_init(struct processing_module *mod);
 void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t alignment);
 void *mod_alloc(struct processing_module *mod, uint32_t size);
 void *mod_zalloc(struct processing_module *mod, uint32_t size);
-int mod_free(struct processing_module *mod, void *ptr);
+int mod_free(struct processing_module *mod, const void *ptr);
+#if CONFIG_COMP_BLOB
+struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
+void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
+#endif
 void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
