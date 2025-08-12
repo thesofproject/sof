@@ -14,6 +14,7 @@
 #include <rtos/symbol.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/data_blob.h>
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
@@ -92,7 +93,7 @@ int module_init(struct processing_module *mod)
 	}
 
 	/* Init memory list */
-	list_init(&md->resources.mem_list);
+	list_init(&md->resources.res_list);
 	list_init(&md->resources.free_cont_list);
 	list_init(&md->resources.cont_chunk_list);
 	md->resources.heap_usage = 0;
@@ -116,13 +117,13 @@ int module_init(struct processing_module *mod)
 
 struct container_chunk {
 	struct list_item chunk_list;
-	struct module_memory containers[CONFIG_MODULE_MEMORY_API_CONTAINER_CHUNK_SIZE];
+	struct module_resource containers[CONFIG_MODULE_MEMORY_API_CONTAINER_CHUNK_SIZE];
 };
 
-static struct module_memory *container_get(struct processing_module *mod)
+static struct module_resource *container_get(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
-	struct module_memory *container;
+	struct module_resource *container;
 
 	if (list_is_empty(&res->free_cont_list)) {
 		struct container_chunk *chunk = rzalloc(SOF_MEM_FLAG_USER, sizeof(*chunk));
@@ -135,19 +136,19 @@ static struct module_memory *container_get(struct processing_module *mod)
 
 		list_item_append(&chunk->chunk_list, &res->cont_chunk_list);
 		for (i = 0; i < ARRAY_SIZE(chunk->containers); i++)
-			list_item_append(&chunk->containers[i].mem_list, &res->free_cont_list);
+			list_item_append(&chunk->containers[i].list, &res->free_cont_list);
 	}
 
-	container = list_first_item(&res->free_cont_list, struct module_memory, mem_list);
-	list_item_del(&container->mem_list);
+	container = list_first_item(&res->free_cont_list, struct module_resource, list);
+	list_item_del(&container->list);
 	return container;
 }
 
-static void container_put(struct processing_module *mod, struct module_memory *container)
+static void container_put(struct processing_module *mod, struct module_resource *container)
 {
 	struct module_resources *res = &mod->priv.resources;
 
-	list_item_append(&container->mem_list, &res->free_cont_list);
+	list_item_append(&container->list, &res->free_cont_list);
 }
 
 /**
@@ -161,7 +162,7 @@ static void container_put(struct processing_module *mod, struct module_memory *c
  */
 void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t alignment)
 {
-	struct module_memory *container = container_get(mod);
+	struct module_resource *container = container_get(mod);
 	struct module_resources *res = &mod->priv.resources;
 	void *ptr;
 
@@ -189,7 +190,8 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	/* Store reference to allocated memory */
 	container->ptr = ptr;
 	container->size = size;
-	list_item_prepend(&container->mem_list, &res->mem_list);
+	container->type = MOD_RES_HEAP;
+	list_item_prepend(&container->list, &res->res_list);
 
 	res->heap_usage += size;
 	if (res->heap_usage > res->heap_high_water_mark)
@@ -234,29 +236,83 @@ void *mod_zalloc(struct processing_module *mod, uint32_t size)
 EXPORT_SYMBOL(mod_zalloc);
 
 /**
+ * Creates a blob handler and releases it when the module is unloaded
+ * @param mod	Pointer to module this memory block is allocated for.
+ * @return Pointer to the created data blob handler
+ *
+ * Like comp_data_blob_handler_new() but the handler is automatically freed.
+ */
+#if CONFIG_COMP_BLOB
+struct comp_data_blob_handler *
+mod_data_blob_handler_new(struct processing_module *mod)
+{
+	struct module_resources *res = &mod->priv.resources;
+	struct module_resource *container = container_get(mod);
+	struct comp_data_blob_handler *bhp;
+
+	if (!container)
+		return NULL;
+
+	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
+	if (!bhp) {
+		container_put(mod, container);
+		return NULL;
+	}
+
+	container->bhp = bhp;
+	container->size = 0;
+	container->type = MOD_RES_BLOB_HANDLER;
+	list_item_prepend(&container->list, &res->res_list);
+
+	return bhp;
+}
+EXPORT_SYMBOL(mod_data_blob_handler_new);
+#endif
+
+static int free_contents(struct processing_module *mod, struct module_resource *container)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	switch (container->type) {
+	case MOD_RES_HEAP:
+		rfree(container->ptr);
+		res->heap_usage -= container->size;
+		return 0;
+#if CONFIG_COMP_BLOB
+	case MOD_RES_BLOB_HANDLER:
+		comp_data_blob_handler_free(container->bhp);
+		return 0;
+#endif
+	default:
+		comp_err(mod->dev, "Unknown resource type: %d", container->type);
+	}
+	return -EINVAL;
+}
+
+/**
  * Frees the memory block removes it from module's book keeping.
  * @param mod	Pointer to module this memory block was allocated for.
  * @param ptr	Pointer to the memory block.
  */
-int mod_free(struct processing_module *mod, void *ptr)
+int mod_free(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
-	struct module_memory *mem;
-	struct list_item *mem_list;
-	struct list_item *_mem_list;
+	struct module_resource *container;
+	struct list_item *res_list;
+	struct list_item *_res_list;
 
 	if (!ptr)
 		return 0;
 
 	/* Find which container keeps this memory */
-	list_for_item_safe(mem_list, _mem_list, &res->mem_list) {
-		mem = container_of(mem_list, struct module_memory, mem_list);
-		if (mem->ptr == ptr) {
-			rfree(mem->ptr);
-			res->heap_usage -= mem->size;
-			list_item_del(&mem->mem_list);
-			container_put(mod, mem);
-			return 0;
+	list_for_item_safe(res_list, _res_list, &res->res_list) {
+		container = container_of(res_list, struct module_resource, list);
+		if (container->ptr == ptr) {
+			int ret = free_contents(mod, container);
+
+			list_item_del(&container->list);
+			container_put(mod, container);
+			return ret;
 		}
 	}
 
@@ -266,6 +322,14 @@ int mod_free(struct processing_module *mod, void *ptr)
 	return -EINVAL;
 }
 EXPORT_SYMBOL(mod_free);
+
+#if CONFIG_COMP_BLOB
+void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
+{
+	mod_free(mod, (void *)dbh);
+}
+EXPORT_SYMBOL(mod_data_blob_handler_free);
+#endif
 
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
@@ -438,8 +502,8 @@ int module_reset(struct processing_module *mod)
 }
 
 /**
- * Frees all the memory allocated for this module
- * @param mod	Pointer to module this memory block was allocated for.
+ * Frees all the resources registered for this module
+ * @param mod	Pointer to module that should have its resource freed.
  *
  * This function is called automatically when the module is unloaded.
  */
@@ -450,11 +514,12 @@ void mod_free_all(struct processing_module *mod)
 	struct list_item *_list;
 
 	/* Find which container keeps this memory */
-	list_for_item_safe(list, _list, &res->mem_list) {
-		struct module_memory *mem = container_of(list, struct module_memory, mem_list);
+	list_for_item_safe(list, _list, &res->res_list) {
+		struct module_resource *container =
+			container_of(list, struct module_resource, list);
 
-		rfree(mem->ptr);
-		list_item_del(&mem->mem_list);
+		free_contents(mod, container);
+		list_item_del(&container->list);
 	}
 
 	list_for_item_safe(list, _list, &res->cont_chunk_list) {
