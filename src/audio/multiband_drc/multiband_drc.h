@@ -89,10 +89,11 @@ static inline multiband_drc_func multiband_drc_find_proc_func_pass(enum sof_ipc_
 	return NULL;
 }
 
-static inline void multiband_drc_iir_reset_state_ch(struct iir_state_df1 *iir)
+static inline void multiband_drc_iir_reset_state_ch(struct processing_module *mod,
+						    struct iir_state_df1 *iir)
 {
-	rfree(iir->coef);
-	rfree(iir->delay);
+	mod_free(mod, iir->coef);
+	mod_free(mod, iir->delay);
 
 	iir->coef = NULL;
 	iir->delay = NULL;

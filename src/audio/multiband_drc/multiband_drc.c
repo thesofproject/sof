@@ -42,17 +42,18 @@ SOF_DEFINE_REG_UUID(multiband_drc);
 DECLARE_TR_CTX(multiband_drc_tr, SOF_UUID(multiband_drc_uuid), LOG_LEVEL_INFO);
 
 /* Called from multiband_drc_setup() from multiband_drc_process(), so cannot be __cold */
-static void multiband_drc_reset_state(struct multiband_drc_state *state)
+static void multiband_drc_reset_state(struct processing_module *mod,
+				      struct multiband_drc_state *state)
 {
 	int i;
 
 	/* Reset emphasis eq-iir state */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		multiband_drc_iir_reset_state_ch(&state->emphasis[i]);
+		multiband_drc_iir_reset_state_ch(mod, &state->emphasis[i]);
 
 	/* Reset crossover state */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		crossover_reset_state_ch(&state->crossover[i]);
+		crossover_reset_state_ch(mod, &state->crossover[i]);
 
 	/* Reset drc kernel state */
 	for (i = 0; i < SOF_MULTIBAND_DRC_MAX_BANDS; i++)
@@ -60,10 +61,11 @@ static void multiband_drc_reset_state(struct multiband_drc_state *state)
 
 	/* Reset deemphasis eq-iir state */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		multiband_drc_iir_reset_state_ch(&state->deemphasis[i]);
+		multiband_drc_iir_reset_state_ch(mod, &state->deemphasis[i]);
 }
 
-static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
+static int multiband_drc_eq_init_coef_ch(struct processing_module *mod,
+					 struct sof_eq_iir_biquad *coef,
 					 struct iir_state_df1 *eq)
 {
 	int ret;
@@ -72,8 +74,7 @@ static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
 	if (SOF_EMP_DEEMP_BIQUADS != SOF_IIR_DF1_4TH_NUM_BIQUADS)
 		return -EINVAL;
 
-	eq->coef = rzalloc(SOF_MEM_FLAG_USER,
-			   sizeof(struct sof_eq_iir_biquad) * SOF_EMP_DEEMP_BIQUADS);
+	eq->coef = mod_zalloc(mod, sizeof(struct sof_eq_iir_biquad) * SOF_EMP_DEEMP_BIQUADS);
 	if (!eq->coef)
 		return -ENOMEM;
 
@@ -86,8 +87,7 @@ static int multiband_drc_eq_init_coef_ch(struct sof_eq_iir_biquad *coef,
 	 * delay[0..1] -> state for first biquad
 	 * delay[2..3] -> state for second biquad
 	 */
-	eq->delay = rzalloc(SOF_MEM_FLAG_USER,
-			    sizeof(uint64_t) * CROSSOVER_NUM_DELAYS_LR4);
+	eq->delay = mod_zalloc(mod, sizeof(uint64_t) * CROSSOVER_NUM_DELAYS_LR4);
 	if (!eq->delay)
 		return -ENOMEM;
 
@@ -148,7 +148,7 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 		if (ret < 0) {
 			comp_err(dev,
 				 "multiband_drc_init_coef(), could not assign coeffs to ch %d", ch);
-			goto err;
+			return ret;
 		}
 	}
 
@@ -157,12 +157,12 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	/* Emphasis: collect the coef array and assign it to every channel */
 	emphasis = config->emp_coef;
 	for (ch = 0; ch < nch; ch++) {
-		ret = multiband_drc_eq_init_coef_ch(emphasis, &state->emphasis[ch]);
+		ret = multiband_drc_eq_init_coef_ch(mod, emphasis, &state->emphasis[ch]);
 		/* Free all previously allocated blocks in case of an error */
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_init_coef(), could not assign coeffs to ch %d",
 				 ch);
-			goto err;
+			return ret;
 		}
 	}
 
@@ -171,12 +171,12 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	/* Deemphasis: collect the coef array and assign it to every channel */
 	deemphasis = config->deemp_coef;
 	for (ch = 0; ch < nch; ch++) {
-		ret = multiband_drc_eq_init_coef_ch(deemphasis, &state->deemphasis[ch]);
+		ret = multiband_drc_eq_init_coef_ch(mod, deemphasis, &state->deemphasis[ch]);
 		/* Free all previously allocated blocks in case of an error */
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_init_coef(), could not assign coeffs to ch %d",
 				 ch);
-			goto err;
+			return ret;
 		}
 	}
 
@@ -188,22 +188,18 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 		if (ret < 0) {
 			comp_err(dev,
 				 "multiband_drc_init_coef(), could not init pre delay buffers");
-			goto err;
+			return ret;
 		}
 
 		ret = drc_set_pre_delay_time(&state->drc[i],
 					     cd->config->drc_coef[i].pre_delay_time, rate);
 		if (ret < 0) {
 			comp_err(dev, "multiband_drc_init_coef(), could not set pre delay time");
-			goto err;
+			return ret;
 		}
 	}
 
 	return 0;
-
-err:
-	multiband_drc_reset_state(state);
-	return ret;
 }
 
 /* Called from multiband_drc_process(), so cannot be __cold */
@@ -213,7 +209,7 @@ static int multiband_drc_setup(struct processing_module *mod, int16_t channels,
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
 	/* Reset any previous state */
-	multiband_drc_reset_state(&cd->state);
+	multiband_drc_reset_state(mod, &cd->state);
 
 	/* Setup Crossover, Emphasis EQ, Deemphasis EQ, and DRC */
 	return multiband_drc_init_coef(mod, channels, rate);
@@ -243,7 +239,7 @@ static int multiband_drc_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -258,40 +254,29 @@ static int multiband_drc_init(struct processing_module *mod)
 	multiband_drc_process_enable(&cd->process_enabled);
 
 	/* Handler for configuration data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto cd_fail;
+		return -ENOMEM;
 	}
 
 	/* Get configuration data and reset DRC state */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed.");
-		goto cd_fail;
+		return ret;
 	}
-	multiband_drc_reset_state(&cd->state);
+	multiband_drc_reset_state(mod, &cd->state);
 
 	return 0;
-
-cd_fail:
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
-	return ret;
 }
 
 __cold static int multiband_drc_free(struct processing_module *mod)
 {
-	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
-
 	assert_can_be_cold();
 
 	comp_info(mod->dev, "multiband_drc_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
-
-	rfree(cd);
 	return 0;
 }
 
@@ -415,7 +400,7 @@ static int multiband_drc_reset(struct processing_module *mod)
 
 	comp_info(mod->dev, "multiband_drc_reset()");
 
-	multiband_drc_reset_state(&cd->state);
+	multiband_drc_reset_state(mod, &cd->state);
 
 	cd->source_format = 0;
 	cd->multiband_drc_func = NULL;
