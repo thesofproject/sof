@@ -57,7 +57,7 @@ static void multiband_drc_reset_state(struct processing_module *mod,
 
 	/* Reset drc kernel state */
 	for (i = 0; i < SOF_MULTIBAND_DRC_MAX_BANDS; i++)
-		drc_reset_state(&state->drc[i]);
+		drc_reset_state(mod, &state->drc[i]);
 
 	/* Reset deemphasis eq-iir state */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -184,7 +184,8 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	for (i = 0; i < num_bands; i++) {
 		comp_info(dev, "multiband_drc_init_coef(), initializing drc band %d", i);
 
-		ret = drc_init_pre_delay_buffers(&state->drc[i], (size_t)sample_bytes, (int)nch);
+		ret = drc_init_pre_delay_buffers(mod, &state->drc[i],
+						 (size_t)sample_bytes, (int)nch);
 		if (ret < 0) {
 			comp_err(dev,
 				 "multiband_drc_init_coef(), could not init pre delay buffers");
