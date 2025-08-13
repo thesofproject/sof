@@ -243,7 +243,7 @@ static enum task_state chain_task_run(void *data)
 		if (!cd->first_data_received && host_avail_bytes > half_buff_size) {
 			ret = dma_reload(cd->chan_link->dma->z_dev,
 					 cd->chan_link->index, 0, 0,
-					 half_buff_size);
+					 MIN(host_avail_bytes, link_free_bytes));
 			if (ret < 0) {
 				tr_err(&chain_dma_tr,
 				       "dma_reload() link error, ret = %d", ret);
