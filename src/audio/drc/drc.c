@@ -20,7 +20,6 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <module/module/llext.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <rtos/panic.h>
 #include <rtos/string.h>
@@ -43,11 +42,11 @@ extern const struct sof_uuid drc_uuid;
 extern struct tr_ctx drc_tr;
 
 /* Called from drc_setup() from drc_process(), so cannot be __cold */
-void drc_reset_state(struct drc_state *state)
+void drc_reset_state(struct processing_module *mod, struct drc_state *state)
 {
 	int i;
 
-	rfree(state->pre_delay_buffers[0]);
+	mod_free(mod, state->pre_delay_buffers[0]);
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; ++i) {
 		state->pre_delay_buffers[i] = NULL;
 	}
@@ -67,7 +66,8 @@ void drc_reset_state(struct drc_state *state)
 	state->max_attack_compression_diff_db = INT32_MIN;
 }
 
-int drc_init_pre_delay_buffers(struct drc_state *state,
+int drc_init_pre_delay_buffers(struct processing_module *mod,
+			       struct drc_state *state,
 			       size_t sample_bytes,
 			       int channels)
 {
@@ -76,7 +76,7 @@ int drc_init_pre_delay_buffers(struct drc_state *state,
 	int i;
 
 	/* Allocate pre-delay (lookahead) buffers */
-	state->pre_delay_buffers[0] = rballoc(SOF_MEM_FLAG_USER, bytes_total);
+	state->pre_delay_buffers[0] = mod_balloc(mod, bytes_total);
 	if (!state->pre_delay_buffers[0])
 		return -ENOMEM;
 
@@ -121,16 +121,17 @@ int drc_set_pre_delay_time(struct drc_state *state,
 }
 
 /* Called from drc_process(), so cannot be __cold */
-static int drc_setup(struct drc_comp_data *cd, uint16_t channels, uint32_t rate)
+static int drc_setup(struct processing_module *mod, uint16_t channels, uint32_t rate)
 {
+	struct drc_comp_data *cd = module_get_private_data(mod);
 	uint32_t sample_bytes = get_sample_bytes(cd->source_format);
 	int ret;
 
 	/* Reset any previous state */
-	drc_reset_state(&cd->state);
+	drc_reset_state(mod, &cd->state);
 
 	/* Allocate pre-delay buffers */
-	ret = drc_init_pre_delay_buffers(&cd->state, (size_t)sample_bytes, (int)channels);
+	ret = drc_init_pre_delay_buffers(mod, &cd->state, (size_t)sample_bytes, (int)channels);
 	if (ret < 0)
 		return ret;
 
@@ -164,28 +165,27 @@ __cold static int drc_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
 	md->private = cd;
 
 	/* Handler for configuration data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto cd_fail;
+		return -ENOMEM;
 	}
 
 	/* Get configuration data and reset DRC state */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed.");
-		goto cd_fail;
+		return ret;
 	}
 
-	drc_reset_state(&cd->state);
+	drc_reset_state(mod, &cd->state);
 
 	/* Initialize DRC to enabled. If defined by topology, a control may set
 	 * enabled to false before prepare() or during streaming with the switch
@@ -194,21 +194,12 @@ __cold static int drc_init(struct processing_module *mod)
 	cd->enabled = true;
 	cd->enable_switch = true;
 	return 0;
-
-cd_fail:
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
-	return ret;
 }
 
 __cold static int drc_free(struct processing_module *mod)
 {
-	struct drc_comp_data *cd = module_get_private_data(mod);
-
 	assert_can_be_cold();
 
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
 	return 0;
 }
 
@@ -284,7 +275,7 @@ static int drc_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = drc_setup(cd, audio_stream_get_channels(source),
+		ret = drc_setup(mod, audio_stream_get_channels(source),
 				audio_stream_get_rate(source));
 		if (ret < 0) {
 			comp_err(dev, "drc_copy(), failed DRC setup");
@@ -370,7 +361,7 @@ static int drc_prepare(struct processing_module *mod,
 	comp_info(dev, "drc_prepare(), source_format=%d", cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config) {
-		ret = drc_setup(cd, channels, rate);
+		ret = drc_setup(mod, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "drc_prepare() error: drc_setup failed.");
 			return ret;
@@ -403,7 +394,7 @@ static int drc_reset(struct processing_module *mod)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 
-	drc_reset_state(&cd->state);
+	drc_reset_state(mod, &cd->state);
 
 	return 0;
 }
