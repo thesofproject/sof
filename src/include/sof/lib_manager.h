@@ -187,6 +187,18 @@ int lib_manager_register_module(const uint32_t component_id);
 const struct sof_man_fw_desc *lib_manager_get_library_manifest(int module_id);
 
 /*
+ * \brief Get address and size of the bss section for given module instance
+ *
+ * param[in] instance_id - instance id
+ * param[in] mod - module manifest
+ * param[out] va_addr - address of the bss section
+ * param[out] size - size of the bss section
+ */
+void lib_manager_get_instance_bss_address(uint32_t instance_id,
+					  const struct sof_man_module *mod,
+					  void __sparse_cache **va_addr, size_t *size);
+
+/*
  * \brief Free module
  *
  * param[in] component_id - component id coming from ipc config. This function reguires valid

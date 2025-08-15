@@ -164,13 +164,32 @@ int module_prepare(struct processing_module *mod,
 		   struct sof_sink **sinks, int num_of_sinks);
 
 static inline
+bool generic_module_is_ready_to_process(struct processing_module *mod,
+					struct sof_source **sources,
+					int num_of_sources,
+					struct sof_sink **sinks,
+					int num_of_sinks)
+{
+	int i;
+
+	for (i = 0; i < num_of_sources; i++)
+		if (source_get_data_available(sources[i]) < source_get_min_available(sources[i]))
+			return false;
+
+	for (i = 0; i < num_of_sinks; i++)
+		if (sink_get_free_size(sinks[i]) < sink_get_min_free_space(sinks[i]))
+			return false;
+
+	return true;
+}
+
+static inline
 bool module_is_ready_to_process(struct processing_module *mod,
 				struct sof_source **sources,
 				int num_of_sources,
 				struct sof_sink **sinks,
 				int num_of_sinks)
 {
-	int i;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 
 	/* LL module has to be always ready for processing */
@@ -182,15 +201,8 @@ bool module_is_ready_to_process(struct processing_module *mod,
 	/* default action - the module is ready if there's enough data for processing and enough
 	 * space to store result. IBS/OBS as declared in init_instance
 	 */
-	for (i = 0; i < num_of_sources; i++)
-		if (source_get_data_available(sources[i]) < source_get_min_available(sources[i]))
-			return false;
-
-	for (i = 0; i < num_of_sinks; i++)
-		if (sink_get_free_size(sinks[i]) < sink_get_min_free_space(sinks[i]))
-			return false;
-
-	return true;
+	return generic_module_is_ready_to_process(mod, sources, num_of_sources, sinks,
+						  num_of_sinks);
 }
 
 int module_process_sink_src(struct processing_module *mod,
