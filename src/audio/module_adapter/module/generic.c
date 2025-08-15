@@ -214,8 +214,7 @@ int mod_free(struct processing_module *mod, void *ptr)
 		}
 	}
 
-	comp_err(mod->dev, "mod_free: error: could not find memory pointed by %p",
-		 ptr);
+	comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
 
 	return -EINVAL;
 }
@@ -364,7 +363,7 @@ int module_reset(struct processing_module *mod)
 		if (ret) {
 			if (ret != PPL_STATUS_PATH_STOP)
 				comp_err(mod->dev,
-					 "module_reset() error %d: module specific reset() failed for comp %d",
+					 "error %d: module specific reset() failed for comp %d",
 					 ret, dev_comp_id(mod->dev));
 			return ret;
 		}
