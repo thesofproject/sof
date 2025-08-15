@@ -125,6 +125,9 @@ struct module_resources {
 	struct list_item cont_chunk_list;
 	size_t heap_usage;
 	size_t heap_high_water_mark;
+#if DEBUG
+	k_tid_t rsrc_mngr;
+#endif
 };
 
 /**

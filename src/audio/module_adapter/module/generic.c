@@ -99,7 +99,9 @@ int module_init(struct processing_module *mod)
 	list_init(&md->resources.cont_chunk_list);
 	md->resources.heap_usage = 0;
 	md->resources.heap_high_water_mark = 0;
-
+#if DEBUG
+	md->resources.rsrc_mngr = k_current_get();
+#endif
 	/* Now we can proceed with module specific initialization */
 	ret = interface->init(mod);
 	if (ret) {
@@ -167,6 +169,9 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	struct module_resources *res = &mod->priv.resources;
 	void *ptr;
 
+#if DEBUG
+	assert(res->rsrc_mngr == k_current_get());
+#endif
 	if (!container)
 		return NULL;
 
@@ -251,6 +256,9 @@ mod_data_blob_handler_new(struct processing_module *mod)
 	struct module_memory *container = container_get(mod);
 	struct comp_data_blob_handler *dbh;
 
+#if DEBUG
+	assert(res->rsrc_mngr == k_current_get());
+#endif
 	if (!container)
 		return NULL;
 
@@ -284,6 +292,9 @@ const void *mod_fast_get(struct processing_module *mod, const void * const dram_
 	struct module_memory *container = container_get(mod);
 	const void *ptr;
 
+#if DEBUG
+	assert(res->rsrc_mngr == k_current_get());
+#endif
 	if (!container)
 		return NULL;
 
@@ -315,6 +326,9 @@ int mod_free(struct processing_module *mod, void *ptr)
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
 
+#if DEBUG
+	assert(res->rsrc_mngr == k_current_get());
+#endif
 	if (!ptr)
 		return 0;
 
@@ -539,6 +553,9 @@ void mod_free_all(struct processing_module *mod)
 	struct list_item *list;
 	struct list_item *_list;
 
+#if DEBUG
+	assert(res->rsrc_mngr == k_current_get());
+#endif
 	/* Find which container keeps this memory */
 	list_for_item_safe(list, _list, &res->mem_list) {
 		struct module_memory *mem = container_of(list, struct module_memory, mem_list);
