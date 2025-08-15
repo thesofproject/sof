@@ -1020,13 +1020,10 @@ static const struct module_interface mixout_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(mixin, &mixin_interface);
-SOF_LLEXT_MOD_ENTRY(mixout, &mixout_interface);
-
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used =
 {
-	SOF_LLEXT_MODULE_MANIFEST("MIXIN", mixin_llext_entry, 1, SOF_REG_UUID(mixin), 30),
-	SOF_LLEXT_MODULE_MANIFEST("MIXOUT", mixout_llext_entry, 1, SOF_REG_UUID(mixout), 30),
+	SOF_LLEXT_MODULE_MANIFEST("MIXIN", &mixin_interface, 1, SOF_REG_UUID(mixin), 30),
+	SOF_LLEXT_MODULE_MANIFEST("MIXOUT", &mixout_interface, 1, SOF_REG_UUID(mixout), 30),
 };
 
 SOF_LLEXT_BUILDINFO;
