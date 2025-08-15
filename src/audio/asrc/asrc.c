@@ -892,10 +892,8 @@ static const struct module_interface asrc_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(asrc, &asrc_interface);
-
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
-	SOF_LLEXT_MODULE_MANIFEST("ASRC", asrc_llext_entry, 1, SOF_REG_UUID(asrc4), 2),
+	SOF_LLEXT_MODULE_MANIFEST("ASRC", &asrc_interface, 1, SOF_REG_UUID(asrc4), 2),
 };
 
 SOF_LLEXT_BUILDINFO;
