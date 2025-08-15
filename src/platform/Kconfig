@@ -44,6 +44,13 @@ config WILDCATLAKE
 	help
 	  Select if your target platform is Wildcatlake-compatible
 
+config NOVALAKE
+	bool "Build for Novalake"
+	select ACE
+	select ACE_VERSION_4_0
+	help
+	  Select if your target platform is Novalake-compatible
+
 config LIBRARY
 	bool "Build Library"
 	help
@@ -327,9 +334,8 @@ endchoice
 
 config MAX_CORE_COUNT
 	int
-	default 5 if LUNARLAKE
-	default 5 if PANTHERLAKE
-	default 4 if TIGERLAKE
+	default 5 if LUNARLAKE || PANTHERLAKE
+	default 4 if TIGERLAKE || NOVALAKE
 	default 3 if METEORLAKE
 	default 3 if WILDCATLAKE
 	default 1
@@ -420,6 +426,12 @@ config ACE_VERSION_3_0
 	bool
 	help
 	  Select for ACE version 3.0
+
+config ACE_VERSION_4_0
+	depends on ACE
+	bool
+	help
+	  Select for ACE version 4.0
 
 config HP_MEMORY_BANKS
 	int "HP memory banks count"
