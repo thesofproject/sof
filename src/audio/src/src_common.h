@@ -242,12 +242,6 @@ int src_process(struct processing_module *mod,
 		struct sof_source **sources, int num_of_sources,
 		struct sof_sink **sinks, int num_of_sinks);
 
-int src_set_config(struct processing_module *mod, uint32_t config_id,
-		   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-		   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-		   size_t response_size);
-int src_get_config(struct processing_module *mod, uint32_t config_id,
-		   uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size);
 int src_free(struct processing_module *mod);
 int src_reset(struct processing_module *mod);
 extern struct tr_ctx src_tr;
