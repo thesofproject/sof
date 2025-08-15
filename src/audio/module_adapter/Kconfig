@@ -13,6 +13,17 @@ menu "Processing modules"
 		  containers to allocate at once is selected by this
 		  config option.
 
+	config MODULE_MEMORY_API_DEBUG
+		bool "Turn on memory API thread safety checks"
+		default y if DEBUG
+		help
+		  The Module Memory API structures are not protected
+		  by locks. This is because the initialization,
+		  allocation, and freeing of resources should always
+		  be done in the same thread. This option adds an
+		  assert to make sure no other thread makes such
+		  operations.
+
 	config CADENCE_CODEC
 		bool "Cadence codec"
 		default n

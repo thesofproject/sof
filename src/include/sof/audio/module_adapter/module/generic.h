@@ -19,6 +19,11 @@
 #include <sof/audio/source_api.h>
 #include "module_interface.h"
 
+/* The __ZEPHYR__ condition is to keep cmocka tests working */
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+#include <zephyr/kernel/thread.h>
+#endif
+
 /*
  * helpers to determine processing type
  * Needed till all the modules use PROCESSING_MODE_SINK_SOURCE
@@ -127,6 +132,9 @@ struct module_resources {
 	struct list_item cont_chunk_list;	/**< Memory container chunks */
 	size_t heap_usage;
 	size_t heap_high_water_mark;
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+	k_tid_t rsrc_mngr;
+#endif
 };
 
 /**
