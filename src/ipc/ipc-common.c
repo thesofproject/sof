@@ -254,9 +254,9 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 			list_item_append(&msg->list, &ipc->msg_list);
 	}
 
-	schedule_ipc_worker();
-
 	k_spin_unlock(&ipc->lock, key);
+
+	schedule_ipc_worker();
 }
 EXPORT_SYMBOL(ipc_msg_send);
 
@@ -265,15 +265,25 @@ static void ipc_work_handler(struct k_work *work)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
+	bool more_to_send = false;
 
 	ipc_send_queued_msg();
 
 	key = k_spin_lock(&ipc->lock);
 
 	if (!list_is_empty(&ipc->msg_list) && !ipc->pm_prepare_D3)
-		schedule_ipc_worker();
+		more_to_send = true;
 
 	k_spin_unlock(&ipc->lock, key);
+
+	/*
+	 * If there's a race and the message is already sent and/or
+	 * prepare_D3 is set, we may do an extra wake-up of the
+	 * worker, but it is harmless as the worker will take
+	 * the lock and check the status again.
+	 */
+	if (more_to_send)
+		schedule_ipc_worker();
 }
 #endif
 
