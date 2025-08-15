@@ -16,7 +16,7 @@ DECLARE_TR_CTX(passthrough_tr, SOF_UUID(passthrough_uuid), LOG_LEVEL_INFO);
 
 static int passthrough_codec_init(struct processing_module *mod)
 {
-	comp_info(mod->dev, "passthrough_codec_init() start");
+	comp_info(mod->dev, "entry");
 	return 0;
 }
 
@@ -28,7 +28,7 @@ static int passthrough_codec_prepare(struct processing_module *mod,
 	struct module_data *codec = &mod->priv;
 	struct comp_buffer *source = comp_dev_get_first_data_producer(dev);
 
-	comp_info(dev, "passthrough_codec_prepare()");
+	comp_info(dev, "entry");
 
 	mod->period_bytes =  audio_stream_period_bytes(&source->stream, dev->frames);
 
@@ -55,7 +55,7 @@ static int passthrough_codec_init_process(struct processing_module *mod)
 	struct module_data *codec = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "passthrough_codec_init_process()");
+	comp_dbg(dev, "entry");
 
 	codec->mpd.produced = 0;
 	codec->mpd.consumed = 0;
@@ -72,6 +72,8 @@ passthrough_codec_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
 
+	comp_dbg(dev, "entry");
+
 	/* Proceed only if we have enough data to fill the module buffer completely */
 	if (input_buffers[0].size < codec->mpd.in_buff_size) {
 		comp_dbg(dev, "not enough data to process");
@@ -83,8 +85,6 @@ passthrough_codec_process(struct processing_module *mod,
 
 	memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
 		 input_buffers[0].data, codec->mpd.in_buff_size);
-
-	comp_dbg(dev, "passthrough_codec_process()");
 
 	memcpy_s(codec->mpd.out_buff, codec->mpd.out_buff_size,
 		 codec->mpd.in_buff, codec->mpd.in_buff_size);
@@ -104,7 +104,7 @@ static int passthrough_codec_reset(struct processing_module *mod)
 {
 	struct module_data *codec = &mod->priv;
 
-	comp_info(mod->dev, "passthrough_codec_reset()");
+	comp_info(mod->dev, "entry");
 
 	rfree(codec->mpd.in_buff);
 	rfree(codec->mpd.out_buff);
@@ -113,7 +113,7 @@ static int passthrough_codec_reset(struct processing_module *mod)
 
 static int passthrough_codec_free(struct processing_module *mod)
 {
-	comp_info(mod->dev, "passthrough_codec_free()");
+	comp_info(mod->dev, "entry");
 
 	/* Nothing to do */
 	return 0;
