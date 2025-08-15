@@ -58,7 +58,7 @@ static int modules_init(struct processing_module *mod)
 	const struct ipc4_base_module_cfg *src_cfg = &md->cfg.base_cfg;
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
-	comp_info(dev, "modules_init() start");
+	comp_info(dev, "entry");
 
 	md->mpd.in_buff_size = src_cfg->ibs;
 	md->mpd.out_buff_size = src_cfg->obs;
@@ -84,7 +84,7 @@ static int modules_prepare(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "modules_prepare()");
+	comp_info(dev, "entry");
 
 	return iadk_wrapper_prepare(module_get_private_data(mod));
 }
@@ -109,7 +109,7 @@ static int modules_free(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_info(dev, "modules_free()");
+	comp_info(dev, "entry");
 	ret = iadk_wrapper_free(module_get_private_data(mod));
 	if (ret)
 		comp_err(dev, "iadk_wrapper_free failed with error: %d", ret);
