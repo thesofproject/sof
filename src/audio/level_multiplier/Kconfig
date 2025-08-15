@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_LEVEL_MULTIPLIER
+	tristate "Level multiplier component"
+	default y
+	help
+	  Select for Level multiplier component. This component
+          applies a fixed gain to audio. The amount of gain
+          is configured in the bytes control that is typically
+          set in boot time from topology. It can e.g. increase
+          capture sensitivity of voice applications by 20 dB
+          compared to media capture.
