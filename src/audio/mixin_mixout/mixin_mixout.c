@@ -139,7 +139,7 @@ static int mixin_init(struct processing_module *mod)
 	struct mixin_data *md;
 	int i;
 
-	comp_dbg(dev, "mixin_init()");
+	comp_dbg(dev, "entry");
 
 	md = rzalloc(SOF_MEM_FLAG_USER, sizeof(*md));
 	if (!md)
@@ -166,7 +166,7 @@ static int mixout_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct mixout_data *mo_data;
 
-	comp_dbg(dev, "mixout_new()");
+	comp_dbg(dev, "entry");
 
 	mo_data = rzalloc(SOF_MEM_FLAG_USER, sizeof(*mo_data));
 	if (!mo_data)
@@ -320,7 +320,7 @@ static int mixin_process(struct processing_module *mod,
 	int i, ret;
 	struct cir_buf_ptr source_ptr;
 
-	comp_dbg(dev, "mixin_process()");
+	comp_dbg(dev, "entry");
 
 	source_avail_frames = source_get_data_frames_available(sources[0]);
 	sinks_free_frames = INT32_MAX;
@@ -526,7 +526,7 @@ static int mixout_process(struct processing_module *mod,
 	struct pending_frames *pending_frames;
 	int i;
 
-	comp_dbg(dev, "mixout_process()");
+	comp_dbg(dev, "entry");
 
 	md = module_get_private_data(mod);
 
@@ -650,7 +650,7 @@ static int mixin_params(struct processing_module *mod)
 	int i;
 	int ret;
 
-	comp_dbg(dev, "mixin_params()");
+	comp_dbg(dev, "entry");
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
@@ -717,7 +717,7 @@ static int mixin_prepare(struct processing_module *mod,
 	enum sof_ipc_frame fmt;
 	int ret;
 
-	comp_info(dev, "mixin_prepare()");
+	comp_info(dev, "entry");
 	md->eos_delay_configured = false;
 
 	ret = mixin_params(mod);
@@ -753,7 +753,7 @@ static int mixout_params(struct processing_module *mod)
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 	int ret;
 
-	comp_dbg(dev, "mixout_params()");
+	comp_dbg(dev, "entry");
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 
@@ -790,7 +790,7 @@ static int mixout_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	comp_dbg(dev, "mixout_prepare()");
+	comp_dbg(dev, "entry");
 
 	/*
 	 * Since mixout sink buffer stream is reset on .prepare(), let's
@@ -822,7 +822,7 @@ static int mixout_bind(struct processing_module *mod, struct bind_info *bind_dat
 
 	mixin = ipc4_get_comp_dev(src_id);
 	if (!mixin) {
-		comp_err(mod->dev, "mixout_bind: no mixin with ID %d found", src_id);
+		comp_err(mod->dev, "no mixin with ID %d found", src_id);
 		return -EINVAL;
 	}
 
@@ -860,7 +860,7 @@ static int mixout_unbind(struct processing_module *mod, struct bind_info *unbind
 	int src_id;
 	struct mixout_data *mixout_data;
 
-	comp_dbg(mod->dev, "mixout_unbind()");
+	comp_dbg(mod->dev, "entry");
 
 	bu = unbind_data->ipc4_data;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
@@ -871,7 +871,7 @@ static int mixout_unbind(struct processing_module *mod, struct bind_info *unbind
 
 	mixin = ipc4_get_comp_dev(src_id);
 	if (!mixin) {
-		comp_err(mod->dev, "mixout_bind: no mixin with ID %d found", src_id);
+		comp_err(mod->dev, "no mixin with ID %d found", src_id);
 		return -EINVAL;
 	}
 
@@ -900,30 +900,30 @@ static int mixin_set_config(struct processing_module *mod, uint32_t config_id,
 	uint16_t gain;
 
 	if (config_id != IPC4_MIXER_MODE) {
-		comp_err(dev, "mixin_set_config() unsupported param ID: %u", config_id);
+		comp_err(dev, "unsupported param ID: %u", config_id);
 		return -EINVAL;
 	}
 
 	if (!(pos & MODULE_CFG_FRAGMENT_SINGLE)) {
-		comp_err(dev, "mixin_set_config() data is expected to be sent as one chunk");
+		comp_err(dev, "data is expected to be sent as one chunk");
 		return -EINVAL;
 	}
 
 	/* for a single chunk data, data_offset_size is size */
 	if (data_offset_size < sizeof(struct ipc4_mixer_mode_config)) {
-		comp_err(dev, "mixin_set_config() too small data size: %u", data_offset_size);
+		comp_err(dev, "too small data size: %u", data_offset_size);
 		return -EINVAL;
 	}
 
 	if (data_offset_size > SOF_IPC_MSG_MAX_SIZE) {
-		comp_err(dev, "mixin_set_config() too large data size: %u", data_offset_size);
+		comp_err(dev, "too large data size: %u", data_offset_size);
 		return -EINVAL;
 	}
 
 	cfg = (const struct ipc4_mixer_mode_config *)fragment;
 
 	if (cfg->mixer_mode_config_count < 1 || cfg->mixer_mode_config_count > MIXIN_MAX_SINKS) {
-		comp_err(dev, "mixin_set_config() invalid mixer_mode_config_count: %u",
+		comp_err(dev, "invalid mixer_mode_config_count: %u",
 			 cfg->mixer_mode_config_count);
 		return -EINVAL;
 	}
