@@ -473,10 +473,8 @@ static const struct module_interface dts_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(dts, &dts_interface);
-
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("DTS", dts_llext_entry, 1, SOF_REG_UUID(dts), 40);
+	SOF_LLEXT_MODULE_MANIFEST("DTS", &dts_interface, 1, SOF_REG_UUID(dts), 40);
 
 SOF_LLEXT_BUILDINFO;
 

@@ -89,18 +89,14 @@ static const struct module_interface src_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(src, &src_interface);
-
 #if CONFIG_COMP_SRC_LITE
 extern const struct module_interface src_lite_interface;
-SOF_LLEXT_MOD_ENTRY(src_lite, &src_lite_interface);
 #endif
 
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
-	SOF_LLEXT_MODULE_MANIFEST("SRC", src_llext_entry, 1, SOF_REG_UUID(src4), 1),
+	SOF_LLEXT_MODULE_MANIFEST("SRC", &src_interface, 1, SOF_REG_UUID(src4), 1),
 #if CONFIG_COMP_SRC_LITE
-	SOF_LLEXT_MODULE_MANIFEST("SRC_LITE", src_lite_llext_entry, 1, SOF_REG_UUID(src_lite),
-				  1),
+	SOF_LLEXT_MODULE_MANIFEST("SRC_LITE", &src_lite_interface, 1, SOF_REG_UUID(src_lite), 1),
 #endif
 };
 

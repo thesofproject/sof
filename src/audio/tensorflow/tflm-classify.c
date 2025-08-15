@@ -243,10 +243,8 @@ SOF_MODULE_INIT(tflmcly, sys_comp_module_tflmcly_interface_init);
 #include <module/module/api_ver.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(tflmcly, &tflmcly_interface);
-
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("TFLMCLY", tflmcly_llext_entry, 1, SOF_REG_UUID(tflmcly), 40);
+	SOF_LLEXT_MODULE_MANIFEST("TFLMCLY", &tflmcly_interface, 1, SOF_REG_UUID(tflmcly), 40);
 
 SOF_LLEXT_BUILDINFO;
 

@@ -424,10 +424,8 @@ static const struct module_interface drc_interface = {
 #include <module/module/api_ver.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(drc, &drc_interface);
-
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("DRC", drc_llext_entry, 1, SOF_REG_UUID(drc), 40);
+	SOF_LLEXT_MODULE_MANIFEST("DRC", &drc_interface, 1, SOF_REG_UUID(drc), 40);
 
 SOF_LLEXT_BUILDINFO;
 
