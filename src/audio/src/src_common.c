@@ -672,24 +672,6 @@ int src_process(struct processing_module *mod,
 	return cd->src_func(cd, sources[0], sinks[0]);
 }
 
-__cold int src_set_config(struct processing_module *mod, uint32_t config_id,
-			  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-			  size_t response_size)
-{
-	assert_can_be_cold();
-
-	return -EINVAL;
-}
-
-__cold int src_get_config(struct processing_module *mod, uint32_t config_id,
-			  uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size)
-{
-	assert_can_be_cold();
-
-	return -EINVAL;
-}
-
 int src_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
