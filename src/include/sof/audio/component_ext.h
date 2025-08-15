@@ -46,6 +46,8 @@ static inline void comp_free(struct comp_dev *dev)
 {
 	assert(dev->drv->ops.free);
 
+	dev->drv->ops.free(dev);
+
 	/* free task if shared component or DP task*/
 	if ((dev->is_shared || dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) &&
 	    dev->task) {
@@ -53,8 +55,6 @@ static inline void comp_free(struct comp_dev *dev)
 		rfree(dev->task);
 		dev->task = NULL;
 	}
-
-	dev->drv->ops.free(dev);
 }
 
 /**
@@ -164,7 +164,6 @@ static inline int comp_trigger_local(struct comp_dev *dev, int cmd)
 		case COMP_TRIGGER_XRUN:
 		case COMP_TRIGGER_PAUSE:
 		case COMP_TRIGGER_STOP:
-			schedule_task_cancel(dev->task);
 			break;
 		}
 	}

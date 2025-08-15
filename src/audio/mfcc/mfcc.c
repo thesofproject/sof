@@ -267,10 +267,8 @@ static const struct module_interface mfcc_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(mfcc, &mfcc_interface);
-
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("MFCC", mfcc_llext_entry, 1, SOF_REG_UUID(mfcc), 40);
+	SOF_LLEXT_MODULE_MANIFEST("MFCC", &mfcc_interface, 1, SOF_REG_UUID(mfcc), 40);
 
 SOF_LLEXT_BUILDINFO;
 

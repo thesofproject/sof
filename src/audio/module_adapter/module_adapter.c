@@ -18,10 +18,16 @@
 #include <sof/audio/source_api.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/base_fw.h>
+#include <ipc4/header.h>
+#include <ipc4/module.h>
+#endif
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <limits.h>
@@ -102,6 +108,14 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	mod->dev = dev;
 	dev->mod = mod;
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	/* create a task for DP processing */
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		/* All data allocated, create a thread */
+		pipeline_comp_dp_task_init(dev);
+	}
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
 	list_init(&mod->raw_data_buffers_list);
 
 	ret = module_adapter_init_data(dev, dst, config, spec);
@@ -133,12 +147,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		goto err;
 	}
 
-#if CONFIG_ZEPHYR_DP_SCHEDULER
-	/* create a task for DP processing */
-	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		pipeline_comp_dp_task_init(dev);
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
-
 	module_adapter_reset_data(dst);
 
 	dev->state = COMP_STATE_READY;
@@ -159,7 +167,12 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
+
 err:
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (dev->task)
+		schedule_task_free(dev->task);
+#endif
 #if CONFIG_IPC_MAJOR_4
 	if (mod)
 		rfree(mod->priv.cfg.input_pins);
@@ -1200,8 +1213,19 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 		dev->state = COMP_STATE_ACTIVE;
 		return PPL_STATUS_PATH_STOP;
 	}
-	if (interface->trigger)
+
+	if (interface->trigger) {
+#if CONFIG_IPC_MAJOR_4
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+			/* Process DP module's trigger */
+			union scheduler_dp_rtio_ipc_param param = {
+				.pipeline_state.trigger_cmd = cmd,
+			};
+			return scheduler_dp_rtio_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE, &param);
+		}
+#endif
 		return interface->trigger(mod, cmd);
+	}
 
 	return module_adapter_set_state(mod, dev, cmd);
 }
@@ -1262,6 +1286,14 @@ void module_adapter_free(struct comp_dev *dev)
 	struct list_item *blist, *_blist;
 
 	comp_dbg(dev, "start");
+
+	if (dev->task) {
+		/* Run DP module's .free() method in its thread context */
+#if CONFIG_IPC_MAJOR_4
+		scheduler_dp_rtio_ipc(mod, SOF_IPC4_MOD_DELETE_INSTANCE, NULL);
+#endif
+		schedule_task_cancel(dev->task);
+	}
 
 	ret = module_free(mod);
 	if (ret)
