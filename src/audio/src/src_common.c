@@ -400,7 +400,7 @@ static int src_verify_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_dbg(dev, "src_verify_params()");
+	comp_dbg(dev, "entry");
 
 	/* check whether params->rate (received from driver) are equal
 	 * to src->source_rate (PLAYBACK) or src->sink_rate (CAPTURE) set during
@@ -485,7 +485,7 @@ int src_params_general(struct processing_module *mod,
 	int n;
 	int err;
 
-	comp_info(dev, "src_params()");
+	comp_info(dev, "entry");
 
 	err = src_set_params(mod, sink);
 	if (err < 0) {
@@ -499,12 +499,12 @@ int src_params_general(struct processing_module *mod,
 		return err;
 	}
 
-	comp_info(dev, "src_params(), source_rate = %u, sink_rate = %u",
+	comp_info(dev, "source_rate = %u, sink_rate = %u",
 		  cd->source_rate, cd->sink_rate);
-	comp_dbg(dev, "src_params(), sample_container_bytes = %d, channels = %u, dev->frames = %u",
+	comp_dbg(dev, "sample_container_bytes = %d, channels = %u, dev->frames = %u",
 		 cd->sample_container_bytes, cd->channels_count, dev->frames);
 	if (!cd->sink_rate) {
-		comp_err(dev, "src_params(), zero sink rate");
+		comp_err(dev, "zero sink rate");
 		return  -EINVAL;
 	}
 
@@ -567,7 +567,7 @@ int src_params_general(struct processing_module *mod,
 		/* This is possibly due to missing coefficients for
 		 * requested rates combination.
 		 */
-		comp_info(dev, "src_params(), missing coefficients for requested rates combination");
+		comp_info(dev, "missing coefficients for requested rates combination");
 		cd->src_func = src_fallback;
 		return  -EINVAL;
 	}
@@ -660,7 +660,7 @@ int src_process(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "src_process()");
+	comp_dbg(mod->dev, "entry");
 
 	/* src component needs 1 source and 1 sink */
 	if (!src_get_copy_limits(cd, sources[0], sinks[0])) {
@@ -693,7 +693,7 @@ int src_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "src_reset()");
+	comp_info(mod->dev, "entry");
 
 	cd->src_func = src_fallback;
 	src_polyphase_reset(&cd->src);
@@ -705,7 +705,7 @@ __cold int src_free(struct processing_module *mod)
 {
 	assert_can_be_cold();
 
-	comp_info(mod->dev, "src_free()");
+	comp_info(mod->dev, "entry");
 
 	return 0;
 }

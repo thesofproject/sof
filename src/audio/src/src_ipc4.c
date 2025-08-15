@@ -195,7 +195,7 @@ __cold int src_init(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	comp_dbg(dev, "src_init()");
+	comp_dbg(dev, "entry");
 
 	if (!cfg->init_data || cfg->size != sizeof(cd->ipc_config)) {
 		comp_err(dev, "Missing or bad size (%u) init data",
@@ -221,10 +221,10 @@ __cold int src_init(struct processing_module *mod)
 	cd->polyphase_func = NULL;
 	src_polyphase_reset(&cd->src);
 
-	comp_dbg(dev, "src_init(), channels_count = %d, depth = %d",
+	comp_dbg(dev, "channels_count = %d, depth = %d",
 		 cd->ipc_config.base.audio_fmt.channels_count,
 		 cd->ipc_config.base.audio_fmt.depth);
-	comp_dbg(dev, "src_init(), sampling frequency = %d, sink rate = %d",
+	comp_dbg(dev, "sampling frequency = %d, sink rate = %d",
 		 cd->ipc_config.base.audio_fmt.sampling_frequency, cd->ipc_config.sink_rate);
 	cd->source_rate = cd->ipc_config.base.audio_fmt.sampling_frequency;
 	cd->sink_rate = cd->ipc_config.sink_rate;
