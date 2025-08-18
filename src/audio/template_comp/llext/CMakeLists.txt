@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 sof_llext_build("template_comp"
-	SOURCES ../template_comp.c
+	SOURCES	../template.c
+		../template-generic.c
+		../template-ipc4.c
 	LIB openmodules
 )
