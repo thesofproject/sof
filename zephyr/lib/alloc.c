@@ -21,6 +21,10 @@
 
 #define SHARED_BUFFER_HEAP_MEM_SIZE	0
 
+#if CONFIG_L3_HEAP && CONFIG_MMU
+#include <kernel_arch_interface.h>
+#endif
+
 #if CONFIG_VIRTUAL_HEAP
 #include <sof/lib/regions_mm.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
@@ -217,7 +221,9 @@ static inline size_t get_l3_heap_size(void)
 	  * - IMR base address
 	  * - actual IMR heap start
 	  */
-	return ROUND_DOWN(IMR_L3_HEAP_SIZE, L3_MEM_PAGE_SIZE);
+	size_t offset = IMR_L3_HEAP_BASE - L3_MEM_BASE_ADDR;
+
+	return ROUND_DOWN(ace_imr_get_mem_size() - offset, L3_MEM_PAGE_SIZE);
 }
 
 void l3_heap_save(void)
@@ -651,11 +657,19 @@ static int heap_init(void)
 #endif
 
 #if CONFIG_L3_HEAP
-	if (l3_heap_copy.heap.heap)
+	if (l3_heap_copy.heap.heap) {
 		l3_heap = l3_heap_copy;
-	else
-		sys_heap_init(&l3_heap.heap, UINT_TO_POINTER(get_l3_heap_start()),
-			      get_l3_heap_size());
+	} else if (ace_imr_used()) {
+		void *l3_heap_start = UINT_TO_POINTER(get_l3_heap_start());
+		size_t l3_heap_size = get_l3_heap_size();
+#if CONFIG_MMU
+		void *cached_ptr = sys_cache_cached_ptr_get(l3_heap_start);
+		uintptr_t va = POINTER_TO_UINT(cached_ptr);
+
+		arch_mem_map(l3_heap_start, va, l3_heap_size, K_MEM_PERM_RW | K_MEM_CACHE_WB);
+#endif
+		sys_heap_init(&l3_heap.heap, l3_heap_start, l3_heap_size);
+	}
 #endif
 
 	return 0;
