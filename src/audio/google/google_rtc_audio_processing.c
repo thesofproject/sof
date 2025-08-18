@@ -856,10 +856,8 @@ static const struct module_interface google_rtc_audio_processing_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(google_rtc_audio_processing, &google_rtc_audio_processing_interface);
-
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("RTC_AEC", google_rtc_audio_processing_llext_entry,
+	SOF_LLEXT_MODULE_MANIFEST("RTC_AEC", &google_rtc_audio_processing_interface,
 				  7, SOF_REG_UUID(google_rtc_audio_processing), 1);
 
 SOF_LLEXT_BUILDINFO;

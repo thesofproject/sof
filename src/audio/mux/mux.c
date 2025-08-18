@@ -479,19 +479,12 @@ static const struct module_interface demux_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(mux, &mux_interface);
-
-/*
- * The demux entry is removed because mtl.toml doesn't have an entry
- * for it. Once that is fixed, the manifest line below can be
- * re-activated:
- * SOF_LLEXT_MOD_ENTRY(demux, &demux_interface);
- */
-
 static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
-	SOF_LLEXT_MODULE_MANIFEST("MUX", mux_llext_entry, 1, SOF_REG_UUID(mux4), 15),
+	SOF_LLEXT_MODULE_MANIFEST("MUX", &mux_interface, 1, SOF_REG_UUID(mux4), 15),
 	/*
-	 * See comment above for a demux deactivation reason
+	 * The demux entry is removed because mtl.toml doesn't have an entry
+	 * for it. Once that is fixed, the manifest line below can be
+	 * re-activated:
 	 * SOF_LLEXT_MODULE_MANIFEST("DEMUX", demux_llext_entry, 1, SOF_REG_UUID(demux), 15),
 	 */
 };

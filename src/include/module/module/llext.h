@@ -33,13 +33,6 @@
 	} \
 }
 
-#define SOF_LLEXT_MOD_ENTRY(name, interface) \
-static const struct module_interface *name##_llext_entry(void *mod_cfg, \
-					void *parent_ppl, void **mod_ptr) \
-{ \
-	return interface; \
-}
-
 #define SOF_LLEXT_BUILDINFO \
 static const struct sof_module_api_build_info buildinfo __section(".mod_buildinfo") __used = { \
 	.format = SOF_MODULE_API_BUILD_INFO_FORMAT, \
