@@ -394,7 +394,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	/* create a zephyr thread for the task */
 	pdata->thread_id = k_thread_create(&pdata->thread, (__sparse_force void *)pdata->p_stack,
 					   pdata->stack_size, dp_thread_fn, task, NULL, NULL,
-					   CONFIG_DP_THREAD_PRIORITY, K_USER, K_FOREVER);
+					   CONFIG_DP_THREAD_PRIORITY, 0, K_FOREVER);
 
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, task->core);
