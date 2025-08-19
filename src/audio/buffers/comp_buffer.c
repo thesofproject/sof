@@ -178,6 +178,7 @@ APP_TASK_DATA static const struct sink_ops comp_buffer_sink_ops = {
 	.audio_set_ipc_params = audio_buffer_sink_set_ipc_params,
 	.on_audio_format_set = audio_buffer_sink_on_audio_format_set,
 	.set_alignment_constants = audio_buffer_sink_set_alignment_constants,
+	.get_lft = audio_buffer_sink_get_lft,
 };
 
 static const struct audio_buffer_ops audio_buffer_ops = {
@@ -185,7 +186,7 @@ static const struct audio_buffer_ops audio_buffer_ops = {
 	.reset = comp_buffer_reset,
 	.audio_set_ipc_params = comp_buffer_set_ipc_params,
 	.on_audio_format_set = comp_buffer_format_set,
-	.set_alignment_constants = comp_buffer_set_alignment_constants
+	.set_alignment_constants = comp_buffer_set_alignment_constants,
 };
 
 static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size,
