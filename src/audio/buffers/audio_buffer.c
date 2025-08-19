@@ -10,6 +10,10 @@
 #include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <ipc/stream.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <module/ipc4/base-config.h>
+#include <sof/audio/component.h>
+#include <module/module/base.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
@@ -182,12 +186,36 @@ int audio_buffer_source_set_alignment_constants(struct sof_source *source,
 	return 0;
 }
 
-/**
- * this is stub, always return Last Feeding Time - 0, meaning "NOW"
- */
 uint32_t audio_buffer_sink_get_lft(struct sof_sink *sink)
 {
-	return 0;
+	struct sof_audio_buffer *buffer = sof_audio_buffer_from_sink(sink);
+	/* get number of ms in the buffer */
+	size_t bytes_per_sec = sink_get_frame_bytes(&buffer->_sink_api) *
+			       sink_get_rate(&buffer->_sink_api);
+	size_t bytes_per_ms = bytes_per_sec / 1000;
+
+	/* round up for frequencies like 44100 */
+	if (bytes_per_ms * 1000 != bytes_per_sec)
+		bytes_per_ms++;
+	uint32_t us_in_buffer =
+			1000 * source_get_data_available(&buffer->_source_api) / bytes_per_ms;
+
+	return us_in_buffer;
+
+	/*
+	 * TODO, Currently there's no DP to DP connection
+	 * >>> the code below is never accessible and won't work because of cache incoherence <<<
+	 *
+	 * to make DP to DP connection possible:
+	 *
+	 * 1) module data must be ALWAYS located in non cached memory alias, allowing
+	 *    cross core access to params like period (needed below) and calling
+	 *    module_get_deadline for the next module, regardless of cores the modules are
+	 *    running on
+	 * 2) comp_buffer must be removed from all pipeline code, replaced with a generic abstract
+	 *    class audio_buffer - allowing using comp_buffer and ring_buffer without current
+	 *    "hybrid buffer" solution
+	 */
 }
 
 void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bool is_shared,
