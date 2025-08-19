@@ -12,7 +12,6 @@
 #include <user/trace.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -421,7 +420,7 @@ static int igo_nr_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -429,60 +428,40 @@ static int igo_nr_init(struct processing_module *mod)
 	ret = IgoLibGetInfo(&cd->igo_lib_info);
 	if (ret != IGO_RET_OK) {
 		comp_err(dev, "IgoLibGetInfo() Failed.");
-		ret = -EINVAL;
-		goto cd_fail;
+		return -EINVAL;
 	}
 
-	cd->p_handle = rballoc(SOF_MEM_FLAG_USER, cd->igo_lib_info.handle_size);
+	cd->p_handle = mod_balloc(mod, cd->igo_lib_info.handle_size);
 	if (!cd->p_handle) {
-		comp_err(dev, "igo_handle memory rballoc error for size %d",
+		comp_err(dev, "igo_handle memory mod_balloc error for size %d",
 			 cd->igo_lib_info.handle_size);
-		ret = -ENOMEM;
-		goto cd_fail;
+		return -ENOMEM;
 	}
 
 	/* Handler for configuration data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
-		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto cd_fail2;
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
+		return -ENOMEM;
 	}
 
 	/* Get configuration data */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed.");
-		ret = -ENOMEM;
-		goto cd_fail3;
+		return -ENOMEM;
 	}
 
 	/* update downstream (playback) or upstream (capture) buffer parameters */
 	mod->verify_params_flags = BUFF_PARAMS_RATE;
 	comp_info(dev, "igo_nr created");
 	return 0;
-
-cd_fail3:
-	comp_data_blob_handler_free(cd->model_handler);
-
-cd_fail2:
-	rfree(cd->p_handle);
-
-cd_fail:
-	rfree(cd);
-	return ret;
 }
 
 static int igo_nr_free(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-
 	comp_info(mod->dev, "igo_nr_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
-
-	rfree(cd->p_handle);
-	rfree(cd);
 	return 0;
 }
 
