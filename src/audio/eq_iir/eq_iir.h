@@ -56,9 +56,8 @@ void eq_iir_s24_default(struct processing_module *mod, struct input_stream_buffe
 void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 			struct output_stream_buffer *bsink, uint32_t frames);
 
-int eq_iir_new_blob(struct processing_module *mod, struct comp_data *cd,
-		    enum sof_ipc_frame source_format, enum sof_ipc_frame sink_format,
-		    int channels);
+int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_format,
+		    enum sof_ipc_frame sink_format, int channels);
 
 void eq_iir_set_passthrough_func(struct comp_data *cd,
 				 enum sof_ipc_frame source_format,
@@ -71,5 +70,5 @@ void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsou
 
 int eq_iir_setup(struct processing_module *mod, int nch);
 
-void eq_iir_free_delaylines(struct comp_data *cd);
+void eq_iir_free_delaylines(struct processing_module *mod);
 #endif /* __SOF_AUDIO_EQ_IIR_EQ_IIR_H__ */
