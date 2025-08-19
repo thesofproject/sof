@@ -512,7 +512,7 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	comp_info(dev, "google_rtc_audio_processing_init()");
 
 	/* Create private component data */
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd) {
 		ret = -ENOMEM;
 		goto fail;
@@ -520,7 +520,7 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 
 	md->private = cd;
 
-	cd->tuning_handler = comp_data_blob_handler_new(dev);
+	cd->tuning_handler = mod_data_blob_handler_new(mod);
 	if (!cd->tuning_handler) {
 		ret = -ENOMEM;
 		goto fail;
@@ -585,8 +585,6 @@ fail:
 			GoogleRtcAudioProcessingFree(cd->state);
 		}
 		GoogleRtcAudioProcessingDetachMemoryBuffer();
-		comp_data_blob_handler_free(cd->tuning_handler);
-		rfree(cd);
 	}
 
 	return ret;
@@ -601,8 +599,6 @@ static int google_rtc_audio_processing_free(struct processing_module *mod)
 	GoogleRtcAudioProcessingFree(cd->state);
 	cd->state = NULL;
 	GoogleRtcAudioProcessingDetachMemoryBuffer();
-	comp_data_blob_handler_free(cd->tuning_handler);
-	rfree(cd);
 	return 0;
 }
 
