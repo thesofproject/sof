@@ -245,13 +245,7 @@ static int ctc_free(struct processing_module *mod)
 
 	comp_info(mod->dev, "ctc_free()");
 
-	if (cd) {
-		rfree(cd->input);
-		rfree(cd->output);
-		GoogleCtcAudioProcessingFree(cd->state);
-		rfree(cd);
-		module_set_private_data(mod, NULL);
-	}
+	GoogleCtcAudioProcessingFree(cd->state);
 
 	return 0;
 }
@@ -265,10 +259,9 @@ static int ctc_init(struct processing_module *mod)
 	comp_info(dev, "ctc_init()");
 
 	/* Create private component data */
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd) {
 		comp_err(dev, "Failed to create component data");
-		ctc_free(mod);
 		return -ENOMEM;
 	}
 
@@ -277,23 +270,20 @@ static int ctc_init(struct processing_module *mod)
 	cd->chunk_frames = kChunkFrames;
 	buf_size = cd->chunk_frames * sizeof(cd->input[0]) * kMaxChannels;
 
-	cd->input = rballoc(SOF_MEM_FLAG_USER, buf_size);
+	cd->input = mod_alloc(mod, buf_size);
 	if (!cd->input) {
 		comp_err(dev, "Failed to allocate input buffer");
-		ctc_free(mod);
 		return -ENOMEM;
 	}
-	cd->output = rballoc(SOF_MEM_FLAG_USER, buf_size);
+	cd->output = mod_alloc(mod, buf_size);
 	if (!cd->output) {
 		comp_err(dev, "Failed to allocate output buffer");
-		ctc_free(mod);
 		return -ENOMEM;
 	}
 
-	cd->tuning_handler = comp_data_blob_handler_new(dev);
+	cd->tuning_handler = mod_data_blob_handler_new(dev);
 	if (!cd->tuning_handler) {
 		comp_err(dev, "Failed to create tuning handler");
-		ctc_free(mod);
 		return -ENOMEM;
 	}
 
