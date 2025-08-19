@@ -15,7 +15,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -58,15 +57,16 @@ static void eq_fir_passthrough(struct fir_state_32x16 fir[],
 	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
 }
 
-static void eq_fir_free_delaylines(struct comp_data *cd)
+static void eq_fir_free_delaylines(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
 	struct fir_state_32x16 *fir = cd->fir;
 	int i = 0;
 
 	/* Free the common buffer for all EQs and point then
 	 * each FIR channel delay line to NULL.
 	 */
-	rfree(cd->fir_delay);
+	mod_free(mod, cd->fir_delay);
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -198,12 +198,13 @@ static void eq_fir_init_delay(struct fir_state_32x16 *fir,
 	}
 }
 
-static int eq_fir_setup(struct comp_dev *dev, struct comp_data *cd, int nch)
+static int eq_fir_setup(struct processing_module *mod, struct comp_data *cd, int nch)
 {
+	struct comp_dev *dev = mod->dev;
 	int delay_size;
 
 	/* Free existing FIR channels data if it was allocated */
-	eq_fir_free_delaylines(cd);
+	eq_fir_free_delaylines(mod);
 
 	/* Update number of channels */
 	cd->nch = nch;
@@ -220,7 +221,7 @@ static int eq_fir_setup(struct comp_dev *dev, struct comp_data *cd, int nch)
 		return 0;
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	cd->fir_delay = rballoc(SOF_MEM_FLAG_USER, delay_size);
+	cd->fir_delay = mod_alloc(mod, delay_size);
 	if (!cd->fir_delay) {
 		comp_err(dev, "eq_fir_setup(), delay allocation failed for size %d", delay_size);
 		return -ENOMEM;
@@ -264,7 +265,7 @@ static int eq_fir_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -274,11 +275,10 @@ static int eq_fir_init(struct processing_module *mod)
 	cd->nch = -1;
 
 	/* component model data handler */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
-		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto err;
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
+		return -ENOMEM;
 	}
 
 	md->private = cd;
@@ -289,32 +289,18 @@ static int eq_fir_init(struct processing_module *mod)
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->init_data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed.");
-		goto err_init;
+		return ret;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
 	return 0;
-
-err_init:
-	comp_data_blob_handler_free(cd->model_handler);
-err:
-	rfree(cd);
-	return ret;
 }
 
 static int eq_fir_free(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-
 	comp_dbg(mod->dev, "eq_fir_free()");
-
-	eq_fir_free_delaylines(cd);
-	comp_data_blob_handler_free(cd->model_handler);
-
-	rfree(cd);
-
 	return 0;
 }
 
@@ -360,7 +346,7 @@ static int eq_fir_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = eq_fir_setup(mod->dev, cd, audio_stream_get_channels(source));
+		ret = eq_fir_setup(mod, cd, audio_stream_get_channels(source));
 		if (ret < 0) {
 			comp_err(mod->dev, "eq_fir_process(), failed FIR setup");
 			return ret;
@@ -437,7 +423,7 @@ static int eq_fir_prepare(struct processing_module *mod,
 	cd->eq_fir_func = eq_fir_passthrough;
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config) {
-		ret = eq_fir_setup(dev, cd, channels);
+		ret = eq_fir_setup(mod, cd, channels);
 		if (ret < 0)
 			comp_err(dev, "eq_fir_setup failed.");
 		else if (cd->fir_delay_size)
@@ -464,7 +450,7 @@ static int eq_fir_reset(struct processing_module *mod)
 
 	comp_data_blob_set_validator(cd->model_handler, NULL);
 
-	eq_fir_free_delaylines(cd);
+	eq_fir_free_delaylines(mod);
 
 	cd->eq_fir_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
