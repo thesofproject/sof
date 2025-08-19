@@ -17,7 +17,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -60,18 +59,17 @@ static int eq_iir_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
 	md->private = cd;
 
 	/* component model data handler */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
-		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto err;
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
+		return -ENOMEM;
 	}
 
 	/* Allocate and make a copy of the coefficients blob and reset IIR. If
@@ -80,27 +78,18 @@ static int eq_iir_init(struct processing_module *mod)
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed with error: %d", ret);
-		comp_data_blob_handler_free(cd->model_handler);
-		goto err;
+		return ret;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df1(&cd->iir[i]);
 
 	return 0;
-err:
-	rfree(cd);
-	return ret;
 }
 
 static int eq_iir_free(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-
-	eq_iir_free_delaylines(cd);
-	comp_data_blob_handler_free(cd->model_handler);
-
-	rfree(cd);
+	eq_iir_free_delaylines(mod);
 	return 0;
 }
 
@@ -234,7 +223,7 @@ static int eq_iir_reset(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	int i;
 
-	eq_iir_free_delaylines(cd);
+	eq_iir_free_delaylines(mod);
 
 	cd->eq_iir_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
