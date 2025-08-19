@@ -182,6 +182,14 @@ int audio_buffer_source_set_alignment_constants(struct sof_source *source,
 	return 0;
 }
 
+/**
+ * this is stub, always return Last Feeding Time - 0, meaning "NOW"
+ */
+uint32_t audio_buffer_sink_get_lft(struct sof_sink *sink)
+{
+	return 0;
+}
+
 void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bool is_shared,
 		       const struct source_ops *source_ops, const struct sink_ops *sink_ops,
 		       const struct audio_buffer_ops *audio_buffer_ops,
