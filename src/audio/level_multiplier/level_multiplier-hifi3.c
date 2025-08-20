@@ -10,11 +10,11 @@
 #include <stdint.h>
 #include "level_multiplier.h"
 
-#define LEVEL_MULTIPLIER_S16_SHIFT	Q_SHIFT_BITS_32(15, LEVEL_MULTIPLIER_QXY_Y, 15)
-#define LEVEL_MULTIPLIER_S24_SHIFT	Q_SHIFT_BITS_64(23, LEVEL_MULTIPLIER_QXY_Y, 23)
-#define LEVEL_MULTIPLIER_S32_SHIFT	Q_SHIFT_BITS_64(31, LEVEL_MULTIPLIER_QXY_Y, 31)
+#define LEVEL_MULTIPLIER_S32_SHIFT	8	/* See explanation from level_multiplier_s32() */
 
-#if SOF_USE_HIFI(NONE, VOLUME)
+#if SOF_USE_MIN_HIFI(3, VOLUME)
+
+#include <xtensa/tie/xt_hifi3.h>
 
 #if CONFIG_FORMAT_S16LE
 /**
@@ -35,23 +35,30 @@ static int level_multiplier_s16(const struct processing_module *mod,
 				uint32_t frames)
 {
 	struct level_multiplier_comp_data *cd = module_get_private_data(mod);
-	const int32_t gain = cd->gain;
-	int16_t const *x, *x_start, *x_end;
-	int16_t *y, *y_start, *y_end;
+	ae_valign x_align;
+	ae_valign y_align = AE_ZALIGN64();
+	ae_f32x2 samples0;
+	ae_f32x2 samples1;
+	const ae_f32x2 gain = cd->gain;
+	ae_f16x4 samples;
+	ae_f16x4 const *x;
+	ae_f16x4 *y;
+	int16_t const *x_start, *x_end;
+	int16_t *y_start, *y_end;
 	int x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
 	int remaining_samples = frames * cd->channels;
 	int bytes = frames * cd->frame_bytes;
 	int ret;
-	int i;
+	int n, i;
 
-	ret = source_get_data_s16(source, bytes, &x, &x_start, &x_size);
+	ret = source_get_data_s16(source, bytes, (const int16_t **)&x, &x_start, &x_size);
 	if (ret)
 		return ret;
 
 	/* Similarly get pointer to sink data in circular buffer, buffer start and size. */
-	ret = sink_get_buffer_s16(sink, bytes, &y, &y_start, &y_size);
+	ret = sink_get_buffer_s16(sink, bytes, (int16_t **)&y, &y_start, &y_size);
 	if (ret)
 		return ret;
 
@@ -62,20 +69,43 @@ static int level_multiplier_s16(const struct processing_module *mod,
 	y_end = y_start + y_size;
 	while (remaining_samples) {
 		/* Find out samples to process before first wrap or end of data. */
-		source_samples_without_wrap = x_end - x;
-		samples_without_wrap = y_end - y;
+		source_samples_without_wrap = x_end - (int16_t *)x;
+		samples_without_wrap = y_end - (int16_t *)y;
 		samples_without_wrap = MIN(samples_without_wrap, source_samples_without_wrap);
 		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
-		for (i = 0; i < samples_without_wrap; i++) {
-			*y = q_multsr_sat_32x32_16(*x, gain, LEVEL_MULTIPLIER_S16_SHIFT);
-			x++;
-			y++;
+		x_align = AE_LA64_PP(x);
+
+		/* Process with 64 bit loads and stores */
+		n = samples_without_wrap >> 2;
+		for (i = 0; i < n; i++) {
+			AE_LA16X4_IP(samples, x_align, x);
+
+			/* Multiply the input sample */
+			samples0 = AE_MULFP32X16X2RS_H(gain, samples);
+			samples1 = AE_MULFP32X16X2RS_L(gain, samples);
+
+			/* Q9.23 to Q1.31 */
+			samples0 = AE_SLAI32S(samples0, 8);
+			samples1 = AE_SLAI32S(samples1, 8);
+
+			/* To Q1.15 */
+			samples = AE_ROUND16X4F32SSYM(samples0, samples1);
+			AE_SA16X4_IP(samples, y_align, y);
+		}
+
+		AE_SA64POS_FP(y_align, y);
+		n = samples_without_wrap - (n << 2);
+		for (i = 0; i < n; i++) {
+			AE_L16_IP(samples, (ae_f16 *)x, sizeof(ae_f16));
+			samples0 = AE_MULFP32X16X2RS_H(gain, samples);
+			samples0 = AE_SLAI32S(samples0, 8);
+			samples = AE_ROUND16X4F32SSYM(samples0, samples0);
+			AE_S16_0_IP(samples, (ae_f16 *)y, sizeof(ae_f16));
 		}
 
 		/* One of the buffers needs a wrap (or end of data), so check for wrap */
-		x = (x >= x_end) ? x - x_size : x;
-		y = (y >= y_end) ? y - y_size : y;
-
+		x = (x >= (ae_f16x4 *)x_end) ? x - x_size : x;
+		y = (y >= (ae_f16x4 *)y_end) ? y - y_size : y;
 		remaining_samples -= samples_without_wrap;
 	}
 
@@ -105,23 +135,28 @@ static int level_multiplier_s24(const struct processing_module *mod,
 				uint32_t frames)
 {
 	struct level_multiplier_comp_data *cd = module_get_private_data(mod);
-	const int32_t gain = cd->gain;
-	int32_t const *x, *x_start, *x_end;
-	int32_t *y, *y_start, *y_end;
+	ae_valign x_align;
+	ae_valign y_align = AE_ZALIGN64();
+	const ae_f32x2 gain = cd->gain;
+	ae_f32x2 samples;
+	ae_f32x2 const *x;
+	ae_f32x2 *y;
+	int32_t const *x_start, *x_end;
+	int32_t *y_start, *y_end;
 	int x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
 	int remaining_samples = frames * cd->channels;
 	int bytes = frames * cd->frame_bytes;
 	int ret;
-	int i;
+	int n, i;
 
-	ret = source_get_data_s32(source, bytes, &x, &x_start, &x_size);
+	ret = source_get_data_s32(source, bytes, (const int32_t **)&x, &x_start, &x_size);
 	if (ret)
 		return ret;
 
 	/* Similarly get pointer to sink data in circular buffer, buffer start and size. */
-	ret = sink_get_buffer_s32(sink, bytes, &y, &y_start, &y_size);
+	ret = sink_get_buffer_s32(sink, bytes, (int32_t **)&y, &y_start, &y_size);
 	if (ret)
 		return ret;
 
@@ -132,21 +167,34 @@ static int level_multiplier_s24(const struct processing_module *mod,
 	y_end = y_start + y_size;
 	while (remaining_samples) {
 		/* Find out samples to process before first wrap or end of data. */
-		source_samples_without_wrap = x_end - x;
-		samples_without_wrap = y_end - y;
+		source_samples_without_wrap = x_end - (int32_t *)x;
+		samples_without_wrap = y_end - (int32_t *)y;
 		samples_without_wrap = MIN(samples_without_wrap, source_samples_without_wrap);
 		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
-		for (i = 0; i < samples_without_wrap; i++) {
-			*y = q_multsr_sat_32x32_24(sign_extend_s24(*x), gain,
-						   LEVEL_MULTIPLIER_S24_SHIFT);
-			x++;
-			y++;
+		x_align = AE_LA64_PP(x);
+
+		/* Process with 64 bit loads and stores */
+		n = samples_without_wrap >> 1;
+		for (i = 0; i < n; i++) {
+			AE_LA32X2_IP(samples, x_align, x);
+			samples = AE_MULFP32X2RS(gain, AE_SLAI32(samples, 8));
+			samples = AE_SLAI32S(samples, 8);
+			samples = AE_SRAI32(samples, 8);
+			AE_SA32X2_IP(samples, y_align, y);
+		}
+
+		AE_SA64POS_FP(y_align, y);
+		if (samples_without_wrap - (n << 1)) {
+			AE_L32_IP(samples, (ae_f32 *)x, sizeof(ae_f32));
+			samples = AE_MULFP32X2RS(gain, AE_SLAI32(samples, 8));
+			samples = AE_SLAI32S(samples, 8);
+			samples = AE_SRAI32(samples, 8);
+			AE_S32_L_IP(samples, (ae_f32 *)y, sizeof(ae_f32));
 		}
 
 		/* One of the buffers needs a wrap (or end of data), so check for wrap */
-		x = (x >= x_end) ? x - x_size : x;
-		y = (y >= y_end) ? y - y_size : y;
-
+		x = (x >= (ae_f32x2 *)x_end) ? x - x_size : x;
+		y = (y >= (ae_f32x2 *)y_end) ? y - y_size : y;
 		remaining_samples -= samples_without_wrap;
 	}
 
@@ -176,23 +224,30 @@ static int level_multiplier_s32(const struct processing_module *mod,
 				uint32_t frames)
 {
 	struct level_multiplier_comp_data *cd = module_get_private_data(mod);
-	const int32_t gain = cd->gain;
-	int32_t const *x, *x_start, *x_end;
-	int32_t *y, *y_start, *y_end;
+	ae_valign x_align;
+	ae_valign y_align = AE_ZALIGN64();
+	ae_f64 mult0;
+	ae_f64 mult1;
+	const ae_f32x2 gain = cd->gain;
+	ae_f32x2 samples;
+	ae_f32x2 const *x;
+	ae_f32x2 *y;
+	int32_t const *x_start, *x_end;
+	int32_t *y_start, *y_end;
 	int x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
 	int remaining_samples = frames * cd->channels;
 	int bytes = frames * cd->frame_bytes;
 	int ret;
-	int i;
+	int n, i;
 
-	ret = source_get_data_s32(source, bytes, &x, &x_start, &x_size);
+	ret = source_get_data_s32(source, bytes, (const int32_t **)&x, &x_start, &x_size);
 	if (ret)
 		return ret;
 
 	/* Similarly get pointer to sink data in circular buffer, buffer start and size. */
-	ret = sink_get_buffer_s32(sink, bytes, &y, &y_start, &y_size);
+	ret = sink_get_buffer_s32(sink, bytes, (int32_t **)&y, &y_start, &y_size);
 	if (ret)
 		return ret;
 
@@ -203,20 +258,39 @@ static int level_multiplier_s32(const struct processing_module *mod,
 	y_end = y_start + y_size;
 	while (remaining_samples) {
 		/* Find out samples to process before first wrap or end of data. */
-		source_samples_without_wrap = x_end - x;
-		samples_without_wrap = y_end - y;
+		source_samples_without_wrap = x_end - (int32_t *)x;
+		samples_without_wrap = y_end - (int32_t *)y;
 		samples_without_wrap = MIN(samples_without_wrap, source_samples_without_wrap);
 		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
-		for (i = 0; i < samples_without_wrap; i++) {
-			*y = q_multsr_sat_32x32(*x, gain, LEVEL_MULTIPLIER_S32_SHIFT);
-			x++;
-			y++;
+		x_align = AE_LA64_PP(x);
+
+		/* Process with 64 bit loads and stores */
+		n = samples_without_wrap >> 1;
+		for (i = 0; i < n; i++) {
+			AE_LA32X2_IP(samples, x_align, x);
+			/* Q31 gain would give Q47, then Q23 gain gives Q39, need to shift
+			 * the product left by 8 to get Q47 for round instruction.
+			 */
+			mult0 = AE_MULF32R_HH(gain, samples);
+			mult1 = AE_MULF32R_LL(gain, samples);
+			mult0 = AE_SLAI64(mult0, LEVEL_MULTIPLIER_S32_SHIFT);
+			mult1 = AE_SLAI64(mult1, LEVEL_MULTIPLIER_S32_SHIFT);
+			samples = AE_ROUND32X2F48SSYM(mult0, mult1); /* Q2.47 -> Q1.31 */
+			AE_SA32X2_IP(samples, y_align, y);
+		}
+
+		AE_SA64POS_FP(y_align, y);
+		if (samples_without_wrap - (n << 1)) {
+			AE_L32_IP(samples, (ae_f32 *)x, sizeof(ae_f32));
+			mult0 = AE_MULF32R_HH(gain, samples);
+			mult0 = AE_SLAI64(mult0, LEVEL_MULTIPLIER_S32_SHIFT);
+			samples = AE_ROUND32F48SSYM(mult0);
+			AE_S32_L_IP(samples, (ae_f32 *)y, sizeof(ae_f32));
 		}
 
 		/* One of the buffers needs a wrap (or end of data), so check for wrap */
-		x = (x >= x_end) ? x - x_size : x;
-		y = (y >= y_end) ? y - y_size : y;
-
+		x = (x >= (ae_f32x2 *)x_end) ? x - x_size : x;
+		y = (y >= (ae_f32x2 *)y_end) ? y - y_size : y;
 		remaining_samples -= samples_without_wrap;
 	}
 
@@ -263,4 +337,4 @@ level_multiplier_func level_multiplier_find_proc_func(enum sof_ipc_frame src_fmt
 	return NULL;
 }
 
-#endif /* SOF_USE_HIFI(NONE, VOLUME) */
+#endif /* SOF_USE_MIN_HIFI(3, VOLUME) */
