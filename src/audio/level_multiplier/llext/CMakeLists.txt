@@ -4,6 +4,7 @@
 sof_llext_build("level_multiplier"
 	SOURCES ../level_multiplier.c
                 ../level_multiplier-generic.c
+                ../level_multiplier-hifi3.c
                 ../level_multiplier-ipc4.c
 	LIB openmodules
 )
