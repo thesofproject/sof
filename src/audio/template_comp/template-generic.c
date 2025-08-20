@@ -96,7 +96,7 @@ static int template_comp_s16(const struct processing_module *mod,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S32LE || CONFIG_FORMAT_S32LE
+#if CONFIG_FORMAT_S32LE || CONFIG_FORMAT_S24LE
 /**
  * template_comp_s32() - Process S32_LE or S24_4LE format.
  * @mod: Pointer to module data.
