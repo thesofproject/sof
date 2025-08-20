@@ -55,6 +55,10 @@
 #include <sof/lib/notifier.h>
 #endif
 
+#ifdef KPB_HIFI3
+#include <xtensa/tie/xt_hifi3.h>
+#endif
+
 static const struct comp_driver comp_kpb;
 
 LOG_MODULE_REGISTER(kpb, CONFIG_SOF_LOG_LEVEL);
