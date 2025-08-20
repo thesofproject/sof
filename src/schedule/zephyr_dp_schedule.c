@@ -33,6 +33,10 @@ DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 struct scheduler_dp_data {
 	struct list_item tasks;		/* list of active dp tasks */
 	struct task ll_tick_src;	/* LL task - source of DP tick */
+	uint32_t last_ll_tick_timestamp;/* a timestamp as k_cycle_get_32 of last LL tick,
+					 * "NOW" for DP deadline calculation
+					 */
+
 };
 
 struct task_dp_pdata {
@@ -258,31 +262,31 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  * Now - pipeline is in stable state, CPU used almost in 100% (it would be 100% if DP3
  * needed 1.2ms for processing - but the example would be too complicated)
  */
-void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *caller_data)
+
+/* Go through all DP tasks and recalculate their readness and dedlines
+ * NOT REENTRANT, should be called with scheduler_dp_lock()
+ */
+static void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run)
 {
-	(void)receiver_data;
-	(void)event_type;
-	(void)caller_data;
 	struct list_item *tlist;
 	struct task *curr_task;
 	struct task_dp_pdata *pdata;
-	unsigned int lock_key;
-	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 
-	lock_key = scheduler_dp_lock(cpu_get_id());
 	list_for_item(tlist, &dp_sch->tasks) {
 		curr_task = container_of(tlist, struct task, list);
 		pdata = curr_task->priv_data;
 		struct processing_module *mod = pdata->mod;
+		bool trigger_task = false;
 
 		/* decrease number of LL ticks/cycles left till the module reaches its deadline */
-		if (pdata->ll_cycles_to_start) {
+		if (mod->dp_startup_delay && is_ll_post_run && pdata->ll_cycles_to_start) {
 			pdata->ll_cycles_to_start--;
 			if (!pdata->ll_cycles_to_start)
-				/* deadline reached, clear startup delay flag.
+				/* delayed start complete, clear startup delay flag.
 				 * see dp_startup_delay comment for details
 				 */
 				mod->dp_startup_delay = false;
+
 		}
 
 		if (curr_task->state == SOF_TASK_STATE_QUEUED) {
@@ -293,16 +297,66 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 							       mod->sinks,
 							       mod->num_of_sinks);
 			if (mod_ready) {
-				/* set a deadline for given num of ticks, starting now */
-				k_thread_deadline_set(pdata->thread_id,
-						      pdata->deadline_clock_ticks);
-
 				/* trigger the task */
 				curr_task->state = SOF_TASK_STATE_RUNNING;
+				if (mod->dp_startup_delay && !pdata->ll_cycles_to_start) {
+					/* first time run - use delayed start */
+					pdata->ll_cycles_to_start =
+						module_get_lpt(pdata->mod) / LL_TIMER_PERIOD_US;
+
+					/* in case LPT < LL cycle - delay at least cycle */
+					if (!pdata->ll_cycles_to_start)
+						pdata->ll_cycles_to_start = 1;
+				}
+				trigger_task = true;
 				k_sem_give(pdata->sem);
 			}
 		}
+		if (curr_task->state == SOF_TASK_STATE_RUNNING) {
+			/* (re) calculate deadline for all running tasks */
+			/* get module deadline in us*/
+			uint32_t deadline = module_get_deadline(mod);
+
+			/* if a deadline cannot be calculated, use a fixed value relative to its
+			 * first start
+			 */
+			if (deadline >= UINT32_MAX / 2 && trigger_task)
+				deadline = module_get_lpt(mod);
+
+			if (deadline < UINT32_MAX) {
+				/* round down to 1ms */
+				deadline = deadline / 1000;
+
+				/* calculate number of ticks */
+				deadline = deadline * (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
+
+				/* add to "NOW", overflows are OK  */
+				deadline = dp_sch->last_ll_tick_timestamp + deadline;
+
+				/* set in Zephyr. Note that it may be in past, it does not matter,
+				 * Zephyr still will schedule the thread with earlier deadline
+				 * first
+				 */
+				k_thread_absolute_deadline_set(pdata->thread_id, deadline);
+			}
+		}
 	}
+}
+
+void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *caller_data)
+{
+	(void)receiver_data;
+	(void)event_type;
+	(void)caller_data;
+	unsigned int lock_key;
+	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+
+	if (event_type == NOTIFIER_ID_LL_PRE_RUN)
+		/* remember current timestamp as "NOW" */
+		dp_sch->last_ll_tick_timestamp = k_cycle_get_32();
+
+	lock_key = scheduler_dp_lock(cpu_get_id());
+	scheduler_dp_recalculate(dp_sch, event_type == NOTIFIER_ID_LL_POST_RUN);
 	scheduler_dp_unlock(lock_key);
 }
 
@@ -374,6 +428,7 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	unsigned int lock_key;
 	enum task_state state;
 	bool task_stop;
+	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 
 	do {
 		/*
@@ -415,6 +470,11 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 		/* if true exit the while loop, terminate the thread */
 		task_stop = task->state == SOF_TASK_STATE_COMPLETED ||
 			task->state == SOF_TASK_STATE_CANCEL;
+		/* recalculate all DP tasks readiness and deadlines
+		 * TODO: it should be for all tasks, for all cores
+		 * currently its limited to current core only
+		 */
+		scheduler_dp_recalculate(dp_sch, false);
 
 		scheduler_dp_unlock(lock_key);
 	} while (!task_stop);
@@ -430,7 +490,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	struct scheduler_dp_data *dp_sch = (struct scheduler_dp_data *)data;
 	struct task_dp_pdata *pdata = task->priv_data;
 	unsigned int lock_key;
-	uint64_t deadline_clock_ticks;
 	int ret;
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
@@ -483,14 +542,6 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	task->state = SOF_TASK_STATE_QUEUED;
 	list_item_prepend(&task->list, &dp_sch->tasks);
 
-	deadline_clock_ticks = period * CONFIG_SYS_CLOCK_TICKS_PER_SEC;
-	/* period/deadline is in us - convert to seconds in next step
-	 * or it always will be zero because of integer calculation
-	 */
-	deadline_clock_ticks /= 1000000;
-
-	pdata->deadline_clock_ticks = deadline_clock_ticks;
-	pdata->ll_cycles_to_start = period / LL_TIMER_PERIOD_US;
 	pdata->mod->dp_startup_delay = true;
 	scheduler_dp_unlock(lock_key);
 
@@ -532,6 +583,7 @@ int scheduler_dp_init(void)
 	if (ret)
 		return ret;
 
+	notifier_register(NULL, NULL, NOTIFIER_ID_LL_PRE_RUN, scheduler_dp_ll_tick, 0);
 	notifier_register(NULL, NULL, NOTIFIER_ID_LL_POST_RUN, scheduler_dp_ll_tick, 0);
 
 	return 0;
