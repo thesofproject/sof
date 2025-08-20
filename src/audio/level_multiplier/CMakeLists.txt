@@ -6,6 +6,7 @@ if(CONFIG_COMP_LEVEL_MULTIPLIER STREQUAL "m")
 else()
   add_local_sources(sof level_multiplier.c)
   add_local_sources(sof level_multiplier-generic.c)
+  add_local_sources(sof level_multiplier-hifi3.c)
 
   if(CONFIG_IPC_MAJOR_3)
     add_local_sources(sof level_multiplier-ipc3.c)
