@@ -649,17 +649,16 @@ err:
 
 static void lib_manager_module_free(struct comp_dev *dev)
 {
-	struct processing_module *mod = comp_mod(dev);
-	const struct comp_ipc_config *const config = &mod->dev->ipc_config;
+	uint32_t component_id = dev->ipc_config.id;
 	int ret;
 
 	/* This call invalidates dev, mod and config pointers! */
 	module_adapter_free(dev);
 
 	/* Free module resources allocated in L2 memory. */
-	ret = lib_manager_free_module(config->id);
+	ret = lib_manager_free_module(component_id);
 	if (ret < 0)
-		comp_err(dev, "lib_manager_free_module() failed!");
+		tr_err(&lib_manager_tr, "lib_manager_free_module() failed!");
 }
 
 static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const struct sof_uuid *uuid)
