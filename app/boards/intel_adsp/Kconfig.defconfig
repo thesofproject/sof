@@ -1,0 +1,10 @@
+# Common defaults for all Intel ADSP SOF targets
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+config IPC4_BASE_FW_INTEL
+	def_bool y
+
+config COMP_ARIA
+	def_tristate m if LIBRARY_DEFAULT_MODULAR
+	def_tristate y
