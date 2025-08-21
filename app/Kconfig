@@ -5,4 +5,3 @@ config SMP_BOOT_DELAY
 	default y if SMP
 
 source "Kconfig.zephyr"
-

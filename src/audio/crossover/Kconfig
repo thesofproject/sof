@@ -5,7 +5,6 @@ config COMP_CROSSOVER
 	select COMP_BLOB
 	select MATH_IIR_DF2T
 	default m if LIBRARY_DEFAULT_MODULAR
-	default n
 	help
 	  Select for Crossover Filter component. A crossover can be used to
 	  split a signal into two or more frequency ranges, so that the outputs

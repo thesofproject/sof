@@ -10,7 +10,6 @@ config COMP_DRC
 	select MATH_EXP
 	select COMP_BLOB
 	default m if LIBRARY_DEFAULT_MODULAR
-	default n
 	help
 	  Select for Dynamic Range Compressor (DRC) component. A DRC can be used
 	  to reduce the volume of loud sounds and amplify silent sounds thus

@@ -64,70 +64,60 @@ menu "Supported downsampling conversions"
 
 config ASRC_SUPPORT_CONVERSION_24000_TO_08000
 	bool "Downsample 24 kHz to 8 kHz"
-	default n
 	help
 	  This option enables downsampling from 24 kHz to 8 kHz into
 	  the build. The consumption of memory is 2.1 kB.
 
 config ASRC_SUPPORT_CONVERSION_24000_TO_16000
 	bool "Downsample 24 kHz to 16 kHz"
-	default n
 	help
 	  This option enables downsampling from 24 kHz to 16 kHz into
 	  the build. The consumption of memory is 1.9 kB.
 
 config ASRC_SUPPORT_CONVERSION_48000_TO_08000
 	bool "Downsample 48 kHz to 8 kHz"
-	default n
 	help
 	  This option enables downsampling from 48 kHz to 8 kHz into
 	  the build. The consumption of memory is 2.1 kB.
 
 config ASRC_SUPPORT_CONVERSION_48000_TO_11025
 	bool "Downsample 48 kHz to 11.025 kHz"
-	default n
 	help
 	  This option enables downsampling from 48 kHz to 11.025 kHz
 	  into the build. The consumption of memory is 1.5 kB.
 
 config ASRC_SUPPORT_CONVERSION_48000_TO_12000
 	bool "Downsample 48 kHz to 12 kHz"
-	default n
 	help
 	  This option enables downsampling from 48 kHz to 12 kHz into
 	  the build. The consumption of memory is 1.5 kB.
 
 config ASRC_SUPPORT_CONVERSION_48000_TO_16000
 	bool "Downsample 48 kHz to 16 kHz"
-	default n
 	help
 	  This option enables downsampling from 48 kHz to 16 kHz into
 	  the build. The consumption of memory is 1.9 kB.
 
 config ASRC_SUPPORT_CONVERSION_48000_TO_22050
 	bool "Downsample 48 kHz to 22.05 kHz"
-	default n
 	help
 	  This option enables downsampling from 48 kHz to 22.05 kHz into
 	  the build. The consumption of memory is 1.6 kB.
 
 config ASRC_SUPPORT_CONVERSION_48000_TO_24000
 	bool "Downsample 48 kHz to 24 kHz"
-	default n
 	help
 	  This option enables downsampling from 48 kHz to 24 kHz into
 	  the build. The consumption of memory is 1.6 kB.
 
 config ASRC_SUPPORT_CONVERSION_48000_TO_32000
 	bool "Downsample 48 kHz to 32 kHz"
-	default n
 	help
 	  This option enables downsampling from 48 kHz to 32 kHz into
 	  the build. The consumption of memory is 1.9 kB.
 
 config ASRC_SUPPORT_CONVERSION_48000_TO_44100
 	bool "Downsample 48 kHz to 44.1 kHz"
-	default n
 	help
 	  This option enables downsampling from 48 kHz to 44.1 kHz
 	  into the build. The consumption of memory is 1.8 kB.

@@ -5,7 +5,6 @@ menu "Google components"
 config COMP_GOOGLE_HOTWORD_DETECT
 	bool "Google hotword detector component"
 	select COMP_BLOB
-	default n
 	help
 	  Select for Google hotword detector component. It uses the Google
 	  hotword library to do keyword detection. A language model needs to
@@ -15,7 +14,6 @@ config COMP_GOOGLE_HOTWORD_DETECT
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	tristate "Google Real Time Communication Audio processing"
 	select COMP_BLOB
-	default n
 	help
 	  Select for Google real-time communication audio processing. It
 	  uses the Google real-time audio processing library to perform
@@ -88,7 +86,6 @@ config COMP_GOOGLE_CTC_AUDIO_PROCESSING
 	select COMP_BLOB
 	select GOOGLE_CTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
 	select STATIC_INIT_GNU if ZEPHYR_SOF_MODULE
-	default n
 	depends on ZEPHYR_SOF_MODULE
 	help
 	  Select for Google crosstalk cancellation audio processing. It

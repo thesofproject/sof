@@ -2,7 +2,6 @@
 
 config COMP_TENSORFLOW
 	tristate "Tensorflow Micro component"
-	default n
 	depends on SOF_STAGING
 	depends on CPP
 	depends on STD_CPP17
