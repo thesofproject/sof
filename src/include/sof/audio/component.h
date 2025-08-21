@@ -848,6 +848,24 @@ static inline enum sof_comp_type dev_comp_type(const struct comp_dev *dev)
 }
 
 /**
+ * Initialize common part of a component device
+ * @param drv Parent component driver.
+ * @param dev Device.
+ * @param bytes Size of the component device in bytes.
+ */
+static inline void comp_init(const struct comp_driver *drv,
+			     struct comp_dev *dev, size_t bytes)
+{
+	dev->size = bytes;
+	dev->drv = drv;
+	dev->state = COMP_STATE_INIT;
+	list_init(&dev->bsink_list);
+	list_init(&dev->bsource_list);
+	memcpy_s(&dev->tctx, sizeof(struct tr_ctx),
+		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
+}
+
+/**
  * Allocates memory for the component device and initializes common part.
  * @param drv Parent component driver.
  * @param bytes Size of the component device in bytes.
@@ -856,22 +874,16 @@ static inline enum sof_comp_type dev_comp_type(const struct comp_dev *dev)
 static inline struct comp_dev *comp_alloc(const struct comp_driver *drv,
 					  size_t bytes)
 {
-	struct comp_dev *dev = NULL;
-
 	/*
 	 * Use uncached address everywhere to access components to rule out
 	 * multi-core failures. TODO: verify if cached alias may be used in some cases
 	 */
-	dev = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, bytes);
+	struct comp_dev *dev = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, bytes);
+
 	if (!dev)
 		return NULL;
-	dev->size = bytes;
-	dev->drv = drv;
-	dev->state = COMP_STATE_INIT;
-	list_init(&dev->bsink_list);
-	list_init(&dev->bsource_list);
-	memcpy_s(&dev->tctx, sizeof(struct tr_ctx),
-		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
+
+	comp_init(drv, dev, bytes);
 
 	return dev;
 }
