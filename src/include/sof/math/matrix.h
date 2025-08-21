@@ -10,6 +10,7 @@
 #ifndef __SOF_MATH_MATRIX_H__
 #define __SOF_MATH_MATRIX_H__
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
 #include <ipc/topology.h>
 #include <stdint.h>
@@ -38,6 +39,20 @@ static inline struct mat_matrix_16b *mat_matrix_alloc_16b(int16_t rows, int16_t 
 	const int mat_size = sizeof(int16_t) * rows * columns + sizeof(struct mat_matrix_16b);
 
 	mat = rzalloc(SOF_MEM_FLAG_USER, mat_size);
+	if (mat)
+		mat_init_16b(mat, rows, columns, fractions);
+
+	return mat;
+}
+
+static inline struct mat_matrix_16b *mod_mat_matrix_alloc_16b(struct processing_module *mod,
+							      int16_t rows, int16_t columns,
+							      int16_t fractions)
+{
+	struct mat_matrix_16b *mat;
+	const int mat_size = sizeof(int16_t) * rows * columns + sizeof(struct mat_matrix_16b);
+
+	mat = mod_zalloc(mod, mat_size);
 	if (mat)
 		mat_init_16b(mat, rows, columns, fractions);
 
