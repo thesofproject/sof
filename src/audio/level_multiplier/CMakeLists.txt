@@ -7,6 +7,7 @@ else()
   add_local_sources(sof level_multiplier.c)
   add_local_sources(sof level_multiplier-generic.c)
   add_local_sources(sof level_multiplier-hifi3.c)
+  add_local_sources(sof level_multiplier-hifi5.c)
 
   if(CONFIG_IPC_MAJOR_4)
     add_local_sources(sof level_multiplier-ipc4.c)
