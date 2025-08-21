@@ -41,7 +41,6 @@ config HOST_DMA_RELOAD_THRESHOLD
 config HOST_DMA_STREAM_SYNCHRONIZATION
 	bool "Stream DMA Transfers Synchronization"
 	default y if ACE
-	default n
 	help
 	  Enable synchronized Firmware Pointer Increment (FPI) register updates of HD-A gateways
 	  belonging to a group defined by the driver. The driver may also specify an update period
@@ -50,7 +49,6 @@ config HOST_DMA_STREAM_SYNCHRONIZATION
 
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
-	  default n
 	  depends on IPC_MAJOR_4
 	  depends on DMA_INTEL_ADSP_HDA
 	  help
@@ -100,7 +98,6 @@ rsource "src/Kconfig"
 
 config COMP_STUBS
 	bool "Build all selected third-party (3P) components with stubs"
-	default n
 	help
 	  Select to force all 3P blocks to link against stubs rather than their libraries. This
 	  should only be used in testing environments like fuzzers or CI.
@@ -111,7 +108,6 @@ rsource "eq_iir/Kconfig"
 
 config COMP_TONE
 	bool "Tone component"
-	default n
 	select CORDIC_FIXED
 	help
 	  Select for Tone component.
@@ -190,7 +186,6 @@ menu "Data formats"
 
 config FORMAT_U8
 	bool "Support U8"
-	default n
 	help
 	  Support unsigned 8 bit processing data format
 
@@ -218,7 +213,6 @@ config FORMAT_S24LE
 
 config FORMAT_S24_3LE
 	bool "Support S24_3LE"
-	default n
 	help
 	  Support packed 24 bit processing data format with sign and in little endian format
 
@@ -248,7 +242,6 @@ config FORMAT_CONVERT_HIFI3
 
 config PCM_CONVERTER_FORMAT_U8
 	bool "Support U8"
-	default n
 	help
 	  Support 8 bit processing data format without sign
 
@@ -284,7 +277,6 @@ config PCM_CONVERTER_FORMAT_S24_4LE_MSB
 
 config PCM_CONVERTER_FORMAT_S24_3LE
 	bool "Support S24_3LE"
-	default n
 	help
 	  Support packed 24 bit processing data format with sign and in little endian format
 
@@ -309,42 +301,36 @@ config PCM_CONVERTER_FORMAT_FLOAT
 
 config PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
 	bool "Support S16C16 <-> S16C32"
-	default n
 	help
 	  Support conversion between 16 bit valid sample size in 16 bit container
 	  and 16 bit valid sample size in 32 bit container
 
 config PCM_CONVERTER_FORMAT_S16_C32_AND_S32_C32
 	bool "Support S16C32 <-> S32C32"
-	default n
 	help
 	  Support conversion between 16 bit valid sample size in 32 bit container
 	  and 32 bit valid sample size in 32 bit container
 
 config PCM_CONVERTER_FORMAT_S16_C32_AND_S24_C32
 	bool "Support S16C32 <-> S24C32"
-	default n
 	help
 	  Support conversion between 16 bit valid sample size in 32 bit container
 	  and 24 bit valid sample size in 32 bit container
 
 config PCM_CONVERTER_FORMAT_S24_C24_AND_S24_C32
 	bool "Support S24C24 <-> S24C32"
-	default n
 	help
 	  Support conversion between 24 bit valid sample size in 24 bit container
 	  and 24 bit valid sample size in 32 bit container
 
 config PCM_CONVERTER_FORMAT_S24_C32_AND_S24_C24
 	bool "Support S24C32 <-> S24C24"
-	default n
 	help
 	  Support conversion between 24 bit valid sample size in 32 bit container
 	  and 24 bit valid sample size in 24 bit container
 
 config PCM_CONVERTER_FORMAT_S16_C32_AND_S16_C32
 	bool "Support S16C32 <-> S16C32"
-	default n
 	help
 	  Support one-to-one copying conversion for 16 bit valid sample size in
 	  32 bit container
@@ -373,7 +359,6 @@ config TRACE_CHANNEL
 
 config WRAP_ACTUAL_POSITION
 	bool "Buffer wrapping"
-	default n
 	help
 	  This option is to update the actual position information on wrap of buffer.
 	  It is not necessary that on wrap, the buffer position would be zero.At wrap,
@@ -382,20 +367,17 @@ config WRAP_ACTUAL_POSITION
 
 config COMP_MODULE_SHARED_LIBRARY_BUILD
 	bool "Build SOF modules as shared libraries"
-	default n
 	help
 	  Select if you want to build modules as shared objects that can be used to run
 	  pipelines on the host with the testbench or the ALSA plugin.
 
 config DISABLE_DESCRIPTOR_SPLIT
 	bool "Disable descriptor split"
-	default n
 	help
 	  This option disbale the descriptor split for host p-table.
 
 config DAI_VERBOSE_GLITCH_WARNINGS
 	bool "Enable additional checks and warnings for DAI data flow"
-	default n
 	  help
 	  Select if you want to enable additional checks and warning logs for
 	  DAI data flow. If DAI copy is called with no data to process,

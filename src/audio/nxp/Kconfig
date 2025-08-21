@@ -2,7 +2,6 @@
 
 config COMP_NXP_EAP
 	tristate "NXP EAP Component"
-	default n
 	help
 	  Select for NXP Essential Audio Processing Component.
 	  The EAP is a bundle of audio processing blocks for enhancing the tonal
@@ -10,7 +9,6 @@ config COMP_NXP_EAP
 
 config COMP_NXP_EAP_STUB
 	tristate "NXP EAP Component stub"
-	default n
 	depends on COMP_NXP_EAP
 	help
 	  Select for NXP EAP stub support.

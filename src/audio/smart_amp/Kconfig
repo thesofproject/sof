@@ -3,7 +3,6 @@
 config COMP_SMART_AMP
 	bool "Smart Amplifier component"
 	select COMP_BLOB
-	default n
 	help
 	  Select for Smart Amp component. This component protect the speaker
 	  from overheating and excursion violation. This consists of two parts
@@ -50,7 +49,6 @@ endchoice
 	config MAXIM_DSM_STUB
 		bool "Maxim DSM solution"
 		depends on MAXIM_DSM
-		default n
 		help
 		  Select to build the Maxim DSM adapter with a stub library. This
 		  should only be used for CI and testing.

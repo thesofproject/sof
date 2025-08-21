@@ -6,7 +6,6 @@ config COMP_MULTIBAND_DRC
 	select CORDIC_FIXED
 	select COMP_BLOB
 	default m if LIBRARY_DEFAULT_MODULAR
-	default n
 	help
 	  Select for Multiband Dynamic Range Compressor (DRC) component. It
 	  consists of Emphasis Equalizer, n-way Crossover Filter, per-band DRC,

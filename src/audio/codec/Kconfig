@@ -2,7 +2,6 @@
 
 config DTS_CODEC
         tristate "DTS codec"
-        default n
         select DTS_CODEC_STUB if COMP_STUBS
         help
           Select to include DTS codec.
@@ -14,7 +13,6 @@ config DTS_CODEC
 config DTS_CODEC_STUB
         bool "DTS codec stub"
         depends on DTS_CODEC
-        default n
         help
           Select to include DTS codec stub library. This is meant for testing and CI
           purposes only.

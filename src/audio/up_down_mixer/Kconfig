@@ -2,7 +2,6 @@
 
 config COMP_UP_DOWN_MIXER
 	bool "UP_DOWN_MIXER component"
-	default n
         depends on IPC_MAJOR_4
         help
          Select for Up Down Mixer component Conversions supported:
