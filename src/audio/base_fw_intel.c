@@ -103,7 +103,7 @@ __cold int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_LP_EBB_COUNT_HW_CFG, PLATFORM_LPSRAM_EBB_COUNT);
 
-#ifdef CONFIG_SOC_INTEL_ACE30
+#if defined(CONFIG_SOC_INTEL_ACE30) || defined(CONFIG_SOC_INTEL_ACE40)
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_I2S_CAPS_HW_CFG, I2S_VER_30_PTL);
 #endif
