@@ -4,6 +4,7 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/format.h>
 #include <rtos/alloc.h>
 #include <sof/math/auditory.h>
@@ -202,6 +203,131 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 	fb->data_length = &fb->scratch_data2[base_idx] - &fb->scratch_data2[0];
 	fb->data = rzalloc(SOF_MEM_FLAG_USER,
 			   sizeof(int16_t) * fb->data_length);
+	if (!fb->data)
+		return -ENOMEM;
+
+	/* Copy the exact triangles data size to allocated buffer */
+	memcpy_s(fb->data, sizeof(int16_t) * fb->data_length,
+		 fb->scratch_data2, sizeof(int16_t) * fb->data_length);
+	return 0;
+}
+
+int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *fb)
+{
+	int32_t up_slope;
+	int32_t down_slope;
+	int32_t slope;
+	int32_t scale = ONE_Q16;
+	int32_t scale_inv = ONE_Q16;
+	int16_t *mel;
+	int16_t mel_start;
+	int16_t mel_end;
+	int16_t mel_step;
+	int16_t left_mel;
+	int16_t center_mel;
+	int16_t right_mel;
+	int16_t delta_cl;
+	int16_t delta_rc;
+	int16_t left_hz;
+	int16_t right_hz;
+	int16_t f;
+	int segment;
+	int i, j, idx;
+	int base_idx = 0;
+	int start_bin = 0;
+	int end_bin = 0;
+
+	if (!fb)
+		return -ENOMEM;
+
+	if (!fb->scratch_data1 || !fb->scratch_data2)
+		return -ENOMEM;
+
+	/* Log power can be log, or log10 or dB, get multiply coef to convert
+	 * log to desired format.
+	 */
+	switch (fb->mel_log_scale) {
+	case MEL_LOG:
+		fb->log_mult = ONE_OVER_LOG2E_Q29;
+		break;
+	case MEL_LOG10:
+		fb->log_mult = ONE_OVER_LOG2TEN_Q29;
+		break;
+	case MEL_DB:
+		fb->log_mult = TEN_OVER_LOG2TEN_Q29;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* Use scratch area to hold vector of Mel values for each FFT frequency */
+	if (fb->scratch_length1 < fb->half_fft_bins)
+		return -ENOMEM;
+
+	fb->scale_log2 = 0;
+
+	mel = fb->scratch_data1;
+	for (i = 0; i < fb->half_fft_bins; i++) {
+		f = fb->samplerate * i / fb->fft_bins;
+		mel[i] = psy_hz_to_mel(f);
+	}
+
+	mel_start = psy_hz_to_mel(fb->start_freq);
+	mel_end = psy_hz_to_mel(fb->end_freq);
+	mel_step = (mel_end - mel_start) / (fb->mel_bins + 1);
+	for (i = 0; i < fb->mel_bins; i++) {
+		left_mel = mel_start + i * mel_step;
+		center_mel = mel_start + (i + 1) * mel_step;
+		right_mel = mel_start + (i + 2) * mel_step;
+		delta_cl = center_mel - left_mel;
+		delta_rc = right_mel - center_mel;
+		segment = 0;
+		idx = base_idx + 3; /* start of filter weight values */
+		if (fb->slaney_normalize) {
+			left_hz = psy_mel_to_hz(left_mel);
+			right_hz = psy_mel_to_hz(right_mel);
+			scale = Q_SHIFT_RND(TWO_Q29 / (right_hz - left_hz), 29, 16); /* Q16.16*/
+			if (i == 0) {
+				scale_inv = Q_SHIFT_LEFT(ONE_Q30 / scale, 14, 16);
+				fb->scale_log2 = base2_logarithm((uint32_t)scale) - LOG2_2P16;
+			}
+
+			scale = Q_MULTSR_32X32((int64_t)scale, scale_inv, 16, 16, 16);
+		}
+		for (j = 0; j < fb->half_fft_bins; j++) {
+			up_slope = (((int32_t)mel[j] - left_mel) << 15) / delta_cl; /* Q17.15 */
+			down_slope = (((int32_t)right_mel - mel[j]) << 15) / delta_rc; /* Q17.15 */
+			slope = MIN(up_slope, down_slope);
+			slope = Q_MULTSR_32X32((int64_t)slope, scale, 15, 16, 15);
+			if (segment == 1 && slope <= 0) {
+				end_bin = j - 1;
+				break;
+			}
+
+			if (segment == 0 && slope > 0) {
+				start_bin = j;
+				segment = 1;
+			}
+
+			if (segment == 1) {
+				if (idx >= fb->scratch_length2)
+					return -EINVAL;
+
+				fb->scratch_data2[idx++] = sat_int16(slope);
+			}
+		}
+
+		if (idx + 2 >= fb->scratch_length2)
+			return -EINVAL;
+
+		fb->scratch_data2[base_idx] = idx; /* index to next */
+		fb->scratch_data2[base_idx + 1] = start_bin;
+		fb->scratch_data2[base_idx + 2] = end_bin - start_bin + 1; /* length */
+		base_idx = idx;
+	}
+
+	fb->data_length = &fb->scratch_data2[base_idx] - &fb->scratch_data2[0];
+	fb->data = mod_zalloc(mod, sizeof(int16_t) * fb->data_length);
 	if (!fb->data)
 		return -ENOMEM;
 
