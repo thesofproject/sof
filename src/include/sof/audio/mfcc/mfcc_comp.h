@@ -154,7 +154,7 @@ static inline int16_t *mfcc_buffer_wrap(struct mfcc_buffer *buffer, int16_t *ptr
 
 int mfcc_setup(struct processing_module *mod, int max_frames, int rate, int channels);
 
-void mfcc_free_buffers(struct mfcc_comp_data *cd);
+void mfcc_free_buffers(struct processing_module *mod);
 
 void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 		      struct output_stream_buffer *bsink, int frames);
