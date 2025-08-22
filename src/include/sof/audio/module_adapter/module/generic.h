@@ -132,6 +132,7 @@ struct module_resources {
 	struct list_item cont_chunk_list;	/**< Memory container chunks */
 	size_t heap_usage;
 	size_t heap_high_water_mark;
+	struct k_heap *heap;
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	k_tid_t rsrc_mngr;
 #endif

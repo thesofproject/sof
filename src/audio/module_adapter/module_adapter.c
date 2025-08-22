@@ -23,6 +23,7 @@
 #include <sof/platform.h>
 #include <sof/ut.h>
 #include <rtos/interrupt.h>
+#include <rtos/kernel.h>
 #include <rtos/symbol.h>
 #include <limits.h>
 #include <stdint.h>
@@ -44,33 +45,85 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL, NULL);
 }
 
+#if CONFIG_MM_DRV
+#define PAGE_SZ CONFIG_MM_DRV_PAGE_SIZE
+#else
+#include <platform/platform.h>
+#define PAGE_SZ HOST_PAGE_SIZE
+#endif
+
+static struct k_heap *module_adapter_dp_heap_new(const struct comp_ipc_config *config)
+{
+	/* src-lite with 8 channels has been seen allocating 14k in one go */
+	/* FIXME: the size will be derived from configuration */
+	const size_t heap_size = 20 * 1024;
+
+	/* Keep uncached to match the default SOF heap! */
+	uint8_t *mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					      heap_size, PAGE_SZ);
+
+	if (!mod_heap_mem)
+		return NULL;
+
+	struct k_heap *mod_heap = (struct k_heap *)mod_heap_mem;
+	const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap), 8);
+	void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
+
+	k_heap_init(mod_heap, mod_heap_buf, heap_size - heap_prefix_size);
+
+	return mod_heap;
+}
+
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
 							  const struct comp_ipc_config *config)
 {
-	struct comp_dev *dev = comp_alloc(drv, sizeof(*dev));
+	struct k_heap *mod_heap;
+	/*
+	 * For DP shared modules the struct processing_module object must be
+	 * accessible from all cores. Unfortunately at this point there's no
+	 * information of components the module will be bound to. So we need to
+	 * allocate shared memory for each DP module.
+	 * To be removed when pipeline 2.0 is ready.
+	 */
+	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
+		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 
-	if (!dev) {
-		comp_cl_err(drv, "failed to allocate memory for comp_dev");
-		return NULL;
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_USERSPACE) &&
+	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
+		mod_heap = module_adapter_dp_heap_new(config);
+		if (!mod_heap) {
+			comp_cl_err(drv, "Failed to allocate DP module heap");
+			return NULL;
+		}
+	} else {
+		mod_heap = drv->user_heap;
 	}
 
-	/* allocate module information.
-	 * for DP shared modules this struct must be accessible from all cores
-	 * Unfortunately at this point there's no information of components the module
-	 * will be bound to. So we need to allocate shared memory for each DP module
-	 * To be removed when pipeline 2.0 is ready
-	 */
-	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
-			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-
-	struct processing_module *mod = sof_heap_alloc(drv->user_heap, flags, sizeof(*mod), 0);
+	struct processing_module *mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
 
 	if (!mod) {
-		comp_err(dev, "failed to allocate memory for module");
-		goto err;
+		comp_cl_err(drv, "failed to allocate memory for module");
+		goto emod;
 	}
 
 	memset(mod, 0, sizeof(*mod));
+	mod->priv.resources.heap = mod_heap;
+
+	/*
+	 * Would be difficult to optimize the allocation to use cache. Only if
+	 * the whole currently active topology is running on the primary core,
+	 * then it can be cached. Effectively it can be only cached in
+	 * single-core configurations.
+	 */
+	struct comp_dev *dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
+
+	if (!dev) {
+		comp_cl_err(drv, "failed to allocate memory for comp_dev");
+		goto err;
+	}
+
+	memset(dev, 0, sizeof(*dev));
+	comp_init(drv, dev, sizeof(*dev));
 	dev->ipc_config = *config;
 	mod->dev = dev;
 	dev->mod = mod;
@@ -78,20 +131,25 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	return mod;
 
 err:
-	sof_heap_free(drv->user_heap, dev);
+	sof_heap_free(mod_heap, mod);
+emod:
+	if (mod_heap != drv->user_heap)
+		rfree(mod_heap);
 
 	return NULL;
 }
 
 static void module_adapter_mem_free(struct processing_module *mod)
 {
-	const struct comp_driver *drv = mod->dev->drv;
+	struct k_heap *mod_heap = mod->priv.resources.heap;
 
 #if CONFIG_IPC_MAJOR_4
+	const struct comp_driver *drv = mod->dev->drv;
+
 	sof_heap_free(drv->user_heap, mod->priv.cfg.input_pins);
 #endif
-	sof_heap_free(drv->user_heap, mod->dev);
-	sof_heap_free(drv->user_heap, mod);
+	sof_heap_free(mod_heap, mod->dev);
+	sof_heap_free(mod_heap, mod);
 }
 
 /*
