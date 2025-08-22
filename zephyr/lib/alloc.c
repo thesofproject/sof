@@ -618,6 +618,9 @@ EXPORT_SYMBOL(rfree);
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment)
 {
+	if (flags & SOF_MEM_FLAG_LARGE_BUFFER)
+		return rballoc_align(flags, bytes, alignment);
+
 	if (!heap)
 		heap = &sof_heap;
 
@@ -629,10 +632,10 @@ void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 
 void sof_heap_free(struct k_heap *heap, void *addr)
 {
-	if (!heap)
-		heap = &sof_heap;
-
-	heap_free(heap, addr);
+	if (heap && addr)
+		heap_free(heap, addr);
+	else
+		rfree(addr);
 }
 
 static int heap_init(void)

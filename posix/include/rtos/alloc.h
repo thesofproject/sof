@@ -54,6 +54,8 @@
 #define SOF_MEM_FLAG_USER		BIT(8)
 /** \brief Indicates that if we should return shared user memory address. */
 #define SOF_MEM_FLAG_USER_SHARED_BUFFER	BIT(9)
+/** \brief Use allocation method for large buffers. */
+#define SOF_MEM_FLAG_LARGE_BUFFER	BIT(10)
 
 /** @} */
 
