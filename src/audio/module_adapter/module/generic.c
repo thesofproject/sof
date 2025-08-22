@@ -131,16 +131,19 @@ struct container_chunk {
 static struct module_resource *container_get(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
+	struct k_heap *mod_heap = res->heap;
 	struct module_resource *container;
 
 	if (list_is_empty(&res->free_cont_list)) {
-		struct container_chunk *chunk = rzalloc(SOF_MEM_FLAG_USER, sizeof(*chunk));
+		struct container_chunk *chunk = sof_heap_alloc(mod_heap, 0, sizeof(*chunk), 0);
 		int i;
 
 		if (!chunk) {
 			comp_err(mod->dev, "allocating more containers failed");
 			return NULL;
 		}
+
+		memset(chunk, 0, sizeof(*chunk));
 
 		list_item_append(&chunk->chunk_list, &res->cont_chunk_list);
 		for (i = 0; i < ARRAY_SIZE(chunk->containers); i++)
@@ -239,8 +242,7 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignme
 	}
 
 	/* Allocate memory for module */
-	ptr = rmalloc_align(SOF_MEM_FLAG_USER, size, alignment);
-
+	ptr = sof_heap_alloc(res->heap, 0, size, alignment);
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
 			 size, alignment, dev_comp_id(mod->dev));
@@ -269,8 +271,7 @@ EXPORT_SYMBOL(mod_alloc_align);
  * Like comp_data_blob_handler_new() but the handler is automatically freed.
  */
 #if CONFIG_COMP_BLOB
-struct comp_data_blob_handler *
-mod_data_blob_handler_new(struct processing_module *mod)
+struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct comp_data_blob_handler *bhp;
@@ -340,7 +341,7 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 
 	switch (container->type) {
 	case MOD_RES_HEAP:
-		rfree(container->ptr);
+		sof_heap_free(res->heap, container->ptr);
 		res->heap_usage -= container->size;
 		return 0;
 #if CONFIG_COMP_BLOB
@@ -581,6 +582,7 @@ int module_reset(struct processing_module *mod)
 void mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
+	struct k_heap *mod_heap = res->heap;
 	struct list_item *list;
 	struct list_item *_list;
 
@@ -599,7 +601,7 @@ void mod_free_all(struct processing_module *mod)
 			container_of(list, struct container_chunk, chunk_list);
 
 		list_item_del(&chunk->chunk_list);
-		rfree(chunk);
+		sof_heap_free(mod_heap, chunk);
 	}
 }
 EXPORT_SYMBOL(mod_free_all);
