@@ -23,6 +23,7 @@
 #include <sof/platform.h>
 #include <sof/ut.h>
 #include <rtos/interrupt.h>
+#include <rtos/kernel.h>
 #include <rtos/symbol.h>
 #include <limits.h>
 #include <stdint.h>
@@ -44,6 +45,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL);
 }
 
+#if CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
 							  const struct comp_ipc_config *config)
 {
@@ -92,6 +94,95 @@ static void module_adapter_mem_free(struct processing_module *mod)
 	module_driver_heap_free(drv->user_heap, mod->dev);
 	module_driver_heap_free(drv->user_heap, mod);
 }
+#else
+
+#if CONFIG_MM_DRV
+#define PAGE_SZ CONFIG_MM_DRV_PAGE_SIZE
+#else
+#include <platform/platform.h>
+#define PAGE_SZ HOST_PAGE_SIZE
+#endif
+
+static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+							  const struct comp_ipc_config *config)
+{
+	uint8_t *mod_heap_mem;
+	struct k_heap *mod_heap;
+	int flags;
+
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		/* src-lite with 8 channels has been seen allocating 14k in one go */
+		const size_t heap_size = 20 * 1024;
+
+		/* Keep uncached to match the default SOF heap! */
+		mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					     heap_size, PAGE_SZ);
+		if (!mod_heap_mem)
+			return NULL;
+
+		const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap), 8);
+		void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
+
+		mod_heap = (struct k_heap *)mod_heap_mem;
+		k_heap_init(mod_heap, mod_heap_buf, heap_size - heap_prefix_size);
+
+		flags = SOF_MEM_FLAG_COHERENT;
+	} else {
+		mod_heap_mem = NULL;
+		mod_heap = NULL;
+
+		flags = 0;
+	}
+
+	struct processing_module *mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
+
+	if (!mod) {
+		comp_cl_err(drv, "failed to allocate memory for module");
+		goto emod;
+	}
+
+	memset(mod, 0, sizeof(*mod));
+	mod->priv.resources.heap = mod_heap;
+	mod->priv.resources.heap_mem = mod_heap_mem;
+
+	/*
+	 * comp_alloc() always allocated dev uncached. Would be difficult to optimize. Only
+	 * if the whole currently active topology is running on the primary core, then it
+	 * can be cached. Effectively it can be only cached in single-core configurations.
+	 */
+	struct comp_dev *dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
+
+	if (!dev) {
+		comp_cl_err(drv, "failed to allocate memory for comp_dev");
+		goto err;
+	}
+
+	memset(dev, 0, sizeof(*dev));
+	comp_init(drv, dev, sizeof(*dev));
+	dev->ipc_config = *config;
+
+	mod->dev = dev;
+
+	return mod;
+
+err:
+	sof_heap_free(mod_heap, mod);
+emod:
+	rfree(mod_heap_mem);
+
+	return NULL;
+}
+
+static void module_adapter_mem_free(struct processing_module *mod)
+{
+	struct k_heap *mod_heap = mod->priv.resources.heap;
+	void *mem = mod->priv.resources.heap_mem;
+
+	sof_heap_free(mod_heap, mod->dev);
+	sof_heap_free(mod_heap, mod);
+	rfree(mem);
+}
+#endif
 
 /*
  * \brief Create a module adapter component.
