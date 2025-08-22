@@ -578,11 +578,9 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	}
 
 	/* allocate stream_params each time */
-	if (mod->stream_params)
-		rfree(mod->stream_params);
+	mod_free(mod, mod->stream_params);
 
-	mod->stream_params = rzalloc(SOF_MEM_FLAG_USER,
-				     sizeof(*mod->stream_params) + params->ext_data_length);
+	mod->stream_params = mod_alloc(mod, sizeof(*mod->stream_params) + params->ext_data_length);
 	if (!mod->stream_params)
 		return -ENOMEM;
 
@@ -1293,7 +1291,7 @@ int module_adapter_reset(struct comp_dev *dev)
 		buffer_zero(buffer);
 	}
 
-	rfree(mod->stream_params);
+	mod_free(mod, mod->stream_params);
 	mod->stream_params = NULL;
 
 	comp_dbg(dev, "done");
@@ -1333,8 +1331,6 @@ void module_adapter_free(struct comp_dev *dev)
 #if CONFIG_IPC_MAJOR_4
 	rfree(mod->priv.cfg.input_pins);
 #endif
-
-	rfree(mod->stream_params);
 
 	struct k_heap *mod_heap = mod->priv.resources.heap;
 	void *mem = mod->priv.resources.heap_mem;
