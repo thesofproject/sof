@@ -422,9 +422,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	mod->output_buffer_size = buff_size;
 
 	/* allocate memory for input buffer data */
-	list_for_item(blist, &dev->bsource_list) {
-		size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
+	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
+	list_for_item(blist, &dev->bsource_list) {
 		mod->input_buffers[i].data = rballoc(memory_flags, size);
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc input buffer data");
