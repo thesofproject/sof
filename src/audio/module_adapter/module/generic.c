@@ -112,7 +112,7 @@ int module_init(struct processing_module *mod)
 
 /**
  * Allocates aligned memory block for module.
- * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param mod		Pointer to the module this memory block is allocated for.
  * @param bytes		Size in bytes.
  * @param alignment	Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
@@ -202,13 +202,12 @@ int mod_free(struct processing_module *mod, void *ptr)
 {
 	struct module_memory *mem;
 	struct list_item *mem_list;
-	struct list_item *_mem_list;
 
 	if (!ptr)
 		return 0;
 
 	/* Find which container keeps this memory */
-	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
+	list_for_item(mem_list, &mod->priv.memory.mem_list) {
 		mem = container_of(mem_list, struct module_memory, mem_list);
 		if (mem->ptr == ptr) {
 			rfree(mem->ptr);
