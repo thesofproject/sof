@@ -496,8 +496,12 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	dd->ipc_config = *dai_cfg;
 
 	/* request GP LP DMA with shared access privilege */
+#if CONFIG_DAI_VIRTUAL
+	dir = SOF_DMA_DIR_MEM_TO_MEM;
+#else
 	dir = dai_cfg->direction == SOF_IPC_STREAM_PLAYBACK ?
 		SOF_DMA_DIR_MEM_TO_DEV : SOF_DMA_DIR_DEV_TO_MEM;
+#endif
 
 	dd->dma = sof_dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, SOF_DMA_ACCESS_SHARED);
 	if (!dd->dma) {

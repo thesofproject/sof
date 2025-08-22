@@ -99,6 +99,7 @@ struct comp_dev;
 #define SOF_DMA_DEV_HS		BIT(13) /**< connectable to ACP HS I2S */
 #define SOF_DMA_DEV_MICFIL	BIT(14) /**< connectable to MICFIL fifo */
 #define SOF_DMA_DEV_SW		BIT(15) /**< connectable to ACP SW */
+#define SOF_DMA_DEV_DAI_VIRTUAL	BIT(16) /**< connectable to Virtual DAI */
 
 /* DMA access privilege flag */
 #define SOF_DMA_ACCESS_EXCLUSIVE	1
