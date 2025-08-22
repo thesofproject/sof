@@ -18,6 +18,7 @@
 #include <user/trace.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/clk.h>
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
@@ -86,6 +87,39 @@ void WEAK *rmalloc(uint32_t flags, size_t bytes)
 void WEAK rfree(void *ptr)
 {
 	free(ptr);
+}
+
+void WEAK *mod_alloc(struct processing_module *mod, uint32_t size)
+{
+	void *ret;
+	(void)mod;
+
+	ret = malloc(size);
+
+	assert(ret);
+
+	return ret;
+}
+
+void WEAK *mod_zalloc(struct processing_module *mod, uint32_t size)
+{
+	void *ret;
+	(void)mod;
+
+	ret = malloc(size);
+
+	assert(ret);
+
+	memset(ret, 0, size);
+
+	return ret;
+}
+
+int WEAK mod_free(struct processing_module *mod, const void *ptr)
+{
+	(void)mod;
+	free((void *)ptr);
+	return 0;
 }
 
 int WEAK memcpy_s(void *dest, size_t dest_size,
