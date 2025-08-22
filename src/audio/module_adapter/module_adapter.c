@@ -1284,6 +1284,7 @@ void module_adapter_free(struct comp_dev *dev)
 	rfree(mod->priv.cfg.input_pins);
 #endif
 
+	rfree(mod->stream_params);
 	rfree(mod);
 	rfree(dev);
 }
