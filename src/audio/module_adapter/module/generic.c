@@ -134,16 +134,19 @@ struct container_chunk {
 static struct module_memory *container_get(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
+	struct k_heap *mod_heap = res->heap;
 	struct module_memory *container;
 
 	if (list_is_empty(&res->free_cont_list)) {
-		struct container_chunk *chunk = rzalloc(SOF_MEM_FLAG_USER, sizeof(*chunk));
+		struct container_chunk *chunk = sof_heap_alloc(mod_heap, 0, sizeof(*chunk), 0);
 		int i;
 
 		if (!chunk) {
 			comp_err(mod->dev, "allocating more containers failed");
 			return NULL;
 		}
+
+		memset(chunk, 0, sizeof(*chunk));
 
 		list_item_append(&chunk->chunk_list, &res->cont_chunk_list);
 		for (i = 0; i < ARRAY_SIZE(chunk->containers); i++)
@@ -175,6 +178,7 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 {
 	struct module_memory *container = container_get(mod);
 	struct module_resources *res = &mod->priv.resources;
+	struct k_heap *mod_heap = res->heap;
 	void *ptr;
 
 	MEM_API_CHECK_THREAD(res);
@@ -188,11 +192,7 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	}
 
 	/* Allocate memory for module */
-	if (alignment)
-		ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
-	else
-		ptr = rballoc(SOF_MEM_FLAG_USER, size);
-
+	ptr = sof_heap_alloc(mod_heap, 0, size, alignment);
 	if (!ptr) {
 		comp_err(mod->dev, "mod_alloc: failed to allocate memory for comp %x.",
 			 dev_comp_id(mod->dev));
@@ -324,6 +324,7 @@ EXPORT_SYMBOL(mod_fast_get);
 int mod_free(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
+	struct k_heap *mod_heap = res->heap;
 	struct module_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
@@ -339,7 +340,7 @@ int mod_free(struct processing_module *mod, const void *ptr)
 			if (mem->free) {
 				mem->free(mem->ptr);
 			} else {
-				rfree(mem->ptr);
+				sof_heap_free(mod_heap, mem->ptr);
 				res->heap_usage -= mem->size;
 			}
 			list_item_del(&mem->mem_list);
@@ -550,6 +551,7 @@ int module_reset(struct processing_module *mod)
 void mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
+	struct k_heap *mod_heap = res->heap;
 	struct list_item *list;
 	struct list_item *_list;
 
@@ -561,7 +563,7 @@ void mod_free_all(struct processing_module *mod)
 		if (mem->free)
 			mem->free(mem->ptr);
 		else
-			rfree(mem->ptr);
+			sof_heap_free(mod_heap, mem->ptr);
 		list_item_del(&mem->mem_list);
 	}
 
@@ -570,7 +572,7 @@ void mod_free_all(struct processing_module *mod)
 			container_of(list, struct container_chunk, chunk_list);
 
 		list_item_del(&chunk->chunk_list);
-		rfree(chunk);
+		sof_heap_free(mod_heap, chunk);
 	}
 }
 EXPORT_SYMBOL(mod_free_all);
