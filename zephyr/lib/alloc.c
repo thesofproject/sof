@@ -609,6 +609,30 @@ void rfree(void *ptr)
 }
 EXPORT_SYMBOL(rfree);
 
+/*
+ * To match the fall-back SOF main heap all private heaps should also be in the
+ * uncached address range.
+ */
+void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment)
+{
+	if (!heap)
+		heap = &sof_heap;
+
+	if (flags & SOF_MEM_FLAG_COHERENT)
+		return heap_alloc_aligned(heap, alignment, bytes);
+
+	return (__sparse_force void *)heap_alloc_aligned_cached(heap, alignment, bytes);
+}
+
+void sof_heap_free(struct k_heap *heap, void *addr)
+{
+	if (!heap)
+		heap = &sof_heap;
+
+	heap_free(heap, addr);
+}
+
 static int heap_init(void)
 {
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE - SHARED_BUFFER_HEAP_MEM_SIZE);
