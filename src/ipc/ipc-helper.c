@@ -175,7 +175,6 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		 * there's just nothing to update
 		 */
 		comp_dbg(dev, "no connected buffers");
-		return 0;
 	} else {
 		/* for other components we iterate over all downstream buffers
 		 * (for playback) or upstream buffers (for capture).
