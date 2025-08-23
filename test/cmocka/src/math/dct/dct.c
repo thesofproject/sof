@@ -22,6 +22,8 @@
 #define MATRIX_MULT_16_MAX_ERROR_ABS  2.5
 #define MATRIX_MULT_16_MAX_ERROR_RMS  1.1
 
+struct processing_module dummy;
+
 static void dct_matrix_16_test(const int16_t *ref, int num_in, int num_out,
 			       enum dct_type type, bool ortho)
 {
@@ -41,7 +43,7 @@ static void dct_matrix_16_test(const int16_t *ref, int num_in, int num_out,
 	dct.num_out = num_out;
 	dct.type = type;
 	dct.ortho = ortho;
-	ret = dct_initialize_16(&dct);
+	ret = mod_dct_initialize_16(&dummy, &dct);
 	if (ret) {
 		fprintf(stderr, "Failed to initialize DCT.\n");
 		exit(EXIT_FAILURE);
