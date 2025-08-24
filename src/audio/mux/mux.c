@@ -11,7 +11,6 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -94,36 +93,27 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER,
-		     sizeof(*cd) + MUX_BLOB_STREAMS_SIZE);
+	cd = mod_zalloc(mod, sizeof(*cd) + MUX_BLOB_STREAMS_SIZE);
 	if (!cd)
 		return -ENOMEM;
 
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto err;
+		return -ENOMEM;
 	}
 
 	module_data->private = cd;
 	ret = comp_init_data_blob(cd->model_handler, cfg->size, cfg->init_data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed.");
-		goto err_init;
+		return ret;
 	}
 
 	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
 	mod->no_pause = true;
 	cd->comp_type = type;
 	return 0;
-
-err_init:
-	comp_data_blob_handler_free(cd->model_handler);
-
-err:
-	rfree(cd);
-	return ret;
 }
 
 static int mux_init(struct processing_module *mod)
@@ -135,12 +125,8 @@ static int mux_init(struct processing_module *mod)
 
 static int mux_free(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-
 	comp_dbg(mod->dev, "mux_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
 	return 0;
 }
 
