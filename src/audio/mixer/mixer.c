@@ -14,7 +14,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -47,7 +46,7 @@ static int mixer_init(struct processing_module *mod)
 
 	comp_dbg(dev, "mixer_init()");
 
-	md = rzalloc(SOF_MEM_FLAG_USER, sizeof(*md));
+	md = mod_zalloc(mod, sizeof(*md));
 	if (!md)
 		return -ENOMEM;
 
@@ -66,7 +65,7 @@ static int mixer_free(struct processing_module *mod)
 
 	comp_dbg(dev, "mixer_free()");
 
-	rfree(md);
+	mod_free(mod, md);
 
 	return 0;
 }
