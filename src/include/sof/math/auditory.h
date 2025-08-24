@@ -76,7 +76,6 @@ int16_t psy_mel_to_hz(int16_t mel);
  *			   filter coefficients.
  * \return                 Zero when success, otherwise error code.
  */
-int psy_get_mel_filterbank(struct psy_mel_filterbank *mel_fb);
 struct processing_module;
 int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *mel_fb);
 
