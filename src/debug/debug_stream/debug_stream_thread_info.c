@@ -313,6 +313,9 @@ static void thread_info_get(int core, struct record_buf *bufd)
 	debug_stream_slot_send_record(&hdr->hdr);
 }
 
+static void hack_notification_init(void);
+static void hack_notification_send(uint32_t val);
+
 static void thread_info_run(void *cnum, void *a, void *b)
 {
 	int core = (int) cnum;
@@ -320,6 +323,7 @@ static void thread_info_run(void *cnum, void *a, void *b)
 		.size = THREAD_INFO_INITIAL_RECORD_BUFFER_SIZE,
 		.w_ptr = 0,
 	};
+	uint32_t val = 0;
 
 	bufd.buf = rmalloc(SOF_MEM_FLAG_USER, bufd.size);
 	if (!bufd.buf) {
@@ -327,9 +331,13 @@ static void thread_info_run(void *cnum, void *a, void *b)
 		return;
 	}
 
+	hack_notification_init();
+
 	for (;;) {
 		thread_info_get(core, &bufd);
 		k_sleep(K_SECONDS(CONFIG_SOF_DEBUG_STREAM_THREAD_INFO_INTERVAL));
+		val = !val;
+		hack_notification_send(val);
 	}
 }
 
@@ -375,3 +383,76 @@ static int thread_info_start(void)
 }
 
 SYS_INIT(thread_info_start, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
+
+/* HACK notification test */
+#include <sof/ipc/msg.h>
+#include <ipc4/notification.h>
+#include <ipc4/module.h>
+#include <ipc4/header.h>
+#include <ipc4/base-config.h>
+
+#define SOF_IPC4_MOD_INIT_BASEFW_MOD_ID		0
+#define SOF_IPC4_MOD_INIT_BASEFW_INSTANCE_ID	0
+
+static struct ipc_msg *notification_template;
+
+static void hack_notification_init(void)
+{
+	struct ipc_msg msg_proto;
+	union ipc4_notification_header *primary =
+		(union ipc4_notification_header *)&msg_proto.header;
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	struct sof_ipc4_control_msg_payload *msg_payload;
+	struct ipc_msg *msg;
+
+	/* Clear header, extension, and other ipc_msg members */
+	memset_s(&msg_proto, sizeof(msg_proto), 0, sizeof(msg_proto));
+	primary->r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+	primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
+	primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+	msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
+				 sizeof(struct sof_ipc4_notify_module_data) +
+				 sizeof(struct sof_ipc4_control_msg_payload) +
+				 sizeof(struct sof_ipc4_ctrl_value_chan));
+	if (!msg) {
+		LOG_ERR("ipc_msg_w_ext_init() failed!");
+		return;
+	}
+
+	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
+	msg_module_data->instance_id = IPC4_INST_ID(SOF_IPC4_MOD_INIT_BASEFW_INSTANCE_ID);
+	msg_module_data->module_id = IPC4_MOD_ID(SOF_IPC4_MOD_INIT_BASEFW_MOD_ID);
+	msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
+		SOF_IPC4_SWITCH_CONTROL_PARAM_ID;
+	msg_module_data->event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
+		sizeof(struct sof_ipc4_ctrl_value_chan);
+
+	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
+	msg_payload->id = SOF_IPC4_KCONTROL_GLOBAL_CAPTURE_HW_MUTE;
+	msg_payload->num_elems = 1;
+	msg_payload->chanv[0].channel = 0;
+
+	LOG_INF("msg initialized");
+	notification_template = msg;
+}
+
+static void hack_notification_send(uint32_t val)
+{
+	struct ipc_msg *msg = notification_template;
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	struct sof_ipc4_control_msg_payload *msg_payload;
+
+	if (!msg) {
+		LOG_ERR("msg not initialized");
+		return;
+	}
+
+	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
+	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
+	msg_payload->chanv[0].value = val;
+
+	LOG_INF("SENDING msg %p %u", msg->tx_data, (msg->tx_size));
+
+	ipc_msg_send(msg, msg->tx_data, false);
+}
