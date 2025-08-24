@@ -24,6 +24,7 @@
 
 struct dma_sg_elem_array;
 struct ipc_msg;
+struct ipc4_message_request;
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
@@ -165,6 +166,49 @@ struct dai_data;
  * @return 0 on success.
  */
 int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev);
+
+/**
+ * \brief Processes IPC4 userspace module message.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] reply IPC message reply structure.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_user_process_module_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
+
+/**
+ * \brief Processes IPC4 userspace global message.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] reply IPC message reply structure.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
+
+/**
+ * \brief Increment the IPC compound message pre-start counter.
+ * @param[in] msg_id IPC message ID.
+ */
+void ipc_compound_pre_start(int msg_id);
+
+/**
+ * \brief Decrement the IPC compound message pre-start counter on return value status.
+ * @param[in] msg_id IPC message ID.
+ * @param[in] ret Return value of the IPC command.
+ * @param[in] delayed True if the reply is delayed.
+ */
+void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed);
+
+/**
+ * \brief Complete the IPC compound message.
+ * @param[in] msg_id IPC message ID.
+ * @param[in] error Error code of the IPC command.
+ */
+void ipc_compound_msg_done(uint32_t msg_id, int error);
+
+/**
+ * \brief Wait for the IPC compound message to complete.
+ * @return 0 on success, error code otherwise on timeout.
+ */
+int ipc_wait_for_compound_msg(void);
 
 /**
  * \brief create a IPC boot complete message.
