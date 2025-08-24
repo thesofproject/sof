@@ -11,7 +11,6 @@
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -94,14 +93,13 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER,
-		     sizeof(*cd) + MUX_BLOB_STREAMS_SIZE);
+	cd = mod_zalloc(mod, sizeof(*cd) + MUX_BLOB_STREAMS_SIZE);
 	if (!cd)
 		return -ENOMEM;
 
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
-		comp_err(dev, "comp_data_blob_handler_new() failed.");
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -109,7 +107,7 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 	module_data->private = cd;
 	ret = comp_init_data_blob(cd->model_handler, cfg->size, cfg->init_data);
 	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed.");
+		comp_err(dev, "module data blob initialization failed.");
 		goto err_init;
 	}
 
@@ -119,10 +117,10 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 	return 0;
 
 err_init:
-	comp_data_blob_handler_free(cd->model_handler);
+	mod_data_blob_handler_free(mod, cd->model_handler);
 
 err:
-	rfree(cd);
+	mod_free(mod, cd);
 	return ret;
 }
 
@@ -139,8 +137,8 @@ static int mux_free(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "mux_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
+	mod_data_blob_handler_free(mod, cd->model_handler);
+	mod_free(mod, cd);
 	return 0;
 }
 
