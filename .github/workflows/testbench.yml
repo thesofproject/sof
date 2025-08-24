@@ -31,6 +31,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
+    env:
+      SOF_WORKSPACE=$HOME:/work/sof/sof
 
     steps:
       - name: Checkout SOF repository (PR source)
