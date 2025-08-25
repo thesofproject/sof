@@ -8,7 +8,6 @@
 #include "tdfb_comp.h"
 
 #include <ipc/topology.h>
-#include <rtos/alloc.h>
 #include <sof/math/iir_df1.h>
 #include <sof/math/trig.h>
 #include <sof/math/sqrt.h>
@@ -176,8 +175,9 @@ static bool line_array_mode_check(struct tdfb_comp_data *cd)
 	return true;
 }
 
-int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
+int tdfb_direction_init(struct processing_module *mod, int32_t fs, int ch_count)
 {
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	struct sof_eq_iir_header *filt;
 	int32_t *delay;
 	int32_t d_max;
@@ -200,7 +200,7 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 
 	/* Allocate delay lines for IIR filters and initialize them */
 	size = ch_count * iir_delay_size_df1(filt);
-	delay = rzalloc(SOF_MEM_FLAG_USER, size);
+	delay = mod_zalloc(mod, size);
 	if (!delay)
 		return -ENOMEM;
 
@@ -225,9 +225,9 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 	cd->direction.max_lag = Q_MULTSR_32X32((int64_t)fs, t_max, 0, 15, 0) + 1;
 	n = (cd->max_frames + (2 * cd->direction.max_lag + 1)) * ch_count;
 	cd->direction.d_size =  n * sizeof(int16_t);
-	cd->direction.d = rzalloc(SOF_MEM_FLAG_USER, cd->direction.d_size);
+	cd->direction.d = mod_zalloc(mod, cd->direction.d_size);
 	if (!cd->direction.d)
-		goto err_free_iir;
+		return -ENOMEM;
 
 	/* Set needed pointers to xcorr delay line, advance write pointer by max_lag to keep read
 	 * always behind write
@@ -238,9 +238,9 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 
 	/* xcorr result is temporary but too large for stack so it is allocated here */
 	cd->direction.r_size = (2 * cd->direction.max_lag + 1) * sizeof(int32_t);
-	cd->direction.r = rzalloc(SOF_MEM_FLAG_USER, cd->direction.r_size);
+	cd->direction.r = mod_zalloc(mod, cd->direction.r_size);
 	if (!cd->direction.r)
-		goto err_free_all;
+		return -ENOMEM;
 
 	/* Check for line array mode */
 	cd->direction.line_array = line_array_mode_check(cd);
@@ -249,22 +249,6 @@ int tdfb_direction_init(struct tdfb_comp_data *cd, int32_t fs, int ch_count)
 	cd->direction.az = 0;
 	cd->direction.step_sign = 1;
 	return 0;
-
-err_free_all:
-	rfree(cd->direction.d);
-	cd->direction.d = NULL;
-
-err_free_iir:
-	rfree(cd->direction.df1_delay);
-	cd->direction.df1_delay = NULL;
-	return -ENOMEM;
-}
-
-void tdfb_direction_free(struct tdfb_comp_data *cd)
-{
-	rfree(cd->direction.df1_delay);
-	rfree(cd->direction.d);
-	rfree(cd->direction.r);
 }
 
 /* Measure level of one channel */
