@@ -241,7 +241,7 @@ static int rtnr_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -250,9 +250,9 @@ static int rtnr_init(struct processing_module *mod)
 	cd->process_enable = true;
 
 	/* Handler for component data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
-		comp_err(dev, "comp_data_blob_handler_new() failed.");
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto cd_fail;
 	}
@@ -285,8 +285,8 @@ static int rtnr_init(struct processing_module *mod)
 	return 0;
 
 cd_fail:
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
+	mod_data_blob_handler_free(mod, cd->model_handler);
+	mod_free(mod, cd);
 	return ret;
 }
 
@@ -296,11 +296,11 @@ static int rtnr_free(struct processing_module *mod)
 
 	comp_info(mod->dev, "rtnr_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
+	mod_data_blob_handler_free(mod, cd->model_handler);
 
 	RTKMA_API_Context_Free(cd->rtk_agl);
 
-	rfree(cd);
+	mod_free(mod, cd);
 	return 0;
 }
 
