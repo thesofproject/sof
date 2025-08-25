@@ -122,7 +122,11 @@ enum sof_dma_cb_status {
 /* Attributes have been ported to Zephyr. This condition is necessary until full support of
  * CONFIG_SOF_ZEPHYR_STRICT_HEADERS.
  */
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 struct sof_dma;
+#else
+struct dma;
+#endif
 
 /**
  *  \brief Element of SG list (as array item).
@@ -194,7 +198,11 @@ struct dma_plat_data {
 	uint32_t period_count;
 };
 
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 struct sof_dma {
+#else
+struct dma {
+#endif
 	struct dma_plat_data plat_data;
 	struct k_spinlock lock;	/**< locking mechanism */
 	int sref;		/**< simple ref counter, guarded by lock */
@@ -206,7 +214,11 @@ struct sof_dma {
 };
 
 struct dma_chan_data {
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	struct sof_dma *dma;
+#else
+	struct dma *dma;
+#endif
 
 	uint32_t status;
 	uint32_t direction;
@@ -224,14 +236,22 @@ struct dma_chan_data {
 };
 
 struct dma_info {
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	struct sof_dma *dma_array;
+#else
+	struct dma *dma_array;
+#endif
 	size_t num_dmas;
 };
 
 /* generic DMA DSP <-> Host copier */
 struct dma_copy {
 	struct dma_chan_data *chan;
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	struct sof_dma *dmac;
+#else
+	struct dma *dmac;
+#endif
 };
 
 struct audio_stream;
