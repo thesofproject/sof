@@ -184,6 +184,8 @@ rsource "codec/Kconfig"
 
 rsource "template_comp/Kconfig"
 
+rsource "level_multiplier/Kconfig"
+
 endmenu # "Audio components"
 
 menu "Data formats"
