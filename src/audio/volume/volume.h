@@ -300,7 +300,7 @@ void sys_comp_module_volume_interface_init(void);
 /* source_or_sink, true means source, false means sink */
 void set_volume_process(struct vol_data *cd, struct comp_dev *dev, bool source_or_sink);
 
-void volume_peak_free(struct vol_data *cd);
+void volume_peak_free(struct processing_module *mod);
 
 int volume_peak_prepare(struct vol_data *cd, struct processing_module *mod);
 
