@@ -91,8 +91,8 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 				out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
 #endif
 
-				/* Shift and round for S24_LE */
-				out_sample = AE_SRAI32R(out_sample, 8);
+				/* Shift to S24_LE */
+				out_sample = AE_SRAI32(out_sample, 8);
 				/* Store the output sample */
 				AE_S32_L_XP(out_sample, out, inc);
 			}
