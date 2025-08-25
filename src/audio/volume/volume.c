@@ -24,7 +24,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/uuid.h>
@@ -776,9 +775,9 @@ static int volume_free(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "volume_free()");
 
-	volume_peak_free(cd);
-	rfree(cd->vol);
-	rfree(cd);
+	volume_peak_free(mod);
+	mod_free(mod, cd->vol);
+	mod_free(mod, cd);
 
 	return 0;
 }
