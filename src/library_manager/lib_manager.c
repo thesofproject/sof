@@ -603,8 +603,18 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	mod = (const struct sof_man_module *)
 		((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
+	const uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, args->data);
+
+	if (!module_entry_point) {
+		tr_err(&lib_manager_tr, "lib_manager_allocate_module() failed!");
+		return NULL;
+	}
+
 	switch (lib_manager_get_module_type(desc, mod)) {
 	case MOD_TYPE_LLEXT:
+		agent = NULL;
+		ops = (const struct module_interface *)module_entry_point;
+		break;
 	case MOD_TYPE_LMDK:
 		agent = &native_system_agent_start;
 		agent_iface = (const void **)&ops;
@@ -617,21 +627,16 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 		agent_iface = (const void **)&adapter_priv;
 		break;
 	case MOD_TYPE_INVALID:
-		return NULL;
-	}
-
-	const uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, args->data);
-	if (!module_entry_point) {
-		tr_err(&lib_manager_tr, "lib_manager_allocate_module() failed!");
-		return NULL;
+		goto err;
 	}
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
-
-	ret = lib_manager_start_agent(drv, config->id, args, module_entry_point, agent,
-				      agent_iface);
-	if (ret)
-		goto err;
+	if (agent) {
+		ret = lib_manager_start_agent(drv, config->id, args, module_entry_point, agent,
+					      agent_iface);
+		if (ret)
+			goto err;
+	}
 
 	if (ops && comp_set_adapter_ops(drv, ops) < 0)
 		goto err;

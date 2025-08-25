@@ -441,10 +441,8 @@ static const struct module_interface multiband_drc_interface = {
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
-SOF_LLEXT_MOD_ENTRY(multiband_drc, &multiband_drc_interface);
-
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("MB_DRC", multiband_drc_llext_entry, 1,
+	SOF_LLEXT_MODULE_MANIFEST("MB_DRC", &multiband_drc_interface, 1,
 				  SOF_REG_UUID(multiband_drc), 40);
 
 SOF_LLEXT_BUILDINFO;
