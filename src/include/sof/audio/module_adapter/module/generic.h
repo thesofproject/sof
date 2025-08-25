@@ -133,6 +133,7 @@ enum mod_resource_type {
 	MOD_RES_UNINITIALIZED = 0,
 	MOD_RES_HEAP,
 	MOD_RES_BLOB_HANDLER,
+	MOD_RES_FAST_GET,
 };
 
 /**
@@ -143,6 +144,7 @@ struct module_resource {
 	union {
 		void *ptr; /**< Pointer to heap allocated memory */
 		struct comp_data_blob_handler *bhp; /**< Blob handler ptr */
+		const void *sram_ptr; /**< SRAM ptr from fast_get() */
 	};
 	struct list_item list; /**< list element */
 	size_t size; /**< Size of allocated heap memory, 0 if not from heap */
@@ -185,6 +187,10 @@ int mod_free(struct processing_module *mod, const void *ptr);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
+#endif
+#if CONFIG_FAST_GET
+const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size);
+void mod_fast_put(struct processing_module *mod, const void *sram_ptr);
 #endif
 void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
