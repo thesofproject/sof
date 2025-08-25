@@ -5,7 +5,6 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <rtos/panic.h>
-#include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <rtos/string.h>
@@ -93,7 +92,7 @@ static int nxp_eap_init(struct processing_module *mod)
 	tr_info(mod->dev, "NXP EAP library, platform: %s version:%s",
 		info.pPlatform, info.pVersionNumber);
 
-	eap = rballoc(SOF_MEM_FLAG_USER, sizeof(*eap));
+	eap = mod_alloc(mod, sizeof(*eap));
 	if (!eap) {
 		comp_err(dev, "nxp_eap_init() failed to allocate module private data");
 		return -ENOMEM;
@@ -106,7 +105,7 @@ static int nxp_eap_init(struct processing_module *mod)
 	lvm_ret = LVM_GetMemoryTable(LVM_NULL, &eap->mem_tab, &eap->inst_params);
 	if (lvm_ret != LVM_SUCCESS) {
 		comp_err(dev, "nxp_eap_init() failed to get memory table %d", lvm_ret);
-		rfree(eap);
+		mod_free(mod, eap);
 		return -EINVAL;
 	}
 
@@ -115,8 +114,7 @@ static int nxp_eap_init(struct processing_module *mod)
 		eap->mem_tab.Region[i].pBaseAddress = NULL;
 
 	for (int i = 0; i < LVM_NR_MEMORY_REGIONS; i++) {
-		eap->mem_tab.Region[i].pBaseAddress = rballoc(SOF_MEM_FLAG_USER,
-							      eap->mem_tab.Region[i].Size);
+		eap->mem_tab.Region[i].pBaseAddress = mod_balloc(mod, eap->mem_tab.Region[i].Size);
 		if (!eap->mem_tab.Region[i].pBaseAddress) {
 			comp_err(dev, "nxp_eap_init() failed to allocate memory for region %d", i);
 			ret = -ENOMEM;
@@ -139,11 +137,11 @@ static int nxp_eap_init(struct processing_module *mod)
 free_mem:
 	for (int i = 0; i < LVM_NR_MEMORY_REGIONS; i++) {
 		if (eap->mem_tab.Region[i].pBaseAddress) {
-			rfree(eap->mem_tab.Region[i].pBaseAddress);
+			mod_free(mod, eap->mem_tab.Region[i].pBaseAddress);
 			eap->mem_tab.Region[i].pBaseAddress = NULL;
 		}
 	}
-	rfree(eap);
+	mod_free(mod, eap);
 	return ret;
 }
 
@@ -156,12 +154,11 @@ static int nxp_eap_free(struct processing_module *mod)
 
 	for (int i = 0; i < LVM_NR_MEMORY_REGIONS; i++) {
 		if (eap->mem_tab.Region[i].pBaseAddress) {
-			rfree(eap->mem_tab.Region[i].pBaseAddress);
+			mod_free(mod, eap->mem_tab.Region[i].pBaseAddress);
 			eap->mem_tab.Region[i].pBaseAddress = NULL;
 		}
 	}
-
-	rfree(eap);
+	mod_free(mod, eap);
 
 	return 0;
 }
@@ -189,13 +186,13 @@ static int nxp_eap_prepare(struct processing_module *mod,
 	 */
 	eap->buffer_bytes = NXP_EAP_DEFAULT_MAX_BLOCK_SIZE;
 
-	md->mpd.in_buff = rballoc_align(SOF_MEM_FLAG_USER, eap->buffer_bytes, 32);
+	md->mpd.in_buff = mod_balloc_align(mod, eap->buffer_bytes, 32);
 	if (!md->mpd.in_buff)
 		return -ENOMEM;
 
-	md->mpd.out_buff = rballoc_align(SOF_MEM_FLAG_USER, eap->buffer_bytes, 32);
+	md->mpd.out_buff = mod_balloc_align(mod, eap->buffer_bytes, 32);
 	if (!md->mpd.out_buff) {
-		rfree(md->mpd.in_buff);
+		mod_free(mod, md->mpd.in_buff);
 		return -ENOMEM;
 	}
 
@@ -213,13 +210,13 @@ static int nxp_eap_reset(struct processing_module *mod)
 	comp_dbg(dev, "nxp_eap_reset");
 
 	if (md->mpd.in_buff) {
-		rfree(md->mpd.in_buff);
+		mod_free(mod, md->mpd.in_buff);
 		md->mpd.in_buff = NULL;
 		md->mpd.in_buff_size = 0;
 	}
 
 	if (md->mpd.out_buff) {
-		rfree(md->mpd.out_buff);
+		mod_free(mod, md->mpd.out_buff);
 		md->mpd.out_buff = NULL;
 		md->mpd.out_buff_size = 0;
 	}
