@@ -287,6 +287,12 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
+		if (ppl_icd->pipeline->expect_eos) {
+			ipc_cmd_err(&ipc_tr, "pipeline %d: Can't transition from EOS to RUNNING",
+				    ppl_icd->id);
+			return IPC4_INVALID_REQUEST;
+		}
+
 		/* init params when pipeline is complete or reset */
 		switch (status) {
 		case COMP_STATE_ACTIVE:
@@ -300,8 +306,6 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 
 			tr_dbg(&ipc_tr, "pipeline %d: set params", ppl_icd->id);
 			ret = ipc4_pcm_params(host);
-			if (ret < 0)
-				return IPC4_INVALID_REQUEST;
 			break;
 		default:
 			ipc_cmd_err(&ipc_tr,
@@ -315,9 +319,6 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		case COMP_STATE_INIT:
 			tr_dbg(&ipc_tr, "pipeline %d: reset from init", ppl_icd->id);
 			ret = ipc4_pipeline_complete(ipc, ppl_icd->id, cmd);
-			if (ret < 0)
-				ret = IPC4_INVALID_REQUEST;
-
 			break;
 		case COMP_STATE_READY:
 		case COMP_STATE_ACTIVE:
@@ -337,9 +338,6 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		case COMP_STATE_INIT:
 			tr_dbg(&ipc_tr, "pipeline %d: pause from init", ppl_icd->id);
 			ret = ipc4_pipeline_complete(ipc, ppl_icd->id, cmd);
-			if (ret < 0)
-				ret = IPC4_INVALID_REQUEST;
-
 			break;
 		default:
 			/* No action needed */
@@ -347,11 +345,15 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 		}
 
 		break;
-	/* special case- TODO */
 	case SOF_IPC4_PIPELINE_STATE_EOS:
-		if (status != COMP_STATE_ACTIVE)
+		if (status != COMP_STATE_ACTIVE) {
+			ipc_cmd_err(&ipc_tr, "pipeline %d: Invalid state for EOS: %d",
+				    ppl_icd->id, status);
 			return IPC4_INVALID_REQUEST;
-		COMPILER_FALLTHROUGH;
+		}
+		ppl_icd->pipeline->expect_eos = true;
+		return 0; /* Must return here. Any other transition clears expect_eos. */
+	/* special case - TODO */
 	case SOF_IPC4_PIPELINE_STATE_SAVED:
 	case SOF_IPC4_PIPELINE_STATE_ERROR_STOP:
 	default:
@@ -359,6 +361,11 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 			    ppl_icd->id, cmd);
 		return IPC4_INVALID_REQUEST;
 	}
+
+	if (ret < 0)
+		return IPC4_INVALID_REQUEST;
+
+	ppl_icd->pipeline->expect_eos = false;
 
 	return ret;
 }
@@ -423,6 +430,9 @@ int ipc4_pipeline_trigger(struct ipc_comp_dev *ppl_icd, uint32_t cmd, bool *dela
 		}
 
 		break;
+	case SOF_IPC4_PIPELINE_STATE_EOS:
+		/* EOS handled in ipc4_pipeline_prepare */
+		return 0;
 	default:
 		ipc_cmd_err(&ipc_tr, "pipeline %d: unsupported trigger cmd: %d",
 			    ppl_icd->id, cmd);
