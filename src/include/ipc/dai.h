@@ -94,8 +94,30 @@ enum sof_ipc_dai_type {
 	SOF_DAI_AMD_SP_VIRTUAL,		/**<Amd SP VIRTUAL */
 	SOF_DAI_AMD_HS_VIRTUAL,		/**<Amd HS VIRTUAL */
 	SOF_DAI_IMX_MICFIL,		/**< i.MX MICFIL */
-	SOF_DAI_AMD_SW_AUDIO		/**<Amd SW AUDIO */
+	SOF_DAI_AMD_SW_AUDIO,		/**<Amd SW AUDIO */
+	SOF_DAI_VIRTUAL,		/**< Virtual DAI for testing/debugging*/
 };
+
+/* Virtual DAI Configuration Request - SOF_IPC_DAI_VIRTUAL_CONFIG */
+struct sof_ipc_dai_virtual_params {
+	uint32_t reserved0;
+
+	/* MCLK */
+	uint16_t reserved1;
+	uint16_t mclk_id;
+	uint32_t mclk_direction;
+
+	uint32_t mclk_rate; /* MCLK frequency in Hz */
+	uint32_t fsync_rate;
+	uint32_t bclk_rate;
+
+	/* TDM */
+	uint32_t tdm_slots;
+	uint32_t rx_slots;
+	uint32_t tx_slots;
+	uint16_t tdm_slot_width;
+	uint16_t reserved2;	/* alignment */
+} __attribute__((packed, aligned(4)));
 
 /* general purpose DAI configuration */
 struct sof_ipc_dai_config {
@@ -126,6 +148,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_afe_params afe;
 		struct sof_ipc_dai_micfil_params micfil;
 		struct sof_ipc_dai_acp_sdw_params acpsdw;
+		struct sof_ipc_dai_virtual_params virtual_dai;
 	};
 } __attribute__((packed, aligned(4)));
 
