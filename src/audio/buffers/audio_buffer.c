@@ -243,7 +243,7 @@ uint32_t audio_buffer_sink_get_lft(struct sof_sink *sink)
 	 */
 	int32_t deadline_correction = 0;
 
-	if (data_consumer_mod->dev->period < data_producer_mod->dev->period) {
+	if (data_consumer_mod->dev->period > data_producer_mod->dev->period) {
 		deadline_correction = (data_consumer_mod->dev->period - us_in_buffer) /
 				       data_producer_mod->dev->period;
 		if (deadline_correction < 0)
