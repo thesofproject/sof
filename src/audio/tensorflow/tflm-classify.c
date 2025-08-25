@@ -18,7 +18,6 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <module/module/llext.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <rtos/panic.h>
 #include <rtos/string.h>
@@ -61,16 +60,16 @@ __cold static int tflm_init(struct processing_module *mod)
 
 	comp_info(dev, "tflm_init()");
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
 	md->private = cd;
 
 	/* Handler for configuration data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
-		comp_err(dev, "comp_data_blob_handler_new() failed.");
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
 		goto cd_fail;
 	}
@@ -102,7 +101,7 @@ __cold static int tflm_init(struct processing_module *mod)
 	return ret;
 
 cd_fail:
-	rfree(cd);
+	mod_free(mod, cd);
 	return ret;
 }
 
@@ -112,8 +111,8 @@ __cold static int tflm_free(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
+	mod_data_blob_handler_free(mod, cd->model_handler);
+	mod_free(mod, cd);
 	return 0;
 }
 
