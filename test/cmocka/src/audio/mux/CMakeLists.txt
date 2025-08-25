@@ -3,7 +3,7 @@
 # make small lib for stripping so we don't have to care
 # about unused missing references
 
-add_compile_options(-fdata-sections -ffunction-sections -DUNIT_TEST)
+add_compile_options(-fdata-sections -ffunction-sections -DUNIT_TEST -DNO_CMOCKA_H)
 link_libraries(-Wl,--gc-sections)
 
 add_library(
@@ -29,6 +29,7 @@ add_library(
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
+	${PROJECT_SOURCE_DIR}/zephyr/lib/fast-get.c
 )
 sof_append_relative_path_definitions(audio_mux)
 
@@ -39,16 +40,19 @@ link_libraries(audio_mux)
 cmocka_test(
 	mux_get_processing_function
 	mux_get_processing_function.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 )
 
 cmocka_test(
 	mux_copy
 	mux_copy.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 )
 
 cmocka_test(
 	demux_copy
 	demux_copy.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 )
 
 target_include_directories(audio_mux PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)

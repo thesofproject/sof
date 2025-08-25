@@ -2,6 +2,7 @@
 
 cmocka_test(eq_fir_process
 	eq_fir_process.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 )
 
 target_include_directories(eq_fir_process PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
@@ -43,6 +44,7 @@ add_library(audio_for_eq_fir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/zephyr/lib/fast-get.c
 )
 sof_append_relative_path_definitions(audio_for_eq_fir)
 
