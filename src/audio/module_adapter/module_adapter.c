@@ -74,12 +74,32 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev) {
-		comp_cl_err(drv, "module_adapter_new(), failed to allocate memory for comp_dev");
-		return NULL;
+	uint8_t *mod_heap_mem;
+	struct k_heap *mod_heap;
+	int flags;
+
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		const size_t heap_size = 8 * 1024;
+
+		/* Keep uncached to match the default SOF heap! */
+		mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					     heap_size, 4096);
+		if (!mod_heap_mem)
+			return NULL;
+
+		const size_t heap_pref_size = ALIGN_UP(sizeof(*mod_heap), 8);
+		void *mod_heap_buf = mod_heap_mem + heap_pref_size;
+
+		mod_heap = (struct k_heap *)mod_heap_mem;
+		k_heap_init(mod_heap, mod_heap_buf, heap_size - heap_pref_size);
+
+		flags = SOF_MEM_FLAG_COHERENT;
+	} else {
+		mod_heap_mem = NULL;
+		mod_heap = NULL;
+
+		flags = 0;
 	}
-	dev->ipc_config = *config;
 
 	/* allocate module information.
 	 * for DP shared modules this struct must be accessible from all cores
@@ -87,14 +107,31 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	 * will be bound to. So we need to allocate shared memory for each DP module
 	 * To be removed when pipeline 2.0 is ready
 	 */
-	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
-			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 
-	mod = rzalloc(flags, sizeof(*mod));
+	mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
 	if (!mod) {
-		comp_err(dev, "module_adapter_new(), failed to allocate memory for module");
+		comp_cl_err(drv, "module_adapter_new(), failed to allocate memory for module");
+		goto emod;
+	}
+
+	memset(mod, 0, sizeof(*mod));
+	mod->priv.resources.heap = mod_heap;
+	mod->priv.resources.heap_mem = mod_heap_mem;
+
+	/*
+	 * comp_alloc() always allocated dev uncached. Would be difficult to optimize. Only
+	 * if the whole currently active topology is running on the primary core, then it
+	 * can be cached. Effectively it can be only cached in single-core configurations.
+	 */
+	dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
+	if (!dev) {
+		comp_cl_err(drv, "module_adapter_new(), failed to allocate memory for comp_dev");
 		goto err;
 	}
+
+	memset(dev, 0, sizeof(*dev));
+	comp_init(drv, dev, sizeof(*dev));
+	dev->ipc_config = *config;
 
 	dst = &mod->priv.cfg;
 
@@ -159,13 +196,17 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	comp_dbg(dev, "module_adapter_new() done");
 	return dev;
+
 err:
 #if CONFIG_IPC_MAJOR_4
 	if (mod)
 		rfree(mod->priv.cfg.input_pins);
 #endif
-	rfree(mod);
-	rfree(dev);
+	sof_heap_free(mod_heap, dev);
+	sof_heap_free(mod_heap, mod);
+emod:
+	rfree(mod_heap_mem);
+
 	return NULL;
 }
 EXPORT_SYMBOL(module_adapter_new);
@@ -521,6 +562,7 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 {
 	int ret;
 	struct processing_module *mod = comp_mod(dev);
+	struct k_heap *mod_heap = mod->priv.resources.heap;
 
 	module_adapter_set_params(mod, params);
 
@@ -531,11 +573,11 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 	}
 
 	/* allocate stream_params each time */
-	if (mod->stream_params)
-		rfree(mod->stream_params);
+	sof_heap_free(mod_heap, mod->stream_params);
 
-	mod->stream_params = rzalloc(SOF_MEM_FLAG_USER,
-				     sizeof(*mod->stream_params) + params->ext_data_length);
+	mod->stream_params = sof_heap_alloc(mod_heap, 0,
+					    sizeof(*mod->stream_params) + params->ext_data_length,
+					    0);
 	if (!mod->stream_params)
 		return -ENOMEM;
 
@@ -1211,6 +1253,7 @@ int module_adapter_reset(struct comp_dev *dev)
 {
 	int ret, i;
 	struct processing_module *mod = comp_mod(dev);
+	struct k_heap *mod_heap = mod->priv.resources.heap;
 	struct list_item *blist;
 
 	comp_dbg(dev, "resetting");
@@ -1246,7 +1289,7 @@ int module_adapter_reset(struct comp_dev *dev)
 		buffer_zero(buffer);
 	}
 
-	rfree(mod->stream_params);
+	sof_heap_free(mod_heap, mod->stream_params);
 	mod->stream_params = NULL;
 
 	comp_dbg(dev, "done");
@@ -1284,24 +1327,24 @@ void module_adapter_free(struct comp_dev *dev)
 	rfree(mod->priv.cfg.input_pins);
 #endif
 
-	rfree(mod->stream_params);
-	rfree(mod);
-	rfree(dev);
+	struct k_heap *mod_heap = mod->priv.resources.heap;
+	void *mem = mod->priv.resources.heap_mem;
+
+	sof_heap_free(mod_heap, mod->stream_params);
+	sof_heap_free(mod_heap, mod);
+	sof_heap_free(mod_heap, dev);
+	rfree(mem);
 }
 EXPORT_SYMBOL(module_adapter_free);
 
-size_t module_adapter_heap_usage(struct processing_module *mod)
+size_t module_adapter_heap_usage(struct processing_module *mod, size_t *hwm)
 {
-	struct list_item *mem_list, *_mem_list;
-	size_t size = 0;
+	struct module_resources *res = &mod->priv.resources;
 
-	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
-		struct module_memory *mem = container_of(mem_list, struct module_memory, mem_list);
+	if (hwm)
+		*hwm = res->heap_high_water_mark;
 
-		size += mem->size;
-	}
-
-	return size;
+	return res->heap_usage;
 }
 EXPORT_SYMBOL(module_adapter_heap_usage);
 

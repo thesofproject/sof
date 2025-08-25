@@ -353,7 +353,7 @@ static void __sparse_cache *heap_alloc_aligned_cached(struct k_heap *h,
 	 */
 #ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
 	min_align = MAX(PLATFORM_DCACHE_ALIGN, min_align);
-	bytes = ALIGN_UP(bytes, min_align);
+	bytes = ALIGN_UP(bytes, PLATFORM_DCACHE_ALIGN);
 #endif
 
 	ptr = (__sparse_force void __sparse_cache *)heap_alloc_aligned(h, min_align, bytes);
@@ -532,6 +532,30 @@ void rfree(void *ptr)
 	heap_free(&sof_heap, ptr);
 }
 EXPORT_SYMBOL(rfree);
+
+/*
+ * To match the fall-back SOF main heap all private heaps should also be in the
+ * uncached address range.
+ */
+void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment)
+{
+	if (!heap)
+		heap = &sof_heap;
+
+	if (flags & SOF_MEM_FLAG_COHERENT)
+		return heap_alloc_aligned(heap, alignment, bytes);
+
+	return (__sparse_force void *)heap_alloc_aligned_cached(heap, alignment, bytes);
+}
+
+void sof_heap_free(struct k_heap *heap, void *addr)
+{
+	if (!heap)
+		heap = &sof_heap;
+
+	heap_free(heap, addr);
+}
 
 static int heap_init(void)
 {

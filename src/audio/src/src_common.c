@@ -627,12 +627,11 @@ int src_allocate_copy_stages(struct processing_module *mod, struct src_param *pr
 		return -EINVAL;
 	}
 
-	stage_dst[0].coefs = fast_get(stage_src1->coefs, coef_size[0]);
-	stage_dst[1].coefs = fast_get(stage_src2->coefs, coef_size[1]);
+	stage_dst[0].coefs = mod_fast_get(mod, stage_src1->coefs, coef_size[0]);
+	stage_dst[1].coefs = mod_fast_get(mod, stage_src2->coefs, coef_size[1]);
 
 	if (!stage_dst[0].coefs || !stage_dst[1].coefs)  {
 		comp_err(mod->dev, "failed to allocate coefficients");
-		fast_put(stage_dst[0].coefs);
 		return -ENOMEM;
 	}
 
@@ -708,12 +707,5 @@ __cold int src_free(struct processing_module *mod)
 
 	comp_info(mod->dev, "src_free()");
 
-#if CONFIG_FAST_GET
-	struct comp_data *cd = module_get_private_data(mod);
-	if (cd->param.stage1) {
-		fast_put(cd->param.stage1->coefs);
-		fast_put(cd->param.stage2->coefs);
-	}
-#endif
 	return 0;
 }

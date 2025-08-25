@@ -11,7 +11,6 @@
 #include <sof/audio/ipc-config.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
@@ -217,7 +216,7 @@ static int asrc_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_alloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -242,7 +241,7 @@ static int asrc_init(struct processing_module *mod)
 	return 0;
 }
 
-static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
+static int asrc_initialize_buffers(struct processing_module *mod, struct asrc_farrow *src_obj)
 {
 	int32_t *buf_32;
 	int16_t *buf_16;
@@ -261,7 +260,7 @@ static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
 		buffer_size = src_obj->buffer_length * sizeof(int32_t);
 
 		for (ch = 0; ch < src_obj->num_channels; ch++) {
-			buf_32 = rzalloc(SOF_MEM_FLAG_USER, buffer_size);
+			buf_32 = mod_zalloc(mod, buffer_size);
 
 			if (!buf_32)
 				return -ENOMEM;
@@ -272,7 +271,7 @@ static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
 		buffer_size = src_obj->buffer_length * sizeof(int16_t);
 
 		for (ch = 0; ch < src_obj->num_channels; ch++) {
-			buf_16 = rzalloc(SOF_MEM_FLAG_USER, buffer_size);
+			buf_16 = mod_zalloc(mod, buffer_size);
 
 			if (!buf_16)
 				return -ENOMEM;
@@ -284,7 +283,7 @@ static int asrc_initialize_buffers(struct asrc_farrow *src_obj)
 	return 0;
 }
 
-static void asrc_release_buffers(struct asrc_farrow *src_obj)
+static void asrc_release_buffers(struct processing_module *mod, struct asrc_farrow *src_obj)
 {
 	int32_t *buf_32;
 	int16_t *buf_16;
@@ -299,7 +298,7 @@ static void asrc_release_buffers(struct asrc_farrow *src_obj)
 
 			if (buf_32) {
 				src_obj->ring_buffers32[ch] = NULL;
-				rfree(buf_32);
+				mod_free(mod, buf_32);
 			}
 		}
 	else
@@ -308,23 +307,17 @@ static void asrc_release_buffers(struct asrc_farrow *src_obj)
 
 			if (buf_16) {
 				src_obj->ring_buffers16[ch] = NULL;
-				rfree(buf_16);
+				mod_free(mod, buf_16);
 			}
 		}
 }
 
 static int asrc_free(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "asrc_free()");
 
-	rfree(cd->buf);
-	asrc_release_buffers(cd->asrc_obj);
-	asrc_free_polyphase_filter(cd->asrc_obj);
-	rfree(cd->asrc_obj);
-	rfree(cd);
 	return 0;
 }
 
@@ -614,8 +607,7 @@ static int asrc_prepare(struct processing_module *mod,
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
 		frame_bytes;
 
-	cd->buf = rzalloc(SOF_MEM_FLAG_USER,
-			  cd->buf_size);
+	cd->buf = mod_zalloc(mod, cd->buf_size);
 	if (!cd->buf) {
 		cd->buf_size = 0;
 		comp_err(dev, "asrc_prepare(), allocation fail for size %d",
@@ -632,7 +624,7 @@ static int asrc_prepare(struct processing_module *mod,
 
 	/* Get required size and allocate memory for ASRC */
 	sample_bits = sample_bytes * 8;
-	ret = asrc_get_required_size(dev, &cd->asrc_size,
+	ret = asrc_get_required_size(mod, &cd->asrc_size,
 				     audio_stream_get_channels(&sourceb->stream),
 				     sample_bits);
 	if (ret) {
@@ -640,8 +632,7 @@ static int asrc_prepare(struct processing_module *mod,
 		goto err_free_buf;
 	}
 
-	cd->asrc_obj = rzalloc(SOF_MEM_FLAG_USER,
-			       cd->asrc_size);
+	cd->asrc_obj = mod_zalloc(mod, cd->asrc_size);
 	if (!cd->asrc_obj) {
 		comp_err(dev, "asrc_prepare(), allocation fail for size %d",
 			 cd->asrc_size);
@@ -659,7 +650,7 @@ static int asrc_prepare(struct processing_module *mod,
 		fs_sec = cd->source_rate;
 	}
 
-	ret = asrc_initialise(dev, cd->asrc_obj, audio_stream_get_channels(&sourceb->stream),
+	ret = asrc_initialise(mod, cd->asrc_obj, audio_stream_get_channels(&sourceb->stream),
 			      fs_prim, fs_sec,
 			      ASRC_IOF_INTERLEAVED, ASRC_IOF_INTERLEAVED,
 			      ASRC_BM_LINEAR, cd->frames, sample_bits,
@@ -670,7 +661,7 @@ static int asrc_prepare(struct processing_module *mod,
 	}
 
 	/* Allocate ring buffers */
-	ret = asrc_initialize_buffers(cd->asrc_obj);
+	ret = asrc_initialize_buffers(mod, cd->asrc_obj);
 
 	/* check for errors */
 	if (ret) {
@@ -698,12 +689,12 @@ static int asrc_prepare(struct processing_module *mod,
 	return 0;
 
 err_free_asrc:
-	asrc_release_buffers(cd->asrc_obj);
-	rfree(cd->asrc_obj);
+	asrc_release_buffers(mod, cd->asrc_obj);
+	mod_free(mod, cd->asrc_obj);
 	cd->asrc_obj = NULL;
 
 err_free_buf:
-	rfree(cd->buf);
+	mod_free(mod, cd->buf);
 	cd->buf = NULL;
 
 err:
@@ -865,10 +856,10 @@ static int asrc_reset(struct processing_module *mod)
 		asrc_dai_stop_timestamp(cd);
 
 	/* Free the allocations those were done in prepare() */
-	asrc_release_buffers(cd->asrc_obj);
-	asrc_free_polyphase_filter(cd->asrc_obj);
-	rfree(cd->asrc_obj);
-	rfree(cd->buf);
+	asrc_release_buffers(mod, cd->asrc_obj);
+	asrc_free_polyphase_filter(mod, cd->asrc_obj);
+	mod_free(mod, cd->asrc_obj);
+	mod_free(mod, cd->buf);
 	cd->asrc_obj = NULL;
 	cd->buf = NULL;
 
