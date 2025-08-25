@@ -40,7 +40,7 @@ __cold static int template_init(struct processing_module *mod)
 
 	comp_info(dev, "template_init()");
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -173,7 +173,7 @@ __cold static int template_free(struct processing_module *mod)
 	assert_can_be_cold();
 
 	comp_dbg(mod->dev, "template_free()");
-	rfree(cd);
+	mod_free(mod, cd);
 	return 0;
 }
 
