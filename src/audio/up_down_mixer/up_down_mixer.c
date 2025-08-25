@@ -11,7 +11,6 @@
 #include <sof/audio/pipeline.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <sof/lib/notifier.h>
@@ -324,12 +323,6 @@ static int init_mix(struct processing_module *mod,
 
 static int up_down_mixer_free(struct processing_module *mod)
 {
-	struct up_down_mixer_data *cd = module_get_private_data(mod);
-
-	rfree(cd->buf_in);
-	rfree(cd->buf_out);
-	rfree(cd);
-
 	return 0;
 }
 
@@ -342,7 +335,7 @@ static int up_down_mixer_init(struct processing_module *mod)
 	struct up_down_mixer_data *cd;
 	int ret;
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd) {
 		comp_free(dev);
 		return -ENOMEM;
@@ -350,12 +343,10 @@ static int up_down_mixer_init(struct processing_module *mod)
 
 	mod_data->private = cd;
 
-	cd->buf_in = rballoc(SOF_MEM_FLAG_USER, mod->priv.cfg.base_cfg.ibs);
-	cd->buf_out = rballoc(SOF_MEM_FLAG_USER, mod->priv.cfg.base_cfg.obs);
-	if (!cd->buf_in || !cd->buf_out) {
-		ret = -ENOMEM;
-		goto err;
-	}
+	cd->buf_in = mod_balloc(mod, mod->priv.cfg.base_cfg.ibs);
+	cd->buf_out = mod_balloc(mod, mod->priv.cfg.base_cfg.obs);
+	if (!cd->buf_in || !cd->buf_out)
+		return -ENOMEM;
 
 	switch (up_down_mixer->coefficients_select) {
 	case DEFAULT_COEFFICIENTS:
@@ -380,20 +371,15 @@ static int up_down_mixer_init(struct processing_module *mod)
 		break;
 	default:
 		comp_err(dev, "unsupported coefficient type");
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	}
 
 	if (ret < 0) {
 		comp_err(dev, "failed to initialize up_down_mix");
-		goto err;
+		return ret;
 	}
 
 	return 0;
-
-err:
-	up_down_mixer_free(mod);
-	return ret;
 }
 
 static int
