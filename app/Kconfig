@@ -6,3 +6,6 @@ config SMP_BOOT_DELAY
 
 source "Kconfig.zephyr"
 
+if SOC_FAMILY_INTEL_ADSP
+	rsource "boards/intel_adsp/Kconfig.defconfig"
+endif
