@@ -351,14 +351,13 @@ int mod_free(struct processing_module *mod, const void *ptr)
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 	struct list_item *res_list;
-	struct list_item *_res_list;
 
 	MEM_API_CHECK_THREAD(res);
 	if (!ptr)
 		return 0;
 
 	/* Find which container keeps this memory */
-	list_for_item_safe(res_list, _res_list, &res->res_list) {
+	list_for_item(res_list, &res->res_list) {
 		container = container_of(res_list, struct module_resource, list);
 		if (container->ptr == ptr) {
 			int ret = free_contents(mod, container);
