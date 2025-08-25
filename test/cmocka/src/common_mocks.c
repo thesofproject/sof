@@ -50,6 +50,14 @@ void WEAK *rballoc_align(uint32_t flags, size_t bytes,
 	return calloc(bytes, 1);
 }
 
+void WEAK *rmalloc(uint32_t flags,
+		   size_t bytes)
+{
+	(void)flags;
+
+	return malloc(bytes);
+}
+
 void WEAK *rzalloc(uint32_t flags,
 		   size_t bytes)
 {

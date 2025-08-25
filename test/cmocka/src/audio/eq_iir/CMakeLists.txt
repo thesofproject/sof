@@ -2,6 +2,7 @@
 
 cmocka_test(eq_iir_process
 	eq_iir_process.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 )
 
 target_include_directories(eq_iir_process PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
@@ -9,7 +10,7 @@ target_include_directories(eq_iir_process PRIVATE ${PROJECT_SOURCE_DIR}/src/audi
 # make small version of libaudio so we don't have to care
 # about unused missing references
 
-add_compile_options(-DUNIT_TEST)
+add_compile_options(-DUNIT_TEST -DNO_CMOCKA_H)
 
 add_library(audio_for_eq_iir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/eq_iir/eq_iir.c
@@ -44,6 +45,7 @@ add_library(audio_for_eq_iir STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
 	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/zephyr/lib/fast-get.c
 )
 sof_append_relative_path_definitions(audio_for_eq_iir)
 

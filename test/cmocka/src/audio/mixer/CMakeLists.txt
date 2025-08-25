@@ -29,6 +29,8 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
 	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
+	${PROJECT_SOURCE_DIR}/zephyr/lib/fast-get.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
 )
 
 target_include_directories(mixer PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
