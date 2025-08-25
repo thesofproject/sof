@@ -15,6 +15,7 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
+#include <sof/lib/fast-get.h>
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
@@ -269,6 +270,39 @@ mod_data_blob_handler_new(struct processing_module *mod)
 EXPORT_SYMBOL(mod_data_blob_handler_new);
 #endif
 
+/**
+ * Make a module associated shared SRAM copy of DRAM read-only data.
+ * @param mod	Pointer to module this copy is allocated for.
+ * @return Pointer to the SRAM copy.
+ *
+ * Like fast_get() but the handler is automatically freed.
+ */
+#if CONFIG_FAST_GET
+const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size)
+{
+	struct module_resources *res = &mod->priv.resources;
+	struct module_resource *container = container_get(mod);
+	const void *ptr;
+
+	if (!container)
+		return NULL;
+
+	ptr = fast_get(dram_ptr, size);
+	if (!ptr) {
+		container_put(mod, container);
+		return NULL;
+	}
+
+	container->sram_ptr = ptr;
+	container->size = 0;
+	container->type = MOD_RES_FAST_GET;
+	list_item_prepend(&container->list, &res->res_list);
+
+	return ptr;
+}
+EXPORT_SYMBOL(mod_fast_get);
+#endif
+
 static int free_contents(struct processing_module *mod, struct module_resource *container)
 {
 	struct module_resources *res = &mod->priv.resources;
@@ -281,6 +315,11 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 #if CONFIG_COMP_BLOB
 	case MOD_RES_BLOB_HANDLER:
 		comp_data_blob_handler_free(container->bhp);
+		return 0;
+#endif
+#if CONFIG_FAST_GET
+	case MOD_RES_FAST_GET:
+		fast_put(container->sram_ptr);
 		return 0;
 #endif
 	default:
@@ -329,6 +368,14 @@ void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_
 	mod_free(mod, (void *)dbh);
 }
 EXPORT_SYMBOL(mod_data_blob_handler_free);
+#endif
+
+#if CONFIG_FAST_GET
+void mod_fast_put(struct processing_module *mod, const void *sram_ptr)
+{
+	mod_free(mod, sram_ptr);
+}
+EXPORT_SYMBOL(mod_fast_put);
 #endif
 
 int module_prepare(struct processing_module *mod,
