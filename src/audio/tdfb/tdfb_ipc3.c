@@ -30,7 +30,7 @@ static int init_get_ctl_ipc(struct processing_module *mod)
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	int comp_id = dev_comp_id(mod->dev);
 
-	cd->ctrl_data = rzalloc(SOF_MEM_FLAG_USER, TDFB_GET_CTRL_DATA_SIZE);
+	cd->ctrl_data = mod_zalloc(mod, TDFB_GET_CTRL_DATA_SIZE);
 	if (!cd->ctrl_data)
 		return -ENOMEM;
 
