@@ -210,3 +210,8 @@ int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_fil
 		 fb->scratch_data2, sizeof(int16_t) * fb->data_length);
 	return 0;
 }
+
+int mod_psy_free_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *mel_fb)
+{
+	return mod_free(mod, mel_fb->data);
+}
