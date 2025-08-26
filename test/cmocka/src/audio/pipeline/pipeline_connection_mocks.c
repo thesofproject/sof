@@ -30,7 +30,7 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 	struct pipeline_connect_data *pipeline_connect_data = calloc
 		(sizeof(struct pipeline_connect_data), 1);
 
-	struct pipeline *pipe = calloc(sizeof(struct pipeline), 1);
+	struct pipeline *pipe = &pipeline_connect_data->p;
 
 	pipe->frames_per_sched = 5;
 	pipe->pipeline_id = PIPELINE_ID_SAME;
@@ -83,7 +83,14 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 	comp_buffer_reset_source_list(buffer_2);
 	pipeline_connect_data->b2 = buffer_2;
 
-	pipeline_connect_data->p = *pipe;
-
 	return pipeline_connect_data;
+}
+
+void free_standard_connect_objects(struct pipeline_connect_data *data)
+{
+	free(data->p.pipe_task);
+	free(data->p.sched_comp);
+	free(data->second);
+	free(data->b1);
+	free(data->b2);
 }
