@@ -78,3 +78,8 @@ int mod_dct_initialize_16(struct processing_module *mod, struct dct_plan_16 *dct
 
 	return 0;
 }
+
+int mod_dct_free_16(struct processing_module *mod, struct dct_plan_16 *dct)
+{
+	return mod_free(mod, dct->matrix);
+}
