@@ -77,7 +77,7 @@ void module_adapter_test_free(struct processing_module_test_data *test_data)
 	}
 
 	for (i = 0; i < test_data->num_sources; i++) {
-		free_test_sink(test_data->sources[i]);
+		free_test_source(test_data->sources[i]);
 		test_free(test_data->input_buffers[i]);
 	}
 
