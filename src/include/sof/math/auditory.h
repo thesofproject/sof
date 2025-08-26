@@ -78,6 +78,7 @@ int16_t psy_mel_to_hz(int16_t mel);
  */
 struct processing_module;
 int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *mel_fb);
+int mod_psy_free_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *mel_fb);
 
 /**
  * \brief Convert linear complex spectra from FFT into Mel band energies in desired
