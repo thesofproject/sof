@@ -47,14 +47,14 @@ static void matrix_mult_16_test(const int16_t *a_ref, const int16_t *b_ref, cons
 
 	b_matrix = mod_mat_matrix_alloc_16b(&dummy, b_rows, b_columns, b_frac);
 	if (!b_matrix) {
-		free(a_matrix);
+		mod_free(&dummy, a_matrix);
 		exit(EXIT_FAILURE);
 	}
 
 	c_matrix = mod_mat_matrix_alloc_16b(&dummy, c_rows, c_columns, c_frac);
 	if (!c_matrix)  {
-		free(a_matrix);
-		free(b_matrix);
+		mod_free(&dummy, a_matrix);
+		mod_free(&dummy, b_matrix);
 		exit(EXIT_FAILURE);
 	}
 
@@ -86,6 +86,10 @@ static void matrix_mult_16_test(const int16_t *a_ref, const int16_t *b_ref, cons
 
 	assert_true(error_rms < MATRIX_MULT_16_MAX_ERROR_RMS);
 	assert_true(delta_max < MATRIX_MULT_16_MAX_ERROR_ABS);
+
+	mod_free(&dummy, a_matrix);
+	mod_free(&dummy, b_matrix);
+	mod_free(&dummy, c_matrix);
 }
 
 static void test_matrix_mult_16_test1(void **state)
