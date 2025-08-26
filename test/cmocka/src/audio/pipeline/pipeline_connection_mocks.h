@@ -32,6 +32,7 @@ struct pipeline_connect_data {
 };
 
 struct pipeline_connect_data *get_standard_connect_objects(void);
+void free_standard_connect_objects(struct pipeline_connect_data *data);
 
 void cleanup_test_data(struct pipeline_connect_data *data);
 
