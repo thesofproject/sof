@@ -672,7 +672,7 @@ static int ipc_pm_context_save(uint32_t header)
 	/* do platform specific suspending */
 	platform_context_save(sof_get());
 
-#if !defined(CONFIG_LIBRARY)
+#if !defined(CONFIG_LIBRARY) && !defined(CONFIG_ZEPHYR_POSIX)
 	/* TODO: check we are inactive - all streams are suspended */
 
 	/* TODO: mask ALL platform interrupts except DMA */
