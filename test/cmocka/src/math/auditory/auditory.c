@@ -131,6 +131,10 @@ static void filterbank_16_test(const int16_t *fft_real, const int16_t *fft_imag,
 
 	assert_true(error_rms < MEL_FB16_MAX_ERROR_RMS);
 	assert_true(delta_max < MEL_FB16_MAX_ERROR_ABS);
+	free(mel_log);
+	free(fft_buf);
+	free(fft_out);
+	mod_psy_free_mel_filterbank(&dummy, &fb);
 	return;
 
 err_get_filterbank:
@@ -234,6 +238,10 @@ static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 
 	assert_true(error_rms < MEL_FB32_MAX_ERROR_RMS);
 	assert_true(delta_max < MEL_FB32_MAX_ERROR_ABS);
+	free(mel_log);
+	free(fft_buf);
+	free(fft_out);
+	mod_psy_free_mel_filterbank(&dummy, &fb);
 	return;
 
 err_get_filterbank:
