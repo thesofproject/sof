@@ -15,7 +15,6 @@
 #include <sof/ipc/topology.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
-#include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/init.h>
 #include <sof/lib/memory.h>
@@ -82,13 +81,12 @@ static void mic_privacy_event(void *arg, enum notify_id type, void *data)
 	}
 }
 
-static int mic_privacy_configure(struct comp_dev *dev, struct copier_data *cd)
+static int mic_privacy_configure(struct processing_module *mod, struct copier_data *cd)
 {
 	struct mic_privacy_data *mic_priv_data;
 	int ret;
 
-	mic_priv_data = rzalloc(SOF_MEM_FLAG_USER,
-				sizeof(struct mic_privacy_data));
+	mic_priv_data = mod_zalloc(mod, sizeof(struct mic_privacy_data));
 	if (!mic_priv_data)
 		return -ENOMEM;
 
@@ -100,7 +98,7 @@ static int mic_privacy_configure(struct comp_dev *dev, struct copier_data *cd)
 	uint32_t zeroing_wait_time = (mic_privacy_get_dma_zeroing_wait_time() * 1000) /
 				     ADSP_RTC_FREQUENCY;
 
-	ret = copier_gain_set_params(dev, &mic_priv_data->mic_priv_gain_params,
+	ret = copier_gain_set_params(mod->dev, &mic_priv_data->mic_priv_gain_params,
 				     zeroing_wait_time, SOF_DAI_INTEL_NONE);
 	if (ret != 0) {
 		rfree(mic_priv_data);
@@ -144,7 +142,7 @@ __cold static int copier_init(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -154,10 +152,8 @@ __cold static int copier_init(struct processing_module *mod)
 	 * store it, it's only used during IPC processing, besides we haven't
 	 * allocated space for it, so don't "fix" this!
 	 */
-	if (memcpy_s(&cd->config, sizeof(cd->config), copier, sizeof(*copier)) < 0) {
-		ret = -EINVAL;
-		goto error_cd;
-	}
+	if (memcpy_s(&cd->config, sizeof(cd->config), copier, sizeof(*copier)) < 0)
+		return -EINVAL;
 
 	/* Allocate memory and store gateway_cfg in runtime. Gateway cfg has to
 	 * be kept even after copier is created e.g. during SET_PIPELINE_STATE
@@ -166,18 +162,15 @@ __cold static int copier_init(struct processing_module *mod)
 	 */
 	if (copier->gtw_cfg.config_length) {
 		gtw_cfg_size = copier->gtw_cfg.config_length << 2;
-		gtw_cfg = rmalloc(SOF_MEM_FLAG_USER,
-				  gtw_cfg_size);
-		if (!gtw_cfg) {
-			ret = -ENOMEM;
-			goto error_cd;
-		}
+		gtw_cfg = mod_alloc(mod, gtw_cfg_size);
+		if (!gtw_cfg)
+			return -ENOMEM;
 
 		ret = memcpy_s(gtw_cfg, gtw_cfg_size, &copier->gtw_cfg.config_data,
 			       gtw_cfg_size);
 		if (ret) {
 			comp_err(dev, "Unable to copy gateway config from copier blob");
-			goto error;
+			return ret;
 		}
 
 		cd->gtw_cfg = gtw_cfg;
@@ -191,8 +184,7 @@ __cold static int copier_init(struct processing_module *mod)
 					  IPC_COMP_IGNORE_REMOTE);
 	if (!ipc_pipe) {
 		comp_err(dev, "pipeline %d is not existed", config->pipeline_id);
-		ret = -EPIPE;
-		goto error;
+		return -EPIPE;
 	}
 
 	dev->pipeline = ipc_pipe->pipeline;
@@ -208,15 +200,15 @@ __cold static int copier_init(struct processing_module *mod)
 			ret = copier_host_create(dev, cd, copier, ipc_pipe->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create host");
-				goto error;
+				return ret;
 			}
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 			if (cd->direction == SOF_IPC_STREAM_CAPTURE &&
 			    node_id.f.dma_type == ipc4_hda_host_output_class) {
-				ret = mic_privacy_configure(dev, cd);
+				ret = mic_privacy_configure(mod, cd);
 				if (ret < 0) {
 					comp_err(dev, "unable to configure mic privacy");
-					goto error;
+					return ret;
 				}
 			}
 #endif
@@ -231,14 +223,14 @@ __cold static int copier_init(struct processing_module *mod)
 			ret = copier_dai_create(dev, cd, copier, ipc_pipe->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create dai");
-				goto error;
+				return ret;
 			}
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 			if (cd->direction == SOF_IPC_STREAM_CAPTURE) {
-				ret = mic_privacy_configure(dev, cd);
+				ret = mic_privacy_configure(mod, cd);
 				if (ret < 0) {
 					comp_err(dev, "unable to configure mic privacy");
-					goto error;
+					return ret;
 				}
 			}
 #endif
@@ -249,14 +241,13 @@ __cold static int copier_init(struct processing_module *mod)
 			ret = copier_ipcgtw_create(dev, cd, copier, ipc_pipe->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create IPC gateway");
-				goto error;
+				return ret;
 			}
 			break;
 #endif
 		default:
 			comp_err(dev, "unsupported dma type %x", (uint32_t)node_id.f.dma_type);
-			ret = -EINVAL;
-			goto error;
+			return -EINVAL;
 		};
 
 		dev->direction_set = true;
@@ -270,11 +261,6 @@ __cold static int copier_init(struct processing_module *mod)
 	dev->direction = cd->direction;
 	dev->state = COMP_STATE_READY;
 	return 0;
-error:
-	rfree(gtw_cfg);
-error_cd:
-	rfree(cd);
-	return ret;
 }
 
 __cold static int copier_free(struct processing_module *mod)
@@ -302,10 +288,6 @@ __cold static int copier_free(struct processing_module *mod)
 	default:
 		break;
 	}
-
-	if (cd)
-		rfree(cd->gtw_cfg);
-	rfree(cd);
 
 	return 0;
 }
