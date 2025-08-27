@@ -38,6 +38,10 @@ auto_start = "0"
 
 index = __COUNTER__
 
+#if defined(CONFIG_COMP_TESTER) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <debug/tester/tester.toml>
+#endif
+
 #if defined(CONFIG_COMP_MIXIN_MIXOUT) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/mixin_mixout/mixin_mixout.toml>
 #endif

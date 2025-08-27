@@ -24,6 +24,10 @@ auto_start = "0"
 
 index = __COUNTER__
 
+#if defined(CONFIG_COMP_TESTER)
+#include <debug/tester/tester.toml>
+#endif
+
 #ifdef CONFIG_COMP_MIXIN_MIXOUT
 #include <audio/mixin_mixout/mixin_mixout.toml>
 #endif
