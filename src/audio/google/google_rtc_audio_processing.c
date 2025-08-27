@@ -766,12 +766,17 @@ static int trigger_handler(struct processing_module *mod, int cmd)
 
 static int google_rtc_audio_processing_reset(struct processing_module *mod)
 {
-	comp_dbg(mod->dev, "google_rtc_audio_processing_reset()");
+	comp_info(mod->dev, "google_rtc_audio_processing_reset()");
 	return 0;
 }
 
-static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
+static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd,
+			       struct comp_dev *dev)
 {
+	/* DEBUG: Log AEC execution start */
+	comp_info(dev, "AEC execute: processing %d channels, %d frames",
+		  cd->num_capture_channels, cd->num_frames);
+
 	/* Note that reference input and mic output share the same
 	 * buffer for efficiency
 	 */
@@ -780,6 +785,10 @@ static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
 	GoogleRtcAudioProcessingProcessCapture_float32(cd->state,
 						       (const float **)cd->raw_mic_buffers,
 						       cd->refout_buffers);
+
+	/* DEBUG: Log AEC execution complete */
+	comp_info(dev, "AEC execute complete: processed %d channels", cd->num_capture_channels);
+
 	cd->buffered_frames = 0;
 }
 
@@ -814,8 +823,22 @@ static int mod_process(struct processing_module *mod, struct sof_source **source
 	int frames = ref_ok ? MIN(fmic, fref) : fmic;
 	int n, frames_rem;
 
+	/* DEBUG: Log data flow information */
+	comp_info(mod->dev, "AEC process: fmic=%d, fref=%d, frames=%d, ref_ok=%d, buffered=%d/%d",
+		  fmic, fref, frames, ref_ok, cd->buffered_frames, cd->num_frames);
+
+	if (frames == 0) {
+		comp_warn(mod->dev, "AEC: No input frames available (fmic=%d, fref=%d)",
+			  fmic, fref);
+		return 0;
+	}
+
 	for (frames_rem = frames; frames_rem; frames_rem -= n) {
 		n = MIN(frames_rem, cd->num_frames - cd->buffered_frames);
+
+		/* DEBUG: Log copy operations */
+		comp_info(mod->dev, "AEC copying: n=%d frames, buffered_frames=%d",
+			  n, cd->buffered_frames);
 
 		cd->mic_copy(mic, n, cd->raw_mic_buffers, cd->buffered_frames);
 
@@ -830,8 +853,22 @@ static int mod_process(struct processing_module *mod, struct sof_source **source
 				break;
 			}
 
-			execute_aec(cd);
+			/* DEBUG: Log AEC execution and output */
+			comp_info(mod->dev, "AEC executing: processing %d frames, sink_free_size=%zu",
+				  cd->num_frames, sink_get_free_size(out));
+
+			execute_aec(cd, mod->dev);
+
+			/* DEBUG: Log output operation with detailed info */
+			comp_info(mod->dev, "AEC output: copying %d frames to sink, chan=%d, nsrc=%d",
+				  cd->num_frames, sink_get_channels(out),
+				  MIN(sink_get_channels(out), CHAN_MAX));
+
 			cd->out_copy(out, cd->num_frames, cd->refout_buffers);
+
+			/* DEBUG: Verify output was written (should be reduced) */
+			comp_info(mod->dev, "AEC output complete: sink_free_size=%zu after copy",
+				  sink_get_free_size(out));
 		}
 	}
 	cd->last_ref_ok = ref_ok;
