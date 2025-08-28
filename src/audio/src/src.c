@@ -78,8 +78,6 @@ static const struct module_interface src_interface = {
 	.prepare = src_prepare,
 	.process = src_process,
 	.is_ready_to_process = src_is_ready_to_process,
-	.set_configuration = src_set_config,
-	.get_configuration = src_get_config,
 	.reset = src_reset,
 	.free = src_free,
 };
