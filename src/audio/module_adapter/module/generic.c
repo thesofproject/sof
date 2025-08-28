@@ -92,7 +92,9 @@ int module_init(struct processing_module *mod)
 	}
 
 	/* Init memory list */
-	list_init(&md->memory.mem_list);
+	list_init(&md->resources.mem_list);
+	list_init(&md->resources.free_cont_list);
+	list_init(&md->resources.cont_chunk_list);
 
 	/* Now we can proceed with module specific initialization */
 	ret = interface->init(mod);
@@ -110,6 +112,42 @@ int module_init(struct processing_module *mod)
 	return 0;
 }
 
+struct container_chunk {
+	struct list_item chunk_list;
+	struct module_memory containers[CONFIG_MODULE_MEMORY_API_CONTAINER_CHUNK_SIZE];
+};
+
+static struct module_memory *container_get(struct processing_module *mod)
+{
+	struct module_resources *res = &mod->priv.resources;
+	struct module_memory *container;
+
+	if (list_is_empty(&res->free_cont_list)) {
+		struct container_chunk *chunk = rzalloc(SOF_MEM_FLAG_USER, sizeof(*chunk));
+		int i;
+
+		if (!chunk) {
+			comp_err(mod->dev, "allocating more containers failed");
+			return NULL;
+		}
+
+		list_item_append(&chunk->chunk_list, &res->cont_chunk_list);
+		for (i = 0; i < ARRAY_SIZE(chunk->containers); i++)
+			list_item_append(&chunk->containers[i].mem_list, &res->free_cont_list);
+	}
+
+	container = list_first_item(&res->free_cont_list, struct module_memory, mem_list);
+	list_item_del(&container->mem_list);
+	return container;
+}
+
+static void container_put(struct processing_module *mod, struct module_memory *container)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	list_item_append(&container->mem_list, &res->free_cont_list);
+}
+
 /**
  * Allocates aligned memory block for module.
  * @param mod		Pointer to the module this memory block is allocatd for.
@@ -121,20 +159,16 @@ int module_init(struct processing_module *mod)
  */
 void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t alignment)
 {
-	struct comp_dev *dev = mod->dev;
-	struct module_memory *container;
+	struct module_memory *container = container_get(mod);
+	struct module_resources *res = &mod->priv.resources;
 	void *ptr;
 
-	if (!size) {
-		comp_err(dev, "mod_alloc: requested allocation of 0 bytes.");
+	if (!container)
 		return NULL;
-	}
 
-	/* Allocate memory container */
-	container = rzalloc(SOF_MEM_FLAG_USER,
-			    sizeof(struct module_memory));
-	if (!container) {
-		comp_err(dev, "mod_alloc: failed to allocate memory container.");
+	if (!size) {
+		comp_err(mod->dev, "mod_alloc: requested allocation of 0 bytes.");
+		container_put(mod, container);
 		return NULL;
 	}
 
@@ -145,15 +179,15 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 		ptr = rballoc(SOF_MEM_FLAG_USER, size);
 
 	if (!ptr) {
-		comp_err(dev, "mod_alloc: failed to allocate memory for comp %x.",
-			 dev_comp_id(dev));
-		rfree(container);
+		comp_err(mod->dev, "mod_alloc: failed to allocate memory for comp %x.",
+			 dev_comp_id(mod->dev));
+		container_put(mod, container);
 		return NULL;
 	}
 	/* Store reference to allocated memory */
 	container->ptr = ptr;
 	container->size = size;
-	list_item_prepend(&container->mem_list, &mod->priv.memory.mem_list);
+	list_item_prepend(&container->mem_list, &res->mem_list);
 
 	return ptr;
 }
@@ -200,6 +234,7 @@ EXPORT_SYMBOL(mod_zalloc);
  */
 int mod_free(struct processing_module *mod, void *ptr)
 {
+	struct module_resources *res = &mod->priv.resources;
 	struct module_memory *mem;
 	struct list_item *mem_list;
 	struct list_item *_mem_list;
@@ -208,12 +243,12 @@ int mod_free(struct processing_module *mod, void *ptr)
 		return 0;
 
 	/* Find which container keeps this memory */
-	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
+	list_for_item_safe(mem_list, _mem_list, &res->mem_list) {
 		mem = container_of(mem_list, struct module_memory, mem_list);
 		if (mem->ptr == ptr) {
 			rfree(mem->ptr);
 			list_item_del(&mem->mem_list);
-			rfree(mem);
+			container_put(mod, mem);
 			return 0;
 		}
 	}
@@ -403,16 +438,24 @@ int module_reset(struct processing_module *mod)
  */
 void mod_free_all(struct processing_module *mod)
 {
-	struct module_memory *mem;
-	struct list_item *mem_list;
-	struct list_item *_mem_list;
+	struct module_resources *res = &mod->priv.resources;
+	struct list_item *list;
+	struct list_item *_list;
 
 	/* Find which container keeps this memory */
-	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
-		mem = container_of(mem_list, struct module_memory, mem_list);
+	list_for_item_safe(list, _list, &res->mem_list) {
+		struct module_memory *mem = container_of(list, struct module_memory, mem_list);
+
 		rfree(mem->ptr);
 		list_item_del(&mem->mem_list);
-		rfree(mem);
+	}
+
+	list_for_item_safe(list, _list, &res->cont_chunk_list) {
+		struct container_chunk *chunk =
+			container_of(list, struct container_chunk, chunk_list);
+
+		list_item_del(&chunk->chunk_list);
+		rfree(chunk);
 	}
 }
 EXPORT_SYMBOL(mod_free_all);
