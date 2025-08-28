@@ -42,7 +42,7 @@ static int src_prepare(struct processing_module *mod,
 	struct src_param *a = &cd->param;
 	int ret;
 
-	comp_info(mod->dev, "src_prepare()");
+	comp_info(mod->dev, "entry");
 
 	if (num_of_sources != 1 || num_of_sinks != 1)
 		return -EINVAL;
