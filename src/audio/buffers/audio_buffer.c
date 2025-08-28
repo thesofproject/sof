@@ -10,6 +10,10 @@
 #include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <ipc/stream.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <module/ipc4/base-config.h>
+#include <sof/audio/component.h>
+#include <module/module/base.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
@@ -180,6 +184,76 @@ int audio_buffer_source_set_alignment_constants(struct sof_source *source,
 	if (buffer->ops->set_alignment_constants)
 		return buffer->ops->set_alignment_constants(buffer, byte_align, frame_align_req);
 	return 0;
+}
+
+uint32_t audio_buffer_sink_get_lft(struct sof_sink *sink)
+{
+	struct sof_audio_buffer *buffer = sof_audio_buffer_from_sink(sink);
+	/* get number of ms in the buffer */
+	size_t bytes_per_sec = sink_get_frame_bytes(&buffer->_sink_api) *
+			       sink_get_rate(&buffer->_sink_api);
+	size_t bytes_per_ms = bytes_per_sec / 1000;
+
+	/* round up for frequencies like 44100 */
+	if (bytes_per_ms * 1000 != bytes_per_sec)
+		bytes_per_ms++;
+	uint32_t us_in_buffer =
+			1000 * source_get_data_available(&buffer->_source_api) / bytes_per_ms;
+
+	return us_in_buffer;
+
+	/*
+	 * TODO, Currently there's no DP to DP connection
+	 * >>> the code below is never accessible and won't work because of cache incoherence <<<
+	 *
+	 * to make DP to DP connection possible:
+	 *
+	 * 1) module data must be ALWAYS located in non cached memory alias, allowing
+	 *    cross core access to params like period (needed below) and calling
+	 *    module_get_deadline for the next module, regardless of cores the modules are
+	 *    running on
+	 * 2) comp_buffer must be removed from all pipeline code, replaced with a generic abstract
+	 *    class audio_buffer - allowing using comp_buffer and ring_buffer without current
+	 *    "hybrid buffer" solution
+	 */
+
+	/* a module bound to source API - taking data from source - is data destination */
+	struct processing_module *data_consumer_mod = source_get_bound_module(&buffer->_source_api);
+	/* a module bound to sink API - sending data to sink - is data source */
+	struct processing_module *data_producer_mod = sink_get_bound_module(&buffer->_sink_api);
+
+	/* if no module connected to source - no data consumer, LFT is infinite.
+	 * use MAXINT / 2 to avoid any overflows in further calculations.
+	 * Zephyr cannot get deadline for a thread longer than MAXINT CPU cycles, much less
+	 * than the value in microseconds returned here
+	 */
+	if (!data_consumer_mod)
+		return UINT_MAX / 2;
+
+	/* in case there's no data producer (should never happen), LFT is NOW */
+	if (!data_producer_mod)
+		return 0;
+
+	/* if data receiver is LL module, the LFT is NOW + number of ms in buffer */
+	if (data_consumer_mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+		return us_in_buffer;
+
+	/* destination is DP. calculate correction of deadline if period of data provider module is
+	 * shorter than consumer module
+	 */
+	int32_t deadline_correction = 0;
+
+	if (data_consumer_mod->dev->period > data_producer_mod->dev->period) {
+		deadline_correction = (data_consumer_mod->dev->period - us_in_buffer) /
+				       data_producer_mod->dev->period;
+		if (deadline_correction < 0)
+			deadline_correction = 0;
+		else
+			deadline_correction =
+					module_get_LPT(data_producer_mod) * deadline_correction;
+	}
+
+	return us_in_buffer + module_get_deadline(data_producer_mod) - deadline_correction;
 }
 
 void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bool is_shared,
