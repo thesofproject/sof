@@ -477,6 +477,7 @@ int scheduler_dp_task_init(struct task **task,
 			   size_t stack_size)
 {
 	void __sparse_cache *p_stack = NULL;
+	struct sys_heap *const user_heap = mod->dev->drv->user_heap;
 
 	/* memory allocation helper structure */
 	struct {
@@ -496,8 +497,8 @@ int scheduler_dp_task_init(struct task **task,
 	 * As the structure contains zephyr kernel specific data, it must be located in
 	 * shared, non cached memory
 	 */
-	task_memory = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
-			      sizeof(*task_memory));
+	task_memory = module_driver_heap_rzalloc(user_heap, SOF_MEM_FLAG_USER |
+						 SOF_MEM_FLAG_COHERENT, sizeof(*task_memory));
 	if (!task_memory) {
 		tr_err(&dp_tr, "memory alloc failed");
 		return -ENOMEM;
@@ -542,7 +543,7 @@ int scheduler_dp_task_init(struct task **task,
 err:
 	/* cleanup - free all allocated resources */
 	rfree((__sparse_force void *)p_stack);
-	rfree(task_memory);
+	module_driver_heap_free(user_heap, task_memory);
 	return ret;
 }
 
