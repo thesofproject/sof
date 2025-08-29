@@ -224,9 +224,10 @@ int module_unbind(struct processing_module *mod, struct bind_info *unbind_data);
 
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config, const void *spec);
+struct userspace_context;
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config, const void *spec,
-					void *mod_priv);
+					void *mod_priv, struct userspace_context* user_ctx);
 int module_adapter_prepare(struct comp_dev *dev);
 int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int module_adapter_copy(struct comp_dev *dev);
