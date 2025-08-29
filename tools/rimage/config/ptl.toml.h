@@ -142,5 +142,9 @@ index = __COUNTER__
 #include <audio/template_comp/template_comp.toml>
 #endif
 
+#if defined(CONFIG_COMP_LEVEL_MULTIPLIER) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/level_multiplier/level_multiplier.toml>
+#endif
+
 [module]
 count = __COUNTER__
