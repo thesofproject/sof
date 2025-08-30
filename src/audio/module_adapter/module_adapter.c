@@ -1290,18 +1290,14 @@ void module_adapter_free(struct comp_dev *dev)
 }
 EXPORT_SYMBOL(module_adapter_free);
 
-size_t module_adapter_heap_usage(struct processing_module *mod)
+size_t module_adapter_heap_usage(struct processing_module *mod, size_t *hwm)
 {
-	struct list_item *mem_list, *_mem_list;
-	size_t size = 0;
+	struct module_resources *res = &mod->priv.resources;
 
-	list_for_item_safe(mem_list, _mem_list, &mod->priv.memory.mem_list) {
-		struct module_memory *mem = container_of(mem_list, struct module_memory, mem_list);
+	if (hwm)
+		*hwm = res->heap_high_water_mark;
 
-		size += mem->size;
-	}
-
-	return size;
+	return res->heap_usage;
 }
 EXPORT_SYMBOL(module_adapter_heap_usage);
 
