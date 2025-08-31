@@ -87,7 +87,7 @@ int module_init(struct processing_module *mod)
 		return -EPERM;
 #endif
 	if (!interface) {
-		comp_err(dev, "module interface not defined for comp id %d",
+		comp_err(dev, "module interface not defined for comp id %#x",
 			 dev_comp_id(dev));
 		return -EIO;
 	}
@@ -96,7 +96,7 @@ int module_init(struct processing_module *mod)
 	if (!interface->init ||
 	    (!!interface->process + !!interface->process_audio_stream +
 	     !!interface->process_raw_data < 1)) {
-		comp_err(dev, "comp %d is missing mandatory interfaces",
+		comp_err(dev, "comp %#x is missing mandatory interfaces",
 			 dev_comp_id(dev));
 		return -EIO;
 	}
@@ -113,7 +113,7 @@ int module_init(struct processing_module *mod)
 	/* Now we can proceed with module specific initialization */
 	ret = interface->init(mod);
 	if (ret) {
-		comp_err(dev, "module_init() error %d: module specific init failed, comp id %d",
+		comp_err(dev, "module_init() error %d: module specific init failed, comp id %#x",
 			 ret, dev_comp_id(dev));
 		return ret;
 	}
@@ -467,7 +467,7 @@ int module_process_legacy(struct processing_module *mod,
 		ret = -EOPNOTSUPP;
 
 	if (ret && ret != -ENOSPC && ret != -ENODATA) {
-		comp_err(dev, "module_process() error %d: for comp %d",
+		comp_err(dev, "module_process() error %d: for comp %#x",
 			 ret, dev_comp_id(dev));
 		return ret;
 	}
@@ -507,7 +507,7 @@ int module_process_sink_src(struct processing_module *mod,
 	ret = ops->process(mod, sources, num_of_sources, sinks, num_of_sinks);
 
 	if (ret && ret != -ENOSPC && ret != -ENODATA) {
-		comp_err(dev, "module_process() error %d: for comp %d",
+		comp_err(dev, "module_process() error %d: for comp %#x",
 			 ret, dev_comp_id(dev));
 		return ret;
 	}
@@ -540,7 +540,7 @@ int module_reset(struct processing_module *mod)
 		if (ret) {
 			if (ret != PPL_STATUS_PATH_STOP)
 				comp_err(mod->dev,
-					 "module_reset() error %d: module specific reset() failed for comp %d",
+					 "module_reset() error %d: module specific reset() failed for comp %#xd",
 					 ret, dev_comp_id(mod->dev));
 			return ret;
 		}
