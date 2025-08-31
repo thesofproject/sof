@@ -281,7 +281,7 @@ static int ctc_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 
-	cd->tuning_handler = mod_data_blob_handler_new(dev);
+	cd->tuning_handler = mod_data_blob_handler_new(mod);
 	if (!cd->tuning_handler) {
 		comp_err(dev, "Failed to create tuning handler");
 		return -ENOMEM;
