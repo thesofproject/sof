@@ -132,7 +132,7 @@ void host_common_one_shot(struct host_data *hd, uint32_t bytes);
 int copier_host_create(struct processing_module *mod, struct copier_data *cd,
 		       const struct ipc4_copier_module_cfg *copier_cfg,
 		       struct pipeline *pipeline);
-void copier_host_free(struct processing_module *mod);
+void copier_host_free(struct copier_data *cd);
 int copier_host_params(struct copier_data *cd, struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params);
 void copier_host_dma_cb(struct comp_dev *dev, size_t bytes);

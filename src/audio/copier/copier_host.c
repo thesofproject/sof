@@ -253,10 +253,8 @@ e_conv:
 	return ret;
 }
 
-__cold void copier_host_free(struct processing_module *mod)
+__cold void copier_host_free(struct copier_data *cd)
 {
-	struct copier_data *cd = module_get_private_data(mod);
-
 	assert_can_be_cold();
 
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION

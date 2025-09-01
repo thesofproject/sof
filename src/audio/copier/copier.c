@@ -271,7 +271,7 @@ __cold static int copier_free(struct processing_module *mod)
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw)
-			copier_host_free(mod);
+			copier_host_free(cd);
 		else
 			/* handle gtw case */
 			copier_ipcgtw_free(cd);
