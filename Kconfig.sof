@@ -139,7 +139,6 @@ config COLD_STORE_EXECUTE_DEBUG
 
 config FAST_GET
 	bool "Enable simple refcounting DRAM data copier"
-	default n
 	help
 	  Enable simple refcounting DRAM data copier for copying processing
 	  module data from DRAM to SRAM when the data is needed and freeing

@@ -1,0 +1,63 @@
+# Common defaults for all Intel ADSP SOF targets
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# SOF / IPC configuration
+# -----------------------
+
+config IPC4_BASE_FW_INTEL
+	default y
+
+# SOF / audio pipeline and module settings
+# ----------------------------------------
+
+config COMP_CHAIN_DMA
+	default y
+
+config FAST_GET
+	default y
+
+config FORMAT_A_LAW
+	default y
+
+config FORMAT_FLOAT
+	default y
+
+config FORMAT_MU_LAW
+	default y
+
+config FORMAT_U8
+	default y
+
+config PCM_CONVERTER_FORMAT_A_LAW
+	default y
+
+config PCM_CONVERTER_FORMAT_FLOAT
+	default y
+
+config PCM_CONVERTER_FORMAT_MU_LAW
+	default y
+
+config PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S24_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S32_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S16_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S24_C24_AND_S24_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S24_C32_AND_S24_C24
+	default y
+
+config PCM_CONVERTER_FORMAT_U8
+	default y
+
+config PIPELINE_2_0
+	default y
