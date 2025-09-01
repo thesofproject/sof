@@ -191,7 +191,7 @@ __cold static int copier_init(struct processing_module *mod)
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			ret = copier_host_create(dev, cd, copier, ipc_pipe->pipeline);
+			ret = copier_host_create(mod, cd, copier, ipc_pipe->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create host");
 				return ret;
@@ -271,7 +271,7 @@ __cold static int copier_free(struct processing_module *mod)
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		if (!cd->ipc_gtw)
-			copier_host_free(cd);
+			copier_host_free(mod);
 		else
 			/* handle gtw case */
 			copier_ipcgtw_free(cd);
