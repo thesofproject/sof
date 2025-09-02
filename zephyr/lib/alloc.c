@@ -547,17 +547,32 @@ void *rballoc_align(uint32_t flags, size_t bytes,
 	} else {
 #if CONFIG_VIRTUAL_HEAP
 	/* Use virtual heap if it is available */
-	if (virtual_buffers_heap)
-		return virtual_heap_alloc(virtual_buffers_heap, flags, bytes, align);
+		if (virtual_buffers_heap) {
+			void *ret = virtual_heap_alloc(virtual_buffers_heap, flags, bytes, align);
+
+			if (!ret)
+				tr_err(&zephyr_tr, "Virtual heap alloc failed");
+			return ret;
+		}
 #endif /* CONFIG_VIRTUAL_HEAP */
 
 		heap = &sof_heap;
 	}
 
-	if (flags & SOF_MEM_FLAG_COHERENT)
-		return heap_alloc_aligned(heap, align, bytes);
+	if (flags & SOF_MEM_FLAG_COHERENT) {
+		void *ret = heap_alloc_aligned(heap, align, bytes);
 
-	return (__sparse_force void *)heap_alloc_aligned_cached(heap, align, bytes);
+		if (!ret)
+			tr_err(&zephyr_tr, "Coherent heap alloc failed");
+		return ret;
+	}
+
+
+	void *ret = (__sparse_force void *)heap_alloc_aligned_cached(heap, align, bytes);
+
+	if (!ret)
+		tr_err(&zephyr_tr, "Cached heap alloc failed");
+	return ret;
 }
 EXPORT_SYMBOL(rballoc_align);
 
