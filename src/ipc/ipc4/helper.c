@@ -581,7 +581,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
 	if (!buffer) {
-		tr_err(&ipc_tr, "failed to allocate buffer to bind %d to %d", src_id, sink_id);
+		tr_err(&ipc_tr, "failed to allocate buffer to bind %#x to %#x", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
 	}
 
@@ -646,14 +646,14 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	ret = comp_buffer_connect(source, source->ipc_config.core, buffer,
 				  PPL_CONN_DIR_COMP_TO_BUFFER);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "failed to connect src %d to internal buffer", src_id);
+		tr_err(&ipc_tr, "failed to connect src %#x to internal buffer", src_id);
 		goto free;
 	}
 
 	ret = comp_buffer_connect(sink, sink->ipc_config.core, buffer,
 				  PPL_CONN_DIR_BUFFER_TO_COMP);
 	if (ret < 0) {
-		tr_err(&ipc_tr, "failed to connect internal buffer to sink %d", sink_id);
+		tr_err(&ipc_tr, "failed to connect internal buffer to sink %#x", sink_id);
 		goto e_sink_connect;
 	}
 
@@ -1043,7 +1043,7 @@ __cold const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 		mod = lib_manager_get_module_manifest(module_id);
 
 		if (!mod) {
-			tr_err(&comp_tr, "Error: Couldn't find loadable module with id %d.",
+			tr_err(&comp_tr, "Error: Couldn't find loadable module with id %#x.",
 			       module_id);
 			return NULL;
 		}
