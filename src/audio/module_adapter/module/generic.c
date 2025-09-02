@@ -182,7 +182,7 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 		return NULL;
 
 	if (!size) {
-		comp_err(mod->dev, "mod_alloc: requested allocation of 0 bytes.");
+		comp_err(mod->dev, "requested allocation of 0 bytes.");
 		container_put(mod, container);
 		return NULL;
 	}
@@ -194,8 +194,8 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 		ptr = rballoc(SOF_MEM_FLAG_USER, size);
 
 	if (!ptr) {
-		comp_err(mod->dev, "mod_alloc: failed to allocate memory for comp %x.",
-			 dev_comp_id(mod->dev));
+		comp_err(mod->dev, "Failed to alloc %d bytes %d alignment for comp %x.",
+			 size, alignment, dev_comp_id(mod->dev));
 		container_put(mod, container);
 		return NULL;
 	}
