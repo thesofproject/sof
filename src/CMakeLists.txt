@@ -11,7 +11,7 @@ add_subdirectory(module)
 if(CONFIG_SAMPLES)
 	add_subdirectory(samples)
 endif()
-add_local_sources(sof spinlock.c)
+
 add_subdirectory(drivers)
 
 if (CONFIG_TRACE)
