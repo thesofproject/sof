@@ -78,22 +78,6 @@ config DEBUG_MEMORY_USAGE_SCAN
 	  This feature does not affect standard memory operations,
 	  especially allocation and deallocation.
 
-config DEBUG_LOCKS
-	bool "Spinlock debug"
-	default n
-	help
-	  It adds additional information to the spinlocks about
-	  the current user of the lock. Also executes panic
-	  on deadlock.
-
-config DEBUG_LOCKS_VERBOSE
-	bool "Spinlock verbose debug"
-	depends on DEBUG_LOCKS
-	default n
-	help
-	  In addition to DEBUG_LOCKS it also adds spinlock traces
-	  every time the lock is acquired.
-
 config DEBUG_IPC_COUNTERS
 	bool "IPC counters"
 	depends on CAVS
