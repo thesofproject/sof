@@ -12,18 +12,18 @@
 /* UUID identifies the components. Use e.g. command uuidgen from package
  * uuid-runtime, add it to uuid-registry.txt in SOF top level.
  */
-SOF_DEFINE_REG_UUID(template_comp);
+SOF_DEFINE_REG_UUID(template);
 
 /* Creates logging data for the component */
-LOG_MODULE_REGISTER(template_comp, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_REGISTER(template, CONFIG_SOF_LOG_LEVEL);
 
 /* Creates the compont trace. Traces show in trace console the component
  * info, warning, and error messages.
  */
-DECLARE_TR_CTX(template_comp_tr, SOF_UUID(template_comp_uuid), LOG_LEVEL_INFO);
+DECLARE_TR_CTX(template_tr, SOF_UUID(template_uuid), LOG_LEVEL_INFO);
 
 /**
- * template_comp_init() - Initialize the template component.
+ * template_init() - Initialize the template component.
  * @mod: Pointer to module data.
  *
  * This function is called when the instance is created. The
@@ -32,13 +32,13 @@ DECLARE_TR_CTX(template_comp_tr, SOF_UUID(template_comp_uuid), LOG_LEVEL_INFO);
  *
  * Return: Zero if success, otherwise error code.
  */
-__cold static int template_comp_init(struct processing_module *mod)
+__cold static int template_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct template_comp_comp_data *cd;
+	struct template_comp_data *cd;
 
-	comp_info(dev, "template_comp_init()");
+	comp_info(dev, "template_init()");
 
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
@@ -49,7 +49,7 @@ __cold static int template_comp_init(struct processing_module *mod)
 }
 
 /**
- * template_comp_process() - The audio data processing function.
+ * template_process() - The audio data processing function.
  * @mod: Pointer to module data.
  * @sources: Pointer to audio samples data sources array.
  * @num_of_sources: Number of sources in the array.
@@ -61,25 +61,25 @@ __cold static int template_comp_init(struct processing_module *mod)
  *
  * Return: Zero if success, otherwise error code.
  */
-static int template_comp_process(struct processing_module *mod,
-				 struct sof_source **sources,
-				 int num_of_sources,
-				 struct sof_sink **sinks,
-				 int num_of_sinks)
+static int template_process(struct processing_module *mod,
+			    struct sof_source **sources,
+			    int num_of_sources,
+			    struct sof_sink **sinks,
+			    int num_of_sinks)
 {
-	struct template_comp_comp_data *cd =  module_get_private_data(mod);
+	struct template_comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct sof_source *source = sources[0]; /* One input in this example */
 	struct sof_sink *sink = sinks[0]; /* One output in this example */
 	int frames = source_get_data_frames_available(source);
 	int sink_frames = sink_get_free_frames(sink);
 
-	comp_dbg(dev, "template_comp_process()");
+	comp_dbg(dev, "template_process()");
 
 	frames = MIN(frames, sink_frames);
 	if (cd->enable)
 		/* Process the data with the channels swap example function. */
-		return cd->template_comp_func(mod, source, sink, frames);
+		return cd->template_func(mod, source, sink, frames);
 
 	/* Just copy from source to sink. */
 	source_to_sink_copy(source, sink, true, frames * cd->frame_bytes);
@@ -87,7 +87,7 @@ static int template_comp_process(struct processing_module *mod,
 }
 
 /**
- * template_comp_prepare() - Prepare the component for processing.
+ * template_prepare() - Prepare the component for processing.
  * @mod: Pointer to module data.
  * @sources: Pointer to audio samples data sources array.
  * @num_of_sources: Number of sources in the array.
@@ -101,16 +101,16 @@ static int template_comp_process(struct processing_module *mod,
  *
  * Return: Value zero if success, otherwise error code.
  */
-static int template_comp_prepare(struct processing_module *mod,
-				 struct sof_source **sources, int num_of_sources,
-				 struct sof_sink **sinks, int num_of_sinks)
+static int template_prepare(struct processing_module *mod,
+			    struct sof_source **sources, int num_of_sources,
+			    struct sof_sink **sinks, int num_of_sinks)
 {
-	struct template_comp_comp_data *cd = module_get_private_data(mod);
+	struct template_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	int i;
 
-	comp_dbg(dev, "template_comp_prepare()");
+	comp_dbg(dev, "template_prepare()");
 
 	/* The processing example in this component supports one input and one
 	 * output. Generally there can be more.
@@ -127,8 +127,8 @@ static int template_comp_prepare(struct processing_module *mod,
 	for (i = 0; i < cd->channels; i++)
 		cd->channel_map[i] = cd->channels - i - 1;
 
-	cd->template_comp_func = template_comp_find_proc_func(source_format);
-	if (!cd->template_comp_func) {
+	cd->template_func = template_find_proc_func(source_format);
+	if (!cd->template_func) {
 		comp_err(dev, "No processing function found for format %d.",
 			 source_format);
 		return -EINVAL;
@@ -138,7 +138,7 @@ static int template_comp_prepare(struct processing_module *mod,
 }
 
 /**
- * template_comp_reset() - Reset the component.
+ * template_reset() - Reset the component.
  * @mod: Pointer to module data.
  *
  * The component reset is called when pipeline is stopped. The reset
@@ -146,17 +146,17 @@ static int template_comp_prepare(struct processing_module *mod,
  *
  * Return: Value zero, always success.
  */
-static int template_comp_reset(struct processing_module *mod)
+static int template_reset(struct processing_module *mod)
 {
-	struct template_comp_comp_data *cd = module_get_private_data(mod);
+	struct template_comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "template_comp_reset()");
+	comp_dbg(mod->dev, "template_reset()");
 	memset(cd, 0, sizeof(*cd));
 	return 0;
 }
 
 /**
- * template_comp_free() - Free dynamic allocations.
+ * template_free() - Free dynamic allocations.
  * @mod: Pointer to module data.
  *
  * Component free is called when the pipelines are deleted. All
@@ -166,46 +166,46 @@ static int template_comp_reset(struct processing_module *mod)
  *
  * Return: Value zero, always success.
  */
-__cold static int template_comp_free(struct processing_module *mod)
+__cold static int template_free(struct processing_module *mod)
 {
-	struct template_comp_comp_data *cd = module_get_private_data(mod);
+	struct template_comp_data *cd = module_get_private_data(mod);
 
 	assert_can_be_cold();
 
-	comp_dbg(mod->dev, "template_comp_free()");
+	comp_dbg(mod->dev, "template_free()");
 	rfree(cd);
 	return 0;
 }
 
 /* This defines the module operations */
-static const struct module_interface template_comp_interface = {
-	.init = template_comp_init,
-	.prepare = template_comp_prepare,
-	.process = template_comp_process,
-	.set_configuration = template_comp_set_config,
-	.get_configuration = template_comp_get_config,
-	.reset = template_comp_reset,
-	.free = template_comp_free
+static const struct module_interface template_interface = {
+	.init = template_init,
+	.prepare = template_prepare,
+	.process = template_process,
+	.set_configuration = template_set_config,
+	.get_configuration = template_get_config,
+	.reset = template_reset,
+	.free = template_free
 };
 
 /* This controls build of the module. If COMP_MODULE is selected in kconfig
  * this is build as dynamically loadable module.
  */
-#if CONFIG_COMP_TEMPLATE_COMP_MODULE
+#if CONFIG_COMP_TEMPLATE_MODULE
 
 #include <module/module/api_ver.h>
 #include <module/module/llext.h>
 #include <rimage/sof/user/manifest.h>
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("TEMPLATE", &template_comp_interface, 1,
-				  SOF_REG_UUID(template_comp), 40);
+	SOF_LLEXT_MODULE_MANIFEST("TEMPLATE", &template_interface, 1,
+				  SOF_REG_UUID(template), 40);
 
 SOF_LLEXT_BUILDINFO;
 
 #else
 
-DECLARE_MODULE_ADAPTER(template_comp_interface, template_comp_uuid, template_comp_tr);
-SOF_MODULE_INIT(template_comp, sys_comp_module_template_comp_interface_init);
+DECLARE_MODULE_ADAPTER(template_interface, template_uuid, template_tr);
+SOF_MODULE_INIT(template, sys_comp_module_template_interface_init);
 
 #endif
