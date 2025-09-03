@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-config COMP_TEMPLATE_COMP
-	tristate "Template_comp example component"
+config COMP_TEMPLATE
+	tristate "Template example component"
 	default y
 	help
-	  Select for template_comp component. Reason for existence
+	  Select for template component. Reason for existence
 	  is to provide a minimal component example and use as
 	  placeholder in processing pipelines. As example processing
 	  it swaps or reverses the channels when the switch control

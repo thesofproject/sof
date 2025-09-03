@@ -939,7 +939,7 @@ void sys_comp_module_selector_interface_init(void);
 void sys_comp_module_src_interface_init(void);
 void sys_comp_module_src_lite_interface_init(void);
 void sys_comp_module_tdfb_interface_init(void);
-void sys_comp_module_template_comp_interface_init(void);
+void sys_comp_module_template_interface_init(void);
 void sys_comp_module_volume_interface_init(void);
 void sys_comp_module_tester_interface_init(void);
 

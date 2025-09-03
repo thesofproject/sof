@@ -12,7 +12,7 @@
 
 #if CONFIG_FORMAT_S16LE
 /**
- * template_comp_s16() - Process S16_LE format.
+ * template_s16() - Process S16_LE format.
  * @mod: Pointer to module data.
  * @source: Source for PCM samples data.
  * @sink: Sink for PCM samples data.
@@ -24,12 +24,12 @@
  *
  * Return: Value zero for success, otherwise an error code.
  */
-static int template_comp_s16(const struct processing_module *mod,
-			     struct sof_source *source,
-			     struct sof_sink *sink,
-			     uint32_t frames)
+static int template_s16(const struct processing_module *mod,
+			struct sof_source *source,
+			struct sof_sink *sink,
+			uint32_t frames)
 {
-	struct template_comp_comp_data *cd = module_get_private_data(mod);
+	struct template_comp_data *cd = module_get_private_data(mod);
 	int16_t const *x, *x_start, *x_end;
 	int16_t *y, *y_start, *y_end;
 	int x_size, y_size;
@@ -98,7 +98,7 @@ static int template_comp_s16(const struct processing_module *mod,
 
 #if CONFIG_FORMAT_S32LE || CONFIG_FORMAT_S24LE
 /**
- * template_comp_s32() - Process S32_LE or S24_4LE format.
+ * template_s32() - Process S32_LE or S24_4LE format.
  * @mod: Pointer to module data.
  * @source: Source for PCM samples data.
  * @sink: Sink for PCM samples data.
@@ -111,12 +111,12 @@ static int template_comp_s16(const struct processing_module *mod,
  *
  * Return: Value zero for success, otherwise an error code.
  */
-static int template_comp_s32(const struct processing_module *mod,
-			     struct sof_source *source,
-			     struct sof_sink *sink,
-			     uint32_t frames)
+static int template_s32(const struct processing_module *mod,
+			struct sof_source *source,
+			struct sof_sink *sink,
+			uint32_t frames)
 {
-	struct template_comp_comp_data *cd = module_get_private_data(mod);
+	struct template_comp_data *cd = module_get_private_data(mod);
 	int32_t const *x, *x_start, *x_end;
 	int32_t *y, *y_start, *y_end;
 	int x_size, y_size;
@@ -186,20 +186,20 @@ static int template_comp_s32(const struct processing_module *mod,
 /* This struct array defines the used processing functions for
  * the PCM formats
  */
-const struct template_comp_proc_fnmap template_comp_proc_fnmap[] = {
+const struct template_proc_fnmap template_proc_fnmap[] = {
 #if CONFIG_FORMAT_S16LE
-	{ SOF_IPC_FRAME_S16_LE, template_comp_s16 },
+	{ SOF_IPC_FRAME_S16_LE, template_s16 },
 #endif
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, template_comp_s32 },
+	{ SOF_IPC_FRAME_S24_4LE, template_s32 },
 #endif
 #if CONFIG_FORMAT_S32LE
-	{ SOF_IPC_FRAME_S32_LE, template_comp_s32 },
+	{ SOF_IPC_FRAME_S32_LE, template_s32 },
 #endif
 };
 
 /**
- * template_comp_find_proc_func() - Find suitable processing function.
+ * template_find_proc_func() - Find suitable processing function.
  * @src_fmt: Enum value for PCM format.
  *
  * This function finds the suitable processing function to use for
@@ -207,14 +207,14 @@ const struct template_comp_proc_fnmap template_comp_proc_fnmap[] = {
  *
  * Return: Pointer to processing function for the requested PCM format.
  */
-template_comp_func template_comp_find_proc_func(enum sof_ipc_frame src_fmt)
+template_func template_find_proc_func(enum sof_ipc_frame src_fmt)
 {
 	int i;
 
 	/* Find suitable processing function from map */
-	for (i = 0; i < ARRAY_SIZE(template_comp_proc_fnmap); i++)
-		if (src_fmt == template_comp_proc_fnmap[i].frame_fmt)
-			return template_comp_proc_fnmap[i].template_comp_proc_func;
+	for (i = 0; i < ARRAY_SIZE(template_proc_fnmap); i++)
+		if (src_fmt == template_proc_fnmap[i].frame_fmt)
+			return template_proc_fnmap[i].template_proc_func;
 
 	return NULL;
 }

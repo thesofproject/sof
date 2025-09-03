@@ -138,8 +138,8 @@ index = __COUNTER__
 #include <audio/mfcc/mfcc.toml>
 #endif
 
-#if defined(CONFIG_COMP_TEMPLATE_COMP) || defined(LLEXT_FORCE_ALL_MODULAR)
-#include <audio/template_comp/template_comp.toml>
+#if defined(CONFIG_COMP_TEMPLATE) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/template/template.toml>
 #endif
 
 [module]
