@@ -16,6 +16,11 @@
 
 /* testbench mem alloc definition */
 
+void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
+{
+	return malloc(bytes);
+}
+
 void *rmalloc(uint32_t flags, size_t bytes)
 {
 	return malloc(bytes);
