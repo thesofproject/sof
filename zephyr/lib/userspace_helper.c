@@ -16,10 +16,19 @@
 
 #include <rtos/alloc.h>
 #include <rtos/userspace_helper.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/module_adapter/library/userspace_proxy.h>
 
 #define MODULE_DRIVER_HEAP_CACHED		CONFIG_SOF_ZEPHYR_HEAP_CACHED
 
+/* Zephyr includes */
+#include <zephyr/kernel.h>
+#include <zephyr/app_memory/app_memdomain.h>
+
 #if CONFIG_USERSPACE
+
+K_APPMEM_PARTITION_DEFINE(common_partition);
+
 struct sys_heap *module_driver_heap_init(void)
 {
 	struct sys_heap *mod_drv_heap = rballoc(SOF_MEM_FLAG_USER, sizeof(struct sys_heap));
@@ -120,6 +129,18 @@ void module_driver_heap_remove(struct sys_heap *mod_drv_heap)
 		rfree(mod_drv_heap->init_mem);
 		rfree(mod_drv_heap);
 	}
+}
+
+int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod)
+{
+	struct k_mem_domain *comp_dom = mod->user_ctx->comp_dom;
+	int ret;
+
+	ret = k_mem_domain_add_partition(comp_dom, &common_partition);
+	if (ret < 0)
+		return ret;
+
+	return k_mem_domain_add_thread(comp_dom, thread_id);
 }
 
 #else /* CONFIG_USERSPACE */
