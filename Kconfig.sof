@@ -9,14 +9,6 @@ config DMA_GW
 	bool
 	default n
 
-config MEM_WND
-	bool
-	default n
-
-config INTEL_IOMUX
-	bool
-	default n
-
 config COMPILER_WORKAROUND_CACHE_ATTR
 	bool
 	default n
