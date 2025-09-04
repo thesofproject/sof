@@ -52,8 +52,14 @@
  * Allocates memory block.
  * @param flags Flags, see SOF_MEM_FLAG_....
  * @param bytes Size in bytes.
+ * @param alignment	Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  *
+ */
+void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment);
+
+/**
+ * Similar to rmalloc_align(), but no alignment can be specified.
  */
 void *rmalloc(uint32_t flags, size_t bytes);
 
