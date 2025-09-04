@@ -5,10 +5,6 @@ config HOST_PTABLE
 	bool
 	default n
 
-config DMA_GW
-	bool
-	default n
-
 config COMPILER_WORKAROUND_CACHE_ATTR
 	bool
 	default n

@@ -249,11 +249,6 @@ static void dma_trace_buffer_free(struct dma_trace_data *d)
 
 static int dma_trace_buffer_init(struct dma_trace_data *d)
 {
-#if CONFIG_DMA_GW
-	struct dma_sg_config *config = &d->gw_config;
-	uint32_t elem_size, elem_addr, elem_num;
-	int ret;
-#endif
 	struct dma_trace_buf *buffer = &d->dmatb;
 	void *buf;
 	k_spinlock_key_t key;
@@ -309,30 +304,6 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 
 	k_spin_unlock(&d->lock, key);
 
-#if CONFIG_DMA_GW
-	/* size of every trace record */
-	elem_size = sizeof(uint64_t) * 2;
-
-	/* Initialize address of local elem */
-	elem_addr = (uint32_t)buffer->addr;
-
-	/* the number of elem list */
-	elem_num = DMA_TRACE_LOCAL_SIZE / elem_size;
-
-	config->direction = DMA_DIR_LMEM_TO_HMEM;
-	config->src_width = sizeof(uint32_t);
-	config->dest_width = sizeof(uint32_t);
-	config->cyclic = 0;
-
-	ret = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
-			   config->direction, elem_num, elem_size,
-			   elem_addr, 0);
-	if (ret < 0) {
-		dma_trace_buffer_free(d);
-		return ret;
-	}
-#endif
-
 #ifdef __ZEPHYR__
 #define ZEPHYR_VER_OPT " zephyr:" STRINGIFY(BUILD_VERSION)
 #else
@@ -361,77 +332,6 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	return 0;
 }
 
-#if CONFIG_DMA_GW
-
-static int dma_trace_start(struct dma_trace_data *d)
-{
-	int err = 0;
-
-	/* DMA Controller initialization is platform-specific */
-	if (!d || !d->dc.dmac) {
-		mtrace_printf(LOG_LEVEL_ERROR,
-			      "dma_trace_start failed: no DMAC!");
-		return -ENODEV;
-	}
-
-	if (d->dc.chan) {
-		/* We already have DMA channel for dtrace, stop it */
-		mtrace_printf(LOG_LEVEL_WARNING,
-			      "dma_trace_start(): DMA reconfiguration (active stream_tag: %u)",
-			      d->active_stream_tag);
-
-		schedule_task_cancel(&d->dmat_work);
-		err = dma_stop_legacy(d->dc.chan);
-		if (err < 0) {
-			mtrace_printf(LOG_LEVEL_ERROR,
-				      "dma_trace_start(): DMA channel failed to stop");
-		} else if (d->active_stream_tag != d->stream_tag) {
-			/* Re-request a channel if different tag is provided */
-			mtrace_printf(LOG_LEVEL_WARNING,
-				      "dma_trace_start(): stream_tag change from %u to %u",
-				      d->active_stream_tag, d->stream_tag);
-
-			dma_channel_put_legacy(d->dc.chan);
-			d->dc.chan = NULL;
-			err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
-		}
-	} else {
-		err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
-	}
-
-	if (err < 0)
-		return err;
-
-	/* Reset host buffer information as host is re-configuring dtrace */
-	d->posn.host_offset = 0;
-
-	d->active_stream_tag = d->stream_tag;
-
-	err = dma_set_config_legacy(d->dc.chan, &d->gw_config);
-	if (err < 0) {
-		mtrace_printf(LOG_LEVEL_ERROR, "dma_set_config() failed: %d", err);
-		goto error;
-	}
-
-	err = dma_start_legacy(d->dc.chan);
-	if (err == 0)
-		return 0;
-
-error:
-	dma_channel_put_legacy(d->dc.chan);
-	d->dc.chan = NULL;
-
-	return err;
-}
-
-static int dma_trace_get_avail_data(struct dma_trace_data *d,
-				    struct dma_trace_buf *buffer,
-				    int avail)
-{
-	/* align data to HD-DMA burst size */
-	return ALIGN_DOWN(avail, d->dma_copy_align);
-}
-#else
 static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail)
@@ -464,8 +364,6 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 	return size;
 }
 
-#endif  /* CONFIG_DMA_GW */
-
 /** Invoked remotely by SOF_IPC_TRACE_DMA_PARAMS* Depends on
  * dma_trace_init_complete()
  */
@@ -477,16 +375,6 @@ int dma_trace_enable(struct dma_trace_data *d)
 	err = dma_trace_buffer_init(d);
 	if (err < 0)
 		return err;
-
-#if CONFIG_DMA_GW
-	/*
-	 * GW DMA need finish DMA config and start before
-	 * host driver trigger start DMA
-	 */
-	err = dma_trace_start(d);
-	if (err < 0)
-		goto out;
-#endif
 
 	/* validate DMA context */
 	if (!d->dc.dmac || !d->dc.chan) {
