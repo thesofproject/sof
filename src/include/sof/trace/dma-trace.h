@@ -30,9 +30,6 @@ struct dma_trace_buf {
 struct dma_trace_data {
 	struct dma_sg_config config;
 	struct dma_trace_buf dmatb;
-#if CONFIG_DMA_GW
-	struct dma_sg_config gw_config;
-#endif
 	struct dma_copy dc;
 	struct sof_ipc_dma_trace_posn posn;
 	struct ipc_msg *msg;
