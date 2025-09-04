@@ -15,6 +15,7 @@
 
 #include "interface.h"
 #include "../ipc4/base-config.h"
+#include <rtos/userspace_helper.h>
 
 #define module_get_private_data(mod) ((mod)->priv.private)
 #define module_set_private_data(mod, data) ((mod)->priv.private = data)
@@ -180,6 +181,9 @@ struct processing_module {
 	uint32_t max_sinks;
 
 	enum module_processing_type proc_type;
+#if CONFIG_USERSPACE
+	struct userspace_context *user_ctx;
+#endif /* CONFIG_USERSPACE */
 #endif /* SOF_MODULE_PRIVATE */
 };
 

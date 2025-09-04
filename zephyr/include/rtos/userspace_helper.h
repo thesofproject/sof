@@ -12,9 +12,20 @@
 #ifndef __ZEPHYR_LIB_USERSPACE_HELPER_H__
 #define __ZEPHYR_LIB_USERSPACE_HELPER_H__
 
-#ifdef CONFIG_USERSPACE
+#ifndef CONFIG_USERSPACE
+#define APP_TASK_BSS
+#define APP_TASK_DATA
+#else
+
+#include <zephyr/app_memory/app_memdomain.h>
+
 #define DRV_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
 				 CONFIG_MM_DRV_PAGE_SIZE)
+#define APP_TASK_BSS	K_APP_BMEM(common_partition)
+#define APP_TASK_DATA	K_APP_DMEM(common_partition)
+
+struct processing_module;
+struct userspace_context;
 
 /**
  * Initialize private processing module heap.
@@ -28,6 +39,18 @@
  * region which is then added to modules memory domain.
  */
 struct sys_heap *module_driver_heap_init(void);
+
+/**
+ * Add DP scheduler created thread to module memory domain.
+ * @param thread_id - id of thread to be added to memory domain.
+ * @param module    - processing module structure
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ */
+int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod);
 
 #endif
 
