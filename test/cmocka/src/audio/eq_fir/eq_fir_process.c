@@ -186,6 +186,7 @@ static int teardown(void **state)
 	test_free(mod->input_buffers);
 	test_free(mod->output_buffers);
 	test_free(mod->stream_params);
+	mod->stream_params = NULL;
 	test_free(td->params);
 	free_test_source(td->source);
 	free_test_sink(td->sink);
