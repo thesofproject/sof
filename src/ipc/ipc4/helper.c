@@ -402,6 +402,11 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
 	ipc_buf.comp.core = cpu_get_id();
+
+	/* Debug: Log buffer creation details */
+	comp_info(src, "ipc4_create_buffer: src_queue=%d, dst_queue=%d, buffer_id=0x%x",
+		  src_queue, dst_queue, ipc_buf.comp.id);
+
 	return buffer_new(&ipc_buf, is_shared);
 }
 
@@ -577,6 +582,10 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		buf_size = MAX(ibs, obs) * 2;
 	else
 		buf_size = ibs * 2;
+
+	/* Debug: Log binding details before buffer creation */
+	tr_info(&ipc_tr, "ipc4_bind: binding src_id=0x%x to sink_id=0x%x, src_queue=%d, dst_queue=%d",
+		src_id, sink_id, bu->extension.r.src_queue, bu->extension.r.dst_queue);
 
 	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
