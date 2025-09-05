@@ -23,7 +23,6 @@ SOF_DEFINE_REG_UUID(dma_copy);
 
 DECLARE_TR_CTX(dmacpy_tr, SOF_UUID(dma_copy_uuid), LOG_LEVEL_INFO);
 
-#if !CONFIG_DMA_GW
 static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	int32_t *offset)
 {
@@ -49,43 +48,11 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	tr_err(&dmacpy_tr, "host offset in beyond end of SG buffer");
 	return NULL;
 }
-#endif
 
 /* Copy DSP memory to host memory.
  * Copies DSP memory to host in a single PAGE_SIZE or smaller block. Does not
  * waits/sleeps and can be used in IRQ context.
  */
-#if CONFIG_DMA_GW
-
-int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
-		     int32_t host_offset, void *local_ptr, int32_t size)
-{
-	int ret;
-
-	/* tell gateway to copy */
-	ret = dma_copy_legacy(dc->chan, size, DMA_COPY_BLOCKING);
-	if (ret < 0)
-		return ret;
-
-	/* bytes copied */
-	return size;
-}
-
-int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
-			    int32_t host_offset, void *local_ptr, int32_t size)
-{
-	int ret;
-
-	/* tell gateway to copy */
-	ret = dma_copy_legacy(dc->chan, size, 0);
-	if (ret < 0)
-		return ret;
-
-	/* bytes copied */
-	return size;
-}
-
-#else /* CONFIG_DMA_GW */
 
 static int
 dma_copy_to_host_flags(struct dma_copy *dc, struct dma_sg_config *host_sg,
@@ -153,8 +120,6 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 				      DMA_COPY_ONE_SHOT);
 }
 
-#endif /* CONFIG_DMA_GW */
-
 int dma_copy_new(struct dma_copy *dc)
 {
 	uint32_t dir, cap, dev;
@@ -169,14 +134,12 @@ int dma_copy_new(struct dma_copy *dc)
 		return -ENODEV;
 	}
 
-#if !CONFIG_DMA_GW
 	/* get DMA channel from DMAC0 */
 	dc->chan = dma_channel_get_legacy(dc->dmac, CONFIG_TRACE_CHANNEL);
 	if (!dc->chan) {
 		tr_err(&dmacpy_tr, "dc->chan is NULL");
 		return -ENODEV;
 	}
-#endif
 
 	return 0;
 }
