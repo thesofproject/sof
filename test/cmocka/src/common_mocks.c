@@ -146,20 +146,6 @@ volatile void * WEAK task_context_get(void)
 	return NULL;
 }
 
-uint32_t WEAK _k_spin_lock_irq(struct k_spinlock *lock)
-{
-	(void)lock;
-
-	return 0;
-}
-
-void WEAK _k_spin_unlock_irq(struct k_spinlock *lock, uint32_t flags, int line)
-{
-	(void)lock;
-	(void)flags;
-	(void)line;
-}
-
 uint64_t WEAK platform_timer_get(struct timer *timer)
 {
 	(void)timer;

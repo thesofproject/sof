@@ -5,7 +5,6 @@ if(BUILD_UNIT_TESTS_HOST)
 		alloc.c
 		${PROJECT_SOURCE_DIR}/src/lib/alloc.c
 		${PROJECT_SOURCE_DIR}/src/platform/library/lib/memory.c
-		${PROJECT_SOURCE_DIR}/src/spinlock.c
 	)
 else()
 	if(CONFIG_CAVS)
@@ -15,7 +14,6 @@ else()
 		alloc.c
 		${PROJECT_SOURCE_DIR}/src/lib/alloc.c
 		${PROJECT_SOURCE_DIR}/src/debug/panic.c
-		${PROJECT_SOURCE_DIR}/src/spinlock.c
 		${MEMORY_FILE}
 	)
 endif()
