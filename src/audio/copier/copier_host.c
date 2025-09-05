@@ -187,7 +187,6 @@ __cold int copier_host_create(struct processing_module *mod, struct copier_data 
 		return ret;
 	}
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
-	/* NOTE: Should use goto e_conv this #if section, not direct return */
 	/* Size of a configuration without optional parameters. */
 	const uint32_t basic_size = sizeof(*copier_cfg) +
 				    (copier_cfg->gtw_cfg.config_length - 1) * sizeof(uint32_t);
@@ -206,14 +205,16 @@ __cold int copier_host_create(struct processing_module *mod, struct copier_data 
 		if (value_ptr) {
 			struct ipc4_copier_sync_group *sync_group;
 
-			if (value_size != sizeof(struct ipc4_copier_sync_group))
-				return -EINVAL;
+			if (value_size != sizeof(struct ipc4_copier_sync_group)) {
+				ret = -EINVAL;
+				goto e_conv;
+			}
 
 			sync_group = (struct ipc4_copier_sync_group *)((void *)value_ptr);
 
 			ret = add_to_fpi_sync_group(dev, hd, sync_group);
 			if (ret < 0)
-				return ret;
+				goto e_conv;
 		}
 	}
 #endif
