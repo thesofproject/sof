@@ -41,8 +41,13 @@ struct sof_man_module_type {
 	uint32_t domain_ll:1;
 	uint32_t domain_dp:1;
 	uint32_t lib_code:1;
+	uint32_t domain_rtos:1;
+	uint32_t core_type:8;
+	uint32_t user_mode:1;
+	uint32_t large_param:1;
+	uint32_t stack_on_bss:1;
+	uint32_t rsvd_:9;
 	uint32_t init_config:4; /* SOF_MAN_MOD_INIT_CONFIG_ */
-	uint32_t rsvd_:20;
 };
 
 /* segment flags.type */
