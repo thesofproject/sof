@@ -214,17 +214,34 @@ static inline bool audio_buffer_is_shared(struct sof_audio_buffer *buffer)
 
 static inline bool audio_buffer_hw_params_configured(struct sof_audio_buffer *buffer)
 {
-	return buffer->audio_stream_params->hw_params_configured;
+	return buffer->audio_stream_params->state != AUDIOBUF_STATE_INITIAL;
 }
 
 static inline void audio_buffer_set_hw_params_configured(struct sof_audio_buffer *buffer)
 {
-	buffer->audio_stream_params->hw_params_configured = true;
+	buffer->audio_stream_params->state = AUDIOBUF_STATE_READY;
 }
 
 static inline void audio_buffer_reset_params(struct sof_audio_buffer *buffer)
 {
-	buffer->audio_stream_params->hw_params_configured = false;
+	buffer->audio_stream_params->state = AUDIOBUF_STATE_INITIAL;
+}
+
+static inline enum sof_audio_buffer_state audio_buffer_get_state(
+	const struct sof_audio_buffer *buffer)
+{
+	return buffer->audio_stream_params->state;
+}
+
+static inline void audio_buffer_set_state(struct sof_audio_buffer *buffer,
+					  enum sof_audio_buffer_state state)
+{
+	buffer->audio_stream_params->state = state;
+}
+
+static inline void audio_buffer_set_eos(struct sof_audio_buffer *buffer)
+{
+	buffer->audio_stream_params->state = AUDIOBUF_STATE_END_OF_STREAM;
 }
 
 static inline uint16_t audio_buffer_get_chmap(struct sof_audio_buffer *buffer, size_t index)
