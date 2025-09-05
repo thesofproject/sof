@@ -4,7 +4,6 @@ config COMP_IGO_NR
 	tristate "IGO NR component"
 	select COMP_BLOB
 	select COMP_IGO_NR_STUB if COMP_STUBS
-	default n
 	help
 	  This option enables Intelligo non-speech noise reduction. The feature links to a proprietary
 	  binary libigonr.a that currently is supported on different Xtensa DSP platforms. Please email
@@ -14,7 +13,6 @@ config COMP_IGO_NR_STUB
 	bool "IGO NR component"
 	select COMP_BLOB
 	depends on COMP_IGO_NR
-	default n
 	help
 	  This option builds the IGO adapter with a stub library, it should only be used for
 	  testing or CI purposes.

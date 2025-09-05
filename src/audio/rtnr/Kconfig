@@ -4,7 +4,6 @@ config COMP_RTNR
 	tristate "RTNR component"
 	select COMP_BLOB
 	select COMP_RTNR_STUB if COMP_STUBS
-	default n
 	help
 	  Select for Realtek noise reduction/suppression(NR/NS) component.
 	  Noise Suppression technology reduces stationary and transient noises in
@@ -19,6 +18,5 @@ config COMP_RTNR_STUB
 	bool "RTNR component stub"
 	select COMP_BLOB
 	depends on COMP_RTNR
-	default n
 	help
 	  Stub out the RTNR library for testing and CI purposes.

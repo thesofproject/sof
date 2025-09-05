@@ -26,7 +26,6 @@ menu "Processing modules"
 
 	config CADENCE_CODEC
 		bool "Cadence codec"
-		default n
 		help
 		  Select for codecs which conforms to the Cadence API.
 		  This will cause codec adapter component to include header
@@ -35,7 +34,6 @@ menu "Processing modules"
 if CADENCE_CODEC
 	config CADENCE_CODEC_WRAPPER
 		bool 'Cadence codec wrapper'
-		default n
 		help
 		  Select for cadence_codec_api wrapper function that will allow
 		  users to call into codecs which conforms to the Cadence API without
@@ -50,7 +48,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_AAC_DEC
 		bool "Cadence AAC decoder"
-		default n
 		help
 		  Select for Cadence AAC decoder support.
 		  This will cause Cadence codec to include Cadence AAC library
@@ -65,7 +62,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_BSAC_DEC
 		bool "Cadence BSAC decoder"
-		default n
 		help
 		  Select for Cadence BSAC decoder support.
 		  This will cause Cadence codec to include Cadence BSAC library
@@ -80,7 +76,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_DAB_DEC
 		bool "Cadence DAB decoder"
-		default n
 		help
 		  Select for Cadence DAB decoder support.
 		  This will cause Cadence codec to include Cadence DAB library
@@ -95,7 +90,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_DRM_DEC
 		bool "Cadence DRM decoder"
-		default n
 		help
 		  Select for Cadence DRM decoder support.
 		  This will cause Cadence codec to include Cadence DRM library
@@ -110,7 +104,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_MP3_DEC
 		bool "Cadence MP3 decoder"
-		default n
 		help
 		  Select for Cadence MP3 decoder support.
 		  This will cause Cadence codec to include Cadence MP3 library
@@ -125,7 +118,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_MP3_ENC
 		bool "Cadence MP3 encoder"
-		default n
 		help
 		  Select for Cadence MP3 encoder support.
 		  This will cause Cadence codec to include Cadence MP3 library
@@ -140,7 +132,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_SBC_DEC
 		bool "Cadence SBC decoder"
-		default n
 		help
 		  Select for Cadence SBC decoder support.
 		  This will cause Cadence codec to include Cadence SBC library
@@ -156,7 +147,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_VORBIS_DEC
 		bool "Cadence VORBIS decoder"
-		default n
 		help
 		  Select for Cadence VORBIS decoder support.
 		  This will cause Cadence codec to include Cadence VORBIS library
@@ -171,7 +161,6 @@ if CADENCE_CODEC
 
 	config CADENCE_CODEC_SRC_PP
 		bool "Cadence SRC polyphase"
-		default n
 		help
 		  Select for Cadence SRC polyphase support.
 		  This will cause Cadence codec to include Cadence SRC library
@@ -188,7 +177,6 @@ endif # Cadence
 
 	config PASSTHROUGH_CODEC
 		bool "Passthrough codec"
-		default n
 		help
 		  Select for a passthrough API codec implementation.
 		  This will cause codec adapter component to include header
@@ -196,7 +184,6 @@ endif # Cadence
 
 	config WAVES_CODEC
 	tristate "Waves codec"
-	default n
 	help
 		Select to include Waves codec. Waves codec implements MaxxEffect API.
 		API definition together with pre-compiled library is shared by Waves Audio Ltd.
@@ -207,14 +194,12 @@ endif # Cadence
 	bool "Waves codec stub"
 	depends on WAVES_CODEC != "n"
 	default y if COMP_STUBS
-	default n
 	help
 		Select to build the waves codec with a stub file. This should only be used for
 		testing or CI.
 
 	config INTEL_MODULES
 	bool "Intel modules"
-	default n
 	depends on LIBRARY_MANAGER
 	help
 		Select for a Intel modules API implementation.
