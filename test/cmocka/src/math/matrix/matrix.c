@@ -81,6 +81,9 @@ static void matrix_mult_16_test(const int16_t *a_ref, const int16_t *b_ref, cons
 	printf("Max absolute error = %5.2f (max %5.2f), error RMS = %5.2f (max %5.2f)\n",
 	       delta_max, MATRIX_MULT_16_MAX_ERROR_ABS, error_rms, MATRIX_MULT_16_MAX_ERROR_RMS);
 
+	free(c_matrix);
+	free(b_matrix);
+	free(a_matrix);
 	assert_true(error_rms < MATRIX_MULT_16_MAX_ERROR_RMS);
 	assert_true(delta_max < MATRIX_MULT_16_MAX_ERROR_ABS);
 }

@@ -67,6 +67,7 @@ static void dct_matrix_16_test(const int16_t *ref, int num_in, int num_out,
 	printf("Max absolute error = %5.2f (max %5.2f), error RMS = %5.2f (max %5.2f)\n",
 	       delta_max, MATRIX_MULT_16_MAX_ERROR_ABS, error_rms, MATRIX_MULT_16_MAX_ERROR_RMS);
 
+	free(dct.matrix);
 	assert_true(error_rms < MATRIX_MULT_16_MAX_ERROR_RMS);
 	assert_true(delta_max < MATRIX_MULT_16_MAX_ERROR_ABS);
 }

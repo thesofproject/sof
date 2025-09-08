@@ -299,6 +299,9 @@ static void test_math_fft_256(void **state)
 	noise += integrate_power_32(out, i + 2, fft_size / 2 - 1);
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
+
+	buffer_free(sink);
+	buffer_free(source);
 	assert_int_equal(snr < MIN_SNR_256, 0);
 }
 
@@ -341,6 +344,9 @@ static void test_math_fft_512(void **state)
 	noise += integrate_power_32(out, i + 2, fft_size / 2 - 1);
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
+
+	buffer_free(sink);
+	buffer_free(source);
 	assert_int_equal(snr < MIN_SNR_512, 0);
 }
 
@@ -383,6 +389,9 @@ static void test_math_fft_1024(void **state)
 	noise += integrate_power_32(out, i + 2, fft_size / 2 - 1);
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
+
+	buffer_free(sink);
+	buffer_free(source);
 	assert_int_equal(snr < MIN_SNR_1024, 0);
 }
 
@@ -424,6 +433,10 @@ static void test_math_fft_1024_ifft(void **state)
 
 	db = 10 * log10((float)signal / noise);
 	printf("%s: SNR: %6.2f dB\n", __func__, db);
+
+	buffer_free(sink);
+	buffer_free(intm);
+	buffer_free(source);
 	assert_int_equal(db < FFT_DB_TH, 0);
 }
 
@@ -464,6 +477,10 @@ static void test_math_fft_512_2ch(void **state)
 	r = power_peak_index_32(out2, fft_size);
 	i = (SINE_HZ * fft_size) / 48000;
 	printf("%s: peak for channel 1 at point %d\n", __func__, r);
+
+	buffer_free(sink2);
+	buffer_free(sink1);
+	buffer_free(source);
 
 	/* the peak should be in range i +/-1 */
 	assert_in_range(r, i - 1, i + 1);
@@ -659,6 +676,9 @@ static void test_math_fft_256_16(void **state)
 	noise += integrate_power_16(out, i + 2, fft_size / 2 - 1);
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
+
+	buffer_free(sink);
+	buffer_free(source);
 	assert_int_equal(snr < MIN_SNR_256_16, 0);
 }
 
@@ -701,6 +721,9 @@ static void test_math_fft_512_16(void **state)
 	noise += integrate_power_16(out, i + 2, fft_size / 2 - 1);
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
+
+	buffer_free(sink);
+	buffer_free(source);
 	assert_int_equal(snr < MIN_SNR_512_16, 0);
 }
 
@@ -743,6 +766,9 @@ static void test_math_fft_1024_16(void **state)
 	noise += integrate_power_16(out, i + 2, fft_size / 2 - 1);
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
+
+	buffer_free(sink);
+	buffer_free(source);
 	assert_int_equal(snr < MIN_SNR_1024_16, 0);
 }
 
@@ -783,6 +809,10 @@ static void test_math_fft_1024_ifft_16(void **state)
 
 	db = 10 * log10((float)signal / noise);
 	printf("%s: SNR: %6.2f dB\n", __func__, db);
+
+	buffer_free(sink);
+	buffer_free(intm);
+	buffer_free(source);
 	assert_int_equal(db < FFT_DB_TH_16, 0);
 }
 
