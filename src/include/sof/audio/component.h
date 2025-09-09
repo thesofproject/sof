@@ -912,8 +912,9 @@ void sys_comp_host_init(void);
 void sys_comp_kpb_init(void);
 void sys_comp_selector_init(void);
 
-void sys_comp_module_nxp_eap_interface_init(void);
+/* Start of modules in alphabetical order */
 void sys_comp_module_aria_interface_init(void);
+void sys_comp_module_asrc_interface_init(void);
 void sys_comp_module_copier_interface_init(void);
 void sys_comp_module_crossover_interface_init(void);
 void sys_comp_module_dcblock_interface_init(void);
@@ -933,15 +934,16 @@ void sys_comp_module_mixin_interface_init(void);
 void sys_comp_module_mixout_interface_init(void);
 void sys_comp_module_multiband_drc_interface_init(void);
 void sys_comp_module_mux_interface_init(void);
-void sys_comp_module_asrc_interface_init(void);
+void sys_comp_module_nxp_eap_interface_init(void);
 void sys_comp_module_rtnr_interface_init(void);
 void sys_comp_module_selector_interface_init(void);
 void sys_comp_module_src_interface_init(void);
 void sys_comp_module_src_lite_interface_init(void);
 void sys_comp_module_tdfb_interface_init(void);
 void sys_comp_module_template_interface_init(void);
-void sys_comp_module_volume_interface_init(void);
 void sys_comp_module_tester_interface_init(void);
+void sys_comp_module_volume_interface_init(void);
+/* End of modules in alphabetical order */
 
 #elif CONFIG_LIBRARY
 /* In case of shared libs components are initialised in dlopen */
