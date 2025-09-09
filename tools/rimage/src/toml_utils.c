@@ -167,6 +167,106 @@ uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
 }
 
 /**
+ * Parse hex value from key in given toml table
+ * @param table toml table where key is specified
+ * @param ctx parsing context, key counter will be incremented after successful key parse
+ * @param key field name
+ * @param def is default value or -1 when value don't have default value
+ * @param error code, 0 when success
+ * @return default, parsed, or UINT16_MAX value for error cases
+ */
+uint16_t parse_uint16_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
+							  const char *key, int64_t def, int *error)
+{
+	toml_raw_t raw;
+	char *temp_s;
+	unsigned long val; /* strtoul return type */
+	int ret;
+
+	raw = toml_raw_in(table, key);
+	if (!raw) {
+		if (def < 0 || def > UINT16_MAX) {
+			*error = err_key_not_found(key);
+			return UINT16_MAX;
+		}
+		*error = 0;
+		return (uint16_t)def;
+	}
+
+	ret = toml_rtos(raw, &temp_s);
+	if (ret < 0) {
+		*error = err_key_parse(key, NULL);
+		return UINT16_MAX;
+	}
+	errno = 0;
+	val = strtoul(temp_s, 0, 0);
+	free(temp_s);
+
+	if (errno != 0) {
+		*error = err_key_parse(key, "can't convert hex value");
+		return UINT16_MAX;
+	}
+	if (val > UINT16_MAX) {
+		*error = log_err(-ERANGE, "key %s out of uint16_t hex range", key);
+		return UINT16_MAX;
+	}
+
+	*error = 0;
+	++ctx->key_cnt;
+	return (uint16_t)val;
+}
+
+/**
+ * Parse hex value from key in given toml table
+ * @param table toml table where key is specified
+ * @param ctx parsing context, key counter will be incremented after successful key parse
+ * @param key field name
+ * @param def is default value or -1 when value don't have default value
+ * @param error code, 0 when success
+ * @return default, parsed, or UINT8_MAX value for error cases
+ */
+uint8_t parse_uint8_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
+							const char *key, int64_t def, int *error)
+{
+	toml_raw_t raw;
+	char *temp_s;
+	unsigned long val;
+	int ret;
+
+	raw = toml_raw_in(table, key);
+	if (!raw) {
+		if (def < 0 || def > UINT8_MAX) {
+			*error = err_key_not_found(key);
+			return UINT8_MAX;
+		}
+		*error = 0;
+		return (uint8_t)def;
+	}
+
+	ret = toml_rtos(raw, &temp_s);
+	if (ret < 0) {
+		*error = err_key_parse(key, NULL);
+		return UINT8_MAX;
+	}
+	errno = 0;
+	val = strtoul(temp_s, 0, 0);
+	free(temp_s);
+
+	if (errno != 0) {
+		*error = err_key_parse(key, "can't convert hex value");
+		return UINT8_MAX;
+	}
+	if (val > UINT8_MAX) {
+		*error = log_err(-ERANGE, "key %s out of uint8_t hex range", key);
+		return UINT8_MAX;
+	}
+
+	*error = 0;
+	++ctx->key_cnt;
+	return (uint8_t)val;
+}
+
+/**
  * Parse integer value from key in given toml table
  * @param table toml table where key is specified
  * @param ctx parsing context, key counter will be incremented after successful key parse
@@ -176,7 +276,7 @@ uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
  * @return default, parsed, or UINT32_MAX value for error cases
  */
 uint32_t parse_uint32_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
-			  int64_t def, int *error)
+						  int64_t def, int *error)
 {
 	toml_raw_t raw;
 	int64_t val;
@@ -208,6 +308,48 @@ uint32_t parse_uint32_key(const toml_table_t *table, struct parse_ctx *ctx, cons
 	*error = 0;
 	++ctx->key_cnt;
 	return (uint32_t)val;
+}
+
+/**
+ * Parse unsigned 8-bit integer value from key in given toml table.
+ * @param table toml table where key is specified
+ * @param ctx parsing context, key counter will be incremented after successful key parse
+ * @param key field name
+ * @param def is default value or -1 when value don't have default value
+ * @param error code, 0 when success
+ * @return default, parsed, or UINT8_MAX value for error cases
+ */
+uint8_t parse_uint8_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
+			int64_t def, int *error)
+{
+	toml_raw_t raw;
+	int64_t val;
+	int ret;
+
+	raw = toml_raw_in(table, key);
+	if (!raw) {
+		if (def < 0 || def > UINT8_MAX) {
+			*error = err_key_not_found(key);
+			return UINT8_MAX;
+		} else {
+			*error = 0;
+			return (uint8_t)def;
+		}
+	}
+
+	ret = toml_rtoi(raw, &val);
+	if (ret < 0) {
+		*error = err_key_parse(key, "can't convert to integer value");
+		return UINT8_MAX;
+	}
+	if (val < 0 || val > UINT8_MAX) {
+		*error = log_err(-ERANGE, "key %s out of uint8_t range", key);
+		return UINT8_MAX;
+	}
+
+	*error = 0;
+	++ctx->key_cnt;
+	return (uint8_t)val;
 }
 
 /**
