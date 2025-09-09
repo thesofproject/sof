@@ -65,6 +65,10 @@ int assert_everything_parsed(const toml_table_t *table, struct parse_ctx *ctx);
  */
 uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
 			      const char *key, int64_t def, int *error);
+uint16_t parse_uint16_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
+			      const char *key, int64_t def, int *error);
+uint8_t parse_uint8_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
+			    const char *key, int64_t def, int *error);
 
 /**
  * Parse integer value from key in given toml table
@@ -77,6 +81,8 @@ uint32_t parse_uint32_hex_key(const toml_table_t *table, struct parse_ctx *ctx,
  */
 uint32_t parse_uint32_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
 			  int64_t def, int *error);
+uint8_t parse_uint8_key(const toml_table_t *table, struct parse_ctx *ctx, const char *key,
+			int64_t def, int *error);
 
 /**
  * Parse string value from key in given toml table to uint8_t array. The
