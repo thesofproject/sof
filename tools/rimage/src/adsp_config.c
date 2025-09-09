@@ -270,11 +270,11 @@ static int parse_cse(const toml_table_t *toml, struct parse_ctx *pctx,
 	hdr->header_length = sizeof(struct CsePartitionDirHeader);
 
 	/* configurable fields */
-	hdr->header_version = parse_uint32_key(cse, &ctx, "header_version", 1, &ret);
+	hdr->header_version = parse_uint8_key(cse, &ctx, "header_version", 1, &ret);
 	if (ret < 0)
 		return ret;
 
-	hdr->entry_version = parse_uint32_key(cse, &ctx, "entry_version", 1, &ret);
+	hdr->entry_version = parse_uint8_key(cse, &ctx, "entry_version", 1, &ret);
 	if (ret < 0)
 		return ret;
 
@@ -382,11 +382,11 @@ static int parse_cse_v2_5(const toml_table_t *toml, struct parse_ctx *pctx,
 	hdr->header_length = sizeof(struct CsePartitionDirHeader_v2_5);
 
 	/* configurable fields */
-	hdr->header_version = parse_uint32_key(cse, &ctx, "header_version", 2, &ret);
+	hdr->header_version = parse_uint8_key(cse, &ctx, "header_version", 2, &ret);
 	if (ret < 0)
 		return ret;
 
-	hdr->entry_version = parse_uint32_key(cse, &ctx, "entry_version", 1, &ret);
+	hdr->entry_version = parse_uint8_key(cse, &ctx, "entry_version", 1, &ret);
 	if (ret < 0)
 		return ret;
 
@@ -771,11 +771,11 @@ static int parse_signed_pkg(const toml_table_t *toml, struct parse_ctx *pctx,
 	if (ret < 0)
 		return ret;
 
-	out->fw_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_type", 0, &ret);
+	out->fw_type = parse_uint8_hex_key(signed_pkg, &ctx, "fw_type", 0, &ret);
 	if (ret < 0)
 		return ret;
 
-	out->fw_sub_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_sub_type", 0, &ret);
+	out->fw_sub_type = parse_uint8_hex_key(signed_pkg, &ctx, "fw_sub_type", 0, &ret);
 	if (ret < 0)
 		return ret;
 
@@ -835,15 +835,15 @@ static int parse_signed_pkg(const toml_table_t *toml, struct parse_ctx *pctx,
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->type = parse_uint32_hex_key(module, &ctx, "type", 0x03, &ret);
+		mod->type = parse_uint8_hex_key(module, &ctx, "type", 0x03, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->hash_algo = parse_uint32_hex_key(module, &ctx, "hash_algo", 0x02, &ret);
+		mod->hash_algo = parse_uint8_hex_key(module, &ctx, "hash_algo", 0x02, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->hash_size = parse_uint32_hex_key(module, &ctx, "hash_size", 0x20, &ret);
+		mod->hash_size = parse_uint16_hex_key(module, &ctx, "hash_size", 0x20, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
@@ -929,11 +929,11 @@ static int parse_signed_pkg_v2_5(const toml_table_t *toml, struct parse_ctx *pct
 	if (ret < 0)
 		return ret;
 
-	out->fw_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_type", 0, &ret);
+	out->fw_type = parse_uint8_hex_key(signed_pkg, &ctx, "fw_type", 0, &ret);
 	if (ret < 0)
 		return ret;
 
-	out->fw_sub_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_sub_type", 0, &ret);
+	out->fw_sub_type = parse_uint8_hex_key(signed_pkg, &ctx, "fw_sub_type", 0, &ret);
 	if (ret < 0)
 		return ret;
 
@@ -993,15 +993,15 @@ static int parse_signed_pkg_v2_5(const toml_table_t *toml, struct parse_ctx *pct
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->type = parse_uint32_hex_key(module, &ctx, "type", 0x03, &ret);
+		mod->type = parse_uint8_hex_key(module, &ctx, "type", 0x03, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->hash_algo = parse_uint32_hex_key(module, &ctx, "hash_algo", 0x00, &ret);
+		mod->hash_algo = parse_uint8_hex_key(module, &ctx, "hash_algo", 0x00, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->hash_size = parse_uint32_hex_key(module, &ctx, "hash_size", 0x30, &ret);
+		mod->hash_size = parse_uint16_hex_key(module, &ctx, "hash_size", 0x30, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
@@ -1079,11 +1079,11 @@ static int parse_signed_pkg_ace_v1_5(const toml_table_t *toml, struct parse_ctx 
 	if (ret < 0)
 		return ret;
 
-	out->fw_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_type", 0, &ret);
+	out->fw_type = parse_uint8_hex_key(signed_pkg, &ctx, "fw_type", 0, &ret);
 	if (ret < 0)
 		return ret;
 
-	out->fw_sub_type = parse_uint32_hex_key(signed_pkg, &ctx, "fw_sub_type", 0, &ret);
+	out->fw_sub_type = parse_uint8_hex_key(signed_pkg, &ctx, "fw_sub_type", 0, &ret);
 	if (ret < 0)
 		return ret;
 
@@ -1121,11 +1121,11 @@ static int parse_signed_pkg_ace_v1_5(const toml_table_t *toml, struct parse_ctx 
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->type = parse_uint32_hex_key(module, &ctx, "type", 0x03, &ret);
+		mod->type = parse_uint8_hex_key(module, &ctx, "type", 0x03, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->hash_algo = parse_uint32_hex_key(module, &ctx, "hash_algo", 0x00, &ret);
+		mod->hash_algo = parse_uint8_hex_key(module, &ctx, "hash_algo", 0x00, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
@@ -1256,7 +1256,7 @@ static int parse_partition_info_ext(const toml_table_t *toml, struct parse_ctx *
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
-		mod->type = parse_uint32_hex_key(module, &ctx, "type", 0x03, &ret);
+		mod->type = parse_uint8_hex_key(module, &ctx, "type", 0x03, &ret);
 		if (ret < 0)
 			return err_key_parse("module", NULL);
 
@@ -1917,7 +1917,7 @@ static int parse_module(const toml_table_t *toml, struct parse_ctx *pctx,
 		if (ret < 0)
 			return err_key_parse("affinity_mask", NULL);
 
-		mod_man->instance_max_count = parse_uint32_hex_key(mod_entry, &ctx_entry,
+		mod_man->instance_max_count = parse_uint16_hex_key(mod_entry, &ctx_entry,
 								   "instance_count", 1, &ret);
 		if (ret < 0)
 			return err_key_parse("instance_count", NULL);
