@@ -175,6 +175,23 @@ if CADENCE_CODEC
 
 endif # Cadence
 
+	config COMP_DOLBY_DAX_AUDIO_PROCESSING
+		bool "Dolby DAX audio processing component"
+		default n
+		help
+		  Select to include Dolby DAX component. Dolby DAX component implements DAX API.
+		  API definition together with pre-compiled library is shared by Dolby.
+		  If library is not provided, COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK must be true,
+		  then the input will be copied to the output.
+
+	config COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK
+		bool "Dolby DAX audio processing component mock"
+		default y if COMP_STUBS
+		depends on COMP_DOLBY_DAX_AUDIO_PROCESSING
+		help
+		  Mock DAX audio processing. It allows for compilation check and basic audio
+		  flow checking.
+
 	config PASSTHROUGH_CODEC
 		bool "Passthrough codec"
 		help
