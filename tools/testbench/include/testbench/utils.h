@@ -65,7 +65,7 @@ struct tb_glb_state {
 #define TB_NAME_SIZE		256
 #define TB_MAX_CONFIG_COUNT	2
 #define TB_MAX_CONFIG_NAME_SIZE	64
-#define TB_MAX_CTLS		16
+#define TB_MAX_CTLS		32
 
 struct tb_mq_desc {
 	char queue_name[TB_NAME_SIZE];

@@ -118,6 +118,10 @@
 #include <audio/dcblock/dcblock.toml>
 #endif
 
+#if defined(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/module_adapter/module/dolby/dax.toml>
+#endif
+
 #if defined(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/google/google_rtc_audio_processing.toml>
 #endif

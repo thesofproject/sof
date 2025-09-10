@@ -1,0 +1,25 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
+	REM #  DAX module config
+	[[module.entry]]
+	name = "DAX"
+	uuid = "40F66C8B-5AA5-4345-8919-53EC431AAA98"
+	affinity_mask = "0x7"
+	instance_count = "1"
+	domain_types = "1"
+	load_type = LOAD_TYPE
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	REM # see struct fw_pin_description
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0x400, 0x8, 0x8, 0x4404]
+
+	REM # see struct sof_man_mod_config
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	mod_cfg = [0, 0, 0, 0, 4096, 135000000, 1024, 1024, 0, 675000, 0]
+
+	index = __COUNTER__

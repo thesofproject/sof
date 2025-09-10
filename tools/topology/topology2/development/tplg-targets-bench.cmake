@@ -10,6 +10,7 @@ set(sampleformats "16" "24" "32")
 set(components
 	"asrc"
 	"dcblock"
+	"dolby-dax"
 	"drc"
 	"drc_multiband"
 	"eqiir"
@@ -28,6 +29,7 @@ set(components
 set(component_parameters
 	"BENCH_ASRC_PARAMS=default"
 	"BENCH_DCBLOCK_PARAMS=default"
+	"BENCH_DOLBY-DAX_PARAMS=default"
 	"BENCH_DRC_PARAMS=enabled"
 	"BENCH_DRC_MULTIBAND_PARAMS=default"
 	"BENCH_EQIIR_PARAMS=loudness"
