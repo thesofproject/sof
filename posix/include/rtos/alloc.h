@@ -32,22 +32,28 @@
  *  @{
  */
 
+/*
+ * for compatibility with the initial `flags` meaning
+ * SOF_MEM_FLAG_ should start at BIT(2)
+ * the first two positions are reserved for SOF_BUF_ flags
+ */
+
  /** \brief Indicates we should return DMA-able memory. */
-#define SOF_MEM_FLAG_DMA		BIT(0)
+#define SOF_MEM_FLAG_DMA		BIT(2)
 /** \brief Indicates that original content should not be copied by realloc. */
-#define SOF_MEM_FLAG_NO_COPY		BIT(1)
+#define SOF_MEM_FLAG_NO_COPY		BIT(3)
 /** \brief Indicates that if we should return uncached address. */
-#define SOF_MEM_FLAG_COHERENT		BIT(2)
+#define SOF_MEM_FLAG_COHERENT		BIT(4)
 /** \brief Indicates that if we should return L3 address. */
-#define SOF_MEM_FLAG_L3			BIT(3)
+#define SOF_MEM_FLAG_L3			BIT(5)
 /** \brief Indicates that if we should return Low power memory address. */
-#define SOF_MEM_FLAG_LOW_POWER		BIT(4)
+#define SOF_MEM_FLAG_LOW_POWER		BIT(6)
 /** \brief Indicates that if we should return kernel memory address. */
-#define SOF_MEM_FLAG_KERNEL		BIT(5)
+#define SOF_MEM_FLAG_KERNEL		BIT(7)
 /** \brief Indicates that if we should return user memory address. */
-#define SOF_MEM_FLAG_USER		BIT(6)
+#define SOF_MEM_FLAG_USER		BIT(8)
 /** \brief Indicates that if we should return shared user memory address. */
-#define SOF_MEM_FLAG_USER_SHARED_BUFFER	BIT(7)
+#define SOF_MEM_FLAG_USER_SHARED_BUFFER	BIT(9)
 
 /** @} */
 
