@@ -716,6 +716,15 @@ static inline void audio_stream_reset(struct audio_stream *buffer)
  */
 void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint32_t size);
 
+#if CONFIG_USERSPACE
+#include <zephyr/kernel.h>
+
+static inline bool _audio_stream_is_user_thread(void)
+{
+	return (k_current_get()->base.user_options & K_USER) != 0;
+}
+#endif
+
 /**
  * Invalidates (in DSP d-cache) the buffer in range [r_ptr, r_ptr+bytes],
  * with rollover if necessary.
@@ -732,6 +741,14 @@ static inline void audio_stream_invalidate(struct audio_stream *buffer, uint32_t
 		head_size = (char *)buffer->end_addr - (char *)buffer->r_ptr;
 		tail_size = bytes - head_size;
 	}
+
+#if CONFIG_USERSPACE
+	/* user-space shared buffers are allocated as uncached */
+	if (_audio_stream_is_user_thread()) {
+		__ASSERT_NO_MSG(sys_cache_is_ptr_cached(buffer->addr) == false);
+		return;
+	}
+#endif
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->r_ptr, head_size);
 	if (tail_size)
@@ -755,6 +772,14 @@ static inline void audio_stream_writeback(struct audio_stream *buffer, uint32_t 
 		head_size = (char *)buffer->end_addr - (char *)buffer->w_ptr;
 		tail_size = bytes - head_size;
 	}
+
+#if CONFIG_USERSPACE
+	/* user-space shared buffers are allocated as uncached */
+	if (_audio_stream_is_user_thread()) {
+		__ASSERT_NO_MSG(sys_cache_is_ptr_cached(buffer->addr) == false);
+		return;
+	}
+#endif
 
 	dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->w_ptr, head_size);
 	if (tail_size)
