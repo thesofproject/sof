@@ -918,6 +918,7 @@ void sys_comp_module_copier_interface_init(void);
 void sys_comp_module_crossover_interface_init(void);
 void sys_comp_module_dcblock_interface_init(void);
 void sys_comp_module_demux_interface_init(void);
+void sys_comp_module_dolby_dax_audio_processing_interface_init(void);
 void sys_comp_module_drc_interface_init(void);
 void sys_comp_module_dts_interface_init(void);
 void sys_comp_module_eq_fir_interface_init(void);
