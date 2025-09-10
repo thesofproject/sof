@@ -185,8 +185,11 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	}
 
 	/* Allocate memory for module */
+#if CONFIG_MOD_ALLOC_USE_RBALLOC
+	ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
+#else
 	ptr = rmalloc_align(SOF_MEM_FLAG_USER, size, alignment);
-
+#endif
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %d bytes %d alignment for comp %x.",
 			 size, alignment, dev_comp_id(mod->dev));

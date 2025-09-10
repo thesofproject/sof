@@ -159,6 +159,14 @@ config VIRTUAL_HEAP
 	  Enabling this option will use the virtual memory heap allocator to allocate buffers.
 	  It is based on a set of buffers whose size is predetermined.
 
+config MOD_ALLOC_USE_RBALLOC
+	bool "Module API mod_alloc should use rballoc, not rmalloc"
+	help
+	  Enabling this option will cause mod_alloc_align() to use
+	  rballoc_aling() instead of rmalloc_align(). The significant
+	  difference between these functions is that rballoc uses
+	  virtual heap if its enabled, rmalloc does not.
+
 config STACK_SIZE_EDF
 	int "EDF scheduler stack size"
 	default 8192
