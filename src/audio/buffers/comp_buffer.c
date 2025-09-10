@@ -217,9 +217,6 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size,
 	audio_stream_set_addr(&buffer->stream, stream_addr);
 	buffer_init_stream(buffer, size);
 
-	audio_stream_set_underrun(&buffer->stream, !!(flags & SOF_BUF_UNDERRUN_PERMITTED));
-	audio_stream_set_overrun(&buffer->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
-
 	comp_buffer_reset_source_list(buffer);
 	comp_buffer_reset_sink_list(buffer);
 

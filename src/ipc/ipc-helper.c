@@ -85,6 +85,11 @@ __cold struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is
 		buffer->stream.runtime_stream_params.pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
 
+		audio_stream_set_underrun(&buffer->stream,
+					  !!(desc->flags & SOF_BUF_UNDERRUN_PERMITTED));
+		audio_stream_set_overrun(&buffer->stream,
+					 !!(desc->flags & SOF_BUF_OVERRUN_PERMITTED));
+
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
 	}
