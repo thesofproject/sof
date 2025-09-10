@@ -25,6 +25,21 @@ if(zephyr) ###  Zephyr ###
 		zephyr_library_import(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
 	endif()
 
+	if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
+		zephyr_library_sources(
+			module/dolby/dax.c
+		)
+		if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
+			zephyr_library_sources(
+				module/dolby/dax_mock.c
+			)
+		else()
+			target_link_libraries(SOF INTERFACE m)
+			target_link_libraries(SOF INTERFACE c)
+			zephyr_library_import(dax_effect ${sof_top_dir}/third_party/lib/libdax.a)
+		endif()
+	endif()
+
 	zephyr_include_directories_ifdef(CONFIG_LIBRARY_MANAGER
 		${SOF_SRC_PATH}/include/sof/audio/module_adapter/iadk/
 		${SOF_SRC_PATH}/include/sof/audio/module_adapter/library/
@@ -110,6 +125,15 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 			sof_add_static_library(xa_src_pp ${CONFIG_CADENCE_CODEC_SRC_PP_LIB})
 		endif()
 
+	endif()
+
+	if(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
+		add_local_sources(sof module/dolby/dax.c)
+		if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
+			add_local_sources(sof module/dolby/dax_mock.c)
+		else()
+			sof_add_static_library(dax_effect ${sof_top_dir}/third_party/lib/libdax.a)
+		endif()
 	endif()
 
 	if(CONFIG_PASSTHROUGH_CODEC)
