@@ -27,6 +27,7 @@
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <sof/audio/format.h>
+#include <zephyr/syscall.h>
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -257,19 +258,31 @@ bool buffer_params_match(struct comp_buffer *buffer,
 static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
 #if CONFIG_INCOHERENT
-	if (audio_buffer_is_shared(&buffer->audio_buffer))
+	if (audio_buffer_is_shared(&buffer->audio_buffer)) {
+#if CONFIG_USERSPACE
+		/* user-space shared buffers are allocated as uncached */
+		if (k_is_user_context())
+			return;
+#endif
 		audio_stream_invalidate(&buffer->stream, bytes);
+	}
 #endif
 }
 
 static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
 #if CONFIG_INCOHERENT
-	if (audio_buffer_is_shared(&buffer->audio_buffer))
+	if (audio_buffer_is_shared(&buffer->audio_buffer)) {
+#if CONFIG_USERSPACE
+		/* user-space shared buffers are allocated as uncached */
+		if (k_is_user_context())
+			return;
+#endif
+
 		audio_stream_writeback(&buffer->stream, bytes);
+	}
 #endif
 }
-
 
 /*
  * Attach a new buffer at the beginning of the list. Note, that "head" must
