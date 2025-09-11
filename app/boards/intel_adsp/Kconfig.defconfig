@@ -2,6 +2,13 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+# ---
+# NOTICE! defconfig files cannot override settings that already have
+#         a default set. Thus some settings (especially choice values with
+#         a default), must be set in the board config files even if the value
+#         is same for all Intel DSPs.
+# ---
+
 # SOF / IPC configuration
 # -----------------------
 
