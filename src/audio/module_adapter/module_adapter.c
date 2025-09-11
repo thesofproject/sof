@@ -451,7 +451,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
 			struct comp_buffer *buffer = buffer_alloc(buff_size, memory_flags,
-								  PLATFORM_DCACHE_ALIGN, false);
+								  PLATFORM_DCACHE_ALIGN,
+								  BUFFER_USAGE_NOT_SHARED);
 			uint32_t flags;
 
 			if (!buffer) {

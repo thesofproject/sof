@@ -592,7 +592,7 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
 	/* allocate not shared buffer */
 	cd->dma_buffer = buffer_alloc(fifo_size, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
-				      addr_align, false);
+				      addr_align, BUFFER_USAGE_NOT_SHARED);
 
 	if (!cd->dma_buffer) {
 		comp_err(dev, "failed to alloc dma buffer");

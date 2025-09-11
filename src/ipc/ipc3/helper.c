@@ -485,7 +485,7 @@ int ipc_buffer_new(struct ipc *ipc, const struct sof_ipc_buffer *desc)
 	}
 
 	/* register buffer with pipeline */
-	buffer = buffer_new(desc, false);
+	buffer = buffer_new(desc, BUFFER_USAGE_NOT_SHARED);
 	if (!buffer) {
 		tr_err(&ipc_tr, "buffer_new() failed");
 		return -ENOMEM;
