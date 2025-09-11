@@ -117,6 +117,10 @@ extern struct tr_ctx buffer_tr;
 #define BUFF_PARAMS_RATE	BIT(2)
 #define BUFF_PARAMS_CHANNELS	BIT(3)
 
+/* buffer usage */
+#define BUFFER_USAGE_SHARED	true	/* buffer used by multiple DSP core and/or HW blocks */
+#define BUFFER_USAGE_NOT_SHARED false	/* buffer only used by one HW block */
+
 /*
  * audio component buffer - connects 2 audio components together in pipeline.
  *

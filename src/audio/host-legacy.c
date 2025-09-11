@@ -760,7 +760,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		}
 	} else {
 		hd->dma_buffer = buffer_alloc(buffer_size, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
-					      addr_align, false);
+					      addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!hd->dma_buffer) {
 			comp_err(dev, "failed to alloc dma buffer");
 			err = -ENOMEM;
