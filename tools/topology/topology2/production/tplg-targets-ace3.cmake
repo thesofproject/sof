@@ -99,11 +99,11 @@ NHLT_BIN=nhlt-sof-ptl-hdmi-ssp02.bin,HEADSET_CODEC=false,HDMI_IN_CAPTURE=true,\
 HDMI_IN_1_ID=0,HDMI_IN_2_ID=1"
 
 # Split topologies
-"cavs-sdw\;sof-ptl-dmic-2ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
+"cavs-sdw\;sof-ptl-dmic-2ch-id5\;PLATFORM=ptl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-ptl-dmic-2ch-id5.bin"
 
-"cavs-sdw\;sof-ptl-dmic-4ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
+"cavs-sdw\;sof-ptl-dmic-4ch-id5\;PLATFORM=ptl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-ptl-dmic-4ch-id5.bin"
 )
