@@ -68,3 +68,24 @@ config PCM_CONVERTER_FORMAT_U8
 
 config PIPELINE_2_0
 	default y
+
+# Zephyr / logging
+# ----------------------------------------
+
+config LOG_BACKEND_ADSP_MTRACE
+	default y
+
+config LOG_FUNC_NAME_PREFIX_ERR
+	default y
+
+config LOG_FUNC_NAME_PREFIX_WRN
+	default y
+
+config LOG_FUNC_NAME_PREFIX_INF
+	default y
+
+config LOG_FUNC_NAME_PREFIX_DBG
+	default y
+
+config LOG_TIMESTAMP_64BIT
+	default y
