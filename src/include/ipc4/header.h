@@ -173,8 +173,9 @@ struct ipc4_message_reply {
 	} extension;
 } __attribute((packed, aligned(4)));
 
-#define SOF_IPC4_SWITCH_CONTROL_PARAM_ID 200
-#define SOF_IPC4_ENUM_CONTROL_PARAM_ID  201
+#define SOF_IPC4_SWITCH_CONTROL_PARAM_ID	200
+#define SOF_IPC4_ENUM_CONTROL_PARAM_ID		201
+#define SOF_IPC4_BYTES_CONTROL_PARAM_ID		202
 #define SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL ((uint32_t)(0xA15A << 16))
 
 /**
@@ -190,15 +191,19 @@ struct sof_ipc4_ctrl_value_chan {
 /**
  * struct sof_ipc4_control_msg_payload - IPC payload for kcontrol parameters
  * @id: unique id of the control
- * @num_elems: Number of elememnts in the chanv array
+ * @num_elems: Number of elements in the chanv array or number of bytes in data
  * @reserved: reserved for future use, must be set to 0
  * @chanv: channel ID and value array
+ * @data: binary payload
  */
 struct sof_ipc4_control_msg_payload {
 	uint16_t id;
 	uint16_t num_elems;
 	uint32_t reserved[4];
-	struct sof_ipc4_ctrl_value_chan chanv[];
+	union {
+		struct sof_ipc4_ctrl_value_chan chanv[0];
+		uint8_t data[0];
+	};
 } __attribute((packed, aligned(4)));
 
 /**
