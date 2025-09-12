@@ -986,6 +986,24 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 	return ret;
 }
 
+__cold static void
+ipc4_prepare_for_kcontrol_get(struct comp_dev *dev, uint8_t param_id,
+			      uint32_t data_size, const char *data_in,
+			      char *data_out)
+{
+	switch (param_id) {
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
+	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
+	case SOF_IPC4_BYTES_CONTROL_PARAM_ID:
+		/* Copy the control payload header from inbox to outbox */
+		memcpy_s(data_out, data_size, data_in,
+			 sizeof(struct sof_ipc4_control_msg_payload));
+		break;
+	default:
+		break;
+	}
+}
+
 __cold static int  ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 						   const struct comp_driver *drv,
 						   bool init_block,
@@ -1144,6 +1162,10 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 #if CONFIG_LIBRARY
 		data += sizeof(reply);
 #endif
+		ipc4_prepare_for_kcontrol_get(dev, config.extension.r.large_param_id,
+					      data_offset,
+					      (const char *)MAILBOX_HOSTBOX_BASE, data);
+
 		ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
 						config.extension.r.init_block,
 						config.extension.r.final_block,
