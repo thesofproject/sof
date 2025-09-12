@@ -87,6 +87,15 @@ config ZEPHYR_NATIVE_DRIVERS
 config ZEPHYR_LOG
 	default y
 
+# Zephyr / device drivers
+# ----------------------------------------
+
+config CLOCK_CONTROL
+	default y
+
+# note: CONFIG_CLOCK_CONTROL_ADSP is enabled by default
+# based on DT definition.
+
 # Zephyr / logging
 # ----------------------------------------
 
