@@ -111,6 +111,9 @@ config INTEL_ADSP_IPC
 config INTEL_ADSP_TIMER
 	default y
 
+config MM_DRV
+	default y
+
 
 # # Zephyr / power settings
 # ----------------------------------------
