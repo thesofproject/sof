@@ -46,12 +46,29 @@ static inline uint8_t __sparse_cache *ring_buffer_buffer_end(struct ring_buffer 
 	return ring_buffer->_data_buffer + ring_buffer->data_buffer_size;
 }
 
+#if CONFIG_USERSPACE
+#include <zephyr/kernel.h>
+
+static inline bool _ring_is_user_thread(void)
+{
+	return (k_current_get()->base.user_options & K_USER) != 0;
+}
+#endif
+
 static inline void ring_buffer_invalidate_shared(struct ring_buffer *ring_buffer,
 						 void __sparse_cache *ptr, size_t size)
 {
 	/* no cache required in case of not shared queue */
 	if (!ring_buffer_is_shared(ring_buffer))
 		return;
+
+#if CONFIG_USERSPACE
+	/* user-space shared buffers are allocated as uncached */
+	if (_ring_is_user_thread()) {
+		__ASSERT_NO_MSG(sys_cache_is_ptr_cached(ptr) == false);
+		return;
+	}
+#endif
 
 	/* wrap-around? */
 	if ((uintptr_t)ptr + size > (uintptr_t)ring_buffer_buffer_end(ring_buffer)) {
@@ -71,6 +88,14 @@ static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
 	/* no cache required in case of not shared queue */
 	if (!ring_buffer_is_shared(ring_buffer))
 		return;
+
+#if CONFIG_USERSPACE
+	/* user-space shared buffers are allocated as uncached */
+	if (_ring_is_user_thread()) {
+		__ASSERT_NO_MSG(sys_cache_is_ptr_cached(ptr) == false);
+		return;
+	}
+#endif
 
 	/* wrap-around? */
 	if ((uintptr_t)ptr + size > (uintptr_t)ring_buffer_buffer_end(ring_buffer)) {
@@ -354,6 +379,20 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	 * correctly, it is necessary to allocate a buffer three times larger than max_ibs_obs.
 	 */
 	ring_buffer->data_buffer_size = 3 * max_ibs_obs;
+
+#if CONFIG_USERSPACE
+	/*
+	 * cache control is not possible in user-space, so cross-core
+	 * buffers must be allocated as coherent
+	 */
+	if (is_shared && _ring_is_user_thread())
+		memory_flags |= SOF_MEM_FLAG_COHERENT;
+
+	/*
+	 * TODO: _data_buffer is not cached anymore so will confuse
+	 *       sparse
+	 */
+#endif
 
 	/* allocate data buffer - always in cached memory alias */
 	ring_buffer->data_buffer_size =

@@ -117,6 +117,10 @@ extern struct tr_ctx buffer_tr;
 #define BUFF_PARAMS_RATE	BIT(2)
 #define BUFF_PARAMS_CHANNELS	BIT(3)
 
+/* buffer usage */
+#define BUFFER_USAGE_SHARED	true	/* buffer used by multiple DSP core and/or HW blocks */
+#define BUFFER_USAGE_NOT_SHARED false	/* buffer only used by one HW block */
+
 /*
  * audio component buffer - connects 2 audio components together in pipeline.
  *
@@ -145,6 +149,15 @@ struct comp_buffer {
 	/* list of buffers, to be used i.e. in raw data processing mode*/
 	struct list_item buffers_list;
 };
+
+#if CONFIG_USERSPACE
+#include <zephyr/kernel.h>
+
+static inline bool _buffer_is_user_thread(void)
+{
+	return (k_current_get()->base.user_options & K_USER) != 0;
+}
+#endif
 
 /*
  * get a component providing data to the buffer
@@ -257,19 +270,31 @@ bool buffer_params_match(struct comp_buffer *buffer,
 static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t bytes)
 {
 #if CONFIG_INCOHERENT
-	if (audio_buffer_is_shared(&buffer->audio_buffer))
+	if (audio_buffer_is_shared(&buffer->audio_buffer)) {
+#if CONFIG_USERSPACE
+		/* user-space shared buffers are allocated as uncached */
+		if (_buffer_is_user_thread())
+			return;
+#endif
 		audio_stream_invalidate(&buffer->stream, bytes);
+	}
 #endif
 }
 
 static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
 #if CONFIG_INCOHERENT
-	if (audio_buffer_is_shared(&buffer->audio_buffer))
+	if (audio_buffer_is_shared(&buffer->audio_buffer)) {
+#if CONFIG_USERSPACE
+		/* user-space shared buffers are allocated as uncached */
+		if (_buffer_is_user_thread())
+			return;
+#endif
+
 		audio_stream_writeback(&buffer->stream, bytes);
+	}
 #endif
 }
-
 
 /*
  * Attach a new buffer at the beginning of the list. Note, that "head" must
