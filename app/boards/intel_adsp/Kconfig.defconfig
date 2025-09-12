@@ -81,6 +81,12 @@ config ZEPHYR_DP_SCHEDULER
 config ZEPHYR_NATIVE_DRIVERS
 	default y
 
+# SOF / logging
+# ----------------------------------------
+
+config ZEPHYR_LOG
+	default y
+
 # Zephyr / logging
 # ----------------------------------------
 
