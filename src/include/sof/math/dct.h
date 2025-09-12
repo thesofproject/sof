@@ -29,6 +29,8 @@ struct dct_plan_16 {
 	bool ortho;
 };
 
-int dct_initialize_16(struct dct_plan_16 *dct);
+int mod_dct_initialize_16(struct processing_module *mod, struct dct_plan_16 *dct);
+
+int mod_dct_free_16(struct processing_module *mod, struct dct_plan_16 *dct);
 
 #endif /* __SOF_MATH_DCT_H__ */

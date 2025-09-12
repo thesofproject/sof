@@ -55,6 +55,10 @@ static void test_audio_pipeline_pipeline_new_creation(void **state)
 
 	/*Pipeline should have been created so pointer can't be null*/
 	assert_non_null(result);
+
+	rfree(result->msg->tx_data);
+	rfree(result->msg);
+	rfree(result);
 }
 
 int main(void)

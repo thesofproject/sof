@@ -179,12 +179,20 @@ static int setup_test_case(void **state)
 	struct processing_module *mod;
 	struct sof_ipc_comp_process *ipc;
 	size_t sample_size = td->format == SOF_IPC_FRAME_S16_LE ? sizeof(int16_t) : sizeof(int32_t);
+	struct pipeline *dummy_pipe;
 
 	ipc = create_mux_comp_ipc(td);
 	dev = comp_new((struct sof_ipc_comp *)ipc);
 	free(ipc);
 	if (!dev)
 		return -EINVAL;
+
+	/* Add dummy pipeline to bypass comp_check_eos() */
+	dummy_pipe = test_malloc(sizeof(*dummy_pipe));
+	if (!dummy_pipe)
+		return -ENOMEM;
+	dummy_pipe->expect_eos = false;
+	dev->pipeline = dummy_pipe;
 
 	mod = comp_mod(dev);
 	td->dev = dev;
@@ -203,10 +211,15 @@ static int teardown_test_case(void **state)
 	struct test_data *td = *((struct test_data **)state);
 	int i;
 
+	rfree(td->mod->input_buffers);
+	rfree(td->mod->output_buffers);
+
 	for (i = 0; i < MUX_MAX_STREAMS; ++i)
 		free_test_source(td->sources[i]);
 
 	free_test_sink(td->sink);
+	test_free(td->dev->pipeline);
+	td->dev->pipeline = NULL;
 	comp_free(td->dev);
 	return 0;
 }
@@ -347,8 +360,10 @@ int main(void)
 	cmocka_set_message_output(CM_OUTPUT_TAP);
 	ret = cmocka_run_group_tests(tests, setup_group, NULL);
 
-	for (ti = 0; ti < ARRAY_SIZE(valid_formats) * ARRAY_SIZE(masks); ti++)
+	for (ti = 0; ti < ARRAY_SIZE(valid_formats) * ARRAY_SIZE(masks); ti++) {
 		free(tests[ti].initial_state);
+		free((void *)tests[ti].name);
+	}
 
 	return ret;
 }
