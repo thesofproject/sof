@@ -157,12 +157,20 @@ static int setup_test_case(void **state)
 	struct processing_module *mod;
 	struct sof_ipc_comp_process *ipc;
 	size_t sample_size = td->format == SOF_IPC_FRAME_S16_LE ? sizeof(int16_t) : sizeof(int32_t);
+	struct pipeline *dummy_pipe;
 
 	ipc = create_demux_comp_ipc(td);
 	dev = comp_new((struct sof_ipc_comp *)ipc);
 	free(ipc);
 	if (!dev)
 		return -EINVAL;
+
+	/* Add dummy pipeline to bypass comp_check_eos() */
+	dummy_pipe = test_malloc(sizeof(*dummy_pipe));
+	if (!dummy_pipe)
+		return -ENOMEM;
+	dummy_pipe->expect_eos = false;
+	dev->pipeline = dummy_pipe;
 
 	mod = comp_mod(dev);
 	td->dev = dev;
@@ -185,6 +193,8 @@ static int teardown_test_case(void **state)
 	for (i = 0; i < MUX_MAX_STREAMS; ++i)
 		free_test_sink(td->sinks[i]);
 
+	test_free(td->dev->pipeline);
+	td->dev->pipeline = NULL;
 	comp_free(td->dev);
 
 	return 0;
