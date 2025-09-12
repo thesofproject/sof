@@ -112,6 +112,26 @@ config INTEL_ADSP_TIMER
 	default y
 
 
+# # Zephyr / power settings
+# ----------------------------------------
+
+config PM
+	default y
+
+config PM_DEVICE
+	default y
+
+config PM_DEVICE_RUNTIME
+	default y
+
+config PM_DEVICE_SYSTEM_MANAGED
+	default y
+
+config POWER_DOMAIN
+	default y
+
+# note: POWER_DOMAIN_INTEL_ADSP will be set based on DT
+
 # Zephyr / logging
 # ----------------------------------------
 
