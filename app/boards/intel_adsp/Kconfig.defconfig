@@ -69,6 +69,18 @@ config PCM_CONVERTER_FORMAT_U8
 config PIPELINE_2_0
 	default y
 
+# SOF / infrastructure
+# ----------------------------------------
+
+config L3_HEAP
+	default y if ACE
+
+config ZEPHYR_DP_SCHEDULER
+	default y
+
+config ZEPHYR_NATIVE_DRIVERS
+	default y
+
 # Zephyr / logging
 # ----------------------------------------
 
