@@ -2,7 +2,6 @@ if SOF
 
 config SOF_STAGING
 	bool "Enable SOF staging features and modules"
-	default n
 	help
 	  SOF staging features are not ready for production but are
 	  upstream to enable developers to continue development in order
@@ -13,7 +12,6 @@ rsource "../Kconfig.sof"
 
 config SOF_USERSPACE
 	bool "Enable SOF support for userspace modules"
-	default n
 	help
 	  SOF userspace modules support will enable modules to run in DP
 	  processing mode as userspace code and data. This feature is WIP
@@ -22,7 +20,6 @@ config SOF_USERSPACE
 config SOF_ZEPHYR_HEAP_CACHED
 	bool "Cached Zephyr heap for SOF memory non-shared zones"
 	default y if CAVS || ACE
-	default n
 	help
 	  Enable cached heap by mapping cached SOF memory zones to different
 	  Zephyr sys_heap objects and enable caching for non-shared zones.
@@ -79,7 +76,6 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
-	default n
 	help
 	  Enable Zephyr native api drivers for host and dai audio components
 	  host-zephyr
@@ -111,7 +107,6 @@ config PIPELINE_2_0
 config ZEPHYR_DP_SCHEDULER
 	bool "use Zephyr thread based DP scheduler"
 	default y if ACE
-	default n
 	depends on IPC_MAJOR_4
 	depends on ZEPHYR_SOF_MODULE
 	depends on ACE
@@ -153,7 +148,6 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 config VIRTUAL_HEAP
 	bool "Use virtual memory heap to allocate a buffers"
 	default y if ACE
-	default n
 	depends on ACE
 	help
 	  Enabling this option will use the virtual memory heap allocator to allocate buffers.

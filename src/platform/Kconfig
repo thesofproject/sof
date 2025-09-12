@@ -359,20 +359,17 @@ config MULTICORE
 
 config INTEL
 	bool
-	default n
 	help
 	  This has to be selected for every Intel platform.
 	  It enables Intel platforms-specific features.
 
 config HOST
 	bool
-	default n
 	help
 	  This has to be selected for building linux test targets.
 
 config IMX
 	bool
-	default n
 	select COMPILER_WORKAROUND_CACHE_ATTR if XTENSA
 	help
 	  This has to be selected for every i.MX NXP platform.
@@ -380,21 +377,18 @@ config IMX
 
 config  MEDIATEK
 	bool
-	default n
 	help
 	  This has to be selected for every MediaTek platform.
 	  It enables MediaTek platforms-specific features.
 
 config AMD
 	bool
-	default n
 	help
 	  This has to be selected for every AMD platform.
 	  It enables AMD platforms-specific features.
 
 config CAVS
 	bool
-	default n
 	select INTEL
 	select SOF_ZEPHYR_NO_SOF_CLOCK
 
@@ -406,7 +400,6 @@ config CAVS_VERSION_2_5
 
 config ACE
 	bool
-	default n
 	select INTEL
 
 config ACE_VERSION_1_5
@@ -461,7 +454,6 @@ config LP_SRAM
 
 config L1_DRAM
 	bool "L1 DRAM memory support"
-	default n
 	help
 	  Indicates that platform does support L1 DATA RAM.
 
@@ -484,7 +476,6 @@ config L1_DRAM_MEMORY_BANK_SIZE
 
 config CAVS_USE_LPRO_IN_WAITI
 	bool "Use low power ring oscillator in WFI"
-	default n
 	depends on CAVS
 	help
 	  Select if we want to use LPRO clock in waiti.
@@ -493,7 +484,6 @@ config CAVS_USE_LPRO_IN_WAITI
 
 config KCPS_DYNAMIC_CLOCK_CONTROL
 	bool "Use KCPS budget to determine DSP clock"
-	default n
 	depends on IPC_MAJOR_4
 	help
 	  Select if we want to use compute budget
@@ -501,7 +491,6 @@ config KCPS_DYNAMIC_CLOCK_CONTROL
 
 config L3_HEAP
 	bool "Use L3 memory heap"
-	default n
 	depends on ACE
 	help
 	  Select this if L3 memory is supported on the platform and
@@ -565,7 +554,6 @@ config HAVE_AGENT
 
 config AMS
 	bool "Enable Async Messaging Service"
-	default n
 	depends on IPC_MAJOR_4
 	help
 	  Enables Async Messaging Service.
@@ -573,7 +561,6 @@ config AMS
 
 config AGENT_PANIC_ON_DELAY
 	bool "Enable system agent time verification panic"
-	default n
 	depends on HAVE_AGENT
 	help
 	  Enables system agent time verification panic.
@@ -582,7 +569,6 @@ config AGENT_PANIC_ON_DELAY
 
 config XTENSA_EXCLUSIVE
 	bool
-	default n
 	help
 	  This has to be selected for xtensa exclusive instructions.
 	  There is a definition for EXCLUSIVE option in xtensa-config.h
@@ -591,7 +577,6 @@ config FORCE_DMA_COPY_WHOLE_BLOCK
 	bool
 	default y if MT8195
 	default y if MT8365
-	default n
 	depends on HOST_PTABLE
 	help
 	  The host component forces DMA to copy the block size to avoid
@@ -618,7 +603,6 @@ if XTENSA
 config INCOHERENT
 	bool "Enable cached data access via the Coherent API"
 	default y if CAVS || ACE
-	default n
 	help
 	  The architecture is cache incoherent. i.e FW has to manually manage
 	  cache coherency amongst objects that are used on multiple cores.
@@ -629,7 +613,6 @@ endif
 
 config LL_WATCHDOG
 	bool "Enable watchdog support in ll scheduler"
-	default n
 	depends on ACE
 	help
 	  Select if you want to protect ll scheduler with a watchdog timer.
