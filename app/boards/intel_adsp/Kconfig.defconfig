@@ -24,6 +24,9 @@ config COMP_CHAIN_DMA
 config COMP_KPB
 	default y
 
+config COMP_UP_DOWN_MIXER
+	default y
+
 config FAST_GET
 	default y
 
