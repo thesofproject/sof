@@ -70,6 +70,8 @@ enum module_processing_type {
 	MODULE_PROCESS_TYPE_RAW,
 };
 
+struct userspace_context;
+
 /*
  * A pointer to this structure is passed to module API functions (from struct module_interface).
  * This structure should contain only fields that should be available to a module.
@@ -180,6 +182,9 @@ struct processing_module {
 	uint32_t max_sinks;
 
 	enum module_processing_type proc_type;
+#if CONFIG_USERSPACE
+	struct userspace_context *user_ctx;
+#endif /* CONFIG_USERSPACE */
 #endif /* SOF_MODULE_PRIVATE */
 };
 

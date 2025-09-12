@@ -17,6 +17,9 @@
 
 #include <rtos/alloc.h>
 
+#define APP_TASK_BSS
+#define APP_TASK_DATA
+
 struct sys_heap;
 
 #ifdef CONFIG_USERSPACE
