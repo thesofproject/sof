@@ -96,6 +96,22 @@ config CLOCK_CONTROL
 # note: CONFIG_CLOCK_CONTROL_ADSP is enabled by default
 # based on DT definition.
 
+config DAI
+	default y
+
+config DAI_INTEL_DMIC
+	default y
+
+config DAI_INTEL_SSP
+	default y
+
+config INTEL_ADSP_IPC
+	default y
+
+config INTEL_ADSP_TIMER
+	default y
+
+
 # Zephyr / logging
 # ----------------------------------------
 
