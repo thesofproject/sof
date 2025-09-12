@@ -21,6 +21,9 @@ config IPC4_BASE_FW_INTEL
 config COMP_CHAIN_DMA
 	default y
 
+config COMP_KPB
+	default y
+
 config FAST_GET
 	default y
 
