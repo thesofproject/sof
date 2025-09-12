@@ -27,6 +27,9 @@ config COMP_KPB
 config COMP_UP_DOWN_MIXER
 	default y
 
+config COMP_VOLUME_WINDOWS_FADE
+	default y
+
 config FAST_GET
 	default y
 
