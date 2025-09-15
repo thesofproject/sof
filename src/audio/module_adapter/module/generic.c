@@ -723,9 +723,11 @@ int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 	switch (bind_data->bind_type) {
 	case COMP_BIND_TYPE_SINK:
 		ret = sink_bind(bind_data->sink, mod);
+		mod->num_of_sinks++;
 		break;
 	case COMP_BIND_TYPE_SOURCE:
 		ret = source_bind(bind_data->source, mod);
+		mod->num_of_sources++;
 		break;
 	default:
 		ret = -EINVAL;
@@ -747,9 +749,11 @@ int module_unbind(struct processing_module *mod, struct bind_info *unbind_data)
 	switch (unbind_data->bind_type) {
 	case COMP_BIND_TYPE_SINK:
 		ret = sink_unbind(unbind_data->sink);
+		mod->num_of_sinks--;
 		break;
 	case COMP_BIND_TYPE_SOURCE:
 		ret = source_unbind(unbind_data->source);
+		mod->num_of_sources--;
 		break;
 	default:
 		ret = -EINVAL;
