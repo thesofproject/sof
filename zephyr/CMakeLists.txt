@@ -58,6 +58,14 @@ function(sof_llext_build module)
 		file(WRITE ${PROJECT_BINARY_DIR}/${module}_llext/lib_name.txt ${SOF_LLEXT_LIB})
 	endif()
 
+	if("${ARCH}" STREQUAL "xtensa")
+		# This makes sure literals are placed in memory before they are used by
+		# the L32R instruction. Usually this is guaranteed by the linker script.
+		# However, since a linker script is not used for LLEXT modules builds,
+		# correct literal placement is ensured with a compilation option here.
+		set(SOF_LLEXT_CFLAGS ${SOF_LLEXT_CFLAGS} -mtext-section-literals)
+	endif()
+
 	target_include_directories(${module}_llext_lib PRIVATE
 		"${SOF_BASE}/xtos/include"
 		"${SOF_BASE}/src/include"
