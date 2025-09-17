@@ -30,6 +30,12 @@ DECLARE_TR_CTX(dolby_dax_audio_processing_tr, SOF_UUID(dolby_dax_audio_processin
 #define VOLUME_MASK 0x10
 #define CTC_MASK 0x20
 
+#define SWITCH_ENABLE_CONTROL_ID 0
+#define SWITCH_CP_CONTROL_ID 1
+#define SWITCH_CTC_CONTROL_ID 2
+#define ENUM_PROFILE_CONTROL_ID 0
+#define ENUM_DEVICE_CONTROL_ID 1
+
 static const char *get_params_str(const void *val, uint32_t val_sz)
 {
 	static char params_str[MAX_PARAMS_STR_BUFFER_SIZE + 16];
@@ -355,7 +361,6 @@ static int dax_set_param_wrapper(struct processing_module *mod,
 		comp_info(dev, "dax_set_param: ret %d, id %#x, size %u, value %s",
 			  ret, id, size >> 2, get_params_str(value, size));
 		break;
-
 	}
 
 	return ret;
@@ -539,7 +544,8 @@ static int check_media_format(struct processing_module *mod)
 	}
 
 	if (audio_stream_get_channels(sink_stream) != 2 ||
-	    sof_to_dax_channels(audio_stream_get_channels(src_stream)) == DAX_CHANNLES_UNSUPPORTED) {
+	    sof_to_dax_channels(audio_stream_get_channels(src_stream)) ==
+				DAX_CHANNLES_UNSUPPORTED) {
 		comp_err(dev, "unsupported number of channels, source %d, sink %d",
 			 audio_stream_get_channels(src_stream),
 			 audio_stream_get_channels(sink_stream));
@@ -597,6 +603,13 @@ static int sof_dax_prepare(struct processing_module *mod, struct sof_source **so
 	if (ret != 0)
 		goto err;
 
+	if (num_of_sources != 1 || num_of_sinks != 1) {
+		comp_err(dev, "unsupported number of buffers, in %d, out %d",
+			 num_of_sources, num_of_sinks);
+		ret = -EINVAL;
+		goto err;
+	}
+
 	dax_ctx->sof_period_bytes = dev->frames *
 		dax_ctx->output_media_format.num_channels *
 		dax_ctx->output_media_format.bytes_per_sample;
@@ -635,14 +648,7 @@ err:
 static int sof_dax_process(struct processing_module *mod, struct sof_source **sources,
 			   int num_of_sources, struct sof_sink **sinks, int num_of_sinks)
 {
-	struct comp_dev *dev = mod->dev;
 	struct sof_dax *dax_ctx = module_get_private_data(mod);
-
-	if (num_of_sources != 1 || num_of_sinks != 1) {
-		comp_err(dev, "unsupported number of buffers, in %d, out %d",
-			 num_of_sources, num_of_sinks);
-		return -EINVAL;
-	}
 
 	struct sof_source *source = sources[0];
 	struct sof_sink *sink = sinks[0];
@@ -696,9 +702,8 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 	int ret = 0;
 	struct comp_dev *dev = mod->dev;
 	struct sof_dax *dax_ctx = module_get_private_data(mod);
-	int32_t switch_val = 0;
-	int32_t enum_val = 0;
-	int32_t volume = 0;
+	int32_t dax_param_id = 0;
+	int32_t val = 0;
 
 	if (fragment_size == 0)
 		return 0;
@@ -709,22 +714,27 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 	switch (config_id) {
 	case 0: /* IPC4_VOLUME */
 		/* ipc4_peak_volume_config::target_volume */
-		volume = ((const int32_t *)fragment)[1];
-		volume = sat_int32(Q_SHIFT_RND((int64_t)volume, 31, 23));
-		dax_set_param_wrapper(mod, DAX_PARAM_ID_ABSOLUTE_VOLUME, &volume, 4);
+		val = ((const int32_t *)fragment)[1];
+		val = sat_int32(Q_SHIFT_RND((int64_t)val, 31, 23));
+		dax_param_id = DAX_PARAM_ID_ABSOLUTE_VOLUME;
 		break;
 	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
 		ctl = (const struct sof_ipc4_control_msg_payload *)fragment;
 		if (ctl->num_elems != 1)
 			return -EINVAL;
-		switch_val = ctl->chanv[0].value;
-		if (ctl->id == 0) { /* Enable switch control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_ENABLE, &switch_val, 4);
-		} else if (ctl->id == 1) { /* Content processing enable switch control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_CP_ENABLE, &switch_val, 4);
-		} else if (ctl->id == 2) { /* Crosstalk Cancellation enable switch control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_CTC_ENABLE, &switch_val, 4);
-		} else {
+
+		val = ctl->chanv[0].value;
+		switch (ctl->id) {
+		case SWITCH_ENABLE_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_ENABLE;
+			break;
+		case SWITCH_CP_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_CP_ENABLE;
+			break;
+		case SWITCH_CTC_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_CTC_ENABLE;
+			break;
+		default:
 			comp_err(dev, "unknown switch control %d", ctl->id);
 			return -EINVAL;
 		}
@@ -733,28 +743,21 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 		ctl = (const struct sof_ipc4_control_msg_payload *)fragment;
 		if (ctl->num_elems != 1)
 			return -EINVAL;
-		enum_val = ctl->chanv[0].value;
-		if (ctl->id == 0) { /* Profile enum control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_PROFILE, &enum_val, 4);
-		} else if (ctl->id == 1) { /* Device enum control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_OUT_DEVICE, &enum_val, 4);
-		} else {
+
+		val = ctl->chanv[0].value;
+		switch (ctl->id) {
+		case ENUM_PROFILE_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_PROFILE;
+			break;
+		case ENUM_DEVICE_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_OUT_DEVICE;
+			break;
+		default:
 			comp_err(dev, "unknown enum control %d", ctl->id);
 			return -EINVAL;
 		}
 		break;
 	default:
-		ret = comp_data_blob_set(dax_ctx->blob_handler, pos,
-					 data_offset_size, fragment, fragment_size);
-		if (ret == 0 && (pos == MODULE_CFG_FRAGMENT_LAST ||
-				 pos == MODULE_CFG_FRAGMENT_SINGLE)) {
-			void *data = NULL;
-			size_t data_size = 0;
-
-			data = comp_get_data_blob(dax_ctx->blob_handler, &data_size, NULL);
-			if (data && data_size > 0)
-				update_params_from_buffer(mod, data, data_size);
-		}
 		break;
 	}
 #else
@@ -762,20 +765,25 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 
 	switch (ctl->cmd) {
 	case SOF_CTRL_CMD_VOLUME:
-		volume = ctl->chanv[0].value;
-		dax_set_param_wrapper(mod, DAX_PARAM_ID_ABSOLUTE_VOLUME, &volume, 4);
+		val = ctl->chanv[0].value;
+		dax_param_id = DAX_PARAM_ID_ABSOLUTE_VOLUME;
 		break;
 	case SOF_CTRL_CMD_SWITCH:
 		if (ctl->num_elems != 1)
 			return -EINVAL;
-		switch_val = ctl->chanv[0].value;
-		if (ctl->index == 0) { /* Enable switch control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_ENABLE, &switch_val, 4);
-		} else if (ctl->index == 1) { /* Content processing enable switch control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_CP_ENABLE, &switch_val, 4);
-		} else if (ctl->index == 2) { /* Crosstalk Cancellation enable switch control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_CTC_ENABLE, &switch_val, 4);
-		} else {
+
+		val = ctl->chanv[0].value;
+		switch (ctl->index) {
+		case SWITCH_ENABLE_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_ENABLE;
+			break;
+		case SWITCH_CP_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_CP_ENABLE;
+			break;
+		case SWITCH_CTC_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_CTC_ENABLE;
+			break;
+		default:
 			comp_err(dev, "unknown switch control %d", ctl->index);
 			return -EINVAL;
 		}
@@ -783,12 +791,16 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 	case SOF_CTRL_CMD_ENUM:
 		if (ctl->num_elems != 1)
 			return -EINVAL;
-		enum_val = ctl->chanv[0].value;
-		if (ctl->index == 0) { /* Profile enum control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_PROFILE, &enum_val, 4);
-		} else if (ctl->index == 1) { /* Device enum control */
-			dax_set_param_wrapper(mod, DAX_PARAM_ID_OUT_DEVICE, &enum_val, 4);
-		} else {
+
+		val = ctl->chanv[0].value;
+		switch (ctl->index) {
+		case ENUM_PROFILE_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_PROFILE;
+			break;
+		case ENUM_DEVICE_CONTROL_ID:
+			dax_param_id = DAX_PARAM_ID_OUT_DEVICE;
+			break;
+		default:
 			comp_err(dev, "unknown enum control %d", ctl->index);
 			return -EINVAL;
 		}
@@ -809,6 +821,21 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 	}
 #endif
 
+	if (dax_param_id == 0) {
+		ret = comp_data_blob_set(dax_ctx->blob_handler, pos,
+					 data_offset_size, fragment, fragment_size);
+		if (ret == 0 && (pos == MODULE_CFG_FRAGMENT_LAST ||
+				 pos == MODULE_CFG_FRAGMENT_SINGLE)) {
+			void *data = NULL;
+			size_t data_size = 0;
+
+			data = comp_get_data_blob(dax_ctx->blob_handler, &data_size, NULL);
+			if (data && data_size > 0)
+				update_params_from_buffer(mod, data, data_size);
+		}
+	} else {
+		ret = dax_set_param_wrapper(mod, dax_param_id, &val, sizeof(val));
+	}
 	return ret;
 }
 

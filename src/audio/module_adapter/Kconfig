@@ -189,8 +189,8 @@ endif # Cadence
 		default y if COMP_STUBS
 		depends on COMP_DOLBY_DAX_AUDIO_PROCESSING
 		help
-		  Mock DAX audio processing.
-		  It allows for compilation check and basic audio flow checking.
+		  Mock DAX audio processing. It allows for compilation check and basic audio
+		  flow checking.
 
 	config PASSTHROUGH_CODEC
 		bool "Passthrough codec"
