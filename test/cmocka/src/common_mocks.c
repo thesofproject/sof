@@ -63,8 +63,24 @@ void WEAK *rbrealloc_align(void *ptr, uint32_t flags,
 {
 	(void)flags;
 	(void)old_bytes;
+	(void)alignment;
 
 	return realloc(ptr, bytes);
+}
+
+void WEAK *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
+{
+	(void)flags;
+	(void)alignment;
+
+	return malloc(bytes);
+}
+
+void WEAK *rmalloc(uint32_t flags, size_t bytes)
+{
+	(void)flags;
+
+	return malloc(bytes);
 }
 
 void WEAK rfree(void *ptr)
