@@ -155,6 +155,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		comp_err(dev, "%d: module params failed", ret);
 		goto err;
 	}
+
+	/* set component period frames */
+	component_set_nearest_period_frames(dev, params.rate);
 #endif
 
 	comp_dbg(dev, "done");
@@ -215,23 +218,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "start");
 #if CONFIG_IPC_MAJOR_4
-	/*
-	 * if the stream_params are valid, just update the sink/source buffer params. If not,
-	 * retrieve the params from the basecfg, allocate stream_params and then update the
-	 * sink/source buffer params.
-	 */
+	/* allocate stream_params and retrieve the params from the basecfg if needed */
 	if (!mod->stream_params) {
 		struct sof_ipc_stream_params params;
 
 		ret = module_adapter_params(dev, &params);
 		if (ret) {
 			comp_err(dev, "module_adapter_new() %d: module params failed", ret);
-			return ret;
-		}
-	} else {
-		ret = comp_verify_params(dev, mod->verify_params_flags, mod->stream_params);
-		if (ret < 0) {
-			comp_err(dev, "comp_verify_params() failed.");
 			return ret;
 		}
 	}
@@ -523,11 +516,13 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 
 	module_adapter_set_params(mod, params);
 
+#if CONFIG_IPC_MAJOR_3
 	ret = comp_verify_params(dev, mod->verify_params_flags, params);
 	if (ret < 0) {
 		comp_err(dev, "comp_verify_params() failed.");
 		return ret;
 	}
+#endif
 
 	/* allocate stream_params each time */
 	if (mod->stream_params)
