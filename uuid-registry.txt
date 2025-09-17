@@ -60,6 +60,7 @@ bc3526a7-9b86-4ab4-84a52e02ae70cc10 dma
 729bf8b5-e873-4bf5-96908e2a3fd33911 dma_copy
 58782c63-1326-4185-845922272e12d1f1 dma_trace
 2b972272-c5b1-4b7e-926f0fc5cb4c4690 dma_trace_task
+40f66c8b-5aa5-4345-891953ec431aaa98 dolby_dax_audio_processing
 87858bc2-baa9-40b6-8e4c2c95ba8b1545 dp_sched
 ee755917-96b9-4130-b49e37b9d0501993 dp_task
 b36ee4da-006f-47f9-a06dfecbe2d8b6ce drc
