@@ -2,6 +2,13 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+# ---
+# NOTICE! defconfig files cannot override settings that already have
+#         a default set. Thus some settings (especially choice values with
+#         a default), must be set in the board config files even if the value
+#         is same for all Intel DSPs.
+# ---
+
 # SOF / IPC configuration
 # -----------------------
 
@@ -60,4 +67,88 @@ config PCM_CONVERTER_FORMAT_U8
 	default y
 
 config PIPELINE_2_0
+	default y
+
+# SOF / infrastructure
+# ----------------------------------------
+
+config L3_HEAP
+	default y if ACE
+
+config ZEPHYR_DP_SCHEDULER
+	default y
+
+config ZEPHYR_NATIVE_DRIVERS
+	default y
+
+# SOF / logging
+# ----------------------------------------
+
+config ZEPHYR_LOG
+	default y
+
+# Zephyr / device drivers
+# ----------------------------------------
+
+config CLOCK_CONTROL
+	default y
+
+# note: CONFIG_CLOCK_CONTROL_ADSP is enabled by default
+# based on DT definition.
+
+config DAI
+	default y
+
+config DAI_INTEL_DMIC
+	default y
+
+config DAI_INTEL_SSP
+	default y
+
+config INTEL_ADSP_IPC
+	default y
+
+config INTEL_ADSP_TIMER
+	default y
+
+
+# # Zephyr / power settings
+# ----------------------------------------
+
+config PM
+	default y
+
+config PM_DEVICE
+	default y
+
+config PM_DEVICE_RUNTIME
+	default y
+
+config PM_DEVICE_SYSTEM_MANAGED
+	default y
+
+config POWER_DOMAIN
+	default y
+
+# note: POWER_DOMAIN_INTEL_ADSP will be set based on DT
+
+# Zephyr / logging
+# ----------------------------------------
+
+config LOG_BACKEND_ADSP_MTRACE
+	default y
+
+config LOG_FUNC_NAME_PREFIX_ERR
+	default y
+
+config LOG_FUNC_NAME_PREFIX_WRN
+	default y
+
+config LOG_FUNC_NAME_PREFIX_INF
+	default y
+
+config LOG_FUNC_NAME_PREFIX_DBG
+	default y
+
+config LOG_TIMESTAMP_64BIT
 	default y
