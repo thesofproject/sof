@@ -6,20 +6,20 @@
 #include <sof/audio/component.h>
 #include "template.h"
 
-LOG_MODULE_DECLARE(template_comp, CONFIG_SOF_LOG_LEVEL);
+LOG_MODULE_DECLARE(template, CONFIG_SOF_LOG_LEVEL);
 
 /* IPC4 controls handler */
-__cold int template_comp_set_config(struct processing_module *mod,
-				    uint32_t param_id,
-				    enum module_cfg_fragment_position pos,
-				    uint32_t data_offset_size,
-				    const uint8_t *fragment,
-				    size_t fragment_size,
-				    uint8_t *response,
-				    size_t response_size)
+__cold int template_set_config(struct processing_module *mod,
+			       uint32_t param_id,
+			       enum module_cfg_fragment_position pos,
+			       uint32_t data_offset_size,
+			       const uint8_t *fragment,
+			       size_t fragment_size,
+			       uint8_t *response,
+			       size_t response_size)
 {
 	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
-	struct template_comp_comp_data *cd = module_get_private_data(mod);
+	struct template_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
 	assert_can_be_cold();
@@ -51,9 +51,9 @@ __cold int template_comp_set_config(struct processing_module *mod,
 }
 
 /* Not used in IPC4 systems, if IPC4 only component, omit .get_configuration set */
-__cold int template_comp_get_config(struct processing_module *mod,
-				    uint32_t config_id, uint32_t *data_offset_size,
-				    uint8_t *fragment, size_t fragment_size)
+__cold int template_get_config(struct processing_module *mod,
+			       uint32_t config_id, uint32_t *data_offset_size,
+			       uint8_t *fragment, size_t fragment_size)
 {
 	assert_can_be_cold();
 	return 0;

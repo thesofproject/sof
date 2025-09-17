@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_COMP_TEMPLATE_COMP STREQUAL "m")
-  add_subdirectory(llext ${PROJECT_BINARY_DIR}/template_comp_llext)
-  add_dependencies(app template_comp)
+if(CONFIG_COMP_TEMPLATE STREQUAL "m")
+  add_subdirectory(llext ${PROJECT_BINARY_DIR}/template_llext)
+  add_dependencies(app template)
 else()
   add_local_sources(sof template.c)
   add_local_sources(sof template-generic.c)
