@@ -427,8 +427,7 @@ __cold int create_multi_endpoint_buffer(struct comp_dev *dev,
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.pipeline_id = config->pipeline_id;
 	ipc_buf.comp.core = config->core;
-	/* allocate not shared buffer */
-	buffer = buffer_new(&ipc_buf, false);
+	buffer = buffer_new(&ipc_buf, BUFFER_USAGE_NOT_SHARED);
 	if (!buffer)
 		return -ENOMEM;
 
