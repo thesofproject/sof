@@ -13,7 +13,6 @@
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/notification_pool.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -141,7 +140,7 @@ static int mixin_init(struct processing_module *mod)
 
 	comp_dbg(dev, "entry");
 
-	md = rzalloc(SOF_MEM_FLAG_USER, sizeof(*md));
+	md = mod_zalloc(mod, sizeof(*md));
 	if (!md)
 		return -ENOMEM;
 
@@ -168,7 +167,7 @@ static int mixout_init(struct processing_module *mod)
 
 	comp_dbg(dev, "entry");
 
-	mo_data = rzalloc(SOF_MEM_FLAG_USER, sizeof(*mo_data));
+	mo_data = mod_zalloc(mod, sizeof(*mo_data));
 	if (!mo_data)
 		return -ENOMEM;
 
@@ -182,17 +181,11 @@ static int mixout_init(struct processing_module *mod)
 
 static int mixin_free(struct processing_module *mod)
 {
-	struct mixin_data *md = module_get_private_data(mod);
-
-	rfree(md);
-
 	return 0;
 }
 
 static int mixout_free(struct processing_module *mod)
 {
-	rfree(module_get_private_data(mod));
-
 	return 0;
 }
 
