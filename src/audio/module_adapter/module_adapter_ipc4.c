@@ -320,10 +320,46 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 	return false;
 }
 
+static int module_update_source_buffer_params(struct processing_module *mod,
+					      struct bind_info *bind_data)
+{
+	struct module_config *dst = &mod->priv.cfg;
+	struct sof_ipc_stream_params params;
+	struct comp_buffer *buffer;
+	int dst_queue_id = bind_data->ipc4_data->extension.r.dst_queue;
+
+	/* only update buffer params for sink components */
+	if (bind_data->bind_type != COMP_BIND_TYPE_SOURCE)
+		return 0;
+
+	comp_dev_for_each_producer(mod->dev, buffer) {
+		if (IPC4_SINK_QUEUE_ID(buffer->stream.runtime_stream_params.id) != dst_queue_id)
+			continue;
+
+		/* use base_cfg params for pin 0 or if base config extn is missing */
+		if (!dst_queue_id || dst_queue_id >= dst->nb_input_pins) {
+			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
+			return 0;
+		}
+
+		/* otherwise use the respective input pin audio format */
+		ipc4_audio_format_to_stream_params(&dst->input_pins[dst_queue_id].audio_fmt,
+						   &params);
+		buffer_set_params(buffer, &params, BUFFER_UPDATE_FORCE);
+		return 0;
+	}
+
+	return 0;
+}
+
 int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	int ret;
+
+	ret = module_update_source_buffer_params(mod, bind_data);
+	if (ret < 0)
+		return ret;
 
 	ret = module_bind(mod, bind_data);
 	if (ret < 0)
