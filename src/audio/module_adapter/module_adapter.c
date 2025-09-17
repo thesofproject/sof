@@ -132,8 +132,13 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	/* set the pipeline pointer if ipc_pipe is valid */
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
 					  IPC_COMP_IGNORE_REMOTE);
-	if (ipc_pipe)
+	if (ipc_pipe) {
 		dev->pipeline = ipc_pipe->pipeline;
+
+		/* LL modules have the same period as the pipeline */
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+			dev->period = ipc_pipe->pipeline->period;
+	}
 #endif
 
 	/* Init processing module */
@@ -166,6 +171,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		comp_err(dev, "%d: module params failed", ret);
 		goto err;
 	}
+
+	/* set component period frames */
+	component_set_nearest_period_frames(dev, params.rate);
 #endif
 
 	comp_dbg(dev, "done");
@@ -226,23 +234,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	comp_dbg(dev, "start");
 #if CONFIG_IPC_MAJOR_4
-	/*
-	 * if the stream_params are valid, just update the sink/source buffer params. If not,
-	 * retrieve the params from the basecfg, allocate stream_params and then update the
-	 * sink/source buffer params.
-	 */
+	/* allocate stream_params and retrieve the params from the basecfg if needed */
 	if (!mod->stream_params) {
 		struct sof_ipc_stream_params params;
 
 		ret = module_adapter_params(dev, &params);
 		if (ret) {
 			comp_err(dev, "module_adapter_new() %d: module params failed", ret);
-			return ret;
-		}
-	} else {
-		ret = comp_verify_params(dev, mod->verify_params_flags, mod->stream_params);
-		if (ret < 0) {
-			comp_err(dev, "comp_verify_params() failed.");
 			return ret;
 		}
 	}
@@ -535,11 +533,13 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 
 	module_adapter_set_params(mod, params);
 
+#if CONFIG_IPC_MAJOR_3
 	ret = comp_verify_params(dev, mod->verify_params_flags, params);
 	if (ret < 0) {
 		comp_err(dev, "comp_verify_params() failed.");
 		return ret;
 	}
+#endif
 
 	/* allocate stream_params each time */
 	if (mod->stream_params)
