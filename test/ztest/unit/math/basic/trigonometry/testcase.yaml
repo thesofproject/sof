@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2025 Intel Corporation. All rights reserved.
+#
+# Math basic trigonometry unit tests converted from CMock to Ztest
+#
+# These contents may have been developed with support from one or more Intel-operated
+# generative artificial intelligence solutions.
+#
+
+common:
+  tags:
+    - SOF
+    - unit_test
+    - math
+    - trigonometry
+  integration_platforms:
+    - native_sim
+  arch_exclude: xtensa  # Test is for host builds only
+
+tests:
+  sof.unit.math.trigonometry:
+    platform_allow:
+      - native_sim
