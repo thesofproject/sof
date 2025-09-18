@@ -716,6 +716,11 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	else
 		hd->local_buffer = comp_dev_get_first_data_producer(dev);
 
+	if (!hd->local_buffer) {
+		comp_err(dev, "no local buffer found");
+		return -EINVAL;
+	}
+
 	period_bytes = dev->frames *
 		audio_stream_frame_bytes(&hd->local_buffer->stream);
 
