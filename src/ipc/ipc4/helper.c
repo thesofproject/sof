@@ -683,6 +683,21 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		source->direction_set = true;
 	}
 
+	/* set sink buffer params for playback and source buffer params for capture */
+	if (source->direction == SOF_IPC_STREAM_PLAYBACK &&
+	    source->drv->type == SOF_COMP_MODULE_ADAPTER) {
+		struct processing_module *srcmod = comp_mod(source);
+
+		buffer_set_params(buffer, srcmod->stream_params, BUFFER_UPDATE_FORCE);
+	}
+
+	if (sink->direction == SOF_IPC_STREAM_CAPTURE &&
+	    sink->drv->type == SOF_COMP_MODULE_ADAPTER) {
+		struct processing_module *sinkmod = comp_mod(sink);
+
+		buffer_set_params(buffer, sinkmod->stream_params, BUFFER_UPDATE_FORCE);
+	}
+
 	ll_unblock(cross_core_bind, flags);
 
 	return IPC4_SUCCESS;
