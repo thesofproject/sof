@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <zephyr/syscall.h>
 
 LOG_MODULE_REGISTER(buffer, CONFIG_SOF_LOG_LEVEL);
 
@@ -235,6 +236,15 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t flags, uint32_t align,
 
 	tr_dbg(&buffer_tr, "buffer_alloc()");
 
+#if CONFIG_USERSPACE
+	/*
+	 * cache control is not possible in user-space, so cross-core
+	 * buffers must be allocated as coherent
+	 */
+	if (is_shared && k_is_user_context())
+		flags |= SOF_MEM_FLAG_COHERENT;
+#endif
+
 	/* validate request */
 	if (size == 0) {
 		tr_err(&buffer_tr, "new size = %zu is invalid", size);
@@ -272,6 +282,15 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 		       minimum_size, preferred_size);
 		return NULL;
 	}
+
+#if CONFIG_USERSPACE
+	/*
+	 * cache control is not possible in user-space, so cross-core
+	 * buffers must be allocated as coherent
+	 */
+	if (is_shared && k_is_user_context())
+		flags |= SOF_MEM_FLAG_COHERENT;
+#endif
 
 	/* Align preferred size to a multiple of the minimum size */
 	if (preferred_size % minimum_size)

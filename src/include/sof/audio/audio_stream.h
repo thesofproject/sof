@@ -26,6 +26,7 @@
 #include <ipc/stream.h>
 #include <ipc4/base-config.h>
 #include <module/audio/audio_stream.h>
+#include <zephyr/syscall.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -733,6 +734,14 @@ static inline void audio_stream_invalidate(struct audio_stream *buffer, uint32_t
 		tail_size = bytes - head_size;
 	}
 
+#if CONFIG_USERSPACE
+	/* user-space shared buffers are allocated as uncached */
+	if (k_is_user_context()) {
+		__ASSERT_NO_MSG(sys_cache_is_ptr_cached(buffer->addr) == false);
+		return;
+	}
+#endif
+
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->r_ptr, head_size);
 	if (tail_size)
 		dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->addr,
@@ -755,6 +764,14 @@ static inline void audio_stream_writeback(struct audio_stream *buffer, uint32_t 
 		head_size = (char *)buffer->end_addr - (char *)buffer->w_ptr;
 		tail_size = bytes - head_size;
 	}
+
+#if CONFIG_USERSPACE
+	/* user-space shared buffers are allocated as uncached */
+	if (k_is_user_context()) {
+		__ASSERT_NO_MSG(sys_cache_is_ptr_cached(buffer->addr) == false);
+		return;
+	}
+#endif
 
 	dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->w_ptr, head_size);
 	if (tail_size)

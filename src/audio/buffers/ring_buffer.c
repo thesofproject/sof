@@ -13,6 +13,8 @@
 #include <rtos/alloc.h>
 #include <ipc/topology.h>
 
+#include <zephyr/syscall.h>
+
 LOG_MODULE_REGISTER(ring_buffer, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(ring_buffer);
@@ -53,6 +55,14 @@ static inline void ring_buffer_invalidate_shared(struct ring_buffer *ring_buffer
 	if (!ring_buffer_is_shared(ring_buffer))
 		return;
 
+#if CONFIG_USERSPACE
+	/* user-space shared buffers are allocated as uncached */
+	if (k_is_user_context()) {
+		__ASSERT_NO_MSG(sys_cache_is_ptr_cached(ptr) == false);
+		return;
+	}
+#endif
+
 	/* wrap-around? */
 	if ((uintptr_t)ptr + size > (uintptr_t)ring_buffer_buffer_end(ring_buffer)) {
 		/* writeback till the end of circular buffer */
@@ -71,6 +81,14 @@ static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
 	/* no cache required in case of not shared queue */
 	if (!ring_buffer_is_shared(ring_buffer))
 		return;
+
+#if CONFIG_USERSPACE
+	/* user-space shared buffers are allocated as uncached */
+	if (k_is_user_context()) {
+		__ASSERT_NO_MSG(sys_cache_is_ptr_cached(ptr) == false);
+		return;
+	}
+#endif
 
 	/* wrap-around? */
 	if ((uintptr_t)ptr + size > (uintptr_t)ring_buffer_buffer_end(ring_buffer)) {
@@ -354,6 +372,15 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	 * correctly, it is necessary to allocate a buffer three times larger than max_ibs_obs.
 	 */
 	ring_buffer->data_buffer_size = 3 * max_ibs_obs;
+
+#if CONFIG_USERSPACE
+	/*
+	 * cache control is not possible in user-space, so cross-core
+	 * buffers must be allocated as coherent
+	 */
+	if (is_shared && k_is_user_context())
+		memory_flags |= SOF_MEM_FLAG_COHERENT;
+#endif
 
 	/* allocate data buffer - always in cached memory alias */
 	ring_buffer->data_buffer_size =
