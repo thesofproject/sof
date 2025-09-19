@@ -34,9 +34,6 @@
 /** \brief IDC send core power down flag. */
 #define IDC_POWER_DOWN		3
 
-/** \brief IDC send timeout in microseconds. */
-#define IDC_TIMEOUT	10000
-
 /** \brief IDC task deadline. */
 #define IDC_DEADLINE	100
 
