@@ -17,6 +17,8 @@ rsource "samples/Kconfig"
 rsource "schedule/Kconfig"
 rsource "schedule/Kconfig.threads_prio"
 
+rsource "idc/Kconfig"
+
 rsource "ipc/Kconfig"
 
 rsource "math/Kconfig"

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config IDC_TIMEOUT_US
+	int "Timeout for blocking IDC call, microseconds"
+	default 10000
+	help
+	  It may be beneficial to have different timeout values
+	  for fast platforms (manufactured silicon) and at least
+	  10 times slower FPGA platforms.
