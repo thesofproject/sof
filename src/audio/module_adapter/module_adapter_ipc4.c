@@ -60,22 +60,22 @@ module_ext_init_decode(struct comp_dev *dev, struct module_config *dst,
 			return NULL;
 		}
 		switch (obj->object_id) {
-		case IPC4_MOD_INIT_DATA_ID_DP_DATA:
+		case IPC4_MOD_INIT_DATA_ID_MEM_DATA:
 		{
-			/* Get dp_data struct that follows the obj struct */
-			const struct ipc4_module_init_ext_obj_dp_data *dp_data =
-				(const struct ipc4_module_init_ext_obj_dp_data *)(obj + 1);
+			/* Get mem_data struct that follows the obj struct */
+			const struct ipc4_module_init_ext_obj_mem_data *mem_data =
+				(const struct ipc4_module_init_ext_obj_mem_data *)(obj + 1);
 
-			if (obj->object_words * sizeof(uint32_t) < sizeof(*dp_data)) {
-				comp_err(dev, "dp_data object too small %u < %u",
-					 obj->object_words * sizeof(uint32_t), sizeof(*dp_data));
+			if (obj->object_words * sizeof(uint32_t) < sizeof(*mem_data)) {
+				comp_err(dev, "mem_data object too small %u < %u",
+					 obj->object_words * sizeof(uint32_t), sizeof(*mem_data));
 				return NULL;
 			}
-			dst->domain_id = dp_data->domain_id;
-			dst->stack_bytes = dp_data->stack_bytes;
-			dst->heap_bytes = dp_data->heap_bytes;
-			comp_info(dev, "init_ext_obj_dp_data domain %u stack %u heap %u",
-				  dp_data->domain_id, dp_data->stack_bytes, dp_data->heap_bytes);
+			dst->domain_id = mem_data->domain_id;
+			dst->stack_bytes = mem_data->stack_bytes;
+			dst->heap_bytes = mem_data->heap_bytes;
+			comp_info(dev, "init_ext_obj_mem_data domain %u stack %u heap %u",
+				  mem_data->domain_id, mem_data->stack_bytes, mem_data->heap_bytes);
 			break;
 		}
 		default:
