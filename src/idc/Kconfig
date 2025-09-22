@@ -2,7 +2,7 @@
 
 config IDC_TIMEOUT_US
 	int "Timeout for blocking IDC call, microseconds"
-	default 10000
+	default 15000
 	help
 	  It may be beneficial to have different timeout values
 	  for fast platforms (manufactured silicon) and at least
