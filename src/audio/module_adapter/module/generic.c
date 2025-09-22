@@ -168,7 +168,7 @@ static void container_put(struct processing_module *mod, struct module_resource 
  *
  * The allocated memory is automatically freed when the module is unloaded.
  */
-void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t alignment)
+void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment)
 {
 	struct module_resource *container = container_get(mod);
 	struct module_resources *res = &mod->priv.resources;
@@ -185,13 +185,14 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	}
 
 	/* Allocate memory for module */
-	if (alignment)
-		ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
-	else
-		ptr = rballoc(SOF_MEM_FLAG_USER, size);
-
+#if CONFIG_MOD_ALLOC_USE_RBALLOC
+	ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
+#else
+	ptr = rmalloc_align(SOF_MEM_FLAG_USER, size, alignment);
+#endif
 	if (!ptr) {
-		comp_err(mod->dev, "failed to allocate memory.");
+		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
+			 size, alignment, dev_comp_id(mod->dev));
 		container_put(mod, container);
 		return NULL;
 	}
@@ -218,7 +219,7 @@ EXPORT_SYMBOL(mod_alloc_align);
  * Like mod_alloc_align() but the alignment can not be specified. However,
  * rballoc() will always aligns the memory to PLATFORM_DCACHE_ALIGN.
  */
-void *mod_alloc(struct processing_module *mod, uint32_t size)
+void *mod_alloc(struct processing_module *mod, size_t size)
 {
 	return mod_alloc_align(mod, size, 0);
 }
@@ -232,7 +233,7 @@ EXPORT_SYMBOL(mod_alloc);
  *
  * Like mod_alloc() but the allocated memory is initialized to zero.
  */
-void *mod_zalloc(struct processing_module *mod, uint32_t size)
+void *mod_zalloc(struct processing_module *mod, size_t size)
 {
 	void *ret = mod_alloc(mod, size);
 

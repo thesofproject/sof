@@ -231,7 +231,7 @@ struct asrc_farrow {
  * @param[in]  bit_depth     The wordlength that will be used for representing
  *                           the PCM samples, must be 16 or 32.
  */
-enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
+enum asrc_error_code asrc_get_required_size(struct processing_module *mod,
 					    int *required_size,
 					    int num_channels,
 					    int bit_depth);
@@ -268,7 +268,7 @@ enum asrc_error_code asrc_get_required_size(struct comp_dev *dev,
  * @param[in] operation_mode Choose 'push' or 'pull', depending on the mode
  *                           you want your ASRC to operate in.
  */
-enum asrc_error_code asrc_initialise(struct comp_dev *dev,
+enum asrc_error_code asrc_initialise(struct processing_module *mod,
 				     struct asrc_farrow *src_obj,
 				     int num_channels,
 				     int32_t fs_prim,
@@ -286,7 +286,7 @@ enum asrc_error_code asrc_initialise(struct comp_dev *dev,
  *
  * @param[in] src_obj        Pointer to the ias_src_farrow.
  */
-void asrc_free_polyphase_filter(struct asrc_farrow *src_obj);
+void asrc_free_polyphase_filter(struct processing_module *mod, struct asrc_farrow *src_obj);
 
 /*
  * @brief Process the sample rate converter for one frame; the frame
@@ -591,7 +591,7 @@ enum asrc_error_code asrc_update_fs_ratio(struct comp_dev *dev,
  * @param[in] fs_prim  Primary sampling rate.
  * @param[in] fs_sec   Secondary sampling rate.
  */
-enum asrc_error_code asrc_set_fs_ratio(struct comp_dev *dev,
+enum asrc_error_code asrc_set_fs_ratio(struct processing_module *mod,
 				       struct asrc_farrow *src_obj,
 				       int32_t fs_prim, int32_t fs_sec);
 
