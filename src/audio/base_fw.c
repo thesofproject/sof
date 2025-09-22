@@ -439,8 +439,8 @@ __cold int set_perf_meas_state(const char *data)
 		break;
 	case IPC4_PERF_MEASUREMENTS_STOPPED:
 		enable_performance_counters();
-		reset_performance_counters();
 		perf_meas_set_state(IPC4_PERF_MEASUREMENTS_STOPPED);
+		reset_performance_counters();
 		break;
 	case IPC4_PERF_MEASUREMENTS_STARTED:
 		enable_performance_counters();
