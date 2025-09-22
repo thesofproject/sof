@@ -313,6 +313,16 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (IS_PROCESSING_MODE_SINK_SOURCE(mod))
 		return 0;
 
+	/* compute number of input buffers */
+	mod->num_of_sources = 0;
+	list_for_item(blist, &dev->bsource_list)
+		mod->num_of_sources++;
+
+	/* compute number of output buffers */
+	mod->num_of_sinks = 0;
+	list_for_item(blist, &dev->bsink_list)
+		mod->num_of_sinks++;
+
 	if (!mod->num_of_sources && !mod->num_of_sinks) {
 		comp_err(dev, "no source and sink buffers connected!");
 		return -EINVAL;
@@ -1212,6 +1222,9 @@ int module_adapter_reset(struct comp_dev *dev)
 	if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
 		rfree(mod->output_buffers);
 		rfree(mod->input_buffers);
+
+		mod->num_of_sources = 0;
+		mod->num_of_sinks = 0;
 	}
 
 	mod->total_data_consumed = 0;
