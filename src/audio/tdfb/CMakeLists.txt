@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_COMP_TDFB STREQUAL "m")
+if(CONFIG_COMP_TDFB STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/tdfb_llext)
   add_dependencies(app tdfb)
 else()

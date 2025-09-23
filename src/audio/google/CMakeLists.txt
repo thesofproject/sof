@@ -14,7 +14,7 @@ if(zephyr) ###  Zephyr ###
 		google_hotword_detect.c
 	)
 
-	if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING STREQUAL "m")
+	if(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING STREQUAL "m" AND DEFINED CONFIG_LLEXT)
 		add_subdirectory(llext_rtc
 				 ${PROJECT_BINARY_DIR}/google_rtc_audio_processing_llext)
 		add_dependencies(app google_rtc_audio_processing)
@@ -37,7 +37,7 @@ if(zephyr) ###  Zephyr ###
 		endif()
 	endif()
 
-	if(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING STREQUAL "m")
+	if(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING STREQUAL "m" AND DEFINED CONFIG_LLEXT)
 		add_subdirectory(llext_ctc
 				 ${PROJECT_BINARY_DIR}/google_ctc_audio_processing_llext)
 		add_dependencies(app google_ctc_audio_processing)

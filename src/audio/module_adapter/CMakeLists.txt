@@ -48,7 +48,7 @@ if(zephyr) ###  Zephyr ###
 
 	if(CONFIG_WAVES_CODEC)
 		set(WAVES_DIR module/waves)
-		if(CONFIG_WAVES_CODEC STREQUAL "m")
+		if(CONFIG_WAVES_CODEC STREQUAL "m" AND DEFINED CONFIG_LLEXT)
 			add_subdirectory(${WAVES_DIR}/llext ${PROJECT_BINARY_DIR}/waves_llext)
 			add_dependencies(app waves)
 		else()
