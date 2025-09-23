@@ -44,6 +44,27 @@ DECLARE_TR_CTX(basefw_comp_tr, SOF_UUID(basefw_uuid), LOG_LEVEL_INFO);
 static struct ipc4_system_time_info global_system_time_info;
 static uint64_t global_cycle_delta;
 
+__cold static uint32_t get_host_buffer_size(void)
+{
+	struct sof_dma *dma_host;
+	uint32_t periods;
+
+	assert_can_be_cold();
+
+	dma_host = sof_dma_get(SOF_DMA_DIR_HMEM_TO_LMEM, 0, SOF_DMA_DEV_HOST,
+			       SOF_DMA_ACCESS_SHARED);
+	if (!dma_host) {
+		LOG_WRN("Failed to get host DMA channel");
+		return 0;
+	}
+
+	periods = dma_host->plat_data.period_count;
+
+	sof_dma_put(dma_host);
+
+	return periods;
+}
+
 __cold static int basefw_config(uint32_t *data_offset, char *data)
 {
 	uint16_t version[4] = {SOF_MAJOR, SOF_MINOR, SOF_MICRO, SOF_BUILD};
@@ -121,6 +142,11 @@ __cold static int basefw_config(uint32_t *data_offset, char *data)
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_FW_CONTEXT_SAVE,
 			     IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE));
+
+	tuple = tlv_next(tuple);
+
+	tlv_value_uint32_set(tuple, IPC4_FW_MIN_HOST_BUFFER_PERIODS,
+			     get_host_buffer_size());
 
 	tuple = tlv_next(tuple);
 
