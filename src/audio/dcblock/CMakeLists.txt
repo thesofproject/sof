@@ -1,4 +1,4 @@
-if(CONFIG_COMP_DCBLOCK STREQUAL "m")
+if(CONFIG_COMP_DCBLOCK STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/dcblock_llext)
   add_dependencies(app dcblock)
   return()

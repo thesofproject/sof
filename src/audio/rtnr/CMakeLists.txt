@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_COMP_RTNR STREQUAL "m")
+if(CONFIG_COMP_RTNR STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/rtnr_llext)
   add_dependencies(app rtnr)
   return()

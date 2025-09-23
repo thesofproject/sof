@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_COMP_CROSSOVER STREQUAL "m")
+if(CONFIG_COMP_CROSSOVER STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/crossover_llext)
   add_dependencies(app crossover)
   return()
