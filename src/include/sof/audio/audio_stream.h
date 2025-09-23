@@ -1036,6 +1036,12 @@ static inline int audio_stream_fmt_conversion(enum ipc4_bit_depth depth,
 			*valid_fmt = SOF_IPC_FRAME_S24_3LE;
 			ret = 0;
 #endif
+		} else if (depth == 8 && valid == 8) {
+#ifdef CONFIG_FORMAT_S8
+			*frame_fmt = SOF_IPC_FRAME_S8;
+			*valid_fmt = SOF_IPC_FRAME_S8;
+			ret = 0;
+#endif /* CONFIG_FORMAT_S8 */
 		} else {
 			/* IPC4_DEPTH_16BIT (16) <---> SOF_IPC_FRAME_S16_LE (0)
 			 * IPC4_DEPTH_24BIT (24) <---> SOF_IPC_FRAME_S24_4LE (1)

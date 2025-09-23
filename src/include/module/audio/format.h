@@ -22,6 +22,7 @@ static inline uint32_t get_sample_bytes(enum sof_ipc_frame fmt)
 	case SOF_IPC_FRAME_S24_3LE:
 		return 3;
 	case SOF_IPC_FRAME_U8:
+	case SOF_IPC_FRAME_S8:
 	case SOF_IPC_FRAME_A_LAW:
 	case SOF_IPC_FRAME_MU_LAW:
 		return 1;
@@ -39,6 +40,7 @@ static inline uint32_t get_sample_bitdepth(enum sof_ipc_frame fmt)
 	case SOF_IPC_FRAME_S24_3LE:
 		return 24;
 	case SOF_IPC_FRAME_U8:
+	case SOF_IPC_FRAME_S8:
 	case SOF_IPC_FRAME_A_LAW:
 	case SOF_IPC_FRAME_MU_LAW:
 		return 8;

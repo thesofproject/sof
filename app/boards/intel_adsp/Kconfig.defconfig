@@ -29,6 +29,9 @@ config FORMAT_MU_LAW
 config FORMAT_U8
 	default y
 
+config FORMAT_S8
+	default y
+
 config PCM_CONVERTER_FORMAT_A_LAW
 	default y
 
@@ -57,6 +60,9 @@ config PCM_CONVERTER_FORMAT_S24_C32_AND_S24_C24
 	default y
 
 config PCM_CONVERTER_FORMAT_U8
+	default y
+
+config PCM_CONVERTER_FORMAT_S8
 	default y
 
 config PIPELINE_2_0
