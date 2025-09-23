@@ -69,6 +69,41 @@ enum ipc4_pipeline_state {
 	SOF_IPC4_PIPELINE_STATE_SAVED
 };
 
+/* IDs for all pipeline ext data types in struct ipc4_pipeline_init_ext_object */
+enum ipc4_pipeline_ext_obj_id {
+	IPC4_GLB_PIPE_EXT_OBJ_ID_INVALID = 0,
+	IPC4_GLB_PIPE_EXT_OBJ_ID_MEM_DATA = 1,
+	IPC4_GLB_PIPE_EXT_OBJ_ID_MAX = IPC4_GLB_PIPE_EXT_OBJ_ID_MEM_DATA,
+};
+
+/* data object for vendor bespoke data with ABI growth and backwards compat */
+struct ipc4_pipeline_ext_object {
+	uint32_t last_object : 1;	/* object is last in array if 1 else object follows. */
+	uint32_t object_id : 15;	/* unique ID for this object or globally */
+	uint32_t object_words : 16;	/* size in dwords (excluding this structure) */
+} __packed __aligned(4);
+/* the object data will be placed in memory here and will have size "object_words" */
+
+/* Ext array data object for pipeline instance's memory requirements */
+struct ipc4_pipeline_ext_obj_mem_data {
+	uint32_t domain_id;		/* userspace domain ID */
+	uint32_t stack_bytes;		/* required stack size in bytes */
+	uint32_t interim_heap_bytes;	/* required interim heap size in bytes */
+	uint32_t lifetime_heap_bytes;	/* required lifetime heap size in bytes */
+	uint32_t shared_bytes;		/* required shared memory in bytes */
+} __packed __aligned(4);
+
+/*
+ * Host Driver sends this message to create a new pipeline instance.
+ */
+struct ipc4_pipeline_ext_payload {
+	uint32_t payload_words : 24;	/* size in dwords (excluding this structure) */
+	uint32_t data_obj_array : 1;	/* struct ipc4_pipeline_ext_object data */
+	uint32_t rsvd0		: 7;
+	uint32_t rsvd1;
+	uint32_t rsvd2;
+} __packed __aligned(4);
+
 /*!
  * lp - indicates whether the pipeline should be kept on running in low power
  * mode. On BXT the driver should set this flag to 1 for WoV pipeline.
@@ -106,7 +141,8 @@ struct ipc4_pipeline_create {
 			uint32_t rsvd1          : 3;
 			uint32_t attributes     : 16;
 			uint32_t core_id        : 4;
-			uint32_t rsvd2          : 6;
+			uint32_t rsvd2          : 5;
+			uint32_t payload	: 1;
 			uint32_t _reserved_2    : 2;
 		} r;
 	} extension;
