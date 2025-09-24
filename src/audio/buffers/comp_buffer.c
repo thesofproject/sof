@@ -15,7 +15,6 @@
 #include <sof/common.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
-#include <rtos/cache.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
@@ -24,6 +23,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <zephyr/cache.h>
 
 LOG_MODULE_REGISTER(buffer, CONFIG_SOF_LOG_LEVEL);
 
@@ -307,9 +307,9 @@ void buffer_zero(struct comp_buffer *buffer)
 
 	bzero(audio_stream_get_addr(&buffer->stream), audio_stream_get_size(&buffer->stream));
 	if (buffer->flags & SOF_MEM_FLAG_DMA)
-		dcache_writeback_region((__sparse_force void __sparse_cache *)
-					audio_stream_get_addr(&buffer->stream),
-					audio_stream_get_size(&buffer->stream));
+		sys_cache_data_flush_range((__sparse_force void __sparse_cache *)
+					   audio_stream_get_addr(&buffer->stream),
+					   audio_stream_get_size(&buffer->stream));
 }
 
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment)

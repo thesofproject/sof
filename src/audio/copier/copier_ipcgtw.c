@@ -8,6 +8,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/ut.h>
 #include <rtos/init.h>
+#include <zephyr/cache.h>
 #include "copier.h"
 #include "ipcgtw_copier.h"
 
@@ -94,8 +95,8 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 	uint32_t data_size;
 	struct ipc4_ipc_gateway_cmd_data_reply *out;
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-				 sizeof(struct ipc4_ipc_gateway_cmd_data));
+	sys_cache_data_invd_range((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				  sizeof(struct ipc4_ipc_gateway_cmd_data));
 	in = (const struct ipc4_ipc_gateway_cmd_data *)MAILBOX_HOSTBOX_BASE;
 
 	dev = find_ipcgtw_by_node_id(in->node_id);
@@ -138,7 +139,7 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 		if (buf) {
 			data_size = MIN(cmd->extension.r.data_size,
 					audio_stream_get_free_bytes(&buf->stream));
-			dcache_invalidate_region((__sparse_force void __sparse_cache *)
+			sys_cache_data_invd_range((__sparse_force void __sparse_cache *)
 						 MAILBOX_HOSTBOX_BASE,
 						 data_size +
 						 offsetof(struct ipc4_ipc_gateway_cmd_data,
