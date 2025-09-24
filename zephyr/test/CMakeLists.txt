@@ -6,6 +6,7 @@ endif()
 
 if (CONFIG_ACE_VERSION_3_0)
 	zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
+		userspace/cache.c
 		userspace/local_lock.c
 	)
 endif()
