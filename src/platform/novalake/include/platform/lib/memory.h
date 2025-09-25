@@ -56,6 +56,12 @@
  */
 #define HEAPMEM_SIZE CONFIG_SOF_ZEPHYR_HEAP_SIZE
 
+#if CONFIG_COLD_STORE_EXECUTE_DRAM && \
+	(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE || !defined(LL_EXTENSION_BUILD))
+#define __cold __section(".cold")
+#define __cold_rodata __section(".coldrodata")
+#endif
+
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

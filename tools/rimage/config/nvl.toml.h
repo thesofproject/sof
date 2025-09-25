@@ -12,6 +12,20 @@ auto_start = "0"
 
 index = __COUNTER__
 
+#if CONFIG_COLD_STORE_EXECUTE_DRAM
+[[module.entry]]
+name = "COLD"
+uuid = UUIDREG_STR_COLD
+affinity_mask = "3"
+instance_count = "1"
+domain_types = "0"
+load_type = "0"
+module_type = "0"
+auto_start = "0"
+
+index = __COUNTER__
+#endif
+
 [[module.entry]]
 name = "BASEFW"
 uuid = "0E398C32-5ADE-BA4B-93B1-C50432280EE4"
