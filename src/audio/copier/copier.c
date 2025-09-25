@@ -540,7 +540,12 @@ static int do_conversion_copy(struct comp_dev *dev,
 
 	comp_get_copy_limits(src, sink, processed_data);
 
-	i = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
+	/*
+	 * Buffer ID is constructed as IPC4_COMP_ID(src_queue, dst_queue).
+	 * From the buffer's perspective, copier's sink is the source,
+	 * so we use IPC4_SRC_QUEUE_ID() to get the correct copier sink index.
+	 */
+	i = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
 	if (i >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 		return -EINVAL;
 	buffer_stream_invalidate(src, processed_data->source_bytes);
@@ -617,7 +622,12 @@ static int copier_module_copy(struct processing_module *mod,
 			uint32_t source_samples;
 			int sink_queue_id;
 
-			sink_queue_id = IPC4_SINK_QUEUE_ID(buf_get_id(sink_c));
+			/*
+			 * Buffer ID is constructed as IPC4_COMP_ID(src_queue, dst_queue).
+			 * From the buffer's perspective, copier's sink is the source,
+			 * so we use IPC4_SRC_QUEUE_ID() to get the correct copier sink index.
+			 */
+			sink_queue_id = IPC4_SRC_QUEUE_ID(buf_get_id(sink_c));
 			if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 				return -EINVAL;
 
