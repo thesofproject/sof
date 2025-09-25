@@ -230,6 +230,101 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
 	return NULL;
 }
 
+/*
+ * This function currently only decodes the payload and prints out
+ * data it finds, but it does not store it anywhere.
+ */
+__cold static int ipc4_create_pipeline_payload_decode(char *data)
+{
+	const struct ipc4_pipeline_ext_payload *hdr =
+		(struct ipc4_pipeline_ext_payload *)data;
+	const struct ipc4_pipeline_ext_object *obj;
+#ifdef CONFIG_DCACHE_LINE_SIZE
+	size_t cache_line_size = CONFIG_DCACHE_LINE_SIZE;
+	size_t hdr_cache_size = ALIGN_UP(sizeof(*hdr), cache_line_size);
+#endif
+	bool last_object;
+	size_t size;
+
+#ifdef CONFIG_DCACHE_LINE_SIZE
+	if (!IS_ENABLED(CONFIG_LIBRARY))
+		sys_cache_data_invd_range((__sparse_force void __sparse_cache *)data,
+					  hdr_cache_size);
+#endif
+	size = hdr->payload_words * sizeof(uint32_t);
+	last_object = !hdr->data_obj_array;
+
+	if (size < sizeof(*hdr)) {
+		tr_err(&ipc_tr, "Payload size too small: %u : %#x", hdr->payload_words,
+		       *((uint32_t *)hdr));
+		return -EINVAL;
+	}
+	if (size > MAILBOX_HOSTBOX_SIZE) {
+		tr_err(&ipc_tr, "Payload size too large: %u : %#x", hdr->payload_words,
+		       *((uint32_t *)hdr));
+	}
+	tr_info(&ipc_tr, "payload size %u array %u: %#x", hdr->payload_words, hdr->data_obj_array,
+		*((uint32_t *)hdr));
+
+#ifdef CONFIG_DCACHE_LINE_SIZE
+	if (!IS_ENABLED(CONFIG_LIBRARY) && ALIGN_UP(size, cache_line_size) > hdr_cache_size)
+		sys_cache_data_invd_range((__sparse_force void __sparse_cache *)
+					  ((char *)data + hdr_cache_size),
+					  ALIGN_UP(size, cache_line_size) - hdr_cache_size);
+#endif
+
+	obj = (const struct ipc4_pipeline_ext_object *)(hdr + 1);
+	while (!last_object) {
+		const struct ipc4_pipeline_ext_object *next_obj;
+
+		/* Check if there is space for the object header */
+		if ((char *)(obj + 1) - data > size) {
+			tr_err(&ipc_tr, "obj header overflow, %u > %zu",
+			       (char *)(obj + 1) - data, size);
+			return -EINVAL;
+		}
+
+		/* Calculate would be next object position and check if current object fits */
+		next_obj = (const struct ipc4_pipeline_ext_object *)
+			(((const uint32_t *)(obj + 1)) + obj->object_words);
+		if ((char *)next_obj - data > size) {
+			tr_err(&ipc_tr, "object size overflow, %u > %zu",
+			       (char *)next_obj - data, size);
+			return -EINVAL;
+		}
+
+		switch (obj->object_id) {
+		case IPC4_GLB_PIPE_EXT_OBJ_ID_MEM_DATA:
+		{
+			/* Get mem_data struct that follows the obj struct */
+			const struct ipc4_pipeline_ext_obj_mem_data *mem_data =
+				(const struct ipc4_pipeline_ext_obj_mem_data *)(obj + 1);
+
+			if (obj->object_words * sizeof(uint32_t) < sizeof(*mem_data)) {
+				tr_err(&ipc_tr, "mem_data object does not fit %zu < %zu",
+				       obj->object_words * sizeof(uint32_t), sizeof(*mem_data));
+				break;
+			}
+			tr_info(&ipc_tr,
+				"init_ext_obj_mem_data domain %u stack %u interim %u lifetime %u shared %u",
+				mem_data->domain_id, mem_data->stack_bytes,
+				mem_data->interim_heap_bytes, mem_data->lifetime_heap_bytes,
+				mem_data->shared_bytes);
+			break;
+		}
+		default:
+			tr_warn(&ipc_tr, "Unknown ext init object id %u of %u words",
+				obj->object_id, obj->object_words);
+		}
+		/* Read the last object flag from obj header */
+		last_object = obj->last_object;
+		/* Move to next object */
+		obj = next_obj;
+	}
+
+	return 0;
+}
+
 __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 {
 	struct ipc_comp_dev *ipc_pipe;
@@ -281,6 +376,23 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	return IPC4_SUCCESS;
 }
 
+#if CONFIG_LIBRARY
+static inline char *ipc4_get_pipe_create_data(void)
+{
+	struct ipc *ipc = ipc_get();
+	char *data = (char *)ipc->comp_data + sizeof(struct ipc4_pipeline_create);
+
+	return data;
+}
+#else
+__cold static inline char *ipc4_get_pipe_create_data(void)
+{
+	assert_can_be_cold();
+
+	return (char *)MAILBOX_HOSTBOX_BASE;
+}
+#endif
+
 /* Only called from ipc4_new_pipeline(), which is __cold */
 __cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
@@ -293,6 +405,14 @@ __cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	/* pass IPC to target core */
 	if (!cpu_is_me(pipe_desc->extension.r.core_id))
 		return ipc4_process_on_core(pipe_desc->extension.r.core_id, false);
+
+	if (pipe_desc->extension.r.payload) {
+		char *data;
+
+		data = ipc4_get_pipe_create_data();
+
+		ipc4_create_pipeline_payload_decode(data);
+	}
 
 	return ipc4_create_pipeline(pipe_desc);
 }
