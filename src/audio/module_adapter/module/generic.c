@@ -192,7 +192,7 @@ static void container_put(struct processing_module *mod, struct module_memory *c
  *
  * The allocated memory is automatically freed when the module is unloaded.
  */
-void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t alignment)
+void *mod_alloc_align(struct processing_module *mod, size_t size, uint32_t alignment)
 {
 	struct module_memory *container = container_get(mod);
 	struct module_resources *res = &mod->priv.resources;
@@ -230,40 +230,6 @@ void *mod_alloc_align(struct processing_module *mod, uint32_t size, uint32_t ali
 	return ptr;
 }
 EXPORT_SYMBOL(mod_alloc_align);
-
-/**
- * Allocates memory block for module.
- * @param mod	Pointer to module this memory block is allocated for.
- * @param bytes	Size in bytes.
- * @return Pointer to the allocated memory or NULL if failed.
- *
- * Like mod_alloc_align() but the alignment can not be specified. However,
- * rballoc() will always aligns the memory to PLATFORM_DCACHE_ALIGN.
- */
-void *mod_alloc(struct processing_module *mod, uint32_t size)
-{
-	return mod_alloc_align(mod, size, 0);
-}
-EXPORT_SYMBOL(mod_alloc);
-
-/**
- * Allocates memory block for module and initializes it to zero.
- * @param mod	Pointer to module this memory block is allocated for.
- * @param bytes	Size in bytes.
- * @return Pointer to the allocated memory or NULL if failed.
- *
- * Like mod_alloc() but the allocated memory is initialized to zero.
- */
-void *mod_zalloc(struct processing_module *mod, uint32_t size)
-{
-	void *ret = mod_alloc(mod, size);
-
-	if (ret)
-		memset(ret, 0, size);
-
-	return ret;
-}
-EXPORT_SYMBOL(mod_zalloc);
 
 /**
  * Creates a blob handler and releases it when the module is unloaded
@@ -379,22 +345,6 @@ int mod_free(struct processing_module *mod, const void *ptr)
 	return -EINVAL;
 }
 EXPORT_SYMBOL(mod_free);
-
-#if CONFIG_COMP_BLOB
-void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
-{
-	mod_free(mod, (void *)dbh);
-}
-EXPORT_SYMBOL(mod_data_blob_handler_free);
-#endif
-
-#if CONFIG_FAST_GET
-void mod_fast_put(struct processing_module *mod, const void *sram_ptr)
-{
-	mod_free(mod, sram_ptr);
-}
-EXPORT_SYMBOL(mod_fast_put);
-#endif
 
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
