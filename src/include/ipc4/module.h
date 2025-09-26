@@ -76,8 +76,8 @@ struct ipc4_vendor_error {
 /* IDs for all global object types in struct ipc4_module_init_ext_object */
 enum ipc4_mod_init_data_glb_id {
 	IPC4_MOD_INIT_DATA_ID_INVALID = 0,
-	IPC4_MOD_INIT_DATA_ID_DP_DATA = 1,
-	IPC4_MOD_INIT_DATA_ID_MAX = IPC4_MOD_INIT_DATA_ID_DP_DATA,
+	IPC4_MOD_INIT_DATA_ID_MEM_DATA = 1,
+	IPC4_MOD_INIT_DATA_ID_MAX = IPC4_MOD_INIT_DATA_ID_MEM_DATA,
 };
 
 /* data object for vendor bespoke data with ABI growth and backwards compat */
@@ -88,8 +88,8 @@ struct ipc4_module_init_ext_object {
 } __attribute__((packed, aligned(4)));
 /* the object data will be placed in memory here and will have size "object_words" */
 
-/* Ext init array data object for Data Processing module memory requirements */
-struct ipc4_module_init_ext_obj_dp_data {
+/* Ext init array data object for module instance's memory requirements */
+struct ipc4_module_init_ext_obj_mem_data {
 	uint32_t domain_id;	/* userspace domain ID */
 	uint32_t stack_bytes;	/* required stack size in bytes, 0 means default size */
 	uint32_t heap_bytes;	/* required heap size in bytes, 0 means default size */
