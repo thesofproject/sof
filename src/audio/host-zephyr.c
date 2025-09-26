@@ -920,8 +920,9 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		}
 	} else {
 		/* allocate not shared buffer */
-		hd->dma_buffer = buffer_alloc_range(buffer_size_preferred, buffer_size,
-						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA, addr_align, false);
+		hd->dma_buffer = buffer_alloc_range(NULL, buffer_size_preferred, buffer_size,
+						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
+						    addr_align, false);
 		if (!hd->dma_buffer) {
 			comp_err(dev, "failed to alloc dma buffer");
 			return -ENOMEM;
