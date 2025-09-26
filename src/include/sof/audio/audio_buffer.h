@@ -110,6 +110,8 @@ struct sof_audio_buffer {
 	 * should not be in struct sof_audio_buffer at all, kept for pipeline2.0 transition
 	 */
 	bool walking;		/**< indicates if the buffer is being walked */
+
+	struct k_heap *heap;
 };
 
 #if CONFIG_PIPELINE_2_0

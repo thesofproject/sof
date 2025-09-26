@@ -578,6 +578,23 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	else
 		buf_size = ibs * 2;
 
+	struct k_heap *dp_heap;
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	struct comp_dev *dp;
+
+	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		dp = sink;
+	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		dp = source;
+	else
+		dp = NULL;
+
+	dp_heap = dp && dp->mod ? dp->mod->priv.resources.heap : NULL;
+#else
+	dp_heap = NULL;
+#endif
+
 	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
 				    bu->extension.r.dst_queue);
 	if (!buffer) {
@@ -606,7 +623,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		struct sof_source *buf_source = audio_buffer_get_source(&buffer->audio_buffer);
 		struct sof_sink *buf_sink = audio_buffer_get_sink(&buffer->audio_buffer);
 
-		ring_buffer = ring_buffer_create(source_get_min_available(buf_source),
+		ring_buffer = ring_buffer_create(dp_heap, source_get_min_available(buf_source),
 						 sink_get_min_free_space(buf_sink),
 						 audio_buffer_is_shared(&buffer->audio_buffer),
 						 buf_get_id(buffer));

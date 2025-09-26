@@ -113,16 +113,15 @@ struct ring_buffer {
 };
 
 /**
- *
+ * @param heap Zephyr heap to allocate memory on
  * @param min_available  minimum data available in queue required by the module using
  *			 ring_buffer's source api
  * @param min_free_space minimum buffer space in queue required by the module using
  *			 ring_buffer's sink api
  * @param is_shared indicates if the buffer will be shared between cores
  * @param id a stream ID, accessible later by sink_get_id/source_get_id
- *
  */
-struct ring_buffer *ring_buffer_create(size_t min_available, size_t min_free_space, bool is_shared,
-				       uint32_t id);
+struct ring_buffer *ring_buffer_create(struct k_heap *heap, size_t min_available,
+				       size_t min_free_space, bool is_shared, uint32_t id);
 
 #endif /* __SOF_RING_BUFFER_H__ */
