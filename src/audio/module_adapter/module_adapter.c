@@ -553,7 +553,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (list_is_empty(&mod->raw_data_buffers_list)) {
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
-			struct comp_buffer *buffer = buffer_alloc(buff_size, memory_flags,
+			struct comp_buffer *buffer = buffer_alloc(md->resources.heap, buff_size,
+								  memory_flags,
 								  PLATFORM_DCACHE_ALIGN,
 								  BUFFER_USAGE_NOT_SHARED);
 			uint32_t flags;

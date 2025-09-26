@@ -268,8 +268,8 @@ static void test_math_fft_256(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 256 * 2 * sizeof(int32_t),
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex32 *out = (struct icomplex32 *)sink->stream.addr;
 	int32_t *in = (int32_t *)source->stream.addr;
 	int fft_size = 256;
@@ -313,8 +313,8 @@ static void test_math_fft_512(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 512 * 2 * sizeof(int32_t),
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex32 *out = (struct icomplex32 *)sink->stream.addr;
 	int32_t *in = (int32_t *)source->stream.addr;
 	int fft_size = 512;
@@ -358,8 +358,8 @@ static void test_math_fft_1024(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 1024 * 2 * sizeof(int32_t),
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex32 *out = (struct icomplex32 *)sink->stream.addr;
 	int32_t *in = (int32_t *)source->stream.addr;
 	int fft_size = 1024;
@@ -403,9 +403,9 @@ static void test_math_fft_1024_ifft(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 1024 * 4 * 2,
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *intm = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *intm = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex32 *out = (struct icomplex32 *)sink->stream.addr;
 	float db;
 	int64_t signal = 0;
@@ -448,9 +448,9 @@ static void test_math_fft_512_2ch(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 512 * 4 * 2,
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink1 = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink2 = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink1 = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink2 = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex32 *out1 = (struct icomplex32 *)sink1->stream.addr;
 	struct icomplex32 *out2 = (struct icomplex32 *)sink2->stream.addr;
 	uint32_t fft_size = 512;
@@ -645,8 +645,8 @@ static void test_math_fft_256_16(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 256 * 2 * sizeof(int16_t),
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex16 *out = (struct icomplex16 *)sink->stream.addr;
 	int16_t *in = (int16_t *)source->stream.addr;
 	int fft_size = 256;
@@ -690,8 +690,8 @@ static void test_math_fft_512_16(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 512 * 2 * sizeof(int16_t),
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex16 *out = (struct icomplex16 *)sink->stream.addr;
 	int16_t *in = (int16_t *)source->stream.addr;
 	int fft_size = 512;
@@ -735,8 +735,8 @@ static void test_math_fft_1024_16(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 1024 * 2 * sizeof(int16_t),
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex16 *out = (struct icomplex16 *)sink->stream.addr;
 	int16_t *in = (int16_t *)source->stream.addr;
 	int fft_size = 1024;
@@ -780,9 +780,9 @@ static void test_math_fft_1024_ifft_16(void **state)
 	struct sof_ipc_buffer test_buf_desc = {
 		.size = 1024 * 2 * sizeof(int16_t),
 	};
-	struct comp_buffer *source = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *intm = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
-	struct comp_buffer *sink = buffer_new(&test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *source = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *intm = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
+	struct comp_buffer *sink = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 	struct icomplex16 *out = (struct icomplex16 *)sink->stream.addr;
 	float db;
 	int64_t signal = 0;

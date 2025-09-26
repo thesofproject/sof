@@ -392,7 +392,7 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 
 __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
 						     uint32_t buf_size, uint32_t src_queue,
-						     uint32_t dst_queue)
+						     uint32_t dst_queue, struct k_heap *heap)
 {
 	struct sof_ipc_buffer ipc_buf;
 
@@ -403,7 +403,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
 	ipc_buf.comp.core = cpu_get_id();
-	return buffer_new(&ipc_buf, is_shared);
+	return buffer_new(heap, &ipc_buf, is_shared);
 }
 
 #if CONFIG_CROSS_CORE_STREAM
@@ -504,6 +504,8 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
+	struct k_heap *dp_heap;
+
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
 	    sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
@@ -511,6 +513,19 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		       src_id, sink_id);
 		return IPC4_INVALID_REQUEST;
 	}
+
+	struct comp_dev *dp;
+
+	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		dp = sink;
+	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		dp = source;
+	else
+		dp = NULL;
+
+	dp_heap = dp && dp->mod ? dp->mod->priv.resources.heap : NULL;
+#else
+	dp_heap = NULL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
@@ -580,7 +595,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		buf_size = ibs * 2;
 
 	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
-				    bu->extension.r.dst_queue);
+				    bu->extension.r.dst_queue, dp_heap);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %#x to %#x", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
@@ -604,12 +619,10 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
 	    source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-		bool dp_on_source = source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP;
 		struct sof_source *src = audio_buffer_get_source(&buffer->audio_buffer);
 		struct sof_sink *snk = audio_buffer_get_sink(&buffer->audio_buffer);
 
-		ring_buffer = ring_buffer_create(dp_on_source ? source : sink,
-						 source_get_min_available(src),
+		ring_buffer = ring_buffer_create(dp, source_get_min_available(src),
 						 sink_get_min_free_space(snk),
 						 audio_buffer_is_shared(&buffer->audio_buffer),
 						 buf_get_id(buffer));
@@ -619,7 +632,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		}
 
 		/* data destination module needs to use ring_buffer */
-		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, dp_on_source,
+		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, dp == source,
 						     &ring_buffer->audio_buffer);
 	}
 
