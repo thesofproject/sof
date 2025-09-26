@@ -326,7 +326,7 @@ const void *mod_fast_get(struct processing_module *mod, const void * const dram_
 	if (!container)
 		return NULL;
 
-	ptr = fast_get(dram_ptr, size);
+	ptr = fast_get(res->heap, dram_ptr, size);
 	if (!ptr) {
 		container_put(mod, container);
 		return NULL;
@@ -358,7 +358,7 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 #endif
 #if CONFIG_FAST_GET
 	case MOD_RES_FAST_GET:
-		fast_put(container->sram_ptr);
+		fast_put(res->heap, container->sram_ptr);
 		return 0;
 #endif
 	default:
