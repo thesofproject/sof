@@ -147,7 +147,7 @@ struct module_memory {
 	void *ptr; /**< A pointer to particular memory block */
 	struct list_item mem_list; /**< list of memory allocated by module */
 	size_t size; /**< Size of allocated heap memory, 0 if not from heap */
-	void (*free)(void *buf); /**< Pointer to free function for non heap allocations */
+	void (*free)(struct k_heap *heap, void *buf); /**< Pointer to custom free function */
 };
 
 /**

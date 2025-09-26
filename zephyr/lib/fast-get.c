@@ -80,7 +80,7 @@ static struct sof_fast_get_entry *fast_get_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-const void *fast_get(const void *dram_ptr, size_t size)
+const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -116,7 +116,7 @@ const void *fast_get(const void *dram_ptr, size_t size)
 		goto out;
 	}
 
-	ret = rmalloc(SOF_MEM_FLAG_USER, size);
+	ret = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, size, 0);
 	if (!ret)
 		goto out;
 	entry->size = size;
@@ -146,7 +146,7 @@ static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-void fast_put(const void *sram_ptr)
+void fast_put(struct k_heap *heap, const void *sram_ptr)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -160,7 +160,7 @@ void fast_put(const void *sram_ptr)
 	}
 	entry->refcount--;
 	if (!entry->refcount) {
-		rfree(entry->sram_ptr);
+		sof_heap_free(heap, entry->sram_ptr);
 		memset(entry, 0, sizeof(*entry));
 	}
 out:
