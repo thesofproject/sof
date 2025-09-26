@@ -617,6 +617,8 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	int ret = 0;
 
 	comp_info(dev, "google_rtc_audio_processing_prepare()");
+	comp_info(dev, "hello");
+
 
 	if (num_of_sources != 2 || num_of_sinks != 1) {
 		comp_err(dev, "Invalid source/sink count");
