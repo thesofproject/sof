@@ -15,6 +15,7 @@
 struct comp_dev;
 struct comp_driver;
 struct comp_ipc_config;
+struct k_mem_domain;
 
 static inline bool module_is_llext(const struct sof_man_module *mod)
 {
@@ -29,12 +30,15 @@ int llext_manager_free_module(const uint32_t component_id);
 
 int llext_manager_add_library(uint32_t module_id);
 
+int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *domain);
+
 bool comp_is_llext(struct comp_dev *comp);
 #else
 #define module_is_llext(mod) false
 #define llext_manager_allocate_module(ipc_config, ipc_specific_config) 0
 #define llext_manager_free_module(component_id) 0
 #define llext_manager_add_library(module_id) 0
+#define llext_manager_add_domain(component_id, domain) 0
 #define comp_is_llext(comp) false
 #endif
 
