@@ -193,7 +193,8 @@ static void container_put(struct processing_module *mod, struct module_memory *c
  *
  * The allocated memory is automatically freed when the module is unloaded.
  */
-void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, size_t alignment)
+void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			   size_t alignment)
 {
 	struct module_memory *container = container_get(mod);
 	struct module_resources *res = &mod->priv.resources;
@@ -230,7 +231,7 @@ void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, 
 
 	return ptr;
 }
-EXPORT_SYMBOL(mod_alloc_ext);
+EXPORT_SYMBOL(z_impl_mod_alloc_ext);
 
 /**
  * Creates a blob handler and releases it when the module is unloaded
@@ -281,7 +282,8 @@ EXPORT_SYMBOL(mod_data_blob_handler_new);
  * Like fast_get() but the handler is automatically freed.
  */
 #if CONFIG_FAST_GET
-const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size)
+const void *z_impl_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				size_t size)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_memory *container = container_get(mod);
@@ -304,7 +306,7 @@ const void *mod_fast_get(struct processing_module *mod, const void * const dram_
 
 	return ptr;
 }
-EXPORT_SYMBOL(mod_fast_get);
+EXPORT_SYMBOL(z_impl_mod_fast_get);
 #endif
 
 /**
@@ -312,7 +314,7 @@ EXPORT_SYMBOL(mod_fast_get);
  * @param mod	Pointer to module this memory block was allocated for.
  * @param ptr	Pointer to the memory block.
  */
-int mod_free(struct processing_module *mod, const void *ptr)
+int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct k_heap *mod_heap = res->heap;
@@ -345,7 +347,29 @@ int mod_free(struct processing_module *mod, const void *ptr)
 
 	return -EINVAL;
 }
-EXPORT_SYMBOL(mod_free);
+EXPORT_SYMBOL(z_impl_mod_free);
+
+#ifdef CONFIG_USERSPACE
+const void *z_vrfy_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				size_t size)
+{
+	return z_impl_mod_fast_get(mod, dram_ptr, size);
+}
+#include <zephyr/syscalls/mod_fast_get_mrsh.c>
+
+void *z_vrfy_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			   size_t alignment)
+{
+	return z_impl_mod_alloc_ext(mod, flags, size, alignment);
+}
+#include <zephyr/syscalls/mod_alloc_ext_mrsh.c>
+
+int z_vrfy_mod_free(struct processing_module *mod, const void *ptr)
+{
+	return z_impl_mod_free(mod, ptr);
+}
+#include <zephyr/syscalls/mod_free_mrsh.c>
+#endif
 
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,

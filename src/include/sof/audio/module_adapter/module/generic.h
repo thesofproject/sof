@@ -23,6 +23,7 @@
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 #include <zephyr/kernel/thread.h>
 #endif
+#include <zephyr/toolchain.h>
 
 /*
  * helpers to determine processing type
@@ -179,7 +180,10 @@ struct module_processing_data {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
-void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, size_t alignment);
+__syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			      size_t alignment);
+__syscall int mod_free(struct processing_module *mod, const void *ptr);
+#include <zephyr/syscalls/generic.h>
 
 /**
  * Allocates aligned memory block for module.
@@ -227,7 +231,6 @@ static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 	return ret;
 }
 
-int mod_free(struct processing_module *mod, const void *ptr);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
 static inline void mod_data_blob_handler_free(struct processing_module *mod,
@@ -237,7 +240,8 @@ static inline void mod_data_blob_handler_free(struct processing_module *mod,
 }
 #endif
 #if CONFIG_FAST_GET
-const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size);
+__syscall const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				   size_t size);
 static inline void mod_fast_put(struct processing_module *mod, const void *sram_ptr)
 {
 	mod_free(mod, sram_ptr);

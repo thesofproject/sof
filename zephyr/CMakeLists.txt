@@ -498,6 +498,7 @@ zephyr_library_sources_ifdef(CONFIG_SHELL
        sof_shell.c
 )
 
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/module_adapter/module/generic.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/fast-get.h)
 
 zephyr_library_link_libraries(SOF)
