@@ -80,7 +80,7 @@ static struct sof_fast_get_entry *fast_get_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
+const void *z_impl_fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -131,7 +131,7 @@ out:
 
 	return ret;
 }
-EXPORT_SYMBOL(fast_get);
+EXPORT_SYMBOL(z_impl_fast_get);
 
 static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *data,
 						      const void *sram_ptr)
@@ -146,7 +146,7 @@ static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-void fast_put(struct k_heap *heap, const void *sram_ptr)
+void z_impl_fast_put(struct k_heap *heap, const void *sram_ptr)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -168,4 +168,16 @@ out:
 	       entry ? entry->size : 0, entry ? entry->refcount : 0);
 	k_spin_unlock(&data->lock, key);
 }
-EXPORT_SYMBOL(fast_put);
+EXPORT_SYMBOL(z_impl_fast_put);
+
+#ifdef CONFIG_USERSPACE
+void z_vrfy_fast_put(struct k_heap *heap, const void *sram_ptr)
+{
+	z_impl_fast_put(heap, sram_ptr);
+}
+
+const void *z_vrfy_fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
+{
+	return z_impl_fast_get(heap, dram_ptr, size);
+}
+#endif
