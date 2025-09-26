@@ -168,6 +168,11 @@ config FORMAT_U8
 	help
 	  Support unsigned 8 bit processing data format
 
+config FORMAT_S8
+	bool "Support S8"
+	help
+	  Support signed 8 bit processing data format
+
 config FORMAT_A_LAW
 	bool "Support A-law"
 	help
@@ -223,6 +228,11 @@ config PCM_CONVERTER_FORMAT_U8
 	bool "Support U8"
 	help
 	  Support 8 bit processing data format without sign
+
+config PCM_CONVERTER_FORMAT_S8
+	bool "Support S8"
+	help
+	  Support signed 8 bit processing data format
 
 config PCM_CONVERTER_FORMAT_A_LAW
 	bool "Support A-law"
