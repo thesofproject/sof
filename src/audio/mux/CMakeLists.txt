@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_COMP_MUX STREQUAL "m")
+if(CONFIG_COMP_MUX STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/mux_llext)
   add_dependencies(app mux)
 else()

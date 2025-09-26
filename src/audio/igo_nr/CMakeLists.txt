@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_COMP_IGO_NR STREQUAL "m")
+if(CONFIG_COMP_IGO_NR STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/igo_nr_llext)
   add_dependencies(app igo_nr)
   return()

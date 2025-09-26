@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-if(CONFIG_COMP_MULTIBAND_DRC STREQUAL "m")
+if(CONFIG_COMP_MULTIBAND_DRC STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/multiband_drc_llext)
   add_dependencies(app multiband_drc)
 else()

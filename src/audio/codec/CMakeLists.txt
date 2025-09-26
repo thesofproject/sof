@@ -3,7 +3,7 @@
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 
-  if(CONFIG_DTS_CODEC STREQUAL "m")
+  if(CONFIG_DTS_CODEC STREQUAL "m" AND DEFINED CONFIG_LLEXT)
     add_subdirectory(dts/llext ${PROJECT_BINARY_DIR}/dts_llext)
     add_dependencies(app dts)
 

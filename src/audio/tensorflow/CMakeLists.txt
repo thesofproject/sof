@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # are we building the llext module ?
-if(CONFIG_COMP_TENSORFLOW STREQUAL "m")
+if(CONFIG_COMP_TENSORFLOW STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/tflm_llext)
   add_dependencies(app tflm)
   return()

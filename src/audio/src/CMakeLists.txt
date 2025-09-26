@@ -13,7 +13,7 @@ sof_list_append_ifdef(CONFIG_COMP_SRC_LITE base_files src_lite.c)
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 
-  if(CONFIG_COMP_SRC STREQUAL "m")
+  if(CONFIG_COMP_SRC STREQUAL "m" AND DEFINED CONFIG_LLEXT)
 
     add_subdirectory(llext ${PROJECT_BINARY_DIR}/src_llext)
     add_dependencies(app src)
