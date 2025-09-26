@@ -1019,7 +1019,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 			return err;
 		}
 	} else {
-		dd->dma_buffer = buffer_alloc_range(buffer_size_preferred, buffer_size,
+		dd->dma_buffer = buffer_alloc_range(NULL, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!dd->dma_buffer) {
