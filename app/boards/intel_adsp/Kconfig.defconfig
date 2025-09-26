@@ -21,6 +21,15 @@ config IPC4_BASE_FW_INTEL
 config COMP_CHAIN_DMA
 	default y
 
+config COMP_KPB
+	default y
+
+config COMP_UP_DOWN_MIXER
+	default y
+
+config COMP_VOLUME_WINDOWS_FADE
+	default y
+
 config FAST_GET
 	default y
 
@@ -109,6 +118,9 @@ config INTEL_ADSP_IPC
 	default y
 
 config INTEL_ADSP_TIMER
+	default y
+
+config MM_DRV
 	default y
 
 
