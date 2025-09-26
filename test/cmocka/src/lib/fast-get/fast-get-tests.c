@@ -72,12 +72,12 @@ static void test_simple_fast_get_put(void **state)
 
 	(void)state; /* unused */
 
-	ret = fast_get(testdata[0], sizeof(testdata[0]));
+	ret = fast_get(NULL, testdata[0], sizeof(testdata[0]));
 
 	assert(ret);
 	assert(!memcmp(ret, testdata[0], sizeof(testdata[0])));
 
-	fast_put(ret);
+	fast_put(NULL, ret);
 }
 
 static void test_fast_get_size_missmatch_test(void **state)
@@ -86,15 +86,15 @@ static void test_fast_get_size_missmatch_test(void **state)
 
 	(void)state; /* unused */
 
-	ret[0] = fast_get(testdata[0], sizeof(testdata[0]));
+	ret[0] = fast_get(NULL, testdata[0], sizeof(testdata[0]));
 
 	assert(ret[0]);
 	assert(!memcmp(ret[0], testdata[0], sizeof(testdata[0])));
 
-	ret[1] = fast_get(testdata[0], sizeof(testdata[0]) + 1);
+	ret[1] = fast_get(NULL, testdata[0], sizeof(testdata[0]) + 1);
 	assert(!ret[1]);
 
-	fast_put(ret);
+	fast_put(NULL, ret);
 }
 
 static void test_over_32_fast_gets_and_puts(void **state)
@@ -105,13 +105,13 @@ static void test_over_32_fast_gets_and_puts(void **state)
 	(void)state; /* unused */
 
 	for (i = 0; i < ARRAY_SIZE(copy); i++)
-		copy[i] = fast_get(testdata[i], sizeof(testdata[0]));
+		copy[i] = fast_get(NULL, testdata[i], sizeof(testdata[0]));
 
 	for (i = 0; i < ARRAY_SIZE(copy); i++)
 		assert(!memcmp(copy[i], testdata[i], sizeof(testdata[0])));
 
 	for (i = 0; i < ARRAY_SIZE(copy); i++)
-		fast_put(copy[i]);
+		fast_put(NULL, copy[i]);
 }
 
 static void test_fast_get_refcounting(void **state)
@@ -121,10 +121,10 @@ static void test_fast_get_refcounting(void **state)
 	(void)state; /* unused */
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
-		copy[0][i] = fast_get(testdata[i], sizeof(testdata[0]));
+		copy[0][i] = fast_get(NULL, testdata[i], sizeof(testdata[0]));
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
-		copy[1][i] = fast_get(testdata[i], sizeof(testdata[0]));
+		copy[1][i] = fast_get(NULL, testdata[i], sizeof(testdata[0]));
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
 		assert(copy[0][i] == copy[1][i]);
@@ -133,13 +133,13 @@ static void test_fast_get_refcounting(void **state)
 		assert(!memcmp(copy[0][i], testdata[i], sizeof(testdata[0])));
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
-		fast_put(copy[0][i]);
+		fast_put(NULL, copy[0][i]);
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
 		assert(!memcmp(copy[1][i], testdata[i], sizeof(testdata[0])));
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
-		fast_put(copy[1][i]);
+		fast_put(NULL, copy[1][i]);
 }
 
 int main(void)

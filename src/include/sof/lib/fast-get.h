@@ -10,7 +10,8 @@
 
 #include <stddef.h>
 
-const void *fast_get(const void * const dram_ptr, size_t size);
-void fast_put(const void *sram_ptr);
+struct k_heap;
+const void *fast_get(struct k_heap *heap, const void * const dram_ptr, size_t size);
+void fast_put(struct k_heap *heap, const void *sram_ptr);
 
 #endif /* __SOF_LIB_FAST_GET_H__ */
