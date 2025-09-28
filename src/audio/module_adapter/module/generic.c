@@ -160,6 +160,71 @@ static void container_put(struct processing_module *mod, struct module_resource 
 }
 
 /**
+ * Allocates aligned buffer memory block for module.
+ * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param bytes		Size in bytes.
+ * @param alignment	Alignment in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * The allocated memory is automatically freed when the module is
+ * unloaded. The back-end, rballoc(), always aligns the memory to
+ * PLATFORM_DCACHE_ALIGN at the minimum.
+ */
+void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
+{
+	struct module_resource *container = container_get(mod);
+	struct module_resources *res = &mod->priv.resources;
+	void *ptr;
+
+	MEM_API_CHECK_THREAD(res);
+	if (!container)
+		return NULL;
+
+	if (!size) {
+		comp_err(mod->dev, "requested allocation of 0 bytes.");
+		container_put(mod, container);
+		return NULL;
+	}
+
+	/* Allocate buffer memory for module */
+	ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
+
+	if (!ptr) {
+		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
+			 size, alignment, dev_comp_id(mod->dev));
+		container_put(mod, container);
+		return NULL;
+	}
+	/* Store reference to allocated memory */
+	container->ptr = ptr;
+	container->size = size;
+	container->type = MOD_RES_HEAP;
+	list_item_prepend(&container->list, &res->res_list);
+
+	res->heap_usage += size;
+	if (res->heap_usage > res->heap_high_water_mark)
+		res->heap_high_water_mark = res->heap_usage;
+
+	return ptr;
+}
+EXPORT_SYMBOL(mod_balloc_align);
+
+/**
+ * Allocates buffer memory block for module.
+ * @param mod	Pointer to module this memory block is allocated for.
+ * @param bytes	Size in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * Like mod_balloc_align() but the alignment can not be specified. However,
+ * rballoc() always aligns the memory to PLATFORM_DCACHE_ALIGN.
+ */
+void *mod_balloc(struct processing_module *mod, size_t size)
+{
+	return mod_balloc_align(mod, size, 0);
+}
+EXPORT_SYMBOL(mod_balloc);
+
+/**
  * Allocates aligned memory block for module.
  * @param mod		Pointer to the module this memory block is allocatd for.
  * @param bytes		Size in bytes.
@@ -213,8 +278,7 @@ EXPORT_SYMBOL(mod_alloc_align);
  * @param bytes	Size in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  *
- * Like mod_alloc_align() but the alignment can not be specified. However,
- * rballoc() will always aligns the memory to PLATFORM_DCACHE_ALIGN.
+ * Like mod_alloc_align() but the alignment can not be specified.
  */
 void *mod_alloc(struct processing_module *mod, size_t size)
 {
