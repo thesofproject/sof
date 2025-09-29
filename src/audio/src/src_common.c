@@ -649,9 +649,7 @@ bool src_is_ready_to_process(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,
 			     struct sof_sink **sinks, int num_of_sinks)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-
-	return src_get_copy_limits(cd, sources[0], sinks[0]);
+	return sink_get_free_frames(sinks[0]) || source_get_data_frames_available(sources[0]);
 }
 
 int src_process(struct processing_module *mod,
