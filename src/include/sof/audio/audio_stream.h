@@ -733,10 +733,10 @@ static inline void audio_stream_invalidate(struct audio_stream *buffer, uint32_t
 		tail_size = bytes - head_size;
 	}
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->r_ptr, head_size);
+	sys_cache_data_flush_range((__sparse_force void __sparse_cache *)buffer->r_ptr, head_size);
 	if (tail_size)
-		dcache_invalidate_region((__sparse_force void __sparse_cache *)buffer->addr,
-					 tail_size);
+		sys_cache_data_flush_range((__sparse_force void __sparse_cache *)buffer->addr,
+					   tail_size);
 }
 
 /**
