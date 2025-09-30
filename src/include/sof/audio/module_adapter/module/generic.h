@@ -189,9 +189,17 @@ struct module_processing_data {
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
 void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
-void *mod_balloc(struct processing_module *mod, size_t size);
+static inline void *mod_balloc(struct processing_module *mod, size_t size)
+{
+	return mod_balloc_align(mod, size, 0);
+}
+
 void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment);
-void *mod_alloc(struct processing_module *mod, size_t size);
+static inline void *mod_alloc(struct processing_module *mod, size_t size)
+{
+	return mod_alloc_align(mod, size, 0);
+}
+
 void *mod_zalloc(struct processing_module *mod, size_t size);
 int mod_free(struct processing_module *mod, const void *ptr);
 #if CONFIG_COMP_BLOB

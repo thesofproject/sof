@@ -212,21 +212,6 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 EXPORT_SYMBOL(mod_balloc_align);
 
 /**
- * Allocates buffer memory block for module.
- * @param mod	Pointer to module this memory block is allocated for.
- * @param bytes	Size in bytes.
- * @return Pointer to the allocated memory or NULL if failed.
- *
- * Like mod_balloc_align() but the alignment can not be specified. However,
- * rballoc() always aligns the memory to PLATFORM_DCACHE_ALIGN.
- */
-void *mod_balloc(struct processing_module *mod, size_t size)
-{
-	return mod_balloc_align(mod, size, 0);
-}
-EXPORT_SYMBOL(mod_balloc);
-
-/**
  * Allocates aligned memory block for module.
  * @param mod		Pointer to the module this memory block is allocatd for.
  * @param bytes		Size in bytes.
@@ -275,20 +260,6 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignme
 	return ptr;
 }
 EXPORT_SYMBOL(mod_alloc_align);
-
-/**
- * Allocates memory block for module.
- * @param mod	Pointer to module this memory block is allocated for.
- * @param bytes	Size in bytes.
- * @return Pointer to the allocated memory or NULL if failed.
- *
- * Like mod_alloc_align() but the alignment can not be specified.
- */
-void *mod_alloc(struct processing_module *mod, size_t size)
-{
-	return mod_alloc_align(mod, size, 0);
-}
-EXPORT_SYMBOL(mod_alloc);
 
 /**
  * Allocates memory block for module and initializes it to zero.
