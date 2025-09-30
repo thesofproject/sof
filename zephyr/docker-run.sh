@@ -54,8 +54,8 @@ main()
 
 run_command()
 {
-    # zephyr-lite:v0.27.4 has /opt/toolchains/zephyr-sdk-0.17.0
-    # zephyr-lite:v0.27.4 is based on zephyr-build:v0.27.4
+    # zephyr-lite:v0.28.4 has /opt/toolchains/zephyr-sdk-0.17.4
+    # zephyr-lite:v0.28.4 is based on zephyr-build:v0.28.4
     # https://hub.docker.com/r/zephyrprojectrtos/zephyr-build/tags
     # https://hub.docker.com/r/thesofproject/zephyr-lite/tags
     #
@@ -65,7 +65,7 @@ run_command()
            --workdir /zep_workspace \
            $SOF_DOCKER_RUN \
            --env REAL_CC --env http_proxy --env https_proxy \
-           thesofproject/zephyr-lite:v0.27.4 \
+           thesofproject/zephyr-lite:v0.28.4 \
            ./sof/scripts/sudo-cwd.sh "$@"
 }
 
