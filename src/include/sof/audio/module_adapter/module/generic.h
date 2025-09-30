@@ -200,7 +200,16 @@ static inline void *mod_alloc(struct processing_module *mod, size_t size)
 	return mod_alloc_align(mod, size, 0);
 }
 
-void *mod_zalloc(struct processing_module *mod, size_t size);
+static inline void *mod_zalloc(struct processing_module *mod, size_t size)
+{
+	void *ret = mod_alloc(mod, size);
+
+	if (ret)
+		memset(ret, 0, size);
+
+	return ret;
+}
+
 int mod_free(struct processing_module *mod, const void *ptr);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
