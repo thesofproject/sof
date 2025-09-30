@@ -172,11 +172,13 @@ static void container_put(struct processing_module *mod, struct module_resource 
  */
 void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
 {
-	struct module_resource *container = container_get(mod);
 	struct module_resources *res = &mod->priv.resources;
+	struct module_resource *container;
 	void *ptr;
 
 	MEM_API_CHECK_THREAD(res);
+
+	container = container_get(mod);
 	if (!container)
 		return NULL;
 
@@ -235,11 +237,13 @@ EXPORT_SYMBOL(mod_balloc);
  */
 void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment)
 {
-	struct module_resource *container = container_get(mod);
 	struct module_resources *res = &mod->priv.resources;
+	struct module_resource *container;
 	void *ptr;
 
 	MEM_API_CHECK_THREAD(res);
+
+	container = container_get(mod);
 	if (!container)
 		return NULL;
 
@@ -317,10 +321,12 @@ struct comp_data_blob_handler *
 mod_data_blob_handler_new(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
-	struct module_resource *container = container_get(mod);
 	struct comp_data_blob_handler *bhp;
+	struct module_resource *container;
 
 	MEM_API_CHECK_THREAD(res);
+
+	container = container_get(mod);
 	if (!container)
 		return NULL;
 
@@ -351,10 +357,12 @@ EXPORT_SYMBOL(mod_data_blob_handler_new);
 const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size)
 {
 	struct module_resources *res = &mod->priv.resources;
-	struct module_resource *container = container_get(mod);
+	struct module_resource *container;
 	const void *ptr;
 
 	MEM_API_CHECK_THREAD(res);
+
+	container = container_get(mod);
 	if (!container)
 		return NULL;
 
