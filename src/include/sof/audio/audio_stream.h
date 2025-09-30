@@ -22,7 +22,7 @@
 #include <sof/math/numbers.h>
 #include <sof/lib/dma.h>
 #include <rtos/alloc.h>
-#include <zephyr/cache.h>
+#include <rtos/cache.h>
 #include <ipc/stream.h>
 #include <ipc4/base-config.h>
 #include <module/audio/audio_stream.h>
@@ -756,10 +756,10 @@ static inline void audio_stream_writeback(struct audio_stream *buffer, uint32_t 
 		tail_size = bytes - head_size;
 	}
 
-	sys_cache_data_flush_range((__sparse_force void __sparse_cache *)buffer->w_ptr, head_size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->w_ptr, head_size);
 	if (tail_size)
-		sys_cache_data_flush_range((__sparse_force void __sparse_cache *)buffer->addr,
-					   tail_size);
+		dcache_writeback_region((__sparse_force void __sparse_cache *)buffer->addr,
+					tail_size);
 }
 
 /**
