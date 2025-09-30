@@ -13,8 +13,6 @@
 #include <rtos/alloc.h>
 #include <ipc/topology.h>
 
-#include <zephyr/cache.h>
-
 LOG_MODULE_REGISTER(ring_buffer, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(ring_buffer);
@@ -58,13 +56,13 @@ static inline void ring_buffer_invalidate_shared(struct ring_buffer *ring_buffer
 	/* wrap-around? */
 	if ((uintptr_t)ptr + size > (uintptr_t)ring_buffer_buffer_end(ring_buffer)) {
 		/* writeback till the end of circular buffer */
-		sys_cache_data_invd_range
+		dcache_invalidate_region
 			(ptr, (uintptr_t)ring_buffer_buffer_end(ring_buffer) - (uintptr_t)ptr);
 		size -= (uintptr_t)ring_buffer_buffer_end(ring_buffer) - (uintptr_t)ptr;
 		ptr = ring_buffer->_data_buffer;
 	}
 	/* invalidate rest of data */
-	sys_cache_data_invd_range(ptr, size);
+	dcache_invalidate_region(ptr, size);
 }
 
 static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
@@ -77,13 +75,13 @@ static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
 	/* wrap-around? */
 	if ((uintptr_t)ptr + size > (uintptr_t)ring_buffer_buffer_end(ring_buffer)) {
 		/* writeback till the end of circular buffer */
-		sys_cache_data_flush_range
+		dcache_writeback_region
 			(ptr, (uintptr_t)ring_buffer_buffer_end(ring_buffer) - (uintptr_t)ptr);
 		size -= (uintptr_t)ring_buffer_buffer_end(ring_buffer) - (uintptr_t)ptr;
 		ptr = ring_buffer->_data_buffer;
 	}
 	/* writeback rest of data */
-	sys_cache_data_flush_range(ptr, size);
+	dcache_writeback_region(ptr, size);
 }
 
 
