@@ -534,7 +534,7 @@ static int file_init_set_dai_data(struct processing_module *mod)
 	struct dai_data *dd;
 	struct copier_data *ccd = module_get_private_data(mod);
 
-	dd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*dd));
+	dd = calloc(1, sizeof(*dd));
 	if (!dd)
 		return -ENOMEM;
 
@@ -559,7 +559,7 @@ static int file_init_set_dai_data(struct processing_module *mod)
 	struct dai_data *dd;
 	struct comp_dev *dev = mod->dev;
 
-	dd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*dd));
+	dd = calloc(1, sizeof(*dd));
 	if (!dd)
 		return -ENOMEM;
 
@@ -601,14 +601,14 @@ static int file_init(struct processing_module *mod)
 
 	tb_debug_print("file_init()\n");
 
-	ccd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*ccd));
+	ccd = calloc(1, sizeof(*ccd));
 	if (!ccd)
 		return -ENOMEM;
 
 	mod_data->private = ccd;
 
 	/* File component data is placed to copier's ipcgtw_data */
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = calloc(1, sizeof(*cd));
 	if (!cd) {
 		free(ccd);
 		return -ENOMEM;
