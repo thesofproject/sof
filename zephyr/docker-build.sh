@@ -50,8 +50,6 @@ unset ZEPHYR_SDK_INSTALL_DIR
 # CMake v3.21 changed the order object files are passed to the linker.
 # This makes builds before that version not reproducible.
 # To save time don't install if recent enough.
-pip install 'cmake>=3.21'
-PATH="$HOME"/.local/bin:"$PATH"
 
 if test -e .west || test -e zephyr; then
     init_update=''
