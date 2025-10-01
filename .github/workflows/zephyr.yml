@@ -15,18 +15,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   manifest-check:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: thesofproject/zephyr-lite:v0.28.4
     steps:
       - uses: actions/checkout@v4
         with:
-          path: ./workspace/sof
+          path: sof
           filter: 'tree:0'
 
       - name: plain west update
+        working-directory: sof
         run: |
-
           : This plain 'west update' does not provide 100% certainty that
           : all the manifest revisions make sense but it is quick and
           : will catch many revision problems. Other jobs typically
@@ -35,8 +39,6 @@ jobs:
           : is useful for testing unmerged Zephyr commits but risks
           : accepting "invalid" ones, this will not.
 
-          pip3 install west
-          cd workspace/sof/
           west init -l
           west update --fetch-opt=--filter=tree:0
 
@@ -45,9 +47,8 @@ jobs:
       # XTOS submodules and... temporarily break every CI, which is why
       # it hasn't been done yet.
       - name: git submodules consistency
+        working-directory: sof
         run: |
-
-          cd workspace/sof
           git submodule update --init --recursive
 
           west update
@@ -66,40 +67,42 @@ jobs:
   # job will be disappear, folded back in the regular build-* jobs below.
   LP64-WIP:
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: thesofproject/zephyr-lite:v0.28.4
 
     steps:
       - uses: actions/checkout@v4
         with:
-          path: ./workspace/sof
+          path: sof
           filter: 'tree:0'
 
-      - name: free space
+      - name: west update
+        working-directory: sof
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
+          west init -l
+          west update --narrow --fetch-opt=--filter=tree:0
 
-      - name: west clones
-        run: pip3 install west && cd workspace/sof/ && west init -l &&
-               west update --narrow --fetch-opt=--filter=tree:0
-
-      # Not strictly necessary but saves a lot of scrolling in the next step
-      # Caching a 12G image is unfortunately not possible:
-      #   https://github.com/ScribeMD/docker-cache/issues/304
-      # For faster builds we would have to pay for some persistent runners.
-      - name: Download docker image && ls /opt/toolchains/
-        run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
+      - name: print all available sdks in /opt/toolchains/
+        run: |
+          ls -l /opt/toolchains/
 
       - name: 64 bits build
         run: |
-          cd workspace && ./sof/zephyr/docker-run.sh /bin/sh -c \
-             'ln -s  /opt/toolchains/zephyr-sdk-*  ~/;
-              west build --board imx93_evk/mimx9352/a55 sof/app      \
-              -- -DEXTRA_CFLAGS=-Werror -DEXTRA_CXXFLAGS=-Werror     \
-              -DEXTRA_AFLAGS=-Werror'
-
+          ln -s  /opt/toolchains/zephyr-sdk-*  ~/
+          west build --board imx93_evk/mimx9352/a55 sof/app \
+            -- -DEXTRA_CFLAGS=-Werror -DEXTRA_CXXFLAGS=-Werror \
+            -DEXTRA_AFLAGS=-Werror
 
   build-linux:
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: thesofproject/zephyr-lite:v0.28.4
     strategy:
       fail-fast: false
       matrix:
@@ -143,20 +146,15 @@ jobs:
         with:
           fetch-depth: 0
           filter: 'tree:0'
-          path: ./workspace/sof
+          path: sof
 
-      - name: free space
+      - name: west update
+        working-directory: sof
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-
-      - name: west clones
-
-        run: pip3 install west && cd workspace/sof/ && west init -l &&
-               time west update --narrow --fetch-opt=--filter=tree:0
+          west init -l
+          west update --narrow --fetch-opt=--filter=tree:0
 
       - name: select zephyr revision
-        working-directory: ${{ github.workspace }}/workspace
         run: |
           if [ 'mnfst' =  '${{ matrix.zephyr_revision }}' ]; then
              rem_rev=$(git -C zephyr rev-parse HEAD)
@@ -175,7 +173,7 @@ jobs:
       # Get some tags to fix `git describe` hence BUILD_VERSION, etc.
       # Keep in sync with build-windows below
       - name: Fetch tags for git describe
-        working-directory: ${{ github.workspace }}/workspace/zephyr
+        working-directory: zephyr
         run: |
           # Because we used git tricks to speed things up, we now have two git
           # problems:
@@ -205,25 +203,19 @@ jobs:
           git describe --long --always --dirty
           git describe --long --always --dirty --tags
 
-      # Not strictly necessary but saves a lot of scrolling in the next step
-      # Caching a 12G image is unfortunately not possible:
-      #   https://github.com/ScribeMD/docker-cache/issues/304
-      # For faster builds we would have to pay for some persistent runners.
-      - name: Download docker image && ls /opt/toolchains/
-        run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
+      - name: print all available sdks in /opt/toolchains/
+        run: |
+          ls -l /opt/toolchains/
 
-      # https://github.com/zephyrproject-rtos/docker-image
-      # Note: env variables can be passed to the container with
-      # -e https_proxy=...
       - name: build
-        run: cd workspace && ./sof/zephyr/docker-run.sh
-             ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror
-             --cmake-args=-DEXTRA_CXXFLAGS=-Werror
-             --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
-             --cmake-args=--warn-uninitialized
-             --overlay=sof/app/configs/repro-build.conf
-             --no-tarball
-             ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
+        run: |
+          ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror \
+            --cmake-args=-DEXTRA_CXXFLAGS=-Werror \
+            --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings' \
+            --cmake-args=--warn-uninitialized \
+            --overlay=sof/app/configs/repro-build.conf \
+            --no-tarball \
+            ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -232,8 +224,8 @@ jobs:
           name: linux-build ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
           if-no-files-found: error
           path: |
-            ${{ github.workspace }}/workspace/build-sof-staging
-            ${{ github.workspace }}/workspace/**/compile_commands.json
+            build-sof-staging
+            ./**/compile_commands.json
 
   build-windows:
     runs-on: windows-latest
@@ -285,12 +277,12 @@ jobs:
 
       # Keep this SDK version identical to the one in
       # sof/zephyr/docker-run.sh
-      - name: Cache Zephyr SDK 0.17.0
+      - name: Cache Zephyr SDK 0.17.4
         id: cache-zephyr-sdk
         uses: actions/cache@v4
         with:
-          path: zephyr-sdk-0.17.0_windows-x86_64.7z
-          key: ${{ runner.os }}-cache-zephyr-sdk-0-17-0
+          path: zephyr-sdk-0.17.4_windows-x86_64.7z
+          key: ${{ runner.os }}-cache-zephyr-sdk-0-17-4
 
       # Wget is needed by Zephyr SDK setup.cmd installation script
       - name: Download wget
@@ -298,11 +290,11 @@ jobs:
         run: |
           curl -L -O http://downloads.sourceforge.net/gnuwin32/wget-1.11.4-1-bin.zip
 
-      - name: Download Zephyr SDK 0.17.0
+      - name: Download Zephyr SDK 0.17.4
         if: ${{ steps.cache-zephyr-sdk.outputs.cache-hit != 'true' }}
         run: |  # yamllint disable-line rule:line-length
           curl -L -O `
-          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.0/zephyr-sdk-0.17.0_windows-x86_64.7z
+          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_windows-x86_64.7z
 
       # Unzips every .zip package to directory matching its name without extension
       - name: Unzip downloaded packages
@@ -325,7 +317,7 @@ jobs:
       # setup.cmd may not be called in from msys shell as it does not parse
       # forward slash script input arguments correctly.
       - name: Install Zephyr SDK
-        run: zephyr-sdk-0.17.0_windows-x86_64/zephyr-sdk-0.17.0/setup.cmd /t all /h /c
+        run: zephyr-sdk-0.17.4_windows-x86_64/zephyr-sdk-0.17.4/setup.cmd /t all /h /c
 
       - name: Setup Python
         uses: actions/setup-python@v5
