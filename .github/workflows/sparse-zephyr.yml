@@ -7,6 +7,10 @@ name: Sparse Zephyr
 # yamllint disable-line rule:truthy
 on: [push, pull_request, workflow_dispatch, workflow_call]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # As of sparse commit ce1a6720f69e / Sept 2022, the exit status of
   # sparse.c is an unusable mess and always zero in practice. Moreover
@@ -18,6 +22,8 @@ jobs:
     # We're sharing the sparse binary with the zephyr-build container so keep
     # this in sync with it.
     runs-on: ubuntu-24.04
+    container:
+      image: thesofproject/zephyr-lite:v0.28.4
 
     strategy:
       fail-fast: false
@@ -25,43 +31,39 @@ jobs:
         platform: [tgl, mtl, lnl]
 
     steps:
-      - name: free space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-
       - name: git clone sparse analyzer
         uses: actions/checkout@v4
         with:
           repository: thesofproject/sparse
           fetch-depth: 0
           filter: 'tree:0'
-          path: workspace/sparse
+          path: sparse
 
       # As of its 2023 commit 98b203419679, sparse-llvm.c uses symbols
       # (LLVMConstGEP, LLVMBuildLoad, LLVMBuildCall,...) which are:
       #   -  -Wdeprecated in LLVM v14
       #   -  Removed in LLVM v16
       - name: build sparse analyzer
-        run: cd workspace/sparse && make -j4  # HAVE_LLVM=no
+        working-directory: sparse
+        run: |
+          make -j4  # HAVE_LLVM=no
 
       - name: git clone sof
         uses: actions/checkout@v4
         with:
-          path: ./workspace/sof
+          path: sof
           fetch-depth: 0  # fix git describe
           filter: 'tree:0'
 
-      - name: west clones
-        run: pip3 install west && cd workspace/sof/ && west init -l &&
-               west update --narrow --fetch-opt=--depth=5
+      - name: west update
+        working-directory: sof
+        run: |
+          west init -l
+          west update --narrow --fetch-opt=--depth=5
 
-      # Not strictly necessary but saves a lot of scrolling in the next step
-      # Caching a 12G image is unfortunately not possible:
-      #   https://github.com/ScribeMD/docker-cache/issues/304
-      # For faster builds we would have to pay for some persistent runners.
-      - name: Download docker image && ls /opt/toolchains/
-        run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
+      - name: print all available sdks in /opt/toolchains/
+        run: |
+          ls -l /opt/toolchains/
 
       # --pristine is important to reproduce _warnings_. It makes no
       # difference for github but it's useful for anyone trying to
@@ -69,13 +71,11 @@ jobs:
       # "sparse" is currently incompatible with PICOLIBC (the new Zephyr default),
       # see https://github.com/zephyrproject-rtos/zephyr/issues/63003
       - name: analyze zephyr
-        working-directory: ./workspace
         run: |
-             ./sof/zephyr/docker-run.sh                          \
-             ./sof/zephyr/docker-build.sh ${{ matrix.platform }}          \
-             --cmake-args=-DZEPHYR_SCA_VARIANT=sparse --cmake-args=-DCONFIG_LOG_USE_VLA=n  \
-             --cmake-args=-DCONFIG_MINIMAL_LIBC=y  \
-             --pristine 2>&1 | tee _.log
+          ./sof/zephyr/docker-build.sh ${{ matrix.platform }} \
+            --cmake-args=-DZEPHYR_SCA_VARIANT=sparse --cmake-args=-DCONFIG_LOG_USE_VLA=n \
+            --cmake-args=-DCONFIG_MINIMAL_LIBC=y \
+            --pristine 2>&1 | tee _.log
 
-             printf '\n\n\t\t\t  ---- Messages below are treated as sparse errors --- \n\n\n'
-             (set -x; ./sof/scripts/parse_sparse_output.sh ${{ matrix.platforms.platform }} <_.log)
+          printf '\n\n\t\t\t  ---- Messages below are treated as sparse errors --- \n\n\n'
+          (set -x; ./sof/scripts/parse_sparse_output.sh ${{ matrix.platforms.platform }} <_.log)
