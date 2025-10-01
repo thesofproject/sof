@@ -7,9 +7,15 @@ name: Zephyr LLEXT
 # yamllint disable-line rule:truthy
 on: [pull_request, workflow_dispatch]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ubuntu-22.04
+    container:
+      image: thesofproject/zephyr-lite:v0.28.4
 
     strategy:
       fail-fast: false
@@ -17,33 +23,30 @@ jobs:
         platform: [mtl, lnl]
 
     steps:
-      - name: free space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-
-      - name: git clone sof
+      - name: checkout
         uses: actions/checkout@v4
         with:
-          path: ./workspace/sof
+          path: sof
           fetch-depth: 0  # fix git describe
           filter: 'tree:0'
 
-      - name: west clones
-        run: pip3 install west && cd workspace/sof/ && west init -l &&
-               west update --narrow --fetch-opt=--depth=5
+      - name: west update
+        working-directory: sof
+        run: |
+          west init -l
+          west update --narrow --fetch-opt=--depth=5
 
-      - name: Download docker image && ls /opt/toolchains/
-        run: cd workspace && ./sof/zephyr/docker-run.sh ls -l /opt/toolchains/
+      - name: print all available sdks in /opt/toolchains/
+        run: |
+          ls -l /opt/toolchains/
 
       - name: llext build
         run: |
-          cd workspace && ./sof/zephyr/docker-run.sh /bin/sh -c \
-             "ln -s  /opt/toolchains/zephyr-sdk-*  ~/;
-              python sof/scripts/xtensa-build-zephyr.py \
-              --cmake-args=-DEXTRA_CFLAGS=-Werror \
-              --cmake-args=-DEXTRA_CXXFLAGS=-Werror \
-              --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings' \
-              --cmake-args=--warn-uninitialized \
-              --overlay=sof/app/configs/${{ matrix.platform }}/modules.conf \
-              ${{ matrix.platform }}"
+          ln -s  /opt/toolchains/zephyr-sdk-*  ~/
+          python sof/scripts/xtensa-build-zephyr.py \
+            --cmake-args=-DEXTRA_CFLAGS=-Werror \
+            --cmake-args=-DEXTRA_CXXFLAGS=-Werror \
+            --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings' \
+            --cmake-args=--warn-uninitialized \
+            --overlay=sof/app/configs/${{ matrix.platform }}/modules.conf \
+            ${{ matrix.platform }}
