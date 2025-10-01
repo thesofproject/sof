@@ -14,7 +14,7 @@ if(zephyr) ###  Zephyr ###
     add_subdirectory(llext ${PROJECT_BINARY_DIR}/tester_llext)
     add_dependencies(app tester)
 
-  elseif(CONFIG_COMP_TESTER)
+  elseif(CONFIG_COMP_TESTER STREQUAL "y")
 
     zephyr_library_sources(${base_files})
 
