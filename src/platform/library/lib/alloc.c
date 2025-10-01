@@ -13,16 +13,25 @@
 #include <malloc.h>
 #include <rtos/alloc.h>
 #include <sof/lib/mm_heap.h>
+#include <platform/lib/heap_usage.h>
+
+struct platform_library_heap_usage sof_platform_library_heap_usage = {0};
 
 /* testbench mem alloc definition */
 
 void *rmalloc(uint32_t flags, size_t bytes)
 {
+	if (sof_platform_library_heap_usage.enable)
+		sof_platform_library_heap_usage.rmalloc_size += bytes;
+
 	return malloc(bytes);
 }
 
 void *rzalloc(uint32_t flags, size_t bytes)
 {
+	if (sof_platform_library_heap_usage.enable)
+		sof_platform_library_heap_usage.rzalloc_size += bytes;
+
 	return calloc(bytes, 1);
 }
 
@@ -34,12 +43,18 @@ void rfree(void *ptr)
 void *rballoc_align(uint32_t flags, size_t bytes,
 		    uint32_t alignment)
 {
+	if (sof_platform_library_heap_usage.enable)
+		sof_platform_library_heap_usage.rballoc_align_size += bytes;
+
 	return malloc(bytes);
 }
 
 void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
 		      size_t old_bytes, uint32_t alignment)
 {
+	if (sof_platform_library_heap_usage.enable && bytes > old_bytes)
+		sof_platform_library_heap_usage.rballoc_align_size += bytes;
+
 	return realloc(ptr, bytes);
 }
 
