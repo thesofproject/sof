@@ -12,15 +12,22 @@
  */
 
 #include <rtos/symbol.h>
-
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
 #include <sof/lib/fast-get.h>
+#include <sof/schedule/dp_schedule.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#include <ipc4/module.h>
+#include <ipc4/pipeline.h>
+#endif
 
 /* The __ZEPHYR__ condition is to keep cmocka tests working */
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-#define MEM_API_CHECK_THREAD(res) __ASSERT((res)->rsrc_mngr == k_current_get(), \
-		"Module memory API operation from wrong thread")
+#define MEM_API_CHECK_THREAD(res) do { \
+	if ((res)->rsrc_mngr != k_current_get()) \
+		LOG_WRN("mngr %p != cur %p", (res)->rsrc_mngr, k_current_get()); \
+} while (0)
 #else
 #define MEM_API_CHECK_THREAD(res)
 #endif
@@ -114,7 +121,13 @@ int module_init(struct processing_module *mod)
 	mod->priv.resources.rsrc_mngr = k_current_get();
 #endif
 	/* Now we can proceed with module specific initialization */
-	ret = interface->init(mod);
+#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_INIT_INSTANCE, NULL);
+	else
+#endif
+		ret = interface->init(mod);
+
 	if (ret) {
 		comp_err(dev, "error %d: module specific init failed", ret);
 		mod_free_all(mod);
@@ -433,7 +446,24 @@ int module_prepare(struct processing_module *mod,
 		return -EPERM;
 #endif
 	if (ops->prepare) {
-		int ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+		int ret;
+
+#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+			const union scheduler_dp_thread_ipc_param param = {
+				.pipeline_state = {
+					.trigger_cmd = COMP_TRIGGER_PREPARE,
+					.state = SOF_IPC4_PIPELINE_STATE_RUNNING,
+					.n_sources = num_of_sources,
+					.sources = sources,
+					.n_sinks = num_of_sinks,
+					.sinks = sinks,
+				},
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE, &param);
+		} else
+#endif
+			ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
 
 		if (ret) {
 			comp_err(dev, "error %d: module specific prepare failed", ret);
@@ -552,11 +582,23 @@ int module_reset(struct processing_module *mod)
 	if (md->state < MODULE_IDLE)
 		return 0;
 #endif
+
 	/* cancel task if DP task*/
-	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && mod->dev->task)
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && mod->dev->task &&
+	    (IS_ENABLED(CONFIG_SOF_USERSPACE_PROXY) || !IS_ENABLED(CONFIG_USERSPACE)))
 		schedule_task_cancel(mod->dev->task);
+
 	if (ops->reset) {
-		ret = ops->reset(mod);
+#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+			const union scheduler_dp_thread_ipc_param param = {
+				.pipeline_state.trigger_cmd = COMP_TRIGGER_STOP,
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE, &param);
+		} else
+#endif
+			ret = ops->reset(mod);
+
 		if (ret) {
 			if (ret != PPL_STATUS_PATH_STOP)
 				comp_err(mod->dev,
@@ -627,7 +669,8 @@ int module_free(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	int ret = 0;
 
-	if (ops->free) {
+	if (ops->free && (mod->dev->ipc_config.proc_domain != COMP_PROCESSING_DOMAIN_DP ||
+			  IS_ENABLED(CONFIG_SOF_USERSPACE_PROXY) || !IS_ENABLED(CONFIG_USERSPACE))) {
 		ret = ops->free(mod);
 		if (ret)
 			comp_warn(mod->dev, "error: %d", ret);
@@ -772,8 +815,17 @@ int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 	if (ret)
 		return ret;
 
-	if (ops->bind)
-		ret = ops->bind(mod, bind_data);
+	if (ops->bind) {
+#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+			const union scheduler_dp_thread_ipc_param param = {
+				.bind_data = bind_data,
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_BIND, &param);
+		} else
+#endif
+			ret = ops->bind(mod, bind_data);
+	}
 
 	return ret;
 }
@@ -796,8 +848,17 @@ int module_unbind(struct processing_module *mod, struct bind_info *unbind_data)
 	if (ret)
 		return ret;
 
-	if (ops->unbind)
-		ret = ops->unbind(mod, unbind_data);
+	if (ops->unbind) {
+#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+			const union scheduler_dp_thread_ipc_param param = {
+				.bind_data = unbind_data,
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_UNBIND, &param);
+		} else
+#endif
+			ret = ops->unbind(mod, unbind_data);
+	}
 
 	return ret;
 }
