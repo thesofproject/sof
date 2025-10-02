@@ -148,7 +148,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, enum sof_ipc4_module
 
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
-		ret = k_sem_take(&dp_sync[cpu_get_id()], K_MSEC(100));
+		ret = k_sem_take(&dp_sync[pmod->dev->task->core], K_MSEC(100));
 		if (ret == -EAGAIN)
 			return -ETIMEDOUT;
 	}
