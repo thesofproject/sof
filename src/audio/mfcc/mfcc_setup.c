@@ -65,7 +65,7 @@ static int mfcc_get_window(struct mfcc_state *state, enum sof_mfcc_fft_window_ty
  * coef[i] = 1.0 + 0.5 * lifter * sin(pi * i / lifter), i = 0 to num_ceps-1
  */
 
-static int mfcc_get_cepstral_lifter(struct mfcc_cepstral_lifter *cl)
+static int mfcc_get_cepstral_lifter(struct processing_module *mod, struct mfcc_cepstral_lifter *cl)
 {
 	int32_t inv_cepstral_lifter;
 	int32_t val;
@@ -75,7 +75,7 @@ static int mfcc_get_cepstral_lifter(struct mfcc_cepstral_lifter *cl)
 	if (cl->num_ceps > DCT_MATRIX_SIZE_MAX)
 		return -EINVAL;
 
-	cl->matrix = mat_matrix_alloc_16b(1, cl->num_ceps, 9); /* Use Q7.9 */
+	cl->matrix = mod_mat_matrix_alloc_16b(mod, 1, cl->num_ceps, 9); /* Use Q7.9 */
 	if (!cl->matrix)
 		return -ENOMEM;
 
@@ -171,12 +171,10 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	comp_info(dev, "mfcc_setup(), buffer_size = %d, prev_size = %d",
 		  state->buffer_size, state->prev_data_size);
 
-	state->buffers = rzalloc(SOF_MEM_FLAG_USER,
-				 state->sample_buffers_size);
+	state->buffers = mod_zalloc(mod, state->sample_buffers_size);
 	if (!state->buffers) {
 		comp_err(dev, "Failed buffer allocate");
-		ret = -ENOMEM;
-		goto exit;
+		return -ENOMEM;
 	}
 
 	mfcc_init_buffer(&state->buf, state->buffers, state->buffer_size);
@@ -189,29 +187,26 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 #else
 	fft->fft_buffer_size = fft->fft_padded_size * sizeof(struct icomplex32);
 #endif
-	fft->fft_buf = rzalloc(SOF_MEM_FLAG_USER, fft->fft_buffer_size);
+	fft->fft_buf = mod_zalloc(mod, fft->fft_buffer_size);
 	if (!fft->fft_buf) {
 		comp_err(dev, "Failed FFT buffer allocate");
-		ret = -ENOMEM;
-		goto free_buffers;
+		return -ENOMEM;
 	}
 
-	fft->fft_out = rzalloc(SOF_MEM_FLAG_USER, fft->fft_buffer_size);
+	fft->fft_out = mod_zalloc(mod, fft->fft_buffer_size);
 	if (!fft->fft_out) {
 		comp_err(dev, "Failed FFT output allocate");
-		ret = -ENOMEM;
-		goto free_fft_buf;
+		return -ENOMEM;
 	}
 
 	fft->fft_fill_start_idx = 0; /* From config pad_type */
 
 	/* Setup FFT */
-	fft->fft_plan = fft_plan_new(fft->fft_buf, fft->fft_out, fft->fft_padded_size,
-				     MFCC_FFT_BITS);
+	fft->fft_plan = mod_fft_plan_new(mod, fft->fft_buf, fft->fft_out, fft->fft_padded_size,
+					 MFCC_FFT_BITS);
 	if (!fft->fft_plan) {
 		comp_err(dev, "Failed FFT init");
-		ret = -EINVAL;
-		goto free_fft_out;
+		return -EINVAL;
 	}
 
 	comp_info(dev, "mfcc_setup(), window = %d, num_mel_bins = %d, num_ceps = %d, norm = %d",
@@ -223,7 +218,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	ret = mfcc_get_window(state, config->window);
 	if (ret < 0) {
 		comp_err(dev, "Failed Window function");
-		goto free_fft_out;
+		return ret;
 	}
 
 	/* Setup Mel auditory filterbank. FFT input and output buffers are used
@@ -242,10 +237,10 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	fb->scratch_data2 = (int16_t *)fft->fft_out;
 	fb->scratch_length1 = fft->fft_buffer_size / sizeof(int16_t);
 	fb->scratch_length2 = fft->fft_buffer_size / sizeof(int16_t);
-	ret = psy_get_mel_filterbank(fb);
+	ret = mod_psy_get_mel_filterbank(mod, fb);
 	if (ret < 0) {
 		comp_err(dev, "Failed Mel filterbank");
-		goto free_fft_out;
+		return ret;
 	}
 
 	/* Setup DCT */
@@ -253,18 +248,18 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	dct->num_out = config->num_ceps;
 	dct->type = (enum dct_type)config->dct;
 	dct->ortho = true;
-	ret = dct_initialize_16(dct);
+	ret = mod_dct_initialize_16(mod, dct);
 	if (ret < 0) {
 		comp_err(dev, "Failed DCT init");
-		goto free_melfb_data;
+		return ret;
 	}
 
 	state->lifter.num_ceps = config->num_ceps;
 	state->lifter.cepstral_lifter = config->cepstral_lifter; /* Q7.9 max 64.0*/
-	ret = mfcc_get_cepstral_lifter(&state->lifter);
+	ret = mfcc_get_cepstral_lifter(mod, &state->lifter);
 	if (ret < 0) {
 		comp_err(dev, "Failed cepstral lifter");
-		goto free_dct_matrix;
+		return ret;
 	}
 
 	/* Scratch overlay during runtime
@@ -297,33 +292,17 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 
 	comp_dbg(dev, "mfcc_setup(), done");
 	return 0;
-
-free_dct_matrix:
-	rfree(state->dct.matrix);
-
-free_melfb_data:
-	rfree(fb->data);
-
-free_fft_out:
-	rfree(fft->fft_out);
-
-free_fft_buf:
-	rfree(fft->fft_buf);
-
-free_buffers:
-	rfree(state->buffers);
-
-exit:
-	return ret;
 }
 
-void mfcc_free_buffers(struct mfcc_comp_data *cd)
+void mfcc_free_buffers(struct processing_module *mod)
 {
-	fft_plan_free(cd->state.fft.fft_plan);
-	rfree(cd->state.fft.fft_buf);
-	rfree(cd->state.fft.fft_out);
-	rfree(cd->state.buffers);
-	rfree(cd->state.melfb.data);
-	rfree(cd->state.dct.matrix);
-	rfree(cd->state.lifter.matrix);
+	struct mfcc_comp_data *cd = module_get_private_data(mod);
+
+	mod_fft_plan_free(mod, cd->state.fft.fft_plan);
+	mod_free(mod, cd->state.fft.fft_buf);
+	mod_free(mod, cd->state.fft.fft_out);
+	mod_free(mod, cd->state.buffers);
+	mod_free(mod, cd->state.melfb.data);
+	mod_free(mod, cd->state.dct.matrix);
+	mod_free(mod, cd->state.lifter.matrix);
 }

@@ -18,6 +18,7 @@
 #include <user/trace.h>
 #include <rtos/spinlock.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/clk.h>
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
@@ -63,13 +64,62 @@ void WEAK *rbrealloc_align(void *ptr, uint32_t flags,
 {
 	(void)flags;
 	(void)old_bytes;
+	(void)alignment;
 
 	return realloc(ptr, bytes);
+}
+
+void WEAK *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
+{
+	(void)flags;
+	(void)alignment;
+
+	return malloc(bytes);
+}
+
+void WEAK *rmalloc(uint32_t flags, size_t bytes)
+{
+	(void)flags;
+
+	return malloc(bytes);
 }
 
 void WEAK rfree(void *ptr)
 {
 	free(ptr);
+}
+
+void WEAK *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
+{
+	void *ret;
+	(void)mod;
+	(void)alignment;
+
+	ret = malloc(size);
+
+	assert(ret);
+
+	return ret;
+}
+
+void WEAK *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment)
+{
+	void *ret;
+	(void)mod;
+	(void)alignment;
+
+	ret = malloc(size);
+
+	assert(ret);
+
+	return ret;
+}
+
+int WEAK mod_free(struct processing_module *mod, const void *ptr)
+{
+	(void)mod;
+	free((void *)ptr);
+	return 0;
 }
 
 int WEAK memcpy_s(void *dest, size_t dest_size,

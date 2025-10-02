@@ -439,7 +439,7 @@ static void heap_free(struct k_heap *h, void *mem)
 }
 
 
-void *rmalloc(uint32_t flags, size_t bytes)
+void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
 {
 	void *ptr;
 	struct k_heap *heap;
@@ -453,7 +453,7 @@ void *rmalloc(uint32_t flags, size_t bytes)
 			tr_err(&zephyr_tr, "L3_HEAP available for cached addresses only!");
 			return NULL;
 		}
-		ptr = (__sparse_force void *)l3_heap_alloc_aligned(heap, 0, bytes);
+		ptr = (__sparse_force void *)l3_heap_alloc_aligned(heap, alignment, bytes);
 
 		return ptr;
 #else
@@ -468,16 +468,23 @@ void *rmalloc(uint32_t flags, size_t bytes)
 	}
 
 	if (!(flags & SOF_MEM_FLAG_COHERENT)) {
-		ptr = (__sparse_force void *)heap_alloc_aligned_cached(heap, 0, bytes);
+		ptr = (__sparse_force void *)heap_alloc_aligned_cached(heap, alignment, bytes);
 	} else {
 		/*
 		 * XTOS alloc implementation has used dcache alignment,
 		 * so SOF application code is expecting this behaviour.
 		 */
-		ptr = heap_alloc_aligned(heap, PLATFORM_DCACHE_ALIGN, bytes);
+		alignment = MAX(PLATFORM_DCACHE_ALIGN, alignment);
+		ptr = heap_alloc_aligned(heap, alignment, bytes);
 	}
 
 	return ptr;
+}
+EXPORT_SYMBOL(rmalloc_align);
+
+void *rmalloc(uint32_t flags, size_t bytes)
+{
+	return rmalloc_align(flags, bytes, 0);
 }
 EXPORT_SYMBOL(rmalloc);
 
