@@ -80,11 +80,11 @@ struct probe_dma_ext {
  * Probe main struct
  */
 struct probe_pdata {
+	struct task dmap_work;					  /**< probe task */
 	struct probe_dma_ext ext_dma;				  /**< extraction DMA */
 	struct probe_dma_ext inject_dma[CONFIG_PROBE_DMA_MAX];	  /**< injection DMA */
 	struct probe_point probe_points[CONFIG_PROBE_POINTS_MAX]; /**< probe points */
 	struct probe_data_packet header;			  /**< data packet header */
-	struct task dmap_work;					  /**< probe task */
 };
 
 /**
