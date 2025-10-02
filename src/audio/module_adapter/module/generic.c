@@ -12,10 +12,15 @@
  */
 
 #include <rtos/symbol.h>
-
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
 #include <sof/lib/fast-get.h>
+#include <sof/schedule/dp_schedule.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#include <ipc4/module.h>
+#include <ipc4/pipeline.h>
+#endif
 
 /* The __ZEPHYR__ condition is to keep cmocka tests working */
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
@@ -118,7 +123,13 @@ int module_init(struct processing_module *mod)
 	mod_resource_init(mod);
 
 	/* Now we can proceed with module specific initialization */
-	ret = interface->init(mod);
+#if CONFIG_IPC_MAJOR_4
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_INIT_INSTANCE, NULL);
+	else
+#endif
+		ret = interface->init(mod);
+
 	if (ret) {
 		comp_err(dev, "module_init() error %d: module specific init failed, comp id %d",
 			 ret, dev_comp_id(dev));
@@ -402,7 +413,27 @@ int module_prepare(struct processing_module *mod,
 		return -EPERM;
 #endif
 	if (ops->prepare) {
-		int ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+		int ret;
+
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+#if CONFIG_IPC_MAJOR_4
+			union scheduler_dp_thread_ipc_param param = {
+				.pipeline_state = {
+					.trigger_cmd = COMP_TRIGGER_PREPARE,
+					.state = SOF_IPC4_PIPELINE_STATE_RUNNING,
+					.n_sources = num_of_sources,
+					.sources = sources,
+					.n_sinks = num_of_sinks,
+					.sinks = sinks,
+				},
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE, &param);
+#else
+			ret = 0;
+#endif
+		} else {
+			ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+		}
 
 		if (ret) {
 			comp_err(dev, "module_prepare() error %d: module specific prepare failed, comp_id %d",
@@ -526,11 +557,21 @@ int module_reset(struct processing_module *mod)
 	if (md->state < MODULE_IDLE)
 		return 0;
 #endif
-	/* cancel task if DP task*/
-	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && mod->dev->task)
-		schedule_task_cancel(mod->dev->task);
+
 	if (ops->reset) {
-		ret = ops->reset(mod);
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+#if CONFIG_IPC_MAJOR_4
+			union scheduler_dp_thread_ipc_param param = {
+				.pipeline_state.trigger_cmd = COMP_TRIGGER_STOP,
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE, &param);
+#else
+			ret = 0;
+#endif
+		} else {
+			ret = ops->reset(mod);
+		}
+
 		if (ret) {
 			if (ret != PPL_STATUS_PATH_STOP)
 				comp_err(mod->dev,
@@ -596,7 +637,7 @@ int module_free(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	int ret = 0;
 
-	if (ops->free) {
+	if (ops->free && mod->dev->ipc_config.proc_domain != COMP_PROCESSING_DOMAIN_DP) {
 		ret = ops->free(mod);
 		if (ret)
 			comp_warn(mod->dev, "error: %d for %d",
@@ -743,8 +784,18 @@ int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 	if (ret)
 		return ret;
 
-	if (ops->bind)
-		ret = ops->bind(mod, bind_data);
+	if (ops->bind) {
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+#if CONFIG_IPC_MAJOR_4
+			union scheduler_dp_thread_ipc_param param = {
+				.bind_data = bind_data,
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_BIND, &param);
+#endif
+		} else {
+			ret = ops->bind(mod, bind_data);
+		}
+	}
 
 	return ret;
 }
