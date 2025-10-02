@@ -238,8 +238,14 @@ __cold static int ipc4_create_pipeline_payload_decode(char *data)
 	const struct ipc4_pipeline_ext_payload *hdr =
 		(struct ipc4_pipeline_ext_payload *)data;
 	const struct ipc4_pipeline_ext_object *obj;
-	size_t size =  hdr->payload_words * sizeof(uint32_t);
-	bool last_object = !hdr->data_obj_array;
+	size_t hdr_cache_size = ALIGN_UP(sizeof(*hdr), CONFIG_DCACHE_LINE_SIZE);
+	bool last_object;
+	size_t size;
+
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 hdr_cache_size);
+	size = hdr->payload_words * sizeof(uint32_t);
+	last_object = !hdr->data_obj_array;
 
 	if (hdr->payload_words * sizeof(uint32_t) < sizeof(*hdr)) {
 		tr_err(&ipc_tr, "Payload size too small: %u : %#x", hdr->payload_words,
@@ -249,6 +255,12 @@ __cold static int ipc4_create_pipeline_payload_decode(char *data)
 
 	tr_info(&ipc_tr, "payload size %u array %u: %#x", hdr->payload_words, hdr->data_obj_array,
 		*((uint32_t *)hdr));
+
+	if (ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE) > hdr_cache_size)
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)
+					 ((char *)MAILBOX_HOSTBOX_BASE + hdr_cache_size),
+					 ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE) -
+					 hdr_cache_size);
 
 	obj = (const struct ipc4_pipeline_ext_object *)(hdr + 1);
 	while (!last_object) {
@@ -384,8 +396,6 @@ __cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	if (pipe_desc->extension.r.payload) {
 		char *data;
 
-		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-					 MAILBOX_HOSTBOX_SIZE);
 		data = ipc4_get_pipe_create_data();
 
 		ipc4_create_pipeline_payload_decode(data);
