@@ -140,7 +140,7 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 	ipc_config.ipc_extended_init = module_init->extension.r.extended_init;
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-				 MAILBOX_HOSTBOX_SIZE);
+				 ALIGN_UP(ipc_config.ipc_config_size, CONFIG_DCACHE_LINE_SIZE));
 
 	data = ipc4_get_comp_new_data();
 
