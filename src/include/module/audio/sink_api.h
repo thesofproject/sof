@@ -78,6 +78,12 @@ struct sink_ops {
 	int (*commit_buffer)(struct sof_sink *sink, size_t commit_size);
 
 	/**
+	 * get latest feeding time for this sink, result is a number of microseconds since "NOW"
+	 * where "now" means a start of last LL cycle, as described in zephyr_dp_schedule.c
+	 */
+	uint32_t (*get_lft)(struct sof_sink *sink);
+
+	/**
 	 * OPTIONAL: Notification to the sink implementation about changes in audio format
 	 *
 	 * Once any of *audio_stream_params elements changes, the implementation of
@@ -346,6 +352,11 @@ static inline int sink_unbind(struct sof_sink *sink)
 static inline struct processing_module *sink_get_bound_module(struct sof_sink *sink)
 {
 	return sink->bound_module;
+}
+
+static inline uint32_t sink_get_last_feeding_time(struct sof_sink *sink)
+{
+	return sink->ops->get_lft(sink);
 }
 
 #endif /* __MODULE_AUDIO_SINK_API_H__ */
