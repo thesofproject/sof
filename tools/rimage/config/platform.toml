@@ -4,4 +4,6 @@
 #include "platform-lnl.toml"
 #elif CONFIG_SOC_INTEL_ACE30
 #include "platform-ptl.toml"
+#elif CONFIG_SOC_INTEL_ACE40
+#include "platform-nvl.toml"
 #endif
