@@ -169,67 +169,83 @@ EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 # Split topologies
 "cavs-sdw\;sof-arl-dmic-2ch-id2\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-arl-dmic-2ch-id2.bin"
+NHLT_BIN=nhlt-sof-arl-dmic-2ch-id2.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-arl-dmic-2ch-id3\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=3,DMIC1_ID=4,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-arl-dmic-2ch-id3.bin"
+NHLT_BIN=nhlt-sof-arl-dmic-2ch-id3.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-arl-dmic-2ch-id4\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=4,DMIC1_ID=5,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-arl-dmic-2ch-id4.bin"
+NHLT_BIN=nhlt-sof-arl-dmic-2ch-id4.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-arl-dmic-2ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-arl-dmic-2ch-id5.bin"
+NHLT_BIN=nhlt-sof-arl-dmic-2ch-id5.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-arl-dmic-4ch-id2\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-arl-dmic-4ch-id2.bin"
+NHLT_BIN=nhlt-sof-arl-dmic-4ch-id2.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-arl-dmic-4ch-id3\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=3,DMIC1_ID=4,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-arl-dmic-4ch-id3.bin"
+NHLT_BIN=nhlt-sof-arl-dmic-4ch-id3.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-arl-dmic-4ch-id4\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=4,DMIC1_ID=5,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-arl-dmic-4ch-id4.bin"
+NHLT_BIN=nhlt-sof-arl-dmic-4ch-id4.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-arl-dmic-4ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-arl-dmic-4ch-id5.bin"
+NHLT_BIN=nhlt-sof-arl-dmic-4ch-id5.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-mtl-dmic-2ch-id2\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id2.bin"
+NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id2.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-mtl-dmic-2ch-id3\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=3,DMIC1_ID=4,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id3.bin"
+NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id3.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-mtl-dmic-2ch-id4\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=4,DMIC1_ID=5,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id4.bin"
+NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id4.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-mtl-dmic-2ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id5.bin"
+NHLT_BIN=nhlt-sof-mtl-dmic-2ch-id5.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-mtl-dmic-4ch-id2\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id2.bin"
+NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id2.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-mtl-dmic-4ch-id3\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=3,DMIC1_ID=4,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id3.bin"
+NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id3.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-mtl-dmic-4ch-id4\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=4,DMIC1_ID=5,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id4.bin"
+NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id4.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 "cavs-sdw\;sof-mtl-dmic-4ch-id5\;PLATFORM=mtl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
-NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id5.bin"
+NHLT_BIN=nhlt-sof-mtl-dmic-4ch-id5.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
 # Below topologies are used on Chromebooks
 
