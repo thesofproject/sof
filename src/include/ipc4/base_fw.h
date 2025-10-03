@@ -373,6 +373,8 @@ enum ipc4_fw_config_params {
 	IPC4_DMI_FORCE_L1_EXIT = 28,
 	/* FW context save on D3 entry */
 	IPC4_FW_CONTEXT_SAVE = 29,
+	/* Minimum size of host buffer in ms */
+	IPC4_FW_MIN_HOST_BUFFER_PERIODS = 33,
 	/* Total number of FW config parameters  */
 	IPC4_FW_CFG_PARAMS_COUNT,
 	/* Max config parameter id */
