@@ -179,7 +179,21 @@ struct module_processing_data {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
-void *mod_alloc_align(struct processing_module *mod, size_t size, uint32_t alignment);
+void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, size_t alignment);
+
+/**
+ * Allocates aligned memory block for module.
+ * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param bytes		Size in bytes.
+ * @param alignment	Alignment in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ *
+ * The allocated memory is automatically freed when the module is unloaded.
+ */
+static inline void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment)
+{
+	return mod_alloc_ext(mod, 0, size, alignment);
+}
 
 /**
  * Allocates memory block for module.

@@ -184,15 +184,16 @@ static void container_put(struct processing_module *mod, struct module_memory *c
 }
 
 /**
- * Allocates aligned memory block for module.
+ * Allocates aligned memory block with flags for module.
  * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param flags		Allocator flags.
  * @param bytes		Size in bytes.
  * @param alignment	Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  *
  * The allocated memory is automatically freed when the module is unloaded.
  */
-void *mod_alloc_align(struct processing_module *mod, size_t size, uint32_t alignment)
+void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, size_t alignment)
 {
 	struct module_memory *container = container_get(mod);
 	struct module_resources *res = &mod->priv.resources;
@@ -210,7 +211,7 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, uint32_t align
 	}
 
 	/* Allocate memory for module */
-	ptr = sof_heap_alloc(mod_heap, 0, size, alignment);
+	ptr = sof_heap_alloc(mod_heap, flags, size, alignment);
 	if (!ptr) {
 		comp_err(mod->dev, "mod_alloc: failed to allocate memory for comp %x.",
 			 dev_comp_id(mod->dev));
@@ -229,7 +230,7 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, uint32_t align
 
 	return ptr;
 }
-EXPORT_SYMBOL(mod_alloc_align);
+EXPORT_SYMBOL(mod_alloc_ext);
 
 /**
  * Creates a blob handler and releases it when the module is unloaded
