@@ -102,10 +102,12 @@ void WEAK *mod_balloc_align(struct processing_module *mod, size_t size, size_t a
 	return ret;
 }
 
-void WEAK *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment)
+void WEAK *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			 size_t alignment)
 {
 	void *ret;
 	(void)mod;
+	(void)flags;
 	(void)alignment;
 
 	ret = malloc(size);
