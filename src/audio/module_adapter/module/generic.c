@@ -215,15 +215,16 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 EXPORT_SYMBOL(mod_balloc_align);
 
 /**
- * Allocates aligned memory block for module.
+ * Allocates aligned memory block with flags for module.
  * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param flags		Allocator flags.
  * @param bytes		Size in bytes.
  * @param alignment	Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  *
  * The allocated memory is automatically freed when the module is unloaded.
  */
-void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment)
+void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, size_t alignment)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
@@ -242,7 +243,7 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignme
 	}
 
 	/* Allocate memory for module */
-	ptr = sof_heap_alloc(res->heap, 0, size, alignment);
+	ptr = sof_heap_alloc(res->heap, flags, size, alignment);
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
 			 size, alignment, dev_comp_id(mod->dev));
@@ -261,7 +262,7 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignme
 
 	return ptr;
 }
-EXPORT_SYMBOL(mod_alloc_align);
+EXPORT_SYMBOL(mod_alloc_ext);
 
 /**
  * Creates a blob handler and releases it when the module is unloaded
