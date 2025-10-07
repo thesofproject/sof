@@ -43,6 +43,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 
 	/* Module adapter components */
 	sys_comp_module_aria_interface_init();
+	sys_comp_module_asrc_interface_init();
 	sys_comp_module_crossover_interface_init();
 	sys_comp_module_dcblock_interface_init();
 	sys_comp_module_demux_interface_init();
@@ -64,7 +65,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_module_selector_interface_init();
 	sys_comp_module_sound_dose_interface_init();
 	sys_comp_module_src_interface_init();
-	sys_comp_module_asrc_interface_init();
+	sys_comp_module_stft_process_interface_init();
 	sys_comp_module_tdfb_interface_init();
 	sys_comp_module_template_interface_init();
 	sys_comp_module_volume_interface_init();
