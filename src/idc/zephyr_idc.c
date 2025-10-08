@@ -185,6 +185,11 @@ void idc_init_thread(void)
 
 	k_p4wq_enable_static_thread(q_zephyr_idc + cpu,
 				    _p4threads_q_zephyr_idc + cpu, BIT(cpu));
+	/*
+	 * Assign SOF system heap to the IDC thread. Otherwise by default it
+	 * uses the Zephyr heap for DP stack allocation
+	 */
+	k_thread_heap_assign(_p4threads_q_zephyr_idc + cpu, sof_sys_heap_get());
 }
 
 #endif /* CONFIG_MULTICORE */

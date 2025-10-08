@@ -5,6 +5,7 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
 #include <sof/audio/component.h>
+#include <rtos/alloc.h>
 #include <rtos/task.h>
 #include <stdint.h>
 #include <sof/schedule/edf_schedule.h>
@@ -111,6 +112,7 @@ int scheduler_init_edf(void)
 
 	k_thread_suspend(thread);
 
+	k_thread_heap_assign(thread, sof_sys_heap_get());
 	k_thread_cpu_mask_clear(thread);
 	k_thread_cpu_mask_enable(thread, PLATFORM_PRIMARY_CORE_ID);
 	k_thread_name_set(thread, "edf_workq");
