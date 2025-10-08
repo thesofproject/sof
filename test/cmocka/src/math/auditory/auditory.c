@@ -14,6 +14,7 @@
 #include <string.h>
 #include <cmocka.h>
 #include <math.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/math/auditory.h>
 #include <sof/math/fft.h>
 #include "ref_hz_to_mel.h"
@@ -37,6 +38,8 @@
 #define MEL_FB32_MAX_ERROR_RMS  3.0
 
 #undef DEBUGFILES /* Change this to #define to get output data files for debugging */
+
+struct processing_module dummy;
 
 static void filterbank_16_test(const int16_t *fft_real, const int16_t *fft_imag,
 			       const int16_t *ref_mel_log,
@@ -87,7 +90,7 @@ static void filterbank_16_test(const int16_t *fft_real, const int16_t *fft_imag,
 	fb.scratch_data2 = (int16_t *)fft_out;
 	fb.scratch_length1 = fft_size / sizeof(int16_t);
 	fb.scratch_length2 = fft_size / sizeof(int16_t);
-	ret = psy_get_mel_filterbank(&fb);
+	ret = mod_psy_get_mel_filterbank(&dummy, &fb);
 	if (ret < 0) {
 		fprintf(stderr, "Failed Mel filterbank\n");
 		goto err_get_filterbank;
@@ -128,6 +131,10 @@ static void filterbank_16_test(const int16_t *fft_real, const int16_t *fft_imag,
 
 	assert_true(error_rms < MEL_FB16_MAX_ERROR_RMS);
 	assert_true(delta_max < MEL_FB16_MAX_ERROR_ABS);
+	free(mel_log);
+	free(fft_buf);
+	free(fft_out);
+	mod_psy_free_mel_filterbank(&dummy, &fb);
 	return;
 
 err_get_filterbank:
@@ -190,7 +197,7 @@ static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 	fb.scratch_data2 = (int16_t *)fft_out;
 	fb.scratch_length1 = fft_size / sizeof(int16_t);
 	fb.scratch_length2 = fft_size / sizeof(int16_t);
-	ret = psy_get_mel_filterbank(&fb);
+	ret = mod_psy_get_mel_filterbank(&dummy, &fb);
 	if (ret < 0) {
 		fprintf(stderr, "Failed Mel filterbank\n");
 		goto err_get_filterbank;
@@ -231,6 +238,10 @@ static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 
 	assert_true(error_rms < MEL_FB32_MAX_ERROR_RMS);
 	assert_true(delta_max < MEL_FB32_MAX_ERROR_ABS);
+	free(mel_log);
+	free(fft_buf);
+	free(fft_out);
+	mod_psy_free_mel_filterbank(&dummy, &fb);
 	return;
 
 err_get_filterbank:

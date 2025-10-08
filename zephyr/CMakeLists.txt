@@ -288,7 +288,13 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 	)
 
 	# Sources for virtual heap management
-	zephyr_library_sources(
+	# Virtual memory support is required and can be enabled with
+	# either VMH or PACOVR.
+	zephyr_library_sources_ifdef(CONFIG_SOF_PACOVR
+		lib/vpages.c
+		lib/pacovr.c
+	)
+	zephyr_library_sources_ifndef(CONFIG_SOF_PACOVR,
 		lib/regions_mm.c
 	)
 

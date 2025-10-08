@@ -4,6 +4,7 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/format.h>
 #include <sof/math/matrix.h>
 #include <sof/math/dct.h>
@@ -31,7 +32,7 @@
  * multiply with the returned matrix.
  * \param[in,out]  dct  In input provide DCT type and size, in output the DCT matrix
  */
-int dct_initialize_16(struct dct_plan_16 *dct)
+int mod_dct_initialize_16(struct processing_module *mod, struct dct_plan_16 *dct)
 {
 	int16_t dct_val;
 	int32_t arg;
@@ -51,7 +52,7 @@ int dct_initialize_16(struct dct_plan_16 *dct)
 	if (dct->num_in > DCT_MATRIX_SIZE_MAX || dct->num_out > DCT_MATRIX_SIZE_MAX)
 		return -EINVAL;
 
-	dct->matrix = mat_matrix_alloc_16b(dct->num_in, dct->num_out, 15);
+	dct->matrix = mod_mat_matrix_alloc_16b(mod, dct->num_in, dct->num_out, 15);
 	if (!dct->matrix)
 		return -ENOMEM;
 
@@ -76,4 +77,9 @@ int dct_initialize_16(struct dct_plan_16 *dct)
 	}
 
 	return 0;
+}
+
+int mod_dct_free_16(struct processing_module *mod, struct dct_plan_16 *dct)
+{
+	return mod_free(mod, dct->matrix);
 }

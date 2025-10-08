@@ -315,7 +315,7 @@ int main(void)
 	struct vol_test_parameters *parameters;
 	uint32_t volume_values[] = {VOL_MAX, VOL_ZERO_DB, VOL_MINUS_80DB};
 	int num_tests = ARRAY_SIZE(test_parameters) * ARRAY_SIZE(volume_values);
-	int i, j;
+	int i, j, ret;
 
 	parameters = test_calloc(num_tests, sizeof(struct vol_test_parameters));
 	for (i = 0; i < ARRAY_SIZE(test_parameters); i++) {
@@ -338,5 +338,9 @@ int main(void)
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
 
-	return cmocka_run_group_tests(tests, NULL, NULL);
+	ret = cmocka_run_group_tests(tests, NULL, NULL);
+
+	test_free(parameters);
+
+	return ret;
 }

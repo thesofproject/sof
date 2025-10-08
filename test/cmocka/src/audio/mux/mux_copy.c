@@ -211,6 +211,9 @@ static int teardown_test_case(void **state)
 	struct test_data *td = *((struct test_data **)state);
 	int i;
 
+	rfree(td->mod->input_buffers);
+	rfree(td->mod->output_buffers);
+
 	for (i = 0; i < MUX_MAX_STREAMS; ++i)
 		free_test_source(td->sources[i]);
 
@@ -357,8 +360,10 @@ int main(void)
 	cmocka_set_message_output(CM_OUTPUT_TAP);
 	ret = cmocka_run_group_tests(tests, setup_group, NULL);
 
-	for (ti = 0; ti < ARRAY_SIZE(valid_formats) * ARRAY_SIZE(masks); ti++)
+	for (ti = 0; ti < ARRAY_SIZE(valid_formats) * ARRAY_SIZE(masks); ti++) {
 		free(tests[ti].initial_state);
+		free((void *)tests[ti].name);
+	}
 
 	return ret;
 }

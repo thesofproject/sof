@@ -613,7 +613,7 @@ static int selector_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -729,11 +729,7 @@ static int selector_verify_params(struct processing_module *mod,
  */
 static int selector_free(struct processing_module *mod)
 {
-	struct comp_data *cd = module_get_private_data(mod);
-
 	comp_dbg(mod->dev, "selector_free()");
-
-	rfree(cd);
 
 	return 0;
 }
