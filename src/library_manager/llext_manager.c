@@ -740,7 +740,6 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	const unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
 	struct lib_manager_module *mctx = ctx->mod + mod_idx;
-	int ret;
 
 	/* Executable code (.text) */
 	uintptr_t va_base_text = mctx->segment[LIB_MANAGER_TEXT].addr;
@@ -754,8 +753,9 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 	uintptr_t va_base_data = mctx->segment[LIB_MANAGER_DATA].addr;
 	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
 
-	ret = llext_manager_add_partition(domain, va_base_text, text_size,
-					  K_MEM_PARTITION_P_RX_U_RX);
+	int ret = llext_manager_add_partition(domain, va_base_text, text_size,
+					      K_MEM_PARTITION_P_RX_U_RX);
+
 	if (ret < 0)
 		return ret;
 
@@ -769,6 +769,64 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 	if (data_size) {
 		ret = llext_manager_add_partition(domain, va_base_data, data_size,
 						  K_MEM_PARTITION_P_RW_U_RW);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int llext_manager_rm_partition(struct k_mem_domain *domain,
+				       uintptr_t addr, size_t size,
+				       k_mem_partition_attr_t attr)
+{
+	size_t pre_pad_size = addr & (PAGE_SZ - 1);
+	struct k_mem_partition part = {
+		.start = addr - pre_pad_size,
+		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
+		.attr = attr,
+	};
+
+	tr_dbg(&lib_manager_tr, "remove %#zx @ %lx partition", part.size, part.start);
+	return k_mem_domain_remove_partition(domain, &part);
+}
+
+int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *domain)
+{
+	const uint32_t module_id = IPC4_MOD_ID(component_id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	const unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+	struct lib_manager_module *mctx = ctx->mod + mod_idx;
+
+	/* Executable code (.text) */
+	uintptr_t va_base_text = mctx->segment[LIB_MANAGER_TEXT].addr;
+	size_t text_size = mctx->segment[LIB_MANAGER_TEXT].size;
+
+	/* Read-only data (.rodata and others) */
+	uintptr_t va_base_rodata = mctx->segment[LIB_MANAGER_RODATA].addr;
+	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
+
+	/* Writable data (.data, .bss and others) */
+	uintptr_t va_base_data = mctx->segment[LIB_MANAGER_DATA].addr;
+	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
+
+	int ret = llext_manager_rm_partition(domain, va_base_text, text_size,
+					     K_MEM_PARTITION_P_RX_U_RX);
+
+	if (ret < 0)
+		return ret;
+
+	if (rodata_size) {
+		ret = llext_manager_rm_partition(domain, va_base_rodata, rodata_size,
+						 K_MEM_PARTITION_P_RO_U_RO);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (data_size) {
+		ret = llext_manager_rm_partition(domain, va_base_data, data_size,
+						 K_MEM_PARTITION_P_RW_U_RW);
 		if (ret < 0)
 			return ret;
 	}
