@@ -58,30 +58,33 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #define PAGE_SZ HOST_PAGE_SIZE
 #endif
 
-static struct k_heap *module_adapter_dp_heap_new(const struct comp_ipc_config *config)
+static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+						       size_t *heap_size)
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
 	/* FIXME: the size will be derived from configuration */
-	const size_t heap_size = 20 * 1024;
+	const size_t buf_size = 20 * 1024;
 
 	/* Keep uncached to match the default SOF heap! */
 	uint8_t *mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-					      heap_size, PAGE_SZ);
+					      buf_size, PAGE_SZ);
 
 	if (!mod_heap_mem)
 		return NULL;
 
-	struct k_heap *mod_heap = (struct k_heap *)mod_heap_mem;
-	const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap), 8);
+	struct dp_heap_user *mod_heap_user = (struct dp_heap_user *)mod_heap_mem;
+	struct k_heap *mod_heap = &mod_heap_user->heap;
+	const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap_user), 4);
 	void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
 
-	k_heap_init(mod_heap, mod_heap_buf, heap_size - heap_prefix_size);
+	*heap_size = buf_size - heap_prefix_size;
+	k_heap_init(mod_heap, mod_heap_buf, *heap_size);
 #ifdef __ZEPHYR__
 	mod_heap->heap.init_mem = mod_heap_buf;
-	mod_heap->heap.init_bytes = heap_size - heap_prefix_size;
+	mod_heap->heap.init_bytes = *heap_size;
 #endif
 
-	return mod_heap;
+	return mod_heap_user;
 }
 
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
@@ -97,16 +100,21 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 */
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
+	struct dp_heap_user *mod_heap_user;
+	size_t heap_size;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_USERSPACE) &&
 	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_heap = module_adapter_dp_heap_new(config);
-		if (!mod_heap) {
+		mod_heap_user = module_adapter_dp_heap_new(config, &heap_size);
+		if (!mod_heap_user) {
 			comp_cl_err(drv, "Failed to allocate DP module heap");
 			return NULL;
 		}
+		mod_heap = &mod_heap_user->heap;
 	} else {
 		mod_heap = drv->user_heap;
+		mod_heap_user = NULL;
+		heap_size = 0;
 	}
 
 	struct processing_module *mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
@@ -118,6 +126,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 
 	memset(mod, 0, sizeof(*mod));
 	mod->priv.resources.heap = mod_heap;
+	mod_resource_init(mod);
 
 	/*
 	 * Would be difficult to optimize the allocation to use cache. Only if
@@ -138,13 +147,15 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	mod->dev = dev;
 	dev->mod = mod;
 
+	if (mod_heap_user)
+		mod_heap_user->client_count++;
+
 	return mod;
 
 err:
 	sof_heap_free(mod_heap, mod);
 emod:
-	if (mod_heap != drv->user_heap)
-		rfree(mod_heap);
+	rfree(mod_heap_user);
 
 	return NULL;
 }
@@ -152,12 +163,24 @@ emod:
 static void module_adapter_mem_free(struct processing_module *mod)
 {
 	struct k_heap *mod_heap = mod->priv.resources.heap;
+	unsigned int domain = mod->dev->ipc_config.proc_domain;
 
+	/*
+	 * In principle it shouldn't even be needed to free individual objects
+	 * on the module heap since we're freeing the heap itself too
+	 */
 #if CONFIG_IPC_MAJOR_4
 	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
 #endif
 	sof_heap_free(mod_heap, mod->dev);
 	sof_heap_free(mod_heap, mod);
+	if (domain == COMP_PROCESSING_DOMAIN_DP) {
+		struct dp_heap_user *mod_heap_user = container_of(mod_heap, struct dp_heap_user,
+								  heap);
+
+		if (mod_heap && !--mod_heap_user->client_count)
+			rfree(mod_heap_user);
+	}
 }
 
 /*
@@ -569,6 +592,14 @@ int module_adapter_prepare(struct comp_dev *dev)
 				comp_err(dev, "failed to allocate local buffer");
 				ret = -ENOMEM;
 				goto free;
+			}
+
+			if (md->resources.heap && md->resources.heap != dev->drv->user_heap) {
+				struct dp_heap_user *dp_user = container_of(md->resources.heap,
+									    struct dp_heap_user,
+									    heap);
+
+				dp_user->client_count++;
 			}
 
 			irq_local_disable(flags);
@@ -1378,11 +1409,16 @@ void module_adapter_free(struct comp_dev *dev)
 	comp_dbg(dev, "start");
 
 	if (dev->task) {
-		/* Run DP module's .free() method in its thread context */
+		/*
+		 * Run DP module's .free() method in its thread context.
+		 * Unlike with other IPCs we first run module's .free() in
+		 * thread context, then cancel the thread, and then execute
+		 * final clean up
+		 */
 #if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
 		scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_DELETE_INSTANCE, NULL);
 #endif
-		schedule_task_cancel(dev->task);
+		schedule_task_free(dev->task);
 	}
 
 	ret = module_free(mod);

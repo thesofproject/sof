@@ -10,10 +10,14 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/common.h>
 #include <sof/list.h>
+#include <sof/llext_manager.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 
+#include <zephyr/app_memory/mem_domain.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/sys/slist.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -23,13 +27,17 @@
 LOG_MODULE_DECLARE(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx dp_tr;
 
+#if CONFIG_USERSPACE
+static struct k_mem_domain dp_mdom[CONFIG_CORE_COUNT];
+#endif
+
 /* Synchronization semaphore for the scheduler thread to wait for DP startup */
 #define DP_SYNC_INIT(i, _)	Z_SEM_INITIALIZER(dp_sync[i], 0, 1)
 #define DP_SYNC_INIT_LIST	LISTIFY(CONFIG_CORE_COUNT, DP_SYNC_INIT, (,))
 static STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_sync, CONFIG_CORE_COUNT) = { DP_SYNC_INIT_LIST };
 
 /* TODO: make this a shared kernel->module buffer for IPC parameters */
-static uint8_t ipc_buf[4096];
+static uint8_t ipc_buf[4096] __aligned(4096);
 
 struct ipc4_flat {
 	unsigned int cmd;
@@ -148,7 +156,7 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 #define DP_THREAD_IPC_TIMEOUT K_MSEC(100)
 
 /* Signal an IPC and wait for processing completion */
-int scheduler_dp_thread_ipc(struct processing_module *pmod, enum sof_ipc4_module_type cmd,
+int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    const union scheduler_dp_thread_ipc_param *param)
 {
 	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
@@ -176,8 +184,10 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, enum sof_ipc4_module
 	flat->ret = -ENOSYS;
 
 	ret = ipc_thread_flatten(cmd, param, flat);
-	if (!ret)
-		k_event_post(pdata->event, DP_TASK_EVENT_IPC);
+	if (!ret) {
+		pdata->pend_ipc++;
+		k_sem_give(pdata->sem);
+	}
 
 	scheduler_dp_unlock(lock_key);
 
@@ -223,7 +233,8 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_
 			/* trigger the task */
 			curr_task->state = SOF_TASK_STATE_RUNNING;
 			trigger_task = true;
-			k_event_post(pdata->event, DP_TASK_EVENT_PROCESS);
+			pdata->pend_proc++;
+			k_sem_give(pdata->sem);
 		}
 
 		if (curr_task->state == SOF_TASK_STATE_RUNNING) {
@@ -270,29 +281,45 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 	ARG_UNUSED(p2);
 	ARG_UNUSED(p3);
 
-	/*
-	 * The IPC thread is waiting for the thread to be
-	 * started, it can proceed now.
-	 */
+	/* The IPC thread is waiting for the thread to be started, it can proceed now. */
 	k_sem_give(&dp_sync[task->core]);
 
 	do {
 		/*
-		 * The thread is started immediately after creation, it stops on event.
-		 * An event is signalled to handle IPC or process audio data.
+		 * The thread is started immediately after creation, it stops here and waits
+		 * for the semaphore to be signalled to handle IPC or process audio data.
 		 */
-		uint32_t mask = k_event_wait_safe(task_pdata->event,
-						  DP_TASK_EVENT_PROCESS | DP_TASK_EVENT_CANCEL |
-						  DP_TASK_EVENT_IPC, false, K_FOREVER);
+		k_sem_take(task_pdata->sem, K_FOREVER);
 
-		if (mask & DP_TASK_EVENT_IPC) {
+		lock_key = scheduler_dp_lock(task->core);
+
+		unsigned char pend_ipc = task_pdata->pend_ipc,
+			pend_proc = task_pdata->pend_proc;
+
+		task_pdata->pend_proc = 0;
+		task_pdata->pend_ipc = 0;
+
+		scheduler_dp_unlock(lock_key);
+
+		/*
+		 * Only 0:1, 1:0 and 1:1 are valid. 0:0 is also possible if IPC and audio
+		 * were signalled in a quick succession before we took the lock above. Any
+		 * value > 1 would mean that we've missed IPCs or LL ticks while in queued /
+		 * idle state, which shouldn't happen.
+		 */
+		if (pend_ipc > 1 || pend_proc > 1) {
+			tr_err(&dp_tr, "Invalid wake up %u:%u", pend_proc, pend_ipc);
+			continue;
+		}
+
+		if (pend_ipc) {
 			/* handle IPC */
 			tr_dbg(&dp_tr, "got IPC wake up for %p state %d", pmod, task->state);
 			ipc_thread_unflatten_run(pmod, (struct ipc4_flat *)ipc_buf);
 			k_sem_give(&dp_sync[task->core]);
 		}
 
-		if (mask & DP_TASK_EVENT_PROCESS) {
+		if (pend_proc) {
 			bool ready;
 
 			if (task->state == SOF_TASK_STATE_RUNNING) {
@@ -333,14 +360,15 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 
 				case SOF_TASK_STATE_CANCEL:
 				case SOF_TASK_STATE_COMPLETED:
-					/* remove from scheduling */
-					list_item_del(&task->list);
+					/* task already removed from scheduling */
 					break;
 
 				default:
 					/* illegal state, serious defect, won't happen */
 					k_oops();
 				}
+			} else {
+				task->state = SOF_TASK_STATE_QUEUED;
 			}
 		} else {
 			lock_key = scheduler_dp_lock(task->core);
@@ -356,4 +384,213 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 	/* call task_complete  */
 	if (task->state == SOF_TASK_STATE_COMPLETED)
 		task_complete(task);
+}
+
+/*
+ * Safe to call with partial successful initialisation,
+ * k_mem_domain_remove_partition() then just returns -ENOENT
+ */
+void scheduler_dp_domain_free(struct processing_module *pmod)
+{
+#if CONFIG_USERSPACE
+	unsigned int core = pmod->dev->task->core;
+
+	llext_manager_rm_domain(pmod->dev->ipc_config.id, dp_mdom + core);
+
+	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
+
+	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_HEAP);
+	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_IPC);
+	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_CFG);
+#endif
+}
+
+int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
+			   const struct task_ops *ops, struct processing_module *mod,
+			   uint16_t core, size_t stack_size, uint32_t options)
+{
+	k_thread_stack_t *p_stack;
+	/* memory allocation helper structure */
+	struct {
+		struct task task;
+		struct task_dp_pdata pdata;
+		struct comp_driver drv;
+		struct module_interface ops;
+	} *task_memory;
+
+	int ret;
+
+	/* must be called on the same core the task will be binded to */
+	assert(cpu_get_id() == core);
+
+	/*
+	 * allocate memory
+	 * to avoid multiple malloc operations allocate all required memory as a single structure
+	 * and return pointer to task_memory->task
+	 * As the structure contains zephyr kernel specific data, it must be located in
+	 * shared, non cached memory
+	 */
+	task_memory = mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				    sizeof(*task_memory), 0);
+	if (!task_memory) {
+		tr_err(&dp_tr, "memory alloc failed");
+		return -ENOMEM;
+	}
+
+	memset(task_memory, 0, sizeof(*task_memory));
+
+	task_memory->drv = *mod->dev->drv;
+	task_memory->ops = *mod->dev->drv->adapter_ops;		// FIXME: is this needed?
+	task_memory->drv.adapter_ops = &task_memory->ops;
+	mod->dev->drv = &task_memory->drv;
+
+	/* allocate stack - must be aligned and cached so a separate alloc */
+	p_stack = user_stack_allocate(stack_size, options);
+	if (!p_stack) {
+		tr_err(&dp_tr, "stack alloc failed");
+		ret = -ENOMEM;
+		goto e_tmem;
+	}
+
+	struct task *ptask = &task_memory->task;
+
+	/* internal SOF task init */
+	ret = schedule_task_init(ptask, uid, SOF_SCHEDULE_DP, 0, ops->run, mod, core, options);
+	if (ret < 0) {
+		tr_err(&dp_tr, "schedule_task_init failed");
+		goto e_stack;
+	}
+
+	struct task_dp_pdata *pdata = &task_memory->pdata;
+
+	/* Point to event_struct event for kernel threads synchronization */
+	/* It will be overwritten for K_USER threads to dynamic ones.  */
+	pdata->sem = &pdata->sem_struct;
+	pdata->thread = &pdata->thread_struct;
+
+#ifdef CONFIG_USERSPACE
+	if (options & K_USER) {
+		pdata->sem = k_object_alloc(K_OBJ_SEM);
+		if (!pdata->sem) {
+			tr_err(&dp_tr, "Event object allocation failed");
+			ret = -ENOMEM;
+			goto e_stack;
+		}
+
+		pdata->thread = k_object_alloc(K_OBJ_THREAD);
+		if (!pdata->thread) {
+			tr_err(&dp_tr, "Thread object allocation failed");
+			ret = -ENOMEM;
+			goto e_kobj;
+		}
+		memset(&pdata->thread->arch, 0, sizeof(pdata->thread->arch));
+	}
+#endif /* CONFIG_USERSPACE */
+
+	/* success, fill the structures */
+	pdata->p_stack = p_stack;
+	pdata->mod = mod;
+
+	/* initialize other task structures */
+	ptask->ops.complete = ops->complete;
+	ptask->ops.get_deadline = ops->get_deadline;
+	ptask->priv_data = pdata;
+	list_init(&ptask->list);
+	*task = ptask;
+
+	/* create a zephyr thread for the task */
+	pdata->thread_id = k_thread_create(pdata->thread, p_stack,
+					   stack_size, dp_thread_fn, ptask, NULL, NULL,
+					   CONFIG_DP_THREAD_PRIORITY, ptask->flags, K_FOREVER);
+
+	/* pin the thread to specific core */
+	ret = k_thread_cpu_pin(pdata->thread_id, core);
+	if (ret < 0) {
+		tr_err(&dp_tr, "zephyr task pin to core failed");
+		goto e_thread;
+	}
+
+#if CONFIG_USERSPACE
+	k_thread_access_grant(pdata->thread_id, pdata->sem, &dp_sync[core]);
+	scheduler_dp_grant(pdata->thread_id, core);
+
+	unsigned int pidx;
+	size_t size;
+	uintptr_t start;
+	struct k_mem_partition *ppart[SOF_DP_PART_TYPE_COUNT];
+
+	for (pidx = 0; pidx < ARRAY_SIZE(ppart); pidx++)
+		ppart[pidx] = pdata->mpart + pidx;
+
+	/* Module heap partition */
+	mod_heap_info(mod, &size, &start);
+	pdata->mpart[SOF_DP_PART_HEAP] = (struct k_mem_partition){
+		.start = start,
+		.size = size,
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+	/* IPC flattening buffer partition */
+	pdata->mpart[SOF_DP_PART_IPC] = (struct k_mem_partition){
+		.start = (uintptr_t)&ipc_buf,
+		.size = sizeof(ipc_buf),
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+	/* Host mailbox partition for additional IPC parameters: read-only */
+	pdata->mpart[SOF_DP_PART_CFG] = (struct k_mem_partition){
+		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
+		.size = 4096,
+		.attr = K_MEM_PARTITION_P_RO_U_RO,
+	};
+
+	for (pidx = 0; pidx < SOF_DP_PART_TYPE_COUNT; pidx++) {
+		ret = k_mem_domain_add_partition(dp_mdom + core, pdata->mpart + pidx);
+		if (ret < 0)
+			goto e_dom;
+	}
+
+	ret = llext_manager_add_domain(mod->dev->ipc_config.id, dp_mdom + core);
+	if (ret < 0) {
+		tr_err(&dp_tr, "failed to add LLEXT to domain %d", ret);
+		goto e_dom;
+	}
+
+	/*
+	 * Keep this call last, able to fail, otherwise domain will be removed
+	 * before its thread
+	 */
+	ret = k_mem_domain_add_thread(dp_mdom + core, pdata->thread_id);
+	if (ret < 0) {
+		tr_err(&dp_tr, "failed to add thread to domain %d", ret);
+		goto e_dom;
+	}
+#endif /* CONFIG_USERSPACE */
+
+	/* start the thread, it should immediately stop at the semaphore */
+	k_sem_init(pdata->sem, 0, 1);
+	k_thread_start(pdata->thread_id);
+
+	return 0;
+
+#ifdef CONFIG_USERSPACE
+e_dom:
+	scheduler_dp_domain_free(mod);
+#endif
+e_thread:
+	k_thread_abort(pdata->thread_id);
+#ifdef CONFIG_USERSPACE
+e_kobj:
+	/* k_object_free looks for a pointer in the list, any invalid value can be passed */
+	k_object_free(pdata->thread);
+	k_object_free(pdata->sem);
+#endif
+e_stack:
+	user_stack_free(p_stack);
+e_tmem:
+	mod_free(mod, task_memory);
+	return ret;
+}
+
+int scheduler_dp_domain_init(void)
+{
+	return k_mem_domain_init(dp_mdom + cpu_get_id(), 0, NULL);
 }
