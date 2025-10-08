@@ -101,6 +101,12 @@ union scheduler_dp_thread_ipc_param {
 	} pipeline_state;
 };
 
+struct dp_heap_user {
+	struct k_heap heap;
+	unsigned int client_count;	/* devices and buffers */
+	// lock;			/* protect the counter */
+};
+
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 int scheduler_dp_thread_ipc(struct processing_module *pmod, enum sof_ipc4_module_type cmd,
 			    union scheduler_dp_thread_ipc_param *param);

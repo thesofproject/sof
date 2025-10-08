@@ -11,6 +11,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/common.h>
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
@@ -157,8 +158,16 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 
+	struct k_heap *heap = buffer->audio_buffer.heap;
+
 	rfree(buffer->stream.addr);
-	sof_heap_free(buffer->audio_buffer.heap, buffer);
+	sof_heap_free(heap, buffer);
+	if (heap) {
+		struct dp_heap_user *mod_heap_user = CONTAINER_OF(heap, struct dp_heap_user, heap);
+
+		if (!--mod_heap_user->client_count)
+			rfree(mod_heap_user);
+	}
 }
 
 static const struct source_ops comp_buffer_source_ops = {

@@ -80,29 +80,31 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		return NULL;
 	}
 
+	struct dp_heap_user *mod_heap_user;
+	const size_t heap_size = 8 * 1024;
 	uint8_t *mod_heap_mem;
 	struct k_heap *mod_heap;
 	int flags;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
-		const size_t heap_size = 8 * 1024;
-
 		/* Keep uncached to match the default SOF heap! */
 		mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 					     heap_size, 4096);
 		if (!mod_heap_mem)
 			return NULL;
 
-		const size_t heap_pref_size = ALIGN_UP(sizeof(*mod_heap), 8);
+		const size_t heap_pref_size = ALIGN_UP(sizeof(*mod_heap_user), 4);
 		void *mod_heap_buf = mod_heap_mem + heap_pref_size;
 
-		mod_heap = (struct k_heap *)mod_heap_mem;
+		mod_heap_user = (struct dp_heap_user *)mod_heap_mem;
+		mod_heap = &mod_heap_user->heap;
 		k_heap_init(mod_heap, mod_heap_buf, heap_size - heap_pref_size);
 
 		flags = SOF_MEM_FLAG_COHERENT;
 	} else {
 		mod_heap_mem = NULL;
 		mod_heap = NULL;
+		mod_heap_user = NULL;
 
 		flags = 0;
 	}
@@ -123,6 +125,8 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	memset(mod, 0, sizeof(*mod));
 	mod->priv.resources.heap = mod_heap;
 	mod->priv.resources.heap_mem = mod_heap_mem;
+	mod->priv.resources.heap_size = heap_size;
+	mod_resource_init(mod);
 
 	/*
 	 * comp_alloc() always allocated dev uncached. Would be difficult to optimize. Only
@@ -200,6 +204,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		comp_err(dev, "module_adapter_new() %d: module params failed", ret);
 		goto err;
 	}
+
+	if (mod_heap_user)
+		mod_heap_user->client_count++;
 #endif
 
 	comp_dbg(dev, "module_adapter_new() done");
@@ -1328,11 +1335,16 @@ void module_adapter_free(struct comp_dev *dev)
 	comp_dbg(dev, "start");
 
 	if (dev->task) {
-		/* Run DP module's .free() method in its thread context */
+		/*
+		 * Run DP module's .free() method in its thread context.
+		 * Unlike with other IPCs we first run module's .free() in
+		 * thread context, then cancel the thread, and then execute
+		 * final clean up
+		 */
 #if CONFIG_IPC_MAJOR_4
 		scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_DELETE_INSTANCE, NULL);
 #endif
-		schedule_task_cancel(dev->task);
+		schedule_task_free(dev->task);
 	}
 
 	ret = module_free(mod);
@@ -1357,11 +1369,19 @@ void module_adapter_free(struct comp_dev *dev)
 #endif
 
 	struct k_heap *mod_heap = mod->priv.resources.heap;
+	struct dp_heap_user *mod_heap_user = CONTAINER_OF(mod_heap, struct dp_heap_user, heap);
 	void *mem = mod->priv.resources.heap_mem;
 
+	/*
+	 * In principle it shouldn't even be needed to free individual objects
+	 * on the module heap since we're freeing the heap itself too
+	 */
 	sof_heap_free(mod_heap, mod);
+	list_item_del(&dev->bsource_list);
+	list_item_del(&dev->bsink_list);
 	sof_heap_free(mod_heap, dev);
-	rfree(mem);
+	if (!mod_heap || !--mod_heap_user->client_count)
+		rfree(mem);
 }
 EXPORT_SYMBOL(module_adapter_free);
 

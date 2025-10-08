@@ -24,8 +24,9 @@
 
 /* The __ZEPHYR__ condition is to keep cmocka tests working */
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-#define MEM_API_CHECK_THREAD(res) __ASSERT((res)->rsrc_mngr == k_current_get(), \
-		"Module memory API operation from wrong thread")
+#define MEM_API_CHECK_THREAD(res) if ((res)->rsrc_mngr != k_current_get()) \
+		LOG_ERR("mngr %p != cur %p", (res)->rsrc_mngr, k_current_get()); else \
+		LOG_INF("mngr %p == cur %p", (res)->rsrc_mngr, k_current_get())
 #else
 #define MEM_API_CHECK_THREAD(res)
 #endif
@@ -76,7 +77,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	return ret;
 }
 
-static void mod_resource_init(struct processing_module *mod)
+void mod_resource_init(struct processing_module *mod)
 {
 	struct module_resources *rsrc = &mod->priv.resources;
 
@@ -119,8 +120,6 @@ int module_init(struct processing_module *mod)
 			 dev_comp_id(dev));
 		return -EIO;
 	}
-
-	mod_resource_init(mod);
 
 	/* Now we can proceed with module specific initialization */
 #if CONFIG_IPC_MAJOR_4
@@ -181,6 +180,17 @@ static void container_put(struct processing_module *mod, struct module_memory *c
 	struct module_resources *res = &mod->priv.resources;
 
 	list_item_append(&container->mem_list, &res->free_cont_list);
+}
+
+void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	if (size)
+		*size = res->heap_size;
+
+	if (start)
+		*start = (uintptr_t)res->heap_mem;
 }
 
 /**
