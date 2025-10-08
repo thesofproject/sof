@@ -12,6 +12,7 @@
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <sof/lib/mm_heap.h>
+#include <sof/lib/pacovr.h>
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
@@ -127,6 +128,18 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 		return NULL;
 	}
 
+#if CONFIG_SOF_PACOVR
+	/* create a pacovr region for all resources */
+	// TODO: make batch and scratch sizes configurable from topology
+	size_t scratch_size = 0x4000; /* 16kB scratch */
+	size_t batch_size = 0x20000;  /* 128kB batch */
+	p->pacovr = pacovr_create(batch_size, scratch_size);
+	if (!p->pacovr) {
+		pipe_err(p, "pipeline_new(): pacovr_create() failed.");
+		goto free;
+	}
+#endif
+
 	/* init pipeline */
 	p->comp_id = comp_id;
 	p->priority = priority;
@@ -236,6 +249,10 @@ int pipeline_free(struct pipeline *p)
 
 	pipeline_posn_offset_put(p->posn_offset);
 
+#if CONFIG_SOF_PACOVR
+	/* free pacovr region */
+	pacovr_destroy(p->pacovr);
+#endif
 	/* now free the pipeline */
 	rfree(p);
 
