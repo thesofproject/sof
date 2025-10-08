@@ -118,12 +118,18 @@ union scheduler_dp_thread_ipc_param {
 	} pipeline_state;
 };
 
+struct dp_heap_user {
+	struct k_heap heap;
+	/* So far relying on linear processing of serialized IPCs, but might need protection */
+	unsigned int client_count;	/* devices and buffers */
+};
+
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-int scheduler_dp_thread_ipc(struct processing_module *pmod, enum sof_ipc4_module_type cmd,
+int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    const union scheduler_dp_thread_ipc_param *param);
 #else
 static inline int scheduler_dp_thread_ipc(struct processing_module *pmod,
-					  enum sof_ipc4_module_type cmd,
+					  unsigned int cmd,
 					  const union scheduler_dp_thread_ipc_param *param)
 {
 	return 0;
