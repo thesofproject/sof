@@ -377,6 +377,11 @@ SYS_INIT(virtual_heap_init, POST_KERNEL, 1);
 
 #endif /* CONFIG_VIRTUAL_HEAP */
 
+struct k_heap *sof_sys_heap_get(void)
+{
+	return &sof_heap;
+}
+
 static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
 {
 	k_spinlock_key_t key;
