@@ -10,12 +10,14 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/common.h>
 #include <sof/list.h>
+#include <sof/llext_manager.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/trace/trace.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/slist.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -25,13 +27,17 @@
 LOG_MODULE_DECLARE(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx dp_tr;
 
+extern sys_slist_t xtensa_domain_list;
+
+static struct k_mem_domain dp_mdom;
+
 /* Synchronization semaphore for the scheduler thread to wait for DP startup */
 #define DP_SYNC_INIT(i, _)	Z_SEM_INITIALIZER(dp_sync[i], 0, 1)
 #define DP_SYNC_INIT_LIST	LISTIFY(CONFIG_CORE_COUNT, DP_SYNC_INIT, (,))
 static STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_sync, CONFIG_CORE_COUNT) = { DP_SYNC_INIT_LIST };
 
 /* TODO: make this a shared kernel->module buffer for IPC parameters */
-static uint8_t ipc_buf[4096];
+static uint8_t ipc_buf[4096] __aligned(4096);
 
 struct ipc4_flat {
 	unsigned int cmd;
@@ -149,8 +155,8 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, enum sof_ipc4_module
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
 		ret = k_sem_take(&dp_sync[pmod->dev->task->core], K_MSEC(100));
-		if (ret == -EAGAIN)
-			return -ETIMEDOUT;
+		if (ret < 0)
+			return ret;
 	}
 
 	unsigned int lock_key = scheduler_dp_lock(pmod->dev->task->core);
@@ -357,4 +363,199 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 	/* call task_complete  */
 	if (task->state == SOF_TASK_STATE_COMPLETED)
 		task_complete(task);
+}
+
+void scheduler_dp_domain_free(struct processing_module *pmod)
+{
+	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
+
+	k_mem_domain_remove_partition(&dp_mdom, pdata->mpart + SOF_DP_PART_HEAP);
+	k_mem_domain_remove_partition(&dp_mdom, pdata->mpart + SOF_DP_PART_IPC);
+	k_mem_domain_remove_partition(&dp_mdom, pdata->mpart + SOF_DP_PART_CFG);
+
+	llext_manager_rm_domain(pmod->dev->ipc_config.id, &dp_mdom);
+}
+
+int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
+			   const struct task_ops *ops, struct processing_module *mod,
+			   uint16_t core, size_t stack_size, uint32_t options)
+{
+	k_thread_stack_t *p_stack;
+	/* memory allocation helper structure */
+	struct {
+		struct task task;
+		struct task_dp_pdata pdata;
+		struct comp_driver drv;
+		struct module_interface ops;
+	} *task_memory;
+
+	int ret;
+
+	/* must be called on the same core the task will be binded to */
+	assert(cpu_get_id() == core);
+
+	/*
+	 * allocate memory
+	 * to avoid multiple malloc operations allocate all required memory as a single structure
+	 * and return pointer to task_memory->task
+	 * As the structure contains zephyr kernel specific data, it must be located in
+	 * shared, non cached memory
+	 */
+	task_memory = mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				    sizeof(*task_memory), 0);
+	if (!task_memory) {
+		tr_err(&dp_tr, "memory alloc failed");
+		return -ENOMEM;
+	}
+
+	memset(task_memory, 0, sizeof(*task_memory));
+
+	task_memory->drv = *mod->dev->drv;
+	task_memory->ops = *mod->dev->drv->adapter_ops;		// FIXME: is this needed?
+	task_memory->drv.adapter_ops = &task_memory->ops;
+	mod->dev->drv = &task_memory->drv;
+
+	/* allocate stack - must be aligned and cached so a separate alloc */
+	p_stack = k_thread_stack_alloc(stack_size, options & K_USER);
+	if (!p_stack) {
+		tr_err(&dp_tr, "stack alloc failed");
+		ret = -ENOMEM;
+		goto e_tmem;
+	}
+
+	struct task *ptask = &task_memory->task;
+
+	/* internal SOF task init */
+	ret = schedule_task_init(ptask, uid, SOF_SCHEDULE_DP, 0, ops->run, mod, core, options);
+	if (ret < 0) {
+		tr_err(&dp_tr, "schedule_task_init failed");
+		goto e_stack;
+	}
+
+	struct task_dp_pdata *pdata = &task_memory->pdata;
+
+	/* Point to ksem semaphore for kernel threads synchronization */
+	/* It will be overwritten for K_USER threads to dynamic ones.  */
+	pdata->sem = &pdata->sem_struct;
+	pdata->thread = &pdata->thread_struct;
+
+#ifdef CONFIG_USERSPACE
+	if (options & K_USER) {
+		pdata->sem = k_object_alloc(K_OBJ_SEM);
+		if (!pdata->sem) {
+			tr_err(&dp_tr, "Semaphore object allocation failed");
+			ret = -ENOMEM;
+			goto e_stack;
+		}
+
+		pdata->thread = k_object_alloc(K_OBJ_THREAD);
+		if (!pdata->thread) {
+			tr_err(&dp_tr, "Thread object allocation failed");
+			ret = -ENOMEM;
+			goto e_kobj;
+		}
+		memset(&pdata->thread->arch, 0, sizeof(pdata->thread->arch));
+	}
+#endif /* CONFIG_USERSPACE */
+
+	/* success, fill the structures */
+	pdata->p_stack = p_stack;
+	pdata->mod = mod;
+
+	/* initialize other task structures */
+	ptask->ops.complete = ops->complete;
+	ptask->ops.get_deadline = ops->get_deadline;
+	ptask->priv_data = pdata;
+	*task = ptask;
+
+	/* create a zephyr thread for the task */
+	pdata->thread_id = k_thread_create(pdata->thread, p_stack,
+					   stack_size, dp_thread_fn, ptask, NULL, NULL,
+					   CONFIG_DP_THREAD_PRIORITY, ptask->flags, K_FOREVER);
+
+#if CONFIG_USERSPACE
+	k_thread_access_grant(pdata->thread_id, pdata->sem, &dp_sync[core]);
+	scheduler_dp_grant(pdata->thread_id, core);
+#endif
+
+	/* pin the thread to specific core */
+	ret = k_thread_cpu_pin(pdata->thread_id, core);
+	if (ret < 0) {
+		tr_err(&dp_tr, "zephyr task pin to core failed");
+		goto e_thread;
+	}
+
+#ifdef CONFIG_USERSPACE
+	int pidx;
+	size_t size;
+	uintptr_t start;
+	struct k_mem_partition *ppart[SOF_DP_PART_TYPE_COUNT];
+
+	for (pidx = 0; pidx < ARRAY_SIZE(ppart); pidx++)
+		ppart[pidx] = pdata->mpart + pidx;
+
+	/* Module heap partition */
+	mod_heap_info(mod, &size, &start);
+	pdata->mpart[SOF_DP_PART_HEAP] = (struct k_mem_partition){
+		.start = start,
+		.size = size,
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+	/* IPC flattening buffer partitioin */
+	pdata->mpart[SOF_DP_PART_IPC] = (struct k_mem_partition){
+		.start = (uintptr_t)&ipc_buf,
+		.size = sizeof(ipc_buf),
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+	/* Host mailbox partition for additional IPC parameters: read-only */
+	pdata->mpart[SOF_DP_PART_CFG] = (struct k_mem_partition){
+		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
+		.size = 4096,
+		.attr = K_MEM_PARTITION_P_RO_U_RO,
+	};
+
+	/* Create a memory domain, add the thread and its stack and heap to it */
+	if (dp_mdom.arch.ptables) {
+		bool found = sys_slist_find_and_remove(&xtensa_domain_list, &dp_mdom.arch.node);
+
+		tr_dbg(&dp_tr, "found %u domain %p", found, &dp_mdom);
+		memset(&dp_mdom, 0, sizeof(dp_mdom));
+	}
+
+	ret = k_mem_domain_init(&dp_mdom, SOF_DP_PART_TYPE_COUNT, ppart);
+	if (ret < 0) {
+		tr_err(&dp_tr, "failed to init mem domain %d", ret);
+		goto e_thread;
+	}
+
+	ret = llext_manager_add_domain(mod->dev->ipc_config.id, &dp_mdom);
+	if (ret < 0) {
+		tr_err(&dp_tr, "failed to add LLEXT to domain %d", ret);
+		goto e_thread;
+	}
+
+	ret = k_mem_domain_add_thread(&dp_mdom, pdata->thread_id);
+	if (ret < 0) {
+		tr_err(&dp_tr, "failed to add thread to domain %d", ret);
+		goto e_thread;
+	}
+#endif /* CONFIG_USERSPACE */
+
+	/* start the thread, it should immediately stop at a semaphore, so clean it */
+	k_sem_init(pdata->sem, 0, 1);
+	k_thread_start(pdata->thread_id);
+
+	return 0;
+
+e_thread:
+	k_thread_abort(pdata->thread_id);
+e_kobj:
+	/* k_object_free looks for a pointer in the list, any invalid value can be passed */
+	k_object_free(pdata->thread);
+	k_object_free(pdata->sem);
+e_stack:
+	k_thread_stack_free(p_stack);
+e_tmem:
+	mod_free(mod, task_memory);
+	return ret;
 }

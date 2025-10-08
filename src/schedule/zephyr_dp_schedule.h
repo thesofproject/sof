@@ -19,7 +19,13 @@ struct scheduler_dp_data {
 	uint32_t last_ll_tick_timestamp;/* a timestamp as k_cycle_get_32 of last LL tick,
 					 * "NOW" for DP deadline calculation
 					 */
+};
 
+enum sof_dp_part_type {
+	SOF_DP_PART_HEAP,
+	SOF_DP_PART_IPC,
+	SOF_DP_PART_CFG,
+	SOF_DP_PART_TYPE_COUNT,
 };
 
 struct task_dp_pdata {
@@ -27,8 +33,7 @@ struct task_dp_pdata {
 	struct k_thread *thread;	/* pointer to the kernels' thread object */
 	struct k_thread thread_struct;	/* thread object for kernel threads */
 	uint32_t deadline_clock_ticks;	/* dp module deadline in Zephyr ticks */
-	k_thread_stack_t __sparse_cache *p_stack;	/* pointer to thread stack */
-	size_t stack_size;		/* size of the stack in bytes */
+	k_thread_stack_t *p_stack;	/* pointer to thread stack */
 	struct k_sem *sem;		/* pointer to semaphore for task scheduling */
 	struct k_sem sem_struct;	/* semaphore for task scheduling for kernel threads */
 	struct processing_module *mod;	/* the module to be scheduled */
@@ -36,6 +41,7 @@ struct task_dp_pdata {
 #ifndef CONFIG_SOF_USERSPACE_PROXY
 	unsigned char pend_ipc;
 	unsigned char pend_proc;
+	struct k_mem_partition mpart[SOF_DP_PART_TYPE_COUNT];
 #endif
 };
 
@@ -43,3 +49,12 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_
 void dp_thread_fn(void *p1, void *p2, void *p3);
 unsigned int scheduler_dp_lock(uint16_t core);
 void scheduler_dp_unlock(unsigned int key);
+void scheduler_dp_grant(k_tid_t thread_id, uint16_t core);
+int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
+			   const struct task_ops *ops, struct processing_module *mod,
+			   uint16_t core, size_t stack_size, uint32_t options);
+#ifdef CONFIG_SOF_USERSPACE_PROXY
+static inline void scheduler_dp_domain_free(struct processing_module *pmod) {}
+#else
+void scheduler_dp_domain_free(struct processing_module *pmod);
+#endif

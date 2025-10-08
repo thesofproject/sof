@@ -18,6 +18,7 @@
 #include <rtos/cache.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
+#include <sof/schedule/dp_schedule.h>
 #include <rtos/spinlock.h>
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
@@ -158,8 +159,16 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 
+	struct k_heap *heap = buffer->audio_buffer.heap;
+
 	rfree(buffer->stream.addr);
-	sof_heap_free(buffer->audio_buffer.heap, buffer);
+	sof_heap_free(heap, buffer);
+	if (heap) {
+		struct dp_heap_user *mod_heap_user = container_of(heap, struct dp_heap_user, heap);
+
+		if (!--mod_heap_user->client_count)
+			rfree(mod_heap_user);
+	}
 }
 
 APP_TASK_DATA static const struct source_ops comp_buffer_source_ops = {

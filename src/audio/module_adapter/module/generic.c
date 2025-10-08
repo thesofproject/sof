@@ -78,7 +78,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	return ret;
 }
 
-static void mod_resource_init(struct processing_module *mod)
+void mod_resource_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	/* Init memory list */
@@ -116,7 +116,6 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-	mod_resource_init(mod);
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	mod->priv.resources.rsrc_mngr = k_current_get();
 #endif
@@ -179,6 +178,17 @@ static void container_put(struct processing_module *mod, struct module_resource 
 	struct module_resources *res = &mod->priv.resources;
 
 	list_item_append(&container->list, &res->free_cont_list);
+}
+
+void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	if (size)
+		*size = res->heap_size;
+
+	if (start)
+		*start = (uintptr_t)container_of(res->heap, struct dp_heap_user, heap);
 }
 
 /**
@@ -416,6 +426,7 @@ int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 EXPORT_SYMBOL(z_impl_mod_free);
 
 #ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
 const void *z_vrfy_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
 				size_t size)
 {
