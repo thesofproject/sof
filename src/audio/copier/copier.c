@@ -131,13 +131,10 @@ static void mic_privacy_free(struct copier_data *cd)
 __cold static int copier_init(struct processing_module *mod)
 {
 	union ipc4_connector_node_id node_id;
-	struct ipc_comp_dev *ipc_pipe;
-	struct ipc *ipc = ipc_get();
 	struct copier_data *cd;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
 	struct ipc4_copier_module_cfg *copier = (struct ipc4_copier_module_cfg *)md->cfg.init_data;
-	struct comp_ipc_config *config = &dev->ipc_config;
 	void *gtw_cfg = NULL;
 	size_t gtw_cfg_size;
 	int i, ret = 0;
@@ -186,17 +183,6 @@ __cold static int copier_init(struct processing_module *mod)
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
 		cd->out_fmt[i] = cd->config.out_fmt;
 
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
-					  config->pipeline_id,
-					  IPC_COMP_IGNORE_REMOTE);
-	if (!ipc_pipe) {
-		comp_err(dev, "pipeline %d is not existed", config->pipeline_id);
-		ret = -EPIPE;
-		goto error;
-	}
-
-	dev->pipeline = ipc_pipe->pipeline;
-
 	node_id = copier->gtw_cfg.node_id;
 	/* copier is linked to gateway */
 	if (node_id.dw != IPC4_INVALID_NODE_ID) {
@@ -205,7 +191,7 @@ __cold static int copier_init(struct processing_module *mod)
 		switch (node_id.f.dma_type) {
 		case ipc4_hda_host_output_class:
 		case ipc4_hda_host_input_class:
-			ret = copier_host_create(dev, cd, copier, ipc_pipe->pipeline);
+			ret = copier_host_create(dev, cd, copier, dev->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create host");
 				goto error;
@@ -228,7 +214,7 @@ __cold static int copier_init(struct processing_module *mod)
 		case ipc4_i2s_link_input_class:
 		case ipc4_alh_link_output_class:
 		case ipc4_alh_link_input_class:
-			ret = copier_dai_create(dev, cd, copier, ipc_pipe->pipeline);
+			ret = copier_dai_create(dev, cd, copier, dev->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create dai");
 				goto error;
@@ -246,7 +232,7 @@ __cold static int copier_init(struct processing_module *mod)
 #if CONFIG_IPC4_GATEWAY
 		case ipc4_ipc_output_class:
 		case ipc4_ipc_input_class:
-			ret = copier_ipcgtw_create(dev, cd, copier, ipc_pipe->pipeline);
+			ret = copier_ipcgtw_create(dev, cd, copier, dev->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create IPC gateway");
 				goto error;

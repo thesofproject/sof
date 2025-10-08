@@ -125,6 +125,17 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	else
 		goto err;
 
+#if CONFIG_IPC_MAJOR_4
+	struct ipc_comp_dev *ipc_pipe;
+	struct ipc *ipc = ipc_get();
+
+	/* set the pipeline pointer if ipc_pipe is valid */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
+	if (ipc_pipe)
+		dev->pipeline = ipc_pipe->pipeline;
+#endif
+
 	/* Init processing module */
 	ret = module_init(mod);
 	if (ret) {
