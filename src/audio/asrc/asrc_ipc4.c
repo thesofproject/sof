@@ -4,7 +4,6 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/ipc-config.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/trace/trace.h>
