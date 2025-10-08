@@ -97,6 +97,15 @@ enum {
 struct bind_info;
 struct sof_source;
 struct sof_sink;
+/*
+ * Keeps the scheduler_dp_thread_ipc() flow simple - just one call that does all
+ * the IPC-message specific parameter packing internally. This is slightly
+ * suboptimal because IPC parameters first have to be collected in this
+ * structure and then packed in DP-accessible memory inside
+ * scheduler_dp_thread_ipc(). This could be split into two levels, by adding
+ * IPC-specific functions like ipc_flatten_pipeline_state() and similar, but
+ * that would add multiple functions to the API.
+ */
 union scheduler_dp_thread_ipc_param {
 	struct bind_info *bind_data;
 	struct {
@@ -109,12 +118,18 @@ union scheduler_dp_thread_ipc_param {
 	} pipeline_state;
 };
 
+struct dp_heap_user {
+	struct k_heap heap;
+	/* So far relying on linear processing of serialized IPCs, but might need protection */
+	unsigned int client_count;	/* devices and buffers */
+};
+
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-int scheduler_dp_thread_ipc(struct processing_module *pmod, enum sof_ipc4_module_type cmd,
+int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    union scheduler_dp_thread_ipc_param *param);
 #else
 static inline int scheduler_dp_thread_ipc(struct processing_module *pmod,
-					  enum sof_ipc4_module_type cmd,
+					  unsigned int cmd,
 					  union scheduler_dp_thread_ipc_param *param)
 {
 	return 0;

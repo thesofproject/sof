@@ -23,6 +23,7 @@
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
@@ -600,6 +601,14 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %#x to %#x", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
 	}
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (dp_heap) {
+		struct dp_heap_user *dp_user = container_of(dp_heap, struct dp_heap_user, heap);
+
+		dp_user->client_count++;
+	}
+#endif
 
 	/*
 	 * set min_free_space and min_available in sink/src api of created buffer.

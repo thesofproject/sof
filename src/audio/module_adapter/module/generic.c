@@ -78,7 +78,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	return ret;
 }
 
-static void mod_resource_init(struct processing_module *mod)
+void mod_resource_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	/* Init memory list */
@@ -116,7 +116,6 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-	mod_resource_init(mod);
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	mod->priv.resources.rsrc_mngr = k_current_get();
 #endif
@@ -180,6 +179,19 @@ static void container_put(struct processing_module *mod, struct module_resource 
 
 	list_item_append(&container->list, &res->free_cont_list);
 }
+
+#if CONFIG_USERSPACE
+void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	if (size)
+		*size = res->heap->heap.init_bytes;
+
+	if (start)
+		*start = (uintptr_t)container_of(res->heap, struct dp_heap_user, heap);
+}
+#endif
 
 /**
  * Allocates aligned buffer memory block for module.

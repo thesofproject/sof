@@ -191,9 +191,19 @@ struct module_processing_data {
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
 void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+void mod_resource_init(struct processing_module *mod);
+void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start);
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			      size_t alignment);
 __syscall int mod_free(struct processing_module *mod, const void *ptr);
+#else
+void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			   size_t alignment);
+int z_impl_mod_free(struct processing_module *mod, const void *ptr);
+#define mod_alloc_ext z_impl_mod_alloc_ext
+#define mod_free z_impl_mod_free
+#endif
 
 /**
  * Allocates aligned memory block for module.
@@ -234,16 +244,20 @@ struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_modul
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
 #endif
 #if CONFIG_FAST_GET
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
 				   size_t size);
+#else
+const void *z_impl_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				size_t size);
+#define mod_fast_get z_impl_mod_fast_get
+#endif
 void mod_fast_put(struct processing_module *mod, const void *sram_ptr);
 #endif
 void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
 		   struct sof_sink **sinks, int num_of_sinks);
-
-#include <zephyr/syscalls/generic.h>
 
 static inline
 bool generic_module_is_ready_to_process(struct processing_module *mod,
@@ -453,5 +467,9 @@ static inline uint32_t module_get_lpt(struct processing_module *mod)
 	/* return worst case of LPT - a module period. See zephyr_dp_schedule.c for description */
 	return mod->dev->period;
 }
+
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#include <zephyr/syscalls/generic.h>
+#endif
 
 #endif /* __SOF_AUDIO_MODULE_GENERIC__ */
