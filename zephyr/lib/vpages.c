@@ -245,7 +245,6 @@ void free_vpages(void *ptr)
 {
 	k_mutex_lock(&page_context.lock, K_FOREVER);
 	vpages_free_and_unmap((uintptr_t *)ptr);
-	assert(!ret); /* should never fail */
 	k_mutex_unlock(&page_context.lock);
 	LOG_INF("vptr %p free/total pages %d/%d", ptr, page_context.free_pages,
 		page_context.total_pages);
