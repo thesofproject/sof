@@ -12,7 +12,7 @@
 
 struct k_heap;
 
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF)
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 #include <zephyr/toolchain.h>
 
 __syscall const void *fast_get(struct k_heap *heap, const void * const dram_ptr, size_t size);
