@@ -76,6 +76,16 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	 module has its own independent heap to which only it has access. This heap is
 	 shared between instances of the same module.
 
+config SOF_VPAGE_ELEMS
+	int "Number of virtual memory allocation elements"
+	default 128
+	help
+	  This setting defines the maximum number of virtual memory allocation
+	  elements that can be tracked. Each allocation element represents a
+	  contiguous block of virtual memory allocated from the virtual memory
+	  heap. Increasing this number allows for more simultaneous allocations,
+	  but also increases the memory overhead for tracking these allocations.
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	help
