@@ -48,6 +48,9 @@ DECLARE_TR_CTX(src_tr, SOF_UUID(src4_uuid), LOG_LEVEL_INFO);
 
 LOG_MODULE_DECLARE(src, CONFIG_SOF_LOG_LEVEL);
 
+#undef comp_dbg
+#define comp_dbg comp_info
+
 int src_rate_check(const void *spec)
 {
 	const struct ipc4_config_src *ipc_src = spec;
