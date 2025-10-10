@@ -412,8 +412,8 @@ int lib_manager_free_module(const uint32_t component_id)
 
 #define PAGE_SZ		4096 /* equals to MAN_PAGE_SIZE used by rimage */
 
-uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
-				      const void *ipc_specific_config, const void **buildinfo)
+static uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
+					const void *ipc_specific_config, const void **buildinfo)
 {
 	tr_err(&lib_manager_tr, "Dynamic module allocation is not supported");
 	return 0;
@@ -578,7 +578,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 						  const void *spec)
 {
 	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(config->id);
-	const struct ipc_config_process *args = (struct ipc_config_process *)spec;
+	const struct ipc_config_process *args = (const struct ipc_config_process *)spec;
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(config->id);
 	const struct module_interface *ops = NULL;
 	const struct sof_man_module *mod;
