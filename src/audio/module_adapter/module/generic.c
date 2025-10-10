@@ -796,3 +796,27 @@ void module_update_buffer_position(struct input_stream_buffer *input_buffers,
 	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
 }
 EXPORT_SYMBOL(module_update_buffer_position);
+
+uint32_t module_get_deadline(struct processing_module *mod)
+{
+	uint32_t deadline;
+
+	/* LL modules have no deadline - it is always "now" */
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+		return 0;
+
+	/* startup condition - set deadline to "unknown" */
+	if (mod->dp_startup_delay)
+		return UINT32_MAX / 2;
+
+	deadline = UINT32_MAX;
+	/* calculate the shortest LFT for all sinks */
+	for (size_t i = 0; i < mod->num_of_sinks; i++) {
+		uint32_t sink_lft = sink_get_last_feeding_time(mod->sinks[i]);
+
+		deadline = MIN(deadline, sink_lft);
+	}
+
+	return deadline;
+}
+EXPORT_SYMBOL(module_get_deadline);

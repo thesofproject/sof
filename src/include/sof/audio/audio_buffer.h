@@ -337,5 +337,6 @@ int audio_buffer_sink_on_audio_format_set(struct sof_sink *sink);
 int audio_buffer_sink_set_alignment_constants(struct sof_sink *sink,
 					      const uint32_t byte_align,
 					      const uint32_t frame_align_req);
+uint32_t audio_buffer_sink_get_lft(struct sof_sink *sink);
 
 #endif /* __SOF_AUDIO_BUFFER__ */
