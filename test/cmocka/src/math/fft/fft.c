@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdbool.h>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
@@ -38,6 +39,8 @@
 #define MIN_SNR_256	132.0
 #define MIN_SNR_512	125.0
 #define MIN_SNR_1024	119.0
+
+struct processing_module dummy;
 
 /**
  * \brief Doing Fast Fourier Transform (FFT) for mono real input buffers.
@@ -68,7 +71,7 @@ static void fft_real(struct comp_buffer *src, struct comp_buffer *dst, uint32_t 
 	if (!outb)
 		goto err_outb;
 
-	plan = fft_plan_new(inb, outb, size, 32);
+	plan = mod_fft_plan_new(&dummy, inb, outb, size, 32);
 	if (!plan)
 		goto err_plan;
 
@@ -85,7 +88,7 @@ static void fft_real(struct comp_buffer *src, struct comp_buffer *dst, uint32_t 
 		*((int32_t *)dst->stream.addr + 2 * i + 1) = outb[i].imag;
 	}
 
-	fft_plan_free(plan);
+	mod_fft_plan_free(&dummy, plan);
 
 err_plan:
 	rfree(outb);
@@ -123,7 +126,7 @@ static void ifft_complex(struct comp_buffer *src, struct comp_buffer *dst, uint3
 	if (!outb)
 		goto err_outb;
 
-	plan = fft_plan_new(inb, outb, size, 32);
+	plan = mod_fft_plan_new(&dummy, inb, outb, size, 32);
 	if (!plan)
 		goto err_plan;
 
@@ -140,7 +143,7 @@ static void ifft_complex(struct comp_buffer *src, struct comp_buffer *dst, uint3
 		*((int32_t *)dst->stream.addr + 2 * i + 1) = outb[i].imag;
 	}
 
-	fft_plan_free(plan);
+	mod_fft_plan_free(&dummy, plan);
 
 err_plan:
 	rfree(outb);
@@ -181,7 +184,7 @@ static void fft_real_2(struct comp_buffer *src, struct comp_buffer *dst1,
 	if (!outb)
 		goto err_outb;
 
-	plan = fft_plan_new(inb, outb, size, 32);
+	plan = mod_fft_plan_new(&dummy, inb, outb, size, 32);
 	if (!plan)
 		goto err_plan;
 
@@ -210,7 +213,7 @@ static void fft_real_2(struct comp_buffer *src, struct comp_buffer *dst1,
 			(outb[size - i].real - outb[i].real) / 2;
 	}
 
-	fft_plan_free(plan);
+	mod_fft_plan_free(&dummy, plan);
 
 err_plan:
 	rfree(outb);
@@ -300,6 +303,9 @@ static void test_math_fft_256(void **state)
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
 	assert_int_equal(snr < MIN_SNR_256, 0);
+
+	buffer_free(source);
+	buffer_free(sink);
 }
 
 static void test_math_fft_512(void **state)
@@ -342,6 +348,9 @@ static void test_math_fft_512(void **state)
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
 	assert_int_equal(snr < MIN_SNR_512, 0);
+
+	buffer_free(source);
+	buffer_free(sink);
 }
 
 static void test_math_fft_1024(void **state)
@@ -384,6 +393,9 @@ static void test_math_fft_1024(void **state)
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
 	assert_int_equal(snr < MIN_SNR_1024, 0);
+
+	buffer_free(source);
+	buffer_free(sink);
 }
 
 static void test_math_fft_1024_ifft(void **state)
@@ -425,6 +437,10 @@ static void test_math_fft_1024_ifft(void **state)
 	db = 10 * log10((float)signal / noise);
 	printf("%s: SNR: %6.2f dB\n", __func__, db);
 	assert_int_equal(db < FFT_DB_TH, 0);
+
+	buffer_free(source);
+	buffer_free(intm);
+	buffer_free(sink);
 }
 
 static void test_math_fft_512_2ch(void **state)
@@ -467,6 +483,10 @@ static void test_math_fft_512_2ch(void **state)
 
 	/* the peak should be in range i +/-1 */
 	assert_in_range(r, i - 1, i + 1);
+
+	buffer_free(source);
+	buffer_free(sink1);
+	buffer_free(sink2);
 }
 
 /**
@@ -498,7 +518,7 @@ static void fft_real_16(struct comp_buffer *src, struct comp_buffer *dst, uint32
 	if (!outb)
 		goto err_outb;
 
-	plan = fft_plan_new(inb, outb, size, 16);
+	plan = mod_fft_plan_new(&dummy, inb, outb, size, 16);
 	if (!plan)
 		goto err_plan;
 
@@ -515,7 +535,7 @@ static void fft_real_16(struct comp_buffer *src, struct comp_buffer *dst, uint32
 		*((int16_t *)dst->stream.addr + 2 * i + 1) = outb[i].imag;
 	}
 
-	fft_plan_free(plan);
+	mod_fft_plan_free(&dummy, plan);
 
 err_plan:
 	rfree(outb);
@@ -553,7 +573,7 @@ static void ifft_complex_16(struct comp_buffer *src, struct comp_buffer *dst, ui
 	if (!outb)
 		goto err_outb;
 
-	plan = fft_plan_new(inb, outb, size, 16);
+	plan = mod_fft_plan_new(&dummy, inb, outb, size, 16);
 	if (!plan)
 		goto err_plan;
 
@@ -570,7 +590,7 @@ static void ifft_complex_16(struct comp_buffer *src, struct comp_buffer *dst, ui
 		*((int16_t *)dst->stream.addr + 2 * i + 1) = outb[i].imag;
 	}
 
-	fft_plan_free(plan);
+	mod_fft_plan_free(&dummy, plan);
 
 err_plan:
 	rfree(outb);
@@ -660,6 +680,9 @@ static void test_math_fft_256_16(void **state)
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
 	assert_int_equal(snr < MIN_SNR_256_16, 0);
+
+	buffer_free(source);
+	buffer_free(sink);
 }
 
 static void test_math_fft_512_16(void **state)
@@ -702,6 +725,9 @@ static void test_math_fft_512_16(void **state)
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
 	assert_int_equal(snr < MIN_SNR_512_16, 0);
+
+	buffer_free(source);
+	buffer_free(sink);
 }
 
 static void test_math_fft_1024_16(void **state)
@@ -744,6 +770,9 @@ static void test_math_fft_1024_16(void **state)
 	snr = 10 * log10(signal / noise);
 	printf("%s: SNR %5.2f dB\n", __func__, snr);
 	assert_int_equal(snr < MIN_SNR_1024_16, 0);
+
+	buffer_free(source);
+	buffer_free(sink);
 }
 
 static void test_math_fft_1024_ifft_16(void **state)
@@ -784,6 +813,10 @@ static void test_math_fft_1024_ifft_16(void **state)
 	db = 10 * log10((float)signal / noise);
 	printf("%s: SNR: %6.2f dB\n", __func__, db);
 	assert_int_equal(db < FFT_DB_TH_16, 0);
+
+	buffer_free(source);
+	buffer_free(intm);
+	buffer_free(sink);
 }
 
 int main(void)

@@ -4,6 +4,7 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/format.h>
 #include <rtos/alloc.h>
 #include <sof/math/auditory.h>
@@ -85,7 +86,7 @@ int16_t psy_mel_to_hz(int16_t mel)
 	return hz;
 }
 
-int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
+int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *fb)
 {
 	int32_t up_slope;
 	int32_t down_slope;
@@ -200,8 +201,7 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 	}
 
 	fb->data_length = &fb->scratch_data2[base_idx] - &fb->scratch_data2[0];
-	fb->data = rzalloc(SOF_MEM_FLAG_USER,
-			   sizeof(int16_t) * fb->data_length);
+	fb->data = mod_zalloc(mod, sizeof(int16_t) * fb->data_length);
 	if (!fb->data)
 		return -ENOMEM;
 
@@ -209,4 +209,9 @@ int psy_get_mel_filterbank(struct psy_mel_filterbank *fb)
 	memcpy_s(fb->data, sizeof(int16_t) * fb->data_length,
 		 fb->scratch_data2, sizeof(int16_t) * fb->data_length);
 	return 0;
+}
+
+int mod_psy_free_mel_filterbank(struct processing_module *mod, struct psy_mel_filterbank *mel_fb)
+{
+	return mod_free(mod, mel_fb->data);
 }
