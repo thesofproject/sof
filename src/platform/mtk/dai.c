@@ -22,6 +22,9 @@
 #elif defined(CONFIG_SOC_MT8196)
 #define MTK_AFE_BASE 0x1a110000
 #define SRAM_CPU_START 0x1a210000
+#elif defined(CONFIG_SOC_MT8365)
+#define MTK_AFE_BASE 0x11220000
+#define SRAM_CPU_START 0x1e000000
 #else
 #error Unrecognized device
 #endif
@@ -133,7 +136,7 @@ static void cfg_convert(const struct afe_cfg *src, struct mtk_base_memif_data *d
 	.base = DT_PROP(n, base), \
 	.end = DT_PROP(n, end), \
 	.cur = DT_PROP(n, cur), \
-	.fs = DT_PROP(n, fs), \
+	COND_PROP(n, fs) \
 	.hd = DT_PROP(n, hd), \
 	.enable = DT_PROP(n, enable), \
 	COND_PROP(n, mono) \
@@ -269,6 +272,20 @@ static unsigned int mtk_afe_fs_timing(unsigned int rate)
 		{ 192000, 14 },
 		{ 352800,  7 },
 		{ 384000,  3 },
+#elif defined(CONFIG_SOC_MT8365)
+		{   8000,  0 },
+		{  11025,  1 },
+		{  12000,  2 },
+		{  16000,  4 },
+		{  22050,  5 },
+		{  24000,  6 },
+		{  32000,  8 },
+		{  44100,  9 },
+		{  48000, 10 },
+		{  88200, 11 },
+		{  96000, 12 },
+		{ 176400, 13 },
+		{ 192000, 14 },
 #else
 		{   8000,  0 },
 		{  11025,  1 },
