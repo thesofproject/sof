@@ -30,6 +30,8 @@
 struct sof_ipc_stream_params;
 void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
 					   struct sof_ipc_stream_params *params);
+void ipc4_audio_format_to_stream_params(const struct ipc4_audio_format *audio_fmt,
+					struct sof_ipc_stream_params *params);
 struct comp_buffer;
 void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 			       const struct ipc4_audio_format *fmt);

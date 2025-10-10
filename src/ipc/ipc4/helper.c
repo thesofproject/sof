@@ -1152,28 +1152,37 @@ int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buff
 	return IPC4_INVALID_REQUEST;
 }
 
-void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
-					   struct sof_ipc_stream_params *params)
+void ipc4_audio_format_to_stream_params(const struct ipc4_audio_format *audio_fmt,
+					struct sof_ipc_stream_params *params)
 {
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 	int i;
 
 	memset(params, 0, sizeof(struct sof_ipc_stream_params));
-	params->channels = base_cfg->audio_fmt.channels_count;
-	params->rate = base_cfg->audio_fmt.sampling_frequency;
-	params->sample_container_bytes = base_cfg->audio_fmt.depth / 8;
-	params->sample_valid_bytes = base_cfg->audio_fmt.valid_bit_depth / 8;
-	params->buffer_fmt = base_cfg->audio_fmt.interleaving_style;
-	params->buffer.size = base_cfg->obs * 2;
+	params->channels = audio_fmt->channels_count;
+	params->rate = audio_fmt->sampling_frequency;
+	params->sample_container_bytes = audio_fmt->depth / 8;
+	params->sample_valid_bytes = audio_fmt->valid_bit_depth / 8;
+	params->buffer_fmt = audio_fmt->interleaving_style;
 
-	audio_stream_fmt_conversion(base_cfg->audio_fmt.depth,
-				    base_cfg->audio_fmt.valid_bit_depth,
+	audio_stream_fmt_conversion(audio_fmt->depth,
+				    audio_fmt->valid_bit_depth,
 				    &frame_fmt, &valid_fmt,
-				    base_cfg->audio_fmt.s_type);
+				    audio_fmt->s_type);
 	params->frame_fmt = frame_fmt;
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
-		params->chmap[i] = (base_cfg->audio_fmt.ch_map >> i * 4) & 0xf;
+		params->chmap[i] = (audio_fmt->ch_map >> i * 4) & 0xf;
+}
+EXPORT_SYMBOL(ipc4_audio_format_to_stream_params);
+
+void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
+					   struct sof_ipc_stream_params *params)
+{
+	memset(params, 0, sizeof(struct sof_ipc_stream_params));
+	params->buffer.size = base_cfg->obs * 2;
+
+	ipc4_audio_format_to_stream_params(&base_cfg->audio_fmt, params);
 }
 EXPORT_SYMBOL(ipc4_base_module_cfg_to_stream_params);
 
