@@ -10,6 +10,7 @@
 
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/pacovr.h>
 #include <sof/list.h>
 #include <rtos/task.h>
 #include <rtos/sof.h>
@@ -63,6 +64,9 @@ struct pipeline {
 	uint32_t xrun_limit_usecs; /**< report xruns greater than limit */
 	uint32_t time_domain;	/**< scheduling time domain */
 	uint32_t attributes;   /**< pipeline attributes from IPC extension msg/ */
+
+	/* pipeline resource management */
+	struct pacovr *pacovr;
 
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
