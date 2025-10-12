@@ -594,6 +594,13 @@ void mod_free_all(struct processing_module *mod)
 		list_item_del(&container->list);
 	}
 
+	list_for_item_safe(list, _list, &res->free_cont_list) {
+		struct module_resource *container =
+			container_of(list, struct module_resource, list);
+
+		list_item_del(&container->list);
+	}
+
 	list_for_item_safe(list, _list, &res->cont_chunk_list) {
 		struct container_chunk *chunk =
 			container_of(list, struct container_chunk, chunk_list);
@@ -601,6 +608,12 @@ void mod_free_all(struct processing_module *mod)
 		list_item_del(&chunk->chunk_list);
 		rfree(chunk);
 	}
+
+	/* Make sure resource lists and accounting are reset */
+	list_init(&res->res_list);
+	list_init(&res->free_cont_list);
+	list_init(&res->cont_chunk_list);
+	res->heap_usage = 0;
 }
 EXPORT_SYMBOL(mod_free_all);
 
