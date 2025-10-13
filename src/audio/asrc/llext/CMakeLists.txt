@@ -4,6 +4,7 @@
 sof_llext_build("asrc"
 	SOURCES ../asrc.c
 		../asrc_farrow_hifi3.c
+		../asrc_farrow_hifi5.c
 		../asrc_farrow.c
 		../asrc_farrow_generic.c
 		../asrc_ipc4.c
