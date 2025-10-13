@@ -536,7 +536,7 @@ if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
 target_compile_options(SOF INTERFACE -fno-inline-functions)
 endif()
 
-if (CONFIG_USERSPACE)
+if (CONFIG_USERSPACE AND "${ZEPHYR_TOOLCHAIN_VARIANT}" STREQUAL "xt-clang")
 target_compile_options(SOF INTERFACE -mno-global-merge)
 endif()
 
