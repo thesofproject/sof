@@ -362,7 +362,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 
 				sink_dev = comp_buffer_get_sink_component(sink);
 
-				j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
+				j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
 
 				if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
 					comp_err(dev, "Sink queue ID: %d >= max output pin count: %d\n",
