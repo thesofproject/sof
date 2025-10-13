@@ -129,7 +129,7 @@ static inline void heap_trace_all(int force) {}
 
 /** @}*/
 
-#if CONFIG_USERSPACE
+#if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
 /**
  * Returns the start address of shared memory heap for buffers.
  *

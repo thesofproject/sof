@@ -38,8 +38,16 @@ config SOF_ZEPHYR_HEAP_SIZE
 	 NOTE: Keep in mind that the heap size should not be greater than the physical
 	 memory size of the system defined in DT (and this includes baseFW text/data).
 
+config SOF_USERSPACE_USE_SHARED_HEAP
+	bool "Use shared heap for SOF userspace modules"
+	depends on USERSPACE
+	help
+	  When set a shared heap will be used for audio buffers between SOF
+	  kernel and userspace modules.
+
 config SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE
 	hex "Size of the shared buffer heap for SOF userspace modules"
+	default 0x0 if !SOF_USERSPACE_USE_SHARED_HEAP
 	default 0x1E000 if SOC_INTEL_ACE15_MTPM || SOC_INTEL_ACE20_LNL
 	default 0x1A000 if SOC_INTEL_ACE30
 	default 0x0
@@ -87,6 +95,7 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 config SOF_USERSPACE_PROXY
 	bool "Use userspace proxy to support userspace modules"
 	select SOF_USERSPACE_USE_DRIVER_HEAP
+	select SOF_USERSPACE_USE_SHARED_HEAP
 	help
 	  When set, userspace modules are launched inside a container created by userspace proxy.
 	  It is responsible for forwarding module function calls coming from sof running in
