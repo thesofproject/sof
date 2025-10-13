@@ -181,10 +181,10 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 err:
 #if CONFIG_IPC_MAJOR_4
 	if (mod)
-		rfree(mod->priv.cfg.input_pins);
+		module_driver_heap_free(drv->user_heap, mod->priv.cfg.input_pins);
 #endif
-	rfree(mod);
-	rfree(dev);
+	module_driver_heap_free(drv->user_heap, mod);
+	module_driver_heap_free(drv->user_heap, dev);
 	return NULL;
 }
 EXPORT_SYMBOL(module_adapter_new);
@@ -1283,12 +1283,12 @@ void module_adapter_free(struct comp_dev *dev)
 	mod_free_all(mod);
 
 #if CONFIG_IPC_MAJOR_4
-	rfree(mod->priv.cfg.input_pins);
+	module_driver_heap_free(dev->drv->user_heap, mod->priv.cfg.input_pins);
 #endif
 
 	rfree(mod->stream_params);
-	rfree(mod);
-	rfree(dev);
+	module_driver_heap_free(dev->drv->user_heap, mod);
+	module_driver_heap_free(dev->drv->user_heap, dev);
 }
 EXPORT_SYMBOL(module_adapter_free);
 
