@@ -7,6 +7,7 @@ sof_llext_build("src"
 		../src_generic.c
 		../src_hifi3.c
 		../src_hifi4.c
+		../src_hifi5.c
 		../src.c
 		../src_common.c
 		../src_ipc4.c
@@ -19,6 +20,7 @@ sof_llext_build("src"
 		../src_generic.c
 		../src_hifi3.c
 		../src_hifi4.c
+		../src_hifi5.c
 		../src.c
 		../src_common.c
 		../src_ipc4.c
