@@ -105,8 +105,10 @@ static uint8_t __aligned(PLATFORM_DCACHE_ALIGN) heapmem[HEAPMEM_SIZE];
 #undef SHARED_BUFFER_HEAP_MEM_SIZE
 #define SHARED_BUFFER_HEAP_MEM_SIZE	ROUND_UP(CONFIG_SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE, \
 						 HOST_PAGE_SIZE)
+#if CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP
 __section(".shared_heap_mem")
 static uint8_t __aligned(HOST_PAGE_SIZE) shared_heapmem[SHARED_BUFFER_HEAP_MEM_SIZE];
+#endif
 #endif /* CONFIG_USERSPACE */
 __section(".heap_mem")
 static uint8_t __aligned(HOST_PAGE_SIZE) heapmem[HEAPMEM_SIZE - SHARED_BUFFER_HEAP_MEM_SIZE];
@@ -142,7 +144,7 @@ extern char _end[], _heap_sentry[];
 
 static struct k_heap sof_heap;
 
-#if CONFIG_USERSPACE
+#if CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP
 static struct k_heap shared_buffer_heap;
 
 static bool is_shared_buffer_heap_pointer(void *ptr)
@@ -174,7 +176,7 @@ size_t get_shared_buffer_heap_size(void)
 {
 	return ROUND_DOWN(SHARED_BUFFER_HEAP_MEM_SIZE, HOST_PAGE_SIZE);
 }
-#endif /* CONFIG_USERSPACE */
+#endif /* CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP */
 
 #if CONFIG_L3_HEAP
 static struct k_heap l3_heap;
@@ -459,7 +461,7 @@ void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
 #else
 		k_panic();
 #endif
-#if CONFIG_USERSPACE
+#if CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP
 	} else if (flags & SOF_MEM_FLAG_USER_SHARED_BUFFER) {
 		heap = &shared_buffer_heap;
 #endif
@@ -553,7 +555,7 @@ void *rballoc_align(uint32_t flags, size_t bytes,
 		tr_err(&zephyr_tr, "L3_HEAP not available.");
 		return NULL;
 #endif
-#if CONFIG_USERSPACE
+#if CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP
 	} else if (flags & SOF_MEM_FLAG_USER_SHARED_BUFFER) {
 		heap = &shared_buffer_heap;
 #endif /* CONFIG_USERSPACE */
@@ -596,7 +598,7 @@ void rfree(void *ptr)
 	}
 #endif
 
-#if CONFIG_USERSPACE
+#if CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP
 	if (is_shared_buffer_heap_pointer(ptr)) {
 		heap_free(&shared_buffer_heap, ptr);
 		return;
@@ -611,7 +613,7 @@ static int heap_init(void)
 {
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE - SHARED_BUFFER_HEAP_MEM_SIZE);
 
-#if CONFIG_USERSPACE
+#if CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP
 	sys_heap_init(&shared_buffer_heap.heap, shared_heapmem, SHARED_BUFFER_HEAP_MEM_SIZE);
 #endif
 
