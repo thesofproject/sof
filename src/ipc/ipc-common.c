@@ -55,9 +55,11 @@ int ipc_process_on_core(uint32_t core, bool blocking)
 		return -EACCES;
 	}
 
+#if CONFIG_IPC_MAJOR_3
 	/* The other core will write there its response */
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 ((struct sof_ipc_cmd_hdr *)ipc->comp_data)->size);
+#endif
 
 	/*
 	 * If the primary core is waiting for secondary cores to complete, it
