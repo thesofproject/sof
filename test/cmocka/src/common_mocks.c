@@ -88,6 +88,23 @@ void WEAK rfree(void *ptr)
 	free(ptr);
 }
 
+void WEAK *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment)
+{
+	(void)heap;
+	(void)flags;
+	(void)alignment;
+
+	return malloc(bytes);
+}
+
+void WEAK sof_heap_free(struct k_heap *heap, void *addr)
+{
+	(void)heap;
+
+	free(addr);
+}
+
 int WEAK memcpy_s(void *dest, size_t dest_size,
 		  const void *src, size_t count)
 {

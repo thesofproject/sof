@@ -71,3 +71,14 @@ int heap_info(int index, struct mm_info *out)
 	return 0;
 }
 #endif
+
+void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment)
+{
+	return malloc(bytes);
+}
+
+void sof_heap_free(struct k_heap *heap, void *addr)
+{
+	free(addr);
+}
