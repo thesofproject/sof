@@ -10,24 +10,28 @@ SOF_TOP=$(cd "$(dirname "$0")/.." && pwd)
 print_usage()
 {
         cat <<EOFUSAGE
-Deletes and re-builds from scratch CMake projects in the tools/
-directory.
-Attention: the list below is _not_ exhaustive. To re-build _everything_
-from scratch don't select any particular target; this will build the
+
+Configures and builds selected CMake projects in the tools/ directory.
+Attention: the list of selected shortcuts below is _not_ exhaustive. To
+build _everything_ don't select any particular target; this will build
 CMake's default target "ALL".
 
-usage: $0 [-c|-f|-h|-l|-p|-t|-T]
+usage: $0 [-c|-f|-h|-l|-p|-t|-T|-X|-Y|-A]
        -h Display help
 
        -c Rebuild ctl/
-       -f Rebuild fuzzer/  # deprecated, see fuzzer/README.md
        -l Rebuild logger/
        -p Rebuild probes/
        -T Rebuild topology/ (not topology/development/! Use ALL)
+       -X Rebuild topology1 only
+       -Y Rebuild topology2 only
        -t Rebuild test/topology/ (or tools/test/topology/tplg-build.sh directly)
+       -A Clone and rebuild local ALSA lib and utils.
 
        -C No build, only CMake re-configuration. Shows CMake targets.
 EOFUSAGE
+
+        warn_if_incremental_build
 }
 
 # generate Makefiles
@@ -37,12 +41,7 @@ reconfigure_build()
         mkdir -p "$BUILD_TOOLS_DIR"
 
         ( cd "$BUILD_TOOLS_DIR"
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools"
-        )
-
-        mkdir "$BUILD_TOOLS_DIR/fuzzer"
-        ( cd "$BUILD_TOOLS_DIR/fuzzer"
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools/fuzzer"
+          cmake -GNinja -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools"
         )
 }
 
@@ -58,37 +57,45 @@ make_tool()
         )
 }
 
-make_fuzzer()
-{
-        ( set -x
-        cmake --build "$BUILD_TOOLS_DIR"/fuzzer  --  -j "$NO_PROCESSORS"
-        )
-}
-
 print_build_info()
 {
        cat <<EOFUSAGE
 
 Build commands for respective tools:
-        ctl:        make -C "$BUILD_TOOLS_DIR" sof-ctl
-        logger:     make -C "$BUILD_TOOLS_DIR" sof-logger
-        probes:     make -C "$BUILD_TOOLS_DIR" sof-probes
-        topologies: make -C "$BUILD_TOOLS_DIR" topologies
-        test tplgs: make -C "$BUILD_TOOLS_DIR" tests
+        ctl:        ninja -C "$BUILD_TOOLS_DIR" sof-ctl
+        logger:     ninja -C "$BUILD_TOOLS_DIR" sof-logger
+        probes:     ninja -C "$BUILD_TOOLS_DIR" sof-probes
+        topologies: ninja -C "$BUILD_TOOLS_DIR" topologies
+        topologies1: ninja -C "$BUILD_TOOLS_DIR" topologies1
+        topologies2: ninja -C "$BUILD_TOOLS_DIR" topologies2
+
+        test tplgs: ninja -C "$BUILD_TOOLS_DIR" tests
                (or ./tools/test/topology/tplg-build.sh directly)
 
-        fuzzer:     make -C "$BUILD_TOOLS_DIR/fuzzer"
-
         list of targets:
-                    make -C "$BUILD_TOOLS_DIR/" help
+                    ninja -C "$BUILD_TOOLS_DIR/" help
 EOFUSAGE
+
+       warn_if_incremental_build
+}
+
+warn_if_incremental_build()
+{
+        $warn_incremental_build || return 0
+        cat <<EOF
+
+WARNING: building tools/ is now incremental by default!
+         To build from scratch delete: $BUILD_TOOLS_DIR
+         or use the -C option.
+
+EOF
 }
 
 main()
 {
-        local DO_BUILD_ctl DO_BUILD_fuzzer DO_BUILD_logger DO_BUILD_probes \
-                DO_BUILD_tests DO_BUILD_topologies SCRIPT_DIR SOF_REPO CMAKE_ONLY \
-                BUILD_ALL
+        local DO_BUILD_ctl DO_BUILD_logger DO_BUILD_probes \
+                DO_BUILD_tests DO_BUILD_topologies1 DO_BUILD_topologies2 SCRIPT_DIR SOF_REPO \
+                CMAKE_ONLY BUILD_ALL
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
         SOF_REPO=$(dirname "$SCRIPT_DIR")
         : "${BUILD_TOOLS_DIR:=$SOF_REPO/tools/build_tools}"
@@ -100,46 +107,62 @@ main()
         fi
 
         DO_BUILD_ctl=false
-        DO_BUILD_fuzzer=false
+        DO_BUILD_alsa=false
         DO_BUILD_logger=false
         DO_BUILD_probes=false
         DO_BUILD_tests=false
-        DO_BUILD_topologies=false
+        DO_BUILD_topologies1=false
+        DO_BUILD_topologies2=false
         CMAKE_ONLY=false
+
+        # better safe than sorry
+        local warn_incremental_build=true
 
         # eval is a sometimes necessary evil
         # shellcheck disable=SC2034
-        while getopts "cfhlptTC" OPTION; do
+        while getopts "cfhlptTCXYA" OPTION; do
                 case "$OPTION" in
                 c) DO_BUILD_ctl=true ;;
-                f) DO_BUILD_fuzzer=true ;;
                 l) DO_BUILD_logger=true ;;
                 p) DO_BUILD_probes=true ;;
                 t) DO_BUILD_tests=true ;;
-                T) DO_BUILD_topologies=true ;;
+                T) DO_BUILD_topologies1=true ; DO_BUILD_topologies2=true ;;
+                X) DO_BUILD_topologies1=true ;;
+                Y) DO_BUILD_topologies2=true ;;
                 C) CMAKE_ONLY=true ;;
+                A) DO_BUILD_alsa=true ;;
                 h) print_usage; exit 1;;
                 *) print_usage; exit 1;;
                 esac
         done
         shift "$((OPTIND - 1))"
-        reconfigure_build
+
+        if "$DO_BUILD_alsa"; then
+                $SOF_TOP/scripts/build-alsa-tools.sh
+        fi
 
         if "$CMAKE_ONLY"; then
+                reconfigure_build
                 print_build_info
                 exit
         fi
+
+        test -e "$BUILD_TOOLS_DIR"/build.ninja ||
+        test -e "$BUILD_TOOLS_DIR"/Makefile    || {
+            warn_incremental_build=false
+            reconfigure_build
+        }
 
         if "$BUILD_ALL"; then
                 # default CMake targets
                 make_tool # trust set -e
 
-                make_fuzzer
-                exit $?
+                warn_if_incremental_build
+                exit 0
         fi
 
         # Keep 'topologies' first because it's the noisiest.
-        for util in topologies tests; do
+        for util in topologies1 topologies2 tests; do
                 if eval '$DO_BUILD_'$util; then
                         make_tool $util
                 fi
@@ -151,9 +174,7 @@ main()
                 fi
         done
 
-        if "$DO_BUILD_fuzzer"; then
-                make_fuzzer
-        fi
+        warn_if_incremental_build
 }
 
 main "$@"

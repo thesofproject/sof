@@ -14,8 +14,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Apollolake DSP configuration
-include(`platform/intel/bxt.m4')
+# Include generic DSP configuration
+include(`platform/generic.m4')
 
 DEBUG_START
 
@@ -93,8 +93,8 @@ DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT,
 	   TEST_DAI_LINK_NAME,
 	   SSP_CONFIG(TEST_SSP_MODE,
 		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
-		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_consumer),
+		      SSP_CLOCK(fsync, 48000, codec_consumer),
 		      SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
 		      SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI_PORT,
 				      TEST_SSP_DATA_BITS, TEST_SSP_MCLK_ID)))

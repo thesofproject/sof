@@ -137,12 +137,23 @@ SectionVendorTokens."sof_afe_tokens" {
 	SOF_TKN_MEDIATEK_AFE_FORMAT			"1602"
 }
 
-SectionVendorTokens."sof_acpsp_tokens" {
-	SOF_TKN_AMD_ACPSP_RATE			"1700"
-	SOF_TKN_AMD_ACPSP_CH			"1701"
+SectionVendorTokens."sof_acp_tokens" {
+	SOF_TKN_AMD_ACP_RATE			"1700"
+	SOF_TKN_AMD_ACP_CH			"1701"
+	SOF_TKN_AMD_ACP_I2S_TDM_MODE		"1702"
 }
 
 SectionVendorTokens."sof_acpdmic_tokens" {
         SOF_TKN_AMD_ACPDMIC_RATE                  "1800"
         SOF_TKN_AMD_ACPDMIC_CH                    "1801"
+}
+
+SectionVendorTokens."sof_micfil_tokens" {
+        SOF_TKN_IMX_MICFIL_RATE                  "2000"
+        SOF_TKN_IMX_MICFIL_CH                    "2001"
+}
+
+SectionVendorTokens."sof_acp_sdw_tokens" {
+	SOF_TKN_AMD_ACP_SDW_SAMPLERATE		"2100"
+	SOF_TKN_AMD_ACP_SDW_CH			"2101"
 }

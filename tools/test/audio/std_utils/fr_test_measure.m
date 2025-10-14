@@ -32,6 +32,8 @@ function test = fr_test_measure(test)
 % Copyright(c) 2017 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+debug = 0;
+
 %% Check if upper and lower mask is defined
 if length(test.fr_mask_flo) || length(test.fr_mask_fhi)
 	test.fr_lo = 0;
@@ -74,7 +76,9 @@ for channel = test.ch
         win = hamming(nt_use);
         m0 = zeros(test.nf,1);
         for n=1:test.nf
-                fprintf('Measuring %.0f Hz ...\n', test.f(n));
+		if debug
+			fprintf('Measuring %.0f Hz ...\n', test.f(n));
+		end
                 i1 = d+(n-1)*nt+nt_skip;
                 i2 = i1+nt_use-1;
                 m0(n) = level_dbfs(x(i1:i2,j).*win) -test.a_db;

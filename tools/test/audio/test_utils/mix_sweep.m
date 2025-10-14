@@ -4,6 +4,8 @@ function  test = mix_sweep(test)
 % Copyright(c) 2017 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+debug = 0;
+
 %% Adjust tone lengt to integer number of samples
 test.nt = round(test.tl*test.fs); % Make number of samples per tone
 test.tl = test.nt/test.fs;        % an integer by adjusting tl.
@@ -59,7 +61,9 @@ for m=1:test.na
                 else
                         a = test.a;
                 end
-                fprintf('Mixing %.0f Hz %.1f dBFS sine ...\n', f, 20*log10(a));
+		if debug
+			fprintf('Mixing %.0f Hz %.1f dBFS sine ...\n', f, 20*log10(a));
+		end
                 s = multitone(test.fs, f, a, test.tl);
                 for ch=test.ch
                         x(i1:i2, ch) = dither_and_quantize(s.*win, test.bits_in);

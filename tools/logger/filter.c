@@ -22,8 +22,6 @@
 #define COMPONENTS_SEPARATOR ','
 #define COMPONENT_NAME_SCAN_STRING_LENGTH 32
 
-extern struct convert_config *global_config;
-
 /** map between log level given by user and enum value */
 static const struct {
 	const char name[16];
@@ -137,7 +135,7 @@ static char *filter_parse_component_name(char *input_str, struct filter_element 
  *   `*`
  * Whitespace is possible at the begin, end and after `name`.
  * `name` must refer to values from given UUID dictionary,
- *        (so name comes from DECLARE_SOF_UUID macro usage)
+ *        (so name comes from SOF_DEFINE_UUID macro usage)
 
  * @param input_str formatted component definition
  * @param out element where component definition should be saved

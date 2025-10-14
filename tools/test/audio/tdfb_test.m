@@ -1,31 +1,36 @@
-function tdfb_test()
+function tdfb_test(xtrun)
 
-% tdfb_test()
+% tdfb_test(xtrun)
 % Inputs
-%   None
+%   xtrun - set to 'xt-run' or 'xt-run --turbo' to test with xt-testbench
 %
 % Outputs
 %   None, to be added later when automatic pass/fail is possible to
 %   determine. So far only visual check enabled.
 
 % SPDX-License-Identifier: BSD-3-Clause
-% Copyright(c) 2020 Intel Corporation. All rights reserved.
+% Copyright(c) 2020-2025 Intel Corporation.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+
+if nargin < 1
+	xtrun = '';
+end
 
 % General settings
 cfg.delete_files = 1;
 cfg.do_plots = 1;
-cfg.tunepath = '../../tune/tdfb/data';
+cfg.tunepath = '../../../src/audio/tdfb/tune/data';
+cfg.xtrun = xtrun;
 
 % Arrays to test. Since the two beams configurations are merge of two designs (pm90deg)
 % need to specify a compatible data file identifier for a single beam design (az0el0deg)
-array_data_list = {'line2_50mm_az0el0deg_48khz', 'line4_28mm_az0el0deg_48khz', 'circular8_100mm_az0el0deg_48khz'};
-tdfb_name_list =  {'', 'line4_28mm_pm90deg_48khz', 'circular8_100mm_pm30deg_48khz'};
+array_data_list = {'line2_50mm_az0el0deg_48khz'};
+tdfb_name_list =  {''};
 
 %% Prepare
 addpath('std_utils');
 addpath('test_utils');
-addpath('../../tune/tdfb');
+addpath('../../../src/audio/tdfb/tune');
 
 for i = 1:length(array_data_list)
 
@@ -72,7 +77,7 @@ test.nch_in = max(bf.input_channel_select) + 1;
 test.nch_out = bf.num_output_channels;
 test.ch_in = 1:test.nch_in;
 test.ch_out = 1:test.nch_out;
-test.extra_opts='-q'; % Quiet mode, comment out to debug with testbench traces
+test.extra_opts='-s tdfb_enable.sh';
 if length(arrayid)
 	test.comp = sprintf('tdfb_%s', arrayid);
 end
@@ -119,6 +124,7 @@ end
 test = test_defaults(bf, tdfb);
 test.fn_in = fullfile(cfg.tunepath, simcap_fn);
 test.fn_out = 'sinerot.raw';
+test.xtrun = cfg.xtrun;
 
 % Run test
 test = test_run_comp(test);

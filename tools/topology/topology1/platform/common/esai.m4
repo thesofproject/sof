@@ -2,7 +2,7 @@ divert(-1)
 
 dnl ESAI related macros
 
-dnl ESAI_CLOCK(clock, freq, codec_master, polarity)
+dnl ESAI_CLOCK(clock, freq, codec_provider, polarity)
 dnl polarity is optional
 define(`ESAI_CLOCK',
 	$1		STR($3)

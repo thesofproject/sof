@@ -46,7 +46,7 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 	1, ESAI, 0, esai0-cs42888,
 	NOT_USED_IGNORED, 2, s24le,
-	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA,
+	1000, 1, 0, SCHEDULE_TIME_DOMAIN_TIMER,
 	2, 48000)
 
 # PCM Playback pipeline 3 on PCM 0 using max 2 channels of s24le.
@@ -56,7 +56,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	3, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_DMA,
+	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # PCM Playback pipeline 4 on PCM 1 using max 2 channels of s24le.
@@ -66,7 +66,7 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	4, 1, 2, s24le,
 	5000, 0, 0,
 	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_DMA,
+	SCHEDULE_TIME_DOMAIN_TIMER,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
@@ -88,7 +88,7 @@ SectionGraph."PIPE_NAME" {
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, ESAI, 0, esai0-cs42888,
 	PIPELINE_SINK_2, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 
 # PCM definitions
@@ -100,7 +100,7 @@ PCM_PLAYBACK_ADD(PCM Deep Buffer, 1, PIPELINE_PCM_4)
 #
 DAI_CONFIG(ESAI, 0, 0, esai0-cs42888,
 	   ESAI_CONFIG(I2S, ESAI_CLOCK(mclk, 49152000, codec_mclk_in),
-		      ESAI_CLOCK(bclk, 3072000, codec_slave),
-		      ESAI_CLOCK(fsync, 48000, codec_slave),
+		      ESAI_CLOCK(bclk, 3072000, codec_consumer),
+		      ESAI_CLOCK(fsync, 48000, codec_consumer),
 		      ESAI_TDM(2, 32, 3, 3),
 		      ESAI_CONFIG_DATA(ESAI, 0, 0)))

@@ -1,0 +1,7 @@
+To build the topology2 source documentation do following steps:
+
+cd tools/topology/topology2/doc
+cmake -B build/
+cmake --build build/ -v
+
+After the last command you should find the html documentation under: sof/tools/topology/topology2/doc/build/doxygen/html

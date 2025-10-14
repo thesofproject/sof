@@ -20,6 +20,8 @@ include(`sof/tokens.m4')
 # Include DSP configuration
 include(`platform/mediatek/mt8195.m4')
 
+DEBUG_START
+
 #
 # Define the demux configure
 #
@@ -53,7 +55,15 @@ define(matrix2, `ROUTE_MATRIX(3,
 
 ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `MUXDEMUX_CONFIG(demux_priv_1, 2, LIST_NONEWLINE(`', `matrix1,', `matrix2'))')
 ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`SPK_PERIOD_US', 10000)', `define(`SPK_PERIOD_US', 1000)')
-ifdef(`GOOGLE_RTC_AUDIO_PROCESSING', `define(`MIC_PERIOD_US', 10000)', `define(`MIC_PERIOD_US', 2000)')
+
+ifdef(`GOOGLE_RTC_AUDIO_PROCESSING',
+	`define(`MIC_PERIOD_US', 10000)'
+	,
+	`ifdef(`RTNR',
+# 5ms period is required for RTNR build 20220728 and later versions
+		`define(`MIC_PERIOD_US', 5000)',
+        `define(`MIC_PERIOD_US', 2000)')'
+)
 
 #
 # Define the pipelines
@@ -179,3 +189,5 @@ DAI_CONFIG(AFE, 2, 0, AFE_SOF_UL4,
 
 DAI_CONFIG(AFE, 3, 0, AFE_SOF_UL5,
 	AFE_CONFIG(AFE_CONFIG_DATA(AFE, 3, 48000, 2, s16le)))
+
+DEBUG_END

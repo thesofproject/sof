@@ -51,8 +51,7 @@ sx = size(x);
 nx = sx(1);
 nch = sx(2);
 
-xq = int32(floor( scale*x + randn(nx,nch) - randn(nx,nch) -0.5)); % TPDF dither
-%xq = int32(round( scale*x )); % Omit dither
+xq = int32(round(scale * x + rand(nx,nch) + rand(nx, nch) - 1)); % TPDF dither
 idx = find(xq > smax);
 xq(idx) = smax;
 idx = find(xq < smin);

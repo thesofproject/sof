@@ -1,35 +1,36 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2018-2024 Intel Corporation. All rights reserved.
 
 /* file component for reading/writing pcm samples to/from a file */
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <sof/sof.h>
-#include <sof/list.h>
-#include <sof/audio/stream.h>
-#include <sof/audio/ipc-config.h>
-#include <sof/lib/clk.h>
-#include <sof/ipc/driver.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/stream.h>
+#include <sof/ipc/driver.h>
 #include <ipc/stream.h>
-#include "testbench/common_test.h"
+#include <rtos/init.h>
+#include <rtos/clk.h>
+#include <rtos/sof.h>
+#include <sof/list.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "testbench/utils.h"
 #include "testbench/file.h"
+#include "testbench/file_ipc4.h"
+#include "../../src/audio/copier/copier.h"
 
-/* bfc7488c-75aa-4ce8-9bde-d8da08a698c2 */
-DECLARE_SOF_UUID("file", file_uuid, 0xbfc7488c, 0x75aa, 0x4ce8,
-		 0x9d, 0xbe, 0xd8, 0xda, 0x08, 0xa6, 0x98, 0xc2);
+
+SOF_DEFINE_REG_UUID(file);
 DECLARE_TR_CTX(file_tr, SOF_UUID(file_uuid), LOG_LEVEL_INFO);
-
-static const struct comp_driver comp_file_dai;
-static const struct comp_driver comp_file_host;
+LOG_MODULE_REGISTER(file, CONFIG_SOF_LOG_LEVEL);
 
 /*
  * Helpers for s24_4le data. To avoid an overflown 24 bit to be taken as valid 32 bit
@@ -411,30 +412,28 @@ static int write_samples_s16(struct file_comp_data *cd, struct audio_stream *sou
 }
 
 /* Default file copy function, just return error if called */
-static int file_default(struct comp_dev *dev, struct audio_stream *sink,
+static int file_default(struct file_comp_data *cd, struct audio_stream *sink,
 			struct audio_stream *source, uint32_t frames)
 {
 	return -EINVAL;
 }
 
 /* function for processing 32-bit samples */
-static int file_s32(struct comp_dev *dev, struct audio_stream *sink,
+static int file_s32(struct file_comp_data *cd, struct audio_stream *sink,
 		    struct audio_stream *source, uint32_t frames)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
 	int nch;
 	int n_samples = 0;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
-		nch = sink->channels;
+		nch = audio_stream_get_channels(sink);
 		n_samples = read_samples_s32(cd, sink, frames * nch, SOF_IPC_FRAME_S32_LE);
 		break;
 	case FILE_WRITE:
 		/* write samples */
-		nch = source->channels;
+		nch = audio_stream_get_channels(source);
 		n_samples = write_samples_s32(cd, source, frames * nch, SOF_IPC_FRAME_S32_LE);
 		break;
 	default:
@@ -452,23 +451,21 @@ static int file_s32(struct comp_dev *dev, struct audio_stream *sink,
 }
 
 /* function for processing 16-bit samples */
-static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
+static int file_s16(struct file_comp_data *cd, struct audio_stream *sink,
 		    struct audio_stream *source, uint32_t frames)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
 	int nch;
 	int n_samples;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
-		nch = sink->channels;
+		nch = audio_stream_get_channels(sink);
 		n_samples = read_samples_s16(cd, sink, frames * nch);
 		break;
 	case FILE_WRITE:
 		/* write samples */
-		nch = source->channels;
+		nch = audio_stream_get_channels(source);
 		n_samples = write_samples_s16(cd, source, frames * nch);
 		break;
 	default:
@@ -486,23 +483,21 @@ static int file_s16(struct comp_dev *dev, struct audio_stream *sink,
 }
 
 /* function for processing 24-bit samples */
-static int file_s24(struct comp_dev *dev, struct audio_stream *sink,
+static int file_s24(struct file_comp_data *cd, struct audio_stream *sink,
 		    struct audio_stream *source, uint32_t frames)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
 	int nch;
 	int n_samples = 0;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
 		/* read samples */
-		nch = sink->channels;
+		nch = audio_stream_get_channels(sink);
 		n_samples = read_samples_s32(cd, sink, frames * nch, SOF_IPC_FRAME_S24_4LE);
 		break;
 	case FILE_WRITE:
 		/* write samples */
-		nch = source->channels;
+		nch = audio_stream_get_channels(source);
 		n_samples = write_samples_s32(cd, source, frames * nch, SOF_IPC_FRAME_S24_4LE);
 		break;
 	default:
@@ -532,62 +527,116 @@ static enum file_format get_file_format(char *filename)
 	return FILE_RAW;
 }
 
-static struct comp_dev *file_new(const struct comp_driver *drv,
-				 struct comp_ipc_config *config,
-				 void *spec)
+#if CONFIG_IPC_MAJOR_4
+/* Minimal support for IPC4 pipeline_comp_trigger()'s dai_get_init_delay_ms() */
+static int file_init_set_dai_data(struct processing_module *mod)
 {
-	const struct dai_driver *fdrv;
-	struct comp_dev *dev;
-	struct ipc_comp_file *ipc_file = spec;
 	struct dai_data *dd;
-	struct dai *fdai;
-	struct file_comp_data *cd;
+	struct copier_data *ccd = module_get_private_data(mod);
 
-	debug_print("file_new()\n");
-
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
-	dev->ipc_config = *config;
-
-	/* allocate  memory for file comp data */
-	dd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*dd));
+	dd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*dd));
 	if (!dd)
-		goto error_skip_dd;
+		return -ENOMEM;
 
-	fdai = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*fdai));
-	if (!fdai)
-		goto error_skip_dai;
+	/* Member dd->dai remains NULL. It's sufficient for dai_get_init_delay_ms().
+	 * In such case the functions returns zero delay. Testbench currently has
+	 * no use for the feature.
+	 */
+	ccd->dd[0] = dd;
+	return 0;
+}
 
-	fdrv = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*fdrv));
-	if (!fdrv)
-		goto error_skip_drv;
+static void file_free_dai_data(struct processing_module *mod)
+{
+	struct copier_data *ccd = module_get_private_data(mod);
 
-	cd = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd)
-		goto error_skip_cd;
+	free(ccd->dd[0]);
+}
+#else
+/* Minimal support for IPC3 pipeline_comp_trigger()'s dai_get_init_delay_ms() */
+static int file_init_set_dai_data(struct processing_module *mod)
+{
+	struct dai_data *dd;
+	struct comp_dev *dev = mod->dev;
 
-	fdai->drv = fdrv;
-	dd->dai = fdai;
-	comp_set_drvdata(dev, dd);
-	comp_set_drvdata(dd->dai, cd);
+	dd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*dd));
+	if (!dd)
+		return -ENOMEM;
+
+	/* Member dd->dai remains NULL. It's sufficient for dai_get_init_delay_ms().
+	 * In such case the functions returns zero delay. Testbench currently has
+	 * no use for the feature.
+	 */
+	dev->priv_data = dd;
+	return 0;
+}
+
+static void file_free_dai_data(struct processing_module *mod)
+{
+	struct dai_data *dd;
+	struct comp_dev *dev = mod->dev;
+
+	dd = comp_get_drvdata(dev);
+	free(dd);
+}
+#endif
+
+static int file_init(struct processing_module *mod)
+{
+	struct comp_dev *dev = mod->dev;
+	struct module_data *mod_data = &mod->priv;
+	struct copier_data *ccd;
+	struct file_comp_data *cd;
+	int ret;
+
+#if CONFIG_IPC_MAJOR_4
+	const struct ipc4_file_module_cfg *module_cfg =
+		(const struct ipc4_file_module_cfg *)mod_data->cfg.init_data;
+
+	const struct ipc4_file_config *ipc_file = &module_cfg->config;
+#else
+	const struct ipc_comp_file *ipc_file =
+		(const struct ipc_comp_file *)mod_data->cfg.init_data;
+#endif
+
+	tb_debug_print("file_init()\n");
+
+	ccd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*ccd));
+	if (!ccd)
+		return -ENOMEM;
+
+	mod_data->private = ccd;
+
+	/* File component data is placed to copier's ipcgtw_data */
+	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	if (!cd) {
+		free(ccd);
+		return -ENOMEM;
+	}
+
+	file_set_comp_data(ccd, cd);
 
 	/* default function for processing samples */
 	cd->file_func = file_default;
 
 	/* get filename from IPC and open file */
-	cd->fs.fn = strdup(ipc_file->fn);
+	if (ipc_file->fn) {
+		cd->fs.fn = strdup(ipc_file->fn);
+	} else {
+		fprintf(stderr, "error: no filename set\n");
+		goto error;
+	}
 
 	/* set file format */
 	cd->fs.f_format = get_file_format(cd->fs.fn);
 
 	/* set file comp mode */
 	cd->fs.mode = ipc_file->mode;
-
-	cd->rate = ipc_file->rate;
-	cd->channels = ipc_file->channels;
+	cd->fs.rate = ipc_file->rate;
+	cd->fs.channels = ipc_file->channels;
 	cd->frame_fmt = ipc_file->frame_fmt;
 	dev->direction = ipc_file->direction;
+	dev->direction_set = true;
 
 	/* open file handle(s) depending on mode */
 	switch (cd->fs.mode) {
@@ -598,6 +647,18 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 				cd->fs.fn, strerror(errno));
 			goto error;
 		}
+
+		/* Change to DAI type is needed to avoid uninitialized hw params in
+		 * pipeline_params, A file host can be left as SOF_COMP_MODULE_ADAPTER
+		 */
+		if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
+			dev->ipc_config.type = SOF_COMP_DAI;
+			ret = file_init_set_dai_data(mod);
+			if (ret) {
+				fprintf(stderr, "error: failed set dai data.\n");
+				goto error;
+			}
+		}
 		break;
 	case FILE_WRITE:
 		cd->fs.wfh = fopen(cd->fs.fn, "w+");
@@ -606,6 +667,19 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 				cd->fs.fn, strerror(errno));
 			goto error;
 		}
+
+		/* Change to DAI type is needed to avoid uninitialized hw params in
+		 * pipeline_params, A file host can be left as SOF_COMP_MODULE_ADAPTER
+		 */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+			dev->ipc_config.type = SOF_COMP_DAI;
+			ret = file_init_set_dai_data(mod);
+			if (ret) {
+				fprintf(stderr, "error: failed set dai data.\n");
+				goto error;
+			}
+		}
+
 		break;
 	default:
 		/* TODO: duplex mode */
@@ -615,235 +689,78 @@ static struct comp_dev *file_new(const struct comp_driver *drv,
 
 	cd->fs.reached_eof = false;
 	cd->fs.write_failed = false;
+	cd->fs.copy_timeout = false;
 	cd->fs.n = 0;
 	cd->fs.copy_count = 0;
-	dev->state = COMP_STATE_READY;
-	return dev;
+	cd->fs.cycles_count = 0;
+	return 0;
 
 error:
 	free(cd);
-
-error_skip_cd:
-	free((void *)fdrv);
-
-error_skip_drv:
-	free(fdai);
-
-error_skip_dai:
-	free(dd);
-
-error_skip_dd:
-	free(dev);
-	return NULL;
+	free(ccd);
+	return -EINVAL;
 }
 
-static void file_free(struct comp_dev *dev)
+static int file_free(struct processing_module *mod)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct copier_data *ccd = module_get_private_data(mod);
+	struct file_comp_data *cd = get_file_comp_data(ccd);
 
-	comp_dbg(dev, "file_free()");
+	tb_debug_print("file_free()\n");
 
 	if (cd->fs.mode == FILE_READ)
 		fclose(cd->fs.rfh);
 	else
 		fclose(cd->fs.wfh);
 
+	file_free_dai_data(mod);
 	free(cd->fs.fn);
 	free(cd);
-	free((void *)dd->dai->drv);
-	free(dd->dai);
-	free(dd);
-	free(dev);
-}
-
-static int file_verify_params(struct comp_dev *dev,
-			      struct sof_ipc_stream_params *params)
-{
-	int ret;
-
-	comp_dbg(dev, "file_verify_params()");
-
-	ret = comp_verify_params(dev, 0, params);
-	if (ret < 0) {
-		comp_err(dev, "file_verify_params() error: comp_verify_params() failed.");
-		return ret;
-	}
-
+	free(ccd);
 	return 0;
-}
-
-/**
- * \brief Sets file component audio stream parameters.
- * \param[in,out] dev Volume base component device.
- * \param[in] params Audio (PCM) stream parameters (ignored for this component)
- * \return Error code.
- *
- * All done in prepare() since we need to know source and sink component params.
- */
-static int file_params(struct comp_dev *dev,
-		       struct sof_ipc_stream_params *params)
-{
-	struct comp_buffer *buffer;
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
-	struct audio_stream *stream;
-	int periods;
-	int samples;
-	int ret;
-
-	comp_info(dev, "file_params()");
-
-	ret = file_verify_params(dev, params);
-	if (ret < 0) {
-		comp_err(dev, "file_params(): pcm params verification failed.");
-		return ret;
-	}
-
-	/* file component sink/source buffer period count */
-	switch (cd->fs.mode) {
-	case FILE_READ:
-		buffer = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		periods = dev->ipc_config.periods_sink;
-		break;
-	case FILE_WRITE:
-		buffer = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		periods = dev->ipc_config.periods_source;
-		break;
-	default:
-		/* TODO: duplex mode */
-		fprintf(stderr, "Error: Unknown file mode %d\n", cd->fs.mode);
-		return -EINVAL;
-	}
-
-	/* set downstream buffer size */
-	stream = &buffer->stream;
-	samples = periods * dev->frames * stream->channels;
-	switch (stream->frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		ret = buffer_set_size(buffer, samples * sizeof(int16_t));
-		if (ret < 0) {
-			fprintf(stderr, "error: file buffer size set\n");
-			return ret;
-		}
-
-		/* set file function */
-		cd->file_func = file_s16;
-		break;
-	case SOF_IPC_FRAME_S24_4LE:
-		ret = buffer_set_size(buffer, samples * sizeof(int32_t));
-		if (ret < 0) {
-			fprintf(stderr, "error: file buffer size set\n");
-			return ret;
-		}
-
-		/* set file function */
-		cd->file_func = file_s24;
-		break;
-	case SOF_IPC_FRAME_S32_LE:
-		ret = buffer_set_size(buffer, samples * sizeof(int32_t));
-		if (ret < 0) {
-			fprintf(stderr, "error: file buffer size set\n");
-			return ret;
-		}
-
-		/* set file function */
-		cd->file_func = file_s32;
-		break;
-	default:
-		fprintf(stderr, "Warning: Unknown file sample format %d\n",
-			dev->ipc_config.frame_fmt);
-		return -EINVAL;
-	}
-
-	cd->sample_container_bytes = get_sample_bytes(stream->frame_fmt);
-	buffer_reset_pos(buffer, NULL);
-
-	return 0;
-}
-
-static int fr_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
-{
-	fprintf(stderr, "Warning: Set data is not implemented\n");
-	return -EINVAL;
-}
-
-static int file_trigger(struct comp_dev *dev, int cmd)
-{
-	comp_info(dev, "file_trigger()");
-	return comp_set_state(dev, cmd);
-}
-
-/* used to pass standard and bespoke commands (with data) to component */
-static int file_cmd(struct comp_dev *dev, int cmd, void *data,
-		    int max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
-	int ret = 0;
-
-	comp_info(dev, "file_cmd()");
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		ret = fr_cmd(dev, cdata);
-		break;
-	default:
-		fprintf(stderr, "Warning: Unknown file command %d\n", cmd);
-		return -EINVAL;
-	}
-
-	return ret;
 }
 
 /*
  * copy and process stream samples
  * returns the number of bytes copied
  */
-static int file_copy(struct comp_dev *dev)
+static int file_process(struct processing_module *mod,
+			struct input_stream_buffer *input_buffers, int num_input_buffers,
+			struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
+	struct comp_dev *dev = mod->dev;
+	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
+	struct audio_stream *source;
+	struct audio_stream *sink;
 	struct comp_buffer *buffer;
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
-	int snk_frames;
-	int src_frames;
-	int bytes = cd->sample_container_bytes;
+	uint32_t frames;
+	uint64_t cycles0, cycles1;
+	int samples = 0;
 	int ret = 0;
 
+	if (cd->fs.reached_eof)
+		return -ENODATA;
+
+	/* Note: a SOF_COMP_DAI does not have input_buffers and output buffers set */
+	tb_getcycles(&cycles0);
 	switch (cd->fs.mode) {
 	case FILE_READ:
-		/* file component sink buffer */
-		buffer = list_first_item(&dev->bsink_list, struct comp_buffer,
-					 source_list);
-
-		/* test sink has enough free frames */
-		snk_frames = MIN(audio_stream_get_free_frames(&buffer->stream), dev->frames);
-		if (snk_frames > 0 && !cd->fs.reached_eof) {
-			/* read PCM samples from file */
-			ret = cd->file_func(dev, &buffer->stream, NULL,
-					    snk_frames);
-
-			/* update sink buffer pointers */
-			if (ret > 0)
-				comp_update_buffer_produce(buffer,
-							   ret * bytes);
-		}
+		/* read PCM samples from file */
+		buffer = comp_dev_get_first_data_consumer(dev);
+		sink = &buffer->stream;
+		frames = audio_stream_get_free_frames(sink);
+		frames = MIN(frames, cd->max_frames);
+		samples = cd->file_func(cd, sink, NULL, frames);
+		audio_stream_produce(sink, audio_stream_sample_bytes(sink) * samples);
 		break;
 	case FILE_WRITE:
-		/* file component source buffer */
-		buffer = list_first_item(&dev->bsource_list,
-					 struct comp_buffer, sink_list);
-
-		/* test source has enough free frames */
-		src_frames = audio_stream_get_avail_frames(&buffer->stream);
-		if (src_frames > 0) {
-			/* write PCM samples into file */
-			ret = cd->file_func(dev, NULL, &buffer->stream,
-					    src_frames);
-
-			/* update source buffer pointers */
-			if (ret > 0)
-				comp_update_buffer_consume(buffer,
-							   ret * bytes);
-		}
+		/* write PCM samples into file */
+		buffer = comp_dev_get_first_data_producer(dev);
+		source = &buffer->stream;
+		frames = audio_stream_get_avail_frames(source);
+		frames = MIN(frames, cd->max_frames);
+		samples = cd->file_func(cd, NULL, source, frames);
+		audio_stream_consume(source, audio_stream_sample_bytes(source) * samples);
 		break;
 	default:
 		/* TODO: duplex mode */
@@ -853,98 +770,116 @@ static int file_copy(struct comp_dev *dev)
 
 	cd->fs.copy_count++;
 	if (cd->fs.reached_eof || (cd->max_copies && cd->fs.copy_count >= cd->max_copies)) {
-		cd->fs.reached_eof = 1;
-		comp_info(dev, "file_copy(): copies %d max %d eof %d",
-			  cd->fs.copy_count, cd->max_copies,
-			  cd->fs.reached_eof);
-		schedule_task_cancel(dev->pipeline->pipe_task);
+		cd->fs.reached_eof = true;
+		tb_debug_print("file_process(): reached EOF\n");
 	}
+
+	if (samples) {
+		cd->copies_timeout_count = 0;
+	} else {
+		cd->copies_timeout_count++;
+		if (cd->copies_timeout_count == FILE_MAX_COPIES_TIMEOUT) {
+			tb_debug_print("file_process(): copies_timeout reached\n");
+			cd->fs.copy_timeout = true;
+		}
+	}
+
+	tb_getcycles(&cycles1);
+	cd->fs.cycles_count += cycles1 - cycles0;
 	return ret;
 }
 
-static int file_prepare(struct comp_dev *dev)
+static int file_prepare(struct processing_module *mod,
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
-	int ret = 0;
+	struct audio_stream *stream;
+	struct comp_buffer *buffer;
+	struct comp_dev *dev = mod->dev;
+	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
 
-	comp_info(dev, "file_prepare()");
+	tb_debug_print("file_prepare()\n");
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
+	/* file component sink/source buffer period count */
+	cd->max_frames = dev->frames;
+	switch (cd->fs.mode) {
+	case FILE_READ:
+		buffer = comp_dev_get_first_data_consumer(dev);
+		break;
+	case FILE_WRITE:
+		buffer = comp_dev_get_first_data_producer(dev);
+		break;
+	default:
+		/* TODO: duplex mode */
+		fprintf(stderr, "Error: Unknown file mode %d\n", cd->fs.mode);
+		return -EINVAL;
+	}
 
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+	/* set file function */
+	stream = &buffer->stream;
+	switch (audio_stream_get_frm_fmt(stream)) {
+	case SOF_IPC_FRAME_S16_LE:
+		cd->file_func = file_s16;
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+		cd->file_func = file_s24;
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		cd->file_func = file_s32;
+		break;
+	default:
+		fprintf(stderr, "Warning: Unknown file sample format %d\n",
+			dev->ipc_config.frame_fmt);
+		return -EINVAL;
+	}
 
-	dev->state = COMP_STATE_PREPARE;
-	return ret;
-}
-
-static int file_reset(struct comp_dev *dev)
-{
-	comp_info(dev, "file_reset()");
-	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
+}
+
+static int file_reset(struct processing_module *mod)
+{
+	struct file_comp_data *cd = module_get_private_data(mod);
+
+	tb_debug_print("file_reset()\n");
+	cd->copies_timeout_count = 0;
+	return 0;
+}
+
+static int file_trigger(struct comp_dev *dev, int cmd)
+{
+	tb_debug_print("file_trigger()\n");
+	return comp_set_state(dev, cmd);
 }
 
 static int file_get_hw_params(struct comp_dev *dev,
 			      struct sof_ipc_stream_params *params, int dir)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct file_comp_data *cd = comp_get_drvdata(dd->dai);
+	struct processing_module *mod = comp_mod(dev);
+	struct file_comp_data *cd = get_file_comp_data(module_get_private_data(mod));
 
-	comp_info(dev, "file_hw_params()");
+	tb_debug_print("file_hw_params()\n");
 	params->direction = dir;
-	params->rate = cd->rate;
-	params->channels = cd->channels;
+	params->rate = cd->fs.rate;
+	params->channels = cd->fs.channels;
 	params->buffer_fmt = 0;
 	params->frame_fmt = cd->frame_fmt;
 	return 0;
 }
 
-static const struct comp_driver comp_file_host = {
-	.type = SOF_COMP_HOST,
-	.uid	= SOF_UUID(file_tr),
-	.tctx	= &file_tr,
-	.ops = {
-		.create = file_new,
-		.free = file_free,
-		.params = file_params,
-		.cmd = file_cmd,
-		.trigger = file_trigger,
-		.copy = file_copy,
-		.prepare = file_prepare,
-		.reset = file_reset,
-	},
-
+/* Needed for SOF_COMP_DAI */
+static struct module_endpoint_ops file_endpoint_ops = {
+	.dai_get_hw_params = file_get_hw_params,
+	.trigger = file_trigger,
 };
 
-static const struct comp_driver comp_file_dai = {
-	.type = SOF_COMP_DAI,
-	.uid	= SOF_UUID(file_tr),
-	.tctx	= &file_tr,
-	.ops = {
-		.create = file_new,
-		.free = file_free,
-		.params = file_params,
-		.cmd = file_cmd,
-		.trigger = file_trigger,
-		.copy = file_copy,
-		.prepare = file_prepare,
-		.reset = file_reset,
-		.dai_get_hw_params = file_get_hw_params,
-	},
+static const struct module_interface file_interface = {
+	.init = file_init,
+	.prepare = file_prepare,
+	.process_audio_stream = file_process,
+	.reset = file_reset,
+	.free = file_free,
+	.endpoint_ops = &file_endpoint_ops,
 };
 
-static struct comp_driver_info comp_file_host_info = {
-	.drv = &comp_file_host,
-};
-
-static struct comp_driver_info comp_file_dai_info = {
-	.drv = &comp_file_dai,
-};
-
-void sys_comp_file_init(void)
-{
-	comp_register(&comp_file_host_info);
-	comp_register(&comp_file_dai_info);
-}
+DECLARE_MODULE_ADAPTER(file_interface, file_uuid, file_tr);
+SOF_MODULE_INIT(file, sys_comp_module_file_interface_init);

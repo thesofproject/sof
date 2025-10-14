@@ -11,16 +11,17 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <unistd.h>
 #include <string.h>
-#include <math.h>
 #include <ipc/topology.h>
-#include <ipc/stream.h>
-#include <ipc/dai.h>
-#include <sof/common.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
 #include <tplg_parser/topology.h>
+#include <tplg_parser/tokens.h>
+
+struct frame_types {
+	char *name;
+	enum sof_ipc_frame frame;
+};
 
 static const struct frame_types sof_frames[] = {
 	/* TODO: fix topology to use ALSA formats */
@@ -35,7 +36,7 @@ static const struct frame_types sof_frames[] = {
 	{"FLOAT_LE", SOF_IPC_FRAME_FLOAT},
 };
 
-enum sof_ipc_frame find_format(const char *name)
+enum sof_ipc_frame tplg_find_format(const char *name)
 {
 	int i;
 
@@ -49,18 +50,19 @@ enum sof_ipc_frame find_format(const char *name)
 }
 
 /* helper functions to get tokens */
-int get_token_uint32_t(void *elem, void *object, uint32_t offset,
-		       uint32_t size)
+int tplg_token_get_uint32_t(void *elem, void *object, uint32_t offset,
+			    uint32_t size)
 {
 	struct snd_soc_tplg_vendor_value_elem *velem = elem;
-	uint32_t *val = object + offset;
+	char *vobject = object;
+	uint32_t *val = (uint32_t *)(vobject + offset);
 
 	*val = velem->value;
 	return 0;
 }
 
-int get_token_uuid(void *elem, void *object, uint32_t offset,
-		   uint32_t size)
+int tplg_token_get_uuid(void *elem, void *object, uint32_t offset,
+			uint32_t size)
 {
 	struct snd_soc_tplg_vendor_uuid_elem *velem = elem;
 	uint8_t *dst = (uint8_t *)object + offset;
@@ -70,44 +72,28 @@ int get_token_uuid(void *elem, void *object, uint32_t offset,
 	return 0;
 }
 
-int get_token_comp_format(void *elem, void *object, uint32_t offset,
-			  uint32_t size)
+int tplg_token_get_comp_format(void *elem, void *object, uint32_t offset,
+			       uint32_t size)
 {
 	struct snd_soc_tplg_vendor_string_elem *velem = elem;
-	uint32_t *val = object + offset;
+	char *vobject = object;
+	uint32_t *val = (uint32_t *)(vobject + offset);
 
-	*val = find_format(velem->string);
+	*val = tplg_find_format(velem->string);
 	return 0;
 }
 
-int get_token_dai_type(void *elem, void *object, uint32_t offset, uint32_t size)
+int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
+			 int count, struct snd_soc_tplg_vendor_array *array,
+			 int priv_size, int num_sets, int object_size)
 {
-	struct snd_soc_tplg_vendor_string_elem *velem = elem;
-	uint32_t *val = (uint32_t *)((uint8_t *)object + offset);
-
-	*val = find_dai(velem->string);
-	return 0;
-}
-
-int get_token_process_type(void *elem, void *object, uint32_t offset,
-			   uint32_t size)
-{
-	struct snd_soc_tplg_vendor_string_elem *velem = elem;
-	uint32_t *val = (uint32_t *)((uint8_t *)object + offset);
-
-	*val = tplg_get_process_name(velem->string);
-	return 0;
-}
-
-/* parse vendor tokens in topology */
-int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
-		     int count, struct snd_soc_tplg_vendor_array *array,
-		     int priv_size)
-{
+	size_t offset = 0;
+	int total = 0;
+	int found = 0;
 	int asize;
-	int ret = 0;
+	int ret;
 
-	while (priv_size > 0 && ret == 0) {
+	while (priv_size > 0 && total < count * num_sets) {
 		asize = array->size;
 
 		/* validate asize */
@@ -119,34 +105,54 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 
 		/* make sure there is enough data before parsing */
 		priv_size -= asize;
-
 		if (priv_size < 0) {
 			fprintf(stderr, "error: invalid priv size 0x%x\n",
-				asize);
+				priv_size);
 			return -EINVAL;
 		}
 
 		/* call correct parser depending on type */
 		switch (array->type) {
 		case SND_SOC_TPLG_TUPLE_TYPE_UUID:
-			ret = sof_parse_uuid_tokens(object, tokens, count, array);
+			found = sof_parse_uuid_tokens(object + offset, tokens, count, array);
 			break;
 		case SND_SOC_TPLG_TUPLE_TYPE_STRING:
-			ret = sof_parse_string_tokens(object, tokens, count, array);
+			ret = sof_parse_string_tokens(object + offset, tokens, count, array);
+			if (ret < 0)
+				return ret;
+			found = ret;
 			break;
 		case SND_SOC_TPLG_TUPLE_TYPE_BOOL:
 		case SND_SOC_TPLG_TUPLE_TYPE_BYTE:
 		case SND_SOC_TPLG_TUPLE_TYPE_WORD:
 		case SND_SOC_TPLG_TUPLE_TYPE_SHORT:
-			ret = sof_parse_word_tokens(object, tokens, count, array);
+			found = sof_parse_word_tokens(object + offset, tokens, count, array);
 			break;
 		default:
 			fprintf(stderr, "error: unknown token type %d\n",
 				array->type);
 			return -EINVAL;
 		}
+
+		array = MOVE_POINTER_BY_BYTES(array, array->size);
+
+		if (found > 0) {
+			total += count;
+			offset += object_size;
+			found = 0;
+		}
 	}
-	return ret;
+
+	return 0;
+}
+
+/* parse vendor tokens in topology */
+int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
+		     int count, struct snd_soc_tplg_vendor_array *array,
+		     int priv_size)
+{
+	/* object_size is not needed when parsing only 1 set of tokens */
+	return sof_parse_token_sets(object, tokens, count, array, priv_size, 1, 0);
 }
 
 /* parse word tokens */
@@ -156,6 +162,7 @@ int sof_parse_word_tokens(void *object,
 			  struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_value_elem *elem;
+	int found = 0;
 	int i, j;
 
 	if (sizeof(struct snd_soc_tplg_vendor_value_elem) * array->num_elems +
@@ -182,10 +189,11 @@ int sof_parse_word_tokens(void *object,
 			/* matched - now load token */
 			tokens[j].get_token(elem, object, tokens[j].offset,
 					    tokens[j].size);
+			found++;
 		}
 	}
 
-	return 0;
+	return found;
 }
 
 /* parse uuid tokens */
@@ -195,6 +203,7 @@ int sof_parse_uuid_tokens(void *object,
 			  struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_uuid_elem *elem;
+	int found = 0;
 	int i, j;
 
 	if (sizeof(struct snd_soc_tplg_vendor_uuid_elem) * array->num_elems +
@@ -221,10 +230,11 @@ int sof_parse_uuid_tokens(void *object,
 			/* matched - now load token */
 			tokens[j].get_token(elem, object, tokens[j].offset,
 					    tokens[j].size);
+			found++;
 		}
 	}
 
-	return 0;
+	return found;
 }
 
 /* parse string tokens */
@@ -234,6 +244,7 @@ int sof_parse_string_tokens(void *object,
 			    struct snd_soc_tplg_vendor_array *array)
 {
 	struct snd_soc_tplg_vendor_string_elem *elem;
+	int found = 0;
 	int i, j;
 
 	if (sizeof(struct snd_soc_tplg_vendor_string_elem) * array->num_elems +
@@ -260,57 +271,18 @@ int sof_parse_string_tokens(void *object,
 			/* matched - now load token */
 			tokens[j].get_token(elem, object, tokens[j].offset,
 					    tokens[j].size);
+			found++;
 		}
 	}
 
-	return 0;
+	return found;
 }
 
-struct sof_process_types {
-	const char *name;
-	enum sof_ipc_process_type type;
-	enum sof_comp_type comp_type;
-};
-
-static const struct sof_process_types sof_process[] = {
-	{"EQFIR", SOF_PROCESS_EQFIR, SOF_COMP_EQ_FIR},
-	{"EQIIR", SOF_PROCESS_EQIIR, SOF_COMP_EQ_IIR},
-	{"KEYWORD_DETECT", SOF_PROCESS_KEYWORD_DETECT, SOF_COMP_KEYWORD_DETECT},
-	{"KPB", SOF_PROCESS_KPB, SOF_COMP_KPB},
-	{"CHAN_SELECTOR", SOF_PROCESS_CHAN_SELECTOR, SOF_COMP_SELECTOR},
-	{"MUX", SOF_PROCESS_MUX, SOF_COMP_MUX},
-	{"DEMUX", SOF_PROCESS_DEMUX, SOF_COMP_DEMUX},
-	{"DCBLOCK", SOF_PROCESS_DCBLOCK, SOF_COMP_DCBLOCK},
-};
-
-enum sof_ipc_process_type tplg_get_process_name(const char *name)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(sof_process); i++) {
-		if (strcmp(name, sof_process[i].name) == 0)
-			return sof_process[i].type;
-	}
-
-	return SOF_PROCESS_NONE;
-}
-
-enum sof_comp_type tplg_get_process_type(enum sof_ipc_process_type type)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(sof_process); i++) {
-		if (sof_process[i].type == type)
-			return sof_process[i].comp_type;
-	}
-
-	return SOF_COMP_NONE;
-}
-
-bool is_valid_priv_size(size_t size_read, size_t priv_size,
-			      struct snd_soc_tplg_vendor_array *array)
+bool tplg_is_valid_priv_size(size_t size_read, size_t priv_size,
+			     struct snd_soc_tplg_vendor_array *array)
 {
 	size_t arr_size, elem_size, arr_elems_size;
+	bool valid;
 
 	arr_size = sizeof(struct snd_soc_tplg_vendor_array);
 
@@ -338,57 +310,9 @@ bool is_valid_priv_size(size_t size_read, size_t priv_size,
 	 * check if size of data to be read from widget's private data
 	 * doesn't exceed private data's size.
 	 */
-	return size_read + arr_size + arr_elems_size <= priv_size;
-}
-
-/* read vendor tuples array from topology */
-int tplg_read_array(struct snd_soc_tplg_vendor_array *array, FILE *file)
-{
-	struct snd_soc_tplg_vendor_uuid_elem uuid;
-	struct snd_soc_tplg_vendor_string_elem string;
-	struct snd_soc_tplg_vendor_value_elem value;
-	int j, ret = 0;
-	size_t size;
-
-	switch (array->type) {
-	case SND_SOC_TPLG_TUPLE_TYPE_UUID:
-
-		/* copy uuid elems into array */
-		for (j = 0; j < array->num_elems; j++) {
-			size = sizeof(struct snd_soc_tplg_vendor_uuid_elem);
-			ret = fread(&uuid, size, 1, file);
-			if (ret != 1)
-				return -EINVAL;
-			memcpy(&array->uuid[j], &uuid, size);
-		}
-		break;
-	case SND_SOC_TPLG_TUPLE_TYPE_STRING:
-
-		/* copy string elems into array */
-		for (j = 0; j < array->num_elems; j++) {
-			size = sizeof(struct snd_soc_tplg_vendor_string_elem);
-			ret = fread(&string, size, 1, file);
-			if (ret != 1)
-				return -EINVAL;
-			memcpy(&array->string[j], &string, size);
-		}
-		break;
-	case SND_SOC_TPLG_TUPLE_TYPE_BOOL:
-	case SND_SOC_TPLG_TUPLE_TYPE_BYTE:
-	case SND_SOC_TPLG_TUPLE_TYPE_WORD:
-	case SND_SOC_TPLG_TUPLE_TYPE_SHORT:
-		/* copy value elems into array */
-		for (j = 0; j < array->num_elems; j++) {
-			size = sizeof(struct snd_soc_tplg_vendor_value_elem);
-			ret = fread(&value, size, 1, file);
-			if (ret != 1)
-				return -EINVAL;
-			memcpy(&array->value[j], &value, size);
-		}
-		break;
-	default:
-		fprintf(stderr, "error: unknown token type %d\n", array->type);
-		return -EINVAL;
-	}
-	return 0;
+	valid = size_read + arr_size + arr_elems_size <= priv_size;
+	if (!valid)
+		fprintf(stderr, "error: invalid private data size %zu read %zu array %zu elems %zu\n",
+			priv_size, size_read, arr_size, arr_elems_size);
+	return valid;
 }
