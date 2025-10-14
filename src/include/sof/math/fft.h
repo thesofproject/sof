@@ -9,6 +9,7 @@
 #ifndef __SOF_FFT_H__
 #define __SOF_FFT_H__
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/format.h>
 #include <sof/common.h>
 #include <stdbool.h>
@@ -52,13 +53,10 @@ struct fft_plan {
 };
 
 /* interfaces of the library */
-struct fft_plan *fft_plan_new(void *inb, void *outb, uint32_t size, int bits);
-struct processing_module;
 struct fft_plan *mod_fft_plan_new(struct processing_module *mod, void *inb,
 				  void *outb, uint32_t size, int bits);
 void fft_execute_16(struct fft_plan *plan, bool ifft);
 void fft_execute_32(struct fft_plan *plan, bool ifft);
-void fft_plan_free(struct fft_plan *plan16);
 void mod_fft_plan_free(struct processing_module *mod, struct fft_plan *plan16);
 
 #endif /* __SOF_FFT_H__ */
