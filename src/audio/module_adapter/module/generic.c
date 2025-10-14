@@ -167,7 +167,7 @@ static void container_put(struct processing_module *mod, struct module_resource 
 
 /**
  * Allocates aligned buffer memory block for module.
- * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param mod		Pointer to the module this memory block is allocated for.
  * @param bytes		Size in bytes.
  * @param alignment	Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
@@ -219,7 +219,7 @@ EXPORT_SYMBOL(mod_balloc_align);
 
 /**
  * Allocates aligned memory block with flags for module.
- * @param mod		Pointer to the module this memory block is allocatd for.
+ * @param mod		Pointer to the module this memory block is allocated for.
  * @param flags		Allocator flags.
  * @param bytes		Size in bytes.
  * @param alignment	Alignment in bytes.
