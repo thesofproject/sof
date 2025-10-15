@@ -23,6 +23,7 @@ set(components
 	"sound_dose"
 	"src"
 	"src_lite"
+	"stft_process"
 	"tdfb"
 	"template_comp"
 )
@@ -43,6 +44,7 @@ set(component_parameters
 	"BENCH_SOUND_DOSE_PARAMS=default"
 	"BENCH_SRC_PARAMS=default"
 	"BENCH_SRC_LITE_PARAMS=default"
+	"BENCH_STFT_PROCESS_PARAMS=default"
 	"BENCH_TDFB_PARAMS=default"
 	"BENCH_TEMPLATE_COMP_PARAMS=default"
 )
