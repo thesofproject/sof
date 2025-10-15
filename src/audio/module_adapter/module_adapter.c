@@ -178,6 +178,10 @@ static void module_adapter_mem_free(struct processing_module *mod)
 	struct k_heap *mod_heap = mod->priv.resources.heap;
 	void *mem = mod->priv.resources.heap_mem;
 
+#if CONFIG_IPC_MAJOR_4
+	if (mod)
+		sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
+#endif
 	sof_heap_free(mod_heap, mod->dev);
 	sof_heap_free(mod_heap, mod);
 	rfree(mem);
