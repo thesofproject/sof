@@ -357,7 +357,13 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 #endif
 
 	/* free task stack */
+#if CONFIG_SOF_VREGIONS
+	struct vregion *vregion = module_get_vregion(pdata->mod);
+	vregion_free(vregion, (__sparse_force void *)pdata->p_stack);
+	ret = 0;
+#else
 	ret = user_stack_free((__sparse_force void *)pdata->p_stack);
+#endif
 	pdata->p_stack = NULL;
 
 	/* all other memory has been allocated as a single malloc, will be freed later by caller */
@@ -547,7 +553,7 @@ int scheduler_dp_task_init(struct task **task,
 {
 	void __sparse_cache *p_stack = NULL;
 	struct sys_heap *const user_heap = mod->dev->drv->user_heap;
-	struct vregion *vregion;
+	struct vregion *vregion = module_get_vregion(mod);
 
 	/* memory allocation helper structure */
 	struct {
@@ -560,23 +566,16 @@ int scheduler_dp_task_init(struct task **task,
 	/* must be called on the same core the task will be binded to */
 	assert(cpu_get_id() == core);
 
-#if CONFIG_SOF_VREGIONS1
-
-	/* if module has its own vregion, use it otherwise use pipeline vregion */
-	if (mod->vregion) {
-		vregion = mod->vregion;
-	} else {
-		/* otherwise use pipeline vregion */
-		vregion = mod->dev->pipeline->vregion;
-	}
-
+#if CONFIG_SOF_VREGIONS
 	//TODO: add check if vregion is in correct memory domain/coherent
-	task_memory = vregion_static_alloc(vregion, sizeof(*task_memory));
+	task_memory = vregion_alloc_align(vregion, VREGION_MEM_TYPE_LIFETIME_SHARED,
+		sizeof(*task_memory), CONFIG_DCACHE_LINE_SIZE);
 	if (!task_memory) {
 		tr_err(&dp_tr, "vregion task memory alloc failed");
 		return -ENOMEM;
 	}
-	p_stack = vregion_static_alloc(vregion, stack_size);
+	p_stack = vregion_alloc_align(vregion, VREGION_MEM_TYPE_LIFETIME,
+		stack_size, CONFIG_DCACHE_LINE_SIZE);
 	if (!p_stack) {
 		tr_err(&dp_tr, "vregion stack alloc failed");
 		return -ENOMEM;
