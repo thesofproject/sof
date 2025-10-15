@@ -76,15 +76,19 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	 module has its own independent heap to which only it has access. This heap is
 	 shared between instances of the same module.
 
-config SOF_PACOVR
-	bool "Enable PACOVR memory allocator"
+config SOF_VREGIONS
+	bool "Enable virtual memory regions"
 	default y if ACE
 	default n
 	depends on ACE
 	help
-	  Enable the PACOVR memory allocator for pipeline resource management.
-	  PACOVR provides a way to manage memory resources for audio pipelines,
-	  including both batch and scratch allocations.
+	  Enable the virtual regions memory allocator for pipeline resource management.
+	  This provides a way to manage memory resources for audio pipelines,
+	  including
+	    1) multiple pipeline static lifetime allocations.
+	    2) runtime pipeline allocations.
+	    3) pipeline shared memory allocations.
+	    4) module text allocation.
 
 config SOF_VPAGE_ELEMS
 	int "Number of virtual memory allocation elements"
@@ -169,7 +173,7 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 
 config VIRTUAL_HEAP
 	bool "Use virtual memory heap to allocate a buffers"
-	default y if ACE
+	default n if ACE
 	depends on ACE
 	help
 	  Enabling this option will use the virtual memory heap allocator to allocate buffers.

@@ -81,12 +81,17 @@ struct processing_module {
 	struct module_data priv; /**< module private data */
 	uint32_t period_bytes; /** pipeline period bytes */
 
+	/* virtual region iff not using the parent pipeline region.
+	 * i.e. a DP module in a different memory domain from rest of pipeline.
+	 */
+	struct vregion *vregion;
+
 	/*
 	 * Fields below can only be accessed by the SOF and must be moved to a new structure.
 	 * Below #ifdef is a temporary solution used until work on separating a common interface
 	 * for loadable modules is completed.
 	 */
-#ifdef SOF_MODULE_API_PRIVATE
+//#ifdef SOF_MODULE_API_PRIVATE
 	struct sof_ipc_stream_params *stream_params;
 	/* list of sink buffers to save produced output, to be used in Raw data
 	 * processing mode
@@ -185,7 +190,15 @@ struct processing_module {
 #if CONFIG_USERSPACE
 	struct userspace_context *user_ctx;
 #endif /* CONFIG_USERSPACE */
-#endif /* SOF_MODULE_PRIVATE */
+//#endif /* SOF_MODULE_PRIVATE */
 };
+
+static inline struct vregion *module_get_vregion(struct processing_module *mod)
+{
+	if (mod->vregion)
+		return mod->vregion;
+	else
+		return mod->dev->pipeline->vregion;
+}
 
 #endif /* __MODULE_MODULE_BASE__ */

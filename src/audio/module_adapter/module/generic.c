@@ -188,14 +188,15 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 		return NULL;
 	}
 
-#if CONFIG_SOF_PACOVR
+#if CONFIG_SOF_VREGIONS
 	/* do we need to use the dynamic heap or the static heap? */
+	struct vregion *vregion = module_get_vregion(mod);
 	if (mod->priv.state != MODULE_INITIALIZED) {
-		/* static allocator */
-		ptr = pacovr_static_alloc(mod->dev->pipeline->pacovr, size);
+		/* lifetime allocator */
+		ptr = vregion_alloc_align(vregion, VREGION_MEM_TYPE_LIFETIME, size, alignment);
 	} else {
-		/* dynamic allocator */
-		ptr = pacovr_dynamic_alloc_align(mod->dev->pipeline->pacovr, size, alignment);
+		/* interim allocator */
+		ptr = vregion_alloc_align(vregion, VREGION_MEM_TYPE_INTERIM, size, alignment);
 	}
 #else
 	/* Allocate memory for module */
@@ -249,14 +250,15 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignme
 		return NULL;
 	}
 
-#if CONFIG_SOF_PACOVR
+#if CONFIG_SOF_VREGIONS
 	/* do we need to use the dynamic heap or the static heap? */
+	struct vregion *vregion = module_get_vregion(mod);
 	if (mod->priv.state != MODULE_INITIALIZED) {
 		/* static allocator */
-		ptr = pacovr_static_alloc(mod->dev->pipeline->pacovr, size);
+		ptr = vregion_alloc_align(vregion, VREGION_MEM_TYPE_LIFETIME, size, alignment);
 	} else {
 		/* dynamic allocator */
-		ptr = pacovr_dynamic_alloc_align(mod->dev->pipeline->pacovr, size, alignment);
+		ptr = vregion_alloc_align(vregion, VREGION_MEM_TYPE_INTERIM, size, alignment);
 	}
 #else
 	/* Allocate memory for module */
@@ -362,15 +364,9 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 
 	switch (container->type) {
 	case MOD_RES_HEAP:
-#if CONFIG_SOF_PACOVR
-	/* do we need to use the scratch heap or the batch heap? */
-	if (mod->priv.state != MODULE_INITIALIZED) {
-		/* static allocator */
-		pacovr_static_free(mod->dev->pipeline->pacovr, container->ptr);
-	} else {
-		/* dynamic allocator */
-		pacovr_dynamic_free(mod->dev->pipeline->pacovr, container->ptr);
-	}
+#if CONFIG_SOF_VREGIONS
+		struct vregion *vregion = module_get_vregion(mod);
+		vregion_free(vregion, container->ptr);
 #else
 		rfree(container->ptr);
 #endif

@@ -12,7 +12,7 @@
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <sof/lib/mm_heap.h>
-#include <sof/lib/pacovr.h>
+#include <sof/lib/vregion.h>
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
@@ -128,14 +128,17 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 		return NULL;
 	}
 
-#if CONFIG_SOF_PACOVR
-	/* create a pacovr region for all resources */
-	// TODO: make batch and scratch sizes configurable from topology
-	size_t scratch_size = 0x4000; /* 16kB scratch */
-	size_t batch_size = 0x20000;  /* 128kB batch */
-	p->pacovr = pacovr_create(batch_size, scratch_size);
-	if (!p->pacovr) {
-		pipe_err(p, "pipeline_new(): pacovr_create() failed.");
+#if CONFIG_SOF_VREGIONS
+	/* create a vregion region for all resources */
+	// TODO: make lifetime_size and interim sizes configurable from topology
+	// TODO: get the text and shared size from topology too
+	size_t lifetime_size = 0x20000; /* 128kB lifetime */
+	size_t interim_size = 0x4000; /* 16kB interim */
+	size_t shared_size = 0x4000; /* 16kB shared */
+
+	p->vregion = vregion_create(lifetime_size, interim_size, shared_size, 0, 0);
+	if (!p->vregion) {
+		pipe_err(p, "pipeline_new(): vregion_create() failed.");
 		goto free;
 	}
 #endif
@@ -249,9 +252,9 @@ int pipeline_free(struct pipeline *p)
 
 	pipeline_posn_offset_put(p->posn_offset);
 
-#if CONFIG_SOF_PACOVR
-	/* free pacovr region */
-	pacovr_destroy(p->pacovr);
+#if CONFIG_SOF_VREGIONS
+	/* free vregion region */
+	vregion_destroy(p->vregion);
 #endif
 	/* now free the pipeline */
 	rfree(p);

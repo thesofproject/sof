@@ -35,7 +35,7 @@ LOG_MODULE_REGISTER(vpage, CONFIG_SOF_LOG_LEVEL);
 struct valloc_elem {
 	uint16_t pages;		/* number of 4kB pages allocated in contiguous block */
 	uint16_t vpage;		/* virtual page number from start of region */
-};
+} __packed;
 
 /*
  * Virtual page table structure
@@ -150,7 +150,7 @@ static int vpages_alloc_and_map(uint32_t pages, void **ptr)
  * @retval ptr to allocated pages if successful.
  * @retval NULL on allocation failure.
  */
-void *vpage_alloc(uint32_t pages)
+void *alloc_vpages(uint32_t pages)
 {
 	void *ptr;
 	int err;
@@ -241,13 +241,13 @@ static int vpages_free_and_unmap(uintptr_t *ptr)
  *
  * @param ptr
  */
-void vpage_free(void *ptr)
+void free_vpages(void *ptr)
 {
 	k_mutex_lock(&page_context.lock, K_FOREVER);
 	vpages_free_and_unmap((uintptr_t *)ptr);
 	assert(!ret); /* should never fail */
 	k_mutex_unlock(&page_context.lock);
-	LOG_INF("vpage_free done ptr %p free pages %d/%d", ptr, page_context.free_pages,
+	LOG_INF("vptr %p free/total pages %d/%d", ptr, page_context.free_pages,
 		page_context.total_pages);
 }
 
@@ -260,7 +260,7 @@ void vpage_free(void *ptr)
  * @retval 0 if successful.
  * @retval -ENOMEM on creation failure.
  */
-static int vpage_init(void)
+static int init_vpages(void)
 {
 	const struct sys_mm_drv_region *virtual_memory_regions;
 	const struct sys_mm_drv_region *region;
@@ -337,5 +337,5 @@ static int vpage_init(void)
 	return 0;
 }
 
-SYS_INIT(vpage_init, POST_KERNEL, 1);
+SYS_INIT(init_vpages, POST_KERNEL, 1);
 

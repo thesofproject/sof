@@ -20,7 +20,7 @@ extern "C" {
  *
  * @return Pointer to the allocated virtual memory region, or NULL on failure.
  */
-void *vpage_alloc(uint32_t pages);
+void *alloc_vpages(uint32_t pages);
 
 /**
  * @brief Free virtual pages
@@ -28,7 +28,7 @@ void *vpage_alloc(uint32_t pages);
  *
  * @param[in] ptr Pointer to the memory pages to free.
  */
-void vpage_free(void *ptr);
+void free_vpages(void *ptr);
 
 /**
  * @brief Initialize virtual page allocator
@@ -39,7 +39,7 @@ void vpage_free(void *ptr);
  * @retval 0 if successful.
  * @retval -ENOMEM on creation failure.
  */
-int vpage_init(void);
+int init_vpages(void);
 
 #ifdef __cplusplus
 }

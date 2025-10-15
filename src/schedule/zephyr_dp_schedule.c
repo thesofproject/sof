@@ -547,6 +547,7 @@ int scheduler_dp_task_init(struct task **task,
 {
 	void __sparse_cache *p_stack = NULL;
 	struct sys_heap *const user_heap = mod->dev->drv->user_heap;
+	struct vregion *vregion;
 
 	/* memory allocation helper structure */
 	struct {
@@ -559,6 +560,28 @@ int scheduler_dp_task_init(struct task **task,
 	/* must be called on the same core the task will be binded to */
 	assert(cpu_get_id() == core);
 
+#if CONFIG_SOF_VREGIONS1
+
+	/* if module has its own vregion, use it otherwise use pipeline vregion */
+	if (mod->vregion) {
+		vregion = mod->vregion;
+	} else {
+		/* otherwise use pipeline vregion */
+		vregion = mod->dev->pipeline->vregion;
+	}
+
+	//TODO: add check if vregion is in correct memory domain/coherent
+	task_memory = vregion_static_alloc(vregion, sizeof(*task_memory));
+	if (!task_memory) {
+		tr_err(&dp_tr, "vregion task memory alloc failed");
+		return -ENOMEM;
+	}
+	p_stack = vregion_static_alloc(vregion, stack_size);
+	if (!p_stack) {
+		tr_err(&dp_tr, "vregion stack alloc failed");
+		return -ENOMEM;
+	}
+#else
 	/*
 	 * allocate memory
 	 * to avoid multiple malloc operations allocate all required memory as a single structure
@@ -580,7 +603,7 @@ int scheduler_dp_task_init(struct task **task,
 		ret = -ENOMEM;
 		goto err;
 	}
-
+#endif /* CONFIG_SOF_VREGION */
 	/* internal SOF task init */
 	ret = schedule_task_init(&task_memory->task, uid, SOF_SCHEDULE_DP, 0, ops->run,
 				 mod, core, options);

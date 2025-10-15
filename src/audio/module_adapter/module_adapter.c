@@ -64,7 +64,10 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct processing_module *mod;
 	struct module_config *dst;
+	struct ipc_comp_dev *ipc_pipe;
+	struct ipc *ipc = ipc_get();
 	const struct module_interface *const interface = drv->adapter_ops;
+	struct vregion *vregion = NULL;
 
 	comp_cl_dbg(drv, "start");
 
@@ -81,6 +84,42 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	}
 	dev->ipc_config = *config;
 
+	/* set pipeline for module */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+					  config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
+	if (!ipc_pipe) {
+		comp_err(dev, "pipeline %d does not exist", config->pipeline_id);
+		goto err_pipe;
+	}
+	dev->pipeline = ipc_pipe->pipeline;
+#if CONFIG_SOF_VREGIONS
+
+	/* TODO: determine if our user domain is different from the LL pipeline domain */
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		// TODO: get the text, heap, stack and shared sizes from topology too
+		/* create a vregion region for all resources */
+		size_t interim_size = 0x4000; /* 16kB scratch */
+		size_t lifetime_size = 0x20000;  /* 128kB batch */
+		size_t shared_size = 0x4000; /* 16kB shared */
+		size_t text_size = 0x4000; /* 16kB text */
+		vregion = vregion_create(lifetime_size, interim_size, shared_size, 0, text_size);
+		if (!vregion) {
+			comp_err(dev, "failed to create vregion for DP module");
+			goto err_pipe;
+		}
+	} else {
+		vregion = dev->pipeline->vregion;
+	}
+
+	/* allocate module in correct vregion*/
+	//TODO: add coherent flag for cross core DP modules
+	mod = vregion_alloc(vregion, VREGION_MEM_TYPE_LIFETIME, sizeof(*mod));
+	if (!mod) {
+		comp_err(dev, "failed to allocate memory for module");
+		goto err_pipe;
+	}
+#else
 	/* allocate module information.
 	 * for DP shared modules this struct must be accessible from all cores
 	 * Unfortunately at this point there's no information of components the module
@@ -95,7 +134,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		comp_err(dev, "failed to allocate memory for module");
 		goto err;
 	}
-
+#endif
+	memset(mod, 0, sizeof(*mod));
+	mod->vregion = vregion;
 	dst = &mod->priv.cfg;
 
 	module_set_private_data(mod, mod_priv);
@@ -165,6 +206,7 @@ err:
 		rfree(mod->priv.cfg.input_pins);
 #endif
 	rfree(mod);
+err_pipe:
 	rfree(dev);
 	return NULL;
 }
@@ -345,8 +387,15 @@ int module_adapter_prepare(struct comp_dev *dev)
 	memory_flags = user_get_buffer_memory_region(dev->drv);
 	/* allocate memory for input buffers */
 	if (mod->max_sources) {
+		//TODO: check if shared memory is needed
+		struct vregion *vregion = module_get_vregion(mod);
 		mod->input_buffers =
+#if CONFIG_SOF_VREGIONS
+			vregion_alloc(vregion, VREGION_MEM_TYPE_LIFETIME_SHARED,
+				      sizeof(*mod->input_buffers) * mod->max_sources);
+#else
 			rzalloc(memory_flags, sizeof(*mod->input_buffers) * mod->max_sources);
+#endif
 		if (!mod->input_buffers) {
 			comp_err(dev, "failed to allocate input buffers");
 			return -ENOMEM;
@@ -354,11 +403,19 @@ int module_adapter_prepare(struct comp_dev *dev)
 	} else {
 		mod->input_buffers = NULL;
 	}
+	memset(mod->input_buffers, 0, sizeof(*mod->input_buffers) * mod->max_sources);
 
 	/* allocate memory for output buffers */
+	//TODO: check if shared memory is needed
 	if (mod->max_sinks) {
+		struct vregion *vregion = module_get_vregion(mod);
 		mod->output_buffers =
+#if CONFIG_SOF_VREGIONS
+			vregion_alloc(vregion, VREGION_MEM_TYPE_LIFETIME_SHARED,
+				      sizeof(*mod->output_buffers) * mod->max_sinks);
+#else
 			rzalloc(memory_flags, sizeof(*mod->output_buffers) * mod->max_sinks);
+#endif
 		if (!mod->output_buffers) {
 			comp_err(dev, "failed to allocate output buffers");
 			ret = -ENOMEM;
@@ -367,6 +424,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	} else {
 		mod->output_buffers = NULL;
 	}
+	memset(mod->output_buffers, 0, sizeof(*mod->output_buffers) * mod->max_sinks);
 
 	/*
 	 * no need to allocate intermediate sink buffers if the module produces only period bytes
@@ -423,8 +481,15 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for input buffer data */
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
+	// TODO: check if shared memory is needed
 	list_for_item(blist, &dev->bsource_list) {
+#if CONFIG_SOF_VREGIONS
+		struct vregion *vregion = module_get_vregion(mod);
+		mod->input_buffers[i].data = vregion_alloc_align(vregion, VREGION_MEM_TYPE_LIFETIME_SHARED,
+								       size, 0);
+#else
 		mod->input_buffers[i].data = rballoc(memory_flags, size);
+#endif
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -436,7 +501,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
+#if CONFIG_SOF_VREGIONS
+		struct vregion *vregion = module_get_vregion(mod);
+		mod->output_buffers[i].data = vregion_alloc_align(vregion, VREGION_MEM_TYPE_LIFETIME_SHARED,
+									size, 0);
+#else
 		mod->output_buffers[i].data = rballoc(memory_flags, md->mpd.out_buff_size);
+#endif
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -1213,17 +1284,32 @@ int module_adapter_reset(struct comp_dev *dev)
 		return ret;
 	}
 
+#if CONFIG_SOF_VREGIONS
+	if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
+		struct vregion *vregion = module_get_vregion(mod);
+		for (i = 0; i < mod->num_of_sinks; i++)
+			vregion_free(vregion, (__sparse_force void *)mod->output_buffers[i].data);
+		for (i = 0; i < mod->num_of_sources; i++)
+			vregion_free(vregion, (__sparse_force void *)mod->input_buffers[i].data);
+	}
+#else
 	if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
 		for (i = 0; i < mod->num_of_sinks; i++)
 			rfree((__sparse_force void *)mod->output_buffers[i].data);
 		for (i = 0; i < mod->num_of_sources; i++)
 			rfree((__sparse_force void *)mod->input_buffers[i].data);
 	}
+#endif
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
+#if CONFIG_SOF_VREGIONS
+		struct vregion *vregion = module_get_vregion(mod);
+		vregion_free(vregion, mod->output_buffers);
+		vregion_free(vregion, mod->input_buffers);
+#else
 		rfree(mod->output_buffers);
 		rfree(mod->input_buffers);
-
+#endif
 		mod->num_of_sources = 0;
 		mod->num_of_sinks = 0;
 	}
@@ -1276,7 +1362,17 @@ void module_adapter_free(struct comp_dev *dev)
 #endif
 
 	rfree(mod->stream_params);
+#if CONFIG_SOF_VREGIONS
+	struct vregion *vregion = module_get_vregion(mod);
+	vregion_free(vregion, (__sparse_force void *)mod);
+
+	/* free the vregion if its a separate instance from the pipeline */
+	if (dev->pipeline->vregion != vregion)
+		vregion_destroy(vregion);
+#else
+
 	rfree(mod);
+#endif
 	rfree(dev);
 }
 EXPORT_SYMBOL(module_adapter_free);
