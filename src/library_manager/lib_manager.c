@@ -937,6 +937,9 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 		return ret;
 	}
 
+	/* Writeback entire library to ensure it's visible to other cores */
+	dcache_writeback_region((__sparse_force void *)library_base_address, preload_size);
+
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 	/* AUTH_PHASE_LAST - do final library authentication checks */
 	ret = lib_manager_auth_proc((__sparse_force void *)library_base_address,
