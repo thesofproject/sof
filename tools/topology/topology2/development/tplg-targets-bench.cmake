@@ -23,6 +23,11 @@ set(components
 	"sound_dose"
 	"src"
 	"src_lite"
+	"stft_process_192_48_"
+	"stft_process_512_128_"
+	"stft_process_768_120_"
+	"stft_process_1024_256_"
+	"stft_process_1536_240_"
 	"tdfb"
 	"template_comp"
 )
@@ -43,6 +48,11 @@ set(component_parameters
 	"BENCH_SOUND_DOSE_PARAMS=default"
 	"BENCH_SRC_PARAMS=default"
 	"BENCH_SRC_LITE_PARAMS=default"
+	"BENCH_STFT_PROCESS_PARAMS=hann_192_48"
+	"BENCH_STFT_PROCESS_PARAMS=hann_512_128"
+	"BENCH_STFT_PROCESS_PARAMS=hann_768_120"
+	"BENCH_STFT_PROCESS_PARAMS=hann_1024_256"
+	"BENCH_STFT_PROCESS_PARAMS=hann_1536_240"
 	"BENCH_TDFB_PARAMS=default"
 	"BENCH_TEMPLATE_COMP_PARAMS=default"
 )
@@ -74,7 +84,7 @@ foreach(sf ${sampleformats})
 		list(APPEND TPLGS "${item}")
 		set(item "cavs-benchmark-sdw\;sof-${plat}-sdw-benchmark-${comp}${sf}-simplejack\;PLATFORM=${plat},SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,BENCH_MODULE_FORMAT=s${sf},BENCH_CONFIG=${comp}${sf},${bench_param}")
 		list(APPEND TPLGS "${item}")
-#		#message(STATUS "Item=" ${item})
+		#message(STATUS "Item=" ${item})
 	endforeach()
 endforeach()
 
