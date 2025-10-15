@@ -136,7 +136,7 @@ int module_adapter_init_data(struct comp_dev *dev,
 		if (cfgsz == (sizeof(*cfg) + pinsz)) {
 			dst->nb_input_pins = n_in;
 			dst->nb_output_pins = n_out;
-			dst->input_pins = sof_heap_alloc(dev->drv->user_heap,
+			dst->input_pins = sof_heap_alloc(dev->mod->priv.resources.heap,
 							 SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 							 pinsz, 0);
 			if (!dst->input_pins)
