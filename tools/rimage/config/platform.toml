@@ -1,0 +1,7 @@
+#if CONFIG_METEORLAKE
+#include "platform-mtl.toml"
+#elif CONFIG_LUNARLAKE
+#include "platform-lnl.toml"
+#elif CONFIG_SOC_INTEL_ACE30
+#include "platform-ptl.toml"
+#endif

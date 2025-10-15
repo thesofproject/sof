@@ -41,10 +41,14 @@ struct convert_config {
 	int dump_ldc;
 	int hide_location;
 	int relative_timestamps;
-	int time_precision;
+	int8_t time_precision;
 	struct snd_sof_uids_header *uids_dict;
 	struct snd_sof_logs_header *logs_header;
 };
 
 uint32_t get_uuid_key(const struct sof_uuid_entry *entry);
-int convert(struct convert_config *config);
+
+/* pointer to config for global context */
+extern struct convert_config * const global_config;
+
+int convert(void);

@@ -11,32 +11,150 @@
 #define _COMMON_TPLG_H
 
 #include <stdbool.h>
+#include <stdarg.h>
 #include <stddef.h>
-#include <sound/asoc.h>
 #include <ipc/dai.h>
+#include <ipc/topology.h>
+#include <ipc/stream.h>
+#include <ipc4/module.h>
 #include <kernel/tokens.h>
+#include <sof/list.h>
+#include <volume/peak_volume.h>
+#include <src/src_ipc.h>
+#include <asrc/asrc_ipc4.h>
 
-#define SOF_DEV 1
-#define FUZZER_DEV 2
+#include "copier/copier.h"
+
+#ifdef TPLG_DEBUG
+#define DEBUG_MAX_LENGTH 256
+static inline void tplg_debug(char *fmt, ...)
+{
+	char msg[DEBUG_MAX_LENGTH];
+	va_list va;
+
+	va_start(va, fmt);
+	vsnprintf(msg, DEBUG_MAX_LENGTH, fmt, va);
+	va_end(va);
+
+	fprintf(stdout, "%s", msg);
+}
+#else
+static inline void tplg_debug(char *fmt, ...) {}
+#endif
+
+/* temporary - current MAXLEN is not define in UAPI header - fix pending */
+#ifndef SNDRV_CTL_ELEM_ID_NAME_MAXLEN
+#define SNDRV_CTL_ELEM_ID_NAME_MAXLEN	44
+#endif
+
+#include <linux/types.h>
+#include <alsa/sound/asoc.h>
+
+#define TPLG_PARSER_SOF_DEV 1
+#define TPLG_PARSER_FUZZER_DEV 2
+#define TPLG_MAX_PCM_PIPELINES	16
 
 #define MOVE_POINTER_BY_BYTES(p, b) ((typeof(p))((uint8_t *)(p) + (b)))
 
 struct testbench_prm;
+struct snd_soc_tplg_vendor_array;
+struct snd_soc_tplg_ctl_hdr;
+struct sof_topology_token;
+struct sof;
+struct fuzz;
+struct sof_topology_module_desc;
 
-struct comp_info {
+struct sof_ipc4_audio_format {
+	uint32_t sampling_frequency;
+	uint32_t bit_depth;
+	uint32_t ch_map;
+	uint32_t ch_cfg; /* sof_ipc4_channel_config */
+	uint32_t interleaving_style;
+	uint32_t fmt_cfg; /* channels_count valid_bit_depth s_type */
+} __packed __aligned(4);
+
+/**
+ * struct sof_ipc4_pin_format - Module pin format
+ * @pin_index: pin index
+ * @buffer_size: buffer size in bytes
+ * @audio_fmt: audio format for the pin
+ *
+ * This structure can be used for both output or input pins and the pin_index is relative to the
+ * pin type i.e output/input pin
+ */
+struct sof_ipc4_pin_format {
+	uint32_t pin_index;
+	uint32_t buffer_size;
+	struct sof_ipc4_audio_format audio_fmt;
+};
+
+/**
+ * struct sof_ipc4_available_audio_format - Available audio formats
+ * @output_pin_fmts: Available output pin formats
+ * @input_pin_fmts: Available input pin formats
+ * @num_input_formats: Number of input pin formats
+ * @num_output_formats: Number of output pin formats
+ */
+struct sof_ipc4_available_audio_format {
+	struct sof_ipc4_pin_format *output_pin_fmts;
+	struct sof_ipc4_pin_format *input_pin_fmts;
+	uint32_t num_input_formats;
+	uint32_t num_output_formats;
+};
+
+struct tplg_pipeline_info {
+	int id;
+	int instance_id;
+	int usage_count;
+	int mem_usage;
 	char *name;
+	struct list_item item; /* item in a list */
+};
+
+struct tplg_pins_info {
+	uint32_t num_input_pins;
+	uint32_t num_output_pins;
+};
+
+struct tplg_comp_info {
+	struct list_item item; /* item in a list */
+	struct sof_ipc4_available_audio_format available_fmt; /* available formats in tplg */
+	struct ipc4_module_init_instance module_init;
+	struct ipc4_base_module_cfg basecfg;
+	struct tplg_pipeline_info *pipe_info;
+	struct sof_uuid uuid;
+	struct tplg_pins_info pins_info;
+	char *name;
+	char *stream_name;
 	int id;
 	int type;
 	int pipeline_id;
+	void *ipc_payload;
+	int ipc_size;
+	int instance_id;
+	int module_id;
 };
 
-struct frame_types {
+struct tplg_route_info {
+	struct tplg_comp_info *source;
+	struct tplg_comp_info *sink;
+	struct list_item item; /* item in a list */
+};
+
+struct tplg_pipeline_list {
+	int count;
+	struct tplg_pipeline_info *pipelines[TPLG_MAX_PCM_PIPELINES];
+};
+
+struct tplg_pcm_info {
 	char *name;
-	enum sof_ipc_frame frame;
+	int id;
+	struct tplg_comp_info *playback_host;
+	struct tplg_comp_info *capture_host;
+	struct list_item item; /* item in a list */
+	struct tplg_pipeline_list playback_pipeline_list;
+	struct tplg_pipeline_list capture_pipeline_list;
 };
-
-struct sof;
-struct fuzz;
 
 /*
  * Per topology data.
@@ -44,10 +162,6 @@ struct fuzz;
  * TODO: Some refactoring still required to move pipeline specific data.
  */
 struct tplg_context {
-	/* info array */
-	struct comp_info *info;		/* comp info array */
-	int info_elems;
-	int info_index;
 
 	/* pipeline and core IDs we are processing */
 	int pipeline_id;
@@ -56,173 +170,166 @@ struct tplg_context {
 	/* current IPC object and widget */
 	struct snd_soc_tplg_hdr *hdr;
 	struct snd_soc_tplg_dapm_widget *widget;
+	struct tplg_comp_info *current_comp_info;
 	int comp_id;
 	size_t widget_size;
 	int dev_type;
 	int sched_id;
-
-	/*
-	 * input and output sample rate parameters
-	 * By default, these are calculated from pipeline frames_per_sched
-	 * and period but they can also be overridden via input arguments
-	 * to the testbench.
-	 */
-	uint32_t fs_in;
-	uint32_t fs_out;
-	uint32_t channels_in;
-	uint32_t channels_out;
-	enum sof_ipc_frame frame_fmt;
+	int dir;
 
 	/* global data */
-	FILE *file;
-	struct testbench_prm *tp;
+	void *tplg_base;
+	size_t tplg_size;
+	long tplg_offset;
 	struct sof *sof;
 	const char *tplg_file;
 	struct fuzz *fuzzer;
+	int ipc_major;
+
+	/* kcontrol creation */
+	void *ctl_arg;
+	int (*ctl_cb)(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
+		      void *comp, void *arg, int index);
 };
 
-/** \brief Types of processing components */
-enum sof_ipc_process_type {
-	SOF_PROCESS_NONE = 0,		/**< None */
-	SOF_PROCESS_EQFIR,		/**< Intel FIR */
-	SOF_PROCESS_EQIIR,		/**< Intel IIR */
-	SOF_PROCESS_KEYWORD_DETECT,	/**< Keyword Detection */
-	SOF_PROCESS_KPB,		/**< KeyPhrase Buffer Manager */
-	SOF_PROCESS_CHAN_SELECTOR,	/**< Channel Selector */
-	SOF_PROCESS_MUX,
-	SOF_PROCESS_DEMUX,
-	SOF_PROCESS_DCBLOCK,
-};
+#define tplg_get(ctx) ((void *)(ctx->tplg_base + ctx->tplg_offset))
 
-struct sof_topology_token {
-	uint32_t token;
-	uint32_t type;
-	int (*get_token)(void *elem, void *object, uint32_t offset,
-			 uint32_t size);
-	uint32_t offset;
-	uint32_t size;
-};
+#define tplg_get_hdr(ctx)							\
+	({struct snd_soc_tplg_hdr *ptr;						\
+	ptr = (struct snd_soc_tplg_hdr *)(ctx->tplg_base + ctx->tplg_offset);	\
+	if (ptr->size != sizeof(*ptr)) {					\
+		printf("%s %d hdr size mismatch 0x%x:0x%zx at offset %ld\n",	\
+				__func__, __LINE__, ptr->size, sizeof(*ptr),	\
+				ctx->tplg_offset); assert(0);			\
+	}									\
+	ctx->tplg_offset += sizeof(*ptr); (void *)ptr; })
 
-enum sof_ipc_frame find_format(const char *name);
+#define tplg_skip_hdr_payload(ctx)						\
+	({struct snd_soc_tplg_hdr *ptr;						\
+	ptr = (struct snd_soc_tplg_hdr *)(ctx->tplg_base + ctx->tplg_offset);	\
+	ctx->tplg_offset += hdr->payload_size; (void *)ptr; })
 
-int get_token_uint32_t(void *elem, void *object, uint32_t offset,
-		       uint32_t size);
+#define tplg_get_object(ctx, obj)						\
+	({void *ptr; ptr = ctx->tplg_base + ctx->tplg_offset;			\
+	ctx->tplg_offset += sizeof(*(obj)); ptr; })
 
-int get_token_comp_format(void *elem, void *object, uint32_t offset,
-			  uint32_t size);
+#define tplg_get_object_priv(ctx, obj, priv_size)				\
+	({void *ptr; ptr = ctx->tplg_base + ctx->tplg_offset;			\
+	ctx->tplg_offset += sizeof(*(obj)) + priv_size; ptr; })
 
-int get_token_uuid(void *elem, void *object, uint32_t offset, uint32_t size);
+#define tplg_get_widget(ctx)							\
+	({struct snd_soc_tplg_dapm_widget *w;					\
+	w = (struct snd_soc_tplg_dapm_widget *)(ctx->tplg_base + ctx->tplg_offset); \
+	ctx->tplg_offset += sizeof(*w) + w->priv.size; w; })
 
-/* EFFECT */
-int get_token_process_type(void *elem, void *object, uint32_t offset,
-			   uint32_t size);
+#define tplg_get_graph(ctx)							\
+	({struct snd_soc_tplg_dapm_graph_elem *w;				\
+	w = (struct snd_soc_tplg_dapm_graph_elem *)(ctx->tplg_base + ctx->tplg_offset); \
+	ctx->tplg_offset += sizeof(*w); w; })
 
-/* Tone */
-static const struct sof_topology_token tone_tokens[] = {
-};
+#define tplg_get_pcm(ctx)                                                       \
+	({struct snd_soc_tplg_pcm *pcm;                         \
+	pcm = (struct snd_soc_tplg_pcm *)(ctx->tplg_base + ctx->tplg_offset); \
+	ctx->tplg_offset += sizeof(*pcm) + pcm->priv.size; pcm; })
 
-/* Generic components */
-static const struct sof_topology_token comp_tokens[] = {
-	{SOF_TKN_COMP_PERIOD_SINK_COUNT,
-		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
-		offsetof(struct sof_ipc_comp_config, periods_sink), 0},
-	{SOF_TKN_COMP_PERIOD_SOURCE_COUNT,
-		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
-		offsetof(struct sof_ipc_comp_config, periods_source), 0},
-	{SOF_TKN_COMP_FORMAT,
-		SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_comp_format,
-		offsetof(struct sof_ipc_comp_config, frame_fmt), 0},
-};
+static inline int tplg_valid_widget(struct snd_soc_tplg_dapm_widget *widget)
+{
+	if (widget->size == sizeof(struct snd_soc_tplg_dapm_widget))
+		return 1;
+	else
+		return 0;
+}
 
-/* DAI */
-enum sof_ipc_dai_type find_dai(const char *name);
+enum sof_ipc_frame tplg_find_format(const char *name);
 
-int get_token_dai_type(void *elem, void *object, uint32_t offset,
-		       uint32_t size);
+int tplg_token_get_uint32_t(void *elem, void *object, uint32_t offset,
+			    uint32_t size);
 
-/* Component extended tokens */
-static const struct sof_topology_token comp_ext_tokens[] = {
-	{SOF_TKN_COMP_UUID,
-		SND_SOC_TPLG_TUPLE_TYPE_UUID, get_token_uuid,
-		offsetof(struct sof_ipc_comp_ext, uuid), 0},
-};
+int tplg_token_get_comp_format(void *elem, void *object, uint32_t offset,
+			       uint32_t size);
 
-struct sof_dai_types {
-	const char *name;
-	enum sof_ipc_dai_type type;
-};
+int tplg_token_get_uuid(void *elem, void *object, uint32_t offset, uint32_t size);
 
 int sof_parse_tokens(void *object,
 		     const struct sof_topology_token *tokens,
 		     int count, struct snd_soc_tplg_vendor_array *array,
 		     int priv_size);
+
 int sof_parse_string_tokens(void *object,
 			    const struct sof_topology_token *tokens,
 			    int count,
 			    struct snd_soc_tplg_vendor_array *array);
+
 int sof_parse_uuid_tokens(void *object,
 			  const struct sof_topology_token *tokens,
 			  int count,
 			  struct snd_soc_tplg_vendor_array *array);
+
 int sof_parse_word_tokens(void *object,
 			  const struct sof_topology_token *tokens,
 			  int count,
 			  struct snd_soc_tplg_vendor_array *array);
-int get_token_dai_type(void *elem, void *object, uint32_t offset,
-		       uint32_t size);
-enum sof_ipc_dai_type find_dai(const char *name);
 
-enum sof_ipc_process_type tplg_get_process_name(const char *name);
-enum sof_comp_type tplg_get_process_type(enum sof_ipc_process_type type);
+int tplg_read_array(struct snd_soc_tplg_vendor_array *array);
 
-int tplg_read_array(struct snd_soc_tplg_vendor_array *array, FILE *file);
-int tplg_create_buffer(struct tplg_context *ctx,
-		     struct sof_ipc_buffer *buffer);
-int tplg_create_pcm(struct tplg_context *ctx, int dir,
-		  struct sof_ipc_comp_host *host);
+int tplg_new_buffer(struct tplg_context *ctx, void *buffer, size_t buffer_size,
+		    struct snd_soc_tplg_ctl_hdr *rctl, size_t buffer_ctl_size);
+
 int tplg_create_dai(struct tplg_context *ctx,
-		  struct sof_ipc_comp_dai *comp_dai);
-int tplg_create_pga(struct tplg_context *ctx,
-		  struct sof_ipc_comp_volume *volume);
+		    struct sof_ipc_comp_dai *comp_dai);
+
 int tplg_create_pipeline(struct tplg_context *ctx,
-		       struct sof_ipc_pipe_new *pipeline);
-int tplg_create_single_control(struct snd_soc_tplg_ctl_hdr **ctl, char **priv,
-			  FILE *file);
-int tplg_create_controls(int num_kcontrols, FILE *file);
-int tplg_create_src(struct tplg_context *ctx,
-		  struct sof_ipc_comp_src *src);
-int tplg_create_asrc(struct tplg_context *ctx,
-		   struct sof_ipc_comp_asrc *asrc);
-int tplg_create_mixer(struct tplg_context *ctx,
-		    struct sof_ipc_comp_mixer *mixer);
-int tplg_create_process(struct tplg_context *ctx,
-		      struct sof_ipc_comp_process *process,
-		      struct sof_ipc_comp_ext *comp_ext);
-int tplg_create_graph(int num_comps, int pipeline_id,
-		    struct comp_info *temp_comp_list, char *pipeline_string,
-		    struct sof_ipc_pipe_comp_connect *connection, FILE *file,
-		    int route_num, int count);
+			 struct sof_ipc_pipe_new *pipeline);
 
-int tplg_register_pga(struct tplg_context *ctx);
+int tplg_get_single_control(struct tplg_context *ctx,
+			    struct snd_soc_tplg_ctl_hdr **ctl,
+			    struct snd_soc_tplg_private **priv);
 
-int load_aif_in_out(struct tplg_context *ctx, int dir);
-int load_dai_in_out(struct tplg_context *ctx, int dir);
-int tplg_register_buffer(struct tplg_context *ctx);
-int tplg_register_pipeline(struct tplg_context *ctx);
-int tplg_register_src(struct tplg_context *ctx);
-int tplg_register_asrc(struct tplg_context *ctx);
-int tplg_register_mixer(struct tplg_context *ctx);
-int tplg_register_graph(void *dev, struct comp_info *temp_comp_list,
-			char *pipeline_string, FILE *file,
-			int count, int num_comps, int pipeline_id);
-int load_process(struct tplg_context *ctx);
-int load_widget(struct tplg_context *ctx);
+int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
+			 struct snd_soc_tplg_ctl_hdr *rctl,
+			 size_t max_ctl_size, void *object);
 
-void register_comp(int comp_type, struct sof_ipc_comp_ext *comp_ext);
-int find_widget(struct comp_info *temp_comp_list, int count, char *name);
-bool is_valid_priv_size(size_t size_read, size_t priv_size,
-			struct snd_soc_tplg_vendor_array *array);
+int tplg_new_pcm(struct tplg_context *ctx, void *host, size_t host_size);
 
-int parse_topology(struct tplg_context *ctx);
+int tplg_new_pipeline(struct tplg_context *ctx, void *pipeline,
+		      size_t pipeline_size, struct snd_soc_tplg_ctl_hdr *rctl);
+
+int tplg_new_mixer(struct tplg_context *ctx, void *mixer, size_t mixer_size,
+		   struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size);
+
+int tplg_new_src(struct tplg_context *ctx, void *src, size_t src_size,
+		 struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
+
+int tplg_new_asrc(struct tplg_context *ctx, void *asrc, size_t asrc_size,
+		  struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
+
+int tplg_new_pga(struct tplg_context *ctx, void *pga, size_t pga_size,
+		 struct snd_soc_tplg_ctl_hdr *rctl, size_t ctl_size);
+
+int tplg_new_dai(struct tplg_context *ctx, void *dai, size_t dai_size,
+		 struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size);
+
+int tplg_new_process(struct tplg_context *ctx, void *process, size_t process_size,
+		     struct snd_soc_tplg_ctl_hdr *rctl, size_t max_ctl_size);
+
+int tplg_create_graph(struct tplg_context *ctx, int count, int pipeline_id,
+		      struct tplg_comp_info *temp_comp_list, char *pipeline_string,
+		      struct sof_ipc_pipe_comp_connect *connection,
+		      int route_num);
+
+bool tplg_is_valid_priv_size(size_t size_read, size_t priv_size,
+			     struct snd_soc_tplg_vendor_array *array);
+
+int tplg_create_object(struct tplg_context *ctx,
+		       const struct sof_topology_module_desc *desc, int num_desc,
+		       const char *name, void *object, size_t max_object_size);
+int sof_parse_token_sets(void *object, const struct sof_topology_token *tokens,
+			 int count, struct snd_soc_tplg_vendor_array *array,
+			 int priv_size, int num_sets, int object_size);
+int tplg_parse_widget_audio_formats(struct tplg_context *ctx);
+int tplg_parse_graph(struct tplg_context *ctx, struct list_item *widget_list,
+		     struct list_item *route_list);
+int tplg_parse_pcm(struct tplg_context *ctx, struct list_item *widget_list,
+		   struct list_item *pcm_list);
 
 #endif

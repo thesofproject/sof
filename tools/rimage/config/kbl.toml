@@ -1,0 +1,30 @@
+version = [1, 5]
+
+[adsp]
+name = "kbl"
+image_size = "0x200000" # (30 + 2) bank * 64KB
+alias_mask = "0xE0000000"
+
+[[adsp.mem_zone]]
+type = "ROM"
+base = "0xBEFE0000"
+size = "0x00002000"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0xA000A000"
+size = "0x100000"
+
+[[adsp.mem_alias]]
+type = "uncached"
+base = "0x9E000000"
+[[adsp.mem_alias]]
+type = "cached"
+base = "0xBE000000"
+
+[css]
+
+[fw_desc.header]
+name = "ADSPFW"
+load_offset = "0"
+hw_buf_base_addr = "0xBE500000"
+hw_buf_length = "0x4A000"

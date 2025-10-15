@@ -22,10 +22,7 @@ define(`CA_SETUP_CONTROLBYTES',
 `       0x00,0x00,0x00,0x00"''
 )
 define(`CA_SETUP_CONTROLBYTES_MAX', 8192)
-
-ifelse(PLATFORM, `tgl', `
-	define(CA_SETUP_CONTROLBYTES_NAME, `MaxxChrome Setup ')', `
-	define(CA_SETUP_CONTROLBYTES_NAME, `Waves' `ENDPOINT_NAME' `Setup ')')
+define(`CA_SETUP_CONTROLBYTES_NAME', `Waves' `ENDPOINT_NAME' `Setup ')
 
 define(`CA_SCHEDULE_CORE', 0)
 

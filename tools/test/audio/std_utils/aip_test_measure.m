@@ -7,6 +7,8 @@ function test = aip_test_measure(test)
 %% Reference: AES17 6.6.7 Attenuation of image products
 %  http://www.aes.org/publications/standards/
 
+debug = 0;
+
 %% Load output file
 [x, nx] = load_test_output(test);
 if nx == 0
@@ -25,7 +27,9 @@ mn = zeros(test.nf,1);
 b_lpf = stdlpf_get(test.fu, test.fs); % Get LPF coef
 b_hpf = stdhpf_get(test.fu, test.fs); % Get HPF coef
 for n=1:test.nf
-        fprintf('Measuring %.0f Hz ...\n', test.f(n));
+	if debug
+		fprintf('Measuring %.0f Hz ...\n', test.f(n));
+	end
         % Get notch coef for this frequency
         [b_notch, a_notch] = stdnotch_get(test.f(n), test.fs);
         i1 = d+(n-1)*nt+nt_skip;

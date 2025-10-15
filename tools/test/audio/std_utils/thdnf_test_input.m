@@ -1,6 +1,6 @@
 function test = thdnf_test_input(test)
 
-%% t = dr_test_input(t)
+%% t = thdnf_test_test_input(t)
 %
 % Create tone data file for playback & record on real device or
 % for algorithm simulation.

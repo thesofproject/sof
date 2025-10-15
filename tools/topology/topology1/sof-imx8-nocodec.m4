@@ -52,7 +52,7 @@ dnl     deadline, priority, core)
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, ESAI, 0, NoCodec-0,
 	PIPELINE_SOURCE_1, 2, s24le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 
@@ -62,7 +62,7 @@ PCM_PLAYBACK_ADD(Port0, 0, PIPELINE_PCM_1)
 dnl DAI_CONFIG(type, dai_index, link_id, name, esai_config)
 DAI_CONFIG(ESAI, 0, 0, NoCodec-0,
 	ESAI_CONFIG(I2S, ESAI_CLOCK(mclk, 49152000, codec_mclk_in),
-		ESAI_CLOCK(bclk, 3072000, codec_slave),
-		ESAI_CLOCK(fsync, 48000, codec_slave),
+		ESAI_CLOCK(bclk, 3072000, codec_consumer),
+		ESAI_CLOCK(fsync, 48000, codec_consumer),
 		ESAI_TDM(2, 32, 3, 3),
 		ESAI_CONFIG_DATA(ESAI, 0, 0)))

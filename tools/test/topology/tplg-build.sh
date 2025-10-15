@@ -240,7 +240,8 @@ done
 
 # for processing algorithms
 ALG_SINGLE_MODE_TESTS=(asrc eq-fir eq-iir src dcblock drc multiband-drc tdfb
-		       tdfb_line4_28mm_pm90deg_48khz tdfb_circular8_100mm_pm30deg_48khz)
+		       tdfb_line4_28mm_pm90deg_48khz tdfb_circular8_100mm_pm30deg_48khz
+		       mfcc)
 ALG_SINGLE_SIMPLE_TESTS=(test-capture test-playback)
 ALG_MULTI_MODE_TESTS=(crossover)
 ALG_MULTI_SIMPLE_TESTS=(test-playback)
@@ -311,10 +312,11 @@ then
 		$shell_name
 
 	#execute alsatplg to create topology binary
+	# $TEST_STRINGS is a very long line of comma-delimited filenames.
 	printf '%s generating %s/*.tplg files with alsatplg...\n' \
 		"$0" "$BUILD_OUTPUT"
 	TEST_STRINGS=${TEST_STRINGS%?}
 	echo $TEST_STRINGS | tr '\n' ',' |
-		xargs ${VERBOSE:+-t} -d ',' -P${NO_PROCESSORS} -n1 -I string \
+		xargs ${VERBOSE:+-t} -d ',' -P${NO_PROCESSORS} -I string \
 		    alsatplg ${VERBOSE:+-v 1} -c string".conf" -o string".tplg"
 fi

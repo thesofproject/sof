@@ -23,6 +23,7 @@ include(`pipeline.m4')
 include(`eq_iir.m4')
 include(`eq_fir.m4')
 
+#
 # Controls
 #
 # Volume Mixer control with max value of 32
@@ -146,5 +147,7 @@ indir(`define', concat(`PIPELINE_MIXER_', PIPELINE_ID), N_MIXER(0))
 
 undefine(`DEF_EQIIR_COEF')
 undefine(`DEF_EQIIR_PRIV')
+undefine(`DEF_EQFIR_COEF')
+undefine(`DEF_EQFIR_PRIV')
 undefine(`DEF_PGA_TOKENS')
 undefine(`DEF_PGA_CONF')

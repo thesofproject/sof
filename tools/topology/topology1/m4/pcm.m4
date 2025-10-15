@@ -128,7 +128,7 @@ define(`PCM_PLAYBACK_ADD_COMMON',
 `}', `fatal_error(`Invalid parameters ($#) to PCM_PLAYBACK_ADD_COMMON')')'
 )
 
-dnl PCM_CAPTURE_ADD_COMMON(name, pcm_id, capture, lp)
+dnl PCM_CAPTURE_ADD_COMMON(name, pcm_id, capture, lp, compress)
 define(`PCM_CAPTURE_ADD_COMMON',
 `ifelse(`$4', `1',
 `SectionVendorTuples."$1_tuples_w" {'
@@ -155,6 +155,8 @@ define(`PCM_CAPTURE_ADD_COMMON',
 `'
 `		capabilities STR($3)'
 `	}'
+`'
+`	compress STR($5)'
 `ifelse(`$4', `1',
 `       data ['
 `               "$1_data_w"'
@@ -165,14 +167,21 @@ define(`PCM_CAPTURE_ADD_COMMON',
 dnl PCM_CAPTURE_ADD(name, pcm_id, capture)
 define(`PCM_CAPTURE_ADD',
 `ifelse(`$#', `3',
-PCM_CAPTURE_ADD_COMMON($1, $2, $3, 0),
+PCM_CAPTURE_ADD_COMMON($1, $2, $3, 0, false),
 `fatal_error(`Invalid parameters ($#) to PCM_CAPTURE_ADD')')'
+)
+
+dnl COMPR_CAPTURE_ADD(name, pcm_id, capture)
+define(`COMPR_CAPTURE_ADD',
+`ifelse(`$#', `3',
+PCM_CAPTURE_ADD_COMMON($1, $2, $3, 0, true),
+`fatal_error(`Invalid parameters ($#) to COMPR_CAPTURE_ADD')')'
 )
 
 dnl PCM_CAPTURE_LP_ADD(name, pcm_id, capture)
 define(`PCM_CAPTURE_LP_ADD',
 `ifelse(`$#', `3',
-PCM_CAPTURE_ADD_COMMON($1, $2, $3, 1),
+PCM_CAPTURE_ADD_COMMON($1, $2, $3, 1, false),
 `fatal_error(`Invalid parameters ($#) to PCM_CAPTURE_LP_ADD')')'
 )
 

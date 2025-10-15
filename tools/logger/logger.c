@@ -5,6 +5,7 @@
 // Author: Bartosz Kokoszko	<bartoszx.kokoszko@linux.intel.com>
 //	   Artur Kloniecki	<arturx.kloniecki@linux.intel.com>
 
+#include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -15,6 +16,18 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <termios.h>
+
+#include <sys/types.h>
+#include <dirent.h>
+
+#include "config.h"
+
+#if HAS_INOTIFY
+#include <poll.h>
+#include <sys/inotify.h>
+#include <sys/stat.h>
+#endif
+
 #include "convert.h"
 #include "misc.h"
 
@@ -91,8 +104,8 @@ static int snapshot(const char *name)
 
 	for (i = 0; i < ARRAY_SIZE(debugfs); i++) {
 
-		sprintf(pinname, "%s/%s", path, debugfs[i]);
-		sprintf(poutname, "%s.%s.txt", name, debugfs[i]);
+		snprintf(pinname, sizeof(pinname), "%s/%s", path, debugfs[i]);
+		snprintf(poutname, sizeof(poutname), "%s.%s.txt", name, debugfs[i]);
 
 		/* open debugfs for reading */
 		in_fd = fopen(pinname, "rb");
@@ -119,9 +132,14 @@ static int snapshot(const char *name)
 			if (count != 4)
 				break;
 
-			sprintf(buffer, "0x%6.6x: 0x%8.8x\n", addr, val);
+			snprintf(buffer, sizeof(buffer), "0x%6.6x: 0x%8.8x\n", addr, val);
 
-			count = fwrite(buffer, 1, strlen(buffer), out_fd);
+			i = strlen(buffer);
+			count = fwrite(buffer, 1, i, out_fd);
+			if (count != i) {
+				fprintf(stderr, "error: an error occurred during write to %s: %s\n",
+					poutname, strerror(errno));
+			}
 
 			addr += 4;
 		}
@@ -151,7 +169,12 @@ static int configure_uart(const char *file, unsigned int baud)
 	tio.c_cc[VMIN] = 1;
 
 	ret = tcsetattr(fd, TCSANOW, &tio);
-	return ret < 0 ? -errno : fd;
+	if (ret < 0) {
+		close(fd);
+		return -errno;
+	}
+
+	return fd;
 }
 
 /* Concantenate `config->filter_config` with `input` + `\n` */
@@ -169,6 +192,108 @@ static int append_filter_config(struct convert_config *config, const char *input
 		return -ENOMEM;
 	return 0;
 }
+
+#if !HAS_INOTIFY
+static void *wait_open(const char *watched_dir, const char *expected_file)
+{
+	assert(HAS_INOTIFY); /* Should never be called */
+}
+#else
+/*
+ * This 5 minutes timeout is for "backward compatible safety" in case
+ * any user/script of an earlier, pre-inotify version of sof-logger
+ * (accidentally?) _expected_ the tool to quit when the driver was not
+ * loaded. This expectation was always wrong but an infinite wait is too
+ * severe of a punishment. This timeout cannot be too small otherwise it
+ * would defeat the new feature.
+ */
+#ifndef SOF_LOGGER_WAIT_OPEN_TIMEOUT_SECS
+#define SOF_LOGGER_WAIT_OPEN_TIMEOUT_SECS (5 * 60)
+#endif
+
+/*
+ * Using inotify, wait up to 5 minutes for 'expected_name' to appear in
+ * 'watched_dir'.  Then return opendir/fopen(expected_name). fopen() and
+ * opendir() failures are NOT handled; e.g. NULL from fopen() is just
+ * passed through.
+ *
+ * Returns a FILE * or DIR *
+ */
+static void *wait_open(const char *watched_dir, const char *expected_file)
+{
+	if (access(watched_dir, R_OK)) {
+		fprintf(stderr, "error: %s() cannot read %s\n", __func__, watched_dir);
+		return NULL;
+	}
+
+	const int iqueue = inotify_init();
+	const int dwatch = inotify_add_watch(iqueue, watched_dir, IN_CREATE);
+	struct stat expected_stat;
+	void *ret_stream = NULL;
+	const int fpath_len = strlen(watched_dir) + 1 + strlen(expected_file) + 1;
+	char * const fpath = malloc(fpath_len);
+
+	if (!fpath) {
+		fprintf(stderr, "error: can't allocate memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+	snprintf(fpath, fpath_len, "%s/%s", watched_dir, expected_file);
+
+	/* Not racy because the inotify watch was set first. */
+	if (!access(fpath, F_OK))
+		goto fopenit;
+
+	fprintf(stdout, "%s: waiting in %s/ for %s\n", APP_NAME, watched_dir, expected_file);
+	fflush(stdout);
+
+	while (1) {
+		char evlist[1 * sizeof(struct inotify_event)];
+		struct pollfd pfd[1] = {{ .fd = iqueue, .events = POLLIN, .revents = 0 }};
+		int pret = poll(pfd, sizeof(pfd) / sizeof(struct pollfd),
+				SOF_LOGGER_WAIT_OPEN_TIMEOUT_SECS * 1000);
+
+		if (pret == 0) {
+			fprintf(stderr, "error: no %s after waiting %d seconds\n",
+				expected_file, SOF_LOGGER_WAIT_OPEN_TIMEOUT_SECS);
+			goto cleanup;
+		}
+
+		if (pret < 0 || pfd[0].revents != POLLIN) {
+			fprintf(stderr, "error: in %s, poll(%s) returned %d, %d\n",
+				__func__, watched_dir, pret, pfd[0].revents);
+			goto cleanup;
+		}
+
+		/* Silence __attribute__((warn_unused_result)) which is
+		 * enabled by some Linux distros even when broken in gcc:
+		 * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66425
+		 */
+		(void)!read(iqueue, evlist, sizeof(evlist));
+
+		if (!access(fpath, F_OK))
+			goto fopenit;
+	}
+
+fopenit:
+	if (stat(fpath, &expected_stat))
+		goto cleanup;
+
+	if ((expected_stat.st_mode & S_IFMT) == S_IFDIR)
+		ret_stream = opendir(fpath);
+	else
+		ret_stream = fopen(fpath, "rb");
+
+cleanup:
+	free(fpath);
+	inotify_rm_watch(iqueue, dwatch);
+
+	return ret_stream;
+}
+#endif // HAS_INOTIFY
+
+static struct convert_config _global_config;
+struct convert_config * const global_config = &_global_config;
 
 int main(int argc, char *argv[])
 {
@@ -249,7 +374,8 @@ int main(int argc, char *argv[])
 			if (i < 0 || 1 < i) {
 				fprintf(stderr, "%s: invalid option: -e %s\n",
 					APP_NAME, optarg);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto out;
 			}
 			config.relative_timestamps = i;
 			break;
@@ -258,7 +384,8 @@ int main(int argc, char *argv[])
 			config.time_precision = atoi(optarg);
 			if (config.time_precision < 0) {
 				usage();
-				return -EINVAL;
+				ret = -EINVAL;
+				goto out;
 			}
 			break;
 		case 'g':
@@ -288,8 +415,10 @@ int main(int argc, char *argv[])
 		usage();
 	}
 
-	if (snapshot_file)
-		return baud ? EINVAL : -snapshot(snapshot_file);
+	if (snapshot_file) {
+		ret = baud ? EINVAL : -snapshot(snapshot_file);
+		goto out;
+	}
 
 	if (!config.ldc_file) {
 		fprintf(stderr, "error: Missing ldc file\n");
@@ -302,17 +431,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "error: Unable to open ldc file %s: %s\n",
 			config.ldc_file, strerror(ret));
 		goto out;
-	}
-
-	if (config.version_fw) {
-		config.version_fd = fopen(config.version_file, "rb");
-		if (!config.version_fd && !config.dump_ldc) {
-			ret = errno;
-			fprintf(stderr,
-				"error: Unable to open version file %s: %s\n",
-				config.version_file, strerror(ret));
-			goto out;
-		}
 	}
 
 	if (config.out_file) {
@@ -339,6 +457,11 @@ int main(int argc, char *argv[])
 	if (!config.in_file && !config.dump_ldc)
 		config.in_file = "/sys/kernel/debug/sof/etrace";
 
+	if (!config.in_file && baud) {
+		fprintf(stderr, "error: No UART device specified\n");
+		usage();
+	}
+
 	if (config.input_std) {
 		config.in_fd = stdin;
 	} else if (baud) {
@@ -348,7 +471,27 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 	} else if (config.in_file) {
-		config.in_fd = fopen(config.in_file, "rb");
+		static const char sys_debug[] = "/sys/kernel/debug";
+		static const char sys_debug_sof[] = "/sys/kernel/debug/sof";
+		/* In the future we could add an option to force waiting
+		 * for _any_ input file, not just for /sys/kernel/debug/sof/[e]trace
+		 */
+		config.in_fd = NULL;
+		if (!HAS_INOTIFY ||
+		    strncmp(config.in_file, sys_debug, strlen(sys_debug))) {
+			config.in_fd = fopen(config.in_file, "rb");
+		} else { // both inotify and /sys/kernel/debug/
+			DIR *dbg_sof = (DIR *)wait_open(sys_debug, "sof");
+
+			if (dbg_sof) {
+				closedir(dbg_sof);
+				config.in_fd =
+					(FILE *)wait_open(sys_debug_sof,
+							  config.in_file +
+							  strlen(sys_debug_sof) + 1);
+			}
+		}
+
 		if (!config.in_fd) {
 			ret = errno;
 			fprintf(stderr,
@@ -360,7 +503,19 @@ int main(int argc, char *argv[])
 	if (isatty(fileno(config.out_fd)) != 1)
 		config.use_colors = 0;
 
-	ret = -convert(&config);
+	if (config.version_fw) {
+		config.version_fd = fopen(config.version_file, "rb");
+		if (!config.version_fd && !config.dump_ldc) {
+			ret = errno;
+			fprintf(stderr,
+				"error: Unable to open version file %s: %s\n",
+				config.version_file, strerror(ret));
+			goto out;
+		}
+	}
+
+	_global_config = config;
+	ret = -convert();
 
 out:
 	/* free memory */

@@ -1,106 +1,66 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2019 Intel Corporation. All rights reserved.
+// Copyright(c) 2023 Intel Corporation. All rights reserved.
 //
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-/* Topology parser */
+/* FE DAI or PCM parser */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <unistd.h>
 #include <string.h>
-#include <math.h>
 #include <ipc/topology.h>
-#include <ipc/stream.h>
-#include <ipc/dai.h>
-#include <sof/common.h>
-#include <tplg_parser/topology.h>
-#include <sof/lib/uuid.h>
+#include <sof/list.h>
 #include <sof/ipc/topology.h>
+#include <kernel/header.h>
+#include <tplg_parser/topology.h>
 
-/* PCM */
-static const struct sof_topology_token pcm_tokens[] = {
-	{SOF_TKN_PCM_DMAC_CONFIG, SND_SOC_TPLG_TUPLE_TYPE_WORD,
-	 get_token_uint32_t,
-	 offsetof(struct sof_ipc_comp_host, dmac_config), 0},
-};
-
-int tplg_create_pcm(struct tplg_context *ctx, int dir,
-		  struct sof_ipc_comp_host *host)
+/* parse and save the PCM information */
+int tplg_parse_pcm(struct tplg_context *ctx, struct list_item *widget_list,
+		   struct list_item *pcm_list)
 {
-	struct snd_soc_tplg_vendor_array *array = NULL;
-	size_t total_array_size = 0, read_size;
-	FILE *file = ctx->file;
-	int size = ctx->widget->priv.size;
-	int comp_id = ctx->comp_id;
-	int ret;
+	struct tplg_pcm_info *pcm_info;
+	struct snd_soc_tplg_pcm *pcm;
+	struct list_item *item;
 
-	/* configure host comp IPC message */
-	host->comp.hdr.size = sizeof(*host);
-	host->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
-	host->comp.id = comp_id;
-	host->comp.type = SOF_COMP_HOST;
-	host->comp.pipeline_id = ctx->pipeline_id;
-	host->direction = dir;
-	host->config.hdr.size = sizeof(host->config);
+	pcm_info = calloc(sizeof(struct tplg_pcm_info), 1);
+	if (!pcm_info)
+		return -ENOMEM;
 
-	/* allocate memory for vendor tuple array */
-	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
-	if (!array) {
-		fprintf(stderr, "error: mem alloc\n");
-		return -errno;
+	pcm = tplg_get_pcm(ctx);
+
+	pcm_info->name = strdup(pcm->pcm_name);
+	if (!pcm_info->name) {
+		free(pcm_info);
+		return -ENOMEM;
 	}
 
-	/* read vendor tokens */
-	while (total_array_size < size) {
-		read_size = sizeof(struct snd_soc_tplg_vendor_array);
-		ret = fread(array, read_size, 1, file);
-		if (ret != 1)
-			return -EINVAL;
+	pcm_info->id = pcm->pcm_id;
 
-		/* check for array size mismatch */
-		if (!is_valid_priv_size(total_array_size, size, array)) {
-			fprintf(stderr, "error: load pcm array size mismatch\n");
-			free(array);
-			return -EINVAL;
+	/* look up from the widget list and populate the PCM info */
+	list_for_item(item, widget_list) {
+		struct tplg_comp_info *comp_info = container_of(item, struct tplg_comp_info, item);
+
+		if (!strcmp(pcm->caps[0].name, comp_info->stream_name) &&
+		    (comp_info->type == SND_SOC_TPLG_DAPM_AIF_IN ||
+		     comp_info->type == SND_SOC_TPLG_DAPM_AIF_OUT)) {
+			pcm_info->playback_host = comp_info;
+			tplg_debug("PCM: '%s' ID: %d Host name: %s\n", pcm_info->name,
+				   pcm_info->id, comp_info->name);
 		}
-
-		ret = tplg_read_array(array, file);
-		if (ret) {
-			fprintf(stderr, "error: read array fail\n");
-			free(array);
-			return ret;
+		if (!strcmp(pcm->caps[1].name, comp_info->stream_name) &&
+		    (comp_info->type == SND_SOC_TPLG_DAPM_AIF_IN ||
+		     comp_info->type == SND_SOC_TPLG_DAPM_AIF_OUT)) {
+			pcm_info->capture_host = comp_info;
+			tplg_debug("PCM: '%s' ID: %d Host name: %s\n", pcm_info->name,
+				   pcm_info->id, comp_info->name);
 		}
-
-		/* parse comp tokens */
-		ret = sof_parse_tokens(&host->config, comp_tokens,
-				       ARRAY_SIZE(comp_tokens), array,
-				       array->size);
-		if (ret != 0) {
-			fprintf(stderr, "error: parse comp tokens %d\n",
-				size);
-			free(array);
-			return -EINVAL;
-		}
-
-		/* parse pcm tokens */
-		ret = sof_parse_tokens(host, pcm_tokens,
-				       ARRAY_SIZE(comp_tokens), array,
-				       array->size);
-		if (ret != 0) {
-			fprintf(stderr, "error: parse pcm tokens %d\n", size);
-			free(array);
-			return -EINVAL;
-		}
-
-		total_array_size += array->size;
 	}
 
-	free(array);
+	list_item_append(&pcm_info->item, pcm_list);
+
 	return 0;
 }
-

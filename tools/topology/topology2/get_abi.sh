@@ -8,8 +8,10 @@ ABI_MINOR=$(awk '/^ *# *define *SOF_ABI_MINOR / { print $3 }' $1/src/include/ker
 ABI_PATCH=$(awk '/^ *# *define *SOF_ABI_PATCH / { print $3 }' $1/src/include/kernel/abi.h)
 
 cat <<EOF_HEADER
-Object.Base.manifest."sof_manifest" {
-	Object.Base.data."SOF ABI" {
+Object.Base.manifest.1 {
+	name "sof_manifest"
+	Object.Base.data.1 {
+		name "SOF ABI"
 EOF_HEADER
 
 print_1byte()
@@ -36,4 +38,4 @@ case "$2" in
 	ipc4) print_2bytes "$ABI_PATCH" ;;
 esac
 
-printf '\"\n\t}\n}'
+printf '\"\n\t}\n}\n'

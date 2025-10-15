@@ -27,25 +27,31 @@ prm.pdm(2).polarity_mic_a = 0;
 prm.pdm(2).polarity_mic_b = 0;
 prm.pdm(2).clk_edge = 0;
 prm.pdm(2).skew = 0;
+prm.vfn = {};
 
 %% Design
 prm.pdmclk_min = 2.4e6;
 prm.pdmclk_max = 4.8e6;
 
+%% alsa-utils
+if exist('include_alsa_utils', 'dir') == 7
+	rmdir('include_alsa_utils', 's');
+end
+
 % clkdiv, mcic, mfira, mfirb
-prm.fifo_a_fs =  8e3; prm.fifo_b_fs = 16e3; dmic_init(prm); %  8, 30, 10, 5
-prm.fifo_a_fs =  8e3; prm.fifo_b_fs = 32e3; dmic_init(prm); %  8, 25, 12, 3
-prm.fifo_a_fs =  8e3; prm.fifo_b_fs = 48e3; dmic_init(prm); %  8, 25, 12, 2
-prm.fifo_a_fs = 24e3; prm.fifo_b_fs = 96e3; dmic_init(prm); %  5, 20,  8, 2
-prm.fifo_a_fs = 32e3; prm.fifo_b_fs = 96e3; dmic_init(prm); %  5, 20,  6, 2
-prm.fifo_a_fs = 48e3; prm.fifo_b_fs = 96e3; dmic_init(prm); %  5, 20,  4, 2
-prm.fifo_a_fs = 48e3; prm.fifo_b_fs = 16e3; dmic_init(prm); %  8, 25,  2, 6
+prm.fifo_a_fs =  8e3; prm.fifo_b_fs = 16e3; prm = dmic_init(prm); %  8, 30, 10, 5
+prm.fifo_a_fs =  8e3; prm.fifo_b_fs = 32e3; prm = dmic_init(prm); %  8, 25, 12, 3
+prm.fifo_a_fs =  8e3; prm.fifo_b_fs = 48e3; prm = dmic_init(prm); %  8, 25, 12, 2
+prm.fifo_a_fs = 24e3; prm.fifo_b_fs = 96e3; prm = dmic_init(prm); %  5, 20,  8, 2
+prm.fifo_a_fs = 32e3; prm.fifo_b_fs = 96e3; prm = dmic_init(prm); %  5, 20,  6, 2
+prm.fifo_a_fs = 48e3; prm.fifo_b_fs = 96e3; prm = dmic_init(prm); %  5, 20,  4, 2
+prm.fifo_a_fs = 48e3; prm.fifo_b_fs = 16e3; prm = dmic_init(prm); %  8, 25,  2, 6
 
 %% No need to run due to duplicated FIR coefficients
-%prm.fifo_a_fs =  8e3; prm.fifo_b_fs = 24e3; dmic_init(prm); %  8, 25, 12, 4
-%prm.fifo_a_fs = 16e3; prm.fifo_b_fs = 32e3; dmic_init(prm); %  8, 25,  6, 3
-%prm.fifo_a_fs = 16e3; prm.fifo_b_fs = 24e3; dmic_init(prm); %  8, 25,  6, 4
-%prm.fifo_a_fs = 16e3; prm.fifo_b_fs = 96e3; dmic_init(prm); %  5, 20, 12, 2
-%prm.fifo_a_fs = 24e3; prm.fifo_b_fs = 32e3; dmic_init(prm); %  8, 25,  4, 3
-%prm.fifo_a_fs = 24e3; prm.fifo_b_fs = 48e3; dmic_init(prm); %  8, 25,  4, 2
-%prm.fifo_a_fs = 32e3; prm.fifo_b_fs = 48e3; dmic_init(prm); %  5, 20,  6, 4
+%prm.fifo_a_fs =  8e3; prm.fifo_b_fs = 24e3; prm = dmic_init(prm); %  8, 25, 12, 4
+%prm.fifo_a_fs = 16e3; prm.fifo_b_fs = 32e3; prm = dmic_init(prm); %  8, 25,  6, 3
+%prm.fifo_a_fs = 16e3; prm.fifo_b_fs = 24e3; prm = dmic_init(prm); %  8, 25,  6, 4
+%prm.fifo_a_fs = 16e3; prm.fifo_b_fs = 96e3; prm = dmic_init(prm); %  5, 20, 12, 2
+%prm.fifo_a_fs = 24e3; prm.fifo_b_fs = 32e3; prm = dmic_init(prm); %  8, 25,  4, 3
+%prm.fifo_a_fs = 24e3; prm.fifo_b_fs = 48e3; prm = dmic_init(prm); %  8, 25,  4, 2
+%prm.fifo_a_fs = 32e3; prm.fifo_b_fs = 48e3; prm = dmic_init(prm); %  5, 20,  6, 4

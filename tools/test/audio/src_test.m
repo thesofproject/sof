@@ -1,30 +1,39 @@
-function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list)
+function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots, comp, xtrun)
 
 %%
 % src_test - test with SRC test bench objective audio quality parameters
 %
-% src_test(bits_in, bits_out, fs_in, fs_out)
+% src_test(bits_in, bits_out, fs_in, fs_out, full_test, show_plots, comp, xtrun)
 %
-% bits_in  - input word length
-% bits_out - output word length
-% fs_in    - vector of rates in
-% fs_out   - vector of rates out
+% bits_in    - input word length
+% bits_out   - output word length
+% fs_in      - vector of rates in, default 8 to 192 kHz
+% fs_out     - vector of rates out, default 8 to 192 kHz
+% full_test  - set to 0 for chirp only, 1 for all, default 1
+% show_plots - set to 1 to see plots, default 0
+% comp       - set to 'src' or 'asrc', default 'src'
+% xtrun      - set to 'xt-run' or 'xt-run --turbo' to test with xt-testbench
+%
+% E.g.
+% src_test(32, 32, 44100, 48000, 1, 1, 'src', 'xt-run --turbo');
 %
 % A default in-out matrix with 32 bits data is tested if the
 % parameters are omitted.
 %
 
 % SPDX-License-Identifier: BSD-3-Clause
-% Copyright(c) 2016 Intel Corporation. All rights reserved.
+% Copyright(c) 2016-2025 Intel Corporation.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 addpath('std_utils');
 addpath('test_utils');
-addpath('../../tune/src');
+addpath('../../../src/audio/src/tune');
 mkdir_check('plots');
 mkdir_check('reports');
 
 %% Defaults for call parameters
+default_in  = [ 8 11.025 12 16 18.9 22.050 24 32 37.8 44.1 48 50 64 88.2 96 176.4 192] * 1e3;
+default_out = [ 8 11.025 12 16      22.05  24 32      44.1 48 50 64 88.2 96 176.4 192] * 1e3;
 if nargin < 1
 	bits_in = 32;
 end
@@ -32,12 +41,28 @@ if nargin < 2
 	bits_out = 32;
 end
 if nargin < 3
-        fs_in_list = [ 8 11.025 12 16 18.9 22.050 24 32 37.8 44.1 48 ...
-		       50 64 88.2 96 176.4 192] * 1e3;
+	fs_in_list = default_in;
 end
 if nargin < 4
-	fs_out_list = [ 8 11.025 12 16 22.05 24 32 44.1 48 ...
-		        50 64 88.2 96 176.4 192] * 1e3;
+	fs_out_list = default_out;
+end
+if nargin < 5
+	full_test = 1;
+end
+if nargin < 6
+	show_plots = 0;
+end
+if nargin < 7
+	comp = 'src';
+end
+if nargin < 8
+	xtrun = '';
+end
+if isempty(fs_in_list)
+	fs_in_list = default_in;
+end
+if isempty(fs_out_list)
+	fs_out_list = default_out;
 end
 
 %% Generic test pass/fail criteria
@@ -54,12 +79,14 @@ t.aap_db_max = -60;
 t.aip_db_max = -60;
 
 %% Defaults for test
-t.fmt = 'raw';         % Can be 'raw' (fast binary) or 'txt' (debug)
-t.nch = 2;             % Number of channels
-t.ch = 0;              % 1..nch. With value 0 test a randomly selected channel.
-t.bits_in = bits_in;   % Input word length
-t.bits_out = bits_out; % Output word length
-t.full_test = 1;       % 0 is quick check only, 1 is full set
+t.fmt = 'raw';          % Can be 'raw' (fast binary) or 'txt' (debug)
+t.nch = 2;              % Number of channels
+t.ch = 0;               % 1..nch. With value 0 test a randomly selected channel.
+t.bits_in = bits_in;    % Input word length
+t.bits_out = bits_out;  % Output word length
+t.full_test = full_test; % 0 is quick check only, 1 is full set
+t.comp = comp;          % Component to test
+t.xtrun = xtrun;
 
 %% Show graphics or not. With visible plot windows Octave may freeze if too
 %  many windows are kept open. As workaround setting close windows to
@@ -67,8 +94,13 @@ t.full_test = 1;       % 0 is quick check only, 1 is full set
 %  visibility set to to 0 only console text is seen. The plots are
 %  exported into plots directory in png format and can be viewed from
 %  there.
-t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
-t.plot_visible = 'off';    % Use off for batch tests and on for interactive
+if show_plots
+	t.plot_close_windows = 0;
+	t.plot_visible = 'on';
+else
+	t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
+	t.plot_visible = 'off';    % Use off for batch tests and on for interactive
+end
 t.files_delete = 1;        % Set to 0 to inspect the audio data files
 
 %% Init for test loop
@@ -94,7 +126,6 @@ r.n_na = 0;
 for b = 1:n_fso
         for a = 1:n_fsi
                 v = -ones(n_test,1); % Set pass/fail test verdict to not executed
-                tn = 1;
                 t.fs1 = fs_in_list(a);
                 t.fs2 = fs_out_list(b);
                 v(1) = chirp_test(t);
@@ -203,7 +234,7 @@ end
 test = g_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -232,7 +263,7 @@ test.f_max = 0.99 * min(t.fs1/2, t.fs2/2);     % Measure up to Nyquist frequency
 test = fr_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -262,16 +293,14 @@ end
 
 prm = src_param(t.fs1, t.fs2, test.coef_bits);
 test.f_start = 20;
-test.f_end = prm.c_pb*min(t.fs1, t.fs2);
-test.fu = prm.c_pb*min(t.fs1, t.fs2);
-%test.f_end = 0.4535*min(t.fs1, t.fs2);
-%test.fu = 0.4535*min(t.fs1, t.fs2);
+test.f_end = min(prm.c_pb * min(t.fs1, t.fs2), 20e3);
+test.fu = min(prm.c_pb * t.fs2, 20e3); % AES17 5.2.5 standard low pass as 20 kHz
 
 %% Create input file
 test = thdnf_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -300,7 +329,7 @@ end
 test = dr_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -335,7 +364,7 @@ test.f_end = 0.5*t.fs2;
 test = aap_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -368,7 +397,7 @@ test.f_end = t.fs1/2;
 test = aip_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -398,12 +427,14 @@ test = test_defaults_src(t);
 test = chirp_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Analyze
 test.fs = t.fs2;
 test = chirp_test_analyze(test);
-src_test_result_print(t, 'Chirp', 'chirpf');
+if test.fail >= 0
+	src_test_result_print(t, 'Chirp', 'chirpf');
+end
 
 % Delete files unless e.g. debugging and need data to run
 delete_check(t.files_delete, test.fn_in);
@@ -417,7 +448,7 @@ end
 %%
 
 function test = test_defaults_src(t)
-test.comp = 'src';
+test.comp = t.comp;
 test.fmt = t.fmt;
 test.bits_in = t.bits_in;
 test.bits_out = t.bits_out;
@@ -426,6 +457,7 @@ test.ch = t.ch;
 test.fs = t.fs1;
 test.fs1 = t.fs1;
 test.fs2 = t.fs2;
+test.xtrun = t.xtrun;
 test.coef_bits = 24; % No need to use actual word length in test
 test.att_rec_db = 0; % Not used in simulation test
 test.quick = 0;      % Test speed is no issue in simulation
@@ -443,24 +475,23 @@ test.thdnf_mask_hi = [];
 test.thdnf_max = [];
 end
 
-function test = test_run_src(test, t)
+function test = test_run_src(test)
 test.fs_in = test.fs1;
 test.fs_out = test.fs2;
+test.extra_opts = '-C 300000'; % Limit to 5 min max, assume 1 ms scheduling
 delete_check(1, test.fn_out);
 test = test_run(test);
 end
 
 function src_test_result_print(t, testverbose, testacronym, ph)
 tstr = sprintf('%s SRC %d, %d', testverbose, t.fs1, t.fs2);
-if nargin > 3
+if nargin > 3 && ~isempty(ph)
         title(ph, tstr);
 else
         title(tstr);
 end
 pfn = sprintf('plots/%s_src_%d_%d.png', testacronym, t.fs1, t.fs2);
-% The print command caused a strange error with __osmesa_print__
-% so disable it for now until solved.
-%print(pfn, '-dpng');
+print(pfn, '-dpng');
 if t.plot_close_windows
 	close all;
 end

@@ -1,5 +1,7 @@
 #
-# Topology for i.MX8QM / i.MX8QXP boards with wm8960 codec demonstrating mixer component
+# Topology for i.MX8QM/i.MX8QXP/i.MX8MP  boards with `CODEC' codec demonstrating mixer component
+#
+# CODEC: wm8960, wm8962
 #
 
 # Include topology builder
@@ -21,9 +23,9 @@ include(`platform/imx/imx8.m4')
 # Define the pipelines
 #
 # PCM0 -----> volume -------v
-#                            low latency mixer ----> volume ----> SAI1
+#                            low latency mixer ----> volume ----> `SAI_INDEX' (`CODEC')
 # PCM1 -----> volume -------^
-# PCM0 <---- Volume <---- SAI1
+# PCM0 <---- Volume <---- `SAI_INDEX'
 #
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
@@ -31,23 +33,34 @@ include(`platform/imx/imx8.m4')
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	2, 0, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000)
+	`RATE', `RATE', `RATE')
 
 #
 # DAI configuration
 #
-# SAI port 1 is our only pipeline DAI
+# SAI port SAI_INDEX is our only pipeline DAI
 #
 
-# playback DAI is SAI1 using 2 periods
+# define STREAM_NAME, based on CODEC name
+define(`STREAM_NAME',
+	`ifelse(CODEC, `wm8960', `-wm8960-hifi',
+			CODEC, `wm8962', `-wm8962',
+			`fatal_error(`Codec not supported.')')')
+
+# define DAI BE dai_link name
+define(`DAI_BE_NAME', concat(concat(`sai', SAI_INDEX), STREAM_NAME))
+
+ifdef(`DMA_DOMAIN', `define(`SCHEDULE_DOMAIN', SCHEDULE_TIME_DOMAIN_DMA)', `define(`SCHEDULE_DOMAIN', SCHEDULE_TIME_DOMAIN_TIMER)')
+
+# playback DAI is SAI_SAI_INDEX using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 1
 # this defines pipeline 1. The 'NOT_USED_IGNORED' is due to dependencies
 # and is adjusted later with an explicit dapm line.
 DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
-	1, SAI, 1, sai1-wm8960-hifi,
+	1, SAI, SAI_INDEX, DAI_BE_NAME,
 	NOT_USED_IGNORED, 2, s32le,
-	1000, 1, 0, SCHEDULE_TIME_DOMAIN_DMA,
-	2, 48000)
+	1000, 1, 0, SCHEDULE_DOMAIN,
+	2, `RATE')
 
 # PCM Playback pipeline 3 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline with priority 0 on core 0
@@ -55,8 +68,8 @@ DAI_ADD(sof/pipe-mixer-volume-dai-playback.m4,
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	3, 0, 2, s32le,
 	1000, 0, 0,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_DMA,
+	`RATE', `RATE', `RATE',
+	SCHEDULE_DOMAIN,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # PCM Playback pipeline 4 on PCM 1 using max 2 channels of s32le.
@@ -65,8 +78,8 @@ PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 PIPELINE_PCM_ADD(sof/pipe-host-volume-playback.m4,
 	4, 1, 2, s32le,
 	5000, 0, 0,
-	48000, 48000, 48000,
-	SCHEDULE_TIME_DOMAIN_DMA,
+	`RATE', `RATE', `RATE',
+	SCHEDULE_DOMAIN,
 	PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
@@ -82,13 +95,13 @@ SectionGraph."PIPE_NAME" {
 	]
 }
 
-# capture DAI is SAI1 using 2 periods
+# capture DAI is SAI_SAI_INDEX using 2 periods
 # Buffers use s32le format, 1000us deadline with priority 0 on core 0
 # this is part of pipeline 2
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, SAI, 1, sai1-wm8960-hifi,
+	2, SAI, SAI_INDEX, DAI_BE_NAME,
 	PIPELINE_SINK_2, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_DMA)
+	1000, 0, 0, SCHEDULE_DOMAIN)
 
 
 # PCM definitions
@@ -98,9 +111,18 @@ PCM_PLAYBACK_ADD(PCM Deep Buffer, 1, PIPELINE_PCM_4)
 #
 # BE configurations
 #
-DAI_CONFIG(SAI, 1, 0, sai1-wm8960-hifi,
-	   SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
-		      SAI_CLOCK(bclk, 3072000, codec_master),
-		      SAI_CLOCK(fsync, 48000, codec_master),
-		      SAI_TDM(2, 16, 3, 3),
-		      SAI_CONFIG_DATA(SAI, 1, 0)))
+DAI_CONFIG(SAI, SAI_INDEX, 0, DAI_BE_NAME,
+ifelse(
+	CODEC, `wm8960', `
+	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
+		SAI_CLOCK(bclk, 3072000, codec_provider),
+		SAI_CLOCK(fsync, RATE, codec_provider),
+		SAI_TDM(2, 32, 3, 3),
+		SAI_CONFIG_DATA(SAI, SAI_INDEX, 0)))',
+	CODEC, `wm8962', `
+	SAI_CONFIG(I2S, SAI_CLOCK(mclk, 12288000, codec_mclk_in),
+		SAI_CLOCK(bclk, 3072000, codec_provider),
+		SAI_CLOCK(fsync, RATE, codec_provider),
+		SAI_TDM(2, 32, 3, 3),
+		SAI_CONFIG_DATA(SAI, SAI_INDEX, 0)))',
+	)
