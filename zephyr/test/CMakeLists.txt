@@ -1,5 +1,5 @@
-if (CONFIG_ACE_VERSION_1_5)
-       zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
+if (CONFIG_SOF_BOOT_TEST)
+       zephyr_library_sources_ifdef(CONFIG_VIRTUAL_HEAP
                vmh.c
        )
 endif()
