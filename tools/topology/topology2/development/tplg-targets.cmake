@@ -372,4 +372,14 @@ DEEP_BUF_SPK=true,PLAYBACK_PIPELINE_SRC=ctc,SSP_SPK_FMT_24=true,SSP_HS_FMT_24=tr
 # CS35L56 SSP2
 "cavs-cs35l56\;sof-tgl-cs35l56-ssp2\;PLATFORM=tgl,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-tgl-cs35l56-ssp2.bin"
+
+# RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
+# Enable FLOAT_LE and U8 PCM formats
+"cavs-sdw\;sof-ptl-rt721-4ch-allfmt\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt721-4ch-allfmt.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
+DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,PCM_FORMAT_ALL=true"
 )
