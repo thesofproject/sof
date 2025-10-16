@@ -71,10 +71,20 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	return ret;
 }
 
+static void mod_resource_init(struct processing_module *mod)
+{
+	struct module_data *md = &mod->priv;
+	/* Init memory list */
+	list_init(&md->resources.res_list);
+	list_init(&md->resources.free_cont_list);
+	list_init(&md->resources.cont_chunk_list);
+	md->resources.heap_usage = 0;
+	md->resources.heap_high_water_mark = 0;
+}
+
 int module_init(struct processing_module *mod)
 {
 	int ret;
-	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	const struct module_interface *const interface = dev->drv->adapter_ops;
 
@@ -99,14 +109,9 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-	/* Init memory list */
-	list_init(&md->resources.res_list);
-	list_init(&md->resources.free_cont_list);
-	list_init(&md->resources.cont_chunk_list);
-	md->resources.heap_usage = 0;
-	md->resources.heap_high_water_mark = 0;
+	mod_resource_init(mod);
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-	md->resources.rsrc_mngr = k_current_get();
+	mod->priv.resources.rsrc_mngr = k_current_get();
 #endif
 	/* Now we can proceed with module specific initialization */
 	ret = interface->init(mod);
@@ -117,7 +122,7 @@ int module_init(struct processing_module *mod)
 
 	comp_dbg(dev, "done");
 #if CONFIG_IPC_MAJOR_3
-	md->state = MODULE_INITIALIZED;
+	mod->priv.state = MODULE_INITIALIZED;
 #endif
 
 	return 0;
