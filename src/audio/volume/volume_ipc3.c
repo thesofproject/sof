@@ -14,7 +14,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/uuid.h>
@@ -81,7 +80,7 @@ int volume_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct vol_data));
+	cd = mod_zalloc(mod, sizeof(struct vol_data));
 	if (!cd)
 		return -ENOMEM;
 
@@ -89,9 +88,8 @@ int volume_init(struct processing_module *mod)
 	 * malloc memory to store current volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
 	 */
-	cd->vol = rmalloc(SOF_MEM_FLAG_USER, vol_size);
+	cd->vol = mod_alloc(mod, vol_size);
 	if (!cd->vol) {
-		rfree(cd);
 		comp_err(dev, "Failed to allocate %zu", vol_size);
 		return -ENOMEM;
 	}
@@ -158,8 +156,6 @@ int volume_init(struct processing_module *mod)
 		break;
 	default:
 		comp_err(dev, "invalid ramp type %d", vol->ramp);
-		rfree(cd);
-		rfree(cd->vol);
 		return -EINVAL;
 	}
 
