@@ -223,7 +223,7 @@ void audio_buffer_init(struct sof_audio_buffer *buffer, uint32_t buffer_type, bo
 		       const struct audio_buffer_ops *audio_buffer_ops,
 		       struct sof_audio_stream_params *audio_stream_params)
 {
-	CORE_CHECK_STRUCT_INIT(&buffer, is_shared);
+	CORE_CHECK_STRUCT_INIT(buffer, is_shared);
 	buffer->buffer_type = buffer_type;
 	buffer->ops = audio_buffer_ops;
 	assert(audio_buffer_ops->free);
