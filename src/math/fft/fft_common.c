@@ -5,11 +5,15 @@
 // Author: Amery Song <chao.song@intel.com>
 //	   Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
+#include <sof/trace/trace.h>
+#include <sof/lib/uuid.h>
 #include <sof/common.h>
 #include <rtos/alloc.h>
 #include <sof/math/fft.h>
+
+SOF_DEFINE_REG_UUID(math_fft);
+DECLARE_TR_CTX(math_fft_tr, SOF_UUID(math_fft_uuid), LOG_LEVEL_INFO);
 
 struct fft_plan *fft_plan_new(void *inb, void *outb, uint32_t size, int bits)
 {
@@ -18,12 +22,21 @@ struct fft_plan *fft_plan_new(void *inb, void *outb, uint32_t size, int bits)
 	int len = 0;
 	int i;
 
-	if (!inb || !outb)
+	if (!inb || !outb) {
+		tr_err(&math_fft_tr, "Input or output buffer is NULL");
 		return NULL;
+	}
+
+	if (size > FFT_SIZE_MAX) {
+		tr_err(&math_fft_tr, "Illegal FFT size %d, max is %d.", size, FFT_SIZE_MAX);
+		return NULL;
+	}
 
 	plan = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct fft_plan));
-	if (!plan)
+	if (!plan) {
+		tr_err(&math_fft_tr, "Memory allocation failed.");
 		return NULL;
+	}
 
 	switch (bits) {
 	case 16:
@@ -35,6 +48,7 @@ struct fft_plan *fft_plan_new(void *inb, void *outb, uint32_t size, int bits)
 		plan->outb32 = outb;
 		break;
 	default:
+		tr_err(&math_fft_tr, "Illegal number of bits %d", bits);
 		rfree(plan);
 		return NULL;
 	}
