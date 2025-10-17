@@ -99,7 +99,7 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 
 	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
-		comp_err(dev, "comp_data_blob_handler_new() failed.");
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
 		return -ENOMEM;
 	}
 
