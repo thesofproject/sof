@@ -241,7 +241,7 @@ static int rtnr_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -250,17 +250,16 @@ static int rtnr_init(struct processing_module *mod)
 	cd->process_enable = true;
 
 	/* Handler for component data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto cd_fail;
+		return -ENOMEM;
 	}
 
 	ret = comp_init_data_blob(cd->model_handler, bs, ipc_rtnr->data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed with error: %d", ret);
-		goto cd_fail;
+		return ret;
 	}
 
 	/* Component defaults */
@@ -269,8 +268,7 @@ static int rtnr_init(struct processing_module *mod)
 	cd->rtk_agl = RTKMA_API_Context_Create(cd->process_sample_rate);
 	if (cd->rtk_agl == 0) {
 		comp_err(dev, "RTKMA_API_Context_Create failed.");
-		ret = -EINVAL;
-		goto cd_fail;
+		return -EINVAL;
 	}
 	comp_info(dev, "RTKMA_API_Context_Create succeeded.");
 
@@ -283,11 +281,6 @@ static int rtnr_init(struct processing_module *mod)
 
 	/* Done. */
 	return 0;
-
-cd_fail:
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
-	return ret;
 }
 
 static int rtnr_free(struct processing_module *mod)
@@ -296,11 +289,8 @@ static int rtnr_free(struct processing_module *mod)
 
 	comp_info(mod->dev, "rtnr_free()");
 
-	comp_data_blob_handler_free(cd->model_handler);
-
 	RTKMA_API_Context_Free(cd->rtk_agl);
 
-	rfree(cd);
 	return 0;
 }
 
