@@ -23,6 +23,7 @@
 #include <sof/platform.h>
 #include <sof/ut.h>
 #include <rtos/interrupt.h>
+#include <rtos/kernel.h>
 #include <rtos/symbol.h>
 #include <limits.h>
 #include <stdint.h>
@@ -44,6 +45,149 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL);
 }
 
+#if CONFIG_SOF_ZEPHYR_USE_SHARED_HEAP
+static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+							  const struct comp_ipc_config *config)
+{
+	struct comp_dev *dev = comp_alloc(drv, sizeof(*dev));
+
+	if (!dev) {
+		comp_cl_err(drv, "failed to allocate memory for comp_dev");
+		return NULL;
+	}
+
+	/* allocate module information.
+	 * for DP shared modules this struct must be accessible from all cores
+	 * Unfortunately at this point there's no information of components the module
+	 * will be bound to. So we need to allocate shared memory for each DP module
+	 * To be removed when pipeline 2.0 is ready
+	 */
+	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
+			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
+
+	struct processing_module *mod = module_driver_heap_rzalloc(drv->user_heap, flags,
+								   sizeof(*mod));
+
+	if (!mod) {
+		comp_err(dev, "failed to allocate memory for module");
+		goto err;
+	}
+
+	mod->dev = dev;
+
+	return mod;
+
+err:
+	module_driver_heap_free(drv->user_heap, dev);
+
+	return NULL;
+}
+
+static void module_adapter_mem_free(struct processing_module *mod)
+{
+	const struct comp_driver *drv = mod->dev->drv;
+
+#if CONFIG_IPC_MAJOR_4
+	if (mod)
+		module_driver_heap_free(drv->user_heap, mod->priv.cfg.input_pins);
+#endif
+	module_driver_heap_free(drv->user_heap, mod->dev);
+	module_driver_heap_free(drv->user_heap, mod);
+}
+#else
+
+#if CONFIG_MM_DRV
+#define PAGE_SZ CONFIG_MM_DRV_PAGE_SIZE
+#else
+#include <platform/platform.h>
+#define PAGE_SZ HOST_PAGE_SIZE
+#endif
+
+static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+							  const struct comp_ipc_config *config)
+{
+	uint8_t *mod_heap_mem;
+	struct k_heap *mod_heap;
+	int flags;
+
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		/* src-lite with 8 channels has been seen allocating 14k in one go */
+		const size_t heap_size = 20 * 1024;
+
+		/* Keep uncached to match the default SOF heap! */
+		mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					     heap_size, PAGE_SZ);
+		if (!mod_heap_mem)
+			return NULL;
+
+		const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap), 8);
+		void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
+
+		mod_heap = (struct k_heap *)mod_heap_mem;
+		k_heap_init(mod_heap, mod_heap_buf, heap_size - heap_prefix_size);
+
+		flags = SOF_MEM_FLAG_COHERENT;
+	} else {
+		mod_heap_mem = NULL;
+		mod_heap = NULL;
+
+		flags = 0;
+	}
+
+	struct processing_module *mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
+
+	if (!mod) {
+		comp_cl_err(drv, "failed to allocate memory for module");
+		goto emod;
+	}
+
+	memset(mod, 0, sizeof(*mod));
+	mod->priv.resources.heap = mod_heap;
+	mod->priv.resources.heap_mem = mod_heap_mem;
+
+	/*
+	 * comp_alloc() always allocated dev uncached. Would be difficult to optimize. Only
+	 * if the whole currently active topology is running on the primary core, then it
+	 * can be cached. Effectively it can be only cached in single-core configurations.
+	 */
+	struct comp_dev *dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
+
+	if (!dev) {
+		comp_cl_err(drv, "failed to allocate memory for comp_dev");
+		goto err;
+	}
+
+	memset(dev, 0, sizeof(*dev));
+	comp_init(drv, dev, sizeof(*dev));
+	dev->ipc_config = *config;
+
+	mod->dev = dev;
+
+	return mod;
+
+err:
+	sof_heap_free(mod_heap, mod);
+emod:
+	rfree(mod_heap_mem);
+
+	return NULL;
+}
+
+static void module_adapter_mem_free(struct processing_module *mod)
+{
+	struct k_heap *mod_heap = mod->priv.resources.heap;
+	void *mem = mod->priv.resources.heap_mem;
+
+#if CONFIG_IPC_MAJOR_4
+	if (mod)
+		sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
+#endif
+	sof_heap_free(mod_heap, mod->dev);
+	sof_heap_free(mod_heap, mod);
+	rfree(mem);
+}
+#endif
+
 /*
  * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
@@ -61,8 +205,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					void *mod_priv)
 {
 	int ret;
-	struct comp_dev *dev;
-	struct processing_module *mod;
 	struct module_config *dst;
 	const struct module_interface *const interface = drv->adapter_ops;
 
@@ -74,32 +216,17 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev) {
-		comp_cl_err(drv, "failed to allocate memory for comp_dev");
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+
+	if (!mod)
 		return NULL;
-	}
-	dev->ipc_config = *config;
-
-	/* allocate module information.
-	 * for DP shared modules this struct must be accessible from all cores
-	 * Unfortunately at this point there's no information of components the module
-	 * will be bound to. So we need to allocate shared memory for each DP module
-	 * To be removed when pipeline 2.0 is ready
-	 */
-	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
-			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-
-	mod = module_driver_heap_rzalloc(drv->user_heap, flags, sizeof(*mod));
-	if (!mod) {
-		comp_err(dev, "failed to allocate memory for module");
-		goto err;
-	}
 
 	dst = &mod->priv.cfg;
 
 	module_set_private_data(mod, mod_priv);
-	mod->dev = dev;
+
+	struct comp_dev *dev = mod->dev;
+
 	dev->mod = mod;
 
 	list_init(&mod->raw_data_buffers_list);
@@ -178,13 +305,10 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	comp_dbg(dev, "done");
 	return dev;
+
 err:
-#if CONFIG_IPC_MAJOR_4
-	if (mod)
-		rfree(mod->priv.cfg.input_pins);
-#endif
-	rfree(mod);
-	rfree(dev);
+	module_adapter_mem_free(mod);
+
 	return NULL;
 }
 EXPORT_SYMBOL(module_adapter_new);
@@ -542,11 +666,9 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 #endif
 
 	/* allocate stream_params each time */
-	if (mod->stream_params)
-		rfree(mod->stream_params);
+	mod_free(mod, mod->stream_params);
 
-	mod->stream_params = rzalloc(SOF_MEM_FLAG_USER,
-				     sizeof(*mod->stream_params) + params->ext_data_length);
+	mod->stream_params = mod_alloc(mod, sizeof(*mod->stream_params) + params->ext_data_length);
 	if (!mod->stream_params)
 		return -ENOMEM;
 
@@ -1248,7 +1370,7 @@ int module_adapter_reset(struct comp_dev *dev)
 		buffer_zero(buffer);
 	}
 
-	rfree(mod->stream_params);
+	mod_free(mod, mod->stream_params);
 	mod->stream_params = NULL;
 
 	comp_dbg(dev, "done");
@@ -1282,13 +1404,7 @@ void module_adapter_free(struct comp_dev *dev)
 
 	mod_free_all(mod);
 
-#if CONFIG_IPC_MAJOR_4
-	rfree(mod->priv.cfg.input_pins);
-#endif
-
-	rfree(mod->stream_params);
-	rfree(mod);
-	rfree(dev);
+	module_adapter_mem_free(mod);
 }
 EXPORT_SYMBOL(module_adapter_free);
 

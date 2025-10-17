@@ -43,4 +43,8 @@ static inline void k_usleep(int32_t us)
 	wait_delay_us(us);
 }
 
+struct k_heap {
+	int unused;
+};
+
 #endif /* __POSIX_RTOS_KERNEL_H__ */
