@@ -688,9 +688,13 @@ RIMAGE_SOURCE_DIR = west_top / "sof" / "tools" / "rimage"
 def rimage_west_configuration(platform_dict, dest_dir):
 	"""Configure rimage in a new file `dest_dir/westconfig.ini`, starting
 	from the workspace .west/config.
-	Returns a tuple (west ConfigFile, pathlib.Path to that new file).
+	Returns a tuple: (west.configuration.Configuration, pathlib.Path to that new file).
 	"""
 
+	# This complex and painful saving and copying can be dropped and
+	# greatly simplified once any of these alternatives gets finally
+	# implemented in `west config`:
+	# https://github.com/zephyrproject-rtos/west/issues/429 or 849, 867,..
 	saved_local_var = os.environ.get('WEST_CONFIG_LOCAL')
 	workspace_west_config_path = os.environ.get('WEST_CONFIG_LOCAL',
 						   str(west_top / ".west" / "config"))
