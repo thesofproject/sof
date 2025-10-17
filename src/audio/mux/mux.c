@@ -106,7 +106,7 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 	module_data->private = cd;
 	ret = comp_init_data_blob(cd->model_handler, cfg->size, cfg->init_data);
 	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed.");
+		comp_err(dev, "module data blob initialization failed.");
 		return ret;
 	}
 
