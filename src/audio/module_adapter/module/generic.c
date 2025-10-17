@@ -188,8 +188,19 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 		return NULL;
 	}
 
-	/* Allocate buffer memory for module */
+#if CONFIG_SOF_PACOVR
+	/* do we need to use the dynamic heap or the static heap? */
+	if (mod->priv.state != MODULE_INITIALIZED) {
+		/* static allocator */
+		ptr = pacovr_static_alloc(mod->dev->pipeline->pacovr, size);
+	} else {
+		/* dynamic allocator */
+		ptr = pacovr_dynamic_alloc_align(mod->dev->pipeline->pacovr, size, alignment);
+	}
+#else
+	/* Allocate memory for module */
 	ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
+#endif
 
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
@@ -238,8 +249,19 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignme
 		return NULL;
 	}
 
+#if CONFIG_SOF_PACOVR
+	/* do we need to use the dynamic heap or the static heap? */
+	if (mod->priv.state != MODULE_INITIALIZED) {
+		/* static allocator */
+		ptr = pacovr_static_alloc(mod->dev->pipeline->pacovr, size);
+	} else {
+		/* dynamic allocator */
+		ptr = pacovr_dynamic_alloc_align(mod->dev->pipeline->pacovr, size, alignment);
+	}
+#else
 	/* Allocate memory for module */
 	ptr = rmalloc_align(SOF_MEM_FLAG_USER, size, alignment);
+#endif
 
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
@@ -340,7 +362,18 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 
 	switch (container->type) {
 	case MOD_RES_HEAP:
+#if CONFIG_SOF_PACOVR
+	/* do we need to use the scratch heap or the batch heap? */
+	if (mod->priv.state != MODULE_INITIALIZED) {
+		/* static allocator */
+		pacovr_static_free(mod->dev->pipeline->pacovr, container->ptr);
+	} else {
+		/* dynamic allocator */
+		pacovr_dynamic_free(mod->dev->pipeline->pacovr, container->ptr);
+	}
+#else
 		rfree(container->ptr);
+#endif
 		res->heap_usage -= container->size;
 		return 0;
 #if CONFIG_COMP_BLOB
