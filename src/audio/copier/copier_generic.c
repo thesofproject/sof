@@ -328,7 +328,7 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 	/* update each sink format */
 	comp_dev_for_each_consumer(dev, sink) {
 		int j;
-		j = IPC4_SINK_QUEUE_ID(buf_get_id(sink));
+		j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
 
 		ipc4_update_buffer_format(sink, &cd->out_fmt[j]);
 	}

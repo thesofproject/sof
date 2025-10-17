@@ -1102,7 +1102,7 @@ static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point
 	switch (probe_point.fields.type) {
 	case PROBE_TYPE_INPUT:
 		comp_dev_for_each_producer(dev->cd, buf) {
-			queue_id = IPC4_SRC_QUEUE_ID(buf_get_id(buf));
+			queue_id = IPC4_SINK_QUEUE_ID(buf_get_id(buf));
 
 			if (queue_id == probe_point.fields.index)
 				return buf;
@@ -1110,7 +1110,7 @@ static struct comp_buffer *ipc4_get_buffer(struct ipc_comp_dev *dev, probe_point
 		break;
 	case PROBE_TYPE_OUTPUT:
 		comp_dev_for_each_consumer(dev->cd, buf) {
-			queue_id = IPC4_SINK_QUEUE_ID(buf_get_id(buf));
+			queue_id = IPC4_SRC_QUEUE_ID(buf_get_id(buf));
 
 			if (queue_id == probe_point.fields.index)
 				return buf;
@@ -1581,14 +1581,14 @@ static int probe_get_available_points(struct processing_module *mod,
 
 		id.fields.type = PROBE_TYPE_INPUT;
 		comp_dev_for_each_producer(icd->cd, buf) {
-			id.fields.index = IPC4_SRC_QUEUE_ID(buf_get_id(buf));
+			id.fields.index = IPC4_SINK_QUEUE_ID(buf_get_id(buf));
 			if (probe_add_point_info_params(info, id, i, max_size))
 				return 0;
 			i++;
 		}
 		id.fields.type = PROBE_TYPE_OUTPUT;
 		comp_dev_for_each_consumer(icd->cd, buf) {
-			id.fields.index = IPC4_SINK_QUEUE_ID(buf_get_id(buf));
+			id.fields.index = IPC4_SRC_QUEUE_ID(buf_get_id(buf));
 			if (probe_add_point_info_params(info, id, i, max_size))
 				return 0;
 			i++;
