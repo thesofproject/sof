@@ -7,6 +7,7 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
+#include <rtos/userspace_helper.h>
 #include <utilities/array.h>
 #include <iadk_module_adapter.h>
 #include <sof/lib_manager.h>
@@ -201,7 +202,7 @@ static int modules_reset(struct processing_module *mod)
 }
 
 /* Processing Module Adapter API*/
-const struct module_interface processing_module_adapter_interface = {
+APP_TASK_DATA const struct module_interface processing_module_adapter_interface = {
 	.init = modules_init,
 	.prepare = modules_prepare,
 	.process = modules_process,

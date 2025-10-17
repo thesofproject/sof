@@ -26,6 +26,7 @@
 #include <rtos/symbol.h>
 #include <limits.h>
 #include <stdint.h>
+#include <rtos/userspace_helper.h>
 
 LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
@@ -41,7 +42,7 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config, const void *spec)
 {
-	return module_adapter_new_ext(drv, config, spec, NULL);
+	return module_adapter_new_ext(drv, config, spec, NULL, NULL);
 }
 
 /*
@@ -58,7 +59,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
  */
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config, const void *spec,
-					void *mod_priv)
+					void *mod_priv, struct userspace_context* user_ctx)
 {
 	int ret;
 	struct comp_dev *dev;
@@ -100,6 +101,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	module_set_private_data(mod, mod_priv);
 	mod->dev = dev;
+#if CONFIG_USERSPACE
+	mod->user_ctx = user_ctx;
+#endif /* CONFIG_USERSPACE */
 	dev->mod = mod;
 
 	list_init(&mod->raw_data_buffers_list);
@@ -181,10 +185,11 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 err:
 #if CONFIG_IPC_MAJOR_4
 	if (mod)
-		rfree(mod->priv.cfg.input_pins);
-#endif
-	rfree(mod);
-	rfree(dev);
+		module_driver_heap_free(drv->user_heap, mod->priv.cfg.input_pins);
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+	module_driver_heap_free(drv->user_heap, mod);
+	module_driver_heap_free(drv->user_heap, dev);
 	return NULL;
 }
 EXPORT_SYMBOL(module_adapter_new);
@@ -1261,6 +1266,7 @@ void module_adapter_free(struct comp_dev *dev)
 {
 	int ret;
 	struct processing_module *mod = comp_mod(dev);
+	const struct comp_driver *drv = dev->drv;
 	struct list_item *blist, *_blist;
 
 	comp_dbg(dev, "start");
@@ -1283,12 +1289,12 @@ void module_adapter_free(struct comp_dev *dev)
 	mod_free_all(mod);
 
 #if CONFIG_IPC_MAJOR_4
-	rfree(mod->priv.cfg.input_pins);
+	module_driver_heap_free(drv->user_heap, mod->priv.cfg.input_pins);
 #endif
 
-	rfree(mod->stream_params);
-	rfree(mod);
-	rfree(dev);
+	module_driver_heap_free(drv->user_heap, mod->stream_params);
+	module_driver_heap_free(drv->user_heap, mod);
+	module_driver_heap_free(drv->user_heap, dev);
 }
 EXPORT_SYMBOL(module_adapter_free);
 
