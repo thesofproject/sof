@@ -376,6 +376,20 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 	struct sys_memory_stats stats;
 #endif
 
+	/*
+	 * Zephyr sys_heap stores metadata at start of each
+	 * heap allocation. To ensure no allocated cached buffer
+	 * overlaps the same cacheline with the metadata chunk,
+	 * align both allocation start and size of allocation
+	 * to cacheline. As cached and non-cached allocations are
+	 * mixed, same rules need to be followed for both type of
+	 * allocations.
+	 */
+#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
+	min_align = MAX(PLATFORM_DCACHE_ALIGN, min_align);
+	bytes = ALIGN_UP(bytes, PLATFORM_DCACHE_ALIGN);
+#endif
+
 	key = k_spin_lock(&h->lock);
 	ret = sys_heap_aligned_alloc(&h->heap, min_align, bytes);
 	k_spin_unlock(&h->lock, key);
@@ -393,20 +407,6 @@ static void __sparse_cache *heap_alloc_aligned_cached(struct k_heap *h,
 						      size_t min_align, size_t bytes)
 {
 	void __sparse_cache *ptr;
-
-	/*
-	 * Zephyr sys_heap stores metadata at start of each
-	 * heap allocation. To ensure no allocated cached buffer
-	 * overlaps the same cacheline with the metadata chunk,
-	 * align both allocation start and size of allocation
-	 * to cacheline. As cached and non-cached allocations are
-	 * mixed, same rules need to be followed for both type of
-	 * allocations.
-	 */
-#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
-	min_align = MAX(PLATFORM_DCACHE_ALIGN, min_align);
-	bytes = ALIGN_UP(bytes, min_align);
-#endif
 
 	ptr = (__sparse_force void __sparse_cache *)heap_alloc_aligned(h, min_align, bytes);
 
@@ -470,11 +470,6 @@ void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
 	if (!(flags & SOF_MEM_FLAG_COHERENT)) {
 		ptr = (__sparse_force void *)heap_alloc_aligned_cached(heap, alignment, bytes);
 	} else {
-		/*
-		 * XTOS alloc implementation has used dcache alignment,
-		 * so SOF application code is expecting this behaviour.
-		 */
-		alignment = MAX(PLATFORM_DCACHE_ALIGN, alignment);
 		ptr = heap_alloc_aligned(heap, alignment, bytes);
 	}
 
