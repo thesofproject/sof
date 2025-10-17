@@ -24,6 +24,7 @@ static int setup(void **state)
 
 static int teardown(void **state)
 {
+	free_standard_connect_objects(*state);
 	free(*state);
 	return 0;
 }

@@ -88,44 +88,32 @@ static int mfcc_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
 	/* Handler for configuration data */
 	md->private = cd;
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto err;
+		return -ENOMEM;
 	}
 
 	/* Get configuration data */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->init_data);
 	if (ret < 0) {
 		comp_err(mod->dev, "comp_init_data_blob() failed.");
-		goto err_init;
+		return ret;
 	}
 
 	return 0;
-
-err_init:
-	comp_data_blob_handler_free(cd->model_handler);
-
-err:
-	rfree(cd);
-	return ret;
 }
 
 static int mfcc_free(struct processing_module *mod)
 {
-	struct mfcc_comp_data *cd = module_get_private_data(mod);
-
 	comp_info(mod->dev, "mfcc_free()");
-	comp_data_blob_handler_free(cd->model_handler);
-	mfcc_free_buffers(cd);
-	rfree(cd);
+	mfcc_free_buffers(mod);
 	return 0;
 }
 
