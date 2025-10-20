@@ -244,7 +244,8 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignme
 	}
 
 	/* Allocate memory for module */
-	ptr = rmalloc_align(SOF_MEM_FLAG_USER, size, alignment);
+	//ptr = rmalloc_align(SOF_MEM_FLAG_USER, size, alignment);
+	ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
 
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
