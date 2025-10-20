@@ -359,7 +359,8 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	ring_buffer->data_buffer_size =
 			ALIGN_UP(ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
 	ring_buffer->_data_buffer = (__sparse_force __sparse_cache void *)
-			rballoc_align(memory_flags, ring_buffer->data_buffer_size,
+			rballoc_align(user_get_buffer_memory_region(dev->drv),
+				      ring_buffer->data_buffer_size,
 				      PLATFORM_DCACHE_ALIGN);
 	if (!ring_buffer->_data_buffer)
 		goto err;
