@@ -590,22 +590,20 @@ void mod_free_all(struct processing_module *mod)
 	struct list_item *_list;
 
 	MEM_API_CHECK_THREAD(res);
-	/* Find which container keeps this memory */
-	list_for_item_safe(list, _list, &res->res_list) {
+	/* Free all contents found in used containers */
+	list_for_item(list, &res->res_list) {
 		struct module_resource *container =
 			container_of(list, struct module_resource, list);
 
 		free_contents(mod, container);
-		list_item_del(&container->list);
 	}
 
-	list_for_item_safe(list, _list, &res->free_cont_list) {
-		struct module_resource *container =
-			container_of(list, struct module_resource, list);
-
-		list_item_del(&container->list);
-	}
-
+	/*
+	 * We do not need to remove the containers from res_list in
+	 * the loop above or go through free_cont_list as all the
+	 * containers are anyway freed in the loop below, and the list
+	 * heads are reinitialized when mod_resource_init() is called.
+	 */
 	list_for_item_safe(list, _list, &res->cont_chunk_list) {
 		struct container_chunk *chunk =
 			container_of(list, struct container_chunk, chunk_list);
