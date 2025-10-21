@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2022 Intel Corporation. All rights reserved.
+// Copyright(c) 2022-2025 Intel Corporation.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -30,11 +30,7 @@
 #define WIN_HAMMING_A0_Q30 Q_CONVERT_FLOAT(0.54, 30)
 #define WIN_HAMMING_A1_Q30 Q_CONVERT_FLOAT(0.46, 30)
 
-/**
- * \brief Return rectangular window, simply values of one
- * \param[in,out]  win  Output vector with coefficients
- * \param[in]  length  Length of coefficients vector
- */
+/* Rectangular window */
 void win_rectangular_16b(int16_t *win, int length)
 {
 	int i;
@@ -43,14 +39,7 @@ void win_rectangular_16b(int16_t *win, int length)
 		win[i] = WIN_ONE_Q15;
 }
 
-/**
- * \brief Calculate Blackman window function, reference
- * https://en.wikipedia.org/wiki/Window_function#Blackman_window
-
- * \param[in,out]  win  Output vector with coefficients
- * \param[in]  length  Length of coefficients vector
- * \param[in]  a0      Parameter for window shape, use e.g. 0.42 as Q1.15
- */
+/* Blackman window */
 void win_blackman_16b(int16_t win[], int length, int16_t a0)
 {
 	const int32_t a1 = Q_CONVERT_FLOAT(0.5, 31);
@@ -77,6 +66,7 @@ void win_blackman_16b(int16_t win[], int length, int16_t a0)
 	}
 }
 
+/* Hamming window */
 void win_hamming_16b(int16_t win[], int length)
 {
 	int32_t val;
@@ -95,6 +85,7 @@ void win_hamming_16b(int16_t win[], int length)
 	}
 }
 
+/* Povey window */
 void win_povey_16b(int16_t win[], int length)
 {
 	int32_t cos_an;
