@@ -51,6 +51,24 @@ void win_blackman_16b(int16_t win[], int length, int16_t a0);
 void win_blackman_32b(int32_t win[], int length, int32_t a0);
 
 /**
+ * Calculates a Hann window function with 16 bits, reference
+ * https://en.wikipedia.org/wiki/Window_function#Hann_and_Hamming_windows
+ *
+ * @param win		Pointer to output vector with Q1.15 coefficients
+ * @param length	Length of coefficients vector
+ */
+void win_hann_16b(int16_t win[], int length);
+
+/**
+ * Calculates a Hann window function with 32 bits, reference
+ * https://en.wikipedia.org/wiki/Window_function#Hann_and_Hamming_windows
+ *
+ * @param win		Pointer to output vector with Q1.31 coefficients
+ * @param length	Length of coefficients vector
+ */
+void win_hann_32b(int32_t win[], int length);
+
+/**
  * Calculates a Hamming window function with 16 bits, reference
  * https://en.wikipedia.org/wiki/Window_function#Hann_and_Hamming_windows
  *
