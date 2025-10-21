@@ -404,6 +404,22 @@ if (CONFIG_SOC_MIMX9596_M7)
 	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/platform/imx95/linker/data-sections.ld)
 
 	set(PLATFORM "imx95")
+
+	# no longer done in Zephyr and should be handled by SOF
+	# See [1], [2], and [3] for more context
+	#
+	# [1]: https://github.com/zephyrproject-rtos/zephyr/issues/91061
+	# [2]: https://github.com/zephyrproject-rtos/zephyr/pull/97946
+	# [3]: https://github.com/zephyrproject-rtos/zephyr/pull/97988
+	add_custom_target(zephyr.ri ALL
+			  DEPENDS ${CMAKE_BINARY_DIR}/zephyr/zephyr.ri)
+
+	add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/zephyr/zephyr.ri
+			   COMMAND west sign --if-tool-available --tool rimage
+			   --build-dir ${CMAKE_BINARY_DIR} ${WEST_SIGN_OPTS}
+			   DEPENDS ${CMAKE_BINARY_DIR}/zephyr/${KERNEL_ELF_NAME})
+
+	board_set_rimage_target(imx95)
 endif()
 
 # AMD RMB platforms
