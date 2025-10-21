@@ -103,6 +103,37 @@ void win_blackman_32b(int32_t win[], int length, int32_t a0)
 	}
 }
 
+/* Hann window */
+void win_hann_16b(int16_t win[], int length)
+{
+	int32_t val;
+	int32_t a;
+	int n;
+
+	a = WIN_PI_Q28 / (length - 1); /* Q4.28 */
+	for (n = 0; n < length; n++) {
+		/* Calculate sin(a * n)^2 */
+		val = sin_fixed_32b(a * n); /* Q4.28 -> Q1.31 */
+		val = Q_MULTSR_32X32((int64_t)val, val, 31, 31, 15); /* Q1.15 */
+		win[n] = sat_int16(val);
+	}
+}
+
+void win_hann_32b(int32_t win[], int length)
+{
+	int64_t val;
+	int32_t a;
+	int n;
+
+	a = WIN_PI_Q28 / (length - 1); /* Q4.28 */
+	for (n = 0; n < length; n++) {
+		/* Calculate sin(a * n)^2 */
+		val = sin_fixed_32b(a * n); /* Q4.28 -> Q1.31 */
+		val = Q_MULTSR_32X32((int64_t)val, val, 31, 31, 31); /* Q1.31 */
+		win[n] = sat_int32(val);
+	}
+}
+
 /* Hamming window */
 void win_hamming_16b(int16_t win[], int length)
 {
