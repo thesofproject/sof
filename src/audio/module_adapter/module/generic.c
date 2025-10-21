@@ -117,6 +117,7 @@ int module_init(struct processing_module *mod)
 	ret = interface->init(mod);
 	if (ret) {
 		comp_err(dev, "error %d: module specific init failed", ret);
+		mod_free_all(mod);
 		return ret;
 	}
 
