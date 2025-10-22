@@ -400,4 +400,35 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt721-4ch-allfmt.bin,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
 DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,PCM_FORMAT_ALL=true"
+
+# Jack codec + SmartAmp topology. No SDW_DMIC connection, experiment with echo ref
+"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-echoref\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_SPK_ENHANCED_PLAYBACK=false,\
+SDW_JACK_ECHO_REF=false,SDW_SPK_ECHO_REF=true"
+
+# experiment with jack and speaker echo ref
+"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-echoref\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_JACK_ECHO_REF=true,SDW_SPK_ECHO_REF=true"
+
+"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-echoref_jack\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_JACK_ECHO_REF=true"
+
+"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-echoref_spk\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_SPK_ECHO_REF=true"
+
+"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-echoref_noenh\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_JACK_ECHO_REF=true,SDW_SPK_ECHO_REF=true,SDW_SPK_ENHANCED_PLAYBACK=false"
+
+"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-noref_noenh\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_SPK_ENHANCED_PLAYBACK=false"
 )
