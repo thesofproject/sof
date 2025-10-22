@@ -20,7 +20,7 @@
 
 /* Align the number to the nearest alignment value */
 #ifndef IS_ALIGNED
-#define IS_ALIGNED(size, alignment) ((size) % (alignment) == 0)
+#define IS_ALIGNED(size, alignment) (!(alignment) || (size) % (alignment) == 0)
 #endif
 
 /* Treat zero as a special case because it wraps around */
