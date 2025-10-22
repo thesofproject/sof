@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2022 Intel Corporation. All rights reserved.
+// Copyright(c) 2022-2025 Intel Corporation.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -16,6 +16,7 @@
 #define WIN_ONE_Q31 INT32_MAX
 #define WIN_05_Q31 Q_CONVERT_FLOAT(0.5, 31)
 
+#define WIN_PI_Q28 Q_CONVERT_FLOAT(3.1415926536, 28)
 #define WIN_TWO_PI_Q28 Q_CONVERT_FLOAT(6.2831853072, 28)
 
 #define WIN_085_Q31 Q_CONVERT_FLOAT(0.85, 31)
@@ -29,12 +30,10 @@
 /* Common approximations to match e.g. Octave */
 #define WIN_HAMMING_A0_Q30 Q_CONVERT_FLOAT(0.54, 30)
 #define WIN_HAMMING_A1_Q30 Q_CONVERT_FLOAT(0.46, 30)
+#define WIN_HAMMING_A0_Q31 Q_CONVERT_FLOAT(0.54, 31)
+#define WIN_HAMMING_A1_Q31 Q_CONVERT_FLOAT(0.46, 31)
 
-/**
- * \brief Return rectangular window, simply values of one
- * \param[in,out]  win  Output vector with coefficients
- * \param[in]  length  Length of coefficients vector
- */
+/* Rectangular window */
 void win_rectangular_16b(int16_t *win, int length)
 {
 	int i;
@@ -43,14 +42,15 @@ void win_rectangular_16b(int16_t *win, int length)
 		win[i] = WIN_ONE_Q15;
 }
 
-/**
- * \brief Calculate Blackman window function, reference
- * https://en.wikipedia.org/wiki/Window_function#Blackman_window
+void win_rectangular_32b(int32_t *win, int length)
+{
+	int i;
 
- * \param[in,out]  win  Output vector with coefficients
- * \param[in]  length  Length of coefficients vector
- * \param[in]  a0      Parameter for window shape, use e.g. 0.42 as Q1.15
- */
+	for (i = 0; i < length; i++)
+		win[i] = WIN_ONE_Q31;
+}
+
+/* Blackman window */
 void win_blackman_16b(int16_t win[], int length, int16_t a0)
 {
 	const int32_t a1 = Q_CONVERT_FLOAT(0.5, 31);
@@ -77,6 +77,64 @@ void win_blackman_16b(int16_t win[], int length, int16_t a0)
 	}
 }
 
+void win_blackman_32b(int32_t win[], int length, int32_t a0)
+{
+	const int32_t a1 = Q_CONVERT_FLOAT(0.5, 31);
+	int64_t val;
+	int32_t inv_length;
+	int32_t a;
+	int16_t alpha;
+	int32_t a2;
+	int32_t c1;
+	int32_t c2;
+	int n;
+
+	alpha = WIN_ONE_Q31 - 2 * a0; /* Q1.31 */
+	a2 = alpha << 15; /* Divided by 2 in Q1.31 */
+	a = WIN_TWO_PI_Q28 / (length - 1); /* Q4.28 */
+	inv_length = WIN_ONE_Q31 / length;
+
+	for (n = 0; n < length; n++) {
+		c1 = cos_fixed_32b(a * n);
+		c2 = cos_fixed_32b(2 * n * Q_MULTSR_32X32((int64_t)a, inv_length, 28, 31, 28));
+		val = a0 - Q_MULTSR_32X32((int64_t)a1, c1, 31, 31, 31) +
+			Q_MULTSR_32X32((int64_t)a2, c2, 31, 31, 31);
+		win[n] = sat_int32(val);
+	}
+}
+
+/* Hann window */
+void win_hann_16b(int16_t win[], int length)
+{
+	int32_t val;
+	int32_t a;
+	int n;
+
+	a = WIN_PI_Q28 / (length - 1); /* Q4.28 */
+	for (n = 0; n < length; n++) {
+		/* Calculate sin(a * n)^2 */
+		val = sin_fixed_32b(a * n); /* Q4.28 -> Q1.31 */
+		val = Q_MULTSR_32X32((int64_t)val, val, 31, 31, 15); /* Q1.15 */
+		win[n] = sat_int16(val);
+	}
+}
+
+void win_hann_32b(int32_t win[], int length)
+{
+	int64_t val;
+	int32_t a;
+	int n;
+
+	a = WIN_PI_Q28 / (length - 1); /* Q4.28 */
+	for (n = 0; n < length; n++) {
+		/* Calculate sin(a * n)^2 */
+		val = sin_fixed_32b(a * n); /* Q4.28 -> Q1.31 */
+		val = Q_MULTSR_32X32((int64_t)val, val, 31, 31, 31); /* Q1.31 */
+		win[n] = sat_int32(val);
+	}
+}
+
+/* Hamming window */
 void win_hamming_16b(int16_t win[], int length)
 {
 	int32_t val;
@@ -95,6 +153,23 @@ void win_hamming_16b(int16_t win[], int length)
 	}
 }
 
+void win_hamming_32b(int32_t win[], int length)
+{
+	int64_t val;
+	int32_t a;
+	int n;
+
+	a = WIN_TWO_PI_Q28 / (length - 1); /* Q4.28 */
+	for (n = 0; n < length; n++) {
+		/* Calculate 0.54 - 0.46 * cos(a * n) */
+		val = cos_fixed_32b(a * n); /* Q4.28 -> Q1.31 */
+		val = Q_MULTSR_32X32((int64_t)val, WIN_HAMMING_A1_Q31, 31, 31, 31); /* Q1.31 */
+		val = WIN_HAMMING_A0_Q31 - val;
+		win[n] = sat_int32(val);
+	}
+}
+
+/* Povey window */
 void win_povey_16b(int16_t win[], int length)
 {
 	int32_t cos_an;
