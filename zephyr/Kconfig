@@ -1,5 +1,3 @@
-if SOF
-
 config SOF_STAGING
 	bool "Enable SOF staging features and modules"
 	help
@@ -166,5 +164,3 @@ config STACK_SIZE_IPC_TX
 	default 2048
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
-
-endif

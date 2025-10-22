@@ -4,6 +4,6 @@
 
 config CORE_COUNT
 	int
-	default 1
+	default MP_MAX_NUM_CPUS
 	help
 	  Number of used cores
