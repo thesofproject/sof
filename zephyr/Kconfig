@@ -210,7 +210,7 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 
 config VIRTUAL_HEAP
 	bool "Use virtual memory heap to allocate a buffers"
-	default y if ACE
+	default n if ACE
 	depends on ACE
 	help
 	  Enabling this option will use the virtual memory heap allocator to allocate buffers.
