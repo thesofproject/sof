@@ -101,6 +101,16 @@ config SOF_USERSPACE_PROXY
 	  It is responsible for forwarding module function calls coming from sof running in
 	  kernelspace to the module code executed with user privileges.
 
+config SOF_VPAGE_MAX_ALLOCS
+	int "Number of virtual memory page allocation elements"
+	default 128
+	help
+	  This setting defines the maximum number of virtual memory page allocation
+	  elements that can be tracked. Each allocation element represents a
+	  contiguous block of virtual memory allocated from the virtual memory
+	  region. Increasing this number allows for more simultaneous page allocations,
+	  but also increases the memory overhead for tracking these allocations.
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	help
