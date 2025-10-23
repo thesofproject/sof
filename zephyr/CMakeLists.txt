@@ -287,10 +287,18 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		${SOF_PLATFORM_PATH}/novalake/lib/clk.c
 	)
 
-	# Sources for virtual heap management
-	zephyr_library_sources(
-		lib/regions_mm.c
-	)
+	# Virtual memory support is required and can be enabled with
+	# either VMH or Virtual pages and regions.
+	if (CONFIG_SOF_VREGIONS)
+		zephyr_library_sources(
+			lib/vpages.c
+			lib/vregion.c
+		)
+	else()
+		zephyr_library_sources(
+			lib/regions_mm.c
+		)
+	endif()
 
 	zephyr_library_sources_ifdef(CONFIG_CAVS_LPS
 		${SOF_PLATFORM_PATH}/intel/ace/lps_wait.c
