@@ -289,8 +289,12 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		${SOF_PLATFORM_PATH}/novalake/lib/clk.c
 	)
 
-	# Sources for virtual heap management
-	zephyr_library_sources(
+	zephyr_library_sources_ifdef(CONFIG_SOF_VREGIONS
+		lib/vpage.c
+		lib/vregion.c
+	)
+
+	zephyr_library_sources_ifdef(CONFIG_VIRTUAL_HEAP
 		lib/regions_mm.c
 	)
 
