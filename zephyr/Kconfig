@@ -250,8 +250,19 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 	  Do not use SOF clk.h interface to set the DSP clock frequency.
 	  Requires implementation of platform/lib/clk.h.
 
+config SOF_VREGIONS
+	bool "Enable virtual memory regions"
+	default y if ACE
+	depends on ACE
+	help
+	  Enable the virtual regions memory allocator for pipeline resource management.
+	  This provides a way to manage memory resources for audio pipelines,
+	  including
+	    1) multiple pipeline static lifetime allocations.
+	    2) runtime pipeline allocations.
+
 config VIRTUAL_HEAP
-	bool "Use virtual memory heap to allocate a buffers"
+	bool "Use virtual memory heap to allocate buffers"
 	default y if ACE
 	depends on ACE
 	help
