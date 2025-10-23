@@ -18,8 +18,9 @@
 #include <zephyr/sys/mem_blocks.h>
 
 /* Attributes for memory regions */
-#define VIRTUAL_REGION_SHARED_HEAP_ATTR 1U	  /*< region dedicated for shared virtual heap */
-#define VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR 2U	  /*< region dedicated for LLEXT libraries */
+#define VIRTUAL_REGION_SHARED_HEAP_ATTR 1U	  /*< region for shared virtual heap */
+#define VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR 2U	  /*< region for LLEXT libraries */
+#define VIRTUAL_REGION_VPAGES_ATTR 3U		  /*< region for virtual page allocator */
 
 /* Dependency on ipc/topology.h created due to memory capability definitions
  * that are defined there
