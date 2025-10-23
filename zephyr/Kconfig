@@ -138,6 +138,16 @@ config SOF_USERSPACE_APPLICATION
 	  Not manually settable. This is effectively a shortcut to replace numerous
 	  checks for (CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY)
 
+config SOF_VPAGE_MAX_ALLOCS
+	int "Number of virtual memory page allocation elements"
+	default 128
+	help
+	  This setting defines the maximum number of virtual memory page allocation
+	  elements that can be tracked. Each allocation element represents a
+	  contiguous block of virtual memory allocated from the virtual memory
+	  region. Increasing this number allows for more simultaneous page allocations,
+	  but also increases the memory overhead for tracking these allocations.
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	help
