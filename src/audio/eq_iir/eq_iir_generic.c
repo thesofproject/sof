@@ -285,15 +285,16 @@ static void eq_iir_init_delay(struct iir_state_df1 *iir,
 	}
 }
 
-void eq_iir_free_delaylines(struct comp_data *cd)
+void eq_iir_free_delaylines(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
 	struct iir_state_df1 *iir = cd->iir;
 	int i = 0;
 
 	/* Free the common buffer for all EQs and point then
 	 * each IIR channel delay line to NULL.
 	 */
-	rfree(cd->iir_delay);
+	mod_free(mod, cd->iir_delay);
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -315,7 +316,7 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 	int delay_size;
 
 	/* Free existing IIR channels data if it was allocated */
-	eq_iir_free_delaylines(cd);
+	eq_iir_free_delaylines(mod);
 
 	/* Set coefficients for each channel EQ from coefficient blob */
 	delay_size = eq_iir_init_coef(mod, nch);
@@ -329,8 +330,7 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 		return 0;
 
 	/* Allocate all IIR channels data in a big chunk and clear it */
-	cd->iir_delay = rzalloc(SOF_MEM_FLAG_USER,
-				delay_size);
+	cd->iir_delay = mod_zalloc(mod, delay_size);
 	if (!cd->iir_delay) {
 		comp_err(mod->dev, "eq_iir_setup(), delay allocation fail");
 		return -ENOMEM;
