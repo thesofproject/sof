@@ -25,7 +25,6 @@
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <rtos/panic.h>
 #include <rtos/string.h>
@@ -261,15 +260,16 @@ static inline int set_pass_func(struct processing_module *mod, enum sof_ipc_fram
  * Control code functions next. The processing is in fir_ C modules.
  */
 
-static void tdfb_free_delaylines(struct tdfb_comp_data *cd)
+static void tdfb_free_delaylines(struct processing_module *mod)
 {
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	struct fir_state_32x16 *fir = cd->fir;
 	int i = 0;
 
 	/* Free the common buffer for all EQs and point then
 	 * each FIR channel delay line to NULL.
 	 */
-	rfree(cd->fir_delay);
+	mod_free(mod, cd->fir_delay);
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -511,10 +511,10 @@ static int tdfb_setup(struct processing_module *mod, int source_nch, int sink_nc
 
 	if (delay_size > cd->fir_delay_size) {
 		/* Free existing FIR channels data if it was allocated */
-		tdfb_free_delaylines(cd);
+		tdfb_free_delaylines(mod);
 
 		/* Allocate all FIR channels data in a big chunk and clear it */
-		cd->fir_delay = rballoc(SOF_MEM_FLAG_USER, delay_size);
+		cd->fir_delay = mod_balloc(mod, delay_size);
 		if (!cd->fir_delay) {
 			comp_err(mod->dev, "tdfb_setup(), delay allocation failed for size %d",
 				 delay_size);
@@ -554,7 +554,7 @@ static int tdfb_init(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
@@ -571,10 +571,10 @@ static int tdfb_init(struct processing_module *mod)
 	/* Initialize IPC for direction of arrival estimate update */
 	ret = tdfb_ipc_notification_init(mod);
 	if (ret)
-		goto err_free_cd;
+		return ret;
 
 	/* Handler for configuration data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
@@ -598,14 +598,8 @@ static int tdfb_init(struct processing_module *mod)
 	return 0;
 
 err:
-	/* These are null if not used for IPC version */
-	rfree(cd->ctrl_data);
 	ipc_msg_free(cd->msg);
-
-err_free_cd:
-	rfree(cd);
 	return ret;
-
 }
 
 static int tdfb_free(struct processing_module *mod)
@@ -615,11 +609,7 @@ static int tdfb_free(struct processing_module *mod)
 	comp_dbg(mod->dev, "tdfb_free()");
 
 	ipc_msg_free(cd->msg);
-	tdfb_free_delaylines(cd);
-	comp_data_blob_handler_free(cd->model_handler);
-	tdfb_direction_free(cd);
-	rfree(cd->ctrl_data);
-	rfree(cd);
+
 	return 0;
 }
 
@@ -780,7 +770,7 @@ static int tdfb_prepare(struct processing_module *mod,
 	comp_dbg(dev, "dev_frames = %d, max_frames = %d", dev->frames, cd->max_frames);
 
 	/* Initialize tracking */
-	ret = tdfb_direction_init(cd, rate, source_channels);
+	ret = tdfb_direction_init(mod, rate, source_channels);
 	if (!ret) {
 		comp_info(dev, "max_lag = %d, xcorr_size = %zu",
 			  cd->direction.max_lag, cd->direction.d_size);
@@ -803,7 +793,7 @@ static int tdfb_reset(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "tdfb_reset()");
 
-	tdfb_free_delaylines(cd);
+	tdfb_free_delaylines(mod);
 
 	cd->tdfb_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
