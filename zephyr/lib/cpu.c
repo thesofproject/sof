@@ -211,7 +211,12 @@ void cpu_notify_state_exit(enum pm_state state)
 		global_imr_ram_storage = NULL;
 
 		/* send FW Ready message */
-		platform_boot_complete(0);
+		int ret = platform_boot_complete(0);
+
+		if (ret) {
+			tr_err(&zephyr_tr, "platform_boot_complete failed: %d", ret);
+			k_panic();
+		}
 #endif
 	}
 }
