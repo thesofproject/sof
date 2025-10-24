@@ -52,11 +52,6 @@ struct task_dp_pdata {
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
 };
 
-#ifdef CONFIG_USERSPACE
-/* Single CPU-wide lock
- * The irq_lock is not available for USERSPACE (non-privileged) threads.
- * Therefore semaphore is used to control critical section.
- */
 #define DP_LOCK_INIT(i, _)	Z_SEM_INITIALIZER(dp_lock[i], 1, 1)
 #define DP_LOCK_INIT_LIST	LISTIFY(CONFIG_MP_MAX_NUM_CPUS, DP_LOCK_INIT, (,))
 
@@ -67,6 +62,10 @@ struct task_dp_pdata {
 static
 STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOCK_INIT_LIST };
 
+/* Each per-core instance of DP scheduler has separate structures; hence, locks are per-core.
+ *
+ * TODO: consider using cpu_get_id() instead of supplying core as a parameter.
+ */
 static inline unsigned int scheduler_dp_lock(uint16_t core)
 {
 	k_sem_take(&dp_lock[core], K_FOREVER);
@@ -80,29 +79,10 @@ static inline void scheduler_dp_unlock(unsigned int key)
 
 static inline void scheduler_dp_grant(k_tid_t thread_id, uint16_t core)
 {
+#if CONFIG_USERSPACE
 	k_thread_access_grant(thread_id, &dp_lock[core]);
-}
-
-#else /* CONFIG_USERSPACE */
-
-static inline void scheduler_dp_grant(k_tid_t thread_id, uint16_t core)
-{
-}
-
-/* Single CPU-wide lock
- * as each per-core instance if dp-scheduler has separate structures, it is enough to
- * use irq_lock instead of cross-core spinlocks
- */
-static inline unsigned int scheduler_dp_lock(uint16_t core)
-{
-	return irq_lock();
-}
-
-static inline void scheduler_dp_unlock(unsigned int key)
-{
-	irq_unlock(key);
-}
 #endif
+}
 
 /* dummy LL task - to start LL on secondary cores */
 static enum task_state scheduler_dp_ll_tick_dummy(void *data)
