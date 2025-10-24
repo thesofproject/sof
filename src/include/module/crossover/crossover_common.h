@@ -8,6 +8,7 @@
 #ifndef __SOF_CROSSOVER_COMMON_H__
 #define __SOF_CROSSOVER_COMMON_H__
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/math/iir_df1.h>
 #include <user/eq.h>
 
@@ -39,17 +40,19 @@ typedef void (*crossover_split)(int32_t in, int32_t out[],
 extern const crossover_split crossover_split_fnmap[];
 
 /* crossover init function */
-int crossover_init_coef_ch(struct sof_eq_iir_biquad *coef,
+int crossover_init_coef_ch(struct processing_module *mod,
+			   struct sof_eq_iir_biquad *coef,
 			   struct crossover_state *ch_state,
 			   int32_t num_sinks);
 
 /**
  * \brief Reset the state of an LR4 filter.
  */
-static inline void crossover_reset_state_lr4(struct iir_state_df1 *lr4)
+static inline void crossover_reset_state_lr4(struct processing_module *mod,
+					     struct iir_state_df1 *lr4)
 {
-	rfree(lr4->coef);
-	rfree(lr4->delay);
+	mod_free(mod, lr4->coef);
+	mod_free(mod, lr4->delay);
 
 	lr4->coef = NULL;
 	lr4->delay = NULL;
@@ -59,13 +62,14 @@ static inline void crossover_reset_state_lr4(struct iir_state_df1 *lr4)
  * \brief Reset the state (coefficients and delay) of the crossover filter
  *	  of a single channel.
  */
-static inline void crossover_reset_state_ch(struct crossover_state *ch_state)
+static inline void crossover_reset_state_ch(struct processing_module *mod,
+					    struct crossover_state *ch_state)
 {
 	int i;
 
 	for (i = 0; i < CROSSOVER_MAX_LR4; i++) {
-		crossover_reset_state_lr4(&ch_state->lowpass[i]);
-		crossover_reset_state_lr4(&ch_state->highpass[i]);
+		crossover_reset_state_lr4(mod, &ch_state->lowpass[i]);
+		crossover_reset_state_lr4(mod, &ch_state->highpass[i]);
 	}
 }
 

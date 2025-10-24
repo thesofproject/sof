@@ -17,7 +17,6 @@
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -298,10 +297,10 @@ static int eq_iir_verify_params(struct comp_dev *dev,
 	return 0;
 }
 
-int eq_iir_new_blob(struct processing_module *mod, struct comp_data *cd,
-		    enum sof_ipc_frame source_format, enum sof_ipc_frame sink_format,
-		    int channels)
+int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_format,
+		    enum sof_ipc_frame sink_format, int channels)
 {
+	struct comp_data *cd = module_get_private_data(mod);
 	int ret;
 
 	ret = eq_iir_setup(mod, channels);
