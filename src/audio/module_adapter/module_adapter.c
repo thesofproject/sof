@@ -138,6 +138,12 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		/* LL modules have the same period as the pipeline */
 		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
 			dev->period = ipc_pipe->pipeline->period;
+
+		/* set dev direction based on pipeline direction */
+		if (dev->pipeline->direction_set) {
+			dev->direction_set = true;
+			dev->direction = dev->pipeline->direction;
+		}
 	}
 #endif
 

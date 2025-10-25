@@ -63,6 +63,8 @@ struct pipeline {
 	uint32_t xrun_limit_usecs; /**< report xruns greater than limit */
 	uint32_t time_domain;	/**< scheduling time domain */
 	uint32_t attributes;   /**< pipeline attributes from IPC extension msg/ */
+	uint32_t direction_set;	/**< flag indicating if direction set from IPC extension msg? */
+	uint32_t direction;	/**< pipeline direction from IPC extension msg */
 
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
