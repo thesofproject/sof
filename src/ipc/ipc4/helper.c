@@ -260,6 +260,10 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 
 	pipe->core = pipe_desc->extension.r.core_id;
 
+	pipe->direction_set = pipe_desc->extension.r.direction_set;
+	if (pipe->direction_set)
+		pipe->direction = pipe_desc->extension.r.direction;
+
 	/* allocate the IPC pipeline container */
 	ipc_pipe = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			   sizeof(struct ipc_comp_dev));
