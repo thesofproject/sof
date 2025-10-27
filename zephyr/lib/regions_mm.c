@@ -10,6 +10,7 @@
 #if defined(CONFIG_MM_DRV)
 #include <sof/lib/regions_mm.h>
 
+LOG_MODULE_DECLARE(mem_allocator, CONFIG_SOF_LOG_LEVEL);
 
 /** @struct vmh_heap
  *
@@ -32,6 +33,10 @@ struct vmh_heap {
 	const struct sys_mm_drv_region *virtual_region;
 	struct sys_mem_blocks *physical_blocks_allocators[MAX_MEMORY_ALLOCATORS_COUNT];
 	struct sys_bitarray *allocation_sizes[MAX_MEMORY_ALLOCATORS_COUNT];
+#ifdef CONFIG_SYS_MEM_BLOCKS_RUNTIME_STATS
+	unsigned int out_of_blocks[MAX_MEMORY_ALLOCATORS_COUNT];
+	bool logged;
+#endif
 	bool allocating_continuously;
 };
 
@@ -398,6 +403,9 @@ static void *_vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 	int mem_block_iterator, allocation_error_code = -ENOMEM;
 	size_t allocation_bitarray_offset, block_count = 0, block_size = 0,
 		allocation_bitarray_position = 0;
+#ifdef CONFIG_SYS_MEM_BLOCKS_RUNTIME_STATS
+	bool first_match = true;
+#endif
 
 	/* We will gather error code when allocating on physical block
 	 * allocators.
@@ -487,6 +495,11 @@ static void *_vmh_alloc(struct vmh_heap *heap, uint32_t alloc_size)
 				sys_bitarray_set_region(heap->allocation_sizes[mem_block_iterator],
 					block_count - 1, allocation_bitarray_position);
 			break;
+#ifdef CONFIG_SYS_MEM_BLOCKS_RUNTIME_STATS
+		} else if (first_match) {
+			++heap->out_of_blocks[mem_block_iterator];
+			first_match = false;
+#endif
 		}
 	}
 
@@ -698,6 +711,39 @@ int vmh_free(struct vmh_heap *heap, void *ptr)
 	k_mutex_unlock(&heap->lock);
 	return ret;
 }
+
+#ifdef CONFIG_SYS_MEM_BLOCKS_RUNTIME_STATS
+/**
+ * @brief Print stats on heap usage per allocator
+ *
+ * @param heap pointer to a heap for which statistics are collected
+ */
+void vmh_log_stats(struct vmh_heap *heap)
+{
+	if (heap->logged)
+		return;
+
+	LOG_INF("Virtual heap stats per allocator");
+	LOG_INF(" ID    | Total  | Max use| Times run out of blocks");
+
+	for (int idx = 0; idx < MAX_MEMORY_ALLOCATORS_COUNT; idx++) {
+		if (!heap->physical_blocks_allocators[idx])
+			continue;
+
+		struct sys_memory_stats stats = {0};
+
+		sys_mem_blocks_runtime_stats_get(heap->physical_blocks_allocators[idx], &stats);
+
+		size_t block_size = 1 << heap->physical_blocks_allocators[idx]->info.blk_sz_shift;
+		size_t block_num = heap->physical_blocks_allocators[idx]->info.num_blocks;
+
+		LOG_INF("%7d| %7u| %7u| %7u", idx, block_num,
+			(stats.max_allocated_bytes / block_size),
+			heap->out_of_blocks[idx]);
+	}
+	heap->logged = true;
+}
+#endif
 
 /**
  * @brief Get default configuration for heap
