@@ -1,9 +1,0 @@
-# SPDX-License-Identifier: BSD-3-Clause
-
-# Host architecture configs
-
-config CORE_COUNT
-	int
-	default 1
-	help
-	  Number of used cores
