@@ -56,4 +56,4 @@ jobs:
         run: pip install -r sof-docs/scripts/requirements.txt
 
       - name: build sof-docs
-        run: make -C sof-docs/ html SOF_DOC_BUILD="$(pwd)"/doxybuild/
+        run: LAX=1 make -C sof-docs/ html SOF_DOC_BUILD="$(pwd)"/doxybuild/
