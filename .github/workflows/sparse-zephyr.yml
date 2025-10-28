@@ -12,6 +12,10 @@ defaults:
     shell: bash
 
 jobs:
+  # disable until https://github.com/zephyrproject-rtos/zephyr/issues/93444
+  # is fixed
+  if: false
+
   # As of sparse commit ce1a6720f69e / Sept 2022, the exit status of
   # sparse.c is an unusable mess and always zero in practice. Moreover
   # SOF has hundreds of sparse warnings right now. So fail only on a
