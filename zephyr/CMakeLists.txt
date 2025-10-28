@@ -2,7 +2,7 @@
 # compile every Zephyr module that can be found. See
 # sof/zephyr/module.yml and
 # https://docs.zephyrproject.org/latest/develop/modules.html
-if(CONFIG_SOF)
+if(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 
 if(CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
@@ -567,4 +567,4 @@ include(../scripts/cmake/uuid-registry.cmake)
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)
 
-endif() # CONFIG_SOF
+endif() # CONFIG_SOF_FULL_ZEPHYR_APPLICATION
