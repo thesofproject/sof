@@ -169,7 +169,7 @@ int copier_gain_input16(struct comp_buffer *buff, enum copier_gain_state state,
 
 			/* Apply fade */
 			for (j = 0; j < nch; j++) {
-				dst += j;
+				dst_tmp = dst + j;
 				/* Quadratic fade part in Q15 format*/
 				gain_env_sq = q_multsr_16x16(gain_env[j], gain_env[j], 15);
 
@@ -180,8 +180,8 @@ int copier_gain_input16(struct comp_buffer *buff, enum copier_gain_state state,
 						      gain_env_sq, 15);
 
 				for (i = 0; i < nmax; i += nch)
-					dst[i] = q_multsr_sat_16x16(dst[i], gain,
-								    GAIN_Q10_INT_SHIFT);
+					dst_tmp[i] = q_multsr_sat_16x16(dst_tmp[i], gain,
+									GAIN_Q10_INT_SHIFT);
 			}
 			samples -= nmax;
 			dst = audio_stream_wrap(&buff->stream, dst + nmax);
@@ -260,7 +260,7 @@ int copier_gain_input32(struct comp_buffer *buff, enum copier_gain_state state,
 
 			/* Apply fade */
 			for (j = 0; j < nch; j++) {
-				dst += j;
+				dst_tmp = dst + j;
 				/* Quadratic fade part in Q15 format*/
 				gain_env_sq = q_multsr_16x16(gain_env[j], gain_env[j], 15);
 
@@ -271,8 +271,8 @@ int copier_gain_input32(struct comp_buffer *buff, enum copier_gain_state state,
 						      gain_env_sq, 15);
 
 				for (i = 0; i < nmax; i += nch)
-					dst[i] =  q_multsr_sat_32x32(dst[i], gain,
-								     GAIN_Q10_INT_SHIFT);
+					dst_tmp[i] =  q_multsr_sat_32x32(dst_tmp[i], gain,
+									 GAIN_Q10_INT_SHIFT);
 			}
 			samples -= nmax;
 			dst = audio_stream_wrap(&buff->stream, dst + nmax);
