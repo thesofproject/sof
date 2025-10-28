@@ -1303,6 +1303,17 @@ size_t module_adapter_heap_usage(struct processing_module *mod, size_t *hwm)
 }
 EXPORT_SYMBOL(module_adapter_heap_usage);
 
+size_t module_adapter_container_usage(struct processing_module *mod, size_t *hwm)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	if (hwm)
+		*hwm = res->container_high_water_mark;
+
+	return res->container_usage;
+}
+EXPORT_SYMBOL(module_adapter_container_usage);
+
 /*
  * \brief Get DAI hw params
  * \param[in] dev - component device pointer
