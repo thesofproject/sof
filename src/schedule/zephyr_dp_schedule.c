@@ -397,7 +397,7 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 	/* all other memory has been allocated as a single malloc, will be freed later by caller */
 	return ret;
 }
-
+__attribute__((optimize("-O0")))
 /* Thread function called in component context, on target core */
 static void dp_thread_fn(void *p1, void *p2, void *p3)
 {
@@ -408,7 +408,11 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	unsigned int lock_key;
 	enum task_state state;
 	bool task_stop;
-	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+	struct scheduler_dp_data *dp_sch = NULL;
+
+
+	if (!(task->flags & K_USER))
+		dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 
 	do {
 		/*
@@ -454,7 +458,8 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 		 * TODO: it should be for all tasks, for all cores
 		 * currently its limited to current core only
 		 */
-		scheduler_dp_recalculate(dp_sch, false);
+		if (dp_sch)
+			scheduler_dp_recalculate(dp_sch, false);
 
 		scheduler_dp_unlock(lock_key);
 	} while (!task_stop);
@@ -463,7 +468,7 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	if (task->state == SOF_TASK_STATE_COMPLETED)
 		task_complete(task);
 }
-
+__attribute__((optimize("-O0")))
 static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t start,
 				     uint64_t period)
 {
@@ -471,6 +476,9 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	struct task_dp_pdata *pdata = task->priv_data;
 	unsigned int lock_key;
 	int ret;
+
+	volatile int i = 0;
+	while (i);
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
 
@@ -568,7 +576,7 @@ int scheduler_dp_init(void)
 
 	return 0;
 }
-
+__attribute__((optimize("-O0")))
 int scheduler_dp_task_init(struct task **task,
 			   const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops,
