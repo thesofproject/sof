@@ -249,6 +249,7 @@ static int ctc_free(struct processing_module *mod)
 		mod_free(mod, cd->input);
 		mod_free(mod, cd->output);
 		GoogleCtcAudioProcessingFree(cd->state);
+		mod_data_blob_handler_free(mod, cd->tuning_handler);
 		mod_free(mod, cd);
 		module_set_private_data(mod, NULL);
 	}
