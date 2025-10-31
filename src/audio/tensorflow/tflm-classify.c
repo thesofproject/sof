@@ -71,14 +71,14 @@ __cold static int tflm_init(struct processing_module *mod)
 	if (!cd->model_handler) {
 		comp_err(dev, "mod_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
-		goto cd_fail;
+		goto fail;
 	}
 
 	/* Get configuration data and reset DRC state */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed.");
-		goto cd_fail;
+		goto fail;
 	}
 
 	/* hard coded atm */
@@ -88,19 +88,21 @@ __cold static int tflm_init(struct processing_module *mod)
 	ret = TF_SetModel(&cd->tfc, NULL);
 	if (!ret) {
 		comp_err(dev, "failed to set model");
-		return ret;
+		goto fail;
 	}
 
 	/* initialise ops */
 	ret = TF_InitOps(&cd->tfc);
 	if (!ret) {
 		comp_err(dev, "failed to init ops");
-		return ret;
+		goto fail;
 	}
 
 	return ret;
 
-cd_fail:
+fail:
+	/* Passing NULL pointer to free functions is Ok */
+	mod_data_blob_handler_free(mod, cd->model_handler);
 	mod_free(mod, cd);
 	return ret;
 }
