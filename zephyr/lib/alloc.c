@@ -286,7 +286,7 @@ static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, size_t by
 	if (!mem)
 		return NULL;
 
-	assert(IS_ALIGNED(mem, align));
+	assert(align == 0 || IS_ALIGNED(mem, align));
 
 	if (flags & SOF_MEM_FLAG_COHERENT)
 		return sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)mem);
