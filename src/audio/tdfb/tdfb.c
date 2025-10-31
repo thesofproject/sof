@@ -601,6 +601,7 @@ err:
 	/* These are null if not used for IPC version */
 	mod_free(mod, cd->ctrl_data);
 	ipc_msg_free(cd->msg);
+	mod_data_blob_handler_free(mod, cd->model_handler);
 
 err_free_cd:
 	mod_free(mod, cd);
