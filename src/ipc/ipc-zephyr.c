@@ -328,6 +328,9 @@ int ipc_platform_send_msg(const struct ipc_msg *msg)
 	/* prepare the message and copy to mailbox */
 	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
 
+	if (msg->tx_size)
+		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
+
 	return ipc_send_message(hdr->pri, hdr->ext);
 }
 
@@ -335,6 +338,9 @@ void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
 {
 	/* prepare the message and copy to mailbox */
 	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
+
+	if (msg->tx_size)
+		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
 
 	ipc_send_message_emergency(hdr->pri, hdr->ext);
 }

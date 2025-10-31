@@ -1592,9 +1592,6 @@ struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
 	msg_data.msg_out.pri = msg->header;
 	msg_data.msg_out.ext = msg->extension;
 
-	if (msg->tx_size)
-		mailbox_dspbox_write(0, (uint32_t *)msg->tx_data, msg->tx_size);
-
 	return &msg_data.msg_out;
 }
 
