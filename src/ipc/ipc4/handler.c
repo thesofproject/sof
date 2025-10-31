@@ -123,9 +123,7 @@ static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(
 {
 	const struct ipc4_pipeline_set_state_data *ppl_data;
 
-	ppl_data = (const struct ipc4_pipeline_set_state_data *)MAILBOX_HOSTBOX_BASE;
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_data,
-				 sizeof(*ppl_data));
+	ppl_data = (const struct ipc4_pipeline_set_state_data *)ipc_access_msg_payload(sizeof(*ppl_data));;
 
 	return ppl_data;
 }
@@ -999,12 +997,13 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 __cold static void ipc4_prepare_for_kcontrol_get(struct comp_dev *dev, uint8_t param_id,
 						 char *data_out, uint32_t data_size)
 {
-	const char *hostbox;
+	const uint32_t *hostbox;
 
 #if CONFIG_LIBRARY
+	/* TODO: can we abstrac LIBRARY to use its own driver? */
 	hostbox = (const char *)ipc_get()->comp_data + sizeof(struct ipc4_module_large_config);
 #else
-	hostbox = (const char *)MAILBOX_HOSTBOX_BASE;
+	hostbox = ipc_access_msg_payload(data_size);
 #endif
 
 	assert_can_be_cold();
@@ -1013,10 +1012,6 @@ __cold static void ipc4_prepare_for_kcontrol_get(struct comp_dev *dev, uint8_t p
 	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
 	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
 	case SOF_IPC4_BYTES_CONTROL_PARAM_ID:
-		/* We have payload in hostbox */
-		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-					 data_size);
-
 		/* Copy the control payload header from inbox to outbox */
 		memcpy_s(data_out, data_size, hostbox,
 			 sizeof(struct sof_ipc4_control_msg_payload));
@@ -1172,14 +1167,14 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 	/* check for vendor param first */
 	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
 		/* For now only vendor_config case uses payload from hostbox */
-		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-					 config.extension.r.data_off_size);
+		const uint32_t *ipc_payload =
+			ipc_access_msg_payload(config.extension.r.data_off_size);
 		ret = ipc4_get_vendor_config_module_instance(dev, drv,
 							     config.extension.r.init_block,
 							     config.extension.r.final_block,
 							     &data_offset,
 							     data,
-							     (const char *)MAILBOX_HOSTBOX_BASE);
+							     (const char *)ipc_payload);
 	} else {
 #if CONFIG_LIBRARY
 		data += sizeof(reply);
@@ -1297,8 +1292,7 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 	if (ret < 0)
 		return IPC4_FAILURE;
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-				 config.extension.r.data_off_size);
+	uint32_t *ipc_payload = ipc_access_msg_payload(config.extension.r.data_off_size);
 	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
@@ -1333,13 +1327,14 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 							     config.extension.r.init_block,
 							     config.extension.r.final_block,
 							     config.extension.r.data_off_size,
-							     (const char *)MAILBOX_HOSTBOX_BASE);
+							     (const char *)ipc_payload);
 	} else {
 #if CONFIG_LIBRARY
 		struct ipc *ipc = ipc_get();
 		const char *data = (const char *)ipc->comp_data + sizeof(config);
 #else
-		const char *data = (const char *)MAILBOX_HOSTBOX_BASE;
+		const char *data =
+			(const char *)ipc_access_msg_payload(config.extension.r.data_off_size);
 #endif
 		ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
 			config.extension.r.init_block, config.extension.r.final_block,
@@ -1439,10 +1434,9 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-				 sizeof(dx_info));
+	const uint32_t *ipc_payload = ipc_access_msg_payload(sizeof(dx_info));
 	ret = memcpy_s(&dx_info, sizeof(dx_info),
-		       (const void *)MAILBOX_HOSTBOX_BASE, sizeof(dx_info));
+		       (const void *)ipc_payload, sizeof(dx_info));
 	if (ret < 0)
 		return IPC4_FAILURE;
 

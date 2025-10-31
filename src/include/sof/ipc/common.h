@@ -214,6 +214,12 @@ int ipc_compact_write_msg(struct ipc_cmd_hdr *hdr);
 struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg);
 
 /**
+ * \brief Access IPC message payload (hostbox) from DSP.
+ *@param[in]bytes make bytes available to host processing
+ */
+uint32_t *ipc_access_msg_payload(size_t bytes);
+
+/**
  * \brief Validate mailbox contents for valid IPC header.
  * @return pointer to header if valid or NULL.
  */

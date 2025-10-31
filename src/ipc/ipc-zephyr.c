@@ -339,6 +339,25 @@ void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
 	ipc_send_message_emergency(hdr->pri, hdr->ext);
 }
 
+uint32_t *ipc_access_msg_payload(size_t bytes)
+{
+	/*
+	 * TODO: intermediate step to put MAILBOX access here,
+	 *       this should be moved to Zephyr IPC driver
+	 */
+	uint32_t *hostbox = (uint32_t*)MAILBOX_HOSTBOX_BASE;
+
+	/*
+	 * TODO: can we invalidate whole hostbox upon IPC reception
+	 *       and skip these calls doen when incrementally
+	 *       parsing the message until full length of payload
+	 *       is known
+	 */
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)hostbox, bytes);
+
+	return hostbox;
+}
+
 int ipc_platform_poll_is_host_ready(void)
 {
 	return ipc_is_complete();
