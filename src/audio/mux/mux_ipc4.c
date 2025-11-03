@@ -11,6 +11,7 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
+#include <sof/audio/data_blob.h>
 #include <sof/trace/trace.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -31,7 +32,7 @@ SOF_DEFINE_REG_UUID(demux);
 
 DECLARE_TR_CTX(demux_tr, SOF_UUID(demux_uuid), LOG_LEVEL_INFO);
 
-static int build_config(struct processing_module *mod)
+static int build_config(struct processing_module *mod, struct mux_data *cfg)
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
@@ -45,12 +46,12 @@ static int build_config(struct processing_module *mod)
 		memset(cd->config.streams[i].mask, 0, sizeof(cd->config.streams[i].mask));
 
 	/* Setting masks for streams */
-	for (i = 0; i < cd->md.base_cfg.audio_fmt.channels_count; i++) {
+	for (i = 0; i < cfg->base_cfg.audio_fmt.channels_count; i++) {
 		cd->config.streams[0].mask[i] = mask;
 		mask <<= 1;
 	}
 
-	for (i = 0; i < cd->md.reference_format.channels_count; i++) {
+	for (i = 0; i < cfg->reference_format.channels_count; i++) {
 		cd->config.streams[1].mask[i] = mask;
 		mask <<= 1;
 	}
@@ -67,7 +68,7 @@ static int build_config(struct processing_module *mod)
  * set up param then verify param. BTW for IPC3 path, the param is sent by
  * host driver.
  */
-static void set_mux_params(struct processing_module *mod)
+static void set_mux_params(struct processing_module *mod, struct mux_data *cfg)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
@@ -76,12 +77,12 @@ static void set_mux_params(struct processing_module *mod)
 	int j;
 
 	params->direction = dev->direction;
-	params->channels =  cd->md.base_cfg.audio_fmt.channels_count;
-	params->rate = cd->md.base_cfg.audio_fmt.sampling_frequency;
-	params->sample_container_bytes = cd->md.base_cfg.audio_fmt.depth / 8;
-	params->sample_valid_bytes = cd->md.base_cfg.audio_fmt.valid_bit_depth / 8;
-	params->buffer_fmt = cd->md.base_cfg.audio_fmt.interleaving_style;
-	params->buffer.size = cd->md.base_cfg.ibs;
+	params->channels =  cfg->base_cfg.audio_fmt.channels_count;
+	params->rate = cfg->base_cfg.audio_fmt.sampling_frequency;
+	params->sample_container_bytes = cfg->base_cfg.audio_fmt.depth / 8;
+	params->sample_valid_bytes = cfg->base_cfg.audio_fmt.valid_bit_depth / 8;
+	params->buffer_fmt = cfg->base_cfg.audio_fmt.interleaving_style;
+	params->buffer.size = cfg->base_cfg.ibs;
 	params->no_stream_position = 1;
 
 	/* There are two input pins and one output pin in the mux.
@@ -95,7 +96,7 @@ static void set_mux_params(struct processing_module *mod)
 		sink = comp_dev_get_first_data_consumer(dev);
 
 		if (!audio_buffer_hw_params_configured(&sink->audio_buffer)) {
-			ipc4_update_buffer_format(sink, &cd->md.output_format);
+			ipc4_update_buffer_format(sink, &cfg->output_format);
 			params->frame_fmt = audio_stream_get_frm_fmt(&sink->stream);
 		}
 	}
@@ -108,9 +109,9 @@ static void set_mux_params(struct processing_module *mod)
 			j = IPC4_SINK_QUEUE_ID(buf_get_id(source));
 			cd->config.streams[j].pipeline_id = buffer_pipeline_id(source);
 			if (j == BASE_CFG_QUEUED_ID)
-				audio_fmt = &cd->md.base_cfg.audio_fmt;
+				audio_fmt = &cfg->base_cfg.audio_fmt;
 			else
-				audio_fmt = &cd->md.reference_format;
+				audio_fmt = &cfg->reference_format;
 
 			ipc4_update_buffer_format(source, audio_fmt);
 		}
@@ -121,13 +122,22 @@ static void set_mux_params(struct processing_module *mod)
 
 int mux_params(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+	struct mux_data *cfg;
+	size_t blob_size;
 	int ret;
 
-	ret = build_config(mod);
+	cfg = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
+	if (!cfg || blob_size > MUX_BLOB_MAX_SIZE) {
+		comp_err(mod->dev, "illegal blob size %zu", blob_size);
+		return -EINVAL;
+	}
+
+	ret = build_config(mod, cfg);
 	if (ret < 0)
 		return ret;
 
-	set_mux_params(mod);
+	set_mux_params(mod, cfg);
 
 	return ret;
 }
