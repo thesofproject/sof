@@ -9,6 +9,7 @@
 #endif
 
 #include <stdint.h>
+#include <sof/boot_test.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/common.h>
 #include <ipc4/base_fw.h>
@@ -152,6 +153,9 @@ int ipc4_logging_enable_logs(bool first_block,
 			LOG_WRN("Too small aging timer value, limiting to %u\n",
 				mtrace_aging_timer);
 		}
+
+		/* Logs enabled, this is the best place to run boot-tests */
+		TEST_RUN_ONCE(sof_run_boot_tests);
 	} else  {
 		k_work_flush_delayable(&log_work, &ipc4_log_work_sync);
 		adsp_mtrace_log_init(NULL);
