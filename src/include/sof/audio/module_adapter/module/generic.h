@@ -127,6 +127,8 @@ struct module_param {
  * when the module unloads.
  */
 struct module_resources {
+	bool tracking_enabled;
+	unsigned int resource_count;
 	struct list_item res_list;		/**< Allocad resource containers */
 	struct list_item free_cont_list;	/**< Unused memory containers */
 	struct list_item cont_chunk_list;	/**< Memory container chunks */
@@ -188,6 +190,7 @@ struct module_processing_data {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
+int mod_resource_init(struct processing_module *mod);
 void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
 static inline void *mod_balloc(struct processing_module *mod, size_t size)
 {

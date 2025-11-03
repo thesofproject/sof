@@ -71,16 +71,26 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	return ret;
 }
 
-static void mod_resource_init(struct processing_module *mod)
+/* TODO: Comtent */
+int mod_resource_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
+
+	MEM_API_CHECK_THREAD(&md->resources);
+	if (md->resources.resource_count > 0) {
+		comp_err(mod->dev, "failed to allocate space for setup config.");
+		return -EBUSY;
+	}
 	/* Init memory list */
 	list_init(&md->resources.res_list);
 	list_init(&md->resources.free_cont_list);
 	list_init(&md->resources.cont_chunk_list);
 	md->resources.heap_usage = 0;
 	md->resources.heap_high_water_mark = 0;
+	md->resources.tracking_enabled = true;
+	return 0;
 }
+EXPORT_SYMBOL(mod_resource_init);
 
 int module_init(struct processing_module *mod)
 {
@@ -117,7 +127,10 @@ int module_init(struct processing_module *mod)
 	ret = interface->init(mod);
 	if (ret) {
 		comp_err(dev, "error %d: module specific init failed", ret);
-		mod_free_all(mod);
+		if (mod->priv.resources.tracking_enabled)
+			mod_free_all(mod);
+		else if (mod->priv.resources.resource_count)
+			comp_err(dev, "%u resources leaked due to failed init");
 		return ret;
 	}
 
@@ -184,6 +197,13 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 
 	MEM_API_CHECK_THREAD(res);
 
+	if (!res->tracking_enabled) {
+		ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
+		if (ptr)
+			res->resource_count++;
+		return ptr;
+	}
+
 	container = container_get(mod);
 	if (!container)
 		return NULL;
@@ -233,6 +253,13 @@ void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignme
 	void *ptr;
 
 	MEM_API_CHECK_THREAD(res);
+
+	if (!res->tracking_enabled) {
+		ptr = rmalloc_align(SOF_MEM_FLAG_USER, size, alignment);
+		if (ptr)
+			res->resource_count++;
+		return ptr;
+	}
 
 	container = container_get(mod);
 	if (!container)
@@ -284,6 +311,13 @@ mod_data_blob_handler_new(struct processing_module *mod)
 
 	MEM_API_CHECK_THREAD(res);
 
+	if (!res->tracking_enabled) {
+		bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
+		if (bhp)
+			res->resource_count++;
+		return bhp;
+	}
+
 	container = container_get(mod);
 	if (!container)
 		return NULL;
@@ -319,6 +353,13 @@ const void *mod_fast_get(struct processing_module *mod, const void * const dram_
 	const void *ptr;
 
 	MEM_API_CHECK_THREAD(res);
+
+	if (!res->tracking_enabled) {
+		ptr = fast_get(dram_ptr, size);
+		if (ptr)
+			res->resource_count++;
+		return ptr;
+	}
 
 	container = container_get(mod);
 	if (!container)
@@ -380,6 +421,20 @@ int mod_free(struct processing_module *mod, const void *ptr)
 	if (!ptr)
 		return 0;
 
+	if (!res->tracking_enabled) {
+		if (res->resource_count == 0) {
+			comp_err(mod->dev, "More resources freed than allocated.");
+			return -EINVAL;
+		}
+		/* TODO: static generic tracked resource free func
+		 * that takes const ptr to treat Guennadi's cast
+		 * allergy, so that mod_free can take non const
+		 */
+		rfree((void *)ptr);
+		res->resource_count--;
+		return 0;
+	}
+
 	/* Find which container keeps this memory */
 	list_for_item(res_list, &res->res_list) {
 		container = container_of(res_list, struct module_resource, list);
@@ -401,6 +456,18 @@ EXPORT_SYMBOL(mod_free);
 #if CONFIG_COMP_BLOB
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
 {
+	struct module_resources *res = &mod->priv.resources;
+
+	if (!res->tracking_enabled) {
+		if (res->resource_count == 0) {
+			comp_err(mod->dev, "More resources freed than allocated.");
+			return;
+		}
+		comp_data_blob_handler_free(dbh);
+		res->resource_count--;
+		return;
+	}
+
 	mod_free(mod, (void *)dbh);
 }
 EXPORT_SYMBOL(mod_data_blob_handler_free);
@@ -409,6 +476,18 @@ EXPORT_SYMBOL(mod_data_blob_handler_free);
 #if CONFIG_FAST_GET
 void mod_fast_put(struct processing_module *mod, const void *sram_ptr)
 {
+	struct module_resources *res = &mod->priv.resources;
+
+	if (!res->tracking_enabled) {
+		if (res->resource_count == 0) {
+			comp_err(mod->dev, "More resources freed than allocated.");
+			return;
+		}
+		fast_put(sram_ptr);
+		res->resource_count--;
+		return;
+	}
+
 	mod_free(mod, sram_ptr);
 }
 EXPORT_SYMBOL(mod_fast_put);
@@ -591,6 +670,9 @@ void mod_free_all(struct processing_module *mod)
 	struct list_item *_list;
 
 	MEM_API_CHECK_THREAD(res);
+
+	__ASSERT(res->tracking_enabled, "Resource tracking not enabled");
+
 	/* Free all contents found in used containers */
 	list_for_item(list, &res->res_list) {
 		struct module_resource *container =
