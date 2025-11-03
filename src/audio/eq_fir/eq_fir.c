@@ -313,7 +313,7 @@ static int eq_fir_free(struct processing_module *mod)
 	comp_dbg(mod->dev, "eq_fir_free()");
 
 	eq_fir_free_delaylines(mod);
-	comp_data_blob_handler_free(cd->model_handler);
+	mod_data_blob_handler_free(mod, cd->model_handler);
 
 	mod_free(mod, cd);
 
