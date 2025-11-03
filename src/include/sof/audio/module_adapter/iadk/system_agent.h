@@ -107,8 +107,9 @@ extern "C" {
  * method (the variant with 7 parameters) via a parameter that initially contained the address to
  * the agent system. The system_agent_start function returns it in the variable adapter.
  */
-int system_agent_start(uintptr_t entry_point, uint32_t module_id, uint32_t instance_id,
-		       uint32_t core_id, uint32_t log_handle, void *mod_cfg, const void **adapter);
+struct system_agent_params;
+
+int system_agent_start(const struct system_agent_params *params, const void **adapter);
 #ifdef __cplusplus
 }
 #endif

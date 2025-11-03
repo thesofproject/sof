@@ -501,9 +501,7 @@ static int lib_manager_start_agent(const struct comp_driver *drv, const uint32_t
 				   const system_agent_start_fn agent,
 				   const void **agent_interface)
 {
-	const uint32_t module_id = IPC4_MOD_ID(component_id);
-	const uint32_t instance_id = IPC4_INST_ID(component_id);
-	const uint32_t log_handle = (uint32_t)drv->tctx;
+	struct system_agent_params agent_params;
 	byte_array_t mod_cfg;
 	int ret;
 
@@ -511,8 +509,14 @@ static int lib_manager_start_agent(const struct comp_driver *drv, const uint32_t
 	/* Intel modules expects DW size here */
 	mod_cfg.size = args->size >> 2;
 
-	ret = agent(module_entry_point, module_id, instance_id, 0, log_handle, &mod_cfg,
-		    agent_interface);
+	agent_params.entry_point = module_entry_point;
+	agent_params.module_id = IPC4_MOD_ID(component_id);
+	agent_params.instance_id = IPC4_INST_ID(component_id);
+	agent_params.core_id = 0;
+	agent_params.log_handle = (uint32_t)drv->tctx;
+	agent_params.mod_cfg = &mod_cfg;
+
+	ret = agent(&agent_params, agent_interface);
 	if (ret)
 		tr_err(&lib_manager_tr, "System agent start failed %d!", ret);
 
