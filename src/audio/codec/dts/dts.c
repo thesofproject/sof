@@ -142,6 +142,7 @@ static int dts_codec_init(struct processing_module *mod)
 	DtsSofInterfaceVersionInfo sdk_version;
 
 	comp_dbg(dev, "dts_codec_init() start");
+	mod_resource_init(mod);
 
 	dts_result = dtsSofInterfaceInit((DtsSofInterfaceInst **)&(codec->private),
 		dts_effect_allocate_codec_memory, dts_effect_free_codec_memory, mod);

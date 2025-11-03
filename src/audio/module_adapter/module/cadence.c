@@ -267,6 +267,7 @@ static int cadence_codec_init(struct processing_module *mod)
 	int ret;
 
 	comp_dbg(dev, "cadence_codec_init() start");
+	mod_resource_init(mod);
 
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct cadence_codec_data));
 	if (!cd) {
@@ -344,6 +345,7 @@ static int cadence_codec_init(struct processing_module *mod)
 	int ret;
 
 	comp_dbg(dev, "cadence_codec_init() start");
+	mod_resource_init(mod);
 
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(struct cadence_codec_data));
 	if (!cd) {
