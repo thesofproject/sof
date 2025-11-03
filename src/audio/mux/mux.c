@@ -390,19 +390,9 @@ static int mux_prepare(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
-	struct sof_mux_config *config;
-	size_t blob_size;
 	int ret;
 
 	comp_dbg(dev, "mux_prepare()");
-
-	config = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
-	if (blob_size > MUX_BLOB_MAX_SIZE) {
-		comp_err(dev, "illegal blob size %zu", blob_size);
-		return -EINVAL;
-	}
-
-	memcpy_s(&cd->config, MUX_BLOB_MAX_SIZE, config, blob_size);
 
 	ret = mux_params(mod);
 	if (ret < 0)

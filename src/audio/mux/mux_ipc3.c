@@ -9,6 +9,7 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
+#include <sof/audio/data_blob.h>
 #include <module/module/base.h>
 #include <sof/trace/trace.h>
 #include <rtos/string_macro.h>
@@ -98,6 +99,18 @@ static int mux_set_values(struct processing_module *mod)
 
 int mux_params(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_mux_config *config;
+	size_t blob_size;
+
+	config = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
+	if (blob_size > MUX_BLOB_MAX_SIZE) {
+		comp_err(mod->dev, "illegal blob size %zu", blob_size);
+		return -EINVAL;
+	}
+
+	memcpy_s(&cd->config, MUX_BLOB_MAX_SIZE, config, blob_size);
+
 	return mux_set_values(mod);
 }
 #endif /* CONFIG_COMP_MUX */
