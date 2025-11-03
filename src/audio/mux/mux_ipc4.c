@@ -105,7 +105,7 @@ static void set_mux_params(struct processing_module *mod)
 		struct ipc4_audio_format *audio_fmt;
 
 		comp_dev_for_each_producer(dev, source) {
-			j = buf_get_id(source);
+			j = IPC4_SINK_QUEUE_ID(buf_get_id(source));
 			cd->config.streams[j].pipeline_id = buffer_pipeline_id(source);
 			if (j == BASE_CFG_QUEUED_ID)
 				audio_fmt = &cd->md.base_cfg.audio_fmt;
