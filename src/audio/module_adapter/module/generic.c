@@ -416,34 +416,11 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 	return -EINVAL;
 }
 
-/**
- * Frees the memory block removes it from module's book keeping.
- * @param mod	Pointer to module this memory block was allocated for.
- * @param ptr	Pointer to the memory block.
- */
-int mod_free(struct processing_module *mod, const void *ptr)
+static int free_tracked_resource(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 	struct list_item *res_list;
-
-	MEM_API_CHECK_THREAD(res);
-	if (!ptr)
-		return 0;
-
-	if (!res->tracking_enabled) {
-		if (res->resource_count == 0) {
-			comp_err(mod->dev, "More resources freed than allocated.");
-			return -EINVAL;
-		}
-		/* TODO: static generic tracked resource free func
-		 * that takes const ptr to treat Guennadi's cast
-		 * allergy, so that mod_free can take non const
-		 */
-		rfree((void *)ptr);
-		res->resource_count--;
-		return 0;
-	}
 
 	/* Find which container keeps this memory */
 	list_for_item(res_list, &res->res_list) {
@@ -461,44 +438,80 @@ int mod_free(struct processing_module *mod, const void *ptr)
 
 	return -EINVAL;
 }
+
+/**
+ * Frees the memory block removes it from module's book keeping.
+ * @param mod	Pointer to module this memory block was allocated for.
+ * @param ptr	Pointer to the memory block.
+ */
+int mod_free(struct processing_module *mod, void *ptr)
+{
+	struct module_resources *res = &mod->priv.resources;
+	struct module_resource *container;
+	struct list_item *res_list;
+
+	MEM_API_CHECK_THREAD(res);
+
+	if (!ptr)
+		return 0;
+
+	if (res->tracking_enabled)
+		return free_tracked_resource(mod, ptr);
+
+	if (res->resource_count == 0) {
+		comp_err(mod->dev, "More resources freed than allocated.");
+		return -EINVAL;
+	}
+	rfree(ptr);
+	res->resource_count--;
+	return 0;
+}
 EXPORT_SYMBOL(mod_free);
 
 #if CONFIG_COMP_BLOB
-void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
+int mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
 {
 	struct module_resources *res = &mod->priv.resources;
 
-	if (!res->tracking_enabled) {
-		if (res->resource_count == 0) {
-			comp_err(mod->dev, "More resources freed than allocated.");
-			return;
-		}
-		comp_data_blob_handler_free(dbh);
-		res->resource_count--;
-		return;
-	}
+	MEM_API_CHECK_THREAD(res);
 
-	mod_free(mod, (void *)dbh);
+	if (!dbh)
+		return 0;
+
+	if (res->tracking_enabled)
+		return free_tracked_resource(mod, dbh);
+
+	if (res->resource_count == 0) {
+		comp_err(mod->dev, "More resources freed than allocated.");
+		return -EINVAL;
+	}
+	comp_data_blob_handler_free(dbh);
+	res->resource_count--;
+	return 0;
 }
 EXPORT_SYMBOL(mod_data_blob_handler_free);
 #endif
 
 #if CONFIG_FAST_GET
-void mod_fast_put(struct processing_module *mod, const void *sram_ptr)
+int mod_fast_put(struct processing_module *mod, const void *sram_ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
 
-	if (!res->tracking_enabled) {
-		if (res->resource_count == 0) {
-			comp_err(mod->dev, "More resources freed than allocated.");
-			return;
-		}
-		fast_put(sram_ptr);
-		res->resource_count--;
-		return;
-	}
+	MEM_API_CHECK_THREAD(res);
 
-	mod_free(mod, sram_ptr);
+	if (!sram_ptr)
+		return 0;
+
+	if (res->tracking_enabled)
+		return free_tracked_resource(mod, sram_ptr);
+
+	if (res->resource_count == 0) {
+		comp_err(mod->dev, "More resources freed than allocated.");
+		return -EINVAL;
+	}
+	fast_put(sram_ptr);
+	res->resource_count--;
+	return 0;
 }
 EXPORT_SYMBOL(mod_fast_put);
 #endif

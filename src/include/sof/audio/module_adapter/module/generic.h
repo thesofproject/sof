@@ -213,14 +213,14 @@ static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 	return ret;
 }
 
-int mod_free(struct processing_module *mod, const void *ptr);
+int mod_free(struct processing_module *mod, void *ptr);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
-void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
+int mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
 #endif
 #if CONFIG_FAST_GET
 const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size);
-void mod_fast_put(struct processing_module *mod, const void *sram_ptr);
+int mod_fast_put(struct processing_module *mod, const void *sram_ptr);
 #endif
 void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
