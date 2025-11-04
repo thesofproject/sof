@@ -1280,10 +1280,12 @@ void module_adapter_free(struct comp_dev *dev)
 		buffer_free(buffer);
 	}
 
-	if (mod->priv.resources.tracking_enabled)
+	if (mod->priv.resources.tracking_enabled) {
 		mod_free_all(mod);
-	else if (mod->priv.resources.resource_count)
+	} else if (mod->priv.resources.resource_count) {
 		comp_err(dev, "%u unfreed resources leaked", mod->priv.resources.resource_count);
+		__ASSERT(0, "unfreed resources leaked");
+	}
 
 #if CONFIG_IPC_MAJOR_4
 	rfree(mod->priv.cfg.input_pins);
