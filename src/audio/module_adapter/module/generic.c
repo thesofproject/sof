@@ -71,7 +71,17 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	return ret;
 }
 
-/* TODO: Comtent */
+/**
+ * Initialize resource tracking and turn it on for the module.
+ * @param mod		Pointer to the module
+ * @return 0 if Ok, -EBUSY if module is in wrong state.
+ *
+ * This function should be called from the module init function before
+ * any resource allocations are made through mod_alloc() and friends.
+ * If resource tracking is on, then all resources allocated through
+ * mod_alloc() and frieds are freed automatically when the module is
+ * unloaded of if its initialization fails.
+ */
 int mod_resource_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
