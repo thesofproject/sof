@@ -1214,7 +1214,7 @@ bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used);
 
 static inline int user_get_buffer_memory_region(const struct comp_driver *drv)
 {
-#if CONFIG_USERSPACE
+#if CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP
 	return drv->user_heap ? SOF_MEM_FLAG_USER_SHARED_BUFFER : SOF_MEM_FLAG_USER;
 #else
 	return SOF_MEM_FLAG_USER;

@@ -19,8 +19,8 @@
 
 #include <zephyr/app_memory/app_memdomain.h>
 
-#define DRV_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
-				 CONFIG_MM_DRV_PAGE_SIZE)
+#define USER_MOD_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
+					 CONFIG_MM_DRV_PAGE_SIZE)
 #define APP_TASK_BSS	K_APP_BMEM(common_partition)
 #define APP_TASK_DATA	K_APP_DMEM(common_partition)
 

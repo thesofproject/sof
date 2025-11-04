@@ -36,16 +36,16 @@ struct sys_heap *module_driver_heap_init(void)
 	if (!mod_drv_heap)
 		return NULL;
 
-	void *mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, DRV_HEAP_SIZE,
+	void *mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, USER_MOD_HEAP_SIZE,
 				  CONFIG_MM_DRV_PAGE_SIZE);
 	if (!mem) {
 		rfree(mod_drv_heap);
 		return NULL;
 	}
 
-	sys_heap_init(mod_drv_heap, mem, DRV_HEAP_SIZE);
+	sys_heap_init(mod_drv_heap, mem, USER_MOD_HEAP_SIZE);
 	mod_drv_heap->init_mem = mem;
-	mod_drv_heap->init_bytes = DRV_HEAP_SIZE;
+	mod_drv_heap->init_bytes = USER_MOD_HEAP_SIZE;
 
 	return mod_drv_heap;
 }
