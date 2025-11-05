@@ -184,20 +184,21 @@ static int idc_prepare(uint32_t comp_id)
 	/* we're running LL on different core, so allocate our own task */
 	if (!dev->task && dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
 		/* allocate task for shared component */
-		dev->task = module_driver_heap_rzalloc(dev->drv->user_heap, SOF_MEM_FLAG_USER,
-						       sizeof(*dev->task));
+		dev->task = sof_heap_alloc(dev->drv->user_heap, SOF_MEM_FLAG_USER,
+					   sizeof(*dev->task), 0);
 		if (!dev->task) {
 			ret = -ENOMEM;
 			goto out;
 		}
 
+		memset(dev->task, 0, sizeof(*dev->task));
 		ret = schedule_task_init_ll(dev->task,
 					    SOF_UUID(idc_task_uuid),
 					    SOF_SCHEDULE_LL_TIMER,
 					    dev->priority, comp_task, dev,
 					    dev->ipc_config.core, 0);
 		if (ret < 0) {
-			module_driver_heap_free(dev->drv->user_heap, dev->task);
+			sof_heap_free(dev->drv->user_heap, dev->task);
 			goto out;
 		}
 	}

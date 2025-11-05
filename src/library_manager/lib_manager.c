@@ -736,7 +736,7 @@ int lib_manager_register_module(const uint32_t component_id)
 	const struct sof_man_module *mod = lib_manager_get_module_manifest(component_id);
 	const struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid;
 	struct comp_driver_info *new_drv_info;
-	struct sys_heap *drv_heap = NULL;
+	struct k_heap *drv_heap = NULL;
 	struct comp_driver *drv = NULL;
 	int ret = -ENOMEM;
 
@@ -765,12 +765,14 @@ int lib_manager_register_module(const uint32_t component_id)
 	}
 #endif /* CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP */
 
-	drv = module_driver_heap_rmalloc(drv_heap, SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
-					 sizeof(struct comp_driver));
+	drv = sof_heap_alloc(drv_heap, SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+			     sizeof(struct comp_driver), 0);
 	if (!drv) {
 		tr_err(&lib_manager_tr, "failed to allocate comp_driver");
 		goto cleanup;
 	}
+
+	memset(drv, 0, sizeof(*drv));
 	drv->user_heap = drv_heap;
 
 	lib_manager_prepare_module_adapter(drv, uid);
@@ -785,7 +787,7 @@ int lib_manager_register_module(const uint32_t component_id)
 cleanup:
 	if (ret < 0) {
 		rfree(new_drv_info);
-		module_driver_heap_free(drv_heap, drv);
+		sof_heap_free(drv_heap, drv);
 		module_driver_heap_remove(drv_heap);
 	}
 

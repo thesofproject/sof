@@ -591,7 +591,7 @@ struct comp_driver {
 							  * Intended to replace the ops field.
 							  * Currently used by module_adapter.
 							  */
-	struct sys_heap *user_heap;			/**< Userspace heap */
+	struct k_heap *user_heap;			/**< Userspace heap */
 };
 
 /** \brief Holds constant pointer to component driver */
@@ -879,13 +879,14 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv, size_t 
 	 * Use uncached address everywhere to access components to rule out
 	 * multi-core failures. TODO: verify if cached alias may be used in some cases
 	 */
-	struct comp_dev *dev = module_driver_heap_rzalloc(drv->user_heap,
-							  SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-							  bytes);
+	struct comp_dev *dev = sof_heap_alloc(drv->user_heap,
+					      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					      bytes, 0);
 
 	if (!dev)
 		return NULL;
 
+	memset(dev, 0, sizeof(*dev));
 	comp_init(drv, dev, bytes);
 
 	return dev;
