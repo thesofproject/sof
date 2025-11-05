@@ -102,6 +102,15 @@ config MATH_FFT
 	  Enable Fast Fourier Transform library, this should not be selected
 	  directly, please select it from other audio components where need it.
 
+config MATH_FFT_MULTI
+	bool "FFT library for some non-power-of-two sizes"
+	depends on MATH_FFT
+	default n
+	help
+	  Enable Fast Fourier Transform library for e.g. sizes 1536 and 3072,
+	  this should not be selected directly, please select it from other
+	  audio components where need it.
+
 menu "Supported FFT word lengths"
 	visible if MATH_FFT
 

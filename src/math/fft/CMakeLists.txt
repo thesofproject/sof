@@ -10,6 +10,10 @@ if(CONFIG_MATH_32BIT_FFT)
   list(APPEND base_files fft_32.c fft_32_hifi3.c)
 endif()
 
+if(CONFIG_MATH_FFT_MULTI)
+  list(APPEND base_files fft_multi.c)
+endif()
+
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 

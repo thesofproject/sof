@@ -113,6 +113,7 @@ e50057a5-8b27-4db4-bd799a639cee5f50 kpb_task
 9f130ed8-2bbf-421c-836ad5269147c9e7 ll_sched_lib
 37f1d41f-252d-448d-b9c41e2bee8e1bf1 main_task
 107eb437-0347-4336-ab60f4baaeb5ea49 math_fft
+590af515-8fc0-4827-8748c8efbe6ac514 math_fft_multi
 d23cf8d0-8dfe-497c-82025f909cf72735 math_power
 0cd84e80-ebd3-11ea-adc10242ac120002 maxim_dsm
 425d6e68-145c-4455-b0b2c7260b0600a5 mem
