@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2020 Intel Corporation. All rights reserved.
+// Copyright(c) 2020-2025 Intel Corporation.
 //
 // Author: Amery Song <chao.song@intel.com>
 //	   Keyon Jie <yang.jie@linux.intel.com>
@@ -13,25 +13,34 @@
 #include <sof/common.h>
 #include <rtos/alloc.h>
 #include <sof/math/fft.h>
+#include "fft_common.h"
 
 LOG_MODULE_REGISTER(math_fft, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(math_fft);
 DECLARE_TR_CTX(math_fft_tr, SOF_UUID(math_fft_uuid), LOG_LEVEL_INFO);
 
-struct fft_plan *mod_fft_plan_new(struct processing_module *mod, void *inb,
-				  void *outb, uint32_t size, int bits)
+struct fft_plan *fft_plan_common_new(struct processing_module *mod, void *inb,
+				     void *outb, uint32_t size, int bits)
 {
 	struct fft_plan *plan;
 	int lim = 1;
 	int len = 0;
-	int i;
 
-	if (!inb || !outb)
+	if (!inb || !outb) {
+		comp_cl_err(mod->dev, "NULL input/output buffers.");
 		return NULL;
+	}
+
+	if (!is_power_of_2(size)) {
+		comp_cl_err(mod->dev, "The FFT size must be a power of two.");
+		return NULL;
+	}
 
 	plan = mod_zalloc(mod, sizeof(struct fft_plan));
-	if (!plan)
+	if (!plan) {
+		comp_cl_err(mod->dev, "Failed to allocate FFT plan.");
 		return NULL;
+	}
 
 	switch (bits) {
 	case 16:
@@ -43,6 +52,7 @@ struct fft_plan *mod_fft_plan_new(struct processing_module *mod, void *inb,
 		plan->outb32 = outb;
 		break;
 	default:
+		comp_cl_err(mod->dev, "Invalid word length.");
 		return NULL;
 	}
 
@@ -54,16 +64,42 @@ struct fft_plan *mod_fft_plan_new(struct processing_module *mod, void *inb,
 
 	plan->size = lim;
 	plan->len = len;
+	return plan;
+}
 
-	plan->bit_reverse_idx = mod_zalloc(mod,	plan->size * sizeof(uint16_t));
-	if (!plan->bit_reverse_idx)
+void fft_plan_init_bit_reverse(uint16_t *bit_reverse_idx, int size, int len)
+{
+	int i;
+
+	/* Set up the bit reverse index. The array will contain the value of
+	 * the index with the bits order reversed. Index can be skipped.
+	 */
+	for (i = 1; i < size; ++i)
+		bit_reverse_idx[i] = (bit_reverse_idx[i >> 1] >> 1) | ((i & 1) << (len - 1));
+}
+
+struct fft_plan *mod_fft_plan_new(struct processing_module *mod, void *inb,
+				  void *outb, uint32_t size, int bits)
+{
+	struct fft_plan *plan;
+
+	if (size > FFT_SIZE_MAX || size < FFT_SIZE_MIN) {
+		comp_cl_err(mod->dev, "Invalid FFT size %d", size);
+		return NULL;
+	}
+
+	plan = fft_plan_common_new(mod, inb, outb, size, bits);
+	if (!plan)
 		return NULL;
 
-	/* set up the bit reverse index */
-	for (i = 1; i < plan->size; ++i)
-		plan->bit_reverse_idx[i] = (plan->bit_reverse_idx[i >> 1] >> 1) |
-					   ((i & 1) << (len - 1));
+	plan->bit_reverse_idx = mod_zalloc(mod,	plan->size * sizeof(uint16_t));
+	if (!plan->bit_reverse_idx) {
+		comp_cl_err(mod->dev, "Failed to allocate bit reverse table.");
+		mod_free(mod, plan);
+		return NULL;
+	}
 
+	fft_plan_init_bit_reverse(plan->bit_reverse_idx, plan->size, plan->len);
 	return plan;
 }
 
