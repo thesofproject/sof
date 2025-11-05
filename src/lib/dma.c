@@ -36,7 +36,7 @@ DECLARE_TR_CTX(dma_tr, SOF_UUID(dma_uuid), LOG_LEVEL_INFO);
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 static int dma_init(struct sof_dma *dma);
 
-struct sof_dma *sof_dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
+struct sof_dma *z_impl_sof_dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
 	const struct dma_info *info = dma_info_get();
 	int users, ret = 0;
@@ -129,7 +129,7 @@ out:
 	return !ret ? dmin : NULL;
 }
 
-void sof_dma_put(struct sof_dma *dma)
+void z_impl_sof_dma_put(struct sof_dma *dma)
 {
 	k_spinlock_key_t key;
 
@@ -168,8 +168,8 @@ static int dma_init(struct sof_dma *dma)
 
 	return 0;
 }
-EXPORT_SYMBOL(sof_dma_get);
-EXPORT_SYMBOL(sof_dma_put);
+EXPORT_SYMBOL(z_impl_sof_dma_get);
+EXPORT_SYMBOL(z_impl_sof_dma_put);
 #else
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
