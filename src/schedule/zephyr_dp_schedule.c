@@ -404,12 +404,17 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	struct task *task = p1;
 	(void)p2;
 	(void)p3;
-	struct task_dp_pdata *task_pdata = task->priv_data;
 	unsigned int lock_key;
 	enum task_state state;
 	bool task_stop;
 	struct scheduler_dp_data *dp_sch = NULL;
 	volatile int dbg = __LINE__;
+	struct task_dp_pdata *task_pdata = NULL;
+
+	while (dbg);
+
+	dbg = __LINE__;
+	task_pdata = task->priv_data;
 	dbg = __LINE__;
 
 	if (!(task->flags & K_USER))
