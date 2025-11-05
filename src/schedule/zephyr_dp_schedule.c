@@ -409,64 +409,93 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	enum task_state state;
 	bool task_stop;
 	struct scheduler_dp_data *dp_sch = NULL;
-
+	volatile int dbg = __LINE__;
+	dbg = __LINE__;
 
 	if (!(task->flags & K_USER))
 		dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+	dbg = __LINE__;
 
 	do {
 		/*
 		 * the thread is started immediately after creation, it will stop on semaphore
 		 * Semaphore will be released once the task is ready to process
 		 */
+		dbg = __LINE__;
 		k_sem_take(task_pdata->sem, K_FOREVER);
+		dbg = __LINE__;
 
-		if (task->state == SOF_TASK_STATE_RUNNING)
+		if (task->state == SOF_TASK_STATE_RUNNING) {
+			dbg = __LINE__;
 			state = task_run(task);
-		else
+		} else {
+			dbg = __LINE__;
 			state = task->state;	/* to avoid undefined variable warning */
+		}
+		dbg = __LINE__;
 
 		lock_key = scheduler_dp_lock(task->core);
+		dbg = __LINE__;
 		/*
 		 * check if task is still running, may have been canceled by external call
 		 * if not, set the state returned by run procedure
 		 */
 		if (task->state == SOF_TASK_STATE_RUNNING) {
+			dbg = __LINE__;
 			task->state = state;
 			switch (state) {
 			case SOF_TASK_STATE_RESCHEDULE:
+				dbg = __LINE__;
 				/* mark to reschedule, schedule time is already calculated */
 				task->state = SOF_TASK_STATE_QUEUED;
+				dbg = __LINE__;
 				break;
 
 			case SOF_TASK_STATE_CANCEL:
+				dbg = __LINE__;
 			case SOF_TASK_STATE_COMPLETED:
 				/* remove from scheduling */
+				dbg = __LINE__;
 				list_item_del(&task->list);
+				dbg = __LINE__;
 				break;
 
 			default:
+				dbg = __LINE__;
 				/* illegal state, serious defect, won't happen */
 				k_panic();
 			}
 		}
 
 		/* if true exit the while loop, terminate the thread */
+		dbg = __LINE__;
 		task_stop = task->state == SOF_TASK_STATE_COMPLETED ||
 			task->state == SOF_TASK_STATE_CANCEL;
+		dbg = __LINE__;
 		/* recalculate all DP tasks readiness and deadlines
 		 * TODO: it should be for all tasks, for all cores
 		 * currently its limited to current core only
 		 */
-		if (dp_sch)
+		dbg = __LINE__;
+		if (dp_sch) {
+			dbg = __LINE__;
 			scheduler_dp_recalculate(dp_sch, false);
+		}
+		dbg = __LINE__;
 
 		scheduler_dp_unlock(lock_key);
+		dbg = __LINE__;
+
 	} while (!task_stop);
+	dbg = __LINE__;
 
 	/* call task_complete  */
-	if (task->state == SOF_TASK_STATE_COMPLETED)
+	if (task->state == SOF_TASK_STATE_COMPLETED) {
+		dbg = __LINE__;
 		task_complete(task);
+	}
+	dbg = __LINE__;
+
 }
 __attribute__((optimize("-O0")))
 static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t start,
