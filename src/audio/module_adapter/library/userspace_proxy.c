@@ -49,10 +49,11 @@ static int userspace_proxy_memory_init(struct userspace_context *user,
 {
 	/* Add module private heap to memory partitions */
 	struct k_mem_partition heap_part = { .attr = K_MEM_PARTITION_P_RW_U_RW };
+	struct sys_heap *heap = &drv->user_heap->heap;
 
 	k_mem_region_align(&heap_part.start, &heap_part.size,
-			   POINTER_TO_UINT(drv->user_heap->init_mem),
-			   drv->user_heap->init_bytes, CONFIG_MM_DRV_PAGE_SIZE);
+			   POINTER_TO_UINT(heap->init_mem),
+			   heap->init_bytes, CONFIG_MM_DRV_PAGE_SIZE);
 
 	tr_dbg(&userspace_proxy_tr, "Heap partition %p + %zx, attr = %u",
 	       UINT_TO_POINTER(heap_part.start), heap_part.size, heap_part.attr);
@@ -63,8 +64,8 @@ static int userspace_proxy_memory_init(struct userspace_context *user,
 	struct k_mem_partition heap_cached_part = { .attr = K_MEM_PARTITION_P_RW_U_RW };
 
 	k_mem_region_align(&heap_cached_part.start, &heap_cached_part.size,
-			   POINTER_TO_UINT(sys_cache_cached_ptr_get(drv->user_heap->init_mem)),
-			   drv->user_heap->init_bytes, CONFIG_MM_DRV_PAGE_SIZE);
+			   POINTER_TO_UINT(sys_cache_cached_ptr_get(heap->init_mem)),
+			   heap->init_bytes, CONFIG_MM_DRV_PAGE_SIZE);
 
 	tr_dbg(&userspace_proxy_tr, "Cached heap partition %p + %zx, attr = %u",
 	       UINT_TO_POINTER(heap_cached_part.start), heap_cached_part.size,
@@ -135,7 +136,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 
 	tr_dbg(&userspace_proxy_tr, "userspace create");
 
-	user = sys_heap_alloc(drv->user_heap, sizeof(struct userspace_context));
+	user = k_heap_alloc(drv->user_heap, sizeof(struct userspace_context), K_FOREVER);
 	if (!user)
 		return -ENOMEM;
 
@@ -184,7 +185,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 error_dom:
 	rfree(domain);
 error:
-	sys_heap_free(drv->user_heap, user);
+	k_heap_free(drv->user_heap, user);
 	return ret;
 }
 
@@ -192,7 +193,7 @@ void userspace_proxy_destroy(const struct comp_driver *drv, struct userspace_con
 {
 	tr_dbg(&userspace_proxy_tr, "userspace proxy destroy");
 	rfree(user_ctx->comp_dom);
-	sys_heap_free(drv->user_heap, user_ctx);
+	k_heap_free(drv->user_heap, user_ctx);
 }
 
 /**

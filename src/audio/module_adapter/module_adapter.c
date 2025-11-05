@@ -63,14 +63,14 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 
-	struct processing_module *mod = module_driver_heap_rzalloc(drv->user_heap, flags,
-								   sizeof(*mod));
+	struct processing_module *mod = sof_heap_alloc(drv->user_heap, flags, sizeof(*mod), 0);
 
 	if (!mod) {
 		comp_err(dev, "failed to allocate memory for module");
 		goto err;
 	}
 
+	memset(mod, 0, sizeof(*mod));
 	dev->ipc_config = *config;
 	mod->dev = dev;
 	dev->mod = mod;
@@ -78,7 +78,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	return mod;
 
 err:
-	module_driver_heap_free(drv->user_heap, dev);
+	sof_heap_free(drv->user_heap, dev);
 
 	return NULL;
 }
@@ -88,10 +88,10 @@ static void module_adapter_mem_free(struct processing_module *mod)
 	const struct comp_driver *drv = mod->dev->drv;
 
 #if CONFIG_IPC_MAJOR_4
-	module_driver_heap_free(drv->user_heap, mod->priv.cfg.input_pins);
+	sof_heap_free(drv->user_heap, mod->priv.cfg.input_pins);
 #endif
-	module_driver_heap_free(drv->user_heap, mod->dev);
-	module_driver_heap_free(drv->user_heap, mod);
+	sof_heap_free(drv->user_heap, mod->dev);
+	sof_heap_free(drv->user_heap, mod);
 }
 
 /*
