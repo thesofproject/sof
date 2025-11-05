@@ -194,7 +194,7 @@ void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, 
 /**
  * Allocates aligned memory block for module.
  * @param mod		Pointer to the module this memory block is allocated for.
- * @param bytes		Size in bytes.
+ * @param size		Size in bytes.
  * @param alignment	Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  *
