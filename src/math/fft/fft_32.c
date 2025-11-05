@@ -10,55 +10,13 @@
 #include <rtos/alloc.h>
 #include <sof/math/fft.h>
 
+#include <stdio.h>
+
 #ifdef FFT_GENERIC
 #include <sof/audio/coefficients/fft/twiddle_32.h>
 
-/*
- * These helpers are optimized for FFT calculation only.
- * e.g. _add/sub() assume the output won't be saturate so no check needed,
- * and _mul() assumes Q1.31 * Q1.31 so the output will be shifted to be Q1.31.
- */
+#include "fft_32.h"
 
-static inline void icomplex32_add(const struct icomplex32 *in1, const struct icomplex32 *in2,
-				  struct icomplex32 *out)
-{
-	out->real = in1->real + in2->real;
-	out->imag = in1->imag + in2->imag;
-}
-
-static inline void icomplex32_sub(const struct icomplex32 *in1, const struct icomplex32 *in2,
-				  struct icomplex32 *out)
-{
-	out->real = in1->real - in2->real;
-	out->imag = in1->imag - in2->imag;
-}
-
-static inline void icomplex32_mul(const struct icomplex32 *in1, const struct icomplex32 *in2,
-				  struct icomplex32 *out)
-{
-	out->real = ((int64_t)in1->real * in2->real - (int64_t)in1->imag * in2->imag) >> 31;
-	out->imag = ((int64_t)in1->real * in2->imag + (int64_t)in1->imag * in2->real) >> 31;
-}
-
-/* complex conjugate */
-static inline void icomplex32_conj(struct icomplex32 *comp)
-{
-	comp->imag = SATP_INT32((int64_t)-1 * comp->imag);
-}
-
-/* shift a complex n bits, n > 0: left shift, n < 0: right shift */
-static inline void icomplex32_shift(const struct icomplex32 *input, int32_t n,
-				    struct icomplex32 *output)
-{
-	if (n > 0) {
-		/* need saturation handling */
-		output->real = SATP_INT32(SATM_INT32((int64_t)input->real << n));
-		output->imag = SATP_INT32(SATM_INT32((int64_t)input->imag << n));
-	} else {
-		output->real = input->real >> -n;
-		output->imag = input->imag >> -n;
-	}
-}
 
 /**
  * \brief Execute the 32-bits Fast Fourier Transform (FFT) or Inverse FFT (IFFT)
@@ -133,9 +91,11 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 		 * for Q1.31 format. Instead, we need to multiply N to compensate
 		 * the shrink we did in the FFT transform.
 		 */
-		for (i = 0; i < plan->size; i++)
+		for (i = 0; i < plan->size; i++) {
+			icomplex32_conj(&outb[i]);
 			icomplex32_shift(&outb[i], plan->len, &outb[i]);
+		}
 	}
 }
 
-#endif
+#endif /* FFT_GENERIC */
