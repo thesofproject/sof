@@ -36,7 +36,7 @@ DECLARE_TR_CTX(dma_tr, SOF_UUID(dma_uuid), LOG_LEVEL_INFO);
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 static int dma_init(struct sof_dma *dma);
 
-struct sof_dma *sof_dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
+struct sof_dma *z_impl_sof_dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
 	const struct dma_info *info = dma_info_get();
 	int users, ret = 0;
@@ -129,7 +129,7 @@ out:
 	return !ret ? dmin : NULL;
 }
 
-void sof_dma_put(struct sof_dma *dma)
+void z_impl_sof_dma_put(struct sof_dma *dma)
 {
 	k_spinlock_key_t key;
 
@@ -142,6 +142,50 @@ void sof_dma_put(struct sof_dma *dma)
 	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
 		dma, dma->sref);
 	k_spin_unlock(&dma->lock, key);
+}
+
+int z_impl_sof_dma_get_attribute(struct sof_dma *dma, uint32_t type, uint32_t *value)
+{
+	return dma_get_attribute(dma->z_dev, type, value);
+}
+
+int z_impl_sof_dma_request_channel(struct sof_dma *dma, uint32_t stream_tag)
+{
+	return dma_request_channel(dma->z_dev, &stream_tag);
+}
+
+void z_impl_sof_dma_release_channel(struct sof_dma *dma,
+				       uint32_t channel)
+{
+	dma_release_channel(dma->z_dev, channel);
+}
+
+int z_impl_sof_dma_config(struct sof_dma *dma, uint32_t channel,
+			  struct dma_config *config)
+{
+	return dma_config(dma->z_dev, channel, config);
+}
+
+
+int z_impl_sof_dma_start(struct sof_dma *dma, uint32_t channel)
+{
+	return dma_start(dma->z_dev, channel);
+}
+
+int z_impl_sof_dma_stop(struct sof_dma *dma, uint32_t channel)
+{
+	return dma_stop(dma->z_dev, channel);
+}
+
+int z_impl_sof_dma_get_status(struct sof_dma *dma, uint32_t channel,
+				  struct dma_status *stat)
+{
+	return dma_get_status(dma->z_dev, channel, stat);
+}
+
+int z_impl_sof_dma_reload(struct sof_dma *dma, uint32_t channel, size_t size)
+{
+	return dma_reload(dma->z_dev, channel, 0, 0, size);
 }
 
 static int dma_init(struct sof_dma *dma)
@@ -168,8 +212,8 @@ static int dma_init(struct sof_dma *dma)
 
 	return 0;
 }
-EXPORT_SYMBOL(sof_dma_get);
-EXPORT_SYMBOL(sof_dma_put);
+EXPORT_SYMBOL(z_impl_sof_dma_get);
+EXPORT_SYMBOL(z_impl_sof_dma_put);
 #else
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
