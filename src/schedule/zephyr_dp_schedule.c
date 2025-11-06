@@ -25,6 +25,9 @@
 
 #include <zephyr/kernel/thread.h>
 
+extern volatile uint32_t debug_val[4];
+extern volatile uint32_t *debug_ptr[16];
+
 LOG_MODULE_REGISTER(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dp_sched);
 
@@ -522,6 +525,10 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		scheduler_dp_unlock(lock_key);
 		return -EINVAL;
 	}
+
+	debug_val[0] = (uint32_t)task;
+	extern volatile uint32_t *debug_ptr[16];
+
 
 	/* create a zephyr thread for the task */
 	pdata->thread_id = k_thread_create(pdata->thread, (__sparse_force void *)pdata->p_stack,
