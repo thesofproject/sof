@@ -414,7 +414,7 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	volatile int dbg = __LINE__;
 	struct task_dp_pdata *task_pdata = NULL;
 
-	while (dbg);
+	//while (dbg);
 
 	dbg = __LINE__;
 	task_pdata = task->priv_data;
@@ -526,9 +526,10 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		return -EINVAL;
 	}
 
-	debug_val[0] = (uint32_t)task;
-	extern volatile uint32_t *debug_ptr[16];
-
+	debug_val[0] = sizeof(*task);
+	debug_val[1] = (uint32_t)task;
+	debug_val[2] = (uint32_t)task->priv_data;
+	debug_ptr[0] = &task->priv_data;
 
 	/* create a zephyr thread for the task */
 	pdata->thread_id = k_thread_create(pdata->thread, (__sparse_force void *)pdata->p_stack,
