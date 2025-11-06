@@ -54,7 +54,7 @@ static int userspace_proxy_memory_init(struct userspace_context *user,
 			   POINTER_TO_UINT(drv->user_heap->init_mem),
 			   drv->user_heap->init_bytes, CONFIG_MM_DRV_PAGE_SIZE);
 
-	tr_dbg(&userspace_proxy_tr, "Heap partition %p + %zx, attr = %u",
+	tr_err(&userspace_proxy_tr, "Heap partition %p + %#zx, attr = %u",
 	       UINT_TO_POINTER(heap_part.start), heap_part.size, heap_part.attr);
 
 #if !defined(CONFIG_XTENSA_MMU_DOUBLE_MAP) && defined(CONFIG_SOF_ZEPHYR_HEAP_CACHED)
@@ -66,7 +66,7 @@ static int userspace_proxy_memory_init(struct userspace_context *user,
 			   POINTER_TO_UINT(sys_cache_cached_ptr_get(drv->user_heap->init_mem)),
 			   drv->user_heap->init_bytes, CONFIG_MM_DRV_PAGE_SIZE);
 
-	tr_dbg(&userspace_proxy_tr, "Cached heap partition %p + %zx, attr = %u",
+	tr_err(&userspace_proxy_tr, "Cached heap partition %p + %#zx, attr = %u",
 	       UINT_TO_POINTER(heap_cached_part.start), heap_cached_part.size,
 	       heap_cached_part.attr);
 #endif
@@ -104,7 +104,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user, uint32_t
 
 		ret = k_mem_domain_add_partition(user->comp_dom, &mem_partition);
 
-		tr_dbg(&userspace_proxy_tr, "Add mod partition %p + %zx, attr = %u, ret = %d",
+		tr_err(&userspace_proxy_tr, "Add mod partition %p + %#zx, attr = %u, ret = %d",
 		       UINT_TO_POINTER(mem_partition.start), mem_partition.size,
 		       mem_partition.attr, ret);
 
@@ -117,7 +117,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user, uint32_t
 	mem_partition.attr = K_MEM_PARTITION_P_RW_U_RW;
 	ret = k_mem_domain_add_partition(user->comp_dom, &mem_partition);
 
-	tr_dbg(&userspace_proxy_tr, "Add bss partition %p + %zx, attr = %u, ret = %d",
+	tr_err(&userspace_proxy_tr, "Add bss partition %p + %#zx, attr = %u, ret = %d",
 	       UINT_TO_POINTER(mem_partition.start), mem_partition.size,
 	       mem_partition.attr, ret);
 
@@ -133,7 +133,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	struct k_mem_domain *domain;
 	int ret;
 
-	tr_dbg(&userspace_proxy_tr, "userspace create");
+	tr_err(&userspace_proxy_tr, "userspace create");
 
 	user = sys_heap_alloc(drv->user_heap, sizeof(struct userspace_context));
 	if (!user)
@@ -190,7 +190,7 @@ error:
 
 void userspace_proxy_destroy(const struct comp_driver *drv, struct userspace_context *user_ctx)
 {
-	tr_dbg(&userspace_proxy_tr, "userspace proxy destroy");
+	tr_err(&userspace_proxy_tr, "userspace proxy destroy");
 	rfree(user_ctx->comp_dom);
 	sys_heap_free(drv->user_heap, user_ctx);
 }

@@ -529,7 +529,9 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	debug_val[0] = sizeof(*task);
 	debug_val[1] = (uint32_t)task;
 	debug_val[2] = (uint32_t)task->priv_data;
-	debug_ptr[0] = &task->priv_data;
+	debug_val[3] = (uint32_t)pdata->p_stack;
+	debug_val[4] = (uint32_t)pdata->p_stack + pdata->stack_size;
+	//debug_ptr[0] = &task->priv_data;
 
 	/* create a zephyr thread for the task */
 	pdata->thread_id = k_thread_create(pdata->thread, (__sparse_force void *)pdata->p_stack,
