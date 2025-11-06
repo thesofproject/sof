@@ -446,8 +446,6 @@ static int free_tracked_resource(struct processing_module *mod, const void *ptr)
 int mod_free(struct processing_module *mod, void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
-	struct module_resource *container;
-	struct list_item *res_list;
 
 	MEM_API_CHECK_THREAD(res);
 
