@@ -405,10 +405,13 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 	(void)p2;
 	(void)p3;
 	struct task_dp_pdata *task_pdata = task->priv_data;
+	struct scheduler_dp_data *dp_sch = NULL;
 	unsigned int lock_key;
 	enum task_state state;
 	bool task_stop;
-	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+
+	if (!(task->flags & K_USER))
+		dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 
 	do {
 		/*
@@ -454,7 +457,8 @@ static void dp_thread_fn(void *p1, void *p2, void *p3)
 		 * TODO: it should be for all tasks, for all cores
 		 * currently its limited to current core only
 		 */
-		scheduler_dp_recalculate(dp_sch, false);
+		if (dp_sch)
+			scheduler_dp_recalculate(dp_sch, false);
 
 		scheduler_dp_unlock(lock_key);
 	} while (!task_stop);
