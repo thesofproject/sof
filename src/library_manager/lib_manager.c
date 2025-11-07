@@ -3,7 +3,8 @@
 // Copyright(c) 2022 Intel Corporation. All rights reserved.
 //
 // Author: Jaroslaw Stelter <jaroslaw.stelter@intel.com>
-//         Pawel Dobrowolski<pawelx.dobrowolski@intel.com>
+//         Pawel Dobrowolski <pawelx.dobrowolski@intel.com>
+//         Adrian Warecki <adrian.warecki@intel.com>
 
 /*
  * Dynamic module loading functions.
@@ -18,11 +19,13 @@
 #include <rtos/clk.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
+#include <rtos/userspace_helper.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
 #include <sof/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
+#include <sof/audio/module_adapter/library/userspace_proxy.h>
 #include <utilities/array.h>
 #include <system_agent.h>
 #include <native_system_agent.h>
@@ -492,18 +495,21 @@ const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t modu
  * \param[in] module_entry_point - Entry point address of the module.
  * \param[in] agent - Function pointer to the system agent start function.
  * \param[out] agent_interface - Pointer to store the module interface returned by the system agent.
+ * \param[out] userspace - Pointer to store the userspace module proxy context.
+ * \param[out] ops - Pointer to store pointer to the module interface structure.
  *
  * \return Error code returned by the system agent, 0 on success.
  */
 static int lib_manager_start_agent(const struct comp_driver *drv, const uint32_t component_id,
+				   const struct sof_man_module *mod_manifest,
 				   const struct ipc_config_process *args,
 				   const uintptr_t module_entry_point,
 				   const system_agent_start_fn agent,
-				   const void **agent_interface)
+				   const void **agent_interface,
+				   struct userspace_context **userspace,
+				   const struct module_interface **ops)
 {
-	const uint32_t module_id = IPC4_MOD_ID(component_id);
-	const uint32_t instance_id = IPC4_INST_ID(component_id);
-	const uint32_t log_handle = (uint32_t)drv->tctx;
+	struct system_agent_params agent_params;
 	byte_array_t mod_cfg;
 	int ret;
 
@@ -511,8 +517,25 @@ static int lib_manager_start_agent(const struct comp_driver *drv, const uint32_t
 	/* Intel modules expects DW size here */
 	mod_cfg.size = args->size >> 2;
 
-	ret = agent(module_entry_point, module_id, instance_id, 0, log_handle, &mod_cfg,
-		    agent_interface);
+	agent_params.entry_point = module_entry_point;
+	agent_params.module_id = IPC4_MOD_ID(component_id);
+	agent_params.instance_id = IPC4_INST_ID(component_id);
+	agent_params.core_id = 0;
+	agent_params.log_handle = (uint32_t)drv->tctx;
+	agent_params.mod_cfg = &mod_cfg;
+
+#if CONFIG_SOF_USERSPACE_PROXY
+	/* If drv->user_heap is allocated, it means the module is userspace. */
+	if (drv->user_heap) {
+		ret = userspace_proxy_create(userspace, drv, mod_manifest, agent, &agent_params,
+					     agent_interface, ops);
+		if (ret)
+			tr_err(&lib_manager_tr, "userspace_proxy_create failed! %d", ret);
+		return ret;
+	}
+#endif /* CONFIG_SOF_USERSPACE_PROXY */
+
+	ret = agent(&agent_params, agent_interface);
 	if (ret)
 		tr_err(&lib_manager_tr, "System agent start failed %d!", ret);
 
@@ -580,13 +603,21 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(config->id);
 	const struct ipc_config_process *args = (const struct ipc_config_process *)spec;
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(config->id);
-	const struct module_interface *ops = NULL;
+	struct userspace_context *userspace = NULL;
+	const struct module_interface *ops;
 	const struct sof_man_module *mod;
 	system_agent_start_fn agent;
 	void *adapter_priv = NULL;
 	const void **agent_iface;
 	struct comp_dev *dev;
 	int ret;
+
+#ifdef CONFIG_SOF_USERSPACE_PROXY
+	if (drv->user_heap && config->proc_domain != COMP_PROCESSING_DOMAIN_DP) {
+		tr_err(&lib_manager_tr, "Userspace supports only DP modules.");
+		return NULL;
+	}
+#endif
 
 	tr_dbg(&lib_manager_tr, "start");
 	if (!desc) {
@@ -619,35 +650,39 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 		agent = &native_system_agent_start;
 		agent_iface = (const void **)&ops;
 		break;
+#if CONFIG_INTEL_MODULES
 	case MOD_TYPE_IADK:
 		agent = &system_agent_start;
-		/* processing_module_adapter_interface is already assigned to drv->adapter_ops by
-		 * the lib_manager_prepare_module_adapter function.
-		 */
+		ops = &processing_module_adapter_interface;
 		agent_iface = (const void **)&adapter_priv;
 		break;
+#endif
 	case MOD_TYPE_INVALID:
 		goto err;
 	}
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	if (agent) {
-		ret = lib_manager_start_agent(drv, config->id, args, module_entry_point, agent,
-					      agent_iface);
+		ret = lib_manager_start_agent(drv, config->id, mod, args, module_entry_point, agent,
+					      agent_iface, &userspace, &ops);
 		if (ret)
 			goto err;
 	}
 
-	if (ops && comp_set_adapter_ops(drv, ops) < 0)
+	if (comp_set_adapter_ops(drv, ops) < 0)
 		goto err;
 
-	dev = module_adapter_new_ext(drv, config, spec, adapter_priv);
+	dev = module_adapter_new_ext(drv, config, spec, adapter_priv, userspace);
 	if (!dev)
 		goto err;
 
 	return dev;
 
 err:
+#if CONFIG_SOF_USERSPACE_PROXY
+	if (userspace)
+		userspace_proxy_destroy(drv, userspace);
+#endif /* CONFIG_SOF_USERSPACE_PROXY */
 	lib_manager_free_module(config->id);
 	return NULL;
 }
@@ -694,18 +729,16 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 	drv->ops.dai_ts_start = module_adapter_ts_start_op;
 	drv->ops.dai_ts_stop = module_adapter_ts_stop_op;
 	drv->ops.dai_ts_get = module_adapter_ts_get_op;
-#if CONFIG_INTEL_MODULES
-	drv->adapter_ops = &processing_module_adapter_interface;
-#endif
 }
 
 int lib_manager_register_module(const uint32_t component_id)
 {
-	struct comp_driver_info *new_drv_info;
-	struct comp_driver *drv = NULL;
 	const struct sof_man_module *mod = lib_manager_get_module_manifest(component_id);
 	const struct sof_uuid *uid = (struct sof_uuid *)&mod->uuid;
-	int ret;
+	struct comp_driver_info *new_drv_info;
+	struct sys_heap *drv_heap = NULL;
+	struct comp_driver *drv = NULL;
+	int ret = -ENOMEM;
 
 	if (!mod) {
 		tr_err(&lib_manager_tr, "Error: Couldn't find loadable module with id %u.",
@@ -722,13 +755,23 @@ int lib_manager_register_module(const uint32_t component_id)
 		return -ENOMEM;
 	}
 
-	drv = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
-		      sizeof(struct comp_driver));
+#if CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP
+	if (mod->type.user_mode) {
+		drv_heap = module_driver_heap_init();
+		if (!drv_heap) {
+			tr_err(&lib_manager_tr, "failed to allocate driver heap!");
+			goto cleanup;
+		}
+	}
+#endif /* CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP */
+
+	drv = module_driver_heap_rmalloc(drv_heap, SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+					 sizeof(struct comp_driver));
 	if (!drv) {
 		tr_err(&lib_manager_tr, "failed to allocate comp_driver");
-		ret = -ENOMEM;
 		goto cleanup;
 	}
+	drv->user_heap = drv_heap;
 
 	lib_manager_prepare_module_adapter(drv, uid);
 
@@ -741,8 +784,9 @@ int lib_manager_register_module(const uint32_t component_id)
 
 cleanup:
 	if (ret < 0) {
-		rfree(drv);
 		rfree(new_drv_info);
+		module_driver_heap_free(drv_heap, drv);
+		module_driver_heap_remove(drv_heap);
 	}
 
 	return ret;

@@ -19,8 +19,8 @@
 
 #include <zephyr/app_memory/app_memdomain.h>
 
-#define DRV_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
-				 CONFIG_MM_DRV_PAGE_SIZE)
+#define USER_MOD_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
+					 CONFIG_MM_DRV_PAGE_SIZE)
 #define APP_TASK_BSS	K_APP_BMEM(common_partition)
 #define APP_TASK_DATA	K_APP_DMEM(common_partition)
 
@@ -39,6 +39,38 @@ struct userspace_context;
  * region which is then added to modules memory domain.
  */
 struct sys_heap *module_driver_heap_init(void);
+
+/**
+ * Add memory region to non-privileged module memory domain.
+ * @param domain - pointer to the modules memory domain.
+ * @param addr   - pointer to memory region start
+ * @param size   - size of the memory region
+ * @param attr   - memory region access attributes
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * Function adds page aligned region to the memory domain.
+ * Caller should take care to not expose other data than these
+ * intended to be shared with the module.
+ */
+int user_add_memory(struct k_mem_domain *domain, uintptr_t addr, size_t size, uint32_t attr);
+
+/**
+ * Remove memory region from non-privileged module memory domain.
+ * @param domain - pointer to the modules memory domain.
+ * @param addr   - pointer to memory region start
+ * @param size   - size of the memory region
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * Function removes previously added page aligned region
+ * from the memory domain.
+ */
+int user_remove_memory(struct k_mem_domain *domain, uintptr_t addr, size_t size);
 
 /**
  * Add DP scheduler created thread to module memory domain.
@@ -132,5 +164,14 @@ void module_driver_heap_free(struct sys_heap *mod_drv_heap, void *mem);
  * Frees private module heap.
  */
 void module_driver_heap_remove(struct sys_heap *mod_drv_heap);
+
+void dump_memory_domain(struct k_mem_domain *domain);
+void dump_page_tables(uint32_t *ptables, void *test, bool kernel);
+void dump_page_table(uint32_t *ptables, void *test);
+
+static inline void dump_domain_entry(struct k_mem_domain *domain, void *test)
+{
+	dump_page_tables(domain->arch.ptables, test, false);
+}
 
 #endif /* __ZEPHYR_LIB_USERSPACE_HELPER_H__ */

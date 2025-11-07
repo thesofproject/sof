@@ -67,6 +67,14 @@ config SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE
 	help
 	  This config defines size of virtual heap region shared between all cores
 
+config SOF_USERSPACE_USE_DRIVER_HEAP
+	bool "Use driver heap for SOF userspace modules"
+	depends on USERSPACE
+	help
+	  When selected, multiple instances of the same userspace module will share
+	  a private heap created for that module's driver. Otherwise, each module
+	  instance will have its own independent private heap.
+
 config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	hex "Size of the private heap created for each userspace module"
 	default 0x1000
@@ -75,6 +83,14 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	 The size of the private heap created for each userspace module. Each userspace
 	 module has its own independent heap to which only it has access. This heap is
 	 shared between instances of the same module.
+
+config SOF_USERSPACE_PROXY
+	bool "Use userspace proxy to support userspace modules"
+	select SOF_USERSPACE_USE_DRIVER_HEAP
+	help
+	  When set, userspace modules are launched inside a container created by userspace proxy.
+	  It is responsible for forwarding module function calls coming from sof running in
+	  kernelspace to the module code executed with user privileges.
 
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"

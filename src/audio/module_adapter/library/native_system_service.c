@@ -19,6 +19,7 @@
 #include <native_system_service.h>
 #include <sof/lib_manager.h>
 #include <module/module/logger.h>
+#include <rtos/userspace_helper.h>
 
 #define RSIZE_MAX 0x7FFFFFFF
 
@@ -162,7 +163,7 @@ AdspErrorCode native_system_service_get_interface(enum interface_id id,
 	return ADSP_NO_ERROR;
 }
 
-const struct native_system_service native_system_service = {
+const APP_TASK_DATA struct native_system_service native_system_service = {
 	.basic = {
 		.log_message = native_system_service_log_message,
 		.safe_memcpy = native_system_service_safe_memcpy,

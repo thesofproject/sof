@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <rtos/string.h>
+#include <rtos/userspace_helper.h>
 #include <utilities/array.h>
 #include <module/iadk/adsp_error_code.h>
 #include <system_service.h>
@@ -21,6 +22,7 @@
 #include <iadk_module_adapter.h>
 #include <system_agent.h>
 #include <sof/audio/module_adapter/library/native_system_service.h>
+#include <sof/audio/module_adapter/library/native_system_agent.h>
 
 using namespace intel_adsp;
 using namespace intel_adsp::system;
@@ -37,7 +39,7 @@ namespace system
 {
 
 /* Structure storing handles to system service operations */
-const AdspSystemService SystemAgent::system_service_ = {
+const APP_TASK_DATA AdspSystemService SystemAgent::system_service_ = {
 	native_system_service_log_message,
 	native_system_service_safe_memcpy,
 	native_system_service_safe_memmove,
@@ -124,16 +126,17 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 typedef int (*create_instance_f)(uint32_t module_id, uint32_t instance_id, uint32_t core_id,
 				 void *mod_cfg, void *parent_ppl, void **mod_ptr);
 
-int system_agent_start(uintptr_t entry_point, uint32_t module_id, uint32_t instance_id,
-		       uint32_t core_id, uint32_t log_handle, void* mod_cfg,
+int system_agent_start(const struct system_agent_params *params,
 		       const void **adapter)
 {
 	uint32_t ret;
-	SystemAgent system_agent(module_id, instance_id, core_id, log_handle);
+	SystemAgent system_agent(params->module_id, params->instance_id, params->core_id,
+				 params->log_handle);
 	void* system_agent_p = reinterpret_cast<void*>(&system_agent);
 
-	create_instance_f ci = (create_instance_f)(entry_point);
-	ret = ci(module_id, instance_id, core_id, mod_cfg, NULL, &system_agent_p);
+	create_instance_f ci = (create_instance_f)(params->entry_point);
+	ret = ci(params->module_id, params->instance_id, params->core_id, params->mod_cfg, NULL,
+		 &system_agent_p);
 
 	IadkModuleAdapter* module_adapter = reinterpret_cast<IadkModuleAdapter*>(system_agent_p);
 	*adapter = module_adapter;

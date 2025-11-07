@@ -25,6 +25,9 @@
 
 #include <zephyr/kernel/thread.h>
 
+extern volatile uint32_t debug_val[4];
+extern volatile uint32_t *debug_ptr[16];
+
 LOG_MODULE_REGISTER(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dp_sched);
 
@@ -397,73 +400,112 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 	/* all other memory has been allocated as a single malloc, will be freed later by caller */
 	return ret;
 }
-
+__attribute__((optimize("-O0")))
 /* Thread function called in component context, on target core */
 static void dp_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct task *task = p1;
 	(void)p2;
 	(void)p3;
-	struct task_dp_pdata *task_pdata = task->priv_data;
 	unsigned int lock_key;
 	enum task_state state;
 	bool task_stop;
-	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+	struct scheduler_dp_data *dp_sch = NULL;
+	volatile int dbg = __LINE__;
+	struct task_dp_pdata *task_pdata = NULL;
+
+	//while (dbg);
+
+	dbg = __LINE__;
+	task_pdata = task->priv_data;
+	dbg = __LINE__;
+
+	if (!(task->flags & K_USER))
+		dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+	dbg = __LINE__;
 
 	do {
 		/*
 		 * the thread is started immediately after creation, it will stop on semaphore
 		 * Semaphore will be released once the task is ready to process
 		 */
+		dbg = __LINE__;
 		k_sem_take(task_pdata->sem, K_FOREVER);
+		dbg = __LINE__;
 
-		if (task->state == SOF_TASK_STATE_RUNNING)
+		if (task->state == SOF_TASK_STATE_RUNNING) {
+			dbg = __LINE__;
 			state = task_run(task);
-		else
+		} else {
+			dbg = __LINE__;
 			state = task->state;	/* to avoid undefined variable warning */
+		}
+		dbg = __LINE__;
 
 		lock_key = scheduler_dp_lock(task->core);
+		dbg = __LINE__;
 		/*
 		 * check if task is still running, may have been canceled by external call
 		 * if not, set the state returned by run procedure
 		 */
 		if (task->state == SOF_TASK_STATE_RUNNING) {
+			dbg = __LINE__;
 			task->state = state;
 			switch (state) {
 			case SOF_TASK_STATE_RESCHEDULE:
+				dbg = __LINE__;
 				/* mark to reschedule, schedule time is already calculated */
 				task->state = SOF_TASK_STATE_QUEUED;
+				dbg = __LINE__;
 				break;
 
 			case SOF_TASK_STATE_CANCEL:
+				dbg = __LINE__;
 			case SOF_TASK_STATE_COMPLETED:
 				/* remove from scheduling */
+				dbg = __LINE__;
 				list_item_del(&task->list);
+				dbg = __LINE__;
 				break;
 
 			default:
+				dbg = __LINE__;
 				/* illegal state, serious defect, won't happen */
 				k_panic();
 			}
 		}
 
 		/* if true exit the while loop, terminate the thread */
+		dbg = __LINE__;
 		task_stop = task->state == SOF_TASK_STATE_COMPLETED ||
 			task->state == SOF_TASK_STATE_CANCEL;
+		dbg = __LINE__;
 		/* recalculate all DP tasks readiness and deadlines
 		 * TODO: it should be for all tasks, for all cores
 		 * currently its limited to current core only
 		 */
-		scheduler_dp_recalculate(dp_sch, false);
+		dbg = __LINE__;
+		if (dp_sch) {
+			dbg = __LINE__;
+			scheduler_dp_recalculate(dp_sch, false);
+		}
+		dbg = __LINE__;
 
 		scheduler_dp_unlock(lock_key);
+		dbg = __LINE__;
+
 	} while (!task_stop);
+	dbg = __LINE__;
 
 	/* call task_complete  */
-	if (task->state == SOF_TASK_STATE_COMPLETED)
+	if (task->state == SOF_TASK_STATE_COMPLETED) {
+		dbg = __LINE__;
 		task_complete(task);
-}
+	}
+	dbg = __LINE__;
 
+}
+__attribute__((optimize("-O0")))
 static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t start,
 				     uint64_t period)
 {
@@ -471,6 +513,9 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	struct task_dp_pdata *pdata = task->priv_data;
 	unsigned int lock_key;
 	int ret;
+
+	volatile int i = 0;
+	while (i);
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
 
@@ -480,6 +525,13 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 		scheduler_dp_unlock(lock_key);
 		return -EINVAL;
 	}
+
+	debug_val[0] = sizeof(*task);
+	debug_val[1] = (uint32_t)task;
+	debug_val[2] = (uint32_t)task->priv_data;
+	debug_val[3] = (uint32_t)pdata->p_stack;
+	debug_val[4] = (uint32_t)pdata->p_stack + pdata->stack_size;
+	//debug_ptr[0] = &task->priv_data;
 
 	/* create a zephyr thread for the task */
 	pdata->thread_id = k_thread_create(pdata->thread, (__sparse_force void *)pdata->p_stack,
@@ -568,7 +620,7 @@ int scheduler_dp_init(void)
 
 	return 0;
 }
-
+__attribute__((optimize("-O0")))
 int scheduler_dp_task_init(struct task **task,
 			   const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops,

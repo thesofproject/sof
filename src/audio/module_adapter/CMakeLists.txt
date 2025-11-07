@@ -57,6 +57,10 @@ if(zephyr) ###  Zephyr ###
 		library/native_system_service.c
 	)
 
+	zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_PROXY
+		library/userspace_proxy.c
+	)
+
 	zephyr_library_sources_ifdef(CONFIG_PASSTHROUGH_CODEC
 		module/passthrough.c
 	)
