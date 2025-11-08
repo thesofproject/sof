@@ -4,6 +4,7 @@
 list(APPEND TPLGS
 # HDMI only topology with passthrough pipelines
 "sof-hda-generic\;sof-hda-generic-idisp\;"
+"sof-hda-generic-aw88399\;sof-hda-generic-aw88399\;HDA_CONFIG=mix"
 # HDMI only topology with passthrough pipelines and
 # 2 or 4 DMIC, no NHLT blob included in topology
 "sof-hda-generic\;sof-hda-generic-idisp-2ch\;NUM_DMICS=2"
