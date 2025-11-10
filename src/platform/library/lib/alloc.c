@@ -48,6 +48,17 @@ void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
 	return realloc(ptr, bytes);
 }
 
+void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment)
+{
+	return malloc(bytes);
+}
+
+void sof_heap_free(struct k_heap *heap, void *addr)
+{
+	free(addr);
+}
+
 void heap_trace(struct mm_heap *heap, int size)
 {
 #if MALLOC_DEBUG

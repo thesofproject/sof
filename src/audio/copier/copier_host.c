@@ -131,11 +131,12 @@ __cold static int init_pipeline_reg(struct comp_dev *dev)
  * Sof host component can support this case so copier reuses host
  * component to support host gateway.
  */
-__cold int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
+__cold int copier_host_create(struct processing_module *mod,
 			      const struct ipc4_copier_module_cfg *copier_cfg,
 			      struct pipeline *pipeline)
 {
-	struct processing_module *mod = comp_mod(dev);
+	struct copier_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct comp_ipc_config *config = &dev->ipc_config;
 	struct ipc_config_host ipc_host;
 	struct host_data *hd;
@@ -177,7 +178,7 @@ __cold int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 	ipc_host.dma_buffer_size = copier_cfg->gtw_cfg.dma_buffer_size;
 	ipc_host.feature_mask = copier_cfg->copier_feature_mask;
 
-	hd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*hd));
+	hd = mod_zalloc(mod, sizeof(*hd));
 	if (!hd)
 		return -ENOMEM;
 
@@ -205,14 +206,16 @@ __cold int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 		if (value_ptr) {
 			struct ipc4_copier_sync_group *sync_group;
 
-			if (value_size != sizeof(struct ipc4_copier_sync_group))
-				return -EINVAL;
+			if (value_size != sizeof(struct ipc4_copier_sync_group)) {
+				ret = -EINVAL;
+				goto e_conv;
+			}
 
 			sync_group = (struct ipc4_copier_sync_group *)((void *)value_ptr);
 
 			ret = add_to_fpi_sync_group(dev, hd, sync_group);
 			if (ret < 0)
-				return ret;
+				goto e_conv;
 		}
 	}
 #endif
@@ -249,13 +252,15 @@ __cold int copier_host_create(struct comp_dev *dev, struct copier_data *cd,
 e_conv:
 	host_common_free(hd);
 e_data:
-	rfree(hd);
+	mod_free(mod, hd);
 
 	return ret;
 }
 
-__cold void copier_host_free(struct copier_data *cd)
+__cold void copier_host_free(struct processing_module *mod)
 {
+	struct copier_data *cd = module_get_private_data(mod);
+
 	assert_can_be_cold();
 
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
@@ -263,7 +268,7 @@ __cold void copier_host_free(struct copier_data *cd)
 		delete_from_fpi_sync_group(cd->hd);
 #endif
 	host_common_free(cd->hd);
-	rfree(cd->hd);
+	mod_free(mod, cd->hd);
 }
 
 /* This is called by DMA driver every time when DMA completes its current

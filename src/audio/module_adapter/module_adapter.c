@@ -44,6 +44,56 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL);
 }
 
+static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+							  const struct comp_ipc_config *config)
+{
+	struct comp_dev *dev = comp_alloc(drv, sizeof(*dev));
+
+	if (!dev) {
+		comp_cl_err(drv, "failed to allocate memory for comp_dev");
+		return NULL;
+	}
+
+	/* allocate module information.
+	 * for DP shared modules this struct must be accessible from all cores
+	 * Unfortunately at this point there's no information of components the module
+	 * will be bound to. So we need to allocate shared memory for each DP module
+	 * To be removed when pipeline 2.0 is ready
+	 */
+	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
+			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
+
+	struct processing_module *mod = module_driver_heap_rzalloc(drv->user_heap, flags,
+								   sizeof(*mod));
+
+	if (!mod) {
+		comp_err(dev, "failed to allocate memory for module");
+		goto err;
+	}
+
+	dev->ipc_config = *config;
+	mod->dev = dev;
+	dev->mod = mod;
+
+	return mod;
+
+err:
+	module_driver_heap_free(drv->user_heap, dev);
+
+	return NULL;
+}
+
+static void module_adapter_mem_free(struct processing_module *mod)
+{
+	const struct comp_driver *drv = mod->dev->drv;
+
+#if CONFIG_IPC_MAJOR_4
+	module_driver_heap_free(drv->user_heap, mod->priv.cfg.input_pins);
+#endif
+	module_driver_heap_free(drv->user_heap, mod->dev);
+	module_driver_heap_free(drv->user_heap, mod);
+}
+
 /*
  * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
@@ -61,8 +111,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					void *mod_priv)
 {
 	int ret;
-	struct comp_dev *dev;
-	struct processing_module *mod;
 	struct module_config *dst;
 	const struct module_interface *const interface = drv->adapter_ops;
 
@@ -74,33 +122,16 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev) {
-		comp_cl_err(drv, "failed to allocate memory for comp_dev");
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+
+	if (!mod)
 		return NULL;
-	}
-	dev->ipc_config = *config;
-
-	/* allocate module information.
-	 * for DP shared modules this struct must be accessible from all cores
-	 * Unfortunately at this point there's no information of components the module
-	 * will be bound to. So we need to allocate shared memory for each DP module
-	 * To be removed when pipeline 2.0 is ready
-	 */
-	int flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
-			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-
-	mod = module_driver_heap_rzalloc(drv->user_heap, flags, sizeof(*mod));
-	if (!mod) {
-		comp_err(dev, "failed to allocate memory for module");
-		goto err;
-	}
 
 	dst = &mod->priv.cfg;
 
 	module_set_private_data(mod, mod_priv);
-	mod->dev = dev;
-	dev->mod = mod;
+
+	struct comp_dev *dev = mod->dev;
 
 	list_init(&mod->raw_data_buffers_list);
 
@@ -178,13 +209,10 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	comp_dbg(dev, "done");
 	return dev;
+
 err:
-#if CONFIG_IPC_MAJOR_4
-	if (mod)
-		rfree(mod->priv.cfg.input_pins);
-#endif
-	rfree(mod);
-	rfree(dev);
+	module_adapter_mem_free(mod);
+
 	return NULL;
 }
 EXPORT_SYMBOL(module_adapter_new);
@@ -1282,13 +1310,8 @@ void module_adapter_free(struct comp_dev *dev)
 
 	mod_free_all(mod);
 
-#if CONFIG_IPC_MAJOR_4
-	rfree(mod->priv.cfg.input_pins);
-#endif
-
 	rfree(mod->stream_params);
-	rfree(mod);
-	rfree(dev);
+	module_adapter_mem_free(mod);
 }
 EXPORT_SYMBOL(module_adapter_free);
 

@@ -18,7 +18,6 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <module/module/llext.h>
-#include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <rtos/panic.h>
 #include <rtos/string.h>
@@ -61,25 +60,25 @@ __cold static int tflm_init(struct processing_module *mod)
 
 	comp_info(dev, "tflm_init()");
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
 		return -ENOMEM;
 
 	md->private = cd;
 
 	/* Handler for configuration data */
-	cd->model_handler = comp_data_blob_handler_new(dev);
+	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
-		comp_err(dev, "comp_data_blob_handler_new() failed.");
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
-		goto cd_fail;
+		goto fail;
 	}
 
 	/* Get configuration data and reset DRC state */
 	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
 	if (ret < 0) {
 		comp_err(dev, "comp_init_data_blob() failed.");
-		goto cd_fail;
+		goto fail;
 	}
 
 	/* hard coded atm */
@@ -89,20 +88,22 @@ __cold static int tflm_init(struct processing_module *mod)
 	ret = TF_SetModel(&cd->tfc, NULL);
 	if (!ret) {
 		comp_err(dev, "failed to set model");
-		return ret;
+		goto fail;
 	}
 
 	/* initialise ops */
 	ret = TF_InitOps(&cd->tfc);
 	if (!ret) {
 		comp_err(dev, "failed to init ops");
-		return ret;
+		goto fail;
 	}
 
 	return ret;
 
-cd_fail:
-	rfree(cd);
+fail:
+	/* Passing NULL pointer to free functions is Ok */
+	mod_data_blob_handler_free(mod, cd->model_handler);
+	mod_free(mod, cd);
 	return ret;
 }
 
@@ -112,8 +113,8 @@ __cold static int tflm_free(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	comp_data_blob_handler_free(cd->model_handler);
-	rfree(cd);
+	mod_data_blob_handler_free(mod, cd->model_handler);
+	mod_free(mod, cd);
 	return 0;
 }
 

@@ -102,10 +102,12 @@ void WEAK *mod_balloc_align(struct processing_module *mod, size_t size, size_t a
 	return ret;
 }
 
-void WEAK *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment)
+void WEAK *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			 size_t alignment)
 {
 	void *ret;
 	(void)mod;
+	(void)flags;
 	(void)alignment;
 
 	ret = malloc(size);
@@ -120,6 +122,23 @@ int WEAK mod_free(struct processing_module *mod, const void *ptr)
 	(void)mod;
 	free((void *)ptr);
 	return 0;
+}
+
+void WEAK *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment)
+{
+	(void)heap;
+	(void)flags;
+	(void)alignment;
+
+	return malloc(bytes);
+}
+
+void WEAK sof_heap_free(struct k_heap *heap, void *addr)
+{
+	(void)heap;
+
+	free(addr);
 }
 
 int WEAK memcpy_s(void *dest, size_t dest_size,
