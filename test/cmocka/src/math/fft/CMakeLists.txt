@@ -28,3 +28,21 @@ cmocka_test(fft
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )
+
+cmocka_test(dft3
+	dft3.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_multi.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_32.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_common.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
+)
+
+cmocka_test(fft_multi
+	fft_multi.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_multi.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_common.c
+	${PROJECT_SOURCE_DIR}/src/math/fft/fft_32.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
+)
