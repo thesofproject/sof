@@ -23,6 +23,7 @@ struct lib_manager_dram_storage {
 	struct llext_elf_sect_map *sect;
 	struct llext_symbol *sym;
 	unsigned int n_llext;
+	unsigned int n_mod;
 };
 
 /*
@@ -147,6 +148,8 @@ int llext_manager_store_to_dram(void)
 	}
 
 	lib_manager_dram.n_llext = n_llext;
+	lib_manager_dram.n_mod = n_mod;
+
 	/* Make sure, that the data is actually in the DRAM, not just in data cache */
 	dcache_writeback_region((__sparse_force void __sparse_cache *)&lib_manager_dram,
 				sizeof(lib_manager_dram));
@@ -162,25 +165,32 @@ int llext_manager_restore_from_dram(void)
 
 	struct ext_library *_ext_lib = ext_lib_get();
 	unsigned int i, j, k, n_mod, n_llext, n_sect, n_sym;
+	struct llext_loader **ldr;
+	struct llext **llext;
 
-	if (!lib_manager_dram.n_llext || !lib_manager_dram.ctx) {
+	if (!lib_manager_dram.n_mod || !lib_manager_dram.ctx) {
 		tr_dbg(&lib_manager_tr, "No modules saved");
 		dcache_writeback_region((__sparse_force void __sparse_cache *)&lib_manager_dram,
 					sizeof(lib_manager_dram));
 		return 0;
 	}
 
-	/* arrays of pointers for llext_restore() */
-	void **ptr_array = rmalloc(SOF_MEM_FLAG_KERNEL,
-				   sizeof(*ptr_array) * lib_manager_dram.n_llext * 2);
-
-	if (!ptr_array)
-		return -ENOMEM;
-
-	struct llext_loader **ldr = (struct llext_loader **)ptr_array;
-	struct llext **llext = (struct llext **)(ptr_array + lib_manager_dram.n_llext);
-
 	*_ext_lib = lib_manager_dram.ext_lib;
+
+	if (lib_manager_dram.n_llext) {
+		/* arrays of pointers for llext_restore() */
+		void **ptr_array = rmalloc(SOF_MEM_FLAG_KERNEL,
+					   sizeof(*ptr_array) * lib_manager_dram.n_llext * 2);
+
+		if (!ptr_array)
+			return -ENOMEM;
+
+		ldr = (struct llext_loader **)ptr_array;
+		llext = (struct llext **)(ptr_array + lib_manager_dram.n_llext);
+	} else {
+		ldr = NULL;
+		llext = NULL;
+	}
 
 	/* The external loop walks all the libraries */
 	for (i = 0, j = 0, n_mod = 0, n_llext = 0, n_sect = 0, n_sym = 0;
@@ -262,26 +272,28 @@ int llext_manager_restore_from_dram(void)
 		_ext_lib->desc[i] = ctx;
 	}
 
-	/* Let Zephyr restore extensions and its own internal bookkeeping */
-	int ret = llext_restore(llext, ldr, lib_manager_dram.n_llext);
+	if (lib_manager_dram.n_llext) {
+		/* Let Zephyr restore extensions and its own internal bookkeeping */
+		int ret = llext_restore(llext, ldr, lib_manager_dram.n_llext);
 
-	if (ret < 0) {
-		tr_err(&lib_manager_tr, "Zephyr failed to restore: %d", ret);
-		goto nomem;
-	}
+		if (ret < 0) {
+			tr_err(&lib_manager_tr, "Zephyr failed to restore: %d", ret);
+			goto nomem;
+		}
 
-	/* Rewrite to correct LLEXT pointers, created by Zephyr */
-	for (i = 0, n_llext = 0; i < ARRAY_SIZE(_ext_lib->desc); i++) {
-		struct lib_manager_mod_ctx *ctx = _ext_lib->desc[i];
+		/* Rewrite to correct LLEXT pointers, created by Zephyr */
+		for (i = 0, n_llext = 0; i < ARRAY_SIZE(_ext_lib->desc); i++) {
+			struct lib_manager_mod_ctx *ctx = _ext_lib->desc[i];
 
-		if (!ctx)
-			continue;
+			if (!ctx)
+				continue;
 
-		struct lib_manager_module *mod = ctx->mod;
+			struct lib_manager_module *mod = ctx->mod;
 
-		for (k = 0; k < ctx->n_mod; k++) {
-			if (mod[k].llext)
-				mod[k].llext = llext[n_llext++];
+			for (k = 0; k < ctx->n_mod; k++) {
+				if (mod[k].llext)
+					mod[k].llext = llext[n_llext++];
+			}
 		}
 	}
 
