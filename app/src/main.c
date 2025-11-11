@@ -54,7 +54,6 @@ static int sof_app_main(void)
 void test_main(void)
 {
 	sof_app_main();
-	k_sleep(K_FOREVER);
 }
 #else
 int main(void)
