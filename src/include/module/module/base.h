@@ -85,6 +85,12 @@ struct processing_module {
 	struct module_data priv; /**< module private data */
 	uint32_t period_bytes; /** pipeline period bytes */
 
+	/* virtual region iff not using the parent pipeline region.
+	 * i.e. a DP module in a different memory domain from rest of pipeline.
+	 */
+	struct vregion *vregion;
+	struct comp_dev *dev;
+
 	/*
 	 * Fields below can only be accessed by the SOF and must be moved to a new structure.
 	 * Below #ifdef is a temporary solution used until work on separating a common interface
@@ -101,7 +107,6 @@ struct processing_module {
 	 * This is a temporary change in order to support the trace messages in the modules. This
 	 * will be removed once the trace API is updated.
 	 */
-	struct comp_dev *dev;
 	uint32_t deep_buff_bytes; /**< copy start threshold */
 	uint32_t output_buffer_size; /**< size of local buffer to save produced samples */
 
@@ -191,5 +196,13 @@ struct processing_module {
 #endif /* CONFIG_USERSPACE */
 #endif /* SOF_MODULE_PRIVATE */
 };
+
+static inline struct vregion *module_get_vregion(struct processing_module *mod)
+{
+	if (mod->vregion)
+		return mod->vregion;
+	else
+		return mod->dev->pipeline->vregion;
+}
 
 #endif /* __MODULE_MODULE_BASE__ */

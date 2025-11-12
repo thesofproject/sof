@@ -136,10 +136,14 @@ int module_adapter_init_data(struct processing_module *mod, struct comp_dev *dev
 		if (cfgsz == (sizeof(*cfg) + pinsz)) {
 			dst->nb_input_pins = n_in;
 			dst->nb_output_pins = n_out;
-			// TODO: mod alloc
+#if !CONFIG_SOF_VREGIONS
 			dst->input_pins = sof_heap_alloc(dev->mod->priv.resources.heap,
 							 SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 							 pinsz, 0);
+#else
+			dst->input_pins = mod_alloc_ext(mod, SOF_MEM_FLAG_COHERENT,
+							pinsz, DCACHE_LINE_SIZE);
+#endif
 			if (!dst->input_pins)
 				return -ENOMEM;
 
