@@ -47,13 +47,13 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 
 	if (!dst->data) {
 		/* No space for config available yet, allocate now */
-		dst->data = rballoc(SOF_MEM_FLAG_USER, size);
+		dst->data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, size, DCACHE_LINE_SIZE);
 	} else if (dst->size != size) {
 		/* The size allocated for previous config doesn't match the new one.
 		 * Free old container and allocate new one.
 		 */
-		rfree(dst->data);
-		dst->data = rballoc(SOF_MEM_FLAG_USER, size);
+		mod_free(mod, dst->data);
+		dst->data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, size, DCACHE_LINE_SIZE);
 	}
 	if (!dst->data) {
 		comp_err(dev, "failed to allocate space for setup config.");
@@ -100,7 +100,7 @@ int module_prepare(struct processing_module *mod,
 	 * as it has been applied during the procedure - it is safe to
 	 * free it.
 	 */
-	rfree(md->cfg.data);
+	mod_free(mod, md->cfg.data);
 
 	md->cfg.avail = false;
 	md->cfg.data = NULL;
@@ -222,7 +222,7 @@ int module_reset(struct processing_module *mod)
 
 	md->cfg.avail = false;
 	md->cfg.size = 0;
-	rfree(md->cfg.data);
+	mod_free(mod, md->cfg.data);
 	md->cfg.data = NULL;
 
 #if CONFIG_IPC_MAJOR_3
@@ -293,7 +293,8 @@ int module_set_configuration(struct processing_module *mod,
 		}
 
 		/* Allocate buffer for new params */
-		md->runtime_params = rballoc(SOF_MEM_FLAG_USER, md->new_cfg_size);
+		md->runtime_params = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, md->new_cfg_size,
+						   DCACHE_LINE_SIZE);
 		if (!md->runtime_params) {
 			comp_err(dev, "space allocation for new params failed");
 			return -ENOMEM;
@@ -334,7 +335,7 @@ int module_set_configuration(struct processing_module *mod,
 	md->new_cfg_size = 0;
 
 	if (md->runtime_params)
-		rfree(md->runtime_params);
+		mod_free(mod, md->runtime_params);
 	md->runtime_params = NULL;
 
 	return ret;
