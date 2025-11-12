@@ -344,15 +344,20 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	module_adapter_check_data(mod, dev, sink);
 
+	/* get memory flags for input and output */
 	memory_flags = user_get_buffer_memory_region(dev->drv);
+
 	/* allocate memory for input buffers */
 	if (mod->max_sources) {
 		mod->input_buffers =
-			rzalloc(memory_flags, sizeof(*mod->input_buffers) * mod->max_sources);
+			mod_alloc_ext(mod, memory_flags,
+				      sizeof(*mod->input_buffers) * mod->max_sources, 0);
+
 		if (!mod->input_buffers) {
 			comp_err(dev, "failed to allocate input buffers");
 			return -ENOMEM;
 		}
+		memset(mod->input_buffers, 0, sizeof(*mod->input_buffers) * mod->max_sources);
 	} else {
 		mod->input_buffers = NULL;
 	}
@@ -360,12 +365,15 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffers */
 	if (mod->max_sinks) {
 		mod->output_buffers =
-			rzalloc(memory_flags, sizeof(*mod->output_buffers) * mod->max_sinks);
+			mod_alloc_ext(mod, memory_flags,
+				      sizeof(*mod->output_buffers) * mod->max_sinks, 0);
+
 		if (!mod->output_buffers) {
 			comp_err(dev, "failed to allocate output buffers");
 			ret = -ENOMEM;
 			goto in_out_free;
 		}
+		memset(mod->output_buffers, 0, sizeof(*mod->output_buffers) * mod->max_sinks);
 	} else {
 		mod->output_buffers = NULL;
 	}
@@ -426,7 +434,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
 	list_for_item(blist, &dev->bsource_list) {
-		mod->input_buffers[i].data = rballoc(memory_flags, size);
+		mod->input_buffers[i].data = mod_alloc_ext(mod, memory_flags, size,
+							   DCACHE_LINE_SIZE);
+
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -438,7 +448,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = rballoc(memory_flags, md->mpd.out_buff_size);
+		mod->output_buffers[i].data = mod_alloc_ext(mod, memory_flags,
+							    md->mpd.out_buff_size,
+							    DCACHE_LINE_SIZE);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -504,16 +516,16 @@ free:
 
 out_data_free:
 	for (i = 0; i < mod->num_of_sinks; i++)
-		rfree(mod->output_buffers[i].data);
+		mod_free(mod, mod->output_buffers[i].data);
 
 in_data_free:
 	for (i = 0; i < mod->num_of_sources; i++)
-		rfree(mod->input_buffers[i].data);
+		mod_free(mod, mod->input_buffers[i].data);
 
 in_out_free:
-	rfree(mod->output_buffers);
+	mod_free(mod, mod->output_buffers);
 	mod->output_buffers = NULL;
-	rfree(mod->input_buffers);
+	mod_free(mod, mod->input_buffers);
 	mod->input_buffers = NULL;
 	return ret;
 }
@@ -535,9 +547,10 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 #endif
 
 	/* allocate stream_params each time */
-	mod_free(mod, mod->stream_params);
+	if (mod->stream_params)
+		mod_free(mod, mod->stream_params);
 
-	mod->stream_params = mod_alloc(mod, sizeof(*mod->stream_params) + params->ext_data_length);
+	mod->stream_params = mod_zalloc(mod, sizeof(*mod->stream_params) + params->ext_data_length);
 	if (!mod->stream_params)
 		return -ENOMEM;
 
@@ -1217,15 +1230,14 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
 		for (i = 0; i < mod->num_of_sinks; i++)
-			rfree((__sparse_force void *)mod->output_buffers[i].data);
+			mod_free(mod, (__sparse_force void *)mod->output_buffers[i].data);
 		for (i = 0; i < mod->num_of_sources; i++)
-			rfree((__sparse_force void *)mod->input_buffers[i].data);
+			mod_free(mod, (__sparse_force void *)mod->input_buffers[i].data);
 	}
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
-		rfree(mod->output_buffers);
-		rfree(mod->input_buffers);
-
+		mod_free(mod, mod->output_buffers);
+		mod_free(mod, mod->input_buffers);
 		mod->num_of_sources = 0;
 		mod->num_of_sinks = 0;
 	}
@@ -1239,7 +1251,7 @@ int module_adapter_reset(struct comp_dev *dev)
 		buffer_zero(buffer);
 	}
 
-	rfree(mod->stream_params);
+	mod_free(mod, mod->stream_params);
 	mod->stream_params = NULL;
 
 	comp_dbg(dev, "done");
@@ -1273,7 +1285,8 @@ void module_adapter_free(struct comp_dev *dev)
 
 	mod_free_all(mod);
 
-	rfree(mod->stream_params);
+	mod_free(mod, mod->stream_params);
+
 	module_adapter_mem_free(mod);
 }
 EXPORT_SYMBOL(module_adapter_free);
