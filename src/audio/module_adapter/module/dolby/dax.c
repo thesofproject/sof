@@ -94,10 +94,10 @@ static int sof_to_dax_buffer_layout(enum sof_ipc_buffer_format sof_buf_fmt)
 	}
 }
 
-static void dax_buffer_release(struct dax_buffer *dax_buff)
+static void dax_buffer_release(struct processing_module *mod, struct dax_buffer *dax_buff)
 {
 	if (dax_buff->addr) {
-		rfree(dax_buff->addr);
+		mod_free(mod, dax_buff->addr);
 		dax_buff->addr = NULL;
 	}
 	dax_buff->size = 0;
@@ -105,12 +105,13 @@ static void dax_buffer_release(struct dax_buffer *dax_buff)
 	dax_buff->free = 0;
 }
 
-static int dax_buffer_alloc(struct dax_buffer *dax_buff, uint32_t bytes)
+static int dax_buffer_alloc(struct processing_module *mod,
+			    struct dax_buffer *dax_buff, uint32_t bytes)
 {
-	dax_buffer_release(dax_buff);
-	dax_buff->addr = rballoc(SOF_MEM_CAPS_RAM, bytes);
+	dax_buffer_release(mod, dax_buff);
+	dax_buff->addr = mod_balloc(mod, bytes);
 	if (!dax_buff->addr)
-		dax_buff->addr = rzalloc(SOF_MEM_CAPS_RAM, bytes);
+		dax_buff->addr = mod_zalloc(mod, bytes);
 	if (!dax_buff->addr)
 		return -ENOMEM;
 
@@ -143,7 +144,7 @@ static int set_tuning_file(struct processing_module *mod, void *value, uint32_t 
 	struct comp_dev *dev = mod->dev;
 	struct sof_dax *dax_ctx = module_get_private_data(mod);
 
-	if (dax_buffer_alloc(&dax_ctx->tuning_file_buffer, size) != 0) {
+	if (dax_buffer_alloc(mod, &dax_ctx->tuning_file_buffer, size) != 0) {
 		comp_err(dev, "allocate %u bytes failed for tuning file", size);
 		ret = -ENOMEM;
 	} else {
@@ -425,14 +426,14 @@ static int sof_dax_free(struct processing_module *mod)
 
 	if (dax_ctx) {
 		dax_free(dax_ctx);
-		dax_buffer_release(&dax_ctx->persist_buffer);
-		dax_buffer_release(&dax_ctx->scratch_buffer);
-		dax_buffer_release(&dax_ctx->tuning_file_buffer);
-		dax_buffer_release(&dax_ctx->input_buffer);
-		dax_buffer_release(&dax_ctx->output_buffer);
-		comp_data_blob_handler_free(dax_ctx->blob_handler);
+		dax_buffer_release(mod, &dax_ctx->persist_buffer);
+		dax_buffer_release(mod, &dax_ctx->scratch_buffer);
+		dax_buffer_release(mod, &dax_ctx->tuning_file_buffer);
+		dax_buffer_release(mod, &dax_ctx->input_buffer);
+		dax_buffer_release(mod, &dax_ctx->output_buffer);
+		mod_data_blob_handler_free(mod, dax_ctx->blob_handler);
 		dax_ctx->blob_handler = NULL;
-		rfree(dax_ctx);
+		mod_free(mod, dax_ctx);
 		module_set_private_data(mod, NULL);
 	}
 	return 0;
@@ -447,7 +448,7 @@ static int sof_dax_init(struct processing_module *mod)
 	uint32_t persist_sz;
 	uint32_t scratch_sz;
 
-	md->private = rzalloc(SOF_MEM_CAPS_RAM, sizeof(struct sof_dax));
+	md->private = mod_zalloc(mod, sizeof(struct sof_dax));
 	if (!md->private) {
 		comp_err(dev, "failed to allocate %u bytes for initialization",
 			 sizeof(struct sof_dax));
@@ -462,7 +463,7 @@ static int sof_dax_init(struct processing_module *mod)
 	dax_ctx->volume = 1 << 23;
 	dax_ctx->update_flags = 0;
 
-	dax_ctx->blob_handler = comp_data_blob_handler_new(dev);
+	dax_ctx->blob_handler = mod_data_blob_handler_new(mod);
 	if (!dax_ctx->blob_handler) {
 		comp_err(dev, "create blob handler failed");
 		ret = -ENOMEM;
@@ -470,13 +471,13 @@ static int sof_dax_init(struct processing_module *mod)
 	}
 
 	persist_sz = dax_query_persist_memory(dax_ctx);
-	if (dax_buffer_alloc(&dax_ctx->persist_buffer, persist_sz) != 0) {
+	if (dax_buffer_alloc(mod, &dax_ctx->persist_buffer, persist_sz) != 0) {
 		comp_err(dev, "allocate %u bytes failed for persist", persist_sz);
 		ret = -ENOMEM;
 		goto err;
 	}
 	scratch_sz = dax_query_scratch_memory(dax_ctx);
-	if (dax_buffer_alloc(&dax_ctx->scratch_buffer, scratch_sz) != 0) {
+	if (dax_buffer_alloc(mod, &dax_ctx->scratch_buffer, scratch_sz) != 0) {
 		comp_err(dev, "allocate %u bytes failed for scratch", scratch_sz);
 		ret = -ENOMEM;
 		goto err;
@@ -602,12 +603,12 @@ static int sof_dax_prepare(struct processing_module *mod, struct sof_source **so
 		dax_ctx->input_media_format.num_channels *
 		dax_ctx->input_media_format.bytes_per_sample;
 	obs = dax_ctx->period_bytes + dax_ctx->sof_period_bytes;
-	if (dax_buffer_alloc(&dax_ctx->input_buffer, ibs) != 0) {
+	if (dax_buffer_alloc(mod, &dax_ctx->input_buffer, ibs) != 0) {
 		comp_err(dev, "allocate %u bytes failed for input", ibs);
 		ret = -ENOMEM;
 		goto err;
 	}
-	if (dax_buffer_alloc(&dax_ctx->output_buffer, obs) != 0) {
+	if (dax_buffer_alloc(mod, &dax_ctx->output_buffer, obs) != 0) {
 		comp_err(dev, "allocate %u bytes failed for output", obs);
 		ret = -ENOMEM;
 		goto err;
@@ -619,8 +620,8 @@ static int sof_dax_prepare(struct processing_module *mod, struct sof_source **so
 	return 0;
 
 err:
-	dax_buffer_release(&dax_ctx->input_buffer);
-	dax_buffer_release(&dax_ctx->output_buffer);
+	dax_buffer_release(mod, &dax_ctx->input_buffer);
+	dax_buffer_release(mod, &dax_ctx->output_buffer);
 	return ret;
 }
 
