@@ -293,8 +293,8 @@ static int cadence_codec_init(struct processing_module *mod)
 		}
 
 		/* allocate memory for runtime set up config */
-		codec->cfg.data = rmalloc(SOF_MEM_FLAG_USER,
-					  cfg->param_size);
+		codec->cfg.data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER,
+					  cfg->param_size, 0);
 		if (!codec->cfg.data) {
 			comp_err(dev, "failed to alloc runtime setup config");
 			ret = -ENOMEM;
@@ -326,7 +326,7 @@ static int cadence_codec_init(struct processing_module *mod)
 	return 0;
 
 free_cfg2:
-	rfree(codec->cfg.data);
+	mod_free(mod, codec->cfg.data);
 free_cfg:
 	rfree(setup_cfg->data);
 free:
@@ -866,7 +866,7 @@ static int cadence_codec_free(struct processing_module *mod)
 {
 	struct cadence_codec_data *cd = module_get_private_data(mod);
 
-	rfree(cd->setup_cfg.data);
+	mod_free(mod, cd->setup_cfg.data);
 	mod_free_all(mod);
 	rfree(cd->self);
 	rfree(cd);
