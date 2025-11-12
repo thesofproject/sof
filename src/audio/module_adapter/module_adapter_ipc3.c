@@ -33,7 +33,8 @@ LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
  *
  * \return: 0 - no error; < 0, error happened.
  */
-int module_adapter_init_data(struct comp_dev *dev,
+int module_adapter_init_data(struct processing_module *mod,
+			     struct comp_dev *dev,
 			     struct module_config *dst,
 			     const struct comp_ipc_config *config,
 			     const void *spec)

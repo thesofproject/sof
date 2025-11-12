@@ -45,11 +45,6 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-	mod_resource_init(mod);
-
-#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-	mod->priv.resources.rsrc_mngr = k_current_get();
-#endif
 	/* Now we can proceed with module specific initialization */
 	ret = interface->init(mod);
 	if (ret) {

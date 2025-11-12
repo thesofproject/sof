@@ -64,6 +64,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	int ret;
 	struct module_config *dst;
 	const struct module_interface *const interface = drv->adapter_ops;
+	struct pipeline *pipeline = NULL;
 
 	comp_cl_dbg(drv, "start");
 
@@ -73,22 +74,49 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+#if CONFIG_IPC_MAJOR_4
+	struct ipc_comp_dev *ipc_pipe;
+	struct ipc *ipc = ipc_get();
+
+	/* set the pipeline pointer if ipc_pipe is valid */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
+	if (ipc_pipe)
+		pipeline = ipc_pipe->pipeline;
+#endif
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, pipeline);
 
 	if (!mod)
 		return NULL;
 
+	dst = &mod->priv.cfg;
 
 	module_set_private_data(mod, mod_priv);
 	list_init(&mod->raw_data_buffers_list);
+#if !CONFIG_SOF_VREGIONS
+	mod_resource_init(mod);
+#endif
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+	mod->priv.resources.rsrc_mngr = k_current_get();
+#endif
 #if CONFIG_USERSPACE
 	mod->user_ctx = user_ctx;
 #endif /* CONFIG_USERSPACE */
 
 	struct comp_dev *dev = mod->dev;
 
-	dst = &mod->priv.cfg;
-	ret = module_adapter_init_data(dev, dst, config, spec);
+#if CONFIG_IPC_MAJOR_4
+	/* set up ipc4 configuration items if needed from topology */
+	if (ipc_pipe) {
+		dev->pipeline = pipeline;
+
+		/* LL modules have the same period as the pipeline */
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+			dev->period = ipc_pipe->pipeline->period;
+	}
+#endif
+
+	ret = module_adapter_init_data(mod, dev, dst, config, spec);
 	if (ret) {
 		comp_err(dev, "%d: module init data failed",
 			 ret);
@@ -108,22 +136,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		mod->proc_type = MODULE_PROCESS_TYPE_RAW;
 	else
 		goto err;
-
-#if CONFIG_IPC_MAJOR_4
-	struct ipc_comp_dev *ipc_pipe;
-	struct ipc *ipc = ipc_get();
-
-	/* set the pipeline pointer if ipc_pipe is valid */
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
-					  IPC_COMP_IGNORE_REMOTE);
-	if (ipc_pipe) {
-		dev->pipeline = ipc_pipe->pipeline;
-
-		/* LL modules have the same period as the pipeline */
-		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
-			dev->period = ipc_pipe->pipeline->period;
-	}
-#endif
 
 	/* Init processing module */
 	ret = module_init(mod);

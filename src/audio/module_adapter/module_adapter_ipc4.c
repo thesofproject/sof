@@ -104,7 +104,7 @@ module_ext_init_decode(struct comp_dev *dev, struct module_config *dst,
  *
  * \return: 0 - no error; < 0, error happened.
  */
-int module_adapter_init_data(struct comp_dev *dev,
+int module_adapter_init_data(struct processing_module *mod, struct comp_dev *dev,
 			     struct module_config *dst,
 			     const struct comp_ipc_config *config,
 			     const void *spec)
@@ -136,6 +136,7 @@ int module_adapter_init_data(struct comp_dev *dev,
 		if (cfgsz == (sizeof(*cfg) + pinsz)) {
 			dst->nb_input_pins = n_in;
 			dst->nb_output_pins = n_out;
+			// TODO: mod alloc
 			dst->input_pins = sof_heap_alloc(dev->mod->priv.resources.heap,
 							 SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 							 pinsz, 0);
