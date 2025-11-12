@@ -26,17 +26,24 @@ if(zephyr) ###  Zephyr ###
 	endif()
 
 	if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
-		zephyr_library_sources(
-			module/dolby/dax.c
-		)
-		if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
-			zephyr_library_sources(
-				module/dolby/dax_mock.c
-			)
+		if(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING STREQUAL "m" AND DEFINED CONFIG_LLEXT)
+			add_subdirectory(module/dolby/llext
+					 ${PROJECT_BINARY_DIR}/dolby_dax_audio_processing_llext)
+			add_dependencies(app dolby_dax_audio_processing)
 		else()
-			target_link_libraries(SOF INTERFACE m)
-			target_link_libraries(SOF INTERFACE c)
-			zephyr_library_import(dax_effect ${sof_top_dir}/third_party/lib/libdax.a)
+			zephyr_library_sources(
+				module/dolby/dax.c
+			)
+			if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
+				zephyr_library_sources(
+					module/dolby/dax_mock.c
+				)
+			else()
+				target_link_libraries(SOF INTERFACE m)
+				target_link_libraries(SOF INTERFACE c)
+				zephyr_library_import(dax_effect
+						      ${sof_top_dir}/third_party/lib/libdax.a)
+			endif()
 		endif()
 	endif()
 

@@ -815,7 +815,34 @@ static const struct module_interface dolby_dax_audio_processing_interface = {
 	.free = sof_dax_free,
 };
 
+#if CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+static const struct sof_man_module_manifest main_manifest __section(".module") __used = {
+	.module = {
+		.name = "DAX",
+		.uuid = SOF_REG_UUID(dolby_dax_audio_processing),
+		.entry_point = (uint32_t)(&dolby_dax_audio_processing_interface),
+		.instance_max_count = 1,
+		.type = {
+			.load_type = SOF_MAN_MOD_TYPE_LLEXT,
+			.domain_dp = 1,
+		},
+		.affinity_mask = 7,
+	}
+};
+
+SOF_LLEXT_BUILDINFO;
+
+#else
+
 DECLARE_MODULE_ADAPTER(dolby_dax_audio_processing_interface, dolby_dax_audio_processing_uuid,
 		       dolby_dax_audio_processing_tr);
 SOF_MODULE_INIT(dolby_dax_audio_processing,
 		sys_comp_module_dolby_dax_audio_processing_interface_init);
+
+#endif
