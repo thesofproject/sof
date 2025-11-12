@@ -176,8 +176,7 @@ if CADENCE_CODEC
 endif # Cadence
 
 	config COMP_DOLBY_DAX_AUDIO_PROCESSING
-		bool "Dolby DAX audio processing component"
-		default n
+		tristate "Dolby DAX audio processing component"
 		help
 		  Select to include Dolby DAX component. Dolby DAX component implements DAX API.
 		  API definition together with pre-compiled library is shared by Dolby.
