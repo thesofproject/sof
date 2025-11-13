@@ -53,6 +53,8 @@ struct cadence_codec_data {
 	void *self;
 	xa_codec_func_t *api;
 	void *mem_tabs;
+	size_t mem_to_be_freed_len;
+	void **mem_to_be_freed;
 	uint32_t api_id;
 	struct module_config setup_cfg;
 };
