@@ -130,6 +130,10 @@ index = __COUNTER__
 #include <audio/google/google_rtc_audio_processing.toml>
 #endif
 
+#if defined(CONFIG_COMP_GOOGLE_CTC_AUDIO_PROCESSING) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/google/google_ctc_audio_processing.toml>
+#endif
+
 #if defined(CONFIG_COMP_TDFB) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/tdfb/tdfb.toml>
 #endif
