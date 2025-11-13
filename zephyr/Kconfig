@@ -190,6 +190,15 @@ config SOF_BOOT_TEST
 	  initialized. After that SOF will continue running and be usable as
 	  usual.
 
+config SOF_BOOT_TEST_STANDALONE
+	bool "enable tests at boot time that are run instead of SOF main"
+	select SOF_BOOT_TEST
+	select ZTEST
+	help
+	  Run extended set of tests at boot that can use IPC and interfere
+	  with system state. Normal IPC handling of the SOF application
+	  is disabled to allow more complex tests to run.
+
 config SOF_ZEPHYR_NO_SOF_CLOCK
 	bool
 	help

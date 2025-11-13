@@ -294,6 +294,11 @@ __cold int ipc_init(struct sof *sof)
 
 	tr_dbg(&ipc_tr, "entry");
 
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+	LOG_INF("SOF_BOOT_TEST_STANDALONE, disabling IPC.");
+	return 0;
+#endif
+
 	/* init ipc data */
 	sof->ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->ipc));
 	if (!sof->ipc) {
