@@ -548,8 +548,7 @@ EXPORT_SYMBOL(rzalloc);
  * @param align Alignment in bytes.
  * @return Pointer to the allocated memory or NULL if failed.
  */
-void *rballoc_align(uint32_t flags, size_t bytes,
-		    uint32_t align)
+void *rballoc_align(uint32_t flags, size_t bytes, uint32_t align)
 {
 	struct k_heap *heap;
 
@@ -568,9 +567,9 @@ void *rballoc_align(uint32_t flags, size_t bytes,
 #endif /* CONFIG_USERSPACE */
 	} else {
 #if CONFIG_VIRTUAL_HEAP
-	/* Use virtual heap if it is available */
-	if (virtual_buffers_heap)
-		return virtual_heap_alloc(virtual_buffers_heap, flags, bytes, align);
+		/* Use virtual heap if it is available */
+		if (virtual_buffers_heap)
+			return virtual_heap_alloc(virtual_buffers_heap, flags, bytes, align);
 #endif /* CONFIG_VIRTUAL_HEAP */
 
 		heap = &sof_heap;
