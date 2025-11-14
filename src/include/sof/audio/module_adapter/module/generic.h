@@ -132,6 +132,8 @@ struct module_resources {
 	struct list_item cont_chunk_list;	/**< Memory container chunks */
 	size_t heap_usage;
 	size_t heap_high_water_mark;
+	size_t container_usage;
+	size_t container_high_water_mark;
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	k_tid_t rsrc_mngr;
 #endif
@@ -313,6 +315,7 @@ void module_adapter_free(struct comp_dev *dev);
 int module_adapter_reset(struct comp_dev *dev);
 
 size_t module_adapter_heap_usage(struct processing_module *mod, size_t *hwm);
+size_t module_adapter_container_usage(struct processing_module *mod, size_t *hwm);
 
 #if CONFIG_IPC_MAJOR_3
 static inline

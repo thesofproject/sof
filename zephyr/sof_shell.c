@@ -68,6 +68,32 @@ static int cmd_sof_module_heap_usage(const struct shell *sh,
 	return 0;
 }
 
+static int cmd_sof_module_container_usage(const struct shell *sh,
+					  size_t argc, char *argv[])
+{
+	struct ipc *ipc = sof_get()->ipc;
+	struct list_item *clist, *_clist;
+	struct ipc_comp_dev *icd;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	list_for_item_safe(clist, _clist, &ipc->comp_list) {
+		size_t usage, hwm;
+
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		usage = module_adapter_container_usage(comp_mod(icd->cd), &hwm);
+		shell_print(sh, "comp id 0x%08x%9zu usage%9zu hwm",
+			    icd->id, usage, hwm);
+	}
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(test_inject_sched_gap, NULL,
 		  "Inject a gap to audio scheduling\n",
@@ -76,6 +102,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(module_heap_usage, NULL,
 		  "Print heap memory usage of each module\n",
 		  cmd_sof_module_heap_usage),
+
+	SHELL_CMD(module_container_usage, NULL,
+		  "Print resource tracking container usage of each module\n",
+		  cmd_sof_module_container_usage),
 
 	SHELL_SUBCMD_SET_END
 );

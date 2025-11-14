@@ -80,6 +80,8 @@ static void mod_resource_init(struct processing_module *mod)
 	list_init(&md->resources.cont_chunk_list);
 	md->resources.heap_usage = 0;
 	md->resources.heap_high_water_mark = 0;
+	md->resources.container_usage = 0;
+	md->resources.container_high_water_mark = 0;
 }
 
 int module_init(struct processing_module *mod)
@@ -155,6 +157,9 @@ static struct module_resource *container_get(struct processing_module *mod)
 
 	container = list_first_item(&res->free_cont_list, struct module_resource, list);
 	list_item_del(&container->list);
+	res->container_usage++;
+	if (res->container_usage > res->container_high_water_mark)
+		res->container_high_water_mark = res->container_usage;
 	return container;
 }
 
@@ -163,6 +168,7 @@ static void container_put(struct processing_module *mod, struct module_resource 
 	struct module_resources *res = &mod->priv.resources;
 
 	list_item_append(&container->list, &res->free_cont_list);
+	res->container_usage--;
 }
 
 /**
