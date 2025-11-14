@@ -162,4 +162,56 @@ ZTEST(sof_list_suite, test_list_item_is_last)
 		     "item2 should be the last item in the list");
 }
 
+/**
+ * @brief Test list_relink functionality
+ *
+ * Tests that list_relink correctly updates references when a list head is moved
+ */
+ZTEST(sof_list_suite, test_list_relink)
+{
+	struct list_item old_head;
+	struct list_item new_head;
+	struct list_item item1;
+	struct list_item item2;
+
+	/* Test case 1: Empty list relinking */
+	list_init(&old_head);
+	new_head = old_head; /* Copy the old head structure */
+
+	list_relink(&new_head, &old_head);
+
+	/* After relinking empty list, new_head should be properly initialized */
+	zassert_equal(&new_head, new_head.next,
+		      "Empty list: new_head->next should point to itself");
+	zassert_equal(&new_head, new_head.prev,
+		      "Empty list: new_head->prev should point to itself");
+
+	/* Test case 2: Non-empty list relinking */
+	list_init(&old_head);
+	list_item_append(&item1, &old_head);
+	list_item_append(&item2, &old_head);
+
+	/* Verify initial state - items point to old_head */
+	zassert_equal(&old_head, item1.prev, "Initial: item1 prev should point to old_head");
+	zassert_equal(&old_head, item2.next, "Initial: item2 next should point to old_head");
+
+	/* Simulate moving list to new location by copying head structure */
+	new_head = old_head;
+	/* Now new_head.next points to item1, new_head.prev points to item2 */
+	/* But item1.prev and item2.next still point to &old_head */
+
+	/* Perform the relinking */
+	list_relink(&new_head, &old_head);
+
+	/* After relinking, items should now point to new_head instead of old_head */
+	zassert_equal(&new_head, item1.prev, "After relink: item1 prev should point to new_head");
+	zassert_equal(&new_head, item2.next, "After relink: item2 next should point to new_head");
+	zassert_equal(&item1, new_head.next, "After relink: new_head next should point to item1");
+	zassert_equal(&item2, new_head.prev, "After relink: new_head prev should point to item2");
+
+	/* Verify list integrity - items should still be properly linked */
+	zassert_equal(&item2, item1.next, "After relink: item1 next should point to item2");
+	zassert_equal(&item1, item2.prev, "After relink: item2 prev should point to item1");
+}
+
 ZTEST_SUITE(sof_list_suite, NULL, NULL, NULL, NULL, NULL);
