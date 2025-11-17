@@ -265,4 +265,36 @@ EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-wcl-dmic-4ch-id5.bin,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
+
+"cavs-es83x6\;sof-ptl-ssp1-jack-id0\;PLATFORM=ptl,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-ssp1-jack-id0.bin,HEADSET_SSP_DAI_INDEX=1,\
+HEADSET_CODEC=true,HEADSET_CODEC_NAME=SSP1-Codec,NUM_HDMIS=0,\
+HDMI_IN_CAPTURE=false"
+
+# HDMI IN port: SSP0 and SSP2, SSP number is a mask in HDMI_IN_1_ID and HDMI_IN_2_ID
+# For example, SSP5 indicates SSP 0 and 2 are used for HDMI IN
+"cavs-es83x6\;sof-ptl-ssp5-hdmiin-id1\;PLATFORM=ptl,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=0,\
+NHLT_BIN=nhlt-sof-ptl-ssp5-hdmiin-id1.bin,HEADSET_CODEC=false,HDMI_IN_CAPTURE=true,\
+HDMI_IN_1_ID=0,HDMI_IN_2_ID=1"
+
+"cavs-es83x6\;sof-ptl-ssp5-hdmiin-id2\;PLATFORM=ptl,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=0,\
+NHLT_BIN=nhlt-sof-ptl-ssp5-hdmiin-id2.bin,HEADSET_CODEC=false,HDMI_IN_CAPTURE=true,\
+HDMI_IN_1_ID=1,HDMI_IN_2_ID=2"
+
+"cavs-es83x6\;sof-ptl-ssp5-hdmiin-id7\;PLATFORM=ptl,PREPROCESS_PLUGINS=nhlt,NUM_HDMIS=0,\
+NHLT_BIN=nhlt-sof-ptl-ssp5-hdmiin-id7.bin,HEADSET_CODEC=false,HDMI_IN_CAPTURE=true,\
+HDMI_IN_1_ID=6,HDMI_IN_2_ID=7"
+
+"cavs-es83x6\;sof-ptl-ssp2-bt-id2\;PLATFORM=ptl,INCLUDE_BT_OFFLOAD=true,NUM_HDMIS=0,\
+HEADSET_CODEC=false,HDMI_IN_CAPTURE=false,BT_ID=2,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-ssp2-bt-id2.bin"
+
+#BT_ID=8, 10 for sdw_sof machine
+"cavs-sdw\;sof-ptl-ssp2-bt-id8\;PLATFORM=ptl,ADD_BT=true,SDW_JACK=false,NUM_HDMIS=0,\
+HEADSET_CODEC=false,HDMI_IN_CAPTURE=false,BT_ID=8,BT_PCM_ID=20,BT_PCM_NAME=Bluetooth,\
+BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt-id8.bin"
+
+"cavs-sdw\;sof-ptl-ssp2-bt-id10\;PLATFORM=ptl,ADD_BT=true,SDW_JACK=false,NUM_HDMIS=0,\
+HEADSET_CODEC=false,HDMI_IN_CAPTURE=false,BT_ID=10,BT_PCM_ID=20,BT_PCM_NAME=Bluetooth,\
+BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt-id10.bin"
 )
