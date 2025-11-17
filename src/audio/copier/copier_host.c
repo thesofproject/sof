@@ -50,6 +50,7 @@ __cold static int add_to_fpi_sync_group(struct comp_dev *parent_dev,
 					struct ipc4_copier_sync_group *sync_group)
 {
 	struct fpi_sync_group *group = find_group_by_id(sync_group->group_id);
+	struct processing_module *mod = comp_mod(parent_dev);
 
 	assert_can_be_cold();
 
@@ -62,11 +63,13 @@ __cold static int add_to_fpi_sync_group(struct comp_dev *parent_dev,
 
 		group->ref_count++;
 	} else {
-		group = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*group));
+		group = mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				      sizeof(*group), 0);
 		if (!group) {
 			comp_err(parent_dev, "Failed to alloc memory for new group");
 			return -ENOMEM;
 		}
+		memset(group, 0, sizeof(*group));
 
 		group->id = sync_group->group_id;
 		group->period = sync_group->fpi_update_period_usec;
@@ -81,9 +84,10 @@ __cold static int add_to_fpi_sync_group(struct comp_dev *parent_dev,
 	return 0;
 }
 
-__cold static void delete_from_fpi_sync_group(struct host_data *hd)
+__cold static void delete_from_fpi_sync_group(struct processing_module *mod)
 {
-	struct fpi_sync_group *group = find_group_by_id(hd->group_id);
+	struct copier_data *cd = module_get_private_data(mod);
+	struct fpi_sync_group *group = find_group_by_id(cd->hd->group_id);
 
 	assert_can_be_cold();
 
@@ -93,7 +97,7 @@ __cold static void delete_from_fpi_sync_group(struct host_data *hd)
 	group->ref_count--;
 	if (group->ref_count == 0) {
 		list_item_del(&group->item);
-		rfree(group);
+		mod_free(mod, group);
 	}
 }
 #endif
@@ -265,7 +269,7 @@ __cold void copier_host_free(struct processing_module *mod)
 
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
 	if (cd->hd->is_grouped)
-		delete_from_fpi_sync_group(cd->hd);
+		delete_from_fpi_sync_group(mod);
 #endif
 	host_common_free(cd->hd);
 	mod_free(mod, cd->hd);
