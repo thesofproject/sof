@@ -204,9 +204,10 @@ __cold static int copier_dai_init(struct comp_dev *dev,
 			return ret;
 	}
 
-	dd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd));
+	dd = mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd), 0);
 	if (!dd)
 		return -ENOMEM;
+	memset(dd, 0, sizeof(*dd));
 
 	ret = dai_common_new(dd, dev, dai);
 	if (ret < 0)
@@ -223,12 +224,14 @@ __cold static int copier_dai_init(struct comp_dev *dev,
 
 	/* Allocate gain data if selected for this dai type and set basic params */
 	if (dai->apply_gain) {
-		struct copier_gain_params *gain_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-							       sizeof(*gain_data));
+		struct copier_gain_params *gain_data =
+			mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				      sizeof(*gain_data), 0);
 		if (!gain_data) {
 			ret = -ENOMEM;
 			goto e_zephyr_free;
 		}
+		memset(gain_data, 0, sizeof(*gain_data));
 		cd->dd[index]->gain_data = gain_data;
 
 		ret = copier_gain_set_params(dev, cd->dd[index]->gain_data,
@@ -244,11 +247,11 @@ __cold static int copier_dai_init(struct comp_dev *dev,
 
 	return 0;
 gain_free:
-	rfree(dd->gain_data);
+	mod_free(mod, dd->gain_data);
 e_zephyr_free:
 	dai_common_free(dd);
 free_dd:
-	rfree(dd);
+	mod_free(mod, dd);
 	return ret;
 }
 
@@ -374,14 +377,16 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	return 0;
 }
 
-__cold void copier_dai_free(struct copier_data *cd)
+__cold void copier_dai_free(struct processing_module *mod)
 {
+	struct copier_data *cd = module_get_private_data(mod);
+
 	assert_can_be_cold();
 
 	for (int i = 0; i < cd->endpoint_num; i++) {
 		dai_common_free(cd->dd[i]);
-		rfree(cd->dd[i]->gain_data);
-		rfree(cd->dd[i]);
+		mod_free(mod, cd->dd[i]->gain_data);
+		mod_free(mod, cd->dd[i]);
 	}
 	/* only dai have multi endpoint case */
 	if (cd->multi_endpoint_buffer)

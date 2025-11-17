@@ -203,7 +203,7 @@ void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, 
  */
 static inline void *mod_alloc_align(struct processing_module *mod, size_t size, size_t alignment)
 {
-	return mod_alloc_ext(mod, 0, size, alignment);
+	return mod_alloc_ext(mod, SOF_MEM_FLAG_USER, size, alignment);
 }
 
 static inline void *mod_balloc(struct processing_module *mod, size_t size)
