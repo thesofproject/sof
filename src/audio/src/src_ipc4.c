@@ -196,6 +196,7 @@ __cold int src_init(struct processing_module *mod)
 	assert_can_be_cold();
 
 	comp_dbg(dev, "entry");
+	mod_resource_init(mod);
 
 	if (!cfg->init_data || cfg->size != sizeof(cd->ipc_config)) {
 		comp_err(dev, "Missing or bad size (%u) init data",

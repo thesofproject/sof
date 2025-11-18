@@ -667,6 +667,7 @@ static int waves_codec_init(struct processing_module *mod)
 	void *response = NULL;
 
 	comp_dbg(dev, "waves_codec_init() start");
+	mod_resource_init(mod);
 
 	waves_codec = mod_alloc_align(mod, sizeof(struct waves_codec_data), 16);
 	if (!waves_codec) {

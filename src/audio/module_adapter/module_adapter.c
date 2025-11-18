@@ -1310,7 +1310,12 @@ void module_adapter_free(struct comp_dev *dev)
 		buffer_free(buffer);
 	}
 
-	mod_free_all(mod);
+	if (mod->priv.resources.tracking_enabled) {
+		mod_free_all(mod);
+	} else if (mod->priv.resources.resource_count) {
+		comp_err(dev, "%u unfreed resources leaked", mod->priv.resources.resource_count);
+		__ASSERT(0, "unfreed resources leaked");
+	}
 
 	rfree(mod->stream_params);
 	module_adapter_mem_free(mod);

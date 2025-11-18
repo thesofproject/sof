@@ -71,16 +71,36 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	return ret;
 }
 
-static void mod_resource_init(struct processing_module *mod)
+/**
+ * Initialize resource tracking and turn it on for the module.
+ * @param mod		Pointer to the module
+ * @return 0 if Ok, -EBUSY if module is in wrong state.
+ *
+ * This function should be called from the module init function before
+ * any resource allocations are made through mod_alloc() and friends.
+ * If resource tracking is on, then all resources allocated through
+ * mod_alloc() and frieds are freed automatically when the module is
+ * unloaded of if its initialization fails.
+ */
+int mod_resource_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
+
+	MEM_API_CHECK_THREAD(&md->resources);
+	if (md->resources.resource_count > 0) {
+		comp_err(mod->dev, "failed to allocate space for setup config.");
+		return -EBUSY;
+	}
 	/* Init memory list */
 	list_init(&md->resources.res_list);
 	list_init(&md->resources.free_cont_list);
 	list_init(&md->resources.cont_chunk_list);
 	md->resources.heap_usage = 0;
 	md->resources.heap_high_water_mark = 0;
+	md->resources.tracking_enabled = true;
+	return 0;
 }
+EXPORT_SYMBOL(mod_resource_init);
 
 int module_init(struct processing_module *mod)
 {
@@ -109,7 +129,6 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-	mod_resource_init(mod);
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	mod->priv.resources.rsrc_mngr = k_current_get();
 #endif
@@ -117,7 +136,10 @@ int module_init(struct processing_module *mod)
 	ret = interface->init(mod);
 	if (ret) {
 		comp_err(dev, "error %d: module specific init failed", ret);
-		mod_free_all(mod);
+		if (mod->priv.resources.tracking_enabled)
+			mod_free_all(mod);
+		else if (mod->priv.resources.resource_count)
+			comp_err(dev, "%u resources leaked due to failed init");
 		return ret;
 	}
 
@@ -184,6 +206,13 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 
 	MEM_API_CHECK_THREAD(res);
 
+	if (!res->tracking_enabled) {
+		ptr = rballoc_align(SOF_MEM_FLAG_USER, size, alignment);
+		if (ptr)
+			res->resource_count++;
+		return ptr;
+	}
+
 	container = container_get(mod);
 	if (!container)
 		return NULL;
@@ -235,6 +264,13 @@ void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, 
 
 	MEM_API_CHECK_THREAD(res);
 
+	if (!res->tracking_enabled) {
+		ptr = rmalloc_align(SOF_MEM_FLAG_USER, size, alignment);
+		if (ptr)
+			res->resource_count++;
+		return ptr;
+	}
+
 	container = container_get(mod);
 	if (!container)
 		return NULL;
@@ -285,6 +321,13 @@ mod_data_blob_handler_new(struct processing_module *mod)
 
 	MEM_API_CHECK_THREAD(res);
 
+	if (!res->tracking_enabled) {
+		bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
+		if (bhp)
+			res->resource_count++;
+		return bhp;
+	}
+
 	container = container_get(mod);
 	if (!container)
 		return NULL;
@@ -320,6 +363,13 @@ const void *mod_fast_get(struct processing_module *mod, const void * const dram_
 	const void *ptr;
 
 	MEM_API_CHECK_THREAD(res);
+
+	if (!res->tracking_enabled) {
+		ptr = fast_get(dram_ptr, size);
+		if (ptr)
+			res->resource_count++;
+		return ptr;
+	}
 
 	container = container_get(mod);
 	if (!container)
@@ -366,20 +416,11 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 	return -EINVAL;
 }
 
-/**
- * Frees the memory block removes it from module's book keeping.
- * @param mod	Pointer to module this memory block was allocated for.
- * @param ptr	Pointer to the memory block.
- */
-int mod_free(struct processing_module *mod, const void *ptr)
+static int free_tracked_resource(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 	struct list_item *res_list;
-
-	MEM_API_CHECK_THREAD(res);
-	if (!ptr)
-		return 0;
 
 	/* Find which container keeps this memory */
 	list_for_item(res_list, &res->res_list) {
@@ -397,20 +438,78 @@ int mod_free(struct processing_module *mod, const void *ptr)
 
 	return -EINVAL;
 }
+
+/**
+ * Frees the memory block removes it from module's book keeping.
+ * @param mod	Pointer to module this memory block was allocated for.
+ * @param ptr	Pointer to the memory block.
+ */
+int mod_free(struct processing_module *mod, void *ptr)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	MEM_API_CHECK_THREAD(res);
+
+	if (!ptr)
+		return 0;
+
+	if (res->tracking_enabled)
+		return free_tracked_resource(mod, ptr);
+
+	if (res->resource_count == 0) {
+		comp_err(mod->dev, "More resources freed than allocated.");
+		return -EINVAL;
+	}
+	rfree(ptr);
+	res->resource_count--;
+	return 0;
+}
 EXPORT_SYMBOL(mod_free);
 
 #if CONFIG_COMP_BLOB
-void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
+int mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
 {
-	mod_free(mod, (void *)dbh);
+	struct module_resources *res = &mod->priv.resources;
+
+	MEM_API_CHECK_THREAD(res);
+
+	if (!dbh)
+		return 0;
+
+	if (res->tracking_enabled)
+		return free_tracked_resource(mod, dbh);
+
+	if (res->resource_count == 0) {
+		comp_err(mod->dev, "More resources freed than allocated.");
+		return -EINVAL;
+	}
+	comp_data_blob_handler_free(dbh);
+	res->resource_count--;
+	return 0;
 }
 EXPORT_SYMBOL(mod_data_blob_handler_free);
 #endif
 
 #if CONFIG_FAST_GET
-void mod_fast_put(struct processing_module *mod, const void *sram_ptr)
+int mod_fast_put(struct processing_module *mod, const void *sram_ptr)
 {
-	mod_free(mod, sram_ptr);
+	struct module_resources *res = &mod->priv.resources;
+
+	MEM_API_CHECK_THREAD(res);
+
+	if (!sram_ptr)
+		return 0;
+
+	if (res->tracking_enabled)
+		return free_tracked_resource(mod, sram_ptr);
+
+	if (res->resource_count == 0) {
+		comp_err(mod->dev, "More resources freed than allocated.");
+		return -EINVAL;
+	}
+	fast_put(sram_ptr);
+	res->resource_count--;
+	return 0;
 }
 EXPORT_SYMBOL(mod_fast_put);
 #endif
@@ -592,6 +691,9 @@ void mod_free_all(struct processing_module *mod)
 	struct list_item *_list;
 
 	MEM_API_CHECK_THREAD(res);
+
+	__ASSERT(res->tracking_enabled, "Resource tracking not enabled");
+
 	/* Free all contents found in used containers */
 	list_for_item(list, &res->res_list) {
 		struct module_resource *container =

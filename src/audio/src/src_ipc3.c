@@ -159,6 +159,7 @@ int src_init(struct processing_module *mod)
 	struct comp_data *cd = NULL;
 
 	comp_dbg(dev, "entry");
+	mod_resource_init(mod);
 
 	if (dev->ipc_config.type != SOF_COMP_SRC) {
 		comp_err(dev, "Wrong IPC config type %u",
