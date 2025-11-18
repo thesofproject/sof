@@ -20,11 +20,26 @@ struct cpu_mutex {
 /* CPU specific mutexes for each circular buffer */
 static struct cpu_mutex cpu_mutex[CONFIG_MP_MAX_NUM_CPUS];
 
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+static struct debug_stream_slot_hdr *dbg_stream_slot;
+#else
 static const int debug_stream_slot = CONFIG_SOF_DEBUG_STREAM_SLOT_NUMBER;
+#endif
 
 static struct debug_stream_slot_hdr *debug_stream_get_slot(void)
 {
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	if (!dbg_stream_slot) {
+		struct adsp_dw_desc slot_desc = { .type = ADSP_DW_SLOT_DEBUG_STREAM, };
+
+		dbg_stream_slot = (struct debug_stream_slot_hdr *)
+					adsp_dw_request_slot(&slot_desc, NULL);
+	}
+
+	return dbg_stream_slot;
+#else
 	return (struct debug_stream_slot_hdr *)ADSP_DW->slots[debug_stream_slot];
+#endif
 }
 
 static
@@ -113,10 +128,15 @@ static int debug_stream_slot_init(void)
 		CONFIG_MP_MAX_NUM_CPUS, section_size, hdr_size,
 		section_area_size);
 
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	if (!hdr)
+		return -ENOMEM;
+#else
 	if (ADSP_DW->descs[debug_stream_slot].type != 0)
 		LOG_WRN("Slot %d was not free: %u", debug_stream_slot,
 			ADSP_DW->descs[debug_stream_slot].type);
 	ADSP_DW->descs[debug_stream_slot].type = ADSP_DW_SLOT_DEBUG_STREAM;
+#endif
 
 	hdr->hdr.magic = DEBUG_STREAM_IDENTIFIER;
 	hdr->hdr.hdr_size = hdr_size;
