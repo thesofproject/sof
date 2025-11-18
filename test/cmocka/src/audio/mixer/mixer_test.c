@@ -80,7 +80,7 @@ static int test_setup(void **state)
 	module_adapter_test_setup(test_data);
 
 	mod_data = &test_data->mod->priv;
-	md = test_malloc(sizeof(*md));
+	md = mod_alloc(test_data->mod, sizeof(*md));
 	mod_data->private = md;
 
 	md->mix_func = mixer_get_processing_function(test_data->mod->dev, test_data->sinks[0]);
@@ -95,7 +95,7 @@ static int test_teardown(void **state)
 	struct processing_module_test_data *test_data = *state;
 	struct mixer_data *md = module_get_private_data(test_data->mod);
 
-	test_free(md);
+	mod_free(test_data->mod, md);
 	module_adapter_test_free(test_data);
 	test_free(test_data);
 

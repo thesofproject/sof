@@ -29,13 +29,14 @@ int module_adapter_test_setup(struct processing_module_test_data *test_data)
 	dev->frames = parameters->frames;
 	mod->dev = dev;
 	dev->mod = mod;
+	mod_resource_init(mod);
 
-	test_data->sinks = test_calloc(test_data->num_sinks, sizeof(struct comp_buffer *));
-	test_data->sources = test_calloc(test_data->num_sources, sizeof(struct comp_buffer *));
+	test_data->sinks = mod_alloc(mod, test_data->num_sinks * sizeof(struct comp_buffer *));
+	test_data->sources = mod_alloc(mod, test_data->num_sources * sizeof(struct comp_buffer *));
 
-	test_data->input_buffers = test_calloc(test_data->num_sources,
+	test_data->input_buffers = mod_alloc(mod, test_data->num_sources *
 					       sizeof(struct input_stream_buffer *));
-	test_data->output_buffers = test_calloc(test_data->num_sinks,
+	test_data->output_buffers = mod_alloc(mod, test_data->num_sinks *
 						sizeof(struct output_stream_buffer *));
 
 	list_init(&dev->bsource_list);
@@ -48,7 +49,7 @@ int module_adapter_test_setup(struct processing_module_test_data *test_data)
 	for (i = 0; i < test_data->num_sinks; i++) {
 		test_data->sinks[i] = create_test_sink(dev, 0, parameters->sink_format,
 						       parameters->channels, size);
-		test_data->output_buffers[i] = test_malloc(sizeof(struct output_stream_buffer));
+		test_data->output_buffers[i] = mod_alloc(mod, sizeof(struct output_stream_buffer));
 		test_data->output_buffers[i]->data = &test_data->sinks[i]->stream;
 	}
 
@@ -58,7 +59,7 @@ int module_adapter_test_setup(struct processing_module_test_data *test_data)
 	for (i = 0; i < test_data->num_sources; i++) {
 		test_data->sources[i] = create_test_source(dev, 0, parameters->source_format,
 							   parameters->channels, size);
-		test_data->input_buffers[i] = test_malloc(sizeof(struct input_stream_buffer));
+		test_data->input_buffers[i] = mod_alloc(mod, sizeof(struct input_stream_buffer));
 		test_data->input_buffers[i]->data = &test_data->sources[i]->stream;
 	}
 
@@ -69,22 +70,24 @@ int module_adapter_test_setup(struct processing_module_test_data *test_data)
 
 void module_adapter_test_free(struct processing_module_test_data *test_data)
 {
+	struct processing_module *mod = test_data->mod;
 	int i;
 
 	for (i = 0; i < test_data->num_sinks; i++) {
 		free_test_sink(test_data->sinks[i]);
-		test_free(test_data->output_buffers[i]);
+		mod_free(mod, test_data->output_buffers[i]);
 	}
 
 	for (i = 0; i < test_data->num_sources; i++) {
 		free_test_source(test_data->sources[i]);
-		test_free(test_data->input_buffers[i]);
+		mod_free(mod, test_data->input_buffers[i]);
 	}
 
-	test_free(test_data->input_buffers);
-	test_free(test_data->output_buffers);
-	test_free(test_data->sinks);
-	test_free(test_data->sources);
+	mod_free(mod, test_data->input_buffers);
+	mod_free(mod, test_data->output_buffers);
+	mod_free(mod, test_data->sinks);
+	mod_free(mod, test_data->sources);
+	mod_free_all(mod);
 	test_free(test_data->mod->dev);
 	test_free(test_data->mod);
 }
