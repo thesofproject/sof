@@ -123,6 +123,13 @@ DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAM
 DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,BT_PCM_ID=20,BT_ID=8,BT_PCM_NAME=Bluetooth,ADD_BT=true,\
 SDW_SPK_ENHANCED_PLAYBACK=false"
 
+"cavs-sdw\;sof-ptl-cs42l43-agg-l3-cs35l56-l2-dax\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-cs42l43-agg-l3-cs35l56-l2-4ch.bin,\
+HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,\
+BT_PCM_ID=20,BT_ID=10,BT_PCM_NAME=Bluetooth,ADD_BT=true,USE_DAX=true,DOLBY_DAX_CORE_ID=0"
+
 # SSP codec topologies for PTL
 # ES83x6 codec alone without HDMI-in capture
 "cavs-es83x6\;sof-ptl-es8336-ssp1\;PLATFORM=ptl,PREPROCESS_PLUGINS=nhlt,\
