@@ -8,6 +8,7 @@
 #include "pipeline_connection_mocks.h"
 
 extern struct schedulers *schedulers;
+struct schedule_data *sch;
 
 struct scheduler_ops schedule_mock_ops = {
 	.schedule_task_free	= &schedule_task_mock_free,
@@ -42,7 +43,7 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 	schedulers = calloc(sizeof(struct schedulers), 1);
 	list_init(&schedulers->list);
 
-	struct schedule_data *sch = calloc(sizeof(struct schedule_data), 1);
+	sch = calloc(sizeof(struct schedule_data), 1);
 
 	list_init(&sch->list);
 	sch->type = SOF_SCHEDULE_EDF;
@@ -93,4 +94,6 @@ void free_standard_connect_objects(struct pipeline_connect_data *data)
 	free(data->second);
 	free(data->b1);
 	free(data->b2);
+	free(sch);
+	free(schedulers);
 }

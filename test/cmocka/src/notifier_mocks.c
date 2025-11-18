@@ -99,4 +99,6 @@ void notifier_unregister_all(void *receiver, void *caller)
 
 	for (i = 0; i < NOTIFIER_ID_COUNT; i++)
 		notifier_unregister(receiver, caller, i);
+	free(_notify);
+	_notify = NULL;
 }
