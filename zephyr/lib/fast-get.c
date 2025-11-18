@@ -9,6 +9,7 @@
 #include <errno.h>
 
 #include <sof/lib/fast-get.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/spinlock.h>
@@ -35,7 +36,7 @@ static struct sof_fast_get_data fast_get_data = {
 
 LOG_MODULE_REGISTER(fast_get, CONFIG_SOF_LOG_LEVEL);
 
-static int fast_get_realloc(struct sof_fast_get_data *data)
+static int fast_get_realloc(struct processing_module *mod, struct sof_fast_get_data *data)
 {
 	struct sof_fast_get_entry *entries;
 	/*
@@ -45,15 +46,16 @@ static int fast_get_realloc(struct sof_fast_get_data *data)
 	const unsigned int init_n_entries = 8;
 	unsigned int n_entries = data->num_entries ? data->num_entries * 2 : init_n_entries;
 
-	entries = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-			  n_entries * sizeof(*entries));
+	entries = mod_alloc_ext(mod, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				n_entries * sizeof(*entries), 0);
 	if (!entries)
 		return -ENOMEM;
+	memset(entries, 0, n_entries * sizeof(*entries));
 
 	if (data->num_entries) {
 		memcpy_s(entries, n_entries * sizeof(*entries), data->entries,
 			 data->num_entries * sizeof(*entries));
-		rfree(data->entries);
+		mod_free(mod, data->entries);
 	}
 
 	data->entries = entries;
@@ -80,7 +82,7 @@ static struct sof_fast_get_entry *fast_get_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-const void *fast_get(const void *dram_ptr, size_t size)
+const void *fast_get(struct processing_module *mod, const void *dram_ptr, size_t size)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -91,7 +93,7 @@ const void *fast_get(const void *dram_ptr, size_t size)
 	do {
 		entry = fast_get_find_entry(data, dram_ptr);
 		if (!entry) {
-			if (fast_get_realloc(data)) {
+			if (fast_get_realloc(mod, data)) {
 				ret = NULL;
 				goto out;
 			}
@@ -116,7 +118,7 @@ const void *fast_get(const void *dram_ptr, size_t size)
 		goto out;
 	}
 
-	ret = rmalloc(SOF_MEM_FLAG_USER, size);
+	ret = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, size, DCACHE_LINE_SIZE);
 	if (!ret)
 		goto out;
 	entry->size = size;
@@ -146,7 +148,7 @@ static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-void fast_put(const void *sram_ptr)
+void fast_put(struct processing_module *mod, const void *sram_ptr)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -160,7 +162,7 @@ void fast_put(const void *sram_ptr)
 	}
 	entry->refcount--;
 	if (!entry->refcount) {
-		rfree(entry->sram_ptr);
+		mod_free(mod, entry->sram_ptr);
 		memset(entry, 0, sizeof(*entry));
 	}
 out:
