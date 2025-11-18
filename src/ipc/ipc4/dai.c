@@ -396,7 +396,8 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 	if (ret < 0)
 		return ret;
 
-	return dai_set_config(dd->dai, common_config, copier_cfg->gtw_cfg.config_data);
+	return dai_set_config(dd->dai, common_config,
+			      copier_cfg->gtw_cfg.config_data, copier_cfg->gtw_cfg.config_length);
 }
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS

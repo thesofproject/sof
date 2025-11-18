@@ -237,7 +237,8 @@ void dai_put(struct dai *dai);
 /**
  * \brief Digital Audio interface formatting
  */
-int dai_set_config(struct dai *dai, struct ipc_config_dai *config, const void *spec_config);
+int dai_set_config(struct dai *dai, struct ipc_config_dai *config,
+		   const void *spec_config, size_t size);
 
 /**
  * \brief Get Digital Audio interface DMA Handshake

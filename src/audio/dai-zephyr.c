@@ -143,7 +143,7 @@ static int dai_trigger_op(struct dai *dai, int cmd, int direction)
 
 /* called from src/ipc/ipc3/handler.c and src/ipc/ipc4/dai.c */
 __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
-			  const void *spec_config)
+			  const void *spec_config, size_t size)
 {
 	const struct device *dev = dai->dev;
 	const struct sof_ipc_dai_config *sof_cfg = spec_config;
@@ -198,7 +198,7 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		return -EINVAL;
 	}
 
-	return dai_config_set(dev, &cfg, cfg_params);
+	return dai_config_set(dev, &cfg, cfg_params, size);
 }
 
 /* called from ipc/ipc3/dai.c */

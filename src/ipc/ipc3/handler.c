@@ -579,7 +579,7 @@ static int ipc_dai_config_set(struct sof_ipc_dai_config *config,
 	}
 
 	/* configure DAI */
-	ret = dai_set_config(dai, config_dai, config);
+	ret = dai_set_config(dai, config_dai, config, sizeof(*config));
 	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
 		ipc_cmd_err(&ipc_tr, "ipc: dai %d,%d config failed %d", config->type,
