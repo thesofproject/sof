@@ -170,3 +170,10 @@ config LOG_TIMESTAMP_64BIT
 
 config ZTEST
 	default SOF_BOOT_TEST_SUPPORTED && SOF_BOOT_TEST_ALLOWED
+
+# Zephyr / debug slot manager
+# ----------------------------------------
+
+config INTEL_ADSP_DEBUG_SLOT_MANAGER
+	default y
+
