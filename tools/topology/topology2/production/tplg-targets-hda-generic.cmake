@@ -4,6 +4,10 @@
 list(APPEND TPLGS
 # HDMI only topology with passthrough pipelines
 "sof-hda-generic\;sof-hda-generic-idisp\;"
+# AW88399 smart amp topologies with SSP variants (SSP port auto-detected by kernel from NHLT)
+"sof-hda-generic-aw88399\;sof-hda-generic-aw88399-ssp0\;HDA_CONFIG=mix,AW_SMART_SSP_INDEX=0,AW_SMART_STREAM_NAME=SSP0-Codec"
+"sof-hda-generic-aw88399\;sof-hda-generic-aw88399-ssp1\;HDA_CONFIG=mix,AW_SMART_SSP_INDEX=1,AW_SMART_STREAM_NAME=SSP1-Codec"
+"sof-hda-generic-aw88399\;sof-hda-generic-aw88399-ssp2\;HDA_CONFIG=mix,AW_SMART_SSP_INDEX=2,AW_SMART_STREAM_NAME=SSP2-Codec"
 # HDMI only topology with passthrough pipelines and
 # 2 or 4 DMIC, no NHLT blob included in topology
 "sof-hda-generic\;sof-hda-generic-idisp-2ch\;NUM_DMICS=2"
