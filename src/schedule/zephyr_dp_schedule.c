@@ -23,34 +23,14 @@
 #include <sof/lib/notifier.h>
 #include <ipc4/base_fw.h>
 
+#include "zephyr_dp_schedule.h"
+
 #include <zephyr/kernel/thread.h>
 
 LOG_MODULE_REGISTER(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dp_sched);
 
 DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
-
-struct scheduler_dp_data {
-	struct list_item tasks;		/* list of active dp tasks */
-	struct task ll_tick_src;	/* LL task - source of DP tick */
-	uint32_t last_ll_tick_timestamp;/* a timestamp as k_cycle_get_32 of last LL tick,
-					 * "NOW" for DP deadline calculation
-					 */
-
-};
-
-struct task_dp_pdata {
-	k_tid_t thread_id;		/* zephyr thread ID */
-	struct k_thread *thread;	/* pointer to the kernels' thread object */
-	struct k_thread thread_struct;	/* thread object for kernel threads */
-	uint32_t deadline_clock_ticks;	/* dp module deadline in Zephyr ticks */
-	k_thread_stack_t __sparse_cache *p_stack;	/* pointer to thread stack */
-	size_t stack_size;		/* size of the stack in bytes */
-	struct k_sem *sem;		/* pointer to semaphore for task scheduling */
-	struct k_sem sem_struct;	/* semaphore for task scheduling for kernel threads */
-	struct processing_module *mod;	/* the module to be scheduled */
-	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
-};
 
 #define DP_LOCK_INIT(i, _)	Z_SEM_INITIALIZER(dp_lock[i], 1, 1)
 #define DP_LOCK_INIT_LIST	LISTIFY(CONFIG_MP_MAX_NUM_CPUS, DP_LOCK_INIT, (,))
@@ -66,13 +46,13 @@ STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOC
  *
  * TODO: consider using cpu_get_id() instead of supplying core as a parameter.
  */
-static inline unsigned int scheduler_dp_lock(uint16_t core)
+unsigned int scheduler_dp_lock(uint16_t core)
 {
 	k_sem_take(&dp_lock[core], K_FOREVER);
 	return core;
 }
 
-static inline void scheduler_dp_unlock(unsigned int key)
+void scheduler_dp_unlock(unsigned int key)
 {
 	k_sem_give(&dp_lock[key]);
 }
@@ -243,86 +223,6 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  * needed 1.2ms for processing - but the example would be too complicated)
  */
 
-/* Go through all DP tasks and recalculate their readness and dedlines
- * NOT REENTRANT, should be called with scheduler_dp_lock()
- */
-static void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run)
-{
-	struct list_item *tlist;
-	struct task *curr_task;
-	struct task_dp_pdata *pdata;
-
-	list_for_item(tlist, &dp_sch->tasks) {
-		curr_task = container_of(tlist, struct task, list);
-		pdata = curr_task->priv_data;
-		struct processing_module *mod = pdata->mod;
-		bool trigger_task = false;
-
-		/* decrease number of LL ticks/cycles left till the module reaches its deadline */
-		if (mod->dp_startup_delay && is_ll_post_run && pdata->ll_cycles_to_start) {
-			pdata->ll_cycles_to_start--;
-			if (!pdata->ll_cycles_to_start)
-				/* delayed start complete, clear startup delay flag.
-				 * see dp_startup_delay comment for details
-				 */
-				mod->dp_startup_delay = false;
-
-		}
-
-		if (curr_task->state == SOF_TASK_STATE_QUEUED) {
-			bool mod_ready;
-
-			mod_ready = module_is_ready_to_process(mod, mod->sources,
-							       mod->num_of_sources,
-							       mod->sinks,
-							       mod->num_of_sinks);
-			if (mod_ready) {
-				/* trigger the task */
-				curr_task->state = SOF_TASK_STATE_RUNNING;
-				if (mod->dp_startup_delay && !pdata->ll_cycles_to_start) {
-					/* first time run - use delayed start */
-					pdata->ll_cycles_to_start =
-						module_get_lpt(pdata->mod) / LL_TIMER_PERIOD_US;
-
-					/* in case LPT < LL cycle - delay at least cycle */
-					if (!pdata->ll_cycles_to_start)
-						pdata->ll_cycles_to_start = 1;
-				}
-				trigger_task = true;
-				k_sem_give(pdata->sem);
-			}
-		}
-		if (curr_task->state == SOF_TASK_STATE_RUNNING) {
-			/* (re) calculate deadline for all running tasks */
-			/* get module deadline in us*/
-			uint32_t deadline = module_get_deadline(mod);
-
-			/* if a deadline cannot be calculated, use a fixed value relative to its
-			 * first start
-			 */
-			if (deadline >= UINT32_MAX / 2 && trigger_task)
-				deadline = module_get_lpt(mod);
-
-			if (deadline < UINT32_MAX) {
-				/* round down to 1ms */
-				deadline = deadline / 1000;
-
-				/* calculate number of ticks */
-				deadline = deadline * (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000);
-
-				/* add to "NOW", overflows are OK  */
-				deadline = dp_sch->last_ll_tick_timestamp + deadline;
-
-				/* set in Zephyr. Note that it may be in past, it does not matter,
-				 * Zephyr still will schedule the thread with earlier deadline
-				 * first
-				 */
-				k_thread_absolute_deadline_set(pdata->thread_id, deadline);
-			}
-		}
-	}
-}
-
 void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *caller_data)
 {
 	(void)receiver_data;
@@ -396,76 +296,6 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 
 	/* all other memory has been allocated as a single malloc, will be freed later by caller */
 	return ret;
-}
-
-/* Thread function called in component context, on target core */
-static void dp_thread_fn(void *p1, void *p2, void *p3)
-{
-	struct task *task = p1;
-	(void)p2;
-	(void)p3;
-	struct task_dp_pdata *task_pdata = task->priv_data;
-	struct scheduler_dp_data *dp_sch = NULL;
-	unsigned int lock_key;
-	enum task_state state;
-	bool task_stop;
-
-	if (!(task->flags & K_USER))
-		dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
-
-	do {
-		/*
-		 * the thread is started immediately after creation, it will stop on semaphore
-		 * Semaphore will be released once the task is ready to process
-		 */
-		k_sem_take(task_pdata->sem, K_FOREVER);
-
-		if (task->state == SOF_TASK_STATE_RUNNING)
-			state = task_run(task);
-		else
-			state = task->state;	/* to avoid undefined variable warning */
-
-		lock_key = scheduler_dp_lock(task->core);
-		/*
-		 * check if task is still running, may have been canceled by external call
-		 * if not, set the state returned by run procedure
-		 */
-		if (task->state == SOF_TASK_STATE_RUNNING) {
-			task->state = state;
-			switch (state) {
-			case SOF_TASK_STATE_RESCHEDULE:
-				/* mark to reschedule, schedule time is already calculated */
-				task->state = SOF_TASK_STATE_QUEUED;
-				break;
-
-			case SOF_TASK_STATE_CANCEL:
-			case SOF_TASK_STATE_COMPLETED:
-				/* remove from scheduling */
-				list_item_del(&task->list);
-				break;
-
-			default:
-				/* illegal state, serious defect, won't happen */
-				k_panic();
-			}
-		}
-
-		/* if true exit the while loop, terminate the thread */
-		task_stop = task->state == SOF_TASK_STATE_COMPLETED ||
-			task->state == SOF_TASK_STATE_CANCEL;
-		/* recalculate all DP tasks readiness and deadlines
-		 * TODO: it should be for all tasks, for all cores
-		 * currently its limited to current core only
-		 */
-		if (dp_sch)
-			scheduler_dp_recalculate(dp_sch, false);
-
-		scheduler_dp_unlock(lock_key);
-	} while (!task_stop);
-
-	/* call task_complete  */
-	if (task->state == SOF_TASK_STATE_COMPLETED)
-		task_complete(task);
 }
 
 static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t start,

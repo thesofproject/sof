@@ -40,6 +40,7 @@ endif()
 
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
 	zephyr_dp_schedule.c
+	zephyr_dp_schedule_proxy.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_TWB_SCHEDULER
