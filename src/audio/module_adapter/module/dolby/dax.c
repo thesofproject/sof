@@ -76,6 +76,8 @@ static int sof_to_dax_channels(uint32_t channels)
 {
 	switch (channels) {
 	case 2:
+	case 6 /* 5.1 */:
+	case 8 /* 7.1 */:
 		return channels;
 	default:
 		return DAX_CHANNLES_UNSUPPORTED;
