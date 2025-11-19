@@ -36,6 +36,40 @@ DECLARE_TR_CTX(dolby_dax_audio_processing_tr, SOF_UUID(dolby_dax_audio_processin
 #define DAX_ENUM_PROFILE_CONTROL_ID 0
 #define DAX_ENUM_DEVICE_CONTROL_ID 1
 
+static int itostr(int num, char *str)
+{
+	int index = 0, digit_count = 0;
+	int temp;
+
+	if (num < 0) {
+		str[0] = '-';
+		index = 1;
+		num = -num;
+	}
+
+	if (num == 0) {
+		str[index] = '0';
+		str[index + 1] = '\0';
+		return index + 1;
+	}
+
+	temp = num;
+	while (temp > 0) {
+		temp /= 10;
+		digit_count++;
+	}
+
+	temp = index + digit_count - 1;
+	while (num > 0) {
+		str[temp] = (num % 10) + '0';
+		num /= 10;
+		temp--;
+	}
+
+	str[index + digit_count] = '\0';
+	return index + digit_count;
+}
+
 static const char *get_params_str(const void *val, uint32_t val_sz)
 {
 	static char params_str[MAX_PARAMS_STR_BUFFER_SIZE + 16];
@@ -43,8 +77,12 @@ static const char *get_params_str(const void *val, uint32_t val_sz)
 	const uint32_t param_sz = val_sz >> 2;
 	uint32_t offset = 0;
 
-	for (uint32_t i = 0; i < param_sz && offset < MAX_PARAMS_STR_BUFFER_SIZE; i++)
-		offset += sprintf(params_str + offset, "%d,", param_val[i]);
+	for (uint32_t i = 0; i < param_sz && offset < MAX_PARAMS_STR_BUFFER_SIZE; i++) {
+		offset += itostr(param_val[i], params_str + offset);
+		params_str[offset] = ',';
+		offset++;
+		params_str[offset] = '\0';
+	}
 	return &params_str[0];
 }
 
@@ -126,9 +164,14 @@ static int dax_buffer_alloc(struct processing_module *mod,
 /* After reading from buffer */
 static void dax_buffer_consume(struct dax_buffer *dax_buff, uint32_t bytes)
 {
+	uint8_t *buf = (uint8_t *)dax_buff->addr;
+	uint32_t copy_bytes;
+
 	bytes = MIN(bytes, dax_buff->avail);
-	memmove(dax_buff->addr, (uint8_t *)dax_buff->addr + bytes, dax_buff->avail - bytes);
-	dax_buff->avail = dax_buff->avail - bytes;
+	copy_bytes = dax_buff->avail - bytes;
+	for (int i = 0; i < copy_bytes; i++)
+		buf[i] = buf[bytes + i];
+	dax_buff->avail = copy_bytes;
 	dax_buff->free = dax_buff->size - dax_buff->avail;
 }
 
