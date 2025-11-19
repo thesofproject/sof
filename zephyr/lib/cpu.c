@@ -120,7 +120,11 @@ static void resume_dais(void)
 		cd = module_get_private_data(mod);
 		dd = cd->dd[0];
 		if (dai_probe(dd->dai->dev) < 0) {
-			tr_err(&zephyr_tr, "DAI resume failed, type %d index %d",
+			tr_err(&zephyr_tr, "DAI resume failed on probe, type %d index %d",
+			       dd->dai->type, dd->dai->index);
+		} else if (dai_set_config(dd->dai, &dd->ipc_config, cd->gtw_cfg,
+					  cd->config.gtw_cfg.config_length) < 0) {
+			tr_err(&zephyr_tr, "DAI resume failed on config, type %d index %d",
 			       dd->dai->type, dd->dai->index);
 		}
 
