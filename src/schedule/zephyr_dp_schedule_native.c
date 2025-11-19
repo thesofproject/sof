@@ -46,27 +46,10 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_
 		}
 
 		if (curr_task->state == SOF_TASK_STATE_QUEUED) {
-			bool mod_ready;
-
-			mod_ready = module_is_ready_to_process(mod, mod->sources,
-							       mod->num_of_sources,
-							       mod->sinks,
-							       mod->num_of_sinks);
-			if (mod_ready) {
-				/* trigger the task */
-				curr_task->state = SOF_TASK_STATE_RUNNING;
-				if (mod->dp_startup_delay && !pdata->ll_cycles_to_start) {
-					/* first time run - use delayed start */
-					pdata->ll_cycles_to_start =
-						module_get_lpt(pdata->mod) / LL_TIMER_PERIOD_US;
-
-					/* in case LPT < LL cycle - delay at least cycle */
-					if (!pdata->ll_cycles_to_start)
-						pdata->ll_cycles_to_start = 1;
-				}
-				trigger_task = true;
-				k_sem_give(pdata->sem);
-			}
+			/* trigger the task */
+			curr_task->state = SOF_TASK_STATE_RUNNING;
+			trigger_task = true;
+			k_sem_give(pdata->sem);
 		}
 		if (curr_task->state == SOF_TASK_STATE_RUNNING) {
 			/* (re) calculate deadline for all running tasks */
@@ -103,13 +86,15 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_
 void dp_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct task *task = p1;
-	(void)p2;
-	(void)p3;
 	struct task_dp_pdata *task_pdata = task->priv_data;
+	struct processing_module *pmod = task_pdata->mod;
 	unsigned int lock_key;
 	enum task_state state;
 	bool task_stop;
 	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
 
 	do {
 		/*
@@ -118,10 +103,22 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 		 */
 		k_sem_take(task_pdata->sem, K_FOREVER);
 
-		if (task->state == SOF_TASK_STATE_RUNNING)
-			state = task_run(task);
-		else
+		if (task->state != SOF_TASK_STATE_RUNNING) {
 			state = task->state;	/* to avoid undefined variable warning */
+		} else if (module_is_ready_to_process(pmod, pmod->sources, pmod->num_of_sources,
+						      pmod->sinks, pmod->num_of_sinks)) {
+			if (pmod->dp_startup_delay && !task_pdata->ll_cycles_to_start) {
+				/* first time run - use delayed start */
+				task_pdata->ll_cycles_to_start =
+					module_get_lpt(pmod) / LL_TIMER_PERIOD_US;
+
+				/* in case LPT < LL cycle - delay at least cycle */
+				if (!task_pdata->ll_cycles_to_start)
+					task_pdata->ll_cycles_to_start = 1;
+			}
+
+			state = task_run(task);
+		}
 
 		lock_key = scheduler_dp_lock(task->core);
 		/*
