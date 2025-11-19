@@ -139,11 +139,15 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	endif()
 
 	if(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
+		target_include_directories(sof PRIVATE ${PROJECT_SOURCE_DIR}/third_party/include)
 		add_local_sources(sof module/dolby/dax.c)
 		if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
 			add_local_sources(sof module/dolby/dax_mock.c)
 		else()
-			sof_add_static_library(dax_effect ${sof_top_dir}/third_party/lib/libdax.a)
+			target_link_libraries(sof PRIVATE m)
+			target_link_libraries(sof PRIVATE c)
+			sof_add_static_library(dax_effect
+				${PROJECT_SOURCE_DIR}/third_party/lib/libdax.a)
 		endif()
 	endif()
 
