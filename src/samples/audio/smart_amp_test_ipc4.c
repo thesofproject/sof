@@ -62,14 +62,14 @@ static int smart_amp_init(struct processing_module *mod)
 
 	comp_dbg(dev, "entry");
 
-	sad = rzalloc(SOF_MEM_FLAG_USER, sizeof(*sad));
+	sad = mod_zalloc(mod, sizeof(*sad));
 	if (!sad)
 		return -ENOMEM;
 
 	mod_data->private = sad;
 
 	/* component model data handler */
-	sad->model_handler = comp_data_blob_handler_new(dev);
+	sad->model_handler = mod_data_blob_handler_new(mod);
 	if (!sad->model_handler) {
 		ret = -ENOMEM;
 		goto sad_fail;
@@ -93,8 +93,8 @@ static int smart_amp_init(struct processing_module *mod)
 	return 0;
 
 sad_fail:
-	comp_data_blob_handler_free(sad->model_handler);
-	rfree(sad);
+	mod_data_blob_handler_free(mod, sad->model_handler);
+	mod_free(mod, sad);
 
 	return ret;
 }
@@ -158,8 +158,8 @@ static int smart_amp_free(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "smart_amp_free()");
-	comp_data_blob_handler_free(sad->model_handler);
-	rfree(sad);
+	mod_data_blob_handler_free(mod, sad->model_handler);
+	mod_free(mod, sad);
 
 	return 0;
 }
