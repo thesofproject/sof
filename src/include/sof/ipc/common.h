@@ -214,6 +214,12 @@ int ipc_compact_write_msg(struct ipc_cmd_hdr *hdr);
 struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg);
 
 /**
+ * \brief Access IPC message payload (hostbox) from DSP.
+ *@param[in]bytes make bytes available to host processing
+ */
+uint32_t *ipc_access_msg_payload(size_t bytes);
+
+/**
  * \brief Validate mailbox contents for valid IPC header.
  * @return pointer to header if valid or NULL.
  */
@@ -249,5 +255,13 @@ void ipc_complete_cmd(struct ipc *ipc);
 
 /* GDB stub: should enter GDB after completing the IPC processing */
 extern bool ipc_enter_gdb;
+
+/**
+ * \brief Send emergency IPC message.
+ *
+ * @param[in] data IPC data to be sent.
+ * @param[in] ext_data Extended data to be sent.
+ */
+void ipc_send_message_emergency(uint32_t data, uint32_t ext_data);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

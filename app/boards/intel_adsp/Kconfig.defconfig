@@ -115,7 +115,9 @@ config DAI_INTEL_SSP
 	default y
 
 config INTEL_ADSP_IPC
+	bool
 	default y
+	depends on IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC
 
 config INTEL_ADSP_TIMER
 	default y

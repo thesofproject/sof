@@ -13,12 +13,11 @@
 
 #include <zephyr/kernel.h>
 
-#include <intel_adsp_ipc.h>
 #include <sof/ipc/common.h>
 
 #include <sof/ipc/schedule.h>
-#include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/mailbox.h> /* for sw_regs with CONFIG_DEBUG_IPC_COUNTERS */
+#include <sof/lib/memory.h>  /* for sw_regs with CONFIG_DEBUG_IPC_COUNTERS */
 #if defined(CONFIG_PM)
 #include <sof/lib/cpu.h>
 #include <zephyr/pm/device.h>
@@ -45,6 +44,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE
+#include <intel_adsp_ipc.h>
+#endif
+#include <zephyr/ipc/backends/intel_adsp_host_ipc.h>
+
 SOF_DEFINE_REG_UUID(zipc_task);
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
@@ -57,35 +61,97 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
  * Filled with content of TDR and TDD registers.
  * When IPC message is read fills ipc_cmd_hdr.
  */
-static uint32_t g_last_data, g_last_ext_data;
+static uint32_t g_last_data, g_last_ext_data, g_last_payload_length;
+
+static uint32_t *g_last_payload;
+
+struct k_sem *wait_ack_sem;
 
 /**
- * @brief cAVS IPC Message Handler Callback function.
+ * @brief cAVS IPC Message Received Callback function.
  *
- * See @ref (*intel_adsp_ipc_handler_t) for function signature description.
- * @return false so BUSY on the other side will not be cleared immediately but
+ * @return -1 so BUSY on the other side will not be cleared immediately but
  * will remain set until message would have been processed by scheduled task, i.e.
  * until ipc_platform_complete_cmd() call.
  */
-static bool message_handler(const struct device *dev, void *arg, uint32_t data, uint32_t ext_data)
+static void ipc_receive_cb(const void *data, size_t cb_type, void *priv)
 {
-	struct ipc *ipc = (struct ipc *)arg;
+	struct intel_adsp_ipc_ept_priv_data *priv_data = priv;
 
-	k_spinlock_key_t key;
+	if (cb_type == INTEL_ADSP_IPC_CB_MSG) {
+		const struct intel_adsp_ipc_msg *msg = data;
 
-	key = k_spin_lock(&ipc->lock);
+		struct ipc *ipc = priv_data->priv;
 
-	g_last_data = data;
-	g_last_ext_data = ext_data;
+		k_spinlock_key_t key;
+
+		key = k_spin_lock(&ipc->lock);
+
+		g_last_data = msg->data;
+		g_last_ext_data = msg->ext_data;
+		g_last_payload = msg->payload;
+		g_last_payload_length = msg->payload_length;
 
 #if CONFIG_DEBUG_IPC_COUNTERS
-	increment_ipc_received_counter();
+		increment_ipc_received_counter();
 #endif
-	ipc_schedule_process(ipc);
+		ipc_schedule_process(ipc);
 
-	k_spin_unlock(&ipc->lock, key);
+		k_spin_unlock(&ipc->lock, key);
 
-	return false;
+		priv_data->cb_ret = -1;
+	} else if (cb_type == INTEL_ADSP_IPC_CB_DONE) {
+		if (wait_ack_sem)
+			k_sem_give(wait_ack_sem);
+
+		priv_data->cb_ret = INTEL_ADSP_IPC_CB_RET_OKAY;
+	}
+}
+
+static struct ipc_ept ipc_ept;
+static struct intel_adsp_ipc_ept_priv_data ipc_ept_priv_data;
+static struct ipc_ept_cfg ipc_ept_cfg = {
+	.name = "sof_ipc",
+	.cb = {
+		.received = ipc_receive_cb,
+	},
+	.priv = &ipc_ept_priv_data,
+};
+
+static void ipc_ept_init(struct ipc *ipc)
+{
+	const struct device *ipc_dev = INTEL_ADSP_IPC_HOST_DEV;
+
+	ipc_ept_priv_data.priv = ipc;
+
+	ipc_service_register_endpoint(ipc_dev, &ipc_ept, &ipc_ept_cfg);
+}
+
+static void ipc_complete(void)
+{
+	ipc_service_send(&ipc_ept, NULL, INTEL_ADSP_IPC_SEND_DONE);
+}
+
+static bool ipc_is_complete(void)
+{
+	return ipc_service_send(&ipc_ept, NULL, INTEL_ADSP_IPC_SEND_IS_COMPLETE) == 0;
+}
+
+static int ipc_send_message(struct intel_adsp_ipc_msg *msg)
+{
+	return ipc_service_send(&ipc_ept, msg, INTEL_ADSP_IPC_SEND_MSG);
+}
+
+void ipc_send_message_emergency(uint32_t data, uint32_t ext_data)
+{
+	struct intel_adsp_ipc_msg msg = {.data = data, .ext_data = ext_data};
+
+	ipc_service_send(&ipc_ept, &msg, INTEL_ADSP_IPC_SEND_MSG_EMERGENCY);
+}
+
+static void ipc_send_message_emergency_with_payload(struct intel_adsp_ipc_msg *msg)
+{
+	ipc_service_send(&ipc_ept, msg, INTEL_ADSP_IPC_SEND_MSG_EMERGENCY);
 }
 
 #ifdef CONFIG_PM_DEVICE
@@ -159,8 +225,8 @@ static int ipc_device_resume_handler(const struct device *dev, void *arg)
 	ipc->task_mask = 0;
 	ipc->pm_prepare_D3 = false;
 
-	/* attach handlers */
-	intel_adsp_ipc_set_message_handler(INTEL_ADSP_IPC_HOST_DEV, message_handler, ipc);
+	/* initialize IPC endpoint */
+	ipc_ept_init(ipc);
 
 	/* schedule task */
 #if CONFIG_TWB_IPC_TASK
@@ -254,7 +320,7 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
 	ARG_UNUSED(ipc);
-	intel_adsp_ipc_complete(INTEL_ADSP_IPC_HOST_DEV);
+	ipc_complete();
 
 #if CONFIG_DEBUG_IPC_COUNTERS
 	increment_ipc_processed_counter();
@@ -263,26 +329,46 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
-	if (!intel_adsp_ipc_is_complete(INTEL_ADSP_IPC_HOST_DEV))
+	if (!ipc_is_complete())
 		return -EBUSY;
 
-	/* prepare the message and copy to mailbox */
 	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
+	struct intel_adsp_ipc_msg ipc_drv_msg = {
+		.data = hdr->pri,
+		.ext_data = hdr->ext,
+		.payload = (uintptr_t)msg->tx_data,
+		.payload_length = msg->tx_size
+	};
 
-	return intel_adsp_ipc_send_message(INTEL_ADSP_IPC_HOST_DEV, hdr->pri, hdr->ext);
+	return ipc_send_message(&ipc_drv_msg);
 }
 
 void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
 {
 	/* prepare the message and copy to mailbox */
 	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
+	struct intel_adsp_ipc_msg ipc_drv_msg = {
+		.data = hdr->pri,
+		.ext_data = hdr->ext,
+		.payload = (uintptr_t)msg->tx_data,
+		.payload_length = msg->tx_size
+	};
 
-	intel_adsp_ipc_send_message_emergency(INTEL_ADSP_IPC_HOST_DEV, hdr->pri, hdr->ext);
+	ipc_send_message_emergency_with_payload(&ipc_drv_msg);
+}
+
+uint32_t *ipc_access_msg_payload(size_t __unused bytes)
+{
+	/*
+	 * The IPC driver has flushed the
+	 * cache on payload buffer, so no action needed here.
+	 */
+	return g_last_payload;
 }
 
 int ipc_platform_poll_is_host_ready(void)
 {
-	return intel_adsp_ipc_is_complete(INTEL_ADSP_IPC_HOST_DEV);
+	return ipc_is_complete();
 }
 
 int platform_ipc_init(struct ipc *ipc)
@@ -300,8 +386,9 @@ int platform_ipc_init(struct ipc *ipc)
 #endif
 	/* configure interrupt - work is done internally by Zephyr API */
 
-	/* attach handlers */
-	intel_adsp_ipc_set_message_handler(INTEL_ADSP_IPC_HOST_DEV, message_handler, ipc);
+	/* initialize IPC endpoint */
+	ipc_ept_init(ipc);
+
 #ifdef CONFIG_PM
 	intel_adsp_ipc_set_suspend_handler(INTEL_ADSP_IPC_HOST_DEV,
 					   ipc_device_suspend_handler, ipc);
@@ -312,11 +399,13 @@ int platform_ipc_init(struct ipc *ipc)
 	return 0;
 }
 
+#ifdef CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE
 static bool ipc_wait_complete(const struct device *dev, void *arg)
 {
 	k_sem_give(arg);
 	return false;
 }
+#endif
 
 void ipc_platform_wait_ack(struct ipc *ipc)
 {
@@ -324,10 +413,18 @@ void ipc_platform_wait_ack(struct ipc *ipc)
 
 	k_sem_init(&ipc_wait_sem, 0, 1);
 
+#ifdef CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE
 	intel_adsp_ipc_set_done_handler(INTEL_ADSP_IPC_HOST_DEV, ipc_wait_complete, &ipc_wait_sem);
+#else
+	wait_ack_sem = &ipc_wait_sem;
+#endif
 
 	if (k_sem_take(&ipc_wait_sem, Z_TIMEOUT_MS(10)) == -EAGAIN)
 		tr_err(&ipc_tr, "Timeout waiting for host ack!");
 
+#ifdef CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE
 	intel_adsp_ipc_set_done_handler(INTEL_ADSP_IPC_HOST_DEV, NULL, NULL);
+#else
+	wait_ack_sem = NULL;
+#endif
 }
