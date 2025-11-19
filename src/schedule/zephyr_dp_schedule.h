@@ -33,6 +33,10 @@ struct task_dp_pdata {
 	struct k_sem sem_struct;	/* semaphore for task scheduling for kernel threads */
 	struct processing_module *mod;	/* the module to be scheduled */
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
+#ifndef CONFIG_SOF_USERSPACE_PROXY
+	unsigned char pend_ipc;
+	unsigned char pend_proc;
+#endif
 };
 
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run);
