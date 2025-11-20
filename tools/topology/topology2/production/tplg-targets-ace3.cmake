@@ -116,6 +116,11 @@ HDMI_IN_CAPTURE=true"
 NHLT_BIN=nhlt-sof-ptl-hdmi-ssp02.bin,HEADSET_CODEC=false,HDMI_IN_CAPTURE=true,\
 HDMI_IN_1_ID=0,HDMI_IN_2_ID=1"
 
+# Topology for PTL with rt5682 (SSP 0), tas2563 (SSP 1), BT (SSP 2) and PDM0 enabled
+"cavs-rt5682\;sof-ptl-tas2563-rt5682\;PLATFORM=ptl,NUM_DMICS=2,DMIC0_PCM_ID=99,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-ptl-tas2563-rt5682.bin,SPK_ID=6,DEEPBUFFER_FW_DMA_MS=10,INCLUDE_ECHO_REF=true,\
+BT_NAME=SSP2-BT,BT_ID=7,BT_PCM_NAME=Bluetooth,DEEP_BUF_SPK=true"
+
 # Split topologies
 "cavs-sdw\;sof-ptl-dmic-2ch-id2\;PLATFORM=ptl,SDW_JACK=false,NUM_HDMIS=0,NUM_DMICS=2,\
 PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,\
