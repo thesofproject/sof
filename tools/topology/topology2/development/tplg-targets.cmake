@@ -97,8 +97,8 @@ NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-dmic-4ch-96k.bin,PASSTHROUGH=true,DMIC_IO_CLK
 PDM1_MIC_B_ENABLE=1,DMIC0_RATE=96000,SSP0_RATE=96000,PREPROCESS_PLUGINS=nhlt,\
 NHLT_BIN=nhlt-sof-ptl-nocodec-fpga-dmic-4ch-96k-ssp0-96k.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000"
 
-# SSP topology for NVL
-"cavs-nocodec\;sof-nvl-nocodec\;PLATFORM=nvl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+# SSP topology for NVL (limit to DSP cores 0/1)
+"cavs-nocodec\;sof-nvl-nocodec\;PLATFORM=nvl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,SSP2_PCM_CORE_ID=0,DP_SRC_CORE_ID=0,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nvl-nocodec.bin"
 
 # Topology for PTL with max98357a and rt5682
