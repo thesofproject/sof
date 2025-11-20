@@ -45,111 +45,6 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL, NULL);
 }
 
-#if CONFIG_MM_DRV
-#define PAGE_SZ CONFIG_MM_DRV_PAGE_SIZE
-#else
-#include <platform/platform.h>
-#define PAGE_SZ HOST_PAGE_SIZE
-#endif
-
-static struct k_heap *module_adapter_dp_heap_new(const struct comp_ipc_config *config)
-{
-	/* src-lite with 8 channels has been seen allocating 14k in one go */
-	/* FIXME: the size will be derived from configuration */
-	const size_t heap_size = 20 * 1024;
-
-	/* Keep uncached to match the default SOF heap! */
-	uint8_t *mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-					      heap_size, PAGE_SZ);
-
-	if (!mod_heap_mem)
-		return NULL;
-
-	struct k_heap *mod_heap = (struct k_heap *)mod_heap_mem;
-	const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap), 8);
-	void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
-
-	k_heap_init(mod_heap, mod_heap_buf, heap_size - heap_prefix_size);
-
-	return mod_heap;
-}
-
-static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
-							  const struct comp_ipc_config *config)
-{
-	struct k_heap *mod_heap;
-	/*
-	 * For DP shared modules the struct processing_module object must be
-	 * accessible from all cores. Unfortunately at this point there's no
-	 * information of components the module will be bound to. So we need to
-	 * allocate shared memory for each DP module.
-	 * To be removed when pipeline 2.0 is ready.
-	 */
-	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
-		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-
-	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_USERSPACE) &&
-	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_heap = module_adapter_dp_heap_new(config);
-		if (!mod_heap) {
-			comp_cl_err(drv, "Failed to allocate DP module heap");
-			return NULL;
-		}
-	} else {
-		mod_heap = drv->user_heap;
-	}
-
-	struct processing_module *mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
-
-	if (!mod) {
-		comp_cl_err(drv, "failed to allocate memory for module");
-		goto emod;
-	}
-
-	memset(mod, 0, sizeof(*mod));
-	mod->priv.resources.heap = mod_heap;
-
-	/*
-	 * Would be difficult to optimize the allocation to use cache. Only if
-	 * the whole currently active topology is running on the primary core,
-	 * then it can be cached. Effectively it can be only cached in
-	 * single-core configurations.
-	 */
-	struct comp_dev *dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
-
-	if (!dev) {
-		comp_cl_err(drv, "failed to allocate memory for comp_dev");
-		goto err;
-	}
-
-	memset(dev, 0, sizeof(*dev));
-	comp_init(drv, dev, sizeof(*dev));
-	dev->ipc_config = *config;
-	mod->dev = dev;
-	dev->mod = mod;
-
-	return mod;
-
-err:
-	sof_heap_free(mod_heap, mod);
-emod:
-	if (mod_heap != drv->user_heap)
-		rfree(mod_heap);
-
-	return NULL;
-}
-
-static void module_adapter_mem_free(struct processing_module *mod)
-{
-	struct k_heap *mod_heap = mod->priv.resources.heap;
-
-#if CONFIG_IPC_MAJOR_4
-	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
-#endif
-	sof_heap_free(mod_heap, mod->dev);
-	sof_heap_free(mod_heap, mod);
-}
-
 /*
  * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
@@ -169,6 +64,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	int ret;
 	struct module_config *dst;
 	const struct module_interface *const interface = drv->adapter_ops;
+	struct pipeline *pipeline = NULL;
 
 	comp_cl_dbg(drv, "start");
 
@@ -178,22 +74,49 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+#if CONFIG_IPC_MAJOR_4
+	struct ipc_comp_dev *ipc_pipe;
+	struct ipc *ipc = ipc_get();
+
+	/* set the pipeline pointer if ipc_pipe is valid */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
+	if (ipc_pipe)
+		pipeline = ipc_pipe->pipeline;
+#endif
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, pipeline);
 
 	if (!mod)
 		return NULL;
 
+	dst = &mod->priv.cfg;
 
 	module_set_private_data(mod, mod_priv);
 	list_init(&mod->raw_data_buffers_list);
+#if !CONFIG_SOF_VREGIONS
+	mod_resource_init(mod);
+#endif
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+	mod->priv.resources.rsrc_mngr = k_current_get();
+#endif
 #if CONFIG_USERSPACE
 	mod->user_ctx = user_ctx;
 #endif /* CONFIG_USERSPACE */
 
 	struct comp_dev *dev = mod->dev;
 
-	dst = &mod->priv.cfg;
-	ret = module_adapter_init_data(dev, dst, config, spec);
+#if CONFIG_IPC_MAJOR_4
+	/* set up ipc4 configuration items if needed from topology */
+	if (ipc_pipe) {
+		dev->pipeline = pipeline;
+
+		/* LL modules have the same period as the pipeline */
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+			dev->period = ipc_pipe->pipeline->period;
+	}
+#endif
+
+	ret = module_adapter_init_data(mod, dev, dst, config, spec);
 	if (ret) {
 		comp_err(dev, "%d: module init data failed",
 			 ret);
@@ -213,22 +136,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		mod->proc_type = MODULE_PROCESS_TYPE_RAW;
 	else
 		goto err;
-
-#if CONFIG_IPC_MAJOR_4
-	struct ipc_comp_dev *ipc_pipe;
-	struct ipc *ipc = ipc_get();
-
-	/* set the pipeline pointer if ipc_pipe is valid */
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
-					  IPC_COMP_IGNORE_REMOTE);
-	if (ipc_pipe) {
-		dev->pipeline = ipc_pipe->pipeline;
-
-		/* LL modules have the same period as the pipeline */
-		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
-			dev->period = ipc_pipe->pipeline->period;
-	}
-#endif
 
 	/* Init processing module */
 	ret = module_init(mod);
@@ -437,15 +344,20 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	module_adapter_check_data(mod, dev, sink);
 
+	/* get memory flags for input and output */
 	memory_flags = user_get_buffer_memory_region(dev->drv);
+
 	/* allocate memory for input buffers */
 	if (mod->max_sources) {
 		mod->input_buffers =
-			rzalloc(memory_flags, sizeof(*mod->input_buffers) * mod->max_sources);
+			mod_alloc_ext(mod, memory_flags,
+				      sizeof(*mod->input_buffers) * mod->max_sources, 0);
+
 		if (!mod->input_buffers) {
 			comp_err(dev, "failed to allocate input buffers");
 			return -ENOMEM;
 		}
+		memset(mod->input_buffers, 0, sizeof(*mod->input_buffers) * mod->max_sources);
 	} else {
 		mod->input_buffers = NULL;
 	}
@@ -453,12 +365,15 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffers */
 	if (mod->max_sinks) {
 		mod->output_buffers =
-			rzalloc(memory_flags, sizeof(*mod->output_buffers) * mod->max_sinks);
+			mod_alloc_ext(mod, memory_flags,
+				      sizeof(*mod->output_buffers) * mod->max_sinks, 0);
+
 		if (!mod->output_buffers) {
 			comp_err(dev, "failed to allocate output buffers");
 			ret = -ENOMEM;
 			goto in_out_free;
 		}
+		memset(mod->output_buffers, 0, sizeof(*mod->output_buffers) * mod->max_sinks);
 	} else {
 		mod->output_buffers = NULL;
 	}
@@ -519,7 +434,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
 	list_for_item(blist, &dev->bsource_list) {
-		mod->input_buffers[i].data = rballoc(memory_flags, size);
+		mod->input_buffers[i].data = mod_alloc_ext(mod, memory_flags, size,
+							   DCACHE_LINE_SIZE);
+
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -531,7 +448,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = rballoc(memory_flags, md->mpd.out_buff_size);
+		mod->output_buffers[i].data = mod_alloc_ext(mod, memory_flags,
+							    md->mpd.out_buff_size,
+							    DCACHE_LINE_SIZE);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -597,16 +516,16 @@ free:
 
 out_data_free:
 	for (i = 0; i < mod->num_of_sinks; i++)
-		rfree(mod->output_buffers[i].data);
+		mod_free(mod, mod->output_buffers[i].data);
 
 in_data_free:
 	for (i = 0; i < mod->num_of_sources; i++)
-		rfree(mod->input_buffers[i].data);
+		mod_free(mod, mod->input_buffers[i].data);
 
 in_out_free:
-	rfree(mod->output_buffers);
+	mod_free(mod, mod->output_buffers);
 	mod->output_buffers = NULL;
-	rfree(mod->input_buffers);
+	mod_free(mod, mod->input_buffers);
 	mod->input_buffers = NULL;
 	return ret;
 }
@@ -628,9 +547,10 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 #endif
 
 	/* allocate stream_params each time */
-	mod_free(mod, mod->stream_params);
+	if (mod->stream_params)
+		mod_free(mod, mod->stream_params);
 
-	mod->stream_params = mod_alloc(mod, sizeof(*mod->stream_params) + params->ext_data_length);
+	mod->stream_params = mod_zalloc(mod, sizeof(*mod->stream_params) + params->ext_data_length);
 	if (!mod->stream_params)
 		return -ENOMEM;
 
@@ -1310,15 +1230,14 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
 		for (i = 0; i < mod->num_of_sinks; i++)
-			rfree((__sparse_force void *)mod->output_buffers[i].data);
+			mod_free(mod, (__sparse_force void *)mod->output_buffers[i].data);
 		for (i = 0; i < mod->num_of_sources; i++)
-			rfree((__sparse_force void *)mod->input_buffers[i].data);
+			mod_free(mod, (__sparse_force void *)mod->input_buffers[i].data);
 	}
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
-		rfree(mod->output_buffers);
-		rfree(mod->input_buffers);
-
+		mod_free(mod, mod->output_buffers);
+		mod_free(mod, mod->input_buffers);
 		mod->num_of_sources = 0;
 		mod->num_of_sinks = 0;
 	}
@@ -1364,8 +1283,9 @@ void module_adapter_free(struct comp_dev *dev)
 		buffer_free(buffer);
 	}
 
-	mod_free(mod, mod->stream_params);
 	mod_free_all(mod);
+
+	mod_free(mod, mod->stream_params);
 
 	module_adapter_mem_free(mod);
 }

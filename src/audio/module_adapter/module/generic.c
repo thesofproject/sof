@@ -47,13 +47,13 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 
 	if (!dst->data) {
 		/* No space for config available yet, allocate now */
-		dst->data = rballoc(SOF_MEM_FLAG_USER, size);
+		dst->data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, size, DCACHE_LINE_SIZE);
 	} else if (dst->size != size) {
 		/* The size allocated for previous config doesn't match the new one.
 		 * Free old container and allocate new one.
 		 */
-		rfree(dst->data);
-		dst->data = rballoc(SOF_MEM_FLAG_USER, size);
+		mod_free(mod, dst->data);
+		dst->data = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, size, DCACHE_LINE_SIZE);
 	}
 	if (!dst->data) {
 		comp_err(dev, "failed to allocate space for setup config.");
@@ -70,351 +70,6 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	comp_dbg(dev, "done");
 	return ret;
 }
-
-static void mod_resource_init(struct processing_module *mod)
-{
-	struct module_data *md = &mod->priv;
-	/* Init memory list */
-	list_init(&md->resources.res_list);
-	list_init(&md->resources.free_cont_list);
-	list_init(&md->resources.cont_chunk_list);
-	md->resources.heap_usage = 0;
-	md->resources.heap_high_water_mark = 0;
-}
-
-int module_init(struct processing_module *mod)
-{
-	int ret;
-	struct comp_dev *dev = mod->dev;
-	const struct module_interface *const interface = dev->drv->adapter_ops;
-
-	comp_dbg(dev, "entry");
-
-#if CONFIG_IPC_MAJOR_3
-	if (mod->priv.state == MODULE_INITIALIZED)
-		return 0;
-	if (mod->priv.state > MODULE_INITIALIZED)
-		return -EPERM;
-#endif
-	if (!interface) {
-		comp_err(dev, "module interface not defined");
-		return -EIO;
-	}
-
-	/* check interface, there must be one and only one of processing procedure */
-	if (!interface->init ||
-	    (!!interface->process + !!interface->process_audio_stream +
-	     !!interface->process_raw_data < 1)) {
-		comp_err(dev, "comp is missing mandatory interfaces");
-		return -EIO;
-	}
-
-	mod_resource_init(mod);
-#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-	mod->priv.resources.rsrc_mngr = k_current_get();
-#endif
-	/* Now we can proceed with module specific initialization */
-	ret = interface->init(mod);
-	if (ret) {
-		comp_err(dev, "error %d: module specific init failed", ret);
-		mod_free_all(mod);
-		return ret;
-	}
-
-	comp_dbg(dev, "done");
-#if CONFIG_IPC_MAJOR_3
-	mod->priv.state = MODULE_INITIALIZED;
-#endif
-
-	return 0;
-}
-
-struct container_chunk {
-	struct list_item chunk_list;
-	struct module_resource containers[CONFIG_MODULE_MEMORY_API_CONTAINER_CHUNK_SIZE];
-};
-
-static struct module_resource *container_get(struct processing_module *mod)
-{
-	struct module_resources *res = &mod->priv.resources;
-	struct k_heap *mod_heap = res->heap;
-	struct module_resource *container;
-
-	if (list_is_empty(&res->free_cont_list)) {
-		struct container_chunk *chunk = sof_heap_alloc(mod_heap, 0, sizeof(*chunk), 0);
-		int i;
-
-		if (!chunk) {
-			comp_err(mod->dev, "allocating more containers failed");
-			return NULL;
-		}
-
-		memset(chunk, 0, sizeof(*chunk));
-
-		list_item_append(&chunk->chunk_list, &res->cont_chunk_list);
-		for (i = 0; i < ARRAY_SIZE(chunk->containers); i++)
-			list_item_append(&chunk->containers[i].list, &res->free_cont_list);
-	}
-
-	container = list_first_item(&res->free_cont_list, struct module_resource, list);
-	list_item_del(&container->list);
-	return container;
-}
-
-static void container_put(struct processing_module *mod, struct module_resource *container)
-{
-	struct module_resources *res = &mod->priv.resources;
-
-	list_item_append(&container->list, &res->free_cont_list);
-}
-
-/**
- * Allocates aligned buffer memory block for module.
- * @param mod		Pointer to the module this memory block is allocated for.
- * @param bytes		Size in bytes.
- * @param alignment	Alignment in bytes.
- * @return Pointer to the allocated memory or NULL if failed.
- *
- * The allocated memory is automatically freed when the module is
- * unloaded. The back-end, rballoc(), always aligns the memory to
- * PLATFORM_DCACHE_ALIGN at the minimum.
- */
-void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
-{
-	struct module_resources *res = &mod->priv.resources;
-	struct module_resource *container;
-
-	MEM_API_CHECK_THREAD(res);
-
-	container = container_get(mod);
-	if (!container)
-		return NULL;
-
-	if (!size) {
-		comp_err(mod->dev, "requested allocation of 0 bytes.");
-		container_put(mod, container);
-		return NULL;
-	}
-
-	/* Allocate buffer memory for module */
-	void *ptr = sof_heap_alloc(res->heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER,
-				   size, alignment);
-
-	if (!ptr) {
-		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
-			 size, alignment, dev_comp_id(mod->dev));
-		container_put(mod, container);
-		return NULL;
-	}
-	/* Store reference to allocated memory */
-	container->ptr = ptr;
-	container->size = size;
-	container->type = MOD_RES_HEAP;
-	list_item_prepend(&container->list, &res->res_list);
-
-	res->heap_usage += size;
-	if (res->heap_usage > res->heap_high_water_mark)
-		res->heap_high_water_mark = res->heap_usage;
-
-	return ptr;
-}
-EXPORT_SYMBOL(mod_balloc_align);
-
-/**
- * Allocates aligned memory block with flags for module.
- * @param mod		Pointer to the module this memory block is allocated for.
- * @param flags		Allocator flags.
- * @param bytes		Size in bytes.
- * @param alignment	Alignment in bytes.
- * @return Pointer to the allocated memory or NULL if failed.
- *
- * The allocated memory is automatically freed when the module is unloaded.
- */
-void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, size_t alignment)
-{
-	struct module_resources *res = &mod->priv.resources;
-	struct module_resource *container;
-
-	MEM_API_CHECK_THREAD(res);
-
-	container = container_get(mod);
-	if (!container)
-		return NULL;
-
-	if (!size) {
-		comp_err(mod->dev, "requested allocation of 0 bytes.");
-		container_put(mod, container);
-		return NULL;
-	}
-
-	/* Allocate memory for module */
-	void *ptr = sof_heap_alloc(res->heap, flags, size, alignment);
-
-	if (!ptr) {
-		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
-			 size, alignment, dev_comp_id(mod->dev));
-		container_put(mod, container);
-		return NULL;
-	}
-	/* Store reference to allocated memory */
-	container->ptr = ptr;
-	container->size = size;
-	container->type = MOD_RES_HEAP;
-	list_item_prepend(&container->list, &res->res_list);
-
-	res->heap_usage += size;
-	if (res->heap_usage > res->heap_high_water_mark)
-		res->heap_high_water_mark = res->heap_usage;
-
-	return ptr;
-}
-EXPORT_SYMBOL(mod_alloc_ext);
-
-/**
- * Creates a blob handler and releases it when the module is unloaded
- * @param mod	Pointer to module this memory block is allocated for.
- * @return Pointer to the created data blob handler
- *
- * Like comp_data_blob_handler_new() but the handler is automatically freed.
- */
-#if CONFIG_COMP_BLOB
-struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod)
-{
-	struct module_resources *res = &mod->priv.resources;
-	struct comp_data_blob_handler *bhp;
-	struct module_resource *container;
-
-	MEM_API_CHECK_THREAD(res);
-
-	container = container_get(mod);
-	if (!container)
-		return NULL;
-
-	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
-	if (!bhp) {
-		container_put(mod, container);
-		return NULL;
-	}
-
-	container->bhp = bhp;
-	container->size = 0;
-	container->type = MOD_RES_BLOB_HANDLER;
-	list_item_prepend(&container->list, &res->res_list);
-
-	return bhp;
-}
-EXPORT_SYMBOL(mod_data_blob_handler_new);
-#endif
-
-/**
- * Make a module associated shared SRAM copy of DRAM read-only data.
- * @param mod	Pointer to module this copy is allocated for.
- * @return Pointer to the SRAM copy.
- *
- * Like fast_get() but the handler is automatically freed.
- */
-#if CONFIG_FAST_GET
-const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size)
-{
-	struct module_resources *res = &mod->priv.resources;
-	struct module_resource *container;
-	const void *ptr;
-
-	MEM_API_CHECK_THREAD(res);
-
-	container = container_get(mod);
-	if (!container)
-		return NULL;
-
-	ptr = fast_get(dram_ptr, size);
-	if (!ptr) {
-		container_put(mod, container);
-		return NULL;
-	}
-
-	container->sram_ptr = ptr;
-	container->size = 0;
-	container->type = MOD_RES_FAST_GET;
-	list_item_prepend(&container->list, &res->res_list);
-
-	return ptr;
-}
-EXPORT_SYMBOL(mod_fast_get);
-#endif
-
-static int free_contents(struct processing_module *mod, struct module_resource *container)
-{
-	struct module_resources *res = &mod->priv.resources;
-
-	switch (container->type) {
-	case MOD_RES_HEAP:
-		sof_heap_free(res->heap, container->ptr);
-		res->heap_usage -= container->size;
-		return 0;
-#if CONFIG_COMP_BLOB
-	case MOD_RES_BLOB_HANDLER:
-		comp_data_blob_handler_free(container->bhp);
-		return 0;
-#endif
-#if CONFIG_FAST_GET
-	case MOD_RES_FAST_GET:
-		fast_put(container->sram_ptr);
-		return 0;
-#endif
-	default:
-		comp_err(mod->dev, "Unknown resource type: %d", container->type);
-	}
-	return -EINVAL;
-}
-
-/**
- * Frees the memory block removes it from module's book keeping.
- * @param mod	Pointer to module this memory block was allocated for.
- * @param ptr	Pointer to the memory block.
- */
-int mod_free(struct processing_module *mod, const void *ptr)
-{
-	struct module_resources *res = &mod->priv.resources;
-	struct module_resource *container;
-	struct list_item *res_list;
-
-	MEM_API_CHECK_THREAD(res);
-	if (!ptr)
-		return 0;
-
-	/* Find which container keeps this memory */
-	list_for_item(res_list, &res->res_list) {
-		container = container_of(res_list, struct module_resource, list);
-		if (container->ptr == ptr) {
-			int ret = free_contents(mod, container);
-
-			list_item_del(&container->list);
-			container_put(mod, container);
-			return ret;
-		}
-	}
-
-	comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
-
-	return -EINVAL;
-}
-EXPORT_SYMBOL(mod_free);
-
-#if CONFIG_COMP_BLOB
-void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
-{
-	mod_free(mod, (void *)dbh);
-}
-EXPORT_SYMBOL(mod_data_blob_handler_free);
-#endif
-
-#if CONFIG_FAST_GET
-void mod_fast_put(struct processing_module *mod, const void *sram_ptr)
-{
-	mod_free(mod, sram_ptr);
-}
-EXPORT_SYMBOL(mod_fast_put);
-#endif
 
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
@@ -445,7 +100,7 @@ int module_prepare(struct processing_module *mod,
 	 * as it has been applied during the procedure - it is safe to
 	 * free it.
 	 */
-	rfree(md->cfg.data);
+	mod_free(mod, md->cfg.data);
 
 	md->cfg.avail = false;
 	md->cfg.data = NULL;
@@ -567,7 +222,7 @@ int module_reset(struct processing_module *mod)
 
 	md->cfg.avail = false;
 	md->cfg.size = 0;
-	rfree(md->cfg.data);
+	mod_free(mod, md->cfg.data);
 	md->cfg.data = NULL;
 
 #if CONFIG_IPC_MAJOR_3
@@ -578,74 +233,6 @@ int module_reset(struct processing_module *mod)
 	md->state = MODULE_INITIALIZED;
 #endif
 	return 0;
-}
-
-/**
- * Frees all the resources registered for this module
- * @param mod	Pointer to module that should have its resource freed.
- *
- * This function is called automatically when the module is unloaded.
- */
-void mod_free_all(struct processing_module *mod)
-{
-	struct module_resources *res = &mod->priv.resources;
-	struct k_heap *mod_heap = res->heap;
-	struct list_item *list;
-	struct list_item *_list;
-
-	MEM_API_CHECK_THREAD(res);
-	/* Free all contents found in used containers */
-	list_for_item(list, &res->res_list) {
-		struct module_resource *container =
-			container_of(list, struct module_resource, list);
-
-		free_contents(mod, container);
-	}
-
-	/*
-	 * We do not need to remove the containers from res_list in
-	 * the loop above or go through free_cont_list as all the
-	 * containers are anyway freed in the loop below, and the list
-	 * heads are reinitialized when mod_resource_init() is called.
-	 */
-	list_for_item_safe(list, _list, &res->cont_chunk_list) {
-		struct container_chunk *chunk =
-			container_of(list, struct container_chunk, chunk_list);
-
-		list_item_del(&chunk->chunk_list);
-		sof_heap_free(mod_heap, chunk);
-	}
-
-	/* Make sure resource lists and accounting are reset */
-	mod_resource_init(mod);
-}
-EXPORT_SYMBOL(mod_free_all);
-
-int module_free(struct processing_module *mod)
-{
-	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
-	struct module_data *md = &mod->priv;
-	int ret = 0;
-
-	if (ops->free) {
-		ret = ops->free(mod);
-		if (ret)
-			comp_warn(mod->dev, "error: %d", ret);
-	}
-
-	/* Free all memory shared by module_adapter & module */
-	md->cfg.avail = false;
-	md->cfg.size = 0;
-	rfree(md->cfg.data);
-	md->cfg.data = NULL;
-	if (md->runtime_params) {
-		rfree(md->runtime_params);
-		md->runtime_params = NULL;
-	}
-#if CONFIG_IPC_MAJOR_3
-	md->state = MODULE_DISABLED;
-#endif
-	return ret;
 }
 
 /*
@@ -706,7 +293,8 @@ int module_set_configuration(struct processing_module *mod,
 		}
 
 		/* Allocate buffer for new params */
-		md->runtime_params = rballoc(SOF_MEM_FLAG_USER, md->new_cfg_size);
+		md->runtime_params = mod_alloc_ext(mod, SOF_MEM_FLAG_USER, md->new_cfg_size,
+						   DCACHE_LINE_SIZE);
 		if (!md->runtime_params) {
 			comp_err(dev, "space allocation for new params failed");
 			return -ENOMEM;
@@ -747,7 +335,7 @@ int module_set_configuration(struct processing_module *mod,
 	md->new_cfg_size = 0;
 
 	if (md->runtime_params)
-		rfree(md->runtime_params);
+		mod_free(mod, md->runtime_params);
 	md->runtime_params = NULL;
 
 	return ret;

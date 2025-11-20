@@ -29,6 +29,8 @@ add_library(
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/memory-common.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/memory-heap.c
 )
 sof_append_relative_path_definitions(audio_mux)
 

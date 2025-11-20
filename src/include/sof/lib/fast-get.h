@@ -10,7 +10,9 @@
 
 #include <stddef.h>
 
-const void *fast_get(const void * const dram_ptr, size_t size);
-void fast_put(const void *sram_ptr);
+struct processing_module;
+
+const void *fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size);
+void fast_put(struct processing_module *mod, const void *sram_ptr);
 
 #endif /* __SOF_LIB_FAST_GET_H__ */
