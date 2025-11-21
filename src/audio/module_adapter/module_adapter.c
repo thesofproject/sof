@@ -544,7 +544,6 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 		comp_err(dev, "comp_verify_params() failed.");
 		return ret;
 	}
-#endif
 
 	/* allocate stream_params each time */
 	if (mod->stream_params)
@@ -567,7 +566,23 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 		if (ret < 0)
 			return ret;
 	}
+#endif
+#if CONFIG_IPC_MAJOR_4
+	/* allocate stream_params once for IPC4 as no use of extended data */
+	assert(params->ext_data_length == 0);
+	if (mod->stream_params)
+		goto copy_params;
 
+	mod->stream_params = mod_zalloc(mod, sizeof(*mod->stream_params));
+	if (!mod->stream_params)
+		return -ENOMEM;
+
+copy_params:
+	ret = memcpy_s(mod->stream_params, sizeof(struct sof_ipc_stream_params),
+		       params, sizeof(struct sof_ipc_stream_params));
+	if (ret < 0)
+		return ret;
+#endif
 	return 0;
 }
 EXPORT_SYMBOL(module_adapter_params);
