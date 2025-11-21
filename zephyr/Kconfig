@@ -1,4 +1,10 @@
-if SOF
+config SOF_FULL_ZEPHYR_APPLICATION
+	bool "Build full SOF Zephyr application"
+	default y
+	help
+	  Top-level build option to enable full build of the SOF application
+	  on top of Zephyr. This should be set to no only for unit test and
+	  such special build targets.
 
 config SOF_STAGING
 	bool "Enable SOF staging features and modules"
@@ -203,5 +209,3 @@ config STACK_SIZE_IPC_TX
 	default 2048
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
-
-endif
