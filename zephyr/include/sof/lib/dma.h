@@ -266,22 +266,8 @@ typedef int (*dma_process_func)(const struct audio_stream *source,
  */
 int dmac_init(struct sof *sof);
 
-/**
- * \brief API to request a platform DMAC.
- *
- * Users can request DMAC based on dev type, copy direction, capabilities
- * and access privilege.
- * For exclusive access, ret DMAC with no channels draining.
- * For shared access, ret DMAC with the least number of channels draining.
- */
-struct sof_dma *sof_dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
-
-/**
- * \brief API to release a platform DMAC.
- *
- * @param[in] dma DMAC to relese.
- */
-void sof_dma_put(struct sof_dma *dma);
+/* need to use sof-dma.h to avoid "syscalls/dma.h" name conflict */
+#include "sof-dma.h"
 
 #ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include "dma-legacy.h"
