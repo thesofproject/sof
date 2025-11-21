@@ -11,6 +11,7 @@
 #include <sof/lib/fast-get.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
+#include <rtos/kernel.h>
 #include <rtos/spinlock.h>
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
@@ -171,10 +172,10 @@ out:
 EXPORT_SYMBOL(z_impl_fast_put);
 
 #ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
 void z_vrfy_fast_put(struct k_heap *heap, const void *sram_ptr)
 {
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(heap, sizeof(*heap)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(heap->heap.heap, sizeof(*heap->heap.heap)));
 	/*
 	 * FIXME: we don't know how much SRAM has been allocated, so cannot
 	 * check. Should fast_put() be changed to pass a size argument?
@@ -182,16 +183,15 @@ void z_vrfy_fast_put(struct k_heap *heap, const void *sram_ptr)
 
 	z_impl_fast_put(heap, sram_ptr);
 }
-#include <zephyr/syscalls/mod_fast_put_mrsh.c>
+#include <zephyr/syscalls/fast_put_mrsh.c>
 
 const void *z_vrfy_fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 {
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(heap, sizeof(*heap)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(heap->heap.heap, sizeof(*heap->heap.heap)));
 	/* We cannot (easily) verify the actual heapp memory */
 	K_OOPS(K_SYSCALL_MEMORY_READ(dram_ptr, size));
 
 	return z_impl_fast_get(heap, dram_ptr, size);
 }
-#include <zephyr/syscalls/mod_fast_get_mrsh.c>
+#include <zephyr/syscalls/fast_get_mrsh.c>
 #endif
