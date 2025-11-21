@@ -10,6 +10,7 @@
 #include <sof/audio/format.h>
 #include <sof/trace/trace.h>
 #include <sof/math/power.h>
+
 #include <sof/lib/uuid.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
