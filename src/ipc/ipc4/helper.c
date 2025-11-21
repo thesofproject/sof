@@ -1179,10 +1179,9 @@ EXPORT_SYMBOL(ipc4_audio_format_to_stream_params);
 void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
 					   struct sof_ipc_stream_params *params)
 {
-	memset(params, 0, sizeof(struct sof_ipc_stream_params));
-	params->buffer.size = base_cfg->obs * 2;
-
 	ipc4_audio_format_to_stream_params(&base_cfg->audio_fmt, params);
+
+	params->buffer.size = base_cfg->obs * 2;
 }
 EXPORT_SYMBOL(ipc4_base_module_cfg_to_stream_params);
 
