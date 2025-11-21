@@ -23,6 +23,7 @@
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 #include <zephyr/kernel/thread.h>
 #endif
+#include <zephyr/toolchain.h>
 
 /*
  * helpers to determine processing type
@@ -133,6 +134,7 @@ struct module_resources {
 	size_t heap_usage;
 	size_t heap_high_water_mark;
 	struct k_heap *heap;
+	size_t heap_size;
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	k_tid_t rsrc_mngr;
 #endif
@@ -190,7 +192,11 @@ struct module_processing_data {
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
 void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
-void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, size_t alignment);
+void mod_resource_init(struct processing_module *mod);
+void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start);
+__syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			      size_t alignment);
+__syscall int mod_free(struct processing_module *mod, const void *ptr);
 
 /**
  * Allocates aligned memory block for module.
@@ -226,19 +232,21 @@ static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 	return ret;
 }
 
-int mod_free(struct processing_module *mod, const void *ptr);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
 #endif
 #if CONFIG_FAST_GET
-const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size);
+__syscall const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				   size_t size);
 void mod_fast_put(struct processing_module *mod, const void *sram_ptr);
 #endif
 void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
 		   struct sof_sink **sinks, int num_of_sinks);
+
+#include <zephyr/syscalls/generic.h>
 
 static inline
 bool generic_module_is_ready_to_process(struct processing_module *mod,

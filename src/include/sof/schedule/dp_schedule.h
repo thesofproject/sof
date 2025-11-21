@@ -13,6 +13,8 @@
 #include <user/trace.h>
 #include <stdint.h>
 #include <ipc4/base_fw.h>
+#include <ipc4/module.h>
+#include <ipc4/pipeline.h>
 
 struct processing_module;
 
@@ -85,5 +87,38 @@ int scheduler_dp_task_init(struct task **task,
  */
 void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props,
 				uint32_t *data_off_size);
+
+struct bind_info;
+struct sof_source;
+struct sof_sink;
+union scheduler_dp_thread_ipc_param {
+	struct bind_info *bind_data;
+	struct {
+		unsigned int trigger_cmd;
+		enum ipc4_pipeline_state state;
+		int n_sources;
+		struct sof_source **sources;
+		int n_sinks;
+		struct sof_sink **sinks;
+	} pipeline_state;
+};
+
+struct dp_heap_user {
+	struct k_heap heap;
+	unsigned int client_count;	/* devices and buffers */
+	// lock;			/* protect the counter */
+};
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+int scheduler_dp_thread_ipc(struct processing_module *pmod, enum sof_ipc4_module_type cmd,
+			    union scheduler_dp_thread_ipc_param *param);
+#else
+static inline int scheduler_dp_thread_ipc(struct processing_module *pmod,
+					  enum sof_ipc4_module_type cmd,
+					  union scheduler_dp_thread_ipc_param *param)
+{
+	return 0;
+}
+#endif
 
 #endif /* __SOF_SCHEDULE_DP_SCHEDULE_H__ */
