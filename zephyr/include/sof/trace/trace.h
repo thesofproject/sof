@@ -15,6 +15,9 @@
 
 #endif
 
+/* writes to FW register that kernel prints on IPC timeout */
+void trace_msg(int msg);
+
 /* printk supports uint64_t so use it until LOG is ready */
 #define USE_PRINTK	1
 

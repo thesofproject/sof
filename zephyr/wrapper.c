@@ -46,6 +46,29 @@ SOF_DEFINE_REG_UUID(zephyr);
 
 DECLARE_TR_CTX(zephyr_tr, SOF_UUID(zephyr_uuid), LOG_LEVEL_INFO);
 
+#include <zephyr/arch/xtensa/arch.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/init.h>
+#include <errno.h>
+#include <zephyr/cache.h>
+#include <mem_window.h>
+
+void trace_msg(int msg)
+{
+	uint32_t *win;
+	const struct mem_win_config *config;
+	const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(mem_window0));
+
+	if (!device_is_ready(dev))
+		return;
+
+	config = dev->config;
+
+	win = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)config->mem_base);
+	win[0] = msg;
+}
+
 /*
  * Interrupts.
  *
