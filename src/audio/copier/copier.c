@@ -283,7 +283,7 @@ __cold static int copier_free(struct processing_module *mod)
 			copier_ipcgtw_free(mod);
 		break;
 	case SOF_COMP_DAI:
-		copier_dai_free(cd);
+		copier_dai_free(mod);
 		break;
 	default:
 		break;

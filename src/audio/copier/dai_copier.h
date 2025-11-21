@@ -79,7 +79,7 @@ int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		      const struct ipc4_copier_module_cfg *copier,
 		      struct pipeline *pipeline);
 
-void copier_dai_free(struct copier_data *cd);
+void copier_dai_free(struct processing_module *mod);
 
 int copier_dai_prepare(struct comp_dev *dev, struct copier_data *cd);
 
