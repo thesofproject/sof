@@ -292,8 +292,12 @@ static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, size_t by
 {
 	void *mem = vmh_alloc(heap, bytes);
 
-	if (!mem)
+	if (!mem) {
+#ifdef CONFIG_SYS_MEM_BLOCKS_RUNTIME_STATS
+		vmh_log_stats(heap);
+#endif
 		return NULL;
+	}
 
 	assert(align == 0 || IS_ALIGNED(mem, align));
 
