@@ -48,5 +48,6 @@ struct debug_stream_record {
 /* Debug Stream record identifiers */
 #define DEBUG_STREAM_RECORD_ID_UNINITIALIZED	0 /* invalid record marker */
 #define DEBUG_STREAM_RECORD_ID_THREAD_INFO	1 /* Thread info record */
+#define DEBUG_STREAM_RECORD_ID_TEXT_MSG		2 /* Text message */
 
 #endif /* __SOC_DEBUG_STREAM_H__ */
