@@ -44,4 +44,13 @@ config SOF_DEBUG_STREAM_THREAD_INFO_INTERVAL
 	  Decides how often thread info runs and checks execution cycle
 	  statistics and stack usage.
 
+config SOF_DEBUG_STREAM_TEXT_MSG
+	bool "Enable text message sending through Debug-Stream"
+	help
+	  Enable debug message sending over debug stream. To use this
+	  feature one only needs to enable debug stream with this
+	  config option and print the debug messages with
+	  ds_msg(). See include/user/debug_stream_text_msg.h for
+	  prototype.
+
 endif
