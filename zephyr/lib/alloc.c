@@ -18,6 +18,7 @@
 #include <sof/trace/trace.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
+#include <adsp_memory.h>
 
 #define SHARED_BUFFER_HEAP_MEM_SIZE	0
 
@@ -213,11 +214,11 @@ static inline size_t get_l3_heap_size(void)
 {
 	 /*
 	  * Calculate the IMR heap size using:
-	  * - total IMR size
+	  * - total IMR size (dynamically detected by ace_imr_get_mem_size())
 	  * - IMR base address
 	  * - actual IMR heap start
 	  */
-	return ROUND_DOWN(IMR_L3_HEAP_SIZE, L3_MEM_PAGE_SIZE);
+	return ROUND_DOWN(ace_imr_get_mem_size(), L3_MEM_PAGE_SIZE);
 }
 
 void l3_heap_save(void)
