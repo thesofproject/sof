@@ -135,7 +135,7 @@ int volume_init(struct processing_module *mod)
 	 * malloc memory to store current volume 4 times to ensure the address
 	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
 	 */
-	cd->vol = mod_alloc(mod, vol_size);
+	cd->vol = mod_alloc_align(mod, vol_size, SOF_FRAME_BYTE_ALIGN);
 	if (!cd->vol) {
 		mod_free(mod, cd);
 		comp_err(dev, "Failed to allocate %d", vol_size);
