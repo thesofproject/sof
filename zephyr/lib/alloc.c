@@ -155,6 +155,25 @@ extern char _end[], _heap_sentry[];
 
 static struct k_heap sof_heap;
 
+/**
+ * Checks whether pointer is from a given heap memory.
+ * @param heap Pointer to a heap.
+ * @param ptr Pointer to memory being checked.
+ * @return True if pointer falls into heap memory region, false otherwise.
+ */
+static bool is_heap_pointer(const struct k_heap *heap, void *ptr)
+{
+	uintptr_t heap_start =
+		POINTER_TO_UINT(sys_cache_cached_ptr_get(heap->heap.init_mem));
+	uintptr_t heap_end = heap_start + heap->heap.init_bytes;
+
+	if (!is_cached(ptr))
+		ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
+
+	return ((POINTER_TO_UINT(ptr) >= heap_start) &&
+		(POINTER_TO_UINT(ptr) < heap_end));
+}
+
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
 static struct k_heap shared_buffer_heap;
 
@@ -628,7 +647,7 @@ EXPORT_SYMBOL(rfree);
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment)
 {
-	if (flags & SOF_MEM_FLAG_LARGE_BUFFER)
+	if (flags & (SOF_MEM_FLAG_LARGE_BUFFER | SOF_MEM_FLAG_USER_SHARED_BUFFER))
 		return rballoc_align(flags, bytes, alignment);
 
 	if (!heap)
@@ -642,7 +661,7 @@ void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 
 void sof_heap_free(struct k_heap *heap, void *addr)
 {
-	if (heap && addr)
+	if (heap && addr && is_heap_pointer(heap, addr))
 		heap_free(heap, addr);
 	else
 		rfree(addr);
