@@ -132,13 +132,13 @@ run_testbench ()
 parse_args "$@"
 
 # Path to topologies
-TPLG_DIR=../../build_tools/test/topology
+TPLG_DIR=../../../../build_tools/test/topology
 
 # Testbench path and executable
 if [[ -z $XTRUN ]]; then
-    PATH_TESTBENCH=../../testbench/build_testbench/install/bin/$TESTBENCH
+    PATH_TESTBENCH=../../../../build_testbench/install/bin/$TESTBENCH
 else
-    BUILD_DIR=../../testbench/build_xt_testbench
+    BUILD_DIR=../../../../build_xt_testbench
     PATH_TESTBENCH="$BUILD_DIR"/$TESTBENCH
     source "$BUILD_DIR"/xtrun_env.sh
     XTRUN_CMD=$XTENSA_PATH/$XTRUN
@@ -168,7 +168,7 @@ PIPELINES=
     [[ $DIRECTION == "playback" ]] && PIPELINES="-p 1,2"
     [[ $DIRECTION == "capture" ]] && PIPELINES="-p 3,4"
     TPLGFN=sof-hda-benchmark-${COMP}${BITS_IN}.tplg
-    TPLG_DIR="../../build_tools/topology/topology2/development"
+    TPLG_DIR="../../../../build_tools/topology/topology2/development"
     TPLG_BUILD_TIP="Please run scripts/build-tools.sh"
 }
 
