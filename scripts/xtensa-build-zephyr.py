@@ -405,6 +405,9 @@ IPC4
 				help="Build menuconfig for target")
 	parser.add_argument("-z", "--zephyrsdk", required=False, action="store_true",
 				help="Force Build using Zephyr SDK for target")
+	parser.add_argument("--deployable-dev-build", required=False, action="store_true",
+			    help="""Create a deployable development build linking binaries to default""")
+
 
 	args = parser.parse_args()
 
@@ -1159,6 +1162,17 @@ def install_platform(platform, sof_output_dir, platf_build_environ, platform_wco
 
 			os.makedirs(alias_key_dir, exist_ok=True)
 			symlink_or_copy(install_key_dir, output_fwname, alias_key_dir, alias_fwname)
+
+			if args.deployable_dev_build:
+				# Also create the "plain" sof-<platform>.ri symlink in the
+				# sof/<vendor>/sof-ipc4/<platform> directory, so that when
+				# copying the entire sof/<vendor>/sof-ipc4 directory to
+				# the target, all platforms are there.
+				alias_vendor_dir = pathlib.Path(sof_output_dir, p_alias).parent
+				alias_ipc4_dir = pathlib.Path(alias_vendor_dir, p_alias)
+				alias_install_key_dir = alias_ipc4_dir / "community"
+				os.makedirs(alias_ipc4_dir, exist_ok=True)
+				symlink_or_copy(alias_install_key_dir, alias_fwname, alias_ipc4_dir, alias_fwname)
 	else:
 		# non deployable builds and IPC3 deployable builds are using the same symlink scheme
 		# The production key is usually different
