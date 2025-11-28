@@ -321,6 +321,7 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 		/* free sink buffer allocated by current component in bind function */
 		comp_dev_for_each_consumer_safe(icd->cd, buffer, safe) {
+			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 			struct comp_dev *sink = comp_buffer_get_sink_component(buffer);
 
 			/* free the buffer only when the sink module has also been disconnected */
