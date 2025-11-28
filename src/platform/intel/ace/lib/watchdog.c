@@ -34,8 +34,7 @@ static void watchdog_primary_core_action_on_timeout(void)
 
 	/* Send Watchdog Timeout IPC notification */
 	ipc4_notification_watchdog_init(&notif, cpu_get_id(), true);
-	intel_adsp_ipc_send_message_emergency(INTEL_ADSP_IPC_HOST_DEV,
-					      notif.primary.dat, notif.extension.dat);
+	(void)ipc_send_message_emergency(notif.primary.dat, notif.extension.dat);
 }
 
 static void watchdog_secondary_core_action_on_timeout(void)
