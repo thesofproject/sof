@@ -46,7 +46,6 @@ class DebugStreamRecord(ctypes.Structure):
         ("size_words", ctypes.c_uint),
     ]
 
-
 class CPUInfo(ctypes.Structure):
     """
     Thread Info record header
@@ -73,6 +72,17 @@ class ThreadInfo(ctypes.Structure):
     ]
 
 
+class TextMsg(ctypes.Structure):
+    """
+    Text Msg record header
+    """
+
+    _pack_ = 1
+    _fields_ = [
+        ("hdr", DebugStreamRecord),
+    ]
+
+
 WSIZE = ctypes.sizeof(ctypes.c_uint)
 
 
@@ -83,6 +93,7 @@ class RecordPrinter:
 
     RECORD_ID_UNINITIALIZED = 0
     RECORD_ID_THREAD_INFO = 1
+    RECORD_ID_TEXT_MSG = 2
 
     def print_record(self, record, cpu):
         """prints debug-stream record"""
@@ -92,7 +103,9 @@ class RecordPrinter:
         )
         if recp.contents.id == self.RECORD_ID_THREAD_INFO:
             return self.print_thread_info(record, cpu)
-        logging.warning("cpu %u: Unsupported recodrd type %u", cpu, recp.contents.id)
+        if recp.contents.id == self.RECORD_ID_TEXT_MSG:
+            return self.print_text_msg(record, cpu)
+        logging.warning("cpu %u: Unsupported record type %u", cpu, recp.contents.id)
         return True
 
     def print_thread_info(self, record, cpu):
@@ -141,6 +154,17 @@ class RecordPrinter:
             )
         return True
 
+    def print_text_msg(self, record, cpu):
+        """prints text-msg record"""
+        if len(record) - ctypes.sizeof(TextMsg) < 0:
+            logging.info("Buffer end reached, parsing failed")
+            return False
+        buffer = (
+            ctypes.c_ubyte * (len(record) - ctypes.sizeof(TextMsg))
+        ).from_address(ctypes.addressof(record) + ctypes.sizeof(TextMsg))
+        msg = bytearray(buffer).decode("utf-8")
+        print("CPU %u: %s" % (cpu, msg))
+        return True
 
 class DebugStreamSectionDescriptor(ctypes.Structure):
     """

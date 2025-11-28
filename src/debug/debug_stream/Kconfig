@@ -7,7 +7,8 @@ config SOF_DEBUG_STREAM_SLOT
 	  information from SOF system that are streamed from SOF DSP
 	  to the host side for decoding and presentation. This option
 	  enables transferring the records from DSP to host over a
-	  debug window slot.
+	  debug window slot. To extract the debugstream see
+	  tools/debug_stream/debug_stream.py.
 
 if SOF_DEBUG_STREAM_SLOT
 
@@ -43,5 +44,14 @@ config SOF_DEBUG_STREAM_THREAD_INFO_INTERVAL
 	help
 	  Decides how often thread info runs and checks execution cycle
 	  statistics and stack usage.
+
+config SOF_DEBUG_STREAM_TEXT_MSG
+	bool "Enable text message sending through Debug-Stream"
+	help
+	  Enable debug message sending over debug stream. To use this
+	  feature one only needs to enable debug stream with this
+	  config option and print the debug messages with
+	  ds_msg(). See include/user/debug_stream_text_msg.h for
+	  prototype.
 
 endif
