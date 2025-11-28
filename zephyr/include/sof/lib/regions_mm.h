@@ -87,6 +87,9 @@ int vmh_free_heap(struct vmh_heap *heap);
 int vmh_free(struct vmh_heap *heap, void *ptr);
 void vmh_get_default_heap_config(const struct sys_mm_drv_region *region,
 		struct vmh_heap_config *cfg);
+#ifdef CONFIG_SYS_MEM_BLOCKS_RUNTIME_STATS
+void vmh_log_stats(struct vmh_heap *heap);
+#endif
 /**
  * @brief Checks if ptr is in range of given memory range
  *
