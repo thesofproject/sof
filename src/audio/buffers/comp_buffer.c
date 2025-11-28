@@ -18,6 +18,7 @@
 #include <rtos/cache.h>
 #include <sof/lib/notifier.h>
 #include <sof/list.h>
+#include <sof/schedule/dp_schedule.h>
 #include <rtos/spinlock.h>
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
@@ -158,8 +159,16 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
 
+	struct k_heap *heap = buffer->audio_buffer.heap;
+
 	rfree(buffer->stream.addr);
-	rfree(buffer);
+	sof_heap_free(heap, buffer);
+	if (heap) {
+		struct dp_heap_user *mod_heap_user = container_of(heap, struct dp_heap_user, heap);
+
+		if (!--mod_heap_user->client_count)
+			rfree(mod_heap_user);
+	}
 }
 
 APP_TASK_DATA static const struct source_ops comp_buffer_source_ops = {
@@ -189,7 +198,8 @@ static const struct audio_buffer_ops audio_buffer_ops = {
 	.set_alignment_constants = comp_buffer_set_alignment_constants,
 };
 
-static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size,
+static struct comp_buffer *buffer_alloc_struct(struct k_heap *heap,
+					       void *stream_addr, size_t size,
 					       uint32_t flags, bool is_shared)
 {
 	struct comp_buffer *buffer;
@@ -200,12 +210,13 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size,
 	if (is_shared)
 		flags |= SOF_MEM_FLAG_COHERENT;
 
-	buffer = rzalloc(flags, sizeof(*buffer));
-
+	buffer = sof_heap_alloc(heap, flags, sizeof(*buffer), 0);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc structure");
 		return NULL;
 	}
+
+	memset(buffer, 0, sizeof(*buffer));
 
 	buffer->flags = flags;
 	/* Force channels to 2 for init to prevent bad call to clz in buffer_init_stream */
@@ -221,6 +232,7 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size,
 
 	audio_stream_set_underrun(&buffer->stream, !!(flags & SOF_BUF_UNDERRUN_PERMITTED));
 	audio_stream_set_overrun(&buffer->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
+	buffer->audio_buffer.heap = heap;
 
 	comp_buffer_reset_source_list(buffer);
 	comp_buffer_reset_sink_list(buffer);
@@ -228,7 +240,7 @@ static struct comp_buffer *buffer_alloc_struct(void *stream_addr, size_t size,
 	return buffer;
 }
 
-struct comp_buffer *buffer_alloc(size_t size, uint32_t flags, uint32_t align,
+struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flags, uint32_t align,
 				 bool is_shared)
 {
 	struct comp_buffer *buffer;
@@ -249,7 +261,7 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t flags, uint32_t align,
 		return NULL;
 	}
 
-	buffer = buffer_alloc_struct(stream_addr, size, flags, is_shared);
+	buffer = buffer_alloc_struct(heap, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
 		rfree(stream_addr);
@@ -258,7 +270,8 @@ struct comp_buffer *buffer_alloc(size_t size, uint32_t flags, uint32_t align,
 	return buffer;
 }
 
-struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_size,
+struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_size,
+				       size_t minimum_size,
 				       uint32_t flags, uint32_t align, bool is_shared)
 {
 	struct comp_buffer *buffer;
@@ -279,7 +292,7 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 		preferred_size += minimum_size - preferred_size % minimum_size;
 
 	for (size = preferred_size; size >= minimum_size; size -= minimum_size) {
-		stream_addr = rballoc_align(flags, size, align);
+		stream_addr = sof_heap_alloc(heap, flags, size, align);
 		if (stream_addr)
 			break;
 	}
@@ -292,7 +305,7 @@ struct comp_buffer *buffer_alloc_range(size_t preferred_size, size_t minimum_siz
 		return NULL;
 	}
 
-	buffer = buffer_alloc_struct(stream_addr, size, flags, is_shared);
+	buffer = buffer_alloc_struct(heap, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
 		rfree(stream_addr);
