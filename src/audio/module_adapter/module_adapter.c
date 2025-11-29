@@ -70,6 +70,8 @@ static struct k_heap *module_adapter_dp_heap_new(const struct comp_ipc_config *c
 	void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
 
 	k_heap_init(mod_heap, mod_heap_buf, heap_size - heap_prefix_size);
+	mod_heap->heap.init_mem = mod_heap_buf;
+	mod_heap->heap.init_bytes = heap_size - heap_prefix_size;
 
 	return mod_heap;
 }
