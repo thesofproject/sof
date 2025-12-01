@@ -676,9 +676,7 @@ static int heap_init(void)
 #endif
 
 #if CONFIG_L3_HEAP
-	if (l3_heap_copy.heap.heap) {
-		l3_heap = l3_heap_copy;
-	} else if (ace_imr_used()) {
+	if (ace_imr_used()) {
 		void *l3_heap_start = UINT_TO_POINTER(get_l3_heap_start());
 		size_t l3_heap_size = get_l3_heap_size();
 #if CONFIG_MMU
@@ -687,7 +685,10 @@ static int heap_init(void)
 
 		arch_mem_map(l3_heap_start, va, l3_heap_size, K_MEM_PERM_RW | K_MEM_CACHE_WB);
 #endif
-		sys_heap_init(&l3_heap.heap, l3_heap_start, l3_heap_size);
+		if (l3_heap_copy.heap.heap)
+			l3_heap = l3_heap_copy;
+		else
+			sys_heap_init(&l3_heap.heap, l3_heap_start, l3_heap_size);
 	}
 #endif
 
