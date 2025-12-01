@@ -230,8 +230,11 @@ static inline size_t get_l3_heap_size(void)
 	  * - actual IMR heap start
 	  */
 	size_t offset = IMR_L3_HEAP_BASE - L3_MEM_BASE_ADDR;
+	size_t size = ace_imr_get_mem_size();
 
-	return ROUND_DOWN(ace_imr_get_mem_size() - offset, L3_MEM_PAGE_SIZE);
+	if (size > MB(48))
+		size = MB(16);
+	return ROUND_DOWN(size - offset, L3_MEM_PAGE_SIZE);
 }
 
 void l3_heap_save(void)
