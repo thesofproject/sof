@@ -356,6 +356,7 @@ Note '-C --warn-uninitialized' is not supported by argparse, an equal
 sign must be used (https://bugs.python.org/issue9334)""",
 	)
 
+	# Firmware deployment options using signing key based links
 	parser.add_argument("--key-type-subdir", default="community",
 			    choices=["community", "none", "dbgkey"],
 			    help="""Output subdirectory for rimage signing key type.
@@ -364,8 +365,9 @@ Default key type subdirectory is \"community\".""")
 
 	parser.add_argument("--use-platform-subdir", default = False,
 			    action="store_true",
-			    help="""Use an output subdirectory for each platform.
-Otherwise, all firmware files are installed in the same staging directory by default.""")
+			    help="""Deployment: Use an output subdirectory for each platform.
+Otherwise, all firmware files are installed in the same staging directory by default. If none
+is specified then firmware binary can be linked to default firmware loading path directly.""")
 
 	parser.add_argument("--no-interactive", default=False, action="store_true",
 			    help="""Run script in non-interactive mode when user input can not be provided.
