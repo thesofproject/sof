@@ -241,7 +241,8 @@ struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
  * This function currently only decodes the payload and prints out
  * data it finds, but it does not store it anywhere.
  */
-__cold static int ipc4_create_pipeline_payload_decode(char *data)
+__cold static int ipc4_create_pipeline_payload_decode(char *data,
+						      struct create_pipeline_params *pparams)
 {
 	const struct ipc4_pipeline_ext_payload *hdr =
 		(struct ipc4_pipeline_ext_payload *)data;
@@ -312,6 +313,7 @@ __cold static int ipc4_create_pipeline_payload_decode(char *data)
 				       obj->object_words * sizeof(uint32_t), sizeof(*mem_data));
 				break;
 			}
+			pparams->mem_data = mem_data;
 			tr_info(&ipc_tr,
 				"init_ext_obj_mem_data domain %u stack %u interim %u lifetime %u shared %u",
 				mem_data->domain_id, mem_data->stack_bytes,
@@ -332,7 +334,8 @@ __cold static int ipc4_create_pipeline_payload_decode(char *data)
 	return 0;
 }
 
-__cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
+__cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
+				       struct create_pipeline_params *pparams)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
@@ -349,7 +352,8 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc)
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(pipe_desc->primary.r.instance_id, pipe_desc->primary.r.ppl_priority, 0);
+	pipe = pipeline_new(pipe_desc->primary.r.instance_id, pipe_desc->primary.r.ppl_priority, 0,
+			    pparams);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
 		return IPC4_OUT_OF_MEMORY;
@@ -404,7 +408,8 @@ __cold static inline char *ipc4_get_pipe_create_data(void)
 __cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 {
 	struct ipc4_pipeline_create *pipe_desc = ipc_from_pipe_new(_pipe_desc);
-
+	struct create_pipeline_params pparams = { 0 };
+	bool valid_pparams = false;
 	assert_can_be_cold();
 
 	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
@@ -415,13 +420,16 @@ __cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 
 	if (pipe_desc->extension.r.payload) {
 		char *data;
+		int ret;
 
 		data = ipc4_get_pipe_create_data();
 
-		ipc4_create_pipeline_payload_decode(data);
+		ret = ipc4_create_pipeline_payload_decode(data, &pparams);
+		if (ret == 0)
+			valid_pparams = true;
 	}
 
-	return ipc4_create_pipeline(pipe_desc);
+	return ipc4_create_pipeline(pipe_desc, valid_pparams ? &pparams : NULL);
 }
 
 __cold static inline int ipc_comp_free_remote(struct comp_dev *dev)
