@@ -12,15 +12,22 @@
  */
 
 #include <rtos/symbol.h>
-
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
 #include <sof/lib/fast-get.h>
+#include <sof/schedule/dp_schedule.h>
+#if CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#include <ipc4/module.h>
+#include <ipc4/pipeline.h>
+#endif
 
 /* The __ZEPHYR__ condition is to keep cmocka tests working */
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-#define MEM_API_CHECK_THREAD(res) __ASSERT((res)->rsrc_mngr == k_current_get(), \
-		"Module memory API operation from wrong thread")
+#define MEM_API_CHECK_THREAD(res) do { \
+	if ((res)->rsrc_mngr != k_current_get()) \
+		LOG_WRN("mngr %p != cur %p", (res)->rsrc_mngr, k_current_get()); \
+} while (0)
 #else
 #define MEM_API_CHECK_THREAD(res)
 #endif
@@ -71,7 +78,7 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 	return ret;
 }
 
-static void mod_resource_init(struct processing_module *mod)
+void mod_resource_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	/* Init memory list */
@@ -109,12 +116,17 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-	mod_resource_init(mod);
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	mod->priv.resources.rsrc_mngr = k_current_get();
 #endif
 	/* Now we can proceed with module specific initialization */
-	ret = interface->init(mod);
+#if CONFIG_IPC_MAJOR_4
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_INIT_INSTANCE, NULL);
+	else
+#endif
+		ret = interface->init(mod);
+
 	if (ret) {
 		comp_err(dev, "error %d: module specific init failed", ret);
 		mod_free_all(mod);
@@ -166,6 +178,17 @@ static void container_put(struct processing_module *mod, struct module_resource 
 	struct module_resources *res = &mod->priv.resources;
 
 	list_item_append(&container->list, &res->free_cont_list);
+}
+
+void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	if (size)
+		*size = res->heap_size;
+
+	if (start)
+		*start = (uintptr_t)container_of(res->heap, struct dp_heap_user, heap);
 }
 
 /**
@@ -230,7 +253,8 @@ EXPORT_SYMBOL(mod_balloc_align);
  *
  * The allocated memory is automatically freed when the module is unloaded.
  */
-void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, size_t alignment)
+void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			   size_t alignment)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
@@ -268,7 +292,7 @@ void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size, 
 
 	return ptr;
 }
-EXPORT_SYMBOL(mod_alloc_ext);
+EXPORT_SYMBOL(z_impl_mod_alloc_ext);
 
 /**
  * Creates a blob handler and releases it when the module is unloaded
@@ -314,7 +338,8 @@ EXPORT_SYMBOL(mod_data_blob_handler_new);
  * Like fast_get() but the handler is automatically freed.
  */
 #if CONFIG_FAST_GET
-const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr, size_t size)
+const void *z_impl_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				size_t size)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
@@ -339,7 +364,7 @@ const void *mod_fast_get(struct processing_module *mod, const void * const dram_
 
 	return ptr;
 }
-EXPORT_SYMBOL(mod_fast_get);
+EXPORT_SYMBOL(z_impl_mod_fast_get);
 #endif
 
 static int free_contents(struct processing_module *mod, struct module_resource *container)
@@ -372,7 +397,7 @@ static int free_contents(struct processing_module *mod, struct module_resource *
  * @param mod	Pointer to module this memory block was allocated for.
  * @param ptr	Pointer to the memory block.
  */
-int mod_free(struct processing_module *mod, const void *ptr)
+int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
@@ -398,7 +423,46 @@ int mod_free(struct processing_module *mod, const void *ptr)
 
 	return -EINVAL;
 }
-EXPORT_SYMBOL(mod_free);
+EXPORT_SYMBOL(z_impl_mod_free);
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+const void *z_vrfy_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
+				size_t size)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->heap, sizeof(*res->heap)));
+	K_OOPS(K_SYSCALL_MEMORY_READ(dram_ptr, size));
+
+	return z_impl_mod_fast_get(mod, dram_ptr, size);
+}
+#include <zephyr/syscalls/mod_fast_get_mrsh.c>
+
+void *z_vrfy_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
+			   size_t alignment)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->heap, sizeof(*res->heap)));
+
+	return z_impl_mod_alloc_ext(mod, flags, size, alignment);
+}
+#include <zephyr/syscalls/mod_alloc_ext_mrsh.c>
+
+int z_vrfy_mod_free(struct processing_module *mod, const void *ptr)
+{
+	struct module_resources *res = &mod->priv.resources;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->heap, sizeof(*res->heap)));
+
+	return z_impl_mod_free(mod, ptr);
+}
+#include <zephyr/syscalls/mod_free_mrsh.c>
+#endif
 
 #if CONFIG_COMP_BLOB
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh)
@@ -433,7 +497,27 @@ int module_prepare(struct processing_module *mod,
 		return -EPERM;
 #endif
 	if (ops->prepare) {
-		int ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+		int ret;
+
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+#if CONFIG_IPC_MAJOR_4
+			union scheduler_dp_thread_ipc_param param = {
+				.pipeline_state = {
+					.trigger_cmd = COMP_TRIGGER_PREPARE,
+					.state = SOF_IPC4_PIPELINE_STATE_RUNNING,
+					.n_sources = num_of_sources,
+					.sources = sources,
+					.n_sinks = num_of_sinks,
+					.sinks = sinks,
+				},
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE, &param);
+#else
+			ret = 0;
+#endif
+		} else {
+			ret = ops->prepare(mod, sources, num_of_sources, sinks, num_of_sinks);
+		}
 
 		if (ret) {
 			comp_err(dev, "error %d: module specific prepare failed", ret);
@@ -552,11 +636,21 @@ int module_reset(struct processing_module *mod)
 	if (md->state < MODULE_IDLE)
 		return 0;
 #endif
-	/* cancel task if DP task*/
-	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && mod->dev->task)
-		schedule_task_cancel(mod->dev->task);
+
 	if (ops->reset) {
-		ret = ops->reset(mod);
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+#if CONFIG_IPC_MAJOR_4
+			union scheduler_dp_thread_ipc_param param = {
+				.pipeline_state.trigger_cmd = COMP_TRIGGER_STOP,
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_GLB_SET_PIPELINE_STATE, &param);
+#else
+			ret = 0;
+#endif
+		} else {
+			ret = ops->reset(mod);
+		}
+
 		if (ret) {
 			if (ret != PPL_STATUS_PATH_STOP)
 				comp_err(mod->dev,
@@ -627,7 +721,7 @@ int module_free(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	int ret = 0;
 
-	if (ops->free) {
+	if (ops->free && mod->dev->ipc_config.proc_domain != COMP_PROCESSING_DOMAIN_DP) {
 		ret = ops->free(mod);
 		if (ret)
 			comp_warn(mod->dev, "error: %d", ret);
@@ -772,8 +866,18 @@ int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 	if (ret)
 		return ret;
 
-	if (ops->bind)
-		ret = ops->bind(mod, bind_data);
+	if (ops->bind) {
+		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+#if CONFIG_IPC_MAJOR_4
+			union scheduler_dp_thread_ipc_param param = {
+				.bind_data = bind_data,
+			};
+			ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_BIND, &param);
+#endif
+		} else {
+			ret = ops->bind(mod, bind_data);
+		}
+	}
 
 	return ret;
 }
