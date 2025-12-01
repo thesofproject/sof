@@ -108,7 +108,8 @@ void pipeline_posn_init(struct sof *sof)
 }
 
 /* create new pipeline - returns pipeline id or negative error */
-struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t comp_id)
+struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t comp_id,
+			      struct create_pipeline_params *pparams)
 {
 	struct sof_ipc_stream_posn posn;
 	struct pipeline *p;

@@ -51,7 +51,8 @@ static void test_audio_pipeline_pipeline_new_creation(void **state)
 	/*Testing component*/
 	struct pipeline *result = pipeline_new(test_data->pipe_id,
 					       test_data->priority,
-					       test_data->comp_id);
+					       test_data->comp_id,
+					       NULL);
 
 	/*Pipeline should have been created so pointer can't be null*/
 	assert_non_null(result);
