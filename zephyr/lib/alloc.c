@@ -167,7 +167,7 @@ static bool is_heap_pointer(const struct k_heap *heap, void *ptr)
 		POINTER_TO_UINT(sys_cache_cached_ptr_get(heap->heap.init_mem));
 	uintptr_t heap_end = heap_start + heap->heap.init_bytes;
 
-	if (!is_cached(ptr))
+	if (!sys_cache_is_ptr_cached(ptr))
 		ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
 
 	return ((POINTER_TO_UINT(ptr) >= heap_start) &&
@@ -182,7 +182,7 @@ static bool is_shared_buffer_heap_pointer(void *ptr)
 	uintptr_t shd_heap_start = POINTER_TO_UINT(shared_heapmem);
 	uintptr_t shd_heap_end = POINTER_TO_UINT(shared_heapmem + SHARED_BUFFER_HEAP_MEM_SIZE);
 
-	if (is_cached(ptr))
+	if (sys_cache_is_ptr_cached(ptr))
 		ptr = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)ptr);
 
 	return (POINTER_TO_UINT(ptr) >= shd_heap_start) && (POINTER_TO_UINT(ptr) < shd_heap_end);
@@ -341,7 +341,7 @@ static bool is_virtual_heap_pointer(void *ptr)
 		POINTER_TO_UINT(sys_cache_cached_ptr_get(&_unused_ram_start_marker));
 	uintptr_t virtual_heap_end = CONFIG_KERNEL_VM_BASE + CONFIG_KERNEL_VM_SIZE;
 
-	if (!is_cached(ptr))
+	if (!sys_cache_is_ptr_cached(ptr))
 		ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
 
 	return ((POINTER_TO_UINT(ptr) >= virtual_heap_start) &&
@@ -463,7 +463,7 @@ static void heap_free(struct k_heap *h, void *mem)
 #ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
 	void *mem_uncached;
 
-	if (is_cached(mem)) {
+	if (sys_cache_is_ptr_cached(mem)) {
 		mem_uncached = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)mem);
 		sys_cache_data_flush_and_invd_range(mem,
 				sys_heap_usable_size(&h->heap, mem_uncached));
