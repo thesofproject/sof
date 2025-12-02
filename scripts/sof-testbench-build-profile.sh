@@ -15,8 +15,11 @@ MODULES_S32="asrc dcblock drc drc_multiband eqfir eqiir gain src tdfb"
 MODULES_S24="aria"
 
 if [ -z "${SOF_WORKSPACE}" ]; then
-    echo "Error: environment variable SOF_WORKSPACE need to be set to top level sof directory"
-    exit 1
+    # fallback to the script directory default path
+    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+    SOF_REPO=$(dirname "$SCRIPT_DIR")
+    SOF_WORKSPACE="$SOF_REPO/../"
+    echo "Using default SOF environment at $SOF_WORKSPACE"
 fi
 
 PLATFORM=none
