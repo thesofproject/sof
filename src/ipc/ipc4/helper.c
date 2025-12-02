@@ -613,8 +613,10 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 						 sink_get_min_free_space(snk),
 						 audio_buffer_is_shared(&buffer->audio_buffer),
 						 buf_get_id(buffer));
-		if (!ring_buffer)
-			goto free_unlocked;
+		if (!ring_buffer) {
+			buffer_free(buffer);
+			return IPC4_OUT_OF_MEMORY;
+		}
 
 		/* data destination module needs to use ring_buffer */
 		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, dp_on_source,
@@ -699,7 +701,6 @@ e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
 	ll_unblock(cross_core_bind, flags);
-free_unlocked:
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
