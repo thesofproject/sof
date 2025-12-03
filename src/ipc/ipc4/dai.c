@@ -396,8 +396,11 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 	if (ret < 0)
 		return ret;
 
+	/* gtw_cfg.config_length is in words */
+	size = copier_cfg->gtw_cfg.config_length << 2;
+
 	return dai_set_config(dd->dai, common_config,
-			      copier_cfg->gtw_cfg.config_data, copier_cfg->gtw_cfg.config_length);
+			      copier_cfg->gtw_cfg.config_data, size);
 }
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
