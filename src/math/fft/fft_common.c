@@ -8,10 +8,15 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
+#include <sof/trace/trace.h>
+#include <sof/lib/uuid.h>
 #include <sof/common.h>
 #include <rtos/alloc.h>
 #include <sof/math/fft.h>
 
+LOG_MODULE_REGISTER(math_fft, CONFIG_SOF_LOG_LEVEL);
+SOF_DEFINE_REG_UUID(math_fft);
+DECLARE_TR_CTX(math_fft_tr, SOF_UUID(math_fft_uuid), LOG_LEVEL_INFO);
 
 struct fft_plan *mod_fft_plan_new(struct processing_module *mod, void *inb,
 				  void *outb, uint32_t size, int bits)
