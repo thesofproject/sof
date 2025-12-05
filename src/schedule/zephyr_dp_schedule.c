@@ -231,9 +231,8 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 	unsigned int lock_key;
 	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
 
-	if (event_type == NOTIFIER_ID_LL_PRE_RUN)
-		/* remember current timestamp as "NOW" */
-		dp_sch->last_ll_tick_timestamp = k_cycle_get_32();
+	/* remember current timestamp as "NOW" */
+	dp_sch->last_ll_tick_timestamp = k_cycle_get_32();
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
 	scheduler_dp_recalculate(dp_sch, event_type == NOTIFIER_ID_LL_POST_RUN);
@@ -357,7 +356,6 @@ int scheduler_dp_init(void)
 	if (ret)
 		return ret;
 
-	notifier_register(NULL, NULL, NOTIFIER_ID_LL_PRE_RUN, scheduler_dp_ll_tick, 0);
 	notifier_register(NULL, NULL, NOTIFIER_ID_LL_POST_RUN, scheduler_dp_ll_tick, 0);
 
 	return 0;
