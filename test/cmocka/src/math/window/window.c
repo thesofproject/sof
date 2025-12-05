@@ -54,7 +54,7 @@ static float test_window(char *window_name, const int16_t *ref_win, int window_l
 	if (!strcmp(window_name, "rectangular")) {
 		win_rectangular_16b(win, window_length);
 	} else if (!strcmp(window_name, "blackman")) {
-		win_blackman_16b(win, window_length, WIN_BLACKMAN_A0);
+		win_blackman_16b(win, window_length, WIN_BLACKMAN_A0_Q15);
 	} else if (!strcmp(window_name, "hamming")) {
 		win_hamming_16b(win, window_length);
 	} else if (!strcmp(window_name, "povey")) {
