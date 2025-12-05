@@ -376,7 +376,15 @@ err:
 	return 0;
 }
 
-int lib_manager_free_module(const uint32_t component_id)
+/*
+ * \brief Free module
+ *
+ * param[in] component_id - component id coming from ipc config. This function reguires valid
+ * lib_id and module_id fields of component id.
+ *
+ * Function is responsible to free module resources in HP memory.
+ */
+static int lib_manager_free_module(const uint32_t component_id)
 {
 	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
@@ -422,7 +430,7 @@ static uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_c
 	return 0;
 }
 
-int lib_manager_free_module(const uint32_t component_id)
+static int lib_manager_free_module(const uint32_t component_id)
 {
 	/* Since we cannot allocate the freeing is not considered to be an error */
 	tr_warn(&lib_manager_tr, "Dynamic module freeing is not supported");
