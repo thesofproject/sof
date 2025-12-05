@@ -97,7 +97,7 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 	}
 
 	/* step 1: re-arrange input in bit reverse order, and shrink the level to avoid overflow */
-	for (i = 1; i < plan->size; ++i)
+	for (i = 0; i < plan->size; ++i)
 		icomplex32_shift(&inb[i], -(plan->len), &outb[plan->bit_reverse_idx[i]]);
 
 	/* step 2: loop to do FFT transform in smaller size */
