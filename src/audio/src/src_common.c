@@ -683,9 +683,13 @@ int src_reset(struct processing_module *mod)
 
 __cold int src_free(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+
 	assert_can_be_cold();
 
 	comp_info(mod->dev, "entry");
+	mod_free(mod, cd->delay_lines);
+	mod_free(mod, cd);
 
 	return 0;
 }
