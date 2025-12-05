@@ -251,11 +251,15 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	const struct sys_mm_drv_region *virtual_memory_regions = sys_mm_drv_query_memory_regions();
 	const struct sys_mm_drv_region *virtual_region;
 
+	if (!virtual_memory_regions)
+		return -EFAULT;
+
 	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, virtual_region) {
 		if (virtual_region->attr == VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR)
 			break;
 	}
-	if (!virtual_region || !virtual_region->size)
+
+	if (!virtual_region->size)
 		return -EFAULT;
 
 	/* Copy Code */
