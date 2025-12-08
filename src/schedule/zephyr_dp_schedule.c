@@ -253,12 +253,12 @@ static int scheduler_dp_task_cancel(void *data, struct task *task)
 	task->state = SOF_TASK_STATE_CANCEL;
 	list_item_del(&task->list);
 
-	/* if there're no more  DP task, stop LL tick source */
+	/* if there're no more DP task, stop LL tick source */
 	if (list_is_empty(&dp_sch->tasks))
 		schedule_task_cancel(&dp_sch->ll_tick_src);
 
-	/* if the task is waiting on a semaphore - let it run and self-terminate */
-	k_sem_give(pdata->sem);
+	/* if the task is waiting on a event - let it run and self-terminate */
+	k_event_set(pdata->event, DP_TASK_EVENT_CANCEL);
 	scheduler_dp_unlock(lock_key);
 
 	/* wait till the task has finished, if there was any task created */
@@ -284,8 +284,8 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 	}
 
 #ifdef CONFIG_USERSPACE
-	if (pdata->sem != &pdata->sem_struct)
-		k_object_free(pdata->sem);
+	if (pdata->event != &pdata->event_struct)
+		k_object_free(pdata->event);
 	if (pdata->thread != &pdata->thread_struct)
 		k_object_free(pdata->thread);
 #endif
@@ -418,16 +418,16 @@ int scheduler_dp_task_init(struct task **task,
 
 	struct task_dp_pdata *pdata = &task_memory->pdata;
 
-	/* Point to ksem semaphore for kernel threads synchronization */
+	/* Point to event_struct event for kernel threads synchronization */
 	/* It will be overwritten for K_USER threads to dynamic ones.  */
-	pdata->sem = &pdata->sem_struct;
+	pdata->event = &pdata->event_struct;
 	pdata->thread = &pdata->thread_struct;
 
 #ifdef CONFIG_USERSPACE
 	if (options & K_USER) {
-		pdata->sem = k_object_alloc(K_OBJ_SEM);
-		if (!pdata->sem) {
-			tr_err(&dp_tr, "Semaphore object allocation failed");
+		pdata->event = k_object_alloc(K_OBJ_EVENT);
+		if (!pdata->event) {
+			tr_err(&dp_tr, "Event object allocation failed");
 			ret = -ENOMEM;
 			goto err;
 		}
@@ -459,7 +459,7 @@ int scheduler_dp_task_init(struct task **task,
 					   stack_size, dp_thread_fn, *task, NULL, NULL,
 					   CONFIG_DP_THREAD_PRIORITY, (*task)->flags, K_FOREVER);
 
-	k_thread_access_grant(pdata->thread_id, pdata->sem);
+	k_thread_access_grant(pdata->thread_id, pdata->event);
 	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
 
 	/* pin the thread to specific core */
@@ -479,8 +479,8 @@ int scheduler_dp_task_init(struct task **task,
 	}
 #endif /* CONFIG_USERSPACE */
 
-	/* start the thread, it should immediately stop at a semaphore, so clean it */
-	k_sem_init(pdata->sem, 0, 1);
+	/* start the thread, it should immediately stop at an event */
+	k_event_init(pdata->event);
 	k_thread_start(pdata->thread_id);
 
 	return 0;
@@ -493,7 +493,7 @@ err:
 		tr_err(&dp_tr, "user_stack_free failed!");
 
 	/* k_object_free looks for a pointer in the list, any invalid value can be passed */
-	k_object_free(task_memory->pdata.sem);
+	k_object_free(task_memory->pdata.event);
 	k_object_free(task_memory->pdata.thread);
 	sof_heap_free(user_heap, task_memory);
 	return ret;
