@@ -86,4 +86,9 @@ int scheduler_dp_task_init(struct task **task,
 void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props,
 				uint32_t *data_off_size);
 
+enum {
+	DP_TASK_EVENT_PROCESS	= BIT(0),	/* Need to process data */
+	DP_TASK_EVENT_CANCEL	= BIT(1),	/* Thread cancellation */
+};
+
 #endif /* __SOF_SCHEDULE_DP_SCHEDULE_H__ */

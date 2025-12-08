@@ -29,8 +29,8 @@ struct task_dp_pdata {
 	uint32_t deadline_clock_ticks;	/* dp module deadline in Zephyr ticks */
 	k_thread_stack_t __sparse_cache *p_stack;	/* pointer to thread stack */
 	size_t stack_size;		/* size of the stack in bytes */
-	struct k_sem *sem;		/* pointer to semaphore for task scheduling */
-	struct k_sem sem_struct;	/* semaphore for task scheduling for kernel threads */
+	struct k_event *event;		/* pointer to event for task scheduling */
+	struct k_event event_struct;	/* event for task scheduling for kernel threads */
 	struct processing_module *mod;	/* the module to be scheduled */
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
 };
