@@ -41,7 +41,7 @@ endif()
 if (CONFIG_SOF_USERSPACE_PROXY OR NOT CONFIG_USERSPACE)
 	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
 		zephyr_dp_schedule.c
-		zephyr_dp_schedule_proxy.c
+		zephyr_dp_schedule_thread.c
 	)
 else()
 	zephyr_library_sources_ifdef(CONFIG_ZEPHYR_DP_SCHEDULER
