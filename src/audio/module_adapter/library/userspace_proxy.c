@@ -44,7 +44,7 @@ DECLARE_TR_CTX(userspace_proxy_tr, SOF_UUID(userspace_proxy_uuid), LOG_LEVEL_INF
 
 static const struct module_interface userspace_proxy_interface;
 
-static int userspace_proxy_memory_init(struct userspace_context *user,
+static int userspace_proxy_memory_init(struct userspace_context *user_ctx,
 				       const struct comp_driver *drv)
 {
 	/* Add module private heap to memory partitions */
@@ -79,10 +79,10 @@ static int userspace_proxy_memory_init(struct userspace_context *user,
 		&heap_part
 	};
 
-	return k_mem_domain_init(user->comp_dom, ARRAY_SIZE(parts_ptr), parts_ptr);
+	return k_mem_domain_init(user_ctx->comp_dom, ARRAY_SIZE(parts_ptr), parts_ptr);
 }
 
-static int userspace_proxy_add_sections(struct userspace_context *user, uint32_t instance_id,
+static int userspace_proxy_add_sections(struct userspace_context *user_ctx, uint32_t instance_id,
 					const struct sof_man_module *const mod)
 {
 	struct k_mem_partition mem_partition;
@@ -103,7 +103,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user, uint32_t
 		mem_partition.start = mod->segment[idx].v_base_addr;
 		mem_partition.size = mod->segment[idx].flags.r.length * CONFIG_MM_DRV_PAGE_SIZE;
 
-		ret = k_mem_domain_add_partition(user->comp_dom, &mem_partition);
+		ret = k_mem_domain_add_partition(user_ctx->comp_dom, &mem_partition);
 
 		tr_dbg(&userspace_proxy_tr, "Add mod partition %p + %zx, attr = %u, ret = %d",
 		       UINT_TO_POINTER(mem_partition.start), mem_partition.size,
@@ -116,7 +116,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user, uint32_t
 	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &mem_partition.size);
 	mem_partition.start = POINTER_TO_UINT(va_base);
 	mem_partition.attr = K_MEM_PARTITION_P_RW_U_RW;
-	ret = k_mem_domain_add_partition(user->comp_dom, &mem_partition);
+	ret = k_mem_domain_add_partition(user_ctx->comp_dom, &mem_partition);
 
 	tr_dbg(&userspace_proxy_tr, "Add bss partition %p + %zx, attr = %u, ret = %d",
 	       UINT_TO_POINTER(mem_partition.start), mem_partition.size,
@@ -130,14 +130,14 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 			   const struct system_agent_params *agent_params,
 			   const void **agent_interface, const struct module_interface **ops)
 {
-	struct userspace_context *user;
+	struct userspace_context *context;
 	struct k_mem_domain *domain;
 	int ret;
 
 	tr_dbg(&userspace_proxy_tr, "userspace create");
 
-	user = k_heap_alloc(drv->user_heap, sizeof(struct userspace_context), K_FOREVER);
-	if (!user)
+	context = k_heap_alloc(drv->user_heap, sizeof(struct userspace_context), K_FOREVER);
+	if (!context)
 		return -ENOMEM;
 
 	/* Allocate memory domain struct */
@@ -146,13 +146,13 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 		ret = -ENOMEM;
 		goto error;
 	}
-	user->comp_dom = domain;
+	context->comp_dom = domain;
 
-	ret = userspace_proxy_memory_init(user, drv);
+	ret = userspace_proxy_memory_init(context, drv);
 	if (ret)
 		goto error_dom;
 
-	ret = userspace_proxy_add_sections(user, agent_params->instance_id, manifest);
+	ret = userspace_proxy_add_sections(context, agent_params->instance_id, manifest);
 	if (ret)
 		goto error_dom;
 
@@ -166,7 +166,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 		}
 	}
 
-	*user_ctx = user;
+	*user_ctx = context;
 
 	/* Store a pointer to the module's interface. For the LMDK modules, the agent places a
 	 * pointer to the module interface at the address specified by agent_interface. Since this
@@ -174,7 +174,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	 * after the agent has been started. For other module types, the ops parameter points to a
 	 * valid module interface.
 	 */
-	user->interface = *ops;
+	context->interface = *ops;
 
 	/* All calls to the module interface must pass through the proxy. Set up our own interface.
 	 */
@@ -185,7 +185,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 error_dom:
 	rfree(domain);
 error:
-	k_heap_free(drv->user_heap, user);
+	k_heap_free(drv->user_heap, context);
 	return ret;
 }
 
