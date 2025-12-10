@@ -498,7 +498,7 @@ const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t modu
  * \brief Starts system agent and returns module interface into agent_interface variable.
  *
  * \param[in] drv - Pointer to the component driver structure.
- * \param[in] component_id - Identifier of the component.
+ * \param[in] config - Pointer to component ipc config structure
  * \param[in] args - Pointer to components' ipc configuration arguments.
  * \param[in] module_entry_point - Entry point address of the module.
  * \param[in] agent - Function pointer to the system agent start function.
@@ -508,7 +508,8 @@ const struct sof_man_module *lib_manager_get_module_manifest(const uint32_t modu
  *
  * \return Error code returned by the system agent, 0 on success.
  */
-static int lib_manager_start_agent(const struct comp_driver *drv, const uint32_t component_id,
+static int lib_manager_start_agent(const struct comp_driver *drv,
+				   const struct comp_ipc_config *config,
 				   const struct sof_man_module *mod_manifest,
 				   const struct ipc_config_process *args,
 				   const uintptr_t module_entry_point,
@@ -526,9 +527,9 @@ static int lib_manager_start_agent(const struct comp_driver *drv, const uint32_t
 	mod_cfg.size = args->size >> 2;
 
 	agent_params.entry_point = module_entry_point;
-	agent_params.module_id = IPC4_MOD_ID(component_id);
-	agent_params.instance_id = IPC4_INST_ID(component_id);
-	agent_params.core_id = 0;
+	agent_params.module_id = IPC4_MOD_ID(config->id);
+	agent_params.instance_id = IPC4_INST_ID(config->id);
+	agent_params.core_id = config->core;
 	agent_params.log_handle = (uint32_t)drv->tctx;
 	agent_params.mod_cfg = &mod_cfg;
 
@@ -671,7 +672,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
 	if (agent) {
-		ret = lib_manager_start_agent(drv, config->id, mod, args, module_entry_point, agent,
+		ret = lib_manager_start_agent(drv, config, mod, args, module_entry_point, agent,
 					      agent_iface, &userspace, &ops);
 		if (ret)
 			goto err;
