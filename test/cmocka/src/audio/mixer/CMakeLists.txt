@@ -13,6 +13,8 @@ cmocka_test(mixer
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/memory-common.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/memory-heap.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
 	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
