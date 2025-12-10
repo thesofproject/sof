@@ -235,7 +235,7 @@ ZTEST_SUITE(userspace_intel_hda_dma, NULL, NULL, NULL, NULL, NULL);
  */
 static int run_tests(void)
 {
-	ztest_run_all(NULL, false, 1, 1);
+	ztest_run_test_suite(userspace_intel_hda_dma, false, 1, 1, NULL);
 	return 0;
 }
 
