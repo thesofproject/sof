@@ -228,6 +228,9 @@ jobs:
             ./**/compile_commands.json
 
   build-windows:
+    # disabled 2025/12, broken due to missing gperf and we have no maintainer for
+    # the Windows build
+    if: false
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -411,7 +414,6 @@ jobs:
 
 
   compare-linux-win:
-
     runs-on: ubuntu-latest
 
     # - We don't compare _all_ the builds, and
