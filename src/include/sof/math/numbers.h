@@ -36,7 +36,11 @@
 	__a > 0 ? 1 : 0;	\
 })
 
+/* Zephyr added gcd() in 2025/Nov to sys/util.h */
+#ifndef gcd
+#define USE_SOF_GCD 1
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */
+#endif
 
 /* This is a divide function that returns ceil of the quotient.
  * E.g. ceil_divide(9, 3) returns 3, ceil_divide(10, 3) returns 4.

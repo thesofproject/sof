@@ -15,6 +15,9 @@
 #include <rtos/symbol.h>
 #include <stdint.h>
 
+/* see numbers.h */
+#ifdef USE_SOF_GCD
+
 /* This function returns the greatest common divisor of two numbers
  * If both parameters are 0, gcd(0, 0) returns 0
  * If first parameters is 0 or second parameter is 0, gcd(0, b) returns b
@@ -74,6 +77,7 @@ int gcd(int a, int b)
 	return a << k;
 }
 EXPORT_SYMBOL(gcd);
+#endif /* USE_SOF_GCD */
 
 #if CONFIG_NUMBERS_VECTOR_FIND
 
