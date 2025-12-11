@@ -374,6 +374,12 @@ jobs:
           choco install ninja
           ninja.exe --version
 
+      # Install GPERF for Windows
+      - name: Install gperf
+        run: |
+          choco install gperf
+          gperf --version
+
       # MSYS2 provides gcc x64_86 toolchain & openssl
       # Installs in D:/a/_temp/msys64
       #
