@@ -241,13 +241,18 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 	scheduler_dp_unlock(lock_key);
 }
 
-// FIXME: is .cancel() always followed by .free()? Where should we free stack and thread?
 static int scheduler_dp_task_cancel(void *data, struct task *task)
+{
+	/* Should never be called */
+	k_panic();
+	return -EOPNOTSUPP;
+}
+
+static int scheduler_dp_task_stop(void *data, struct task *task)
 {
 	unsigned int lock_key;
 	struct scheduler_dp_data *dp_sch = (struct scheduler_dp_data *)data;
 	struct task_dp_pdata *pdata = task->priv_data;
-
 
 	/* this is asyn cancel - mark the task as canceled and remove it from scheduling */
 	lock_key = scheduler_dp_lock(cpu_get_id());
@@ -279,7 +284,7 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 	struct task_dp_pdata *pdata = task->priv_data;
 	int ret;
 
-	scheduler_dp_task_cancel(data, task);
+	scheduler_dp_task_stop(data, task);
 
 	/* the thread should be terminated at this moment,
 	 * abort is safe and will ensure no use after free
