@@ -55,6 +55,14 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-rt712-l0-4ch.bin,\
 HDMI1_ID=5,HDMI2_ID=6,HDMI3_ID=7,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
+"cavs-sdw\;sof-mtl-tac5572-2ch\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_AMP_FEEDBACK_STREAM=Capture-SmartAmp,\
+NUM_DMICS=0,PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=3,DMIC1_ID=4,\
+SDW_DMIC=1,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
+
 # sof_sdw creates dmic01 and dmic16k no matter 1 or 2 dmics are present.
 # So, HDMI link ids are the same for -2ch and -4ch topologies.
 "cavs-sdw\;sof-mtl-rt712-l0-2ch\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=1,\
