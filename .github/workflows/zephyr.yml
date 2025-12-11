@@ -133,10 +133,12 @@ jobs:
             zephyr_revision: mnfst
             IPC_platforms: lnl
 
-          # This is "duplication of effort" but it makes sure no one
-          # breaks --all, see for instance #9262 and previous commit.
+          # Due to GitHub size limitations we can't afford to run --all and
+          # duplicate builds already built in previous steps.
+          # This will now build any platform that would've run with --all that
+          # isn't already built above.
           - zephyr_revision: mnfst
-            IPC_platforms: --all
+            IPC_platforms: wcl imx95
 
     steps:
       - uses: actions/checkout@v4
