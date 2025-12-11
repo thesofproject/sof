@@ -244,22 +244,6 @@ void l3_heap_save(void)
 				get_l3_heap_size());
 }
 
-/**
- * Checks whether pointer is from L3 heap memory range.
- * @param ptr Pointer to memory being checked.
- * @return True if pointer falls into L3 heap region, false otherwise.
- */
-static bool is_l3_heap_pointer(void *ptr)
-{
-	uintptr_t l3_heap_start = get_l3_heap_start();
-	uintptr_t l3_heap_end = l3_heap_start + get_l3_heap_size();
-
-	if ((POINTER_TO_UINT(ptr) >= l3_heap_start) && (POINTER_TO_UINT(ptr) < l3_heap_end))
-		return true;
-
-	return false;
-}
-
 static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
 {
 	k_spinlock_key_t key;
@@ -609,7 +593,7 @@ void rfree(void *ptr)
 		return;
 
 #if CONFIG_L3_HEAP
-	if (is_l3_heap_pointer(ptr)) {
+	if (is_heap_pointer(&l3_heap, ptr)) {
 		l3_heap_free(&l3_heap, ptr);
 		return;
 	}
@@ -680,10 +664,13 @@ static int heap_init(void)
 
 		arch_mem_map(l3_heap_start, va, l3_heap_size, K_MEM_PERM_RW | K_MEM_CACHE_WB);
 #endif
-		if (l3_heap_copy.heap.heap)
+		if (l3_heap_copy.heap.heap) {
 			l3_heap = l3_heap_copy;
-		else
+		} else {
+			l3_heap.heap.init_mem = l3_heap_start;
+			l3_heap.heap.init_bytes = l3_heap_size;
 			sys_heap_init(&l3_heap.heap, l3_heap_start, l3_heap_size);
+		}
 	}
 #endif
 
