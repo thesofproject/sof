@@ -74,7 +74,7 @@ static int userspace_proxy_memory_init(struct userspace_context *user,
 
 	struct k_mem_partition *parts_ptr[] = {
 #ifdef HEAP_PART_CACHED
-		&heap_part_cached,
+		&heap_cached_part,
 #endif
 		&heap_part
 	};
