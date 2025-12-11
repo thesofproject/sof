@@ -177,17 +177,6 @@ static bool is_heap_pointer(const struct k_heap *heap, void *ptr)
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
 static struct k_heap shared_buffer_heap;
 
-static bool is_shared_buffer_heap_pointer(void *ptr)
-{
-	uintptr_t shd_heap_start = POINTER_TO_UINT(shared_heapmem);
-	uintptr_t shd_heap_end = POINTER_TO_UINT(shared_heapmem + SHARED_BUFFER_HEAP_MEM_SIZE);
-
-	if (sys_cache_is_ptr_cached(ptr))
-		ptr = sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)ptr);
-
-	return (POINTER_TO_UINT(ptr) >= shd_heap_start) && (POINTER_TO_UINT(ptr) < shd_heap_end);
-}
-
 /**
  * Returns the start of HPSRAM Shared memory heap.
  * @return Pointer to the HPSRAM Shared memory location which can be used
@@ -634,7 +623,7 @@ void rfree(void *ptr)
 #endif
 
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
-	if (is_shared_buffer_heap_pointer(ptr)) {
+	if (is_heap_pointer(&shared_buffer_heap, ptr)) {
 		heap_free(&shared_buffer_heap, ptr);
 		return;
 	}
@@ -676,6 +665,8 @@ static int heap_init(void)
 	sys_heap_init(&sof_heap.heap, heapmem, HEAPMEM_SIZE - SHARED_BUFFER_HEAP_MEM_SIZE);
 
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
+	shared_buffer_heap.heap.init_mem = shared_heapmem;
+	shared_buffer_heap.heap.init_bytes = SHARED_BUFFER_HEAP_MEM_SIZE;
 	sys_heap_init(&shared_buffer_heap.heap, shared_heapmem, SHARED_BUFFER_HEAP_MEM_SIZE);
 #endif
 
