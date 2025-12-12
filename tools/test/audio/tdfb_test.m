@@ -208,7 +208,7 @@ if cfg.do_plots
 	hold off
 	grid on;
 	legend('ch1 in','ch1 out');
-	title(tstr);
+	title(tstr, 'Interpreter', 'none');
 end
 
 end
