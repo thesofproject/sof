@@ -134,6 +134,15 @@ struct pipeline_task {
 	struct comp_dev *sched_comp;	/**< pipeline scheduling component */
 };
 
+/** \brief For storing IPC payload data. */
+struct pipeline_params {
+	uint32_t domain_id;
+	size_t stack_bytes;
+	size_t lifetime_bytes;
+	size_t interim_bytes;
+	size_t shared_bytes;
+};
+
 #define pipeline_task_get(t) container_of(t, struct pipeline_task, task)
 
 /*
@@ -148,9 +157,11 @@ struct pipeline_task {
  * \param[in] pipeline_id Pipeline ID number.
  * \param[in] priority Pipeline scheduling priority.
  * \param[in] comp_id Pipeline component ID number.
+ * \param[in] pparams Pipeline parameters from IPC payload, maybe NULL.
  * \return New pipeline pointer or NULL.
  */
-struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t comp_id);
+struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t comp_id,
+			      struct pipeline_params *pparams);
 
 /**
  * \brief Free's a pipeline.
