@@ -17,7 +17,7 @@ SOF_DEFINE_REG_UUID(template);
 /* Creates logging data for the component */
 LOG_MODULE_REGISTER(template, CONFIG_SOF_LOG_LEVEL);
 
-/* Creates the compont trace. Traces show in trace console the component
+/* Creates the component trace. Traces show in trace console the component
  * info, warning, and error messages.
  */
 DECLARE_TR_CTX(template_tr, SOF_UUID(template_uuid), LOG_LEVEL_INFO);
