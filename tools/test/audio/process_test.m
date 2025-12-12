@@ -442,7 +442,7 @@ function test_result_print(t, testverbose, testacronym, test)
 	%% FIXME: get unique string to keep all the incremental logs
 
 	for i = 1:length(test.ph)
-		title(test.ph(i), tstr);
+		title(test.ph(i), tstr, 'Interpreter', 'none');
 	end
 
 	for i = 1:length(test.fh)
