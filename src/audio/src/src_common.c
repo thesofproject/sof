@@ -533,7 +533,7 @@ int src_params_general(struct processing_module *mod,
 	/* free any existing delay lines. TODO reuse if same size */
 	mod_free(mod, cd->delay_lines);
 
-	cd->delay_lines = mod_balloc(mod, delay_lines_size);
+	cd->delay_lines = mod_alloc(mod, delay_lines_size);
 	if (!cd->delay_lines) {
 		comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
 			 delay_lines_size);
@@ -683,9 +683,13 @@ int src_reset(struct processing_module *mod)
 
 __cold int src_free(struct processing_module *mod)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+
 	assert_can_be_cold();
 
 	comp_info(mod->dev, "entry");
+	mod_free(mod, cd->delay_lines);
+	mod_free(mod, cd);
 
 	return 0;
 }

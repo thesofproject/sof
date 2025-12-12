@@ -44,17 +44,15 @@ struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init);
 /** See comp_ops::free */
 static inline void comp_free(struct comp_dev *dev)
 {
-	assert(dev->drv->ops.free);
+	const struct comp_driver *drv = dev->drv;
 
-	/* free task if shared component or DP task*/
-	if ((dev->is_shared || dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) &&
-	    dev->task) {
-		schedule_task_free(dev->task);
-		sof_heap_free(dev->drv->user_heap, dev->task);
-		dev->task = NULL;
-	}
+	assert(drv->ops.free);
 
-	dev->drv->ops.free(dev);
+	/*
+	 * In DP case this will run in DP thread context, so the task can only
+	 * be freed after this.
+	 */
+	drv->ops.free(dev);
 }
 
 /**

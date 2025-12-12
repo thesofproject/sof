@@ -50,7 +50,8 @@ __cold static bool valid_ipc_buffer_desc(const struct sof_ipc_buffer *desc)
 }
 
 /* create a new component in the pipeline */
-__cold struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is_shared)
+__cold struct comp_buffer *buffer_new(struct k_heap *heap, const struct sof_ipc_buffer *desc,
+				      bool is_shared)
 {
 	struct comp_buffer *buffer;
 	uint32_t flags = desc->flags;
@@ -78,7 +79,7 @@ __cold struct comp_buffer *buffer_new(const struct sof_ipc_buffer *desc, bool is
 			desc->caps, flags);
 
 	/* allocate buffer */
-	buffer = buffer_alloc(desc->size, flags, PLATFORM_DCACHE_ALIGN,
+	buffer = buffer_alloc(heap, desc->size, flags, PLATFORM_DCACHE_ALIGN,
 			      is_shared);
 	if (buffer) {
 		buffer->stream.runtime_stream_params.id = desc->comp.id;

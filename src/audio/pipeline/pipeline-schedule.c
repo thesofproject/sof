@@ -383,7 +383,6 @@ static enum task_state dp_task_run(void *data)
 
 int pipeline_comp_dp_task_init(struct comp_dev *comp)
 {
-	int ret;
 	/* DP tasks are guaranteed to have a module_adapter */
 	struct processing_module *mod = comp_mod(comp);
 	struct task_ops ops  = {
@@ -392,22 +391,17 @@ int pipeline_comp_dp_task_init(struct comp_dev *comp)
 		.complete	= NULL
 	};
 
-	if (!comp->task) {
-		ret = scheduler_dp_task_init(&comp->task,
-					     SOF_UUID(dp_task_uuid),
-					     &ops,
-					     mod,
-					     comp->ipc_config.core,
-					     TASK_DP_STACK_SIZE,
-#if CONFIG_USERSPACE
-					     mod->user_ctx ? K_USER : 
-#endif /* CONFIG_USERSPACE */
-					     0);
-		if (ret < 0)
-			return ret;
-	}
+	if (comp->task)
+		return 0;
 
-	return 0;
+#if CONFIG_SOF_USERSPACE_PROXY
+	unsigned int flags = mod->user_ctx ? K_USER : 0;
+#else
+	unsigned int flags = IS_ENABLED(CONFIG_USERSPACE) ? K_USER : 0;
+#endif
+
+	return scheduler_dp_task_init(&comp->task, SOF_UUID(dp_task_uuid), &ops, mod,
+				      comp->ipc_config.core, TASK_DP_STACK_SIZE, flags);
 }
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 

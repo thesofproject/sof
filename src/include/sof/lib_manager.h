@@ -199,15 +199,6 @@ void lib_manager_get_instance_bss_address(uint32_t instance_id,
 					  void __sparse_cache **va_addr, size_t *size);
 
 /*
- * \brief Free module
- *
- * param[in] component_id - component id coming from ipc config. This function reguires valid
- * lib_id and module_id fields of component id.
- *
- * Function is responsible to free module resources in HP memory.
- */
-int lib_manager_free_module(const uint32_t component_id);
-/*
  * \brief Load library
  *
  * param[in] dma_id - channel used to transfer binary from host
