@@ -486,9 +486,9 @@ end
 function src_test_result_print(t, testverbose, testacronym, ph)
 tstr = sprintf('%s SRC %d, %d', testverbose, t.fs1, t.fs2);
 if nargin > 3 && ~isempty(ph)
-        title(ph, tstr);
+        title(ph, tstr, 'Interpreter', 'none');
 else
-        title(tstr);
+        title(tstr, 'Interpreter', 'none');
 end
 pfn = sprintf('plots/%s_src_%d_%d.png', testacronym, t.fs1, t.fs2);
 print(pfn, '-dpng');
