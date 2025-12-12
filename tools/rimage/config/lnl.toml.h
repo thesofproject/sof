@@ -62,6 +62,10 @@
 #include <audio/src/src.toml>
 #endif
 
+#if defined(CONFIG_CADENCE_CODEC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/module_adapter/module/cadence.toml>
+#endif
+
 #if defined(CONFIG_COMP_SEL) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/selector/selector.toml>
 #endif

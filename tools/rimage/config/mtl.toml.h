@@ -78,6 +78,10 @@
 #include <audio/mux/mux.toml>
 #endif
 
+#if defined(CONFIG_CADENCE_CODEC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/module_adapter/module/cadence.toml>
+#endif
+
 #ifdef CONFIG_SAMPLE_KEYPHRASE
 #include <samples/audio/detect_test.toml>
 #endif
@@ -136,10 +140,6 @@
 
 #if defined(CONFIG_DTS_CODEC) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/codec/dts/dts.toml>
-#endif
-
-#ifdef CONFIG_CADENCE_CODEC
-#include <audio/module_adapter/module/cadence.toml>
 #endif
 
 #if defined(CONFIG_WAVES_CODEC) || defined(LLEXT_FORCE_ALL_MODULAR)
