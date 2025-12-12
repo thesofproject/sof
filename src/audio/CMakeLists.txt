@@ -121,9 +121,7 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 		add_subdirectory(mic_privacy_manager)
 	endif()
 	if(CONFIG_COMP_TONE)
-		add_local_sources(sof
-			tone.c
-		)
+		add_subdirectory(tone)
 	endif()
 	if(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 		list(APPEND base_files host-zephyr.c)
