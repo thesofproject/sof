@@ -51,6 +51,10 @@ __syscall int sof_dma_get_status(struct sof_dma *dma, uint32_t channel, struct d
 
 __syscall int sof_dma_reload(struct sof_dma *dma, uint32_t channel, size_t size);
 
+__syscall int sof_dma_suspend(struct sof_dma *dma, uint32_t channel);
+
+__syscall int sof_dma_resume(struct sof_dma *dma, uint32_t channel);
+
 static inline int z_impl_sof_dma_get_attribute(struct sof_dma *dma, uint32_t type, uint32_t *value)
 {
 	return dma_get_attribute(dma->z_dev, type, value);
@@ -93,6 +97,16 @@ static inline int z_impl_sof_dma_get_status(struct sof_dma *dma, uint32_t channe
 static inline int z_impl_sof_dma_reload(struct sof_dma *dma, uint32_t channel, size_t size)
 {
 	return dma_reload(dma->z_dev, channel, 0, 0, size);
+}
+
+static inline int z_impl_sof_dma_suspend(struct sof_dma *dma, uint32_t channel)
+{
+	return dma_suspend(dma->z_dev, channel);
+}
+
+static inline int z_impl_sof_dma_resume(struct sof_dma *dma, uint32_t channel)
+{
+	return dma_resume(dma->z_dev, channel);
 }
 
 #ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
@@ -162,6 +176,16 @@ static inline int sof_dma_get_status(struct sof_dma *dma, uint32_t channel, stru
 static inline int sof_dma_reload(struct sof_dma *dma, uint32_t channel, size_t size)
 {
 	return z_impl_sof_dma_reload(dma, channel, size);
+}
+
+static inline int sof_dma_suspend(struct sof_dma *dma, uint32_t channel)
+{
+	return z_impl_sof_dma_suspend(dma, channel);
+}
+
+static inline int sof_dma_resume(struct sof_dma *dma, uint32_t channel)
+{
+	return z_impl_sof_dma_resume(dma, channel);
 }
 
 #endif /* CONFIG_SOF_USERSPACE_INTERFACE_DMA */

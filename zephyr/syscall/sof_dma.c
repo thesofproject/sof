@@ -235,4 +235,20 @@ static inline int z_vrfy_sof_dma_reload(struct sof_dma *dma, uint32_t channel, s
 }
 #include <zephyr/syscalls/sof_dma_reload_mrsh.c>
 
+static inline int z_vrfy_sof_dma_suspend(struct sof_dma *dma, uint32_t channel)
+{
+	K_OOPS(!sof_dma_is_valid(dma));
+
+	return z_impl_sof_dma_suspend(dma, channel);
+}
+#include <zephyr/syscalls/sof_dma_suspend_mrsh.c>
+
+static inline int z_vrfy_sof_dma_resume(struct sof_dma *dma, uint32_t channel)
+{
+	K_OOPS(!sof_dma_is_valid(dma));
+
+	return z_impl_sof_dma_resume(dma, channel);
+}
+#include <zephyr/syscalls/sof_dma_resume_mrsh.c>
+
 #endif /* CONFIG_SOF_USERSPACE_INTERFACE_DMA */

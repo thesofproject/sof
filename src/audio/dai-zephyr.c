@@ -607,7 +607,7 @@ __cold void dai_common_free(struct dai_data *dd)
 		dai_group_put(dd->group);
 
 	if (dd->chan) {
-		dma_release_channel(dd->dma->z_dev, dd->chan->index);
+		sof_dma_release_channel(dd->dma, dd->chan->index);
 		dd->chan->dev_data = NULL;
 	}
 
@@ -798,7 +798,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 
 		comp_dbg(dev, "fifo 0x%x", fifo);
 
-		err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_MAX_BLOCK_COUNT, &max_block_count);
+		err = sof_dma_get_attribute(dd->dma, DMA_ATTR_MAX_BLOCK_COUNT, &max_block_count);
 		if (err < 0) {
 			comp_err(dev, "can't get max block count, err = %d",
 				 err);
@@ -954,14 +954,14 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT, &addr_align);
+	err = sof_dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT, &addr_align);
 	if (err < 0) {
 		comp_err(dev, "can't get dma buffer addr align, err = %d",
 			 err);
 		return err;
 	}
 
-	err = dma_get_attribute(dd->dma->z_dev, DMA_ATTR_BUFFER_SIZE_ALIGNMENT, &align);
+	err = sof_dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_SIZE_ALIGNMENT, &align);
 	if (err < 0 || !align) {
 		comp_err(dev, "no valid dma align, err = %d, align = %u",
 			 err, align);
@@ -1155,7 +1155,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	/* get DMA channel */
-	channel = dma_request_channel(dd->dma->z_dev, &channel);
+	channel = sof_dma_request_channel(dd->dma, channel);
 	if (channel < 0) {
 		comp_err(dev, "dma_request_channel() failed");
 		dd->chan = NULL;
@@ -1199,7 +1199,7 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 		return 0;
 	}
 
-	ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
+	ret = sof_dma_config(dd->chan->dma, dd->chan->index, dd->z_config);
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -1286,7 +1286,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			ret = dma_start(dd->chan->dma->z_dev, dd->chan->index);
+			ret = sof_dma_start(dd->chan->dma, dd->chan->index);
 			if (ret < 0)
 				return ret;
 
@@ -1324,16 +1324,16 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
-			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+			ret = sof_dma_stop(dd->chan->dma, dd->chan->index);
 			if (ret < 0)
 				return ret;
 
 			/* dma_config needed after stop */
-			ret = dma_config(dd->chan->dma->z_dev, dd->chan->index, dd->z_config);
+			ret = sof_dma_config(dd->chan->dma, dd->chan->index, dd->z_config);
 			if (ret < 0)
 				return ret;
 
-			ret = dma_start(dd->chan->dma->z_dev, dd->chan->index);
+			ret = sof_dma_start(dd->chan->dma, dd->chan->index);
 			if (ret < 0)
 				return ret;
 
@@ -1361,11 +1361,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
  * as soon as possible.
  */
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
-		ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		ret = sof_dma_stop(dd->chan->dma, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		ret = sof_dma_stop(dd->chan->dma, dd->chan->index);
 		if (ret) {
 			comp_warn(dev, "dma was stopped earlier");
 			ret = 0;
@@ -1375,11 +1375,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "PAUSE");
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
-		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
+		ret = sof_dma_suspend(dd->chan->dma, dd->chan->index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = dma_suspend(dd->chan->dma->z_dev, dd->chan->index);
+		ret = sof_dma_suspend(dd->chan->dma, dd->chan->index);
 #endif
 		break;
 	case COMP_TRIGGER_PRE_START:
@@ -1471,7 +1471,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 /* get status from dma and check for xrun */
 static int dai_get_status(struct comp_dev *dev, struct dai_data *dd, struct dma_status *stat)
 {
-	int ret = dma_get_status(dd->chan->dma->z_dev, dd->chan->index, stat);
+	int ret = sof_dma_get_status(dd->chan->dma, dd->chan->index, stat);
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	if (ret == -EPIPE && !dd->xrun_notification_sent) {
 		struct ipc_msg *notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
@@ -1582,7 +1582,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 #endif
 
 		for (i = 0; i < num_endpoints; i++) {
-			ret = dma_reload(dd[i]->chan->dma->z_dev, dd[i]->chan->index, 0, 0, 0);
+			ret = sof_dma_reload(dd[i]->chan->dma, dd[i]->chan->index, 0);
 			if (ret < 0) {
 				dai_report_xrun(dd[i], dev, 0);
 				return ret;
@@ -1608,10 +1608,10 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 
 		status = dai_dma_multi_endpoint_cb(dd[i], dev, frames, multi_endpoint_buffer);
 		if (status == SOF_DMA_CB_STATUS_END)
-			dma_stop(dd[i]->chan->dma->z_dev, dd[i]->chan->index);
+			sof_dma_stop(dd[i]->chan->dma, dd[i]->chan->index);
 
 		copy_bytes = frames * audio_stream_frame_bytes(&dd[i]->dma_buffer->stream);
-		ret = dma_reload(dd[i]->chan->dma->z_dev, dd[i]->chan->index, 0, 0, copy_bytes);
+		ret = sof_dma_reload(dd[i]->chan->dma, dd[i]->chan->index, copy_bytes);
 		if (ret < 0) {
 			dai_report_xrun(dd[i], dev, copy_bytes);
 			return ret;
@@ -1800,7 +1800,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		comp_warn(dev, "nothing to copy, src_frames: %u, sink_frames: %u",
 			  src_frames, sink_frames);
 #endif
-		dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, 0);
+		sof_dma_reload(dd->chan->dma, dd->chan->index, 0);
 		return 0;
 	}
 
@@ -1810,9 +1810,9 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		comp_warn(dev, "dai trigger copy failed");
 
 	if (dai_dma_cb(dd, dev, copy_bytes, converter) == SOF_DMA_CB_STATUS_END)
-		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		sof_dma_stop(dd->chan->dma, dd->chan->index);
 
-	ret = dma_reload(dd->chan->dma->z_dev, dd->chan->index, 0, 0, copy_bytes);
+	ret = sof_dma_reload(dd->chan->dma, dd->chan->index, copy_bytes);
 	if (ret < 0) {
 		dai_report_xrun(dd, dev, copy_bytes);
 		return ret;

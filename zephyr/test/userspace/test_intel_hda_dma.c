@@ -62,6 +62,7 @@ static void intel_hda_dma_user(void *p1, void *p2, void *p3)
 	LOG_INF("configure DMA channel");
 
 	channel = sof_dma_request_channel(dma, TEST_CHANNEL);
+	zassert_equal(channel, TEST_CHANNEL);
 	LOG_INF("sof_dma_request_channel: ret %d", channel);
 
 	err = sof_dma_get_attribute(dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
@@ -234,7 +235,7 @@ ZTEST_SUITE(userspace_intel_hda_dma, NULL, NULL, NULL, NULL, NULL);
  */
 static int run_tests(void)
 {
-	ztest_run_all(NULL, false, 1, 1);
+	ztest_run_test_suite(userspace_intel_hda_dma, false, 1, 1, NULL);
 	return 0;
 }
 

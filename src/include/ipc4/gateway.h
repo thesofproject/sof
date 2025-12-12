@@ -162,8 +162,8 @@ struct ipc4_ipc_gateway_config_blob {
 	uint32_t buffer_size;
 
 	/**< Flags */
-	union flags {
-		struct bits {
+	union {
+		struct {
 			/**< Activates high threshold notification */
 			/*!
 			 * Indicates whether notification should be sent to the host
