@@ -44,6 +44,10 @@
 #include <audio/src/src.toml>
 #endif
 
+#if defined(CONFIG_CADENCE_CODEC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/module_adapter/module/cadence.toml>
+#endif
+
 #if defined(CONFIG_SAMPLE_SMART_AMP) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <samples/audio/smart_amp_test.toml>
 #endif
