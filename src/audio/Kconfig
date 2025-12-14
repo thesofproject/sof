@@ -93,13 +93,6 @@ config COMP_STUBS
 	  Select to force all 3P blocks to link against stubs rather than their libraries. This
 	  should only be used in testing environments like fuzzers or CI.
 
-config COMP_TONE
-	bool "Tone component"
-	select CORDIC_FIXED
-	help
-	  Select for Tone component.
-	  Warning: This component is deprecated and will be removed from SOF v2.8.
-
 config COMP_KPB
 	bool "KPB component"
 	default y
@@ -154,6 +147,7 @@ rsource "src/Kconfig"
 rsource "tdfb/Kconfig"
 rsource "template/Kconfig"
 rsource "tensorflow/Kconfig"
+rsource "tone/Kconfig"
 rsource "up_down_mixer/Kconfig"
 rsource "volume/Kconfig"
 # --- End Kconfig Sources (alphabetical order) ---
