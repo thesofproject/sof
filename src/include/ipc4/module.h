@@ -77,7 +77,8 @@ struct ipc4_vendor_error {
 enum ipc4_mod_init_data_glb_id {
 	IPC4_MOD_INIT_DATA_ID_INVALID = 0,
 	IPC4_MOD_INIT_DATA_ID_DP_DATA = 1,
-	IPC4_MOD_INIT_DATA_ID_MAX = IPC4_MOD_INIT_DATA_ID_DP_DATA,
+	IPC4_MOD_INIT_DATA_ID_MODULE_DATA = 2,
+	IPC4_MOD_INIT_DATA_ID_MAX = IPC4_MOD_INIT_DATA_ID_MODULE_DATA,
 };
 
 /* data object for vendor bespoke data with ABI growth and backwards compat */
