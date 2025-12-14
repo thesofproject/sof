@@ -33,6 +33,8 @@
 struct ipc4_module_init_ext_obj_dp_data;
 struct module_ext_init_data {
 	const struct ipc4_module_init_ext_obj_dp_data *dp_data;
+	const void *module_data;
+	size_t module_data_size;
 };
 
 /**
