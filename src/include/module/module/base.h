@@ -38,9 +38,11 @@ struct module_config {
 	uint8_t nb_output_pins;
 	struct ipc4_input_pin_format *input_pins;
 	struct ipc4_output_pin_format *output_pins;
-	uint32_t domain_id;	/* userspace domain ID */
-	uint32_t stack_bytes;	/* stack size in bytes, 0 means default value */
-	uint32_t heap_bytes;	/* max heap size in bytes, 0 means default value */
+	uint32_t domain_id;		/* userspace domain ID */
+	uint32_t stack_bytes;		/* stack size in bytes */
+	uint32_t interim_heap_bytes;	/* interim heap size in bytes */
+	uint32_t lifetime_heap_bytes;	/* lifetime heap size in bytes */
+	uint32_t shared_bytes;		/* shared size in bytes */
 #endif
 };
 

@@ -90,9 +90,11 @@ struct ipc4_module_init_ext_object {
 
 /* Ext init array data object for Data Processing module memory requirements */
 struct ipc4_module_init_ext_obj_dp_data {
-	uint32_t domain_id;	/* userspace domain ID */
-	uint32_t stack_bytes;	/* required stack size in bytes, 0 means default size */
-	uint32_t heap_bytes;	/* required heap size in bytes, 0 means default size */
+	uint32_t domain_id;		/* userspace domain ID */
+	uint32_t stack_bytes;		/* required stack size in bytes */
+	uint32_t interim_heap_bytes;	/* required interim heap size in bytes */
+	uint32_t lifetime_heap_bytes;	/* required lifetime heap size in bytes */
+	uint32_t shared_bytes;		/* required shared memory size in bytes */
 } __attribute__((packed, aligned(4)));
 
 /*

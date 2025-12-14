@@ -67,15 +67,20 @@ module_ext_init_decode(struct comp_dev *dev, struct module_config *dst,
 				(const struct ipc4_module_init_ext_obj_dp_data *)(obj + 1);
 
 			if (obj->object_words * sizeof(uint32_t) < sizeof(*dp_data)) {
-				comp_err(dev, "dp_data object too small %zu < %zu",
-					 obj->object_words * sizeof(uint32_t), sizeof(*dp_data));
-				return NULL;
+				comp_warn(dev, "dp_data object too small %zu < %zu",
+					  obj->object_words * sizeof(uint32_t), sizeof(*dp_data));
+				break;
 			}
 			dst->domain_id = dp_data->domain_id;
 			dst->stack_bytes = dp_data->stack_bytes;
-			dst->heap_bytes = dp_data->heap_bytes;
-			comp_info(dev, "init_ext_obj_dp_data domain %u stack %u heap %u",
-				  dp_data->domain_id, dp_data->stack_bytes, dp_data->heap_bytes);
+			dst->interim_heap_bytes = dp_data->interim_heap_bytes;
+			dst->lifetime_heap_bytes = dp_data->interim_heap_bytes;
+			dst->shared_bytes = dp_data->shared_bytes;
+			comp_info(dev,
+				  "init_ext_obj_dp_data domain %u stack %u interim %u lifetime %u shared %u",
+				  dp_data->domain_id, dp_data->stack_bytes,
+				  dp_data->interim_heap_bytes, dp_data->lifetime_heap_bytes,
+				  dp_data->shared_bytes);
 			break;
 		}
 		default:
