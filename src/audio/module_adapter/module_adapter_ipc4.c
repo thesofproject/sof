@@ -35,7 +35,7 @@ module_ext_init_decode(struct comp_dev *dev, struct module_config *dst,
 	const struct ipc4_module_init_ext_object *obj;
 
 	if (*size < sizeof(ext_init)) {
-		comp_err(dev, "Size too small for ext init  %u < %u",
+		comp_err(dev, "Size too small for ext init %zu < %zu",
 			 *size, sizeof(ext_init));
 		return NULL;
 	}
@@ -47,7 +47,7 @@ module_ext_init_decode(struct comp_dev *dev, struct module_config *dst,
 
 		/* Check if there is space for the object header */
 		if ((unsigned char *)(obj + 1) - data > *size) {
-			comp_err(dev, "ext init obj overflow, %u > %u",
+			comp_err(dev, "ext init obj overflow, %u > %zu",
 				 (unsigned char *)(obj + 1) - data, *size);
 			return NULL;
 		}
@@ -55,7 +55,7 @@ module_ext_init_decode(struct comp_dev *dev, struct module_config *dst,
 		next_obj = (const struct ipc4_module_init_ext_object *)
 			(((uint32_t *) (obj + 1)) + obj->object_words);
 		if ((unsigned char *)next_obj - data > *size) {
-			comp_err(dev, "ext init object array overflow, %u > %u",
+			comp_err(dev, "ext init object array overflow, %u > %zu",
 				 (unsigned char *)obj - data, *size);
 			return NULL;
 		}
@@ -67,7 +67,7 @@ module_ext_init_decode(struct comp_dev *dev, struct module_config *dst,
 				(const struct ipc4_module_init_ext_obj_dp_data *)(obj + 1);
 
 			if (obj->object_words * sizeof(uint32_t) < sizeof(*dp_data)) {
-				comp_err(dev, "dp_data object too small %u < %u",
+				comp_err(dev, "dp_data object too small %zu < %zu",
 					 obj->object_words * sizeof(uint32_t), sizeof(*dp_data));
 				return NULL;
 			}
