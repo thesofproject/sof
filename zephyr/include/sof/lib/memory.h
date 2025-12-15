@@ -32,6 +32,9 @@ void dbg_path_cold_enter(const char *fn);
 
 static inline void __assert_can_be_cold(const char *fn)
 {
+	if (k_is_user_context())
+		return;
+
 	__ASSERT(!ll_sch_is_current(), "%s() called from an LL thread!", fn);
 	dbg_path_cold_enter(fn);
 }
