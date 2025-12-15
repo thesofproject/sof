@@ -431,7 +431,18 @@ int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd);
 void module_update_buffer_position(struct input_stream_buffer *input_buffers,
 				   struct output_stream_buffer *output_buffers,
 				   uint32_t frames);
-
+struct module_ext_init_data;
+#if CONFIG_IPC_MAJOR_4
+int module_ext_init_decode(const struct comp_driver *drv, struct module_ext_init_data *ext_data,
+			   struct ipc_config_process *spec);
+#else
+static inline
+int module_ext_init_decode(const struct comp_driver *drv, struct module_ext_init_data *ext_data,
+			   struct ipc_config_process *spec)
+{
+	return 0;
+}
+#endif
 int module_adapter_init_data(struct comp_dev *dev,
 			     struct module_config *dst,
 			     const struct comp_ipc_config *config,
