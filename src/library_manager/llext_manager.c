@@ -803,13 +803,15 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 	shdr_cold.sh_size = 0;
 	shdr_coldrodata.sh_size = 0;
 
-	ret = llext_get_section_header(ldr, ext, ".cold", &shdr_cold);
+	ret = llext_get_section_header((struct llext_loader *)ldr, (struct llext *)ext,
+				       ".cold", &shdr_cold);
 	if (ret < 0)
 		tr_warn(&lib_manager_tr, "couldn't get .cold header");
 	else
 		llext_get_region_info(ldr, ext, LLEXT_MEM_TEXT, NULL, &text_addr, NULL);
 
-	ret = llext_get_section_header(ldr, ext, ".coldrodata", &shdr_coldrodata);
+	ret = llext_get_section_header((struct llext_loader *)ldr, (struct llext *)ext,
+				       ".coldrodata", &shdr_coldrodata);
 	if (ret < 0)
 		tr_warn(&lib_manager_tr, "couldn't get .coldrodata header");
 	else
