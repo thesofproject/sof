@@ -187,7 +187,7 @@ static void module_adapter_mem_free(struct processing_module *mod)
  * \brief Create a module adapter component.
  * \param[in] drv - component driver pointer.
  * \param[in] config - component ipc descriptor pointer.
- * \param[in] spec - passdowned data from driver.
+ * \param[in] const_spec - passdowned data from driver.
  * \param[in] mod_priv - Pointer to private data for processing module.
  *
  * \return: a pointer to newly created module adapter component on success. NULL on error.
@@ -196,13 +196,18 @@ static void module_adapter_mem_free(struct processing_module *mod)
  *	 the create method.
  */
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
-					const struct comp_ipc_config *config, const void *spec,
-					void *mod_priv, struct userspace_context *user_ctx)
+					const struct comp_ipc_config *config,
+					const void *const_spec, void *mod_priv,
+					struct userspace_context *user_ctx)
 {
 	int ret;
 	struct module_config *dst;
 	const struct module_interface *const interface = drv->adapter_ops;
-
+	struct ipc_config_process spec =
+		*((const struct ipc_config_process *) const_spec);
+#if CONFIG_IPC_MAJOR_4
+	struct module_ext_init_data ext_data = { 0 };
+#endif
 	comp_cl_dbg(drv, "start");
 
 	if (!config) {
@@ -210,6 +215,13 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 			    (size_t)drv, (size_t)config);
 		return NULL;
 	}
+#if CONFIG_IPC_MAJOR_4
+	if (config->ipc_extended_init) {
+		ret = module_ext_init_decode(drv, &ext_data, &spec);
+		if (ret != 0)
+			return NULL;
+	}
+#endif
 
 	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
 
@@ -233,7 +245,17 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 #endif /* CONFIG_USERSPACE */
 
 	dst = &mod->priv.cfg;
-	ret = module_adapter_init_data(dev, dst, config, spec);
+	/*
+	 * NOTE: dst->ext_data points to stack variable and contains
+	 *       pointers to IPC payload mailbox, so its only valid in
+	 *       functions that called from this function. This why
+	 *       the pointer is set NULL before the this function
+	 *       exits.
+	 */
+#if CONFIG_IPC_MAJOR_4
+	dst->ext_data = &ext_data;
+#endif
+	ret = module_adapter_init_data(dev, dst, config, &spec);
 	if (ret) {
 		comp_err(dev, "%d: module init data failed",
 			 ret);
@@ -299,6 +321,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	component_set_nearest_period_frames(dev, params.rate);
 #endif
 
+#if CONFIG_IPC_MAJOR_4
+	dst->ext_data = NULL;
+#endif
 	comp_dbg(dev, "done");
 	return dev;
 
@@ -308,6 +333,9 @@ err:
 		schedule_task_free(dev->task);
 #endif
 	module_adapter_mem_free(mod);
+#if CONFIG_IPC_MAJOR_4
+	dst->ext_data = NULL;
+#endif
 
 	return NULL;
 }
