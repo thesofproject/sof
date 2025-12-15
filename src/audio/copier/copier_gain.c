@@ -34,12 +34,8 @@ __cold int copier_gain_set_params(struct comp_dev *dev, struct copier_gain_param
 	switch (dai_type) {
 	case SOF_DAI_INTEL_DMIC:
 		{
-			struct dmic_config_data *dmic_cfg = cd->gtw_cfg;
-
-			if (!dmic_cfg) {
-				comp_err(dev, "No dmic config found");
-				return -EINVAL;
-			}
+			struct dmic_config_data *dmic_cfg =
+					(void *)cd->config.gtw_cfg.config_data;
 
 			union dmic_global_cfg *dmic_glb_cfg = &dmic_cfg->dmic_blob.global_cfg;
 

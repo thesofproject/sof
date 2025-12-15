@@ -241,13 +241,6 @@ struct ipc4_data_segment_enabled {
 } __attribute__((packed, aligned(4)));
 
 struct copier_data {
-	/*
-	 * struct ipc4_copier_module_cfg actually has variable size, but we
-	 * don't need the variable size array at the end, we won't be copying it
-	 * from the IPC data.
-	 */
-	struct ipc4_copier_module_cfg config;
-	void *gtw_cfg;
 	enum ipc4_gateway_type gtw_type;
 	uint32_t endpoint_num;
 
@@ -277,6 +270,8 @@ struct copier_data {
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 	struct mic_privacy_data *mic_priv;
 #endif
+	/* Has to be at the end due to variable size array */
+	struct ipc4_copier_module_cfg config;
 };
 
 int apply_attenuation(struct comp_dev *dev, struct copier_data *cd,
