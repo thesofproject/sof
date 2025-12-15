@@ -4,7 +4,6 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-#include <sof/audio/coefficients/fft/twiddle_3072_32.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/format.h>
 #include <sof/trace/trace.h>
@@ -14,6 +13,7 @@
 #include <sof/math/fft.h>
 #include "fft_common.h"
 #include "fft_32.h"
+#include "coef/twiddle_3072_32.h"
 
 LOG_MODULE_REGISTER(math_fft_multi, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(math_fft_multi);

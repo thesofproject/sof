@@ -10,7 +10,7 @@
 #include <sof/math/fft.h>
 
 #ifdef FFT_GENERIC
-#include <sof/audio/coefficients/fft/twiddle_16.h>
+#include "coef/twiddle_16.h"
 
 /*
  * Helpers for 16 bit FFT calculation

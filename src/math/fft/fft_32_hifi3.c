@@ -10,8 +10,8 @@
 #include <sof/math/fft.h>
 
 #ifdef FFT_HIFI3
-#include <sof/audio/coefficients/fft/twiddle_32.h>
 #include <xtensa/tie/xt_hifi3.h>
+#include "coef/twiddle_32.h"
 
 void fft_execute_32(struct fft_plan *plan, bool ifft)
 {

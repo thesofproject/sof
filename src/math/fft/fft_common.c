@@ -13,7 +13,9 @@
 #include <sof/common.h>
 #include <rtos/alloc.h>
 #include <sof/math/fft.h>
+
 #include "fft_common.h"
+#include "fft_32.h"
 
 LOG_MODULE_REGISTER(math_fft, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(math_fft);

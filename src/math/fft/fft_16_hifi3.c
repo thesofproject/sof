@@ -9,8 +9,8 @@
 #include <sof/math/fft.h>
 
 #ifdef FFT_HIFI3
-#include <sof/audio/coefficients/fft/twiddle_16.h>
 #include <xtensa/tie/xt_hifi3.h>
+#include "coef/twiddle_16.h"
 
 /**
  * \brief Execute the 16-bits Fast Fourier Transform (FFT) or Inverse FFT (IFFT)

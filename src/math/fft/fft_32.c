@@ -13,9 +13,8 @@
 #include <stdio.h>
 
 #ifdef FFT_GENERIC
-#include <sof/audio/coefficients/fft/twiddle_32.h>
-
 #include "fft_32.h"
+#include "coef/twiddle_32.h"
 
 
 /**
