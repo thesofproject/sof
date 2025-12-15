@@ -91,13 +91,9 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 			struct processing_module *mod = comp_mod(dev);
 			struct copier_data *cd = module_get_private_data(mod);
 
-			if (!cd->gtw_cfg) {
-				comp_err(dev, "No gateway config found!");
-				return SOF_DMA_CHAN_INVALID;
-			}
-
 			channel = SOF_DMA_CHAN_INVALID;
-			const struct sof_alh_configuration_blob *alh_blob = cd->gtw_cfg;
+			const struct sof_alh_configuration_blob *alh_blob =
+							(void *)cd->config.gtw_cfg.config_data;
 
 			for (int i = 0; i < alh_blob->alh_cfg.count; i++) {
 				if (dai->host_dma_config[i]->stream_id == dai->dai_index) {

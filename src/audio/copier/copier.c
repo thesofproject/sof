@@ -136,48 +136,27 @@ __cold static int copier_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
 	struct ipc4_copier_module_cfg *copier = (struct ipc4_copier_module_cfg *)md->cfg.init_data;
-	void *gtw_cfg = NULL;
-	size_t gtw_cfg_size;
+	size_t cfg_total_size = sizeof(*copier);
+	size_t gtw_cfg_var_size = 0;
 	int i, ret = 0;
 
 	assert_can_be_cold();
 
-	cd = mod_zalloc(mod, sizeof(*cd));
+	if (copier->gtw_cfg.config_length > 1) {
+		/* one word already included in gateway_cfg struct hence subtraction */
+		gtw_cfg_var_size += (copier->gtw_cfg.config_length - 1) << 2;
+		cfg_total_size += gtw_cfg_var_size;
+	}
+
+	cd = mod_zalloc(mod, sizeof(*cd) + gtw_cfg_var_size);
 	if (!cd)
 		return -ENOMEM;
 
 	md->private = cd;
-	/*
-	 * Don't copy the config_data[] variable size array, we don't need to
-	 * store it, it's only used during IPC processing, besides we haven't
-	 * allocated space for it, so don't "fix" this!
-	 */
-	if (memcpy_s(&cd->config, sizeof(cd->config), copier, sizeof(*copier)) < 0) {
+
+	if (memcpy_s(&cd->config, cfg_total_size, copier, cfg_total_size) < 0) {
 		ret = -EINVAL;
-		goto error_cd;
-	}
-
-	/* Allocate memory and store gateway_cfg in runtime. Gateway cfg has to
-	 * be kept even after copier is created e.g. during SET_PIPELINE_STATE
-	 * IPC when dai_config_dma_channel() is called second time and DMA
-	 * config is used to assign dma_channel_id value.
-	 */
-	if (copier->gtw_cfg.config_length) {
-		gtw_cfg_size = copier->gtw_cfg.config_length << 2;
-		gtw_cfg = mod_alloc(mod, gtw_cfg_size);
-		if (!gtw_cfg) {
-			ret = -ENOMEM;
-			goto error_cd;
-		}
-
-		ret = memcpy_s(gtw_cfg, gtw_cfg_size, &copier->gtw_cfg.config_data,
-			       gtw_cfg_size);
-		if (ret) {
-			comp_err(dev, "Unable to copy gateway config from copier blob");
-			goto error;
-		}
-
-		cd->gtw_cfg = gtw_cfg;
+		goto error;
 	}
 
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
@@ -257,8 +236,6 @@ __cold static int copier_init(struct processing_module *mod)
 	dev->state = COMP_STATE_READY;
 	return 0;
 error:
-	mod_free(mod, gtw_cfg);
-error_cd:
 	mod_free(mod, cd);
 	return ret;
 }
@@ -289,8 +266,6 @@ __cold static int copier_free(struct processing_module *mod)
 		break;
 	}
 
-	if (cd)
-		mod_free(mod, cd->gtw_cfg);
 	mod_free(mod, cd);
 
 	return 0;
