@@ -61,7 +61,7 @@ config SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE
 	hex "Size of the shared buffer heap for SOF userspace modules"
 	default 0x0 if !SOF_USERSPACE_USE_SHARED_HEAP
 	default 0x1E000 if SOC_INTEL_ACE15_MTPM || SOC_INTEL_ACE20_LNL
-	default 0x1A000 if SOC_INTEL_ACE30
+	default 0x10000 if SOC_INTEL_ACE30
 	default 0x0
 	depends on USERSPACE
 	help
