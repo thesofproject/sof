@@ -324,6 +324,14 @@ void audio_buffer_reset(struct sof_audio_buffer *buffer)
 {
 	if (buffer->ops->reset)
 		buffer->ops->reset(buffer);
+
+#if CONFIG_PIPELINE_2_0
+	if (buffer->secondary_buffer_sink && buffer->secondary_buffer_sink->ops->reset)
+		buffer->secondary_buffer_sink->ops->reset(buffer->secondary_buffer_sink);
+
+	if (buffer->secondary_buffer_source && buffer->secondary_buffer_source->ops->reset)
+		buffer->secondary_buffer_source->ops->reset(buffer->secondary_buffer_source);
+#endif
 }
 
 /* Audio-buffer wrappers for the source-sink API */
