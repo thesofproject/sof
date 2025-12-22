@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <rtos/string.h>
+#include <rtos/userspace_helper.h>
 #include <utilities/array.h>
 #include <module/iadk/adsp_error_code.h>
 #include <system_service.h>
@@ -38,7 +39,7 @@ namespace system
 {
 
 /* Structure storing handles to system service operations */
-const AdspSystemService SystemAgent::system_service_ = {
+const APP_TASK_DATA AdspSystemService SystemAgent::system_service_ = {
 	native_system_service_log_message,
 	native_system_service_safe_memcpy,
 	native_system_service_safe_memmove,
