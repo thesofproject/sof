@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 if(CONFIG_IPC_MAJOR_3)
-	add_local_sources(sof module_adapter.c module_adapter_ipc3.c module/generic.c)
+	add_local_sources(sof module_adapter.c module_adapter_ipc3.c module/generic.c
+			  module/memory-common.c module/memory-heap.c)
 elseif(CONFIG_IPC_MAJOR_4)
-	add_local_sources(sof module_adapter.c module_adapter_ipc4.c module/generic.c)
+	add_local_sources(sof module_adapter.c module_adapter_ipc4.c module/generic.c
+			  module/memory-common.c module/memory-heap.c)
 endif()
 
 is_zephyr(zephyr)
