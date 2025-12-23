@@ -630,9 +630,21 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	    source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 		struct sof_source *src = audio_buffer_get_source(&buffer->audio_buffer);
 		struct sof_sink *snk = audio_buffer_get_sink(&buffer->audio_buffer);
+		struct processing_module *srcmod = comp_mod(source);
+		struct module_data *src_module_data = &srcmod->priv;
+		struct processing_module *dstmod = comp_mod(sink);
+		struct module_data *dst_module_data = &dstmod->priv;
 
-		ring_buffer = ring_buffer_create(dp, source_get_min_available(src),
-						 sink_get_min_free_space(snk),
+		/*
+		 * Handle cases where the size of the ring buffer depends on the
+		 * in_buff_size/out_buff_size advertised by the module. E.g. in the case of the
+		 * compressed decoder module, the in/out_buff_size is determined during module
+		 * init based on the decoder implementation
+		 */
+		ring_buffer = ring_buffer_create(dp, MAX(source_get_min_available(src),
+							 dst_module_data->mpd.in_buff_size),
+						 MAX(sink_get_min_free_space(snk),
+						     src_module_data->mpd.out_buff_size),
 						 audio_buffer_is_shared(&buffer->audio_buffer),
 						 buf_get_id(buffer));
 		if (!ring_buffer) {
