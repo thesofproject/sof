@@ -111,12 +111,12 @@ void mod_fft_multi_plan_free(struct processing_module *mod, struct fft_multi_pla
 
 /**
  * dft3_32() - Discrete Fourier Transform (DFT) for size 3.
- * @x: Pointer to complex values input array, Q1.31
- * @y: Pointer to complex values output array, Q3.29
+ * @param input: Pointer to complex values input array, Q1.31
+ * @param output: Pointer to complex values output array, Q3.29
  *
- * This function is useful for calculating some non power of two FFTs. e.g. FFT for
- * size 1536 is done with three 512 size FFTs and one 3 size DFT.
+ * This function is useful for calculating some non power of two FFTs. E.g. the
+ * FFT for size 1536 is done with three 512 size FFTs and one 3 size DFT.
  */
-void dft3_32(struct icomplex32 *x_in, struct icomplex32 *y);
+void dft3_32(struct icomplex32 *input, struct icomplex32 *output);
 
 #endif /* __SOF_FFT_H__ */
