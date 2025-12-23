@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-set(common_files notifier.c dma.c dai.c)
+set(common_files notifier.c dma.c dai.c objpool.c)
 
 if(CONFIG_LIBRARY)
   add_local_sources(sof
