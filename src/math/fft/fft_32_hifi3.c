@@ -11,7 +11,6 @@
 
 #ifdef FFT_HIFI3
 #include <xtensa/tie/xt_hifi3.h>
-#include "coef/twiddle_32.h"
 
 void fft_execute_32(struct fft_plan *plan, bool ifft)
 {
@@ -23,6 +22,7 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 	ae_int32x2 *outx = (ae_int32x2 *)plan->outb32;
 	ae_int32x2 *outtop;
 	ae_int32x2 *outbottom;
+	ae_int32x2 *twiddle;
 	uint16_t *idx = &plan->bit_reverse_idx[0];
 	int depth, top, bottom, index;
 	int i, j, k, m, n;
@@ -55,23 +55,22 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 	}
 
 	/* step 2: loop to do FFT transform in smaller size */
+	twiddle = plan->twiddle;
 	for (depth = 1; depth <= len; ++depth) {
 		m = 1 << depth;
 		n = m >> 1;
-		i = FFT_SIZE_MAX >> depth;
+		i = size >> depth;
 
 		/* doing FFT transforms in size m */
 		for (k = 0; k < size; k += m) {
 			/* doing one FFT transform for size m */
 			for (j = 0; j < n; ++j) {
-				index = i * j;
+				index = i * j * sizeof(ae_int32x2);
 				top = k + j;
 				bottom = top + n;
 
 				/* load twiddle factor to sample1 */
-				sample1 = twiddle_real_32[index];
-				sample2 = twiddle_imag_32[index];
-				sample1 = AE_SEL32_LH(sample1, sample2);
+				sample1 = AE_L32X2_X(twiddle, index);
 
 				/* calculate the accumulator: twiddle * bottom */
 				sample2 = outx[bottom];

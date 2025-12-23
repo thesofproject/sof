@@ -14,8 +14,6 @@
 
 #ifdef FFT_GENERIC
 #include "fft_32.h"
-#include "coef/twiddle_32.h"
-
 
 /**
  * \brief Execute the 32-bits Fast Fourier Transform (FFT) or Inverse FFT (IFFT)
@@ -29,6 +27,7 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 	struct icomplex32 tmp2;
 	struct icomplex32 *inb;
 	struct icomplex32 *outb;
+	struct icomplex32 *twiddle;
 	int depth;
 	int top;
 	int bottom;
@@ -58,10 +57,11 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 		icomplex32_shift(&inb[i], -(plan->len), &outb[plan->bit_reverse_idx[i]]);
 
 	/* step 2: loop to do FFT transform in smaller size */
+	twiddle = plan->twiddle;
 	for (depth = 1; depth <= plan->len; ++depth) {
 		m = 1 << depth;
 		n = m >> 1;
-		i = FFT_SIZE_MAX >> depth;
+		i = plan->size >> depth;
 
 		/* doing FFT transforms in size m */
 		for (k = 0; k < plan->size; k += m) {
@@ -70,8 +70,7 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 				index = i * j;
 				top = k + j;
 				bottom = top + n;
-				tmp1.real = twiddle_real_32[index];
-				tmp1.imag = twiddle_imag_32[index];
+				tmp1 = twiddle[index];
 				/* calculate the accumulator: twiddle * bottom */
 				icomplex32_mul(&tmp1, &outb[bottom], &tmp2);
 				tmp1 = outb[top];

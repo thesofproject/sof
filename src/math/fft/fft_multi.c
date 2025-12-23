@@ -24,6 +24,23 @@ DECLARE_TR_CTX(math_fft_multi_tr, SOF_UUID(math_fft_multi_uuid), LOG_LEVEL_INFO)
 #define DFT3_COEFI	1859775393	/* int32(sqrt(3) / 2 * 2^31) */
 #define DFT3_SCALE	715827883	/* int32(1/3*2^31) */
 
+static void init_multi_fft_twiddle(struct fft_multi_plan *plan)
+{
+	int32_t *twiddle;
+	int i, j, k, m;
+
+	/* Copy The twiddle factors to usage order */
+	m = FFT_MULTI_TWIDDLE_SIZE / 2 / plan->fft_size;
+	twiddle = plan->multi_twiddle;
+	for (j = 1; j < plan->num_ffts; j++) {
+		for (i = 0; i < plan->fft_size; i++) {
+			k = j * i * m;
+			*twiddle++ = multi_twiddle_real_32[k];
+			*twiddle++ = multi_twiddle_imag_32[k];
+		}
+	}
+}
+
 struct fft_multi_plan *mod_fft_multi_plan_new(struct processing_module *mod, void *inb,
 					      void *outb, uint32_t size, int bits)
 {
@@ -31,6 +48,11 @@ struct fft_multi_plan *mod_fft_multi_plan_new(struct processing_module *mod, voi
 	size_t tmp_size;
 	const int size_div3 = size / 3;
 	int i;
+
+	if (bits != 32) {
+		comp_cl_err(mod->dev, "Not supported word length %d", bits);
+		return NULL;
+	}
 
 	if (!inb || !outb) {
 		comp_cl_err(mod->dev, "Null buffers");
@@ -45,6 +67,9 @@ struct fft_multi_plan *mod_fft_multi_plan_new(struct processing_module *mod, voi
 	plan = mod_zalloc(mod, sizeof(struct fft_multi_plan));
 	if (!plan)
 		return NULL;
+
+	plan->inb32 = inb;
+	plan->outb32 = outb;
 
 	if (is_power_of_2(size)) {
 		plan->num_ffts = 1;
@@ -69,54 +94,71 @@ struct fft_multi_plan *mod_fft_multi_plan_new(struct processing_module *mod, voi
 		goto err;
 	}
 
-	switch (bits) {
-	case 32:
-		plan->inb32 = inb;
-		plan->outb32 = outb;
+	/* Allocate twiddle factors, 2x int32_t for real and complex */
+	plan->multi_twiddle = mod_alloc_align(mod, size * sizeof(int64_t), sizeof(int64_t));
+	if (!plan->multi_twiddle) {
+		comp_cl_err(mod->dev, "Failed to allocate twiddle factors buffer");
+		goto err_free_bit_reverse;
+	}
 
-		if (plan->num_ffts > 1) {
-			/* Allocate input/output buffers for FFTs */
-			tmp_size = 2 * plan->num_ffts * plan->fft_size * sizeof(struct icomplex32);
-			plan->tmp_i32[0] = mod_balloc(mod, tmp_size);
-			if (!plan->tmp_i32[0]) {
-				comp_cl_err(mod->dev, "Failed to allocate FFT buffers");
-				goto err_free_bit_reverse;
-			}
+	init_multi_fft_twiddle(plan);
 
-			/* Set up buffers */
-			plan->tmp_o32[0] = plan->tmp_i32[0] + plan->fft_size;
-			for (i = 1; i < plan->num_ffts; i++) {
-				plan->tmp_i32[i] = plan->tmp_o32[i - 1] + plan->fft_size;
-				plan->tmp_o32[i] = plan->tmp_i32[i] + plan->fft_size;
-			}
-		} else {
-			plan->tmp_i32[0] = inb;
-			plan->tmp_o32[0] = outb;
+	/* Allocate memory for packed twiddle factors */
+	plan->shared_twiddle = fft_plan_allocate_twiddle(mod, plan->fft_size, bits);
+	if (!plan->shared_twiddle) {
+		comp_cl_err(mod->dev, "Failed to allocate twiddle factors.");
+		goto err_free_multi_twiddle;
+	}
+
+	/* Pack twiddle factors from sparse real and image to complex pairs */
+	fft_plan_init_twiddle(plan->shared_twiddle, plan->fft_size, bits);
+
+	if (plan->num_ffts > 1) {
+		/* Allocate input/output buffers for FFTs */
+		tmp_size = 2 * plan->num_ffts * plan->fft_size * sizeof(struct icomplex32);
+		plan->tmp_i32[0] = mod_balloc(mod, tmp_size);
+		if (!plan->tmp_i32[0]) {
+			comp_cl_err(mod->dev, "Failed to allocate FFT buffers");
+			goto err_free_shared_twiddle;
 		}
 
-		for (i = 0; i < plan->num_ffts; i++) {
-			plan->fft_plan[i] = fft_plan_common_new(mod,
-								plan->tmp_i32[i],
-								plan->tmp_o32[i],
-								plan->fft_size, 32);
-			if (!plan->fft_plan[i])
-				goto err_free_buffer;
-
-			plan->fft_plan[i]->bit_reverse_idx = plan->bit_reverse_idx;
+		/* Set up buffers */
+		plan->tmp_o32[0] = plan->tmp_i32[0] + plan->fft_size;
+		for (i = 1; i < plan->num_ffts; i++) {
+			plan->tmp_i32[i] = plan->tmp_o32[i - 1] + plan->fft_size;
+			plan->tmp_o32[i] = plan->tmp_i32[i] + plan->fft_size;
 		}
-		break;
-	default:
-		comp_cl_err(mod->dev, "Not supported word length %d", bits);
-		goto err;
+	} else {
+		plan->tmp_i32[0] = inb;
+		plan->tmp_o32[0] = outb;
+	}
+
+	for (i = 0; i < plan->num_ffts; i++) {
+		plan->fft_plan[i] = fft_plan_common_new(mod,
+							plan->tmp_i32[i],
+							plan->tmp_o32[i],
+							plan->fft_size, 32);
+		if (!plan->fft_plan[i])
+			goto err_free_buffer;
+
+		plan->fft_plan[i]->bit_reverse_idx = plan->bit_reverse_idx;
+		plan->fft_plan[i]->twiddle = plan->shared_twiddle;
 	}
 
 	/* Set up common bit index reverse table */
 	fft_plan_init_bit_reverse(plan->bit_reverse_idx, plan->fft_plan[0]->size,
 				  plan->fft_plan[0]->len);
+
 	return plan;
 
 err_free_buffer:
 	mod_free(mod, plan->tmp_i32[0]);
+
+err_free_shared_twiddle:
+	mod_free(mod, plan->shared_twiddle);
+
+err_free_multi_twiddle:
+	mod_free(mod, plan->multi_twiddle);
 
 err_free_bit_reverse:
 	mod_free(mod, plan->bit_reverse_idx);
@@ -141,6 +183,7 @@ void mod_fft_multi_plan_free(struct processing_module *mod, struct fft_multi_pla
 		mod_free(mod, plan->tmp_i32[0]);
 
 	mod_free(mod, plan->bit_reverse_idx);
+	mod_free(mod, plan->multi_twiddle);
 	mod_free(mod, plan);
 }
 
@@ -188,8 +231,9 @@ void fft_multi_execute_32(struct fft_multi_plan *plan, bool ifft)
 {
 	struct icomplex32 x[FFT_MULTI_COUNT_MAX];
 	struct icomplex32 y[FFT_MULTI_COUNT_MAX];
-	struct icomplex32 t, c;
-	int i, j, k, m;
+	struct icomplex32 c;
+	struct icomplex32 *t;
+	int i, j, k;
 
 	/* Handle 2^N FFT */
 	if (plan->num_ffts == 1) {
@@ -230,15 +274,12 @@ void fft_multi_execute_32(struct fft_multi_plan *plan, bool ifft)
 #endif
 
 	/* Multiply with twiddle factors */
-	m = FFT_MULTI_TWIDDLE_SIZE / 2 / plan->fft_size;
+	t = (struct icomplex32 *)plan->multi_twiddle;
 	for (j = 1; j < plan->num_ffts; j++) {
 		for (i = 0; i < plan->fft_size; i++) {
 			c = plan->tmp_o32[j][i];
-			k = j * i * m;
-			t.real = multi_twiddle_real_32[k];
-			t.imag = multi_twiddle_imag_32[k];
-			//fprintf(fh3, "%d %d\n", t.real, t.imag);
-			icomplex32_mul(&t, &c, &plan->tmp_o32[j][i]);
+			icomplex32_mul(t, &c, &plan->tmp_o32[j][i]);
+			t++;
 		}
 	}
 
