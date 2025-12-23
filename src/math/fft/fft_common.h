@@ -4,6 +4,15 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
+#ifndef __SOF_FFT_COMMON_H__
+#define __SOF_FFT_COMMON_H__
+
+#if CONFIG_MATH_FFT_COLD_TWIDDLE_FACTORS
+#define SOF_MATH_FFT_COLD_RODATA __cold_rodata
+#else
+#define SOF_MATH_FFT_COLD_RODATA
+#endif
+
 /**
  * fft_plan_common_new() - Common FFT prepare function
  * @param mod: Pointer to module
@@ -23,3 +32,22 @@ struct fft_plan *fft_plan_common_new(struct processing_module *mod, void *inb,
  * @param len: Power of two value equals FFT size
  */
 void fft_plan_init_bit_reverse(uint16_t *bit_reverse_idx, int size, int len);
+
+/**
+ * fft_plan_allocate_twiddle - Allocates memory for twiddle factors
+ * @param mod: pointer to module
+ * @param size: size of FFT
+ * @param bits: word length of FFT, 32 or 16
+ * @return Pointer to allocated memory
+ */
+void *fft_plan_allocate_twiddle(struct processing_module *mod, int size, int bits);
+
+/**
+ * fft_plan_init_twiddle - sets up a decimated and re-arranged twiddle factors tabled
+ * @param twiddle: pointer to destination twiddle factors
+ * @param size: size of FFT
+ * @param bits: word length of FFT, 32 or 16
+ */
+void fft_plan_init_twiddle(void *twiddle, int size, int bits);
+
+#endif /* __SOF_FFT_COMMON_H__ */
