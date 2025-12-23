@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2025 Intel Corporation.
+
+#include <rtos/alloc.h>
+#include <rtos/bit.h>
+#include <sof/objpool.h>
+#include <sof/common.h>
+#include <sof/list.h>
+
+#include <errno.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+struct objpool {
+	struct list_item list;
+	unsigned int n;
+	uint32_t mask;
+	size_t size;
+	uint8_t data[];
+};
+
+#define OBJPOOL_BITS (sizeof(((struct objpool *)0)->mask) * 8)
+
+static int objpool_add(struct list_item *head, unsigned int n, size_t size)
+{
+	if (n > OBJPOOL_BITS)
+		return -ENOMEM;
+
+	if (!is_power_of_2(n))
+		return -EINVAL;
+
+	size_t aligned_size = ALIGN_UP(size, sizeof(int));
+
+	/* Initialize with 0 to give caller a chance to identify new allocations */
+	struct objpool *pobjpool = rzalloc(0, n * aligned_size + sizeof(*pobjpool));
+
+	if (!pobjpool)
+		return -ENOMEM;
+
+	pobjpool->n = n;
+	/* clear bit means free */
+	pobjpool->mask = 0;
+	pobjpool->size = size;
+
+	list_item_append(&pobjpool->list, head);
+
+	return 0;
+}
+
+void *objpool_alloc(struct list_item *head, size_t size)
+{
+	size_t aligned_size = ALIGN_UP(size, sizeof(int));
+	struct list_item *list;
+	struct objpool *pobjpool;
+
+	/* Make sure size * 32 still fits in OBJPOOL_BITS bits */
+	if (!size || aligned_size > (UINT_MAX >> 5) - sizeof(*pobjpool))
+		return NULL;
+
+	list_for_item(list, head) {
+		pobjpool = container_of(list, struct objpool, list);
+
+		uint32_t free_mask = MASK(pobjpool->n - 1, 0) & ~pobjpool->mask;
+
+		/* sanity check */
+		if (size != pobjpool->size)
+			return NULL;
+
+		if (!free_mask)
+			continue;
+
+		/* Find first free - guaranteed valid now */
+		unsigned int bit = ffs(free_mask) - 1;
+
+		pobjpool->mask |= BIT(bit);
+
+		return pobjpool->data + aligned_size * bit;
+	}
+
+	/* no free elements found */
+	unsigned int new_n;
+
+	if (list_is_empty(head)) {
+		new_n = 2;
+	} else {
+		/* Check the last one */
+		pobjpool = container_of(head->prev, struct objpool, list);
+
+		if (pobjpool->n == OBJPOOL_BITS)
+			new_n = OBJPOOL_BITS;
+		else
+			new_n = pobjpool->n << 1;
+	}
+
+	if (objpool_add(head, new_n, size) < 0)
+		return NULL;
+
+	/* Return the first element of the new objpool, which is now the last one in the list */
+	pobjpool = container_of(head->prev, struct objpool, list);
+	pobjpool->mask = 1;
+
+	return pobjpool->data;
+}
+
+int objpool_free(struct list_item *head, void *data)
+{
+	struct list_item *list;
+	struct objpool *pobjpool;
+
+	if (!data)
+		return 0;
+
+	list_for_item(list, head) {
+		pobjpool = container_of(list, struct objpool, list);
+
+		size_t aligned_size = ALIGN_UP(pobjpool->size, sizeof(int));
+
+		if ((uint8_t *)data >= pobjpool->data &&
+		    (uint8_t *)data < pobjpool->data + aligned_size * pobjpool->n) {
+			unsigned int n = ((uint8_t *)data - pobjpool->data) / aligned_size;
+
+			if ((uint8_t *)data != pobjpool->data + n * aligned_size)
+				return -EINVAL;
+
+			pobjpool->mask &= ~BIT(n);
+
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
