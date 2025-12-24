@@ -38,15 +38,15 @@ struct task_dp_pdata {
 	k_thread_stack_t *p_stack;	/* pointer to thread stack */
 	struct processing_module *mod;	/* the module to be scheduled */
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
-#if CONFIG_SOF_USERSPACE_PROXY || !CONFIG_USERSPACE
-	struct k_event *event;		/* pointer to event for task scheduling */
-	struct k_event event_struct;	/* event for task scheduling for kernel threads */
-#else
+#if CONFIG_SOF_USERSPACE_APPLICATION
 	struct k_sem *sem;              /* pointer to semaphore for task scheduling */
 	struct k_sem sem_struct;        /* semaphore for task scheduling for kernel threads */
 	unsigned char pend_ipc;
 	unsigned char pend_proc;
 	struct k_mem_partition mpart[SOF_DP_PART_TYPE_COUNT];
+#else
+	struct k_event *event;		/* pointer to event for task scheduling */
+	struct k_event event_struct;	/* event for task scheduling for kernel threads */
 #endif
 };
 
@@ -58,10 +58,10 @@ void scheduler_dp_grant(k_tid_t thread_id, uint16_t core);
 int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops, struct processing_module *mod,
 			   uint16_t core, size_t stack_size, uint32_t options);
-#if CONFIG_SOF_USERSPACE_PROXY || !CONFIG_USERSPACE
-static inline void scheduler_dp_domain_free(struct processing_module *pmod) {}
-static inline int scheduler_dp_domain_init(void) {return 0;}
-#else
+#if CONFIG_SOF_USERSPACE_APPLICATION
 void scheduler_dp_domain_free(struct processing_module *pmod);
 int scheduler_dp_domain_init(void);
+#else
+static inline void scheduler_dp_domain_free(struct processing_module *pmod) {}
+static inline int scheduler_dp_domain_init(void) {return 0;}
 #endif
