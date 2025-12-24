@@ -10,8 +10,12 @@ is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 
 	# modules and codecs in alphabetical order
-
-	zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC module/cadence.c)
+if (CONFIG_IPC_MAJOR_3)
+	zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC module/cadence.c module/cadence_ipc3.c)
+elseif (CONFIG_IPC_MAJOR_4)
+	zephyr_include_directories(${sof_top_dir}/src/include/sof/audio/cadence)
+	zephyr_library_sources_ifdef(CONFIG_CADENCE_CODEC module/cadence.c module/cadence_ipc4.c)
+endif()
 
 	if (CONFIG_CADENCE_CODEC_AAC_DEC)
 		zephyr_library_import(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
