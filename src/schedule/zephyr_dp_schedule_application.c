@@ -36,9 +36,6 @@ static struct k_mem_domain dp_mdom[CONFIG_CORE_COUNT];
 #define DP_SYNC_INIT_LIST	LISTIFY(CONFIG_CORE_COUNT, DP_SYNC_INIT, (,))
 static STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_sync, CONFIG_CORE_COUNT) = { DP_SYNC_INIT_LIST };
 
-/* TODO: make this a shared kernel->module buffer for IPC parameters */
-static uint8_t ipc_buf[4096] __aligned(4096);
-
 struct ipc4_flat {
 	unsigned int cmd;
 	int ret;
@@ -52,7 +49,7 @@ struct ipc4_flat {
 			enum ipc4_pipeline_state state;
 			int n_sources;
 			int n_sinks;
-			void *source_sink[];
+			void *source_sink[2 * CONFIG_MODULE_MAX_CONNECTIONS];
 		} pipeline_state;
 	};
 };
@@ -79,15 +76,14 @@ static int ipc_thread_flatten(unsigned int cmd, const union scheduler_dp_thread_
 		case COMP_TRIGGER_STOP:
 			break;
 		case COMP_TRIGGER_PREPARE:
-			if (sizeof(flat->cmd) + sizeof(flat->ret) + sizeof(flat->pipeline_state) +
-			    sizeof(void *) * (param->pipeline_state.n_sources +
-					      param->pipeline_state.n_sinks) >
-			    sizeof(ipc_buf))
+			if (param->pipeline_state.n_sources > CONFIG_MODULE_MAX_CONNECTIONS ||
+			    param->pipeline_state.n_sinks > CONFIG_MODULE_MAX_CONNECTIONS)
 				return -ENOMEM;
 
 			flat->pipeline_state.state = param->pipeline_state.state;
 			flat->pipeline_state.n_sources = param->pipeline_state.n_sources;
 			flat->pipeline_state.n_sinks = param->pipeline_state.n_sinks;
+			/* Up to 2 * CONFIG_MODULE_MAX_CONNECTIONS */
 			memcpy(flat->pipeline_state.source_sink, param->pipeline_state.sources,
 			       flat->pipeline_state.n_sources *
 			       sizeof(flat->pipeline_state.source_sink[0]));
@@ -178,12 +174,10 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 
 	unsigned int lock_key = scheduler_dp_lock(pmod->dev->task->core);
 
-	struct ipc4_flat *flat = (struct ipc4_flat *)ipc_buf;
-
 	/* IPCs are serialised */
-	flat->ret = -ENOSYS;
+	pdata->flat->ret = -ENOSYS;
 
-	ret = ipc_thread_flatten(cmd, param, flat);
+	ret = ipc_thread_flatten(cmd, param, pdata->flat);
 	if (!ret) {
 		pdata->pend_ipc++;
 		k_sem_give(pdata->sem);
@@ -197,7 +191,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 		if (ret < 0)
 			tr_err(&dp_tr, "Failed waiting for DP thread: %d", ret);
 		else
-			ret = flat->ret;
+			ret = pdata->flat->ret;
 	}
 
 	return ret;
@@ -316,7 +310,7 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 		if (pend_ipc) {
 			/* handle IPC */
 			tr_dbg(&dp_tr, "got IPC wake up for %p state %d", pmod, task->state);
-			ipc_thread_unflatten_run(pmod, (struct ipc4_flat *)ipc_buf);
+			ipc_thread_unflatten_run(pmod, task_pdata->flat);
 			k_sem_give(&dp_sync[task->core]);
 		}
 
@@ -401,7 +395,6 @@ void scheduler_dp_domain_free(struct processing_module *pmod)
 	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
 
 	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_HEAP);
-	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_IPC);
 	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_CFG);
 #endif
 }
@@ -416,6 +409,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		struct task task;
 		struct task_dp_pdata pdata;
 		struct comp_driver drv;
+		struct ipc4_flat flat;
 	} *task_memory;
 
 	int ret;
@@ -465,6 +459,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	/* It will be overwritten for K_USER threads to dynamic ones.  */
 	pdata->sem = &pdata->sem_struct;
 	pdata->thread = &pdata->thread_struct;
+	pdata->flat = &task_memory->flat;
 
 #ifdef CONFIG_USERSPACE
 	if (options & K_USER) {
@@ -525,12 +520,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	pdata->mpart[SOF_DP_PART_HEAP] = (struct k_mem_partition){
 		.start = start,
 		.size = size,
-		.attr = K_MEM_PARTITION_P_RW_U_RW,
-	};
-	/* IPC flattening buffer partition */
-	pdata->mpart[SOF_DP_PART_IPC] = (struct k_mem_partition){
-		.start = (uintptr_t)&ipc_buf,
-		.size = sizeof(ipc_buf),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 	/* Host mailbox partition for additional IPC parameters: read-only */
