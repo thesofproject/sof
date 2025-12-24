@@ -510,10 +510,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	unsigned int pidx;
 	size_t size;
 	uintptr_t start;
-	struct k_mem_partition *ppart[SOF_DP_PART_TYPE_COUNT];
-
-	for (pidx = 0; pidx < ARRAY_SIZE(ppart); pidx++)
-		ppart[pidx] = pdata->mpart + pidx;
 
 	/* Module heap partition */
 	mod_heap_info(mod, &size, &start);
