@@ -416,12 +416,11 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		struct task task;
 		struct task_dp_pdata pdata;
 		struct comp_driver drv;
-		struct module_interface ops;
 	} *task_memory;
 
 	int ret;
 
-	/* must be called on the same core the task will be binded to */
+	/* must be called on the same core the task will be bound to */
 	assert(cpu_get_id() == core);
 
 	/*
@@ -441,8 +440,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	memset(task_memory, 0, sizeof(*task_memory));
 
 	task_memory->drv = *mod->dev->drv;
-	task_memory->ops = *mod->dev->drv->adapter_ops;		// FIXME: is this needed?
-	task_memory->drv.adapter_ops = &task_memory->ops;
 	mod->dev->drv = &task_memory->drv;
 
 	/* allocate stack - must be aligned and cached so a separate alloc */
