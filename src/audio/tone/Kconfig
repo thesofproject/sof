@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_TONE
+	tristate "Tone component"
+	default m if LIBRARY_DEFAULT_MODULAR
+	default y
+	depends on COMP_MODULE_ADAPTER
+	depends on IPC_MAJOR_4
+	select CORDIC_FIXED
+	help
+	  Select for Tone component. This component is used to generate
+	  audio tones (sine waves) at specified frequencies when the Tone
+	  mode is enabled. The two other modes it supports are silence where
+	  it generates 0s and passthrough where the input is passed to the
+	  output. Warning: This component is untested with IPC_MAJOR_3 and
+	  is unavailable.
