@@ -1335,7 +1335,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 	}
 
 	if (interface->trigger) {
-#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#if CONFIG_SOF_USERSPACE_APPLICATION
 		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 			/* Process DP module's trigger */
 			const union scheduler_dp_thread_ipc_param param = {
@@ -1415,7 +1415,7 @@ void module_adapter_free(struct comp_dev *dev)
 		 * thread context, then cancel the thread, and then execute
 		 * final clean up
 		 */
-#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#if CONFIG_SOF_USERSPACE_APPLICATION
 		scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_DELETE_INSTANCE, NULL);
 #endif
 		schedule_task_free(dev->task);

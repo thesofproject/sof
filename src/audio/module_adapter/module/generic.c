@@ -120,7 +120,7 @@ int module_init(struct processing_module *mod)
 	mod->priv.resources.rsrc_mngr = k_current_get();
 #endif
 	/* Now we can proceed with module specific initialization */
-#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#if CONFIG_SOF_USERSPACE_APPLICATION
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
 		ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_INIT_INSTANCE, NULL);
 	else
@@ -501,7 +501,7 @@ int module_prepare(struct processing_module *mod,
 	if (ops->prepare) {
 		int ret;
 
-#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#if CONFIG_SOF_USERSPACE_APPLICATION
 		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 			const union scheduler_dp_thread_ipc_param param = {
 				.pipeline_state = {
@@ -638,11 +638,11 @@ int module_reset(struct processing_module *mod)
 
 	/* cancel task if DP task*/
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && mod->dev->task &&
-	    (IS_ENABLED(CONFIG_SOF_USERSPACE_PROXY) || !IS_ENABLED(CONFIG_USERSPACE)))
+	    !IS_ENABLED(CONFIG_SOF_USERSPACE_APPLICATION))
 		schedule_task_cancel(mod->dev->task);
 
 	if (ops->reset) {
-#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#if CONFIG_SOF_USERSPACE_APPLICATION
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 			const union scheduler_dp_thread_ipc_param param = {
 				.pipeline_state.trigger_cmd = COMP_TRIGGER_STOP,
@@ -723,7 +723,7 @@ int module_free(struct processing_module *mod)
 	int ret = 0;
 
 	if (ops->free && (mod->dev->ipc_config.proc_domain != COMP_PROCESSING_DOMAIN_DP ||
-			  IS_ENABLED(CONFIG_SOF_USERSPACE_PROXY) || !IS_ENABLED(CONFIG_USERSPACE))) {
+			  !IS_ENABLED(CONFIG_SOF_USERSPACE_APPLICATION))) {
 		ret = ops->free(mod);
 		if (ret)
 			comp_warn(mod->dev, "error: %d", ret);
@@ -869,7 +869,7 @@ int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 		return ret;
 
 	if (ops->bind) {
-#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#if CONFIG_SOF_USERSPACE_APPLICATION
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 			const union scheduler_dp_thread_ipc_param param = {
 				.bind_data = bind_data,
@@ -902,7 +902,7 @@ int module_unbind(struct processing_module *mod, struct bind_info *unbind_data)
 		return ret;
 
 	if (ops->unbind) {
-#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#if CONFIG_SOF_USERSPACE_APPLICATION
 		if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 			const union scheduler_dp_thread_ipc_param param = {
 				.bind_data = unbind_data,
