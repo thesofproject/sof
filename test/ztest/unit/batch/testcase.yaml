@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2025 Intel Corporation.
+#
+# Batch allocator unit tests for Ztest framework
+
+tests:
+  sof.batch:
+    tags: unit
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    build_only: false
