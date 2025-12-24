@@ -25,11 +25,11 @@ struct scheduler_dp_data {
 
 enum sof_dp_part_type {
 	SOF_DP_PART_HEAP,
-	SOF_DP_PART_IPC,
 	SOF_DP_PART_CFG,
 	SOF_DP_PART_TYPE_COUNT,
 };
 
+struct ipc4_flat;
 struct task_dp_pdata {
 	k_tid_t thread_id;		/* zephyr thread ID */
 	struct k_thread *thread;	/* pointer to the kernels' thread object */
@@ -44,6 +44,7 @@ struct task_dp_pdata {
 #else
 	struct k_sem *sem;              /* pointer to semaphore for task scheduling */
 	struct k_sem sem_struct;        /* semaphore for task scheduling for kernel threads */
+	struct ipc4_flat *flat;
 	unsigned char pend_ipc;
 	unsigned char pend_proc;
 	struct k_mem_partition mpart[SOF_DP_PART_TYPE_COUNT];
