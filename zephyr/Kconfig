@@ -113,6 +113,13 @@ config SOF_USERSPACE_PROXY
 	  It is responsible for forwarding module function calls coming from sof running in
 	  kernelspace to the module code executed with user privileges.
 
+config SOF_USERSPACE_APPLICATION
+	bool
+	default USERSPACE && !SOF_USERSPACE_PROXY
+	help
+	  Not manually settable. This is effectively a shortcut to replace numerous
+	  checks for (CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY)
+
 config ZEPHYR_NATIVE_DRIVERS
 	bool "Use Zephyr native drivers"
 	help

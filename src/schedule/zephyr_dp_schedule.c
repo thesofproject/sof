@@ -240,7 +240,7 @@ void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *
 	scheduler_dp_unlock(lock_key);
 }
 
-#if CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY
+#if CONFIG_SOF_USERSPACE_APPLICATION
 static int scheduler_dp_task_cancel(void *data, struct task *task)
 {
 	/* Should never be called */
@@ -266,10 +266,10 @@ static int scheduler_dp_task_stop(void *data, struct task *task)
 		schedule_task_cancel(&dp_sch->ll_tick_src);
 
 	/* if the task is waiting - let it run and self-terminate */
-#if CONFIG_SOF_USERSPACE_PROXY || !CONFIG_USERSPACE
-	k_event_set(pdata->event, DP_TASK_EVENT_CANCEL);
-#else
+#if CONFIG_SOF_USERSPACE_APPLICATION
 	k_sem_give(pdata->sem);
+#else
+	k_event_set(pdata->event, DP_TASK_EVENT_CANCEL);
 #endif
 	scheduler_dp_unlock(lock_key);
 
@@ -350,10 +350,10 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 
 static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task		= scheduler_dp_task_shedule,
-#if CONFIG_SOF_USERSPACE_PROXY || !CONFIG_USERSPACE
-	.schedule_task_cancel	= scheduler_dp_task_stop,
-#else
+#if CONFIG_SOF_USERSPACE_APPLICATION
 	.schedule_task_cancel	= scheduler_dp_task_cancel,
+#else
+	.schedule_task_cancel	= scheduler_dp_task_stop,
 #endif
 	.schedule_task_free	= scheduler_dp_task_free,
 };
