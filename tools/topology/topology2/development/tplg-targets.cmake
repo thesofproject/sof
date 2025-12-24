@@ -428,4 +428,16 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt721-4ch-echoref.bin,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
 DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,SDW_JACK_ECHO_REF=true,SDW_SPK_ECHO_REF=true"
+
+# RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
+# Enable echo reference capture from jack and speaker output
+# Enable SSP2 BT
+"cavs-sdw\;sof-ptl-rt721-4ch-ssp2bt-echoref\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt721-4ch-echoref.bin,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
+BT_NAME=SSP2-BT,BT_PCM_ID=20,BT_ID=10,BT_PCM_NAME=Bluetooth,ADD_BT=true,\
+DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,SDW_JACK_ECHO_REF=true,SDW_SPK_ECHO_REF=true"
 )
