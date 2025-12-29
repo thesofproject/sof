@@ -3,6 +3,18 @@
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 list(APPEND TPLGS
 # SDW topology for PTL RVP
+"cavs-sdw\;sof-ptl-rt711\;PLATFORM=ptl,HDMI1_ID=2,HDMI2_ID=3,HDMI3_ID=4"
+
+"cavs-sdw\;sof-ptl-rt711-2ch\;PLATFORM=ptl,NUM_DMICS=2,PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,\
+DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt711-2ch.bin,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
+
+"cavs-sdw\;sof-ptl-rt711-4ch\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
+DMIC0_ID=2,DMIC1_ID=3,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt711-4ch.bin,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,DMIC0_ENHANCED_CAPTURE=true,\
+EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
+
 # RT721 eval board with SDW-DMIC, sof_sdw_quirk_table without SOC_SDW_PCH_DMIC
 "cavs-sdw\;sof-ptl-rt721\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
