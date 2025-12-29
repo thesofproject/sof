@@ -2,6 +2,15 @@
 
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 list(APPEND TPLGS
+# MOCKUP topology for PTL
+"cavs-sdw\;sof-nvl-rt711-rt1308-rt715\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,SDW_AMP_FEEDBACK=false"
+
+"cavs-sdw\;sof-nvl-rt711-rt1308-mono-rt715\;NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,SDW_AMP_FEEDBACK=false"
+
+"cavs-sdw\;sof-nvl-rt715-rt711-rt1308-mono\;NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,\
+SDW_JACK_OUT_STREAM=SDW1-Playback,SDW_JACK_IN_STREAM=SDW1-Capture,\
+SDW_SPK_STREAM=SDW2-Playback,SDW_DMIC_STREAM=SDW0-Capture,SDW_AMP_FEEDBACK=false,\
+SDW_SPK_ENHANCED_PLAYBACK=false,SDW_DMIC_ENHANCED_CAPTURE=false"
 
 # RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC
 "cavs-sdw\;sof-nvl-rt721-4ch\;PLATFORM=nvl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
