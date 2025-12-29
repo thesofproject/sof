@@ -2,6 +2,16 @@
 
 # Array of "input-file-name;output-file-name;comma separated pre-processor variables"
 list(APPEND TPLGS
+# MOCKUP topology for PTL
+"cavs-sdw\;sof-ptl-rt711-rt1308-rt715\;NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,SDW_AMP_FEEDBACK=false"
+
+"cavs-sdw\;sof-ptl-rt711-rt1308-mono-rt715\;NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,SDW_AMP_FEEDBACK=false"
+
+"cavs-sdw\;sof-ptl-rt715-rt711-rt1308-mono\;NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,\
+SDW_JACK_OUT_STREAM=SDW1-Playback,SDW_JACK_IN_STREAM=SDW1-Capture,\
+SDW_SPK_STREAM=SDW2-Playback,SDW_DMIC_STREAM=SDW0-Capture,SDW_AMP_FEEDBACK=false,\
+SDW_SPK_ENHANCED_PLAYBACK=false,SDW_DMIC_ENHANCED_CAPTURE=false"
+
 # SDW topology for PTL RVP
 "cavs-sdw\;sof-ptl-rt711\;PLATFORM=ptl,HDMI1_ID=2,HDMI2_ID=3,HDMI3_ID=4"
 
