@@ -47,7 +47,8 @@ struct ipc4_flat {
 			enum ipc4_pipeline_state state;
 			int n_sources;
 			int n_sinks;
-			void *source_sink[2 * CONFIG_MODULE_MAX_CONNECTIONS];
+			struct sof_source *source[CONFIG_MODULE_MAX_CONNECTIONS];
+			struct sof_sink *sink[CONFIG_MODULE_MAX_CONNECTIONS];
 		} pipeline_state;
 	};
 };
@@ -82,13 +83,12 @@ static int ipc_thread_flatten(unsigned int cmd, const union scheduler_dp_thread_
 			flat->pipeline_state.n_sources = param->pipeline_state.n_sources;
 			flat->pipeline_state.n_sinks = param->pipeline_state.n_sinks;
 			/* Up to 2 * CONFIG_MODULE_MAX_CONNECTIONS */
-			memcpy(flat->pipeline_state.source_sink, param->pipeline_state.sources,
+			memcpy(flat->pipeline_state.source, param->pipeline_state.sources,
 			       flat->pipeline_state.n_sources *
-			       sizeof(flat->pipeline_state.source_sink[0]));
-			memcpy(flat->pipeline_state.source_sink + flat->pipeline_state.n_sources,
-			       param->pipeline_state.sinks,
+			       sizeof(flat->pipeline_state.source[0]));
+			memcpy(flat->pipeline_state.sink, param->pipeline_state.sinks,
 			       flat->pipeline_state.n_sinks *
-			       sizeof(flat->pipeline_state.source_sink[0]));
+			       sizeof(flat->pipeline_state.sink[0]));
 		}
 	}
 
@@ -138,11 +138,10 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 			break;
 		case COMP_TRIGGER_PREPARE:
 			flat->ret = ops->prepare(pmod,
-				(struct sof_source **)flat->pipeline_state.source_sink,
-				flat->pipeline_state.n_sources,
-				(struct sof_sink **)(flat->pipeline_state.source_sink +
-						     flat->pipeline_state.n_sources),
-				flat->pipeline_state.n_sinks);
+						 flat->pipeline_state.source,
+						 flat->pipeline_state.n_sources,
+						 flat->pipeline_state.sink,
+						 flat->pipeline_state.n_sinks);
 		}
 	}
 }
