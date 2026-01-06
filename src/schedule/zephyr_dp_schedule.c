@@ -300,8 +300,7 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 	if (pdata->event != &pdata->event_struct)
 		k_object_free(pdata->event);
 #else
-	if (pdata->sem != &pdata->sem_struct)
-		k_object_free(pdata->sem);
+	k_object_free(pdata->sem);
 #endif
 	if (pdata->thread != &pdata->thread_struct)
 		k_object_free(pdata->thread);

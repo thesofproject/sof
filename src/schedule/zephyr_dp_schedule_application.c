@@ -27,9 +27,7 @@
 LOG_MODULE_DECLARE(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx dp_tr;
 
-#if CONFIG_USERSPACE
 static struct k_mem_domain dp_mdom[CONFIG_CORE_COUNT];
-#endif
 
 /* Synchronization semaphore for the scheduler thread to wait for DP startup */
 #define DP_SYNC_INIT(i, _)	Z_SEM_INITIALIZER(dp_sync[i], 0, 1)
@@ -198,7 +196,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 }
 
 /* Go through all DP tasks and recalculate their readiness and deadlines
- * NOT REENTRANT, should be called with scheduler_dp_lock()
+ * NOT REENTRANT, called with scheduler_dp_lock() held
  */
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run)
 {
@@ -387,7 +385,6 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
  */
 void scheduler_dp_domain_free(struct processing_module *pmod)
 {
-#if CONFIG_USERSPACE
 	unsigned int core = pmod->dev->task->core;
 
 	llext_manager_rm_domain(pmod->dev->ipc_config.id, dp_mdom + core);
@@ -396,9 +393,9 @@ void scheduler_dp_domain_free(struct processing_module *pmod)
 
 	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_HEAP);
 	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_CFG);
-#endif
 }
 
+/* Called only in IPC context */
 int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops, struct processing_module *mod,
 			   uint16_t core, size_t stack_size, uint32_t options)
@@ -455,30 +452,22 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	struct task_dp_pdata *pdata = &task_memory->pdata;
 
-	/* Point to event_struct event for kernel threads synchronization */
-	/* It will be overwritten for K_USER threads to dynamic ones.  */
-	pdata->sem = &pdata->sem_struct;
-	pdata->thread = &pdata->thread_struct;
 	pdata->flat = &task_memory->flat;
 
-#ifdef CONFIG_USERSPACE
-	if (options & K_USER) {
-		pdata->sem = k_object_alloc(K_OBJ_SEM);
-		if (!pdata->sem) {
-			tr_err(&dp_tr, "Event object allocation failed");
-			ret = -ENOMEM;
-			goto e_stack;
-		}
-
-		pdata->thread = k_object_alloc(K_OBJ_THREAD);
-		if (!pdata->thread) {
-			tr_err(&dp_tr, "Thread object allocation failed");
-			ret = -ENOMEM;
-			goto e_kobj;
-		}
-		memset(&pdata->thread->arch, 0, sizeof(pdata->thread->arch));
+	pdata->sem = k_object_alloc(K_OBJ_SEM);
+	if (!pdata->sem) {
+		tr_err(&dp_tr, "Event object allocation failed");
+		ret = -ENOMEM;
+		goto e_stack;
 	}
-#endif /* CONFIG_USERSPACE */
+
+	pdata->thread = k_object_alloc(K_OBJ_THREAD);
+	if (!pdata->thread) {
+		tr_err(&dp_tr, "Thread object allocation failed");
+		ret = -ENOMEM;
+		goto e_kobj;
+	}
+	memset(&pdata->thread->arch, 0, sizeof(pdata->thread->arch));
 
 	/* success, fill the structures */
 	pdata->p_stack = p_stack;
@@ -503,7 +492,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		goto e_thread;
 	}
 
-#if CONFIG_USERSPACE
 	k_thread_access_grant(pdata->thread_id, pdata->sem, &dp_sync[core]);
 	scheduler_dp_grant(pdata->thread_id, core);
 
@@ -546,7 +534,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		tr_err(&dp_tr, "failed to add thread to domain %d", ret);
 		goto e_dom;
 	}
-#endif /* CONFIG_USERSPACE */
 
 	/* start the thread, it should immediately stop at the semaphore */
 	k_sem_init(pdata->sem, 0, 1);
@@ -554,18 +541,14 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	return 0;
 
-#ifdef CONFIG_USERSPACE
 e_dom:
 	scheduler_dp_domain_free(mod);
-#endif
 e_thread:
 	k_thread_abort(pdata->thread_id);
-#ifdef CONFIG_USERSPACE
 e_kobj:
 	/* k_object_free looks for a pointer in the list, any invalid value can be passed */
 	k_object_free(pdata->thread);
 	k_object_free(pdata->sem);
-#endif
 e_stack:
 	user_stack_free(p_stack);
 e_tmem:
