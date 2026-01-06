@@ -40,7 +40,6 @@ struct task_dp_pdata {
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
 #if CONFIG_SOF_USERSPACE_APPLICATION
 	struct k_sem *sem;              /* pointer to semaphore for task scheduling */
-	struct k_sem sem_struct;        /* semaphore for task scheduling for kernel threads */
 	struct ipc4_flat *flat;
 	unsigned char pend_ipc;
 	unsigned char pend_proc;
