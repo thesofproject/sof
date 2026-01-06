@@ -33,6 +33,14 @@ SOF_DEFINE_REG_UUID(dp_sched);
 
 DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 
+#if CONFIG_SOF_USERSPACE_APPLICATION
+struct dp_sem_buf {
+	struct sys_sem sem[CONFIG_CORE_COUNT];
+	uint8_t reserved[CONFIG_MM_DRV_PAGE_SIZE - sizeof(struct sys_sem) * CONFIG_CORE_COUNT];
+};
+
+static struct dp_sem_buf __aligned(4096) dp_sched_sem;
+#else
 #define DP_LOCK_INIT(i, _)	Z_SEM_INITIALIZER(dp_lock[i], 1, 1)
 #define DP_LOCK_INIT_LIST	LISTIFY(CONFIG_MP_MAX_NUM_CPUS, DP_LOCK_INIT, (,))
 
@@ -42,6 +50,7 @@ DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
  */
 static
 STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOCK_INIT_LIST };
+#endif
 
 /* Each per-core instance of DP scheduler has separate structures; hence, locks are per-core.
  *
@@ -49,21 +58,47 @@ STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOC
  */
 unsigned int scheduler_dp_lock(uint16_t core)
 {
+#if CONFIG_SOF_USERSPACE_APPLICATION
+	sys_sem_take(&dp_sched_sem.sem[core], K_FOREVER);
+#else
 	k_sem_take(&dp_lock[core], K_FOREVER);
+#endif
+
 	return core;
 }
 
 void scheduler_dp_unlock(unsigned int key)
 {
+#if CONFIG_SOF_USERSPACE_APPLICATION
+	sys_sem_give(&dp_sched_sem.sem[key]);
+#else
 	k_sem_give(&dp_lock[key]);
-}
-
-void scheduler_dp_grant(k_tid_t thread_id, uint16_t core)
-{
-#if CONFIG_USERSPACE
-	k_thread_access_grant(thread_id, &dp_lock[core]);
 #endif
 }
+
+#if CONFIG_SOF_USERSPACE_APPLICATION
+int scheduler_dp_add_domain(struct k_mem_domain *domain)
+{
+	struct k_mem_partition part = {
+		.start = (uintptr_t)&dp_sched_sem,
+		.size = sizeof(dp_sched_sem),
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+
+	return k_mem_domain_add_partition(domain, &part);
+}
+
+int scheduler_dp_rm_domain(struct k_mem_domain *domain)
+{
+	struct k_mem_partition part = {
+		.start = (uintptr_t)&dp_sched_sem,
+		.size = sizeof(dp_sched_sem),
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+
+	return k_mem_domain_remove_partition(domain, &part);
+}
+#endif
 
 /* dummy LL task - to start LL on secondary cores */
 static enum task_state scheduler_dp_ll_tick_dummy(void *data)
@@ -369,6 +404,11 @@ int scheduler_dp_init(void)
 	list_init(&dp_sch->tasks);
 
 	scheduler_init(SOF_SCHEDULE_DP, &schedule_dp_ops, dp_sch);
+
+#if CONFIG_SOF_USERSPACE_APPLICATION
+	for (unsigned int i = 0; i < ARRAY_SIZE(dp_sched_sem.sem); i++)
+		sys_sem_init(dp_sched_sem.sem + i, 1, 1);
+#endif
 
 	/* init src of DP tick */
 	ret = schedule_task_init_ll(&dp_sch->ll_tick_src,

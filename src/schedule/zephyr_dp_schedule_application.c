@@ -396,6 +396,7 @@ void scheduler_dp_domain_free(struct processing_module *pmod)
 
 	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_HEAP);
 	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_CFG);
+	scheduler_dp_rm_domain(dp_mdom + core);
 #endif
 }
 
@@ -505,7 +506,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 #if CONFIG_USERSPACE
 	k_thread_access_grant(pdata->thread_id, pdata->sem, &dp_sync[core]);
-	scheduler_dp_grant(pdata->thread_id, core);
 
 	unsigned int pidx;
 	size_t size;
@@ -529,6 +529,12 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		ret = k_mem_domain_add_partition(dp_mdom + core, pdata->mpart + pidx);
 		if (ret < 0)
 			goto e_dom;
+	}
+
+	ret = scheduler_dp_add_domain(dp_mdom + core);
+	if (ret < 0) {
+		tr_err(&dp_tr, "failed to add DP lock domain %d", ret);
+		goto e_dom;
 	}
 
 	ret = llext_manager_add_domain(mod->dev->ipc_config.id, dp_mdom + core);
