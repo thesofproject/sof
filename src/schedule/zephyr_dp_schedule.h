@@ -55,7 +55,6 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_
 void dp_thread_fn(void *p1, void *p2, void *p3);
 unsigned int scheduler_dp_lock(uint16_t core);
 void scheduler_dp_unlock(unsigned int key);
-void scheduler_dp_grant(k_tid_t thread_id, uint16_t core);
 int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops, struct processing_module *mod,
 			   uint16_t core, size_t stack_size, uint32_t options);
