@@ -14,7 +14,7 @@
 #define FFT_MULTI_TWIDDLE_SIZE	2048
 
 /* in Q1.31, generated from cos(i * 2 * pi / FFT_SIZE_MAX) */
-const int32_t multi_twiddle_real_32[FFT_MULTI_TWIDDLE_SIZE] = {
+SOF_MATH_FFT_COLD_RODATA static const int32_t multi_twiddle_real_32[FFT_MULTI_TWIDDLE_SIZE] = {
 	2147483647,
 	2147479156,
 	2147465681,
@@ -2066,7 +2066,7 @@ const int32_t multi_twiddle_real_32[FFT_MULTI_TWIDDLE_SIZE] = {
 };
 
 /* in Q1.31, generated from sin(i * 2 * pi / FFT_SIZE_MAX) */
-const int32_t multi_twiddle_imag_32[FFT_MULTI_TWIDDLE_SIZE] = {
+SOF_MATH_FFT_COLD_RODATA static const int32_t multi_twiddle_imag_32[FFT_MULTI_TWIDDLE_SIZE] = {
 	0,
 	-4392262,
 	-8784505,
