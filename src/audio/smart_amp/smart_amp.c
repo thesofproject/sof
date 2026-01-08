@@ -17,6 +17,7 @@
 #include <user/smart_amp.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/smart_amp/smart_amp.h>
+#include <sof/lib/uuid.h>
 
 static const struct comp_driver comp_smart_amp;
 
@@ -29,11 +30,14 @@ SOF_DEFINE_REG_UUID(maxim_dsm);
 
 #else /* Passthrough */
 SOF_DEFINE_REG_UUID(passthru_smart_amp);
-#define UUID_SYM passthru_smart_amp
+#define UUID_SYM passthru_smart_amp_uuid
 
 #endif
+
 DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(UUID_SYM),
 	       LOG_LEVEL_INFO);
+
+LOG_MODULE_REGISTER(smart_amp, CONFIG_SOF_LOG_LEVEL);
 
 /* Amp configuration & model calibration data for tuning/debug */
 #define SOF_SMART_AMP_CONFIG 0

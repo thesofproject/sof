@@ -20,6 +20,8 @@
 #include <sof/audio/smart_amp/smart_amp.h>
 #include "dsm_api_public.h"
 
+LOG_MODULE_DECLARE(smart_amp, CONFIG_SOF_LOG_LEVEL);
+
 /* Maxim DSM(Dynamic Speaker Management) process buffer size */
 #define DSM_FRM_SZ		48
 #define DSM_FF_BUF_SZ		(DSM_FRM_SZ * SMART_AMP_FF_MAX_CH_NUM)

@@ -10,11 +10,12 @@
 
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <sof/bit.h>
 #include <sof/common.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sof/audio/smart_amp/smart_amp.h>
+
+LOG_MODULE_DECLARE(smart_amp, CONFIG_SOF_LOG_LEVEL);
 
 /* self-declared inner model data struct */
 struct passthru_mod_data {
