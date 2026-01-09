@@ -33,15 +33,18 @@ SOF_DEFINE_REG_UUID(dp_sched);
 
 DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 
-#define DP_LOCK_INIT(i, _)	Z_SEM_INITIALIZER(dp_lock[i], 1, 1)
+#ifdef CONFIG_USERSPACE
+#define SYS_SEM_INITIALIZER(obj, n_init, n_max) {.futex = {n_init}, .limit = n_max}
+#else
+#define SYS_SEM_INITIALIZER(obj, n_init, n_max) {Z_SEM_INITIALIZER(obj.kernel_sem, 1, 1)}
+#endif
+
+#define DP_LOCK_INIT(i, _)	SYS_SEM_INITIALIZER(dp_lock[i], 1, 1)
 #define DP_LOCK_INIT_LIST	LISTIFY(CONFIG_MP_MAX_NUM_CPUS, DP_LOCK_INIT, (,))
 
-/* User threads don't need access to this array. Access is performed from
- * the kernel space via a syscall. Array must be placed in special section
- * to be qualified as initialized by the gen_kobject_list.py script.
- */
-static
-STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOCK_INIT_LIST };
+static struct sys_sem dp_lock[CONFIG_MP_MAX_NUM_CPUS] = {
+	DP_LOCK_INIT_LIST
+};
 
 /* Each per-core instance of DP scheduler has separate structures; hence, locks are per-core.
  *
@@ -49,20 +52,14 @@ STRUCT_SECTION_ITERABLE_ARRAY(k_sem, dp_lock, CONFIG_MP_MAX_NUM_CPUS) = { DP_LOC
  */
 unsigned int scheduler_dp_lock(uint16_t core)
 {
-	k_sem_take(&dp_lock[core], K_FOREVER);
+	sys_sem_take(&dp_lock[core], K_FOREVER);
+
 	return core;
 }
 
 void scheduler_dp_unlock(unsigned int key)
 {
-	k_sem_give(&dp_lock[key]);
-}
-
-void scheduler_dp_grant(k_tid_t thread_id, uint16_t core)
-{
-#if CONFIG_USERSPACE
-	k_thread_access_grant(thread_id, &dp_lock[core]);
-#endif
+	sys_sem_give(&dp_lock[key]);
 }
 
 /* dummy LL task - to start LL on secondary cores */

@@ -492,7 +492,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	}
 
 	k_thread_access_grant(pdata->thread_id, pdata->sem, &dp_sync[core]);
-	scheduler_dp_grant(pdata->thread_id, core);
 
 	unsigned int pidx;
 	size_t size;
