@@ -91,4 +91,23 @@ int user_stack_free(void *p_stack);
  */
 void module_driver_heap_remove(struct k_heap *mod_drv_heap);
 
+#ifdef CONFIG_USERSPACE
+
+/**
+ * Add access to mailbox.h interface to a user-space thread.
+ *
+ * @param domain memory domain to add the mailbox partitions to
+ * @param thread_id user-space thread for which access is added
+ */
+int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id);
+
+#else
+
+static inline int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
+{
+	return 0;
+}
+
+#endif /* CONFIG_USERSPACE */
+
 #endif /* __ZEPHYR_LIB_USERSPACE_HELPER_H__ */
