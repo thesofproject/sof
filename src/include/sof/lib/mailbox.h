@@ -100,6 +100,14 @@ void mailbox_hostbox_read(void *dest, size_t dest_size,
 	assert(!host_read_err);
 }
 
+#if CONFIG_IPC_MAJOR_4
+static inline
+void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
+{
+	/* in IPC4, the stream mailbox must not be used */
+	assert(false);
+}
+#else
 static inline
 void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 {
@@ -110,5 +118,6 @@ void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 	dcache_writeback_region((__sparse_force void __sparse_cache *)(MAILBOX_STREAM_BASE +
 								       offset), bytes);
 }
+#endif
 
 #endif /* __SOF_LIB_MAILBOX_H__ */
