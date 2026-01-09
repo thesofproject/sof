@@ -29,6 +29,8 @@ LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
  */
 #define NO_XRUN_RECOVERY 1
 
+#if CONFIG_IPC_MAJOR_3
+
 /* This function always returns success */
 static int pipeline_comp_xrun(struct comp_dev *current,
 			      struct comp_buffer *calling_buf,
@@ -48,6 +50,8 @@ static int pipeline_comp_xrun(struct comp_dev *current,
 
 	return pipeline_for_each_comp(current, ctx, dir);
 }
+
+#endif /* CONFIG_IPC_MAJOR_3 */
 
 #if NO_XRUN_RECOVERY
 /* recover the pipeline from a XRUN condition */
@@ -139,6 +143,7 @@ int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd)
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 		   int32_t bytes)
 {
+#if CONFIG_IPC_MAJOR_3
 	struct pipeline_data data;
 	struct pipeline_walk_context walk_ctx = {
 		.comp_func = pipeline_comp_xrun,
@@ -146,6 +151,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 		.skip_incomplete = true,
 	};
 	struct sof_ipc_stream_posn posn;
+#endif
 	int ret;
 
 	/* don't flood host */
@@ -162,6 +168,12 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 		pipe_err(p, "Pipelines notification about XRUN failed, ret = %d",
 			 ret);
 
+	/*
+	 * The IPC position info reporting via window2 is only
+	 * used for IPC3 and e.g. in IPC4 this is conflicting
+	 * with the debug window usages (logging, debug, ..)
+	 */
+#if CONFIG_IPC_MAJOR_3
 	memset(&posn, 0, sizeof(posn));
 	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN,
 			      dev_comp_id(dev));
@@ -172,4 +184,5 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	data.p = p;
 
 	walk_ctx.comp_func(dev, NULL, &walk_ctx, dev->direction);
+#endif
 }
