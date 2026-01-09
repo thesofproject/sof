@@ -12,6 +12,8 @@ Available tests:
    - Test Zephyr DAI interface, together with SOF DMA
      wrapper from a user thread. Mimics the call flows done in
      sof/src/audio/dai-zephyr.c. Use cavstool.py as host runner.
+- test_mailbox.c
+   - Test use of sof/mailbox.h interface from a Zephyr user thread.
 
 Building for Intel Panther Lake:
 ./scripts/xtensa-build-zephyr.py --cmake-args=-DCONFIG_SOF_BOOT_TEST_STANDALONE=y \
