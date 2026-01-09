@@ -15,3 +15,7 @@ if (CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_INTERFACE_DMA)
               zephyr_library_sources(userspace/test_intel_ssp_dai.c)
        endif()
 endif()
+
+if (CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_USERSPACE)
+  zephyr_library_sources(userspace/test_mailbox.c)
+endif()
