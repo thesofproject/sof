@@ -24,6 +24,18 @@
 #define module_set_private_data(mod, data) ((mod)->priv.private = data)
 
 /**
+ * \struct module_ext_init_data
+ * \brief Container for found ext init object pointers
+ * This struct contains pointers that point to IPC payload directly. The
+ * module should store what it needs in its init() callback as the data
+ * is not valid after that.
+ */
+struct ipc4_module_init_ext_obj_dp_data;
+struct module_ext_init_data {
+	const struct ipc4_module_init_ext_obj_dp_data *dp_data;
+};
+
+/**
  * \struct module_config
  * \brief Module config container, used for both config types.
  */
@@ -38,9 +50,7 @@ struct module_config {
 	uint8_t nb_output_pins;
 	struct ipc4_input_pin_format *input_pins;
 	struct ipc4_output_pin_format *output_pins;
-	uint32_t domain_id;	/* userspace domain ID */
-	uint32_t stack_bytes;	/* stack size in bytes, 0 means default value */
-	uint32_t heap_bytes;	/* max heap size in bytes, 0 means default value */
+	struct module_ext_init_data *ext_data; /**< IPC payload pointers, NULL after init() */
 #endif
 };
 
