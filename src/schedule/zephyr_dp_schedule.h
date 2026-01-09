@@ -25,7 +25,9 @@ struct scheduler_dp_data {
 
 enum sof_dp_part_type {
 	SOF_DP_PART_HEAP,
+	SOF_DP_PART_HEAP_CACHE,
 	SOF_DP_PART_CFG,
+	SOF_DP_PART_CFG_CACHE,
 	SOF_DP_PART_TYPE_COUNT,
 };
 
