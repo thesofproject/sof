@@ -392,7 +392,9 @@ void scheduler_dp_domain_free(struct processing_module *pmod)
 	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
 
 	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_HEAP);
+	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_HEAP_CACHE);
 	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG);
+	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG_CACHE);
 
 	pmod->mdom = NULL;
 	objpool_free(&dp_mdom_head, mdom);
@@ -522,11 +524,21 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		.size = size,
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
+	pdata->mpart[SOF_DP_PART_HEAP_CACHE] = (struct k_mem_partition){
+		.start = (uintptr_t)sys_cache_cached_ptr_get((void *)start),
+		.size = size,
+		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
+	};
 	/* Host mailbox partition for additional IPC parameters: read-only */
 	pdata->mpart[SOF_DP_PART_CFG] = (struct k_mem_partition){
-		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
+		.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)MAILBOX_HOSTBOX_BASE),
 		.size = 4096,
 		.attr = K_MEM_PARTITION_P_RO_U_RO,
+	};
+	pdata->mpart[SOF_DP_PART_CFG_CACHE] = (struct k_mem_partition){
+		.start = (uintptr_t)MAILBOX_HOSTBOX_BASE,
+		.size = 4096,
+		.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
 	};
 
 	for (pidx = 0; pidx < SOF_DP_PART_TYPE_COUNT; pidx++) {
