@@ -1468,7 +1468,13 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	return dai_common_trigger(dd, dev, cmd);
 }
 
-/* get status from dma and check for xrun */
+/**
+ * Get status from the DMA driver.
+ *
+ * After status call, a check for xrun condition is done and
+ * depending on configuration, a xrun report is optionally sent.
+ * See also xrun reporting done in dai_report_reload_xrun().
+ */
 static int dai_get_status(struct comp_dev *dev, struct dai_data *dd, struct dma_status *stat)
 {
 	int ret = sof_dma_get_status(dd->chan->dma, dd->chan->index, stat);
@@ -1494,8 +1500,13 @@ static int dai_get_status(struct comp_dev *dev, struct dai_data *dd, struct dma_
 	return ret;
 }
 
-/* report xrun occurrence */
-static void dai_report_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
+/**
+ * Report xrun occurrence after DAI DMA driver reports
+ * an error for a reload attempt of 'bytes' of data.
+ *
+ * See also xrun detection done in dai_get_status().
+ */
+static void dai_report_reload_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
 {
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		comp_err(dev, "underrun due to no data available");
@@ -1584,7 +1595,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 		for (i = 0; i < num_endpoints; i++) {
 			ret = sof_dma_reload(dd[i]->chan->dma, dd[i]->chan->index, 0);
 			if (ret < 0) {
-				dai_report_xrun(dd[i], dev, 0);
+				dai_report_reload_xrun(dd[i], dev, 0);
 				return ret;
 			}
 		}
@@ -1613,7 +1624,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 		copy_bytes = frames * audio_stream_frame_bytes(&dd[i]->dma_buffer->stream);
 		ret = sof_dma_reload(dd[i]->chan->dma, dd[i]->chan->index, copy_bytes);
 		if (ret < 0) {
-			dai_report_xrun(dd[i], dev, copy_bytes);
+			dai_report_reload_xrun(dd[i], dev, copy_bytes);
 			return ret;
 		}
 
@@ -1814,7 +1825,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	ret = sof_dma_reload(dd->chan->dma, dd->chan->index, copy_bytes);
 	if (ret < 0) {
-		dai_report_xrun(dd, dev, copy_bytes);
+		dai_report_reload_xrun(dd, dev, copy_bytes);
 		return ret;
 	}
 
