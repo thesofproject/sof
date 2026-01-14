@@ -376,10 +376,26 @@ enum ipc4_fw_config_params {
 	IPC4_FW_CONTEXT_SAVE = 29,
 	/* Minimum size of host buffer in ms */
 	IPC4_FW_MIN_HOST_BUFFER_PERIODS = 33,
+	/* decoder/encoder codec information */
+	IPC4_FW_SOF_INFO = 35,
 	/* Total number of FW config parameters  */
 	IPC4_FW_CFG_PARAMS_COUNT,
 	/* Max config parameter id */
 	IPC4_MAX_FW_CFG_PARAM = IPC4_FW_CFG_PARAMS_COUNT - 1,
+};
+
+/*
+ * tuple based array for SOF specific information under IPC4_FW_SOF_INFO
+ * tuple of fw_config
+ */
+enum ipc4_fw_sof_info_params {
+	/* decoder/encoder codec information */
+	IPC4_SOF_CODEC_INFO = 0,
+
+	/* Total number of SOF config parameters  */
+	IPC4_SOF_CFG_PARAMS_COUNT,
+	/* Max config parameter id */
+	IPC4_MAX_SOF_CFG_PARAM = IPC4_SOF_CFG_PARAMS_COUNT - 1,
 };
 
 enum ipc4_hw_config_params {
