@@ -116,13 +116,16 @@ jobs:
         # many lines. Pay attention to COMMAS.
         IPC_platforms: [
           # - IPC3 default
-          imx8 imx8x imx8m imx8ulp,
+          imx8 imx8x,
+          imx8m imx8ulp,
           # - IPC4 default, released
-          mtl lnl,
+          mtl,
+          lnl,
           # active development
           ptl,
           # Temporary testbed for Zephyr development.
-          tgl tgl-h,
+          tgl,
+          tgl-h
         ]
         build_opts: [""]
         # Sparse matrices are complicated, you must read this page slowly:
@@ -238,13 +241,16 @@ jobs:
         # many lines. Pay attention to COMMAS.
         platforms: [
           # - IPC3 default
-          imx8 imx8x imx8m imx8ulp,
+          imx8 imx8x,
+          imx8m imx8ulp,
           # - IPC4 default, released
-          mtl lnl,
+          mtl,
+          lnl,
           # active development
           ptl,
           # legacy
-          tgl tgl-h,
+          tgl,
+          tgl-h
         ]
         build_opts: [""]
         # Sparse matrices are complicated, see comments on Linux matrix above.
@@ -462,7 +468,8 @@ jobs:
           for regdir in 'linux-build *-d *.*' \
                         'linux-build *.*lnl.*' \
                         'windows-build *.*mtl.*' \
-                        'windows-build *tgl tgl-h'; do
+                        'windows-build *tgl-h' \
+                        'windows-build *tgl'; do
             find . -maxdepth 1 | grep -q "\./${regdir}\$" ||
               { >&2 printf 'Missing %s\n' "${regdir}"; exit 1; }
           done
