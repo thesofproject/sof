@@ -21,6 +21,10 @@ endif()
 		zephyr_library_import(xa_aac_dec ${CONFIG_CADENCE_CODEC_AAC_DEC_LIB})
 	endif()
 
+	if (CONFIG_CADENCE_CODEC_VORBIS_DEC)
+		zephyr_library_import(xa_vorbis_dec ${CONFIG_CADENCE_CODEC_VORBIS_DEC_LIB})
+	endif()
+
 	if (CONFIG_CADENCE_CODEC_MP3_DEC)
 		zephyr_library_import(xa_mp3_dec ${CONFIG_CADENCE_CODEC_MP3_DEC_LIB})
 	endif()
