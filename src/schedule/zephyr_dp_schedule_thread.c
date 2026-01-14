@@ -270,7 +270,6 @@ int scheduler_dp_task_init(struct task **task,
 					   CONFIG_DP_THREAD_PRIORITY, (*task)->flags, K_FOREVER);
 
 	k_thread_access_grant(pdata->thread_id, pdata->event);
-	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
 
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, core);
