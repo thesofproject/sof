@@ -75,6 +75,7 @@ enum module_processing_type {
 };
 
 struct userspace_context;
+struct k_mem_domain;
 
 /*
  * A pointer to this structure is passed to module API functions (from struct module_interface).
@@ -189,6 +190,9 @@ struct processing_module {
 #if CONFIG_USERSPACE
 	struct userspace_context *user_ctx;
 #endif /* CONFIG_USERSPACE */
+#if CONFIG_SOF_USERSPACE_APPLICATION
+	struct k_mem_domain *mdom;
+#endif
 #endif /* SOF_MODULE_PRIVATE */
 };
 

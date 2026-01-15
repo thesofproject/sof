@@ -387,8 +387,6 @@ int scheduler_dp_init(void)
 
 	notifier_register(NULL, NULL, NOTIFIER_ID_LL_POST_RUN, scheduler_dp_ll_tick, 0);
 
-	scheduler_dp_domain_init();
-
 	return 0;
 }
 

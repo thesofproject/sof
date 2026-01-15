@@ -60,8 +60,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 			   uint16_t core, size_t stack_size, uint32_t options);
 #if CONFIG_SOF_USERSPACE_APPLICATION
 void scheduler_dp_domain_free(struct processing_module *pmod);
-int scheduler_dp_domain_init(void);
 #else
 static inline void scheduler_dp_domain_free(struct processing_module *pmod) {}
-static inline int scheduler_dp_domain_init(void) {return 0;}
 #endif
