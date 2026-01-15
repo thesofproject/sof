@@ -9,6 +9,9 @@
 #include <sof/objpool.h>
 #include <sof/common.h>
 #include <sof/list.h>
+
+#include <rtos/alloc.h>
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,23 +29,26 @@ void *__wrap_rzalloc(uint32_t flags, size_t bytes)
 
 ZTEST(objpool_suite, test_objpool_wrong_size)
 {
-	struct list_item head = LIST_INIT(head);
+	struct objpool_head head = {.list = LIST_INIT(head.list)};
 	/* new object pool of 2 blocks */
-	uint8_t *block1 = objpool_alloc(&head, DATA_SIZE);
+	uint8_t *block1 = objpool_alloc(&head, DATA_SIZE, 0);
 	/* should fail because of a different size */
-	uint8_t *block2 = objpool_alloc(&head, DATA_SIZE + 1);
+	uint8_t *block2 = objpool_alloc(&head, DATA_SIZE + 1, 0);
 	/* second block in the first object pool */
-	uint8_t *block3 = objpool_alloc(&head, DATA_SIZE);
+	uint8_t *block3 = objpool_alloc(&head, DATA_SIZE, 0);
 	/* new object pool of 4 blocks */
-	uint8_t *block4 = objpool_alloc(&head, DATA_SIZE);
+	uint8_t *block4 = objpool_alloc(&head, DATA_SIZE, 0);
 	/* should fail because of a different size */
-	uint8_t *block5 = objpool_alloc(&head, DATA_SIZE * 2);
+	uint8_t *block5 = objpool_alloc(&head, DATA_SIZE * 2, 0);
+	/* should fail because of different flags */
+	uint8_t *block6 = objpool_alloc(&head, DATA_SIZE * 2, SOF_MEM_FLAG_COHERENT);
 
 	zassert_not_null(block1);
 	zassert_is_null(block2);
 	zassert_not_null(block3);
 	zassert_not_null(block4);
 	zassert_is_null(block5);
+	zassert_is_null(block6);
 
 	zassert_not_ok(objpool_free(&head, block1 + 1));
 	zassert_ok(objpool_free(&head, block1));
@@ -54,7 +60,7 @@ ZTEST(objpool_suite, test_objpool_wrong_size)
 
 ZTEST(objpool_suite, test_objpool)
 {
-	struct list_item head = LIST_INIT(head);
+	struct objpool_head head = {.list = LIST_INIT(head.list)};
 	void *blocks[62]; /* 2 + 4 + 8 + 16 + 32 */
 	unsigned int k = 0;
 
@@ -64,7 +70,7 @@ ZTEST(objpool_suite, test_objpool)
 		uint8_t *start;
 
 		for (unsigned int j = 0; j < n; j++) {
-			uint8_t *block = objpool_alloc(&head, DATA_SIZE);
+			uint8_t *block = objpool_alloc(&head, DATA_SIZE, 0);
 
 			zassert_not_null(block, "allocation failed loop %u iter %u", i, j);
 

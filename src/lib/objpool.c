@@ -24,7 +24,7 @@ struct objpool {
 
 #define OBJPOOL_BITS (sizeof(((struct objpool *)0)->mask) * 8)
 
-static int objpool_add(struct list_item *head, unsigned int n, size_t size)
+static int objpool_add(struct list_item *head, unsigned int n, size_t size, uint32_t flags)
 {
 	if (n > OBJPOOL_BITS)
 		return -ENOMEM;
@@ -35,7 +35,7 @@ static int objpool_add(struct list_item *head, unsigned int n, size_t size)
 	size_t aligned_size = ALIGN_UP(size, sizeof(int));
 
 	/* Initialize with 0 to give caller a chance to identify new allocations */
-	struct objpool *pobjpool = rzalloc(0, n * aligned_size + sizeof(*pobjpool));
+	struct objpool *pobjpool = rzalloc(flags, n * aligned_size + sizeof(*pobjpool));
 
 	if (!pobjpool)
 		return -ENOMEM;
@@ -50,7 +50,7 @@ static int objpool_add(struct list_item *head, unsigned int n, size_t size)
 	return 0;
 }
 
-void *objpool_alloc(struct list_item *head, size_t size)
+void *objpool_alloc(struct objpool_head *head, size_t size, uint32_t flags)
 {
 	size_t aligned_size = ALIGN_UP(size, sizeof(int));
 	struct list_item *list;
@@ -60,7 +60,11 @@ void *objpool_alloc(struct list_item *head, size_t size)
 	if (!size || aligned_size > (UINT_MAX >> 5) - sizeof(*pobjpool))
 		return NULL;
 
-	list_for_item(list, head) {
+	if (!list_is_empty(&head->list) && head->flags != flags)
+		/* List isn't empty, and flags don't match */
+		return NULL;
+
+	list_for_item(list, &head->list) {
 		pobjpool = container_of(list, struct objpool, list);
 
 		uint32_t free_mask = MASK(pobjpool->n - 1, 0) & ~pobjpool->mask;
@@ -83,11 +87,11 @@ void *objpool_alloc(struct list_item *head, size_t size)
 	/* no free elements found */
 	unsigned int new_n;
 
-	if (list_is_empty(head)) {
+	if (list_is_empty(&head->list)) {
 		new_n = 2;
 	} else {
 		/* Check the last one */
-		pobjpool = container_of(head->prev, struct objpool, list);
+		pobjpool = container_of(head->list.prev, struct objpool, list);
 
 		if (pobjpool->n == OBJPOOL_BITS)
 			new_n = OBJPOOL_BITS;
@@ -95,17 +99,17 @@ void *objpool_alloc(struct list_item *head, size_t size)
 			new_n = pobjpool->n << 1;
 	}
 
-	if (objpool_add(head, new_n, size) < 0)
+	if (objpool_add(&head->list, new_n, size, flags) < 0)
 		return NULL;
 
 	/* Return the first element of the new objpool, which is now the last one in the list */
-	pobjpool = container_of(head->prev, struct objpool, list);
+	pobjpool = container_of(head->list.prev, struct objpool, list);
 	pobjpool->mask = 1;
 
 	return pobjpool->data;
 }
 
-int objpool_free(struct list_item *head, void *data)
+int objpool_free(struct objpool_head *head, void *data)
 {
 	struct list_item *list;
 	struct objpool *pobjpool;
@@ -113,7 +117,7 @@ int objpool_free(struct list_item *head, void *data)
 	if (!data)
 		return 0;
 
-	list_for_item(list, head) {
+	list_for_item(list, &head->list) {
 		pobjpool = container_of(list, struct objpool, list);
 
 		size_t aligned_size = ALIGN_UP(pobjpool->size, sizeof(int));

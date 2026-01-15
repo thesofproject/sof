@@ -6,12 +6,21 @@
 #ifndef __ZEPHYR_OBJPOOL_H__
 #define __ZEPHYR_OBJPOOL_H__
 
-struct list_item;
+#include <sof/list.h>
+
+#include <stdint.h>
+
+struct objpool_head {
+	struct list_item list;
+	uint32_t flags;
+};
+
 /**
  * Allocate memory tracked as part of an object pool.
  *
- * @param head Pointer to the object pool list head.
+ * @param head Pointer to the object pool head.
  * @param size Size in bytes of memory blocks to allocate.
+ * @param flags Memory allocation flags.
  *
  * @return a pointer to the allocated memory on success, NULL on failure.
  *
@@ -22,13 +31,15 @@ struct list_item;
  * is requested, the next call allocates 4 blocks, then 8, 16 and 32. After that
  * 32 blocks are allocated every time. Note, that by design allocated blocks are
  * never freed. See more below.
+ * TODO: @a flags are currently only used when allocating new object sets.
+ * Should add a check that they're consistent with already allocated objects.
  */
-void *objpool_alloc(struct list_item *head, size_t size);
+void *objpool_alloc(struct objpool_head *head, size_t size, uint32_t flags);
 
 /**
  * Return a block to the object pool
  *
- * @param head Pointer to the object pool list head.
+ * @param head Pointer to the object pool head.
  * @param data Pointer to the object to return (can be NULL)
  *
  * @return 0 on success or a negative error code.
@@ -36,6 +47,6 @@ void *objpool_alloc(struct list_item *head, size_t size);
  * Return a block to the object pool. Memory is never freed by design, unused
  * blocks are kept in the object pool for future re-use.
  */
-int objpool_free(struct list_item *head, void *data);
+int objpool_free(struct objpool_head *head, void *data);
 
 #endif
