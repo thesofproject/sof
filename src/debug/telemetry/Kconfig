@@ -3,6 +3,7 @@
 config SOF_TELEMETRY
 	bool "enable telemetry"
 	default n
+	depends on !SOF_USERSPACE_LL
 	help
 	  Enables telemetry. Enables performance measurements and debug utilities
 	  that use memory window 2 (debug window) as interface. Measurements include
