@@ -117,12 +117,13 @@ const void *z_impl_fast_get(struct k_heap *heap, const void *dram_ptr, size_t si
 		goto out;
 	}
 
-	ret = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, size, 0);
+	ret = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, size, PLATFORM_DCACHE_ALIGN);
 	if (!ret)
 		goto out;
 	entry->size = size;
 	entry->sram_ptr = ret;
 	memcpy_s(entry->sram_ptr, entry->size, dram_ptr, size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)entry->sram_ptr, size);
 	entry->dram_ptr = dram_ptr;
 	entry->refcount = 1;
 out:
