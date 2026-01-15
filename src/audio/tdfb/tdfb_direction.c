@@ -108,7 +108,7 @@ static inline int16_t tdfb_mic_distance_sqrt(int32_t x)
 
 	xs = Q_SHIFT_RND(x, 24, 12);
 	xs = MIN(xs, UINT16_MAX);
-	return sqrt_int16((uint16_t)xs);
+	return sofm_sqrt_int16((uint16_t)xs);
 }
 
 static int16_t max_mic_distance(struct tdfb_comp_data *cd)

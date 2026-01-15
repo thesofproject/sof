@@ -29,7 +29,7 @@
  * Arguments	: uint16_t u
  * Return Type	: int32_t
  */
-uint16_t sqrt_int16(uint16_t u)
+uint16_t sofm_sqrt_int16(uint16_t u)
 {
 	static const int32_t iv1[193] = {
 	    46341, 46702, 47059, 47415, 47767, 48117, 48465, 48809, 49152, 49492, 49830, 50166,
@@ -146,4 +146,4 @@ uint16_t sqrt_int16(uint16_t u)
 
 	return y;
 }
-EXPORT_SYMBOL(sqrt_int16);
+EXPORT_SYMBOL(sofm_sqrt_int16);
