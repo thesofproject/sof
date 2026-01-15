@@ -11,6 +11,7 @@
 #include <sof/common.h>
 #include <sof/list.h>
 #include <sof/llext_manager.h>
+#include <sof/objpool.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 
@@ -27,7 +28,7 @@
 LOG_MODULE_DECLARE(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx dp_tr;
 
-static struct k_mem_domain dp_mdom[CONFIG_CORE_COUNT];
+static struct objpool_head dp_mdom_head = {.list = LIST_INIT(dp_mdom_head.list)};
 
 /* Synchronization semaphore for the scheduler thread to wait for DP startup */
 #define DP_SYNC_INIT(i, _)	Z_SEM_INITIALIZER(dp_sync[i], 0, 1)
@@ -384,14 +385,17 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
  */
 void scheduler_dp_domain_free(struct processing_module *pmod)
 {
-	unsigned int core = pmod->dev->task->core;
+	struct k_mem_domain *mdom = pmod->mdom;
 
-	llext_manager_rm_domain(pmod->dev->ipc_config.id, dp_mdom + core);
+	llext_manager_rm_domain(pmod->dev->ipc_config.id, mdom);
 
 	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
 
-	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_HEAP);
-	k_mem_domain_remove_partition(dp_mdom + core, pdata->mpart + SOF_DP_PART_CFG);
+	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_HEAP);
+	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG);
+
+	pmod->mdom = NULL;
+	objpool_free(&dp_mdom_head, mdom);
 }
 
 /* Called only in IPC context */
@@ -497,6 +501,19 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	unsigned int pidx;
 	size_t size;
 	uintptr_t start;
+	struct k_mem_domain *mdom = objpool_alloc(&dp_mdom_head, sizeof(*mdom),
+						  SOF_MEM_FLAG_COHERENT);
+
+	if (!mdom)
+		goto e_thread;
+
+	mod->mdom = mdom;
+
+	if (!mdom->arch.ptables) {
+		ret = k_mem_domain_init(mdom, 0, NULL);
+		if (ret < 0)
+			goto e_dom;
+	}
 
 	/* Module heap partition */
 	mod_heap_info(mod, &size, &start);
@@ -513,12 +530,12 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	};
 
 	for (pidx = 0; pidx < SOF_DP_PART_TYPE_COUNT; pidx++) {
-		ret = k_mem_domain_add_partition(dp_mdom + core, pdata->mpart + pidx);
+		ret = k_mem_domain_add_partition(mdom, pdata->mpart + pidx);
 		if (ret < 0)
 			goto e_dom;
 	}
 
-	ret = llext_manager_add_domain(mod->dev->ipc_config.id, dp_mdom + core);
+	ret = llext_manager_add_domain(mod->dev->ipc_config.id, mdom);
 	if (ret < 0) {
 		tr_err(&dp_tr, "failed to add LLEXT to domain %d", ret);
 		goto e_dom;
@@ -528,7 +545,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	 * Keep this call last, able to fail, otherwise domain will be removed
 	 * before its thread
 	 */
-	ret = k_mem_domain_add_thread(dp_mdom + core, pdata->thread_id);
+	ret = k_mem_domain_add_thread(mdom, pdata->thread_id);
 	if (ret < 0) {
 		tr_err(&dp_tr, "failed to add thread to domain %d", ret);
 		goto e_dom;
@@ -553,9 +570,4 @@ e_stack:
 e_tmem:
 	mod_free(mod, task_memory);
 	return ret;
-}
-
-int scheduler_dp_domain_init(void)
-{
-	return k_mem_domain_init(dp_mdom + cpu_get_id(), 0, NULL);
 }
