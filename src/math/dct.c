@@ -58,7 +58,7 @@ int mod_dct_initialize_16(struct processing_module *mod, struct dct_plan_16 *dct
 
 	c1 = PI_Q29 / dct->num_in;
 	arg = Q_SHIFT_RND(TWO_Q29 / dct->num_in, 29, 12);
-	c2 = sqrt_int16(arg); /* Q4.12 */
+	c2 = sofm_sqrt_int16(arg); /* Q4.12 */
 	for (n = 0; n < dct->num_in; n++) {
 		for (k = 0; k < dct->num_out; k++) {
 			/* Note: Current int16_t nk works up to DCT_MATRIX_SIZE_MAX = 91 */
