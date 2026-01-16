@@ -69,8 +69,14 @@ static inline int memset_s(void *dest, size_t dest_size, int data, size_t count)
 	if (count > dest_size)
 		return -EINVAL;
 
-	if (!memset(dest, data, count))
-		return -ENOMEM;
+	memset(dest, data, count);
+	/*
+	 * Prevent compiler from optimizing away the memset.
+	 * Memory barrier prevents dead store elimination.
+	 */
+#if defined(CONFIG_XTENSA)
+	__asm__ __volatile__("memw" ::: "memory");
+#endif
 
 	return 0;
 }
