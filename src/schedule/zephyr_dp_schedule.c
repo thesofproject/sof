@@ -325,6 +325,12 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
 
+	if (task_is_active(task)) {
+		scheduler_dp_unlock(lock_key);
+		tr_dbg(&dp_tr, "DP task already active");
+		return 0;
+	}
+
 	if (task->state != SOF_TASK_STATE_INIT &&
 	    task->state != SOF_TASK_STATE_CANCEL &&
 	    task->state != SOF_TASK_STATE_COMPLETED) {
