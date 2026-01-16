@@ -222,32 +222,12 @@ static int idc_trigger(uint32_t comp_id)
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, cpu_get_id());
 	uint32_t cmd = *(uint32_t *)payload;
-	int ret;
 
 	ipc_dev = ipc_get_comp_by_id(ipc, comp_id);
 	if (!ipc_dev)
 		return -ENODEV;
 
-	ret = comp_trigger(ipc_dev->cd, cmd);
-	if (ret < 0)
-		goto out;
-
-	/* schedule or cancel task */
-	switch (cmd) {
-	case COMP_TRIGGER_START:
-	case COMP_TRIGGER_RELEASE:
-		schedule_task(ipc_dev->cd->task, 0, ipc_dev->cd->period);
-		break;
-	case COMP_TRIGGER_XRUN:
-	case COMP_TRIGGER_PAUSE:
-	case COMP_TRIGGER_STOP:
-		schedule_task_cancel(ipc_dev->cd->task);
-		break;
-	}
-
-out:
-
-	return ret;
+	return comp_trigger(ipc_dev->cd, cmd);
 }
 
 /**
