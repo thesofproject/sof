@@ -45,7 +45,6 @@ LOG_MODULE_REGISTER(smart_amp, CONFIG_SOF_LOG_LEVEL);
 
 struct smart_amp_data {
 	struct sof_smart_amp_config config;
-	struct comp_data_blob_handler *model_handler;
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
 	struct comp_buffer *sink_buf; /**< sink buffer */

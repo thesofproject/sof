@@ -2,7 +2,6 @@
 
 config COMP_SMART_AMP
 	bool "Smart Amplifier component"
-	select COMP_BLOB
 	help
 	  Select for Smart Amp component. This component protect the speaker
 	  from overheating and excursion violation. This consists of two parts
