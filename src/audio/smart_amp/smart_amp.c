@@ -11,15 +11,13 @@
 #include <sys/types.h>
 
 #include <rtos/init.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/msg.h>
 #include <sof/ut.h>
 #include <user/smart_amp.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/smart_amp/smart_amp.h>
-#include <sof/lib/uuid.h>
-
-static const struct comp_driver comp_smart_amp;
 
 /* NOTE: this code builds itself with one of two distinct UUIDs
  * depending on configuration!
@@ -48,8 +46,6 @@ struct smart_amp_data {
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
 	struct comp_buffer *sink_buf; /**< sink buffer */
-
-	struct ipc_config_process ipc_config;
 
 	smart_amp_src_func ff_get_frame; /**< function to get stream source */
 	smart_amp_src_func fb_get_frame; /**< function to get feedback source */
@@ -108,12 +104,12 @@ static inline int smart_amp_buf_alloc(struct smart_amp_buf *buf, size_t size)
 static ssize_t smart_amp_alloc_mod_memblk(struct smart_amp_data *sad,
 					  enum smart_amp_mod_memblk blk)
 {
-	struct smart_amp_mod_data_base *mod = sad->mod_data;
+	struct smart_amp_mod_data_base *smod = sad->mod_data;
 	int ret;
 	size_t size;
 
 	/* query the required size from inner model. */
-	ret = mod->mod_ops->query_memblk_size(mod, blk);
+	ret = smod->mod_ops->query_memblk_size(smod, blk);
 	if (ret < 0)
 		goto error;
 
@@ -128,7 +124,7 @@ static ssize_t smart_amp_alloc_mod_memblk(struct smart_amp_data *sad,
 		goto error;
 
 	/* provide the memory block information to inner model. */
-	ret = mod->mod_ops->set_memblk(mod, blk, &sad->mod_mems[blk]);
+	ret = smod->mod_ops->set_memblk(smod, blk, &sad->mod_mems[blk]);
 	if (ret < 0)
 		goto error;
 
@@ -175,46 +171,34 @@ error:
 	return ret;
 }
 
-static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
-				      const struct comp_ipc_config *config,
-				      const void *spec)
+static int smart_amp_init(struct processing_module *mod)
 {
-	struct comp_dev *dev;
-	const struct ipc_config_process *ipc_sa = spec;
+	struct comp_dev *dev = mod->dev;
+	struct module_config *mcfg = &mod->priv.cfg;
 	struct smart_amp_data *sad;
 	struct sof_smart_amp_config *cfg;
 	size_t bs;
 	int ret;
 
-	dev = comp_alloc(drv, sizeof(*dev));
-	if (!dev)
-		return NULL;
+	/* Allocate smart_amp_data using module API */
+	sad = mod_zalloc(mod, sizeof(*sad));
+	if (!sad)
+		return -ENOMEM;
 
-	dev->ipc_config = *config;
+	mod->priv.private = sad;
 
-	sad = rzalloc(SOF_MEM_FLAG_USER, sizeof(*sad));
-	if (!sad) {
-		rfree(dev);
-		return NULL;
+	/* Copy config blob if present */
+	if (mcfg->avail && mcfg->init_data && mcfg->size >= sizeof(struct sof_smart_amp_config)) {
+		cfg = (struct sof_smart_amp_config *)mcfg->init_data;
+		bs = mcfg->size;
+		memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
 	}
-
-	comp_set_drvdata(dev, sad);
-	sad->ipc_config = *ipc_sa;
-
-	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
-	bs = ipc_sa->size;
-
-	if (bs > 0 && bs < sizeof(struct sof_smart_amp_config)) {
-		comp_err(dev, "failed to apply config");
-		goto error;
-	}
-
-	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
 
 	/* allocate inner model data struct */
 	sad->mod_data = mod_data_create(dev);
 	if (!sad->mod_data) {
 		comp_err(dev, "failed to allocate nner model data");
+		ret = -ENOMEM;
 		goto error;
 	}
 
@@ -256,22 +240,19 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	}
 	comp_dbg(dev, "used mod config buffer %d bytes", ret);
 
-	dev->state = COMP_STATE_READY;
-
-	return dev;
-
+	return 0;
 error:
 	smart_amp_free_mod_memories(sad);
-	rfree(sad);
-	rfree(dev);
-	return NULL;
+	mod_free(mod, sad);
+	return ret;
 }
 
-static int smart_amp_set_config(struct comp_dev *dev,
+static int smart_amp_set_config(struct processing_module *mod,
 				struct sof_ipc_ctrl_data *cdata)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct sof_smart_amp_config *cfg;
+	struct comp_dev *dev = mod->dev;
 	size_t bs;
 
 	/* Copy new config, find size from header */
@@ -294,10 +275,11 @@ static int smart_amp_set_config(struct comp_dev *dev,
 	return 0;
 }
 
-static int smart_amp_get_config(struct comp_dev *dev,
+static int smart_amp_get_config(struct processing_module *mod,
 				struct sof_ipc_ctrl_data *cdata, int size)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	size_t bs;
 	int ret = 0;
 
@@ -319,24 +301,24 @@ static int smart_amp_get_config(struct comp_dev *dev,
 	return ret;
 }
 
-#if CONFIG_IPC_MAJOR_3
-static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
+static int smart_amp_ctrl_get_bin_data(struct processing_module *mod,
 				       struct sof_ipc_ctrl_data *cdata,
 				       int size)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct smart_amp_mod_data_base *mod;
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct smart_amp_mod_data_base *smod;
+	struct comp_dev *dev = mod->dev;
 	int ret = 0;
 
 	assert(sad);
-	mod = sad->mod_data;
+	smod = sad->mod_data;
 
 	switch (cdata->data->type) {
 	case SOF_SMART_AMP_CONFIG:
-		ret = smart_amp_get_config(dev, cdata, size);
+		ret = smart_amp_get_config(mod, cdata, size);
 		break;
 	case SOF_SMART_AMP_MODEL:
-		ret = mod->mod_ops->get_config(mod, cdata, size);
+		ret = smod->mod_ops->get_config(smod, cdata, size);
 		if (ret < 0) {
 			comp_err(dev, "failed to read inner model!");
 			return ret;
@@ -350,34 +332,38 @@ static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 	return ret;
 }
 
-static int smart_amp_ctrl_get_data(struct comp_dev *dev,
-				   struct sof_ipc_ctrl_data *cdata, int size)
+static int smart_amp_get_configuration(struct processing_module *mod,
+				       uint32_t config_id, uint32_t *data_offset_size,
+				       uint8_t *fragment, size_t fragment_size)
 {
-	int ret = 0;
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "smart_amp_ctrl_get_data() size: %d", size);
+	comp_dbg(dev, "config_id %u size: %zu", config_id, fragment_size);
 
+#if CONFIG_IPC_MAJOR_3
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		ret = smart_amp_ctrl_get_bin_data(dev, cdata, size);
-		break;
+		return smart_amp_ctrl_get_bin_data(mod, cdata, fragment_size);
 	default:
 		comp_err(dev, "invalid cdata->cmd");
-		return -EINVAL;
 	}
-
-	return ret;
+#elif CONFIG_IPC_MAJOR_4
+	return smart_amp_ctrl_get_bin_data(mod, cdata, fragment_size);
+#endif
+	return -EINVAL;
 }
 
-static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
+static int smart_amp_ctrl_set_bin_data(struct processing_module *mod,
 				       struct sof_ipc_ctrl_data *cdata)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct smart_amp_mod_data_base *mod;
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct smart_amp_mod_data_base *smod;
+	struct comp_dev *dev = mod->dev;
 	int ret = 0;
 
 	assert(sad);
-	mod = sad->mod_data;
+	smod = sad->mod_data;
 
 	if (dev->state < COMP_STATE_READY) {
 		comp_err(dev, "driver in init!");
@@ -386,10 +372,10 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 
 	switch (cdata->data->type) {
 	case SOF_SMART_AMP_CONFIG:
-		ret = smart_amp_set_config(dev, cdata);
+		ret = smart_amp_set_config(mod, cdata);
 		break;
 	case SOF_SMART_AMP_MODEL:
-		ret = mod->mod_ops->set_config(mod, cdata);
+		ret = smod->mod_ops->set_config(smod, cdata);
 		if (ret < 0) {
 			comp_err(dev, "failed to write inner model!");
 			return ret;
@@ -403,9 +389,10 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 	return ret;
 }
 
-static int smart_amp_ctrl_set_data(struct comp_dev *dev,
+static int smart_amp_ctrl_set_data(struct processing_module *mod,
 				   struct sof_ipc_ctrl_data *cdata)
 {
+	struct comp_dev *dev = mod->dev;
 	int ret = 0;
 
 	/* Check version from ABI header */
@@ -416,8 +403,8 @@ static int smart_amp_ctrl_set_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		comp_dbg(dev, "smart_amp_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = smart_amp_ctrl_set_bin_data(dev, cdata);
+		comp_dbg(dev, "SOF_CTRL_CMD_BINARY");
+		ret = smart_amp_ctrl_set_bin_data(mod, cdata);
 		break;
 	default:
 		comp_err(dev, "invalid cdata->cmd");
@@ -428,74 +415,71 @@ static int smart_amp_ctrl_set_data(struct comp_dev *dev,
 	return ret;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int smart_amp_cmd(struct comp_dev *dev, int cmd, void *data,
-			 int max_data_size)
+static int smart_amp_set_configuration(struct processing_module *mod,
+				       uint32_t config_id,
+				       enum module_cfg_fragment_position pos,
+				       uint32_t data_offset_size,
+				       const uint8_t *fragment, size_t fragment_size,
+				       uint8_t *response, size_t response_size)
 {
-	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "cmd: %d", cmd);
+	comp_info(dev, "config_id %u size %zu", config_id, response_size);
 
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		return smart_amp_ctrl_set_data(dev, cdata);
-	case COMP_CMD_GET_DATA:
-		return smart_amp_ctrl_get_data(dev, cdata, max_data_size);
+#if CONFIG_IPC_MAJOR_3
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_BINARY:
+		comp_info(dev, "SOF_CTRL_CMD_BINARY");
+		return smart_amp_ctrl_set_data(mod, cdata);
 	default:
-		return -EINVAL;
+		comp_err(dev, "unknown cmd %d", cdata->cmd);
 	}
-}
+#elif CONFIG_IPC_MAJOR_4
+	return smart_amp_ctrl_set_data(mod, cdata);
 #endif
+	return -EINVAL;
+}
 
-static void smart_amp_free(struct comp_dev *dev)
+static int smart_amp_free(struct processing_module *mod)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "smart_amp_free()");
+	if (!sad)
+		return 0;
 
 	smart_amp_free_mod_memories(sad);
 
-	rfree(sad);
-	sad = NULL;
-	rfree(dev);
-	dev = NULL;
-}
-
-static int smart_amp_verify_params(struct comp_dev *dev,
-				   struct sof_ipc_stream_params *params)
-{
-	int ret;
-
-	comp_dbg(dev, "smart_amp_verify_params()");
-
-	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
-	if (ret < 0) {
-		comp_err(dev, "volume_verify_params() error: comp_verify_params() failed.");
-		return ret;
-	}
+	mod_free(mod, sad);
+	mod->priv.private = NULL;
 
 	return 0;
 }
 
-static int smart_amp_params(struct comp_dev *dev,
-			    struct sof_ipc_stream_params *params)
+#if CONFIG_IPC_MAJOR_4
+static void smart_amp_ipc4_params(struct processing_module *mod)
 {
-	int err;
+	struct sof_ipc_stream_params *params = mod->stream_params;
+	struct comp_buffer *sinkb, *sourceb;
+	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "smart_amp_params()");
+	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
+	component_set_nearest_period_frames(dev, params->rate);
 
-	err = smart_amp_verify_params(dev, params);
-	if (err < 0) {
-		comp_err(dev, "pcm params verification failed.");
-		return -EINVAL;
-	}
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
 
-	return 0;
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
 }
+#endif /* CONFIG_IPC_MAJOR_4 */
 
-static int smart_amp_trigger(struct comp_dev *dev, int cmd)
+static int smart_amp_trigger(struct processing_module *mod, int cmd)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	int ret = 0;
 
 	comp_dbg(dev, "smart_amp_trigger(), command = %u", cmd);
@@ -519,13 +503,14 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
-static int smart_amp_ff_process(struct comp_dev *dev,
+static int smart_amp_ff_process(struct processing_module *mod,
 				const struct audio_stream *source,
 				const struct audio_stream *sink,
 				uint32_t frames, const int8_t *chan_map)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct smart_amp_mod_data_base *mod = sad->mod_data;
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct smart_amp_mod_data_base *smod = sad->mod_data;
+	struct comp_dev *dev = mod->dev;
 	int ret;
 
 	sad->ff_mod.consumed = 0;
@@ -544,7 +529,7 @@ static int smart_amp_ff_process(struct comp_dev *dev,
 
 	sad->ff_get_frame(&sad->ff_mod, frames, source, chan_map);
 
-	ret = mod->mod_ops->ff_proc(mod, frames, &sad->ff_mod, &sad->out_mod);
+	ret = smod->mod_ops->ff_proc(smod, frames, &sad->ff_mod, &sad->out_mod);
 	if (ret) {
 		comp_err(dev, "feed forward inner model process error");
 		return ret;
@@ -555,12 +540,13 @@ static int smart_amp_ff_process(struct comp_dev *dev,
 	return 0;
 }
 
-static int smart_amp_fb_process(struct comp_dev *dev,
+static int smart_amp_fb_process(struct processing_module *mod,
 				const struct audio_stream *source,
 				uint32_t frames, const int8_t *chan_map)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct smart_amp_mod_data_base *mod = sad->mod_data;
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct smart_amp_mod_data_base *smod = sad->mod_data;
+	struct comp_dev *dev = mod->dev;
 	int ret;
 
 	sad->fb_mod.consumed = 0;
@@ -578,7 +564,7 @@ static int smart_amp_fb_process(struct comp_dev *dev,
 
 	sad->fb_get_frame(&sad->fb_mod, frames, source, chan_map);
 
-	ret = mod->mod_ops->fb_proc(mod, frames, &sad->fb_mod);
+	ret = smod->mod_ops->fb_proc(smod, frames, &sad->fb_mod);
 	if (ret) {
 		comp_err(dev, "feedback inner model process error");
 		return ret;
@@ -587,11 +573,14 @@ static int smart_amp_fb_process(struct comp_dev *dev,
 	return 0;
 }
 
-static int smart_amp_copy(struct comp_dev *dev)
+static int smart_amp_process(struct processing_module *mod,
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source_buf = sad->source_buf;
-	struct comp_buffer *sink_buf = sad->sink_buf;
+	struct comp_buffer *sink_buf = comp_buffer_get_from_sink(sinks[0]);
 	uint32_t avail_passthrough_frames;
 	uint32_t avail_feedback_frames;
 	uint32_t avail_frames;
@@ -599,7 +588,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	uint32_t sink_bytes;
 	uint32_t feedback_bytes;
 
-	comp_dbg(dev, "smart_amp_copy()");
+	comp_dbg(dev, "%d sources %d sinks", num_of_sources, num_of_sinks);
 
 	/* available bytes and samples calculation */
 	avail_passthrough_frames = audio_stream_avail_frames(&source_buf->stream,
@@ -626,7 +615,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 			/* perform buffer writeback after source_buf process */
 			buffer_stream_invalidate(feedback_buf, feedback_bytes);
-			smart_amp_fb_process(dev, &feedback_buf->stream,
+			smart_amp_fb_process(mod, &feedback_buf->stream,
 					     avail_feedback_frames,
 					     sad->config.feedback_ch_map);
 
@@ -645,7 +634,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	source_bytes = avail_frames * audio_stream_frame_bytes(&source_buf->stream);
 
 	buffer_stream_invalidate(source_buf, source_bytes);
-	smart_amp_ff_process(dev, &source_buf->stream, &sink_buf->stream,
+	smart_amp_ff_process(mod, &source_buf->stream, &sink_buf->stream,
 			     avail_frames, sad->config.source_ch_map);
 
 	comp_dbg(dev, "processing %u feed forward frames (consumed: %u, produced: %u)",
@@ -663,11 +652,11 @@ static int smart_amp_copy(struct comp_dev *dev)
 	return 0;
 }
 
-static int smart_amp_reset(struct comp_dev *dev)
+static int smart_amp_reset(struct processing_module *mod)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct smart_amp_mod_data_base *mod = sad->mod_data;
-	int ret;
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct smart_amp_mod_data_base *smod = sad->mod_data;
+	struct comp_dev *dev = mod->dev;
 
 	comp_dbg(dev, "smart_amp_reset()");
 
@@ -676,13 +665,7 @@ static int smart_amp_reset(struct comp_dev *dev)
 	sad->ff_set_frame = NULL;
 
 	/* reset inner model */
-	ret = mod->mod_ops->reset(mod);
-	if (ret)
-		return ret;
-
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-
-	return 0;
+	return smod->mod_ops->reset(smod);
 }
 
 /* supported formats: {SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE}
@@ -693,17 +676,18 @@ static inline bool is_supported_fmt(uint16_t fmt)
 	return fmt <= SOF_IPC_FRAME_S32_LE;
 }
 
-static int smart_amp_resolve_mod_fmt(struct comp_dev *dev, uint32_t least_req_depth)
+static int smart_amp_resolve_mod_fmt(struct processing_module *mod, uint32_t least_req_depth)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	struct smart_amp_mod_data_base *mod = sad->mod_data;
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct smart_amp_mod_data_base *smod = sad->mod_data;
+	struct comp_dev *dev = mod->dev;
 	const uint16_t *mod_fmts;
 	int num_mod_fmts;
 	int ret;
 	int i;
 
 	/* get supported formats from mod */
-	ret = mod->mod_ops->get_supported_fmts(mod, &mod_fmts, &num_mod_fmts);
+	ret = smod->mod_ops->get_supported_fmts(smod, &mod_fmts, &num_mod_fmts);
 	if (ret) {
 		comp_err(dev, "failed to get supported formats");
 		return ret;
@@ -715,7 +699,7 @@ static int smart_amp_resolve_mod_fmt(struct comp_dev *dev, uint32_t least_req_de
 			/* set frame format to inner model */
 			comp_dbg(dev, "set mod format to %u",
 				 mod_fmts[i]);
-			ret = mod->mod_ops->set_fmt(mod, mod_fmts[i]);
+			ret = smod->mod_ops->set_fmt(smod, mod_fmts[i]);
 			if (ret) {
 				comp_err(dev,
 					 "failed setting format %u",
@@ -731,32 +715,36 @@ static int smart_amp_resolve_mod_fmt(struct comp_dev *dev, uint32_t least_req_de
 	return -EINVAL;
 }
 
-static int smart_amp_prepare(struct comp_dev *dev)
+static int smart_amp_prepare(struct processing_module *mod,
+			     struct sof_source **sources, int num_of_sources,
+			     struct sof_sink **sinks, int num_of_sinks)
 {
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct smart_amp_data *sad = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
 	uint16_t ff_src_fmt, fb_src_fmt, resolved_mod_fmt;
 	uint32_t least_req_depth;
-	int ret;
+	int ret, i;
 
-	comp_dbg(dev, "smart_amp_prepare()");
+	comp_dbg(dev, "%d sources %d sinks", num_of_sources, num_of_sinks);
+#if CONFIG_IPC_MAJOR_4
+	smart_amp_ipc4_params(mod);
+#endif
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	/* searching for stream and feedback source buffers */
-	struct comp_buffer *source_buffer;
-
-	comp_dev_for_each_producer(dev, source_buffer) {
-		if (comp_buffer_get_source_component(source_buffer)->ipc_config.type
-				== SOF_COMP_DEMUX)
-			sad->feedback_buf = source_buffer;
+	/* In module API, state is managed by the framework, so no comp_set_state needed */
+	for (i = 0; i < num_of_sources; i++) {
+		/* NOTE: This should not work in module based environment:
+		 *	 sources[i]->bound_module->dev->ipc_config.type == SOF_COMP_DEMUX
+		 *	 So let's check which one of the sources is from a capture stream.
+		 *	 The code is not tested and may not work.
+		 */
+		if (sources[i]->bound_module->dev->direction == SOF_IPC_STREAM_CAPTURE)
+			sad->feedback_buf = comp_buffer_get_from_source(sources[i]);
 		else
-			sad->source_buf = source_buffer;
+			sad->source_buf = comp_buffer_get_from_source(sources[i]);
 	}
 
 	/* sink buffer */
-	sad->sink_buf = comp_dev_get_first_data_consumer(dev);
+	sad->sink_buf = comp_buffer_get_from_sink(sinks[0]);
 	if (!sad->sink_buf) {
 		comp_err(dev, "no sink buffer");
 		return -ENOTCONN;
@@ -781,14 +769,13 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		fb_src_fmt = audio_stream_get_frm_fmt(&sad->feedback_buf->stream);
 		sad->fb_mod.channels = MIN(SMART_AMP_FB_MAX_CH_NUM,
 					   audio_stream_get_channels(&sad->feedback_buf->stream));
-
 		least_req_depth = MAX(least_req_depth, get_sample_bitdepth(fb_src_fmt));
 	}
 
 	/* resolve the frame format for inner model. The return value will be the applied format
 	 * or the negative error code.
 	 */
-	ret = smart_amp_resolve_mod_fmt(dev, least_req_depth);
+	ret = smart_amp_resolve_mod_fmt(mod, least_req_depth);
 	if (ret < 0)
 		return ret;
 
@@ -812,36 +799,20 @@ static int smart_amp_prepare(struct comp_dev *dev)
 		comp_dbg(dev, "fb mod buffer channels:%u fmt_conv:%u -> %u",
 			 sad->fb_mod.channels, fb_src_fmt, sad->fb_mod.frame_fmt);
 	}
+
 	return 0;
 }
 
-static const struct comp_driver comp_smart_amp = {
-	.type = SOF_COMP_SMART_AMP,
-	.uid = SOF_RT_UUID(UUID_SYM),
-	.tctx = &smart_amp_comp_tr,
-	.ops = {
-		.create = smart_amp_new,
-		.free = smart_amp_free,
-		.params = smart_amp_params,
-		.prepare = smart_amp_prepare,
-#if CONFIG_IPC_MAJOR_3
-		.cmd = smart_amp_cmd,
-#endif
-		.trigger = smart_amp_trigger,
-		.copy = smart_amp_copy,
-		.reset = smart_amp_reset,
-	},
+static struct module_interface smart_amp_interface = {
+	.init = smart_amp_init,
+	.prepare = smart_amp_prepare,
+	.process = smart_amp_process,
+	.set_configuration = smart_amp_set_configuration,
+	.get_configuration = smart_amp_get_configuration,
+	.reset = smart_amp_reset,
+	.free = smart_amp_free,
+	.trigger = smart_amp_trigger,
 };
 
-static SHARED_DATA struct comp_driver_info comp_smart_amp_info = {
-	.drv = &comp_smart_amp,
-};
-
-UT_STATIC void sys_comp_smart_amp_init(void)
-{
-	comp_register(platform_shared_get(&comp_smart_amp_info,
-					  sizeof(comp_smart_amp_info)));
-}
-
-DECLARE_MODULE(sys_comp_smart_amp_init);
-SOF_MODULE_INIT(smart_amp, sys_comp_smart_amp_init);
+DECLARE_MODULE_ADAPTER(smart_amp_interface, UUID_SYM, smart_amp_comp_tr);
+SOF_MODULE_INIT(smart_amp, sys_comp_module_smart_amp_interface_init);
