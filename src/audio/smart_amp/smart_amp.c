@@ -42,6 +42,7 @@ LOG_MODULE_REGISTER(smart_amp, CONFIG_SOF_LOG_LEVEL);
 #define SOF_SMART_AMP_MODEL 1
 
 struct smart_amp_data {
+	struct processing_module *mod;
 	struct sof_smart_amp_config config;
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
@@ -68,33 +69,34 @@ struct smart_amp_data {
 static inline void smart_amp_free_mod_memories(struct smart_amp_data *sad)
 {
 	/* sof -> mod feed-forward data re-mapping and format conversion */
-	rfree(sad->ff_mod.buf.data);
+	mod_free(sad->mod, sad->ff_mod.buf.data);
 	sad->ff_mod.buf.data = NULL;
 	/* sof -> mod feedback data re-mapping and format conversion */
-	rfree(sad->fb_mod.buf.data);
+	mod_free(sad->mod, sad->fb_mod.buf.data);
 	sad->fb_mod.buf.data = NULL;
 	/* mod -> sof processed data format conversion */
-	rfree(sad->out_mod.buf.data);
+	mod_free(sad->mod, sad->out_mod.buf.data);
 	sad->out_mod.buf.data = NULL;
 
 	/* mem block for mod private data usage */
-	rfree(sad->mod_mems[MOD_MEMBLK_PRIVATE].data);
+	mod_free(sad->mod, sad->mod_mems[MOD_MEMBLK_PRIVATE].data);
 	sad->mod_mems[MOD_MEMBLK_PRIVATE].data = NULL;
 	/* mem block for mod audio frame data usage */
-	rfree(sad->mod_mems[MOD_MEMBLK_FRAME].data);
+	mod_free(sad->mod, sad->mod_mems[MOD_MEMBLK_FRAME].data);
 	sad->mod_mems[MOD_MEMBLK_FRAME].data = NULL;
 	/* mem block for mod parameter blob usage */
-	rfree(sad->mod_mems[MOD_MEMBLK_PARAM].data);
+	mod_free(sad->mod, sad->mod_mems[MOD_MEMBLK_PARAM].data);
 	sad->mod_mems[MOD_MEMBLK_PARAM].data = NULL;
 
 	/* inner model data struct */
-	rfree(sad->mod_data);
+	mod_free(sad->mod, sad->mod_data);
 	sad->mod_data = NULL;
 }
 
-static inline int smart_amp_buf_alloc(struct smart_amp_buf *buf, size_t size)
+static inline int smart_amp_buf_alloc(struct processing_module *mod,
+				      struct smart_amp_buf *buf, size_t size)
 {
-	buf->data = rballoc(SOF_MEM_FLAG_USER, size);
+	buf->data = mod_alloc(mod, size);
 	if (!buf->data)
 		return -ENOMEM;
 	buf->size = size;
@@ -119,7 +121,7 @@ static ssize_t smart_amp_alloc_mod_memblk(struct smart_amp_data *sad,
 
 	/* allocate the memory block when returned size > 0. */
 	size = ret;
-	ret = smart_amp_buf_alloc(&sad->mod_mems[blk], size);
+	ret = smart_amp_buf_alloc(sad->mod, &sad->mod_mems[blk], size);
 	if (ret < 0)
 		goto error;
 
@@ -144,21 +146,21 @@ static int smart_amp_alloc_data_buffers(struct comp_dev *dev,
 
 	/* sof -> mod feed-forward data re-mapping and format conversion */
 	size = SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t);
-	ret = smart_amp_buf_alloc(&sad->ff_mod.buf, size);
+	ret = smart_amp_buf_alloc(sad->mod, &sad->ff_mod.buf, size);
 	if (ret < 0)
 		goto error;
 	total_size = size;
 
 	/* sof -> mod feedback data re-mapping and format conversion */
 	size = SMART_AMP_FB_BUF_DB_SZ * sizeof(int32_t);
-	ret = smart_amp_buf_alloc(&sad->fb_mod.buf, size);
+	ret = smart_amp_buf_alloc(sad->mod, &sad->fb_mod.buf, size);
 	if (ret < 0)
 		goto error;
 	total_size += size;
 
 	/* mod -> sof processed data format conversion */
 	size = SMART_AMP_FF_BUF_DB_SZ * sizeof(int32_t);
-	ret = smart_amp_buf_alloc(&sad->out_mod.buf, size);
+	ret = smart_amp_buf_alloc(sad->mod, &sad->out_mod.buf, size);
 	if (ret < 0)
 		goto error;
 	total_size += size;
@@ -186,6 +188,7 @@ static int smart_amp_init(struct processing_module *mod)
 		return -ENOMEM;
 
 	mod->priv.private = sad;
+	sad->mod = mod;
 
 	/* Copy config blob if present */
 	if (mcfg->avail && mcfg->init_data && mcfg->size >= sizeof(struct sof_smart_amp_config)) {
