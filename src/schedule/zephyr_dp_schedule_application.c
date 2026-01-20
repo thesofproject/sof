@@ -176,10 +176,8 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 	pdata->flat->ret = -ENOSYS;
 
 	ret = ipc_thread_flatten(cmd, param, pdata->flat);
-	if (!ret) {
-		pdata->pend_ipc++;
-		k_sem_give(pdata->sem);
-	}
+	if (!ret)
+		k_event_post(pdata->event, DP_TASK_EVENT_IPC);
 
 	scheduler_dp_unlock(lock_key);
 
@@ -225,8 +223,7 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_
 			/* trigger the task */
 			curr_task->state = SOF_TASK_STATE_RUNNING;
 			trigger_task = true;
-			pdata->pend_proc++;
-			k_sem_give(pdata->sem);
+			k_event_post(pdata->event, DP_TASK_EVENT_PROCESS);
 		}
 
 		if (curr_task->state == SOF_TASK_STATE_RUNNING) {
@@ -278,41 +275,18 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 	comp_info(pmod->dev, "userspace thread started");
 
 	do {
-		/*
-		 * The thread is started immediately after creation, it stops here and waits
-		 * for the semaphore to be signalled to handle IPC or process audio data.
-		 */
-		k_sem_take(task_pdata->sem, K_FOREVER);
+		uint32_t mask = k_event_wait_safe(task_pdata->event,
+						  DP_TASK_EVENT_PROCESS | DP_TASK_EVENT_CANCEL |
+						  DP_TASK_EVENT_IPC, false, K_FOREVER);
 
-		lock_key = scheduler_dp_lock(task->core);
-
-		unsigned char pend_ipc = task_pdata->pend_ipc,
-			pend_proc = task_pdata->pend_proc;
-
-		task_pdata->pend_proc = 0;
-		task_pdata->pend_ipc = 0;
-
-		scheduler_dp_unlock(lock_key);
-
-		/*
-		 * Only 0:1, 1:0 and 1:1 are valid. 0:0 is also possible if IPC and audio
-		 * were signalled in a quick succession before we took the lock above. Any
-		 * value > 1 would mean that we've missed IPCs or LL ticks while in queued /
-		 * idle state, which shouldn't happen.
-		 */
-		if (pend_ipc > 1 || pend_proc > 1) {
-			tr_err(&dp_tr, "Invalid wake up %u:%u", pend_proc, pend_ipc);
-			continue;
-		}
-
-		if (pend_ipc) {
+		if (mask & DP_TASK_EVENT_IPC) {
 			/* handle IPC */
 			tr_dbg(&dp_tr, "got IPC wake up for %p state %d", pmod, task->state);
 			ipc_thread_unflatten_run(pmod, task_pdata->flat);
 			k_sem_give(&dp_sync[task->core]);
 		}
 
-		if (pend_proc) {
+		if (mask & DP_TASK_EVENT_PROCESS) {
 			bool ready;
 
 			if (task->state == SOF_TASK_STATE_RUNNING) {
@@ -411,7 +385,7 @@ void scheduler_dp_internal_free(struct task *task)
 {
 	struct task_dp_pdata *pdata = task->priv_data;
 
-	k_object_free(pdata->sem);
+	k_object_free(pdata->event);
 	k_object_free(pdata->thread);
 	scheduler_dp_domain_free(pdata);
 
@@ -471,8 +445,8 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	pdata->flat = &task_memory->flat;
 
-	pdata->sem = k_object_alloc(K_OBJ_SEM);
-	if (!pdata->sem) {
+	pdata->event = k_object_alloc(K_OBJ_EVENT);
+	if (!pdata->event) {
 		tr_err(&dp_tr, "Event object allocation failed");
 		ret = -ENOMEM;
 		goto e_stack;
@@ -509,7 +483,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		goto e_thread;
 	}
 
-	k_thread_access_grant(pdata->thread_id, pdata->sem, &dp_sync[core]);
+	k_thread_access_grant(pdata->thread_id, pdata->event, &dp_sync[core]);
 	scheduler_dp_grant(pdata->thread_id, core);
 
 	unsigned int pidx;
@@ -579,7 +553,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	}
 
 	/* start the thread, it should immediately stop at the semaphore */
-	k_sem_init(pdata->sem, 0, 1);
+	k_event_init(pdata->event);
 	k_thread_start(pdata->thread_id);
 
 	return 0;
@@ -591,7 +565,7 @@ e_thread:
 e_kobj:
 	/* k_object_free looks for a pointer in the list, any invalid value can be passed */
 	k_object_free(pdata->thread);
-	k_object_free(pdata->sem);
+	k_object_free(pdata->event);
 e_stack:
 	user_stack_free(p_stack);
 e_tmem:

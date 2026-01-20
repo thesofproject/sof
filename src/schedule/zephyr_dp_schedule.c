@@ -266,11 +266,8 @@ static int scheduler_dp_task_stop(void *data, struct task *task)
 		schedule_task_cancel(&dp_sch->ll_tick_src);
 
 	/* if the task is waiting - let it run and self-terminate */
-#if CONFIG_SOF_USERSPACE_APPLICATION
-	k_sem_give(pdata->sem);
-#else
 	k_event_set(pdata->event, DP_TASK_EVENT_CANCEL);
-#endif
+
 	scheduler_dp_unlock(lock_key);
 
 	/* wait till the task has finished, if there was any task created */
