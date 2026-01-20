@@ -200,7 +200,7 @@ static int smart_amp_init(struct processing_module *mod)
 	/* allocate inner model data struct */
 	sad->mod_data = mod_data_create(dev);
 	if (!sad->mod_data) {
-		comp_err(dev, "failed to allocate nner model data");
+		comp_err(dev, "failed to allocate inner model data");
 		ret = -ENOMEM;
 		goto error;
 	}
