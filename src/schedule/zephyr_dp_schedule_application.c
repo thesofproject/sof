@@ -506,8 +506,11 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	struct k_mem_domain *mdom = objpool_alloc(&dp_mdom_head, sizeof(*mdom),
 						  SOF_MEM_FLAG_COHERENT);
 
-	if (!mdom)
+	if (!mdom) {
+		tr_err(&dp_tr, "objpool allocation failed");
+		ret = -ENOMEM;
 		goto e_thread;
+	}
 
 	mod->mdom = mdom;
 
