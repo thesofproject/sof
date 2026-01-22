@@ -13,14 +13,17 @@
 
 #include <stdint.h>
 
-#define PI_DIV2_Q4_28 421657428
-#define PI_DIV2_Q3_29 843314856
-#define PI_Q4_28      843314857
-#define PI_MUL2_Q4_28     1686629713
-#define CORDIC_31B_TABLE_SIZE		31
-#define CORDIC_15B_TABLE_SIZE		15
-#define CORDIC_30B_ITABLE_SIZE		30
-#define CORDIC_16B_ITABLE_SIZE		16
+#define PI_Q4_28 843314857	 /* int32(pi * 2^28) */
+#define PI_MUL2_Q4_28 1686629713 /* int32(2 * pi * 2^28) */
+#define PI_DIV2_Q3_29 843314857	 /* int32(pi / 2 * 2^29) */
+#define PI_Q3_29 1686629713	 /* int32(pi * 2^29) */
+
+#define CORDIC_31B_TABLE_SIZE 31
+#define CORDIC_15B_TABLE_SIZE 15
+#define CORDIC_30B_ITABLE_SIZE 30
+#define CORDIC_16B_ITABLE_SIZE 16
+#define CORDIC_31B_ITERATIONS (CORDIC_31B_TABLE_SIZE - 1)
+#define CORDIC_16B_ITERATIONS (CORDIC_16B_ITABLE_SIZE - 1)
 
 typedef enum {
 	EN_32B_CORDIC_SINE,
@@ -38,8 +41,9 @@ struct cordic_cmpx {
 
 void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_yn, int32_t *xn,
 		   int32_t *th_cdc_fxp);
-int32_t is_scalar_cordic_acos(int32_t realvalue, int16_t numiters);
-int32_t is_scalar_cordic_asin(int32_t realvalue, int16_t numiters);
+int32_t is_scalar_cordic_acos(int32_t realvalue, int numiters_minus_one);
+int32_t is_scalar_cordic_asin(int32_t realvalue, int numiters_minus_one);
+
 void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct cordic_cmpx *cexp);
 /* Input is Q4.28, output is Q1.31 */
 /**
@@ -238,11 +242,9 @@ static inline int32_t asin_fixed_32b(int32_t cdc_asin_th)
 	int32_t th_asin_fxp;
 
 	if (cdc_asin_th >= 0)
-		th_asin_fxp = is_scalar_cordic_asin(cdc_asin_th,
-						    CORDIC_31B_TABLE_SIZE);
+		th_asin_fxp = is_scalar_cordic_asin(cdc_asin_th, CORDIC_31B_ITERATIONS);
 	else
-		th_asin_fxp = -is_scalar_cordic_asin(-cdc_asin_th,
-						     CORDIC_31B_TABLE_SIZE);
+		th_asin_fxp = -is_scalar_cordic_asin(-cdc_asin_th, CORDIC_31B_ITERATIONS);
 
 	return th_asin_fxp; /* Q2.30 */
 }
@@ -262,12 +264,10 @@ static inline int32_t acos_fixed_32b(int32_t cdc_acos_th)
 	int32_t th_acos_fxp;
 
 	if (cdc_acos_th >= 0)
-		th_acos_fxp = is_scalar_cordic_acos(cdc_acos_th,
-						    CORDIC_31B_TABLE_SIZE);
+		th_acos_fxp = is_scalar_cordic_acos(cdc_acos_th, CORDIC_31B_ITERATIONS);
 	else
 		th_acos_fxp =
-		PI_MUL2_Q4_28 - is_scalar_cordic_acos(-cdc_acos_th,
-						      CORDIC_31B_TABLE_SIZE);
+		    PI_Q3_29 - is_scalar_cordic_acos(-cdc_acos_th, CORDIC_31B_ITERATIONS);
 
 	return th_acos_fxp; /* Q3.29 */
 }
@@ -289,11 +289,9 @@ static inline int16_t asin_fixed_16b(int32_t cdc_asin_th)
 	int32_t th_asin_fxp;
 
 	if (cdc_asin_th >= 0)
-		th_asin_fxp = is_scalar_cordic_asin(cdc_asin_th,
-						    CORDIC_16B_ITABLE_SIZE);
+		th_asin_fxp = is_scalar_cordic_asin(cdc_asin_th, CORDIC_16B_ITERATIONS);
 	else
-		th_asin_fxp = -is_scalar_cordic_asin(-cdc_asin_th,
-						     CORDIC_16B_ITABLE_SIZE);
+		th_asin_fxp = -is_scalar_cordic_asin(-cdc_asin_th, CORDIC_16B_ITERATIONS);
 	/*convert Q2.30 to Q2.14 format*/
 	return sat_int16(Q_SHIFT_RND(th_asin_fxp, 30, 14));
 }
@@ -314,12 +312,9 @@ static inline int16_t acos_fixed_16b(int32_t cdc_acos_th)
 	int32_t th_acos_fxp;
 
 	if (cdc_acos_th >= 0)
-		th_acos_fxp = is_scalar_cordic_acos(cdc_acos_th,
-						    CORDIC_16B_ITABLE_SIZE);
+		th_acos_fxp = is_scalar_cordic_acos(cdc_acos_th, CORDIC_16B_ITERATIONS);
 	else
-		th_acos_fxp =
-		PI_MUL2_Q4_28 - is_scalar_cordic_acos(-cdc_acos_th,
-						      CORDIC_16B_ITABLE_SIZE);
+		th_acos_fxp = PI_Q3_29 - is_scalar_cordic_acos(-cdc_acos_th, CORDIC_16B_ITERATIONS);
 
 	/*convert Q3.29 to Q3.13 format*/
 	return sat_int16(Q_SHIFT_RND(th_acos_fxp, 29, 13));
