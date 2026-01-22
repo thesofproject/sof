@@ -13,18 +13,13 @@
 #include <sof/math/cordic.h>
 #include <stdint.h>
 
-/* Use a local definition to avoid adding a dependency on <math.h> */
-#define _M_PI		3.14159265358979323846	/* pi */
+#define CORDIC_SINE_COS_LUT_Q29 652032874 /* deg = 69.586061, int32(1.214505869895220 * 2^29) */
 
-/* 652032874 , deg = 69.586061*/
-const int32_t cordic_sine_cos_lut_q29fl	 =  Q_CONVERT_FLOAT(1.214505869895220, 29);
-/* 1686629713, deg = 90.000000	*/
-const int32_t cordic_sine_cos_piovertwo_q30fl  = Q_CONVERT_FLOAT(_M_PI / 2, 30);
-/* 421657428 , deg = 90.000000 */
-const int32_t cord_sincos_piovertwo_q28fl  = Q_CONVERT_FLOAT(_M_PI / 2, 28);
-/* 843314857,  deg = 90.000000	*/
-const int32_t cord_sincos_piovertwo_q29fl  = Q_CONVERT_FLOAT(_M_PI / 2, 29);
-/* arc trignometry constant*/
+#define CORDIC_SINCOS_PIOVERTWO_Q28 421657428	  /* int32(pi / 2 * 2^28) */
+#define CORDIC_SINCOS_PI_Q28 843314857		  /* int32(pi * 2^28) */
+#define CORDIC_SINCOS_TWOPI_Q28 1686629713	  /* int32(2 * pi * 2^28) */
+#define CORDIC_SINCOS_ONEANDHALFPI_Q28 1264972285 /* int32(1.5 * pi * 2^28) */
+
 /**
  * CORDIC-based approximation of sine and cosine
  * \+----------+----------------------------------------+--------------------+-------------------+
@@ -36,20 +31,25 @@ const int32_t cord_sincos_piovertwo_q29fl  = Q_CONVERT_FLOAT(_M_PI / 2, 29);
  * \|1686629713| Q_CONVERT_FLOAT(1.5707963267341256, 30)|    89.9999999965181| 1.57079632673413  |
  * \+----------+----------------------------------------+--------------------+-------------------+
  */
-/* 379625062,  deg = 81.0284683480568475 or round(1.4142135605216026*2^28) */
-const int32_t cord_arcsincos_q28fl  = Q_CONVERT_FLOAT(1.4142135605216026 / 2, 28);
-/* 1073741824, deg = 57.2957795130823229 or round(1*2^30)*/
-const int32_t cord_arcsincos_q30fl  = Q_CONVERT_FLOAT(1.0000000000000000, 30);
+
+#define CORDIC_ARCSINCOS_SQRT2_DIV4_Q30 379625062 /* int32(sqrt(2) / 4 * 2^30) */
+#define CORDIC_ARCSINCOS_ONE_Q30 1073741824	  /* int32(1 * 2^30) */
+
 /**
  * CORDIC-based approximation of sine, cosine and complex exponential
  */
 void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_yn, int32_t *xn,
 		   int32_t *th_cdc_fxp)
 {
+	int32_t direction;
+	int32_t abs_th;
 	int32_t b_idx;
-	int32_t xtmp;
-	int32_t ytmp;
-	*sign = 1;
+	int32_t xn_local = CORDIC_SINE_COS_LUT_Q29;
+	int32_t yn_local = 0;
+	int32_t xtmp = CORDIC_SINE_COS_LUT_Q29;
+	int32_t ytmp = 0;
+	int shift;
+
 	/* Addition or subtraction by a multiple of pi/2 is done in the data type
 	 * of the input. When the fraction length is 29, then the quantization error
 	 * introduced by the addition or subtraction of pi/2 is done with 29 bits of
@@ -58,46 +58,37 @@ void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_
 	 * without overflow.Increase of fractionLength makes the addition or
 	 * subtraction of a multiple of pi/2 more precise
 	 */
-	if (th_rad_fxp > cord_sincos_piovertwo_q28fl) {
-		if ((th_rad_fxp - cord_sincos_piovertwo_q29fl) <= cord_sincos_piovertwo_q28fl) {
-			th_rad_fxp -= cord_sincos_piovertwo_q29fl;
-			*sign  = -1;
+	abs_th = (th_rad_fxp >= 0) ? th_rad_fxp : -th_rad_fxp;
+	direction = (th_rad_fxp >= 0) ? 1 : -1;
+	*sign = 1;
+	if (abs_th > CORDIC_SINCOS_PIOVERTWO_Q28) {
+		if (abs_th <= CORDIC_SINCOS_ONEANDHALFPI_Q28) {
+			th_rad_fxp -= direction * CORDIC_SINCOS_PI_Q28;
+			*sign = -1;
 		} else {
-			th_rad_fxp -= cordic_sine_cos_piovertwo_q30fl;
-		}
-	} else if (th_rad_fxp < -cord_sincos_piovertwo_q28fl) {
-		if ((th_rad_fxp + cord_sincos_piovertwo_q29fl) >= -cord_sincos_piovertwo_q28fl) {
-			th_rad_fxp += cord_sincos_piovertwo_q29fl;
-			*sign  = -1;
-		} else {
-			th_rad_fxp += cordic_sine_cos_piovertwo_q30fl;
+			th_rad_fxp -= direction * CORDIC_SINCOS_TWOPI_Q28;
 		}
 	}
 
 	th_rad_fxp <<= 2;
-	*b_yn = 0;
-	*xn = cordic_sine_cos_lut_q29fl;
-	xtmp = cordic_sine_cos_lut_q29fl;
-	ytmp = 0;
 
 	/* Calculate the correct coefficient values from rotation angle.
 	 * Find difference between the coefficients from the lookup table
 	 * and those from the calculation
 	 */
 	for (b_idx = 0; b_idx < a_idx; b_idx++) {
-		if (th_rad_fxp < 0) {
-			th_rad_fxp += cordic_lookup[b_idx];
-			*xn += ytmp;
-			*b_yn -= xtmp;
-		} else {
-			th_rad_fxp -= cordic_lookup[b_idx];
-			*xn -= ytmp;
-			*b_yn += xtmp;
-		}
-		xtmp = *xn >> (b_idx + 1);
-		ytmp = *b_yn >> (b_idx + 1);
+		direction = (th_rad_fxp >= 0) ? 1 : -1;
+		shift = b_idx + 1;
+		th_rad_fxp -= direction * cordic_lookup[b_idx];
+		xn_local -= direction * ytmp;
+		yn_local += direction * xtmp;
+		xtmp = xn_local >> shift;
+		ytmp = yn_local >> shift;
 	}
-	/* Q2.30 format -sine, cosine*/
+
+	/* Write back results once */
+	*xn = xn_local;
+	*b_yn = yn_local;
 	*th_cdc_fxp = th_rad_fxp;
 }
 EXPORT_SYMBOL(cordic_approx);
@@ -108,7 +99,7 @@ EXPORT_SYMBOL(cordic_approx);
  *		  int16_t numiters
  * Return Type	: int32_t
  */
-int32_t is_scalar_cordic_acos(int32_t cosvalue, int16_t numiters)
+int32_t is_scalar_cordic_acos(int32_t cosvalue, int numiters)
 {
 	int32_t xdshift;
 	int32_t ydshift;
@@ -118,25 +109,22 @@ int32_t is_scalar_cordic_acos(int32_t cosvalue, int16_t numiters)
 	int32_t y = 0;
 	int32_t z = 0;
 	int32_t sign;
-	int32_t b_i;
-	int i;
+	int b_i;
 	int j;
-	int k;
 
 	/* Initialize the variables for the cordic iteration
 	 * angles less than pi/4, we initialize (x,y) along the x-axis.
 	 * angles greater than or equal to pi/4, we initialize (x,y)
 	 * along the y-axis. This improves the accuracy of the algorithm
 	 * near the edge of the domain of convergence
+	 *
+	 * Note: not pi/4 but sqrt(2)/4 is used as the threshold
 	 */
-	if ((cosvalue >> 1) < cord_arcsincos_q28fl) {
-		x = 0;
-		y = cord_arcsincos_q30fl;
+	if (cosvalue < CORDIC_ARCSINCOS_SQRT2_DIV4_Q30) {
+		y = CORDIC_ARCSINCOS_ONE_Q30;
 		z = PI_DIV2_Q3_29;
 	} else {
-		x = cord_arcsincos_q30fl;
-		y = 0;
-		z = 0;
+		x = CORDIC_ARCSINCOS_ONE_Q30;
 	}
 
 	/* DCORDIC(Double CORDIC) algorithm */
@@ -144,20 +132,14 @@ int32_t is_scalar_cordic_acos(int32_t cosvalue, int16_t numiters)
 	/* CORDIC method,where the iteration step value changes EVERY time, i.e. on */
 	/* each iteration, in the double iteration method, the iteration step value */
 	/* is repeated twice and changes only through one iteration */
-	i = numiters - 1;
-	for (b_i = 0; b_i < i; b_i++) {
+	for (b_i = 0; b_i < numiters; b_i++) {
 		j = (b_i + 1) << 1;
 		if (j >= 31)
 			j = 31;
 
-		if (b_i < 31)
-			k = b_i;
-		else
-			k = 31;
-
-		xshift = x >> k;
+		xshift = x >> b_i;
+		yshift = y >> b_i;
 		xdshift = x >> j;
-		yshift = y >> k;
 		ydshift = y >> j;
 		/* Do nothing if x currently equals the target value. Allowed for
 		 * double rotations algorithms, as it is equivalent to rotating by
@@ -188,7 +170,7 @@ int32_t is_scalar_cordic_acos(int32_t cosvalue, int16_t numiters)
  *		  int16_t numiters
  * Return Type	: int32_t
  */
-int32_t is_scalar_cordic_asin(int32_t sinvalue, int16_t numiters)
+int32_t is_scalar_cordic_asin(int32_t sinvalue, int numiters)
 {
 	int32_t xdshift;
 	int32_t ydshift;
@@ -198,25 +180,22 @@ int32_t is_scalar_cordic_asin(int32_t sinvalue, int16_t numiters)
 	int32_t y = 0;
 	int32_t z = 0;
 	int32_t sign;
-	int32_t b_i;
-	int i;
+	int b_i;
 	int j;
-	int k;
 
 	/* Initialize the variables for the cordic iteration
 	 * angles less than pi/4, we initialize (x,y) along the x-axis.
 	 * angles greater than or equal to pi/4, we initialize (x,y)
 	 * along the y-axis. This improves the accuracy of the algorithm
 	 * near the edge of the domain of convergence
+	 *
+	 * Note: Instead of pi/4, sqrt(2)/4 is used as the threshold
 	 */
-	if ((sinvalue >> 1) > cord_arcsincos_q28fl) {
-		x = 0;
-		y = cord_arcsincos_q30fl;
+	if (sinvalue > CORDIC_ARCSINCOS_SQRT2_DIV4_Q30) {
+		y = CORDIC_ARCSINCOS_ONE_Q30;
 		z = PI_DIV2_Q3_29;
 	} else {
-		x = cord_arcsincos_q30fl;
-		y = 0;
-		z = 0;
+		x = CORDIC_ARCSINCOS_ONE_Q30;
 	}
 
 	/* DCORDIC(Double CORDIC) algorithm */
@@ -224,21 +203,15 @@ int32_t is_scalar_cordic_asin(int32_t sinvalue, int16_t numiters)
 	/* CORDIC method,where the iteration step value changes EVERY time, i.e. on */
 	/* each iteration, in the double iteration method, the iteration step value */
 	/* is repeated twice and changes only through one iteration */
-	i = numiters - 1;
-	for (b_i = 0; b_i < i; b_i++) {
+	for (b_i = 0; b_i < numiters; b_i++) {
 		j = (b_i + 1) << 1;
 		if (j >= 31)
 			j = 31;
 
-		if (b_i < 31)
-			k = b_i;
-		else
-			k = 31;
-
-		xshift = x >> k;
-		xdshift = x >> j;
-		yshift = y >> k;
+		xshift = x >> b_i;
+		yshift = y >> b_i;
 		ydshift = y >> j;
+		xdshift = x >> j;
 		/* Do nothing if x currently equals the target value. Allowed for
 		 * double rotations algorithms, as it is equivalent to rotating by
 		 * the same angle in opposite directions sequentially. Accounts for
