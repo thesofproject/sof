@@ -271,19 +271,19 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		lib/dma.c
 	)
 
-	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE15_MTPM
+	zephyr_library_sources_ifdef(CONFIG_SOC_ACE15_MTPM
 		${SOF_PLATFORM_PATH}/meteorlake/lib/clk.c
 	)
 
-	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE20_LNL
+	zephyr_library_sources_ifdef(CONFIG_SOC_ACE20_LNL
 		${SOF_PLATFORM_PATH}/lunarlake/lib/clk.c
 	)
 
-	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE30
+	zephyr_library_sources_ifdef(CONFIG_SOC_ACE30
 		${SOF_PLATFORM_PATH}/ace30/lib/clk.c
 	)
 
-	zephyr_library_sources_ifdef(CONFIG_SOC_INTEL_ACE40
+	zephyr_library_sources_ifdef(CONFIG_SOC_ACE40
 		${SOF_PLATFORM_PATH}/novalake/lib/clk.c
 	)
 
@@ -300,13 +300,13 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		${SOF_PLATFORM_PATH}/intel/ace/lib/watchdog.c
 	)
 
-	if (CONFIG_SOC_INTEL_ACE15_MTPM)
+	if (CONFIG_SOC_ACE15_MTPM)
 		set(PLATFORM "meteorlake")
-	elseif(CONFIG_SOC_INTEL_ACE20_LNL)
+	elseif(CONFIG_SOC_ACE20_LNL)
 		set(PLATFORM "lunarlake")
-	elseif(CONFIG_SOC_INTEL_ACE30)
+	elseif(CONFIG_SOC_ACE30)
 		set(PLATFORM "ace30")
-	elseif(CONFIG_SOC_INTEL_ACE40)
+	elseif(CONFIG_SOC_ACE40)
 		set(PLATFORM "novalake")
 	endif()
 
