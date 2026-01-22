@@ -2,8 +2,8 @@
 #include "platform-mtl.toml"
 #elif CONFIG_LUNARLAKE
 #include "platform-lnl.toml"
-#elif CONFIG_SOC_INTEL_ACE30
+#elif CONFIG_SOC_ACE30
 #include "platform-ptl.toml"
-#elif CONFIG_SOC_INTEL_ACE40
+#elif CONFIG_SOC_ACE40
 #include "platform-nvl.toml"
 #endif
