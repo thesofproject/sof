@@ -1432,22 +1432,23 @@ void module_adapter_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "start");
 
-	if (dev->task) {
+#if CONFIG_SOF_USERSPACE_APPLICATION
+	if (dev->task)
 		/*
 		 * Run DP module's .free() method in its thread context.
 		 * Unlike with other IPCs we first run module's .free() in
 		 * thread context, then cancel the thread, and then execute
 		 * final clean up
 		 */
-#if CONFIG_SOF_USERSPACE_APPLICATION
 		scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_DELETE_INSTANCE, NULL);
 #endif
-		schedule_task_free(dev->task);
-	}
 
 	ret = module_free(mod);
 	if (ret)
 		comp_err(dev, "failed with error: %d", ret);
+
+	if (dev->task)
+		schedule_task_free(dev->task);
 
 	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,

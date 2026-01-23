@@ -123,6 +123,13 @@ config SOF_USERSPACE_PROXY
 	  It is responsible for forwarding module function calls coming from sof running in
 	  kernelspace to the module code executed with user privileges.
 
+config SOF_USERSPACE_MOD_IPC_BY_DP_THREAD
+	bool "Handle modules IPC in DP thread"
+	depends on SOF_USERSPACE_PROXY
+	help
+	  When enabled, IPC requests targeted to a userspace module are executed
+	  in its DP thread instead of the shared user worker thread.
+
 config SOF_USERSPACE_PROXY_WORKER_STACK_SIZE
 	int "Userspace IPC worker stack size"
 	default 4096

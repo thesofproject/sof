@@ -32,6 +32,7 @@ enum sof_dp_part_type {
 };
 
 struct ipc4_flat;
+
 struct task_dp_pdata {
 	k_tid_t thread_id;		/* zephyr thread ID */
 	struct k_thread *thread;	/* pointer to the kernels' thread object */
@@ -46,6 +47,9 @@ struct task_dp_pdata {
 #endif
 	struct k_event *event;		/* pointer to event for task scheduling */
 	struct k_event event_struct;	/* event for task scheduling for kernel threads */
+#if IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
+	struct k_work_user *ipc_work_item;	/* work item for IPC handling */
+#endif
 };
 
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run);
