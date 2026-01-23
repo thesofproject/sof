@@ -16,6 +16,15 @@
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
 
+#ifdef __ZEPHYR__
+#include <zephyr/logging/log.h>
+#else
+#define LOG_DBG(...) do {} while (0)
+#define LOG_INF(...) do {} while (0)
+#define LOG_WRN(...) do {} while (0)
+#define LOG_ERR(...) do {} while (0)
+#endif
+
 struct sof_fast_get_entry {
 	const void *dram_ptr;
 	void *sram_ptr;
@@ -101,7 +110,7 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 
 	if (entry->sram_ptr) {
 		if (entry->size != size || entry->dram_ptr != dram_ptr) {
-			tr_err(fast_get, "size %u != %u or ptr %p != %p mismatch",
+			LOG_ERR("size %u != %u or ptr %p != %p mismatch",
 				entry->size, size, entry->dram_ptr, dram_ptr);
 			ret = NULL;
 			goto out;
@@ -128,8 +137,7 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 	entry->refcount = 1;
 out:
 	k_spin_unlock(&data->lock, key);
-	tr_dbg(fast_get, "get %p, %p, size %u, refcnt %u", dram_ptr, ret, size,
-	       entry ? entry->refcount : 0);
+	LOG_DBG("get %p, %p, size %u, refcnt %u", dram_ptr, ret, size, entry ? entry->refcount : 0);
 
 	return ret;
 }
@@ -157,7 +165,7 @@ void fast_put(struct k_heap *heap, const void *sram_ptr)
 	key = k_spin_lock(&fast_get_data.lock);
 	entry = fast_put_find_entry(data, sram_ptr);
 	if (!entry) {
-		tr_err(fast_get, "Put called to unknown address %p", sram_ptr);
+		LOG_ERR("Put called to unknown address %p", sram_ptr);
 		goto out;
 	}
 	entry->refcount--;
@@ -166,7 +174,7 @@ void fast_put(struct k_heap *heap, const void *sram_ptr)
 		memset(entry, 0, sizeof(*entry));
 	}
 out:
-	tr_dbg(fast_get, "put %p, DRAM %p size %u refcnt %u", sram_ptr, entry ? entry->dram_ptr : 0,
+	LOG_DBG("put %p, DRAM %p size %u refcnt %u", sram_ptr, entry ? entry->dram_ptr : 0,
 	       entry ? entry->size : 0, entry ? entry->refcount : 0);
 	k_spin_unlock(&data->lock, key);
 }
