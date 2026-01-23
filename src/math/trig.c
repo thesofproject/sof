@@ -95,9 +95,7 @@ EXPORT_SYMBOL(cordic_approx);
 
 /**
  * CORDIC-based approximation for inverse cosine
- * Arguments	: int32_t cosvalue
- *		  int16_t numiters
- * Return Type	: int32_t
+ * cosvalue is Q2.30, return value is angle in Q3.29 format
  */
 int32_t is_scalar_cordic_acos(int32_t cosvalue, int numiters)
 {
@@ -166,9 +164,7 @@ int32_t is_scalar_cordic_acos(int32_t cosvalue, int numiters)
 
 /**
  * CORDIC-based approximation for inverse sine
- * Arguments	: int32_t sinvalue
- *		  int16_t numiters
- * Return Type	: int32_t
+ * sinvalue is Q2.30, return value is angle in Q2.30 format
  */
 int32_t is_scalar_cordic_asin(int32_t sinvalue, int numiters)
 {
@@ -236,13 +232,9 @@ int32_t is_scalar_cordic_asin(int32_t sinvalue, int numiters)
 }
 
 /**
- * approximated complex result
- * Arguments	: int32_t sign
- *		  int32_t b_yn
- *		  int32_t xn
- *		  enum    type
- *		  struct  cordic_cmpx
- * Return Type	: none
+ * cmpx_cexp() - CORDIC-based approximation of complex exponential e^(j*THETA)
+ *
+ * The sine and cosine values are in Q2.30 format from cordic_approx()function.
  */
 void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct cordic_cmpx *cexp)
 {
