@@ -31,6 +31,7 @@ struct userspace_context {
 	struct k_mem_domain *comp_dom;			/* Module specific memory domain	*/
 	const struct module_interface *interface;	/* Userspace module interface		*/
 	struct user_work_item *work_item;		/* work item for user worker thread	*/
+	struct k_event *dp_event;			/* DP thread event			*/
 };
 #endif /* CONFIG_USERSPACE */
 
@@ -62,6 +63,21 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
  * @param user_ctx - pointer to userspace module context
  */
 void userspace_proxy_destroy(const struct comp_driver *drv, struct userspace_context *user_ctx);
+
+#if IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
+/**
+ * Register a k_event object used to notify the DP thread about a pending userspace module IPC
+ * request to process.
+ *
+ * @param mod    Pointer to the processing module.
+ * @param event  Pointer to the event to signal incoming IPC.
+ *
+ * @return Pointer to a k_work_user work item for userspace modules, or NULL for non-userspace
+ *	   modules.
+ */
+struct k_work_user *userspace_proxy_register_ipc_handler(struct processing_module *mod,
+							 struct k_event *event);
+#endif
 
 #endif /* CONFIG_SOF_USERSPACE_PROXY */
 

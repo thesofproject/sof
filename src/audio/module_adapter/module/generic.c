@@ -622,7 +622,8 @@ int module_reset(struct processing_module *mod)
 
 	/* cancel task if DP task*/
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && mod->dev->task &&
-	    !IS_ENABLED(CONFIG_SOF_USERSPACE_APPLICATION))
+	    !IS_ENABLED(CONFIG_SOF_USERSPACE_APPLICATION) &&
+	    !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD))
 		schedule_task_cancel(mod->dev->task);
 
 	if (ops->reset) {

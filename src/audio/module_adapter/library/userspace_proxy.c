@@ -49,6 +49,36 @@ DECLARE_TR_CTX(userspace_proxy_tr, SOF_UUID(userspace_proxy_uuid), LOG_LEVEL_INF
 
 static const struct module_interface userspace_proxy_interface;
 
+#if IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
+#include <sof/audio/module_adapter/iadk/system_agent.h>
+#include <sof/schedule/dp_schedule.h>
+
+static inline int user_worker_get(void)
+{
+	return 0;
+}
+
+static inline void user_worker_put(void) { }
+
+struct k_work_user *userspace_proxy_register_ipc_handler(struct processing_module *mod,
+							 struct k_event *event)
+{
+	struct userspace_context * const user_ctx = mod->user_ctx;
+
+	if (user_ctx) {
+		tr_dbg(&userspace_proxy_tr, "Set DP event %p for module %p",
+		       (void *)event, (void *)mod);
+		assert(user_ctx->work_item);
+
+		user_ctx->dp_event = event;
+		user_ctx->work_item->event = event;
+
+		return &user_ctx->work_item->work_item;
+	}
+
+	return NULL;
+}
+#else
 /* IPC requests targeting userspace modules are handled through a user work queue.
  * Each userspace module provides its own work item that carries the IPC request parameters.
  * The worker thread is switched into the module's memory domain and receives the work item.
@@ -106,6 +136,7 @@ static void user_worker_put(void)
 		user_stack_free(worker.stack_ptr);
 	}
 }
+#endif
 
 static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap *user_heap)
 {
@@ -128,7 +159,9 @@ static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap
 
 	k_work_user_init(&work_item->work_item, userspace_proxy_worker_handler);
 
+#if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
 	work_item->event = &worker.event;
+#endif
 	work_item->params.context = user_ctx;
 	user_ctx->work_item = work_item;
 
@@ -155,6 +188,11 @@ BUILD_ASSERT(IS_ALIGNED(MAILBOX_HOSTBOX_SIZE, CONFIG_MMU_PAGE_SIZE),
 static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t cmd,
 				  bool ipc_payload_access)
 {
+#if IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
+	struct k_event * const event = user_ctx->dp_event;
+#else
+	struct k_event * const event = &worker.event;
+#endif
 	struct module_params *params = user_work_get_params(user_ctx);
 	const uintptr_t ipc_req_buf = (uintptr_t)MAILBOX_HOSTBOX_BASE;
 	struct k_mem_partition ipc_part = {
@@ -162,7 +200,7 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 		.size = MAILBOX_HOSTBOX_SIZE,
 		.attr = user_get_partition_attr(ipc_req_buf) | K_MEM_PARTITION_P_RO_U_RO,
 	};
-	int ret, ret2;
+	int ret = 0, ret2;
 
 	params->cmd = cmd;
 
@@ -174,6 +212,7 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 		}
 	}
 
+#if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
 	/* Switch worker thread to module memory domain */
 	ret = k_mem_domain_add_thread(user_ctx->comp_dom, worker.thread_id);
 	if (ret < 0) {
@@ -193,9 +232,13 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 		tr_err(&userspace_proxy_tr, "Submit to queue error: %d", ret);
 		goto done;
 	}
+#else
+	assert(event);
+	k_event_post(event, DP_TASK_EVENT_IPC);
+#endif
 
 	/* Timeout value is aligned with the ipc_wait_for_compound_msg function */
-	if (!k_event_wait_safe(&worker.event, DP_TASK_EVENT_IPC_DONE, false,
+	if (!k_event_wait_safe(event, DP_TASK_EVENT_IPC_DONE, false,
 			       Z_TIMEOUT_US(250 * 20))) {
 		tr_err(&userspace_proxy_tr, "IPC processing timedout.");
 		ret = -ETIMEDOUT;
@@ -313,18 +356,29 @@ static int userspace_proxy_start_agent(struct userspace_context *user_ctx,
 {
 	const byte_array_t * const mod_cfg = (byte_array_t *)agent_params->mod_cfg;
 	struct module_params *params = user_work_get_params(user_ctx);
-	int ret;
 
 	params->ext.agent.start_fn = start_fn;
-	params->ext.agent.params = *agent_params;
-	params->ext.agent.mod_cfg = *mod_cfg;
 
-	ret = userspace_proxy_invoke(user_ctx, USER_PROXY_MOD_CMD_AGENT_START, true);
-	if (ret)
-		return ret;
+	/* Start the system agent, if provided. */
+	if (start_fn) {
+		params->ext.agent.params = *agent_params;
+		params->ext.agent.params.mod_cfg = &params->ext.agent.mod_cfg;
+		params->ext.agent.mod_cfg = *mod_cfg;
 
-	*agent_interface = params->ext.agent.out_interface;
-	return params->status;
+		/* In case of processing modules ipc in the DP thread, the agent will be started in
+		 * the init function. At this point the DP thread does not exist yet.
+		 */
+#if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
+		int ret = userspace_proxy_invoke(user_ctx, USER_PROXY_MOD_CMD_AGENT_START, true);
+
+		if (ret)
+			return ret;
+
+		*agent_interface = params->ext.agent.out_interface;
+		return params->status;
+#endif
+	}
+	return 0;
 }
 
 int userspace_proxy_create(struct userspace_context **user_ctx, const struct comp_driver *drv,
@@ -341,6 +395,8 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	context = k_heap_alloc(drv->user_heap, sizeof(struct userspace_context), K_FOREVER);
 	if (!context)
 		return -ENOMEM;
+
+	context->dp_event = NULL;
 
 	/* Allocate memory domain struct */
 	domain = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*domain));
@@ -362,14 +418,10 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	if (ret)
 		goto error_dom;
 
-	/* Start the system agent, if provided. */
-
-	if (start_fn) {
-		ret = userspace_proxy_start_agent(context, start_fn, agent_params, agent_interface);
-		if (ret) {
-			tr_err(&userspace_proxy_tr, "System agent failed with error %d.", ret);
-			goto error_work_item;
-		}
+	ret = userspace_proxy_start_agent(context, start_fn, agent_params, agent_interface);
+	if (ret) {
+		tr_err(&userspace_proxy_tr, "System agent failed with error %d.", ret);
+		goto error_work_item;
 	}
 
 	*user_ctx = context;
@@ -419,6 +471,22 @@ static int userspace_proxy_init(struct processing_module *mod)
 	int ret;
 
 	comp_dbg(mod->dev, "start");
+
+#if IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
+	/* Start the system agent, if provided. Params is already filled by
+	 * the userspace_proxy_start_agent function.
+	 */
+	if (params->ext.agent.start_fn) {
+		ret = userspace_proxy_invoke(mod->user_ctx, USER_PROXY_MOD_CMD_AGENT_START, true);
+		if (ret)
+			return ret;
+
+		if (params->ext.agent.start_fn == system_agent_start)
+			module_set_private_data(mod, (void *)params->ext.agent.out_interface);
+		else
+			mod->user_ctx->interface = params->ext.agent.out_interface;
+	}
+#endif
 
 	params->mod = mod;
 	ret = userspace_proxy_invoke(mod->user_ctx, USER_PROXY_MOD_CMD_INIT, true);

@@ -31,9 +31,6 @@ void userspace_proxy_handle_request(struct processing_module *mod, struct module
 
 	switch (params->cmd) {
 	case USER_PROXY_MOD_CMD_AGENT_START:
-		/* Set pointer to user accessible mod_cfg structure. */
-		params->ext.agent.params.mod_cfg = &params->ext.agent.mod_cfg;
-
 		params->status = params->ext.agent.start_fn(&params->ext.agent.params,
 							    &params->ext.agent.out_interface);
 		break;
