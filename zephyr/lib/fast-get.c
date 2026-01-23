@@ -81,7 +81,7 @@ static struct sof_fast_get_entry *fast_get_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-const void *z_impl_fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
+const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -133,7 +133,7 @@ out:
 
 	return ret;
 }
-EXPORT_SYMBOL(z_impl_fast_get);
+EXPORT_SYMBOL(fast_get);
 
 static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *data,
 						      const void *sram_ptr)
@@ -148,7 +148,7 @@ static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-void z_impl_fast_put(struct k_heap *heap, const void *sram_ptr)
+void fast_put(struct k_heap *heap, const void *sram_ptr)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -170,29 +170,4 @@ out:
 	       entry ? entry->size : 0, entry ? entry->refcount : 0);
 	k_spin_unlock(&data->lock, key);
 }
-EXPORT_SYMBOL(z_impl_fast_put);
-
-#ifdef CONFIG_USERSPACE
-#include <zephyr/internal/syscall_handler.h>
-void z_vrfy_fast_put(struct k_heap *heap, const void *sram_ptr)
-{
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(heap, sizeof(*heap)));
-	/*
-	 * FIXME: we don't know how much SRAM has been allocated, so cannot
-	 * check. Should fast_put() be changed to pass a size argument?
-	 */
-
-	z_impl_fast_put(heap, sram_ptr);
-}
-#include <zephyr/syscalls/fast_put_mrsh.c>
-
-const void *z_vrfy_fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
-{
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(heap, sizeof(*heap)));
-	/* We cannot (easily) verify the actual heapp memory */
-	K_OOPS(K_SYSCALL_MEMORY_READ(dram_ptr, size));
-
-	return z_impl_fast_get(heap, dram_ptr, size);
-}
-#include <zephyr/syscalls/fast_get_mrsh.c>
-#endif
+EXPORT_SYMBOL(fast_put);
