@@ -6,7 +6,7 @@
 
 #include <sof/audio/format.h>
 #include <sof/math/auditory.h>
-#include <sof/math/fft.h>
+#include <sof/math/icomplex32.h>
 #include <sof/math/log.h>
 #include <sof/math/numbers.h>
 #include <stdint.h>
