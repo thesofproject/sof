@@ -12,6 +12,8 @@
 #ifndef __ZEPHYR_LIB_USERSPACE_HELPER_H__
 #define __ZEPHYR_LIB_USERSPACE_HELPER_H__
 
+#include <zephyr/kernel.h>
+
 #ifndef CONFIG_USERSPACE
 #define APP_TASK_BSS
 #define APP_TASK_DATA
