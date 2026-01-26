@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation.
+#
+# Math basic complex numbers unit tests
+#
+
+common:
+  tags:
+    - SOF
+    - unit_test
+    - math
+    - complex
+  integration_platforms:
+    - native_sim
+  arch_exclude: xtensa  # Test is for host builds only
+
+tests:
+  sof.unit.math.complex:
+    platform_allow:
+      - native_sim
