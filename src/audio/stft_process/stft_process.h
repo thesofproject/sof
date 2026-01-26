@@ -63,6 +63,7 @@ struct stft_process_buffer {
 struct stft_process_fft {
 	struct icomplex32 *fft_buf; /**< fft_padded_size */
 	struct icomplex32 *fft_out; /**< fft_padded_size */
+	struct ipolar32 *fft_polar;
 	struct fft_multi_plan *fft_plan;
 	struct fft_multi_plan *ifft_plan;
 	int fft_fill_start_idx; /**< Set to 0 for pad left, etc. */
