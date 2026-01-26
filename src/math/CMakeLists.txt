@@ -91,6 +91,10 @@ if(CONFIG_MATH_MU_LAW_CODEC)
   list(APPEND base_files mu_law.c)
 endif()
 
+if(CONFIG_MATH_COMPLEX)
+  list(APPEND base_files complex.c)
+endif()
+
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
 
