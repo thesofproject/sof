@@ -16,7 +16,7 @@ if(CONFIG_MATH_LUT_SINE_FIXED)
 endif()
 
 if(CONFIG_SQRT_FIXED)
-  list(APPEND base_files sqrt_int16.c)
+  list(APPEND base_files sqrt_int16.c sqrt_int32.c)
 endif()
 
 if(CONFIG_MATH_EXP)
