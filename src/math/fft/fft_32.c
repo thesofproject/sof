@@ -6,17 +6,13 @@
 //	   Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/audio/format.h>
-#include <sof/common.h>
-#include <rtos/alloc.h>
 #include <sof/math/fft.h>
-
-#include <stdio.h>
+#include <sof/math/icomplex32.h>
+#include <sof/common.h>
+#include <stdint.h>
 
 #ifdef FFT_GENERIC
 #include <sof/audio/coefficients/fft/twiddle_32.h>
-
-#include "fft_32.h"
-
 
 /**
  * \brief Execute the 32-bits Fast Fourier Transform (FFT) or Inverse FFT (IFFT)

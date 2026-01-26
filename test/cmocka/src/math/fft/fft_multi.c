@@ -5,6 +5,8 @@
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 #include <sof/audio/format.h>
+#include <sof/math/icomplex16.h>
+#include <sof/math/icomplex32.h>
 #include <sof/math/fft.h>
 #include "ref_fft_multi_96_32.h"
 #include "ref_fft_multi_512_32.h"

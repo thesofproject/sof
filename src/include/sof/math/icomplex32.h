@@ -1,13 +1,29 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2020-2025 Intel Corporation. All rights reserved.
+// Copyright(c) 2020-2026 Intel Corporation.
 //
 // Author: Amery Song <chao.song@intel.com>
 //	   Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/audio/format.h>
-#include <sof/math/fft.h>
+#include <sof/math/exp_fcn.h>
+#include <sof/math/log.h>
+#include <sof/math/trig.h>
 #include <sof/common.h>
+#include <stdint.h>
+
+#ifndef __SOF_ICOMPLEX32_H__
+#define __SOF_ICOMPLEX32_H__
+
+/**
+ * struct icomplex32 - Storage for a normal complex number.
+ * @param real The real part in Q1.31 fractional format.
+ * @param imag The imaginary part in Q1.31 fractional format.
+ */
+struct icomplex32 {
+	int32_t real;
+	int32_t imag;
+};
 
 /*
  * These helpers are optimized for FFT calculation only.
@@ -62,3 +78,5 @@ static inline void icomplex32_shift(const struct icomplex32 *input, int32_t n,
 		output->imag = input->imag >> -n;
 	}
 }
+
+#endif /* __SOF_ICOMPLEX32_H__ */

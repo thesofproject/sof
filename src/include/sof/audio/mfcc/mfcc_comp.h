@@ -18,7 +18,7 @@
 /* __XCC__ is both for xt_xcc and xt_clang */
 #if defined(__XCC__)
 # include <xtensa/config/core-isa.h>
-# if XCHAL_HAVE_HIFI4
+# if XCHAL_HAVE_HIFI4 || XCHAL_HAVE_HIFI5
 #  define MFCC_HIFI4
 # elif XCHAL_HAVE_HIFI3
 #  define MFCC_HIFI3
