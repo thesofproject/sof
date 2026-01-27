@@ -465,7 +465,7 @@ static void check_and_update_settings(struct processing_module *mod)
 	}
 }
 
-static int sof_dax_free(struct processing_module *mod)
+static void destroy_instance(struct processing_module *mod)
 {
 	struct sof_dax *dax_ctx = module_get_private_data(mod);
 
@@ -476,44 +476,16 @@ static int sof_dax_free(struct processing_module *mod)
 		dax_buffer_release(mod, &dax_ctx->tuning_file_buffer);
 		dax_buffer_release(mod, &dax_ctx->input_buffer);
 		dax_buffer_release(mod, &dax_ctx->output_buffer);
-		mod_data_blob_handler_free(mod, dax_ctx->blob_handler);
-		dax_ctx->blob_handler = NULL;
-		mod_free(mod, dax_ctx);
-		module_set_private_data(mod, NULL);
 	}
-	return 0;
 }
 
-static int sof_dax_init(struct processing_module *mod)
+static int establish_instance(struct processing_module *mod)
 {
-	int ret;
+	int ret = 0;
 	struct comp_dev *dev = mod->dev;
-	struct module_data *md = &mod->priv;
-	struct sof_dax *dax_ctx;
+	struct sof_dax *dax_ctx = module_get_private_data(mod);
 	uint32_t persist_sz;
 	uint32_t scratch_sz;
-
-	md->private = mod_zalloc(mod, sizeof(struct sof_dax));
-	if (!md->private) {
-		comp_err(dev, "failed to allocate %u bytes for initialization",
-			 sizeof(struct sof_dax));
-		return -ENOMEM;
-	}
-	dax_ctx = module_get_private_data(mod);
-	dax_ctx->enable = 0;
-	dax_ctx->profile = 0;
-	dax_ctx->out_device = 0;
-	dax_ctx->ctc_enable = 1;
-	dax_ctx->content_processing_enable = 1;
-	dax_ctx->volume = 1 << 23;
-	dax_ctx->update_flags = 0;
-
-	dax_ctx->blob_handler = mod_data_blob_handler_new(mod);
-	if (!dax_ctx->blob_handler) {
-		comp_err(dev, "create blob handler failed");
-		ret = -ENOMEM;
-		goto err;
-	}
 
 	persist_sz = dax_query_persist_memory(dax_ctx);
 	if (dax_buffer_alloc(mod, &dax_ctx->persist_buffer, persist_sz) != 0) {
@@ -538,8 +510,55 @@ static int sof_dax_init(struct processing_module *mod)
 	return 0;
 
 err:
-	sof_dax_free(mod);
+	destroy_instance(mod);
 	return ret;
+}
+
+static int sof_dax_free(struct processing_module *mod)
+{
+	struct sof_dax *dax_ctx = module_get_private_data(mod);
+
+	destroy_instance(mod);
+
+	if (dax_ctx) {
+		mod_data_blob_handler_free(mod, dax_ctx->blob_handler);
+		dax_ctx->blob_handler = NULL;
+		mod_free(mod, dax_ctx);
+		module_set_private_data(mod, NULL);
+	}
+	return 0;
+}
+
+static int sof_dax_init(struct processing_module *mod)
+{
+	struct comp_dev *dev = mod->dev;
+	struct module_data *md = &mod->priv;
+	struct sof_dax *dax_ctx;
+
+	md->private = mod_zalloc(mod, sizeof(struct sof_dax));
+	if (!md->private) {
+		comp_err(dev, "failed to allocate %u bytes for initialization",
+			 sizeof(struct sof_dax));
+		return -ENOMEM;
+	}
+	dax_ctx = module_get_private_data(mod);
+	dax_ctx->enable = 0;
+	dax_ctx->profile = 0;
+	dax_ctx->out_device = 0;
+	dax_ctx->ctc_enable = 1;
+	dax_ctx->content_processing_enable = 1;
+	dax_ctx->volume = 1 << 23;
+	dax_ctx->update_flags = 0;
+
+	dax_ctx->blob_handler = mod_data_blob_handler_new(mod);
+	if (!dax_ctx->blob_handler) {
+		comp_err(dev, "create blob handler failed");
+		mod_free(mod, dax_ctx);
+		module_set_private_data(mod, NULL);
+		return -ENOMEM;
+	}
+
+	return 0;
 }
 
 static int check_media_format(struct processing_module *mod)
@@ -628,6 +647,11 @@ static int sof_dax_prepare(struct processing_module *mod, struct sof_source **so
 			 num_of_sources, num_of_sinks);
 		return -EINVAL;
 	}
+
+	/* dax instance will be established on prepare(), and destroyed on reset() */
+	ret = establish_instance(mod);
+	if (ret != 0)
+		return ret;
 
 	ret = check_media_format(mod);
 	if (ret != 0)
@@ -852,11 +876,21 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 	return ret;
 }
 
+static int sof_dax_reset(struct processing_module *mod) {
+	struct comp_dev *dev = mod->dev;
+
+	/* dax instance will be established on prepare(), and destroyed on reset() */
+	destroy_instance(mod);
+	comp_info(dev, "reset");
+	return 0;
+}
+
 static const struct module_interface dolby_dax_audio_processing_interface = {
 	.init = sof_dax_init,
 	.prepare = sof_dax_prepare,
 	.process = sof_dax_process,
 	.set_configuration = sof_dax_set_configuration,
+	.reset = sof_dax_reset,
 	.free = sof_dax_free,
 };
 
