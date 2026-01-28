@@ -52,6 +52,7 @@ struct fft_plan {
 	struct icomplex32 *outb32;	/* pointer to output integer complex buffer */
 	struct icomplex16 *inb16;	/* pointer to input integer complex buffer */
 	struct icomplex16 *outb16;	/* pointer to output integer complex buffer */
+	void *twiddle;
 };
 
 struct fft_multi_plan {
@@ -60,6 +61,8 @@ struct fft_multi_plan {
 	struct icomplex32 *tmp_o32[FFT_MULTI_COUNT_MAX]; /* pointer to output buffer */
 	struct icomplex32 *inb32;	/* pointer to input integer complex buffer */
 	struct icomplex32 *outb32;	/* pointer to output integer complex buffer */
+	int32_t *multi_twiddle;		/* twiddle factors for combine FFT */
+	int32_t *shared_twiddle;	/* twiddle factors for three FFTs */
 	uint16_t *bit_reverse_idx;
 	uint32_t total_size;
 	uint32_t fft_size;

@@ -111,6 +111,16 @@ config MATH_FFT_MULTI
 	  this should not be selected directly, please select it from other
 	  audio components where need it.
 
+config MATH_FFT_COLD_TWIDDLE_FACTORS
+	bool "FFT cold twiddle factors"
+	depends on MATH_FFT
+	default y
+	help
+	  Link twiddle factors for the maximum FFT size to
+	  DRAM and copy the needed set to SRAM when the FFT
+	  plan is initialized. The twiddle factors data
+	  size is currently 29 kB.
+
 menu "Supported FFT word lengths"
 	visible if MATH_FFT
 
