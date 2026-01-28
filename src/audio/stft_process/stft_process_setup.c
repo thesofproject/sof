@@ -163,6 +163,9 @@ int stft_process_setup(struct processing_module *mod, int max_frames,
 		goto free_fft_buf;
 	}
 
+	/* Share the fft_out buffer for polar format */
+	fft->fft_polar = (struct ipolar32 *)fft->fft_out;
+
 	fft->fft_fill_start_idx = 0; /* From config pad_type */
 
 	/* Setup FFT */

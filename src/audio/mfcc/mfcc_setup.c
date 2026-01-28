@@ -8,6 +8,8 @@
 #include <sof/audio/component.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/math/auditory.h>
+#include <sof/math/icomplex16.h>
+#include <sof/math/icomplex32.h>
 #include <sof/math/trig.h>
 #include <sof/math/window.h>
 #include <sof/trace/trace.h>
