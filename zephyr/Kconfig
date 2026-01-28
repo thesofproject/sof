@@ -83,7 +83,7 @@ config SOF_ZEPHYR_VIRTUAL_HEAP_SIZE
 config SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE
 	hex "Size in bytes of virtual memory region for virtual heap shared for all cores"
 	depends on MM_DRV_INTEL_ADSP_MTL_TLB
-	default 0x100000
+	default 0x180000
 	help
 	  This config defines size of virtual heap region shared between all cores
 
