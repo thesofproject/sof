@@ -11,8 +11,11 @@
 #include <zephyr/timing/timing.h>
 #endif
 
+#ifndef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
 /* Slot in memory window 2 (Debug Window) to be used as telemetry slot */
 #define SOF_DW_TELEMETRY_SLOT 1
+#endif
+
 /* Memory of average algorithm of performance queue */
 #define SOF_AVG_PERF_MEAS_DEPTH 64
 /* Number of runs taken to calculate average (algorithm resolution) */
@@ -87,6 +90,9 @@ struct telemetry_perf_queue {
 };
 
 void telemetry_update(uint32_t begin_ccount, uint32_t current_ccount);
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+struct system_tick_info *telemetry_get_systick_info_ptr(void);
+#endif
 
 #ifdef CONFIG_TIMING_FUNCTIONS
 #define telemetry_timestamp timing_counter_get

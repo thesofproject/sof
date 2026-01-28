@@ -27,6 +27,10 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 /* Systic variables, one set per core */
 static int telemetry_systick_counter[CONFIG_MAX_CORE_COUNT];
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+static struct telemetry_wnd_data *wnd_data;
+#endif
+
 #ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 static int telemetry_prev_ccount[CONFIG_MAX_CORE_COUNT];
 static int telemetry_perf_period_sum[CONFIG_MAX_CORE_COUNT];
@@ -68,19 +72,45 @@ static size_t telemetry_perf_queue_avg(struct telemetry_perf_queue *q)
 }
 #endif
 
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+struct system_tick_info *telemetry_get_systick_info_ptr(void)
+{
+	if (!wnd_data)
+		return NULL;
+
+	return (struct system_tick_info *)wnd_data->system_tick_info;
+}
+#endif
+
 int telemetry_init(void)
 {
 	/* systick_init */
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	struct adsp_dw_desc slot_desc = { .type = ADSP_DW_SLOT_TELEMETRY, };
+	struct system_tick_info *systick_info;
+
+	if (wnd_data)
+		return 0;
+
+	wnd_data = (struct telemetry_wnd_data *)adsp_dw_request_slot(&slot_desc,
+								     NULL);
+	if (!wnd_data)
+		return -ENOMEM;
+
+	systick_info = (struct system_tick_info *)wnd_data->system_tick_info;
+#else
 	uint8_t slot_num = SOF_DW_TELEMETRY_SLOT;
 	volatile struct adsp_debug_window *window = ADSP_DW;
 	struct telemetry_wnd_data *wnd_data = (struct telemetry_wnd_data *)ADSP_DW->slots[slot_num];
 	struct system_tick_info *systick_info =
 			(struct system_tick_info *)wnd_data->system_tick_info;
 
-	tr_info(&ipc_tr, "Telemetry enabled. May affect performance");
-
 	window->descs[slot_num].type = ADSP_DW_SLOT_TELEMETRY;
 	window->descs[slot_num].resource_id = 0;
+#endif
+
+	tr_info(&ipc_tr, "Telemetry enabled. May affect performance");
+
 	wnd_data->separator_1 = 0x0000C0DE;
 
 	/* Zero values per core */
@@ -101,13 +131,19 @@ int telemetry_init(void)
 void telemetry_update(uint32_t begin_stamp, uint32_t current_stamp)
 {
 	int prid = cpu_get_id();
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	struct system_tick_info *systick_info = telemetry_get_systick_info_ptr();
 
-	++telemetry_systick_counter[prid];
-
+	if (!systick_info)
+		return;
+#else
 	struct telemetry_wnd_data *wnd_data =
 		(struct telemetry_wnd_data *)ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT];
 	struct system_tick_info *systick_info =
 		(struct system_tick_info *)wnd_data->system_tick_info;
+#endif
+
+	++telemetry_systick_counter[prid];
 
 	systick_info[prid].count = telemetry_systick_counter[prid];
 	systick_info[prid].last_time_elapsed = current_stamp - begin_stamp;

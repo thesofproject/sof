@@ -211,10 +211,17 @@ int get_performance_data(struct global_perf_data * const global_perf_data)
 
 	size_t slots_count;
 	size_t slot_idx = 0;
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	struct system_tick_info *systick_info = telemetry_get_systick_info_ptr();
+
+	if (!systick_info)
+		return 0;
+#else
 	struct telemetry_wnd_data *wnd_data =
 		(struct telemetry_wnd_data *)ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT];
 	struct system_tick_info *systick_info =
 		(struct system_tick_info *)wnd_data->system_tick_info;
+#endif
 
 	/* Fill one performance record with performance stats per core */
 	for (int core_id = 0; core_id < CONFIG_MAX_CORE_COUNT; ++core_id) {
@@ -369,10 +376,17 @@ int reset_performance_counters(void)
 	if (perf_measurements_state == IPC4_PERF_MEASUREMENTS_DISABLED)
 		return -EINVAL;
 
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	struct system_tick_info *systick_info = telemetry_get_systick_info_ptr();
+
+	if (!systick_info)
+		return 0;
+#else
 	struct telemetry_wnd_data *wnd_data =
 			(struct telemetry_wnd_data *)ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT];
 	struct system_tick_info *systick_info =
 			(struct system_tick_info *)wnd_data->system_tick_info;
+#endif
 
 	for (int core_id = 0; core_id < CONFIG_MAX_CORE_COUNT; ++core_id) {
 		if (!(cpu_enabled_cores() & BIT(core_id)))
