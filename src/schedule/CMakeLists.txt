@@ -29,7 +29,7 @@ if (CONFIG_SOC_ACP_6_0)
 		)
 	else()
 		zephyr_library_sources(
-			ll_schedule.c
+			ll_schedule_xtos.c
 		)
 	endif()
 else()
