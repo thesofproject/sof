@@ -66,7 +66,11 @@ struct ll_schedule_domain_ops {
 struct ll_schedule_domain {
 	uint64_t next_tick;		/**< ticks just set for next run */
 	uint64_t new_target_tick;	/**< for the next set, used during the reschedule stage */
-	struct k_spinlock lock;		/**< standard lock */
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct k_mutex *lock;		/**< standard lock */
+#else
+	struct k_spinlock lock;         /**< standard lock */
+#endif
 	atomic_t total_num_tasks;	/**< total number of registered tasks */
 	atomic_t enabled_cores;		/**< number of enabled cores */
 	uint32_t ticks_per_ms;		/**< number of clock ticks per ms */
@@ -93,13 +97,26 @@ static inline struct ll_schedule_domain *dma_domain_get(void)
 	return sof_get()->platform_dma_domain;
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct task *zephyr_ll_task_alloc(void);
+struct k_heap *zephyr_ll_user_heap(void);
+void zephyr_ll_user_resources_init(void);
+#endif /* CONFIG_SOF_USERSPACE_LL */
+
 static inline struct ll_schedule_domain *domain_init
 				(int type, int clk, bool synchronous,
 				 const struct ll_schedule_domain_ops *ops)
 {
 	struct ll_schedule_domain *domain;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	domain = sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				sizeof(*domain), sizeof(void *));
+	if (domain)
+		memset(domain, 0, sizeof(*domain));
+#else
 	domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*domain));
+#endif
 	if (!domain)
 		return NULL;
 	domain->type = type;
@@ -116,7 +133,17 @@ static inline struct ll_schedule_domain *domain_init
 	domain->next_tick = UINT64_MAX;
 	domain->new_target_tick = UINT64_MAX;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/* Allocate mutex dynamically for userspace access */
+	domain->lock = k_object_alloc(K_OBJ_MUTEX);
+	if (!domain->lock) {
+		sof_heap_free(zephyr_ll_user_heap(), domain);
+		return NULL;
+	}
+	k_mutex_init(domain->lock);
+#else
 	k_spinlock_init(&domain->lock);
+#endif
 	atomic_init(&domain->total_num_tasks, 0);
 	atomic_init(&domain->enabled_cores, 0);
 
@@ -246,7 +273,11 @@ struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
 struct ll_schedule_domain *zephyr_ll_domain(void);
 struct ll_schedule_domain *zephyr_domain_init(int clk);
 #define timer_domain_init(timer, clk) zephyr_domain_init(clk)
-#endif
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain);
+struct k_mem_domain *zephyr_ll_mem_domain(void);
+#endif /* CONFIG_SOF_USERSPACE_LL */
+#endif /* __ZEPHYR__ */
 
 struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 						      uint32_t num_dma, int clk,
