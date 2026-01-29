@@ -17,7 +17,6 @@
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <rtos/spinlock.h>
-#include <rtos/symbol.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -168,8 +167,6 @@ static int dma_init(struct sof_dma *dma)
 
 	return 0;
 }
-EXPORT_SYMBOL(z_impl_sof_dma_get);
-EXPORT_SYMBOL(z_impl_sof_dma_put);
 #else
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
@@ -286,8 +283,6 @@ void dma_put(struct dma *dma)
 		dma, dma->sref);
 	k_spin_unlock(&dma->lock, key);
 }
-EXPORT_SYMBOL(dma_get);
-EXPORT_SYMBOL(dma_put);
 #endif
 
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
@@ -329,7 +324,6 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 	rfree(elem_array->elems);
 	dma_sg_init(elem_array);
 }
-EXPORT_SYMBOL(dma_sg_free);
 
 int dma_buffer_copy_from(struct comp_buffer *source,
 			 struct comp_buffer *sink,

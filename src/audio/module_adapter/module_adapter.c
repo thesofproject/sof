@@ -30,7 +30,6 @@
 #endif
 #include <rtos/interrupt.h>
 #include <rtos/kernel.h>
-#include <rtos/symbol.h>
 #include <limits.h>
 #include <stdint.h>
 
@@ -339,7 +338,6 @@ err:
 
 	return NULL;
 }
-EXPORT_SYMBOL(module_adapter_new);
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 static void module_adapter_calculate_dp_period(struct comp_dev *dev)
@@ -685,7 +683,6 @@ in_out_free:
 	mod->input_buffers = NULL;
 	return ret;
 }
-EXPORT_SYMBOL(module_adapter_prepare);
 
 int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
 {
@@ -725,7 +722,6 @@ int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *pa
 
 	return 0;
 }
-EXPORT_SYMBOL(module_adapter_params);
 
 /*
  * Function to copy from source buffer to the module buffer
@@ -1340,7 +1336,6 @@ int module_adapter_copy(struct comp_dev *dev)
 	comp_err(dev, "unknown processing_data_type");
 	return -EINVAL;
 }
-EXPORT_SYMBOL(module_adapter_copy);
 
 int module_adapter_trigger(struct comp_dev *dev, int cmd)
 {
@@ -1378,7 +1373,6 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 
 	return module_adapter_set_state(mod, dev, cmd);
 }
-EXPORT_SYMBOL(module_adapter_trigger);
 
 int module_adapter_reset(struct comp_dev *dev)
 {
@@ -1426,7 +1420,6 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
-EXPORT_SYMBOL(module_adapter_reset);
 
 void module_adapter_free(struct comp_dev *dev)
 {
@@ -1469,7 +1462,6 @@ void module_adapter_free(struct comp_dev *dev)
 
 	module_adapter_mem_free(mod);
 }
-EXPORT_SYMBOL(module_adapter_free);
 
 size_t module_adapter_heap_usage(struct processing_module *mod, size_t *hwm)
 {
@@ -1480,7 +1472,6 @@ size_t module_adapter_heap_usage(struct processing_module *mod, size_t *hwm)
 
 	return res->heap_usage;
 }
-EXPORT_SYMBOL(module_adapter_heap_usage);
 
 /*
  * \brief Get DAI hw params
@@ -1503,7 +1494,6 @@ int module_adapter_get_hw_params(struct comp_dev *dev, struct sof_ipc_stream_par
 
 	return -EOPNOTSUPP;
 }
-EXPORT_SYMBOL(module_adapter_get_hw_params);
 
 /*
  * \brief Get stream position
@@ -1524,7 +1514,6 @@ int module_adapter_position(struct comp_dev *dev, struct sof_ipc_stream_posn *po
 
 	return -EOPNOTSUPP;
 }
-EXPORT_SYMBOL(module_adapter_position);
 
 /*
  * \brief DAI timestamp configure
@@ -1544,7 +1533,6 @@ int module_adapter_ts_config_op(struct comp_dev *dev)
 
 	return -EOPNOTSUPP;
 }
-EXPORT_SYMBOL(module_adapter_ts_config_op);
 
 /*
  * \brief DAI timestamp start
@@ -1564,7 +1552,6 @@ int module_adapter_ts_start_op(struct comp_dev *dev)
 
 	return -EOPNOTSUPP;
 }
-EXPORT_SYMBOL(module_adapter_ts_start_op);
 
 /*
  * \brief DAI timestamp stop
@@ -1584,7 +1571,6 @@ int module_adapter_ts_stop_op(struct comp_dev *dev)
 
 	return -EOPNOTSUPP;
 }
-EXPORT_SYMBOL(module_adapter_ts_stop_op);
 
 /*
  * \brief Get DAI timestamp
@@ -1609,4 +1595,3 @@ int module_adapter_ts_get_op(struct comp_dev *dev, struct timestamp_data *tsd)
 
 	return -EOPNOTSUPP;
 }
-EXPORT_SYMBOL(module_adapter_ts_get_op);
