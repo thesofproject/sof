@@ -29,6 +29,16 @@ config SOF_USERSPACE_INTERFACE_DMA
 	help
 	  Allow user-space threads to use the SOF DMA interface.
 
+config SOF_USERSPACE_LL
+	bool "Run Low-Latency pipelines in userspace threads"
+	depends on USERSPACE
+	select SOF_USERSPACE_INTERFACE_DMA
+	help
+	  Run Low-Latency (LL) pipelines in userspace threads. This adds
+	  memory protection between operating system resources and
+	  audio application threads.
+          If unsure, select "N".
+
 config SOF_ZEPHYR_HEAP_CACHED
 	bool "Cached Zephyr heap for SOF memory non-shared zones"
 	default y if CAVS || ACE
