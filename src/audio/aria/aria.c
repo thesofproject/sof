@@ -120,7 +120,7 @@ static int aria_init(struct processing_module *mod)
 	size_t ibs, chc, sgs, sgc, req_mem, att;
 	void *buf;
 
-	comp_info(dev, "aria_init()");
+	comp_info(dev, "entry");
 
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
@@ -186,7 +186,7 @@ static int aria_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct aria_data *cd = module_get_private_data(mod);
 
-	comp_info(dev, "aria_prepare()");
+	comp_info(dev, "entry");
 
 	source = comp_dev_get_first_data_producer(dev);
 	sink = comp_dev_get_first_data_consumer(dev);
@@ -227,7 +227,7 @@ static int aria_reset(struct processing_module *mod)
 	struct aria_data *cd = module_get_private_data(mod);
 	int idx;
 
-	comp_info(dev, "aria_reset()");
+	comp_info(dev, "entry");
 
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_info(dev, "aria module is in active state. Ignore resetting");
@@ -254,7 +254,7 @@ static int aria_process(struct processing_module *mod,
 	uint32_t copy_bytes;
 	uint32_t frames = input_buffers[0].size;
 
-	comp_dbg(dev, "aria_copy()");
+	comp_dbg(dev, "entry");
 
 	frames = MIN(frames, cd->smpl_group_cnt);
 
@@ -281,7 +281,7 @@ static int aria_set_config(struct processing_module *mod, uint32_t param_id,
 	struct aria_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "aria_set_config()");
+	comp_info(dev, "entry");
 	if (param_id == ARIA_SET_ATTENUATION) {
 		if (fragment_size != sizeof(uint32_t)) {
 			comp_err(dev, "Illegal fragment_size = %d", fragment_size);
