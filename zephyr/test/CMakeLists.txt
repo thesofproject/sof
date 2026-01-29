@@ -19,3 +19,7 @@ endif()
 if (CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_USERSPACE)
   zephyr_library_sources(userspace/test_mailbox.c)
 endif()
+
+if (CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_LL)
+  zephyr_library_sources(userspace/test_ll_task.c)
+endif()
