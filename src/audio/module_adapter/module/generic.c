@@ -714,7 +714,6 @@ void mod_free_all(struct processing_module *mod)
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);
 }
-EXPORT_SYMBOL(mod_free_all);
 
 int module_free(struct processing_module *mod)
 {
@@ -950,4 +949,3 @@ uint32_t module_get_deadline(struct processing_module *mod)
 
 	return deadline;
 }
-EXPORT_SYMBOL(module_get_deadline);

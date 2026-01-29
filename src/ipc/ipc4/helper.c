@@ -1334,7 +1334,6 @@ void ipc4_audio_format_to_stream_params(const struct ipc4_audio_format *audio_fm
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
 		params->chmap[i] = (audio_fmt->ch_map >> i * 4) & 0xf;
 }
-EXPORT_SYMBOL(ipc4_audio_format_to_stream_params);
 
 void ipc4_base_module_cfg_to_stream_params(const struct ipc4_base_module_cfg *base_cfg,
 					   struct sof_ipc_stream_params *params)

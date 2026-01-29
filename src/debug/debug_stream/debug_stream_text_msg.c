@@ -33,5 +33,3 @@ void ds_msg(const char *format, ...)
 						  sizeof(buf.msg.hdr.data[0]));
 	debug_stream_slot_send_record(&buf.msg.hdr);
 }
-EXPORT_SYMBOL(ds_msg);
-

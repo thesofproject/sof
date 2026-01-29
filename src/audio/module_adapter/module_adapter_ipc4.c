@@ -211,7 +211,6 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 						    NULL, 0);
 	return 0;
 }
-EXPORT_SYMBOL(module_set_large_config);
 
 int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_block,
 			    bool last_block, uint32_t *data_offset_size, char *data)
@@ -243,7 +242,6 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 	 */
 	return -EIO;
 }
-EXPORT_SYMBOL(module_get_large_config);
 
 int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *value)
 {
@@ -265,7 +263,6 @@ int module_adapter_get_attribute(struct comp_dev *dev, uint32_t type, void *valu
 
 	return 0;
 }
-EXPORT_SYMBOL(module_adapter_get_attribute);
 
 int module_adapter_set_attribute(struct comp_dev *dev, uint32_t type, void *value)
 {
@@ -283,7 +280,6 @@ int module_adapter_set_attribute(struct comp_dev *dev, uint32_t type, void *valu
 
 	return 0;
 }
-EXPORT_SYMBOL(module_adapter_set_attribute);
 
 static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 {
@@ -368,7 +364,6 @@ int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
 
 	return 0;
 }
-EXPORT_SYMBOL(module_adapter_bind);
 
 int module_adapter_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
 {
@@ -383,7 +378,6 @@ int module_adapter_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
 
 	return 0;
 }
-EXPORT_SYMBOL(module_adapter_unbind);
 
 uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 						 uint32_t stream_no, bool input)
@@ -399,7 +393,6 @@ uint64_t module_adapter_get_total_data_processed(struct comp_dev *dev,
 	else
 		return mod->total_data_consumed;
 }
-EXPORT_SYMBOL(module_adapter_get_total_data_processed);
 
 int module_adapter_sink_src_prepare(struct comp_dev *dev)
 {
