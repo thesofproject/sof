@@ -220,7 +220,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	k_spin_unlock(&domain->lock, key);
 
-	tr_info(&ll_tr, "zephyr_domain_register domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
+	tr_info(&ll_tr, "domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
 		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)LL_TIMER_PERIOD_US);
 
 	return 0;
@@ -253,7 +253,7 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 
 	k_spin_unlock(&domain->lock, key);
 
-	tr_info(&ll_tr, "zephyr_domain_unregister domain->type %d domain->clk %d",
+	tr_info(&ll_tr, "domain->type %d domain->clk %d",
 		domain->type, domain->clk);
 
 	/*

@@ -342,7 +342,7 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 	    dd->ipc_config.type != common_config->type)
 		return 0;
 
-	comp_info(dev, "dai_config() dai type = %d index = %d dd %p",
+	comp_info(dev, "dai type = %d index = %d dd %p",
 		  common_config->type, common_config->dai_index, dd);
 
 	/* cannot configure DAI while active */
@@ -376,7 +376,7 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 		size = sizeof(*copier_cfg);
 		dd->dai_spec_config = rzalloc(SOF_MEM_FLAG_USER, size);
 		if (!dd->dai_spec_config) {
-			comp_err(dev, "No memory for dai_config size %d", size);
+			comp_err(dev, "No memory for size %d", size);
 			return -ENOMEM;
 		}
 

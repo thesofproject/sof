@@ -235,7 +235,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, comp_id);
 	if (!ipc_pipe) {
-		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipe component id 0x%x failed",
+		tr_err(&ipc_tr, "ipc: looking for pipe component id 0x%x failed",
 		       comp_id);
 		return -EINVAL;
 	}
@@ -249,14 +249,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	/* get pipeline source component */
 	ipc_ppl_source = ipc_get_ppl_src_comp(ipc, p->pipeline_id);
 	if (!ipc_ppl_source) {
-		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline source failed");
+		tr_err(&ipc_tr, "ipc: looking for pipeline source failed");
 		return -EINVAL;
 	}
 
 	/* get pipeline sink component */
 	ipc_ppl_sink = ipc_get_ppl_sink_comp(ipc, p->pipeline_id);
 	if (!ipc_ppl_sink) {
-		tr_err(&ipc_tr, "ipc: ipc_pipeline_complete looking for pipeline sink failed");
+		tr_err(&ipc_tr, "ipc: looking for pipeline sink failed");
 		return -EINVAL;
 	}
 

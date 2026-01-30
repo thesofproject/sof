@@ -216,7 +216,7 @@ static void zephyr_ll_run(void *data)
 		if (state != SOF_TASK_STATE_COMPLETED &&
 		    state != SOF_TASK_STATE_RESCHEDULE) {
 			tr_err(&ll_tr,
-			       "zephyr_ll_run: invalid return state %u",
+			       "invalid return state %u",
 			       state);
 			state = SOF_TASK_STATE_RESCHEDULE;
 		}

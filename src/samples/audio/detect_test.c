@@ -139,7 +139,7 @@ static void notify_host(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "notify_host()");
+	comp_info(dev, "entry");
 
 #if CONFIG_IPC_MAJOR_4
 	ipc_msg_send(cd->msg, NULL, true);
@@ -177,7 +177,7 @@ static void notify_kpb(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "notify_kpb(), preamble: %u", cd->detect_preamble);
+	comp_info(dev, "preamble: %u", cd->detect_preamble);
 
 	cd->client_data.r_ptr = NULL;
 	cd->client_data.sink = NULL;
@@ -282,7 +282,7 @@ static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
 		return ACTIVATION_DEFAULT_THRESHOLD_S32;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(dev, "test_keyword_get_threshold(), unsupported sample width: %d",
+		comp_err(dev, "unsupported sample width: %d",
 			 sample_width);
 		return -EINVAL;
 	}
@@ -311,7 +311,7 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 	if (!cd->config.activation_threshold) {
 		ret = test_keyword_get_threshold(dev, sample_width);
 		if (ret < 0) {
-			comp_err(dev, "test_keyword_apply_config(): unsupported sample width %u",
+			comp_err(dev, "unsupported sample width %u",
 				 sample_width);
 			return ret;
 		}
@@ -332,7 +332,7 @@ static void test_keyword_set_params(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 
-	comp_info(dev, "test_keyword_set_params()");
+	comp_info(dev, "entry");
 
 	memset(params, 0, sizeof(*params));
 	params->channels = cd->base_cfg.audio_fmt.channels_count;
@@ -361,11 +361,11 @@ static int test_keyword_set_config(struct comp_dev *dev, const char *data,
 	cfg = (const struct sof_detect_test_config *)data;
 	cfg_size = data_size;
 
-	comp_info(dev, "test_keyword_set_config(): config size = %u",
+	comp_info(dev, "config size = %u",
 		  cfg_size);
 
 	if (cfg_size != sizeof(struct sof_detect_test_config)) {
-		comp_err(dev, "test_keyword_set_config(): invalid config size");
+		comp_err(dev, "invalid config size");
 		return -EINVAL;
 	}
 
@@ -379,12 +379,12 @@ static int test_keyword_get_config(struct comp_dev *dev, char *data,
 	size_t cfg_size;
 	int ret;
 
-	comp_info(dev, "test_keyword_get_config()");
+	comp_info(dev, "entry");
 
 	cfg_size = sizeof(struct sof_detect_test_config);
 
 	if (cfg_size > *data_size) {
-		comp_err(dev, "test_keyword_get_config(): wrong config size: %d",
+		comp_err(dev, "wrong config size: %d",
 			 *data_size);
 		return -EINVAL;
 	}
@@ -405,7 +405,7 @@ static int test_keyword_set_large_config(struct comp_dev *dev,
 					 uint32_t data_offset,
 					 const char *data)
 {
-	comp_dbg(dev, "test_keyword_set_large_config()");
+	comp_dbg(dev, "entry");
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	switch (param_id) {
@@ -429,7 +429,7 @@ static int test_keyword_get_large_config(struct comp_dev *dev,
 					 uint32_t *data_offset,
 					 char *data)
 {
-	comp_dbg(dev, "test_keyword_get_large_config()");
+	comp_dbg(dev, "entry");
 
 	switch (param_id) {
 	case IPC4_DETECT_TEST_GET_CONFIG:
@@ -492,10 +492,10 @@ static int test_keyword_set_config(struct comp_dev *dev,
 	cfg = (struct sof_detect_test_config *)cdata->data->data;
 	bs = cfg->size;
 
-	comp_info(dev, "test_keyword_set_config(), blob size = %zu", bs);
+	comp_info(dev, "blob size = %zu", bs);
 
 	if (bs != sizeof(struct sof_detect_test_config)) {
-		comp_err(dev, "test_keyword_set_config(): invalid blob size");
+		comp_err(dev, "invalid blob size");
 		return -EINVAL;
 	}
 
@@ -573,7 +573,7 @@ static int test_keyword_get_config(struct comp_dev *dev,
 	size_t bs;
 	int ret = 0;
 
-	comp_info(dev, "test_keyword_get_config()");
+	comp_info(dev, "entry");
 
 	/* Copy back to user space */
 	bs = cd->config.size;
@@ -606,7 +606,7 @@ static int test_keyword_ctrl_get_bin_data(struct comp_dev *dev,
 		ret = comp_data_blob_get_cmd(cd->model_handler, cdata, size);
 		break;
 	default:
-		comp_err(dev, "test_keyword_ctrl_get_bin_data(): unknown binary data type");
+		comp_err(dev, "unknown binary data type");
 		break;
 	}
 
@@ -618,14 +618,14 @@ static int test_keyword_ctrl_get_data(struct comp_dev *dev,
 {
 	int ret = 0;
 
-	comp_info(dev, "test_keyword_ctrl_get_data() size: %d", size);
+	comp_info(dev, "size: %d", size);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		ret = test_keyword_ctrl_get_bin_data(dev, cdata, size);
 		break;
 	default:
-		comp_err(dev, "test_keyword_ctrl_get_data(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -638,7 +638,7 @@ static int test_keyword_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
-	comp_info(dev, "test_keyword_cmd()");
+	comp_info(dev, "entry");
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -774,7 +774,7 @@ static void test_keyword_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "test_keyword_free()");
+	comp_info(dev, "entry");
 
 #if CONFIG_AMS
 	int ret;
@@ -782,7 +782,7 @@ static void test_keyword_free(struct comp_dev *dev)
 	/* Unregister KD as AMS producer */
 	ret = ams_helper_unregister_producer(dev, cd->kpd_uuid_id);
 	if (ret)
-		comp_err(dev, "test_keyword_free(): unregister ams error %d", ret);
+		comp_err(dev, "unregister ams error %d", ret);
 #endif
 
 	ipc_msg_free(cd->msg);
@@ -796,11 +796,11 @@ static int test_keyword_verify_params(struct comp_dev *dev,
 {
 	int ret;
 
-	comp_dbg(dev, "test_keyword_verify_params()");
+	comp_dbg(dev, "entry");
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
-		comp_err(dev, "test_keyword_verify_params(): verification failed!");
+		comp_err(dev, "verification failed!");
 		return ret;
 	}
 
@@ -821,7 +821,7 @@ static int test_keyword_params(struct comp_dev *dev,
 
 	err = test_keyword_verify_params(dev, params);
 	if (err < 0) {
-		comp_err(dev, "test_keyword_params(): pcm params verification failed.");
+		comp_err(dev, "pcm params verification failed.");
 		return err;
 	}
 
@@ -834,7 +834,7 @@ static int test_keyword_params(struct comp_dev *dev,
 	if (!cd->config.activation_threshold) {
 		err = test_keyword_get_threshold(dev, params->sample_valid_bytes * 8);
 		if (err < 0) {
-			comp_err(dev, "test_keyword_params(): unsupported sample width %u",
+			comp_err(dev, "unsupported sample width %u",
 				 params->sample_valid_bytes * 8);
 			return err;
 		}
@@ -850,12 +850,12 @@ static int test_keyword_params(struct comp_dev *dev,
 		rate = audio_stream_get_rate(&sourceb->stream);
 
 		if (channels != 1) {
-			comp_err(dev, "test_keyword_params(): only single-channel supported");
+			comp_err(dev, "only single-channel supported");
 			return -EINVAL;
 		}
 
 		if (!detector_is_sample_width_supported(frame_fmt)) {
-			comp_err(dev, "test_keyword_params(): only 16-bit format supported");
+			comp_err(dev, "only 16-bit format supported");
 			return -EINVAL;
 		}
 
@@ -880,7 +880,7 @@ static int test_keyword_trigger(struct comp_dev *dev, int cmd)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "test_keyword_trigger()");
+	comp_info(dev, "entry");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret)
@@ -903,7 +903,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	uint32_t frames;
 
-	comp_dbg(dev, "test_keyword_copy()");
+	comp_dbg(dev, "entry");
 
 	/* keyword components will only ever have 1 source */
 	source = comp_dev_get_first_data_producer(dev);
@@ -927,7 +927,7 @@ static int test_keyword_reset(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "test_keyword_reset()");
+	comp_info(dev, "entry");
 
 	cd->activation = 0;
 	cd->detect_preamble = 0;
@@ -950,11 +950,11 @@ static int test_keyword_prepare(struct comp_dev *dev)
 	sample_width = cd->config.sample_width;
 #endif /* CONFIG_IPC_MAJOR_4 */
 
-	comp_info(dev, "test_keyword_prepare()");
+	comp_info(dev, "entry");
 
 	ret = test_keyword_params(dev, &params);
 	if (ret < 0) {
-		comp_err(dev, "test_keyword_prepare(): params config failed.");
+		comp_err(dev, "params config failed.");
 		return ret;
 	}
 
@@ -969,7 +969,7 @@ static int test_keyword_prepare(struct comp_dev *dev)
 		ret = test_keyword_get_threshold(dev, valid_bits);
 
 		if (ret < 0) {
-			comp_err(dev, "test_keyword_prepare(): unsupported sample width %u",
+			comp_err(dev, "unsupported sample width %u",
 				 valid_bits);
 			return ret;
 		}

@@ -325,7 +325,7 @@ void dai_put(struct dai *dai)
 
 	ret = dai_remove(dai->dev);
 	if (ret < 0) {
-		tr_err(&dai_tr, "dai_put_zephyr: index %d failed ret = %d",
+		tr_err(&dai_tr, "index %d failed ret = %d",
 		       dai->index, ret);
 	}
 
@@ -391,11 +391,11 @@ void dai_put(struct dai *dai)
 	if (--dai->sref == 0) {
 		ret = dai_remove(dai);
 		if (ret < 0) {
-			tr_err(&dai_tr, "dai_put: type %d index %d dai_remove() failed ret = %d",
+			tr_err(&dai_tr, "type %d index %d dai_remove() failed ret = %d",
 			       dai->drv->type, dai->index, ret);
 		}
 	}
-	tr_info(&dai_tr, "dai_put type %d index %d new sref %d",
+	tr_info(&dai_tr, "type %d index %d new sref %d",
 		dai->drv->type, dai->index, dai->sref);
 	k_spin_unlock(&dai->lock, key);
 }

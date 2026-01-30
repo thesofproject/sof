@@ -107,7 +107,7 @@ static int smart_amp_set_config(struct processing_module *mod, uint32_t config_i
 	struct comp_dev *dev = mod->dev;
 	struct smart_amp_data *sad = module_get_private_data(mod);
 
-	comp_dbg(dev, "smart_amp_set_config()");
+	comp_dbg(dev, "entry");
 
 	switch (config_id) {
 	case SMART_AMP_SET_MODEL:
@@ -115,11 +115,11 @@ static int smart_amp_set_config(struct processing_module *mod, uint32_t config_i
 					 data_offset_size, fragment, fragment_size);
 	case SMART_AMP_SET_CONFIG:
 		if (fragment_size != sizeof(sad->config)) {
-			comp_err(dev, "smart_amp_set_config(): invalid config size %u, expect %u",
+			comp_err(dev, "invalid config size %u, expect %u",
 				 fragment_size, sizeof(struct sof_smart_amp_config));
 			return -EINVAL;
 		}
-		comp_dbg(dev, "smart_amp_set_config(): config size = %u", fragment_size);
+		comp_dbg(dev, "config size = %u", fragment_size);
 		memcpy_s(&sad->config, sizeof(sad->config), fragment, fragment_size);
 		return 0;
 	default:
@@ -135,13 +135,13 @@ static inline int smart_amp_get_config(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_dbg(dev, "smart_amp_get_config()");
+	comp_dbg(dev, "entry");
 
 	switch (config_id) {
 	case SMART_AMP_GET_CONFIG:
 		ret = memcpy_s(fragment, fragment_size, &sad->config, sizeof(sad->config));
 		if (ret) {
-			comp_err(dev, "smart_amp_get_config(): wrong config size %d",
+			comp_err(dev, "wrong config size %d",
 				 fragment_size);
 			return ret;
 		}
@@ -157,7 +157,7 @@ static int smart_amp_free(struct processing_module *mod)
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "smart_amp_free()");
+	comp_dbg(dev, "entry");
 	mod_data_blob_handler_free(mod, sad->model_handler);
 	mod_free(mod, sad);
 

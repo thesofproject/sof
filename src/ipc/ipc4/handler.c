@@ -881,7 +881,7 @@ __cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 		return IPC4_FAILURE;
 
 	tr_dbg(&ipc_tr,
-		"ipc4_init_module_instance %x : %x",
+		"%x : %x",
 		(uint32_t)module_init.primary.r.module_id,
 		(uint32_t)module_init.primary.r.instance_id);
 
@@ -912,7 +912,7 @@ __cold static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 	if (ret < 0)
 		return IPC4_FAILURE;
 
-	tr_dbg(&ipc_tr, "ipc4_bind_module_instance %x : %x with %x : %x",
+	tr_dbg(&ipc_tr, "%x : %x with %x : %x",
 	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
 	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
 
@@ -931,7 +931,7 @@ __cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	if (ret < 0)
 		return IPC4_FAILURE;
 
-	tr_dbg(&ipc_tr, "ipc4_unbind_module_instance %x : %x with %x : %x",
+	tr_dbg(&ipc_tr, "%x : %x with %x : %x",
 	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
 	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
 
@@ -946,7 +946,7 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 	struct comp_dev *dev = NULL;
 	int ret;
 
-	tr_dbg(&ipc_tr, "ipc4_set_get_config_module_instance %x : %x, set %d",
+	tr_dbg(&ipc_tr, "%x : %x, set %d",
 	       (uint32_t)config->primary.r.module_id, (uint32_t)config->primary.r.instance_id,
 	       !!set);
 
@@ -977,7 +977,7 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 
 	ret = function(dev, COMP_ATTR_IPC4_CONFIG, &config->extension.dat);
 	if (ret < 0) {
-		ipc_cmd_err(&ipc_tr, "ipc4_set_get_config_module_instance %x : %x failed %d, set %u, param %x",
+		ipc_cmd_err(&ipc_tr, "%x : %x failed %d, set %u, param %x",
 			    (uint32_t)config->primary.r.module_id,
 			    (uint32_t)config->primary.r.instance_id, ret, !!set,
 			    (uint32_t)config->extension.dat);
@@ -1131,7 +1131,7 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 	if (ret < 0)
 		return IPC4_FAILURE;
 
-	tr_dbg(&ipc_tr, "ipc4_get_large_config_module_instance %x : %x",
+	tr_dbg(&ipc_tr, "%x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
 	/* get component dev for non-basefw since there is no
@@ -1293,7 +1293,7 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 config.extension.r.data_off_size);
-	tr_dbg(&ipc_tr, "ipc4_set_large_config_module_instance %x : %x",
+	tr_dbg(&ipc_tr, "%x : %x",
 	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
 
 	if (config.primary.r.module_id) {
@@ -1362,7 +1362,7 @@ __cold static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 	if (ret < 0)
 		return IPC4_FAILURE;
 
-	tr_dbg(&ipc_tr, "ipc4_delete_module_instance %x : %x", (uint32_t)module.primary.r.module_id,
+	tr_dbg(&ipc_tr, "%x : %x", (uint32_t)module.primary.r.module_id,
 	       (uint32_t)module.primary.r.instance_id);
 
 	comp_id = IPC4_COMP_ID(module.primary.r.module_id, module.primary.r.instance_id);
@@ -1393,7 +1393,7 @@ __cold static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 	module_id = d0ix.primary.r.module_id;
 	instance_id = d0ix.primary.r.instance_id;
 
-	tr_dbg(&ipc_tr, "ipc4_module_process_d0ix %x : %x", module_id, instance_id);
+	tr_dbg(&ipc_tr, "%x : %x", module_id, instance_id);
 
 	/* only module 0 can be used to set d0ix state */
 	if (d0ix.primary.r.module_id || d0ix.primary.r.instance_id) {
@@ -1442,7 +1442,7 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 
 	/* check if core enable mask is valid */
 	if (dx_info.core_mask > MASK(CONFIG_CORE_COUNT - 1, 0)) {
-		ipc_cmd_err(&ipc_tr, "ipc4_module_process_dx: CONFIG_CORE_COUNT: %d < core enable mask: %d",
+		ipc_cmd_err(&ipc_tr, "CONFIG_CORE_COUNT: %d < core enable mask: %d",
 			    CONFIG_CORE_COUNT, dx_info.core_mask);
 		return IPC4_ERROR_INVALID_PARAM;
 	}

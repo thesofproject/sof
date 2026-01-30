@@ -63,7 +63,7 @@ int notifier_register(void *receiver, void *caller, enum notify_id type,
 			 sizeof(*handle));
 
 	if (!handle) {
-		tr_err(&nt_tr, "notifier_register(): callback handle allocation failed.");
+		tr_err(&nt_tr, "callback handle allocation failed.");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -197,7 +197,7 @@ void init_system_notify(struct sof *sof)
 	*notify = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			  sizeof(**notify));
 	if (!*notify) {
-		tr_err(&nt_tr, "init_system_notify(): allocation failed");
+		tr_err(&nt_tr, "allocation failed");
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 

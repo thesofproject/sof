@@ -81,9 +81,9 @@ static enum task_state validate(void *data)
 	/* warning timeout */
 	if (delta > sa->warn_timeout) {
 		if (delta > UINT_MAX)
-			tr_warn(&sa_tr, "validate(), ll drift detected, delta > %u", UINT_MAX);
+			tr_warn(&sa_tr, "ll drift detected, delta > %u", UINT_MAX);
 		else
-			tr_warn(&sa_tr, "validate(), ll drift detected, delta = %u",
+			tr_warn(&sa_tr, "ll drift detected, delta = %u",
 				(unsigned int)delta);
 	}
 
@@ -98,9 +98,9 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	uint64_t ticks;
 
 	if (timeout > UINT_MAX)
-		tr_warn(&sa_tr, "sa_init(), timeout > %u", UINT_MAX);
+		tr_warn(&sa_tr, "timeout > %u", UINT_MAX);
 	else
-		tr_info(&sa_tr, "sa_init(), timeout = %u", (unsigned int)timeout);
+		tr_info(&sa_tr, "timeout = %u", (unsigned int)timeout);
 
 	sof->sa = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->sa));
 
@@ -117,10 +117,10 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	if (ticks > UINT_MAX || sof->sa->warn_timeout > UINT_MAX ||
 	    sof->sa->panic_timeout > UINT_MAX)
 		tr_info(&sa_tr,
-			"sa_init(), some of the values are > %u", UINT_MAX);
+			"some of the values are > %u", UINT_MAX);
 	else
 		tr_info(&sa_tr,
-			"sa_init(), ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
+			"ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
 			(unsigned int)ticks, (unsigned int)sof->sa->warn_timeout,
 			(unsigned int)sof->sa->panic_timeout);
 
