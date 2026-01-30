@@ -489,14 +489,14 @@ int volume_set_chan(struct processing_module *mod, int chan,
 	 */
 	if (v < cd->vol_min) {
 		/* No need to fail, just trace the event. */
-		comp_warn(mod->dev, "volume_set_chan: Limited request %d to min. %d",
+		comp_warn(mod->dev, "Limited request %d to min. %d",
 			  v, cd->vol_min);
 		v = cd->vol_min;
 	}
 
 	if (v > cd->vol_max) {
 		/* No need to fail, just trace the event. */
-		comp_warn(mod->dev, "volume_set_chan: Limited request %d to max. %d",
+		comp_warn(mod->dev, "Limited request %d to max. %d",
 			  v, cd->vol_max);
 		v = cd->vol_max;
 	}
@@ -560,7 +560,7 @@ static int volume_process(struct processing_module *mod,
 	uint32_t frames;
 	int64_t prev_sum = 0;
 
-	comp_dbg(mod->dev, "volume_process()");
+	comp_dbg(mod->dev, "entry");
 
 	while (avail_frames) {
 #if CONFIG_COMP_PEAK_VOL
@@ -670,7 +670,7 @@ static int volume_prepare(struct processing_module *mod,
 	int ret;
 	int i;
 
-	comp_dbg(dev, "volume_prepare()");
+	comp_dbg(dev, "entry");
 
 	/* volume component will only ever have 1 sink and source buffer */
 	sinkb = comp_dev_get_first_data_consumer(dev);
@@ -760,7 +760,7 @@ static int volume_reset(struct processing_module *mod)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "volume_reset()");
+	comp_dbg(mod->dev, "entry");
 	volume_reset_state(cd);
 	return 0;
 }
@@ -773,7 +773,7 @@ static int volume_free(struct processing_module *mod)
 {
 	struct vol_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "volume_free()");
+	comp_dbg(mod->dev, "entry");
 
 	volume_peak_free(mod);
 	mod_free(mod, cd->vol);

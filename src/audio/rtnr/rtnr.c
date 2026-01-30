@@ -74,27 +74,27 @@ void rtnr_printf(int a, int b, int c, int d, int e)
 {
 	switch (a) {
 	case 0xa:
-		tr_info(&rtnr_tr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		tr_info(&rtnr_tr, "1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 			b, c, d, e);
 		break;
 
 	case 0xb:
-		tr_info(&rtnr_tr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		tr_info(&rtnr_tr, "1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 			b, c, d, e);
 		break;
 
 	case 0xc:
-		tr_warn(&rtnr_tr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		tr_warn(&rtnr_tr, "1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 			b, c, d, e);
 		break;
 
 	case 0xd:
-		tr_dbg(&rtnr_tr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		tr_dbg(&rtnr_tr, "1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 		       b, c, d, e);
 		break;
 
 	case 0xe:
-		tr_err(&rtnr_tr, "rtnr_printf 1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
+		tr_err(&rtnr_tr, "1st=%08x, 2nd=%08x, 3rd=%08x, 4st=%08x",
 		       b, c, d, e);
 		break;
 
@@ -197,7 +197,7 @@ static inline void rtnr_set_process_sample_rate(struct processing_module *mod, u
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "rtnr_set_process_sample_rate()");
+	comp_dbg(mod->dev, "entry");
 	cd->process_sample_rate = sample_rate;
 }
 
@@ -206,12 +206,12 @@ static int32_t rtnr_check_config_validity(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "rtnr_check_config_validity() sample_rate:%d enabled: %d",
+	comp_dbg(dev, "sample_rate:%d enabled: %d",
 		cd->config.params.sample_rate, cd->config.params.enabled);
 
 	if ((cd->config.params.sample_rate != 48000) &&
 		(cd->config.params.sample_rate != 16000)) {
-		comp_err(dev, "rtnr_check_config_validity() invalid sample_rate:%d",
+		comp_err(dev, "invalid sample_rate:%d",
 			cd->config.params.sample_rate);
 		return -EINVAL;
 	}
@@ -294,7 +294,7 @@ static int rtnr_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "rtnr_free()");
+	comp_info(mod->dev, "entry");
 
 	mod_data_blob_handler_free(mod, cd->model_handler);
 
@@ -312,7 +312,7 @@ static int rtnr_check_params(struct processing_module *mod, struct audio_stream 
 	struct comp_data *cd = module_get_private_data(mod);
 	bool channels_valid;
 
-	comp_info(dev, "rtnr_check_params()");
+	comp_info(dev, "entry");
 
 	/* set source/sink_frames/rate */
 	cd->source_rate = audio_stream_get_rate(source);
@@ -439,7 +439,7 @@ static int rtnr_get_config(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 
 #if CONFIG_IPC_MAJOR_4
-	comp_err(dev, "rtnr_get_config(), Not supported, should not happen");
+	comp_err(dev, "Not supported, should not happen");
 	return -EINVAL;
 
 #elif CONFIG_IPC_MAJOR_3
@@ -447,7 +447,7 @@ static int rtnr_get_config(struct processing_module *mod,
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	int j;
 
-	comp_dbg(dev, "rtnr_get_config()");
+	comp_dbg(dev, "entry");
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
@@ -478,7 +478,7 @@ static int rtnr_reconfigure(struct processing_module *mod)
 	uint8_t *config;
 	size_t size;
 
-	comp_dbg(dev, "rtnr_reconfigure()");
+	comp_dbg(dev, "entry");
 
 	if (!comp_is_current_data_blob_valid(cd->model_handler) &&
 	    !comp_is_new_data_blob_available(cd->model_handler)) {
@@ -494,7 +494,7 @@ static int rtnr_reconfigure(struct processing_module *mod)
 	}
 
 	config = comp_get_data_blob(cd->model_handler, &size, NULL);
-	comp_dbg(dev, "rtnr_reconfigure() size: %d", size);
+	comp_dbg(dev, "size: %d", size);
 
 	if (size == 0) {
 		/* No data to be handled */
@@ -562,7 +562,7 @@ static int32_t rtnr_set_value(struct processing_module *mod, void *ctl_data)
 
 	for (j = 0; j < cdata->num_elems; j++) {
 		val |= cdata->chanv[j].value;
-		comp_dbg(dev, "rtnr_set_value(), value = %u", val);
+		comp_dbg(dev, "value = %u", val);
 	}
 
 	if (val) {
@@ -614,7 +614,7 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 			 * concurrently which is the case when there is no preemption.
 			 */
 			if (comp_is_new_data_blob_available(cd->model_handler)) {
-				comp_dbg(dev, "rtnr_set_config(), new data blob available");
+				comp_dbg(dev, "new data blob available");
 				comp_get_data_blob(cd->model_handler, NULL, NULL);
 				cd->reconfigure = true;
 			}
@@ -629,7 +629,7 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 		return rtnr_set_value(mod, cdata);
 	}
 
-	comp_err(dev, "rtnr_set_config() error: invalid command %d", cdata->cmd);
+	comp_err(dev, "error: invalid command %d", cdata->cmd);
 	return -EINVAL;
 
 #elif CONFIG_IPC_MAJOR_4
@@ -637,10 +637,10 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 
 	switch (param_id) {
 	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID:
-		comp_dbg(dev, "rtnr_set_config(), SOF_IPC4_SWITCH_CONTROL_PARAM_ID");
+		comp_dbg(dev, "SOF_IPC4_SWITCH_CONTROL_PARAM_ID");
 		return rtnr_set_value(mod, ctl);
 	case SOF_RTNR_CONFIG:
-		comp_dbg(dev, "rtnr_set_config(), SOF_RTNR_CONFIG");
+		comp_dbg(dev, "SOF_RTNR_CONFIG");
 		if (dev->state < COMP_STATE_READY) {
 			comp_err(dev, "driver in init!");
 			return -EBUSY;
@@ -648,7 +648,7 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 
 		return rtnr_set_config_bytes(mod, fragment, fragment_size);
 	case SOF_RTNR_DATA:
-		comp_dbg(dev, "rtnr_set_config(), SOF_RTNR_DATA");
+		comp_dbg(dev, "SOF_RTNR_DATA");
 		if (dev->state < COMP_STATE_READY) {
 			comp_err(dev, "driver in init!");
 			return -EBUSY;
@@ -675,7 +675,7 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 		return 0;
 	}
 
-	comp_err(dev, "rtnr_set_config(), error: invalid param_id = %d", param_id);
+	comp_err(dev, "error: invalid param_id = %d", param_id);
 	return -EINVAL;
 #endif
 }
@@ -799,7 +799,7 @@ static int rtnr_prepare(struct processing_module *mod,
 	struct comp_buffer *sourceb, *sinkb;
 	int ret;
 
-	comp_dbg(dev, "rtnr_prepare()");
+	comp_dbg(dev, "entry");
 
 	sinkb = comp_dev_get_first_data_consumer(dev);
 	sourceb = comp_dev_get_first_data_producer(dev);
@@ -829,7 +829,7 @@ static int rtnr_prepare(struct processing_module *mod,
 		goto err;
 
 	/* Check source and sink PCM format and get processing function */
-	comp_info(dev, "rtnr_prepare(), sink_format=%d", cd->sink_format);
+	comp_info(dev, "sink_format=%d", cd->sink_format);
 	cd->rtnr_func = rtnr_find_func(cd->sink_format);
 	if (!cd->rtnr_func) {
 		comp_err(dev, "No suitable processing function found.");
@@ -853,7 +853,7 @@ static int rtnr_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "rtnr_reset()");
+	comp_info(mod->dev, "entry");
 
 	cd->sink_format = 0;
 	cd->rtnr_func = NULL;

@@ -52,24 +52,24 @@ static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt
 	switch (fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		comp_dbg(mod->dev, "set_func(), SOF_IPC_FRAME_S16_LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S16_LE");
 		cd->tdfb_func = tdfb_fir_s16;
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		comp_dbg(mod->dev, "set_func(), SOF_IPC_FRAME_S24_4LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S24_4LE");
 		cd->tdfb_func = tdfb_fir_s24;
 		break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		comp_dbg(mod->dev, "set_func(), SOF_IPC_FRAME_S32_LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S32_LE");
 		cd->tdfb_func = tdfb_fir_s32;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(mod->dev, "set_func(), invalid frame_fmt");
+		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;
 	}
 	return 0;
@@ -233,24 +233,24 @@ static inline int set_pass_func(struct processing_module *mod, enum sof_ipc_fram
 	switch (fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		comp_dbg(mod->dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S16_LE");
 		cd->tdfb_func = tdfb_pass_s16;
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		comp_dbg(mod->dev, "set_pass_func(), SOF_IPC_FRAME_S24_4LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S24_4LE");
 		cd->tdfb_func = tdfb_pass_s24;
 		break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		comp_dbg(mod->dev, "set_pass_func(), SOF_IPC_FRAME_S32_LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S32_LE");
 		cd->tdfb_func = tdfb_pass_s32;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(mod->dev, "set_pass_func(), invalid frame_fmt");
+		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;
 	}
 	return 0;
@@ -327,37 +327,37 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	/* Sanity checks */
 	if (config->num_output_channels > PLATFORM_MAX_CHANNELS ||
 	    !config->num_output_channels) {
-		comp_err(dev, "tdfb_init_coef(), invalid num_output_channels %d",
+		comp_err(dev, "invalid num_output_channels %d",
 			 config->num_output_channels);
 		return -EINVAL;
 	}
 
 	if (config->num_output_channels != sink_nch) {
-		comp_err(dev, "tdfb_init_coef(), stream output channels count %d does not match configuration %d",
+		comp_err(dev, "stream output channels count %d does not match configuration %d",
 			 sink_nch, config->num_output_channels);
 		return -EINVAL;
 	}
 
 	if (config->num_filters > SOF_TDFB_FIR_MAX_COUNT) {
-		comp_err(dev, "tdfb_init_coef(), invalid num_filters %d",
+		comp_err(dev, "invalid num_filters %d",
 			 config->num_filters);
 		return -EINVAL;
 	}
 
 	if (config->num_angles > SOF_TDFB_MAX_ANGLES) {
-		comp_err(dev, "tdfb_init_coef(), invalid num_angles %d",
+		comp_err(dev, "invalid num_angles %d",
 			 config->num_angles);
 		return -EINVAL;
 	}
 
 	if (config->beam_off_defined > 1) {
-		comp_err(dev, "tdfb_init_coef(), invalid beam_off_defined %d",
+		comp_err(dev, "invalid beam_off_defined %d",
 			 config->beam_off_defined);
 		return -EINVAL;
 	}
 
 	if (config->num_mic_locations > SOF_TDFB_MAX_MICROPHONES) {
-		comp_err(dev, "tdfb_init_coef(), invalid num_mic_locations %d",
+		comp_err(dev, "invalid num_mic_locations %d",
 			 config->num_mic_locations);
 		return -EINVAL;
 	}
@@ -367,7 +367,7 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	 * A most basic blob has num_angles equals 1. Mic locations data is optional.
 	 */
 	if (config->num_angles == 0 && config->num_mic_locations == 0) {
-		comp_err(dev, "tdfb_init_coef(), ABI version less than 3.19.1 is not supported.");
+		comp_err(dev, "ABI version less than 3.19.1 is not supported.");
 		return -EINVAL;
 	}
 
@@ -395,7 +395,7 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 		(&cd->filter_angles[config->num_angles]);
 	if ((uint8_t *)&cd->mic_locations[config->num_mic_locations] !=
 	    (uint8_t *)config + config->size) {
-		comp_err(dev, "tdfb_init_coef(), invalid config size");
+		comp_err(dev, "invalid config size");
 		return -EINVAL;
 	}
 
@@ -414,14 +414,14 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 
 	idx = cd->filter_angles[min_delta_idx].filter_index;
 	if (cd->beam_on) {
-		comp_info(dev, "tdfb_init_coef(), angle request %d, found %d, idx %d",
+		comp_info(dev, "angle request %d, found %d, idx %d",
 			  target_az, cd->filter_angles[min_delta_idx].azimuth, idx);
 	} else if (config->beam_off_defined) {
 		cd->output_channel_mix = output_channel_mix_beam_off;
 		idx = config->num_filters * config->num_angles;
-		comp_info(dev, "tdfb_init_coef(), configure beam off");
+		comp_info(dev, "configure beam off");
 	} else {
-		comp_info(dev, "tdfb_init_coef(), beam off is not defined, using filter %d, idx %d",
+		comp_info(dev, "beam off is not defined, using filter %d, idx %d",
 			  cd->filter_angles[min_delta_idx].azimuth, idx);
 	}
 
@@ -436,7 +436,7 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 		if (s > 0) {
 			size_sum += s;
 		} else {
-			comp_err(dev, "tdfb_init_coef(), FIR length %d is invalid",
+			comp_err(dev, "FIR length %d is invalid",
 				 coef_data->length);
 			return -EINVAL;
 		}
@@ -459,7 +459,7 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	 * used for filters input.
 	 */
 	if (max_ch + 1 > source_nch) {
-		comp_err(dev, "tdfb_init_coef(), stream input channels count %d is not sufficient for configuration %d",
+		comp_err(dev, "stream input channels count %d is not sufficient for configuration %d",
 			 source_nch, max_ch + 1);
 		return -EINVAL;
 	}
@@ -516,7 +516,7 @@ static int tdfb_setup(struct processing_module *mod, int source_nch, int sink_nc
 		/* Allocate all FIR channels data in a big chunk and clear it */
 		cd->fir_delay = mod_balloc(mod, delay_size);
 		if (!cd->fir_delay) {
-			comp_err(mod->dev, "tdfb_setup(), delay allocation failed for size %d",
+			comp_err(mod->dev, "delay allocation failed for size %d",
 				 delay_size);
 			return -ENOMEM;
 		}
@@ -545,11 +545,11 @@ static int tdfb_init(struct processing_module *mod)
 	int ret;
 	int i;
 
-	comp_info(dev, "tdfb_init()");
+	comp_info(dev, "entry");
 
 	/* Check first that configuration blob size is sane */
 	if (bs > SOF_TDFB_MAX_SIZE) {
-		comp_err(dev, "tdfb_init() error: configuration blob size = %zu > %d",
+		comp_err(dev, "error: configuration blob size = %zu > %d",
 			 bs, SOF_TDFB_MAX_SIZE);
 		return -EINVAL;
 	}
@@ -613,7 +613,7 @@ static int tdfb_free(struct processing_module *mod)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "tdfb_free()");
+	comp_dbg(mod->dev, "entry");
 
 	ipc_msg_free(cd->msg);
 	tdfb_free_delaylines(mod);
@@ -655,7 +655,7 @@ static int tdfb_process(struct processing_module *mod,
 	int frame_count = input_buffers[0].size;
 	int ret;
 
-	comp_dbg(dev, "tdfb_process()");
+	comp_dbg(dev, "entry");
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
@@ -664,7 +664,7 @@ static int tdfb_process(struct processing_module *mod,
 				 audio_stream_get_channels(sink),
 				 audio_stream_get_frm_fmt(source));
 		if (ret < 0) {
-			comp_err(dev, "tdfb_process(), failed FIR setup");
+			comp_err(dev, "failed FIR setup");
 			return ret;
 		}
 	}
@@ -676,7 +676,7 @@ static int tdfb_process(struct processing_module *mod,
 				 audio_stream_get_channels(sink),
 				 audio_stream_get_frm_fmt(source));
 		if (ret < 0) {
-			comp_err(dev, "tdfb_process(), failed FIR setup");
+			comp_err(dev, "failed FIR setup");
 			return ret;
 		}
 	}
@@ -730,7 +730,7 @@ static int tdfb_prepare(struct processing_module *mod,
 	int rate;
 	int ret;
 
-	comp_info(dev, "tdfb_prepare()");
+	comp_info(dev, "entry");
 
 	/* Find source and sink buffers */
 	sourceb = comp_dev_get_first_data_producer(dev);
@@ -762,7 +762,7 @@ static int tdfb_prepare(struct processing_module *mod,
 
 	ret = tdfb_setup(mod, source_channels, sink_channels, frame_fmt);
 	if (ret < 0) {
-		comp_err(dev, "tdfb_prepare() error: tdfb_setup failed.");
+		comp_err(dev, "error: tdfb_setup failed.");
 		goto out;
 	}
 
@@ -802,7 +802,7 @@ static int tdfb_reset(struct processing_module *mod)
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	int i;
 
-	comp_dbg(mod->dev, "tdfb_reset()");
+	comp_dbg(mod->dev, "entry");
 
 	tdfb_free_delaylines(mod);
 

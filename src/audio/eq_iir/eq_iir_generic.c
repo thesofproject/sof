@@ -202,11 +202,11 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
-		comp_err(mod->dev, "eq_iir_init_coef(), invalid channels count");
+		comp_err(mod->dev, "invalid channels count");
 		return -EINVAL;
 	}
 	if (config->number_of_responses > SOF_EQ_IIR_MAX_RESPONSES) {
-		comp_err(mod->dev, "eq_iir_init_coef(), # of resp exceeds max");
+		comp_err(mod->dev, "# of resp exceeds max");
 		return -EINVAL;
 	}
 
@@ -241,13 +241,13 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
-			comp_info(mod->dev, "eq_iir_init_coef(), ch %d is set to bypass", i);
+			comp_info(mod->dev, "ch %d is set to bypass", i);
 			iir_reset_df1(&iir[i]);
 			continue;
 		}
 
 		if (resp >= config->number_of_responses) {
-			comp_err(mod->dev, "eq_iir_init_coef(), requested response %d exceeds defined",
+			comp_err(mod->dev, "requested response %d exceeds defined",
 				 resp);
 			return -EINVAL;
 		}
@@ -258,13 +258,13 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 		if (s > 0) {
 			size_sum += s;
 		} else {
-			comp_err(mod->dev, "eq_iir_init_coef(), sections count %d exceeds max",
+			comp_err(mod->dev, "sections count %d exceeds max",
 				 eq->num_sections);
 			return -EINVAL;
 		}
 
 		iir_init_coef_df1(&iir[i], eq);
-		comp_info(mod->dev, "eq_iir_init_coef(), ch %d is set to response %d", i, resp);
+		comp_info(mod->dev, "ch %d is set to response %d", i, resp);
 	}
 
 	return size_sum;
@@ -332,7 +332,7 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 	/* Allocate all IIR channels data in a big chunk and clear it */
 	cd->iir_delay = mod_zalloc(mod, delay_size);
 	if (!cd->iir_delay) {
-		comp_err(mod->dev, "eq_iir_setup(), delay allocation fail");
+		comp_err(mod->dev, "delay allocation fail");
 		return -ENOMEM;
 	}
 

@@ -247,7 +247,7 @@ static int google_rtc_audio_processing_reconfigure(struct processing_module *mod
 	size_t size;
 	int ret;
 
-	comp_dbg(dev, "google_rtc_audio_processing_reconfigure()");
+	comp_dbg(dev, "entry");
 
 	if (!comp_is_current_data_blob_valid(cd->tuning_handler) &&
 	    !comp_is_new_data_blob_available(cd->tuning_handler)) {
@@ -509,7 +509,7 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	struct google_rtc_audio_processing_comp_data *cd;
 	int ret, i;
 
-	comp_info(dev, "google_rtc_audio_processing_init()");
+	comp_info(dev, "entry");
 
 	/* Create private component data */
 	cd = mod_zalloc(mod, sizeof(*cd));
@@ -596,7 +596,7 @@ static int google_rtc_audio_processing_free(struct processing_module *mod)
 {
 	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "google_rtc_audio_processing_free()");
+	comp_dbg(mod->dev, "entry");
 
 	GoogleRtcAudioProcessingFree(cd->state);
 	cd->state = NULL;
@@ -616,7 +616,7 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
 	int ret = 0;
 
-	comp_info(dev, "google_rtc_audio_processing_prepare()");
+	comp_info(dev, "entry");
 
 	if (num_of_sources != 2 || num_of_sinks != 1) {
 		comp_err(dev, "Invalid source/sink count");
@@ -766,7 +766,7 @@ static int trigger_handler(struct processing_module *mod, int cmd)
 
 static int google_rtc_audio_processing_reset(struct processing_module *mod)
 {
-	comp_dbg(mod->dev, "google_rtc_audio_processing_reset()");
+	comp_dbg(mod->dev, "entry");
 	return 0;
 }
 

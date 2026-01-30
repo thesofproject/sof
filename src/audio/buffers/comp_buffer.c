@@ -432,7 +432,7 @@ int buffer_set_params(struct comp_buffer *buffer,
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	if (!params) {
-		buf_err(buffer, "buffer_set_params(): !params");
+		buf_err(buffer, "!params");
 		return -EINVAL;
 	}
 
@@ -441,7 +441,7 @@ int buffer_set_params(struct comp_buffer *buffer,
 
 	ret = audio_stream_set_params(&buffer->stream, params);
 	if (ret < 0) {
-		buf_err(buffer, "buffer_set_params(): audio_stream_set_params failed");
+		buf_err(buffer, "audio_stream_set_params failed");
 		return -EINVAL;
 	}
 
@@ -490,7 +490,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		struct comp_dev *src_component = comp_buffer_get_source_component(buffer);
 		struct comp_dev *sink_component = comp_buffer_get_sink_component(buffer);
 
-		buf_dbg(buffer, "comp_update_buffer_produce(), no bytes to produce, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
+		buf_dbg(buffer, "no bytes to produce, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
 			src_component ? dev_comp_id(src_component) : (unsigned int)UINT32_MAX,
 			src_component ? dev_comp_type(src_component) : (unsigned int)UINT32_MAX,
 			sink_component ? dev_comp_id(sink_component) : (unsigned int)UINT32_MAX,
@@ -505,11 +505,11 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
-	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
+	buf_dbg(buffer, "((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
 		(audio_stream_get_avail_bytes(&buffer->stream) << 16) |
 		 audio_stream_get_free_bytes(&buffer->stream),
 		(buffer->id << 16) | audio_stream_get_size(&buffer->stream));
-	buf_dbg(buffer, "comp_update_buffer_produce(), ((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
+	buf_dbg(buffer, "((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		((char *)audio_stream_get_rptr(&buffer->stream) -
 		 (char *)audio_stream_get_addr(&buffer->stream)) << 16 |
 		((char *)audio_stream_get_wptr(&buffer->stream) -
@@ -533,7 +533,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		struct comp_dev *src_component = comp_buffer_get_source_component(buffer);
 		struct comp_dev *sink_component = comp_buffer_get_sink_component(buffer);
 
-		buf_dbg(buffer, "comp_update_buffer_consume(), no bytes to consume, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
+		buf_dbg(buffer, "no bytes to consume, source->comp.id = %u, source->comp.type = %u, sink->comp.id = %u, sink->comp.type = %u",
 			src_component ? dev_comp_id(src_component) : (unsigned int)UINT32_MAX,
 			src_component ? dev_comp_type(src_component) : (unsigned int)UINT32_MAX,
 			sink_component ? dev_comp_id(sink_component) : (unsigned int)UINT32_MAX,
@@ -548,7 +548,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
-	buf_dbg(buffer, "comp_update_buffer_consume(), (buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
+	buf_dbg(buffer, "(buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
 		(audio_stream_get_avail_bytes(&buffer->stream) << 16) |
 		 audio_stream_get_free_bytes(&buffer->stream),
 		(buffer->id << 16) | audio_stream_get_size(&buffer->stream),

@@ -100,7 +100,7 @@ static void src_copy_s32(struct processing_module *mod,
 					  in_frames, &idx);
 
 	if (ret)
-		comp_err(dev, "src_copy_s32(), error %d", ret);
+		comp_err(dev, "error %d", ret);
 
 	buf = (int32_t *)cd->obuf[0];
 	n = out_frames * audio_stream_get_channels(sink);
@@ -176,7 +176,7 @@ static void src_copy_s16(struct processing_module *mod,
 					  in_frames, &idx);
 
 	if (ret)
-		comp_err(dev, "src_copy_s16(), error %d", ret);
+		comp_err(dev, "error %d", ret);
 
 	buf = (int16_t *)cd->obuf[0];
 	n = out_frames * audio_stream_get_channels(sink);
@@ -206,13 +206,13 @@ static int asrc_init(struct processing_module *mod)
 	const ipc_asrc_cfg *ipc_asrc = (const ipc_asrc_cfg *)mod_data->cfg.init_data;
 	struct comp_data *cd;
 
-	comp_info(dev, "asrc_init(), source_rate=%d, sink_rate=%d, asynchronous_mode=%d, operation_mode=%d",
+	comp_info(dev, "source_rate=%d, sink_rate=%d, asynchronous_mode=%d, operation_mode=%d",
 		  asrc_get_source_rate(ipc_asrc), asrc_get_sink_rate(ipc_asrc),
 		  asrc_get_asynchronous_mode(ipc_asrc), asrc_get_operation_mode(ipc_asrc));
 
 	/* validate init data - either SRC sink or source rate must be set */
 	if (asrc_get_source_rate(ipc_asrc) == 0 || asrc_get_sink_rate(ipc_asrc) == 0) {
-		comp_err(dev, "asrc_init(), sink or source rates are not set");
+		comp_err(dev, "sink or source rates are not set");
 		return -EINVAL;
 	}
 
@@ -317,7 +317,7 @@ static int asrc_free(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "asrc_free()");
+	comp_dbg(dev, "entry");
 
 	mod_free(mod, cd->buf);
 	asrc_release_buffers(mod, cd->asrc_obj);
@@ -332,7 +332,7 @@ static int asrc_set_config(struct processing_module *mod, uint32_t config_id,
 			   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 			   size_t response_size)
 {
-	comp_err(mod->dev, "asrc_set_config()");
+	comp_err(mod->dev, "entry");
 	return -EINVAL;
 }
 
@@ -343,7 +343,7 @@ static int asrc_verify_params(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_dbg(dev, "asrc_verify_params()");
+	comp_dbg(dev, "entry");
 
 	/* check whether params->rate (received from driver) are equal
 	 * to asrc->source_rate (PLAYBACK) or asrc->sink_rate (CAPTURE) set
@@ -386,7 +386,7 @@ static int asrc_params(struct processing_module *mod)
 	struct comp_buffer *sourceb, *sinkb;
 	int err;
 
-	comp_info(dev, "asrc_params()");
+	comp_info(dev, "entry");
 
 	asrc_set_stream_params(cd, pcm_params);
 
@@ -416,7 +416,7 @@ static int asrc_params(struct processing_module *mod)
 	cd->sink_rate = audio_stream_get_rate(&sinkb->stream);
 
 	if (!cd->sink_rate) {
-		comp_err(dev, "asrc_params(), zero sink rate");
+		comp_err(dev, "zero sink rate");
 		return -EINVAL;
 	}
 
@@ -435,7 +435,7 @@ static int asrc_params(struct processing_module *mod)
 	cd->sink_frames_max = cd->sink_frames + 10;
 	cd->frames = MAX(cd->source_frames_max, cd->sink_frames_max);
 
-	comp_info(dev, "asrc_params(), source_rate=%u, sink_rate=%u, source_frames_max=%d, sink_frames_max=%d",
+	comp_info(dev, "source_rate=%u, sink_rate=%u, source_frames_max=%d, sink_frames_max=%d",
 		  cd->source_rate, cd->sink_rate,
 		  cd->source_frames_max, cd->sink_frames_max);
 
@@ -506,7 +506,7 @@ static int asrc_trigger(struct processing_module *mod, int cmd)
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_info(dev, "asrc_trigger()");
+	comp_info(dev, "entry");
 
 	/* Enable timestamping in pipeline DAI */
 	if (cmd == COMP_TRIGGER_START && cd->track_drift) {
@@ -546,7 +546,7 @@ static int asrc_prepare(struct processing_module *mod,
 	int ret;
 	int i;
 
-	comp_info(dev, "asrc_prepare()");
+	comp_info(dev, "entry");
 
 	ret = asrc_params(mod);
 	if (ret < 0)
@@ -580,12 +580,12 @@ static int asrc_prepare(struct processing_module *mod,
 
 	/* validate */
 	if (!sink_period_bytes) {
-		comp_err(dev, "asrc_prepare(), sink_period_bytes = 0");
+		comp_err(dev, "sink_period_bytes = 0");
 		ret = -EINVAL;
 		goto err;
 	}
 	if (!source_period_bytes) {
-		comp_err(dev, "asrc_prepare(), source_period_bytes = 0");
+		comp_err(dev, "source_period_bytes = 0");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -604,7 +604,7 @@ static int asrc_prepare(struct processing_module *mod,
 		cd->asrc_func = src_copy_s32;
 		break;
 	default:
-		comp_err(dev, "asrc_prepare(), invalid frame format");
+		comp_err(dev, "invalid frame format");
 		return -EINVAL;
 	}
 
@@ -616,7 +616,7 @@ static int asrc_prepare(struct processing_module *mod,
 	cd->buf = mod_zalloc(mod, cd->buf_size);
 	if (!cd->buf) {
 		cd->buf_size = 0;
-		comp_err(dev, "asrc_prepare(), allocation fail for size %d",
+		comp_err(dev, "allocation fail for size %d",
 			 cd->buf_size);
 		ret = -ENOMEM;
 		goto err;
@@ -634,13 +634,13 @@ static int asrc_prepare(struct processing_module *mod,
 				     audio_stream_get_channels(&sourceb->stream),
 				     sample_bits);
 	if (ret) {
-		comp_err(dev, "asrc_prepare(), get_required_size_bytes failed");
+		comp_err(dev, "get_required_size_bytes failed");
 		goto err_free_buf;
 	}
 
 	cd->asrc_obj = mod_zalloc(mod, cd->asrc_size);
 	if (!cd->asrc_obj) {
-		comp_err(dev, "asrc_prepare(), allocation fail for size %d",
+		comp_err(dev, "allocation fail for size %d",
 			 cd->asrc_size);
 		cd->asrc_size = 0;
 		ret = -ENOMEM;
@@ -685,7 +685,7 @@ static int asrc_prepare(struct processing_module *mod,
 	cd->skew_min = cd->skew;
 	cd->skew_max = cd->skew;
 
-	comp_info(dev, "asrc_prepare(), skew = %d", cd->skew);
+	comp_info(dev, "skew = %d", cd->skew);
 	ret = asrc_update_drift(dev, cd->asrc_obj, cd->skew);
 	if (ret) {
 		comp_err(dev, "asrc_update_drift(), error %d", ret);
@@ -756,7 +756,7 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 
 	/* Prevent divide by zero */
 	if (delta_sample == 0 || tsd.walclk_rate == 0) {
-		comp_err(dev, "asrc_control_loop(), DAI timestamp failed");
+		comp_err(dev, "DAI timestamp failed");
 		return -EINVAL;
 	}
 
@@ -796,7 +796,7 @@ static int asrc_process(struct processing_module *mod,
 	int frames_snk;
 	int ret;
 
-	comp_dbg(dev, "asrc_process()");
+	comp_dbg(dev, "entry");
 
 	ret = asrc_control_loop(dev, cd);
 	if (ret)
@@ -841,7 +841,7 @@ static int asrc_process(struct processing_module *mod,
 		cd->asrc_func(mod, source_s, sink_s, &consumed, &produced);
 		buffer_stream_writeback(sink, produced * audio_stream_frame_bytes(sink_s));
 
-		comp_dbg(dev, "asrc_process(), consumed = %u,  produced = %u", consumed, produced);
+		comp_dbg(dev, "consumed = %u,  produced = %u", consumed, produced);
 
 		output_buffers[0].size = produced * audio_stream_frame_bytes(sink_s);
 		input_buffers[0].consumed = consumed * audio_stream_frame_bytes(source_s);
@@ -855,7 +855,7 @@ static int asrc_reset(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(dev, "asrc_reset(), skew_min=%d, skew_max=%d", cd->skew_min, cd->skew_max);
+	comp_dbg(dev, "skew_min=%d, skew_max=%d", cd->skew_min, cd->skew_max);
 
 	/* If any resources feasible to stop */
 	if (cd->track_drift)

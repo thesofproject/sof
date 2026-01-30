@@ -321,7 +321,7 @@ static int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
 		 * required size
 		 */
 		if (bs > size) {
-			comp_err(dev, "[DSM] maxim_dsm_get_param(): invalid size %d", bs);
+			comp_err(dev, "[DSM] invalid size %d", bs);
 			return -EINVAL;
 		}
 
@@ -394,7 +394,7 @@ static int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 			 */
 			retcode = dsm_api_set_params(hspk->dsmhandle, 1, value);
 			if (retcode != DSM_API_OK) {
-				comp_err(dev, "[DSM] maxim_dsm_set_param() write failure. (id:%x, ret:%x)",
+				comp_err(dev, "[DSM] write failure. (id:%x, ret:%x)",
 					 id, retcode);
 				return -EINVAL;
 			}
@@ -422,7 +422,7 @@ static int maxim_dsm_restore_param(struct smart_amp_mod_struct_t *hspk)
 
 		retcode = dsm_api_set_params(hspk->dsmhandle, 1, value);
 		if (retcode != DSM_API_OK) {
-			comp_err(dev, "[DSM] maxim_dsm_restore_param() write failure. (id:%x, ret:%x)",
+			comp_err(dev, "[DSM] write failure. (id:%x, ret:%x)",
 				 value[DSM_SET_ID_IDX], retcode);
 			return -EINVAL;
 		}

@@ -77,7 +77,7 @@ int stft_process_setup(struct processing_module *mod, int max_frames,
 	int ret;
 	int i;
 
-	comp_dbg(dev, "stft_process_setup()");
+	comp_dbg(dev, "entry");
 
 	/* Check size */
 	if (config->size != sizeof(struct sof_stft_process_config)) {
@@ -196,7 +196,7 @@ int stft_process_setup(struct processing_module *mod, int max_frames,
 	state->waiting_fill = true;
 	state->prev_samples_valid = false;
 
-	comp_dbg(dev, "stft_process_setup(), done");
+	comp_dbg(dev, "done");
 	return 0;
 
 free_window_out:

@@ -351,7 +351,7 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_dbg(dev, "volume_set_config()");
+	comp_dbg(dev, "entry");
 
 	ret = module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
 				       fragment_size, response, response_size);
@@ -413,7 +413,7 @@ static int volume_params(struct processing_module *mod)
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "volume_params()");
+	comp_dbg(dev, "entry");
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 

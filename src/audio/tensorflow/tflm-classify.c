@@ -58,7 +58,7 @@ __cold static int tflm_init(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	comp_info(dev, "tflm_init()");
+	comp_info(dev, "entry");
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -129,11 +129,11 @@ __cold static int tflm_set_config(struct processing_module *mod, uint32_t param_
 
 	assert_can_be_cold();
 
-	comp_dbg(dev, "tflm_set_config()");
+	comp_dbg(dev, "entry");
 
 	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
 
-	comp_info(dev, "tflm_set_config(), bytes control");
+	comp_info(dev, "bytes control");
 	ret = comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
 				 fragment_size);
 
@@ -188,7 +188,7 @@ static int tflm_process(struct processing_module *mod,
 	int features = input_buffers[0].size;
 	int ret;
 
-	comp_dbg(dev, "tflm_process()");
+	comp_dbg(dev, "entry");
 
 	/* Window size is TFLM_FEATURE_ELEM_COUNT and we increment
 	 * by TFLM_FEATURE_SIZE until buffer empty.

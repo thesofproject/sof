@@ -191,11 +191,11 @@ static int waves_effect_allocate(struct processing_module *mod)
 	struct waves_codec_data *waves_codec = codec->private;
 	MaxxStatus_t status;
 
-	comp_dbg(dev, "waves_effect_allocate() start");
+	comp_dbg(dev, "start");
 
 	status = MaxxEffect_GetEffectSize(&waves_codec->effect_size);
 	if (status) {
-		comp_err(dev, "waves_effect_allocate() MaxxEffect_GetEffectSize returned %d",
+		comp_err(dev, "MaxxEffect_GetEffectSize returned %d",
 			 status);
 		return -EINVAL;
 	}
@@ -204,12 +204,12 @@ static int waves_effect_allocate(struct processing_module *mod)
 		waves_codec->effect_size, 16);
 
 	if (!waves_codec->effect) {
-		comp_err(dev, "waves_effect_allocate() failed to allocate %d bytes for effect",
+		comp_err(dev, "failed to allocate %d bytes for effect",
 			 waves_codec->effect_size);
 		return -ENOMEM;
 	}
 
-	comp_dbg(dev, "waves_effect_allocate() allocated %d bytes for effect",
+	comp_dbg(dev, "allocated %d bytes for effect",
 		  waves_codec->effect_size);
 
 	return 0;
@@ -224,7 +224,7 @@ static int waves_effect_check(struct comp_dev *dev)
 	const struct audio_stream *snk_fmt = &sink->stream;
 
 	/* Init sink & source buffers */
-	comp_dbg(dev, "waves_effect_check() start");
+	comp_dbg(dev, "start");
 
 	if (!source || !sink) {
 		comp_err(dev, "no source or sink buffer");
@@ -235,55 +235,55 @@ static int waves_effect_check(struct comp_dev *dev)
 
 	/* resampling not supported */
 	if (audio_stream_get_rate(src_fmt) != audio_stream_get_rate(snk_fmt)) {
-		comp_err(dev, "waves_effect_check() source %d sink %d rate mismatch",
+		comp_err(dev, "source %d sink %d rate mismatch",
 			 audio_stream_get_rate(src_fmt), audio_stream_get_rate(snk_fmt));
 		return -EINVAL;
 	}
 
 	/* upmix/downmix not supported */
 	if (audio_stream_get_channels(src_fmt) != audio_stream_get_channels(snk_fmt)) {
-		comp_err(dev, "waves_effect_check() source %d sink %d channels mismatch",
+		comp_err(dev, "source %d sink %d channels mismatch",
 			 audio_stream_get_channels(src_fmt), audio_stream_get_channels(snk_fmt));
 		return -EINVAL;
 	}
 
 	/* different frame format not supported */
 	if (audio_stream_get_frm_fmt(src_fmt) != audio_stream_get_frm_fmt(snk_fmt)) {
-		comp_err(dev, "waves_effect_check() source %d sink %d sample format mismatch",
+		comp_err(dev, "source %d sink %d sample format mismatch",
 			 audio_stream_get_frm_fmt(src_fmt), audio_stream_get_frm_fmt(snk_fmt));
 		return -EINVAL;
 	}
 
 	/* different interleaving is not supported */
 	if (audio_stream_get_buffer_fmt(src_fmt) != audio_stream_get_buffer_fmt(snk_fmt)) {
-		comp_err(dev, "waves_effect_check() source %d sink %d buffer format mismatch",
+		comp_err(dev, "source %d sink %d buffer format mismatch",
 			 audio_stream_get_buffer_fmt(src_fmt), audio_stream_get_buffer_fmt(snk_fmt));
 		return -EINVAL;
 	}
 
 	if (!format_is_supported(audio_stream_get_frm_fmt(src_fmt))) {
-		comp_err(dev, "waves_effect_check() float samples not supported");
+		comp_err(dev, "float samples not supported");
 		return -EINVAL;
 	}
 
 	if (!layout_is_supported(audio_stream_get_buffer_fmt(src_fmt))) {
-		comp_err(dev, "waves_effect_check() non interleaved format not supported");
+		comp_err(dev, "non interleaved format not supported");
 		return -EINVAL;
 	}
 
 	if (!rate_is_supported(audio_stream_get_rate(src_fmt))) {
-		comp_err(dev, "waves_effect_check() rate %d not supported",
+		comp_err(dev, "rate %d not supported",
 			 audio_stream_get_rate(src_fmt));
 		return -EINVAL;
 	}
 
 	if (audio_stream_get_channels(src_fmt) != 2) {
-		comp_err(dev, "waves_effect_check() channels %d not supported",
+		comp_err(dev, "channels %d not supported",
 			 audio_stream_get_channels(src_fmt));
 		return -EINVAL;
 	}
 
-	comp_dbg(dev, "waves_effect_check() done");
+	comp_dbg(dev, "done");
 	return 0;
 }
 
@@ -302,25 +302,25 @@ static int waves_effect_init(struct processing_module *mod)
 	MaxxStreamFormat_t *i_formats[NUM_IO_STREAMS] = { &waves_codec->i_format };
 	MaxxStreamFormat_t *o_formats[NUM_IO_STREAMS] = { &waves_codec->o_format };
 
-	comp_dbg(dev, "waves_effect_init() start");
+	comp_dbg(dev, "start");
 
 	sample_format = format_convert_sof_to_me(audio_stream_get_frm_fmt(src_fmt));
 	if (sample_format < 0) {
-		comp_err(dev, "waves_effect_init() sof sample format %d not supported",
+		comp_err(dev, "sof sample format %d not supported",
 			 audio_stream_get_frm_fmt(src_fmt));
 		return -EINVAL;
 	}
 
 	buffer_format = layout_convert_sof_to_me(audio_stream_get_buffer_fmt(src_fmt));
 	if (buffer_format < 0) {
-		comp_err(dev, "waves_effect_init() sof buffer format %d not supported",
+		comp_err(dev, "sof buffer format %d not supported",
 			 audio_stream_get_buffer_fmt(src_fmt));
 		return -EINVAL;
 	}
 
 	sample_bytes = sample_format_convert_to_bytes(sample_format);
 	if (sample_bytes < 0) {
-		comp_err(dev, "waves_effect_init() sample_format %d not supported",
+		comp_err(dev, "sample_format %d not supported",
 			 sample_format);
 		return -EINVAL;
 	}
@@ -346,22 +346,22 @@ static int waves_effect_init(struct processing_module *mod)
 
 	// trace allows printing only up-to 4 words at a time
 	// logging all the information in two calls
-	comp_info(dev, "waves_effect_init() rate %d, channels %d", waves_codec->i_format.sampleRate,
+	comp_info(dev, "rate %d, channels %d", waves_codec->i_format.sampleRate,
 		  waves_codec->i_format.numChannels);
 
-	comp_info(dev, "waves_effect_init() format %d, layout %d, frame %d",
+	comp_info(dev, "format %d, layout %d, frame %d",
 		  waves_codec->i_format.samplesFormat, waves_codec->i_format.samplesLayout,
 		  waves_codec->buffer_samples);
 
 	status = MaxxEffect_Initialize(waves_codec->effect, i_formats, 1, o_formats, 1);
 
 	if (status) {
-		comp_err(dev, "waves_effect_init() MaxxEffect_Initialize returned %d", status);
+		comp_err(dev, "MaxxEffect_Initialize returned %d", status);
 		return -EINVAL;
 	}
 	waves_codec->initialized = true;
 
-	comp_dbg(dev, "waves_effect_init() done");
+	comp_dbg(dev, "done");
 	return 0;
 }
 
@@ -374,11 +374,11 @@ static int waves_effect_buffers(struct processing_module *mod)
 	int ret;
 	void *i_buffer = NULL, *o_buffer = NULL;
 
-	comp_dbg(dev, "waves_effect_buffers() start");
+	comp_dbg(dev, "start");
 
 	i_buffer = mod_alloc_align(mod, waves_codec->buffer_bytes, 16);
 	if (!i_buffer) {
-		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for i_buffer",
+		comp_err(dev, "failed to allocate %d bytes for i_buffer",
 			 waves_codec->buffer_bytes);
 		ret = -ENOMEM;
 		goto err;
@@ -386,7 +386,7 @@ static int waves_effect_buffers(struct processing_module *mod)
 
 	o_buffer = mod_alloc_align(mod, waves_codec->buffer_bytes, 16);
 	if (!o_buffer) {
-		comp_err(dev, "waves_effect_buffers() failed to allocate %d bytes for o_buffer",
+		comp_err(dev, "failed to allocate %d bytes for o_buffer",
 			 waves_codec->buffer_bytes);
 		ret = -ENOMEM;
 		goto err;
@@ -399,10 +399,10 @@ static int waves_effect_buffers(struct processing_module *mod)
 	codec->mpd.out_buff = waves_codec->o_buffer;
 	codec->mpd.out_buff_size = waves_codec->buffer_bytes;
 
-	comp_dbg(dev, "waves_effect_buffers() in_buff_size %d, out_buff_size %d",
+	comp_dbg(dev, "in_buff_size %d, out_buff_size %d",
 		  codec->mpd.in_buff_size, codec->mpd.out_buff_size);
 
-	comp_dbg(dev, "waves_effect_buffers() done");
+	comp_dbg(dev, "done");
 	return 0;
 
 err:
@@ -423,12 +423,12 @@ static int waves_effect_revision(struct processing_module *mod)
 	uint32_t revision_len;
 	MaxxStatus_t status;
 
-	comp_info(dev, "waves_effect_revision() start");
+	comp_info(dev, "start");
 
 	status = MaxxEffect_Revision_Get(waves_codec->effect, &revision, &revision_len);
 
 	if (status) {
-		comp_err(dev, "waves_effect_revision() MaxxEffect_Revision_Get returned %d",
+		comp_err(dev, "MaxxEffect_Revision_Get returned %d",
 			 status);
 		return -EINVAL;
 	}
@@ -458,7 +458,7 @@ static int waves_effect_revision(struct processing_module *mod)
 	}
 #endif
 
-	comp_info(dev, "waves_effect_revision() done");
+	comp_info(dev, "done");
 	return 0;
 }
 
@@ -470,11 +470,11 @@ static int waves_effect_save_config_blob_to_cache(struct processing_module *mod,
 	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 
-	comp_info(dev, "waves_effect_save_config_blob_to_cache() start");
+	comp_info(dev, "start");
 
 	/* release old cached config blob*/
 	if (waves_codec->config_blob && size != waves_codec->config_blob_size) {
-		comp_info(dev, "waves_effect_save_config_blob_to_cache() release blob");
+		comp_info(dev, "release blob");
 		mod_free(mod, waves_codec->config_blob);
 		waves_codec->config_blob = NULL;
 		waves_codec->config_blob_size = 0;
@@ -484,7 +484,7 @@ static int waves_effect_save_config_blob_to_cache(struct processing_module *mod,
 		waves_codec->config_blob = mod_alloc_align(mod, size, 16);
 		if (!waves_codec->config_blob) {
 			comp_err(dev,
-				"waves_effect_save_config_blob_to_cache() failed to allocate %d bytes for config blob",
+				"failed to allocate %d bytes for config blob",
 				size);
 			return -ENOMEM;
 		}
@@ -503,7 +503,7 @@ static int waves_effect_save_config_blob_to_cache(struct processing_module *mod,
 		return ret;
 	}
 
-	comp_dbg(dev, "waves_effect_save_config_blob_to_cache() done");
+	comp_dbg(dev, "done");
 	return 0;
 }
 
@@ -517,13 +517,13 @@ static int waves_effect_message(struct processing_module *mod, void *data, uint3
 	uint32_t response_size = 0;
 
 	if (waves_codec->initialized) {
-		comp_info(dev, "waves_effect_message() start data %p size %d", data, size);
+		comp_info(dev, "start data %p size %d", data, size);
 
 		status = MaxxEffect_Message(waves_codec->effect, data, size,
 									waves_codec->response, &response_size);
 
 		if (status) {
-			comp_err(dev, "waves_effect_message() MaxxEffect_Message returned %d",
+			comp_err(dev, "MaxxEffect_Message returned %d",
 					status);
 			return -EINVAL;
 		}
@@ -553,7 +553,7 @@ static int waves_effect_apply_config_blob_from_cache(struct processing_module *m
 	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 
-	comp_info(dev, "waves_effect_apply_config_blob_from_cache()");
+	comp_info(dev, "entry");
 
 	if (waves_codec->config_blob) {
 		return waves_effect_message(mod, waves_codec->config_blob,
@@ -584,24 +584,24 @@ static int waves_effect_apply_config(struct processing_module *mod)
 	uint32_t param_number = 0;
 	int ret = 0;
 
-	comp_info(dev, "waves_effect_apply_config() start");
+	comp_info(dev, "start");
 
 	cfg = &codec->cfg;
 
-	comp_info(dev, "waves_effect_apply_config() config %p, size %d, avail %d",
+	comp_info(dev, "config %p, size %d, avail %d",
 		  cfg->data, cfg->size, cfg->avail);
 
 	if (!cfg->data) {
 		ret = waves_effect_apply_config_blob_from_cache(mod);
 		if (ret) {
-			comp_err(dev, "waves_effect_apply_config() error %x: apply cache fail",
+			comp_err(dev, "error %x: apply cache fail",
 				ret);
 			return ret;
 		}
 	}
 
 	if (cfg->size > MAX_CONFIG_SIZE_BYTES) {
-		comp_err(dev, "waves_effect_apply_config() provided config is too big, size %d",
+		comp_err(dev, "provided config is too big, size %d",
 			 cfg->size);
 		return -EINVAL;
 	}
@@ -616,24 +616,24 @@ static int waves_effect_apply_config(struct processing_module *mod)
 		param = (struct module_param *)((char *)cfg->data + index);
 		param_data_size = param->size - sizeof(param->size) - sizeof(param->id);
 
-		comp_info(dev, "waves_effect_apply_config() param num %d id %d size %d",
+		comp_info(dev, "param num %d id %d size %d",
 			  param_number, param->id, param->size);
 
 		if ((param->size <= header_size) || (param->size > MAX_CONFIG_SIZE_BYTES)) {
-			comp_err(dev, "waves_effect_apply_config() invalid module_param size: %d",
+			comp_err(dev, "invalid module_param size: %d",
 				param->size);
 			return -EINVAL;
 		}
 
 		if ((index + param->size) > cfg->size) {
-			comp_err(dev, "waves_effect_apply_config() module_param size: %d exceeds cfg buffer size: %d",
+			comp_err(dev, "module_param size: %d exceeds cfg buffer size: %d",
 				param->size, cfg->size);
 			return -EINVAL;
 		}
 
 		switch (param->id) {
 		case PARAM_NOP:
-			comp_info(dev, "waves_effect_apply_config() NOP");
+			comp_info(dev, "NOP");
 			break;
 		case PARAM_MESSAGE:
 			ret = waves_effect_handle_param_message(mod, param->data, param_data_size);
@@ -650,11 +650,11 @@ static int waves_effect_apply_config(struct processing_module *mod)
 	}
 
 	if (ret) {
-		comp_err(dev, "waves_effect_apply_config() failed %d", ret);
+		comp_err(dev, "failed %d", ret);
 		return ret;
 	}
 
-	comp_dbg(dev, "waves_effect_apply_config() done");
+	comp_dbg(dev, "done");
 	return 0;
 }
 
@@ -666,11 +666,11 @@ static int waves_codec_init(struct processing_module *mod)
 	int ret = 0;
 	void *response = NULL;
 
-	comp_dbg(dev, "waves_codec_init() start");
+	comp_dbg(dev, "start");
 
 	waves_codec = mod_alloc_align(mod, sizeof(struct waves_codec_data), 16);
 	if (!waves_codec) {
-		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for waves_codec_data",
+		comp_err(dev, "failed to allocate %d bytes for waves_codec_data",
 			 sizeof(struct waves_codec_data));
 		ret = -ENOMEM;
 	} else {
@@ -682,7 +682,7 @@ static int waves_codec_init(struct processing_module *mod)
 	}
 
 	if (ret) {
-		comp_err(dev, "waves_codec_init() failed %d", ret);
+		comp_err(dev, "failed %d", ret);
 		return ret;
 	}
 
@@ -690,20 +690,20 @@ static int waves_codec_init(struct processing_module *mod)
 					      &waves_codec->response_max_bytes);
 
 	if (ret) {
-		comp_err(dev, "waves_codec_init() MaxxEffect_GetMessageMaxSize returned %d", ret);
+		comp_err(dev, "MaxxEffect_GetMessageMaxSize returned %d", ret);
 		return -EINVAL;
 	}
 
 	response = mod_alloc_align(mod, waves_codec->response_max_bytes, 16);
 	if (!response) {
-		comp_err(dev, "waves_codec_init() failed to allocate %d bytes for response",
+		comp_err(dev, "failed to allocate %d bytes for response",
 			 waves_codec->response_max_bytes);
 		return -ENOMEM;
 	}
 	waves_codec->response = response;
 	waves_codec->initialized = false;
 
-	comp_dbg(dev, "waves_codec_init() done");
+	comp_dbg(dev, "done");
 	return ret;
 }
 
@@ -714,7 +714,7 @@ static int waves_codec_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_dbg(dev, "waves_codec_prepare() start");
+	comp_dbg(dev, "start");
 
 	ret = waves_effect_check(dev);
 	if (ret)
@@ -732,11 +732,11 @@ static int waves_codec_prepare(struct processing_module *mod,
 	if (ret)
 		goto error;
 
-	comp_dbg(dev, "waves_codec_prepare() done");
+	comp_dbg(dev, "done");
 	return 0;
 
 error:
-	comp_err(dev, "waves_codec_prepare() failed %d", ret);
+	comp_err(dev, "failed %d", ret);
 	return ret;
 }
 
@@ -745,7 +745,7 @@ static int waves_codec_init_process(struct processing_module *mod)
 	struct module_data *codec = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "waves_codec_init_process()");
+	comp_dbg(dev, "entry");
 
 	codec->mpd.produced = 0;
 	codec->mpd.consumed = 0;
@@ -777,7 +777,7 @@ waves_codec_process(struct processing_module *mod,
 		 input_buffers[0].data, codec->mpd.in_buff_size);
 	codec->mpd.avail = codec->mpd.in_buff_size;
 
-	comp_dbg(dev, "waves_codec_process() start");
+	comp_dbg(dev, "start");
 
 	MaxxStream_t *i_streams[NUM_IO_STREAMS] = { &waves_codec->i_stream };
 	MaxxStream_t *o_streams[NUM_IO_STREAMS] = { &waves_codec->o_stream };
@@ -789,7 +789,7 @@ waves_codec_process(struct processing_module *mod,
 	 * on the other hand there is available/produced counters in mpd, check them anyways
 	 */
 	if (codec->mpd.avail != waves_codec->buffer_bytes) {
-		comp_warn(dev, "waves_codec_process() input buffer %d is not full %d",
+		comp_warn(dev, "input buffer %d is not full %d",
 			  codec->mpd.avail, waves_codec->buffer_bytes);
 		num_input_samples = codec->mpd.avail /
 			(waves_codec->sample_size_in_bytes * waves_codec->i_format.numChannels);
@@ -807,7 +807,7 @@ waves_codec_process(struct processing_module *mod,
 
 	status = MaxxEffect_Process(waves_codec->effect, i_streams, o_streams);
 	if (status) {
-		comp_err(dev, "waves_codec_process() MaxxEffect_Process returned %d", status);
+		comp_err(dev, "MaxxEffect_Process returned %d", status);
 		ret = -EINVAL;
 	} else {
 		codec->mpd.produced = waves_codec->o_stream.numAvailableSamples *
@@ -822,9 +822,9 @@ waves_codec_process(struct processing_module *mod,
 	}
 
 	if (ret)
-		comp_err(dev, "waves_codec_process() failed %d", ret);
+		comp_err(dev, "failed %d", ret);
 
-	comp_dbg(dev, "waves_codec_process() done");
+	comp_dbg(dev, "done");
 	return ret;
 }
 
@@ -836,16 +836,16 @@ static int waves_codec_reset(struct processing_module *mod)
 	struct module_data *codec = &mod->priv;
 	struct waves_codec_data *waves_codec = codec->private;
 
-	comp_info(dev, "waves_codec_reset() start");
+	comp_info(dev, "start");
 
 	status = MaxxEffect_Reset(waves_codec->effect);
 	if (status) {
-		comp_err(dev, "waves_codec_reset() MaxxEffect_Reset returned %d", status);
+		comp_err(dev, "MaxxEffect_Reset returned %d", status);
 		ret = -EINVAL;
 	}
 
 	if (ret)
-		comp_err(dev, "waves_codec_reset() failed %d", ret);
+		comp_err(dev, "failed %d", ret);
 
 	if (codec->mpd.in_buff)
 		mod_free(mod, codec->mpd.in_buff);
@@ -854,13 +854,13 @@ static int waves_codec_reset(struct processing_module *mod)
 		mod_free(mod, codec->mpd.out_buff);
 
 	waves_codec->initialized = false;
-	comp_dbg(dev, "waves_codec_reset() done");
+	comp_dbg(dev, "done");
 	return ret;
 }
 
 static int waves_codec_free(struct processing_module *mod)
 {
-	comp_dbg(mod->dev, "waves_codec_free()");
+	comp_dbg(mod->dev, "entry");
 	return 0;
 }
 

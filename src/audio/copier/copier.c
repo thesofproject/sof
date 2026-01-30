@@ -61,19 +61,19 @@ static void mic_privacy_event(void *arg, enum notify_id type, void *data)
 	struct mic_privacy_settings *mic_privacy_settings = data;
 
 	if (type == NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE) {
-		LOG_INF("mic_privacy_event, state1 = %d, state2 = %d ",
+		LOG_INF("state1 = %d, state2 = %d ",
 			mic_privacy_settings->mic_privacy_state, mic_priv_data->mic_privacy_state);
 
 		if (mic_privacy_settings->mic_privacy_state == MIC_PRIV_UNMUTED) {
 			if (mic_priv_data->mic_privacy_state == MIC_PRIV_MUTED) {
 				mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_IN;
-				LOG_INF("mic_privacy_event switch to FADE_IN");
+				LOG_INF("switch to FADE_IN");
 			}
 		} else {
 			/* In case when mute would be triggered before copier instantiation. */
 			if (mic_priv_data->mic_privacy_state != MIC_PRIV_MUTED) {
 				mic_priv_data->mic_privacy_state = MIC_PRIV_FADE_OUT;
-				LOG_INF("mic_privacy_event switch to FADE_OUT");
+				LOG_INF("switch to FADE_OUT");
 			}
 		}
 		mic_priv_data->max_ramp_time_in_ms = (mic_privacy_settings->max_ramp_time * 1000) /
@@ -285,7 +285,7 @@ static int copier_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	comp_info(dev, "copier_prepare()");
+	comp_info(dev, "entry");
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -327,7 +327,7 @@ static int copier_reset(struct processing_module *mod)
 	struct ipc4_pipeline_registers pipe_reg;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "copier_reset()");
+	comp_dbg(dev, "entry");
 
 	cd->input_total_data_processed = 0;
 	cd->output_total_data_processed = 0;
@@ -365,7 +365,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 	uint32_t latency;
 	int ret;
 
-	comp_dbg(dev, "copier_comp_trigger()");
+	comp_dbg(dev, "entry");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -671,7 +671,7 @@ static int copier_process(struct processing_module *mod,
 	struct copier_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "copier_process()");
+	comp_dbg(dev, "entry");
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
@@ -701,7 +701,7 @@ static int copier_params(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	int i, ret = 0;
 
-	comp_dbg(dev, "copier_params()");
+	comp_dbg(dev, "entry");
 
 	copier_update_params(cd, dev, params);
 

@@ -53,7 +53,7 @@ static int selector_verify_params(struct comp_dev *dev,
 	uint32_t in_channels;
 	uint32_t out_channels;
 
-	comp_dbg(dev, "selector_verify_params()");
+	comp_dbg(dev, "entry");
 
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
@@ -189,7 +189,7 @@ static void selector_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "selector_free()");
+	comp_dbg(dev, "entry");
 
 	rfree(cd);
 	rfree(dev);
@@ -207,7 +207,7 @@ static int selector_params(struct comp_dev *dev,
 {
 	int err;
 
-	comp_dbg(dev, "selector_params()");
+	comp_dbg(dev, "entry");
 
 	err = selector_verify_params(dev, params);
 	if (err < 0) {
@@ -233,7 +233,7 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		comp_dbg(dev, "selector_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
+		comp_dbg(dev, "SOF_CTRL_CMD_BINARY");
 
 		cfg = (struct sof_sel_config *)
 		      ASSUME_ALIGNED(&cdata->data->data, 4);
@@ -269,7 +269,7 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		comp_dbg(dev, "selector_ctrl_get_data(), SOF_CTRL_CMD_BINARY");
+		comp_dbg(dev, "SOF_CTRL_CMD_BINARY");
 		if (size < sizeof(cd->config))
 			return -EINVAL;
 
@@ -306,7 +306,7 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 	int ret = 0;
 
-	comp_dbg(dev, "selector_cmd()");
+	comp_dbg(dev, "entry");
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -316,10 +316,10 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 		ret = selector_ctrl_get_data(dev, cdata, max_data_size);
 		break;
 	case COMP_CMD_SET_VALUE:
-		comp_dbg(dev, "selector_cmd(), COMP_CMD_SET_VALUE");
+		comp_dbg(dev, "COMP_CMD_SET_VALUE");
 		break;
 	case COMP_CMD_GET_VALUE:
-		comp_dbg(dev, "selector_cmd(), COMP_CMD_GET_VALUE");
+		comp_dbg(dev, "COMP_CMD_GET_VALUE");
 		break;
 	default:
 		comp_err(dev, "invalid command");
@@ -341,7 +341,7 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	enum sof_comp_type type;
 	int ret;
 
-	comp_dbg(dev, "selector_trigger()");
+	comp_dbg(dev, "entry");
 
 	sourceb = comp_dev_get_first_data_producer(dev);
 	if (!sourceb) {
@@ -375,7 +375,7 @@ static int selector_copy(struct comp_dev *dev)
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 
-	comp_dbg(dev, "selector_copy()");
+	comp_dbg(dev, "entry");
 
 	/* selector component will have 1 source and 1 sink buffer */
 	source = comp_dev_get_first_data_producer(dev);
@@ -388,7 +388,7 @@ static int selector_copy(struct comp_dev *dev)
 	source_bytes = frames * audio_stream_frame_bytes(&source->stream);
 	sink_bytes = frames * audio_stream_frame_bytes(&sink->stream);
 
-	comp_dbg(dev, "selector_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
+	comp_dbg(dev, "source_bytes = 0x%x, sink_bytes = 0x%x",
 		 source_bytes, sink_bytes);
 
 	/* copy selected channels from in to out */
@@ -415,7 +415,7 @@ static int selector_prepare(struct comp_dev *dev)
 	size_t sink_size;
 	int ret;
 
-	comp_dbg(dev, "selector_prepare()");
+	comp_dbg(dev, "entry");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -499,7 +499,7 @@ static int selector_reset(struct comp_dev *dev)
 	int ret;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "selector_reset()");
+	comp_dbg(dev, "entry");
 
 	cd->source_period_bytes = 0;
 	cd->sink_period_bytes = 0;
@@ -589,7 +589,7 @@ static int selector_init(struct processing_module *mod)
 	size_t bs[2];
 	int ret;
 
-	comp_dbg(mod->dev, "selector_init()");
+	comp_dbg(mod->dev, "entry");
 
 	init_cfg_ext = cfg->init_data;
 	init_cfg_out_fmt = cfg->init_data;
@@ -692,7 +692,7 @@ static int selector_verify_params(struct processing_module *mod,
 	uint32_t in_channels = cd->config.in_channels_count;
 	uint32_t out_channels = cd->config.out_channels_count;
 
-	comp_dbg(dev, "selector_verify_params()");
+	comp_dbg(dev, "entry");
 
 	/* verify input channels */
 	if (in_channels == 0 || in_channels > SEL_SOURCE_CHANNELS_MAX) {
@@ -731,7 +731,7 @@ static int selector_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "selector_free()");
+	comp_dbg(mod->dev, "entry");
 
 	mod_free(mod, cd);
 
@@ -750,7 +750,7 @@ static int selector_params(struct processing_module *mod)
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	int err;
 
-	comp_dbg(mod->dev, "selector_params()");
+	comp_dbg(mod->dev, "entry");
 
 	set_selector_params(mod, params);
 
@@ -802,7 +802,7 @@ static int selector_process(struct processing_module *mod,
 	struct comp_data *cd = module_get_private_data(mod);
 	uint32_t avail_frames = input_buffers[0].size;
 
-	comp_dbg(mod->dev, "selector_process()");
+	comp_dbg(mod->dev, "entry");
 
 	if (avail_frames)
 		/* copy selected channels from in to out */
@@ -827,7 +827,7 @@ static int selector_prepare(struct processing_module *mod,
 	size_t sink_size;
 	int ret;
 
-	comp_dbg(dev, "selector_prepare()");
+	comp_dbg(dev, "entry");
 
 	ret = selector_params(mod);
 	if (ret < 0)
@@ -903,7 +903,7 @@ static int selector_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "selector_reset()");
+	comp_dbg(mod->dev, "entry");
 
 	cd->source_period_bytes = 0;
 	cd->sink_period_bytes = 0;

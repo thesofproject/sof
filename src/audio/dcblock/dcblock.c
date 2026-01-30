@@ -48,7 +48,7 @@ static void dcblock_set_passthrough(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "dcblock_set_passthrough()");
+	comp_info(mod->dev, "entry");
 	int i;
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -87,7 +87,7 @@ static int dcblock_init(struct processing_module *mod)
 	size_t bs = ipc_dcblock->size;
 	int ret;
 
-	comp_info(dev, "dcblock_init()");
+	comp_info(dev, "entry");
 
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd)
@@ -128,7 +128,7 @@ static int dcblock_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "dcblock_free()");
+	comp_info(mod->dev, "entry");
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
 	return 0;
@@ -172,7 +172,7 @@ static int dcblock_process(struct processing_module *mod,
 	struct audio_stream *sink = output_buffers[0].data;
 	uint32_t frames = input_buffers[0].size;
 
-	comp_dbg(mod->dev, "dcblock_process()");
+	comp_dbg(mod->dev, "entry");
 
 	cd->dcblock_func(cd, source, sink, frames);
 
@@ -193,7 +193,7 @@ static int dcblock_prepare(struct processing_module *mod,
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "dcblock_prepare()");
+	comp_info(dev, "entry");
 
 	/* DC Filter component will only ever have one source and sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
@@ -214,11 +214,11 @@ static int dcblock_prepare(struct processing_module *mod,
 	dcblock_init_state(cd);
 	cd->dcblock_func = dcblock_find_func(cd->source_format);
 	if (!cd->dcblock_func) {
-		comp_err(dev, "dcblock_prepare(), No processing function matching frames format");
+		comp_err(dev, "No processing function matching frames format");
 		return -EINVAL;
 	}
 
-	comp_info(mod->dev, "dcblock_prepare(), source_format=%d, sink_format=%d",
+	comp_info(mod->dev, "source_format=%d, sink_format=%d",
 		  cd->source_format, cd->sink_format);
 
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
@@ -239,7 +239,7 @@ static int dcblock_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "dcblock_reset()");
+	comp_info(mod->dev, "entry");
 
 	dcblock_init_state(cd);
 

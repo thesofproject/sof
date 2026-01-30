@@ -263,7 +263,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 	enum sof_dma_cb_status dma_status = SOF_DMA_CB_STATUS_RELOAD;
 	int ret;
 
-	comp_dbg(dev, "dai_dma_cb()");
+	comp_dbg(dev, "entry");
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -422,7 +422,7 @@ dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t fr
 	enum sof_dma_cb_status dma_status = SOF_DMA_CB_STATUS_RELOAD;
 	uint32_t i, bytes;
 
-	comp_dbg(dev, "dai_dma_multi_endpoint_cb()");
+	comp_dbg(dev, "entry");
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -641,7 +641,7 @@ int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 	struct dai_config cfg;
 	int ret;
 
-	comp_dbg(dev, "dai_common_get_hw_params()");
+	comp_dbg(dev, "entry");
 
 	ret = dai_config_get(dd->dai->dev, &cfg, dir);
 	if (ret)
@@ -683,7 +683,7 @@ static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
 
 	ret = dai_common_get_hw_params(dd, dev, &hw_params, params->direction);
 	if (ret < 0) {
-		comp_err(dev, "dai_verify_params failed ret %d", ret);
+		comp_err(dev, "failed ret %d", ret);
 		return ret;
 	}
 
@@ -850,7 +850,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	struct dma_block_config *prev = NULL;
 	int i;
 
-	comp_dbg(dev, "dai_set_dma_config()");
+	comp_dbg(dev, "entry");
 
 	dma_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
 			  sizeof(struct dma_config));
@@ -934,7 +934,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "dai_set_dma_buffer()");
+	comp_dbg(dev, "entry");
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		dd->local_buffer = comp_dev_get_first_data_producer(dev);
@@ -1119,7 +1119,7 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "dai_params()");
+	comp_dbg(dev, "entry");
 
 	return dai_common_params(dd, dev, params);
 }
@@ -1211,7 +1211,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "dai_prepare()");
+	comp_dbg(dev, "entry");
 
 	ret = dai_common_config_prepare(dd, dev);
 	if (ret < 0)
@@ -1259,7 +1259,7 @@ static int dai_reset(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "dai_reset()");
+	comp_dbg(dev, "entry");
 
 	dai_common_reset(dd, dev);
 

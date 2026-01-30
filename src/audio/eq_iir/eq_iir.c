@@ -51,11 +51,11 @@ static int eq_iir_init(struct processing_module *mod)
 	size_t bs = cfg->size;
 	int i, ret;
 
-	comp_info(dev, "eq_iir_init()");
+	comp_info(dev, "entry");
 
 	/* Check first before proceeding with dev and cd that coefficients blob size is sane */
 	if (bs > SOF_EQ_IIR_MAX_SIZE) {
-		comp_err(dev, "eq_iir_init(), coefficients blob size %zu exceeds maximum", bs);
+		comp_err(dev, "coefficients blob size %zu exceeds maximum", bs);
 		return -EINVAL;
 	}
 
@@ -113,7 +113,7 @@ static int eq_iir_set_config(struct processing_module *mod, uint32_t config_id,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "eq_iir_set_config()");
+	comp_info(mod->dev, "entry");
 
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
 				  fragment_size);
@@ -126,7 +126,7 @@ static int eq_iir_get_config(struct processing_module *mod,
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "eq_iir_get_config()");
+	comp_info(mod->dev, "entry");
 
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
@@ -185,7 +185,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 	int channels;
 	int ret = 0;
 
-	comp_dbg(dev, "eq_iir_prepare()");
+	comp_dbg(dev, "entry");
 
 	/* EQ component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
@@ -209,7 +209,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
 	/* Initialize EQ */
-	comp_info(dev, "eq_iir_prepare(), source_format=%d, sink_format=%d",
+	comp_info(dev, "source_format=%d, sink_format=%d",
 		  source_format, sink_format);
 
 	eq_iir_set_passthrough_func(cd, source_format, sink_format);
@@ -222,7 +222,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 	}
 
 	if (!cd->eq_iir_func) {
-		comp_err(dev, "eq_iir_prepare(), No processing function found");
+		comp_err(dev, "No processing function found");
 		ret = -EINVAL;
 	}
 

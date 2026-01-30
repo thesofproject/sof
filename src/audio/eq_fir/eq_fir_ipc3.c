@@ -23,24 +23,24 @@ int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 	switch (fmt) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S16_LE");
 		set_s16_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S24_4LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S24_4LE");
 		set_s24_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		comp_dbg(mod->dev, "set_fir_func(), SOF_IPC_FRAME_S32_LE");
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_S32_LE");
 		set_s32_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(mod->dev, "set_fir_func(), invalid frame_fmt");
+		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;
 	}
 	return 0;

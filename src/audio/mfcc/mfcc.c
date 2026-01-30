@@ -79,11 +79,11 @@ static int mfcc_init(struct processing_module *mod)
 	size_t bs = cfg->size;
 	int ret;
 
-	comp_info(dev, "mfcc_init()");
+	comp_info(dev, "entry");
 
 	/* Check first that configuration blob size is sane */
 	if (bs > SOF_MFCC_CONFIG_MAX_SIZE) {
-		comp_err(dev, "mfcc_init() error: configuration blob size %zu exceeds %d",
+		comp_err(dev, "error: configuration blob size %zu exceeds %d",
 			 bs, SOF_MFCC_CONFIG_MAX_SIZE);
 		return -EINVAL;
 	}
@@ -122,7 +122,7 @@ static int mfcc_free(struct processing_module *mod)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "mfcc_free()");
+	comp_info(mod->dev, "entry");
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	mod_free(mod, cd);
 	mfcc_free_buffers(mod);
@@ -136,7 +136,7 @@ static int mfcc_get_config(struct processing_module *mod,
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "mfcc_get_config()");
+	comp_info(mod->dev, "entry");
 
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
@@ -148,7 +148,7 @@ static int mfcc_set_config(struct processing_module *mod, uint32_t config_id,
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "mfcc_set_config()");
+	comp_info(mod->dev, "entry");
 
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
 				  fragment, fragment_size);
@@ -163,7 +163,7 @@ static int mfcc_process(struct processing_module *mod,
 	struct audio_stream *sink = output_buffers->data;
 	int frames = input_buffers->size;
 
-	comp_dbg(mod->dev, "mfcc_process(), start");
+	comp_dbg(mod->dev, "start");
 
 	frames = MIN(frames, cd->max_frames);
 	cd->mfcc_func(mod, input_buffers, output_buffers, frames);
@@ -171,7 +171,7 @@ static int mfcc_process(struct processing_module *mod,
 	/* TODO: use module_update_buffer_position() from #6194 */
 	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
 	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
-	comp_dbg(mod->dev, "mfcc_process(), done");
+	comp_dbg(mod->dev, "done");
 	return 0;
 }
 
@@ -188,7 +188,7 @@ static int mfcc_prepare(struct processing_module *mod,
 	uint32_t sink_period_bytes;
 	int ret;
 
-	comp_info(dev, "mfcc_prepare()");
+	comp_info(dev, "entry");
 
 	/* MFCC component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
@@ -204,7 +204,7 @@ static int mfcc_prepare(struct processing_module *mod,
 	/* get sink data format and period bytes */
 	sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream, dev->frames);
-	comp_info(dev, "mfcc_prepare(), source_format = %d, sink_format = %d",
+	comp_info(dev, "source_format = %d, sink_format = %d",
 		  source_format, sink_format);
 	if (audio_stream_get_size(&sinkb->stream) < sink_period_bytes) {
 		comp_err(dev, "sink buffer size %d is insufficient < %d",
@@ -220,14 +220,14 @@ static int mfcc_prepare(struct processing_module *mod,
 		ret = mfcc_setup(mod, dev->frames + 4, audio_stream_get_rate(&sourceb->stream),
 				 audio_stream_get_channels(&sourceb->stream));
 		if (ret < 0) {
-			comp_err(dev, "mfcc_prepare(), setup failed.");
+			comp_err(dev, "setup failed.");
 			goto err;
 		}
 	}
 
 	cd->mfcc_func = mfcc_find_func(source_format, sink_format, mfcc_fm, ARRAY_SIZE(mfcc_fm));
 	if (!cd->mfcc_func) {
-		comp_err(dev, "mfcc_prepare(), No proc func");
+		comp_err(dev, "No proc func");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -243,7 +243,7 @@ static int mfcc_reset(struct processing_module *mod)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "mfcc_reset()");
+	comp_info(mod->dev, "entry");
 
 	/* Reset to similar state as init() */
 	cd->mfcc_func = NULL;

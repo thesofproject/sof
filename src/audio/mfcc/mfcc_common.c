@@ -50,7 +50,7 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 	 * first output cepstral coefficients originate from streamed data and not
 	 * from buffers with zero data.
 	 */
-	comp_dbg(dev, "mfcc_stft_process(), avail = %d", buf->s_avail);
+	comp_dbg(dev, "avail = %d", buf->s_avail);
 	if (state->waiting_fill) {
 		if (buf->s_avail < fft->fft_size)
 			return 0;

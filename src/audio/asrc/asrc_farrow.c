@@ -278,18 +278,18 @@ enum asrc_error_code asrc_get_required_size(struct processing_module *mod,
 
 	/* check for parameter errors */
 	if (!required_size) {
-		comp_err(dev, "asrc_get_required_size(), invalid required_size");
+		comp_err(dev, "invalid required_size");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (num_channels < 1) {
-		comp_err(dev, "asrc_get_required_size(), invalid num_channels = %d",
+		comp_err(dev, "invalid num_channels = %d",
 			 num_channels);
 		return ASRC_EC_INVALID_NUM_CHANNELS;
 	}
 
 	if (bit_depth != 16 && bit_depth != 32) {
-		comp_err(dev, "asrc_get_required_size_bytes(), invalid bit_depth = %d",
+		comp_err(dev, "invalid bit_depth = %d",
 			 bit_depth);
 		return ASRC_EC_INVALID_BIT_DEPTH;
 	}
@@ -337,34 +337,34 @@ enum asrc_error_code asrc_initialise(struct processing_module *mod,
 
 	/* check for parameter errors */
 	if (!src_obj) {
-		comp_err(dev, "asrc_initialise(), null src_obj");
+		comp_err(dev, "null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (num_channels < 1) {
-		comp_err(dev, "asrc_initialise(), num_channels = %d",
+		comp_err(dev, "num_channels = %d",
 			 num_channels);
 		return ASRC_EC_INVALID_NUM_CHANNELS;
 	}
 
 	if (fs_prim < 8000 || fs_prim > 192000) {
-		comp_err(dev, "asrc_initialise(), fs_prim = %d", fs_prim);
+		comp_err(dev, "fs_prim = %d", fs_prim);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
 	if (fs_sec < 8000 || fs_sec > 192000) {
-		comp_err(dev, "asrc_initialise(), fs_src = %d", fs_sec);
+		comp_err(dev, "fs_src = %d", fs_sec);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
 	if (buffer_length < 2) {
-		comp_err(dev, "asrc_initialise(), buffer_length = %d",
+		comp_err(dev, "buffer_length = %d",
 			 buffer_length);
 		return ASRC_EC_INVALID_BUFFER_LENGTH;
 	}
 
 	if (bit_depth != 16 && bit_depth != 32) {
-		comp_err(dev, "asrc_initialise(), bit_depth = %d",
+		comp_err(dev, "bit_depth = %d",
 			 bit_depth);
 		return ASRC_EC_INVALID_BIT_DEPTH;
 	}
@@ -397,7 +397,7 @@ enum asrc_error_code asrc_initialise(struct processing_module *mod,
 
 	/* check conversion ratios */
 	if (src_obj->fs_ratio == 0 || src_obj->fs_ratio_inv == 0) {
-		comp_err(dev, "asrc_initialise(), fail to calculate ratios");
+		comp_err(dev, "fail to calculate ratios");
 		return ASRC_EC_INVALID_CONVERSION_RATIO;
 	}
 
@@ -416,7 +416,7 @@ enum asrc_error_code asrc_initialise(struct processing_module *mod,
 
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
-		comp_err(dev, "asrc_initialise(), failed filter initialise");
+		comp_err(dev, "failed filter initialise");
 		return error_code;
 	}
 
@@ -448,22 +448,22 @@ enum asrc_error_code asrc_set_fs_ratio(struct processing_module *mod,
 
 	/* Check for parameter errors */
 	if (!src_obj) {
-		comp_err(dev, "asrc_set_fs_ratio(), null src_obj");
+		comp_err(dev, "null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		comp_err(dev, "asrc_set_fs_ratio(), not initialised");
+		comp_err(dev, "not initialised");
 		return ASRC_EC_INIT_FAILED;
 	}
 
 	if (fs_prim < 8000 || fs_prim > 192000) {
-		comp_err(dev, "asrc_set_fs_ratio(), fs_prim = %d", fs_prim);
+		comp_err(dev, "fs_prim = %d", fs_prim);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
 	if (fs_sec < 8000 || fs_sec > 192000) {
-		comp_err(dev, "asrc_set_fs_ratio(), fs_sec = %d", fs_sec);
+		comp_err(dev, "fs_sec = %d", fs_sec);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
@@ -483,7 +483,7 @@ enum asrc_error_code asrc_set_fs_ratio(struct processing_module *mod,
 
 	/* check conversion ratios */
 	if (src_obj->fs_ratio == 0 || src_obj->fs_ratio_inv == 0) {
-		comp_err(dev, "asrc_set_fs_ratio(), failed to calculate ratios");
+		comp_err(dev, "failed to calculate ratios");
 		return ASRC_EC_INVALID_CONVERSION_RATIO;
 	}
 
@@ -497,7 +497,7 @@ enum asrc_error_code asrc_set_fs_ratio(struct processing_module *mod,
 	enum asrc_error_code error_code = initialise_filter(mod, src_obj);
 	/* check for errors */
 	if (error_code != ASRC_EC_OK) {
-		comp_err(dev, "asrc_set_fs_ratio(), failed filter initialise");
+		comp_err(dev, "failed filter initialise");
 		return error_code;
 	}
 
@@ -524,12 +524,12 @@ enum asrc_error_code asrc_set_input_format(struct comp_dev *dev,
 {
 	/* check for parameter errors */
 	if (!src_obj) {
-		comp_err(dev, "asrc_set_input_format(), null src_obj");
+		comp_err(dev, "null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		comp_err(dev, "asrc_set_input_format(), not initialised");
+		comp_err(dev, "not initialised");
 		return ASRC_EC_INIT_FAILED;
 	}
 
@@ -544,12 +544,12 @@ enum asrc_error_code asrc_set_output_format(struct comp_dev *dev,
 {
 	/* check for parameter errors */
 	if (!src_obj) {
-		comp_err(dev, "asrc_set_output_format(), null src_obj");
+		comp_err(dev, "null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		comp_err(dev, "asrc_set_output_format(), not initialised");
+		comp_err(dev, "not initialised");
 		return ASRC_EC_INIT_FAILED;
 	}
 
@@ -616,7 +616,7 @@ static enum asrc_error_code initialise_filter(struct processing_module *mod,
 
 	if (fs_in == 0 || fs_out == 0) {
 		/* Avoid possible divisions by zero. */
-		comp_err(dev, "initialise_filter(), fs_in = %d, fs_out = %d",
+		comp_err(dev, "fs_in = %d, fs_out = %d",
 			 fs_in, fs_out);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	} else if (fs_in == 48000 && fs_out >= 48000) {
@@ -713,7 +713,7 @@ static enum asrc_error_code initialise_filter(struct processing_module *mod,
 			break;
 #endif
 		default:
-			comp_err(dev, "initialise_filter(), fs_out = %d",
+			comp_err(dev, "fs_out = %d",
 				 fs_out);
 			return ASRC_EC_INVALID_SAMPLE_RATE;
 		}
@@ -738,19 +738,19 @@ static enum asrc_error_code initialise_filter(struct processing_module *mod,
 			break;
 #endif
 		default:
-			comp_err(dev, "initialise_filter(), fs_out = %d",
+			comp_err(dev, "fs_out = %d",
 				 fs_out);
 			return ASRC_EC_INVALID_SAMPLE_RATE;
 		}
 	} else {
 		/* Conversion ratio is not supported. */
-		comp_err(dev, "initialise_filter(), fs_in = %d", fs_in);
+		comp_err(dev, "fs_in = %d", fs_in);
 		return ASRC_EC_INVALID_SAMPLE_RATE;
 	}
 
 	/* Check that filter length does not exceed allocated */
 	if (src_obj->filter_length > ASRC_MAX_FILTER_LENGTH) {
-		comp_err(dev, "initialise_filter(), filter_length %d exceeds max",
+		comp_err(dev, "filter_length %d exceeds max",
 			 src_obj->filter_length);
 		return ASRC_EC_INVALID_FILTER_LENGTH;
 	}
@@ -772,7 +772,7 @@ static enum asrc_error_code initialise_filter(struct processing_module *mod,
 		src_obj->calc_ir = &asrc_calc_impulse_response_n7;
 		break;
 	default:
-		comp_err(dev, "initialise_filter(), num_filters = %d",
+		comp_err(dev, "num_filters = %d",
 			 src_obj->num_filters);
 		return ASRC_EC_INVALID_CONVERSION_RATIO;
 	}
@@ -789,12 +789,12 @@ enum asrc_error_code asrc_update_drift(struct comp_dev *dev,
 
 	/* check for parameter errors */
 	if (!src_obj) {
-		comp_err(dev, "asrc_update_drift(), null src_obj");
+		comp_err(dev, "null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		comp_err(dev, "asrc_update_drift(), not initialised");
+		comp_err(dev, "not initialised");
 		return ASRC_EC_INIT_FAILED;
 	}
 
@@ -805,7 +805,7 @@ enum asrc_error_code asrc_update_drift(struct comp_dev *dev,
 
 	/* Skew is Q2.30 */
 	if (clock_skew < SKEW_MIN || clock_skew > SKEW_MAX) {
-		comp_err(dev, "asrc_update_drift(), clock_skew = %d",
+		comp_err(dev, "clock_skew = %d",
 			 clock_skew);
 		return ASRC_EC_INVALID_CLOCK_SKEW;
 	}
@@ -837,12 +837,12 @@ enum asrc_error_code asrc_update_fs_ratio(struct comp_dev *dev,
 
 	/* Check input for errors */
 	if (!src_obj) {
-		comp_err(dev, "asrc_update_fs_ratio(), null src_obj");
+		comp_err(dev, "null src_obj");
 		return ASRC_EC_INVALID_POINTER;
 	}
 
 	if (!src_obj->is_initialised) {
-		comp_err(dev, "asrc_update_fs_ratio(), not initialized");
+		comp_err(dev, "not initialized");
 		return ASRC_EC_INIT_FAILED;
 	}
 

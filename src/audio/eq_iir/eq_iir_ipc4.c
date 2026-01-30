@@ -84,13 +84,13 @@ int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_for
 
 	ret = eq_iir_setup(mod, channels);
 	if (ret < 0) {
-		comp_err(mod->dev, "eq_iir_new_blob(), failed IIR setup");
+		comp_err(mod->dev, "failed IIR setup");
 		return ret;
 	} else if (cd->iir_delay_size) {
-		comp_dbg(mod->dev, "eq_iir_new_blob(), active");
+		comp_dbg(mod->dev, "active");
 		cd->eq_iir_func = eq_iir_find_func(mod);
 	} else {
-		comp_dbg(mod->dev, "eq_iir_new_blob(), pass-through");
+		comp_dbg(mod->dev, "pass-through");
 		cd->eq_iir_func = eq_iir_pass;
 	}
 
@@ -106,7 +106,7 @@ static int eq_iir_params(struct processing_module *mod)
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i;
 
-	comp_dbg(dev, "eq_iir_params()");
+	comp_dbg(dev, "entry");
 	comp_params = *params;
 	comp_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	comp_params.rate = mod->priv.cfg.base_cfg.audio_fmt.sampling_frequency;

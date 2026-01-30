@@ -62,7 +62,7 @@ int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_i
 {
 	if (dd->group) {
 		if (dd->group->group_id != group_id) {
-			comp_err(dev, "dai_assign_group(), DAI already in group %d, requested %d",
+			comp_err(dev, "DAI already in group %d, requested %d",
 				 dd->group->group_id, group_id);
 			return -EINVAL;
 		}
@@ -73,12 +73,12 @@ int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_i
 
 	dd->group = dai_group_get(group_id, DAI_CREAT);
 	if (!dd->group) {
-		comp_err(dev, "dai_assign_group(), failed to assign group %d",
+		comp_err(dev, "failed to assign group %d",
 			 group_id);
 		return -EINVAL;
 	}
 
-	comp_dbg(dev, "dai_assign_group(), group %d num %d",
+	comp_dbg(dev, "group %d num %d",
 		 group_id, dd->group->num_dais);
 
 	/* Register for the atomic trigger event */
@@ -97,7 +97,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 	uint32_t bytes = next->elem.size;
 	int ret;
 
-	comp_dbg(dev, "dai_dma_cb()");
+	comp_dbg(dev, "entry");
 
 	next->status = SOF_DMA_CB_STATUS_RELOAD;
 
@@ -136,7 +136,7 @@ static void dai_dma_cb(void *arg, enum notify_id type, void *data)
 					dd->local_buffer : dd->dma_buffer;
 		sink_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
 					dd->dma_buffer : dd->local_buffer;
-		comp_err(dev, "dai_dma_cb() dma buffer copy failed, dir %d bytes %d avail %d free %d",
+		comp_err(dev, "dma buffer copy failed, dir %d bytes %d avail %d free %d",
 			 dev->direction, bytes,
 			 audio_stream_get_avail_samples(&source_c->stream) *
 				audio_stream_frame_bytes(&source_c->stream),
@@ -293,7 +293,7 @@ static int dai_comp_hw_params(struct comp_dev *dev,
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "dai_comp_hw_params()");
+	comp_dbg(dev, "entry");
 
 	/* configure hw dai stream params */
 	ret = dai_hw_params(dd->dai, params);
@@ -371,7 +371,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->period;
 
-	comp_info(dev, "dai_playback_params() dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
+	comp_info(dev, "dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
 		  config->dest_dev, dd->stream_id,
 		  config->src_width, config->dest_width);
 
@@ -379,7 +379,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
-		comp_info(dev, "dai_playback_params() fifo 0x%x", fifo);
+		comp_info(dev, "fifo 0x%x", fifo);
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
@@ -436,7 +436,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		config->dest_width = config->src_width;
 	}
 
-	comp_info(dev, "dai_capture_params() src_dev = %d stream_id = %d src_width = %d dest_width = %d",
+	comp_info(dev, "src_dev = %d stream_id = %d src_width = %d dest_width = %d",
 		  config->src_dev, dd->stream_id,
 		  config->src_width, config->dest_width);
 
@@ -444,7 +444,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		fifo = dai_get_fifo(dd->dai, dev->direction,
 				    dd->stream_id);
 
-		comp_info(dev, "dai_capture_params() fifo 0x%x", fifo);
+		comp_info(dev, "fifo 0x%x", fifo);
 
 		err = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
@@ -589,7 +589,7 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "dai_params()");
+	comp_dbg(dev, "entry");
 
 	return dai_common_params(dd, dev, params);
 }
@@ -616,7 +616,7 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	channel = dai_config_dma_channel(dd, dev, dd->dai_spec_config);
-	comp_info(dev, "dai_common_config_prepare(), channel = %d", channel);
+	comp_info(dev, "channel = %d", channel);
 
 	/* do nothing for asking for channel free, for compatibility. */
 	if (channel == DMA_CHAN_INVALID) {
@@ -684,7 +684,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_info(dev, "dai_prepare()");
+	comp_info(dev, "entry");
 
 	ret = dai_common_config_prepare(dd, dev);
 	if (ret < 0)
@@ -727,7 +727,7 @@ static int dai_reset(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_info(dev, "dai_reset()");
+	comp_info(dev, "entry");
 
 	dai_common_reset(dd, dev);
 
@@ -741,7 +741,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 {
 	int ret;
 
-	comp_dbg(dev, "dai_comp_trigger_internal(), command = %u", cmd);
+	comp_dbg(dev, "command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -752,7 +752,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		comp_dbg(dev, "dai_comp_trigger_internal(), START");
+		comp_dbg(dev, "START");
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
@@ -795,12 +795,12 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_XRUN:
-		comp_info(dev, "dai_comp_trigger_internal(), XRUN");
+		comp_info(dev, "XRUN");
 		dd->xrun = 1;
 
 		COMPILER_FALLTHROUGH;
 	case COMP_TRIGGER_STOP:
-		comp_dbg(dev, "dai_comp_trigger_internal(), STOP");
+		comp_dbg(dev, "STOP");
 /*
  * Some platforms cannot just simple disable
  * DMA channel during the transfer,
@@ -818,7 +818,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 #endif
 		break;
 	case COMP_TRIGGER_PAUSE:
-		comp_dbg(dev, "dai_comp_trigger_internal(), PAUSE");
+		comp_dbg(dev, "PAUSE");
 		ret = dma_pause_legacy(dd->chan);
 		dai_trigger(dd->dai, cmd, dev->direction);
 		break;
@@ -843,7 +843,7 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 
 	/* DAI not in a group, use normal trigger */
 	if (!group) {
-		comp_dbg(dev, "dai_common_trigger(), non-atomic trigger");
+		comp_dbg(dev, "non-atomic trigger");
 		return dai_comp_trigger_internal(dd, dev, cmd);
 	}
 
@@ -853,13 +853,13 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 		/* First DAI to receive the trigger command,
 		 * prepare for atomic trigger
 		 */
-		comp_dbg(dev, "dai_common_trigger(), begin atomic trigger for group %d",
+		comp_dbg(dev, "begin atomic trigger for group %d",
 			 group->group_id);
 		group->trigger_cmd = cmd;
 		group->trigger_counter = group->num_dais - 1;
 	} else if (group->trigger_cmd != cmd) {
 		/* Already processing a different trigger command */
-		comp_err(dev, "dai_common_trigger(), already processing atomic trigger");
+		comp_err(dev, "already processing atomic trigger");
 		ret = -EAGAIN;
 	} else {
 		/* Count down the number of remaining DAIs required
@@ -867,7 +867,7 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 		 * takes place
 		 */
 		group->trigger_counter--;
-		comp_dbg(dev, "dai_common_trigger(), trigger counter %d, group %d",
+		comp_dbg(dev, "trigger counter %d, group %d",
 			 group->trigger_counter, group->group_id);
 
 		if (!group->trigger_counter) {
@@ -952,7 +952,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 
 	copy_bytes = samples * sampling;
 
-	comp_dbg(dev, "dai_common_copy(), dir: %d copy_bytes= 0x%x, frames= %d",
+	comp_dbg(dev, "dir: %d copy_bytes= 0x%x, frames= %d",
 		 dev->direction, copy_bytes,
 		 samples / audio_stream_get_channels(&dd->local_buffer->stream));
 
@@ -990,7 +990,7 @@ static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "dai_copy()");
+	comp_dbg(dev, "entry");
 
 	/*
 	 * DAI devices will only ever have 1 sink, so no need to pass an array of PCM converter
@@ -1051,7 +1051,7 @@ static int dai_ts_start(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "dai_ts_start()");
+	comp_dbg(dev, "entry");
 
 	return dai_common_ts_start(dd, dev);
 }
@@ -1068,7 +1068,7 @@ static int dai_ts_stop(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "dai_ts_stop()");
+	comp_dbg(dev, "entry");
 
 	return dai_common_ts_stop(dd, dev);
 }
@@ -1085,7 +1085,7 @@ static int dai_ts_get(struct comp_dev *dev, struct timestamp_data *tsd)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "dai_ts_get()");
+	comp_dbg(dev, "entry");
 
 	return dai_common_ts_get(dd, dev, tsd);
 }

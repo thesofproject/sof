@@ -407,7 +407,7 @@ up_down_mixer_process(struct processing_module *mod,
 	const uint8_t *input0_pos, *input0_start;
 	uint8_t *output_pos, *output_start;
 
-	comp_dbg(dev, "up_down_mixer_process()");
+	comp_dbg(dev, "entry");
 
 	output_frames = sink_get_free_frames(output_buffers[0]);
 	input_frames = source_get_data_frames_available(input_buffers[0]);

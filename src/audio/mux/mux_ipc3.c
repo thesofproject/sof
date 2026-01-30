@@ -39,7 +39,7 @@ static int mux_set_values(struct processing_module *mod)
 	unsigned int i;
 	unsigned int j;
 
-	comp_dbg(dev, "mux_set_values()");
+	comp_dbg(dev, "entry");
 
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {

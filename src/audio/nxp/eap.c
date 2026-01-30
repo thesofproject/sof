@@ -94,7 +94,7 @@ static int nxp_eap_init(struct processing_module *mod)
 
 	eap = mod_alloc(mod, sizeof(*eap));
 	if (!eap) {
-		comp_err(dev, "nxp_eap_init() failed to allocate module private data");
+		comp_err(dev, "failed to allocate module private data");
 		return -ENOMEM;
 	}
 
@@ -104,7 +104,7 @@ static int nxp_eap_init(struct processing_module *mod)
 
 	lvm_ret = LVM_GetMemoryTable(LVM_NULL, &eap->mem_tab, &eap->inst_params);
 	if (lvm_ret != LVM_SUCCESS) {
-		comp_err(dev, "nxp_eap_init() failed to get memory table %d", lvm_ret);
+		comp_err(dev, "failed to get memory table %d", lvm_ret);
 		mod_free(mod, eap);
 		return -EINVAL;
 	}
@@ -116,7 +116,7 @@ static int nxp_eap_init(struct processing_module *mod)
 	for (int i = 0; i < LVM_NR_MEMORY_REGIONS; i++) {
 		eap->mem_tab.Region[i].pBaseAddress = mod_balloc(mod, eap->mem_tab.Region[i].Size);
 		if (!eap->mem_tab.Region[i].pBaseAddress) {
-			comp_err(dev, "nxp_eap_init() failed to allocate memory for region %d", i);
+			comp_err(dev, "failed to allocate memory for region %d", i);
 			ret = -ENOMEM;
 			goto free_mem;
 		}
@@ -124,7 +124,7 @@ static int nxp_eap_init(struct processing_module *mod)
 
 	lvm_ret = LVM_GetInstanceHandle(&eap->instance, &eap->mem_tab, &eap->inst_params);
 	if (lvm_ret != LVM_SUCCESS) {
-		comp_err(dev, "nxp_eap_init() failed to get instance handle err: %d", lvm_ret);
+		comp_err(dev, "failed to get instance handle err: %d", lvm_ret);
 		ret = -EINVAL;
 		goto free_mem;
 	}
@@ -150,7 +150,7 @@ static int nxp_eap_free(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct nxp_eap_data *eap = module_get_private_data(mod);
 
-	comp_dbg(dev, "nxp_eap_free()");
+	comp_dbg(dev, "entry");
 
 	for (int i = 0; i < LVM_NR_MEMORY_REGIONS; i++) {
 		if (eap->mem_tab.Region[i].pBaseAddress) {
@@ -173,7 +173,7 @@ static int nxp_eap_prepare(struct processing_module *mod,
 	struct comp_buffer *source = comp_dev_get_first_data_producer(dev);
 	const struct audio_stream *stream;
 
-	comp_dbg(dev, "nxp_eap_prepare()");
+	comp_dbg(dev, "entry");
 
 	stream = &source->stream;
 	eap->sample_rate = audio_stream_get_rate(stream);
@@ -207,7 +207,7 @@ static int nxp_eap_reset(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
 
-	comp_dbg(dev, "nxp_eap_reset");
+	comp_dbg(dev, "entry");
 
 	if (md->mpd.in_buff) {
 		mod_free(mod, md->mpd.in_buff);
@@ -234,7 +234,7 @@ static int nxp_eap_process(struct processing_module *mod,
 	LVM_INT16 *buffer_table[2];
 	LVM_ReturnStatus_en ret;
 
-	comp_dbg(dev, "nxp_eap_process()");
+	comp_dbg(dev, "entry");
 
 	/* we need to input buffer to be completely full to be able to process it */
 	if (input_buffers[0].size < eap->mpd.in_buff_size)
@@ -254,7 +254,7 @@ static int nxp_eap_process(struct processing_module *mod,
 			  (LVM_INT16 **)buffer_table, eap->mpd.avail / eap_data->frame_bytes,
 			  eap_data->audio_time_ms);
 	if (ret != LVM_SUCCESS) {
-		comp_err(dev, "nxp_eap_process() failed with error %d", ret);
+		comp_err(dev, "failed with error %d", ret);
 		return -EIO;
 	}
 
@@ -280,7 +280,7 @@ static int nxp_eap_cmd_set_value(struct processing_module *mod, struct sof_ipc_c
 	index = cdata->chanv[0].value;
 
 	if (index >= ARRAY_SIZE(nxp_eap_effect_presets)) {
-		comp_info(dev, "nxp_eap_cmd_set_value() invalid index (%d), config not changed",
+		comp_info(dev, "invalid index (%d), config not changed",
 			  index);
 	} else {
 		memcpy(&eap->ctrl_params, nxp_eap_effect_presets[index].params,
@@ -304,7 +304,7 @@ static int nxp_eap_set_config(struct processing_module *mod, uint32_t param_id,
 	struct comp_dev *dev = mod->dev;
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 
-	comp_dbg(dev, "nxp_eap_set_config()");
+	comp_dbg(dev, "entry");
 
 	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
 		return nxp_eap_cmd_set_value(mod, cdata);
@@ -319,7 +319,7 @@ static int nxp_eap_get_config(struct processing_module *mod,
 {
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "nxp_eap_get_config()");
+	comp_dbg(dev, "entry");
 
 	return 0;
 }

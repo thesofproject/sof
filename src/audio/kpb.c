@@ -191,7 +191,7 @@ static void kpb_ams_kpd_notification(const struct ams_message_payload *const ams
 	struct kpb_client *cli_data = (struct kpb_client *)ams_message_payload->message;
 	struct comp_dev *dev = ctx;
 
-	comp_dbg(dev, "kpb_ams_kpd_notification()");
+	comp_dbg(dev, "entry");
 
 	kpb_init_draining(dev, cli_data);
 }
@@ -287,7 +287,7 @@ static void kpb_set_params(struct comp_dev *dev,
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	enum sof_ipc_frame frame_fmt, valid_fmt;
 
-	comp_dbg(dev, "kpb_set_params()");
+	comp_dbg(dev, "entry");
 
 	memset_s(params, sizeof(*params), 0, sizeof(*params));
 	params->channels = kpb->ipc4_cfg.base_cfg.audio_fmt.channels_count;
@@ -347,7 +347,7 @@ static int kpb_bind(struct comp_dev *dev, struct bind_info *bind_data)
 	int buf_id;
 	int ret = 0;
 
-	comp_dbg(dev, "kpb_bind()");
+	comp_dbg(dev, "entry");
 
 	bu = bind_data->ipc4_data;
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
@@ -393,7 +393,7 @@ static int kpb_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
 	struct ipc4_module_bind_unbind *bu;
 	int buf_id;
 
-	comp_dbg(dev, "kpb_unbind()");
+	comp_dbg(dev, "entry");
 
 	bu = unbind_data->ipc4_data;
 	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
@@ -576,7 +576,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 	int i = 0;
 	size_t allocated_size = 0;
 
-	comp_cl_info(&comp_kpb, "kpb_allocate_history_buffer()");
+	comp_cl_info(&comp_kpb, "entry");
 
 	/* Initialize history buffer */
 	kpb->hd.c_hb = rzalloc(SOF_MEM_FLAG_USER,
@@ -667,7 +667,7 @@ static void kpb_free_history_buffer(struct history_buffer *buff)
 	struct history_buffer *_buff;
 	struct history_buffer *first_buff = buff;
 
-	comp_cl_info(&comp_kpb, "kpb_free_history_buffer()");
+	comp_cl_info(&comp_kpb, "entry");
 
 	if (!buff)
 		return;
@@ -694,7 +694,7 @@ static void kpb_free(struct comp_dev *dev)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 
-	comp_info(dev, "kpb_free()");
+	comp_info(dev, "entry");
 
 #if CONFIG_AMS
 	/* Unregister KPB as AMS consumer */
@@ -733,7 +733,7 @@ static void kpb_free(struct comp_dev *dev)
  */
 static int kpb_trigger(struct comp_dev *dev, int cmd)
 {
-	comp_info(dev, "kpb_trigger()");
+	comp_info(dev, "entry");
 
 	return comp_set_state(dev, cmd);
 }
@@ -743,7 +743,7 @@ static int kpb_verify_params(struct comp_dev *dev,
 {
 	int ret;
 
-	comp_dbg(dev, "kpb_verify_params()");
+	comp_dbg(dev, "entry");
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
@@ -806,7 +806,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	int i;
 	size_t hb_size_req = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width, kpb->config.channels);
 
-	comp_dbg(dev, "kpb_prepare()");
+	comp_dbg(dev, "entry");
 
 	/* retrieve the params from the base_cfg and update the source/sink buffer params */
 	kpb_set_params(dev, &params);
@@ -1211,7 +1211,7 @@ static int kpb_copy(struct comp_dev *dev)
 	uint32_t avail_bytes;
 	uint32_t channels = kpb->config.channels;
 
-	comp_dbg(dev, "kpb_copy()");
+	comp_dbg(dev, "entry");
 
 	if (list_is_empty(&dev->bsource_list)) {
 		comp_err(dev, "no source.");
@@ -1411,7 +1411,7 @@ static int kpb_buffer_data(struct comp_dev *dev,
 	enum kpb_state state_preserved = kpb->state;
 	size_t sample_width = kpb->config.sampling_width;
 
-	comp_dbg(dev, "kpb_buffer_data()");
+	comp_dbg(dev, "entry");
 
 	/* We are allowed to buffer data in internal history buffer
 	 * only in KPB_STATE_RUN, KPB_STATE_DRAINING or KPB_STATE_INIT_DRAINING
@@ -1566,7 +1566,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 {
 	int ret = 0;
 
-	comp_cl_info(&comp_kpb, "kpb_register_client()");
+	comp_cl_info(&comp_kpb, "entry");
 
 	if (!cli) {
 		comp_cl_err(&comp_kpb, "no client data");
@@ -1720,10 +1720,10 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			/* Unlimited draining */
 			drain_interval = 0;
 			period_bytes_limit = 0;
-			comp_info(dev, "kpb_init_draining: unlimited draining speed selected.");
+			comp_info(dev, "unlimited draining speed selected.");
 		}
 
-		comp_info(dev, "kpb_init_draining(), schedule draining task");
+		comp_info(dev, "schedule draining task");
 
 		/* Add one-time draining task into the scheduler. */
 		kpb->draining_task_data.sink = kpb->host_sink;
@@ -1848,7 +1848,7 @@ static enum task_state kpb_draining_task(void *arg)
 	k_sched_lock();
 #endif
 
-	comp_cl_dbg(&comp_kpb, "kpb_draining_task()");
+	comp_cl_dbg(&comp_kpb, "entry");
 
 	/* Have we received reset request? */
 	if (kpb->state == KPB_STATE_RESETTING) {
@@ -1968,10 +1968,10 @@ out:
 	draining_time_ms = k_cyc_to_ms_near64(draining_time_end -
 			draining_data->draining_time_start);
 	if (draining_time_ms <= UINT_MAX)
-		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %zu drained in %u ms",
+		comp_cl_info(&comp_kpb, "KPB: done. %zu drained in %u ms",
 			     draining_data->drained, (unsigned int)draining_time_ms);
 	else
-		comp_cl_info(&comp_kpb, "KPB: kpb_draining_task(), done. %zu drained in > %u ms",
+		comp_cl_info(&comp_kpb, "KPB: done. %zu drained in > %u ms",
 			     draining_data->drained, UINT_MAX);
 
 	/* Restore original EDF thread priority */
@@ -2212,7 +2212,7 @@ static void kpb_clear_history_buffer(struct history_buffer *buff)
 	void *start_addr;
 	size_t size;
 
-	comp_cl_info(&comp_kpb, "kpb_clear_history_buffer()");
+	comp_cl_info(&comp_kpb, "entry");
 
 	do {
 		start_addr = buff->start_addr;
@@ -2363,7 +2363,7 @@ static void kpb_reset_history_buffer(struct history_buffer *buff)
 {
 	struct history_buffer *first_buff = buff;
 
-	comp_cl_info(&comp_kpb, "kpb_reset_history_buffer()");
+	comp_cl_info(&comp_kpb, "entry");
 
 	if (!buff)
 		return;
@@ -2655,7 +2655,7 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 	/* We can use extended param id for both extended and standard param id */
 	union ipc4_extended_param_id extended_param_id;
 
-	comp_info(dev, "kpb_set_large_config()");
+	comp_info(dev, "entry");
 
 	extended_param_id.full = param_id;
 

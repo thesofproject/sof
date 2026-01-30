@@ -379,24 +379,24 @@ static inline int32_t set_capture_func(struct processing_module *mod, struct sof
 	switch (source_get_frm_fmt(source)) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
-		comp_info(dev, "set_capture_func(), SOF_IPC_FRAME_S16_LE");
+		comp_info(dev, "SOF_IPC_FRAME_S16_LE");
 		cd->igo_nr_func = igo_nr_capture_s16;
 		break;
 #endif
 #if CONFIG_FORMAT_S24LE
 	case SOF_IPC_FRAME_S24_4LE:
-		comp_info(dev, "set_capture_func(), SOF_IPC_FRAME_S24_4LE");
+		comp_info(dev, "SOF_IPC_FRAME_S24_4LE");
 		cd->igo_nr_func = igo_nr_capture_s24;
 		break;
 #endif
 #if CONFIG_FORMAT_S32LE
 	case SOF_IPC_FRAME_S32_LE:
-		comp_info(dev, "set_capture_func(), SOF_IPC_FRAME_S32_LE");
+		comp_info(dev, "SOF_IPC_FRAME_S32_LE");
 		cd->igo_nr_func = igo_nr_capture_s32;
 		break;
 #endif
 	default:
-		comp_err(dev, "set_capture_func(), invalid frame_fmt");
+		comp_err(dev, "invalid frame_fmt");
 		return -EINVAL;
 	}
 	return 0;
@@ -411,11 +411,11 @@ static int igo_nr_init(struct processing_module *mod)
 	size_t bs = cfg->size;
 	int32_t ret;
 
-	comp_info(dev, "igo_nr_init()");
+	comp_info(dev, "entry");
 
 	/* Check first that configuration blob size is sane */
 	if (bs > SOF_IGO_NR_MAX_SIZE) {
-		comp_err(dev, "igo_nr_init() error: configuration blob size = %u > %d",
+		comp_err(dev, "error: configuration blob size = %u > %d",
 			 bs, SOF_IGO_NR_MAX_SIZE);
 		return -EINVAL;
 	}
@@ -476,7 +476,7 @@ static int igo_nr_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "igo_nr_free()");
+	comp_info(mod->dev, "entry");
 
 	mod_data_blob_handler_free(mod, cd->model_handler);
 
@@ -492,30 +492,30 @@ static int32_t igo_nr_check_params(struct processing_module *mod, struct sof_sou
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "igo_nr_check_params()");
+	comp_info(dev, "entry");
 
 	/* set source/sink_frames/rate */
 	cd->source_rate = source_get_rate(source);
 	cd->sink_rate = sink_get_rate(sink);
 
 	if (source_get_channels(source) != sink_get_channels(sink)) {
-		comp_err(dev, "igo_nr_check_params(), mismatch source/sink stream channels");
+		comp_err(dev, "mismatch source/sink stream channels");
 		cd->invalid_param = true;
 	}
 
 	if (!cd->sink_rate) {
-		comp_err(dev, "igo_nr_check_params(), zero sink rate");
+		comp_err(dev, "zero sink rate");
 		return -EINVAL;
 	}
 
 	/* The igo_nr supports sample rate 48000 only. */
 	switch (cd->source_rate) {
 	case 48000:
-		comp_info(dev, "igo_nr_check_params(), sample rate = 48000");
+		comp_info(dev, "sample rate = 48000");
 		cd->invalid_param = false;
 		break;
 	default:
-		comp_err(dev, "igo_nr_check_params(), invalid sample rate");
+		comp_err(dev, "invalid sample rate");
 		cd->invalid_param = true;
 	}
 
@@ -528,10 +528,10 @@ static int32_t igo_nr_check_config_validity(struct comp_dev *dev,
 	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 
 	if (!p_config) {
-		comp_err(dev, "igo_nr_check_config_validity() error: invalid cd->model_handler");
+		comp_err(dev, "error: invalid cd->model_handler");
 		return -EINVAL;
 	} else if (p_config->active_channel_idx >= SOF_IPC_MAX_CHANNELS) {
-		comp_err(dev, "igo_nr_check_config_validity() error: invalid active_channel_idxs");
+		comp_err(dev, "error: invalid active_channel_idxs");
 		return -EINVAL;
 	} else {
 		return 0;
@@ -565,13 +565,13 @@ static int igo_nr_get_config(struct processing_module *mod,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "igo_nr_get_config(), SOF_CTRL_CMD_BINARY");
+		comp_info(dev, "SOF_CTRL_CMD_BINARY");
 		return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 	case SOF_CTRL_CMD_SWITCH:
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->process_enable[j];
-			comp_info(dev, "igo_nr_get_config(), channel = %u, value = %u",
+			comp_info(dev, "channel = %u, value = %u",
 				  cdata->chanv[j].channel,
 				  cdata->chanv[j].value);
 		}
@@ -628,7 +628,7 @@ static int igo_nr_set_config(struct processing_module *mod, uint32_t param_id,
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
-	comp_info(dev, "igo_nr_set_config()");
+	comp_info(dev, "entry");
 
 #if CONFIG_IPC_MAJOR_3
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
@@ -659,7 +659,7 @@ static int igo_nr_set_config(struct processing_module *mod, uint32_t param_id,
 		comp_info(dev, "igo_nr_cmd_set_config(), SOF_IPC4_SWITCH_CONTROL_PARAM_ID");
 		return igo_nr_set_chan(mod, ctl);
 	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
-		comp_err(dev, "igo_nr_set_config(), illegal control.");
+		comp_err(dev, "illegal control.");
 		return -EINVAL;
 	}
 
@@ -720,7 +720,7 @@ static void igo_nr_set_igo_params(struct processing_module *mod)
 	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	struct comp_dev *dev = mod->dev;
 
-	comp_info(dev, "igo_nr_set_igo_params()");
+	comp_info(dev, "entry");
 	igo_nr_check_config_validity(dev, cd);
 
 	if (p_config) {
@@ -815,7 +815,7 @@ static int32_t igo_nr_prepare(struct processing_module *mod,
 	struct sof_sink *sink = sinks[0];
 	int ret;
 
-	comp_dbg(dev, "igo_nr_prepare()");
+	comp_dbg(dev, "entry");
 
 	if (!source || !sink) {
 		comp_err(dev, "no source or sink");
@@ -866,7 +866,7 @@ static int igo_nr_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "igo_nr_reset()");
+	comp_info(mod->dev, "entry");
 
 	cd->igo_nr_func = NULL;
 

@@ -184,7 +184,7 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 	int j;
 	int ret = 0;
 
-	comp_dbg(dev, "volume_set_config()");
+	comp_dbg(dev, "entry");
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
@@ -194,16 +194,16 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_VOLUME:
-		comp_dbg(dev, "volume_set_config(), SOF_CTRL_CMD_VOLUME, cdata->comp_id = %u",
+		comp_dbg(dev, "SOF_CTRL_CMD_VOLUME, cdata->comp_id = %u",
 			 cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
 			ch = cdata->chanv[j].channel;
 			val = cdata->chanv[j].value;
-			comp_dbg(dev, "volume_set_config(), channel = %d, value = %u",
+			comp_dbg(dev, "channel = %d, value = %u",
 				 ch, val);
 
 			if (ch >= SOF_IPC_MAX_CHANNELS) {
-				comp_err(dev, "volume_set_config(), illegal channel = %d",
+				comp_err(dev, "illegal channel = %d",
 					 ch);
 				return -EINVAL;
 			}
@@ -222,15 +222,15 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "volume_set_config(), SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
+		comp_dbg(dev, "SOF_CTRL_CMD_SWITCH, cdata->comp_id = %u",
 			 cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
 			ch = cdata->chanv[j].channel;
 			val = cdata->chanv[j].value;
-			comp_dbg(dev, "volume_set_config(), channel = %d, value = %u",
+			comp_dbg(dev, "channel = %d, value = %u",
 				 ch, val);
 			if (ch >= SOF_IPC_MAX_CHANNELS) {
-				comp_err(dev, "volume_set_config(), illegal channel = %d",
+				comp_err(dev, "illegal channel = %d",
 					 ch);
 				return -EINVAL;
 			}
@@ -261,7 +261,7 @@ int volume_get_config(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	int j;
 
-	comp_dbg(dev, "volume_get_config()");
+	comp_dbg(dev, "entry");
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
@@ -275,7 +275,7 @@ int volume_get_config(struct processing_module *mod,
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->tvolume[j];
-			comp_dbg(dev, "volume_get_config(), channel = %u, value = %u",
+			comp_dbg(dev, "channel = %u, value = %u",
 				 cdata->chanv[j].channel,
 				 cdata->chanv[j].value);
 		}
@@ -284,7 +284,7 @@ int volume_get_config(struct processing_module *mod,
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = !cd->muted[j];
-			comp_dbg(dev, "volume_get_config(), channel = %u, value = %u",
+			comp_dbg(dev, "channel = %u, value = %u",
 				 cdata->chanv[j].channel,
 				 cdata->chanv[j].value);
 		}

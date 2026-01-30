@@ -108,7 +108,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	struct dct_plan_16 *dct = &state->dct;
 	int ret;
 
-	comp_dbg(dev, "mfcc_setup()");
+	comp_dbg(dev, "entry");
 
 	/* Check size */
 	if (config->size != sizeof(struct sof_mfcc_config)) {
@@ -137,7 +137,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		return -EINVAL;
 	}
 
-	comp_info(dev, "mfcc_setup(), source_channel = %d, stream_channels = %d",
+	comp_info(dev, "source_channel = %d, stream_channels = %d",
 		  config->channel, channels);
 	if (config->channel >= channels) {
 		comp_err(dev, "Illegal channel");
@@ -156,7 +156,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	fft->fft_hop_size = config->frame_shift;
 	fft->half_fft_size = (fft->fft_padded_size >> 1) + 1;
 
-	comp_info(dev, "mfcc_setup(), emphasis = %d, fft_size = %d, fft_padded_size = %d, fft_hop_size = %d",
+	comp_info(dev, "emphasis = %d, fft_size = %d, fft_padded_size = %d, fft_hop_size = %d",
 		  config->preemphasis_coefficient,
 		  fft->fft_size, fft->fft_padded_size, fft->fft_hop_size);
 
@@ -168,7 +168,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->sample_buffers_size = sizeof(int16_t) *
 		(state->buffer_size + state->prev_data_size + fft->fft_size);
 
-	comp_info(dev, "mfcc_setup(), buffer_size = %d, prev_size = %d",
+	comp_info(dev, "buffer_size = %d, prev_size = %d",
 		  state->buffer_size, state->prev_data_size);
 
 	state->buffers = mod_zalloc(mod, state->sample_buffers_size);
@@ -213,9 +213,9 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		goto free_fft_out;
 	}
 
-	comp_info(dev, "mfcc_setup(), window = %d, num_mel_bins = %d, num_ceps = %d, norm = %d",
+	comp_info(dev, "window = %d, num_mel_bins = %d, num_ceps = %d, norm = %d",
 		  config->window, config->num_mel_bins, config->num_ceps, config->norm);
-	comp_info(dev, "mfcc_setup(), low_freq = %d, high_freq = %d",
+	comp_info(dev, "low_freq = %d, high_freq = %d",
 		  state->low_freq, state->high_freq);
 
 	/* Setup window */
@@ -294,7 +294,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->waiting_fill = true;
 	state->prev_samples_valid = false;
 
-	comp_dbg(dev, "mfcc_setup(), done");
+	comp_dbg(dev, "done");
 	return 0;
 
 free_dct_matrix:

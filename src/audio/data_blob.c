@@ -110,7 +110,7 @@ bool comp_is_new_data_blob_available(struct comp_data_blob_handler
 {
 	assert(blob_handler);
 
-	comp_dbg(blob_handler->dev, "comp_is_new_data_blob_available()");
+	comp_dbg(blob_handler->dev, "entry");
 
 	/* New data blob is available when new data blob is allocated (data_new
 	 * is not NULL), and the component has received all required chunks of data
@@ -185,25 +185,25 @@ int comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 
 #if CONFIG_IPC_MAJOR_3
 	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
-		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), illegal control command");
+		comp_err(blob_handler->dev, "illegal control command");
 		return -EINVAL;
 	}
 #endif
 
-	comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd() pos = %d, fragment size = %zu",
+	comp_dbg(blob_handler->dev, "pos = %d, fragment size = %zu",
 		 pos, fragment_size);
 
 	/* Check that there is no work-in-progress previous request */
 	if (blob_handler->data_new &&
 	    (pos == MODULE_CFG_FRAGMENT_FIRST || pos == MODULE_CFG_FRAGMENT_SINGLE)) {
-		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), busy with previous request");
+		comp_err(blob_handler->dev, "busy with previous request");
 		return -EBUSY;
 	}
 
 	/* In single blob mode the component can not be reconfigured if the component is active.
 	 */
 	if (blob_handler->single_blob && blob_handler->dev->state == COMP_STATE_ACTIVE) {
-		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), on the fly updates forbidden in single blob mode");
+		comp_err(blob_handler->dev, "on the fly updates forbidden in single blob mode");
 		return -EBUSY;
 	}
 
@@ -441,13 +441,13 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 
 	assert(blob_handler);
 
-	comp_dbg(blob_handler->dev, "comp_data_blob_set_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
+	comp_dbg(blob_handler->dev, "msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
 		 cdata->elems_remaining);
 
 	/* Check that there is no work-in-progress previous request */
 	if (blob_handler->data_new && cdata->msg_index == 0) {
-		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), busy with previous request");
+		comp_err(blob_handler->dev, "busy with previous request");
 		return -EBUSY;
 	}
 
@@ -456,7 +456,7 @@ int comp_data_blob_set_cmd(struct comp_data_blob_handler *blob_handler,
 	 */
 	if (blob_handler->single_blob &&
 	    blob_handler->dev->state == COMP_STATE_ACTIVE) {
-		comp_err(blob_handler->dev, "comp_data_blob_set_cmd(), on the fly updates forbidden in single blob mode");
+		comp_err(blob_handler->dev, "on the fly updates forbidden in single blob mode");
 		return -EBUSY;
 	}
 
@@ -581,7 +581,7 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 		return -EINVAL;
 	}
 
-	comp_dbg(blob_handler->dev, "comp_data_blob_get_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
+	comp_dbg(blob_handler->dev, "msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
 		 cdata->elems_remaining);
 
@@ -590,7 +590,7 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 		/* reset data_pos variable in case of copying first element */
 		if (!cdata->msg_index) {
 			blob_handler->data_pos = 0;
-			comp_dbg(blob_handler->dev, "comp_data_blob_get_cmd() model data_size = 0x%x",
+			comp_dbg(blob_handler->dev, "model data_size = 0x%x",
 				 blob_handler->data_size);
 		}
 
@@ -639,7 +639,7 @@ comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 {
 	struct comp_data_blob_handler *handler;
 
-	comp_dbg(dev, "comp_data_blob_handler_new_ext()");
+	comp_dbg(dev, "entry");
 
 	handler = rzalloc(SOF_MEM_FLAG_USER,
 			  sizeof(struct comp_data_blob_handler));

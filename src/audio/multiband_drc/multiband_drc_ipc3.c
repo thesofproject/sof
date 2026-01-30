@@ -30,10 +30,10 @@ static int multiband_drc_cmd_set_value(struct processing_module *mod,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "multiband_drc_multiband_drc_cmd_set_value(), SOF_CTRL_CMD_SWITCH");
+		comp_dbg(dev, "multiband_drc_SOF_CTRL_CMD_SWITCH");
 		if (cdata->num_elems == 1) {
 			cd->process_enabled = cdata->chanv[0].value;
-			comp_info(dev, "multiband_drc_cmd_set_value(), process_enabled = %d",
+			comp_info(dev, "process_enabled = %d",
 				  cd->process_enabled);
 			return 0;
 		}
@@ -68,13 +68,13 @@ static int multiband_drc_cmd_get_value(struct processing_module *mod,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(dev, "multiband_drc_cmd_get_value(), SOF_CTRL_CMD_SWITCH");
+		comp_dbg(dev, "SOF_CTRL_CMD_SWITCH");
 		for (j = 0; j < cdata->num_elems; j++)
 			cdata->chanv[j].value = cd->process_enabled;
 		if (cdata->num_elems == 1)
 			return 0;
 
-		comp_warn(dev, "multiband_drc_cmd_get_value() warn: num_elems should be 1, got %d",
+		comp_warn(dev, "warn: num_elems should be 1, got %d",
 			  cdata->num_elems);
 		return 0;
 	}
@@ -91,7 +91,7 @@ int multiband_drc_get_ipc_config(struct processing_module *mod, struct sof_ipc_c
 	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
 		return multiband_drc_cmd_get_value(mod, cdata);
 
-	comp_dbg(mod->dev, "multiband_drc_get_ipc_config(), SOF_CTRL_CMD_BINARY");
+	comp_dbg(mod->dev, "SOF_CTRL_CMD_BINARY");
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 

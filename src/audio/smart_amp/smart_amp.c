@@ -263,7 +263,7 @@ static int smart_amp_set_config(struct processing_module *mod,
 	      ASSUME_ALIGNED(&cdata->data->data, sizeof(uint32_t));
 	bs = cfg->size;
 
-	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %zu, expected blob size = %zu",
+	comp_dbg(dev, "actual blob size = %zu, expected blob size = %zu",
 		 bs, sizeof(struct sof_smart_amp_config));
 
 	if (bs != sizeof(struct sof_smart_amp_config)) {
@@ -289,7 +289,7 @@ static int smart_amp_get_config(struct processing_module *mod,
 	/* Copy back to user space */
 	bs = sad->config.size;
 
-	comp_dbg(dev, "smart_amp_get_config(), actual blob size = %zu, expected blob size = %zu",
+	comp_dbg(dev, "actual blob size = %zu, expected blob size = %zu",
 		 bs, sizeof(struct sof_smart_amp_config));
 
 	if (bs == 0 || bs > size)
@@ -449,7 +449,7 @@ static int smart_amp_free(struct processing_module *mod)
 	struct smart_amp_data *sad = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "smart_amp_free()");
+	comp_dbg(dev, "entry");
 	if (!sad)
 		return 0;
 
@@ -485,7 +485,7 @@ static int smart_amp_trigger(struct processing_module *mod, int cmd)
 	struct comp_dev *dev = mod->dev;
 	int ret = 0;
 
-	comp_dbg(dev, "smart_amp_trigger(), command = %u", cmd);
+	comp_dbg(dev, "command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 
@@ -661,7 +661,7 @@ static int smart_amp_reset(struct processing_module *mod)
 	struct smart_amp_mod_data_base *smod = sad->mod_data;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "smart_amp_reset()");
+	comp_dbg(dev, "entry");
 
 	sad->ff_get_frame = NULL;
 	sad->fb_get_frame = NULL;

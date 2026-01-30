@@ -115,17 +115,17 @@ static int pipeline_comp_copy(struct comp_dev *current,
 	bool is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
 	int err;
 
-	pipe_dbg(current->pipeline, "pipeline_comp_copy(), current->comp.id = %u, dir = %u",
+	pipe_dbg(current->pipeline, "current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
 	if (!is_single_ppl) {
 		pipe_dbg(current->pipeline,
-			 "pipeline_comp_copy(), current is from another pipeline and can't be scheduled together");
+			 "current is from another pipeline and can't be scheduled together");
 		return 0;
 	}
 
 	if (!comp_is_active(current)) {
-		pipe_dbg(current->pipeline, "pipeline_comp_copy(), current is not active");
+		pipe_dbg(current->pipeline, "current is not active");
 		return 0;
 	}
 
@@ -239,7 +239,7 @@ static int pipeline_comp_list(struct comp_dev *current,
 	 */
 	if (!is_single_ppl && (!is_same_sched || IPC4_MOD_ID(current->ipc_config.id))) {
 		pipe_dbg(current->pipeline,
-			 "pipeline_comp_list(), current is from another pipeline");
+			 "current is from another pipeline");
 		return 0;
 	}
 
@@ -473,7 +473,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	int err;
 
 	pipe_dbg(current->pipeline,
-		 "pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
+		 "current->comp.id = %u, dir = %u",
 		 dev_comp_id(current), dir);
 
 	switch (ppl_data->cmd) {
@@ -520,7 +520,7 @@ static int pipeline_comp_trigger(struct comp_dev *current,
 	 */
 	if (!is_single_ppl && (!is_same_sched || IS_ENABLED(CONFIG_IPC_MAJOR_4))) {
 		pipe_dbg(current->pipeline,
-			 "pipeline_comp_trigger(), current is from another pipeline");
+			 "current is from another pipeline");
 
 		if (pipeline_should_report_enodata_on_trigger(current, ctx, dir))
 			return -ENODATA;

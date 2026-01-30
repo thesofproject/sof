@@ -25,7 +25,7 @@ __cold int template_set_config(struct processing_module *mod, uint32_t param_id,
 
 	assert_can_be_cold();
 
-	comp_dbg(dev, "template_set_config()");
+	comp_dbg(dev, "entry");
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_SWITCH:
@@ -65,7 +65,7 @@ __cold int template_get_config(struct processing_module *mod,
 
 	assert_can_be_cold();
 
-	comp_info(dev, "template_get_config()");
+	comp_info(dev, "entry");
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_SWITCH:

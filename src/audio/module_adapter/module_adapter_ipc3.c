@@ -91,7 +91,7 @@ int module_adapter_init_data(struct comp_dev *dev,
 		break;
 	}
 	default:
-		comp_err(dev, "module_adapter_init_data() unsupported comp type %d", config->type);
+		comp_err(dev, "unsupported comp type %d", config->type);
 		return -EINVAL;
 	}
 
@@ -99,7 +99,7 @@ int module_adapter_init_data(struct comp_dev *dev,
 	if (size) {
 		ret = module_load_config(dev, data, size);
 		if (ret < 0) {
-			comp_err(dev, "module_adapter_init_data() error %d: config loading has failed.",
+			comp_err(dev, "error %d: config loading has failed.",
 				 ret);
 			return ret;
 		}
@@ -270,7 +270,7 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	int ret = 0;
 
-	comp_dbg(dev, "module_adapter_cmd() %d start", cmd);
+	comp_dbg(dev, "%d start", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -307,12 +307,12 @@ int module_adapter_cmd(struct comp_dev *dev, int cmd, void *data, int max_data_s
 			ret = interface->get_configuration(mod, 0, 0, (uint8_t *)cdata, 0);
 		break;
 	default:
-		comp_err(dev, "module_adapter_cmd() error: unknown command");
+		comp_err(dev, "error: unknown command");
 		ret = -EINVAL;
 		break;
 	}
 
-	comp_dbg(dev, "module_adapter_cmd() done");
+	comp_dbg(dev, "done");
 	return ret;
 }
 

@@ -81,13 +81,13 @@ int crossover_check_sink_assign(struct processing_module *mod,
 		pin_index = cd->output_pin_index[j];
 		i = crossover_get_stream_index(mod, config, pin_index);
 		if (i < 0) {
-			comp_warn(dev, "crossover_check_sink_assign(), could not assign sink %u",
+			comp_warn(dev, "could not assign sink %u",
 				  pin_index);
 			break;
 		}
 
 		if (assigned_sinks[i]) {
-			comp_warn(dev, "crossover_check_sink_assign(), multiple sinks from pin %u are assigned",
+			comp_warn(dev, "multiple sinks from pin %u are assigned",
 				  pin_index);
 			break;
 		}
@@ -113,7 +113,7 @@ void crossover_params(struct processing_module *mod)
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "crossover_params()");
+	comp_dbg(dev, "entry");
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);

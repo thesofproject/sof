@@ -135,7 +135,7 @@ static int mux_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "mux_free()");
+	comp_dbg(mod->dev, "entry");
 
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	mod_free(mod, cd);
@@ -238,7 +238,7 @@ static int demux_process(struct processing_module *mod,
 	int source_bytes;
 	int i;
 
-	comp_dbg(dev, "demux_process()");
+	comp_dbg(dev, "entry");
 
 	/* align sink streams with their respective configurations */
 	comp_dev_for_each_consumer(dev, sink) {
@@ -315,7 +315,7 @@ static int mux_process(struct processing_module *mod,
 	int source_bytes;
 	int i, j;
 
-	comp_dbg(dev, "mux_process()");
+	comp_dbg(dev, "entry");
 
 	/* align source streams with their respective configurations */
 	j = 0;
@@ -366,7 +366,7 @@ static int mux_reset(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	int dir = dev->pipeline->source_comp->direction;
 
-	comp_dbg(dev, "mux_reset()");
+	comp_dbg(dev, "entry");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		comp_dev_for_each_producer(dev, source) {
@@ -392,7 +392,7 @@ static int mux_prepare(struct processing_module *mod,
 	struct comp_data *cd = module_get_private_data(mod);
 	int ret;
 
-	comp_dbg(dev, "mux_prepare()");
+	comp_dbg(dev, "entry");
 
 	ret = mux_params(mod);
 	if (ret < 0)
@@ -419,7 +419,7 @@ static int mux_get_config(struct processing_module *mod,
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "mux_get_config()");
+	comp_dbg(mod->dev, "entry");
 
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
@@ -431,7 +431,7 @@ static int mux_set_config(struct processing_module *mod, uint32_t config_id,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "mux_set_config()");
+	comp_dbg(mod->dev, "entry");
 
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
 				  fragment, fragment_size);

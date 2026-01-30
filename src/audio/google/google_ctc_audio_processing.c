@@ -243,7 +243,7 @@ static int ctc_free(struct processing_module *mod)
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "ctc_free()");
+	comp_info(mod->dev, "entry");
 
 	if (cd) {
 		mod_free(mod, cd->input);
@@ -263,7 +263,7 @@ static int ctc_init(struct processing_module *mod)
 	struct google_ctc_audio_processing_comp_data *cd;
 	int buf_size;
 
-	comp_info(dev, "ctc_init()");
+	comp_info(dev, "entry");
 
 	/* Create private component data */
 	cd = mod_zalloc(mod, sizeof(*cd));
@@ -313,7 +313,7 @@ static int google_ctc_audio_processing_reconfigure(struct processing_module *mod
 	size_t size;
 	int ret;
 
-	comp_dbg(dev, "google_ctc_audio_processing_reconfigure()");
+	comp_dbg(dev, "entry");
 
 	config = comp_get_data_blob(cd->tuning_handler, &size, NULL);
 	if (size == 0) {
@@ -353,7 +353,7 @@ static int ctc_prepare(struct processing_module *mod,
 	uint8_t *config;
 	int config_size;
 
-	comp_info(mod->dev, "ctc_prepare()");
+	comp_info(mod->dev, "entry");
 
 	source = comp_dev_get_first_data_producer(dev);
 	if (!source) {
@@ -378,13 +378,13 @@ static int ctc_prepare(struct processing_module *mod,
 		break;
 #endif
 	default:
-		comp_err(mod->dev, "ctc_prepare(), invalid frame_fmt");
+		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;
 	}
 
 	num_channels = audio_stream_get_channels(&source->stream);
 	if (num_channels > kMaxChannels) {
-		comp_err(mod->dev, "ctc_prepare(), invalid number of channels");
+		comp_err(mod->dev, "invalid number of channels");
 		return -EINVAL;
 	}
 	cd->next_avail_output_samples = cd->chunk_frames * num_channels;
@@ -401,7 +401,7 @@ static int ctc_prepare(struct processing_module *mod,
 							     config,
 							     config_size);
 	if (!cd->state) {
-		comp_err(mod->dev, "ctc_prepare(), failed to create CTC");
+		comp_err(mod->dev, "failed to create CTC");
 		return -ENOMEM;
 	}
 
@@ -413,7 +413,7 @@ static int ctc_reset(struct processing_module *mod)
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
 	size_t buf_size = cd->chunk_frames * sizeof(cd->input[0]) * kMaxChannels;
 
-	comp_info(mod->dev, "ctc_reset()");
+	comp_info(mod->dev, "entry");
 
 	GoogleCtcAudioProcessingFree(cd->state);
 	cd->state = NULL;
@@ -438,7 +438,7 @@ static int ctc_process(struct processing_module *mod,
 
 	int ret;
 
-	comp_dbg(mod->dev, "ctc_process()");
+	comp_dbg(mod->dev, "entry");
 
 	if (cd->reconfigure) {
 		ret = google_ctc_audio_processing_reconfigure(mod);

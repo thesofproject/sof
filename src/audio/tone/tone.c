@@ -146,7 +146,7 @@ static int tone_s32_passthrough(struct processing_module *mod, struct sof_sink *
 	ret = sink_get_buffer_s32(sink, output_frames * output_frame_bytes,
 				  &output_pos, &output_start, &output_cirbuf_size);
 	if (ret) {
-		comp_err(mod->dev, "tone_s32_passthrough(): sink_get_buffer_s32() failed");
+		comp_err(mod->dev, "sink_get_buffer_s32() failed");
 		return -ENODATA;
 	}
 
@@ -156,7 +156,7 @@ static int tone_s32_passthrough(struct processing_module *mod, struct sof_sink *
 	ret = source_get_data_s32(source, input_frames * input_frame_bytes,
 				  &input_pos, &input_start, &input_cirbuf_size);
 	if (ret) {
-		comp_err(mod->dev, "tone_s32_passthrough(): source_get_data_s32() failed");
+		comp_err(mod->dev, "source_get_data_s32() failed");
 		return -ENODATA;
 	}
 	input_end = input_start + input_cirbuf_size;

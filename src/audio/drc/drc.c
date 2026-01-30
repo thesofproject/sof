@@ -154,13 +154,13 @@ __cold static int drc_init(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	comp_info(dev, "drc_init()");
+	comp_info(dev, "entry");
 
 	/* Check first before proceeding with dev and cd that coefficients
 	 * blob size is sane.
 	 */
 	if (bs > SOF_DRC_MAX_SIZE) {
-		comp_err(dev, "drc_init(), error: configuration blob size = %u > %d",
+		comp_err(dev, "error: configuration blob size = %u > %d",
 			 bs, SOF_DRC_MAX_SIZE);
 		return -EINVAL;
 	}
@@ -223,7 +223,7 @@ __cold static int drc_set_config(struct processing_module *mod, uint32_t param_i
 
 	assert_can_be_cold();
 
-	comp_dbg(dev, "drc_set_config()");
+	comp_dbg(dev, "entry");
 
 #if CONFIG_IPC_MAJOR_4
 	struct sof_ipc4_control_msg_payload *ctl = (struct sof_ipc4_control_msg_payload *)fragment;
@@ -233,7 +233,7 @@ __cold static int drc_set_config(struct processing_module *mod, uint32_t param_i
 		if (ctl->id == SOF_DRC_CTRL_INDEX_ENABLE_SWITCH &&
 		    ctl->num_elems == SOF_DRC_NUM_ELEMS_ENABLE_SWITCH) {
 			cd->enable_switch = ctl->chanv[0].value;
-			comp_info(dev, "drc_set_config(), enable_switch = %d", cd->enable_switch);
+			comp_info(dev, "enable_switch = %d", cd->enable_switch);
 		} else {
 			comp_err(dev, "Illegal switch control id = %d, num_elems = %d",
 				 ctl->id, ctl->num_elems);
@@ -243,12 +243,12 @@ __cold static int drc_set_config(struct processing_module *mod, uint32_t param_i
 		return 0;
 
 	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
-		comp_err(dev, "drc_set_config(), illegal control.");
+		comp_err(dev, "illegal control.");
 		return -EINVAL;
 	}
 #endif
 
-	comp_info(dev, "drc_set_config(), bytes control");
+	comp_info(dev, "bytes control");
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
 				  fragment_size);
 }
@@ -262,7 +262,7 @@ __cold static int drc_get_config(struct processing_module *mod,
 
 	assert_can_be_cold();
 
-	comp_info(mod->dev, "drc_get_config()");
+	comp_info(mod->dev, "entry");
 
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
@@ -280,7 +280,7 @@ static int drc_process(struct processing_module *mod,
 	int frames = input_buffers[0].size;
 	int ret;
 
-	comp_dbg(dev, "drc_process()");
+	comp_dbg(dev, "entry");
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
@@ -322,7 +322,7 @@ static void drc_params(struct processing_module *mod)
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "drc_params()");
+	comp_dbg(dev, "entry");
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
@@ -348,7 +348,7 @@ static int drc_prepare(struct processing_module *mod,
 	int rate;
 	int ret;
 
-	comp_info(dev, "drc_prepare()");
+	comp_info(dev, "entry");
 
 	/* DRC component will only ever have 1 source and 1 sink buffer */
 	sourceb = comp_dev_get_first_data_producer(dev);
@@ -368,18 +368,18 @@ static int drc_prepare(struct processing_module *mod,
 	rate = audio_stream_get_rate(&sinkb->stream);
 
 	/* Initialize DRC */
-	comp_info(dev, "drc_prepare(), source_format=%d", cd->source_format);
+	comp_info(dev, "source_format=%d", cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config) {
 		ret = drc_setup(mod, channels, rate);
 		if (ret < 0) {
-			comp_err(dev, "drc_prepare() error: drc_setup failed.");
+			comp_err(dev, "error: drc_setup failed.");
 			return ret;
 		}
 
 		cd->drc_func = drc_find_proc_func(cd->source_format);
 		if (!cd->drc_func) {
-			comp_err(dev, "drc_prepare(), No proc func");
+			comp_err(dev, "No proc func");
 			return -EINVAL;
 		}
 
@@ -396,7 +396,7 @@ static int drc_prepare(struct processing_module *mod,
 		cd->drc_func = drc_default_pass;
 	}
 
-	comp_info(dev, "drc_prepare(), DRC is configured.");
+	comp_info(dev, "DRC is configured.");
 	return 0;
 }
 

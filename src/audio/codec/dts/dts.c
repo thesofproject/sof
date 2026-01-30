@@ -40,14 +40,14 @@ static void dts_effect_free_codec_memory(void *mod_void, void *pMem)
 	struct processing_module *mod = mod_void;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "dts_effect_free_codec_memory() start");
+	comp_dbg(dev, "start");
 
 	int ret = mod_free(mod, pMem);
 
 	if (ret)
-		comp_err(dev, "dts_effect_free_codec_memory() mod_free failed %d", ret);
+		comp_err(dev, "mod_free failed %d", ret);
 
-	comp_dbg(dev, "dts_effect_free_codec_memory() done");
+	comp_dbg(dev, "done");
 }
 
 static int dts_effect_convert_sof_interface_result(struct comp_dev *dev,
@@ -82,7 +82,7 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	DtsSofInterfaceBufferFormat buffer_format;
 	unsigned int buffer_fmt, frame_fmt, rate, channels;
 
-	comp_dbg(dev, "dts_effect_populate_buffer_configuration() start");
+	comp_dbg(dev, "start");
 
 	if (!source)
 		return -EINVAL;
@@ -127,7 +127,7 @@ static int dts_effect_populate_buffer_configuration(struct comp_dev *dev,
 	buffer_config->numChannels = channels;
 	buffer_config->periodInFrames = dev->frames;
 
-	comp_dbg(dev, "dts_effect_populate_buffer_configuration() done");
+	comp_dbg(dev, "done");
 
 	return 0;
 }
@@ -141,14 +141,14 @@ static int dts_codec_init(struct processing_module *mod)
 	DtsSofInterfaceVersionInfo interface_version;
 	DtsSofInterfaceVersionInfo sdk_version;
 
-	comp_dbg(dev, "dts_codec_init() start");
+	comp_dbg(dev, "start");
 
 	dts_result = dtsSofInterfaceInit((DtsSofInterfaceInst **)&(codec->private),
 		dts_effect_allocate_codec_memory, dts_effect_free_codec_memory, mod);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_init() dtsSofInterfaceInit failed %d %d", ret, dts_result);
+		comp_err(dev, "dtsSofInterfaceInit failed %d %d", ret, dts_result);
 
 	/* Obtain the current versions of DTS interface and SDK */
 	dts_result = dtsSofInterfaceGetVersion(&interface_version, &sdk_version);
@@ -156,13 +156,13 @@ static int dts_codec_init(struct processing_module *mod)
 	/* Not necessary to fail initialisation if only get version failed */
 	if (dts_result == DTS_SOF_INTERFACE_RESULT_SUCCESS) {
 		comp_info(dev,
-			"dts_codec_init() DTS SOF Interface version %d.%d.%d.%d",
+			"DTS SOF Interface version %d.%d.%d.%d",
 			interface_version.major,
 			interface_version.minor,
 			interface_version.patch,
 			interface_version.build);
 		comp_info(dev,
-			"dts_codec_init() DTS SDK version %d.%d.%d.%d",
+			"DTS SDK version %d.%d.%d.%d",
 			sdk_version.major,
 			sdk_version.minor,
 			sdk_version.patch,
@@ -170,9 +170,9 @@ static int dts_codec_init(struct processing_module *mod)
 	}
 
 	if (ret)
-		comp_err(dev, "dts_codec_init() failed %d %d", ret, dts_result);
+		comp_err(dev, "failed %d %d", ret, dts_result);
 
-	comp_dbg(dev, "dts_codec_init() done");
+	comp_dbg(dev, "done");
 
 	return ret;
 }
@@ -187,12 +187,12 @@ static int dts_codec_prepare(struct processing_module *mod,
 	DtsSofInterfaceBufferConfiguration buffer_configuration;
 	DtsSofInterfaceResult dts_result;
 
-	comp_dbg(dev, "dts_codec_prepare() start");
+	comp_dbg(dev, "start");
 
 	ret = dts_effect_populate_buffer_configuration(dev, &buffer_configuration);
 	if (ret) {
 		comp_err(dev,
-			"dts_codec_prepare() dts_effect_populate_buffer_configuration failed %d",
+			"dts_effect_populate_buffer_configuration failed %d",
 			ret);
 		return ret;
 	}
@@ -207,9 +207,9 @@ static int dts_codec_prepare(struct processing_module *mod,
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_prepare() failed %d", ret);
+		comp_err(dev, "failed %d", ret);
 
-	comp_dbg(dev, "dts_codec_prepare() done");
+	comp_dbg(dev, "done");
 
 	return ret;
 }
@@ -221,7 +221,7 @@ static int dts_codec_init_process(struct processing_module *mod)
 	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 
-	comp_dbg(dev, "dts_codec_init_process() start");
+	comp_dbg(dev, "start");
 
 	dts_result = dtsSofInterfaceInitProcess(codec->private);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
@@ -231,9 +231,9 @@ static int dts_codec_init_process(struct processing_module *mod)
 	codec->mpd.init_done = 1;
 
 	if (ret)
-		comp_err(dev, "dts_codec_init_process() failed %d %d", ret, dts_result);
+		comp_err(dev, "failed %d %d", ret, dts_result);
 
-	comp_dbg(dev, "dts_codec_init_process() done");
+	comp_dbg(dev, "done");
 
 	return ret;
 }
@@ -265,7 +265,7 @@ dts_codec_process(struct processing_module *mod,
 		 input_buffers[0].data, codec->mpd.in_buff_size);
 	codec->mpd.avail = codec->mpd.in_buff_size;
 
-	comp_dbg(dev, "dts_codec_process() start");
+	comp_dbg(dev, "start");
 
 	dts_result = dtsSofInterfaceProcess(codec->private, &bytes_processed);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
@@ -275,7 +275,7 @@ dts_codec_process(struct processing_module *mod,
 	input_buffers[0].consumed = codec->mpd.consumed;
 
 	if (ret) {
-		comp_err(dev, "dts_codec_process() failed %d %d", ret, dts_result);
+		comp_err(dev, "failed %d %d", ret, dts_result);
 		return ret;
 	}
 
@@ -284,7 +284,7 @@ dts_codec_process(struct processing_module *mod,
 		 codec->mpd.produced);
 	output_buffers[0].size = codec->mpd.produced;
 
-	comp_dbg(dev, "dts_codec_process() done");
+	comp_dbg(dev, "done");
 
 	return ret;
 }
@@ -304,17 +304,17 @@ static int dts_codec_apply_config(struct processing_module *mod)
 	uint32_t param_number = 0;
 	DtsSofInterfaceResult dts_result;
 
-	comp_dbg(dev, "dts_codec_apply_config() start");
+	comp_dbg(dev, "start");
 
 	config = &codec->cfg;
 
 	/* Check that config->data isn't invalid and has size greater than 0 */
 	config_header_size = sizeof(config->size) + sizeof(config->avail);
 	if (config->size < config_header_size) {
-		comp_warn(dev, "dts_codec_apply_config() config->data is invalid");
+		comp_warn(dev, "config->data is invalid");
 		return 0;
 	} else if (config->size == config_header_size) {
-		comp_warn(dev, "dts_codec_apply_config() size of config->data is 0");
+		comp_warn(dev, "size of config->data is 0");
 		return 0;
 	}
 
@@ -324,7 +324,7 @@ static int dts_codec_apply_config(struct processing_module *mod)
 	/* Check that config->data is not greater than the max expected for DTS data */
 	if (config_data_size > MAX_EXPECTED_DTS_CONFIG_DATA_SIZE) {
 		comp_err(dev,
-			"dts_codec_apply_config() size of config->data is larger than max for DTS data");
+			"size of config->data is larger than max for DTS data");
 		return -EINVAL;
 	}
 
@@ -336,7 +336,7 @@ static int dts_codec_apply_config(struct processing_module *mod)
 
 		/* If param->size is less than param_header_size, then this param is not valid */
 		if (param->size < param_header_size) {
-			comp_err(dev, "dts_codec_apply_config() param is invalid");
+			comp_err(dev, "param is invalid");
 			return -EINVAL;
 		}
 
@@ -345,7 +345,7 @@ static int dts_codec_apply_config(struct processing_module *mod)
 			/* Calculate size of param->data */
 			param_data_size = param->size - param_header_size;
 
-			comp_dbg(dev, "dts_codec_apply_config() id %d size %d",
+			comp_dbg(dev, "id %d size %d",
 					param->id, param_data_size);
 
 			if (param_data_size) {
@@ -354,7 +354,7 @@ static int dts_codec_apply_config(struct processing_module *mod)
 				ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 				if (ret) {
 					comp_err(dev,
-						"dts_codec_apply_config() dtsSofInterfaceApplyConfig failed %d",
+						"dtsSofInterfaceApplyConfig failed %d",
 						dts_result);
 					return ret;
 				}
@@ -365,7 +365,7 @@ static int dts_codec_apply_config(struct processing_module *mod)
 		i += param->size;
 	}
 
-	comp_dbg(dev, "dts_codec_apply_config() done");
+	comp_dbg(dev, "done");
 
 	return ret;
 }
@@ -377,15 +377,15 @@ static int dts_codec_reset(struct processing_module *mod)
 	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 
-	comp_dbg(dev, "dts_codec_reset() start");
+	comp_dbg(dev, "start");
 
 	dts_result = dtsSofInterfaceReset(codec->private);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_reset() failed %d %d", ret, dts_result);
+		comp_err(dev, "failed %d %d", ret, dts_result);
 
-	comp_dbg(dev, "dts_codec_reset() done");
+	comp_dbg(dev, "done");
 
 	return ret;
 }
@@ -397,15 +397,15 @@ static int dts_codec_free(struct processing_module *mod)
 	struct module_data *codec = &mod->priv;
 	DtsSofInterfaceResult dts_result;
 
-	comp_dbg(dev, "dts_codec_free() start");
+	comp_dbg(dev, "start");
 
 	dts_result = dtsSofInterfaceFree(codec->private);
 	ret = dts_effect_convert_sof_interface_result(dev, dts_result);
 
 	if (ret)
-		comp_err(dev, "dts_codec_free() failed %d %d", ret, dts_result);
+		comp_err(dev, "failed %d %d", ret, dts_result);
 
-	comp_dbg(dev, "dts_codec_free() done");
+	comp_dbg(dev, "done");
 
 	return ret;
 }

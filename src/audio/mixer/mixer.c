@@ -44,7 +44,7 @@ static int mixer_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct mixer_data *md;
 
-	comp_dbg(dev, "mixer_init()");
+	comp_dbg(dev, "entry");
 
 	md = mod_zalloc(mod, sizeof(*md));
 	if (!md)
@@ -63,7 +63,7 @@ static int mixer_free(struct processing_module *mod)
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "mixer_free()");
+	comp_dbg(dev, "entry");
 
 	mod_free(mod, md);
 
@@ -88,7 +88,7 @@ static int mixer_process(struct processing_module *mod,
 	uint32_t sink_bytes;
 	int active_input_buffers = 0;
 
-	comp_dbg(dev, "mixer_process() %d", num_input_buffers);
+	comp_dbg(dev, "%d", num_input_buffers);
 
 	/* too many sources ? */
 	if (num_input_buffers >= PLATFORM_MAX_STREAMS)
@@ -128,7 +128,7 @@ static int mixer_process(struct processing_module *mod,
 
 	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
 
-	comp_dbg(dev, "mixer_process(), source_bytes = 0x%x, sink_bytes = 0x%x",
+	comp_dbg(dev, "source_bytes = 0x%x, sink_bytes = 0x%x",
 		 source_bytes, sink_bytes);
 
 	/* mix streams */
@@ -163,7 +163,7 @@ static int mixer_reset(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	int dir = dev->pipeline->source_comp->direction;
 
-	comp_dbg(dev, "mixer_reset()");
+	comp_dbg(dev, "entry");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
 		struct comp_buffer *source;

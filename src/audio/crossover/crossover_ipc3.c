@@ -48,13 +48,13 @@ int crossover_check_sink_assign(struct processing_module *mod,
 
 		i = crossover_get_stream_index(mod, config, pipeline_id);
 		if (i < 0) {
-			comp_warn(dev, "crossover_check_sink_assign(), could not assign sink %d",
+			comp_warn(dev, "could not assign sink %d",
 				  pipeline_id);
 			break;
 		}
 
 		if (assigned_sinks[i]) {
-			comp_warn(dev, "crossover_check_sink_assign(), multiple sinks from pipeline %d are assigned",
+			comp_warn(dev, "multiple sinks from pipeline %d are assigned",
 				  pipeline_id);
 			break;
 		}

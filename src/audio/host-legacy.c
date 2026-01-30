@@ -129,7 +129,7 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 	uint32_t split_value = 0;
 	int ret = 0;
 
-	comp_dbg(dev, "host_copy_one_shot()");
+	comp_dbg(dev, "entry");
 
 	copy_bytes = host_get_copy_bytes_one_shot(hd, dev);
 	if (!copy_bytes) {
@@ -197,7 +197,7 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 	uint32_t copy_bytes = 0;
 	int ret = 0;
 
-	comp_dbg(dev, "host_copy_one_shot()");
+	comp_dbg(dev, "entry");
 
 	copy_bytes = host_get_copy_bytes_one_shot(hd, dev);
 	if (!copy_bytes) {
@@ -242,7 +242,7 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 
 	/* assert dma_buffer_copy succeed */
 	if (ret < 0)
-		comp_err(dev, "host_common_update() dma buffer copy failed, dir %d bytes %d avail %d free %d",
+		comp_err(dev, "dma buffer copy failed, dir %d bytes %d avail %d free %d",
 			 dev->direction, bytes,
 			 audio_stream_get_avail_samples(&source->stream) *
 				audio_stream_frame_bytes(&source->stream),
@@ -344,7 +344,7 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 	struct host_data *hd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 
-	comp_dbg(dev, "host_dma_cb() %p", &comp_host);
+	comp_dbg(dev, "%p", &comp_host);
 
 	/* update position */
 	host_common_update(hd, dev, bytes);
@@ -411,7 +411,7 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	uint32_t flags = 0;
 	int ret;
 
-	comp_dbg(dev, "host_copy_normal()");
+	comp_dbg(dev, "entry");
 
 	if (hd->copy_type == COMP_COPY_BLOCKING)
 		flags |= DMA_COPY_BLOCKING;
@@ -515,7 +515,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "host_trigger()");
+	comp_dbg(dev, "entry");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -611,7 +611,7 @@ static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "host_free()");
+	comp_dbg(dev, "entry");
 	host_common_free(hd);
 	rfree(hd);
 	rfree(dev);
@@ -655,7 +655,7 @@ static int host_verify_params(struct comp_dev *dev,
 {
 	int ret;
 
-	comp_dbg(dev, "host_verify_params()");
+	comp_dbg(dev, "entry");
 
 	ret = comp_verify_params(dev, 0, params);
 	if (ret < 0) {
@@ -849,7 +849,7 @@ static int host_params(struct comp_dev *dev,
 	struct host_data *hd = comp_get_drvdata(dev);
 	int err;
 
-	comp_dbg(dev, "host_params()");
+	comp_dbg(dev, "entry");
 
 	err = host_verify_params(dev, params);
 	if (err < 0) {
@@ -871,7 +871,7 @@ static int host_prepare(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "host_prepare()");
+	comp_dbg(dev, "entry");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -934,7 +934,7 @@ static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "host_reset()");
+	comp_dbg(dev, "entry");
 
 	host_common_reset(hd, dev->state);
 	dev->state = COMP_STATE_READY;

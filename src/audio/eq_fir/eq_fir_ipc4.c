@@ -42,7 +42,7 @@ int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
 	default:
-		comp_err(mod->dev, "set_fir_func(), invalid valid_bith_depth");
+		comp_err(mod->dev, "invalid valid_bith_depth");
 		return -EINVAL;
 	}
 	return 0;
@@ -54,7 +54,7 @@ int eq_fir_params(struct processing_module *mod)
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "eq_fir_params()");
+	comp_dbg(dev, "entry");
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
