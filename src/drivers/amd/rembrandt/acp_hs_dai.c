@@ -60,7 +60,7 @@ static inline int hsdai_set_config(struct dai *dai, struct ipc_config_dai *commo
 			i2stdm_mstrclkgen.bits.i2stdm_bclk_div_val = 0x20;
 			break;
 		default:
-			dai_err(dai, "hsdai_set_config unsupported slots");
+			dai_err(dai, "unsupported slots");
 			return -EINVAL;
 		}
 		break;
@@ -70,7 +70,7 @@ static inline int hsdai_set_config(struct dai *dai, struct ipc_config_dai *commo
 		i2stdm_mstrclkgen.bits.i2stdm_bclk_div_val = 0x80;
 		break;
 	default:
-		dai_err(dai, "hsdai_set_config invalid format");
+		dai_err(dai, "invalid format");
 		return -EINVAL;
 	}
 
@@ -109,7 +109,7 @@ static inline int hsdai_set_config(struct dai *dai, struct ipc_config_dai *commo
 		io_reg_write((PU_REGISTER_BASE + ACP_HSTDM_IRER), hs_irer.u32all);
 		break;
 	default:
-		dai_err(dai, "hsdai_set_config invalid format");
+		dai_err(dai, "invalid format");
 		return -EINVAL;
 	}
 	return 0;

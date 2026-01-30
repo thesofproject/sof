@@ -50,7 +50,7 @@ static int micfil_get_hw_params(struct dai *dai,
 {
 	struct micfil_pdata *micfil = dai_get_drvdata(dai);
 
-	dai_info(dai, "micfil_get_hw_params()");
+	dai_info(dai, "entry");
 
 	params->rate = micfil->params.pdm_rate;
 	params->channels = micfil->params.pdm_ch;
@@ -184,7 +184,7 @@ static int micfil_set_config(struct dai *dai, struct ipc_config_dai *common_conf
 
 	micfil->params = config->micfil;
 
-	dai_info(dai, "micfil_set_config() dai_idx %d channels %d sampling_freq %d",
+	dai_info(dai, "dai_idx %d channels %d sampling_freq %d",
 		 common_config->dai_index, micfil->params.pdm_ch, micfil->params.pdm_rate);
 
 	/* disable the module */
@@ -232,7 +232,7 @@ static int micfil_get_fifo_depth(struct dai *dai, int direction)
 
 static void micfil_start(struct dai *dai)
 {
-	dai_info(dai, "micfil_start()");
+	dai_info(dai, "entry");
 
 	micfil_reset(dai);
 
@@ -252,7 +252,7 @@ static void micfil_start(struct dai *dai)
 
 static void micfil_stop(struct dai *dai)
 {
-	dai_info(dai, "micfil_stop()");
+	dai_info(dai, "entry");
 
 	/* Disable the module */
 	dai_update_bits(dai, REG_MICFIL_CTRL1, MICFIL_CTRL1_PDMIEN, 0);
@@ -263,7 +263,7 @@ static void micfil_stop(struct dai *dai)
 
 static int micfil_trigger(struct dai *dai, int cmd, int direction)
 {
-	dai_info(dai, "micfil_trigger() cmd %d dir %d", cmd, direction);
+	dai_info(dai, "cmd %d dir %d", cmd, direction);
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -288,7 +288,7 @@ static int micfil_probe(struct dai *dai)
 {
 	struct micfil_pdata *micfil;
 
-	dai_info(dai, "micfil_probe()");
+	dai_info(dai, "entry");
 
 	micfil = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*micfil));
 	if (!micfil) {
@@ -307,7 +307,7 @@ static int micfil_remove(struct dai *dai)
 {
 	struct micfil_pdata *micfil = dai_get_drvdata(dai);
 
-	dai_info(dai, "micfil_remove()");
+	dai_info(dai, "entry");
 
 	rfree(micfil);
 	dai_set_drvdata(dai, NULL);

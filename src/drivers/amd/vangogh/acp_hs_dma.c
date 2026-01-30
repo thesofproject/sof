@@ -279,7 +279,7 @@ static int acp_dai_hs_dma_copy(struct dma_chan_data *channel, int bytes,
 		.channel = channel,
 		.elem.size = bytes,
 	};
-	tr_info(&acp_hs_tr, "acp_dai_hs_dma_copy ");
+	tr_info(&acp_hs_tr, "entry");
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
 		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 	return 0;

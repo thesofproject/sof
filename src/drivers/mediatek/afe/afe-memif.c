@@ -192,7 +192,7 @@ static int memif_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 		memif->wptr = (memif->wptr + bytes) % memif->dma_size;
 	else
 		memif->rptr = (memif->rptr + bytes) % memif->dma_size;
-	tr_dbg(&memif_tr, "memif_copy: wptr:%u, rptr:%u", memif->wptr, memif->rptr);
+	tr_dbg(&memif_tr, "wptr:%u, rptr:%u", memif->wptr, memif->rptr);
 
 	notifier_event(channel, NOTIFIER_ID_DMA_COPY, NOTIFIER_TARGET_CORE_LOCAL, &next,
 		       sizeof(next));
@@ -241,7 +241,7 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 	channel->direction = config->direction;
 
 	direction = afe_memif_get_direction(memif->afe, memif->memif_id);
-	tr_info(&memif_tr, "memif_set_config, direction:%d, afe_dir:%d", config->direction,
+	tr_info(&memif_tr, "direction:%d, afe_dir:%d", config->direction,
 		direction);
 
 	switch (config->direction) {
@@ -263,7 +263,7 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 		tr_dbg(&memif_tr, "capture: dai_id:%d, dma_addr:%u\n", dai_id, dma_addr);
 		break;
 	default:
-		tr_err(&memif_tr, "afe_memif_set_config() unsupported config direction");
+		tr_err(&memif_tr, "afe_unsupported config direction");
 		return -EINVAL;
 	}
 
