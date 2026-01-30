@@ -29,7 +29,7 @@ DECLARE_TR_CTX(sai_tr, SOF_UUID(sai_uuid), LOG_LEVEL_INFO);
 
 static void sai_start(struct dai *dai, int direction)
 {
-	dai_info(dai, "SAI: sai_start");
+	dai_info(dai, "SAI: entry");
 
 	struct sai_pdata *sai = dai_get_drvdata(dai);
 	int chan_idx = 0;
@@ -139,7 +139,7 @@ static void sai_start(struct dai *dai, int direction)
 
 static void sai_release(struct dai *dai, int direction)
 {
-	dai_info(dai, "SAI: sai_release");
+	dai_info(dai, "SAI: entry");
 
 	int chan_idx = 0;
 #ifdef CONFIG_IMX8ULP
@@ -171,7 +171,7 @@ static void sai_release(struct dai *dai, int direction)
 
 static void sai_stop(struct dai *dai, int direction)
 {
-	dai_info(dai, "SAI: sai_stop");
+	dai_info(dai, "SAI: entry");
 
 	uint32_t xcsr = 0U;
 	int ret = 0;
@@ -222,7 +222,7 @@ static void sai_stop(struct dai *dai, int direction)
 static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 				 const void *spec_config)
 {
-	dai_info(dai, "SAI: sai_set_config");
+	dai_info(dai, "SAI: entry");
 	const struct sof_ipc_dai_config *config = spec_config;
 	uint32_t val_cr2 = 0, val_cr4 = 0, val_cr5 = 0;
 	uint32_t mask_cr2 = 0, mask_cr4 = 0, mask_cr5 = 0;
@@ -438,7 +438,7 @@ static inline int sai_set_config(struct dai *dai, struct ipc_config_dai *common_
 
 static int sai_trigger(struct dai *dai, int cmd, int direction)
 {
-	dai_info(dai, "SAI: sai_trigger");
+	dai_info(dai, "SAI: entry");
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -465,12 +465,12 @@ static int sai_probe(struct dai *dai)
 {
 	struct sai_pdata *sai;
 
-	dai_info(dai, "SAI: sai_probe");
+	dai_info(dai, "SAI: entry");
 
 	/* allocate private data */
 	sai = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*sai));
 	if (!sai) {
-		dai_err(dai, "sai_probe(): alloc failed");
+		dai_err(dai, "alloc failed");
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, sai);
@@ -504,7 +504,7 @@ static int sai_remove(struct dai *dai)
 {
 	struct sai_pdata *sai = dai_get_drvdata(dai);
 
-	dai_info(dai, "sai_remove()");
+	dai_info(dai, "entry");
 
 	rfree(sai);
 	dai_set_drvdata(dai, NULL);
@@ -524,7 +524,7 @@ static int sai_get_fifo(struct dai *dai, int direction, int stream_id)
 	case DAI_DIR_CAPTURE:
 		return dai_fifo(dai, direction); /* stream_id is unused */
 	default:
-		dai_err(dai, "sai_get_fifo(): Invalid direction");
+		dai_err(dai, "Invalid direction");
 		return -EINVAL;
 	}
 }
@@ -536,7 +536,7 @@ static int sai_get_fifo_depth(struct dai *dai, int direction)
 	case DAI_DIR_CAPTURE:
 		return dai->plat_data.fifo[direction].depth;
 	default:
-		dai_err(dai, "esai_get_fifo_depth(): Invalid direction");
+		dai_err(dai, "Invalid direction");
 		return -EINVAL;
 	}
 }

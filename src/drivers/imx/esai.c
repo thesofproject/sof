@@ -367,7 +367,7 @@ static int esai_remove(struct dai *dai)
 {
 	struct esai_pdata *pdata = dai_get_drvdata(dai);
 
-	dai_info(dai, "esai_remove()");
+	dai_info(dai, "entry");
 
 	rfree(pdata);
 	dai_set_drvdata(dai, NULL);
@@ -391,7 +391,7 @@ static int esai_get_fifo(struct dai *dai, int direction, int stream_id)
 	case DAI_DIR_CAPTURE:
 		return dai_fifo(dai, direction); /* stream_id is unused */
 	default:
-		dai_err(dai, "esai_get_fifo(): Invalid direction");
+		dai_err(dai, "Invalid direction");
 		return -EINVAL;
 	}
 }
@@ -403,7 +403,7 @@ static int esai_get_fifo_depth(struct dai *dai, int direction)
 	case DAI_DIR_CAPTURE:
 		return dai->plat_data.fifo[direction].depth;
 	default:
-		dai_err(dai, "esai_get_fifo_depth(): Invalid direction");
+		dai_err(dai, "Invalid direction");
 		return -EINVAL;
 	}
 }
@@ -420,7 +420,7 @@ static int esai_get_hw_params(struct dai *dai,
 	params->buffer_fmt = 0;
 	params->frame_fmt = SOF_IPC_FRAME_S24_4LE;
 
-	dai_info(dai, "esai_get_hw_params(): params->rate = %d, fsync_rate = %d",
+	dai_info(dai, "params->rate = %d, fsync_rate = %d",
 		 params->rate, esai->params.fsync_rate);
 
 	return 0;

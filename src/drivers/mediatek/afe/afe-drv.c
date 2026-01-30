@@ -251,7 +251,7 @@ int afe_dai_set_config(struct mtk_base_afe *afe, int id, unsigned int channel, u
 	if (id >= afe->dais_size)
 		return -EINVAL;
 
-	tr_info(&afedrv_tr, "afe_dai_set_config, id:%d\n", id);
+	tr_info(&afedrv_tr, "id:%d\n", id);
 
 	dai = &afe->dais[id];
 	dai->channel = channel;
@@ -271,10 +271,10 @@ int afe_dai_get_config(struct mtk_base_afe *afe, int id, unsigned int *channel, 
 
 	/* TODO 1. if need use dai->id to search target dai */
 	/* TODO 1. if need a status to control the dai status */
-	tr_info(&afedrv_tr, "afe_dai_get_config, id:%d\n", id);
+	tr_info(&afedrv_tr, "id:%d\n", id);
 
 	if (id >= afe->dais_size || id < 0) {
-		tr_err(&afedrv_tr, "afe_dai_get_config , invalid id:%d\n", id);
+		tr_err(&afedrv_tr, ", invalid id:%d\n", id);
 		return -EINVAL;
 	}
 	dai = &afe->dais[id];

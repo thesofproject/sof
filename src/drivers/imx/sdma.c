@@ -85,8 +85,7 @@ struct sdma_pdata {
 static void sdma_set_overrides(struct dma_chan_data *channel,
 			       bool event_override, bool host_override)
 {
-	tr_dbg(&sdma_tr, "sdma_set_overrides(%d, %d)", event_override,
-	       host_override);
+	tr_dbg(&sdma_tr, "event %d, host %d", event_override, host_override);
 	dma_reg_update_bits(channel->dma, SDMA_EVTOVR, BIT(channel->index),
 			    event_override ? BIT(channel->index) : 0);
 	dma_reg_update_bits(channel->dma, SDMA_HOSTOVR, BIT(channel->index),
@@ -110,7 +109,7 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 	struct sdma_chan *c0data = dma_chan_get_data(c0);
 	int ret;
 
-	tr_dbg(&sdma_tr, "sdma_run_c0 cmd %d buf_addr 0x%08x sdma_addr 0x%04x count %d",
+	tr_dbg(&sdma_tr, "cmd %d buf_addr 0x%08x sdma_addr 0x%04x count %d",
 	       cmd, buf_addr, sdma_addr, count);
 
 	c0data->desc[0].config = SDMA_BD_CMD(cmd) | SDMA_BD_COUNT(count)
@@ -150,7 +149,7 @@ static int sdma_run_c0(struct dma *dma, uint8_t cmd, uint32_t buf_addr,
 		dma_reg_update_bits(dma, SDMA_CONFIG, SDMA_CONFIG_CSM_MSK,
 				    SDMA_CONFIG_CSM_DYN);
 
-	tr_dbg(&sdma_tr, "sdma_run_c0 done, ret = %d", ret);
+	tr_dbg(&sdma_tr, "done, ret = %d", ret);
 
 	return ret;
 }
@@ -161,7 +160,7 @@ static int sdma_register_init(struct dma *dma)
 	struct sdma_pdata *pdata = dma_get_drvdata(dma);
 	int i;
 
-	tr_dbg(&sdma_tr, "sdma_register_init");
+	tr_dbg(&sdma_tr, "entry");
 	dma_reg_write(dma, SDMA_RESET, 1);
 	/* Wait for 10us */
 	ret = poll_for_register_delay(dma_base(dma) + SDMA_RESET, 1, 0, 1000);
@@ -216,7 +215,7 @@ static void sdma_init_c0(struct dma *dma)
 	struct sdma_pdata *sdma_pdata = dma_get_drvdata(dma);
 	struct sdma_chan *pdata = &sdma_pdata->chan_pdata[0];
 
-	tr_dbg(&sdma_tr, "sdma_init_c0");
+	tr_dbg(&sdma_tr, "entry");
 	c0->status = COMP_STATE_READY;
 
 	/* Reset channel 0 private data */
@@ -233,14 +232,14 @@ static int sdma_boot(struct dma *dma)
 {
 	int ret;
 
-	tr_dbg(&sdma_tr, "sdma_boot");
+	tr_dbg(&sdma_tr, "entry");
 	ret = sdma_register_init(dma);
 	if (ret < 0)
 		return ret;
 
 	sdma_init_c0(dma);
 
-	tr_dbg(&sdma_tr, "sdma_boot done");
+	tr_dbg(&sdma_tr, "done");
 	return 0;
 }
 
@@ -251,7 +250,7 @@ static int sdma_upload_context(struct dma_chan_data *chan)
 	/* Ensure context is ready for upload */
 	dcache_writeback_region(pdata->ctx, sizeof(*pdata->ctx));
 
-	tr_dbg(&sdma_tr, "sdma_upload_context for channel %d", chan->index);
+	tr_dbg(&sdma_tr, "for channel %d", chan->index);
 
 	/* Last parameters are unneeded for this command and are ignored;
 	 * set to 0.
@@ -382,7 +381,7 @@ static int sdma_remove(struct dma *dma)
 		return 0;
 	}
 
-	tr_dbg(&sdma_tr, "sdma_remove");
+	tr_dbg(&sdma_tr, "entry");
 
 	/* Prevent all channels except channel 0 from running */
 	dma_reg_write(dma, SDMA_HOSTOVR, 1);
@@ -442,7 +441,7 @@ static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 {
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 
-	tr_dbg(&sdma_tr, "sdma_enable_event(%d, %d)", channel->index, eventnum);
+	tr_dbg(&sdma_tr, "channel %d, event %d", channel->index, eventnum);
 
 	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
 		return; /* No change if request is invalid */
@@ -460,7 +459,7 @@ static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 
 static void sdma_disable_event(struct dma_chan_data *channel, int eventnum)
 {
-	tr_dbg(&sdma_tr, "sdma_disable_event(%d, %d)", channel->index, eventnum);
+	tr_dbg(&sdma_tr, "channel %d, event %d", channel->index, eventnum);
 
 	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
 		return; /* No change if request is invalid */
@@ -475,7 +474,7 @@ static void sdma_channel_put(struct dma_chan_data *channel)
 
 	if (channel->status == COMP_STATE_INIT)
 		return; /* Channel was already free */
-	tr_dbg(&sdma_tr, "sdma_channel_put(%d)", channel->index);
+	tr_dbg(&sdma_tr, "channel %d", channel->index);
 
 	dma_interrupt_legacy(channel, DMA_IRQ_CLEAR);
 	sdma_disable_event(channel, pdata->hw_event);
@@ -485,7 +484,7 @@ static void sdma_channel_put(struct dma_chan_data *channel)
 
 static int sdma_start(struct dma_chan_data *channel)
 {
-	tr_dbg(&sdma_tr, "sdma_start(%d)", channel->index);
+	tr_dbg(&sdma_tr, "channel %d", channel->index);
 
 	if (channel->status != COMP_STATE_PREPARE &&
 	    channel->status != COMP_STATE_PAUSED)
@@ -507,7 +506,7 @@ static int sdma_stop(struct dma_chan_data *channel)
 
 	channel->status = COMP_STATE_READY;
 
-	tr_dbg(&sdma_tr, "sdma_stop(%d)", channel->index);
+	tr_dbg(&sdma_tr, "channel %d", channel->index);
 
 	sdma_disable_channel(channel->dma, channel->index);
 
@@ -553,7 +552,7 @@ static int sdma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 	};
 	int idx;
 
-	tr_dbg(&sdma_tr, "sdma_copy");
+	tr_dbg(&sdma_tr, "entry");
 
 	idx = (pdata->next_bd + 1) % 2;
 	pdata->next_bd = idx;
@@ -581,7 +580,7 @@ static int sdma_status(struct dma_chan_data *channel,
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 	struct sdma_bd *bd;
 
-	tr_dbg(&sdma_tr, "sdma_status");
+	tr_dbg(&sdma_tr, "entry");
 	if (channel->status == COMP_STATE_INIT)
 		return -EINVAL;
 	status->state = channel->status;
@@ -689,13 +688,13 @@ static int sdma_read_config(struct dma_chan_data *channel,
 	for (i = 0; i < config->elem_array.count; i++) {
 		if (config->direction == SOF_DMA_DIR_MEM_TO_DEV &&
 		    pdata->fifo_paddr != config->elem_array.elems[i].dest) {
-			tr_err(&sdma_tr, "sdma_read_config: FIFO changes address!");
+			tr_err(&sdma_tr, "FIFO changes address!");
 			return -EINVAL;
 		}
 
 		if (config->direction == SOF_DMA_DIR_DEV_TO_MEM &&
 		    pdata->fifo_paddr != config->elem_array.elems[i].src) {
-			tr_err(&sdma_tr, "sdma_read_config: FIFO changes address!");
+			tr_err(&sdma_tr, "FIFO changes address!");
 			return -EINVAL;
 		}
 
@@ -868,7 +867,7 @@ static int sdma_set_config(struct dma_chan_data *channel,
 	struct sdma_chan *pdata = dma_chan_get_data(channel);
 	int ret;
 
-	tr_dbg(&sdma_tr, "sdma_set_config channel %d", channel->index);
+	tr_dbg(&sdma_tr, "channel %d", channel->index);
 
 	ret = sdma_read_config(channel, config);
 	if (ret < 0)
@@ -925,7 +924,7 @@ static int sdma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 		 */
 		return 0;
 	default:
-		tr_err(&sdma_tr, "sdma_interrupt unknown cmd %d", cmd);
+		tr_err(&sdma_tr, "unknown cmd %d", cmd);
 		return -EINVAL;
 	}
 }
@@ -966,7 +965,7 @@ static int sdma_get_data_size(struct dma_chan_data *channel, uint32_t *avail,
 	uint32_t result_data = 0;
 	int i;
 
-	tr_dbg(&sdma_tr, "sdma_get_data_size(%d)", channel->index);
+	tr_dbg(&sdma_tr, "channel %d", channel->index);
 	if (channel->index == 0) {
 		/* Channel 0 shouldn't have this called anyway */
 		tr_err(&sdma_tr, "Please do not call get_data_size on SDMA channel 0!");
@@ -992,7 +991,7 @@ static int sdma_get_data_size(struct dma_chan_data *channel, uint32_t *avail,
 		*avail = result_data;
 		break;
 	default:
-		tr_err(&sdma_tr, "sdma_get_data_size channel invalid direction");
+		tr_err(&sdma_tr, "channel invalid direction");
 		return -EINVAL;
 	}
 	return 0;

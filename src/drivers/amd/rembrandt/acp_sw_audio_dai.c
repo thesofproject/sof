@@ -51,7 +51,7 @@ static int swaudiodai_remove(struct dai *dai)
 {
 	struct acp_pdata *acp = dai_get_drvdata(dai);
 
-	dai_info(dai, "swaudiodai_remove");
+	dai_info(dai, "entry");
 	rfree(acp);
 	dai_set_drvdata(dai, NULL);
 

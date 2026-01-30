@@ -391,7 +391,7 @@ static int edma_set_config(struct dma_chan_data *channel,
 		doff = config->dest_width;
 		break;
 	default:
-		tr_err(&edma_tr, "edma_set_config() unsupported config direction");
+		tr_err(&edma_tr, "unsupported config direction");
 		return -EINVAL;
 	}
 
@@ -541,7 +541,7 @@ static int edma_get_data_size(struct dma_chan_data *channel,
 		*avail = ABS(capture_data_size) / 2;
 		break;
 	default:
-		tr_err(&edma_tr, "edma_get_data_size() unsupported direction %d",
+		tr_err(&edma_tr, "unsupported direction %d",
 		       channel->direction);
 		return -EINVAL;
 	}

@@ -110,7 +110,7 @@ static int spdai_get_fifo(struct dai *dai, int direction, int stream_id)
 	case DAI_DIR_CAPTURE:
 		return dai_fifo(dai, direction);
 	default:
-		dai_err(dai, "spdai_get_fifo(): Invalid direction");
+		dai_err(dai, "Invalid direction");
 		return -EINVAL;
 	}
 }
