@@ -32,9 +32,6 @@ SOF_DEFINE_REG_UUID(passthru_smart_amp);
 
 #endif
 
-DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(UUID_SYM),
-	       LOG_LEVEL_INFO);
-
 LOG_MODULE_REGISTER(smart_amp, CONFIG_SOF_LOG_LEVEL);
 
 /* Amp configuration & model calibration data for tuning/debug */
@@ -817,5 +814,6 @@ static struct module_interface smart_amp_interface = {
 	.trigger = smart_amp_trigger,
 };
 
+DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(UUID_SYM), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(smart_amp_interface, UUID_SYM, smart_amp_comp_tr);
 SOF_MODULE_INIT(smart_amp, sys_comp_module_smart_amp_interface_init);

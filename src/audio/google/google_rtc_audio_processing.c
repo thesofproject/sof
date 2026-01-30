@@ -56,10 +56,6 @@ LOG_MODULE_REGISTER(google_rtc_audio_processing, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(google_rtc_audio_processing);
 
-DECLARE_TR_CTX(google_rtc_audio_processing_tr, SOF_UUID(google_rtc_audio_processing_uuid),
-			   LOG_LEVEL_INFO);
-
-
 static __aligned(PLATFORM_DCACHE_ALIGN)
 uint8_t aec_mem_blob[CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_KB * 1024];
 
@@ -864,6 +860,8 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(google_rtc_audio_processing_tr, SOF_UUID(google_rtc_audio_processing_uuid),
+			   LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(google_rtc_audio_processing_interface,
 		       google_rtc_audio_processing_uuid, google_rtc_audio_processing_tr);
 SOF_MODULE_INIT(google_rtc_audio_processing,

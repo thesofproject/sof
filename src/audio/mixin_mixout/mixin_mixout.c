@@ -35,11 +35,9 @@ LOG_MODULE_REGISTER(mixin_mixout, CONFIG_SOF_LOG_LEVEL);
 
 /* mixin 39656eb2-3b71-4049-8d3f-f92cd5c43c09 */
 SOF_DEFINE_REG_UUID(mixin);
-DECLARE_TR_CTX(mixin_tr, SOF_UUID(mixin_uuid), LOG_LEVEL_INFO);
 
 /* mixout 3c56505a-24d7-418f-bddc-c1f5a3ac2ae0 */
 SOF_DEFINE_REG_UUID(mixout);
-DECLARE_TR_CTX(mixout_tr, SOF_UUID(mixout_uuid), LOG_LEVEL_INFO);
 
 #define MIXIN_MAX_SINKS IPC4_MIXIN_MODULE_MAX_OUTPUT_QUEUES
 #define MIXOUT_MAX_SOURCES IPC4_MIXOUT_MODULE_MAX_INPUT_QUEUES
@@ -1050,9 +1048,11 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(mixin_tr, SOF_UUID(mixin_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(mixin_interface, mixin_uuid, mixin_tr);
 SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
 
+DECLARE_TR_CTX(mixout_tr, SOF_UUID(mixout_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(mixout_interface, mixout_uuid, mixout_tr);
 SOF_MODULE_INIT(mixout, sys_comp_module_mixout_interface_init);
 

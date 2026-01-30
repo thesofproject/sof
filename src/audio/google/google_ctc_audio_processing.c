@@ -22,9 +22,6 @@ LOG_MODULE_REGISTER(google_ctc_audio_processing, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(google_ctc_audio_processing);
 
-DECLARE_TR_CTX(google_ctc_audio_processing_tr, SOF_UUID(google_ctc_audio_processing_uuid),
-	       LOG_LEVEL_INFO);
-
 // TODO(eddyhsu): Share these utils function with RTC.
 static inline float clamp_rescale(float max_val, float x)
 {
@@ -475,6 +472,8 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(google_ctc_audio_processing_tr, SOF_UUID(google_ctc_audio_processing_uuid),
+	       LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(google_ctc_audio_processing_interface,
 		       google_ctc_audio_processing_uuid, google_ctc_audio_processing_tr);
 SOF_MODULE_INIT(google_ctc_audio_processing,

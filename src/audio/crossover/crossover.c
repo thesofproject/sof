@@ -40,8 +40,6 @@ LOG_MODULE_REGISTER(crossover, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(crossover);
 
-DECLARE_TR_CTX(crossover_tr, SOF_UUID(crossover_uuid), LOG_LEVEL_INFO);
-
 /**
  * \brief Reset the state (coefficients and delay) of the crossover filter
  *	  across all channels
@@ -648,6 +646,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(crossover_tr, SOF_UUID(crossover_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(crossover_interface, crossover_uuid, crossover_tr);
 SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);
 

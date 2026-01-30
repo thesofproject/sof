@@ -44,8 +44,6 @@ LOG_MODULE_REGISTER(igo_nr, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(igo_nr);
 
-DECLARE_TR_CTX(igo_nr_tr, SOF_UUID(igo_nr_uuid), LOG_LEVEL_INFO);
-
 static void igo_nr_lib_process(struct comp_data *cd)
 {
 	/* Pass through the active channel if
@@ -901,6 +899,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(igo_nr_tr, SOF_UUID(igo_nr_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(igo_nr_interface, igo_nr_uuid, igo_nr_tr);
 SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);
 

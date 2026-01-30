@@ -43,8 +43,6 @@ LOG_MODULE_REGISTER(tdfb, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(tdfb);
 
-DECLARE_TR_CTX(tdfb_tr, SOF_UUID(tdfb_uuid), LOG_LEVEL_INFO);
-
 static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
@@ -841,6 +839,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(tdfb_tr, SOF_UUID(tdfb_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tdfb_interface, tdfb_uuid, tdfb_tr);
 SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);
 

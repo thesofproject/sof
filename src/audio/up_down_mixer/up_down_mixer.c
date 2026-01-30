@@ -32,9 +32,6 @@ LOG_MODULE_REGISTER(up_down_mixer, CONFIG_SOF_LOG_LEVEL);
 /* these ids aligns windows driver requirement to support windows driver */
 SOF_DEFINE_REG_UUID(up_down_mixer);
 
-DECLARE_TR_CTX(up_down_mixer_comp_tr, SOF_UUID(up_down_mixer_uuid),
-	       LOG_LEVEL_INFO);
-
 int32_t custom_coeffs[UP_DOWN_MIX_COEFFS_LENGTH];
 
 static int set_downmix_coefficients(struct processing_module *mod,
@@ -447,5 +444,6 @@ static const struct module_interface up_down_mixer_interface = {
 	.free = up_down_mixer_free
 };
 
+DECLARE_TR_CTX(up_down_mixer_comp_tr, SOF_UUID(up_down_mixer_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(up_down_mixer_interface, up_down_mixer_uuid, up_down_mixer_comp_tr);
 SOF_MODULE_INIT(up_down_mixer, sys_comp_module_up_down_mixer_interface_init);

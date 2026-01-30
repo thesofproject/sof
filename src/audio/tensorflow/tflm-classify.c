@@ -35,8 +35,6 @@
 
 SOF_DEFINE_REG_UUID(tflmcly);
 LOG_MODULE_REGISTER(tflmcly, CONFIG_SOF_LOG_LEVEL);
-DECLARE_TR_CTX(tflm_tr, SOF_UUID(tflmcly_uuid), LOG_LEVEL_INFO);
-EXPORT_SYMBOL(tflm_tr);
 EXPORT_SYMBOL(tflmcly_uuid);
 EXPORT_SYMBOL(log_const_tflmcly);
 
@@ -235,6 +233,7 @@ static const struct module_interface tflmcly_interface = {
 	.free = tflm_free
 };
 
+DECLARE_TR_CTX(tflm_tr, SOF_UUID(tflmcly_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tflmcly_interface, tflmcly_uuid, tflm_tr);
 SOF_MODULE_INIT(tflmcly, sys_comp_module_tflmcly_interface_init);
 

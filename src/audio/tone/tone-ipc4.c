@@ -40,7 +40,6 @@
 
 SOF_DEFINE_REG_UUID(tone);
 LOG_MODULE_DECLARE(tone, CONFIG_SOF_LOG_LEVEL);
-DECLARE_TR_CTX(tone_tr, SOF_UUID(tone_uuid), LOG_LEVEL_INFO);
 
 static int tone_init(struct processing_module *mod)
 {
@@ -223,6 +222,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(tone_tr, SOF_UUID(tone_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tone_interface, tone_uuid, tone_tr);
 SOF_MODULE_INIT(tone, sys_comp_module_tone_interface_init);
 

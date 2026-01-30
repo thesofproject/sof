@@ -32,8 +32,6 @@ LOG_MODULE_REGISTER(aria, CONFIG_SOF_LOG_LEVEL);
 /* these ids aligns windows driver requirement to support windows driver */
 SOF_DEFINE_REG_UUID(aria);
 
-DECLARE_TR_CTX(aria_comp_tr, SOF_UUID(aria_uuid), LOG_LEVEL_INFO);
-
 /**
  * \brief Aria gain index mapping table
  */
@@ -326,6 +324,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(aria_comp_tr, SOF_UUID(aria_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(aria_interface, aria_uuid, aria_comp_tr);
 SOF_MODULE_INIT(aria, sys_comp_module_aria_interface_init);
 

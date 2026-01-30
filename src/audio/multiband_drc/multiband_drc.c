@@ -39,8 +39,6 @@ LOG_MODULE_REGISTER(multiband_drc, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(multiband_drc);
 
-DECLARE_TR_CTX(multiband_drc_tr, SOF_UUID(multiband_drc_uuid), LOG_LEVEL_INFO);
-
 /* Called from multiband_drc_setup() from multiband_drc_process(), so cannot be __cold */
 static void multiband_drc_reset_state(struct processing_module *mod,
 				      struct multiband_drc_state *state)
@@ -450,6 +448,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(multiband_drc_tr, SOF_UUID(multiband_drc_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(multiband_drc_interface, multiband_drc_uuid, multiband_drc_tr);
 SOF_MODULE_INIT(multiband_drc, sys_comp_module_multiband_drc_interface_init);
 

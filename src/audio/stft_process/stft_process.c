@@ -17,11 +17,6 @@ SOF_DEFINE_REG_UUID(stft_process);
 /* Creates logging data for the component */
 LOG_MODULE_REGISTER(stft_process, CONFIG_SOF_LOG_LEVEL);
 
-/* Creates the component trace. Traces show in trace console the component
- * info, warning, and error messages.
- */
-DECLARE_TR_CTX(stft_process_tr, SOF_UUID(stft_process_uuid), LOG_LEVEL_INFO);
-
 #if STFT_DEBUG
 FILE *stft_debug_fft_in_fh;
 FILE *stft_debug_fft_out_fh;
@@ -252,6 +247,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(stft_process_tr, SOF_UUID(stft_process_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(stft_process_interface, stft_process_uuid, stft_process_tr);
 SOF_MODULE_INIT(stft_process, sys_comp_module_stft_process_interface_init);
 

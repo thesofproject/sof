@@ -37,7 +37,6 @@
 
 SOF_DEFINE_REG_UUID(tone);
 LOG_MODULE_DECLARE(tone, CONFIG_SOF_LOG_LEVEL);
-DECLARE_TR_CTX(tone_tr, SOF_UUID(tone_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_tone;
 
@@ -375,6 +374,8 @@ static int tone_reset(struct comp_dev *dev)
 
 	return 0;
 }
+
+DECLARE_TR_CTX(tone_tr, SOF_UUID(tone_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,

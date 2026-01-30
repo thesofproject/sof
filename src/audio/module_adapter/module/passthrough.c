@@ -12,7 +12,6 @@
 LOG_MODULE_REGISTER(passthrough, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(passthrough);
-DECLARE_TR_CTX(passthrough_tr, SOF_UUID(passthrough_uuid), LOG_LEVEL_INFO);
 
 static int passthrough_codec_init(struct processing_module *mod)
 {
@@ -127,5 +126,6 @@ static const struct module_interface passthrough_interface = {
 	.free = passthrough_codec_free
 };
 
+DECLARE_TR_CTX(passthrough_tr, SOF_UUID(passthrough_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(passthrough_interface, passthrough_uuid, passthrough_tr);
 SOF_MODULE_INIT(passthrough, sys_comp_module_passthrough_interface_init);
