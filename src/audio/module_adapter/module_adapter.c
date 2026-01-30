@@ -169,6 +169,10 @@ static void module_adapter_mem_free(struct processing_module *mod)
 	 * In principle it shouldn't even be needed to free individual objects
 	 * on the module heap since we're freeing the heap itself too
 	 */
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (mod->dev->task)
+		sof_heap_free(mod_heap, mod->dev->task);
+#endif
 #if CONFIG_IPC_MAJOR_4
 	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
 #endif
