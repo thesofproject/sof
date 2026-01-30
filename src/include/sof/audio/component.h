@@ -950,6 +950,7 @@ void sys_comp_module_mixout_interface_init(void);
 void sys_comp_module_multiband_drc_interface_init(void);
 void sys_comp_module_mux_interface_init(void);
 void sys_comp_module_nxp_eap_interface_init(void);
+void sys_comp_module_phase_vocoder_interface_init(void);
 void sys_comp_module_rtnr_interface_init(void);
 void sys_comp_module_selector_interface_init(void);
 void sys_comp_module_sound_dose_interface_init(void);
