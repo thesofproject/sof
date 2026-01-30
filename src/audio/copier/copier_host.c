@@ -284,7 +284,7 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 	struct copier_data *cd = module_get_private_data(mod);
 	int ret, frames;
 
-	comp_dbg(dev, "copier_host_dma_cb() %p", dev);
+	comp_dbg(dev, "%p", dev);
 
 	/* update position */
 	host_common_update(cd->hd, dev, bytes);
@@ -302,7 +302,7 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 
 		ret = apply_attenuation(dev, cd, cd->hd->local_buffer, frames);
 		if (ret < 0)
-			comp_dbg(dev, "copier_host_dma_cb() apply attenuation failed! %d", ret);
+			comp_dbg(dev, "apply attenuation failed! %d", ret);
 
 		buffer_stream_writeback(cd->hd->local_buffer, bytes);
 	}

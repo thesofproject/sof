@@ -73,7 +73,7 @@ int crossover_get_stream_index(struct processing_module *mod,
 		if (assign_sink[i] == pipe_id)
 			return i;
 
-	comp_err(mod->dev, "crossover_get_stream_index() error: couldn't find any assignment for connected pipeline %u",
+	comp_err(mod->dev, "error: couldn't find any assignment for connected pipeline %u",
 		 pipe_id);
 
 	return -EINVAL;
@@ -127,14 +127,14 @@ static int crossover_assign_sinks(struct processing_module *mod,
 		 */
 		if (i < 0) {
 			comp_err(dev,
-				 "crossover_assign_sinks(), could not find sink %d in config",
+				 "could not find sink %d in config",
 				 sink_id);
 			break;
 		}
 
 		if (assigned_obufs[i]) {
 			comp_err(dev,
-				 "crossover_assign_sinks(), multiple sinks with id %d are assigned",
+				 "multiple sinks with id %d are assigned",
 				 sink_id);
 			break;
 		}
@@ -243,17 +243,17 @@ static int crossover_init_coef(struct processing_module *mod, int nch)
 	int ch, err;
 
 	if (!config) {
-		comp_err(mod->dev, "crossover_init_coef(), no config is set");
+		comp_err(mod->dev, "no config is set");
 		return -EINVAL;
 	}
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS) {
-		comp_err(mod->dev, "crossover_init_coef(), invalid channels count (%i)", nch);
+		comp_err(mod->dev, "invalid channels count (%i)", nch);
 		return -EINVAL;
 	}
 
-	comp_info(mod->dev, "crossover_init_coef(), initializing %i-way crossover",
+	comp_info(mod->dev, "initializing %i-way crossover",
 		  config->num_sinks);
 
 	/* Collect the coef array and assign it to every channel */
@@ -263,7 +263,7 @@ static int crossover_init_coef(struct processing_module *mod, int nch)
 					     config->num_sinks);
 		/* Free all previously allocated blocks in case of an error */
 		if (err < 0) {
-			comp_err(mod->dev, "crossover_init_coef(), could not assign coefficients to ch %d",
+			comp_err(mod->dev, "could not assign coefficients to ch %d",
 				 ch);
 			crossover_reset_state(mod);
 			return err;
@@ -302,11 +302,11 @@ static int crossover_init(struct processing_module *mod)
 	size_t bs = ipc_crossover->size;
 	int ret;
 
-	comp_info(dev, "crossover_init()");
+	comp_info(dev, "entry");
 
 	/* Check that the coefficients blob size is sane */
 	if (bs > SOF_CROSSOVER_MAX_SIZE) {
-		comp_err(dev, "crossover_init(), blob size (%d) exceeds maximum allowed size (%i)",
+		comp_err(dev, "blob size (%d) exceeds maximum allowed size (%i)",
 			 bs, SOF_CROSSOVER_MAX_SIZE);
 		return -ENOMEM;
 	}
@@ -334,7 +334,7 @@ static int crossover_init(struct processing_module *mod)
 
 	ret = crossover_output_pin_init(mod);
 	if (ret < 0) {
-		comp_err(dev, "crossover_init_output_pins() failed.");
+		comp_err(dev, "failed.");
 		goto cd_fail;
 	}
 
@@ -354,7 +354,7 @@ static int crossover_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "crossover_free()");
+	comp_info(mod->dev, "entry");
 
 	mod_data_blob_handler_free(mod, cd->model_handler);
 
@@ -377,13 +377,13 @@ static int crossover_validate_config(struct processing_module *mod,
 	int32_t num_assigned_sinks;
 
 	if (size > SOF_CROSSOVER_MAX_SIZE || !size) {
-		comp_err(dev, "crossover_validate_config(), size %d is invalid", size);
+		comp_err(dev, "size %d is invalid", size);
 		return -EINVAL;
 	}
 
 	if (config->num_sinks > SOF_CROSSOVER_MAX_STREAMS ||
 	    config->num_sinks < 2) {
-		comp_err(dev, "crossover_validate_config(), invalid num_sinks %i, expected number between 2 and %i",
+		comp_err(dev, "invalid num_sinks %i, expected number between 2 and %i",
 			 config->num_sinks, SOF_CROSSOVER_MAX_STREAMS);
 		return -EINVAL;
 	}
@@ -397,7 +397,7 @@ static int crossover_validate_config(struct processing_module *mod,
 	 * is different than what is configured.
 	 */
 	if (num_assigned_sinks != config->num_sinks) {
-		comp_err(dev, "crossover_validate_config(), number of assigned sinks %d, expected from config %d",
+		comp_err(dev, "number of assigned sinks %d, expected from config %d",
 			 num_assigned_sinks, config->num_sinks);
 		return -EINVAL;
 	}
@@ -414,7 +414,7 @@ static int crossover_set_config(struct processing_module *mod, uint32_t config_i
 	struct comp_data *cd = module_get_private_data(mod);
 	int ret;
 
-	comp_info(mod->dev, "crossover_set_config()");
+	comp_info(mod->dev, "entry");
 
 	ret = crossover_check_config(mod, fragment);
 	if (ret < 0)
@@ -432,7 +432,7 @@ static int crossover_get_config(struct processing_module *mod,
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	int ret;
 
-	comp_info(mod->dev, "crossover_get_config()");
+	comp_info(mod->dev, "entry");
 
 	ret = crossover_check_config(mod, fragment);
 	if (ret < 0)
@@ -469,14 +469,14 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 	int ret;
 	int i;
 
-	comp_dbg(dev, "crossover_process_audio_stream()");
+	comp_dbg(dev, "entry");
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 		ret = crossover_setup(mod, audio_stream_get_channels(source));
 		if (ret < 0) {
-			comp_err(dev, "crossover_process_audio_stream(), failed Crossover setup");
+			comp_err(dev, "failed Crossover setup");
 			return ret;
 		}
 	}
@@ -531,7 +531,7 @@ static int crossover_prepare(struct processing_module *mod,
 	struct comp_buffer *source, *sink;
 	int channels;
 
-	comp_info(dev, "crossover_prepare()");
+	comp_info(dev, "entry");
 
 	source = comp_dev_get_first_data_producer(dev);
 	if (!source) {
@@ -557,7 +557,7 @@ static int crossover_prepare(struct processing_module *mod,
 		}
 	}
 
-	comp_info(dev, "crossover_prepare(), source_format=%d, sink_formats=%d, nch=%d",
+	comp_info(dev, "source_format=%d, sink_formats=%d, nch=%d",
 		  cd->source_format, cd->source_format, channels);
 
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
@@ -565,7 +565,7 @@ static int crossover_prepare(struct processing_module *mod,
 	/* Initialize Crossover */
 	if (cd->config && crossover_validate_config(mod, cd->config) < 0) {
 		/* If config is invalid then delete it */
-		comp_err(dev, "crossover_prepare(), invalid binary config format");
+		comp_err(dev, "invalid binary config format");
 		crossover_free_config(&cd->config);
 	}
 
@@ -573,29 +573,29 @@ static int crossover_prepare(struct processing_module *mod,
 		int ret = crossover_setup(mod, channels);
 
 		if (ret < 0) {
-			comp_err(dev, "crossover_prepare(), setup failed");
+			comp_err(dev, "setup failed");
 			return ret;
 		}
 
 		cd->crossover_process = crossover_find_proc_func(cd->source_format);
 		if (!cd->crossover_process) {
-			comp_err(dev, "crossover_prepare(), No processing function matching frame_fmt %i",
+			comp_err(dev, "No processing function matching frame_fmt %i",
 				 cd->source_format);
 			return -EINVAL;
 		}
 
 		cd->crossover_split = crossover_find_split_func(cd->config->num_sinks);
 		if (!cd->crossover_split) {
-			comp_err(dev, "crossover_prepare(), No split function matching num_sinks %i",
+			comp_err(dev, "No split function matching num_sinks %i",
 				 cd->config->num_sinks);
 			return -EINVAL;
 		}
 	} else {
-		comp_info(dev, "crossover_prepare(), setting crossover to passthrough mode");
+		comp_info(dev, "setting crossover to passthrough mode");
 
 		cd->crossover_process = crossover_find_proc_func_pass(cd->source_format);
 		if (!cd->crossover_process) {
-			comp_err(dev, "crossover_prepare(), No passthrough function matching frame_fmt %i",
+			comp_err(dev, "No passthrough function matching frame_fmt %i",
 				 cd->source_format);
 			return -EINVAL;
 		}
@@ -613,7 +613,7 @@ static int crossover_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "crossover_reset()");
+	comp_info(mod->dev, "entry");
 
 	crossover_reset_state(mod);
 

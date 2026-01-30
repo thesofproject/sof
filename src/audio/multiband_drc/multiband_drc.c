@@ -110,7 +110,7 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	int i, ch, ret, num_bands;
 
 	if (!config) {
-		comp_err(dev, "multiband_drc_init_coef(), no config is set");
+		comp_err(dev, "no config is set");
 		return -EINVAL;
 	}
 
@@ -119,22 +119,22 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS) {
 		comp_err(dev,
-			 "multiband_drc_init_coef(), invalid channels count(%i)", nch);
+			 "invalid channels count(%i)", nch);
 		return -EINVAL;
 	}
 	if (config->num_bands > SOF_MULTIBAND_DRC_MAX_BANDS) {
-		comp_err(dev, "multiband_drc_init_coef(), invalid bands count(%i)",
+		comp_err(dev, "invalid bands count(%i)",
 			 config->num_bands);
 		return -EINVAL;
 	}
 
-	comp_info(dev, "multiband_drc_init_coef(), initializing %i-way crossover",
+	comp_info(dev, "initializing %i-way crossover",
 		  config->num_bands);
 
 	/* Crossover: determine the split function */
 	cd->crossover_split = crossover_find_split_func(config->num_bands);
 	if (!cd->crossover_split) {
-		comp_err(dev, "multiband_drc_init_coef(), No crossover_split for band count(%i)",
+		comp_err(dev, "No crossover_split for band count(%i)",
 			 config->num_bands);
 		return -EINVAL;
 	}
@@ -147,12 +147,12 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 		/* Free all previously allocated blocks in case of an error */
 		if (ret < 0) {
 			comp_err(dev,
-				 "multiband_drc_init_coef(), could not assign coeffs to ch %d", ch);
+				 "could not assign coeffs to ch %d", ch);
 			goto err;
 		}
 	}
 
-	comp_info(dev, "multiband_drc_init_coef(), initializing emphasis_eq");
+	comp_info(dev, "initializing emphasis_eq");
 
 	/* Emphasis: collect the coef array and assign it to every channel */
 	emphasis = config->emp_coef;
@@ -160,13 +160,13 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 		ret = multiband_drc_eq_init_coef_ch(mod, emphasis, &state->emphasis[ch]);
 		/* Free all previously allocated blocks in case of an error */
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_init_coef(), could not assign coeffs to ch %d",
+			comp_err(dev, "could not assign coeffs to ch %d",
 				 ch);
 			goto err;
 		}
 	}
 
-	comp_info(dev, "multiband_drc_init_coef(), initializing deemphasis_eq");
+	comp_info(dev, "initializing deemphasis_eq");
 
 	/* Deemphasis: collect the coef array and assign it to every channel */
 	deemphasis = config->deemp_coef;
@@ -174,7 +174,7 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 		ret = multiband_drc_eq_init_coef_ch(mod, deemphasis, &state->deemphasis[ch]);
 		/* Free all previously allocated blocks in case of an error */
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_init_coef(), could not assign coeffs to ch %d",
+			comp_err(dev, "could not assign coeffs to ch %d",
 				 ch);
 			goto err;
 		}
@@ -182,20 +182,20 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 
 	/* Allocate all DRC pre-delay buffers and set delay time with band number */
 	for (i = 0; i < num_bands; i++) {
-		comp_info(dev, "multiband_drc_init_coef(), initializing drc band %d", i);
+		comp_info(dev, "initializing drc band %d", i);
 
 		ret = drc_init_pre_delay_buffers(mod, &state->drc[i],
 						 (size_t)sample_bytes, (int)nch);
 		if (ret < 0) {
 			comp_err(dev,
-				 "multiband_drc_init_coef(), could not init pre delay buffers");
+				 "could not init pre delay buffers");
 			goto err;
 		}
 
 		ret = drc_set_pre_delay_time(&state->drc[i],
 					     cd->config->drc_coef[i].pre_delay_time, rate);
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_init_coef(), could not set pre delay time");
+			comp_err(dev, "could not set pre delay time");
 			goto err;
 		}
 	}
@@ -233,13 +233,13 @@ static int multiband_drc_init(struct processing_module *mod)
 	size_t bs = cfg->size;
 	int ret;
 
-	comp_info(dev, "multiband_drc_init()");
+	comp_info(dev, "entry");
 
 	/* Check first before proceeding with dev and cd that coefficients
 	 * blob size is sane.
 	 */
 	if (bs > SOF_MULTIBAND_DRC_MAX_BLOB_SIZE) {
-		comp_err(dev, "multiband_drc_init(), error: configuration blob size = %u > %d",
+		comp_err(dev, "error: configuration blob size = %u > %d",
 			 bs, SOF_MULTIBAND_DRC_MAX_BLOB_SIZE);
 		return -EINVAL;
 	}
@@ -288,7 +288,7 @@ __cold static int multiband_drc_free(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	comp_info(mod->dev, "multiband_drc_free()");
+	comp_info(mod->dev, "entry");
 
 	mod_data_blob_handler_free(mod, cd->model_handler);
 
@@ -306,7 +306,7 @@ __cold static int multiband_drc_set_config(struct processing_module *mod, uint32
 
 	assert_can_be_cold();
 
-	comp_dbg(dev, "multiband_drc_set_config()");
+	comp_dbg(dev, "entry");
 
 	return multiband_drc_set_ipc_config(mod, param_id,
 					    fragment, pos, data_offset_size, fragment_size);
@@ -320,7 +320,7 @@ __cold static int multiband_drc_get_config(struct processing_module *mod,
 
 	assert_can_be_cold();
 
-	comp_dbg(mod->dev, "multiband_drc_get_config()");
+	comp_dbg(mod->dev, "entry");
 
 	return multiband_drc_get_ipc_config(mod, cdata, fragment_size);
 }
@@ -337,7 +337,7 @@ static int multiband_drc_process(struct processing_module *mod,
 	int frames = input_buffers[0].size;
 	int ret;
 
-	comp_dbg(dev, "multiband_drc_process()");
+	comp_dbg(dev, "entry");
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
@@ -345,7 +345,7 @@ static int multiband_drc_process(struct processing_module *mod,
 		ret = multiband_drc_setup(mod, (int16_t)audio_stream_get_channels(sink),
 					  audio_stream_get_rate(sink));
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_process(), failed DRC setup");
+			comp_err(dev, "failed DRC setup");
 			return ret;
 		}
 	}
@@ -371,7 +371,7 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	int rate;
 	int ret = 0;
 
-	comp_info(dev, "multiband_drc_prepare()");
+	comp_info(dev, "entry");
 
 	ret = multiband_drc_params(mod);
 	if (ret < 0)
@@ -390,20 +390,20 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	rate = audio_stream_get_rate(&sourceb->stream);
 
 	/* Initialize DRC */
-	comp_dbg(dev, "multiband_drc_prepare(), source_format=%d, sink_format=%d",
+	comp_dbg(dev, "source_format=%d, sink_format=%d",
 		 cd->source_format, cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
 	if (cd->config) {
 		ret = multiband_drc_setup(mod, channels, rate);
 		if (ret < 0) {
-			comp_err(dev, "multiband_drc_prepare() error: multiband_drc_setup failed.");
+			comp_err(dev, "error: multiband_drc_setup failed.");
 			return ret;
 		}
 	}
 
 	cd->multiband_drc_func = multiband_drc_find_proc_func(cd->source_format);
 	if (!cd->multiband_drc_func) {
-		comp_err(dev, "multiband_drc_prepare(), No proc func");
+		comp_err(dev, "No proc func");
 		return -EINVAL;
 	}
 
@@ -414,7 +414,7 @@ static int multiband_drc_reset(struct processing_module *mod)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "multiband_drc_reset()");
+	comp_info(mod->dev, "entry");
 
 	multiband_drc_reset_state(mod, &cd->state);
 

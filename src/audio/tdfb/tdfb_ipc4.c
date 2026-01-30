@@ -109,7 +109,7 @@ int tdfb_get_ipc_config(struct processing_module *mod,
 			uint32_t param_id, uint32_t *data_offset_size,
 			uint8_t *fragment, size_t fragment_size)
 {
-	comp_err(mod->dev, "tdfb_get_ipc_config, Not supported, should not happen");
+	comp_err(mod->dev, "Not supported, should not happen");
 	return -EINVAL;
 }
 
@@ -175,7 +175,7 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 			 ctl->id, ctl->num_elems);
 		return tdfb_cmd_enum_set(ctl, cd);
 	default:
-		comp_info(mod->dev, "tdfb_set_ipc_config(), binary");
+		comp_info(mod->dev, "binary");
 		return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
 					  fragment, fragment_size);
 	}

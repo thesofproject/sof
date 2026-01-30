@@ -218,7 +218,7 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 /* pipelines must be inactive */
 int pipeline_free(struct pipeline *p)
 {
-	pipe_dbg(p, "pipeline_free()");
+	pipe_dbg(p, "entry");
 
 	/*
 	 * pipeline_free should always be called only after all the widgets in the pipeline have
@@ -252,11 +252,11 @@ static int pipeline_comp_complete(struct comp_dev *current,
 {
 	struct pipeline_data *ppl_data = ctx->comp_data;
 
-	pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current->comp.id = 0x%x, dir = %u",
+	pipe_dbg(ppl_data->p, "current->comp.id = 0x%x, dir = %u",
 		 dev_comp_id(current), dir);
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
-		pipe_dbg(ppl_data->p, "pipeline_comp_complete(), current is from another pipeline");
+		pipe_dbg(ppl_data->p, "current is from another pipeline");
 		return 0;
 	}
 
@@ -327,7 +327,7 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	int is_single_ppl;
 	int err;
 
-	pipe_dbg(p_current, "pipeline_comp_reset(), current->comp.id = 0x%x, dir = %u",
+	pipe_dbg(p_current, "current->comp.id = 0x%x, dir = %u",
 		 dev_comp_id(current), dir);
 
 	if (!p->source_comp) {

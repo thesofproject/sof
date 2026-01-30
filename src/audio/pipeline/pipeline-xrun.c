@@ -67,7 +67,7 @@ int pipeline_xrun_recover(struct pipeline *p)
 {
 	int ret;
 
-	pipe_err(p, "pipeline_xrun_recover()");
+	pipe_err(p, "entry");
 
 	/* prepare the pipeline */
 	ret = pipeline_prepare(p, p->source_comp);

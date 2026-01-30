@@ -38,7 +38,7 @@ __cold static int template_init(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	struct template_comp_data *cd;
 
-	comp_info(dev, "template_init()");
+	comp_info(dev, "entry");
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -74,7 +74,7 @@ static int template_process(struct processing_module *mod,
 	int frames = source_get_data_frames_available(source);
 	int sink_frames = sink_get_free_frames(sink);
 
-	comp_dbg(dev, "template_process()");
+	comp_dbg(dev, "entry");
 
 	frames = MIN(frames, sink_frames);
 	if (cd->enable)
@@ -110,7 +110,7 @@ static int template_prepare(struct processing_module *mod,
 	enum sof_ipc_frame source_format;
 	int i;
 
-	comp_dbg(dev, "template_prepare()");
+	comp_dbg(dev, "entry");
 
 	/* The processing example in this component supports one input and one
 	 * output. Generally there can be more.
@@ -150,7 +150,7 @@ static int template_reset(struct processing_module *mod)
 {
 	struct template_comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "template_reset()");
+	comp_dbg(mod->dev, "entry");
 	memset(cd, 0, sizeof(*cd));
 	return 0;
 }
@@ -172,7 +172,7 @@ __cold static int template_free(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	comp_dbg(mod->dev, "template_free()");
+	comp_dbg(mod->dev, "entry");
 	mod_free(mod, cd);
 	return 0;
 }

@@ -104,7 +104,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	int requested_state = comp_get_requested_state(cmd);
 
 	if (dev->state == requested_state) {
-		comp_info(dev, "comp_set_state(), state already set to %u",
+		comp_info(dev, "state already set to %u",
 			  dev->state);
 #ifdef CONFIG_IPC_MAJOR_4
 		return 0;
@@ -517,7 +517,7 @@ static bool comp_check_eos(struct comp_dev *dev)
 			 * the EOS state. However, silence is generated to flush its internal
 			 * buffers, so pass this state to the output buffers.
 			 */
-			comp_dbg(dev, "comp_check_eos() - EOS flush detected");
+			comp_dbg(dev, "- EOS flush detected");
 			sink_state = AUDIOBUF_STATE_END_OF_STREAM_FLUSH;
 			break;
 		} else if (state == AUDIOBUF_STATE_END_OF_STREAM) {
@@ -525,7 +525,7 @@ static bool comp_check_eos(struct comp_dev *dev)
 			size_t min_avail = source_get_min_available(source);
 
 			if (source_get_data_available(source) < min_avail) {
-				comp_dbg(dev, "comp_check_eos() - EOS detected");
+				comp_dbg(dev, "- EOS detected");
 				if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 					/* For DP modules, fill missing input data with silence to
 					 * allow it to process the remaining data.

@@ -63,7 +63,7 @@ static void notify_host(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "notify_host()");
+	comp_dbg(dev, "entry");
 
 	ipc_msg_send(cd->msg, &cd->event, true);
 }
@@ -72,7 +72,7 @@ static void notify_kpb(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "notify_kpb()");
+	comp_dbg(dev, "entry");
 
 	cd->client_data.r_ptr = NULL;
 	cd->client_data.sink = NULL;
@@ -143,7 +143,7 @@ static void ghd_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "ghd_free()");
+	comp_dbg(dev, "entry");
 
 	comp_data_blob_handler_free(cd->model_handler);
 	ipc_msg_free(cd->msg);
@@ -394,7 +394,7 @@ static int ghd_copy(struct comp_dev *dev)
 
 	bytes = audio_stream_get_avail_bytes(stream);
 
-	comp_dbg(dev, "ghd_copy() avail_bytes %u", bytes);
+	comp_dbg(dev, "avail_bytes %u", bytes);
 	comp_dbg(dev, "buffer begin/r_ptr/end [0x%x 0x%x 0x%x]",
 		 (uint32_t)audio_stream_get_addr(stream),
 		 (uint32_t)audio_stream_get_rptr(stream),
@@ -425,7 +425,7 @@ static int ghd_reset(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "ghd_reset()");
+	comp_dbg(dev, "entry");
 
 	cd->detected = 0;
 	cd->history_bytes = 0;
@@ -438,7 +438,7 @@ static int ghd_prepare(struct comp_dev *dev)
 {
 	int ret;
 
-	comp_dbg(dev, "ghd_prepare()");
+	comp_dbg(dev, "entry");
 
 	ret = ghd_setup_model(dev);
 	if (ret)

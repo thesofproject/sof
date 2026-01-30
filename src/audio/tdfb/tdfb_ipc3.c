@@ -114,16 +114,16 @@ static int tdfb_cmd_get_value(struct processing_module *mod, struct sof_ipc_ctrl
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		comp_dbg(mod->dev, "tdfb_cmd_get_value(), SOF_CTRL_CMD_ENUM index=%d",
+		comp_dbg(mod->dev, "SOF_CTRL_CMD_ENUM index=%d",
 			 cdata->index);
 		return tdfb_cmd_enum_get(cdata, cd);
 	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(mod->dev, "tdfb_cmd_get_value(), SOF_CTRL_CMD_SWITCH index=%d",
+		comp_dbg(mod->dev, "SOF_CTRL_CMD_SWITCH index=%d",
 			 cdata->index);
 		return tdfb_cmd_switch_get(cdata, cd);
 	}
 
-	comp_err(mod->dev, "tdfb_cmd_get_value() error: invalid cdata->cmd");
+	comp_err(mod->dev, "error: invalid cdata->cmd");
 	return -EINVAL;
 }
 
@@ -137,7 +137,7 @@ int tdfb_get_ipc_config(struct processing_module *mod,
 	if (cdata->cmd != SOF_CTRL_CMD_BINARY)
 		return tdfb_cmd_get_value(mod, cdata);
 
-	comp_dbg(mod->dev, "tdfb_get_ipc_config(), binary");
+	comp_dbg(mod->dev, "binary");
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
@@ -190,16 +190,16 @@ static int tdfb_cmd_set_value(struct processing_module *mod, struct sof_ipc_ctrl
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		comp_dbg(mod->dev, "tdfb_cmd_set_value(), SOF_CTRL_CMD_ENUM index=%d",
+		comp_dbg(mod->dev, "SOF_CTRL_CMD_ENUM index=%d",
 			 cdata->index);
 		return tdfb_cmd_enum_set(cdata, cd);
 	case SOF_CTRL_CMD_SWITCH:
-		comp_dbg(mod->dev, "tdfb_cmd_set_value(), SOF_CTRL_CMD_SWITCH index=%d",
+		comp_dbg(mod->dev, "SOF_CTRL_CMD_SWITCH index=%d",
 			 cdata->index);
 		return tdfb_cmd_switch_set(cdata, cd);
 	}
 
-	comp_err(mod->dev, "tdfb_cmd_set_value() error: invalid cdata->cmd");
+	comp_err(mod->dev, "error: invalid cdata->cmd");
 	return -EINVAL;
 }
 
@@ -215,7 +215,7 @@ int tdfb_set_ipc_config(struct processing_module *mod, uint32_t param_id,
 	if (cdata->cmd != SOF_CTRL_CMD_BINARY) {
 		ret = tdfb_cmd_set_value(mod, cdata);
 	} else {
-		comp_info(mod->dev, "tdfb_set_ipc_config(), binary");
+		comp_info(mod->dev, "binary");
 		ret = comp_data_blob_set(cd->model_handler, pos, data_offset_size,
 					 fragment, fragment_size);
 	}

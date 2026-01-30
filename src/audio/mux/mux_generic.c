@@ -171,7 +171,7 @@ static void demux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 	uint32_t elem;
 	uint32_t frames_without_wrap;
 
-	comp_dbg(dev, "demux_s16le()");
+	comp_dbg(dev, "entry");
 
 	if (!lookup || !lookup->num_elems)
 		return;
@@ -224,7 +224,7 @@ static void mux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 	uint32_t elem;
 	uint32_t frames_without_wrap;
 
-	comp_dbg(dev, "mux_s16le()");
+	comp_dbg(dev, "entry");
 
 	if (!lookup || !lookup->num_elems)
 		return;
@@ -371,7 +371,7 @@ static void demux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 	uint32_t elem;
 	uint32_t frames_without_wrap;
 
-	comp_dbg(dev, "demux_s32le");
+	comp_dbg(dev, "entry");
 
 	if (!lookup || !lookup->num_elems)
 		return;
@@ -424,7 +424,7 @@ static void mux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 	uint32_t elem;
 	uint32_t frames_without_wrap;
 
-	comp_dbg(dev, "mux_s32le()");
+	comp_dbg(dev, "entry");
 
 	if (!lookup || !lookup->num_elems)
 		return;

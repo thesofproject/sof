@@ -85,7 +85,7 @@ static int tone_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "tone_free()");
+	comp_info(mod->dev, "entry");
 
 	mod_free(mod, cd);
 	return 0;

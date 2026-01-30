@@ -54,11 +54,11 @@ __cold int multiband_drc_set_ipc_config(struct processing_module *mod, uint32_t 
 		return 0;
 
 	case SOF_IPC4_ENUM_CONTROL_PARAM_ID:
-		comp_err(dev, "multiband_drc_set_ipc_config(), illegal control.");
+		comp_err(dev, "illegal control.");
 		return -EINVAL;
 	}
 
-	comp_dbg(mod->dev, "multiband_drc_set_ipc_config(), SOF_CTRL_CMD_BINARY");
+	comp_dbg(mod->dev, "SOF_CTRL_CMD_BINARY");
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
 				  fragment_size);
 }
@@ -68,7 +68,7 @@ __cold int multiband_drc_get_ipc_config(struct processing_module *mod,
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "multiband_drc_get_ipc_config(), SOF_CTRL_CMD_BINARY");
+	comp_dbg(mod->dev, "SOF_CTRL_CMD_BINARY");
 
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
@@ -82,7 +82,7 @@ int multiband_drc_params(struct processing_module *mod)
 	enum sof_ipc_frame valid_fmt, frame_fmt;
 	int i;
 
-	comp_dbg(dev, "multiband_drc_params()");
+	comp_dbg(dev, "entry");
 
 	comp_params = *params;
 	comp_params.channels = mod->priv.cfg.base_cfg.audio_fmt.channels_count;

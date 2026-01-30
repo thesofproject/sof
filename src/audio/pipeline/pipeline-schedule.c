@@ -167,7 +167,7 @@ static enum task_state pipeline_task(void *arg)
 	struct pipeline *p = arg;
 	int err;
 
-	pipe_dbg(p, "pipeline_task()");
+	pipe_dbg(p, "entry");
 
 	/* are we in xrun ? */
 	if (p->xrun_bytes) {
@@ -232,7 +232,7 @@ static enum task_state pipeline_task(void *arg)
 		}
 	}
 
-	pipe_dbg(p, "pipeline_task() sched");
+	pipe_dbg(p, "sched");
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }

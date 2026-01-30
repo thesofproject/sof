@@ -30,7 +30,7 @@ int dcblock_get_ipc_config(struct processing_module *mod,
 	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "dcblock_get_ipc_config()");
+	comp_info(mod->dev, "entry");
 
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
@@ -44,7 +44,7 @@ int dcblock_set_ipc_config(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
-	comp_info(mod->dev, "dcblock_set_ipc_config()");
+	comp_info(mod->dev, "entry");
 
 	return comp_data_blob_set(cd->model_handler, pos, data_offset_size, fragment,
 				  fragment_size);
@@ -56,7 +56,7 @@ void dcblock_params(struct processing_module *mod)
 	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "dcblock_params()");
+	comp_dbg(dev, "entry");
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);

@@ -223,7 +223,7 @@ static int sound_dose_process(struct processing_module *mod,
 	int frames = source_get_data_frames_available(source);
 	int sink_frames = sink_get_free_frames(sink);
 
-	comp_dbg(dev, "sound_dose_process()");
+	comp_dbg(dev, "entry");
 
 	if (cd->gain_update) {
 		/* Convert dB * 100 to Q8.24 */
@@ -270,7 +270,7 @@ static int sound_dose_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 
-	comp_dbg(dev, "sound_dose_prepare()");
+	comp_dbg(dev, "entry");
 
 	/* The processing example in this component supports one input and one
 	 * output. Generally there can be more.
@@ -307,7 +307,7 @@ static int sound_dose_reset(struct processing_module *mod)
 {
 	struct sound_dose_comp_data *cd = module_get_private_data(mod);
 
-	comp_dbg(mod->dev, "sound_dose_reset()");
+	comp_dbg(mod->dev, "entry");
 
 	sound_dose_setup_init(cd);
 	return 0;
@@ -329,7 +329,7 @@ __cold static int sound_dose_free(struct processing_module *mod)
 	struct sound_dose_comp_data *cd = module_get_private_data(mod);
 
 	assert_can_be_cold();
-	comp_dbg(mod->dev, "sound_dose_free()");
+	comp_dbg(mod->dev, "entry");
 
 	sound_dose_filters_free(cd);
 	if (cd->msg) {

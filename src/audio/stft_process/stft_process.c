@@ -46,7 +46,7 @@ __cold static int stft_process_init(struct processing_module *mod)
 
 	assert_can_be_cold();
 
-	comp_info(dev, "stft_process_init()");
+	comp_info(dev, "entry");
 
 	cd = mod_alloc(mod, sizeof(*cd));
 	if (!cd)
