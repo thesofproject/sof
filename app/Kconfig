@@ -4,6 +4,11 @@ config SCHED_CPU_MASK_PIN_ONLY
 config SMP_BOOT_DELAY
 	default y if SMP
 
+# Allow compiler to determine whether to generate FLIX instructions.
+choice COMPILER_CODEGEN_VLIW
+        default COMPILER_CODEGEN_VLIW_AUTO if "$(ZEPHYR_TOOLCHAIN_VARIANT)" = "xt-clang"
+endchoice
+
 source "Kconfig.zephyr"
 
 if SOC_FAMILY_INTEL_ADSP
