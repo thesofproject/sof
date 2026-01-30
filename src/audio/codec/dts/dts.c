@@ -8,11 +8,9 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include "DtsSofInterface.h"
 
-
 LOG_MODULE_REGISTER(dts, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dts);
-DECLARE_TR_CTX(dts_tr, SOF_UUID(dts_uuid), LOG_LEVEL_INFO);
 
 #define MAX_EXPECTED_DTS_CONFIG_DATA_SIZE 8192
 
@@ -480,6 +478,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(dts_tr, SOF_UUID(dts_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(dts_interface, dts_uuid, dts_tr);
 SOF_MODULE_INIT(dts, sys_comp_module_dts_interface_init);
 

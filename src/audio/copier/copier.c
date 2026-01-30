@@ -52,8 +52,6 @@ LOG_MODULE_REGISTER(copier, CONFIG_SOF_LOG_LEVEL);
 /* this id aligns windows driver requirement to support windows driver */
 SOF_DEFINE_REG_UUID(copier);
 
-DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_uuid), LOG_LEVEL_INFO);
-
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 static void mic_privacy_event(void *arg, enum notify_id type, void *data)
 {
@@ -1212,6 +1210,8 @@ static const struct module_interface copier_interface = {
 	.unbind = copier_unbind,
 	.endpoint_ops = &copier_endpoint_ops,
 };
+
+DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_uuid), LOG_LEVEL_INFO);
 
 DECLARE_MODULE_ADAPTER(copier_interface, copier_uuid, copier_comp_tr);
 SOF_MODULE_INIT(copier, sys_comp_module_copier_interface_init);

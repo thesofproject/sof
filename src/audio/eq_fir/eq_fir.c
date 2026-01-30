@@ -40,8 +40,6 @@ LOG_MODULE_REGISTER(eq_fir, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(eq_fir);
 
-DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
-
 /* Pass-through functions to replace FIR core while not configured for
  * response.
  */
@@ -499,6 +497,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
 SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
 

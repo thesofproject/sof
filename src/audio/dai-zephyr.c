@@ -64,8 +64,6 @@ LOG_MODULE_REGISTER(dai_comp, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dai);
 
-DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_uuid), LOG_LEVEL_INFO);
-
 #if CONFIG_COMP_DAI_GROUP
 
 static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd);
@@ -1994,6 +1992,8 @@ int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, struct bind_inf
 	return 0;
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
+
+DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,

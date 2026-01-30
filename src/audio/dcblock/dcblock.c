@@ -36,8 +36,6 @@ LOG_MODULE_REGISTER(dcblock, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dcblock);
 
-DECLARE_TR_CTX(dcblock_tr, SOF_UUID(dcblock_uuid), LOG_LEVEL_INFO);
-
 /**
  * \brief Sets the DC Blocking filter in pass through mode.
  * The frequency response of a DCB filter is:
@@ -272,6 +270,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(dcblock_tr, SOF_UUID(dcblock_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(dcblock_interface, dcblock_uuid, dcblock_tr);
 SOF_MODULE_INIT(dcblock, sys_comp_module_dcblock_interface_init);
 

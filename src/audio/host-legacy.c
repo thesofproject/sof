@@ -40,8 +40,6 @@ LOG_MODULE_REGISTER(host, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(host);
 
-DECLARE_TR_CTX(host_tr, SOF_UUID(host_uuid), LOG_LEVEL_INFO);
-
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
 	if (!hc->elem_array.elems || !hc->elem_array.count)
@@ -1004,6 +1002,8 @@ static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no
 
 	return ret;
 }
+
+DECLARE_TR_CTX(host_tr, SOF_UUID(host_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,

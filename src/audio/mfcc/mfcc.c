@@ -36,8 +36,6 @@ LOG_MODULE_REGISTER(mfcc, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(mfcc);
 
-DECLARE_TR_CTX(mfcc_tr, SOF_UUID(mfcc_uuid), LOG_LEVEL_INFO);
-
 __cold_rodata const struct mfcc_func_map mfcc_fm[] = {
 #if CONFIG_FORMAT_S16LE
 	{SOF_IPC_FRAME_S16_LE,  mfcc_s16_default},
@@ -274,6 +272,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(mfcc_tr, SOF_UUID(mfcc_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);
 SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);
 

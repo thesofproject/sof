@@ -43,7 +43,6 @@
 
 LOG_MODULE_REGISTER(sof_modules, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(modules);
-DECLARE_TR_CTX(intel_codec_tr, SOF_UUID(modules_uuid), LOG_LEVEL_INFO);
 
 /**
  * \brief modules_init.

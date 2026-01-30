@@ -43,7 +43,6 @@ LOG_MODULE_REGISTER(selector, CONFIG_SOF_LOG_LEVEL);
 static const struct comp_driver comp_selector;
 
 SOF_DEFINE_REG_UUID(selector);
-DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
 
 static int selector_verify_params(struct comp_dev *dev,
 				  struct sof_ipc_stream_params *params)
@@ -510,6 +509,8 @@ static int selector_reset(struct comp_dev *dev)
 	return ret;
 }
 
+DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
+
 /** \brief Selector component definition. */
 static const struct comp_driver comp_selector = {
 	.type	= SOF_COMP_SELECTOR,
@@ -544,7 +545,6 @@ SOF_MODULE_INIT(selector, sys_comp_selector_init);
 #else
 
 SOF_DEFINE_REG_UUID(selector4);
-DECLARE_TR_CTX(selector_tr, SOF_UUID(selector4_uuid), LOG_LEVEL_INFO);
 
 static void build_config(struct comp_data *cd, struct module_config *cfg)
 {
@@ -937,6 +937,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(selector_tr, SOF_UUID(selector4_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(selector_interface, selector4_uuid, selector_tr);
 SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);
 

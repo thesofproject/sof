@@ -17,11 +17,6 @@ SOF_DEFINE_REG_UUID(level_multiplier);
 /* Creates logging data for the component */
 LOG_MODULE_REGISTER(level_multiplier, CONFIG_SOF_LOG_LEVEL);
 
-/* Creates the component trace. Traces show in trace console the component
- * info, warning, and error messages.
- */
-DECLARE_TR_CTX(level_multiplier_tr, SOF_UUID(level_multiplier_uuid), LOG_LEVEL_INFO);
-
 /**
  * level_multiplier_init() - Initialize the level_multiplier component.
  * @mod: Pointer to module data.
@@ -205,6 +200,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(level_multiplier_tr, SOF_UUID(level_multiplier_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(level_multiplier_interface, level_multiplier_uuid, level_multiplier_tr);
 SOF_MODULE_INIT(level_multiplier, sys_comp_module_level_multiplier_interface_init);
 

@@ -45,7 +45,6 @@ static const struct comp_driver ghd_driver;
 LOG_MODULE_REGISTER(google_hotword_detect, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(google_hotword);
-DECLARE_TR_CTX(ghd_tr, SOF_UUID(ghd_uuid), LOG_LEVEL_INFO);
 
 struct comp_data {
 	struct comp_data_blob_handler *model_handler;
@@ -446,6 +445,8 @@ static int ghd_prepare(struct comp_dev *dev)
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
+
+DECLARE_TR_CTX(ghd_tr, SOF_UUID(ghd_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver ghd_driver = {
 	.type	= SOF_COMP_KEYWORD_DETECT,

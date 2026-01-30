@@ -19,8 +19,6 @@
 
 LOG_MODULE_REGISTER(dolby_dax_audio_processing, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dolby_dax_audio_processing);
-DECLARE_TR_CTX(dolby_dax_audio_processing_tr, SOF_UUID(dolby_dax_audio_processing_uuid),
-	       LOG_LEVEL_INFO);
 
 #define MAX_PARAMS_STR_BUFFER_SIZE 1536
 #define DAX_ENABLE_MASK 0x1
@@ -885,6 +883,8 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(dolby_dax_audio_processing_tr, SOF_UUID(dolby_dax_audio_processing_uuid),
+	       LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(dolby_dax_audio_processing_interface, dolby_dax_audio_processing_uuid,
 		       dolby_dax_audio_processing_tr);
 SOF_MODULE_INIT(dolby_dax_audio_processing,

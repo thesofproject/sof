@@ -40,8 +40,6 @@ LOG_MODULE_REGISTER(tester, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(tester);
 
-DECLARE_TR_CTX(tester_tr, SOF_UUID(tester_uuid), LOG_LEVEL_INFO);
-
 struct tester_init_config {
 	struct ipc4_base_module_cfg ipc4_cfg;
 	int32_t test_type;
@@ -250,6 +248,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(tester_tr, SOF_UUID(tester_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tester_interface, tester_uuid, tester_tr);
 SOF_MODULE_INIT(tester, sys_comp_module_tester_interface_init);
 

@@ -20,8 +20,6 @@ LOG_MODULE_REGISTER(cadence_codec, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(cadence_codec);
 
-DECLARE_TR_CTX(cadence_codec_tr, SOF_UUID(cadence_codec_uuid), LOG_LEVEL_INFO);
-
 enum cadence_api_id {
 	CADENCE_CODEC_WRAPPER_ID	= 0x01,
 	CADENCE_CODEC_AAC_DEC_ID	= 0x02,
@@ -925,5 +923,6 @@ static const struct module_interface cadence_codec_interface = {
 	.free = cadence_codec_free
 };
 
+DECLARE_TR_CTX(cadence_codec_tr, SOF_UUID(cadence_codec_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(cadence_codec_interface, cadence_codec_uuid, cadence_codec_tr);
 SOF_MODULE_INIT(cadence_codec, sys_comp_module_cadence_codec_interface_init);

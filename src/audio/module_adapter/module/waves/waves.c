@@ -20,7 +20,6 @@
 
 SOF_DEFINE_REG_UUID(waves);
 
-DECLARE_TR_CTX(waves_tr, SOF_UUID(waves_uuid), LOG_LEVEL_INFO);
 LOG_MODULE_REGISTER(waves, CONFIG_SOF_LOG_LEVEL);
 
 struct waves_codec_data {
@@ -920,6 +919,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(waves_tr, SOF_UUID(waves_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(waves_interface, waves_uuid, waves_tr);
 SOF_MODULE_INIT(waves, sys_comp_module_waves_interface_init);
 

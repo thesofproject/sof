@@ -27,11 +27,6 @@ SOF_DEFINE_REG_UUID(sound_dose);
 /* Creates logging data for the component */
 LOG_MODULE_REGISTER(sound_dose, CONFIG_SOF_LOG_LEVEL);
 
-/* Creates the component trace. Traces show in trace console the component
- * info, warning, and error messages.
- */
-DECLARE_TR_CTX(sound_dose_tr, SOF_UUID(sound_dose_uuid), LOG_LEVEL_INFO);
-
 void sound_dose_report_mel(const struct processing_module *mod)
 {
 	struct sound_dose_comp_data *cd = module_get_private_data(mod);
@@ -369,6 +364,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+DECLARE_TR_CTX(sound_dose_tr, SOF_UUID(sound_dose_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(sound_dose_interface, sound_dose_uuid, sound_dose_tr);
 SOF_MODULE_INIT(sound_dose, sys_comp_module_sound_dose_interface_init);
 

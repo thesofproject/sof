@@ -6,17 +6,12 @@
 #include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/uuid.h>
 #include <sof/ut.h>
 #include <rtos/init.h>
 #include "copier.h"
 #include "ipcgtw_copier.h"
 
 LOG_MODULE_REGISTER(ipcgtw, CONFIG_SOF_LOG_LEVEL);
-
-SOF_DEFINE_REG_UUID(ipcgw);
-
-DECLARE_TR_CTX(ipcgtw_comp_tr, SOF_UUID(ipcgw_uuid), LOG_LEVEL_INFO);
 
 /* List of existing IPC gateways */
 static struct list_item ipcgtw_list_head = LIST_INIT(ipcgtw_list_head);

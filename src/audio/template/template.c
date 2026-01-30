@@ -17,11 +17,6 @@ SOF_DEFINE_REG_UUID(template);
 /* Creates logging data for the component */
 LOG_MODULE_REGISTER(template, CONFIG_SOF_LOG_LEVEL);
 
-/* Creates the component trace. Traces show in trace console the component
- * info, warning, and error messages.
- */
-DECLARE_TR_CTX(template_tr, SOF_UUID(template_uuid), LOG_LEVEL_INFO);
-
 /**
  * template_init() - Initialize the template component.
  * @mod: Pointer to module data.
@@ -205,6 +200,8 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* Only used for the module adapter trace context, soon to be deprecated */
+DECLARE_TR_CTX(template_tr, SOF_UUID(template_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(template_interface, template_uuid, template_tr);
 SOF_MODULE_INIT(template, sys_comp_module_template_interface_init);
 
