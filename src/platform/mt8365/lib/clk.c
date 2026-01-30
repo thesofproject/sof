@@ -79,7 +79,7 @@ static inline int dsp_clk_value_convert(int value)
 
 static void clk_dsppll_enable(void)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_enable\n");
+	tr_dbg(&clkdrv_tr, "entry");
 
 	clk_setl(DSPPLL_CON3, PLL_PWR_ON);
 	wait_delay_us(1);
@@ -93,7 +93,7 @@ static void clk_dsppll_enable(void)
 
 static void clk_dsppll_disable(void)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_disable\n");
+	tr_dbg(&clkdrv_tr, "entry");
 
 	clk_clrl(DSPPLL_CON0, PLL_BASE_EN);
 	wait_delay_us(1);

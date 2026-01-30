@@ -215,7 +215,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 	int ret = -ENODEV;
 	int i;
 
-	tr_info(&ipc_tr, "ipc_comp_dai_config() dai type = %d index = %d",
+	tr_info(&ipc_tr, "dai type = %d index = %d",
 		config->type, config->dai_index);
 
 	/* for each component */
@@ -310,7 +310,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 	    dd->ipc_config.type != config->type)
 		return 0;
 
-	comp_info(dev, "dai_config() dai type = %d index = %d dd %p",
+	comp_info(dev, "dai type = %d index = %d dd %p",
 		  config->type, config->dai_index, dd);
 
 	/* cannot configure DAI while active */
@@ -379,7 +379,7 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 		dd->dai_spec_config = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 					      sizeof(struct sof_ipc_dai_config));
 		if (!dd->dai_spec_config) {
-			comp_err(dev, "No memory for dai_config.");
+			comp_err(dev, "No memory");
 			return -ENOMEM;
 		}
 	}

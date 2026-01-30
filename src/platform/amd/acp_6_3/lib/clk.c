@@ -191,7 +191,7 @@ void acp_change_clock_notify(uint32_t clock_freq)
 
 	acp_6_3_get_boot_ref_clock(&boot_ref_clk);
 
-	tr_info(&acp_clk_tr, "acp_change_clock_notify clock_freq : %d clock_type : %d",
+	tr_info(&acp_clk_tr, "clock_freq : %d clock_type : %d",
 		clock_freq, clock_type);
 
 	fraction_val = (float)(clock_freq / (float)1000000.0f);
@@ -212,7 +212,7 @@ void acp_change_clock_notify(uint32_t clock_freq)
 		bypass_cntl.bitfields.CLK1_BYPASS_DIV = 0xF;
 	} else {
 		did  = (float)(boot_ref_clk / (float)fraction_val);
-		tr_info(&acp_clk_tr, "acp_change_clock_notify CLK Divider : %d boot_ref_clk : %d\n",
+		tr_info(&acp_clk_tr, "CLK Divider : %d boot_ref_clk : %d\n",
 			(uint32_t)(did * 100), (uint32_t)boot_ref_clk);
 
 		if (did > 62.0f) {
@@ -251,7 +251,7 @@ void acp_change_clock_notify(uint32_t clock_freq)
 
 		do {
 			dfs_status.u32all = acp_reg_read_via_smn(CLK5_CLK1_DFS_STATUS, sizeof(int));
-			tr_info(&acp_clk_tr, "acp_change_clock_notify ACLK1 CLK1_DIVIDER : %d dfsstatus %d ",
+			tr_info(&acp_clk_tr, "ACLK1 CLK1_DIVIDER : %d dfsstatus %d ",
 				dfs_cntl.u32all, dfs_status.u32all);
 		} while (dfs_status.bitfields.CLK1_DFS_DIV_REQ_IDLE == 0);
 		updated_clk = acp_reg_read_via_smn(CLK5_CLK1_CURRENT_CNT, sizeof(int));
@@ -268,7 +268,7 @@ void acp_change_clock_notify(uint32_t clock_freq)
 				dfs_cntl.u32all =
 					acp_reg_read_via_smn(CLK5_CLK1_DFS_CNTL,
 							     sizeof(int));
-				tr_info(&acp_clk_tr, "acp_change_clock_notify ACLK2 CLK1_DIVIDER:%d dfsstatus %d ",
+				tr_info(&acp_clk_tr, "ACLK2 CLK1_DIVIDER:%d dfsstatus %d ",
 					dfs_cntl.u32all, dfs_status.u32all);
 			} while (dfs_status.bitfields.CLK1_DFS_DIV_REQ_IDLE == 0);
 		}
@@ -281,7 +281,7 @@ void acp_change_clock_notify(uint32_t clock_freq)
 
 		do {
 			dfs_status.u32all = acp_reg_read_via_smn(CLK5_CLK0_DFS_STATUS, sizeof(int));
-			tr_info(&acp_clk_tr, "acp_change_clock_notify SCLK CLK1_DIVIDER: %d",
+			tr_info(&acp_clk_tr, "SCLK CLK1_DIVIDER: %d",
 				dfs_cntl.u32all);
 		} while (dfs_status.bitfields.CLK1_DFS_DIV_REQ_IDLE == 0);
 

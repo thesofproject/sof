@@ -110,11 +110,11 @@ static int smart_amp_set_config(struct comp_dev *dev,
 	       ASSUME_ALIGNED(&cdata->data->data, sizeof(uint32_t));
 	bs = cfg->size;
 
-	comp_dbg(dev, "smart_amp_set_config(), actual blob size = %zu, expected blob size = %zu",
+	comp_dbg(dev, "actual blob size = %zu, expected blob size = %zu",
 		 bs, sizeof(struct sof_smart_amp_config));
 
 	if (bs != sizeof(struct sof_smart_amp_config)) {
-		comp_err(dev, "smart_amp_set_config(): invalid blob size, actual blob size = %zu, expected blob size = %zu",
+		comp_err(dev, "invalid blob size, actual blob size = %zu, expected blob size = %zu",
 			 bs, sizeof(struct sof_smart_amp_config));
 		return -EINVAL;
 	}
@@ -164,7 +164,7 @@ static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 	case SOF_SMART_AMP_MODEL:
 		return comp_data_blob_get_cmd(sad->model_handler, cdata, size);
 	default:
-		comp_warn(dev, "smart_amp_ctrl_get_bin_data(): unknown binary data type");
+		comp_warn(dev, "unknown binary data type");
 		break;
 	}
 
@@ -174,13 +174,13 @@ static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 static int smart_amp_ctrl_get_data(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata, int size)
 {
-	comp_info(dev, "smart_amp_ctrl_get_data() size: %d", size);
+	comp_info(dev, "size: %d", size);
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		return smart_amp_ctrl_get_bin_data(dev, cdata, size);
 	default:
-		comp_err(dev, "smart_amp_ctrl_get_data(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		return -EINVAL;
 	}
 }
@@ -193,7 +193,7 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 	assert(sad);
 
 	if (dev->state < COMP_STATE_READY) {
-		comp_err(dev, "smart_amp_ctrl_set_bin_data(): driver in init!");
+		comp_err(dev, "driver in init!");
 		return -EBUSY;
 	}
 
@@ -203,7 +203,7 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 	case SOF_SMART_AMP_MODEL:
 		return comp_data_blob_set_cmd(sad->model_handler, cdata);
 	default:
-		comp_warn(dev, "smart_amp_ctrl_set_bin_data(): unknown binary data type");
+		comp_warn(dev, "unknown binary data type");
 		break;
 	}
 
@@ -215,19 +215,19 @@ static int smart_amp_ctrl_set_data(struct comp_dev *dev,
 {
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		comp_err(dev, "smart_amp_ctrl_set_data(): invalid version");
+		comp_err(dev, "invalid version");
 		return -EINVAL;
 	}
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		comp_info(dev, "smart_amp_ctrl_set_data(), SOF_CTRL_CMD_ENUM");
+		comp_info(dev, "SOF_CTRL_CMD_ENUM");
 		break;
 	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "smart_amp_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
+		comp_info(dev, "SOF_CTRL_CMD_BINARY");
 		return smart_amp_ctrl_set_bin_data(dev, cdata);
 	default:
-		comp_err(dev, "smart_amp_ctrl_set_data(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		return -EINVAL;
 	}
 
@@ -240,7 +240,7 @@ static int smart_amp_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = ASSUME_ALIGNED(data, 4);
 
-	comp_info(dev, "smart_amp_cmd(): cmd: %d", cmd);
+	comp_info(dev, "cmd: %d", cmd);
 
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
@@ -256,7 +256,7 @@ static void smart_amp_free(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 
-	comp_info(dev, "smart_amp_free()");
+	comp_info(dev, "entry");
 
 	comp_data_blob_handler_free(sad->model_handler);
 
@@ -269,11 +269,11 @@ static int smart_amp_verify_params(struct comp_dev *dev,
 {
 	int ret;
 
-	comp_info(dev, "smart_amp_verify_params()");
+	comp_info(dev, "entry");
 
 	ret = comp_verify_params(dev, BUFF_PARAMS_CHANNELS, params);
 	if (ret < 0) {
-		comp_err(dev, "smart_amp_verify_params() error: comp_verify_params() failed.");
+		comp_err(dev, "error: comp_verify_params() failed.");
 		return ret;
 	}
 
@@ -285,13 +285,13 @@ static int smart_amp_params(struct comp_dev *dev,
 {
 	int err;
 
-	comp_info(dev, "smart_amp_params()");
+	comp_info(dev, "entry");
 
 	smart_amp_set_params(dev, params);
 
 	err = smart_amp_verify_params(dev, params);
 	if (err < 0) {
-		comp_err(dev, "smart_amp_params(): pcm params verification failed.");
+		comp_err(dev, "pcm params verification failed.");
 		return err;
 	}
 
@@ -303,7 +303,7 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	int ret = 0;
 
-	comp_info(dev, "smart_amp_trigger(), command = %u", cmd);
+	comp_info(dev, "command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 
@@ -340,7 +340,7 @@ static int smart_amp_process_s16(struct comp_dev *dev,
 	int i;
 	int j;
 
-	comp_dbg(dev, "smart_amp_process_s16()");
+	comp_dbg(dev, "entry");
 
 	for (i = 0; i < frames; i++) {
 		for (j = 0 ; j < sad->out_channels; j++) {
@@ -372,7 +372,7 @@ static int smart_amp_process_s32(struct comp_dev *dev,
 	int i;
 	int j;
 
-	comp_dbg(dev, "smart_amp_process_s32()");
+	comp_dbg(dev, "entry");
 
 	for (i = 0; i < frames; i++) {
 		for (j = 0 ; j < sad->out_channels; j++) {
@@ -419,7 +419,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	uint32_t sink_bytes;
 	uint32_t feedback_bytes;
 
-	comp_dbg(dev, "smart_amp_copy()");
+	comp_dbg(dev, "entry");
 
 	/* available bytes and samples calculation */
 	avail_passthrough_frames =
@@ -440,7 +440,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 			feedback_bytes = avail_frames *
 				audio_stream_frame_bytes(&buf->stream);
 
-			comp_dbg(dev, "smart_amp_copy(): processing %d feedback frames (avail_passthrough_frames: %d)",
+			comp_dbg(dev, "processing %d feedback frames (avail_passthrough_frames: %d)",
 				 avail_frames, avail_passthrough_frames);
 
 			/* perform buffer writeback after source_buf process */
@@ -476,7 +476,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 static int smart_amp_reset(struct comp_dev *dev)
 {
-	comp_info(dev, "smart_amp_reset()");
+	comp_info(dev, "entry");
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -489,7 +489,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	struct comp_buffer *source_buffer;
 	int ret;
 
-	comp_info(dev, "smart_amp_prepare()");
+	comp_info(dev, "entry");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -527,7 +527,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 
 	sad->process = get_smart_amp_process(dev, sad->source_buf);
 	if (!sad->process) {
-		comp_err(dev, "smart_amp_prepare(): get_smart_amp_process failed");
+		comp_err(dev, "get_smart_amp_process failed");
 		ret = -EINVAL;
 	}
 	return ret;

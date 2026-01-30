@@ -84,18 +84,18 @@ void kwd_nn_detect_test(struct comp_dev *dev,
 			result = kwd_nn_detect_postprocess(confidences);
 			time_stop = sof_cycle_get_64();
 			comp_dbg(dev,
-				 "KWD: kwd_nn_detect_test_copy() inference done in %u ms",
+				 "KWD: inference done in %u ms",
 				 (unsigned int)k_cyc_to_ms_near64(time_stop - time_start));
 			switch (result) {
 			case KWD_NN_YES_KEYWORD:
 			case KWD_NN_NO_KEYWORD:
 				if (result == KWD_NN_NO_KEYWORD)
 					comp_info(dev,
-						  "kwd_nn_detect_test_copy(): keyword NO detected confidence %d",
+						  "keyword NO detected confidence %d",
 						  confidences[3]);
 				else
 					comp_info(dev,
-						  "kwd_nn_detect_test_copy(): keyword YES detected confidences %d",
+						  "keyword YES detected confidences %d",
 						  confidences[2]);
 				/* The algorithm shall use cd->drain_req
 				 * to specify its draining size request.

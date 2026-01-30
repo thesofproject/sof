@@ -495,7 +495,7 @@ static int ams_process_slot(struct async_message_service *ams, uint32_t slot)
 	instance_id = shared_c->slots[slot].instance_id;
 
 	ams_release(shared_c);
-	tr_info(&ams_tr, "ams_process_slot slot %d msg %d from 0x%08x",
+	tr_info(&ams_tr, "slot %d msg %d from 0x%08x",
 		slot, msg.message_type_id,
 		msg.producer_module_id << 16 | msg.producer_instance_id);
 

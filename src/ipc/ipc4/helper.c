@@ -1263,7 +1263,7 @@ __cold static int ipc4_add_comp_dev(struct comp_dev *dev)
 	icd->core = dev->ipc_config.core;
 	icd->id = dev->ipc_config.id;
 
-	tr_dbg(&ipc_tr, "ipc4_add_comp_dev add comp 0x%x", icd->id);
+	tr_dbg(&ipc_tr, "add comp 0x%x", icd->id);
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
 

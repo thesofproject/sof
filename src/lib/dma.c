@@ -278,11 +278,11 @@ void dma_put(struct dma *dma)
 	if (--dma->sref == 0) {
 		ret = dma_remove_legacy(dma);
 		if (ret < 0) {
-			tr_err(&dma_tr, "dma_put(): dma_remove() failed id  = %d, ret = %d",
+			tr_err(&dma_tr, "dma_remove() failed id  = %d, ret = %d",
 			       dma->plat_data.id, ret);
 		}
 	}
-	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
+	tr_info(&dma_tr, "dma = %p, sref = %d",
 		dma, dma->sref);
 	k_spin_unlock(&dma->lock, key);
 }

@@ -829,7 +829,7 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	if (!dmat) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "ipc_dma_trace_config failed: dmat not initialized");
+			      "failed: dmat not initialized");
 		return -ENOMEM;
 	}
 

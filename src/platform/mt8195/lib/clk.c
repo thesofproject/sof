@@ -77,7 +77,7 @@ static inline int dsp_clk_value_convert(int value)
 
 static void clk_dsppll_enable(void)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_enable\n");
+	tr_dbg(&clkdrv_tr, "entry");
 
 	io_reg_update_bits(AUDIODSP_CK_CG, 0x1 << RG_AUDIODSP_SW_CG, 0x0);
 	clk_setl(DSPPLL_CON4, PLL_PWR_ON);
@@ -91,7 +91,7 @@ static void clk_dsppll_enable(void)
 
 static void clk_dsppll_disable(void)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_disable\n");
+	tr_dbg(&clkdrv_tr, "entry");
 
 	clk_clrl(DSPPLL_CON0, PLL_EN);
 	wait_delay_us(1);
@@ -144,7 +144,7 @@ static int clock_platform_set_cpu_freq(int clock, int freq_idx)
 	if (adsp_clock == adsp_clk_req)
 		return 0;
 
-	tr_info(&clkdrv_tr, "clock_platform_set_cpu_freq %d\n", adsp_clk_req);
+	tr_info(&clkdrv_tr, "%d\n", adsp_clk_req);
 
 	/* convert res manager value to driver map */
 	clk_mux = dsp_clk_value_convert(freq_idx);

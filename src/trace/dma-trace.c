@@ -96,7 +96,7 @@ static enum task_state trace_work(void *data)
 	size = dma_copy_to_host(&d->dc, config, d->posn.host_offset,
 				buffer->r_ptr, size);
 	if (size < 0) {
-		tr_err(&dt_tr, "trace_work(): dma_copy_to_host() failed");
+		tr_err(&dt_tr, "dma_copy_to_host() failed");
 		goto out;
 	}
 
@@ -152,7 +152,7 @@ int dma_trace_init_early(struct sof *sof)
 	sof->dmat = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->dmat));
 	if (!sof->dmat) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "dma_trace_init_early(): alloc failed");
+			      "alloc failed");
 		return -ENOMEM;
 	}
 
@@ -171,7 +171,7 @@ int dma_trace_init_early(struct sof *sof)
 
 err:
 	mtrace_printf(LOG_LEVEL_ERROR,
-		      "dma_trace_init_early() failed: %d", ret);
+		      "failed: %d", ret);
 
 	rfree(sof->dmat);
 	sof->dmat = NULL;
@@ -184,11 +184,11 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 {
 	int ret = 0;
 
-	tr_info(&dt_tr, "dma_trace_init_complete()");
+	tr_info(&dt_tr, "entry");
 
 	if (!d) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "dma_trace_init_complete(): failed, no dma_trace_data");
+			      "failed, no dma_trace_data");
 		return -ENOMEM;
 	}
 
@@ -196,7 +196,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 	ret = dma_copy_new(&d->dc);
 	if (ret < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "dma_trace_init_complete(): dma_copy_new() failed: %d", ret);
+			      "dma_copy_new() failed: %d", ret);
 		goto out;
 	}
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
@@ -208,7 +208,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 #endif
 	if (ret < 0) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "dma_trace_init_complete(): dma_get_attribute() failed: %d", ret);
+			      "dma_get_attribute() failed: %d", ret);
 
 		goto out;
 	}
@@ -268,7 +268,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 
 	if (!d || !d->dc.dmac) {
 		mtrace_printf(LOG_LEVEL_ERROR,
-			      "dma_trace_buffer_init() failed, no DMAC! d=%p", d);
+			      "failed, no DMAC! d=%p", d);
 		return -ENODEV;
 	}
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
@@ -285,7 +285,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	buf = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 			    DMA_TRACE_LOCAL_SIZE, addr_align);
 	if (!buf) {
-		mtrace_printf(LOG_LEVEL_ERROR, "dma_trace_buffer_init(): alloc failed");
+		mtrace_printf(LOG_LEVEL_ERROR, "alloc failed");
 		return -ENOMEM;
 	}
 
@@ -378,7 +378,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	/* validate DMA context */
 	if (!d->dc.dmac || !d->dc.chan) {
-		tr_err_atomic(&dt_tr, "dma_trace_enable(): not valid");
+		tr_err_atomic(&dt_tr, "not valid");
 		err = -ENODEV;
 		goto out;
 	}
@@ -544,7 +544,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 				trace_data->dropped_entries;
 			trace_data->dropped_entries = 0;
 			mtrace_printf(LOG_LEVEL_WARNING,
-				      "dtrace_add_event(): number of dropped logs = %u",
+				      "number of dropped logs = %u",
 				      tmp_dropped_entries);
 		}
 	}

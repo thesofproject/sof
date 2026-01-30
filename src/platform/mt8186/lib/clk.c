@@ -36,7 +36,7 @@ static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 static void clk_dsppll_enable(uint32_t value)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_enable: %d\n", value);
+	tr_dbg(&clkdrv_tr, "%d\n", value);
 
 	switch (value) {
 	case ADSP_CLK_PLL_300M:
@@ -60,7 +60,7 @@ static void clk_dsppll_enable(uint32_t value)
 
 static void clk_dsppll_disable(void)
 {
-	tr_dbg(&clkdrv_tr, "clk_dsppll_disable\n");
+	tr_dbg(&clkdrv_tr, "entry");
 
 	io_reg_update_bits(MTK_ADSPPLL_CON0, MTK_PLL_BASE_EN, 0);
 	wait_delay_us(1);

@@ -463,7 +463,7 @@ static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 	struct lib_manager_mod_ctx *ctx = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 						  sizeof(*ctx));
 	if (!ctx) {
-		tr_err(&lib_manager_tr, "lib_manager_update_sof_ctx(): allocation failed");
+		tr_err(&lib_manager_tr, "allocation failed");
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 
