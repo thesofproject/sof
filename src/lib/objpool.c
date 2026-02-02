@@ -143,3 +143,37 @@ int objpool_free(struct objpool_head *head, void *data)
 
 	return -EINVAL;
 }
+
+void objpool_prune(struct objpool_head *head)
+{
+	struct list_item *next, *tmp;
+
+	list_for_item_safe(next, tmp, &head->list) {
+		list_item_del(next);
+		sof_heap_free(head->heap, container_of(next, struct objpool, list));
+	}
+}
+
+int objpool_iterate(struct objpool_head *head, objpool_iterate_cb cb, void *arg)
+{
+	struct list_item *list;
+
+	list_for_item(list, &head->list) {
+		struct objpool *pobjpool = container_of(list, struct objpool, list);
+		size_t aligned_size = ALIGN_UP(pobjpool->size, sizeof(int));
+		uint32_t mask = pobjpool->mask;
+		unsigned int bit;
+
+		if (!mask)
+			/* all free */
+			continue;
+
+		for (; mask; mask &= ~BIT(bit)) {
+			bit = ffs(mask) - 1;
+			if (cb(pobjpool->data + bit * aligned_size, arg))
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}

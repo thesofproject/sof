@@ -8,6 +8,8 @@
 
 #include <sof/list.h>
 
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 struct k_heap;
@@ -50,5 +52,29 @@ void *objpool_alloc(struct objpool_head *head, size_t size, uint32_t flags);
  * blocks are kept in the object pool for future re-use.
  */
 int objpool_free(struct objpool_head *head, void *data);
+
+/**
+ * Free all of the object pool memory
+ *
+ * @param head Pointer to the object pool head.
+ */
+void objpool_prune(struct objpool_head *head);
+
+/* returns true to stop */
+typedef bool (*objpool_iterate_cb)(void *data, void *arg);
+
+/**
+ * Iterate over object pool entries until stopped
+ *
+ * @param head Pointer to the object pool head.
+ * @param cb Callback function
+ * @param arg Callback function argument
+ *
+ * @return 0 on success or a negative error code.
+ *
+ * Call the callback function for each entry in the pool, until it returns true.
+ * If the callback never returns true, return an error.
+ */
+int objpool_iterate(struct objpool_head *head, objpool_iterate_cb cb, void *arg);
 
 #endif
