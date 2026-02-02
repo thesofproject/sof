@@ -10,8 +10,10 @@
 
 #include <stdint.h>
 
+struct k_heap;
 struct objpool_head {
 	struct list_item list;
+	struct k_heap *heap;
 	uint32_t flags;
 };
 
