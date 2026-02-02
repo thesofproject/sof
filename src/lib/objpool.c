@@ -24,7 +24,7 @@ struct objpool {
 
 #define OBJPOOL_BITS (sizeof(((struct objpool *)0)->mask) * 8)
 
-static int objpool_add(struct list_item *head, unsigned int n, size_t size, uint32_t flags)
+static int objpool_add(struct objpool_head *head, unsigned int n, size_t size, uint32_t flags)
 {
 	if (n > OBJPOOL_BITS)
 		return -ENOMEM;
@@ -32,20 +32,26 @@ static int objpool_add(struct list_item *head, unsigned int n, size_t size, uint
 	if (!is_power_of_2(n))
 		return -EINVAL;
 
-	size_t aligned_size = ALIGN_UP(size, sizeof(int));
+	size_t aligned_size = n * ALIGN_UP(size, sizeof(int));
 
-	/* Initialize with 0 to give caller a chance to identify new allocations */
-	struct objpool *pobjpool = rzalloc(flags, n * aligned_size + sizeof(*pobjpool));
+	if (!head->heap)
+		head->heap = sof_sys_heap_get();
+
+	struct objpool *pobjpool = sof_heap_alloc(head->heap, flags,
+						  aligned_size + sizeof(*pobjpool), 0);
 
 	if (!pobjpool)
 		return -ENOMEM;
+
+	/* Initialize with 0 to give caller a chance to identify new allocations */
+	memset(pobjpool->data, 0, aligned_size);
 
 	pobjpool->n = n;
 	/* clear bit means free */
 	pobjpool->mask = 0;
 	pobjpool->size = size;
 
-	list_item_append(&pobjpool->list, head);
+	list_item_append(&pobjpool->list, &head->list);
 
 	return 0;
 }
@@ -99,7 +105,7 @@ void *objpool_alloc(struct objpool_head *head, size_t size, uint32_t flags)
 			new_n = pobjpool->n << 1;
 	}
 
-	if (objpool_add(&head->list, new_n, size, flags) < 0)
+	if (objpool_add(head, new_n, size, flags) < 0)
 		return NULL;
 
 	/* Return the first element of the new objpool, which is now the last one in the list */
