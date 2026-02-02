@@ -8,8 +8,10 @@
 #include <sof/audio/cadence/mp3_dec/xa_mp3_dec_api.h>
 #include <sof/audio/cadence/mp3_enc/xa_mp3_enc_api.h>
 #include <sof/audio/cadence/aac_dec/xa_aac_dec_api.h>
+#include <sof/ipc/msg.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <ipc/compress_params.h>
+#include <ipc4/notification.h>
 #include <rtos/init.h>
 
 SOF_DEFINE_REG_UUID(cadence_codec);
@@ -467,6 +469,36 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 	if (ret) {
 		source_release_data(sources[0], 0);
 		return ret;
+	}
+
+	if (codec->mpd.eos_reached && !codec->mpd.eos_notification_sent) {
+		struct ipc_msg msg_proto;
+		struct comp_ipc_config *ipc_config = &dev->ipc_config;
+		union ipc4_notification_header *primary =
+			(union ipc4_notification_header *)&msg_proto.header;
+		struct sof_ipc4_notify_module_data *msg_module_data;
+		struct ipc_msg *msg;
+
+		memset_s(&msg_proto, sizeof(msg_proto), 0, sizeof(msg_proto));
+		primary->r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+		primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
+		primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+		primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+		msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
+					 sizeof(*msg_module_data));
+		if (msg) {
+			msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
+			msg_module_data->instance_id = IPC4_INST_ID(ipc_config->id);
+			msg_module_data->module_id = IPC4_MOD_ID(ipc_config->id);
+			msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_COMPR_MAGIC_VAL;
+			msg_module_data->event_data_size = 0;
+
+			ipc_msg_send(msg, NULL, false);
+			codec->mpd.eos_notification_sent = true;
+		}
+
+		/* Set EOS for the sink as we are not going to produce more data */
+		audio_buffer_set_eos(sof_audio_buffer_from_sink(sinks[0]));
 	}
 
 	/* do not proceed if not enough free space left */
