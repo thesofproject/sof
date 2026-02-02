@@ -250,6 +250,9 @@ int cadence_codec_init_process(struct processing_module *mod)
 	struct cadence_codec_data *cd = codec->private;
 	struct comp_dev *dev = mod->dev;
 
+	codec->mpd.eos_reached = false;
+	codec->mpd.eos_notification_sent = false;
+
 	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "error %x: failed to set size of input data",
@@ -475,6 +478,13 @@ int cadence_codec_process_data(struct processing_module *mod)
 	struct comp_dev *dev = mod->dev;
 	int ret;
 
+	if (codec->mpd.eos_reached) {
+		codec->mpd.produced = 0;
+		codec->mpd.consumed = 0;
+
+		return 0;
+	}
+
 	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "failed to set size of input data with error: %x:", ret);
@@ -502,6 +512,9 @@ int cadence_codec_process_data(struct processing_module *mod)
 		comp_err(dev, "could not get consumed bytes, error: %x", ret);
 		return ret;
 	}
+
+	if (!codec->mpd.produced && dev->pipeline->expect_eos)
+		codec->mpd.eos_reached = true;
 
 	return 0;
 }
