@@ -227,9 +227,12 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	     (uintptr_t)bss_addr >= (uintptr_t)va_base_data + data_size)) {
 		size_t bss_align = MIN(PAGE_SZ, BIT(__builtin_ctz((uintptr_t)bss_addr)));
 
-		if ((uintptr_t)bss_addr + bss_size == (uintptr_t)va_base_data &&
-		    !((uintptr_t)bss_addr & (PAGE_SZ - 1))) {
-			/* .bss directly in front of writable data and properly aligned, prepend */
+		if ((!data_size || (uintptr_t)bss_addr + bss_size == (uintptr_t)va_base_data) &&
+		    bss_align >= PAGE_SZ) {
+			/*
+			 * .bss is properly aligned and either there's no writable data,
+			 * or .bss is directly in front of writable data, prepend .bss
+			 */
 			va_base_data = bss_addr;
 			data_size += bss_size;
 		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data +
