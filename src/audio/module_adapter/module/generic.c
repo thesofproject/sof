@@ -12,6 +12,8 @@
  */
 
 #include <rtos/symbol.h>
+#include <sof/compiler_attributes.h>
+#include <sof/objpool.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/data_blob.h>
 #include <sof/lib/fast-get.h>
@@ -81,10 +83,10 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 void mod_resource_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
+
 	/* Init memory list */
-	list_init(&md->resources.res_list);
-	list_init(&md->resources.free_cont_list);
-	list_init(&md->resources.cont_chunk_list);
+	list_init(&md->resources.objpool.list);
+	md->resources.objpool.heap = md->resources.heap;
 	md->resources.heap_usage = 0;
 	md->resources.heap_high_water_mark = 0;
 }
@@ -141,43 +143,14 @@ int module_init(struct processing_module *mod)
 	return 0;
 }
 
-struct container_chunk {
-	struct list_item chunk_list;
-	struct module_resource containers[CONFIG_MODULE_MEMORY_API_CONTAINER_CHUNK_SIZE];
-};
-
 static struct module_resource *container_get(struct processing_module *mod)
 {
-	struct module_resources *res = &mod->priv.resources;
-	struct k_heap *mod_heap = res->heap;
-	struct module_resource *container;
-
-	if (list_is_empty(&res->free_cont_list)) {
-		struct container_chunk *chunk = sof_heap_alloc(mod_heap, 0, sizeof(*chunk), 0);
-		int i;
-
-		if (!chunk) {
-			comp_err(mod->dev, "allocating more containers failed");
-			return NULL;
-		}
-
-		memset(chunk, 0, sizeof(*chunk));
-
-		list_item_append(&chunk->chunk_list, &res->cont_chunk_list);
-		for (i = 0; i < ARRAY_SIZE(chunk->containers); i++)
-			list_item_append(&chunk->containers[i].list, &res->free_cont_list);
-	}
-
-	container = list_first_item(&res->free_cont_list, struct module_resource, list);
-	list_item_del(&container->list);
-	return container;
+	return objpool_alloc(&mod->priv.resources.objpool, sizeof(struct module_resource), 0);
 }
 
 static void container_put(struct processing_module *mod, struct module_resource *container)
 {
-	struct module_resources *res = &mod->priv.resources;
-
-	list_item_append(&container->list, &res->free_cont_list);
+	objpool_free(&mod->priv.resources.objpool, container);
 }
 
 #if CONFIG_USERSPACE
@@ -235,7 +208,6 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 	container->ptr = ptr;
 	container->size = size;
 	container->type = MOD_RES_HEAP;
-	list_item_prepend(&container->list, &res->res_list);
 
 	res->heap_usage += size;
 	if (res->heap_usage > res->heap_high_water_mark)
@@ -286,7 +258,6 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	container->ptr = ptr;
 	container->size = size;
 	container->type = MOD_RES_HEAP;
-	list_item_prepend(&container->list, &res->res_list);
 
 	res->heap_usage += size;
 	if (res->heap_usage > res->heap_high_water_mark)
@@ -306,7 +277,7 @@ EXPORT_SYMBOL(z_impl_mod_alloc_ext);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod)
 {
-	struct module_resources *res = &mod->priv.resources;
+	struct module_resources * __maybe_unused res = &mod->priv.resources;
 	struct comp_data_blob_handler *bhp;
 	struct module_resource *container;
 
@@ -325,7 +296,6 @@ struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_modul
 	container->bhp = bhp;
 	container->size = 0;
 	container->type = MOD_RES_BLOB_HANDLER;
-	list_item_prepend(&container->list, &res->res_list);
 
 	return bhp;
 }
@@ -362,7 +332,6 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 	container->sram_ptr = ptr;
 	container->size = 0;
 	container->type = MOD_RES_FAST_GET;
-	list_item_prepend(&container->list, &res->res_list);
 
 	return ptr;
 }
@@ -394,6 +363,29 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 	return -EINVAL;
 }
 
+struct mod_res_cb_arg {
+	struct processing_module *mod;
+	const void *ptr;
+};
+
+static bool mod_res_free(void *data, void *arg)
+{
+	struct mod_res_cb_arg *cb_arg = arg;
+	struct module_resource *container = data;
+
+	if (cb_arg->ptr && container->ptr != cb_arg->ptr)
+		return false;
+
+	int ret = free_contents(cb_arg->mod, container);
+
+	if (ret < 0)
+		comp_err(cb_arg->mod->dev, "Cannot free allocation %p", cb_arg->ptr);
+
+	container_put(cb_arg->mod, container);
+
+	return true;
+}
+
 /**
  * Frees the memory block removes it from module's book keeping.
  * @param mod	Pointer to module this memory block was allocated for.
@@ -402,28 +394,19 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
-	struct module_resource *container;
-	struct list_item *res_list;
 
 	MEM_API_CHECK_THREAD(res);
 	if (!ptr)
 		return 0;
 
-	/* Find which container keeps this memory */
-	list_for_item(res_list, &res->res_list) {
-		container = container_of(res_list, struct module_resource, list);
-		if (container->ptr == ptr) {
-			int ret = free_contents(mod, container);
+	/* Find which container holds this memory */
+	struct mod_res_cb_arg cb_arg = {mod, ptr};
+	int ret = objpool_iterate(&res->objpool, mod_res_free, &cb_arg);
 
-			list_item_del(&container->list);
-			container_put(mod, container);
-			return ret;
-		}
-	}
+	if (ret < 0)
+		comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
 
-	comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
-
-	return -EINVAL;
+	return ret;
 }
 EXPORT_SYMBOL(z_impl_mod_free);
 
@@ -684,32 +667,14 @@ int module_reset(struct processing_module *mod)
 void mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
-	struct k_heap *mod_heap = res->heap;
-	struct list_item *list;
-	struct list_item *_list;
 
 	MEM_API_CHECK_THREAD(res);
+
 	/* Free all contents found in used containers */
-	list_for_item(list, &res->res_list) {
-		struct module_resource *container =
-			container_of(list, struct module_resource, list);
+	struct mod_res_cb_arg cb_arg = {mod, NULL};
 
-		free_contents(mod, container);
-	}
-
-	/*
-	 * We do not need to remove the containers from res_list in
-	 * the loop above or go through free_cont_list as all the
-	 * containers are anyway freed in the loop below, and the list
-	 * heads are reinitialized when mod_resource_init() is called.
-	 */
-	list_for_item_safe(list, _list, &res->cont_chunk_list) {
-		struct container_chunk *chunk =
-			container_of(list, struct container_chunk, chunk_list);
-
-		list_item_del(&chunk->chunk_list);
-		sof_heap_free(mod_heap, chunk);
-	}
+	objpool_iterate(&res->objpool, mod_res_free, &cb_arg);
+	objpool_prune(&res->objpool);
 
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);
