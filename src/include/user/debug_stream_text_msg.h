@@ -7,6 +7,7 @@
 #define __SOC_DEBUG_STREAM_TEXT_MSG_H__
 
 #include <user/debug_stream_slot.h>
+#include <stdarg.h>
 
 /*
  * Debug Stream text message.
