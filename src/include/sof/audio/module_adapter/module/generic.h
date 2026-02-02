@@ -172,6 +172,8 @@ struct module_processing_data {
 	uint32_t produced; /**< Specifies how much data the module produced in its last task.*/
 	uint32_t consumed; /**< Specified how much data the module consumed in its last task */
 	uint32_t init_done; /**< Specifies if the module initialization is finished */
+	bool eos_reached; /**< End of stream processing is reached */
+	bool eos_notification_sent; /**< EOS notification is sent to host */
 	void *in_buff; /**< A pointer to module input buffer. */
 	void *out_buff; /**< A pointer to module output buffer. */
 };
