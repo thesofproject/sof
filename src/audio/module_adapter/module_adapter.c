@@ -53,7 +53,7 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #if CONFIG_MM_DRV
 #define PAGE_SZ CONFIG_MM_DRV_PAGE_SIZE
 #else
-#include <platform/platform.h>
+#include <sof/platform.h>
 #define PAGE_SZ HOST_PAGE_SIZE
 #endif
 

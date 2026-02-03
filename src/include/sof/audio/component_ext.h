@@ -158,9 +158,9 @@ static inline int comp_trigger_local(struct comp_dev *dev, int cmd)
 		/* schedule or cancel task */
 		switch (cmd) {
 		case COMP_TRIGGER_START:
-		case COMP_TRIGGER_RELEASE:
 			ret = schedule_task(dev->task, 0, dev->period);
 			break;
+		case COMP_TRIGGER_RELEASE:
 		case COMP_TRIGGER_XRUN:
 		case COMP_TRIGGER_PAUSE:
 		case COMP_TRIGGER_STOP:

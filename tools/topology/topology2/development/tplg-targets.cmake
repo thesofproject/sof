@@ -60,9 +60,9 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 # HDA topology with passthrough analog codec pipelines using CHAIN_DMA
 "sof-hda-generic\;sof-hda-passthrough-chain-dma\;HDA_CONFIG=passthrough,CODEC_HDA_CHAIN_DMA=true"
 
-# SSP topology for PTL
+# SSP topology for PTL, includes Data Processing SRC
 "cavs-nocodec\;sof-ptl-nocodec\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin"
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
 
 # SSP topology for PTL with 96 kHz DMIC
 "cavs-nocodec\;sof-ptl-nocodec-dmic-4ch-96k\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
@@ -310,9 +310,9 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin,SRC_DOMAIN=DP"
 # SSP test topology for Data Processing SRC on LNL
 "cavs-nocodec\;sof-lnl-nocodec-dp-test\;PLATFORM=lnl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-lnl-nocodec.bin,SRC_DOMAIN=DP"
-# SSP test topology for Data Processing SRC on PTL
+# SSP test topology for PTL with no DP
 "cavs-nocodec\;sof-ptl-nocodec-dp-test\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
-PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin"
 
 # SSP test topology for Data Processing on core 1 SRC for MTL
 "cavs-nocodec\;sof-mtl-nocodec-dp-core-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
