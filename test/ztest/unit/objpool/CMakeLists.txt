@@ -21,10 +21,11 @@ target_compile_definitions(app PRIVATE
 
 target_sources(app PRIVATE
 	test_objpool_ztest.c
+	${SOF_ROOT}/test/ztest/unit/common/alloc.c
 	${SOF_ROOT}/src/lib/objpool.c
 )
 
-target_link_libraries(app PRIVATE "-Wl,--wrap=rzalloc")
+target_link_libraries(app PRIVATE "-Wl,--wrap=rzalloc,--wrap=sof_heap_alloc,--wrap=sof_heap_free,--wrap=sof_sys_heap_get")
 
 # Add RELATIVE_FILE definitions for SOF trace functionality
 sof_append_relative_path_definitions(app)

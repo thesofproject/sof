@@ -22,6 +22,7 @@ target_compile_definitions(app PRIVATE
 target_sources(app PRIVATE
 	test_fast_get_ztest.c
 	${SOF_ROOT}/zephyr/lib/fast-get.c
+	${SOF_ROOT}/test/ztest/unit/common/alloc.c
 )
 
 target_link_libraries(app PRIVATE "-Wl,--wrap=rzalloc,--wrap=rfree,--wrap=sof_heap_alloc,--wrap=sof_heap_free")

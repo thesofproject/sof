@@ -15,18 +15,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-void *__wrap_rzalloc(uint32_t flags, size_t bytes)
-{
-	(void)flags;
-
-	void *ret = malloc(bytes);
-
-	if (ret)
-		memset(ret, 0, bytes);
-
-	return ret;
-}
-
 ZTEST(objpool_suite, test_objpool_wrong_size)
 {
 	struct objpool_head head = {.list = LIST_INIT(head.list)};

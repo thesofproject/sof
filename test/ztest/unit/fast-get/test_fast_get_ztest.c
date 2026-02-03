@@ -56,52 +56,6 @@ static const int testdata[33][100] = {
 	{ 33 },
 };
 
-/* Mock memory allocation functions for testing purposes */
-
-void *__wrap_rzalloc(uint32_t flags, size_t bytes)
-{
-	void *ret;
-	(void)flags;
-
-	ret = malloc(bytes);
-
-	zassert_not_null(ret, "Memory allocation should not fail");
-
-	memset(ret, 0, bytes);
-
-	return ret;
-}
-
-void __wrap_rfree(void *ptr)
-{
-	free(ptr);
-}
-
-struct k_heap;
-void *__wrap_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes, size_t alignment)
-{
-	void *ret;
-
-	(void)flags;
-	(void)heap;
-
-	if (alignment)
-		ret = aligned_alloc(alignment, ALIGN_UP(bytes, alignment));
-	else
-		ret = malloc(bytes);
-
-	zassert_not_null(ret, "Memory allocation should not fail");
-
-	return ret;
-}
-
-void __wrap_sof_heap_free(struct k_heap *heap, void *ptr)
-{
-	(void)heap;
-
-	free(ptr);
-}
-
 /**
  * @brief Test basic fast_get and fast_put functionality
  *
