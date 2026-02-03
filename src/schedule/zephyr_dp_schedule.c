@@ -295,24 +295,12 @@ static int scheduler_dp_task_free(void *data, struct task *task)
 		pdata->thread_id = NULL;
 	}
 
-#ifdef CONFIG_USERSPACE
-#if CONFIG_SOF_USERSPACE_PROXY
-	if (pdata->event != &pdata->event_struct)
-		k_object_free(pdata->event);
-#else
-	k_object_free(pdata->sem);
-#endif
-	if (pdata->thread != &pdata->thread_struct)
-		k_object_free(pdata->thread);
-#endif
-
 	/* free task stack */
 	ret = user_stack_free(pdata->p_stack);
 	pdata->p_stack = NULL;
 
-	scheduler_dp_domain_free(pdata->mod);
+	scheduler_dp_internal_free(task);
 
-	/* all other memory has been allocated as a single malloc, will be freed later by caller */
 	return ret;
 }
 

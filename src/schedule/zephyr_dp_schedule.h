@@ -58,8 +58,4 @@ void scheduler_dp_grant(k_tid_t thread_id, uint16_t core);
 int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops, struct processing_module *mod,
 			   uint16_t core, size_t stack_size, uint32_t options);
-#if CONFIG_SOF_USERSPACE_APPLICATION
-void scheduler_dp_domain_free(struct processing_module *pmod);
-#else
-static inline void scheduler_dp_domain_free(struct processing_module *pmod) {}
-#endif
+void scheduler_dp_internal_free(struct task *task);
