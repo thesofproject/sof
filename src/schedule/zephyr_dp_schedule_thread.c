@@ -187,7 +187,7 @@ int scheduler_dp_task_init(struct task **task,
 
 	/* memory allocation helper structure */
 	struct {
-		struct task task;
+		struct task task;		/* keep first, used for freeing below */
 		struct task_dp_pdata pdata;
 	} *task_memory;
 
@@ -307,4 +307,19 @@ err:
 	k_object_free(task_memory->pdata.thread);
 	sof_heap_free(user_heap, task_memory);
 	return ret;
+}
+
+void scheduler_dp_internal_free(struct task *task)
+{
+	struct task_dp_pdata *pdata = task->priv_data;
+
+#ifdef CONFIG_USERSPACE
+	if (pdata->event != &pdata->event_struct)
+		k_object_free(pdata->event);
+	if (pdata->thread != &pdata->thread_struct)
+		k_object_free(pdata->thread);
+#endif
+
+	/* task is the first member in task_memory above */
+	sof_heap_free(pdata->mod->dev->drv->user_heap, task);
 }

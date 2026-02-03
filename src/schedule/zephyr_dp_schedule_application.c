@@ -383,13 +383,12 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
  * Safe to call with partial successful initialisation,
  * k_mem_domain_remove_partition() then just returns -ENOENT
  */
-void scheduler_dp_domain_free(struct processing_module *pmod)
+static void scheduler_dp_domain_free(struct task_dp_pdata *pdata)
 {
+	struct processing_module *pmod = pdata->mod;
 	struct k_mem_domain *mdom = pmod->mdom;
 
 	llext_manager_rm_domain(pmod->dev->ipc_config.id, mdom);
-
-	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
 
 	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_HEAP);
 	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG);
@@ -398,19 +397,32 @@ void scheduler_dp_domain_free(struct processing_module *pmod)
 	objpool_free(&dp_mdom_head, mdom);
 }
 
+/* memory allocation helper structure */
+struct scheduler_dp_task_memory {
+	struct task task;
+	struct task_dp_pdata pdata;
+	struct comp_driver drv;
+	struct ipc4_flat flat;
+};
+
+void scheduler_dp_internal_free(struct task *task)
+{
+	struct task_dp_pdata *pdata = task->priv_data;
+
+	k_object_free(pdata->sem);
+	k_object_free(pdata->thread);
+	scheduler_dp_domain_free(pdata);
+
+	mod_free(pdata->mod, container_of(task, struct scheduler_dp_task_memory, task));
+}
+
 /* Called only in IPC context */
 int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops, struct processing_module *mod,
 			   uint16_t core, size_t stack_size, uint32_t options)
 {
 	k_thread_stack_t *p_stack;
-	/* memory allocation helper structure */
-	struct {
-		struct task task;
-		struct task_dp_pdata pdata;
-		struct comp_driver drv;
-		struct ipc4_flat flat;
-	} *task_memory;
+	struct scheduler_dp_task_memory *task_memory;
 
 	int ret;
 
@@ -558,7 +570,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	return 0;
 
 e_dom:
-	scheduler_dp_domain_free(mod);
+	scheduler_dp_domain_free(pdata);
 e_thread:
 	k_thread_abort(pdata->thread_id);
 e_kobj:
