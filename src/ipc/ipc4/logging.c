@@ -61,7 +61,7 @@ static uint32_t mtrace_aging_timer = IPC4_MTRACE_NOTIFY_AGING_TIMER_MS;
 
 #define MTRACE_IPC_CORE	PLATFORM_PRIMARY_CORE_ID
 
-static struct k_mutex log_mutex;
+static K_MUTEX_DEFINE(log_mutex);
 static struct k_work_delayable log_work;
 
 static void mtrace_log_hook_unlocked(size_t written, size_t space_left)
@@ -141,11 +141,13 @@ int ipc4_logging_enable_logs(bool first_block,
 
 	if (log_state->enable) {
 		adsp_mtrace_log_init(mtrace_log_hook);
+		/* Initialize work queue if not already initialized */
+		if (!log_work.work.handler)
+			k_work_init_delayable(&log_work, log_work_handler);
 
-		k_mutex_init(&log_mutex);
-		k_work_init_delayable(&log_work, log_work_handler);
-
-		log_backend_enable(log_backend, mtrace_log_hook, CONFIG_SOF_LOG_LEVEL);
+		/* Enable backend if not already active */
+		if (!log_backend_is_active(log_backend))
+			log_backend_enable(log_backend, mtrace_log_hook, CONFIG_SOF_LOG_LEVEL);
 
 		mtrace_aging_timer = log_state->aging_timer_period;
 		if (mtrace_aging_timer < IPC4_MTRACE_AGING_TIMER_MIN_MS) {
@@ -157,9 +159,16 @@ int ipc4_logging_enable_logs(bool first_block,
 		/* Logs enabled, this is the best place to run boot-tests */
 		TEST_RUN_ONCE(sof_run_boot_tests);
 	} else  {
-		k_work_flush_delayable(&log_work, &ipc4_log_work_sync);
+		/* Flush work queue if initialized */
+		if (log_work.work.handler) {
+			k_work_flush_delayable(&log_work, &ipc4_log_work_sync);
+			log_work.work.handler = NULL;
+		}
+
 		adsp_mtrace_log_init(NULL);
-		log_backend_disable(log_backend);
+		/* Disable backend if currently active */
+		if (log_backend_is_active(log_backend))
+			log_backend_disable(log_backend);
 	}
 
 	return 0;
