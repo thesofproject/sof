@@ -2,7 +2,7 @@
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright (c) 2016-2020, Intel Corporation. All rights reserved.
+% Copyright (c) 2016-2026, Intel Corporation.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -166,7 +166,7 @@ sof_eq_pack_export(bm, fn, comment)
 
 fs_list = [16e3 48e3];
 fc_list = [20 30 40 50 100];
-g_list = [0 20 30 40];
+g_list = [0 16 20 30 40];
 for i = 1:length(fs_list)
 	for j = 1:length(fc_list);
 		for k = 1:length(g_list);
