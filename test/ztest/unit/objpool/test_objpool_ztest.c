@@ -75,4 +75,44 @@ ZTEST(objpool_suite, test_objpool)
 		zassert_ok(objpool_free(&head, blocks[k]), "free failed");
 }
 
+struct test_objpool_data {
+	char cnt;
+	uint8_t reserved[DATA_SIZE - sizeof(char)];
+} __packed;
+
+static unsigned int test_objpool_check;
+
+static bool test_objpool_cb(void *data, void *arg)
+{
+	struct test_objpool_data *odata = data;
+
+	zassert_equal(test_objpool_check++, odata->cnt, "Counter mismatch");
+	zassert_equal((unsigned int)arg, 2, "Wrong argument");
+
+	return odata->cnt == (unsigned int)arg;
+}
+
+ZTEST(objpool_suite, test_objpool_iterate)
+{
+	struct objpool_head head = {.list = LIST_INIT(head.list)};
+	unsigned int i;
+
+	for (i = 0; i < 4; i++) {
+		struct test_objpool_data *odata = objpool_alloc(&head, sizeof(*odata), 0);
+
+		zassert_not_null(odata, "allocation failed loop %u", i);
+
+		odata->cnt = i;
+	}
+
+	int ret = objpool_iterate(&head, test_objpool_cb, (void *)2);
+
+	zassert_equal(test_objpool_check, 3);
+
+	zassert_ok(ret);
+
+	/* Reset for a possible rerun */
+	test_objpool_check = 0;
+}
+
 ZTEST_SUITE(objpool_suite, NULL, NULL, NULL, NULL, NULL);
