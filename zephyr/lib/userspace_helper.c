@@ -83,6 +83,11 @@ int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod)
 	return k_mem_domain_add_thread(comp_dom, thread_id);
 }
 
+int user_memory_attach_common_partition(struct k_mem_domain *dom)
+{
+	return k_mem_domain_add_partition(dom, &common_partition);
+}
+
 int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 {
 	struct k_mem_partition mem_partition;
