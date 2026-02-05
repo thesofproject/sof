@@ -681,6 +681,10 @@ __cold static int basefw_set_large_config(struct comp_dev *dev, uint32_t param_i
 	assert_can_be_cold();
 
 	switch (param_id) {
+	case IPC4_ASTATE_TABLE:
+		/* Trivial handler due to an empty Astate Table requested in get_large_config */
+		STATIC_ASSERT(IPC4_MAX_CLK_STATES == 0, IPC4_NON_ZERO_ASTATE_UNSUPPORTED);
+		return IPC4_SUCCESS;
 	case IPC4_DMA_CONTROL:
 		return basefw_dma_control(first_block, last_block, data_offset, data);
 	case IPC4_PERF_MEASUREMENTS_STATE:
