@@ -16,14 +16,7 @@
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
 
-#ifdef __ZEPHYR__
 #include <zephyr/logging/log.h>
-#else
-#define LOG_DBG(...) do {} while (0)
-#define LOG_INF(...) do {} while (0)
-#define LOG_WRN(...) do {} while (0)
-#define LOG_ERR(...) do {} while (0)
-#endif
 
 struct sof_fast_get_entry {
 	const void *dram_ptr;
