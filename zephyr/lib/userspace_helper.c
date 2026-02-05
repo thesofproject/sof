@@ -94,6 +94,8 @@ int user_memory_attach_common_partition(struct k_mem_domain *dom)
 	return k_mem_domain_add_partition(dom, &common_partition);
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+
 int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 {
 	struct k_mem_partition mem_partition;
@@ -158,6 +160,8 @@ void user_grant_dma_access_all(struct k_thread *thread)
 		LOG_DBG("Granted DMA device access: %s to thread %p", d->z_dev->name, thread);
 	}
 }
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 #else /* CONFIG_USERSPACE */
 
