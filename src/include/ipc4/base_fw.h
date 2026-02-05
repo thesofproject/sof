@@ -17,10 +17,11 @@
 #ifndef __SOF_IPC4_BASE_FW_H__
 #define __SOF_IPC4_BASE_FW_H__
 
-/* Three clk src states :low power XTAL,  low power ring
- * and high power ring oscillator
+/* SOF FW performs autonomous management of clock sources.
+ * Set MAX_CLK_STATES to 0 in order to propagate this information through IPC and thus
+ * prevent reception of unsupported clock configuration.
  */
-#define IPC4_MAX_CLK_STATES 3
+#define IPC4_MAX_CLK_STATES 0
 
 /* Max src queue count count supported by ipc4 */
 #define IPC4_MAX_SRC_QUEUE 8
