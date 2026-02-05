@@ -460,10 +460,15 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 	mod->deep_buff_bytes = 0;
 
-	/* Get period_bytes first on prepare(). At this point it is guaranteed that the stream
-	 * parameter from sink buffer is settled, and still prior to all references to period_bytes.
+	/* Get period_bytes first on prepare(). At this point the stream parameter from sink buffer
+	 * shall be settled, provided that the pipeline is built correctly (bind IPC received).
+	 * Hence check for NULL.
 	 */
 	sink = comp_dev_get_first_data_consumer(dev);
+	if (!sink) {
+		comp_err(dev, "no sink present on period size calculation");
+		return -EINVAL;
+	}
 
 	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
 	comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
