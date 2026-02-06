@@ -218,6 +218,10 @@ __cold static int primary_core_init(int argc, char *argv[], struct sof *sof)
 	io_perf_monitor_init();
 #endif
 
+#if CONFIG_SOF_USERSPACE_LL
+	zephyr_ll_user_resources_init();
+#endif
+
 	/* init the platform */
 	if (platform_init(sof) < 0)
 		sof_panic(SOF_IPC_PANIC_PLATFORM);

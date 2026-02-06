@@ -7,6 +7,7 @@
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <rtos/symbol.h>
+#include <rtos/userspace_helper.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/watchdog.h>
@@ -38,17 +39,28 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
 #define ZEPHYR_LL_STACK_SIZE	8192
 
+#if CONFIG_SOF_USERSPACE_LL
+K_THREAD_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_SIZE);
+#else
 K_KERNEL_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_SIZE);
+#endif
 
 struct zephyr_domain_thread {
-	struct k_thread ll_thread;
-	struct k_sem sem;
+	struct k_thread *ll_thread;
+	struct k_sem *sem;
+#ifndef CONFIG_SOF_USERSPACE_LL
+	struct k_thread ll_thread_obj;
+	struct k_sem sem_obj;
+#endif
 	void (*handler)(void *arg);
 	void *arg;
 };
 
 struct zephyr_domain {
-	struct k_timer timer;
+	struct k_timer *timer;
+#ifndef CONFIG_SOF_USERSPACE_LL
+	struct k_timer timer_obj;
+#endif
 	struct zephyr_domain_thread domain_thread[CONFIG_CORE_COUNT];
 	struct ll_schedule_domain *ll_domain;
 #if CONFIG_CROSS_CORE_STREAM
@@ -77,16 +89,18 @@ static inline void stats_report(unsigned int runs, int core, unsigned int cycles
 static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct zephyr_domain *zephyr_domain = p1;
-	int core = cpu_get_id();
+	int core = POINTER_TO_INT(p2);
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 #ifdef CONFIG_SCHEDULE_LL_STATS_LOG
 	unsigned int runs = 0, overruns = 0, cycles_sum = 0, cycles_max = 0;
 	unsigned int cycles0, cycles1, diff, timer_fired;
 #endif
 
+	tr_dbg(&ll_tr, "ll core %u thread starting", core);
+
 	for (;;) {
 		/* immediately go to sleep, waiting to be woken up by the timer */
-		k_sem_take(&dt->sem, K_FOREVER);
+		k_sem_take(dt->sem, K_FOREVER);
 
 #ifdef CONFIG_SCHEDULE_LL_STATS_LOG
 		cycles0 = k_cycle_get_32();
@@ -120,7 +134,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 		/* This handles wrapping correctly too */
 		diff = cycles1 - cycles0;
 
-		timer_fired = k_timer_status_get(&zephyr_domain->timer);
+		timer_fired = k_timer_status_get(zephyr_domain->timer);
 		if (timer_fired > 1)
 			overruns++;
 
@@ -163,9 +177,12 @@ static void zephyr_domain_timer_fn(struct k_timer *timer)
 		struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
 		if (dt->handler)
-			k_sem_give(&dt->sem);
+			k_sem_give(dt->sem);
 	}
 }
+
+/* The normal kernel-space implementation for register/unregister */
+#ifndef CONFIG_SOF_USERSPACE_LL
 
 static int zephyr_domain_register(struct ll_schedule_domain *domain,
 				  struct task *task,
@@ -188,15 +205,16 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 	dt->arg = arg;
 
 	/* 10 is rather random, we better not accumulate 10 missed timer interrupts */
-	k_sem_init(&dt->sem, 0, 10);
+	k_sem_init(dt->sem, 0, 10);
 
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
-	thread = k_thread_create(&dt->ll_thread,
-				 ll_sched_stack[core],
-				 ZEPHYR_LL_STACK_SIZE,
-				 zephyr_domain_thread_fn, zephyr_domain, NULL, NULL,
-				 CONFIG_LL_THREAD_PRIORITY, 0, K_FOREVER);
+	/* not allocated dynamically when LL in kernel space */
+	dt->ll_thread = &dt->ll_thread_obj;
+
+	thread = k_thread_create(dt->ll_thread, ll_sched_stack[core], ZEPHYR_LL_STACK_SIZE,
+				 zephyr_domain_thread_fn, zephyr_domain, INT_TO_POINTER(core),
+				 NULL, CONFIG_LL_THREAD_PRIORITY, 0, K_FOREVER);
 
 	k_thread_cpu_mask_clear(thread);
 	k_thread_cpu_mask_enable(thread, core);
@@ -206,13 +224,13 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 
 	key = k_spin_lock(&domain->lock);
 
-	if (!k_timer_user_data_get(&zephyr_domain->timer)) {
+	if (!k_timer_user_data_get(zephyr_domain->timer)) {
 		k_timeout_t start = {0};
 
-		k_timer_init(&zephyr_domain->timer, zephyr_domain_timer_fn, NULL);
-		k_timer_user_data_set(&zephyr_domain->timer, zephyr_domain);
+		k_timer_init(zephyr_domain->timer, zephyr_domain_timer_fn, NULL);
+		k_timer_user_data_set(zephyr_domain->timer, zephyr_domain);
 
-		k_timer_start(&zephyr_domain->timer, start, K_USEC(LL_TIMER_PERIOD_US));
+		k_timer_start(zephyr_domain->timer, start, K_USEC(LL_TIMER_PERIOD_US));
 
 		/* Enable the watchdog */
 		watchdog_enable(core);
@@ -245,8 +263,8 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 		/* Disable the watchdog */
 		watchdog_disable(core);
 
-		k_timer_stop(&zephyr_domain->timer);
-		k_timer_user_data_set(&zephyr_domain->timer, NULL);
+		k_timer_stop(zephyr_domain->timer);
+		k_timer_user_data_set(zephyr_domain->timer, NULL);
 	}
 
 	zephyr_domain->domain_thread[core].handler = NULL;
@@ -260,10 +278,142 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 	 * If running in the context of the domain thread, k_thread_abort() will
 	 * not return
 	 */
-	k_thread_abort(&zephyr_domain->domain_thread[core].ll_thread);
+	k_thread_abort(zephyr_domain->domain_thread[core].ll_thread);
+
+	tr_dbg(&ll_tr, "exit");
 
 	return 0;
 }
+
+#else /* CONFIG_SOF_USERSPACE_LL */
+
+/* User-space implementation for register/unregister */
+
+static int zephyr_domain_register_user(struct ll_schedule_domain *domain,
+				       struct task *task,
+				       void (*handler)(void *arg), void *arg)
+{
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+	int core = cpu_get_id();
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+	char thread_name[] = "ll_thread0";
+	k_tid_t thread;
+
+	tr_dbg(&ll_tr, "entry");
+
+	/* domain work only needs registered once on each core */
+	if (dt->handler)
+		return 0;
+
+	__ASSERT_NO_MSG(task->core == core);
+
+	dt->handler = handler;
+	dt->arg = arg;
+
+	/* 10 is rather random, we better not accumulate 10 missed timer interrupts */
+	k_sem_init(dt->sem, 0, 10);
+
+	thread_name[sizeof(thread_name) - 2] = '0' + core;
+
+	if (!dt->ll_thread) {
+		/* Allocate thread structure dynamically */
+		dt->ll_thread = k_object_alloc(K_OBJ_THREAD);
+		if (!dt->ll_thread) {
+			tr_err(&ll_tr, "Failed to allocate thread object for core %d", core);
+			dt->handler = NULL;
+			dt->arg = NULL;
+			return -ENOMEM;
+		}
+
+		thread = k_thread_create(dt->ll_thread, ll_sched_stack[core], ZEPHYR_LL_STACK_SIZE,
+					 zephyr_domain_thread_fn, zephyr_domain,
+					 INT_TO_POINTER(core), NULL, CONFIG_LL_THREAD_PRIORITY,
+					 K_USER, K_FOREVER);
+
+		k_thread_cpu_mask_clear(thread);
+		k_thread_cpu_mask_enable(thread, core);
+		k_thread_name_set(thread, thread_name);
+
+		k_mem_domain_add_thread(zephyr_ll_mem_domain(), thread);
+		k_thread_access_grant(thread, dt->sem, domain->lock, zephyr_domain->timer);
+		tr_dbg(&ll_tr, "granted LL access to thread %p (core %d)", thread, core);
+
+		k_thread_start(thread);
+	}
+
+	k_mutex_lock(domain->lock, K_FOREVER);
+	if (!k_timer_user_data_get(zephyr_domain->timer)) {
+		k_timeout_t start = {0};
+
+		k_timer_init(zephyr_domain->timer, zephyr_domain_timer_fn, NULL);
+		k_timer_user_data_set(zephyr_domain->timer, zephyr_domain);
+
+		k_timer_start(zephyr_domain->timer, start, K_USEC(LL_TIMER_PERIOD_US));
+
+		/* Enable the watchdog */
+		watchdog_enable(core);
+	}
+
+	k_mutex_unlock(domain->lock);
+
+	tr_info(&ll_tr, "domain->type %d domain->clk %d domain->ticks_per_ms %d period %d",
+		domain->type, domain->clk, domain->ticks_per_ms, (uint32_t)LL_TIMER_PERIOD_US);
+
+	return 0;
+}
+
+static int zephyr_domain_unregister_user(struct ll_schedule_domain *domain,
+					 struct task *task, uint32_t num_tasks)
+{
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+	int core = task->core;
+
+	tr_dbg(&ll_tr, "entry");
+
+	/* tasks still registered on this core */
+	if (num_tasks)
+		return 0;
+
+	k_mutex_lock(domain->lock, K_FOREVER);
+
+	if (!atomic_read(&domain->total_num_tasks)) {
+		/* Disable the watchdog */
+		watchdog_disable(core);
+
+		k_timer_stop(zephyr_domain->timer);
+		k_timer_user_data_set(zephyr_domain->timer, NULL);
+	}
+
+	zephyr_domain->domain_thread[core].handler = NULL;
+
+	k_mutex_unlock(domain->lock);
+
+	tr_info(&ll_tr, "domain->type %d domain->clk %d",
+		domain->type, domain->clk);
+
+	/* Thread not removed here, only the timer is stopped.
+	 * Thread object cleanup would require k_thread_abort() which cannot
+	 * be safely called from this context. The thread remains allocated
+	 * but dormant until next registration or system shutdown.
+	 */
+
+	tr_dbg(&ll_tr, "exit");
+
+	return 0;
+}
+
+struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain)
+{
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+	int core = cpu_get_id();
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+
+	tr_dbg(&ll_tr, "entry");
+
+	return dt->ll_thread;
+}
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 #if CONFIG_CROSS_CORE_STREAM
 static void zephyr_domain_block(struct ll_schedule_domain *domain)
@@ -290,9 +440,14 @@ static void zephyr_domain_unblock(struct ll_schedule_domain *domain)
 }
 #endif
 
-static const struct ll_schedule_domain_ops zephyr_domain_ops = {
+APP_TASK_DATA static const struct ll_schedule_domain_ops zephyr_domain_ops = {
+#ifdef CONFIG_SOF_USERSPACE_LL
+	.domain_register	= zephyr_domain_register_user,
+	.domain_unregister	= zephyr_domain_unregister_user,
+#else
 	.domain_register	= zephyr_domain_register,
 	.domain_unregister	= zephyr_domain_unregister,
+#endif
 #if CONFIG_CROSS_CORE_STREAM
 	.domain_block		= zephyr_domain_block,
 	.domain_unblock		= zephyr_domain_unblock,
@@ -303,6 +458,8 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 {
 	struct ll_schedule_domain *domain;
 	struct zephyr_domain *zephyr_domain;
+	struct zephyr_domain_thread *dt;
+	int core;
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
 			     &zephyr_domain_ops);
@@ -311,15 +468,36 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 		return NULL;
 	}
 
+#if CONFIG_SOF_USERSPACE_LL
+	zephyr_domain = sof_heap_alloc(zephyr_ll_user_heap(),
+				       SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				       sizeof(*zephyr_domain), sizeof(void *));
+	if (zephyr_domain)
+		memset(zephyr_domain, 0, sizeof(*zephyr_domain));
+#else
 	zephyr_domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 				sizeof(*zephyr_domain));
+#endif
 	if (!zephyr_domain) {
 		tr_err(&ll_tr, "domain allocation failed");
-		rfree(domain);
+		k_panic();
 		return NULL;
 	}
 
 	zephyr_domain->ll_domain = domain;
+
+#if CONFIG_SOF_USERSPACE_LL
+	/* Allocate timer dynamically for userspace access */
+	zephyr_domain->timer = k_object_alloc(K_OBJ_TIMER);
+	if (!zephyr_domain->timer) {
+		tr_err(&ll_tr, "timer allocation failed");
+		k_panic();
+		return NULL;
+	}
+#else
+	/* not allocated dynamically when LL in kernel space */
+	zephyr_domain->timer = &zephyr_domain->timer_obj;
+#endif
 
 #if CONFIG_CROSS_CORE_STREAM
 	atomic_set(&zephyr_domain->block, 0);
@@ -328,6 +506,20 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 #endif
 
 	ll_sch_domain_set_pdata(domain, zephyr_domain);
+
+	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
+		dt = zephyr_domain->domain_thread + core;
+#ifdef CONFIG_SOF_USERSPACE_LL
+		dt->sem = k_object_alloc(K_OBJ_SEM);
+		if (!dt->sem) {
+			tr_err(&ll_tr, "Failed to allocate semaphore for core %d", core);
+			k_panic();
+		}
+#else
+		/* not allocated dynamically when LL in kernel space */
+		dt->sem = &dt->sem_obj;
+#endif
+	}
 
 	return domain;
 }
@@ -342,6 +534,6 @@ bool ll_sch_is_current(void)
 
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + cpu_get_id();
 
-	return k_current_get() == &dt->ll_thread;
+	return k_current_get() == dt->ll_thread;
 }
 EXPORT_SYMBOL(ll_sch_is_current);

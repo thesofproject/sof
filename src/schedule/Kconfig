@@ -15,6 +15,7 @@ config SCHEDULE_DMA_MULTI_CHANNEL
 config SCHEDULE_LL_STATS_LOG
 	bool "Log low-latency scheduler statistics"
 	default y
+	depends on !SOF_USERSPACE_LL
 	help
 	  Log statistics from low-latency scheduler. This is a low overhead
 	  mechanism to gather average and worst-case execution times of

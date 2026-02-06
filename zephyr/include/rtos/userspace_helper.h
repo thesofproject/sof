@@ -52,6 +52,18 @@ struct k_heap *module_driver_heap_init(void);
  */
 int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod);
 
+/**
+ * Attach common userspace memory partition to a module memory domain.
+ * @param dom - memory domain to attach the common partition to.
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * The common partition contains shared objects required by user-space modules.
+ */
+int user_memory_attach_common_partition(struct k_mem_domain *dom);
+
 #endif
 
 /**

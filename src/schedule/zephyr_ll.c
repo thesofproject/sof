@@ -30,6 +30,10 @@ struct zephyr_ll {
 	unsigned int n_tasks;			/* task counter */
 	struct ll_schedule_domain *ll_domain;	/* scheduling domain */
 	unsigned int core;			/* core ID of this instance */
+#if CONFIG_SOF_USERSPACE_LL
+	struct k_mutex *lock;			/* mutex for userspace */
+#endif
+	struct k_heap *heap;
 };
 
 /* per-task scheduler data */
@@ -41,17 +45,26 @@ struct zephyr_ll_pdata {
 
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	k_mutex_lock(sch->lock, K_FOREVER);
+#else
 	irq_local_disable(*flags);
+#endif
 }
 
 static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	k_mutex_unlock(sch->lock);
+#else
 	irq_local_enable(*flags);
+#endif
 }
 
 static void zephyr_ll_assert_core(const struct zephyr_ll *sch)
 {
-	assert(CONFIG_CORE_COUNT == 1 || sch->core == cpu_get_id());
+	assert(CONFIG_CORE_COUNT == 1 || IS_ENABLED(CONFIG_SOF_USERSPACE_LL) ||
+	       sch->core == cpu_get_id());
 }
 
 /* Locking: caller should hold the domain lock */
@@ -176,6 +189,8 @@ static void zephyr_ll_run(void *data)
 	struct list_item *list, *tmp, task_head = LIST_INIT(task_head);
 	uint32_t flags;
 
+	tr_dbg(&ll_tr, "entry");
+
 	zephyr_ll_lock(sch, &flags);
 
 	/*
@@ -248,8 +263,11 @@ static void zephyr_ll_run(void *data)
 
 	zephyr_ll_unlock(sch, &flags);
 
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/* TODO: to be replaced with direct function calls */
 	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
+#endif
 }
 
 static void schedule_ll_callback(void *data)
@@ -345,6 +363,15 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 		tr_err(&ll_tr, "cannot register domain %d",
 		       ret);
 
+#if CONFIG_SOF_USERSPACE_LL
+	k_thread_access_grant(zephyr_domain_thread_tid(sch->ll_domain), sch->lock);
+
+	tr_dbg(&ll_tr, "granting access to lock %p for thread %p", sch->lock,
+	       zephyr_domain_thread_tid(sch->ll_domain));
+	tr_dbg(&ll_tr, "granting access to domain lock %p for thread %p", &sch->ll_domain->lock,
+	       zephyr_domain_thread_tid(sch->ll_domain));
+#endif
+
 	return 0;
 }
 
@@ -432,7 +459,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 	/* Protect against racing with schedule_task() */
 	zephyr_ll_lock(sch, &flags);
 	task->priv_data = NULL;
-	rfree(pdata);
+	sof_heap_free(sch->heap, pdata);
 	zephyr_ll_unlock(sch, &flags);
 
 	return 0;
@@ -493,13 +520,25 @@ static const struct scheduler_ops zephyr_ll_ops = {
 	.scheduler_free		= zephyr_ll_scheduler_free,
 };
 
+#if CONFIG_SOF_USERSPACE_LL
+struct task *zephyr_ll_task_alloc(void)
+{
+	return sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER,
+			      sizeof(struct task), sizeof(void *));
+}
+#endif /* CONFIG_SOF_USERSPACE_LL */
+
 int zephyr_ll_task_init(struct task *task,
 			const struct sof_uuid_entry *uid, uint16_t type,
 			uint16_t priority, enum task_state (*run)(void *data),
 			void *data, uint16_t core, uint32_t flags)
 {
 	struct zephyr_ll_pdata *pdata;
+	struct k_heap *heap = sof_sys_heap_get();
+	int alloc_flags = SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT;
 	int ret;
+
+	tr_dbg(&ll_tr, "ll-scheduler task %p init", data);
 
 	if (task->priv_data)
 		return -EEXIST;
@@ -509,12 +548,17 @@ int zephyr_ll_task_init(struct task *task,
 	if (ret < 0)
 		return ret;
 
-	pdata = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
-			sizeof(*pdata));
+#if CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+	alloc_flags = SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT;
+#endif
+	pdata = sof_heap_alloc(heap, alloc_flags, sizeof(*pdata), 0);
 	if (!pdata) {
 		tr_err(&ll_tr, "alloc failed");
 		return -ENOMEM;
 	}
+
+	memset(pdata, 0, sizeof(*pdata));
 
 	k_sem_init(&pdata->sem, 0, 1);
 
@@ -529,17 +573,43 @@ EXPORT_SYMBOL(zephyr_ll_task_init);
 int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 {
 	struct zephyr_ll *sch;
+	int core = cpu_get_id();
+	struct k_heap *heap = sof_sys_heap_get();
+	int flags = SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT;
+
+#if CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+	flags = SOF_MEM_FLAG_USER;
+#endif
+	tr_dbg(&ll_tr, "init on core %d", core);
 
 	/* initialize per-core scheduler private data */
-	sch = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
+	sch = sof_heap_alloc(heap, flags, sizeof(*sch), 0);
 	if (!sch) {
 		tr_err(&ll_tr, "allocation failed");
 		return -ENOMEM;
 	}
+
+	memset(sch, 0, sizeof(*sch));
+
 	list_init(&sch->tasks);
 	sch->ll_domain = domain;
-	sch->core = cpu_get_id();
+	sch->core = core;
 	sch->n_tasks = 0;
+	sch->heap = heap;
+
+#if CONFIG_SOF_USERSPACE_LL
+	/* Allocate mutex dynamically for userspace access */
+	sch->lock = k_object_alloc(K_OBJ_MUTEX);
+	if (!sch->lock) {
+		tr_err(&ll_tr, "mutex allocation failed");
+		sof_heap_free(sch->heap, sch);
+		return -ENOMEM;
+	}
+	k_mutex_init(sch->lock);
+
+	tr_dbg(&ll_tr, "ll-scheduler init done, sch %p sch->lock %p", sch, sch->lock);
+#endif
 
 	scheduler_init(domain->type, &zephyr_ll_ops, sch);
 
