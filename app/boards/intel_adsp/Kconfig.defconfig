@@ -175,5 +175,4 @@ config ZTEST
 # ----------------------------------------
 
 config INTEL_ADSP_DEBUG_SLOT_MANAGER
-	default y
-
+	default y if !SOF_USERSPACE_PROXY
