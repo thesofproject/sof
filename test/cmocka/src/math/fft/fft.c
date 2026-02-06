@@ -17,6 +17,8 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/math/icomplex16.h>
+#include <sof/math/icomplex32.h>
 #include <sof/math/fft.h>
 
 #include "input.h"

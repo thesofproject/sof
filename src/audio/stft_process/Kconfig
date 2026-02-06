@@ -1,14 +1,30 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 config COMP_STFT_PROCESS
-	tristate "Template example component"
+	tristate "STFT processing component"
 	default n
 	select MATH_FFT
 	select MATH_32BIT_FFT
 	select MATH_FFT_MULTI
 	help
-	  Select for stft_process component. Reason for existence
-	  is to provide a minimal component example and use as
-	  placeholder in processing pipelines. As example processing
-	  it swaps or reverses the channels when the switch control
-	  is enabled.
+	  Select for stft_process component. STFT acronym means
+	  short term Fourier transform. It converts audio
+	  to multiple FFTs with selected FFT size, hop, and
+	  window function. Possible signal processing can be
+	  done in it in frequency domain for FFTs that is
+	  efficient for more complex signal processing techniques.
+	  The component converts then the frequency domain
+	  version of signal back to normal PCM audio stream
+	  with inverse STFT.
+
+if COMP_STFT_PROCESS
+
+config STFT_PROCESS_MAGNITUDE_PHASE
+	bool "Convert FFTs to polar magnitude and phase"
+	default n
+	help
+	  Select for processing in polar magnitude and phase
+	  domain. Such complex values format is common for
+	  frequency domain signal processing.
+
+endif # COMP_STFT_PROCESS

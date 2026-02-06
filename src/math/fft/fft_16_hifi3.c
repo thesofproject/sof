@@ -7,6 +7,8 @@
 #include <sof/audio/format.h>
 #include <sof/common.h>
 #include <sof/math/fft.h>
+#include <sof/math/icomplex16.h>
+
 
 #ifdef FFT_HIFI3
 #include <sof/audio/coefficients/fft/twiddle_16.h>

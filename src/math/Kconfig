@@ -95,9 +95,17 @@ config MATH_DECIBELS
 	  Select this to enable db2lin_fixed() and exp_fixed()
 	  functions.
 
+config MATH_COMPLEX
+	bool "Operations for complex numbers"
+	default n
+	help
+	  Select this to enable functions for complex numbers
+	  arithmetic such as conversions to/from polar format.
+
 config MATH_FFT
 	bool "FFT library"
 	default n
+	select MATH_COMPLEX
 	help
 	  Enable Fast Fourier Transform library, this should not be selected
 	  directly, please select it from other audio components where need it.
