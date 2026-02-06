@@ -94,6 +94,7 @@ void *objpool_alloc(struct objpool_head *head, size_t size, uint32_t flags)
 	unsigned int new_n;
 
 	if (list_is_empty(&head->list)) {
+		head->flags = flags;
 		new_n = 2;
 	} else {
 		/* Check the last one */
