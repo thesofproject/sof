@@ -16,6 +16,15 @@
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
 
+#ifdef __ZEPHYR__
+#include <zephyr/logging/log.h>
+#else
+#define LOG_DBG(...) do {} while (0)
+#define LOG_INF(...) do {} while (0)
+#define LOG_WRN(...) do {} while (0)
+#define LOG_ERR(...) do {} while (0)
+#endif
+
 struct sof_fast_get_entry {
 	const void *dram_ptr;
 	void *sram_ptr;
@@ -81,7 +90,7 @@ static struct sof_fast_get_entry *fast_get_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-const void *z_impl_fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
+const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -101,7 +110,7 @@ const void *z_impl_fast_get(struct k_heap *heap, const void *dram_ptr, size_t si
 
 	if (entry->sram_ptr) {
 		if (entry->size != size || entry->dram_ptr != dram_ptr) {
-			tr_err(fast_get, "size %u != %u or ptr %p != %p mismatch",
+			LOG_ERR("size %u != %u or ptr %p != %p mismatch",
 				entry->size, size, entry->dram_ptr, dram_ptr);
 			ret = NULL;
 			goto out;
@@ -128,12 +137,11 @@ const void *z_impl_fast_get(struct k_heap *heap, const void *dram_ptr, size_t si
 	entry->refcount = 1;
 out:
 	k_spin_unlock(&data->lock, key);
-	tr_dbg(fast_get, "get %p, %p, size %u, refcnt %u", dram_ptr, ret, size,
-	       entry ? entry->refcount : 0);
+	LOG_DBG("get %p, %p, size %u, refcnt %u", dram_ptr, ret, size, entry ? entry->refcount : 0);
 
 	return ret;
 }
-EXPORT_SYMBOL(z_impl_fast_get);
+EXPORT_SYMBOL(fast_get);
 
 static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *data,
 						      const void *sram_ptr)
@@ -148,7 +156,7 @@ static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-void z_impl_fast_put(struct k_heap *heap, const void *sram_ptr)
+void fast_put(struct k_heap *heap, const void *sram_ptr)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -157,7 +165,7 @@ void z_impl_fast_put(struct k_heap *heap, const void *sram_ptr)
 	key = k_spin_lock(&fast_get_data.lock);
 	entry = fast_put_find_entry(data, sram_ptr);
 	if (!entry) {
-		tr_err(fast_get, "Put called to unknown address %p", sram_ptr);
+		LOG_ERR("Put called to unknown address %p", sram_ptr);
 		goto out;
 	}
 	entry->refcount--;
@@ -166,33 +174,8 @@ void z_impl_fast_put(struct k_heap *heap, const void *sram_ptr)
 		memset(entry, 0, sizeof(*entry));
 	}
 out:
-	tr_dbg(fast_get, "put %p, DRAM %p size %u refcnt %u", sram_ptr, entry ? entry->dram_ptr : 0,
-	       entry ? entry->size : 0, entry ? entry->refcount : 0);
+	LOG_DBG("put %p, DRAM %p size %u refcnt %u", sram_ptr, entry ? entry->dram_ptr : 0,
+		entry ? entry->size : 0, entry ? entry->refcount : 0);
 	k_spin_unlock(&data->lock, key);
 }
-EXPORT_SYMBOL(z_impl_fast_put);
-
-#ifdef CONFIG_USERSPACE
-#include <zephyr/internal/syscall_handler.h>
-void z_vrfy_fast_put(struct k_heap *heap, const void *sram_ptr)
-{
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(heap, sizeof(*heap)));
-	/*
-	 * FIXME: we don't know how much SRAM has been allocated, so cannot
-	 * check. Should fast_put() be changed to pass a size argument?
-	 */
-
-	z_impl_fast_put(heap, sram_ptr);
-}
-#include <zephyr/syscalls/fast_put_mrsh.c>
-
-const void *z_vrfy_fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
-{
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(heap, sizeof(*heap)));
-	/* We cannot (easily) verify the actual heapp memory */
-	K_OOPS(K_SYSCALL_MEMORY_READ(dram_ptr, size));
-
-	return z_impl_fast_get(heap, dram_ptr, size);
-}
-#include <zephyr/syscalls/fast_get_mrsh.c>
-#endif
+EXPORT_SYMBOL(fast_put);
