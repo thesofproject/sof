@@ -10,11 +10,12 @@
 #include <rtos/string.h>
 #include <user/debug_stream.h>
 #include <user/debug_stream_slot.h>
+#include <zephyr/kernel.h>
 
 LOG_MODULE_REGISTER(debug_stream_slot);
 
 struct cpu_mutex {
-	struct k_mutex m;
+	struct k_spinlock l;
 } __aligned(CONFIG_DCACHE_LINE_SIZE);
 
 /* CPU specific mutexes for each circular buffer */
@@ -66,6 +67,7 @@ int debug_stream_slot_send_record(struct debug_stream_record *rec)
 		debug_stream_get_circular_buffer(&desc, arch_proc_id());
 	uint32_t record_size = rec->size_words;
 	uint32_t record_start, buf_remain;
+	k_spinlock_key_t key;
 
 	LOG_DBG("Sending record %u id %u len %u", rec->seqno, rec->id, rec->size_words);
 
@@ -77,7 +79,7 @@ int debug_stream_slot_send_record(struct debug_stream_record *rec)
 			desc.buf_words, desc.core_id, desc.buf_words, desc.offset);
 		return -ENOMEM;
 	}
-	k_mutex_lock(&cpu_mutex[arch_proc_id()].m, K_FOREVER);
+	key = k_spin_lock(&cpu_mutex[arch_proc_id()].l);
 
 	rec->seqno = buf->next_seqno++;
 	rec->size_words = record_size + 1; /* +1 for size at the end of record */
@@ -105,7 +107,7 @@ int debug_stream_slot_send_record(struct debug_stream_record *rec)
 	buf->data[buf->w_ptr] = record_size + 1;
 	buf->w_ptr = (buf->w_ptr + 1) % desc.buf_words;
 
-	k_mutex_unlock(&cpu_mutex[arch_proc_id()].m);
+	k_spin_unlock(&cpu_mutex[arch_proc_id()].l, key);
 
 	LOG_DBG("Record %u id %u len %u sent", rec->seqno, rec->id, record_size);
 	return 0;
@@ -159,14 +161,6 @@ static int debug_stream_slot_init(void)
 
 		buf->next_seqno = 0;
 		buf->w_ptr = 0;
-		k_mutex_init(&cpu_mutex[i].m);
-		/* The core specific mutexes are now .bss which is uncached so the
-		 * following line is commented out. However, since the mutexes are
-		 * core specific there should be nothing preventing from having them
-		 * in cached memory.
-		 *
-		 * sys_cache_data_flush_range(&cpu_mutex[i], sizeof(cpu_mutex[i]));
-		 */
 	}
 	LOG_INF("Debug stream slot initialized");
 
