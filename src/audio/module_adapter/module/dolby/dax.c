@@ -181,6 +181,51 @@ static void dax_buffer_produce(struct dax_buffer *dax_buff, uint32_t bytes)
 	dax_buff->free = dax_buff->size - dax_buff->avail;
 }
 
+static void destroy_instance(struct processing_module *mod)
+{
+	struct sof_dax *dax_ctx = module_get_private_data(mod);
+
+	dax_free(dax_ctx); /* free internal dax instance in dax_ctx */
+	dax_buffer_release(mod, &dax_ctx->persist_buffer);
+	dax_buffer_release(mod, &dax_ctx->scratch_buffer);
+}
+
+static int establish_instance(struct processing_module *mod)
+{
+	int ret = 0;
+	struct comp_dev *dev = mod->dev;
+	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	uint32_t persist_sz;
+	uint32_t scratch_sz;
+
+	persist_sz = dax_query_persist_memory(dax_ctx);
+	if (dax_buffer_alloc(mod, &dax_ctx->persist_buffer, persist_sz) != 0) {
+		comp_err(dev, "allocate %u bytes failed for persist", persist_sz);
+		ret = -ENOMEM;
+		goto err;
+	}
+	scratch_sz = dax_query_scratch_memory(dax_ctx);
+	if (dax_buffer_alloc(mod, &dax_ctx->scratch_buffer, scratch_sz) != 0) {
+		comp_err(dev, "allocate %u bytes failed for scratch", scratch_sz);
+		ret = -ENOMEM;
+		goto err;
+	}
+	ret = dax_init(dax_ctx);
+	if (ret != 0) {
+		comp_err(dev, "dax instance initialization failed, ret %d", ret);
+		goto err;
+	}
+	dax_ctx->update_flags |= DAX_ENABLE_MASK;
+
+	comp_info(dev, "allocated: persist %u, scratch %u. version: %s",
+			  persist_sz, scratch_sz, dax_get_version());
+	return 0;
+
+err:
+	destroy_instance(mod);
+	return ret;
+}
+
 static int set_tuning_file(struct processing_module *mod, void *value, uint32_t size)
 {
 	int ret = 0;
@@ -463,17 +508,23 @@ static void check_and_update_settings(struct processing_module *mod)
 	}
 }
 
+static int sof_dax_reset(struct processing_module *mod) {
+	struct sof_dax *dax_ctx = module_get_private_data(mod);
+
+	/* dax instance will be established on prepare(), and destroyed on reset() */
+	destroy_instance(mod);
+	dax_buffer_release(mod, &dax_ctx->input_buffer);
+	dax_buffer_release(mod, &dax_ctx->output_buffer);
+	return 0;
+}
+
 static int sof_dax_free(struct processing_module *mod)
 {
 	struct sof_dax *dax_ctx = module_get_private_data(mod);
 
 	if (dax_ctx) {
-		dax_free(dax_ctx);
-		dax_buffer_release(mod, &dax_ctx->persist_buffer);
-		dax_buffer_release(mod, &dax_ctx->scratch_buffer);
+		sof_dax_reset(mod);
 		dax_buffer_release(mod, &dax_ctx->tuning_file_buffer);
-		dax_buffer_release(mod, &dax_ctx->input_buffer);
-		dax_buffer_release(mod, &dax_ctx->output_buffer);
 		mod_data_blob_handler_free(mod, dax_ctx->blob_handler);
 		dax_ctx->blob_handler = NULL;
 		mod_free(mod, dax_ctx);
@@ -484,12 +535,9 @@ static int sof_dax_free(struct processing_module *mod)
 
 static int sof_dax_init(struct processing_module *mod)
 {
-	int ret;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
 	struct sof_dax *dax_ctx;
-	uint32_t persist_sz;
-	uint32_t scratch_sz;
 
 	md->private = mod_zalloc(mod, sizeof(struct sof_dax));
 	if (!md->private) {
@@ -509,35 +557,12 @@ static int sof_dax_init(struct processing_module *mod)
 	dax_ctx->blob_handler = mod_data_blob_handler_new(mod);
 	if (!dax_ctx->blob_handler) {
 		comp_err(dev, "create blob handler failed");
-		ret = -ENOMEM;
-		goto err;
+		mod_free(mod, dax_ctx);
+		module_set_private_data(mod, NULL);
+		return -ENOMEM;
 	}
 
-	persist_sz = dax_query_persist_memory(dax_ctx);
-	if (dax_buffer_alloc(mod, &dax_ctx->persist_buffer, persist_sz) != 0) {
-		comp_err(dev, "allocate %u bytes failed for persist", persist_sz);
-		ret = -ENOMEM;
-		goto err;
-	}
-	scratch_sz = dax_query_scratch_memory(dax_ctx);
-	if (dax_buffer_alloc(mod, &dax_ctx->scratch_buffer, scratch_sz) != 0) {
-		comp_err(dev, "allocate %u bytes failed for scratch", scratch_sz);
-		ret = -ENOMEM;
-		goto err;
-	}
-	ret = dax_init(dax_ctx);
-	if (ret != 0) {
-		comp_err(dev, "dax instance initialization failed, ret %d", ret);
-		goto err;
-	}
-
-	comp_info(dev, "allocated: persist %u, scratch %u. version: %s",
-		  persist_sz, scratch_sz, dax_get_version());
 	return 0;
-
-err:
-	sof_dax_free(mod);
-	return ret;
 }
 
 static int check_media_format(struct processing_module *mod)
@@ -628,6 +653,11 @@ static int sof_dax_prepare(struct processing_module *mod, struct sof_source **so
 	}
 
 	ret = check_media_format(mod);
+	if (ret != 0)
+		return ret;
+
+	/* dax instance will be established on prepare(), and destroyed on reset() */
+	ret = establish_instance(mod);
 	if (ret != 0)
 		return ret;
 
@@ -855,6 +885,7 @@ static const struct module_interface dolby_dax_audio_processing_interface = {
 	.prepare = sof_dax_prepare,
 	.process = sof_dax_process,
 	.set_configuration = sof_dax_set_configuration,
+	.reset = sof_dax_reset,
 	.free = sof_dax_free,
 };
 
