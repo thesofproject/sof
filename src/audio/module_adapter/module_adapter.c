@@ -210,8 +210,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	comp_cl_dbg(drv, "start");
 
 	if (!config) {
-		comp_cl_err(drv, "wrong input params! drv = %zx config = %zx",
-			    (size_t)drv, (size_t)config);
+		comp_cl_err(drv, "NULL config! drv = %p", drv);
 		return NULL;
 	}
 #if CONFIG_IPC_MAJOR_4
@@ -248,8 +247,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	 * NOTE: dst->ext_data points to stack variable and contains
 	 *       pointers to IPC payload mailbox, so its only valid in
 	 *       functions that called from this function. This why
-	 *       the pointer is set NULL before the this function
-	 *       exits.
+	 *       the pointer is set NULL before this function exits.
 	 */
 #if CONFIG_IPC_MAJOR_4
 	dst->ext_data = &ext_data;
