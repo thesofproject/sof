@@ -204,6 +204,9 @@ static int cadence_configure_codec_params(struct processing_module *mod)
 		return cadence_configure_mp3_enc_params(mod);
 	case CADENCE_CODEC_AAC_DEC_ID:
 		return cadence_configure_aac_dec_params(mod);
+	case CADENCE_CODEC_VORBIS_DEC_ID:
+		/* No configuration needed for Vorbis */
+		return 0;
 	default:
 		break;
 	}
