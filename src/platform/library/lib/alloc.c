@@ -70,8 +70,3 @@ void heap_trace_all(int force)
 {
 	heap_trace(NULL, 0);
 }
-
-struct k_heap *sof_sys_heap_get(void)
-{
-	return NULL;
-}

@@ -13,9 +13,8 @@
 #ifndef __SOF_AUDIO_MODULE_GENERIC__
 #define __SOF_AUDIO_MODULE_GENERIC__
 
-#include <sof/objpool.h>
-#include <sof/ut.h>
 #include <sof/audio/component.h>
+#include <sof/ut.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include "module_interface.h"
@@ -129,7 +128,9 @@ struct module_param {
  * when the module unloads.
  */
 struct module_resources {
-	struct objpool_head objpool;
+	struct list_item res_list;		/**< Allocad resource containers */
+	struct list_item free_cont_list;	/**< Unused memory containers */
+	struct list_item cont_chunk_list;	/**< Memory container chunks */
 	size_t heap_usage;
 	size_t heap_high_water_mark;
 	struct k_heap *heap;

@@ -9,10 +9,12 @@
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
+#include <sof/lib/dma.h>
 #include <sof/schedule/schedule.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/component_ext.h>
 #include <sof/trace/trace.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
