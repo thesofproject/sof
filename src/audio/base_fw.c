@@ -630,6 +630,16 @@ __cold static int basefw_get_large_config(struct comp_dev *dev, uint32_t param_i
 						data_offset, data);
 };
 
+__cold static int basefw_astate_table(void)
+{
+	assert_can_be_cold();
+
+	/* Trivial handler possible due to an empty Astate Table requested in get_large_config */
+	STATIC_ASSERT(IPC4_MAX_CLK_STATES == 0, IPC4_NON_ZERO_ASTATE_UNSUPPORTED);
+
+	return IPC4_SUCCESS;
+}
+
 /**
  * Handles the DMA Control IPC message to initialize or modify DMA gateway configuration.
  *
@@ -682,9 +692,7 @@ __cold static int basefw_set_large_config(struct comp_dev *dev, uint32_t param_i
 
 	switch (param_id) {
 	case IPC4_ASTATE_TABLE:
-		/* Trivial handler due to an empty Astate Table requested in get_large_config */
-		STATIC_ASSERT(IPC4_MAX_CLK_STATES == 0, IPC4_NON_ZERO_ASTATE_UNSUPPORTED);
-		return IPC4_SUCCESS;
+		return basefw_astate_table();
 	case IPC4_DMA_CONTROL:
 		return basefw_dma_control(first_block, last_block, data_offset, data);
 	case IPC4_PERF_MEASUREMENTS_STATE:
