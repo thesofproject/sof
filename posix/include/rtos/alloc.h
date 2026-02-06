@@ -140,7 +140,10 @@ static inline void k_heap_init(struct k_heap *heap, void *mem, size_t bytes)
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment);
 void sof_heap_free(struct k_heap *heap, void *addr);
-struct k_heap *sof_sys_heap_get(void);
+static inline struct k_heap *sof_sys_heap_get(void)
+{
+	return NULL;
+}
 
 /**
  * Calculates length of the null-terminated string.

@@ -124,11 +124,6 @@ int WEAK mod_free(struct processing_module *mod, const void *ptr)
 	return 0;
 }
 
-struct k_heap * WEAK sof_sys_heap_get(void)
-{
-	return NULL;
-}
-
 void WEAK *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment)
 {
