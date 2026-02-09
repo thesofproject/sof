@@ -15,11 +15,13 @@
 #include <stdint.h>
 
 #include <rtos/alloc.h>
+#include <rtos/sof.h>
 #include <rtos/userspace_helper.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/library/userspace_proxy.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
 
 #define MODULE_DRIVER_HEAP_CACHED		CONFIG_SOF_ZEPHYR_HEAP_CACHED
 
@@ -144,6 +146,17 @@ void user_grant_dai_access_all(struct k_thread *thread)
 		k_thread_access_grant(thread, devices[i]);
 
 	LOG_DBG("Granted DAI access to thread %p for %zu devices", thread, count);
+}
+
+void user_grant_dma_access_all(struct k_thread *thread)
+{
+	const struct dma_info *info = dma_info_get();
+	struct sof_dma *d;
+
+	for (d = info->dma_array; d < info->dma_array + info->num_dmas; d++) {
+		k_thread_access_grant(thread, d->z_dev);
+		LOG_DBG("Granted DMA device access: %s to thread %p", d->z_dev->name, thread);
+	}
 }
 
 #else /* CONFIG_USERSPACE */

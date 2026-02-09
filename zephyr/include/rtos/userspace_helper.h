@@ -133,6 +133,13 @@ static inline uint32_t user_get_partition_attr(uintptr_t ptr)
  */
 void user_grant_dai_access_all(struct k_thread *thread);
 
+/**
+ * Grant DMA device access to a user-space thread.
+ *
+ * @param thread user-space thread for which DMA access is granted
+ */
+void user_grant_dma_access_all(struct k_thread *thread);
+
 #else
 
 static inline int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
