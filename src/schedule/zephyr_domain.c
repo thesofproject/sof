@@ -336,6 +336,8 @@ static int zephyr_domain_register_user(struct ll_schedule_domain *domain,
 
 		k_mem_domain_add_thread(zephyr_ll_mem_domain(), thread);
 		k_thread_access_grant(thread, dt->sem, domain->lock, zephyr_domain->timer);
+		user_grant_dai_access_all(thread);
+		user_grant_dma_access_all(thread);
 		tr_dbg(&ll_tr, "granted LL access to thread %p (core %d)", thread, core);
 
 		k_thread_start(thread);
