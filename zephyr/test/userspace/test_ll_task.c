@@ -13,6 +13,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/audio/pipeline.h>
 #include <rtos/task.h>
 #include <rtos/userspace_helper.h>
 #include <ipc4/fw_reg.h>
@@ -92,6 +93,40 @@ static void ll_task_test(void)
 ZTEST(userspace_ll, ll_task_test)
 {
 	ll_task_test();
+}
+
+static void pipeline_check(void)
+{
+	struct pipeline *p;
+	struct k_heap *heap;
+	uint32_t pipeline_id = 1;
+	uint32_t priority = 5;
+	uint32_t comp_id = 10;
+	int ret;
+
+	heap = zephyr_ll_user_heap();
+	zassert_not_null(heap, "user heap not found");
+
+	/* Create pipeline on user heap */
+	p = pipeline_new(heap, pipeline_id, priority, comp_id, NULL);
+	zassert_not_null(p, "pipeline creation failed");
+
+	/* Verify heap assignment */
+	zassert_equal(p->heap, heap, "pipeline heap not equal to user heap");
+
+	/* Verify pipeline properties */
+	zassert_equal(p->pipeline_id, pipeline_id, "pipeline id mismatch");
+	zassert_equal(p->priority, priority, "priority mismatch");
+	zassert_equal(p->comp_id, comp_id, "comp id mismatch");
+
+	/* Free pipeline */
+	ret = pipeline_free(p);
+	zassert_ok(ret, "pipeline free failed");
+}
+
+ZTEST(userspace_ll, pipeline_check)
+{
+	pipeline_check();
 }
 
 ZTEST_SUITE(userspace_ll, NULL, NULL, NULL, NULL, NULL);
