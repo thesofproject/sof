@@ -16,7 +16,7 @@
 #define APP_TASK_BSS
 #define APP_TASK_DATA
 #else
-
+#include <zephyr/cache.h>
 #include <zephyr/app_memory/app_memdomain.h>
 
 #define USER_MOD_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
@@ -112,6 +112,17 @@ void module_driver_heap_remove(struct k_heap *mod_drv_heap);
  * @param thread_id user-space thread for which access is added
  */
 int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id);
+
+/**
+ * Derive partition attribute from the pointer. If the address is cacheable, sets the cacheable
+ * attribute.
+ *
+ * @param ptr Address of the partition start
+ */
+static inline uint32_t user_get_partition_attr(uintptr_t ptr)
+{
+	return sys_cache_is_ptr_cached(UINT_TO_POINTER(ptr)) ? XTENSA_MMU_CACHED_WB : 0;
+}
 
 #else
 

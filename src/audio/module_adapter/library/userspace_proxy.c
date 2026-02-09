@@ -61,7 +61,9 @@ static int userspace_proxy_memory_init(struct userspace_context *user_ctx,
 #if !defined(CONFIG_XTENSA_MMU_DOUBLE_MAP) && defined(CONFIG_SOF_ZEPHYR_HEAP_CACHED)
 #define HEAP_PART_CACHED
 	/* Add cached module private heap to memory partitions */
-	struct k_mem_partition heap_cached_part = { .attr = K_MEM_PARTITION_P_RW_U_RW };
+	struct k_mem_partition heap_cached_part = {
+		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB
+	};
 
 	k_mem_region_align(&heap_cached_part.start, &heap_cached_part.size,
 			   POINTER_TO_UINT(sys_cache_cached_ptr_get(heap->init_mem)),
@@ -102,6 +104,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user_ctx, uint
 
 		mem_partition.start = mod->segment[idx].v_base_addr;
 		mem_partition.size = mod->segment[idx].flags.r.length * CONFIG_MM_DRV_PAGE_SIZE;
+		mem_partition.attr |= user_get_partition_attr(mem_partition.start);
 
 		ret = k_mem_domain_add_partition(user_ctx->comp_dom, &mem_partition);
 
@@ -115,7 +118,8 @@ static int userspace_proxy_add_sections(struct userspace_context *user_ctx, uint
 
 	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &mem_partition.size);
 	mem_partition.start = POINTER_TO_UINT(va_base);
-	mem_partition.attr = K_MEM_PARTITION_P_RW_U_RW;
+	mem_partition.attr = user_get_partition_attr(mem_partition.start) |
+		K_MEM_PARTITION_P_RW_U_RW;
 	ret = k_mem_domain_add_partition(user_ctx->comp_dom, &mem_partition);
 
 	tr_dbg(&userspace_proxy_tr, "Add bss partition %p + %zx, attr = %u, ret = %d",
