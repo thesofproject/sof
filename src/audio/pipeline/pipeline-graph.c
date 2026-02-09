@@ -11,6 +11,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
+#include <rtos/alloc.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
@@ -108,8 +109,8 @@ void pipeline_posn_init(struct sof *sof)
 }
 
 /* create new pipeline - returns pipeline id or negative error */
-struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t comp_id,
-			      struct create_pipeline_params *pparams)
+struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_t priority,
+			      uint32_t comp_id, struct create_pipeline_params *pparams)
 {
 	struct sof_ipc_stream_posn posn;
 	struct pipeline *p;
@@ -122,13 +123,16 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 	heap_trace_all(0);
 
 	/* allocate new pipeline */
-	p = rzalloc(SOF_MEM_FLAG_USER, sizeof(*p));
+	p = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, sizeof(*p), 0);
 	if (!p) {
 		pipe_cl_err("Out of Memory");
 		return NULL;
 	}
 
+	memset(p, 0, sizeof(*p));
+
 	/* init pipeline */
+	p->heap = heap;
 	p->comp_id = comp_id;
 	p->priority = priority;
 	p->pipeline_id = pipeline_id;
@@ -161,7 +165,7 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 
 	return p;
 free:
-	rfree(p);
+	sof_heap_free(heap, p);
 	return NULL;
 }
 
@@ -230,7 +234,7 @@ int pipeline_free(struct pipeline *p)
 #if !CONFIG_LIBRARY || UNIT_TEST
 		schedule_task_free(p->pipe_task);
 #endif
-		rfree(p->pipe_task);
+		sof_heap_free(p->heap, p->pipe_task);
 	}
 
 	ipc_msg_free(p->msg);
@@ -238,7 +242,7 @@ int pipeline_free(struct pipeline *p)
 	pipeline_posn_offset_put(p->posn_offset);
 
 	/* now free the pipeline */
-	rfree(p);
+	sof_heap_free(p->heap, p);
 
 	/* show heap status */
 	heap_trace_all(0);

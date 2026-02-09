@@ -8,6 +8,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
+#include <rtos/alloc.h>
 #include <rtos/interrupt.h>
 #include <sof/lib/agent.h>
 #include <sof/list.h>
@@ -241,15 +242,17 @@ static struct task *pipeline_task_init(struct pipeline *p, uint32_t type)
 {
 	struct pipeline_task *task = NULL;
 
-	task = rzalloc(SOF_MEM_FLAG_USER,
-		       sizeof(*task));
+	task = sof_heap_alloc(p->heap, SOF_MEM_FLAG_USER,
+			      sizeof(*task), 0);
 	if (!task)
 		return NULL;
+
+	memset(task, 0, sizeof(*task));
 
 	if (schedule_task_init_ll(&task->task, SOF_UUID(pipe_task_uuid), type,
 				  p->priority, pipeline_task,
 				  p, p->core, 0) < 0) {
-		rfree(task);
+		sof_heap_free(p->heap, task);
 		return NULL;
 	}
 

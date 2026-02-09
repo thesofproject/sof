@@ -352,8 +352,8 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(pipe_desc->primary.r.instance_id, pipe_desc->primary.r.ppl_priority, 0,
-			    pparams);
+	pipe = pipeline_new(NULL, pipe_desc->primary.r.instance_id,
+			    pipe_desc->primary.r.ppl_priority, 0, pparams);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
 		return IPC4_OUT_OF_MEMORY;

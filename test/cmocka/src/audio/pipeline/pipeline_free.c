@@ -23,7 +23,7 @@
 #endif
 
 /* mock free() - dont free as we inspect contents */
-void rfree(void *ptr)
+void sof_heap_free(struct k_heap *heap, void *addr)
 {
 }
 

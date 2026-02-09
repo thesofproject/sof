@@ -395,7 +395,7 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(pipe_desc->pipeline_id, pipe_desc->priority,
+	pipe = pipeline_new(NULL, pipe_desc->pipeline_id, pipe_desc->priority,
 			    pipe_desc->comp_id, NULL);
 	if (!pipe) {
 		tr_err(&ipc_tr, "pipeline_new() failed");
