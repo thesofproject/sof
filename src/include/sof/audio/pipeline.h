@@ -25,6 +25,7 @@ struct comp_buffer;
 struct comp_dev;
 struct ipc;
 struct ipc_msg;
+struct k_heap;
 
 /*
  * Pipeline status to stop execution of current path, but to keep the
@@ -52,6 +53,7 @@ struct ipc_msg;
  * Audio pipeline.
  */
 struct pipeline {
+	struct k_heap *heap;	/**< heap used for allocating this pipeline */
 	uint32_t comp_id;	/**< component id for pipeline */
 	uint32_t pipeline_id;	/**< pipeline id */
 	uint32_t sched_id;	/**< Scheduling component id */
@@ -152,14 +154,15 @@ struct create_pipeline_params {
 
 /**
  * \brief Creates a new pipeline.
+ * \param[in] heap Heap to allocate the pipeline on, or NULL for default.
  * \param[in] pipeline_id Pipeline ID number.
  * \param[in] priority Pipeline scheduling priority.
  * \param[in] comp_id Pipeline component ID number.
  * \param[in] pparams Pipeline parameters from IPC payload, maybe NULL.
  * \return New pipeline pointer or NULL.
  */
-struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t comp_id,
-			      struct create_pipeline_params *pparams);
+struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_t priority,
+			      uint32_t comp_id, struct create_pipeline_params *pparams);
 
 /**
  * \brief Free's a pipeline.
