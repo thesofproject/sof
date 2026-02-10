@@ -187,6 +187,14 @@ const struct device *zephyr_dev[] = {
 #endif
 };
 
+const struct device **dai_get_device_list(size_t *count)
+{
+	__ASSERT_NO_MSG(count);
+	*count = ARRAY_SIZE(zephyr_dev);
+
+	return zephyr_dev;
+}
+
 /* convert sof_ipc_dai_type to Zephyr dai_type */
 static int sof_dai_type_to_zephyr(uint32_t type)
 {

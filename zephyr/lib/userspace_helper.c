@@ -19,12 +19,16 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/library/userspace_proxy.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/dai.h>
 
 #define MODULE_DRIVER_HEAP_CACHED		CONFIG_SOF_ZEPHYR_HEAP_CACHED
 
 /* Zephyr includes */
 #include <zephyr/kernel.h>
 #include <zephyr/app_memory/app_memdomain.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(userspace_helper, CONFIG_SOF_LOG_LEVEL);
 
 #if CONFIG_USERSPACE
 
@@ -126,6 +130,20 @@ int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 	k_mem_domain_add_thread(domain, thread_id);
 
 	return 0;
+}
+
+void user_grant_dai_access_all(struct k_thread *thread)
+{
+	const struct device **devices;
+	size_t count;
+	size_t i;
+
+	devices = dai_get_device_list(&count);
+
+	for (i = 0; i < count; i++)
+		k_thread_access_grant(thread, devices[i]);
+
+	LOG_DBG("Granted DAI access to thread %p for %zu devices", thread, count);
 }
 
 #else /* CONFIG_USERSPACE */
