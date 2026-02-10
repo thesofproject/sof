@@ -269,7 +269,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *cd,
 		    struct sof_ipc_pcm_params *params);
 
 /**
- * \brief Creates a new pipeline.
+ * \brief Prepares pipeline for processing.
  * \param[in] p pipeline.
  * \param[in,out] cd Pipeline component device.
  * \return 0 on success.
