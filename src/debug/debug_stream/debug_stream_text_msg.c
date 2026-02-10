@@ -73,6 +73,11 @@ static void ds_exception_dump(const char *format, va_list args)
 	if (reports_sent_cpu[arch_proc_id()] > 0)
 		return;
 
+	/* Skip useless " ** " prefix to save bytes */
+	if (strlen(format) >= 4 &&
+	    format[0] == ' ' && format[1] == '*' && format[2] == '*' && format[3] == ' ')
+		format += 4;
+
 	len = vsnprintf(ds_buf.text + ds_pos, sizeof(ds_buf.text) - ds_pos, format, args);
 	if (len < 0) {
 		ds_pos = 0;
