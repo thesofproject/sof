@@ -1,4 +1,4 @@
-# Sound Open Firmware
+# Sound Open Firmwares
 
 ### Status
 [![Daily Actions](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml/badge.svg)](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml)
