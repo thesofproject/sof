@@ -294,11 +294,6 @@ __cold int ipc_init(struct sof *sof)
 
 	tr_dbg(&ipc_tr, "entry");
 
-#if CONFIG_SOF_BOOT_TEST_STANDALONE
-	LOG_INF("SOF_BOOT_TEST_STANDALONE, disabling IPC.");
-	return 0;
-#endif
-
 	/* init ipc data */
 	sof->ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->ipc));
 	if (!sof->ipc) {
@@ -327,6 +322,11 @@ __cold int ipc_init(struct sof *sof)
 	io_perf_monitor_init_data(&sof->ipc->io_perf_in_msg_count, &init_data);
 	init_data.direction = IO_PERF_OUTPUT_DIRECTION;
 	io_perf_monitor_init_data(&sof->ipc->io_perf_out_msg_count, &init_data);
+#endif
+
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+	LOG_INF("SOF_BOOT_TEST_STANDALONE, disabling IPC.");
+	return 0;
 #endif
 
 #ifdef __ZEPHYR__
