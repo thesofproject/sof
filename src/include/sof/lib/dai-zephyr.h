@@ -28,6 +28,7 @@
 #include <sof/ipc/topology.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/ipc-config.h>
+#include <ipc/dai.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -305,7 +306,7 @@ void dai_release_llp_slot(struct dai_data *dd);
 /**
  * \brief Retrieve a pointer to the Zephyr device structure for a DAI of a given type and index.
  */
-const struct device *dai_get_device(uint32_t type, uint32_t index);
+const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
 
 /**
  * \brief Retrieve the list of all DAI devices.
