@@ -83,7 +83,7 @@ struct sof_dax {
 	int32_t ctc_enable;
 	int32_t content_processing_enable;
 	int32_t volume;
-	uint32_t update_flags;
+	uint32_t update_flags; /* Deprecated */
 
 	/* DAX buffers */
 	struct dax_buffer persist_buffer; /* Used for dax instance */
