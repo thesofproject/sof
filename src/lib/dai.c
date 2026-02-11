@@ -231,7 +231,7 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 	}
 }
 
-const struct device *dai_get_device(uint32_t type, uint32_t index)
+const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index)
 {
 	struct dai_config cfg;
 	int z_type;
