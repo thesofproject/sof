@@ -217,8 +217,8 @@ static int cadence_codec_init(struct processing_module *mod)
 	struct module_data *codec = &mod->priv;
 	struct module_config *cfg = &codec->cfg;
 	struct module_ext_init_data *ext_data = cfg->ext_data;
+	struct module_config *setup_cfg = NULL;
 	struct cadence_codec_data *cd;
-	struct module_config *setup_cfg;
 	struct comp_dev *dev = mod->dev;
 	int mem_tabs_size;
 	int ret;
@@ -308,7 +308,8 @@ static int cadence_codec_init(struct processing_module *mod)
 free:
 	mod_free(mod, cd->mem_tabs);
 free_cfg:
-	mod_free(mod, setup_cfg->data);
+	if (setup_cfg)
+		mod_free(mod, setup_cfg->data);
 free_cd:
 	mod_free(mod, cd);
 
