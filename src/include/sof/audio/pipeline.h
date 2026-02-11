@@ -369,9 +369,9 @@ int pipeline_comp_ll_task_init(struct pipeline *p);
 int pipeline_comp_dp_task_init(struct comp_dev *comp);
 
 /**
- * \brief Free's a pipeline.
+ * \brief Schedule a pipeline copy to run after a delay
  * \param[in] p pipeline.
- * \param[in] start Pipelien start time in microseconds.
+ * \param[in] start Pipeline start time in microseconds.
  */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start);
 
