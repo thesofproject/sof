@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 
+#include <rtos/atomic.h>
 #include <rtos/init.h>
 #include <sof/audio/data_blob.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -36,6 +37,62 @@ SOF_DEFINE_REG_UUID(dolby_dax_audio_processing);
 #define DAX_SWITCH_CTC_CONTROL_ID 2
 #define DAX_ENUM_PROFILE_CONTROL_ID 0
 #define DAX_ENUM_DEVICE_CONTROL_ID 1
+
+struct dax_adapter_data {
+	struct sof_dax dax_ctx;
+	atomic_t proc_flags;
+};
+
+enum dax_flag_opt_mode {
+	DAX_FLAG_READ = 0,
+	DAX_FLAG_SET,
+	DAX_FLAG_CLEAR,
+	DAX_FLAG_READ_AND_CLEAR,
+};
+
+static int32_t flag_process(struct dax_adapter_data *adapter_data,
+			    uint32_t flag,
+			    enum dax_flag_opt_mode opt_mode)
+{
+#ifdef __ZEPHYR__
+	int32_t bit = ffs(flag) - 1;
+
+	switch (opt_mode) {
+	case DAX_FLAG_READ:
+		return atomic_test_bit(&adapter_data->proc_flags, bit);
+	case DAX_FLAG_SET:
+		atomic_set_bit(&adapter_data->proc_flags, bit);
+		break;
+	case DAX_FLAG_CLEAR:
+		atomic_clear_bit(&adapter_data->proc_flags, bit);
+		break;
+	case DAX_FLAG_READ_AND_CLEAR:
+		return atomic_test_and_clear_bit(&adapter_data->proc_flags, bit);
+	default:
+		break;
+	}
+#else
+	/* Non-Zephyr builds run single-threaded (no DP mode), there is no synchronous problem */
+	int32_t old_flags = atomic_read(&adapter_data->proc_flags);
+
+	switch (opt_mode) {
+	case DAX_FLAG_READ:
+		return (old_flags & flag) != 0;
+	case DAX_FLAG_SET:
+		atomic_set(&adapter_data->proc_flags, old_flags | flag);
+		break;
+	case DAX_FLAG_CLEAR:
+		atomic_set(&adapter_data->proc_flags, old_flags & ~flag);
+		break;
+	case DAX_FLAG_READ_AND_CLEAR:
+		atomic_set(&adapter_data->proc_flags, old_flags & ~flag);
+		return (old_flags & flag) != 0;
+	default:
+		break;
+	}
+#endif
+	return 0;
+}
 
 static int itostr(int num, char *str)
 {
@@ -186,7 +243,8 @@ static void dax_buffer_produce(struct dax_buffer *dax_buff, uint32_t bytes)
 
 static void destroy_instance(struct processing_module *mod)
 {
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	dax_free(dax_ctx); /* free internal dax instance in dax_ctx */
 	dax_buffer_release(mod, &dax_ctx->persist_buffer);
@@ -197,7 +255,8 @@ static int establish_instance(struct processing_module *mod)
 {
 	int ret = 0;
 	struct comp_dev *dev = mod->dev;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 	uint32_t persist_sz;
 	uint32_t scratch_sz;
 
@@ -220,7 +279,7 @@ static int establish_instance(struct processing_module *mod)
 	}
 
 	/* set DAX_ENABLE_MASK bit to trigger the fully update of kcontrol values */
-	dax_ctx->update_flags |= DAX_ENABLE_MASK;
+	flag_process(adapter_data, DAX_ENABLE_MASK, DAX_FLAG_SET);
 
 	comp_info(dev, "allocated: persist %u, scratch %u. version: %s",
 		  persist_sz, scratch_sz, dax_get_version());
@@ -235,7 +294,8 @@ static int set_tuning_file(struct processing_module *mod, void *value, uint32_t 
 {
 	int ret = 0;
 	struct comp_dev *dev = mod->dev;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	if (dax_buffer_alloc(mod, &dax_ctx->tuning_file_buffer, size) != 0) {
 		comp_err(dev, "allocate %u bytes failed for tuning file", size);
@@ -254,7 +314,8 @@ static int set_tuning_file(struct processing_module *mod, void *value, uint32_t 
 static int set_enable(struct processing_module *mod, int32_t enable)
 {
 	int ret = 0;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	if (enable) {
 		ret = dax_set_enable(1, dax_ctx);
@@ -271,7 +332,8 @@ static int set_enable(struct processing_module *mod, int32_t enable)
 static int set_volume(struct processing_module *mod, int32_t abs_volume)
 {
 	int ret;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	dax_ctx->volume = abs_volume;
 	if (!dax_ctx->enable)
@@ -285,7 +347,8 @@ static int set_volume(struct processing_module *mod, int32_t abs_volume)
 static int set_device(struct processing_module *mod, int32_t out_device)
 {
 	int ret;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	dax_ctx->out_device = out_device;
 	ret = dax_set_device(out_device, dax_ctx);
@@ -297,7 +360,8 @@ static int set_device(struct processing_module *mod, int32_t out_device)
 static int set_crosstalk_cancellation_enable(struct processing_module *mod, int32_t enable)
 {
 	int ret;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	dax_ctx->ctc_enable = enable;
 	ret = dax_set_ctc_enable(enable, dax_ctx);
@@ -312,7 +376,8 @@ static int set_profile(struct processing_module *mod, int32_t profile_id)
 {
 	int ret = -EINVAL;
 	struct comp_dev *dev = mod->dev;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 	uint32_t params_sz = 0;
 	void *params;
 
@@ -332,7 +397,8 @@ static int set_tuning_device(struct processing_module *mod, int32_t tuning_devic
 {
 	int ret = -EINVAL;
 	struct comp_dev *dev = mod->dev;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 	uint32_t params_sz = 0;
 	void *params;
 
@@ -352,7 +418,8 @@ static int set_content_processing_enable(struct processing_module *mod, int32_t 
 {
 	int ret = -EINVAL;
 	struct comp_dev *dev = mod->dev;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 	uint32_t params_sz = 0;
 	void *params;
 
@@ -373,7 +440,8 @@ static int dax_set_param_wrapper(struct processing_module *mod,
 {
 	int ret = 0;
 	struct comp_dev *dev = mod->dev;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 	int32_t tmp_val;
 
 	switch (id) {
@@ -385,25 +453,25 @@ static int dax_set_param_wrapper(struct processing_module *mod,
 		tmp_val = !!tmp_val;
 		if (dax_ctx->enable != tmp_val) {
 			dax_ctx->enable = tmp_val;
-			dax_ctx->update_flags |= DAX_ENABLE_MASK;
+			flag_process(adapter_data, DAX_ENABLE_MASK, DAX_FLAG_SET);
 		}
 		break;
 	case DAX_PARAM_ID_ABSOLUTE_VOLUME:
 		dax_ctx->volume = *((int32_t *)value);
-		dax_ctx->update_flags |= DAX_VOLUME_MASK;
+		flag_process(adapter_data, DAX_VOLUME_MASK, DAX_FLAG_SET);
 		break;
 	case DAX_PARAM_ID_OUT_DEVICE:
 		tmp_val = *((int32_t *)value);
 		if (dax_ctx->out_device != tmp_val) {
 			dax_ctx->out_device = tmp_val;
-			dax_ctx->update_flags |= DAX_DEVICE_MASK;
+			flag_process(adapter_data, DAX_DEVICE_MASK, DAX_FLAG_SET);
 		}
 		break;
 	case DAX_PARAM_ID_PROFILE:
 		tmp_val = *((int32_t *)value);
 		if (dax_ctx->profile != tmp_val) {
 			dax_ctx->profile = tmp_val;
-			dax_ctx->update_flags |= DAX_PROFILE_MASK;
+			flag_process(adapter_data, DAX_PROFILE_MASK, DAX_FLAG_SET);
 		}
 		break;
 	case DAX_PARAM_ID_CP_ENABLE:
@@ -411,7 +479,7 @@ static int dax_set_param_wrapper(struct processing_module *mod,
 		tmp_val = !!tmp_val;
 		if (dax_ctx->content_processing_enable != tmp_val) {
 			dax_ctx->content_processing_enable = tmp_val;
-			dax_ctx->update_flags |= DAX_CP_MASK;
+			flag_process(adapter_data, DAX_CP_MASK, DAX_FLAG_SET);
 		}
 		break;
 	case DAX_PARAM_ID_CTC_ENABLE:
@@ -419,7 +487,7 @@ static int dax_set_param_wrapper(struct processing_module *mod,
 		tmp_val = !!tmp_val;
 		if (dax_ctx->ctc_enable != tmp_val) {
 			dax_ctx->ctc_enable = tmp_val;
-			dax_ctx->update_flags |= DAX_CTC_MASK;
+			flag_process(adapter_data, DAX_CTC_MASK, DAX_FLAG_SET);
 		}
 		break;
 	case DAX_PARAM_ID_ENDPOINT:
@@ -471,56 +539,52 @@ static int update_params_from_buffer(struct processing_module *mod, void *data, 
 
 static void check_and_update_settings(struct processing_module *mod)
 {
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
-	if (dax_ctx->update_flags & DAX_ENABLE_MASK) {
+	if (flag_process(adapter_data, DAX_ENABLE_MASK, DAX_FLAG_READ_AND_CLEAR)) {
 		set_enable(mod, dax_ctx->enable);
 		if (dax_ctx->enable) {
-			dax_ctx->update_flags |= DAX_DEVICE_MASK;
-			dax_ctx->update_flags |= DAX_VOLUME_MASK;
+			flag_process(adapter_data, DAX_DEVICE_MASK, DAX_FLAG_SET);
+			flag_process(adapter_data, DAX_VOLUME_MASK, DAX_FLAG_SET);
 		}
-		dax_ctx->update_flags &= ~DAX_ENABLE_MASK;
 		return;
 	}
-	if (dax_ctx->update_flags & DAX_DEVICE_MASK) {
+	if (flag_process(adapter_data, DAX_DEVICE_MASK, DAX_FLAG_READ_AND_CLEAR)) {
 		set_device(mod, dax_ctx->out_device);
 		set_tuning_device(mod, dax_ctx->tuning_device);
-		dax_ctx->update_flags |= DAX_PROFILE_MASK;
-		dax_ctx->update_flags &= ~DAX_DEVICE_MASK;
+		flag_process(adapter_data, DAX_PROFILE_MASK, DAX_FLAG_SET);
 		return;
 	}
-	if (dax_ctx->update_flags & DAX_CTC_MASK) {
+	if (flag_process(adapter_data, DAX_CTC_MASK, DAX_FLAG_READ_AND_CLEAR)) {
 		set_crosstalk_cancellation_enable(mod, dax_ctx->ctc_enable);
-		dax_ctx->update_flags |= DAX_PROFILE_MASK;
-		dax_ctx->update_flags &= ~DAX_CTC_MASK;
+		flag_process(adapter_data, DAX_PROFILE_MASK, DAX_FLAG_SET);
 		return;
 	}
-	if (dax_ctx->update_flags & DAX_PROFILE_MASK) {
+	if (flag_process(adapter_data, DAX_PROFILE_MASK, DAX_FLAG_READ_AND_CLEAR)) {
 		set_profile(mod, dax_ctx->profile);
 		if (!dax_ctx->content_processing_enable)
-			dax_ctx->update_flags |= DAX_CP_MASK;
-		dax_ctx->update_flags &= ~DAX_PROFILE_MASK;
+			flag_process(adapter_data, DAX_CP_MASK, DAX_FLAG_SET);
 		return;
 	}
-	if (dax_ctx->update_flags & DAX_CP_MASK) {
+	if (flag_process(adapter_data, DAX_CP_MASK, DAX_FLAG_READ_AND_CLEAR)) {
 		set_content_processing_enable(mod, dax_ctx->content_processing_enable);
-		dax_ctx->update_flags &= ~DAX_CP_MASK;
 		return;
 	}
-	if (dax_ctx->update_flags & DAX_VOLUME_MASK) {
+	if (flag_process(adapter_data, DAX_VOLUME_MASK, DAX_FLAG_READ_AND_CLEAR))
 		set_volume(mod, dax_ctx->volume);
-		dax_ctx->update_flags &= ~DAX_VOLUME_MASK;
-	}
 }
 
 static int sof_dax_reset(struct processing_module *mod)
 {
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx;
 
 	/* dax instance will be established on prepare(), and destroyed on reset() */
-	if (dax_ctx) {
-		if (dax_ctx->update_flags & DAX_PROCESSING_MASK) {
-			dax_ctx->update_flags |= DAX_RESET_MASK;
+	if (adapter_data) {
+		dax_ctx = &adapter_data->dax_ctx;
+		if (flag_process(adapter_data, DAX_PROCESSING_MASK, DAX_FLAG_READ)) {
+			flag_process(adapter_data, DAX_PROCESSING_MASK, DAX_FLAG_SET);
 		} else {
 			destroy_instance(mod);
 			dax_buffer_release(mod, &dax_ctx->input_buffer);
@@ -533,17 +597,19 @@ static int sof_dax_reset(struct processing_module *mod)
 
 static int sof_dax_free(struct processing_module *mod)
 {
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx;
 
-	if (dax_ctx) {
-		if (dax_ctx->update_flags & DAX_PROCESSING_MASK) {
-			dax_ctx->update_flags |= DAX_FREE_MASK;
+	if (adapter_data) {
+		dax_ctx = &adapter_data->dax_ctx;
+		if (flag_process(adapter_data, DAX_PROCESSING_MASK, DAX_FLAG_READ)) {
+			flag_process(adapter_data, DAX_FREE_MASK, DAX_FLAG_SET);
 		} else {
 			sof_dax_reset(mod);
 			dax_buffer_release(mod, &dax_ctx->tuning_file_buffer);
 			mod_data_blob_handler_free(mod, dax_ctx->blob_handler);
 			dax_ctx->blob_handler = NULL;
-			mod_free(mod, dax_ctx);
+			mod_free(mod, adapter_data);
 			module_set_private_data(mod, NULL);
 		}
 	}
@@ -552,16 +618,17 @@ static int sof_dax_free(struct processing_module *mod)
 
 static void check_and_update_state(struct processing_module *mod)
 {
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
 
-	if (!dax_ctx)
+	if (!adapter_data)
 		return;
 
-	if (dax_ctx->update_flags & DAX_FREE_MASK) {
+	if (flag_process(adapter_data, DAX_FREE_MASK, DAX_FLAG_READ)) {
+		flag_process(adapter_data, DAX_FREE_MASK, DAX_FLAG_CLEAR);
 		sof_dax_free(mod);
-	} else if (dax_ctx->update_flags & DAX_RESET_MASK) {
+	} else if (flag_process(adapter_data, DAX_RESET_MASK, DAX_FLAG_READ)) {
+		flag_process(adapter_data, DAX_RESET_MASK, DAX_FLAG_CLEAR);
 		sof_dax_reset(mod);
-		dax_ctx->update_flags &= ~DAX_RESET_MASK;
 	}
 }
 
@@ -569,15 +636,18 @@ static int sof_dax_init(struct processing_module *mod)
 {
 	struct comp_dev *dev = mod->dev;
 	struct module_data *md = &mod->priv;
+	struct dax_adapter_data *adapter_data;
 	struct sof_dax *dax_ctx;
 
-	md->private = mod_zalloc(mod, sizeof(struct sof_dax));
+	md->private = mod_zalloc(mod, sizeof(struct dax_adapter_data));
 	if (!md->private) {
 		comp_err(dev, "failed to allocate %u bytes for initialization",
 			 sizeof(struct sof_dax));
 		return -ENOMEM;
 	}
-	dax_ctx = module_get_private_data(mod);
+
+	adapter_data = module_get_private_data(mod);
+	dax_ctx = &adapter_data->dax_ctx;
 	dax_ctx->enable = 0;
 	dax_ctx->profile = 0;
 	dax_ctx->out_device = 0;
@@ -589,7 +659,7 @@ static int sof_dax_init(struct processing_module *mod)
 	dax_ctx->blob_handler = mod_data_blob_handler_new(mod);
 	if (!dax_ctx->blob_handler) {
 		comp_err(dev, "create blob handler failed");
-		mod_free(mod, dax_ctx);
+		mod_free(mod, adapter_data);
 		module_set_private_data(mod, NULL);
 		return -ENOMEM;
 	}
@@ -605,7 +675,8 @@ static int check_media_format(struct processing_module *mod)
 	struct comp_buffer *sink = comp_dev_get_first_data_consumer(dev);
 	const struct audio_stream *src_stream = &source->stream;
 	const struct audio_stream *sink_stream = &sink->stream;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	if (audio_stream_get_frm_fmt(src_stream) != audio_stream_get_frm_fmt(sink_stream) ||
 	    sof_to_dax_frame_fmt(audio_stream_get_frm_fmt(src_stream)) == DAX_FMT_UNSUPPORTED) {
@@ -675,7 +746,8 @@ static int sof_dax_prepare(struct processing_module *mod, struct sof_source **so
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 	uint32_t ibs, obs;
 
 	if (num_of_sources != 1 || num_of_sinks != 1) {
@@ -733,7 +805,8 @@ err:
 static int sof_dax_process(struct processing_module *mod, struct sof_source **sources,
 			   int num_of_sources, struct sof_sink **sinks, int num_of_sinks)
 {
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 	struct sof_source *source = sources[0];
 	struct sof_sink *sink = sinks[0];
 	uint8_t *buf, *bufstart, *bufend, *dax_buf;
@@ -742,12 +815,12 @@ static int sof_dax_process(struct processing_module *mod, struct sof_source **so
 	struct dax_buffer *dax_output_buffer = &dax_ctx->output_buffer;
 	uint32_t consumed_bytes, processed_bytes, produced_bytes;
 
-	if (!dax_ctx) {
-		comp_err(mod->dev, "invalid dax context");
+	if (!adapter_data) {
+		comp_err(mod->dev, "invalid adapter data");
 		return -EINVAL;
 	}
 
-	dax_ctx->update_flags |= DAX_PROCESSING_MASK;
+	flag_process(adapter_data, DAX_PROCESSING_MASK, DAX_FLAG_SET);
 	/* source stream -> internal input buffer */
 	consumed_bytes = MIN(source_get_data_available(source), dax_input_buffer->free);
 	source_get_data(source, consumed_bytes, (void *)&buf, (void *)&bufstart, &bufsz);
@@ -779,7 +852,7 @@ static int sof_dax_process(struct processing_module *mod, struct sof_source **so
 		dax_buffer_consume(dax_output_buffer, produced_bytes);
 		sink_commit_buffer(sink, produced_bytes);
 	}
-	dax_ctx->update_flags &= ~DAX_PROCESSING_MASK;
+	flag_process(adapter_data, DAX_PROCESSING_MASK, DAX_FLAG_CLEAR);
 	check_and_update_state(mod);
 
 	return 0;
@@ -793,7 +866,8 @@ static int sof_dax_set_configuration(struct processing_module *mod, uint32_t con
 {
 	int ret;
 	struct comp_dev *dev = mod->dev;
-	struct sof_dax *dax_ctx = module_get_private_data(mod);
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 	int32_t dax_param_id = 0;
 	int32_t val;
 
