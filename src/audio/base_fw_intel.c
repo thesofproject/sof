@@ -422,7 +422,7 @@ __cold int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, 
 {
 	union ipc4_connector_node_id node = (union ipc4_connector_node_id)node_id;
 	int ret, result;
-	enum dai_type type;
+	enum sof_ipc_dai_type type;
 
 	assert_can_be_cold();
 
@@ -442,7 +442,7 @@ __cold int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, 
 		return IPC4_SUCCESS;
 	case ipc4_i2s_link_output_class:
 	case ipc4_i2s_link_input_class:
-		type = DAI_INTEL_SSP;
+		type = SOF_DAI_INTEL_SSP;
 		break;
 	default:
 		return IPC4_INVALID_RESOURCE_ID;
