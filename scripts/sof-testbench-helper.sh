@@ -147,10 +147,10 @@ if [[ "$XTRUN" == true ]]; then
     echo "  input: $INFILE1, output: $OUTFILE1, trace: $TRACEFILE, profile: $PROFILETXT"
     source "$XTB4_SETUP"
     if [[ $PROFILE == true ]]; then
-	"$XTENSA_PATH"/xt-run --profile="$PROFILEOUT" "$XTB4" $OPTS 2> "$TRACEFILE"
+	"$XTENSA_PATH"/xt-run --mem_model --profile="$PROFILEOUT" "$XTB4" $OPTS 2> "$TRACEFILE"
 	"$XTENSA_PATH"/xt-gprof "$XTB4" "$PROFILEOUT" > "$PROFILETXT"
     else
-	"$XTENSA_PATH"/xt-run "$XTB4" $OPTS 2> "$TRACEFILE"
+	"$XTENSA_PATH"/xt-run --mem_model "$XTB4" $OPTS 2> "$TRACEFILE"
     fi
 else
     if [ ! -x "$TB4" ]; then
