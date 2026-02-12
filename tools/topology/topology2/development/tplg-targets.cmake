@@ -410,6 +410,18 @@ EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default"
 NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_DEEP_BUFFER=true,DEEPBUFFER_FW_DMA_MS=10,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default"
 
+# Deep buffer DMIC0 with tplg NHLT for PTL, 2ch and 4ch
+"sof-hda-generic\;sof-hda-generic-ace3-2ch-dmicdeepbuf\;PLATFORM=ptl,HDA_CONFIG=mix,NUM_DMICS=2,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-2ch-dmicdeepbuf.bin,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
+EFX_DMIC0_DRC_PARAMS=dmic_default,DMIC0_DEEP_BUFFER=true,DEEPBUFFER_FW_DMA_MS=10"
+
+"sof-hda-generic\;sof-hda-generic-ace3-4ch-dmicdeepbuf\;PLATFORM=ptl,HDA_CONFIG=mix,\
+NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,PREPROCESS_PLUGINS=nhlt,\
+NHLT_BIN=nhlt-sof-hda-generic-ace3-4ch-dmicdeepbuf.bin,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_pass,\
+EFX_DMIC0_DRC_PARAMS=dmic_default,DMIC0_DEEP_BUFFER=true,DEEPBUFFER_FW_DMA_MS=10"
+
 # Deep buffer DMIC0 with RT721 eval board with PCH-DMIC
 "cavs-sdw\;sof-ptl-rt721-4ch-dmicdeepbuf\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=5,DMIC1_ID=6,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9,\
