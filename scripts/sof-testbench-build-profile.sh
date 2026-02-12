@@ -12,7 +12,8 @@ usage() {
 }
 
 MODULES_S32_44K_48K="asrc src"
-MODULES_S32="dcblock drc drc_multiband eqfir eqiir gain tdfb"
+MODULES_S32="dcblock drc drc_multiband dolby-dax eqfir eqiir gain level_multiplier micsel \
+	     sound_dose stft_process_1536_240_ template_comp tdfb"
 MODULES_S24="aria"
 
 if [ -z "${SOF_WORKSPACE}" ]; then
