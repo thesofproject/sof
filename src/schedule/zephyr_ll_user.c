@@ -25,9 +25,8 @@ struct zephyr_ll_mem_resources {
 
 static struct zephyr_ll_mem_resources ll_mem_resources;
 
-K_APPMEM_PARTITION_DEFINE(ll_common);
 /* Heap allocator for LL scheduler memory (user accessible pointer) */
-K_APP_BMEM(ll_common) static struct k_heap *zephyr_ll_heap;
+APP_TASK_DATA static struct k_heap *zephyr_ll_heap;
 
 static struct k_heap *zephyr_ll_heap_init(void)
 {
@@ -61,11 +60,6 @@ static struct k_heap *zephyr_ll_heap_init(void)
 	ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &mem_partition);
 	tr_dbg(&ll_tr, "init ll heap %p, size %u (uncached), ret %d",
 	       (void *)mem_partition.start, heap->heap.init_bytes, ret);
-	if (ret)
-		k_panic();
-
-	ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &ll_common);
-	tr_dbg(&ll_tr, "init ll common %p, ret %d", (void *)&ll_common, ret);
 	if (ret)
 		k_panic();
 
