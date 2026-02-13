@@ -867,6 +867,11 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	int i, channel, err;
 	bool is_scheduling_source = dev == dev->pipeline->sched_comp;
 	uint32_t round_up_size;
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct k_heap *heap = zephyr_ll_user_heap();
+#else
+	struct k_heap *heap = NULL;
+#endif
 
 	/* host params always installed by pipeline IPC */
 	hd->host_size = params->buffer.size;
@@ -955,7 +960,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		}
 	} else {
 		/* allocate not shared buffer */
-		hd->dma_buffer = buffer_alloc_range(NULL, buffer_size_preferred, buffer_size,
+		hd->dma_buffer = buffer_alloc_range(heap, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!hd->dma_buffer) {
