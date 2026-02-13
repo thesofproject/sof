@@ -269,9 +269,6 @@ int scheduler_dp_task_init(struct task **task,
 					   stack_size, dp_thread_fn, *task, NULL, NULL,
 					   CONFIG_DP_THREAD_PRIORITY, (*task)->flags, K_FOREVER);
 
-	k_thread_access_grant(pdata->thread_id, pdata->event);
-	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
-
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, core);
 	if (ret < 0) {
@@ -280,6 +277,9 @@ int scheduler_dp_task_init(struct task **task,
 	}
 
 #ifdef CONFIG_USERSPACE
+	k_thread_access_grant(pdata->thread_id, pdata->event);
+	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
+
 	if ((*task)->flags & K_USER) {
 		ret = user_memory_init_shared(pdata->thread_id, pdata->mod);
 		if (ret < 0) {
