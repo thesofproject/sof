@@ -16,6 +16,7 @@
 #include <rtos/task.h>
 #include <sof/lib/perf_cnt.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/sem.h>
 #include <ipc4/base_fw.h>
 #include <sof/debug/telemetry/telemetry.h>
 
@@ -41,7 +42,7 @@ struct zephyr_ll {
 struct zephyr_ll_pdata {
 	bool run;
 	bool freeing;
-	struct k_sem sem;
+	struct sys_sem sem;
 };
 
 #if CONFIG_SOF_USERSPACE_LL
@@ -136,7 +137,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 		 * zephyr_ll_task_free() is trying to free this task. Complete
 		 * it and signal the semaphore to let the function proceed
 		 */
-		k_sem_give(&pdata->sem);
+		sys_sem_give(&pdata->sem);
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
@@ -505,7 +506,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	if (must_wait)
 		/* Wait for up to 100 periods */
-		k_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
+		sys_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
 
 	/* Protect against racing with schedule_task() */
 	zephyr_ll_lock(sch, &flags);
@@ -691,7 +692,7 @@ int zephyr_ll_task_init(struct task *task,
 
 	memset(pdata, 0, sizeof(*pdata));
 
-	k_sem_init(&pdata->sem, 0, 1);
+	sys_sem_init(&pdata->sem, 0, 1);
 
 	task->priv_data = pdata;
 
