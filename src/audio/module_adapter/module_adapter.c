@@ -226,6 +226,12 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	if (!mod)
 		return NULL;
 
+	module_set_private_data(mod, mod_priv);
+	list_init(&mod->raw_data_buffers_list);
+#if CONFIG_USERSPACE
+	mod->user_ctx = user_ctx;
+#endif /* CONFIG_USERSPACE */
+
 	struct comp_dev *dev = mod->dev;
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
@@ -235,12 +241,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		pipeline_comp_dp_task_init(dev);
 	}
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
-
-	module_set_private_data(mod, mod_priv);
-	list_init(&mod->raw_data_buffers_list);
-#if CONFIG_USERSPACE
-	mod->user_ctx = user_ctx;
-#endif /* CONFIG_USERSPACE */
 
 	dst = &mod->priv.cfg;
 	/*
