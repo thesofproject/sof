@@ -12,7 +12,6 @@
 #include <sof/compiler_attributes.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
-#include <sof/ipc/notification_pool.h>
 #include <rtos/init.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -253,8 +252,6 @@ static void mixin_check_notify_underrun(struct comp_dev *dev, struct mixin_data 
 	const bool eos_detected = state == AUDIOBUF_STATE_END_OF_STREAM_FLUSH ||
 				  state == AUDIOBUF_STATE_END_OF_STREAM;
 
-	struct ipc_msg *notify;
-
 	mixin_data->last_reported_underrun++;
 
 	if (!source_avail || eos_detected) {
@@ -273,13 +270,8 @@ static void mixin_check_notify_underrun(struct comp_dev *dev, struct mixin_data 
 		    (eos_detected && mixin_data->eos_delay_periods == 0)) {
 			mixin_data->last_reported_underrun = 0;
 
-			notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
-			if (!notify)
-				return;
-
-			mixer_underrun_notif_msg_init(notify, dev->ipc_config.id, eos_detected,
+			send_mixer_underrun_notif_msg(dev->ipc_config.id, eos_detected,
 						      source_avail, sinks_free);
-			ipc_msg_send(notify, notify->tx_data, false);
 		}
 	}
 }
