@@ -334,10 +334,6 @@ err:
 		schedule_task_free(dev->task);
 #endif
 	module_adapter_mem_free(mod);
-#if CONFIG_IPC_MAJOR_4
-	dst->ext_data = NULL;
-#endif
-
 	return NULL;
 }
 
