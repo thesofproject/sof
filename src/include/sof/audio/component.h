@@ -1228,6 +1228,16 @@ void comp_init_performance_data(struct comp_dev *dev);
  */
 bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used);
 
+/**
+ * Grant access to component to a thread.
+ *
+ * Must be called from kernel context.
+ *
+ * @param dev Component to update.
+ * @param th thread to give access to
+ */
+void comp_grant_access_to_thread(const struct comp_dev *dev, struct k_thread *th);
+
 static inline int user_get_buffer_memory_region(const struct comp_driver *drv)
 {
 #if CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP
