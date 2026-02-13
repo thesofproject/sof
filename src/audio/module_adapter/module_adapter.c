@@ -238,7 +238,11 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	/* create a task for DP processing */
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 		/* All data allocated, create a thread */
-		pipeline_comp_dp_task_init(dev);
+		ret = pipeline_comp_dp_task_init(dev);
+		if (ret) {
+			comp_cl_err(drv, "DP task creation failed with error %d.", ret);
+			goto err;
+		}
 	}
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
