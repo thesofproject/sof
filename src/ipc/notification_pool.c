@@ -100,4 +100,3 @@ struct ipc_msg *ipc_notification_pool_get(size_t size)
 	item->msg.tx_size = size;
 	return &item->msg;
 }
-EXPORT_SYMBOL(ipc_notification_pool_get);
