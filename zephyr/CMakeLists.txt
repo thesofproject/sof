@@ -518,7 +518,9 @@ zephyr_library_sources(
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
+if(CONFIG_COLD_STORE_EXECUTE_DRAM)
 zephyr_library_sources_ifdef(CONFIG_FAST_GET lib/fast-get.c)
+endif()
 
 # Optional SOF sources - depends on Kconfig - WIP
 
