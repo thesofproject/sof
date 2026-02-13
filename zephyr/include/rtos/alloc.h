@@ -122,9 +122,16 @@ void rfree(void *ptr);
  */
 void l3_heap_save(void);
 
-void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
-		     size_t alignment);
-void sof_heap_free(struct k_heap *heap, void *addr);
+__syscall void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+			      size_t alignment);
+
+void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+			    size_t alignment);
+
+__syscall void sof_heap_free(struct k_heap *heap, void *addr);
+
+void z_impl_sof_heap_free(struct k_heap *heap, void *addr);
+
 struct k_heap *sof_sys_heap_get(void);
 
 /* TODO: remove - debug only - only needed for linking */
@@ -148,5 +155,7 @@ uintptr_t get_shared_buffer_heap_start(void);
 size_t get_shared_buffer_heap_size(void);
 
 #endif
+
+#include <zephyr/syscalls/alloc.h>
 
 #endif /* __ZEPHYR_RTOS_ALLOC_H__ */
