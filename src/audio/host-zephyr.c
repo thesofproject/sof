@@ -33,7 +33,6 @@
 #include <stdint.h>
 
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-#include <sof/ipc/notification_pool.h>
 #include <ipc4/notification.h>
 #endif
 
@@ -368,19 +367,14 @@ static int host_get_status(struct comp_dev *dev, struct host_data *hd, struct dm
 	int ret = sof_dma_get_status(hd->chan->dma, hd->chan->index, stat);
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	if (ret == -EPIPE && !hd->xrun_notification_sent) {
-		struct ipc_msg *notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
+		uint32_t ppl_id = dev->pipeline->pipeline_id;
+		bool notif_sent = false;
 
-		if (notify) {
-			if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
-				copier_gateway_underrun_notif_msg_init(notify,
-								       dev->pipeline->pipeline_id);
-			else
-				copier_gateway_overrun_notif_msg_init(notify,
-								      dev->pipeline->pipeline_id);
-
-			ipc_msg_send(notify, notify->tx_data, false);
-			hd->xrun_notification_sent = true;
-		}
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			notif_sent = send_copier_gateway_underrun_notif_msg(ppl_id);
+		else
+			notif_sent = send_copier_gateway_overrun_notif_msg(ppl_id);
+		hd->xrun_notification_sent = notif_sent;
 	} else if (!ret) {
 		hd->xrun_notification_sent = false;
 	}

@@ -26,7 +26,6 @@
 #include <zephyr/pm/policy.h>
 #include <rtos/init.h>
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-#include <sof/ipc/notification_pool.h>
 #include <ipc4/notification.h>
 #endif
 
@@ -150,19 +149,14 @@ static int chain_get_dma_status(struct chain_dma_data *cd, struct dma_chan_data 
 	int ret = dma_get_status(chan->dma->z_dev, chan->index, stat);
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	if (ret == -EPIPE && !cd->xrun_notification_sent) {
-		struct ipc_msg *notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
+		uint32_t node_id = cd->link_connector_node_id.dw;
+		bool notif_sent = false;
 
-		if (notify) {
-			if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK)
-				gateway_underrun_notif_msg_init(notify,
-								cd->link_connector_node_id.dw);
-			else
-				gateway_overrun_notif_msg_init(notify,
-							       cd->link_connector_node_id.dw);
-
-			ipc_msg_send(notify, notify->tx_data, false);
-			cd->xrun_notification_sent = true;
-		}
+		if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK)
+			notif_sent = send_gateway_underrun_notif_msg(node_id);
+		else
+			notif_sent = send_gateway_overrun_notif_msg(node_id);
+		cd->xrun_notification_sent = notif_sent;
 	} else if (!ret) {
 		cd->xrun_notification_sent = false;
 	}
