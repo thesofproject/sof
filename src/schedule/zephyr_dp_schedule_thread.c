@@ -262,12 +262,12 @@ int scheduler_dp_task_init(struct task **task,
 	/* success, fill the structures */
 	pdata->p_stack = p_stack;
 	pdata->mod = mod;
-	*task = &task_memory->task;
 
 	/* create a zephyr thread for the task */
 	pdata->thread_id = k_thread_create(pdata->thread, (__sparse_force void *)p_stack,
-					   stack_size, dp_thread_fn, *task, NULL, NULL,
-					   CONFIG_DP_THREAD_PRIORITY, (*task)->flags, K_FOREVER);
+					   stack_size, dp_thread_fn, &task_memory->task, NULL, NULL,
+					   CONFIG_DP_THREAD_PRIORITY, task_memory->task.flags,
+					   K_FOREVER);
 
 	k_thread_access_grant(pdata->thread_id, pdata->event);
 	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
@@ -280,7 +280,7 @@ int scheduler_dp_task_init(struct task **task,
 	}
 
 #ifdef CONFIG_USERSPACE
-	if ((*task)->flags & K_USER) {
+	if (task_memory->task.flags & K_USER) {
 		ret = user_memory_init_shared(pdata->thread_id, pdata->mod);
 		if (ret < 0) {
 			tr_err(&dp_tr, "user_memory_init_shared() failed");
@@ -293,6 +293,8 @@ int scheduler_dp_task_init(struct task **task,
 	k_event_init(pdata->event);
 	k_thread_start(pdata->thread_id);
 
+	/* success, fill output parameter */
+	*task = &task_memory->task;
 	return 0;
 
 e_thread:
