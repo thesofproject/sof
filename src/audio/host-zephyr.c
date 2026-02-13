@@ -25,6 +25,7 @@
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <sof/debug/telemetry/performance_monitor.h>
+#include <sof/schedule/ll_schedule_domain.h> /* zephyr_ll_user_heap() */
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -610,7 +611,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev,
 		elem_array = &hd->local.elem_array;
 
 		/* config buffer will be used as proxy */
-		err = dma_sg_alloc(NULL, &hd->config.elem_array, SOF_MEM_FLAG_USER,
+		err = dma_sg_alloc(hd->alloc_ctx.heap, &hd->config.elem_array, SOF_MEM_FLAG_USER,
 				   dir, 1, 0, 0, 0);
 		if (err < 0) {
 			comp_err(dev, "dma_sg_alloc() failed");
@@ -620,7 +621,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev,
 		elem_array = &hd->config.elem_array;
 	}
 
-	err = dma_sg_alloc(NULL, elem_array, SOF_MEM_FLAG_USER, dir, buffer_count,
+	err = dma_sg_alloc(hd->alloc_ctx.heap, elem_array, SOF_MEM_FLAG_USER, dir, buffer_count,
 			   buffer_bytes,
 			   (uintptr_t)audio_stream_get_addr(&hd->dma_buffer->stream), 0);
 	if (err < 0) {
@@ -729,6 +730,17 @@ __cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	hd->chan_index = -EINVAL;
 	hd->copy_type = COMP_COPY_NORMAL;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * copier_host_create() uses mod_zalloc() to allocate
+	 * the 'hd' host data object and does not set hd->alloc_ctx.
+	 * If LL is run in user-space, assign the 'heap' here.
+	 */
+	hd->alloc_ctx.heap = zephyr_ll_user_heap();
+#else
+	hd->alloc_ctx.heap = NULL;
+#endif
+
 	return 0;
 }
 
@@ -739,6 +751,7 @@ __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct host_data *hd;
 	const struct ipc_config_host *ipc_host = spec;
+	struct k_heap *heap = NULL;
 	int ret;
 
 	assert_can_be_cold();
@@ -750,9 +763,11 @@ __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	hd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*hd));
+	hd = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, sizeof(*hd), 0);
 	if (!hd)
 		goto e_data;
+
+	memset(hd, 0, sizeof(*hd));
 
 	hd->nobytes_last_logged = k_uptime_get();
 	comp_set_drvdata(dev, hd);
@@ -766,7 +781,7 @@ __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 	return dev;
 
 e_dev:
-	rfree(hd);
+	sof_heap_free(heap, hd);
 e_data:
 	comp_free_device(dev);
 	return NULL;
@@ -794,7 +809,7 @@ __cold void host_common_free(struct host_data *hd)
 	sof_dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
-	dma_sg_free(NULL, &hd->config.elem_array);
+	dma_sg_free(hd->alloc_ctx.heap, &hd->config.elem_array);
 }
 
 __cold static void host_free(struct comp_dev *dev)
@@ -805,7 +820,8 @@ __cold static void host_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "entry");
 	host_common_free(hd);
-	rfree(hd);
+	/* NULL heap passed in host_new(), must match! */
+	sof_heap_free(NULL, hd);
 	comp_free_device(dev);
 }
 
@@ -963,7 +979,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		}
 	} else {
 		/* allocate not shared buffer */
-		hd->dma_buffer = buffer_alloc_range(NULL, buffer_size_preferred, buffer_size,
+		hd->dma_buffer = buffer_alloc_range(&hd->alloc_ctx, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!hd->dma_buffer) {
@@ -1020,14 +1036,16 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 	memset(dma_cfg, 0, sizeof(*dma_cfg));
 
-	dma_block_cfg = rzalloc(SOF_MEM_FLAG_USER,
-				sizeof(*dma_block_cfg));
+	dma_block_cfg = sof_heap_alloc(hd->alloc_ctx.heap, SOF_MEM_FLAG_USER,
+				       sizeof(*dma_block_cfg), 0);
 
 	if (!dma_block_cfg) {
 		comp_err(dev, "dma_block_config allocation failed");
 		err = -ENOMEM;
 		goto err_release_channel;
 	}
+
+	memset(dma_block_cfg, 0, sizeof(*dma_block_cfg));
 
 	dma_cfg->block_count = 1;
 	dma_cfg->source_data_size = config->src_width;
@@ -1110,7 +1128,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 err_free_block_cfg:
 	dma_cfg->head_block = NULL;
-	rfree(dma_block_cfg);
+	sof_heap_free(hd->alloc_ctx.heap, dma_block_cfg);
 err_release_channel:
 	sof_dma_release_channel(hd->dma, hd->chan_index);
 	hd->chan_index = -EINVAL;
@@ -1178,9 +1196,9 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 	}
 
 	/* free all DMA elements */
-	dma_sg_free(NULL, &hd->host.elem_array);
-	dma_sg_free(NULL, &hd->local.elem_array);
-	dma_sg_free(NULL, &hd->config.elem_array);
+	dma_sg_free(hd->alloc_ctx.heap, &hd->host.elem_array);
+	dma_sg_free(hd->alloc_ctx.heap, &hd->local.elem_array);
+	dma_sg_free(hd->alloc_ctx.heap, &hd->config.elem_array);
 
 	/* free DMA buffer */
 	if (hd->dma_buffer) {
@@ -1190,7 +1208,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 
 	/* free DMA block configuration */
 	if (hd->z_config.head_block)
-		rfree(hd->z_config.head_block);
+		sof_heap_free(hd->alloc_ctx.heap, hd->z_config.head_block);
 
 	/* reset buffer pointers */
 	hd->local_pos = 0;
