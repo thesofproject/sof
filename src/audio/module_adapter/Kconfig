@@ -173,6 +173,16 @@ if CADENCE_CODEC
 		  This option is a string and takes the full name of the SRC library binary.
 	endif
 
+	config SOF_COMPRESS_CODEC_PCM_DEC
+		bool "SOF PCM (WAV) decoder"
+		help
+		  Select to enable PCM (WAV) decoder.
+		  This provides PCM/WAV file decoding support through a simple
+		  implementation that handles the PCM data. Note that this is not
+		  a Cadence codec module but an open-source addition to support the
+		  PCM data format. In addition need to build the cplay from
+		  tinycompress with option --enable-pcm to use this.
+
 endif # Cadence
 
 	config COMP_DOLBY_DAX_AUDIO_PROCESSING
