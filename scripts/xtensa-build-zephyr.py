@@ -216,6 +216,10 @@ platform_configs_all = {
 		"hifi4_mscale_v2_0_2_prod",
 		RIMAGE_KEY = "key param ignored by imx8m"
 	),
+	"imx8m_cm7" : PlatformConfig(
+		"imx", "imx8mp_evk/mimx8ml8/m7/ddr",
+		"", "", "", ""
+	),
 	"imx8ulp" : PlatformConfig(
 		"imx", "imx8ulp_evk/mimx8ud7/adsp",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
@@ -953,6 +957,15 @@ def build_platforms():
 			platform_dict,
 			STAGING_DIR / "sof-info" / platform
 		)
+
+		# SOF marks ELF sections in the range [SOF_MODULE_DRAM_LINK_START, SOF_MODULE_DRAM_LINK_END]
+		# as "detached". On imx8m_cm7 that address range overlaps with the M7 ITCM, so rimage would
+		# incorrectly classify ITCM sections as detached. Pass -d to ignore detached classification
+		if platform == "imx8m_cm7":
+			existing = platform_wcfg.get("rimage.extra-args") or ""
+			platform_wcfg.set("rimage.extra-args",
+					  shlex.join(shlex.split(existing) + ["-d"]))
+
 		platf_build_environ['WEST_CONFIG_LOCAL'] = str(wcfg_path)
 
 		# Make sure the build logs don't leave anything hidden
@@ -1304,7 +1317,7 @@ def gzip_compress(fname, gzdst=None):
 # Don't run sof_ri_info and ignore silently .ri files that don't have one.
 RI_INFO_UNSUPPORTED = []
 
-RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp', 'imx95']
+RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8m_cm7', 'imx8ulp', 'imx95']
 RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196', 'mt8365']
 RI_INFO_UNSUPPORTED += ['qemu_xtensa', 'qemu_xtensa_mmu']
