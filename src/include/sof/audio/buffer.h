@@ -33,6 +33,7 @@
 #include <stdint.h>
 
 struct comp_dev;
+struct k_heap;
 
 /** \name Trace macros
  *  @{
@@ -148,6 +149,8 @@ struct comp_buffer {
 
 	/* list of buffers, to be used i.e. in raw data processing mode*/
 	struct list_item buffers_list;
+
+	struct k_heap *heap;
 };
 
 /*
