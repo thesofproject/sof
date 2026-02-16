@@ -501,7 +501,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 
 	kpb = rzalloc(SOF_MEM_FLAG_USER, sizeof(*kpb));
 	if (!kpb) {
-		rfree(dev);
+		comp_free_device(dev);
 		return NULL;
 	}
 
@@ -509,7 +509,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 
 	ret = kpb_set_verify_ipc_params(dev, ipc_process);
 	if (ret) {
-		rfree(dev);
+		comp_free_device(dev);
 		return NULL;
 	}
 
@@ -544,7 +544,7 @@ static struct comp_dev *kpb_new(const struct comp_driver *drv,
 	/* retrieve params from the base config for IPC4 */
 	ret = kpb_params(dev, &params);
 	if (ret < 0) {
-		rfree(dev);
+		comp_free_device(dev);
 		return NULL;
 	}
 #endif
@@ -720,7 +720,7 @@ static void kpb_free(struct comp_dev *dev)
 
 	/* Free KPB */
 	rfree(kpb);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 /**

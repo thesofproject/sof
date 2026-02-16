@@ -671,7 +671,7 @@ __cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 
 	rfree(cd);
 error:
-	rfree(dev);
+	comp_free_device(dev);
 	return NULL;
 }
 
@@ -683,7 +683,7 @@ __cold static void chain_task_free(struct comp_dev *dev)
 
 	chain_release(dev);
 	rfree(cd);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 static const struct comp_driver comp_chain_dma = {

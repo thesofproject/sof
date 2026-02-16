@@ -893,6 +893,19 @@ static inline struct comp_dev *comp_alloc(const struct comp_driver *drv, size_t 
 }
 
 /**
+ * Frees memory allocated for component device.
+ *
+ * This is a counterpart to comp_alloc() and not to be confused with
+ * comp_free().
+ *
+ * @param dev Pointer to the component device.
+ */
+static inline void comp_free_device(struct comp_dev *dev)
+{
+	sof_heap_free(dev->drv->user_heap, dev);
+}
+
+/**
  * \brief Module adapter associated with a component
  * @param dev Component device
  */

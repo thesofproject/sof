@@ -196,7 +196,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	dd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd));
 	if (!dd) {
-		rfree(dev);
+		comp_free_device(dev);
 		return NULL;
 	}
 
@@ -211,7 +211,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 error:
 	rfree(dd);
-	rfree(dev);
+	comp_free_device(dev);
 	return NULL;
 }
 
@@ -248,7 +248,7 @@ static void dai_free(struct comp_dev *dev)
 	dai_common_free(dd);
 
 	rfree(dd);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
