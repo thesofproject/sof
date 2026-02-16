@@ -152,7 +152,7 @@ SHARED_DATA struct sof_dma dma[] = {
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(host_dma)),
 },
 #endif
-#if defined(CONFIG_SOC_MIMX8ML8_ADSP)
+#if defined(CONFIG_SOC_MIMX8ML8_ADSP) || defined(CONFIG_SOC_MIMX8ML8_M7)
 {
 	.plat_data = {
 		.dir = SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
