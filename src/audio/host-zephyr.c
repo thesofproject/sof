@@ -736,6 +736,15 @@ __cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	hd->chan_index = -1;
 	hd->copy_type = COMP_COPY_NORMAL;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * copier_host_create() uses mod_zalloc() to allocate
+	 * the 'hd' host data object and does not set hd->heap.
+	 * If LL is run in user-space, assign the 'heap' here.
+	 */
+	hd->heap = zephyr_ll_user_heap();
+#endif
+
 	return 0;
 }
 
