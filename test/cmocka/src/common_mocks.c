@@ -59,16 +59,6 @@ void WEAK *rzalloc(uint32_t flags,
 	return calloc(bytes, 1);
 }
 
-void WEAK *rbrealloc_align(void *ptr, uint32_t flags,
-			   size_t bytes, size_t old_bytes, uint32_t alignment)
-{
-	(void)flags;
-	(void)old_bytes;
-	(void)alignment;
-
-	return realloc(ptr, bytes);
-}
-
 void WEAK *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
 {
 	(void)flags;

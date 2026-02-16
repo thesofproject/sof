@@ -42,12 +42,6 @@ void *rballoc_align(uint32_t flags, size_t bytes,
 	return malloc(bytes);
 }
 
-void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
-		      size_t old_bytes, uint32_t alignment)
-{
-	return realloc(ptr, bytes);
-}
-
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment)
 {

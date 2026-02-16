@@ -38,18 +38,6 @@ void rfree(void *ptr)
 	free(ptr);
 }
 
-void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
-		      size_t old_bytes, uint32_t alignment)
-{
-	void *newptr = aligned_alloc(alignment, bytes);
-
-	if (!newptr)
-		return NULL;
-	memcpy(newptr, ptr, bytes > old_bytes ? old_bytes : bytes);
-	free(ptr);
-	return newptr;
-}
-
 /* TODO: all mm_pm_...() routines to be implemented for IMR storage */
 uint32_t mm_pm_context_size(void)
 {
