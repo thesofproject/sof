@@ -493,36 +493,6 @@ void *rmalloc(uint32_t flags, size_t bytes)
 }
 EXPORT_SYMBOL(rmalloc);
 
-void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
-		      size_t old_bytes, uint32_t alignment)
-{
-	void *new_ptr;
-
-	if (!ptr) {
-		return rballoc_align(flags, bytes, alignment);
-	}
-
-	/* Original version returns NULL without freeing this memory */
-	if (!bytes) {
-		/* TODO: Should we call rfree(ptr); */
-		tr_err(&zephyr_tr, "realloc failed for 0 bytes");
-		return NULL;
-	}
-
-	new_ptr = rballoc_align(flags, bytes, alignment);
-	if (!new_ptr)
-		return NULL;
-
-	if (!(flags & SOF_MEM_FLAG_NO_COPY))
-		memcpy_s(new_ptr, bytes, ptr, MIN(bytes, old_bytes));
-
-	rfree(ptr);
-
-	tr_info(&zephyr_tr, "rbealloc: new ptr %p", new_ptr);
-
-	return new_ptr;
-}
-
 /**
  * Similar to rmalloc(), guarantees that returned block is zeroed.
  */
