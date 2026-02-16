@@ -161,7 +161,7 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	struct k_heap *heap = buffer->audio_buffer.heap;
 
-	rfree(buffer->stream.addr);
+	sof_heap_free(heap, buffer->stream.addr);
 	sof_heap_free(heap, buffer);
 	if (heap) {
 		struct dp_heap_user *mod_heap_user = container_of(heap, struct dp_heap_user, heap);
@@ -254,7 +254,7 @@ struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flag
 		return NULL;
 	}
 
-	stream_addr = rballoc_align(flags, size, align);
+	stream_addr = sof_heap_alloc(heap, flags, size, align);
 	if (!stream_addr) {
 		tr_err(&buffer_tr, "could not alloc size = %zu bytes of flags = 0x%x",
 		       size, flags);
@@ -264,7 +264,7 @@ struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flag
 	buffer = buffer_alloc_struct(heap, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
-		rfree(stream_addr);
+		sof_heap_free(heap, stream_addr);
 	}
 
 	return buffer;
@@ -292,7 +292,7 @@ struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_siz
 		preferred_size += minimum_size - preferred_size % minimum_size;
 
 	for (size = preferred_size; size >= minimum_size; size -= minimum_size) {
-		stream_addr = rballoc_align(flags, size, align);
+		stream_addr = sof_heap_alloc(heap, flags, size, align);
 		if (stream_addr)
 			break;
 	}
@@ -308,7 +308,7 @@ struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_siz
 	buffer = buffer_alloc_struct(heap, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
-		rfree(stream_addr);
+		sof_heap_free(heap, stream_addr);
 	}
 
 	return buffer;
@@ -341,14 +341,8 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 	if (size == audio_stream_get_size(&buffer->stream))
 		return 0;
 
-	if (!alignment)
-		new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream),
-				    buffer->flags | SOF_MEM_FLAG_NO_COPY,
-				    size, audio_stream_get_size(&buffer->stream));
-	else
-		new_ptr = rbrealloc_align(audio_stream_get_addr(&buffer->stream),
-					  buffer->flags | SOF_MEM_FLAG_NO_COPY, size,
-					  audio_stream_get_size(&buffer->stream), alignment);
+	new_ptr = sof_heap_alloc(buffer->audio_buffer.heap, buffer->flags, size, alignment);
+
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > audio_stream_get_size(&buffer->stream)) {
 		buf_err(buffer, "resize can't alloc %u bytes of flags 0x%x",
@@ -357,8 +351,10 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 	}
 
 	/* use bigger chunk, else just use the old chunk but set smaller */
-	if (new_ptr)
-		buffer->stream.addr = new_ptr;
+	if (new_ptr) {
+		sof_heap_free(buffer->audio_buffer.heap, audio_stream_get_addr(&buffer->stream));
+		audio_stream_set_addr(&buffer->stream, new_ptr);
+	}
 
 	buffer_init_stream(buffer, size);
 
@@ -368,7 +364,6 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, size_t minimum_size,
 			  uint32_t alignment)
 {
-	void *ptr = audio_stream_get_addr(&buffer->stream);
 	const size_t actual_size = audio_stream_get_size(&buffer->stream);
 	void *new_ptr = NULL;
 	size_t new_size;
@@ -389,34 +384,28 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	if (preferred_size == actual_size)
 		return 0;
 
-	if (!alignment) {
-		for (new_size = preferred_size; new_size >= minimum_size;
-		     new_size -= minimum_size) {
-			new_ptr = rbrealloc(ptr, buffer->flags | SOF_MEM_FLAG_NO_COPY,
-					    new_size, actual_size);
-			if (new_ptr)
-				break;
-		}
-	} else {
-		for (new_size = preferred_size; new_size >= minimum_size;
-		     new_size -= minimum_size) {
-			new_ptr = rbrealloc_align(ptr, buffer->flags | SOF_MEM_FLAG_NO_COPY,
-						  new_size, actual_size, alignment);
-			if (new_ptr)
-				break;
-		}
+	for (new_size = preferred_size; new_size >= minimum_size;
+	     new_size -= minimum_size) {
+		new_ptr = sof_heap_alloc(buffer->audio_buffer.heap, buffer->flags, new_size, alignment);
+		if (new_ptr)
+			break;
 	}
 
-	/* we couldn't allocate bigger chunk */
-	if (!new_ptr && new_size > actual_size) {
-		buf_err(buffer, "resize can't alloc %zu bytes of flags 0x%x", new_size,
-			buffer->flags);
-		return -ENOMEM;
+	/* If no allocation succeeded, check if old buffer is large enough */
+	if (!new_ptr) {
+		if (minimum_size > actual_size) {
+			buf_err(buffer, "resize can't alloc %zu bytes of flags 0x%x",
+				minimum_size, buffer->flags);
+			return -ENOMEM;
+		}
+		new_size = minimum_size;
 	}
 
 	/* use bigger chunk, else just use the old chunk but set smaller */
-	if (new_ptr)
-		buffer->stream.addr = new_ptr;
+	if (new_ptr) {
+		sof_heap_free(buffer->audio_buffer.heap, audio_stream_get_addr(&buffer->stream));
+		audio_stream_set_addr(&buffer->stream, new_ptr);
+	}
 
 	buffer_init_stream(buffer, new_size);
 
