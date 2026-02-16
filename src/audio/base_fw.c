@@ -11,6 +11,7 @@
 #include <ipc4/base_fw_vendor.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/logging.h>
+#include <ipc4/notification.h>
 #include <ipc/topology.h>
 #include <ipc/compress_params.h>
 #include <sof_versions.h>
@@ -696,6 +697,18 @@ __cold static int basefw_get_large_config(struct comp_dev *dev, uint32_t param_i
 						data_offset, data);
 };
 
+__cold static int basefw_notification_mask_info(const char *data)
+{
+	struct ipc4_notification_mask_info *mask_info;
+
+	assert_can_be_cold();
+
+	mask_info = (struct ipc4_notification_mask_info *)data;
+	ipc4_update_notification_mask(mask_info->ntfy_mask, mask_info->enabled_mask);
+
+	return IPC4_SUCCESS;
+}
+
 __cold static int basefw_astate_table(void)
 {
 	assert_can_be_cold();
@@ -757,6 +770,8 @@ __cold static int basefw_set_large_config(struct comp_dev *dev, uint32_t param_i
 	assert_can_be_cold();
 
 	switch (param_id) {
+	case IPC4_NOTIFICATION_MASK:
+		return basefw_notification_mask_info(data);
 	case IPC4_ASTATE_TABLE:
 		return basefw_astate_table();
 	case IPC4_DMA_CONTROL:

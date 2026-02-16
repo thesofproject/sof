@@ -14,11 +14,38 @@
 
 #include <rtos/symbol.h>
 
+static uint32_t notification_mask = 0xFFFFFFFF;
+
+static bool is_notif_filtered_out(uint32_t event_type)
+{
+	uint32_t notif_idx;
+
+	switch (event_type) {
+	case SOF_IPC4_GATEWAY_UNDERRUN_DETECTED:
+		notif_idx = IPC4_UNDERRUN_AT_GATEWAY_NOTIFICATION_MASK_IDX;
+		break;
+	case SOF_IPC4_MIXER_UNDERRUN_DETECTED:
+		notif_idx = IPC4_UNDERRUN_AT_MIXER_NOTIFICATION_MASK_IDX;
+		break;
+	case SOF_IPC4_GATEWAY_OVERRUN_DETECTED:
+		notif_idx = IPC4_OVERRUN_AT_GATEWAY_NOTIFICATION_MASK_IDX;
+		break;
+	default:
+		return false;
+	}
+
+	return (notification_mask & BIT(notif_idx)) == 0;
+}
+
 static bool send_resource_notif(uint32_t resource_id, uint32_t event_type, uint32_t resource_type,
 				void *data, uint32_t data_size)
 {
-	struct ipc_msg *msg = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
+	struct ipc_msg *msg;
 
+	if (is_notif_filtered_out(event_type))
+		return true; //silently ignore
+
+	msg = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
 	if (!msg)
 		return false;
 
@@ -41,6 +68,12 @@ static bool send_resource_notif(uint32_t resource_id, uint32_t event_type, uint3
 	ipc_msg_send(msg, msg->tx_data, false);
 
 	return true;
+}
+
+void ipc4_update_notification_mask(uint32_t ntfy_mask, uint32_t enabled_mask)
+{
+	notification_mask &= enabled_mask | (~ntfy_mask);
+	notification_mask |= enabled_mask & ntfy_mask;
 }
 
 bool send_copier_gateway_underrun_notif_msg(uint32_t pipeline_id)

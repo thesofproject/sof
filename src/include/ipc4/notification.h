@@ -297,5 +297,6 @@ bool send_gateway_overrun_notif_msg(uint32_t resource_id);
 
 void send_mixer_underrun_notif_msg(uint32_t resource_id, uint32_t eos_flag, uint32_t data_mixed,
 				   uint32_t expected_data_mixed);
+void ipc4_update_notification_mask(uint32_t ntfy_mask, uint32_t enabled_mask);
 
 #endif /* __IPC4_NOTIFICATION_H__ */
