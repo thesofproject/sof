@@ -134,7 +134,7 @@ cd_fail:
 	ipc_msg_free(cd->msg);
 	rfree(cd);
 fail:
-	rfree(dev);
+	comp_free_device(dev);
 	return NULL;
 }
 
@@ -147,7 +147,7 @@ static void ghd_free(struct comp_dev *dev)
 	comp_data_blob_handler_free(cd->model_handler);
 	ipc_msg_free(cd->msg);
 	rfree(cd);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 static int ghd_params(struct comp_dev *dev,

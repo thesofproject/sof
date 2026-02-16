@@ -88,7 +88,7 @@ sad_fail:
 	comp_data_blob_handler_free(sad->model_handler);
 	rfree(sad);
 fail:
-	rfree(dev);
+	comp_free_device(dev);
 	return NULL;
 }
 
@@ -261,7 +261,7 @@ static void smart_amp_free(struct comp_dev *dev)
 	comp_data_blob_handler_free(sad->model_handler);
 
 	rfree(sad);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 static int smart_amp_verify_params(struct comp_dev *dev,

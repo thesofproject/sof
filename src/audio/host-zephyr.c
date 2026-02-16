@@ -775,7 +775,7 @@ __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 e_dev:
 	rfree(hd);
 e_data:
-	rfree(dev);
+	comp_free_device(dev);
 	return NULL;
 }
 
@@ -798,7 +798,7 @@ __cold static void host_free(struct comp_dev *dev)
 	comp_dbg(dev, "entry");
 	host_common_free(hd);
 	rfree(hd);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 static int host_elements_reset(struct host_data *hd, int direction)

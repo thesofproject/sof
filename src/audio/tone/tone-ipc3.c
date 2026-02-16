@@ -58,7 +58,7 @@ static struct comp_dev *tone_new(const struct comp_driver *drv,
 
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
-		rfree(dev);
+		comp_free_device(dev);
 		return NULL;
 	}
 
@@ -82,7 +82,7 @@ static void tone_free(struct comp_dev *dev)
 	comp_info(dev, "entry");
 
 	rfree(td);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 /* set component audio stream parameters */

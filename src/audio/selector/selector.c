@@ -163,7 +163,7 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
 	if (!cd) {
-		rfree(dev);
+		comp_free_device(dev);
 		return NULL;
 	}
 
@@ -172,7 +172,7 @@ static struct comp_dev *selector_new(const struct comp_driver *drv,
 	ret = memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data, bs);
 	if (ret) {
 		rfree(cd);
-		rfree(dev);
+		comp_free_device(dev);
 		return NULL;
 	}
 
@@ -191,7 +191,7 @@ static void selector_free(struct comp_dev *dev)
 	comp_dbg(dev, "entry");
 
 	rfree(cd);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 /**

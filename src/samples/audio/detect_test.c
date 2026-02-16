@@ -766,7 +766,7 @@ cd_fail:
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
 fail:
-	rfree(dev);
+	comp_free_device(dev);
 	return NULL;
 }
 
@@ -788,7 +788,7 @@ static void test_keyword_free(struct comp_dev *dev)
 	ipc_msg_free(cd->msg);
 	comp_data_blob_handler_free(cd->model_handler);
 	rfree(cd);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 static int test_keyword_verify_params(struct comp_dev *dev,

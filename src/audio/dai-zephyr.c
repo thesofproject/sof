@@ -589,7 +589,7 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 error:
 	rfree(dd);
 e_data:
-	rfree(dev);
+	comp_free_device(dev);
 	return NULL;
 }
 
@@ -630,7 +630,7 @@ __cold static void dai_free(struct comp_dev *dev)
 	dai_common_free(dd);
 
 	rfree(dd);
-	rfree(dev);
+	comp_free_device(dev);
 }
 
 int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
