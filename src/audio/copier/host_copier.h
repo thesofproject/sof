@@ -50,10 +50,11 @@ struct host_data {
 	/* local DMA config */
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	struct sof_dma *dma;
+	int chan_index;
 #else
 	struct dma *dma;
-#endif
 	struct dma_chan_data *chan;
+#endif
 	struct dma_sg_config config;
 #ifdef __ZEPHYR__
 	struct dma_config z_config;

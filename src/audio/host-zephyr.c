@@ -84,7 +84,7 @@ static int host_dma_set_config_and_copy(struct host_data *hd, struct comp_dev *d
 	local_elem->size = bytes;
 
 	/* reconfigure transfer */
-	ret = sof_dma_config(hd->chan->dma, hd->chan->index, &hd->z_config);
+	ret = sof_dma_config(hd->dma, hd->chan_index, &hd->z_config);
 	if (ret < 0) {
 		comp_err(dev, "dma_config() failed, ret = %d",
 			 ret);
@@ -93,7 +93,7 @@ static int host_dma_set_config_and_copy(struct host_data *hd, struct comp_dev *d
 
 	cb(dev, bytes);
 
-	ret = sof_dma_reload(hd->chan->dma, hd->chan->index, bytes);
+	ret = sof_dma_reload(hd->dma, hd->chan_index, bytes);
 	if (ret < 0) {
 		comp_err(dev, "dma_copy() failed, ret = %d",
 			 ret);
@@ -223,7 +223,7 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 	hd->z_config.head_block->block_size = local_elem->size;
 
 	/* reconfigure transfer */
-	ret = sof_dma_config(hd->chan->dma, hd->chan->index, &hd->z_config);
+	ret = sof_dma_config(hd->dma, hd->chan_index, &hd->z_config);
 	if (ret < 0) {
 		comp_err(dev, "dma_config() failed, ret = %u", ret);
 		return ret;
@@ -231,7 +231,7 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 
 	cb(dev, copy_bytes);
 
-	ret = sof_dma_reload(hd->chan->dma, hd->chan->index, copy_bytes);
+	ret = sof_dma_reload(hd->dma, hd->chan_index, copy_bytes);
 	if (ret < 0)
 		comp_err(dev, "dma_copy() failed, ret = %u", ret);
 
@@ -365,7 +365,7 @@ static void host_dma_cb(struct comp_dev *dev, size_t bytes)
 /* get status from dma and check for xrun */
 static int host_get_status(struct comp_dev *dev, struct host_data *hd, struct dma_status *stat)
 {
-	int ret = sof_dma_get_status(hd->chan->dma, hd->chan->index, stat);
+	int ret = sof_dma_get_status(hd->dma, hd->chan_index, stat);
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	if (ret == -EPIPE && !hd->xrun_notification_sent) {
 		struct ipc_msg *notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
@@ -563,7 +563,7 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	if (!copy_bytes) {
 		if (hd->partial_size != 0) {
 			if (stream_sync(hd, dev)) {
-				ret = sof_dma_reload(hd->chan->dma, hd->chan->index,
+				ret = sof_dma_reload(hd->dma, hd->chan_index,
 						     hd->partial_size);
 				if (ret < 0)
 					comp_err(dev, "dma_reload() failed, ret = %u", ret);
@@ -590,7 +590,7 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 	    hd->dma_buffer_size - hd->partial_size <=
 	    (2 + threshold) * hd->period_bytes) {
 		if (stream_sync(hd, dev)) {
-			ret = sof_dma_reload(hd->chan->dma, hd->chan->index,
+			ret = sof_dma_reload(hd->dma, hd->chan_index,
 					     hd->partial_size);
 			if (ret < 0)
 				comp_err(dev, "dma_reload() failed, ret = %u", ret);
@@ -658,7 +658,7 @@ int host_common_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 	if (cmd != COMP_TRIGGER_START && hd->copy_type == COMP_COPY_ONE_SHOT)
 		return ret;
 
-	if (!hd->chan) {
+	if (hd->chan_index == -1) {
 		comp_err(dev, "no dma channel configured");
 		return -EINVAL;
 	}
@@ -666,14 +666,14 @@ int host_common_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		hd->partial_size = 0;
-		ret = sof_dma_start(hd->chan->dma, hd->chan->index);
+		ret = sof_dma_start(hd->dma, hd->chan_index);
 		if (ret < 0)
 			comp_err(dev, "dma_start() failed, ret = %u",
 				 ret);
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
-		ret = sof_dma_stop(hd->chan->dma, hd->chan->index);
+		ret = sof_dma_stop(hd->dma, hd->chan_index);
 		if (ret < 0)
 			comp_err(dev, "dma stop failed: %d",
 				 ret);
@@ -733,7 +733,7 @@ __cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
 		sof_dma_put(hd->dma);
 		return -ENOMEM;
 	}
-	hd->chan = NULL;
+	hd->chan_index = -1;
 	hd->copy_type = COMP_COPY_NORMAL;
 
 	return 0;
@@ -864,7 +864,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	uint32_t buffer_size_preferred;
 	uint32_t addr_align;
 	uint32_t align;
-	int i, channel, err;
+	int i, err;
 	bool is_scheduling_source = dev == dev->pipeline->sched_comp;
 	uint32_t round_up_size;
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -1005,21 +1005,15 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	/* get DMA channel from DMAC
 	 * note: stream_tag is ignored by dw-dma
 	 */
-	channel = sof_dma_request_channel(hd->dma, hda_chan);
-	if (channel < 0) {
+	hd->chan_index = sof_dma_request_channel(hd->dma, hda_chan);
+	if (hd->chan_index < 0) {
 		comp_err(dev, "requested channel %d is busy", hda_chan);
 		return -ENODEV;
 	}
-	hd->chan = &hd->dma->chan[channel];
 
 	uint32_t buffer_addr = 0;
 	uint32_t buffer_bytes = 0;
 	uint32_t addr;
-
-	hd->chan->direction = config->direction;
-	hd->chan->desc_count = config->elem_array.count;
-	hd->chan->is_scheduling_source = config->is_scheduling_source;
-	hd->chan->period = config->period;
 
 	memset(dma_cfg, 0, sizeof(*dma_cfg));
 
@@ -1067,7 +1061,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		break;
 	}
 
-	err = sof_dma_config(hd->chan->dma, hd->chan->index, dma_cfg);
+	err = sof_dma_config(hd->dma, hd->chan_index, dma_cfg);
 	if (err < 0) {
 		comp_err(dev, "dma_config() failed");
 		goto err_free_block_cfg;
@@ -1097,8 +1091,8 @@ err_free_block_cfg:
 	dma_cfg->head_block = NULL;
 	rfree(dma_block_cfg);
 err_release_channel:
-	sof_dma_release_channel(hd->dma, hd->chan->index);
-	hd->chan = NULL;
+	sof_dma_release_channel(hd->dma, hd->chan_index);
+	hd->chan_index = -1;
 
 	return err;
 }
@@ -1156,10 +1150,10 @@ static int host_position(struct comp_dev *dev,
 
 void host_common_reset(struct host_data *hd, uint16_t state)
 {
-	if (hd->chan) {
-		sof_dma_stop(hd->chan->dma, hd->chan->index);
-		sof_dma_release_channel(hd->dma, hd->chan->index);
-		hd->chan = NULL;
+	if (hd->chan_index != -1) {
+		sof_dma_stop(hd->dma, hd->chan_index);
+		sof_dma_release_channel(hd->dma, hd->chan_index);
+		hd->chan_index = -1;
 	}
 
 	/* free all DMA elements */
