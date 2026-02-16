@@ -74,6 +74,12 @@ struct cadence_api cadence_api_table[] = {
 		.api = xa_src_pp,
 	},
 #endif
+#ifdef CONFIG_SOF_COMPRESS_CODEC_PCM_DEC
+	{
+		.id = SOF_COMPRESS_CODEC_PCM_DEC_ID,
+		.api = xa_pcm_dec,
+	},
+#endif
 };
 
 static int cadence_codec_get_api_id(uint32_t compress_id, uint32_t direction)
@@ -89,6 +95,8 @@ static int cadence_codec_get_api_id(uint32_t compress_id, uint32_t direction)
 		return CADENCE_CODEC_AAC_DEC_ID;
 	case SND_AUDIOCODEC_VORBIS:
 		return CADENCE_CODEC_VORBIS_DEC_ID;
+	case SND_AUDIOCODEC_PCM:
+		return SOF_COMPRESS_CODEC_PCM_DEC_ID;
 	default:
 		return -EINVAL;
 	}
@@ -236,6 +244,22 @@ unsigned int cadence_codec_get_samples(struct processing_module *mod)
 		return 1152;
 	case CADENCE_CODEC_AAC_DEC_ID:
 		return 1024;
+	case SOF_COMPRESS_CODEC_PCM_DEC_ID: {
+		/*
+		 * xa_pcm_dec has no fixed frame size: it can produce up to the
+		 * full configured output buffer per call. Report the upper
+		 * bound (ceiling division) so the IPC3 free-space gate covers
+		 * what the codec may actually write even when out_buff_size is
+		 * not an exact multiple of frame_bytes.
+		 */
+		struct module_data *codec = &mod->priv;
+		uint32_t frame_bytes = mod->stream_params->sample_container_bytes *
+				       mod->stream_params->channels;
+
+		if (!frame_bytes)
+			return 0;
+		return (codec->mpd.out_buff_size + frame_bytes - 1) / frame_bytes;
+	}
 	default:
 		break;
 	}
