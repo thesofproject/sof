@@ -113,6 +113,7 @@ struct host_data {
 	uint64_t next_sync;
 	uint64_t period_in_cycles;
 #endif
+	struct k_heap *heap;
 };
 
 int host_common_new(struct host_data *hd, struct comp_dev *dev,
