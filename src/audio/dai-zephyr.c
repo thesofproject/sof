@@ -824,7 +824,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 			} while (--max_block_count > 0);
 		}
 
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
+		err = dma_sg_alloc(NULL, &config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
 				   period_count,
 				   period_bytes,
@@ -1105,7 +1105,7 @@ out:
 	if (err < 0) {
 		buffer_free(dd->dma_buffer);
 		dd->dma_buffer = NULL;
-		dma_sg_free(&config->elem_array);
+		dma_sg_free(NULL, &config->elem_array);
 		rfree(dd->z_config);
 		dd->z_config = NULL;
 	}
@@ -1236,7 +1236,7 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 	if (!dd->delayed_dma_stop)
 		dai_dma_release(dd, dev);
 
-	dma_sg_free(&config->elem_array);
+	dma_sg_free(NULL, &config->elem_array);
 	if (dd->z_config) {
 		rfree(dd->z_config->head_block);
 		rfree(dd->z_config);

@@ -617,7 +617,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev,
 		elem_array = &hd->local.elem_array;
 
 		/* config buffer will be used as proxy */
-		err = dma_sg_alloc(&hd->config.elem_array, SOF_MEM_FLAG_USER,
+		err = dma_sg_alloc(NULL, &hd->config.elem_array, SOF_MEM_FLAG_USER,
 				   dir, 1, 0, 0, 0);
 		if (err < 0) {
 			comp_err(dev, "dma_sg_alloc() failed");
@@ -627,7 +627,7 @@ static int create_local_elems(struct host_data *hd, struct comp_dev *dev,
 		elem_array = &hd->config.elem_array;
 	}
 
-	err = dma_sg_alloc(elem_array, SOF_MEM_FLAG_USER, dir, buffer_count,
+	err = dma_sg_alloc(NULL, elem_array, SOF_MEM_FLAG_USER, dir, buffer_count,
 			   buffer_bytes,
 			   (uintptr_t)audio_stream_get_addr(&hd->dma_buffer->stream), 0);
 	if (err < 0) {
@@ -786,7 +786,7 @@ __cold void host_common_free(struct host_data *hd)
 	sof_dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
-	dma_sg_free(&hd->config.elem_array);
+	dma_sg_free(NULL, &hd->config.elem_array);
 }
 
 __cold static void host_free(struct comp_dev *dev)
@@ -1158,9 +1158,9 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 	}
 
 	/* free all DMA elements */
-	dma_sg_free(&hd->host.elem_array);
-	dma_sg_free(&hd->local.elem_array);
-	dma_sg_free(&hd->config.elem_array);
+	dma_sg_free(NULL, &hd->host.elem_array);
+	dma_sg_free(NULL, &hd->local.elem_array);
+	dma_sg_free(NULL, &hd->config.elem_array);
 
 	/* free DMA buffer */
 	if (hd->dma_buffer) {
