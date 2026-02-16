@@ -162,15 +162,11 @@ int objpool_iterate(struct objpool_head *head, objpool_iterate_cb cb, void *arg)
 	list_for_item(list, &head->list) {
 		struct objpool *pobjpool = container_of(list, struct objpool, list);
 		size_t aligned_size = ALIGN_UP(pobjpool->size, sizeof(int));
-		uint32_t mask = pobjpool->mask;
 		unsigned int bit;
 
-		if (!mask)
-			/* all free */
-			continue;
-
-		for (; mask; mask &= ~BIT(bit)) {
+		for (uint32_t mask = pobjpool->mask; mask; mask &= ~BIT(bit)) {
 			bit = ffs(mask) - 1;
+
 			if (cb(pobjpool->data + bit * aligned_size, arg))
 				return 0;
 		}
