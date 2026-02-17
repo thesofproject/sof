@@ -168,6 +168,7 @@ struct dai_data {
 #endif
 	/* Copier gain params */
 	struct copier_gain_params *gain_data;
+	struct k_heap *heap;
 };
 
 /* these 3 are here to satisfy clk.c and ssp.h interconnection, will be removed leter */
