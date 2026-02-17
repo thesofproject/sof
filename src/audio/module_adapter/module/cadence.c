@@ -476,6 +476,7 @@ int cadence_codec_process_data(struct processing_module *mod)
 	struct cadence_codec_data *cd = module_get_private_data(mod);
 	struct module_data *codec = &mod->priv;
 	struct comp_dev *dev = mod->dev;
+	uint32_t done = 0;
 	int ret;
 
 	if (codec->mpd.eos_reached) {
@@ -483,6 +484,18 @@ int cadence_codec_process_data(struct processing_module *mod)
 		codec->mpd.consumed = 0;
 
 		return 0;
+	}
+
+	if (dev->pipeline->expect_eos) {
+		/* Signal that the stream is expected to end anytime soon */
+		API_CALL(cd, XA_API_CMD_INPUT_OVER, 0, NULL, ret);
+		if (ret != LIB_NO_ERROR) {
+			if (LIB_IS_FATAL_ERROR(ret)) {
+				comp_err(dev, "input_over failed with error: %x", ret);
+				return ret;
+			}
+			comp_warn(dev, "input_over failed with nonfatal error: %x", ret);
+		}
 	}
 
 	API_CALL(cd, XA_API_CMD_SET_INPUT_BYTES, 0, &codec->mpd.avail, ret);
@@ -500,6 +513,15 @@ int cadence_codec_process_data(struct processing_module *mod)
 		comp_warn(dev, "processing failed with nonfatal error: %x", ret);
 	}
 
+	API_CALL(cd, XA_API_CMD_EXECUTE, XA_CMD_TYPE_DONE_QUERY, &done, ret);
+	if (ret != LIB_NO_ERROR) {
+		if (LIB_IS_FATAL_ERROR(ret)) {
+			comp_err(dev, "done query failed with error: %x", ret);
+			return ret;
+		}
+		comp_warn(dev, "done query failed with nonfatal error: %x", ret);
+	}
+
 	API_CALL(cd, XA_API_CMD_GET_OUTPUT_BYTES, 0, &codec->mpd.produced, ret);
 	if (ret != LIB_NO_ERROR) {
 		comp_err(dev, "could not get produced bytes, error %x:",
@@ -513,8 +535,17 @@ int cadence_codec_process_data(struct processing_module *mod)
 		return ret;
 	}
 
-	if (!codec->mpd.produced && dev->pipeline->expect_eos)
-		codec->mpd.eos_reached = true;
+	if (dev->pipeline->expect_eos) {
+		/*
+		 * AAC decoder cannot signal DONE, check if it stopped
+		 * producing data when EOS is expected
+		 */
+		if (cd->api_id == CADENCE_CODEC_AAC_DEC_ID && !codec->mpd.produced)
+			done = true;
+
+		if (done)
+			codec->mpd.eos_reached = true;
+	}
 
 	return 0;
 }
