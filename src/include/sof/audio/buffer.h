@@ -151,6 +151,15 @@ struct comp_buffer {
 	struct list_item buffers_list;
 
 	struct k_heap *heap;
+
+#if CONFIG_PROBE
+	/** probe produce callback, called on buffer produce */
+	void (*probe_cb_produce)(void *arg, struct buffer_cb_transact *cb_data);
+	/** probe free callback, called on buffer free */
+	void (*probe_cb_free)(void *arg);
+	/** opaque argument passed to probe callbacks */
+	void *probe_cb_arg;
+#endif
 };
 
 /*
