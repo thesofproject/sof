@@ -457,22 +457,51 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 		/* free sink buffer allocated by current component in bind function */
 		comp_dev_for_each_consumer_safe(icd->cd, buffer, safe) {
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+			struct k_heap *buf_heap = buffer->audio_buffer.heap;
+			struct comp_dev *orig_sink = comp_buffer_get_sink_component(buffer);
+			bool buf_is_dp = buf_heap &&
+				(icd->cd->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
+				 (orig_sink && orig_sink->ipc_config.proc_domain ==
+				  COMP_PROCESSING_DOMAIN_DP));
+#endif
+
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 			struct comp_dev *sink = comp_buffer_get_sink_component(buffer);
 
 			/* free the buffer only when the sink module has also been disconnected */
-			if (!sink)
+			if (!sink) {
 				buffer_free(buffer);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+				if (buf_is_dp)
+					dp_heap_put(buf_heap);
+#endif
+			}
 		}
 
 		/* free source buffer allocated by current component in bind function */
 		comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+			struct k_heap *buf_heap = buffer->audio_buffer.heap;
+			struct comp_dev *orig_source =
+				comp_buffer_get_source_component(buffer);
+			bool buf_is_dp = buf_heap &&
+				(icd->cd->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
+				 (orig_source && orig_source->ipc_config.proc_domain ==
+				  COMP_PROCESSING_DOMAIN_DP));
+#endif
+
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 			struct comp_dev *source = comp_buffer_get_source_component(buffer);
 
 			/* free the buffer only when the source module has also been disconnected */
-			if (!source)
+			if (!source) {
 				buffer_free(buffer);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+				if (buf_is_dp)
+					dp_heap_put(buf_heap);
+#endif
+			}
 		}
 
 		if (!cpu_is_me(icd->core))
@@ -738,7 +767,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (dp_heap) {
+	if (dp) {
 		struct dp_heap_user *dp_user = container_of(dp_heap, struct dp_heap_user, heap);
 
 		dp_user->client_count++;
@@ -782,6 +811,8 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 						 buf_get_id(buffer));
 		if (!ring_buffer) {
 			buffer_free(buffer);
+			if (dp)
+				dp_heap_put(dp_heap);
 			return IPC4_OUT_OF_MEMORY;
 		}
 
@@ -869,6 +900,10 @@ e_sink_connect:
 free:
 	ll_unblock(cross_core_bind, flags);
 	buffer_free(buffer);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (dp)
+		dp_heap_put(dp_heap);
+#endif
 	return IPC4_INVALID_RESOURCE_STATE;
 }
 
@@ -950,6 +985,13 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 #endif
 	}
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	struct k_heap *buf_heap = buffer->audio_buffer.heap;
+	bool buf_is_dp = buf_heap &&
+		(src->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
+		 sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP);
+#endif
+
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 	/* these might call comp_ipc4_bind_remote() if necessary */
@@ -965,6 +1007,10 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	ll_unblock(cross_core_unbind, flags);
 
 	buffer_free(buffer);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (buf_is_dp)
+		dp_heap_put(buf_heap);
+#endif
 
 	if (ret || ret1)
 		return IPC4_INVALID_RESOURCE_ID;

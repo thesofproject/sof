@@ -157,12 +157,6 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	sof_heap_free(heap, buffer->stream.addr);
 	sof_heap_free(heap, buffer);
-	if (heap) {
-		struct dp_heap_user *mod_heap_user = container_of(heap, struct dp_heap_user, heap);
-
-		if (!--mod_heap_user->client_count)
-			rfree(mod_heap_user);
-	}
 }
 
 APP_TASK_DATA static const struct source_ops comp_buffer_source_ops = {

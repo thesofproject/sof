@@ -8,6 +8,7 @@
 #ifndef __SOF_SCHEDULE_DP_SCHEDULE_H__
 #define __SOF_SCHEDULE_DP_SCHEDULE_H__
 
+#include <rtos/alloc.h>
 #include <rtos/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -124,6 +125,22 @@ struct dp_heap_user {
 	/* So far relying on linear processing of serialized IPCs, but might need protection */
 	unsigned int client_count;	/* devices and buffers */
 };
+
+/**
+ * dp_heap_put() - Release a reference to a DP module heap.
+ * @heap: The k_heap pointer belonging to a dp_heap_user.
+ *
+ * Decrements client_count and frees the dp_heap_user when it reaches zero.
+ * Must only be called for heaps that are part of a dp_heap_user, i.e. heaps
+ * allocated by module_adapter_dp_heap_new() for DP domain modules.
+ */
+static inline void dp_heap_put(struct k_heap *heap)
+{
+	struct dp_heap_user *mod_heap_user = container_of(heap, struct dp_heap_user, heap);
+
+	if (!--mod_heap_user->client_count)
+		rfree(mod_heap_user);
+}
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
