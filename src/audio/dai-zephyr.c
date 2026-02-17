@@ -203,12 +203,13 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int hs_id = props->dma_hs_id;
+	const struct dai_properties *props;
+	int hs_id;
 
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_lock(dai->lock, K_FOREVER);
+	props = dai_get_properties(dai->dev, direction, stream_id);
+	hs_id = props->dma_hs_id;
+	k_mutex_unlock(dai->lock);
 
 	return hs_id;
 }
@@ -217,39 +218,41 @@ int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
 	const struct dai_properties *props;
-	k_spinlock_key_t key;
 	int fifo_depth;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
+	k_mutex_lock(dai->lock, K_FOREVER);
 	props = dai_get_properties(dai->dev, direction, 0);
 	fifo_depth = props->fifo_depth;
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_unlock(dai->lock);
 
 	return fifo_depth;
 }
 
 int dai_get_stream_id(struct dai *dai, int direction)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
-	int stream_id = props->stream_id;
+	const struct dai_properties *props;
+	int stream_id;
 
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_lock(dai->lock, K_FOREVER);
+	props = dai_get_properties(dai->dev, direction, 0);
+	stream_id = props->stream_id;
+	k_mutex_unlock(dai->lock);
 
 	return stream_id;
 }
 
 static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int fifo_address = props->fifo_address;
+	const struct dai_properties *props;
+	int fifo_address;
 
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_lock(dai->lock, K_FOREVER);
+	props = dai_get_properties(dai->dev, direction, stream_id);
+	fifo_address = props->fifo_address;
+	k_mutex_unlock(dai->lock);
 
 	return fifo_address;
 }
@@ -501,7 +504,12 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 		return -ENODEV;
 	}
 
-	k_spinlock_init(&dd->dai->lock);
+#ifdef CONFIG_SOF_USERSPACE_LL
+	dd->dai->lock = k_object_alloc(K_OBJ_MUTEX);
+#else
+	dd->dai->lock = &dd->dai->lock_obj;
+#endif
+	k_mutex_init(dd->dai->lock);
 
 	dma_sg_init(&dd->config.elem_array);
 	dd->xrun = 0;
@@ -629,6 +637,10 @@ __cold void dai_common_free(struct dai_data *dd)
 	sof_dma_put(dd->dma);
 
 	dai_release_llp_slot(dd);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	k_object_free(dd->dai->lock);
+#endif
 
 	dai_put(dd->dai);
 
@@ -1956,16 +1968,15 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
 	const struct dai_properties *props;
-	k_spinlock_key_t key;
 	uint32_t init_delay;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
+	k_mutex_lock(dai->lock, K_FOREVER);
 	props = dai_get_properties(dai->dev, 0, 0);
 	init_delay = props->reg_init_delay;
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_unlock(dai->lock);
 
 	return init_delay;
 }

@@ -52,7 +52,10 @@ struct dai {
 	uint32_t dma_dev;
 	const struct device *dev;
 	const struct dai_data *dd;
-	struct k_spinlock lock;		/* protect properties */
+	struct k_mutex *lock;		/* protect properties */
+#ifndef CONFIG_SOF_USERSPACE_LL
+	struct k_mutex lock_obj;
+#endif
 };
 
 union hdalink_cfg {
