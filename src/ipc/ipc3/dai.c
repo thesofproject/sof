@@ -209,7 +209,11 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		}
 		pin_data->pin_num = dd->dai->index;
 		pin_data->pin_dir = dai->direction;
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+		pin_data->dma_channel = dd->chan_index >= 0 ? dd->chan_index : 0xFFFF;
+#else
 		pin_data->dma_channel = dd->chan ? dd->chan->index : 0xFFFF;
+#endif
 		pin_data->index = 0xFFFF;
 		pin_data->instance = 0xFFFF;
 		dev_data->dai_index_ptr = pin_data;
@@ -311,17 +315,23 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	/* put the allocated DMA channel first */
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+	if (dd->chan_index >= 0) {
+		/* remove callback */
+		notifier_unregister(dev, &dd->dma->chan[dd->chan_index],
+				    NOTIFIER_ID_DMA_COPY);
+		dma_release_channel(dd->dma->z_dev, dd->chan_index);
+		dd->chan_index = -EINVAL;
+	}
+#else
 	if (dd->chan) {
 		/* remove callback */
 		notifier_unregister(dev, dd->chan, NOTIFIER_ID_DMA_COPY);
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
-#else
 		dma_channel_put_legacy(dd->chan);
-#endif
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
+#endif
 }
 
 int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai *common_config,
@@ -352,20 +362,33 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 		if (SOF_DAI_QUIRK_IS_SET(config->flags, SOF_DAI_CONFIG_FLAGS_2_STEP_STOP))
 			dd->delayed_dma_stop = true;
 
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+		if (dd->chan_index >= 0) {
+			comp_info(dev, "Configured. dma channel index %d, ignore...",
+				  dd->chan_index);
+			return 0;
+		}
+#else
 		if (dd->chan) {
 			comp_info(dev, "Configured. dma channel index %d, ignore...",
 				  dd->chan->index);
 			return 0;
 		}
+#endif
 		break;
 	case SOF_DAI_CONFIG_FLAGS_HW_FREE:
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+		if (dd->chan_index < 0)
+			return 0;
+#else
 		if (!dd->chan)
 			return 0;
+#endif
 
 		/* stop DMA and reset config for two-step stop DMA */
 		if (dd->delayed_dma_stop) {
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-			ret = dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+			ret = dma_stop(dd->dma->z_dev, dd->chan_index);
 #else
 			ret = dma_stop_delayed_legacy(dd->chan);
 #endif
@@ -377,11 +400,13 @@ int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai 
 
 		return 0;
 	case SOF_DAI_CONFIG_FLAGS_PAUSE:
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+		if (dd->chan_index < 0)
+			return 0;
+		return dma_stop(dd->dma->z_dev, dd->chan_index);
+#else
 		if (!dd->chan)
 			return 0;
-#if CONFIG_ZEPHYR_NATIVE_DRIVERS
-		return dma_stop(dd->chan->dma->z_dev, dd->chan->index);
-#else
 		return dma_stop_delayed_legacy(dd->chan);
 #endif
 	default:

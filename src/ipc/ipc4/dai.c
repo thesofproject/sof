@@ -216,7 +216,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	/* put the allocated DMA channel first */
-	if (dd->chan) {
+	if (dd->chan_index >= 0) {
 		struct ipc4_llp_reading_slot slot;
 
 		if (dd->slot_info.node_id) {
@@ -237,11 +237,10 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		 * TODO: refine power management when stream is paused
 		 */
 		/* if reset is after pause dma has already been stopped */
-		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		dma_stop(dd->dma->z_dev, dd->chan_index);
 
-		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
-		dd->chan->dev_data = NULL;
-		dd->chan = NULL;
+		dma_release_channel(dd->dma->z_dev, dd->chan_index);
+		dd->chan_index = -EINVAL;
 	}
 }
 
@@ -365,9 +364,9 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 		return 0;
 	}
 
-	if (dd->chan) {
+	if (dd->chan_index >= 0) {
 		comp_info(dev, "Configured. dma channel index %d, ignore...",
-			  dd->chan->index);
+			  dd->chan_index);
 		return 0;
 	}
 
@@ -425,7 +424,7 @@ int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
 	platform_dai_wallclock(dev, &dd->wallclock);
 	posn->wallclock = dd->wallclock;
 
-	ret = dma_get_status(dd->dma->z_dev, dd->chan->index, &status);
+	ret = dma_get_status(dd->dma->z_dev, dd->chan_index, &status);
 	if (ret < 0)
 		return ret;
 
@@ -450,7 +449,7 @@ void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
 	if (!dd->slot_info.node_id)
 		return;
 
-	ret = dma_get_status(dd->dma->z_dev, dd->chan->index, &status);
+	ret = dma_get_status(dd->dma->z_dev, dd->chan_index, &status);
 	if (ret < 0)
 		return;
 
