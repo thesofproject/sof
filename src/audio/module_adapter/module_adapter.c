@@ -177,20 +177,9 @@ static void module_adapter_mem_free(struct processing_module *mod)
 	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
 #endif
 	sof_heap_free(mod_heap, mod->dev);
-	LOG_INF("mod");
-#ifdef CONFIG_SOF_USERSPACE_LL
-	mod_heap = zephyr_ll_user_heap();
-	comp_cl_dbg(drv, "using ll user heap for module free");
-#endif
-	comp_cl_info(drv, "free mod %p with heap %p", mod, mod_heap);
 	sof_heap_free(mod_heap, mod);
-	if (domain == COMP_PROCESSING_DOMAIN_DP) {
-		struct dp_heap_user *mod_heap_user = container_of(mod_heap, struct dp_heap_user,
-								  heap);
-
-		if (mod_heap && !--mod_heap_user->client_count)
-			rfree(mod_heap_user);
-	}
+	if (domain == COMP_PROCESSING_DOMAIN_DP && mod_heap)
+		dp_heap_put(mod_heap);
 }
 
 /*
@@ -641,7 +630,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 				goto free;
 			}
 
-			if (md->resources.heap && md->resources.heap != dev->drv->user_heap) {
+			if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+			    md->resources.heap) {
 				struct dp_heap_user *dp_user = container_of(md->resources.heap,
 									    struct dp_heap_user,
 									    heap);
@@ -687,6 +677,9 @@ free:
 		list_item_del(&buffer->buffers_list);
 		irq_local_enable(flags);
 		buffer_free(buffer);
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+		    md->resources.heap)
+			dp_heap_put(md->resources.heap);
 	}
 
 out_data_free:
@@ -1479,6 +1472,9 @@ void module_adapter_free(struct comp_dev *dev)
 		list_item_del(&buffer->buffers_list);
 		irq_local_enable(flags);
 		buffer_free(buffer);
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+		    mod->priv.resources.heap)
+			dp_heap_put(mod->priv.resources.heap);
 	}
 
 	mod_free(mod, mod->stream_params);
