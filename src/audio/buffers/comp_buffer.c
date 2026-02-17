@@ -16,7 +16,6 @@
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
-#include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/schedule/dp_schedule.h>
 #include <rtos/spinlock.h>
@@ -147,17 +146,12 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
 
-	struct buffer_cb_free cb_data = {
-		.buffer = buffer,
-	};
-
 	buf_dbg(buffer, "buffer_free()");
 
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_FREE,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	/* In case some listeners didn't unregister from buffer's callbacks */
-	notifier_unregister_all(NULL, buffer);
+#if CONFIG_PROBE
+	if (buffer->probe_cb_free)
+		buffer->probe_cb_free(buffer->probe_cb_arg);
+#endif
 
 	struct k_heap *heap = buffer->audio_buffer.heap;
 
@@ -470,12 +464,6 @@ bool buffer_params_match(struct comp_buffer *buffer,
 
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
-	struct buffer_cb_transact cb_data = {
-		.buffer = buffer,
-		.transaction_amount = bytes,
-		.transaction_begin_address = audio_stream_get_wptr(&buffer->stream),
-	};
-
 	/* return if no bytes */
 	if (!bytes) {
 #if CONFIG_SOF_LOG_DBG_BUFFER
@@ -491,10 +479,19 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	audio_stream_produce(&buffer->stream, bytes);
+#if CONFIG_PROBE
+	if (buffer->probe_cb_produce) {
+		struct buffer_cb_transact cb_data = {
+			.buffer = buffer,
+			.transaction_amount = bytes,
+			.transaction_begin_address = audio_stream_get_wptr(&buffer->stream),
+		};
 
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
+		buffer->probe_cb_produce(buffer->probe_cb_arg, &cb_data);
+	}
+#endif
+
+	audio_stream_produce(&buffer->stream, bytes);
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
 	buf_dbg(buffer, "((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
@@ -511,12 +508,6 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
-	struct buffer_cb_transact cb_data = {
-		.buffer = buffer,
-		.transaction_amount = bytes,
-		.transaction_begin_address = audio_stream_get_rptr(&buffer->stream),
-	};
-
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	/* return if no bytes */
@@ -535,9 +526,6 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	}
 
 	audio_stream_consume(&buffer->stream, bytes);
-
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
 	buf_dbg(buffer, "(buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
