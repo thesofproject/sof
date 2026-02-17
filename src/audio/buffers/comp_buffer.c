@@ -153,11 +153,14 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	buf_dbg(buffer, "buffer_free()");
 
+#ifndef CONFIG_SOF_USERSPACE_LL
+       /* TODO: to be replaced with direct function calls */
 	notifier_event(buffer, NOTIFIER_ID_BUFFER_FREE,
 		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 	/* In case some listeners didn't unregister from buffer's callbacks */
 	notifier_unregister_all(NULL, buffer);
+#endif
 
 	struct k_heap *heap = buffer->audio_buffer.heap;
 
