@@ -33,6 +33,7 @@
 #include <stdint.h>
 
 struct comp_dev;
+struct buffer_cb_transact;
 
 /** \name Trace macros
  *  @{
@@ -148,6 +149,15 @@ struct comp_buffer {
 
 	/* list of buffers, to be used i.e. in raw data processing mode*/
 	struct list_item buffers_list;
+
+#if CONFIG_PROBE
+	/** probe produce callback, called on buffer produce */
+	void (*probe_cb_produce)(void *arg, struct buffer_cb_transact *cb_data);
+	/** probe free callback, called on buffer free */
+	void (*probe_cb_free)(void *arg);
+	/** opaque argument passed to probe callbacks */
+	void *probe_cb_arg;
+#endif
 };
 
 /*
@@ -188,15 +198,11 @@ static inline void comp_buffer_reset_sink_list(struct comp_buffer *buffer)
 	list_init(&buffer->sink_list);
 }
 
-/* Only to be used for synchronous same-core notifications! */
+/* Used as parameter for probe produce callback */
 struct buffer_cb_transact {
 	struct comp_buffer *buffer;
 	uint32_t transaction_amount;
 	void *transaction_begin_address;
-};
-
-struct buffer_cb_free {
-	struct comp_buffer *buffer;
 };
 
 #define buffer_from_list(ptr, dir) \
