@@ -117,7 +117,7 @@ typedef int (*channel_copy_func)(const struct audio_stream *src, unsigned int sr
  */
 struct dai_data {
 	/* local DMA config */
-	struct dma_chan_data *chan;
+	int chan_index;
 	uint32_t stream_id;
 	struct dma_sg_config config;
 	struct dma_config *z_config;
