@@ -374,15 +374,17 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 	/* allocated dai_config if not yet */
 	if (!dd->dai_spec_config) {
 		size = sizeof(*copier_cfg);
-		dd->dai_spec_config = rzalloc(SOF_MEM_FLAG_USER, size);
+		dd->dai_spec_config = sof_heap_alloc(dd->heap, SOF_MEM_FLAG_USER, size, 0);
 		if (!dd->dai_spec_config) {
 			comp_err(dev, "No memory for size %d", size);
 			return -ENOMEM;
 		}
 
+		memset(dd->dai_spec_config, 0, size);
+
 		ret = memcpy_s(dd->dai_spec_config, size, copier_cfg, size);
 		if (ret < 0) {
-			rfree(dd->dai_spec_config);
+			sof_heap_free(dd->heap, dd->dai_spec_config);
 			dd->dai_spec_config = NULL;
 			return -EINVAL;
 		}

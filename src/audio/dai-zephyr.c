@@ -23,6 +23,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/dma.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
@@ -506,6 +507,15 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	dd->xrun = 0;
 	dd->chan = NULL;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * copier_dai_create() uses mod_zalloc() to allocate
+	 * the 'dd' dai data object and does not set dd->heap.
+	 * If LL is run in user-space, assign the 'heap' here.
+	 */
+	dd->heap = zephyr_ll_user_heap();
+#endif
+
 	/* I/O performance init, keep it last so the function does not reach this in case
 	 * of return on error, so that we do not waste a slot
 	 */
@@ -558,6 +568,7 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	const struct ipc_config_dai *dai_cfg = spec;
 	struct dai_data *dd;
+	struct k_heap *heap = NULL;
 	int ret;
 
 	assert_can_be_cold();
@@ -570,9 +581,16 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	dev->ipc_config = *config;
 
-	dd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd));
+#ifdef CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+#endif
+
+	dd = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd), 0);
 	if (!dd)
 		goto e_data;
+
+	memset(dd, 0, sizeof(*dd));
+	dd->heap = heap;
 
 	comp_set_drvdata(dev, dd);
 
@@ -587,7 +605,7 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 	return dev;
 
 error:
-	rfree(dd);
+	sof_heap_free(dd->heap, dd);
 e_data:
 	comp_free_device(dev);
 	return NULL;
@@ -615,7 +633,7 @@ __cold void dai_common_free(struct dai_data *dd)
 
 	dai_put(dd->dai);
 
-	rfree(dd->dai_spec_config);
+	sof_heap_free(dd->heap, dd->dai_spec_config);
 }
 
 __cold static void dai_free(struct comp_dev *dev)
@@ -629,7 +647,7 @@ __cold static void dai_free(struct comp_dev *dev)
 
 	dai_common_free(dd);
 
-	rfree(dd);
+	sof_heap_free(dd->heap, dd);
 	comp_free_device(dev);
 }
 
@@ -824,7 +842,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 			} while (--max_block_count > 0);
 		}
 
-		err = dma_sg_alloc(NULL, &config->elem_array, SOF_MEM_FLAG_USER,
+		err = dma_sg_alloc(dd->heap, &config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
 				   period_count,
 				   period_bytes,
@@ -850,8 +868,9 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 
 	comp_dbg(dev, "entry");
 
-	dma_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-			  sizeof(struct dma_config));
+	dma_cfg = sof_heap_alloc(dd->heap,
+				 SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				 sizeof(struct dma_config), 0);
 	if (!dma_cfg) {
 		comp_err(dev, "dma_cfg allocation failed");
 		return -ENOMEM;
@@ -880,10 +899,11 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	else
 		dma_cfg->dma_slot = config->src_dev;
 
-	dma_block_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-				sizeof(struct dma_block_config) * dma_cfg->block_count);
+	dma_block_cfg = sof_heap_alloc(dd->heap,
+				       SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				       sizeof(struct dma_block_config) * dma_cfg->block_count, 0);
 	if (!dma_block_cfg) {
-		rfree(dma_cfg);
+		sof_heap_free(dd->heap, dma_cfg);
 		comp_err(dev, "dma_block_config allocation failed");
 		return -ENOMEM;
 	}
@@ -1017,7 +1037,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 			return err;
 		}
 	} else {
-		dd->dma_buffer = buffer_alloc_range(NULL, buffer_size_preferred, buffer_size,
+		dd->dma_buffer = buffer_alloc_range(dd->heap, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!dd->dma_buffer) {
@@ -1105,8 +1125,8 @@ out:
 	if (err < 0) {
 		buffer_free(dd->dma_buffer);
 		dd->dma_buffer = NULL;
-		dma_sg_free(NULL, &config->elem_array);
-		rfree(dd->z_config);
+		dma_sg_free(dd->heap, &config->elem_array);
+		sof_heap_free(dd->heap, dd->z_config);
 		dd->z_config = NULL;
 	}
 
@@ -1236,10 +1256,10 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 	if (!dd->delayed_dma_stop)
 		dai_dma_release(dd, dev);
 
-	dma_sg_free(NULL, &config->elem_array);
+	dma_sg_free(dd->heap, &config->elem_array);
 	if (dd->z_config) {
-		rfree(dd->z_config->head_block);
-		rfree(dd->z_config);
+		sof_heap_free(dd->heap, dd->z_config->head_block);
+		sof_heap_free(dd->heap, dd->z_config);
 		dd->z_config = NULL;
 	}
 
