@@ -38,7 +38,7 @@ void dai_set_link_hda_config(uint16_t *link_config,
 			     const void *spec_config)
 {
 #if ACE_VERSION > ACE_VERSION_1_5
-	const struct ipc4_audio_format *out_fmt = common_config->out_fmt;
+	const struct ipc4_audio_format *gtw_fmt = common_config->gtw_fmt;
 	union hdalink_cfg link_cfg;
 
 	switch (common_config->type) {
@@ -49,14 +49,14 @@ void dai_set_link_hda_config(uint16_t *link_config,
 		break;
 	case SOF_DAI_INTEL_DMIC:
 		link_cfg.full = 0;
-		if (out_fmt->depth == IPC4_DEPTH_16BIT) {
+		if (gtw_fmt->depth == IPC4_DEPTH_16BIT) {
 			/* 16bit dmic packs two 16bit samples into single 32bit word
 			 * fw needs to adjust channel count to match final sample
 			 * group size
 			 */
-			link_cfg.part.hchan = (out_fmt->channels_count - 1) / 2;
+			link_cfg.part.hchan = (gtw_fmt->channels_count - 1) / 2;
 		} else {
-			link_cfg.part.hchan = out_fmt->channels_count - 1;
+			link_cfg.part.hchan = gtw_fmt->channels_count - 1;
 		}
 		link_cfg.part.stream = common_config->host_dma_config[0]->stream_id;
 		break;
