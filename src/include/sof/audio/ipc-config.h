@@ -77,7 +77,7 @@ struct ipc_config_dai {
 					  */
 	/**< DMA configs - required for ACE 2.0 and newer */
 	struct ipc_dma_config *host_dma_config[GTW_DMA_DEVICE_MAX_COUNT];
-	const struct ipc4_audio_format *out_fmt;/**< audio format for output pin 0 - required
+	const struct ipc4_audio_format *gtw_fmt;/**< audio format for gateway DMA data - required
 						  * for ACE 2.0 and newer
 						  */
 	/* Gain feature flag */

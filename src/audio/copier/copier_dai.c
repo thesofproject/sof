@@ -285,6 +285,8 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	dai.is_config_blob = true;
 	dai.sampling_frequency = copier->out_fmt.sampling_frequency;
 	dai.feature_mask = copier->copier_feature_mask;
+	dai.gtw_fmt = (dai.direction == SOF_IPC_STREAM_PLAYBACK) ?
+		&cd->config.out_fmt : &cd->config.base.audio_fmt;
 
 	switch (node_id.f.dma_type) {
 	case ipc4_hda_link_output_class:
@@ -303,7 +305,6 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 			comp_err(dev, "No ssp dma_config found in blob!");
 			return -EINVAL;
 		}
-		dai.out_fmt = &copier->out_fmt;
 		break;
 	case ipc4_alh_link_output_class:
 	case ipc4_alh_link_input_class:
@@ -330,7 +331,6 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 			comp_err(dev, "No dmic dma_config found in blob!");
 			return -EINVAL;
 		}
-		dai.out_fmt = &copier->out_fmt;
 #if CONFIG_COPIER_GAIN
 		dai.apply_gain = true;
 #endif
