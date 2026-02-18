@@ -510,6 +510,7 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	dd->dai->lock = k_object_alloc(K_OBJ_MUTEX);
+	comp_set_drvdata(dev, dd);
 #else
 	dd->dai->lock = &dd->dai->lock_obj;
 #endif

@@ -446,6 +446,15 @@ static void pipeline_two_components(bool run_in_user)
 		user_grant_dma_access_all(&ppl_user_thread);
 		user_access_to_mailbox(zephyr_ll_mem_domain(), &ppl_user_thread);
 
+		/*
+		 * A hack for testing purposes, normally DAI module
+		 * is created in user-space so it gets access
+		 * automatically. Until that works, use dai_dd directly.
+		 */
+		struct dai_data *dai_dd = comp_get_drvdata(ctx->dai_comp);
+		struct k_mutex *dai_lock = dai_dd->dai->lock;
+		k_thread_access_grant(&ppl_user_thread, dai_lock);
+
 		k_thread_start(&ppl_user_thread);
 
 		LOG_INF("user thread started, waiting for completion");
