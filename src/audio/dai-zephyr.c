@@ -145,7 +145,7 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 {
 	const struct device *dev = dai->dev;
 	const struct sof_ipc_dai_config *sof_cfg = spec_config;
-	struct dai_config cfg;
+	struct dai_config cfg = {0};
 	const void *cfg_params;
 	bool is_blob;
 
