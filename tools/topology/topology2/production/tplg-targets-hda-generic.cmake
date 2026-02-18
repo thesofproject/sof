@@ -13,6 +13,9 @@ list(APPEND TPLGS
 "sof-hda-generic\;sof-hda-generic\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
 EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
 
+"sof-hda-generic\;sof-hda-generic-compr\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
+EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough,COMPRESSED=true"
+
 "sof-hda-generic\;sof-hda-generic-dax\;HDA_CONFIG=dax,HDA_MIC_ENHANCED_CAPTURE=true,\
 EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough,DOLBY_DAX_CORE_ID=1"
 
