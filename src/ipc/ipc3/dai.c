@@ -63,6 +63,9 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	case SOF_DAI_IMX_ESAI:
 		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
+	case SOF_DAI_VIRTUAL:
+		handshake = dai_get_handshake(dd->dai, dai->direction,
+					      dd->stream_id);
 /* TODO: remove this when transition to native drivers is complete on all NXP platforms */
 #ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 		channel = EDMA_HS_GET_CHAN(handshake);
@@ -171,6 +174,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 	case SOF_DAI_IMX_MICFIL:
 	case SOF_DAI_IMX_SAI:
 	case SOF_DAI_IMX_ESAI:
+	case SOF_DAI_VIRTUAL:
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 		break;
 	case SOF_DAI_AMD_BT:

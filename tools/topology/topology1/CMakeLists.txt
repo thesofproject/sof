@@ -71,6 +71,7 @@ set(TPLGS
 	"sof-imx8mp-compr-pcm-cap-wm8960\;sof-imx8mp-compr-pcm-cap-wm8960"
 	"sof-imx8mp-compr-wm8960\;sof-imx8mp-compr-wm8960\;-DCODEC=wm8960\;-DRATE=48000"
 	"sof-imx8mp-compr-wm8960\;sof-imx8mp-compr-wm8962\;-DCODEC=wm8962\;-DRATE=48000"
+	"sof-imx8-virtual\;sof-imx8-virtual"
 	## end i.MX8MP topologies
 
 	## i.MX8ULP topologies

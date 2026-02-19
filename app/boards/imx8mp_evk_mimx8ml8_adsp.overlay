@@ -12,6 +12,10 @@
 	};
 };
 
+&emul_dma {
+	status = "okay";
+};
+
 &sdma3 {
 	status = "okay";
 };
