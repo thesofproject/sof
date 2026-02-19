@@ -1183,7 +1183,7 @@ static int module_adapter_copy_ring_buffers(struct comp_dev *dev)
 		/* input - we need to copy data from audio_stream (as source)
 		 * to ring_buffer (as sink)
 		 */
-		err = audio_buffer_sync_secondary_buffer(&buffer->audio_buffer, UINT_MAX);
+		err = audio_buffer_sync_secondary_buffer(&buffer->audio_buffer, SIZE_MAX);
 
 		if (err) {
 			comp_err(dev, "LL to DP copy error status: %d", err);
