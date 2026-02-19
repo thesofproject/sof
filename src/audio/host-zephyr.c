@@ -432,6 +432,7 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	uint32_t dma_copy_bytes;
 	int ret;
 
+	assert(0);
 	/* get data sizes from DMA */
 	ret = host_get_status(dev, hd, &dma_stat);
 	if (ret < 0) {
