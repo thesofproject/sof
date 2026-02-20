@@ -16,6 +16,8 @@
 #include <math.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/math/auditory.h>
+#include <sof/math/icomplex16.h>
+#include <sof/math/icomplex32.h>
 #include <sof/math/fft.h>
 #include "ref_hz_to_mel.h"
 #include "ref_mel_filterbank_16_test1.h"

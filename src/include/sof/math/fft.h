@@ -11,6 +11,7 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/format.h>
+#include <sof/math/icomplex32.h>
 #include <sof/common.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -29,20 +30,6 @@
 #define FFT_SIZE_MIN		1
 #define FFT_SIZE_MAX		1024
 #define FFT_MULTI_COUNT_MAX	3
-
-struct icomplex32 {
-	int32_t real;
-	int32_t imag;
-};
-
-/* Note: the add of packed attribute to icmplex16 would significantly increase
- * processing time of fft_execute_16() so it is not done. The optimized versions of
- * FFT for HiFi will need a different packed data structure vs. generic C.
- */
-struct icomplex16 {
-	int16_t real;
-	int16_t imag;
-};
 
 struct fft_plan {
 	uint32_t size;	/* fft size */

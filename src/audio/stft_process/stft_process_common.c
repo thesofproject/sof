@@ -5,6 +5,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/math/auditory.h>
+#include <sof/math/icomplex32.h>
 #include <sof/math/matrix.h>
 #include <sof/math/sqrt.h>
 #include <sof/math/trig.h>
@@ -97,6 +98,36 @@ static void stft_do_ifft(struct stft_process_state *state, int ch)
 	stft_process_overlap_add_ifft_buffer(state, ch);
 }
 
+#if CONFIG_STFT_PROCESS_MAGNITUDE_PHASE
+static void stft_convert_to_polar(struct stft_process_fft *fft)
+{
+	int i;
+
+	for (i = 0; i < fft->half_fft_size; i++)
+		sofm_icomplex32_to_polar(&fft->fft_out[i], &fft->fft_polar[i]);
+}
+
+static void stft_convert_to_complex(struct stft_process_fft *fft)
+{
+	int i;
+
+	for (i = 0; i < fft->half_fft_size; i++)
+		sofm_ipolar32_to_complex(&fft->fft_polar[i], &fft->fft_out[i]);
+}
+
+static void stft_apply_fft_symmetry(struct stft_process_fft *fft)
+{
+	int i, j, k;
+
+	j = 2 * fft->half_fft_size - 2;
+	for (i = fft->half_fft_size; i < fft->fft_size; i++) {
+		k = j - i;
+		fft->fft_out[i].real = fft->fft_out[k].real;
+		fft->fft_out[i].imag = -fft->fft_out[k].imag;
+	}
+}
+#endif
+
 static void stft_do_fft_ifft(const struct processing_module *mod)
 {
 	struct stft_comp_data *cd = module_get_private_data(mod);
@@ -110,7 +141,12 @@ static void stft_do_fft_ifft(const struct processing_module *mod)
 		if (num_fft) {
 			stft_do_fft(state, ch);
 
-			/* stft_process(state) */
+#if CONFIG_STFT_PROCESS_MAGNITUDE_PHASE
+			/* Convert half-FFT to polar and back, and fix upper part */
+			stft_convert_to_polar(&state->fft);
+			stft_convert_to_complex(&state->fft);
+			stft_apply_fft_symmetry(&state->fft);
+#endif
 
 			stft_do_ifft(state, ch);
 			cd->fft_done = true;

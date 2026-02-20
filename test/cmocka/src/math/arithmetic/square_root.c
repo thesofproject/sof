@@ -139,7 +139,7 @@ static void test_math_arithmetic_sqrt_fixed(void **state)
 
 	memcpy_s((void *)&u[0], sizeof(u), (void *)&uv[0], 252U * sizeof(uint32_t));
 	for (i = 0; i < ARRAY_SIZE(sqrt_ref_table); i++) {
-		y = Q_CONVERT_QTOF(sqrt_int16(u[i]), 12);
+		y = Q_CONVERT_QTOF(sofm_sqrt_int16(u[i]), 12);
 		diff = fabs(sqrt_ref_table[i] - y);
 
 		if (diff > CMP_TOLERANCE) {
