@@ -16,7 +16,7 @@ if(CONFIG_MATH_LUT_SINE_FIXED)
 endif()
 
 if(CONFIG_SQRT_FIXED)
-  list(APPEND base_files sqrt_int16.c)
+  list(APPEND base_files sqrt_int16.c sqrt_int32.c)
 endif()
 
 if(CONFIG_MATH_EXP)
@@ -89,6 +89,10 @@ endif()
 
 if(CONFIG_MATH_MU_LAW_CODEC)
   list(APPEND base_files mu_law.c)
+endif()
+
+if(CONFIG_MATH_COMPLEX)
+  list(APPEND base_files complex.c)
 endif()
 
 is_zephyr(zephyr)

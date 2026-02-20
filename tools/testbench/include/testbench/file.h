@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2018 Intel Corporation. All rights reserved.
+ * Copyright(c) 2018-2026 Intel Corporation.
  *
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-#define FILE_MAX_COPIES_TIMEOUT		3
+#define FILE_MAX_COPIES_TIMEOUT 10
 
 /**< Convert with right shift a bytes count to samples count */
 #define FILE_BYTES_TO_S16_SAMPLES(s)	((s) >> 1)
