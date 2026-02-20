@@ -226,21 +226,25 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	if (!mod)
 		return NULL;
 
+	module_set_private_data(mod, mod_priv);
+	list_init(&mod->raw_data_buffers_list);
+#if CONFIG_USERSPACE
+	mod->user_ctx = user_ctx;
+#endif /* CONFIG_USERSPACE */
+
 	struct comp_dev *dev = mod->dev;
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	/* create a task for DP processing */
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
 		/* All data allocated, create a thread */
-		pipeline_comp_dp_task_init(dev);
+		ret = pipeline_comp_dp_task_init(dev);
+		if (ret) {
+			comp_cl_err(drv, "DP task creation failed with error %d.", ret);
+			goto err;
+		}
 	}
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
-
-	module_set_private_data(mod, mod_priv);
-	list_init(&mod->raw_data_buffers_list);
-#if CONFIG_USERSPACE
-	mod->user_ctx = user_ctx;
-#endif /* CONFIG_USERSPACE */
 
 	dst = &mod->priv.cfg;
 	/*
@@ -330,10 +334,6 @@ err:
 		schedule_task_free(dev->task);
 #endif
 	module_adapter_mem_free(mod);
-#if CONFIG_IPC_MAJOR_4
-	dst->ext_data = NULL;
-#endif
-
 	return NULL;
 }
 
