@@ -140,14 +140,53 @@ int ipc4_logging_enable_logs(bool first_block,
 	log_state = (const struct ipc4_log_state_info *)data;
 
 	if (log_state->enable) {
+		uint32_t log_level = LOG_LEVEL_NONE; /* Default if no bits set */
+		uint32_t mask = log_state->logs_mask[0];
+
+		/* TODO: Improve mask handling for better code maintainability
+		 * The logs_mask bits should be defined using proper macros or a struct
+		 * to improve readability and maintainability. Current hardcoded bit
+		 * positions are sufficient for now but should be refactored in the future.
+		 * Possible improvements:
+		 * - Define IPC4_LOG_MASK_* macros for each bit position
+		 * - Create a struct with bitfields for each priority level
+		 * - Add proper documentation in IPC4 specification headers
+		 */
+
+		/* Determine log level from mask bits 0-4 (priority levels)
+		 * bit 0: critical & error    -> LOG_LEVEL_ERR
+		 * bit 1: high & warning      -> LOG_LEVEL_WRN
+		 * bit 2: medium              -> LOG_LEVEL_INF
+		 * bit 3: low & info          -> LOG_LEVEL_INF
+		 * bit 4: verbose & debug     -> LOG_LEVEL_DBG
+		 * Check highest bit set to determine maximum log level
+		 */
+		if (mask & BIT(4))
+			log_level = LOG_LEVEL_DBG;
+		else if (mask & (BIT(3) | BIT(2)))
+			log_level = LOG_LEVEL_INF;
+		else if (mask & BIT(1))
+			log_level = LOG_LEVEL_WRN;
+		else if (mask & BIT(0))
+			log_level = LOG_LEVEL_ERR;
+
 		adsp_mtrace_log_init(mtrace_log_hook);
 		/* Initialize work queue if not already initialized */
 		if (!log_work.work.handler)
 			k_work_init_delayable(&log_work, log_work_handler);
 
-		/* Enable backend if not already active */
-		if (!log_backend_is_active(log_backend))
-			log_backend_enable(log_backend, mtrace_log_hook, CONFIG_SOF_LOG_LEVEL);
+		/* Enable backend with determined log level
+		 *
+		 * Note: If CONFIG_LOG_RUNTIME_FILTERING is not enabled, the log_level
+		 * parameter has no effect - all logs are filtered at compile-time only.
+		 *
+		 * Note: Setting log_level to LOG_LEVEL_NONE will result in no logs being
+		 * output, as all runtime filters will be set to NONE. This behavior will
+		 * be useful in the future when per-source filtering can be specified via
+		 * IPC, allowing selective enabling of specific log sources while keeping
+		 * others disabled.
+		 */
+		log_backend_enable(log_backend, mtrace_log_hook, log_level);
 
 		mtrace_aging_timer = log_state->aging_timer_period;
 		if (mtrace_aging_timer < IPC4_MTRACE_AGING_TIMER_MIN_MS) {
