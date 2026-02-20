@@ -41,15 +41,11 @@ struct task_dp_pdata {
 	struct processing_module *mod;	/* the module to be scheduled */
 	uint32_t ll_cycles_to_start;    /* current number of LL cycles till delayed start */
 #if CONFIG_SOF_USERSPACE_APPLICATION
-	struct k_sem *sem;              /* pointer to semaphore for task scheduling */
 	struct ipc4_flat *flat;
-	unsigned char pend_ipc;
-	unsigned char pend_proc;
 	struct k_mem_partition mpart[SOF_DP_PART_TYPE_COUNT];
-#else
+#endif
 	struct k_event *event;		/* pointer to event for task scheduling */
 	struct k_event event_struct;	/* event for task scheduling for kernel threads */
-#endif
 };
 
 void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run);
