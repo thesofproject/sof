@@ -14,7 +14,7 @@
 #define FFT_SIZE_MAX	1024
 
 /* in Q1.15, generated from cos(i * 2 * pi / FFT_SIZE_MAX) */
-const int16_t twiddle_real_16[FFT_SIZE_MAX] = {
+SOF_MATH_FFT_COLD_RODATA static const int16_t twiddle_real_16[FFT_SIZE_MAX] = {
 	32767,
 	32767,
 	32766,
@@ -1042,7 +1042,7 @@ const int16_t twiddle_real_16[FFT_SIZE_MAX] = {
 };
 
 /* in Q1.15, generated from sin(i * 2 * pi / FFT_SIZE_MAX) */
-const int16_t twiddle_imag_16[FFT_SIZE_MAX] = {
+SOF_MATH_FFT_COLD_RODATA static const int16_t twiddle_imag_16[FFT_SIZE_MAX] = {
 	0,
 	-201,
 	-402,
