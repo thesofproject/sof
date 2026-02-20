@@ -407,7 +407,7 @@ void dma_trace_disable(struct dma_trace_data *d)
 #if (CONFIG_HOST_PTABLE)
 	/* Free up the host SG if it is set */
 	if (d->host_size) {
-		dma_sg_free(&d->config.elem_array);
+		dma_sg_free(NULL, &d->config.elem_array);
 		d->host_size = 0;
 	}
 #endif

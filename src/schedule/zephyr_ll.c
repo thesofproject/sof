@@ -40,7 +40,10 @@ struct zephyr_ll {
 struct zephyr_ll_pdata {
 	bool run;
 	bool freeing;
-	struct k_sem sem;
+#ifndef CONFIG_SOF_USERSPACE_LL
+	struct k_sem sem_obj;
+#endif
+	struct k_sem *sem;
 };
 
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
@@ -87,7 +90,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 		 * zephyr_ll_task_free() is trying to free this task. Complete
 		 * it and signal the semaphore to let the function proceed
 		 */
-		k_sem_give(&pdata->sem);
+		k_sem_give(pdata->sem);
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
@@ -454,7 +457,11 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	if (must_wait)
 		/* Wait for up to 100 periods */
-		k_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
+		k_sem_take(pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	k_object_free(pdata->sem);
+#endif
 
 	/* Protect against racing with schedule_task() */
 	zephyr_ll_lock(sch, &flags);
@@ -560,7 +567,12 @@ int zephyr_ll_task_init(struct task *task,
 
 	memset(pdata, 0, sizeof(*pdata));
 
-	k_sem_init(&pdata->sem, 0, 1);
+#ifdef CONFIG_SOF_USERSPACE_LL
+	pdata->sem = k_object_alloc(K_OBJ_SEM);
+#else
+	pdata->sem = &pdata->sem_obj;
+#endif
+	k_sem_init(pdata->sem, 0, 1);
 
 	task->priv_data = pdata;
 

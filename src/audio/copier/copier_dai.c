@@ -208,6 +208,8 @@ __cold static int copier_dai_init(struct comp_dev *dev,
 	if (!dd)
 		return -ENOMEM;
 	memset(dd, 0, sizeof(*dd));
+	dd->chan_index = -1;
+	comp_info(dev, "dd %p initialized, index %d", dd, dd->chan_index);
 
 	ret = dai_common_new(dd, dev, dai);
 	if (ret < 0)

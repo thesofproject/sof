@@ -17,14 +17,16 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
  *
  * This structure encapsulates the memory management resources required for the
  * low-latency (LL) scheduler in userspace mode. It provides memory isolation
- * and heap management for LL scheduler threads.
+ * and heap management for LL scheduler threads. Only kernel accessible.
  */
 struct zephyr_ll_mem_resources {
 	struct k_mem_domain mem_domain; /**< Memory domain for LL thread isolation */
-	struct k_heap *heap; /**< Heap allocator for LL scheduler memory */
 };
 
 static struct zephyr_ll_mem_resources ll_mem_resources;
+
+/* Heap allocator for LL scheduler memory (user accessible pointer) */
+APP_TASK_DATA static struct k_heap *zephyr_ll_heap;
 
 static struct k_heap *zephyr_ll_heap_init(void)
 {
@@ -68,7 +70,7 @@ void zephyr_ll_user_resources_init(void)
 {
 	k_mem_domain_init(&ll_mem_resources.mem_domain, 0, NULL);
 
-	ll_mem_resources.heap = zephyr_ll_heap_init();
+	zephyr_ll_heap = zephyr_ll_heap_init();
 
 	/* attach common partition to LL domain */
 	user_memory_attach_common_partition(zephyr_ll_mem_domain());
@@ -76,7 +78,7 @@ void zephyr_ll_user_resources_init(void)
 
 struct k_heap *zephyr_ll_user_heap(void)
 {
-	return ll_mem_resources.heap;
+	return zephyr_ll_heap;
 }
 
 struct k_mem_domain *zephyr_ll_mem_domain(void)

@@ -239,6 +239,6 @@ int ipc_process_host_buffer(struct ipc *ipc,
 
 	return 0;
 error:
-	dma_sg_free(elem_array);
+	dma_sg_free(NULL, elem_array);
 	return err;
 }

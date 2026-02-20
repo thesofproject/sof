@@ -23,6 +23,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/dma.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
@@ -202,55 +203,62 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int hs_id = props->dma_hs_id;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_lock(dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, direction, stream_id, &props);
+	k_mutex_unlock(dai->lock);
+	if (ret < 0)
+		return ret;
 
-	return hs_id;
+	return props.dma_hs_id;
 }
 
 /* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
-	const struct dai_properties *props;
-	k_spinlock_key_t key;
-	int fifo_depth;
+	struct dai_properties props;
+	int ret;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
-	props = dai_get_properties(dai->dev, direction, 0);
-	fifo_depth = props->fifo_depth;
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_lock(dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, direction, 0, &props);
+	k_mutex_unlock(dai->lock);
+	if (ret < 0)
+		return 0;
 
-	return fifo_depth;
+	return props.fifo_depth;
 }
 
 int dai_get_stream_id(struct dai *dai, int direction)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
-	int stream_id = props->stream_id;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_lock(dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, direction, 0, &props);
+	k_mutex_unlock(dai->lock);
+	if (ret < 0)
+		return ret;
 
-	return stream_id;
+	return props.stream_id;
 }
 
 static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int fifo_address = props->fifo_address;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_lock(dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, direction, stream_id, &props);
+	k_mutex_unlock(dai->lock);
+	if (ret < 0)
+		return ret;
 
-	return fifo_address;
+	return props.fifo_address;
 }
 
 /* this is called by DMA driver every time descriptor has completed */
@@ -500,11 +508,25 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 		return -ENODEV;
 	}
 
-	k_spinlock_init(&dd->dai->lock);
+#ifdef CONFIG_SOF_USERSPACE_LL
+	dd->dai->lock = k_object_alloc(K_OBJ_MUTEX);
+	comp_set_drvdata(dev, dd);
+#else
+	dd->dai->lock = &dd->dai->lock_obj;
+#endif
+	k_mutex_init(dd->dai->lock);
 
 	dma_sg_init(&dd->config.elem_array);
 	dd->xrun = 0;
-	dd->chan = NULL;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * copier_dai_create() uses mod_zalloc() to allocate
+	 * the 'dd' dai data object and does not set dd->heap.
+	 * If LL is run in user-space, assign the 'heap' here.
+	 */
+	dd->heap = zephyr_ll_user_heap();
+#endif
 
 	/* I/O performance init, keep it last so the function does not reach this in case
 	 * of return on error, so that we do not waste a slot
@@ -558,6 +580,7 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	const struct ipc_config_dai *dai_cfg = spec;
 	struct dai_data *dd;
+	struct k_heap *heap = NULL;
 	int ret;
 
 	assert_can_be_cold();
@@ -570,9 +593,18 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	dev->ipc_config = *config;
 
-	dd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd));
+#ifdef CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+#endif
+
+	dd = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd), 0);
 	if (!dd)
 		goto e_data;
+
+	memset(dd, 0, sizeof(*dd));
+	dd->heap = heap;
+	dd->chan_index = -1;
+	comp_info(dev, "dd %p initialized, index %d", dd, dd->chan_index);
 
 	comp_set_drvdata(dev, dd);
 
@@ -587,7 +619,7 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 	return dev;
 
 error:
-	rfree(dd);
+	sof_heap_free(dd->heap, dd);
 e_data:
 	comp_free_device(dev);
 	return NULL;
@@ -604,18 +636,20 @@ __cold void dai_common_free(struct dai_data *dd)
 	if (dd->group)
 		dai_group_put(dd->group);
 
-	if (dd->chan) {
-		sof_dma_release_channel(dd->dma, dd->chan->index);
-		dd->chan->dev_data = NULL;
-	}
+	if (dd->chan_index != -1)
+		sof_dma_release_channel(dd->dma, dd->chan_index);
 
 	sof_dma_put(dd->dma);
 
 	dai_release_llp_slot(dd);
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	k_object_free(dd->dai->lock);
+#endif
+
 	dai_put(dd->dai);
 
-	rfree(dd->dai_spec_config);
+	sof_heap_free(dd->heap, dd->dai_spec_config);
 }
 
 __cold static void dai_free(struct comp_dev *dev)
@@ -629,7 +663,7 @@ __cold static void dai_free(struct comp_dev *dev)
 
 	dai_common_free(dd);
 
-	rfree(dd);
+	sof_heap_free(dd->heap, dd);
 	comp_free_device(dev);
 }
 
@@ -824,7 +858,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 			} while (--max_block_count > 0);
 		}
 
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
+		err = dma_sg_alloc(dd->heap, &config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
 				   period_count,
 				   period_bytes,
@@ -850,8 +884,9 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 
 	comp_dbg(dev, "entry");
 
-	dma_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-			  sizeof(struct dma_config));
+	dma_cfg = sof_heap_alloc(dd->heap,
+				 SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				 sizeof(struct dma_config), 0);
 	if (!dma_cfg) {
 		comp_err(dev, "dma_cfg allocation failed");
 		return -ENOMEM;
@@ -880,10 +915,11 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	else
 		dma_cfg->dma_slot = config->src_dev;
 
-	dma_block_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-				sizeof(struct dma_block_config) * dma_cfg->block_count);
+	dma_block_cfg = sof_heap_alloc(dd->heap,
+				       SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				       sizeof(struct dma_block_config) * dma_cfg->block_count, 0);
 	if (!dma_block_cfg) {
-		rfree(dma_cfg);
+		sof_heap_free(dd->heap, dma_cfg);
 		comp_err(dev, "dma_block_config allocation failed");
 		return -ENOMEM;
 	}
@@ -1017,7 +1053,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 			return err;
 		}
 	} else {
-		dd->dma_buffer = buffer_alloc_range(NULL, buffer_size_preferred, buffer_size,
+		dd->dma_buffer = buffer_alloc_range(dd->heap, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!dd->dma_buffer) {
@@ -1105,8 +1141,8 @@ out:
 	if (err < 0) {
 		buffer_free(dd->dma_buffer);
 		dd->dma_buffer = NULL;
-		dma_sg_free(&config->elem_array);
-		rfree(dd->z_config);
+		dma_sg_free(dd->heap, &config->elem_array);
+		sof_heap_free(dd->heap, dd->z_config);
 		dd->z_config = NULL;
 	}
 
@@ -1137,9 +1173,9 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dd->chan) {
+	if (dd->chan_index != -1) {
 		comp_info(dev, "dma channel index %d already configured",
-			  dd->chan->index);
+			  dd->chan_index);
 		return 0;
 	}
 
@@ -1153,18 +1189,14 @@ int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	/* get DMA channel */
-	channel = sof_dma_request_channel(dd->dma, channel);
-	if (channel < 0) {
+	dd->chan_index = sof_dma_request_channel(dd->dma, channel);
+	if (dd->chan_index < 0) {
 		comp_err(dev, "dma_request_channel() failed");
-		dd->chan = NULL;
 		return -EIO;
 	}
 
-	dd->chan = &dd->dma->chan[channel];
-	dd->chan->dev_data = dd;
-
 	comp_dbg(dev, "new configured dma channel index %d",
-		 dd->chan->index);
+		 dd->chan_index);
 
 	return 0;
 }
@@ -1175,8 +1207,8 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 
 	dd->total_data_processed = 0;
 
-	if (!dd->chan) {
-		comp_err(dev, "Missing dd->chan.");
+	if (dd->chan_index == -1) {
+		comp_err(dev, "Missing dd->chan_index.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -1197,7 +1229,7 @@ int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
 		return 0;
 	}
 
-	ret = sof_dma_config(dd->chan->dma, dd->chan->index, dd->z_config);
+	ret = sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -1236,10 +1268,10 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 	if (!dd->delayed_dma_stop)
 		dai_dma_release(dd, dev);
 
-	dma_sg_free(&config->elem_array);
+	dma_sg_free(dd->heap, &config->elem_array);
 	if (dd->z_config) {
-		rfree(dd->z_config->head_block);
-		rfree(dd->z_config);
+		sof_heap_free(dd->heap, dd->z_config->head_block);
+		sof_heap_free(dd->heap, dd->z_config);
 		dd->z_config = NULL;
 	}
 
@@ -1284,7 +1316,7 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			ret = sof_dma_start(dd->chan->dma, dd->chan->index);
+			ret = sof_dma_start(dd->dma, dd->chan_index);
 			if (ret < 0)
 				return ret;
 
@@ -1322,16 +1354,16 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
-			ret = sof_dma_stop(dd->chan->dma, dd->chan->index);
+			ret = sof_dma_stop(dd->dma, dd->chan_index);
 			if (ret < 0)
 				return ret;
 
 			/* dma_config needed after stop */
-			ret = sof_dma_config(dd->chan->dma, dd->chan->index, dd->z_config);
+			ret = sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
 			if (ret < 0)
 				return ret;
 
-			ret = sof_dma_start(dd->chan->dma, dd->chan->index);
+			ret = sof_dma_start(dd->dma, dd->chan_index);
 			if (ret < 0)
 				return ret;
 
@@ -1359,11 +1391,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
  * as soon as possible.
  */
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
-		ret = sof_dma_stop(dd->chan->dma, dd->chan->index);
+		ret = sof_dma_stop(dd->dma, dd->chan_index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = sof_dma_stop(dd->chan->dma, dd->chan->index);
+		ret = sof_dma_stop(dd->dma, dd->chan_index);
 		if (ret) {
 			comp_warn(dev, "dma was stopped earlier");
 			ret = 0;
@@ -1373,11 +1405,11 @@ static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, 
 	case COMP_TRIGGER_PAUSE:
 		comp_dbg(dev, "PAUSE");
 #if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
-		ret = sof_dma_suspend(dd->chan->dma, dd->chan->index);
+		ret = sof_dma_suspend(dd->dma, dd->chan_index);
 		dai_trigger_op(dd->dai, cmd, dev->direction);
 #else
 		dai_trigger_op(dd->dai, cmd, dev->direction);
-		ret = sof_dma_suspend(dd->chan->dma, dd->chan->index);
+		ret = sof_dma_suspend(dd->dma, dd->chan_index);
 #endif
 		break;
 	case COMP_TRIGGER_PRE_START:
@@ -1475,7 +1507,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
  */
 static int dai_get_status(struct comp_dev *dev, struct dai_data *dd, struct dma_status *stat)
 {
-	int ret = sof_dma_get_status(dd->chan->dma, dd->chan->index, stat);
+	int ret = sof_dma_get_status(dd->dma, dd->chan_index, stat);
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	if (ret == -EPIPE && !dd->xrun_notification_sent) {
 		struct ipc_msg *notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
@@ -1591,7 +1623,7 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 #endif
 
 		for (i = 0; i < num_endpoints; i++) {
-			ret = sof_dma_reload(dd[i]->chan->dma, dd[i]->chan->index, 0);
+			ret = sof_dma_reload(dd[i]->dma, dd[i]->chan_index, 0);
 			if (ret < 0) {
 				dai_report_reload_xrun(dd[i], dev, 0);
 				return ret;
@@ -1617,10 +1649,10 @@ int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
 
 		status = dai_dma_multi_endpoint_cb(dd[i], dev, frames, multi_endpoint_buffer);
 		if (status == SOF_DMA_CB_STATUS_END)
-			sof_dma_stop(dd[i]->chan->dma, dd[i]->chan->index);
+			sof_dma_stop(dd[i]->dma, dd[i]->chan_index);
 
 		copy_bytes = frames * audio_stream_frame_bytes(&dd[i]->dma_buffer->stream);
-		ret = sof_dma_reload(dd[i]->chan->dma, dd[i]->chan->index, copy_bytes);
+		ret = sof_dma_reload(dd[i]->dma, dd[i]->chan_index, copy_bytes);
 		if (ret < 0) {
 			dai_report_reload_xrun(dd[i], dev, copy_bytes);
 			return ret;
@@ -1809,7 +1841,7 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		comp_warn(dev, "nothing to copy, src_frames: %u, sink_frames: %u",
 			  src_frames, sink_frames);
 #endif
-		sof_dma_reload(dd->chan->dma, dd->chan->index, 0);
+		sof_dma_reload(dd->dma, dd->chan_index, 0);
 		return 0;
 	}
 
@@ -1819,9 +1851,9 @@ int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_fun
 		comp_warn(dev, "dai trigger copy failed");
 
 	if (dai_dma_cb(dd, dev, copy_bytes, converter) == SOF_DMA_CB_STATUS_END)
-		sof_dma_stop(dd->chan->dma, dd->chan->index);
+		sof_dma_stop(dd->dma, dd->chan_index);
 
-	ret = sof_dma_reload(dd->chan->dma, dd->chan->index, copy_bytes);
+	ret = sof_dma_reload(dd->dma, dd->chan_index, copy_bytes);
 	if (ret < 0) {
 		dai_report_reload_xrun(dd, dev, copy_bytes);
 		return ret;
@@ -1859,7 +1891,7 @@ int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 	struct dai_ts_cfg *cfg = &dd->ts_config;
 
 	comp_dbg(dev, "dai_ts_config()");
-	if (!dd->chan) {
+	if (dd->chan_index == -1) {
 		comp_err(dev, "No DMA channel information");
 		return -EINVAL;
 	}
@@ -1882,7 +1914,7 @@ int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
 	cfg->direction = dai->direction;
 	cfg->index = dd->dai->index;
 	cfg->dma_id = dd->dma->plat_data.id;
-	cfg->dma_chan_index = dd->chan->index;
+	cfg->dma_chan_index = dd->chan_index;
 	cfg->dma_chan_count = dd->dma->plat_data.channels;
 
 	return dai_ts_config(dd->dai->dev, cfg);
@@ -1940,17 +1972,18 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
-	const struct dai_properties *props;
-	k_spinlock_key_t key;
-	uint32_t init_delay;
+	struct dai_properties props;
+	uint32_t init_delay = 0;
+	int ret;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
-	props = dai_get_properties(dai->dev, 0, 0);
-	init_delay = props->reg_init_delay;
-	k_spin_unlock(&dai->lock, key);
+	k_mutex_lock(dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, 0, 0, &props);
+	if (!ret)
+		init_delay = props.reg_init_delay;
+	k_mutex_unlock(dai->lock);
 
 	return init_delay;
 }

@@ -27,6 +27,7 @@
 #include <sof/common.h>
 #include <sof/compiler_attributes.h>
 #include <ipc/stream.h>
+#include <rtos/userspace_helper.h>
 
 #include <stddef.h>
 #include <stdint.h>
@@ -669,7 +670,7 @@ static int pcm_convert_f_to_s32(const struct audio_stream *source,
 }
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
 
-const struct pcm_func_map pcm_func_map[] = {
+APP_TASK_DATA const struct pcm_func_map pcm_func_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_U8
 	{ SOF_IPC_FRAME_U8, SOF_IPC_FRAME_U8, just_copy },
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_U8 */
@@ -732,7 +733,7 @@ const struct pcm_func_map pcm_func_map[] = {
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S32LE */
 };
 
-const size_t pcm_func_count = ARRAY_SIZE(pcm_func_map);
+APP_TASK_DATA const size_t pcm_func_count = ARRAY_SIZE(pcm_func_map);
 
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
 static int pcm_convert_s16_c16_to_s16_c32(const struct audio_stream *source,
@@ -1020,7 +1021,7 @@ static int pcm_convert_s24_c32_to_s24_c24_link_gtw(const struct audio_stream *so
 
 #endif
 
-const struct pcm_func_vc_map pcm_func_vc_map[] = {
+APP_TASK_DATA const struct pcm_func_vc_map pcm_func_vc_map[] = {
 #if CONFIG_PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,
 		pcm_convert_s16_c16_to_s16_c32 },
@@ -1101,6 +1102,6 @@ const struct pcm_func_vc_map pcm_func_vc_map[] = {
 #endif
 };
 
-const size_t pcm_func_vc_count = ARRAY_SIZE(pcm_func_vc_map);
+APP_TASK_DATA const size_t pcm_func_vc_count = ARRAY_SIZE(pcm_func_vc_map);
 
 #endif

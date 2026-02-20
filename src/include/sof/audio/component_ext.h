@@ -53,6 +53,10 @@ static inline void comp_free(struct comp_dev *dev)
 	 * be freed after this.
 	 */
 	drv->ops.free(dev);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	k_object_free(dev->list_mutex);
+#endif
 }
 
 /**
