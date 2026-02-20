@@ -32,6 +32,7 @@ extern xa_codec_func_t xa_mp3_enc;
 extern xa_codec_func_t xa_sbc_dec;
 extern xa_codec_func_t xa_vorbis_dec;
 extern xa_codec_func_t xa_src_pp;
+extern xa_codec_func_t xa_pcm_dec;
 
 #define DEFAULT_CODEC_ID CADENCE_CODEC_WRAPPER_ID
 
@@ -77,6 +78,7 @@ enum cadence_api_id {
 	CADENCE_CODEC_VORBIS_DEC_ID	= 0x08,
 	CADENCE_CODEC_SRC_PP_ID		= 0x09,
 	CADENCE_CODEC_MP3_ENC_ID	= 0x0A,
+	SOF_COMPRESS_CODEC_PCM_DEC_ID	= 0xC0,
 };
 
 #if CONFIG_IPC_MAJOR_4

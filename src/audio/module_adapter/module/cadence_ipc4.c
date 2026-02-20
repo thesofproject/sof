@@ -209,6 +209,9 @@ static int cadence_configure_codec_params(struct processing_module *mod)
 	case CADENCE_CODEC_VORBIS_DEC_ID:
 		/* No configuration needed for Vorbis */
 		return 0;
+	case SOF_COMPRESS_CODEC_PCM_DEC_ID:
+		/* No configuration needed for PCM decoder */
+		return 0;
 	default:
 		break;
 	}

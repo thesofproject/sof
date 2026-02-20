@@ -99,6 +99,10 @@ static void get_codec_info(struct sof_tlv **tuple)
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_VORBIS, SOF_IPC_STREAM_PLAYBACK);
 #endif
+#ifdef CONFIG_SOF_COMPRESS_CODEC_PCM_DEC
+	codec_info.items[codec_info.count++] =
+	    SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK);
+#endif
 
 	if (!codec_info.count)
 		return;
