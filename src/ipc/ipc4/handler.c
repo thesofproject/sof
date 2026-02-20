@@ -1641,6 +1641,8 @@ __cold void ipc_send_panic_notification(void)
 
 #ifdef CONFIG_LOG_BACKEND_ADSP_MTRACE
 
+static atomic_t mtrace_notify_counter;
+
 static bool is_notification_queued(struct ipc_msg *msg)
 {
 	struct ipc *ipc = ipc_get();
@@ -1663,7 +1665,8 @@ void ipc_send_buffer_status_notify(void)
 		return;
 
 	msg_notify.header = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
-	msg_notify.extension = 0;
+	atomic_add(&mtrace_notify_counter, 1);
+	msg_notify.extension = atomic_read(&mtrace_notify_counter);
 	msg_notify.tx_size = 0;
 
 	tr_dbg(&ipc_tr, "tx-notify\t: %#x|%#x", msg_notify.header, msg_notify.extension);
