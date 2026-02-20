@@ -51,7 +51,6 @@ tools/test/audio/zeros_in.raw
 __pycache__
 .checkpatch-camelcase.git.*
 
-build*/
 
 # Eclipse project metadata
 .settings
