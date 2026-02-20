@@ -11,7 +11,9 @@ usage() {
     echo
 }
 
-MODULES_S32="asrc dcblock drc drc_multiband eqfir eqiir gain src tdfb"
+MODULES_S32_44K_48K="asrc src"
+MODULES_S32="dcblock drc drc_multiband dolby-dax eqfir eqiir gain level_multiplier micsel \
+	     sound_dose stft_process_1536_240_ template_comp tdfb"
 MODULES_S24="aria"
 
 if [ -z "${SOF_WORKSPACE}" ]; then
@@ -61,6 +63,13 @@ $HELPER -x -t development/sof-hda-benchmark-generic.tplg -n 1,2,3 \
 	-p "$PDIR/profile-$PLATFORM-benchmark.txt" > "$PDIR/log-$PLATFORM-benchmark.txt"
 
 # Profile modules
+for mod in $MODULES_S32_44K_48K
+do
+    echo "Profiling $mod ..."
+    $HELPER -r 44100 -x -m "$mod" \
+	    -p "$PDIR/profile-$PLATFORM-$mod.txt" > "$PDIR/log-$PLATFORM-$mod.txt"
+done
+
 for mod in $MODULES_S32
 do
     echo "Profiling $mod ..."

@@ -15,7 +15,8 @@ usage() {
     echo "  -n <pipelines>, default 1,2"
     echo "  -o <output wav>, default none"
     echo "  -p <profiling result text>, use with -x, default none"
-    echo "  -r <rate>, default 48000"
+    echo "  -r <rate>, input rate, default 48000"
+    echo "  -R <rate>, output rate, default 48000"
     echo "  -t <force topology>, default none, e.g. production/sof-hda-generic.tplg"
     echo "  -v runs with valgrind, not available with -x"
     echo "  -x runs testbench with xt-run simulator"
@@ -55,7 +56,7 @@ PROFILE=false
 TPLG0=
 VALGRIND=
 
-while getopts "b:c:hi:km:n:o:p:r:t:vx" opt; do
+while getopts "b:c:hi:km:n:o:p:r:R:t:vx" opt; do
     case "${opt}" in
         b)
 	    BITS=${OPTARG}
@@ -89,6 +90,8 @@ while getopts "b:c:hi:km:n:o:p:r:t:vx" opt; do
 	    ;;
         r)
 	    RATE_IN=${OPTARG}
+	    ;;
+        R)
 	    RATE_OUT=${OPTARG}
 	    ;;
         t)
@@ -147,10 +150,10 @@ if [[ "$XTRUN" == true ]]; then
     echo "  input: $INFILE1, output: $OUTFILE1, trace: $TRACEFILE, profile: $PROFILETXT"
     source "$XTB4_SETUP"
     if [[ $PROFILE == true ]]; then
-	"$XTENSA_PATH"/xt-run --profile="$PROFILEOUT" "$XTB4" $OPTS 2> "$TRACEFILE"
+	"$XTENSA_PATH"/xt-run --mem_model --profile="$PROFILEOUT" "$XTB4" $OPTS 2> "$TRACEFILE"
 	"$XTENSA_PATH"/xt-gprof "$XTB4" "$PROFILEOUT" > "$PROFILETXT"
     else
-	"$XTENSA_PATH"/xt-run "$XTB4" $OPTS 2> "$TRACEFILE"
+	"$XTENSA_PATH"/xt-run --mem_model "$XTB4" $OPTS 2> "$TRACEFILE"
     fi
 else
     if [ ! -x "$TB4" ]; then

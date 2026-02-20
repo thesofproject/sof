@@ -122,4 +122,16 @@ test_component asrc 32 32 48000 "$FullTest"
 # test with template component
 test_component template_comp 32 32 48000 "$FullTest"
 
+# test with Dolby DAX with stub
+test_component dolby-dax 32 32 48000 "$FullTest"
+
+# test with level_multiplier
+test_component level_multiplier 32 32 48000 "$FullTest"
+
+# test with micsel
+test_component micsel 32 32 48000 "$FullTest"
+
+# test with sound_dose
+test_component sound_dose 32 32 48000 "$FullTest"
+
 echo "All tests are done!"
