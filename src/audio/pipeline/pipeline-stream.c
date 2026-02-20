@@ -21,7 +21,6 @@
 #include <rtos/kernel.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/lib/cpu-clk-manager.h>
-#include <sof/ipc/notification_pool.h>
 
 #ifdef CONFIG_IPC_MAJOR_4
 #include <ipc4/notification.h>
@@ -96,14 +95,7 @@ pipeline_should_report_enodata_on_trigger(struct comp_dev *rsrc,
 void pipeline_comp_copy_error_notify(const struct comp_dev *component, int err)
 {
 #ifdef CONFIG_IPC_MAJOR_4
-	struct ipc_msg *notify;
-
-	notify = ipc_notification_pool_get(IPC4_RESOURCE_EVENT_SIZE);
-	if (!notify)
-		return;
-
-	process_data_error_notif_msg_init(notify, component->ipc_config.id, err);
-	ipc_msg_send(notify, notify->tx_data, false);
+	send_process_data_error_notif_msg(component->ipc_config.id, err);
 #endif
 }
 
