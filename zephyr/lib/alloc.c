@@ -17,6 +17,7 @@
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
 
+
 #define SHARED_BUFFER_HEAP_MEM_SIZE	0
 
 #if CONFIG_L3_HEAP && CONFIG_MMU
@@ -223,7 +224,7 @@ static inline size_t get_l3_heap_size(void)
 {
 	 /*
 	  * Calculate the IMR heap size using:
-	  * - total IMR size
+	  * - total IMR size (dynamically detected by ace_imr_get_mem_size())
 	  * - IMR base address
 	  * - actual IMR heap start
 	  */
