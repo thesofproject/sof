@@ -353,6 +353,38 @@ if (CONFIG_SOC_MIMX8ML8_ADSP)
 	set(PLATFORM "imx8m")
 endif()
 
+if (CONFIG_SOC_MIMX8ML8_M7)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/imx8m_cm7/platform.c
+		${SOF_PLATFORM_PATH}/imx8m_cm7/lib/clk.c
+		lib/dma.c
+	)
+
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/imx/ipc.c
+	)
+
+	zephyr_library_sources(
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
+	)
+
+	# SOF-specific linker script additions
+	zephyr_linker_sources(DATA_SECTIONS ${sof_top_dir}/src/platform/imx8m_cm7/linker/data-sections.ld)
+
+	set(PLATFORM "imx8m_cm7")
+
+	add_custom_target(zephyr.ri ALL
+			  DEPENDS ${CMAKE_BINARY_DIR}/zephyr/zephyr.ri)
+
+	add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/zephyr/zephyr.ri
+			   COMMAND west sign --if-tool-available --tool rimage
+			   --build-dir ${CMAKE_BINARY_DIR} ${WEST_SIGN_OPTS}
+			   DEPENDS ${CMAKE_BINARY_DIR}/zephyr/${KERNEL_ELF_NAME})
+
+	board_set_rimage_target(imx8m_cm7)
+
+endif()
+
 if (CONFIG_SOC_MIMX8UD7_ADSP)
 	zephyr_library_sources(
 		${SOF_DRIVERS_PATH}/imx/ipc.c
