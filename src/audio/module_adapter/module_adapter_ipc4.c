@@ -159,8 +159,8 @@ int module_adapter_init_data(struct comp_dev *dev,
 		}
 	}
 
-	if (!config->ipc_extended_init ||
-	    (!dst->ext_data->dp_data && !dst->ext_data->module_data)) {
+	/* Assume legacy API if module data was not found in ext_init payload */
+	if (!dst->ext_data || !dst->ext_data->module_data) {
 		dst->init_data = cfg; /* legacy API */
 		dst->avail = true;
 	}
