@@ -6,6 +6,7 @@
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
 #include <sof/audio/module_adapter/module/generic.h>
+#include <platform/lib/heap_usage.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/topology.h>
 #include <sof/list.h>
@@ -23,6 +24,8 @@
 #include <time.h>
 
 #define TESTBENCH_NCH	2
+
+extern struct platform_library_heap_usage sof_platform_library_heap_usage;
 
 /*
  * Parse output filenames from user input
@@ -299,6 +302,22 @@ static void test_pipeline_stats(struct testbench_prm *tp, long long delta_t)
 		printf("Total execution time: %lld us, %.2f x realtime\n",
 		       delta_t, (float)frames_out / tp->fs_out * 1000000 / delta_t);
 
+	if (sof_platform_library_heap_usage.enable) {
+		printf("Size of rmalloc() allocations: %zu B\n",
+		       sof_platform_library_heap_usage.rmalloc_size);
+		printf("Size of rzalloc() allocations: %zu B\n",
+		       sof_platform_library_heap_usage.rzalloc_size);
+		printf("Size of rballoc_align() allocations: %zu B\n",
+		       sof_platform_library_heap_usage.rballoc_align_size);
+		printf("Size of rbrealloc_align() allocations: %zu B\n",
+		       sof_platform_library_heap_usage.rbrealloc_align_size);
+		printf("Total size of allocation from heap: %zu B\n",
+		       sof_platform_library_heap_usage.rmalloc_size +
+		       sof_platform_library_heap_usage.rzalloc_size +
+		       sof_platform_library_heap_usage.rballoc_align_size +
+		       sof_platform_library_heap_usage.rbrealloc_align_size);
+	}
+
 	printf("\n");
 }
 
@@ -332,6 +351,9 @@ static int pipline_test(struct testbench_prm *tp)
 			fprintf(stderr, "error: topology load %d failed %d\n", dp_count, err);
 			break;
 		}
+
+		/* Start follow heap usage */
+		sof_platform_library_heap_usage.enable = true;
 
 		err = tb_set_up_all_pipelines(tp);
 		if (err < 0) {
