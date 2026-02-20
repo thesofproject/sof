@@ -23,6 +23,10 @@
 
 #include <sof/lib/memory.h>
 
+#if CONFIG_UAOL_INTEL_ADSP
+#include <zephyr/drivers/uaol.h>
+#endif
+
 #include <ipc4/base_fw.h>
 #include <ipc4/alh.h>
 #include <rimage/sof/user/manifest.h>
@@ -36,6 +40,22 @@ struct ipc4_modules_info {
 	uint32_t modules_count;
 	struct sof_man_module modules[0];
 } __packed __aligned(4);
+
+#if CONFIG_UAOL_INTEL_ADSP
+struct ipc4_uaol_link_capabilities {
+	uint32_t input_streams_supported          : 4;
+	uint32_t output_streams_supported         : 4;
+	uint32_t bidirectional_streams_supported  : 5;
+	uint32_t rsvd                             : 19;
+	uint32_t max_tx_fifo_size;
+	uint32_t max_rx_fifo_size;
+} __packed __aligned(4);
+
+struct ipc4_uaol_capabilities {
+	uint32_t link_count;
+	struct ipc4_uaol_link_capabilities link_caps[];
+} __packed __aligned(4);
+#endif	/* CONFIG_UAOL_INTEL_ADSP */
 
 /*
  * TODO: default to value of ACE1.x platforms. This is defined
@@ -67,7 +87,7 @@ __cold int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
 	tlv_value_uint32_set(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
 
 	tuple = tlv_next(tuple);
-	tlv_value_uint32_set(tuple, IPC4_UAOL_SUPPORT, 0);
+	tlv_value_uint32_set(tuple, IPC4_UAOL_SUPPORT, IS_ENABLED(CONFIG_UAOL_INTEL_ADSP));
 
 	tuple = tlv_next(tuple);
 	tlv_value_uint32_set(tuple, IPC4_ALH_SUPPORT_LEVEL_FW_CFG, IPC4_ALH_CAVS_1_8);
@@ -77,6 +97,55 @@ __cold int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
 
 	return 0;
 }
+
+#if CONFIG_UAOL_INTEL_ADSP
+#define DEV_AND_COMMA(node) DEVICE_DT_GET(node),
+static const struct device *uaol_devs[] = {
+	DT_FOREACH_STATUS_OKAY(intel_adsp_uaol, DEV_AND_COMMA)
+};
+
+static void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type)
+{
+	const size_t dev_count = ARRAY_SIZE(uaol_devs);
+	struct uaol_capabilities dev_cap;
+	struct ipc4_uaol_capabilities *caps = (struct ipc4_uaol_capabilities *)tuple->value;
+	size_t caps_size = offsetof(struct ipc4_uaol_capabilities, link_caps[dev_count]);
+	size_t i;
+	int ret;
+
+	memset(caps, 0, caps_size);
+
+	caps->link_count = dev_count;
+	for (i = 0; i < dev_count; i++) {
+		ret = uaol_get_capabilities(uaol_devs[i], &dev_cap);
+		if (ret)
+			continue;
+
+		caps->link_caps[i].input_streams_supported = dev_cap.input_streams;
+		caps->link_caps[i].output_streams_supported = dev_cap.output_streams;
+		caps->link_caps[i].bidirectional_streams_supported = dev_cap.bidirectional_streams;
+		caps->link_caps[i].max_tx_fifo_size = dev_cap.max_tx_fifo_size;
+		caps->link_caps[i].max_rx_fifo_size = dev_cap.max_rx_fifo_size;
+	}
+
+	tlv_value_set(tuple, type, caps_size, caps);
+}
+
+static int uaol_stream_id_to_hda_link_stream_id(int uaol_stream_id)
+{
+	size_t dev_count = ARRAY_SIZE(uaol_devs);
+	size_t i;
+
+	for (i = 0; i < dev_count; i++) {
+		int hda_link_stream_id = uaol_get_mapped_hda_link_stream_id(uaol_devs[i],
+									    uaol_stream_id);
+		if (hda_link_stream_id >= 0)
+			return hda_link_stream_id;
+	}
+
+	return -1;
+}
+#endif	/* CONFIG_UAOL_INTEL_ADSP */
 
 __cold int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 {
@@ -118,6 +187,11 @@ __cold int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 	priv_caps.capabilities[0] = mic_privacy_get_policy_register();
 
 	tlv_value_set(tuple, IPC4_INTEL_MIC_PRIVACY_CAPS_HW_CFG, sizeof(priv_caps), &priv_caps);
+#endif
+
+#if CONFIG_UAOL_INTEL_ADSP
+	tuple = tlv_next(tuple);
+	tlv_value_set_uaol_caps(tuple, IPC4_UAOL_CAPS_HW_CFG);
 #endif
 
 	tuple = tlv_next(tuple);
@@ -421,6 +495,7 @@ __cold int basefw_vendor_set_large_config(struct comp_dev *dev, uint32_t param_i
 __cold int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, size_t data_size)
 {
 	union ipc4_connector_node_id node = (union ipc4_connector_node_id)node_id;
+	int dai_index = node.f.v_index;
 	int ret, result;
 	enum sof_ipc_dai_type type;
 
@@ -444,11 +519,25 @@ __cold int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, 
 	case ipc4_i2s_link_input_class:
 		type = SOF_DAI_INTEL_SSP;
 		break;
+
+#if CONFIG_UAOL_INTEL_ADSP
+	case ipc4_alh_uaol_stream_link_output_class:
+	case ipc4_alh_uaol_stream_link_input_class:
+		type = SOF_DAI_INTEL_UAOL;
+		dai_index = uaol_stream_id_to_hda_link_stream_id(node.f.v_index);
+		if (dai_index < 0) {
+			tr_err(&basefw_comp_tr,
+			       "HDA link stream not found! UAOL node ID: 0x%x", node_id);
+			return IPC4_INVALID_RESOURCE_ID;
+		}
+		break;
+#endif
+
 	default:
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	const struct device *dev = dai_get_device(type, node.f.v_index);
+	const struct device *dev = dai_get_device(type, dai_index);
 
 	if (!dev) {
 		tr_err(&basefw_comp_tr,
