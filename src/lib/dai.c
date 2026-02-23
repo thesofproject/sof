@@ -185,6 +185,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_NXP_MICFIL
 	DT_FOREACH_STATUS_OKAY(nxp_dai_micfil, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_AMD_SDW
+	DT_FOREACH_STATUS_OKAY(amd_acp_sdw_dai, GET_DEVICE_LIST)
+#endif
 #if CONFIG_DAI_INTEL_UAOL
 	DT_FOREACH_STATUS_OKAY(intel_uaol_dai, GET_DEVICE_LIST)
 #endif
@@ -229,8 +232,8 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_SP_VIRTUAL:
 	case SOF_DAI_AMD_HS_VIRTUAL:
-	case SOF_DAI_AMD_SW_AUDIO:
-		return -ENOTSUP;
+	case SOF_DAI_AMD_SDW:
+		return DAI_AMD_SDW;
 	default:
 		return -EINVAL;
 	}
@@ -293,6 +296,10 @@ static void dai_set_device_params(struct dai *d)
 	case SOF_DAI_INTEL_UAOL:
 		d->dma_dev = SOF_DMA_DEV_HDA;
 		d->dma_caps = SOF_DMA_CAP_HDA;
+		break;
+	case SOF_DAI_AMD_SDW:
+		d->dma_dev = SOF_DMA_DEV_SW;
+		d->dma_caps = SOF_DMA_CAP_SW;
 		break;
 	default:
 		break;
