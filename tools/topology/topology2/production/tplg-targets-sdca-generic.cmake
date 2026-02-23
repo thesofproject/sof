@@ -13,19 +13,19 @@ SDW_JACK_IN_STREAM=Capture-SimpleJack,NUM_HDMIS=0"
 
 "cavs-sdw\;sof-sdca-1amp-id2\;NUM_SDW_AMP_LINKS=1,SDW_JACK=false,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
-DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true"
+DEEP_BUF_SPK=true"
 
 "cavs-sdw\;sof-sdca-2amp-id2\;NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
-DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true"
+DEEP_BUF_SPK=true"
 
 "cavs-sdw\;sof-sdca-3amp-id2\;NUM_SDW_AMP_LINKS=3,SDW_JACK=false,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
-DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true"
+DEEP_BUF_SPK=true"
 
 "cavs-sdw\;sof-sdca-4amp-id2\;NUM_SDW_AMP_LINKS=4,SDW_JACK=false,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
-DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true"
+DEEP_BUF_SPK=true"
 
 "cavs-sdw\;sof-sdca-mic-id4\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
 SDW_DMIC_STREAM=Capture-SmartMic"
