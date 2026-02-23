@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2023 AMD. All rights reserved.
+//Copyright(c) 2023, 2026 AMD. All rights reserved.
 //
 //Author:	Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //		SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+//      Sivasubramanian <sravisar@amd.com>
 
 #include <sof/audio/component.h>
 #include <sof/drivers/acp_dai_dma.h>
@@ -79,8 +80,8 @@ const struct dai_driver acp_btdai_driver = {
 	.type	  = SOF_DAI_AMD_BT,
 	.uid	  = SOF_UUID(btdai_uuid),
 	.tctx	  = &btdai_tr,
-	.dma_dev  = DMA_DEV_BT,
-	.dma_caps = DMA_CAP_BT,
+	.dma_dev  = SOF_DMA_DEV_BT,
+	.dma_caps = SOF_DMA_CAP_BT,
 	.ops = {
 		.trigger		= btdai_trigger,
 		.set_config		= btdai_set_config,
