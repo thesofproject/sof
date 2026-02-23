@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2024 AMD.All rights reserved.
+ * Copyright(c) 2024, 2026 AMD.All rights reserved.
  *
- * Author:	SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+ * Author: SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+ * Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
+ * Sivasubramanian <sravisar@amd.com>
  */
 #ifdef __SOF_PLATFORM_H__
 
@@ -17,9 +19,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <platform/fw_scratch_mem.h>
-#include <platform/chip_registers.h>
+#include <platform/platform_misc.h>
 
-struct ll_schedule_domain;
+#define INTERRUPT_ENABLE 1
 struct timer;
 
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)

@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2024 AMD.All rights reserved.
+ * Copyright(c) 2024, 2026 AMD.All rights reserved.
  *
  * Author:	SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+ *          Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
+ *          Sivasubramanian <sravisar@amd.com>
  */
 #ifdef __SOF_LIB_MEMORY_H__
 
@@ -10,7 +12,9 @@
 #define __PLATFORM_LIB_MEMORY_H__
 
 #include <rtos/cache.h>
-#include <platform/chip_offset_byte.h>
+
+#define PU_REGISTER_BASE        (0x9FD00000 - 0x01240000)
+#define PU_SCRATCH_REG_BASE	    (0x9FF00000 - 0x01250000)
 
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN	128
@@ -182,7 +186,7 @@ static inline void *platform_rfree_prepare(void *ptr)
 	return ptr;
 }
 #endif
-
+#define host_to_local(addr) addr
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

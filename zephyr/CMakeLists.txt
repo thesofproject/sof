@@ -469,6 +469,22 @@ if (CONFIG_SOC_ACP_6_0)
 	set(PLATFORM "acp_6_0")
 endif()
 
+if (CONFIG_SOC_ACP_7_0)
+	# Platform sources
+	zephyr_library_sources(
+		${SOF_DRIVERS_PATH}/amd/rembrandt/ipc.c
+		${SOF_DRIVERS_PATH}/amd/common/ipc.c
+		${SOF_PLATFORM_PATH}/amd/acp_7_0/platform.c
+		${SOF_PLATFORM_PATH}/amd/acp_7_0/lib/clk.c
+	)
+    zephyr_library_sources(lib/dma.c)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/acp_7_0/include)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/common/include)
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/amd/acp_7_0/include/arch)
+
+	set(PLATFORM "acp_7_0")
+endif()
+
 if (CONFIG_SOC_FAMILY_MTK)
 	set(PLATFORM "mtk")
 
