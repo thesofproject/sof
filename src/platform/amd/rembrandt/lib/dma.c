@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2022 AMD. All rights reserved.
+//Copyright(c) 2022, 2026 AMD. All rights reserved.
 //
 //Author:       Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //              Bala Kishore <balakishore.pati@amd.com>
+//              Sivasubramanian <sravisar@amd.com>
 
 #include <sof/common.h>
 #include <platform/fw_scratch_mem.h>
@@ -41,8 +42,8 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 	.plat_data = {
 		.id		= DMA_ID_DAI_DMIC,
 		.dir		= DMA_DIR_DEV_TO_MEM,
-		.devs		= DMA_DEV_DMIC,
-		.caps		= DMA_CAP_DMIC,
+		.devs		= SOF_DMA_DEV_DMIC,
+		.caps		= SOF_DMA_CAP_DMIC,
 		.base		= DMA0_BASE,
 		.chan_size	= DMA0_SIZE,
 		.channels	= 8,
@@ -54,8 +55,8 @@ SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
 	.plat_data = {
 		.id		= DMA_ID_DAI_HS,
 		.dir		= DMA_DIR_DEV_TO_MEM | DMA_DIR_MEM_TO_DEV,
-		.devs		= DMA_DEV_SP,
-		.caps		= DMA_CAP_SP,
+		.devs		= SOF_DMA_DEV_SP,
+		.caps		= SOF_DMA_CAP_SP,
 		.base		= DMA0_BASE,
 		.chan_size	= DMA0_SIZE,
 		.channels	= 8,

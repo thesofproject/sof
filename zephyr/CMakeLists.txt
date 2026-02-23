@@ -482,7 +482,6 @@ if (CONFIG_SOC_ACP_6_0)
 		${SOF_PLATFORM_PATH}/amd/rembrandt/lib/clk.c
 		${SOF_PLATFORM_PATH}/amd/rembrandt/lib/dai.c
 		${SOF_PLATFORM_PATH}/amd/rembrandt/lib/dma.c
-		${SOF_PLATFORM_PATH}/amd/rembrandt/lib/memory.c
 	)
 
 	# SOF core infrastructure - runs on top of Zephyr
