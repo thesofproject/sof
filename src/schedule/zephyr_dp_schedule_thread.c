@@ -8,6 +8,7 @@
 #include <rtos/task.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/module_adapter/library/userspace_proxy.h>
 #include <sof/common.h>
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -277,13 +278,13 @@ int scheduler_dp_task_init(struct task **task,
 	}
 
 #ifdef CONFIG_USERSPACE
-	k_thread_access_grant(pdata->thread_id, pdata->event);
-	scheduler_dp_grant(pdata->thread_id, cpu_get_id());
+	if (options & K_USER) {
+		k_thread_access_grant(pdata->thread_id, pdata->event);
+		scheduler_dp_grant(pdata->thread_id, core);
 
-	if (task_memory->task.flags & K_USER) {
-		ret = user_memory_init_shared(pdata->thread_id, pdata->mod);
+		ret = k_mem_domain_add_thread(pdata->mod->user_ctx->comp_dom, pdata->thread_id);
 		if (ret < 0) {
-			tr_err(&dp_tr, "user_memory_init_shared() failed");
+			tr_err(&dp_tr, "k_mem_domain_add_thread() failed %d", ret);
 			goto e_thread;
 		}
 	}

@@ -43,18 +43,6 @@ struct userspace_context;
 struct k_heap *module_driver_heap_init(void);
 
 /**
- * Add DP scheduler created thread to module memory domain.
- * @param thread_id - id of thread to be added to memory domain.
- * @param module    - processing module structure
- *
- * @return 0 for success, error otherwise.
- *
- * @note
- * Function used only when CONFIG_USERSPACE is set.
- */
-int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod);
-
-/**
  * Attach common userspace memory partition to a module memory domain.
  * @param dom - memory domain to attach the common partition to.
  *
