@@ -9,7 +9,6 @@
 #include <sof/math/fft.h>
 
 #ifdef FFT_HIFI3
-#include <sof/audio/coefficients/fft/twiddle_16.h>
 #include <xtensa/tie/xt_hifi3.h>
 
 /**
@@ -31,6 +30,7 @@ void fft_execute_16(struct fft_plan *plan, bool ifft)
 	ae_int16x4 *out16x4;
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
+	int16_t *twiddle;
 	int depth, top, bottom, index;
 	int i, j, k, m, n;
 	int size = plan->size;
@@ -67,22 +67,22 @@ void fft_execute_16(struct fft_plan *plan, bool ifft)
 	}
 
 	/* step 2: loop to do FFT transform in smaller size */
+	twiddle = plan->twiddle;
 	for (depth = 1; depth <= plan->len; ++depth) {
 		m = 1 << depth;
 		n = m >> 1;
-		i = FFT_SIZE_MAX >> depth;
+		i = size >> depth;
 
 		/* doing FFT transforms in size m */
 		for (k = 0; k < plan->size; k += m) {
 			/* doing one FFT transform for size m */
 			for (j = 0; j < n; ++j) {
-				index = i * j;
+				index = 2 * i * j;
 				top = k + j;
 				bottom = top + n;
 				/* store twiddle and bottom as Q9.23*/
 				temp1 = AE_CVTP24A16X2_LL(outb[bottom].real, outb[bottom].imag);
-				temp2 = AE_CVTP24A16X2_LL(twiddle_real_16[index],
-							  twiddle_imag_16[index]);
+				temp2 = AE_CVTP24A16X2_LL(twiddle[index], twiddle[index + 1]);
 				/* calculate the accumulator: twiddle * bottom */
 				res = AE_MULFC24RA(temp1, temp2);
 				/* saturate and round the result to 16bit and put it in
