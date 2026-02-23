@@ -77,18 +77,6 @@ int user_stack_free(void *p_stack)
 	return k_thread_stack_free(p_stack);
 }
 
-int user_memory_init_shared(k_tid_t thread_id, struct processing_module *mod)
-{
-	struct k_mem_domain *comp_dom = mod->user_ctx->comp_dom;
-	int ret;
-
-	ret = k_mem_domain_add_partition(comp_dom, &common_partition);
-	if (ret < 0)
-		return ret;
-
-	return k_mem_domain_add_thread(comp_dom, thread_id);
-}
-
 int user_memory_attach_common_partition(struct k_mem_domain *dom)
 {
 	return k_mem_domain_add_partition(dom, &common_partition);
