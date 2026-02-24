@@ -5,9 +5,15 @@
  */
 
 #include <zephyr/kernel.h>
-
+#include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
+/* define qemu boot tests if any qemu target is defined, add targets to end */
+#if defined(CONFIG_BOARD_QEMU_XTENSA_DC233C) ||\
+    defined(CONFIG_BOARD_QEMU_XTENSA_DC233C_MMU)
+#define QEMU_BOOT_TESTS
+#endif
 
 /**
  * Should be included from sof/schedule/task.h
@@ -54,6 +60,9 @@ static int sof_app_main(void)
 void test_main(void)
 {
 	sof_app_main();
+#if CONFIG_SOF_BOOT_TEST && defined(QEMU_BOOT_TESTS)
+	sof_run_boot_tests();
+#endif
 }
 #else
 int main(void)
