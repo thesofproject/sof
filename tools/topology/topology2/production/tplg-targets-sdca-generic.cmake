@@ -37,6 +37,16 @@ SDW_DMIC_STREAM=Capture-SmartMic"
 "cavs-sdw\;sof-hdmi-pcm5-id6\;SDW_JACK=false,HDMI1_ID=6,HDMI2_ID=7,HDMI3_ID=8"
 "cavs-sdw\;sof-hdmi-pcm5-id7\;SDW_JACK=false,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9"
 
+# Feature topologies which should work with the function topologies above
+"cavs-sdw\;sof-sdca-amp-ref\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_ECHO_REF=true,SDW_SPK_ECHO_REF_PCM_ID=12"
+
+"cavs-sdw\;sof-sdca-amp-ref-dai\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_AMP_FEEDBACK=false,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF=true,SDW_SPK_ECHO_REF_PCM_ID=12"
+
+"cavs-sdw\;sof-sdca-jack-ref-dai\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_ECHO_REF_DAI=true,SDW_JACK_ECHO_REF=true,SDW_JACK_ECHO_REF_PCM_ID=11"
+
 # Topology for speaker with 2-way crossover filter in SOF
 # with channels order L-low, R-low, L-high, R-high
 "cavs-sdw\;sof-sdca-2amp-id2-xover\;NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
