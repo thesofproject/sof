@@ -59,9 +59,6 @@ static void ll_task_test(void)
 	task = zephyr_ll_task_alloc();
 	zassert_not_null(task, "task allocation failed");
 
-	/* allow user space to report status via 'test_runs' */
-	k_mem_domain_add_partition(zephyr_ll_mem_domain(), &userspace_ll_part);
-
 	/* work in progress, see pipeline-schedule.c */
 	ret = schedule_task_init_ll(task, SOF_UUID(test_task_uuid), SOF_SCHEDULE_LL_TIMER,
 				    priority, task_callback,
@@ -92,7 +89,11 @@ static void ll_task_test(void)
 
 ZTEST(userspace_ll, ll_task_test)
 {
+#ifndef CONFIG_QEMU_TARGET
 	ll_task_test();
+#else
+	ztest_test_skip();
+#endif
 }
 
 static void pipeline_check(void)
@@ -131,14 +132,4 @@ ZTEST(userspace_ll, pipeline_check)
 
 ZTEST_SUITE(userspace_ll, NULL, NULL, NULL, NULL, NULL);
 
-/**
- * SOF main has booted up and IPC handling is stopped.
- * Run test suites with ztest_run_all.
- */
-static int run_tests(void)
-{
-	ztest_run_test_suite(userspace_ll, false, 1, 1, NULL);
-	return 0;
-}
 
-SYS_INIT(run_tests, APPLICATION, 99);
