@@ -42,8 +42,11 @@ static struct k_heap *zephyr_ll_heap_init(void)
 		k_panic();
 	}
 
+	uintptr_t cached_ptr = (uintptr_t)sys_cache_cached_ptr_get(heap->heap.init_mem);
+	uintptr_t uncached_ptr = (uintptr_t)sys_cache_uncached_ptr_get(heap->heap.init_mem);
+
 	/* Create memory partition for sch_data array */
-	mem_partition.start = (uintptr_t)sys_cache_cached_ptr_get(heap->heap.init_mem);
+	mem_partition.start = cached_ptr;
 	mem_partition.size = heap->heap.init_bytes;
 	mem_partition.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB;
 
@@ -53,13 +56,15 @@ static struct k_heap *zephyr_ll_heap_init(void)
 	if (ret)
 		k_panic();
 
-	mem_partition.start = (uintptr_t)sys_cache_uncached_ptr_get(heap->heap.init_mem);
-	mem_partition.attr = K_MEM_PARTITION_P_RW_U_RW;
-	ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &mem_partition);
-	tr_dbg(&ll_tr, "init ll heap %p, size %u (uncached), ret %d",
-	       (void *)mem_partition.start, heap->heap.init_bytes, ret);
-	if (ret)
-		k_panic();
+	if (cached_ptr != uncached_ptr) {
+		mem_partition.start = uncached_ptr;
+		mem_partition.attr = K_MEM_PARTITION_P_RW_U_RW;
+		ret = k_mem_domain_add_partition(&ll_mem_resources.mem_domain, &mem_partition);
+		tr_dbg(&ll_tr, "init ll heap %p, size %u (uncached), ret %d",
+		       (void *)mem_partition.start, heap->heap.init_bytes, ret);
+		if (ret)
+			k_panic();
+	}
 
 	return heap;
 }
