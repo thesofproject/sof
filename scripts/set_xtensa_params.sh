@@ -150,6 +150,12 @@ case "$platform" in
 	HOST="xtensa-mt8365-elf"
 	TOOLCHAIN_VER="RG-2018.9-linux"
 	;;
+    qemu_xtensa | qemu_xtensa_mmu)
+	PLATFORM="$1"
+	XTENSA_CORE=""
+	HOST="xtensa-zephyr-elf"
+	TOOLCHAIN_VER=""
+	;;
     *)
 	>&2 printf 'Unknown xtensa platform=%s\n' "$platform"
 	return 1
@@ -166,6 +172,8 @@ esac
 
 # For Zephyr unit tests
 case "$platform" in
+    qemu_xtensa | qemu_xtensa_mmu)
+        ZEPHYR_TOOLCHAIN_VARIANT='zephyr';;
     imx8*|mtl|lnl)
         ZEPHYR_TOOLCHAIN_VARIANT='xt-clang';;
     *) # The previous, main case/esac already caught invalid input.

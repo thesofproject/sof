@@ -32,6 +32,14 @@ Running test:
   sudo ./cavstool.py sof-ptl.ri
 - Test results printed to cavstool.py
 
+Running test on QEMU (dc233c MMU):
+- Tests can also be built and run locally using Zephyr's QEMU simulator.
+- First, build the test application using `xtensa-build-zephyr.py`:
+  ./scripts/xtensa-build-zephyr.py qemu_xtensa_mmu --cmake-args=-DCONFIG_SOF_BOOT_TEST_STANDALONE=y \
+      --cmake-args=-DCONFIG_SOF_USERSPACE_INTERFACE_DMA=y --cmake-args=-DCONFIG_SOF_USERSPACE_LL=y
+- Once built, run the test in QEMU:
+  west build -d build-qemu_xtensa_mmu -t run
+
 References to related assets in Zephyr codebase:
 - cavstool.py
     - zephyr/soc/intel/intel_adsp/tools/cavstool.py

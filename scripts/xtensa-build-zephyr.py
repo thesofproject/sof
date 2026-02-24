@@ -227,6 +227,14 @@ platform_configs_all = {
 		"imx", "imx95_evk/mimx9596/m7/ddr",
 		"", "", "", ""
 	),
+	"qemu_xtensa" : PlatformConfig(
+		"zephyr", "qemu_xtensa/dc233c",
+		"", "", "zephyr"
+	),
+	"qemu_xtensa_mmu" : PlatformConfig(
+		"zephyr", "qemu_xtensa/dc233c/mmu",
+		"", "", "zephyr"
+	),
 }
 
 platform_configs = platform_configs_all.copy()
@@ -894,6 +902,7 @@ def build_platforms():
 		platform_build_dir_name = f"build-{platform}"
 
 		PLAT_CONFIG = platform_dict["PLAT_CONFIG"]
+
 		build_cmd = ["west"]
 		build_cmd += ["-v"] * args.verbose
 		if args.menuconfig:
@@ -1144,8 +1153,9 @@ def install_platform(platform, sof_output_dir, platf_build_environ, platform_wco
 		install_key_dir = install_key_dir / args.key_type_subdir
 
 	os.makedirs(install_key_dir, exist_ok=True)
-	# looses file owner and group - file is commonly accessible
-	shutil.copy2(abs_build_dir / "zephyr.ri", install_key_dir / output_fwname)
+	# looses file owner and group - file is commonly accessible, dont install qemu.
+	if platform not in ("qemu_xtensa", "qemu_xtensa_mmu"):
+		shutil.copy2(abs_build_dir / "zephyr.ri", install_key_dir / output_fwname)
 
 	if args.deployable_build and platform_configs[platform].ipc4:
 		# IPC4 deployable builds are using separate directories per platforms
@@ -1298,6 +1308,8 @@ RI_INFO_UNSUPPORTED = []
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp', 'imx95']
 RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196', 'mt8365']
+RI_INFO_UNSUPPORTED += ['qemu_xtensa', 'qemu_xtensa_mmu']
+
 
 # For temporary workarounds. Unlike _UNSUPPORTED above, the platforms below will print a warning.
 RI_INFO_FIXME = [ ]

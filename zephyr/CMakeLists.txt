@@ -184,6 +184,8 @@ set_property(TARGET modules_sof PROPERTY CXX_STANDARD 17)
 zephyr_include_directories(include)
 zephyr_include_directories(${ZEPHYR_BASE}/kernel/include)
 zephyr_include_directories(${ZEPHYR_BASE}/arch/${ARCH}/include)
+zephyr_include_directories(${SOF_SRC_PATH}/include/sof/audio/module_adapter/iadk/)
+zephyr_include_directories(${SOF_SRC_PATH}/include/sof/audio/module_adapter/library/)
 
 # SOC level sources
 # Files that are commented may not be needed.
@@ -484,6 +486,11 @@ zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_PLATFORM_PATH}/posix/posix.c
 	${SOF_PLATFORM_PATH}/posix/fuzz.c
 )
+
+if (CONFIG_BOARD_QEMU_XTENSA)
+	set(PLATFORM "qemu_xtensa")
+	zephyr_library_sources(${SOF_PLATFORM_PATH}/qemu_xtensa/platform.c)
+endif()
 
 if(NOT DEFINED PLATFORM)
 	message(FATAL_ERROR "PLATFORM is not defined, check your Kconfiguration?")
