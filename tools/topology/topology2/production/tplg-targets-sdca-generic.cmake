@@ -30,6 +30,15 @@ DEEP_BUF_SPK=true"
 "cavs-sdw\;sof-sdca-mic-id4\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
 SDW_DMIC_STREAM=Capture-SmartMic"
 
+"cavs-sdw\;sof-sdca-amp-ref\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_ECHO_REF=true,SDW_SPK_ECHO_REF_PCM_ID=12"
+
+"cavs-sdw\;sof-sdca-amp-ref-dai\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_AMP_FEEDBACK=false,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF=true,SDW_SPK_ECHO_REF_PCM_ID=12"
+
+"cavs-sdw\;sof-sdca-jack-ref-dai\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_ECHO_REF_DAI=true,SDW_JACK_ECHO_REF=true,SDW_JACK_ECHO_REF_PCM_ID=11"
+
 "cavs-sdw\;sof-hdmi-pcm5-id2\;SDW_JACK=false,HDMI1_ID=2,HDMI2_ID=3,HDMI3_ID=4"
 "cavs-sdw\;sof-hdmi-pcm5-id3\;SDW_JACK=false,HDMI1_ID=3,HDMI2_ID=4,HDMI3_ID=5"
 "cavs-sdw\;sof-hdmi-pcm5-id4\;SDW_JACK=false,HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6"
