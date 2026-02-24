@@ -10,6 +10,6 @@ target_sources(app PRIVATE
   )
 
 zephyr_library_include_directories(app PUBLIC
-    ${sof_module}/src/arch/xtensa/include
-    ${sof_module}/src/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/arch/xtensa/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/include
   )
