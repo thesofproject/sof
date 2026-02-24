@@ -412,6 +412,8 @@ EXPORT_SYMBOL(z_impl_mod_free);
 
 #ifdef CONFIG_USERSPACE
 #include <zephyr/internal/syscall_handler.h>
+
+#if CONFIG_FAST_GET
 const void *z_vrfy_mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
 				size_t size)
 {
@@ -424,6 +426,7 @@ const void *z_vrfy_mod_fast_get(struct processing_module *mod, const void * cons
 	return z_impl_mod_fast_get(mod, dram_ptr, size);
 }
 #include <zephyr/syscalls/mod_fast_get_mrsh.c>
+#endif
 
 void *z_vrfy_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			   size_t alignment)
