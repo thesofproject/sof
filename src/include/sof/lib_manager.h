@@ -77,6 +77,7 @@
 
 #define LIB_MANAGER_GET_LIB_ID(module_id) (((module_id) & 0xF000) >> LIB_MANAGER_LIB_ID_SHIFT)
 #define LIB_MANAGER_GET_MODULE_INDEX(module_id) ((module_id) & 0xFFF)
+#define LIB_MANAGER_PACK_LIB_ID(lib_index) (((lib_index) << LIB_MANAGER_LIB_ID_SHIFT) & 0xF000)
 
 #ifdef CONFIG_LIBRARY_MANAGER
 struct ipc_lib_msg {

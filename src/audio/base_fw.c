@@ -410,7 +410,7 @@ __cold static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 			desc = basefw_vendor_get_manifest();
 		} else {
 #if CONFIG_LIBRARY_MANAGER
-			desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(lib_id);
+			desc = lib_manager_get_library_manifest(LIB_MANAGER_PACK_LIB_ID(lib_id));
 #else
 			desc = NULL;
 #endif
