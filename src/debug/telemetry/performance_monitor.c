@@ -344,7 +344,7 @@ int enable_performance_counters(void)
 			desc = basefw_vendor_get_manifest();
 		} else {
 #if CONFIG_LIBRARY_MANAGER
-			desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(lib_id);
+			desc = lib_manager_get_library_manifest(LIB_MANAGER_PACK_LIB_ID(lib_id));
 #else
 			desc = NULL;
 #endif
