@@ -138,6 +138,10 @@ index = __COUNTER__
 #include <audio/tdfb/tdfb.toml>
 #endif
 
+#if defined(CONFIG_DTS_CODEC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/codec/dts/dts.toml>
+#endif
+
 #if defined(CONFIG_COMP_RTNR) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/rtnr/rtnr.toml>
 #endif
