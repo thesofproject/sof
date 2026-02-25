@@ -7,6 +7,7 @@
 #include <zephyr/kernel.h>
 #include <sof/boot_test.h>
 #include <zephyr/logging/log.h>
+
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* define qemu boot tests if any qemu target is defined, add targets to end */
@@ -56,12 +57,28 @@ static int sof_app_main(void)
 	return 0;
 }
 
+#if CONFIG_SOF_BOOT_TEST && defined(QEMU_BOOT_TESTS)
+/* cleanly exit qemu so CI can continue and check test results */
+static inline void qemu_xtensa_exit(int status) {
+    register int syscall_id __asm__ ("a2") = 1;      /* SYS_exit is 1 */
+    register int exit_status __asm__ ("a3") = status;
+
+    __asm__ __volatile__ (
+        "simcall\n"
+        :
+        : "r" (syscall_id), "r" (exit_status)
+        : "memory"
+    );
+}
+#endif
+
 #if CONFIG_ZTEST
 void test_main(void)
 {
 	sof_app_main();
 #if CONFIG_SOF_BOOT_TEST && defined(QEMU_BOOT_TESTS)
 	sof_run_boot_tests();
+	qemu_xtensa_exit(0);
 #endif
 }
 #else
