@@ -10,10 +10,11 @@
 #include <sof/schedule/ll_schedule.h>
 #include <rtos/alloc.h>
 #include <rtos/symbol.h>
+#include <rtos/userspace_helper.h>
 #include <sof/lib/cpu.h>
 #include <ipc/topology.h>
 
-static struct schedulers *_schedulers[CONFIG_CORE_COUNT];
+static APP_TASK_BSS struct schedulers *_schedulers[CONFIG_CORE_COUNT];
 
 /**
  * Retrieves registered schedulers.
