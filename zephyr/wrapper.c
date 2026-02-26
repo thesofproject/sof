@@ -265,7 +265,11 @@ void platform_dai_timestamp(struct comp_dev *dai,
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
+#ifndef CONFIG_SOF_USERSPACE_LL
 	*wallclock = sof_cycle_get_64();
+#else
+	*wallclock = k_uptime_get();
+#endif
 }
 
 /*
