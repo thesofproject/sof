@@ -79,6 +79,7 @@ static void mailbox_test(void)
 
 ZTEST(userspace_mailbox, mailbox_test)
 {
+#ifndef CONFIG_QEMU_TARGET
 	/* first test from kernel */
 	mailbox_write_to_pipeline_regs();
 
@@ -86,18 +87,11 @@ ZTEST(userspace_mailbox, mailbox_test)
 	mailbox_test();
 
 	ztest_test_pass();
+#else
+	ztest_test_skip();
+#endif
 }
 
 ZTEST_SUITE(userspace_mailbox, NULL, NULL, NULL, NULL, NULL);
 
-/**
- * SOF main has booted up and IPC handling is stopped.
- * Run test suites with ztest_run_all.
- */
-static int run_tests(void)
-{
-	ztest_run_test_suite(userspace_mailbox, false, 1, 1, NULL);
-	return 0;
-}
 
-SYS_INIT(run_tests, APPLICATION, 99);
