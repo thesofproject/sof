@@ -574,6 +574,30 @@ void zephyr_ll_grant_access(struct k_thread *thread)
 	k_thread_access_grant(thread, ll_sch->lock);
 }
 
+/**
+ * Lock the LL scheduler to prevent it from processing tasks.
+ *
+ * Uses the LL scheduler's own k_mutex which is re-entrant, so
+ * schedule_task() calls within the locked section will not deadlock.
+ * Must be paired with zephyr_ll_unlock_sched().
+ */
+void zephyr_ll_lock_sched(void)
+{
+	struct zephyr_ll *sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+
+	k_mutex_lock(sch->lock, K_FOREVER);
+}
+
+/**
+ * Unlock the LL scheduler after a previous zephyr_ll_lock_sched() call.
+ */
+void zephyr_ll_unlock_sched(void)
+{
+	struct zephyr_ll *sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+
+	k_mutex_unlock(sch->lock);
+}
+
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 int zephyr_ll_task_init(struct task *task,

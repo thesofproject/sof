@@ -117,6 +117,8 @@ void zephyr_ll_task_free(struct task *task);
 struct k_heap *zephyr_ll_user_heap(void);
 void zephyr_ll_user_resources_init(void);
 void zephyr_ll_grant_access(struct k_thread *thread);
+void zephyr_ll_lock_sched(void);
+void zephyr_ll_unlock_sched(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 static inline struct ll_schedule_domain *domain_init
