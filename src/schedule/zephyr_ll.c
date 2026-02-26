@@ -533,6 +533,13 @@ void zephyr_ll_task_free(struct task *task)
 	sof_heap_free(zephyr_ll_user_heap(), task);
 }
 
+void zephyr_ll_grant_access(struct k_thread *thread)
+{
+	struct zephyr_ll *ll_sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+
+	k_thread_access_grant(thread, ll_sch->lock);
+}
+
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 int zephyr_ll_task_init(struct task *task,
