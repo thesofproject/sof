@@ -294,18 +294,24 @@ static int zephyr_domain_register_user(struct ll_schedule_domain *domain,
 				       void (*handler)(void *arg), void *arg)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
-	int core = 0; /* cpu_get_id(); */
-	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+	struct zephyr_domain_thread *dt;
 	char thread_name[] = "ll_thread0";
 	k_tid_t thread;
+	int core;
 
 	tr_dbg(&ll_tr, "entry");
+
+	if (task->core < 0 || task->core >= CONFIG_CORE_COUNT)
+		return -EINVAL;
+
+	dt = zephyr_domain->domain_thread + task->core;
 
 	/* domain work only needs registered once on each core */
 	if (dt->handler)
 		return 0;
 
-	__ASSERT_NO_MSG(task->core == core);
+	/* safety check executed in kernel mode */
+	__ASSERT_NO_MSG(cpu_get_id() == core);
 
 	dt->handler = handler;
 	dt->arg = arg;
