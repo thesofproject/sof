@@ -404,7 +404,7 @@ static int zephyr_ll_task_schedule_after(void *data, struct task *task, uint64_t
  * This is synchronous - after this returns the object can be destroyed!
  * Assertion: under Zephyr this is always called from a thread context!
  */
-static int zephyr_ll_task_free(void *data, struct task *task)
+static int zephyr_ll_task_sched_free(void *data, struct task *task)
 {
 	struct zephyr_ll *sch = data;
 	uint32_t flags;
@@ -516,7 +516,7 @@ static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task		= zephyr_ll_task_schedule,
 	.schedule_task_before	= zephyr_ll_task_schedule_before,
 	.schedule_task_after	= zephyr_ll_task_schedule_after,
-	.schedule_task_free	= zephyr_ll_task_free,
+	.schedule_task_free	= zephyr_ll_task_sched_free,
 	.schedule_task_cancel	= zephyr_ll_task_cancel,
 	.scheduler_free		= zephyr_ll_scheduler_free,
 };
@@ -527,6 +527,12 @@ struct task *zephyr_ll_task_alloc(void)
 	return sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER,
 			      sizeof(struct task), sizeof(void *));
 }
+
+void zephyr_ll_task_free(struct task *task)
+{
+	sof_heap_free(zephyr_ll_user_heap(), task);
+}
+
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 int zephyr_ll_task_init(struct task *task,
