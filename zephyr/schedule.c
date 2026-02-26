@@ -21,6 +21,11 @@ static struct schedulers *_schedulers[CONFIG_CORE_COUNT];
  */
 struct schedulers **arch_schedulers_get(void)
 {
+	if (k_is_user_context()) {
+		printk("FIXME: using core0 scheduler\n");
+		return _schedulers;
+	}
+
 	return _schedulers + cpu_get_id();
 }
 EXPORT_SYMBOL(arch_schedulers_get);
