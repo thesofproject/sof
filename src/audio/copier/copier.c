@@ -1189,7 +1189,7 @@ __cold static int copier_unbind(struct processing_module *mod, struct bind_info 
 	return 0;
 }
 
-static struct module_endpoint_ops copier_endpoint_ops = {
+static APP_TASK_DATA const struct module_endpoint_ops copier_endpoint_ops = {
 	.get_total_data_processed = copier_get_processed_data,
 	.position = copier_position,
 	.dai_ts_config = copier_dai_ts_config_op,
@@ -1200,7 +1200,7 @@ static struct module_endpoint_ops copier_endpoint_ops = {
 	.trigger = copier_comp_trigger
 };
 
-static const struct module_interface copier_interface = {
+static APP_TASK_DATA const struct module_interface copier_interface = {
 	.init = copier_init,
 	.prepare = copier_prepare,
 	.process_audio_stream = copier_process,
