@@ -294,7 +294,7 @@ static int zephyr_domain_register_user(struct ll_schedule_domain *domain,
 				       void (*handler)(void *arg), void *arg)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
-	int core = cpu_get_id();
+	int core = 0; /* cpu_get_id(); */
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 	char thread_name[] = "ll_thread0";
 	k_tid_t thread;
@@ -407,7 +407,7 @@ static int zephyr_domain_unregister_user(struct ll_schedule_domain *domain,
 struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
-	int core = cpu_get_id();
+	int core = 0; /* cpu_get_id(); */
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
 	tr_dbg(&ll_tr, "entry");
