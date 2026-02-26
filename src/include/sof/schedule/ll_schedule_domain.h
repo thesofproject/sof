@@ -99,6 +99,7 @@ static inline struct ll_schedule_domain *dma_domain_get(void)
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 struct task *zephyr_ll_task_alloc(void);
+void zephyr_ll_task_free(struct task *task);
 struct k_heap *zephyr_ll_user_heap(void);
 void zephyr_ll_user_resources_init(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
