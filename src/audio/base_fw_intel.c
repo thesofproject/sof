@@ -22,6 +22,7 @@
 #include <zephyr/pm/device_runtime.h>
 
 #include <sof/lib/memory.h>
+#include <sof/lib_manager.h>
 
 #include <ipc4/base_fw.h>
 #include <ipc4/alh.h>
@@ -37,6 +38,9 @@ struct ipc4_modules_info {
 	struct sof_man_module modules[0];
 } __packed __aligned(4);
 
+/* Sanity check because a subtraction of those sizes is performed later on */
+STATIC_ASSERT(sizeof(struct ipc4_modules_info) < SOF_IPC_MSG_MAX_SIZE,
+	      invalid_modules_info_struct_size);
 /*
  * TODO: default to value of ACE1.x platforms. This is defined
  *       in multiple places in Zephyr, mm_drv_intel_adsp.h and
@@ -137,21 +141,41 @@ __cold int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
 {
 	assert_can_be_cold();
 
-	struct sof_man_fw_desc *desc = basefw_vendor_get_manifest();
-
-	if (!desc)
-		return IPC4_ERROR_INVALID_PARAM;
-
 	struct ipc4_modules_info *const module_info = (struct ipc4_modules_info *)data;
+	const struct sof_man_fw_desc *desc;
+	uint32_t curr_mod_cnt, curr_cpy_size, total_mod_cnt = 0;
+	uint32_t total_size_left = SOF_IPC_MSG_MAX_SIZE - sizeof(struct ipc4_modules_info);
+	int ret;
 
-	module_info->modules_count = desc->header.num_module_entries;
+	for (int lib_id = 0; lib_id < LIB_MANAGER_MAX_LIBS; ++lib_id) {
+		if (lib_id == 0) {
+			desc = basefw_vendor_get_manifest();
+		} else {
+#if CONFIG_LIBRARY_MANAGER
+			desc = lib_manager_get_library_manifest(LIB_MANAGER_PACK_LIB_ID(lib_id));
+#else
+			desc = NULL;
+#endif
+		}
 
-	for (int idx = 0; idx < module_info->modules_count; ++idx) {
-		struct sof_man_module *module_entry =
-			(struct sof_man_module *)((char *)desc + SOF_MAN_MODULE_OFFSET(idx));
-		memcpy_s(&module_info->modules[idx], sizeof(module_info->modules[idx]),
-			 module_entry, sizeof(struct sof_man_module));
+		if (!desc)
+			continue;
+
+		curr_mod_cnt = desc->header.num_module_entries;
+		curr_cpy_size = sizeof(struct sof_man_module) * curr_mod_cnt;
+
+		ret = memcpy_s(&module_info->modules[total_mod_cnt], total_size_left,
+			       (char *)desc + SOF_MAN_MODULE_OFFSET(0), curr_cpy_size);
+		if (ret) {
+			tr_err(&basefw_comp_tr, "Couldn't copy module info for %d lib", lib_id);
+			return IPC4_OUT_OF_MEMORY;
+		}
+
+		total_mod_cnt += curr_mod_cnt;
+		total_size_left -= curr_cpy_size;
 	}
+
+	module_info->modules_count = total_mod_cnt;
 
 	*data_offset = sizeof(*module_info) +
 				module_info->modules_count * sizeof(module_info->modules[0]);
