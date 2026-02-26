@@ -258,15 +258,24 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
+#ifndef CONFIG_SOF_USERSPACE_LL
 	posn->wallclock = sof_cycle_get_64() - posn->wallclock;
 	posn->wallclock_hz = sys_cycle_get_64_rate();
+#else
+	posn->wallclock = k_uptime_ticks() - posn->wallclock;
+	posn->wallclock_hz = CONFIG_SYS_CLOCK_TICKS_PER_SEC;
+#endif
 	posn->flags |= SOF_TIME_WALL_VALID;
 }
 
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
+#ifndef CONFIG_SOF_USERSPACE_LL
 	*wallclock = sof_cycle_get_64();
+#else
+	*wallclock = k_uptime_ticks();
+#endif
 }
 
 /*
