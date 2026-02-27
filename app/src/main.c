@@ -59,16 +59,17 @@ static int sof_app_main(void)
 
 #if CONFIG_SOF_BOOT_TEST && defined(QEMU_BOOT_TESTS)
 /* cleanly exit qemu so CI can continue and check test results */
-static inline void qemu_xtensa_exit(int status) {
-    register int syscall_id __asm__ ("a2") = 1;      /* SYS_exit is 1 */
-    register int exit_status __asm__ ("a3") = status;
+static inline void qemu_xtensa_exit(int status)
+{
+	register int syscall_id __asm__ ("a2") = 1;      /* SYS_exit is 1 */
+	register int exit_status __asm__ ("a3") = status;
 
-    __asm__ __volatile__ (
-        "simcall\n"
-        :
-        : "r" (syscall_id), "r" (exit_status)
-        : "memory"
-    );
+	__asm__ __volatile__ (
+		"simcall\n"
+		:
+		: "r" (syscall_id), "r" (exit_status)
+		: "memory"
+	);
 }
 #endif
 

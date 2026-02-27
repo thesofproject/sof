@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2024 Intel Corporation. All rights reserved.
+# Copyright(c) 2026 Intel Corporation. All rights reserved.
 
 # Define the build directory from the first argument (or default)
 BUILD_DIR="${1:-build}"
@@ -13,15 +13,9 @@ BUILD_DIR="${1:-build}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOF_WORKSPACE="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# check if Zephyr environment is set up
-if [ ! -z "$SOF_WORKSPACE" ]; then
-    VENV_DIR="$SOF_WORKSPACE/.venv"
-    echo "Using SOF environment at $SOF_WORKSPACE"
-else
-    # default to the local workspace
-    VENV_DIR="${SOF_WORKSPACE}/.venv"
-    echo "Using default SOF environment at $VENV_DIR"
-fi
+# Use the SOF workspace to locate the virtual environment
+VENV_DIR="$SOF_WORKSPACE/.venv"
+echo "Using SOF environment at $SOF_WORKSPACE"
 
 # start the virtual environment
 source ${VENV_DIR}/bin/activate

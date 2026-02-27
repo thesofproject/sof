@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2024 Intel Corporation. All rights reserved.
+# Copyright(c) 2026 Intel Corporation. All rights reserved.
 """
 sof-qemu-run.py - Automated QEMU test runner and crash analyzer
 
@@ -16,7 +16,7 @@ import pexpect
 import subprocess
 import argparse
 import os
-import sys
+
 import re
 
 # ANSI Color Codes
@@ -95,7 +95,6 @@ def main():
 
     # We will accumulate output to check for crashes
     full_output = ""
-    last_output = ""
 
     with open(args.log_file, "w") as log_file:
         try:
