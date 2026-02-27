@@ -103,11 +103,19 @@ struct sof_man_uuid {
 	uint8_t  d[8];
 };
 
+struct sof_man_runtime_info {
+	uint16_t module_id;
+	uint16_t state_flags;
+};
+
 /*
  * Each module has an entry in the FW header. Used by ROM - Immutable.
  */
 struct sof_man_module {
-	uint8_t struct_id[SOF_MAN_MOD_ID_LEN];	/* SOF_MAN_MOD_ID */
+	union {
+		uint8_t struct_id[SOF_MAN_MOD_ID_LEN];	/* SOF_MAN_MOD_ID */
+		struct sof_man_runtime_info runtime_info;
+	};
 	uint8_t name[SOF_MAN_MOD_NAME_LEN];
 	struct sof_man_uuid uuid;
 	struct sof_man_module_type type;
