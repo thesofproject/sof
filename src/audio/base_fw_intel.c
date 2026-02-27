@@ -171,6 +171,15 @@ __cold int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
 			return IPC4_OUT_OF_MEMORY;
 		}
 
+		/* replace structure id ("$AME" tag) with runtime info */
+		for (uint32_t idx = 0; idx < curr_mod_cnt; ++idx) {
+			uint32_t mod_id = LIB_MANAGER_PACK_MODULE_ID(lib_id, idx);
+
+			module_info->modules[total_mod_cnt + idx].runtime_info.module_id = mod_id;
+			/* TODO: set bit[0] for modules loaded into ADSP memory */
+			module_info->modules[total_mod_cnt + idx].runtime_info.state_flags = 0x0;
+		}
+
 		total_mod_cnt += curr_mod_cnt;
 		total_size_left -= curr_cpy_size;
 	}
