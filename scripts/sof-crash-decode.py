@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2024 Intel Corporation. All rights reserved.
+# Copyright(c) 2026 Intel Corporation. All rights reserved.
 """
 decode_crash.py - Zephyr Xtensa Crash Dump Decoder
 
@@ -14,16 +14,16 @@ Dependencies:
 
 Usage Examples:
     # 1. Provide the ELF and read crash from stdin
-    cat crash.txt | ./decode_crash.py --elf zephyr.elf
+    cat crash.txt | ./sof-crash-decode.py --elf zephyr.elf
 
     # 2. Automatically locate ELF/objdump from a Zephyr build directory, read crash from file
-    ./decode_crash.py --build-dir build-qemu_xtensa/ --dump crash.txt
+    ./sof-crash-decode.py --build-dir build-qemu_xtensa/ --dump crash.txt
 
     # 3. Read directly from the system clipboard
-    ./decode_crash.py --build-dir build-qemu_xtensa/ --clipboard
+    ./sof-crash-decode.py --build-dir build-qemu_xtensa/ --clipboard
 
     # 4. Pipe a live trace to the decoder
-    tail -f log.txt | ./decode_crash.py --build-dir build_dir/
+    tail -f log.txt | ./sof-crash-decode.py --build-dir build_dir/
 
 """
 
