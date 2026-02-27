@@ -158,6 +158,25 @@ struct scheduler_ops {
 	 * This operation is optional.
 	 */
 	int (*scheduler_restore)(void *data);
+
+	/**
+	 * Initializes context
+	 * @param data Private data of selected scheduler.
+	 * @param task task that needs to be scheduled
+	 * @return thread that will be used to run the scheduled task
+	 *
+	 * This operation is optional.
+	 */
+	struct k_thread *(*scheduler_init_context)(void *data, struct task *task);
+
+	/**
+	 * Frees scheduler context
+	 * @param data Private data of selected scheduler.
+	 *
+	 * This operation is optional.
+	 */
+	void (*scheduler_free_context)(void *data);
+
 };
 
 /** \brief Holds information about scheduler. */
@@ -377,6 +396,41 @@ static inline int schedulers_restore(void)
 	}
 
 	return 0;
+}
+
+
+/** See scheduler_ops::scheduler_init_context */
+static inline struct k_thread *scheduler_init_context(struct task *task)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	assert(schedulers);
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (sch->ops->scheduler_init_context)
+			return sch->ops->scheduler_init_context(sch->data, task);
+	}
+
+	return 0;
+}
+
+/** See scheduler_ops::scheduler_free_context */
+static inline void scheduler_free_context(void)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	assert(schedulers);
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (sch->ops->scheduler_free_context)
+			sch->ops->scheduler_free_context(sch->data);
+	}
 }
 
 /**
