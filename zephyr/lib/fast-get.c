@@ -194,6 +194,7 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 				int err = fast_get_access_grant(k_current_get(), ret, size);
 
 				if (err < 0) {
+					LOG_ERR("failed to grant additional access err=%d", err);
 					ret = NULL;
 					goto out;
 				}
@@ -233,6 +234,7 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 		int err = fast_get_access_grant(entry->thread, ret, size);
 
 		if (err < 0) {
+			LOG_ERR("failed to grant access err=%d", err);
 			sof_heap_free(NULL, ret);
 			ret = NULL;
 			goto out;
