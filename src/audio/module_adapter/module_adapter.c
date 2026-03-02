@@ -62,7 +62,7 @@ static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_con
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
 	/* FIXME: the size will be derived from configuration */
-	const size_t buf_size = 20 * 1024;
+	const size_t buf_size = 16 * 1024;
 
 	/* Keep uncached to match the default SOF heap! */
 	uint8_t *mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
