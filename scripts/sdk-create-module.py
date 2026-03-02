@@ -362,9 +362,12 @@ def main():
     print("--- SOF SDK New Module Creator ---")
 
     # Argument Validation ---
-    if len(sys.argv) != 2:
+    if len(sys.argv) == 2 and sys.argv[1] in ['-h', '--help']:
+        print("Usage: sdk-create-module.py <new_module_name>")
+        sys.exit(0)
+    elif len(sys.argv) != 2:
         print("\n[ERROR] Invalid number of arguments.")
-        print("Usage: sdk_create_module.py <new_module_name>")
+        print("Usage: sdk-create-module.py <new_module_name>")
         sys.exit(1)
 
     # Configuration --- paths are with respect to script dir
