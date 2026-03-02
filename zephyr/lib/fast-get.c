@@ -279,21 +279,36 @@ void fast_put(struct k_heap *heap, const void *sram_ptr)
 	}
 	entry->refcount--;
 
-#if CONFIG_USERSPACE
-	if (entry->size > FAST_GET_MAX_COPY_SIZE && entry->thread) {
-		struct k_mem_partition part = {
-			.start = (uintptr_t)entry->sram_ptr,
-			.size = ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE),
-			.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
-		};
-
-		LOG_DBG("remove %#zx @ %p", part.size, entry->sram_ptr);
-		k_mem_domain_remove_partition(entry->thread->mem_domain_info.mem_domain, &part);
-	}
-#endif
-
 	if (!entry->refcount) {
-		sof_heap_free(heap, entry->sram_ptr);
+#if CONFIG_USERSPACE
+		/* For large buffers, we need to:
+		 * 1. Free the heap buffer FIRST (while partition still grants us access)
+		 * 2. Then remove the partition (to prevent partition leaks)
+		 * This order is critical - we must free while we still have access.
+		 */
+		if (entry->size > FAST_GET_MAX_COPY_SIZE) {
+			struct k_mem_partition part;
+			struct k_mem_domain *domain = entry->thread->mem_domain_info.mem_domain;
+			void *addr = entry->sram_ptr;
+
+			sof_heap_free(heap, addr);
+
+			part.start = (uintptr_t)addr;
+			part.size = ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE);
+			part.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB;
+
+			int err = k_mem_domain_remove_partition(domain, &part);
+
+			if (err < 0)
+				LOG_WRN("partition removal failed err=%d", err);
+
+		} else
+#endif /* CONFIG_USERSPACE */
+		{
+			/* Small buffers have no partitions, just free */
+			sof_heap_free(heap, entry->sram_ptr);
+		}
+
 		memset(entry, 0, sizeof(*entry));
 	}
 out:
