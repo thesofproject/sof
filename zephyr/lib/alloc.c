@@ -344,7 +344,8 @@ static const struct vmh_heap_config static_hp_buffers = {
 		{ 2048, 8},
 		{ 4096, 11},
 		{ 8192, 10},
-		{ 65536, 3},
+		{ 32768, 8},
+		{ 65536, 7},
 		{ 131072, 1},
 		{ 524288, 1} /* buffer for kpb */
 	},
