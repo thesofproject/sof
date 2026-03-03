@@ -520,7 +520,7 @@ static int lib_manager_start_agent(const struct comp_driver *drv,
 {
 	struct system_agent_params agent_params;
 	byte_array_t mod_cfg;
-	int ret;
+	int ret = 0;
 
 	mod_cfg.data = (uint8_t *)args->data;
 	/* Intel modules expects DW size here */
@@ -540,13 +540,13 @@ static int lib_manager_start_agent(const struct comp_driver *drv,
 					     agent_interface, ops);
 		if (ret)
 			tr_err(&lib_manager_tr, "userspace_proxy_create failed! %d", ret);
-		return ret;
-	}
+	} else
 #endif /* CONFIG_SOF_USERSPACE_PROXY */
-
-	ret = agent(&agent_params, agent_interface);
-	if (ret)
-		tr_err(&lib_manager_tr, "System agent start failed %d!", ret);
+	if (agent) {
+		ret = agent(&agent_params, agent_interface);
+		if (ret)
+			tr_err(&lib_manager_tr, "System agent start failed %d!", ret);
+	}
 
 	return ret;
 }
@@ -654,6 +654,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	case MOD_TYPE_LLEXT:
 		agent = NULL;
 		ops = (const struct module_interface *)module_entry_point;
+		agent_iface = NULL;
 		break;
 	case MOD_TYPE_LMDK:
 		agent = &native_system_agent_start;
@@ -670,8 +671,8 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 		goto err;
 	}
 
-	/* At this point module resources are allocated and it is moved to L2 memory. */
-	if (agent) {
+	if (agent || IS_ENABLED(CONFIG_SOF_USERSPACE_PROXY)) {
+		/* At this point module resources are allocated and it is moved to L2 memory. */
 		ret = lib_manager_start_agent(drv, config, mod, args, module_entry_point, agent,
 					      agent_iface, &userspace, &ops);
 		if (ret)
