@@ -4,6 +4,7 @@
 
 #if CONFIG_IPC_MAJOR_4
 
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component_ext.h>
 #include <sof/lib/notifier.h>
 #include <sof/audio/component_ext.h>
@@ -700,6 +701,43 @@ int tb_set_bytes_control(struct testbench_prm *tp, struct tb_ctl *ctl, uint32_t 
 	return tb_send_bytes_data(&tp->ipc_tx, &tp->ipc_rx,
 				  ctl->module_id, ctl->instance_id,
 				  (struct sof_abi_hdr *)data);
+}
+
+void tb_collect_heap_usage(struct testbench_prm *tp, struct tb_heap_usage_record *records,
+			   int *count_out)
+{
+	struct list_item *item;
+	size_t hwm;
+	int count = 0;
+
+	list_for_item(item, &tp->widget_list) {
+		struct tplg_comp_info *info = container_of(item, struct tplg_comp_info, item);
+		uint32_t comp_id = IPC4_COMP_ID(info->module_id, info->instance_id);
+		struct comp_dev *dev = ipc4_get_comp_dev(comp_id);
+
+		if (!dev || !dev->mod)
+			continue;
+
+		/* In testbench environment, skip AIF/DAI because they are not real components. */
+		if (info->type == SND_SOC_TPLG_DAPM_AIF_IN ||
+		    info->type == SND_SOC_TPLG_DAPM_AIF_OUT ||
+		    info->type == SND_SOC_TPLG_DAPM_DAI_IN ||
+		    info->type == SND_SOC_TPLG_DAPM_DAI_OUT)
+			continue;
+
+		if (count >= TB_NUM_WIDGETS_SUPPORTED) {
+			fprintf(stderr, "Error: Too many components for heap records, max %d.\n",
+				TB_NUM_WIDGETS_SUPPORTED);
+			break;
+		}
+
+		module_adapter_heap_usage(dev->mod, &hwm);
+		records[count].module_name = info->name;
+		records[count].heap_max = hwm;
+		count++;
+	}
+
+	*count_out = count;
 }
 
 #endif /* CONFIG_IPC_MAJOR_4 */
