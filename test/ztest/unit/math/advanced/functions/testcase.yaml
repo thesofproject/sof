@@ -10,7 +10,7 @@
 
 tests:
   sof.unit.math.advanced.functions:
-    tags: math advanced functions power
+    tags: math advanced functions power logarithm base2
     platform_allow: native_sim
     integration_platforms:
       - native_sim
