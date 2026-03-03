@@ -29,7 +29,9 @@ target_compile_definitions(app PRIVATE
 
 target_sources(app PRIVATE
 	test_scalar_power_ztest.c
+	test_base2_logarithm_ztest.c
 	${SOF_ROOT}/src/math/power.c
+	${SOF_ROOT}/src/math/base2log.c
 )
 
 # Apply SOF relative path definitions for proper compilation
