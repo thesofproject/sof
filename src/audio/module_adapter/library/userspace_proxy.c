@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include <sof/lib_manager.h>
+#include <sof/llext_manager.h>
 #include <sof/audio/component.h>
 #include <sof/schedule/dp_schedule.h>
 #include <rtos/userspace_helper.h>
@@ -163,6 +164,7 @@ static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap
 	work_item->event = &worker.event;
 #endif
 	work_item->params.context = user_ctx;
+	work_item->params.mod = NULL;
 	user_ctx->work_item = work_item;
 
 	return 0;
@@ -382,7 +384,7 @@ static int userspace_proxy_start_agent(struct userspace_context *user_ctx,
 }
 
 int userspace_proxy_create(struct userspace_context **user_ctx, const struct comp_driver *drv,
-			   const struct sof_man_module *manifest, system_agent_start_fn start_fn,
+			   const struct sof_man_module *manifest, system_agent_start_fn agent_fn,
 			   const struct system_agent_params *agent_params,
 			   const void **agent_interface, const struct module_interface **ops)
 {
@@ -410,7 +412,12 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	if (ret)
 		goto error_dom;
 
-	ret = userspace_proxy_add_sections(context, agent_params->instance_id, manifest);
+	if (agent_fn)
+		ret = userspace_proxy_add_sections(context, agent_params->instance_id, manifest);
+	else
+		/* llext modules do not use the system agent. */
+		ret = llext_manager_add_domain(agent_params->module_id, domain);
+
 	if (ret)
 		goto error_dom;
 
@@ -418,7 +425,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	if (ret)
 		goto error_dom;
 
-	ret = userspace_proxy_start_agent(context, start_fn, agent_params, agent_interface);
+	ret = userspace_proxy_start_agent(context, agent_fn, agent_params, agent_interface);
 	if (ret) {
 		tr_err(&userspace_proxy_tr, "System agent failed with error %d.", ret);
 		goto error_work_item;
