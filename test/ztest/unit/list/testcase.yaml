@@ -6,7 +6,7 @@
 # generative artificial intelligence solutions.
 
 tests:
-  sof.list:
+  sof.unit.list:
     platform_allow: native_sim
     harness: ztest
     tags: unit

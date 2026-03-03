@@ -9,7 +9,7 @@
 #
 
 tests:
-  math.advanced.functions:
+  sof.unit.math.advanced.functions:
     tags: math advanced functions power
     platform_allow: native_sim
     integration_platforms:

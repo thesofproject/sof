@@ -16,6 +16,6 @@ common:
   arch_exclude: xtensa  # Test is for host builds only
 
 tests:
-  sof.unit.math.complex:
+  sof.unit.math.basic.complex:
     platform_allow:
       - native_sim
