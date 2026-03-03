@@ -11,21 +11,56 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 "cavs-sdw\;sof-sdca-jack-id0\;SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
 SDW_JACK_IN_STREAM=Capture-SimpleJack,NUM_HDMIS=0"
 
+"cavs-sdw\;sof-sdca-jack-ref-dai-id0\;SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
+SDW_JACK_IN_STREAM=Capture-SimpleJack,NUM_HDMIS=0,SDW_ECHO_REF_DAI=true,SDW_JACK_ECHO_REF=true"
+
 "cavs-sdw\;sof-sdca-1amp-id2\;NUM_SDW_AMP_LINKS=1,SDW_JACK=false,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
 DEEP_BUF_SPK=true"
+
+"cavs-sdw\;sof-sdca-1amp-ref-dai-id2\;NUM_SDW_AMP_LINKS=1,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true,JACK_RATE=48000,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF=true"
+
+"cavs-sdw\;sof-sdca-1amp-ref-id2\;NUM_SDW_AMP_LINKS=1,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true,JACK_RATE=48000,SDW_SPK_ECHO_REF=true"
 
 "cavs-sdw\;sof-sdca-2amp-id2\;NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
 DEEP_BUF_SPK=true"
 
+"cavs-sdw\;sof-sdca-2amp-ref-dai-id2\;NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true,JACK_RATE=48000,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF=true"
+
+"cavs-sdw\;sof-sdca-2amp-ref-id2\;NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true,JACK_RATE=48000,SDW_SPK_ECHO_REF=true"
+
 "cavs-sdw\;sof-sdca-3amp-id2\;NUM_SDW_AMP_LINKS=3,SDW_JACK=false,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
 DEEP_BUF_SPK=true"
 
+"cavs-sdw\;sof-sdca-3amp-ref-dai-id2\;NUM_SDW_AMP_LINKS=3,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true,JACK_RATE=48000,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF=true"
+
+"cavs-sdw\;sof-sdca-3amp-ref-id2\;NUM_SDW_AMP_LINKS=3,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true,JACK_RATE=48000,SDW_SPK_ECHO_REF=true"
+
 "cavs-sdw\;sof-sdca-4amp-id2\;NUM_SDW_AMP_LINKS=4,SDW_JACK=false,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
 DEEP_BUF_SPK=true"
+
+"cavs-sdw\;sof-sdca-4amp-ref-dai-id2\;NUM_SDW_AMP_LINKS=4,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true,JACK_RATE=48000,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF=true"
+
+"cavs-sdw\;sof-sdca-4amp-ref-id2\;NUM_SDW_AMP_LINKS=4,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true,JACK_RATE=48000,SDW_SPK_ECHO_REF=true"
 
 "cavs-sdw\;sof-sdca-mic-id4\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
 SDW_DMIC_STREAM=Capture-SmartMic"
