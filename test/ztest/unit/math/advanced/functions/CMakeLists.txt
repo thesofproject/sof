@@ -36,6 +36,3 @@ target_sources(app PRIVATE
 
 # Apply SOF relative path definitions for proper compilation
 sof_append_relative_path_definitions(app)
-
-# Link math library for advanced math functions
-target_link_libraries(app PRIVATE m)
