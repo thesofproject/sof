@@ -9,7 +9,7 @@
 #
 
 tests:
-  math.basic.arithmetic:
+  sof.unit.math.basic.arithmetic:
     tags: math arithmetic numbers
     platform_allow: native_sim
     integration_platforms:

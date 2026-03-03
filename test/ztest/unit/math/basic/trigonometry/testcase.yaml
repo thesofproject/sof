@@ -19,6 +19,6 @@ common:
   arch_exclude: xtensa  # Test is for host builds only
 
 tests:
-  sof.unit.math.trigonometry:
+  sof.unit.math.basic.trigonometry:
     platform_allow:
       - native_sim
