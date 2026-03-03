@@ -178,24 +178,34 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 		comp_buffer_set_sink_component(buffer, comp);
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+#define PPL_LOCK_DECLARE
+#define PPL_LOCK(x) k_mutex_lock(comp->list_mutex, K_FOREVER)
+#define PPL_UNLOCK(x) k_mutex_unlock(comp->list_mutex)
+#else
+#define PPL_LOCK_DECLARE uint32_t flags
+#define PPL_LOCK(x) irq_local_disable(flags)
+#define PPL_UNLOCK(x)  irq_local_enable(flags)
+#endif
+
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir)
 {
 	struct list_item *comp_list;
-	uint32_t flags;
+	PPL_LOCK_DECLARE;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
 		comp_info(comp, "connect buffer %d as sink", buf_get_id(buffer));
 	else
 		comp_info(comp, "connect buffer %d as source", buf_get_id(buffer));
 
-	irq_local_disable(flags);
+	PPL_LOCK();
 
 	comp_list = comp_buffer_list(comp, dir);
 	buffer_attach(buffer, comp_list, dir);
 	buffer_set_comp(buffer, comp, dir);
 
-	irq_local_enable(flags);
+	PPL_UNLOCK();
 
 	return 0;
 }
@@ -203,20 +213,20 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int dir)
 {
 	struct list_item *comp_list;
-	uint32_t flags;
+	PPL_LOCK_DECLARE;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
 		comp_dbg(comp, "disconnect buffer %d as sink", buf_get_id(buffer));
 	else
 		comp_dbg(comp, "disconnect buffer %d as source", buf_get_id(buffer));
 
-	irq_local_disable(flags);
+	PPL_LOCK();
 
 	comp_list = comp_buffer_list(comp, dir);
 	buffer_detach(buffer, comp_list, dir);
 	buffer_set_comp(buffer, NULL, dir);
 
-	irq_local_enable(flags);
+	PPL_UNLOCK();
 }
 
 /* pipelines must be inactive */

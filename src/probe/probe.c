@@ -176,7 +176,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	dma->config.dest_width = sizeof(uint32_t);
 	dma->config.cyclic = 0;
 
-	err = dma_sg_alloc(&dma->config.elem_array, SOF_MEM_FLAG_USER,
+	err = dma_sg_alloc(NULL, &dma->config.elem_array, SOF_MEM_FLAG_USER,
 			   dma->config.direction, elem_num, elem_size, elem_addr, 0);
 	if (err < 0)
 		return err;
@@ -255,7 +255,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 static int probe_dma_deinit(struct probe_dma_ext *dma)
 {
 	int err = 0;
-	dma_sg_free(&dma->config.elem_array);
+	dma_sg_free(NULL, &dma->config.elem_array);
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	err = dma_stop(dma->dc.dmac->z_dev, dma->dc.chan->index);
 #else

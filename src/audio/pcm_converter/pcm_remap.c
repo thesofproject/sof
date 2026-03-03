@@ -5,6 +5,7 @@
 
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/audio_stream.h>
+#include <rtos/userspace_helper.h>
 
 static void mute_channel_c16(struct audio_stream *stream, int channel, int frames)
 {
@@ -423,7 +424,7 @@ static int remap_c16_to_c32_no_shift(const struct audio_stream *source, uint32_t
 /* Unfortunately, all these nice "if"s were commented out to suppress
  * CI "defined but not used" warnings.
  */
-const struct pcm_func_map pcm_remap_func_map[] = {
+APP_TASK_DATA  const struct pcm_func_map pcm_remap_func_map[] = {
 /* #if CONFIG_PCM_CONVERTER_FORMAT_S16LE */
 	{ SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, remap_c16},
 /* #endif */
@@ -474,4 +475,4 @@ const struct pcm_func_map pcm_remap_func_map[] = {
 /* #endif */
 };
 
-const size_t pcm_remap_func_count = ARRAY_SIZE(pcm_remap_func_map);
+APP_TASK_DATA const size_t pcm_remap_func_count = ARRAY_SIZE(pcm_remap_func_map);

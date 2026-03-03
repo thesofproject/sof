@@ -52,7 +52,10 @@ struct dai {
 	uint32_t dma_dev;
 	const struct device *dev;
 	const struct dai_data *dd;
-	struct k_spinlock lock;		/* protect properties */
+	struct k_mutex *lock;		/* protect properties */
+#ifndef CONFIG_SOF_USERSPACE_LL
+	struct k_mutex lock_obj;
+#endif
 };
 
 union hdalink_cfg {
@@ -117,7 +120,7 @@ typedef int (*channel_copy_func)(const struct audio_stream *src, unsigned int sr
  */
 struct dai_data {
 	/* local DMA config */
-	struct dma_chan_data *chan;
+	int chan_index;
 	uint32_t stream_id;
 	struct dma_sg_config config;
 	struct dma_config *z_config;
@@ -168,6 +171,7 @@ struct dai_data {
 #endif
 	/* Copier gain params */
 	struct copier_gain_params *gain_data;
+	struct k_heap *heap;
 };
 
 /* these 3 are here to satisfy clk.c and ssp.h interconnection, will be removed leter */

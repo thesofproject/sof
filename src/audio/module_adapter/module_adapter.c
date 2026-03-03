@@ -111,7 +111,12 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 		}
 		mod_heap = &mod_heap_user->heap;
 	} else {
+#ifdef CONFIG_SOF_USERSPACE_LL
+		mod_heap = zephyr_ll_user_heap();
+		comp_cl_dbg(drv, "using ll user heap for module");
+#else
 		mod_heap = drv->user_heap;
+#endif
 		mod_heap_user = NULL;
 		heap_size = 0;
 	}

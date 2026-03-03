@@ -11,6 +11,7 @@
 #include <sof/lib/uuid.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
+#include <sof/schedule/ll_schedule_domain.h> /* for zephyr_ll_user_heap() */
 #include <ipc/topology.h>
 #include <ipc/dai.h>
 #include <user/trace.h>
@@ -298,6 +299,11 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	const struct device *dev;
 	struct dai *d;
+	struct k_heap *heap = NULL;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+#endif
 
 	dev = dai_get_device(type, index);
 	if (!dev) {
@@ -306,9 +312,11 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		return NULL;
 	}
 
-	d = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(struct dai));
+	d = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(struct dai), 0);
 	if (!d)
 		return NULL;
+
+	memset(d, 0, sizeof(struct dai));
 
 	d->index = index;
 	d->type = type;
@@ -319,7 +327,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	if (dai_probe(d->dev)) {
 		tr_err(&dai_tr, "dai_get: failed to probe dai with index %d type %d",
 		       index, type);
-		rfree(d);
+		sof_heap_free(heap, d);
 		return NULL;
 	}
 
@@ -330,6 +338,11 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 void dai_put(struct dai *dai)
 {
 	int ret;
+	struct k_heap *heap = NULL;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+#endif
 
 	ret = dai_remove(dai->dev);
 	if (ret < 0) {
@@ -337,7 +350,7 @@ void dai_put(struct dai *dai)
 		       dai->index, ret);
 	}
 
-	rfree(dai);
+	sof_heap_free(heap, dai);
 }
 #else
 static inline const struct dai_type_info *dai_find_type(uint32_t type)

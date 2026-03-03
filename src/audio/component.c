@@ -699,3 +699,11 @@ void comp_update_ibs_obs_cpc(struct comp_dev *dev)
 #endif
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+void comp_grant_access_to_thread(const struct comp_dev *dev, struct k_thread *th)
+{
+	assert(dev->list_mutex);
+	tr_dbg(&ipc_tr, "grant access to mutex %p for thread %p", dev->list_mutex, th);
+	k_thread_access_grant(th, dev->list_mutex);
+}
+#endif
