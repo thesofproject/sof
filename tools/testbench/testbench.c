@@ -240,7 +240,9 @@ static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 	return ret;
 }
 
-static void test_pipeline_stats(struct testbench_prm *tp, long long delta_t)
+static void test_pipeline_stats(struct testbench_prm *tp, long long delta_t,
+				struct tb_heap_usage_record *heap_records,
+				int heap_records_count)
 {
 	long long file_cycles, pipeline_cycles;
 	float pipeline_mcps;
@@ -284,22 +286,28 @@ static void test_pipeline_stats(struct testbench_prm *tp, long long delta_t)
 	frames_out = n_out / tp->channels_out;
 	printf("Input sample (frame) count: %d (%d)\n", n_in, n_in / tp->channels_in);
 	printf("Output sample (frame) count: %d (%d)\n", n_out, frames_out);
+	if (heap_records_count > 0) {
+		for (i = 0; i < heap_records_count; i++)
+			printf("Heap usage for module %s: %u bytes\n",
+			       heap_records[i].module_name, (uint32_t)heap_records[i].heap_max);
+	}
+
+	printf("\n");
 	if (tp->total_cycles) {
 		pipeline_cycles = tp->total_cycles - file_cycles;
 		pipeline_mcps = (float)pipeline_cycles * tp->fs_out / frames_out / 1e6;
+		if (tb_check_trace(LOG_LEVEL_DEBUG))
+			printf("Warning: Use -d 3 or smaller value to avoid traces to increase MCPS.\n");
+
 		printf("Total execution cycles: %lld\n", tp->total_cycles);
 		printf("File component cycles: %lld\n", file_cycles);
 		printf("Pipeline cycles: %lld\n", pipeline_cycles);
-		printf("Pipeline MCPS: %6.2f\n", pipeline_mcps);
-		if (tb_check_trace(LOG_LEVEL_DEBUG))
-			printf("Warning: Use -d 3 or smaller value to avoid traces to increase MCPS.\n");
+		printf("Pipeline MCPS: %6.2f\n\n", pipeline_mcps);
 	}
 
 	if (delta_t)
-		printf("Total execution time: %lld us, %.2f x realtime\n",
-		       delta_t, (float)frames_out / tp->fs_out * 1000000 / delta_t);
-
-	printf("\n");
+		printf("Total execution time: %lld us, %.2f x realtime\n\n", delta_t,
+		       (float)frames_out / tp->fs_out * 1000000 / delta_t);
 }
 
 /*
@@ -308,14 +316,16 @@ static void test_pipeline_stats(struct testbench_prm *tp, long long delta_t)
  */
 static int pipline_test(struct testbench_prm *tp)
 {
-	float samples_to_ns;
-	int dp_count = 0;
-	struct timespec td0, td1;
+	struct tb_heap_usage_record heap_usage_records[TB_NUM_WIDGETS_SUPPORTED];
 	struct file_state *out_stat;
-	long long delta_t;
+	struct timespec td0 = {0}, td1 = {0};
+	long long delta_t = 0;
 	int64_t next_control_ns;
 	int64_t time_ns;
+	float samples_to_ns;
 	int err;
+	int heap_usage_records_count = 0;
+	int dp_count = 0;
 
 	/* build, run and teardown pipelines */
 	while (dp_count < tp->dynamic_pipeline_iterations) {
@@ -392,8 +402,10 @@ static int pipline_test(struct testbench_prm *tp)
 		}
 
 		tb_schedule_pipeline_check_state(tp); /* Once more to flush out remaining data */
-
 		tb_gettime(&td1);
+		delta_t = (td1.tv_sec - td0.tv_sec) * 1000000;
+		delta_t += (td1.tv_nsec - td0.tv_nsec) / 1000;
+		tb_collect_heap_usage(tp, heap_usage_records, &heap_usage_records_count);
 
 out:
 		err = tb_set_reset_state(tp);
@@ -403,12 +415,7 @@ out:
 			break;
 		}
 
-		/* TODO: This should be printed after reset and free to get cleaner output
-		 * but the file internal status would be lost there.
-		 */
-		delta_t = (td1.tv_sec - td0.tv_sec) * 1000000;
-		delta_t += (td1.tv_nsec - td0.tv_nsec) / 1000;
-		test_pipeline_stats(tp, delta_t);
+		test_pipeline_stats(tp, delta_t, heap_usage_records, heap_usage_records_count);
 
 		err = tb_free_all_pipelines(tp);
 		if (err < 0) {
