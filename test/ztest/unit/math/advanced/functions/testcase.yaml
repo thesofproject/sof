@@ -9,8 +9,8 @@
 #
 
 tests:
-  math.advanced.functions:
-    tags: math advanced functions power
+  sof.unit.math.advanced.functions:
+    tags: math advanced functions power logarithm base2 exponential exp db2lin
     platform_allow: native_sim
     integration_platforms:
       - native_sim

@@ -5,7 +5,7 @@
 # Object pool allocator unit tests for Ztest framework
 
 tests:
-  sof.objpool:
+  sof.unit.objpool:
     tags: unit
     platform_allow: native_sim
     integration_platforms:

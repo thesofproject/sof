@@ -29,11 +29,15 @@ target_compile_definitions(app PRIVATE
 
 target_sources(app PRIVATE
 	test_scalar_power_ztest.c
+	test_base2_logarithm_ztest.c
+	test_exponential_ztest.c
 	${SOF_ROOT}/src/math/power.c
+	${SOF_ROOT}/src/math/base2log.c
+	${SOF_ROOT}/src/math/exp_fcn.c
+	# Note: exp_fcn_hifi.c is conditionally compiled only for Xtensa HiFi platforms.
+	# TODO: Enable these tests on Xtensa platforms to also test HiFi-optimized code paths.
+	${SOF_ROOT}/src/math/exp_fcn_hifi.c
 )
 
 # Apply SOF relative path definitions for proper compilation
 sof_append_relative_path_definitions(app)
-
-# Link math library for advanced math functions
-target_link_libraries(app PRIVATE m)

@@ -6,7 +6,7 @@
 # generative artificial intelligence solutions.
 
 tests:
-  fast_get.basic_functionality:
+  sof.unit.fast_get:
     tags: fast_get memory cache
     platform_allow: native_sim
     integration_platforms:
