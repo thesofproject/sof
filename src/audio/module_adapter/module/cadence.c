@@ -74,6 +74,12 @@ struct cadence_api cadence_api_table[] = {
 		.api = xa_src_pp,
 	},
 #endif
+#ifdef CONFIG_SOF_COMPRESS_CODEC_PCM_DEC
+	{
+		.id = SOF_COMPRESS_CODEC_PCM_DEC_ID,
+		.api = xa_pcm_dec,
+	},
+#endif
 };
 
 static int cadence_codec_get_api_id(uint32_t compress_id, uint32_t direction)
@@ -89,6 +95,8 @@ static int cadence_codec_get_api_id(uint32_t compress_id, uint32_t direction)
 		return CADENCE_CODEC_AAC_DEC_ID;
 	case SND_AUDIOCODEC_VORBIS:
 		return CADENCE_CODEC_VORBIS_DEC_ID;
+	case SND_AUDIOCODEC_PCM:
+		return SOF_COMPRESS_CODEC_PCM_DEC_ID;
 	default:
 		return -EINVAL;
 	}
@@ -235,6 +243,8 @@ int cadence_codec_get_samples(struct processing_module *mod)
 		/* MPEG-1 Layer 3 */
 		return 1152;
 	case CADENCE_CODEC_AAC_DEC_ID:
+		return 1024;
+	case SOF_COMPRESS_CODEC_PCM_DEC_ID:
 		return 1024;
 	default:
 		break;
