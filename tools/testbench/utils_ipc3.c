@@ -441,4 +441,9 @@ int tb_set_bytes_control(struct testbench_prm *tp, struct tb_ctl *ctl, uint32_t 
 	return 0;
 }
 
+void tb_collect_heap_usage(struct testbench_prm *tp, struct tb_heap_usage_record *rec, int *count)
+{
+	*count = 0;
+}
+
 #endif /* CONFIG_IPC_MAJOR_3 */

@@ -148,6 +148,17 @@ struct testbench_prm {
 #endif
 };
 
+/**
+ * @brief Record of heap memory usage for a module.
+ *
+ * Stores the maximum heap usage observed for a specific module,
+ * used for profiling and memory analysis in testbench.
+ */
+struct tb_heap_usage_record {
+	char *module_name; /**< Name of the module */
+	size_t heap_max;   /**< Maximum heap usage in bytes */
+};
+
 extern int debug;
 
 int tb_decode_enum(struct snd_soc_tplg_enum_control *enum_ctl, char *token);
@@ -169,6 +180,18 @@ int tb_set_up_all_pipelines(struct testbench_prm *tp);
 int tb_setup(struct sof *sof, struct testbench_prm *tp);
 bool tb_is_pipeline_enabled(struct testbench_prm *tp, int pipeline_id);
 bool tb_schedule_pipeline_check_state(struct testbench_prm *tp);
+
+/**
+ * @brief Collect heap usage statistics for all modules.
+ *
+ * Iterates over the active modules in the testbench and records the maximum
+ * heap usage for each one into the provided array.
+ *
+ * @param tp Pointer to testbench parameters.
+ * @param rec Array of heap usage records to populate.
+ * @param count Pointer to an integer that receives the number of records written.
+ */
+void tb_collect_heap_usage(struct testbench_prm *tp, struct tb_heap_usage_record *rec, int *count);
 void tb_debug_print(char *message);
 void tb_free(struct sof *sof);
 void tb_free_topology(struct testbench_prm *tp);
