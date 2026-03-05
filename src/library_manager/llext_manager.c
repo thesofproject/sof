@@ -320,6 +320,8 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	/* Writable data (.data, .bss, etc.) */
 	void __sparse_cache *va_base_data = (void __sparse_cache *)
 		mctx->segment[LIB_MANAGER_DATA].addr;
+	void __sparse_cache *va_base_bss = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_BSS].addr;
 	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size +
 		mctx->segment[LIB_MANAGER_BSS].size;
 	int err = 0, ret;
@@ -329,6 +331,12 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	ret = llext_manager_align_unmap(va_base_text, text_size);
 	if (ret < 0)
 		err = ret;
+
+	/* Mimic the logic from load_module where the .bss address is used for mapping
+	 * in case of e.g. lack of writable .data section
+	 */
+	if (!va_base_data)
+		va_base_data = va_base_bss;
 
 	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_DATA,
 					      va_base_data, data_size);
