@@ -162,8 +162,9 @@ class RecordPrinter:
         buffer = (
             ctypes.c_ubyte * (len(record) - ctypes.sizeof(TextMsg))
         ).from_address(ctypes.addressof(record) + ctypes.sizeof(TextMsg))
-        msg = bytearray(buffer).decode("utf-8")
-        print("CPU %u: %s" % (cpu, msg))
+        payload = bytes(buffer)
+        msg = payload.split(b"\0", 1)[0].decode("utf-8", errors="replace")
+        print("CPU %u:\n%s" % (cpu, msg))
         return True
 
 class DebugStreamSectionDescriptor(ctypes.Structure):
