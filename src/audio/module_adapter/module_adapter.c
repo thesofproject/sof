@@ -234,6 +234,17 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 
 	struct comp_dev *dev = mod->dev;
 
+	dst = &mod->priv.cfg;
+	/*
+	 * NOTE: dst->ext_data points to stack variable and contains
+	 *       pointers to IPC payload mailbox, so its only valid in
+	 *       functions that called from this function. This why
+	 *       the pointer is set NULL before this function exits.
+	 */
+#if CONFIG_IPC_MAJOR_4
+	dst->ext_data = &ext_data;
+#endif
+
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	/* create a task for DP processing */
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
@@ -246,16 +257,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	}
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
-	dst = &mod->priv.cfg;
-	/*
-	 * NOTE: dst->ext_data points to stack variable and contains
-	 *       pointers to IPC payload mailbox, so its only valid in
-	 *       functions that called from this function. This why
-	 *       the pointer is set NULL before this function exits.
-	 */
-#if CONFIG_IPC_MAJOR_4
-	dst->ext_data = &ext_data;
-#endif
 	ret = module_adapter_init_data(dev, dst, config, &spec);
 	if (ret) {
 		comp_err(dev, "%d: module init data failed",
