@@ -58,22 +58,55 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #endif
 
 static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+						       const struct module_ext_init_data *ext_init,
 						       size_t *heap_size)
 {
+	const size_t heap_prefix_size = ALIGN_UP(sizeof(struct dp_heap_user), 4);
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
-	/* FIXME: the size will be derived from configuration */
-	const size_t buf_size = 20 * 1024;
+	size_t buf_size = CONFIG_SOF_USERSPACE_DP_DEFAULT_HEAP_SIZE;
 
+#if CONFIG_IPC_MAJOR_4
+	if (config->ipc_extended_init && ext_init && ext_init->dp_data &&
+	    (ext_init->dp_data->lifetime_heap_bytes > 0 ||
+	     ext_init->dp_data->interim_heap_bytes > 0)) {
+		if (ext_init->dp_data->lifetime_heap_bytes > 64*1024*1024 ||
+		    ext_init->dp_data->interim_heap_bytes > 64*1024*1024) {
+			LOG_ERR("Insanely large lifetime %u or interim %u heap size for %#x",
+				ext_init->dp_data->lifetime_heap_bytes,
+				ext_init->dp_data->interim_heap_bytes, config->id);
+			return NULL;
+		}
+
+		/*
+		 * For the moment there is only one heap so sum up
+		 * lifetime and interim values. It is also a conscious
+		 * decision here to count the size of struct
+		 * dp_heap_user to be included into required heap
+		 * size.
+		 */
+		buf_size = ext_init->dp_data->lifetime_heap_bytes +
+			ext_init->dp_data->interim_heap_bytes;
+		LOG_DBG("%u + %u = %zu byte heap size requested in IPC for %#x",
+			ext_init->dp_data->lifetime_heap_bytes,
+			ext_init->dp_data->interim_heap_bytes, buf_size, config->id);
+	}
+#endif
+	if (buf_size < heap_prefix_size) {
+		LOG_ERR("Too small heap size %zu (< %zu) for %#x", buf_size, heap_prefix_size,
+			config->id);
+		return NULL;
+	}
+
+	LOG_INF("Allocating %zu byte heap (default %zu) for %#x", buf_size,
+		CONFIG_SOF_USERSPACE_DP_DEFAULT_HEAP_SIZE, config->id);
 	/* Keep uncached to match the default SOF heap! */
-	uint8_t *mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-					      buf_size, PAGE_SZ);
+	uint8_t *mod_heap_mem = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, buf_size);
 
 	if (!mod_heap_mem)
 		return NULL;
 
 	struct dp_heap_user *mod_heap_user = (struct dp_heap_user *)mod_heap_mem;
 	struct k_heap *mod_heap = &mod_heap_user->heap;
-	const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap_user), 4);
 	void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
 
 	*heap_size = buf_size - heap_prefix_size;
@@ -86,8 +119,10 @@ static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_con
 	return mod_heap_user;
 }
 
-static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
-							  const struct comp_ipc_config *config)
+static
+struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+						   const struct comp_ipc_config *config,
+						   const struct module_ext_init_data *ext_init)
 {
 	struct k_heap *mod_heap;
 	/*
@@ -104,7 +139,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_USERSPACE) &&
 	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_heap_user = module_adapter_dp_heap_new(config, &heap_size);
+		mod_heap_user = module_adapter_dp_heap_new(config, ext_init, &heap_size);
 		if (!mod_heap_user) {
 			comp_cl_err(drv, "Failed to allocate DP module heap");
 			return NULL;
@@ -220,8 +255,14 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 			return NULL;
 	}
 #endif
+	const struct module_ext_init_data *ext_init =
+#if CONFIG_IPC_MAJOR_4
+		&ext_data;
+#else
+		NULL;
+#endif
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init);
 
 	if (!mod)
 		return NULL;
@@ -238,8 +279,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	/*
 	 * NOTE: dst->ext_data points to stack variable and contains
 	 *       pointers to IPC payload mailbox, so its only valid in
-	 *       functions that called from this function. This why
-	 *       the pointer is set NULL before this function exits.
+	 *       functions that are called from this function. This is
+	 *       why the pointer is set to NULL before this function
+	 *       exits.
 	 */
 #if CONFIG_IPC_MAJOR_4
 	dst->ext_data = &ext_data;
