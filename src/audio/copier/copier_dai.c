@@ -322,6 +322,17 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		if (ret)
 			return ret;
 		break;
+	case ipc4_alh_uaol_stream_link_output_class:
+	case ipc4_alh_uaol_stream_link_input_class:
+		dai.type = SOF_DAI_INTEL_UAOL;
+		dai.is_config_blob = true;
+		cd->gtw_type = ipc4_gtw_alh;
+		ret = ipc4_find_dma_config(&dai, gtw_cfg_data, gtw_cfg_szie);
+		if (ret != IPC4_SUCCESS) {
+			comp_err(dev, "No uaol dma_config found in blob!");
+			return -EINVAL;
+		}
+		break;
 	case ipc4_dmic_link_input_class:
 		dai.type = SOF_DAI_INTEL_DMIC;
 		dai.is_config_blob = true;

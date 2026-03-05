@@ -185,6 +185,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_NXP_MICFIL
 	DT_FOREACH_STATUS_OKAY(nxp_dai_micfil, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_INTEL_UAOL
+	DT_FOREACH_STATUS_OKAY(intel_uaol_dai, GET_DEVICE_LIST)
+#endif
 };
 
 const struct device **dai_get_device_list(size_t *count)
@@ -207,6 +210,8 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 		return DAI_INTEL_HDA;
 	case SOF_DAI_INTEL_ALH:
 		return DAI_INTEL_ALH;
+	case SOF_DAI_INTEL_UAOL:
+		return DAI_INTEL_UAOL;
 	case SOF_DAI_IMX_SAI:
 		return DAI_IMX_SAI;
 	case SOF_DAI_IMX_ESAI:
@@ -285,6 +290,7 @@ static void dai_set_device_params(struct dai *d)
 #endif
 		break;
 	case SOF_DAI_INTEL_HDA:
+	case SOF_DAI_INTEL_UAOL:
 		d->dma_dev = SOF_DMA_DEV_HDA;
 		d->dma_caps = SOF_DMA_CAP_HDA;
 		break;

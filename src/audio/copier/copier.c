@@ -191,6 +191,8 @@ __cold static int copier_init(struct processing_module *mod)
 		case ipc4_i2s_link_input_class:
 		case ipc4_alh_link_output_class:
 		case ipc4_alh_link_input_class:
+		case ipc4_alh_uaol_stream_link_output_class:
+		case ipc4_alh_uaol_stream_link_input_class:
 			ret = copier_dai_create(dev, cd, copier, dev->pipeline);
 			if (ret < 0) {
 				comp_err(dev, "unable to create dai");
