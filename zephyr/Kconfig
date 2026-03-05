@@ -61,6 +61,15 @@ config SOF_ZEPHYR_HEAP_SIZE
 	 NOTE: Keep in mind that the heap size should not be greater than the physical
 	 memory size of the system defined in DT (and this includes baseFW text/data).
 
+config SOF_USERSPACE_DP_DEFAULT_HEAP_SIZE
+       int "Default heap size for DP userspace threads"
+       default 20480
+       help
+         Defines the default heap size for userspace DP processing
+         threads. The value can be overridden with IPC module init
+         ext_init module payload. The default is derived from what is
+         required for SRC module to produce all supported conversions.
+
 config SOF_USERSPACE_USE_SHARED_HEAP
 	bool "Use shared heap for SOF userspace modules"
 	depends on USERSPACE
