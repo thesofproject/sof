@@ -58,17 +58,39 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #define PAGE_SZ HOST_PAGE_SIZE
 #endif
 
-static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config)
+static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+						  const struct module_ext_init_data *ext_init)
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
-	/* FIXME: the size will be derived from configuration */
-	const size_t buf_size = 28 * 1024;
+	size_t buf_size = CONFIG_SOF_USERSPACE_DP_DEFAULT_HEAP_SIZE;
 
+#if CONFIG_IPC_MAJOR_4
+	if (config->ipc_extended_init && ext_init && ext_init->dp_data &&
+	    ext_init->dp_data->heap_bytes > 0) {
+		if (ext_init->dp_data->heap_bytes > MB(64)) {
+			LOG_ERR("Bad heap size %u bytes for %#x",
+				ext_init->dp_data->heap_bytes, config->id);
+			return NULL;
+		}
+
+		buf_size = ext_init->dp_data->heap_bytes;
+
+		LOG_INF("%zu byte heap size requested in IPC for %#x", buf_size, config->id);
+	}
+#endif
+	/*
+	 * A 1-to-1 replacement of the original heap implementation would be to
+	 * have "lifetime size" equal to 0. But (1) this is invalid for
+	 * vregion_create() and (2) we gradually move objects, that are simple
+	 * to move to the lifetime buffer. Make it 4k for the beginning.
+	 */
 	return vregion_create(buf_size);
 }
 
-static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
-							  const struct comp_ipc_config *config)
+static
+struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+						   const struct comp_ipc_config *config,
+						   const struct module_ext_init_data *ext_init)
 {
 	struct k_heap *mod_heap;
 	struct vregion *mod_vreg;
@@ -86,7 +108,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_SOF_VREGIONS) &&
 	    IS_ENABLED(CONFIG_USERSPACE) && !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_vreg = module_adapter_dp_heap_new(config);
+		mod_vreg = module_adapter_dp_heap_new(config, ext_init);
 		if (!mod_vreg) {
 			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
 			return NULL;
@@ -227,8 +249,14 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 			return NULL;
 	}
 #endif
+	const struct module_ext_init_data *ext_init =
+#if CONFIG_IPC_MAJOR_4
+		&ext_data;
+#else
+		NULL;
+#endif
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init);
 
 	if (!mod)
 		return NULL;
@@ -245,8 +273,9 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	/*
 	 * NOTE: dst->ext_data points to stack variable and contains
 	 *       pointers to IPC payload mailbox, so its only valid in
-	 *       functions that called from this function. This why
-	 *       the pointer is set NULL before this function exits.
+	 *       functions that are called from this function. This is
+	 *       why the pointer is set to NULL before this function
+	 *       exits.
 	 */
 #if CONFIG_IPC_MAJOR_4
 	dst->ext_data = &ext_data;
