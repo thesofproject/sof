@@ -51,8 +51,33 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL, NULL, NULL);
 }
 
-static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
-							  const struct comp_ipc_config *config)
+static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+						  const struct module_ext_init_data *ext_init)
+{
+	size_t buf_size = CONFIG_SOF_USERSPACE_DP_DEFAULT_HEAP_SIZE;
+	uintptr_t vreg_start;
+
+#if CONFIG_IPC_MAJOR_4
+	if (config->ipc_extended_init && ext_init && ext_init->dp_data &&
+	    ext_init->dp_data->heap_bytes > 0) {
+		if (ext_init->dp_data->heap_bytes > MB(64)) {
+			LOG_ERR("Bad heap size %u bytes for %#x",
+				ext_init->dp_data->heap_bytes, config->id);
+			return NULL;
+		}
+
+		buf_size = ext_init->dp_data->heap_bytes;
+
+		LOG_INF("%zu byte heap size requested in IPC for %#x", buf_size, config->id);
+	}
+#endif
+	return vregion_create_map(&vreg_start, &buf_size);
+}
+
+static
+struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+						   const struct comp_ipc_config *config,
+						   const struct module_ext_init_data *ext_init)
 {
 	struct k_heap *mod_heap;
 	struct vregion *mod_vreg;
@@ -67,15 +92,10 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 */
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-	size_t vreg_size;
-	uintptr_t vreg_start;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_SOF_VREGIONS) &&
 	    IS_ENABLED(CONFIG_USERSPACE) && !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		/* src-lite with 8 channels has been seen allocating 14k in one go */
-		/* FIXME: the size will be derived from configuration */
-		vreg_size = 28 * 1024;
-		mod_vreg = vregion_create_map(&vreg_start, &vreg_size);
+		mod_vreg = module_adapter_dp_heap_new(config, ext_init);
 		if (!mod_vreg) {
 			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
 			return NULL;
@@ -92,8 +112,6 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 #else
 		mod_heap = drv->user_heap;
 #endif
-		vreg_size = 0;
-		vreg_start = 0;
 		mod_vreg = NULL;
 	}
 
@@ -223,8 +241,14 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 			return NULL;
 	}
 #endif
+	const struct module_ext_init_data *ext_init =
+#if CONFIG_IPC_MAJOR_4
+		&ext_data;
+#else
+		NULL;
+#endif
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init);
 
 	if (!mod)
 		return NULL;
