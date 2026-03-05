@@ -61,6 +61,7 @@ int tb_setup(struct sof *sof, struct testbench_prm *tp)
 	sys_comp_module_mixout_interface_init();
 	sys_comp_module_multiband_drc_interface_init();
 	sys_comp_module_mux_interface_init();
+	sys_comp_module_phase_vocoder_interface_init();
 	sys_comp_module_rtnr_interface_init();
 	sys_comp_module_selector_interface_init();
 	sys_comp_module_sound_dose_interface_init();
