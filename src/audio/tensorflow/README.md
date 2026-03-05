@@ -1,34 +1,22 @@
-# SOF Tensorflow Micro Integration
+# TensorFlow Lite Micro (TFLM) Architecture
 
-The TFLM module integrates tensorflow micro into SOF as an audio classifiction and in the future an audio processing module. This module is currently still work in progress, and needs a few features to be completed before its ready for production.
+This directory acts as the bridge for running ML models.
 
-## Building
+## Overview
 
-Please run ```./scripts/tensorflow-clone.sh``` before building as this will clone all dependencies required to build tensor flow micro with optimized xtensa kernels.
+Integrates TensorFlow Lite for Microcontrollers into the SOF audio pipeline. Evaluates pre-trained neural network topologies inline with the audio stream for tasks like wake-word, noise cancellation, or sound classification.
 
-Please select the following in Kconfig
+## Architecture Diagram
+
+```mermaid
+graph LR
+  Feat[Audio Features] --> TFLM[TFLM Inference Engine]
+  SubGraph[FlatBuffer Model] -.-> TFLM
+  TFLM --> Out[Inference Labels/Scores]
 ```
-CONFIG_CPP=y
-CONFIG_STD_CPP17=y
-CONFIG_SOF_STAGING=y
-```
 
-To build as built-in, select ```CONFIG_COMP_TENSORFLOW=y``` in Kconfig and build.
+## Configuration and Scripts
 
-To build as a llext module, select ```CONFIG_COMP_TENSORFLOW=m``` in Kconfig and the build.
-
-## Running
-
-The TFLM SOF module needs features created by the MFCC module as its input. This step is still in progress. The following pipeline will be used
-
-``` Mic --> MFCC --> TFLM --> Classification ```
-
-## TODO
-
-1) Create MFCC pipeline and align with TFLM micro_speech audio feature extraction configuration.
-
-2) Support compressed output PCM with Classification results.
-
-3) Load tflite models via binary kcontrol.
-
-4) Support audio processing via TFLM module.
+- **Kconfig**: Enforces requirements for C++17 support and core framework staging logic (`COMP_TENSORFLOW`).
+- **CMakeLists.txt**: An intricate build specification linking the Tensilica neural network library block computations (`nn_hifi_lib`) and the TensorFlow Lite micro core engine (`tflm_lib`). Also hooks the `tflm-classify.c` SOF adapter via compiler flags explicitly enforcing memory, precision, and XTENSA optimizations.
+- **tflmcly.toml**: Topology definition for the specific TFLM Classifier implementation binding the engine against the UUID `UUIDREG_STR_TFLMCLY`.
