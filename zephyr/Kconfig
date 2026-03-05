@@ -203,6 +203,15 @@ config ZEPHYR_DP_SCHEDULER
 	  DP modules can be located in dieffrent cores than LL pipeline modules, may have
 	  different tick (i.e. 300ms for speech reccognition, etc.)
 
+config ZEPHYR_DP_SCHEDULER_MIN_STACK_SIZE
+       int "Minimum stack size for DP processing thread"
+       default 512
+       help
+         Defines the minimum stack size allowed for DP processing
+         threads despite what is requested in the module init IPC
+         ext_init payload. If the stack size requested in the IPC is
+         smaller than this, then the value defined here takes over.
+
 config CROSS_CORE_STREAM
 	bool "Enable cross-core connected pipelines"
 	default y if IPC_MAJOR_4
