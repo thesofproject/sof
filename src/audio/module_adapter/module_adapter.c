@@ -58,12 +58,27 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #endif
 
 static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+						       const struct module_ext_init_data *ext_init,
 						       size_t *heap_size)
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
-	/* FIXME: the size will be derived from configuration */
-	const size_t buf_size = 16 * 1024;
+	size_t buf_size = 16 * 1024; /* the default heap buffer size */
 
+#if CONFIG_IPC_MAJOR_4
+	if (config->ipc_extended_init && ext_init && ext_init->dp_data &&
+	    (ext_init->dp_data->lifetime_heap_bytes > 0 ||
+	     ext_init->dp_data->interim_heap_bytes)) {
+		/*
+		 * For the moment there is only one heap so sum up
+		 * lifetime and interim values. It is also a conscious
+		 * decision here to count the size of struct
+		 * dp_heap_user to be included into required heap
+		 * size.
+		 */
+		buf_size = ext_init->dp_data->lifetime_heap_bytes +
+			ext_init->dp_data->interim_heap_bytes;
+	}
+#endif
 	/* Keep uncached to match the default SOF heap! */
 	uint8_t *mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 					      buf_size, PAGE_SZ);
@@ -86,8 +101,10 @@ static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_con
 	return mod_heap_user;
 }
 
-static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
-							  const struct comp_ipc_config *config)
+static struct processing_module *
+module_adapter_mem_alloc(const struct comp_driver *drv,
+			 const struct comp_ipc_config *config,
+			 const struct module_ext_init_data *ext_init)
 {
 	struct k_heap *mod_heap;
 	/*
@@ -104,7 +121,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_USERSPACE) &&
 	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_heap_user = module_adapter_dp_heap_new(config, &heap_size);
+		mod_heap_user = module_adapter_dp_heap_new(config, ext_init, &heap_size);
 		if (!mod_heap_user) {
 			comp_cl_err(drv, "Failed to allocate DP module heap");
 			return NULL;
@@ -220,8 +237,14 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 			return NULL;
 	}
 #endif
+	const struct module_ext_init_data *ext_init =
+#if CONFIG_IPC_MAJOR_4
+		&ext_data;
+#else
+		NULL;
+#endif
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init);
 
 	if (!mod)
 		return NULL;
