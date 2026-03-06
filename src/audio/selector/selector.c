@@ -37,6 +37,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if CONFIG_IPC_MAJOR_4
+#define SEL_MAX_CONFIG_BLOB_SIZE (SEL_MAX_NUM_CONFIGS * sizeof(struct ipc4_selector_coeffs_config))
+#endif
+
 LOG_MODULE_REGISTER(selector, CONFIG_SOF_LOG_LEVEL);
 
 #if CONFIG_IPC_MAJOR_3
@@ -574,7 +578,7 @@ static void build_config(struct comp_data *cd, struct module_config *cfg)
 	/* Build default coefficient array (unity Q10 on diagonal, i.e. pass-through mode) */
 	memset(&cd->coeffs_config, 0, sizeof(cd->coeffs_config));
 	for (i = 0; i < MIN(SEL_SOURCE_CHANNELS_MAX, SEL_SINK_CHANNELS_MAX); i++)
-		cd->coeffs_config.coeffs[i][i] = 1 << 10;
+		cd->coeffs_config.coeffs[i][i] = SEL_COEF_ONE_Q10;
 }
 
 static int selector_init(struct processing_module *mod)
@@ -733,6 +737,7 @@ static int selector_free(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "entry");
 
+	mod_free(mod, cd->multi_coeffs_config);
 	mod_free(mod, cd);
 
 	return 0;
@@ -769,13 +774,51 @@ static int selector_set_config(struct processing_module *mod, uint32_t config_id
 			       size_t response_size)
 {
 	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int n;
 
 	if (config_id == IPC4_SELECTOR_COEFFS_CONFIG_ID) {
-		if (data_offset_size != sizeof(cd->coeffs_config))
+		if (data_offset_size > SEL_MAX_CONFIG_BLOB_SIZE ||
+		    fragment_size < data_offset_size ||
+		    pos != MODULE_CFG_FRAGMENT_SINGLE) {
+			comp_err(dev, "Failure with data_offset_size %u fragment_size %u pos %u",
+				 data_offset_size, (uint32_t)fragment_size, (uint32_t)pos);
 			return -EINVAL;
+		}
 
-		memcpy_s(&cd->coeffs_config, sizeof(cd->coeffs_config), fragment, data_offset_size);
-		return 0;
+		/* The size must be N times the coefficient vectors size of one channels
+		 * up/down mix profile.
+		 */
+		n = data_offset_size / sizeof(struct ipc4_selector_coeffs_config);
+		if (n < 1 || data_offset_size != n * sizeof(struct ipc4_selector_coeffs_config)) {
+			comp_err(dev, "Invalid configuration size.");
+			return -EINVAL;
+		}
+
+		cd->num_configs = n;
+		if (cd->multi_coeffs_config && cd->multi_coeffs_config_size < data_offset_size) {
+			/* Configuration exist but the allocation is too small to write over. */
+			mod_free(mod, cd->multi_coeffs_config);
+			cd->multi_coeffs_config = NULL;
+		}
+
+		if (!cd->multi_coeffs_config) {
+			cd->multi_coeffs_config_size = data_offset_size;
+			cd->multi_coeffs_config = mod_alloc(mod, cd->multi_coeffs_config_size);
+			if (!cd->multi_coeffs_config) {
+				comp_err(dev, "Failed to allocate configuration blob.");
+				return -ENOMEM;
+			}
+		}
+
+		/* Copy the configuration and notify for need to re-configure. If for
+		 * some reason the memcpy_s() would return an error (it can't because
+		 * of the previous checks), the partial or incorrect blob would remain
+		 * allocated but be freed later in module error handling and ending.
+		 */
+		cd->new_config = true;
+		return memcpy_s(cd->multi_coeffs_config, cd->multi_coeffs_config_size,
+				fragment, data_offset_size);
 	}
 
 	return -EINVAL;
@@ -785,6 +828,112 @@ static int selector_get_config(struct processing_module *mod, uint32_t config_id
 			       uint32_t *data_offset_size, uint8_t *fragment, size_t fragment_size)
 {
 	/* ToDo: add support */
+	return 0;
+}
+
+/**
+ * \brief Loop the array of mix coefficients sets and find a set with matching channels
+ * in and out count.
+ * \param[in] cd Selector component data.
+ * \param[in] source_channels Number of channels in source.
+ * \param[in] sink_channels Number of channels in sink.
+ *
+ * \return Pointer to the matching ipc4_selector_coeffs_config if found, or NULL if
+ * no matching configuration exists.
+ */
+static struct ipc4_selector_coeffs_config *selector_config_array_search(struct comp_data *cd,
+									int source_channels,
+									int sink_channels)
+{
+	struct ipc4_selector_coeffs_config *found = NULL;
+	int i;
+
+	for (i = 0; i < cd->num_configs; i++) {
+		if (cd->multi_coeffs_config[i].source_channels_count == source_channels &&
+		    cd->multi_coeffs_config[i].sink_channels_count == sink_channels) {
+			found = &cd->multi_coeffs_config[i];
+			break;
+		}
+	}
+
+	return found;
+}
+
+/**
+ * \brief Get mix coefficients set from configuration blob with multiple coefficients sets.
+ *  Also activate more efficient pass-through copy mode if the coefficients indicate 1:1
+ *  copy from source to sink.
+ * \param[in,out] mod Selector base module device.
+ * \param[in] source_channels Number of channels in source.
+ * \param[in] sink_channels Number of channels in sink.
+ *
+ * \return Error code.
+ */
+static int selector_find_coefficients(struct processing_module *mod)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct ipc4_selector_coeffs_config *config;
+	uint32_t source_channels = cd->config.in_channels_count;
+	uint32_t sink_channels = cd->config.out_channels_count;
+	int16_t coef;
+	int ret, i, j;
+
+	/* In set_config() the blob is copied to cd->multi_coeffs_config. A legacy blob contains a
+	 * single set of mix coefficients without channels information. A new blob with multiple
+	 * configurations has the source and sink channels count information. If there has been no
+	 * set_config(), then the cd->coeffs_config has been initialized in set_selector_params()
+	 * to mix with coefficients SEL_COEF_ONE_Q10 for matching input and output channels.
+	 */
+	if (cd->multi_coeffs_config) {
+		if (cd->num_configs > 1) {
+			config = selector_config_array_search(cd, source_channels, sink_channels);
+			/* If not found, check if pass-through mix is defined for the max
+			 * channels count (8).
+			 */
+			if (!config && source_channels == sink_channels)
+				config = selector_config_array_search(cd, SEL_SOURCE_CHANNELS_MAX,
+								      SEL_SINK_CHANNELS_MAX);
+
+			if (!config) {
+				comp_err(dev, "No mix coefficients found for %u to %u channels.",
+					 source_channels, sink_channels);
+				return -EINVAL;
+			}
+		} else {
+			config = cd->multi_coeffs_config;
+		}
+
+		ret = memcpy_s(&cd->coeffs_config, sizeof(struct ipc4_selector_coeffs_config),
+			       config, sizeof(*config));
+		if (ret)
+			return ret;
+	}
+
+	/* The pass-through copy function can be used if coefficients are a unit matrix for
+	 * 1:1 stream copy.
+	 */
+	if (source_channels == sink_channels) {
+		cd->passthrough = true;
+		for (i = 0; i < sink_channels; i++) {
+			for (j = 0; j < source_channels; j++) {
+				coef = cd->coeffs_config.coeffs[i][j];
+				if ((i == j && coef != SEL_COEF_ONE_Q10) || (i != j && coef != 0)) {
+					cd->passthrough = false;
+					break;
+				}
+			}
+		}
+	} else {
+		cd->passthrough = false;
+	}
+
+	if (cd->passthrough)
+		comp_info(dev, "Passthrough mode.");
+	else
+		comp_info(dev, "Using coefficients for %u to %u channels.",
+			  source_channels, sink_channels);
+
 	return 0;
 }
 
@@ -799,10 +948,28 @@ static int selector_process(struct processing_module *mod,
 			    struct output_stream_buffer *output_buffers,
 			    int num_output_buffers)
 {
+	struct audio_stream *source;
+	struct audio_stream *sink;
 	struct comp_data *cd = module_get_private_data(mod);
 	uint32_t avail_frames = input_buffers[0].size;
+	int ret;
 
 	comp_dbg(mod->dev, "entry");
+
+	if (cd->new_config) {
+		cd->new_config = false;
+		ret = selector_find_coefficients(mod);
+		if (ret)
+			return ret;
+	}
+
+	if (cd->passthrough) {
+		source = input_buffers->data;
+		sink = output_buffers->data;
+		audio_stream_copy(source, 0, sink, 0, avail_frames * cd->config.in_channels_count);
+		module_update_buffer_position(input_buffers, output_buffers, avail_frames);
+		return 0;
+	}
 
 	if (avail_frames)
 		/* copy selected channels from in to out */
@@ -850,17 +1017,7 @@ static int selector_prepare(struct processing_module *mod,
 	/* get sink data format and period bytes */
 	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
 	cd->sink_period_bytes = audio_stream_period_bytes(&sinkb->stream, dev->frames);
-
-	/* There is an assumption that sink component will report out
-	 * proper number of channels [1] for selector to actually
-	 * reduce channel count between source and sink
-	 */
-	comp_info(dev, "source sink channel = %u %u",
-		  audio_stream_get_channels(&sourceb->stream),
-		  audio_stream_get_channels(&sinkb->stream));
-
 	sink_size = audio_stream_get_size(&sinkb->stream);
-
 	md->mpd.in_buff_size = cd->source_period_bytes;
 	md->mpd.out_buff_size = cd->sink_period_bytes;
 
@@ -891,6 +1048,11 @@ static int selector_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
+	if (cd->new_config) {
+		cd->new_config = false;
+		return selector_find_coefficients(mod);
+	}
+
 	return 0;
 }
 
@@ -908,7 +1070,9 @@ static int selector_reset(struct processing_module *mod)
 	cd->source_period_bytes = 0;
 	cd->sink_period_bytes = 0;
 	cd->sel_func = NULL;
-
+	cd->num_configs = 0;
+	cd->passthrough = false;
+	cd->new_config = false;
 	return 0;
 }
 

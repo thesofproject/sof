@@ -27,6 +27,9 @@
 struct comp_buffer;
 struct comp_dev;
 
+/** \brief Default mix gain. */
+#define SEL_COEF_ONE_Q10 1024 /* int16(1 * 2^10) */
+
 #if CONFIG_IPC_MAJOR_3
 /** \brief Supported channel count on input. */
 #define SEL_SOURCE_2CH 2
@@ -42,6 +45,9 @@ struct comp_dev;
 
 /** \brief Maximum supported channel count on output. */
 #define SEL_SINK_CHANNELS_MAX   8
+
+/** \brief Maximum number of configurations in the blob received with set_config() */
+#define SEL_MAX_NUM_CONFIGS	8
 
 #define SEL_NUM_IN_PIN_FMTS	1
 #define SEL_NUM_OUT_PIN_FMTS	1
@@ -60,8 +66,10 @@ enum ipc4_selector_config_id {
 
 /** \brief IPC4 mixing coefficients configuration. */
 struct ipc4_selector_coeffs_config {
-	uint16_t rsvd0;	/**< Unused field, keeps the structure aligned with common layout */
-	uint16_t rsvd1;	/**< Unused field, keeps the structure aligned with common layout */
+	uint8_t source_channels_count; /**< Used when multiple profiles are packed into one blob. */
+	uint8_t sink_channels_count; /**< Used when multiple profiles are packed into one blob. */
+	uint8_t source_channel_config; /**< Used when multiple profiles are packed into one blob. */
+	uint8_t sink_channel_config; /**< Used when multiple profiles are packed into one blob. */
 
 	/** Mixing coefficients in Q10 fixed point format */
 	int16_t coeffs[SEL_SINK_CHANNELS_MAX][SEL_SOURCE_CHANNELS_MAX];
@@ -109,6 +117,8 @@ struct comp_data {
 #if CONFIG_IPC_MAJOR_4
 	struct sof_selector_ipc4_config sel_ipc4_cfg;
 	struct ipc4_selector_coeffs_config coeffs_config;
+	struct ipc4_selector_coeffs_config *multi_coeffs_config;
+	size_t multi_coeffs_config_size;
 #endif
 
 	uint32_t source_period_bytes;	/**< source number of period bytes */
@@ -117,6 +127,9 @@ struct comp_data {
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	struct sof_sel_config config;	/**< component configuration data */
 	sel_func sel_func;	/**< channel selector processing function */
+	int num_configs;	/**< Number of coefficients sets in configuration blob. */
+	bool passthrough;	/**< Use a passthrough copy function when no up/down mix. */
+	bool new_config;	/**< True if new configuration has been received */
 };
 
 /** \brief Selector processing functions map. */
