@@ -1,0 +1,15 @@
+version = [1, 0]
+
+[adsp]
+name = "imx8m_cm7"
+
+[[adsp.mem_zone]]
+type = "IRAM"
+base = "0x0000000"
+size = "0x2000"
+host_offset = "0x0"
+[[adsp.mem_zone]]
+type = "SRAM"
+base = "0x80000000"
+size = "0x100000"
+host_offset = "0x0"

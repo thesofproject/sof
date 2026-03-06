@@ -145,6 +145,15 @@ config IMX8M
 	help
 	  Select if your target platform is imx8m-compatible
 
+config IMX8M_CM7
+	bool "Build for NXP i.MX8MP CM7 core"
+	select ZEPHYR_LOG
+	select BUILD_OUTPUT_BIN
+	select HOST_PTABLE
+	select IMX
+	help
+	  Select if your target platform is imx8mp-compatible with cm7 core.
+
 config IMX8ULP
 	bool "Build for NXP i.MX8ULP"
 	select XT_HAVE_RESET_VECTOR_ROM
