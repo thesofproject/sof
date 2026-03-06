@@ -93,9 +93,14 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		break;
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_HS_VIRTUAL:
-	case SOF_DAI_AMD_SW_AUDIO:
+	case SOF_DAI_AMD_SDW:
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
+	    #if defined(CONFIG_SOC_ACP_7_0)
+		if (channel >= 64 && channel < 128) {
+		channel = channel - 64;
+		}
+		#endif
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
 		handshake = dai_get_handshake(dd->dai, dai->direction,
@@ -188,9 +193,29 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		break;
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_HS_VIRTUAL:
-	case SOF_DAI_AMD_SW_AUDIO:
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
+	case SOF_DAI_AMD_SDW:
+		#define SDW_INSTANCES 2
+	    #if defined(CONFIG_SOC_ACP_6_0)
 		break;
+		#else
+		struct acp_dma_dev_data *dev_data = dd->dma->z_dev->data;
+		struct sdw_pin_data *pin_data;
+		/* Allocate memory only if not already allocated */
+		if (!dev_data->dai_index_ptr) {
+			pin_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					   sizeof(*pin_data));
+			dev_data->dai_index_ptr = pin_data;
+		} else {
+			pin_data = dev_data->dai_index_ptr;
+		}
+		pin_data->pin_num = dd->dai->index;
+		pin_data->pin_dir = dai->direction;
+		pin_data->dma_channel = dd->chan ? dd->chan->index : 0xFFFF;
+		pin_data->index = 0xFFFF;
+		pin_data->instance = 0xFFFF;
+		dev_data->dai_index_ptr = pin_data;
+		break;
+		#endif
 	case SOF_DAI_MEDIATEK_AFE:
 		break;
 	default:

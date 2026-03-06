@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2023 AMD. All rights reserved.
+//Copyright(c) 2023, 2026 AMD. All rights reserved.
 //
 //Author:       Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //              SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+//              Sivasubramanian <sravisar@amd.com>
 
 #include <rtos/panic.h>
-#include <platform/chip_offset_byte.h>
-#include <platform/chip_registers.h>
 #include <rtos/interrupt.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
@@ -91,7 +90,7 @@ int platform_ipc_init(struct ipc *ipc)
 	/* schedule */
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_amd_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
-	arch_interrupt_clear(IRQ_NUM_EXT_LEVEL3);
+	interrupt_disable(IRQ_NUM_EXT_LEVEL3, ipc);
 	interrupt_register(IRQ_NUM_EXT_LEVEL3, amd_irq_handler, ipc);
 	/* Enabling software interuppts */
 	interrupt_enable(IRQ_NUM_EXT_LEVEL3, ipc);

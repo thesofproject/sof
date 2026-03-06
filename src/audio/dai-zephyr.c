@@ -191,6 +191,10 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_IMX_MICFIL;
 		cfg_params = &sof_cfg->micfil;
 		break;
+	case SOF_DAI_AMD_SDW:
+		cfg.type = DAI_AMD_SDW;
+		cfg_params = &sof_cfg->acpsdw;
+		break;
 	default:
 		return -EINVAL;
 	}

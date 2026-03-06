@@ -182,7 +182,7 @@
 	.ifeq (XTHAL_SAS_TIE | XTHAL_SAS_NOCC | XTHAL_SAS_CALR) & ~(\select)
 	xchal_sa_align	\ptr, 0, 0, 16, 16
 	ae_s64.i	aed0, \ptr, .Lxchal_ofs_+56
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_s64.i	aed1, \ptr, .Lxchal_ofs_+0
 	ae_s64.i	aed2, \ptr, .Lxchal_ofs_+8
 	ae_s64.i	aed3, \ptr, .Lxchal_ofs_+16
@@ -191,7 +191,7 @@
 	ae_s64.i	aed6, \ptr, .Lxchal_ofs_+40
 	ae_s64.i	aed7, \ptr, .Lxchal_ofs_+48
 	ae_s64.i	aed8, \ptr, .Lxchal_ofs_+56
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_s64.i	aed9, \ptr, .Lxchal_ofs_+0
 	ae_s64.i	aed10, \ptr, .Lxchal_ofs_+8
 	ae_s64.i	aed11, \ptr, .Lxchal_ofs_+16
@@ -200,7 +200,7 @@
 	ae_s64.i	aed14, \ptr, .Lxchal_ofs_+40
 	ae_s64.i	aed15, \ptr, .Lxchal_ofs_+48
 	ae_s64.i	aed16, \ptr, .Lxchal_ofs_+56
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_s64.i	aed17, \ptr, .Lxchal_ofs_+0
 	ae_s64.i	aed18, \ptr, .Lxchal_ofs_+8
 	ae_s64.i	aed19, \ptr, .Lxchal_ofs_+16
@@ -209,7 +209,7 @@
 	ae_s64.i	aed22, \ptr, .Lxchal_ofs_+40
 	ae_s64.i	aed23, \ptr, .Lxchal_ofs_+48
 	ae_s64.i	aed24, \ptr, .Lxchal_ofs_+56
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_s64.i	aed25, \ptr, .Lxchal_ofs_+0
 	ae_s64.i	aed26, \ptr, .Lxchal_ofs_+8
 	ae_s64.i	aed27, \ptr, .Lxchal_ofs_+16
@@ -225,12 +225,12 @@
 	s8i	\at1, \ptr, .Lxchal_ofs_+58
 	ae_movae	\at1, aep3
 	s8i	\at1, \ptr, .Lxchal_ofs_+59
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_salign128.i	u0, \ptr, .Lxchal_ofs_+0
 	ae_salign128.i	u1, \ptr, .Lxchal_ofs_+16
 	ae_salign128.i	u2, \ptr, .Lxchal_ofs_+32
 	ae_salign128.i	u3, \ptr, .Lxchal_ofs_+48
-	addi.a	\ptr, \ptr, -320
+	addi	\ptr, \ptr, -320
 	ae_movdrzbvc	aed0		// ureg AE_ZBIASV8C
 	ae_s64.i	aed0, \ptr, .Lxchal_ofs_+0 + 0
 	ae_movvfcrfsr	aed0		// ureg FCR_FSR
@@ -302,7 +302,7 @@
 	l32i	\at1, \ptr, .Lxchal_ofs_+52
 	wur.ae_cend2	\at1		// ureg 251
 	ae_l64.i	aed0, \ptr, .Lxchal_ofs_+56
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_l64.i	aed1, \ptr, .Lxchal_ofs_+0
 	ae_l64.i	aed2, \ptr, .Lxchal_ofs_+8
 	ae_l64.i	aed3, \ptr, .Lxchal_ofs_+16
@@ -311,7 +311,7 @@
 	ae_l64.i	aed6, \ptr, .Lxchal_ofs_+40
 	ae_l64.i	aed7, \ptr, .Lxchal_ofs_+48
 	ae_l64.i	aed8, \ptr, .Lxchal_ofs_+56
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_l64.i	aed9, \ptr, .Lxchal_ofs_+0
 	ae_l64.i	aed10, \ptr, .Lxchal_ofs_+8
 	ae_l64.i	aed11, \ptr, .Lxchal_ofs_+16
@@ -320,7 +320,7 @@
 	ae_l64.i	aed14, \ptr, .Lxchal_ofs_+40
 	ae_l64.i	aed15, \ptr, .Lxchal_ofs_+48
 	ae_l64.i	aed16, \ptr, .Lxchal_ofs_+56
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_l64.i	aed17, \ptr, .Lxchal_ofs_+0
 	ae_l64.i	aed18, \ptr, .Lxchal_ofs_+8
 	ae_l64.i	aed19, \ptr, .Lxchal_ofs_+16
@@ -329,7 +329,7 @@
 	ae_l64.i	aed22, \ptr, .Lxchal_ofs_+40
 	ae_l64.i	aed23, \ptr, .Lxchal_ofs_+48
 	ae_l64.i	aed24, \ptr, .Lxchal_ofs_+56
-	addi.a	\ptr, \ptr, 64
+	addi	\ptr, \ptr, 64
 	ae_l64.i	aed25, \ptr, .Lxchal_ofs_+0
 	ae_l64.i	aed26, \ptr, .Lxchal_ofs_+8
 	ae_l64.i	aed27, \ptr, .Lxchal_ofs_+16
@@ -337,7 +337,7 @@
 	ae_l64.i	aed29, \ptr, .Lxchal_ofs_+32
 	ae_l64.i	aed30, \ptr, .Lxchal_ofs_+40
 	ae_l64.i	aed31, \ptr, .Lxchal_ofs_+48
-	addi.a	\ptr, \ptr, 56
+	addi	\ptr, \ptr, 56
 	l8ui	\at1, \ptr, .Lxchal_ofs_+0
 	ae_movea	aep0, \at1
 	l8ui	\at1, \ptr, .Lxchal_ofs_+1
@@ -346,7 +346,7 @@
 	ae_movea	aep2, \at1
 	l8ui	\at1, \ptr, .Lxchal_ofs_+3
 	ae_movea	aep3, \at1
-	addi.a	\ptr, \ptr, 8
+	addi	\ptr, \ptr, 8
 	ae_lalign128.i	u0, \ptr, .Lxchal_ofs_+0
 	ae_lalign128.i	u1, \ptr, .Lxchal_ofs_+16
 	ae_lalign128.i	u2, \ptr, .Lxchal_ofs_+32

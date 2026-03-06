@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2024 AMD. All rights reserved.
+//Copyright(c) 2024, 2026 AMD. All rights reserved.
 //
 //Author:	SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+//	        Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
+//          Sivasubramanian <sravisar@amd.com>
 
 #include <sof/common.h>
 #include <sof/drivers/acp_dai_dma.h>
@@ -299,7 +301,7 @@ const struct dai_type_info dti[] = {
 	},
 #endif
 	{
-		.type		= SOF_DAI_AMD_SW_AUDIO,
+		.type		= SOF_DAI_AMD_SDW,
 		.dai_array	= swaudiodai,
 		.num_dais	= ARRAY_SIZE(swaudiodai)
 	},

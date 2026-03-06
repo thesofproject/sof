@@ -94,7 +94,7 @@ enum sof_ipc_dai_type {
 	SOF_DAI_AMD_SP_VIRTUAL,		/**<Amd SP VIRTUAL */
 	SOF_DAI_AMD_HS_VIRTUAL,		/**<Amd HS VIRTUAL */
 	SOF_DAI_IMX_MICFIL,		/**< i.MX MICFIL */
-	SOF_DAI_AMD_SW_AUDIO		/**<Amd SW AUDIO */
+	SOF_DAI_AMD_SDW		/**< Amd SDW */
 };
 
 /* general purpose DAI configuration */

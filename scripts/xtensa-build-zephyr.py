@@ -123,6 +123,12 @@ extra_platform_configs = {
 		"rmb_LX7_HiFi5_PROD",
 		RIMAGE_KEY = "key param ignored by acp_6_0"
 	),
+	"acp_7_0" : PlatformConfig(
+		"amd", "acp_7_0_adsp/acp_7_0",
+		f"RI-2023.11{xtensa_tools_version_postfix}",
+		"ACP_7_0_HiFi5_NNE_PROD",
+		RIMAGE_KEY = "key param ignored by acp_7_0"
+	),
 	# MediaTek platforms
 	# (move to platform_configs_all on next Zephyr SDK release after 0.17.0)
 	"mt8195" : PlatformConfig(
@@ -1306,7 +1312,7 @@ def gzip_compress(fname, gzdst=None):
 RI_INFO_UNSUPPORTED = []
 
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp', 'imx95']
-RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0']
+RI_INFO_UNSUPPORTED += ['acp_6_0','acp_7_0']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196', 'mt8365']
 RI_INFO_UNSUPPORTED += ['qemu_xtensa', 'qemu_xtensa_mmu']
 

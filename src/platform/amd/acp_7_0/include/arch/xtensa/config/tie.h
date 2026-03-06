@@ -32,6 +32,10 @@
 #ifndef XTENSA_CORE_TIE_H
 #define XTENSA_CORE_TIE_H
 
+#ifndef UINT32_C
+#define UINT32_C(x) x
+#endif
+
 /* parasoft-begin-suppress ALL "This file not MISRA checked." */
 
 #define XCHAL_CP_NUM			UINT32_C(1)	/* number of coprocessors */

@@ -238,8 +238,6 @@ config ACP_7_0
 	select XT_INTERRUPT_LEVEL_4
 	select XT_WAITI_DELAY
 	select XTENSA_EXCLUSIVE
-	select AMD
-	select SCHEDULE_DMA_MULTI_CHANNEL
 	help
 	 Select if your target platform is acp_7_0-compatible
 
