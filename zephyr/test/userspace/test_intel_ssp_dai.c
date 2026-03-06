@@ -130,13 +130,16 @@ static void intel_ssp_dai_user(void *p1, void *p2, void *p3)
 	 * cannot access
 	 */
 	dma_in = sof_dma_get(SOF_DMA_DIR_DEV_TO_MEM, 0, SOF_DMA_DEV_SSP, SOF_DMA_ACCESS_SHARED);
+	zassert_not_null(dma_in, "dma_in get failed");
 	dma_out = sof_dma_get(SOF_DMA_DIR_MEM_TO_DEV, 0, SOF_DMA_DEV_SSP, SOF_DMA_ACCESS_SHARED);
+	zassert_not_null(dma_out, "dma_out get failed");
 
 	k_sem_take(&ipc_sem_wake_user, K_FOREVER);
 
 	LOG_INF("create a DAI device for %s", STRINGIFY(SSP_DEVICE));
 
 	dai_dev = DEVICE_DT_GET(DT_NODELABEL(SSP_DEVICE));
+	zassert_not_null(dai_dev, "dai_dev DT struct not found");
 	err = dai_probe(dai_dev);
 	zassert_equal(err, 0);
 
@@ -297,8 +300,11 @@ static void intel_ssp_dai_kernel(void)
 	k_thread_access_grant(&user_thread, &ipc_sem_wake_kernel);
 
 	dma_out = DEVICE_DT_GET(DT_NODELABEL(hda_link_out));
+	zassert_not_null(dma_out, "hda_link_out not found");
 	dma_in = DEVICE_DT_GET(DT_NODELABEL(hda_link_in));
+	zassert_not_null(dma_in, "hda_link_in not found");
 	dai_dev = DEVICE_DT_GET(DT_NODELABEL(SSP_DEVICE));
+	zassert_not_null(dai_dev, "SSP_DEVICE not found");
 
 	k_thread_access_grant(&user_thread, dma_out);
 	k_thread_access_grant(&user_thread, dma_in);
