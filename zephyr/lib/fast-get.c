@@ -277,40 +277,42 @@ void fast_put(struct k_heap *heap, const void *sram_ptr)
 		LOG_ERR("Put called to unknown address %p", sram_ptr);
 		goto out;
 	}
+
 	entry->refcount--;
 
 	if (!entry->refcount) {
-#if CONFIG_USERSPACE
-		/* For large buffers, we need to:
-		 * 1. Free the heap buffer FIRST (while partition still grants us access)
-		 * 2. Then remove the partition (to prevent partition leaks)
-		 * This order is critical - we must free while we still have access.
-		 */
-		if (entry->size > FAST_GET_MAX_COPY_SIZE) {
-			struct k_mem_partition part;
-			struct k_mem_domain *domain = entry->thread->mem_domain_info.mem_domain;
-			void *addr = entry->sram_ptr;
-
-			sof_heap_free(heap, addr);
-
-			part.start = (uintptr_t)addr;
-			part.size = ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE);
-			part.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB;
-
-			int err = k_mem_domain_remove_partition(domain, &part);
-
-			if (err < 0)
-				LOG_WRN("partition removal failed err=%d", err);
-
-		} else
-#endif /* CONFIG_USERSPACE */
-		{
-			/* Small buffers have no partitions, just free */
-			sof_heap_free(heap, entry->sram_ptr);
-		}
-
-		memset(entry, 0, sizeof(*entry));
+		LOG_DBG("freeing buffer %p", entry->sram_ptr);
+		sof_heap_free(heap, entry->sram_ptr);
 	}
+
+#if CONFIG_USERSPACE
+	/*
+	 * For large buffers, each thread that called fast_get() has a partition
+	 * in its memory domain. Each thread must remove its own partition here
+	 * to prevent partition leaks.
+	 *
+	 * Order matters: free buffer first (needs partition for cache access),
+	 * then remove partition.
+	 */
+	if (entry->size > FAST_GET_MAX_COPY_SIZE && entry->thread) {
+		struct k_mem_partition part = {
+			.start = (uintptr_t)entry->sram_ptr,
+			.size = ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE),
+			.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
+		};
+		struct k_mem_domain *domain = k_current_get()->mem_domain_info.mem_domain;
+
+		LOG_DBG("removing partition %p size %#zx from thread %p",
+			(void *)part.start, part.size, k_current_get());
+		int err = k_mem_domain_remove_partition(domain, &part);
+
+		if (err)
+			LOG_WRN("partition removal failed: %d", err);
+	}
+#endif
+
+	if (!entry->refcount)
+		memset(entry, 0, sizeof(*entry));
 out:
 	LOG_DBG("put %p, DRAM %p size %u refcnt %u", sram_ptr, entry ? entry->dram_ptr : 0,
 		entry ? entry->size : 0, entry ? entry->refcount : 0);
