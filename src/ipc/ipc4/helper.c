@@ -63,7 +63,7 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx comp_tr;
 
 static const struct comp_driver *ipc4_get_drv(const void *uuid);
-static int ipc4_add_comp_dev(struct comp_dev *dev);
+int ipc4_add_comp_dev(struct comp_dev *dev);
 
 void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 			   uint32_t id)
@@ -184,23 +184,6 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 	} else {
 		dev = drv->ops.create(drv, &ipc_config, (const void *)data);
 	}
-	if (!dev)
-		return NULL;
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-
-#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
-	/* init global performance measurement */
-	dev->perf_data.perf_data_item = perf_data_getnext();
-	/* this can be null, just no performance measurements in this case */
-	if (dev->perf_data.perf_data_item) {
-		dev->perf_data.perf_data_item->item.resource_id = comp_id;
-		if (perf_meas_get_state() != IPC4_PERF_MEASUREMENTS_DISABLED)
-			comp_init_performance_data(dev);
-	}
-#endif
-
 	ipc4_add_comp_dev(dev);
 
 	comp_update_ibs_obs_cpc(dev);
@@ -1245,12 +1228,26 @@ struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 }
 EXPORT_SYMBOL(ipc4_get_comp_dev);
 
-__cold static int ipc4_add_comp_dev(struct comp_dev *dev)
+__cold int ipc4_add_comp_dev(struct comp_dev *dev)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
 
 	assert_can_be_cold();
+
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	/* init global performance measurement */
+	dev->perf_data.perf_data_item = perf_data_getnext();
+	/* this can be null, just no performance measurements in this case */
+	if (dev->perf_data.perf_data_item) {
+		dev->perf_data.perf_data_item->item.resource_id = dev->ipc_config.id;
+		if (perf_meas_get_state() != IPC4_PERF_MEASUREMENTS_DISABLED)
+			comp_init_performance_data(dev);
+	}
+#endif
 
 	/* check id for duplicates */
 	icd = ipc_get_comp_by_id(ipc, dev->ipc_config.id);

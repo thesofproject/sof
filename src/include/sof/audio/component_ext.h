@@ -39,6 +39,7 @@ struct comp_driver_list {
 struct comp_dev *comp_new(struct sof_ipc_comp *comp);
 #elif CONFIG_IPC_MAJOR_4
 struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init);
+int ipc4_add_comp_dev(struct comp_dev *dev);
 #endif
 
 /** See comp_ops::free */
