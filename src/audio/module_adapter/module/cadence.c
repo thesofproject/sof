@@ -471,13 +471,31 @@ int cadence_codec_resolve_api_with_id(struct processing_module *mod, uint32_t co
 	return 0;
 }
 
-int cadence_codec_process_data(struct processing_module *mod)
+static void cadence_store_api_error_code(struct comp_dev *dev,
+					 XA_ERRORCODE *api_error_code,
+					 int ret, const char *cmd_name)
+{
+	if (!api_error_code)
+		return;
+
+	if (*api_error_code && *api_error_code != ret)
+		comp_dbg(dev, "overwriting api error code at %s: old %#x new %#x",
+			 cmd_name, *api_error_code, ret);
+
+	*api_error_code = ret;
+}
+
+int cadence_codec_process_data(struct processing_module *mod,
+			       XA_ERRORCODE *api_error_code)
 {
 	struct cadence_codec_data *cd = module_get_private_data(mod);
 	struct module_data *codec = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	uint32_t done = 0;
 	int ret;
+
+	if (api_error_code)
+		*api_error_code = 0;
 
 	if (codec->mpd.eos_reached) {
 		codec->mpd.produced = 0;
@@ -490,11 +508,13 @@ int cadence_codec_process_data(struct processing_module *mod)
 		/* Signal that the stream is expected to end anytime soon */
 		API_CALL(cd, XA_API_CMD_INPUT_OVER, 0, NULL, ret);
 		if (ret != LIB_NO_ERROR) {
+			if (api_error_code)
+				*api_error_code = ret;
+
 			if (LIB_IS_FATAL_ERROR(ret)) {
 				comp_err(dev, "input_over failed with error: %x", ret);
 				return ret;
 			}
-			comp_warn(dev, "input_over failed with nonfatal error: %x", ret);
 		}
 	}
 
@@ -506,20 +526,24 @@ int cadence_codec_process_data(struct processing_module *mod)
 
 	API_CALL(cd, XA_API_CMD_EXECUTE, XA_CMD_TYPE_DO_EXECUTE, NULL, ret);
 	if (ret != LIB_NO_ERROR) {
+		cadence_store_api_error_code(dev, api_error_code, ret,
+					     "XA_API_CMD_EXECUTE_DO_EXECUTE");
+
 		if (LIB_IS_FATAL_ERROR(ret)) {
 			comp_err(dev, "processing failed with error: %x", ret);
 			return ret;
 		}
-		comp_warn(dev, "processing failed with nonfatal error: %x", ret);
 	}
 
 	API_CALL(cd, XA_API_CMD_EXECUTE, XA_CMD_TYPE_DONE_QUERY, &done, ret);
 	if (ret != LIB_NO_ERROR) {
+		cadence_store_api_error_code(dev, api_error_code, ret,
+					     "XA_API_CMD_EXECUTE_DONE_QUERY");
+
 		if (LIB_IS_FATAL_ERROR(ret)) {
 			comp_err(dev, "done query failed with error: %x", ret);
 			return ret;
 		}
-		comp_warn(dev, "done query failed with nonfatal error: %x", ret);
 	}
 
 	API_CALL(cd, XA_API_CMD_GET_OUTPUT_BYTES, 0, &codec->mpd.produced, ret);
