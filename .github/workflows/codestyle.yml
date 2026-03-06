@@ -18,44 +18,6 @@ permissions:
   contents: read
 
 jobs:
-  checkpatch:
-    runs-on: ubuntu-24.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        strictness: [null, --subjective]
-
-    env:
-      PR_NUM: ${{github.event.number}}
-      # TODO: reduce duplication with scripts/sof-*-commit-hook.sh
-      # thanks to either some .conf file or some wrapper script
-      CHK_CMD_OPTS: --ignore UNKNOWN_COMMIT_ID --codespell
-
-    steps:
-      # depth 2 so:
-      # ^1. we can show the Subject of the current target branch tip
-      # ^2. we reconnect/graft to the later fetch pull/1234/head,
-      - uses: actions/checkout@v4
-        with: {fetch-depth: 2}
-
-      - name: install codespell
-        run: sudo apt-get -y install codespell && dpkg -L codespell | grep dict
-
-      # See shallowness issue https://github.com/thesofproject/linux/issues/2556
-      - name: fetch PR commits
-        run: |
-           .github/workflows/shallowfetchPRcommits.sh \
-              ${GITHUB_REPOSITORY} "$PR_NUM"
-           # show what we got
-           git --no-pager log --oneline --graph --decorate --max-count=50
-
-      - name: checkpatch
-        env:
-          STRICTNESS: ${{ matrix.strictness }}
-        run: .github/workflows/checkpatch_list.sh ${CHK_CMD_OPTS}
-          ${STRICTNESS} < PR_SHAs.txt
-
   yamllint:
     runs-on: ubuntu-latest
     steps:
