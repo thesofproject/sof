@@ -264,7 +264,7 @@ cadence_codec_process(struct processing_module *mod,
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
-	ret = cadence_codec_process_data(mod);
+	ret = cadence_codec_process_data(mod, NULL);
 	if (ret)
 		return ret;
 

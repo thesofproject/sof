@@ -96,7 +96,8 @@ int cadence_codec_set_configuration(struct processing_module *mod, uint32_t conf
 int cadence_codec_resolve_api_with_id(struct processing_module *mod, uint32_t codec_id,
 				      uint32_t direction);
 int cadence_codec_apply_params(struct processing_module *mod, int size, void *data);
-int cadence_codec_process_data(struct processing_module *mod);
+int cadence_codec_process_data(struct processing_module *mod,
+			       XA_ERRORCODE *api_error_code);
 int cadence_codec_apply_config(struct processing_module *mod);
 void cadence_codec_free_memory_tables(struct processing_module *mod);
 int cadence_codec_init_memory_tables(struct processing_module *mod);

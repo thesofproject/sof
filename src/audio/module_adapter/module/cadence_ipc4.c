@@ -465,7 +465,7 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
-	ret = cadence_codec_process_data(mod);
+	ret = cadence_codec_process_data(mod, NULL);
 	if (ret) {
 		source_release_data(sources[0], 0);
 		return ret;
