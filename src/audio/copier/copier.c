@@ -39,6 +39,7 @@
 #include "host_copier.h"
 #include "dai_copier.h"
 #include "ipcgtw_copier.h"
+#include "qemugtw_copier.h"
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 #include <zephyr/drivers/mic_privacy/intel/mic_privacy.h>
 #endif
@@ -216,6 +217,14 @@ __cold static int copier_init(struct processing_module *mod)
 			}
 			break;
 #endif
+		case ipc4_qemu_output_class:
+		case ipc4_qemu_input_class:
+			ret = copier_qemugtw_create(mod, copier, dev->pipeline);
+			if (ret < 0) {
+				comp_err(dev, "unable to create QEMU gateway");
+				goto error;
+			}
+			break;
 		default:
 			comp_err(dev, "unsupported dma type %x", (uint32_t)node_id.f.dma_type);
 			ret = -EINVAL;
@@ -251,11 +260,14 @@ __cold static int copier_free(struct processing_module *mod)
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
-		if (!cd->ipc_gtw)
+		if (cd->qemu_gtw) {
+			copier_qemugtw_free(mod);
+		} else if (!cd->ipc_gtw) {
 			copier_host_free(mod);
-		else
+		} else {
 			/* handle gtw case */
 			copier_ipcgtw_free(mod);
+		}
 		break;
 	case SOF_COMP_DAI:
 		copier_dai_free(mod);
@@ -287,7 +299,9 @@ static int copier_prepare(struct processing_module *mod,
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
-		if (!cd->ipc_gtw) {
+		if (cd->qemu_gtw) {
+			/* do nothing */
+		} else if (!cd->ipc_gtw) {
 			ret = host_common_prepare(cd->hd);
 			if (ret < 0)
 				return ret;
@@ -310,8 +324,9 @@ static int copier_prepare(struct processing_module *mod,
 							      &cd->config.out_fmt, ipc4_gtw_none,
 							      ipc4_bidirection, DUMMY_CHMAP);
 		if (!cd->converter[0]) {
-			comp_err(dev, "can't support for in format %d, out format %d",
-				 cd->config.base.audio_fmt.depth,  cd->config.out_fmt.depth);
+			comp_err(dev, "can't support for in format %d (valid %d) out format %d (valid %d)",
+				 cd->config.base.audio_fmt.depth, cd->config.base.audio_fmt.valid_bit_depth,
+				 cd->config.out_fmt.depth, cd->config.out_fmt.valid_bit_depth);
 			return -EINVAL;
 		}
 	}
@@ -332,7 +347,9 @@ static int copier_reset(struct processing_module *mod)
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
-		if (!cd->ipc_gtw)
+		if (cd->qemu_gtw)
+			copier_qemugtw_reset(dev);
+		else if (!cd->ipc_gtw)
 			host_common_reset(cd->hd, dev->state);
 		else
 			copier_ipcgtw_reset(dev);
@@ -374,7 +391,9 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
-		if (!cd->ipc_gtw) {
+		if (cd->qemu_gtw) {
+			/* do nothing */
+		} else if (!cd->ipc_gtw) {
 			ret = host_common_trigger(cd->hd, dev, cmd);
 			if (ret < 0)
 				return ret;
@@ -673,6 +692,9 @@ static int copier_process(struct processing_module *mod,
 
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
+		if (cd->qemu_gtw)
+			return copier_qemugtw_process(dev);
+
 		if (!cd->ipc_gtw)
 			return host_common_copy(cd->hd, dev, copier_host_dma_cb);
 
@@ -706,7 +728,9 @@ static int copier_params(struct processing_module *mod)
 	for (i = 0; i < cd->endpoint_num; i++) {
 		switch (dev->ipc_config.type) {
 		case SOF_COMP_HOST:
-			if (!cd->ipc_gtw)
+			if (cd->qemu_gtw)
+				ret = copier_qemugtw_params(cd->qemugtw_data, dev, params);
+			else if (!cd->ipc_gtw)
 				ret = copier_host_params(cd, dev, params);
 			else
 				/* handle gtw case */
@@ -932,7 +956,7 @@ __cold static int copier_get_configuration(struct processing_module *mod,
 
 	assert_can_be_cold();
 
-	if (cd->ipc_gtw)
+	if (cd->ipc_gtw || cd->qemu_gtw)
 		return 0;
 
 	switch (config_id) {
@@ -1029,8 +1053,8 @@ static uint64_t copier_get_processed_data(struct comp_dev *dev, uint32_t stream_
 			switch (dev->ipc_config.type) {
 			case  SOF_COMP_HOST:
 				source = dev->direction == SOF_IPC_STREAM_PLAYBACK;
-				/* only support host, not support ipcgtw case */
-				if (!cd->ipc_gtw && source == input)
+				/* only support host, not support ipcgtw/qemugtw case */
+				if (!cd->ipc_gtw && !cd->qemu_gtw && source == input)
 					ret = cd->hd->total_data_processed;
 				break;
 			case  SOF_COMP_DAI:
@@ -1066,7 +1090,7 @@ static int copier_position(struct comp_dev *dev, struct sof_ipc_stream_posn *pos
 	switch (dev->ipc_config.type) {
 	case SOF_COMP_HOST:
 		/* only support host not support gtw case */
-		if (!cd->ipc_gtw) {
+		if (!cd->ipc_gtw && !cd->qemu_gtw) {
 			posn->host_posn = cd->hd->local_pos;
 			ret = posn->host_posn;
 		}

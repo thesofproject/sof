@@ -80,6 +80,12 @@ enum ipc4_connector_node_id_type {
 	/**< SPI */
 	ipc4_spi_output_class = 25,
 	ipc4_spi_input_class = 26,
+
+	/**< QEMU test output (DSP ->). */
+	ipc4_qemu_output_class = 27,
+	/**< QEMU test input (DSP <-). */
+	ipc4_qemu_input_class = 28,
+
 	ipc4_max_connector_node_id_type
 };
 
@@ -209,7 +215,8 @@ enum ipc4_gateway_type {
 	ipc4_gtw_link	= BIT(3),
 	ipc4_gtw_alh	= BIT(4),
 	ipc4_gtw_ssp	= BIT(5),
-	ipc4_gtw_all	= BIT(6) - 1
+	ipc4_gtw_qemu	= BIT(6),
+	ipc4_gtw_all	= BIT(7) - 1
 };
 
 enum ipc4_direction_type {
