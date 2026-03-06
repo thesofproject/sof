@@ -1126,9 +1126,8 @@ int ipc4_process_on_core(uint32_t core, bool blocking)
 	return IPC4_SUCCESS;
 }
 
-__cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
+__cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 {
-	const struct sof_uuid *const __maybe_unused sof_uuid = (const struct sof_uuid *)uuid;
 	struct comp_driver_list *drivers = comp_drivers_get();
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
@@ -1149,18 +1148,26 @@ __cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
 			       info->drv->type,
 			       info->drv->tctx->uuid_p);
 			drv = info->drv;
-			goto out;
+			break;
 		}
 	}
 
-	tr_warn(&comp_tr,
-		"the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
-		sof_uuid->a, sof_uuid->b, sof_uuid->c, sof_uuid->d[0], sof_uuid->d[1],
-		sof_uuid->d[2], sof_uuid->d[3], sof_uuid->d[4], sof_uuid->d[5], sof_uuid->d[6],
-		sof_uuid->d[7]);
-
-out:
 	irq_local_enable(flags);
+	return drv;
+}
+
+__cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
+{
+	const struct comp_driver *drv = ipc4_search_for_drv(uuid);
+	const struct sof_uuid *const __maybe_unused sof_uuid = (const struct sof_uuid *)uuid;
+
+	if (!drv)
+		tr_warn(&comp_tr,
+			"the provided UUID (%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x) can't be found!",
+			sof_uuid->a, sof_uuid->b, sof_uuid->c, sof_uuid->d[0], sof_uuid->d[1],
+			sof_uuid->d[2], sof_uuid->d[3], sof_uuid->d[4], sof_uuid->d[5],
+			sof_uuid->d[6], sof_uuid->d[7]);
+
 	return drv;
 }
 
@@ -1174,7 +1181,6 @@ out:
 __cold const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 {
 	const struct sof_man_fw_desc *desc = NULL;
-	const struct comp_driver *drv;
 	const struct sof_man_module *mod;
 	uint32_t entry_index;
 
@@ -1223,18 +1229,18 @@ __cold const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 		return NULL;
 #endif
 	}
-	/* Check already registered components */
-	drv = ipc4_get_drv(&mod->uuid);
 
 #if CONFIG_LIBRARY_MANAGER
-	if (!drv) {
-		/* New module not registered yet. */
-		lib_manager_register_module(module_id);
-		drv = ipc4_get_drv(&mod->uuid);
-	}
-#endif
+	/* Check already registered components */
+	const struct comp_driver *drv = ipc4_search_for_drv(&mod->uuid);
 
-	return drv;
+	if (drv)
+		return drv;
+
+	/* New module not registered yet. */
+	lib_manager_register_module(module_id);
+#endif
+	return ipc4_get_drv(&mod->uuid);
 }
 
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
