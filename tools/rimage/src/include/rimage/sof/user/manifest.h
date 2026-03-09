@@ -257,6 +257,10 @@ struct sof_man_module_manifest {
  * enough and that SRAM will not use these addresses.
  */
 #define SOF_MODULE_DRAM_LINK_START	0
+#if CONFIG_COLD_STORE_EXECUTE_DRAM
 #define SOF_MODULE_DRAM_LINK_END	0x08000000
+#else
+#define SOF_MODULE_DRAM_LINK_END	SOF_MODULE_DRAM_LINK_START
+#endif
 
 #endif /* __RIMAGE_USER_MANIFEST_H__ */
