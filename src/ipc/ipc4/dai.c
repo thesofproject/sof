@@ -28,6 +28,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#ifdef CONFIG_DAI_INTEL_UAOL
+#include <sof/audio/uaol.h>
+#endif
 
 #include "../audio/copier/copier.h"
 #include "../audio/copier/dai_copier.h"
@@ -183,8 +186,11 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 			 dev->ipc_config.frame_fmt, dd->stream_id);
 
 		break;
+#ifdef CONFIG_DAI_INTEL_UAOL
 	case SOF_DAI_INTEL_UAOL:
+		dai_get_uaol_stream_id(dd->dai, &dd->uaol.link_id, &dd->uaol.stream_id);
 		break;
+#endif
 	default:
 		/* other types of DAIs not handled for now */
 		comp_warn(dev, "Unknown dai type %d", dai->type);
@@ -241,6 +247,14 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		dma_release_channel(dd->dma->z_dev, dd->chan_index);
 		dd->chan_index = -EINVAL;
 	}
+
+#ifdef CONFIG_DAI_INTEL_UAOL
+	if (dd->uaol.fb_chan_idx >= 0) {
+		dma_stop(dd->dma->z_dev, dd->uaol.fb_chan_idx);
+		dma_release_channel(dd->dma->z_dev, dd->uaol.fb_chan_idx);
+		dd->uaol.fb_chan_idx = -EINVAL;
+	}
+#endif
 }
 
 void dai_release_llp_slot(struct dai_data *dd)
