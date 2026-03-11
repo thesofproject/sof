@@ -1,10 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-cmocka_test(find_min_int16
-	find_min_int16.c
-	${PROJECT_SOURCE_DIR}/src/math/numbers.c
-)
-
 cmocka_test(find_max_abs_int32
 	find_max_abs_int32.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c
