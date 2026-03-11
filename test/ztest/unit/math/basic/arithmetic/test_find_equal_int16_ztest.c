@@ -6,6 +6,8 @@
 // generative artificial intelligence solutions.
 //
 // Converted from CMock to Ztest
+// Original tests from test/cmocka/src/math/numbers/find_equal_int16.c:
+// Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
 #include <zephyr/ztest.h>
 #include <sof/math/numbers.h>
