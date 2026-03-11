@@ -6,6 +6,9 @@
 // generative artificial intelligence solutions.
 //
 // Converted from CMock to Ztest
+// Original tests from test/cmocka/src/math/numbers/gcd.c:
+// Author: Marcin Maka <marcin.maka@linux.intel.com>
+//         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <zephyr/ztest.h>
 #include <sof/math/numbers.h>
