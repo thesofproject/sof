@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-add_subdirectory(trig)
 add_subdirectory(arithmetic)
 add_subdirectory(fft)
 add_subdirectory(window)
