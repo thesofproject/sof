@@ -26,6 +26,7 @@ target_sources(app PRIVATE
 	test_find_min_int16_ztest.c
 	test_find_max_abs_int32_ztest.c
 	test_norm_int32_ztest.c
+	test_crc32_ztest.c
 	${SOF_ROOT}/src/math/numbers.c
 )
 
