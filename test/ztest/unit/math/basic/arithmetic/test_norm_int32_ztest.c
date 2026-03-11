@@ -6,6 +6,8 @@
 // generative artificial intelligence solutions.
 //
 // Converted from CMock to Ztest
+// Original tests from test/cmocka/src/math/numbers/norm_int32.c:
+// Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
 #include <zephyr/ztest.h>
 #include <sof/math/numbers.h>
