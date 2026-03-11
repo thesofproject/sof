@@ -34,11 +34,19 @@
 
 /* Define M_PI if not available */
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
+#define M_PI	3.14159265358979323846
 #endif
 
 /* Conversion factor from degrees to radians (PI/180) */
-#define DEGREES_TO_RADIANS 0.017453292519943295
+#define DEGREES_TO_RADIANS	0.017453292519943295
+
+#define CMP_TOLERANCE_32B	0.0000000611175871f
+#define CMP_TOLERANCE_16B	0.000065f
+#define CMP_TOLERANCE_ASIN_32B	0.000000068141916f
+#define CMP_TOLERANCE_ACOS_32B	0.000000060077032f
+#define CMP_TOLERANCE_ASIN_16B	0.0001152158f
+#define CMP_TOLERANCE_ACOS_16B	0.0001196862f
+#define CMP_TOLERANCE_SIN	3.1e-5f
 
 /*
  * Helper function for rounding double values to nearest integer
