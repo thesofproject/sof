@@ -8,7 +8,6 @@ set(SOF_ROOT "${PROJECT_SOURCE_DIR}/../../../../../..")
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
-	${SOF_ROOT}/test/cmocka/include
 )
 
 # Define SOF-specific configurations for unit testing
