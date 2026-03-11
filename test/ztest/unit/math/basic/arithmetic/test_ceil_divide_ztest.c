@@ -6,6 +6,8 @@
 // generative artificial intelligence solutions.
 //
 // Converted from CMock to Ztest
+// Original file: sof/test/cmocka/src/math/numbers/ceil_divide.c
+// Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
 #include <zephyr/ztest.h>
 #include <sof/math/numbers.h>
