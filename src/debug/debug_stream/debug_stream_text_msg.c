@@ -15,18 +15,15 @@
 
 LOG_MODULE_REGISTER(debug_stream_text_msg);
 
-void ds_msg(const char *format, ...)
+void ds_vamsg(const char *format, va_list args)
 {
-	va_list args;
 	struct {
 		struct debug_stream_text_msg msg;
 		char text[128];
 	} __packed buf = { 0 };
 	ssize_t len;
 
-	va_start(args, format);
 	len = vsnprintf(buf.text, sizeof(buf.text), format, args);
-	va_end(args);
 
 	if (len < 0)
 		return;
@@ -36,6 +33,15 @@ void ds_msg(const char *format, ...)
 	buf.msg.hdr.size_words = SOF_DIV_ROUND_UP(sizeof(buf.msg) + len,
 						  sizeof(buf.msg.hdr.data[0]));
 	debug_stream_slot_send_record(&buf.msg.hdr);
+}
+
+void ds_msg(const char *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	ds_vamsg(format, args);
+	va_end(args);
 }
 
 #if defined(CONFIG_EXCEPTION_DUMP_HOOK)
