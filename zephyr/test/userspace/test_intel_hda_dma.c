@@ -57,6 +57,7 @@ static void intel_hda_dma_user(void *p1, void *p2, void *p3)
 	 * cannot access
 	 */
 	dma = sof_dma_get(SOF_DMA_DIR_LMEM_TO_HMEM, 0, SOF_DMA_DEV_HOST, SOF_DMA_ACCESS_SHARED);
+	zassert_not_null(dma, "dma get failed");
 
 	k_sem_take(&ipc_sem_wake_user, K_FOREVER);
 	LOG_INF("configure DMA channel");
@@ -181,6 +182,7 @@ static void intel_hda_dma_kernel(void)
 	k_thread_access_grant(&user_thread, &ipc_sem_wake_kernel);
 
 	dma = DEVICE_DT_GET(DT_NODELABEL(hda_host_in));
+	zassert_not_null(dma, "hda_host_in device not found");
 	k_thread_access_grant(&user_thread, dma);
 
 	hda_ipc_msg(INTEL_ADSP_IPC_HOST_DEV, IPCCMD_HDA_RESET,
