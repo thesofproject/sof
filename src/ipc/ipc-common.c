@@ -24,6 +24,8 @@
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <ipc/dai.h>
@@ -35,6 +37,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#endif
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+#include <rtos/userspace_helper.h>
+#include <sof/schedule/ll_schedule_domain.h>
+#include <ipc4/pipeline.h>
+#endif
+
 #include <sof/debug/telemetry/performance_monitor.h>
 
 LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
@@ -42,6 +54,18 @@ LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(ipc);
 
 DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+K_APPMEM_PARTITION_DEFINE(ipc_context_part);
+
+K_APP_BMEM(ipc_context_part) static struct ipc ipc_context;
+
+struct ipc *ipc_get(void)
+{
+	return &ipc_context;
+}
+EXPORT_SYMBOL(ipc_get);
+#endif
 
 int ipc_process_on_core(uint32_t core, bool blocking)
 {
@@ -256,7 +280,11 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 			list_item_append(&msg->list, &ipc->msg_list);
 	}
 
+#if 0 /*def CONFIG_SOF_USERSPACE_LL */
+	LOG_WRN("Skipping IPC worker schedule. TODO to fix\n");
+#else
 	schedule_ipc_worker();
+#endif
 
 	k_spin_unlock(&ipc->lock, key);
 }
@@ -288,29 +316,208 @@ void ipc_schedule_process(struct ipc *ipc)
 #endif
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/* User-space thread for pipeline_two_components test */
+#define IPC_USER_STACKSIZE 8192
+
+#define IPC_USER_EVENT_CMD      BIT(0)
+#define IPC_USER_EVENT_STOP     BIT(1)
+
+static struct k_thread ipc_user_thread;
+static K_THREAD_STACK_DEFINE(ipc_user_stack, IPC_USER_STACKSIZE);
+
+/**
+ * @brief Forward an IPC4 command to the user-space thread.
+ *
+ * Called from kernel context (IPC EDF task) to forward the IPC4
+ * message to the user-space thread for processing. Sets
+ * IPC_TASK_IN_THREAD in task_mask so the host is not signaled
+ * until the user thread completes. Blocks until the user thread
+ * finishes processing and returns the result.
+ *
+ * @param ipc4 Pointer to the IPC4 message request
+ * @return Result from user thread processing
+ */
+int ipc_user_forward_cmd(struct ipc4_message_request *ipc4)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_user *pdata = ipc->ipc_user_pdata;
+	k_spinlock_key_t key;
+	int ret;
+
+	LOG_DBG("IPC: forward cmd %08x", ipc4->primary.dat);
+
+	/* Copy message words — original buffer may be reused */
+	pdata->ipc_msg_pri = ipc4->primary.dat;
+	pdata->ipc_msg_ext = ipc4->extension.dat;
+	pdata->ipc = ipc;
+
+	/* Prevent host completion until user thread finishes */
+	key = k_spin_lock(&ipc->lock);
+	ipc->task_mask |= IPC_TASK_IN_THREAD;
+	k_spin_unlock(&ipc->lock, key);
+
+	/* Wake the user thread */
+	k_event_set(pdata->event, IPC_USER_EVENT_CMD);
+
+	/* Wait for user thread to complete */
+	ret = k_sem_take(pdata->sem, K_MSEC(10));
+	if (ret) {
+		LOG_ERR("IPC user: sem error %d\n", ret);
+		return ret;
+	}
+
+	/* Clear the task mask bit and check for completion */
+	key = k_spin_lock(&ipc->lock);
+	ipc->task_mask &= ~IPC_TASK_IN_THREAD;
+	ipc_complete_cmd(ipc);
+	k_spin_unlock(&ipc->lock, key);
+
+	return pdata->result;
+}
+
+/**
+ * User-space thread entry point for pipeline_two_components test.
+ * p1 points to the ppl_test_ctx shared with the kernel launcher.
+ */
+static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
+{
+	struct ipc_user *ipc_user = p1;
+
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	__ASSERT(k_is_user_context(), "expected user context");
+
+	/* Signal startup complete — unblocks init waiting on semaphore */
+	k_sem_give(ipc_user->sem);
+	LOG_INF("IPC user-space thread started");
+
+	for (;;) {
+		uint32_t mask = k_event_wait_safe(ipc_user->event,
+						  IPC_USER_EVENT_CMD | IPC_USER_EVENT_STOP,
+						  false, K_MSEC(5000));
+
+		LOG_DBG("IPC user wake, mask %u", mask);
+
+		if (mask & IPC_USER_EVENT_CMD) {
+			struct ipc4_pipeline_create pipe_msg;
+
+			/* Reconstruct the IPC4 message from copied words */
+			pipe_msg.primary.dat = ipc_user->ipc_msg_pri;
+			pipe_msg.extension.dat = ipc_user->ipc_msg_ext;
+
+			/* Execute pipeline creation in user context */
+			ipc_user->result = ipc_pipeline_new(ipc_user->ipc, (ipc_pipe_new *)&pipe_msg);
+
+			/* Signal completion — kernel side will finish IPC */
+			k_sem_give(ipc_user->sem);
+		}
+
+		if (mask & IPC_USER_EVENT_STOP)
+			break;
+	}
+}
+
+__cold int ipc_user_init(void)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_user *ipc_user = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER,
+						   sizeof(*ipc_user), 0);
+	int ret;
+
+	ipc_user->sem = k_object_alloc(K_OBJ_SEM);
+	if (!ipc_user->sem) {
+		LOG_ERR("user IPC sem alloc failed");
+		k_panic();
+	}
+
+	ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(), &ipc_context_part);
+
+	k_sem_init(ipc_user->sem, 0, 1);
+
+	/* Allocate kernel objects for the user-space thread */
+	ipc_user->event = k_object_alloc(K_OBJ_EVENT);
+	if (!ipc_user->event) {
+		LOG_ERR("user IPC event alloc failed");
+		k_panic();
+	}
+	k_event_init(ipc_user->event);
+
+	k_thread_create(&ipc_user_thread, ipc_user_stack, IPC_USER_STACKSIZE,
+			ipc_user_thread_fn, ipc_user, NULL, NULL,
+			-1, K_USER, K_FOREVER);
+
+	ipc_user->thread = &ipc_user_thread;
+	k_thread_access_grant(&ipc_user_thread, ipc_user->sem, ipc_user->event);
+	user_grant_dai_access_all(&ipc_user_thread);
+	user_grant_dma_access_all(&ipc_user_thread);
+	user_access_to_mailbox(zephyr_ll_mem_domain(), &ipc_user_thread);
+	zephyr_ll_grant_access(&ipc_user_thread);
+	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &ipc_user_thread);
+
+	k_thread_name_set(&ipc_user_thread, __func__);
+
+	/* Store references in ipc struct so kernel handler can forward commands */
+	ipc->ipc_user_pdata = ipc_user;
+
+	k_thread_start(&ipc_user_thread);
+
+	struct task *task = zephyr_ll_task_alloc();
+	schedule_task_init_ll(task, SOF_UUID(ipc_uuid), SOF_SCHEDULE_LL_TIMER,
+			0, NULL, NULL, cpu_get_id(), 0);
+	ipc_user->audio_thread = scheduler_init_context(task);
+
+	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
+	k_sem_take(ipc->ipc_user_pdata->sem, K_FOREVER);
+
+	return 0;
+}
+#else
+static int ipc_user_init(void)
+{
+	return 0;
+}
+#endif /* CONFIG_SOF_USERSPACE_LL */
+
 __cold int ipc_init(struct sof *sof)
 {
+	struct k_heap *heap;
+	struct ipc *ipc;
+
 	assert_can_be_cold();
 
 	tr_dbg(&ipc_tr, "entry");
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+
+	ipc = ipc_get();
+	memset(ipc, 0, sizeof(*ipc));
+#else
+	heap = NULL;
+
 	/* init ipc data */
-	sof->ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->ipc));
-	if (!sof->ipc) {
+	ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*ipc));
+	if (!ipc) {
 		tr_err(&ipc_tr, "Unable to allocate IPC data");
 		return -ENOMEM;
 	}
-	sof->ipc->comp_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-				      SOF_IPC_MSG_MAX_SIZE);
-	if (!sof->ipc->comp_data) {
+	sof->ipc = ipc;
+#endif
+
+	ipc->comp_data = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					SOF_IPC_MSG_MAX_SIZE, 0);
+	if (!ipc->comp_data) {
 		tr_err(&ipc_tr, "Unable to allocate IPC component data");
-		rfree(sof->ipc);
+		sof_heap_free(heap, ipc);
 		return -ENOMEM;
 	}
+	memset(ipc->comp_data, 0, SOF_IPC_MSG_MAX_SIZE);
 
-	k_spinlock_init(&sof->ipc->lock);
-	list_init(&sof->ipc->msg_list);
-	list_init(&sof->ipc->comp_list);
+	k_spinlock_init(&ipc->lock);
+	list_init(&ipc->msg_list);
+	list_init(&ipc->comp_list);
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	struct io_perf_data_item init_data = {IO_PERF_IPC_ID,
@@ -319,20 +526,17 @@ __cold int ipc_init(struct sof *sof)
 					      IO_PERF_POWERED_UP_ENABLED,
 					      IO_PERF_D0IX_POWER_MODE,
 					      0, 0, 0 };
-	io_perf_monitor_init_data(&sof->ipc->io_perf_in_msg_count, &init_data);
+	io_perf_monitor_init_data(&ipc->io_perf_in_msg_count, &init_data);
 	init_data.direction = IO_PERF_OUTPUT_DIRECTION;
-	io_perf_monitor_init_data(&sof->ipc->io_perf_out_msg_count, &init_data);
+	io_perf_monitor_init_data(&ipc->io_perf_out_msg_count, &init_data);
 #endif
 
-#if CONFIG_SOF_BOOT_TEST_STANDALONE
-	LOG_INF("SOF_BOOT_TEST_STANDALONE, disabling IPC.");
-	return 0;
-#endif
 
 #ifdef __ZEPHYR__
-	struct k_thread *thread = &sof->ipc->ipc_send_wq.thread;
+	struct k_thread *thread = &ipc->ipc_send_wq.thread;
 
-	k_work_queue_start(&sof->ipc->ipc_send_wq, ipc_send_wq_stack,
+	k_work_queue_init(&ipc->ipc_send_wq);
+	k_work_queue_start(&ipc->ipc_send_wq, ipc_send_wq_stack,
 			   K_THREAD_STACK_SIZEOF(ipc_send_wq_stack), 1, NULL);
 
 	k_thread_suspend(thread);
@@ -342,10 +546,17 @@ __cold int ipc_init(struct sof *sof)
 
 	k_thread_resume(thread);
 
-	k_work_init_delayable(&sof->ipc->z_delayed_work, ipc_work_handler);
+	k_work_init_delayable(&ipc->z_delayed_work, ipc_work_handler);
 #endif
 
-	return platform_ipc_init(sof->ipc);
+	ipc_user_init();
+
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+	LOG_INF("SOF_BOOT_TEST_STANDALONE, skipping platform IPC init.");
+	return 0;
+#endif
+
+	return platform_ipc_init(ipc);
 }
 
 /* Locking: call with ipc->lock held and interrupts disabled */
