@@ -14,6 +14,7 @@ SOF_DEFINE_REG_UUID(ipc_task_posix);
 
 static struct ipc *global_ipc;
 
+#ifdef CONFIG_ARCH_POSIX_LIBFUZZER
 // Not an ISR, called from the native_posix fuzz interrupt.  Left
 // alone for general hygiene.  This is how a IPC interrupt would look
 // if we had one.
@@ -131,6 +132,7 @@ static void fuzz_isr(const void *arg)
 
 	posix_ipc_isr(NULL);
 }
+#endif
 
 // This API is... confounded by its history.  With IPC3, the job of
 // this function is to get a newly-received IPC message header (!)
@@ -172,12 +174,14 @@ int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
 // Re-raise the interrupt if there's still fuzz data to process
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
+#ifdef CONFIG_ARCH_POSIX_LIBFUZZER
 	extern void posix_sw_set_pending_IRQ(unsigned int IRQn);
 
 	if (fuzz_in_sz > 0) {
 		posix_fuzz_sz = 0;
 		posix_sw_set_pending_IRQ(CONFIG_ZEPHYR_POSIX_FUZZ_IRQ);
 	}
+#endif
 }
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
@@ -200,8 +204,10 @@ void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
 
 int platform_ipc_init(struct ipc *ipc)
 {
+#ifdef CONFIG_ARCH_POSIX_LIBFUZZER
 	IRQ_CONNECT(CONFIG_ZEPHYR_POSIX_FUZZ_IRQ, 0, fuzz_isr, NULL, 0);
 	irq_enable(CONFIG_ZEPHYR_POSIX_FUZZ_IRQ);
+#endif
 
 	global_ipc = ipc;
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_posix_uuid),
