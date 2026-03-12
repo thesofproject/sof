@@ -54,6 +54,20 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_SECONDARY_CORE	BIT(2)
 #define IPC_TASK_POWERDOWN      BIT(3)
 
+struct ipc_user {
+	struct k_thread *thread;
+	struct k_sem *sem;
+	struct k_event *event;
+	/** @brief Copy of IPC4 message primary word forwarded to user thread */
+	uint32_t ipc_msg_pri;
+	/** @brief Copy of IPC4 message extension word forwarded to user thread */
+	uint32_t ipc_msg_ext;
+	/** @brief Result code from user thread processing */
+	int result;
+	struct ipc *ipc;
+	struct k_thread *audio_thread;
+};
+
 struct ipc {
 	struct k_spinlock lock;	/* locking mechanism */
 	void *comp_data;
@@ -73,6 +87,10 @@ struct ipc {
 	struct task *ipc_task;
 #else
 	struct task ipc_task;
+#endif
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct ipc_user *ipc_user_pdata;
 #endif
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
@@ -96,6 +114,12 @@ struct ipc {
 
 extern struct task_ops ipc_task_ops;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+
+struct ipc *ipc_get(void);
+
+#else
+
 /**
  * \brief Get the IPC global context.
  * @return The global IPC context.
@@ -104,6 +128,8 @@ static inline struct ipc *ipc_get(void)
 {
 	return sof_get()->ipc;
 }
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /**
  * \brief Initialise global IPC context.
@@ -293,5 +319,15 @@ void ipc_complete_cmd(struct ipc *ipc);
 
 /* GDB stub: should enter GDB after completing the IPC processing */
 extern bool ipc_enter_gdb;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct ipc4_message_request;
+/**
+ * @brief Forward an IPC4 command to the user-space thread.
+ * @param ipc4 Pointer to the IPC4 message request
+ * @return Result from user thread processing
+ */
+int ipc_user_forward_cmd(struct ipc4_message_request *ipc4);
+#endif
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

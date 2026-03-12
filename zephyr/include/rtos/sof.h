@@ -46,8 +46,10 @@ struct sof {
 	int argc;
 	char **argv;
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	/* ipc */
 	struct ipc *ipc;
+#endif
 
 	/* system agent */
 	struct sa *sa;
