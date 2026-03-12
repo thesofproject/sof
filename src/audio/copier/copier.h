@@ -263,10 +263,12 @@ struct copier_data {
 	uint64_t output_total_data_processed;
 	struct host_data *hd;
 	bool ipc_gtw;
+	bool qemu_gtw;
 	struct dai_data *dd[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	uint32_t channels[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	uint32_t chan_map[IPC4_ALH_MAX_NUMBER_OF_GTW];
 	struct ipcgtw_data *ipcgtw_data;
+	struct qemugtw_data *qemugtw_data;
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 	struct mic_privacy_data *mic_priv;
 #endif
