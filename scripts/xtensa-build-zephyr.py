@@ -234,6 +234,10 @@ platform_configs_all = {
 		"zephyr", "qemu_xtensa/dc233c/mmu",
 		"", "", "zephyr"
 	),
+	"native_sim" : PlatformConfig(
+		"zephyr", "native_sim",
+		"", "", "zephyr"
+	),
 }
 
 platform_configs = platform_configs_all.copy()
