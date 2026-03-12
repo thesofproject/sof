@@ -8,6 +8,10 @@
 
 LVM_ReturnStatus_en LVM_GetVersionInfo(LVM_VersionInfo_st  *pVersion)
 {
+	if (pVersion) {
+		pVersion->pPlatform = "stub_platform";
+		pVersion->pVersionNumber = "0.0.0_stub";
+	}
 	return LVM_SUCCESS;
 }
 
