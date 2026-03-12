@@ -179,6 +179,40 @@ out:
 
 #ifdef __ZEPHYR__
 static K_THREAD_STACK_DEFINE(ipc_send_wq_stack, CONFIG_STACK_SIZE_IPC_TX);
+#if CONFIG_SOF_IPC_USER_THREAD
+static K_THREAD_STACK_DEFINE(ipc_user_stack, CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
+static void ipc_user_thread(void *arg1, void *arg2, void *arg3);
+
+static void ipc_init_user_thread(struct ipc *ipc)
+{
+	struct k_thread *user_thread = &ipc->ipc_user.thread;
+
+	k_sem_init(&ipc->ipc_user.req_sem, 0, 1);
+	k_sem_init(&ipc->ipc_user.reply_sem, 0, 1);
+
+	k_thread_create(user_thread, ipc_user_stack,
+			K_THREAD_STACK_SIZEOF(ipc_user_stack),
+			ipc_user_thread, ipc, NULL, NULL,
+			1, 0, K_FOREVER);
+
+	k_thread_cpu_pin(user_thread, PLATFORM_PRIMARY_CORE_ID);
+	k_thread_name_set(user_thread, "ipc_user");
+	k_thread_start(user_thread);
+}
+
+static void ipc_user_thread(void *arg1, void *arg2, void *arg3)
+{
+	struct ipc *ipc = arg1;
+
+	ARG_UNUSED(arg2);
+	ARG_UNUSED(arg3);
+
+	while (1) {
+		k_sem_take(&ipc->ipc_user.req_sem, K_FOREVER);
+		k_sem_give(&ipc->ipc_user.reply_sem);
+	}
+}
+#endif /* CONFIG_SOF_IPC_USER_THREAD */
 #endif
 
 static void schedule_ipc_worker(void)
@@ -339,10 +373,13 @@ __cold int ipc_init(struct sof *sof)
 
 	k_thread_cpu_pin(thread, PLATFORM_PRIMARY_CORE_ID);
 	k_thread_name_set(thread, "ipc_send_wq");
-
 	k_thread_resume(thread);
 
 	k_work_init_delayable(&sof->ipc->z_delayed_work, ipc_work_handler);
+
+	#if CONFIG_SOF_IPC_USER_THREAD
+	ipc_init_user_thread(sof->ipc);
+	#endif
 #endif
 
 	return platform_ipc_init(sof->ipc);

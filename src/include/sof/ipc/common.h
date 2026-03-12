@@ -54,6 +54,14 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_SECONDARY_CORE	BIT(2)
 #define IPC_TASK_POWERDOWN      BIT(3)
 
+#if defined(__ZEPHYR__) && CONFIG_SOF_IPC_USER_THREAD
+struct ipc_user_thread_data {
+	struct k_thread thread;
+	struct k_sem req_sem;
+	struct k_sem reply_sem;
+};
+#endif
+
 struct ipc {
 	struct k_spinlock lock;	/* locking mechanism */
 	void *comp_data;
@@ -84,6 +92,9 @@ struct ipc {
 #ifdef __ZEPHYR__
 	struct k_work_delayable z_delayed_work;
 	struct k_work_q ipc_send_wq;
+#if CONFIG_SOF_IPC_USER_THREAD
+	struct ipc_user_thread_data ipc_user;
+#endif
 #endif
 
 	void *private;
