@@ -7,6 +7,7 @@
 #define __SOC_DEBUG_STREAM_TEXT_MSG_H__
 
 #include <user/debug_stream_slot.h>
+#include <stdarg.h>
 
 /*
  * Debug Stream text message.
@@ -21,5 +22,6 @@ struct debug_stream_text_msg {
  * CONFIG_SOF_DEBUG_STREAM_TEXT_MSG to enable this function.
  */
 void ds_msg(const char *format, ...);
+void ds_vamsg(const char *format, va_list ap);
 
 #endif /*  __SOC_DEBUG_STREAM_TEXT_MSG_H__ */
