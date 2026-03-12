@@ -453,4 +453,9 @@ struct ipc4_chain_dma {
 	} extension;
 } __attribute__((packed, aligned(4)));
 
+struct ipc4_message_request;
+
+int ipc4_new_pipeline(struct ipc4_message_request *ipc4);
+int ipc4_delete_pipeline(struct ipc4_message_request *ipc4);
+
 #endif

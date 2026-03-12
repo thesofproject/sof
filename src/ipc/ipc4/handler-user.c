@@ -91,7 +91,7 @@ static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(
  * Global IPC Operations.
  */
 #ifndef CONFIG_SOF_USERSPACE_LL
-__cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
+__cold int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
 
@@ -102,7 +102,7 @@ __cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 #endif
 
 #ifndef CONFIG_SOF_USERSPACE_LL
-__cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
+__cold int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_pipeline_delete *pipe;
 	struct ipc *ipc = ipc_get();
