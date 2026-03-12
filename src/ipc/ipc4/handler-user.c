@@ -90,6 +90,7 @@ static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(
 /*
  * Global IPC Operations.
  */
+#ifndef CONFIG_SOF_USERSPACE_LL
 __cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
@@ -98,6 +99,7 @@ __cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 
 	return ipc_pipeline_new(ipc, (ipc_pipe_new *)ipc4);
 }
+#endif
 
 __cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 {
@@ -666,7 +668,12 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 
 	/* pipeline settings */
 	case SOF_IPC4_GLB_CREATE_PIPELINE:
+		/* Implementation in progress: forward only CREATE_PIPELINE for now */
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4);
+#else
 		ret = ipc4_new_pipeline(ipc4);
+#endif
 		break;
 	case SOF_IPC4_GLB_DELETE_PIPELINE:
 		ret = ipc4_delete_pipeline(ipc4);

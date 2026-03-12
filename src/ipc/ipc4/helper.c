@@ -340,8 +340,15 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc *ipc = ipc_get();
+	struct k_heap *heap = NULL;
 
 	assert_can_be_cold();
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+#endif
+
+	LOG_INF("pipe_desc %x, instance %u", pipe_desc, pipe_desc->primary.r.instance_id);
 
 	/* check whether pipeline id is already taken or in use */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipe_desc->primary.r.instance_id);
@@ -352,8 +359,9 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(NULL, pipe_desc->primary.r.instance_id,
+	pipe = pipeline_new(heap, pipe_desc->primary.r.instance_id,
 			    pipe_desc->primary.r.ppl_priority, 0, pparams);
+	LOG_INF("pipeline_new() -> %p", pipe);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
 		return IPC4_OUT_OF_MEMORY;
@@ -368,12 +376,13 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	pipe->core = pipe_desc->extension.r.core_id;
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-			   sizeof(struct ipc_comp_dev));
+	ipc_pipe = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				  sizeof(struct ipc_comp_dev), 0);
 	if (!ipc_pipe) {
 		pipeline_free(pipe);
 		return IPC4_OUT_OF_MEMORY;
 	}
+	memset(ipc_pipe, 0, sizeof(*ipc_pipe));
 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
@@ -383,6 +392,8 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+
+	LOG_INF("success");
 
 	return IPC4_SUCCESS;
 }
@@ -715,6 +726,14 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 #else
 	dp_heap = NULL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (!dp_heap) {
+		/* use system user heap for non-DP module buffers */
+		dp_heap = sof_sys_user_heap_get();
+	}
+#endif
+
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
 	/* If both components are on same core -- process IPC on that core,
