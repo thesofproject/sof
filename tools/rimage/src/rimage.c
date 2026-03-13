@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <errno.h>
 #include <string.h>
 #include <stdbool.h>
@@ -35,6 +36,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -q resign binary\n");
 	fprintf(stdout, "\t -p set PV bit\n");
 	fprintf(stdout, "\t -d ignore detached sections\n");
+	fprintf(stdout, "\t -Q, --quiet suppress informational stdout logs\n");
 }
 
 int main(int argc, char *argv[])
@@ -46,12 +48,18 @@ int main(int argc, char *argv[])
 	int use_ext_man = 0;
 	unsigned int pv_bit = 0;
 	bool imr_type_override = false;
+	bool quiet = false;
+	static const struct option long_options[] = {
+		{ "quiet", no_argument, NULL, 'Q' },
+		{ NULL, 0, NULL, 0 }
+	};
 
 	memset(&image, 0, sizeof(image));
 
 	image.imr_type = MAN_DEFAULT_IMR_TYPE;
 
-	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:pld")) != -1) {
+	while ((opt = getopt_long(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:pldQ",
+				  long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -106,6 +114,9 @@ int main(int argc, char *argv[])
 			/* ignore detached sections */
 			image.ignore_detached = true;
 			break;
+		case 'Q':
+			quiet = true;
+			break;
 		default:
 		 /* getopt's default error message is good enough */
 			return 1;
@@ -158,6 +169,10 @@ int main(int argc, char *argv[])
 			return -EINVAL;
 		}
 	}
+
+	if (quiet && !freopen("/dev/null", "w", stdout))
+		fprintf(stderr, "error: unable to redirect stdout: %s\n", strerror(errno));
+
 	/* find machine */
 	heap_adsp = malloc(sizeof(struct adsp));
 	if (!heap_adsp) {
