@@ -529,6 +529,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "imx8x" if IMX8X
 	default "imx8m" if IMX8M
 	default "imx8ulp" if IMX8ULP
+	default "imx95" if IMX95
 	default "rn" if RENOIR
 	default "rmb" if REMBRANDT
 	default "vangogh" if VANGOGH
