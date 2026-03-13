@@ -271,7 +271,7 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 	int dai_count;
 	int i, ret;
 	uint8_t *gtw_cfg_data = (uint8_t *)cd->config.gtw_cfg.config_data;
-	size_t gtw_cfg_szie = cd->config.gtw_cfg.config_length * 4;
+	size_t gtw_cfg_size = cd->config.gtw_cfg.config_length * 4;
 
 	assert_can_be_cold();
 
@@ -300,7 +300,7 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_SSP;
 		dai.is_config_blob = true;
 		cd->gtw_type = ipc4_gtw_ssp;
-		ret = ipc4_find_dma_config(&dai, gtw_cfg_data, gtw_cfg_szie);
+		ret = ipc4_find_dma_config(&dai, gtw_cfg_data, gtw_cfg_size);
 		if (ret != 0) {
 			comp_err(dev, "No ssp dma_config found in blob!");
 			return -EINVAL;
@@ -326,7 +326,7 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_DMIC;
 		dai.is_config_blob = true;
 		cd->gtw_type = ipc4_gtw_dmic;
-		ret = ipc4_find_dma_config(&dai, gtw_cfg_data, gtw_cfg_szie);
+		ret = ipc4_find_dma_config(&dai, gtw_cfg_data, gtw_cfg_size);
 		if (ret != 0) {
 			comp_err(dev, "No dmic dma_config found in blob!");
 			return -EINVAL;
