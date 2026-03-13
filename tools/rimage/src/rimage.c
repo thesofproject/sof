@@ -34,6 +34,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -y verify signed file\n");
 	fprintf(stdout, "\t -q resign binary\n");
 	fprintf(stdout, "\t -p set PV bit\n");
+	fprintf(stdout, "\t -d ignore detached sections\n");
 }
 
 int main(int argc, char *argv[])
@@ -50,7 +51,7 @@ int main(int argc, char *argv[])
 
 	image.imr_type = MAN_DEFAULT_IMR_TYPE;
 
-	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:pl")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:va:s:k:ri:f:b:ec:y:q:pld")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -100,6 +101,10 @@ int main(int argc, char *argv[])
 			break;
 		case 'l':
 			image.loadable_module = true;
+			break;
+		case 'd':
+			/* ignore detached sections */
+			image.ignore_detached = true;
 			break;
 		default:
 		 /* getopt's default error message is good enough */
@@ -225,7 +230,8 @@ int main(int argc, char *argv[])
 		if (ret < 0)
 			goto out;
 
-		module_parse_sections(&image.module[i].file, &image.adsp->mem, image.verbose);
+		module_parse_sections(&image.module[i].file, &image.adsp->mem, image.verbose,
+				      image.ignore_detached);
 
 		/* When there is more than one module, then first one is bootloader.
 		 * Does not apply to building a image of a loadable module. */

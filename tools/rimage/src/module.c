@@ -310,7 +310,8 @@ static enum module_section_type get_section_type(const struct elf_section_header
 	}
 }
 
-void module_parse_sections(struct module *module, const struct memory_config *mem_cfg, bool verbose)
+void module_parse_sections(struct module *module, const struct memory_config *mem_cfg, bool verbose,
+			   bool ignore_detached)
 {
 	const uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
 	uint16_t i;
@@ -344,7 +345,7 @@ void module_parse_sections(struct module *module, const struct memory_config *me
 		out_section->size = sect->data.size;
 		out_section->type = get_section_type(sect);
 		out_section->rom = section_is_rom(mem_cfg, sect);
-		out_section->detached = section_is_detached(mem_cfg, sect);
+		out_section->detached = !ignore_detached && section_is_detached(mem_cfg, sect);
 		out_section->address = sect->data.vaddr;
 		out_section->load_address = find_physical_address(&module->elf, sect->data.vaddr);
 
