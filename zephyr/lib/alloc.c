@@ -149,6 +149,7 @@ extern char _end[], _heap_sentry[];
 
 static struct k_heap sof_heap;
 
+#if !defined(CONFIG_BOARD_NATIVE_SIM)
 /**
  * Checks whether pointer is from a given heap memory.
  * @param heap Pointer to a heap.
@@ -167,6 +168,7 @@ static bool is_heap_pointer(const struct k_heap *heap, void *ptr)
 	return ((POINTER_TO_UINT(ptr) >= heap_start) &&
 		(POINTER_TO_UINT(ptr) < heap_end));
 }
+#endif
 
 #if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
 static struct k_heap shared_buffer_heap;
@@ -389,6 +391,7 @@ struct k_heap *sof_sys_user_heap_get(void)
 #endif
 }
 
+#if !defined(CONFIG_BOARD_NATIVE_SIM)
 static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
 {
 	k_spinlock_key_t key;
@@ -458,7 +461,106 @@ static void heap_free(struct k_heap *h, void *mem)
 
 	k_spin_unlock(&h->lock, key);
 }
+#endif
 
+
+#if defined(CONFIG_BOARD_NATIVE_SIM)
+#include <nsi_host_trampolines.h>
+#include <string.h>
+
+void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
+{
+	void *ptr;
+	void *raw;
+
+	if (alignment < sizeof(void *))
+		alignment = sizeof(void *);
+
+	raw = nsi_host_malloc(bytes + alignment + sizeof(void *));
+	if (!raw)
+		return NULL;
+
+	ptr = (void *)(((uintptr_t)raw + sizeof(void *) + alignment - 1) & ~(alignment - 1));
+	((void **)ptr)[-1] = raw;
+
+	return ptr;
+}
+EXPORT_SYMBOL(rmalloc_align);
+
+void *rmalloc(uint32_t flags, size_t bytes)
+{
+	return rmalloc_align(flags, bytes, 0);
+}
+EXPORT_SYMBOL(rmalloc);
+
+void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
+		      size_t old_bytes, uint32_t alignment)
+{
+	void *new_ptr;
+
+	if (!ptr)
+		return rmalloc_align(flags, bytes, alignment);
+
+	if (!bytes) {
+		void *raw = ((void **)ptr)[-1];
+
+		nsi_host_free(raw);
+		return NULL;
+	}
+
+	new_ptr = rmalloc_align(flags, bytes, alignment);
+	if (!new_ptr)
+		return NULL;
+
+	if (!(flags & SOF_MEM_FLAG_NO_COPY))
+		memcpy_s(new_ptr, bytes, ptr, MIN(bytes, old_bytes));
+
+	void *raw_old = ((void **)ptr)[-1];
+
+	nsi_host_free(raw_old);
+
+	return new_ptr;
+}
+
+void *rzalloc(uint32_t flags, size_t bytes)
+{
+	void *ptr = rmalloc_align(flags, bytes, 0);
+
+	if (ptr)
+		memset(ptr, 0, bytes);
+	return ptr;
+}
+EXPORT_SYMBOL(rzalloc);
+
+void *rballoc_align(uint32_t flags, size_t bytes, uint32_t align)
+{
+	return rmalloc_align(flags, bytes, align);
+}
+EXPORT_SYMBOL(rballoc_align);
+
+void rfree(void *ptr)
+{
+	if (!ptr)
+		return;
+
+	void *raw = ((void **)ptr)[-1];
+
+	nsi_host_free(raw);
+}
+EXPORT_SYMBOL(rfree);
+
+void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment)
+{
+	return rmalloc_align(flags, bytes, alignment);
+}
+
+void sof_heap_free(struct k_heap *heap, void *addr)
+{
+	rfree(addr);
+}
+
+#else
 
 void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
 {
@@ -648,6 +750,8 @@ void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 	else
 		rfree(addr);
 }
+
+#endif /* CONFIG_BOARD_NATIVE_SIM */
 
 static int heap_init(void)
 {
