@@ -127,10 +127,11 @@ void module_close(struct module *module);
  * @param module module structure
  * @param mem_cfg memory configration structure
  * @param verbose verbose logging selection
+ * @param ignore_detached do not mark detached sections
  * @return error code
  */
 void module_parse_sections(struct module *module, const struct memory_config *mem_cfg,
-			   bool verbose);
+			   bool verbose, bool ignore_detached);
 
 /**
  * Read module section to memory buffer

@@ -65,6 +65,9 @@ struct image {
 
 	/* Output image is a loadable module */
 	bool loadable_module;
+
+	/* Do not mark detached sections */
+	bool ignore_detached;
 };
 
 struct memory_zone {
