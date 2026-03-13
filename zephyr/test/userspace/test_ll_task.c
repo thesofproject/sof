@@ -24,6 +24,7 @@
 #include <ipc4/module.h>
 #include <ipc4/gateway.h>
 #include <ipc4/header.h>
+#include <ipc4/pipeline.h>
 #include <ipc4/base_fw_vendor.h>
 #include <module/ipc4/base-config.h>
 #include <rimage/sof/user/manifest.h>
@@ -146,6 +147,83 @@ static void pipeline_check(void)
 ZTEST(userspace_ll, pipeline_check)
 {
 	pipeline_check();
+}
+
+/**
+ * Test creating a pipeline via IPC4 GLB_CREATE_PIPELINE message.
+ *
+ * Unlike pipeline_check() which calls pipeline_new() directly,
+ * this test constructs an ipc4_pipeline_create message and sends
+ * it through ipc_cmd(), exercising the full IPC4 command dispatch
+ * path: ipc_cmd() -> ipc4_process_glb_message() ->
+ * ipc_user_forward_cmd() (userspace) or ipc4_new_pipeline().
+ */
+static void ipc4_create_pipeline_check(void)
+{
+	struct ipc4_pipeline_create pipe_desc = {0};
+	struct ipc *ipc = ipc_get();
+	struct ipc_cmd_hdr *hdr;
+	struct ipc_comp_dev *ipc_pipe;
+	uint32_t pipeline_id = 10;
+	uint32_t priority = 3;
+	int ret;
+
+	/* Construct IPC4 CREATE_PIPELINE message */
+	pipe_desc.primary.r.type = SOF_IPC4_GLB_CREATE_PIPELINE;
+	pipe_desc.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+	pipe_desc.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	pipe_desc.primary.r.instance_id = pipeline_id;
+	pipe_desc.primary.r.ppl_priority = priority;
+	pipe_desc.primary.r.ppl_mem_size = 0;
+
+	pipe_desc.extension.r.core_id = 0;
+	pipe_desc.extension.r.lp = 0;
+	pipe_desc.extension.r.payload = 0;
+
+	/*
+	 * Populate handler.c's internal IPC message buffer.
+	 * ipc_compact_read_msg() returns a pointer to the static
+	 * msg_data.msg_in used by ipc_cmd() via ipc4_get_message_request().
+	 * Overwriting through this pointer sets up the message for dispatch.
+	 */
+	hdr = ipc_compact_read_msg();
+	hdr->pri = pipe_desc.primary.dat;
+	hdr->ext = pipe_desc.extension.dat;
+
+	/* Send through the full IPC command dispatch path */
+	ipc_cmd(hdr);
+
+	LOG_INF("ipc_cmd() returned for pipeline id=%u", pipeline_id);
+
+	/* Verify pipeline is registered in IPC component list */
+	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipeline_id);
+	zassert_not_null(ipc_pipe, "pipeline not found in IPC comp list");
+	zassert_equal(ipc_pipe->type, COMP_TYPE_PIPELINE, "wrong comp type");
+	zassert_equal(ipc_pipe->id, pipeline_id, "pipeline id mismatch");
+	zassert_not_null(ipc_pipe->pipeline, "pipeline struct is NULL");
+	zassert_equal(ipc_pipe->pipeline->pipeline_id, pipeline_id,
+		      "pipeline->pipeline_id mismatch");
+	zassert_equal(ipc_pipe->pipeline->priority, priority,
+		      "pipeline priority mismatch");
+	zassert_equal(ipc_pipe->pipeline->time_domain, SOF_TIME_DOMAIN_TIMER,
+		      "time_domain not set");
+
+	LOG_INF("pipeline verified in IPC comp list");
+
+	/* Clean up through IPC free path */
+	ret = ipc_pipeline_free(ipc, pipeline_id);
+	zassert_equal(ret, 0, "ipc_pipeline_free failed: %%d", ret);
+
+	/* Verify pipeline is removed from IPC component list */
+	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipeline_id);
+	zassert_is_null(ipc_pipe, "pipeline still in IPC comp list after free");
+
+	LOG_INF("ipc4 create pipeline test complete");
+}
+
+ZTEST(userspace_ll, ipc4_create_pipeline_check)
+{
+	ipc4_create_pipeline_check();
 }
 
 /* Copier UUID: 9ba00c83-ca12-4a83-943c-1fa2e82f9dda */
