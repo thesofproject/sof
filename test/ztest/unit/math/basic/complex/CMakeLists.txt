@@ -22,6 +22,7 @@ target_sources(app PRIVATE
 	${SOF_ROOT}/src/math/complex.c
 	${SOF_ROOT}/src/math/sqrt_int32.c
 	${SOF_ROOT}/src/math/trig.c
+	${SOF_ROOT}/src/math/atan2.c
 )
 
 # Link math library for standard math functions

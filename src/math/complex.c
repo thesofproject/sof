@@ -9,6 +9,7 @@
 #include <sof/audio/format.h>
 #include <sof/math/icomplex32.h>
 #include <sof/math/sqrt.h>
+#include <sof/math/trig.h>
 #include <stdint.h>
 
 /* sofm_icomplex32_to_polar() - Convert (re, im) complex number to polar. */
@@ -17,8 +18,6 @@ void sofm_icomplex32_to_polar(struct icomplex32 *complex, struct ipolar32 *polar
 	struct icomplex32 c = *complex;
 	int64_t squares_sum;
 	int32_t sqrt_arg;
-	int32_t acos_arg;
-	int32_t acos_val;
 
 	/* Calculate square of magnitudes Q1.31, result is Q2.62 */
 	squares_sum = (int64_t)c.real * c.real + (int64_t)c.imag * c.imag;
@@ -27,16 +26,8 @@ void sofm_icomplex32_to_polar(struct icomplex32 *complex, struct ipolar32 *polar
 	sqrt_arg = Q_SHIFT_RND(squares_sum, 62, 30);
 	polar->magnitude = sofm_sqrt_int32(sqrt_arg); /* Q2.30 */
 
-	/* Avoid divide by zero and ambiguous angle for a zero vector. */
-	if (polar->magnitude == 0) {
-		polar->angle = 0;
-		return;
-	}
-
-	/* Calculate phase angle with acos( complex->real / polar->magnitude) */
-	acos_arg = sat_int32((((int64_t)c.real) << 29) / polar->magnitude); /* Q2.30 */
-	acos_val = acos_fixed_32b(acos_arg);				    /* Q3.29 */
-	polar->angle = (c.imag < 0) ? -acos_val : acos_val;
+	/* Angle */
+	polar->angle = sofm_atan2_32b(c.imag, c.real); /* Q3.29 */
 }
 EXPORT_SYMBOL(sofm_icomplex32_to_polar);
 
