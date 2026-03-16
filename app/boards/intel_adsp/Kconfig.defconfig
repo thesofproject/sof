@@ -123,6 +123,9 @@ config INTEL_ADSP_TIMER
 config MM_DRV
 	default y
 
+config UAOL
+	default y if ACE
+
 
 # # Zephyr / power settings
 # ----------------------------------------
