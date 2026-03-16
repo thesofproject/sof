@@ -523,12 +523,12 @@ int src_params_general(struct processing_module *mod,
 	 * be aligned to 8 bytes as required by some Xtensa
 	 * instructions (e.g AE_L32X2F24_XC)
 	 */
-	delay_lines_size = ALIGN_UP(sizeof(int32_t) * cd->param.total, 8);
-	if (delay_lines_size == 0) {
-		comp_err(dev, "delay_lines_size = 0");
+	if (cd->param.total == 0) {
+		comp_err(dev, "configuration failed: total size = 0");
 
 		return  -EINVAL;
 	}
+	delay_lines_size = ALIGN_UP(sizeof(int32_t) * cd->param.total, 8);
 
 	/* free any existing delay lines. TODO reuse if same size */
 	mod_free(mod, cd->delay_lines);
