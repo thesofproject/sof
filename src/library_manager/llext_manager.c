@@ -787,21 +787,21 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
 
 	int ret = llext_manager_add_partition(domain, va_base_text, text_size,
-					      K_MEM_PARTITION_P_RX_U_RX);
+					      K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 
 	if (ret < 0)
 		return ret;
 
 	if (rodata_size) {
 		ret = llext_manager_add_partition(domain, va_base_rodata, rodata_size,
-						  K_MEM_PARTITION_P_RO_U_RO);
+						  K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
 		if (ret < 0)
 			goto e_text;
 	}
 
 	if (data_size) {
 		ret = llext_manager_add_partition(domain, va_base_data, data_size,
-						  K_MEM_PARTITION_P_RW_U_RW);
+						  K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB);
 		if (ret < 0)
 			goto e_rodata;
 	}
@@ -864,7 +864,7 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 		       shdr_cold.sh_size, (uintptr_t)text_addr + text_offset);
 		ret = llext_manager_add_partition(domain, (uintptr_t)text_addr + text_offset,
 						  shdr_cold.sh_size,
-						  K_MEM_PARTITION_P_RX_U_RX);
+						  K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 		if (ret < 0)
 			goto e_data;
 		mctx->segment[LIB_MANAGER_COLD].addr = (uintptr_t)text_addr + text_offset;
@@ -876,7 +876,7 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 		       shdr_coldrodata.sh_size, (uintptr_t)rodata_addr + rodata_offset);
 		ret = llext_manager_add_partition(domain, (uintptr_t)rodata_addr + rodata_offset,
 						  shdr_coldrodata.sh_size,
-						  K_MEM_PARTITION_P_RO_U_RO);
+						  K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
 		if (ret < 0)
 			goto e_cold;
 		mctx->segment[LIB_MANAGER_COLDRODATA].addr = (uintptr_t)rodata_addr + rodata_offset;
@@ -887,15 +887,18 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 
 e_cold:
 	llext_manager_rm_partition(domain, (uintptr_t)text_addr + text_offset, shdr_cold.sh_size,
-				   K_MEM_PARTITION_P_RX_U_RX);
+				   K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 	mctx->segment[LIB_MANAGER_COLD].addr = 0;
 	mctx->segment[LIB_MANAGER_COLD].size = 0;
 e_data:
-	llext_manager_rm_partition(domain, va_base_data, data_size, K_MEM_PARTITION_P_RW_U_RW);
+	llext_manager_rm_partition(domain, va_base_data, data_size,
+				   K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB);
 e_rodata:
-	llext_manager_rm_partition(domain, va_base_rodata, rodata_size, K_MEM_PARTITION_P_RO_U_RO);
+	llext_manager_rm_partition(domain, va_base_rodata, rodata_size,
+				   K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
 e_text:
-	llext_manager_rm_partition(domain, va_base_text, text_size, K_MEM_PARTITION_P_RX_U_RX);
+	llext_manager_rm_partition(domain, va_base_text, text_size,
+				   K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 	return ret;
 }
 
@@ -920,14 +923,14 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
 
 	int err, ret = llext_manager_rm_partition(domain, va_base_text, text_size,
-						  K_MEM_PARTITION_P_RX_U_RX);
+						  K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 
 	if (ret < 0)
 		tr_err(&lib_manager_tr, "failed to remove .text memory partition: %d", ret);
 
 	if (rodata_size) {
 		err = llext_manager_rm_partition(domain, va_base_rodata, rodata_size,
-						 K_MEM_PARTITION_P_RO_U_RO);
+						 K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
 		if (err < 0) {
 			tr_err(&lib_manager_tr, "failed to remove .rodata memory partition: %d",
 			       err);
@@ -938,7 +941,7 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 
 	if (data_size) {
 		err = llext_manager_rm_partition(domain, va_base_data, data_size,
-						 K_MEM_PARTITION_P_RW_U_RW);
+						 K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB);
 		if (err < 0) {
 			tr_err(&lib_manager_tr, "failed to remove .data memory partition: %d", err);
 			if (!ret)
@@ -950,7 +953,7 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 		err = llext_manager_rm_partition(domain,
 						 mctx->segment[LIB_MANAGER_COLD].addr,
 						 mctx->segment[LIB_MANAGER_COLD].size,
-						 K_MEM_PARTITION_P_RX_U_RX);
+						 K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
 		if (err < 0) {
 			tr_err(&lib_manager_tr, "failed to remove .cold memory partition: %d", err);
 			if (!ret)
@@ -962,7 +965,7 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 		err = llext_manager_rm_partition(domain,
 						 mctx->segment[LIB_MANAGER_COLDRODATA].addr,
 						 mctx->segment[LIB_MANAGER_COLDRODATA].size,
-						 K_MEM_PARTITION_P_RO_U_RO);
+						 K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
 		if (err < 0) {
 			tr_err(&lib_manager_tr,
 			       "failed to remove .coldrodata memory partition: %d", err);
