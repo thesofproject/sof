@@ -31,6 +31,7 @@
 #include <sof/math/cordic.h>
 #include <sof/math/lut_trig.h>
 #include "trig_tables.h"
+#include "atan2_tables.h"
 
 /* Define M_PI if not available */
 #ifndef M_PI
@@ -47,6 +48,7 @@
 #define CMP_TOLERANCE_ASIN_16B	0.0001152158f
 #define CMP_TOLERANCE_ACOS_16B	0.0001196862f
 #define CMP_TOLERANCE_SIN	3.1e-5f
+#define CMP_TOLERANCE_ATAN2	2.0e-5 /* ~0.001 degrees in radians */
 
 /*
  * Helper function for rounding double values to nearest integer
@@ -228,6 +230,40 @@ ZTEST(trigonometry, test_sin_lut_16b_fixed)
 		zassert_true(delta <= CMP_TOLERANCE_SIN,
 			     "sin_lut_16b_fixed failed for angle %d", theta);
 	}
+}
+
+/* Test sofm_atan2_32b function */
+ZTEST(trigonometry, test_atan2)
+{
+	double reference;
+	double result;
+	double delta;
+	double delta_max = 0.0;
+	int32_t result_q29_max = 0;
+	int32_t result_q29;
+	int i_max = 0;
+	int i;
+
+	/* Note that the first atan2_test_y[], atan2_test_x[] have forced to
+	 * zero y or x, values to test edge cases where x == 0 or y == 0. See
+	 * script atan2_tables.m for details.
+	 */
+	for (i = 0; i < ATAN2_TEST_TABLE_SIZE; ++i) {
+		result_q29 = sofm_atan2_32b(atan2_test_y[i], atan2_test_x[i]);
+		result = Q_CONVERT_QTOD(result_q29, 29);
+		reference = Q_CONVERT_QTOD(atan2_test_ref[i], 29);
+		delta = fabs(reference - result);
+		if (i == 0 || delta > delta_max) {
+			result_q29_max = result_q29;
+			delta_max = delta;
+			i_max = i;
+		}
+		zassert_true(delta <= CMP_TOLERANCE_ATAN2,
+			     "sofm_atan2_32b failed for input %d: (%d, %d) result %d, expected %d",
+			     i, atan2_test_y[i], atan2_test_x[i], result_q29, atan2_test_ref[i]);
+	}
+	printf(" INFO - Maximum delta for atan2 test %d: %.6e (%d, %d) result %d\n",
+	       i_max, delta_max, atan2_test_y[i_max], atan2_test_x[i_max], result_q29_max);
 }
 
 ZTEST_SUITE(trigonometry, NULL, NULL, NULL, NULL, NULL);
