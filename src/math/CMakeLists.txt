@@ -11,6 +11,10 @@ if(CONFIG_CORDIC_FIXED)
   list(APPEND base_files trig.c)
 endif()
 
+if(CONFIG_MATH_ATAN2)
+  list(APPEND base_files atan2.c)
+endif()
+
 if(CONFIG_MATH_LUT_SINE_FIXED)
   list(APPEND base_files lut_trig.c)
 endif()

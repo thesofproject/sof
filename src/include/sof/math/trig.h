@@ -383,4 +383,18 @@ static inline int16_t acos_fixed_16b(int32_t cdc_acos_th)
 	return sat_int16(Q_SHIFT_RND(th_acos_fxp, 29, 13));
 }
 
+/**
+ * sofm_atan2_32b() - Four-quadrant arctangent using degree-9 Remez minimax polynomial
+ * @param y Imaginary component (sine) in Q1.31 format.
+ * @param x Real component (cosine) in Q1.31 format.
+ * @return Angle in Q3.29 radians, range [-pi, +pi].
+ *
+ * Uses the Horner-form polynomial:
+ *   atan(z) = z * (C0 + z^2 * (C1 + z^2 * (C2 + z^2 * (C3 + z^2 * C4))))
+ *
+ * with Remez minimax coefficients on [0, 1].
+ * Maximum error ~0.001 degrees (1.94e-5 radians).
+ */
+int32_t sofm_atan2_32b(int32_t y, int32_t x);
+
 #endif /* __SOF_MATH_TRIG_H__ */
