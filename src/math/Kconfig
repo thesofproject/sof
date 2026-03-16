@@ -108,6 +108,9 @@ config MATH_DECIBELS
 config MATH_COMPLEX
 	bool "Operations for complex numbers"
 	default n
+	select CORDIC_FIXED
+	select MATH_ATAN2
+	select SQRT_FIXED
 	help
 	  Select this to enable functions for complex numbers
 	  arithmetic such as conversions to/from polar format.
