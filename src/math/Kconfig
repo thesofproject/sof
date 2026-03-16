@@ -9,6 +9,16 @@ config CORDIC_FIXED
 	  Select this to enable sin(), cos(), asin(), acos(),
 	  and cexp() functions as 16 bit and 32 bit versions.
 
+config MATH_ATAN2
+	bool "Four-quadrant arctangent function"
+	default n
+	help
+	  Select this to enable sofm_atan2_32b(y, x) function. It computes
+	  the four-quadrant arctangent using a polynomial approximation.
+	  Input arguments y and x are Q1.31 format and the output angle
+	  is Q3.29 format with range [-pi, pi]. The maximum approximation
+	  error is ~0.001 degrees.
+
 config MATH_LUT_SINE_FIXED
 	bool "Lookup table based sine function"
 	default n
