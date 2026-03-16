@@ -21,6 +21,7 @@ target_sources(app PRIVATE
 	trig_test.c
 	${SOF_ROOT}/src/math/trig.c
 	${SOF_ROOT}/src/math/lut_trig.c
+	${SOF_ROOT}/src/math/atan2.c
 )
 
 # Link math library for standard math functions
