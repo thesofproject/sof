@@ -74,4 +74,14 @@ config SOF_DEBUG_STREAM_TEXT_MSG
 	  ds_msg(). See include/user/debug_stream_text_msg.h for
 	  prototype.
 
+config SOF_DEBUG_STREAM_TEXT_MSG_ASSERT_PRINT
+	bool "Enable assert print sending through Debug-Stream"
+	depends on EXCEPTION_DUMP_HOOK && (ASSERT || ASSERT_VERBOSE)
+	select SOF_DEBUG_STREAM_TEXT_MSG
+	help
+	  Enable assert print sending over debug stream as text
+	  message. This feature is also sensitive to Zephyr option
+	  CONFIG_EXCEPTION_DUMP_HOOK_ONLY. If that is set then the
+	  asserts are not printed through printk interface.
+
 endif
