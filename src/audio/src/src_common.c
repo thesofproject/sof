@@ -480,6 +480,7 @@ int src_params_general(struct processing_module *mod,
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	size_t delay_lines_size;
+	size_t old_total;
 	int32_t *buffer_start;
 	int n;
 	int err;
@@ -510,6 +511,8 @@ int src_params_general(struct processing_module *mod,
 	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
 	cd->sink_frames = dev->frames;
 
+	old_total = cd->param.total;
+
 	/* Allocate needed memory for delay lines */
 	err = src_buffer_lengths(dev, cd, cd->channels_count);
 	if (err < 0) {
@@ -529,14 +532,16 @@ int src_params_general(struct processing_module *mod,
 	}
 	delay_lines_size = ALIGN_UP(sizeof(int32_t) * cd->param.total, 8);
 
-	/* free any existing delay lines. TODO reuse if same size */
-	mod_free(mod, cd->delay_lines);
+	if (!cd->delay_lines || old_total != cd->param.total) {
+		/* free any existing delay lines */
+		mod_free(mod, cd->delay_lines);
 
-	cd->delay_lines = mod_alloc(mod, delay_lines_size);
-	if (!cd->delay_lines) {
-		comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
-			 delay_lines_size);
-		return  -ENOMEM;
+		cd->delay_lines = mod_alloc(mod, delay_lines_size);
+		if (!cd->delay_lines) {
+			comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
+				 delay_lines_size);
+			return  -ENOMEM;
+		}
 	}
 
 	/* Clear all delay lines here */
