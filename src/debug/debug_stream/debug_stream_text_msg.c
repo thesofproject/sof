@@ -150,4 +150,32 @@ static int init_exception_dump_hook(void)
 }
 
 SYS_INIT(init_exception_dump_hook, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
+
+#if defined(CONFIG_SOF_DEBUG_STREAM_TEXT_MSG_ASSERT_PRINT)
+void assert_print(const char *fmt, ...)
+{
+	va_list ap;
+
+	/* Do not print assert after exception has been dumped */
+	if (ds_cpu[arch_proc_id()].reports_sent > 0)
+		return;
+
+	va_start(ap, fmt);
+#if !defined(CONFIG_EXCEPTION_DUMP_HOOK_ONLY)
+	{
+		va_list ap2;
+
+		va_copy(ap2, ap);
+#endif
+		ds_vamsg(fmt, ap);
+#if !defined(CONFIG_EXCEPTION_DUMP_HOOK_ONLY)
+		vprintk(fmt, ap2);
+		va_end(ap2);
+	}
+#endif
+	ds_vamsg(fmt, ap);
+	va_end(ap);
+}
+EXPORT_SYMBOL(assert_print);
+#endif
 #endif
