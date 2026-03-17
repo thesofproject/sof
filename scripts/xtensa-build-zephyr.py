@@ -92,18 +92,6 @@ class PlatformConfig:
 # These cannot be built by everyone out of the box yet.
 # For instance: there's no open-source toolchain available for them yet.
 extra_platform_configs = {
-	"nvl" : PlatformConfig(
-		"intel", "intel_adsp/ace40/nvl",
-		f"RI-2022.10{xtensa_tools_version_postfix}",
-		"ace4px_HiFi5MMU_PIF_nlib",
-		ipc4 = True
-	),
-	"nvl-s" : PlatformConfig(
-		"intel", "intel_adsp/ace40/nvls",
-		f"RI-2022.10{xtensa_tools_version_postfix}",
-		"ace4px_HiFi5MMU_PIF_nlib",
-		ipc4 = True
-	),
 	"wcl-sim" : PlatformConfig(
 		"intel", "intel_adsp/ace30/wcl/sim",
 		f"RI-2022.10{xtensa_tools_version_postfix}",
@@ -197,7 +185,18 @@ platform_configs_all = {
 		"ace30_LX7HiFi4_PIF",
 		ipc4 = True
 	),
-
+	"nvl" : PlatformConfig(
+		"intel", "intel_adsp/ace40/nvl",
+		f"RI-2022.10{xtensa_tools_version_postfix}",
+		"ace4px_HiFi5MMU_PIF_nlib",
+		ipc4 = True
+	),
+	"nvl-s" : PlatformConfig(
+		"intel", "intel_adsp/ace40/nvls",
+		f"RI-2022.10{xtensa_tools_version_postfix}",
+		"ace4px_HiFi5MMU_PIF_nlib",
+		ipc4 = True
+	),
 	#  NXP platforms
 	"imx8" : PlatformConfig(
 		"imx", "imx8qm_mek/mimx8qm6/adsp",
