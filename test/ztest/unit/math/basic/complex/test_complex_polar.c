@@ -15,7 +15,7 @@ LOG_MODULE_REGISTER(test_complex_polar, LOG_LEVEL_INF);
 
 #define COMPLEX_ABS_TOL 1.2e-8
 #define MAGNITUDE_ABS_TOL 7.1e-8
-#define ANGLE_ABS_TOL 4.4e-5
+#define ANGLE_ABS_TOL 2.0e-5
 
 /**
  * @brief Test complex to polar conversion function
@@ -35,7 +35,7 @@ ZTEST(math_complex, test_icomplex32_to_polar)
 	double magnitude, angle;
 	double delta_mag, delta_ang;
 	double magnitude_scale_q30 = 1.0 / 1073741824.0; /* 1.0 / 2^30 */
-	double angle_scale_q29 = 1.0 / 536870912.0; /* 1.0 / 2^29 */
+	double angle_scale_q29 = 1.0 / 536870912.0;	 /* 1.0 / 2^29 */
 	double delta_mag_max = 0;
 	double delta_ang_max = 0;
 	int i;
@@ -118,11 +118,11 @@ ZTEST(math_complex, test_ipolar32_to_complex)
 
 	/* Re-run worst cases to print info */
 	sofm_ipolar32_to_complex(&polar_real_max, &complex);
-	printf("delta_real_max = %g at (%d, %d) -> (%d, %d)\n", delta_real_max,
+	printf(" INFO - delta_real_max = %g at (%d, %d) -> (%d, %d)\n", delta_real_max,
 	       polar_real_max.magnitude, polar_real_max.angle, complex.real, complex.imag);
 
 	sofm_ipolar32_to_complex(&polar_imag_max, &complex);
-	printf("delta_imag_max = %g at (%d, %d) -> (%d, %d)\n", delta_imag_max,
+	printf(" INFO - delta_imag_max = %g at (%d, %d) -> (%d, %d)\n", delta_imag_max,
 	       polar_imag_max.magnitude, polar_imag_max.angle, complex.real, complex.imag);
 }
 
