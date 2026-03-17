@@ -176,9 +176,6 @@ int task_main_start(struct sof *sof)
 	/* init default audio components */
 	sys_comp_init(sof);
 
-	/* init pipeline position offsets */
-	pipeline_posn_init(sof);
-
 	return 0;
 }
 

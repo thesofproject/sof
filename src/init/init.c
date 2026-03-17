@@ -32,6 +32,7 @@
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/audio/pipeline.h>
 #include <ipc/trace.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/fw_reg.h>
@@ -239,6 +240,11 @@ __cold static int primary_core_init(int argc, char *argv[], struct sof *sof)
 #if CONFIG_SOF_USERSPACE_LL
 	zephyr_ll_user_resources_init();
 #endif
+
+	/* init pipeline position offsets - must be before platform_init()
+	 * which calls ipc_init() -> ipc_user_init() that needs the posn mutex.
+	 */
+	pipeline_posn_init(sof);
 
 	/* init the platform */
 	if (platform_init(sof) < 0)
