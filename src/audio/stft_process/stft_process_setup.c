@@ -90,6 +90,8 @@ int stft_process_setup(struct processing_module *mod, int max_frames,
 		return -EINVAL;
 	}
 
+	/* max_frames needs to be even for buffer size allocation for Xtensa HiFi SIMD. */
+	max_frames = ALIGN_UP(max_frames, 2);
 	cd->max_frames = max_frames;
 	state->sample_rate = sample_rate;
 
@@ -110,25 +112,37 @@ int stft_process_setup(struct processing_module *mod, int max_frames,
 	fft->fft_hop_size = config->frame_shift;
 	fft->half_fft_size = (fft->fft_padded_size >> 1) + 1;
 
+	/* FFT size needs to be a multiple of 4 for Xtensa HiFi SIMD,
+	 * and FFT hop size needs to be a multiple of 2. Check also
+	 * for otherwise sane values.
+	 */
+	if (fft->fft_size <= 0 || fft->fft_hop_size <= 0 ||
+	    fft->fft_hop_size > fft->fft_size ||
+	    (fft->fft_size & 3) || (fft->fft_hop_size & 1)) {
+		comp_err(dev, "FFT size %d or hop size %d are invalid.",
+			 fft->fft_size, fft->fft_hop_size);
+		return -EINVAL;
+	}
+
 	comp_info(dev, "fft_size = %d, fft_hop_size = %d, window = %d",
 		  fft->fft_size, fft->fft_hop_size, config->window);
 
 	/* Calculated parameters */
 	state->prev_data_size = fft->fft_size - fft->fft_hop_size;
-	ibuf_size = fft->fft_hop_size + cd->max_frames;
-	obuf_size = fft->fft_size + cd->max_frames;
+	ibuf_size = fft->fft_hop_size + max_frames;
+	obuf_size = fft->fft_size + max_frames;
 	prev_size = state->prev_data_size;
 
 	/* Allocate buffer input samples, overlap buffer, window */
-	sample_buffers_size = sizeof(int32_t) * cd->channels *
-		(ibuf_size + obuf_size + prev_size + fft->fft_size);
+	sample_buffers_size = sizeof(int32_t) *
+		(cd->channels * (ibuf_size + obuf_size + prev_size) + fft->fft_size);
 
-	if (sample_buffers_size > STFT_MAX_ALLOC_SIZE || sample_buffers_size < 0) {
+	if (sample_buffers_size > STFT_MAX_ALLOC_SIZE) {
 		comp_err(dev, "Illegal allocation size");
-		return -EINVAL;
+		return -ENOMEM;
 	}
 
-	state->buffers = mod_balloc(mod, sample_buffers_size);
+	state->buffers = mod_balloc_align(mod, sample_buffers_size, 2 * sizeof(int32_t));
 	if (!state->buffers) {
 		comp_err(dev, "Failed buffer allocate");
 		ret = -ENOMEM;
@@ -149,14 +163,14 @@ int stft_process_setup(struct processing_module *mod, int max_frames,
 
 	/* Allocate buffers for FFT input and output data */
 	fft->fft_buffer_size = fft->fft_padded_size * sizeof(struct icomplex32);
-	fft->fft_buf = mod_balloc(mod, fft->fft_buffer_size);
+	fft->fft_buf = mod_balloc_align(mod, fft->fft_buffer_size, sizeof(struct icomplex32));
 	if (!fft->fft_buf) {
 		comp_err(dev, "Failed FFT buffer allocate");
 		ret = -ENOMEM;
 		goto free_buffers;
 	}
 
-	fft->fft_out = mod_balloc(mod, fft->fft_buffer_size);
+	fft->fft_out = mod_balloc_align(mod, fft->fft_buffer_size, sizeof(struct icomplex32));
 	if (!fft->fft_out) {
 		comp_err(dev, "Failed FFT output allocate");
 		ret = -ENOMEM;

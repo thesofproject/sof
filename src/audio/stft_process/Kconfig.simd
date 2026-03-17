@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+comment "STFT Process optimization level select"
+
+choice "COMP_STFT_PROCESS_SIMD_LEVEL_SELECT"
+	prompt "Choose which SIMD level is used for the STFT Process module"
+	depends on COMP_STFT_PROCESS
+	default COMP_STFT_PROCESS_HIFI_MAX
+
+	config COMP_STFT_PROCESS_HIFI_MAX
+		prompt "SIMD will be selected by toolchain pre-defined header"
+		bool
+		help
+			When this is selected, the optimization level will be
+			determined by the toolchain pre-defined macros in the
+			core isa header file.
+
+	config COMP_STFT_PROCESS_HIFI_3
+		prompt "Choose HIFI3 intrinsic optimized STFT Process module"
+		bool
+		help
+			This option is used to build HIFI3 intrinsic optimized
+			STFT Process code.
+
+	config COMP_STFT_PROCESS_HIFI_NONE
+		prompt "Choose generic C STFT Process module, no HIFI SIMD involved"
+		bool
+		help
+			This option is used to build STFT Process
+			with generic C code.
+endchoice

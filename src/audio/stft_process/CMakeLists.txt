@@ -8,6 +8,7 @@ else()
   add_local_sources(sof stft_process_setup.c)
   add_local_sources(sof stft_process_common.c)
   add_local_sources(sof stft_process-generic.c)
+  add_local_sources(sof stft_process-hifi3.c)
 
   if(CONFIG_IPC_MAJOR_4)
     add_local_sources(sof stft_process-ipc4.c)

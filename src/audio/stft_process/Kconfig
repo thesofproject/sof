@@ -19,6 +19,8 @@ config COMP_STFT_PROCESS
 
 if COMP_STFT_PROCESS
 
+rsource "Kconfig.simd"
+
 config STFT_PROCESS_MAGNITUDE_PHASE
 	bool "Convert FFTs to polar magnitude and phase"
 	default n

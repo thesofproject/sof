@@ -213,28 +213,128 @@ static inline int stft_process_get_config(struct processing_module *mod, uint32_
 }
 #endif
 
+/**
+ * stft_process_setup() - Initialize STFT processing state and allocate buffers.
+ * @mod: Pointer to processing module.
+ * @max_frames: Maximum number of frames per processing call.
+ * @rate: Audio sample rate in Hz.
+ * @channels: Number of audio channels.
+ *
+ * Configures FFT parameters, allocates aligned sample and FFT buffers,
+ * sets up window function, and creates FFT/IFFT plans based on the
+ * component configuration.
+ *
+ * Return: Zero on success, otherwise a negative error code.
+ */
 int stft_process_setup(struct processing_module *mod, int max_frames, int rate, int channels);
 
+/**
+ * stft_process_source_s16() - Copy S16_LE source data to STFT internal buffers.
+ * @cd: STFT component data.
+ * @source: Source for PCM samples data.
+ * @frames: Number of audio data frames to process.
+ *
+ * De-interleaves S16_LE audio frames from the source circular buffer
+ * into per-channel internal circular buffers. Each 16-bit sample is
+ * converted to Q1.31 format by left-shifting 16 bits.
+ *
+ * Return: Zero on success, otherwise an error code.
+ */
 int stft_process_source_s16(struct stft_comp_data *cd, struct sof_source *source, int frames);
 
+/**
+ * stft_process_sink_s16() - Copy STFT internal buffers to S16_LE sink.
+ * @cd: STFT component data.
+ * @sink: Sink for PCM samples data.
+ * @frames: Number of audio data frames to produce.
+ *
+ * Interleaves per-channel STFT output buffers into the sink circular
+ * buffer in S16_LE format. Q1.31 samples are converted to Q1.15 with
+ * rounding and saturation. Output buffer samples are cleared after
+ * reading to prepare for the next overlap-add cycle.
+ *
+ * Return: Zero on success, otherwise an error code.
+ */
 int stft_process_sink_s16(struct stft_comp_data *cd, struct sof_sink *sink, int frames);
 
+/**
+ * stft_process_source_s32() - Copy S32_LE source data to STFT internal buffers.
+ * @cd: STFT component data.
+ * @source: Source for PCM samples data.
+ * @frames: Number of audio data frames to process.
+ *
+ * De-interleaves S32_LE audio frames from the source circular buffer
+ * into per-channel internal circular buffers.
+ *
+ * Return: Zero on success, otherwise an error code.
+ */
 int stft_process_source_s32(struct stft_comp_data *cd, struct sof_source *source, int frames);
 
+/**
+ * stft_process_sink_s32() - Copy STFT internal buffers to S32_LE sink.
+ * @cd: STFT component data.
+ * @sink: Sink for PCM samples data.
+ * @frames: Number of audio data frames to produce.
+ *
+ * Interleaves per-channel STFT output buffers into the sink circular
+ * buffer in S32_LE format. The output buffer samples are cleared after
+ * reading to prepare for the next overlap-add cycle.
+ *
+ * Return: Zero on success, otherwise an error code.
+ */
 int stft_process_sink_s32(struct stft_comp_data *cd, struct sof_sink *sink, int frames);
 
+/**
+ * stft_process_free_buffers() - Free all STFT processing buffers.
+ * @mod: Pointer to processing module.
+ *
+ * Releases sample buffers, FFT buffers, and FFT/IFFT plans allocated
+ * during stft_process_setup().
+ */
 void stft_process_free_buffers(struct processing_module *mod);
 
-void stft_process_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-			      struct output_stream_buffer *bsink, int frames);
-
+/**
+ * stft_process_fill_prev_samples() - Save overlap samples for next STFT frame.
+ * @buf: Circular buffer to read overlap samples from.
+ * @prev_data: Destination array for the overlap data.
+ * @prev_data_length: Number of samples to copy.
+ *
+ * Copies prev_data_length samples from the circular buffer into the
+ * linear prev_data array, handling wrap-around as needed.
+ */
 void stft_process_fill_prev_samples(struct stft_process_buffer *buf, int32_t *prev_data,
 				    int prev_data_length);
 
+/**
+ * stft_process_fill_fft_buffer() - Assemble FFT input from overlap and new data.
+ * @state: STFT processing state.
+ * @ch: Channel index.
+ *
+ * Constructs the FFT input buffer by concatenating the previous overlap
+ * samples and one hop of new samples from the input circular buffer.
+ * Imaginary parts are set to zero. The overlap buffer is updated with
+ * data for the next frame.
+ */
 void stft_process_fill_fft_buffer(struct stft_process_state *state, int ch);
 
+/**
+ * stft_process_apply_window() - Multiply FFT buffer by the analysis window.
+ * @state: STFT processing state that contains the FFT buffer and window.
+ *
+ * The real part of each complex sample in the FFT buffer is multiplied
+ * by the corresponding Q1.31 window coefficient.
+ */
 void stft_process_apply_window(struct stft_process_state *state);
 
+/**
+ * stft_process_overlap_add_ifft_buffer() - Overlap-add IFFT output to circular output buffer.
+ * @state: STFT processing state.
+ * @ch: Channel index.
+ *
+ * Each IFFT output sample is multiplied by the gain compensation value
+ * and added with saturation to the existing content of the circular
+ * output buffer.
+ */
 void stft_process_overlap_add_ifft_buffer(struct stft_process_state *state, int ch);
 
 #endif //  __SOF_AUDIO_STFT_PROCESS_H__
