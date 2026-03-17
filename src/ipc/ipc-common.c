@@ -596,6 +596,7 @@ __cold int ipc_user_init(void)
 	user_grant_dma_access_all(&ipc_user_thread);
 	user_access_to_mailbox(zephyr_ll_mem_domain(), &ipc_user_thread);
 	zephyr_ll_grant_access(&ipc_user_thread);
+	pipeline_posn_grant_access(&ipc_user_thread);
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &ipc_user_thread);
 
 	k_thread_cpu_pin(&ipc_user_thread, PLATFORM_PRIMARY_CORE_ID);
