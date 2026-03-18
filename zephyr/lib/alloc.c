@@ -13,6 +13,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/audio/pipeline.h>
+#include <sof/schedule/ll_schedule_domain.h> /* for zephyr_ll_user_heap() */
 #include <sof/trace/trace.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
@@ -376,6 +377,16 @@ SYS_INIT(virtual_heap_init, POST_KERNEL, 1);
 struct k_heap *sof_sys_heap_get(void)
 {
 	return &sof_heap;
+}
+
+struct k_heap *sof_sys_user_heap_get(void)
+{
+#ifdef CONFIG_SOF_USERSPACE_LL
+	return zephyr_ll_user_heap();
+#else
+	/* let sof_heap_alloc() pick */
+	return NULL;
+#endif
 }
 
 static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
