@@ -75,3 +75,8 @@ struct k_heap *sof_sys_heap_get(void)
 {
 	return NULL;
 }
+
+struct k_heap *sof_sys_user_heap_get(void)
+{
+	return NULL;
+}
