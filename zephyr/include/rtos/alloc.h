@@ -127,6 +127,22 @@ void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 void sof_heap_free(struct k_heap *heap, void *addr);
 struct k_heap *sof_sys_heap_get(void);
 
+/**
+ * Returns heap object to use for SOF heap allocations
+ * for audio application code.
+ *
+ * The returned value may be NULL. This matches with semantics
+ * of sof_heap_alloc() that allows passing NULL as the 'heap'.
+ * In this case, the heap implementation will choose the heap to
+ * use.
+ *
+ * The function should not be used for heap allocations for objects that
+ * are only used in SOF kernel space.
+ *
+ * Note: audio modules should use mod_alloc() instead!
+ */
+struct k_heap *sof_sys_user_heap_get(void);
+
 /* TODO: remove - debug only - only needed for linking */
 static inline void heap_trace_all(int force) {}
 
