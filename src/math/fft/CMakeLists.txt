@@ -11,7 +11,7 @@ if(CONFIG_MATH_32BIT_FFT)
 endif()
 
 if(CONFIG_MATH_FFT_MULTI)
-  list(APPEND base_files fft_multi.c)
+  list(APPEND base_files fft_multi.c fft_multi_generic.c fft_multi_hifi3.c)
 endif()
 
 is_zephyr(zephyr)
