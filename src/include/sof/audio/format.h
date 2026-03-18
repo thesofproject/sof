@@ -70,6 +70,9 @@
 /* Convert fractional Qnx.ny number x to float */
 #define Q_CONVERT_QTOF(x, ny) ((float)(x) / ((int64_t)1 << (ny)))
 
+/* Convert fractional Qnx.ny number x to double */
+#define Q_CONVERT_QTOD(x, ny) ((double)(x) / ((int64_t)1 << (ny)))
+
 /* A more clever macro for Q-shifts */
 #define Q_SHIFT(x, src_q, dst_q) ((x) >> ((src_q) - (dst_q)))
 #define Q_SHIFT_RND(x, src_q, dst_q) \
