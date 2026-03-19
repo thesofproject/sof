@@ -466,7 +466,7 @@ void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
 	if (!dd->slot_info.node_id)
 		return;
 
-	ret = dma_get_status(dd->dma->z_dev, dd->chan_index, &status);
+	ret = sof_dma_get_status(dd->dma, dd->chan_index, &status);
 	if (ret < 0)
 		return;
 
