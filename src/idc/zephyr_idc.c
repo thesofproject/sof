@@ -181,10 +181,14 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 
 void idc_init_thread(void)
 {
+	char thread_name[] = "idc_p4wq0";
 	int cpu = cpu_get_id();
 
 	k_p4wq_enable_static_thread(q_zephyr_idc + cpu,
 				    _p4threads_q_zephyr_idc + cpu, BIT(cpu));
+
+	thread_name[sizeof(thread_name) - 2] = '0' + cpu;
+	k_thread_name_set(_p4threads_q_zephyr_idc + cpu, thread_name);
 	/*
 	 * Assign SOF system heap to the IDC thread. Otherwise by default it
 	 * uses the Zephyr heap for DP stack allocation
