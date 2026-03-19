@@ -54,6 +54,17 @@ config SOF_DEBUG_STREAM_THREAD_INFO_TOTAL_CPU_LOAD_TO_LOG
 	  print the total CPU load (sum of all threads) to
 	  the logging system.
 
+config SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS
+	int "Number of cpu sections slot is divided to"
+	default CORE_COUNT
+	range 1 MP_MAX_NUM_CPUS
+	help
+	  In some situations a high number of cpu sections shrinks the
+	  circular buffer size so much that it limit debugging. With
+	  this option its possible to use fewer sections. The downside
+	  is that the cpus above the number of sections can not send
+	  any debug stream messages.
+
 config SOF_DEBUG_STREAM_TEXT_MSG
 	bool "Enable text message sending through Debug-Stream"
 	help
