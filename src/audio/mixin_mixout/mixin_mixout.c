@@ -707,7 +707,9 @@ static int mixin_prepare(struct processing_module *mod,
 	int ret;
 
 	comp_info(dev, "entry");
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	md->eos_delay_configured = false;
+#endif
 
 	ret = mixin_params(mod);
 	if (ret < 0)
