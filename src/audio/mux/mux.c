@@ -312,7 +312,6 @@ static int mux_process(struct processing_module *mod,
 	const struct audio_stream *sources_stream[MUX_MAX_STREAMS] = { NULL };
 	int frames = 0;
 	int sink_bytes;
-	int source_bytes;
 	int i, j;
 
 	comp_dbg(dev, "entry");
@@ -341,18 +340,18 @@ static int mux_process(struct processing_module *mod,
 	if (num_input_buffers == 0)
 		return 0;
 
-	source_bytes = frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
 	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
 	mux_prepare_active_look_up(cd, output_buffers[0].data, &sources_stream[0]);
 
 	/* produce output */
 	cd->mux(dev, output_buffers[0].data, &sources_stream[0], frames, &cd->active_lookup);
 
-	/* Update consumed and produced */
+	/* Update consumed per source using each source's own frame size */
 	j = 0;
 	comp_dev_for_each_producer(dev, source) {
 		if (comp_buffer_get_source_state(source) == dev->state)
-			mod->input_buffers[j].consumed = source_bytes;
+			mod->input_buffers[j].consumed =
+				frames * audio_stream_frame_bytes(mod->input_buffers[j].data);
 		j++;
 	}
 	mod->output_buffers[0].size = sink_bytes;
