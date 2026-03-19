@@ -33,7 +33,7 @@ static struct previous_counters { /* Cached data from previous round */
 		void *tid;	 /* thread ID (the thread struct ptr) */
 		uint64_t cycles; /* cycle counter value */
 	} threads[THREAD_INFO_MAX_THREADS]; /* The max amount of threads we follow */
-} previous[CONFIG_MP_MAX_NUM_CPUS];
+} previous[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
 #endif
 
 /*
@@ -344,9 +344,10 @@ static void thread_info_run(void *cnum, void *a, void *b)
 }
 
 #define THREAD_STACK_SIZE (2048)
-static K_THREAD_STACK_ARRAY_DEFINE(info_thread_stacks, CONFIG_MP_MAX_NUM_CPUS,
+static K_THREAD_STACK_ARRAY_DEFINE(info_thread_stacks,
+				   CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS,
 				   THREAD_STACK_SIZE);
-static struct k_thread info_thread[CONFIG_MP_MAX_NUM_CPUS];
+static struct k_thread info_thread[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
 
 static int thread_info_start(void)
 {

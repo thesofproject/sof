@@ -52,9 +52,9 @@ void ds_msg(const char *format, ...)
 static struct {
 	struct debug_stream_text_msg msg;
 	char text[640];
-} __packed ds_buf[CONFIG_MP_MAX_NUM_CPUS];
-static int reports_sent_cpu[CONFIG_MP_MAX_NUM_CPUS];
-static size_t ds_pos[CONFIG_MP_MAX_NUM_CPUS];
+} __packed ds_buf[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
+static int reports_sent_cpu[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
+static size_t ds_pos[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
 
 static void ds_exception_drain(bool flush)
 {
