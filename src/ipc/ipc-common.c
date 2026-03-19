@@ -190,6 +190,7 @@ static void ipc_init_user_thread(struct ipc *ipc)
 	k_spinlock_init(&ipc->ipc_user.lock);
 	k_sem_init(&ipc->ipc_user.req_sem, 0, 1);
 	k_sem_init(&ipc->ipc_user.reply_sem, 0, 1);
+	ipc->ipc_user.schedule_pending = false;
 	ipc->ipc_user.req = IPC4_USER_THREAD_REQ_NONE;
 	ipc->ipc_user.msg = NULL;
 	ipc->ipc_user.reply = NULL;
@@ -210,6 +211,8 @@ static int ipc4_process_in_user_thread(struct ipc *ipc, enum ipc4_user_thread_re
 				       struct ipc_msg *reply)
 {
 	k_spinlock_key_t key;
+	k_spinlock_key_t ipc_key;
+	bool schedule_pending;
 	int ret;
 
 	if (!ipc || !ipc4 || !reply)
@@ -225,10 +228,19 @@ static int ipc4_process_in_user_thread(struct ipc *ipc, enum ipc4_user_thread_re
 	k_sem_take(&ipc->ipc_user.reply_sem, K_FOREVER);
 
 	key = k_spin_lock(&ipc->ipc_user.lock);
+	schedule_pending = ipc->ipc_user.schedule_pending;
+	ipc->ipc_user.schedule_pending = false;
 	req = ipc->ipc_user.req;
 	ret = ipc->ipc_user.ret;
 	ipc->ipc_user.req = IPC4_USER_THREAD_REQ_NONE;
 	k_spin_unlock(&ipc->ipc_user.lock, key);
+
+	if (schedule_pending) {
+		ipc_key = k_spin_lock(&ipc->lock);
+		k_work_schedule_for_queue(&ipc->ipc_send_wq, &ipc->z_delayed_work,
+					K_USEC(IPC_PERIOD_USEC));
+		k_spin_unlock(&ipc->lock, ipc_key);
+	}
 
 	if (req != IPC4_USER_THREAD_REQ_NONE)
 		return -EINVAL;
@@ -322,6 +334,16 @@ static void schedule_ipc_worker(void)
 	 */
 #ifdef __ZEPHYR__
 	struct ipc *ipc = ipc_get();
+	#if CONFIG_SOF_IPC_USER_THREAD
+	k_spinlock_key_t key;
+
+	if (k_current_get() == &ipc->ipc_user.thread) {
+		key = k_spin_lock(&ipc->ipc_user.lock);
+		ipc->ipc_user.schedule_pending = true;
+		k_spin_unlock(&ipc->ipc_user.lock, key);
+		return;
+	}
+	#endif
 
 	k_work_schedule_for_queue(&ipc->ipc_send_wq, &ipc->z_delayed_work, K_USEC(IPC_PERIOD_USEC));
 #endif

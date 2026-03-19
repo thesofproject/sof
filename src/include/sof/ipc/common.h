@@ -66,6 +66,7 @@ struct ipc_user_thread_data {
 	struct k_spinlock lock;
 	struct k_sem req_sem;
 	struct k_sem reply_sem;
+	bool schedule_pending;
 	enum ipc4_user_thread_req req;
 	struct ipc4_message_request *msg;
 	struct ipc_msg *reply;
