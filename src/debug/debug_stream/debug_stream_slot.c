@@ -19,7 +19,7 @@ struct cpu_mutex {
 } __aligned(CONFIG_DCACHE_LINE_SIZE);
 
 /* CPU specific mutexes for each circular buffer */
-static struct cpu_mutex cpu_mutex[CONFIG_MP_MAX_NUM_CPUS];
+static struct cpu_mutex cpu_mutex[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
 
 #ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
 static struct debug_stream_slot_hdr *dbg_stream_slot;
@@ -51,6 +51,12 @@ debug_stream_get_circular_buffer(struct debug_stream_section_descriptor *desc, u
 
 	if (hdr->hdr.magic != DEBUG_STREAM_IDENTIFIER) {
 		LOG_ERR("Debug stream slot not initialized.");
+		return NULL;
+	}
+
+	if (core >= CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS) {
+		LOG_DBG("No section for cpu %u >= %u ", core,
+			CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS);
 		return NULL;
 	}
 
@@ -116,18 +122,19 @@ int debug_stream_slot_send_record(struct debug_stream_record *rec)
 static int debug_stream_slot_init(void)
 {
 	struct debug_stream_slot_hdr *hdr = debug_stream_get_slot();
-	size_t hdr_size = ALIGN_UP(offsetof(struct debug_stream_slot_hdr,
-					    section_desc[CONFIG_MP_MAX_NUM_CPUS]),
-				   CONFIG_DCACHE_LINE_SIZE);
+	size_t hdr_size = ALIGN_UP(
+		offsetof(struct debug_stream_slot_hdr,
+			 section_desc[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS]),
+		CONFIG_DCACHE_LINE_SIZE);
 	size_t section_area_size = ADSP_DW_SLOT_SIZE - hdr_size;
 	size_t section_size = ALIGN_DOWN(section_area_size /
-					 CONFIG_MP_MAX_NUM_CPUS,
+					 CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS,
 					 CONFIG_DCACHE_LINE_SIZE);
 	size_t offset = hdr_size;
 	int i;
 
 	LOG_INF("%u sections of %u bytes, hdr %u, section area %u",
-		CONFIG_MP_MAX_NUM_CPUS, section_size, hdr_size,
+		CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS, section_size, hdr_size,
 		section_area_size);
 
 #ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
@@ -142,9 +149,9 @@ static int debug_stream_slot_init(void)
 
 	hdr->hdr.magic = DEBUG_STREAM_IDENTIFIER;
 	hdr->hdr.hdr_size = hdr_size;
-	hdr->total_size = hdr_size + CONFIG_MP_MAX_NUM_CPUS * section_size;
-	hdr->num_sections = CONFIG_MP_MAX_NUM_CPUS;
-	for (i = 0; i < CONFIG_MP_MAX_NUM_CPUS; i++) {
+	hdr->total_size = hdr_size + CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS * section_size;
+	hdr->num_sections = CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS;
+	for (i = 0; i < CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS; i++) {
 		hdr->section_desc[i].core_id = i;
 		hdr->section_desc[i].buf_words =
 			(section_size - offsetof(struct debug_stream_circular_buf, data[0]))/
@@ -154,7 +161,7 @@ static int debug_stream_slot_init(void)
 			i, section_size, offset);
 		offset += section_size;
 	}
-	for (i = 0; i < CONFIG_MP_MAX_NUM_CPUS; i++) {
+	for (i = 0; i < CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS; i++) {
 		struct debug_stream_section_descriptor desc = { 0 };
 		struct debug_stream_circular_buf *buf =
 			debug_stream_get_circular_buffer(&desc, i);
