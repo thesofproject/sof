@@ -105,6 +105,7 @@ static void resume_dais(void)
 	struct processing_module *mod;
 	struct copier_data *cd;
 	struct dai_data *dd;
+	size_t gtw_cfg_size;
 
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 	/* Re-initialize mic privacy manager first to ensure proper state before DAI resume */
@@ -119,12 +120,13 @@ static void resume_dais(void)
 		mod = comp_mod(icd->cd);
 		cd = module_get_private_data(mod);
 		dd = cd->dd[0];
+		/* gtw_cfg.config_length is in words */
+		gtw_cfg_size = cd->config.gtw_cfg.config_length << 2;
 		if (dai_probe(dd->dai->dev) < 0) {
 			tr_err(&zephyr_tr, "DAI resume failed on probe, type %d index %d",
 			       dd->dai->type, dd->dai->index);
-		} else if (dai_set_config(dd->dai, &dd->ipc_config,
-					  cd->config.gtw_cfg.config_data,
-					  cd->config.gtw_cfg.config_length) < 0) {
+		} else if (dai_set_config(dd->dai, &dd->ipc_config, cd->config.gtw_cfg.config_data,
+					  gtw_cfg_size) < 0) {
 			tr_err(&zephyr_tr, "DAI resume failed on config, type %d index %d",
 			       dd->dai->type, dd->dai->index);
 		}
