@@ -146,14 +146,15 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	const struct sof_ipc_dai_config *sof_cfg = spec_config;
 	struct dai_config cfg = {0};
 	const void *cfg_params;
+	size_t dai_cfg_size = size;
 	bool is_blob;
 
 	assert_can_be_cold();
 
 	cfg.dai_index = common_config->dai_index;
 	is_blob = common_config->is_config_blob;
-	cfg.format = sof_cfg->format;
-	cfg.options = sof_cfg->flags;
+	cfg.format = common_config->format;
+	cfg.options = is_blob ? 0 : sof_cfg->flags;
 	cfg.rate = common_config->sampling_frequency;
 
 	switch (common_config->type) {
@@ -195,7 +196,14 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		return -EINVAL;
 	}
 
-	return dai_config_set(dev, &cfg, cfg_params, size);
+	if (!is_blob) {
+		if (size < SOF_DAI_CONFIG_HW_SPEC_OFFSET)
+			return -EINVAL;
+
+		dai_cfg_size -= SOF_DAI_CONFIG_HW_SPEC_OFFSET;
+	}
+
+	return dai_config_set(dev, &cfg, cfg_params, dai_cfg_size);
 }
 
 /* called from ipc/ipc3/dai.c */

@@ -21,6 +21,7 @@
 #include <ipc/dai-mediatek.h>
 #include <ipc/dai-amd.h>
 #include <ipc/header.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /*
@@ -96,6 +97,8 @@ enum sof_ipc_dai_type {
 	SOF_DAI_IMX_MICFIL,		/**< i.MX MICFIL */
 	SOF_DAI_AMD_SW_AUDIO		/**<Amd SW AUDIO */
 };
+
+#define SOF_DAI_CONFIG_HW_SPEC_OFFSET offsetof(struct sof_ipc_dai_config, ssp)
 
 /* general purpose DAI configuration */
 struct sof_ipc_dai_config {
