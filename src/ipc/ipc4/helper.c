@@ -1357,13 +1357,14 @@ __cold static int ipc4_add_comp_dev(struct comp_dev *dev)
 	}
 
 	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-		      sizeof(struct ipc_comp_dev));
+	icd = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+			     sizeof(struct ipc_comp_dev), 0);
 	if (!icd) {
 		tr_err(&ipc_tr, "alloc failed");
-		rfree(icd);
+		sof_heap_free(sof_sys_user_heap_get(), icd);
 		return IPC4_OUT_OF_MEMORY;
 	}
+	memset(icd, 0, sizeof(*icd));
 
 	icd->cd = dev;
 	icd->type = COMP_TYPE_COMPONENT;
