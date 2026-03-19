@@ -276,8 +276,25 @@ static int userspace_proxy_memory_init(struct userspace_context *user_ctx,
 	tr_dbg(&userspace_proxy_tr, "Heap partition %#lx + %zx, attr = %u",
 	       heap_part.start, heap_part.size, heap_part.attr);
 
-#if !defined(CONFIG_XTENSA_MMU_DOUBLE_MAP) && defined(CONFIG_SOF_ZEPHYR_HEAP_CACHED)
-#define HEAP_PART_CACHED
+	/* When a new memory domain is created, only the "factory" entries from the L2 page
+	 * tables are copied. Memory that was dynamically mapped during firmware execution
+	 * will not be accessible from the new domain. The k_heap structure (drv->user_heap)
+	 * resides in such dynamically mapped memory, so we must explicitly add a partition
+	 * for it to ensure that syscalls can access this structure from the userspace domain.
+	 */
+	struct k_mem_partition heap_struct_part = {
+		.attr = K_MEM_PARTITION_P_RW_U_NA |
+			user_get_partition_cache_attr(POINTER_TO_UINT(drv->user_heap))
+	};
+
+	k_mem_region_align(&heap_struct_part.start, &heap_struct_part.size,
+			   POINTER_TO_UINT(drv->user_heap),
+			   sizeof(*drv->user_heap), CONFIG_MM_DRV_PAGE_SIZE);
+
+	tr_dbg(&userspace_proxy_tr, "Heap struct partition %#lx + %zx, attr = %u",
+	       heap_struct_part.start, heap_struct_part.size, heap_struct_part.attr);
+
+#if defined(CONFIG_SOF_ZEPHYR_HEAP_CACHED)
 	/* Add cached module private heap to memory partitions */
 	struct k_mem_partition heap_cached_part = {
 		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB
@@ -296,10 +313,11 @@ static int userspace_proxy_memory_init(struct userspace_context *user_ctx,
 		 * These include ops structures marked with APP_TASK_DATA.
 		 */
 		&common_partition,
-#ifdef HEAP_PART_CACHED
+#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
 		&heap_cached_part,
 #endif
-		&heap_part
+		&heap_part,
+		&heap_struct_part
 	};
 
 	tr_dbg(&userspace_proxy_tr, "Common partition %#lx + %zx, attr = %u",
