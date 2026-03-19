@@ -249,7 +249,7 @@ static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 	/* not a kernel level IPC message */
 	default:
 		/* try and handle as a user IPC message */
-		ret = ipc4_user_process_glb_message(ipc4, &msg_reply);
+		ret = ipc4_process_glb_message_in_user_thread(ipc4, &msg_reply);
 		break;
 	}
 
@@ -412,7 +412,7 @@ __cold static int ipc4_process_module_message(struct ipc4_message_request *ipc4)
 		break;
 	default:
 		/* try and handle as a user IPC message */
-		ret = ipc4_user_process_module_message(ipc4, &msg_reply);
+		ret = ipc4_process_module_message_in_user_thread(ipc4, &msg_reply);
 		break;
 	}
 

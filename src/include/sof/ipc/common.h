@@ -54,11 +54,22 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_SECONDARY_CORE	BIT(2)
 #define IPC_TASK_POWERDOWN      BIT(3)
 
+enum ipc4_user_thread_req {
+	IPC4_USER_THREAD_REQ_NONE,
+	IPC4_USER_THREAD_REQ_GLB,
+	IPC4_USER_THREAD_REQ_MODULE,
+};
+
 #if defined(__ZEPHYR__) && CONFIG_SOF_IPC_USER_THREAD
 struct ipc_user_thread_data {
 	struct k_thread thread;
+	struct k_spinlock lock;
 	struct k_sem req_sem;
 	struct k_sem reply_sem;
+	enum ipc4_user_thread_req req;
+	struct ipc4_message_request *msg;
+	struct ipc_msg *reply;
+	int ret;
 };
 #endif
 
@@ -193,6 +204,24 @@ int ipc4_user_process_module_message(struct ipc4_message_request *ipc4, struct i
  * @return IPC4_SUCCESS on success, error code otherwise.
  */
 int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
+
+/**
+ * \brief Processes IPC4 global message in IPC user thread.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] reply IPC message reply structure.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_process_glb_message_in_user_thread(struct ipc4_message_request *ipc4,
+					    struct ipc_msg *reply);
+
+/**
+ * \brief Processes IPC4 module message in IPC user thread.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] reply IPC message reply structure.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_process_module_message_in_user_thread(struct ipc4_message_request *ipc4,
+					       struct ipc_msg *reply);
 
 /**
  * \brief Increment the IPC compound message pre-start counter.

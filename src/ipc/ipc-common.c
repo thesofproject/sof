@@ -187,8 +187,13 @@ static void ipc_init_user_thread(struct ipc *ipc)
 {
 	struct k_thread *user_thread = &ipc->ipc_user.thread;
 
+	k_spinlock_init(&ipc->ipc_user.lock);
 	k_sem_init(&ipc->ipc_user.req_sem, 0, 1);
 	k_sem_init(&ipc->ipc_user.reply_sem, 0, 1);
+	ipc->ipc_user.req = IPC4_USER_THREAD_REQ_NONE;
+	ipc->ipc_user.msg = NULL;
+	ipc->ipc_user.reply = NULL;
+	ipc->ipc_user.ret = 0;
 
 	k_thread_create(user_thread, ipc_user_stack,
 			K_THREAD_STACK_SIZEOF(ipc_user_stack),
@@ -200,17 +205,111 @@ static void ipc_init_user_thread(struct ipc *ipc)
 	k_thread_start(user_thread);
 }
 
+static int ipc4_process_in_user_thread(struct ipc *ipc, enum ipc4_user_thread_req req,
+				       struct ipc4_message_request *ipc4,
+				       struct ipc_msg *reply)
+{
+	k_spinlock_key_t key;
+	int ret;
+
+	if (!ipc || !ipc4 || !reply)
+		return -EINVAL;
+
+	key = k_spin_lock(&ipc->ipc_user.lock);
+	ipc->ipc_user.req = req;
+	ipc->ipc_user.msg = ipc4;
+	ipc->ipc_user.reply = reply;
+	k_spin_unlock(&ipc->ipc_user.lock, key);
+
+	k_sem_give(&ipc->ipc_user.req_sem);
+	k_sem_take(&ipc->ipc_user.reply_sem, K_FOREVER);
+
+	key = k_spin_lock(&ipc->ipc_user.lock);
+	req = ipc->ipc_user.req;
+	ret = ipc->ipc_user.ret;
+	ipc->ipc_user.req = IPC4_USER_THREAD_REQ_NONE;
+	k_spin_unlock(&ipc->ipc_user.lock, key);
+
+	if (req != IPC4_USER_THREAD_REQ_NONE)
+		return -EINVAL;
+
+	if (ret)
+		tr_err(&ipc_tr, "%#x %#x reply %d", ipc4->primary.dat, ipc4->extension.dat,
+		       ret);
+
+	return ret;
+}
+
+int ipc4_process_glb_message_in_user_thread(struct ipc4_message_request *ipc4,
+					    struct ipc_msg *reply)
+{
+	return ipc4_process_in_user_thread(ipc_get(), IPC4_USER_THREAD_REQ_GLB, ipc4, reply);
+}
+
+int ipc4_process_module_message_in_user_thread(struct ipc4_message_request *ipc4,
+					       struct ipc_msg *reply)
+{
+	return ipc4_process_in_user_thread(ipc_get(), IPC4_USER_THREAD_REQ_MODULE, ipc4, reply);
+}
+
 static void ipc_user_thread(void *arg1, void *arg2, void *arg3)
 {
 	struct ipc *ipc = arg1;
+	struct ipc4_message_request *ipc4;
+	struct ipc_msg *reply;
+	enum ipc4_user_thread_req req;
+	int ret;
+	k_spinlock_key_t key;
 
 	ARG_UNUSED(arg2);
 	ARG_UNUSED(arg3);
+	tr_info(&ipc_tr, "user thread started");
 
 	while (1) {
 		k_sem_take(&ipc->ipc_user.req_sem, K_FOREVER);
+
+		key = k_spin_lock(&ipc->ipc_user.lock);
+		req = ipc->ipc_user.req;
+		ipc4 = ipc->ipc_user.msg;
+		reply = ipc->ipc_user.reply;
+		k_spin_unlock(&ipc->ipc_user.lock, key);
+
+		switch (req) {
+		case IPC4_USER_THREAD_REQ_GLB:
+			ret = ipc4_user_process_glb_message(ipc4, reply);
+			break;
+		case IPC4_USER_THREAD_REQ_MODULE:
+			ret = ipc4_user_process_module_message(ipc4, reply);
+			break;
+		default:
+			ret = -EINVAL;
+			break;
+		}
+
+		if (ret)
+			tr_err(&ipc_tr, "%#x %#x failed: %d",
+			       ipc4->primary.dat, ipc4->extension.dat, ret);
+
+		key = k_spin_lock(&ipc->ipc_user.lock);
+		ipc->ipc_user.ret = ret;
+		ipc->ipc_user.req = IPC4_USER_THREAD_REQ_NONE;
+		k_spin_unlock(&ipc->ipc_user.lock, key);
+
 		k_sem_give(&ipc->ipc_user.reply_sem);
 	}
+}
+#else /* CONFIG_SOF_IPC_USER_THREAD */
+
+int ipc4_process_glb_message_in_user_thread(struct ipc4_message_request *ipc4,
+					    struct ipc_msg *reply)
+{
+	return ipc4_user_process_glb_message(ipc4, reply);
+}
+
+int ipc4_process_module_message_in_user_thread(struct ipc4_message_request *ipc4,
+					       struct ipc_msg *reply)
+{
+	return ipc4_user_process_module_message(ipc4, reply);
 }
 #endif /* CONFIG_SOF_IPC_USER_THREAD */
 #endif
