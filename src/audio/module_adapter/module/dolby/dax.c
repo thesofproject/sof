@@ -38,9 +38,26 @@ SOF_DEFINE_REG_UUID(dolby_dax_audio_processing);
 #define DAX_ENUM_PROFILE_CONTROL_ID 0
 #define DAX_ENUM_DEVICE_CONTROL_ID 1
 
+#define DAX_OWNER_ID_INVALID 0
+
+struct dax_shared_resource {
+	void *instance;
+	struct dax_buffer persist_buffer;
+	struct dax_buffer scratch_buffer;
+	atomic_t owner_id_counter;
+	atomic_t owner;
+	atomic_t force_owner; /* the owner should obtain resource immediately */
+	atomic_t ref_count;
+	atomic_t initialized;
+};
+
+static struct dax_shared_resource shared_resource;
+
 struct dax_adapter_data {
 	struct sof_dax dax_ctx;
 	atomic_t proc_flags;
+	int32_t owner_id;
+	int32_t is_registered;
 };
 
 enum dax_flag_opt_mode {
@@ -246,9 +263,19 @@ static void destroy_instance(struct processing_module *mod)
 	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
 	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
-	dax_free(dax_ctx); /* free internal dax instance in dax_ctx */
-	dax_buffer_release(mod, &dax_ctx->persist_buffer);
-	dax_buffer_release(mod, &dax_ctx->scratch_buffer);
+	if (dax_ctx) {
+		dax_ctx->p_dax = shared_resource.instance;
+		dax_free(dax_ctx); /* free internal dax instance in dax_ctx if it is valid */
+		rfree(shared_resource.persist_buffer.addr);
+		rfree(shared_resource.scratch_buffer.addr);
+		memset(&shared_resource.persist_buffer, 0, sizeof(shared_resource.persist_buffer));
+		memset(&shared_resource.scratch_buffer, 0, sizeof(shared_resource.scratch_buffer));
+		memset(&dax_ctx->persist_buffer, 0, sizeof(dax_ctx->persist_buffer));
+		memset(&dax_ctx->scratch_buffer, 0, sizeof(dax_ctx->scratch_buffer));
+		shared_resource.instance = NULL;
+		dax_ctx->p_dax = NULL;
+		comp_info(mod->dev, "freed instance");
+	}
 }
 
 static int establish_instance(struct processing_module *mod)
@@ -261,25 +288,35 @@ static int establish_instance(struct processing_module *mod)
 	uint32_t scratch_sz;
 
 	persist_sz = dax_query_persist_memory(dax_ctx);
-	if (dax_buffer_alloc(mod, &dax_ctx->persist_buffer, persist_sz) != 0) {
+	shared_resource.persist_buffer.addr = rballoc(SOF_MEM_FLAG_LARGE_BUFFER, persist_sz);
+	if (!shared_resource.persist_buffer.addr) {
 		comp_err(dev, "allocate %u bytes failed for persist", persist_sz);
 		ret = -ENOMEM;
 		goto err;
 	}
 	scratch_sz = dax_query_scratch_memory(dax_ctx);
-	if (dax_buffer_alloc(mod, &dax_ctx->scratch_buffer, scratch_sz) != 0) {
+	shared_resource.scratch_buffer.addr = rballoc(SOF_MEM_FLAG_LARGE_BUFFER, scratch_sz);
+	if (!shared_resource.scratch_buffer.addr) {
 		comp_err(dev, "allocate %u bytes failed for scratch", scratch_sz);
 		ret = -ENOMEM;
 		goto err;
 	}
+
+	shared_resource.persist_buffer.size = persist_sz;
+	shared_resource.scratch_buffer.size = scratch_sz;
+	dax_ctx->persist_buffer = shared_resource.persist_buffer;
+	dax_ctx->scratch_buffer = shared_resource.scratch_buffer;
 	ret = dax_init(dax_ctx);
 	if (ret != 0) {
 		comp_err(dev, "dax instance initialization failed, ret %d", ret);
 		goto err;
 	}
+	shared_resource.instance = dax_ctx->p_dax;
 
-	/* set DAX_ENABLE_MASK bit to trigger the fully update of kcontrol values */
-	flag_process(adapter_data, DAX_ENABLE_MASK, DAX_FLAG_SET);
+	/* reset dax_ctx here because acquire_ownership is only the way to get shared instance */
+	dax_ctx->p_dax = NULL;
+	memset(&dax_ctx->persist_buffer, 0, sizeof(dax_ctx->persist_buffer));
+	memset(&dax_ctx->scratch_buffer, 0, sizeof(dax_ctx->scratch_buffer));
 
 	comp_info(dev, "allocated: persist %u, scratch %u. version: %s",
 		  persist_sz, scratch_sz, dax_get_version());
@@ -288,6 +325,82 @@ static int establish_instance(struct processing_module *mod)
 err:
 	destroy_instance(mod);
 	return ret;
+}
+
+static bool is_instance_owned(struct processing_module *mod)
+{
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+
+	return atomic_read(&shared_resource.owner) == adapter_data->owner_id;
+}
+
+static void release_ownership(struct processing_module *mod)
+{
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
+
+	atomic_set(&shared_resource.owner, DAX_OWNER_ID_INVALID);
+	dax_ctx->p_dax = NULL;
+	memset(&dax_ctx->persist_buffer, 0, sizeof(dax_ctx->persist_buffer));
+	memset(&dax_ctx->scratch_buffer, 0, sizeof(dax_ctx->scratch_buffer));
+	comp_info(mod->dev, "unbinded DAX instance from owner %d", adapter_data->owner_id);
+}
+
+static void set_ownership(struct processing_module *mod, int32_t owner_id)
+{
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
+
+	atomic_set(&shared_resource.owner, owner_id);
+	dax_ctx->p_dax = shared_resource.instance;
+	dax_ctx->persist_buffer = shared_resource.persist_buffer;
+	dax_ctx->scratch_buffer = shared_resource.scratch_buffer;
+
+	/* reset instance buffer data */
+	dax_set_enable(0, dax_ctx);
+
+	/* set DAX_ENABLE_MASK bit to trigger the fully update of kcontrol values */
+	flag_process(adapter_data, DAX_ENABLE_MASK, DAX_FLAG_SET);
+
+	comp_info(mod->dev, "binded DAX instance to owner %d", adapter_data->owner_id);
+}
+
+/* can only be called within sof_dax_process */
+static int acquire_ownership(struct processing_module *mod)
+{
+	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
+	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
+	int32_t force_owner;
+
+	if (atomic_read(&shared_resource.initialized) == 0)
+		return -EINVAL;
+
+	force_owner = atomic_read(&shared_resource.force_owner);
+	if (force_owner != DAX_OWNER_ID_INVALID && force_owner != adapter_data->owner_id) {
+		/* release current ownership cause force_owner has more priority */
+		if (is_instance_owned(mod))
+			release_ownership(mod);
+		return 0;
+	}
+
+	/* transfer owner safely */
+	if (atomic_read(&shared_resource.owner) == DAX_OWNER_ID_INVALID) {
+		set_ownership(mod, adapter_data->owner_id);
+		if (force_owner == adapter_data->owner_id)
+			atomic_set(&shared_resource.force_owner, DAX_OWNER_ID_INVALID);
+		return 0;
+	}
+
+	/* highest priority for speaker */
+	if (dax_ctx->out_device == DAX_AUDIO_DEVICE_OUT_SPEAKER) {
+		atomic_set(&shared_resource.force_owner, adapter_data->owner_id);
+		return 0;
+	}
+
+	dax_ctx->p_dax = NULL;
+	memset(&dax_ctx->persist_buffer, 0, sizeof(dax_ctx->persist_buffer));
+	memset(&dax_ctx->scratch_buffer, 0, sizeof(dax_ctx->scratch_buffer));
+	return -EBUSY;
 }
 
 static int set_tuning_file(struct processing_module *mod, void *value, uint32_t size)
@@ -313,17 +426,14 @@ static int set_tuning_file(struct processing_module *mod, void *value, uint32_t 
 
 static int set_enable(struct processing_module *mod, int32_t enable)
 {
-	int ret = 0;
+	int ret;
 	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
 	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
-	if (enable) {
-		ret = dax_set_enable(1, dax_ctx);
-		dax_ctx->enable = (ret == 0 ? 1 : 0);
-	} else {
-		dax_ctx->enable = 0;
-		dax_set_enable(0, dax_ctx);
-	}
+	if (!is_instance_owned(mod))
+		return 0;
+
+	ret = dax_set_enable(enable, dax_ctx);
 
 	comp_info(mod->dev, "set dax enable %d, ret %d", enable, ret);
 	return ret;
@@ -336,7 +446,7 @@ static int set_volume(struct processing_module *mod, int32_t abs_volume)
 	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	dax_ctx->volume = abs_volume;
-	if (!dax_ctx->enable)
+	if (!dax_ctx->enable || !is_instance_owned(mod))
 		return 0;
 
 	ret = dax_set_volume(abs_volume, dax_ctx);
@@ -351,6 +461,9 @@ static int set_device(struct processing_module *mod, int32_t out_device)
 	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	dax_ctx->out_device = out_device;
+	if (!dax_ctx->enable || !is_instance_owned(mod))
+		return 0;
+
 	ret = dax_set_device(out_device, dax_ctx);
 
 	comp_info(mod->dev, "set device %d, ret %d", out_device, ret);
@@ -364,6 +477,9 @@ static int set_crosstalk_cancellation_enable(struct processing_module *mod, int3
 	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
 	dax_ctx->ctc_enable = enable;
+	if (!dax_ctx->enable || !is_instance_owned(mod))
+		return 0;
+
 	ret = dax_set_ctc_enable(enable, dax_ctx);
 
 	comp_info(mod->dev, "set ctc enable %d, ret %d", enable, ret);
@@ -382,7 +498,7 @@ static int set_profile(struct processing_module *mod, int32_t profile_id)
 	void *params;
 
 	dax_ctx->profile = profile_id;
-	if (!dax_ctx->enable)
+	if (!dax_ctx->enable || !is_instance_owned(mod))
 		return 0;
 
 	params = dax_find_params(DAX_PARAM_ID_PROFILE, profile_id, &params_sz, dax_ctx);
@@ -403,7 +519,7 @@ static int set_tuning_device(struct processing_module *mod, int32_t tuning_devic
 	void *params;
 
 	dax_ctx->tuning_device = tuning_device;
-	if (!dax_ctx->enable)
+	if (!dax_ctx->enable || !is_instance_owned(mod))
 		return 0;
 
 	params = dax_find_params(DAX_PARAM_ID_TUNING_DEVICE, tuning_device, &params_sz, dax_ctx);
@@ -424,7 +540,7 @@ static int set_content_processing_enable(struct processing_module *mod, int32_t 
 	void *params;
 
 	dax_ctx->content_processing_enable = enable;
-	if (!dax_ctx->enable)
+	if (!dax_ctx->enable || !is_instance_owned(mod))
 		return 0;
 
 	params = dax_find_params(DAX_PARAM_ID_CP_ENABLE, enable, &params_sz, dax_ctx);
@@ -542,6 +658,9 @@ static void check_and_update_settings(struct processing_module *mod)
 	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
 	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
 
+	if (!is_instance_owned(mod))
+		return;
+
 	if (flag_process(adapter_data, DAX_ENABLE_MASK, DAX_FLAG_READ_AND_CLEAR)) {
 		set_enable(mod, dax_ctx->enable);
 		if (dax_ctx->enable) {
@@ -580,13 +699,16 @@ static int sof_dax_reset(struct processing_module *mod)
 	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
 	struct sof_dax *dax_ctx;
 
-	/* dax instance will be established on prepare(), and destroyed on reset() */
 	if (adapter_data) {
 		dax_ctx = &adapter_data->dax_ctx;
 		if (flag_process(adapter_data, DAX_PROCESSING_MASK, DAX_FLAG_READ)) {
 			flag_process(adapter_data, DAX_RESET_MASK, DAX_FLAG_SET);
 		} else {
-			destroy_instance(mod);
+			if (adapter_data->is_registered == 1) {
+				atomic_sub(&shared_resource.ref_count, 1);
+				release_ownership(mod);
+				adapter_data->is_registered = 0;
+			}
 			dax_buffer_release(mod, &dax_ctx->input_buffer);
 			dax_buffer_release(mod, &dax_ctx->output_buffer);
 		}
@@ -606,6 +728,12 @@ static int sof_dax_free(struct processing_module *mod)
 			flag_process(adapter_data, DAX_FREE_MASK, DAX_FLAG_SET);
 		} else {
 			sof_dax_reset(mod);
+
+			if (atomic_read(&shared_resource.ref_count) == 0) {
+				destroy_instance(mod);
+				atomic_set(&shared_resource.initialized, 0);
+			}
+
 			dax_buffer_release(mod, &dax_ctx->tuning_file_buffer);
 			mod_data_blob_handler_free(mod, dax_ctx->blob_handler);
 			dax_ctx->blob_handler = NULL;
@@ -660,6 +788,12 @@ static int sof_dax_init(struct processing_module *mod)
 		module_set_private_data(mod, NULL);
 		return -ENOMEM;
 	}
+
+	if (atomic_read(&shared_resource.owner_id_counter) == INT32_MAX)
+		atomic_set(&shared_resource.owner_id_counter, 0);
+	atomic_add(&shared_resource.owner_id_counter, 1);
+	adapter_data->owner_id = atomic_read(&shared_resource.owner_id_counter);
+	comp_info(dev, "initialized, owner id %d", adapter_data->owner_id);
 
 	return 0;
 }
@@ -757,10 +891,20 @@ static int sof_dax_prepare(struct processing_module *mod, struct sof_source **so
 	if (ret != 0)
 		return ret;
 
-	/* dax instance will be established on prepare(), and destroyed on reset() */
-	ret = establish_instance(mod);
-	if (ret != 0)
-		return ret;
+	if (adapter_data->is_registered == 0) {
+		adapter_data->is_registered = 1;
+		atomic_add(&shared_resource.ref_count, 1);
+	}
+
+	if (atomic_read(&shared_resource.initialized) == 0) {
+		atomic_set(&shared_resource.initialized, 1);
+		ret = establish_instance(mod);
+		if (ret) {
+			/* rollback initialization state */
+			atomic_set(&shared_resource.initialized, 0);
+			return ret;
+		}
+	}
 
 	dax_ctx->sof_period_bytes = dev->frames *
 		dax_ctx->output_media_format.num_channels *
@@ -832,6 +976,7 @@ static int sof_dax_process(struct processing_module *mod, struct sof_source **so
 	dax_buffer_produce(dax_input_buffer, consumed_bytes);
 	source_release_data(source, consumed_bytes);
 
+	acquire_ownership(mod);
 	check_and_update_settings(mod);
 
 	/* internal input buffer -> internal output buffer */
