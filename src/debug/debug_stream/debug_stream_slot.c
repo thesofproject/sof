@@ -147,22 +147,20 @@ static int debug_stream_slot_init(void)
 	for (i = 0; i < CONFIG_MP_MAX_NUM_CPUS; i++) {
 		hdr->section_desc[i].core_id = i;
 		hdr->section_desc[i].buf_words =
-			(section_size - offsetof(struct debug_stream_circular_buf, data[0]))/
+			(section_size - offsetof(struct debug_stream_circular_buf, data[0])) /
 			sizeof(uint32_t);
 		hdr->section_desc[i].offset = offset;
-		LOG_INF("sections %u, size %u, offset %u",
-			i, section_size, offset);
+		LOG_DBG("sections %u, size %u, offset %u", i, section_size, offset);
 		offset += section_size;
 	}
 	for (i = 0; i < CONFIG_MP_MAX_NUM_CPUS; i++) {
 		struct debug_stream_section_descriptor desc = { 0 };
-		struct debug_stream_circular_buf *buf =
-			debug_stream_get_circular_buffer(&desc, i);
+		struct debug_stream_circular_buf *buf = debug_stream_get_circular_buffer(&desc, i);
 
 		buf->next_seqno = 0;
 		buf->w_ptr = 0;
 	}
-	LOG_INF("Debug stream slot initialized");
+	LOG_DBG("Debug stream slot initialized");
 
 	return 0;
 }
