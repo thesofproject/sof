@@ -201,10 +201,8 @@ struct processing_module {
 	enum module_processing_type proc_type;
 #if CONFIG_USERSPACE
 	struct userspace_context *user_ctx;
-#endif /* CONFIG_USERSPACE */
-#if CONFIG_SOF_USERSPACE_APPLICATION
 	struct k_mem_domain *mdom;
-#endif
+#endif /* CONFIG_USERSPACE */
 #endif /* SOF_MODULE_PRIVATE */
 };
 

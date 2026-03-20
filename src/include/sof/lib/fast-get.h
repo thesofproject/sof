@@ -11,6 +11,7 @@
 #include <stddef.h>
 
 struct k_heap;
+struct k_mem_domain;
 
 /*
  * When built for SOF, fast_get() and fast_put() are only needed when DRAM
@@ -25,13 +26,13 @@ struct k_heap;
 	(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE || !defined(LL_EXTENSION_BUILD))) || \
 	!CONFIG_SOF_FULL_ZEPHYR_APPLICATION
 const void *fast_get(struct k_heap *heap, const void * const dram_ptr, size_t size);
-void fast_put(struct k_heap *heap, const void *sram_ptr);
+void fast_put(struct k_heap *heap, struct k_mem_domain *mdom, const void *sram_ptr);
 #else
 static inline const void *fast_get(struct k_heap *heap, const void * const dram_ptr, size_t size)
 {
 	return dram_ptr;
 }
-static inline void fast_put(struct k_heap *heap, const void *sram_ptr) {}
+static inline void fast_put(struct k_heap *heap, struct k_mem_domain *mdom, const void *sram_ptr) {}
 #endif
 
 #endif /* __SOF_LIB_FAST_GET_H__ */

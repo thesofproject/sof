@@ -77,7 +77,7 @@ static void test_simple_fast_get_put(void **state)
 	assert(ret);
 	assert(!memcmp(ret, testdata[0], sizeof(testdata[0])));
 
-	fast_put(NULL, ret);
+	fast_put(NULL, NULL, ret);
 }
 
 static void test_fast_get_size_missmatch_test(void **state)
@@ -94,7 +94,7 @@ static void test_fast_get_size_missmatch_test(void **state)
 	ret[1] = fast_get(NULL, testdata[0], sizeof(testdata[0]) + 1);
 	assert(!ret[1]);
 
-	fast_put(NULL, ret);
+	fast_put(NULL, NULL, ret);
 }
 
 static void test_over_32_fast_gets_and_puts(void **state)
@@ -111,7 +111,7 @@ static void test_over_32_fast_gets_and_puts(void **state)
 		assert(!memcmp(copy[i], testdata[i], sizeof(testdata[0])));
 
 	for (i = 0; i < ARRAY_SIZE(copy); i++)
-		fast_put(NULL, copy[i]);
+		fast_put(NULL, NULL, copy[i]);
 }
 
 static void test_fast_get_refcounting(void **state)
@@ -133,13 +133,13 @@ static void test_fast_get_refcounting(void **state)
 		assert(!memcmp(copy[0][i], testdata[i], sizeof(testdata[0])));
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
-		fast_put(NULL, copy[0][i]);
+		fast_put(NULL, NULL, copy[0][i]);
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
 		assert(!memcmp(copy[1][i], testdata[i], sizeof(testdata[0])));
 
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
-		fast_put(NULL, copy[1][i]);
+		fast_put(NULL, NULL, copy[1][i]);
 }
 
 int main(void)
