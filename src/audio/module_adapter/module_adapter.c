@@ -177,6 +177,12 @@ static void module_adapter_mem_free(struct processing_module *mod)
 	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
 #endif
 	sof_heap_free(mod_heap, mod->dev);
+	LOG_INF("mod");
+#ifdef CONFIG_SOF_USERSPACE_LL
+	mod_heap = zephyr_ll_user_heap();
+	comp_cl_dbg(drv, "using ll user heap for module free");
+#endif
+	comp_cl_info(drv, "free mod %p with heap %p", mod, mod_heap);
 	sof_heap_free(mod_heap, mod);
 	if (domain == COMP_PROCESSING_DOMAIN_DP) {
 		struct dp_heap_user *mod_heap_user = container_of(mod_heap, struct dp_heap_user,
