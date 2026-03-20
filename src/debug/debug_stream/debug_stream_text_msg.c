@@ -130,7 +130,7 @@ static void ds_exception_dump(const char *format, va_list args)
 
 static int init_exception_dump_hook(void)
 {
-	set_exception_dump_hook(ds_exception_dump, ds_exception_drain);
+	arch_exception_set_dump_hook(ds_exception_dump, ds_exception_drain);
 	LOG_INF("exception_dump_hook set");
 	return 0;
 }
