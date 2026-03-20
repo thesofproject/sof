@@ -369,7 +369,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	icd->cd = NULL;
 
 	list_item_del(&icd->list);
-	rfree(icd);
+	sof_heap_free(sof_sys_user_heap_get(), icd);
 
 	return 0;
 }

@@ -340,13 +340,9 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc *ipc = ipc_get();
-	struct k_heap *heap = NULL;
+	struct k_heap *heap = sof_sys_user_heap_get();
 
 	assert_can_be_cold();
-
-#ifdef CONFIG_SOF_USERSPACE_LL
-	heap = zephyr_ll_user_heap();
-#endif
 
 	LOG_INF("pipe_desc %x, instance %u", pipe_desc, pipe_desc->primary.r.instance_id);
 
@@ -561,7 +557,7 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 
 	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
-	rfree(ipc_pipe);
+	sof_heap_free(sof_sys_user_heap_get(), ipc_pipe);
 
 	return IPC4_SUCCESS;
 }
@@ -1122,7 +1118,7 @@ __cold int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdm
 			if (icd->cd != dev)
 				continue;
 			list_item_del(&icd->list);
-			rfree(icd);
+			sof_heap_free(sof_sys_user_heap_get(), icd);
 			break;
 		}
 		comp_free(dev);
