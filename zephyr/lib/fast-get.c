@@ -122,7 +122,11 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 		alloc_align = PLATFORM_DCACHE_ALIGN;
 	}
 
-	if (size > FAST_GET_MAX_COPY_SIZE || !IS_ENABLED(CONFIG_USERSPACE))
+	/* The module driver heap is shared by all instances of a given module.
+	 * Instances can share the allocated buffer.
+	 */
+	if (size > FAST_GET_MAX_COPY_SIZE || !IS_ENABLED(CONFIG_USERSPACE) ||
+	    IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP))
 		alloc_ptr = dram_ptr;
 	else
 		/* When userspace is enabled only share large buffers */
@@ -164,8 +168,12 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 		/*
 		 * We only get there for large buffers, since small buffers with
 		 * enabled userspace don't create fast-get entries
+		 * 
+		 * We also reach this point when using the module driver heap.
+		 * Since the heap is already shared across module instances,
+		 * we skip memory domain manipulation.
 		 */
-		if (current_is_userspace) {
+		if (current_is_userspace && size > FAST_GET_MAX_COPY_SIZE) {
 			if (!fast_get_partition_exists(mdom, ret,
 						       ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
 				LOG_DBG("grant access to domain %p", mdom);
