@@ -86,8 +86,8 @@ STATIC_ASSERT(sizeof(struct coherent) <= DCACHE_LINE_SIZE,  DCACHE_LINE_SIZE_too
 #define ADDR_IS_COHERENT(_c)
 #endif
 
-/* debug sharing amongst cores */
-#ifdef COHERENT_CHECK_NONSHARED_CORES
+/* debug sharing amongst cores - not available in user-space builds */
+#if defined(COHERENT_CHECK_NONSHARED_CORES) && !defined(CONFIG_SOF_USERSPACE_LL)
 
 #define CORE_CHECK_STRUCT_FIELD uint32_t __core; bool __is_shared
 #define CORE_CHECK_STRUCT_INIT(_c, is_shared) { (_c)->__core = cpu_get_id(); \
