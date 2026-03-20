@@ -25,10 +25,8 @@ static void test_vmh_init_and_free_heap(struct vmh_heap_config *config,
 					bool expect_success)
 {
 	struct vmh_heap *heap = vmh_init_heap(config, allocating_continuously);
-	if (expect_success) {
-		zassert_not_null(heap,
-		"Heap initialization expected to succeed but failed");
-		}
+	if (expect_success)
+		zassert_not_null(heap, "Heap initialization expected to succeed but failed");
 	else
 		zassert_is_null(heap, "Heap initialization expected to fail but succeeded");
 
