@@ -341,6 +341,9 @@ EXPORT_SYMBOL(z_impl_mod_fast_get);
 static int free_contents(struct processing_module *mod, struct module_resource *container)
 {
 	struct module_resources *res = &mod->priv.resources;
+#if CONFIG_FAST_GET
+	struct k_mem_domain *mdom;
+#endif
 
 	switch (container->type) {
 	case MOD_RES_HEAP:
@@ -354,7 +357,12 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 #endif
 #if CONFIG_FAST_GET
 	case MOD_RES_FAST_GET:
-		fast_put(res->heap, container->sram_ptr);
+#if CONFIG_USERSPACE
+		mdom = mod->mdom;
+#else
+		mdom = NULL;
+#endif
+		fast_put(res->heap, mdom, container->sram_ptr);
 		return 0;
 #endif
 	default:

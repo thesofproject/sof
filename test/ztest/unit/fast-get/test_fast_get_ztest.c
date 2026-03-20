@@ -72,7 +72,7 @@ ZTEST(fast_get_suite, test_simple_fast_get_put)
 	zassert_mem_equal(ret, testdata[0], sizeof(testdata[0]),
 			  "Returned data should match original data");
 
-	fast_put(NULL, ret);
+	fast_put(NULL, NULL, ret);
 }
 
 /**
@@ -94,7 +94,7 @@ ZTEST(fast_get_suite, test_fast_get_size_missmatch_test)
 	ret[1] = fast_get(NULL, testdata[0], sizeof(testdata[0]) + 1);
 	zassert_is_null(ret[1], "fast_get with different size should return NULL");
 
-	fast_put(NULL, ret[0]);
+	fast_put(NULL, NULL, ret[0]);
 }
 
 /**
@@ -116,7 +116,7 @@ ZTEST(fast_get_suite, test_over_32_fast_gets_and_puts)
 				  "Data at index %d should match original", i);
 
 	for (i = 0; i < ARRAY_SIZE(copy); i++)
-		fast_put(NULL, copy[i]);
+		fast_put(NULL, NULL, copy[i]);
 }
 
 /**
@@ -147,7 +147,7 @@ ZTEST(fast_get_suite, test_fast_get_refcounting)
 
 	/* Release first set of references */
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
-		fast_put(NULL, copy[0][i]);
+		fast_put(NULL, NULL, copy[0][i]);
 
 	/* Data should still be valid through second set of references */
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
@@ -156,7 +156,7 @@ ZTEST(fast_get_suite, test_fast_get_refcounting)
 
 	/* Release second set of references */
 	for (i = 0; i < ARRAY_SIZE(copy[0]); i++)
-		fast_put(NULL, copy[1][i]);
+		fast_put(NULL, NULL, copy[1][i]);
 }
 
 /**

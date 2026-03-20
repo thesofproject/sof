@@ -29,7 +29,7 @@ struct sof_fast_get_entry {
 	const void *dram_ptr;
 	void *sram_ptr;
 #if CONFIG_USERSPACE
-	struct k_thread *thread;
+	struct k_mem_domain *mdom;
 #endif
 	size_t size;
 	unsigned int refcount;
@@ -117,7 +117,7 @@ static bool fast_get_domain_exists(struct k_thread *thread, void *start, size_t 
 	return false;
 }
 
-static int fast_get_access_grant(k_tid_t thread, void *addr, size_t size)
+static int fast_get_access_grant(struct k_mem_domain *mdom, void *addr, size_t size)
 {
 	struct k_mem_partition part = {
 		.start = (uintptr_t)addr,
@@ -126,7 +126,7 @@ static int fast_get_access_grant(k_tid_t thread, void *addr, size_t size)
 	};
 
 	LOG_DBG("add %#zx @ %p", part.size, addr);
-	return k_mem_domain_add_partition(thread->mem_domain_info.mem_domain, &part);
+	return k_mem_domain_add_partition(mdom, &part);
 }
 #endif /* CONFIG_USERSPACE */
 
@@ -183,15 +183,18 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 		ret = entry->sram_ptr;
 
 #if CONFIG_USERSPACE
+		struct k_mem_domain *mdom = k_current_get()->mem_domain_info.mem_domain;
+
 		/* We only get there for large buffers */
-		if (k_current_get()->mem_domain_info.mem_domain->num_partitions > 1) {
+		if (mdom->num_partitions > 1) {
 			/* A userspace thread makes the request */
-			if (k_current_get() != entry->thread &&
+			if (mdom != entry->mdom &&
 			    !fast_get_domain_exists(k_current_get(), ret,
 						    ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
-				LOG_DBG("grant access to thread %p first was %p", k_current_get(),
-					entry->thread);
-				int err = fast_get_access_grant(k_current_get(), ret, size);
+				LOG_DBG("grant access to domain %p first was %p", mdom,
+					entry->mdom);
+
+				int err = fast_get_access_grant(mdom, ret, size);
 
 				if (err < 0) {
 					LOG_ERR("failed to grant additional access err=%d", err);
@@ -228,10 +231,10 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 	dcache_writeback_region((__sparse_force void __sparse_cache *)entry->sram_ptr, size);
 
 #if CONFIG_USERSPACE
-	entry->thread = k_current_get();
+	entry->mdom = k_current_get()->mem_domain_info.mem_domain;
 	if (size > FAST_GET_MAX_COPY_SIZE) {
 		/* Otherwise we've allocated on thread's heap, so it already has access */
-		int err = fast_get_access_grant(entry->thread, ret, size);
+		int err = fast_get_access_grant(entry->mdom, ret, size);
 
 		if (err < 0) {
 			LOG_ERR("failed to grant access err=%d", err);
@@ -265,7 +268,7 @@ static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-void fast_put(struct k_heap *heap, const void *sram_ptr)
+void fast_put(struct k_heap *heap, struct k_mem_domain *mdom, const void *sram_ptr)
 {
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
@@ -294,17 +297,16 @@ void fast_put(struct k_heap *heap, const void *sram_ptr)
 	 * Order matters: free buffer first (needs partition for cache access),
 	 * then remove partition.
 	 */
-	if (entry->size > FAST_GET_MAX_COPY_SIZE && entry->thread) {
+	if (entry->size > FAST_GET_MAX_COPY_SIZE && entry->mdom && mdom) {
 		struct k_mem_partition part = {
 			.start = (uintptr_t)entry->sram_ptr,
 			.size = ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE),
 			.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
 		};
-		struct k_mem_domain *domain = k_current_get()->mem_domain_info.mem_domain;
 
-		LOG_DBG("removing partition %p size %#zx from thread %p",
-			(void *)part.start, part.size, k_current_get());
-		int err = k_mem_domain_remove_partition(domain, &part);
+		LOG_DBG("removing partition %p size %#zx memory domain %p",
+			(void *)part.start, part.size, mdom);
+		int err = k_mem_domain_remove_partition(mdom, &part);
 
 		if (err)
 			LOG_WRN("partition removal failed: %d", err);
