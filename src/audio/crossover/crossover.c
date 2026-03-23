@@ -296,18 +296,9 @@ static int crossover_init(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd;
-	const struct module_config *ipc_crossover = &md->cfg;
-	size_t bs = ipc_crossover->size;
 	int ret;
 
 	comp_info(dev, "entry");
-
-	/* Check that the coefficients blob size is sane */
-	if (bs > SOF_CROSSOVER_MAX_SIZE) {
-		comp_err(dev, "blob size (%d) exceeds maximum allowed size (%i)",
-			 bs, SOF_CROSSOVER_MAX_SIZE);
-		return -ENOMEM;
-	}
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -320,13 +311,6 @@ static int crossover_init(struct processing_module *mod)
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
-		goto cd_fail;
-	}
-
-	/* Get configuration data and reset Crossover state */
-	ret = comp_init_data_blob(cd->model_handler, bs, ipc_crossover->data);
-	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed.");
 		goto cd_fail;
 	}
 
@@ -527,6 +511,7 @@ static int crossover_prepare(struct processing_module *mod,
 	struct comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *source, *sink;
+	size_t data_size;
 	int channels;
 
 	comp_info(dev, "entry");
@@ -558,13 +543,14 @@ static int crossover_prepare(struct processing_module *mod,
 	comp_info(dev, "source_format=%d, sink_formats=%d, nch=%d",
 		  cd->source_format, cd->source_format, channels);
 
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
 
 	/* Initialize Crossover */
-	if (cd->config && crossover_validate_config(mod, cd->config) < 0) {
-		/* If config is invalid then delete it */
+	if (cd->config &&
+	    (!data_size || crossover_validate_config(mod, cd->config) < 0)) {
+		/* If the configuration is invalid fail the prepare */
 		comp_err(dev, "invalid binary config format");
-		crossover_free_config(&cd->config);
+		return -EINVAL;
 	}
 
 	if (cd->config) {

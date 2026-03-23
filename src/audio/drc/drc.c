@@ -147,23 +147,12 @@ __cold static int drc_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct module_config *cfg = &md->cfg;
 	struct drc_comp_data *cd;
-	size_t bs = cfg->size;
 	int ret;
 
 	assert_can_be_cold();
 
 	comp_info(dev, "entry");
-
-	/* Check first before proceeding with dev and cd that coefficients
-	 * blob size is sane.
-	 */
-	if (bs > SOF_DRC_MAX_SIZE) {
-		comp_err(dev, "error: configuration blob size = %u > %d",
-			 bs, SOF_DRC_MAX_SIZE);
-		return -EINVAL;
-	}
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -176,13 +165,6 @@ __cold static int drc_init(struct processing_module *mod)
 	if (!cd->model_handler) {
 		comp_err(dev, "mod_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
-		goto cd_fail;
-	}
-
-	/* Get configuration data and reset DRC state */
-	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
-	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed.");
 		goto cd_fail;
 	}
 
@@ -344,6 +326,7 @@ static int drc_prepare(struct processing_module *mod,
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
+	size_t data_size;
 	int channels;
 	int rate;
 	int ret;
@@ -369,8 +352,8 @@ static int drc_prepare(struct processing_module *mod,
 
 	/* Initialize DRC */
 	comp_info(dev, "source_format=%d", cd->source_format);
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	if (cd->config) {
+	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
+	if (cd->config && data_size > 0) {
 		ret = drc_setup(mod, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "error: drc_setup failed.");

@@ -80,10 +80,7 @@ static int dcblock_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct module_config *ipc_dcblock = &md->cfg;
 	struct comp_data *cd;
-	size_t bs = ipc_dcblock->size;
-	int ret;
 
 	comp_info(dev, "entry");
 
@@ -98,24 +95,11 @@ static int dcblock_init(struct processing_module *mod)
 	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto err_cd;
-	}
-
-	ret = comp_init_data_blob(cd->model_handler, bs, ipc_dcblock->data);
-	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed with error: %d", ret);
-		goto err_model_cd;
+		rfree(cd);
+		return -ENOMEM;
 	}
 
 	return 0;
-
-err_model_cd:
-	comp_data_blob_handler_free(cd->model_handler);
-
-err_cd:
-	rfree(cd);
-	return ret;
 }
 
 /**
@@ -190,6 +174,7 @@ static int dcblock_prepare(struct processing_module *mod,
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
+	size_t data_size;
 
 	comp_info(dev, "entry");
 
@@ -219,8 +204,8 @@ static int dcblock_prepare(struct processing_module *mod,
 	comp_info(mod->dev, "source_format=%d, sink_format=%d",
 		  cd->source_format, cd->sink_format);
 
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	if (cd->config)
+	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
+	if (cd->config && data_size > 0)
 		dcblock_copy_coefficients(mod);
 	else
 		dcblock_set_passthrough(mod);

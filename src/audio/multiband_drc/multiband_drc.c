@@ -226,21 +226,9 @@ static int multiband_drc_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct module_config *cfg = &md->cfg;
 	struct multiband_drc_comp_data *cd;
-	size_t bs = cfg->size;
-	int ret;
 
 	comp_info(dev, "entry");
-
-	/* Check first before proceeding with dev and cd that coefficients
-	 * blob size is sane.
-	 */
-	if (bs > SOF_MULTIBAND_DRC_MAX_BLOB_SIZE) {
-		comp_err(dev, "error: configuration blob size = %u > %d",
-			 bs, SOF_MULTIBAND_DRC_MAX_BLOB_SIZE);
-		return -EINVAL;
-	}
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -260,24 +248,13 @@ static int multiband_drc_init(struct processing_module *mod)
 	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto cd_fail;
+		mod_free(mod, cd);
+		return -ENOMEM;
 	}
 
-	/* Get configuration data and reset DRC state */
-	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
-	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed.");
-		goto cd_fail;
-	}
 	multiband_drc_reset_state(mod, &cd->state);
 
 	return 0;
-
-cd_fail:
-	mod_data_blob_handler_free(mod, cd->model_handler);
-	mod_free(mod, cd);
-	return ret;
 }
 
 __cold static int multiband_drc_free(struct processing_module *mod)
@@ -365,6 +342,7 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	struct comp_buffer *sourceb;
+	size_t data_size;
 	int channels;
 	int rate;
 	int ret = 0;
@@ -390,8 +368,8 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	/* Initialize DRC */
 	comp_dbg(dev, "source_format=%d, sink_format=%d",
 		 cd->source_format, cd->source_format);
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	if (cd->config) {
+	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
+	if (cd->config && data_size > 0) {
 		ret = multiband_drc_setup(mod, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "error: multiband_drc_setup failed.");
