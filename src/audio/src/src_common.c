@@ -688,6 +688,16 @@ __cold int src_free(struct processing_module *mod)
 	assert_can_be_cold();
 
 	comp_info(mod->dev, "entry");
+
+#if CONFIG_FAST_GET
+	struct src_param *a = &cd->param;
+
+	if (a->stage1)
+		mod_fast_put(mod, a->stage1->coefs);
+	if (a->stage2)
+		mod_fast_put(mod, a->stage2->coefs);
+#endif
+
 	mod_free(mod, cd->delay_lines);
 	mod_free(mod, cd);
 
