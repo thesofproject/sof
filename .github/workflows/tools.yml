@@ -7,6 +7,9 @@ name: User space tools/ directory
 # yamllint disable-line rule:truthy
 on: [pull_request, workflow_dispatch, workflow_call]
 
+permissions:
+  contents: read
+
 jobs:
   # This is not the same as building every ./build-tools.sh option.
   top-level_default_CMake_target_ALL:

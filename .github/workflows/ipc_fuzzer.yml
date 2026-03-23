@@ -22,6 +22,9 @@ on:
   pull_request:
   # TODO: can we provide a default inputs here too?
 
+permissions:
+  contents: read
+
 jobs:
 
   simple-IPC-fuzz_sh:
