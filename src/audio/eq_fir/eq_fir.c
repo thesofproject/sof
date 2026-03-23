@@ -247,22 +247,10 @@ static int eq_fir_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct module_config *cfg = &md->cfg;
 	struct comp_data *cd = NULL;
-	size_t bs = cfg->size;
 	int i;
-	int ret;
 
 	comp_info(dev, "entry");
-
-	/* Check first before proceeding with dev and cd that coefficients
-	 * blob size is sane.
-	 */
-	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		comp_err(dev, "coefficients blob size = %zu > SOF_EQ_FIR_MAX_SIZE",
-			 bs);
-		return -EINVAL;
-	}
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -277,31 +265,16 @@ static int eq_fir_init(struct processing_module *mod)
 	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "mod_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto err;
+		mod_free(mod, cd);
+		return -ENOMEM;
 	}
 
 	md->private = cd;
-
-	/* Allocate and make a copy of the coefficients blob and reset FIR. If
-	 * the EQ is configured later in run-time the size is zero.
-	 */
-	ret = comp_init_data_blob(cd->model_handler, bs, cfg->init_data);
-	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed.");
-		goto err_init;
-	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
 	return 0;
-
-err_init:
-	mod_data_blob_handler_free(mod, cd->model_handler);
-err:
-	mod_free(mod, cd);
-	return ret;
 }
 
 static int eq_fir_free(struct processing_module *mod)
@@ -413,6 +386,7 @@ static int eq_fir_prepare(struct processing_module *mod,
 	int channels;
 	enum sof_ipc_frame frame_fmt;
 	int ret = 0;
+	size_t data_size;
 
 	comp_dbg(dev, "entry");
 
@@ -435,8 +409,8 @@ static int eq_fir_prepare(struct processing_module *mod,
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
 
 	cd->eq_fir_func = eq_fir_passthrough;
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	if (cd->config) {
+	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
+	if (cd->config && data_size > 0) {
 		ret = eq_fir_setup(mod, channels);
 		if (ret < 0)
 			comp_err(dev, "eq_fir_setup failed.");

@@ -537,20 +537,11 @@ static int tdfb_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct module_config *cfg = &md->cfg;
 	struct tdfb_comp_data *cd;
-	size_t bs = cfg->size;
 	int ret;
 	int i;
 
 	comp_info(dev, "entry");
-
-	/* Check first that configuration blob size is sane */
-	if (bs > SOF_TDFB_MAX_SIZE) {
-		comp_err(dev, "error: configuration blob size = %zu > %d",
-			 bs, SOF_TDFB_MAX_SIZE);
-		return -EINVAL;
-	}
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -576,13 +567,6 @@ static int tdfb_init(struct processing_module *mod)
 	if (!cd->model_handler) {
 		comp_err(dev, "mod_data_blob_handler_new() failed.");
 		ret = -ENOMEM;
-		goto err;
-	}
-
-	/* Get configuration data and reset FIR filters */
-	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
-	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed.");
 		goto err;
 	}
 
@@ -723,6 +707,7 @@ static int tdfb_prepare(struct processing_module *mod,
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame frame_fmt;
+	size_t data_size;
 	int source_channels;
 	int sink_channels;
 	int rate;
@@ -752,8 +737,9 @@ static int tdfb_prepare(struct processing_module *mod,
 	rate = audio_stream_get_rate(&sourceb->stream);
 
 	/* Initialize filter */
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-	if (!cd->config) {
+	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
+	if (!cd->config || !data_size) {
+		comp_err(dev, "Missing a configuration blob.");
 		ret = -EINVAL;
 		goto out;
 	}

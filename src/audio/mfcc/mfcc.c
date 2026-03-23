@@ -72,19 +72,9 @@ static int mfcc_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct module_config *cfg = &md->cfg;
 	struct mfcc_comp_data *cd = NULL;
-	size_t bs = cfg->size;
-	int ret;
 
 	comp_info(dev, "entry");
-
-	/* Check first that configuration blob size is sane */
-	if (bs > SOF_MFCC_CONFIG_MAX_SIZE) {
-		comp_err(dev, "error: configuration blob size %zu exceeds %d",
-			 bs, SOF_MFCC_CONFIG_MAX_SIZE);
-		return -EINVAL;
-	}
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -95,25 +85,11 @@ static int mfcc_init(struct processing_module *mod)
 	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "comp_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto err;
-	}
-
-	/* Get configuration data */
-	ret = comp_init_data_blob(cd->model_handler, bs, cfg->init_data);
-	if (ret < 0) {
-		comp_err(mod->dev, "comp_init_data_blob() failed.");
-		goto err_init;
+		mod_free(mod, cd);
+		return -ENOMEM;
 	}
 
 	return 0;
-
-err_init:
-	comp_data_blob_handler_free(cd->model_handler);
-
-err:
-	mod_free(mod, cd);
-	return ret;
 }
 
 static int mfcc_free(struct processing_module *mod)
@@ -183,6 +159,7 @@ static int mfcc_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
+	size_t data_size;
 	uint32_t sink_period_bytes;
 	int ret;
 
@@ -211,10 +188,10 @@ static int mfcc_prepare(struct processing_module *mod,
 		goto err;
 	}
 
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
 
 	/* Initialize MFCC, max_frames is set to dev->frames + 4 */
-	if (cd->config) {
+	if (cd->config && data_size > 0) {
 		ret = mfcc_setup(mod, dev->frames + 4, audio_stream_get_rate(&sourceb->stream),
 				 audio_stream_get_channels(&sourceb->stream));
 		if (ret < 0) {

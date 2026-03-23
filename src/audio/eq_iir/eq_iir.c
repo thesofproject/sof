@@ -44,18 +44,10 @@ static int eq_iir_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct module_config *cfg = &md->cfg;
 	struct comp_data *cd;
-	size_t bs = cfg->size;
-	int i, ret;
+	int i;
 
 	comp_info(dev, "entry");
-
-	/* Check first before proceeding with dev and cd that coefficients blob size is sane */
-	if (bs > SOF_EQ_IIR_MAX_SIZE) {
-		comp_err(dev, "coefficients blob size %zu exceeds maximum", bs);
-		return -EINVAL;
-	}
 
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd)
@@ -67,28 +59,14 @@ static int eq_iir_init(struct processing_module *mod)
 	cd->model_handler = mod_data_blob_handler_new(mod);
 	if (!cd->model_handler) {
 		comp_err(dev, "mod_data_blob_handler_new() failed.");
-		ret = -ENOMEM;
-		goto err;
-	}
-
-	/* Allocate and make a copy of the coefficients blob and reset IIR. If
-	 * the EQ is configured later in run-time the size is zero.
-	 */
-	ret = comp_init_data_blob(cd->model_handler, bs, cfg->data);
-	if (ret < 0) {
-		comp_err(dev, "comp_init_data_blob() failed with error: %d", ret);
-		goto err;
+		mod_free(mod, cd);
+		return -ENOMEM;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df1(&cd->iir[i]);
 
 	return 0;
-
-err:
-	mod_data_blob_handler_free(mod, cd->model_handler);
-	mod_free(mod, cd);
-	return ret;
 }
 
 static int eq_iir_free(struct processing_module *mod)
@@ -180,6 +158,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
+	size_t data_size;
 	int channels;
 	int ret = 0;
 
@@ -204,7 +183,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 	source_format = audio_stream_get_frm_fmt(&sourceb->stream);
 	sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
 
-	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
 
 	/* Initialize EQ */
 	comp_info(dev, "source_format=%d, sink_format=%d",
@@ -213,7 +192,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 	eq_iir_set_passthrough_func(cd, source_format, sink_format);
 
 	/* Initialize EQ */
-	if (cd->config) {
+	if (cd->config && data_size > 0) {
 		ret = eq_iir_new_blob(mod, source_format, sink_format, channels);
 		if (ret)
 			return ret;
