@@ -103,7 +103,7 @@ static struct sof_fast_get_entry *fast_get_find_entry(struct sof_fast_get_data *
 #endif
 
 #if CONFIG_USERSPACE
-static bool fast_get_domain_exists(struct k_thread *thread, void *start, size_t size)
+static bool fast_get_partition_exists(struct k_thread *thread, void *start, size_t size)
 {
 	struct k_mem_domain *domain = thread->mem_domain_info.mem_domain;
 
@@ -185,12 +185,15 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 #if CONFIG_USERSPACE
 		struct k_mem_domain *mdom = k_current_get()->mem_domain_info.mem_domain;
 
-		/* We only get there for large buffers */
+		/*
+		 * We only get there for large buffers, since small buffers with
+		 * enabled userspace don't create fast-get entries
+		 */
 		if (mdom->num_partitions > 1) {
 			/* A userspace thread makes the request */
 			if (mdom != entry->mdom &&
-			    !fast_get_domain_exists(k_current_get(), ret,
-						    ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
+			    !fast_get_partition_exists(k_current_get(), ret,
+						       ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
 				LOG_DBG("grant access to domain %p first was %p", mdom,
 					entry->mdom);
 
@@ -284,7 +287,7 @@ void fast_put(struct k_heap *heap, struct k_mem_domain *mdom, const void *sram_p
 	entry->refcount--;
 
 	if (!entry->refcount) {
-		LOG_DBG("freeing buffer %p", entry->sram_ptr);
+		LOG_DBG("freeing buffer %p", sram_ptr);
 		sof_heap_free(heap, entry->sram_ptr);
 	}
 
@@ -299,7 +302,7 @@ void fast_put(struct k_heap *heap, struct k_mem_domain *mdom, const void *sram_p
 	 */
 	if (entry->size > FAST_GET_MAX_COPY_SIZE && entry->mdom && mdom) {
 		struct k_mem_partition part = {
-			.start = (uintptr_t)entry->sram_ptr,
+			.start = (uintptr_t)sram_ptr,
 			.size = ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE),
 			.attr = K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB,
 		};
