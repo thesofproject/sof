@@ -1,0 +1,50 @@
+---
+name: "CodeQL Analysis"
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+permissions:
+  contents: read
+
+# Specifies group name that stops previous workflows if the name matches
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze GitHub Actions Workflows
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write  # Required to upload SARIF results
+      actions: read           # Required to read workflow information
+      contents: read          # Required to checkout repository
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['actions']  # Analyze GitHub Actions workflows
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98  # v4
+        with:
+          languages: ${{ matrix.language }}
+          # Optional: Specify custom queries
+          # queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98  # v4
+        with:
+          category: "/language:${{ matrix.language }}"
+          upload: true
+          # Upload SARIF results to GitHub Security tab
+          output: sarif-results
