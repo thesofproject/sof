@@ -10,6 +10,9 @@ name: Unit tests
 # yamllint disable-line rule:truthy
 on: [pull_request, workflow_dispatch, workflow_call]
 
+permissions:
+  contents: read
+
 jobs:
   cmocka_utests:
     runs-on: ubuntu-latest

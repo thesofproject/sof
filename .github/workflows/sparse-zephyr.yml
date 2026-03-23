@@ -11,6 +11,9 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: read
+
 jobs:
   # As of sparse commit ce1a6720f69e / Sept 2022, the exit status of
   # sparse.c is an unusable mess and always zero in practice. Moreover

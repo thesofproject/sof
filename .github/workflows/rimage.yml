@@ -22,6 +22,9 @@ on:
     paths:
       - tools/rimage/**
 
+permissions:
+  contents: read
+
 jobs:
 
   # Basic build test
