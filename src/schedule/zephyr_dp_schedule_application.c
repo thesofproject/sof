@@ -369,6 +369,23 @@ static void scheduler_dp_domain_free(struct task_dp_pdata *pdata)
 	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG);
 	k_mem_domain_remove_partition(mdom, pdata->mpart + SOF_DP_PART_CFG_CACHE);
 
+	if (mdom->num_partitions) {
+		/* Violation: all partitions should be freed by now */
+		unsigned int n = mdom->num_partitions;
+
+		LOG_WRN("%u domain partition(s) not freed, force-freeing them all", n);
+
+		for (unsigned int i = 0; i < arch_mem_domain_max_partitions_get() && n; i++) {
+			struct k_mem_partition *dpart = &mdom->partitions[i];
+
+			if (dpart->size) {
+				k_mem_domain_remove_partition(mdom, dpart);
+				n--;
+			}
+		}
+	}
+
+	/* All partitions removed, the domain can be freed now */
 	pmod->mdom = NULL;
 	objpool_free(&dp_mdom_head, mdom);
 }
