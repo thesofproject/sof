@@ -2,30 +2,31 @@
 # Copyright(c) 2025 Intel Corporation. All rights reserved.
 
 # Use zephyr-build as base image
-FROM ghcr.io/zephyrproject-rtos/zephyr-build:v0.28.4 as base
+FROM ghcr.io/zephyrproject-rtos/zephyr-build:v0.29.0 as base
 
 # Remove additional toolchains.
 # As this is not ideal solution there is a plan to build docker image without zephyr-build as the base
 # and install only needed toolchains in the future.
 USER root
 
-RUN cd /opt/toolchains/zephyr-sdk-0.17.4 && \
-    rm -rvf arc* \
-        micro* \
-        mips* \
-        nios* \
-        risc* \
-        sparc* \
-        sysroots \
-        x86* \
-        xtensa-espressif* \
-        xtensa-sample* \
-        xtensa-dc233c*
+RUN rm -rvf /opt/toolchains/zephyr-sdk-1.0.0/hosttools/sysroots && \
+    rm -rvf /opt/fvps && \
+    cd /opt/toolchains/zephyr-sdk-1.0.0/gnu && \
+      rm -rvf arc* \
+          micro* \
+          mips* \
+          nios* \
+          risc* \
+          sparc* \
+          x86* \
+          xtensa-espressif* \
+          xtensa-sample* \
+          xtensa-dc233c*
 
 # Use ubuntu24.04 as base for zephyr-lite
 FROM ubuntu:24.04 as zephyr-lite
 
-# Copy needed files from base to zephyr-lite
+# Copy only required files from base image to zephyr-lite
 # /opt for toolchains and sdk
 # /usr for binaries and libs
 # /home for libs installed in .local
@@ -51,7 +52,8 @@ RUN /opt/python/venv/bin/pip install 'cmake>=3.21' jsonschema
 
 # Set zephyr env variables
 ENV PATH="/opt/python/venv/bin/:$PATH"
-ENV ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk-0.17.4
+ENV ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk-1.0.0
+ENV ZSDK_VERSION=1.0.0
 ENV ZEPHYR_TOOLCHAIN_VARIANT=zephyr
 
 CMD ["/bin/bash", "-l"]
