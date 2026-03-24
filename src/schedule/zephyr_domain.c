@@ -299,7 +299,7 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	struct zephyr_domain_thread *dt;
-	char thread_name[] = "ll_thread0";
+	char thread_name[] = "userll_thread0";
 	k_tid_t thread;
 	int core;
 
