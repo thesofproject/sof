@@ -45,6 +45,15 @@ config SOF_DEBUG_STREAM_THREAD_INFO_INTERVAL
 	  Decides how often thread info runs and checks execution cycle
 	  statistics and stack usage.
 
+config SOF_DEBUG_STREAM_THREAD_INFO_TOTAL_CPU_LOAD_TO_LOG
+	bool "Print summarized total CPU load to log subsystem"
+	depends on SOF_DEBUG_STREAM_THREAD_INFO
+	default y
+	help
+	  In addition to printing thread statistics to debug stream,
+	  print the total CPU load (sum of all threads) to
+	  the logging system.
+
 config SOF_DEBUG_STREAM_TEXT_MSG
 	bool "Enable text message sending through Debug-Stream"
 	help
