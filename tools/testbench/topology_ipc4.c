@@ -1286,6 +1286,7 @@ static int tb_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
 	struct snd_soc_tplg_mixer_control *tplg_mixer;
 	struct snd_soc_tplg_enum_control *tplg_enum;
 	struct snd_soc_tplg_bytes_control *tplg_bytes;
+	struct sof_abi_hdr *abi;
 
 	if (glb->num_ctls >= TB_MAX_CTLS) {
 		fprintf(stderr, "Error: Too many controls already.\n");
@@ -1358,7 +1359,26 @@ static int tb_kcontrol_cb_new(struct snd_soc_tplg_ctl_hdr *tplg_ctl,
 				tplg_bytes->priv.size);
 			return -EINVAL;
 		}
-		ctl->data = tplg_bytes->priv.data;
+
+		if (tplg_bytes->priv.size >= sizeof(struct sof_abi_hdr)) {
+			abi = (struct sof_abi_hdr *)tplg_bytes->priv.data;
+			if (abi->size > TB_MAX_BYTES_DATA_SIZE) {
+				fprintf(stderr,
+					"Error: ABI payload size %u exceeds max %d\n",
+					abi->size, TB_MAX_BYTES_DATA_SIZE);
+				return -EINVAL;
+			}
+			if (tplg_bytes->priv.size <
+			    sizeof(struct sof_abi_hdr) + abi->size) {
+				fprintf(stderr,
+					"Error: bytes data size %d is smaller than ABI header + payload (%zu + %u)\n",
+					tplg_bytes->priv.size,
+					sizeof(struct sof_abi_hdr), abi->size);
+				return -EINVAL;
+			}
+			ctl->data = tplg_bytes->priv.data;
+		}
+
 		ctl->comp_info = comp_info;
 		strncpy(ctl->name, tplg_ctl->name, TB_MAX_CTL_NAME_CHARS);
 		break;
