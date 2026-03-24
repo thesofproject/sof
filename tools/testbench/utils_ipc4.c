@@ -290,7 +290,8 @@ static int tb_set_up_widget(struct testbench_prm *tp, struct tplg_comp_info *com
 		/* send the bytes data from kcontrols associated with current widget */
 		if (ctl->module_id != comp_info->module_id ||
 		    ctl->instance_id != comp_info->instance_id ||
-		    ctl->type != SND_SOC_TPLG_TYPE_BYTES)
+		    ctl->type != SND_SOC_TPLG_TYPE_BYTES ||
+		    !ctl->data)
 			continue;
 
 		abi = (struct sof_abi_hdr *)ctl->data;
