@@ -16,7 +16,7 @@ on: [pull_request, workflow_dispatch, workflow_call]
 
 jobs:
   main:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4

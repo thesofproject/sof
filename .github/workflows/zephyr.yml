@@ -66,7 +66,7 @@ jobs:
   # sof/scripts/xtensa-build-zephyr.py configuration script. Then this
   # job will be disappear, folded back in the regular build-* jobs below.
   LP64-WIP:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     defaults:
       run:
         shell: bash
@@ -97,7 +97,7 @@ jobs:
             -DEXTRA_AFLAGS=-Werror
 
   build-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     defaults:
       run:
         shell: bash
