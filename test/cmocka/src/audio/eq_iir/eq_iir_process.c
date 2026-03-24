@@ -13,6 +13,7 @@
 #include <sof/audio/component_ext.h>
 #include <eq_iir/eq_iir.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <ipc/control.h>
 
 #include "../../util.h"
 #include "../../../include/cmocka_chirp_2ch.h"
@@ -68,21 +69,46 @@ static int setup_group(void **state)
 static struct sof_ipc_comp_process *create_eq_iir_comp_ipc(struct test_data *td)
 {
 	struct sof_ipc_comp_process *ipc;
-	struct sof_eq_iir_config *eq;
 	size_t ipc_size = sizeof(struct sof_ipc_comp_process);
-	struct sof_abi_hdr *blob = (struct sof_abi_hdr *)iir_coef_2ch;
 	const struct sof_uuid uuid = SOF_REG_UUID(eq_iir);
 
-	ipc = calloc(1, ipc_size + blob->size + SOF_UUID_SIZE);
+	ipc = calloc(1, ipc_size + SOF_UUID_SIZE);
 	memcpy_s(ipc + 1, SOF_UUID_SIZE, &uuid, SOF_UUID_SIZE);
-	eq = (struct sof_eq_iir_config *)((char *)(ipc + 1) + SOF_UUID_SIZE);
 	ipc->comp.hdr.size = ipc_size + SOF_UUID_SIZE;
 	ipc->comp.type = SOF_COMP_MODULE_ADAPTER;
 	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
-	ipc->size = blob->size;
+	ipc->size = 0;
 	ipc->comp.ext_data_length = SOF_UUID_SIZE;
-	memcpy_s(eq, blob->size, blob->data, blob->size);
 	return ipc;
+}
+
+static int eq_iir_send_config(struct processing_module *mod)
+{
+	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
+	struct sof_abi_hdr *blob = (struct sof_abi_hdr *)iir_coef_2ch;
+	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_abi_hdr) +
+		blob->size;
+	struct sof_ipc_ctrl_data *cdata;
+	int ret;
+
+	cdata = calloc(1, cdata_size);
+	if (!cdata)
+		return -ENOMEM;
+
+	cdata->cmd = SOF_CTRL_CMD_BINARY;
+	cdata->num_elems = blob->size;
+	cdata->data[0].magic = blob->magic;
+	cdata->data[0].type = blob->type;
+	cdata->data[0].size = blob->size;
+	cdata->data[0].abi = blob->abi;
+	memcpy_s(cdata->data[0].data, blob->size, blob->data, blob->size);
+
+	ret = ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
+				     blob->size, (const uint8_t *)cdata,
+				     blob->size, NULL, 0);
+
+	free(cdata);
+	return ret;
 }
 
 static void prepare_sink(struct test_data *td, struct processing_module *mod)
@@ -154,6 +180,10 @@ static int setup(void **state)
 	td->dev = dev;
 	dev->frames = params->frames;
 	mod = comp_mod(dev);
+
+	ret = eq_iir_send_config(mod);
+	if (ret)
+		return ret;
 
 	prepare_sink(td, mod);
 	prepare_source(td, mod);
