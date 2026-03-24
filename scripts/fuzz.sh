@@ -189,7 +189,7 @@ setup()
     SOF_TOP=$(cd "$(dirname "$0")/.." && pwd)
     export SOF_TOP
 
-    export ZEPHYR_TOOLCHAIN_VARIANT=llvm
+    export ZEPHYR_TOOLCHAIN_VARIANT=host/llvm
 
     # Define ZEPHYR_BASE so this can be invoked even outside the west workspace.
     local WS_TOP
