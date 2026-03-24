@@ -225,6 +225,13 @@ static void thread_info_cb(const struct k_thread *cthread, void *user_data)
 		tinfo->name, tinfo->stack_usage * 100U / 255,
 		tinfo->cpu_usage * 100U / 255);
 
+	/* .is_idle depends on CONFIG_SMP */
+#if defined(CONFIG_SOF_DEBUG_STREAM_THREAD_INFO_TOTAL_CPU_LOAD_TO_LOG) && defined(CONFIG_SMP)
+	if (thread->base.is_idle)
+		LOG_INF("core %u utilization %u%%", ud->core,
+			100U - tinfo->cpu_usage * 100U / 255);
+#endif
+
 	ud->thread_count++;
 }
 
