@@ -51,7 +51,7 @@ jobs:
       - name: Build and run unit tests
         run: |
           cd workspace
-          export ZEPHYR_TOOLCHAIN_VARIANT=llvm
+          export ZEPHYR_TOOLCHAIN_VARIANT=host/llvm
           west twister --testsuite-root sof/test/ztest/unit/ --platform native_sim --verbose \
            --inline-logs
   # This part is commented out because it is not needed at the moment.

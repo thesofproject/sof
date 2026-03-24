@@ -21,7 +21,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.28.4
+      image: thesofproject/zephyr-lite:v0.29.0
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,7 +71,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.28.4
+      image: thesofproject/zephyr-lite:v0.29.0
 
     steps:
       - uses: actions/checkout@v4
@@ -102,7 +102,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.28.4
+      image: thesofproject/zephyr-lite:v0.29.0
     strategy:
       fail-fast: false
       matrix:
@@ -285,12 +285,12 @@ jobs:
 
       # Keep this SDK version identical to the one in
       # sof/zephyr/docker-run.sh
-      - name: Cache Zephyr SDK 0.17.4
+      - name: Cache Zephyr SDK 1.0.0
         id: cache-zephyr-sdk
         uses: actions/cache@v4
         with:
-          path: zephyr-sdk-0.17.4_windows-x86_64.7z
-          key: ${{ runner.os }}-cache-zephyr-sdk-0-17-4
+          path: zephyr-sdk-1.0.0_windows-x86_64_gnu.7z
+          key: ${{ runner.os }}-cache-zephyr-sdk-1-0-0
 
       # Wget is needed by Zephyr SDK setup.cmd installation script
       - name: Download wget
@@ -298,11 +298,11 @@ jobs:
         run: |
           curl -L -O http://downloads.sourceforge.net/gnuwin32/wget-1.11.4-1-bin.zip
 
-      - name: Download Zephyr SDK 0.17.4
+      - name: Download Zephyr SDK 1.0.0
         if: ${{ steps.cache-zephyr-sdk.outputs.cache-hit != 'true' }}
         run: |  # yamllint disable-line rule:line-length
           curl -L -O `
-          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_windows-x86_64.7z
+          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v1.0.0/zephyr-sdk-1.0.0_windows-x86_64_gnu.7z
 
       # Unzips every .zip package to directory matching its name without extension
       - name: Unzip downloaded packages
@@ -325,12 +325,12 @@ jobs:
       # setup.cmd may not be called in from msys shell as it does not parse
       # forward slash script input arguments correctly.
       - name: Install Zephyr SDK
-        run: zephyr-sdk-0.17.4_windows-x86_64/zephyr-sdk-0.17.4/setup.cmd /t all /h /c
+        run: zephyr-sdk-1.0.0_windows-x86_64_gnu/zephyr-sdk-1.0.0/setup.cmd /t all /h /c
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: West install
         run: pip3 install west
@@ -367,7 +367,7 @@ jobs:
         uses: actions/setup-python@v5
         id: cache-python
         with:
-          python-version: '3.10'
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: workspace/zephyr/scripts/requirements.txt
 
