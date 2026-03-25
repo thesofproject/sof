@@ -243,7 +243,7 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 
 		if (err < 0) {
 			LOG_ERR("failed to grant access err=%d", err);
-			sof_heap_free(NULL, ret);
+			sof_heap_free(heap, ret);
 			ret = NULL;
 			goto out;
 		}
