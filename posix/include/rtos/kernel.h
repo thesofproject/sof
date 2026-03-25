@@ -10,6 +10,7 @@
 
 #include <rtos/wait.h>
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __ZEPHYR__
@@ -27,6 +28,13 @@ typedef struct {
 #define Z_TIMEOUT_US(t) ((k_timeout_t) { .ticks = clock_us_to_ticks(PLATFORM_DEFAULT_CLOCK, t) })
 
 #define Z_TIMEOUT_MS(t) ((k_timeout_t) { .ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, t) })
+
+struct k_thread;
+static inline bool thread_is_userspace(struct k_thread *thread)
+{
+	(void)thread;
+	return false;
+}
 
 static inline void k_sleep(k_timeout_t timeout)
 {
