@@ -180,8 +180,6 @@ int stft_process_setup(struct processing_module *mod, int max_frames,
 	/* Share the fft_out buffer for polar format */
 	fft->fft_polar = (struct ipolar32 *)fft->fft_out;
 
-	fft->fft_fill_start_idx = 0; /* From config pad_type */
-
 	/* Setup FFT */
 	fft->fft_plan = mod_fft_multi_plan_new(mod, fft->fft_buf, fft->fft_out,
 					       fft->fft_padded_size, 32);

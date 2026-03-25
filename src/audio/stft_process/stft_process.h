@@ -66,7 +66,6 @@ struct stft_process_fft {
 	struct ipolar32 *fft_polar;
 	struct fft_multi_plan *fft_plan;
 	struct fft_multi_plan *ifft_plan;
-	int fft_fill_start_idx; /**< Set to 0 for pad left, etc. */
 	int fft_size;
 	int fft_padded_size;
 	int fft_hop_size;
