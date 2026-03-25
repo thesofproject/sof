@@ -28,9 +28,6 @@
 struct sof_fast_get_entry {
 	const void *dram_ptr;
 	void *sram_ptr;
-#if CONFIG_USERSPACE
-	struct k_mem_domain *mdom;
-#endif
 	size_t size;
 	unsigned int refcount;
 };
@@ -103,10 +100,8 @@ static struct sof_fast_get_entry *fast_get_find_entry(struct sof_fast_get_data *
 #endif
 
 #if CONFIG_USERSPACE
-static bool fast_get_partition_exists(struct k_thread *thread, void *start, size_t size)
+static bool fast_get_partition_exists(struct k_mem_domain *domain, void *start, size_t size)
 {
-	struct k_mem_domain *domain = thread->mem_domain_info.mem_domain;
-
 	for (unsigned int i = 0; i < domain->num_partitions; i++) {
 		struct k_mem_partition *dpart = &domain->partitions[i];
 
@@ -170,8 +165,8 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 	} while (!entry);
 
 #if CONFIG_USERSPACE
-	LOG_DBG("userspace %u part %#zx bytes alloc %p entry %p DRAM %p",
-		k_current_get()->mem_domain_info.mem_domain->num_partitions, size,
+	LOG_DBG("%s: %#zx bytes alloc %p entry %p DRAM %p",
+		current_is_userspace ? "userspace" : "kernel", size,
 		alloc_ptr, entry->sram_ptr, dram_ptr);
 #endif
 
@@ -193,11 +188,9 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 		 * enabled userspace don't create fast-get entries
 		 */
 		if (current_is_userspace) {
-			if (mdom != entry->mdom &&
-			    !fast_get_partition_exists(k_current_get(), ret,
+			if (!fast_get_partition_exists(mdom, ret,
 						       ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
-				LOG_DBG("grant access to domain %p first was %p", mdom,
-					entry->mdom);
+				LOG_DBG("grant access to domain %p", mdom);
 
 				int err = fast_get_access_grant(mdom, ret, size);
 
@@ -236,10 +229,10 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 	dcache_writeback_region((__sparse_force void __sparse_cache *)entry->sram_ptr, size);
 
 #if CONFIG_USERSPACE
-	entry->mdom = k_current_get()->mem_domain_info.mem_domain;
 	if (size > FAST_GET_MAX_COPY_SIZE && current_is_userspace) {
 		/* Otherwise we've allocated on thread's heap, so it already has access */
-		int err = fast_get_access_grant(entry->mdom, ret, size);
+		int err = fast_get_access_grant(k_current_get()->mem_domain_info.mem_domain,
+						ret, size);
 
 		if (err < 0) {
 			LOG_ERR("failed to grant access err=%d", err);
@@ -298,11 +291,8 @@ void fast_put(struct k_heap *heap, struct k_mem_domain *mdom, const void *sram_p
 	 * For large buffers, each thread that called fast_get() has a partition
 	 * in its memory domain. Each thread must remove its own partition here
 	 * to prevent partition leaks.
-	 *
-	 * Order matters: free buffer first (needs partition for cache access),
-	 * then remove partition.
 	 */
-	if (entry->size > FAST_GET_MAX_COPY_SIZE && entry->mdom && mdom) {
+	if (entry->size > FAST_GET_MAX_COPY_SIZE && mdom) {
 		struct k_mem_partition part = {
 			.start = (uintptr_t)sram_ptr,
 			.size = ALIGN_UP(entry->size, CONFIG_MM_DRV_PAGE_SIZE),
