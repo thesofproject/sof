@@ -37,7 +37,6 @@ void stft_process_apply_window(struct stft_process_state *state)
 	ae_f32x2 win01, win23;
 	ae_int32x2 d0, d1;
 	int fft_size = fft->fft_size;
-	int i = fft->fft_fill_start_idx;
 	int j;
 	int n4;
 
@@ -52,7 +51,7 @@ void stft_process_apply_window(struct stft_process_state *state)
 	 * Stride for buf  is sizeof(ae_int32x2) = 8 bytes per complex sample.
 	 * Stride for win  is sizeof(ae_int32)   = 4 bytes per scalar window value.
 	 */
-	buf = (ae_int32 *)&fft->fft_buf[i];
+	buf = (ae_int32 *)fft->fft_buf;
 	win = (const ae_int32x2 *)state->window;
 
 	assert(!(fft_size & 3));
@@ -109,7 +108,7 @@ void stft_process_overlap_add_ifft_buffer(struct stft_process_state *state, int 
 	ae_f32x2 fft_data;
 	ae_f32x2 d0, d1;
 	ae_f32x2 *w = (ae_f32x2 *)obuf->w_ptr;
-	ae_f32 *fft_p = (ae_f32 *)&fft->fft_buf[fft->fft_fill_start_idx];
+	ae_f32 *fft_p = (ae_f32 *)fft->fft_buf;
 	int samples_remain = fft->fft_size;
 	int i, n;
 

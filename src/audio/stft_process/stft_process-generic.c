@@ -18,7 +18,7 @@ void stft_process_overlap_add_ifft_buffer(struct stft_process_state *state, int 
 	int i;
 	int n;
 	int samples_remain = fft->fft_size;
-	int idx = fft->fft_fill_start_idx;
+	int idx = 0;
 
 	while (samples_remain) {
 		n = stft_process_buffer_samples_without_wrap(obuf, w);
@@ -49,12 +49,11 @@ void stft_process_apply_window(struct stft_process_state *state)
 {
 	struct stft_process_fft *fft = &state->fft;
 	int j;
-	int i = fft->fft_fill_start_idx;
 
 	/* Multiply Q1.31 by Q1.15 gives Q2.46, shift right by 15 to get Q2.31, no saturate need */
 	for (j = 0; j < fft->fft_size; j++)
-		fft->fft_buf[i + j].real =
-			sat_int32(Q_MULTSR_32X32((int64_t)fft->fft_buf[i + j].real,
+		fft->fft_buf[j].real =
+			sat_int32(Q_MULTSR_32X32((int64_t)fft->fft_buf[j].real,
 						 state->window[j], 31, 31, 31));
 }
 #endif /* SOF_USE_HIFI(NONE, COMP_STFT_PROCESS) */
