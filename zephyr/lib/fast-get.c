@@ -132,6 +132,9 @@ static int fast_get_access_grant(struct k_mem_domain *mdom, void *addr, size_t s
 
 const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 {
+#if CONFIG_USERSPACE
+	bool current_is_userspace = thread_is_userspace(k_current_get());
+#endif
 	struct sof_fast_get_data *data = &fast_get_data;
 	uint32_t alloc_flags = SOF_MEM_FLAG_USER;
 	struct sof_fast_get_entry *entry;
@@ -189,8 +192,7 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 		 * We only get there for large buffers, since small buffers with
 		 * enabled userspace don't create fast-get entries
 		 */
-		if (mdom->num_partitions > 1) {
-			/* A userspace thread makes the request */
+		if (current_is_userspace) {
 			if (mdom != entry->mdom &&
 			    !fast_get_partition_exists(k_current_get(), ret,
 						       ALIGN_UP(size, CONFIG_MM_DRV_PAGE_SIZE))) {
@@ -235,7 +237,7 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 
 #if CONFIG_USERSPACE
 	entry->mdom = k_current_get()->mem_domain_info.mem_domain;
-	if (size > FAST_GET_MAX_COPY_SIZE) {
+	if (size > FAST_GET_MAX_COPY_SIZE && current_is_userspace) {
 		/* Otherwise we've allocated on thread's heap, so it already has access */
 		int err = fast_get_access_grant(entry->mdom, ret, size);
 

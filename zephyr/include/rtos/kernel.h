@@ -8,4 +8,11 @@
 
 #include <zephyr/kernel.h>
 
+#include <stdbool.h>
+
+static inline bool thread_is_userspace(struct k_thread *thread)
+{
+	return !!(thread->base.user_options & K_USER);
+}
+
 #endif /* __ZEPHYR_RTOS_KERNEL_H__ */
