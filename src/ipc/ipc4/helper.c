@@ -588,6 +588,23 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
  * disable any interrupts.
  */
 
+#if CONFIG_SOF_USERSPACE_LL
+#define ll_block(cross_core_bind, flags) \
+	do { \
+		if (cross_core_bind) \
+			domain_block(sof_get()->platform_timer_domain); \
+		else \
+			zephyr_ll_lock_sched(); \
+	} while (0)
+
+#define ll_unblock(cross_core_bind, flags) \
+	do { \
+		if (cross_core_bind) \
+			domain_unblock(sof_get()->platform_timer_domain); \
+		else \
+			zephyr_ll_unlock_sched(); \
+	} while (0)
+#else
 #define ll_block(cross_core_bind, flags) \
 	do { \
 		if (cross_core_bind) \
@@ -603,6 +620,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 		else \
 			irq_local_enable(flags); \
 	} while (0)
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /* Calling both ll_block() and ll_wait_finished_on_core() makes sure LL will not start its
  * next cycle and its current cycle on specified core has finished.
@@ -634,8 +652,13 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 #else
 
+#if CONFIG_SOF_USERSPACE_LL
+#define ll_block(cross_core_bind, flags)	zephyr_ll_lock_sched()
+#define ll_unblock(cross_core_bind, flags)	zephyr_ll_unlock_sched()
+#else
 #define ll_block(cross_core_bind, flags)	irq_local_disable(flags)
 #define ll_unblock(cross_core_bind, flags)	irq_local_enable(flags)
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 #endif
 
