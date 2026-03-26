@@ -1455,7 +1455,7 @@ int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
 
 			irq_local_disable(irq_flags);
 			notifier_event(group, NOTIFIER_ID_DAI_TRIGGER,
-				       BIT(cpu_get_id()), NULL, 0);
+				       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 			irq_local_enable(irq_flags);
 
 			/* return error of last trigger */
