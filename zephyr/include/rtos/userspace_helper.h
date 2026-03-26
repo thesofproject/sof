@@ -26,6 +26,14 @@
 #define APP_TASK_BSS	K_APP_BMEM(common_partition)
 #define APP_TASK_DATA	K_APP_DMEM(common_partition)
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+#define APP_SYSUSER_BSS	K_APP_BMEM(sysuser_partition)
+#define APP_SYSUSER_DATA	K_APP_DMEM(sysuser_partition)
+#else
+#define APP_SYSUSER_BSS
+#define APP_SYSUSER_DATA
+#endif
+
 struct processing_module;
 struct userspace_context;
 
@@ -136,5 +144,28 @@ static inline int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t th
 }
 
 #endif /* CONFIG_USERSPACE */
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+
+int user_memory_attach_system_user_partition(struct k_mem_domain *dom);
+
+#else
+
+/**
+ * Attach SOF system user memory partition to a memory domain.
+ * @param dom - memory domain to attach the sysuser partition to.
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * The sysuser partition contains shared objects required by user-space modules.
+ */
+static inline int user_memory_attach_system_user_partition(struct k_mem_domain *dom)
+{
+	return 0;
+}
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 #endif /* __ZEPHYR_LIB_USERSPACE_HELPER_H__ */

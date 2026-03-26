@@ -36,6 +36,10 @@ LOG_MODULE_REGISTER(userspace_helper, CONFIG_SOF_LOG_LEVEL);
 
 K_APPMEM_PARTITION_DEFINE(common_partition);
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+K_APPMEM_PARTITION_DEFINE(sysuser_partition);
+#endif
+
 struct k_heap *module_driver_heap_init(void)
 {
 	struct k_heap *mod_drv_heap = rballoc(SOF_MEM_FLAG_USER, sizeof(*mod_drv_heap));
@@ -83,6 +87,10 @@ int user_memory_attach_common_partition(struct k_mem_domain *dom)
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+int user_memory_attach_system_user_partition(struct k_mem_domain *dom)
+{
+	return k_mem_domain_add_partition(dom, &sysuser_partition);
+}
 
 int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 {
