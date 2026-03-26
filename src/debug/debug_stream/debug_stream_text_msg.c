@@ -49,39 +49,48 @@ void ds_msg(const char *format, ...)
  * in bursts, and sending more than one record in short time makes the
  * host-side decoder lose track of things.
  */
-static struct {
-	struct debug_stream_text_msg msg;
-	char text[640];
-} __packed ds_buf[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
-static int reports_sent_cpu[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
-static size_t ds_pos[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
+
+/* Per-CPU state for exception dump and assert_print(). Static data is
+ * currently placed in .bss and its ATM uncached so the ds_cpu table
+ * elements do not need to be cache aligned, but if this changes we
+ * need __aligned(CONFIG_DCACHE_LINE_SIZE) here.
+ */
+static struct ds_cpu_state {
+	struct {
+		struct debug_stream_text_msg msg;
+		char text[640];
+	} __packed buf;
+	int reports_sent;
+	size_t pos;
+} ds_cpu[CONFIG_SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS];
 
 static void ds_exception_drain(bool flush)
 {
 	unsigned int cpu = arch_proc_id();
+	struct ds_cpu_state *cs = &ds_cpu[cpu];
 
 	if (flush) {
-		ds_pos[cpu] = 0;
-		reports_sent_cpu[cpu] = 0;
+		cs->pos = 0;
 		return;
 	}
 
-	if (ds_pos[cpu] == 0)
+	if (cs->pos == 0)
 		return;
 
-	if (reports_sent_cpu[cpu] > 0)
+	if (cs->reports_sent > 0)
 		return;
 
-	ds_buf[cpu].msg.hdr.id = DEBUG_STREAM_RECORD_ID_TEXT_MSG;
-	ds_buf[cpu].msg.hdr.size_words =
-		SOF_DIV_ROUND_UP(sizeof(ds_buf[cpu].msg) + ds_pos[cpu],
-				 sizeof(ds_buf[cpu].msg.hdr.data[0]));
+	cs->buf.msg.hdr.id = DEBUG_STREAM_RECORD_ID_TEXT_MSG;
+	cs->buf.msg.hdr.size_words =
+		SOF_DIV_ROUND_UP(sizeof(cs->buf.msg) + cs->pos,
+				 sizeof(cs->buf.msg.hdr.data[0]));
+
 	/* Make sure the possible up to 3 extra bytes at end of msg are '\0' */
-	memset(ds_buf[cpu].text + ds_pos[cpu], 0,
-	       ds_buf[cpu].msg.hdr.size_words * sizeof(ds_buf[cpu].msg.hdr.data[0]) - ds_pos[cpu]);
-	debug_stream_slot_send_record(&ds_buf[cpu].msg.hdr);
-	reports_sent_cpu[cpu] = 1;
-	ds_pos[cpu] = 0;
+	memset(cs->buf.text + cs->pos, 0,
+	       cs->buf.msg.hdr.size_words * sizeof(cs->buf.msg.hdr.data[0]) - cs->pos);
+	debug_stream_slot_send_record(&cs->buf.msg.hdr);
+	cs->reports_sent = 1;
+	cs->pos = 0;
 }
 
 static void ds_exception_dump(const char *format, va_list args)
@@ -90,11 +99,12 @@ static void ds_exception_dump(const char *format, va_list args)
 	size_t avail;
 	size_t written;
 	unsigned int cpu = arch_proc_id();
+	struct ds_cpu_state *cs = &ds_cpu[cpu];
 
-	if (reports_sent_cpu[cpu] > 0)
+	if (cs->reports_sent > 0)
 		return;
 
-	avail = sizeof(ds_buf[cpu].text) - ds_pos[cpu];
+	avail = sizeof(cs->buf.text) - cs->pos;
 	if (avail == 0) {
 		ds_exception_drain(false);
 		return;
@@ -108,9 +118,9 @@ static void ds_exception_dump(const char *format, va_list args)
 	    format[0] == ' ' && format[1] == '*' && format[2] == '*' && format[3] == ' ')
 		format += 4;
 
-	len = vsnprintf(ds_buf[cpu].text + ds_pos[cpu], avail, format, args);
+	len = vsnprintf(cs->buf.text + cs->pos, avail, format, args);
 	if (len < 0) {
-		ds_pos[cpu] = 0;
+		cs->pos = 0;
 		return;
 	}
 
@@ -122,9 +132,9 @@ static void ds_exception_dump(const char *format, va_list args)
 	else
 		written = (size_t)len;
 
-	ds_pos[cpu] += written;
+	cs->pos += written;
 
-	if (ds_pos[cpu] >= sizeof(ds_buf[cpu].text))
+	if (cs->pos >= sizeof(cs->buf.text))
 		ds_exception_drain(false);
 }
 
