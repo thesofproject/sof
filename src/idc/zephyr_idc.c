@@ -115,23 +115,38 @@ static void idc_handler(struct k_p4wq_work *work)
 
 /*
  * Used for *target* CPUs, since the initiator (usually core 0) can launch
- * several IDC messages at once
+ * several IDC messages at once. Also we need 2 work items per target core,
+ * because the p4wq thread might just have returned from the work handler, but
+ * hasn't released the work buffer yet (hasn't set thread pointer to NULL).
+ * Then submitting the same work item again can result in an assertion failure.
  */
-static struct zephyr_idc_msg idc_work[CONFIG_CORE_COUNT];
+static struct zephyr_idc_msg idc_work[CONFIG_CORE_COUNT * 2];
+/* Protect the above array */
+static K_MUTEX_DEFINE(idc_mutex);
 
 int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
 	struct idc *idc = *idc_get();
 	struct idc_payload *payload = idc_payload_get(idc, msg->core);
 	unsigned int target_cpu = msg->core;
-	struct zephyr_idc_msg *zmsg = idc_work + target_cpu;
+	struct zephyr_idc_msg *zmsg = idc_work + target_cpu * 2;
 	struct idc_msg *msg_cp = &zmsg->msg;
 	struct k_p4wq_work *work = &zmsg->work;
 	int ret;
 	int idc_send_memcpy_err __unused;
 
+	k_mutex_lock(&idc_mutex, K_FOREVER);
+
+	if (unlikely(work->thread)) {
+		/* See comment above the idc_work[] array. */
+		zmsg++;
+		work = &zmsg->work;
+		msg_cp = &zmsg->msg;
+	}
+
 	idc_send_memcpy_err = memcpy_s(msg_cp, sizeof(*msg_cp), msg, sizeof(*msg));
 	assert(!idc_send_memcpy_err);
+
 	/* Same priority as the IPC thread which is an EDF task and under Zephyr */
 	work->priority = CONFIG_EDF_THREAD_PRIORITY;
 	work->deadline = 0;
@@ -157,6 +172,8 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	__ASSERT_NO_MSG(!is_cached(msg_cp));
 
 	k_p4wq_submit(q_zephyr_idc + target_cpu, work);
+
+	k_mutex_unlock(&idc_mutex);
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	/* Increment performance counters */
