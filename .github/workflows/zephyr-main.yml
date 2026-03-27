@@ -1,0 +1,17 @@
+---
+name: Zephyr Main Branch
+
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    - cron: '0 4,16 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zephyr-main-builds:
+    uses: ./.github/workflows/zephyr.yml
+    with:
+      zephyr_revision: 'zmain'

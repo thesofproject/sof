@@ -2,6 +2,7 @@
 
 ### Status
 [![Daily Actions](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml/badge.svg)](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml)
+[![Zephyr Main Branch](https://github.com/thesofproject/sof/actions/workflows/zephyr-main.yml/badge.svg)](https://github.com/thesofproject/sof/actions/workflows/zephyr-main.yml)
 
 ### Community
 
