@@ -165,6 +165,9 @@ config LOG_FUNC_NAME_PREFIX_INF
 config LOG_FUNC_NAME_PREFIX_DBG
 	default y
 
+config LOG_CORE_ID_PREFIX
+	default y
+
 config LOG_TIMESTAMP_64BIT
 	default y
 
