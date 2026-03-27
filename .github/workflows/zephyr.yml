@@ -5,7 +5,17 @@ name: Zephyr
 # 'workflow_dispatch' allows running this workflow manually from the
 # 'Actions' tab
 # yamllint disable-line rule:truthy
-on: [push, pull_request, workflow_dispatch, workflow_call]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      zephyr_revision:
+        description: 'Zephyr revision to build against'
+        type: string
+        required: false
+        default: 'mnfst'
 
 # Specifies group name that stops previous wokrflows if the name matches
 concurrency:
@@ -112,8 +122,7 @@ jobs:
         # These keys are kept short because Github's left column is not resizable.
         # Search "zephyr_revision" and see below what they expand to.
         zephyr_revision: [
-          mnfst,  # special value: don't override sof/west.yml
-          zmain,  # Zephyr's main branch
+          "${{ inputs.zephyr_revision || 'mnfst' }}"
         ]
         # Using groups to avoid spamming the small results box with too
         # many lines. Pay attention to COMMAS.
@@ -173,7 +182,8 @@ jobs:
              esac
              ( cd sof/submanifests/
                sed -e "s#=sof_zephyr_revision_override=#${rem_rev}#" \
-                 sof-ci-jenkins/zephyr-override-template.yml > test-zephyr-main.yml
+                 sof-ci-jenkins/zephyr-override-template.yml \
+                 > test-zephyr-main.yml
              )
              time west update --narrow  --fetch-opt=--filter=tree:0
           fi
@@ -192,8 +202,7 @@ jobs:
           # does not use --tags.
           #
           # 2. west fetches using the remote URL, not the remote name. So remote
-          # branches are missing from --decorate below. Cosmetic but annoying;
-          # especially in the "zmain" case.
+          # branches are missing from --decorate below. Cosmetic but annoying.
 
           set -x
           # Fix problem 2. Do NOT assume anything about remote names: nothing is guaranteed.
@@ -227,7 +236,7 @@ jobs:
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.zephyr_revision == 'mnfst' }}
+        if: always()
         with:
           name: linux-build ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
           if-no-files-found: error
