@@ -333,7 +333,10 @@ void k_sys_fatal_error_handler(unsigned int reason,
 	/* flush and switch to immediate mode */
 	LOG_PANIC();
 
+	/* IPC not set up in standalone test mode */
+#ifndef CONFIG_SOF_BOOT_TEST_STANDALONE
 	ipc_send_panic_notification();
+#endif
 
 #if defined(CONFIG_ARCH_POSIX) || defined(CONFIG_ZEPHYR_POSIX)
 	LOG_ERR("Halting emulation");
