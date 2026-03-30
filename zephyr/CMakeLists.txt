@@ -549,6 +549,7 @@ zephyr_library_sources_ifdef(CONFIG_SHELL
 
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/module_adapter/module/generic.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/fast-get.h)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/ipc/ipc_reply.h)
 zephyr_syscall_header(include/rtos/alloc.h)
 zephyr_library_sources(syscall/alloc.c)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/dai-zephyr.h)
