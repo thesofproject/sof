@@ -193,6 +193,7 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_IMX_MICFIL;
 		cfg_params = &sof_cfg->micfil;
 		break;
+#if defined(DAI_INTEL_UAOL)
 	case SOF_DAI_INTEL_UAOL:
 		cfg.type = DAI_INTEL_UAOL;
 		cfg.channels = common_config->gtw_fmt->channels_count;
@@ -205,6 +206,7 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg_params = spec_config;
 		dai_set_link_hda_config(&cfg.link_config, common_config, spec_config);
 		break;
+#endif
 	default:
 		return -EINVAL;
 	}
