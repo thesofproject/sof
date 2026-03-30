@@ -710,7 +710,7 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	return 0;
 }
 
-void ipc_msg_reply(struct sof_ipc_reply *reply)
+void z_impl_ipc_msg_reply(struct sof_ipc_reply *reply)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
