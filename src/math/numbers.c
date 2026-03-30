@@ -79,7 +79,7 @@ int gcd(int a, int b)
 EXPORT_SYMBOL(gcd);
 #endif /* USE_SOF_GCD */
 
-#if CONFIG_NUMBERS_VECTOR_FIND
+#if CONFIG_NUMBERS_VECTOR_FIND || CONFIG_ZTEST
 
 /* This function searches from vec[] (of length vec_length) integer values
  * of n. The indexes to equal values is returned in idx[]. The function
@@ -133,9 +133,9 @@ int32_t find_max_abs_int32(int32_t vec[], int vec_length)
 	return SATP_INT32(amax); /* Amax is always a positive value */
 }
 
-#endif /* CONFIG_VECTOR_FIND */
+#endif /* CONFIG_VECTOR_FIND || CONFIG_ZTEST */
 
-#if CONFIG_NUMBERS_NORM
+#if CONFIG_NUMBERS_NORM || CONFIG_ZTEST
 
 /* Count the left shift amount to normalize a 32 bit signed integer value
  * without causing overflow. Input value 0 will result to 31.
@@ -155,7 +155,7 @@ int norm_int32(int32_t val)
 }
 EXPORT_SYMBOL(norm_int32);
 
-#endif /* CONFIG_NORM */
+#endif /* CONFIG_NORM || CONFIG_ZTEST */
 
 /**
  * Basic CRC-32 implementation, based on pseudo-code from
