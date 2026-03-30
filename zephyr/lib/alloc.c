@@ -473,6 +473,11 @@ void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
 	void *ptr;
 	void *raw;
 
+	if (bytes > 16 * 1024 * 1024) {
+		tr_err(&zephyr_tr, "rmalloc_align: requested %zu bytes exceeds 16MB limit", bytes);
+		return NULL;
+	}
+
 	if (alignment < sizeof(void *))
 		alignment = sizeof(void *);
 
