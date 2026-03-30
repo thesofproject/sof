@@ -89,9 +89,11 @@ void sys_arch_reboot(int type)
 void test_main(void)
 {
 	sof_app_main();
-#if CONFIG_SOF_BOOT_TEST && defined(QEMU_BOOT_TESTS)
+#if CONFIG_SOF_BOOT_TEST
 	sof_run_boot_tests();
+#if defined(QEMU_BOOT_TESTS)
 	qemu_xtensa_exit(0);
+#endif
 #endif
 }
 #else
