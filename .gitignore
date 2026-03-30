@@ -64,3 +64,6 @@ build*/
 cscope.*
 ncscope.*
 
+# VSCode project metadata
+.vscode/launch.json
+.vscode/settings.json

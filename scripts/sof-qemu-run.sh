@@ -57,5 +57,14 @@ echo "Using SOF environment at $SOF_WORKSPACE"
 # start the virtual environment
 source ${VENV_DIR}/bin/activate
 
+# Execute the QEMU runner from within the correct build directory
+cd "${BUILD_DIR}" || exit 1
+
+# For ace30 targets (ptl and wcl builds), use the explicitly built intel_ace qemu
+if [[ "${BUILD_DIR}" == *"ptl"* ]] || [[ "${BUILD_DIR}" == *"wcl"* ]]; then
+    export QEMU_BIN_PATH="$SOF_WORKSPACE/qemu/build"
+    echo "Using intel_ace QEMU for ace30 target at $QEMU_BIN_PATH"
+fi
+
 # Finally run the python script which will now correctly inherit 'west' from the sourced environment.
 python3 "${SCRIPT_DIR}/sof-qemu-run.py" --build-dir "${BUILD_DIR}" $VALGRIND_ARG
