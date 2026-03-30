@@ -101,6 +101,7 @@ __cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 }
 #endif
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 __cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_pipeline_delete *pipe;
@@ -113,6 +114,7 @@ __cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 
 	return ipc_pipeline_free(ipc, pipe->primary.r.instance_id);
 }
+#endif
 
 static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 {
@@ -676,7 +678,11 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 #endif
 		break;
 	case SOF_IPC4_GLB_DELETE_PIPELINE:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4);
+#else
 		ret = ipc4_delete_pipeline(ipc4);
+#endif
 		break;
 	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
 		ret = ipc4_set_pipeline_state(ipc4);

@@ -401,14 +401,31 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 		LOG_DBG("IPC user wake, mask %u", mask);
 
 		if (mask & IPC_USER_EVENT_CMD) {
-			struct ipc4_pipeline_create pipe_msg;
+			struct ipc4_message_request msg;
 
 			/* Reconstruct the IPC4 message from copied words */
-			pipe_msg.primary.dat = ipc_user->ipc_msg_pri;
-			pipe_msg.extension.dat = ipc_user->ipc_msg_ext;
+			msg.primary.dat = ipc_user->ipc_msg_pri;
+			msg.extension.dat = ipc_user->ipc_msg_ext;
 
-			/* Execute pipeline creation in user context */
-			ipc_user->result = ipc_pipeline_new(ipc_user->ipc, (ipc_pipe_new *)&pipe_msg);
+			switch (msg.primary.r.type) {
+			case SOF_IPC4_GLB_CREATE_PIPELINE:
+				ipc_user->result = ipc_pipeline_new(ipc_user->ipc,
+								    (ipc_pipe_new *)&msg);
+				break;
+			case SOF_IPC4_GLB_DELETE_PIPELINE: {
+				struct ipc4_pipeline_delete *pipe =
+					(struct ipc4_pipeline_delete *)&msg;
+
+				ipc_user->result = ipc_pipeline_free(
+					ipc_user->ipc, pipe->primary.r.instance_id);
+				break;
+			}
+			default:
+				LOG_ERR("IPC user: unsupported cmd type %d",
+					msg.primary.r.type);
+				ipc_user->result = -EINVAL;
+				break;
+			}
 
 			/* Signal completion — kernel side will finish IPC */
 			k_sem_give(ipc_user->sem);
