@@ -291,7 +291,9 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
 	struct comp_buffer *safe;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	uint32_t flags;
+#endif
 
 	assert_can_be_cold();
 
