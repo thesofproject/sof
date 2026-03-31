@@ -403,10 +403,12 @@ static int zephyr_ll_task_sched_free(void *data, struct task *task)
 
 	zephyr_ll_assert_core(sch);
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	if (k_is_in_isr()) {
 		tr_err(&ll_tr, "cannot free tasks from interrupt context!");
 		return -EDEADLK;
 	}
+#endif
 
 	zephyr_ll_lock(sch, &flags);
 
