@@ -13,6 +13,7 @@
 #include <rtos/interrupt.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/topology.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/interrupt.h>
 #include <rtos/timer.h>
 #include <rtos/cache.h>
@@ -823,7 +824,9 @@ __cold static int set_chmap(struct comp_dev *dev, const void *data, size_t data_
 	pcm_converter_func process;
 	pcm_converter_func converters[IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT];
 	int i;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	uint32_t irq_flags;
+#endif
 
 	assert_can_be_cold();
 
@@ -877,15 +880,26 @@ __cold static int set_chmap(struct comp_dev *dev, const void *data, size_t data_
 		}
 	}
 
-	/* Atomically update chmap, process and converters */
+	/* Atomically update chmap, process and converters.
+	 * In user-space builds irq_local_disable() is privileged,
+	 * use the LL scheduler lock instead.
+	 */
+#ifdef CONFIG_SOF_USERSPACE_LL
+	zephyr_ll_lock_sched(cpu_get_id());
+#else
 	irq_local_disable(irq_flags);
+#endif
 
 	cd->dd[0]->chmap = chmap_cfg->channel_map;
 	cd->dd[0]->process = process;
 	for (i = 0; i < IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT; i++)
 		cd->converter[i] = converters[i];
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	zephyr_ll_unlock_sched(cpu_get_id());
+#else
 	irq_local_enable(irq_flags);
+#endif
 
 	return 0;
 }
