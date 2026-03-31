@@ -108,10 +108,14 @@ def main():
                         break
 
     # Determine execution command
-    run_cmd = [west_path, "-v", "build", "-d", build_dir]
-
-
-    run_cmd.extend(["-t", "run"])
+    if "ptl" in build_dir.lower() or "wcl" in build_dir.lower():
+        qemu_bin = os.environ.get("QEMU_BIN_PATH", os.path.join(os.environ.get("SOF_WORKSPACE", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))), "qemu", "build"))
+        qemu_exe = os.path.join(qemu_bin, "qemu-system-xtensa")
+        print(f"[sof-qemu-run] Bypassing west run explicitly for ACE30 target. Using QEMU: {qemu_exe}")
+        fw_image = os.path.join(build_dir, "zephyr", "zephyr.ri")
+        run_cmd = [qemu_exe, "-cpu", "ace30", "-machine", "adsp_ace30", "-kernel", fw_image, "-nographic"]
+    else:
+        run_cmd = [west_path, "-v", "build", "-d", build_dir, "-t", "run"]
 
     if args.valgrind:
         if not is_native_sim:
