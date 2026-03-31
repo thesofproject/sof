@@ -46,6 +46,27 @@ struct userspace_context;
 struct k_heap *module_driver_heap_init(void);
 
 /**
+ * Initialize private processing module heap with embedded metadata.
+ * @return pointer to the k_heap structure.
+ *
+ * @note
+ * Unlike module_driver_heap_init(), this function embeds the k_heap
+ * struct at the start of the page-aligned backing buffer. The
+ * init_mem / init_bytes fields cover the full allocation, so a
+ * memory partition derived from them automatically includes the
+ * k_heap metadata (required for userspace syscall verification).
+ * Must be freed with sys_user_heap_remove().
+ */
+struct k_heap *sys_user_heap_init(void);
+
+/**
+ * Free private processing module heap allocated by
+ * sys_user_heap_init().
+ * @param mod_drv_heap pointer to the k_heap structure.
+ */
+void sys_user_heap_remove(struct k_heap *mod_drv_heap);
+
+/**
  * Attach common userspace memory partition to a module memory domain.
  * @param dom - memory domain to attach the common partition to.
  *

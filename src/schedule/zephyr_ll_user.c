@@ -30,7 +30,7 @@ APP_TASK_DATA static struct k_heap *zephyr_ll_heap;
 
 static struct k_heap *zephyr_ll_heap_init(void)
 {
-	struct k_heap *heap = module_driver_heap_init();
+	struct k_heap *heap = sys_user_heap_init();
 	struct k_mem_partition mem_partition;
 	int ret;
 
