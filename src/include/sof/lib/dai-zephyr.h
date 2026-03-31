@@ -164,7 +164,7 @@ struct dai_data {
 #endif
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	/* io performance measurement */
-	struct io_perf_data_item *io_perf_bytes_count;
+	struct io_perf_data_item *io_perf_dai_byte_count;
 #endif
 	/* Copier gain params */
 	struct copier_gain_params *gain_data;
