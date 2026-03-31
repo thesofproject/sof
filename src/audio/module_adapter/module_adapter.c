@@ -622,7 +622,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 								  memory_flags,
 								  PLATFORM_DCACHE_ALIGN,
 								  BUFFER_USAGE_NOT_SHARED);
+#ifndef CONFIG_SOF_USERSPACE_LL
 			uint32_t flags;
+#endif
 
 			if (!buffer) {
 				comp_err(dev, "failed to allocate local buffer");
@@ -639,9 +641,17 @@ int module_adapter_prepare(struct comp_dev *dev)
 				dp_user->client_count++;
 			}
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+			zephyr_ll_lock_sched(cpu_get_id());
+#else
 			irq_local_disable(flags);
+#endif
 			list_item_prepend(&buffer->buffers_list, &mod->raw_data_buffers_list);
+#ifdef CONFIG_SOF_USERSPACE_LL
+			zephyr_ll_unlock_sched(cpu_get_id());
+#else
 			irq_local_enable(flags);
+#endif
 
 			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
 			audio_buffer_reset(&buffer->audio_buffer);
@@ -671,11 +681,21 @@ free:
 	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  buffers_list);
+#ifndef CONFIG_SOF_USERSPACE_LL
 		uint32_t flags;
+#endif
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+		zephyr_ll_lock_sched(cpu_get_id());
+#else
 		irq_local_disable(flags);
+#endif
 		list_item_del(&buffer->buffers_list);
+#ifdef CONFIG_SOF_USERSPACE_LL
+		zephyr_ll_unlock_sched(cpu_get_id());
+#else
 		irq_local_enable(flags);
+#endif
 		buffer_free(buffer);
 		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
 		    md->resources.heap)
@@ -1466,11 +1486,21 @@ void module_adapter_free(struct comp_dev *dev)
 	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  buffers_list);
+#ifndef CONFIG_SOF_USERSPACE_LL
 		uint32_t flags;
+#endif
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+		zephyr_ll_lock_sched(cpu_get_id());
+#else
 		irq_local_disable(flags);
+#endif
 		list_item_del(&buffer->buffers_list);
+#ifdef CONFIG_SOF_USERSPACE_LL
+		zephyr_ll_unlock_sched(cpu_get_id());
+#else
 		irq_local_enable(flags);
+#endif
 		buffer_free(buffer);
 		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
 		    mod->priv.resources.heap)
