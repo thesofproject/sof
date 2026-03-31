@@ -9,6 +9,7 @@
 #include <sof/tlv.h>
 #include <sof/trace/trace.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <rtos/userspace_helper.h>
 #include "copier.h"
 #include "host_copier.h"
 
@@ -27,7 +28,7 @@ struct fpi_sync_group {
 	struct list_item item;
 };
 
-static struct list_item group_list_head = LIST_INIT(group_list_head);
+static APP_SYSUSER_DATA struct list_item group_list_head = LIST_INIT(group_list_head);
 
 __cold static struct fpi_sync_group *find_group_by_id(uint32_t id)
 {
