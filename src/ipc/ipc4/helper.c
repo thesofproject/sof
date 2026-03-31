@@ -1216,11 +1216,19 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	uint32_t flags;
+#endif
 
 	assert_can_be_cold();
 
+	/* Driver list is populated at boot before IPC processing starts.
+	 * In user-space builds irq_local_disable() is privileged, but the
+	 * list is immutable by this point so no lock is needed.
+	 */
+#ifndef CONFIG_SOF_USERSPACE_LL
 	irq_local_disable(flags);
+#endif
 
 	/* search driver list with UUID */
 	list_for_item(clist, &drivers->list) {
@@ -1236,7 +1244,9 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 		}
 	}
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	irq_local_enable(flags);
+#endif
 	return drv;
 }
 
