@@ -425,7 +425,7 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 	}
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	/* Increment performance counters */
-	io_perf_monitor_update_data(dd->io_perf_bytes_count, bytes);
+	io_perf_monitor_update_data(dd->io_perf_dai_byte_count, bytes);
 #endif
 
 	return dma_status;
@@ -558,12 +558,12 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	/* ignore perf meas init on case of other dai types */
 	if (perf_type != IO_PERF_INVALID_ID) {
 		struct io_perf_data_item init_data = {perf_type,
-						      cpu_get_id(),
+						      dai_cfg->dai_index,
 						      perf_dir,
 						      IO_PERF_POWERED_UP_ENABLED,
 						      IO_PERF_D0IX_POWER_MODE,
 						      0, 0, 0 };
-		io_perf_monitor_init_data(&dd->io_perf_bytes_count, &init_data);
+		io_perf_monitor_init_data(&dd->io_perf_dai_byte_count, &init_data);
 	}
 #endif
 
@@ -617,7 +617,7 @@ __cold void dai_common_free(struct dai_data *dd)
 	assert_can_be_cold();
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
-	io_perf_monitor_release_slot(dd->io_perf_bytes_count);
+	io_perf_monitor_release_slot(dd->io_perf_dai_byte_count);
 #endif
 
 	if (dd->group)
