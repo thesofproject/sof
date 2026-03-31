@@ -69,6 +69,45 @@ void module_driver_heap_remove(struct k_heap *mod_drv_heap)
 	}
 }
 
+struct k_heap *sys_user_heap_init(void)
+{
+	const size_t prefix = ALIGN_UP(sizeof(struct k_heap), 4);
+	const size_t total = prefix + USER_MOD_HEAP_SIZE;
+
+	/*
+	 * Allocate a single page-aligned buffer for both the k_heap
+	 * metadata and the heap backing memory.  Placing the k_heap
+	 * struct inside the same allocation means the memory partition
+	 * (which uses init_mem / init_bytes) automatically covers the
+	 * k_heap struct, making it accessible from userspace syscall
+	 * verification wrappers such as z_vrfy_mod_free().
+	 */
+	void *mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, total,
+				  CONFIG_MM_DRV_PAGE_SIZE);
+	if (!mem)
+		return NULL;
+
+	struct k_heap *mod_drv_heap = (struct k_heap *)mem;
+	void *heap_buf = (uint8_t *)mem + prefix;
+
+	k_heap_init(mod_drv_heap, heap_buf, USER_MOD_HEAP_SIZE);
+
+	/* init_mem / init_bytes track the full allocation so that
+	 * partition setup and sys_user_heap_remove()
+	 * cover and free the entire region including the k_heap struct.
+	 */
+	mod_drv_heap->heap.init_mem = mem;
+	mod_drv_heap->heap.init_bytes = total;
+
+	return mod_drv_heap;
+}
+
+void sys_user_heap_remove(struct k_heap *mod_drv_heap)
+{
+	if (mod_drv_heap)
+		rfree(mod_drv_heap);
+}
+
 void *user_stack_allocate(size_t stack_size, uint32_t options)
 {
 	return k_thread_stack_alloc(stack_size, options & K_USER);
