@@ -640,7 +640,6 @@ int module_adapter_prepare(struct comp_dev *dev)
 								  buff_size, memory_flags,
 								  PLATFORM_DCACHE_ALIGN,
 								  BUFFER_USAGE_NOT_SHARED);
-			uint32_t flags;
 
 			if (!buffer) {
 				comp_err(dev, "failed to allocate local buffer");
@@ -650,9 +649,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 			vregion_get(md->resources.alloc->vreg);
 
-			irq_local_disable(flags);
 			list_item_prepend(&buffer->buffers_list, &mod->raw_data_buffers_list);
-			irq_local_enable(flags);
 
 			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
 			audio_buffer_reset(&buffer->audio_buffer);
@@ -682,11 +679,8 @@ free:
 	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  buffers_list);
-		uint32_t flags;
 
-		irq_local_disable(flags);
 		list_item_del(&buffer->buffers_list);
-		irq_local_enable(flags);
 		buffer_free(buffer);
 	}
 
@@ -1474,11 +1468,7 @@ void module_adapter_free(struct comp_dev *dev)
 	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  buffers_list);
-		uint32_t flags;
-
-		irq_local_disable(flags);
 		list_item_del(&buffer->buffers_list);
-		irq_local_enable(flags);
 		buffer_free(buffer);
 	}
 
