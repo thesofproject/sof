@@ -1142,11 +1142,8 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
-	uint32_t flags;
 
 	assert_can_be_cold();
-
-	irq_local_disable(flags);
 
 	/* search driver list with UUID */
 	list_for_item(clist, &drivers->list) {
@@ -1162,7 +1159,6 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 		}
 	}
 
-	irq_local_enable(flags);
 	return drv;
 }
 
