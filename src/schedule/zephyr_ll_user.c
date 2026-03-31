@@ -9,6 +9,7 @@
 #include <rtos/userspace_helper.h>
 
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
 
 LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
