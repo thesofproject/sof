@@ -24,6 +24,7 @@
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
+#include <sof/debug/telemetry/performance_monitor.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -261,6 +262,10 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 			 dev->direction, bytes, ret);
 		return;
 	}
+
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	io_perf_monitor_update_data(hd->io_perf_host_byte_count, bytes);
+#endif
 
 	hd->total_data_processed += bytes;
 
@@ -771,6 +776,14 @@ __cold void host_common_free(struct host_data *hd)
 {
 	assert_can_be_cold();
 
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* Check for NULL just in case the params() step is omitted */
+	if (hd->io_perf_host_byte_count) {
+		io_perf_monitor_release_slot(hd->io_perf_host_byte_count);
+		hd->io_perf_host_byte_count = NULL;
+	}
+#endif
+
 	sof_dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
@@ -1073,6 +1086,24 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	/* set copy function */
 	hd->copy = hd->copy_type == COMP_COPY_ONE_SHOT ? host_copy_one_shot :
 		host_copy_normal;
+
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	if (!hd->io_perf_host_byte_count) {
+		/* On the Host side, unlike the DAI side, the port direction values (INPUT/OUTPUT)
+		 * match the stream direction enum values (CAPTURE/PLAYBACK), so we can directly
+		 * use params->direction here.
+		 */
+		struct io_perf_data_item init_data = {
+			IO_PERF_HDA_ID,
+			hd->chan->index,
+			params->direction,
+			IO_PERF_POWERED_UP_ENABLED,
+			IO_PERF_D0IX_POWER_MODE,
+			0, 0, 0
+		};
+		io_perf_monitor_init_data(&hd->io_perf_host_byte_count, &init_data);
+	}
+#endif
 
 	return 0;
 
