@@ -22,6 +22,10 @@
 #include <sof/lib/notifier.h>
 #include "copier.h"
 
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+struct io_perf_data_item;
+#endif
+
 typedef void (*copy_callback_t)(struct comp_dev *dev, size_t bytes);
 
 struct host_data;
@@ -111,6 +115,9 @@ struct host_data {
 	uint8_t group_id;
 	uint64_t next_sync;
 	uint64_t period_in_cycles;
+#endif
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	struct io_perf_data_item *io_perf_host_byte_count;
 #endif
 };
 
