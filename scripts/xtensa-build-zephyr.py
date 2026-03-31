@@ -1170,7 +1170,7 @@ def install_platform(platform, sof_output_dir, platf_build_environ, platform_wco
 
 	os.makedirs(install_key_dir, exist_ok=True)
 	# looses file owner and group - file is commonly accessible, dont install qemu.
-	if platform not in ("qemu_xtensa", "qemu_xtensa_mmu"):
+	if platform not in ("qemu_xtensa", "qemu_xtensa_mmu", "native_sim"):
 		shutil.copy2(abs_build_dir / "zephyr.ri", install_key_dir / output_fwname)
 
 	if args.deployable_build and platform_configs[platform].ipc4:
@@ -1324,7 +1324,7 @@ RI_INFO_UNSUPPORTED = []
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8m_cm7', 'imx8ulp', 'imx95']
 RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196', 'mt8365']
-RI_INFO_UNSUPPORTED += ['qemu_xtensa', 'qemu_xtensa_mmu']
+RI_INFO_UNSUPPORTED += ['qemu_xtensa', 'qemu_xtensa_mmu', 'native_sim']
 
 
 # For temporary workarounds. Unlike _UNSUPPORTED above, the platforms below will print a warning.
