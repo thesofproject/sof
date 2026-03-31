@@ -151,7 +151,7 @@ config POWER_DOMAIN
 # ----------------------------------------
 
 config LOG_BACKEND_ADSP_MTRACE
-	default y
+	default y if LOG
 
 config LOG_FUNC_NAME_PREFIX_ERR
 	default y

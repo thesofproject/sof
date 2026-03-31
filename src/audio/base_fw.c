@@ -258,11 +258,13 @@ __cold struct ipc4_system_time_info *basefw_get_system_time_info(void)
 	return &global_system_time_info;
 }
 
+#if defined(CONFIG_LOG)
 /* Cannot be cold - this function is called from the logger per log_set_timestamp_func() below */
 static log_timestamp_t basefw_get_timestamp(void)
 {
 	return sof_cycle_get_64() + global_cycle_delta;
 }
+#endif
 
 __cold static uint32_t basefw_set_system_time(uint32_t param_id, bool first_block, bool last_block,
 					      uint32_t data_offset, const char *data)
@@ -296,8 +298,10 @@ __cold static uint32_t basefw_set_system_time(uint32_t param_id, bool first_bloc
 			((uint64_t)global_system_time_info.host_time.val_u << 32);
 	host_cycle = k_us_to_cyc_ceil64(host_time);
 	global_cycle_delta = host_cycle - dsp_cycle;
+#if defined(CONFIG_LOG)
 	log_set_timestamp_func(basefw_get_timestamp,
 			       sys_clock_hw_cycles_per_sec());
+#endif
 
 	return IPC4_SUCCESS;
 }

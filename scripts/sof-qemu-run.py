@@ -108,15 +108,8 @@ def main():
                         break
 
     # Determine execution command
-    # If the user is running the python script directly from outside the workspace, we need to provide the source directory.
-    # But if west finds it automatically (or we are in the build dir), providing `-s` might clear the CACHED_BOARD config.
     run_cmd = [west_path, "-v", "build", "-d", build_dir]
 
-    # Check if we are physically sitting inside the build directory
-    if os.path.abspath(".") != os.path.abspath(build_dir):
-        # We need to explicitly supply the app source to prevent west from crashing
-        app_source_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app"))
-        run_cmd.extend(["-s", app_source_dir])
 
     run_cmd.extend(["-t", "run"])
 
