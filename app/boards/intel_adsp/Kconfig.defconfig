@@ -124,7 +124,8 @@ config MM_DRV
 	default y
 
 config UAOL
-	default y if ACE
+	default n	# Temporarily disabled until a proper fix for SOFC2-1595 is merged.
+#	default y if ACE
 
 
 # # Zephyr / power settings
