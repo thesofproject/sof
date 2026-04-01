@@ -48,6 +48,7 @@ config SOF_ZEPHYR_HEAP_CACHED
 
 config SOF_ZEPHYR_HEAP_SIZE
 	hex "Size of the Zephyr heap for SOF"
+	default 0x40000 if VIRTUAL_HEAP
 	default 0xF0000 if SOC_ACE15_MTPM || SOC_ACE20_LNL
 	default 0xD0000 if SOC_ACE30 || SOC_ACE40
 	default 0x0
@@ -80,15 +81,6 @@ config SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE
 	 allocating audio buffers between the kernel and userspace modules.
 	 NOTE: Keep in mind that the shared heap size should not be greater than the
 	 heap size.
-
-config SOF_ZEPHYR_VIRTUAL_HEAP_SIZE
-	hex "Size of the Zephyr virtual heap for SOF"
-	depends on VIRTUAL_HEAP
-	default 0x40000
-	help
-	 Support scaling of the virtual address heap size for different platforms.
-	 NOTE: Keep in mind that the heap size should not be greater than the physical
-	 memory size of the system defined in DT (and this includes baseFW text/data).
 
 config SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE
 	hex "Size in bytes of virtual memory region for virtual heap shared for all cores"

@@ -29,11 +29,6 @@
 
 struct vmh_heap;
 struct vmh_heap *virtual_buffers_heap;
-
-#undef	HEAPMEM_SIZE
-/* Buffers are allocated from virtual space so we can safely reduce the heap size.
- */
-#define	HEAPMEM_SIZE CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_SIZE
 #endif /* CONFIG_VIRTUAL_HEAP */
 
 
