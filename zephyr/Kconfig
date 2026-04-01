@@ -279,3 +279,11 @@ config STACK_SIZE_IPC_TX
 	default 2048
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
+
+config SOF_IPC_USER_THREAD_STACK_SIZE
+	int "IPC user thread stack size"
+	default 8192
+	depends on SOF_USERSPACE_LL
+	help
+	  Stack size for the userspace IPC thread.
+	  Keep a power of 2.
