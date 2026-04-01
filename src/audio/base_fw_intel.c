@@ -194,7 +194,11 @@ __cold int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
 	tlv_value_set(tuple, IPC4_INTEL_MIC_PRIVACY_CAPS_HW_CFG, sizeof(priv_caps), &priv_caps);
 #endif
 
-#if CONFIG_UAOL_INTEL_ADSP
+	/* Linux 7.0 and older do not enable UAOL for any Intel
+	 * hardware, so below capability check will lead to a DSP
+	 * panic. In strict compatibility mode, bypass the capability
+	 * check. */
+#if !defined(CONFIG_SOF_OS_LINUX_COMPAT_PRIORITY) && defined(CONFIG_UAOL_INTEL_ADSP)
 	tuple = tlv_next(tuple);
 	tlv_value_set_uaol_caps(tuple, IPC4_UAOL_CAPS_HW_CFG);
 #endif
