@@ -318,13 +318,12 @@ void ipc_schedule_process(struct ipc *ipc)
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 /* User-space thread for pipeline_two_components test */
-#define IPC_USER_STACKSIZE 8192
 
 #define IPC_USER_EVENT_CMD      BIT(0)
 #define IPC_USER_EVENT_STOP     BIT(1)
 
 static struct k_thread ipc_user_thread;
-static K_THREAD_STACK_DEFINE(ipc_user_stack, IPC_USER_STACKSIZE);
+static K_THREAD_STACK_DEFINE(ipc_user_stack, CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
 
 /**
  * @brief Forward an IPC4 command to the user-space thread.
@@ -461,7 +460,8 @@ __cold int ipc_user_init(void)
 	}
 	k_event_init(ipc_user->event);
 
-	k_thread_create(&ipc_user_thread, ipc_user_stack, IPC_USER_STACKSIZE,
+	k_thread_create(&ipc_user_thread, ipc_user_stack,
+			CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
 			ipc_user_thread_fn, ipc_user, NULL, NULL,
 			-1, K_USER, K_FOREVER);
 
@@ -473,7 +473,8 @@ __cold int ipc_user_init(void)
 	zephyr_ll_grant_access(&ipc_user_thread);
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &ipc_user_thread);
 
-	k_thread_name_set(&ipc_user_thread, __func__);
+	k_thread_cpu_pin(&ipc_user_thread, PLATFORM_PRIMARY_CORE_ID);
+	k_thread_name_set(&ipc_user_thread, "ipc_user");
 
 	/* Store references in ipc struct so kernel handler can forward commands */
 	ipc->ipc_user_pdata = ipc_user;
