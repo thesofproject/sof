@@ -22,6 +22,9 @@ LOG_MODULE_REGISTER(thread_info);
 /* Data structure to store the cycle counter values from the previous
  * round. The numbers are used to calculate what the load was on this
  * round.
+ * Static data is currently placed in .bss and its ATM uncached so the
+ * ds_cpu table elements do not need to be cache aligned, but if this
+ * changes we need __aligned(CONFIG_DCACHE_LINE_SIZE) here.
  */
 static struct previous_counters { /* Cached data from previous round */
 	uint64_t active;	  /* All execution cycles */
@@ -30,7 +33,7 @@ static struct previous_counters { /* Cached data from previous round */
 		void *tid;	 /* thread ID (the thread struct ptr) */
 		uint64_t cycles; /* cycle counter value */
 	} threads[THREAD_INFO_MAX_THREADS]; /* The max amount of threads we follow */
-} __aligned(CONFIG_DCACHE_LINE_SIZE) previous[CONFIG_MP_MAX_NUM_CPUS];
+} previous[CONFIG_MP_MAX_NUM_CPUS];
 #endif
 
 /*
