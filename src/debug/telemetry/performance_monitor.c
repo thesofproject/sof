@@ -128,7 +128,7 @@ static bool perf_bitmap_is_bit_clear(struct perf_bitmap * const bitmap, size_t b
 
 struct perf_data_item_comp *perf_data_getnext(void)
 {
-	int idx;
+	size_t idx;
 	int ret = perf_bitmap_alloc(&performance_data_bitmap, &idx);
 
 	if (ret < 0)
@@ -138,8 +138,10 @@ struct perf_data_item_comp *perf_data_getnext(void)
 	 * ,and always set bit on bitmap alloc.
 	 */
 	ret = perf_bitmap_setbit(&performance_data_bitmap, idx);
-	if (ret < 0)
+	if (ret < 0) {
+		perf_bitmap_free(&performance_data_bitmap, idx);
 		return NULL;
+	}
 	return &perf_data[idx];
 }
 
@@ -445,24 +447,30 @@ int io_perf_monitor_init(void)
 
 static struct io_perf_data_item *io_perf_monitor_get_next_slot(struct io_perf_monitor_ctx *self)
 {
-	int idx;
+	size_t idx;
 	int ret;
 	k_spinlock_key_t key = k_spin_lock(&self->lock);
 
 	ret = perf_bitmap_alloc(&self->io_performance_data_bitmap, &idx);
 	if (ret < 0)
-		return NULL;
+		goto out_unlock;
 	/* ref. FW did not set the bits, but here we do it to not have to use
 	 * isFree() check that the bitarray does not provide yet. Instead we will use isClear
 	 * ,and always set bit on bitmap alloc.
 	 */
 
 	ret = perf_bitmap_setbit(&self->io_performance_data_bitmap, idx);
-	if (ret < 0)
-		return NULL;
+	if (ret < 0) {
+		perf_bitmap_free(&self->io_performance_data_bitmap, idx);
+		goto out_unlock;
+	}
 
 	k_spin_unlock(&self->lock, key);
 	return &self->io_perf_data[idx];
+
+out_unlock:
+	k_spin_unlock(&self->lock, key);
+	return NULL;
 }
 
 int io_perf_monitor_release_slot(struct io_perf_data_item *item)
