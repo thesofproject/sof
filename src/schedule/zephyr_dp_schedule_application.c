@@ -387,6 +387,7 @@ static void scheduler_dp_domain_free(struct task_dp_pdata *pdata)
 
 	/* All partitions removed, the domain can be freed now */
 	pmod->mdom = NULL;
+	k_mem_domain_deinit(mdom);
 	objpool_free(&dp_mdom_head, mdom);
 }
 
@@ -506,6 +507,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	unsigned int pidx;
 	size_t size;
 	uintptr_t start;
+	bool on_pool = false;
 	struct k_mem_domain *mdom = objpool_alloc(&dp_mdom_head, sizeof(*mdom),
 						  SOF_MEM_FLAG_COHERENT);
 
@@ -515,12 +517,14 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 		goto e_thread;
 	}
 
+	on_pool = true;
+
 	mod->mdom = mdom;
 
 	if (!mdom->arch.ptables) {
 		ret = k_mem_domain_init(mdom, 0, NULL);
 		if (ret < 0)
-			goto e_dom;
+			goto e_thread;
 	}
 
 	/* Module heap partition */
@@ -577,7 +581,10 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 e_dom:
 	scheduler_dp_domain_free(pdata);
+	on_pool = false;
 e_thread:
+	if (on_pool)
+		objpool_free(&dp_mdom_head, mdom);
 	k_thread_abort(pdata->thread_id);
 e_kobj:
 	/* k_object_free looks for a pointer in the list, any invalid value can be passed */
