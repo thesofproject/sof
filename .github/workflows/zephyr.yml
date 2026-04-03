@@ -249,6 +249,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Search "zephyr_revision" and see below what they expand to.
+        zephyr_revision: [
+          "${{ inputs.zephyr_revision || 'mnfst' }}"
+        ]
         # Using groups to avoid spamming the small results box with too
         # many lines. Pay attention to COMMAS.
         platforms: [
@@ -268,6 +272,7 @@ jobs:
         # Sparse matrices are complicated, see comments on Linux matrix above.
         include:
           - build_opts: -d
+            zephyr_revision: mnfst
             platforms: lnl
 
 
@@ -354,6 +359,24 @@ jobs:
           west init -l sof
           west update --narrow --fetch-opt=--filter=tree:0
 
+      - name: select zephyr revision
+        working-directory: ${{ github.workspace }}/workspace
+        run: |
+          if ('mnfst' -eq '${{ matrix.zephyr_revision }}') {
+             $rem_rev = $(git -C zephyr rev-parse HEAD)
+          } else {
+             switch ('${{ matrix.zephyr_revision }}') {
+               'zmain' { $rem_rev = 'main' }
+               default { Write-Error 'Unknown matrix.zephyr_revision'; exit 1 }
+             }
+             Push-Location sof/submanifests/
+             (Get-Content sof-ci-jenkins/zephyr-override-template.yml) `
+               -replace '=sof_zephyr_revision_override=', "$rem_rev" `
+               | Set-Content test-zephyr-main.yml
+             Pop-Location
+             west update --narrow --fetch-opt=--filter=tree:0
+          }
+
       # Get some tags to fix `git describe` etc., see detailed build-linux comments above.
       - name: Fetch tags for git describe
         working-directory: ${{ github.workspace }}/workspace/zephyr
@@ -428,6 +451,7 @@ jobs:
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: windows-build ${{ matrix.build_opts }} ${{ matrix.platforms }}
           if-no-files-found: error
