@@ -389,15 +389,17 @@ jobs:
         run: pip install -r zephyr/scripts/requirements.txt
 
       # Ninja has been coming and going, see #8250
-      - name: choco install ninja
+      # Using winget instead of choco - winget now properly refreshes PATH
+      # since PowerShell 7.6 (see https://github.com/microsoft/winget-cli/issues/549)
+      - name: Install ninja
         run: |
-          choco install ninja
+          winget install Ninja-build.Ninja --accept-source-agreements --accept-package-agreements
           ninja.exe --version
 
-      # Install GPERF for Windows
+      # Install GPERF for Windows using winget
       - name: Install gperf
         run: |
-          choco install gperf
+          winget install oss-winget.gperf --accept-source-agreements --accept-package-agreements
           gperf --version
 
       # MSYS2 provides gcc x64_86 toolchain & openssl
