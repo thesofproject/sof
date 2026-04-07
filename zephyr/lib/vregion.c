@@ -191,7 +191,7 @@ static void *interim_alloc(struct interim_heap *heap,
 
 	ptr = k_heap_aligned_alloc(&heap->heap, align, size, K_NO_WAIT);
 	if (!ptr)
-		LOG_ERR("error: interim alloc failed for %d bytes align %d",
+		LOG_WRN("interim alloc failed for %d bytes align %d",
 			size, align);
 
 	return ptr;
@@ -236,7 +236,7 @@ static void *lifetime_alloc(struct vlinear_heap *heap,
 
 	/* check we have enough lifetime space left */
 	if (heap_obj_size + heap->used > heap->size) {
-		LOG_ERR("error: lifetime alloc failed for object %d heap %d bytes free %d",
+		LOG_WRN("lifetime alloc failed for object %d heap %d bytes free %d",
 			size, heap_obj_size, heap->size - heap->used);
 		return NULL;
 	}
