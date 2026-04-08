@@ -41,6 +41,7 @@ endif()
 		else()
 			zephyr_library_sources(
 				module/dolby/dax.c
+				module/dolby/dax_instance_manager.c
 			)
 			if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
 				zephyr_library_sources(
@@ -150,6 +151,7 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	if(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
 		target_include_directories(sof PRIVATE ${PROJECT_SOURCE_DIR}/third_party/include)
 		add_local_sources(sof module/dolby/dax.c)
+		add_local_sources(sof module/dolby/dax_instance_manager.c)
 		if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK)
 			add_local_sources(sof module/dolby/dax_mock.c)
 		else()

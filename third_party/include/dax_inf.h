@@ -14,6 +14,12 @@
 #include <stdint.h>
 #include <string.h>
 
+enum dax_device {
+	DAX_DEVICE_UNSUPPORTED = -1,
+	DAX_DEVICE_SPEAKER = 0,
+	DAX_DEVICE_HEADPHONE = 1,
+};
+
 enum dax_frame_fmt {
 	DAX_FMT_UNSUPPORTED = -1,
 	DAX_FMT_SHORT_16 = 4,
@@ -143,6 +149,10 @@ int dax_init(struct sof_dax *dax_ctx);
 
 /**
  * @brief Process audio data through the DAX module
+ *
+ * If DAX is disabled or the DAX instance is invalid (dax_ctx->p_dax is NULL),
+ * the dax_process will by default perform only copy operations, without any
+ * audio processing.
  *
  * @param[in] dax_ctx Pointer to the DAX context structure
  *
