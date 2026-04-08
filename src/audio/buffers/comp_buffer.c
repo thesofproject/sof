@@ -146,7 +146,7 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
 
-	buf_dbg(buffer, "buffer_free()");
+	buf_dbg(buffer, "entry");
 
 #if CONFIG_PROBE
 	if (buffer->probe_cb_free)
@@ -198,7 +198,7 @@ static struct comp_buffer *buffer_alloc_struct(struct k_heap *heap,
 {
 	struct comp_buffer *buffer;
 
-	tr_dbg(&buffer_tr, "buffer_alloc_struct()");
+	tr_dbg(&buffer_tr, "entry");
 
 	/* allocate new buffer, but add coherent if shared with other cores */
 	if (is_shared)
@@ -240,7 +240,7 @@ struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flag
 	struct comp_buffer *buffer;
 	void *stream_addr;
 
-	tr_dbg(&buffer_tr, "buffer_alloc()");
+	tr_dbg(&buffer_tr, "entry");
 
 	/* validate request */
 	if (size == 0) {
@@ -310,7 +310,7 @@ struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_siz
 
 void buffer_zero(struct comp_buffer *buffer)
 {
-	buf_dbg(buffer, "stream_zero()");
+	buf_dbg(buffer, "entry");
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	bzero(audio_stream_get_addr(&buffer->stream), audio_stream_get_size(&buffer->stream));
