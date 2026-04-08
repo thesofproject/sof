@@ -124,7 +124,8 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	}
 
 	memset(mod, 0, sizeof(*mod));
-	mod->priv.resources.heap = mod_heap;
+	mod->priv.resources.alloc.heap = mod_heap;
+	mod->priv.resources.alloc.client = mod_heap_user;
 	mod_resource_init(mod);
 
 	/*
@@ -161,7 +162,7 @@ emod:
 
 static void module_adapter_mem_free(struct processing_module *mod)
 {
-	struct k_heap *mod_heap = mod->priv.resources.heap;
+	struct k_heap *mod_heap = mod->priv.resources.alloc.heap;
 	unsigned int domain = mod->dev->ipc_config.proc_domain;
 
 	/*
@@ -611,8 +612,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (list_is_empty(&mod->raw_data_buffers_list)) {
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
-			struct comp_buffer *buffer = buffer_alloc(md->resources.heap, buff_size,
-								  memory_flags,
+			struct comp_buffer *buffer = buffer_alloc(&md->resources.alloc,
+								  buff_size, memory_flags,
 								  PLATFORM_DCACHE_ALIGN,
 								  BUFFER_USAGE_NOT_SHARED);
 			uint32_t flags;
@@ -623,13 +624,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 				goto free;
 			}
 
-			if (md->resources.heap && md->resources.heap != dev->drv->user_heap) {
-				struct dp_heap_user *dp_user = container_of(md->resources.heap,
-									    struct dp_heap_user,
-									    heap);
-
-				dp_user->client_count++;
-			}
+			if (md->resources.alloc.heap &&
+			    md->resources.alloc.heap != dev->drv->user_heap)
+				md->resources.alloc.client->client_count++;
 
 			irq_local_disable(flags);
 			list_item_prepend(&buffer->buffers_list, &mod->raw_data_buffers_list);
