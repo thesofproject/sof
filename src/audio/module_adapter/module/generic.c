@@ -86,7 +86,7 @@ void mod_resource_init(struct processing_module *mod)
 
 	/* Init memory list */
 	list_init(&md->resources.objpool.list);
-	md->resources.objpool.heap = md->resources.heap;
+	md->resources.objpool.heap = md->resources.alloc.heap;
 	md->resources.heap_usage = 0;
 	md->resources.heap_high_water_mark = 0;
 }
@@ -159,10 +159,10 @@ void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start
 	struct module_resources *res = &mod->priv.resources;
 
 	if (size)
-		*size = res->heap->heap.init_bytes;
+		*size = res->alloc.heap->heap.init_bytes;
 
 	if (start)
-		*start = (uintptr_t)container_of(res->heap, struct dp_heap_user, heap);
+		*start = (uintptr_t)res->alloc.client;
 }
 #endif
 
@@ -195,7 +195,7 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 	}
 
 	/* Allocate buffer memory for module */
-	void *ptr = sof_heap_alloc(res->heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER,
+	void *ptr = sof_heap_alloc(res->alloc.heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER,
 				   size, alignment);
 
 	if (!ptr) {
@@ -246,7 +246,7 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	}
 
 	/* Allocate memory for module */
-	void *ptr = sof_heap_alloc(res->heap, flags, size, alignment);
+	void *ptr = sof_heap_alloc(res->alloc.heap, flags, size, alignment);
 
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
@@ -323,7 +323,7 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 	if (!container)
 		return NULL;
 
-	ptr = fast_get(res->heap, dram_ptr, size);
+	ptr = fast_get(res->alloc.heap, dram_ptr, size);
 	if (!ptr) {
 		container_put(mod, container);
 		return NULL;
@@ -347,7 +347,7 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 
 	switch (container->type) {
 	case MOD_RES_HEAP:
-		sof_heap_free(res->heap, container->ptr);
+		sof_heap_free(res->alloc.heap, container->ptr);
 		res->heap_usage -= container->size;
 		return 0;
 #if CONFIG_COMP_BLOB
@@ -362,7 +362,7 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 #else
 		mdom = NULL;
 #endif
-		fast_put(res->heap, mdom, container->sram_ptr);
+		fast_put(res->alloc.heap, mdom, container->sram_ptr);
 		return 0;
 #endif
 	default:
@@ -429,7 +429,7 @@ const void *z_vrfy_mod_fast_get(struct processing_module *mod, const void * cons
 	struct module_resources *res = &mod->priv.resources;
 
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->heap, sizeof(*res->heap)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->alloc.heap, sizeof(*res->alloc.heap)));
 	K_OOPS(K_SYSCALL_MEMORY_READ(dram_ptr, size));
 
 	return z_impl_mod_fast_get(mod, dram_ptr, size);
@@ -443,7 +443,7 @@ void *z_vrfy_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	struct module_resources *res = &mod->priv.resources;
 
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->heap, sizeof(*res->heap)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->alloc.heap, sizeof(*res->alloc.heap)));
 
 	return z_impl_mod_alloc_ext(mod, flags, size, alignment);
 }
@@ -454,7 +454,7 @@ int z_vrfy_mod_free(struct processing_module *mod, const void *ptr)
 	struct module_resources *res = &mod->priv.resources;
 
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
-	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->heap, sizeof(*res->heap)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(res->alloc.heap, sizeof(*res->alloc.heap)));
 
 	return z_impl_mod_free(mod, ptr);
 }

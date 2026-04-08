@@ -111,7 +111,7 @@ struct sof_audio_buffer {
 	 */
 	bool walking;		/**< indicates if the buffer is being walked */
 
-	struct k_heap *heap;
+	struct mod_alloc_ctx *alloc;
 };
 
 #if CONFIG_PIPELINE_2_0
