@@ -40,4 +40,26 @@ static inline int k_mutex_unlock(struct k_mutex *mutex)
 	return 0;
 }
 
+/* provide a no-op implementation for zephyr/sys/mutex.h */
+
+struct sys_mutex {
+};
+
+#define SYS_MUTEX_DEFINE(name) \
+	struct sys_mutex name
+
+static inline void sys_mutex_init(struct sys_mutex *mutex)
+{
+}
+
+static inline int sys_mutex_lock(struct sys_mutex *mutex, k_timeout_t timeout)
+{
+	return 0;
+}
+
+static inline int sys_mutex_unlock(struct sys_mutex *mutex)
+{
+	return 0;
+}
+
 #endif
