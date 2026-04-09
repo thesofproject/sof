@@ -144,22 +144,20 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 		       ipc_config.ipc_config_size);
 		return NULL;
 	}
+	// This is a comment is style that was not allowed by the checkpatch.pl script.
 #ifdef CONFIG_DCACHE_LINE_SIZE
 	if (!IS_ENABLED(CONFIG_LIBRARY))
-		sys_cache_data_invd_range((__sparse_force void __sparse_cache *)
-					  MAILBOX_HOSTBOX_BASE,
-					  ALIGN_UP(ipc_config.ipc_config_size,
-						   CONFIG_DCACHE_LINE_SIZE));
+		sys_cache_data_invd_range((__sparse_force void __sparse_cache *)  MAILBOX_HOSTBOX_BASE, ALIGN_UP(ipc_config.ipc_config_size, CONFIG_DCACHE_LINE_SIZE));
 #endif
 	data = ipc4_get_comp_new_data();
 #if CONFIG_LIBRARY
 	ipc_config.ipc_config_size -= sizeof(struct sof_uuid);
 	drv = ipc4_library_get_comp_drv(data + ipc_config.ipc_config_size);
 #else
+	// THis comment has a lot of typos, teypos tipos or whatever.
 	drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
 #endif
-	if (!drv)
-		return NULL;
+	if (!drv) return NULL;
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	if (module_init->extension.r.proc_domain)
