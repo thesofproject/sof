@@ -11,6 +11,7 @@
 #include <sof/common.h>
 #include <rtos/idc.h>
 #include <rtos/alloc.h>
+#include <rtos/mutex.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
@@ -32,6 +33,9 @@
 #include "../audio/copier/dai_copier.h"
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
+/* Protects IPC4 LLP reading-slot firmware registers used by DAI code. */
+static SYS_MUTEX_DEFINE(llp_reading_slots_lock);
 
 void dai_set_link_hda_config(uint16_t *link_config,
 			     struct ipc_config_dai *common_config,
@@ -210,6 +214,8 @@ int ipc_comp_dai_config(struct ipc *ipc, struct ipc_config_dai *common_config,
 
 void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 {
+	int ret;
+
 	/* cannot configure DAI while active */
 	if (dev->state == COMP_STATE_ACTIVE) {
 		comp_info(dev, "Component is in active state. Ignore resetting");
@@ -221,15 +227,15 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		struct ipc4_llp_reading_slot slot;
 
 		if (dd->slot_info.node_id) {
-			k_spinlock_key_t key;
-
 			/* reset llp position to 0 in memory window for reset state. */
 			memset_s(&slot, sizeof(slot), 0, sizeof(slot));
 			slot.node_id = dd->slot_info.node_id;
 
-			key = k_spin_lock(&sof_get()->fw_reg_lock);
+			ret = sys_mutex_lock(&llp_reading_slots_lock, K_FOREVER);
+			assert(!ret);
 			mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
-			k_spin_unlock(&sof_get()->fw_reg_lock, key);
+			ret = sys_mutex_unlock(&llp_reading_slots_lock);
+			assert(!ret);
 		}
 
 		/* The stop sequnece of host driver is first pause and then reset
@@ -254,7 +260,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 void dai_release_llp_slot(struct dai_data *dd)
 {
 	struct ipc4_llp_reading_slot slot;
-	k_spinlock_key_t key;
+	int ret;
 
 	if (!dd->slot_info.node_id)
 		return;
@@ -262,9 +268,11 @@ void dai_release_llp_slot(struct dai_data *dd)
 	memset_s(&slot, sizeof(slot), 0, sizeof(slot));
 
 	/* clear node id for released llp slot */
-	key = k_spin_lock(&sof_get()->fw_reg_lock);
+	ret = sys_mutex_lock(&llp_reading_slots_lock, K_FOREVER);
+	assert(!ret);
 	mailbox_sw_regs_write(dd->slot_info.reg_offset, &slot, sizeof(slot));
-	k_spin_unlock(&sof_get()->fw_reg_lock, key);
+	ret = sys_mutex_unlock(&llp_reading_slots_lock);
+	assert(!ret);
 
 	dd->slot_info.reg_offset = 0;
 	dd->slot_info.node_id = 0;
@@ -274,9 +282,9 @@ static int dai_get_unused_llp_slot(struct comp_dev *dev,
 				   union ipc4_connector_node_id *node)
 {
 	struct ipc4_llp_reading_slot slot;
-	k_spinlock_key_t key;
 	uint32_t max_slot;
 	uint32_t offset;
+	int ret;
 	int i;
 
 	/* sdw with multiple gateways uses sndw_reading_slots */
@@ -288,7 +296,8 @@ static int dai_get_unused_llp_slot(struct comp_dev *dev,
 		max_slot = IPC4_MAX_LLP_GPDMA_READING_SLOTS;
 	}
 
-	key = k_spin_lock(&sof_get()->fw_reg_lock);
+	ret = sys_mutex_lock(&llp_reading_slots_lock, K_FOREVER);
+	assert(!ret);
 
 	/* find unused llp slot offset with node_id of zero */
 	for (i = 0; i < max_slot; i++, offset += sizeof(slot)) {
@@ -301,7 +310,8 @@ static int dai_get_unused_llp_slot(struct comp_dev *dev,
 
 	if (i >= max_slot) {
 		comp_err(dev, "can't find free slot");
-		k_spin_unlock(&sof_get()->fw_reg_lock, key);
+		ret = sys_mutex_unlock(&llp_reading_slots_lock);
+		assert(!ret);
 		return -EINVAL;
 	}
 
@@ -309,7 +319,8 @@ static int dai_get_unused_llp_slot(struct comp_dev *dev,
 	slot.node_id = node->dw & IPC4_NODE_ID_MASK;
 	mailbox_sw_regs_write(offset, &slot, sizeof(slot));
 
-	k_spin_unlock(&sof_get()->fw_reg_lock, key);
+	ret = sys_mutex_unlock(&llp_reading_slots_lock);
+	assert(!ret);
 
 	return offset;
 }
