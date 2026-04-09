@@ -7,5 +7,6 @@
 #define __ZEPHYR_RTOS_MUTEX_H__
 
 #include <zephyr/kernel.h> /* k_mutex_*() */
+#include <zephyr/sys/mutex.h> /* for sys_mutex */
 
 #endif /* __ZEPHYR_RTOS_MUTEX_H__ */
