@@ -410,8 +410,7 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 
 			ipc_user->reply_ext = 0;
 
-			if (msg.primary.r.msg_tgt ==
-			    SOF_IPC4_MESSAGE_TARGET_MODULE_MSG) {
+			if (msg.primary.r.msg_tgt == SOF_IPC4_MESSAGE_TARGET_MODULE_MSG) {
 				/* Module message dispatch */
 				switch (msg.primary.r.type) {
 				case SOF_IPC4_MOD_CONFIG_GET:
@@ -425,6 +424,24 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 						ipc4_process_module_config(
 							&msg, true, NULL);
 					break;
+				case SOF_IPC4_MOD_BIND: {
+					struct ipc4_module_bind_unbind bu;
+
+					memcpy_s(&bu, sizeof(bu), &msg, sizeof(msg));
+					ipc_user->result = ipc_comp_connect(
+						ipc_user->ipc,
+						(ipc_pipe_comp_connect *)&bu);
+					break;
+				}
+				case SOF_IPC4_MOD_UNBIND: {
+					struct ipc4_module_bind_unbind bu;
+
+					memcpy_s(&bu, sizeof(bu), &msg, sizeof(msg));
+					ipc_user->result = ipc_comp_disconnect(
+						ipc_user->ipc,
+						(ipc_pipe_comp_connect *)&bu);
+					break;
+				}
 				default:
 					LOG_ERR("IPC user: unsupported module cmd type %d",
 						msg.primary.r.type);
@@ -442,7 +459,6 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 				case SOF_IPC4_GLB_DELETE_PIPELINE: {
 					struct ipc4_pipeline_delete *pipe =
 						(struct ipc4_pipeline_delete *)&msg;
-
 					ipc_user->result =
 						ipc_pipeline_free(
 							ipc_user->ipc,
