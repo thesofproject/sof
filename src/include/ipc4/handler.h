@@ -17,6 +17,16 @@ struct ipc4_message_request;
 int ipc4_user_process_module_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
 
 /**
+ * @brief Process MOD_CONFIG_GET or MOD_CONFIG_SET in any execution context.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] set true for CONFIG_SET, false for CONFIG_GET.
+ * @param[out] reply_ext Receives extension value for CONFIG_GET (may be NULL).
+ * @return IPC4 status code (0 on success).
+ */
+int ipc4_process_module_config(struct ipc4_message_request *ipc4,
+			       bool set, uint32_t *reply_ext);
+
+/**
  * \brief Processes IPC4 userspace global message.
  * @param[in] ipc4 IPC4 message request.
  * @param[in] reply IPC message reply structure.

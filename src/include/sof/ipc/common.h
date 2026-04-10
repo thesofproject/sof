@@ -64,6 +64,8 @@ struct ipc_user {
 	uint32_t ipc_msg_ext;
 	/** @brief Result code from user thread processing */
 	int result;
+	/** @brief Reply extension word from user thread (e.g. CONFIG_GET result) */
+	uint32_t reply_ext;
 	struct ipc *ipc;
 	struct k_thread *audio_thread;
 };
