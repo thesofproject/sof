@@ -117,9 +117,12 @@ struct host_data {
 	uint64_t next_sync;
 	uint64_t period_in_cycles;
 #endif
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	struct io_perf_data_item *io_perf_host_byte_count;
 #endif
+
+	struct k_heap *heap;
 };
 
 int host_common_new(struct host_data *hd, struct comp_dev *dev,
