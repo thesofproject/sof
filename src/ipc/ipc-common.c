@@ -45,6 +45,8 @@
 #include <rtos/userspace_helper.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <ipc4/pipeline.h>
+#include <ipc4/module.h>
+#include <ipc4/handler.h>
 #endif
 
 #include <sof/debug/telemetry/performance_monitor.h>
@@ -406,24 +408,53 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 			msg.primary.dat = ipc_user->ipc_msg_pri;
 			msg.extension.dat = ipc_user->ipc_msg_ext;
 
-			switch (msg.primary.r.type) {
-			case SOF_IPC4_GLB_CREATE_PIPELINE:
-				ipc_user->result = ipc_pipeline_new(ipc_user->ipc,
-								    (ipc_pipe_new *)&msg);
-				break;
-			case SOF_IPC4_GLB_DELETE_PIPELINE: {
-				struct ipc4_pipeline_delete *pipe =
-					(struct ipc4_pipeline_delete *)&msg;
+			ipc_user->reply_ext = 0;
 
-				ipc_user->result = ipc_pipeline_free(
-					ipc_user->ipc, pipe->primary.r.instance_id);
-				break;
-			}
-			default:
-				LOG_ERR("IPC user: unsupported cmd type %d",
-					msg.primary.r.type);
-				ipc_user->result = -EINVAL;
-				break;
+			if (msg.primary.r.msg_tgt ==
+			    SOF_IPC4_MESSAGE_TARGET_MODULE_MSG) {
+				/* Module message dispatch */
+				switch (msg.primary.r.type) {
+				case SOF_IPC4_MOD_CONFIG_GET:
+					ipc_user->result =
+						ipc4_process_module_config(
+							&msg, false,
+							&ipc_user->reply_ext);
+					break;
+				case SOF_IPC4_MOD_CONFIG_SET:
+					ipc_user->result =
+						ipc4_process_module_config(
+							&msg, true, NULL);
+					break;
+				default:
+					LOG_ERR("IPC user: unsupported module cmd type %d",
+						msg.primary.r.type);
+					ipc_user->result = -EINVAL;
+					break;
+				}
+			} else {
+				/* Global message dispatch */
+				switch (msg.primary.r.type) {
+				case SOF_IPC4_GLB_CREATE_PIPELINE:
+					ipc_user->result =
+						ipc_pipeline_new(ipc_user->ipc,
+								 (ipc_pipe_new *)&msg);
+					break;
+				case SOF_IPC4_GLB_DELETE_PIPELINE: {
+					struct ipc4_pipeline_delete *pipe =
+						(struct ipc4_pipeline_delete *)&msg;
+
+					ipc_user->result =
+						ipc_pipeline_free(
+							ipc_user->ipc,
+							pipe->primary.r.instance_id);
+					break;
+				}
+				default:
+					LOG_ERR("IPC user: unsupported glb cmd type %d",
+						msg.primary.r.type);
+					ipc_user->result = -EINVAL;
+					break;
+				}
 			}
 
 			/* Signal completion — kernel side will finish IPC */
