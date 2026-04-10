@@ -1314,10 +1314,18 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		ret = ipc4_set_large_config_module_instance(ipc4);
 		break;
 	case SOF_IPC4_MOD_BIND:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4);
+#else
 		ret = ipc4_bind_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_UNBIND:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4);
+#else
 		ret = ipc4_unbind_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_DELETE_INSTANCE:
 		ret = ipc4_delete_module_instance(ipc4);
