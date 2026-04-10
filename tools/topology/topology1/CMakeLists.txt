@@ -122,6 +122,7 @@ set(TPLGS
 	"sof-acp_6_3_sdw\;sof-acp_6_3-rt711-l0-rt1316-l0-rt714-l1"
 	"sof-acp_7_0\;sof-acp_7_0"
 	"sof-acp_7_0_sdw\;sof-acp_7_0-rt722-l0"
+	"sof-acp_7_x_sdw\;sof-acp_7_x-rt721-l0"
 )
 
 # This empty 'production/' source subdirectory exists only to create the
