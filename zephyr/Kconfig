@@ -252,7 +252,7 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 
 config SOF_VREGIONS
 	bool "Enable virtual memory regions"
-	default y if ACE
+	default y if ACE && !ACE_VERSION_1_5 && !ACE_VERSION_2_0
 	depends on ACE
 	help
 	  Enable the virtual regions memory allocator for pipeline resource management.
