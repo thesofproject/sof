@@ -803,7 +803,22 @@ __cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4, bool set)
+/**
+ * @brief Process MOD_CONFIG_GET or MOD_CONFIG_SET in any execution context.
+ *
+ * Looks up the target component by module_id:instance_id, verifies the
+ * driver supports get_attribute/set_attribute, and dispatches the
+ * operation. For GET, the retrieved value is written to @p reply_ext.
+ *
+ * Callable from both the IPC kernel task and the IPC user thread.
+ *
+ * @param ipc4      Pointer to the IPC4 message request (primary + extension)
+ * @param set       true for CONFIG_SET, false for CONFIG_GET
+ * @param reply_ext Output: receives the extension value for CONFIG_GET (may be NULL for SET)
+ * @return IPC4 status code (0 on success)
+ */
+__cold int ipc4_process_module_config(struct ipc4_message_request *ipc4,
+				      bool set, uint32_t *reply_ext)
 {
 	struct ipc4_module_config *config = (struct ipc4_module_config *)ipc4;
 	int (*function)(struct comp_dev *dev, uint32_t type, void *value);
@@ -849,8 +864,21 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 		ret = IPC4_INVALID_CONFIG_PARAM_ID;
 	}
 
+	if (!set && reply_ext)
+		*reply_ext = config->extension.dat;
+
+	return ret;
+}
+
+static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4, bool set)
+{
+	uint32_t reply_ext;
+	int ret;
+
+	ret = ipc4_process_module_config(ipc4, set, &reply_ext);
+
 	if (!set)
-		msg_reply->extension = config->extension.dat;
+		msg_reply->extension = reply_ext;
 
 	return ret;
 }
@@ -1258,10 +1286,26 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		ret = ipc4_init_module_instance(ipc4);
 		break;
 	case SOF_IPC4_MOD_CONFIG_GET:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		/* Forward to user thread for privilege-separated execution */
+		ret = ipc_user_forward_cmd(ipc4);
+		if (!ret) {
+			struct ipc *ipc = ipc_get();
+			struct ipc_user *pdata = ipc->ipc_user_pdata;
+
+			msg_reply->extension = pdata->reply_ext;
+		}
+#else
 		ret = ipc4_set_get_config_module_instance(ipc4, false);
+#endif
 		break;
 	case SOF_IPC4_MOD_CONFIG_SET:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		/* Forward to user thread for privilege-separated execution */
+		ret = ipc_user_forward_cmd(ipc4);
+#else
 		ret = ipc4_set_get_config_module_instance(ipc4, true);
+#endif
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
 		ret = ipc4_get_large_config_module_instance(ipc4);
