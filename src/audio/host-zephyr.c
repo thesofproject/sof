@@ -21,6 +21,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/string.h>
 #include <sof/ut.h>
 #include <sof/trace/trace.h>
@@ -748,6 +749,7 @@ __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	struct host_data *hd;
 	const struct ipc_config_host *ipc_host = spec;
+	struct k_heap *heap = NULL;
 	int ret;
 
 	assert_can_be_cold();
@@ -759,9 +761,16 @@ __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 		return NULL;
 	dev->ipc_config = *config;
 
-	hd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*hd));
+#ifdef CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+#endif
+
+	hd = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, sizeof(*hd), 0);
 	if (!hd)
 		goto e_data;
+
+	memset(hd, 0, sizeof(*hd));
+	hd->heap = heap;
 
 	hd->nobytes_last_logged = k_uptime_get();
 	comp_set_drvdata(dev, hd);
@@ -775,7 +784,7 @@ __cold static struct comp_dev *host_new(const struct comp_driver *drv,
 	return dev;
 
 e_dev:
-	rfree(hd);
+	sof_heap_free(heap, hd);
 e_data:
 	comp_free_device(dev);
 	return NULL;
@@ -807,7 +816,7 @@ __cold static void host_free(struct comp_dev *dev)
 
 	comp_dbg(dev, "entry");
 	host_common_free(hd);
-	rfree(hd);
+	sof_heap_free(hd->heap, hd);
 	comp_free_device(dev);
 }
 
@@ -965,8 +974,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		}
 	} else {
 		/* allocate not shared buffer */
-		hd->dma_buffer = buffer_alloc_range(sof_sys_user_heap_get(),
-						    buffer_size_preferred, buffer_size,
+		hd->dma_buffer = buffer_alloc_range(hd->heap, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!hd->dma_buffer) {
@@ -1023,14 +1031,16 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 	memset(dma_cfg, 0, sizeof(*dma_cfg));
 
-	dma_block_cfg = rzalloc(SOF_MEM_FLAG_USER,
-				sizeof(*dma_block_cfg));
+	dma_block_cfg = sof_heap_alloc(hd->heap, SOF_MEM_FLAG_USER,
+				       sizeof(*dma_block_cfg), 0);
 
 	if (!dma_block_cfg) {
 		comp_err(dev, "dma_block_config allocation failed");
 		err = -ENOMEM;
 		goto err_release_channel;
 	}
+
+	memset(dma_block_cfg, 0, sizeof(*dma_block_cfg));
 
 	dma_cfg->block_count = 1;
 	dma_cfg->source_data_size = config->src_width;
@@ -1113,7 +1123,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 err_free_block_cfg:
 	dma_cfg->head_block = NULL;
-	rfree(dma_block_cfg);
+	sof_heap_free(hd->heap, dma_block_cfg);
 err_release_channel:
 	sof_dma_release_channel(hd->dma, hd->chan_index);
 	hd->chan_index = -1;
@@ -1193,7 +1203,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 
 	/* free DMA block configuration */
 	if (hd->z_config.head_block)
-		rfree(hd->z_config.head_block);
+		sof_heap_free(hd->heap, hd->z_config.head_block);
 
 	/* reset buffer pointers */
 	hd->local_pos = 0;
