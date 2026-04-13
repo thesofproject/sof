@@ -869,7 +869,7 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 
 	comp_dbg(dev, "entry");
 
-	dma_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+	dma_cfg = rmalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
 			  sizeof(struct dma_config));
 	if (!dma_cfg) {
 		comp_err(dev, "dma_cfg allocation failed");
