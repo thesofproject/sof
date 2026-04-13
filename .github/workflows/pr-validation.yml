@@ -1,0 +1,29 @@
+# Example workflow for automatic Signed-off-by validation
+# Place this file in your repository at: .github/workflows/pr-validation.yml
+
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to validate'
+        required: true
+        type: number
+
+jobs:
+  validate-commits:
+    uses: ./.github/workflows/reusable-sob-validator.yml
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    with:
+      config-path: '.github/label-descriptions.yml'
+      sob-label: 'signed off by'
+      pr-number: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.pr_number) || '' }}
+    secrets: inherit
