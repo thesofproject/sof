@@ -145,8 +145,9 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 	vr->lifetime.base = vr->base + interim_size;
 
 	/* set alloc ptr addresses for lifetime linear partitions */
-	vr->lifetime.ptr = vr->lifetime.base + sizeof(*vr); /* skip vregion struct */
-	vr->lifetime.used = sizeof(*vr);
+	vr->lifetime.ptr = vr->lifetime.base +
+		ALIGN_UP(sizeof(*vr), CONFIG_DCACHE_LINE_SIZE); /* skip vregion struct */
+	vr->lifetime.used = ALIGN_UP(sizeof(*vr), CONFIG_DCACHE_LINE_SIZE);
 
 	/* init interim heaps */
 	k_heap_init(&vr->interim.heap, vr->interim.heap.heap.init_mem, interim_size);
@@ -274,6 +275,9 @@ void vregion_free(struct vregion *vr, void *ptr)
 	if (!vr || !ptr)
 		return;
 
+	if (sys_cache_is_ptr_uncached(ptr))
+		ptr = sys_cache_cached_ptr_get(ptr);
+
 	/* check if pointer is in interim heap */
 	if (ptr >= (void *)vr->interim.heap.heap.init_mem &&
 	    ptr < (void *)((uint8_t *)vr->interim.heap.heap.init_mem +
@@ -309,8 +313,8 @@ void *vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
 	if (!vr || !size)
 		return NULL;
 
-	if (!alignment)
-		alignment = 4; /* default align 4 bytes */
+	if (alignment < PLATFORM_DCACHE_ALIGN)
+		alignment = PLATFORM_DCACHE_ALIGN;
 
 	switch (type) {
 	case VREGION_MEM_TYPE_INTERIM:
@@ -337,6 +341,37 @@ void *vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size)
 }
 EXPORT_SYMBOL(vregion_alloc);
 
+void *vregion_alloc_coherent(struct vregion *vr, enum vregion_mem_type type, size_t size)
+{
+	size = ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE);
+
+	void *p = vregion_alloc_align(vr, type, size, CONFIG_DCACHE_LINE_SIZE);
+
+	if (!p)
+		return NULL;
+
+	sys_cache_data_invd_range(p, size);
+
+	return sys_cache_uncached_ptr_get(p);
+}
+
+void *vregion_alloc_coherent_align(struct vregion *vr, enum vregion_mem_type type,
+				   size_t size, size_t alignment)
+{
+	if (alignment < CONFIG_DCACHE_LINE_SIZE)
+		alignment = CONFIG_DCACHE_LINE_SIZE;
+	size = ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE);
+
+	void *p = vregion_alloc_align(vr, type, size, alignment);
+
+	if (!p)
+		return NULL;
+
+	sys_cache_data_invd_range(p, size);
+
+	return sys_cache_uncached_ptr_get(p);
+}
+
 /**
  * @brief Log virtual region memory usage.
  *
@@ -353,3 +388,12 @@ void vregion_info(struct vregion *vr)
 		vr->lifetime.used, vr->lifetime.free_count);
 }
 EXPORT_SYMBOL(vregion_info);
+
+void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
+{
+	if (size)
+		*size = vr->size;
+
+	if (start)
+		*start = (uintptr_t)vr->base;
+}
