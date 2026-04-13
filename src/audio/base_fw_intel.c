@@ -109,7 +109,8 @@ static const struct device *uaol_devs[] = {
 	DT_FOREACH_STATUS_OKAY(intel_adsp_uaol, DEV_AND_COMMA)
 };
 
-static void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type)
+#if !CONFIG_SOF_OS_LINUX_COMPAT_PRIORITY
+__cold static void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type)
 {
 	const size_t dev_count = ARRAY_SIZE(uaol_devs);
 	struct uaol_capabilities dev_cap;
@@ -117,6 +118,8 @@ static void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type)
 	size_t caps_size = offsetof(struct ipc4_uaol_capabilities, link_caps[dev_count]);
 	size_t i;
 	int ret;
+
+	assert_can_be_cold();
 
 	memset(caps, 0, caps_size);
 
@@ -135,11 +138,14 @@ static void tlv_value_set_uaol_caps(struct sof_tlv *tuple, uint32_t type)
 
 	tlv_value_set(tuple, type, caps_size, caps);
 }
+#endif /* CONFIG_SOF_OS_LINUX_COMPAT_PRIORITY */
 
-static int uaol_stream_id_to_hda_link_stream_id(int uaol_stream_id)
+__cold static int uaol_stream_id_to_hda_link_stream_id(int uaol_stream_id)
 {
 	size_t dev_count = ARRAY_SIZE(uaol_devs);
 	size_t i;
+
+	assert_can_be_cold();
 
 	for (i = 0; i < dev_count; i++) {
 		int hda_link_stream_id = uaol_get_mapped_hda_link_stream_id(uaol_devs[i],
