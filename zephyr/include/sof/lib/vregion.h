@@ -59,6 +59,11 @@ enum vregion_mem_type {
 void *vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size);
 
 /**
+ * @brief like vregion_alloc() but allocates coherent memory
+ */
+void *vregion_alloc_coherent(struct vregion *vr, enum vregion_mem_type type, size_t size);
+
+/**
  * @brief Allocate aligned memory from the specified virtual region.
  *
  * Allocate aligned memory from the specified virtual region based on the memory type.
@@ -71,6 +76,12 @@ void *vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size)
  */
 void *vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
 			  size_t size, size_t alignment);
+
+/**
+ * @brief like vregion_alloc_align() but allocates coherent memory
+ */
+void *vregion_alloc_coherent_align(struct vregion *vr, enum vregion_mem_type type,
+				   size_t size, size_t alignment);
 
 /**
  * @brief Free memory allocated from the specified virtual region.
@@ -88,6 +99,15 @@ void vregion_free(struct vregion *vr, void *ptr);
  * @param[in] vr Pointer to the virtual region instance.
  */
 void vregion_info(struct vregion *vr);
+
+/**
+ * @brief Get virtual region memory start and size.
+ *
+ * @param[in] vr Pointer to the virtual region instance.
+ * @param[in] size Pointer to size
+ * @param[in] start Pointer to start
+ */
+void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
 #ifdef __cplusplus
 }
