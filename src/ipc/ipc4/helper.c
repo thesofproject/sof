@@ -663,8 +663,8 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 #else
 
 #if CONFIG_SOF_USERSPACE_LL
-#define ll_block(cross_core_bind, flags)	zephyr_ll_lock_sched(cpu_get_id())
-#define ll_unblock(cross_core_bind, flags)	zephyr_ll_unlock_sched(cpu_get_id())
+#define ll_block(cross_core_bind, flags)	zephyr_ll_lock_sched(0)
+#define ll_unblock(cross_core_bind, flags)	zephyr_ll_unlock_sched(0)
 #else
 #define ll_block(cross_core_bind, flags)	irq_local_disable(flags)
 #define ll_unblock(cross_core_bind, flags)	irq_local_enable(flags)
@@ -869,6 +869,12 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 * could result in buffers being only half connected when a pipeline task gets executed.
 	 */
 	ll_block(cross_core_bind, flags);
+
+	/*
+	 * TODO: for multicore user support, comp_bufffer_connect()
+	 * needs to be converted to a syscall. for now, limit to core0
+	 */
+	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || source->ipc_config.core == cpu_get_id());
 
 	if (cross_core_bind) {
 #if CONFIG_CROSS_CORE_STREAM
