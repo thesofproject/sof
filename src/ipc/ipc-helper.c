@@ -86,8 +86,10 @@ __cold struct comp_buffer *buffer_new(struct k_heap *heap, const struct sof_ipc_
 		buffer->stream.runtime_stream_params.pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
 
+#if !defined(CONFIG_SOF_USERSPACE_LL)
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
+#endif
 	}
 
 	return buffer;
