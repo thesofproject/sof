@@ -528,12 +528,12 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	/* Module heap partition */
 	mod_heap_info(mod, &size, &start);
 	pdata->mpart[SOF_DP_PART_HEAP] = (struct k_mem_partition){
-		.start = start,
+		.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)start),
 		.size = size,
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 	pdata->mpart[SOF_DP_PART_HEAP_CACHE] = (struct k_mem_partition){
-		.start = (uintptr_t)sys_cache_cached_ptr_get((void *)start),
+		.start = start,
 		.size = size,
 		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
 	};

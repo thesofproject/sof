@@ -7,6 +7,7 @@
 #include <sof/objpool.h>
 #include <sof/common.h>
 #include <sof/list.h>
+#include <sof/lib/vregion.h>
 
 #include <errno.h>
 #include <limits.h>
@@ -37,8 +38,17 @@ static int objpool_add(struct objpool_head *head, unsigned int n, size_t size, u
 	if (!head->heap)
 		head->heap = sof_sys_heap_get();
 
-	struct objpool *pobjpool = sof_heap_alloc(head->heap, flags,
-						  aligned_size + sizeof(*pobjpool), 0);
+	struct objpool *pobjpool;
+
+	if (!head->vreg)
+		pobjpool = sof_heap_alloc(head->heap, flags,
+					  aligned_size + sizeof(*pobjpool), 0);
+	else if (flags & SOF_MEM_FLAG_COHERENT)
+		pobjpool = vregion_alloc_coherent(head->vreg, VREGION_MEM_TYPE_INTERIM,
+						  aligned_size + sizeof(*pobjpool));
+	else
+		pobjpool = vregion_alloc(head->vreg, VREGION_MEM_TYPE_INTERIM,
+					 aligned_size + sizeof(*pobjpool));
 
 	if (!pobjpool)
 		return -ENOMEM;
@@ -150,8 +160,13 @@ void objpool_prune(struct objpool_head *head)
 	struct list_item *next, *tmp;
 
 	list_for_item_safe(next, tmp, &head->list) {
+		struct objpool *pool = container_of(next, struct objpool, list);
+
 		list_item_del(next);
-		sof_heap_free(head->heap, container_of(next, struct objpool, list));
+		if (head->vreg)
+			vregion_free(head->vreg, pool);
+		else
+			sof_heap_free(head->heap, pool);
 	}
 }
 

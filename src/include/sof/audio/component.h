@@ -583,7 +583,6 @@ struct vregion;
 struct mod_alloc_ctx {
 	struct k_heap *heap;
 	struct vregion *vreg;
-	unsigned int client_count;
 };
 
 /**

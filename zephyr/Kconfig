@@ -143,6 +143,7 @@ config SOF_USERSPACE_PROXY_WORKER_STACK_SIZE
 config SOF_USERSPACE_APPLICATION
 	bool
 	default USERSPACE && !SOF_USERSPACE_PROXY
+	depends on SOF_VREGIONS
 	help
 	  Not manually settable. This is effectively a shortcut to replace numerous
 	  checks for (CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY)
