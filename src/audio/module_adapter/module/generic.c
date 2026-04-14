@@ -277,7 +277,7 @@ EXPORT_SYMBOL(z_impl_mod_alloc_ext);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod)
 {
-	struct module_resources * __maybe_unused res = &mod->priv.resources;
+	struct module_resources *res = &mod->priv.resources;
 	struct comp_data_blob_handler *bhp;
 	struct module_resource *container;
 
@@ -287,7 +287,7 @@ struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_modul
 	if (!container)
 		return NULL;
 
-	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
+	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL, res->heap);
 	if (!bhp) {
 		container_put(mod, container);
 		return NULL;
