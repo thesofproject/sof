@@ -15,6 +15,21 @@ extern "C" {
 struct vregion;
 
 /**
+ * @brief Memory types for virtual region allocations.
+ * Used to specify the type of memory allocation within a virtual region.
+ *
+ * @note
+ * - interim: allocation that can be freed i.e. get/set large config, kcontrols.
+ * - lifetime: allocation that cannot be freed i.e. init data, pipeline data.
+ */
+enum vregion_mem_type {
+	VREGION_MEM_TYPE_INTERIM,		/* interim allocation that can be freed */
+	VREGION_MEM_TYPE_LIFETIME,		/* lifetime allocation */
+};
+
+#if CONFIG_SOF_VREGIONS
+
+/**
  * @brief Create a new virtual region instance.
  *
  * Create a new virtual region instance with specified static and dynamic partitions.
@@ -34,19 +49,6 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size);
  * @param[in] vr Pointer to the virtual region instance to destroy.
  */
 void vregion_destroy(struct vregion *vr);
-
-/**
- * @brief Memory types for virtual region allocations.
- * Used to specify the type of memory allocation within a virtual region.
- *
- * @note
- * - interim: allocation that can be freed i.e. get/set large config, kcontrols.
- * - lifetime: allocation that cannot be freed i.e. init data, pipeline data.
- */
-enum vregion_mem_type {
-	VREGION_MEM_TYPE_INTERIM,		/* interim allocation that can be freed */
-	VREGION_MEM_TYPE_LIFETIME,		/* lifetime allocation */
-};
 
 /**
  * @brief Allocate memory from the specified virtual region.
@@ -108,6 +110,42 @@ void vregion_info(struct vregion *vr);
  * @param[in] start Pointer to start
  */
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
+
+#else /* CONFIG_SOF_VREGIONS */
+
+static inline struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
+{
+	return NULL;
+}
+static inline void vregion_destroy(struct vregion *vr) {}
+static inline void *vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size)
+{
+	return NULL;
+}
+static inline void *vregion_alloc_coherent(struct vregion *vr, enum vregion_mem_type type,
+					   size_t size)
+{
+	return NULL;
+}
+static inline void *vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
+					size_t size, size_t alignment)
+{
+	return NULL;
+}
+static inline void *vregion_alloc_coherent_align(struct vregion *vr, enum vregion_mem_type type,
+						 size_t size, size_t alignment)
+{
+	return NULL;
+}
+static inline void vregion_free(struct vregion *vr, void *ptr) {}
+static inline void vregion_info(struct vregion *vr) {}
+static inline void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
+{
+	if (size)
+		*size = 0;
+}
+
+#endif /* CONFIG_SOF_VREGIONS */
 
 #ifdef __cplusplus
 }
