@@ -82,13 +82,13 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 
 void mod_resource_init(struct processing_module *mod)
 {
-	struct module_data *md = &mod->priv;
+	struct module_resources *res = &mod->priv.resources;
 
 	/* Init memory list */
-	list_init(&md->resources.objpool.list);
-	md->resources.objpool.heap = md->resources.alloc->heap;
-	md->resources.heap_usage = 0;
-	md->resources.heap_high_water_mark = 0;
+	list_init(&res->objpool.list);
+	res->objpool.heap = res->alloc->heap;
+	res->heap_usage = 0;
+	res->heap_high_water_mark = 0;
 }
 
 int module_init(struct processing_module *mod)
