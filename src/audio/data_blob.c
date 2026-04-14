@@ -624,12 +624,13 @@ EXPORT_SYMBOL(comp_data_blob_get_cmd);
 
 static void *default_alloc(size_t size)
 {
-	return rballoc(SOF_MEM_FLAG_USER, size);
+	return sof_heap_alloc(sof_sys_user_heap_get(),
+			      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER, size, 0);
 }
 
 static void default_free(void *buf)
 {
-	rfree(buf);
+	sof_heap_free(sof_sys_user_heap_get(), buf);
 }
 
 struct comp_data_blob_handler *
@@ -641,10 +642,11 @@ comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 
 	comp_dbg(dev, "entry");
 
-	handler = rzalloc(SOF_MEM_FLAG_USER,
-			  sizeof(struct comp_data_blob_handler));
+	handler = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER,
+				 sizeof(struct comp_data_blob_handler), 0);
 
 	if (handler) {
+		memset(handler, 0, sizeof(*handler));
 		handler->dev = dev;
 		handler->single_blob = single_blob;
 		handler->alloc = alloc ? alloc : default_alloc;
@@ -662,6 +664,6 @@ void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
 
 	comp_free_data_blob(blob_handler);
 
-	rfree(blob_handler);
+	sof_heap_free(sof_sys_user_heap_get(), blob_handler);
 }
 EXPORT_SYMBOL(comp_data_blob_handler_free);
