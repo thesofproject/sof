@@ -21,6 +21,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/vregion.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/dp_schedule.h>
@@ -739,7 +740,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	if (alloc)
-		alloc->client_count++;
+		vregion_get(alloc->vreg);
 #endif
 
 	/*

@@ -157,14 +157,12 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 	struct mod_alloc_ctx *alloc = buffer->audio_buffer.alloc;
 
 	rfree(buffer->stream.addr);
-	if (alloc && alloc->vreg)
+	if (alloc && alloc->vreg) {
 		vregion_free(alloc->vreg, buffer);
-	else
+		if (!vregion_put(alloc->vreg))
+			rfree(alloc);
+	} else {
 		sof_heap_free(alloc ? alloc->heap : NULL, buffer);
-
-	if (alloc && !--alloc->client_count) {
-		vregion_put(alloc->vreg);
-		rfree(alloc);
 	}
 }
 
