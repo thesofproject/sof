@@ -28,8 +28,7 @@ struct comp_data_blob_handler {
 				  */
 	uint32_t single_blob:1; /**< Allocate only one blob. Module can not
 				  *  be active while reconfguring.
-				  */
-	void *(*alloc)(size_t size);	/**< alternate allocator, maybe null */
+				  */	struct k_heap *heap;		/**< heap for user-safe alloc, or NULL */	void *(*alloc)(size_t size);	/**< alternate allocator, maybe null */
 	void (*free)(void *buf);	/**< alternate free(), maybe null */
 
 	/** validator for new data, maybe null */
@@ -632,23 +631,52 @@ static void default_free(void *buf)
 	rfree(buf);
 }
 
+static void *default_heap_alloc(size_t size)
+{
+	return sof_heap_alloc(sof_sys_user_heap_get(),
+			      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+			      size, 0);
+}
+
+static void default_heap_free(void *buf)
+{
+	sof_heap_free(sof_sys_user_heap_get(), buf);
+}
+
 struct comp_data_blob_handler *
 comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 			       void *(*alloc)(size_t size),
-			       void (*free)(void *buf))
+			       void (*free)(void *buf),
+			       struct k_heap *heap)
 {
 	struct comp_data_blob_handler *handler;
 
 	comp_dbg(dev, "entry");
 
-	handler = rzalloc(SOF_MEM_FLAG_USER,
-			  sizeof(struct comp_data_blob_handler));
+	if (heap)
+		handler = sof_heap_alloc(heap,
+					SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					sizeof(struct comp_data_blob_handler), 0);
+	else
+		handler = rzalloc(SOF_MEM_FLAG_USER,
+				  sizeof(struct comp_data_blob_handler));
 
 	if (handler) {
+		if (heap)
+			memset(handler, 0, sizeof(*handler));
 		handler->dev = dev;
 		handler->single_blob = single_blob;
-		handler->alloc = alloc ? alloc : default_alloc;
-		handler->free = free ? free : default_free;
+		handler->heap = heap;
+		if (alloc) {
+			handler->alloc = alloc;
+			handler->free = free ? free : default_free;
+		} else if (heap) {
+			handler->alloc = default_heap_alloc;
+			handler->free = default_heap_free;
+		} else {
+			handler->alloc = default_alloc;
+			handler->free = free ? free : default_free;
+		}
 	}
 
 	return handler;
@@ -662,6 +690,9 @@ void comp_data_blob_handler_free(struct comp_data_blob_handler *blob_handler)
 
 	comp_free_data_blob(blob_handler);
 
-	rfree(blob_handler);
+	if (blob_handler->heap)
+		sof_heap_free(blob_handler->heap, blob_handler);
+	else
+		rfree(blob_handler);
 }
 EXPORT_SYMBOL(comp_data_blob_handler_free);
