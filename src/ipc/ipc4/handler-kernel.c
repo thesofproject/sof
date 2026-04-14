@@ -98,16 +98,6 @@ static inline void ipc4_send_reply(struct ipc4_message_reply *reply)
 	ret = memcpy_s(ipc->comp_data, sizeof(*reply), reply, sizeof(*reply));
 	assert(!ret);
 }
-
-static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(void)
-{
-	const struct ipc4_pipeline_set_state_data *ppl_data;
-	struct ipc *ipc = ipc_get();
-
-	ppl_data = (const struct ipc4_pipeline_set_state_data *)ipc->comp_data;
-
-	return ppl_data;
-}
 #else
 static inline struct ipc4_message_request *ipc4_get_message_request(void)
 {
