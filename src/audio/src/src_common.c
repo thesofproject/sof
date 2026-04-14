@@ -537,7 +537,7 @@ int src_params_general(struct processing_module *mod,
 	if (!cd->delay_lines) {
 		comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
 			 delay_lines_size);
-		return  -EINVAL;
+		return  -ENOMEM;
 	}
 
 	/* Clear all delay lines here */
