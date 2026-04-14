@@ -12,6 +12,7 @@
 #include <rtos/sof.h>
 
 struct comp_dev;
+struct k_heap;
 
 struct comp_data_blob_handler;
 
@@ -113,11 +114,13 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
  * @param single_blob Set true for single configuration blob operation
  * @param alloc Optional blob memory allocator function pointer
  * @param free Optional blob memory free function pointer
+ * @param heap Optional heap for user-safe allocation, or NULL for default
  */
 struct comp_data_blob_handler *
 comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 			       void *(*alloc)(size_t size),
-			       void (*free)(void *buf));
+			       void (*free)(void *buf),
+			       struct k_heap *heap);
 
 /**
  * Returns new data blob handler.
@@ -130,7 +133,7 @@ comp_data_blob_handler_new_ext(struct comp_dev *dev, bool single_blob,
 static inline
 struct comp_data_blob_handler *comp_data_blob_handler_new(struct comp_dev *dev)
 {
-	return comp_data_blob_handler_new_ext(dev, false, NULL, NULL);
+	return comp_data_blob_handler_new_ext(dev, false, NULL, NULL, NULL);
 }
 
 /**
