@@ -613,6 +613,52 @@ audio_stream_avail_frames_aligned(const struct audio_stream *source,
 }
 
 /**
+ * Rounds down a frame count to meet the alignment constraint of the stream.
+ * @param stream Audio stream with alignment requirements set.
+ * @param frames Frame count to round down.
+ * @return Largest aligned frame count less than or equal to frames.
+ */
+static inline uint32_t audio_stream_align_frames_round_down(const struct audio_stream *stream,
+							    uint32_t frames)
+{
+	uint16_t align = stream->runtime_stream_params.align_frame_cnt;
+
+	return ROUND_DOWN(frames, align);
+}
+
+/**
+ * Rounds up a frame count to meet the alignment constraint of the stream.
+ * @param stream Audio stream with alignment requirements set.
+ * @param frames Frame count to round up.
+ * @return Smallest aligned frame count greater than or equal to frames.
+ */
+static inline uint32_t audio_stream_align_frames_round_up(const struct audio_stream *stream,
+							  uint32_t frames)
+{
+	uint16_t align = stream->runtime_stream_params.align_frame_cnt;
+	uint32_t aligned_frames = ROUND_DOWN(frames, align);
+
+	if (aligned_frames < frames)
+		aligned_frames += align;
+
+	return aligned_frames;
+}
+
+/**
+ * Rounds to nearest a frame count to meet the alignment constraint of the stream.
+ * @param stream Audio stream with alignment requirements set.
+ * @param frames Frame count to round to nearest.
+ * @return Aligned frame count.
+ */
+static inline uint32_t audio_stream_align_frames_round_nearest(const struct audio_stream *stream,
+							       uint32_t frames)
+{
+	uint16_t align = stream->runtime_stream_params.align_frame_cnt;
+
+	return ROUND_DOWN(frames + (align >> 1), align);
+}
+
+/**
  * Updates the buffer state after writing to the buffer.
  * @param buffer Buffer to update.
  * @param bytes Number of written bytes.
