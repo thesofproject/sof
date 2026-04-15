@@ -28,7 +28,9 @@ struct comp_data_blob_handler {
 				  */
 	uint32_t single_blob:1; /**< Allocate only one blob. Module can not
 				  *  be active while reconfguring.
-				  */	struct k_heap *heap;		/**< heap for user-safe alloc, or NULL */	void *(*alloc)(size_t size);	/**< alternate allocator, maybe null */
+				  */
+	struct k_heap *heap;		/**< heap for user-safe alloc, or NULL */
+	void *(*alloc)(size_t size);	/**< alternate allocator, maybe null */
 	void (*free)(void *buf);	/**< alternate free(), maybe null */
 
 	/** validator for new data, maybe null */
