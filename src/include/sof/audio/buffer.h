@@ -34,6 +34,7 @@
 
 struct comp_dev;
 struct k_heap;
+struct buffer_cb_transact;
 
 /** \name Trace macros
  *  @{

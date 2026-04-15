@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct comp_driver;
 struct dma_sg_elem_array;
 struct ipc_msg;
 struct ipc4_message_request;
@@ -68,6 +69,17 @@ struct ipc_user {
 	uint32_t reply_ext;
 	struct ipc *ipc;
 	struct k_thread *audio_thread;
+	/** @brief Original kernel driver pointer for restoring dev->drv after create */
+	const struct comp_driver *init_drv;
+	/**
+	 * @brief User-accessible copy of comp_driver + tr_ctx for create().
+	 *
+	 * The comp_driver and tr_ctx structs reside in kernel memory
+	 * (.rodata/.data) which is not user-readable. The kernel handler
+	 * copies them here before forwarding to the user thread.
+	 * Size verified by BUILD_ASSERT in handler-user.c.
+	 */
+	uint8_t init_drv_data[160] __aligned(4);
 };
 
 struct ipc {

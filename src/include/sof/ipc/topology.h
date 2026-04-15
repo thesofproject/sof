@@ -49,6 +49,13 @@ typedef uint32_t ipc_comp;
 struct ipc_comp_dev;
 const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id);
 struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id);
+int ipc4_add_comp_dev(struct comp_dev *dev);
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct ipc4_message_request;
+struct comp_driver;
+struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
+				    const struct comp_driver *drv);
+#endif
 int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma);
 int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma);
 int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma);

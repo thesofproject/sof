@@ -151,6 +151,43 @@ int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 	if (ret < 0)
 		return ret;
 
+#if defined(CONFIG_SOF_USERSPACE_LL) && defined(CONFIG_IPC_MAJOR_4)
+	/* HOSTBOX partitions for IPC4 module init parameter block reads.
+	 * comp_new_ipc4() accesses MAILBOX_HOSTBOX_BASE directly to get
+	 * the module configuration data sent by the host.
+	 */
+	{
+		struct k_mem_partition hostbox_partition;
+
+		/* Uncached HOSTBOX partition */
+		hostbox_partition.start =
+			(uintptr_t)sys_cache_uncached_ptr_get(
+				(void __sparse_cache *)MAILBOX_HOSTBOX_BASE);
+		hostbox_partition.size = ALIGN_UP(MAILBOX_HOSTBOX_SIZE,
+						  CONFIG_MMU_PAGE_SIZE);
+		hostbox_partition.attr = K_MEM_PARTITION_P_RO_U_RO;
+
+		ret = k_mem_domain_add_partition(domain, &hostbox_partition);
+		if (ret < 0)
+			return ret;
+
+		/* Cached HOSTBOX partition for cache invalidation path.
+		 * sys_cache_data_invd_range() syscall verification requires
+		 * write access to the region, so use RW instead of RO.
+		 */
+		hostbox_partition.start =
+			(uintptr_t)sys_cache_cached_ptr_get(
+				(void *)MAILBOX_HOSTBOX_BASE);
+		hostbox_partition.size = ALIGN_UP(MAILBOX_HOSTBOX_SIZE,
+						  CONFIG_MMU_PAGE_SIZE);
+		hostbox_partition.attr = K_MEM_PARTITION_P_RW_U_RW;
+
+		ret = k_mem_domain_add_partition(domain, &hostbox_partition);
+		if (ret < 0)
+			return ret;
+	}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 #ifndef CONFIG_IPC_MAJOR_4
 	/*
 	 * Next mailbox_stream (not available in IPC4). Stream access is cached,

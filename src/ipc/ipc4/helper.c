@@ -63,7 +63,6 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx comp_tr;
 
 static const struct comp_driver *ipc4_get_drv(const void *uuid);
-static int ipc4_add_comp_dev(struct comp_dev *dev);
 
 void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 			   uint32_t id)
@@ -207,6 +206,105 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 
 	return dev;
 }
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * comp_new_ipc4_user - Create component in user-space IPC thread context.
+ *
+ * Called from the user-space IPC thread. Receives a pre-resolved driver
+ * pointer from the kernel handler. Performs IPC4 message parsing, HOSTBOX
+ * data read, and calls drv->ops.create() in user-space context.
+ *
+ * @param ipc4 IPC4 message request (reconstructed from ipc_user pri/ext words)
+ * @param drv  Component driver resolved by kernel via ipc4_get_comp_drv()
+ * @return Created component device, or NULL on failure
+ */
+__cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
+					   const struct comp_driver *drv)
+{
+	struct ipc4_module_init_instance module_init;
+	struct comp_ipc_config ipc_config;
+	struct comp_dev *dev;
+	uint32_t comp_id;
+	char *data;
+	int ret;
+
+	assert_can_be_cold();
+
+	ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return NULL;
+
+	comp_id = IPC4_COMP_ID(module_init.primary.r.module_id,
+			       module_init.primary.r.instance_id);
+
+	if (ipc4_get_comp_dev(comp_id)) {
+		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
+		return NULL;
+	}
+
+	if (module_init.extension.r.core_id >= CONFIG_CORE_COUNT) {
+		tr_err(&ipc_tr, "ipc: comp->core = %u",
+		       (uint32_t)module_init.extension.r.core_id);
+		return NULL;
+	}
+
+	memset(&ipc_config, 0, sizeof(ipc_config));
+	ipc_config.id = comp_id;
+	ipc_config.pipeline_id = module_init.extension.r.ppl_instance_id;
+	ipc_config.core = module_init.extension.r.core_id;
+	ipc_config.ipc_config_size =
+		module_init.extension.r.param_block_size * sizeof(uint32_t);
+	ipc_config.ipc_extended_init = module_init.extension.r.extended_init;
+	if (ipc_config.ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
+		tr_err(&ipc_tr,
+		       "IPC payload size %u too big for the message window",
+		       ipc_config.ipc_config_size);
+		return NULL;
+	}
+#ifdef CONFIG_DCACHE_LINE_SIZE
+	if (!IS_ENABLED(CONFIG_LIBRARY))
+		sys_cache_data_invd_range(
+			(__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+			ALIGN_UP(ipc_config.ipc_config_size,
+				 CONFIG_DCACHE_LINE_SIZE));
+#endif
+	data = ipc4_get_comp_new_data();
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (module_init.extension.r.proc_domain)
+		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
+	else
+		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
+#else
+	if (module_init.extension.r.proc_domain) {
+		tr_err(&ipc_tr,
+		       "ipc: DP scheduling is disabled, cannot create comp 0x%x",
+		       comp_id);
+		return NULL;
+	}
+	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
+#endif
+
+	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
+		const struct ipc_config_process spec = {
+			.data = (const unsigned char *)data,
+			.size = ipc_config.ipc_config_size,
+		};
+
+		dev = drv->ops.create(drv, &ipc_config, (const void *)&spec);
+	} else {
+		dev = drv->ops.create(drv, &ipc_config, (const void *)data);
+	}
+	if (!dev)
+		return NULL;
+
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+	return dev;
+}
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /* Called from ipc4_set_pipeline_state(), so cannot be cold */
 struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
@@ -1357,7 +1455,7 @@ struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 }
 EXPORT_SYMBOL(ipc4_get_comp_dev);
 
-__cold static int ipc4_add_comp_dev(struct comp_dev *dev)
+__cold int ipc4_add_comp_dev(struct comp_dev *dev)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
