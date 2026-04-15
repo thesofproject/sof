@@ -5,7 +5,6 @@
 #ifndef __SOF_LIB_VREGION_H__
 #define __SOF_LIB_VREGION_H__
 
-#include <zephyr/kernel.h>
 #include <stddef.h>
 
 #ifdef __cplusplus
