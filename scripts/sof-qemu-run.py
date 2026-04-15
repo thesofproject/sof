@@ -77,6 +77,8 @@ def main():
     parser.add_argument("--build-dir", default="build", help="Path to the build directory containing zephyr.elf, linker.cmd, etc. Defaults to 'build'.")
     parser.add_argument("--log-file", default="qemu-run.log", help="Path to save the QEMU output log. Defaults to 'qemu-run.log'.")
     parser.add_argument("--valgrind", action="store_true", help="Run the executable under Valgrind (only valid for native_sim).")
+    parser.add_argument("--interactive", action="store_true", help="Drop into the interactive QEMU monitor after execution completes instead of quitting natively.")
+    parser.add_argument("--qemu-d", default="in_asm,nochain,int", help="Options to pass to QEMU's -d flag. Defaults to 'in_asm,nochain,int'.")
     args = parser.parse_args()
 
     # Make absolute path just in case
@@ -103,7 +105,8 @@ def main():
         with open(cmake_cache, "r") as f:
             for line in f:
                 if line.startswith("CACHED_BOARD:STRING=") or line.startswith("BOARD:STRING="):
-                    if "native_sim" in line.split("=", 1)[1].strip():
+                    board = line.split("=", 1)[1].strip()
+                    if "native_sim" in board:
                         is_native_sim = True
                         break
 
@@ -114,7 +117,22 @@ def main():
         print(f"[sof-qemu-run] Bypassing west run explicitly for ACE30 target. Using QEMU: {qemu_exe}")
         os.environ["QEMU_ACE_MTRACE_FILE"] = "/tmp/ace-mtrace.log"
         fw_image = os.path.join(build_dir, "zephyr", "zephyr.ri")
-        run_cmd = [qemu_exe, "-machine", "adsp_ace30", "-kernel", fw_image, "-nographic"]
+        run_cmd = [
+            qemu_exe,
+            "-machine", "adsp_ace30",
+            "-kernel", fw_image,
+            "-nographic",
+            "-icount", "shift=5,align=off"
+        ]
+        
+        if args.qemu_d:
+            run_cmd.extend(["-d", args.qemu_d])
+            
+        run_cmd.extend(["-D", "/tmp/qemu-exec.log"])
+
+        print("\n[sof-qemu-run] \033[36;1m💡 Quick Tip: Monitor logs in real-time across another terminal window:\033[0m")
+        print("    tail -f /tmp/qemu-exec.log")
+        print("    tail -f /tmp/ace-mtrace.log\n")
     else:
         run_cmd = [west_path, "-v", "build", "-d", build_dir, "-t", "run"]
 
@@ -137,6 +155,11 @@ def main():
             sys.exit(1)
 
         run_cmd = [valgrind_path, exe_path]
+
+    if args.interactive:
+        print("\n[sof-qemu-run] Starting QEMU directly in interactive mode. Automatic crash analysis is disabled.")
+        subprocess.run(run_cmd)
+        sys.exit(0)
 
     child = pexpect.spawn(run_cmd[0], run_cmd[1:], encoding='utf-8')
 
@@ -222,11 +245,6 @@ def main():
 
                     info_regs_output = child.before
                     print("\n[sof-qemu-run] Successfully extracted registers from QEMU monitor.\n")
-
-                    # Quit qemu safely
-                    child.sendline("quit")
-                    child.expect(pexpect.EOF, timeout=2)
-                    child.close()
 
                     # Run the decoder on the intercepted register output
                     run_sof_crash_decode(build_dir, info_regs_output)
