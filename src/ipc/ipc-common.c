@@ -442,6 +442,67 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 						(ipc_pipe_comp_connect *)&bu);
 					break;
 				}
+				case SOF_IPC4_MOD_INIT_INSTANCE: {
+					/* User thread creates the component —
+					 * drv->ops.create() runs in user-space so
+					 * untrusted module code does not execute
+					 * with kernel privileges.
+					 *
+					 * init_drv = original kernel pointer
+					 * init_drv_data = user-accessible copy
+					 */
+					const struct comp_driver *orig_drv =
+						ipc_user->init_drv;
+					const struct comp_driver *drv_copy =
+						(const struct comp_driver *)
+						ipc_user->init_drv_data;
+
+					ipc_user->init_drv = NULL;
+					if (!orig_drv) {
+						ipc_user->result =
+							IPC4_MOD_NOT_INITIALIZED;
+						break;
+					}
+
+					struct comp_dev *dev =
+						comp_new_ipc4_user(&msg, drv_copy);
+
+					if (!dev) {
+						ipc_user->result =
+							IPC4_MOD_NOT_INITIALIZED;
+						break;
+					}
+
+					/* Restore original kernel driver pointer.
+					 * comp_init() set dev->drv to the copy;
+					 * runtime code expects the canonical
+					 * kernel address.
+					 */
+					dev->drv = orig_drv;
+
+					ipc_user->result =
+						ipc4_add_comp_dev(dev);
+					if (ipc_user->result != IPC4_SUCCESS)
+						break;
+
+					comp_update_ibs_obs_cpc(dev);
+					ipc_user->result = 0;
+					break;
+				}
+				case SOF_IPC4_MOD_DELETE_INSTANCE: {
+					struct ipc4_module_delete_instance module;
+
+					memcpy_s(&module, sizeof(module), &msg, sizeof(msg));
+					uint32_t comp_id = IPC4_COMP_ID(
+						module.primary.r.module_id,
+						module.primary.r.instance_id);
+					ipc_user->result = ipc_comp_free(
+						ipc_user->ipc, comp_id);
+					if (ipc_user->result < 0)
+						ipc_user->result =
+							IPC4_INVALID_RESOURCE_ID;
+					break;
+				}
 				default:
 					LOG_ERR("IPC user: unsupported module cmd type %d",
 						msg.primary.r.type);
@@ -532,6 +593,12 @@ __cold int ipc_user_init(void)
 	schedule_task_init_ll(task, SOF_UUID(ipc_uuid), SOF_SCHEDULE_LL_TIMER,
 			0, NULL, NULL, cpu_get_id(), 0);
 	ipc_user->audio_thread = scheduler_init_context(task);
+
+	/* Grant ipc_user thread permission on the audio thread object.
+	 * Needed so user-space dai_common_new() can call
+	 * k_thread_access_grant(audio_thread, dai_mutex) from user context.
+	 */
+	k_thread_access_grant(&ipc_user_thread, ipc_user->audio_thread);
 
 	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
 	k_sem_take(ipc->ipc_user_pdata->sem, K_FOREVER);
