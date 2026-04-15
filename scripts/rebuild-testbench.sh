@@ -5,16 +5,32 @@
 # stop on most errors
 set -e
 
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-SOF_REPO=$(dirname "$SCRIPT_DIR")
-TESTBENCH_DIR="$SOF_REPO"/tools/testbench
+# This script can be executed from the sof firmware toplevel or workspace directory
+# First check for the worksapce environment variable
+if [ -z "$SOF_WORKSPACE" ]; then
+    # Environment variable is empty or unset so use default
+    BASE_DIR="$HOME/work/sof"
+else
+    # Environment variable exists and has a value
+    BASE_DIR="$SOF_WORKSPACE"
+fi
+cd "$BASE_DIR"
+
+# check we are in the workspace directory
+if [ ! -d "sof" ]; then
+    echo "Error: can't find SOF firmware directory. Please check your installation."
+    exit 1
+fi
+
+TESTBENCH_DIR=$BASE_DIR/sof/tools/testbench
 
 # Defaults
 BUILD_BACKEND='make'
 BUILD_TYPE=native
-BUILD_DIR_NAME=build_testbench
+BUILD_DIR_NAME=$BASE_DIR/build_testbench
 BUILD_TARGET=install
 : "${SOF_AFL:=$HOME/sof/work/AFL/afl-gcc}"
+SCRIPT_DIR=$BASE_DIR/sof/scripts
 
 print_usage()
 {
@@ -59,7 +75,7 @@ setup_xtensa_tools_build()
 {
     BUILD_TYPE=xt
     BUILD_TARGET=
-    BUILD_DIR_NAME=build_xt_testbench
+    BUILD_DIR_NAME=$BASE_DIR/build_xt_testbench
 
     # check needed environment variables
     test -n "${XTENSA_TOOLS_ROOT}" || die "XTENSA_TOOLS_ROOT need to be set.\n"
@@ -90,7 +106,7 @@ setup_xtensa_tools_build()
 
 export_xtensa_setup()
 {
-    export_dir=$TESTBENCH_DIR/$BUILD_DIR_NAME
+    export_dir=$BUILD_DIR_NAME
     export_script=$export_dir/xtrun_env.sh
     xtbench=$export_dir/sof-testbench4
     xtbench_run="XTENSA_CORE=$XTENSA_CORE \$XTENSA_TOOLS_ROOT/$install_bin/xt-run $xtbench"
@@ -114,14 +130,14 @@ Success!
 
 For temporary, interactive Kconfiguration use:
 
-   $BUILD_BACKEND -C $TESTBENCH_DIR/$BUILD_DIR_NAME/sof_ep/build/  menuconfig
+   $BUILD_BACKEND -C $BUILD_DIR_NAME/sof_ep/build/  menuconfig
 
 Permanent configuration is "src/arch/host/configs/library_defconfig".
 
 For instant, incremental build:
 
    $src_env_msg
-   $BUILD_BACKEND -C $TESTBENCH_DIR/$BUILD_DIR_NAME/ -j$(nproc)
+   $BUILD_BACKEND -C $BUILD_DIR_NAME/ -j$(nproc)
 
 EOF0
 
