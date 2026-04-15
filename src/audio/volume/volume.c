@@ -556,6 +556,7 @@ static int volume_process(struct processing_module *mod,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
 {
 	struct vol_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = input_buffers[0].data;
 	uint32_t avail_frames = input_buffers[0].size;
 	uint32_t frames;
 	int64_t prev_sum = 0;
@@ -571,11 +572,26 @@ static int volume_process(struct processing_module *mod,
 			frames = avail_frames;
 		} else if (cd->ramp_type == SOF_VOLUME_LINEAR_ZC) {
 			/* with ZC ramping look for next ZC offset */
-			frames = cd->zc_get(input_buffers[0].data, cd->vol_ramp_frames, &prev_sum);
+			frames = cd->zc_get(source, cd->vol_ramp_frames, &prev_sum);
+			/* Align frames count to audio stream constraints. If it rounds to zero
+			 * round it up to smallest nonzero aligned frames count.
+			 */
+			frames = audio_stream_align_frames_round_nearest(source, frames);
+			if (!frames)
+				frames = audio_stream_align_frames_round_up(source, 1);
 		} else {
-			/* without ZC process max ramp chunk */
-			frames = cd->vol_ramp_frames;
+			/* During volume ramp align the number of frames used in this
+			 * gain step. Align up since with low rates this would typically
+			 * become zero.
+			 */
+			frames = audio_stream_align_frames_round_up(source, cd->vol_ramp_frames);
 		}
+
+		/* Cancel the gain step for ZC or smaller ramp step if it exceeds
+		 * the available frames.
+		 */
+		if (frames > avail_frames)
+			frames = avail_frames;
 
 		if (!cd->ramp_finished) {
 			volume_ramp(mod);
