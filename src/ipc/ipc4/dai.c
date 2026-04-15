@@ -34,8 +34,7 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
-/* Protects IPC4 LLP reading-slot firmware registers used by DAI code. */
-static SYS_MUTEX_DEFINE(llp_reading_slots_lock);
+static APP_SYSUSER_BSS SYS_MUTEX_DEFINE(llp_reading_slots_lock);
 
 void dai_set_link_hda_config(uint16_t *link_config,
 			     struct ipc_config_dai *common_config,
