@@ -308,7 +308,9 @@ void dai_release_llp_slot(struct dai_data *dd);
 /**
  * \brief Retrieve a pointer to the Zephyr device structure for a DAI of a given type and index.
  */
-const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
+__syscall const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
+
+const struct device *z_impl_dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
 
 /**
  * \brief Retrieve the list of all DAI devices.
@@ -317,5 +319,7 @@ const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
  */
 const struct device **dai_get_device_list(size_t *count);
 /** @}*/
+
+#include <zephyr/syscalls/dai-zephyr.h>
 
 #endif /* __SOF_LIB_DAI_ZEPHYR_H__ */
