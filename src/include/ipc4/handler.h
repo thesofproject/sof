@@ -27,6 +27,26 @@ int ipc4_process_module_config(struct ipc4_message_request *ipc4,
 			       bool set, uint32_t *reply_ext);
 
 /**
+ * @brief Process MOD_LARGE_CONFIG_GET in any execution context.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[out] reply_ext Receives extension value for reply.
+ * @param[out] reply_tx_size Receives TX data size for reply.
+ * @param[out] reply_tx_data Receives TX data pointer for reply.
+ * @return IPC4 status code (0 on success).
+ */
+int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
+				  uint32_t *reply_ext,
+				  uint32_t *reply_tx_size,
+				  void **reply_tx_data);
+
+/**
+ * @brief Process MOD_LARGE_CONFIG_SET in any execution context.
+ * @param[in] ipc4 IPC4 message request.
+ * @return IPC4 status code (0 on success).
+ */
+int ipc4_process_large_config_set(struct ipc4_message_request *ipc4);
+
+/**
  * \brief Processes IPC4 userspace global message.
  * @param[in] ipc4 IPC4 message request.
  * @param[in] reply IPC message reply structure.
