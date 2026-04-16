@@ -98,7 +98,8 @@ static int ipc_get_page_descriptors(struct sof_dma *dmac, uint8_t *page_table,
 	 * reload() function which may not be the case for all
 	 * vendors.
 	 */
-	if (!IS_ENABLED(CONFIG_DMA_NXP_SOF_HOST_DMA)) {
+	if (!IS_ENABLED(CONFIG_DMA_NXP_SOF_HOST_DMA) &&
+	    !IS_ENABLED(CONFIG_DMA_MTK_SOF_HOST_DMA)) {
 		tr_err(&ipc_tr, "DMAC not supported for page transfer");
 		return -ENOTSUP;
 	}

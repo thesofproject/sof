@@ -169,6 +169,14 @@ config ZEPHYR_NATIVE_DRIVERS
 	  dai-zephyr
 	  will be used instead of legacy xtos version.
 
+config DMA_MTK_SOF_HOST_DMA
+	bool "MediaTek SOF host DMA driver"
+	default y if SOC_FAMILY_MTK && ZEPHYR_NATIVE_DRIVERS
+	help
+	  Software-based DMA driver for MTK SOF host component.
+	  MTK DSP can access host memory directly, so this driver
+	  implements DMA transfers using memcpy + cache management.
+
 config DMA_DOMAIN
 	bool "Enable the usage of DMA domain."
 	help

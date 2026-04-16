@@ -157,8 +157,13 @@ struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
 int platform_ipc_init(struct ipc *ipc)
 {
 	mtk_host_buffer.page_table = hostbuf_ptable;
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+	mtk_host_buffer.dmac = sof_dma_get(SOF_DMA_DIR_HMEM_TO_LMEM, 0,
+					    SOF_DMA_DEV_HOST, SOF_DMA_ACCESS_SHARED);
+#else
 	mtk_host_buffer.dmac = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST,
 				       DMA_ACCESS_SHARED);
+#endif
 
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
@@ -210,18 +215,63 @@ void clocks_init(struct sof *sof)
 	sof->clocks = clks;
 }
 
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+/*
+ * Allocate SOF-level channel descriptor arrays (struct dma_chan_data[]) for
+ * each sof_dma entry. Native Zephyr DMA drivers manage their own internal
+ * channel state but do not allocate the SOF-layer chan[] array that
+ * dai-zephyr.c and host-zephyr.c rely on (e.g. dd->chan = &dd->dma->chan[i]).
+ * Legacy DMA drivers (dummy-dma, afe-memif) did this in their own probe();
+ * in the native path we do it here after dmac_init() registers the DMA info.
+ */
+static int mtk_dma_chan_alloc(struct sof *sof)
+{
+	int i, j;
+
+	for (i = 0; i < sof->dma_info->num_dmas; i++) {
+		struct sof_dma *d = &sof->dma_info->dma_array[i];
+
+		if (!d->plat_data.channels || d->chan)
+			continue;
+
+		d->chan = rzalloc(SOF_MEM_FLAG_KERNEL,
+				  d->plat_data.channels * sizeof(struct dma_chan_data));
+		if (!d->chan)
+			return -ENOMEM;
+
+		for (j = 0; j < d->plat_data.channels; j++) {
+			d->chan[j].dma = d;
+			d->chan[j].index = j;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 int platform_init(struct sof *sof)
 {
+	int ret;
+
 	clocks_init(sof);
 	scheduler_init_edf();
 	sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
 	mtk_dai_init(sof);
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+	/* In native mode, DMA is registered in sof/zephyr/lib/dma.c */
+	dmac_init(sof);
+	ret = mtk_dma_chan_alloc(sof);
+	if (ret < 0)
+		return ret;
+#endif
 	ipc_init(sof);
+#if CONFIG_SCHEDULE_DMA_MULTI_CHANNEL
 	sof->platform_dma_domain =
 		dma_multi_chan_domain_init(&sof->dma_info->dma_array[0],
 					   sof->dma_info->num_dmas,
 					   PLATFORM_DEFAULT_CLOCK, false);
+#endif
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 	return 0;
 }
