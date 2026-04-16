@@ -154,6 +154,8 @@ __cold int secondary_core_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM);
 
+	LOG_INF("init done");
+
 	return err;
 }
 
