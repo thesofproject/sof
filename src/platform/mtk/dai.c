@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright(c) 2024 Google LLC.  All rights reserved.
 // Author: Andy Ross <andyross@google.com>
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <sof/lib/dai-legacy.h>
+#endif
 #include <ipc/dai.h>
 #include <sof/drivers/afe-drv.h>
+#include <stdbool.h>
+#include <errno.h>
+#include <zephyr/devicetree.h>
 
 /* The legacy driver stores register addresses as an offset from an
  * arbitrary base address (which is not actually a unified block of
@@ -158,6 +163,7 @@ static struct mtk_base_memif_data afe_memifs[] = {
 	DT_FOREACH_STATUS_OKAY(mediatek_afe, EMPTY_STRUCT)
 };
 
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 static struct dai mtk_dais[] = {
 	DT_FOREACH_STATUS_OKAY(mediatek_afe, EMPTY_STRUCT)
 };
@@ -210,6 +216,7 @@ static const struct dai_info mtk_dai_info = {
 	.dai_type_array = mtk_dai_types,
 	.num_dai_types = ARRAY_SIZE(mtk_dai_types),
 };
+#endif /* !CONFIG_ZEPHYR_NATIVE_DRIVERS */
 
 #if defined(CONFIG_SOC_SERIES_MT818X) || defined(CONFIG_SOC_MT8195)
 static unsigned int mtk_afe2adsp_addr(unsigned int addr)
@@ -324,7 +331,7 @@ struct mtk_base_afe_platform mtk_afe_platform = {
 	.memif_32bit_supported = 0,
 	.irq_datas = NULL,
 	.irqs_size = 0,
-	.dais_size = ARRAY_SIZE(mtk_dais),
+	.dais_size = ARRAY_SIZE(afes),
 	.afe_fs = mtk_afe_fs,
 	.irq_fs = mtk_afe_fs_timing,
 #if defined(CONFIG_SOC_SERIES_MT818X) || defined(CONFIG_SOC_MT8195)
@@ -342,6 +349,7 @@ int mtk_dai_init(struct sof *sof)
 		afe_memifs[i].id = i;
 		cfg_convert(&afes[i], &afe_memifs[i]);
 
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 		/* Also initialize the dais array */
 		extern const struct dai_driver afe_dai_driver;
 
@@ -362,6 +370,7 @@ int mtk_dai_init(struct sof *sof)
 		int hs = (i << 16) | di;
 
 		mtk_dais[di].plat_data.fifo[0].handshake = hs;
+#endif
 	}
 
 	/* DTS stores the direction as a boolean property, but the
@@ -377,7 +386,9 @@ int mtk_dai_init(struct sof *sof)
 	for (/**/; i < ARRAY_SIZE(afes); i++)
 		__ASSERT_NO_MSG(!afes[i].downlink);
 
+#ifndef CONFIG_ZEPHYR_NATIVE_DRIVERS
 	sof->dai_info = &mtk_dai_info;
 	sof->dma_info = &mtk_dma_info;
+#endif
 	return 0;
 }

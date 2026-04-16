@@ -518,11 +518,25 @@ if (CONFIG_SOC_FAMILY_MTK)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/mtk/platform.c
 		${SOF_PLATFORM_PATH}/mtk/dai.c
-		${SOF_DRIVERS_PATH}/generic/dummy-dma.c
-		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-memif.c
-		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-dai.c
 		${SOF_SRC_PATH}/drivers/mediatek/afe/afe-drv.c
 	)
+
+	if (CONFIG_ZEPHYR_NATIVE_DRIVERS)
+		# Native Zephyr DMA/DAI path
+		zephyr_library_sources(
+			lib/dma.c
+			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_afe_memif.c
+			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_host_dma.c
+			${SOF_SRC_PATH}/drivers/mediatek/afe/zephyr_mtk_dai.c
+		)
+	else()
+		# Legacy DMA path
+		zephyr_library_sources(
+			${SOF_DRIVERS_PATH}/generic/dummy-dma.c
+			${SOF_SRC_PATH}/drivers/mediatek/afe/afe-memif.c
+			${SOF_SRC_PATH}/drivers/mediatek/afe/afe-dai.c
+		)
+	endif()
 endif()
 
 # Building for native_posix-based whole-OS host emulator

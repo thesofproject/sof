@@ -239,6 +239,28 @@ SHARED_DATA struct sof_dma dma[] = {
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(acp_sdw_dma)),
 },
 #endif
+#if DT_HAS_COMPAT_STATUS_OKAY(mediatek_afe_memif_dma)
+{
+	.plat_data = {
+		.dir		= SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.devs		= SOF_DMA_DEV_AFE_MEMIF,
+		.channels	= DT_PROP(DT_NODELABEL(afe_memif_dma), dma_channels),
+		.period_count	= 4,
+	},
+	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(afe_memif_dma)),
+},
+#endif
+#if DT_HAS_COMPAT_STATUS_OKAY(mediatek_sof_host_dma)
+{
+	.plat_data = {
+		.dir		= SOF_DMA_DIR_HMEM_TO_LMEM | SOF_DMA_DIR_LMEM_TO_HMEM,
+		.devs		= SOF_DMA_DEV_HOST,
+		.channels	= DT_PROP(DT_NODELABEL(host_dma), dma_channels),
+		.period_count	= 4,
+	},
+	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(host_dma)),
+},
+#endif
 };
 
 const struct dma_info lib_dma = {
