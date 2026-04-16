@@ -223,6 +223,12 @@ int ipc4_user_process_module_message(struct ipc4_message_request *ipc4, struct i
  */
 int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
 
+/*
+ * When CONFIG_SOF_USERSPACE_LL is enabled, compound message functions are
+ * declared as syscalls in ipc4/handler.h — do not re-declare here with
+ * external linkage as that conflicts with the static inline syscall wrappers.
+ */
+#if !(defined(__ZEPHYR__) && defined(CONFIG_SOF_USERSPACE_LL))
 /**
  * \brief Increment the IPC compound message pre-start counter.
  * @param[in] msg_id IPC message ID.
@@ -238,17 +244,18 @@ void ipc_compound_pre_start(int msg_id);
 void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed);
 
 /**
+ * \brief Wait for the IPC compound message to complete.
+ * @return 0 on success, error code otherwise on timeout.
+ */
+int ipc_wait_for_compound_msg(void);
+#endif /* !CONFIG_SOF_USERSPACE_LL */
+
+/**
  * \brief Complete the IPC compound message.
  * @param[in] msg_id IPC message ID.
  * @param[in] error Error code of the IPC command.
  */
 void ipc_compound_msg_done(uint32_t msg_id, int error);
-
-/**
- * \brief Wait for the IPC compound message to complete.
- * @return 0 on success, error code otherwise on timeout.
- */
-int ipc_wait_for_compound_msg(void);
 
 /**
  * \brief create a IPC boot complete message.
