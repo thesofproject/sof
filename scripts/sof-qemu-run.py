@@ -219,7 +219,6 @@ def main():
         
         with open(active_log, "w") as log_file:
             try:
-                qemu_started = False
                 while True:
                     try:
                         index = child.expect([r'\r\n', pexpect.TIMEOUT, pexpect.EOF], timeout=2)
@@ -234,20 +233,16 @@ def main():
                             sys.stdout.flush()
 
                             full_output += line
-                            if not qemu_started and ("Booting Zephyr OS" in line or "To exit from QEMU" in line or "qemu-system-" in line):
-                                qemu_started = True
                         elif index == 1: # TIMEOUT
-                            if qemu_started or check_for_crash(full_output):
-                                print("\n\n[sof-qemu-run] 2 seconds passed since last log event. Checking status...")
-                                break
+                            print("\n\n[sof-qemu-run] 2 seconds passed since last log event. Checking status...")
+                            break
                         elif index == 2: # EOF
                             print("\n\n[sof-qemu-run] QEMU process terminated.")
                             break
 
                     except pexpect.TIMEOUT:
-                        if qemu_started or check_for_crash(full_output):
-                            print("\n\n[sof-qemu-run] 2 seconds passed since last log event. Checking status...")
-                            break
+                        print("\n\n[sof-qemu-run] 2 seconds passed since last log event. Checking status...")
+                        break
                     except pexpect.EOF:
                         print("\n\n[sof-qemu-run] QEMU process terminated.")
                         break
