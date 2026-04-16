@@ -16,6 +16,24 @@ import pexpect
 import subprocess
 import argparse
 import os
+import time
+
+def check_external_logs_active(rcmd):
+    files_to_check = []
+    if "-D" in rcmd:
+        try:
+            d_idx = rcmd.index("-D")
+            files_to_check.append(rcmd[d_idx + 1])
+        except (ValueError, IndexError):
+            pass
+    if "QEMU_ACE_MTRACE_FILE" in os.environ:
+        files_to_check.append(os.environ["QEMU_ACE_MTRACE_FILE"])
+        
+    for fp in files_to_check:
+        if os.path.isfile(fp):
+            if time.time() - os.path.getmtime(fp) < 2.0:
+                return True
+    return False
 
 import re
 
@@ -234,6 +252,8 @@ def main():
 
                             full_output += line
                         elif index == 1: # TIMEOUT
+                            if check_external_logs_active(rcmd):
+                                continue
                             print("\n\n[sof-qemu-run] 2 seconds passed since last log event. Checking status...")
                             break
                         elif index == 2: # EOF
@@ -241,6 +261,8 @@ def main():
                             break
 
                     except pexpect.TIMEOUT:
+                        if check_external_logs_active(rcmd):
+                            continue
                         print("\n\n[sof-qemu-run] 2 seconds passed since last log event. Checking status...")
                         break
                     except pexpect.EOF:
