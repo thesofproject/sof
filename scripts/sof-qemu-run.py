@@ -85,6 +85,7 @@ def main():
     parser.add_argument("--qemu-d", default="in_asm,nochain,int", help="Options to pass to QEMU's -d flag. Defaults to 'in_asm,nochain,int'.")
     parser.add_argument("--ztest", action="store_true", help="Automatically compile the firmware image with ztest_overlay.conf prior to booting.")
     parser.add_argument("--rebuild", action="store_true", help="Rebuild the firmware before running; otherwise, assumes firmware is already built.")
+    parser.add_argument("--timeout", type=float, default=5.0, help="Seconds to wait after the last log event before dumping registers (default: 5.0).")
     args = parser.parse_args()
 
     # Make absolute path just in case
@@ -268,8 +269,8 @@ def main():
                                     print("\n\n[sof-qemu-run] Detected 'halting system' in mtrace log! Breaking...")
                                     break
                                     
-                    if time.time() - last_active_time >= 5.0:
-                        print("\n\n[sof-qemu-run] 5 seconds passed since last log event. Checking status...")
+                    if time.time() - last_active_time >= args.timeout:
+                        print(f"\n\n[sof-qemu-run] {args.timeout} seconds passed since last log event. Checking status...")
                         break
 
             except KeyboardInterrupt:
