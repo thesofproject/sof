@@ -20,12 +20,6 @@ import time
 
 def check_external_logs_active(rcmd):
     files_to_check = []
-    if "-D" in rcmd:
-        try:
-            d_idx = rcmd.index("-D")
-            files_to_check.append(rcmd[d_idx + 1])
-        except (ValueError, IndexError):
-            pass
     if "QEMU_ACE_MTRACE_FILE" in os.environ:
         files_to_check.append(os.environ["QEMU_ACE_MTRACE_FILE"])
         
