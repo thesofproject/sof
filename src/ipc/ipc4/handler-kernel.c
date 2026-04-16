@@ -139,7 +139,7 @@ __cold static bool is_any_ppl_active(void)
 	return false;
 }
 
-void ipc_compound_pre_start(int msg_id)
+void z_impl_ipc_compound_pre_start(int msg_id)
 {
 	/* ipc thread will wait for all scheduled tasks to be complete
 	 * Use a reference count to check status of these tasks.
@@ -147,7 +147,23 @@ void ipc_compound_pre_start(int msg_id)
 	atomic_add(&msg_data.delayed_reply, 1);
 }
 
-void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
+#ifdef CONFIG_USERSPACE
+/**
+ * \brief Userspace verification wrapper for ipc_compound_pre_start().
+ *
+ * Forwards the call to z_impl_ipc_compound_pre_start(). No pointer
+ * validation is needed as only primitive types are passed.
+ *
+ * @param[in] msg_id IPC message ID.
+ */
+void z_vrfy_ipc_compound_pre_start(int msg_id)
+{
+	z_impl_ipc_compound_pre_start(msg_id);
+}
+#include <zephyr/syscalls/ipc_compound_pre_start_mrsh.c>
+#endif
+
+void z_impl_ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 {
 	if (ret) {
 		ipc_cmd_err(&ipc_tr, "failed to process msg %d status %d", msg_id, ret);
@@ -159,6 +175,24 @@ void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 	if (!delayed)
 		atomic_sub(&msg_data.delayed_reply, 1);
 }
+
+#ifdef CONFIG_USERSPACE
+/**
+ * \brief Userspace verification wrapper for ipc_compound_post_start().
+ *
+ * Forwards the call to z_impl_ipc_compound_post_start(). No pointer
+ * validation is needed as only primitive types are passed.
+ *
+ * @param[in] msg_id IPC message ID.
+ * @param[in] ret Return value of the IPC command.
+ * @param[in] delayed True if the reply is delayed.
+ */
+void z_vrfy_ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
+{
+	z_impl_ipc_compound_post_start(msg_id, ret, delayed);
+}
+#include <zephyr/syscalls/ipc_compound_post_start_mrsh.c>
+#endif
 
 void ipc_compound_msg_done(uint32_t msg_id, int error)
 {
@@ -181,13 +215,13 @@ void ipc_compound_msg_done(uint32_t msg_id, int error)
  * be always IPC4_FAILURE. Therefore the compound messages handling is simplified. The pipeline
  * triggers will require an explicit scheduler call to get the components to desired state.
  */
-int ipc_wait_for_compound_msg(void)
+int z_impl_ipc_wait_for_compound_msg(void)
 {
 	atomic_set(&msg_data.delayed_reply, 0);
 	return IPC4_SUCCESS;
 }
 #else
-int ipc_wait_for_compound_msg(void)
+int z_impl_ipc_wait_for_compound_msg(void)
 {
 	int try_count = 30;
 
@@ -203,6 +237,22 @@ int ipc_wait_for_compound_msg(void)
 
 	return IPC4_SUCCESS;
 }
+
+#ifdef CONFIG_USERSPACE
+/**
+ * \brief Userspace verification wrapper for ipc_wait_for_compound_msg().
+ *
+ * Forwards the call to z_impl_ipc_wait_for_compound_msg(). No pointer
+ * validation is needed as no pointers are passed.
+ *
+ * @return IPC4_SUCCESS on success, IPC4_FAILURE on timeout.
+ */
+int z_vrfy_ipc_wait_for_compound_msg(void)
+{
+	return z_impl_ipc_wait_for_compound_msg();
+}
+#include <zephyr/syscalls/ipc_wait_for_compound_msg_mrsh.c>
+#endif
 #endif
 
 #if CONFIG_LIBRARY_MANAGER
