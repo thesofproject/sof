@@ -423,8 +423,12 @@ __cold const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper
 	return ipc4_get_pipeline_data();
 }
 
-/* Entry point for ipc4_pipeline_trigger(), therefore cannot be cold */
-static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
+/**
+ * \brief Process SET_PIPELINE_STATE IPC4 message (prepare + trigger phases).
+ * @param[in] ipc4 IPC4 message request.
+ * @return 0 on success, IPC4 error code otherwise.
+ */
+int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 {
 	const struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
@@ -685,7 +689,11 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 #endif
 		break;
 	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4);
+#else
 		ret = ipc4_set_pipeline_state(ipc4);
+#endif
 		break;
 
 	case SOF_IPC4_GLB_GET_PIPELINE_STATE:
