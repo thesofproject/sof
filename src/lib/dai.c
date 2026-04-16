@@ -191,6 +191,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_INTEL_UAOL
 	DT_FOREACH_STATUS_OKAY(intel_uaol_dai, GET_DEVICE_LIST)
 #endif
+#if DT_HAS_COMPAT_STATUS_OKAY(mediatek_afe)
+	DT_FOREACH_STATUS_OKAY(mediatek_afe, GET_DEVICE_LIST)
+#endif
 };
 
 const struct device **dai_get_device_list(size_t *count)
@@ -300,6 +303,9 @@ static void dai_set_device_params(struct dai *d)
 	case SOF_DAI_AMD_SDW:
 		d->dma_dev = SOF_DMA_DEV_SW;
 		d->dma_caps = SOF_DMA_CAP_SW;
+		break;
+	case SOF_DAI_MEDIATEK_AFE:
+		d->dma_dev = SOF_DMA_DEV_AFE_MEMIF;
 		break;
 	default:
 		break;
