@@ -503,6 +503,19 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 							IPC4_INVALID_RESOURCE_ID;
 					break;
 				}
+				case SOF_IPC4_MOD_LARGE_CONFIG_GET:
+					ipc_user->result =
+						ipc4_process_large_config_get(
+							&msg,
+							&ipc_user->reply_ext,
+							&ipc_user->reply_tx_size,
+							&ipc_user->reply_tx_data);
+					break;
+				case SOF_IPC4_MOD_LARGE_CONFIG_SET:
+					ipc_user->result =
+						ipc4_process_large_config_set(
+							&msg);
+					break;
 				default:
 					LOG_ERR("IPC user: unsupported module cmd type %d",
 						msg.primary.r.type);
