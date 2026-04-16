@@ -67,6 +67,10 @@ struct ipc_user {
 	int result;
 	/** @brief Reply extension word from user thread (e.g. CONFIG_GET result) */
 	uint32_t reply_ext;
+	/** @brief Reply TX data size from user thread (e.g. LARGE_CONFIG_GET result) */
+	uint32_t reply_tx_size;
+	/** @brief Reply TX data pointer from user thread (e.g. LARGE_CONFIG_GET result) */
+	void *reply_tx_data;
 	struct ipc *ipc;
 	struct k_thread *audio_thread;
 	/** @brief Original kernel driver pointer for restoring dev->drv after create */

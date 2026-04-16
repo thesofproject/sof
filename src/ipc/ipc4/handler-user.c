@@ -1016,6 +1016,108 @@ __cold static int ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 	return IPC4_SUCCESS;
 }
 
+__cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
+					uint32_t *reply_ext,
+					uint32_t *reply_tx_size,
+					void **reply_tx_data)
+{
+	struct ipc4_module_large_config_reply reply;
+	struct ipc4_module_large_config config;
+	char *data = ipc_get()->comp_data;
+	const struct comp_driver *drv;
+	struct comp_dev *dev = NULL;
+	uint32_t data_offset;
+
+	assert_can_be_cold();
+
+	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+
+	if (ret < 0)
+		return IPC4_FAILURE;
+
+	tr_dbg(&ipc_tr, "%x : %x",
+	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
+
+	/* get component dev for non-basefw since there is no
+	 * component dev for basefw
+	 */
+	if (config.primary.r.module_id) {
+		uint32_t comp_id;
+
+		comp_id = IPC4_COMP_ID(config.primary.r.module_id,
+				       config.primary.r.instance_id);
+		dev = ipc4_get_comp_dev(comp_id);
+		if (!dev)
+			return IPC4_MOD_INVALID_ID;
+
+		drv = dev->drv;
+
+		/* Multicore disabled for userspace forwarding;
+		 * non-userspace path retains ipc4_process_on_core()
+		 */
+	} else {
+		drv = ipc4_get_comp_drv(config.primary.r.module_id);
+	}
+
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	if (!drv->ops.get_large_config)
+		return IPC4_INVALID_REQUEST;
+
+	data_offset = config.extension.r.data_off_size;
+
+	/* check for vendor param first */
+	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+		/* For now only vendor_config case uses payload from hostbox */
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+					 config.extension.r.data_off_size);
+		ret = ipc4_get_vendor_config_module_instance(dev, drv,
+							     config.extension.r.init_block,
+							     config.extension.r.final_block,
+							     &data_offset,
+							     data,
+							     (const char *)MAILBOX_HOSTBOX_BASE);
+	} else {
+#if CONFIG_LIBRARY
+		data += sizeof(reply);
+#endif
+		ipc4_prepare_for_kcontrol_get(dev, config.extension.r.large_param_id,
+					      data, data_offset);
+
+		ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
+						config.extension.r.init_block,
+						config.extension.r.final_block,
+						&data_offset, data);
+	}
+
+	/* set up ipc4 error code for reply data */
+	if (ret < 0)
+		ret = IPC4_MOD_INVALID_ID;
+
+	/* Copy host config and overwrite */
+	reply.extension.dat = config.extension.dat;
+	reply.extension.r.data_off_size = data_offset;
+
+	/* The last block, no more data */
+	if (!config.extension.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
+		reply.extension.r.final_block = 1;
+
+	/* Indicate last block if error occurs */
+	if (ret)
+		reply.extension.r.final_block = 1;
+
+	/* no need to allocate memory for reply msg */
+	if (ret)
+		return ret;
+
+	/* Output via parameters instead of msg_reply */
+	*reply_ext = reply.extension.dat;
+	*reply_tx_size = data_offset;
+	*reply_tx_data = data;
+	return ret;
+}
+
 __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config_reply reply;
@@ -1177,6 +1279,77 @@ __cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 	}
 	return drv->ops.set_large_config(dev, param_id, init_block, final_block,
 					 data_off_size, data);
+}
+
+__cold int ipc4_process_large_config_set(struct ipc4_message_request *ipc4)
+{
+	struct ipc4_module_large_config config;
+	struct comp_dev *dev = NULL;
+	const struct comp_driver *drv;
+
+	assert_can_be_cold();
+
+	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+
+	if (ret < 0)
+		return IPC4_FAILURE;
+
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 config.extension.r.data_off_size);
+	tr_dbg(&ipc_tr, "%x : %x",
+	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
+
+	if (config.primary.r.module_id) {
+		uint32_t comp_id;
+
+		comp_id = IPC4_COMP_ID(config.primary.r.module_id, config.primary.r.instance_id);
+		dev = ipc4_get_comp_dev(comp_id);
+		if (!dev)
+			return IPC4_MOD_INVALID_ID;
+
+		drv = dev->drv;
+
+		/* Multicore disabled for userspace forwarding;
+		 * non-userspace path retains ipc4_process_on_core()
+		 */
+	} else {
+		drv = ipc4_get_comp_drv(config.primary.r.module_id);
+	}
+
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	if (!drv->ops.set_large_config)
+		return IPC4_INVALID_REQUEST;
+
+	/* check for vendor param first */
+	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+		ret = ipc4_set_vendor_config_module_instance(dev, drv,
+							     (uint32_t)config.primary.r.module_id,
+							     (uint32_t)config.primary.r.instance_id,
+							     config.extension.r.init_block,
+							     config.extension.r.final_block,
+							     config.extension.r.data_off_size,
+							     (const char *)MAILBOX_HOSTBOX_BASE);
+	} else {
+#if CONFIG_LIBRARY
+		struct ipc *ipc = ipc_get();
+		const char *data = (const char *)ipc->comp_data + sizeof(config);
+#else
+		const char *data = (const char *)MAILBOX_HOSTBOX_BASE;
+#endif
+		ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
+			config.extension.r.init_block, config.extension.r.final_block,
+			config.extension.r.data_off_size, data);
+		if (ret < 0) {
+			ipc_cmd_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
+				    (uint32_t)config.primary.r.module_id,
+				    (uint32_t)config.primary.r.instance_id);
+			ret = IPC4_INVALID_RESOURCE_ID;
+		}
+	}
+
+	return ret;
 }
 
 __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
@@ -1371,10 +1544,50 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 #endif
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
+#ifdef CONFIG_SOF_USERSPACE_LL
+	{
+		struct ipc4_module_large_config config;
+
+		memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+		if (config.primary.r.module_id) {
+			/* Module case: forward to user thread */
+			ret = ipc_user_forward_cmd(ipc4);
+			if (!ret) {
+				struct ipc *ipc = ipc_get();
+				struct ipc_user *pdata = ipc->ipc_user_pdata;
+
+				msg_reply->extension = pdata->reply_ext;
+				msg_reply->tx_size = pdata->reply_tx_size;
+				msg_reply->tx_data = pdata->reply_tx_data;
+			}
+		} else {
+			/* Base firmware (module_id==0): keep in kernel —
+			 * ipc4_get_comp_drv() accesses IMR manifest which
+			 * has no user-space partition.
+			 */
+			ret = ipc4_get_large_config_module_instance(ipc4);
+		}
+	}
+#else
 		ret = ipc4_get_large_config_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
+#ifdef CONFIG_SOF_USERSPACE_LL
+	{
+		struct ipc4_module_large_config config;
+
+		memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+		if (config.primary.r.module_id) {
+			ret = ipc_user_forward_cmd(ipc4);
+		} else {
+			/* Base firmware: keep in kernel (IMR access) */
+			ret = ipc4_set_large_config_module_instance(ipc4);
+		}
+	}
+#else
 		ret = ipc4_set_large_config_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_BIND:
 #ifdef CONFIG_SOF_USERSPACE_LL
