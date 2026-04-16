@@ -526,6 +526,10 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 							pipe->primary.r.instance_id);
 					break;
 				}
+				case SOF_IPC4_GLB_SET_PIPELINE_STATE:
+					ipc_user->result =
+						ipc4_set_pipeline_state(&msg);
+					break;
 				default:
 					LOG_ERR("IPC user: unsupported glb cmd type %d",
 						msg.primary.r.type);
