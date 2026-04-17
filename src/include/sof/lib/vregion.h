@@ -41,13 +41,26 @@ enum vregion_mem_type {
 struct vregion *vregion_create(size_t lifetime_size, size_t interim_size);
 
 /**
- * @brief Destroy a virtual region instance.
+ * @brief Increment virtual region's user count.
  *
- * Free all associated resources and deallocate the virtual region instance.
+ * The creator of the virtual region is its first user, for any additional users
+ * increment the region's use-count.
  *
- * @param[in] vr Pointer to the virtual region instance to destroy.
+ * @param[in] vr Pointer to the virtual region instance to release.
+ * @return struct vregion* Pointer to the virtual region instance.
  */
-void vregion_destroy(struct vregion *vr);
+struct vregion *vregion_get(struct vregion *vr);
+
+/**
+ * @brief Decrement virtual region's user count or destroy it.
+ *
+ * Decrement virtual region's user count, when it reaches 0 free all associated
+ * resources.
+ *
+ * @param[in] vr Pointer to the virtual region instance to release.
+ * @return struct vregion* Pointer to the virtual region instance or NULL if it has been destroyed.
+ */
+struct vregion *vregion_put(struct vregion *vr);
 
 /**
  * @brief Allocate memory from the specified virtual region.
@@ -112,11 +125,31 @@ void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
 #else /* CONFIG_SOF_VREGIONS */
 
+#include <rtos/alloc.h>
+
+struct vregion {
+	unsigned int use_count;
+};
+
 static inline struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 {
-	return NULL;
+	struct vregion *vr = rmalloc(0, sizeof(*vr));
+
+	vr->use_count = 1;
+	return vr;
 }
-static inline void vregion_destroy(struct vregion *vr) {}
+static inline struct vregion *vregion_get(struct vregion *vr)
+{
+	if (vr)
+		vr->use_count++;
+	return vr;
+}
+static inline struct vregion *vregion_put(struct vregion *vr)
+{
+	if (vr && !--vr->use_count)
+		rfree(vr);
+	return vr;
+}
 static inline void *vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size)
 {
 	return NULL;
