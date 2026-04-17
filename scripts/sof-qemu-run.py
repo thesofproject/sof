@@ -87,11 +87,16 @@ def main():
     parser.add_argument("--rebuild", action="store_true", help="Rebuild the firmware before running; otherwise, assumes firmware is already built.")
     parser.add_argument("--timeout", type=float, default=5.0, help="Seconds to wait after the last log event before dumping registers (default: 5.0).")
     parser.add_argument("--cores", type=int, default=None, help="Number of SMP cores to emulate in QEMU.")
+    parser.add_argument("--tcp-monitor", type=int, nargs="?", const=1025, default=None, help="Start the QEMU TCP monitor socket. Optionally specify the port (default: 1025).")
     args = parser.parse_args()
     
     if args.cores:
         existing_flags = os.environ.get("QEMU_EXTRA_FLAGS", "")
         os.environ["QEMU_EXTRA_FLAGS"] = f"{existing_flags} -smp {args.cores}".strip()
+        
+    if args.tcp_monitor:
+        existing_flags = os.environ.get("QEMU_EXTRA_FLAGS", "")
+        os.environ["QEMU_EXTRA_FLAGS"] = f"{existing_flags} -monitor tcp:localhost:{args.tcp_monitor},server,nowait".strip()
 
     # Make absolute path just in case
     # The shell script cd's into `args.build_dir` before executing us, so `args.build_dir` might be relative to the shell script's pwd.
@@ -181,6 +186,8 @@ def main():
             ]
             if args.cores:
                 run_cmd.extend(["-smp", str(args.cores)])
+            if args.tcp_monitor:
+                run_cmd.extend(["-monitor", f"tcp:localhost:{args.tcp_monitor},server,nowait"])
             if args.qemu_d:
                 run_cmd.extend(["-d", args.qemu_d])
                 
