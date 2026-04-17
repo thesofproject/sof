@@ -16,6 +16,8 @@ LOG_MODULE_DECLARE(sof_boot_test, LOG_LEVEL_DBG);
 extern char __rodata_region_start[];
 extern char __rodata_region_end[];
 
+extern struct k_mem_partition k_log_partition;
+
 static struct k_mem_domain log_mdom;
 
 #define USER_STACKSIZE	2048
@@ -50,6 +52,7 @@ static void test_user_thread(void)
 	};
 	k_mem_domain_init(&log_mdom, 0, NULL);
 	k_mem_domain_add_partition(&log_mdom, &log_part);
+	k_mem_domain_add_partition(&log_mdom, &k_log_partition);
 
 	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
 			user_function, NULL, NULL, NULL,
@@ -69,6 +72,7 @@ static void test_user_thread_with_sem(void)
 	};
 	k_mem_domain_init(&log_mdom, 0, NULL);
 	k_mem_domain_add_partition(&log_mdom, &log_part);
+	k_mem_domain_add_partition(&log_mdom, &k_log_partition);
 
 	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
 			user_sem_function, NULL, NULL, NULL,
@@ -134,6 +138,7 @@ static void test_user_thread_sys_sem(void)
 			-1, K_USER, K_FOREVER);
 	k_mem_domain_add_partition(&dp_mdom, &mpart);
 	k_mem_domain_add_partition(&dp_mdom, &log_part);
+	k_mem_domain_add_partition(&dp_mdom, &k_log_partition);
 	k_mem_domain_add_thread(&dp_mdom, &user_thread);
 
 	k_thread_start(&user_thread);
@@ -144,6 +149,7 @@ static void test_user_thread_sys_sem(void)
 	sys_sem_give(&simple_sem.sem2);
 
 	k_thread_join(&user_thread, K_FOREVER);
+	k_mem_domain_remove_partition(&dp_mdom, &k_log_partition);
 	k_mem_domain_remove_partition(&dp_mdom, &log_part);
 	k_mem_domain_remove_partition(&dp_mdom, &mpart);
 }
