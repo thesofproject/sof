@@ -659,7 +659,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	else
 		dp = NULL;
 
-	alloc = dp && dp->mod ? &dp->mod->priv.resources.alloc : NULL;
+	alloc = dp && dp->mod ? dp->mod->priv.resources.alloc : NULL;
 #else
 	alloc = NULL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
@@ -738,8 +738,8 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (alloc && alloc->client)
-		alloc->client->client_count++;
+	if (alloc)
+		alloc->client_count++;
 #endif
 
 	/*

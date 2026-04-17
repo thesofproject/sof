@@ -162,11 +162,9 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 	else
 		sof_heap_free(alloc ? alloc->heap : NULL, buffer);
 
-	if (alloc && alloc->client && !--alloc->client->client_count) {
-		rfree(alloc->client);
-		alloc->client = NULL;
-		/* NULL is allowed */
+	if (alloc && !--alloc->client_count) {
 		vregion_put(alloc->vreg);
+		rfree(alloc);
 	}
 }
 

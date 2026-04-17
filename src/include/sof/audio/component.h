@@ -580,11 +580,10 @@ struct comp_ops {
 
 struct k_heap;
 struct vregion;
-struct dp_heap_user;
 struct mod_alloc_ctx {
 	struct k_heap *heap;
 	struct vregion *vreg;
-	struct dp_heap_user *client;
+	unsigned int client_count;
 };
 
 /**
