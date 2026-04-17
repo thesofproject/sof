@@ -200,7 +200,7 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 	struct k_mem_partition ipc_part = {
 		.start = ipc_req_buf,
 		.size = MAILBOX_HOSTBOX_SIZE,
-		.attr = user_get_partition_attr(ipc_req_buf) | K_MEM_PARTITION_P_RO_U_RO,
+		.attr = user_get_partition_cache_attr(ipc_req_buf) | K_MEM_PARTITION_P_RO_U_RO,
 	};
 	int ret = 0, ret2;
 
@@ -328,7 +328,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user_ctx, uint
 
 		mem_partition.start = mod->segment[idx].v_base_addr;
 		mem_partition.size = mod->segment[idx].flags.r.length * CONFIG_MM_DRV_PAGE_SIZE;
-		mem_partition.attr |= user_get_partition_attr(mem_partition.start);
+		mem_partition.attr |= user_get_partition_cache_attr(mem_partition.start);
 
 		ret = k_mem_domain_add_partition(user_ctx->comp_dom, &mem_partition);
 
@@ -341,7 +341,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user_ctx, uint
 
 	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &mem_partition.size);
 	mem_partition.start = POINTER_TO_UINT(va_base);
-	mem_partition.attr = user_get_partition_attr(mem_partition.start) |
+	mem_partition.attr = user_get_partition_cache_attr(mem_partition.start) |
 		K_MEM_PARTITION_P_RW_U_RW;
 	ret = k_mem_domain_add_partition(user_ctx->comp_dom, &mem_partition);
 
@@ -687,7 +687,7 @@ static int userspace_proxy_get_configuration(struct processing_module *mod, uint
 	struct k_mem_partition ipc_resp_part = {
 		.start = ipc_resp_buf,
 		.size = SOF_IPC_MSG_MAX_SIZE,
-		.attr = user_get_partition_attr(ipc_resp_buf) | K_MEM_PARTITION_P_RW_U_RW,
+		.attr = user_get_partition_cache_attr(ipc_resp_buf) | K_MEM_PARTITION_P_RW_U_RW,
 	};
 	int ret;
 
