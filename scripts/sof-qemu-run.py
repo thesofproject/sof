@@ -139,7 +139,7 @@ def main():
                 print(f"[sof-qemu-run] Injected Rimage Path: {optional_rimage_path}")
 
             # Ensure pristine builds trigger CMake re-configuration loading the new overlay arguments cleanly:
-            subprocess.run([west_path, "build", "-d", build_dir, "-p", "auto", "--", "-DOVERLAY_CONFIG=ztest_overlay.conf"], check=True)
+            subprocess.run([west_path, "build", "-d", build_dir, "-p", "auto", "--", "-DOVERLAY_CONFIG=ztest_overlay.conf", "-DCONFIG_SOF_USERSPACE_LL=y"], check=True)
             print("\033[32;1m[sof-qemu-run] Compilation Successful.\033[0m\n")
         else:
             print("\033[32;1m[sof-qemu-run] Skipping compilation/rebuild, using previously generated binaries.\033[0m\n")
@@ -174,14 +174,20 @@ def main():
 
         print("\n[sof-qemu-run] \033[36;1m💡 Quick Tip: Monitor logs in real-time across another terminal window:\033[0m")
         print("    tail -f /tmp/qemu-exec*.log")
-        print("    tail -f /tmp/ace-mtrace.log\n")
+        print("    tail -f /tmp/ace-mtrace.log")
+        if args.tcp_monitor:
+            print("\n[sof-qemu-run] \033[36;1m💡 Quick Tip: Automate Out-Of-Band IPC Triggers (Requires sof/qemu codebase mapping):\033[0m")
+            print(f"    python3 scripts/sof-qemu-ipc.py --port {args.tcp_monitor} --status\n")
+        else:
+            print()
 
         for fw in fw_images:
             run_cmd = [
                 qemu_exe,
                 "-machine", "adsp_ace30",
                 "-kernel", fw,
-                "-nographic",
+                "-display", "none",
+                "-serial", "mon:stdio",
                 "-icount", "shift=5,align=off"
             ]
             if args.cores:
