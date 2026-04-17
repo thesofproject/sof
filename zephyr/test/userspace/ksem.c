@@ -13,8 +13,8 @@
 
 LOG_MODULE_DECLARE(sof_boot_test, LOG_LEVEL_DBG);
 
-extern char __rodata_region_start[];
-extern char __rodata_region_end[];
+extern char z_data_smem_k_log_partition_part_start[];
+extern char z_data_smem_k_log_partition_part_end[];
 
 extern struct k_mem_partition k_log_partition;
 
@@ -46,8 +46,8 @@ static void user_sem_function(void *p1, void *p2, void *p3)
 static void test_user_thread(void)
 {
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)ROUND_DOWN(__rodata_region_start, CONFIG_MMU_PAGE_SIZE),
-		.size = (uintptr_t)ROUND_UP(__rodata_region_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(__rodata_region_start, CONFIG_MMU_PAGE_SIZE),
+		.start = (uintptr_t)ROUND_DOWN(z_data_smem_k_log_partition_part_start, CONFIG_MMU_PAGE_SIZE),
+		.size = (uintptr_t)ROUND_UP(z_data_smem_k_log_partition_part_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(z_data_smem_k_log_partition_part_start, CONFIG_MMU_PAGE_SIZE),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 	k_mem_domain_init(&log_mdom, 0, NULL);
@@ -68,8 +68,8 @@ static void test_user_thread(void)
 static void test_user_thread_with_sem(void)
 {
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)ROUND_DOWN(__rodata_region_start, CONFIG_MMU_PAGE_SIZE),
-		.size = (uintptr_t)ROUND_UP(__rodata_region_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(__rodata_region_start, CONFIG_MMU_PAGE_SIZE),
+		.start = (uintptr_t)ROUND_DOWN(z_data_smem_k_log_partition_part_start, CONFIG_MMU_PAGE_SIZE),
+		.size = (uintptr_t)ROUND_UP(z_data_smem_k_log_partition_part_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(z_data_smem_k_log_partition_part_start, CONFIG_MMU_PAGE_SIZE),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 	k_mem_domain_init(&log_mdom, 0, NULL);
@@ -128,8 +128,8 @@ static void test_user_thread_sys_sem(void)
 	};
 
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)ROUND_DOWN(__rodata_region_start, CONFIG_MMU_PAGE_SIZE),
-		.size = (uintptr_t)ROUND_UP(__rodata_region_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(__rodata_region_start, CONFIG_MMU_PAGE_SIZE),
+		.start = (uintptr_t)ROUND_DOWN(z_data_smem_k_log_partition_part_start, CONFIG_MMU_PAGE_SIZE),
+		.size = (uintptr_t)ROUND_UP(z_data_smem_k_log_partition_part_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(z_data_smem_k_log_partition_part_start, CONFIG_MMU_PAGE_SIZE),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 
