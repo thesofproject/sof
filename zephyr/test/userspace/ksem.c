@@ -61,6 +61,8 @@ static void test_user_thread(void)
 	k_thread_start(&user_thread);
 	
 	k_thread_join(&user_thread, K_FOREVER);
+	k_mem_domain_remove_partition(&log_mdom, &k_log_partition);
+	k_mem_domain_remove_partition(&log_mdom, &log_part);
 }
 
 static void test_user_thread_with_sem(void)
@@ -84,6 +86,8 @@ static void test_user_thread_with_sem(void)
 	
 	k_sem_take(&user_sem, K_FOREVER);
 	k_thread_join(&user_thread, K_FOREVER);
+	k_mem_domain_remove_partition(&log_mdom, &k_log_partition);
+	k_mem_domain_remove_partition(&log_mdom, &log_part);
 }
 
 ZTEST(sof_boot, user_space)
