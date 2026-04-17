@@ -118,10 +118,10 @@ static void test_user_thread_sys_sem(void)
 		.attr = K_MEM_PARTITION_P_RW_U_RW/* | XTENSA_MMU_CACHED_WB*/,
 	};
 
-	struct k_mem_partition mpart2 = {
-		.start = (uintptr_t)0x400be000,
-		.size = 0x1000,
-		.attr = K_MEM_PARTITION_P_RW_U_RW/* | XTENSA_MMU_CACHED_WB*/,
+	struct k_mem_partition log_part = {
+		.start = (uintptr_t)__log_strings_start & ~0xfff,
+		.size = (((uintptr_t)__log_strings_end - ((uintptr_t)__log_strings_start & ~0xfff)) + 0xfff) & ~0xfff,
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 
 	k_mem_domain_init(&dp_mdom, 0, NULL);
@@ -132,7 +132,7 @@ static void test_user_thread_sys_sem(void)
 			sys_sem_function, NULL, NULL, NULL,
 			-1, K_USER, K_FOREVER);
 	k_mem_domain_add_partition(&dp_mdom, &mpart);
-	k_mem_domain_add_partition(&dp_mdom, &mpart2);
+	k_mem_domain_add_partition(&dp_mdom, &log_part);
 	k_mem_domain_add_thread(&dp_mdom, &user_thread);
 
 	k_thread_start(&user_thread);
@@ -143,7 +143,7 @@ static void test_user_thread_sys_sem(void)
 	sys_sem_give(&simple_sem.sem2);
 
 	k_thread_join(&user_thread, K_FOREVER);
-	k_mem_domain_remove_partition(&dp_mdom, &mpart2);
+	k_mem_domain_remove_partition(&dp_mdom, &log_part);
 	k_mem_domain_remove_partition(&dp_mdom, &mpart);
 }
 
