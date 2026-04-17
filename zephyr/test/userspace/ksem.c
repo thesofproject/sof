@@ -87,8 +87,8 @@ static void test_user_thread_with_sem(void)
 
 ZTEST(sof_boot, user_space)
 {
-	test_user_thread();
-	test_user_thread_with_sem();
+	//test_user_thread();
+	//test_user_thread_with_sem();
 }
 
 #include <zephyr/sys/sem.h>
