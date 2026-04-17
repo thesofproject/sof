@@ -132,7 +132,7 @@ struct module_resources {
 	struct objpool_head objpool;
 	size_t heap_usage;
 	size_t heap_high_water_mark;
-	struct mod_alloc_ctx alloc;
+	struct mod_alloc_ctx *alloc;
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	k_tid_t rsrc_mngr;
 #endif

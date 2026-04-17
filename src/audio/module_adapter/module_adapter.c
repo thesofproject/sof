@@ -57,8 +57,8 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #define PAGE_SZ HOST_PAGE_SIZE
 #endif
 
-static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
-						       size_t *heap_size)
+static struct k_heap *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+						 size_t *heap_size)
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
 	/* FIXME: the size will be derived from configuration */
@@ -71,9 +71,8 @@ static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_con
 	if (!mod_heap_mem)
 		return NULL;
 
-	struct dp_heap_user *mod_heap_user = (struct dp_heap_user *)mod_heap_mem;
-	struct k_heap *mod_heap = &mod_heap_user->heap;
-	const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap_user), 4);
+	struct k_heap *mod_heap = (struct k_heap *)mod_heap_mem;
+	const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap), 4);
 	void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
 
 	*heap_size = buf_size - heap_prefix_size;
@@ -83,7 +82,7 @@ static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_con
 	mod_heap->heap.init_bytes = *heap_size;
 #endif
 
-	return mod_heap_user;
+	return mod_heap;
 }
 
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
@@ -99,20 +98,17 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 */
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-	struct dp_heap_user *mod_heap_user;
 	size_t heap_size;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_USERSPACE) &&
 	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_heap_user = module_adapter_dp_heap_new(config, &heap_size);
-		if (!mod_heap_user) {
+		mod_heap = module_adapter_dp_heap_new(config, &heap_size);
+		if (!mod_heap) {
 			comp_cl_err(drv, "Failed to allocate DP module heap");
 			return NULL;
 		}
-		mod_heap = &mod_heap_user->heap;
 	} else {
 		mod_heap = drv->user_heap;
-		mod_heap_user = NULL;
 		heap_size = 0;
 	}
 
@@ -123,9 +119,16 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 		goto emod;
 	}
 
+	struct mod_alloc_ctx *alloc = rmalloc(flags, sizeof(*alloc));
+
+	if (!alloc)
+		goto ealloc;
+
 	memset(mod, 0, sizeof(*mod));
-	mod->priv.resources.alloc.heap = mod_heap;
-	mod->priv.resources.alloc.client = mod_heap_user;
+	alloc->heap = mod_heap;
+	alloc->vreg = NULL;
+	alloc->client_count = 0;
+	mod->priv.resources.alloc = alloc;
 	mod_resource_init(mod);
 
 	/*
@@ -138,7 +141,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 
 	if (!dev) {
 		comp_cl_err(drv, "failed to allocate memory for comp_dev");
-		goto err;
+		goto edev;
 	}
 
 	memset(dev, 0, sizeof(*dev));
@@ -147,22 +150,25 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	mod->dev = dev;
 	dev->mod = mod;
 
-	if (mod_heap_user)
-		mod_heap_user->client_count++;
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		alloc->client_count++;
 
 	return mod;
 
-err:
+edev:
+	rfree(alloc);
+ealloc:
 	sof_heap_free(mod_heap, mod);
 emod:
-	rfree(mod_heap_user);
+	rfree(mod_heap);
 
 	return NULL;
 }
 
 static void module_adapter_mem_free(struct processing_module *mod)
 {
-	struct k_heap *mod_heap = mod->priv.resources.alloc.heap;
+	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
+	struct k_heap *mod_heap = alloc->heap;
 	unsigned int domain = mod->dev->ipc_config.proc_domain;
 
 	/*
@@ -175,11 +181,12 @@ static void module_adapter_mem_free(struct processing_module *mod)
 	sof_heap_free(mod_heap, mod->dev);
 	sof_heap_free(mod_heap, mod);
 	if (domain == COMP_PROCESSING_DOMAIN_DP) {
-		struct dp_heap_user *mod_heap_user = container_of(mod_heap, struct dp_heap_user,
-								  heap);
-
-		if (mod_heap && !--mod_heap_user->client_count)
-			rfree(mod_heap_user);
+		if (!IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP))
+			rfree(mod_heap);
+		if (!--alloc->client_count)
+			rfree(alloc);
+	} else {
+		rfree(alloc);
 	}
 }
 
@@ -612,7 +619,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (list_is_empty(&mod->raw_data_buffers_list)) {
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
-			struct comp_buffer *buffer = buffer_alloc(&md->resources.alloc,
+			struct comp_buffer *buffer = buffer_alloc(md->resources.alloc,
 								  buff_size, memory_flags,
 								  PLATFORM_DCACHE_ALIGN,
 								  BUFFER_USAGE_NOT_SHARED);
@@ -624,9 +631,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 				goto free;
 			}
 
-			if (md->resources.alloc.heap &&
-			    md->resources.alloc.heap != dev->drv->user_heap)
-				md->resources.alloc.client->client_count++;
+			if (md->resources.alloc->heap &&
+			    md->resources.alloc->heap != dev->drv->user_heap)
+				md->resources.alloc->client_count++;
 
 			irq_local_disable(flags);
 			list_item_prepend(&buffer->buffers_list, &mod->raw_data_buffers_list);

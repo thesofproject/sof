@@ -294,7 +294,7 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 				       uint32_t id)
 {
 	struct ring_buffer *ring_buffer;
-	struct mod_alloc_ctx *alloc = &dev->mod->priv.resources.alloc;
+	struct mod_alloc_ctx *alloc = dev->mod->priv.resources.alloc;
 	struct k_heap *heap = alloc->heap;
 	struct vregion *vreg = alloc->vreg;
 	int memory_flags = (is_shared ? SOF_MEM_FLAG_COHERENT : 0) |
