@@ -139,7 +139,7 @@ def main():
                 print(f"[sof-qemu-run] Injected Rimage Path: {optional_rimage_path}")
 
             # Ensure pristine builds trigger CMake re-configuration loading the new overlay arguments cleanly:
-            subprocess.run([west_path, "build", "-d", build_dir, "-p", "auto", "--", "-DOVERLAY_CONFIG=ztest_overlay.conf", "-DCONFIG_SOF_USERSPACE_LL=y"], check=True)
+            subprocess.run([west_path, "build", "-d", build_dir, "-p", "auto", "--", "-DOVERLAY_CONFIG=ztest_overlay.conf", "-DCONFIG_SOF_USERSPACE_LL=y", "-DCONFIG_COMP_SRC=y", "-DCONFIG_COMP_COPIER=y", "-DCONFIG_COMP_VOLUME=y", "-DCONFIG_COMP_MIXIN_MIXOUT=y"], check=True)
             print("\033[32;1m[sof-qemu-run] Compilation Successful.\033[0m\n")
         else:
             print("\033[32;1m[sof-qemu-run] Skipping compilation/rebuild, using previously generated binaries.\033[0m\n")
