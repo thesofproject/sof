@@ -44,8 +44,8 @@ static void user_sem_function(void *p1, void *p2, void *p3)
 static void test_user_thread(void)
 {
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
-		.size = (uintptr_t)ROUND_UP(__log_strings_end, 4096) - (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
+		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, CONFIG_MMU_PAGE_SIZE),
+		.size = (uintptr_t)ROUND_UP(__log_strings_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(__log_strings_start, CONFIG_MMU_PAGE_SIZE),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 	k_mem_domain_init(&log_mdom, 0, NULL);
@@ -63,8 +63,8 @@ static void test_user_thread(void)
 static void test_user_thread_with_sem(void)
 {
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
-		.size = (uintptr_t)ROUND_UP(__log_strings_end, 4096) - (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
+		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, CONFIG_MMU_PAGE_SIZE),
+		.size = (uintptr_t)ROUND_UP(__log_strings_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(__log_strings_start, CONFIG_MMU_PAGE_SIZE),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 	k_mem_domain_init(&log_mdom, 0, NULL);
@@ -93,10 +93,10 @@ ZTEST(sof_boot, user_space)
 struct sem_mem {
 	struct sys_sem sem1;
 	struct sys_sem sem2;
-	uint8_t reserved[4096 - 2 * sizeof(struct sys_sem)];
+	uint8_t reserved[CONFIG_MMU_PAGE_SIZE - 2 * sizeof(struct sys_sem)];
 };
 
-static struct sem_mem simple_sem __attribute__((aligned(4096)));
+static struct sem_mem simple_sem __attribute__((aligned(CONFIG_MMU_PAGE_SIZE)));
 static struct k_mem_domain dp_mdom;
 
 static void sys_sem_function(void *p1, void *p2, void *p3)
@@ -115,13 +115,13 @@ static void test_user_thread_sys_sem(void)
 {
 	struct k_mem_partition mpart = {
 		.start = (uintptr_t)&simple_sem,
-		.size = 4096,
+		.size = CONFIG_MMU_PAGE_SIZE,
 		.attr = K_MEM_PARTITION_P_RW_U_RW/* | XTENSA_MMU_CACHED_WB*/,
 	};
 
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
-		.size = (uintptr_t)ROUND_UP(__log_strings_end, 4096) - (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
+		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, CONFIG_MMU_PAGE_SIZE),
+		.size = (uintptr_t)ROUND_UP(__log_strings_end, CONFIG_MMU_PAGE_SIZE) - (uintptr_t)ROUND_DOWN(__log_strings_start, CONFIG_MMU_PAGE_SIZE),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 
