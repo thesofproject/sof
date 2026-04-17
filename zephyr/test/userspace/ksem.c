@@ -9,6 +9,7 @@
 #include <zephyr/ztest.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/app_memory/mem_domain.h>
+#include <zephyr/sys/util.h>
 
 LOG_MODULE_DECLARE(sof_boot_test, LOG_LEVEL_DBG);
 
@@ -43,8 +44,8 @@ static void user_sem_function(void *p1, void *p2, void *p3)
 static void test_user_thread(void)
 {
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)__log_strings_start & ~0xfff,
-		.size = (((uintptr_t)__log_strings_end - ((uintptr_t)__log_strings_start & ~0xfff)) + 0xfff) & ~0xfff,
+		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
+		.size = (uintptr_t)ROUND_UP(__log_strings_end, 4096) - (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 	k_mem_domain_init(&log_mdom, 0, NULL);
@@ -62,8 +63,8 @@ static void test_user_thread(void)
 static void test_user_thread_with_sem(void)
 {
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)__log_strings_start & ~0xfff,
-		.size = (((uintptr_t)__log_strings_end - ((uintptr_t)__log_strings_start & ~0xfff)) + 0xfff) & ~0xfff,
+		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
+		.size = (uintptr_t)ROUND_UP(__log_strings_end, 4096) - (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 	k_mem_domain_init(&log_mdom, 0, NULL);
@@ -119,8 +120,8 @@ static void test_user_thread_sys_sem(void)
 	};
 
 	struct k_mem_partition log_part = {
-		.start = (uintptr_t)__log_strings_start & ~0xfff,
-		.size = (((uintptr_t)__log_strings_end - ((uintptr_t)__log_strings_start & ~0xfff)) + 0xfff) & ~0xfff,
+		.start = (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
+		.size = (uintptr_t)ROUND_UP(__log_strings_end, 4096) - (uintptr_t)ROUND_DOWN(__log_strings_start, 4096),
 		.attr = K_MEM_PARTITION_P_RW_U_RW,
 	};
 
