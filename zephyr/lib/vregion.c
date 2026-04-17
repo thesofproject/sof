@@ -84,6 +84,8 @@ struct vregion {
 	uint8_t *base;			/* base address of entire region */
 	size_t size;			/* size of whole region in bytes */
 	unsigned int pages;		/* size of whole region in pages */
+	struct k_mutex lock;		/* protect vregion heaps and use-count */
+	unsigned int use_count;
 
 	/* interim heap */
 	struct interim_heap interim;	/* interim heap */
@@ -152,6 +154,10 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 	/* init interim heaps */
 	k_heap_init(&vr->interim.heap, vr->interim.heap.heap.init_mem, interim_size);
 
+	k_mutex_init(&vr->lock);
+	/* The creator is the first user */
+	vr->use_count = 1;
+
 	/* log the new vregion */
 	LOG_INF("new at base %p size %#zx pages %u struct embedded at %p",
 		(void *)vr->base, total_size, pages, (void *)vr);
@@ -161,20 +167,46 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 	return vr;
 }
 
-/**
- * @brief Destroy a virtual region instance.
- *
- * @param[in] vr Pointer to the virtual region instance to destroy.
- */
-void vregion_destroy(struct vregion *vr)
+struct vregion *vregion_get(struct vregion *vr)
 {
 	if (!vr)
-		return;
+		return NULL;
+
+	k_mutex_lock(&vr->lock, K_FOREVER);
+	vr->use_count++;
+	k_mutex_unlock(&vr->lock);
+
+	return vr;
+}
+
+/**
+ * @brief Decrement virtual region's user count or destroy it.
+ *
+ * @param[in] vr Pointer to the virtual region instance to release.
+ * @return struct vregion* Pointer to the virtual region instance or NULL if it has been destroyed.
+ */
+struct vregion *vregion_put(struct vregion *vr)
+{
+	unsigned int use_count;
+
+	if (!vr)
+		return NULL;
+
+	k_mutex_lock(&vr->lock, K_FOREVER);
+	use_count = --vr->use_count;
+	k_mutex_unlock(&vr->lock);
+
+	if (use_count)
+		return vr;
+
+	/* Last user: nobody else can access the instance. */
 
 	/* log the vregion being destroyed */
 	LOG_DBG("destroy %p size %#zx pages %u", (void *)vr->base, vr->size, vr->pages);
 	LOG_DBG(" lifetime used %zu free count %d", vr->lifetime.used, vr->lifetime.free_count);
 	vpage_free(vr->base);
+
+	return NULL;
 }
 
 /**
@@ -275,25 +307,24 @@ void vregion_free(struct vregion *vr, void *ptr)
 	if (!vr || !ptr)
 		return;
 
+	k_mutex_lock(&vr->lock, K_FOREVER);
+
 	if (sys_cache_is_ptr_uncached(ptr))
 		ptr = sys_cache_cached_ptr_get(ptr);
 
-	/* check if pointer is in interim heap */
 	if (ptr >= (void *)vr->interim.heap.heap.init_mem &&
 	    ptr < (void *)((uint8_t *)vr->interim.heap.heap.init_mem +
-			   vr->interim.heap.heap.init_bytes)) {
+			   vr->interim.heap.heap.init_bytes))
+		/* pointer is in interim heap */
 		interim_free(&vr->interim, ptr);
-		return;
-	}
-
-	/* check if pointer is in lifetime heap */
-	if (ptr >= (void *)vr->lifetime.base &&
-	    ptr < (void *)(vr->lifetime.base + vr->lifetime.size)) {
+	else if (ptr >= (void *)vr->lifetime.base &&
+		   ptr < (void *)(vr->lifetime.base + vr->lifetime.size))
+		/* pointer is in lifetime heap */
 		lifetime_free(&vr->lifetime, ptr);
-		return;
-	}
+	else
+		LOG_ERR("error: vregion free invalid pointer %p", ptr);
 
-	LOG_ERR("error: vregion free invalid pointer %p", ptr);
+	k_mutex_unlock(&vr->lock);
 }
 EXPORT_SYMBOL(vregion_free);
 
@@ -310,21 +341,31 @@ EXPORT_SYMBOL(vregion_free);
 void *vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
 			  size_t size, size_t alignment)
 {
+	void *p;
+
 	if (!vr || !size)
 		return NULL;
 
 	if (alignment < PLATFORM_DCACHE_ALIGN)
 		alignment = PLATFORM_DCACHE_ALIGN;
 
+	k_mutex_lock(&vr->lock, K_FOREVER);
+
 	switch (type) {
 	case VREGION_MEM_TYPE_INTERIM:
-		return interim_alloc(&vr->interim, size, alignment);
+		p = interim_alloc(&vr->interim, size, alignment);
+		break;
 	case VREGION_MEM_TYPE_LIFETIME:
-		return lifetime_alloc(&vr->lifetime, size, alignment);
+		p = lifetime_alloc(&vr->lifetime, size, alignment);
+		break;
 	default:
 		LOG_ERR("error: invalid memory type %d", type);
-		return NULL;
+		p = NULL;
 	}
+
+	k_mutex_unlock(&vr->lock);
+
+	return p;
 }
 EXPORT_SYMBOL(vregion_alloc_align);
 
