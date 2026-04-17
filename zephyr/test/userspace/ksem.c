@@ -8,8 +8,14 @@
 #include <zephyr/kernel.h>
 #include <zephyr/ztest.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/app_memory/mem_domain.h>
 
 LOG_MODULE_DECLARE(sof_boot_test, LOG_LEVEL_DBG);
+
+extern const char __log_strings_start[];
+extern const char __log_strings_end[];
+
+static struct k_mem_domain log_mdom;
 
 #define USER_STACKSIZE	2048
 
@@ -36,19 +42,41 @@ static void user_sem_function(void *p1, void *p2, void *p3)
 
 static void test_user_thread(void)
 {
+	struct k_mem_partition log_part = {
+		.start = (uintptr_t)__log_strings_start & ~0xfff,
+		.size = (((uintptr_t)__log_strings_end - ((uintptr_t)__log_strings_start & ~0xfff)) + 0xfff) & ~0xfff,
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+	k_mem_domain_init(&log_mdom, 0, NULL);
+	k_mem_domain_add_partition(&log_mdom, &log_part);
+
 	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
 			user_function, NULL, NULL, NULL,
-			-1, K_USER, K_MSEC(0));
+			-1, K_USER, K_FOREVER);
+	k_mem_domain_add_thread(&log_mdom, &user_thread);
+	k_thread_start(&user_thread);
+	
 	k_thread_join(&user_thread, K_FOREVER);
 }
 
 static void test_user_thread_with_sem(void)
 {
-	/* Start in 10ms to have time to grant the thread access to the semaphore */
+	struct k_mem_partition log_part = {
+		.start = (uintptr_t)__log_strings_start & ~0xfff,
+		.size = (((uintptr_t)__log_strings_end - ((uintptr_t)__log_strings_start & ~0xfff)) + 0xfff) & ~0xfff,
+		.attr = K_MEM_PARTITION_P_RW_U_RW,
+	};
+	k_mem_domain_init(&log_mdom, 0, NULL);
+	k_mem_domain_add_partition(&log_mdom, &log_part);
+
 	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
 			user_sem_function, NULL, NULL, NULL,
-			-1, K_USER, K_MSEC(10));
+			-1, K_USER, K_FOREVER);
+	
 	k_thread_access_grant(&user_thread, &user_sem);
+	k_mem_domain_add_thread(&log_mdom, &user_thread);
+	k_thread_start(&user_thread);
+	
 	k_sem_take(&user_sem, K_FOREVER);
 	k_thread_join(&user_thread, K_FOREVER);
 }
@@ -60,7 +88,6 @@ ZTEST(sof_boot, user_space)
 }
 
 #include <zephyr/sys/sem.h>
-#include <zephyr/app_memory/mem_domain.h>
 
 struct sem_mem {
 	struct sys_sem sem1;
@@ -91,6 +118,12 @@ static void test_user_thread_sys_sem(void)
 		.attr = K_MEM_PARTITION_P_RW_U_RW/* | XTENSA_MMU_CACHED_WB*/,
 	};
 
+	struct k_mem_partition mpart2 = {
+		.start = (uintptr_t)0x400be000,
+		.size = 0x1000,
+		.attr = K_MEM_PARTITION_P_RW_U_RW/* | XTENSA_MMU_CACHED_WB*/,
+	};
+
 	k_mem_domain_init(&dp_mdom, 0, NULL);
 	sys_sem_init(&simple_sem.sem1, 0, 1);
 	sys_sem_init(&simple_sem.sem2, 0, 1);
@@ -99,6 +132,7 @@ static void test_user_thread_sys_sem(void)
 			sys_sem_function, NULL, NULL, NULL,
 			-1, K_USER, K_FOREVER);
 	k_mem_domain_add_partition(&dp_mdom, &mpart);
+	k_mem_domain_add_partition(&dp_mdom, &mpart2);
 	k_mem_domain_add_thread(&dp_mdom, &user_thread);
 
 	k_thread_start(&user_thread);
@@ -109,6 +143,7 @@ static void test_user_thread_sys_sem(void)
 	sys_sem_give(&simple_sem.sem2);
 
 	k_thread_join(&user_thread, K_FOREVER);
+	k_mem_domain_remove_partition(&dp_mdom, &mpart2);
 	k_mem_domain_remove_partition(&dp_mdom, &mpart);
 }
 
