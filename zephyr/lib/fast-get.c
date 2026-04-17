@@ -223,10 +223,6 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 	ret = sof_heap_alloc(heap, alloc_flags, alloc_size, alloc_align);
 	if (!ret)
 		goto out;
-	entry->size = size;
-	entry->sram_ptr = ret;
-	memcpy_s(entry->sram_ptr, entry->size, dram_ptr, size);
-	dcache_writeback_region((__sparse_force void __sparse_cache *)entry->sram_ptr, size);
 
 #if CONFIG_USERSPACE
 	if (size > FAST_GET_MAX_COPY_SIZE && current_is_userspace) {
@@ -244,6 +240,10 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 #endif /* CONFIG_USERSPACE */
 
 	entry->dram_ptr = dram_ptr;
+	entry->size = size;
+	entry->sram_ptr = ret;
+	memcpy_s(ret, alloc_size, dram_ptr, size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)ret, size);
 	entry->refcount = 1;
 out:
 	k_spin_unlock(&data->lock, key);
