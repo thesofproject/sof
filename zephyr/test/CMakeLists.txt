@@ -13,7 +13,7 @@ if(CONFIG_SOF_BOOT_TEST)
   endif()
 endif()
 
-if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_INTERFACE_DMA)
+if(CONFIG_SOF_BOOT_TEST AND CONFIG_SOF_USERSPACE_INTERFACE_DMA)
   if(CONFIG_DT_HAS_INTEL_ADSP_HDA_HOST_IN_ENABLED)
     zephyr_library_sources(userspace/test_intel_hda_dma.c)
   endif()
@@ -22,11 +22,11 @@ if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_INTERFACE_DMA)
   endif()
 endif()
 
-if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_LL)
+if(CONFIG_SOF_BOOT_TEST AND CONFIG_SOF_USERSPACE_LL)
   zephyr_library_sources(userspace/test_mailbox.c)
 endif()
 
-if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_LL)
+if(CONFIG_SOF_BOOT_TEST AND CONFIG_SOF_USERSPACE_LL)
   zephyr_library_sources(userspace/test_ipc4_pipeline_util.c
   userspace/test_ipc4_pipeline_native.c
   userspace/test_ipc4_pipeline_user.c)
@@ -55,7 +55,7 @@ if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_LL)
   zephyr_library_sources_ifdef(CONFIG_COMP_SOUND_DOSE audio/test_sound_dose.c)
 endif()
 
-if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_ZTEST)
+if(CONFIG_SOF_BOOT_TEST AND CONFIG_ZTEST)
   set(MATH_ZTEST_SOURCES
     ../../test/ztest/unit/math/basic/arithmetic/test_crc32_ztest.c
     ../../test/ztest/unit/math/basic/arithmetic/test_find_equal_int16_ztest.c
