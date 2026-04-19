@@ -84,6 +84,7 @@ def main():
     parser.add_argument("--interactive", action="store_true", help="Drop into the interactive QEMU monitor after execution completes instead of quitting natively.")
     parser.add_argument("--qemu-d", default="in_asm,nochain,int", help="Options to pass to QEMU's -d flag. Defaults to 'in_asm,nochain,int'.")
     parser.add_argument("--ztest", action="store_true", help="Automatically compile the firmware image with ztest_overlay.conf prior to booting.")
+    parser.add_argument("--test-fw-standard", action="store_true", help="Build a fully standard firmware image but forcibly natively attach test suite blocks into the OS IPC boot handler hook (circumventing standard isolated boot modes).")
     parser.add_argument("--rebuild", action="store_true", help="Rebuild the firmware before running; otherwise, assumes firmware is already built.")
     parser.add_argument("--timeout", type=float, default=5.0, help="Seconds to wait after the last log event before dumping registers (default: 5.0).")
     parser.add_argument("--cores", type=int, default=None, help="Number of SMP cores to emulate in QEMU.")
@@ -141,6 +142,22 @@ def main():
             # Ensure pristine builds trigger CMake re-configuration loading the new overlay arguments cleanly:
             subprocess.run([west_path, "build", "-d", build_dir, "-p", "auto", "--", "-DOVERLAY_CONFIG=ztest_overlay.conf", "-DCONFIG_SOF_USERSPACE_LL=y", "-DCONFIG_COMP_SRC=y", "-DCONFIG_COMP_COPIER=y", "-DCONFIG_COMP_VOLUME=y", "-DCONFIG_COMP_MIXIN_MIXOUT=y"], check=True)
             print("\033[32;1m[sof-qemu-run] Compilation Successful.\033[0m\n")
+        else:
+            print("\033[32;1m[sof-qemu-run] Skipping compilation/rebuild, using previously generated binaries.\033[0m\n")
+    elif args.test_fw_standard:
+        print("\n\033[32;1m[sof-qemu-run] STANDARD FIRMWARE + ZTEST ENABLED: Tests attached to normal IPC boot hook without standalone overlay limits.\033[0m")
+        if args.rebuild:
+            print("\033[32;1m[sof-qemu-run] Recompiling standard Zephyr firmware natively alongside unit testing modules...\033[0m")
+            # Inject standard rimage build directory directly into PATH so `west sign` mathematically authenticates Zephyr.elf into Zephyr.ri directly seamlessly.
+            sof_workspace = os.environ.get("SOF_WORKSPACE", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+            optional_rimage_path = os.path.join(sof_workspace, "build-rimage")
+            if os.path.isdir(optional_rimage_path) and optional_rimage_path not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = f"{optional_rimage_path}{os.pathsep}{os.environ.get('PATH', '')}"
+                print(f"[sof-qemu-run] Injected Rimage Path: {optional_rimage_path}")
+
+            # Force fully-functional topology builds by injecting testing parameters strictly via commandline arguments natively
+            subprocess.run([west_path, "build", "-d", build_dir, "-p", "auto", "--", "-DCONFIG_SOF_BOOT_TEST=y", "-DCONFIG_ZTEST=y", "-DCONFIG_SOF_USERSPACE_LL=y", "-DCONFIG_COMP_SRC=y", "-DCONFIG_COMP_COPIER=y", "-DCONFIG_COMP_VOLUME=y", "-DCONFIG_COMP_MIXIN_MIXOUT=y", "-DCONFIG_MAX_THREAD_BYTES=4"], check=True)
+            print("\033[32;1m[sof-qemu-run] Standard Compilation Successful.\033[0m\n")
         else:
             print("\033[32;1m[sof-qemu-run] Skipping compilation/rebuild, using previously generated binaries.\033[0m\n")
 
