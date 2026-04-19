@@ -82,10 +82,20 @@ config SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE
 	 NOTE: Keep in mind that the shared heap size should not be greater than the
 	 heap size.
 
+config VIRTUAL_HEAP_EXTENDED
+	bool "Extend the Virtual Heap configuration with additional buffers"
+	depends on MM_DRV_INTEL_ADSP_MTL_TLB
+	default y
+	help
+	  Enable additional Virtual Heap buffers. Some configurations need this
+	  while others need the memory for other purposes, e.g. for the virtual
+	  page / virtual region storage.
+
 config SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE
 	hex "Size in bytes of virtual memory region for virtual heap shared for all cores"
 	depends on MM_DRV_INTEL_ADSP_MTL_TLB
-	default 0x140000
+	default 0x140000 if VIRTUAL_HEAP_EXTENDED
+	default 0x100000
 	help
 	  This config defines size of virtual heap region shared between all cores
 
