@@ -108,13 +108,7 @@ static inline void ipc_msg_free(struct ipc_msg *msg)
  */
 void ipc_send_queued_msg(void);
 
-/**
- * \brief Queues an IPC message for transmission.
- * @param msg The IPC message to be freed.
- * @param data The message data.
- * @param high_priority True if a high priortity message.
- */
-void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority);
+#include <sof/ipc/ipc_msg_send.h>
 
 /**
  * \brief Send an IPC message directly for emergency.

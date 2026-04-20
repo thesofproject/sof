@@ -622,6 +622,7 @@ zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/module_adapter/module/ge
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/fast-get.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/ipc/ipc_reply.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/ipc4/handler.h)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/ipc/ipc_msg_send.h)
 zephyr_syscall_header(include/rtos/alloc.h)
 zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_INTERFACE_ALLOC syscall/alloc.c)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/vregion.h)
