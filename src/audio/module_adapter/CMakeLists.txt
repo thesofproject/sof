@@ -33,6 +33,9 @@ endif()
 		zephyr_library_import(xa_mp3_enc ${CONFIG_CADENCE_CODEC_MP3_ENC_LIB})
 	endif()
 
+	zephyr_library_sources_ifdef(CONFIG_SOF_COMPRESS_CODEC_PCM_DEC
+		module/cadence_other/xa_pcm_dec.c)
+
 	if (CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
 		if(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING STREQUAL "m" AND DEFINED CONFIG_LLEXT)
 			add_subdirectory(module/dolby/llext
@@ -145,6 +148,10 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 			sof_add_static_library(xa_src_pp ${CONFIG_CADENCE_CODEC_SRC_PP_LIB})
 		endif()
 
+	endif()
+
+	if(CONFIG_SOF_COMPRESS_CODEC_PCM_DEC)
+		add_subdirectory(module/cadence_other)
 	endif()
 
 	if(CONFIG_COMP_DOLBY_DAX_AUDIO_PROCESSING)
