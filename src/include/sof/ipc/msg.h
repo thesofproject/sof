@@ -21,6 +21,7 @@
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/common.h>
+#include <sof/ipc/ipc_msg_list_remove.h>
 #include <ipc/trace.h>
 
 #include <stdbool.h>
@@ -91,16 +92,9 @@ static inline void ipc_msg_free(struct ipc_msg *msg)
 	if (!msg)
 		return;
 
-	struct ipc *ipc = ipc_get();
-	k_spinlock_key_t key;
-
-	key = k_spin_lock(&ipc->lock);
-
-	list_item_del(&msg->list);
+	ipc_msg_list_remove(msg);
 	rfree(msg->tx_data);
 	rfree(msg);
-
-	k_spin_unlock(&ipc->lock, key);
 }
 
 /**
@@ -108,13 +102,7 @@ static inline void ipc_msg_free(struct ipc_msg *msg)
  */
 void ipc_send_queued_msg(void);
 
-/**
- * \brief Queues an IPC message for transmission.
- * @param msg The IPC message to be freed.
- * @param data The message data.
- * @param high_priority True if a high priortity message.
- */
-void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority);
+#include <sof/ipc/ipc_msg_send.h>
 
 /**
  * \brief Send an IPC message directly for emergency.
