@@ -83,6 +83,22 @@ static inline struct ipc_msg *ipc_msg_init(uint32_t header, uint32_t size)
 }
 
 /**
+ * \brief Remove an IPC message from the send queue.
+ *
+ * Acquires the IPC lock and removes the message from its list.
+ * Safe to call from userspace.
+ *
+ * @param msg The IPC message to remove from the queue.
+ */
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall void ipc_msg_list_remove(struct ipc_msg *msg);
+#include <zephyr/syscalls/msg.h>
+#else
+void z_impl_ipc_msg_list_remove(struct ipc_msg *msg);
+#define ipc_msg_list_remove z_impl_ipc_msg_list_remove
+#endif
+
+/**
  * \brief Frees IPC message header and data.
  * @param msg The IPC message to be freed.
  */
@@ -91,16 +107,9 @@ static inline void ipc_msg_free(struct ipc_msg *msg)
 	if (!msg)
 		return;
 
-	struct ipc *ipc = ipc_get();
-	k_spinlock_key_t key;
-
-	key = k_spin_lock(&ipc->lock);
-
-	list_item_del(&msg->list);
+	ipc_msg_list_remove(msg);
 	rfree(msg->tx_data);
 	rfree(msg);
-
-	k_spin_unlock(&ipc->lock, key);
 }
 
 /**
@@ -110,11 +119,19 @@ void ipc_send_queued_msg(void);
 
 /**
  * \brief Queues an IPC message for transmission.
- * @param msg The IPC message to be freed.
+ * @param msg The IPC message.
  * @param data The message data.
- * @param high_priority True if a high priortity message.
+ * @param high_priority True if a high priority message.
  */
-void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority);
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall void ipc_msg_send(struct ipc_msg *msg, void *data,
+			    bool high_priority);
+#include <zephyr/syscalls/msg.h>
+#else
+void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data,
+			 bool high_priority);
+#define ipc_msg_send z_impl_ipc_msg_send
+#endif
 
 /**
  * \brief Send an IPC message directly for emergency.
