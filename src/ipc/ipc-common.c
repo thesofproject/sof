@@ -39,6 +39,7 @@
 
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
+#include <zephyr/internal/syscall_handler.h>
 #endif
 
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -242,7 +243,11 @@ __cold void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 	k_spin_unlock(&ipc->lock, key);
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+#else
 void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+#endif
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
@@ -291,6 +296,27 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	k_spin_unlock(&ipc->lock, key);
 }
 EXPORT_SYMBOL(ipc_msg_send);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+static inline bool z_vrfy_ipc_msg_send_check_data(struct ipc_msg *msg, void *data)
+{
+	/* If data != NULL and tx_size > 0, verify the data buffer */
+	if (data && msg->tx_size > 0)
+		K_OOPS(K_SYSCALL_MEMORY_READ(data, msg->tx_size));
+
+	return true;
+}
+
+void z_vrfy_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(msg, sizeof(*msg)));
+
+	z_vrfy_ipc_msg_send_check_data(msg, data);
+
+	z_impl_ipc_msg_send(msg, data, high_priority);
+}
+#include <zephyr/syscalls/ipc_msg_send_mrsh.c>
+#endif
 
 #ifdef __ZEPHYR__
 static void ipc_work_handler(struct k_work *work)
