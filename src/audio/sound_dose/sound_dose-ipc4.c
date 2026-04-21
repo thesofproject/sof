@@ -32,9 +32,9 @@ static struct ipc_msg *sound_dose_notification_init(struct processing_module *mo
 	primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
 	primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-	msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
-				 sizeof(struct sof_ipc4_notify_module_data) +
-				 sizeof(struct sof_ipc4_control_msg_payload));
+	msg = mod_ipc_msg_w_ext_init(mod, msg_proto.header, msg_proto.extension,
+				     sizeof(struct sof_ipc4_notify_module_data) +
+				     sizeof(struct sof_ipc4_control_msg_payload));
 	if (!msg)
 		return NULL;
 

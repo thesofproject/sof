@@ -19,6 +19,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
+#include <sof/ipc/msg.h>
 #include "module_interface.h"
 
 #include <sof/compiler_attributes.h>
@@ -239,6 +240,65 @@ static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 		memset(ret, 0, size);
 
 	return ret;
+}
+
+/**
+ * \brief Initialize a new IPC message using the module allocator.
+ * @param mod Module to allocate from
+ * @param header Message header metadata
+ * @param extension Message header extension metadata
+ * @param size Message data size in bytes.
+ * @return New IPC message.
+ */
+static inline struct ipc_msg *mod_ipc_msg_w_ext_init(struct processing_module *mod,
+						     uint32_t header,
+						     uint32_t extension,
+						     uint32_t size)
+{
+	struct ipc_msg *msg;
+
+	msg = mod_zalloc(mod, sizeof(*msg));
+	if (!msg)
+		return NULL;
+
+	if (size) {
+		msg->tx_data = mod_zalloc(mod, size);
+		if (!msg->tx_data) {
+			mod_free(mod, msg);
+			return NULL;
+		}
+	}
+
+	msg->header = header;
+	msg->extension = extension;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	return msg;
+}
+
+static inline struct ipc_msg *mod_ipc_msg_init(struct processing_module *mod,
+					       uint32_t header, uint32_t size)
+{
+	return mod_ipc_msg_w_ext_init(mod, header, 0, size);
+}
+
+/**
+ * \brief Free an IPC message allocated with mod_ipc_msg_init() or
+ *        mod_ipc_msg_w_ext_init().
+ * @param mod Module that owns the message.
+ * @param msg Message to free (may be NULL).
+ */
+static inline void mod_ipc_msg_free(struct processing_module *mod,
+				    struct ipc_msg *msg)
+{
+	if (!msg)
+		return;
+
+	ipc_msg_list_remove(msg);
+
+	mod_free(mod, msg->tx_data);
+	mod_free(mod, msg);
 }
 
 #if CONFIG_COMP_BLOB
