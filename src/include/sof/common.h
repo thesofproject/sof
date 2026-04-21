@@ -223,6 +223,9 @@
 #  define SOF_FRAME_BYTE_ALIGN	4
 #endif
 
+/* Default frame-count alignment is 1 */
+#define SOF_FRAME_COUNT_ALIGN	1
+
 #ifndef __GLIBC_USE
 #define __GLIBC_USE(x) 0
 #endif

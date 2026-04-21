@@ -51,6 +51,6 @@ void audio_stream_init(struct audio_stream *audio_stream, void *buff_addr, uint3
 	audio_stream->addr = buff_addr;
 	audio_stream->end_addr = (char *)audio_stream->addr + size;
 
-	audio_stream_set_align(1, 1, audio_stream);
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, SOF_FRAME_COUNT_ALIGN, audio_stream);
 	audio_stream_reset(audio_stream);
 }
