@@ -70,6 +70,50 @@ struct ipc *ipc_get(void)
 EXPORT_SYMBOL(ipc_get);
 #endif
 
+struct ipc_msg *ipc_msg_w_ext_init(struct k_heap *heap, uint32_t header,
+				   uint32_t extension, uint32_t size)
+{
+	struct ipc_msg *msg;
+
+	if (heap) {
+		msg = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				     sizeof(*msg), 0);
+		if (msg)
+			memset(msg, 0, sizeof(*msg));
+	} else {
+		msg = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*msg));
+	}
+	if (!msg)
+		return NULL;
+
+	if (size) {
+		if (heap) {
+			msg->tx_data = sof_heap_alloc(heap,
+					SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					size, 0);
+			if (msg->tx_data)
+				memset(msg->tx_data, 0, size);
+		} else {
+			msg->tx_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					       size);
+		}
+		if (!msg->tx_data) {
+			if (heap)
+				sof_heap_free(heap, msg);
+			else
+				rfree(msg);
+			return NULL;
+		}
+	}
+
+	msg->header = header;
+	msg->extension = extension;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	return msg;
+}
+
 int ipc_process_on_core(uint32_t core, bool blocking)
 {
 	struct ipc *ipc = ipc_get();

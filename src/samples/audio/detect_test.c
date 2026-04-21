@@ -472,7 +472,7 @@ static struct ipc_msg *ipc4_kd_notification_init(uint32_t word_id,
 
 	notif.extension.r.sv_score = score;
 
-	msg = ipc_msg_w_ext_init(notif.primary.dat,
+	msg = ipc_msg_w_ext_init(NULL, notif.primary.dat,
 				 notif.extension.dat,
 				 0);
 	if (!msg)
@@ -727,7 +727,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	cd->msg = ipc4_kd_notification_init(NOTIFICATION_DEFAULT_WORD_ID,
 					    NOTIFICATION_DEFAULT_SCORE);
 #else
-	cd->msg = ipc_msg_init(cd->event.rhdr.hdr.cmd, sizeof(cd->event));
+	cd->msg = ipc_msg_init(NULL, cd->event.rhdr.hdr.cmd, sizeof(cd->event));
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 	if (!cd->msg) {

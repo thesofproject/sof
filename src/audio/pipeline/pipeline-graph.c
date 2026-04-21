@@ -156,7 +156,7 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN, p->comp_id);
 
 	if (posn.rhdr.hdr.size) {
-		p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, posn.rhdr.hdr.size);
+		p->msg = ipc_msg_init(heap, posn.rhdr.hdr.cmd, posn.rhdr.hdr.size);
 		if (!p->msg) {
 			pipe_err(p, "ipc_msg_init failed");
 			goto free;
