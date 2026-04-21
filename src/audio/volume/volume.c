@@ -639,30 +639,37 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
 /**
  * \brief Set volume frames alignment limit.
  * \param[in,out] source Structure pointer of source.
- * \param[in,out] sink Structure pointer of sink.
  */
-static void volume_set_alignment(struct audio_stream *source,
-				 struct audio_stream *sink)
+static void volume_set_alignment(struct audio_stream *source)
 {
-	/* Both source and sink buffer in HiFi5  processing version,
-	 * xtensa intrinsics ask for 16-byte aligned.
+	const int channels = audio_stream_get_channels(source);
+
+	/* The source buffer in HiFi5 processing version needs 16 bytes alignment. The
+	 * macro SOF_FRAME_BYTE_ALIGN is set in common.h to the requirement align.
+	 * The VOLUME_HIFI3_HIFI4_FRAME_BYTE_ALIGN_6CH also has the value 16 and the
+	 * same align for 5.1 channels works for HiFi5 too.
 	 *
-	 * Both source and sink buffer in HiFi3 or HiFi4 processing version,
-	 * xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
-	 * requires 16-byte aligned.
+	 * In HiFi4 processing version the source align requirement is 8 bytes. While
+	 * the 5.1 format SSE audio requires 16 bytes alignment.
 	 */
-#if SOF_USE_HIFI(3, VOLUME) || SOF_USE_HIFI(4, VOLUME)
-	const uint32_t byte_align = audio_stream_get_channels(source) == 6 ?
-		VOLUME_HIFI3_HIFI4_FRAME_BYTE_ALIGN_6CH : SOF_FRAME_BYTE_ALIGN;
+	const uint32_t byte_align =
+		(channels == 6) ? VOLUME_HIFI3_HIFI4_FRAME_BYTE_ALIGN_6CH : SOF_FRAME_BYTE_ALIGN;
+
+	/* On HiFi5 the number of samples to process must be multiple of four for s24/s32
+	 * and multiple of eight for s16. For HiFi4 and HiFi3 the number of samples
+	 * need to be multiple of two for s32 and multiple of four for s16.
+	 * E.g. for s32 format for channels counts of 1, 2, 4, 6, ... the
+	 * frame align need to be 4, 2, 1, 2, ...
+	 */
+#if SOF_USE_HIFI(5, VOLUME)
+	const int n = (audio_stream_get_valid_fmt(source) == SOF_IPC_FRAME_S16_LE) ? 8 : 4;
 #else
-	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
+	const int n = (audio_stream_get_valid_fmt(source) == SOF_IPC_FRAME_S16_LE) ? 4 : 2;
 #endif
 
-	/*There is no limit for frame number, so both source and sink set it to be 1*/
-	const uint32_t frame_align_req = 1;
+	const uint32_t frame_align_req = (uint32_t)(n / gcd(n, channels));
 
 	audio_stream_set_align(byte_align, frame_align_req, source);
-	audio_stream_set_align(byte_align, frame_align_req, sink);
 }
 
 /**
@@ -698,7 +705,7 @@ static int volume_prepare(struct processing_module *mod,
 
 	ret = volume_peak_prepare(cd, mod);
 
-	volume_set_alignment(&sourceb->stream, &sinkb->stream);
+	volume_set_alignment(&sourceb->stream);
 
 	/* get sink period bytes */
 	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
