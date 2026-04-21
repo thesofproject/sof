@@ -19,10 +19,37 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* HACK: test ipc_msg_send syscall from LL */
+#include <sof/ipc/msg.h>
+#include <sof/ipc/ipc_msg_send.h>
+#include <ipc4/notification.h>
+
 LOG_MODULE_DECLARE(selector, CONFIG_SOF_LOG_LEVEL);
 
 #define BYTES_TO_S16_SAMPLES	1
 #define BYTES_TO_S32_SAMPLES	2
+
+/* HACK: send PHRASE_DETECTED notification every 1000 LL frames (~1 s) */
+static void sel_hack_notify(struct processing_module *mod, struct comp_data *cd)
+{
+	if (!cd->hack_msg) {
+		union ipc4_notification_header nhdr;
+
+		nhdr.r.notif_type = SOF_IPC4_NOTIFY_PHRASE_DETECTED;
+		nhdr.r.type = SOF_IPC4_GLB_NOTIFICATION;
+		nhdr.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+		nhdr.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+		cd->hack_msg = mod_ipc_msg_w_ext_init(mod, nhdr.dat, 0, 0);
+		if (!cd->hack_msg)
+			return;
+	}
+
+	if (++cd->hack_frame_count >= 1000) {
+		cd->hack_frame_count = 0;
+		ipc_msg_send(cd->hack_msg, NULL, true);
+	}
+}
 
 #if CONFIG_IPC_MAJOR_3
 #if CONFIG_FORMAT_S16LE
@@ -238,6 +265,7 @@ static void sel_s16le(struct processing_module *mod, struct input_stream_buffer 
 	}
 
 	module_update_buffer_position(bsource, bsink, frames);
+	sel_hack_notify(mod, cd);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -311,6 +339,7 @@ static void sel_s24le(struct processing_module *mod, struct input_stream_buffer 
 	}
 
 	module_update_buffer_position(bsource, bsink, frames);
+	sel_hack_notify(mod, cd);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -382,6 +411,7 @@ static void sel_s32le(struct processing_module *mod, struct input_stream_buffer 
 	}
 
 	module_update_buffer_position(bsource, bsink, frames);
+	sel_hack_notify(mod, cd);
 }
 #endif /* CONFIG_FORMAT_S32LE */
 #endif

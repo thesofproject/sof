@@ -130,6 +130,10 @@ struct comp_data {
 	int num_configs;	/**< Number of coefficients sets in configuration blob. */
 	bool passthrough;	/**< Use a passthrough copy function when no up/down mix. */
 	bool new_config;	/**< True if new configuration has been received */
+
+	/* HACK: test ipc_msg_send syscall from LL context */
+	struct ipc_msg *hack_msg;
+	uint32_t hack_frame_count;
 };
 
 /** \brief Selector processing functions map. */
