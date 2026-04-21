@@ -591,28 +591,6 @@ audio_stream_avail_frames(const struct audio_stream *source,
 }
 
 /**
- * Computes maximum number of frames aligned that can be copied from
- * source buffer to sink buffer, verifying number of available source
- * frames vs. free space available in sink.
- * @param source Buffer of source.
- * @param sink Buffer of sink.
- * @return Number of frames.
- */
-static inline uint32_t
-audio_stream_avail_frames_aligned(const struct audio_stream *source,
-				  const struct audio_stream *sink)
-{
-	uint32_t src_frames = (audio_stream_get_avail_bytes(source) >>
-			source->runtime_stream_params.align_shift_idx) *
-					source->runtime_stream_params.align_frame_cnt;
-	uint32_t sink_frames = (audio_stream_get_free_bytes(sink) >>
-			sink->runtime_stream_params.align_shift_idx) *
-					sink->runtime_stream_params.align_frame_cnt;
-
-	return MIN(src_frames, sink_frames);
-}
-
-/**
  * Rounds down a frame count to meet the alignment constraint of the stream.
  * @param stream Audio stream with alignment requirements set.
  * @param frames Frame count to round down.
@@ -656,6 +634,25 @@ static inline uint32_t audio_stream_align_frames_round_nearest(const struct audi
 	uint16_t align = stream->runtime_stream_params.align_frame_cnt;
 
 	return ROUND_DOWN(frames + (align >> 1), align);
+}
+
+/**
+ * Computes maximum number of frames aligned with source align criteria
+ * that can be copied from source buffer to sink buffer, verifying number
+ * of available source frames vs. free space available in sink.
+ * @param source Buffer of source.
+ * @param sink Buffer of sink.
+ * @return Number of frames.
+ */
+static inline uint32_t
+audio_stream_avail_frames_aligned(const struct audio_stream *source,
+				  const struct audio_stream *sink)
+{
+	uint32_t src_frames = audio_stream_get_avail_frames(source);
+	uint32_t sink_frames = audio_stream_get_free_frames(sink);
+	uint32_t n = MIN(src_frames, sink_frames);
+
+	return audio_stream_align_frames_round_down(source, n);
 }
 
 /**
