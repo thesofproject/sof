@@ -32,6 +32,9 @@ void sys_comp_module_mixer_interface_init(void);
 
 #define MIXER_MAX_SOURCES	2
 
+/* Xtensa HiFi optimized version needs this for 5.1ch */
+#define MIXER_HIFI_FRAME_BYTE_ALIGN_6CH 16
+
 /* mixer component private data */
 struct mixer_data {
 	void (*mix_func)(struct comp_dev *dev, struct audio_stream *sink,

@@ -384,13 +384,12 @@ int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 	return -ENOTSUP;
 }
 
-void src_set_alignment(struct sof_source *source, struct sof_sink *sink)
+void src_set_alignment(struct sof_source *source)
 {
-	const uint32_t byte_align = 1;
-	const uint32_t frame_align_req = 1;
+	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
+	const uint32_t frame_align_req = SOF_FRAME_COUNT_ALIGN;
 
 	source_set_alignment_constants(source, byte_align, frame_align_req);
-	sink_set_alignment_constants(sink, byte_align, frame_align_req);
 }
 
 static int src_verify_params(struct processing_module *mod)

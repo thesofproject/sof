@@ -832,8 +832,7 @@ static int32_t igo_nr_prepare(struct processing_module *mod,
 	if (ret)
 		return ret;
 
-	source_set_alignment_constants(source, 1, IGO_FRAME_SIZE);
-	sink_set_alignment_constants(sink, 1, IGO_FRAME_SIZE);
+	source_set_alignment_constants(source, SOF_FRAME_BYTE_ALIGN, IGO_FRAME_SIZE);
 
 	igo_nr_set_igo_params(mod);
 

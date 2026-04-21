@@ -187,18 +187,18 @@ static int mixer_reset(struct processing_module *mod)
 /* init and calculate the aligned setting for available frames and free frames retrieve*/
 static inline void mixer_set_frame_alignment(struct audio_stream *source)
 {
-#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
 
 	/* Xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
-	 * requires 16-byte aligned.
+	 * requires 16-byte aligned. Note: The SOF_FRAME_BYTE_ALIGN is the
+	 * same value 16 with HiFi5.
 	 */
-	const uint32_t byte_align = audio_stream_get_channels(source) == 6 ? 16 : 8;
+	const uint32_t byte_align = audio_stream_get_channels(source) == 6 ?
+		MIXER_HIFI_FRAME_BYTE_ALIGN_6CH : SOF_FRAME_BYTE_ALIGN;
 
-	/*There is no limit for frame number, so set it as 1*/
-	const uint32_t frame_align_req = 1;
+	/* There is no limit for frame number, so set it as default (1). */
+	const uint32_t frame_align_req = SOF_FRAME_COUNT_ALIGN;
 
 	audio_stream_set_align(byte_align, frame_align_req, source);
-#endif
 }
 
 static int mixer_prepare(struct processing_module *mod,
@@ -216,7 +216,10 @@ static int mixer_prepare(struct processing_module *mod,
 	}
 
 	md->mix_func = mixer_get_processing_function(dev, sink);
-	mixer_set_frame_alignment(&sink->stream);
+
+	/* No need to set sink align constraints, set constraints for each
+	 * source next. The sink align will follow to common source alignment.
+	 */
 
 	/* check each mixer source state */
 	struct comp_buffer *source;

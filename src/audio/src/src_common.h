@@ -143,7 +143,7 @@ int32_t src_input_rates(void);
 
 int32_t src_output_rates(void);
 
-void src_set_alignment(struct sof_source *source, struct sof_sink *sink);
+void src_set_alignment(struct sof_source *source);
 
 struct comp_data {
 #if CONFIG_IPC_MAJOR_4

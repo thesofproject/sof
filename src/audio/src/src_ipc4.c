@@ -151,7 +151,7 @@ int src_prepare_general(struct processing_module *mod,
 	int ret = 0;
 
 	/* set align requirements */
-	src_set_alignment(source, sink);
+	src_set_alignment(source);
 
 	switch (cd->ipc_config.base.audio_fmt.valid_bit_depth) {
 #if CONFIG_FORMAT_S16LE

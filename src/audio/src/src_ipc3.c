@@ -105,7 +105,7 @@ int src_prepare_general(struct processing_module *mod,
 	enum sof_ipc_frame sink_format;
 
 	/* set align requirements */
-	src_set_alignment(source, sink);
+	src_set_alignment(source);
 
 	/* get source/sink data format */
 	source_format = source_get_frm_fmt(source);

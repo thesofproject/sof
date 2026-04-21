@@ -142,7 +142,7 @@ static int eq_iir_process(struct processing_module *mod,
 static void eq_iir_set_alignment(struct audio_stream *source,
 				 struct audio_stream *sink)
 {
-	const uint32_t byte_align = 8;
+	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
 	const uint32_t frame_align_req = 2;
 
 	audio_stream_set_align(byte_align, frame_align_req, source);
