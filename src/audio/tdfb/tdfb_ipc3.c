@@ -36,7 +36,7 @@ static int init_get_ctl_ipc(struct processing_module *mod)
 
 	cd->ctrl_data->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG | SOF_IPC_COMP_GET_VALUE | comp_id;
 	cd->ctrl_data->rhdr.hdr.size = TDFB_GET_CTRL_DATA_SIZE;
-	cd->msg = ipc_msg_init(cd->ctrl_data->rhdr.hdr.cmd, cd->ctrl_data->rhdr.hdr.size);
+	cd->msg = mod_ipc_msg_init(mod, cd->ctrl_data->rhdr.hdr.cmd, cd->ctrl_data->rhdr.hdr.size);
 
 	cd->ctrl_data->comp_id = comp_id;
 	cd->ctrl_data->type = SOF_CTRL_TYPE_VALUE_CHAN_GET;
