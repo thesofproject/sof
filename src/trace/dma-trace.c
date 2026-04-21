@@ -160,7 +160,7 @@ int dma_trace_init_early(struct sof *sof)
 	k_spinlock_init(&sof->dmat->lock);
 
 	ipc_build_trace_posn(&sof->dmat->posn);
-	sof->dmat->msg = ipc_msg_init(sof->dmat->posn.rhdr.hdr.cmd,
+	sof->dmat->msg = ipc_msg_init(NULL, sof->dmat->posn.rhdr.hdr.cmd,
 				      sof->dmat->posn.rhdr.hdr.size);
 	if (!sof->dmat->msg) {
 		ret = -ENOMEM;

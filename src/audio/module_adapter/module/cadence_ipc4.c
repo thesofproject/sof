@@ -484,8 +484,8 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 		primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
 		primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 		primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-		msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
-					 sizeof(*msg_module_data));
+		msg = mod_ipc_msg_w_ext_init(mod, msg_proto.header, msg_proto.extension,
+					     sizeof(*msg_module_data));
 		if (msg) {
 			msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
 			msg_module_data->instance_id = IPC4_INST_ID(ipc_config->id);
