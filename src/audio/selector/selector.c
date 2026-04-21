@@ -1007,8 +1007,7 @@ static int selector_prepare(struct processing_module *mod,
 	sourceb = comp_dev_get_first_data_producer(dev);
 	sinkb = comp_dev_get_first_data_consumer(dev);
 
-	audio_stream_set_align(4, 1, &sourceb->stream);
-	audio_stream_set_align(4, 1, &sinkb->stream);
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, SOF_FRAME_COUNT_ALIGN, &sourceb->stream);
 
 	/* get source data format and period bytes */
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);

@@ -168,11 +168,6 @@ static void aria_set_stream_params(struct comp_buffer *buffer,
 	const struct ipc4_audio_format *audio_fmt = &mod->priv.cfg.base_cfg.audio_fmt;
 
 	ipc4_update_buffer_format(buffer, audio_fmt);
-#if SOF_USE_HIFI(3, ARIA) || SOF_USE_HIFI(4, ARIA)
-	audio_stream_set_align(8, 1, &buffer->stream);
-#elif SOF_USE_HIFI(5, ARIA)
-	audio_stream_set_align(16, 1, &buffer->stream);
-#endif
 }
 
 static int aria_prepare(struct processing_module *mod,
@@ -195,6 +190,7 @@ static int aria_prepare(struct processing_module *mod,
 
 	aria_set_stream_params(source, mod);
 	aria_set_stream_params(sink, mod);
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, SOF_FRAME_COUNT_ALIGN, &source->stream);
 
 	if (audio_stream_get_valid_fmt(&source->stream) != SOF_IPC_FRAME_S24_4LE ||
 	    audio_stream_get_valid_fmt(&sink->stream) != SOF_IPC_FRAME_S24_4LE) {

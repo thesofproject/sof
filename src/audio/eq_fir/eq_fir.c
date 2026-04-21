@@ -366,14 +366,12 @@ static int eq_fir_process(struct processing_module *mod,
 	return 0;
 }
 
-static void eq_fir_set_alignment(struct audio_stream *source,
-				 struct audio_stream *sink)
+static void eq_fir_set_alignment(struct audio_stream *source)
 {
-	const uint32_t byte_align = 1;
+	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
 	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
 
 	audio_stream_set_align(byte_align, frame_align_req, source);
-	audio_stream_set_align(byte_align, frame_align_req, sink);
 }
 
 static int eq_fir_prepare(struct processing_module *mod,
@@ -404,7 +402,7 @@ static int eq_fir_prepare(struct processing_module *mod,
 		return ret;
 	}
 
-	eq_fir_set_alignment(&sourceb->stream, &sinkb->stream);
+	eq_fir_set_alignment(&sourceb->stream);
 	channels = audio_stream_get_channels(&sinkb->stream);
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
 

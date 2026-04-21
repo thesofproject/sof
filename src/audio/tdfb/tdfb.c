@@ -689,14 +689,12 @@ static int tdfb_process(struct processing_module *mod,
 	return 0;
 }
 
-static void tdfb_set_alignment(struct audio_stream *source,
-			       struct audio_stream *sink)
+static void tdfb_set_alignment(struct audio_stream *source)
 {
-	const uint32_t byte_align = 1;
+	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
 	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
 
 	audio_stream_set_align(byte_align, frame_align_req, source);
-	audio_stream_set_align(byte_align, frame_align_req, sink);
 }
 
 static int tdfb_prepare(struct processing_module *mod,
@@ -729,7 +727,7 @@ static int tdfb_prepare(struct processing_module *mod,
 		return ret;
 	}
 
-	tdfb_set_alignment(&sourceb->stream, &sinkb->stream);
+	tdfb_set_alignment(&sourceb->stream);
 
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
 	source_channels = audio_stream_get_channels(&sourceb->stream);
