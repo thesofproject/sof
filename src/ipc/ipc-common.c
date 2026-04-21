@@ -65,6 +65,37 @@ struct ipc *ipc_get(void)
 }
 #endif
 
+struct ipc_msg *ipc_msg_w_ext_init(struct k_heap *heap, uint32_t header,
+				   uint32_t extension, uint32_t size)
+{
+	struct ipc_msg *msg;
+
+	msg = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				     sizeof(*msg), 0);
+	if (!msg)
+		return NULL;
+
+	memset(msg, 0, sizeof(*msg));
+
+	if (size) {
+		msg->tx_data = sof_heap_alloc(heap,
+					      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					      size, 0);
+		if (!msg->tx_data) {
+			sof_heap_free(heap, msg);
+			return NULL;
+		}
+		memset(msg->tx_data, 0, size);
+	}
+
+	msg->header = header;
+	msg->extension = extension;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	return msg;
+}
+
 int ipc_process_on_core(uint32_t core, bool blocking)
 {
 	struct ipc *ipc = ipc_get();
