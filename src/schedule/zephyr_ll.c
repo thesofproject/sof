@@ -65,8 +65,15 @@ static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 
 static void zephyr_ll_assert_core(const struct zephyr_ll *sch)
 {
-	assert(CONFIG_CORE_COUNT == 1 || IS_ENABLED(CONFIG_SOF_USERSPACE_LL) ||
-	       sch->core == cpu_get_id());
+#if CONFIG_SOF_USERSPACE_LL
+	/* In user-space mode, cpu_get_id() is not available.
+	 * Core correctness is ensured by task->core routing in
+	 * schedule.h and verified at task schedule time.
+	 */
+	(void)sch;
+#else
+	assert(CONFIG_CORE_COUNT == 1 || sch->core == cpu_get_id());
+#endif
 }
 
 /* Locking: caller should hold the domain lock */
@@ -524,10 +531,10 @@ struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
 
 	if (!k_is_user_context()) {
 		tr_dbg(&ll_tr, "granting access to domain lock %p for thread %p", &sch->ll_domain->lock,
-			zephyr_domain_thread_tid(sch->ll_domain));
+			zephyr_domain_thread_tid(sch->ll_domain, task->core));
 	}
 
-	return zephyr_domain_thread_tid(sch->ll_domain);
+	return zephyr_domain_thread_tid(sch->ll_domain, task->core);
 }
 
 void zephyr_ll_free_context(void *data)
@@ -576,9 +583,10 @@ void zephyr_ll_grant_access(struct k_thread *thread)
  * schedule_task() calls within the locked section will not deadlock.
  * Must be paired with zephyr_ll_unlock_sched().
  */
-void zephyr_ll_lock_sched(void)
+void zephyr_ll_lock_sched(int core)
 {
-	struct zephyr_ll *sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+	struct zephyr_ll *sch = (struct zephyr_ll *)scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER,
+										core);
 
 	sys_mutex_lock(&sch->lock, K_FOREVER);
 }
@@ -586,9 +594,10 @@ void zephyr_ll_lock_sched(void)
 /**
  * Unlock the LL scheduler after a previous zephyr_ll_lock_sched() call.
  */
-void zephyr_ll_unlock_sched(void)
+void zephyr_ll_unlock_sched(int core)
 {
-	struct zephyr_ll *sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+	struct zephyr_ll *sch = (struct zephyr_ll *)scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER,
+										core);
 
 	sys_mutex_unlock(&sch->lock);
 }

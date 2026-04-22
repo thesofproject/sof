@@ -477,13 +477,12 @@ static void zephyr_domain_thread_free(struct ll_schedule_domain *domain,
 	tr_info(&ll_tr, "thread_free done, core %d", core);
 }
 
-struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain)
+struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain, int core)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
-	int core = 0; /* cpu_get_id(); */
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
-	tr_dbg(&ll_tr, "entry");
+	tr_dbg(&ll_tr, "entry core %d", core);
 
 	return dt->ll_thread;
 }

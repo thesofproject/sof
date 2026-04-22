@@ -47,6 +47,10 @@
 
 LOG_MODULE_REGISTER(init, CONFIG_SOF_LOG_LEVEL);
 
+#if CONFIG_SOF_USERSPACE_LL
+SOF_DEFINE_REG_UUID(sec_core_init);
+#endif
+
 /* main firmware context */
 static struct sof sof;
 
@@ -134,6 +138,18 @@ __cold int secondary_core_init(struct sof *sof)
 	if (err < 0)
 		return err;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
+#if CONFIG_SOF_USERSPACE_LL
+	/* Create domain thread for this secondary core's LL scheduler */
+	{
+		struct task *task = zephyr_ll_task_alloc();
+
+		schedule_task_init_ll(task, SOF_UUID(sec_core_init_uuid),
+				      SOF_SCHEDULE_LL_TIMER,
+				      0, NULL, NULL, cpu_get_id(), 0);
+		scheduler_init_context(task);
+	}
+#endif
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
