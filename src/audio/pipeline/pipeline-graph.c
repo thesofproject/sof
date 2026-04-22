@@ -180,8 +180,8 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 #define PPL_LOCK_DECLARE
-#define PPL_LOCK(x) k_mutex_lock(comp->list_mutex, K_FOREVER)
-#define PPL_UNLOCK(x) k_mutex_unlock(comp->list_mutex)
+#define PPL_LOCK(x) sys_mutex_lock(&comp->list_mutex, K_FOREVER)
+#define PPL_UNLOCK(x) sys_mutex_unlock(&comp->list_mutex)
 #else
 #define PPL_LOCK_DECLARE uint32_t flags
 #define PPL_LOCK(x) irq_local_disable(flags)
