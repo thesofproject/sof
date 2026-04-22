@@ -20,32 +20,65 @@
 #include <stdint.h>
 
 /* HACK: test ipc_msg_send syscall from LL */
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/ipc/msg.h>
 #include <sof/ipc/ipc_msg_send.h>
 #include <ipc4/notification.h>
+#include <ipc4/header.h>
+#include <ipc4/module.h>
 
 LOG_MODULE_DECLARE(selector, CONFIG_SOF_LOG_LEVEL);
 
 #define BYTES_TO_S16_SAMPLES	1
 #define BYTES_TO_S32_SAMPLES	2
 
-/* HACK: send PHRASE_DETECTED notification every 1000 LL frames (~1 s) */
+/* HACK: send MODULE_NOTIFICATION every 1000 LL frames (~1 s) with payload */
 static void sel_hack_notify(struct processing_module *mod, struct comp_data *cd)
 {
 	if (!cd->hack_msg) {
-		union ipc4_notification_header nhdr;
+		struct ipc_msg msg_proto;
+		union ipc4_notification_header *primary =
+			(union ipc4_notification_header *)&msg_proto.header;
+		struct comp_dev *dev = mod->dev;
+		struct comp_ipc_config *ipc_config = &dev->ipc_config;
+		struct sof_ipc4_notify_module_data *msg_module_data;
+		struct sof_ipc4_control_msg_payload *msg_payload;
 
-		nhdr.r.notif_type = SOF_IPC4_NOTIFY_PHRASE_DETECTED;
-		nhdr.r.type = SOF_IPC4_GLB_NOTIFICATION;
-		nhdr.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-		nhdr.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+		memset(&msg_proto, 0, sizeof(msg_proto));
+		primary->r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+		primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
+		primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+		primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
 
-		cd->hack_msg = mod_ipc_msg_w_ext_init(mod, nhdr.dat, 0, 0);
+		cd->hack_msg = mod_ipc_msg_w_ext_init(mod, msg_proto.header,
+						      msg_proto.extension,
+						      sizeof(*msg_module_data) +
+						      sizeof(*msg_payload) +
+						      sizeof(struct sof_ipc4_ctrl_value_chan));
 		if (!cd->hack_msg)
 			return;
+
+		msg_module_data = (struct sof_ipc4_notify_module_data *)cd->hack_msg->tx_data;
+		msg_module_data->instance_id = IPC4_INST_ID(ipc_config->id);
+		msg_module_data->module_id = IPC4_MOD_ID(ipc_config->id);
+		msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
+			SOF_IPC4_ENUM_CONTROL_PARAM_ID;
+		msg_module_data->event_data_size = sizeof(*msg_payload) +
+			sizeof(struct sof_ipc4_ctrl_value_chan);
+
+		msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
+		msg_payload->id = 0;
+		msg_payload->num_elems = 1;
+		msg_payload->chanv[0].channel = 0;
 	}
 
 	if (++cd->hack_frame_count >= 1000) {
+		struct sof_ipc4_notify_module_data *mdata =
+			(struct sof_ipc4_notify_module_data *)cd->hack_msg->tx_data;
+		struct sof_ipc4_control_msg_payload *payload =
+			(struct sof_ipc4_control_msg_payload *)mdata->event_data;
+
+		payload->chanv[0].value = cd->hack_frame_count + cd->hack_frame_count;
 		cd->hack_frame_count = 0;
 		ipc_msg_send(cd->hack_msg, NULL, true);
 	}
