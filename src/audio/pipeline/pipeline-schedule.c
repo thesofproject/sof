@@ -291,7 +291,9 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	 * while pipeline state is being updated. The k_mutex is re-entrant
 	 * so schedule_task() calls inside the critical section are safe.
 	 */
-	zephyr_ll_lock_sched();
+	int sched_core = ppl_data->start->ipc_config.core;
+
+	zephyr_ll_lock_sched(sched_core);
 #else
 	uint32_t flags;
 
@@ -358,7 +360,7 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 		}
 	}
 #ifdef CONFIG_SOF_USERSPACE_LL
-	zephyr_ll_unlock_sched();
+	zephyr_ll_unlock_sched(sched_core);
 #else
 	irq_local_enable(flags);
 #endif
