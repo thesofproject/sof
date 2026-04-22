@@ -601,7 +601,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 		if (cross_core_bind) \
 			domain_block(sof_get()->platform_timer_domain); \
 		else \
-			zephyr_ll_lock_sched(); \
+			zephyr_ll_lock_sched(cpu_get_id()); \
 	} while (0)
 
 #define ll_unblock(cross_core_bind, flags) \
@@ -609,7 +609,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 		if (cross_core_bind) \
 			domain_unblock(sof_get()->platform_timer_domain); \
 		else \
-			zephyr_ll_unlock_sched(); \
+			zephyr_ll_unlock_sched(cpu_get_id()); \
 	} while (0)
 #else
 #define ll_block(cross_core_bind, flags) \
@@ -660,8 +660,8 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 #else
 
 #if CONFIG_SOF_USERSPACE_LL
-#define ll_block(cross_core_bind, flags)	zephyr_ll_lock_sched()
-#define ll_unblock(cross_core_bind, flags)	zephyr_ll_unlock_sched()
+#define ll_block(cross_core_bind, flags)	zephyr_ll_lock_sched(cpu_get_id())
+#define ll_unblock(cross_core_bind, flags)	zephyr_ll_unlock_sched(cpu_get_id())
 #else
 #define ll_block(cross_core_bind, flags)	irq_local_disable(flags)
 #define ll_unblock(cross_core_bind, flags)	irq_local_enable(flags)

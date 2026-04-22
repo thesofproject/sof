@@ -22,11 +22,21 @@ static APP_TASK_BSS struct schedulers *_schedulers[CONFIG_CORE_COUNT];
  */
 struct schedulers **arch_schedulers_get(void)
 {
-	if (k_is_user_context()) {
-		printk("FIXME: using core0 scheduler\n");
-		return _schedulers;
-	}
-
 	return _schedulers + cpu_get_id();
 }
 EXPORT_SYMBOL(arch_schedulers_get);
+
+#if CONFIG_SOF_USERSPACE_LL
+/**
+ * Retrieves registered schedulers for a specific core.
+ * @param core Core ID to get schedulers for.
+ * @return List of registered schedulers for the specified core.
+ *
+ * Safe to call from user-space context — does not use cpu_get_id().
+ */
+struct schedulers **arch_schedulers_get_for_core(int core)
+{
+	return _schedulers + core;
+}
+EXPORT_SYMBOL(arch_schedulers_get_for_core);
+#endif

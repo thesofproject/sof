@@ -117,8 +117,8 @@ void zephyr_ll_task_free(struct task *task);
 struct k_heap *zephyr_ll_user_heap(void);
 void zephyr_ll_user_resources_init(void);
 void zephyr_ll_grant_access(struct k_thread *thread);
-void zephyr_ll_lock_sched(void);
-void zephyr_ll_unlock_sched(void);
+void zephyr_ll_lock_sched(int core);
+void zephyr_ll_unlock_sched(int core);
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 static inline struct ll_schedule_domain *domain_init
@@ -317,7 +317,7 @@ struct ll_schedule_domain *zephyr_ll_domain(void);
 struct ll_schedule_domain *zephyr_domain_init(int clk);
 #define timer_domain_init(timer, clk) zephyr_domain_init(clk)
 #ifdef CONFIG_SOF_USERSPACE_LL
-struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain);
+struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain, int core);
 struct k_mem_domain *zephyr_ll_mem_domain(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
 #endif /* __ZEPHYR__ */
