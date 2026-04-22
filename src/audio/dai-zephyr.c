@@ -225,9 +225,9 @@ int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 	struct dai_properties props;
 	int ret;
 
-	k_mutex_lock(dai->lock, K_FOREVER);
+	sys_mutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, direction, stream_id, &props);
-	k_mutex_unlock(dai->lock);
+	sys_mutex_unlock(&dai->lock);
 	if (ret < 0)
 		return ret;
 
@@ -243,9 +243,9 @@ int dai_get_fifo_depth(struct dai *dai, int direction)
 	if (!dai)
 		return 0;
 
-	k_mutex_lock(dai->lock, K_FOREVER);
+	sys_mutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, direction, 0, &props);
-	k_mutex_unlock(dai->lock);
+	sys_mutex_unlock(&dai->lock);
 	if (ret < 0)
 		return 0;
 
@@ -257,9 +257,9 @@ int dai_get_stream_id(struct dai *dai, int direction)
 	struct dai_properties props;
 	int ret;
 
-	k_mutex_lock(dai->lock, K_FOREVER);
+	sys_mutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, direction, 0, &props);
-	k_mutex_unlock(dai->lock);
+	sys_mutex_unlock(&dai->lock);
 	if (ret < 0)
 		return ret;
 
@@ -271,9 +271,9 @@ static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 	struct dai_properties props;
 	int ret;
 
-	k_mutex_lock(dai->lock, K_FOREVER);
+	sys_mutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, direction, stream_id, &props);
-	k_mutex_unlock(dai->lock);
+	sys_mutex_unlock(&dai->lock);
 	if (ret < 0)
 		return ret;
 
@@ -527,12 +527,7 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 		return -ENODEV;
 	}
 
-#ifdef CONFIG_SOF_USERSPACE_LL
-	dd->dai->lock = k_object_alloc(K_OBJ_MUTEX);
-#else
-	dd->dai->lock = &dd->dai->lock_obj;
-#endif
-	k_mutex_init(dd->dai->lock);
+	sys_mutex_init(&dd->dai->lock);
 
 	dma_sg_init(&dd->config.elem_array);
 	dd->xrun = 0;
@@ -660,10 +655,6 @@ __cold void dai_common_free(struct dai_data *dd)
 	sof_dma_put(dd->dma);
 
 	dai_release_llp_slot(dd);
-
-#ifdef CONFIG_SOF_USERSPACE_LL
-	k_object_free(dd->dai->lock);
-#endif
 
 	dai_put(dd->dai);
 
@@ -1986,11 +1977,11 @@ uint32_t dai_get_init_delay_ms(struct dai *dai)
 	if (!dai)
 		return 0;
 
-	k_mutex_lock(dai->lock, K_FOREVER);
+	sys_mutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, 0, 0, &props);
 	if (!ret)
 		init_delay = props.reg_init_delay;
-	k_mutex_unlock(dai->lock);
+	sys_mutex_unlock(&dai->lock);
 
 	return init_delay;
 }
