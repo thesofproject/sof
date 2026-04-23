@@ -5,6 +5,11 @@
  */
 
 / {
+	/* this'll select Cortex-M SysTick as the system timer */
+	chosen {
+		/delete-property/ zephyr,system-timer;
+	};
+
 	host_dma: dma {
 		compatible = "nxp,sof-host-dma";
 		dma-channels = <32>;
