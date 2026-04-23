@@ -632,6 +632,8 @@ zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/dai.c)
 
 zephyr_syscall_header(${SOF_SRC_PATH}/include/user/debug_stream_slot.h)
 
+zephyr_syscall_header(${SOF_SRC_PATH}/include/ipc4/notification.h)
+
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
 
