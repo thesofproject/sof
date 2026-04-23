@@ -205,7 +205,7 @@ __cold void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 	key = k_spin_lock(&ipc->lock);
 
 	/* copy mailbox data to message if not already copied */
-	if (msg->tx_size > 0 && msg->tx_size <= SOF_IPC_MSG_MAX_SIZE &&
+	if (data && msg->tx_size > 0 && msg->tx_size <= SOF_IPC_MSG_MAX_SIZE &&
 	    msg->tx_data != data) {
 		ret = memcpy_s(msg->tx_data, msg->tx_size, data, msg->tx_size);
 		assert(!ret);
@@ -225,7 +225,7 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	key = k_spin_lock(&ipc->lock);
 
 	/* copy mailbox data to message if not already copied */
-	if ((msg->tx_size > 0 && msg->tx_size <= SOF_IPC_MSG_MAX_SIZE) &&
+	if (data && (msg->tx_size > 0 && msg->tx_size <= SOF_IPC_MSG_MAX_SIZE) &&
 	    msg->tx_data != data) {
 		ret = memcpy_s(msg->tx_data, msg->tx_size, data, msg->tx_size);
 		assert(!ret);
