@@ -297,4 +297,18 @@ void send_mixer_underrun_notif_msg(uint32_t resource_id, uint32_t eos_flag, uint
 				   uint32_t expected_data_mixed);
 void ipc4_update_notification_mask(uint32_t ntfy_mask, uint32_t enabled_mask);
 
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+
+__syscall bool send_resource_notif(uint32_t resource_id, uint32_t event_type,
+				   uint32_t resource_type, void *data, uint32_t data_size);
+#include <zephyr/syscalls/notification.h>
+
+#else
+
+bool z_impl_send_resource_notif(uint32_t resource_id, uint32_t event_type,
+				uint32_t resource_type, void *data, uint32_t data_size);
+#define send_resource_notif z_impl_send_resource_notif
+
+#endif
+
 #endif /* __IPC4_NOTIFICATION_H__ */
