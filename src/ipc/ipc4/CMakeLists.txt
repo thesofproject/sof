@@ -7,6 +7,7 @@ add_local_sources(sof
 	helper.c
 	logging.c
 	notification.c
+	notification-user.c
 )
 
 # The DAI interface is not implemented in library builds and
