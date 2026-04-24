@@ -287,12 +287,14 @@ int scheduler_dp_task_init(struct task **task,
 					   CONFIG_DP_THREAD_PRIORITY, task_memory->task.flags,
 					   K_FOREVER);
 
+#ifdef CONFIG_SCHED_CPU_MASK
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, core);
 	if (ret < 0) {
 		tr_err(&dp_tr, "zephyr task pin to core failed");
 		goto e_thread;
 	}
+#endif
 
 #ifdef CONFIG_USERSPACE
 	if (options & K_USER) {

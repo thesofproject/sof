@@ -220,12 +220,14 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 		goto done;
 	}
 
+#ifdef CONFIG_SCHED_CPU_MASK
 	/* Pin worker thread to the same core as the module */
 	ret = k_thread_cpu_pin(worker.thread_id, cpu_get_id());
 	if (ret < 0) {
 		tr_err(&userspace_proxy_tr, "Failed to pin cpu, error: %d", ret);
 		goto done;
 	}
+#endif
 
 	ret = k_work_user_submit_to_queue(&worker.work_queue, &user_ctx->work_item->work_item);
 	if (ret < 0) {

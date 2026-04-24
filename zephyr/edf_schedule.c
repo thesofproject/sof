@@ -113,8 +113,10 @@ int scheduler_init_edf(void)
 	k_thread_suspend(thread);
 
 	k_thread_heap_assign(thread, sof_sys_heap_get());
+#ifdef CONFIG_SCHED_CPU_MASK
 	k_thread_cpu_mask_clear(thread);
 	k_thread_cpu_mask_enable(thread, PLATFORM_PRIMARY_CORE_ID);
+#endif
 	k_thread_name_set(thread, "edf_workq");
 
 	k_thread_resume(thread);

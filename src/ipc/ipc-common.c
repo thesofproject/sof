@@ -337,7 +337,9 @@ __cold int ipc_init(struct sof *sof)
 
 	k_thread_suspend(thread);
 
+#ifdef CONFIG_SCHED_CPU_MASK
 	k_thread_cpu_pin(thread, PLATFORM_PRIMARY_CORE_ID);
+#endif
 	k_thread_name_set(thread, "ipc_send_wq");
 
 	k_thread_resume(thread);

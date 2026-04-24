@@ -461,8 +461,10 @@ static int zephyr_dma_domain_register(struct ll_schedule_domain *domain,
 				 0,
 				 K_FOREVER);
 
+#ifdef CONFIG_SCHED_CPU_MASK
 	k_thread_cpu_mask_clear(thread);
 	k_thread_cpu_mask_enable(thread, core);
+#endif
 	k_thread_name_set(thread, thread_name);
 
 	k_thread_start(thread);

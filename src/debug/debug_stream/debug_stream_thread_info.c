@@ -367,12 +367,14 @@ static int thread_info_start(void)
 			LOG_ERR("k_thread_create() failed for core %u", i);
 			continue;
 		}
+#ifdef CONFIG_SCHED_CPU_MASK
 		ret = k_thread_cpu_pin(tid, i);
 		if (ret < 0) {
 			LOG_ERR("Pinning thread to code core %u", i);
 			k_thread_abort(tid);
 			continue;
 		}
+#endif
 		snprintf(name, sizeof(name), "%u thread info", i);
 		ret = k_thread_name_set(tid, name);
 		if (ret < 0)
