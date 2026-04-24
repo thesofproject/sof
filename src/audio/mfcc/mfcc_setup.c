@@ -248,23 +248,37 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		goto free_fft_out;
 	}
 
-	/* Setup DCT */
-	dct->num_in = config->num_mel_bins;
-	dct->num_out = config->num_ceps;
-	dct->type = (enum dct_type)config->dct;
-	dct->ortho = true;
-	ret = mod_dct_initialize_16(mod, dct);
-	if (ret < 0) {
-		comp_err(dev, "Failed DCT init");
-		goto free_melfb_data;
-	}
+	/* Setup DCT and cepstral lifter only when num_ceps > 0.
+	 * When num_ceps is zero, skip DCT/lifter and output Mel
+	 * log spectra directly.
+	 */
+	if (config->num_ceps > 0) {
+		dct->num_in = config->num_mel_bins;
+		dct->num_out = config->num_ceps;
+		dct->type = (enum dct_type)config->dct;
+		dct->ortho = true;
+		ret = mod_dct_initialize_16(mod, dct);
+		if (ret < 0) {
+			comp_err(dev, "Failed DCT init");
+			goto free_melfb_data;
+		}
 
-	state->lifter.num_ceps = config->num_ceps;
-	state->lifter.cepstral_lifter = config->cepstral_lifter; /* Q7.9 max 64.0*/
-	ret = mfcc_get_cepstral_lifter(mod, &state->lifter);
-	if (ret < 0) {
-		comp_err(dev, "Failed cepstral lifter");
-		goto free_dct_matrix;
+		state->lifter.num_ceps = config->num_ceps;
+		state->lifter.cepstral_lifter = config->cepstral_lifter; /* Q7.9 max 64.0*/
+		ret = mfcc_get_cepstral_lifter(mod, &state->lifter);
+		if (ret < 0) {
+			comp_err(dev, "Failed cepstral lifter");
+			goto free_dct_matrix;
+		}
+
+		state->mel_only = false;
+	} else {
+		comp_info(dev, "num_ceps is 0, Mel log spectra output mode");
+		dct->num_in = config->num_mel_bins;
+		dct->num_out = 0;
+		dct->matrix = NULL;
+		state->lifter.matrix = NULL;
+		state->mel_only = true;
 	}
 
 	/* Scratch overlay during runtime
@@ -288,8 +302,12 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	/* Use FFT buffer as scratch for later computed data */
 	state->power_spectra = (int32_t *)&fft->fft_buf[0];
 	state->mel_spectra = (struct mat_matrix_16b *)&fft->fft_out[0];
-	state->cepstral_coef = (struct mat_matrix_16b *)
-		&state->mel_spectra->data[state->dct.num_in];
+	if (!state->mel_only) {
+		state->cepstral_coef =
+			(struct mat_matrix_16b *)&state->mel_spectra->data[state->dct.num_in];
+	} else {
+		state->cepstral_coef = NULL;
+	}
 
 	/* Set initial state for STFT */
 	state->waiting_fill = true;

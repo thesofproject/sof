@@ -125,6 +125,7 @@ struct mfcc_state {
 	int low_freq;
 	int high_freq;
 	int sample_rate;
+	bool mel_only; /**< When true, output Mel spectra instead of cepstral coefficients */
 	bool waiting_fill; /**< booleans */
 	bool prev_samples_valid;
 	size_t sample_buffers_size; /**< bytes */

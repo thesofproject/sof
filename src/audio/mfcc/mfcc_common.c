@@ -119,16 +119,22 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 					    state->mel_spectra->data, mel_scale_shift);
 #endif
 
-		/* Multiply Mel spectra with DCT matrix to get cepstral coefficients */
-		mat_init_16b(state->cepstral_coef, 1, state->dct.num_out, 7); /* Q8.7 */
-		mat_multiply(state->mel_spectra, state->dct.matrix, state->cepstral_coef);
+		if (state->mel_only) {
+			/* In Mel-only mode output Mel log spectra directly */
+			cc_count += state->dct.num_in;
+		} else {
+			/* Multiply Mel spectra with DCT matrix to get cepstral coefficients */
+			mat_init_16b(state->cepstral_coef, 1, state->dct.num_out, 7); /* Q8.7 */
+			mat_multiply(state->mel_spectra, state->dct.matrix, state->cepstral_coef);
 
-		/* Apply cepstral lifter */
-		if (state->lifter.cepstral_lifter != 0)
-			mat_multiply_elementwise(state->cepstral_coef, state->lifter.matrix,
-						 state->cepstral_coef);
+			/* Apply cepstral lifter */
+			if (state->lifter.cepstral_lifter != 0) {
+				mat_multiply_elementwise(state->cepstral_coef, state->lifter.matrix,
+							 state->cepstral_coef);
+			}
 
-		cc_count += state->dct.num_out;
+			cc_count += state->dct.num_out;
+		}
 
 		/* Output to sink buffer */
 	}
@@ -205,9 +211,17 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 	 */
 	zero_samples = frames * audio_stream_get_channels(sink);
 	if (num_ceps > 0) {
+		int16_t *out_data;
+
+		if (state->mel_only) {
+			out_data = state->mel_spectra->data;
+		} else {
+			out_data = state->cepstral_coef->data;
+		}
+
 		zero_samples -= num_ceps + num_magic;
 		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_magic, (int16_t *)&magic);
-		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_ceps, state->cepstral_coef->data);
+		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_ceps, out_data);
 	}
 
 	w_ptr = mfcc_sink_copy_zero_s16(sink, w_ptr, zero_samples);
