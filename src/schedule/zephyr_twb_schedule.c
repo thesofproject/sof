@@ -441,6 +441,7 @@ int scheduler_twb_task_init(struct task **task,
 		goto err;
 	}
 
+#ifdef CONFIG_SCHED_CPU_MASK
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(thread_id, core);
 	if (ret < 0) {
@@ -448,6 +449,7 @@ int scheduler_twb_task_init(struct task **task,
 		tr_err(&twb_tr, "zephyr task pin to core %d failed", core);
 		goto err;
 	}
+#endif
 
 	/* set the thread name */
 	if (name) {
