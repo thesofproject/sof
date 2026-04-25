@@ -377,8 +377,11 @@ static void host_dma_cb(struct comp_dev *dev, size_t bytes)
 static int host_get_status(struct comp_dev *dev, struct host_data *hd, struct dma_status *stat)
 {
 	int ret = sof_dma_get_status(hd->dma, hd->chan_index, stat);
+	int *counter = &ipc_get()->dummy_counter;
+
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-	if (ret == -EPIPE && !hd->xrun_notification_sent) {
+//	if (ret == -EPIPE && !hd->xrun_notification_sent) {
+	if (((*counter)++ % 10000) == 1000 && !hd->xrun_notification_sent) {
 		hd->xrun_notification_sent = send_copier_gateway_xrun_notif_msg
 			(dev->pipeline->pipeline_id, dev->direction);
 	} else if (!ret) {

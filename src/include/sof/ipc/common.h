@@ -121,6 +121,7 @@ struct ipc {
 	struct k_work_delayable z_delayed_work;
 	struct k_work_q ipc_send_wq;
 #endif
+	int dummy_counter;
 
 	void *private;
 };
