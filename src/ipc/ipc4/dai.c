@@ -34,8 +34,7 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
-/* Protects IPC4 LLP reading-slot firmware registers used by DAI code. */
-static SYS_MUTEX_DEFINE(llp_reading_slots_lock);
+static APP_SYSUSER_BSS SYS_MUTEX_DEFINE(llp_reading_slots_lock);
 
 void dai_set_link_hda_config(uint16_t *link_config,
 			     struct ipc_config_dai *common_config,
@@ -223,7 +222,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 	}
 
 	/* put the allocated DMA channel first */
-	if (dd->chan) {
+	if (dd->chan_index != -1) {
 		struct ipc4_llp_reading_slot slot;
 
 		if (dd->slot_info.node_id) {
@@ -245,15 +244,16 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		 */
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 		/* if reset is after pause dma has already been stopped */
-		dma_stop(dd->chan->dma->z_dev, dd->chan->index);
+		sof_dma_stop(dd->dma, dd->chan_index);
 
-		dma_release_channel(dd->chan->dma->z_dev, dd->chan->index);
+		sof_dma_release_channel(dd->dma, dd->chan_index);
 #else
+		/* TODO: to remove this, no longer works! */
 		dma_stop_legacy(dd->chan);
 		dma_channel_put_legacy(dd->chan);
-#endif
-		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
+#endif
+
 	}
 }
 
@@ -377,9 +377,9 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 		return 0;
 	}
 
-	if (dd->chan) {
+	if (dd->chan_index != -1) {
 		comp_info(dev, "Configured. dma channel index %d, ignore...",
-			  dd->chan->index);
+			  dd->chan_index);
 		return 0;
 	}
 
@@ -400,15 +400,17 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 	/* allocated dai_config if not yet */
 	if (!dd->dai_spec_config) {
 		size = sizeof(*copier_cfg);
-		dd->dai_spec_config = rzalloc(SOF_MEM_FLAG_USER, size);
+		dd->dai_spec_config = sof_heap_alloc(dd->heap, SOF_MEM_FLAG_USER, size, 0);
 		if (!dd->dai_spec_config) {
 			comp_err(dev, "No memory for size %d", size);
 			return -ENOMEM;
 		}
 
+		memset(dd->dai_spec_config, 0, size);
+
 		ret = memcpy_s(dd->dai_spec_config, size, copier_cfg, size);
 		if (ret < 0) {
-			rfree(dd->dai_spec_config);
+			sof_heap_free(dd->heap, dd->dai_spec_config);
 			dd->dai_spec_config = NULL;
 			return -EINVAL;
 		}
@@ -438,7 +440,7 @@ int dai_common_position(struct dai_data *dd, struct comp_dev *dev,
 	platform_dai_wallclock(dev, &dd->wallclock);
 	posn->wallclock = dd->wallclock;
 
-	ret = dma_get_status(dd->dma->z_dev, dd->chan->index, &status);
+	ret = dma_get_status(dd->dma->z_dev, dd->chan_index, &status);
 	if (ret < 0)
 		return ret;
 
@@ -463,7 +465,7 @@ void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev)
 	if (!dd->slot_info.node_id)
 		return;
 
-	ret = dma_get_status(dd->dma->z_dev, dd->chan->index, &status);
+	ret = sof_dma_get_status(dd->dma, dd->chan_index, &status);
 	if (ret < 0)
 		return;
 

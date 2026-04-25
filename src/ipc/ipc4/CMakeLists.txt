@@ -8,6 +8,7 @@ add_local_sources(sof
 	helper.c
 	logging.c
 	notification.c
+	notification-user.c
 )
 
 is_zephyr(zephyr)

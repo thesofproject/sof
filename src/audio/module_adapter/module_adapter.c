@@ -111,7 +111,12 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 		}
 		mod_heap = &mod_heap_user->heap;
 	} else {
+#ifdef CONFIG_SOF_USERSPACE_LL
+		mod_heap = zephyr_ll_user_heap();
+		comp_cl_dbg(drv, "using ll user heap for module");
+#else
 		mod_heap = drv->user_heap;
+#endif
 		mod_heap_user = NULL;
 		heap_size = 0;
 	}
@@ -173,13 +178,8 @@ static void module_adapter_mem_free(struct processing_module *mod)
 #endif
 	sof_heap_free(mod_heap, mod->dev);
 	sof_heap_free(mod_heap, mod);
-	if (domain == COMP_PROCESSING_DOMAIN_DP) {
-		struct dp_heap_user *mod_heap_user = container_of(mod_heap, struct dp_heap_user,
-								  heap);
-
-		if (mod_heap && !--mod_heap_user->client_count)
-			rfree(mod_heap_user);
-	}
+	if (domain == COMP_PROCESSING_DOMAIN_DP && mod_heap)
+		dp_heap_put(mod_heap);
 }
 
 /*
@@ -508,11 +508,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for input buffers */
 	if (mod->max_sources) {
 		mod->input_buffers =
-			rzalloc(memory_flags, sizeof(*mod->input_buffers) * mod->max_sources);
+			sof_heap_alloc(sof_sys_user_heap_get(), memory_flags,
+				       sizeof(*mod->input_buffers) * mod->max_sources, 0);
 		if (!mod->input_buffers) {
 			comp_err(dev, "failed to allocate input buffers");
 			return -ENOMEM;
 		}
+		memset(mod->input_buffers, 0, sizeof(*mod->input_buffers) * mod->max_sources);
 	} else {
 		mod->input_buffers = NULL;
 	}
@@ -520,12 +522,14 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffers */
 	if (mod->max_sinks) {
 		mod->output_buffers =
-			rzalloc(memory_flags, sizeof(*mod->output_buffers) * mod->max_sinks);
+			sof_heap_alloc(sof_sys_user_heap_get(), memory_flags,
+				       sizeof(*mod->output_buffers) * mod->max_sources, 0);
 		if (!mod->output_buffers) {
 			comp_err(dev, "failed to allocate output buffers");
 			ret = -ENOMEM;
 			goto in_out_free;
 		}
+		memset(mod->input_buffers, 0, sizeof(*mod->output_buffers) * mod->max_sources);
 	} else {
 		mod->output_buffers = NULL;
 	}
@@ -586,7 +590,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
 	list_for_item(blist, &dev->bsource_list) {
-		mod->input_buffers[i].data = rballoc(memory_flags, size);
+		mod->input_buffers[i].data = sof_heap_alloc(sof_sys_user_heap_get(),
+							     memory_flags, size, 0);
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -598,7 +603,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = rballoc(memory_flags, md->mpd.out_buff_size);
+		mod->output_buffers[i].data = sof_heap_alloc(sof_sys_user_heap_get(),
+							      memory_flags,
+							      md->mpd.out_buff_size, 0);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -615,7 +622,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 								  memory_flags,
 								  PLATFORM_DCACHE_ALIGN,
 								  BUFFER_USAGE_NOT_SHARED);
+#ifndef CONFIG_SOF_USERSPACE_LL
 			uint32_t flags;
+#endif
 
 			if (!buffer) {
 				comp_err(dev, "failed to allocate local buffer");
@@ -623,7 +632,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 				goto free;
 			}
 
-			if (md->resources.heap && md->resources.heap != dev->drv->user_heap) {
+			if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+			    md->resources.heap) {
 				struct dp_heap_user *dp_user = container_of(md->resources.heap,
 									    struct dp_heap_user,
 									    heap);
@@ -631,9 +641,17 @@ int module_adapter_prepare(struct comp_dev *dev)
 				dp_user->client_count++;
 			}
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+			zephyr_ll_lock_sched(cpu_get_id());
+#else
 			irq_local_disable(flags);
+#endif
 			list_item_prepend(&buffer->buffers_list, &mod->raw_data_buffers_list);
+#ifdef CONFIG_SOF_USERSPACE_LL
+			zephyr_ll_unlock_sched(cpu_get_id());
+#else
 			irq_local_enable(flags);
+#endif
 
 			buffer_set_params(buffer, mod->stream_params, BUFFER_UPDATE_FORCE);
 			audio_buffer_reset(&buffer->audio_buffer);
@@ -663,26 +681,39 @@ free:
 	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  buffers_list);
+#ifndef CONFIG_SOF_USERSPACE_LL
 		uint32_t flags;
+#endif
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+		zephyr_ll_lock_sched(cpu_get_id());
+#else
 		irq_local_disable(flags);
+#endif
 		list_item_del(&buffer->buffers_list);
+#ifdef CONFIG_SOF_USERSPACE_LL
+		zephyr_ll_unlock_sched(cpu_get_id());
+#else
 		irq_local_enable(flags);
+#endif
 		buffer_free(buffer);
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+		    md->resources.heap)
+			dp_heap_put(md->resources.heap);
 	}
 
 out_data_free:
 	for (i = 0; i < mod->num_of_sinks; i++)
-		rfree(mod->output_buffers[i].data);
+		sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers[i].data);
 
 in_data_free:
 	for (i = 0; i < mod->num_of_sources; i++)
-		rfree(mod->input_buffers[i].data);
+		sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers[i].data);
 
 in_out_free:
-	rfree(mod->output_buffers);
+	sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers);
 	mod->output_buffers = NULL;
-	rfree(mod->input_buffers);
+	sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers);
 	mod->input_buffers = NULL;
 	return ret;
 }
@@ -1394,14 +1425,16 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
 		for (i = 0; i < mod->num_of_sinks; i++)
-			rfree((__sparse_force void *)mod->output_buffers[i].data);
+			sof_heap_free(sof_sys_user_heap_get(),
+				      (__sparse_force void *)mod->output_buffers[i].data);
 		for (i = 0; i < mod->num_of_sources; i++)
-			rfree((__sparse_force void *)mod->input_buffers[i].data);
+			sof_heap_free(sof_sys_user_heap_get(),
+				      (__sparse_force void *)mod->input_buffers[i].data);
 	}
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
-		rfree(mod->output_buffers);
-		rfree(mod->input_buffers);
+		sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers);
+		sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers);
 
 		mod->num_of_sources = 0;
 		mod->num_of_sinks = 0;
@@ -1453,12 +1486,25 @@ void module_adapter_free(struct comp_dev *dev)
 	list_for_item_safe(blist, _blist, &mod->raw_data_buffers_list) {
 		struct comp_buffer *buffer = container_of(blist, struct comp_buffer,
 							  buffers_list);
+#ifndef CONFIG_SOF_USERSPACE_LL
 		uint32_t flags;
+#endif
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+		zephyr_ll_lock_sched(cpu_get_id());
+#else
 		irq_local_disable(flags);
+#endif
 		list_item_del(&buffer->buffers_list);
+#ifdef CONFIG_SOF_USERSPACE_LL
+		zephyr_ll_unlock_sched(cpu_get_id());
+#else
 		irq_local_enable(flags);
+#endif
 		buffer_free(buffer);
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+		    mod->priv.resources.heap)
+			dp_heap_put(mod->priv.resources.heap);
 	}
 
 	mod_free(mod, mod->stream_params);

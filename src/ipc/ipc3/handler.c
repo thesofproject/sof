@@ -878,7 +878,7 @@ static int ipc_dma_trace_config(uint32_t header)
 
 error:
 #if CONFIG_HOST_PTABLE
-	dma_sg_free(&elem_array);
+	dma_sg_free(NULL, &elem_array);
 
 processing_error:
 #endif

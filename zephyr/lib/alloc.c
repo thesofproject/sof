@@ -13,6 +13,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/audio/pipeline.h>
+#include <sof/schedule/ll_schedule_domain.h> /* for zephyr_ll_user_heap() */
 #include <sof/trace/trace.h>
 #include <rtos/symbol.h>
 #include <rtos/wait.h>
@@ -378,6 +379,16 @@ struct k_heap *sof_sys_heap_get(void)
 	return &sof_heap;
 }
 
+struct k_heap *sof_sys_user_heap_get(void)
+{
+#ifdef CONFIG_SOF_USERSPACE_LL
+	return zephyr_ll_user_heap();
+#else
+	/* let sof_heap_alloc() pick */
+	return NULL;
+#endif
+}
+
 static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes)
 {
 	k_spinlock_key_t key;
@@ -615,8 +626,8 @@ EXPORT_SYMBOL(rfree);
  * To match the fall-back SOF main heap all private heaps should also be in the
  * uncached address range.
  */
-void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
-		     size_t alignment)
+void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+			    size_t alignment)
 {
 	if (flags & (SOF_MEM_FLAG_LARGE_BUFFER | SOF_MEM_FLAG_USER_SHARED_BUFFER))
 		return rballoc_align(flags, bytes, alignment);
@@ -630,7 +641,7 @@ void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 	return (__sparse_force void *)heap_alloc_aligned_cached(heap, alignment, bytes);
 }
 
-void sof_heap_free(struct k_heap *heap, void *addr)
+void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 {
 	if (heap && addr && is_heap_pointer(heap, addr))
 		heap_free(heap, addr);

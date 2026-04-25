@@ -98,29 +98,6 @@ static inline void *rballoc(uint32_t flags, size_t bytes)
 }
 
 /**
- * Changes size of the memory block allocated.
- * @param ptr Address of the block to resize.
- * @param flags Flags, see SOF_MEM_FLAG_...
- * @param bytes New size in bytes.
- * @param old_bytes Old size in bytes.
- * @param alignment Alignment in bytes.
- * @return Pointer to the resized memory of NULL if failed.
- */
-void *rbrealloc_align(void *ptr, uint32_t flags, size_t bytes,
-		      size_t old_bytes, uint32_t alignment);
-
-/**
- * Similar to rballoc_align(), returns resized buffer aligned to
- * PLATFORM_DCACHE_ALIGN.
- */
-static inline void *rbrealloc(void *ptr, uint32_t flags,
-			      size_t bytes, size_t old_bytes)
-{
-	return rbrealloc_align(ptr, flags, bytes, old_bytes,
-			       PLATFORM_DCACHE_ALIGN);
-}
-
-/**
  * Frees the memory block.
  * @param ptr Pointer to the memory block.
  */
@@ -141,6 +118,7 @@ void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment);
 void sof_heap_free(struct k_heap *heap, void *addr);
 struct k_heap *sof_sys_heap_get(void);
+struct k_heap *sof_sys_user_heap_get(void);
 
 /**
  * Calculates length of the null-terminated string.

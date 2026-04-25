@@ -42,6 +42,14 @@ config HOST_DMA_STREAM_SYNCHRONIZATION
 	  for each group, different than the default one determined by the system tick frequency.
 	  This feature will allow host lower power consumption in scenarios with deep buffering.
 
+config HOST_DMA_IPC_POSITION_UPDATES
+	bool "Support for stream position updates via IPC messages"
+	default y if IPC_MAJOR_3
+	help
+	  Support firmware functionality to report stream position updates
+	  by sending a IPC message whenever one period of audio is transfferred.
+	  Most platforms provide more efficient ways to query the DMA status.
+
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  depends on IPC_MAJOR_4

@@ -29,6 +29,8 @@
 struct dai_config;
 struct dma;
 struct dma_sg_elem_array;
+struct processing_module;
+struct k_heap;
 
 struct ipc_msg {
 	uint32_t header;	/* specific to platform */
@@ -40,46 +42,27 @@ struct ipc_msg {
 };
 
 /**
- * \brief Initialize a new IPC message.
+ * \brief Initialize a new IPC message using a specific heap.
+ * @param heap Heap to allocate from (NULL = default kernel heap)
  * @param header Message header metadata
  * @param extension Message header extension metadata
  * @param size Message data size in bytes.
  * @return New IPC message.
  */
-static inline struct ipc_msg *ipc_msg_w_ext_init(uint32_t header, uint32_t extension,
-						 uint32_t size)
-{
-	struct ipc_msg *msg;
-
-	msg = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*msg));
-	if (!msg)
-		return NULL;
-
-	if (size) {
-		msg->tx_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, size);
-		if (!msg->tx_data) {
-			rfree(msg);
-			return NULL;
-		}
-	}
-
-	msg->header = header;
-	msg->extension = extension;
-	msg->tx_size = size;
-	list_init(&msg->list);
-
-	return msg;
-}
+struct ipc_msg *ipc_msg_w_ext_init(struct k_heap *heap, uint32_t header,
+				   uint32_t extension, uint32_t size);
 
 /**
- * \brief Initialise a new IPC message.
+ * \brief Initialize a new IPC message using a specific heap.
+ * @param heap Heap to allocate from (NULL = default kernel heap)
  * @param header Message header metadata
  * @param size Message data size in bytes.
  * @return New IPC message.
  */
-static inline struct ipc_msg *ipc_msg_init(uint32_t header, uint32_t size)
+static inline struct ipc_msg *ipc_msg_init(struct k_heap *heap,
+					   uint32_t header, uint32_t size)
 {
-	return ipc_msg_w_ext_init(header, 0, size);
+	return ipc_msg_w_ext_init(heap, header, 0, size);
 }
 
 /**
@@ -108,13 +91,7 @@ static inline void ipc_msg_free(struct ipc_msg *msg)
  */
 void ipc_send_queued_msg(void);
 
-/**
- * \brief Queues an IPC message for transmission.
- * @param msg The IPC message to be freed.
- * @param data The message data.
- * @param high_priority True if a high priortity message.
- */
-void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority);
+#include <sof/ipc/ipc_msg_send.h>
 
 /**
  * \brief Send an IPC message directly for emergency.

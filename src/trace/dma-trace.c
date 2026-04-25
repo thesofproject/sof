@@ -160,7 +160,7 @@ int dma_trace_init_early(struct sof *sof)
 	k_spinlock_init(&sof->dmat->lock);
 
 	ipc_build_trace_posn(&sof->dmat->posn);
-	sof->dmat->msg = ipc_msg_init(sof->dmat->posn.rhdr.hdr.cmd,
+	sof->dmat->msg = ipc_msg_init(NULL, sof->dmat->posn.rhdr.hdr.cmd,
 				      sof->dmat->posn.rhdr.hdr.size);
 	if (!sof->dmat->msg) {
 		ret = -ENOMEM;
@@ -407,7 +407,7 @@ void dma_trace_disable(struct dma_trace_data *d)
 #if (CONFIG_HOST_PTABLE)
 	/* Free up the host SG if it is set */
 	if (d->host_size) {
-		dma_sg_free(&d->config.elem_array);
+		dma_sg_free(NULL, &d->config.elem_array);
 		d->host_size = 0;
 	}
 #endif

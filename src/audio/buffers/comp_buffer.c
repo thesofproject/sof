@@ -16,7 +16,6 @@
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
-#include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/schedule/dp_schedule.h>
 #include <rtos/spinlock.h>
@@ -147,28 +146,17 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
 
-	struct buffer_cb_free cb_data = {
-		.buffer = buffer,
-	};
-
 	buf_dbg(buffer, "buffer_free()");
 
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_FREE,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
-
-	/* In case some listeners didn't unregister from buffer's callbacks */
-	notifier_unregister_all(NULL, buffer);
+#if CONFIG_PROBE
+	if (buffer->probe_cb_free)
+		buffer->probe_cb_free(buffer->probe_cb_arg);
+#endif
 
 	struct k_heap *heap = buffer->audio_buffer.heap;
 
-	rfree(buffer->stream.addr);
+	sof_heap_free(heap, buffer->stream.addr);
 	sof_heap_free(heap, buffer);
-	if (heap) {
-		struct dp_heap_user *mod_heap_user = container_of(heap, struct dp_heap_user, heap);
-
-		if (!--mod_heap_user->client_count)
-			rfree(mod_heap_user);
-	}
 }
 
 APP_TASK_DATA static const struct source_ops comp_buffer_source_ops = {
@@ -218,6 +206,7 @@ static struct comp_buffer *buffer_alloc_struct(struct k_heap *heap,
 
 	memset(buffer, 0, sizeof(*buffer));
 
+	buffer->heap = heap;
 	buffer->flags = flags;
 	/* Force channels to 2 for init to prevent bad call to clz in buffer_init_stream */
 	buffer->stream.runtime_stream_params.channels = 2;
@@ -254,7 +243,7 @@ struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flag
 		return NULL;
 	}
 
-	stream_addr = rballoc_align(flags, size, align);
+	stream_addr = sof_heap_alloc(heap, flags, size, align);
 	if (!stream_addr) {
 		tr_err(&buffer_tr, "could not alloc size = %zu bytes of flags = 0x%x",
 		       size, flags);
@@ -264,8 +253,10 @@ struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flag
 	buffer = buffer_alloc_struct(heap, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
-		rfree(stream_addr);
+		sof_heap_free(heap, stream_addr);
 	}
+
+	buffer->heap = heap;
 
 	return buffer;
 }
@@ -292,7 +283,7 @@ struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_siz
 		preferred_size += minimum_size - preferred_size % minimum_size;
 
 	for (size = preferred_size; size >= minimum_size; size -= minimum_size) {
-		stream_addr = rballoc_align(flags, size, align);
+		stream_addr = sof_heap_alloc(heap, flags, size, align);
 		if (stream_addr)
 			break;
 	}
@@ -308,8 +299,10 @@ struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_siz
 	buffer = buffer_alloc_struct(heap, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
-		rfree(stream_addr);
+		sof_heap_free(heap, stream_addr);
 	}
+
+	buffer->heap = heap;
 
 	return buffer;
 }
@@ -341,14 +334,8 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 	if (size == audio_stream_get_size(&buffer->stream))
 		return 0;
 
-	if (!alignment)
-		new_ptr = rbrealloc(audio_stream_get_addr(&buffer->stream),
-				    buffer->flags | SOF_MEM_FLAG_NO_COPY,
-				    size, audio_stream_get_size(&buffer->stream));
-	else
-		new_ptr = rbrealloc_align(audio_stream_get_addr(&buffer->stream),
-					  buffer->flags | SOF_MEM_FLAG_NO_COPY, size,
-					  audio_stream_get_size(&buffer->stream), alignment);
+	new_ptr = sof_heap_alloc(buffer->heap, buffer->flags, size, alignment);
+
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > audio_stream_get_size(&buffer->stream)) {
 		buf_err(buffer, "resize can't alloc %u bytes of flags 0x%x",
@@ -357,8 +344,10 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 	}
 
 	/* use bigger chunk, else just use the old chunk but set smaller */
-	if (new_ptr)
+	if (new_ptr) {
+		sof_heap_free(buffer->heap, audio_stream_get_addr(&buffer->stream));
 		buffer->stream.addr = new_ptr;
+	}
 
 	buffer_init_stream(buffer, size);
 
@@ -389,22 +378,11 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	if (preferred_size == actual_size)
 		return 0;
 
-	if (!alignment) {
-		for (new_size = preferred_size; new_size >= minimum_size;
-		     new_size -= minimum_size) {
-			new_ptr = rbrealloc(ptr, buffer->flags | SOF_MEM_FLAG_NO_COPY,
-					    new_size, actual_size);
-			if (new_ptr)
-				break;
-		}
-	} else {
-		for (new_size = preferred_size; new_size >= minimum_size;
-		     new_size -= minimum_size) {
-			new_ptr = rbrealloc_align(ptr, buffer->flags | SOF_MEM_FLAG_NO_COPY,
-						  new_size, actual_size, alignment);
-			if (new_ptr)
-				break;
-		}
+	for (new_size = preferred_size; new_size >= minimum_size;
+	     new_size -= minimum_size) {
+		new_ptr = sof_heap_alloc(buffer->heap, buffer->flags, new_size, alignment);
+		if (new_ptr)
+			break;
 	}
 
 	/* we couldn't allocate bigger chunk */
@@ -415,8 +393,10 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	}
 
 	/* use bigger chunk, else just use the old chunk but set smaller */
-	if (new_ptr)
+	if (new_ptr) {
+		sof_heap_free(buffer->heap, audio_stream_get_addr(&buffer->stream));
 		buffer->stream.addr = new_ptr;
+	}
 
 	buffer_init_stream(buffer, new_size);
 
@@ -478,12 +458,6 @@ bool buffer_params_match(struct comp_buffer *buffer,
 
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
-	struct buffer_cb_transact cb_data = {
-		.buffer = buffer,
-		.transaction_amount = bytes,
-		.transaction_begin_address = audio_stream_get_wptr(&buffer->stream),
-	};
-
 	/* return if no bytes */
 	if (!bytes) {
 #if CONFIG_SOF_LOG_DBG_BUFFER
@@ -499,10 +473,19 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	audio_stream_produce(&buffer->stream, bytes);
+#if CONFIG_PROBE
+	if (buffer->probe_cb_produce) {
+		struct buffer_cb_transact cb_data = {
+			.buffer = buffer,
+			.transaction_amount = bytes,
+			.transaction_begin_address = audio_stream_get_wptr(&buffer->stream),
+		};
 
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_PRODUCE,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
+		buffer->probe_cb_produce(buffer->probe_cb_arg, &cb_data);
+	}
+#endif
+
+	audio_stream_produce(&buffer->stream, bytes);
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
 	buf_dbg(buffer, "((buffer->avail << 16) | buffer->free) = %08x, ((buffer->id << 16) | buffer->size) = %08x",
@@ -519,12 +502,6 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
-	struct buffer_cb_transact cb_data = {
-		.buffer = buffer,
-		.transaction_amount = bytes,
-		.transaction_begin_address = audio_stream_get_rptr(&buffer->stream),
-	};
-
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	/* return if no bytes */
@@ -543,9 +520,6 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	}
 
 	audio_stream_consume(&buffer->stream, bytes);
-
-	notifier_event(buffer, NOTIFIER_ID_BUFFER_CONSUME,
-		       NOTIFIER_TARGET_CORE_LOCAL, &cb_data, sizeof(cb_data));
 
 #if CONFIG_SOF_LOG_DBG_BUFFER
 	buf_dbg(buffer, "(buffer->avail << 16) | buffer->free = %08x, (buffer->id << 16) | buffer->size = %08x, (buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",

@@ -26,6 +26,9 @@
 #define APP_TASK_BSS	K_APP_BMEM(common_partition)
 #define APP_TASK_DATA	K_APP_DMEM(common_partition)
 
+#define APP_SYSUSER_BSS	K_APP_BMEM(sysuser_partition)
+#define APP_SYSUSER_DATA	K_APP_DMEM(sysuser_partition)
+
 struct processing_module;
 struct userspace_context;
 
@@ -41,6 +44,27 @@ struct userspace_context;
  * region which is then added to modules memory domain.
  */
 struct k_heap *module_driver_heap_init(void);
+
+/**
+ * Initialize private processing module heap with embedded metadata.
+ * @return pointer to the k_heap structure.
+ *
+ * @note
+ * Unlike module_driver_heap_init(), this function embeds the k_heap
+ * struct at the start of the page-aligned backing buffer. The
+ * init_mem / init_bytes fields cover the full allocation, so a
+ * memory partition derived from them automatically includes the
+ * k_heap metadata (required for userspace syscall verification).
+ * Must be freed with sys_user_heap_remove().
+ */
+struct k_heap *sys_user_heap_init(void);
+
+/**
+ * Free private processing module heap allocated by
+ * sys_user_heap_init().
+ * @param mod_drv_heap pointer to the k_heap structure.
+ */
+void sys_user_heap_remove(struct k_heap *mod_drv_heap);
 
 /**
  * Attach common userspace memory partition to a module memory domain.
@@ -136,5 +160,27 @@ static inline int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t th
 }
 
 #endif /* CONFIG_USERSPACE */
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+
+int user_memory_attach_system_user_partition(struct k_mem_domain *dom);
+
+#else
+
+/**
+ * Attach SOF system user memory partition to a memory domain.
+ * @param dom - memory domain to attach the common partition to.
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * The common partition contains shared objects required by user-space modules.
+ */
+static int user_memory_attach_system_user_partition(struct k_mem_domain *dom)
+{
+}
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 #endif /* __ZEPHYR_LIB_USERSPACE_HELPER_H__ */

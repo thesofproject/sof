@@ -285,7 +285,8 @@ void dma_put(struct dma *dma)
 }
 #endif
 
-int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
+int dma_sg_alloc(struct k_heap *heap,
+		 struct dma_sg_elem_array *elem_array,
 		 uint32_t flags,
 		 uint32_t direction,
 		 uint32_t buffer_count, uint32_t buffer_bytes,
@@ -293,10 +294,12 @@ int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 {
 	int i;
 
-	elem_array->elems = rzalloc(SOF_MEM_FLAG_USER,
-				    sizeof(struct dma_sg_elem) * buffer_count);
+	elem_array->elems = sof_heap_alloc(heap, SOF_MEM_FLAG_USER,
+					   sizeof(struct dma_sg_elem) * buffer_count, 0);
 	if (!elem_array->elems)
 		return -ENOMEM;
+
+	memset(elem_array->elems, 0, sizeof(struct dma_sg_elem) * buffer_count);
 
 	for (i = 0; i < buffer_count; i++) {
 		elem_array->elems[i].size = buffer_bytes;
@@ -319,9 +322,9 @@ int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 	return 0;
 }
 
-void dma_sg_free(struct dma_sg_elem_array *elem_array)
+void dma_sg_free(struct k_heap *heap, struct dma_sg_elem_array *elem_array)
 {
-	rfree(elem_array->elems);
+	sof_heap_free(heap, elem_array->elems);
 	dma_sg_init(elem_array);
 }
 
