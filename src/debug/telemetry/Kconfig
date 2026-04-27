@@ -12,6 +12,7 @@ config SOF_TELEMETRY
 
 config SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	bool "enable performance measurements"
+	depends on SOF_TELEMETRY
 	default n
 	help
 	  Enables performance measurements. Requires ADSP_MW interface. Each created component
@@ -21,6 +22,7 @@ config SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 
 config SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	bool "enable I/O performance measurements"
+	depends on SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
 	help
 	  Enables IO performance measurements. Each data interface will have its data throughput
 	  measured (IPC/IDC and GPIO will measure number of messages/state changes).

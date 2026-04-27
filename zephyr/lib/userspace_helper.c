@@ -36,6 +36,10 @@ LOG_MODULE_REGISTER(userspace_helper, CONFIG_SOF_LOG_LEVEL);
 
 K_APPMEM_PARTITION_DEFINE(common_partition);
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+K_APPMEM_PARTITION_DEFINE(sysuser_partition);
+#endif
+
 struct k_heap *module_driver_heap_init(void)
 {
 	struct k_heap *mod_drv_heap = rballoc(SOF_MEM_FLAG_USER, sizeof(*mod_drv_heap));
@@ -65,6 +69,45 @@ void module_driver_heap_remove(struct k_heap *mod_drv_heap)
 	}
 }
 
+struct k_heap *sys_user_heap_init(void)
+{
+	const size_t prefix = ALIGN_UP(sizeof(struct k_heap), 4);
+	const size_t total = prefix + USER_MOD_HEAP_SIZE;
+
+	/*
+	 * Allocate a single page-aligned buffer for both the k_heap
+	 * metadata and the heap backing memory.  Placing the k_heap
+	 * struct inside the same allocation means the memory partition
+	 * (which uses init_mem / init_bytes) automatically covers the
+	 * k_heap struct, making it accessible from userspace syscall
+	 * verification wrappers such as z_vrfy_mod_free().
+	 */
+	void *mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, total,
+				  CONFIG_MM_DRV_PAGE_SIZE);
+	if (!mem)
+		return NULL;
+
+	struct k_heap *mod_drv_heap = (struct k_heap *)mem;
+	void *heap_buf = (uint8_t *)mem + prefix;
+
+	k_heap_init(mod_drv_heap, heap_buf, USER_MOD_HEAP_SIZE);
+
+	/* init_mem / init_bytes track the full allocation so that
+	 * partition setup and sys_user_heap_remove()
+	 * cover and free the entire region including the k_heap struct.
+	 */
+	mod_drv_heap->heap.init_mem = mem;
+	mod_drv_heap->heap.init_bytes = total;
+
+	return mod_drv_heap;
+}
+
+void sys_user_heap_remove(struct k_heap *mod_drv_heap)
+{
+	if (mod_drv_heap)
+		rfree(mod_drv_heap);
+}
+
 void *user_stack_allocate(size_t stack_size, uint32_t options)
 {
 	return k_thread_stack_alloc(stack_size, options & K_USER);
@@ -83,6 +126,10 @@ int user_memory_attach_common_partition(struct k_mem_domain *dom)
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+int user_memory_attach_system_user_partition(struct k_mem_domain *dom)
+{
+	return k_mem_domain_add_partition(dom, &sysuser_partition);
+}
 
 int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 {
@@ -103,6 +150,43 @@ int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 	ret = k_mem_domain_add_partition(domain, &mem_partition);
 	if (ret < 0)
 		return ret;
+
+#if defined(CONFIG_SOF_USERSPACE_LL) && defined(CONFIG_IPC_MAJOR_4)
+	/* HOSTBOX partitions for IPC4 module init parameter block reads.
+	 * comp_new_ipc4() accesses MAILBOX_HOSTBOX_BASE directly to get
+	 * the module configuration data sent by the host.
+	 */
+	{
+		struct k_mem_partition hostbox_partition;
+
+		/* Uncached HOSTBOX partition */
+		hostbox_partition.start =
+			(uintptr_t)sys_cache_uncached_ptr_get(
+				(void __sparse_cache *)MAILBOX_HOSTBOX_BASE);
+		hostbox_partition.size = ALIGN_UP(MAILBOX_HOSTBOX_SIZE,
+						  CONFIG_MMU_PAGE_SIZE);
+		hostbox_partition.attr = K_MEM_PARTITION_P_RO_U_RO;
+
+		ret = k_mem_domain_add_partition(domain, &hostbox_partition);
+		if (ret < 0)
+			return ret;
+
+		/* Cached HOSTBOX partition for cache invalidation path.
+		 * sys_cache_data_invd_range() syscall verification requires
+		 * write access to the region, so use RW instead of RO.
+		 */
+		hostbox_partition.start =
+			(uintptr_t)sys_cache_cached_ptr_get(
+				(void *)MAILBOX_HOSTBOX_BASE);
+		hostbox_partition.size = ALIGN_UP(MAILBOX_HOSTBOX_SIZE,
+						  CONFIG_MMU_PAGE_SIZE);
+		hostbox_partition.attr = K_MEM_PARTITION_P_RW_U_RW;
+
+		ret = k_mem_domain_add_partition(domain, &hostbox_partition);
+		if (ret < 0)
+			return ret;
+	}
+#endif /* CONFIG_IPC_MAJOR_4 */
 
 #ifndef CONFIG_IPC_MAJOR_4
 	/*

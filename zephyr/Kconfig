@@ -29,6 +29,13 @@ config SOF_USERSPACE_INTERFACE_DMA
 	help
 	  Allow user-space threads to use the SOF DMA interface.
 
+config SOF_USERSPACE_INTERFACE_ALLOC
+	bool "Enable SOF heap alloc interface to userspace threads"
+	depends on USERSPACE
+	help
+	  Allow user-space threads to use sof_heap_alloc/sof_heap_free
+	  as Zephyr system calls.
+
 config SOF_USERSPACE_LL
 	bool "Run Low-Latency pipelines in userspace threads"
 	depends on USERSPACE
@@ -282,3 +289,11 @@ config STACK_SIZE_IPC_TX
 	default 2048
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
+
+config SOF_IPC_USER_THREAD_STACK_SIZE
+	int "IPC user thread stack size"
+	default 8192
+	depends on SOF_USERSPACE_LL
+	help
+	  Stack size for the userspace IPC thread.
+	  Keep a power of 2.

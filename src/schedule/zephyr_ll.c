@@ -5,6 +5,7 @@
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
 #include <sof/list.h>
+#include <rtos/mutex.h>
 #include <rtos/spinlock.h>
 #include <rtos/symbol.h>
 #include <sof/audio/component.h>
@@ -15,6 +16,7 @@
 #include <rtos/task.h>
 #include <sof/lib/perf_cnt.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/sem.h>
 #include <ipc4/base_fw.h>
 #include <sof/debug/telemetry/telemetry.h>
 
@@ -31,7 +33,7 @@ struct zephyr_ll {
 	struct ll_schedule_domain *ll_domain;	/* scheduling domain */
 	unsigned int core;			/* core ID of this instance */
 #if CONFIG_SOF_USERSPACE_LL
-	struct k_mutex *lock;			/* mutex for userspace */
+	struct sys_mutex lock;			/* mutex for userspace */
 #endif
 	struct k_heap *heap;
 };
@@ -40,13 +42,13 @@ struct zephyr_ll {
 struct zephyr_ll_pdata {
 	bool run;
 	bool freeing;
-	struct k_sem sem;
+	struct sys_sem sem;
 };
 
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 {
 #if CONFIG_SOF_USERSPACE_LL
-	k_mutex_lock(sch->lock, K_FOREVER);
+	sys_mutex_lock(&sch->lock, K_FOREVER);
 #else
 	irq_local_disable(*flags);
 #endif
@@ -55,7 +57,7 @@ static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 {
 #if CONFIG_SOF_USERSPACE_LL
-	k_mutex_unlock(sch->lock);
+	sys_mutex_unlock(&sch->lock);
 #else
 	irq_local_enable(*flags);
 #endif
@@ -63,8 +65,15 @@ static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 
 static void zephyr_ll_assert_core(const struct zephyr_ll *sch)
 {
-	assert(CONFIG_CORE_COUNT == 1 || IS_ENABLED(CONFIG_SOF_USERSPACE_LL) ||
-	       sch->core == cpu_get_id());
+#if CONFIG_SOF_USERSPACE_LL
+	/* In user-space mode, cpu_get_id() is not available.
+	 * Core correctness is ensured by task->core routing in
+	 * schedule.h and verified at task schedule time.
+	 */
+	(void)sch;
+#else
+	assert(CONFIG_CORE_COUNT == 1 || sch->core == cpu_get_id());
+#endif
 }
 
 /* Locking: caller should hold the domain lock */
@@ -87,7 +96,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 		 * zephyr_ll_task_free() is trying to free this task. Complete
 		 * it and signal the semaphore to let the function proceed
 		 */
-		k_sem_give(&pdata->sem);
+		sys_sem_give(&pdata->sem);
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
@@ -360,17 +369,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 
 	ret = domain_register(sch->ll_domain, task, &schedule_ll_callback, sch);
 	if (ret < 0)
-		tr_err(&ll_tr, "cannot register domain %d",
-		       ret);
-
-#if CONFIG_SOF_USERSPACE_LL
-	k_thread_access_grant(zephyr_domain_thread_tid(sch->ll_domain), sch->lock);
-
-	tr_dbg(&ll_tr, "granting access to lock %p for thread %p", sch->lock,
-	       zephyr_domain_thread_tid(sch->ll_domain));
-	tr_dbg(&ll_tr, "granting access to domain lock %p for thread %p", &sch->ll_domain->lock,
-	       zephyr_domain_thread_tid(sch->ll_domain));
-#endif
+		tr_err(&ll_tr, "cannot register domain %d", ret);
 
 	return 0;
 }
@@ -403,7 +402,7 @@ static int zephyr_ll_task_schedule_after(void *data, struct task *task, uint64_t
  * This is synchronous - after this returns the object can be destroyed!
  * Assertion: under Zephyr this is always called from a thread context!
  */
-static int zephyr_ll_task_free(void *data, struct task *task)
+static int zephyr_ll_task_sched_free(void *data, struct task *task)
 {
 	struct zephyr_ll *sch = data;
 	uint32_t flags;
@@ -412,10 +411,12 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	zephyr_ll_assert_core(sch);
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	if (k_is_in_isr()) {
 		tr_err(&ll_tr, "cannot free tasks from interrupt context!");
 		return -EDEADLK;
 	}
+#endif
 
 	zephyr_ll_lock(sch, &flags);
 
@@ -454,7 +455,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	if (must_wait)
 		/* Wait for up to 100 periods */
-		k_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
+		sys_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
 
 	/* Protect against racing with schedule_task() */
 	zephyr_ll_lock(sch, &flags);
@@ -511,13 +512,51 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 		       sch->n_tasks);
 }
 
+#if CONFIG_SOF_USERSPACE_LL
+struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
+{
+	struct zephyr_ll *sch = data;
+	int ret;
+
+	/*
+	 * Use domain_thread_init() for privileged setup (thread creation,
+	 * timer, access grants). domain_register() is now bookkeeping only
+	 * and will be called later from user context when scheduling tasks.
+	 */
+	ret = domain_thread_init(sch->ll_domain, task);
+	if (ret < 0) {
+		tr_err(&ll_tr, "cannot init_context %d", ret);
+		return NULL;
+	}
+
+	if (!k_is_user_context()) {
+		tr_dbg(&ll_tr, "granting access to domain lock %p for thread %p", &sch->ll_domain->lock,
+			zephyr_domain_thread_tid(sch->ll_domain, task->core));
+	}
+
+	return zephyr_domain_thread_tid(sch->ll_domain, task->core);
+}
+
+void zephyr_ll_free_context(void *data)
+{
+	struct zephyr_ll *sch = data;
+
+	tr_info(&ll_tr, "free the domain thread");
+	domain_thread_free(sch->ll_domain, sch->n_tasks);
+}
+#endif
+
 static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task		= zephyr_ll_task_schedule,
 	.schedule_task_before	= zephyr_ll_task_schedule_before,
 	.schedule_task_after	= zephyr_ll_task_schedule_after,
-	.schedule_task_free	= zephyr_ll_task_free,
+	.schedule_task_free	= zephyr_ll_task_sched_free,
 	.schedule_task_cancel	= zephyr_ll_task_cancel,
 	.scheduler_free		= zephyr_ll_scheduler_free,
+#if CONFIG_SOF_USERSPACE_LL
+	.scheduler_init_context	= zephyr_ll_init_context,
+	.scheduler_free_context	= zephyr_ll_free_context,
+#endif
 };
 
 #if CONFIG_SOF_USERSPACE_LL
@@ -526,6 +565,43 @@ struct task *zephyr_ll_task_alloc(void)
 	return sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER,
 			      sizeof(struct task), sizeof(void *));
 }
+
+void zephyr_ll_task_free(struct task *task)
+{
+	sof_heap_free(zephyr_ll_user_heap(), task);
+}
+
+void zephyr_ll_grant_access(struct k_thread *thread)
+{
+	/* sys_mutex does not require access grants */
+}
+
+/**
+ * Lock the LL scheduler to prevent it from processing tasks.
+ *
+ * Uses the LL scheduler's own sys_mutex which is re-entrant, so
+ * schedule_task() calls within the locked section will not deadlock.
+ * Must be paired with zephyr_ll_unlock_sched().
+ */
+void zephyr_ll_lock_sched(int core)
+{
+	struct zephyr_ll *sch = (struct zephyr_ll *)scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER,
+										core);
+
+	sys_mutex_lock(&sch->lock, K_FOREVER);
+}
+
+/**
+ * Unlock the LL scheduler after a previous zephyr_ll_lock_sched() call.
+ */
+void zephyr_ll_unlock_sched(int core)
+{
+	struct zephyr_ll *sch = (struct zephyr_ll *)scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER,
+										core);
+
+	sys_mutex_unlock(&sch->lock);
+}
+
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 int zephyr_ll_task_init(struct task *task,
@@ -560,7 +636,7 @@ int zephyr_ll_task_init(struct task *task,
 
 	memset(pdata, 0, sizeof(*pdata));
 
-	k_sem_init(&pdata->sem, 0, 1);
+	sys_sem_init(&pdata->sem, 0, 1);
 
 	task->priv_data = pdata;
 
@@ -599,16 +675,8 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	sch->heap = heap;
 
 #if CONFIG_SOF_USERSPACE_LL
-	/* Allocate mutex dynamically for userspace access */
-	sch->lock = k_object_alloc(K_OBJ_MUTEX);
-	if (!sch->lock) {
-		tr_err(&ll_tr, "mutex allocation failed");
-		sof_heap_free(sch->heap, sch);
-		return -ENOMEM;
-	}
-	k_mutex_init(sch->lock);
-
-	tr_dbg(&ll_tr, "ll-scheduler init done, sch %p sch->lock %p", sch, sch->lock);
+	sys_mutex_init(&sch->lock);
+	tr_dbg(&ll_tr, "ll-scheduler init done, sch %p", sch);
 #endif
 
 	scheduler_init(domain->type, &zephyr_ll_ops, sch);

@@ -22,8 +22,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct comp_driver;
 struct dma_sg_elem_array;
 struct ipc_msg;
+struct ipc4_message_request;
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
@@ -53,6 +55,37 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_SECONDARY_CORE	BIT(2)
 #define IPC_TASK_POWERDOWN      BIT(3)
 
+struct ipc_user {
+	struct k_thread *thread;
+	struct k_sem *sem;
+	struct k_event *event;
+	/** @brief Copy of IPC4 message primary word forwarded to user thread */
+	uint32_t ipc_msg_pri;
+	/** @brief Copy of IPC4 message extension word forwarded to user thread */
+	uint32_t ipc_msg_ext;
+	/** @brief Result code from user thread processing */
+	int result;
+	/** @brief Reply extension word from user thread (e.g. CONFIG_GET result) */
+	uint32_t reply_ext;
+	/** @brief Reply TX data size from user thread (e.g. LARGE_CONFIG_GET result) */
+	uint32_t reply_tx_size;
+	/** @brief Reply TX data pointer from user thread (e.g. LARGE_CONFIG_GET result) */
+	void *reply_tx_data;
+	struct ipc *ipc;
+	struct k_thread *audio_thread;
+	/** @brief Original kernel driver pointer for restoring dev->drv after create */
+	const struct comp_driver *init_drv;
+	/**
+	 * @brief User-accessible copy of comp_driver + tr_ctx for create().
+	 *
+	 * The comp_driver and tr_ctx structs reside in kernel memory
+	 * (.rodata/.data) which is not user-readable. The kernel handler
+	 * copies them here before forwarding to the user thread.
+	 * Size verified by BUILD_ASSERT in handler-user.c.
+	 */
+	uint8_t init_drv_data[160] __aligned(4);
+};
+
 struct ipc {
 	struct k_spinlock lock;	/* locking mechanism */
 	void *comp_data;
@@ -72,6 +105,10 @@ struct ipc {
 	struct task *ipc_task;
 #else
 	struct task ipc_task;
+#endif
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct ipc_user *ipc_user_pdata;
 #endif
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
@@ -95,6 +132,12 @@ struct ipc {
 
 extern struct task_ops ipc_task_ops;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+
+struct ipc *ipc_get(void);
+
+#else
+
 /**
  * \brief Get the IPC global context.
  * @return The global IPC context.
@@ -103,6 +146,8 @@ static inline struct ipc *ipc_get(void)
 {
 	return sof_get()->ipc;
 }
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /**
  * \brief Initialise global IPC context.
@@ -165,6 +210,56 @@ struct dai_data;
  * @return 0 on success.
  */
 int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev);
+
+/**
+ * \brief Processes IPC4 userspace module message.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] reply IPC message reply structure.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_user_process_module_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
+
+/**
+ * \brief Processes IPC4 userspace global message.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] reply IPC message reply structure.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
+
+/*
+ * When CONFIG_SOF_USERSPACE_LL is enabled, compound message functions are
+ * declared as syscalls in ipc4/handler.h — do not re-declare here with
+ * external linkage as that conflicts with the static inline syscall wrappers.
+ */
+#if !(defined(__ZEPHYR__) && defined(CONFIG_SOF_USERSPACE_LL))
+/**
+ * \brief Increment the IPC compound message pre-start counter.
+ * @param[in] msg_id IPC message ID.
+ */
+void ipc_compound_pre_start(int msg_id);
+
+/**
+ * \brief Decrement the IPC compound message pre-start counter on return value status.
+ * @param[in] msg_id IPC message ID.
+ * @param[in] ret Return value of the IPC command.
+ * @param[in] delayed True if the reply is delayed.
+ */
+void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed);
+
+/**
+ * \brief Wait for the IPC compound message to complete.
+ * @return 0 on success, error code otherwise on timeout.
+ */
+int ipc_wait_for_compound_msg(void);
+#endif /* !CONFIG_SOF_USERSPACE_LL */
+
+/**
+ * \brief Complete the IPC compound message.
+ * @param[in] msg_id IPC message ID.
+ * @param[in] error Error code of the IPC command.
+ */
+void ipc_compound_msg_done(uint32_t msg_id, int error);
 
 /**
  * \brief create a IPC boot complete message.
@@ -240,7 +335,7 @@ int ipc_process_on_core(uint32_t core, bool blocking);
  * \brief reply to an IPC message.
  * @param[in] reply pointer to the reply structure.
  */
-void ipc_msg_reply(struct sof_ipc_reply *reply);
+#include <sof/ipc/ipc_reply.h>
 
 /**
  * \brief Call platform-specific IPC completion function.
@@ -249,5 +344,15 @@ void ipc_complete_cmd(struct ipc *ipc);
 
 /* GDB stub: should enter GDB after completing the IPC processing */
 extern bool ipc_enter_gdb;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct ipc4_message_request;
+/**
+ * @brief Forward an IPC4 command to the user-space thread.
+ * @param ipc4 Pointer to the IPC4 message request
+ * @return Result from user thread processing
+ */
+int ipc_user_forward_cmd(struct ipc4_message_request *ipc4);
+#endif
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

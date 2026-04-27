@@ -23,6 +23,7 @@
 #include <sof/lib/dma.h>
 #include <sof/list.h>
 #include <rtos/sof.h>
+#include <rtos/mutex.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/topology.h>
@@ -52,7 +53,7 @@ struct dai {
 	uint32_t dma_dev;
 	const struct device *dev;
 	const struct dai_data *dd;
-	struct k_spinlock lock;		/* protect properties */
+	struct sys_mutex lock;		/* protect properties */
 };
 
 union hdalink_cfg {
@@ -117,7 +118,7 @@ typedef int (*channel_copy_func)(const struct audio_stream *src, unsigned int sr
  */
 struct dai_data {
 	/* local DMA config */
-	struct dma_chan_data *chan;
+	int chan_index;
 	uint32_t stream_id;
 	struct dma_sg_config config;
 	struct dma_config *z_config;
@@ -168,6 +169,7 @@ struct dai_data {
 #endif
 	/* Copier gain params */
 	struct copier_gain_params *gain_data;
+	struct k_heap *heap;
 };
 
 /* these 3 are here to satisfy clk.c and ssp.h interconnection, will be removed leter */
@@ -306,7 +308,9 @@ void dai_release_llp_slot(struct dai_data *dd);
 /**
  * \brief Retrieve a pointer to the Zephyr device structure for a DAI of a given type and index.
  */
-const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
+__syscall const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
+
+const struct device *z_impl_dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
 
 /**
  * \brief Retrieve the list of all DAI devices.
@@ -315,5 +319,7 @@ const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
  */
 const struct device **dai_get_device_list(size_t *count);
 /** @}*/
+
+#include <zephyr/syscalls/dai-zephyr.h>
 
 #endif /* __SOF_LIB_DAI_ZEPHYR_H__ */

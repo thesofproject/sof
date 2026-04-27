@@ -10,13 +10,26 @@
 #include <sof/boot_test.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/uuid.h>
-#include <sof/schedule/schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/component_ext.h>
+#include <sof/audio/buffer.h>
+#include <sof/ipc/common.h>
+#include <sof/ipc/topology.h>
 #include <rtos/task.h>
 #include <rtos/userspace_helper.h>
 #include <ipc4/fw_reg.h>
+#include <ipc4/module.h>
+#include <ipc4/gateway.h>
+#include <ipc4/header.h>
+#include <ipc4/pipeline.h>
+#include <ipc4/base_fw_vendor.h>
+#include <module/ipc4/base-config.h>
+#include <rimage/sof/user/manifest.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/ztest.h>
@@ -24,6 +37,7 @@
 #include <zephyr/app_memory/app_memdomain.h>
 
 #include <stddef.h> /* offsetof() */
+#include <string.h>
 
 LOG_MODULE_DECLARE(sof_boot_test, LOG_LEVEL_DBG);
 
@@ -36,10 +50,15 @@ K_APPMEM_PARTITION_DEFINE(userspace_ll_part);
 /* Global variable for test runs counter, accessible from user-space */
 K_APP_BMEM(userspace_ll_part) static int test_runs;
 
+/* User-space thread for pipeline_two_components test */
+#define PPL_USER_STACKSIZE 4096
+
+static struct k_thread ppl_user_thread;
+static K_THREAD_STACK_DEFINE(ppl_user_stack, PPL_USER_STACKSIZE);
+
 static enum task_state task_callback(void *arg)
 {
 	LOG_INF("entry");
-
 	if (++test_runs > 3)
 		return SOF_TASK_STATE_COMPLETED;
 
@@ -52,15 +71,11 @@ static void ll_task_test(void)
 	int priority = 0;
 	int core = 0;
 	int ret;
-
 	/* Initialize global test runs counter */
 	test_runs = 0;
 
 	task = zephyr_ll_task_alloc();
 	zassert_not_null(task, "task allocation failed");
-
-	/* allow user space to report status via 'test_runs' */
-	k_mem_domain_add_partition(zephyr_ll_mem_domain(), &userspace_ll_part);
 
 	/* work in progress, see pipeline-schedule.c */
 	ret = schedule_task_init_ll(task, SOF_UUID(test_task_uuid), SOF_SCHEDULE_LL_TIMER,
@@ -77,7 +92,7 @@ static void ll_task_test(void)
 	LOG_INF("task scheduled and running");
 
 	/* Let the task run for a bit */
-	k_sleep(K_MSEC(10));
+	k_sleep(K_MSEC(100));
 
 	/* Cancel the task to stop any scheduled execution */
 	ret = schedule_task_cancel(task);
@@ -86,6 +101,9 @@ static void ll_task_test(void)
 	/* Free task resources */
 	ret = schedule_task_free(task);
 	zassert_equal(ret, 0);
+
+	k_mem_domain_remove_partition(zephyr_ll_mem_domain(), &userspace_ll_part);
+	zephyr_ll_task_free(task);
 
 	LOG_INF("test complete");
 }
@@ -129,16 +147,22 @@ ZTEST(userspace_ll, pipeline_check)
 	pipeline_check();
 }
 
-ZTEST_SUITE(userspace_ll, NULL, NULL, NULL, NULL, NULL);
+static struct dma_info dummy_dma_info = {
+	.dma_array = NULL,
+	.num_dmas = 0,
+};
 
-/**
- * SOF main has booted up and IPC handling is stopped.
- * Run test suites with ztest_run_all.
- */
-static int run_tests(void)
+static void *userspace_ll_setup(void)
 {
-	ztest_run_test_suite(userspace_ll, false, 1, 1, NULL);
-	return 0;
+	struct sof *sof = sof_get();
+
+	k_mem_domain_add_partition(zephyr_ll_mem_domain(), &userspace_ll_part);
+	sof->dma_info = &dummy_dma_info;
+	sof->platform_timer_domain = zephyr_domain_init(19200000);
+	scheduler_init_ll(sof->platform_timer_domain);
+	return NULL;
 }
 
-SYS_INIT(run_tests, APPLICATION, 99);
+ZTEST_SUITE(userspace_ll, NULL, userspace_ll_setup, NULL, NULL, NULL);
+
+

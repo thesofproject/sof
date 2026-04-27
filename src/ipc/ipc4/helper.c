@@ -63,7 +63,7 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx comp_tr;
 
 static const struct comp_driver *ipc4_get_drv(const void *uuid);
-static int ipc4_add_comp_dev(struct comp_dev *dev);
+int ipc4_add_comp_dev(struct comp_dev *dev);
 
 void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 			   uint32_t id)
@@ -184,29 +184,111 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 	} else {
 		dev = drv->ops.create(drv, &ipc_config, (const void *)data);
 	}
-	if (!dev)
-		return NULL;
-
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-
-#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
-	/* init global performance measurement */
-	dev->perf_data.perf_data_item = perf_data_getnext();
-	/* this can be null, just no performance measurements in this case */
-	if (dev->perf_data.perf_data_item) {
-		dev->perf_data.perf_data_item->item.resource_id = comp_id;
-		if (perf_meas_get_state() != IPC4_PERF_MEASUREMENTS_DISABLED)
-			comp_init_performance_data(dev);
-	}
-#endif
-
 	ipc4_add_comp_dev(dev);
 
 	comp_update_ibs_obs_cpc(dev);
 
 	return dev;
 }
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * comp_new_ipc4_user - Create component in user-space IPC thread context.
+ *
+ * Called from the user-space IPC thread. Receives a pre-resolved driver
+ * pointer from the kernel handler. Performs IPC4 message parsing, HOSTBOX
+ * data read, and calls drv->ops.create() in user-space context.
+ *
+ * @param ipc4 IPC4 message request (reconstructed from ipc_user pri/ext words)
+ * @param drv  Component driver resolved by kernel via ipc4_get_comp_drv()
+ * @return Created component device, or NULL on failure
+ */
+__cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
+					   const struct comp_driver *drv)
+{
+	struct ipc4_module_init_instance module_init;
+	struct comp_ipc_config ipc_config;
+	struct comp_dev *dev;
+	uint32_t comp_id;
+	char *data;
+	int ret;
+
+	assert_can_be_cold();
+
+	ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
+	if (ret < 0)
+		return NULL;
+
+	comp_id = IPC4_COMP_ID(module_init.primary.r.module_id,
+			       module_init.primary.r.instance_id);
+
+	if (ipc4_get_comp_dev(comp_id)) {
+		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
+		return NULL;
+	}
+
+	if (module_init.extension.r.core_id >= CONFIG_CORE_COUNT) {
+		tr_err(&ipc_tr, "ipc: comp->core = %u",
+		       (uint32_t)module_init.extension.r.core_id);
+		return NULL;
+	}
+
+	memset(&ipc_config, 0, sizeof(ipc_config));
+	ipc_config.id = comp_id;
+	ipc_config.pipeline_id = module_init.extension.r.ppl_instance_id;
+	ipc_config.core = module_init.extension.r.core_id;
+	ipc_config.ipc_config_size =
+		module_init.extension.r.param_block_size * sizeof(uint32_t);
+	ipc_config.ipc_extended_init = module_init.extension.r.extended_init;
+	if (ipc_config.ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
+		tr_err(&ipc_tr,
+		       "IPC payload size %u too big for the message window",
+		       ipc_config.ipc_config_size);
+		return NULL;
+	}
+#ifdef CONFIG_DCACHE_LINE_SIZE
+	if (!IS_ENABLED(CONFIG_LIBRARY))
+		sys_cache_data_invd_range(
+			(__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+			ALIGN_UP(ipc_config.ipc_config_size,
+				 CONFIG_DCACHE_LINE_SIZE));
+#endif
+	data = ipc4_get_comp_new_data();
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (module_init.extension.r.proc_domain)
+		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
+	else
+		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
+#else
+	if (module_init.extension.r.proc_domain) {
+		tr_err(&ipc_tr,
+		       "ipc: DP scheduling is disabled, cannot create comp 0x%x",
+		       comp_id);
+		return NULL;
+	}
+	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
+#endif
+
+	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
+		const struct ipc_config_process spec = {
+			.data = (const unsigned char *)data,
+			.size = ipc_config.ipc_config_size,
+		};
+
+		dev = drv->ops.create(drv, &ipc_config, (const void *)&spec);
+	} else {
+		dev = drv->ops.create(drv, &ipc_config, (const void *)data);
+	}
+	if (!dev)
+		return NULL;
+
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+	return dev;
+}
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /* Called from ipc4_set_pipeline_state(), so cannot be cold */
 struct ipc_comp_dev *ipc_get_comp_by_ppl_id(struct ipc *ipc, uint16_t type,
@@ -340,8 +422,11 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc *ipc = ipc_get();
+	struct k_heap *heap = sof_sys_user_heap_get();
 
 	assert_can_be_cold();
+
+	LOG_INF("pipe_desc %x, instance %u", pipe_desc, pipe_desc->primary.r.instance_id);
 
 	/* check whether pipeline id is already taken or in use */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipe_desc->primary.r.instance_id);
@@ -352,8 +437,9 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(NULL, pipe_desc->primary.r.instance_id,
+	pipe = pipeline_new(heap, pipe_desc->primary.r.instance_id,
 			    pipe_desc->primary.r.ppl_priority, 0, pparams);
+	LOG_INF("pipeline_new() -> %p", pipe);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
 		return IPC4_OUT_OF_MEMORY;
@@ -368,12 +454,13 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	pipe->core = pipe_desc->extension.r.core_id;
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-			   sizeof(struct ipc_comp_dev));
+	ipc_pipe = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				  sizeof(struct ipc_comp_dev), 0);
 	if (!ipc_pipe) {
 		pipeline_free(pipe);
 		return IPC4_OUT_OF_MEMORY;
 	}
+	memset(ipc_pipe, 0, sizeof(*ipc_pipe));
 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
@@ -383,6 +470,8 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+
+	LOG_INF("success");
 
 	return IPC4_SUCCESS;
 }
@@ -457,22 +546,51 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 
 		/* free sink buffer allocated by current component in bind function */
 		comp_dev_for_each_consumer_safe(icd->cd, buffer, safe) {
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+			struct k_heap *buf_heap = buffer->audio_buffer.heap;
+			struct comp_dev *orig_sink = comp_buffer_get_sink_component(buffer);
+			bool buf_is_dp = buf_heap &&
+				(icd->cd->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
+				 (orig_sink && orig_sink->ipc_config.proc_domain ==
+				  COMP_PROCESSING_DOMAIN_DP));
+#endif
+
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 			struct comp_dev *sink = comp_buffer_get_sink_component(buffer);
 
 			/* free the buffer only when the sink module has also been disconnected */
-			if (!sink)
+			if (!sink) {
 				buffer_free(buffer);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+				if (buf_is_dp)
+					dp_heap_put(buf_heap);
+#endif
+			}
 		}
 
 		/* free source buffer allocated by current component in bind function */
 		comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+			struct k_heap *buf_heap = buffer->audio_buffer.heap;
+			struct comp_dev *orig_source =
+				comp_buffer_get_source_component(buffer);
+			bool buf_is_dp = buf_heap &&
+				(icd->cd->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
+				 (orig_source && orig_source->ipc_config.proc_domain ==
+				  COMP_PROCESSING_DOMAIN_DP));
+#endif
+
 			pipeline_disconnect(icd->cd, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 			struct comp_dev *source = comp_buffer_get_source_component(buffer);
 
 			/* free the buffer only when the source module has also been disconnected */
-			if (!source)
+			if (!source) {
 				buffer_free(buffer);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+				if (buf_is_dp)
+					dp_heap_put(buf_heap);
+#endif
+			}
 		}
 
 		if (!cpu_is_me(icd->core))
@@ -521,7 +639,7 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 
 	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
-	rfree(ipc_pipe);
+	sof_heap_free(sof_sys_user_heap_get(), ipc_pipe);
 
 	return IPC4_SUCCESS;
 }
@@ -538,7 +656,10 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
-	ipc_buf.comp.core = cpu_get_id();
+
+	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || src->ipc_config.core == cpu_get_id());
+	ipc_buf.comp.core = src->ipc_config.core;
+
 	return buffer_new(heap, &ipc_buf, is_shared);
 }
 
@@ -559,6 +680,23 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
  * disable any interrupts.
  */
 
+#if CONFIG_SOF_USERSPACE_LL
+#define ll_block(cross_core_bind, flags) \
+	do { \
+		if (cross_core_bind) \
+			domain_block(sof_get()->platform_timer_domain); \
+		else \
+			zephyr_ll_lock_sched(cpu_get_id()); \
+	} while (0)
+
+#define ll_unblock(cross_core_bind, flags) \
+	do { \
+		if (cross_core_bind) \
+			domain_unblock(sof_get()->platform_timer_domain); \
+		else \
+			zephyr_ll_unlock_sched(cpu_get_id()); \
+	} while (0)
+#else
 #define ll_block(cross_core_bind, flags) \
 	do { \
 		if (cross_core_bind) \
@@ -574,6 +712,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 		else \
 			irq_local_enable(flags); \
 	} while (0)
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /* Calling both ll_block() and ll_wait_finished_on_core() makes sure LL will not start its
  * next cycle and its current cycle on specified core has finished.
@@ -605,8 +744,13 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 #else
 
+#if CONFIG_SOF_USERSPACE_LL
+#define ll_block(cross_core_bind, flags)	zephyr_ll_lock_sched(0)
+#define ll_unblock(cross_core_bind, flags)	zephyr_ll_unlock_sched(0)
+#else
 #define ll_block(cross_core_bind, flags)	irq_local_disable(flags)
 #define ll_unblock(cross_core_bind, flags)	irq_local_enable(flags)
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 #endif
 
@@ -663,6 +807,14 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 #else
 	dp_heap = NULL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (!dp_heap) {
+		/* use system user heap for non-DP module buffers */
+		dp_heap = sof_sys_user_heap_get();
+	}
+#endif
+
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
 	/* If both components are on same core -- process IPC on that core,
@@ -738,7 +890,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (dp_heap) {
+	if (dp) {
 		struct dp_heap_user *dp_user = container_of(dp_heap, struct dp_heap_user, heap);
 
 		dp_user->client_count++;
@@ -782,6 +934,8 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 						 buf_get_id(buffer));
 		if (!ring_buffer) {
 			buffer_free(buffer);
+			if (dp)
+				dp_heap_put(dp_heap);
 			return IPC4_OUT_OF_MEMORY;
 		}
 
@@ -797,6 +951,12 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 * could result in buffers being only half connected when a pipeline task gets executed.
 	 */
 	ll_block(cross_core_bind, flags);
+
+	/*
+	 * TODO: for multicore user support, comp_bufffer_connect()
+	 * needs to be converted to a syscall. for now, limit to core0
+	 */
+	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || source->ipc_config.core == cpu_get_id());
 
 	if (cross_core_bind) {
 #if CONFIG_CROSS_CORE_STREAM
@@ -869,6 +1029,10 @@ e_sink_connect:
 free:
 	ll_unblock(cross_core_bind, flags);
 	buffer_free(buffer);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (dp)
+		dp_heap_put(dp_heap);
+#endif
 	return IPC4_INVALID_RESOURCE_STATE;
 }
 
@@ -950,6 +1114,13 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 #endif
 	}
 
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	struct k_heap *buf_heap = buffer->audio_buffer.heap;
+	bool buf_is_dp = buf_heap &&
+		(src->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
+		 sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP);
+#endif
+
 	pipeline_disconnect(src, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 	pipeline_disconnect(sink, buffer, PPL_CONN_DIR_BUFFER_TO_COMP);
 	/* these might call comp_ipc4_bind_remote() if necessary */
@@ -965,6 +1136,10 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	ll_unblock(cross_core_unbind, flags);
 
 	buffer_free(buffer);
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	if (buf_is_dp)
+		dp_heap_put(buf_heap);
+#endif
 
 	if (ret || ret1)
 		return IPC4_INVALID_RESOURCE_ID;
@@ -1034,7 +1209,7 @@ __cold int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdm
 			if (icd->cd != dev)
 				continue;
 			list_item_del(&icd->list);
-			rfree(icd);
+			sof_heap_free(sof_sys_user_heap_get(), icd);
 			break;
 		}
 		comp_free(dev);
@@ -1132,11 +1307,19 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 	struct list_item *clist;
 	const struct comp_driver *drv = NULL;
 	struct comp_driver_info *info;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	uint32_t flags;
+#endif
 
 	assert_can_be_cold();
 
+	/* Driver list is populated at boot before IPC processing starts.
+	 * In user-space builds irq_local_disable() is privileged, but the
+	 * list is immutable by this point so no lock is needed.
+	 */
+#ifndef CONFIG_SOF_USERSPACE_LL
 	irq_local_disable(flags);
+#endif
 
 	/* search driver list with UUID */
 	list_for_item(clist, &drivers->list) {
@@ -1152,7 +1335,9 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 		}
 	}
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	irq_local_enable(flags);
+#endif
 	return drv;
 }
 
@@ -1254,12 +1439,26 @@ struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 }
 EXPORT_SYMBOL(ipc4_get_comp_dev);
 
-__cold static int ipc4_add_comp_dev(struct comp_dev *dev)
+__cold int ipc4_add_comp_dev(struct comp_dev *dev)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
 
 	assert_can_be_cold();
+
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+
+#ifdef CONFIG_SOF_TELEMETRY_PERFORMANCE_MEASUREMENTS
+	/* init global performance measurement */
+	dev->perf_data.perf_data_item = perf_data_getnext();
+	/* this can be null, just no performance measurements in this case */
+	if (dev->perf_data.perf_data_item) {
+		dev->perf_data.perf_data_item->item.resource_id = dev->ipc_config.id;
+		if (perf_meas_get_state() != IPC4_PERF_MEASUREMENTS_DISABLED)
+			comp_init_performance_data(dev);
+	}
+#endif
 
 	/* check id for duplicates */
 	icd = ipc_get_comp_by_id(ipc, dev->ipc_config.id);
@@ -1269,13 +1468,14 @@ __cold static int ipc4_add_comp_dev(struct comp_dev *dev)
 	}
 
 	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-		      sizeof(struct ipc_comp_dev));
+	icd = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+			     sizeof(struct ipc_comp_dev), 0);
 	if (!icd) {
 		tr_err(&ipc_tr, "alloc failed");
-		rfree(icd);
+		sof_heap_free(sof_sys_user_heap_get(), icd);
 		return IPC4_OUT_OF_MEMORY;
 	}
+	memset(icd, 0, sizeof(*icd));
 
 	icd->cd = dev;
 	icd->type = COMP_TYPE_COMPONENT;

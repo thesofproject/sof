@@ -106,6 +106,12 @@ if(zephyr) ###  Zephyr ###
     ${base_files}
   )
 
+  if(CONFIG_ZTEST)
+    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/numbers.c
+      PROPERTIES COMPILE_DEFINITIONS "CONFIG_NUMBERS_VECTOR_FIND=1;CONFIG_NUMBERS_NORM=1"
+    )
+  endif()
+
 else() ### library, e.g. testbench or plugin ###
 
   add_local_sources(sof ${base_files})

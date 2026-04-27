@@ -37,6 +37,8 @@
 #include <sof/audio/mic_privacy_manager.h>
 #endif
 
+extern struct tr_ctx basefw_comp_tr;
+
 struct ipc4_modules_info {
 	uint32_t modules_count;
 	struct sof_man_module modules[0];

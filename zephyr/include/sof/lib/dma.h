@@ -34,6 +34,7 @@
 
 struct comp_buffer;
 struct comp_dev;
+struct k_heap;
 
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  SOF DMA Drivers API specification (deprecated interface, to be
@@ -291,13 +292,14 @@ static inline void dma_sg_init(struct dma_sg_elem_array *ea)
 	ea->elems = NULL;
 }
 
-int dma_sg_alloc(struct dma_sg_elem_array *ea,
+int dma_sg_alloc(struct k_heap *heap,
+		 struct dma_sg_elem_array *ea,
 		 uint32_t flags,
 		 uint32_t direction,
 		 uint32_t buffer_count, uint32_t buffer_bytes,
 		 uintptr_t dma_buffer_addr, uintptr_t external_addr);
 
-void dma_sg_free(struct dma_sg_elem_array *ea);
+void dma_sg_free(struct k_heap *heap, struct dma_sg_elem_array *ea);
 
 /**
  * \brief Get the total size of SG buffer

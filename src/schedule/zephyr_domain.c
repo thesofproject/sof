@@ -126,7 +126,8 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 		}
 #endif
 
-		dt->handler(dt->arg);
+		if (dt->handler)
+			dt->handler(dt->arg);
 
 #ifdef CONFIG_SCHEDULE_LL_STATS_LOG
 		cycles1 = k_cycle_get_32();
@@ -287,61 +288,65 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 
 #else /* CONFIG_SOF_USERSPACE_LL */
 
-/* User-space implementation for register/unregister */
-
-static int zephyr_domain_register_user(struct ll_schedule_domain *domain,
-				       struct task *task,
-				       void (*handler)(void *arg), void *arg)
+/*
+ * Privileged thread initialization for userspace LL scheduling.
+ * Creates the scheduling thread, sets up timer, grants access to kernel
+ * objects. Must be called from kernel context before any user-space
+ * domain_register() calls.
+ */
+static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
+				     struct task *task)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
-	int core = cpu_get_id();
-	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
-	char thread_name[] = "ll_thread0";
+	struct zephyr_domain_thread *dt;
+	char thread_name[] = "userll_thread0";
 	k_tid_t thread;
+	int core;
 
-	tr_dbg(&ll_tr, "entry");
+	tr_dbg(&ll_tr, "thread_init entry");
 
-	/* domain work only needs registered once on each core */
-	if (dt->handler)
+	if (task->core < 0 || task->core >= CONFIG_CORE_COUNT)
+		return -EINVAL;
+
+	core = task->core;
+	dt = zephyr_domain->domain_thread + core;
+
+	/* thread only needs to be created once per core */
+	if (dt->ll_thread)
 		return 0;
 
-	__ASSERT_NO_MSG(task->core == core);
-
-	dt->handler = handler;
-	dt->arg = arg;
+	dt->handler = NULL;
 
 	/* 10 is rather random, we better not accumulate 10 missed timer interrupts */
 	k_sem_init(dt->sem, 0, 10);
 
 	thread_name[sizeof(thread_name) - 2] = '0' + core;
 
+	/* Allocate thread structure dynamically */
+	dt->ll_thread = k_object_alloc(K_OBJ_THREAD);
 	if (!dt->ll_thread) {
-		/* Allocate thread structure dynamically */
-		dt->ll_thread = k_object_alloc(K_OBJ_THREAD);
-		if (!dt->ll_thread) {
-			tr_err(&ll_tr, "Failed to allocate thread object for core %d", core);
-			dt->handler = NULL;
-			dt->arg = NULL;
-			return -ENOMEM;
-		}
-
-		thread = k_thread_create(dt->ll_thread, ll_sched_stack[core], ZEPHYR_LL_STACK_SIZE,
-					 zephyr_domain_thread_fn, zephyr_domain,
-					 INT_TO_POINTER(core), NULL, CONFIG_LL_THREAD_PRIORITY,
-					 K_USER, K_FOREVER);
-
-		k_thread_cpu_mask_clear(thread);
-		k_thread_cpu_mask_enable(thread, core);
-		k_thread_name_set(thread, thread_name);
-
-		k_mem_domain_add_thread(zephyr_ll_mem_domain(), thread);
-		k_thread_access_grant(thread, dt->sem, domain->lock, zephyr_domain->timer);
-		user_grant_dai_access_all(thread);
-		user_grant_dma_access_all(thread);
-		tr_dbg(&ll_tr, "granted LL access to thread %p (core %d)", thread, core);
-
-		k_thread_start(thread);
+		tr_err(&ll_tr, "Failed to allocate thread object for core %d", core);
+		dt->handler = NULL;
+		dt->arg = NULL;
+		return -ENOMEM;
 	}
+
+	thread = k_thread_create(dt->ll_thread, ll_sched_stack[core], ZEPHYR_LL_STACK_SIZE,
+				 zephyr_domain_thread_fn, zephyr_domain,
+				 INT_TO_POINTER(core), NULL, CONFIG_LL_THREAD_PRIORITY,
+				 K_USER, K_FOREVER);
+
+	k_thread_cpu_mask_clear(thread);
+	k_thread_cpu_mask_enable(thread, core);
+	k_thread_name_set(thread, thread_name);
+
+	k_mem_domain_add_thread(zephyr_ll_mem_domain(), thread);
+	k_thread_access_grant(thread, dt->sem, domain->lock, zephyr_domain->timer);
+	user_grant_dai_access_all(thread);
+	user_grant_dma_access_all(thread);
+	tr_dbg(&ll_tr, "granted LL access to thread %p (core %d)", thread, core);
+
+	k_thread_start(thread);
 
 	k_mutex_lock(domain->lock, K_FOREVER);
 	if (!k_timer_user_data_get(zephyr_domain->timer)) {
@@ -364,6 +369,43 @@ static int zephyr_domain_register_user(struct ll_schedule_domain *domain,
 	return 0;
 }
 
+/*
+ * User-space register: bookkeeping only. The privileged thread setup has
+ * already been done by domain_thread_init() called from kernel context.
+ */
+static int zephyr_domain_register_user(struct ll_schedule_domain *domain,
+				       struct task *task,
+				       void (*handler)(void *arg), void *arg)
+{
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+	struct zephyr_domain_thread *dt;
+	int core;
+
+	tr_dbg(&ll_tr, "register_user entry");
+
+	if (task->core < 0 || task->core >= CONFIG_CORE_COUNT)
+		return -EINVAL;
+
+	core = task->core;
+	dt = zephyr_domain->domain_thread + core;
+
+	if (!dt->ll_thread) {
+		tr_err(&ll_tr, "domain_thread_init() not called for core %d", core);
+		return -EINVAL;
+	}
+
+	__ASSERT_NO_MSG(!dt->handler || dt->handler == handler);
+	if (dt->handler)
+		return 0;
+
+	dt->handler = handler;
+	dt->arg = arg;
+
+	tr_info(&ll_tr, "task registered on core %d", core);
+
+	return 0;
+}
+
 static int zephyr_domain_unregister_user(struct ll_schedule_domain *domain,
 					 struct task *task, uint32_t num_tasks)
 {
@@ -377,14 +419,6 @@ static int zephyr_domain_unregister_user(struct ll_schedule_domain *domain,
 		return 0;
 
 	k_mutex_lock(domain->lock, K_FOREVER);
-
-	if (!atomic_read(&domain->total_num_tasks)) {
-		/* Disable the watchdog */
-		watchdog_disable(core);
-
-		k_timer_stop(zephyr_domain->timer);
-		k_timer_user_data_set(zephyr_domain->timer, NULL);
-	}
 
 	zephyr_domain->domain_thread[core].handler = NULL;
 
@@ -404,13 +438,51 @@ static int zephyr_domain_unregister_user(struct ll_schedule_domain *domain,
 	return 0;
 }
 
-struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain)
+/*
+ * Free resources acquired by zephyr_domain_thread_init().
+ * Stops the timer, aborts the scheduling thread and frees the thread object.
+ * Must be called from kernel context.
+ */
+static void zephyr_domain_thread_free(struct ll_schedule_domain *domain,
+				      uint32_t num_tasks)
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	int core = cpu_get_id();
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
-	tr_dbg(&ll_tr, "entry");
+	tr_dbg(&ll_tr, "thread_free entry, core %d, num_tasks %u", core, num_tasks);
+
+	/* Still tasks on other cores, only clean up this core's thread */
+	k_mutex_lock(domain->lock, K_FOREVER);
+
+	if (!num_tasks && !atomic_read(&domain->total_num_tasks)) {
+		/* Last task globally: stop the timer and watchdog */
+		watchdog_disable(core);
+
+		k_timer_stop(zephyr_domain->timer);
+		k_timer_user_data_set(zephyr_domain->timer, NULL);
+	}
+
+	dt->handler = NULL;
+	dt->arg = NULL;
+
+	k_mutex_unlock(domain->lock);
+
+	if (dt->ll_thread) {
+		k_thread_abort(dt->ll_thread);
+		k_object_free(dt->ll_thread);
+		dt->ll_thread = NULL;
+	}
+
+	tr_info(&ll_tr, "thread_free done, core %d", core);
+}
+
+struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain, int core)
+{
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+
+	tr_dbg(&ll_tr, "entry core %d", core);
 
 	return dt->ll_thread;
 }
@@ -446,6 +518,8 @@ APP_TASK_DATA static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 #ifdef CONFIG_SOF_USERSPACE_LL
 	.domain_register	= zephyr_domain_register_user,
 	.domain_unregister	= zephyr_domain_unregister_user,
+	.domain_thread_init	= zephyr_domain_thread_init,
+	.domain_thread_free	= zephyr_domain_thread_free,
 #else
 	.domain_register	= zephyr_domain_register,
 	.domain_unregister	= zephyr_domain_unregister,

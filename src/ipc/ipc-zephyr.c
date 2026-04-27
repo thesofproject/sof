@@ -97,7 +97,7 @@ static void sof_ipc_receive_cb(const void *data, size_t len, void *priv)
 	k_spin_unlock(&ipc->lock, key);
 }
 
-#ifdef CONFIG_PM_DEVICE
+#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_PM)
 /**
  * @brief IPC device suspend handler callback function.
  * Checks whether device power state should be actually changed.
@@ -250,7 +250,9 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 		 * @note no return - memory will be
 		 * powered off and IPC sent.
 		 */
+#if !defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		platform_pm_runtime_power_off();
+#endif
 #endif /* CONFIG_PM  */
 	}
 

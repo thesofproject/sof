@@ -526,6 +526,7 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 	if (in_fmt->s_type == IPC4_TYPE_MSB_INTEGER && in_valid == SOF_IPC_FRAME_S24_4LE) {
 		switch (type) {
 		case ipc4_gtw_host:
+		case ipc4_gtw_qemu:
 			if (dir == ipc4_playback)
 				in_valid = SOF_IPC_FRAME_S24_4LE_MSB;
 			break;
@@ -544,6 +545,7 @@ pcm_converter_func get_converter_func(const struct ipc4_audio_format *in_fmt,
 	if (out_fmt->s_type == IPC4_TYPE_MSB_INTEGER && out_valid == SOF_IPC_FRAME_S24_4LE) {
 		switch (type) {
 		case ipc4_gtw_host:
+		case ipc4_gtw_qemu:
 			if (dir == ipc4_capture)
 				out_valid = SOF_IPC_FRAME_S24_4LE_MSB;
 			break;
