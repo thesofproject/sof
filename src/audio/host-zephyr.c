@@ -95,7 +95,7 @@ static int host_dma_set_config_and_copy(struct host_data *hd, struct comp_dev *d
 
 	ret = sof_dma_reload(hd->dma, hd->chan_index, bytes);
 	if (ret < 0) {
-		comp_err(dev, "dma_copy() failed, ret = %d",
+		comp_err(dev, "dma_reload() failed, ret = %d",
 			 ret);
 		return ret;
 	}
@@ -225,7 +225,7 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 	/* reconfigure transfer */
 	ret = sof_dma_config(hd->dma, hd->chan_index, &hd->z_config);
 	if (ret < 0) {
-		comp_err(dev, "dma_config() failed, ret = %u", ret);
+		comp_err(dev, "dma_config() failed, ret = %d", ret);
 		return ret;
 	}
 
@@ -233,7 +233,7 @@ static int host_copy_one_shot(struct host_data *hd, struct comp_dev *dev, copy_c
 
 	ret = sof_dma_reload(hd->dma, hd->chan_index, copy_bytes);
 	if (ret < 0)
-		comp_err(dev, "dma_copy() failed, ret = %u", ret);
+		comp_err(dev, "dma_reload() failed, ret = %d", ret);
 
 	return ret;
 }
@@ -428,7 +428,7 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	/* get data sizes from DMA */
 	ret = host_get_status(dev, hd, &dma_stat);
 	if (ret < 0) {
-		comp_err(dev, "dma_get_status() failed, ret = %u",
+		comp_err(dev, "dma_get_status() failed, ret = %d",
 			 ret);
 		/* return 0 copy_bytes in case of error to skip DMA copy */
 		return 0;
@@ -559,7 +559,7 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 				ret = sof_dma_reload(hd->dma, hd->chan_index,
 						     hd->partial_size);
 				if (ret < 0)
-					comp_err(dev, "dma_reload() failed, ret = %u", ret);
+					comp_err(dev, "dma_reload() failed, ret = %d", ret);
 
 				hd->partial_size = 0;
 			}
@@ -586,7 +586,7 @@ static int host_copy_normal(struct host_data *hd, struct comp_dev *dev, copy_cal
 			ret = sof_dma_reload(hd->dma, hd->chan_index,
 					     hd->partial_size);
 			if (ret < 0)
-				comp_err(dev, "dma_reload() failed, ret = %u", ret);
+				comp_err(dev, "dma_reload() failed, ret = %d", ret);
 
 			hd->partial_size = 0;
 		}
@@ -661,7 +661,7 @@ int host_common_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 		hd->partial_size = 0;
 		ret = sof_dma_start(hd->dma, hd->chan_index);
 		if (ret < 0)
-			comp_err(dev, "dma_start() failed, ret = %u",
+			comp_err(dev, "dma_start() failed, ret = %d",
 				 ret);
 		break;
 	case COMP_TRIGGER_STOP:
