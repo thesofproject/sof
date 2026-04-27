@@ -784,6 +784,13 @@ __cold void host_common_free(struct host_data *hd)
 	}
 #endif
 
+	/* release DMA channel if not already done by reset */
+	if (hd->chan_index != -EINVAL) {
+		sof_dma_stop(hd->dma, hd->chan_index);
+		sof_dma_release_channel(hd->dma, hd->chan_index);
+		hd->chan_index = -EINVAL;
+	}
+
 	sof_dma_put(hd->dma);
 
 	ipc_msg_free(hd->msg);
