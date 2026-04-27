@@ -27,7 +27,6 @@
 #include "testbench/file_ipc4.h"
 #include "../../src/audio/copier/copier.h"
 
-
 SOF_DEFINE_REG_UUID(file);
 DECLARE_TR_CTX(file_tr, SOF_UUID(file_uuid), LOG_LEVEL_INFO);
 LOG_MODULE_REGISTER(file, CONFIG_SOF_LOG_LEVEL);
@@ -669,7 +668,8 @@ static int file_init(struct processing_module *mod)
 		}
 
 		/* Change to DAI type is needed to avoid uninitialized hw params in
-		 * pipeline_params, A file host can be left as SOF_COMP_MODULE_ADAPTER
+		 * pipeline_params. For capture the file write is the host so set
+		 * SOF_COMP_HOST to skip sink check in module_adapter_prepare().
 		 */
 		if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 			dev->ipc_config.type = SOF_COMP_DAI;
@@ -678,6 +678,8 @@ static int file_init(struct processing_module *mod)
 				fprintf(stderr, "error: failed set dai data.\n");
 				goto error;
 			}
+		} else {
+			dev->ipc_config.type = SOF_COMP_HOST;
 		}
 
 		break;
