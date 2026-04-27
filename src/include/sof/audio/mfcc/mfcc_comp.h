@@ -156,12 +156,6 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int rate, int chan
 
 void mfcc_free_buffers(struct processing_module *mod);
 
-void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, int frames);
-
-void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
-			  struct mfcc_pre_emph *emph, int frames, int source_channel);
-
 void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 			    int prev_data_length);
 
@@ -175,7 +169,28 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift);
 
 #if CONFIG_FORMAT_S16LE
 
+void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel);
+
 void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, int frames);
+#endif
+
+#if CONFIG_FORMAT_S24LE
+
+void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel);
+
+void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, int frames);
+#endif
+
+#if CONFIG_FORMAT_S32LE
+
+void mfcc_source_copy_s32(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel);
+
+void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 		      struct output_stream_buffer *bsink, int frames);
 #endif
 

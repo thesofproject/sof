@@ -214,8 +214,112 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
+static int32_t *mfcc_sink_copy_zero_s32(const struct audio_stream *sink, int32_t *w_ptr,
+					int samples)
+{
+	int copied;
+	int nmax;
+	int n;
+
+	for (copied = 0; copied < samples; copied += n) {
+		nmax = samples - copied;
+		n = audio_stream_samples_without_wrap_s32(sink, w_ptr);
+		n = MIN(n, nmax);
+		memset(w_ptr, 0, n * sizeof(int32_t));
+		w_ptr = audio_stream_wrap(sink, w_ptr + n);
+	}
+
+	return w_ptr;
+}
+
+static int32_t *mfcc_sink_copy_data_s32(const struct audio_stream *sink, int32_t *w_ptr,
+					int samples, int32_t *r_ptr)
+{
+	int copied;
+	int nmax;
+	int n;
+
+	for (copied = 0; copied < samples; copied += n) {
+		nmax = samples - copied;
+		n = audio_stream_samples_without_wrap_s32(sink, w_ptr);
+		n = MIN(n, nmax);
+		/* Not using memcpy_s() due to speed need */
+		memcpy(w_ptr, r_ptr, n * sizeof(int32_t));
+		w_ptr = audio_stream_wrap(sink, w_ptr + n);
+		r_ptr += n;
+	}
+
+	return w_ptr;
+}
+#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
+
 #if CONFIG_FORMAT_S24LE
+void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, int frames)
+{
+	struct audio_stream *sink = bsink->data;
+	struct mfcc_comp_data *cd = module_get_private_data(mod);
+	struct mfcc_state *state = &cd->state;
+	struct mfcc_buffer *buf = &cd->state.buf;
+	uint32_t magic = MFCC_MAGIC;
+	int32_t *w_ptr = audio_stream_get_wptr(sink);
+	const int num_magic = 1; /* one int32_t word for magic */
+	int num_ceps;
+	int ceps_s32;
+	int zero_samples;
+
+	/* Get samples from source buffer */
+	mfcc_source_copy_s24(bsource, buf, &state->emph, frames, state->source_channel);
+
+	/* Run STFT and processing after FFT */
+	num_ceps = mfcc_stft_process(mod->dev, state);
+
+	/* Copy data to sink. Pack int16_t cepstral data into int32_t samples. */
+	zero_samples = frames * audio_stream_get_channels(sink);
+	if (num_ceps > 0) {
+		ceps_s32 = (num_ceps + 1) / 2;
+		zero_samples -= ceps_s32 + num_magic;
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_magic, (int32_t *)&magic);
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, ceps_s32,
+						(int32_t *)state->cepstral_coef->data);
+	}
+
+	w_ptr = mfcc_sink_copy_zero_s32(sink, w_ptr, zero_samples);
+}
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
+void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, int frames)
+{
+	struct audio_stream *sink = bsink->data;
+	struct mfcc_comp_data *cd = module_get_private_data(mod);
+	struct mfcc_state *state = &cd->state;
+	struct mfcc_buffer *buf = &cd->state.buf;
+	uint32_t magic = MFCC_MAGIC;
+	int32_t *w_ptr = audio_stream_get_wptr(sink);
+	const int num_magic = 1; /* one int32_t word for magic */
+	int num_ceps;
+	int ceps_s32;
+	int zero_samples;
+
+	/* Get samples from source buffer */
+	mfcc_source_copy_s32(bsource, buf, &state->emph, frames, state->source_channel);
+
+	/* Run STFT and processing after FFT */
+	num_ceps = mfcc_stft_process(mod->dev, state);
+
+	/* Copy data to sink. Pack int16_t cepstral data into int32_t samples. */
+	zero_samples = frames * audio_stream_get_channels(sink);
+	if (num_ceps > 0) {
+		ceps_s32 = (num_ceps + 1) / 2;
+		zero_samples -= ceps_s32 + num_magic;
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_magic, (int32_t *)&magic);
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, ceps_s32,
+						(int32_t *)state->cepstral_coef->data);
+	}
+
+	w_ptr = mfcc_sink_copy_zero_s32(sink, w_ptr, zero_samples);
+}
 #endif /* CONFIG_FORMAT_S32LE */

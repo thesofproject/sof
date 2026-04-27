@@ -232,4 +232,124 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 #endif
 }
 
+#if CONFIG_FORMAT_S24LE
+void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	struct audio_stream *source = bsource->data;
+	int copied;
+	int nmax;
+	int n;
+	int i;
+	int num_channels = audio_stream_get_channels(source);
+	ae_int32 *in;
+	ae_int32 *x = (ae_int32 *)audio_stream_get_rptr(source);
+	ae_int16 *out = (ae_int16 *)buf->w_ptr;
+	ae_int32x2 sample32;
+	ae_int16x4 sample;
+	ae_int32x2 temp;
+	ae_int16x4 coef = emph->coef;
+	ae_int16x4 delay;
+	const int in_inc = sizeof(ae_int32) * num_channels;
+
+	for (copied = 0; copied < frames; copied += n) {
+		nmax = frames - copied;
+		n = audio_stream_frames_without_wrap(source, x);
+		n = MIN(n, nmax);
+		nmax = mfcc_buffer_samples_without_wrap(buf, (int16_t *)out);
+		n = MIN(n, nmax);
+		in = x + source_channel;
+		if (emph->enable) {
+			delay = emph->delay;
+			for (i = 0; i < n; i++) {
+				AE_L32_XP(sample32, in, in_inc);
+				/* S24_4LE: shift right by 8 to get 16-bit, then convert */
+				sample32 = AE_SRAI32(sample32, 8);
+				sample = AE_SAT16X4(sample32, sample32);
+				/* Q1.15 -> Q1.31 */
+				temp = AE_CVT32X2F16_10(sample);
+				AE_MULAF16SS_00(temp, delay, coef);
+				delay = sample;
+				sample = AE_ROUND16X4F32SSYM(temp, temp);
+				AE_S16_0_IP(sample, out, 2);
+			}
+			emph->delay = delay;
+		} else {
+			for (i = 0; i < n; i++) {
+				AE_L32_XP(sample32, in, in_inc);
+				sample32 = AE_SRAI32(sample32, 8);
+				sample = AE_SAT16X4(sample32, sample32);
+				AE_S16_0_IP(sample, out, 2);
+			}
+		}
+
+		x = audio_stream_wrap(source, x + n * num_channels);
+		out = (ae_int16 *)mfcc_buffer_wrap(buf, (int16_t *)out);
+	}
+	buf->s_avail += copied;
+	buf->s_free -= copied;
+	buf->w_ptr = (int16_t *)out;
+}
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+void mfcc_source_copy_s32(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	struct audio_stream *source = bsource->data;
+	int copied;
+	int nmax;
+	int n;
+	int i;
+	int num_channels = audio_stream_get_channels(source);
+	ae_int32 *in;
+	ae_int32 *x = (ae_int32 *)audio_stream_get_rptr(source);
+	ae_int16 *out = (ae_int16 *)buf->w_ptr;
+	ae_int32x2 sample32;
+	ae_int16x4 sample;
+	ae_int32x2 temp;
+	ae_int16x4 coef = emph->coef;
+	ae_int16x4 delay;
+	const int in_inc = sizeof(ae_int32) * num_channels;
+
+	for (copied = 0; copied < frames; copied += n) {
+		nmax = frames - copied;
+		n = audio_stream_frames_without_wrap(source, x);
+		n = MIN(n, nmax);
+		nmax = mfcc_buffer_samples_without_wrap(buf, (int16_t *)out);
+		n = MIN(n, nmax);
+		in = x + source_channel;
+		if (emph->enable) {
+			delay = emph->delay;
+			for (i = 0; i < n; i++) {
+				AE_L32_XP(sample32, in, in_inc);
+				/* S32: shift right by 16 to get 16-bit */
+				sample32 = AE_SRAI32(sample32, 16);
+				sample = AE_SAT16X4(sample32, sample32);
+				/* Q1.15 -> Q1.31 */
+				temp = AE_CVT32X2F16_10(sample);
+				AE_MULAF16SS_00(temp, delay, coef);
+				delay = sample;
+				sample = AE_ROUND16X4F32SSYM(temp, temp);
+				AE_S16_0_IP(sample, out, 2);
+			}
+			emph->delay = delay;
+		} else {
+			for (i = 0; i < n; i++) {
+				AE_L32_XP(sample32, in, in_inc);
+				sample32 = AE_SRAI32(sample32, 16);
+				sample = AE_SAT16X4(sample32, sample32);
+				AE_S16_0_IP(sample, out, 2);
+			}
+		}
+
+		x = audio_stream_wrap(source, x + n * num_channels);
+		out = (ae_int16 *)mfcc_buffer_wrap(buf, (int16_t *)out);
+	}
+	buf->s_avail += copied;
+	buf->s_free -= copied;
+	buf->w_ptr = (int16_t *)out;
+}
+#endif /* CONFIG_FORMAT_S32LE */
+
 #endif /* MFCC_HIFI3 */

@@ -190,4 +190,112 @@ void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffe
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_S24LE
+
+void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	struct audio_stream *source = bsource->data;
+	int32_t tmp, s;
+	int32_t *x0;
+	int32_t *x = audio_stream_get_rptr(source);
+	int16_t *w = buf->w_ptr;
+	int copied;
+	int nmax;
+	int n1;
+	int n2;
+	int n;
+	int i;
+	int num_channels = audio_stream_get_channels(source);
+
+	/* Copy from source to pre-buffer for FFT.
+	 * The pre-emphasis filter is done in this step.
+	 * S24_4LE data is in 32-bit container, shift left by 8 to Q1.31,
+	 * then convert to Q1.15 with rounding.
+	 */
+	for (copied = 0; copied < frames; copied += n) {
+		nmax = frames - copied;
+		n1 = audio_stream_frames_without_wrap(source, x);
+		n2 = mfcc_buffer_samples_without_wrap(buf, w);
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		x0 = x + source_channel;
+		for (i = 0; i < n; i++) {
+			if (emph->enable) {
+				/* Convert to Q1.31, ignore highest byte */
+				s = (int32_t)((uint32_t)*x0 << 8);
+				/* Q1.15 x Q1.15 -> Q2.30 */
+				tmp = (int32_t)emph->delay * emph->coef + Q_SHIFT(s, 31, 30);
+				*w = sat_int16(Q_SHIFT_RND(tmp, 30, 15));
+				emph->delay = sat_int16(Q_SHIFT_RND(s, 31, 15));
+			} else {
+				/* Convert to Q1.31, ignore highest byte */
+				s = (int32_t)((uint32_t)*x0 << 8);
+				*w = sat_int16(Q_SHIFT_RND(s, 31, 15));
+			}
+			x0 += num_channels;
+			w++;
+		}
+
+		x = audio_stream_wrap(source, x + n * audio_stream_get_channels(source));
+		w = mfcc_buffer_wrap(buf, w);
+	}
+	buf->s_avail += copied;
+	buf->s_free -= copied;
+	buf->w_ptr = w;
+}
+
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+
+void mfcc_source_copy_s32(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	struct audio_stream *source = bsource->data;
+	int32_t s;
+	int32_t *x0;
+	int32_t *x = audio_stream_get_rptr(source);
+	int16_t *w = buf->w_ptr;
+	int copied;
+	int nmax;
+	int n1;
+	int n2;
+	int n;
+	int i;
+	int num_channels = audio_stream_get_channels(source);
+
+	/* Copy from source to pre-buffer for FFT.
+	 * The pre-emphasis filter is done in this step.
+	 * S32 data is in 32-bit container, shift right by 16 to get 16-bit.
+	 */
+	for (copied = 0; copied < frames; copied += n) {
+		nmax = frames - copied;
+		n1 = audio_stream_frames_without_wrap(source, x);
+		n2 = mfcc_buffer_samples_without_wrap(buf, w);
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		x0 = x + source_channel;
+		for (i = 0; i < n; i++) {
+			if (emph->enable) {
+				/* Q1.15 x Q1.15 -> Q2.30 */
+				s = (int32_t)emph->delay * emph->coef + Q_SHIFT(*x0, 31, 30);
+				*w = sat_int16(Q_SHIFT_RND(s, 30, 15));
+				emph->delay = sat_int16(Q_SHIFT_RND(*x0, 31, 15));
+			} else {
+				*w = sat_int16(Q_SHIFT_RND(*x0, 31, 15));
+			}
+			x0 += num_channels;
+			w++;
+		}
+
+		x = audio_stream_wrap(source, x + n * audio_stream_get_channels(source));
+		w = mfcc_buffer_wrap(buf, w);
+	}
+	buf->s_avail += copied;
+	buf->s_free -= copied;
+	buf->w_ptr = w;
+}
+#endif /* CONFIG_FORMAT_S32LE */
+
 #endif /* MFCC_GENERIC */
