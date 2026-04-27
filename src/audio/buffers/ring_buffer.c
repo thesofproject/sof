@@ -10,6 +10,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/ring_buffer.h>
 #include <sof/audio/component.h>
+#include <sof/schedule/dp_schedule.h>
 
 #include <rtos/alloc.h>
 #include <ipc/topology.h>
@@ -85,7 +86,6 @@ static inline void ring_buffer_writeback_shared(struct ring_buffer *ring_buffer,
 	dcache_writeback_region(ptr, size);
 }
 
-
 /**
  * @brief remove the queue from the list, free memory
  */
@@ -94,11 +94,20 @@ static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
 	if (!audio_buffer)
 		return;
 
-	struct ring_buffer *ring_buffer = container_of(audio_buffer,
-						       struct ring_buffer, audio_buffer);
+	struct ring_buffer *ring_buffer =
+	    container_of(audio_buffer, struct ring_buffer, audio_buffer);
+	struct k_heap *heap = audio_buffer->heap;
 
-	sof_heap_free(audio_buffer->heap, (__sparse_force void *)ring_buffer->_data_buffer);
-	sof_heap_free(audio_buffer->heap, ring_buffer);
+	sof_heap_free(heap, (__sparse_force void *)ring_buffer->_data_buffer);
+	sof_heap_free(heap, ring_buffer);
+
+	/* decrement DP heap client_count, matching the increment in ipc_comp_connect */
+	if (heap) {
+		struct dp_heap_user *dp_user = container_of(heap, struct dp_heap_user, heap);
+
+		if (!--dp_user->client_count)
+			rfree(dp_user);
+	}
 }
 
 static void ring_buffer_reset(struct sof_audio_buffer *audio_buffer)

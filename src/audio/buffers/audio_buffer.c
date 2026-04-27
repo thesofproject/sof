@@ -24,7 +24,10 @@
 int audio_buffer_attach_secondary_buffer(struct sof_audio_buffer *buffer, bool at_input,
 					 struct sof_audio_buffer *secondary_buffer)
 {
-	if (buffer->secondary_buffer_sink || buffer->secondary_buffer_source)
+	/* check per-side: allow attaching on both sides (needed for DP-to-DP) */
+	if (at_input && buffer->secondary_buffer_sink)
+		return -EINVAL;
+	if (!at_input && buffer->secondary_buffer_source)
 		return -EINVAL;
 
 	/* secondary buffer must share audio params with the primary buffer */
@@ -47,6 +50,50 @@ int audio_buffer_sync_secondary_buffer(struct sof_audio_buffer *buffer, size_t l
 
 	struct sof_source *data_src;
 	struct sof_sink *data_dst;
+
+	if (buffer->secondary_buffer_sink && buffer->secondary_buffer_source) {
+		/*
+		 * DP-to-DP case: both secondary buffers present.
+		 * Data flows: input_ring_buffer -> comp_buffer -> output_ring_buffer
+		 *
+		 * This buffer may be synced by two DP modules during the same LL cycle:
+		 *  - The source DP module syncs it via comp_dev_for_each_consumer (output)
+		 *  - The sink DP module syncs it via comp_dev_for_each_producer (input)
+		 *
+		 * Both steps run in order (source DP first, then sink DP). Performing
+		 * them both here in a single call ensures atomicity and correct
+		 * rate-limiting. The second call for the same buffer will be a no-op
+		 * since the comp_buffer will be empty.
+		 *
+		 * Step 1: copy from input secondary buffer to primary (comp_buffer).
+		 * No limit on input side - copy all available data.
+		 */
+		data_src = audio_buffer_get_source(buffer->secondary_buffer_sink);
+		data_dst = &buffer->_sink_api;
+
+		size_t data_available = source_get_data_available(data_src);
+		size_t free_size = sink_get_free_size(data_dst);
+		size_t to_copy = MIN(data_available, free_size);
+
+		err = source_to_sink_copy(data_src, data_dst, true, to_copy);
+		if (err)
+			return err;
+
+		/*
+		 * Step 2: copy from primary (comp_buffer) to output secondary buffer.
+		 * Apply the limit to the output side to control how much data
+		 * is made available to the downstream DP module per LL cycle.
+		 */
+		data_src = &buffer->_source_api;
+		data_dst = audio_buffer_get_sink(buffer->secondary_buffer_source);
+
+		data_available = source_get_data_available(data_src);
+		free_size = sink_get_free_size(data_dst);
+		to_copy = MIN(MIN(data_available, free_size), limit);
+
+		err = source_to_sink_copy(data_src, data_dst, true, to_copy);
+		return err;
+	}
 
 	if (buffer->secondary_buffer_sink) {
 		/*
@@ -203,18 +250,16 @@ uint32_t audio_buffer_sink_get_lft(struct sof_sink *sink)
 	return us_in_buffer;
 
 	/*
-	 * TODO, Currently there's no DP to DP connection
-	 * >>> the code below is never accessible and won't work because of cache incoherence <<<
+	 * NOTE: DP-to-DP connections are now supported via dual ring_buffers
+	 * attached as secondary buffers on both sides of a comp_buffer.
+	 * Data cascades: ring_buf_src -> comp_buffer -> ring_buf_sink
+	 * with syncing during each LL cycle.
 	 *
-	 * to make DP to DP connection possible:
-	 *
-	 * 1) module data must be ALWAYS located in non cached memory alias, allowing
-	 *    cross core access to params like period (needed below) and calling
-	 *    module_get_deadline for the next module, regardless of cores the modules are
-	 *    running on
-	 * 2) comp_buffer must be removed from all pipeline code, replaced with a generic abstract
-	 *    class audio_buffer - allowing using comp_buffer and ring_buffer without current
-	 *    "hybrid buffer" solution
+	 * Future improvements:
+	 * 1) module data should be in non-cached memory alias for reliable
+	 *    cross-core access to params like period and deadlines
+	 * 2) comp_buffer should be replaced with generic audio_buffer
+	 *    throughout pipeline code (Pipeline 2.0)
 	 */
 }
 
