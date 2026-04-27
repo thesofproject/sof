@@ -15,12 +15,13 @@
 #include <sof/lib/memory.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
+#include <rtos/userspace_helper.h>
 #include <zephyr/device.h>
 
 #define DW_DMA_BUFFER_PERIOD_COUNT	0x4
 #define HDA_DMA_BUFFER_PERIOD_COUNT	4
 
-SHARED_DATA struct sof_dma dma[] = {
+APP_TASK_DATA SHARED_DATA struct sof_dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpgpdma0), okay)
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {

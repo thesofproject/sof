@@ -86,8 +86,10 @@ __cold struct comp_buffer *buffer_new(struct k_heap *heap, const struct sof_ipc_
 		buffer->stream.runtime_stream_params.pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
 
+#if !defined(CONFIG_SOF_USERSPACE_LL)
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
+#endif
 	}
 
 	return buffer;
@@ -291,7 +293,9 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
 	struct comp_buffer *safe;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	uint32_t flags;
+#endif
 
 	assert_can_be_cold();
 
@@ -333,7 +337,16 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		return -EINVAL;
 	}
 
+	/* Lock buffer lists to prevent racing with the LL scheduler.
+	 * In user-space builds, irq_local_disable() is a privileged
+	 * operation, so use the per-component list_mutex instead
+	 * (same pattern as PPL_LOCK in pipeline_disconnect()).
+	 */
+#ifdef CONFIG_SOF_USERSPACE_LL
+	sys_mutex_lock(&icd->cd->list_mutex, K_FOREVER);
+#else
 	irq_local_disable(flags);
+#endif
 	comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
 		comp_buffer_set_sink_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
@@ -346,7 +359,11 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		comp_buffer_reset_source_list(buffer);
 	}
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	sys_mutex_unlock(&icd->cd->list_mutex);
+#else
 	irq_local_enable(flags);
+#endif
 
 	/* free component and remove from list */
 	comp_free(icd->cd);
@@ -354,7 +371,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	icd->cd = NULL;
 
 	list_item_del(&icd->list);
-	rfree(icd);
+	sof_heap_free(sof_sys_user_heap_get(), icd);
 
 	return 0;
 }

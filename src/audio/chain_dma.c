@@ -15,7 +15,9 @@
 #include <ipc/dai.h>
 #include <ipc4/gateway.h>
 #include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
+#include <rtos/alloc.h>
 #include <rtos/task.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
@@ -57,6 +59,15 @@ struct chain_dma_data {
 	uint8_t cs;
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	bool xrun_notification_sent;
+#endif
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/** Kernel workqueue scheduling for chain DMA in userspace builds.
+	 *  Chain DMA needs kernel context for DMA operations, so it cannot
+	 *  run on the user-space LL timer thread.
+	 */
+	struct k_work_delayable dma_work;
+	bool stopped;
 #endif
 
 	/* local host DMA config */
@@ -268,6 +279,25 @@ static enum task_state chain_task_run(void *data)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/** Kernel workqueue handler for chain DMA periodic task.
+ *  Runs chain_task_run() in kernel context and reschedules if needed.
+ */
+static void chain_dma_work_handler(struct k_work *work)
+{
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct chain_dma_data *cd = CONTAINER_OF(dwork, struct chain_dma_data, dma_work);
+	enum task_state state;
+
+	if (cd->stopped)
+		return;
+
+	state = chain_task_run(cd);
+	if (state == SOF_TASK_STATE_RESCHEDULE && !cd->stopped)
+		k_work_reschedule(dwork, K_USEC(LL_TIMER_PERIOD_US));
+}
+#endif
+
 static int chain_task_start(struct comp_dev *dev)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
@@ -309,6 +339,12 @@ static int chain_task_start(struct comp_dev *dev)
 		}
 	}
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	cd->stopped = false;
+	k_work_init_delayable(&cd->dma_work, chain_dma_work_handler);
+	k_work_reschedule(&cd->dma_work, K_NO_WAIT);
+	cd->chain_task.state = SOF_TASK_STATE_QUEUED;
+#else
 	ret = schedule_task_init_ll(&cd->chain_task, SOF_UUID(chain_dma_uuid),
 				    SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
 				    chain_task_run, cd, 0, 0);
@@ -323,16 +359,19 @@ static int chain_task_start(struct comp_dev *dev)
 		schedule_task_free(&cd->chain_task);
 		goto error_task;
 	}
+#endif
 
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 
 	return 0;
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 error_task:
 	chain_host_stop(dev);
 	chain_link_stop(dev);
 
 	return ret;
+#endif
 }
 
 static int chain_task_pause(struct comp_dev *dev)
@@ -340,10 +379,18 @@ static int chain_task_pause(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	int ret, ret2;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (cd->chain_task.state == SOF_TASK_STATE_FREE)
+		return 0;
+
+	cd->stopped = true;
+	cd->first_data_received = false;
+#else
 	if (cd->chain_task.state == SOF_TASK_STATE_FREE)
 		return 0;
 
 	cd->first_data_received = false;
+#endif
 	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = chain_host_stop(dev);
 		ret2 = chain_link_stop(dev);
@@ -354,7 +401,12 @@ static int chain_task_pause(struct comp_dev *dev)
 	if (!ret)
 		ret = ret2;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	k_work_cancel_delayable_sync(&cd->dma_work, &(struct k_work_sync){});
+	cd->chain_task.state = SOF_TASK_STATE_FREE;
+#else
 	schedule_task_free(&cd->chain_task);
+#endif
 	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 
 	return ret;
@@ -579,8 +631,14 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 
 	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
 	/* allocate not shared buffer */
+#ifdef CONFIG_SOF_USERSPACE_LL
+	cd->dma_buffer = buffer_alloc(sof_sys_user_heap_get(), fifo_size,
+				      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
+				      addr_align, BUFFER_USAGE_NOT_SHARED);
+#else
 	cd->dma_buffer = buffer_alloc(NULL, fifo_size, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 				      addr_align, BUFFER_USAGE_NOT_SHARED);
+#endif
 
 	if (!cd->dma_buffer) {
 		comp_err(dev, "failed to alloc dma buffer");
@@ -639,13 +697,30 @@ __cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 	if (host_dma_id >= max_chain_number)
 		return NULL;
 
-	dev = comp_alloc(drv, sizeof(*dev));
+#ifdef CONFIG_SOF_USERSPACE_LL
+	dev = sof_heap_alloc(sof_sys_user_heap_get(),
+			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+			     sizeof(*dev), 0);
 	if (!dev)
 		return NULL;
 
+	memset(dev, 0, sizeof(*dev));
+	comp_init(drv, dev, sizeof(*dev));
+#else
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+#endif
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	cd = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER, sizeof(*cd), 0);
+#else
 	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+#endif
 	if (!cd)
 		goto error;
+
+	memset(cd, 0, sizeof(*cd));
 
 	cd->first_data_received = false;
 	cd->cs = scs ? 2 : 4;
@@ -657,9 +732,17 @@ __cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 	if (!ret)
 		return dev;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	sof_heap_free(sof_sys_user_heap_get(), cd);
+#else
 	rfree(cd);
+#endif
 error:
+#ifdef CONFIG_SOF_USERSPACE_LL
+	sof_heap_free(sof_sys_user_heap_get(), dev);
+#else
 	comp_free_device(dev);
+#endif
 	return NULL;
 }
 
@@ -670,8 +753,16 @@ __cold static void chain_task_free(struct comp_dev *dev)
 	assert_can_be_cold();
 
 	chain_release(dev);
+#ifdef CONFIG_SOF_USERSPACE_LL
+	sof_heap_free(sof_sys_user_heap_get(), cd);
+#else
 	rfree(cd);
+#endif
+#ifdef CONFIG_SOF_USERSPACE_LL
+	sof_heap_free(sof_sys_user_heap_get(), dev);
+#else
 	comp_free_device(dev);
+#endif
 }
 
 static const struct comp_driver comp_chain_dma = {

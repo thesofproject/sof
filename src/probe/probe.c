@@ -13,7 +13,6 @@
 #include <rtos/alloc.h>
 #include <rtos/init.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/driver.h>
@@ -176,7 +175,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 	dma->config.dest_width = sizeof(uint32_t);
 	dma->config.cyclic = 0;
 
-	err = dma_sg_alloc(&dma->config.elem_array, SOF_MEM_FLAG_USER,
+	err = dma_sg_alloc(NULL, &dma->config.elem_array, SOF_MEM_FLAG_USER,
 			   dma->config.direction, elem_num, elem_size, elem_addr, 0);
 	if (err < 0)
 		return err;
@@ -255,7 +254,7 @@ static int probe_dma_init(struct probe_dma_ext *dma, uint32_t direction)
 static int probe_dma_deinit(struct probe_dma_ext *dma)
 {
 	int err = 0;
-	dma_sg_free(&dma->config.elem_array);
+	dma_sg_free(NULL, &dma->config.elem_array);
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 	err = dma_stop(dma->dc.dmac->z_dev, dma->dc.chan->index);
 #else
@@ -902,14 +901,12 @@ static ssize_t probe_logging_hook(uint8_t *buffer, size_t length)
  *	  Extraction probe: generate format, header and copy data to probe buffer.
  *	  Injection probe: find corresponding DMA, check avail data, copy data,
  *	  update pointers and request more data from host if needed.
- * \param[in] arg pointer (not used).
- * \param[in] type of notify.
- * \param[in] data pointer.
+ * \param[in] arg pointer to buffer_id.
+ * \param[in] cb_data pointer to buffer callback transaction data.
  */
-static void probe_cb_produce(void *arg, enum notify_id type, void *data)
+static void probe_cb_produce(void *arg, struct buffer_cb_transact *cb_data)
 {
 	struct probe_pdata *_probe = probe_get();
-	struct buffer_cb_transact *cb_data = data;
 	struct comp_buffer *buffer = cb_data->buffer;
 	struct probe_dma_ext *dma;
 	uint32_t buffer_id;
@@ -921,7 +918,7 @@ static void probe_cb_produce(void *arg, enum notify_id type, void *data)
 	uint32_t format;
 	uint64_t checksum;
 
-	buffer_id = *(int *)arg;
+	buffer_id = *(uint32_t *)arg;
 
 	/* search for probe point connected to this buffer */
 	for (i = 0; i < CONFIG_PROBE_POINTS_MAX; i++)
@@ -1068,13 +1065,11 @@ err:
 
 /**
  * \brief Callback for buffer free, it will remove probe point.
- * \param[in] arg pointer (not used).
- * \param[in] type of notify.
- * \param[in] data pointer.
+ * \param[in] arg pointer to buffer_id.
  */
-static void probe_cb_free(void *arg, enum notify_id type, void *data)
+static void probe_cb_free(void *arg)
 {
-	uint32_t buffer_id = *(int *)arg;
+	uint32_t buffer_id = *(uint32_t *)arg;
 	int ret;
 
 	tr_dbg(&pr_tr, "buffer_id = %u", buffer_id);
@@ -1315,16 +1310,13 @@ int probe_point_add(uint32_t count, const struct probe_point *probe)
 			probe_point_id_t *new_buf_id = &_probe->probe_points[first_free].buffer_id;
 
 #if CONFIG_IPC_MAJOR_4
-			notifier_register(&new_buf_id->full_id, buf, NOTIFIER_ID_BUFFER_PRODUCE,
-					  &probe_cb_produce, 0);
-			notifier_register(&new_buf_id->full_id, buf, NOTIFIER_ID_BUFFER_FREE,
-					  &probe_cb_free, 0);
+			struct comp_buffer *probe_buf = buf;
 #else
-			notifier_register(&new_buf_id->full_id, dev->cb, NOTIFIER_ID_BUFFER_PRODUCE,
-					  &probe_cb_produce, 0);
-			notifier_register(&new_buf_id->full_id, dev->cb, NOTIFIER_ID_BUFFER_FREE,
-					  &probe_cb_free, 0);
+			struct comp_buffer *probe_buf = (struct comp_buffer *)dev->cb;
 #endif
+			probe_buf->probe_cb_produce = probe_cb_produce;
+			probe_buf->probe_cb_free = probe_cb_free;
+			probe_buf->probe_cb_arg = &new_buf_id->full_id;
 		}
 	}
 
@@ -1444,19 +1436,20 @@ int probe_point_remove(uint32_t count, const uint32_t *buffer_id)
 				if (dev) {
 					buf = ipc4_get_buffer(dev, *buf_id);
 					if (buf) {
-						notifier_unregister(NULL, buf,
-								    NOTIFIER_ID_BUFFER_PRODUCE);
-						notifier_unregister(NULL, buf,
-								    NOTIFIER_ID_BUFFER_FREE);
+						buf->probe_cb_produce = NULL;
+						buf->probe_cb_free = NULL;
+						buf->probe_cb_arg = NULL;
 					}
 				}
 #else
 				dev = ipc_get_comp_by_id(ipc_get(), buffer_id[i]);
 				if (dev) {
-					notifier_unregister(&buf_id->full_id, dev->cb,
-							    NOTIFIER_ID_BUFFER_PRODUCE);
-					notifier_unregister(&buf_id->full_id, dev->cb,
-							    NOTIFIER_ID_BUFFER_FREE);
+					struct comp_buffer *probe_buf =
+						(struct comp_buffer *)dev->cb;
+
+					probe_buf->probe_cb_produce = NULL;
+					probe_buf->probe_cb_free = NULL;
+					probe_buf->probe_cb_arg = NULL;
 				}
 #endif
 				_probe->probe_points[j].stream_tag =

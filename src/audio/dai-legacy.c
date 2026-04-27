@@ -379,7 +379,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 
 		comp_info(dev, "fifo 0x%x", fifo);
 
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
+		err = dma_sg_alloc(NULL, &config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
 				   period_count,
 				   period_bytes,
@@ -444,7 +444,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 
 		comp_info(dev, "fifo 0x%x", fifo);
 
-		err = dma_sg_alloc(&config->elem_array, SOF_MEM_FLAG_USER,
+		err = dma_sg_alloc(NULL, &config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
 				   period_count,
 				   period_bytes,
@@ -709,7 +709,7 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 	if (!dd->delayed_dma_stop)
 		dai_dma_release(dd, dev);
 
-	dma_sg_free(&config->elem_array);
+	dma_sg_free(NULL, &config->elem_array);
 
 	if (dd->dma_buffer) {
 		buffer_free(dd->dma_buffer);
