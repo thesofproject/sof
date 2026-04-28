@@ -16,7 +16,7 @@ The output file is hard-coded to mfcc.raw.
 
 The output can be plotted and retrieved with Matlab or Octave command:
 
-[ceps, t, n] = decode_ceps('mfcc.raw', 13);
+[ceps, t, n] = decode_ceps('mfcc_s16.raw', 13);
 
 In the above it's known from configuration script that MFCC was set up to
 output 13 cepstral coefficients from each FFT -> Mel -> DCT -> Cepstral
@@ -27,3 +27,9 @@ e.g. other sound files found in computer.
 
 ./run_mfcc.sh /usr/share/sounds/gnome/default/alerts/bark.ogg
 ./run_mfcc.sh /usr/share/sounds/gnome/default/alerts/sonar.ogg
+
+The script runs the same input sample with s16/24/32 formats for
+cepstral coefficients data output and Mel frequency spectrogram
+output. The 80 bands Mel output can be visualized with command:
+
+[ceps, t, n] = decode_mel('mel_s16.raw', 80);
