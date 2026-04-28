@@ -100,3 +100,22 @@ struct ipc_msg *ipc_notification_pool_get(size_t size)
 	item->msg.tx_size = size;
 	return &item->msg;
 }
+
+#if CONFIG_LIBRARY
+void ipc_notification_pool_free(void)
+{
+	struct ipc_notif_pool_item *item;
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&pool_free_list_lock);
+	while (!list_is_empty(&pool_free_list)) {
+		item = list_first_item(&pool_free_list, struct ipc_notif_pool_item, msg.list);
+		list_item_del(&item->msg.list);
+		--pool_depth;
+		k_spin_unlock(&pool_free_list_lock, key);
+		rfree(item);
+		key = k_spin_lock(&pool_free_list_lock);
+	}
+	k_spin_unlock(&pool_free_list_lock, key);
+}
+#endif /* CONFIG_LIBRARY */
