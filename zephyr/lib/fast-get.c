@@ -224,6 +224,9 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 	if (!ret)
 		goto out;
 
+	memcpy_s(ret, alloc_size, dram_ptr, size);
+	dcache_writeback_region((__sparse_force void __sparse_cache *)ret, size);
+
 #if CONFIG_USERSPACE
 	if (size > FAST_GET_MAX_COPY_SIZE && current_is_userspace) {
 		/* Otherwise we've allocated on thread's heap, so it already has access */
@@ -242,8 +245,6 @@ const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
 	entry->dram_ptr = dram_ptr;
 	entry->size = size;
 	entry->sram_ptr = ret;
-	memcpy_s(ret, alloc_size, dram_ptr, size);
-	dcache_writeback_region((__sparse_force void __sparse_cache *)ret, size);
 	entry->refcount = 1;
 out:
 	k_spin_unlock(&data->lock, key);
