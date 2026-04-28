@@ -26,53 +26,6 @@
  * MFCC algorithm code
  */
 
-void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
-			  struct mfcc_pre_emph *emph, int frames, int source_channel)
-{
-	struct audio_stream *source = bsource->data;
-	int32_t s;
-	int16_t *x0;
-	int16_t *x = audio_stream_get_rptr(source);
-	int16_t *w = buf->w_ptr;
-	int copied;
-	int nmax;
-	int n1;
-	int n2;
-	int n;
-	int i;
-	int num_channels = audio_stream_get_channels(source);
-
-	/* Copy from source to pre-buffer for FFT.
-	 * The pre-emphasis filter is done in this step.
-	 */
-	for (copied = 0; copied < frames; copied += n) {
-		nmax = frames - copied;
-		n1 = audio_stream_frames_without_wrap(source, x);
-		n2 = mfcc_buffer_samples_without_wrap(buf, w);
-		n = MIN(n1, n2);
-		n = MIN(n, nmax);
-		x0 = x + source_channel;
-		for (i = 0; i < n; i++) {
-			if (emph->enable) {
-				/* Q1.15 x Q1.15 -> Q2.30 */
-				s = (int32_t)emph->delay * emph->coef + Q_SHIFT_LEFT(*x0, 15, 30);
-				*w = sat_int16(Q_SHIFT_RND(s, 30, 15));
-				emph->delay = *x0;
-			} else {
-				*w = *x0;
-			}
-			x0 += num_channels;
-			w++;
-		}
-
-		x = audio_stream_wrap(source, x + n * audio_stream_get_channels(source));
-		w = mfcc_buffer_wrap(buf, w);
-	}
-	buf->s_avail += copied;
-	buf->s_free -= copied;
-	buf->w_ptr = w;
-}
-
 void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 			    int prev_data_length)
 {
@@ -190,24 +143,66 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 
 #if CONFIG_FORMAT_S16LE
 
+void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	struct audio_stream *source = bsource->data;
+	int32_t s;
+	int16_t *x0;
+	int16_t *x = audio_stream_get_rptr(source);
+	int16_t *w = buf->w_ptr;
+	int copied;
+	int nmax;
+	int n1;
+	int n2;
+	int n;
+	int i;
+	int num_channels = audio_stream_get_channels(source);
+
+	/* Copy from source to pre-buffer for FFT.
+	 * The pre-emphasis filter is done in this step.
+	 */
+	for (copied = 0; copied < frames; copied += n) {
+		nmax = frames - copied;
+		n1 = audio_stream_frames_without_wrap(source, x);
+		n2 = mfcc_buffer_samples_without_wrap(buf, w);
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		x0 = x + source_channel;
+		for (i = 0; i < n; i++) {
+			if (emph->enable) {
+				/* Q1.15 x Q1.15 -> Q2.30 */
+				s = (int32_t)emph->delay * emph->coef + Q_SHIFT_LEFT(*x0, 15, 30);
+				*w = sat_int16(Q_SHIFT_RND(s, 30, 15));
+				emph->delay = *x0;
+			} else {
+				*w = *x0;
+			}
+			x0 += num_channels;
+			w++;
+		}
+
+		x = audio_stream_wrap(source, x + n * audio_stream_get_channels(source));
+		w = mfcc_buffer_wrap(buf, w);
+	}
+	buf->s_avail += copied;
+	buf->s_free -= copied;
+	buf->w_ptr = w;
+}
+
 int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
 				 int16_t *w_ptr, int samples)
 {
 	int copied;
 	int nmax;
-	int i;
 	int n;
 
 	for (copied = 0; copied < samples; copied += n) {
 		nmax = samples - copied;
 		n = audio_stream_samples_without_wrap_s16(sink, w_ptr);
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*w_ptr = 0;
-			w_ptr++;
-		}
-
-		w_ptr = audio_stream_wrap(sink, w_ptr);
+		memset(w_ptr, 0, n * sizeof(int16_t));
+		w_ptr = audio_stream_wrap(sink, w_ptr + n);
 	}
 
 	return w_ptr;
@@ -218,20 +213,16 @@ int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr
 {
 	int copied;
 	int nmax;
-	int i;
 	int n;
 
 	for (copied = 0; copied < samples; copied += n) {
 		nmax = samples - copied;
 		n = audio_stream_samples_without_wrap_s16(sink, w_ptr);
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*w_ptr = *r_ptr;
-			r_ptr++;
-			w_ptr++;
-		}
-
-		w_ptr = audio_stream_wrap(sink, w_ptr);
+		/* Not using memcpy_s() due to speed need */
+		memcpy(w_ptr, r_ptr, n * sizeof(int16_t));
+		w_ptr = audio_stream_wrap(sink, w_ptr + n);
+		r_ptr += n;
 	}
 
 	return w_ptr;
