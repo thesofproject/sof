@@ -98,8 +98,8 @@ static int mfcc_free(struct processing_module *mod)
 
 	comp_info(mod->dev, "entry");
 	mod_data_blob_handler_free(mod, cd->model_handler);
-	mod_free(mod, cd);
 	mfcc_free_buffers(mod);
+	mod_free(mod, cd);
 	return 0;
 }
 
