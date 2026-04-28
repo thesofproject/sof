@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2022 Intel Corporation. All rights reserved.
+ * Copyright(c) 2022-2026 Intel Corporation.
  *
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
@@ -174,12 +174,6 @@ int mfcc_normalize_fft_buffer(struct mfcc_state *state);
 void mfcc_apply_window(struct mfcc_state *state, int input_shift);
 
 #if CONFIG_FORMAT_S16LE
-
-int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
-				 int16_t *w_ptr, int samples);
-
-int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr,
-				 int samples, int16_t *r_ptr);
 
 void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 		      struct output_stream_buffer *bsink, int frames);

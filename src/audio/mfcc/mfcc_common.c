@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2023 Intel Corporation. All rights reserved.
+// Copyright(c) 2023-2026 Intel Corporation.
 //
 // Author: Andrula Song <andrula.song@intel.com>
 
@@ -140,6 +140,44 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 }
 
 #if CONFIG_FORMAT_S16LE
+static int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
+				 int16_t *w_ptr, int samples)
+{
+	int copied;
+	int nmax;
+	int n;
+
+	for (copied = 0; copied < samples; copied += n) {
+		nmax = samples - copied;
+		n = audio_stream_samples_without_wrap_s16(sink, w_ptr);
+		n = MIN(n, nmax);
+		memset(w_ptr, 0, n * sizeof(int16_t));
+		w_ptr = audio_stream_wrap(sink, w_ptr + n);
+	}
+
+	return w_ptr;
+}
+
+static int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr,
+				 int samples, int16_t *r_ptr)
+{
+	int copied;
+	int nmax;
+	int n;
+
+	for (copied = 0; copied < samples; copied += n) {
+		nmax = samples - copied;
+		n = audio_stream_samples_without_wrap_s16(sink, w_ptr);
+		n = MIN(n, nmax);
+		/* Not using memcpy_s() due to speed need */
+		memcpy(w_ptr, r_ptr, n * sizeof(int16_t));
+		w_ptr = audio_stream_wrap(sink, w_ptr + n);
+		r_ptr += n;
+	}
+
+	return w_ptr;
+}
+
 void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 		      struct output_stream_buffer *bsink, int frames)
 {

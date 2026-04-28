@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2023 Intel Corporation. All rights reserved.
+// Copyright(c) 2023-2026 Intel Corporation.
 //
 // Author: Andrula Song <andrula.song@intel.com>
 
@@ -41,6 +41,8 @@ static inline void set_circular_buf1(const void *start, const void *end)
 /*
  * MFCC algorithm code
  */
+
+#if CONFIG_FORMAT_S16LE
 void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
 			  struct mfcc_pre_emph *emph, int frames, int source_channel)
 {
@@ -87,6 +89,7 @@ void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffe
 	buf->s_free -= frames;
 	buf->w_ptr = (int16_t *)out;
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
 void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 			    int prev_data_length)
@@ -225,65 +228,4 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 #endif
 }
 
-#if CONFIG_FORMAT_S16LE
-
-int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
-				 int16_t *w_ptr, int samples)
-{
-	int i;
-	int n = samples >> 2;
-	int m = samples & 0x03;
-	ae_int16x4 *out = (ae_int16x4 *)w_ptr;
-	const int inc = sizeof(ae_int16);
-	ae_valign outu = AE_ZALIGN64();
-	ae_int16x4 zero = AE_ZERO16();
-
-	set_circular_buf0(sink->addr, sink->end_addr);
-
-	for (i = 0; i < n; i++)
-		AE_SA16X4_IC(zero, outu, out);
-
-	AE_SA64POS_FP(outu, out);
-	/* process the left samples that less than 4
-	 * one by one to avoid memory access overrun
-	 */
-	for (i = 0; i < m ; i++)
-		AE_S16_0_XC(zero, (ae_int16 *)out, inc);
-
-	return (int16_t *)out;
-}
-
-int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr,
-				 int samples, int16_t *r_ptr)
-{
-	int i;
-	int n = samples >> 2;
-	int m = samples & 0x03;
-	ae_int16x4 *out = (ae_int16x4 *)w_ptr;
-	ae_int16x4 *in = (ae_int16x4 *)r_ptr;
-	ae_valign outu = AE_ZALIGN64();
-	ae_valign inu = AE_ZALIGN64();
-	const int inc = sizeof(ae_int16);
-	ae_int16x4 in_sample;
-
-	set_circular_buf0(sink->addr, sink->end_addr);
-
-	inu = AE_LA64_PP(in);
-	for (i = 0; i < n; i++) {
-		AE_LA16X4_IP(in_sample, inu, in);
-		AE_SA16X4_IC(in_sample, outu, out);
-	}
-	AE_SA64POS_FP(outu, out);
-	/* process the left samples that less than 4
-	 * one by one to avoid memory access overrun
-	 */
-	for (i = 0; i < m ; i++) {
-		AE_L16_XP(in_sample, (ae_int16 *)in, inc);
-		AE_S16_0_XC(in_sample, (ae_int16 *)out, inc);
-	}
-
-	return (int16_t *)out;
-}
-
-#endif /* CONFIG_FORMAT_S16LE */
-#endif
+#endif /* MFCC_HIFI4 */
