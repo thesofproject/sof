@@ -23,4 +23,15 @@
  */
 struct ipc_msg *ipc_notification_pool_get(size_t size);
 
+#if CONFIG_LIBRARY
+/**
+ * @brief Frees all IPC notification messages in the pool.
+ *
+ * This function frees all notification messages currently held in
+ * the pool free list and resets the pool depth counter. It is
+ * required only in library (testbench) build.
+ */
+void ipc_notification_pool_free(void);
+#endif /* CONFIG_LIBRARY */
+
 #endif /* __SOF_IPC_NOTIFICATION_POOL_H__ */

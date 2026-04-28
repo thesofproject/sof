@@ -6,6 +6,8 @@
 #include <platform/lib/ll_schedule.h>
 #include <sof/audio/component.h>
 #include <sof/ipc/topology.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/notification_pool.h>
 #include <sof/lib/notifier.h>
 
 #include <ctype.h>
@@ -210,6 +212,13 @@ void tb_free(struct sof *sof)
 		free(sch);
 	}
 	free(*arch_schedulers_get());
+
+	/* Drain IPC message queue to free queued notifications */
+	while (!list_is_empty(&sof->ipc->msg_list))
+		ipc_send_queued_msg();
+
+	/* Free notification pool items */
+	ipc_notification_pool_free();
 
 	/* free IPC data */
 	iipc = sof->ipc->private;
