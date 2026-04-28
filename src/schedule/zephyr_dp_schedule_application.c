@@ -387,6 +387,7 @@ static void scheduler_dp_domain_free(struct task_dp_pdata *pdata)
 
 	/* All partitions removed, the domain can be freed now */
 	pmod->mdom = NULL;
+	k_mem_domain_deinit(mdom);
 	objpool_free(&dp_mdom_head, mdom);
 }
 
