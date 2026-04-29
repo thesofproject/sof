@@ -13,26 +13,57 @@
 
 #include <user/debug_stream_text_msg.h>
 
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+#endif
+
 LOG_MODULE_REGISTER(debug_stream_text_msg);
 
-void ds_vamsg(const char *format, va_list args)
+#ifdef CONFIG_USERSPACE
+void z_impl_ds_send_text_record(const char *text, size_t len)
+#else
+void ds_send_text_record(const char *text, size_t len)
+#endif
 {
 	struct {
 		struct debug_stream_text_msg msg;
-		char text[128];
+		char text[DS_TEXT_MSG_MAX_LEN];
 	} __packed buf = { 0 };
-	ssize_t len;
 
-	len = vsnprintf(buf.text, sizeof(buf.text), format, args);
-
-	if (len < 0)
+	if (!text || len == 0)
 		return;
+
 	len = MIN(len, sizeof(buf.text));
+	memcpy(buf.text, text, len);
 
 	buf.msg.hdr.id = DEBUG_STREAM_RECORD_ID_TEXT_MSG;
 	buf.msg.hdr.size_words = SOF_DIV_ROUND_UP(sizeof(buf.msg) + len,
 						  sizeof(buf.msg.hdr.data[0]));
 	debug_stream_slot_send_record(&buf.msg.hdr);
+}
+
+#ifdef CONFIG_USERSPACE
+static inline void z_vrfy_ds_send_text_record(const char *text, size_t len)
+{
+	len = MIN(len, DS_TEXT_MSG_MAX_LEN);
+	K_OOPS(K_SYSCALL_MEMORY_READ(text, len));
+	z_impl_ds_send_text_record(text, len);
+}
+#include <zephyr/syscalls/ds_send_text_record_mrsh.c>
+#endif
+
+void ds_vamsg(const char *format, va_list args)
+{
+	char text[DS_TEXT_MSG_MAX_LEN];
+	ssize_t len;
+
+	len = vsnprintf(text, sizeof(text), format, args);
+
+	if (len < 0)
+		return;
+	len = MIN(len, sizeof(text));
+
+	ds_send_text_record(text, len);
 }
 
 void ds_msg(const char *format, ...)
