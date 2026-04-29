@@ -31,6 +31,9 @@
 #endif
 #include <sof/common.h>
 
+#if CONFIG_ZEPHYR_LOG || CONFIG_LIBRARY || CONFIG_ARCH_POSIX_LIBFUZZER
+#include <sof/lib/uuid.h>
+#endif
 #include <sof/trace/preproc.h>
 #include <sof/trace/trace-boot.h>
 
@@ -128,6 +131,7 @@ static inline void mtrace_printf(int log_level, const char *format_str, ...)
 /**
  * Trace context.
  */
+struct sof_uuid_entry;
 struct tr_ctx {
 	const struct sof_uuid_entry *uuid_p;	/**< UUID pointer, use SOF_UUID() to init */
 	uint32_t level;				/**< Default log level */
