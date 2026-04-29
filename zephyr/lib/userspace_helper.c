@@ -69,10 +69,10 @@ void module_driver_heap_remove(struct k_heap *mod_drv_heap)
 	}
 }
 
-struct k_heap *sys_user_heap_init(void)
+struct k_heap *sys_user_heap_init(size_t heap_size)
 {
 	const size_t prefix = ALIGN_UP(sizeof(struct k_heap), 4);
-	const size_t total = prefix + USER_MOD_HEAP_SIZE;
+	const size_t total = prefix + heap_size;
 
 	/*
 	 * Allocate a single page-aligned buffer for both the k_heap
@@ -90,7 +90,7 @@ struct k_heap *sys_user_heap_init(void)
 	struct k_heap *mod_drv_heap = (struct k_heap *)mem;
 	void *heap_buf = (uint8_t *)mem + prefix;
 
-	k_heap_init(mod_drv_heap, heap_buf, USER_MOD_HEAP_SIZE);
+	k_heap_init(mod_drv_heap, heap_buf, heap_size);
 
 	/* init_mem / init_bytes track the full allocation so that
 	 * partition setup and sys_user_heap_remove()
