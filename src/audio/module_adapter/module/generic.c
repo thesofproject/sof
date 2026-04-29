@@ -323,7 +323,7 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 	if (!container)
 		return NULL;
 
-	ptr = fast_get(res->alloc->heap, dram_ptr, size);
+	ptr = fast_get(res->alloc, dram_ptr, size);
 	if (!ptr) {
 		container_put(mod, container);
 		return NULL;
@@ -362,7 +362,7 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 #else
 		mdom = NULL;
 #endif
-		fast_put(res->alloc->heap, mdom, container->sram_ptr);
+		fast_put(res->alloc, mdom, container->sram_ptr);
 		return 0;
 #endif
 	default:
