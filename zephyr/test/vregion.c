@@ -31,7 +31,7 @@ static void test_vreg_alloc_lifet(struct vregion *vreg)
 
 	zassert_not_null(ptr);
 
-	void *ptr_align = vregion_alloc_align(vreg, VREGION_MEM_TYPE_LIFETIME, 2000, 16);
+	void *ptr_align = vregion_alloc_align(vreg, VREGION_MEM_TYPE_LIFETIME, 1600, 16);
 
 	zassert_not_null(ptr_align);
 	zassert_equal((uintptr_t)ptr_align & 15, 0);
@@ -76,7 +76,7 @@ static void test_vreg_alloc_tmp(struct vregion *vreg)
 static void test_vreg_destroy(struct vregion *vreg)
 {
 	vregion_info(vreg);
-	vregion_destroy(vreg);
+	vregion_put(vreg);
 }
 
 ZTEST(sof_boot, vregion)

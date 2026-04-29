@@ -16,7 +16,6 @@
 #include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
-#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/coherent.h>
 #include <sof/math/numbers.h>
@@ -217,15 +216,15 @@ struct buffer_cb_transact {
 		buffer->cb_type = type;	\
 	} while (0)
 
-struct k_heap;
+struct mod_alloc_ctx;
 
 /* pipeline buffer creation and destruction */
-struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flags, uint32_t align,
-				 bool is_shared);
-struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_size,
+struct comp_buffer *buffer_alloc(struct mod_alloc_ctx *alloc, size_t size, uint32_t flags,
+				 uint32_t align, bool is_shared);
+struct comp_buffer *buffer_alloc_range(struct mod_alloc_ctx *alloc, size_t preferred_size,
 				       size_t minimum_size,
 				       uint32_t flags, uint32_t align, bool is_shared);
-struct comp_buffer *buffer_new(struct k_heap *heap, const struct sof_ipc_buffer *desc,
+struct comp_buffer *buffer_new(struct mod_alloc_ctx *alloc, const struct sof_ipc_buffer *desc,
 			       bool is_shared);
 
 int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);

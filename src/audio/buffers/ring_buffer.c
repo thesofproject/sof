@@ -6,6 +6,7 @@
 #include <sof/common.h>
 #include <sof/trace/trace.h>
 #include <sof/lib/uuid.h>
+#include <sof/lib/vregion.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/ring_buffer.h>
@@ -96,9 +97,15 @@ static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	struct ring_buffer *ring_buffer = container_of(audio_buffer,
 						       struct ring_buffer, audio_buffer);
+	struct mod_alloc_ctx *alloc = audio_buffer->alloc;
 
-	sof_heap_free(audio_buffer->heap, (__sparse_force void *)ring_buffer->_data_buffer);
-	sof_heap_free(audio_buffer->heap, ring_buffer);
+	if (alloc->vreg) {
+		vregion_free(alloc->vreg, (__sparse_force void *)ring_buffer->_data_buffer);
+		vregion_free(alloc->vreg, ring_buffer);
+	} else {
+		sof_heap_free(alloc->heap, (__sparse_force void *)ring_buffer->_data_buffer);
+		sof_heap_free(alloc->heap, ring_buffer);
+	}
 }
 
 static void ring_buffer_reset(struct sof_audio_buffer *audio_buffer)
@@ -287,12 +294,19 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 				       uint32_t id)
 {
 	struct ring_buffer *ring_buffer;
-	struct k_heap *heap = dev->mod->priv.resources.heap;
+	struct mod_alloc_ctx *alloc = dev->mod->priv.resources.alloc;
+	struct k_heap *heap = alloc->heap;
+	struct vregion *vreg = alloc->vreg;
 	int memory_flags = (is_shared ? SOF_MEM_FLAG_COHERENT : 0) |
 			   user_get_buffer_memory_region(dev->drv);
 
 	/* allocate ring_buffer structure */
-	ring_buffer = sof_heap_alloc(heap, memory_flags, sizeof(*ring_buffer), 0);
+	if (!vreg)
+		ring_buffer = sof_heap_alloc(heap, memory_flags, sizeof(*ring_buffer), 0);
+	else if (is_shared)
+		ring_buffer = vregion_alloc_coherent(vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*ring_buffer));
+	else
+		ring_buffer = vregion_alloc(vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*ring_buffer));
 	if (!ring_buffer)
 		return NULL;
 
@@ -307,7 +321,8 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	audio_buffer_init(&ring_buffer->audio_buffer, BUFFER_TYPE_RING_BUFFER,
 			  is_shared, &ring_buffer_source_ops, &ring_buffer_sink_ops,
 			  &audio_buffer_ops, NULL);
-	ring_buffer->audio_buffer.heap = heap;
+	ring_buffer->audio_buffer.alloc = alloc;
+	ring_buffer->audio_buffer.alloc->heap = heap;
 
 	/* set obs/ibs in sink/source interfaces */
 	sink_set_min_free_space(audio_buffer_get_sink(&ring_buffer->audio_buffer),
@@ -364,11 +379,20 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	/* allocate data buffer - always in cached memory alias */
 	ring_buffer->data_buffer_size = ALIGN_UP(ring_buffer->data_buffer_size,
 						 PLATFORM_DCACHE_ALIGN);
-	ring_buffer->_data_buffer = (__sparse_force __sparse_cache void *)sof_heap_alloc(heap,
-					user_get_buffer_memory_region(dev->drv),
-					ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
-	if (!ring_buffer->_data_buffer)
+
+	void *data_buf;
+
+	if (vreg)
+		data_buf = vregion_alloc_align(vreg, VREGION_MEM_TYPE_INTERIM, ring_buffer->data_buffer_size,
+					       PLATFORM_DCACHE_ALIGN);
+	else
+		data_buf = sof_heap_alloc(heap, user_get_buffer_memory_region(dev->drv),
+					  ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
+
+	if (!data_buf)
 		goto err;
+
+	ring_buffer->_data_buffer = (__sparse_force __sparse_cache void *)data_buf;
 
 	tr_info(&ring_buffer_tr, "Ring buffer created, id: %u shared: %u min_available: %u min_free_space %u, size %u",
 		id, ring_buffer_is_shared(ring_buffer), min_available, min_free_space,
@@ -378,6 +402,9 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	return ring_buffer;
 err:
 	tr_err(&ring_buffer_tr, "Ring buffer creation failure");
-	sof_heap_free(heap, ring_buffer);
+	if (vreg)
+		vregion_free(vreg, ring_buffer);
+	else
+		sof_heap_free(heap, ring_buffer);
 	return NULL;
 }

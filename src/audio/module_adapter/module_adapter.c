@@ -18,6 +18,7 @@
 #include <sof/audio/source_api.h>
 #include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/lib/vregion.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/common.h>
@@ -57,39 +58,29 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #define PAGE_SZ HOST_PAGE_SIZE
 #endif
 
-static struct dp_heap_user *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
-						       size_t *heap_size)
+static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+						  size_t *heap_size)
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
 	/* FIXME: the size will be derived from configuration */
 	const size_t buf_size = 20 * 1024;
 
-	/* Keep uncached to match the default SOF heap! */
-	uint8_t *mod_heap_mem = rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-					      buf_size, PAGE_SZ);
-
-	if (!mod_heap_mem)
-		return NULL;
-
-	struct dp_heap_user *mod_heap_user = (struct dp_heap_user *)mod_heap_mem;
-	struct k_heap *mod_heap = &mod_heap_user->heap;
-	const size_t heap_prefix_size = ALIGN_UP(sizeof(*mod_heap_user), 4);
-	void *mod_heap_buf = mod_heap_mem + heap_prefix_size;
-
-	*heap_size = buf_size - heap_prefix_size;
-	k_heap_init(mod_heap, mod_heap_buf, *heap_size);
-#ifdef __ZEPHYR__
-	mod_heap->heap.init_mem = mod_heap_buf;
-	mod_heap->heap.init_bytes = *heap_size;
-#endif
-
-	return mod_heap_user;
+	/*
+	 * A 1-to-1 replacement of the original heap implementation would be to
+	 * have "lifetime size" equal to 0. But (1) this is invalid for
+	 * vregion_create() and (2) we gradually move objects, that are simple
+	 * to move to the lifetime buffer. Make it 1k for the beginning.
+	 */
+	return vregion_create(4096, buf_size - 4096);
 }
 
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
 							  const struct comp_ipc_config *config)
 {
 	struct k_heap *mod_heap;
+	struct vregion *mod_vreg;
+	struct processing_module *mod;
+	struct comp_dev *dev;
 	/*
 	 * For DP shared modules the struct processing_module object must be
 	 * accessible from all cores. Unfortunately at this point there's no
@@ -99,32 +90,43 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 */
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-	struct dp_heap_user *mod_heap_user;
 	size_t heap_size;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_USERSPACE) &&
 	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_heap_user = module_adapter_dp_heap_new(config, &heap_size);
-		if (!mod_heap_user) {
-			comp_cl_err(drv, "Failed to allocate DP module heap");
+		mod_vreg = module_adapter_dp_heap_new(config, &heap_size);
+		if (!mod_vreg) {
+			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
 			return NULL;
 		}
-		mod_heap = &mod_heap_user->heap;
+		mod_heap = NULL;
 	} else {
 		mod_heap = drv->user_heap;
-		mod_heap_user = NULL;
 		heap_size = 0;
+		mod_vreg = NULL;
 	}
 
-	struct processing_module *mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
+	if (!mod_vreg)
+		mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
+	else if (flags & SOF_MEM_FLAG_COHERENT)
+		mod = vregion_alloc_coherent(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*mod));
+	else
+		mod = vregion_alloc(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*mod));
 
 	if (!mod) {
 		comp_cl_err(drv, "failed to allocate memory for module");
 		goto emod;
 	}
 
+	struct mod_alloc_ctx *alloc = rmalloc(flags, sizeof(*alloc));
+
+	if (!alloc)
+		goto ealloc;
+
 	memset(mod, 0, sizeof(*mod));
-	mod->priv.resources.heap = mod_heap;
+	alloc->heap = mod_heap;
+	alloc->vreg = mod_vreg;
+	mod->priv.resources.alloc = alloc;
 	mod_resource_init(mod);
 
 	/*
@@ -133,11 +135,14 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 * then it can be cached. Effectively it can be only cached in
 	 * single-core configurations.
 	 */
-	struct comp_dev *dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
+	if (mod_vreg)
+		dev = vregion_alloc_coherent(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*dev));
+	else
+		dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
 
 	if (!dev) {
 		comp_cl_err(drv, "failed to allocate memory for comp_dev");
-		goto err;
+		goto edev;
 	}
 
 	memset(dev, 0, sizeof(*dev));
@@ -146,23 +151,25 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	mod->dev = dev;
 	dev->mod = mod;
 
-	if (mod_heap_user)
-		mod_heap_user->client_count++;
-
 	return mod;
 
-err:
-	sof_heap_free(mod_heap, mod);
+edev:
+	rfree(alloc);
+ealloc:
+	if (mod_vreg)
+		vregion_free(mod_vreg, mod);
+	else
+		sof_heap_free(mod_heap, mod);
 emod:
-	rfree(mod_heap_user);
+	vregion_put(mod_vreg);
 
 	return NULL;
 }
 
 static void module_adapter_mem_free(struct processing_module *mod)
 {
-	struct k_heap *mod_heap = mod->priv.resources.heap;
-	unsigned int domain = mod->dev->ipc_config.proc_domain;
+	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
+	struct k_heap *mod_heap = alloc->heap;
 
 	/*
 	 * In principle it shouldn't even be needed to free individual objects
@@ -171,14 +178,17 @@ static void module_adapter_mem_free(struct processing_module *mod)
 #if CONFIG_IPC_MAJOR_4
 	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
 #endif
-	sof_heap_free(mod_heap, mod->dev);
-	sof_heap_free(mod_heap, mod);
-	if (domain == COMP_PROCESSING_DOMAIN_DP) {
-		struct dp_heap_user *mod_heap_user = container_of(mod_heap, struct dp_heap_user,
-								  heap);
+	if (alloc->vreg) {
+		struct vregion *mod_vreg = alloc->vreg;
 
-		if (mod_heap && !--mod_heap_user->client_count)
-			rfree(mod_heap_user);
+		vregion_free(mod_vreg, mod->dev);
+		vregion_free(mod_vreg, mod);
+		if (!vregion_put(mod_vreg))
+			rfree(alloc);
+	} else {
+		sof_heap_free(mod_heap, mod->dev);
+		sof_heap_free(mod_heap, mod);
+		rfree(alloc);
 	}
 }
 
@@ -611,8 +621,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	if (list_is_empty(&mod->raw_data_buffers_list)) {
 		for (i = 0; i < mod->num_of_sinks; i++) {
 			/* allocate not shared buffer */
-			struct comp_buffer *buffer = buffer_alloc(md->resources.heap, buff_size,
-								  memory_flags,
+			struct comp_buffer *buffer = buffer_alloc(md->resources.alloc,
+								  buff_size, memory_flags,
 								  PLATFORM_DCACHE_ALIGN,
 								  BUFFER_USAGE_NOT_SHARED);
 			uint32_t flags;
@@ -623,13 +633,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 				goto free;
 			}
 
-			if (md->resources.heap && md->resources.heap != dev->drv->user_heap) {
-				struct dp_heap_user *dp_user = container_of(md->resources.heap,
-									    struct dp_heap_user,
-									    heap);
-
-				dp_user->client_count++;
-			}
+			vregion_get(md->resources.alloc->vreg);
 
 			irq_local_disable(flags);
 			list_item_prepend(&buffer->buffers_list, &mod->raw_data_buffers_list);

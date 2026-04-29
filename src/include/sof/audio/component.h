@@ -578,6 +578,13 @@ struct comp_ops {
 	uint64_t (*get_total_data_processed)(struct comp_dev *dev, uint32_t stream_no, bool input);
 };
 
+struct k_heap;
+struct vregion;
+struct mod_alloc_ctx {
+	struct k_heap *heap;
+	struct vregion *vreg;
+};
+
 /**
  * Audio component base driver "class"
  * - used by all other component types.

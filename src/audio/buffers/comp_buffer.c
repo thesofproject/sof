@@ -16,6 +16,7 @@
 #include <rtos/interrupt.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
+#include <sof/lib/vregion.h>
 #include <sof/list.h>
 #include <sof/schedule/dp_schedule.h>
 #include <rtos/spinlock.h>
@@ -146,22 +147,22 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	struct comp_buffer *buffer = container_of(audio_buffer, struct comp_buffer, audio_buffer);
 
-	buf_dbg(buffer, "buffer_free()");
+	buf_dbg(buffer, "entry");
 
 #if CONFIG_PROBE
 	if (buffer->probe_cb_free)
 		buffer->probe_cb_free(buffer->probe_cb_arg);
 #endif
 
-	struct k_heap *heap = buffer->audio_buffer.heap;
+	struct mod_alloc_ctx *alloc = buffer->audio_buffer.alloc;
 
 	rfree(buffer->stream.addr);
-	sof_heap_free(heap, buffer);
-	if (heap) {
-		struct dp_heap_user *mod_heap_user = container_of(heap, struct dp_heap_user, heap);
-
-		if (!--mod_heap_user->client_count)
-			rfree(mod_heap_user);
+	if (alloc && alloc->vreg) {
+		vregion_free(alloc->vreg, buffer);
+		if (!vregion_put(alloc->vreg))
+			rfree(alloc);
+	} else {
+		sof_heap_free(alloc ? alloc->heap : NULL, buffer);
 	}
 }
 
@@ -192,19 +193,24 @@ static const struct audio_buffer_ops audio_buffer_ops = {
 	.set_alignment_constants = comp_buffer_set_alignment_constants,
 };
 
-static struct comp_buffer *buffer_alloc_struct(struct k_heap *heap,
+static struct comp_buffer *buffer_alloc_struct(struct mod_alloc_ctx *alloc,
 					       void *stream_addr, size_t size,
 					       uint32_t flags, bool is_shared)
 {
 	struct comp_buffer *buffer;
 
-	tr_dbg(&buffer_tr, "buffer_alloc_struct()");
+	tr_dbg(&buffer_tr, "entry");
 
 	/* allocate new buffer, but add coherent if shared with other cores */
 	if (is_shared)
 		flags |= SOF_MEM_FLAG_COHERENT;
 
-	buffer = sof_heap_alloc(heap, flags, sizeof(*buffer), 0);
+	if (!alloc || !alloc->vreg)
+		buffer = sof_heap_alloc(alloc ? alloc->heap : NULL, flags, sizeof(*buffer), 0);
+	else if (is_shared)
+		buffer = vregion_alloc_coherent(alloc->vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*buffer));
+	else
+		buffer = vregion_alloc(alloc->vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*buffer));
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc structure");
 		return NULL;
@@ -226,7 +232,7 @@ static struct comp_buffer *buffer_alloc_struct(struct k_heap *heap,
 
 	audio_stream_set_underrun(&buffer->stream, !!(flags & SOF_BUF_UNDERRUN_PERMITTED));
 	audio_stream_set_overrun(&buffer->stream, !!(flags & SOF_BUF_OVERRUN_PERMITTED));
-	buffer->audio_buffer.heap = heap;
+	buffer->audio_buffer.alloc = alloc;
 
 	comp_buffer_reset_source_list(buffer);
 	comp_buffer_reset_sink_list(buffer);
@@ -234,13 +240,13 @@ static struct comp_buffer *buffer_alloc_struct(struct k_heap *heap,
 	return buffer;
 }
 
-struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flags, uint32_t align,
-				 bool is_shared)
+struct comp_buffer *buffer_alloc(struct mod_alloc_ctx *alloc, size_t size, uint32_t flags,
+				 uint32_t align, bool is_shared)
 {
 	struct comp_buffer *buffer;
 	void *stream_addr;
 
-	tr_dbg(&buffer_tr, "buffer_alloc()");
+	tr_dbg(&buffer_tr, "entry");
 
 	/* validate request */
 	if (size == 0) {
@@ -255,7 +261,7 @@ struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flag
 		return NULL;
 	}
 
-	buffer = buffer_alloc_struct(heap, stream_addr, size, flags, is_shared);
+	buffer = buffer_alloc_struct(alloc, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
 		rfree(stream_addr);
@@ -264,7 +270,7 @@ struct comp_buffer *buffer_alloc(struct k_heap *heap, size_t size, uint32_t flag
 	return buffer;
 }
 
-struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_size,
+struct comp_buffer *buffer_alloc_range(struct mod_alloc_ctx *alloc, size_t preferred_size,
 				       size_t minimum_size,
 				       uint32_t flags, uint32_t align, bool is_shared)
 {
@@ -299,7 +305,7 @@ struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_siz
 		return NULL;
 	}
 
-	buffer = buffer_alloc_struct(heap, stream_addr, size, flags, is_shared);
+	buffer = buffer_alloc_struct(alloc, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
 		rfree(stream_addr);
@@ -310,7 +316,7 @@ struct comp_buffer *buffer_alloc_range(struct k_heap *heap, size_t preferred_siz
 
 void buffer_zero(struct comp_buffer *buffer)
 {
-	buf_dbg(buffer, "stream_zero()");
+	buf_dbg(buffer, "entry");
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
 
 	bzero(audio_stream_get_addr(&buffer->stream), audio_stream_get_size(&buffer->stream));

@@ -12,9 +12,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct vregion;
 struct k_heap;
 struct objpool_head {
 	struct list_item list;
+	struct vregion *vreg;
 	struct k_heap *heap;
 	uint32_t flags;
 };

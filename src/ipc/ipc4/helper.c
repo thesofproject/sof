@@ -21,6 +21,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/vregion.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/dp_schedule.h>
@@ -527,8 +528,8 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 }
 
 __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool is_shared,
-						     uint32_t buf_size, uint32_t src_queue,
-						     uint32_t dst_queue, struct k_heap *heap)
+						uint32_t buf_size, uint32_t src_queue,
+						uint32_t dst_queue, struct mod_alloc_ctx *alloc)
 {
 	struct sof_ipc_buffer ipc_buf;
 
@@ -539,7 +540,7 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
 	ipc_buf.comp.core = cpu_get_id();
-	return buffer_new(heap, &ipc_buf, is_shared);
+	return buffer_new(alloc, &ipc_buf, is_shared);
 }
 
 #if CONFIG_CROSS_CORE_STREAM
@@ -640,7 +641,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 	}
 
-	struct k_heap *dp_heap;
+	struct mod_alloc_ctx *alloc;
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
@@ -659,9 +660,9 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	else
 		dp = NULL;
 
-	dp_heap = dp && dp->mod ? dp->mod->priv.resources.heap : NULL;
+	alloc = dp && dp->mod ? dp->mod->priv.resources.alloc : NULL;
 #else
-	dp_heap = NULL;
+	alloc = NULL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
@@ -731,18 +732,15 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		buf_size = ibs * 2;
 
 	buffer = ipc4_create_buffer(source, cross_core_bind, buf_size, bu->extension.r.src_queue,
-				    bu->extension.r.dst_queue, dp_heap);
+				    bu->extension.r.dst_queue, alloc);
 	if (!buffer) {
 		tr_err(&ipc_tr, "failed to allocate buffer to bind %#x to %#x", src_id, sink_id);
 		return IPC4_OUT_OF_MEMORY;
 	}
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (dp_heap) {
-		struct dp_heap_user *dp_user = container_of(dp_heap, struct dp_heap_user, heap);
-
-		dp_user->client_count++;
-	}
+	if (alloc)
+		vregion_get(alloc->vreg);
 #endif
 
 	/*
