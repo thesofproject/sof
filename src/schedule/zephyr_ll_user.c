@@ -30,14 +30,11 @@ APP_TASK_DATA static struct k_heap *zephyr_ll_heap;
 
 static struct k_heap *zephyr_ll_heap_init(void)
 {
-	struct k_heap *heap = sys_user_heap_init();
+	const size_t ll_heap_size = ALIGN_UP(CONFIG_SOF_ZEPHYR_LL_USER_HEAP_SIZE,
+						 CONFIG_MM_DRV_PAGE_SIZE);
+	struct k_heap *heap = sys_user_heap_init(ll_heap_size);
 	struct k_mem_partition mem_partition;
 	int ret;
-
-	/*
-	 * TODO: the size of LL heap should be independently configurable and
-	 *       not tied to CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
-	 */
 
 	if (!heap) {
 		tr_err(&ll_tr, "heap alloc fail");

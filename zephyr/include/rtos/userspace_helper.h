@@ -57,7 +57,7 @@ struct k_heap *module_driver_heap_init(void);
  * k_heap metadata (required for userspace syscall verification).
  * Must be freed with sys_user_heap_remove().
  */
-struct k_heap *sys_user_heap_init(void);
+struct k_heap *sys_user_heap_init(size_t heap_size);
 
 /**
  * Free private processing module heap allocated by

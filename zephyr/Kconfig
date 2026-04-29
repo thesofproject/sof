@@ -113,6 +113,17 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	 module has its own independent heap to which only it has access. This heap is
 	 shared between instances of the same module.
 
+config SOF_ZEPHYR_LL_USER_HEAP_SIZE
+	hex "Size of the shared LL user-space heap"
+	default 0x20000
+	depends on SOF_USERSPACE_LL
+	help
+	 The size of the shared heap used by the low-latency (LL) scheduler
+	 user-space thread. This heap is shared across all pipelines running
+	 on the LL thread and must be large enough to hold all host DMA
+	 buffers, chain DMA data, SG elements, and module adapter buffers
+	 for all simultaneously active pipelines.
+
 config SOF_USERSPACE_PROXY
 	bool "Use userspace proxy to support userspace modules"
 	select SOF_USERSPACE_USE_DRIVER_HEAP
