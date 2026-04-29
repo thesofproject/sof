@@ -212,6 +212,7 @@ static void man_get_section_manifest(struct image *image,
 	man_module->type.domain_dp = sof_mod->module.type.domain_dp;
 	man_module->type.domain_ll = sof_mod->module.type.domain_ll;
 	man_module->type.load_type = sof_mod->module.type.load_type;
+	man_module->type.user_mode = sof_mod->module.type.user_mode;
 
 	/* text segment */
 	segment = &man_module->segment[SOF_MAN_SEGMENT_TEXT];
