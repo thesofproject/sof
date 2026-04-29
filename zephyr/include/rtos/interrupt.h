@@ -11,7 +11,7 @@
 /* TODO: to be removed completely when the following platforms are switched
  * to native drivers.
  */
-#if  defined(CONFIG_AMD)
+#if defined(CONFIG_AMD) && !defined(CONFIG_ZEPHYR_NATIVE_DRIVERS)
 /* imx currently has no IRQ driver in Zephyr so we force to xtos IRQ */
 #include "../../../xtos/include/rtos/interrupt.h"
 #else
@@ -86,6 +86,6 @@ static inline void platform_interrupt_init(void) {}
 #define irq_local_enable(flags) \
 	arch_irq_unlock(flags)
 
-#endif /* IMX */
+#endif /* CONFIG_AMD && !CONFIG_ZEPHYR_NATIVE_DRIVERS */
 
 #endif /* __ZEPHYR_RTOS_INTERRUPT_H__ */

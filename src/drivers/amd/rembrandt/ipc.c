@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2022 AMD. All rights reserved.
+//Copyright(c) 2022, 2026 AMD. All rights reserved.
 //
 //Author:       Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //              Bala Kishore <balakishore.pati@amd.com>
-
+//              Sivasubramanian <sravisar@amd.com>
 #include <rtos/panic.h>
-#include <platform/chip_offset_byte.h>
-#include <platform/chip_registers.h>
 #include <rtos/interrupt.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/msg.h>
@@ -32,8 +30,38 @@
 #include <platform/platform.h>
 #include <platform/ipc.h>
 
+#define HOST_TO_DSP_INTR 1
+#define INTERRUPT_DISABLE 0
+LOG_MODULE_REGISTER(ipc1, CONFIG_SOF_LOG_LEVEL);
 volatile acp_scratch_mem_config_t *pscratch_mem_cfg = (volatile acp_scratch_mem_config_t *)
 						      (PU_SCRATCH_REG_BASE + SCRATCH_REG_OFFSET);
+
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+/* Clear the Acknowledge ( status) for the host to DSP interrupt */
+void acp_ack_intr_from_host(void)
+{
+	/* acknowledge the host interrupt */
+	acp_dsp_sw_intr_stat_t sw_intr_stat;
+
+	sw_intr_stat.u32all = 0;
+	sw_intr_stat.bits.host_to_dsp0_intr1_stat = INTERRUPT_ENABLE;
+	io_reg_write((PU_REGISTER_BASE + ACP_DSP_SW_INTR_STAT), sw_intr_stat.u32all);
+}
+
+/* This function triggers a host interrupt from ACP DSP */
+void acp_dsp_to_host_intr_trig(void)
+{
+	acp_sw_intr_trig_t  sw_intr_trig;
+
+	/* Read the Software Interrupt controller register and update */
+	sw_intr_trig = (acp_sw_intr_trig_t)io_reg_read(PU_REGISTER_BASE +
+						ACP_SW_INTR_TRIG);
+	/* Configures the trigger bit in ACP_DSP_SW_INTR_TRIG register */
+	sw_intr_trig.bits.trig_dsp0_to_host_intr = INTERRUPT_ENABLE;
+	/* Write the Software Interrupt controller register */
+	io_reg_write((PU_REGISTER_BASE + ACP_SW_INTR_TRIG), sw_intr_trig.u32all);
+}
+#endif /* CONFIG_ZEPHYR_NATIVE_DRIVERS */
 
 void amd_irq_handler(void *arg)
 {

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2023 AMD. All rights reserved.
+//Copyright(c) 2023, 2026 AMD. All rights reserved.
 //
 // Author:	Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //		SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+//      Sivasubramanian <sravisar@amd.com>
 
 #include <sof/audio/component.h>
 #include <sof/drivers/acp_dai_dma.h>
@@ -157,8 +158,8 @@ const struct dai_driver acp_dmic_dai_driver = {
 	.type = SOF_DAI_AMD_DMIC,
 	.uid = SOF_UUID(acp_dmic_dai_uuid),
 	.tctx = &acp_dmic_dai_tr,
-	.dma_dev = DMA_DEV_DMIC,
-	.dma_caps = DMA_CAP_DMIC,
+	.dma_dev = SOF_DMA_DEV_DMIC,
+	.dma_caps = SOF_DMA_CAP_DMIC,
 	.ops = {
 		.trigger		= acp_dmic_dai_trigger,
 		.set_config		= acp_dmic_dai_set_config,
