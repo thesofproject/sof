@@ -10,6 +10,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/lib/fast-get.h>
+#include <sof/lib/vregion.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/kernel.h>
@@ -217,12 +218,12 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 		goto out;
 	}
 
-	/*
-	 * If a userspace threads is the first user to fast-get the buffer, an
-	 * SRAM copy will be allocated on its own heap, so it will have access
-	 * to it
-	 */
-	ret = sof_heap_alloc(heap, alloc_flags, alloc_size, alloc_align);
+	if (alloc && alloc->vreg && size <= FAST_GET_MAX_COPY_SIZE)
+		/* A userspace allocation, that won't be shared */
+		ret = vregion_alloc_align(alloc->vreg, VREGION_MEM_TYPE_INTERIM, alloc_size,
+					  alloc_align);
+	else
+		ret = sof_heap_alloc(heap, alloc_flags, alloc_size, alloc_align);
 	if (!ret)
 		goto out;
 
@@ -287,7 +288,10 @@ void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void
 
 	if (!entry->refcount) {
 		LOG_DBG("freeing buffer %p", sram_ptr);
-		sof_heap_free(heap, entry->sram_ptr);
+		if (alloc && alloc->vreg && entry->size <= FAST_GET_MAX_COPY_SIZE)
+			vregion_free(alloc->vreg, entry->sram_ptr);
+		else
+			sof_heap_free(heap, entry->sram_ptr);
 	}
 
 #if CONFIG_USERSPACE
