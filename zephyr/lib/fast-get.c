@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <errno.h>
 
+#include <sof/audio/component.h>
 #include <sof/lib/fast-get.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
@@ -125,8 +126,9 @@ static int fast_get_access_grant(struct k_mem_domain *mdom, void *addr, size_t s
 }
 #endif /* CONFIG_USERSPACE */
 
-const void *fast_get(struct k_heap *heap, const void *dram_ptr, size_t size)
+const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t size)
 {
+	struct k_heap *heap = alloc ? alloc->heap : NULL;
 #if CONFIG_USERSPACE
 	bool current_is_userspace = thread_is_userspace(k_current_get());
 #endif
@@ -266,8 +268,9 @@ static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *
 	return NULL;
 }
 
-void fast_put(struct k_heap *heap, struct k_mem_domain *mdom, const void *sram_ptr)
+void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void *sram_ptr)
 {
+	struct k_heap *heap = alloc ? alloc->heap : NULL;
 	struct sof_fast_get_data *data = &fast_get_data;
 	struct sof_fast_get_entry *entry;
 	k_spinlock_key_t key;
