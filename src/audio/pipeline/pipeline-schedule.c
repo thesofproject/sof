@@ -388,6 +388,7 @@ int pipeline_comp_dp_task_init(struct comp_dev *comp)
 {
 	/* DP tasks are guaranteed to have a module_adapter */
 	struct processing_module *mod = comp_mod(comp);
+	size_t stack_size = TASK_DP_STACK_SIZE;
 	struct task_ops ops  = {
 		.run		= dp_task_run,
 		.get_deadline	= NULL,
@@ -403,8 +404,17 @@ int pipeline_comp_dp_task_init(struct comp_dev *comp)
 	unsigned int flags = IS_ENABLED(CONFIG_USERSPACE) ? K_USER : 0;
 #endif
 
+	if (mod->priv.cfg.ext_data && mod->priv.cfg.ext_data->dp_data &&
+	    mod->priv.cfg.ext_data->dp_data->stack_bytes > 0) {
+		stack_size = MAX(mod->priv.cfg.ext_data->dp_data->stack_bytes,
+				 CONFIG_ZEPHYR_DP_SCHEDULER_MIN_STACK_SIZE);
+		comp_info(comp, "stack size set to %zu, %zu requested, min allowed %zu",
+			  stack_size, mod->priv.cfg.ext_data->dp_data->stack_bytes,
+			  CONFIG_ZEPHYR_DP_SCHEDULER_MIN_STACK_SIZE);
+	}
+
 	return scheduler_dp_task_init(&comp->task, SOF_UUID(dp_task_uuid), &ops, mod,
-				      comp->ipc_config.core, TASK_DP_STACK_SIZE, flags);
+				      comp->ipc_config.core, stack_size, flags);
 }
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
