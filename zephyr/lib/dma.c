@@ -212,7 +212,7 @@ SHARED_DATA struct sof_dma dma[] = {
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(host_dma)),
 },
 #endif /* CONFIG_SOC_MIMX9596_M7 */
-#if defined(CONFIG_SOC_ACP_7_0)
+#if defined(CONFIG_SOC_ACP_7_0) || defined(CONFIG_SOC_ACP_7_X)
 {
 	.plat_data = {
 		.dir		= SOF_DMA_DIR_LMEM_TO_HMEM |
@@ -233,7 +233,7 @@ SHARED_DATA struct sof_dma dma[] = {
 		.caps		= SOF_DMA_CAP_SW,
 		.base		= DMA0_BASE,
 		.chan_size	= DMA0_SIZE,
-		.channels	= 12,
+		.channels	= DT_PROP(DT_NODELABEL(acp_sdw_dma), dma_channels),
 		.period_count	= 2,
 	},
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(acp_sdw_dma)),
