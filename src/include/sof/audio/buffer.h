@@ -16,7 +16,6 @@
 #include <rtos/panic.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
-#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/coherent.h>
 #include <sof/math/numbers.h>
