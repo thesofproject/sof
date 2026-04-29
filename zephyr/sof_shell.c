@@ -62,8 +62,8 @@ static int cmd_sof_module_heap_usage(const struct shell *sh,
 			continue;
 
 		usage = module_adapter_heap_usage(comp_mod(icd->cd), &hwm);
-		shell_print(sh, "comp id 0x%08x%9zu usage%9zu hwm %9zu max\tbytes",
-			    icd->id, usage, hwm, comp_mod(icd->cd)->priv.cfg.heap_bytes);
+		shell_print(sh, "comp id 0x%08x%9zu usage%9zu hwm\tbytes",
+			    icd->id, usage, hwm);
 	}
 	return 0;
 }
