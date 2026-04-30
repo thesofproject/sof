@@ -60,6 +60,7 @@ struct audio_buffer_ops {
 				       const uint32_t frame_align_req);
 };
 
+struct mod_alloc_ctx;
 /* base class for all buffers, all buffers must inherit from it */
 struct sof_audio_buffer {
 	CORE_CHECK_STRUCT_FIELD;
