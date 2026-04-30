@@ -50,6 +50,9 @@ static int mfcc_get_window(struct mfcc_state *state, enum sof_mfcc_fft_window_ty
 	case MFCC_HAMMING_WINDOW:
 		win_hamming_16b(state->window, fft->fft_size);
 		return 0;
+	case MFCC_HANN_WINDOW:
+		win_hann_16b(state->window, fft->fft_size);
+		return 0;
 	case MFCC_POVEY_WINDOW:
 		win_povey_16b(state->window, fft->fft_size);
 		return 0;
