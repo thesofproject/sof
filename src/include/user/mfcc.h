@@ -69,7 +69,7 @@ struct sof_mfcc_config {
 	int16_t num_ceps; /**< Number of cepstral coefficients, e.g. 13 */
 	int16_t num_mel_bins; /**< Number of internal Mel bands, e.g. 23 */
 	int16_t preemphasis_coefficient; /**< Q1.15, e.g. 0.97, or 0 for disable */
-	int16_t top_db; /**< Q8.7 dB, limit Mel energies to this value e.g. 200 */
+	int16_t top_db; /**< Q8.7 dB, limit min. Mel energies to chunk max - top_dB, e.g. 80 */
 	int16_t vtln_high; /**< Reserved, no support */
 	int16_t vtln_low; /**< Reserved, no support */
 	int16_t vtln_warp; /**< Reserved, no support */
