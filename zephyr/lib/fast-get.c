@@ -11,6 +11,7 @@
 #include <sof/audio/component.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
+#include <sof/objpool.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <rtos/kernel.h>
@@ -36,60 +37,30 @@ struct sof_fast_get_entry {
 
 struct sof_fast_get_data {
 	struct k_spinlock lock;
-	size_t num_entries;
-	struct sof_fast_get_entry *entries;
+	struct objpool_head pool;
 };
 
 static struct sof_fast_get_data fast_get_data = {
-	.num_entries = 0,
-	.entries = NULL,
+	.pool.list = LIST_INIT(fast_get_data.pool.list),
 };
 
 LOG_MODULE_REGISTER(fast_get, CONFIG_SOF_LOG_LEVEL);
 
-static int fast_get_realloc(struct sof_fast_get_data *data)
+struct fast_get_find {
+	const void *ptr;
+	struct sof_fast_get_entry *entry;
+};
+
+static bool fast_get_find_entry(void *data, void *arg)
 {
-	struct sof_fast_get_entry *entries;
-	/*
-	 * Allocate 8 entries for the beginning. Currently we only use 2 entries
-	 * at most, so this should provide a reasonable first allocation.
-	 */
-	const unsigned int init_n_entries = 8;
-	unsigned int n_entries = data->num_entries ? data->num_entries * 2 : init_n_entries;
+	struct sof_fast_get_entry *entry = data;
+	struct fast_get_find *find = arg;
 
-	entries = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-			  n_entries * sizeof(*entries));
-	if (!entries)
-		return -ENOMEM;
+	if (find->ptr != entry->dram_ptr)
+		return false;
 
-	if (data->num_entries) {
-		memcpy_s(entries, n_entries * sizeof(*entries), data->entries,
-			 data->num_entries * sizeof(*entries));
-		rfree(data->entries);
-	}
-
-	data->entries = entries;
-	data->num_entries = n_entries;
-
-	return 0;
-}
-
-static struct sof_fast_get_entry *fast_get_find_entry(struct sof_fast_get_data *data,
-						      const void *dram_ptr)
-{
-	int i;
-
-	for (i = 0; i < data->num_entries; i++) {
-		if (data->entries[i].dram_ptr == dram_ptr)
-			return &data->entries[i];
-	}
-
-	for (i = 0; i < data->num_entries; i++) {
-		if (data->entries[i].dram_ptr == NULL)
-			return &data->entries[i];
-	}
-
-	return NULL;
+	find->entry = entry;
+	return true;
 }
 
 #if CONFIG_MM_DRV
@@ -157,15 +128,19 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 		/* When userspace is enabled only share large buffers */
 		alloc_ptr = NULL;
 
-	do {
-		entry = fast_get_find_entry(data, alloc_ptr);
+	struct fast_get_find find = {
+		.ptr = alloc_ptr,
+	};
+	objpool_iterate(&fast_get_data.pool, fast_get_find_entry, &find);
+	entry = find.entry;
+	if (!entry) {
+		entry = objpool_alloc(&fast_get_data.pool, sizeof(*entry),
+				      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT);
 		if (!entry) {
-			if (fast_get_realloc(data)) {
-				ret = NULL;
-				goto out;
-			}
+			ret = NULL;
+			goto out;
 		}
-	} while (!entry);
+	}
 
 #if CONFIG_USERSPACE
 	LOG_DBG("%s: %#zx bytes alloc %p entry %p DRAM %p",
@@ -257,17 +232,16 @@ out:
 }
 EXPORT_SYMBOL(fast_get);
 
-static struct sof_fast_get_entry *fast_put_find_entry(struct sof_fast_get_data *data,
-						      const void *sram_ptr)
+static bool fast_put_find_entry(void *data, void *arg)
 {
-	int i;
+	struct sof_fast_get_entry *entry = data;
+	struct fast_get_find *find = arg;
 
-	for (i = 0; i < data->num_entries; i++) {
-		if (data->entries[i].sram_ptr == sram_ptr)
-			return &data->entries[i];
-	}
+	if (find->ptr != entry->sram_ptr)
+		return false;
 
-	return NULL;
+	find->entry = entry;
+	return true;
 }
 
 void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void *sram_ptr)
@@ -278,7 +252,12 @@ void fast_put(struct mod_alloc_ctx *alloc, struct k_mem_domain *mdom, const void
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&fast_get_data.lock);
-	entry = fast_put_find_entry(data, sram_ptr);
+
+	struct fast_get_find find = {
+		.ptr = sram_ptr,
+	};
+	objpool_iterate(&fast_get_data.pool, fast_put_find_entry, &find);
+	entry = find.entry;
 	if (!entry) {
 		LOG_ERR("Put called to unknown address %p", sram_ptr);
 		goto out;

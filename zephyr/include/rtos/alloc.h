@@ -125,7 +125,15 @@ void l3_heap_save(void);
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment);
 void sof_heap_free(struct k_heap *heap, void *addr);
+#if CONFIG_SOF_FULL_ZEPHYR_APPLICATION
 struct k_heap *sof_sys_heap_get(void);
+#else
+/* for unit-testing */
+static inline struct k_heap *sof_sys_heap_get(void)
+{
+	return NULL;
+}
+#endif
 
 /**
  * Returns heap object to use for SOF heap allocations
