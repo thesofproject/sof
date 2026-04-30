@@ -114,6 +114,7 @@ struct mfcc_state {
 	struct mat_matrix_16b *mel_spectra; /**< Pointer to scratch */
 	struct mat_matrix_16b *cepstral_coef; /**< Pointer to scratch */
 	int32_t *power_spectra; /**< Pointer to scratch */
+	int16_t mmax; /**< Maximum Mel value in Q9.7 */
 	int16_t buf_avail;
 	int16_t *buffers;
 	int16_t *prev_data; /**< prev_data_size */

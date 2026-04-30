@@ -152,6 +152,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	else
 		state->source_channel = config->channel;
 
+	state->mmax = config->mmax_init;
 	state->emph.enable = config->preemphasis_coefficient > 0;
 	state->emph.coef = -config->preemphasis_coefficient; /* Negate config parameter */
 	fft->fft_size = config->frame_length;
