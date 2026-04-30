@@ -8,6 +8,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/audio_stream.h>
+#include <sof/audio/format.h>
 #include <sof/math/auditory.h>
 #include <sof/math/matrix.h>
 #include <sof/math/sqrt.h>
@@ -36,8 +37,10 @@ LOG_MODULE_REGISTER(mfcc_common, CONFIG_SOF_LOG_LEVEL);
  * The main processing function for MFCC
  */
 
-static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *state)
+static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_comp_data *cd)
 {
+	struct sof_mfcc_config *config = cd->config;
+	struct mfcc_state *state = &cd->state;
 	struct mfcc_buffer *buf = &state->buf;
 	struct mfcc_fft *fft = &state->fft;
 	int mel_scale_shift;
@@ -45,6 +48,10 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 	int i;
 	int m;
 	int cc_count = 0;
+	int32_t s;
+	int16_t mel_value;
+	int16_t peak;
+	int16_t clamp_value;
 
 	/* Phase 1, wait until whole fft_size is filled with valid data. This way
 	 * first output cepstral coefficients originate from streamed data and not
@@ -122,6 +129,43 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 		if (state->mel_only) {
 			/* In Mel-only mode output Mel log spectra directly */
 			cc_count += state->dct.num_in;
+
+			/* Find peak mel value and track state->mmax */
+			if (config->dynamic_mmax) {
+				peak = state->mel_spectra->data[0];
+				for (i = 1; i < state->dct.num_in; i++) {
+					if (state->mel_spectra->data[i] > peak)
+						peak = state->mel_spectra->data[i];
+				}
+
+				/* Jump to peak immediately if higher, decay otherwise */
+				if (peak > state->mmax) {
+					state->mmax = peak;
+				} else {
+					/* Q8.7 * Q1.15, result Q8.7. The coefficient is small so
+					 * no need for saturation.
+					 */
+					s = (int32_t)peak - state->mmax;
+					state->mmax +=
+						Q_MULTSR_32X32(s, config->mmax_coef, 7, 15, 7);
+				}
+			}
+
+			/* Clamp Mel values lower than mmax - top_db, add offset, and scale */
+			clamp_value = state->mmax - config->top_db;
+			for (i = 0; i < state->dct.num_in; i++) {
+				mel_value = state->mel_spectra->data[i];
+				if (mel_value < clamp_value)
+					mel_value = clamp_value;
+
+				/* Q8.7 * Q4.12, result 8.7 */
+				s = (int32_t)mel_value + config->mel_offset;
+				state->mel_spectra->data[i] =
+					sat_int16(Q_MULTSR_32X32(s, config->mel_scale, 7, 12, 7));
+			}
+
+			/* Enable this to check mmax decay */
+			comp_dbg(dev, "state->mmax = %d", state->mmax);
 		} else {
 			/* Multiply Mel spectra with DCT matrix to get cepstral coefficients */
 			mat_init_16b(state->cepstral_coef, 1, state->dct.num_out, 7); /* Q8.7 */
@@ -146,8 +190,8 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_state *stat
 }
 
 #if CONFIG_FORMAT_S16LE
-static int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
-				 int16_t *w_ptr, int samples)
+static int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink, int16_t *w_ptr,
+					int samples)
 {
 	int copied;
 	int nmax;
@@ -165,7 +209,7 @@ static int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
 }
 
 static int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr,
-				 int samples, int16_t *r_ptr)
+					int samples, int16_t *r_ptr)
 {
 	int copied;
 	int nmax;
@@ -202,7 +246,7 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s16(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT: Mel auditory filter and DCT. */
-	num_ceps = mfcc_stft_process(mod->dev, state);
+	num_ceps = mfcc_stft_process(mod->dev, cd);
 
 	/* If new output produced, set up pointer into scratch data and mark magic pending */
 	if (num_ceps > 0) {
@@ -299,7 +343,7 @@ void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s24(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT */
-	num_ceps = mfcc_stft_process(mod->dev, state);
+	num_ceps = mfcc_stft_process(mod->dev, cd);
 
 	/* If new output produced, set up pointer into scratch data */
 	if (num_ceps > 0) {
@@ -361,7 +405,7 @@ void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s32(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT */
-	num_ceps = mfcc_stft_process(mod->dev, state);
+	num_ceps = mfcc_stft_process(mod->dev, cd);
 
 	/* If new output produced, set up pointer into scratch data */
 	if (num_ceps > 0) {

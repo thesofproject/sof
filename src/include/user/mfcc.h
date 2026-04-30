@@ -50,7 +50,11 @@ enum sof_mfcc_dct_type {
  */
 struct sof_mfcc_config {
 	uint32_t size; /**< Size of this struct in bytes */
-	uint32_t reserved[8];
+	int16_t mel_offset; /**< Q8.7 default 0, use 4.0 for Whisper */
+	int16_t mel_scale; /**< Q4.12 default 1.0, use 0.25 for Whisper */
+	int16_t mmax_init; /**< Q8.7 default 0, with dynamic_mmax false, can sim. Whisper mmax */
+	int16_t mmax_coef; /**< Q1.15 decay coefficient for dynamic mmax, a small value for slow */
+	uint32_t reserved[6];
 	int32_t sample_frequency; /**< Hz. e.g. 16000 */
 	int32_t pmin; /**< Q1.31 linear power, limit minimum Mel energy, e.g. 1e-9 */
 	enum sof_mfcc_mel_log_type mel_log; /**< Use MEL_LOG_IS_LOG, LOG10 or DB*/
@@ -80,7 +84,7 @@ struct sof_mfcc_config {
 	bool snip_edges; /**< Must be true (1) */
 	bool subtract_mean; /**< Must be false (0) */
 	bool use_energy; /**< Must be false (0) */
-	bool reserved_bool1;
+	bool dynamic_mmax; /**< Track max Mel value for clamp with top_db value */
 	bool reserved_bool2;
 	bool reserved_bool3;
 } __attribute__((packed));
