@@ -2,6 +2,7 @@
 
 cmocka_test(fast-get-tests
 	fast-get-tests.c
+	${PROJECT_SOURCE_DIR}/src/lib/objpool.c
 	${PROJECT_SOURCE_DIR}/zephyr/lib/fast-get.c
 	${PROJECT_SOURCE_DIR}/src/lib/alloc.c
 	${PROJECT_SOURCE_DIR}/src/platform/library/lib/memory.c

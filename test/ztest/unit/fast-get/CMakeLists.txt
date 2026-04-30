@@ -21,6 +21,7 @@ target_compile_definitions(app PRIVATE
 
 target_sources(app PRIVATE
 	test_fast_get_ztest.c
+	${SOF_ROOT}/src/lib/objpool.c
 	${SOF_ROOT}/zephyr/lib/fast-get.c
 	${SOF_ROOT}/test/ztest/unit/common/alloc.c
 )
