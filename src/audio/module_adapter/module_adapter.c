@@ -69,7 +69,7 @@ static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *
 	 * A 1-to-1 replacement of the original heap implementation would be to
 	 * have "lifetime size" equal to 0. But (1) this is invalid for
 	 * vregion_create() and (2) we gradually move objects, that are simple
-	 * to move to the lifetime buffer. Make it 1k for the beginning.
+	 * to move to the lifetime buffer. Make it 4k for the beginning.
 	 */
 	return vregion_create(4096, buf_size - 4096);
 }
