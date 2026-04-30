@@ -128,7 +128,10 @@ struct mfcc_state {
 	bool mel_only; /**< When true, output Mel spectra instead of cepstral coefficients */
 	bool waiting_fill; /**< booleans */
 	bool prev_samples_valid;
+	bool magic_pending; /**< True when magic word not yet written for current output */
 	size_t sample_buffers_size; /**< bytes */
+	int16_t *out_data_ptr; /**< Read pointer into scratch data for multi-period output */
+	int out_remain; /**< Remaining int16_t samples to write to sink from scratch */
 };
 
 /* MFCC component private data */

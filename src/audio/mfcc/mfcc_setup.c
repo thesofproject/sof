@@ -53,7 +53,6 @@ static int mfcc_get_window(struct mfcc_state *state, enum sof_mfcc_fft_window_ty
 	case MFCC_POVEY_WINDOW:
 		win_povey_16b(state->window, fft->fft_size);
 		return 0;
-
 	default:
 		return -EINVAL;
 	}
@@ -309,9 +308,33 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		state->cepstral_coef = NULL;
 	}
 
+	/* Allocate output buffer for multi-period output. Size allows for
+	 * current output data plus leftover from previous period.
+	 */
+	int max_out_per_hop = state->mel_only ? dct->num_in : dct->num_out;
+
+	/* Check that output data can be drained within the periods spanned by one
+	 * FFT hop. Each hop consumes fft_hop_size input samples and produces
+	 * max_out_per_hop + 2 (magic) int16_t output values. The sink provides at
+	 * least fft_hop_size * channels int16_t samples per hop (worst case s16).
+	 * If output exceeds this, data accumulates and will eventually overflow.
+	 */
+	int out_per_hop = max_out_per_hop + 2;
+	int sink_per_hop = fft->fft_hop_size * channels;
+
+	if (out_per_hop > sink_per_hop) {
+		comp_err(dev, "Output %d int16 per hop exceeds sink capacity %d (hop %d x ch %d)",
+			 out_per_hop, sink_per_hop, fft->fft_hop_size, channels);
+		ret = -EINVAL;
+		goto free_dct_matrix;
+	}
+
 	/* Set initial state for STFT */
 	state->waiting_fill = true;
 	state->prev_samples_valid = false;
+	state->magic_pending = false;
+	state->out_data_ptr = NULL;
+	state->out_remain = 0;
 
 	comp_dbg(dev, "done");
 	return 0;

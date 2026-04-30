@@ -193,38 +193,49 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 	struct mfcc_buffer *buf = &cd->state.buf;
 	uint32_t magic = MFCC_MAGIC;
 	int16_t *w_ptr = audio_stream_get_wptr(sink);
-	// int num_magic = sizeof(magic) / sizeof(int16_t);
 	const int num_magic = 2;
 	int num_ceps;
-	int zero_samples;
+	int sink_samples;
+	int to_copy;
 
 	/* Get samples from source buffer */
 	mfcc_source_copy_s16(bsource, buf, &state->emph, frames, state->source_channel);
 
-	/* Run STFT and processing after FFT: Mel auditory filter and DCT. The sink
-	 * buffer is updated during STDF processing.
-	 */
+	/* Run STFT and processing after FFT: Mel auditory filter and DCT. */
 	num_ceps = mfcc_stft_process(mod->dev, state);
 
-	/* Done, copy data to sink. This works only if the period has room for magic (2)
-	 * plus num_ceps int16_t samples. TODO: split ceps over multiple periods.
-	 */
-	zero_samples = frames * audio_stream_get_channels(sink);
+	/* If new output produced, set up pointer into scratch data and mark magic pending */
 	if (num_ceps > 0) {
-		int16_t *out_data;
+		if (state->mel_only)
+			state->out_data_ptr = state->mel_spectra->data;
+		else
+			state->out_data_ptr = state->cepstral_coef->data;
 
-		if (state->mel_only) {
-			out_data = state->mel_spectra->data;
-		} else {
-			out_data = state->cepstral_coef->data;
-		}
-
-		zero_samples -= num_ceps + num_magic;
-		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_magic, (int16_t *)&magic);
-		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_ceps, out_data);
+		state->out_remain = num_ceps;
+		state->magic_pending = true;
 	}
 
-	w_ptr = mfcc_sink_copy_zero_s16(sink, w_ptr, zero_samples);
+	/* Write to sink, limited by period size */
+	sink_samples = frames * audio_stream_get_channels(sink);
+
+	/* Write magic word first if pending */
+	if (state->magic_pending && sink_samples >= num_magic) {
+		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_magic, (int16_t *)&magic);
+		sink_samples -= num_magic;
+		state->magic_pending = false;
+	}
+
+	/* Write cepstral/mel data from scratch buffer */
+	to_copy = MIN(state->out_remain, sink_samples);
+	if (to_copy > 0) {
+		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, to_copy, state->out_data_ptr);
+		state->out_data_ptr += to_copy;
+		state->out_remain -= to_copy;
+		sink_samples -= to_copy;
+	}
+
+	/* Zero-fill remaining sink samples */
+	w_ptr = mfcc_sink_copy_zero_s16(sink, w_ptr, sink_samples);
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
@@ -280,8 +291,9 @@ void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer 
 	int32_t *w_ptr = audio_stream_get_wptr(sink);
 	const int num_magic = 1; /* one int32_t word for magic */
 	int num_ceps;
-	int ceps_s32;
-	int zero_samples;
+	int sink_samples;
+	int remain_s32;
+	int to_copy;
 
 	/* Get samples from source buffer */
 	mfcc_source_copy_s24(bsource, buf, &state->emph, frames, state->source_channel);
@@ -289,17 +301,43 @@ void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer 
 	/* Run STFT and processing after FFT */
 	num_ceps = mfcc_stft_process(mod->dev, state);
 
-	/* Copy data to sink. Pack int16_t cepstral data into int32_t samples. */
-	zero_samples = frames * audio_stream_get_channels(sink);
+	/* If new output produced, set up pointer into scratch data */
 	if (num_ceps > 0) {
-		ceps_s32 = (num_ceps + 1) / 2;
-		zero_samples -= ceps_s32 + num_magic;
-		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_magic, (int32_t *)&magic);
-		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, ceps_s32,
-						(int32_t *)state->cepstral_coef->data);
+		if (state->mel_only)
+			state->out_data_ptr = state->mel_spectra->data;
+		else
+			state->out_data_ptr = state->cepstral_coef->data;
+
+		state->out_remain = num_ceps;
+		state->magic_pending = true;
 	}
 
-	w_ptr = mfcc_sink_copy_zero_s32(sink, w_ptr, zero_samples);
+	/* Write to sink, limited by period size */
+	sink_samples = frames * audio_stream_get_channels(sink);
+
+	/* Write magic word first if pending */
+	if (state->magic_pending && sink_samples >= num_magic) {
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_magic, (int32_t *)&magic);
+		sink_samples -= num_magic;
+		state->magic_pending = false;
+	}
+
+	/* Write cepstral/mel data packed as int32_t from scratch buffer */
+	remain_s32 = (state->out_remain + 1) / 2;
+	to_copy = MIN(remain_s32, sink_samples);
+	if (to_copy > 0) {
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, to_copy,
+						(int32_t *)state->out_data_ptr);
+		state->out_data_ptr += to_copy * 2;
+		state->out_remain -= to_copy * 2;
+		if (state->out_remain < 0)
+			state->out_remain = 0;
+
+		sink_samples -= to_copy;
+	}
+
+	/* Zero-fill remaining sink samples */
+	w_ptr = mfcc_sink_copy_zero_s32(sink, w_ptr, sink_samples);
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
@@ -315,8 +353,9 @@ void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer 
 	int32_t *w_ptr = audio_stream_get_wptr(sink);
 	const int num_magic = 1; /* one int32_t word for magic */
 	int num_ceps;
-	int ceps_s32;
-	int zero_samples;
+	int sink_samples;
+	int remain_s32;
+	int to_copy;
 
 	/* Get samples from source buffer */
 	mfcc_source_copy_s32(bsource, buf, &state->emph, frames, state->source_channel);
@@ -324,16 +363,42 @@ void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer 
 	/* Run STFT and processing after FFT */
 	num_ceps = mfcc_stft_process(mod->dev, state);
 
-	/* Copy data to sink. Pack int16_t cepstral data into int32_t samples. */
-	zero_samples = frames * audio_stream_get_channels(sink);
+	/* If new output produced, set up pointer into scratch data */
 	if (num_ceps > 0) {
-		ceps_s32 = (num_ceps + 1) / 2;
-		zero_samples -= ceps_s32 + num_magic;
-		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_magic, (int32_t *)&magic);
-		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, ceps_s32,
-						(int32_t *)state->cepstral_coef->data);
+		if (state->mel_only)
+			state->out_data_ptr = state->mel_spectra->data;
+		else
+			state->out_data_ptr = state->cepstral_coef->data;
+
+		state->out_remain = num_ceps;
+		state->magic_pending = true;
 	}
 
-	w_ptr = mfcc_sink_copy_zero_s32(sink, w_ptr, zero_samples);
+	/* Write to sink, limited by period size */
+	sink_samples = frames * audio_stream_get_channels(sink);
+
+	/* Write magic word first if pending */
+	if (state->magic_pending && sink_samples >= num_magic) {
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_magic, (int32_t *)&magic);
+		sink_samples -= num_magic;
+		state->magic_pending = false;
+	}
+
+	/* Write cepstral/mel data packed as int32_t from scratch buffer */
+	remain_s32 = (state->out_remain + 1) / 2;
+	to_copy = MIN(remain_s32, sink_samples);
+	if (to_copy > 0) {
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, to_copy,
+						(int32_t *)state->out_data_ptr);
+		state->out_data_ptr += to_copy * 2;
+		state->out_remain -= to_copy * 2;
+		if (state->out_remain < 0)
+			state->out_remain = 0;
+
+		sink_samples -= to_copy;
+	}
+
+	/* Zero-fill remaining sink samples */
+	w_ptr = mfcc_sink_copy_zero_s32(sink, w_ptr, sink_samples);
 }
 #endif /* CONFIG_FORMAT_S32LE */
