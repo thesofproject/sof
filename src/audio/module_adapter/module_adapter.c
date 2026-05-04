@@ -63,7 +63,7 @@ static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
 	/* FIXME: the size will be derived from configuration */
-	const size_t buf_size = 20 * 1024;
+	const size_t buf_size = 28 * 1024;
 
 	/*
 	 * A 1-to-1 replacement of the original heap implementation would be to
