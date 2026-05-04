@@ -277,6 +277,144 @@ __cold static int cmd_sof_clock_status(const struct shell *sh,
 }
 #endif /* CONFIG_SOF_SHELL_CLOCK_STATUS */
 
+#if CONFIG_SOF_SHELL_MODULE_LIST
+
+/* Page size in DSP manifest entries (instance_bss_size, segment lengths) */
+#ifdef CONFIG_MM_DRV_PAGE_SIZE
+#define _SHELL_MOD_PAGE_SZ CONFIG_MM_DRV_PAGE_SIZE
+#else
+#define _SHELL_MOD_PAGE_SZ 4096
+#endif
+
+#if CONFIG_IPC4_BASE_FW_INTEL
+__cold static void print_manifest_modules(const struct shell *sh,
+					  const struct sof_man_fw_desc *desc,
+					  int lib_id)
+{
+	const struct sof_man_mod_config *cfg_base;
+	int i;
+
+	if (!desc)
+		return;
+
+	cfg_base = (const struct sof_man_mod_config *)
+		((const uint8_t *)desc +
+		 SOF_MAN_MODULE_OFFSET(desc->header.num_module_entries));
+
+	for (i = 0; i < (int)desc->header.num_module_entries; i++) {
+		const struct sof_man_module *mod;
+		const struct sof_man_mod_config *cfg = NULL;
+		uint32_t text_sz, bss_sz;
+		char name[SOF_MAN_MOD_NAME_LEN + 1];
+
+		mod = (const struct sof_man_module *)
+			((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i));
+
+		/* name is not null-terminated in the manifest */
+		memcpy(name, mod->name, SOF_MAN_MOD_NAME_LEN);
+		name[SOF_MAN_MOD_NAME_LEN] = '\0';
+
+		if (mod->cfg_count > 0)
+			cfg = cfg_base + mod->cfg_offset;
+
+		text_sz = (uint32_t)mod->segment[0].flags.r.length * _SHELL_MOD_PAGE_SZ;
+		bss_sz  = (uint32_t)mod->instance_bss_size * _SHELL_MOD_PAGE_SZ;
+
+		shell_print(sh,
+			    "[%d:%d] %-8s"
+			    "  uuid:%08x-%04x-%04x-%02x%02x%02x%02x%02x%02x%02x%02x",
+			    lib_id, i, name,
+			    mod->uuid.a, mod->uuid.b, mod->uuid.c,
+			    mod->uuid.d[0], mod->uuid.d[1],
+			    mod->uuid.d[2], mod->uuid.d[3],
+			    mod->uuid.d[4], mod->uuid.d[5],
+			    mod->uuid.d[6], mod->uuid.d[7]);
+		shell_print(sh,
+			    "        inst_max:%-3u  bss/inst:%6u B  text:%6u B"
+			    "  affinity:0x%02x",
+			    mod->instance_max_count, bss_sz, text_sz,
+			    mod->affinity_mask);
+		if (cfg)
+			shell_print(sh,
+				    "        cpc:%-8u  cps:%-9u  ibs:%-6u  obs:%u",
+				    cfg->cpc, cfg->cps, cfg->ibs, cfg->obs);
+		else
+			shell_print(sh, "        cpc:N/A");
+	}
+}
+#endif /* CONFIG_IPC4_BASE_FW_INTEL */
+
+__cold static int cmd_sof_module_list(const struct shell *sh,
+				      size_t argc, char *argv[])
+{
+#if CONFIG_IPC4_BASE_FW_INTEL
+	const struct sof_man_fw_desc *desc;
+	int total = 0;
+
+	shell_print(sh, "Built-in modules:");
+	desc = basefw_vendor_get_manifest();
+	if (desc) {
+		print_manifest_modules(sh, desc, 0);
+		total += (int)desc->header.num_module_entries;
+	} else {
+		shell_print(sh, "  (manifest not available)");
+	}
+
+#if CONFIG_LIBRARY_MANAGER
+	{
+		int lib_id;
+
+		for (lib_id = 1; lib_id < LIB_MANAGER_MAX_LIBS; lib_id++) {
+			desc = lib_manager_get_library_manifest(
+					LIB_MANAGER_PACK_LIB_ID(lib_id));
+			if (!desc)
+				continue;
+			shell_print(sh, "Library %d modules:", lib_id);
+			print_manifest_modules(sh, desc, lib_id);
+			total += (int)desc->header.num_module_entries;
+		}
+	}
+#endif /* CONFIG_LIBRARY_MANAGER */
+
+	if (!total)
+		shell_print(sh, "No modules found.");
+
+#else /* !CONFIG_IPC4_BASE_FW_INTEL */
+	/* Generic fallback: list registered component drivers */
+	struct comp_driver_list *drivers = comp_drivers_get();
+	struct list_item *clist;
+	struct comp_driver_info *info;
+	int count = 0;
+
+	shell_print(sh, "%-5s  %-24s  %s", "type", "name", "uuid");
+
+	list_for_item(clist, &drivers->list) {
+		const struct sof_uuid *uid;
+		const char *name;
+
+		info = container_of(clist, struct comp_driver_info, list);
+		uid = info->drv->uid;
+		name = (info->drv->tctx && info->drv->tctx->uuid_p)
+			? info->drv->tctx->uuid_p->name : "?";
+
+		shell_print(sh,
+			    "%-5u  %-24s"
+			    "  %08x-%04x-%04x-%02x%02x%02x%02x%02x%02x%02x%02x",
+			    info->drv->type, name,
+			    uid->a, uid->b, uid->c,
+			    uid->d[0], uid->d[1], uid->d[2], uid->d[3],
+			    uid->d[4], uid->d[5], uid->d[6], uid->d[7]);
+		count++;
+	}
+
+	if (!count)
+		shell_print(sh, "No drivers registered.");
+#endif /* CONFIG_IPC4_BASE_FW_INTEL */
+
+	return 0;
+}
+#endif /* CONFIG_SOF_SHELL_MODULE_LIST */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_test_commands,
 	SHELL_CMD(ll_delay, NULL,
 		  "Inject a scheduling gap to stress the LL timer domain\n",
@@ -294,6 +432,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_mod_heap_commands,
 #endif
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_mod_commands,
+#if CONFIG_SOF_SHELL_MODULE_LIST
+	SHELL_CMD(list, NULL,
+		  "List all available modules with name, memory, size and RTC info\n",
+		  cmd_sof_module_list),
+#endif
 #if CONFIG_SOF_SHELL_MODULE_STATUS
 	SHELL_CMD(info, NULL,
 		  "Print status of all active components\n",
@@ -348,9 +491,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 		  "Test commands: ll_delay\n",
 		  NULL),
 
-#if CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_HEAP_USAGE
+#if CONFIG_SOF_SHELL_MODULE_LIST || CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_HEAP_USAGE
 	SHELL_CMD(mod, &sof_mod_commands,
-		  "Module commands: info, heap\n",
+<<<<<<< HEAD
+		  "Module commands: list, info, heap\n",
 		  NULL),
 #endif
 
