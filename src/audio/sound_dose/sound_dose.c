@@ -327,10 +327,7 @@ __cold static int sound_dose_free(struct processing_module *mod)
 	comp_dbg(mod->dev, "entry");
 
 	sound_dose_filters_free(cd);
-	if (cd->msg) {
-		rfree(cd->msg->tx_data);
-		rfree(cd->msg);
-	}
+	ipc_msg_free(cd->msg);
 	rfree(cd->abi);
 	rfree(cd);
 	return 0;
