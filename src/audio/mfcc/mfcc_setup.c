@@ -139,10 +139,9 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		return -EINVAL;
 	}
 
-	comp_info(dev, "source_channel = %d, stream_channels = %d",
-		  config->channel, channels);
-	if (config->channel >= channels) {
-		comp_err(dev, "Illegal channel");
+	if (config->channel >= channels || (config->channel < 0 && channels != 1)) {
+		comp_err(dev, "Illegal source_channel %d for stream channels %d", config->channel,
+			 channels);
 		return -EINVAL;
 	}
 
