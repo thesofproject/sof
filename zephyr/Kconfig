@@ -253,6 +253,128 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 	  Do not use SOF clk.h interface to set the DSP clock frequency.
 	  Requires implementation of platform/lib/clk.h.
 
+menu "SOF shell commands"
+	depends on SHELL
+
+config SOF_SHELL_HEAP_USAGE
+	bool "Module heap usage command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof module_heap_usage' shell command which prints
+	  per-module heap allocation and high-water-mark for all active
+	  IPC4 components.
+
+config SOF_SHELL_PIPELINE_STATUS
+	bool "Pipeline status command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof pipeline_status' shell command which lists all
+	  active IPC4 pipelines with their core, priority, period and state.
+
+config SOF_SHELL_MODULE_STATUS
+	bool "Module (component) status command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof module_status' shell command which lists all
+	  active IPC4 components with their pipeline, core and state.
+
+config SOF_SHELL_CORE_STATUS
+	bool "Core status command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof core_status' shell command which reports the
+	  enabled/active state of each DSP core.
+
+config SOF_SHELL_SRAM_STATUS
+	bool "SRAM heap status command"
+	default y
+	depends on SHELL && SYS_HEAP_RUNTIME_STATS
+	help
+	  Enables the 'sof sram_status' shell command which reports HPSRAM
+	  heap allocated, free and peak-allocated bytes.
+	  Requires CONFIG_SYS_HEAP_RUNTIME_STATS=y.
+
+config SOF_SHELL_CLOCK_STATUS
+	bool "Clock status command"
+	default y
+	depends on SHELL && !SOF_ZEPHYR_NO_SOF_CLOCK
+	help
+	  Enables the 'sof clock_status' shell command which reports the
+	  current CPU clock frequency for each DSP core.
+
+config SOF_SHELL_MODULE_LIST
+	bool "Module list command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof module_list' shell command which prints all modules
+	  known to the firmware. On IPC4 Intel platforms (IPC4_BASE_FW_INTEL)
+	  the manifest is consulted and the output includes:
+	    - module name (8-char from manifest)
+	    - UUID
+	    - maximum instance count
+	    - BSS memory per instance (bytes)
+	    - text segment size (bytes)
+	    - affinity mask
+	    - CPC (cycles per copy), IBS and OBS from module config
+	  On other platforms the registered component driver list is shown
+	  with UUID and name from the trace context.
+
+config SOF_SHELL_PIPELINE_OPS
+	bool "Pipeline construction and control commands"
+	default n
+	depends on SHELL && IPC_MAJOR_4
+	help
+	  Enables IPC4 pipeline construction and control commands accessible
+	  from the SOF shell. These are intended for debug and bring-up use:
+
+	    sof ppl_create <id> [prio] [pages] [core] [lp]
+	      Create a new IPC4 pipeline.
+
+	    sof ppl_delete <id>
+	      Delete a pipeline and all its module instances.
+
+	    sof ppl_state <id> <running|paused|reset>
+	      Transition a pipeline to the given state.
+
+	    sof mod_init <mod_id> <inst_id> <ppl_id> [core] [dp]
+	      Instantiate a module (by module_id from module_list) into a
+	      pipeline. No init-data is sent; only modules that have a
+	      working zero-parameter default config will init successfully.
+
+	    sof mod_delete <mod_id> <inst_id>
+	      Delete a module instance.
+
+	    sof mod_bind <src_mod> <src_inst> <dst_mod> <dst_inst> [sq] [dq]
+	      Bind (connect) the output of src module to the input of dst.
+
+	    sof mod_unbind <src_mod> <src_inst> <dst_mod> <dst_inst> [sq] [dq]
+	      Unbind (disconnect) two previously bound module instances.
+
+config SOF_SHELL_MMU_DBG
+	bool "MMU / TLB debug commands"
+	default y
+	depends on SHELL && (MM_DRV_INTEL_ADSP_MTL_TLB || XTENSA_MMU)
+	help
+	  Enables MMU/TLB debug shell commands.
+
+	  On Intel ADSP MTL/PTL (CONFIG_MM_DRV_INTEL_ADSP_MTL_TLB=y):
+	    sof mmu_status  — VM layout, mapped/free pages, region list
+	    sof tlb_dump   — dump all active 16-bit MMIO TLB entries
+	    sof tlb_lookup — query a page or page range (VA/PA/R/W/X/bank)
+
+	  On Xtensa MMU platforms (CONFIG_XTENSA_MMU=y, e.g. PTL):
+	    sof rasid      — decode the RASID hardware register (ring→ASID map)
+	    sof page_info  — probe DTLB for a page or range; report
+	                     physical address, ring, ASID, cache mode, R/W/X
+	                     (PTL has both sets of commands).
+
+endmenu # SOF shell commands
+
 config SOF_VREGIONS
 	bool "Enable virtual memory regions"
 	default y if ACE && !ACE_VERSION_1_5 && !ACE_VERSION_2_0
