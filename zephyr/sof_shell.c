@@ -998,6 +998,169 @@ __cold static int cmd_sof_tlb_lookup(const struct shell *sh,
 
 #endif /* CONFIG_MM_DRV_INTEL_ADSP_MTL_TLB */
 
+#if CONFIG_XTENSA_MMU
+
+/*
+ * Xtensa hardware MMU helpers.
+ *
+ * PDTLB result layout (Xtensa ISA §4.6.5):
+ *   bit[4]   = HIT
+ *   bits[3:0] = TLB way (valid when HIT)
+ *
+ * RDTLB0 result:
+ *   bits[31:12] = Virtual Page Number
+ *   bits[5:4]   = ring (0=kernel, 1=unused, 2=user, 3=shared)
+ *   bits[3:0]   = CA (cache + access attributes)
+ *
+ * RDTLB1 result:
+ *   bits[31:12] = Physical Page Number
+ *   bits[3:0]   = CA (same as RDTLB0)
+ *
+ * CA bits (from <zephyr/arch/xtensa/xtensa_mmu.h>):
+ *   bit 0 = XTENSA_MMU_PERM_X   (executable)
+ *   bit 1 = XTENSA_MMU_PERM_W   (writable)
+ *   bit 2 = XTENSA_MMU_CACHED_WB (write-back cache)
+ *   bit 3 = XTENSA_MMU_CACHED_WT (write-through cache)
+ *   bits 2+3 both set = illegal / not-present
+ */
+#define SHELL_PDTLB_HIT    0x10U  /* bit 4 of pdtlb result */
+#define SHELL_PTE_RING_SHIFT 4U
+#define SHELL_PTE_RING_MASK  0x30U
+#define SHELL_PTE_CA_MASK    0x0FU
+#define SHELL_PTE_PPN_MASK   0xFFFFF000U
+
+static inline uint32_t shell_pdtlb(void *vaddr)
+{
+	uint32_t r;
+	__asm__ __volatile__("pdtlb %0, %1\n\t" : "=a"(r) : "a"((uint32_t)vaddr));
+	return r;
+}
+
+static inline uint32_t shell_rdtlb0(uint32_t entry)
+{
+	uint32_t r;
+	__asm__ volatile("rdtlb0 %0, %1\n\t" : "=a"(r) : "a"(entry));
+	return r;
+}
+
+static inline uint32_t shell_rdtlb1(uint32_t entry)
+{
+	uint32_t r;
+	__asm__ volatile("rdtlb1 %0, %1\n\t" : "=a"(r) : "a"(entry));
+	return r;
+}
+
+static inline uint32_t shell_rsr_rasid(void)
+{
+	uint32_t r;
+	__asm__ volatile("rsr %0, rasid" : "=a"(r));
+	return r;
+}
+
+/* Decode 4-bit CA cache field into a short string */
+__cold static const char *ca_cache_str(uint32_t ca)
+{
+	switch (ca & (XTENSA_MMU_CACHED_WB | XTENSA_MMU_CACHED_WT)) {
+	case 0:                     return "uncached";
+	case XTENSA_MMU_CACHED_WB:  return "WB      ";
+	case XTENSA_MMU_CACHED_WT:  return "WT      ";
+	default:                    return "illegal ";
+	}
+}
+
+__cold_rodata static const char * const ring_name[] = {
+	"kernel", "unused", "user", "shared"
+};
+
+/* sof rasid */
+__cold static int cmd_sof_rasid(const struct shell *sh,
+				size_t argc, char *argv[])
+{
+	uint32_t rasid = shell_rsr_rasid();
+	int ring;
+
+	shell_print(sh, "RASID: 0x%08x", rasid);
+	for (ring = 0; ring < 4; ring++) {
+		uint8_t asid = (uint8_t)((rasid >> (ring * 8)) & 0xff);
+
+		shell_print(sh, "  ring %d (%s):\tASID 0x%02x",
+			    ring, ring_name[ring], asid);
+	}
+	return 0;
+}
+
+/* sof page_info <vaddr> [end_vaddr] */
+__cold static int cmd_sof_page_info(const struct shell *sh,
+				    size_t argc, char *argv[])
+{
+	uintptr_t vstart, vend;
+	uint32_t rasid;
+
+	{
+		char *ep;
+		ulong v = strtoul(argv[1], &ep, 0);
+
+		if (ep == argv[1]) {
+			shell_print(sh, "error: invalid address '%s'", argv[1]);
+			return -EINVAL;
+		}
+		vstart = (uintptr_t)v & ~(uintptr_t)(KB(4) - 1);
+	}
+
+	if (argc > 2) {
+		char *ep;
+		ulong v = strtoul(argv[2], &ep, 0);
+
+		if (ep == argv[2]) {
+			shell_print(sh, "error: invalid address '%s'", argv[2]);
+			return -EINVAL;
+		}
+		vend = (uintptr_t)v & ~(uintptr_t)(KB(4) - 1);
+	} else {
+		vend = vstart;
+	}
+
+	if (vend < vstart)
+		vend = vstart;
+
+	rasid = shell_rsr_rasid();
+	shell_print(sh, "RASID: 0x%08x", rasid);
+	shell_print(sh, "  %-12s  %-12s  ring  asid  perms  cache");
+
+	for (uintptr_t va = vstart; va <= vend; va += KB(4)) {
+		uint32_t probe = shell_pdtlb((void *)va);
+
+		if (!(probe & SHELL_PDTLB_HIT)) {
+			shell_print(sh,
+				    "  0x%08x   (DTLB miss — not in TLB cache)",
+				    (uint32_t)va);
+			continue;
+		}
+
+		uint32_t pte0 = shell_rdtlb0(probe);
+		uint32_t pte1 = shell_rdtlb1(probe);
+		uint32_t ring = (pte0 & SHELL_PTE_RING_MASK) >> SHELL_PTE_RING_SHIFT;
+		uint32_t ca   = pte0 & SHELL_PTE_CA_MASK;
+		uint32_t paddr = pte1 & SHELL_PTE_PPN_MASK;
+		uint8_t  asid = (uint8_t)((rasid >> (ring * 8)) & 0xff);
+		char perm[4] = {
+			'R',
+			(ca & XTENSA_MMU_PERM_W) ? 'W' : '-',
+			(ca & XTENSA_MMU_PERM_X) ? 'X' : '-',
+			'\0'
+		};
+
+		shell_print(sh,
+			    "  0x%08x   0x%08x   %u     0x%02x  %s    %s",
+			    (uint32_t)va, paddr,
+			    ring, asid,
+			    perm, ca_cache_str(ca));
+	}
+	return 0;
+}
+
+#endif /* CONFIG_XTENSA_MMU */
+
 #endif /* CONFIG_SOF_SHELL_MMU_DBG */
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_test_commands,
@@ -1117,6 +1280,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_tlb_commands,
 );
 #endif /* CONFIG_SOF_SHELL_MMU_DBG && CONFIG_MM_DRV_INTEL_ADSP_MTL_TLB */
 
+#if CONFIG_SOF_SHELL_MMU_DBG && CONFIG_XTENSA_MMU
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_page_commands,
+	SHELL_CMD_ARG(info, NULL,
+		  "Probe DTLB: PA/ring/ASID/perms/cache per page (XTENSA_MMU): "
+		  "<vaddr> [end_vaddr]\n",
+		  cmd_sof_page_info, 2, 1),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(test, &sof_test_commands,
 		  "Test commands: ll_delay\n",
@@ -1127,6 +1300,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 		  "Module commands: list, info, heap, init, delete, bind, unbind\n",
 		  NULL),
 #endif
+
 
 #if CONFIG_SOF_SHELL_PIPELINE_STATUS || CONFIG_SOF_SHELL_PIPELINE_OPS
 	SHELL_CMD(ppl, &sof_ppl_commands,
@@ -1158,6 +1332,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 		  NULL),
 	SHELL_CMD(tlb, &sof_tlb_commands,
 		  "TLB commands: info, lookup (CONFIG_SOF_SHELL_MMU_DBG)\n",
+		  NULL),
+#endif
+
+#if CONFIG_SOF_SHELL_MMU_DBG && CONFIG_XTENSA_MMU
+	SHELL_CMD(rasid, NULL,
+		  "Decode RASID register: ring 0-3 to ASID mapping (XTENSA_MMU)\n",
+		  cmd_sof_rasid),
+	SHELL_CMD(page, &sof_page_commands,
+		  "Page commands: info (XTENSA_MMU)\n",
 		  NULL),
 #endif
 
