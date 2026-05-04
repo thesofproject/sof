@@ -415,6 +415,384 @@ __cold static int cmd_sof_module_list(const struct shell *sh,
 }
 #endif /* CONFIG_SOF_SHELL_MODULE_LIST */
 
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+
+__cold static int parse_long(const struct shell *sh, const char *s, long *out,
+			     long min_val, long max_val)
+{
+	char *endptr;
+	long v = strtol(s, &endptr, 0);
+
+	if (endptr == s || v < min_val || v > max_val) {
+		shell_print(sh, "error: invalid value '%s' (allowed %ld..%ld)",
+			    s, min_val, max_val);
+		return -EINVAL;
+	}
+	*out = v;
+	return 0;
+}
+
+/*
+ * Resolve a module argument that may be either:
+ *   - a numeric module_id  (e.g. "2", "0x02")
+ *   - a module name string (e.g. "COPIER", "copier")  — IPC4/Intel only
+ *
+ * Returns 0 on success, -EINVAL on failure.
+ */
+__cold static int parse_module_id(const struct shell *sh, const char *s,
+				  long *module_id)
+{
+	char *endptr;
+	long v = strtol(s, &endptr, 0);
+
+	/* Numeric: accepted if the whole string was consumed */
+	if (endptr != s && *endptr == '\0') {
+		if (v < 0 || v > 0xFFFF) {
+			shell_print(sh, "error: module id 0x%lx out of range", v);
+			return -EINVAL;
+		}
+		*module_id = v;
+		return 0;
+	}
+
+#if CONFIG_IPC4_BASE_FW_INTEL
+	/* Name lookup: search built-in manifest then loaded libraries */
+	{
+		char upper[SOF_MAN_MOD_NAME_LEN + 1];
+		const struct sof_man_fw_desc *desc;
+		uint32_t i;
+		int k;
+
+		/* Upper-case the input for case-insensitive compare */
+		for (k = 0; k < SOF_MAN_MOD_NAME_LEN && s[k]; k++)
+			upper[k] = (char)toupper((unsigned char)s[k]);
+		upper[k] = '\0';
+
+		desc = basefw_vendor_get_manifest();
+		if (desc) {
+			for (i = 0; i < desc->header.num_module_entries; i++) {
+				const struct sof_man_module *mod =
+					(const struct sof_man_module *)
+					((const uint8_t *)desc +
+					 SOF_MAN_MODULE_OFFSET(i));
+				char mname[SOF_MAN_MOD_NAME_LEN + 1];
+				int j;
+
+				for (j = 0; j < SOF_MAN_MOD_NAME_LEN; j++)
+					mname[j] = (char)toupper(
+						(unsigned char)mod->name[j]);
+				mname[SOF_MAN_MOD_NAME_LEN] = '\0';
+
+				if (!strncmp(upper, mname,
+					     SOF_MAN_MOD_NAME_LEN)) {
+					*module_id = (long)mod->module_id;
+					return 0;
+				}
+			}
+		}
+
+#if CONFIG_LIBRARY_MANAGER
+		{
+			int lib_id;
+
+			for (lib_id = 1; lib_id < LIB_MANAGER_MAX_LIBS;
+			     lib_id++) {
+				uint32_t pack_id = LIB_MANAGER_PACK_LIB_ID(
+					lib_id);
+
+				desc = lib_manager_get_library_manifest(
+					pack_id);
+				if (!desc)
+					continue;
+				for (i = 0;
+				     i < desc->header.num_module_entries;
+				     i++) {
+					const struct sof_man_module *mod =
+						(const struct sof_man_module *)
+						((const uint8_t *)desc +
+						 SOF_MAN_MODULE_OFFSET(i));
+					char mname[SOF_MAN_MOD_NAME_LEN + 1];
+					int j;
+
+					for (j = 0;
+					     j < SOF_MAN_MOD_NAME_LEN; j++)
+						mname[j] = (char)toupper(
+							(unsigned char)
+							mod->name[j]);
+					mname[SOF_MAN_MOD_NAME_LEN] = '\0';
+
+					if (!strncmp(upper, mname,
+						     SOF_MAN_MOD_NAME_LEN)) {
+						*module_id =
+							(long)mod->module_id;
+						return 0;
+					}
+				}
+			}
+		}
+#endif /* CONFIG_LIBRARY_MANAGER */
+	}
+#endif /* CONFIG_IPC4_BASE_FW_INTEL */
+
+	shell_print(sh, "error: unknown module '%s' (use name or numeric id)", s);
+	return -EINVAL;
+}
+
+/* sof ppl_create <ppl_id> [priority=0] [pages=2] [core=0] [lp=0] */
+__cold static int cmd_sof_ppl_create(const struct shell *sh,
+				     size_t argc, char *argv[])
+{
+	struct ipc4_pipeline_create msg = {};
+	struct ipc *ipc = sof_get()->ipc;
+	long ppl_id, priority = 0, pages = 2, core = 0, lp = 0;
+	int ret;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	if (parse_long(sh, argv[1], &ppl_id, 0, 255) < 0) return -EINVAL;
+	if (argc > 2 && parse_long(sh, argv[2], &priority, 0, 7) < 0) return -EINVAL;
+	if (argc > 3 && parse_long(sh, argv[3], &pages,    1, 2047) < 0) return -EINVAL;
+	if (argc > 4 && parse_long(sh, argv[4], &core,     0, 7) < 0) return -EINVAL;
+	if (argc > 5 && parse_long(sh, argv[5], &lp,       0, 1) < 0) return -EINVAL;
+
+	msg.primary.r.ppl_mem_size = (uint32_t)pages;
+	msg.primary.r.ppl_priority = (uint32_t)priority;
+	msg.primary.r.instance_id  = (uint32_t)ppl_id;
+	msg.primary.r.type         = SOF_IPC4_GLB_CREATE_PIPELINE;
+	msg.extension.r.lp         = (uint32_t)lp;
+	msg.extension.r.core_id    = (uint32_t)core;
+
+	ret = ipc_pipeline_new(ipc, (ipc_pipe_new *)&msg);
+	if (ret < 0)
+		shell_print(sh, "ppl_create %ld failed: %d", ppl_id, ret);
+	else
+		shell_print(sh, "pipeline %ld created (prio=%ld pages=%ld core=%ld lp=%ld)",
+			    ppl_id, priority, pages, core, lp);
+	return 0;
+}
+
+/* sof ppl_delete <ppl_id> */
+__cold static int cmd_sof_ppl_delete(const struct shell *sh,
+				     size_t argc, char *argv[])
+{
+	struct ipc *ipc = sof_get()->ipc;
+	long ppl_id;
+	int ret;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	if (parse_long(sh, argv[1], &ppl_id, 0, 255) < 0) return -EINVAL;
+
+	ret = ipc_pipeline_free(ipc, (uint32_t)ppl_id);
+	if (ret < 0)
+		shell_print(sh, "ppl_delete %ld failed: %d", ppl_id, ret);
+	else
+		shell_print(sh, "pipeline %ld deleted", ppl_id);
+	return 0;
+}
+
+/* sof ppl_state <ppl_id> <running|paused|reset> */
+__cold static int cmd_sof_ppl_state(const struct shell *sh,
+				    size_t argc, char *argv[])
+{
+	struct ipc *ipc = sof_get()->ipc;
+	struct ipc_comp_dev *ppl_icd;
+	bool delayed = false;
+	long ppl_id;
+	uint32_t cmd;
+	int ret;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	if (parse_long(sh, argv[1], &ppl_id, 0, 255) < 0) return -EINVAL;
+
+	if (!strcmp(argv[2], "running"))
+		cmd = SOF_IPC4_PIPELINE_STATE_RUNNING;
+	else if (!strcmp(argv[2], "paused"))
+		cmd = SOF_IPC4_PIPELINE_STATE_PAUSED;
+	else if (!strcmp(argv[2], "reset"))
+		cmd = SOF_IPC4_PIPELINE_STATE_RESET;
+	else {
+		shell_print(sh, "unknown state '%s' (running|paused|reset)", argv[2]);
+		return -EINVAL;
+	}
+
+	ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
+					 (uint32_t)ppl_id, IPC_COMP_IGNORE_REMOTE);
+	if (!ppl_icd) {
+		shell_print(sh, "pipeline %ld not found", ppl_id);
+		return 0;
+	}
+
+	ret = ipc4_pipeline_prepare(ppl_icd, cmd);
+	if (ret < 0) {
+		shell_print(sh, "ppl_state %ld prepare failed: %d", ppl_id, ret);
+		return 0;
+	}
+
+	ret = ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
+	if (ret < 0)
+		shell_print(sh, "ppl_state %ld trigger failed: %d", ppl_id, ret);
+	else
+		shell_print(sh, "pipeline %ld -> %s%s", ppl_id, argv[2],
+			    delayed ? " (delayed)" : "");
+	return 0;
+}
+
+/* sof mod_init <mod_name|mod_id> <inst_id> <ppl_id> [core=0] [dp=0] */
+__cold static int cmd_sof_mod_init(const struct shell *sh,
+				   size_t argc, char *argv[])
+{
+	struct ipc4_module_init_instance msg = {};
+	struct comp_dev *dev;
+	long mod_id, inst_id, ppl_id, core = 0, dp = 0;
+
+	if (parse_module_id(sh, argv[1], &mod_id) < 0) return -EINVAL;
+	if (parse_long(sh, argv[2], &inst_id, 0, 255)    < 0) return -EINVAL;
+	if (parse_long(sh, argv[3], &ppl_id,  0, 255)    < 0) return -EINVAL;
+	if (argc > 4 && parse_long(sh, argv[4], &core, 0, 7) < 0) return -EINVAL;
+	if (argc > 5 && parse_long(sh, argv[5], &dp,   0, 1) < 0) return -EINVAL;
+
+	msg.primary.r.module_id   = (uint32_t)mod_id;
+	msg.primary.r.instance_id = (uint32_t)inst_id;
+	msg.primary.r.type        = SOF_IPC4_MOD_INIT_INSTANCE;
+	msg.primary.r.msg_tgt     = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+	msg.extension.r.ppl_instance_id = (uint32_t)ppl_id;
+	msg.extension.r.core_id         = (uint32_t)core;
+	msg.extension.r.proc_domain     = (uint32_t)dp;
+	msg.extension.r.param_block_size = 0;
+
+	dev = comp_new_ipc4(&msg);
+	if (!dev)
+		shell_print(sh, "mod_init module=0x%lx inst=%ld failed",
+			    mod_id, inst_id);
+	else
+		shell_print(sh,
+			    "module 0x%lx inst %ld created in pipeline %ld"
+			    " comp_id=0x%08x",
+			    mod_id, inst_id, ppl_id,
+			    IPC4_COMP_ID((uint32_t)mod_id, (uint32_t)inst_id));
+	return 0;
+}
+
+/* sof mod_delete <mod_name|mod_id> <inst_id> */
+__cold static int cmd_sof_mod_delete(const struct shell *sh,
+				     size_t argc, char *argv[])
+{
+	struct ipc *ipc = sof_get()->ipc;
+	long mod_id, inst_id;
+	uint32_t comp_id;
+	int ret;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	if (parse_module_id(sh, argv[1], &mod_id) < 0) return -EINVAL;
+	if (parse_long(sh, argv[2], &inst_id, 0, 255)    < 0) return -EINVAL;
+
+	comp_id = IPC4_COMP_ID((uint32_t)mod_id, (uint32_t)inst_id);
+	ret = ipc_comp_free(ipc, comp_id);
+	if (ret < 0)
+		shell_print(sh, "mod_delete module=0x%lx inst=%ld failed: %d",
+			    mod_id, inst_id, ret);
+	else
+		shell_print(sh, "module 0x%lx inst %ld deleted", mod_id, inst_id);
+	return 0;
+}
+
+/* sof mod_bind <src_name|src_id> <src_inst> <dst_name|dst_id> <dst_inst> [sq=0] [dq=0] */
+__cold static int cmd_sof_mod_bind(const struct shell *sh,
+				   size_t argc, char *argv[])
+{
+	struct ipc4_module_bind_unbind msg = {};
+	struct ipc *ipc = sof_get()->ipc;
+	long src_mod, src_inst, dst_mod, dst_inst, src_q = 0, dst_q = 0;
+	int ret;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	if (parse_module_id(sh, argv[1], &src_mod) < 0) return -EINVAL;
+	if (parse_long(sh, argv[2], &src_inst, 0, 255)    < 0) return -EINVAL;
+	if (parse_module_id(sh, argv[3], &dst_mod) < 0) return -EINVAL;
+	if (parse_long(sh, argv[4], &dst_inst, 0, 255)    < 0) return -EINVAL;
+	if (argc > 5 && parse_long(sh, argv[5], &src_q, 0, 7) < 0) return -EINVAL;
+	if (argc > 6 && parse_long(sh, argv[6], &dst_q, 0, 7) < 0) return -EINVAL;
+
+	msg.primary.r.module_id   = (uint32_t)src_mod;
+	msg.primary.r.instance_id = (uint32_t)src_inst;
+	msg.primary.r.type        = SOF_IPC4_MOD_BIND;
+	msg.primary.r.msg_tgt     = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+	msg.extension.r.dst_module_id   = (uint32_t)dst_mod;
+	msg.extension.r.dst_instance_id = (uint32_t)dst_inst;
+	msg.extension.r.src_queue       = (uint32_t)src_q;
+	msg.extension.r.dst_queue       = (uint32_t)dst_q;
+
+	ret = ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&msg);
+	if (ret < 0)
+		shell_print(sh, "mod_bind failed: %d", ret);
+	else
+		shell_print(sh, "bound 0x%lx:%ld[q%ld] -> 0x%lx:%ld[q%ld]",
+			    src_mod, src_inst, src_q,
+			    dst_mod, dst_inst, dst_q);
+	return 0;
+}
+
+/* sof mod_unbind <src_name|src_id> <src_inst> <dst_name|dst_id> <dst_inst> [sq=0] [dq=0] */
+__cold static int cmd_sof_mod_unbind(const struct shell *sh,
+				     size_t argc, char *argv[])
+{
+	struct ipc4_module_bind_unbind msg = {};
+	struct ipc *ipc = sof_get()->ipc;
+	long src_mod, src_inst, dst_mod, dst_inst, src_q = 0, dst_q = 0;
+	int ret;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	if (parse_module_id(sh, argv[1], &src_mod) < 0) return -EINVAL;
+	if (parse_long(sh, argv[2], &src_inst, 0, 255)    < 0) return -EINVAL;
+	if (parse_module_id(sh, argv[3], &dst_mod) < 0) return -EINVAL;
+	if (parse_long(sh, argv[4], &dst_inst, 0, 255)    < 0) return -EINVAL;
+	if (argc > 5 && parse_long(sh, argv[5], &src_q, 0, 7) < 0) return -EINVAL;
+	if (argc > 6 && parse_long(sh, argv[6], &dst_q, 0, 7) < 0) return -EINVAL;
+
+	msg.primary.r.module_id   = (uint32_t)src_mod;
+	msg.primary.r.instance_id = (uint32_t)src_inst;
+	msg.primary.r.type        = SOF_IPC4_MOD_UNBIND;
+	msg.primary.r.msg_tgt     = SOF_IPC4_MESSAGE_TARGET_MODULE_MSG;
+	msg.extension.r.dst_module_id   = (uint32_t)dst_mod;
+	msg.extension.r.dst_instance_id = (uint32_t)dst_inst;
+	msg.extension.r.src_queue       = (uint32_t)src_q;
+	msg.extension.r.dst_queue       = (uint32_t)dst_q;
+
+	ret = ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&msg);
+	if (ret < 0)
+		shell_print(sh, "mod_unbind failed: %d", ret);
+	else
+		shell_print(sh, "unbound 0x%lx:%ld[q%ld] -/- 0x%lx:%ld[q%ld]",
+			    src_mod, src_inst, src_q,
+			    dst_mod, dst_inst, dst_q);
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_PIPELINE_OPS */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_test_commands,
 	SHELL_CMD(ll_delay, NULL,
 		  "Inject a scheduling gap to stress the LL timer domain\n",
@@ -447,6 +825,22 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_mod_commands,
 		  "Heap usage commands\n",
 		  NULL),
 #endif
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+	SHELL_CMD_ARG(init, NULL,
+		  "Instantiate module: <name|id> <inst_id> <ppl_id> [core=0] [dp=0]\n",
+		  cmd_sof_mod_init, 4, 2),
+	SHELL_CMD_ARG(delete, NULL,
+		  "Delete module instance: <name|id> <inst_id>\n",
+		  cmd_sof_mod_delete, 3, 0),
+	SHELL_CMD_ARG(bind, NULL,
+		  "Bind two module instances: <sname|sid> <si> <dname|did> <di>"
+		  " [sq=0] [dq=0]\n",
+		  cmd_sof_mod_bind, 5, 2),
+	SHELL_CMD_ARG(unbind, NULL,
+		  "Unbind two module instances: <sname|sid> <si> <dname|did> <di>"
+		  " [sq=0] [dq=0]\n",
+		  cmd_sof_mod_unbind, 5, 2),
+#endif
 	SHELL_SUBCMD_SET_END
 );
 
@@ -455,6 +849,17 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_ppl_commands,
 	SHELL_CMD(list, NULL,
 		  "Print status of all active pipelines\n",
 		  cmd_sof_pipeline_status),
+#endif
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+	SHELL_CMD_ARG(create, NULL,
+		  "Create IPC4 pipeline: <ppl_id> [priority=0] [pages=2] [core=0] [lp=0]\n",
+		  cmd_sof_ppl_create, 2, 4),
+	SHELL_CMD_ARG(delete, NULL,
+		  "Delete IPC4 pipeline: <ppl_id>\n",
+		  cmd_sof_ppl_delete, 2, 0),
+	SHELL_CMD_ARG(state, NULL,
+		  "Set IPC4 pipeline state: <ppl_id> <running|paused|reset>\n",
+		  cmd_sof_ppl_state, 3, 0),
 #endif
 	SHELL_SUBCMD_SET_END
 );
@@ -491,16 +896,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 		  "Test commands: ll_delay\n",
 		  NULL),
 
-#if CONFIG_SOF_SHELL_MODULE_LIST || CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_HEAP_USAGE
+#if CONFIG_SOF_SHELL_MODULE_LIST || CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_HEAP_USAGE || CONFIG_SOF_SHELL_PIPELINE_OPS
 	SHELL_CMD(mod, &sof_mod_commands,
-<<<<<<< HEAD
-		  "Module commands: list, info, heap\n",
+		  "Module commands: list, info, heap, init, delete, bind, unbind\n",
 		  NULL),
 #endif
 
-#if CONFIG_SOF_SHELL_PIPELINE_STATUS
+#if CONFIG_SOF_SHELL_PIPELINE_STATUS || CONFIG_SOF_SHELL_PIPELINE_OPS
 	SHELL_CMD(ppl, &sof_ppl_commands,
-		  "Pipeline commands: list\n",
+		  "Pipeline commands: list, create, delete, state\n",
 		  NULL),
 #endif
 
