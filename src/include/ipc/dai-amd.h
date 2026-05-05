@@ -23,6 +23,7 @@ struct sof_ipc_dai_acp_params {
 	uint32_t reserved0;
 	uint32_t fsync_rate;
 	uint32_t tdm_slots;
+	uint32_t tdm_mode;
 } __attribute__((packed, aligned(4)));
 
 /* ACP Configuration Request - SOF_IPC_DAI_AMD_SDW_CONFIG */
