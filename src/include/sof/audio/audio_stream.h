@@ -66,6 +66,15 @@ struct audio_stream {
 	struct sof_audio_stream_params runtime_stream_params;
 };
 
+/* A pointer to data in a ring buffer. Just for convenience to reduce the number of typical
+ * processing function parameters: e.g., just 3 parameters (in, out ptr, and size) instead of 7.
+ */
+struct cir_buf_ptr {
+	void *buf_start;
+	void *buf_end;
+	void *ptr;
+};
+
 void audio_stream_recalc_align(struct audio_stream *stream);
 
 static inline void *audio_stream_get_rptr(const struct audio_stream *buf)
