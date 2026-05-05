@@ -508,7 +508,12 @@ struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
 	struct zephyr_ll *sch = data;
 	int ret;
 
-	ret = domain_register(sch->ll_domain, task, &schedule_ll_callback, sch);
+	/*
+	 * Use domain_thread_init() for privileged setup (thread creation,
+	 * timer, access grants). domain_register() is now bookkeeping only
+	 * and will be called later from user context when scheduling tasks.
+	 */
+	ret = domain_thread_init(sch->ll_domain, task);
 	if (ret < 0) {
 		tr_err(&ll_tr, "cannot init_context %d", ret);
 		return NULL;
@@ -530,7 +535,8 @@ void zephyr_ll_free_context(void *data)
 {
 	struct zephyr_ll *sch = data;
 
-	(void *)sch;
+	tr_info(&ll_tr, "free the domain thread");
+	domain_thread_free(sch->ll_domain, sch->n_tasks);
 }
 #endif
 
