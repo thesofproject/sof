@@ -29,6 +29,7 @@
 #include <sof/ctx_alloc.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/ipc-config.h>
+#include <sof/audio/component.h>
 #include <ipc/dai.h>
 #include <errno.h>
 #include <stddef.h>
@@ -169,6 +170,8 @@ struct dai_data {
 #endif
 	/* Copier gain params */
 	struct copier_gain_params *gain_data;
+
+	struct mod_alloc_ctx alloc_ctx;
 };
 
 /* these 3 are here to satisfy clk.c and ssp.h interconnection, will be removed leter */
