@@ -99,13 +99,6 @@ struct ipc4_mixer_mode_config {
 	struct ipc4_mixer_mode_sink_config mixer_mode_sink_configs[1];
 } __packed __aligned(4);
 
-/* Pointer to data in circular buffer together with buffer boundaries */
-struct cir_buf_ptr {
-	void *buf_start;
-	void *buf_end;
-	void *ptr;
-};
-
 /**
  * \brief mixin processing function interface
  */
