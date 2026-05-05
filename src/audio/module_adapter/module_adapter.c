@@ -101,7 +101,12 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 		}
 		mod_heap = NULL;
 	} else {
+#ifdef CONFIG_SOF_USERSPACE_LL
+		mod_heap = sof_sys_user_heap_get();
+		comp_cl_dbg(drv, "using ll user heap for module");
+#else
 		mod_heap = drv->user_heap;
+#endif
 		heap_size = 0;
 		mod_vreg = NULL;
 	}
@@ -118,7 +123,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 		goto emod;
 	}
 
-	struct mod_alloc_ctx *alloc = rmalloc(flags, sizeof(*alloc));
+	struct mod_alloc_ctx *alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
 
 	if (!alloc)
 		goto ealloc;
@@ -154,7 +159,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	return mod;
 
 edev:
-	rfree(alloc);
+	sof_heap_free(mod_heap, alloc);
 ealloc:
 	if (mod_vreg)
 		vregion_free(mod_vreg, mod);
@@ -184,11 +189,11 @@ static void module_adapter_mem_free(struct processing_module *mod)
 		vregion_free(mod_vreg, mod->dev);
 		vregion_free(mod_vreg, mod);
 		if (!vregion_put(mod_vreg))
-			rfree(alloc);
+			sof_heap_free(alloc->heap, alloc);
 	} else {
 		sof_heap_free(mod_heap, mod->dev);
 		sof_heap_free(mod_heap, mod);
-		rfree(alloc);
+		sof_heap_free(mod_heap, alloc);
 	}
 }
 
@@ -527,11 +532,13 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for input buffers */
 	if (mod->max_sources) {
 		mod->input_buffers =
-			rzalloc(memory_flags, sizeof(*mod->input_buffers) * mod->max_sources);
+			sof_heap_alloc(sof_sys_user_heap_get(), memory_flags,
+				       sizeof(*mod->input_buffers) * mod->max_sources, 0);
 		if (!mod->input_buffers) {
 			comp_err(dev, "failed to allocate input buffers");
 			return -ENOMEM;
 		}
+		memset(mod->input_buffers, 0, sizeof(*mod->input_buffers) * mod->max_sources);
 	} else {
 		mod->input_buffers = NULL;
 	}
@@ -539,12 +546,14 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffers */
 	if (mod->max_sinks) {
 		mod->output_buffers =
-			rzalloc(memory_flags, sizeof(*mod->output_buffers) * mod->max_sinks);
+			sof_heap_alloc(sof_sys_user_heap_get(), memory_flags,
+				       sizeof(*mod->output_buffers) * mod->max_sinks, 0);
 		if (!mod->output_buffers) {
 			comp_err(dev, "failed to allocate output buffers");
 			ret = -ENOMEM;
 			goto in_out_free;
 		}
+		memset(mod->output_buffers, 0, sizeof(*mod->output_buffers) * mod->max_sinks);
 	} else {
 		mod->output_buffers = NULL;
 	}
@@ -605,7 +614,8 @@ int module_adapter_prepare(struct comp_dev *dev)
 	size_t size = MAX(mod->deep_buff_bytes, mod->period_bytes);
 
 	list_for_item(blist, &dev->bsource_list) {
-		mod->input_buffers[i].data = rballoc(memory_flags, size);
+		mod->input_buffers[i].data = sof_heap_alloc(sof_sys_user_heap_get(),
+							     memory_flags, size, 0);
 		if (!mod->input_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc input buffer data");
 			ret = -ENOMEM;
@@ -617,7 +627,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	/* allocate memory for output buffer data */
 	i = 0;
 	list_for_item(blist, &dev->bsink_list) {
-		mod->output_buffers[i].data = rballoc(memory_flags, md->mpd.out_buff_size);
+		mod->output_buffers[i].data = sof_heap_alloc(sof_sys_user_heap_get(),
+							      memory_flags,
+							      md->mpd.out_buff_size, 0);
 		if (!mod->output_buffers[i].data) {
 			comp_err(mod->dev, "Failed to alloc output buffer data");
 			ret = -ENOMEM;
@@ -686,16 +698,16 @@ free:
 
 out_data_free:
 	for (i = 0; i < mod->num_of_sinks; i++)
-		rfree(mod->output_buffers[i].data);
+		sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers[i].data);
 
 in_data_free:
 	for (i = 0; i < mod->num_of_sources; i++)
-		rfree(mod->input_buffers[i].data);
+		sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers[i].data);
 
 in_out_free:
-	rfree(mod->output_buffers);
+	sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers);
 	mod->output_buffers = NULL;
-	rfree(mod->input_buffers);
+	sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers);
 	mod->input_buffers = NULL;
 	return ret;
 }
@@ -1407,14 +1419,16 @@ int module_adapter_reset(struct comp_dev *dev)
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod)) {
 		for (i = 0; i < mod->num_of_sinks; i++)
-			rfree((__sparse_force void *)mod->output_buffers[i].data);
+			sof_heap_free(sof_sys_user_heap_get(),
+				      (__sparse_force void *)mod->output_buffers[i].data);
 		for (i = 0; i < mod->num_of_sources; i++)
-			rfree((__sparse_force void *)mod->input_buffers[i].data);
+			sof_heap_free(sof_sys_user_heap_get(),
+				      (__sparse_force void *)mod->input_buffers[i].data);
 	}
 
 	if (IS_PROCESSING_MODE_RAW_DATA(mod) || IS_PROCESSING_MODE_AUDIO_STREAM(mod)) {
-		rfree(mod->output_buffers);
-		rfree(mod->input_buffers);
+		sof_heap_free(sof_sys_user_heap_get(), mod->output_buffers);
+		sof_heap_free(sof_sys_user_heap_get(), mod->input_buffers);
 
 		mod->num_of_sources = 0;
 		mod->num_of_sinks = 0;
