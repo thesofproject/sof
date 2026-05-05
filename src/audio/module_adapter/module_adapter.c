@@ -192,6 +192,12 @@ static void module_adapter_mem_free(struct processing_module *mod)
 		if (!vregion_put(mod_vreg))
 			rfree(alloc);
 	} else {
+		LOG_INF("mod");
+#ifdef CONFIG_SOF_USERSPACE_LL
+		mod_heap = zephyr_ll_user_heap();
+		comp_cl_dbg(drv, "using ll user heap for module free");
+#endif
+		comp_cl_info(drv, "free mod %p with heap %p", mod, mod_heap);
 		sof_heap_free(mod_heap, mod->dev);
 		sof_heap_free(mod_heap, mod);
 		rfree(alloc);
