@@ -8,6 +8,7 @@
 #ifndef __SOF_SCHEDULE_DP_SCHEDULE_H__
 #define __SOF_SCHEDULE_DP_SCHEDULE_H__
 
+#include <rtos/alloc.h>
 #include <rtos/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>

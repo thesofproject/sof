@@ -700,6 +700,9 @@ free:
 		list_item_del(&buffer->buffers_list);
 		irq_local_enable(flags);
 		buffer_free(buffer);
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+		    md->resources.heap)
+			dp_heap_put(md->resources.heap);
 	}
 
 out_data_free:
@@ -1492,6 +1495,9 @@ void module_adapter_free(struct comp_dev *dev)
 		list_item_del(&buffer->buffers_list);
 		irq_local_enable(flags);
 		buffer_free(buffer);
+		if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
+		    mod->priv.resources.heap)
+			dp_heap_put(mod->priv.resources.heap);
 	}
 
 	mod_free(mod, mod->stream_params);
