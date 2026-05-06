@@ -51,47 +51,6 @@ void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 	buf->r_ptr = r;
 }
 
-void mfcc_fill_fft_buffer(struct mfcc_state *state)
-{
-	struct mfcc_buffer *buf = &state->buf;
-	struct mfcc_fft *fft = &state->fft;
-	int16_t *r = buf->r_ptr;
-	int copied;
-	int nmax;
-	int idx = fft->fft_fill_start_idx;
-	int j;
-	int n;
-
-	/* Copy overlapped samples from state buffer. Imaginary part of input
-	 * remains zero.
-	 */
-	for (j = 0; j < state->prev_data_size; j++)
-		fft->fft_buf[idx + j].real = state->prev_data[j];
-
-	/* Copy hop size of new data from circular buffer */
-	idx += state->prev_data_size;
-	for (copied = 0; copied < fft->fft_hop_size; copied += n) {
-		nmax = fft->fft_hop_size - copied;
-		n = mfcc_buffer_samples_without_wrap(buf, r);
-		n = MIN(n, nmax);
-		for (j = 0; j < n; j++) {
-			fft->fft_buf[idx].real = *r;
-			r++;
-			idx++;
-		}
-		r = mfcc_buffer_wrap(buf, r);
-	}
-
-	buf->s_avail -= copied;
-	buf->s_free += copied;
-	buf->r_ptr = r;
-
-	/* Copy for next time data back to overlap buffer */
-	idx = fft->fft_fill_start_idx + fft->fft_hop_size;
-	for (j = 0; j < state->prev_data_size; j++)
-		state->prev_data[j] = fft->fft_buf[idx + j].real;
-}
-
 void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 {
 	struct mfcc_fft *fft = &state->fft;

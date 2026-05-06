@@ -304,7 +304,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->mel_log_32 = &state->power_spectra[fft->half_fft_size];
 
 	/* Check that mel_log_32 fits in the remaining fft_buf scratch space */
-	int mel_log_32_space = fft->fft_padded_size * 2 - fft->half_fft_size;
+	int mel_log_32_space = (int)(fft->fft_buffer_size / sizeof(int32_t)) - fft->half_fft_size;
 
 	if (config->num_mel_bins > mel_log_32_space) {
 		comp_err(dev, "num_mel_bins %d exceeds mel_log_32 scratch space %d",

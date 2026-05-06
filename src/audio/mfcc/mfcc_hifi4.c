@@ -124,50 +124,6 @@ void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 	buf->r_ptr = (int16_t *)in;
 }
 
-void mfcc_fill_fft_buffer(struct mfcc_state *state)
-{
-	struct mfcc_buffer *buf = &state->buf;
-	struct mfcc_fft *fft = &state->fft;
-	int idx = fft->fft_fill_start_idx;
-	ae_int16 *out = (ae_int16 *)&fft->fft_buf[idx].real;
-	ae_int16 *in = (ae_int16 *)state->prev_data;
-	ae_int16x4 sample;
-	const int buf_inc = sizeof(ae_int16);
-	const int fft_inc = sizeof(fft->fft_buf[0]);
-	int j;
-
-	/* Copy overlapped samples from state buffer. Imaginary part of input
-	 * remains zero.
-	 */
-	for (j = 0; j < state->prev_data_size; j++) {
-		AE_L16_XP(sample, in, buf_inc);
-		AE_S16_0_XP(sample, out, fft_inc);
-	}
-
-	/* Copy hop size of new data from circular buffer */
-	idx += state->prev_data_size;
-	in = (ae_int16 *)buf->r_ptr;
-	out = (ae_int16 *)&fft->fft_buf[idx].real;
-	set_circular_buf0(buf->addr, buf->end_addr);
-	for (j = 0; j < fft->fft_hop_size; j++) {
-		AE_L16_XC(sample, in, buf_inc);
-		AE_S16_0_XP(sample, out, fft_inc);
-	}
-
-	buf->s_avail -= fft->fft_hop_size;
-	buf->s_free += fft->fft_hop_size;
-	buf->r_ptr = (int16_t *)in;
-
-	/* Copy for next time data back to overlap buffer */
-	idx = fft->fft_fill_start_idx + fft->fft_hop_size;
-	in = (ae_int16 *)&fft->fft_buf[idx].real;
-	out = (ae_int16 *)state->prev_data;
-	for (j = 0; j < state->prev_data_size; j++) {
-		AE_L16_XP(sample, in, fft_inc);
-		AE_S16_0_XP(sample, out, buf_inc);
-	}
-}
-
 void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 {
 	struct mfcc_fft *fft = &state->fft;
