@@ -458,15 +458,16 @@ __cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 	channel = cd->host_connector_node_id.f.v_index;
 	channel = dma_request_channel(cd->dma_host->z_dev, &channel);
 	if (channel < 0) {
-		comp_err(dev, "dma_request_channel() failed");
-		return -EINVAL;
+		comp_err(dev, "host dma_request_channel() failed for %u",
+			 cd->host_connector_node_id.f.v_index);
+		return channel;
 	}
 
 	cd->chan_host = &cd->dma_host->chan[channel];
 
 	err = dma_config(cd->dma_host->z_dev, cd->chan_host->index, dma_cfg_host);
 	if (err < 0) {
-		comp_err(dev, "dma_config() failed");
+		comp_err(dev, "host dma_config() failed for %d", channel);
 		goto error_host;
 	}
 
@@ -474,7 +475,9 @@ __cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 	channel = cd->link_connector_node_id.f.v_index;
 	channel = dma_request_channel(cd->dma_link->z_dev, &channel);
 	if (channel < 0) {
-		comp_err(dev, "dma_request_channel() failed");
+		comp_err(dev, "link dma_request_channel() failed for %u",
+			 cd->link_connector_node_id.f.v_index);
+		err = channel;
 		goto error_host;
 	}
 
@@ -482,7 +485,7 @@ __cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 
 	err = dma_config(cd->dma_link->z_dev, cd->chan_link->index, dma_cfg_link);
 	if (err < 0) {
-		comp_err(dev, "dma_config() failed");
+		comp_err(dev, "link dma_config() failed for %d", channel);
 		goto error_link;
 	}
 	return 0;
