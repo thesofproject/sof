@@ -410,6 +410,32 @@ config SOF_SHELL_LLEXT_LOAD_SLOT_NUM
 	  is not available. Must not conflict with TRACE/TELEMETRY/SHELL slots.
 	  Default slot 2 is normally free on this configuration.
 
+config SOF_SHELL_LLEXT_LIST
+	bool "llext library listing command"
+	default y
+	depends on SHELL && LIBRARY_MANAGER
+	help
+	  Enables the 'sof llext_list' shell command.  Iterates over all
+	  loaded llext libraries in IMR/DRAM and prints, for each one:
+	  base address, storage size, and per-module-file SRAM mapping state
+	  (mapped/unmapped), Zephyr llext use-count, and dependency count.
+
+	  Useful for verifying that an llext load succeeded and for checking
+	  whether any module is still active before attempting a purge.
+
+config SOF_SHELL_LLEXT_PURGE
+	bool "llext library purge command"
+	default y
+	depends on SHELL && LIBRARY_MANAGER
+	help
+	  Enables the 'sof llext_purge <lib_id>' shell command.  Removes the
+	  specified llext library from IMR/DRAM storage and frees all memory
+	  associated with it.
+
+	  The command refuses if any module within the library is still mapped
+	  into SRAM (i.e. an active pipeline is using it) and returns -EBUSY.
+	  Tear down all pipelines that reference the library before purging.
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS

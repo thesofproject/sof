@@ -46,6 +46,10 @@
 #include <adsp_debug_window.h>
 #endif /* CONFIG_SOF_SHELL_LLEXT_LOAD */
 
+#if (CONFIG_SOF_SHELL_LLEXT_LIST || CONFIG_SOF_SHELL_LLEXT_PURGE) && CONFIG_LLEXT
+#include <zephyr/llext/llext.h>
+#endif
+
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/shell/shell.h>
@@ -1270,6 +1274,191 @@ __cold static int cmd_sof_llext_load(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_LLEXT_LOAD */
 
+#if CONFIG_SOF_SHELL_LLEXT_LIST
+
+/*
+ * sof llext_list
+ *
+ * Lists all llext libraries currently held in IMR/DRAM.  For each library the
+ * DRAM base address, total storage size and per-module-file name, text/data/BSS
+ * sizes and SRAM state are printed.
+ *
+ * Example output:
+ *   llext libs in IMR/DRAM:
+ *   [1] base=0x89000000  size=49152 B  manifest_mods=1  elf_files=1
+ *       [1:0] TESTER    text= 12288 B  data=  4096 B  bss=  4096 B  DRAM=yes  SRAM=no   use=0  dep=0
+ */
+__cold static int cmd_sof_llext_list(const struct shell *sh,
+				     size_t argc, char *argv[])
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+#if CONFIG_LIBRARY_MANAGER
+	struct ext_library *ext_lib = ext_lib_get();
+	int found = 0;
+	int lib_id;
+
+	shell_print(sh, "llext libs in IMR/DRAM:");
+
+	for (lib_id = 1; lib_id < LIB_MANAGER_MAX_LIBS; lib_id++) {
+		const struct lib_manager_mod_ctx *ctx = ext_lib->desc[lib_id];
+		const struct sof_man_fw_desc *desc;
+		uint32_t store_bytes;
+
+		if (!ctx || !ctx->base_addr)
+			continue;
+
+		desc = (const struct sof_man_fw_desc *)
+			((const uint8_t *)ctx->base_addr + SOF_MAN_ELF_TEXT_OFFSET);
+		store_bytes = desc->header.preload_page_count *
+			      (uint32_t)_SHELL_MOD_PAGE_SZ;
+
+		shell_print(sh, "[%d] base=%p  size=%u B  manifest_mods=%u  elf_files=%u",
+			    lib_id, ctx->base_addr, store_bytes,
+			    desc->header.num_module_entries,
+			    ctx->n_mod);
+
+#if CONFIG_LLEXT
+		if (ctx->mod) {
+			unsigned int i;
+
+			for (i = 0; i < ctx->n_mod; i++) {
+				const struct lib_manager_module *m = ctx->mod + i;
+				const struct sof_man_module *mm;
+				int use = m->llext ? (int)m->llext->use_count : 0;
+				char name[SOF_MAN_MOD_NAME_LEN + 1];
+				uint32_t text_sz = 0, data_sz = 0, bss_sz;
+				int s;
+
+				if (m->mod_manifest) {
+					/* Module has been loaded to SRAM: use the
+					 * manifest pointer set by llext_manager. */
+					mm = &m->mod_manifest->module;
+					text_sz = m->mod_manifest->text_size;
+				} else {
+					/* DRAM-only: read manifest by local
+					 * index i, not start_idx (global). */
+					mm = (const struct sof_man_module *)
+						((const uint8_t *)desc +
+						 SOF_MAN_MODULE_OFFSET(i));
+				}
+
+				memcpy(name, mm->name, SOF_MAN_MOD_NAME_LEN);
+				name[SOF_MAN_MOD_NAME_LEN] = '\0';
+
+				/* Scan manifest segments for page-based sizes.
+				 * For DRAM-only llext modules these are 0; fall
+				 * back to the runtime lib_manager segment sizes. */
+				for (s = 0; s < 3; s++) {
+					uint32_t pg = mm->segment[s].flags.r.length;
+
+					switch (mm->segment[s].flags.r.type) {
+					case SOF_MAN_SEGMENT_TEXT:
+						if (!text_sz)
+							text_sz = pg * _SHELL_MOD_PAGE_SZ;
+						break;
+					case SOF_MAN_SEGMENT_DATA: /* == RODATA */
+						data_sz = pg * _SHELL_MOD_PAGE_SZ;
+						break;
+					default:
+						break;
+					}
+				}
+				bss_sz = (uint32_t)mm->instance_bss_size * _SHELL_MOD_PAGE_SZ;
+
+				/* For DRAM llext modules the manifest page fields
+				 * are 0; use the runtime lib_manager segment sizes
+				 * if available. */
+				if (!text_sz)
+					text_sz = (uint32_t)m->segment[LIB_MANAGER_TEXT].size;
+				if (!data_sz)
+					data_sz = (uint32_t)(m->segment[LIB_MANAGER_DATA].size
+							     + m->segment[LIB_MANAGER_RODATA].size);
+				if (!bss_sz)
+					bss_sz = (uint32_t)m->segment[LIB_MANAGER_BSS].size;
+
+				shell_print(sh,
+					    "    [%d:%u] %-8s"
+					    "  text=%6u B  data=%6u B  bss=%6u B"
+					    "  DRAM=yes  SRAM=%-3s"
+					    "  use=%-2d  dep=%u",
+					    lib_id, i, name,
+					    text_sz, data_sz, bss_sz,
+					    m->mapped ? "yes" : "no",
+					    use,
+					    m->n_dependent);
+			}
+		}
+#endif /* CONFIG_LLEXT */
+
+		found++;
+	}
+
+	if (!found)
+		shell_print(sh, "  (none)");
+#else
+	shell_print(sh, "Library manager not enabled.");
+#endif /* CONFIG_LIBRARY_MANAGER */
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_LLEXT_LIST */
+
+#if CONFIG_SOF_SHELL_LLEXT_PURGE
+
+/*
+ * sof llext_purge <lib_id>
+ *
+ * Removes a loadable llext library from IMR/DRAM storage and frees its memory.
+ * All module files belonging to the library must be unloaded from SRAM first
+ * (i.e., all pipeline instances using the library must be torn down).
+ *
+ * Example:
+ *   uart:~$ sof llext_purge 1
+ *   llext_purge: lib 1 freed OK
+ */
+__cold static int cmd_sof_llext_purge(const struct shell *sh,
+				      size_t argc, char *argv[])
+{
+#if CONFIG_LIBRARY_MANAGER
+	char *endptr = NULL;
+	long lib_id;
+	int ret;
+
+	lib_id = strtol(argv[1], &endptr, 0);
+	if (endptr == argv[1] || lib_id < 1 || lib_id >= LIB_MANAGER_MAX_LIBS) {
+		shell_error(sh, "lib_id must be 1..%d", LIB_MANAGER_MAX_LIBS - 1);
+		return -EINVAL;
+	}
+
+	ret = lib_manager_purge_library((uint32_t)lib_id);
+	switch (ret) {
+	case 0:
+		shell_print(sh, "llext_purge: lib %ld freed OK", lib_id);
+		break;
+	case -ENOENT:
+		shell_error(sh, "llext_purge: lib %ld not loaded", lib_id);
+		break;
+	case -EBUSY:
+		shell_error(sh, "llext_purge: lib %ld still active in SRAM — "
+			    "destroy all pipelines using it first", lib_id);
+		break;
+	default:
+		shell_error(sh, "llext_purge: lib %ld failed: %d", lib_id, ret);
+		break;
+	}
+	return ret;
+#else
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+	shell_print(sh, "Library manager not enabled.");
+	return -ENOSYS;
+#endif /* CONFIG_LIBRARY_MANAGER */
+}
+
+#endif /* CONFIG_SOF_SHELL_LLEXT_PURGE */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_llext_commands,
 #if CONFIG_SOF_SHELL_LLEXT_LOAD
 	SHELL_CMD_ARG(load, NULL,
@@ -1279,6 +1468,20 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_llext_commands,
 		  "     bs=$(stat -c%s <module.ri>) count=1\n"
 		  "on the host. Prints result when DMA and IPC4 load complete.\n",
 		  cmd_sof_llext_load, 2, 1),
+#endif
+#if (CONFIG_SOF_SHELL_LLEXT_LIST || CONFIG_SOF_SHELL_LLEXT_PURGE) && CONFIG_LLEXT
+	SHELL_CMD(list, NULL,
+		  "List llext libraries stored in IMR/DRAM.\n"
+		  "For each library shows base address, storage size and per-module\n"
+		  "SRAM mapping state (yes/no), use count and dependency count.\n",
+		  cmd_sof_llext_list),
+#endif
+#if CONFIG_SOF_SHELL_LLEXT_PURGE
+	SHELL_CMD_ARG(purge, NULL,
+		  "Purge llext library from IMR/DRAM: <lib_id>\n"
+		  "Fails with -EBUSY if any module in the library is still\n"
+		  "mapped in SRAM (i.e. a pipeline using it is still active).\n",
+		  cmd_sof_llext_purge, 2, 0),
 #endif
 	SHELL_SUBCMD_SET_END
 );
@@ -1464,9 +1667,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 		  NULL),
 #endif
 
-#if CONFIG_SOF_SHELL_LLEXT_LOAD
+#if CONFIG_SOF_SHELL_LLEXT_LOAD || \
+    ((CONFIG_SOF_SHELL_LLEXT_LIST || CONFIG_SOF_SHELL_LLEXT_PURGE) && CONFIG_LLEXT)
 	SHELL_CMD(llext, &sof_llext_commands,
-		  "Llext commands: load (SOF_SHELL_LLEXT_*)\n",
+		  "Llext commands: load, list, purge (SOF_SHELL_LLEXT_*)\n",
 		  NULL),
 #endif
 

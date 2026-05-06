@@ -1191,3 +1191,55 @@ cleanup:
 
 	return ret;
 }
+
+int lib_manager_purge_library(uint32_t lib_id)
+{
+	struct ext_library *ext_lib = ext_lib_get();
+	struct lib_manager_mod_ctx *ctx;
+	unsigned int i;
+
+	if (!lib_id || lib_id >= LIB_MANAGER_MAX_LIBS)
+		return -EINVAL;
+
+	ctx = ext_lib->desc[lib_id];
+	if (!ctx || !ctx->base_addr)
+		return -ENOENT;
+
+#if CONFIG_LLEXT
+	/* Refuse if any module file is still mapped in SRAM */
+	if (ctx->mod) {
+		for (i = 0; i < ctx->n_mod; i++) {
+			if (ctx->mod[i].mapped) {
+				tr_err(&lib_manager_tr,
+				       "lib %u mod[%u] still in SRAM",
+				       lib_id, i);
+				return -EBUSY;
+			}
+			/* Auxiliary libs linked via llext_manager_add_library
+			 * have an ebl/llext but no mapped SRAM; still in use if
+			 * n_dependent > 0. */
+			if (ctx->mod[i].n_dependent) {
+				tr_err(&lib_manager_tr,
+				       "lib %u mod[%u] still has %u dependents",
+				       lib_id, i, ctx->mod[i].n_dependent);
+				return -EBUSY;
+			}
+		}
+		rfree(ctx->mod);
+		ctx->mod = NULL;
+	}
+#else
+	(void)i;
+#endif /* CONFIG_LLEXT */
+
+	/* Free the DRAM/IMR storage buffer */
+	rfree(ctx->base_addr);
+	ctx->base_addr = NULL;
+
+	/* Free the context itself and clear the global descriptor slot */
+	rfree(ctx);
+	ext_lib->desc[lib_id] = NULL;
+
+	tr_info(&lib_manager_tr, "purged library id: %u", lib_id);
+	return 0;
+}
