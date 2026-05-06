@@ -152,20 +152,29 @@ def main():
         print("[sof-qemu-run] Error: 'west' command not found in PATH.")
         sys.exit(1)
 
-    # Determine what we are actually running
+    # Determine execution command
     runs = []
     
-    # Check for multiple firmware images in the build directory (chained boot tests)
-    fw_images = []
-    zephyr_elf = os.path.join(build_dir, "zephyr", "zephyr.elf")
-    if os.path.isfile(zephyr_elf):
-        fw_images.append(zephyr_elf)
+    if "ace30" in board.lower() or "ptl" in board.lower() or "wcl" in board.lower():
+        qemu_bin_path = os.environ.get("QEMU_BIN_PATH", os.path.join(os.environ.get("SOF_WORKSPACE", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))), "qemu", "build"))
+        qemu_exe = os.path.join(qemu_bin_path, "qemu-system-xtensa")
+        print(f"[sof-qemu-run] Bypassing west run explicitly for ACE30 target. Using QEMU: {qemu_exe}")
         
-    # Also check for .bin images if elf isn't there or if we have multi-image
-    if not is_native_sim:
-        qemu_exe = shutil.which("qemu-system-xtensa")
-        if not qemu_exe:
-            print("[sof-qemu-run] Error: 'qemu-system-xtensa' not found in PATH.")
+        # Enable dynamic recursive ZTest execution if isolated zephyr.elf doesn't exist
+        fw_images = []
+        default_ri = os.path.join(build_dir, "zephyr", "zephyr.ri")
+        default_elf = os.path.join(build_dir, "zephyr", "zephyr.elf")
+        if os.path.isfile(default_ri):
+            fw_images.append(default_ri)
+        elif os.path.isfile(default_elf):
+            fw_images.append(default_elf)
+        else:
+            for root, dirs, files in os.walk(build_dir):
+                if "zephyr.elf" in files:
+                    fw_images.append(os.path.join(root, "zephyr.elf"))
+                    
+        if not fw_images:
+            print(f"[sof-qemu-run] Error: No Zephyr firmware generated natively (missing zephyr.elf) within {build_dir}")
             sys.exit(1)
 
         for fw in fw_images:
