@@ -315,15 +315,25 @@ static void asrc_release_buffers(struct processing_module *mod, struct asrc_farr
 static int asrc_free(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
 
-	comp_dbg(dev, "entry");
+	comp_dbg(mod->dev, "entry");
+
+	if (!cd)
+		return 0;
 
 	mod_free(mod, cd->buf);
-	asrc_release_buffers(mod, cd->asrc_obj);
-	asrc_free_polyphase_filter(mod, cd->asrc_obj);
-	mod_free(mod, cd->asrc_obj);
+	cd->buf = NULL;
+
+	if (cd->asrc_obj) {
+		asrc_release_buffers(mod, cd->asrc_obj);
+		asrc_free_polyphase_filter(mod, cd->asrc_obj);
+		mod_free(mod, cd->asrc_obj);
+		cd->asrc_obj = NULL;
+	}
+
 	mod_free(mod, cd);
+	module_set_private_data(mod, NULL);
+
 	return 0;
 }
 
@@ -862,12 +872,17 @@ static int asrc_reset(struct processing_module *mod)
 		asrc_dai_stop_timestamp(cd);
 
 	/* Free the allocations those were done in prepare() */
-	asrc_release_buffers(mod, cd->asrc_obj);
-	asrc_free_polyphase_filter(mod, cd->asrc_obj);
-	mod_free(mod, cd->asrc_obj);
-	mod_free(mod, cd->buf);
-	cd->asrc_obj = NULL;
-	cd->buf = NULL;
+	if (cd->asrc_obj) {
+		asrc_release_buffers(mod, cd->asrc_obj);
+		asrc_free_polyphase_filter(mod, cd->asrc_obj);
+		mod_free(mod, cd->asrc_obj);
+		cd->asrc_obj = NULL;
+	}
+
+	if (cd->buf) {
+		mod_free(mod, cd->buf);
+		cd->buf = NULL;
+	}
 
 	return 0;
 }
