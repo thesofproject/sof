@@ -224,7 +224,6 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 	for (j = 0; j < fft->fft_size; j++) {
 		AE_L32_IP(sample, fft_in, 0);
 		AE_L16_XP(win, win_in, win_inc);
-		temp = AE_MULFP32X16X2RS_H(sample, win);
 		temp = AE_MULFP32X16X2RS_L(sample, win);
 		temp = AE_SLAA32S(temp, input_shift);
 		AE_S32_L_XP(temp, fft_in, fft_inc);
