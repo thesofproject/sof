@@ -1085,7 +1085,7 @@ __cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 		 * (4 bytes type | 4 bytes length=0 | no value)
 		 * we do not handle such case
 		 */
-		if (data_off_size < sizeof(struct sof_tlv))
+		if (data_off_size < sizeof(struct sof_tlv) || data_off_size > MAILBOX_HOSTBOX_SIZE)
 			return IPC4_INVALID_CONFIG_DATA_STRUCT;
 
 		/* ===Iterate over payload===
@@ -1097,9 +1097,20 @@ __cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 		const uint8_t *end_offset = (const uint8_t *)data + data_off_size;
 
 		while ((const uint8_t *)tlv < end_offset) {
+			size_t remaining = (size_t)(end_offset - (const uint8_t *)tlv);
+
 			/* check for invalid length */
 			if (!tlv->length)
 				return IPC4_INVALID_CONFIG_DATA_LEN;
+
+			/* Validate TLV header + value fits within remaining
+			 * payload to prevent OOB access and pointer wraparound
+			 * on 32-bit arithmetic (CWE-190). Split into two checks
+			 * to avoid overflow in the size_t addition itself.
+			 */
+			if (remaining < sizeof(struct sof_tlv) ||
+			    tlv->length > remaining - sizeof(struct sof_tlv))
+				return IPC4_INVALID_REQUEST;
 
 			ret = drv->ops.set_large_config(dev, tlv->type, init_block,
 				final_block, tlv->length, tlv->value);
@@ -1108,7 +1119,7 @@ __cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 					    (uint32_t)module_id, (uint32_t)instance_id);
 				return IPC4_INVALID_RESOURCE_ID;
 			}
-			/* Move pointer to the end of this tlv */
+			/* Move pointer to the end of this tlv (aligned) */
 			tlv = (struct sof_tlv *)((const uint8_t *)tlv +
 				sizeof(struct sof_tlv) + ALIGN_UP(tlv->length, 4));
 		}
