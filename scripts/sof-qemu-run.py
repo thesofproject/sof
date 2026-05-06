@@ -151,8 +151,27 @@ def main():
             runs.append((fw, run_cmd))
             
     else:
-        # Placeholder for native_sim logic in next patch
-        run_cmd = [west_path, "-v", "build", "-d", build_dir, "-t", "run"]
+        if not args.rebuild and is_native_sim and not args.valgrind:
+            run_cmd = [os.path.join(build_dir, "zephyr", "zephyr.exe")]
+        else:
+            run_cmd = [west_path, "-v", "build", "-d", build_dir, "-t", "run"]
+        if args.valgrind:
+            if not is_native_sim:
+                print("[sof-qemu-run] Error: --valgrind is only supported for the native_sim board.")
+                sys.exit(1)
+
+            if args.rebuild:
+                print("[sof-qemu-run] Rebuilding before valgrind...")
+                subprocess.run([west_path, "build", "-d", build_dir], check=True)
+
+            valgrind_path = shutil.which("valgrind")
+            if not valgrind_path:
+                print("[sof-qemu-run] Error: 'valgrind' command not found in PATH.")
+                sys.exit(1)
+
+            exe_path = os.path.join(build_dir, "zephyr", "zephyr.exe")
+            run_cmd = [valgrind_path, exe_path]
+            
         runs.append((build_dir, run_cmd))
 
     # Master Batch Execution Loop
