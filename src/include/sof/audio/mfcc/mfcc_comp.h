@@ -36,7 +36,7 @@
  * set to 32 the FFT and Mel filterbank are computed with better 32 bit precision. There
  * is also need to enable 32 bit FFT from Kconfig if set.
  */
-#define MFCC_FFT_BITS	16
+#define MFCC_FFT_BITS	32
 
 /* MFCC with 16 bit FFT benefits from data normalize, for 32 bits there's no
  * significant impact. The amount of left shifts for FFT input is limited to
@@ -114,7 +114,8 @@ struct mfcc_state {
 	struct mat_matrix_16b *mel_spectra; /**< Pointer to scratch */
 	struct mat_matrix_16b *cepstral_coef; /**< Pointer to scratch */
 	int32_t *power_spectra; /**< Pointer to scratch */
-	int16_t mmax; /**< Maximum Mel value in Q9.7 */
+	int32_t *mel_log_32; /**< Pointer to scratch for 32-bit Mel output Q9.23 */
+	int32_t mmax; /**< Maximum Mel value in Q9.23 */
 	int16_t buf_avail;
 	int16_t *buffers;
 	int16_t *prev_data; /**< prev_data_size */
@@ -132,6 +133,7 @@ struct mfcc_state {
 	bool magic_pending; /**< True when magic word not yet written for current output */
 	size_t sample_buffers_size; /**< bytes */
 	int16_t *out_data_ptr; /**< Read pointer into scratch data for multi-period output */
+	int32_t *out_data_ptr_32; /**< Read pointer for 32-bit mel-only output */
 	int out_remain; /**< Remaining int16_t samples to write to sink from scratch */
 };
 

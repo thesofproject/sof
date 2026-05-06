@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2022 Intel Corporation. All rights reserved.
+// Copyright(c) 2022-2026 Intel Corporation.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
@@ -152,7 +152,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	else
 		state->source_channel = config->channel;
 
-	state->mmax = config->mmax_init;
+	state->mmax = (int32_t)config->mmax_init << 16; /* Q9.7 -> Q9.23 */
 	state->emph.enable = config->preemphasis_coefficient > 0;
 	state->emph.coef = -config->preemphasis_coefficient; /* Negate config parameter */
 	fft->fft_size = config->frame_length;
@@ -286,15 +286,16 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 
 	/* Scratch overlay during runtime
 	 *
-	 *  +--------------------------------------------------------+
-	 *  | 1. fft_buf[], 16 bits,size x 4, e.g. 512 -> 2048 bytes |
-	 *  +-------------------------------------+------------------+
-	 *  | 3. power_spectra[],                 |
-	 *  |    32 bits, e.g. x257 -> 1028 bytes |
-	 *  +-------------------------------------+
+	 *  +------------------------------------------------------------+
+	 *  | 1. fft_buf[], 32 bits, size x 8, e.g. 512 -> 4096 bytes    |
+	 *  +-------------------------------------+----------------------+
+	 *  | 3. power_spectra[],                 | 6. mel_log_32[],     |
+	 *  |    32 bits, e.g. x257 -> 1028 bytes |    32 bits, e.g. x80 |
+	 *  |                                     |    320 bytes         |
+	 *  +-------------------------------------+----------------------+
 	 *
 	 *  +---------------------------------------------------------------------------------+
-	 *  | 2. fft_out[], 16 bits,size x 4, e.g. 512 -> 2048 bytes                          |
+	 *  | 2. fft_out[], 32 bits, size x 8, e.g. 512 -> 4096 bytes                         |
 	 *  +----------------------------------+----------------------------------+-----------+
 	 *  | 4. mel_spectra[],                | 5. cepstral_coef[],              |
 	 *  |    16 bits, e.g. x23 -> 46 bytes |    16 bits, e.g. 13x -> 26 bytes |
@@ -304,6 +305,18 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 
 	/* Use FFT buffer as scratch for later computed data */
 	state->power_spectra = (int32_t *)&fft->fft_buf[0];
+	state->mel_log_32 = &state->power_spectra[fft->half_fft_size];
+
+	/* Check that mel_log_32 fits in the remaining fft_buf scratch space */
+	int mel_log_32_space = fft->fft_padded_size * 2 - fft->half_fft_size;
+
+	if (config->num_mel_bins > mel_log_32_space) {
+		comp_err(dev, "num_mel_bins %d exceeds mel_log_32 scratch space %d",
+			 config->num_mel_bins, mel_log_32_space);
+		ret = -EINVAL;
+		goto free_dct_matrix;
+	}
+
 	state->mel_spectra = (struct mat_matrix_16b *)&fft->fft_out[0];
 	if (!state->mel_only) {
 		state->cepstral_coef =
@@ -338,6 +351,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->prev_samples_valid = false;
 	state->magic_pending = false;
 	state->out_data_ptr = NULL;
+	state->out_data_ptr_32 = NULL;
 	state->out_remain = 0;
 
 	comp_dbg(dev, "done");

@@ -4,7 +4,8 @@ config COMP_MFCC
 	tristate "MFCC component"
 	depends on COMP_MODULE_ADAPTER
 	select CORDIC_FIXED
-	select MATH_16BIT_MEL_FILTERBANK
+	select MATH_32BIT_FFT
+	select MATH_32BIT_MEL_FILTERBANK
 	select MATH_AUDITORY
 	select MATH_DCT
 	select MATH_DECIBELS
