@@ -174,12 +174,25 @@ def main():
             
         runs.append((build_dir, run_cmd))
 
-    # Master Batch Execution Loop
+    print("\n[sof-qemu-run] \033[36;1m💡 Quick Tip: Monitor logs in real-time across another terminal window:\033[0m")
+    print(f"    tail -f /tmp/qemu-exec*.log")
+    print(f"    tail -f {args.mtrace_log if args.mtrace_log else '/tmp/ace-mtrace.log'}")
+    
+    if args.tcp_monitor:
+        print("\n[sof-qemu-run] \033[36;1m💡 Quick Tip: Automate Out-Of-Band IPC Triggers (Requires sof/qemu codebase mapping):\033[0m")
+        print(f"    python3 scripts/sof-qemu-ipc.py --port {args.tcp_monitor} --status\n")
+    else:
+        print()
+
+    # Master Batch Execution Loop traversing standard runner pipelines identically
     for idx, (fw_target, rcmd) in enumerate(runs):
         if len(runs) > 1:
-            print(f"\n\033[32;1m[sof-qemu-run] BATCH EXECUTE [{idx+1}/{len(runs)}]: {fw_target}\033[0m\n")
+            print(f"\n\033[32;1m========================================================================\033[0m")
+            print(f"\033[32;1m[sof-qemu-run] BATCH EXECUTE [{idx+1}/{len(runs)}]: {fw_target}\033[0m")
+            print(f"\033[32;1m========================================================================\033[0m\n")
 
         if args.interactive:
+            print("\n[sof-qemu-run] Starting QEMU directly in interactive mode. Automatic crash analysis is disabled.")
             subprocess.run(rcmd)
             continue
 
