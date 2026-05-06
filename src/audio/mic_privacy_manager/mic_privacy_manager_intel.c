@@ -95,6 +95,15 @@ int mic_privacy_manager_init(void)
 	if (!mic_priv_dev)
 		return -EINVAL;
 
+	if (!device_is_ready(mic_priv_dev)) {
+		LOG_ERR("mic_privacy device not ready");
+		/* Clear the handle so later helpers take their !mic_priv_dev
+		 * path instead of dereferencing a device that is not ready
+		 */
+		mic_priv_dev = NULL;
+		return -ENODEV;
+	}
+
 	mic_privacy_api = (struct mic_privacy_api_funcs *)mic_priv_dev->api;
 	mic_privacy_policy = mic_privacy_api->get_policy();
 
@@ -109,6 +118,9 @@ int mic_privacy_manager_init(void)
 
 int mic_privacy_manager_get_policy(void)
 {
+	if (!mic_priv_dev)
+		return MIC_PRIVACY_HW_MANAGED;
+
 	mic_privacy_api = (struct mic_privacy_api_funcs *)mic_priv_dev->api;
 
 	return mic_privacy_api->get_policy();
