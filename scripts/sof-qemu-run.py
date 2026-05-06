@@ -85,35 +85,74 @@ def main():
     parser.add_argument("--log-file", default="qemu-run.log", help="Path to save the QEMU output log. Defaults to 'qemu-run.log'.")
     parser.add_argument("--timeout", type=int, default=2, help="Seconds of silence before assuming QEMU has hung or finished. Defaults to 2.")
     parser.add_argument("--valgrind", action="store_true", help="Run with valgrind (native_sim only).")
-    parser.add_argument("--cores", type=int, help="Number of SMP cores for QEMU.")
+    parser.add_argument("--cores", type=int, default=None, help="Number of SMP cores to emulate in QEMU.")
     parser.add_argument("--mtrace-log", help="Path to MTrace log file for ADSP ACE30.")
-    parser.add_argument("--tcp-monitor", type=int, help="Expose QEMU monitor on local TCP port.")
+    parser.add_argument("--tcp-monitor", type=int, nargs="?", const=1025, default=None, help="Start the QEMU TCP monitor socket. Optionally specify the port (default: 1025).")
     parser.add_argument("--qemu-d", help="Pass -d flags to QEMU.")
     parser.add_argument("--exec-log", help="Pass -D log file to QEMU.")
     parser.add_argument("--rebuild", action="store_true", help="Rebuild before running.")
-    parser.add_argument("--test-ztest", action="store_true", help="Build and run with ZTest overlay.")
+    parser.add_argument("--ztest", action="store_true", help="Build and run with ZTest overlay.")
     parser.add_argument("--test-fw-standard", action="store_true", help="Build and run standard FW with ZTest enabled.")
     parser.add_argument("--interactive", action="store_true", help="Run QEMU directly in interactive mode (disables crash monitor).")
     args = parser.parse_args()
 
+    # Clean up old log files before starting
+    for log_path in [args.mtrace_log, args.exec_log]:
+        if log_path and os.path.exists(log_path):
+            try:
+                os.remove(log_path)
+                print(f"[sof-qemu-run] Cleaned up old log: {log_path}")
+            except Exception as e:
+                print(f"[sof-qemu-run] Warning: Could not delete {log_path}: {e}")
+    
+    extra_qemu_flags = []
+    if args.cores:
+        extra_qemu_flags.append(f"-smp {args.cores}")
+        
+    if args.tcp_monitor:
+        extra_qemu_flags.append(f"-monitor tcp:localhost:{args.tcp_monitor},server,nowait")
+
+    if args.mtrace_log:
+        # For ADSP boards, mtrace-file is a machine parameter. 
+        # We append it to a -machine flag. West will append this to its own flags.
+        extra_qemu_flags.append(f"-machine adsp_ace30,mtrace-file={args.mtrace_log}")
+        os.environ["QEMU_ACE_MTRACE_FILE"] = args.mtrace_log
+        print(f"[sof-qemu-run] Setting QEMU_ACE_MTRACE_FILE: {args.mtrace_log}")
+
+    if args.exec_log:
+        extra_qemu_flags.append(f"-D {args.exec_log}")
+
+    if args.qemu_d:
+        extra_qemu_flags.append(f"-d {args.qemu_d}")
+
+    if extra_qemu_flags:
+        existing_flags = os.environ.get("QEMU_EXTRA_FLAGS", "")
+        os.environ["QEMU_EXTRA_FLAGS"] = f"{existing_flags} {' '.join(extra_qemu_flags)}".strip()
+        print(f"[sof-qemu-run] QEMU_EXTRA_FLAGS: {os.environ['QEMU_EXTRA_FLAGS']}")
+
     # Make absolute path just in case
     build_dir = os.path.abspath(args.build_dir)
     
-    # Board detection from .config
+    print(f"Starting QEMU test runner (Build Dir: {args.build_dir})...")
+
+    west_path = shutil.which("west")
+
+    # Detect the board configuration from CMakeCache.txt
+    is_native_sim = False
     board = "unknown"
-    config_path = os.path.join(build_dir, "zephyr", ".config")
-    if os.path.isfile(config_path):
-        with open(config_path, "r") as f:
+    cmake_cache = os.path.join(build_dir, "CMakeCache.txt")
+
+    if os.path.isfile(cmake_cache):
+        with open(cmake_cache, "r") as f:
             for line in f:
-                if line.startswith("CONFIG_BOARD="):
-                    board = line.split("=")[1].strip().strip('"')
-                    break
+                if line.startswith("CACHED_BOARD:STRING=") or line.startswith("BOARD:STRING="):
+                    board = line.split("=", 1)[1].strip()
+                    if "native_sim" in board:
+                        is_native_sim = True
+                        break
 
-    # Detection for native_sim board
-    is_native_sim = "native_sim" in board
-
-    if args.test_ztest:
-        print("\n\033[32;1m[sof-qemu-run] ISOLATED ZTEST ENABLED: Only unit testing modules will be built and executed.\033[0m")
+    if args.ztest:
+        print("\n\033[32;1m[sof-qemu-run] ZTEST ENABLED: Mathematics and firmware testing configured.\033[0m")
         if args.rebuild:
             print("\033[32;1m[sof-qemu-run] Recompiling Zephyr firmware with testing overlays natively...\033[0m")
             # Inject standard rimage build directory directly into PATH so `west sign` mathematically authenticates Zephyr.elf into Zephyr.ri directly seamlessly.
@@ -322,7 +361,7 @@ def main():
             run_sof_crash_decode(build_dir, full_output)
         else:
             if is_native_sim:
-                print("\n[sof-qemu-run] No crash detected.")
+                print("\n[sof-qemu-run] No crash detected. (Skipping QEMU monitor interaction for native_sim)")
             else:
                 print("\n[sof-qemu-run] No crash detected. Interacting with QEMU Monitor to grab registers...")
 
