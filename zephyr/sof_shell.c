@@ -237,6 +237,72 @@ __cold static int cmd_sof_core_status(const struct shell *sh,
 }
 #endif /* CONFIG_SOF_SHELL_CORE_STATUS */
 
+#if CONFIG_SOF_SHELL_CORE_POWER
+
+/*
+ * sof core_on <core_id>
+ * sof core_off <core_id>
+ *
+ * Power a secondary DSP core on or off.  Core 0 (primary) cannot be
+ * controlled via these commands.
+ */
+__cold static int cmd_sof_core_on(const struct shell *sh,
+				  size_t argc, char *argv[])
+{
+	char *endptr = NULL;
+	long id;
+	int ret;
+
+	id = strtol(argv[1], &endptr, 0);
+	if (endptr == argv[1] || id < 1 || id >= CONFIG_CORE_COUNT) {
+		shell_error(sh, "core_id must be 1..%d", CONFIG_CORE_COUNT - 1);
+		return -EINVAL;
+	}
+
+	if (cpu_is_core_enabled((int)id)) {
+		shell_print(sh, "core %ld already active", id);
+		return 0;
+	}
+
+	ret = cpu_enable_core((int)id);
+	if (ret)
+		shell_error(sh, "core_on: failed to enable core %ld: %d", id, ret);
+	else
+		shell_print(sh, "core_on: core %ld enabled", id);
+
+	return ret;
+}
+
+__cold static int cmd_sof_core_off(const struct shell *sh,
+				   size_t argc, char *argv[])
+{
+	char *endptr = NULL;
+	long id;
+
+	id = strtol(argv[1], &endptr, 0);
+	if (endptr == argv[1] || id < 1 || id >= CONFIG_CORE_COUNT) {
+		shell_error(sh, "core_id must be 1..%d", CONFIG_CORE_COUNT - 1);
+		return -EINVAL;
+	}
+
+	if (!cpu_is_core_enabled((int)id)) {
+		shell_print(sh, "core %ld already inactive", id);
+		return 0;
+	}
+
+	cpu_disable_core((int)id);
+
+	if (cpu_is_core_enabled((int)id)) {
+		shell_error(sh, "core_off: core %ld did not power down", id);
+		return -EIO;
+	}
+
+	shell_print(sh, "core_off: core %ld disabled", id);
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_CORE_POWER */
+
 #if CONFIG_SOF_SHELL_SRAM_STATUS
 __cold static int cmd_sof_sram_status(const struct shell *sh,
 			       size_t argc, char *argv[])
@@ -1563,6 +1629,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_core_commands,
 		  "Print enabled/active state of each DSP core\n",
 		  cmd_sof_core_status),
 #endif
+#if CONFIG_SOF_SHELL_CORE_POWER
+	SHELL_CMD_ARG(on, NULL,
+		  "Power on a secondary DSP core: <core_id>\n"
+		  "core_id must be 1..CONFIG_CORE_COUNT-1 (core 0 is primary).\n",
+		  cmd_sof_core_on, 2, 0),
+	SHELL_CMD_ARG(off, NULL,
+		  "Power off a secondary DSP core: <core_id>\n"
+		  "core_id must be 1..CONFIG_CORE_COUNT-1 (core 0 is primary).\n",
+		  cmd_sof_core_off, 2, 0),
+#endif
 	SHELL_SUBCMD_SET_END
 );
 
@@ -1631,9 +1707,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 		  NULL),
 #endif
 
-#if CONFIG_SOF_SHELL_CORE_STATUS
+#if CONFIG_SOF_SHELL_CORE_STATUS || CONFIG_SOF_SHELL_CORE_POWER
 	SHELL_CMD(core, &sof_core_commands,
-		  "Core commands: info\n",
+		  "Core commands: info, on, off\n",
 		  NULL),
 #endif
 

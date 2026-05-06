@@ -289,6 +289,22 @@ config SOF_SHELL_CORE_STATUS
 	  Enables the 'sof core_status' shell command which reports the
 	  enabled/active state of each DSP core.
 
+config SOF_SHELL_CORE_POWER
+	bool "Secondary core power on/off commands"
+	default y
+	depends on SHELL && MULTICORE && SMP
+	help
+	  Enables the 'sof core_on <id>' and 'sof core_off <id>' shell
+	  commands for powering secondary DSP cores on and off at runtime.
+
+	  Core 0 (primary) is not a valid target — these commands only accept
+	  core IDs in the range [1 .. CONFIG_CORE_COUNT-1].
+
+	  core_on calls cpu_enable_core() which starts the secondary Zephyr
+	  CPU and runs secondary_core_init().  core_off calls
+	  cpu_disable_core() which requests PM_STATE_SOFT_OFF on the core
+	  and waits for it to halt before asserting the reset line.
+
 config SOF_SHELL_SRAM_STATUS
 	bool "SRAM heap status command"
 	default y
