@@ -155,6 +155,10 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->emph.coef = -config->preemphasis_coefficient; /* Negate config parameter */
 	fft->fft_size = config->frame_length;
 	fft->fft_padded_size = 1 << (31 - norm_int32(fft->fft_size)); /* Round up to nearest 2^N */
+	if (config->frame_shift <= 0) {
+		comp_err(dev, "frame_shift must be positive");
+		return -EINVAL;
+	}
 	fft->fft_hop_size = config->frame_shift;
 	fft->half_fft_size = (fft->fft_padded_size >> 1) + 1;
 
