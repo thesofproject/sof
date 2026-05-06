@@ -91,16 +91,59 @@ def main():
     parser.add_argument("--qemu-d", help="Pass -d flags to QEMU.")
     parser.add_argument("--exec-log", help="Pass -D log file to QEMU.")
     parser.add_argument("--rebuild", action="store_true", help="Rebuild before running.")
+    parser.add_argument("--test-ztest", action="store_true", help="Build and run with ZTest overlay.")
+    parser.add_argument("--test-fw-standard", action="store_true", help="Build and run standard FW with ZTest enabled.")
     parser.add_argument("--interactive", action="store_true", help="Run QEMU directly in interactive mode (disables crash monitor).")
     args = parser.parse_args()
 
     # Make absolute path just in case
     build_dir = os.path.abspath(args.build_dir)
     
+    # Board detection from .config
+    board = "unknown"
+    config_path = os.path.join(build_dir, "zephyr", ".config")
+    if os.path.isfile(config_path):
+        with open(config_path, "r") as f:
+            for line in f:
+                if line.startswith("CONFIG_BOARD="):
+                    board = line.split("=")[1].strip().strip('"')
+                    break
+
     # Detection for native_sim board
-    is_native_sim = False
-    if os.path.isfile(os.path.join(build_dir, "zephyr", "zephyr.exe")):
-        is_native_sim = True
+    is_native_sim = "native_sim" in board
+
+    if args.test_ztest:
+        print("\n\033[32;1m[sof-qemu-run] ISOLATED ZTEST ENABLED: Only unit testing modules will be built and executed.\033[0m")
+        if args.rebuild:
+            print("\033[32;1m[sof-qemu-run] Recompiling Zephyr firmware with testing overlays natively...\033[0m")
+            # Inject standard rimage build directory directly into PATH so `west sign` mathematically authenticates Zephyr.elf into Zephyr.ri directly seamlessly.
+            sof_workspace = os.environ.get("SOF_WORKSPACE", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+            optional_rimage_path = os.path.join(sof_workspace, "build-rimage")
+            if os.path.isdir(optional_rimage_path) and optional_rimage_path not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = f"{optional_rimage_path}{os.pathsep}{os.environ.get('PATH', '')}"
+                print(f"[sof-qemu-run] Injected Rimage Path: {optional_rimage_path}")
+
+            # Ensure pristine builds trigger CMake re-configuration loading the new overlay arguments cleanly:
+            subprocess.run([west_path, "build", "-d", build_dir, "-p", "auto", "--", "-DOVERLAY_CONFIG=ztest_overlay.conf"], check=True)
+            print("\033[32;1m[sof-qemu-run] Compilation Successful.\033[0m\n")
+        else:
+            print("\033[32;1m[sof-qemu-run] Skipping compilation/rebuild, using previously generated binaries.\033[0m\n")
+    elif args.test_fw_standard:
+        print("\n\033[32;1m[sof-qemu-run] STANDARD FIRMWARE + ZTEST ENABLED: Tests attached to normal IPC boot hook without standalone overlay limits.\033[0m")
+        if args.rebuild:
+            print("\033[32;1m[sof-qemu-run] Recompiling standard Zephyr firmware natively alongside unit testing modules...\033[0m")
+            # Inject standard rimage build directory directly into PATH so `west sign` mathematically authenticates Zephyr.elf into Zephyr.ri directly seamlessly.
+            sof_workspace = os.environ.get("SOF_WORKSPACE", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+            optional_rimage_path = os.path.join(sof_workspace, "build-rimage")
+            if os.path.isdir(optional_rimage_path) and optional_rimage_path not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = f"{optional_rimage_path}{os.pathsep}{os.environ.get('PATH', '')}"
+                print(f"[sof-qemu-run] Injected Rimage Path: {optional_rimage_path}")
+
+            # Force fully-functional topology builds by injecting testing parameters strictly via commandline arguments natively
+            subprocess.run([west_path, "build", "-d", build_dir, "-p", "auto", "--", "-DCONFIG_ZTEST=y", "-DCONFIG_SOF_USERSPACE_LL=y", "-DCONFIG_COMP_SRC=y", "-DCONFIG_COMP_COPIER=y", "-DCONFIG_COMP_VOLUME=y", "-DCONFIG_COMP_MIXIN_MIXOUT=y", "-DCONFIG_MAX_THREAD_BYTES=4"], check=True)
+            print("\033[32;1m[sof-qemu-run] Standard Compilation Successful.\033[0m\n")
+        else:
+            print("\033[32;1m[sof-qemu-run] Skipping compilation/rebuild, using previously generated binaries.\033[0m\n")
 
     print(f"Starting QEMU test runner (Build Dir: {args.build_dir}, Timeout: {args.timeout}s)...")
 
