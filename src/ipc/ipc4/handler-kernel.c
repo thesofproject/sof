@@ -47,6 +47,7 @@
 #endif
 
 #include <errno.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -212,8 +213,31 @@ __cold static int ipc4_load_library(struct ipc4_message_request *ipc4)
 
 	ret = lib_manager_load_library(library.header.r.dma_id, library.header.r.lib_id,
 				       ipc4->primary.r.type);
-	if (ret != 0)
-		return (ret == -EINVAL) ? IPC4_ERROR_INVALID_PARAM : IPC4_FAILURE;
+	if (ret != 0) {
+		log_panic(); /* flush all pending log messages before replying */
+		/* Encode specific error to allow diagnosis from dmesg IPC status code */
+		switch (ret) {
+		case -EINVAL:
+			return IPC4_ERROR_INVALID_PARAM; /* 1 - invalid param */
+		case -ENOMEM:
+			return IPC4_OUT_OF_MEMORY;       /* 3 - out of memory */
+		case -EFAULT:
+			return 4;                        /* 4 - EFAULT */
+		case -ENOENT:
+			return 9;                        /* 9 - resource not found (symbol) */
+		case -ENOEXEC:
+			return IPC4_INVALID_MANIFEST;    /* 14 - invalid ELF */
+		case -EPROTO:
+			return 15;                       /* 15 - protocol error (EPROTO) */
+		case -EBUSY:
+			return 42;                       /* 42 - EBUSY */
+		case -ETIMEDOUT:
+			return 43;                       /* 43 - DMA timeout */
+		default:
+			/* encode negative errno as 100+ value for diagnosis */
+			return (-ret < 50) ? (-ret + 100) : IPC4_FAILURE;
+		}
+	}
 
 	return IPC4_SUCCESS;
 }

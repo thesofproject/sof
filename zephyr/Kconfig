@@ -373,6 +373,43 @@ config SOF_SHELL_MMU_DBG
 	                     physical address, ring, ASID, cache mode, R/W/X
 	                     (PTL has both sets of commands).
 
+config SOF_SHELL_LLEXT_LOAD
+	bool "Interactive llext module load command"
+	default y
+	depends on SHELL && LIBRARY_MANAGER
+	help
+	  Enables the 'sof llext_load' shell command which lets a developer
+	  load a compiled llext module from the host file system into the DSP
+	  at run time without a full firmware restart.
+
+	  Usage (2-step interactive flow):
+
+	    Step 1 — on the DSP shell:
+	      uart:~$ sof llext_load mymodule 1
+
+	    The DSP allocates an ADSP debug window slot, sets the handshake
+	    state to REQUESTING, and waits (up to 120 s) for the host.
+
+	    Step 2 — on the Linux host:
+	      $ cat mymodule.ri > /sys/kernel/debug/sof/llext_load
+
+	    The kernel driver reads the slot, performs the HDA DMA transfer
+	    (IPC4 LOAD_LIBRARY_PREPARE + LOAD_LIBRARY sequence), and writes
+	    the result back to the slot.  The DSP shell command then wakes up
+	    and prints the outcome.
+
+	  Requires CONFIG_SND_SOC_SOF_CLIENT_LLEXT_LOAD in the Linux kernel.
+
+config SOF_SHELL_LLEXT_LOAD_SLOT_NUM
+	int "Debug window slot for llext_load (fallback without slot manager)"
+	default 2
+	depends on SOF_SHELL_LLEXT_LOAD && !INTEL_ADSP_DEBUG_SLOT_MANAGER
+	help
+	  Index of the ADSP debug window slot (0-14) reserved for the
+	  shell llext_load handshake when CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	  is not available. Must not conflict with TRACE/TELEMETRY/SHELL slots.
+	  Default slot 2 is normally free on this configuration.
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS

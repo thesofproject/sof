@@ -394,8 +394,10 @@ static int llext_manager_link(const char *name,
 		};
 
 		ret = llext_load(ldr, name, llext, &ldr_parm);
-		if (ret)
+		if (ret) {
+			tr_err(&lib_manager_tr, "llext_load failed: ret=%d", ret);
 			return ret;
+		}
 	}
 
 	/* All code sections */
@@ -448,7 +450,12 @@ static int llext_manager_link(const char *name,
 		*mod_manifest = llext_peek(ldr, hdr->sh_offset);
 	}
 
-	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
+	int link_ret = *buildinfo && *mod_manifest ? 0 : -EPROTO;
+
+	if (link_ret)
+		tr_err(&lib_manager_tr, "llext_manager_link: buildinfo=%p mod_manifest=%p ret=%d",
+		       *buildinfo, *mod_manifest, link_ret);
+	return link_ret;
 }
 
 /* Count "module files" in the library, allocate and initialize memory for their descriptors */
@@ -604,7 +611,6 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 		       mod_array[entry_index].name, (*mod_manifest)->module.name);
 		return -ENOEXEC;
 	}
-
 	return mod_ctx_idx;
 }
 
@@ -1068,8 +1074,10 @@ int llext_manager_add_library(uint32_t module_id)
 			int ret = llext_manager_link_single(module_id + i, desc, ctx,
 							(const void **)&buildinfo, &mod_manifest);
 
-			if (ret < 0)
+			if (ret < 0) {
+				tr_err(&lib_manager_tr, "llext_manager_link_single failed: %d", ret);
 				return ret;
+			}
 		}
 	}
 

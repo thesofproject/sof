@@ -16,6 +16,8 @@
 #include <sof/compiler_attributes.h>
 #include <sof/ipc/topology.h>
 
+#include <zephyr/drivers/dma.h>
+
 #include <rtos/clk.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
@@ -868,11 +870,16 @@ static int lib_manager_dma_deinit(struct lib_manager_dma_ext *dma_ext, uint32_t 
 
 static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, uint32_t size)
 {
-	uint64_t timeout = k_ms_to_cyc_ceil64(200);
+	uint64_t timeout = k_ms_to_cyc_ceil64(600);
 	struct dma_status stat;
+	uint32_t init_wp;
 	int ret;
 
-	/* Wait till whole data acquired with timeout of 200ms */
+	/* Capture initial WP for diagnostics */
+	ret = dma_get_status(dma_ext->chan->dma->z_dev, dma_ext->chan->index, &stat);
+	init_wp = stat.write_position;
+
+	/* Wait till whole data acquired with timeout of 600ms */
 	timeout += sof_cycle_get_64();
 
 	for (;;) {
@@ -887,7 +894,10 @@ static int lib_manager_load_data_from_host(struct lib_manager_dma_ext *dma_ext, 
 		k_usleep(100);
 	}
 
-	tr_err(&lib_manager_tr, "timeout during DMA transfer");
+	tr_err(&lib_manager_tr,
+	       "DMA timeout: plen=%u wp=%u rp=%u sz=%u init_wp=%u",
+	       stat.pending_length, stat.write_position, stat.read_position, size,
+	       init_wp);
 	return -ETIMEDOUT;
 }
 
@@ -988,6 +998,7 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	ret = lib_manager_store_data(dma_ext, (uint8_t __sparse_cache *)library_base_address +
 				     MAN_MAX_SIZE_V1_8, preload_size - MAN_MAX_SIZE_V1_8);
 	if (ret < 0) {
+		tr_err(&lib_manager_tr, "lib_manager_store_data(rest) failed: %d", ret);
 		rfree((__sparse_force void *)library_base_address);
 		return ret;
 	}
@@ -1100,6 +1111,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 	}
 
 	lib_manager_init();
+	LOG_ERR("CANARY lib_id=%u type=%u", lib_id, type);
 
 	_ext_lib = ext_lib_get();
 
@@ -1120,6 +1132,7 @@ int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type)
 				      MAN_MAX_SIZE_V1_8, CONFIG_MM_DRV_PAGE_SIZE);
 	if (!man_tmp_buffer) {
 		ret = -ENOMEM;
+		LOG_ERR("man_tmp_buffer alloc failed");
 		goto cleanup;
 	}
 
@@ -1173,6 +1186,8 @@ cleanup:
 
 	if (!ret)
 		tr_info(&lib_manager_tr, "loaded library id: %u", lib_id);
+	else
+		LOG_ERR("lib_manager_load_library FAILED ret=%d", ret);
 
 	return ret;
 }
