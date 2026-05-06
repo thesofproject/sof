@@ -187,9 +187,12 @@ def main():
         full_output = ""
         # Suffix distinct files appropriately if chained
         active_log = args.log_file + (f".{idx}" if len(runs) > 1 else "")
+        mtrace_file = os.environ.get("QEMU_ACE_MTRACE_FILE")
+        mtrace_fd = None
+        last_active_time = time.time()
+        
         with open(active_log, "w") as log_file:
             try:
-                last_active_time = time.time()
                 while True:
                     try:
                         index = child.expect([r'\r\n', pexpect.TIMEOUT, pexpect.EOF], timeout=0.5)
@@ -214,6 +217,27 @@ def main():
                     except pexpect.EOF:
                         print("\n\n[sof-qemu-run] QEMU process terminated.")
                         break
+                        
+                    if mtrace_file and os.path.isfile(mtrace_file):
+                        if not mtrace_fd:
+                            try:
+                                mtrace_fd = open(mtrace_file, "r", encoding="utf-8", errors="ignore")
+                            except Exception:
+                                pass
+                        
+                        if mtrace_fd:
+                            new_data = mtrace_fd.read()
+                            if new_data:
+                                last_active_time = time.time()
+                                full_output += new_data
+                                # Also write to log file and stdout
+                                log_file.write(new_data)
+                                log_file.flush()
+                                sys.stdout.write(new_data)
+                                sys.stdout.flush()
+                                if "halting system" in new_data:
+                                    print("\n\n[sof-qemu-run] Detected 'halting system' in mtrace log! Breaking...")
+                                    break
 
                     if time.time() - last_active_time >= args.timeout:
                         print(f"\n\n[sof-qemu-run] {args.timeout} seconds passed since last log event. Checking status...")
