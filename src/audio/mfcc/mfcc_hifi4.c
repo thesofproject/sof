@@ -253,8 +253,10 @@ void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffe
 		coef = emph->coef;
 		for (i = 0; i < frames; i++) {
 			AE_L32_XC(sample32, in, in_inc);
-			/* S24_4LE: shift right by 8 to get 16-bit */
-			sample32 = AE_SRAI32(sample32, 8);
+			/* Shift left by 8 to sign-extend to Q1.31 */
+			sample32 = AE_SLAI32(sample32, 8);
+			/* Then shift right by 16 to get 16-bit */
+			sample32 = AE_SRAI32(sample32, 16);
 			sample = AE_SAT16X4(sample32, sample32);
 			/* Q1.15 -> Q1.31 */
 			temp = AE_CVT32X2F16_10(sample);
@@ -267,7 +269,10 @@ void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffe
 	} else {
 		for (i = 0; i < frames; i++) {
 			AE_L32_XC(sample32, in, in_inc);
-			sample32 = AE_SRAI32(sample32, 8);
+			/* Shift left by 8 to sign-extend to Q1.31 */
+			sample32 = AE_SLAI32(sample32, 8);
+			/* Then shift right by 16 to get 16-bit */
+			sample32 = AE_SRAI32(sample32, 16);
 			sample = AE_SAT16X4(sample32, sample32);
 			AE_S16_0_XC1(sample, out, out_inc);
 		}
