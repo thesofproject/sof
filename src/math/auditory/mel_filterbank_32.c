@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *fb, struct icomplex32 *fft_out,
-				 int32_t *power_spectra, int16_t *mel_log, int bitshift)
+				 int32_t *power_spectra, int32_t *mel_log, int bitshift)
 {
 	int64_t pmax;
 	int64_t p;
@@ -79,8 +79,8 @@ void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *fb, struct icomplex3
 		 */
 		log -= ((int32_t)lshift + 2 * bitshift) << 16;
 
-		/* Scale for desired log  */
-		log = Q_MULTSR_32X32((int64_t)log, fb->log_mult, 16, 29, 7);
-		mel_log[i] = sat_int16(log); /* Q8.7 */
+		/* Scale for desired log, output as Q9.23 */
+		log = Q_MULTSR_32X32((int64_t)log, fb->log_mult, 16, 29, 23);
+		mel_log[i] = log; /* Q9.23 */
 	}
 }

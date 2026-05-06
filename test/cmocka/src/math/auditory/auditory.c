@@ -163,7 +163,8 @@ static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 	float error_rms;
 	float delta_max = 0;
 	int32_t *power_spectra;
-	int16_t *mel_log;
+	int32_t *mel_log;
+	int16_t mel_log_16;
 	int i;
 	const int half_fft = num_fft_bins / 2 + 1;
 	const int fft_size = num_fft_bins * sizeof(struct icomplex32);
@@ -181,7 +182,7 @@ static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 		goto err_out_alloc;
 	}
 
-	mel_log = malloc(MEL_FILTERBANK_32_TEST1_NUM_MEL_BINS * sizeof(int16_t));
+	mel_log = malloc(num_mel_bins * sizeof(int32_t));
 	if (!mel_log) {
 		fprintf(stderr, "Failed to allocate output vector\n");
 		goto err_mel_alloc;
@@ -215,9 +216,10 @@ static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 	power_spectra = (int32_t *)&fft_buf[0];
 	psy_apply_mel_filterbank_32(&fb, fft_out, power_spectra, mel_log, shift);
 
-	/* Check */
+	/* Check: convert Q9.23 output to Q9.7 for comparison with reference */
 	for (i = 0; i < num_mel_bins; i++) {
-		delta = (float)ref_mel_log[i] - (float)mel_log[i];
+		mel_log_16 = (int16_t)(mel_log[i] >> 16);
+		delta = (float)ref_mel_log[i] - (float)mel_log_16;
 		sum_squares += delta * delta;
 		if (delta > delta_max)
 			delta_max = delta;
@@ -233,7 +235,7 @@ static void filterbank_32_test(const int32_t *fft_real, const int32_t *fft_imag,
 	FILE *fh = fopen("mel_filterbank_32.txt", "w");
 
 	for (i = 0; i < num_mel_bins; i++)
-		fprintf(fh, "%d %d\n", ref_mel_log[i], mel_log[i]);
+		fprintf(fh, "%d %d\n", ref_mel_log[i], (int16_t)(mel_log[i] >> 16));
 
 	fclose(fh);
 #endif

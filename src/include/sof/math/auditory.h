@@ -103,11 +103,11 @@ void psy_apply_mel_filterbank_16(struct psy_mel_filterbank *mel_fb, struct icomp
  * \param[in]  fft_out       Array of complex numbers from FFT in Q1.31 format.
  * \param[out] power_spectra Array of linear power spectra, needed scratch are that is half + 1
  *                           side of fft_out. The data can be discarded after if no use.
- * \param[out] mel_log       Array of Q9.7 log/log10/10log10 format Mel band energies.
+ * \param[out] mel_log       Array of Q9.23 log/log10/10log10 format Mel band energies.
  * \param[in]  bitshift      A shift left scale that has been possibly applied to FFT. This will
  *                           be subtracted from the log or decibels notation.
  */
 void psy_apply_mel_filterbank_32(struct psy_mel_filterbank *mel_fb, struct icomplex32 *fft_out,
-				 int32_t *power_spectra, int16_t *mel_log, int bitshift);
+				 int32_t *power_spectra, int32_t *mel_log, int bitshift);
 
 #endif /* __SOF_MATH_AUDITORY_H__ */
