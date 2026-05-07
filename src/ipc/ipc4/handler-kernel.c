@@ -589,6 +589,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 		/* should not reach here as we only have 2 message types */
 		ipc_cmd_err(&ipc_tr, "ipc4: invalid target %d", target);
 		err = IPC4_UNKNOWN_MESSAGE_TYPE;
+		ipc_stats_inc_rx_error();
 	}
 
 	/* FW sends an ipc message to host if request bit is clear */

@@ -58,6 +58,8 @@
 #endif
 
 #include <stdlib.h>
+#include <string.h>
+#include <sof/ipc/common.h>
 
 #define SOF_TEST_INJECT_SCHED_GAP_USEC 1500
 
@@ -1565,6 +1567,56 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_vpage_commands,
 	SHELL_SUBCMD_SET_END
 );
 
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	shell_print(sh, "ID          Core  Status  Priority  Period");
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_PIPELINE)
+			continue;
+
+		p = icd->pipeline;
+		shell_print(sh, "0x%08x  %d     %d       %d         %d",
+			    p->pipeline_id, p->core, p->status, p->priority, p->period);
+	}
+	return 0;
+}
+
+static int cmd_sof_ipc_stats(const struct shell *sh, size_t argc, char *argv[])
+{
+	struct ipc_stats s;
+
+	if (argc > 1 && !strcmp(argv[1], "reset")) {
+		ipc_stats_reset();
+		shell_print(sh, "ipc stats reset");
+		return 0;
+	}
+
+	ipc_stats_get(&s);
+	shell_print(sh, "IPC statistics:");
+	shell_print(sh, "  rx_count        : %u", s.rx_count);
+	shell_print(sh, "  rx_errors       : %u", s.rx_errors);
+	shell_print(sh, "  tx_count        : %u", s.tx_count);
+	shell_print(sh, "  tx_direct_count : %u", s.tx_direct_count);
+	shell_print(sh, "  tx_errors       : %u", s.tx_errors);
+	return 0;
+}
+
+static int cmd_sof_ipc_last(const struct shell *sh, size_t argc, char *argv[])
+{
+	struct ipc_stats s;
+
+	ipc_stats_get(&s);
+	shell_print(sh, "Last IPC RX: pri=0x%08x ext=0x%08x @ %llu cycles",
+		    s.last_rx_pri, s.last_rx_ext, (unsigned long long)s.last_rx_time);
+	shell_print(sh, "Last IPC TX: pri=0x%08x ext=0x%08x @ %llu cycles",
+		    s.last_tx_pri, s.last_tx_ext, (unsigned long long)s.last_tx_time);
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_vreg_commands,
 	SHELL_CMD(info, NULL,
 		  "Print virtual regions status\n",
@@ -1736,6 +1788,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_page_commands,
 );
 #endif
 
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_ipc_commands,
+	SHELL_CMD_ARG(stats, NULL,
+		  "Print IPC RX/TX counters; 'sof ipc stats reset' clears them\n",
+		  cmd_sof_ipc_stats, 1, 1),
+	SHELL_CMD(last, NULL,
+		  "Print the last received and sent IPC headers\n",
+		  cmd_sof_ipc_last),
+	SHELL_SUBCMD_SET_END
+);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(test, &sof_test_commands,
 		  "Test commands: ll_delay\n",
@@ -1807,6 +1869,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 
 	SHELL_CMD(vreg, &sof_vreg_commands,
 		  "Vregion commands: info (CONFIG_SOF_SHELL_VREGION_INFO, SOF_VREGIONS)\n",
+		  NULL),
+
+	SHELL_CMD(ipc, &sof_ipc_commands,
+		  "IPC commands: stats, last\n",
 		  NULL),
 
 	SHELL_SUBCMD_SET_END
