@@ -597,6 +597,26 @@ config SOF_SHELL_DMA_STATUS
 	  free bytes, read/write positions and total_copied. Pairs well
 	  with 'sof dai_list' for diagnosing P2M/M2P paths.
 
+config SOF_SHELL_KCTL_LIST
+	bool "kcontrol introspection command"
+	default y
+	depends on SHELL
+	help
+	  Enables 'sof kctl_list' which walks the IPC component list and
+	  prints, per component, the comp_id, pipeline_id, core, decoded
+	  module name (volume / gain / mixin / mixout / eqiir / src /
+	  ...) taken from the trace UUID context, a coarse 'kind' tag
+	  (volume / mixer / blob / config) for control-bearing modules,
+	  and the current comp_state.
+
+	  This is read-only on purpose. Actual kcontrol get/set values
+	  flow through per-module IPC4 large_config blobs
+	  (set_configuration / get_configuration) which need
+	  module-specific marshalling and are intentionally left to host
+	  tools (tinymix, sof-ctl). Use this command together with 'sof
+	  module_status' to identify which comp_id carries which control
+	  before going through the host path.
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS

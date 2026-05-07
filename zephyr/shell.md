@@ -69,7 +69,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 
 | Area | Suggested commands | Status |
 |---|---|---|
-| kcontrols / mixer | `kctl_list`, `kctl_get <id>`, `kctl_set <id> <val>` | TODO |
+| **kcontrols / mixer** | `kctl_list`, `kctl_get <id>`, `kctl_set <id> <val>` | **DONE (task 8)** &mdash; `kctl_list` decodes module names + kind for every component. `kctl_get/set` deferred (per-module IPC4 large_config blobs &mdash; use host tools). |
 | Module runtime config | `mod_config_get/set <mod_id> <inst> <param_id>` | TODO |
 | Stream / copier | `stream_list`, `stream_pause/resume <id>`, `copier_gain_set` | TODO |
 | Clocks (extend `clock_status`) | `clock_set <core> <freq>`, `clock_force <pll>` | TODO |
@@ -116,7 +116,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 5. **`mailbox_hex` / `dbgwin_dump`** &mdash; DONE (was originally `crash_log`/`bt`; pivoted because SOF panic.c isn't built on Zephyr and `bt` of a running CPU from itself isn't meaningful).
 6. **`perf_status`** &mdash; DONE.
 7. **`dai_list` / `dma_status`** &mdash; DONE.
-8. `kctl_get/set` &mdash; today only doable via tplg/IPC.
+8. **`kctl_get/set`** &mdash; DONE (`kctl_list` only; values stay on host).
 
 ---
 
@@ -392,3 +392,40 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
   ships its own `dma` shell when `CONFIG_DMA_SHELL=y`, but that one
   walks Zephyr DMA devices and exposes raw register pokes, so the
   two are complementary.
+
+## Task 8 &mdash; `kctl_list`
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `sof kctl_list` | Walk every component in the IPC topology and print `comp_id`, `pipeline_id`, `core`, the decoded module name (`volume`, `gain`, `mixin`, `mixout`, `eqiir`, `src`, ...), a coarse `kind` tag for control-bearing modules (`volume` / `mixer` / `blob` / `config`) and the current `comp_state`. |
+
+### Implementation
+
+- Module-adapter components all share `SOF_COMP_MODULE_ADAPTER` for
+  `drv->type`, so the only stable per-module label available in
+  firmware is the UUID name string from
+  `cd->drv->tctx->uuid_p->name` (the same name the LDC tool prints).
+  `kctl_drv_name()` reads that, `kctl_drv_kind()` maps known module
+  names to a coarse control-family tag.
+- New Kconfig (default `y`, depends on `SHELL`):
+  `CONFIG_SOF_SHELL_KCTL_LIST`.
+- Shell command in [zephyr/sof_shell.c](zephyr/sof_shell.c).
+
+### Notes / follow-ups
+
+- Read-only on purpose. `kctl_get` / `kctl_set` are intentionally
+  not implemented in firmware. Control values flow through
+  per-module IPC4 large_config blobs
+  (`set_configuration` / `get_configuration` in
+  [src/include/module/module/interface.h](src/include/module/module/interface.h)),
+  each with their own `config_id` namespace and TLV layout.
+  Marshalling that from the shell would essentially duplicate the
+  host-side tplg / IPC code path. Use `tinymix` /
+  [sof-ctl](tools/ctl) on the host instead, and pair with
+  `sof module_status` for raw component state.
+- This concludes the documented quick-win list. Future shell
+  commands should follow the same pattern: small, read-only,
+  Kconfig-gated, and complementary to (not a replacement for) the
+  host control plane.

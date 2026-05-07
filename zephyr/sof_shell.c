@@ -2417,6 +2417,108 @@ __cold static int cmd_sof_dma_status(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_DMA_STATUS */
 
+#if CONFIG_SOF_SHELL_KCTL_LIST
+
+/*
+ * Best-effort decoded driver name. Module-adapter components share
+ * SOF_COMP_MODULE_ADAPTER for drv->type, so the only stable per-module
+ * label available in firmware is the UUID name string from the trace
+ * context (which carries the same name printed by the LDC tool).
+ */
+static const char *kctl_drv_name(const struct comp_dev *cd)
+{
+	if (cd && cd->drv && cd->drv->tctx && cd->drv->tctx->uuid_p &&
+	    cd->drv->tctx->uuid_p->name[0])
+		return cd->drv->tctx->uuid_p->name;
+	return "?";
+}
+
+/*
+ * Tag the modules that are known to expose ALSA-style kcontrols
+ * (volume / gain / mixer-style switches and enums). This is purely a
+ * UI hint -- the actual control values live behind per-module
+ * config_id blobs that need IPC4 large_config marshalling, which is
+ * intentionally out of scope here (see shell.md).
+ */
+static const char *kctl_drv_kind(const char *name)
+{
+	if (!name)
+		return "";
+	if (!strcmp(name, "volume") || !strcmp(name, "gain"))
+		return "volume";
+	if (!strcmp(name, "mixin") || !strcmp(name, "mixout") ||
+	    !strcmp(name, "mixer"))
+		return "mixer";
+	if (!strcmp(name, "eqiir") || !strcmp(name, "eqfir") ||
+	    !strcmp(name, "drc") || !strcmp(name, "multiband_drc") ||
+	    !strcmp(name, "dcblock") || !strcmp(name, "tdfb") ||
+	    !strcmp(name, "crossover") || !strcmp(name, "google_rtc_audio_processing"))
+		return "blob";
+	if (!strcmp(name, "selector") || !strcmp(name, "src") ||
+	    !strcmp(name, "asrc"))
+		return "config";
+	return "";
+}
+
+__cold static int cmd_sof_kctl_list(const struct shell *sh,
+				    size_t argc, char *argv[])
+{
+	struct ipc *ipc = sof_get()->ipc;
+	struct list_item *clist;
+	struct ipc_comp_dev *icd;
+	int count = 0;
+
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	shell_print(sh, "%-12s %-8s %-5s %-24s %-8s %s",
+		    "comp_id", "ppl_id", "core", "module", "kind", "state");
+
+	list_for_item(clist, &ipc->comp_list) {
+		const struct comp_dev *cd;
+		const char *name;
+
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_COMPONENT)
+			continue;
+
+		cd = icd->cd;
+		name = kctl_drv_name(cd);
+
+		shell_print(sh, "0x%-10x %-8u %-5u %-24s %-8s %s",
+			    icd->id,
+			    cd->pipeline ? cd->pipeline->pipeline_id : 0,
+			    icd->core, name, kctl_drv_kind(name),
+			    comp_state_str(cd->state));
+		count++;
+	}
+
+	if (!count) {
+		shell_print(sh,
+			    "No components found. Start an audio stream first.");
+		return 0;
+	}
+
+	shell_print(sh, "");
+	shell_print(sh,
+		    "kctl get/set is intentionally not exposed here -- control");
+	shell_print(sh,
+		    "values flow through per-module IPC4 large_config blobs");
+	shell_print(sh,
+		    "(set_configuration / get_configuration). Use tinymix /");
+	shell_print(sh,
+		    "sof-ctl on the host, or 'sof module_status' for raw state.");
+
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_KCTL_LIST */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_vpage_commands,
 	SHELL_CMD(info, NULL,
 		  "Print virtual page allocator status\n",
@@ -2724,6 +2826,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_dma_commands,
 );
 #endif
 
+#if CONFIG_SOF_SHELL_KCTL_LIST
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_kctl_commands,
+	SHELL_CMD(list, NULL,
+		  "List components and their decoded module name / kind\n",
+		  cmd_sof_kctl_list),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(test, &sof_test_commands,
 		  "Test commands: ll delay\n",
@@ -2853,6 +2964,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 #if CONFIG_SOF_SHELL_DMA_STATUS
 	SHELL_CMD(dma, &sof_dma_commands,
 		  "DMA commands: status\n",
+		  NULL),
+#endif
+
+#if CONFIG_SOF_SHELL_KCTL_LIST
+	SHELL_CMD(kctl, &sof_kctl_commands,
+		  "Kcontrol commands: list\n",
 		  NULL),
 #endif
 
