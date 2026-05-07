@@ -16,6 +16,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
+#include <sof/lib/mailbox.h>
 #include <sof/platform.h>
 #include <sof/ut.h>
 #include <rtos/interrupt.h>
@@ -28,17 +29,22 @@ LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 int module_ext_init_decode(const struct comp_driver *drv, struct module_ext_init_data *ext_data,
 			   struct ipc_config_process *spec)
 {
-	const struct ipc4_module_init_ext_init *ext_init =
-		(const struct ipc4_module_init_ext_init *)spec->data;
-	bool last_object = !ext_init->data_obj_array;
+	const struct ipc4_module_init_ext_init *ext_init;
 	const struct ipc4_module_init_ext_object *obj;
+	bool last_object;
+	size_t consumed;
 
 	assert(drv->type == SOF_COMP_MODULE_ADAPTER);
-	if (spec->size < sizeof(ext_init)) {
+
+	/* Validate size before dereferencing ext_init pointer */
+	if (spec->size < sizeof(*ext_init)) {
 		comp_cl_err(drv, "Size too small for ext init %zu < %zu",
-			    spec->size, sizeof(ext_init));
+			    spec->size, sizeof(*ext_init));
 		return -EINVAL;
 	}
+
+	ext_init = (const struct ipc4_module_init_ext_init *)spec->data;
+	last_object = !ext_init->data_obj_array;
 	/* TODO: Handle ext_init->gna_used and ext_init->rtos_domain here */
 	/* Get the first obj struct right after ext_init struct */
 	obj = (const struct ipc4_module_init_ext_object *)(ext_init + 1);
@@ -103,7 +109,15 @@ int module_ext_init_decode(const struct comp_driver *drv, struct module_ext_init
 	}
 
 	/* Remove decoded ext_init payload from spec */
-	spec->size -= (unsigned char *)obj - spec->data;
+	consumed = (unsigned char *)obj - spec->data;
+
+	if (consumed > spec->size) {
+		comp_cl_err(drv, "ext_init consumed more than spec->size (%zu > %zu)",
+			    consumed, spec->size);
+		return -EINVAL;
+	}
+
+	spec->size -= consumed;
 	spec->data = (const unsigned char *)obj;
 
 	return 0;
@@ -132,8 +146,10 @@ int module_adapter_init_data(struct comp_dev *dev,
 
 	if (cfg == NULL)
 		return -EINVAL;
-	if (cfgsz < sizeof(cfg->base_cfg))
+	if (cfgsz > MAILBOX_HOSTBOX_SIZE || cfgsz < sizeof(cfg->base_cfg)) {
+		comp_err(dev, "invalid config size %zu", cfgsz);
 		return -EINVAL;
+	}
 
 	dst->base_cfg = cfg->base_cfg;
 	dst->size = cfgsz;
