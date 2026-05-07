@@ -90,7 +90,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 | Logging / trace | `log_status`, `mtrace_dump` (snapshot) | **DONE (task 4)** &mdash; runtime per-source `log_level` deferred (needs `CONFIG_LOG_RUNTIME_FILTERING`, see notes) |
 | Telemetry / perf | `perf_status`, `perf_reset`, `cpu_load` | TODO |
 | Notifications | `notify_subscribers`, `notify_stats` | TODO |
-| Debug window / mailbox | `dbgwin_dump <slot>`, `mailbox_hex` | TODO |
+| **Debug window / mailbox** | `dbgwin_dump <slot>`, `mailbox_hex` | **DONE (task 5)** |
 | Crash / panic | `crash_log`, `crash_clear`, `panic_info`, `bt`, `regs` | TODO |
 | Heap walk | `heap_walk <zone>`, `heap_blocks`, `obj_pool_stats` | TODO |
 | Probes | `probe_init`, `probe_add <buf_id>`, `probe_remove`, `probe_dma_status` | TODO |
@@ -113,7 +113,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 2. **`buffer_list` / `buffer_info`** &mdash; DONE.
 3. **`sched_tasks` / `sched_load`** &mdash; DONE.
 4. **`log_status` / `mtrace_dump`** &mdash; DONE.
-5. `crash_log` / `bt` &mdash; pair with the `crash-*` artifacts in the tree.
+5. **`mailbox_hex` / `dbgwin_dump`** &mdash; DONE (was originally `crash_log`/`bt`; pivoted because SOF panic.c isn't built on Zephyr and `bt` of a running CPU from itself isn't meaningful).
 6. `perf_status` &mdash; wraps SOF telemetry counters.
 7. `dai_list` / `dma_chan_status` &mdash; link/DMA blind spot.
 8. `kctl_get/set` &mdash; today only doable via tplg/IPC.
@@ -265,3 +265,47 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
   future option could format output in pages or filter by severity.
 - A `mtrace_dump --consume` mode (advance `host_ptr`) is intentionally
   not provided to avoid silently breaking host-side tooling.
+
+## Task 5 &mdash; `mailbox_hex` / `dbgwin_dump`
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `sof mailbox_hex` | List the four SOF mailbox regions (exception, dspbox, hostbox, debug) with their base address and size. |
+| `sof mailbox_hex <region> [off] [len]` | Hex-dump a mailbox region; offset and length are clamped to the region size. Default length 256 bytes. |
+| `sof dbgwin_dump` | List all 15 ADSP debug-window slot descriptors (resource_id, type, vma, decoded type name, core). |
+| `sof dbgwin_dump <slot> [len]` | Hex-dump a single slot (max `ADSP_DW_SLOT_SIZE` = 4096 bytes); default length 256. |
+
+### Implementation
+
+- `mailbox_hex` uses the `MAILBOX_*_BASE` / `MAILBOX_*_SIZE` macros
+  from [src/include/sof/lib/mailbox.h](src/include/sof/lib/mailbox.h);
+  the four region records are a static table.
+- `dbgwin_dump` re-derives the window 2 base from the device tree
+  (`mem_window2`) plus `WIN2_OFFSET`, mirrors
+  `struct adsp_debug_window` from
+  [zephyr/soc/intel/intel_adsp/common/debug_window.c](../../zephyr/soc/intel/intel_adsp/common/debug_window.c)
+  and reads through an uncached pointer so we always see the
+  slot-manager state (works whether or not
+  `CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER=y`).
+- A small shared `sof_shell_hex_dump()` helper handles the 16-byte
+  hex+ASCII rows and is built whenever either command is enabled.
+- Two new Kconfigs (default `y`):
+  - `CONFIG_SOF_SHELL_MAILBOX_HEX`
+  - `CONFIG_SOF_SHELL_DBGWIN_DUMP` (depends on `SOC_FAMILY_INTEL_ADSP`)
+- Shell commands in [zephyr/sof_shell.c](zephyr/sof_shell.c).
+
+### Notes / follow-ups
+
+- The original quick-win was `crash_log`/`bt`; pivoted because SOF's
+  in-tree `panic_dump()` is not compiled on Zephyr (Zephyr installs
+  its own fatal handler) and a running shell can't backtrace its own
+  CPU after a panic. `mailbox_hex exception` still surfaces whatever
+  the platform-specific fatal path leaves there, so the same
+  diagnostic intent is covered as far as it can be from a live shell.
+- A future `panic_decode` could parse a known on-target oops layout
+  (Zephyr coredump or telemetry slot) once one is standardised on
+  ACE.
+- `dbgwin_dump` is read-only. We do not implement a write/seize
+  command to avoid corrupting host-visible state.

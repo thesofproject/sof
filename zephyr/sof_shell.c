@@ -1932,6 +1932,211 @@ __cold static int cmd_sof_mtrace_dump(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_MTRACE_DUMP */
 
+#if CONFIG_SOF_SHELL_MAILBOX_HEX || CONFIG_SOF_SHELL_DBGWIN_DUMP
+
+static void sof_shell_hex_dump(const struct shell *sh, uintptr_t base,
+			       size_t off, size_t len)
+{
+	const uint8_t *p = (const uint8_t *)(base + off);
+	size_t i, j;
+
+	for (i = 0; i < len; i += 16) {
+		size_t row = MIN((size_t)16, len - i);
+		char ascii[17];
+
+		shell_fprintf(sh, SHELL_NORMAL, "%08lx ",
+			      (unsigned long)(off + i));
+		for (j = 0; j < 16; j++) {
+			if (j < row)
+				shell_fprintf(sh, SHELL_NORMAL, " %02x", p[i + j]);
+			else
+				shell_fprintf(sh, SHELL_NORMAL, "   ");
+			ascii[j] = (j < row && p[i + j] >= 0x20 && p[i + j] < 0x7f) ?
+				   (char)p[i + j] : '.';
+		}
+		ascii[16] = '\0';
+		shell_fprintf(sh, SHELL_NORMAL, "  %s\n", ascii);
+	}
+}
+
+#endif
+
+#if CONFIG_SOF_SHELL_MAILBOX_HEX
+
+#include <sof/lib/mailbox.h>
+
+struct sof_shell_mb_region {
+	const char *name;
+	uintptr_t base;
+	size_t size;
+};
+
+static const struct sof_shell_mb_region sof_shell_mb_regions[] = {
+#ifdef MAILBOX_EXCEPTION_BASE
+	{ "exception", MAILBOX_EXCEPTION_BASE, MAILBOX_EXCEPTION_SIZE },
+#endif
+#ifdef MAILBOX_DSPBOX_BASE
+	{ "dspbox",    MAILBOX_DSPBOX_BASE,    MAILBOX_DSPBOX_SIZE    },
+#endif
+#ifdef MAILBOX_HOSTBOX_BASE
+	{ "hostbox",   MAILBOX_HOSTBOX_BASE,   MAILBOX_HOSTBOX_SIZE   },
+#endif
+#ifdef MAILBOX_DEBUG_BASE
+	{ "debug",     MAILBOX_DEBUG_BASE,     MAILBOX_DEBUG_SIZE     },
+#endif
+};
+
+__cold static int cmd_sof_mailbox_hex(const struct shell *sh,
+				      size_t argc, char *argv[])
+{
+	const struct sof_shell_mb_region *r = NULL;
+	size_t off = 0, len;
+	char *end = NULL;
+	int i;
+
+	if (argc < 2) {
+		shell_print(sh, "Mailbox regions:");
+		for (i = 0; i < ARRAY_SIZE(sof_shell_mb_regions); i++)
+			shell_print(sh, "  %-10s base 0x%08lx  size %zu",
+				    sof_shell_mb_regions[i].name,
+				    (unsigned long)sof_shell_mb_regions[i].base,
+				    sof_shell_mb_regions[i].size);
+		shell_print(sh, "Usage: sof mailbox_hex <region> [offset] [length]");
+		return 0;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(sof_shell_mb_regions); i++) {
+		if (!strcmp(argv[1], sof_shell_mb_regions[i].name)) {
+			r = &sof_shell_mb_regions[i];
+			break;
+		}
+	}
+	if (!r) {
+		shell_print(sh, "Unknown region '%s'", argv[1]);
+		return -EINVAL;
+	}
+
+	if (argc > 2) {
+		off = strtoul(argv[2], &end, 0);
+		if (end == argv[2] || off >= r->size) {
+			shell_print(sh, "Bad offset (max 0x%zx)", r->size);
+			return -EINVAL;
+		}
+	}
+
+	len = MIN((size_t)256, r->size - off);
+	if (argc > 3) {
+		len = strtoul(argv[3], &end, 0);
+		if (end == argv[3])
+			return -EINVAL;
+		len = MIN(len, r->size - off);
+	}
+
+	shell_print(sh, "%s @ 0x%08lx + 0x%zx, %zu bytes:",
+		    r->name, (unsigned long)r->base, off, len);
+	sof_shell_hex_dump(sh, r->base, off, len);
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_MAILBOX_HEX */
+
+#if CONFIG_SOF_SHELL_DBGWIN_DUMP
+
+#include <adsp_memory.h>
+#include <adsp_debug_window.h>
+
+/* Mirror struct used by zephyr/soc/intel/intel_adsp/common/debug_window.c.
+ * We map window 2 directly so we can read descriptors and slot data without
+ * depending on slot-manager internals.
+ */
+struct sof_shell_dw {
+	struct adsp_dw_desc descs[ADSP_DW_DESC_COUNT];
+	uint8_t reserved[ADSP_DW_PAGE0_SLOT_OFFSET -
+			 ADSP_DW_DESC_COUNT * sizeof(struct adsp_dw_desc)];
+	uint8_t partial_page0[ADSP_DW_SLOT_SIZE - ADSP_DW_PAGE0_SLOT_OFFSET];
+	uint8_t slots[ADSP_DW_SLOT_COUNT][ADSP_DW_SLOT_SIZE];
+} __packed;
+
+#define SOF_SHELL_DW_BASE \
+	(DT_REG_ADDR(DT_PHANDLE(DT_NODELABEL(mem_window2), memory)) + WIN2_OFFSET)
+
+static const char *dw_type_name(uint32_t type)
+{
+	switch (type & ADSP_DW_SLOT_TYPE_MASK) {
+	case ADSP_DW_SLOT_UNUSED & ADSP_DW_SLOT_TYPE_MASK:
+		return type ? "?" : "unused";
+	case ADSP_DW_SLOT_CRITICAL_LOG & ADSP_DW_SLOT_TYPE_MASK:
+		return "critical_log";
+	case ADSP_DW_SLOT_DEBUG_LOG & ADSP_DW_SLOT_TYPE_MASK:
+		return "debug_log";
+	case ADSP_DW_SLOT_GDB_STUB & ADSP_DW_SLOT_TYPE_MASK:
+		return "gdb_stub";
+	case ADSP_DW_SLOT_TELEMETRY & ADSP_DW_SLOT_TYPE_MASK:
+		return "telemetry";
+	case ADSP_DW_SLOT_TRACE & ADSP_DW_SLOT_TYPE_MASK:
+		return "trace";
+	case ADSP_DW_SLOT_SHELL & ADSP_DW_SLOT_TYPE_MASK:
+		return "shell";
+	case ADSP_DW_SLOT_DEBUG_STREAM & ADSP_DW_SLOT_TYPE_MASK:
+		return "debug_stream";
+	case ADSP_DW_SLOT_BROKEN & ADSP_DW_SLOT_TYPE_MASK:
+		return "broken";
+	default:
+		return "?";
+	}
+}
+
+__cold static int cmd_sof_dbgwin_dump(const struct shell *sh,
+				      size_t argc, char *argv[])
+{
+	volatile struct sof_shell_dw *dw =
+		(volatile struct sof_shell_dw *)
+		sys_cache_uncached_ptr_get((__sparse_force void __sparse_cache *)
+					   SOF_SHELL_DW_BASE);
+	int slot, i;
+	size_t len = 256;
+	char *end = NULL;
+
+	if (argc < 2) {
+		shell_print(sh,
+			    "ADSP debug window @ 0x%08lx (%d slots, %u bytes each)",
+			    (unsigned long)SOF_SHELL_DW_BASE,
+			    ADSP_DW_SLOT_COUNT, ADSP_DW_SLOT_SIZE);
+		shell_print(sh, "  slot  res_id      type       vma         name");
+		for (i = 0; i < ADSP_DW_SLOT_COUNT; i++) {
+			shell_print(sh,
+				    "  %3d   0x%08x  0x%08x 0x%08x  %s (core %u)",
+				    i, dw->descs[i].resource_id, dw->descs[i].type,
+				    dw->descs[i].vma, dw_type_name(dw->descs[i].type),
+				    (unsigned int)(dw->descs[i].type & ADSP_DW_SLOT_CORE_MASK));
+		}
+		shell_print(sh, "Usage: sof dbgwin_dump <slot> [length]");
+		return 0;
+	}
+
+	slot = strtol(argv[1], &end, 0);
+	if (end == argv[1] || slot < 0 || slot >= ADSP_DW_SLOT_COUNT) {
+		shell_print(sh, "Bad slot (0..%d)", ADSP_DW_SLOT_COUNT - 1);
+		return -EINVAL;
+	}
+
+	if (argc > 2) {
+		len = strtoul(argv[2], &end, 0);
+		if (end == argv[2])
+			return -EINVAL;
+	}
+	len = MIN(len, (size_t)ADSP_DW_SLOT_SIZE);
+
+	shell_print(sh, "Slot %d type=0x%08x (%s, core %u) vma=0x%08x; %zu bytes:",
+		    slot, dw->descs[slot].type, dw_type_name(dw->descs[slot].type),
+		    (unsigned int)(dw->descs[slot].type & ADSP_DW_SLOT_CORE_MASK),
+		    dw->descs[slot].vma, len);
+	sof_shell_hex_dump(sh, (uintptr_t)dw->slots[slot], 0, len);
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_DBGWIN_DUMP */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_vpage_commands,
 	SHELL_CMD(info, NULL,
 		  "Print virtual page allocator status\n",
@@ -2201,6 +2406,24 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_mtrace_commands,
 );
 #endif
 
+#if CONFIG_SOF_SHELL_MAILBOX_HEX
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_mailbox_commands,
+	SHELL_CMD_ARG(hex, NULL,
+		  "Hex-dump a mailbox region: <region> [offset] [length]\n",
+		  cmd_sof_mailbox_hex, 1, 3),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
+#if CONFIG_SOF_SHELL_DBGWIN_DUMP
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_dbgwin_commands,
+	SHELL_CMD_ARG(dump, NULL,
+		  "List ADSP debug-window slots, or hex-dump one: [slot] [length]\n",
+		  cmd_sof_dbgwin_dump, 1, 2),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(test, &sof_test_commands,
 		  "Test commands: ll delay\n",
@@ -2299,6 +2522,18 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 #if CONFIG_SOF_SHELL_MTRACE_DUMP
 	SHELL_CMD(mtrace, &sof_mtrace_commands,
 		  "Mtrace commands: dump\n",
+		  NULL),
+#endif
+
+#if CONFIG_SOF_SHELL_MAILBOX_HEX
+	SHELL_CMD(mailbox, &sof_mailbox_commands,
+		  "Mailbox commands: hex\n",
+		  NULL),
+#endif
+
+#if CONFIG_SOF_SHELL_DBGWIN_DUMP
+	SHELL_CMD(dbgwin, &sof_dbgwin_commands,
+		  "Debug window commands: dump\n",
 		  NULL),
 #endif
 

@@ -517,6 +517,33 @@ config SOF_SHELL_MTRACE_DUMP
 	  receive every byte. Useful when no host driver is attached
 	  (e.g. early bring-up over UART shell only).
 
+config SOF_SHELL_MAILBOX_HEX
+	bool "Hex-dump SOF mailbox regions"
+	default y
+	depends on SHELL
+	help
+	  Enables 'sof mailbox_hex <region> [offset] [length]' which hex
+	  dumps one of the SOF mailbox regions (exception, dspbox, hostbox,
+	  debug). With no arguments lists the regions and their sizes. The
+	  length is clamped to the region size; default 256 bytes.
+
+	  Useful for inspecting the panic dump area after a fatal error and
+	  for low-level IPC payload debugging.
+
+config SOF_SHELL_DBGWIN_DUMP
+	bool "Hex-dump ADSP debug-window slots"
+	default y
+	depends on SHELL && SOC_FAMILY_INTEL_ADSP
+	help
+	  Enables 'sof dbgwin_dump [slot] [length]' which lists the
+	  descriptors of all ADSP debug-window slots (slot manager
+	  metadata in window 2 page 0) with a friendly type name, and
+	  hex-dumps the slot contents when a slot index is given.
+
+	  This makes it possible to peek at gdb_stub, telemetry,
+	  critical_log, broken-marker and other slots from the shell
+	  without host-side tooling.
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS
