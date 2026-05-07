@@ -87,7 +87,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 | IPC inject | `ipc_inject <hex>`, `ipc_queue` | TODO |
 | Audio buffers | `buffer_list`, `buffer_info <id>` | **DONE (task 2)** |
 | **Scheduler** | `sched_tasks`, `sched_load`, `task_info <task>` | **DONE (task 3)** |
-| Logging / trace | `log_level <component> <lvl>`, `log_filter`, `mtrace_dump`, `trace_stats` | TODO |
+| Logging / trace | `log_status`, `mtrace_dump` (snapshot) | **DONE (task 4)** &mdash; runtime per-source `log_level` deferred (needs `CONFIG_LOG_RUNTIME_FILTERING`, see notes) |
 | Telemetry / perf | `perf_status`, `perf_reset`, `cpu_load` | TODO |
 | Notifications | `notify_subscribers`, `notify_stats` | TODO |
 | Debug window / mailbox | `dbgwin_dump <slot>`, `mailbox_hex` | TODO |
@@ -112,7 +112,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 1. **`ipc_stats` / `ipc_last`** &mdash; DONE.
 2. **`buffer_list` / `buffer_info`** &mdash; DONE.
 3. **`sched_tasks` / `sched_load`** &mdash; DONE.
-4. `log_level` / `mtrace_dump` &mdash; runtime log tuning without rebuild.
+4. **`log_status` / `mtrace_dump`** &mdash; DONE.
 5. `crash_log` / `bt` &mdash; pair with the `crash-*` artifacts in the tree.
 6. `perf_status` &mdash; wraps SOF telemetry counters.
 7. `dai_list` / `dma_chan_status` &mdash; link/DMA blind spot.
@@ -221,3 +221,47 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
   targets).
 - `task_info <uid>` lookup, deadline-miss counts and per-core
   aggregation could be added on top of the same op.
+
+## Task 4 &mdash; `log_status` / `mtrace_dump`
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `sof log_status` | List every Zephyr log backend (idx, internal id, active state, name) plus the total number of registered log sources in the local domain. Read-only. |
+| `sof mtrace_dump` | Print the unread portion of the ADSP mtrace SRAM ring buffer as a snapshot, *without* advancing `host_ptr`. Safe to use while host-side `mtrace-reader.py` is running. |
+
+### Implementation
+
+- `log_status` uses Zephyr's public log backend API
+  (`log_backend_count_get()`, `log_backend_get()`,
+  `log_backend_is_active()`, `log_backend_id_get()`,
+  `log_src_cnt_get()`); no new state is added.
+- `mtrace_dump` re-acquires the existing mtrace slot:
+  - With `CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER=y` (default on PTL/MTL/LNL):
+    via `adsp_dw_request_slot()` with the same descriptor type
+    (`ADSP_DW_SLOT_DEBUG_LOG | core 0`); the slot manager returns the
+    already-allocated slot.
+  - Otherwise: directly indexes
+    `ADSP_DW->slots[ADSP_DW_SLOT_NUM_MTRACE]`.
+  - The slot layout (`{host_ptr, dsp_ptr, data[]}`) mirrors the one in
+    [zephyr/subsys/logging/backends/log_backend_adsp_mtrace.c](../../zephyr/subsys/logging/backends/log_backend_adsp_mtrace.c).
+  - We read from `host_ptr` to `dsp_ptr` byte-by-byte and write to the
+    shell, but never store back to `host_ptr`, so the host-side
+    consumer keeps seeing the same bytes.
+- Two new Kconfigs (default `y`):
+  - `CONFIG_SOF_SHELL_LOG_INFO` (depends on `LOG`)
+  - `CONFIG_SOF_SHELL_MTRACE_DUMP` (depends on `LOG_BACKEND_ADSP_MTRACE`)
+- Shell commands in [zephyr/sof_shell.c](zephyr/sof_shell.c).
+
+### Notes / follow-ups
+
+- Per-source runtime `log_level` setting was deliberately deferred: it
+  requires `CONFIG_LOG_RUNTIME_FILTERING=y` (extra per-call overhead)
+  and Zephyr already ships an equivalent `log` shell command
+  (`CONFIG_LOG_CMDS=y`). If we ever need it we should reuse Zephyr's
+  command rather than reimplement it.
+- `mtrace_dump` shows raw text exactly as the backend formatted it; a
+  future option could format output in pages or filter by severity.
+- A `mtrace_dump --consume` mode (advance `host_ptr`) is intentionally
+  not provided to avoid silently breaking host-side tooling.

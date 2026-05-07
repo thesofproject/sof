@@ -1837,6 +1837,101 @@ __cold static int cmd_sof_sched_load(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_SCHED_INFO */
 
+#if CONFIG_SOF_SHELL_LOG_INFO
+
+#include <zephyr/logging/log_backend.h>
+#include <zephyr/logging/log_ctrl.h>
+
+__cold static int cmd_sof_log_status(const struct shell *sh,
+				     size_t argc, char *argv[])
+{
+	int n = log_backend_count_get();
+	int i;
+
+	shell_print(sh, "Log backends: %d, sources: %u",
+		    n, log_src_cnt_get(Z_LOG_LOCAL_DOMAIN_ID));
+	shell_print(sh, "  idx  id  active  name");
+
+	for (i = 0; i < n; i++) {
+		const struct log_backend *be = log_backend_get(i);
+
+		if (!be)
+			continue;
+		shell_print(sh, "  %3d  %3u   %-3s    %s",
+			    i, log_backend_id_get(be),
+			    log_backend_is_active(be) ? "yes" : "no",
+			    be->name ? be->name : "?");
+	}
+
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_LOG_INFO */
+
+#if CONFIG_SOF_SHELL_MTRACE_DUMP
+
+#include <adsp_debug_window.h>
+
+/* must match the layout used by zephyr/subsys/logging/backends/log_backend_adsp_mtrace.c */
+struct sof_shell_mtrace_slot {
+	uint32_t host_ptr;
+	uint32_t dsp_ptr;
+	uint8_t data[ADSP_DW_SLOT_SIZE - 2 * sizeof(uint32_t)];
+} __packed;
+
+#define SOF_SHELL_MTRACE_BUF_SIZE (ADSP_DW_SLOT_SIZE - 2 * sizeof(uint32_t))
+#define SOF_SHELL_MTRACE_TYPE(core) \
+	(ADSP_DW_SLOT_DEBUG_LOG | ((core) & ADSP_DW_SLOT_CORE_MASK))
+
+__cold static int cmd_sof_mtrace_dump(const struct shell *sh,
+				      size_t argc, char *argv[])
+{
+	struct sof_shell_mtrace_slot *slot;
+	uint32_t r, w, len, i;
+
+#ifdef CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	struct adsp_dw_desc desc = { .type = SOF_SHELL_MTRACE_TYPE(0) };
+
+	slot = adsp_dw_request_slot(&desc, NULL);
+#else
+	slot = (struct sof_shell_mtrace_slot *)
+		ADSP_DW->slots[ADSP_DW_SLOT_NUM_MTRACE];
+#endif
+	if (!slot) {
+		shell_print(sh, "mtrace slot not available");
+		return -ENODEV;
+	}
+
+	r = slot->host_ptr;
+	w = slot->dsp_ptr;
+
+	if (r == w) {
+		shell_print(sh, "mtrace: empty (host_ptr=dsp_ptr=%u)", r);
+		return 0;
+	}
+
+	if (w > r)
+		len = w - r;
+	else
+		len = SOF_SHELL_MTRACE_BUF_SIZE - r + w;
+
+	shell_print(sh,
+		    "mtrace: host_ptr=%u dsp_ptr=%u unread=%u bytes (snapshot)",
+		    r, w, len);
+
+	/* print byte-by-byte without advancing host_ptr; preserves host consumer */
+	for (i = 0; i < len; i++) {
+		uint32_t off = (r + i) % SOF_SHELL_MTRACE_BUF_SIZE;
+
+		shell_fprintf(sh, SHELL_NORMAL, "%c", slot->data[off]);
+	}
+	shell_fprintf(sh, SHELL_NORMAL, "\n");
+
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_MTRACE_DUMP */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_vpage_commands,
 	SHELL_CMD(info, NULL,
 		  "Print virtual page allocator status\n",
@@ -2088,6 +2183,24 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_sched_commands,
 );
 #endif
 
+#if CONFIG_SOF_SHELL_LOG_INFO
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_log_commands,
+	SHELL_CMD(status, NULL,
+		  "List Zephyr log backends with state and source count\n",
+		  cmd_sof_log_status),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
+#if CONFIG_SOF_SHELL_MTRACE_DUMP
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_mtrace_commands,
+	SHELL_CMD(dump, NULL,
+		  "Snapshot the mtrace SRAM ring buffer (does not advance host_ptr)\n",
+		  cmd_sof_mtrace_dump),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(test, &sof_test_commands,
 		  "Test commands: ll delay\n",
@@ -2174,6 +2287,18 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 #if CONFIG_SOF_SHELL_SCHED_INFO
 	SHELL_CMD(sched, &sof_sched_commands,
 		  "Scheduler commands: tasks, load\n",
+		  NULL),
+#endif
+
+#if CONFIG_SOF_SHELL_LOG_INFO
+	SHELL_CMD(log, &sof_log_commands,
+		  "Log commands: status\n",
+		  NULL),
+#endif
+
+#if CONFIG_SOF_SHELL_MTRACE_DUMP
+	SHELL_CMD(mtrace, &sof_mtrace_commands,
+		  "Mtrace commands: dump\n",
 		  NULL),
 #endif
 

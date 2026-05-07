@@ -488,6 +488,35 @@ config SOF_SHELL_SCHED_INFO
 	  own lock during the walk; schedulers without an implementation are
 	  silently skipped.
 
+config SOF_SHELL_LOG_INFO
+	bool "Log subsystem status command"
+	default y
+	depends on SHELL && LOG
+	help
+	  Enables the 'sof log_status' shell command, which lists every
+	  registered Zephyr log backend with its index, internal id,
+	  active/inactive state and name, plus the total number of
+	  registered log sources in the local domain.
+
+	  Read-only and cheap; useful for confirming which backends
+	  (uart_console, adsp_mtrace, adsp_hda, ...) are alive without
+	  having to enable CONFIG_LOG_RUNTIME_FILTERING and the much
+	  larger Zephyr 'log' shell module.
+
+config SOF_SHELL_MTRACE_DUMP
+	bool "mtrace SRAM buffer snapshot command"
+	default y
+	depends on SHELL && LOG_BACKEND_ADSP_MTRACE
+	help
+	  Enables the 'sof mtrace_dump' shell command which prints the
+	  unread portion of the ADSP mtrace SRAM ring buffer (the same
+	  buffer normally consumed by host-side mtrace-reader.py).
+
+	  The snapshot does NOT advance the host_ptr, so it is safe to
+	  use while a host consumer is running: the host will still
+	  receive every byte. Useful when no host driver is attached
+	  (e.g. early bring-up over UART shell only).
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS
