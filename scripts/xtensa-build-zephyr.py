@@ -1100,7 +1100,20 @@ def build_platforms():
 		# - LLEXT shared library link wrapper
 		# No wrapper script or CMAKE_C_COMPILER override needed.
 		if args.llvm_clang:
-			pass  # All configuration is in cmake/toolchain/llvm/target.cmake
+			# Set XTENSA_CORE_ID so cmake/toolchain/llvm/target.cmake
+			# selects the correct -mcpu for the LLVM backend.
+			# Platforms that share an SDK toolchain (e.g. NVL uses PTL's
+			# assembler) need an explicit CPU override for HiFi5 support.
+			parts = PLAT_CONFIG.split("/")
+			if len(parts) >= 3:
+				core_id = f"{parts[1]}_{parts[2]}"  # e.g. "ace40_nvl" -> "intel_ace40"
+				# Map board-level names to LLVM processor names
+				core_id_map = {
+					"ace30_ptl": "intel_ace30_ptl",
+					"ace40_nvl": "intel_ace40",
+					"ace40_nvls": "intel_ace40",
+				}
+				platf_build_environ["XTENSA_CORE_ID"] = core_id_map.get(core_id, "intel_ace30_ptl")
 
 		extra_conf_files = [str(item.resolve(True)) for item in args.overlay]
 		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
