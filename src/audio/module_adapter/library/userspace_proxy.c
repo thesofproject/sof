@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include <sof/lib_manager.h>
+#include <sof/llext_manager.h>
 #include <sof/audio/component.h>
 #include <sof/schedule/dp_schedule.h>
 #include <rtos/userspace_helper.h>
@@ -163,6 +164,7 @@ static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap
 	work_item->event = &worker.event;
 #endif
 	work_item->params.context = user_ctx;
+	work_item->params.mod = NULL;
 	user_ctx->work_item = work_item;
 
 	return 0;
@@ -198,7 +200,7 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 	struct k_mem_partition ipc_part = {
 		.start = ipc_req_buf,
 		.size = MAILBOX_HOSTBOX_SIZE,
-		.attr = user_get_partition_attr(ipc_req_buf) | K_MEM_PARTITION_P_RO_U_RO,
+		.attr = user_get_partition_cache_attr(ipc_req_buf) | K_MEM_PARTITION_P_RO_U_RO,
 	};
 	int ret = 0, ret2;
 
@@ -276,8 +278,25 @@ static int userspace_proxy_memory_init(struct userspace_context *user_ctx,
 	tr_dbg(&userspace_proxy_tr, "Heap partition %#lx + %zx, attr = %u",
 	       heap_part.start, heap_part.size, heap_part.attr);
 
-#if !defined(CONFIG_XTENSA_MMU_DOUBLE_MAP) && defined(CONFIG_SOF_ZEPHYR_HEAP_CACHED)
-#define HEAP_PART_CACHED
+	/* When a new memory domain is created, only the "factory" entries from the L2 page
+	 * tables are copied. Memory that was dynamically mapped during firmware execution
+	 * will not be accessible from the new domain. The k_heap structure (drv->user_heap)
+	 * resides in such dynamically mapped memory, so we must explicitly add a partition
+	 * for it to ensure that syscalls can access this structure from the userspace domain.
+	 */
+	struct k_mem_partition heap_struct_part = {
+		.attr = K_MEM_PARTITION_P_RW_U_NA |
+			user_get_partition_cache_attr(POINTER_TO_UINT(drv->user_heap))
+	};
+
+	k_mem_region_align(&heap_struct_part.start, &heap_struct_part.size,
+			   POINTER_TO_UINT(drv->user_heap),
+			   sizeof(*drv->user_heap), CONFIG_MM_DRV_PAGE_SIZE);
+
+	tr_dbg(&userspace_proxy_tr, "Heap struct partition %#lx + %zx, attr = %u",
+	       heap_struct_part.start, heap_struct_part.size, heap_struct_part.attr);
+
+#if defined(CONFIG_SOF_ZEPHYR_HEAP_CACHED)
 	/* Add cached module private heap to memory partitions */
 	struct k_mem_partition heap_cached_part = {
 		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB
@@ -296,10 +315,11 @@ static int userspace_proxy_memory_init(struct userspace_context *user_ctx,
 		 * These include ops structures marked with APP_TASK_DATA.
 		 */
 		&common_partition,
-#ifdef HEAP_PART_CACHED
+#ifdef CONFIG_SOF_ZEPHYR_HEAP_CACHED
 		&heap_cached_part,
 #endif
-		&heap_part
+		&heap_part,
+		&heap_struct_part
 	};
 
 	tr_dbg(&userspace_proxy_tr, "Common partition %#lx + %zx, attr = %u",
@@ -328,7 +348,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user_ctx, uint
 
 		mem_partition.start = mod->segment[idx].v_base_addr;
 		mem_partition.size = mod->segment[idx].flags.r.length * CONFIG_MM_DRV_PAGE_SIZE;
-		mem_partition.attr |= user_get_partition_attr(mem_partition.start);
+		mem_partition.attr |= user_get_partition_cache_attr(mem_partition.start);
 
 		ret = k_mem_domain_add_partition(user_ctx->comp_dom, &mem_partition);
 
@@ -341,7 +361,7 @@ static int userspace_proxy_add_sections(struct userspace_context *user_ctx, uint
 
 	lib_manager_get_instance_bss_address(instance_id, mod, &va_base, &mem_partition.size);
 	mem_partition.start = POINTER_TO_UINT(va_base);
-	mem_partition.attr = user_get_partition_attr(mem_partition.start) |
+	mem_partition.attr = user_get_partition_cache_attr(mem_partition.start) |
 		K_MEM_PARTITION_P_RW_U_RW;
 	ret = k_mem_domain_add_partition(user_ctx->comp_dom, &mem_partition);
 
@@ -384,7 +404,7 @@ static int userspace_proxy_start_agent(struct userspace_context *user_ctx,
 }
 
 int userspace_proxy_create(struct userspace_context **user_ctx, const struct comp_driver *drv,
-			   const struct sof_man_module *manifest, system_agent_start_fn start_fn,
+			   const struct sof_man_module *manifest, system_agent_start_fn agent_fn,
 			   const struct system_agent_params *agent_params,
 			   const void **agent_interface, const struct module_interface **ops)
 {
@@ -412,7 +432,12 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	if (ret)
 		goto error_dom;
 
-	ret = userspace_proxy_add_sections(context, agent_params->instance_id, manifest);
+	if (agent_fn)
+		ret = userspace_proxy_add_sections(context, agent_params->instance_id, manifest);
+	else
+		/* llext modules do not use the system agent. */
+		ret = llext_manager_add_domain(agent_params->module_id, domain);
+
 	if (ret)
 		goto error_dom;
 
@@ -420,7 +445,7 @@ int userspace_proxy_create(struct userspace_context **user_ctx, const struct com
 	if (ret)
 		goto error_dom;
 
-	ret = userspace_proxy_start_agent(context, start_fn, agent_params, agent_interface);
+	ret = userspace_proxy_start_agent(context, agent_fn, agent_params, agent_interface);
 	if (ret) {
 		tr_err(&userspace_proxy_tr, "System agent failed with error %d.", ret);
 		goto error_work_item;
@@ -682,7 +707,7 @@ static int userspace_proxy_get_configuration(struct processing_module *mod, uint
 	struct k_mem_partition ipc_resp_part = {
 		.start = ipc_resp_buf,
 		.size = SOF_IPC_MSG_MAX_SIZE,
-		.attr = user_get_partition_attr(ipc_resp_buf) | K_MEM_PARTITION_P_RW_U_RW,
+		.attr = user_get_partition_cache_attr(ipc_resp_buf) | K_MEM_PARTITION_P_RW_U_RW,
 	};
 	int ret;
 

@@ -543,12 +543,14 @@ static int lib_manager_start_agent(const struct comp_driver *drv,
 		return ret;
 	}
 #endif /* CONFIG_SOF_USERSPACE_PROXY */
+	if (agent) {
+		ret = agent(&agent_params, agent_interface);
+		if (ret)
+			tr_err(&lib_manager_tr, "System agent start failed %d!", ret);
+		return ret;
+	}
 
-	ret = agent(&agent_params, agent_interface);
-	if (ret)
-		tr_err(&lib_manager_tr, "System agent start failed %d!", ret);
-
-	return ret;
+	return 0;
 }
 
 enum buildinfo_mod_type { MOD_TYPE_INVALID, MOD_TYPE_IADK, MOD_TYPE_LMDK, MOD_TYPE_LLEXT };
@@ -654,6 +656,7 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	case MOD_TYPE_LLEXT:
 		agent = NULL;
 		ops = (const struct module_interface *)module_entry_point;
+		agent_iface = NULL;
 		break;
 	case MOD_TYPE_LMDK:
 		agent = &native_system_agent_start;
@@ -671,12 +674,10 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	}
 
 	/* At this point module resources are allocated and it is moved to L2 memory. */
-	if (agent) {
-		ret = lib_manager_start_agent(drv, config, mod, args, module_entry_point, agent,
-					      agent_iface, &userspace, &ops);
-		if (ret)
-			goto err;
-	}
+	ret = lib_manager_start_agent(drv, config, mod, args, module_entry_point, agent,
+					agent_iface, &userspace, &ops);
+	if (ret)
+		goto err;
 
 	if (comp_set_adapter_ops(drv, ops) < 0)
 		goto err;
