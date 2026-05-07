@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2022 Intel Corporation. All rights reserved.
+ * Copyright(c) 2022-2026 Intel Corporation.
  *
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
@@ -114,6 +114,7 @@ struct mfcc_state {
 	struct mat_matrix_16b *mel_spectra; /**< Pointer to scratch */
 	struct mat_matrix_16b *cepstral_coef; /**< Pointer to scratch */
 	int32_t *power_spectra; /**< Pointer to scratch */
+	int16_t mmax; /**< Maximum Mel value in Q9.7 */
 	int16_t buf_avail;
 	int16_t *buffers;
 	int16_t *prev_data; /**< prev_data_size */
@@ -125,9 +126,13 @@ struct mfcc_state {
 	int low_freq;
 	int high_freq;
 	int sample_rate;
+	bool mel_only; /**< When true, output Mel spectra instead of cepstral coefficients */
 	bool waiting_fill; /**< booleans */
 	bool prev_samples_valid;
+	bool magic_pending; /**< True when magic word not yet written for current output */
 	size_t sample_buffers_size; /**< bytes */
+	int16_t *out_data_ptr; /**< Read pointer into scratch data for multi-period output */
+	int out_remain; /**< Remaining int16_t samples to write to sink from scratch */
 };
 
 /* MFCC component private data */
@@ -156,12 +161,6 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int rate, int chan
 
 void mfcc_free_buffers(struct processing_module *mod);
 
-void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, int frames);
-
-void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
-			  struct mfcc_pre_emph *emph, int frames, int source_channel);
-
 void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 			    int prev_data_length);
 
@@ -175,13 +174,28 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift);
 
 #if CONFIG_FORMAT_S16LE
 
-int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
-				 int16_t *w_ptr, int samples);
-
-int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr,
-				 int samples, int16_t *r_ptr);
+void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel);
 
 void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, int frames);
+#endif
+
+#if CONFIG_FORMAT_S24LE
+
+void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel);
+
+void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, int frames);
+#endif
+
+#if CONFIG_FORMAT_S32LE
+
+void mfcc_source_copy_s32(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel);
+
+void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
 		      struct output_stream_buffer *bsink, int frames);
 #endif
 

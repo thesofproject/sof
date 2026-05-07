@@ -50,10 +50,12 @@ static int mfcc_get_window(struct mfcc_state *state, enum sof_mfcc_fft_window_ty
 	case MFCC_HAMMING_WINDOW:
 		win_hamming_16b(state->window, fft->fft_size);
 		return 0;
+	case MFCC_HANN_WINDOW:
+		win_hann_16b(state->window, fft->fft_size);
+		return 0;
 	case MFCC_POVEY_WINDOW:
 		win_povey_16b(state->window, fft->fft_size);
 		return 0;
-
 	default:
 		return -EINVAL;
 	}
@@ -139,10 +141,9 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		return -EINVAL;
 	}
 
-	comp_info(dev, "source_channel = %d, stream_channels = %d",
-		  config->channel, channels);
-	if (config->channel >= channels) {
-		comp_err(dev, "Illegal channel");
+	if (config->channel >= channels || (config->channel < 0 && channels != 1)) {
+		comp_err(dev, "Illegal source_channel %d for stream channels %d", config->channel,
+			 channels);
 		return -EINVAL;
 	}
 
@@ -151,6 +152,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	else
 		state->source_channel = config->channel;
 
+	state->mmax = config->mmax_init;
 	state->emph.enable = config->preemphasis_coefficient > 0;
 	state->emph.coef = -config->preemphasis_coefficient; /* Negate config parameter */
 	fft->fft_size = config->frame_length;
@@ -249,23 +251,37 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		goto free_fft_out;
 	}
 
-	/* Setup DCT */
-	dct->num_in = config->num_mel_bins;
-	dct->num_out = config->num_ceps;
-	dct->type = (enum dct_type)config->dct;
-	dct->ortho = true;
-	ret = mod_dct_initialize_16(mod, dct);
-	if (ret < 0) {
-		comp_err(dev, "Failed DCT init");
-		goto free_melfb_data;
-	}
+	/* Setup DCT and cepstral lifter only when num_ceps > 0.
+	 * When num_ceps is zero, skip DCT/lifter and output Mel
+	 * log spectra directly.
+	 */
+	if (config->num_ceps > 0) {
+		dct->num_in = config->num_mel_bins;
+		dct->num_out = config->num_ceps;
+		dct->type = (enum dct_type)config->dct;
+		dct->ortho = true;
+		ret = mod_dct_initialize_16(mod, dct);
+		if (ret < 0) {
+			comp_err(dev, "Failed DCT init");
+			goto free_melfb_data;
+		}
 
-	state->lifter.num_ceps = config->num_ceps;
-	state->lifter.cepstral_lifter = config->cepstral_lifter; /* Q7.9 max 64.0*/
-	ret = mfcc_get_cepstral_lifter(mod, &state->lifter);
-	if (ret < 0) {
-		comp_err(dev, "Failed cepstral lifter");
-		goto free_dct_matrix;
+		state->lifter.num_ceps = config->num_ceps;
+		state->lifter.cepstral_lifter = config->cepstral_lifter; /* Q7.9 max 64.0*/
+		ret = mfcc_get_cepstral_lifter(mod, &state->lifter);
+		if (ret < 0) {
+			comp_err(dev, "Failed cepstral lifter");
+			goto free_dct_matrix;
+		}
+
+		state->mel_only = false;
+	} else {
+		comp_info(dev, "num_ceps is 0, Mel log spectra output mode");
+		dct->num_in = config->num_mel_bins;
+		dct->num_out = 0;
+		dct->matrix = NULL;
+		state->lifter.matrix = NULL;
+		state->mel_only = true;
 	}
 
 	/* Scratch overlay during runtime
@@ -289,12 +305,40 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	/* Use FFT buffer as scratch for later computed data */
 	state->power_spectra = (int32_t *)&fft->fft_buf[0];
 	state->mel_spectra = (struct mat_matrix_16b *)&fft->fft_out[0];
-	state->cepstral_coef = (struct mat_matrix_16b *)
-		&state->mel_spectra->data[state->dct.num_in];
+	if (!state->mel_only) {
+		state->cepstral_coef =
+			(struct mat_matrix_16b *)&state->mel_spectra->data[state->dct.num_in];
+	} else {
+		state->cepstral_coef = NULL;
+	}
+
+	/* Allocate output buffer for multi-period output. Size allows for
+	 * current output data plus leftover from previous period.
+	 */
+	int max_out_per_hop = state->mel_only ? dct->num_in : dct->num_out;
+
+	/* Check that output data can be drained within the periods spanned by one
+	 * FFT hop. Each hop consumes fft_hop_size input samples and produces
+	 * max_out_per_hop + 2 (magic) int16_t output values. The sink provides at
+	 * least fft_hop_size * channels int16_t samples per hop (worst case s16).
+	 * If output exceeds this, data accumulates and will eventually overflow.
+	 */
+	int out_per_hop = max_out_per_hop + 2;
+	int sink_per_hop = fft->fft_hop_size * channels;
+
+	if (out_per_hop > sink_per_hop) {
+		comp_err(dev, "Output %d int16 per hop exceeds sink capacity %d (hop %d x ch %d)",
+			 out_per_hop, sink_per_hop, fft->fft_hop_size, channels);
+		ret = -EINVAL;
+		goto free_dct_matrix;
+	}
 
 	/* Set initial state for STFT */
 	state->waiting_fill = true;
 	state->prev_samples_valid = false;
+	state->magic_pending = false;
+	state->out_data_ptr = NULL;
+	state->out_remain = 0;
 
 	comp_dbg(dev, "done");
 	return 0;

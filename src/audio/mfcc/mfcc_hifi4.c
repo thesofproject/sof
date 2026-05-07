@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2023 Intel Corporation. All rights reserved.
+// Copyright(c) 2023-2026 Intel Corporation.
 //
 // Author: Andrula Song <andrula.song@intel.com>
 
@@ -41,6 +41,8 @@ static inline void set_circular_buf1(const void *start, const void *end)
 /*
  * MFCC algorithm code
  */
+
+#if CONFIG_FORMAT_S16LE
 void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
 			  struct mfcc_pre_emph *emph, int frames, int source_channel)
 {
@@ -87,6 +89,7 @@ void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffe
 	buf->s_free -= frames;
 	buf->w_ptr = (int16_t *)out;
 }
+#endif /* CONFIG_FORMAT_S16LE */
 
 void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 			    int prev_data_length)
@@ -225,65 +228,106 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 #endif
 }
 
-#if CONFIG_FORMAT_S16LE
-
-int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink,
-				 int16_t *w_ptr, int samples)
+#if CONFIG_FORMAT_S24LE
+void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
 {
+	struct audio_stream *source = bsource->data;
+	int num_channels = audio_stream_get_channels(source);
+	ae_int32 *in = (ae_int32 *)source->r_ptr + source_channel;
+	ae_int16 *out = (ae_int16 *)buf->w_ptr;
+	ae_int32x2 sample32;
+	ae_int16x4 sample;
+	ae_int32x2 temp;
+	ae_int16x4 coef;
+	ae_int16x4 delay;
+	const int in_inc = sizeof(ae_int32) * num_channels;
+	const int out_inc = sizeof(ae_int16);
 	int i;
-	int n = samples >> 2;
-	int m = samples & 0x03;
-	ae_int16x4 *out = (ae_int16x4 *)w_ptr;
-	const int inc = sizeof(ae_int16);
-	ae_valign outu = AE_ZALIGN64();
-	ae_int16x4 zero = AE_ZERO16();
 
-	set_circular_buf0(sink->addr, sink->end_addr);
+	set_circular_buf1(buf->addr, buf->end_addr);
+	set_circular_buf0(source->addr, source->end_addr);
 
-	for (i = 0; i < n; i++)
-		AE_SA16X4_IC(zero, outu, out);
-
-	AE_SA64POS_FP(outu, out);
-	/* process the left samples that less than 4
-	 * one by one to avoid memory access overrun
-	 */
-	for (i = 0; i < m ; i++)
-		AE_S16_0_XC(zero, (ae_int16 *)out, inc);
-
-	return (int16_t *)out;
-}
-
-int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr,
-				 int samples, int16_t *r_ptr)
-{
-	int i;
-	int n = samples >> 2;
-	int m = samples & 0x03;
-	ae_int16x4 *out = (ae_int16x4 *)w_ptr;
-	ae_int16x4 *in = (ae_int16x4 *)r_ptr;
-	ae_valign outu = AE_ZALIGN64();
-	ae_valign inu = AE_ZALIGN64();
-	const int inc = sizeof(ae_int16);
-	ae_int16x4 in_sample;
-
-	set_circular_buf0(sink->addr, sink->end_addr);
-
-	inu = AE_LA64_PP(in);
-	for (i = 0; i < n; i++) {
-		AE_LA16X4_IP(in_sample, inu, in);
-		AE_SA16X4_IC(in_sample, outu, out);
-	}
-	AE_SA64POS_FP(outu, out);
-	/* process the left samples that less than 4
-	 * one by one to avoid memory access overrun
-	 */
-	for (i = 0; i < m ; i++) {
-		AE_L16_XP(in_sample, (ae_int16 *)in, inc);
-		AE_S16_0_XC(in_sample, (ae_int16 *)out, inc);
+	if (emph->enable) {
+		delay = emph->delay;
+		coef = emph->coef;
+		for (i = 0; i < frames; i++) {
+			AE_L32_XC(sample32, in, in_inc);
+			/* S24_4LE: shift right by 8 to get 16-bit */
+			sample32 = AE_SRAI32(sample32, 8);
+			sample = AE_SAT16X4(sample32, sample32);
+			/* Q1.15 -> Q1.31 */
+			temp = AE_CVT32X2F16_10(sample);
+			AE_MULAF16SS_00(temp, delay, coef);
+			delay = sample;
+			sample = AE_ROUND16X4F32SSYM(temp, temp);
+			AE_S16_0_XC1(sample, out, out_inc);
+		}
+		emph->delay = delay;
+	} else {
+		for (i = 0; i < frames; i++) {
+			AE_L32_XC(sample32, in, in_inc);
+			sample32 = AE_SRAI32(sample32, 8);
+			sample = AE_SAT16X4(sample32, sample32);
+			AE_S16_0_XC1(sample, out, out_inc);
+		}
 	}
 
-	return (int16_t *)out;
+	buf->s_avail += frames;
+	buf->s_free -= frames;
+	buf->w_ptr = (int16_t *)out;
 }
+#endif /* CONFIG_FORMAT_S24LE */
 
-#endif /* CONFIG_FORMAT_S16LE */
-#endif
+#if CONFIG_FORMAT_S32LE
+void mfcc_source_copy_s32(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	struct audio_stream *source = bsource->data;
+	int num_channels = audio_stream_get_channels(source);
+	ae_int32 *in = (ae_int32 *)source->r_ptr + source_channel;
+	ae_int16 *out = (ae_int16 *)buf->w_ptr;
+	ae_int32x2 sample32;
+	ae_int16x4 sample;
+	ae_int32x2 temp;
+	ae_int16x4 coef;
+	ae_int16x4 delay;
+	const int in_inc = sizeof(ae_int32) * num_channels;
+	const int out_inc = sizeof(ae_int16);
+	int i;
+
+	set_circular_buf1(buf->addr, buf->end_addr);
+	set_circular_buf0(source->addr, source->end_addr);
+
+	if (emph->enable) {
+		delay = emph->delay;
+		coef = emph->coef;
+		for (i = 0; i < frames; i++) {
+			AE_L32_XC(sample32, in, in_inc);
+			/* S32: shift right by 16 to get 16-bit */
+			sample32 = AE_SRAI32(sample32, 16);
+			sample = AE_SAT16X4(sample32, sample32);
+			/* Q1.15 -> Q1.31 */
+			temp = AE_CVT32X2F16_10(sample);
+			AE_MULAF16SS_00(temp, delay, coef);
+			delay = sample;
+			sample = AE_ROUND16X4F32SSYM(temp, temp);
+			AE_S16_0_XC1(sample, out, out_inc);
+		}
+		emph->delay = delay;
+	} else {
+		for (i = 0; i < frames; i++) {
+			AE_L32_XC(sample32, in, in_inc);
+			sample32 = AE_SRAI32(sample32, 16);
+			sample = AE_SAT16X4(sample32, sample32);
+			AE_S16_0_XC1(sample, out, out_inc);
+		}
+	}
+
+	buf->s_avail += frames;
+	buf->s_free -= frames;
+	buf->w_ptr = (int16_t *)out;
+}
+#endif /* CONFIG_FORMAT_S32LE */
+
+#endif /* MFCC_HIFI4 */

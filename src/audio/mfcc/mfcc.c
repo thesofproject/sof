@@ -38,13 +38,13 @@ SOF_DEFINE_REG_UUID(mfcc);
 
 __cold_rodata const struct mfcc_func_map mfcc_fm[] = {
 #if CONFIG_FORMAT_S16LE
-	{SOF_IPC_FRAME_S16_LE,  mfcc_s16_default},
+	{SOF_IPC_FRAME_S16_LE, mfcc_s16_default},
 #endif /* CONFIG_FORMAT_S16LE */
 #if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, NULL},
+	{SOF_IPC_FRAME_S24_4LE, mfcc_s24_default},
 #endif /* CONFIG_FORMAT_S24LE */
 #if CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE,  NULL},
+	{SOF_IPC_FRAME_S32_LE, mfcc_s32_default},
 #endif /* CONFIG_FORMAT_S32LE */
 };
 

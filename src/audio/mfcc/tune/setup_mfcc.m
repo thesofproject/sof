@@ -1,23 +1,36 @@
-% setup_mfcc(cfg)
+% setup_mfcc()
 %
-% Input
-%   cfg - optional MFCC configuration parameters struct, see
-%         below from code
-%
-% Create binary configuration blob for MFCC component. The hex data
-% is written to tools/topology/topology2/include/components/mfcc and
-% tools/topology/topology1/m4/mfcc.
+% Create binary configuration blobs for the MFCC component.
+% The hex data is written to files in directory
+% tools/topology/topology2/include/components/mfcc.
 
 % SPDX-License-Identifier: BSD-3-Clause
 %
-% Copyright (c) 2018-2026, Intel Corporation. All rights reserved.
+% Copyright (c) 2018-2026, Intel Corporation.
 
-function setup_mfcc(cfg)
+function setup_mfcc()
 
-if nargin < 1
+	gen_cfg.tplg_ver = 2;
+	gen_cfg.ipc_ver = 4;
+	gen_cfg.tools_path = '../../../../tools/';
+	gen_cfg.mfcc_conf_path = [gen_cfg.tools_path 'topology/topology2/include/components/mfcc/'];
+
+	% Default blob
+	setup = get_mfcc_default_config();
+	setup.tplg_fn = 'default.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+	% Blob for mel spectrogram data
+	setup = get_mel_spectrogram_config();
+	setup.tplg_fn = 'mel80.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+end
+
+function cfg = get_mfcc_default_config()
 	cfg.blackman_coef = 0.42;
 	cfg.cepstral_lifter = 22.0;
-	cfg.channel = -1; % -1 expect mono, 0 left, 1 right ...
+	cfg.channel = 0; % -1 expect mono, 0 left, 1 right ...
 	cfg.dither = 0.0; % no support
 	cfg.energy_floor = 1.0;
 	cfg.frame_length = 25.0; % ms
@@ -44,26 +57,54 @@ if nargin < 1
 	cfg.mel_log = 'log'; % Set to 'db' for librosa, set to 'log10' for matlab
 	cfg.pmin = 5e-10; % Set to 1e-10 for librosa
 	cfg.top_db = 200; % Set to 80 for librosa
+	cfg.mel_offset = 0; % For mel_only mode, no impact with num_ceps > 0
+	cfg.mel_scale = 0; % same
+	cfg.mmax_init = 0; % same
+	cfg.mmax_coef = 0; % same
+	cfg.dynamic_mmax = false; % same
 end
 
-cfg.tools = '../../../../tools/';
-
-cfg.tplg_fn = [cfg.tools 'topology/topology1/m4/mfcc/mfcc_config.m4'];
-cfg.tplg_ver = 1;
-cfg.ipc_ver = 3;
-export_mfcc_setup(cfg);
-
-cfg.tplg_fn = [cfg.tools 'topology/topology2/include/components/mfcc/default.conf'];
-cfg.tplg_ver = 2;
-cfg.ipc_ver = 4;
-export_mfcc_setup(cfg);
-
+function cfg = get_mel_spectrogram_config()
+	cfg.blackman_coef = 0;
+	cfg.cepstral_lifter = 0;
+	cfg.channel = 0;
+	cfg.dither = 0;
+	cfg.energy_floor = 1.0;
+	cfg.frame_length = 25.0; % 400 samples at 16 kHz
+	cfg.frame_shift = 10.0; % 160 samples at 16 kHz
+	cfg.high_freq = 8000;
+	cfg.htk_compat = false;
+	cfg.low_freq = 0;
+	cfg.num_ceps = 0; % Mel-only mode, no DCT
+	cfg.min_duration = 0;
+	cfg.norm = 'slaney';
+	cfg.num_mel_bins = 80;
+	cfg.preemphasis_coefficient = 0;
+	cfg.raw_energy = false;
+	cfg.remove_dc_offset = false;
+	cfg.round_to_power_of_two = true;
+	cfg.sample_frequency = 16000;
+	cfg.snip_edges = true;
+	cfg.subtract_mean = false;
+	cfg.use_energy = false;
+	cfg.vtln_high = 0;
+	cfg.vtln_low = 0;
+	cfg.vtln_warp = 1.0;
+	cfg.window_type = 'hann';
+	cfg.mel_log = 'log10';
+	cfg.pmin = 1e-10;
+	cfg.top_db = 8; % applied for log10, would be 80 dB clamp for decibels as 10*log10()
+	cfg.mel_offset = 4.0; % For whisper like Mel scale and normalize
+	cfg.mel_scale = 0.25; % For whisper like Mel scale and normalize
+	cfg.mmax_init = 0; % Initial value max Mel value, data clamp is mmax - top_db
+	cfg.mmax_coef = 0; % Dynamic max Mel value decay coefficient (zero lock to found max)
+	cfg.dynamic_mmax = true;
 end
 
-function export_mfcc_setup(cfg)
+function export_mfcc_setup(gen_cfg, cfg)
 
 %% Use blob tool from EQ
-addpath([cfg.tools 'tune/common']);
+addpath([gen_cfg.tools_path 'tune/common']);
 
 %% Blob size, size plus reserved(8) + current parameters
 nbytes_data = 104;
@@ -73,7 +114,7 @@ sh32 = [0 -8 -16 -24];
 sh16 = [0 -8];
 
 %% Get ABI information
-[abi_bytes, nbytes_abi] = sof_get_abi(nbytes_data, cfg.ipc_ver);
+[abi_bytes, nbytes_abi] = sof_get_abi(nbytes_data, gen_cfg.ipc_ver);
 
 %% Initialize correct size uint8 array
 nbytes = nbytes_abi + nbytes_data;
@@ -86,14 +127,21 @@ j = nbytes_abi + 1;
 
 %% Apply default MFCC configuration, first struct header and reserved, then data
 [b8, j] = add_w32b(nbytes_data, b8, j);
-for i = 1:8
+
+v = q_convert(cfg.mel_offset, 7);                [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.mel_scale, 12);                [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.mmax_init, 7);                 [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.mmax_coef, 15);                [b8, j] = add_w16b(v, b8, j);
+
+% Reserved
+for i = 1:6
 	[b8, j] = add_w32b(0, b8, j);
 end
 
 v = q_convert(cfg.sample_frequency, 0);          [b8, j] = add_w32b(v, b8, j);
 v = q_convert(cfg.pmin, 31);                     [b8, j] = add_w32b(v, b8, j);
-v = 0;                                           [b8, j] = add_w32b(v, b8, j); % enum mel_log
-v = 0;                                           [b8, j] = add_w32b(v, b8, j); % enum norm
+v = get_mel_log_value(cfg.mel_log);              [b8, j] = add_w32b(v, b8, j); % enum mel_log
+v = get_norm_value(cfg.norm);                    [b8, j] = add_w32b(v, b8, j); % enum norm
 v = 0;                                           [b8, j] = add_w32b(v, b8, j); % enum pad
 v = get_window(cfg);                             [b8, j] = add_w32b(v, b8, j); % enum window
 v = 1;                                           [b8, j] = add_w32b(v, b8, j); % enum dct type
@@ -119,22 +167,24 @@ v = cfg.round_to_power_of_two;                   [b8, j] = add_w8b(v, b8, j); % 
 v = cfg.snip_edges;                              [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.subtract_mean;                           [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.use_energy;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.dynamic_mmax;                            [b8, j] = add_w8b(v, b8, j); % bool
 
 %% Export
-switch cfg.tplg_ver
+tplg_fn = [gen_cfg.mfcc_conf_path cfg.tplg_fn];
+switch gen_cfg.tplg_ver
        case 1
-	       sof_tplg_write(cfg.tplg_fn, b8, "DEF_MFCC_PRIV", ...
+	       sof_tplg_write(tplg_fn, b8, "DEF_MFCC_PRIV", ...
 			      "Exported with script setup_mfcc.m", ...
 			      "cd src/audio/mfcc/tune; octave setup_mfcc.m");
        case 2
-	       sof_tplg2_write(cfg.tplg_fn, b8, "mfcc_config", ...
+	       sof_tplg2_write(tplg_fn, b8, "mfcc_config", ...
 			       "Exported MFCC configuration", ...
 			       "cd src/audio/mfcc/tune; octave setup_mfcc.m");
        otherwise
-	       error("Illegal cfg.tplg_ver, use 1 for topology v1 or 2 topology v2.");
+	       error("Illegal tplg_ver, use 1 for topology v1 or 2 topology v2.");
 end
 
-rmpath([cfg.tools 'tune/common']);
+rmpath([gen_cfg.tools_path 'tune/common']);
 
 end
 
@@ -154,6 +204,30 @@ function n = get_window(cfg)
 			n = 4;
 		otherwise
 			error('Unknown window type');
+	end
+end
+
+function n = get_mel_log_value(mel_log)
+	switch lower(mel_log)
+		case 'log'
+			n = 0;
+		case 'log10'
+			n = 1;
+		case 'db'
+			n = 2;
+		otherwise
+			error('Unknown mel_log type');
+	end
+end
+
+function n = get_norm_value(norm)
+	switch lower(norm)
+		case 'none'
+			n = 0;
+		case 'slaney'
+			n = 1;
+		otherwise
+			error('Unknown norm type');
 	end
 end
 
