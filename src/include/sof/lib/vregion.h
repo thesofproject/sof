@@ -7,6 +7,8 @@
 
 #include <stddef.h>
 
+struct shell;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -123,6 +125,13 @@ void vregion_info(struct vregion *vr);
  */
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
+/**
+ * @brief Dump all virtual regions info
+ *
+ * @param[in] sh Shell context to print to.
+ */
+void vregion_info_all(const struct shell *sh);
+
 #else /* CONFIG_SOF_VREGIONS */
 
 #include <rtos/alloc.h>
@@ -176,6 +185,7 @@ static inline void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t 
 	if (size)
 		*size = 0;
 }
+static inline void vregion_info_all(const struct shell *sh) {}
 
 #endif /* CONFIG_SOF_VREGIONS */
 

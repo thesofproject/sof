@@ -31,6 +31,15 @@ void *vpage_alloc(unsigned int pages);
  */
 void vpage_free(void *ptr);
 
+struct shell;
+
+/**
+ * @brief Dump virtual page allocator status
+ *
+ * @param[in] sh Shell context to print to.
+ */
+void vpage_info(const struct shell *sh);
+
 #ifdef __cplusplus
 }
 #endif
