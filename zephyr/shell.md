@@ -76,8 +76,8 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 | Power management | `pm_state`, `pm_force <state>`, `pg_status`, `idle_stats` | TODO |
 | Cache | `dcache_flush <addr> <size>`, `dcache_inv`, `icache_inv` | TODO |
 | Watchdog | `wdt_status`, `wdt_kick`, `wdt_disable` | TODO |
-| DAI / link control | `dai_list`, `dai_status <type> <idx>`, `dai_trigger`, `dai_loopback` | TODO |
-| DMA | `dma_list`, `dma_chan_status <dma> <chan>`, `dma_stop` | TODO |
+| **DAI / link control** | `dai_list`, `dai_status <type> <idx>`, `dai_trigger`, `dai_loopback` | **DONE (task 7)** &mdash; `dai_list` covers introspection; trigger/loopback deferred (writeable, needs careful tplg coordination). |
+| **DMA** | `dma_list`, `dma_chan_status <dma> <chan>`, `dma_stop` | **DONE (task 7)** &mdash; `dma_status` covers list+per-channel. `dma_stop` deferred (would corrupt active stream). |
 
 ### Debug
 
@@ -115,7 +115,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 4. **`log_status` / `mtrace_dump`** &mdash; DONE.
 5. **`mailbox_hex` / `dbgwin_dump`** &mdash; DONE (was originally `crash_log`/`bt`; pivoted because SOF panic.c isn't built on Zephyr and `bt` of a running CPU from itself isn't meaningful).
 6. **`perf_status`** &mdash; DONE.
-7. `dai_list` / `dma_chan_status` &mdash; link/DMA blind spot.
+7. **`dai_list` / `dma_status`** &mdash; DONE.
 8. `kctl_get/set` &mdash; today only doable via tplg/IPC.
 
 ---
@@ -349,3 +349,46 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
   one row per occupied slot.
 - Zephyr already provides `kernel cpu_load` and `kernel threads`;
   `cpu_load` was therefore not duplicated here.
+
+## Task 7 &mdash; `dai_list` / `dma_status`
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `sof dai_list` | Iterate `dai_get_device_list()` and print, per DAI, the Zephyr device name, decoded type (ssp/dmic/hda/alh/uaol/sai/esai/...), index, current channel count, sample rate, format and word size, plus per-direction fifo address, fifo depth, DMA handshake id and stream id. |
+| `sof dma_status` | List every SOF DMA controller (`dma_info_get()`), with id, channel count, busy count, caps/devs bitmasks, base address and Zephyr device name. |
+| `sof dma_status <dma>` | Walk all channels of one controller, calling `sof_dma_get_status()` on each. |
+| `sof dma_status <dma> <chan>` | Status of a single channel: busy/idle, direction, pending/free bytes, read/write positions, total_copied. |
+
+### Implementation
+
+- `dai_list` uses `dai_get_device_list()` from
+  [src/include/sof/lib/dai-zephyr.h](src/include/sof/lib/dai-zephyr.h)
+  and the Zephyr DAI API
+  (`dai_config_get()`, `dai_get_properties()`); it falls back to
+  TX-only or RX-only `config_get()` when `DAI_DIR_BOTH` is not
+  supported by a driver.
+- `dma_status` walks `sof_get()->dma_info->dma_array[]` (via
+  `dma_info_get()` from
+  [zephyr/include/sof/lib/dma.h](zephyr/include/sof/lib/dma.h))
+  and calls `sof_dma_get_status()` per channel; this re-uses the
+  same Zephyr `dma_get_status()` path the DSP itself uses, so the
+  numbers exactly match runtime audio state.
+- Two new Kconfigs (default `y`, both depend on
+  `ZEPHYR_NATIVE_DRIVERS`):
+  - `CONFIG_SOF_SHELL_DAI_LIST`
+  - `CONFIG_SOF_SHELL_DMA_STATUS`
+- Shell commands in [zephyr/sof_shell.c](zephyr/sof_shell.c).
+
+### Notes / follow-ups
+
+- Read-only on purpose. `dai_trigger`, `dai_loopback`, `dma_stop`
+  were intentionally not added in this pass &mdash; they would corrupt
+  in-flight streams and require coordination with topology / IPC
+  state machines. Pair with the existing `pipeline_state` (gated by
+  `CONFIG_SOF_SHELL_PIPELINE_OPS`) for stream control.
+- `dma_status` only iterates SOF-registered DMACs. Zephyr also
+  ships its own `dma` shell when `CONFIG_DMA_SHELL=y`, but that one
+  walks Zephyr DMA devices and exposes raw register pokes, so the
+  two are complementary.

@@ -2226,6 +2226,197 @@ __cold static int cmd_sof_perf_status(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_PERF_STATUS */
 
+#if CONFIG_SOF_SHELL_DAI_LIST || CONFIG_SOF_SHELL_DMA_STATUS
+#include <sof/lib/dai.h>
+#include <zephyr/drivers/dai.h>
+#include <zephyr/drivers/dma.h>
+#endif
+
+#if CONFIG_SOF_SHELL_DAI_LIST
+
+static const char *zephyr_dai_type_str(int t)
+{
+	switch (t) {
+	case DAI_LEGACY_I2S:	return "i2s";
+	case DAI_INTEL_SSP:	return "ssp";
+	case DAI_INTEL_DMIC:	return "dmic";
+	case DAI_INTEL_HDA:	return "hda";
+	case DAI_INTEL_ALH:	return "alh";
+	case DAI_IMX_SAI:	return "sai";
+	case DAI_IMX_ESAI:	return "esai";
+	case DAI_AMD_BT:	return "amd_bt";
+	case DAI_AMD_SP:	return "amd_sp";
+	case DAI_AMD_DMIC:	return "amd_dmic";
+	case DAI_MEDIATEK_AFE:	return "mtk_afe";
+	case DAI_INTEL_SSP_NHLT:  return "ssp_nhlt";
+	case DAI_INTEL_DMIC_NHLT: return "dmic_nhlt";
+	case DAI_INTEL_HDA_NHLT:  return "hda_nhlt";
+	case DAI_INTEL_ALH_NHLT:  return "alh_nhlt";
+	case DAI_IMX_MICFIL:	return "micfil";
+	case DAI_INTEL_UAOL:	return "uaol";
+	case DAI_AMD_SDW:	return "amd_sdw";
+	default:		return "?";
+	}
+}
+
+__cold static int cmd_sof_dai_list(const struct shell *sh,
+				   size_t argc, char *argv[])
+{
+	const struct device **list;
+	size_t count = 0;
+	int i;
+
+	list = dai_get_device_list(&count);
+	if (!list || !count) {
+		shell_print(sh, "No DAIs registered");
+		return 0;
+	}
+
+	shell_print(sh, "%zu DAI(s) registered:", count);
+	shell_print(sh, "  idx  name                       type        index  channels  rate     fmt    word");
+	for (i = 0; i < count; i++) {
+		const struct device *dev = list[i];
+		struct dai_config cfg = {0};
+		const struct dai_properties *props;
+
+		if (dai_config_get(dev, &cfg, DAI_DIR_BOTH)) {
+			/* try TX-only then RX-only */
+			if (dai_config_get(dev, &cfg, DAI_DIR_TX) &&
+			    dai_config_get(dev, &cfg, DAI_DIR_RX)) {
+				shell_print(sh, "  %3d  %-26s  (config_get failed)",
+					    i, dev->name ? dev->name : "?");
+				continue;
+			}
+		}
+
+		shell_print(sh,
+			    "  %3d  %-26s  %-10s  %5u  %8u  %7u  0x%04x %4u",
+			    i, dev->name ? dev->name : "?",
+			    zephyr_dai_type_str(cfg.type), cfg.dai_index,
+			    cfg.channels, cfg.rate, cfg.format, cfg.word_size);
+
+		props = dai_get_properties(dev, DAI_DIR_TX, 0);
+		if (props)
+			shell_print(sh,
+				    "        TX: fifo 0x%08x depth %u hs %u stream %d",
+				    props->fifo_address, props->fifo_depth,
+				    props->dma_hs_id, props->stream_id);
+		props = dai_get_properties(dev, DAI_DIR_RX, 0);
+		if (props)
+			shell_print(sh,
+				    "        RX: fifo 0x%08x depth %u hs %u stream %d",
+				    props->fifo_address, props->fifo_depth,
+				    props->dma_hs_id, props->stream_id);
+	}
+
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_DAI_LIST */
+
+#if CONFIG_SOF_SHELL_DMA_STATUS
+
+static const char *dma_dir_str(enum dma_channel_direction d)
+{
+	switch (d) {
+	case MEMORY_TO_MEMORY:	return "M2M";
+	case MEMORY_TO_PERIPHERAL: return "M2P";
+	case PERIPHERAL_TO_MEMORY: return "P2M";
+	case PERIPHERAL_TO_PERIPHERAL: return "P2P";
+	case HOST_TO_MEMORY:	return "H2M";
+	case MEMORY_TO_HOST:	return "M2H";
+	default:		return "?";
+	}
+}
+
+static void dma_print_one(const struct shell *sh, struct sof_dma *dma,
+			  int dma_idx, int chan)
+{
+	struct dma_status st = {0};
+	int ret = sof_dma_get_status(dma, chan, &st);
+
+	if (ret) {
+		shell_print(sh, "  dma %d ch %d: get_status -> %d",
+			    dma_idx, chan, ret);
+		return;
+	}
+	shell_print(sh,
+		    "  dma %d ch %d: %s dir=%s pending=%u free=%u rd=%u wr=%u total=%llu",
+		    dma_idx, chan, st.busy ? "BUSY" : "idle",
+		    dma_dir_str(st.dir), st.pending_length, st.free,
+		    st.read_position, st.write_position,
+		    (unsigned long long)st.total_copied);
+}
+
+__cold static int cmd_sof_dma_status(const struct shell *sh,
+				     size_t argc, char *argv[])
+{
+	const struct dma_info *info = dma_info_get();
+	struct sof_dma *dma;
+	int i, ch;
+
+	if (!info || !info->num_dmas) {
+		shell_print(sh, "No DMA controllers registered");
+		return 0;
+	}
+
+	if (argc == 1) {
+		shell_print(sh, "%zu DMA controller(s):", info->num_dmas);
+		shell_print(sh, "  idx  id  channels  busy  caps     devs     base");
+		for (i = 0; i < info->num_dmas; i++) {
+			dma = &info->dma_array[i];
+			shell_print(sh,
+				    "  %3d  %2u  %8u  %4u  0x%04x   0x%04x   0x%08x  (%s)",
+				    i, dma->plat_data.id,
+				    dma->plat_data.channels,
+				    (unsigned int)atomic_get(&dma->num_channels_busy),
+				    dma->plat_data.caps,
+				    dma->plat_data.devs,
+				    dma->plat_data.base,
+				    dma->z_dev && dma->z_dev->name ?
+					dma->z_dev->name : "?");
+		}
+		shell_print(sh,
+			    "Usage: sof dma_status <dma_idx> [chan]  (omit chan to walk all)");
+		return 0;
+	}
+
+	{
+		char *end = NULL;
+		long idx = strtol(argv[1], &end, 0);
+
+		if (end == argv[1] || idx < 0 || idx >= (long)info->num_dmas) {
+			shell_print(sh, "Bad DMA index (0..%zu)",
+				    info->num_dmas - 1);
+			return -EINVAL;
+		}
+		dma = &info->dma_array[idx];
+
+		if (argc > 2) {
+			ch = strtol(argv[2], &end, 0);
+			if (end == argv[2] || ch < 0 ||
+			    ch >= (int)dma->plat_data.channels) {
+				shell_print(sh, "Bad channel (0..%u)",
+					    dma->plat_data.channels - 1);
+				return -EINVAL;
+			}
+			dma_print_one(sh, dma, (int)idx, ch);
+			return 0;
+		}
+
+		shell_print(sh, "DMA %ld (%s): %u channels",
+			    idx, dma->z_dev && dma->z_dev->name ?
+				 dma->z_dev->name : "?",
+			    dma->plat_data.channels);
+		for (ch = 0; ch < (int)dma->plat_data.channels; ch++)
+			dma_print_one(sh, dma, (int)idx, ch);
+	}
+
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_DMA_STATUS */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_vpage_commands,
 	SHELL_CMD(info, NULL,
 		  "Print virtual page allocator status\n",
@@ -2523,6 +2714,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_perf_commands,
 );
 #endif
 
+#if CONFIG_SOF_SHELL_DMA_STATUS
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_dma_commands,
+	SHELL_CMD_ARG(status, NULL,
+		  "List DMA controllers, or per-channel status: "
+		  "[dma_idx] [chan]\n",
+		  cmd_sof_dma_status, 1, 2),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(test, &sof_test_commands,
 		  "Test commands: ll delay\n",
@@ -2639,6 +2840,19 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 #if CONFIG_SOF_SHELL_PERF_STATUS
 	SHELL_CMD(perf, &sof_perf_commands,
 		  "Perf commands: status\n",
+		  NULL),
+#endif
+
+#if CONFIG_SOF_SHELL_DAI_LIST
+	SHELL_CMD(dai_list, NULL,
+		  "List all registered DAIs (name, type, channels, rate, "
+		  "fifo, hs)\n",
+		  cmd_sof_dai_list),
+#endif
+
+#if CONFIG_SOF_SHELL_DMA_STATUS
+	SHELL_CMD(dma, &sof_dma_commands,
+		  "DMA commands: status\n",
 		  NULL),
 #endif
 

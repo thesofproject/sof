@@ -561,6 +561,42 @@ config SOF_SHELL_PERF_STATUS
 	  reset_performance_counters(); 'stop'/'pause' just update the
 	  state) - useful for taking before/after snapshots without IPC.
 
+config SOF_SHELL_DAI_LIST
+	bool "DAI introspection command"
+	default y
+	depends on SHELL && ZEPHYR_NATIVE_DRIVERS
+	help
+	  Enables 'sof dai_list' which iterates dai_get_device_list()
+	  and prints, per DAI, the Zephyr device name, decoded type
+	  (ssp/dmic/hda/alh/uaol/sai/esai/...), index, current channel
+	  count, sample rate, format and word size from
+	  dai_config_get(), plus per-direction fifo address, fifo depth,
+	  DMA handshake id and stream id from dai_get_properties().
+
+	  Useful for verifying which DAIs were registered for a topology
+	  without going through host-side debug.
+
+config SOF_SHELL_DMA_STATUS
+	bool "DMA controller / channel status command"
+	default y
+	depends on SHELL && ZEPHYR_NATIVE_DRIVERS
+	help
+	  Enables 'sof dma_status [dma_idx [chan]]':
+
+	    'sof dma_status'                  - list every DMA controller
+	                                        registered with SOF (id,
+	                                        channel count, busy count,
+	                                        caps/devs bitmasks, base,
+	                                        Zephyr device name).
+	    'sof dma_status <dma_idx>'        - per-channel status for one
+	                                        controller.
+	    'sof dma_status <dma_idx> <chan>' - status for one channel.
+
+	  Per-channel status comes from sof_dma_get_status() (Zephyr
+	  dma_get_status()) and shows busy/idle, direction, pending and
+	  free bytes, read/write positions and total_copied. Pairs well
+	  with 'sof dai_list' for diagnosing P2M/M2P paths.
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS
