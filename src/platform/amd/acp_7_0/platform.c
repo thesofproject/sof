@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2024 AMD. All rights reserved.
+//Copyright(c) 2024, 2026 AMD. All rights reserved.
 //
 //Author:	SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+//          Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
+//          Sivasubramanian <sravisar@amd.com>
 
 #include <sof/compiler_info.h>
 #include <sof/debug/debug.h>
@@ -33,7 +35,12 @@
 #include <sof_versions.h>
 #include <errno.h>
 #include <stdint.h>
-#include <platform/chip_offset_byte.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(platform_file, CONFIG_SOF_LOG_LEVEL);
+
+#define INTERRUPT_DISABLE 0
+extern void acp_dsp_to_host_intr_trig(void);
 
 struct sof;
 static const struct sof_ipc_fw_ready ready
@@ -48,11 +55,14 @@ static const struct sof_ipc_fw_ready ready
 		.micro = SOF_MICRO,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
-#ifdef DEBUG_BUILD
-		/* only added in debug for reproducibility in releases */
-		.build = SOF_BUILD,
+#if BLD_COUNTERS
+		.build = SOF_BUILD, /* See version-build-counter.cmake */
 		.date = __DATE__,
 		.time = __TIME__,
+#else
+		.build = -1,
+		.date = "dtermin.\0",
+		.time = "fwready.\0",
 #endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
@@ -126,62 +136,34 @@ const struct ext_man_windows xsram_window
 	},
 };
 
-static SHARED_DATA struct timer timer = {
-	.id = TIMER0,
-	.irq = IRQ_NUM_TIMER0,
-};
-
 int platform_init(struct sof *sof)
 {
 	int ret;
 
-	sof->platform_timer = &timer;
-	sof->cpu_timers = &timer;
 	/* to view system memory */
-	interrupt_init(sof);
 	platform_interrupt_init();
 	platform_clock_init(sof);
 	scheduler_init_edf();
 	/* init low latency domains and schedulers */
 	/* CONFIG_SYSTICK_PERIOD set as PLATFORM_DEFAULT_CLOCK */
-	sof->platform_timer_domain =
-		timer_domain_init(sof->platform_timer, PLATFORM_DEFAULT_CLOCK);
-	scheduler_init_ll(sof->platform_timer_domain);
-	platform_timer_start(sof->platform_timer);
+	sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
+	zephyr_ll_scheduler_init(sof->platform_timer_domain);
+
 	/*CONFIG_SYSTICK_PERIOD hardcoded as 200000*/
 	sa_init(sof, 200000);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 	/* init DMA */
-	ret = acp_dma_init(sof);
+	ret = dmac_init(sof);
 	if (ret < 0)
 		return -ENODEV;
-	/* Init DMA platform domain */
-	sof->platform_dma_domain =
-		dma_multi_chan_domain_init(&sof->dma_info->dma_array[0],
-					   sizeof(sof->dma_info->dma_array),
-					   PLATFORM_DEFAULT_CLOCK, true);
-	sof->platform_dma_domain->full_sync = true;
-	scheduler_init_ll(sof->platform_dma_domain);
+
 	/* initialize the host IPC mechanisms */
 	ipc_init(sof);
 	/* initialize the DAI mechanisms */
 	ret = dai_init(sof);
 	if (ret < 0)
 		return -ENODEV;
-#if CONFIG_TRACE
-	/* Initialize DMA for Trace*/
-	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
-	sof->dmat->config.elem_array.elems =
-		rzalloc(SOF_MEM_FLAG_KERNEL,
-			sizeof(struct dma_sg_elem) * 1);
-	sof->dmat->config.elem_array.count = 1;
-	sof->dmat->config.elem_array.elems->dest = 0x03800000;
-	sof->dmat->config.elem_array.elems->size = 65536;
-	sof->dmat->config.scatter = 0;
-	dma_trace_init_complete(sof->dmat);
-#endif
-	/* show heap status */
-	heap_trace_all(1);
+
 	return 0;
 }
 
@@ -208,9 +190,4 @@ int platform_boot_complete(uint32_t boot_message)
 int platform_context_save(struct sof *sof)
 {
 	return 0;
-}
-
-void platform_wait_for_interrupt(int level)
-{
-	arch_wait_for_interrupt(level);
 }

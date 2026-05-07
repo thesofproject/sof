@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-//Copyright(c) 2023 AMD. All rights reserved.
+//Copyright(c) 2023, 2026 AMD. All rights reserved.
 //
 //Author:       Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
 //              Maruthi Machani <maruthi.machani@amd.com>
+//              Sivasubramanian <sravisar@amd.com>
 
 #include <sof/drivers/acp_dai_dma.h>
 #include <sof/lib/uuid.h>
@@ -95,7 +96,7 @@ static int swaudiodai_get_hw_params(struct dai *dai,
 }
 
 const struct dai_driver acp_swaudiodai_driver = {
-	.type = SOF_DAI_AMD_SW_AUDIO,
+	.type = SOF_DAI_AMD_SDW,
 	.uid = SOF_UUID(swaudiodai_uuid),
 	.tctx = &swaudiodai_tr,
 	.dma_dev = DMA_DEV_SW,

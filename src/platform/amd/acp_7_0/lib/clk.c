@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2024 AMD.All rights reserved.
+// Copyright(c) 2024, 2026 AMD.All rights reserved.
 //
 // Author:	SaiSurya, Ch <saisurya.chakkaveeravenkatanaga@amd.com>
+//          Basavaraj Hiregoudar <basavaraj.hiregoudar@amd.com>
+//          Sivasubramanian <sravisar@amd.com>
 //
 
 #include <sof/common.h>
@@ -36,8 +38,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <platform/fw_scratch_mem.h>
-#include <platform/chip_registers.h>
 
+LOG_MODULE_REGISTER(acp_clk, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(acp_clk);
 DECLARE_TR_CTX(acp_clk_tr, SOF_UUID(acp_clk_uuid), LOG_LEVEL_INFO);
 
