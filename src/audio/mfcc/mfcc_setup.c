@@ -222,7 +222,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	ret = mfcc_get_window(state, config->window);
 	if (ret < 0) {
 		comp_err(dev, "Failed Window function");
-		goto free_fft_out;
+		goto free_fft_plan;
 	}
 
 	/* Setup Mel auditory filterbank. FFT input and output buffers are used
@@ -244,7 +244,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	ret = mod_psy_get_mel_filterbank(mod, fb);
 	if (ret < 0) {
 		comp_err(dev, "Failed Mel filterbank");
-		goto free_fft_out;
+		goto free_fft_plan;
 	}
 
 	/* Setup DCT and cepstral lifter only when num_ceps > 0.
@@ -310,7 +310,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		comp_err(dev, "num_mel_bins %d exceeds mel_log_32 scratch space %d",
 			 config->num_mel_bins, mel_log_32_space);
 		ret = -EINVAL;
-		goto free_dct_matrix;
+		goto free_lifter;
 	}
 
 	state->mel_spectra = (struct mat_matrix_16b *)&fft->fft_out[0];
@@ -339,7 +339,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		comp_err(dev, "Output %d int16 per hop exceeds sink capacity %d (hop %d x ch %d)",
 			 out_per_hop, sink_per_hop, fft->fft_hop_size, channels);
 		ret = -EINVAL;
-		goto free_dct_matrix;
+		goto free_lifter;
 	}
 
 	/* Set initial state for STFT */
@@ -353,20 +353,26 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	comp_dbg(dev, "done");
 	return 0;
 
+free_lifter:
+	mod_free(mod, state->lifter.matrix);
+
 free_dct_matrix:
-	rfree(state->dct.matrix);
+	mod_free(mod, state->dct.matrix);
 
 free_melfb_data:
-	rfree(fb->data);
+	mod_free(mod, fb->data);
+
+free_fft_plan:
+	mod_fft_plan_free(mod, fft->fft_plan);
 
 free_fft_out:
-	rfree(fft->fft_out);
+	mod_free(mod, fft->fft_out);
 
 free_fft_buf:
-	rfree(fft->fft_buf);
+	mod_free(mod, fft->fft_buf);
 
 free_buffers:
-	rfree(state->buffers);
+	mod_free(mod, state->buffers);
 
 exit:
 	return ret;
