@@ -7,50 +7,49 @@ set -e
 RAW_INPUT_S16=in_s16.raw
 RAW_INPUT_S24=in_s24.raw
 RAW_INPUT_S32=in_s32.raw
-RAW_OUTPUT_S16=mfcc_s16.raw
-RAW_OUTPUT_S24=mfcc_s24.raw
-RAW_OUTPUT_S32=mfcc_s32.raw
 
 VALGRIND="valgrind --leak-check=full"
+#VALGRIND=""
 TESTBENCH=$SOF_WORKSPACE/sof/tools/testbench/build_testbench/install/bin/sof-testbench4
-TOPOLOGY_S16=$SOF_WORKSPACE/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfcc16.tplg
-TOPOLOGY_S24=$SOF_WORKSPACE/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfcc24.tplg
-TOPOLOGY_S32=$SOF_WORKSPACE/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfcc32.tplg
-OPT_S16="-r 16000 -c 2 -b S16_LE -p 3,4 -t $TOPOLOGY_S16"
-OPT_S24="-r 16000 -c 2 -b S24_LE -p 3,4 -t $TOPOLOGY_S24"
-OPT_S32="-r 16000 -c 2 -b S32_LE -p 3,4 -t $TOPOLOGY_S32"
+TESTBENCH_RUN="$VALGRIND $TESTBENCH"
 
-# Convert input audio file raw 16 kHz 2 channel 16 bit
-sox -R --encoding signed-integer "$1" -L -r 16000 -c 2 -b 16 "$RAW_INPUT_S16"
-sox -R --no-dither --encoding signed-integer -L -r 16000 -c 2 -b 16 "$RAW_INPUT_S16" -b 32 "$RAW_INPUT_S32"
-sox -R --no-dither --encoding signed-integer -L -r 16000 -c 2 -b 16 "$RAW_INPUT_S16" -b 32 "$RAW_INPUT_S24" vol 0.003906250000
+convert_input() {
+	sox -R --encoding signed-integer "$1" -L -r 16000 -c 2 -b 16 "$RAW_INPUT_S16"
+	sox -R --no-dither --encoding signed-integer -L -r 16000 -c 2 -b 16 \
+		"$RAW_INPUT_S16" -b 32 "$RAW_INPUT_S32"
+	sox -R --no-dither --encoding signed-integer -L -r 16000 -c 2 -b 16 \
+		"$RAW_INPUT_S16" -b 32 "$RAW_INPUT_S24" vol 0.003906250000
+}
 
-# Run testbench
-$VALGRIND $TESTBENCH $OPT_S16 -i "$RAW_INPUT_S16" -o "$RAW_OUTPUT_S16"
-$VALGRIND $TESTBENCH $OPT_S24 -i "$RAW_INPUT_S24" -o "$RAW_OUTPUT_S24"
-$VALGRIND $TESTBENCH $OPT_S32 -i "$RAW_INPUT_S32" -o "$RAW_OUTPUT_S32"
+run_testbench() {
+	local tplg_base="$1"
+	local out_s16="$2"
+	local out_s24="$3"
+	local out_s32="$4"
+	local label="$5"
+	local tplg_s16="${SOF_WORKSPACE}/sof/tools/build_tools/topology/topology2/development/${tplg_base}16.tplg"
+	local tplg_s24="${SOF_WORKSPACE}/sof/tools/build_tools/topology/topology2/development/${tplg_base}24.tplg"
+	local tplg_s32="${SOF_WORKSPACE}/sof/tools/build_tools/topology/topology2/development/${tplg_base}32.tplg"
 
-echo ----------------------------------------------------------------------------------
-echo The MFCC data was output to file $RAW_OUTPUT_S16, $RAW_OUTPUT_S24, $RAW_OUTPUT_S32
-echo ----------------------------------------------------------------------------------
+	$TESTBENCH_RUN -r 16000 -c 2 -b S16_LE -p 3,4 -t "$tplg_s16" -i "$RAW_INPUT_S16" -o "$out_s16"
+	$TESTBENCH_RUN -r 16000 -c 2 -b S24_LE -p 3,4 -t "$tplg_s24" -i "$RAW_INPUT_S24" -o "$out_s24"
+	$TESTBENCH_RUN -r 16000 -c 2 -b S32_LE -p 3,4 -t "$tplg_s32" -i "$RAW_INPUT_S32" -o "$out_s32"
 
-RAW_OUTPUT_S16=mel_s16.raw
-RAW_OUTPUT_S24=mel_s24.raw
-RAW_OUTPUT_S32=mel_s32.raw
+	echo ----------------------------------------------------------------------------------
+	echo "The ${label} data was output to file ${out_s16}, ${out_s24}, ${out_s32}"
+	echo ----------------------------------------------------------------------------------
+}
 
-TESTBENCH=$SOF_WORKSPACE/sof/tools/testbench/build_testbench/install/bin/sof-testbench4
-TOPOLOGY_S16=$SOF_WORKSPACE/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfccmel16.tplg
-TOPOLOGY_S24=$SOF_WORKSPACE/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfccmel24.tplg
-TOPOLOGY_S32=$SOF_WORKSPACE/sof/tools/build_tools/topology/topology2/development/sof-hda-benchmark-mfccmel32.tplg
-OPT_S16="-r 16000 -c 2 -b S16_LE -p 3,4 -t $TOPOLOGY_S16"
-OPT_S24="-r 16000 -c 2 -b S24_LE -p 3,4 -t $TOPOLOGY_S24"
-OPT_S32="-r 16000 -c 2 -b S32_LE -p 3,4 -t $TOPOLOGY_S32"
+main() {
+	convert_input "$1"
+	run_testbench "sof-hda-benchmark-mfcc" mfcc_s16.raw mfcc_s24.raw mfcc_s32.raw "MFCC"
+	run_testbench "sof-hda-benchmark-mfccmel" mel_s16.raw mel_s24.raw mel_s32.raw "MFCC Mel"
 
-# Run testbench
-$VALGRIND $TESTBENCH $OPT_S16 -i "$RAW_INPUT_S16" -o "$RAW_OUTPUT_S16"
-$VALGRIND $TESTBENCH $OPT_S24 -i "$RAW_INPUT_S24" -o "$RAW_OUTPUT_S24"
-$VALGRIND $TESTBENCH $OPT_S32 -i "$RAW_INPUT_S32" -o "$RAW_OUTPUT_S32"
+	if [ -n "$XTENSA_PATH" ]; then
+		TESTBENCH_RUN="$XTENSA_PATH/xt-run $SOF_WORKSPACE/sof/tools/testbench/build_xt_testbench/sof-testbench4"
+		run_testbench "sof-hda-benchmark-mfcc" xt_mfcc_s16.raw xt_mfcc_s24.raw xt_mfcc_s32.raw "Xtensa MFCC"
+		run_testbench "sof-hda-benchmark-mfccmel" xt_mel_s16.raw xt_mel_s24.raw xt_mel_s32.raw "Xtensa MFCC Mel"
+	fi
+}
 
-echo ----------------------------------------------------------------------------------
-echo The MFCC Mel data was output to file $RAW_OUTPUT_S16, $RAW_OUTPUT_S24, $RAW_OUTPUT_S32
-echo ----------------------------------------------------------------------------------
+main "$@"

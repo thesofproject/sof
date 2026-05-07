@@ -97,7 +97,7 @@ export_xtensa_setup()
     cat <<EOFSETUP > "$export_script"
 export XTENSA_TOOLS_ROOT=$XTENSA_TOOLS_ROOT
 export XTENSA_CORE=$XTENSA_CORE
-XTENSA_PATH=$tools_bin
+export XTENSA_PATH=$tools_bin
 EOFSETUP
 }
 
