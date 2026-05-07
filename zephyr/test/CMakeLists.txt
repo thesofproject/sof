@@ -26,3 +26,20 @@ endif()
 if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_LL)
   zephyr_library_sources(userspace/test_ll_task.c)
 endif()
+
+if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_ZTEST)
+  set(MATH_ZTEST_SOURCES
+    ../../test/ztest/unit/math/basic/arithmetic/test_crc32_ztest.c
+    ../../test/ztest/unit/math/basic/arithmetic/test_find_equal_int16_ztest.c
+    ../../test/ztest/unit/math/basic/arithmetic/test_find_max_abs_int32_ztest.c
+    ../../test/ztest/unit/math/basic/arithmetic/test_find_min_int16_ztest.c
+    ../../test/ztest/unit/math/basic/arithmetic/test_gcd_ztest.c
+    ../../test/ztest/unit/math/basic/arithmetic/test_norm_int32_ztest.c
+  )
+
+  zephyr_library_sources(${MATH_ZTEST_SOURCES})
+
+  set_source_files_properties(${MATH_ZTEST_SOURCES}
+    PROPERTIES COMPILE_DEFINITIONS "CONFIG_NUMBERS_VECTOR_FIND=1;CONFIG_NUMBERS_NORM=1;UNIT_TEST=1"
+  )
+endif()

@@ -11,6 +11,8 @@
 #include <nsi_cpu_if.h>
 #include <nsi_main_semipublic.h>
 
+#include <platform/posix_fuzz.h>
+
 const uint8_t *posix_fuzz_buf;
 size_t posix_fuzz_sz;
 
