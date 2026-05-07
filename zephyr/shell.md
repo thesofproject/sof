@@ -85,7 +85,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 |---|---|---|
 | **IPC counters / last message** | `ipc_stats`, `ipc_last` | **DONE (task 1)** |
 | IPC inject | `ipc_inject <hex>`, `ipc_queue` | TODO |
-| Audio buffers | `buffer_list`, `buffer_info <id>` | TODO |
+| **Audio buffers** | `buffer_list`, `buffer_info <id>` | **DONE (task 2)** |
 | Scheduler | `sched_tasks`, `sched_load`, `task_info <task>` | TODO |
 | Logging / trace | `log_level <component> <lvl>`, `log_filter`, `mtrace_dump`, `trace_stats` | TODO |
 | Telemetry / perf | `perf_status`, `perf_reset`, `cpu_load` | TODO |
@@ -110,7 +110,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 ### Quick-win order
 
 1. **`ipc_stats` / `ipc_last`** &mdash; DONE.
-2. `buffer_list` / `buffer_info` &mdash; "where is audio stuck?".
+2. **`buffer_list` / `buffer_info`** &mdash; DONE.
 3. `sched_tasks` / `sched_load` &mdash; pairs with `test_inject_sched_gap`.
 4. `log_level` / `mtrace_dump` &mdash; runtime log tuning without rebuild.
 5. `crash_log` / `bt` &mdash; pair with the `crash-*` artifacts in the tree.
@@ -154,3 +154,36 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 - IPC3 dispatch errors are not yet routed through `ipc_stats_inc_rx_error()`.
 - A future task can add a small ring buffer of last-N IPC headers and
   per-target counters (FW_GEN_MSG vs MODULE_MSG, plus per opcode).
+
+## Task 2 &mdash; `buffer_list` / `buffer_info`
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `sof buffer_list` | List every audio buffer in the pipeline with source/sink component IDs, size, avail, free, channels, rate and frame format. |
+| `sof buffer_info <buffer_id>` | Detailed info for a single buffer: source/sink comps, core, flags, size/avail/free bytes, rptr, wptr, channels, rate, frame format. |
+
+### Implementation
+
+- Buffers are enumerated by walking `ipc->comp_list`; for each
+  `COMP_TYPE_COMPONENT` we walk its `bsink_list` via
+  `comp_dev_get_first_data_consumer()` /
+  `comp_dev_get_next_data_consumer()`.  Each buffer therefore appears
+  exactly once (it is the sink of exactly one source component) and the
+  same enumeration works on both IPC3 and IPC4.
+- `buf_get_id()` from [src/include/sof/audio/buffer.h](src/include/sof/audio/buffer.h)
+  is used as the buffer identifier.
+- Stream metrics use the existing `audio_stream_get_*()` accessors from
+  [src/include/sof/audio/audio_stream.h](src/include/sof/audio/audio_stream.h).
+- New Kconfig `CONFIG_SOF_SHELL_BUFFER_INFO` (default `y`).
+- Shell commands in [zephyr/sof_shell.c](zephyr/sof_shell.c).
+
+### Notes / follow-ups
+
+- Today only fill-level snapshots are reported; high-water mark and
+  underrun/overrun counters are not tracked in `comp_buffer` and would
+  require new instrumentation.
+- `buffer_info` does not yet decode `flags` symbolically.
+- A future enhancement could add `--core <n>` filtering and per-buffer
+  topology graph output.

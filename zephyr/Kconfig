@@ -452,6 +452,21 @@ config SOF_SHELL_LLEXT_PURGE
 	  into SRAM (i.e. an active pipeline is using it) and returns -EBUSY.
 	  Tear down all pipelines that reference the library before purging.
 
+config SOF_SHELL_BUFFER_INFO
+	bool "Audio buffer list/info commands"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof buffer_list' and 'sof buffer_info <id>' shell
+	  commands.  buffer_list walks all components and prints every
+	  downstream comp_buffer with its source/sink component IDs, current
+	  fill level (size/avail/free), channel count, sample rate and
+	  frame format.  buffer_info dumps the same fields plus rptr/wptr,
+	  flags and core for a single buffer selected by ID.
+
+	  Useful for diagnosing where audio is stuck in a pipeline (xrun,
+	  underrun, mis-bind) without rebuilding firmware.
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS
