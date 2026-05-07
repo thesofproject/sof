@@ -7,6 +7,7 @@
 
 #include <rtos/sof.h> /* sof_get() */
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/schedule.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>
@@ -1717,6 +1718,125 @@ __cold static int cmd_sof_buffer_info(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_BUFFER_INFO */
 
+#if CONFIG_SOF_SHELL_SCHED_INFO
+
+static const char *sched_type_str(int type)
+{
+	switch (type) {
+	case SOF_SCHEDULE_EDF:		return "edf";
+	case SOF_SCHEDULE_LL_TIMER:	return "ll_timer";
+	case SOF_SCHEDULE_LL_DMA:	return "ll_dma";
+	case SOF_SCHEDULE_DP:		return "dp";
+	case SOF_SCHEDULE_TWB:		return "twb";
+	default:			return "?";
+	}
+}
+
+static const char *sched_state_str(enum task_state s)
+{
+	switch (s) {
+	case SOF_TASK_STATE_INIT:	return "init";
+	case SOF_TASK_STATE_QUEUED:	return "queued";
+	case SOF_TASK_STATE_PENDING:	return "pending";
+	case SOF_TASK_STATE_RUNNING:	return "running";
+	case SOF_TASK_STATE_PREEMPTED:	return "preempt";
+	case SOF_TASK_STATE_COMPLETED:	return "done";
+	case SOF_TASK_STATE_FREE:	return "free";
+	case SOF_TASK_STATE_CANCEL:	return "cancel";
+	case SOF_TASK_STATE_RESCHEDULE:	return "resched";
+	default:			return "?";
+	}
+}
+
+struct sched_walk_ctx {
+	const struct shell *sh;
+	int sch_type;
+	uint32_t total_sum;
+	uint32_t total_cnt;
+	uint32_t total_max;
+	int task_count;
+	bool show_load;
+};
+
+static void sched_list_cb(struct task *task, void *_ctx)
+{
+	struct sched_walk_ctx *c = _ctx;
+	uint32_t avg = task->cycles_cnt ? task->cycles_sum / task->cycles_cnt : 0;
+
+	if (c->show_load) {
+		shell_print(c->sh,
+			    "  %-9s core %u  prio %3u  state %-7s"
+			    "  count %u  avg %u  max %u  sum %u cyc",
+			    sched_type_str(c->sch_type), task->core,
+			    task->priority, sched_state_str(task->state),
+			    task->cycles_cnt, avg, task->cycles_max,
+			    task->cycles_sum);
+	} else {
+		shell_print(c->sh,
+			    "  %-9s core %u  prio %3u  state %-7s"
+			    "  flags 0x%04x  uid %p  data %p",
+			    sched_type_str(c->sch_type), task->core,
+			    task->priority, sched_state_str(task->state),
+			    task->flags, (const void *)task->uid, task->data);
+	}
+
+	c->total_sum += task->cycles_sum;
+	c->total_cnt += task->cycles_cnt;
+	if (task->cycles_max > c->total_max)
+		c->total_max = task->cycles_max;
+	c->task_count++;
+}
+
+static int sched_walk(const struct shell *sh, bool show_load)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct sched_walk_ctx ctx = { .sh = sh, .show_load = show_load };
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	if (!schedulers) {
+		shell_print(sh, "No schedulers registered");
+		return 0;
+	}
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (!sch->ops->scheduler_dump_tasks)
+			continue;
+		ctx.sch_type = sch->type;
+		sch->ops->scheduler_dump_tasks(sch->data, sched_list_cb, &ctx);
+	}
+
+	if (!ctx.task_count)
+		shell_print(sh, "  (no tasks)");
+
+	if (show_load) {
+		uint32_t avg = ctx.total_cnt ? ctx.total_sum / ctx.total_cnt : 0;
+
+		shell_print(sh,
+			    "Total: %d tasks  count %u  avg %u  peak max %u cyc",
+			    ctx.task_count, ctx.total_cnt, avg, ctx.total_max);
+	}
+
+	return 0;
+}
+
+__cold static int cmd_sof_sched_tasks(const struct shell *sh,
+				      size_t argc, char *argv[])
+{
+	shell_print(sh, "Active scheduler tasks:");
+	return sched_walk(sh, false);
+}
+
+__cold static int cmd_sof_sched_load(const struct shell *sh,
+				     size_t argc, char *argv[])
+{
+	shell_print(sh, "Scheduler task cycle counters:");
+	return sched_walk(sh, true);
+}
+
+#endif /* CONFIG_SOF_SHELL_SCHED_INFO */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_vpage_commands,
 	SHELL_CMD(info, NULL,
 		  "Print virtual page allocator status\n",
@@ -1790,10 +1910,17 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_llext_commands,
 	SHELL_SUBCMD_SET_END
 );
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_test_commands,
-	SHELL_CMD(ll_delay, NULL,
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_test_ll_commands,
+	SHELL_CMD(delay, NULL,
 		  "Inject a scheduling gap to stress the LL timer domain\n",
 		  cmd_sof_test_inject_sched_gap),
+	SHELL_SUBCMD_SET_END
+);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_test_commands,
+	SHELL_CMD(ll, &sof_test_ll_commands,
+		  "LL timer domain test commands\n",
+		  NULL),
 	SHELL_SUBCMD_SET_END
 );
 
@@ -1949,9 +2076,21 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_buffer_commands,
 );
 #endif
 
+#if CONFIG_SOF_SHELL_SCHED_INFO
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_sched_commands,
+	SHELL_CMD(tasks, NULL,
+		  "List all scheduler tasks (type, core, prio, state)\n",
+		  cmd_sof_sched_tasks),
+	SHELL_CMD(load, NULL,
+		  "Show per-task cycle counters and totals\n",
+		  cmd_sof_sched_load),
+	SHELL_SUBCMD_SET_END
+);
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(test, &sof_test_commands,
-		  "Test commands: ll_delay\n",
+		  "Test commands: ll delay\n",
 		  NULL),
 
 #if CONFIG_SOF_SHELL_MODULE_LIST || CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_HEAP_USAGE || CONFIG_SOF_SHELL_PIPELINE_OPS
@@ -2029,6 +2168,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 #if CONFIG_SOF_SHELL_BUFFER_INFO
 	SHELL_CMD(buffer, &sof_buffer_commands,
 		  "Buffer commands: list, info\n",
+		  NULL),
+#endif
+
+#if CONFIG_SOF_SHELL_SCHED_INFO
+	SHELL_CMD(sched, &sof_sched_commands,
+		  "Scheduler commands: tasks, load\n",
 		  NULL),
 #endif
 

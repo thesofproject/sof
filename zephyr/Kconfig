@@ -467,6 +467,27 @@ config SOF_SHELL_BUFFER_INFO
 	  Useful for diagnosing where audio is stuck in a pipeline (xrun,
 	  underrun, mis-bind) without rebuilding firmware.
 
+config SOF_SHELL_SCHED_INFO
+	bool "Scheduler task list/load commands"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof sched_tasks' and 'sof sched_load' shell commands.
+
+	  sched_tasks walks every registered SOF scheduler (LL timer, LL DMA,
+	  EDF, DP, TWB) and prints each task's scheduler type, core, priority,
+	  state, flags and uid.
+
+	  sched_load prints per-task execution cycle counters (cycles_cnt,
+	  cycles_sum, cycles_max, derived average) plus aggregate totals,
+	  using the cycle counters that the schedulers already maintain in
+	  struct task.  Pairs naturally with 'sof test_inject_sched_gap' for
+	  diagnosing scheduling latency.
+
+	  Each scheduler implements scheduler_dump_tasks() which takes its
+	  own lock during the walk; schedulers without an implementation are
+	  silently skipped.
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS

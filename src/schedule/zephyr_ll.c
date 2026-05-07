@@ -511,6 +511,23 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 		       sch->n_tasks);
 }
 
+static void zephyr_ll_dump_tasks(void *data,
+				 void (*cb)(struct task *task, void *ctx),
+				 void *ctx)
+{
+	struct zephyr_ll *sch = data;
+	struct list_item *list;
+	uint32_t flags = 0;
+
+	zephyr_ll_lock(sch, &flags);
+	list_for_item(list, &sch->tasks) {
+		struct task *task = container_of(list, struct task, list);
+
+		cb(task, ctx);
+	}
+	zephyr_ll_unlock(sch, &flags);
+}
+
 static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task		= zephyr_ll_task_schedule,
 	.schedule_task_before	= zephyr_ll_task_schedule_before,
@@ -518,6 +535,7 @@ static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task_free	= zephyr_ll_task_free,
 	.schedule_task_cancel	= zephyr_ll_task_cancel,
 	.scheduler_free		= zephyr_ll_scheduler_free,
+	.scheduler_dump_tasks	= zephyr_ll_dump_tasks,
 };
 
 #if CONFIG_SOF_USERSPACE_LL

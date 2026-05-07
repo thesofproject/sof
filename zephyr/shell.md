@@ -85,8 +85,8 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 |---|---|---|
 | **IPC counters / last message** | `ipc_stats`, `ipc_last` | **DONE (task 1)** |
 | IPC inject | `ipc_inject <hex>`, `ipc_queue` | TODO |
-| **Audio buffers** | `buffer_list`, `buffer_info <id>` | **DONE (task 2)** |
-| Scheduler | `sched_tasks`, `sched_load`, `task_info <task>` | TODO |
+| Audio buffers | `buffer_list`, `buffer_info <id>` | **DONE (task 2)** |
+| **Scheduler** | `sched_tasks`, `sched_load`, `task_info <task>` | **DONE (task 3)** |
 | Logging / trace | `log_level <component> <lvl>`, `log_filter`, `mtrace_dump`, `trace_stats` | TODO |
 | Telemetry / perf | `perf_status`, `perf_reset`, `cpu_load` | TODO |
 | Notifications | `notify_subscribers`, `notify_stats` | TODO |
@@ -111,7 +111,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 
 1. **`ipc_stats` / `ipc_last`** &mdash; DONE.
 2. **`buffer_list` / `buffer_info`** &mdash; DONE.
-3. `sched_tasks` / `sched_load` &mdash; pairs with `test_inject_sched_gap`.
+3. **`sched_tasks` / `sched_load`** &mdash; DONE.
 4. `log_level` / `mtrace_dump` &mdash; runtime log tuning without rebuild.
 5. `crash_log` / `bt` &mdash; pair with the `crash-*` artifacts in the tree.
 6. `perf_status` &mdash; wraps SOF telemetry counters.
@@ -187,3 +187,37 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 - `buffer_info` does not yet decode `flags` symbolically.
 - A future enhancement could add `--core <n>` filtering and per-buffer
   topology graph output.
+
+## Task 3 &mdash; `sched_tasks` / `sched_load`
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `sof sched_tasks` | List every task across all SOF schedulers (LL timer, LL DMA, EDF, DP, TWB) with type, core, priority, state, flags and uid. |
+| `sof sched_load`  | Per-task cycle counters (cycles_cnt, cycles_sum, cycles_max, derived average) plus aggregate totals. Pairs with `test_inject_sched_gap`. |
+
+### Implementation
+
+- New optional op `scheduler_dump_tasks(data, cb, ctx)` added to
+  `struct scheduler_ops` in
+  [src/include/sof/schedule/schedule.h](src/include/sof/schedule/schedule.h).
+- Implemented for the Zephyr schedulers under their own locks:
+  - [src/schedule/zephyr_ll.c](src/schedule/zephyr_ll.c) (LL timer / LL DMA)
+  - [src/schedule/zephyr_twb_schedule.c](src/schedule/zephyr_twb_schedule.c)
+  - [src/schedule/zephyr_dp_schedule.c](src/schedule/zephyr_dp_schedule.c)
+- Shell walks the global scheduler list via `arch_schedulers_get()` and
+  invokes the op on every scheduler that provides one; schedulers
+  without an implementation are silently skipped.
+- Cycle counters are read from existing `task->cycles_sum`,
+  `task->cycles_max`, `task->cycles_cnt` fields already maintained by
+  the schedulers.
+- New Kconfig `CONFIG_SOF_SHELL_SCHED_INFO` (default `y`).
+- Shell commands in [zephyr/sof_shell.c](zephyr/sof_shell.c).
+
+### Notes / follow-ups
+
+- The xtos LL scheduler is not yet covered (not built on Zephyr ACE
+  targets).
+- `task_info <uid>` lookup, deadline-miss counts and per-core
+  aggregation could be added on top of the same op.
