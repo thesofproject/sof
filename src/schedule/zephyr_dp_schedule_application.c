@@ -22,6 +22,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "zephyr_dp_schedule.h"
 
@@ -410,6 +411,15 @@ void scheduler_dp_internal_free(struct task *task)
 	mod_free(pdata->mod, container_of(task, struct scheduler_dp_task_memory, task));
 }
 
+static void scheduler_dp_thread_name_set(k_tid_t thread_id, struct processing_module *mod)
+{
+	char name[CONFIG_THREAD_MAX_NAME_LEN];
+
+	snprintf(name, sizeof(name), "DP comp id %#x", mod->dev->ipc_config.id);
+
+	k_thread_name_set(thread_id, name);
+}
+
 /* Called only in IPC context */
 int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops, struct processing_module *mod,
@@ -493,7 +503,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	pdata->thread_id = k_thread_create(pdata->thread, p_stack,
 					   stack_size, dp_thread_fn, ptask, NULL, NULL,
 					   CONFIG_DP_THREAD_PRIORITY, ptask->flags, K_FOREVER);
-
+	scheduler_dp_thread_name_set(pdata->thread_id, mod);
 #ifdef CONFIG_SCHED_CPU_MASK
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, core);
