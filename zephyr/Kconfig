@@ -544,6 +544,23 @@ config SOF_SHELL_DBGWIN_DUMP
 	  critical_log, broken-marker and other slots from the shell
 	  without host-side tooling.
 
+config SOF_SHELL_PERF_STATUS
+	bool "Performance / telemetry status command"
+	default y
+	depends on SHELL && SOF_TELEMETRY
+	help
+	  Enables 'sof perf_status [reset|start|stop|pause]' which prints
+	  the current ipc4_perf_measurements_state plus per-active-core
+	  systick counters from the SOF telemetry slot:
+	  count, last/max time elapsed (cycles), avg/peak KCPS and the
+	  4k/8k peak utilization buckets.
+
+	  With one of the optional sub-commands the command transitions
+	  the perf measurement state machine ('start' calls
+	  enable_performance_counters(), 'reset' calls
+	  reset_performance_counters(); 'stop'/'pause' just update the
+	  state) - useful for taking before/after snapshots without IPC.
+
 endmenu # SOF shell commands
 
 config SOF_VREGIONS

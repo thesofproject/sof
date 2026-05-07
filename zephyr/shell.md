@@ -88,7 +88,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 | Audio buffers | `buffer_list`, `buffer_info <id>` | **DONE (task 2)** |
 | **Scheduler** | `sched_tasks`, `sched_load`, `task_info <task>` | **DONE (task 3)** |
 | Logging / trace | `log_status`, `mtrace_dump` (snapshot) | **DONE (task 4)** &mdash; runtime per-source `log_level` deferred (needs `CONFIG_LOG_RUNTIME_FILTERING`, see notes) |
-| Telemetry / perf | `perf_status`, `perf_reset`, `cpu_load` | TODO |
+| **Telemetry / perf** | `perf_status`, `perf_status reset`, `perf_status start/stop/pause` | **DONE (task 6)** |
 | Notifications | `notify_subscribers`, `notify_stats` | TODO |
 | **Debug window / mailbox** | `dbgwin_dump <slot>`, `mailbox_hex` | **DONE (task 5)** |
 | Crash / panic | `crash_log`, `crash_clear`, `panic_info`, `bt`, `regs` | TODO |
@@ -114,7 +114,7 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
 3. **`sched_tasks` / `sched_load`** &mdash; DONE.
 4. **`log_status` / `mtrace_dump`** &mdash; DONE.
 5. **`mailbox_hex` / `dbgwin_dump`** &mdash; DONE (was originally `crash_log`/`bt`; pivoted because SOF panic.c isn't built on Zephyr and `bt` of a running CPU from itself isn't meaningful).
-6. `perf_status` &mdash; wraps SOF telemetry counters.
+6. **`perf_status`** &mdash; DONE.
 7. `dai_list` / `dma_chan_status` &mdash; link/DMA blind spot.
 8. `kctl_get/set` &mdash; today only doable via tplg/IPC.
 
@@ -309,3 +309,43 @@ debug or testing. Items get ticked off as commands land on `topic/shell`.
   ACE.
 - `dbgwin_dump` is read-only. We do not implement a write/seize
   command to avoid corrupting host-visible state.
+
+## Task 6 &mdash; `perf_status`
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `sof perf_status` | Print the SOF telemetry performance state (`disabled`/`stopped`/`started`/`paused`) and per-active-core systick counters (`count`, `last_time_elapsed`, `max_time_elapsed`, `avg_kcps`, `peak_kcps`, plus 4k/8k peak utilization). |
+| `sof perf_status reset` | Call `reset_performance_counters()` to zero all counters. |
+| `sof perf_status start` | Call `enable_performance_counters()` and set state to `STARTED`. |
+| `sof perf_status stop` / `pause` | Transition state to `STOPPED` or `PAUSED` (stops sampling without zeroing counters). |
+
+### Implementation
+
+- Reads per-core systick info via
+  `telemetry_get_systick_info_ptr()` (with
+  `CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER`) or directly from
+  `ADSP_DW->slots[SOF_DW_TELEMETRY_SLOT]` otherwise.
+- Iterates only cores in `cpu_enabled_cores()` so the output matches
+  the active topology.
+- Uses the existing `perf_meas_get_state()` /
+  `perf_meas_set_state()` /
+  `enable_performance_counters()` /
+  `reset_performance_counters()` API from
+  [src/include/sof/debug/telemetry/performance_monitor.h](src/include/sof/debug/telemetry/performance_monitor.h);
+  no new state added.
+- New Kconfig `CONFIG_SOF_SHELL_PERF_STATUS` (default `y`,
+  depends on `SOF_TELEMETRY`).
+- Shell command in [zephyr/sof_shell.c](zephyr/sof_shell.c).
+
+### Notes / follow-ups
+
+- We deliberately do not dump the full per-component
+  `perf_data_item_comp` array yet: it can grow large
+  (`CONFIG_MEMORY_WIN_3_SIZE` / item size, ~hundreds of items on PTL)
+  and would require a heap allocation. A future `perf_components` /
+  `perf_status -v` could iterate `performance_data_bitmap` and stream
+  one row per occupied slot.
+- Zephyr already provides `kernel cpu_load` and `kernel threads`;
+  `cpu_load` was therefore not duplicated here.
