@@ -62,6 +62,8 @@
 #define SOF_TEST_INJECT_SCHED_GAP_USEC 1500
 
 #include <sof_versions.h>
+#include <sof/lib/vpage.h>
+#include <sof/lib/vregion.h>
 
 __cold static int cmd_sof_test_inject_sched_gap(const struct shell *sh,
 		       size_t argc, char *argv[])
@@ -1536,6 +1538,40 @@ static int cmd_sof_version(const struct shell *sh, size_t argc, char *argv[])
 	return 0;
 }
 
+static int cmd_sof_vpage_info(const struct shell *sh, size_t argc, char *argv[])
+{
+#if CONFIG_SOF_VREGIONS
+	vpage_info(sh);
+#else
+	shell_fprintf(sh, SHELL_NORMAL, "Virtual regions not enabled\n");
+#endif
+	return 0;
+}
+
+static int cmd_sof_vregion_info(const struct shell *sh, size_t argc, char *argv[])
+{
+#if CONFIG_SOF_VREGIONS
+	vregion_info_all(sh);
+#else
+	shell_fprintf(sh, SHELL_NORMAL, "Virtual regions not enabled\n");
+#endif
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_vpage_commands,
+	SHELL_CMD(info, NULL,
+		  "Print virtual page allocator status\n",
+		  cmd_sof_vpage_info),
+	SHELL_SUBCMD_SET_END
+);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_vreg_commands,
+	SHELL_CMD(info, NULL,
+		  "Print virtual regions status\n",
+		  cmd_sof_vregion_info),
+	SHELL_SUBCMD_SET_END
+);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_llext_commands,
 #if CONFIG_SOF_SHELL_LLEXT_LOAD
 	SHELL_CMD_ARG(load, NULL,
@@ -1764,6 +1800,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 	SHELL_CMD(version, NULL,
 		  "Print the current SOF software version\n",
 		  cmd_sof_version),
+
+	SHELL_CMD(vpage, &sof_vpage_commands,
+		  "Vpage commands: info (CONFIG_SOF_SHELL_VPAGE_INFO, SOF_VREGIONS)\n",
+		  NULL),
+
+	SHELL_CMD(vreg, &sof_vreg_commands,
+		  "Vregion commands: info (CONFIG_SOF_SHELL_VREGION_INFO, SOF_VREGIONS)\n",
+		  NULL),
 
 	SHELL_SUBCMD_SET_END
 );
