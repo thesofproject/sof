@@ -107,7 +107,6 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 #else
 		mod_heap = drv->user_heap;
 #endif
-		mod_heap_user = NULL;
 		heap_size = 0;
 		mod_vreg = NULL;
 	}
@@ -124,7 +123,9 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 		goto emod;
 	}
 
-	struct mod_alloc_ctx *alloc = rmalloc(flags, sizeof(*alloc));
+	struct mod_alloc_ctx *alloc;
+
+	alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
 
 	if (!alloc)
 		goto ealloc;
@@ -160,7 +161,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	return mod;
 
 edev:
-	rfree(alloc);
+	sof_heap_free(mod_heap, alloc);
 ealloc:
 	if (mod_vreg)
 		vregion_free(mod_vreg, mod);
@@ -189,8 +190,9 @@ static void module_adapter_mem_free(struct processing_module *mod)
 
 		vregion_free(mod_vreg, mod->dev);
 		vregion_free(mod_vreg, mod);
-		if (!vregion_put(mod_vreg))
-			rfree(alloc);
+		if (!vregion_put(mod_vreg)) {
+			sof_heap_free(alloc->heap, alloc);
+		}
 	} else {
 		LOG_INF("mod");
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -200,7 +202,7 @@ static void module_adapter_mem_free(struct processing_module *mod)
 		comp_cl_info(drv, "free mod %p with heap %p", mod, mod_heap);
 		sof_heap_free(mod_heap, mod->dev);
 		sof_heap_free(mod_heap, mod);
-		rfree(alloc);
+		sof_heap_free(mod_heap, alloc);
 	}
 }
 
