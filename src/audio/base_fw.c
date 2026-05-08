@@ -420,7 +420,7 @@ __cold static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 		if (!desc)
 			continue;
 
-		libs_info->libraries[lib_id].id = lib_id;
+		libs_info->libraries[lib_counter].id = lib_id;
 		memcpy_s(libs_info->libraries[lib_counter].name,
 			 SOF_MAN_FW_HDR_FW_NAME_LEN, desc->header.name, sizeof(desc->header.name));
 		libs_info->libraries[lib_counter].major_version =
@@ -439,7 +439,7 @@ __cold static int basefw_libraries_info_get(uint32_t *data_offset, char *data)
 
 	libs_info->library_count = lib_counter;
 	*data_offset =
-		sizeof(libs_info) + libs_info->library_count * sizeof(libs_info->libraries[0]);
+		sizeof(*libs_info) + libs_info->library_count * sizeof(libs_info->libraries[0]);
 
 	return IPC4_SUCCESS;
 }
