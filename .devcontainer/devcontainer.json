@@ -7,6 +7,9 @@
 		}
 	},
 	"customizations": {
+		"gitpod": {
+			"automationsFile": "../.ona/automations.yaml"
+		},
 		"vscode": {
 			"extensions": [
 				"ms-vscode.cmake-tools",
