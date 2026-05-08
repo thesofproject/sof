@@ -160,7 +160,6 @@ static int mfcc_prepare(struct processing_module *mod,
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
 	size_t data_size;
-	uint32_t sink_period_bytes;
 	int ret;
 
 	comp_info(dev, "entry");
@@ -178,15 +177,7 @@ static int mfcc_prepare(struct processing_module *mod,
 
 	/* get sink data format and period bytes */
 	sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
-	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream, dev->frames);
-	comp_info(dev, "source_format = %d, sink_format = %d",
-		  source_format, sink_format);
-	if (audio_stream_get_size(&sinkb->stream) < sink_period_bytes) {
-		comp_err(dev, "sink buffer size %d is insufficient < %d",
-			 audio_stream_get_size(&sinkb->stream), sink_period_bytes);
-		ret = -ENOMEM;
-		goto err;
-	}
+	comp_info(dev, "source_format = %d, sink_format = %d", source_format, sink_format);
 
 	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
 
