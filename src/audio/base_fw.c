@@ -323,6 +323,11 @@ __cold static int basefw_register_kcps(bool first_block, bool last_block,
 		return IPC4_ERROR_INVALID_PARAM;
 
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	if (data_offset_or_size < sizeof(int32_t)) {
+		tr_err(&ipc_tr, "basefw_register_kcps: payload too small: %u", data_offset_or_size);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
 	/* value of kcps to request on core 0. Can be negative */
 	if (core_kcps_adjust(0, *(int32_t *)data))
 		return IPC4_ERROR_INVALID_PARAM;
@@ -352,6 +357,12 @@ __cold static int basefw_resource_allocation_request(bool first_block, bool last
 
 	if (!(first_block && last_block))
 		return IPC4_ERROR_INVALID_PARAM;
+
+	if (data_offset_or_size < sizeof(struct ipc4_resource_request)) {
+		tr_err(&ipc_tr, "basefw_resource_allocation_request: payload too small: %u < %zu",
+		       data_offset_or_size, sizeof(struct ipc4_resource_request));
+		return IPC4_ERROR_INVALID_PARAM;
+	}
 
 	request = (struct ipc4_resource_request *)data;
 
@@ -518,12 +529,17 @@ __cold static int basefw_pipeline_list_info_get(uint32_t *data_offset, char *dat
 	return IPC4_SUCCESS;
 }
 
-__cold int set_perf_meas_state(const char *data)
+__cold int set_perf_meas_state(uint32_t data_size, const uint8_t *data)
 {
 	assert_can_be_cold();
 
 #ifdef CONFIG_SOF_TELEMETRY
-	enum ipc4_perf_measurements_state_set state = *data;
+	if (data_size < sizeof(*data)) {
+		tr_err(&ipc_tr, "set_perf_meas_state: payload too small: %u", data_size);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
+	uint8_t state = *data;
 
 	switch (state) {
 	case IPC4_PERF_MEASUREMENTS_DISABLED:
@@ -624,12 +640,17 @@ __cold static int io_global_perf_data_get(uint32_t *data_off_size, char *data)
 #endif
 }
 
-__cold static int io_perf_monitor_state_set(const char *data)
+__cold static int io_perf_monitor_state_set(uint32_t data_size, const uint8_t *data)
 {
 	assert_can_be_cold();
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
-	return io_perf_monitor_set_state((enum ipc4_perf_measurements_state_set)*data);
+	if (data_size < sizeof(*data)) {
+		tr_err(&ipc_tr, "io_perf_monitor_state_set: payload too small: %u", data_size);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
+	return io_perf_monitor_set_state(*data);
 #else
 	return IPC4_UNAVAILABLE;
 #endif
@@ -697,11 +718,17 @@ __cold static int basefw_get_large_config(struct comp_dev *dev, uint32_t param_i
 						data_offset, data);
 };
 
-__cold static int basefw_notification_mask_info(const void *data)
+__cold static int basefw_notification_mask_info(uint32_t data_size, const void *data)
 {
 	const struct ipc4_notification_mask_info *mask_info = data;
 
 	assert_can_be_cold();
+
+	if (data_size < sizeof(struct ipc4_notification_mask_info)) {
+		tr_err(&ipc_tr, "basefw_notification_mask_info: payload too small: %u < %zu",
+		       data_size, sizeof(struct ipc4_notification_mask_info));
+		return IPC4_ERROR_INVALID_PARAM;
+	}
 
 	ipc4_update_notification_mask(mask_info->ntfy_mask, mask_info->enabled_mask);
 
@@ -770,15 +797,15 @@ __cold static int basefw_set_large_config(struct comp_dev *dev, uint32_t param_i
 
 	switch (param_id) {
 	case IPC4_NOTIFICATION_MASK:
-		return basefw_notification_mask_info(data);
+		return basefw_notification_mask_info(data_offset, data);
 	case IPC4_ASTATE_TABLE:
 		return basefw_astate_table();
 	case IPC4_DMA_CONTROL:
 		return basefw_dma_control(first_block, last_block, data_offset, data);
 	case IPC4_PERF_MEASUREMENTS_STATE:
-		return set_perf_meas_state(data);
+		return set_perf_meas_state(data_offset, (const uint8_t *)data);
 	case IPC4_IO_PERF_MEASUREMENTS_STATE:
-		return io_perf_monitor_state_set(data);
+		return io_perf_monitor_state_set(data_offset, (const uint8_t *)data);
 	case IPC4_SYSTEM_TIME:
 		return basefw_set_system_time(param_id, first_block,
 						last_block, data_offset, data);

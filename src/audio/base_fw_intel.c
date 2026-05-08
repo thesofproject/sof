@@ -502,9 +502,15 @@ static int basefw_mic_priv_state_changed(bool first_block,
 					 const char *data)
 {
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
-	tr_info(&basefw_comp_tr, "state changed to %d", *data);
+	if (data_offset_or_size < sizeof(uint8_t)) {
+		tr_err(&basefw_comp_tr, "mic_priv_state_changed: payload too small: %u",
+		       data_offset_or_size);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
 
-	uint32_t mic_disable_status = (uint32_t)(*data);
+	uint32_t mic_disable_status = (uint32_t)(uint8_t)(*data);
+
+	tr_info(&basefw_comp_tr, "state changed to %u", mic_disable_status);
 	struct mic_privacy_settings settings;
 
 	mic_privacy_fill_settings(&settings, mic_disable_status);
