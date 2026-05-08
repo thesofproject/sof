@@ -713,6 +713,13 @@ __cold int ipc_init(struct sof *sof)
 
 	ipc = ipc_get();
 	memset(ipc, 0, sizeof(*ipc));
+	ipc->ll_alloc = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, sizeof(*ipc->ll_alloc), 0);
+	if (!ipc->ll_alloc) {
+		tr_err(&ipc_tr, "Unable to allocate IPC ll_alloc");
+		return -ENOMEM;
+	}
+	ipc->ll_alloc->heap = heap;
+	ipc->ll_alloc->vreg = NULL;
 #else
 	heap = NULL;
 
