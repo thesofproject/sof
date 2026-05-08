@@ -109,6 +109,7 @@ struct ipc {
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	struct ipc_user *ipc_user_pdata;
+	struct mod_alloc_ctx *ll_alloc;
 #endif
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS

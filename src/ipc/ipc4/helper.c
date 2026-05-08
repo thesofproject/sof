@@ -804,12 +804,9 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	if (!dp_heap) {
-		/* use system user heap for non-DP module buffers */
-		dp_heap = sof_sys_user_heap_get();
-	}
+	if (!alloc)
+		alloc = ipc->ll_alloc;
 #endif
-
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
 	/* If both components are on same core -- process IPC on that core,
