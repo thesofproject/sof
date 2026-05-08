@@ -550,6 +550,7 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 	 * If LL is run in user-space, assign the 'heap' here.
 	 */
 	dd->heap = zephyr_ll_user_heap();
+	dd->alloc_ctx = ipc_get()->ll_alloc;
 #endif
 
 	/* I/O performance init, keep it last so the function does not reach this in case
@@ -1075,7 +1076,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 			return err;
 		}
 	} else {
-		dd->dma_buffer = buffer_alloc_range(dd->heap, buffer_size_preferred, buffer_size,
+		dd->dma_buffer = buffer_alloc_range(dd->alloc_ctx, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!dd->dma_buffer) {
