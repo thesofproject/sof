@@ -63,7 +63,11 @@ function(sof_llext_build module)
 		# the L32R instruction. Usually this is guaranteed by the linker script.
 		# However, since a linker script is not used for LLEXT modules builds,
 		# correct literal placement is ensured with a compilation option here.
-		set(SOF_LLEXT_CFLAGS ${SOF_LLEXT_CFLAGS} -mtext-section-literals)
+		# Note: -mtext-section-literals is GCC-specific; Clang doesn't support it.
+		check_c_compiler_flag(-mtext-section-literals HAS_MTEXT_SECTION_LITERALS)
+		if(HAS_MTEXT_SECTION_LITERALS)
+			set(SOF_LLEXT_CFLAGS ${SOF_LLEXT_CFLAGS} -mtext-section-literals)
+		endif()
 	endif()
 
 	target_include_directories(${module}_llext_lib PRIVATE
@@ -132,8 +136,9 @@ function(sof_llext_build module)
 		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py -s ${size_file}
 			--text-addr=${CONFIG_LIBRARY_BASE_ADDRESS}
 			-c $<TARGET_PROPERTY:bintools,elfconvert_command>
-			-f ${proc_in_file} -o ${proc_out_file} ${CMAKE_C_COMPILER} --
-			${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib> ${EXTRA_LIBS}
+			-f ${proc_in_file} -o ${proc_out_file}
+			$ENV{ZEPHYR_SDK_INSTALL_DIR}/gnu/${CROSS_COMPILE_TARGET}/bin/${CROSS_COMPILE_TARGET}-gcc --
+			-mtext-section-literals ${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib> ${EXTRA_LIBS}
 	)
 
 	add_llext_command(TARGET ${module}
