@@ -470,17 +470,38 @@ __cold static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
 __cold static int basefw_set_fw_config(bool first_block, bool last_block,
 				       uint32_t data_offset, const char *data)
 {
+	assert_can_be_cold();
+
+	/* Validate minimum TLV header (type + length fields) is present */
+	if (data_offset < sizeof(struct sof_tlv)) {
+		tr_err(&basefw_comp_tr, "FW_CONFIG payload too small: %u < %zu",
+		       data_offset, sizeof(struct sof_tlv));
+		return IPC4_INVALID_CONFIG_DATA_LEN;
+	}
+
 	const struct sof_tlv *tlv = (const struct sof_tlv *)data;
 
-	assert_can_be_cold();
+	/* Validate the TLV value payload fits within the reported buffer size */
+	if (tlv->length > data_offset - sizeof(struct sof_tlv)) {
+		tr_err(&basefw_comp_tr,
+		       "FW_CONFIG TLV value truncated: len %u exceeds payload %u",
+		       tlv->length, data_offset);
+		return IPC4_INVALID_CONFIG_DATA_LEN;
+	}
 
 	switch (tlv->type) {
 	case IPC4_DMI_FORCE_L1_EXIT:
+		if (tlv->length < sizeof(uint32_t)) {
+			tr_err(&basefw_comp_tr, "DMI_FORCE_L1_EXIT value too small: %u",
+			       tlv->length);
+			return IPC4_INVALID_CONFIG_DATA_LEN;
+		}
 		return fw_config_set_force_l1_exit(tlv);
 	default:
 		break;
 	}
-	tr_warn(&basefw_comp_tr, "returning success for Set FW_CONFIG without handling it");
+
+	tr_warn(&basefw_comp_tr, "Set FW_CONFIG: no handler for type %u", tlv->type);
 	return 0;
 }
 
