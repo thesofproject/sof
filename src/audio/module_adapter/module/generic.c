@@ -295,7 +295,7 @@ struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_modul
 	if (!container)
 		return NULL;
 
-	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL, res->heap);
+	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL, res->alloc->heap);
 	if (!bhp) {
 		container_put(mod, container);
 		return NULL;
