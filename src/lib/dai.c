@@ -210,8 +210,10 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 		return DAI_INTEL_HDA;
 	case SOF_DAI_INTEL_ALH:
 		return DAI_INTEL_ALH;
+#if 0
 	case SOF_DAI_INTEL_UAOL:
 		return DAI_INTEL_UAOL;
+#endif
 	case SOF_DAI_IMX_SAI:
 		return DAI_IMX_SAI;
 	case SOF_DAI_IMX_ESAI:
