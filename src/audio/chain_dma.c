@@ -555,6 +555,7 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 				  uint32_t fifo_size)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	struct mod_alloc_ctx *alloc_ctx = NULL;
 	uint32_t addr_align;
 	size_t buff_size;
 	void *buff_addr;
@@ -633,15 +634,15 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 	}
 
 	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
-	/* allocate not shared buffer */
+
 #ifdef CONFIG_SOF_USERSPACE_LL
-	cd->dma_buffer = buffer_alloc(sof_sys_user_heap_get(), fifo_size,
+	alloc_ctx = ipc_get()->ll_alloc;
+#endif
+
+	/* allocate not shared buffer */
+	cd->dma_buffer = buffer_alloc(alloc_ctx, fifo_size,
 				      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 				      addr_align, BUFFER_USAGE_NOT_SHARED);
-#else
-	cd->dma_buffer = buffer_alloc(NULL, fifo_size, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
-				      addr_align, BUFFER_USAGE_NOT_SHARED);
-#endif
 
 	if (!cd->dma_buffer) {
 		comp_err(dev, "failed to alloc dma buffer");
