@@ -737,6 +737,7 @@ __cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	 * If LL is run in user-space, assign the 'heap' here.
 	 */
 	hd->heap = zephyr_ll_user_heap();
+	hd->alloc_ctx = ipc_get()->ll_alloc;
 #endif
 
 	return 0;
@@ -981,7 +982,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 		}
 	} else {
 		/* allocate not shared buffer */
-		hd->dma_buffer = buffer_alloc_range(hd->heap, buffer_size_preferred, buffer_size,
+		hd->dma_buffer = buffer_alloc_range(hd->alloc_ctx, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!hd->dma_buffer) {

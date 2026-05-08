@@ -123,6 +123,7 @@ struct host_data {
 #endif
 
 	struct k_heap *heap;
+	struct mod_alloc_ctx *alloc_ctx;
 };
 
 int host_common_new(struct host_data *hd, struct comp_dev *dev,
