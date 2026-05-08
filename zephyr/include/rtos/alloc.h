@@ -99,9 +99,21 @@ void rfree(void *ptr);
  */
 void l3_heap_save(void);
 
+/*
+ * This is ugly to define the signatures twice, but this
+ * is required to support userspace builds that do not export alloc.
+ */
+#ifdef CONFIG_SOF_USERSPACE_INTERFACE_ALLOC
+__syscall void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+			       size_t alignment);
+__syscall void sof_heap_free(struct k_heap *heap, void *addr);
+#include <zephyr/syscalls/alloc.h>
+#else
 void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment);
 void sof_heap_free(struct k_heap *heap, void *addr);
+#endif
+
 #if CONFIG_SOF_FULL_ZEPHYR_APPLICATION
 struct k_heap *sof_sys_heap_get(void);
 #else

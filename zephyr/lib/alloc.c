@@ -628,8 +628,8 @@ EXPORT_SYMBOL(rfree);
  * To match the fall-back SOF main heap all private heaps should also be in the
  * uncached address range.
  */
-void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
-		     size_t alignment)
+void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+			    size_t alignment)
 {
 	if (flags & (SOF_MEM_FLAG_LARGE_BUFFER | SOF_MEM_FLAG_USER_SHARED_BUFFER))
 		return rballoc_align(flags, bytes, alignment);
@@ -643,13 +643,35 @@ void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 	return (__sparse_force void *)heap_alloc_aligned_cached(heap, alignment, bytes);
 }
 
-void sof_heap_free(struct k_heap *heap, void *addr)
+void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
 {
 	if (heap && addr && is_heap_pointer(heap, addr))
 		heap_free(heap, addr);
 	else
 		rfree(addr);
 }
+
+#ifndef CONFIG_SOF_USERSPACE_INTERFACE_ALLOC
+
+/*
+ * Putting these as inlines in alloc.h breaks Zephyr native
+ * ztests like sof/test/ztest/unit/fast-get that include rtos/alloc.h
+ * but do not link lib/alloc.c . To to keep the tests happy,
+ * implement the functions here.
+ */
+
+void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment)
+{
+	return z_impl_sof_heap_alloc(heap, flags, bytes, alignment);
+}
+
+void sof_heap_free(struct k_heap *heap, void *addr)
+{
+	return z_impl_sof_heap_free(heap, addr);
+}
+
+#endif /* CONFIG_SOF_USERSPACE_INTERFACE_ALLOC */
 
 static int heap_init(void)
 {
