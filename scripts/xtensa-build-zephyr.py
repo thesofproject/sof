@@ -1024,8 +1024,9 @@ def build_platforms():
 		if args.llvm_clang:
 			print(f"Using LLVM/Clang from {args.llvm_clang}")
 			xtensa_tools_root_dir = None
-			# Force zephyr SDK variant so we get the GCC assembler/linker
-			platf_build_environ["ZEPHYR_TOOLCHAIN_VARIANT"] = "zephyr"
+			# Use llvm toolchain variant for native Clang support with GCC assembler/linker
+			platf_build_environ["ZEPHYR_TOOLCHAIN_VARIANT"] = "llvm"
+			platf_build_environ["LLVM_TOOLCHAIN_PATH"] = str(pathlib.Path(args.llvm_clang).resolve())
 		elif args.zephyrsdk:
 			print("Using Zephyr SDK for building")
 			xtensa_tools_root_dir = None
@@ -1092,12 +1093,14 @@ def build_platforms():
 		if args.cmake_args:
 			build_cmd += args.cmake_args
 
-		# When using LLVM/Clang, generate a wrapper and override compilers
+		# When using LLVM/Clang, the llvm toolchain variant handles:
+		# - Compiler detection via LLVM_TOOLCHAIN_PATH
+		# - GCC assembler/linker integration via CROSS_COMPILE
+		# - FLIX VLIW bundling via TOOLCHAIN_C_FLAGS
+		# - LLEXT shared library link wrapper
+		# No wrapper script or CMAKE_C_COMPILER override needed.
 		if args.llvm_clang:
-			wrapper_path = generate_clang_wrapper(args.llvm_clang, platform,
-							      PLAT_CONFIG, west_top)
-			build_cmd.append(f"-DCMAKE_C_COMPILER={wrapper_path}")
-			build_cmd.append(f"-DCMAKE_ASM_COMPILER={wrapper_path}")
+			pass  # All configuration is in cmake/toolchain/llvm/target.cmake
 
 		extra_conf_files = [str(item.resolve(True)) for item in args.overlay]
 		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
