@@ -30,10 +30,12 @@ target_compile_definitions(app PRIVATE
 target_sources(app PRIVATE
 	test_scalar_power_ztest.c
 	test_base2_logarithm_ztest.c
+	test_base10_logarithm_ztest.c
 	test_exponential_ztest.c
 	test_square_root_ztest.c
 	${SOF_ROOT}/src/math/power.c
 	${SOF_ROOT}/src/math/base2log.c
+	${SOF_ROOT}/src/math/log_10.c
 	${SOF_ROOT}/src/math/exp_fcn.c
 	${SOF_ROOT}/src/math/sqrt_int16.c
 	# Note: exp_fcn_hifi.c is conditionally compiled only for Xtensa HiFi platforms.

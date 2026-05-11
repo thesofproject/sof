@@ -10,7 +10,7 @@
 
 tests:
   sof.unit.math.advanced.functions:
-    tags: math advanced functions power logarithm base2 exponential exp db2lin sqrt
+    tags: math advanced functions power logarithm base2 base10 exponential exp db2lin sqrt log10
     platform_allow: native_sim
     integration_platforms:
       - native_sim
