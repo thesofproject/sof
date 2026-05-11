@@ -246,3 +246,67 @@ __cold int src_init(struct processing_module *mod)
 	return 0;
 }
 
+/* Called after src_init() and setup_stages callback is set.
+ * Allocate filter stages and delay lines at init time.
+ */
+int src_init_stages(struct processing_module *mod)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int ret;
+
+	ret = cd->setup_stages(mod);
+	if (ret < 0)
+		return ret;
+
+	/* For DP modules, dev->period is not yet set at init time (it's
+	 * computed in src_set_params at prepare). Derive it here from the
+	 * IPC config's output buffer size so that delay line allocation
+	 * uses correct buffer sizes.
+	 */
+	if (dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP && !dev->frames) {
+		uint32_t frame_bytes = cd->channels_count * cd->sample_container_bytes;
+
+		if (frame_bytes && cd->sink_rate) {
+			dev->period = 1000000ULL *
+				(cd->ipc_config.base.obs / frame_bytes) /
+				cd->sink_rate;
+			dev->period /= LL_TIMER_PERIOD_US;
+			dev->period *= LL_TIMER_PERIOD_US;
+			component_set_nearest_period_frames(dev, cd->sink_rate);
+		}
+	}
+
+	return src_allocate_delay_lines(mod);
+}
+
+/* At prepare time just verify rates and set downstream params */
+int src_prepare_do(struct processing_module *mod,
+		   struct sof_source *source, struct sof_sink *sink)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int ret;
+
+	if (cd->source_rate != cd->ipc_config.base.audio_fmt.sampling_frequency ||
+	    cd->sink_rate != cd->ipc_config.sink_rate) {
+		comp_err(mod->dev, "rate mismatch: source %u/%u sink %u/%u",
+			 cd->source_rate,
+			 cd->ipc_config.base.audio_fmt.sampling_frequency,
+			 cd->sink_rate, cd->ipc_config.sink_rate);
+		return -EINVAL;
+	}
+
+	ret = src_set_params(mod, sink);
+	if (ret < 0) {
+		comp_err(mod->dev, "set params failed.");
+		return ret;
+	}
+
+	/* Update frame counts with final dev->frames from src_set_params */
+	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
+	cd->sink_frames = dev->frames;
+
+	return src_prepare_general(mod, source, sink);
+}
+
