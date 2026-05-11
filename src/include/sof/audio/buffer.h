@@ -34,6 +34,7 @@
 struct comp_dev;
 struct buffer_cb_transact;
 
+
 /** \name Trace macros
  *  @{
  */
