@@ -167,6 +167,7 @@ struct comp_data {
 	int (*src_func)(struct comp_data *cd, struct sof_source *source,
 			struct sof_sink *sink);
 	void (*polyphase_func)(struct src_stage_prm *s);
+	int (*setup_stages)(struct processing_module *mod);
 };
 
 #if CONFIG_IPC_MAJOR_4
@@ -218,6 +219,7 @@ static inline int src_fallback(struct comp_data *cd,
 int src_allocate_copy_stages(struct processing_module *mod, struct src_param *prm,
 			     const struct src_stage *stage_src1,
 			     const struct src_stage *stage_src2);
+int src_allocate_delay_lines(struct processing_module *mod);
 int src_rate_check(const void *spec);
 int src_set_params(struct processing_module *mod, struct sof_sink *sink);
 
@@ -227,6 +229,9 @@ int src_prepare_general(struct processing_module *mod,
 			struct sof_source *source,
 			struct sof_sink *sink);
 int src_init(struct processing_module *mod);
+int src_init_stages(struct processing_module *mod);
+int src_prepare_do(struct processing_module *mod,
+		   struct sof_source *source, struct sof_sink *sink);
 
 int src_copy_sxx(struct comp_data *cd, struct sof_source *source,
 		 struct sof_sink *sink);
