@@ -1,0 +1,64 @@
+---
+# SPDX-License-Identifier: BSD-3-Clause
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable zephyr-shell.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand zephyr-shell.yml exp.yml && diff -w -u zephyr-shell.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: Zephyr Shell
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+# yamllint disable-line rule:truthy
+on: [pull_request, workflow_dispatch]
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container:
+      image: thesofproject/zephyr-lite:v0.29.0
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [tgl, mtl, lnl]
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          path: sof
+          fetch-depth: 0  # fix git describe
+          filter: 'tree:0'
+
+      - name: west update
+        working-directory: sof
+        run: |
+          west init -l
+          west update --narrow --fetch-opt=--depth=5
+
+      - name: print all available sdks in /opt/toolchains/
+        run: |
+          ls -l /opt/toolchains/
+
+      - name: shell build
+        run: |
+          ln -s  /opt/toolchains/zephyr-sdk-*  ~/
+          python sof/scripts/xtensa-build-zephyr.py \
+            --cmake-args=-DEXTRA_CFLAGS=-Werror \
+            --cmake-args=-DEXTRA_CXXFLAGS=-Werror \
+            --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings' \
+            --cmake-args=--warn-uninitialized \
+            --overlay=sof/app/shell_overlay.conf \
+            ${{ matrix.platform }}
