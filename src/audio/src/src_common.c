@@ -574,6 +574,86 @@ int src_params_general(struct processing_module *mod,
 	return 0;
 }
 
+/* Allocate delay lines and initialize the polyphase SRC filter.
+ * Assumes that cd->param rate table pointers (in_fs, out_fs, etc.)
+ * and stage pointers (stage1, stage2) are already set up via
+ * cd->setup_stages().
+ */
+int src_allocate_delay_lines(struct processing_module *mod)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	size_t delay_lines_size;
+	int32_t *buffer_start;
+	int n;
+	int ret;
+
+	/* For LL modules dev->period is already set from the pipeline.
+	 * Compute dev->frames so buffer sizing works.
+	 */
+	if (!dev->frames)
+		component_set_nearest_period_frames(dev, cd->sink_rate);
+
+	if (!cd->sink_rate) {
+		comp_err(dev, "zero sink rate");
+		return -EINVAL;
+	}
+
+	cd->source_frames = dev->frames * cd->source_rate / cd->sink_rate;
+	cd->sink_frames = dev->frames;
+
+	/* Allocate needed memory for delay lines */
+	ret = src_buffer_lengths(dev, cd, cd->channels_count);
+	if (ret < 0) {
+		comp_err(dev, "src_buffer_lengths() failed");
+		return ret;
+	}
+
+	delay_lines_size = ALIGN_UP(sizeof(int32_t) * cd->param.total, 8);
+	if (delay_lines_size == 0) {
+		comp_err(dev, "delay_lines_size = 0");
+		return -EINVAL;
+	}
+
+	mod_free(mod, cd->delay_lines);
+
+	cd->delay_lines = mod_alloc(mod, delay_lines_size);
+	if (!cd->delay_lines) {
+		comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
+			 delay_lines_size);
+		return -ENOMEM;
+	}
+
+	memset(cd->delay_lines, 0, delay_lines_size);
+	buffer_start = cd->delay_lines + ALIGN_UP(cd->param.sbuf_length, 2);
+
+	/* Initialize SRC for actual sample rate */
+	n = src_polyphase_init(&cd->src, &cd->param, buffer_start);
+
+	/* Reset stage buffer */
+	cd->sbuf_r_ptr = cd->delay_lines;
+	cd->sbuf_w_ptr = cd->delay_lines;
+	cd->sbuf_avail = 0;
+
+	switch (n) {
+	case 0:
+		cd->src_func = src_copy_sxx;
+		break;
+	case 1:
+		cd->src_func = src_1s;
+		break;
+	case 2:
+		cd->src_func = src_2s;
+		break;
+	default:
+		comp_info(dev, "missing coefficients for requested rates combination");
+		cd->src_func = src_fallback;
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int src_param_set(struct comp_dev *dev, struct comp_data *cd)
 {
 	struct src_param *a = &cd->param;

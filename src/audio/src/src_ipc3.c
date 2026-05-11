@@ -195,3 +195,27 @@ int src_init(struct processing_module *mod)
 	return 0;
 }
 
+/* IPC3: No filter allocation at init, change ipc3 behavior as little as possible */
+int src_init_stages(struct processing_module *mod)
+{
+	return 0;
+}
+
+/* IPC3: Full filter setup at prepare time */
+int src_prepare_do(struct processing_module *mod,
+		   struct sof_source *source, struct sof_sink *sink)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	int ret;
+
+	ret = cd->setup_stages(mod);
+	if (ret < 0)
+		return ret;
+
+	ret = src_params_general(mod, source, sink);
+	if (ret < 0)
+		return ret;
+
+	return src_prepare_general(mod, source, sink);
+}
+
