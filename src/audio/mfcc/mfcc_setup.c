@@ -18,6 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <sof/audio/mfcc/mfcc_vad.h>
+
 /* Definitions for cepstral lifter */
 #define PI_Q23 Q_CONVERT_FLOAT(3.1415926536, 23)
 #define TWO_PI_Q23 Q_CONVERT_FLOAT(6.2831853072, 23)
@@ -124,6 +126,11 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	if (!config->round_to_power_of_two || !config->snip_edges ||
 	    config->subtract_mean || config->use_energy) {
 		comp_err(dev, "Can't change currently hard-coded features");
+		return -EINVAL;
+	}
+
+	if (sample_rate > MFCC_MAX_SAMPLE_RATE) {
+		comp_err(dev, "Sample rate %d exceeds max %d Hz", sample_rate, MFCC_MAX_SAMPLE_RATE);
 		return -EINVAL;
 	}
 
@@ -328,11 +335,11 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 
 	/* Check that output data can be drained within the periods spanned by one
 	 * FFT hop. Each hop consumes fft_hop_size input samples and produces
-	 * max_out_per_hop + 2 (magic) int16_t output values. The sink provides at
-	 * least fft_hop_size * channels int16_t samples per hop (worst case s16).
+	 * max_out_per_hop + 12 (magic header) int16_t output values. The sink provides
+	 * at least fft_hop_size * channels int16_t samples per hop (worst case s16).
 	 * If output exceeds this, data accumulates and will eventually overflow.
 	 */
-	int out_per_hop = max_out_per_hop + 2;
+	int out_per_hop = max_out_per_hop + sizeof(state->header) / sizeof(int16_t);
 	int sink_per_hop = fft->fft_hop_size * channels;
 
 	if (out_per_hop > sink_per_hop) {
@@ -345,10 +352,21 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	/* Set initial state for STFT */
 	state->waiting_fill = true;
 	state->prev_samples_valid = false;
-	state->magic_pending = false;
+	state->header_pending = false;
+	state->hop_count = 0;
+	memset(&state->header, 0, sizeof(state->header));
+	state->header.magic = MFCC_MAGIC;
 	state->out_data_ptr = NULL;
 	state->out_data_ptr_32 = NULL;
 	state->out_remain = 0;
+
+	if (config->enable_vad) {
+		ret = mfcc_vad_init(&cd->vad, config->num_mel_bins, sample_rate, mod);
+		if (ret < 0) {
+			comp_err(dev, "Failed VAD init");
+			goto free_lifter;
+		}
+	}
 
 	comp_dbg(dev, "done");
 	return 0;
@@ -389,4 +407,6 @@ void mfcc_free_buffers(struct processing_module *mod)
 	mod_free(mod, cd->state.melfb.data);
 	mod_free(mod, cd->state.dct.matrix);
 	mod_free(mod, cd->state.lifter.matrix);
+	mod_free(mod, cd->vad.noise_floor);
+	mod_free(mod, cd->vad.weights);
 }

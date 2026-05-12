@@ -77,6 +77,7 @@ struct sof_mfcc_config {
 	int16_t vtln_high; /**< Reserved, no support */
 	int16_t vtln_low; /**< Reserved, no support */
 	int16_t vtln_warp; /**< Reserved, no support */
+	int16_t reserved16[3]; /**< Reserved for future 16-bit fields, set to 0 */
 	bool htk_compat; /**< Must be false */
 	bool raw_energy; /**< Reserved, no support */
 	bool remove_dc_offset; /**< Reserved, no support */
@@ -85,8 +86,10 @@ struct sof_mfcc_config {
 	bool subtract_mean; /**< Must be false (0) */
 	bool use_energy; /**< Must be false (0) */
 	bool dynamic_mmax; /**< Track max Mel value for clamp with top_db value */
-	bool reserved_bool2;
-	bool reserved_bool3;
+	bool enable_vad; /**< Run VAD algorithm */
+	bool enable_dtx; /**< Reserved (stream once per second non-speech frames) */
+	bool update_controls; /**< Update controls with VAD decision */
+	bool reserved_bool[5]; /* Reserved for future boolean flags, set to false (0) */
 } __attribute__((packed));
 
 #endif /* __USER_MFCC_H__ */
