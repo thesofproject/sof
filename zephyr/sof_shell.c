@@ -70,6 +70,11 @@
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
 
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+__cold static const char *module_name_from_id(uint32_t module_id,
+					      char *name_buf);
+#endif
+
 __cold static int cmd_sof_test_inject_sched_gap(const struct shell *sh,
 		       size_t argc, char *argv[])
 {
@@ -111,14 +116,26 @@ __cold static int cmd_sof_module_heap_usage(const struct shell *sh,
 
 	list_for_item_safe(clist, _clist, &ipc->comp_list) {
 		size_t usage, hwm;
+		uint32_t mod_id;
+		const char *mod_name = "unknown";
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+		char mod_name_buf[SOF_MAN_MOD_NAME_LEN + 1];
+#endif
 
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
 
+		mod_id = icd->id & 0xffff;
+
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+		mod_name = module_name_from_id(mod_id, mod_name_buf);
+#endif
+
 		usage = module_adapter_heap_usage(comp_mod(icd->cd), &hwm);
-		shell_print(sh, "comp id 0x%08x%9zu usage%9zu hwm\tbytes",
-			    icd->id, usage, hwm);
+		shell_print(sh,
+			    "comp_id=0x%08x module=%s(0x%04x) usage=%zu hwm=%zu bytes",
+			    icd->id, mod_name, mod_id, usage, hwm);
 		count++;
 	}
 
@@ -204,16 +221,29 @@ __cold static int cmd_sof_module_status(const struct shell *sh,
 		return 0;
 	}
 
-	shell_print(sh, "%-12s %-8s %-5s %s",
-		    "comp_id", "ppl_id", "core", "state");
+	shell_print(sh, "%-12s %-26s %-8s %-5s %s",
+		    "comp_id", "module", "ppl_id", "core", "state");
 
 	list_for_item(clist, &ipc->comp_list) {
+		uint32_t mod_id;
+		const char *mod_name = "unknown";
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+		char mod_name_buf[SOF_MAN_MOD_NAME_LEN + 1];
+#endif
+
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
 
-		shell_print(sh, "0x%-10x %-8u %-5u %s",
+		mod_id = icd->id & 0xffff;
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+		mod_name = module_name_from_id(mod_id, mod_name_buf);
+#endif
+
+		shell_print(sh, "0x%-10x %-18s(0x%04x) %-8u %-5u %s",
 			    icd->id,
+			    mod_name,
+			    mod_id,
 			    icd->cd->pipeline ? icd->cd->pipeline->pipeline_id : 0,
 			    icd->core,
 			    comp_state_str(icd->cd->state));
@@ -626,6 +656,58 @@ __cold static int parse_module_id(const struct shell *sh, const char *s,
 	return -EINVAL;
 }
 
+__cold static const char *module_name_from_id(uint32_t module_id,
+					      char *name_buf)
+{
+#if CONFIG_IPC4_BASE_FW_INTEL
+	const struct sof_man_fw_desc *desc;
+	uint32_t i;
+
+	desc = basefw_vendor_get_manifest();
+	if (desc) {
+		for (i = 0; i < desc->header.num_module_entries; i++) {
+			const struct sof_man_module *mod =
+				(const struct sof_man_module *)
+				((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i));
+
+			if (mod->module_id == module_id) {
+				memcpy(name_buf, mod->name, SOF_MAN_MOD_NAME_LEN);
+				name_buf[SOF_MAN_MOD_NAME_LEN] = '\0';
+				return name_buf;
+			}
+		}
+	}
+
+#if CONFIG_LIBRARY_MANAGER
+	{
+		int lib_id;
+
+		for (lib_id = 1; lib_id < LIB_MANAGER_MAX_LIBS; lib_id++) {
+			desc = lib_manager_get_library_manifest(
+				LIB_MANAGER_PACK_LIB_ID(lib_id));
+			if (!desc)
+				continue;
+
+			for (i = 0; i < desc->header.num_module_entries; i++) {
+				const struct sof_man_module *mod =
+					(const struct sof_man_module *)
+					((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i));
+
+				if (mod->module_id == module_id) {
+					memcpy(name_buf, mod->name,
+					       SOF_MAN_MOD_NAME_LEN);
+					name_buf[SOF_MAN_MOD_NAME_LEN] = '\0';
+					return name_buf;
+				}
+			}
+		}
+	}
+#endif /* CONFIG_LIBRARY_MANAGER */
+#endif /* CONFIG_IPC4_BASE_FW_INTEL */
+
+	return "unknown";
+}
+
 /* sof ppl_create <ppl_id> [priority=0] [pages=2] [core=0] [lp=0] */
 __cold static int cmd_sof_ppl_create(const struct shell *sh,
 				     size_t argc, char *argv[])
@@ -742,6 +824,7 @@ __cold static int cmd_sof_mod_init(const struct shell *sh,
 {
 	struct ipc4_module_init_instance msg = {};
 	struct comp_dev *dev;
+	char mod_name[SOF_MAN_MOD_NAME_LEN + 1];
 	long mod_id, inst_id, ppl_id, core = 0, dp = 0;
 
 	if (parse_module_id(sh, argv[1], &mod_id) < 0) return -EINVAL;
@@ -761,12 +844,14 @@ __cold static int cmd_sof_mod_init(const struct shell *sh,
 
 	dev = comp_new_ipc4(&msg);
 	if (!dev)
-		shell_print(sh, "mod_init module=0x%lx inst=%ld failed",
+		shell_print(sh, "mod_init module=%s(0x%lx) inst=%ld failed",
+			    module_name_from_id((uint32_t)mod_id, mod_name),
 			    mod_id, inst_id);
 	else
 		shell_print(sh,
-			    "module 0x%lx inst %ld created in pipeline %ld"
+			    "module %s(0x%lx) inst %ld created in pipeline %ld"
 			    " comp_id=0x%08x",
+			    module_name_from_id((uint32_t)mod_id, mod_name),
 			    mod_id, inst_id, ppl_id,
 			    IPC4_COMP_ID((uint32_t)mod_id, (uint32_t)inst_id));
 	return 0;
@@ -777,6 +862,7 @@ __cold static int cmd_sof_mod_delete(const struct shell *sh,
 				     size_t argc, char *argv[])
 {
 	struct ipc *ipc = sof_get()->ipc;
+	char mod_name[SOF_MAN_MOD_NAME_LEN + 1];
 	long mod_id, inst_id;
 	uint32_t comp_id;
 	int ret;
@@ -792,10 +878,13 @@ __cold static int cmd_sof_mod_delete(const struct shell *sh,
 	comp_id = IPC4_COMP_ID((uint32_t)mod_id, (uint32_t)inst_id);
 	ret = ipc_comp_free(ipc, comp_id);
 	if (ret < 0)
-		shell_print(sh, "mod_delete module=0x%lx inst=%ld failed: %d",
+		shell_print(sh, "mod_delete module=%s(0x%lx) inst=%ld failed: %d",
+			    module_name_from_id((uint32_t)mod_id, mod_name),
 			    mod_id, inst_id, ret);
 	else
-		shell_print(sh, "module 0x%lx inst %ld deleted", mod_id, inst_id);
+		shell_print(sh, "module %s(0x%lx) inst %ld deleted",
+			    module_name_from_id((uint32_t)mod_id, mod_name),
+			    mod_id, inst_id);
 	return 0;
 }
 
@@ -805,6 +894,8 @@ __cold static int cmd_sof_mod_bind(const struct shell *sh,
 {
 	struct ipc4_module_bind_unbind msg = {};
 	struct ipc *ipc = sof_get()->ipc;
+	char src_name[SOF_MAN_MOD_NAME_LEN + 1];
+	char dst_name[SOF_MAN_MOD_NAME_LEN + 1];
 	long src_mod, src_inst, dst_mod, dst_inst, src_q = 0, dst_q = 0;
 	int ret;
 
@@ -831,10 +922,18 @@ __cold static int cmd_sof_mod_bind(const struct shell *sh,
 
 	ret = ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&msg);
 	if (ret < 0)
-		shell_print(sh, "mod_bind failed: %d", ret);
-	else
-		shell_print(sh, "bound 0x%lx:%ld[q%ld] -> 0x%lx:%ld[q%ld]",
+		shell_print(sh,
+			    "mod_bind %s(0x%lx):%ld[q%ld] -> %s(0x%lx):%ld[q%ld] failed: %d",
+			    module_name_from_id((uint32_t)src_mod, src_name),
 			    src_mod, src_inst, src_q,
+			    module_name_from_id((uint32_t)dst_mod, dst_name),
+			    dst_mod, dst_inst, dst_q,
+			    ret);
+	else
+		shell_print(sh, "bound %s(0x%lx):%ld[q%ld] -> %s(0x%lx):%ld[q%ld]",
+			    module_name_from_id((uint32_t)src_mod, src_name),
+			    src_mod, src_inst, src_q,
+			    module_name_from_id((uint32_t)dst_mod, dst_name),
 			    dst_mod, dst_inst, dst_q);
 	return 0;
 }
@@ -845,6 +944,8 @@ __cold static int cmd_sof_mod_unbind(const struct shell *sh,
 {
 	struct ipc4_module_bind_unbind msg = {};
 	struct ipc *ipc = sof_get()->ipc;
+	char src_name[SOF_MAN_MOD_NAME_LEN + 1];
+	char dst_name[SOF_MAN_MOD_NAME_LEN + 1];
 	long src_mod, src_inst, dst_mod, dst_inst, src_q = 0, dst_q = 0;
 	int ret;
 
@@ -871,10 +972,18 @@ __cold static int cmd_sof_mod_unbind(const struct shell *sh,
 
 	ret = ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&msg);
 	if (ret < 0)
-		shell_print(sh, "mod_unbind failed: %d", ret);
-	else
-		shell_print(sh, "unbound 0x%lx:%ld[q%ld] -/- 0x%lx:%ld[q%ld]",
+		shell_print(sh,
+			    "mod_unbind %s(0x%lx):%ld[q%ld] -/- %s(0x%lx):%ld[q%ld] failed: %d",
+			    module_name_from_id((uint32_t)src_mod, src_name),
 			    src_mod, src_inst, src_q,
+			    module_name_from_id((uint32_t)dst_mod, dst_name),
+			    dst_mod, dst_inst, dst_q,
+			    ret);
+	else
+		shell_print(sh, "unbound %s(0x%lx):%ld[q%ld] -/- %s(0x%lx):%ld[q%ld]",
+			    module_name_from_id((uint32_t)src_mod, src_name),
+			    src_mod, src_inst, src_q,
+			    module_name_from_id((uint32_t)dst_mod, dst_name),
 			    dst_mod, dst_inst, dst_q);
 	return 0;
 }
