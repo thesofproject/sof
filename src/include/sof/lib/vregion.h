@@ -22,6 +22,7 @@ struct vregion;
  * - lifetime: allocation that cannot be freed i.e. init data, pipeline data.
  */
 enum vregion_mem_type {
+	VREGION_MEM_TYPE_INDIFFERENT,		/* lifetime before interim init, interim after */
 	VREGION_MEM_TYPE_INTERIM,		/* interim allocation that can be freed */
 	VREGION_MEM_TYPE_LIFETIME,		/* lifetime allocation */
 };

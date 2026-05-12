@@ -396,6 +396,12 @@ void *vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
 	case VREGION_MEM_TYPE_LIFETIME:
 		p = lifetime_alloc(vr, &vr->lifetime, size, alignment);
 		break;
+	case VREGION_MEM_TYPE_INDIFFERENT:
+		if (vr->interim_initialized)
+			p = interim_alloc(vr, &vr->interim, size, alignment);
+		else
+			p = lifetime_alloc(vr, &vr->lifetime, size, alignment);
+		break;
 	default:
 		LOG_ERR("error: invalid memory type %d", type);
 		p = NULL;
