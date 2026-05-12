@@ -7,8 +7,10 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
+#include <sof/lib/vregion.h>
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <rtos/alloc.h>
@@ -294,8 +296,14 @@ static int pipeline_comp_complete(struct comp_dev *current,
 	 * It will be calculated during module prepare operation
 	 * either by the module or to default value based on module's OBS
 	 */
-	if (current->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
+	if (current->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
 		current->period = ppl_data->p->period;
+	} else {
+		struct processing_module *mod = comp_mod(current);
+
+		if (mod && mod->priv.resources.alloc)
+			vregion_set_interim(mod->priv.resources.alloc->vreg);
+	}
 
 	current->priority = ppl_data->p->priority;
 
