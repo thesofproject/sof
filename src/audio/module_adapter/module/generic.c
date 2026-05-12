@@ -251,16 +251,18 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 		return NULL;
 	}
 
-	/* Allocate memory for module */
+	/* Allocate memory for module. Before init completes, use
+	 * lifetime partition so allocations persist across prepare/reset.
+	 */
 	void *ptr;
 
 	if (!res->alloc->vreg)
 		ptr = sof_heap_alloc(res->alloc->heap, flags, size, alignment);
 	else if (flags & SOF_MEM_FLAG_COHERENT)
-		ptr = vregion_alloc_coherent_align(res->alloc->vreg, VREGION_MEM_TYPE_INTERIM,
+		ptr = vregion_alloc_coherent_align(res->alloc->vreg, res->alloc->vregion_type,
 						   size, alignment);
 	else
-		ptr = vregion_alloc_align(res->alloc->vreg, VREGION_MEM_TYPE_INTERIM,
+		ptr = vregion_alloc_align(res->alloc->vreg, res->alloc->vregion_type,
 					  size, alignment);
 
 	if (!ptr) {
