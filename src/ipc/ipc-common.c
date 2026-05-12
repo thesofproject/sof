@@ -45,52 +45,30 @@ SOF_DEFINE_REG_UUID(ipc);
 
 DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
 
-/* Lightweight IPC stats. Updated under ipc->lock on the write paths and
- * read with the same lock from the shell. Single instance is sufficient
- * since there is only one IPC instance per firmware image.
+/* Lightweight IPC stats guarded by a dedicated lock.
+ *
+ * Do not reuse ipc->lock here: stats are updated from IPC RX/TX hot paths and
+ * some call sites may already run under IPC-internal locking, so nesting on
+ * ipc->lock can deadlock.
  */
 static struct ipc_stats g_ipc_stats;
+static struct k_spinlock g_ipc_stats_lock;
 
 void ipc_stats_record_rx(uint32_t pri, uint32_t ext)
 {
-	struct ipc *ipc = ipc_get();
-	k_spinlock_key_t key;
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
 
-	if (!ipc) {
-		g_ipc_stats.rx_count++;
-		g_ipc_stats.last_rx_pri = pri;
-		g_ipc_stats.last_rx_ext = ext;
-		g_ipc_stats.last_rx_time = sof_cycle_get_64();
-		return;
-	}
-
-	key = k_spin_lock(&ipc->lock);
 	g_ipc_stats.rx_count++;
 	g_ipc_stats.last_rx_pri = pri;
 	g_ipc_stats.last_rx_ext = ext;
 	g_ipc_stats.last_rx_time = sof_cycle_get_64();
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&g_ipc_stats_lock, key);
 }
 
 void ipc_stats_record_tx(uint32_t pri, uint32_t ext, bool direct, int err)
 {
-	struct ipc *ipc = ipc_get();
-	k_spinlock_key_t key;
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
 
-	if (!ipc) {
-		if (err < 0)
-			g_ipc_stats.tx_errors++;
-		else if (direct)
-			g_ipc_stats.tx_direct_count++;
-		else
-			g_ipc_stats.tx_count++;
-		g_ipc_stats.last_tx_pri = pri;
-		g_ipc_stats.last_tx_ext = ext;
-		g_ipc_stats.last_tx_time = sof_cycle_get_64();
-		return;
-	}
-
-	key = k_spin_lock(&ipc->lock);
 	if (err < 0) {
 		g_ipc_stats.tx_errors++;
 	} else {
@@ -102,55 +80,34 @@ void ipc_stats_record_tx(uint32_t pri, uint32_t ext, bool direct, int err)
 		g_ipc_stats.last_tx_ext = ext;
 		g_ipc_stats.last_tx_time = sof_cycle_get_64();
 	}
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&g_ipc_stats_lock, key);
 }
 
 void ipc_stats_inc_rx_error(void)
 {
-	struct ipc *ipc = ipc_get();
-	k_spinlock_key_t key;
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
 
-	if (!ipc) {
-		g_ipc_stats.rx_errors++;
-		return;
-	}
-
-	key = k_spin_lock(&ipc->lock);
 	g_ipc_stats.rx_errors++;
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&g_ipc_stats_lock, key);
 }
 
 void ipc_stats_get(struct ipc_stats *out)
 {
-	struct ipc *ipc = ipc_get();
-	k_spinlock_key_t key;
-
 	if (!out)
 		return;
 
-	if (!ipc) {
-		*out = g_ipc_stats;
-		return;
-	}
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
 
-	key = k_spin_lock(&ipc->lock);
 	*out = g_ipc_stats;
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&g_ipc_stats_lock, key);
 }
 
 void ipc_stats_reset(void)
 {
-	struct ipc *ipc = ipc_get();
-	k_spinlock_key_t key;
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
 
-	if (!ipc) {
-		memset(&g_ipc_stats, 0, sizeof(g_ipc_stats));
-		return;
-	}
-
-	key = k_spin_lock(&ipc->lock);
 	memset(&g_ipc_stats, 0, sizeof(g_ipc_stats));
-	k_spin_unlock(&ipc->lock, key);
+	k_spin_unlock(&g_ipc_stats_lock, key);
 }
 
 int ipc_process_on_core(uint32_t core, bool blocking)
