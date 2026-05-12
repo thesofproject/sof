@@ -44,10 +44,10 @@ static int objpool_add(struct objpool_head *head, unsigned int n, size_t size, u
 		pobjpool = sof_heap_alloc(head->heap, flags,
 					  aligned_size + sizeof(*pobjpool), 0);
 	else if (flags & SOF_MEM_FLAG_COHERENT)
-		pobjpool = vregion_alloc_coherent(head->vreg, VREGION_MEM_TYPE_INTERIM,
+		pobjpool = vregion_alloc_coherent(head->vreg, VREGION_MEM_TYPE_INDIFFERENT,
 						  aligned_size + sizeof(*pobjpool));
 	else
-		pobjpool = vregion_alloc(head->vreg, VREGION_MEM_TYPE_INTERIM,
+		pobjpool = vregion_alloc(head->vreg, VREGION_MEM_TYPE_INDIFFERENT,
 					 aligned_size + sizeof(*pobjpool));
 
 	if (!pobjpool)
