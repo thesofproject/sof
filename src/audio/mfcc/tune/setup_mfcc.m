@@ -62,6 +62,9 @@ function cfg = get_mfcc_default_config()
 	cfg.mmax_init = 0; % same
 	cfg.mmax_coef = 0; % same
 	cfg.dynamic_mmax = false; % same
+	cfg.enable_vad = false;
+	cfg.enable_dtx = false;
+	cfg.update_controls = false;
 end
 
 function cfg = get_mel_spectrogram_config()
@@ -99,6 +102,9 @@ function cfg = get_mel_spectrogram_config()
 	cfg.mmax_init = 0; % Initial value max Mel value, data clamp is mmax - top_db
 	cfg.mmax_coef = 0; % Dynamic max Mel value decay coefficient (zero lock to found max)
 	cfg.dynamic_mmax = true;
+	cfg.enable_vad = true;
+	cfg.enable_dtx = false;
+	cfg.update_controls = true;
 end
 
 function export_mfcc_setup(gen_cfg, cfg)
@@ -107,7 +113,7 @@ function export_mfcc_setup(gen_cfg, cfg)
 addpath([gen_cfg.tools_path 'tune/common']);
 
 %% Blob size, size plus reserved(8) + current parameters
-nbytes_data = 104;
+nbytes_data = 116;
 
 %% Little endian
 sh32 = [0 -8 -16 -24];
@@ -160,6 +166,10 @@ v = q_convert(cfg.top_db, 7);                    [b8, j] = add_w16b(v, b8, j);
 v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_high Qx.y TBD
 v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_low Qx.y TBD
 v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_warp Qx.y TBD
+% reserved16[3]
+for i = 1:3
+	[b8, j] = add_w16b(0, b8, j);
+end
 v = cfg.htk_compat;                              [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.raw_energy;                              [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.remove_dc_offset;                        [b8, j] = add_w8b(v, b8, j); % bool
@@ -168,6 +178,13 @@ v = cfg.snip_edges;                              [b8, j] = add_w8b(v, b8, j); % 
 v = cfg.subtract_mean;                           [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.use_energy;                              [b8, j] = add_w8b(v, b8, j); % bool
 v = cfg.dynamic_mmax;                            [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.enable_vad;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.enable_dtx;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.update_controls;                         [b8, j] = add_w8b(v, b8, j); % bool
+% reserved_bool[5]
+for i = 1:5
+	[b8, j] = add_w8b(0, b8, j);
+end
 
 %% Export
 tplg_fn = [gen_cfg.mfcc_conf_path cfg.tplg_fn];
