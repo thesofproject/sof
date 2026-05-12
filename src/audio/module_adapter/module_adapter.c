@@ -65,13 +65,7 @@ static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *
 	/* FIXME: the size will be derived from configuration */
 	const size_t buf_size = 28 * 1024;
 
-	/*
-	 * A 1-to-1 replacement of the original heap implementation would be to
-	 * have "lifetime size" equal to 0. But (1) this is invalid for
-	 * vregion_create() and (2) we gradually move objects, that are simple
-	 * to move to the lifetime buffer. Make it 4k for the beginning.
-	 */
-	return vregion_create(4096, buf_size - 4096);
+	return vregion_create(buf_size);
 }
 
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
@@ -109,9 +103,9 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	if (!mod_vreg)
 		mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
 	else if (flags & SOF_MEM_FLAG_COHERENT)
-		mod = vregion_alloc_coherent(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*mod));
+		mod = vregion_alloc_coherent(mod_vreg, sizeof(*mod));
 	else
-		mod = vregion_alloc(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*mod));
+		mod = vregion_alloc(mod_vreg, sizeof(*mod));
 
 	if (!mod) {
 		comp_cl_err(drv, "failed to allocate memory for module");
@@ -136,7 +130,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 * single-core configurations.
 	 */
 	if (mod_vreg)
-		dev = vregion_alloc_coherent(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*dev));
+		dev = vregion_alloc_coherent(mod_vreg, sizeof(*dev));
 	else
 		dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
 
