@@ -30,25 +30,7 @@
 #endif
 
 #define MFCC_MAGIC 0x6d666363 /* ASCII for "mfcc" */
-
-/* Set to 16 for lower RAM and MCPS with slightly lower quality. Set to 32 for best
- * quality but higher MCPS and RAM. The MFCC input is currently 16 bits. With this option
- * set to 32 the FFT and Mel filterbank are computed with better 32 bit precision. There
- * is also need to enable 32 bit FFT from Kconfig if set.
- */
 #define MFCC_FFT_BITS	32
-
-/* MFCC with 16 bit FFT benefits from data normalize, for 32 bits there's no
- * significant impact. The amount of left shifts for FFT input is limited to
- * 10 that equals about 60 dB boost. The boost is compensated in Mel energy
- * calculation.
- */
-#if MFCC_FFT_BITS == 16
-#define MFCC_NORMALIZE_FFT
-#else
-#undef MFCC_NORMALIZE_FFT
-#endif
-#define MFCC_NORMALIZE_MAX_SHIFT	10
 
 /** \brief Type definition for processing function select return value. */
 typedef void (*mfcc_func)(struct processing_module *mod,
@@ -79,15 +61,8 @@ struct mfcc_pre_emph {
 };
 
 struct mfcc_fft {
-#if MFCC_FFT_BITS == 16
-	struct icomplex16 *fft_buf; /**< fft_padded_size */
-	struct icomplex16 *fft_out; /**< fft_padded_size */
-#elif MFCC_FFT_BITS == 32
 	struct icomplex32 *fft_buf; /**< fft_padded_size */
 	struct icomplex32 *fft_out; /**< fft_padded_size */
-#else
-#error "MFCC_FFT_BITS needs to be 16 or 32"
-#endif
 	struct fft_plan *fft_plan;
 	int fft_fill_start_idx; /**< Set to 0 for pad left, etc. */
 	int fft_size;
@@ -167,10 +142,6 @@ void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 			    int prev_data_length);
 
 void mfcc_fill_fft_buffer(struct mfcc_state *state);
-
-#ifdef MFCC_NORMALIZE_FFT
-int mfcc_normalize_fft_buffer(struct mfcc_state *state);
-#endif
 
 void mfcc_apply_window(struct mfcc_state *state, int input_shift);
 

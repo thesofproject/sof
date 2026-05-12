@@ -172,29 +172,6 @@ void mfcc_fill_fft_buffer(struct mfcc_state *state)
 	}
 }
 
-#ifdef MFCC_NORMALIZE_FFT
-int mfcc_normalize_fft_buffer(struct mfcc_state *state)
-{
-	struct mfcc_fft *fft = &state->fft;
-	ae_p16s *in = (ae_p16s *)&fft->fft_buf[fft->fft_fill_start_idx].real;
-	ae_int32x2 sample;
-	ae_int32x2 max = AE_ZERO32();
-	const int fft_inc = sizeof(fft->fft_buf[0]);
-	int shift;
-	int j;
-
-	for (j = 0; j < fft->fft_size; j++) {
-		/* load 16-bit data to middle of 32-bit container*/
-		AE_L16M_XU(sample, in, fft_inc);
-		max = AE_MAXABS32S(max, sample);
-	}
-	shift = AE_NSAZ32_L(max) - 8;/* 16 bit data */
-	shift = MAX(shift, 0);
-	shift = MIN(shift, MFCC_NORMALIZE_MAX_SHIFT);
-	return shift;
-}
-#endif
-
 void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 {
 	struct mfcc_fft *fft = &state->fft;
@@ -205,19 +182,6 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 	ae_int16x4 win;
 	int j;
 
-#if MFCC_FFT_BITS == 16
-	ae_int16 *fft_in = (ae_int16 *)&fft->fft_buf[fft->fft_fill_start_idx].real;
-	ae_int16x4 sample;
-
-	for (j = 0; j < fft->fft_size; j++) {
-		AE_L16_IP(sample, fft_in, 0);
-		AE_L16_XP(win, win_in, win_inc);
-		temp = AE_MULF16SS_00(sample, win);
-		temp = AE_SLAA32S(temp, input_shift);
-		sample = AE_ROUND16X4F32SASYM(temp, temp);
-		AE_S16_0_XP(sample, fft_in, fft_inc);
-	}
-#else
 	ae_int32 *fft_in = (ae_int32 *)&fft->fft_buf[fft->fft_fill_start_idx].real;
 	ae_int32x2 sample;
 
@@ -228,7 +192,6 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 		temp = AE_SLAA32S(temp, input_shift);
 		AE_S32_L_XP(temp, fft_in, fft_inc);
 	}
-#endif
 }
 
 #if CONFIG_FORMAT_S24LE

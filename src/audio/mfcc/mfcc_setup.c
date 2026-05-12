@@ -187,11 +187,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->window = state->prev_data + state->prev_data_size;
 
 	/* Allocate buffers for FFT input and output data */
-#if MFCC_FFT_BITS == 16
-	fft->fft_buffer_size = fft->fft_padded_size * sizeof(struct icomplex16);
-#else
 	fft->fft_buffer_size = fft->fft_padded_size * sizeof(struct icomplex32);
-#endif
 	fft->fft_buf = mod_zalloc(mod, fft->fft_buffer_size);
 	if (!fft->fft_buf) {
 		comp_err(dev, "Failed FFT buffer allocate");

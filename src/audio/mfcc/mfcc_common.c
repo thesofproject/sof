@@ -22,17 +22,6 @@
 #include <stdint.h>
 
 LOG_MODULE_REGISTER(mfcc_common, CONFIG_SOF_LOG_LEVEL);
-/* MFCC with 16 bit FFT benefits from data normalize, for 32 bits there's no
- * significant impact. The amount of left shifts for FFT input is limited to
- * 10 that equals about 60 dB boost. The boost is compensated in Mel energy
- * calculation.
- */
-#if MFCC_FFT_BITS == 16
-#define MFCC_NORMALIZE_FFT
-#else
-#undef MFCC_NORMALIZE_FFT
-#endif
-#define MFCC_NORMALIZE_MAX_SHIFT	10
 
 /*
  * The main processing function for MFCC
@@ -87,12 +76,7 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_comp_data *
 
 		/* TODO: use_energy & raw_energy */
 
-#ifdef MFCC_NORMALIZE_FFT
-		/* Find block scale left shift for FFT input */
-		input_shift = mfcc_normalize_fft_buffer(state);
-#else
 		input_shift = 0;
-#endif
 
 		/* Window function */
 		mfcc_apply_window(state, input_shift);
@@ -105,15 +89,10 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_comp_data *
 		bzero(fft->fft_out, fft->fft_buffer_size);
 
 		/* Compute FFT */
-#if MFCC_FFT_BITS == 16
-		fft_execute_16(fft->fft_plan, false);
-#else
 		fft_execute_32(fft->fft_plan, false);
-#endif
 
-		/* Initialize 16-bit Mel log spectrum buffer in Q9.7. When MFCC_FFT_BITS
-		 * is 32 and output is cepstral coefficients, the Mel values are converted
-		 * later from Q9.23 to Q9.7 for DCT matrix multiplication.
+		/* Initialize 16-bit Mel log spectrum buffer in Q9.7. The Mel values
+		 * are converted from Q9.23 to Q9.7 for DCT matrix multiplication.
 		 */
 		mat_init_16b(state->mel_spectra, 1, state->dct.num_in, 7); /* Q9.7 */
 
@@ -122,13 +101,8 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_comp_data *
 		 * to add the missing "gain".
 		 */
 		mel_scale_shift = input_shift - fft->fft_plan->len;
-#if MFCC_FFT_BITS == 16
-		psy_apply_mel_filterbank_16(&state->melfb, fft->fft_out, state->power_spectra,
-					    state->mel_spectra->data, mel_scale_shift);
-#else
 		psy_apply_mel_filterbank_32(&state->melfb, fft->fft_out, state->power_spectra,
 					    state->mel_log_32, mel_scale_shift);
-#endif
 
 		if (state->mel_only) {
 			/* In Mel-only mode output Mel log spectra directly */

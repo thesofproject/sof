@@ -92,53 +92,17 @@ void mfcc_fill_fft_buffer(struct mfcc_state *state)
 		state->prev_data[j] = fft->fft_buf[idx + j].real;
 }
 
-#ifdef MFCC_NORMALIZE_FFT
-int mfcc_normalize_fft_buffer(struct mfcc_state *state)
-{
-	struct mfcc_fft *fft = &state->fft;
-	int32_t absx;
-	int32_t smax = 0;
-	int32_t x;
-	int shift;
-	int j;
-	int i = fft->fft_fill_start_idx;
-
-	for (j = 0; j < fft->fft_size; j++) {
-		x = fft->fft_buf[i + j].real;
-		absx = (x < 0) ? -x : x;
-		if (smax < absx)
-			smax = absx;
-	}
-
-	shift = norm_int32(smax << 15) - 1; /* 16 bit data */
-	shift = MAX(shift, 0);
-	shift = MIN(shift, MFCC_NORMALIZE_MAX_SHIFT);
-	return shift;
-}
-#endif
-
 void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 {
 	struct mfcc_fft *fft = &state->fft;
 	int j;
 	int i = fft->fft_fill_start_idx;
 
-#if MFCC_FFT_BITS == 16
-	/* TODO: Use proper multiply and saturate function to make sure no overflows */
-	int32_t x;
-	int s = 14 - input_shift; /* Q1.15 x Q1.15 -> Q30 -> Q15, shift by 15 - 1 for round */
-
-	for (j = 0; j < fft->fft_size; j++) {
-		x = (int32_t)fft->fft_buf[i + j].real * state->window[j];
-		fft->fft_buf[i + j].real = ((x >> s) + 1) >> 1;
-	}
-#else
 	/* TODO: Use proper multiply and saturate function to make sure no overflows */
 	int s = input_shift + 1; /* To convert 16 -> 32 with Q1.15 x Q1.15 -> Q30 -> Q31 */
 
 	for (j = 0; j < fft->fft_size; j++)
 		fft->fft_buf[i + j].real = (fft->fft_buf[i + j].real * state->window[j]) << s;
-#endif
 }
 
 #if CONFIG_FORMAT_S16LE
