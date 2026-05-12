@@ -448,10 +448,21 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
 	int ret;
+#ifdef CONFIG_SOF_USERSPACE_LL
+	int ppl_core;
+#endif
 
 	assert_can_be_cold();
 
 	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
+	if (!icd)
+		return IPC4_SUCCESS;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	ppl_core = icd->core;
+	zephyr_ll_lock_sched(ppl_core);
+#endif
+
 	while (icd) {
 		struct comp_buffer *buffer;
 		struct comp_buffer *safe;
@@ -481,11 +492,19 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		else
 			ret = ipc_comp_free(ipc, icd->id);
 
-		if (ret)
+		if (ret) {
+#ifdef CONFIG_SOF_USERSPACE_LL
+			zephyr_ll_unlock_sched(ppl_core);
+#endif
 			return IPC4_INVALID_RESOURCE_STATE;
+		}
 
 		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
 	}
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	zephyr_ll_unlock_sched(ppl_core);
+#endif
 
 	return IPC4_SUCCESS;
 }

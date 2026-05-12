@@ -179,16 +179,19 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * User-space LL: IPC-level zephyr_ll_lock_sched() provides mutual
+ * exclusion with the LL thread. No per-pipeline lock needed.
+ */
 #define PPL_LOCK_DECLARE
-#define PPL_LOCK() do { \
-		int ret = sys_mutex_lock(&comp->list_mutex, K_FOREVER); \
-		assert(ret == 0); \
-	} while (0)
-#define PPL_UNLOCK() do { \
-		int ret = sys_mutex_unlock(&comp->list_mutex); \
-		assert(ret == 0); \
-	} while (0)
+#define PPL_LOCK() zephyr_ll_lock_sched(PLATFORM_PRIMARY_CORE_ID)
+#define PPL_UNLOCK() zephyr_ll_unlock_sched(PLATFORM_PRIMARY_CORE_ID)
 #else
+/*
+ * Kernel-space LL. When modifying pipeline connections, block IRQs
+ * and prevent LL from running. No locking needed when iterating
+ * the pipeline in the LL thread.
+ */
 #define PPL_LOCK_DECLARE uint32_t flags
 #define PPL_LOCK() irq_local_disable(flags)
 #define PPL_UNLOCK()  irq_local_enable(flags)

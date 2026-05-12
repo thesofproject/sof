@@ -17,6 +17,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
@@ -334,12 +335,11 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	}
 
 	/* Lock buffer lists to prevent racing with the LL scheduler.
-	 * In user-space builds, irq_local_disable() is a privileged
-	 * operation, so use the per-component list_mutex instead
-	 * (same pattern as PPL_LOCK in pipeline_disconnect()).
+	 * In user-space builds, use the LL scheduler's sys_mutex
+	 * (re-entrant, so safe if caller already holds it).
 	 */
 #ifdef CONFIG_SOF_USERSPACE_LL
-	sys_mutex_lock(&icd->cd->list_mutex, K_FOREVER);
+	zephyr_ll_lock_sched(icd->core);
 #else
 	irq_local_disable(flags);
 #endif
@@ -356,7 +356,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	}
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	sys_mutex_unlock(&icd->cd->list_mutex);
+	zephyr_ll_unlock_sched(icd->core);
 #else
 	irq_local_enable(flags);
 #endif

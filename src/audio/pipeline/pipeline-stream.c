@@ -145,6 +145,20 @@ static int pipeline_comp_copy(struct comp_dev *current,
 	return err;
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+#include <sof/schedule/ll_schedule_domain.h>
+/*
+ * User-space LL: The LL thread runs at cooperative priority (-16)
+ * and cannot be preempted by IPC (priority 1). No per-pipeline
+ * lock needed in pipeline_copy() hot path.
+ */
+#define PPL_LOCK() zephyr_ll_lock_sched(PLATFORM_PRIMARY_CORE_ID)
+#define PPL_UNLOCK() zephyr_ll_unlock_sched(PLATFORM_PRIMARY_CORE_ID)
+#else
+#define PPL_LOCK()
+#define PPL_UNLOCK()
+#endif
+
 /* Copy data across all pipeline components.
  * For capture pipelines it always starts from source component
  * and continues downstream and for playback pipelines it first
@@ -162,6 +176,8 @@ int pipeline_copy(struct pipeline *p)
 	uint32_t dir;
 	int ret;
 
+	PPL_LOCK();
+
 	if (p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dir = PPL_DIR_UPSTREAM;
 		start = p->sink_comp;
@@ -177,6 +193,8 @@ int pipeline_copy(struct pipeline *p)
 	if (ret < 0)
 		pipe_err(p, "ret = %d, start->comp.id = %u, dir = %u",
 			 ret, dev_comp_id(start), dir);
+
+	PPL_UNLOCK();
 
 	return ret;
 }
