@@ -149,6 +149,8 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	memset(mod, 0, sizeof(*mod));
 	alloc->heap = mod_heap;
 	alloc->vreg = mod_vreg;
+	/* Set vreg type to lifetime mode first, will become interim in module_adapter_prepare() */
+	alloc->vregion_type = VREGION_MEM_TYPE_LIFETIME;
 	mod->priv.resources.alloc = alloc;
 	mod_resource_init(mod);
 
@@ -422,6 +424,9 @@ int module_adapter_prepare(struct comp_dev *dev)
 	int i = 0;
 
 	comp_dbg(dev, "start");
+
+	/* Prepare has been called, from now on all vreg allocs should be INTERIM. */
+	mod->priv.resources.alloc->vregion_type = VREGION_MEM_TYPE_INTERIM;
 #if CONFIG_IPC_MAJOR_4
 	/* allocate stream_params and retrieve the params from the basecfg if needed */
 	if (!mod->stream_params) {
