@@ -14,6 +14,7 @@ config IPC_MAJOR_3
 
 config IPC_MAJOR_4
 	bool "IPC Major Version 4"
+	depends on ZEPHYR_NATIVE_DRIVERS || LIBRARY
 	help
 	  This is an IPC version used by certain middleware on some IOT
 	  Intel devices. Not for general use.
