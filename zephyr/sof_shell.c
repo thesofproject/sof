@@ -384,9 +384,11 @@ __cold static int cmd_sof_clock_status(const struct shell *sh,
 
 	for (i = 0; i < NUM_CLOCKS; i++) {
 		uint32_t freq = clocks[i].freqs[clocks[i].current_freq_idx].freq;
+		uint32_t mhz_whole = freq / 1000000;
+		uint32_t mhz_tenth = (freq % 1000000) / 100000;
 
-		shell_print(sh, "%-6d %-12u %.1f",
-			    i, freq, (double)freq / 1000000.0);
+		shell_print(sh, "%-6d %-12u %u.%u",
+			    i, freq, mhz_whole, mhz_tenth);
 	}
 
 	return 0;
@@ -420,8 +422,9 @@ __cold static void print_manifest_modules(const struct shell *sh,
 	for (i = 0; i < (int)desc->header.num_module_entries; i++) {
 		const struct sof_man_module *mod;
 		const struct sof_man_mod_config *cfg = NULL;
-		uint32_t text_sz, bss_sz;
+		uint32_t text_sz = 0, bss_sz;
 		char name[SOF_MAN_MOD_NAME_LEN + 1];
+		int s;
 
 		mod = (const struct sof_man_module *)
 			((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(i));
@@ -433,8 +436,15 @@ __cold static void print_manifest_modules(const struct shell *sh,
 		if (mod->cfg_count > 0)
 			cfg = cfg_base + mod->cfg_offset;
 
-		text_sz = (uint32_t)mod->segment[0].flags.r.length * _SHELL_MOD_PAGE_SZ;
-		bss_sz  = (uint32_t)mod->instance_bss_size * _SHELL_MOD_PAGE_SZ;
+		/* find TEXT segment by type — index 0 is not always TEXT for built-ins */
+		for (s = 0; s < 3; s++) {
+			if (mod->segment[s].flags.r.type == SOF_MAN_SEGMENT_TEXT) {
+				text_sz = (uint32_t)mod->segment[s].flags.r.length
+					  * _SHELL_MOD_PAGE_SZ;
+				break;
+			}
+		}
+		bss_sz = (uint32_t)mod->instance_bss_size * _SHELL_MOD_PAGE_SZ;
 
 		shell_print(sh,
 			    "[%d:%d] %-8s"
@@ -456,6 +466,9 @@ __cold static void print_manifest_modules(const struct shell *sh,
 				    cfg->cpc, cfg->cps, cfg->ibs, cfg->obs);
 		else
 			shell_print(sh, "        cpc:N/A");
+
+		/* yield between entries so the serial driver can drain its TX FIFO */
+		k_msleep(5);
 	}
 }
 #endif /* CONFIG_IPC4_BASE_FW_INTEL */
