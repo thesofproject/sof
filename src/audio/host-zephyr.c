@@ -651,7 +651,7 @@ int host_common_trigger(struct host_data *hd, struct comp_dev *dev, int cmd)
 	if (cmd != COMP_TRIGGER_START && hd->copy_type == COMP_COPY_ONE_SHOT)
 		return ret;
 
-	if (hd->chan_index == -EINVAL) {
+	if (hd->chan_index < 0) {
 		comp_err(dev, "no dma channel configured");
 		return -EINVAL;
 	}
@@ -785,7 +785,7 @@ __cold void host_common_free(struct host_data *hd)
 #endif
 
 	/* release DMA channel if not already done by reset */
-	if (hd->chan_index != -EINVAL) {
+	if (hd->chan_index >=  0) {
 		sof_dma_stop(hd->dma, hd->chan_index);
 		sof_dma_release_channel(hd->dma, hd->chan_index);
 		hd->chan_index = -EINVAL;
@@ -1171,7 +1171,7 @@ static int host_position(struct comp_dev *dev,
 
 void host_common_reset(struct host_data *hd, uint16_t state)
 {
-	if (hd->chan_index != -EINVAL) {
+	if (hd->chan_index >= 0) {
 		sof_dma_stop(hd->dma, hd->chan_index);
 		sof_dma_release_channel(hd->dma, hd->chan_index);
 		hd->chan_index = -EINVAL;
