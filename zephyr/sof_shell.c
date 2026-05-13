@@ -2368,8 +2368,8 @@ static const char *zephyr_dai_type_str(int t)
 	}
 }
 
-__cold static int cmd_sof_dai_list(const struct shell *sh,
-				   size_t argc, char *argv[])
+__cold static int cmd_sof_dai_list_fn(const struct shell *sh,
+				      size_t argc, char *argv[])
 {
 	const struct device **list;
 	size_t count = 0;
@@ -2404,22 +2404,33 @@ __cold static int cmd_sof_dai_list(const struct shell *sh,
 			    zephyr_dai_type_str(cfg.type), cfg.dai_index,
 			    cfg.channels, cfg.rate, cfg.format, cfg.word_size);
 
-		props = dai_get_properties(dev, DAI_DIR_TX, 0);
-		if (props)
-			shell_print(sh,
-				    "        TX: fifo 0x%08x depth %u hs %u stream %d",
-				    props->fifo_address, props->fifo_depth,
-				    props->dma_hs_id, props->stream_id);
-		props = dai_get_properties(dev, DAI_DIR_RX, 0);
-		if (props)
-			shell_print(sh,
-				    "        RX: fifo 0x%08x depth %u hs %u stream %d",
-				    props->fifo_address, props->fifo_depth,
-				    props->dma_hs_id, props->stream_id);
+		/* get_properties is optional and only valid on configured DAIs */
+		if (cfg.channels && DEVICE_API_GET(dai, dev)->get_properties) {
+			props = dai_get_properties(dev, DAI_DIR_TX, 0);
+			if (props)
+				shell_print(sh,
+					    "        TX: fifo 0x%08x depth %u hs %u stream %d",
+					    props->fifo_address, props->fifo_depth,
+					    props->dma_hs_id, props->stream_id);
+			props = dai_get_properties(dev, DAI_DIR_RX, 0);
+			if (props)
+				shell_print(sh,
+					    "        RX: fifo 0x%08x depth %u hs %u stream %d",
+					    props->fifo_address, props->fifo_depth,
+					    props->dma_hs_id, props->stream_id);
+		}
 	}
 
 	return 0;
 }
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sof_dai_commands,
+	SHELL_CMD(list, NULL,
+		  "List all registered DAI endpoints: name, type, index, "
+		  "channels, rate, format, word size and per-direction fifo/hs\n",
+		  cmd_sof_dai_list_fn),
+	SHELL_SUBCMD_SET_END
+);
 
 #endif /* CONFIG_SOF_SHELL_DAI_LIST */
 
@@ -3064,10 +3075,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 #endif
 
 #if CONFIG_SOF_SHELL_DAI_LIST
-	SHELL_CMD(dai_list, NULL,
-		  "List all registered DAIs (name, type, channels, rate, "
-		  "fifo, hs)\n",
-		  cmd_sof_dai_list),
+	SHELL_CMD(dai, &sof_dai_commands,
+		  "DAI commands: list\n",
+		  NULL),
 #endif
 
 #if CONFIG_SOF_SHELL_DMA_STATUS
