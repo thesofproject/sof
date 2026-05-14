@@ -310,37 +310,41 @@ dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
 		/*
 		 * copy from local buffer to all sinks that are not gateway buffers
 		 * using the right PCM converter function.
+		 * Skip in case of endpoint DAI devices created by the copier.
 		 */
-		struct comp_buffer *sink;
+		if (converter) {
+			struct comp_buffer *sink;
 
-		comp_dev_for_each_consumer(dev, sink) {
-			struct comp_dev *sink_dev;
-			int j;
+			comp_dev_for_each_consumer(dev, sink) {
+				struct comp_dev *sink_dev;
+				int j;
 
-			if (sink == dd->dma_buffer)
-				continue;
+				if (sink == dd->dma_buffer)
+					continue;
 
-			sink_dev = comp_buffer_get_sink_component(sink);
+				sink_dev = comp_buffer_get_sink_component(sink);
 
-			j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
+				j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
 
-			if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
-				comp_err(dev, "Sink queue ID: %d >= max output pin count: %d\n",
-					 j, IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT);
-				ret = -EINVAL;
-				continue;
-			}
+				if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
+					comp_err(dev, "Sink queue ID: %d >= max output pin count: %d\n",
+						 j, IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT);
+					ret = -EINVAL;
+					continue;
+				}
 
-			if (!converter[j]) {
-				comp_err(dev, "No PCM converter for sink queue %d\n", j);
-				ret = -EINVAL;
-				continue;
-			}
+				if (!converter[j]) {
+					comp_err(dev, "No PCM converter for sink queue %d\n", j);
+					ret = -EINVAL;
+					continue;
+				}
 
-			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE  &&
-			    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
-				ret = stream_copy_from_no_consume(dev, dd->local_buffer, sink,
-								  converter[j], bytes, dd->chmap);
+				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE  &&
+				    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
+					ret = stream_copy_from_no_consume(dev, dd->local_buffer,
+									  sink, converter[j],
+									  bytes, dd->chmap);
+				}
 			}
 		}
 #endif
