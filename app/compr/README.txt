@@ -16,7 +16,8 @@ cadence.conf      - Base Cadence codec module only (no individual codecs)
 mp3.conf          - MP3 decoder and encoder
 aac.conf          - AAC decoder
 vorbis.conf       - Vorbis decoder
-all_codecs.conf   - All supported codecs (MP3, AAC, Vorbis)
+pcm.conf	  - PCM (wav) decoder
+all_codecs.conf   - All supported codecs (MP3, AAC, Vorbis, pcm)
 
 Usage Examples
 --------------
