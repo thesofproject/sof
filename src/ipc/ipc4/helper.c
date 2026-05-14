@@ -1271,7 +1271,6 @@ __cold static int ipc4_add_comp_dev(struct comp_dev *dev)
 		      sizeof(struct ipc_comp_dev));
 	if (!icd) {
 		tr_err(&ipc_tr, "alloc failed");
-		rfree(icd);
 		return IPC4_OUT_OF_MEMORY;
 	}
 
