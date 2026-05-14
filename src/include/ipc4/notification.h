@@ -88,7 +88,7 @@ enum sof_ipc4_resource_event_type {
 	/* SNDW debug notification e.g. external VAD detected */
 	SOF_IPC4_SNDW_DEBUG_INFO		= 18,
 	/* Invalid type */
-	SOF_IPC4_INVALID_RESORUCE_EVENT_TYPE	= 19,
+	SOF_IPC4_INVALID_RESOURCE_EVENT_TYPE	= 19,
 };
 
 /* Resource Type - source of the event */
