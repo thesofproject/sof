@@ -20,23 +20,28 @@ void fft_execute_32(struct fft_plan *plan, bool ifft)
 	ae_int32x2 sample1;
 	ae_int32x2 sample2;
 	ae_int32x2 tw;
-	ae_int32x2 *inx = (ae_int32x2 *)plan->inb32;
-	ae_int32x2 *outx = (ae_int32x2 *)plan->outb32;
+	ae_int32x2 *inx;
+	ae_int32x2 *outx;
 	ae_int32x2 *top_ptr;
 	ae_int32x2 *bot_ptr;
-	uint16_t *idx = &plan->bit_reverse_idx[0];
+	uint16_t *idx;
 	const int32_t *tw_r;
 	const int32_t *tw_i;
 	int depth, i;
 	int j, k, m, n;
-	int size = plan->size;
-	int len = plan->len;
+	int size, len;
 
 	if (!plan || !plan->bit_reverse_idx)
 		return;
 
 	if (!plan->inb32 || !plan->outb32)
 		return;
+
+	inx = (ae_int32x2 *)plan->inb32;
+	outx = (ae_int32x2 *)plan->outb32;
+	idx = &plan->bit_reverse_idx[0];
+	size = plan->size;
+	len = plan->len;
 
 	/* step 1: re-arrange input in bit reverse order, and shrink the level to avoid overflow */
 	if (ifft) {
