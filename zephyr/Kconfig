@@ -452,6 +452,20 @@ config SOF_SHELL_LLEXT_PURGE
 	  into SRAM (i.e. an active pipeline is using it) and returns -EBUSY.
 	  Tear down all pipelines that reference the library before purging.
 
+config SOF_SHELL_LLEXT_SYMBOLS
+	bool "llext symbol table dump command"
+	default y
+	depends on SHELL && LLEXT
+	help
+	  Enables the 'sof llext symbols [name]' shell command.  Without an
+	  argument it iterates every loaded Zephyr llext extension; with a
+	  name it filters to that single extension.  For each extension it
+	  prints the extension name, use_count, and two symbol tables:
+	    exp_tab  – symbols exported via LL_EXTENSION_SYMBOL (public API)
+	    sym_tab  – all global symbols resolved during linking
+
+	  Each symbol entry shows the symbol name and its runtime address.
+
 config SOF_SHELL_BUFFER_INFO
 	bool "Audio buffer list/info commands"
 	default y

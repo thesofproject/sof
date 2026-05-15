@@ -1657,6 +1657,78 @@ __cold static int cmd_sof_llext_purge(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_LLEXT_PURGE */
 
+#if CONFIG_SOF_SHELL_LLEXT_SYMBOLS && CONFIG_LLEXT
+
+/*
+ * sof llext symbols [name]
+ *
+ * Without an argument: iterate every loaded Zephyr llext extension and for
+ * each print its name, use_count, then two tables:
+ *   exp_tab  – symbols exported by the extension via LL_EXTENSION_SYMBOL
+ *   sym_tab  – all global symbols resolved during linking (internal + imports)
+ *
+ * With a name argument: restrict output to that single extension.
+ *
+ * Example (no arg):
+ *   [tester]  use=1  exp=3  sym=12
+ *     exp  my_api_init          0x60040100
+ *     exp  my_api_process       0x60040120
+ *     sym  __start              0x60040000
+ *     ...
+ */
+
+struct _llext_sym_ctx {
+	const struct shell *sh;
+	const char *filter;  /* NULL = all */
+	int found;
+};
+
+static int _llext_sym_cb(struct llext *ext, void *arg)
+{
+	struct _llext_sym_ctx *ctx = arg;
+	size_t i;
+
+	if (ctx->filter && strcmp(ext->name, ctx->filter) != 0)
+		return 0;
+
+	shell_print(ctx->sh,
+		    "[%s]  use=%u  exp=%zu  sym=%zu",
+		    ext->name, ext->use_count,
+		    ext->exp_tab.sym_cnt, ext->sym_tab.sym_cnt);
+
+	for (i = 0; i < ext->exp_tab.sym_cnt; i++)
+		shell_print(ctx->sh, "  exp  %-32s  %p",
+			    ext->exp_tab.syms[i].name,
+			    ext->exp_tab.syms[i].addr);
+
+	for (i = 0; i < ext->sym_tab.sym_cnt; i++)
+		shell_print(ctx->sh, "  sym  %-32s  %p",
+			    ext->sym_tab.syms[i].name,
+			    ext->sym_tab.syms[i].addr);
+
+	ctx->found++;
+	return 0;
+}
+
+__cold static int cmd_sof_llext_symbols(const struct shell *sh,
+					size_t argc, char *argv[])
+{
+	struct _llext_sym_ctx ctx = {
+		.sh = sh,
+		.filter = (argc > 1) ? argv[1] : NULL,
+		.found = 0,
+	};
+
+	llext_iterate(_llext_sym_cb, &ctx);
+
+	if (!ctx.found)
+		shell_print(sh, argc > 1 ? "llext '%s' not found" : "(no llext loaded)",
+			    argc > 1 ? argv[1] : "");
+	return 0;
+}
+
+#endif /* CONFIG_SOF_SHELL_LLEXT_SYMBOLS && CONFIG_LLEXT */
+
 static int cmd_sof_version(const struct shell *sh, size_t argc, char *argv[])
 {
 	shell_print(sh, "SOF Version: %d.%d.%d-%s (Build %d)",
@@ -2726,6 +2798,13 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_llext_commands,
 		  "mapped in SRAM (i.e. a pipeline using it is still active).\n",
 		  cmd_sof_llext_purge, 2, 0),
 #endif
+#if CONFIG_SOF_SHELL_LLEXT_SYMBOLS && CONFIG_LLEXT
+	SHELL_CMD_ARG(symbols, NULL,
+		  "List symbol tables of all (or one named) llext: [name]\n"
+		  "Shows exp_tab (exported) and sym_tab (all linked) symbols\n"
+		  "with address, plus extension use_count.\n",
+		  cmd_sof_llext_symbols, 1, 1),
+#endif
 	SHELL_SUBCMD_SET_END
 );
 
@@ -3027,9 +3106,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_commands,
 #endif
 
 #if CONFIG_SOF_SHELL_LLEXT_LOAD || \
-    ((CONFIG_SOF_SHELL_LLEXT_LIST || CONFIG_SOF_SHELL_LLEXT_PURGE) && CONFIG_LLEXT)
+    ((CONFIG_SOF_SHELL_LLEXT_LIST || CONFIG_SOF_SHELL_LLEXT_PURGE || \
+      CONFIG_SOF_SHELL_LLEXT_SYMBOLS) && CONFIG_LLEXT)
 	SHELL_CMD(llext, &sof_llext_commands,
-		  "Llext commands: load, list, purge (SOF_SHELL_LLEXT_*)\n",
+		  "Llext commands: load, list, purge, symbols (SOF_SHELL_LLEXT_*)\n",
 		  NULL),
 #endif
 
