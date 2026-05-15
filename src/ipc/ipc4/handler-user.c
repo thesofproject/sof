@@ -1281,7 +1281,7 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		ret = IPC4_UNAVAILABLE;
 		break;
 	default:
-		ret = IPC4_UNAVAILABLE;
+		ret = IPC4_UNKNOWN_MESSAGE_TYPE;
 		break;
 	}
 
