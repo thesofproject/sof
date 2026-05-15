@@ -91,7 +91,7 @@ static inline void tlv_value_get(const void *data,
 	const struct sof_tlv *tlv = (const struct sof_tlv *)data;
 	const uint32_t end_addr = (uint32_t)data + size;
 
-	while ((uint32_t)tlv < end_addr) {
+	while (tlv && (uint32_t)tlv < end_addr) {
 		if (tlv->type == type) {
 			*value = (void *)tlv->value;
 			*length = tlv->length;
