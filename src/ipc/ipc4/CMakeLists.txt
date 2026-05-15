@@ -2,13 +2,18 @@
 
 # Files common to Zephyr and XTOS
 add_local_sources(sof
-	dai.c
 	handler-user.c
 	handler-kernel.c
 	helper.c
 	logging.c
 	notification.c
 )
+
+# The DAI interface is not implemented in library builds and
+# code depends on Zephyr DAI driver definitions to be available.
+if(NOT CONFIG_LIBRARY)
+	add_local_sources(sof dai.c)
+endif()
 
 is_zephyr(zephyr)
 if(zephyr) ###  Zephyr ###
