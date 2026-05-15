@@ -35,11 +35,13 @@ void fft_execute_16(struct fft_plan *plan, bool ifft)
 	ae_valign outu = AE_ZALIGN64();
 	int depth, top, bottom, index;
 	int i, j, k, m, n;
-	int size = plan->size;
-	int len = plan->len;
+	int size, len;
 
 	if (!plan || !plan->bit_reverse_idx)
 		return;
+
+	size = plan->size;
+	len = plan->len;
 
 	outb = plan->outb16;
 	if (!plan->inb16 || !outb)
