@@ -690,6 +690,10 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 	/* component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
+	if (!cd->model_handler) {
+		comp_err(dev, "comp_data_blob_handler_new failed");
+		goto cd_fail;
+	}
 
 #if CONFIG_IPC_MAJOR_4
 	/* For IPC4 we only receive the base_cfg, make a copy of it */
