@@ -1307,7 +1307,7 @@ int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buff
 	struct ipc_dma_config *dma_cfg;
 	struct sof_tlv *tlvs;
 
-	for (tlvs = (struct sof_tlv *)data_buffer; (uint32_t)tlvs < end_addr;
+	for (tlvs = (struct sof_tlv *)data_buffer; tlvs && (uint32_t)tlvs < end_addr;
 	     tlvs = tlv_next(tlvs)) {
 		dma_cfg = tlv_value_ptr_get(tlvs, GTW_DMA_CONFIG_ID);
 		if (!dma_cfg)
