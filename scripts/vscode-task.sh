@@ -5,17 +5,16 @@
 # Simple helper script for vscode task support.
 # Current vscode tasks have difficulty executing multiple commands.
 
-# check if Zephyr environment is set up
-if [ ! -z "$ZEPHYR_BASE" ]; then
-    VENV_DIR="$ZEPHYR_BASE/.venv"
-    echo "Using Zephyr environment at $ZEPHYR_BASE"
-elif [ ! -z "$SOF_WORKSPACE" ]; then
-    VENV_DIR="$SOF_WORKSPACE/zephyr/.venv"
-    echo "Using SOF/Zephyr environment at $SOF_WORKSPACE"
+# check if SOF workspace environment is set up
+if [ ! -z "$SOF_WORKSPACE" ]; then
+    VENV_DIR="$SOF_WORKSPACE/.venv"
+    echo "Using SOF environment at $SOF_WORKSPACE"
 else
-    # fallback to the zephyr default from the getting started guide
-    VENV_DIR="$HOME/zephyrproject/.venv"
-    echo "Using default Zephyr environment at $VENV_DIR"
+    # fallback to the script directory default path
+    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+    SOF_REPO=$(dirname "$SCRIPT_DIR")
+    VENV_DIR="$SOF_REPO/../.venv"
+    echo "Using default SOF environment at $VENV_DIR"
 fi
 
 # start the virtual environment

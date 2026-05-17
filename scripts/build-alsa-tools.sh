@@ -22,13 +22,16 @@ declare -a COMMIT_ID=(
 )
 
 # Directory where repositories will be cloned/updated.
-if [[ -z "$SOF_WORKSPACE" ]]; then
-  # Environment variable is empty or unset so use default
-  BASE_DIR="$HOME/work/sof"
-else
-  # Environment variable exists and has a value
-  BASE_DIR="$SOF_WORKSPACE"
+if [ -z "${SOF_WORKSPACE}" ]; then
+    # fallback to the script directory default path
+    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+    SOF_REPO=$(dirname "$SCRIPT_DIR")
+    SOF_WORKSPACE="$SOF_REPO/../"
+    echo "Using default SOF environment at $SOF_WORKSPACE"
 fi
+
+# Environment variable exists and has a value
+BASE_DIR="$SOF_WORKSPACE"
 
 # Arguments to pass to ./configure for each repository.  Add or remove
 declare -a CONFIGURE_ARGS=(
