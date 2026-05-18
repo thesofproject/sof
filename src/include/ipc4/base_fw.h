@@ -26,6 +26,9 @@
 /* Max src queue count supported by ipc4 */
 #define IPC4_MAX_SRC_QUEUE 8
 
+/* Max dst queue count supported by ipc4 */
+#define IPC4_MAX_DST_QUEUE 8
+
 /* Max module instance for single module count supported by ipc4 */
 #define IPC4_MAX_MODULE_INSTANCES 256
 
