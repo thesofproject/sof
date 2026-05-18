@@ -424,7 +424,7 @@ __cold int basefw_vendor_get_large_config(struct comp_dev *dev, uint32_t param_i
 
 	extended_param_id.full = param_id;
 
-	uint32_t ret = IPC4_ERROR_INVALID_PARAM;
+	uint32_t ret = IPC4_INVALID_REQUEST;
 
 	switch (extended_param_id.part.parameter_type) {
 	case IPC4_MEMORY_STATE_INFO_GET:
@@ -560,7 +560,7 @@ __cold int basefw_vendor_set_large_config(struct comp_dev *dev, uint32_t param_i
 		break;
 	}
 
-	return IPC4_UNKNOWN_MESSAGE_TYPE;
+	return IPC4_INVALID_REQUEST;
 }
 
 __cold int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, size_t data_size)
