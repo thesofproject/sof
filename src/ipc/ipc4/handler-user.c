@@ -809,7 +809,7 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 		comp_id = IPC4_COMP_ID(config->primary.r.module_id, config->primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
-			return IPC4_MOD_INVALID_ID;
+			return IPC4_INVALID_RESOURCE_ID;
 
 		drv = dev->drv;
 
@@ -821,7 +821,7 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 	}
 
 	if (!drv)
-		return IPC4_MOD_INVALID_ID;
+		return IPC4_INVALID_RESOURCE_ID;
 
 	function = set ? drv->ops.set_attribute : drv->ops.get_attribute;
 	if (!function)
@@ -996,7 +996,7 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 				       config.primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
-			return IPC4_MOD_INVALID_ID;
+			return IPC4_INVALID_RESOURCE_ID;
 
 		drv = dev->drv;
 
@@ -1008,7 +1008,7 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 	}
 
 	if (!drv)
-		return IPC4_MOD_INVALID_ID;
+		return IPC4_INVALID_RESOURCE_ID;
 
 	if (!drv->ops.get_large_config)
 		return IPC4_INVALID_REQUEST;
@@ -1041,7 +1041,7 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 
 	/* set up ipc4 error code for reply data */
 	if (ret < 0)
-		ret = IPC4_MOD_INVALID_ID;
+		ret = IPC4_INVALID_RESOURCE_ID;
 
 	/* Copy host config and overwrite */
 	reply.extension.dat = config.extension.dat;
@@ -1165,7 +1165,7 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 		comp_id = IPC4_COMP_ID(config.primary.r.module_id, config.primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
-			return IPC4_MOD_INVALID_ID;
+			return IPC4_INVALID_RESOURCE_ID;
 
 		drv = dev->drv;
 
@@ -1177,7 +1177,7 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 	}
 
 	if (!drv)
-		return IPC4_MOD_INVALID_ID;
+		return IPC4_INVALID_RESOURCE_ID;
 
 	if (!drv->ops.set_large_config)
 		return IPC4_INVALID_REQUEST;
