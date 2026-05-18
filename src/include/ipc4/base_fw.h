@@ -23,7 +23,7 @@
  */
 #define IPC4_MAX_CLK_STATES 0
 
-/* Max src queue count count supported by ipc4 */
+/* Max src queue count supported by ipc4 */
 #define IPC4_MAX_SRC_QUEUE 8
 
 /* Max module instance for single module count supported by ipc4 */
