@@ -817,6 +817,10 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 		if (!cpu_is_me(dev->ipc_config.core))
 			return ipc4_process_on_core(dev->ipc_config.core, false);
 	} else {
+		/* BaseFW module has only 0th instance */
+		if (config->primary.r.instance_id)
+			return IPC4_INVALID_RESOURCE_ID;
+
 		drv = ipc4_get_comp_drv(config->primary.r.module_id);
 	}
 
@@ -1004,6 +1008,10 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 		if (!cpu_is_me(dev->ipc_config.core))
 			return ipc4_process_on_core(dev->ipc_config.core, false);
 	} else {
+		/* BaseFW module has only 0th instance */
+		if (config.primary.r.instance_id)
+			return IPC4_INVALID_RESOURCE_ID;
+
 		drv = ipc4_get_comp_drv(config.primary.r.module_id);
 	}
 
@@ -1173,6 +1181,10 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 		if (!cpu_is_me(dev->ipc_config.core))
 			return ipc4_process_on_core(dev->ipc_config.core, false);
 	} else {
+		/* BaseFW module has only 0th instance */
+		if (config.primary.r.instance_id)
+			return IPC4_INVALID_RESOURCE_ID;
+
 		drv = ipc4_get_comp_drv(config.primary.r.module_id);
 	}
 
