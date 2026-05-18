@@ -506,6 +506,14 @@ int module_adapter_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	if (mod->num_of_sources > mod->max_sources ||
+	    mod->num_of_sinks > mod->max_sinks) {
+		comp_err(dev, "connected sources %d (max %d) or sinks %d (max %d) exceed module capacity",
+			 mod->num_of_sources, mod->max_sources,
+			 mod->num_of_sinks, mod->max_sinks);
+		return -EINVAL;
+	}
+
 	/* check processing mode */
 	if (IS_PROCESSING_MODE_AUDIO_STREAM(mod) && mod->max_sources > 1 && mod->max_sinks > 1) {
 		comp_err(dev, "Invalid use of simple_copy");
