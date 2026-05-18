@@ -21,6 +21,7 @@
 #include <sof/ut.h>
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
+#include <ipc4/base_fw.h>
 #include <limits.h>
 #include <stdint.h>
 
@@ -162,6 +163,9 @@ int module_adapter_init_data(struct comp_dev *dev,
 			     + (n_out * sizeof(*dst->output_pins));
 
 		if (cfgsz == (sizeof(*cfg) + pinsz)) {
+			if (n_in > IPC4_MAX_SRC_QUEUE || n_out > IPC4_MAX_DST_QUEUE)
+				return -EINVAL;
+
 			dst->nb_input_pins = n_in;
 			dst->nb_output_pins = n_out;
 			dst->input_pins = sof_heap_alloc(dev->mod->priv.resources.alloc->heap,
