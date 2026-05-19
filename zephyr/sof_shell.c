@@ -1518,6 +1518,7 @@ __cold static int cmd_sof_llext_list(const struct shell *sh,
 			    ctx->n_mod);
 
 #if CONFIG_LLEXT
+
 		if (ctx->mod) {
 			unsigned int i;
 
@@ -1529,18 +1530,25 @@ __cold static int cmd_sof_llext_list(const struct shell *sh,
 				uint32_t text_sz = 0, data_sz = 0, bss_sz;
 				int s;
 
-				if (m->mod_manifest) {
-					/* Module has been loaded to SRAM: use the
-					 * manifest pointer set by llext_manager. */
-					mm = &m->mod_manifest->module;
+				/* Always read the module manifest directly from the
+				 * DRAM library descriptor. This is always valid after
+				 * the library has been DMA'd to DRAM, and avoids cache
+				 * coherency issues with the SRAM-linked copy. Use
+				 * dcache_invalidate_region() to ensure we read the
+				 * freshly-written DRAM content rather than a stale
+				 * cache line.
+				 * Note: m->mod_manifest (if non-NULL) points to the
+				 * SRAM copy created during module instantiation; we
+				 * still use text_size from there when available. */
+				mm = (const struct sof_man_module *)
+					((const uint8_t *)desc +
+					 SOF_MAN_MODULE_OFFSET(i));
+				dcache_invalidate_region(
+					(__sparse_force void *)mm,
+					sizeof(*mm));
+
+				if (m->mod_manifest)
 					text_sz = m->mod_manifest->text_size;
-				} else {
-					/* DRAM-only: read manifest by local
-					 * index i, not start_idx (global). */
-					mm = (const struct sof_man_module *)
-						((const uint8_t *)desc +
-						 SOF_MAN_MODULE_OFFSET(i));
-				}
 
 				memcpy(name, mm->name, SOF_MAN_MOD_NAME_LEN);
 				name[SOF_MAN_MOD_NAME_LEN] = '\0';
