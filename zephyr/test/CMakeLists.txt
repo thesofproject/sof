@@ -11,6 +11,10 @@ if(CONFIG_SOF_BOOT_TEST)
   if(CONFIG_USERSPACE AND CONFIG_SOF_USERSPACE_INTERFACE_ALLOC)
     zephyr_library_sources(userspace/test_heap_alloc.c)
   endif()
+
+  if(CONFIG_SOF_USERSPACE_INTERFACE_MUTEX)
+    zephyr_library_sources(userspace/test_umutex.c)
+  endif()
 endif()
 
 if(CONFIG_SOF_BOOT_TEST_STANDALONE AND CONFIG_SOF_USERSPACE_INTERFACE_DMA)

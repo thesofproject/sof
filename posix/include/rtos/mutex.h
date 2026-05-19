@@ -83,4 +83,31 @@ static inline int sys_sem_take(struct sys_sem *sem, k_timeout_t timeout)
 	return 0;
 }
 
+/**
+ * @brief User-space accessible mutex stub for host/testbench builds.
+ */
+struct sof_umutex {
+	struct k_mutex mutex;  /**< Inline k_mutex for POSIX (no dynamic alloc needed) */
+};
+
+static inline int sof_umutex_init(struct sof_umutex *umutex)
+{
+	return k_mutex_init(&umutex->mutex);
+}
+
+static inline int sof_umutex_lock(struct sof_umutex *umutex, k_timeout_t timeout)
+{
+	return k_mutex_lock(&umutex->mutex, timeout);
+}
+
+static inline int sof_umutex_unlock(struct sof_umutex *umutex)
+{
+	return k_mutex_unlock(&umutex->mutex);
+}
+
+static inline void sof_umutex_free(struct sof_umutex *umutex)
+{
+	/* No-op on POSIX — no kernel objects to free */
+}
+
 #endif

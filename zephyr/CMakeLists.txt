@@ -549,6 +549,12 @@ if(CONFIG_SOF_USERSPACE_INTERFACE_DMA)
 	zephyr_syscall_header(include/sof/lib/sof_dma.h)
 endif()
 
+if(CONFIG_SOF_USERSPACE_INTERFACE_MUTEX)
+	zephyr_library_sources(syscall/umutex.c)
+	zephyr_library_sources(lib/umutex.c)
+	zephyr_syscall_header(include/rtos/umutex.h)
+endif()
+
 # Mandatory Files used on all platforms.
 # Commented files will be added/removed as integration dictates.
 zephyr_library_sources(
