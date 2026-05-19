@@ -190,6 +190,7 @@ __cold int copier_host_create(struct processing_module *mod,
 	if (!hd)
 		return -ENOMEM;
 
+	hd->mod = mod;
 	ret = host_common_new(hd, dev, &ipc_host, config->id);
 	if (ret < 0) {
 		comp_err(dev, "copier: host new failed with exit");

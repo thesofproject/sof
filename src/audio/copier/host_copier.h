@@ -106,6 +106,7 @@ struct host_data {
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
+	struct processing_module *mod;	/**< module pointer for tracked allocs */
 #if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 	struct ipc_msg *msg;	/**< host notification */
 #endif

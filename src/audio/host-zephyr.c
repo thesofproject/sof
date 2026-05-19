@@ -7,6 +7,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
@@ -728,7 +729,12 @@ __cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, config_id);
 
 #if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
-	hd->msg = ipc_msg_init(hd->heap, hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
+	if (hd->mod)
+		hd->msg = mod_ipc_msg_init(hd->mod, hd->posn.rhdr.hdr.cmd,
+					   sizeof(hd->posn));
+	else
+		hd->msg = ipc_msg_init(hd->heap, hd->posn.rhdr.hdr.cmd,
+				       sizeof(hd->posn));
 	if (!hd->msg) {
 		comp_err(dev, "ipc_msg_init failed");
 		sof_dma_put(hd->dma);
@@ -821,7 +827,10 @@ __cold void host_common_free(struct host_data *hd)
 	sof_dma_put(hd->dma);
 
 #if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
-	ipc_msg_free(hd->msg);
+	if (hd->mod)
+		mod_free(hd->mod, hd->msg);
+	else
+		ipc_msg_free(hd->msg);
 #endif
 	dma_sg_free(hd->heap, &hd->config.elem_array);
 }
