@@ -97,36 +97,13 @@ static int mfcc_free(struct processing_module *mod)
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 
 	comp_info(mod->dev, "entry");
+	ipc_msg_free(cd->msg);
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	mfcc_free_buffers(mod);
 	mod_free(mod, cd);
 	return 0;
 }
 
-static int mfcc_get_config(struct processing_module *mod,
-			   uint32_t config_id, uint32_t *data_offset_size,
-			   uint8_t *fragment, size_t fragment_size)
-{
-	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
-	struct mfcc_comp_data *cd = module_get_private_data(mod);
-
-	comp_info(mod->dev, "entry");
-
-	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
-}
-
-static int mfcc_set_config(struct processing_module *mod, uint32_t config_id,
-			   enum module_cfg_fragment_position pos, uint32_t data_offset_size,
-			   const uint8_t *fragment, size_t fragment_size, uint8_t *response,
-			   size_t response_size)
-{
-	struct mfcc_comp_data *cd = module_get_private_data(mod);
-
-	comp_info(mod->dev, "entry");
-
-	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
-				  fragment, fragment_size);
-}
 
 static int mfcc_process(struct processing_module *mod,
 			struct input_stream_buffer *input_buffers, int num_input_buffers,
@@ -187,22 +164,29 @@ static int mfcc_prepare(struct processing_module *mod,
 				 audio_stream_get_channels(&sourceb->stream));
 		if (ret < 0) {
 			comp_err(dev, "setup failed.");
-			goto err;
+			return ret;
 		}
+	} else {
+		comp_err(dev, "configuration is missing.");
+		return -EINVAL;
 	}
 
 	cd->mfcc_func = mfcc_find_func(source_format, sink_format, mfcc_fm, ARRAY_SIZE(mfcc_fm));
 	if (!cd->mfcc_func) {
 		comp_err(dev, "No proc func");
-		ret = -EINVAL;
-		goto err;
+		return -EINVAL;
+	}
+
+	/* Initialize VAD switch control notification if enabled */
+	if (cd->config->enable_vad && cd->config->update_controls && !cd->msg) {
+		ret = mfcc_ipc_notification_init(mod);
+		if (ret < 0)
+			return ret;
+
+		cd->vad_prev = false;
 	}
 
 	return 0;
-
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-	return ret;
 }
 
 static int mfcc_reset(struct processing_module *mod)
