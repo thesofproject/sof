@@ -603,6 +603,8 @@ zephyr_syscall_header(${SOF_SRC_PATH}/include/ipc4/handler.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/ipc/ipc_msg_send.h)
 zephyr_syscall_header(include/rtos/alloc.h)
 zephyr_library_sources(syscall/alloc.c)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/vregion.h)
+zephyr_library_sources(syscall/vregion.c)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/dai-zephyr.h)
 zephyr_library_sources(syscall/dai.c)
 

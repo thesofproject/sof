@@ -43,11 +43,20 @@ config SOF_USERSPACE_INTERFACE_MUTEX
 	  Enables the sof_umutex API for dynamically-allocated
 	  user-space accessible mutexes backed by k_object_alloc.
 
+config SOF_USERSPACE_INTERFACE_VREGION
+	bool "Enable SOF vregion interface to userspace threads"
+	depends on USERSPACE
+	depends on SOF_VREGIONS
+	help
+	  Allow user-space threads to use vregion_alloc/vregion_free
+	  and their variants as Zephyr system calls.
+
 config SOF_USERSPACE_LL
 	bool "Run Low-Latency pipelines in userspace threads"
 	depends on USERSPACE
 	select SOF_USERSPACE_INTERFACE_DMA
 	select SOF_USERSPACE_INTERFACE_MUTEX
+	select SOF_USERSPACE_INTERFACE_VREGION if SOF_VREGIONS
 	help
 	  Run Low-Latency (LL) pipelines in userspace threads. This adds
 	  memory protection between operating system resources and
