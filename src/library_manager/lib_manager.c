@@ -652,7 +652,12 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 		return NULL;
 	}
 
-	switch (lib_manager_get_module_type(desc, mod)) {
+	enum buildinfo_mod_type mod_type = lib_manager_get_module_type(desc, mod);
+
+	tr_err(&lib_manager_tr, "DBG create: mod='%s' entry=%#lx type=%d",
+	       mod->name, (unsigned long)module_entry_point, mod_type);
+
+	switch (mod_type) {
 	case MOD_TYPE_LLEXT:
 		agent = NULL;
 		ops = (const struct module_interface *)module_entry_point;
@@ -683,6 +688,8 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	if (comp_set_adapter_ops(drv, ops) < 0)
 		goto err;
 
+	tr_err(&lib_manager_tr, "DBG create: calling module_adapter_new_ext, ops=%p extended_init=%d",
+	       ops, config->ipc_extended_init);
 	dev = module_adapter_new_ext(drv, config, spec, adapter_priv, userspace);
 	if (!dev)
 		goto err;
