@@ -211,71 +211,93 @@ free:
 	return ret;
 }
 
-static int
-cadence_codec_process(struct processing_module *mod,
-		      struct input_stream_buffer *input_buffers, int num_input_buffers,
-		      struct output_stream_buffer *output_buffers, int num_output_buffers)
+static int cadence_codec_process(struct processing_module *mod,
+				 struct sof_source **sources, int num_of_sources,
+				 struct sof_sink **sinks, int num_of_sinks)
 {
-	struct comp_buffer *local_buff;
 	struct comp_dev *dev = mod->dev;
 	struct module_data *codec = &mod->priv;
-	int free_bytes, output_bytes = cadence_codec_get_samples(mod) *
+	size_t output_bytes = cadence_codec_get_samples(mod) *
 				mod->stream_params->sample_container_bytes *
 				mod->stream_params->channels;
-	uint32_t remaining = input_buffers[0].size;
+	size_t remaining = source_get_data_available(sources[0]);
+	const void *source_buffer_start, *src_ptr;
+	void *sink_ptr, *sink_buffer_start;
+	size_t src_bytes, sink_bytes;
 	int ret;
 
 	if (!cadence_codec_deep_buff_allowed(mod))
 		mod->deep_buff_bytes = 0;
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
-	if (input_buffers[0].size < codec->mpd.in_buff_size) {
+	if (remaining < codec->mpd.in_buff_size) {
 		comp_dbg(dev, "not enough data to process");
 		return -ENODATA;
 	}
 
 	if (!codec->mpd.init_done) {
-		memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size, input_buffers[0].data,
-			 codec->mpd.in_buff_size);
+		ret = source_get_data(sources[0], codec->mpd.in_buff_size, &src_ptr,
+				      &source_buffer_start, &src_bytes);
+		if (ret) {
+			comp_err(dev, "cannot get data from source buffer");
+			return ret;
+		}
+
+		cadence_copy_data_from_buffer(codec->mpd.in_buff, src_ptr,
+					      codec->mpd.in_buff_size, src_bytes,
+					      source_buffer_start);
 		codec->mpd.avail = codec->mpd.in_buff_size;
 
 		ret = cadence_codec_init_process(mod);
-		if (ret)
+		if (ret) {
+			source_release_data(sources[0], 0);
 			return ret;
+		}
 
 		remaining -= codec->mpd.consumed;
-		input_buffers[0].consumed = codec->mpd.consumed;
+		source_release_data(sources[0], codec->mpd.consumed);
 	}
 
-	/* do not proceed with processing if not enough free space left in the local buffer */
-	local_buff = list_first_item(&mod->raw_data_buffers_list, struct comp_buffer, buffers_list);
-	free_bytes = audio_stream_get_free(&local_buff->stream);
-	if (free_bytes < output_bytes)
+	/* do not proceed with processing if not enough free space left in the sink buffer */
+	if (sink_get_free_size(sinks[0]) < output_bytes)
 		return -ENOSPC;
 
 	/* Proceed only if we have enough data to fill the module buffer completely */
 	if (remaining < codec->mpd.in_buff_size)
 		return -ENODATA;
 
-	memcpy_s(codec->mpd.in_buff, codec->mpd.in_buff_size,
-		 (uint8_t *)input_buffers[0].data + input_buffers[0].consumed,
-		 codec->mpd.in_buff_size);
+	ret = source_get_data(sources[0], codec->mpd.in_buff_size, &src_ptr, &source_buffer_start,
+			      &src_bytes);
+	if (ret)
+		return ret;
+
+	cadence_copy_data_from_buffer(codec->mpd.in_buff, src_ptr,
+				      codec->mpd.in_buff_size, src_bytes,
+				      source_buffer_start);
 	codec->mpd.avail = codec->mpd.in_buff_size;
 
 	comp_dbg(dev, "cadence_codec_process() start");
 
 	ret = cadence_codec_process_data(mod, NULL);
-	if (ret)
+	if (ret) {
+		source_release_data(sources[0], 0);
 		return ret;
+	}
 
-	/* update consumed with the number of samples consumed during init */
-	input_buffers[0].consumed += codec->mpd.consumed;
-	codec->mpd.consumed = input_buffers[0].consumed;
+	source_release_data(sources[0], codec->mpd.consumed);
 
-	/* copy the produced samples into the output buffer */
-	memcpy_s(output_buffers[0].data, codec->mpd.produced, codec->mpd.out_buff,
-		 codec->mpd.produced);
-	output_buffers[0].size = codec->mpd.produced;
+	ret = sink_get_buffer(sinks[0], codec->mpd.produced, &sink_ptr, &sink_buffer_start,
+			      &sink_bytes);
+	if (ret) {
+		comp_err(dev, "cannot get sink buffer");
+		return ret;
+	}
+
+	/* Copy the produced samples into the output buffer */
+	cadence_copy_data_to_buffer(sink_ptr, codec->mpd.produced, sink_bytes,
+				    sink_buffer_start, codec->mpd.out_buff);
+
+	sink_commit_buffer(sinks[0], codec->mpd.produced);
 
 	comp_dbg(dev, "cadence_codec_process() done");
 
@@ -307,7 +329,7 @@ static int cadence_codec_reset(struct processing_module *mod)
 static const struct module_interface cadence_codec_interface = {
 	.init = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
-	.process_raw_data = cadence_codec_process,
+	.process = cadence_codec_process,
 	.set_configuration = cadence_codec_set_configuration,
 	.reset = cadence_codec_reset,
 	.free = cadence_codec_free
