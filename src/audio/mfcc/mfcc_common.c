@@ -29,8 +29,9 @@ LOG_MODULE_REGISTER(mfcc_common, CONFIG_SOF_LOG_LEVEL);
  * The main processing function for MFCC
  */
 
-static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_comp_data *cd)
+static int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
 {
+	const struct comp_dev *dev = mod->dev;
 	struct sof_mfcc_config *config = cd->config;
 	struct mfcc_state *state = &cd->state;
 	struct mfcc_buffer *buf = &state->buf;
@@ -187,6 +188,16 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_comp_data *
 
 		/* Increment hop counter at end of hop processing */
 		state->hop_count++;
+
+		/* Send notification when VAD state changes */
+		if (config->enable_vad && config->update_controls) {
+			bool vad_now = cd->vad.is_speech;
+
+			if (vad_now != cd->vad_prev) {
+				mfcc_send_vad_notification(mod, vad_now ? 1 : 0);
+				cd->vad_prev = vad_now;
+			}
+		}
 	}
 
 	return cc_count;
@@ -295,7 +306,7 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s16(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT: Mel auditory filter and DCT. */
-	num_ceps = mfcc_stft_process(mod->dev, cd);
+	num_ceps = mfcc_stft_process(mod, cd);
 
 	/* If new output produced, set up pointer into scratch data and mark header pending */
 	if (num_ceps > 0) {
@@ -400,7 +411,7 @@ void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s24(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT */
-	num_ceps = mfcc_stft_process(mod->dev, cd);
+	num_ceps = mfcc_stft_process(mod, cd);
 
 	/* If new output produced, set up pointer into scratch data */
 	if (num_ceps > 0) {
@@ -485,7 +496,7 @@ void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s32(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT */
-	num_ceps = mfcc_stft_process(mod->dev, cd);
+	num_ceps = mfcc_stft_process(mod, cd);
 
 	/* If new output produced, set up pointer into scratch data */
 	if (num_ceps > 0) {
