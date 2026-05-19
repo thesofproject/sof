@@ -144,6 +144,7 @@ enum mod_resource_type {
 	MOD_RES_HEAP,
 	MOD_RES_BLOB_HANDLER,
 	MOD_RES_FAST_GET,
+	MOD_RES_IPC_MSG,
 };
 
 /**
@@ -155,6 +156,7 @@ struct module_resource {
 		void *ptr; /**< Pointer to heap allocated memory */
 		struct comp_data_blob_handler *bhp; /**< Blob handler ptr */
 		const void *sram_ptr; /**< SRAM ptr from fast_get() */
+		struct ipc_msg *msg; /**< IPC message from mod_ipc_msg_w_ext_init() */
 	};
 	struct list_item list; /**< list element */
 	size_t size; /**< Size of allocated heap memory, 0 if not from heap */

@@ -289,16 +289,41 @@ struct ipc_msg *mod_ipc_msg_w_ext_init(struct processing_module *mod,
 					      uint32_t extension,
 					      uint32_t size)
 {
+	struct module_resources *res = &mod->priv.resources;
+	struct module_resource *container;
 	struct ipc_msg *msg;
 
-	msg = mod_zalloc(mod, sizeof(*msg));
-	if (!msg)
+	MEM_API_CHECK_THREAD(res);
+
+	container = container_get(mod);
+	if (!container)
 		return NULL;
 
+	if (res->alloc->vreg)
+		msg = vregion_alloc(res->alloc->vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*msg));
+	else
+		msg = sof_heap_alloc(res->alloc->heap, SOF_MEM_FLAG_COHERENT, sizeof(*msg), 0);
+
+	if (!msg) {
+		container_put(mod, container);
+		return NULL;
+	}
+
+	memset(msg, 0, sizeof(*msg));
+
 	if (size) {
-		msg->tx_data = mod_zalloc(mod, size);
+		if (res->alloc->vreg)
+			msg->tx_data = vregion_alloc(res->alloc->vreg,
+						     VREGION_MEM_TYPE_INTERIM, size);
+		else
+			msg->tx_data = sof_heap_alloc(res->alloc->heap,
+						      SOF_MEM_FLAG_COHERENT, size, 0);
 		if (!msg->tx_data) {
-			mod_free(mod, msg);
+			if (res->alloc->vreg)
+				vregion_free(res->alloc->vreg, msg);
+			else
+				sof_heap_free(res->alloc->heap, msg);
+			container_put(mod, container);
 			return NULL;
 		}
 	}
@@ -307,6 +332,10 @@ struct ipc_msg *mod_ipc_msg_w_ext_init(struct processing_module *mod,
 	msg->extension = extension;
 	msg->tx_size = size;
 	list_init(&msg->list);
+
+	container->msg = msg;
+	container->size = 0;
+	container->type = MOD_RES_IPC_MSG;
 
 	return msg;
 }
@@ -413,6 +442,23 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 		fast_put(res->alloc, mdom, container->sram_ptr);
 		return 0;
 #endif
+	case MOD_RES_IPC_MSG: {
+		struct ipc *ipc = ipc_get();
+		k_spinlock_key_t key;
+
+		key = k_spin_lock(&ipc->lock);
+		list_item_del(&container->msg->list);
+		k_spin_unlock(&ipc->lock, key);
+
+		if (res->alloc->vreg) {
+			vregion_free(res->alloc->vreg, container->msg->tx_data);
+			vregion_free(res->alloc->vreg, container->msg);
+		} else {
+			sof_heap_free(res->alloc->heap, container->msg->tx_data);
+			sof_heap_free(res->alloc->heap, container->msg);
+		}
+		return 0;
+	}
 	default:
 		comp_err(mod->dev, "Unknown resource type: %d", container->type);
 	}
