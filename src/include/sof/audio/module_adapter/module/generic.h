@@ -201,12 +201,15 @@ void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start
 __syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			      size_t alignment);
 __syscall int mod_free(struct processing_module *mod, const void *ptr);
+__syscall void mod_free_all(struct processing_module *mod);
 #else
 void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			   size_t alignment);
 int z_impl_mod_free(struct processing_module *mod, const void *ptr);
+void z_impl_mod_free_all(struct processing_module *mod);
 #define mod_alloc_ext z_impl_mod_alloc_ext
 #define mod_free z_impl_mod_free
+#define mod_free_all z_impl_mod_free_all
 #endif
 
 /**
@@ -277,7 +280,6 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 #endif
 void mod_fast_put(struct processing_module *mod, const void *sram_ptr);
 #endif
-void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
 		   struct sof_sink **sinks, int num_of_sinks);

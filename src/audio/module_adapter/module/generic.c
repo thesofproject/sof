@@ -562,6 +562,20 @@ int z_vrfy_mod_free(struct processing_module *mod, const void *ptr)
 	return z_impl_mod_free(mod, ptr);
 }
 #include <zephyr/syscalls/mod_free_mrsh.c>
+
+void z_vrfy_mod_free_all(struct processing_module *mod)
+{
+	size_t h_size = 0;
+	uintptr_t h_start;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	mod_heap_info(mod, &h_size, &h_start);
+	if (h_size)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+
+	z_impl_mod_free_all(mod);
+}
+#include <zephyr/syscalls/mod_free_all_mrsh.c>
 #endif
 
 #if CONFIG_COMP_BLOB
@@ -780,7 +794,7 @@ int module_reset(struct processing_module *mod)
  *
  * This function is called automatically when the module is unloaded.
  */
-void mod_free_all(struct processing_module *mod)
+void z_impl_mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
 
@@ -795,6 +809,7 @@ void mod_free_all(struct processing_module *mod)
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);
 }
+EXPORT_SYMBOL(z_impl_mod_free_all);
 
 int module_free(struct processing_module *mod)
 {
