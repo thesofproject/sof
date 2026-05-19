@@ -284,6 +284,34 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 }
 EXPORT_SYMBOL(z_impl_mod_alloc_ext);
 
+struct ipc_msg *mod_ipc_msg_w_ext_init(struct processing_module *mod,
+					      uint32_t header,
+					      uint32_t extension,
+					      uint32_t size)
+{
+	struct ipc_msg *msg;
+
+	msg = mod_zalloc(mod, sizeof(*msg));
+	if (!msg)
+		return NULL;
+
+	if (size) {
+		msg->tx_data = mod_zalloc(mod, size);
+		if (!msg->tx_data) {
+			mod_free(mod, msg);
+			return NULL;
+		}
+	}
+
+	msg->header = header;
+	msg->extension = extension;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	return msg;
+}
+EXPORT_SYMBOL(mod_ipc_msg_w_ext_init);
+
 /**
  * Creates a blob handler and releases it when the module is unloaded
  * @param mod	Pointer to module this memory block is allocated for.
