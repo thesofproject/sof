@@ -148,6 +148,18 @@ def main():
 
     crashed = check_for_crash(full_output)
 
+    shell_enabled = False
+    config_file = os.path.join(build_dir, "zephyr", ".config")
+    if not os.path.isfile(config_file):
+        config_file = os.path.join("zephyr", ".config")
+
+    if os.path.isfile(config_file):
+        with open(config_file, "r") as f:
+            for line in f:
+                if line.strip() == "CONFIG_SHELL=y":
+                    shell_enabled = True
+                    break
+
     if crashed:
         print("\n[sof-qemu-run] Detected crash signature in standard output!")
         # Stop QEMU if it's still running
@@ -156,6 +168,14 @@ def main():
             child.close(force=True)
 
         run_sof_crash_decode(build_dir, full_output)
+    elif shell_enabled:
+        print("\n[sof-qemu-run] Shell is enabled. Entering interactive mode...")
+        if child.isalive():
+            try:
+                child.interact()
+            except Exception as e:
+                print(f"Error during interaction: {e}")
+                child.close(force=True)
     else:
         print("\n[sof-qemu-run] No crash detected. Interacting with QEMU Monitor to grab registers...")
 

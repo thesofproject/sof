@@ -145,6 +145,9 @@ int module_adapter_init_data(struct comp_dev *dev,
 	assert(dev->drv->type == SOF_COMP_MODULE_ADAPTER);
 	cfg = (const struct ipc4_base_module_extended_cfg *)args->data;
 
+	comp_err(dev, "DBG init_data: cfgsz=%zu cfg=%p base_cfg_sz=%zu full_cfg_sz=%zu",
+		 cfgsz, cfg, sizeof(cfg->base_cfg), sizeof(*cfg));
+
 	if (cfg == NULL)
 		return -EINVAL;
 	if (cfgsz > MAILBOX_HOSTBOX_SIZE || cfgsz < sizeof(cfg->base_cfg)) {

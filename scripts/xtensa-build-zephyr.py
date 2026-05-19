@@ -1147,6 +1147,23 @@ def install_lib(platform, sof_output_dir, abs_build_dir, platform_wconfig):
 				symlink_or_copy(lib_install_dir, lib_name,
 						lib_dir, alias_libname)
 
+		# Create UUID.bin symlinks in sof-ipc4-lib pointing to the grouped .ri
+		if key in lib_uuids:
+			for uuid in lib_uuids[key]:
+				symlink_or_copy(lib_install_dir, lib_name,
+						sof_lib_dir, uuid + '.bin')
+				for p_alias in platform_configs[platform].aliases:
+					alias_lib_dir = sof_output_dir / '..' / 'sof-ipc4-lib' / p_alias
+					if args.key_type_subdir != "none":
+						alias_lib_dir = alias_lib_dir / args.key_type_subdir
+					alias_lib_dir.mkdir(parents=True, exist_ok=True)
+					alias_libname = ''.join(['sof-', p_alias, '-', key, '.ri'])
+					alias_lib_install_dir = sof_output_dir / p_alias
+					if args.key_type_subdir != "none":
+						alias_lib_install_dir = alias_lib_install_dir / args.key_type_subdir
+					symlink_or_copy(alias_lib_install_dir, alias_libname,
+							alias_lib_dir, uuid + '.bin')
+
 def install_platform(platform, sof_output_dir, platf_build_environ, platform_wconfig):
 
 	# Keep in sync with caller

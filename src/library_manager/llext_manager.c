@@ -394,8 +394,10 @@ static int llext_manager_link(const char *name,
 		};
 
 		ret = llext_load(ldr, name, llext, &ldr_parm);
-		if (ret)
+		if (ret) {
+			tr_err(&lib_manager_tr, "llext_load failed: ret=%d", ret);
 			return ret;
+		}
 	}
 
 	/* All code sections */
@@ -448,7 +450,12 @@ static int llext_manager_link(const char *name,
 		*mod_manifest = llext_peek(ldr, hdr->sh_offset);
 	}
 
-	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
+	int link_ret = *buildinfo && *mod_manifest ? 0 : -EPROTO;
+
+	if (link_ret)
+		tr_err(&lib_manager_tr, "llext_manager_link: buildinfo=%p mod_manifest=%p ret=%d",
+		       *buildinfo, *mod_manifest, link_ret);
+	return link_ret;
 }
 
 /* Count "module files" in the library, allocate and initialize memory for their descriptors */
@@ -481,6 +488,7 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 	for (i = 0, n_mod = 0, offs = ~0; i < desc->header.num_module_entries; i++)
 		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != offs) {
 			offs = mod_array[i].segment[LIB_MANAGER_TEXT].file_offset;
+			ctx->mod[n_mod].mod_manifest = NULL;
 			ctx->mod[n_mod].mapped = false;
 			ctx->mod[n_mod].llext = NULL;
 			ctx->mod[n_mod].ebl = NULL;
@@ -604,7 +612,6 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 		       mod_array[entry_index].name, (*mod_manifest)->module.name);
 		return -ENOEXEC;
 	}
-
 	return mod_ctx_idx;
 }
 
@@ -644,6 +651,12 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 					const void *ipc_specific_config)
 {
 	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
+
+	tr_err(&lib_manager_tr, "DBG alloc_module: comp_id=%#x mod_id=%#x lib_id=%u entry_idx=%u",
+	       ipc_config->id, module_id,
+	       LIB_MANAGER_GET_LIB_ID(module_id),
+	       LIB_MANAGER_GET_MODULE_INDEX(module_id));
+
 	/* Library manifest */
 	const struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)
 		lib_manager_get_library_manifest(module_id);
@@ -651,7 +664,8 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 
 	if (!ctx || !desc) {
-		tr_err(&lib_manager_tr, "failed to get module descriptor");
+		tr_err(&lib_manager_tr, "DBG alloc_module: ctx=%p desc=%p - NOT FOUND",
+		       ctx, desc);
 		return 0;
 	}
 
@@ -663,6 +677,9 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 	int mod_ctx_idx = llext_manager_link_single(module_id, desc, ctx,
 						    (const void **)&buildinfo, &mod_manifest);
 
+	tr_err(&lib_manager_tr, "DBG alloc_module: link_single ret=%d buildinfo=%p",
+	       mod_ctx_idx, buildinfo);
+
 	if (mod_ctx_idx < 0)
 		return 0;
 
@@ -670,6 +687,10 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 
 	if (buildinfo) {
 		/* First instance: check that the module is native */
+		tr_err(&lib_manager_tr,
+		       "DBG alloc_module: buildinfo fmt=%#x ver=%#x (expect fmt=%#x ver=%#x)",
+		       buildinfo->format, buildinfo->api_version_number.full,
+		       SOF_MODULE_API_BUILD_INFO_FORMAT, SOF_MODULE_API_CURRENT_VERSION);
 		if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
 		    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
 			tr_err(&lib_manager_tr, "Unsupported module API version");
@@ -725,11 +746,19 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 		}
 
 		/* Map executable code and data */
+		tr_err(&lib_manager_tr,
+		       "DBG alloc_module: loading SRAM text=%#zx data=%#zx bss=%#zx",
+		       mctx->segment[LIB_MANAGER_TEXT].size,
+		       mctx->segment[LIB_MANAGER_DATA].size,
+		       mctx->segment[LIB_MANAGER_BSS].size);
 		ret = llext_manager_load_module(mctx);
+		tr_err(&lib_manager_tr, "DBG alloc_module: load_module ret=%d", ret);
 		if (ret < 0)
 			return 0;
 	}
 
+	tr_err(&lib_manager_tr, "DBG alloc_module: entry_point=%#x",
+	       mod_manifest->module.entry_point);
 	return mod_manifest->module.entry_point;
 }
 
@@ -1068,8 +1097,10 @@ int llext_manager_add_library(uint32_t module_id)
 			int ret = llext_manager_link_single(module_id + i, desc, ctx,
 							(const void **)&buildinfo, &mod_manifest);
 
-			if (ret < 0)
+			if (ret < 0) {
+				tr_err(&lib_manager_tr, "llext_manager_link_single failed: %d", ret);
 				return ret;
+			}
 		}
 	}
 

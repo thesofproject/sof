@@ -8,12 +8,17 @@
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/dlist.h>
+#include <zephyr/shell/shell.h>
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
 #include <rtos/alloc.h>
 #include <sof/common.h>
 
 LOG_MODULE_REGISTER(vregion, CONFIG_SOF_LOG_LEVEL);
+
+static sys_dlist_t vregion_list = SYS_DLIST_STATIC_INIT(&vregion_list);
+static K_MUTEX_DEFINE(vregion_list_lock);
 
 /*
  * Pre Allocated Contiguous Virtual Memory Region Allocator
@@ -80,6 +85,8 @@ struct interim_heap {
  * TODO: Add support to flag which heaps should have their contexts saved and restored.
  */
 struct vregion {
+	sys_dnode_t node;
+
 	/* region context */
 	uint8_t *base;			/* base address of entire region */
 	size_t size;			/* size of whole region in bytes */
@@ -164,6 +171,10 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 	LOG_DBG(" interim size %#zx at %p", interim_size, (void *)vr->interim.heap.heap.init_mem);
 	LOG_DBG(" lifetime size %#zx at %p", lifetime_size, (void *)vr->lifetime.base);
 
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+	sys_dlist_append(&vregion_list, &vr->node);
+	k_mutex_unlock(&vregion_list_lock);
+
 	return vr;
 }
 
@@ -204,6 +215,11 @@ struct vregion *vregion_put(struct vregion *vr)
 	/* log the vregion being destroyed */
 	LOG_DBG("destroy %p size %#zx pages %u", (void *)vr->base, vr->size, vr->pages);
 	LOG_DBG(" lifetime used %zu free count %d", vr->lifetime.used, vr->lifetime.free_count);
+	
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+	sys_dlist_remove(&vr->node);
+	k_mutex_unlock(&vregion_list_lock);
+
 	vpage_free(vr->base);
 
 	return NULL;
@@ -437,4 +453,30 @@ void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
 
 	if (start)
 		*start = (uintptr_t)vr->base;
+}
+
+void vregion_info_all(const struct shell *sh)
+{
+	struct vregion *vr;
+	int count = 0;
+
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+	
+	shell_fprintf(sh, SHELL_NORMAL, "Virtual Regions Status:\n");
+	
+	SYS_DLIST_FOR_EACH_CONTAINER(&vregion_list, vr, node) {
+		k_mutex_lock(&vr->lock, K_FOREVER);
+		shell_fprintf(sh, SHELL_NORMAL, "  [%d] Base: %p, Size: %#zx bytes, Pages: %u\n",
+			      count++, (void *)vr->base, vr->size, vr->pages);
+		shell_fprintf(sh, SHELL_NORMAL, "      Lifetime Used: %#zx bytes, Free Count: %d\n",
+			      vr->lifetime.used, vr->lifetime.free_count);
+		shell_fprintf(sh, SHELL_NORMAL, "      Use Count: %u\n", vr->use_count);
+		k_mutex_unlock(&vr->lock);
+	}
+	
+	if (count == 0) {
+		shell_fprintf(sh, SHELL_NORMAL, "  No active virtual regions found.\n");
+	}
+
+	k_mutex_unlock(&vregion_list_lock);
 }

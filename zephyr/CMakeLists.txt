@@ -113,13 +113,27 @@ function(sof_llext_build module)
 	get_target_property(proc_in_file ${module} lib_output)
 	get_target_property(proc_out_file ${module} pkg_input)
 	get_target_property(proc_pkg_file ${module} pkg_output)
-	set(size_file ${PROJECT_BINARY_DIR}/module_size)
 
-	get_property(last_target GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET)
-	if(NOT "${last_target}" STREQUAL "")
-		add_dependencies(${module}_llext_proc ${last_target})
+	# Openmodule ELFs (LIB != "") use a separate address accumulator so their
+	# pre-linked VMAs start from CONFIG_LIBRARY_BASE_ADDRESS independently of
+	# the (much larger) standalone LLEXT module chain. Standalone llexts are
+	# position-independent via ELF relocation; only openmodule ELFs require
+	# exact pre-linked VMAs that must fit within the TLB virtual range.
+	if("${SOF_LLEXT_LIB}" STREQUAL "")
+		set(size_file ${PROJECT_BINARY_DIR}/module_size)
+		get_property(last_target GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET)
+		if(NOT "${last_target}" STREQUAL "")
+			add_dependencies(${module}_llext_proc ${last_target})
+		endif()
+		set_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET ${module})
+	else()
+		set(size_file ${PROJECT_BINARY_DIR}/openmod_module_size)
+		get_property(last_target GLOBAL PROPERTY SOF_LLEXT_OPENMOD_LAST_TARGET)
+		if(NOT "${last_target}" STREQUAL "")
+			add_dependencies(${module}_llext_proc ${last_target})
+		endif()
+		set_property(GLOBAL PROPERTY SOF_LLEXT_OPENMOD_LAST_TARGET ${module})
 	endif()
-	set_property(GLOBAL PROPERTY SOF_LLEXT_LAST_TARGET ${module})
 
 	add_llext_command(TARGET ${module}
 		POST_BUILD

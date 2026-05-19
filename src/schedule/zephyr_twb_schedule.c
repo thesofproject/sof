@@ -342,10 +342,28 @@ static int scheduler_twb_task_free(void *data, struct task *task)
 	return 0;
 }
 
+static void scheduler_twb_dump_tasks(void *data,
+				     void (*cb)(struct task *task, void *ctx),
+				     void *ctx)
+{
+	struct scheduler_twb_data *twb_sch = data;
+	struct list_item *tlist;
+	unsigned int key;
+
+	key = scheduler_twb_lock();
+	list_for_item(tlist, &twb_sch->tasks) {
+		struct task *task = container_of(tlist, struct task, list);
+
+		cb(task, ctx);
+	}
+	scheduler_twb_unlock(key);
+}
+
 static struct scheduler_ops schedule_twb_ops = {
 	.schedule_task		= scheduler_twb_task_shedule,
 	.schedule_task_cancel	= scheduler_twb_task_cancel,
 	.schedule_task_free	= scheduler_twb_task_free,
+	.scheduler_dump_tasks	= scheduler_twb_dump_tasks,
 };
 
 int scheduler_twb_init(void)

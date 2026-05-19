@@ -158,6 +158,21 @@ struct scheduler_ops {
 	 * This operation is optional.
 	 */
 	int (*scheduler_restore)(void *data);
+
+	/**
+	 * Iterate over all tasks owned by the scheduler and invoke @p cb on each.
+	 * The scheduler is responsible for taking its own lock around the walk.
+	 * @param data Private data of selected scheduler.
+	 * @param cb   Callback called once per task; must not block.
+	 * @param ctx  Opaque context passed to @p cb.
+	 *
+	 * This operation is optional and exists only for diagnostics
+	 * (e.g. shell commands).  Schedulers that do not implement it are
+	 * silently skipped by enumeration tools.
+	 */
+	void (*scheduler_dump_tasks)(void *data,
+				     void (*cb)(struct task *task, void *ctx),
+				     void *ctx);
 };
 
 /** \brief Holds information about scheduler. */

@@ -266,6 +266,8 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 #if CONFIG_IPC_MAJOR_4
 	dst->ext_data = &ext_data;
 #endif
+	comp_cl_err(drv, "DBG adapter_new: extended_init=%d spec.size=%zu",
+		    config->ipc_extended_init, spec.size);
 	ret = module_adapter_init_data(dev, dst, config, &spec);
 	if (ret) {
 		comp_err(dev, "%d: module init data failed",
@@ -304,6 +306,8 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 #endif
 
 	/* Init processing module */
+	comp_cl_err(drv, "DBG adapter_new: calling module_init, interface->init=%p",
+		    interface->init);
 	ret = module_init(mod);
 	if (ret) {
 		comp_err(dev, "%d: module initialization failed",

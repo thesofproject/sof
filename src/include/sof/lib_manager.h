@@ -250,4 +250,19 @@ void lib_notif_msg_send(struct ipc_msg *msg);
  */
 void lib_notif_msg_clean(bool leave_one_handle);
 
+/*
+ * \brief Purge (free) a loadable library from IMR/DRAM storage
+ *
+ * param[in] lib_id - library slot id (1 .. LIB_MANAGER_MAX_LIBS-1)
+ *
+ * Removes the library binary from DRAM/IMR and releases the
+ * lib_manager_mod_ctx entry so that the slot can be reused by a
+ * future LOAD_LIBRARY call.  Returns -EBUSY if any module file from
+ * the library is still mapped in SRAM (i.e., has active instances
+ * or is still linked as a dependency).
+ *
+ * Return: 0 on success, negative errno on error.
+ */
+int lib_manager_purge_library(uint32_t lib_id);
+
 #endif /* __SOF_LIB_MANAGER_H__ */

@@ -253,6 +253,386 @@ config SOF_ZEPHYR_NO_SOF_CLOCK
 	  Do not use SOF clk.h interface to set the DSP clock frequency.
 	  Requires implementation of platform/lib/clk.h.
 
+menu "SOF shell commands"
+	depends on SHELL
+
+config SOF_SHELL_HEAP_USAGE
+	bool "Module heap usage command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof module_heap_usage' shell command which prints
+	  per-module heap allocation and high-water-mark for all active
+	  IPC4 components.
+
+config SOF_SHELL_PIPELINE_STATUS
+	bool "Pipeline status command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof pipeline_status' shell command which lists all
+	  active IPC4 pipelines with their core, priority, period and state.
+
+config SOF_SHELL_MODULE_STATUS
+	bool "Module (component) status command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof module_status' shell command which lists all
+	  active IPC4 components with their pipeline, core and state.
+
+config SOF_SHELL_CORE_STATUS
+	bool "Core status command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof core_status' shell command which reports the
+	  enabled/active state of each DSP core.
+
+config SOF_SHELL_CORE_POWER
+	bool "Secondary core power on/off commands"
+	default y
+	depends on SHELL && MULTICORE && SMP
+	help
+	  Enables the 'sof core_on <id>' and 'sof core_off <id>' shell
+	  commands for powering secondary DSP cores on and off at runtime.
+
+	  Core 0 (primary) is not a valid target — these commands only accept
+	  core IDs in the range [1 .. CONFIG_CORE_COUNT-1].
+
+	  core_on calls cpu_enable_core() which starts the secondary Zephyr
+	  CPU and runs secondary_core_init().  core_off calls
+	  cpu_disable_core() which requests PM_STATE_SOFT_OFF on the core
+	  and waits for it to halt before asserting the reset line.
+
+config SOF_SHELL_SRAM_STATUS
+	bool "SRAM heap status command"
+	default y
+	depends on SHELL && SYS_HEAP_RUNTIME_STATS
+	help
+	  Enables the 'sof sram_status' shell command which reports HPSRAM
+	  heap allocated, free and peak-allocated bytes.
+	  Requires CONFIG_SYS_HEAP_RUNTIME_STATS=y.
+
+config SOF_SHELL_CLOCK_STATUS
+	bool "Clock status command"
+	default y
+	depends on SHELL && !SOF_ZEPHYR_NO_SOF_CLOCK
+	help
+	  Enables the 'sof clock_status' shell command which reports the
+	  current CPU clock frequency for each DSP core.
+
+config SOF_SHELL_MODULE_LIST
+	bool "Module list command"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof module_list' shell command which prints all modules
+	  known to the firmware. On IPC4 Intel platforms (IPC4_BASE_FW_INTEL)
+	  the manifest is consulted and the output includes:
+	    - module name (8-char from manifest)
+	    - UUID
+	    - maximum instance count
+	    - BSS memory per instance (bytes)
+	    - text segment size (bytes)
+	    - affinity mask
+	    - CPC (cycles per copy), IBS and OBS from module config
+	  On other platforms the registered component driver list is shown
+	  with UUID and name from the trace context.
+
+config SOF_SHELL_PIPELINE_OPS
+	bool "Pipeline construction and control commands"
+	default n
+	depends on SHELL && IPC_MAJOR_4
+	help
+	  Enables IPC4 pipeline construction and control commands accessible
+	  from the SOF shell. These are intended for debug and bring-up use:
+
+	    sof ppl_create <id> [prio] [pages] [core] [lp]
+	      Create a new IPC4 pipeline.
+
+	    sof ppl_delete <id>
+	      Delete a pipeline and all its module instances.
+
+	    sof ppl_state <id> <running|paused|reset>
+	      Transition a pipeline to the given state.
+
+	    sof mod_init <mod_id> <inst_id> <ppl_id> [core] [dp]
+	      Instantiate a module (by module_id from module_list) into a
+	      pipeline. No init-data is sent; only modules that have a
+	      working zero-parameter default config will init successfully.
+
+	    sof mod_delete <mod_id> <inst_id>
+	      Delete a module instance.
+
+	    sof mod_bind <src_mod> <src_inst> <dst_mod> <dst_inst> [sq] [dq]
+	      Bind (connect) the output of src module to the input of dst.
+
+	    sof mod_unbind <src_mod> <src_inst> <dst_mod> <dst_inst> [sq] [dq]
+	      Unbind (disconnect) two previously bound module instances.
+
+config SOF_SHELL_MMU_DBG
+	bool "MMU / TLB debug commands"
+	default y
+	depends on SHELL && (MM_DRV_INTEL_ADSP_MTL_TLB || XTENSA_MMU)
+	help
+	  Enables MMU/TLB debug shell commands.
+
+	  On Intel ADSP MTL/PTL (CONFIG_MM_DRV_INTEL_ADSP_MTL_TLB=y):
+	    sof mmu_status  — VM layout, mapped/free pages, region list
+	    sof tlb_dump   — dump all active 16-bit MMIO TLB entries
+	    sof tlb_lookup — query a page or page range (VA/PA/R/W/X/bank)
+
+	  On Xtensa MMU platforms (CONFIG_XTENSA_MMU=y, e.g. PTL):
+	    sof rasid      — decode the RASID hardware register (ring→ASID map)
+	    sof page_info  — probe DTLB for a page or range; report
+	                     physical address, ring, ASID, cache mode, R/W/X
+	                     (PTL has both sets of commands).
+
+config SOF_SHELL_LLEXT_LOAD
+	bool "Interactive llext module load command"
+	default y
+	depends on SHELL && LIBRARY_MANAGER
+	help
+	  Enables the 'sof llext_load' shell command which lets a developer
+	  load a compiled llext module from the host file system into the DSP
+	  at run time without a full firmware restart.
+
+	  Usage (2-step interactive flow):
+
+	    Step 1 — on the DSP shell:
+	      uart:~$ sof llext_load mymodule 1
+
+	    The DSP allocates an ADSP debug window slot, sets the handshake
+	    state to REQUESTING, and waits (up to 120 s) for the host.
+
+	    Step 2 — on the Linux host:
+	      $ cat mymodule.ri > /sys/kernel/debug/sof/llext_load
+
+	    The kernel driver reads the slot, performs the HDA DMA transfer
+	    (IPC4 LOAD_LIBRARY_PREPARE + LOAD_LIBRARY sequence), and writes
+	    the result back to the slot.  The DSP shell command then wakes up
+	    and prints the outcome.
+
+	  Requires CONFIG_SND_SOC_SOF_CLIENT_LLEXT_LOAD in the Linux kernel.
+
+config SOF_SHELL_LLEXT_LOAD_SLOT_NUM
+	int "Debug window slot for llext_load (fallback without slot manager)"
+	default 2
+	depends on SOF_SHELL_LLEXT_LOAD && !INTEL_ADSP_DEBUG_SLOT_MANAGER
+	help
+	  Index of the ADSP debug window slot (0-14) reserved for the
+	  shell llext_load handshake when CONFIG_INTEL_ADSP_DEBUG_SLOT_MANAGER
+	  is not available. Must not conflict with TRACE/TELEMETRY/SHELL slots.
+	  Default slot 2 is normally free on this configuration.
+
+config SOF_SHELL_LLEXT_LIST
+	bool "llext library listing command"
+	default y
+	depends on SHELL && LIBRARY_MANAGER
+	help
+	  Enables the 'sof llext_list' shell command.  Iterates over all
+	  loaded llext libraries in IMR/DRAM and prints, for each one:
+	  base address, storage size, and per-module-file SRAM mapping state
+	  (mapped/unmapped), Zephyr llext use-count, and dependency count.
+
+	  Useful for verifying that an llext load succeeded and for checking
+	  whether any module is still active before attempting a purge.
+
+config SOF_SHELL_LLEXT_PURGE
+	bool "llext library purge command"
+	default y
+	depends on SHELL && LIBRARY_MANAGER
+	help
+	  Enables the 'sof llext_purge <lib_id>' shell command.  Removes the
+	  specified llext library from IMR/DRAM storage and frees all memory
+	  associated with it.
+
+	  The command refuses if any module within the library is still mapped
+	  into SRAM (i.e. an active pipeline is using it) and returns -EBUSY.
+	  Tear down all pipelines that reference the library before purging.
+
+config SOF_SHELL_LLEXT_SYMBOLS
+	bool "llext symbol table dump command"
+	default y
+	depends on SHELL && LLEXT
+	help
+	  Enables the 'sof llext symbols [name]' shell command.  Without an
+	  argument it iterates every loaded Zephyr llext extension; with a
+	  name it filters to that single extension.  For each extension it
+	  prints the extension name, use_count, and two symbol tables:
+	    exp_tab  – symbols exported via LL_EXTENSION_SYMBOL (public API)
+	    sym_tab  – all global symbols resolved during linking
+
+	  Each symbol entry shows the symbol name and its runtime address.
+
+config SOF_SHELL_BUFFER_INFO
+	bool "Audio buffer list/info commands"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof buffer_list' and 'sof buffer_info <id>' shell
+	  commands.  buffer_list walks all components and prints every
+	  downstream comp_buffer with its source/sink component IDs, current
+	  fill level (size/avail/free), channel count, sample rate and
+	  frame format.  buffer_info dumps the same fields plus rptr/wptr,
+	  flags and core for a single buffer selected by ID.
+
+	  Useful for diagnosing where audio is stuck in a pipeline (xrun,
+	  underrun, mis-bind) without rebuilding firmware.
+
+config SOF_SHELL_SCHED_INFO
+	bool "Scheduler task list/load commands"
+	default y
+	depends on SHELL
+	help
+	  Enables the 'sof sched_tasks' and 'sof sched_load' shell commands.
+
+	  sched_tasks walks every registered SOF scheduler (LL timer, LL DMA,
+	  EDF, DP, TWB) and prints each task's scheduler type, core, priority,
+	  state, flags and uid.
+
+	  sched_load prints per-task execution cycle counters (cycles_cnt,
+	  cycles_sum, cycles_max, derived average) plus aggregate totals,
+	  using the cycle counters that the schedulers already maintain in
+	  struct task.  Pairs naturally with 'sof test_inject_sched_gap' for
+	  diagnosing scheduling latency.
+
+	  Each scheduler implements scheduler_dump_tasks() which takes its
+	  own lock during the walk; schedulers without an implementation are
+	  silently skipped.
+
+config SOF_SHELL_LOG_INFO
+	bool "Log subsystem status command"
+	default y
+	depends on SHELL && LOG
+	help
+	  Enables the 'sof log_status' shell command, which lists every
+	  registered Zephyr log backend with its index, internal id,
+	  active/inactive state and name, plus the total number of
+	  registered log sources in the local domain.
+
+	  Read-only and cheap; useful for confirming which backends
+	  (uart_console, adsp_mtrace, adsp_hda, ...) are alive without
+	  having to enable CONFIG_LOG_RUNTIME_FILTERING and the much
+	  larger Zephyr 'log' shell module.
+
+config SOF_SHELL_MTRACE_DUMP
+	bool "mtrace SRAM buffer snapshot command"
+	default y
+	depends on SHELL && LOG_BACKEND_ADSP_MTRACE
+	help
+	  Enables the 'sof mtrace_dump' shell command which prints the
+	  unread portion of the ADSP mtrace SRAM ring buffer (the same
+	  buffer normally consumed by host-side mtrace-reader.py).
+
+	  The snapshot does NOT advance the host_ptr, so it is safe to
+	  use while a host consumer is running: the host will still
+	  receive every byte. Useful when no host driver is attached
+	  (e.g. early bring-up over UART shell only).
+
+config SOF_SHELL_MAILBOX_HEX
+	bool "Hex-dump SOF mailbox regions"
+	default y
+	depends on SHELL
+	help
+	  Enables 'sof mailbox_hex <region> [offset] [length]' which hex
+	  dumps one of the SOF mailbox regions (exception, dspbox, hostbox,
+	  debug). With no arguments lists the regions and their sizes. The
+	  length is clamped to the region size; default 256 bytes.
+
+	  Useful for inspecting the panic dump area after a fatal error and
+	  for low-level IPC payload debugging.
+
+config SOF_SHELL_DBGWIN_DUMP
+	bool "Hex-dump ADSP debug-window slots"
+	default y
+	depends on SHELL && SOC_FAMILY_INTEL_ADSP
+	help
+	  Enables 'sof dbgwin_dump [slot] [length]' which lists the
+	  descriptors of all ADSP debug-window slots (slot manager
+	  metadata in window 2 page 0) with a friendly type name, and
+	  hex-dumps the slot contents when a slot index is given.
+
+	  This makes it possible to peek at gdb_stub, telemetry,
+	  critical_log, broken-marker and other slots from the shell
+	  without host-side tooling.
+
+config SOF_SHELL_PERF_STATUS
+	bool "Performance / telemetry status command"
+	default y
+	depends on SHELL && SOF_TELEMETRY
+	help
+	  Enables 'sof perf_status [reset|start|stop|pause]' which prints
+	  the current ipc4_perf_measurements_state plus per-active-core
+	  systick counters from the SOF telemetry slot:
+	  count, last/max time elapsed (cycles), avg/peak KCPS and the
+	  4k/8k peak utilization buckets.
+
+	  With one of the optional sub-commands the command transitions
+	  the perf measurement state machine ('start' calls
+	  enable_performance_counters(), 'reset' calls
+	  reset_performance_counters(); 'stop'/'pause' just update the
+	  state) - useful for taking before/after snapshots without IPC.
+
+config SOF_SHELL_DAI_LIST
+	bool "DAI introspection command"
+	default y
+	depends on SHELL && ZEPHYR_NATIVE_DRIVERS
+	help
+	  Enables 'sof dai_list' which iterates dai_get_device_list()
+	  and prints, per DAI, the Zephyr device name, decoded type
+	  (ssp/dmic/hda/alh/uaol/sai/esai/...), index, current channel
+	  count, sample rate, format and word size from
+	  dai_config_get(), plus per-direction fifo address, fifo depth,
+	  DMA handshake id and stream id from dai_get_properties().
+
+	  Useful for verifying which DAIs were registered for a topology
+	  without going through host-side debug.
+
+config SOF_SHELL_DMA_STATUS
+	bool "DMA controller / channel status command"
+	default y
+	depends on SHELL && ZEPHYR_NATIVE_DRIVERS
+	help
+	  Enables 'sof dma_status [dma_idx [chan]]':
+
+	    'sof dma_status'                  - list every DMA controller
+	                                        registered with SOF (id,
+	                                        channel count, busy count,
+	                                        caps/devs bitmasks, base,
+	                                        Zephyr device name).
+	    'sof dma_status <dma_idx>'        - per-channel status for one
+	                                        controller.
+	    'sof dma_status <dma_idx> <chan>' - status for one channel.
+
+	  Per-channel status comes from sof_dma_get_status() (Zephyr
+	  dma_get_status()) and shows busy/idle, direction, pending and
+	  free bytes, read/write positions and total_copied. Pairs well
+	  with 'sof dai_list' for diagnosing P2M/M2P paths.
+
+config SOF_SHELL_KCTL_LIST
+	bool "kcontrol introspection command"
+	default y
+	depends on SHELL
+	help
+	  Enables 'sof kctl_list' which walks the IPC component list and
+	  prints, per component, the comp_id, pipeline_id, core, decoded
+	  module name (volume / gain / mixin / mixout / eqiir / src /
+	  ...) taken from the trace UUID context, a coarse 'kind' tag
+	  (volume / mixer / blob / config) for control-bearing modules,
+	  and the current comp_state.
+
+	  This is read-only on purpose. Actual kcontrol get/set values
+	  flow through per-module IPC4 large_config blobs
+	  (set_configuration / get_configuration) which need
+	  module-specific marshalling and are intentionally left to host
+	  tools (tinymix, sof-ctl). Use this command together with 'sof
+	  module_status' to identify which comp_id carries which control
+	  before going through the host path.
+
+endmenu # SOF shell commands
+
 config SOF_VREGIONS
 	bool "Enable virtual memory regions"
 	default y if ACE && !ACE_VERSION_1_5 && !ACE_VERSION_2_0

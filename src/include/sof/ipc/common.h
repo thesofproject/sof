@@ -229,6 +229,66 @@ struct ipc_cmd_hdr *mailbox_validate(void);
 void ipc_cmd(struct ipc_cmd_hdr *_hdr);
 
 /**
+ * \brief Lightweight IPC counters and last-message snapshot for diagnostics.
+ *
+ * Populated by the platform RX/TX hooks. Safe to read from any context;
+ * fields are 32-bit and updated under @ref ipc::lock when written.
+ */
+struct ipc_stats {
+	uint32_t rx_count;	/**< total IPC messages received */
+	uint32_t tx_count;	/**< total IPC messages sent */
+	uint32_t tx_direct_count; /**< messages sent via the direct path */
+	uint32_t rx_errors;	/**< RX path errors / unknown targets */
+	uint32_t tx_errors;	/**< TX path send failures */
+
+	/* last RX */
+	uint32_t last_rx_pri;
+	uint32_t last_rx_ext;
+	uint64_t last_rx_time;	/**< platform cycles */
+
+	/* last TX */
+	uint32_t last_tx_pri;
+	uint32_t last_tx_ext;
+	uint64_t last_tx_time;
+};
+
+/**
+ * \brief Record an inbound IPC for the stats snapshot.
+ *
+ * @param[in] pri Primary header word.
+ * @param[in] ext Extension header word.
+ */
+void ipc_stats_record_rx(uint32_t pri, uint32_t ext);
+
+/**
+ * \brief Record an outbound IPC for the stats snapshot.
+ *
+ * @param[in] pri Primary header word.
+ * @param[in] ext Extension header word.
+ * @param[in] direct True if the message used the "direct" send path.
+ * @param[in] err   Send result (negative on error).
+ */
+void ipc_stats_record_tx(uint32_t pri, uint32_t ext, bool direct, int err);
+
+/**
+ * \brief Increment the RX error counter without updating the last-message
+ * snapshot. Used for unknown targets / dispatch failures.
+ */
+void ipc_stats_inc_rx_error(void);
+
+/**
+ * \brief Read a copy of the current IPC statistics.
+ *
+ * @param[out] out Destination snapshot.
+ */
+void ipc_stats_get(struct ipc_stats *out);
+
+/**
+ * \brief Reset all IPC statistics counters.
+ */
+void ipc_stats_reset(void);
+
+/**
  * \brief IPC message to be processed on other core.
  * @param[in] core Core id for IPC to be processed on.
  * @param[in] blocking Process in blocking mode: wait for completion.
