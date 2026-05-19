@@ -107,5 +107,10 @@ int cadence_init_codec_object(struct processing_module *mod);
 int cadence_codec_resolve_api(struct processing_module *mod);
 int cadence_codec_free(struct processing_module *mod);
 size_t cadence_api_table_size(void);
+void cadence_copy_data_from_buffer(void *dest, const void *buffer_ptr, size_t bytes_to_copy,
+				   size_t buffer_size, void const *buffer_start);
+void cadence_copy_data_to_buffer(void *buffer_ptr, size_t bytes_to_copy,
+				 size_t buffer_size, void *buffer_start,
+				 const void *src);
 
 #endif /* __SOF_AUDIO_CADENCE_CODEC__ */

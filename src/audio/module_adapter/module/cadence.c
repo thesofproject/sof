@@ -573,3 +573,40 @@ int cadence_codec_process_data(struct processing_module *mod,
 
 	return 0;
 }
+
+void cadence_copy_data_from_buffer(void *dest, const void *buffer_ptr, size_t bytes_to_copy,
+				   size_t buffer_size, void const *buffer_start)
+{
+	size_t bytes_to_end = (size_t)((const uint8_t *)buffer_start +
+				       buffer_size - (const uint8_t *)buffer_ptr);
+
+	if (bytes_to_end >= bytes_to_copy) {
+		/* No wrap, copy directly */
+		memcpy_s(dest, bytes_to_copy, buffer_ptr, bytes_to_copy);
+		return;
+	}
+
+	/* Wrap occurs, copy in two parts */
+	memcpy_s(dest, bytes_to_end, buffer_ptr, bytes_to_end);
+	memcpy_s((uint8_t *)dest + bytes_to_end, bytes_to_copy - bytes_to_end,
+		 buffer_start, bytes_to_copy - bytes_to_end);
+}
+
+void cadence_copy_data_to_buffer(void *buffer_ptr, size_t bytes_to_copy,
+				 size_t buffer_size, void *buffer_start,
+				 const void *src)
+{
+	size_t bytes_to_end = (size_t)((uint8_t *)buffer_start +
+				       buffer_size - (uint8_t *)buffer_ptr);
+
+	if (bytes_to_end >= bytes_to_copy) {
+		/* No wrap, copy directly */
+		memcpy_s(buffer_ptr, bytes_to_copy, src, bytes_to_copy);
+		return;
+	}
+
+	/* Wrap occurs, copy in two parts */
+	memcpy_s(buffer_ptr, bytes_to_end, src, bytes_to_end);
+	memcpy_s(buffer_start, bytes_to_copy - bytes_to_end,
+		 (const uint8_t *)src + bytes_to_end, bytes_to_copy - bytes_to_end);
+}
