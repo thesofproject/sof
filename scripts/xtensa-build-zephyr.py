@@ -979,6 +979,22 @@ def build_platforms():
 				env=platf_build_environ, sof_log_env=True)
 		print()
 
+		# Delete the LLEXT VMA accumulator file before every build.
+		# llext_offset_calc.py uses module_size as a persistent counter
+		# across cmake custom-command invocations.  If ninja is invoked
+		# more than once without a pristine rebuild this counter keeps
+		# accumulating, pushing pre-linked VMAs beyond the valid LLEXT
+		# virtual region and causing sys_mm_drv_map_region() to fail
+		# silently at runtime (IPC4_MOD_NOT_INITIALIZED error 104).
+		# llext_offset_calc.py already handles a missing file as size=0,
+		# so deletion is the simplest and most reliable reset.
+		zephyr_build_dir = pathlib.Path(abs_build_dir) / "zephyr"
+		if zephyr_build_dir.is_dir():
+			acc_path = zephyr_build_dir / "module_size"
+			if acc_path.is_file():
+				acc_path.unlink()
+				print(f"Deleted LLEXT VMA accumulator: {acc_path}")
+
 		# Build
 		try:
 			execute_command(build_cmd, cwd=west_top, env=platf_build_environ, sof_log_env=True)
