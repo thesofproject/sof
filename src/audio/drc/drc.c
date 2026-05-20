@@ -76,7 +76,7 @@ int drc_init_pre_delay_buffers(struct processing_module *mod,
 	int i;
 
 	/* Allocate pre-delay (lookahead) buffers */
-	state->pre_delay_buffers[0] = mod_balloc(mod, bytes_total);
+	state->pre_delay_buffers[0] = mod_alloc(mod, bytes_total);
 	if (!state->pre_delay_buffers[0])
 		return -ENOMEM;
 
