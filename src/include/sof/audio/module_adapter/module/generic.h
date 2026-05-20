@@ -324,7 +324,8 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 struct userspace_context;
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config, const void *spec,
-					void *mod_priv, struct userspace_context *user_ctx);
+					void *mod_priv, struct userspace_context *user_ctx,
+					const struct module_interface *ops);
 int module_adapter_prepare(struct comp_dev *dev);
 int module_adapter_params(struct comp_dev *dev, struct sof_ipc_stream_params *params);
 int module_adapter_copy(struct comp_dev *dev);
