@@ -220,7 +220,7 @@ static int eq_fir_setup(struct processing_module *mod, int nch)
 		return 0;
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	cd->fir_delay = mod_balloc(mod, delay_size);
+	cd->fir_delay = mod_alloc(mod, delay_size);
 	if (!cd->fir_delay) {
 		comp_err(dev, "delay allocation failed for size %d", delay_size);
 		return -ENOMEM;
