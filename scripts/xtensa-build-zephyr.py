@@ -1027,6 +1027,26 @@ def build_platforms():
 			# Use llvm toolchain variant for native Clang support with GCC assembler/linker
 			platf_build_environ["ZEPHYR_TOOLCHAIN_VARIANT"] = "llvm"
 			platf_build_environ["LLVM_TOOLCHAIN_PATH"] = str(pathlib.Path(args.llvm_clang).resolve())
+			# The llvm toolchain variant uses the Zephyr SDK's GNU Xtensa
+			# assembler/linker/sysroot. Zephyr's FindZephyr-sdk.cmake skips
+			# auto-discovery when ZEPHYR_TOOLCHAIN_VARIANT=llvm, so locate
+			# the SDK ourselves and export ZEPHYR_SDK_INSTALL_DIR if unset.
+			if not platf_build_environ.get("ZEPHYR_SDK_INSTALL_DIR"):
+				sdk_search = [pathlib.Path.home(), pathlib.Path("/opt"), pathlib.Path("/usr/local")]
+				sdks = []
+				for base in sdk_search:
+					if base.is_dir():
+						sdks.extend(base.glob("zephyr-sdk-*"))
+				# Prefer highest version (natural sort)
+				sdks = sorted((d for d in sdks if d.is_dir()),
+					      key=lambda p: p.name, reverse=True)
+				if sdks:
+					platf_build_environ["ZEPHYR_SDK_INSTALL_DIR"] = str(sdks[0])
+					print(f"Auto-detected ZEPHYR_SDK_INSTALL_DIR={sdks[0]}")
+				else:
+					print("WARNING: ZEPHYR_SDK_INSTALL_DIR not set and no zephyr-sdk-* "
+					      "directory found in $HOME, /opt, or /usr/local. "
+					      "LLVM Xtensa builds need the Zephyr SDK for binutils/sysroot.")
 		elif args.zephyrsdk:
 			print("Using Zephyr SDK for building")
 			xtensa_tools_root_dir = None
