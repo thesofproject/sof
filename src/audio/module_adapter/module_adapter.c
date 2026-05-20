@@ -48,7 +48,7 @@ LOG_MODULE_REGISTER(module_adapter, CONFIG_SOF_LOG_LEVEL);
 struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 				    const struct comp_ipc_config *config, const void *spec)
 {
-	return module_adapter_new_ext(drv, config, spec, NULL, NULL);
+	return module_adapter_new_ext(drv, config, spec, NULL, NULL, NULL);
 }
 
 #if CONFIG_MM_DRV
@@ -207,11 +207,12 @@ static void module_adapter_mem_free(struct processing_module *mod)
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config,
 					const void *const_spec, void *mod_priv,
-					struct userspace_context *user_ctx)
+					struct userspace_context *user_ctx,
+					const struct module_interface *ops)
 {
 	int ret;
 	struct module_config *dst;
-	const struct module_interface *const interface = drv->adapter_ops;
+	const struct module_interface *const interface = ops ? : drv->adapter_ops;
 	struct ipc_config_process spec =
 		*((const struct ipc_config_process *) const_spec);
 #if CONFIG_IPC_MAJOR_4
