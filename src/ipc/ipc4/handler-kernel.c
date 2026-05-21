@@ -14,7 +14,6 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
-#include <sof/boot_test.h>
 #include <sof/common.h>
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
@@ -40,11 +39,6 @@
 #include <rtos/kernel.h>
 #include <rtos/string.h>
 #include <sof/lib_manager.h>
-
-#if CONFIG_SOF_BOOT_TEST
-/* CONFIG_SOF_BOOT_TEST depends on Zephyr */
-#include <zephyr/ztest.h>
-#endif
 
 #include <errno.h>
 #include <stdbool.h>
