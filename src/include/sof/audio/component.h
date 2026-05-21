@@ -878,8 +878,10 @@ static inline void comp_init(const struct comp_driver *drv,
 #ifdef CONFIG_SOF_USERSPACE_LL
 	sys_mutex_init(&dev->list_mutex);
 #endif
+#ifndef __ZEPHYR__
 	memcpy_s(&dev->tctx, sizeof(dev->tctx),
 		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
+#endif
 }
 
 /**
