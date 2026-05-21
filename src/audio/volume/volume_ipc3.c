@@ -219,6 +219,11 @@ int volume_set_config(struct processing_module *mod, uint32_t config_id,
 		volume_set_ramp_channel_counter(cd, cd->channels);
 
 		volume_ramp_check(mod);
+		/* Update function pointer after all volume changes */
+		if (comp_dev_get_first_data_consumer(dev) != NULL) {
+			cd->is_passthrough = false;
+			set_volume_process(cd, dev, false);
+		}
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
