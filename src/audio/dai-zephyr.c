@@ -208,6 +208,10 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg_params = spec_config;
 		dai_set_link_hda_config(&cfg.link_config, common_config, spec_config);
 		break;
+	case SOF_DAI_MEDIATEK_AFE:
+		cfg.type = DAI_MEDIATEK_AFE;
+		cfg_params = &sof_cfg->afe;
+		break;
 	default:
 		return -EINVAL;
 	}
