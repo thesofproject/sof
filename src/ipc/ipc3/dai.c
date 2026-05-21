@@ -178,21 +178,38 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 	case SOF_DAI_IMX_ESAI:
 		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
 		break;
-	case SOF_DAI_AMD_BT:
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
-		break;
-	case SOF_DAI_AMD_SP:
-	case SOF_DAI_AMD_SP_VIRTUAL:
-		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S16_LE;
-		break;
 	case SOF_DAI_AMD_DMIC:
 		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
 		if (dd->dma_buffer)
 			audio_stream_set_frm_fmt(&dd->dma_buffer->stream,
 						 dev->ipc_config.frame_fmt);
 		break;
+	case SOF_DAI_AMD_BT:
+	case SOF_DAI_AMD_SP:
+	case SOF_DAI_AMD_SP_VIRTUAL:
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_HS_VIRTUAL:
+#if defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0)
+	{
+		struct acp_dma_dev_data *tdm_data = dd->dma->z_dev->data;
+		struct tdm_context *tdm_ctx;
+
+		/* Allocate coherent memory for TDM context shared between
+		 * IPC and DMA contexts.
+		 */
+		if (!tdm_data->dai_index_ptr) {
+			tdm_ctx = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					  sizeof(*tdm_ctx));
+			if (!tdm_ctx)
+				return -ENOMEM;
+			tdm_data->dai_index_ptr = tdm_ctx;
+		} else {
+			tdm_ctx = (struct tdm_context *)tdm_data->dai_index_ptr;
+		}
+		tdm_ctx->index = dd->dai->index;
+	}
+#endif
+		break;
 	case SOF_DAI_AMD_SDW:
 #if defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0)
 	{

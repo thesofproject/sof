@@ -97,6 +97,7 @@ enum sof_ipc_dai_type {
 	SOF_DAI_IMX_MICFIL,		/**< i.MX MICFIL */
 	SOF_DAI_AMD_SDW,		/**< Amd SDW */
 	SOF_DAI_INTEL_UAOL,		/**< Intel UAOL */
+	SOF_DAI_AMD_TDM			/**< Amd TDM */
 };
 
 #define SOF_DAI_CONFIG_HW_SPEC_OFFSET offsetof(struct sof_ipc_dai_config, ssp)
@@ -126,7 +127,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_acp_params acpbt;
 		struct sof_ipc_dai_acp_params acpsp;
 		struct sof_ipc_dai_acpdmic_params acpdmic;
-		struct sof_ipc_dai_acp_params acphs;
+		struct sof_ipc_dai_acp_params acptdm;
 		struct sof_ipc_dai_afe_params afe;
 		struct sof_ipc_dai_micfil_params micfil;
 		struct sof_ipc_dai_acp_sdw_params acpsdw;
