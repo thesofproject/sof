@@ -17,6 +17,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
 #include <sof/list.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
 #include <rtos/clk.h>
