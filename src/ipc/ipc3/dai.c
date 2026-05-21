@@ -29,6 +29,8 @@
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
+#define DAI_INDEX_INVALID	0xFFFF
+
 void dai_set_link_hda_config(uint16_t *link_config,
 			    struct ipc_config_dai *common_config,
 			    const void *spec_config)
@@ -93,7 +95,10 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		break;
 	case SOF_DAI_AMD_HS:
 	case SOF_DAI_AMD_HS_VIRTUAL:
-	case SOF_DAI_AMD_SDW:
+	case SOF_DAI_AMD_SDW: {
+		struct dai_config *params = (struct dai_config *)dd->dai->dev->config;
+
+		params->dai_index = dd->dai->index;
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
 #if defined(CONFIG_SOC_ACP_7_0)
@@ -102,6 +107,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		}
 #endif
 		break;
+	}
 	case SOF_DAI_MEDIATEK_AFE:
 		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
@@ -196,6 +202,13 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 	case SOF_DAI_AMD_SDW:
 #if defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0)
 	{
+		/* AMD SDW/HS HW needs 24-bit data MSB-aligned in 32-bit word */
+		if (dev->ipc_config.frame_fmt == SOF_IPC_FRAME_S24_4LE)
+			dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S24_4LE_MSB;
+		if (dd->dma_buffer)
+			audio_stream_set_frm_fmt(&dd->dma_buffer->stream,
+						 dev->ipc_config.frame_fmt);
+
 		struct acp_dma_dev_data *dev_data = dd->dma->z_dev->data;
 		struct sdw_pin_data *pin_data;
 
@@ -210,12 +223,18 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		pin_data->pin_num = dd->dai->index;
 		pin_data->pin_dir = dai->direction;
 #ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
-		pin_data->dma_channel = dd->chan_index >= 0 ? dd->chan_index : 0xFFFF;
+		pin_data->dma_channel = dd->chan_index >= 0 ? dd->chan_index : DAI_INDEX_INVALID;
 #else
-		pin_data->dma_channel = dd->chan ? dd->chan->index : 0xFFFF;
+		pin_data->dma_channel = dd->chan ? dd->chan->index : DAI_INDEX_INVALID;
 #endif
-		pin_data->index = 0xFFFF;
-		pin_data->instance = 0xFFFF;
+#if defined(CONFIG_SOC_ACP_7_X)
+		for (int i = 0; i < SDW_INSTANCES; i++) {
+			pin_data->index[i] = DAI_INDEX_INVALID;
+		}
+#else
+			pin_data->index = DAI_INDEX_INVALID;
+#endif
+		pin_data->instance = DAI_INDEX_INVALID;
 		dev_data->dai_index_ptr = pin_data;
 	}
 #endif
@@ -313,6 +332,18 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		comp_info(dev, "Component is in active state. Ignore resetting");
 		return;
 	}
+
+#if defined(CONFIG_AMD)
+	/* Free DAI-specific data allocated in ipc_dai_data_config() */
+	if (dd->dma && dd->dma->z_dev && dd->dma->z_dev->data) {
+		struct acp_dma_dev_data *dev_data = dd->dma->z_dev->data;
+
+		if (dev_data->dai_index_ptr) {
+			rfree(dev_data->dai_index_ptr);
+			dev_data->dai_index_ptr = NULL;
+		}
+	}
+#endif
 
 	/* put the allocated DMA channel first */
 #ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS

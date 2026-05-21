@@ -251,6 +251,19 @@ config ACP_7_0
 	help
 	 Select if your target platform is acp_7_0-compatible
 
+config ACP_7_X
+	bool "Build for ACP_7_X"
+	select XT_INTERRUPT_LEVEL_5
+	select XT_INTERRUPT_LEVEL_3
+	select XT_INTERRUPT_LEVEL_1
+	select XT_INTERRUPT_LEVEL_4
+	select XT_WAITI_DELAY
+	select XTENSA_EXCLUSIVE
+	select AMD
+	select AMD_BINARY_BUILD
+	help
+	 Select if your target platform is acp_7_x-compatible
+
 config MT8186
 	bool "Build for MTK MT8186 (XTOS)"
 	select XT_INTERRUPT_LEVEL_1
@@ -544,6 +557,7 @@ config RIMAGE_SIGNING_SCHEMA
 	default "vangogh" if VANGOGH
 	default "acp_6_3" if ACP_6_3
 	default "acp_7_0" if ACP_7_0
+	default "acp_7_x" if ACP_7_X
 	default "mt8186" if MT8186
 	default "mt8188" if MT8188
 	default "mt8195" if MT8195
