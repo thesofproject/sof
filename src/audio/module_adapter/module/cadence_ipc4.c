@@ -217,6 +217,32 @@ static int cadence_configure_codec_params(struct processing_module *mod)
 	return -EINVAL;
 }
 
+static struct ipc_msg *cadence_codec_notification_init(struct processing_module *mod)
+{
+	struct comp_dev *dev = mod->dev;
+	struct comp_ipc_config *ipc_config = &dev->ipc_config;
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	union ipc4_notification_header primary;
+	struct ipc_msg *msg;
+
+	primary.dat = 0;
+	primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+	primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+	msg = ipc_msg_w_ext_init(primary.dat, 0, sizeof(*msg_module_data));
+	if (!msg)
+		return NULL;
+
+	msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
+	msg_module_data->instance_id = IPC4_INST_ID(ipc_config->id);
+	msg_module_data->module_id = IPC4_MOD_ID(ipc_config->id);
+	msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_COMPR_MAGIC_VAL;
+	msg_module_data->event_data_size = 0;
+
+	return msg;
+}
+
 static int cadence_codec_init(struct processing_module *mod)
 {
 	struct module_data *codec = &mod->priv;
@@ -237,6 +263,13 @@ static int cadence_codec_init(struct processing_module *mod)
 	}
 
 	codec->private = cd;
+	cd->msg = cadence_codec_notification_init(mod);
+	if (!cd->msg) {
+		comp_err(dev, "failed to allocate IPC notification template");
+		ret = -ENOMEM;
+		goto free_cd;
+	}
+
 	memcpy_s(&cd->base_cfg, sizeof(cd->base_cfg), &cfg->base_cfg, sizeof(cd->base_cfg));
 
 	codec->mpd.init_done = 0;
@@ -263,7 +296,7 @@ static int cadence_codec_init(struct processing_module *mod)
 		if (!setup_cfg->data) {
 			comp_err(dev, "failed to alloc setup config");
 			ret = -ENOMEM;
-			goto free_cd;
+			goto free_notification;
 		}
 
 		setup_cfg->size = size;
@@ -329,6 +362,8 @@ free:
 free_cfg:
 	if (setup_cfg)
 		mod_free(mod, setup_cfg->data);
+free_notification:
+	ipc_msg_free(cd->msg);
 free_cd:
 	mod_free(mod, cd);
 
@@ -466,30 +501,10 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 	}
 
 	if (codec->mpd.eos_reached && !codec->mpd.eos_notification_sent) {
-		struct ipc_msg msg_proto;
-		struct comp_ipc_config *ipc_config = &dev->ipc_config;
-		union ipc4_notification_header *primary =
-			(union ipc4_notification_header *)&msg_proto.header;
-		struct sof_ipc4_notify_module_data *msg_module_data;
-		struct ipc_msg *msg;
+		struct cadence_codec_data *cd = module_get_private_data(mod);
 
-		memset_s(&msg_proto, sizeof(msg_proto), 0, sizeof(msg_proto));
-		primary->r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
-		primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
-		primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-		primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-		msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
-					 sizeof(*msg_module_data));
-		if (msg) {
-			msg_module_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
-			msg_module_data->instance_id = IPC4_INST_ID(ipc_config->id);
-			msg_module_data->module_id = IPC4_MOD_ID(ipc_config->id);
-			msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_COMPR_MAGIC_VAL;
-			msg_module_data->event_data_size = 0;
-
-			ipc_msg_send(msg, NULL, false);
-			codec->mpd.eos_notification_sent = true;
-		}
+		ipc_msg_send(cd->msg, NULL, false);
+		codec->mpd.eos_notification_sent = true;
 
 		/* Set EOS for the sink as we are not going to produce more data */
 		audio_buffer_set_eos(sof_audio_buffer_from_sink(sinks[0]));
@@ -546,13 +561,22 @@ static bool cadence_is_ready_to_process(struct processing_module *mod,
 	return true;
 }
 
+static int ipc4_cadence_codec_free(struct processing_module *mod)
+{
+	struct cadence_codec_data *cd = module_get_private_data(mod);
+
+	ipc_msg_free(cd->msg);
+
+	return cadence_codec_free(mod);
+}
+
 static const struct module_interface cadence_codec_interface = {
 	.init = cadence_codec_init,
 	.prepare = cadence_codec_prepare,
 	.process = cadence_codec_process,
 	.set_configuration = cadence_codec_set_configuration,
 	.reset = cadence_codec_reset,
-	.free = cadence_codec_free,
+	.free = ipc4_cadence_codec_free,
 	.is_ready_to_process = cadence_is_ready_to_process,
 };
 
