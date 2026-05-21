@@ -87,8 +87,9 @@ struct vregion {
 	struct k_mutex lock;		/* protect vregion heaps and use-count */
 	unsigned int use_count;
 
-	/* interim heap */
+	/* interim heap - created lazily on first interim allocation */
 	struct interim_heap interim;	/* interim heap */
+	bool interim_initialized;	/* true after k_heap_init for interim */
 
 	/* lifetime heap */
 	struct vlinear_heap lifetime;	/* lifetime linear heap */
@@ -118,13 +119,13 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 	}
 
 	/*
-	 * Align up lifetime sizes and interim sizes to nearest page, the
-	 * vregion structure is stored in lifetime area so account for its size too.
+	 * Sum lifetime and interim together into one contiguous buffer.
+	 * The vregion struct is stored at the start, followed by lifetime
+	 * allocations growing upward. The interim k_heap is created lazily
+	 * from the remaining space on the first interim allocation.
 	 */
-	lifetime_size += sizeof(*vr);
-	lifetime_size = ALIGN_UP(lifetime_size, CONFIG_MM_DRV_PAGE_SIZE);
-	interim_size = ALIGN_UP(interim_size, CONFIG_MM_DRV_PAGE_SIZE);
-	total_size = lifetime_size + interim_size;
+	total_size = lifetime_size + interim_size + sizeof(*vr);
+	total_size = ALIGN_UP(total_size, CONFIG_MM_DRV_PAGE_SIZE);
 
 	/* allocate pages for vregion */
 	pages = total_size / CONFIG_MM_DRV_PAGE_SIZE;
@@ -132,27 +133,21 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 	if (!vregion_base)
 		return NULL;
 
-	/* init vregion - place it at the start of the lifetime region */
-	vr = (struct vregion *)(vregion_base + interim_size);
+	/* init vregion - place it at the start of the buffer */
+	vr = (struct vregion *)vregion_base;
 	vr->base = vregion_base;
 	vr->size = total_size;
 	vr->pages = pages;
 
-	/* set partition sizes */
-	vr->interim.heap.heap.init_bytes = interim_size;
-	vr->lifetime.size = lifetime_size;
-
-	/* set base addresses for partitions */
-	vr->interim.heap.heap.init_mem = vr->base;
-	vr->lifetime.base = vr->base + interim_size;
-
-	/* set alloc ptr addresses for lifetime linear partitions */
-	vr->lifetime.ptr = vr->lifetime.base +
-		ALIGN_UP(sizeof(*vr), CONFIG_DCACHE_LINE_SIZE); /* skip vregion struct */
+	/* lifetime linear allocator starts right after the vregion struct */
+	vr->lifetime.base = vregion_base;
+	vr->lifetime.size = total_size;
+	vr->lifetime.ptr = vregion_base +
+		ALIGN_UP(sizeof(*vr), CONFIG_DCACHE_LINE_SIZE);
 	vr->lifetime.used = ALIGN_UP(sizeof(*vr), CONFIG_DCACHE_LINE_SIZE);
 
-	/* init interim heaps */
-	k_heap_init(&vr->interim.heap, vr->interim.heap.heap.init_mem, interim_size);
+	/* interim heap is not initialized yet - will be created lazily */
+	vr->interim_initialized = false;
 
 	k_mutex_init(&vr->lock);
 	/* The creator is the first user */
@@ -161,8 +156,6 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 	/* log the new vregion */
 	LOG_INF("new at base %p size %#zx pages %u struct embedded at %p",
 		(void *)vr->base, total_size, pages, (void *)vr);
-	LOG_DBG(" interim size %#zx at %p", interim_size, (void *)vr->interim.heap.heap.init_mem);
-	LOG_DBG(" lifetime size %#zx at %p", lifetime_size, (void *)vr->lifetime.base);
 
 	return vr;
 }
@@ -210,17 +203,51 @@ struct vregion *vregion_put(struct vregion *vr)
 }
 
 /**
+ * @brief Initialize the interim heap from remaining vregion space.
+ *
+ * Called on first interim allocation. Creates the k_heap from all buffer
+ * space not yet consumed by lifetime allocations.
+ *
+ * @param[in] vr Pointer to the virtual region instance.
+ */
+static void interim_heap_init(struct vregion *vr)
+{
+	uint8_t *interim_base;
+	size_t interim_size;
+
+	/* interim heap starts right after current lifetime pointer, page-aligned */
+	interim_base = UINT_TO_POINTER(ALIGN_UP(POINTER_TO_UINT(vr->lifetime.ptr),
+						CONFIG_MM_DRV_PAGE_SIZE));
+	interim_size = (vr->base + vr->size) - interim_base;
+
+	LOG_INF("creating interim heap: lifetime used %zu, interim available %zu at %p",
+		vr->lifetime.used, interim_size, (void *)interim_base);
+
+	/* cap lifetime so no more lifetime allocs can grow into interim */
+	vr->lifetime.size = interim_base - vr->base;
+
+	vr->interim.heap.heap.init_mem = interim_base;
+	vr->interim.heap.heap.init_bytes = interim_size;
+	k_heap_init(&vr->interim.heap, interim_base, interim_size);
+	vr->interim_initialized = true;
+}
+
+/**
  * @brief Allocate memory with alignment from the virtual region dynamic heap.
  *
+ * @param[in] vr Pointer to the virtual region instance.
  * @param[in] heap Pointer to the heap to use.
  * @param[in] size Size of the allocation.
  * @param[in] align Alignment of the allocation.
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-static void *interim_alloc(struct interim_heap *heap,
+static void *interim_alloc(struct vregion *vr, struct interim_heap *heap,
 			   size_t size, size_t align)
 {
 	void *ptr;
+
+	if (!vr->interim_initialized)
+		interim_heap_init(vr);
 
 	ptr = k_heap_aligned_alloc(&heap->heap, align, size, K_NO_WAIT);
 	if (!ptr)
@@ -244,18 +271,28 @@ static void interim_free(struct interim_heap *heap, void *ptr)
 /**
  * @brief Allocate memory from the virtual region lifetime allocator.
  *
+ * If the interim heap has already been created (i.e., an interim allocation
+ * was made), log a warning and fall back to interim allocation.
+ *
+ * @param[in] vr Pointer to the virtual region instance.
  * @param[in] heap Pointer to the linear heap to use.
  * @param[in] size Size of the allocation.
  * @param[in] align Alignment of the allocation.
  *
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-static void *lifetime_alloc(struct vlinear_heap *heap,
+static void *lifetime_alloc(struct vregion *vr, struct vlinear_heap *heap,
 			    size_t size, size_t align)
 {
 	void *ptr;
 	uint8_t *aligned_ptr;
 	size_t heap_obj_size;
+
+	/* If interim heap already exists, lifetime partition is sealed */
+	if (vr->interim_initialized) {
+		LOG_WRN("lifetime alloc after interim created, using interim for %zu bytes", size);
+		return interim_alloc(vr, &vr->interim, size, align);
+	}
 
 	/* align heap pointer to alignment requested */
 	aligned_ptr = UINT_TO_POINTER(ALIGN_UP(POINTER_TO_UINT(heap->ptr), align));
@@ -312,14 +349,15 @@ void vregion_free(struct vregion *vr, void *ptr)
 	if (sys_cache_is_ptr_uncached(ptr))
 		ptr = sys_cache_cached_ptr_get(ptr);
 
-	if (ptr >= (void *)vr->interim.heap.heap.init_mem &&
+	/* Check if pointer is in interim heap (if initialized) */
+	if (vr->interim_initialized &&
+	    ptr >= (void *)vr->interim.heap.heap.init_mem &&
 	    ptr < (void *)((uint8_t *)vr->interim.heap.heap.init_mem +
 			   vr->interim.heap.heap.init_bytes))
-		/* pointer is in interim heap */
 		interim_free(&vr->interim, ptr);
 	else if (ptr >= (void *)vr->lifetime.base &&
 		   ptr < (void *)(vr->lifetime.base + vr->lifetime.size))
-		/* pointer is in lifetime heap */
+		/* pointer is in lifetime area - no-op free */
 		lifetime_free(&vr->lifetime, ptr);
 	else
 		LOG_ERR("error: vregion free invalid pointer %p", ptr);
@@ -353,10 +391,16 @@ void *vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
 
 	switch (type) {
 	case VREGION_MEM_TYPE_INTERIM:
-		p = interim_alloc(&vr->interim, size, alignment);
+		p = interim_alloc(vr, &vr->interim, size, alignment);
 		break;
 	case VREGION_MEM_TYPE_LIFETIME:
-		p = lifetime_alloc(&vr->lifetime, size, alignment);
+		p = lifetime_alloc(vr, &vr->lifetime, size, alignment);
+		break;
+	case VREGION_MEM_TYPE_INDIFFERENT:
+		if (vr->interim_initialized)
+			p = interim_alloc(vr, &vr->interim, size, alignment);
+		else
+			p = lifetime_alloc(vr, &vr->lifetime, size, alignment);
 		break;
 	default:
 		LOG_ERR("error: invalid memory type %d", type);

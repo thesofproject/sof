@@ -584,6 +584,7 @@ struct vregion;
 struct mod_alloc_ctx {
 	struct k_heap *heap;
 	struct vregion *vreg;
+	int vregion_type;       /* enum vregion_mem_type */
 };
 
 /**

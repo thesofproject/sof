@@ -217,9 +217,9 @@ static struct comp_buffer *buffer_alloc_struct(struct mod_alloc_ctx *alloc,
 	if (!alloc || !alloc->vreg)
 		buffer = sof_heap_alloc(alloc ? alloc->heap : NULL, flags, sizeof(*buffer), 0);
 	else if (is_shared)
-		buffer = vregion_alloc_coherent(alloc->vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*buffer));
+		buffer = vregion_alloc_coherent(alloc->vreg, alloc->vregion_type, sizeof(*buffer));
 	else
-		buffer = vregion_alloc(alloc->vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*buffer));
+		buffer = vregion_alloc(alloc->vreg, alloc->vregion_type, sizeof(*buffer));
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc structure");
 		return NULL;

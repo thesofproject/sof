@@ -194,8 +194,8 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 	}
 
 	if (alloc && alloc->vreg && size <= FAST_GET_MAX_COPY_SIZE)
-		/* A userspace allocation, that won't be shared */
-		ret = vregion_alloc_align(alloc->vreg, VREGION_MEM_TYPE_INTERIM, alloc_size,
+		/* Use mem type set by caller (mod_fast_get sets per module state) */
+		ret = vregion_alloc_align(alloc->vreg, alloc->vregion_type, alloc_size,
 					  alloc_align);
 	else
 		ret = sof_heap_alloc(heap, alloc_flags, alloc_size, alloc_align);

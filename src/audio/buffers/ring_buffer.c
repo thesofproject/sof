@@ -304,9 +304,9 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	if (!vreg)
 		ring_buffer = sof_heap_alloc(heap, memory_flags, sizeof(*ring_buffer), 0);
 	else if (is_shared)
-		ring_buffer = vregion_alloc_coherent(vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*ring_buffer));
+		ring_buffer = vregion_alloc_coherent(vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*ring_buffer));
 	else
-		ring_buffer = vregion_alloc(vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*ring_buffer));
+		ring_buffer = vregion_alloc(vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*ring_buffer));
 	if (!ring_buffer)
 		return NULL;
 
@@ -383,7 +383,7 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	void *data_buf;
 
 	if (vreg)
-		data_buf = vregion_alloc_align(vreg, VREGION_MEM_TYPE_INTERIM, ring_buffer->data_buffer_size,
+		data_buf = vregion_alloc_align(vreg, VREGION_MEM_TYPE_LIFETIME, ring_buffer->data_buffer_size,
 					       PLATFORM_DCACHE_ALIGN);
 	else
 		data_buf = sof_heap_alloc(heap, user_get_buffer_memory_region(dev->drv),
