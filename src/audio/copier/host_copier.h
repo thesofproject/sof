@@ -120,6 +120,8 @@ struct host_data {
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	struct io_perf_data_item *io_perf_host_byte_count;
 #endif
+
+	struct mod_alloc_ctx alloc_ctx;
 };
 
 int host_common_new(struct host_data *hd, struct comp_dev *dev,
