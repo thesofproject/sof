@@ -22,7 +22,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if defined(CONFIG_AMD)
+#define LL_TIMER_PERIOD_US	500ULL /* 500us period for AMD ACP platforms */
+#else
 #define LL_TIMER_PERIOD_US	1000ULL /* default period in microseconds */
+#endif
 
 /* Default ll watchdog timeout in microseconds.
  * It was decided to have a timeout of two periods to give a safe margin of time between the start
