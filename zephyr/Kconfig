@@ -29,10 +29,25 @@ config SOF_USERSPACE_INTERFACE_DMA
 	help
 	  Allow user-space threads to use the SOF DMA interface.
 
+config SOF_USERSPACE_INTERFACE_ALLOC
+	bool "Enable SOF heap alloc interface to userspace threads"
+	depends on USERSPACE
+	help
+	  Allow user-space threads to use sof_heap_alloc/sof_heap_free
+	  as Zephyr system calls.
+
+config SOF_USERSPACE_INTERFACE_MUTEX
+	bool "User-space mutex interface"
+	depends on USERSPACE
+	help
+	  Enables the sof_umutex API for dynamically-allocated
+	  user-space accessible mutexes backed by k_object_alloc.
+
 config SOF_USERSPACE_LL
 	bool "Run Low-Latency pipelines in userspace threads"
 	depends on USERSPACE
 	select SOF_USERSPACE_INTERFACE_DMA
+	select SOF_USERSPACE_INTERFACE_MUTEX
 	help
 	  Run Low-Latency (LL) pipelines in userspace threads. This adds
 	  memory protection between operating system resources and

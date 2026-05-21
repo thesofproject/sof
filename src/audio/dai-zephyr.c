@@ -23,6 +23,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/dma.h>
+#include <sof/schedule/ll_schedule_domain.h> /* zephyr_ll_user_heap() */
 #include <sof/list.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
@@ -225,55 +226,62 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int hs_id = props->dma_hs_id;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, direction, stream_id, &props);
+	sof_umutex_unlock(&dai->lock);
+	if (ret < 0)
+		return ret;
 
-	return hs_id;
+	return props.dma_hs_id;
 }
 
 /* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
-	const struct dai_properties *props;
-	k_spinlock_key_t key;
-	int fifo_depth;
+	struct dai_properties props;
+	int ret;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
-	props = dai_get_properties(dai->dev, direction, 0);
-	fifo_depth = props->fifo_depth;
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, direction, 0, &props);
+	sof_umutex_unlock(&dai->lock);
+	if (ret < 0)
+		return 0;
 
-	return fifo_depth;
+	return props.fifo_depth;
 }
 
 int dai_get_stream_id(struct dai *dai, int direction)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
-	int stream_id = props->stream_id;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, direction, 0, &props);
+	sof_umutex_unlock(&dai->lock);
+	if (ret < 0)
+		return ret;
 
-	return stream_id;
+	return props.stream_id;
 }
 
 static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int fifo_address = props->fifo_address;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, direction, stream_id, &props);
+	sof_umutex_unlock(&dai->lock);
+	if (ret < 0)
+		return ret;
 
-	return fifo_address;
+	return props.fifo_address;
 }
 
 /* this is called by DMA driver every time descriptor has completed */
@@ -505,6 +513,7 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 			  const struct ipc_config_dai *dai_cfg)
 {
 	uint32_t dir;
+	int ret;
 
 	assert_can_be_cold();
 
@@ -528,10 +537,26 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 		return -ENODEV;
 	}
 
-	k_spinlock_init(&dd->dai->lock);
+	ret = sof_umutex_init(&dd->dai->lock);
+	if (ret < 0) {
+		dai_put(dd->dai);
+		comp_err(dev, "sof_umutex_init() failed: %d", ret);
+		return ret;
+	}
 
 	dma_sg_init(&dd->config.elem_array);
 	dd->xrun = 0;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * copier_dai_create() uses mod_zalloc() to allocate
+	 * the 'dd' dai data object and does not set dd->alloc_ctx.
+	 * If LL is run in user-space, assign the 'heap' here.
+	 */
+	dd->alloc_ctx.heap = zephyr_ll_user_heap();
+#else
+	dd->alloc_ctx.heap = NULL;
+#endif
 
 	/* I/O performance init, keep it last so the function does not reach this in case
 	 * of return on error, so that we do not waste a slot
@@ -585,6 +610,7 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 	struct comp_dev *dev;
 	const struct ipc_config_dai *dai_cfg = spec;
 	struct dai_data *dd;
+	struct k_heap *heap = NULL;
 	int ret;
 
 	assert_can_be_cold();
@@ -597,9 +623,11 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 
 	dev->ipc_config = *config;
 
-	dd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd));
+	dd = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd), 0);
 	if (!dd)
 		goto e_data;
+
+	memset(dd, 0, sizeof(*dd));
 
 	comp_set_drvdata(dev, dd);
 
@@ -614,7 +642,7 @@ __cold static struct comp_dev *dai_new(const struct comp_driver *drv,
 	return dev;
 
 error:
-	rfree(dd);
+	sof_heap_free(heap, dd);
 e_data:
 	comp_free_device(dev);
 	return NULL;
@@ -640,9 +668,11 @@ __cold void dai_common_free(struct dai_data *dd)
 
 	dai_release_llp_slot(dd);
 
+	sof_umutex_free(&dd->dai->lock);
+
 	dai_put(dd->dai);
 
-	rfree(dd->dai_spec_config);
+	sof_heap_free(dd->alloc_ctx.heap, dd->dai_spec_config);
 }
 
 __cold static void dai_free(struct comp_dev *dev)
@@ -656,7 +686,8 @@ __cold static void dai_free(struct comp_dev *dev)
 
 	dai_common_free(dd);
 
-	rfree(dd);
+	/* heap is NULL to match what is passed in dai_new() */
+	sof_heap_free(NULL, dd);
 	comp_free_device(dev);
 }
 
@@ -851,7 +882,7 @@ static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t
 			} while (--max_block_count > 0);
 		}
 
-		err = dma_sg_alloc(NULL, &config->elem_array, SOF_MEM_FLAG_USER,
+		err = dma_sg_alloc(dd->alloc_ctx.heap, &config->elem_array, SOF_MEM_FLAG_USER,
 				   config->direction,
 				   period_count,
 				   period_bytes,
@@ -877,8 +908,9 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 
 	comp_dbg(dev, "entry");
 
-	dma_cfg = rmalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-			  sizeof(struct dma_config));
+	dma_cfg = sof_heap_alloc(dd->alloc_ctx.heap,
+				 SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				 sizeof(struct dma_config), 0);
 	if (!dma_cfg) {
 		comp_err(dev, "dma_cfg allocation failed");
 		return -ENOMEM;
@@ -907,10 +939,11 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	else
 		dma_cfg->dma_slot = config->src_dev;
 
-	dma_block_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-				sizeof(struct dma_block_config) * dma_cfg->block_count);
+	dma_block_cfg = sof_heap_alloc(dd->alloc_ctx.heap,
+				       SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				       sizeof(struct dma_block_config) * dma_cfg->block_count, 0);
 	if (!dma_block_cfg) {
-		rfree(dma_cfg);
+		sof_heap_free(dd->alloc_ctx.heap, dma_cfg);
 		comp_err(dev, "dma_block_config allocation failed");
 		return -ENOMEM;
 	}
@@ -1044,7 +1077,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 			return err;
 		}
 	} else {
-		dd->dma_buffer = buffer_alloc_range(NULL, buffer_size_preferred, buffer_size,
+		dd->dma_buffer = buffer_alloc_range(&dd->alloc_ctx, buffer_size_preferred, buffer_size,
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 						    addr_align, BUFFER_USAGE_NOT_SHARED);
 		if (!dd->dma_buffer) {
@@ -1132,8 +1165,8 @@ out:
 	if (err < 0) {
 		buffer_free(dd->dma_buffer);
 		dd->dma_buffer = NULL;
-		dma_sg_free(NULL, &config->elem_array);
-		rfree(dd->z_config);
+		dma_sg_free(dd->alloc_ctx.heap, &config->elem_array);
+		sof_heap_free(dd->alloc_ctx.heap, dd->z_config);
 		dd->z_config = NULL;
 	}
 
@@ -1259,10 +1292,10 @@ void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
 	if (!dd->delayed_dma_stop)
 		dai_dma_release(dd, dev);
 
-	dma_sg_free(NULL, &config->elem_array);
+	dma_sg_free(dd->alloc_ctx.heap, &config->elem_array);
 	if (dd->z_config) {
-		rfree(dd->z_config->head_block);
-		rfree(dd->z_config);
+		sof_heap_free(dd->alloc_ctx.heap, dd->z_config->head_block);
+		sof_heap_free(dd->alloc_ctx.heap, dd->z_config);
 		dd->z_config = NULL;
 	}
 
@@ -1952,17 +1985,18 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
-	const struct dai_properties *props;
-	k_spinlock_key_t key;
-	uint32_t init_delay;
+	struct dai_properties props;
+	uint32_t init_delay = 0;
+	int ret;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
-	props = dai_get_properties(dai->dev, 0, 0);
-	init_delay = props->reg_init_delay;
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
+	ret = dai_get_properties_copy(dai->dev, 0, 0, &props);
+	if (!ret)
+		init_delay = props.reg_init_delay;
+	sof_umutex_unlock(&dai->lock);
 
 	return init_delay;
 }

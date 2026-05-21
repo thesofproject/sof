@@ -23,11 +23,13 @@
 #include <sof/lib/dma.h>
 #include <sof/list.h>
 #include <rtos/sof.h>
+#include <rtos/umutex.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/topology.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/ipc-config.h>
+#include <sof/audio/component.h>
 #include <ipc/dai.h>
 #include <errno.h>
 #include <stddef.h>
@@ -52,7 +54,7 @@ struct dai {
 	uint32_t dma_dev;
 	const struct device *dev;
 	const struct dai_data *dd;
-	struct k_spinlock lock;		/* protect properties */
+	struct sof_umutex lock;		/* protect properties */
 };
 
 union hdalink_cfg {
@@ -168,6 +170,8 @@ struct dai_data {
 #endif
 	/* Copier gain params */
 	struct copier_gain_params *gain_data;
+
+	struct mod_alloc_ctx alloc_ctx;
 };
 
 /* these 3 are here to satisfy clk.c and ssp.h interconnection, will be removed leter */

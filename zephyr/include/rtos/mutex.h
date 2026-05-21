@@ -8,5 +8,6 @@
 
 #include <zephyr/kernel.h> /* k_mutex_*() */
 #include <zephyr/sys/mutex.h> /* for sys_mutex */
+#include <rtos/umutex.h> /* for sof_umutex */
 
 #endif /* __ZEPHYR_RTOS_MUTEX_H__ */
