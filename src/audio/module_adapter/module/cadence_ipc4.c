@@ -395,24 +395,6 @@ static int cadence_codec_prepare(struct processing_module *mod,
 	return 0;
 }
 
-static void cadence_copy_data_from_buffer(void *dest, const void *buffer_ptr, size_t bytes_to_copy,
-					  size_t buffer_size, uint8_t const *buffer_start)
-{
-	size_t bytes_to_end = (size_t)((uint8_t *)buffer_start +
-				       buffer_size - (uint8_t *)buffer_ptr);
-
-	if (bytes_to_end >= bytes_to_copy) {
-		/* No wrap, copy directly */
-		memcpy_s(dest, bytes_to_copy, buffer_ptr, bytes_to_copy);
-		return;
-	}
-
-	/* Wrap occurs, copy in two parts */
-	memcpy_s(dest, bytes_to_end, buffer_ptr, bytes_to_end);
-	memcpy_s((uint8_t *)dest + bytes_to_end, bytes_to_copy - bytes_to_end,
-		 buffer_start, bytes_to_copy - bytes_to_end);
-}
-
 static int cadence_codec_process(struct processing_module *mod, struct sof_source **sources,
 				 int num_of_sources, struct sof_sink **sinks, int num_of_sinks)
 {
@@ -420,11 +402,10 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 	struct module_data *codec = &mod->priv;
 	size_t in_size = source_get_data_available(sources[0]);
 	size_t out_space = sink_get_free_size(sinks[0]);
-	uint8_t const *source_buffer_start;
-	int consumed_during_init = 0;
+	const void *source_buffer_start, *src_ptr;
+	void *sink_buffer_start, *sink_ptr;
+	size_t src_bytes, sink_bytes;
 	uint32_t remaining = in_size;
-	const void *src_ptr;
-	size_t src_bytes;
 	int ret;
 
 	if (!codec->mpd.init_done) {
@@ -446,7 +427,6 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 
 		remaining -= codec->mpd.consumed;
 		source_release_data(sources[0], codec->mpd.consumed);
-		consumed_during_init = codec->mpd.consumed;
 	}
 
 	codec->mpd.consumed = 0;
@@ -456,8 +436,8 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 		return -ENODATA;
 
 	/* Acquire data from the source buffer */
-	ret = source_get_data(sources[0], codec->mpd.in_buff_size, &src_ptr,
-			      (const void **)&source_buffer_start, &src_bytes);
+	ret = source_get_data(sources[0], codec->mpd.in_buff_size, &src_ptr, &source_buffer_start,
+			      &src_bytes);
 
 	cadence_copy_data_from_buffer(codec->mpd.in_buff, src_ptr, codec->mpd.in_buff_size,
 				      src_bytes, source_buffer_start);
@@ -507,32 +487,16 @@ static int cadence_codec_process(struct processing_module *mod, struct sof_sourc
 		return -ENOSPC;
 	}
 
-	void *sink_ptr;
-	size_t sink_bytes;
-	uint8_t const *sink_buffer_start;
-
-	ret = sink_get_buffer(sinks[0], codec->mpd.produced, &sink_ptr,
-			      (void **)&sink_buffer_start, &sink_bytes);
+	ret = sink_get_buffer(sinks[0], codec->mpd.produced, &sink_ptr, &sink_buffer_start,
+			      &sink_bytes);
 	if (ret) {
 		comp_err(dev, "cannot get sink buffer");
 		return ret;
 	}
 
 	/* Copy the produced samples into the output buffer */
-	size_t bytes_to_end = (size_t)((uint8_t *)sink_buffer_start +
-				       sink_bytes - (uint8_t *)sink_ptr);
-
-	if (bytes_to_end >= codec->mpd.produced) {
-		/* No wrap, copy directly */
-		memcpy_s(sink_ptr, codec->mpd.produced, codec->mpd.out_buff,
-			 codec->mpd.produced);
-	} else {
-		/* Wrap occurs, copy in two parts */
-		memcpy_s(sink_ptr, bytes_to_end, codec->mpd.out_buff, bytes_to_end);
-		memcpy_s((uint8_t *)sink_buffer_start, codec->mpd.produced - bytes_to_end,
-			 (uint8_t *)codec->mpd.out_buff + bytes_to_end,
-			 codec->mpd.produced - bytes_to_end);
-	}
+	cadence_copy_data_to_buffer(sink_ptr, codec->mpd.produced, sink_bytes,
+				    sink_buffer_start, codec->mpd.out_buff);
 
 	source_release_data(sources[0], codec->mpd.consumed);
 	sink_commit_buffer(sinks[0], codec->mpd.produced);
