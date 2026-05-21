@@ -36,7 +36,15 @@
 
 LOG_MODULE_REGISTER(component, CONFIG_SOF_LOG_LEVEL);
 
-static SHARED_DATA struct comp_driver_list cd;
+static APP_SYSUSER_BSS SHARED_DATA struct comp_driver_list cd;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct comp_driver_list *comp_drivers_get(void)
+{
+	return platform_shared_get(&cd, sizeof(cd));
+}
+EXPORT_SYMBOL(comp_drivers_get);
+#endif
 
 SOF_DEFINE_REG_UUID(component);
 

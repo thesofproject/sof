@@ -582,7 +582,7 @@ static int tdfb_init(struct processing_module *mod)
 err:
 	/* These are null if not used for IPC version */
 	mod_free(mod, cd->ctrl_data);
-	ipc_msg_free(cd->msg);
+	mod_free(mod, cd->msg);
 	mod_data_blob_handler_free(mod, cd->model_handler);
 
 err_free_cd:
@@ -597,7 +597,7 @@ static int tdfb_free(struct processing_module *mod)
 
 	comp_dbg(mod->dev, "entry");
 
-	ipc_msg_free(cd->msg);
+	mod_free(mod, cd->msg);
 	tdfb_free_delaylines(mod);
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	tdfb_direction_free(mod);

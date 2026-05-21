@@ -687,10 +687,6 @@ struct comp_dev {
 	struct list_item bsource_list;	/**< list of source buffers */
 	struct list_item bsink_list;	/**< list of sink buffers */
 
-#ifdef CONFIG_SOF_USERSPACE_LL
-	struct sys_mutex list_mutex;     /**< protect lists of source/sinks */
-#endif
-
 	/* performance data*/
 	struct comp_perf_data perf_data;
 	/* Input Buffer Size for pin 0, add array for other pins if needed */
@@ -875,9 +871,6 @@ static inline void comp_init(const struct comp_driver *drv,
 	dev->state = COMP_STATE_INIT;
 	list_init(&dev->bsink_list);
 	list_init(&dev->bsource_list);
-#ifdef CONFIG_SOF_USERSPACE_LL
-	sys_mutex_init(&dev->list_mutex);
-#endif
 	memcpy_s(&dev->tctx, sizeof(dev->tctx),
 		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
 }

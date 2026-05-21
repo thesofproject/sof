@@ -12,6 +12,10 @@
 #include "copier.h"
 #include "host_copier.h"
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+#include <rtos/userspace_helper.h>
+#endif
+
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
@@ -27,7 +31,7 @@ struct fpi_sync_group {
 	struct list_item item;
 };
 
-static struct list_item group_list_head = LIST_INIT(group_list_head);
+static APP_SYSUSER_BSS struct list_item group_list_head = LIST_INIT(group_list_head);
 
 __cold static struct fpi_sync_group *find_group_by_id(uint32_t id)
 {
@@ -186,6 +190,7 @@ __cold int copier_host_create(struct processing_module *mod,
 	if (!hd)
 		return -ENOMEM;
 
+	hd->mod = mod;
 	ret = host_common_new(hd, dev, &ipc_host, config->id);
 	if (ret < 0) {
 		comp_err(dev, "copier: host new failed with exit");

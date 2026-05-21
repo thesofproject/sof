@@ -11,6 +11,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/mailbox.h>
 #include <sof/list.h>
+#include <rtos/mutex.h>
 #include <rtos/task.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
@@ -205,6 +206,14 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
  * \param[in,out] sof Pointer to sof structure.
  */
 void pipeline_posn_init(struct sof *sof);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * \brief Grants user-space thread access to pipeline position mutex.
+ * \param[in] thread Thread to grant access to.
+ */
+void pipeline_posn_grant_access(struct k_thread *thread);
+#endif
 
 /**
  * \brief Resets the pipeline and free runtime resources.
