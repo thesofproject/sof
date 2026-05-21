@@ -979,6 +979,20 @@ def build_platforms():
 				env=platf_build_environ, sof_log_env=True)
 		print()
 
+		# Reset the LLEXT VMA accumulator files before every build.
+		# llext_link_helper.py uses openmod_module_size and module_size as
+		# persistent counters across cmake custom-command invocations.  If
+		# ninja is invoked more than once without a pristine rebuild these
+		# counters keep accumulating, pushing pre-linked VMAs beyond the
+		# valid LLEXT virtual region and causing sys_mm_drv_map_region() to
+		# fail silently at runtime (IPC4_MOD_NOT_INITIALIZED error 104).
+		zephyr_build_dir = pathlib.Path(abs_build_dir) / "zephyr"
+		for acc_file in ("openmod_module_size", "module_size"):
+			acc_path = zephyr_build_dir / acc_file
+			if acc_path.is_file():
+				acc_path.write_text("0\n")
+				print(f"Reset LLEXT VMA accumulator: {acc_path}")
+
 		# Build
 		try:
 			execute_command(build_cmd, cwd=west_top, env=platf_build_environ, sof_log_env=True)
