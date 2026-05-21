@@ -6,12 +6,16 @@
 #ifndef __SOF_CTX_ALLOC_H__
 #define __SOF_CTX_ALLOC_H__
 
-#include <sof/audio/component.h>
 #include <sof/lib/vregion.h>
 #include <rtos/alloc.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+
+struct mod_alloc_ctx {
+       struct k_heap *heap;
+       struct vregion *vreg;
+};
 
 /**
  * Allocate memory from a mod_alloc_ctx context.

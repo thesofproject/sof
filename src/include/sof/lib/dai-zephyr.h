@@ -26,6 +26,7 @@
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/topology.h>
+#include <sof/ctx_alloc.h>
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/ipc-config.h>
 #include <ipc/dai.h>
