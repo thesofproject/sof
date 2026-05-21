@@ -23,7 +23,6 @@
 #include <rtos/idc.h>
 #include <rtos/mutex.h>
 #include <rtos/userspace_helper.h>
-#include <sof/lib/dai.h>
 #include <sof/schedule/schedule.h>
 #include <ipc/control.h>
 #include <sof/ipc/topology.h>
@@ -36,6 +35,16 @@ struct sof_ipc_stream_posn;
 struct dai_hw_params;
 struct timestamp_data;
 struct dai_ts_data;
+
+struct k_heap;
+struct vregion;
+struct mod_alloc_ctx {
+	struct k_heap *heap;
+	struct vregion *vreg;
+};
+
+/* dai.h requires definition for mod_alloc_ctx */
+#include <sof/lib/dai.h>
 
 /** \addtogroup component_api Component API
  *  @{
@@ -577,13 +586,6 @@ struct comp_ops {
 	 * Usually shouldn't be __cold.
 	 */
 	uint64_t (*get_total_data_processed)(struct comp_dev *dev, uint32_t stream_no, bool input);
-};
-
-struct k_heap;
-struct vregion;
-struct mod_alloc_ctx {
-	struct k_heap *heap;
-	struct vregion *vreg;
 };
 
 /**
