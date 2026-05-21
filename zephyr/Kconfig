@@ -46,6 +46,20 @@ config SOF_ZEPHYR_HEAP_CACHED
 	  Enable cached heap by mapping cached SOF memory zones to different
 	  Zephyr sys_heap objects and enable caching for non-shared zones.
 
+config SOF_NATIVE_SIM_HOST_HEAP
+	bool "Use the host C library heap on native_sim"
+	depends on BOARD_NATIVE_SIM
+	default y
+	help
+	  When enabled on the native_sim board, SOF heap allocations
+	  (rmalloc/rzalloc/rballoc/rfree etc.) are routed through the
+	  host C library via the Zephyr native simulator host trampolines
+	  (nsi_host_malloc/nsi_host_free). This makes tools like Valgrind
+	  effective at finding heap errors in SOF code.
+
+	  When disabled, the regular Zephyr sys_heap based implementation
+	  is used, matching the behavior on real targets.
+
 config SOF_ZEPHYR_HEAP_SIZE
 	hex "Size of the Zephyr heap for SOF"
 	default 0x40000 if VIRTUAL_HEAP

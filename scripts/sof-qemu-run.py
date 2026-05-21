@@ -76,9 +76,12 @@ def main():
     parser = argparse.ArgumentParser(description="Run QEMU via west and automatically decode crashes.")
     parser.add_argument("--build-dir", default="build", help="Path to the build directory containing zephyr.elf, linker.cmd, etc. Defaults to 'build'.")
     parser.add_argument("--log-file", default="qemu-run.log", help="Path to save the QEMU output log. Defaults to 'qemu-run.log'.")
+    parser.add_argument("--valgrind", action="store_true", help="Run the executable under Valgrind (only valid for native_sim).")
     args = parser.parse_args()
 
     # Make absolute path just in case
+    # The shell script cd's into `args.build_dir` before executing us, so `args.build_dir` might be relative to the shell script's pwd.
+    # We resolve it relative to the python script's original invocation cwd.
     build_dir = os.path.abspath(args.build_dir)
 
     print(f"Starting QEMU test runner. Monitoring for crashes (Build Dir: {args.build_dir})...")
@@ -91,7 +94,53 @@ def main():
         print("Please ensure you have sourced the Zephyr environment (e.g., source zephyr-env.sh).")
         sys.exit(1)
 
-    child = pexpect.spawn(west_path, ["-v", "build", "-t", "run"], encoding='utf-8')
+    # Detect the board configuration from CMakeCache.txt
+    is_native_sim = False
+
+    cmake_cache = os.path.join(build_dir, "CMakeCache.txt")
+
+    if os.path.isfile(cmake_cache):
+        with open(cmake_cache, "r") as f:
+            for line in f:
+                if line.startswith("CACHED_BOARD:STRING=") or line.startswith("BOARD:STRING="):
+                    if "native_sim" in line.split("=", 1)[1].strip():
+                        is_native_sim = True
+                        break
+
+    # Determine execution command
+    # If the user is running the python script directly from outside the workspace, we need to provide the source directory.
+    # But if west finds it automatically (or we are in the build dir), providing `-s` might clear the CACHED_BOARD config.
+    run_cmd = [west_path, "-v", "build", "-d", build_dir]
+
+    # Check if we are physically sitting inside the build directory
+    if os.path.abspath(".") != os.path.abspath(build_dir):
+        # We need to explicitly supply the app source to prevent west from crashing
+        app_source_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app"))
+        run_cmd.extend(["-s", app_source_dir])
+
+    run_cmd.extend(["-t", "run"])
+
+    if args.valgrind:
+        if not is_native_sim:
+            print("[sof-qemu-run] Error: --valgrind is only supported for the native_sim board.")
+            sys.exit(1)
+
+        print("[sof-qemu-run] Rebuilding before valgrind...")
+        subprocess.run([west_path, "build", "-d", build_dir], check=True)
+
+        valgrind_path = shutil.which("valgrind")
+        if not valgrind_path:
+            print("[sof-qemu-run] Error: 'valgrind' command not found in PATH.")
+            sys.exit(1)
+
+        exe_path = os.path.join(build_dir, "zephyr", "zephyr.exe")
+        if not os.path.isfile(exe_path):
+            print(f"[sof-qemu-run] Error: Executable not found at {exe_path}")
+            sys.exit(1)
+
+        run_cmd = [valgrind_path, exe_path]
+
+    child = pexpect.spawn(run_cmd[0], run_cmd[1:], encoding='utf-8')
 
     # We will accumulate output to check for crashes
     full_output = ""
@@ -157,36 +206,39 @@ def main():
 
         run_sof_crash_decode(build_dir, full_output)
     else:
-        print("\n[sof-qemu-run] No crash detected. Interacting with QEMU Monitor to grab registers...")
-
-        # We need to send Ctrl-A c to enter the monitor
-        if child.isalive():
-            child.send("\x01c") # Ctrl-A c
-            try:
-                # Wait for (qemu) prompt
-                child.expect(r"\(qemu\)", timeout=5)
-                # Send "info registers"
-                child.sendline("info registers")
-                # Wait for the next prompt
-                child.expect(r"\(qemu\)", timeout=5)
-
-                info_regs_output = child.before
-                print("\n[sof-qemu-run] Successfully extracted registers from QEMU monitor.\n")
-
-                # Quit qemu safely
-                child.sendline("quit")
-                child.expect(pexpect.EOF, timeout=2)
-                child.close()
-
-                # Run the decoder on the intercepted register output
-                run_sof_crash_decode(build_dir, info_regs_output)
-            except pexpect.TIMEOUT:
-                print("\n[sof-qemu-run] Timed out waiting for QEMU monitor. Is it running?")
-                child.close(force=True)
-            except pexpect.EOF:
-                print("\n[sof-qemu-run] QEMU terminated before we could run monitor commands.")
+        if is_native_sim:
+            print("\n[sof-qemu-run] No crash detected. (Skipping QEMU monitor interaction for native_sim)")
         else:
-            print("\n[sof-qemu-run] Process is no longer alive, cannot extract registers.")
+            print("\n[sof-qemu-run] No crash detected. Interacting with QEMU Monitor to grab registers...")
+
+            # We need to send Ctrl-A c to enter the monitor
+            if child.isalive():
+                child.send("\x01c") # Ctrl-A c
+                try:
+                    # Wait for (qemu) prompt
+                    child.expect(r"\(qemu\)", timeout=5)
+                    # Send "info registers"
+                    child.sendline("info registers")
+                    # Wait for the next prompt
+                    child.expect(r"\(qemu\)", timeout=5)
+
+                    info_regs_output = child.before
+                    print("\n[sof-qemu-run] Successfully extracted registers from QEMU monitor.\n")
+
+                    # Quit qemu safely
+                    child.sendline("quit")
+                    child.expect(pexpect.EOF, timeout=2)
+                    child.close()
+
+                    # Run the decoder on the intercepted register output
+                    run_sof_crash_decode(build_dir, info_regs_output)
+                except pexpect.TIMEOUT:
+                    print("\n[sof-qemu-run] Timed out waiting for QEMU monitor. Is it running?")
+                    child.close(force=True)
+                except pexpect.EOF:
+                    print("\n[sof-qemu-run] QEMU terminated before we could run monitor commands.")
+            else:
+                print("\n[sof-qemu-run] Process is no longer alive, cannot extract registers.")
 
 if __name__ == "__main__":
     main()

@@ -57,7 +57,7 @@ static int sof_app_main(void)
 	return 0;
 }
 
-#if CONFIG_SOF_BOOT_TEST && defined(QEMU_BOOT_TESTS)
+#if defined(QEMU_BOOT_TESTS)
 /* cleanly exit qemu so CI can continue and check test results */
 static inline void qemu_xtensa_exit(int status)
 {
@@ -73,13 +73,27 @@ static inline void qemu_xtensa_exit(int status)
 }
 #endif
 
+#ifdef CONFIG_REBOOT
+void sys_arch_reboot(int type)
+{
+#if defined(QEMU_BOOT_TESTS)
+	qemu_xtensa_exit(type);
+#endif
+	while (1) {
+		k_cpu_idle();
+	}
+}
+#endif
+
 #if CONFIG_ZTEST
 void test_main(void)
 {
 	sof_app_main();
-#if CONFIG_SOF_BOOT_TEST && defined(QEMU_BOOT_TESTS)
+#if CONFIG_SOF_BOOT_TEST
 	sof_run_boot_tests();
+#if defined(QEMU_BOOT_TESTS)
 	qemu_xtensa_exit(0);
+#endif
 #endif
 }
 #else
