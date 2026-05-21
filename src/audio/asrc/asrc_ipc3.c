@@ -17,6 +17,7 @@
 SOF_DEFINE_REG_UUID(asrc);
 
 DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
+LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
 
 int asrc_dai_configure_timestamp(struct comp_data *cd)
 {
@@ -62,4 +63,32 @@ void asrc_update_buffer_format(struct comp_buffer *buf_c, struct comp_data *cd)
 void asrc_set_stream_params(struct comp_data *cd, struct sof_ipc_stream_params *params)
 {
 	/* IPC3 don't need to update audio stream format here. */
+}
+
+int asrc_verify_stream_params(struct processing_module *mod, struct sof_ipc_stream_params *params)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+
+	/* PCM sampling rate received in params is dynamically selected based on the mode
+	 * (PULL/PUSH). Need to validate it against the initial fixed ASRC configuration
+	 * src->source/sink_rate = 0 means that source/sink rate can vary.
+	 */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		if (asrc_get_source_rate(&cd->ipc_config) &&
+		    params->rate != asrc_get_source_rate(&cd->ipc_config)) {
+			comp_err(dev, "runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, asrc_get_source_rate(&cd->ipc_config));
+			return -EINVAL;
+		}
+	} else {
+		if (asrc_get_sink_rate(&cd->ipc_config) &&
+		    params->rate != asrc_get_sink_rate(&cd->ipc_config)) {
+			comp_err(dev, "runtime stream pcm rate %u does not match rate %u fetched from ipc.",
+				 params->rate, asrc_get_sink_rate(&cd->ipc_config));
+			return -EINVAL;
+		}
+	}
+
+	return 0;
 }

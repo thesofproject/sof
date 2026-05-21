@@ -75,3 +75,15 @@ void asrc_set_stream_params(struct comp_data *cd, struct sof_ipc_stream_params *
 {
 	ipc4_base_module_cfg_to_stream_params(&cd->ipc_config.base, params);
 }
+
+int asrc_verify_stream_params(struct processing_module *mod, struct sof_ipc_stream_params *params)
+{
+	/* IPC4 params contain the same fixed sampling rate that is already stored in
+	 * ipc4_asrc_module_cfg, rather than a PCM sampling rate that is dynamically selected
+	 * based on the mode (PULL/PUSH) as in IPC3. For now leave the function empty.
+	 */
+	(void)mod;
+	(void)params;
+
+	return 0;
+}
