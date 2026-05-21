@@ -70,7 +70,6 @@ struct host_data {
 
 	/* host position reporting related */
 	uint32_t host_size;	/**< Host buffer size (in bytes) */
-	uint32_t report_pos;	/**< Position in current report period */
 	uint32_t local_pos;	/**< Local position in host buffer */
 	uint32_t host_period_bytes;
 	uint16_t stream_tag;
@@ -106,7 +105,10 @@ struct host_data {
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
+	uint32_t report_pos;	/**< Position in current report period */
 	struct ipc_msg *msg;	/**< host notification */
+#endif
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	bool xrun_notification_sent;
 #endif
