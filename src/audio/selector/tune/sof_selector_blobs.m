@@ -23,6 +23,7 @@ function sof_selector_blobs()
 	IPC4_CHANNEL_CONFIG_STEREO = 1;
 	IPC4_CHANNEL_CONFIG_QUATRO = 5;
 	IPC4_CHANNEL_CONFIG_5_POINT_1 = 8;
+	IPC4_CHANNEL_CONFIG_DUAL_MONO = 9;
 	IPC4_CHANNEL_CONFIG_7_POINT_1 = 12;
 
 	% Matrix for 1:1 pass-through
@@ -38,6 +39,16 @@ function sof_selector_blobs()
 	sel.coeffs(1, 1) = 0.7071;
 	sel.coeffs(1, 2) = 0.7071;
 	stereo_to_mono_pack8 = write_blob(sel, "downmix_stereo_to_mono");
+
+	% Stereo to dual-mono downmix
+	sel.ch_count = [2 2];
+	sel.ch_config = [IPC4_CHANNEL_CONFIG_STEREO IPC4_CHANNEL_CONFIG_DUAL_MONO];
+	sel.coeffs = zeros(8,8);
+	sel.coeffs(1, 1) = 0.5;
+	sel.coeffs(1, 2) = 0.5;
+	sel.coeffs(2, 1) = 0.5;
+	sel.coeffs(2, 2) = 0.5;
+	stereo_to_doublemono_pack8 = write_blob(sel, "downmix_stereo_to_doublemono");
 
 	% 5.1 to stereo downmix
 	sel.ch_count = [6 2];
@@ -189,7 +200,7 @@ function write_8bit_packed(pack8, blobname)
 	blob8 = sof_selector_build_blob(pack8);
 	str_config = "selector_config";
 	str_exported = "Exported with script sof_selector_blobs.m";
-	str_howto = "cd tools/tune/selector; octave sof_selector_blobs.m";
+	str_howto = "cd src/audio/selector/tune; octave sof_selector_blobs.m";
 	sof_tools = '../../../../tools';
 	sof_tplg = fullfile(sof_tools, 'topology');
 	sof_tplg_selector = fullfile(sof_tplg, 'topology2/include/components/micsel');
