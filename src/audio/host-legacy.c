@@ -227,7 +227,9 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 	struct comp_buffer *sink;
 	int ret;
 	bool update_mailbox = false;
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 	bool send_ipc = false;
+#endif
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
 		source = hd->dma_buffer;
@@ -272,6 +274,7 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 	if (hd->cont_update_posn)
 		update_mailbox = true;
 
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 	/* Don't send stream position if no_stream_position == 1 */
 	if (!hd->no_stream_position) {
 		hd->report_pos += bytes;
@@ -291,13 +294,16 @@ void host_common_update(struct host_data *hd, struct comp_dev *dev, uint32_t byt
 			send_ipc = true;
 		}
 	}
+#endif
 
 	if (update_mailbox) {
 		pipeline_get_timestamp(dev->pipeline, dev, &hd->posn);
 		mailbox_stream_write(dev->pipeline->posn_offset,
 				     &hd->posn, sizeof(hd->posn));
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 		if (send_ipc)
 			ipc_msg_send(hd->msg, &hd->posn, false);
+#endif
 	}
 }
 
@@ -553,12 +559,14 @@ int host_common_new(struct host_data *hd, struct comp_dev *dev,
 
 	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, config_id);
 
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, hd->posn.rhdr.hdr.size);
 	if (!hd->msg) {
 		comp_err(dev, "ipc_msg_init failed");
 		dma_put(hd->dma);
 		return -ENOMEM;
 	}
+#endif
 	hd->chan = NULL;
 	hd->copy_type = COMP_COPY_NORMAL;
 
@@ -614,7 +622,9 @@ void host_common_free(struct host_data *hd)
 
 	dma_put(hd->dma);
 
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 	ipc_msg_free(hd->msg);
+#endif
 	dma_sg_free(NULL, &hd->config.elem_array);
 }
 
@@ -952,7 +962,9 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 
 	/* reset buffer pointers */
 	hd->local_pos = 0;
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 	hd->report_pos = 0;
+#endif
 	hd->total_data_processed = 0;
 
 	hd->copy_type = COMP_COPY_NORMAL;
