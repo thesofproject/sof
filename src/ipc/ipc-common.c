@@ -490,6 +490,44 @@ __cold static void ipc_user_init(void)
 	if (ret < 0)
 		LOG_WRN("ipc context partition add failed: %d", ret);
 
+	/*
+	 * Grant user-space access to .cold (execute) and .coldrodata (read)
+	 * sections in IMR. The prepare path walks component code that may
+	 * reference __cold functions and __cold_rodata data.
+	 */
+#ifdef CONFIG_COLD_STORE_EXECUTE_DRAM
+	extern char __cold_start[], __cold_end[];
+	extern char __coldrodata_start[];
+	extern char _imr_end[];
+
+	if (&__cold_end[0] > &__cold_start[0]) {
+		struct k_mem_partition cold_part = {
+			.start = (uintptr_t)__cold_start,
+			.size = ALIGN_UP((uintptr_t)__cold_end - (uintptr_t)__cold_start,
+					 CONFIG_MMU_PAGE_SIZE),
+			.attr = K_MEM_PARTITION_P_RX_U_RX,
+		};
+
+		ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(), &cold_part);
+		if (ret < 0)
+			LOG_WRN("cold text partition add failed: %d", ret);
+	}
+
+	if (&_imr_end[0] > &__coldrodata_start[0]) {
+		struct k_mem_partition cold_part = {
+			.start = (uintptr_t)__coldrodata_start,
+			.size = ALIGN_UP((uintptr_t)_imr_end - (uintptr_t)__coldrodata_start,
+					 CONFIG_MMU_PAGE_SIZE),
+			.attr = K_MEM_PARTITION_P_RO_U_RO,
+		};
+
+		ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(), &cold_part);
+		if (ret < 0)
+			LOG_WRN("cold rodata partition %#zx @ %#lx add failed: %d",
+				cold_part.size, cold_part.start, ret);
+	}
+#endif
+
 	k_sem_init(ipc_user->sem, 0, 1);
 
 	ret = ipc_user_init_thread(ipc_user);
