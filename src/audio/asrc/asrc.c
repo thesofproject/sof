@@ -336,47 +336,6 @@ static int asrc_set_config(struct processing_module *mod, uint32_t config_id,
 	return -EINVAL;
 }
 
-static int asrc_verify_params(struct processing_module *mod,
-			      struct sof_ipc_stream_params *params)
-{
-	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_dev *dev = mod->dev;
-	int ret;
-
-	comp_dbg(dev, "entry");
-
-	/* check whether params->rate (received from driver) are equal
-	 * to asrc->source_rate (PLAYBACK) or asrc->sink_rate (CAPTURE) set
-	 * during creating src component in asrc_new().
-	 * src->source/sink_rate = 0 means that source/sink rate can vary.
-	 */
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (asrc_get_source_rate(&cd->ipc_config) &&
-		    params->rate != asrc_get_source_rate(&cd->ipc_config)) {
-			comp_err(dev, "runtime stream pcm rate %u does not match rate %u fetched from ipc.",
-				 params->rate, asrc_get_source_rate(&cd->ipc_config));
-			return -EINVAL;
-		}
-	} else {
-		if (asrc_get_sink_rate(&cd->ipc_config) &&
-		    params->rate != asrc_get_sink_rate(&cd->ipc_config)) {
-			comp_err(dev, "runtime stream pcm rate %u does not match rate %u fetched from ipc.",
-				 params->rate, asrc_get_sink_rate(&cd->ipc_config));
-			return -EINVAL;
-		}
-	}
-
-	/* update downstream (playback) or upstream (capture) buffer parameters
-	 */
-	ret = comp_verify_params(dev, BUFF_PARAMS_RATE, params);
-	if (ret < 0) {
-		comp_err(dev, "comp_verify_params() failed.");
-		return ret;
-	}
-
-	return 0;
-}
-
 /* set component audio stream parameters */
 static int asrc_params(struct processing_module *mod)
 {
@@ -390,9 +349,13 @@ static int asrc_params(struct processing_module *mod)
 
 	asrc_set_stream_params(cd, pcm_params);
 
-	err = asrc_verify_params(mod, pcm_params);
+	err = asrc_verify_stream_params(mod, pcm_params);
+	if (err < 0)
+		return -EINVAL;
+
+	err = comp_verify_params(dev, BUFF_PARAMS_RATE, pcm_params);
 	if (err < 0) {
-		comp_err(dev, "pcm params verification failed.");
+		comp_err(dev, "comp_verify_params() failed.");
 		return -EINVAL;
 	}
 
