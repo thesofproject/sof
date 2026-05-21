@@ -672,10 +672,13 @@ __cold int ipc_user_init(void)
 					  (uintptr_t)__coldrodata_start,
 					  CONFIG_MMU_PAGE_SIZE);
 		cold_part.attr = K_MEM_PARTITION_P_RO_U_RO;
-		ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(),
-						 &cold_part);
-		if (ret < 0)
-			LOG_WRN("cold rodata partition add failed: %d", ret);
+		if (cold_part.size && cold_part.start) {
+			ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(),
+							 &cold_part);
+			if (ret < 0)
+				LOG_WRN("cold rodata partition %#zx @ %#lx add failed: %d", cold_part.size,
+					cold_part.start, ret);
+		}
 	}
 #endif
 
