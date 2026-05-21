@@ -226,12 +226,11 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	struct dai_properties props;
-	k_spinlock_key_t key;
 	int ret;
 
-	key = k_spin_lock(&dai->lock);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, direction, stream_id, &props);
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_unlock(&dai->lock);
 	if (ret < 0)
 		return ret;
 
@@ -242,15 +241,14 @@ int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
 	struct dai_properties props;
-	k_spinlock_key_t key;
 	int ret;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, direction, 0, &props);
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_unlock(&dai->lock);
 	if (ret < 0)
 		return 0;
 
@@ -260,12 +258,11 @@ int dai_get_fifo_depth(struct dai *dai, int direction)
 int dai_get_stream_id(struct dai *dai, int direction)
 {
 	struct dai_properties props;
-	k_spinlock_key_t key;
 	int ret;
 
-	key = k_spin_lock(&dai->lock);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, direction, 0, &props);
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_unlock(&dai->lock);
 	if (ret < 0)
 		return ret;
 
@@ -275,12 +272,11 @@ int dai_get_stream_id(struct dai *dai, int direction)
 static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
 	struct dai_properties props;
-	k_spinlock_key_t key;
 	int ret;
 
-	key = k_spin_lock(&dai->lock);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, direction, stream_id, &props);
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_unlock(&dai->lock);
 	if (ret < 0)
 		return ret;
 
@@ -512,6 +508,7 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 			  const struct ipc_config_dai *dai_cfg)
 {
 	uint32_t dir;
+	int ret;
 
 	assert_can_be_cold();
 
@@ -535,7 +532,12 @@ __cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
 		return -ENODEV;
 	}
 
-	k_spinlock_init(&dd->dai->lock);
+	ret = sof_umutex_init(&dd->dai->lock);
+	if (ret < 0) {
+		dai_put(dd->dai);
+		comp_err(dev, "sof_umutex_init() failed: %d", ret);
+		return ret;
+	}
 
 	dma_sg_init(&dd->config.elem_array);
 	dd->xrun = 0;
@@ -646,6 +648,8 @@ __cold void dai_common_free(struct dai_data *dd)
 	sof_dma_put(dd->dma);
 
 	dai_release_llp_slot(dd);
+
+	sof_umutex_free(&dd->dai->lock);
 
 	dai_put(dd->dai);
 
@@ -1961,17 +1965,16 @@ uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
 	struct dai_properties props;
 	uint32_t init_delay = 0;
-	k_spinlock_key_t key;
 	int ret;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
+	sof_umutex_lock(&dai->lock, K_FOREVER);
 	ret = dai_get_properties_copy(dai->dev, 0, 0, &props);
 	if (!ret)
 		init_delay = props.reg_init_delay;
-	k_spin_unlock(&dai->lock, key);
+	sof_umutex_unlock(&dai->lock);
 
 	return init_delay;
 }

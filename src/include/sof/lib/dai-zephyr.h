@@ -23,6 +23,7 @@
 #include <sof/lib/dma.h>
 #include <sof/list.h>
 #include <rtos/sof.h>
+#include <rtos/umutex.h>
 #include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <sof/ipc/topology.h>
@@ -52,7 +53,7 @@ struct dai {
 	uint32_t dma_dev;
 	const struct device *dev;
 	const struct dai_data *dd;
-	struct k_spinlock lock;		/* protect properties */
+	struct sof_umutex lock;		/* protect properties */
 };
 
 union hdalink_cfg {
