@@ -202,6 +202,13 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 	case SOF_DAI_AMD_SDW:
 #if defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0)
 	{
+		/* AMD SDW/HS HW needs 24-bit data MSB-aligned in 32-bit word */
+		if (dev->ipc_config.frame_fmt == SOF_IPC_FRAME_S24_4LE)
+			dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S24_4LE_MSB;
+		if (dd->dma_buffer)
+			audio_stream_set_frm_fmt(&dd->dma_buffer->stream,
+						 dev->ipc_config.frame_fmt);
+
 		struct acp_dma_dev_data *dev_data = dd->dma->z_dev->data;
 		struct sdw_pin_data *pin_data;
 
