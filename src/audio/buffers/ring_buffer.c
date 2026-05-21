@@ -7,6 +7,7 @@
 #include <sof/trace/trace.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/vregion.h>
+#include <sof/ctx_alloc.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/ring_buffer.h>
@@ -99,13 +100,8 @@ static void ring_buffer_free(struct sof_audio_buffer *audio_buffer)
 						       struct ring_buffer, audio_buffer);
 	struct mod_alloc_ctx *alloc = audio_buffer->alloc;
 
-	if (alloc->vreg) {
-		vregion_free(alloc->vreg, (__sparse_force void *)ring_buffer->_data_buffer);
-		vregion_free(alloc->vreg, ring_buffer);
-	} else {
-		sof_heap_free(alloc->heap, (__sparse_force void *)ring_buffer->_data_buffer);
-		sof_heap_free(alloc->heap, ring_buffer);
-	}
+	sof_ctx_free(alloc, (__sparse_force void *)ring_buffer->_data_buffer);
+	sof_ctx_free(alloc, ring_buffer);
 }
 
 static void ring_buffer_reset(struct sof_audio_buffer *audio_buffer)
@@ -296,17 +292,11 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	struct ring_buffer *ring_buffer;
 	struct mod_alloc_ctx *alloc = dev->mod->priv.resources.alloc;
 	struct k_heap *heap = alloc->heap;
-	struct vregion *vreg = alloc->vreg;
 	int memory_flags = (is_shared ? SOF_MEM_FLAG_COHERENT : 0) |
 			   user_get_buffer_memory_region(dev->drv);
 
 	/* allocate ring_buffer structure */
-	if (!vreg)
-		ring_buffer = sof_heap_alloc(heap, memory_flags, sizeof(*ring_buffer), 0);
-	else if (is_shared)
-		ring_buffer = vregion_alloc_coherent(vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*ring_buffer));
-	else
-		ring_buffer = vregion_alloc(vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*ring_buffer));
+	ring_buffer = sof_ctx_alloc(alloc, memory_flags, sizeof(*ring_buffer), 0);
 	if (!ring_buffer)
 		return NULL;
 
@@ -382,12 +372,8 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 
 	void *data_buf;
 
-	if (vreg)
-		data_buf = vregion_alloc_align(vreg, VREGION_MEM_TYPE_INTERIM, ring_buffer->data_buffer_size,
-					       PLATFORM_DCACHE_ALIGN);
-	else
-		data_buf = sof_heap_alloc(heap, user_get_buffer_memory_region(dev->drv),
-					  ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
+	data_buf = sof_ctx_alloc(alloc, user_get_buffer_memory_region(dev->drv),
+				 ring_buffer->data_buffer_size, PLATFORM_DCACHE_ALIGN);
 
 	if (!data_buf)
 		goto err;
@@ -402,9 +388,6 @@ struct ring_buffer *ring_buffer_create(struct comp_dev *dev, size_t min_availabl
 	return ring_buffer;
 err:
 	tr_err(&ring_buffer_tr, "Ring buffer creation failure");
-	if (vreg)
-		vregion_free(vreg, ring_buffer);
-	else
-		sof_heap_free(heap, ring_buffer);
+	sof_ctx_free(alloc, ring_buffer);
 	return NULL;
 }
