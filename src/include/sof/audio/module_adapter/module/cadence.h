@@ -51,10 +51,13 @@ struct cadence_api {
 	xa_codec_func_t *api;
 };
 
+struct ipc_msg;
+
 struct cadence_codec_data {
 #if CONFIG_IPC_MAJOR_4
 	struct ipc4_base_module_cfg base_cfg;
 	uint32_t direction;
+	struct ipc_msg *msg;
 #endif
 	char name[LIB_NAME_MAX_LEN];
 	void *self;
