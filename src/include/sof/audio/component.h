@@ -23,6 +23,7 @@
 #include <rtos/idc.h>
 #include <rtos/mutex.h>
 #include <rtos/userspace_helper.h>
+#include <sof/ctx_alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/schedule/schedule.h>
 #include <ipc/control.h>
@@ -577,13 +578,6 @@ struct comp_ops {
 	 * Usually shouldn't be __cold.
 	 */
 	uint64_t (*get_total_data_processed)(struct comp_dev *dev, uint32_t stream_no, bool input);
-};
-
-struct k_heap;
-struct vregion;
-struct mod_alloc_ctx {
-	struct k_heap *heap;
-	struct vregion *vreg;
 };
 
 /**
