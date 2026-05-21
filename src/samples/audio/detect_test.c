@@ -519,7 +519,7 @@ static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
 		 * configuration will be used when playback/capture
 		 * starts.
 		 */
-		comp_err(dev, "keyword_ctrl_set_bin_data(): driver is busy");
+		comp_err(dev, "driver is busy");
 		return -EBUSY;
 	}
 
@@ -531,7 +531,7 @@ static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
 		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
 		break;
 	default:
-		comp_err(dev, "keyword_ctrl_set_bin_data(): unknown binary data type");
+		comp_err(dev, "unknown binary data type");
 		break;
 	}
 
@@ -545,20 +545,20 @@ static int test_keyword_ctrl_set_data(struct comp_dev *dev,
 
 	/* Check version from ABI header */
 	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		comp_err(dev, "test_keyword_cmd_set_data(): invalid version");
+		comp_err(dev, "invalid version");
 		return -EINVAL;
 	}
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
-		comp_info(dev, "test_keyword_cmd_set_data(), SOF_CTRL_CMD_ENUM");
+		comp_info(dev, "SOF_CTRL_CMD_ENUM");
 		break;
 	case SOF_CTRL_CMD_BINARY:
-		comp_info(dev, "test_keyword_cmd_set_data(), SOF_CTRL_CMD_BINARY");
+		comp_info(dev, "SOF_CTRL_CMD_BINARY");
 		ret = test_keyword_ctrl_set_bin_data(dev, cdata);
 		break;
 	default:
-		comp_err(dev, "test_keyword_cmd_set_data(): invalid cdata->cmd");
+		comp_err(dev, "invalid cdata->cmd");
 		ret = -EINVAL;
 		break;
 	}
@@ -667,7 +667,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	struct comp_data *cd = NULL;
 	int ret = 0;
 
-	comp_cl_info(&comp_keyword, "test_keyword_new()");
+	comp_cl_info(&comp_keyword, "entry");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -690,6 +690,10 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 	/* component model data handler */
 	cd->model_handler = comp_data_blob_handler_new(dev);
+	if (!cd->model_handler) {
+		comp_err(dev, "comp_data_blob_handler_new failed");
+		goto cd_fail;
+	}
 
 #if CONFIG_IPC_MAJOR_4
 	/* For IPC4 we only receive the base_cfg, make a copy of it */
@@ -700,12 +704,12 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 
 	if (bs > 0) {
 		if (bs < sizeof(struct sof_detect_test_config)) {
-			comp_err(dev, "test_keyword_new(): invalid data size");
+			comp_err(dev, "invalid data size");
 			goto cd_fail;
 		}
 
 		if (test_keyword_apply_config(dev, cfg)) {
-			comp_err(dev, "test_keyword_new(): failed to apply config");
+			comp_err(dev, "failed to apply config");
 			goto cd_fail;
 		}
 	}
@@ -714,7 +718,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	ret = comp_init_data_blob(cd->model_handler, INITIAL_MODEL_DATA_SIZE,
 				  NULL);
 	if (ret < 0) {
-		comp_err(dev, "test_keyword_new(): model data initial failed");
+		comp_err(dev, "model data initial failed");
 		goto cd_fail;
 	}
 
@@ -731,7 +735,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 #endif /* CONFIG_IPC_MAJOR_4 */
 
 	if (!cd->msg) {
-		comp_err(dev, "test_keyword_new(): ipc notification init failed");
+		comp_err(dev, "ipc notification init failed");
 		goto cd_fail;
 	}
 
@@ -740,7 +744,7 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	cd->input = rballoc_align(SOF_MEM_FLAG_USER,
 				  sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE, 64);
 	if (!cd->input) {
-		comp_err(dev, "test_keyword_new(): input alloc failed");
+		comp_err(dev, "input alloc failed");
 		goto cd_fail;
 	}
 	bzero(cd->input, sizeof(int16_t) * KWD_NN_IN_BUFF_SIZE);
