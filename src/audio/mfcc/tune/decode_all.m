@@ -25,7 +25,7 @@ for i = 1:length(all_ceps_files)
 	fn = all_ceps_files{i};
 	if exist(fn, 'file')
 		fprintf('Decoding MFCC ceps: %s\n', fn);
-		[ceps, t, n] = decode_ceps(fn, num_ceps);
+		[ceps, t, n, vad, energy, noise_energy, frame_num] = decode_ceps(fn, num_ceps);
 	end
 end
 
@@ -34,6 +34,6 @@ for i = 1:length(all_mel_files)
 	fmt = all_mel_fmts{i};
 	if exist(fn, 'file')
 		fprintf('Decoding Mel: %s\n', fn);
-		[mel, t, n] = decode_mel(fn, num_mel, fmt);
+		[mel, t, n, vad, energy, noise_energy, frame_num] = decode_mel(fn, num_mel, fmt);
 	end
 end

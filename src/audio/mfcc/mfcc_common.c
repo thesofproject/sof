@@ -21,14 +21,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <sof/audio/mfcc/mfcc_vad.h>
+
 LOG_MODULE_REGISTER(mfcc_common, CONFIG_SOF_LOG_LEVEL);
 
 /*
  * The main processing function for MFCC
  */
 
-static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_comp_data *cd)
+static int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
 {
+	const struct comp_dev *dev = mod->dev;
 	struct sof_mfcc_config *config = cd->config;
 	struct mfcc_state *state = &cd->state;
 	struct mfcc_buffer *buf = &state->buf;
@@ -169,6 +172,32 @@ static int mfcc_stft_process(const struct comp_dev *dev, struct mfcc_comp_data *
 
 			cc_count += state->dct.num_out;
 		}
+
+		/* Use hop counter for frame numbering (independent of VAD enable) */
+		state->header.frame_number = state->hop_count;
+
+		/* Run VAD on the mel log spectrum (available in both modes) */
+		if (config->enable_vad) {
+			mfcc_vad_update(&cd->vad, state->mel_log_32);
+
+			/* Populate data header for this output frame */
+			state->header.energy = cd->vad.energy;
+			state->header.noise_energy = cd->vad.noise_energy;
+			state->header.vad_flag = cd->vad.is_speech ? 1 : 0;
+		}
+
+		/* Increment hop counter at end of hop processing */
+		state->hop_count++;
+
+		/* Send notification when VAD state changes */
+		if (config->enable_vad && config->update_controls) {
+			bool vad_now = cd->vad.is_speech;
+
+			if (vad_now != cd->vad_prev) {
+				mfcc_send_vad_notification(mod, vad_now ? 1 : 0);
+				cd->vad_prev = vad_now;
+			}
+		}
 	}
 
 	return cc_count;
@@ -267,9 +296,8 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 	struct mfcc_state *state = &cd->state;
 	struct mfcc_buffer *buf = &cd->state.buf;
-	uint32_t magic = MFCC_MAGIC;
 	int16_t *w_ptr = audio_stream_get_wptr(sink);
-	const int num_magic = 2;
+	const int num_header_s16 = sizeof(state->header) / sizeof(int16_t);
 	int num_ceps;
 	int sink_samples;
 	int to_copy;
@@ -278,27 +306,29 @@ void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s16(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT: Mel auditory filter and DCT. */
-	num_ceps = mfcc_stft_process(mod->dev, cd);
+	num_ceps = mfcc_stft_process(mod, cd);
 
-	/* If new output produced, set up pointer into scratch data and mark magic pending */
+	/* If new output produced, set up pointer into scratch data and mark header pending */
 	if (num_ceps > 0) {
-		if (state->mel_only)
+		if (state->mel_only) {
 			state->out_data_ptr = state->mel_spectra->data;
-		else
+		} else {
 			state->out_data_ptr = state->cepstral_coef->data;
+		}
 
 		state->out_remain = num_ceps;
-		state->magic_pending = true;
+		state->header_pending = true;
 	}
 
 	/* Write to sink, limited by period size */
 	sink_samples = frames * audio_stream_get_channels(sink);
 
-	/* Write magic word first if pending */
-	if (state->magic_pending && sink_samples >= num_magic) {
-		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_magic, (int16_t *)&magic);
-		sink_samples -= num_magic;
-		state->magic_pending = false;
+	/* Write data header first if pending */
+	if (state->header_pending && sink_samples >= num_header_s16) {
+		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_header_s16,
+						(int16_t *)&state->header);
+		sink_samples -= num_header_s16;
+		state->header_pending = false;
 	}
 
 	/* Write cepstral/mel data from scratch buffer */
@@ -363,9 +393,8 @@ void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer 
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 	struct mfcc_state *state = &cd->state;
 	struct mfcc_buffer *buf = &cd->state.buf;
-	uint32_t magic = MFCC_MAGIC;
 	int32_t *w_ptr = audio_stream_get_wptr(sink);
-	const int num_magic = 1; /* one int32_t word for magic */
+	const int num_header_s32 = sizeof(state->header) / sizeof(int32_t);
 	int num_ceps;
 	int sink_samples;
 	int remain_s32;
@@ -376,7 +405,7 @@ void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s24(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT */
-	num_ceps = mfcc_stft_process(mod->dev, cd);
+	num_ceps = mfcc_stft_process(mod, cd);
 
 	/* If new output produced, set up pointer into scratch data */
 	if (num_ceps > 0) {
@@ -391,17 +420,18 @@ void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer 
 		}
 
 		state->out_remain = num_ceps;
-		state->magic_pending = true;
+		state->header_pending = true;
 	}
 
 	/* Write to sink, limited by period size */
 	sink_samples = frames * audio_stream_get_channels(sink);
 
-	/* Write magic word first if pending */
-	if (state->magic_pending && sink_samples >= num_magic) {
-		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_magic, (int32_t *)&magic);
-		sink_samples -= num_magic;
-		state->magic_pending = false;
+	/* Write data header first if pending */
+	if (state->header_pending && sink_samples >= num_header_s32) {
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_header_s32,
+						(int32_t *)&state->header);
+		sink_samples -= num_header_s32;
+		state->header_pending = false;
 	}
 
 	if (state->mel_only) {
@@ -443,9 +473,8 @@ void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer 
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 	struct mfcc_state *state = &cd->state;
 	struct mfcc_buffer *buf = &cd->state.buf;
-	uint32_t magic = MFCC_MAGIC;
 	int32_t *w_ptr = audio_stream_get_wptr(sink);
-	const int num_magic = 1; /* one int32_t word for magic */
+	const int num_header_s32 = sizeof(state->header) / sizeof(int32_t);
 	int num_ceps;
 	int sink_samples;
 	int remain_s32;
@@ -455,7 +484,7 @@ void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer 
 	mfcc_source_copy_s32(bsource, buf, &state->emph, frames, state->source_channel);
 
 	/* Run STFT and processing after FFT */
-	num_ceps = mfcc_stft_process(mod->dev, cd);
+	num_ceps = mfcc_stft_process(mod, cd);
 
 	/* If new output produced, set up pointer into scratch data */
 	if (num_ceps > 0) {
@@ -466,17 +495,18 @@ void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer 
 		}
 
 		state->out_remain = num_ceps;
-		state->magic_pending = true;
+		state->header_pending = true;
 	}
 
 	/* Write to sink, limited by period size */
 	sink_samples = frames * audio_stream_get_channels(sink);
 
-	/* Write magic word first if pending */
-	if (state->magic_pending && sink_samples >= num_magic) {
-		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_magic, (int32_t *)&magic);
-		sink_samples -= num_magic;
-		state->magic_pending = false;
+	/* Write data header first if pending */
+	if (state->header_pending && sink_samples >= num_header_s32) {
+		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_header_s32,
+						(int32_t *)&state->header);
+		sink_samples -= num_header_s32;
+		state->header_pending = false;
 	}
 
 	if (state->mel_only) {
