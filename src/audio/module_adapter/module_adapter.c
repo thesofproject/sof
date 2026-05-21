@@ -399,7 +399,7 @@ int module_adapter_prepare(struct comp_dev *dev)
 
 		ret = module_adapter_params(dev, &params);
 		if (ret) {
-			comp_err(dev, "module_adapter_new() %d: module params failed", ret);
+			comp_err(dev, "module params failed: %d", ret);
 			return ret;
 		}
 	}
