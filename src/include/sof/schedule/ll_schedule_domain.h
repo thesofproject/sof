@@ -43,6 +43,20 @@ struct ll_schedule_domain_ops {
 			       void (*handler)(void *arg), void *arg);
 	int (*domain_unregister)(struct ll_schedule_domain *domain,
 				 struct task *task, uint32_t num_tasks);
+#if CONFIG_SOF_USERSPACE_LL
+	/*
+	 * Initialize the scheduling thread and perform all privileged setup
+	 * (thread creation, timer init, access grants). Called once from
+	 * kernel context before any user-space domain_register() calls.
+	 */
+	int (*domain_thread_init)(struct ll_schedule_domain *domain,
+				  struct task *task);
+	/* Free resources acquired by domain_thread_init(). Called from
+	 * kernel context when the scheduling context is being torn down.
+	 */
+	void (*domain_thread_free)(struct ll_schedule_domain *domain,
+				   uint32_t num_tasks);
+#endif
 	void (*domain_enable)(struct ll_schedule_domain *domain, int core);
 	void (*domain_disable)(struct ll_schedule_domain *domain, int core);
 #if CONFIG_CROSS_CORE_STREAM
@@ -99,8 +113,12 @@ static inline struct ll_schedule_domain *dma_domain_get(void)
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 struct task *zephyr_ll_task_alloc(void);
+void zephyr_ll_task_free(struct task *task);
 struct k_heap *zephyr_ll_user_heap(void);
 void zephyr_ll_user_resources_init(void);
+void zephyr_ll_grant_access(struct k_thread *thread);
+void zephyr_ll_lock_sched(int core);
+void zephyr_ll_unlock_sched(int core);
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 static inline struct ll_schedule_domain *domain_init
@@ -176,6 +194,31 @@ static inline void domain_task_cancel(struct ll_schedule_domain *domain,
 	if (domain->ops->domain_task_cancel)
 		domain->ops->domain_task_cancel(domain, task);
 }
+
+#if CONFIG_SOF_USERSPACE_LL
+/*
+ * Initialize the scheduling thread and do all privileged setup.
+ * Must be called from kernel context before user-space tasks register.
+ */
+static inline int domain_thread_init(struct ll_schedule_domain *domain,
+				     struct task *task)
+{
+	assert(domain->ops->domain_thread_init);
+
+	return domain->ops->domain_thread_init(domain, task);
+}
+
+/*
+ * Free resources acquired by domain_thread_init().
+ * Must be called from kernel context.
+ */
+static inline void domain_thread_free(struct ll_schedule_domain *domain,
+				      uint32_t num_tasks)
+{
+	if (domain->ops->domain_thread_free)
+		domain->ops->domain_thread_free(domain, num_tasks);
+}
+#endif
 
 static inline int domain_register(struct ll_schedule_domain *domain,
 				  struct task *task,
@@ -274,7 +317,7 @@ struct ll_schedule_domain *zephyr_ll_domain(void);
 struct ll_schedule_domain *zephyr_domain_init(int clk);
 #define timer_domain_init(timer, clk) zephyr_domain_init(clk)
 #ifdef CONFIG_SOF_USERSPACE_LL
-struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain);
+struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain, int core);
 struct k_mem_domain *zephyr_ll_mem_domain(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
 #endif /* __ZEPHYR__ */

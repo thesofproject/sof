@@ -119,9 +119,15 @@ static inline struct dma_block_config *deep_copy_dma_blk_cfg_list(struct dma_con
 
 	for (user_next = cfg->head_block, kern_next = kern_cfg;
 	     user_next;
-	     user_next = user_next->next_block, kern_next++) {
-		if (++i > cfg->block_count)
-			goto err;
+	     user_next = user_next->next_block, kern_next++, i++) {
+		if (i == cfg->block_count) {
+			/* last block can point to first one */
+			if (user_next != cfg->head_block)
+				goto err;
+
+			kern_prev->next_block = kern_cfg;
+			break;
+		}
 
 		if (k_usermode_from_copy(kern_next, user_next, sizeof(*kern_next)))
 			goto err;

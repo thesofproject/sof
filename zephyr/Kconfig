@@ -29,10 +29,34 @@ config SOF_USERSPACE_INTERFACE_DMA
 	help
 	  Allow user-space threads to use the SOF DMA interface.
 
+config SOF_USERSPACE_INTERFACE_ALLOC
+	bool "Enable SOF heap alloc interface to userspace threads"
+	depends on USERSPACE
+	help
+	  Allow user-space threads to use sof_heap_alloc/sof_heap_free
+	  as Zephyr system calls.
+
+config SOF_USERSPACE_INTERFACE_MUTEX
+	bool "User-space mutex interface"
+	depends on USERSPACE
+	help
+	  Enables the sof_umutex API for dynamically-allocated
+	  user-space accessible mutexes backed by k_object_alloc.
+
+config SOF_USERSPACE_INTERFACE_VREGION
+	bool "Enable SOF vregion interface to userspace threads"
+	depends on USERSPACE
+	depends on SOF_VREGIONS
+	help
+	  Allow user-space threads to use vregion_alloc/vregion_free
+	  and their variants as Zephyr system calls.
+
 config SOF_USERSPACE_LL
 	bool "Run Low-Latency pipelines in userspace threads"
 	depends on USERSPACE
 	select SOF_USERSPACE_INTERFACE_DMA
+	select SOF_USERSPACE_INTERFACE_MUTEX
+	select SOF_USERSPACE_INTERFACE_VREGION if SOF_VREGIONS
 	help
 	  Run Low-Latency (LL) pipelines in userspace threads. This adds
 	  memory protection between operating system resources and
@@ -115,6 +139,17 @@ config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
 	 The size of the private heap created for each userspace module. Each userspace
 	 module has its own independent heap to which only it has access. This heap is
 	 shared between instances of the same module.
+
+config SOF_ZEPHYR_LL_USER_HEAP_SIZE
+	hex "Size of the shared LL user-space heap"
+	default 0x20000
+	depends on SOF_USERSPACE_LL
+	help
+	 The size of the shared heap used by the low-latency (LL) scheduler
+	 user-space thread. This heap is shared across all pipelines running
+	 on the LL thread and must be large enough to hold all host DMA
+	 buffers, chain DMA data, SG elements, and module adapter buffers
+	 for all simultaneously active pipelines.
 
 config SOF_USERSPACE_PROXY
 	bool "Use userspace proxy to support userspace modules"
@@ -283,3 +318,11 @@ config STACK_SIZE_IPC_TX
 	default 2048
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
+
+config SOF_IPC_USER_THREAD_STACK_SIZE
+	int "IPC user thread stack size"
+	default 8192
+	depends on SOF_USERSPACE_LL
+	help
+	  Stack size for the userspace IPC thread.
+	  Keep a power of 2.

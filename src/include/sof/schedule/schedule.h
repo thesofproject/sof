@@ -158,6 +158,25 @@ struct scheduler_ops {
 	 * This operation is optional.
 	 */
 	int (*scheduler_restore)(void *data);
+
+	/**
+	 * Initializes context
+	 * @param data Private data of selected scheduler.
+	 * @param task task that needs to be scheduled
+	 * @return thread that will be used to run the scheduled task
+	 *
+	 * This operation is optional.
+	 */
+	struct k_thread *(*scheduler_init_context)(void *data, struct task *task);
+
+	/**
+	 * Frees scheduler context
+	 * @param data Private data of selected scheduler.
+	 *
+	 * This operation is optional.
+	 */
+	void (*scheduler_free_context)(void *data);
+
 };
 
 /** \brief Holds information about scheduler. */
@@ -179,6 +198,10 @@ struct schedulers {
  */
 struct schedulers **arch_schedulers_get(void);
 
+#if CONFIG_SOF_USERSPACE_LL
+struct schedulers **arch_schedulers_get_for_core(int core);
+#endif
+
 /**
  * Retrieves scheduler's data.
  * @param type SOF_SCHEDULE_ type.
@@ -199,10 +222,39 @@ static inline void *scheduler_get_data(uint16_t type)
 	return NULL;
 }
 
+#if CONFIG_SOF_USERSPACE_LL
+/**
+ * Retrieves scheduler's data for a specific core.
+ * @param type SOF_SCHEDULE_ type.
+ * @param core Core ID to get scheduler data for.
+ * @return Pointer to scheduler's data.
+ *
+ * Safe to call from user-space context — does not use cpu_get_id().
+ */
+static inline void *scheduler_get_data_for_core(uint16_t type, int core)
+{
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(core);
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (type == sch->type)
+			return sch->data;
+	}
+
+	return NULL;
+}
+#endif
+
 /** See scheduler_ops::schedule_task_running */
 static inline int schedule_task_running(struct task *task)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(task->core);
+#else
 	struct schedulers *schedulers = *arch_schedulers_get();
+#endif
 	struct schedule_data *sch;
 	struct list_item *slist;
 
@@ -224,7 +276,11 @@ static inline int schedule_task_running(struct task *task)
 static inline int schedule_task(struct task *task, uint64_t start,
 				uint64_t period)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(task->core);
+#else
 	struct schedulers *schedulers = *arch_schedulers_get();
+#endif
 	struct schedule_data *sch;
 	struct list_item *slist;
 
@@ -245,7 +301,11 @@ static inline int schedule_task(struct task *task, uint64_t start,
 static inline int schedule_task_before(struct task *task, uint64_t start,
 				       uint64_t period, struct task *before)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(task->core);
+#else
 	struct schedulers *schedulers = *arch_schedulers_get();
+#endif
 	struct schedule_data *sch;
 	struct list_item *slist;
 
@@ -271,7 +331,11 @@ static inline int schedule_task_before(struct task *task, uint64_t start,
 static inline int schedule_task_after(struct task *task, uint64_t start,
 				      uint64_t period, struct task *after)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(task->core);
+#else
 	struct schedulers *schedulers = *arch_schedulers_get();
+#endif
 	struct schedule_data *sch;
 	struct list_item *slist;
 
@@ -296,7 +360,11 @@ static inline int schedule_task_after(struct task *task, uint64_t start,
 /** See scheduler_ops::reschedule_task */
 static inline int reschedule_task(struct task *task, uint64_t start)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(task->core);
+#else
 	struct schedulers *schedulers = *arch_schedulers_get();
+#endif
 	struct schedule_data *sch;
 	struct list_item *slist;
 
@@ -318,7 +386,11 @@ static inline int reschedule_task(struct task *task, uint64_t start)
 /** See scheduler_ops::schedule_task_cancel */
 static inline int schedule_task_cancel(struct task *task)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(task->core);
+#else
 	struct schedulers *schedulers = *arch_schedulers_get();
+#endif
 	struct schedule_data *sch;
 	struct list_item *slist;
 
@@ -334,7 +406,11 @@ static inline int schedule_task_cancel(struct task *task)
 /** See scheduler_ops::schedule_task_free */
 static inline int schedule_task_free(struct task *task)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(task->core);
+#else
 	struct schedulers *schedulers = *arch_schedulers_get();
+#endif
 	struct schedule_data *sch;
 	struct list_item *slist;
 
@@ -377,6 +453,45 @@ static inline int schedulers_restore(void)
 	}
 
 	return 0;
+}
+
+
+/** See scheduler_ops::scheduler_init_context */
+static inline struct k_thread *scheduler_init_context(struct task *task)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	struct schedulers *schedulers = *arch_schedulers_get_for_core(task->core);
+#else
+	struct schedulers *schedulers = *arch_schedulers_get();
+#endif
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	assert(schedulers);
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (sch->ops->scheduler_init_context)
+			return sch->ops->scheduler_init_context(sch->data, task);
+	}
+
+	return 0;
+}
+
+/** See scheduler_ops::scheduler_free_context */
+static inline void scheduler_free_context(void)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	assert(schedulers);
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (sch->ops->scheduler_free_context)
+			sch->ops->scheduler_free_context(sch->data);
+	}
 }
 
 /**
