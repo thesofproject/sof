@@ -17,6 +17,7 @@
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/vregion.h>
+#include <sof/ctx_alloc.h>
 #include <sof/list.h>
 #include <sof/schedule/dp_schedule.h>
 #include <rtos/spinlock.h>
@@ -158,10 +159,7 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	assert(alloc);
-	if (alloc->vreg)
-		vregion_free(alloc->vreg, buffer->stream.addr);
-	else
-		sof_heap_free(alloc->heap, buffer->stream.addr);
+	sof_ctx_free(alloc, buffer->stream.addr);
 #else
 	rfree(buffer->stream.addr);
 #endif
@@ -216,10 +214,8 @@ static struct comp_buffer *buffer_alloc_struct(struct mod_alloc_ctx *alloc,
 
 	if (!alloc || !alloc->vreg)
 		buffer = sof_heap_alloc(alloc ? alloc->heap : NULL, flags, sizeof(*buffer), 0);
-	else if (is_shared)
-		buffer = vregion_alloc_coherent(alloc->vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*buffer));
 	else
-		buffer = vregion_alloc(alloc->vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*buffer));
+		buffer = sof_ctx_alloc(alloc, flags, sizeof(*buffer), 0);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc structure");
 		return NULL;
@@ -265,10 +261,7 @@ struct comp_buffer *buffer_alloc(struct mod_alloc_ctx *alloc, size_t size, uint3
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	assert(alloc);
-	if (alloc->vreg)
-		stream_addr = vregion_alloc_align(alloc->vreg, VREGION_MEM_TYPE_INTERIM, size, align);
-	else
-		stream_addr = sof_heap_alloc(alloc->heap, flags, size, align);
+	stream_addr = sof_ctx_alloc(alloc, flags, size, align);
 #else
 	stream_addr = rballoc_align(flags, size, align);
 #endif
@@ -283,10 +276,7 @@ struct comp_buffer *buffer_alloc(struct mod_alloc_ctx *alloc, size_t size, uint3
 		tr_err(&buffer_tr, "could not alloc buffer structure");
 #ifdef CONFIG_SOF_USERSPACE_LL
 		assert(alloc);
-		if (alloc->vreg)
-			vregion_free(alloc->vreg, stream_addr);
-		else
-			sof_heap_free(alloc->heap, stream_addr);
+		sof_ctx_free(alloc, stream_addr);
 #else
 		rfree(stream_addr);
 #endif
@@ -319,10 +309,7 @@ struct comp_buffer *buffer_alloc_range(struct mod_alloc_ctx *alloc, size_t prefe
 	for (size = preferred_size; size >= minimum_size; size -= minimum_size) {
 #ifdef CONFIG_SOF_USERSPACE_LL
 		assert(alloc);
-		if (alloc->vreg)
-			stream_addr = vregion_alloc_align(alloc->vreg, VREGION_MEM_TYPE_INTERIM, size, align);
-		else
-			stream_addr = sof_heap_alloc(alloc->heap, flags, size, align);
+		stream_addr = sof_ctx_alloc(alloc, flags, size, align);
 #else
 		stream_addr = rballoc_align(flags, size, align);
 #endif
@@ -343,10 +330,7 @@ struct comp_buffer *buffer_alloc_range(struct mod_alloc_ctx *alloc, size_t prefe
 		tr_err(&buffer_tr, "could not alloc buffer structure");
 #ifdef CONFIG_SOF_USERSPACE_LL
 		assert(alloc);
-		if (alloc->vreg)
-			vregion_free(alloc->vreg, stream_addr);
-		else
-			sof_heap_free(alloc->heap, stream_addr);
+		sof_ctx_free(alloc, stream_addr);
 #else
 		rfree(stream_addr);
 #endif
@@ -387,10 +371,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 	assert(alloc);
-	if (alloc->vreg)
-		new_ptr = vregion_alloc_align(alloc->vreg, VREGION_MEM_TYPE_INTERIM, size, alignment);
-	else
-		new_ptr = sof_heap_alloc(alloc->heap, buffer->flags, size, alignment);
+	new_ptr = sof_ctx_alloc(alloc, buffer->flags, size, alignment);
 #else
 	new_ptr = rballoc_align(buffer->flags, size, alignment);
 #endif
@@ -406,10 +387,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 	if (new_ptr) {
 #ifdef CONFIG_SOF_USERSPACE_LL
 		assert(alloc);
-		if (alloc->vreg)
-			vregion_free(alloc->vreg, audio_stream_get_addr(&buffer->stream));
-		else
-			sof_heap_free(alloc->heap, audio_stream_get_addr(&buffer->stream));
+		sof_ctx_free(alloc, audio_stream_get_addr(&buffer->stream));
 #else
 		rfree(audio_stream_get_addr(&buffer->stream));
 #endif
@@ -451,10 +429,7 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	     new_size -= minimum_size) {
 #ifdef CONFIG_SOF_USERSPACE_LL
 		assert(alloc);
-		if (alloc->vreg)
-			new_ptr = vregion_alloc_align(alloc->vreg, VREGION_MEM_TYPE_INTERIM, new_size, alignment);
-		else
-			new_ptr = sof_heap_alloc(alloc->heap, buffer->flags, new_size, alignment);
+		new_ptr = sof_ctx_alloc(alloc, buffer->flags, new_size, alignment);
 #else
 		new_ptr = rballoc_align(buffer->flags, new_size, alignment);
 #endif
@@ -473,10 +448,7 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 	if (new_ptr) {
 #ifdef CONFIG_SOF_USERSPACE_LL
 		assert(alloc);
-		if (alloc->vreg)
-			vregion_free(alloc->vreg, audio_stream_get_addr(&buffer->stream));
-		else
-			sof_heap_free(alloc->heap, audio_stream_get_addr(&buffer->stream));
+		sof_ctx_free(alloc, audio_stream_get_addr(&buffer->stream));
 #else
 		rfree(audio_stream_get_addr(&buffer->stream));
 #endif

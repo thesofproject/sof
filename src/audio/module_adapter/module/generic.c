@@ -18,6 +18,7 @@
 #include <sof/audio/data_blob.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
+#include <sof/ctx_alloc.h>
 #include <sof/schedule/dp_schedule.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/header.h>
@@ -252,16 +253,7 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	}
 
 	/* Allocate memory for module */
-	void *ptr;
-
-	if (!res->alloc->vreg)
-		ptr = sof_heap_alloc(res->alloc->heap, flags, size, alignment);
-	else if (flags & SOF_MEM_FLAG_COHERENT)
-		ptr = vregion_alloc_coherent_align(res->alloc->vreg, VREGION_MEM_TYPE_INTERIM,
-						   size, alignment);
-	else
-		ptr = vregion_alloc_align(res->alloc->vreg, VREGION_MEM_TYPE_INTERIM,
-					  size, alignment);
+	void *ptr = sof_ctx_alloc(res->alloc, flags, size, alignment);
 
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
@@ -362,10 +354,7 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 
 	switch (container->type) {
 	case MOD_RES_HEAP:
-		if (res->alloc->vreg)
-			vregion_free(res->alloc->vreg, container->ptr);
-		else
-			sof_heap_free(res->alloc->heap, container->ptr);
+		sof_ctx_free(res->alloc, container->ptr);
 		res->heap_usage -= container->size;
 		return 0;
 #if CONFIG_COMP_BLOB
