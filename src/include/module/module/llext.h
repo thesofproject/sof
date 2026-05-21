@@ -6,7 +6,7 @@
 #ifndef MODULE_LLEXT_H
 #define MODULE_LLEXT_H
 
-#define SOF_LLEXT_MODULE_MANIFEST(manifest_name, entry, affinity, mod_uuid, instances) \
+#define SOF_LLEXT_MODULE_MANIFEST(manifest_name, entry, affinity, mod_uuid, instances, ...) \
 { \
 	.module = { \
 		.name = manifest_name, \
@@ -16,6 +16,8 @@
 		.type = { \
 			.load_type = SOF_MAN_MOD_TYPE_LLEXT, \
 			.domain_ll = 1, \
+			.user_mode = COND_CODE_0(NUM_VA_ARGS_LESS_1(_, ##__VA_ARGS__), (0), \
+						 (GET_ARG_N(1, __VA_ARGS__))), \
 		}, \
 		.affinity_mask = (affinity), \
 	} \
