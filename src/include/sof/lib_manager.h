@@ -219,6 +219,25 @@ void lib_manager_get_instance_bss_address(uint32_t instance_id,
  */
 int lib_manager_load_library(uint32_t dma_id, uint32_t lib_id, uint32_t type);
 
+struct userspace_context;
+/*
+ * \brief Allocate the module and start the agent if needed
+ */
+int lib_manager_mod_create_priv(const struct comp_driver *drv,
+				const struct comp_ipc_config *config,
+				const void *spec, void **adapter_priv,
+				struct userspace_context **userspace,
+				const struct module_interface **ops);
+
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall int lib_manager_free_module(const uint32_t component_id);
+
+#include <zephyr/syscalls/lib_manager.h>
+#else
+int z_impl_lib_manager_free_module(const uint32_t component_id);
+#define lib_manager_free_module z_impl_lib_manager_free_module
+#endif
+
 /*
  * \brief Initialize message
  *
