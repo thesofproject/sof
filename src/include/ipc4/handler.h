@@ -68,7 +68,7 @@ int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4);
  */
 void ipc_compound_msg_done(uint32_t msg_id, int error);
 
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_USERSPACE_LL)
+#if defined(__ZEPHYR__) && defined(CONFIG_USERSPACE)
 /**
  * \brief Increment the IPC compound message pre-start counter.
  * @param[in] msg_id IPC message ID.
