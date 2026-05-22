@@ -250,4 +250,15 @@ void lib_notif_msg_send(struct ipc_msg *msg);
  */
 void lib_notif_msg_clean(bool leave_one_handle);
 
+#include <zephyr/toolchain/common.h>
+__syscall int lib_manager_free_module(const uint32_t component_id);
+__syscall int lib_manager_mod_create_priv(const struct comp_driver *drv,
+					  const struct comp_ipc_config *config,
+					  const void *spec,
+					  void **adapter_priv,
+					  struct userspace_context **userspace,
+					  const struct module_interface **ops);
+
+#include <zephyr/syscalls/lib_manager.h>
+
 #endif /* __SOF_LIB_MANAGER_H__ */
