@@ -122,6 +122,7 @@ struct lib_manager_mod_ctx {
 	void *base_addr;	/* library cold storage address (e.g. DRAM) */
 	unsigned int n_mod;
 	struct lib_manager_module *mod;
+	bool user_mapped;
 };
 
 struct ext_library {

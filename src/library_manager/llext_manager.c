@@ -734,6 +734,38 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 }
 
 #ifdef CONFIG_USERSPACE
+#ifdef CONFIG_SOF_USERSPACE_LL
+int llext_manager_map_lib(uint32_t comp_id)
+{
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(comp_id);
+
+	if (!ctx || ctx->user_mapped)
+		return 0;
+
+	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(comp_id);
+
+	if (!desc)
+		/* Built-in driver */
+		return 0;
+
+	size_t preload_size = desc->header.preload_page_count * CONFIG_MM_DRV_PAGE_SIZE;
+	struct k_mem_partition lib_part = {
+		.start = (uintptr_t)desc,
+		.size = preload_size,
+		.attr = K_MEM_PARTITION_P_RW_U_NA | XTENSA_MMU_CACHED_WB,
+	};
+
+	int ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(), &lib_part);
+
+	if (ret < 0)
+		return ret;
+
+	ctx->user_mapped = true;
+
+	return 0;
+}
+#endif
+
 static int llext_manager_add_partition(struct k_mem_domain *domain,
 				       uintptr_t addr, size_t size,
 				       k_mem_partition_attr_t attr)

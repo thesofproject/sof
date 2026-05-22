@@ -206,6 +206,8 @@ int llext_manager_restore_from_dram(void)
 
 		/* Restore the library context */
 		*ctx = lib_manager_dram.ctx[j++];
+		/* It will have to be mapped again, reset the flag */
+		ctx->user_mapped = false;
 
 		/* Allocate and restore all the modules in the library */
 		struct lib_manager_module *mod = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
