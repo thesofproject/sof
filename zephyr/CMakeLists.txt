@@ -628,6 +628,7 @@ zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_INTERFACE_ALLOC syscall/alloc.
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/vregion.h)
 zephyr_library_sources(syscall/vregion.c)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/dai-zephyr.h)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib_manager.h)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/dai.c)
 
 zephyr_syscall_header(${SOF_SRC_PATH}/include/user/debug_stream_slot.h)

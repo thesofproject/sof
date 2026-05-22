@@ -385,7 +385,7 @@ err:
  *
  * Function is responsible to free module resources in HP memory.
  */
-static int lib_manager_free_module(const uint32_t component_id)
+int z_impl_lib_manager_free_module(const uint32_t component_id)
 {
 	const struct sof_man_module *mod;
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
@@ -431,7 +431,7 @@ static uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_c
 	return 0;
 }
 
-static int lib_manager_free_module(const uint32_t component_id)
+static int z_impl_lib_manager_free_module(const uint32_t component_id)
 {
 	/* Since we cannot allocate the freeing is not considered to be an error */
 	tr_warn(&lib_manager_tr, "Dynamic module freeing is not supported");
@@ -598,6 +598,128 @@ static enum buildinfo_mod_type lib_manager_get_module_type(const struct sof_man_
 	}
 }
 
+static void lib_manager_mod_free_priv(const struct comp_driver *drv,
+				      const struct comp_ipc_config *config,
+				      struct userspace_context *userspace)
+{
+#if CONFIG_SOF_USERSPACE_PROXY
+	if (userspace)
+		userspace_proxy_destroy(drv, userspace);
+#endif /* CONFIG_SOF_USERSPACE_PROXY */
+	lib_manager_free_module(config->id);
+}
+
+APP_SYSUSER_BSS struct sof_man_fw_desc ll_man_desc;
+
+int z_impl_lib_manager_mod_create_priv(const struct comp_driver *drv,
+				       const struct comp_ipc_config *config,
+				       const void *spec,
+				       void **adapter_priv,
+				       struct userspace_context **userspace,
+				       const struct module_interface **ops)
+{
+	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(config->id);
+	const struct ipc_config_process *args = (const struct ipc_config_process *)spec;
+	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(config->id);
+	const struct sof_man_module *mod;
+	system_agent_start_fn agent;
+	const void **agent_iface;
+	int ret;
+
+#ifdef CONFIG_SOF_USERSPACE_PROXY
+	if (drv->user_heap && config->proc_domain != COMP_PROCESSING_DOMAIN_DP) {
+		tr_err(&lib_manager_tr, "Userspace supports only DP modules.");
+		return -EOPNOTSUPP;
+	}
+#endif
+
+	tr_dbg(&lib_manager_tr, "start");
+	if (!desc) {
+		tr_err(&lib_manager_tr, "Error: Couldn't find loadable module with id %u.",
+		       config->id);
+		return -ENOENT;
+	}
+
+	if (entry_index >= desc->header.num_module_entries) {
+		tr_err(&lib_manager_tr, "Entry index %u out of bounds.", entry_index);
+		return -EINVAL;
+	}
+
+	mod = (const struct sof_man_module *)
+		((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
+
+	const uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, args->data);
+
+	if (!module_entry_point) {
+		tr_err(&lib_manager_tr, "lib_manager_allocate_module() failed!");
+		return -ENOENT;
+	}
+
+	switch (lib_manager_get_module_type(desc, mod)) {
+	case MOD_TYPE_LLEXT:
+		agent = NULL;
+		*ops = (const struct module_interface *)module_entry_point;
+		agent_iface = NULL;
+		break;
+	case MOD_TYPE_LMDK:
+		agent = &native_system_agent_start;
+		agent_iface = (const void **)ops;
+		break;
+#if CONFIG_INTEL_MODULES
+	case MOD_TYPE_IADK:
+		agent = &system_agent_start;
+		*ops = &processing_module_adapter_interface;
+		agent_iface = (const void **)adapter_priv;
+		break;
+#endif
+	case MOD_TYPE_INVALID:
+	default:
+		ret = -EINVAL;
+		goto err;
+	}
+
+	if (agent || IS_ENABLED(CONFIG_SOF_USERSPACE_PROXY)) {
+		/* At this point module resources are allocated and it is moved to L2 memory. */
+		ret = lib_manager_start_agent(drv, config, mod, args, module_entry_point, agent,
+					      agent_iface, userspace, ops);
+		if (ret)
+			goto err;
+	}
+
+	ret = comp_set_adapter_ops(drv, *ops);
+	if (ret < 0)
+		goto err;
+
+	return 0;
+
+err:
+	lib_manager_mod_free_priv(drv, config, *userspace);
+	return ret;
+}
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+
+static int z_vrfy_lib_manager_free_module(const uint32_t component_id)
+{
+	return z_impl_lib_manager_free_module(component_id);
+}
+#include <zephyr/syscalls/lib_manager_free_module_mrsh.c>
+
+static int z_vrfy_lib_manager_mod_create_priv(const struct comp_driver *drv,
+					      const struct comp_ipc_config *config,
+					      const void *spec,
+					      void **adapter_priv,
+					      struct userspace_context **userspace,
+					      const struct module_interface **ops)
+{
+	return z_impl_lib_manager_mod_create_priv(drv, config, spec, adapter_priv,
+						  userspace, ops);
+}
+#include <zephyr/syscalls/lib_manager_mod_create_priv_mrsh.c>
+
+#endif /* CONFIG_USERSPACE */
+
 /*
  * \brief Load module code, allocate its instance and create a module adapter component.
  * \param[in] drv - component driver pointer.
@@ -610,91 +732,23 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 						  const struct comp_ipc_config *config,
 						  const void *spec)
 {
-	const struct sof_man_fw_desc *const desc = lib_manager_get_library_manifest(config->id);
-	const struct ipc_config_process *args = (const struct ipc_config_process *)spec;
-	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(config->id);
 	struct userspace_context *userspace = NULL;
 	const struct module_interface *ops;
-	const struct sof_man_module *mod;
-	system_agent_start_fn agent;
 	void *adapter_priv = NULL;
-	const void **agent_iface;
 	struct comp_dev *dev;
-	int ret;
+	int ret = lib_manager_mod_create_priv(drv, config, spec, &adapter_priv, &userspace, &ops);
 
-#ifdef CONFIG_SOF_USERSPACE_PROXY
-	if (drv->user_heap && config->proc_domain != COMP_PROCESSING_DOMAIN_DP) {
-		tr_err(&lib_manager_tr, "Userspace supports only DP modules.");
+	if (ret < 0)
 		return NULL;
-	}
-#endif
 
-	tr_dbg(&lib_manager_tr, "start");
-	if (!desc) {
-		tr_err(&lib_manager_tr, "Error: Couldn't find loadable module with id %u.",
-		       config->id);
-		return NULL;
-	}
-
-	if (entry_index >= desc->header.num_module_entries) {
-		tr_err(&lib_manager_tr, "Entry index %u out of bounds.", entry_index);
-		return NULL;
-	}
-
-	mod = (const struct sof_man_module *)
-		((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
-
-	const uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, args->data);
-
-	if (!module_entry_point) {
-		tr_err(&lib_manager_tr, "lib_manager_allocate_module() failed!");
-		return NULL;
-	}
-
-	switch (lib_manager_get_module_type(desc, mod)) {
-	case MOD_TYPE_LLEXT:
-		agent = NULL;
-		ops = (const struct module_interface *)module_entry_point;
-		agent_iface = NULL;
-		break;
-	case MOD_TYPE_LMDK:
-		agent = &native_system_agent_start;
-		agent_iface = (const void **)&ops;
-		break;
-#if CONFIG_INTEL_MODULES
-	case MOD_TYPE_IADK:
-		agent = &system_agent_start;
-		ops = &processing_module_adapter_interface;
-		agent_iface = (const void **)&adapter_priv;
-		break;
-#endif
-	case MOD_TYPE_INVALID:
-		goto err;
-	}
-
-	if (agent || IS_ENABLED(CONFIG_SOF_USERSPACE_PROXY)) {
-		/* At this point module resources are allocated and it is moved to L2 memory. */
-		ret = lib_manager_start_agent(drv, config, mod, args, module_entry_point, agent,
-					      agent_iface, &userspace, &ops);
-		if (ret)
-			goto err;
-	}
-
-	if (comp_set_adapter_ops(drv, ops) < 0)
-		goto err;
-
-	dev = module_adapter_new_ext(drv, config, spec, adapter_priv, userspace, NULL);
+	dev = module_adapter_new_ext(drv, config, spec, adapter_priv, userspace, ops);
 	if (!dev)
 		goto err;
 
 	return dev;
 
 err:
-#if CONFIG_SOF_USERSPACE_PROXY
-	if (userspace)
-		userspace_proxy_destroy(drv, userspace);
-#endif /* CONFIG_SOF_USERSPACE_PROXY */
-	lib_manager_free_module(config->id);
+	lib_manager_mod_free_priv(drv, config, userspace);
 	return NULL;
 }
 
