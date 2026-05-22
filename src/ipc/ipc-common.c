@@ -519,23 +519,17 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 					 * with kernel privileges.
 					 *
 					 * init_drv = original kernel pointer
-					 * init_drv_data = user-accessible copy
 					 */
-					const struct comp_driver *orig_drv =
-						ipc_user->init_drv;
-					const struct comp_driver *drv_copy =
-						(const struct comp_driver *)
-						ipc_user->init_drv_data;
+					const struct comp_driver *drv = ipc_user->init_drv;
 
 					ipc_user->init_drv = NULL;
-					if (!orig_drv) {
+					if (!drv) {
 						ipc_user->result =
 							IPC4_MOD_NOT_INITIALIZED;
 						break;
 					}
 
-					struct comp_dev *dev =
-						comp_new_ipc4_user(&msg, drv_copy);
+					struct comp_dev *dev = comp_new_ipc4_user(&msg, drv);
 
 					if (!dev) {
 						ipc_user->result =
@@ -543,19 +537,12 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 						break;
 					}
 
-					/* Restore original kernel driver pointer.
-					 * comp_init() set dev->drv to the copy;
-					 * runtime code expects the canonical
-					 * kernel address.
-					 */
-					dev->drv = orig_drv;
-
-					ipc_user->result =
-						ipc4_add_comp_dev(dev);
+					ipc_user->result = ipc4_add_comp_dev(dev);
 					if (ipc_user->result != IPC4_SUCCESS)
 						break;
 
 					comp_update_ibs_obs_cpc(dev);
+
 					ipc_user->result = 0;
 					break;
 				}
