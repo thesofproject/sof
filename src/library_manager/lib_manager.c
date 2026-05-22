@@ -828,6 +828,8 @@ int lib_manager_register_module(const uint32_t component_id)
 			goto cleanup;
 		}
 	}
+#else
+	drv_heap = sof_sys_user_heap_get();
 #endif /* CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP */
 
 	drv = sof_heap_alloc(drv_heap, SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
