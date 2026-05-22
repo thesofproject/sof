@@ -396,17 +396,27 @@ exit:
 	return ret;
 }
 
+static void mfcc_free_and_null(struct processing_module *mod, void **ptr)
+{
+	mod_free(mod, *ptr);
+	*ptr = NULL;
+}
+
+/* Free MFCC buffers to prevent leaks on reset->prepare cycles.
+ * mfcc_free_buffers() NULLs the pointers after free.
+ */
 void mfcc_free_buffers(struct processing_module *mod)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 
 	mod_fft_plan_free(mod, cd->state.fft.fft_plan);
-	mod_free(mod, cd->state.fft.fft_buf);
-	mod_free(mod, cd->state.fft.fft_out);
-	mod_free(mod, cd->state.buffers);
-	mod_free(mod, cd->state.melfb.data);
-	mod_free(mod, cd->state.dct.matrix);
-	mod_free(mod, cd->state.lifter.matrix);
-	mod_free(mod, cd->vad.noise_floor);
-	mod_free(mod, cd->vad.weights);
+	cd->state.fft.fft_plan = NULL;
+	mfcc_free_and_null(mod, (void **)&cd->state.fft.fft_buf);
+	mfcc_free_and_null(mod, (void **)&cd->state.fft.fft_out);
+	mfcc_free_and_null(mod, (void **)&cd->state.buffers);
+	mfcc_free_and_null(mod, (void **)&cd->state.melfb.data);
+	mfcc_free_and_null(mod, (void **)&cd->state.dct.matrix);
+	mfcc_free_and_null(mod, (void **)&cd->state.lifter.matrix);
+	mfcc_free_and_null(mod, (void **)&cd->vad.noise_floor);
+	mfcc_free_and_null(mod, (void **)&cd->vad.weights);
 }

@@ -175,6 +175,7 @@ static int mfcc_prepare(struct processing_module *mod,
 	cd->mfcc_func = mfcc_find_func(source_format, sink_format, mfcc_fm, ARRAY_SIZE(mfcc_fm));
 	if (!cd->mfcc_func) {
 		comp_err(dev, "No proc func");
+		mfcc_free_buffers(mod);
 		return -EINVAL;
 	}
 
@@ -182,8 +183,10 @@ static int mfcc_prepare(struct processing_module *mod,
 	if (cd->config->enable_vad && cd->config->update_controls) {
 		if (!cd->msg) {
 			ret = mfcc_ipc_notification_init(mod);
-			if (ret < 0)
+			if (ret < 0) {
+				mfcc_free_buffers(mod);
 				return ret;
+			}
 		}
 	}
 
@@ -196,6 +199,11 @@ static int mfcc_reset(struct processing_module *mod)
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 
 	comp_info(mod->dev, "entry");
+
+	/* Free MFCC buffers to prevent leaks on reset->prepare cycles.
+	 * mfcc_free_buffers() NULLs the pointers after free.
+	 */
+	mfcc_free_buffers(mod);
 
 	/* Reset to similar state as init() */
 	cd->mfcc_func = NULL;
