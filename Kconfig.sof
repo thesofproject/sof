@@ -33,6 +33,7 @@ config COLD_STORE_EXECUTE_DRAM
 
 config COLD_STORE_EXECUTE_DEBUG
 	bool "Enable checks for cold code on hot paths"
+	depends on !SOF_USERSPACE_LL
 	help
 	  This enables an assert_can_be_cold() check, which causes an exception
 	  if called in the LL task context and assert() evaluation is enabled.
