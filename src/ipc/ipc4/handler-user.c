@@ -1517,10 +1517,6 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		 */
 		struct ipc4_module_init_instance mi;
 
-		BUILD_ASSERT(sizeof(struct comp_driver) + sizeof(struct tr_ctx) <=
-			     sizeof(((struct ipc_user *)0)->init_drv_data),
-			     "ipc_user.init_drv_data too small for driver copy");
-
 		memcpy_s(&mi, sizeof(mi), ipc4, sizeof(*ipc4));
 		if (!cpu_is_me(mi.extension.r.core_id)) {
 			ret = ipc4_init_module_instance(ipc4);
@@ -1528,32 +1524,16 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			struct ipc *ipc = ipc_get();
 			uint32_t comp_id = IPC4_COMP_ID(mi.primary.r.module_id,
 							mi.primary.r.instance_id);
-			const struct comp_driver *drv = ipc4_get_comp_drv(
-				IPC4_MOD_ID(comp_id));
+			const struct comp_driver *drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
 
 			if (!drv) {
 				ret = IPC4_MOD_NOT_INITIALIZED;
 			} else {
 				struct ipc_user *pdata = ipc->ipc_user_pdata;
 
-				/* Copy comp_driver and tr_ctx into
-				 * user-accessible ipc_user buffer —
-				 * originals are in kernel .rodata/.data
-				 * and not readable from user mode.
-				 */
-				struct comp_driver *drv_copy =
-					(struct comp_driver *)pdata->init_drv_data;
-				struct tr_ctx *tctx_copy =
-					(struct tr_ctx *)(pdata->init_drv_data +
-							  sizeof(struct comp_driver));
-
-				memcpy_s(drv_copy, sizeof(*drv_copy),
-					 drv, sizeof(*drv));
-				if (drv->tctx) {
-					memcpy_s(tctx_copy, sizeof(*tctx_copy),
-						 drv->tctx, sizeof(*drv->tctx));
-					drv_copy->tctx = tctx_copy;
-				}
+				ret = llext_manager_map_lib(comp_id);
+				if (ret < 0)
+					break;
 
 				pdata->init_drv = drv;
 				ret = ipc_user_forward_cmd(ipc4);
