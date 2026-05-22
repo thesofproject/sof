@@ -54,7 +54,9 @@ struct sof_mfcc_config {
 	int16_t mel_scale; /**< Q4.12 default 1.0, use 0.25 for Whisper */
 	int16_t mmax_init; /**< Q8.7 default 0, with dynamic_mmax false, can sim. Whisper mmax */
 	int16_t mmax_coef; /**< Q1.15 decay coefficient for dynamic mmax, a small value for slow */
-	uint32_t reserved[6];
+	uint16_t dtx_trailing_silence_hops; /**< DTX: number of silence hops to send after speech, 0 = send first only */
+	uint16_t dtx_silence_hops_interval; /**< DTX: send silence frame every Nth hop during VAD=0, 0 = disable */
+	uint32_t reserved[5];
 	int32_t sample_frequency; /**< Hz. e.g. 16000 */
 	int32_t pmin; /**< Q1.31 linear power, limit minimum Mel energy, e.g. 1e-9 */
 	enum sof_mfcc_mel_log_type mel_log; /**< Use MEL_LOG_IS_LOG, LOG10 or DB*/
@@ -87,9 +89,10 @@ struct sof_mfcc_config {
 	bool use_energy; /**< Must be false (0) */
 	bool dynamic_mmax; /**< Track max Mel value for clamp with top_db value */
 	bool enable_vad; /**< Run VAD algorithm */
-	bool enable_dtx; /**< Reserved (stream once per second non-speech frames) */
+	bool enable_dtx; /**< Discontinuous transmission: suppress silence after trailing frames */
 	bool update_controls; /**< Update controls with VAD decision */
-	bool reserved_bool[5]; /* Reserved for future boolean flags, set to false (0) */
+	bool compress_output; /**< Use compress PCM output: variable size, no zero padding */
+	bool reserved_bool[4]; /* Reserved for future boolean flags, set to false (0) */
 } __attribute__((packed));
 
 #endif /* __USER_MFCC_H__ */

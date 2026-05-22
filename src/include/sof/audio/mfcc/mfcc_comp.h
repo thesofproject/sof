@@ -54,18 +54,6 @@ struct mfcc_data_header {
 	int32_t vad_flag;	/**< VAD decision: 1 = speech, 0 = silence */
 };
 
-/** \brief Type definition for processing function select return value. */
-typedef void (*mfcc_func)(struct processing_module *mod,
-			  struct input_stream_buffer *bsource,
-			  struct output_stream_buffer *bsink,
-			  int frames);
-
-/** \brief MFCC processing functions map item. */
-struct mfcc_func_map {
-	uint8_t source;		/**< source frame format */
-	mfcc_func func;		/**< processing function */
-};
-
 struct mfcc_buffer {
 	int16_t *addr;
 	int16_t *end_addr;
@@ -81,6 +69,10 @@ struct mfcc_pre_emph {
 	int16_t delay;
 	int enable;
 };
+
+/** \brief Type definition for source/sink based input copy function. */
+typedef void (*mfcc_source_func)(struct sof_source *source, struct mfcc_buffer *buf,
+				 struct mfcc_pre_emph *emph, int frames, int source_channel);
 
 struct mfcc_fft {
 	struct icomplex32 *fft_buf; /**< fft_padded_size */
@@ -130,10 +122,15 @@ struct mfcc_state {
 	bool header_pending; /**< True when data header not yet written for current output */
 	struct mfcc_data_header header; /**< Data header for current output frame */
 	size_t sample_buffers_size; /**< bytes */
-	int16_t *out_data_ptr; /**< Read pointer into scratch data for multi-period output */
-	int32_t *out_data_ptr_32; /**< Read pointer for 32-bit mel-only output */
-	int out_remain; /**< Remaining int16_t samples to write to sink from scratch */
+	int32_t *out_data_ptr; /**< Read pointer into staging data for multi-period output */
+	int out_remain; /**< Remaining int32_t samples to write to sink from staging */
+	int32_t *out_stage; /**< Dedicated staging buffer for pending output, decoupled from STFT scratch */
+	int out_stage_size; /**< Capacity of out_stage in int32_t samples */
 	uint32_t hop_count; /**< FFT hop counter, increments every processed hop */
+	int vad_silence_count; /**< Consecutive VAD=0 hops since last speech */
+	int16_t dtx_trailing_silence; /**< Number of trailing silence hops to send, from config */
+	int16_t dtx_silence_interval; /**< Send silence frame every Nth hop, 0 = disable */
+	int dtx_silence_counter; /**< Counter for periodic silence frame send */
 };
 
 /* MFCC component private data */
@@ -144,8 +141,9 @@ struct mfcc_comp_data {
 	struct sof_mfcc_config *config;
 	struct ipc_msg *msg;		/**< IPC notification for VAD switch control */
 	int max_frames;
+	enum sof_ipc_frame source_format;	/**< Source audio format for output sizing */
 	bool vad_prev;			/**< Previous VAD state for edge detection */
-	mfcc_func mfcc_func;		/**< processing function */
+	mfcc_source_func source_func;	/**< source copy function */
 };
 
 static inline int mfcc_buffer_samples_without_wrap(struct mfcc_buffer *buffer, int16_t *ptr)
@@ -172,31 +170,37 @@ void mfcc_fill_fft_buffer(struct mfcc_state *state);
 
 void mfcc_apply_window(struct mfcc_state *state, int input_shift);
 
+/**
+ * \brief Run STFT and Mel/DCT processing.
+ * \return Number of output coefficients produced, or 0 if not enough data.
+ */
+int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd);
+
+/**
+ * \brief Prepare and commit MFCC output data after STFT processing.
+ *
+ * This handles the output data conversion and dispatches to either the
+ * compress-output or legacy PCM-output path.
+ *
+ * \return 0 on success or a negative error code.
+ */
+int mfcc_process_output(struct processing_module *mod, struct mfcc_comp_data *cd,
+			struct sof_source **sources, struct sof_sink **sinks,
+			int num_ceps, int frames);
+
 #if CONFIG_FORMAT_S16LE
-
-void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+void mfcc_source_copy_s16(struct sof_source *source, struct mfcc_buffer *buf,
 			  struct mfcc_pre_emph *emph, int frames, int source_channel);
-
-void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, int frames);
 #endif
 
 #if CONFIG_FORMAT_S24LE
-
-void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+void mfcc_source_copy_s24(struct sof_source *source, struct mfcc_buffer *buf,
 			  struct mfcc_pre_emph *emph, int frames, int source_channel);
-
-void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, int frames);
 #endif
 
 #if CONFIG_FORMAT_S32LE
-
-void mfcc_source_copy_s32(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
+void mfcc_source_copy_s32(struct sof_source *source, struct mfcc_buffer *buf,
 			  struct mfcc_pre_emph *emph, int frames, int source_channel);
-
-void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, int frames);
 #endif
 
 #if CONFIG_IPC_MAJOR_4

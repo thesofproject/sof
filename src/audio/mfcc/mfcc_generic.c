@@ -8,7 +8,6 @@
 #ifdef MFCC_GENERIC
 
 #include <sof/audio/component.h>
-#include <sof/audio/audio_stream.h>
 #include <sof/math/auditory.h>
 #include <sof/math/icomplex16.h>
 #include <sof/math/icomplex32.h>
@@ -26,6 +25,17 @@
  * MFCC algorithm code
  */
 
+/**
+ * \brief Generic-C copy of the overlap window from the input circular buffer.
+ *
+ * Copies \p prev_data_length samples from the front of \p buf into
+ * \p prev_data and advances the read pointer. Used once on first frame
+ * to seed the overlap region for subsequent STFT hops.
+ *
+ * \param[in,out] buf Input circular buffer (Q1.15 mono).
+ * \param[out] prev_data Destination overlap buffer.
+ * \param[in] prev_data_length Number of samples to copy.
+ */
 void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 			    int prev_data_length)
 {
@@ -51,6 +61,17 @@ void mfcc_fill_prev_samples(struct mfcc_buffer *buf, int16_t *prev_data,
 	buf->r_ptr = r;
 }
 
+/**
+ * \brief Generic-C window function application on the FFT input buffer.
+ *
+ * Multiplies the real part of \c fft->fft_buf (sized \c fft->fft_size,
+ * Q1.15 input upcast to int32) by \c state->window (Q1.15) in-place and
+ * left-shifts by \p input_shift + 1 to produce Q1.31 fixed-point input
+ * to the FFT.
+ *
+ * \param[in,out] state MFCC state; \c state->fft.fft_buf is updated in-place.
+ * \param[in] input_shift Additional left shift applied to the windowed sample.
+ */
 void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 {
 	struct mfcc_fft *fft = &state->fft;
@@ -63,162 +84,5 @@ void mfcc_apply_window(struct mfcc_state *state, int input_shift)
 	for (j = 0; j < fft->fft_size; j++)
 		fft->fft_buf[i + j].real = (fft->fft_buf[i + j].real * state->window[j]) << s;
 }
-
-#if CONFIG_FORMAT_S16LE
-void mfcc_source_copy_s16(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
-			  struct mfcc_pre_emph *emph, int frames, int source_channel)
-{
-	struct audio_stream *source = bsource->data;
-	int32_t s;
-	int16_t *x0;
-	int16_t *x = audio_stream_get_rptr(source);
-	int16_t *w = buf->w_ptr;
-	int copied;
-	int nmax;
-	int n1;
-	int n2;
-	int n;
-	int i;
-	int num_channels = audio_stream_get_channels(source);
-
-	/* Copy from source to pre-buffer for FFT.
-	 * The pre-emphasis filter is done in this step.
-	 */
-	for (copied = 0; copied < frames; copied += n) {
-		nmax = frames - copied;
-		n1 = audio_stream_frames_without_wrap(source, x);
-		n2 = mfcc_buffer_samples_without_wrap(buf, w);
-		n = MIN(n1, n2);
-		n = MIN(n, nmax);
-		x0 = x + source_channel;
-		for (i = 0; i < n; i++) {
-			if (emph->enable) {
-				/* Q1.15 x Q1.15 -> Q2.30 */
-				s = (int32_t)emph->delay * emph->coef + Q_SHIFT_LEFT(*x0, 15, 30);
-				*w = sat_int16(Q_SHIFT_RND(s, 30, 15));
-				emph->delay = *x0;
-			} else {
-				*w = *x0;
-			}
-			x0 += num_channels;
-			w++;
-		}
-
-		x = audio_stream_wrap(source, x + n * audio_stream_get_channels(source));
-		w = mfcc_buffer_wrap(buf, w);
-	}
-	buf->s_avail += copied;
-	buf->s_free -= copied;
-	buf->w_ptr = w;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE
-
-void mfcc_source_copy_s24(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
-			  struct mfcc_pre_emph *emph, int frames, int source_channel)
-{
-	struct audio_stream *source = bsource->data;
-	int32_t tmp, s;
-	int32_t *x0;
-	int32_t *x = audio_stream_get_rptr(source);
-	int16_t *w = buf->w_ptr;
-	int copied;
-	int nmax;
-	int n1;
-	int n2;
-	int n;
-	int i;
-	int num_channels = audio_stream_get_channels(source);
-
-	/* Copy from source to pre-buffer for FFT.
-	 * The pre-emphasis filter is done in this step.
-	 * S24_4LE data is in 32-bit container, shift left by 8 to Q1.31,
-	 * then convert to Q1.15 with rounding.
-	 */
-	for (copied = 0; copied < frames; copied += n) {
-		nmax = frames - copied;
-		n1 = audio_stream_frames_without_wrap(source, x);
-		n2 = mfcc_buffer_samples_without_wrap(buf, w);
-		n = MIN(n1, n2);
-		n = MIN(n, nmax);
-		x0 = x + source_channel;
-		for (i = 0; i < n; i++) {
-			if (emph->enable) {
-				/* Convert to Q1.31, ignore highest byte */
-				s = (int32_t)((uint32_t)*x0 << 8);
-				/* Q1.15 x Q1.15 -> Q2.30 */
-				tmp = (int32_t)emph->delay * emph->coef + Q_SHIFT(s, 31, 30);
-				*w = sat_int16(Q_SHIFT_RND(tmp, 30, 15));
-				emph->delay = sat_int16(Q_SHIFT_RND(s, 31, 15));
-			} else {
-				/* Convert to Q1.31, ignore highest byte */
-				s = (int32_t)((uint32_t)*x0 << 8);
-				*w = sat_int16(Q_SHIFT_RND(s, 31, 15));
-			}
-			x0 += num_channels;
-			w++;
-		}
-
-		x = audio_stream_wrap(source, x + n * audio_stream_get_channels(source));
-		w = mfcc_buffer_wrap(buf, w);
-	}
-	buf->s_avail += copied;
-	buf->s_free -= copied;
-	buf->w_ptr = w;
-}
-
-#endif /* CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S32LE
-
-void mfcc_source_copy_s32(struct input_stream_buffer *bsource, struct mfcc_buffer *buf,
-			  struct mfcc_pre_emph *emph, int frames, int source_channel)
-{
-	struct audio_stream *source = bsource->data;
-	int32_t s;
-	int32_t *x0;
-	int32_t *x = audio_stream_get_rptr(source);
-	int16_t *w = buf->w_ptr;
-	int copied;
-	int nmax;
-	int n1;
-	int n2;
-	int n;
-	int i;
-	int num_channels = audio_stream_get_channels(source);
-
-	/* Copy from source to pre-buffer for FFT.
-	 * The pre-emphasis filter is done in this step.
-	 * S32 data is in 32-bit container, shift right by 16 to get 16-bit.
-	 */
-	for (copied = 0; copied < frames; copied += n) {
-		nmax = frames - copied;
-		n1 = audio_stream_frames_without_wrap(source, x);
-		n2 = mfcc_buffer_samples_without_wrap(buf, w);
-		n = MIN(n1, n2);
-		n = MIN(n, nmax);
-		x0 = x + source_channel;
-		for (i = 0; i < n; i++) {
-			if (emph->enable) {
-				/* Q1.15 x Q1.15 -> Q2.30 */
-				s = (int32_t)emph->delay * emph->coef + Q_SHIFT(*x0, 31, 30);
-				*w = sat_int16(Q_SHIFT_RND(s, 30, 15));
-				emph->delay = sat_int16(Q_SHIFT_RND(*x0, 31, 15));
-			} else {
-				*w = sat_int16(Q_SHIFT_RND(*x0, 31, 15));
-			}
-			x0 += num_channels;
-			w++;
-		}
-
-		x = audio_stream_wrap(source, x + n * audio_stream_get_channels(source));
-		w = mfcc_buffer_wrap(buf, w);
-	}
-	buf->s_avail += copied;
-	buf->s_free -= copied;
-	buf->w_ptr = w;
-}
-#endif /* CONFIG_FORMAT_S32LE */
 
 #endif /* MFCC_GENERIC */

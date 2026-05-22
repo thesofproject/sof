@@ -7,7 +7,8 @@
 #include <sof/audio/mfcc/mfcc_comp.h>
 
 #include <sof/audio/component.h>
-#include <sof/audio/audio_stream.h>
+#include <module/audio/sink_api.h>
+#include <module/audio/source_api.h>
 #include <sof/audio/format.h>
 #include <sof/math/auditory.h>
 #include <sof/math/fft.h>
@@ -20,16 +21,262 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <rtos/string.h>
 
 #include <sof/audio/mfcc/mfcc_vad.h>
 
 LOG_MODULE_REGISTER(mfcc_common, CONFIG_SOF_LOG_LEVEL);
 
 /*
+ * Source/sink API based source copy functions.
+ * These use sof_source API and are compiled on all platforms (generic, HiFi3, HiFi4).
+ */
+
+#if CONFIG_FORMAT_S16LE
+/**
+ * \brief Copy S16_LE input frames from source to MFCC circular buffer.
+ *
+ * Reads \p frames frames from \p source, selects channel \p source_channel,
+ * optionally applies the pre-emphasis filter \p emph, and writes Q1.15 mono
+ * samples to the MFCC input circular buffer \p buf. The source read is
+ * released after the copy completes. On source read failure the function
+ * returns without modifying \p buf state.
+ *
+ * \param[in,out] source Audio source providing interleaved S16_LE frames.
+ * \param[in,out] buf MFCC input circular buffer (mono Q1.15).
+ * \param[in,out] emph Pre-emphasis filter state; updated when enabled.
+ * \param[in] frames Number of input frames to copy.
+ * \param[in] source_channel Channel index to extract from the source.
+ */
+void mfcc_source_copy_s16(struct sof_source *source, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	int16_t const *x;
+	int16_t const *x_start;
+	int16_t const *x_end;
+	int x_size;
+	int num_channels = source_get_channels(source);
+	size_t req_bytes = frames * num_channels * sizeof(int16_t);
+	int16_t *w = buf->w_ptr;
+	int src_without_wrap;
+	int dst_without_wrap;
+	int samples_without_wrap;
+	int remaining = frames;
+	int32_t s;
+	int ret;
+	int i;
+
+	ret = source_get_data_s16(source, req_bytes, &x, &x_start, &x_size);
+	if (ret)
+		return;
+
+	x += source_channel;
+	x_end = x_start + x_size;
+
+	while (remaining) {
+		src_without_wrap = (x_end - x) / num_channels;
+		dst_without_wrap = buf->end_addr - w;
+		samples_without_wrap = MIN(src_without_wrap, dst_without_wrap);
+		samples_without_wrap = MIN(samples_without_wrap, remaining);
+		if (emph->enable) {
+			for (i = 0; i < samples_without_wrap; i++) {
+				s = (int32_t)emph->delay * emph->coef +
+					Q_SHIFT_LEFT(*x, 15, 30);
+				*w = sat_int16(Q_SHIFT_RND(s, 30, 15));
+				emph->delay = *x;
+				x += num_channels;
+				w++;
+			}
+		} else {
+			for (i = 0; i < samples_without_wrap; i++) {
+				*w = *x;
+				x += num_channels;
+				w++;
+			}
+		}
+		x = (x >= x_end) ? x - x_size : x;
+		w = mfcc_buffer_wrap(buf, w);
+		remaining -= samples_without_wrap;
+	}
+
+	buf->s_avail += frames;
+	buf->s_free -= frames;
+	buf->w_ptr = w;
+	source_release_data(source, req_bytes);
+}
+#endif /* CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S24LE
+/**
+ * \brief Copy S24_4LE input frames from source to MFCC circular buffer.
+ *
+ * Same as mfcc_source_copy_s16() but accepts S24_4LE input (24-bit data
+ * sign-extended in a 32-bit container). Samples are downscaled to Q1.15
+ * for the MFCC pipeline.
+ *
+ * \param[in,out] source Audio source providing interleaved S24_4LE frames.
+ * \param[in,out] buf MFCC input circular buffer (mono Q1.15).
+ * \param[in,out] emph Pre-emphasis filter state; updated when enabled.
+ * \param[in] frames Number of input frames to copy.
+ * \param[in] source_channel Channel index to extract from the source.
+ */
+void mfcc_source_copy_s24(struct sof_source *source, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	int32_t const *x;
+	int32_t const *x_start;
+	int32_t const *x_end;
+	int x_size;
+	int num_channels = source_get_channels(source);
+	size_t req_bytes = frames * num_channels * sizeof(int32_t);
+	int16_t *w = buf->w_ptr;
+	int src_without_wrap;
+	int dst_without_wrap;
+	int samples_without_wrap;
+	int remaining = frames;
+	int32_t s, tmp;
+	int ret;
+	int i;
+
+	ret = source_get_data_s32(source, req_bytes, &x, &x_start, &x_size);
+	if (ret)
+		return;
+
+	x += source_channel;
+	x_end = x_start + x_size;
+
+	while (remaining) {
+		src_without_wrap = (x_end - x) / num_channels;
+		dst_without_wrap = buf->end_addr - w;
+		samples_without_wrap = MIN(src_without_wrap, dst_without_wrap);
+		samples_without_wrap = MIN(samples_without_wrap, remaining);
+		if (emph->enable) {
+			for (i = 0; i < samples_without_wrap; i++) {
+				s = (int32_t)((uint32_t)*x << 8);
+				tmp = (int32_t)emph->delay * emph->coef +
+					Q_SHIFT(s, 31, 30);
+				*w = sat_int16(Q_SHIFT_RND(tmp, 30, 15));
+				emph->delay = sat_int16(Q_SHIFT_RND(s, 31, 15));
+				x += num_channels;
+				w++;
+			}
+		} else {
+			for (i = 0; i < samples_without_wrap; i++) {
+				s = (int32_t)((uint32_t)*x << 8);
+				*w = sat_int16(Q_SHIFT_RND(s, 31, 15));
+				x += num_channels;
+				w++;
+			}
+
+		}
+		x = (x >= x_end) ? x - x_size : x;
+		w = mfcc_buffer_wrap(buf, w);
+		remaining -= samples_without_wrap;
+	}
+
+	buf->s_avail += frames;
+	buf->s_free -= frames;
+	buf->w_ptr = w;
+	source_release_data(source, req_bytes);
+}
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+/**
+ * \brief Copy S32_LE input frames from source to MFCC circular buffer.
+ *
+ * Same as mfcc_source_copy_s16() but accepts S32_LE input. Samples are
+ * downscaled to Q1.15 for the MFCC pipeline.
+ *
+ * \param[in,out] source Audio source providing interleaved S32_LE frames.
+ * \param[in,out] buf MFCC input circular buffer (mono Q1.15).
+ * \param[in,out] emph Pre-emphasis filter state; updated when enabled.
+ * \param[in] frames Number of input frames to copy.
+ * \param[in] source_channel Channel index to extract from the source.
+ */
+void mfcc_source_copy_s32(struct sof_source *source, struct mfcc_buffer *buf,
+			  struct mfcc_pre_emph *emph, int frames, int source_channel)
+{
+	int32_t const *x;
+	int32_t const *x_start;
+	int32_t const *x_end;
+	int x_size;
+	int num_channels = source_get_channels(source);
+	size_t req_bytes = frames * num_channels * sizeof(int32_t);
+	int16_t *w = buf->w_ptr;
+	int src_without_wrap;
+	int dst_without_wrap;
+	int samples_without_wrap;
+	int remaining = frames;
+	int32_t s;
+	int ret;
+	int i;
+
+	ret = source_get_data_s32(source, req_bytes, &x, &x_start, &x_size);
+	if (ret)
+		return;
+
+	x += source_channel;
+	x_end = x_start + x_size;
+	while (remaining) {
+		src_without_wrap = (x_end - x) / num_channels;
+		dst_without_wrap = buf->end_addr - w;
+		samples_without_wrap = MIN(src_without_wrap, dst_without_wrap);
+		samples_without_wrap = MIN(samples_without_wrap, remaining);
+		if (emph->enable) {
+			for (i = 0; i < samples_without_wrap; i++) {
+				s = (int32_t)emph->delay * emph->coef +
+					Q_SHIFT(*x, 31, 30);
+				*w = sat_int16(Q_SHIFT_RND(s, 30, 15));
+				emph->delay = sat_int16(Q_SHIFT_RND(*x, 31, 15));
+				x += num_channels;
+				w++;
+			}
+		} else {
+			for (i = 0; i < samples_without_wrap; i++) {
+				*w = sat_int16(Q_SHIFT_RND(*x, 31, 15));
+				x += num_channels;
+				w++;
+			}
+		}
+
+		x = (x >= x_end) ? x - x_size : x;
+		w = mfcc_buffer_wrap(buf, w);
+		remaining -= samples_without_wrap;
+	}
+
+	buf->s_avail += frames;
+	buf->s_free -= frames;
+	buf->w_ptr = w;
+	source_release_data(source, req_bytes);
+}
+#endif /* CONFIG_FORMAT_S32LE */
+
+/*
  * The main processing function for MFCC
  */
 
-static int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
+/**
+ * \brief Run one STFT hop and Mel/DCT processing.
+ *
+ * Waits until the input circular buffer has at least one FFT window of
+ * samples, then for each available hop: copies the overlap-add window
+ * into the FFT scratch buffer, applies the analysis window, runs the
+ * 32-bit FFT, computes Mel log spectra, and either keeps the Mel output
+ * (when \c state->mel_only is true) or applies DCT and cepstral lifter
+ * to produce cepstral coefficients. Optionally runs VAD on the Mel
+ * spectrum and sends an IPC notification on VAD state changes.
+ *
+ * \param[in,out] mod Processing module.
+ * \param[in,out] cd  MFCC component data; state and configuration updated
+ *                    in-place. Output values land in \c state->mel_log_32
+ *                    (Mel mode) or \c state->cepstral_coef (cepstral mode).
+ *
+ * \return Number of int32_t output values produced this call (0 if not
+ *         enough input data was available, or no error condition was
+ *         detected).
+ */
+int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
 {
 	const struct comp_dev *dev = mod->dev;
 	struct sof_mfcc_config *config = cd->config;
@@ -45,6 +292,7 @@ static int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_dat
 	int32_t mel_value;
 	int32_t peak;
 	int32_t clamp_value;
+	bool vad_now;
 
 	/* Phase 1, wait until whole fft_size is filled with valid data. This way
 	 * first output cepstral coefficients originate from streamed data and not
@@ -147,11 +395,6 @@ static int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_dat
 					sat_int32(Q_MULTSR_32X32(s, config->mel_scale, 23, 12, 23));
 			}
 
-			/* Store Q9.7 version in mel_spectra for s16 output mode */
-			for (j = 0; j < state->dct.num_in; j++)
-				state->mel_spectra->data[j] =
-					sat_int16(state->mel_log_32[j] >> 16);
-
 			/* Enable this to check mmax decay */
 			comp_dbg(dev, "state->mmax = %d", state->mmax);
 		} else {
@@ -191,7 +434,7 @@ static int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_dat
 
 		/* Send notification when VAD state changes */
 		if (config->enable_vad && config->update_controls) {
-			bool vad_now = cd->vad.is_speech;
+			vad_now = cd->vad.is_speech;
 
 			if (vad_now != cd->vad_prev) {
 				mfcc_send_vad_notification(mod, vad_now ? 1 : 0);
@@ -203,6 +446,319 @@ static int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_dat
 	return cc_count;
 }
 
+/**
+ * \brief Write bytes into a possibly wrapped sink buffer.
+ *
+ * Caller must ensure max_bytes <= buf_size; otherwise the wrap branch
+ * would write past the end of the buffer. Returns 0 on bound violation.
+ */
+static size_t mfcc_sink_write_bytes(uint8_t **dst, uint8_t *buf_start,
+				    size_t buf_size, const uint8_t *src,
+				    size_t max_bytes)
+{
+	uint8_t *buf_end = buf_start + buf_size;
+	size_t chunk;
+
+	if (max_bytes == 0)
+		return 0;
+
+	/* Guard: a single write must not exceed total sink buffer size. */
+	if (max_bytes > buf_size)
+		return 0;
+
+	chunk = MIN(max_bytes, (size_t)(buf_end - *dst));
+	memcpy(*dst, src, chunk);
+	if (chunk < max_bytes) {
+		memcpy(buf_start, src + chunk, max_bytes - chunk);
+		*dst = buf_start + (max_bytes - chunk);
+	} else {
+		*dst += chunk;
+		if (*dst >= buf_end)
+			*dst = buf_start;
+	}
+
+	return max_bytes;
+}
+
+/**
+ * \brief Prepare the next MFCC output frame after STFT processing.
+ *
+ * Copies Mel (int32 Q9.23) or cepstral (int16 Q9.7 widened to int32 Q9.23)
+ * output into \c state->out_stage, sets up the read pointer for staged output,
+ * and marks the data header as pending.
+ *
+ * \param[in,out] state MFCC state.
+ * \param[in] num_ceps Number of int32_t values to publish; no-op if <= 0.
+ */
+static void mfcc_prepare_output(struct mfcc_state *state, int num_ceps)
+{
+	int k;
+
+	if (num_ceps <= 0)
+		return;
+
+	/* Copy into out_stage so the next STFT hop may freely reuse
+	 * mel_log_32 / cepstral_coef while this frame is still pending.
+	 */
+	if (state->mel_only) {
+		for (k = 0; k < num_ceps; k++)
+			state->out_stage[k] = state->mel_log_32[k];
+	} else {
+		/* Widen int16 Q9.7 cepstral coefficients to int32 Q9.23. */
+		for (k = 0; k < num_ceps; k++)
+			state->out_stage[k] = (int32_t)state->cepstral_coef->data[k] << 16;
+	}
+
+	state->out_data_ptr = state->out_stage;
+	state->out_remain = num_ceps;
+	state->header_pending = true;
+}
+
+/**
+ * \brief Commit MFCC output in compress mode.
+ *
+ * Writes the pending data header (if any) followed by the pending
+ * int32_t Mel/cepstral payload into the sink as a contiguous blob,
+ * without zero padding. When VAD + DTX are enabled, suppresses silence
+ * frames after a configurable trailing-silence count and optionally
+ * sends periodic keep-alive silence updates.
+ *
+ * \param[in,out] mod Processing module.
+ * \param[in,out] cd MFCC component data.
+ * \param[in,out] sinks Sink array; only sinks[0] is used.
+ * \param[in] num_ceps Number of int32_t values prepared for this hop.
+ *
+ * \return 0 on success, -ENOSPC if the sink cannot accept the frame,
+ *         or a negative error from the sink API.
+ */
+static int mfcc_output_compress(struct processing_module *mod, struct mfcc_comp_data *cd,
+				struct sof_sink **sinks, int num_ceps)
+{
+	struct mfcc_state *state = &cd->state;
+	size_t out_bytes;
+	size_t commit_bytes;
+	void *sink_ptr;
+	void *sink_start;
+	size_t sink_buf_size;
+	uint8_t *dst;
+	int ret;
+	bool pending;
+	bool send_periodic;
+
+	pending = state->header_pending || state->out_remain > 0;
+	if (!pending)
+		return 0;
+
+	if (num_ceps > 0 && cd->config->enable_vad && !cd->vad.is_speech) {
+		state->vad_silence_count++;
+		/* With DTX enabled, send trailing silence frames
+		 * (configurable count) then suppress. After trailing
+		 * frames, optionally send periodic silence updates
+		 * at the configured interval. This gives the host
+		 * enough silence to detect end-of-speech while
+		 * keeping alive updates during long silence.
+		 * Without DTX, output every frame regardless of VAD.
+		 */
+		if (cd->config->enable_dtx &&
+		    state->vad_silence_count > state->dtx_trailing_silence) {
+			send_periodic = false;
+
+			/* Check periodic silence frame send */
+			if (state->dtx_silence_interval > 0) {
+				state->dtx_silence_counter++;
+				if (state->dtx_silence_counter >=
+				    state->dtx_silence_interval) {
+					state->dtx_silence_counter = 0;
+					send_periodic = true;
+				}
+			}
+
+			if (!send_periodic) {
+				/* Suppress this frame */
+				state->header_pending = false;
+				state->out_remain = 0;
+				return 0;
+			}
+		}
+	} else {
+		state->vad_silence_count = 0;
+		state->dtx_silence_counter = 0;
+	}
+
+	out_bytes = (state->header_pending ? sizeof(state->header) : 0) +
+		    state->out_remain * sizeof(int32_t);
+	if (out_bytes == 0)
+		return 0;
+
+	commit_bytes = out_bytes;
+	if (sink_get_free_size(sinks[0]) < commit_bytes)
+		return -ENOSPC;
+
+	ret = sink_get_buffer(sinks[0], commit_bytes, &sink_ptr,
+			      &sink_start, &sink_buf_size);
+	if (ret)
+		return ret;
+
+	dst = sink_ptr;
+	if (state->header_pending) {
+		mfcc_sink_write_bytes(&dst, sink_start, sink_buf_size,
+				      (uint8_t *)&state->header,
+				      sizeof(state->header));
+	}
+
+	if (state->out_remain > 0) {
+		mfcc_sink_write_bytes(&dst, sink_start, sink_buf_size,
+				      (uint8_t *)state->out_data_ptr,
+				      state->out_remain * sizeof(int32_t));
+	}
+
+	ret = sink_commit_buffer(sinks[0], commit_bytes);
+	if (ret)
+		return ret;
+
+	state->header_pending = false;
+	state->out_remain = 0;
+	return 0;
+}
+
+/**
+ * \brief Commit MFCC output in legacy PCM mode.
+ *
+ * Acquires a sink period sized as \p frames audio frames, zero-fills it,
+ * then writes any pending data header and pending int32_t Mel/cepstral
+ * payload. Any payload that does not fit in the current period stays in
+ * \c state->out_data_ptr / \c state->out_remain for the next call.
+ *
+ * \param[in,out] mod Processing module.
+ * \param[in,out] cd MFCC component data.
+ * \param[in,out] sources Sources array (unused; reserved for symmetry).
+ * \param[in,out] sinks Sink array; only sinks[0] is used.
+ * \param[in] frames Number of audio frames the sink expects this period.
+ *
+ * \return 0 on success, -ENOSPC if the sink cannot accept the period,
+ *         or a negative error from the sink API.
+ */
+static int mfcc_output_legacy(struct processing_module *mod, struct mfcc_comp_data *cd,
+			      struct sof_source **sources, struct sof_sink **sinks,
+			      int frames)
+{
+	struct mfcc_state *state = &cd->state;
+	size_t commit_bytes;
+	size_t bytes_to_end;
+	size_t avail;
+	size_t hdr_size;
+	size_t data_bytes;
+	size_t to_write;
+	void *sink_ptr;
+	void *sink_start;
+	size_t sink_buf_size;
+	uint8_t *dst;
+	int n32;
+	int ret;
+
+	/* The MFCC sink is treated as an opaque byte container: the period
+	 * carries an MFCC blob (header + int32 features), not PCM audio.
+	 * Sizing the commit as sink_frame_bytes * frames keeps the period
+	 * size matched to whatever the sink advertises (S16_LE / S24_4LE /
+	 * S32_LE), so no format-specific conversion is needed. Any payload
+	 * that does not fit in the current period is carried over via
+	 * state->out_remain and drained in the next call(s). The host side
+	 * decodes the bytes as MFCC features regardless of the sink's
+	 * nominal PCM format, so non-S32 sinks (e.g. bench S16 topologies)
+	 * remain supported.
+	 */
+	commit_bytes = sink_get_frame_bytes(sinks[0]) * frames;
+	if (sink_get_free_size(sinks[0]) < commit_bytes)
+		return -ENOSPC;
+
+	ret = sink_get_buffer(sinks[0], commit_bytes, &sink_ptr,
+			      &sink_start, &sink_buf_size);
+	if (ret)
+		return ret;
+
+	/* Zero-fill entire period first */
+	bytes_to_end = (size_t)((uint8_t *)sink_start + sink_buf_size -
+				(uint8_t *)sink_ptr);
+
+	if (bytes_to_end >= commit_bytes) {
+		memset(sink_ptr, 0, commit_bytes);
+	} else {
+		memset(sink_ptr, 0, bytes_to_end);
+		memset(sink_start, 0, commit_bytes - bytes_to_end);
+	}
+
+	dst = sink_ptr;
+	avail = commit_bytes;
+
+	/* Write pending header */
+	if (state->header_pending && avail > 0) {
+		hdr_size = sizeof(state->header);
+
+		if (avail >= hdr_size) {
+			mfcc_sink_write_bytes(&dst, sink_start, sink_buf_size,
+					      (uint8_t *)&state->header, hdr_size);
+			avail -= hdr_size;
+			state->header_pending = false;
+		}
+	}
+
+	/* Write pending feature data (always int32) */
+	if (state->out_remain > 0 && avail > 0) {
+		data_bytes = state->out_remain * sizeof(int32_t);
+		to_write = MIN(data_bytes, avail) & ~(size_t)3;
+		if (to_write > 0) {
+			mfcc_sink_write_bytes(&dst, sink_start, sink_buf_size,
+					      (uint8_t *)state->out_data_ptr,
+					      to_write);
+			n32 = to_write / sizeof(int32_t);
+			state->out_data_ptr += n32;
+			state->out_remain -= n32;
+		}
+	}
+
+	return sink_commit_buffer(sinks[0], commit_bytes);
+}
+
+int mfcc_process_output(struct processing_module *mod, struct mfcc_comp_data *cd,
+			struct sof_source **sources, struct sof_sink **sinks,
+			int num_ceps, int frames)
+{
+	bool pending;
+
+	pending = cd->state.header_pending || cd->state.out_remain > 0;
+
+	if (cd->config->compress_output) {
+		/* Keep retrying pending frame first; don't overwrite pending state. */
+		if (!pending && num_ceps > 0)
+			mfcc_prepare_output(&cd->state, num_ceps);
+		else if (pending)
+			num_ceps = 0;
+
+		return mfcc_output_compress(mod, cd, sinks, num_ceps);
+	}
+
+	/* Legacy PCM mode: same guard. Overwriting out_data_ptr / out_remain
+	 * while a previous period's data is still pending would drop samples.
+	 */
+	if (!pending && num_ceps > 0)
+		mfcc_prepare_output(&cd->state, num_ceps);
+
+	return mfcc_output_legacy(mod, cd, sources, sinks, frames);
+}
+
+/**
+ * \brief Refill the FFT input scratch from the input circular buffer.
+ *
+ * Copies the saved overlap (\c state->prev_data) into the first samples
+ * of \c fft->fft_buf, appends one \c fft_hop_size of new data from the
+ * input circular buffer (consuming it), and finally saves the trailing
+ * window of the FFT input back to \c state->prev_data for the next hop.
+ * The caller is expected to have zeroed \c fft->fft_buf so that the
+ * complex imaginary parts remain 0.
+ *
+ * \param[in,out] state MFCC state. Input buffer pointers/counters and
+ *                      \c prev_data are updated; \c fft->fft_buf is filled.
+ */
 void mfcc_fill_fft_buffer(struct mfcc_state *state)
 {
 	struct mfcc_buffer *buf = &state->buf;
@@ -249,311 +805,3 @@ void mfcc_fill_fft_buffer(struct mfcc_state *state)
 		d += fft_elem_inc;
 	}
 }
-
-#if CONFIG_FORMAT_S16LE
-static int16_t *mfcc_sink_copy_zero_s16(const struct audio_stream *sink, int16_t *w_ptr,
-					int samples)
-{
-	int copied;
-	int nmax;
-	int n;
-
-	for (copied = 0; copied < samples; copied += n) {
-		nmax = samples - copied;
-		n = audio_stream_samples_without_wrap_s16(sink, w_ptr);
-		n = MIN(n, nmax);
-		memset(w_ptr, 0, n * sizeof(int16_t));
-		w_ptr = audio_stream_wrap(sink, w_ptr + n);
-	}
-
-	return w_ptr;
-}
-
-static int16_t *mfcc_sink_copy_data_s16(const struct audio_stream *sink, int16_t *w_ptr,
-					int samples, int16_t *r_ptr)
-{
-	int copied;
-	int nmax;
-	int n;
-
-	for (copied = 0; copied < samples; copied += n) {
-		nmax = samples - copied;
-		n = audio_stream_samples_without_wrap_s16(sink, w_ptr);
-		n = MIN(n, nmax);
-		/* Not using memcpy_s() due to speed need */
-		memcpy(w_ptr, r_ptr, n * sizeof(int16_t));
-		w_ptr = audio_stream_wrap(sink, w_ptr + n);
-		r_ptr += n;
-	}
-
-	return w_ptr;
-}
-
-void mfcc_s16_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, int frames)
-{
-	struct audio_stream *sink = bsink->data;
-	struct mfcc_comp_data *cd = module_get_private_data(mod);
-	struct mfcc_state *state = &cd->state;
-	struct mfcc_buffer *buf = &cd->state.buf;
-	int16_t *w_ptr = audio_stream_get_wptr(sink);
-	const int num_header_s16 = sizeof(state->header) / sizeof(int16_t);
-	int num_ceps;
-	int sink_samples;
-	int to_copy;
-
-	/* Get samples from source buffer */
-	mfcc_source_copy_s16(bsource, buf, &state->emph, frames, state->source_channel);
-
-	/* Run STFT and processing after FFT: Mel auditory filter and DCT. */
-	num_ceps = mfcc_stft_process(mod, cd);
-
-	/* If new output produced, set up pointer into scratch data and mark header pending */
-	if (num_ceps > 0) {
-		if (state->mel_only) {
-			state->out_data_ptr = state->mel_spectra->data;
-		} else {
-			state->out_data_ptr = state->cepstral_coef->data;
-		}
-
-		state->out_remain = num_ceps;
-		state->header_pending = true;
-	}
-
-	/* Write to sink, limited by period size */
-	sink_samples = frames * audio_stream_get_channels(sink);
-
-	/* Write data header first if pending */
-	if (state->header_pending) {
-		if (sink_samples < num_header_s16) {
-			/* Not enough sink space for header, defer entire frame */
-			mfcc_sink_copy_zero_s16(sink, w_ptr, sink_samples);
-			return;
-		}
-
-		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, num_header_s16,
-						(int16_t *)&state->header);
-		sink_samples -= num_header_s16;
-		state->header_pending = false;
-	}
-
-	/* Write cepstral/mel data from scratch buffer */
-	to_copy = MIN(state->out_remain, sink_samples);
-	if (to_copy > 0) {
-		w_ptr = mfcc_sink_copy_data_s16(sink, w_ptr, to_copy, state->out_data_ptr);
-		state->out_data_ptr += to_copy;
-		state->out_remain -= to_copy;
-		sink_samples -= to_copy;
-	}
-
-	/* Zero-fill remaining sink samples */
-	w_ptr = mfcc_sink_copy_zero_s16(sink, w_ptr, sink_samples);
-}
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static int32_t *mfcc_sink_copy_zero_s32(const struct audio_stream *sink, int32_t *w_ptr,
-					int samples)
-{
-	int copied;
-	int nmax;
-	int n;
-
-	for (copied = 0; copied < samples; copied += n) {
-		nmax = samples - copied;
-		n = audio_stream_samples_without_wrap_s32(sink, w_ptr);
-		n = MIN(n, nmax);
-		memset(w_ptr, 0, n * sizeof(int32_t));
-		w_ptr = audio_stream_wrap(sink, w_ptr + n);
-	}
-
-	return w_ptr;
-}
-
-static int32_t *mfcc_sink_copy_data_s32(const struct audio_stream *sink, int32_t *w_ptr,
-					int samples, int32_t *r_ptr)
-{
-	int copied;
-	int nmax;
-	int n;
-
-	for (copied = 0; copied < samples; copied += n) {
-		nmax = samples - copied;
-		n = audio_stream_samples_without_wrap_s32(sink, w_ptr);
-		n = MIN(n, nmax);
-		/* Not using memcpy_s() due to speed need */
-		memcpy(w_ptr, r_ptr, n * sizeof(int32_t));
-		w_ptr = audio_stream_wrap(sink, w_ptr + n);
-		r_ptr += n;
-	}
-
-	return w_ptr;
-}
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
-
-#if CONFIG_FORMAT_S24LE
-void mfcc_s24_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, int frames)
-{
-	struct audio_stream *sink = bsink->data;
-	struct mfcc_comp_data *cd = module_get_private_data(mod);
-	struct mfcc_state *state = &cd->state;
-	struct mfcc_buffer *buf = &cd->state.buf;
-	int32_t *w_ptr = audio_stream_get_wptr(sink);
-	const int num_header_s32 = sizeof(state->header) / sizeof(int32_t);
-	int num_ceps;
-	int sink_samples;
-	int remain_s32;
-	int to_copy;
-	int k;
-
-	/* Get samples from source buffer */
-	mfcc_source_copy_s24(bsource, buf, &state->emph, frames, state->source_channel);
-
-	/* Run STFT and processing after FFT */
-	num_ceps = mfcc_stft_process(mod, cd);
-
-	/* If new output produced, set up pointer into scratch data */
-	if (num_ceps > 0) {
-		if (state->mel_only) {
-			/* Convert mel_log_32 from Q9.23 to Q9.15 in-place */
-			for (k = 0; k < num_ceps; k++)
-				state->mel_log_32[k] >>= 8;
-
-			state->out_data_ptr_32 = state->mel_log_32;
-		} else {
-			state->out_data_ptr = state->cepstral_coef->data;
-		}
-
-		state->out_remain = num_ceps;
-		state->header_pending = true;
-	}
-
-	/* Write to sink, limited by period size */
-	sink_samples = frames * audio_stream_get_channels(sink);
-
-	/* Write data header first if pending */
-	if (state->header_pending) {
-		if (sink_samples < num_header_s32) {
-			/* Not enough sink space for header, defer entire frame */
-			mfcc_sink_copy_zero_s32(sink, w_ptr, sink_samples);
-			return;
-		}
-
-		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_header_s32,
-						(int32_t *)&state->header);
-		sink_samples -= num_header_s32;
-		state->header_pending = false;
-	}
-
-	if (state->mel_only) {
-		/* Write 32-bit mel data Q9.15, one value per int32_t */
-		to_copy = MIN(state->out_remain, sink_samples);
-		if (to_copy > 0) {
-			w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, to_copy,
-							state->out_data_ptr_32);
-			state->out_data_ptr_32 += to_copy;
-			state->out_remain -= to_copy;
-			sink_samples -= to_copy;
-		}
-	} else {
-		/* Write cepstral data packed as int32_t from scratch buffer */
-		remain_s32 = (state->out_remain + 1) / 2;
-		to_copy = MIN(remain_s32, sink_samples);
-		if (to_copy > 0) {
-			w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, to_copy,
-							(int32_t *)state->out_data_ptr);
-			state->out_data_ptr += to_copy * 2;
-			state->out_remain -= to_copy * 2;
-			if (state->out_remain < 0)
-				state->out_remain = 0;
-
-			sink_samples -= to_copy;
-		}
-	}
-
-	/* Zero-fill remaining sink samples */
-	w_ptr = mfcc_sink_copy_zero_s32(sink, w_ptr, sink_samples);
-}
-#endif /* CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S32LE
-void mfcc_s32_default(struct processing_module *mod, struct input_stream_buffer *bsource,
-		      struct output_stream_buffer *bsink, int frames)
-{
-	struct audio_stream *sink = bsink->data;
-	struct mfcc_comp_data *cd = module_get_private_data(mod);
-	struct mfcc_state *state = &cd->state;
-	struct mfcc_buffer *buf = &cd->state.buf;
-	int32_t *w_ptr = audio_stream_get_wptr(sink);
-	const int num_header_s32 = sizeof(state->header) / sizeof(int32_t);
-	int num_ceps;
-	int sink_samples;
-	int remain_s32;
-	int to_copy;
-
-	/* Get samples from source buffer */
-	mfcc_source_copy_s32(bsource, buf, &state->emph, frames, state->source_channel);
-
-	/* Run STFT and processing after FFT */
-	num_ceps = mfcc_stft_process(mod, cd);
-
-	/* If new output produced, set up pointer into scratch data */
-	if (num_ceps > 0) {
-		if (state->mel_only) {
-			state->out_data_ptr_32 = state->mel_log_32;
-		} else {
-			state->out_data_ptr = state->cepstral_coef->data;
-		}
-
-		state->out_remain = num_ceps;
-		state->header_pending = true;
-	}
-
-	/* Write to sink, limited by period size */
-	sink_samples = frames * audio_stream_get_channels(sink);
-
-	/* Write data header first if pending */
-	if (state->header_pending) {
-		if (sink_samples < num_header_s32) {
-			/* Not enough sink space for header, defer entire frame */
-			mfcc_sink_copy_zero_s32(sink, w_ptr, sink_samples);
-			return;
-		}
-
-		w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, num_header_s32,
-						(int32_t *)&state->header);
-		sink_samples -= num_header_s32;
-		state->header_pending = false;
-	}
-
-	if (state->mel_only) {
-		/* Write 32-bit mel data Q9.23, one value per int32_t */
-		to_copy = MIN(state->out_remain, sink_samples);
-		if (to_copy > 0) {
-			w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, to_copy,
-							state->out_data_ptr_32);
-			state->out_data_ptr_32 += to_copy;
-			state->out_remain -= to_copy;
-			sink_samples -= to_copy;
-		}
-	} else {
-		/* Write cepstral data packed as int32_t from scratch buffer */
-		remain_s32 = (state->out_remain + 1) / 2;
-		to_copy = MIN(remain_s32, sink_samples);
-		if (to_copy > 0) {
-			w_ptr = mfcc_sink_copy_data_s32(sink, w_ptr, to_copy,
-							(int32_t *)state->out_data_ptr);
-			state->out_data_ptr += to_copy * 2;
-			state->out_remain -= to_copy * 2;
-			if (state->out_remain < 0)
-				state->out_remain = 0;
-
-			sink_samples -= to_copy;
-		}
-	}
-
-	/* Zero-fill remaining sink samples */
-	w_ptr = mfcc_sink_copy_zero_s32(sink, w_ptr, sink_samples);
-}
-#endif /* CONFIG_FORMAT_S32LE */

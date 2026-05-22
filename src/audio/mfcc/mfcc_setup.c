@@ -27,6 +27,13 @@
 
 LOG_MODULE_REGISTER(mfcc_setup, CONFIG_SOF_LOG_LEVEL);
 
+/**
+ * \brief Initialize an MFCC input circular buffer descriptor.
+ *
+ * \param[out] buf Circular buffer descriptor to initialize.
+ * \param[in] base Backing storage (Q1.15 samples).
+ * \param[in] size Buffer length in samples.
+ */
 static void mfcc_init_buffer(struct mfcc_buffer *buf, int16_t *base, int size)
 {
 	buf->addr = base;
@@ -38,6 +45,15 @@ static void mfcc_init_buffer(struct mfcc_buffer *buf, int16_t *base, int size)
 	buf->s_length = size;
 }
 
+/**
+ * \brief Fill \c state->window with the configured analysis window.
+ *
+ * \param[in,out] state MFCC state; \c state->window is written, sized
+ *                      \c state->fft.fft_size and in Q1.15.
+ * \param[in] name Window type identifier from the MFCC configuration.
+ *
+ * \return 0 on success, -EINVAL for an unsupported window type.
+ */
 static int mfcc_get_window(struct mfcc_state *state, enum sof_mfcc_fft_window_type name)
 {
 	struct mfcc_fft *fft = &state->fft;
@@ -103,6 +119,24 @@ static int mfcc_get_cepstral_lifter(struct processing_module *mod, struct mfcc_c
 /* TODO mfcc setup needs to use the config blob, not hard coded parameters.
  * Also this is a too long function. Split to STFT, Mel filter, etc. parts.
  */
+/**
+ * \brief Allocate and initialize MFCC runtime state from the config blob.
+ *
+ * Validates the supplied configuration, allocates the input circular
+ * buffer, overlap buffer, window vector, FFT scratch, Mel filterbank,
+ * DCT/cepstral lifter matrices (when \c num_ceps > 0) and VAD state
+ * (when enabled). All allocations are freed on any failure path.
+ *
+ * \param[in,out] mod Processing module that owns the MFCC instance.
+ * \param[in] max_frames Maximum input frames the pipeline will deliver
+ *                       per call; sizes the input buffer.
+ * \param[in] sample_rate Input sample rate in Hz; must match
+ *                        \c config->sample_frequency.
+ * \param[in] channels Number of channels in the input stream.
+ *
+ * \return 0 on success or a negative error code (\c -EINVAL for bad
+ *         configuration, \c -ENOMEM for an allocation failure).
+ */
 int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, int channels)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
@@ -112,6 +146,10 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	struct mfcc_fft *fft = &state->fft;
 	struct psy_mel_filterbank *fb = &state->melfb;
 	struct dct_plan_16 *dct = &state->dct;
+	int mel_log_32_space;
+	int max_out_per_hop;
+	int out_per_hop;
+	int sink_per_hop;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -129,13 +167,45 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 		return -EINVAL;
 	}
 
-	if (sample_rate > MFCC_MAX_SAMPLE_RATE) {
-		comp_err(dev, "Sample rate %d exceeds max %d Hz", sample_rate, MFCC_MAX_SAMPLE_RATE);
+	if (sample_rate <= 0 || sample_rate > MFCC_MAX_SAMPLE_RATE) {
+		comp_err(dev, "Sample rate %d out of range (1..%d Hz)",
+			 sample_rate, MFCC_MAX_SAMPLE_RATE);
 		return -EINVAL;
 	}
 
 	if (config->sample_frequency != sample_rate) {
 		comp_err(dev, "Config sample_frequency does not match stream");
+		return -EINVAL;
+	}
+
+	/* Validate configuration parameters up front so that runtime code
+	 * (executed every hop in the DSP) can skip divide-by-zero / range
+	 * checks. Any later division by these fields is safe after this.
+	 */
+	if (config->frame_length <= 0 || config->frame_shift <= 0 ||
+	    config->frame_shift > config->frame_length) {
+		comp_err(dev, "Illegal frame_length %d or frame_shift %d",
+			 config->frame_length, config->frame_shift);
+		return -EINVAL;
+	}
+
+	if (config->num_mel_bins <= 0) {
+		comp_err(dev, "Illegal num_mel_bins %d", config->num_mel_bins);
+		return -EINVAL;
+	}
+
+	if (config->num_ceps < 0) {
+		comp_err(dev, "Illegal num_ceps %d", config->num_ceps);
+		return -EINVAL;
+	}
+
+	/* cepstral_lifter is used as a divisor in mfcc_get_cepstral_lifter().
+	 * Either disabled (== 0) or strictly positive. Negative values are
+	 * rejected to keep runtime math (every hop in DSP) free of guards.
+	 */
+	if (config->num_ceps > 0 && config->cepstral_lifter < 0) {
+		comp_err(dev, "Illegal cepstral_lifter %d (must be >= 0)",
+			 config->cepstral_lifter);
 		return -EINVAL;
 	}
 
@@ -271,10 +341,14 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 
 		state->lifter.num_ceps = config->num_ceps;
 		state->lifter.cepstral_lifter = config->cepstral_lifter; /* Q7.9 max 64.0*/
-		ret = mfcc_get_cepstral_lifter(mod, &state->lifter);
-		if (ret < 0) {
-			comp_err(dev, "Failed cepstral lifter");
-			goto free_dct_matrix;
+		if (state->lifter.cepstral_lifter > 0) {
+			ret = mfcc_get_cepstral_lifter(mod, &state->lifter);
+			if (ret < 0) {
+				comp_err(dev, "Failed cepstral lifter");
+				goto free_dct_matrix;
+			}
+		} else {
+			state->lifter.matrix = NULL;
 		}
 
 		state->mel_only = false;
@@ -311,7 +385,7 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	state->mel_log_32 = &state->power_spectra[fft->half_fft_size];
 
 	/* Check that mel_log_32 fits in the remaining fft_buf scratch space */
-	int mel_log_32_space = (int)(fft->fft_buffer_size / sizeof(int32_t)) - fft->half_fft_size;
+	mel_log_32_space = (int)(fft->fft_buffer_size / sizeof(int32_t)) - fft->half_fft_size;
 
 	if (config->num_mel_bins > mel_log_32_space) {
 		comp_err(dev, "num_mel_bins %d exceeds mel_log_32 scratch space %d",
@@ -331,21 +405,35 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	/* Allocate output buffer for multi-period output. Size allows for
 	 * current output data plus leftover from previous period.
 	 */
-	int max_out_per_hop = state->mel_only ? dct->num_in : dct->num_out;
+	max_out_per_hop = state->mel_only ? dct->num_in : dct->num_out;
 
 	/* Check that output data can be drained within the periods spanned by one
 	 * FFT hop. Each hop consumes fft_hop_size input samples and produces
-	 * max_out_per_hop + 12 (magic header) int16_t output values. The sink provides
-	 * at least fft_hop_size * channels int16_t samples per hop (worst case s16).
+	 * max_out_per_hop + header int32_t output values. The sink provides
+	 * at least fft_hop_size * channels int32_t samples per hop (worst case s32).
 	 * If output exceeds this, data accumulates and will eventually overflow.
+	 * This check is not needed in compress output mode where only actual data
+	 * bytes are committed without zero padding.
 	 */
-	int out_per_hop = max_out_per_hop + sizeof(state->header) / sizeof(int16_t);
-	int sink_per_hop = fft->fft_hop_size * channels;
+	out_per_hop = max_out_per_hop + sizeof(state->header) / sizeof(int32_t);
+	sink_per_hop = fft->fft_hop_size * channels;
 
-	if (out_per_hop > sink_per_hop) {
-		comp_err(dev, "Output %d int16 per hop exceeds sink capacity %d (hop %d x ch %d)",
+	if (!config->compress_output && out_per_hop > sink_per_hop) {
+		comp_err(dev, "Output %d int32 per hop exceeds sink capacity %d (hop %d x ch %d)",
 			 out_per_hop, sink_per_hop, fft->fft_hop_size, channels);
 		ret = -EINVAL;
+		goto free_lifter;
+	}
+
+	/* Staging buffer for pending output. Decouples committed data from
+	 * the FFT scratch (mel_log_32) so the next STFT hop can run while a
+	 * previous frame is still being drained across multiple periods.
+	 */
+	state->out_stage_size = max_out_per_hop;
+	state->out_stage = mod_zalloc(mod, max_out_per_hop * sizeof(int32_t));
+	if (!state->out_stage) {
+		comp_err(dev, "Failed output staging buffer allocate");
+		ret = -ENOMEM;
 		goto free_lifter;
 	}
 
@@ -357,19 +445,25 @@ int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, i
 	memset(&state->header, 0, sizeof(state->header));
 	state->header.magic = MFCC_MAGIC;
 	state->out_data_ptr = NULL;
-	state->out_data_ptr_32 = NULL;
 	state->out_remain = 0;
+	state->vad_silence_count = 0;
+	state->dtx_trailing_silence = config->dtx_trailing_silence_hops;
+	state->dtx_silence_interval = config->dtx_silence_hops_interval;
+	state->dtx_silence_counter = 0;
 
 	if (config->enable_vad) {
 		ret = mfcc_vad_init(&cd->vad, config->num_mel_bins, sample_rate, mod);
 		if (ret < 0) {
 			comp_err(dev, "Failed VAD init");
-			goto free_lifter;
+			goto free_out_stage;
 		}
 	}
 
 	comp_dbg(dev, "done");
 	return 0;
+
+free_out_stage:
+	mod_free(mod, state->out_stage);
 
 free_lifter:
 	mod_free(mod, state->lifter.matrix);
@@ -396,6 +490,12 @@ exit:
 	return ret;
 }
 
+/**
+ * \brief Free a single MFCC allocation and clear the caller's pointer.
+ *
+ * \param[in,out] mod Processing module owning the allocation.
+ * \param[in,out] ptr Address of the pointer to free; set to NULL on return.
+ */
 static void mfcc_free_and_null(struct processing_module *mod, void **ptr)
 {
 	mod_free(mod, *ptr);
@@ -404,6 +504,16 @@ static void mfcc_free_and_null(struct processing_module *mod, void **ptr)
 
 /* Free MFCC buffers to prevent leaks on reset->prepare cycles.
  * mfcc_free_buffers() NULLs the pointers after free.
+ */
+/**
+ * \brief Release all MFCC runtime allocations.
+ *
+ * Frees FFT plan, scratch buffers, input/overlap buffers, Mel
+ * filterbank data, DCT matrix, cepstral lifter matrix, and VAD state.
+ * All freed pointers are set to NULL so the function is safe to call
+ * across repeated reset/prepare cycles.
+ *
+ * \param[in,out] mod Processing module that owns the MFCC instance.
  */
 void mfcc_free_buffers(struct processing_module *mod)
 {
@@ -417,6 +527,7 @@ void mfcc_free_buffers(struct processing_module *mod)
 	mfcc_free_and_null(mod, (void **)&cd->state.melfb.data);
 	mfcc_free_and_null(mod, (void **)&cd->state.dct.matrix);
 	mfcc_free_and_null(mod, (void **)&cd->state.lifter.matrix);
+	mfcc_free_and_null(mod, (void **)&cd->state.out_stage);
 	mfcc_free_and_null(mod, (void **)&cd->vad.noise_floor);
 	mfcc_free_and_null(mod, (void **)&cd->vad.weights);
 }
