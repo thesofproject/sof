@@ -3,8 +3,9 @@
 // Copyright(c) 2025 Intel Corporation. All rights reserved.
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/ipc-config.h>
@@ -174,16 +175,15 @@ int8_t expected_feature_yes[TFLM_FEATURE_SIZE] = {
  */
 
 static int tflm_process(struct processing_module *mod,
-			struct input_stream_buffer *input_buffers,
-			int num_input_buffers,
-			struct output_stream_buffer *output_buffers,
-			int num_output_buffers)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	struct tflm_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	int features = input_buffers[0].size;
+	size_t frame_bytes = source_get_frame_bytes(sources[0]);
+	int features = source_get_data_frames_available(sources[0]);
+	const void *data_ptr, *buf_start;
+	size_t buf_size;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -192,12 +192,18 @@ static int tflm_process(struct processing_module *mod,
 	 * by TFLM_FEATURE_SIZE until buffer empty.
 	 */
 	while (features >= TFLM_FEATURE_ELEM_COUNT) {
-		cd->tfc.audio_features = source->r_ptr;
+		ret = source_get_data(sources[0], TFLM_FEATURE_ELEM_COUNT * frame_bytes,
+				      &data_ptr, &buf_start, &buf_size);
+		if (ret)
+			return ret;
+
+		cd->tfc.audio_features = data_ptr;
 		cd->tfc.audio_data_size = TFLM_FEATURE_ELEM_COUNT;
 		ret = TF_ProcessClassify(&cd->tfc);
 		if (!ret) {
 			comp_err(dev, "classify failed %s.",
 				 cd->tfc.error);
+			source_release_data(sources[0], 0);
 			return ret;
 		}
 
@@ -207,10 +213,9 @@ static int tflm_process(struct processing_module *mod,
 				 cd->tfc.predictions[i], prediction[i]);
 		}
 
-		/* calc new free and available after moving onto next feature */
-		module_update_buffer_position(&input_buffers[0],
-					      &output_buffers[0], TFLM_FEATURE_SIZE);
-		features = input_buffers[0].size;
+		/* advance by one stride */
+		source_release_data(sources[0], TFLM_FEATURE_SIZE * frame_bytes);
+		features = source_get_data_frames_available(sources[0]);
 	}
 
 	return ret;
@@ -226,7 +231,7 @@ static int tflm_reset(struct processing_module *mod)
 static const struct module_interface tflmcly_interface = {
 	.init = tflm_init,
 //	.prepare = tflm_prepare,
-	.process_audio_stream = tflm_process,
+	.process = tflm_process,
 	.set_configuration = tflm_set_config,
 //	.get_configuration = tflm_get_config,
 	.reset = tflm_reset,
