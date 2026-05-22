@@ -494,6 +494,11 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 					   stack_size, dp_thread_fn, ptask, NULL, NULL,
 					   CONFIG_DP_THREAD_PRIORITY, ptask->flags, K_FOREVER);
 
+	unsigned int pidx;
+	size_t size;
+	uintptr_t start;
+	bool on_pool = false;
+
 #ifdef CONFIG_SCHED_CPU_MASK
 	/* pin the thread to specific core */
 	ret = k_thread_cpu_pin(pdata->thread_id, core);
@@ -506,10 +511,6 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	k_thread_access_grant(pdata->thread_id, pdata->event, &dp_sync[core]);
 	scheduler_dp_grant(pdata->thread_id, core);
 
-	unsigned int pidx;
-	size_t size;
-	uintptr_t start;
-	bool on_pool = false;
 	struct k_mem_domain *mdom = objpool_alloc(&dp_mdom_head, sizeof(*mdom),
 						  SOF_MEM_FLAG_COHERENT);
 
