@@ -12,6 +12,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
+#include <module/audio/source_api.h>
+#include <module/audio/sink_api.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -36,29 +38,39 @@ LOG_MODULE_REGISTER(mfcc, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(mfcc);
 
-__cold_rodata const struct mfcc_func_map mfcc_fm[] = {
-#if CONFIG_FORMAT_S16LE
-	{SOF_IPC_FRAME_S16_LE, mfcc_s16_default},
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, mfcc_s24_default},
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE, mfcc_s32_default},
-#endif /* CONFIG_FORMAT_S32LE */
+/** \brief Source/sink API based source copy function map. */
+struct mfcc_source_func_map {
+	uint8_t source_fmt;
+	mfcc_source_func func;
 };
 
-static mfcc_func mfcc_find_func(enum sof_ipc_frame source_format,
-				enum sof_ipc_frame sink_format,
-				const struct mfcc_func_map *map,
-				int n)
+__cold_rodata static const struct mfcc_source_func_map mfcc_sfm[] = {
+#if CONFIG_FORMAT_S16LE
+	{SOF_IPC_FRAME_S16_LE, mfcc_source_copy_s16},
+#endif
+#if CONFIG_FORMAT_S24LE
+	{SOF_IPC_FRAME_S24_4LE, mfcc_source_copy_s24},
+#endif
+#if CONFIG_FORMAT_S32LE
+	{SOF_IPC_FRAME_S32_LE, mfcc_source_copy_s32},
+#endif
+};
+
+/**
+ * \brief Look up the source copy function for a given input format.
+ *
+ * \param[in] source_format SOF IPC frame format of the input stream.
+ *
+ * \return Pointer to the matching mfcc_source_func, or NULL if the
+ *         format is not supported in this build.
+ */
+static mfcc_source_func mfcc_find_source_func(enum sof_ipc_frame source_format)
 {
 	int i;
 
-	/* Find suitable processing function from map. */
-	for (i = 0; i < n; i++) {
-		if (source_format == map[i].source)
-			return map[i].func;
+	for (i = 0; i < ARRAY_SIZE(mfcc_sfm); i++) {
+		if (source_format == mfcc_sfm[i].source_fmt)
+			return mfcc_sfm[i].func;
 	}
 
 	return NULL;
@@ -68,6 +80,16 @@ static mfcc_func mfcc_find_func(enum sof_ipc_frame source_format,
  * End of MFCC setup code. Next the standard component methods.
  */
 
+/**
+ * \brief MFCC module init callback.
+ *
+ * Allocates the component private data and the configuration blob
+ * handler used to receive the MFCC configuration from user space.
+ *
+ * \param[in,out] mod Processing module being initialized.
+ *
+ * \return 0 on success, -ENOMEM on allocation failure.
+ */
 static int mfcc_init(struct processing_module *mod)
 {
 	struct module_data *md = &mod->priv;
@@ -92,6 +114,16 @@ static int mfcc_init(struct processing_module *mod)
 	return 0;
 }
 
+/**
+ * \brief MFCC module free callback.
+ *
+ * Releases the IPC notification message, configuration blob handler,
+ * runtime buffers and the private data structure.
+ *
+ * \param[in,out] mod Processing module being freed.
+ *
+ * \return 0 on success.
+ */
 static int mfcc_free(struct processing_module *mod)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
@@ -105,28 +137,76 @@ static int mfcc_free(struct processing_module *mod)
 	return 0;
 }
 
-
+/**
+ * \brief Source/sink API based process function for MFCC.
+ *
+ * Reads input audio from sof_source, runs the STFT/Mel/DCT stage, and
+ * delegates output formatting and commit handling to mfcc_common.c.
+ *
+ * \param[in,out] mod Processing module.
+ * \param[in,out] sources Source array; only sources[0] is used.
+ * \param[in] num_of_sources Number of sources (must be 1).
+ * \param[in,out] sinks Sink array; only sinks[0] is used.
+ * \param[in] num_of_sinks Number of sinks (must be 1).
+ *
+ * \return 0 on success, or a negative error code from the STFT or output stages.
+ */
 static int mfcc_process(struct processing_module *mod,
-			struct input_stream_buffer *input_buffers, int num_input_buffers,
-			struct output_stream_buffer *output_buffers, int num_output_buffers)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = input_buffers->data;
-	struct audio_stream *sink = output_buffers->data;
-	int frames = input_buffers->size;
+	struct comp_dev *dev = mod->dev;
+	struct mfcc_state *state = &cd->state;
+	bool pending;
+	size_t source_avail;
+	int frames;
+	int num_ceps;
 
-	comp_dbg(mod->dev, "start");
+	comp_dbg(dev, "start");
 
-	frames = MIN(frames, cd->max_frames);
-	cd->mfcc_func(mod, input_buffers, output_buffers, frames);
+	/* In compress mode, retry pending output first and avoid producing
+	 * new frames until previous frame has been committed. In legacy
+	 * mode, pending output is held in a dedicated staging buffer
+	 * (state->out_stage) that STFT does not touch, so input processing
+	 * can continue while the previous period is drained.
+	 */
+	pending = state->header_pending || state->out_remain > 0;
+	if (cd->config->compress_output && pending)
+		return mfcc_process_output(mod, cd, sources, sinks, 0, 0);
 
-	/* TODO: use module_update_buffer_position() from #6194 */
-	input_buffers->consumed += audio_stream_frame_bytes(source) * frames;
-	output_buffers->size += audio_stream_frame_bytes(sink) * frames;
-	comp_dbg(mod->dev, "done");
-	return 0;
+	source_avail = source_get_data_frames_available(sources[0]);
+	frames = MIN(source_avail, cd->max_frames);
+	if (!frames)
+		return 0;
+
+	/* Copy input audio from source to MFCC internal circular buffer */
+	cd->source_func(sources[0], &state->buf, &state->emph, frames, state->source_channel);
+
+	/* Run STFT and Mel/DCT processing */
+	num_ceps = mfcc_stft_process(mod, cd);
+	if (num_ceps < 0)
+		return num_ceps;
+
+	return mfcc_process_output(mod, cd, sources, sinks, num_ceps, frames);
 }
 
+/**
+ * \brief MFCC module prepare callback.
+ *
+ * Validates the source/sink connection, reads the configuration blob,
+ * initializes the MFCC processing state via mfcc_setup(), selects the
+ * input copy function for the source frame format, and prepares the
+ * VAD switch control notification when enabled.
+ *
+ * \param[in,out] mod Processing module being prepared.
+ * \param[in,out] sources Source array; only sources[0] is used.
+ * \param[in] num_of_sources Number of sources (must be 1).
+ * \param[in,out] sinks Sink array; only sinks[0] is used.
+ * \param[in] num_of_sinks Number of sinks (must be 1).
+ *
+ * \return 0 on success or a negative error code.
+ */
 static int mfcc_prepare(struct processing_module *mod,
 			struct sof_source **sources, int num_of_sources,
 			struct sof_sink **sinks, int num_of_sinks)
@@ -172,12 +252,20 @@ static int mfcc_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	cd->mfcc_func = mfcc_find_func(source_format, sink_format, mfcc_fm, ARRAY_SIZE(mfcc_fm));
-	if (!cd->mfcc_func) {
-		comp_err(dev, "No proc func");
+	cd->source_func = mfcc_find_source_func(source_format);
+	if (!cd->source_func) {
+		comp_err(dev, "No source func");
 		mfcc_free_buffers(mod);
 		return -EINVAL;
 	}
+
+	cd->source_format = source_format;
+
+	if (cd->config->compress_output)
+		comp_info(dev, "compress PCM output mode enabled");
+
+	if (cd->config->enable_dtx && !cd->config->compress_output)
+		comp_warn(dev, "enable_dtx ignored in normal PCM mode, only applies to compress");
 
 	/* Initialize VAD switch control notification if enabled */
 	if (cd->config->enable_vad && cd->config->update_controls) {
@@ -194,6 +282,17 @@ static int mfcc_prepare(struct processing_module *mod,
 	return 0;
 }
 
+/**
+ * \brief MFCC module reset callback.
+ *
+ * Frees runtime buffers (NULLing their pointers) so a subsequent
+ * mfcc_prepare() can re-allocate cleanly. The configuration blob
+ * handler and IPC notification message are preserved.
+ *
+ * \param[in,out] mod Processing module being reset.
+ *
+ * \return 0 on success.
+ */
 static int mfcc_reset(struct processing_module *mod)
 {
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
@@ -206,7 +305,7 @@ static int mfcc_reset(struct processing_module *mod)
 	mfcc_free_buffers(mod);
 
 	/* Reset to similar state as init() */
-	cd->mfcc_func = NULL;
+	cd->source_func = NULL;
 	return 0;
 }
 
@@ -215,7 +314,7 @@ static const struct module_interface mfcc_interface = {
 	.free = mfcc_free,
 	.set_configuration = mfcc_set_config,
 	.get_configuration = mfcc_get_config,
-	.process_audio_stream = mfcc_process,
+	.process = mfcc_process,
 	.prepare = mfcc_prepare,
 	.reset = mfcc_reset,
 };
