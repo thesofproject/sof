@@ -229,6 +229,9 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 
 	hdr = ipc_compact_read_msg();
 
+	if (hdr)
+		ipc_stats_record_rx(((uint32_t *)hdr)[0], ((uint32_t *)hdr)[1]);
+
 	/* perform command */
 	ipc_cmd(hdr);
 
@@ -272,13 +275,18 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
+	int ret;
+
 	if (ipc_service_get_tx_buffer_size(&sof_ipc_ept) == 0)
 		return -EBUSY;
 
 	/* prepare the message and copy to mailbox */
 	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
 
-	return ipc_service_send(&sof_ipc_ept, hdr, sizeof(*hdr));
+	ret = ipc_service_send(&sof_ipc_ept, hdr, sizeof(*hdr));
+	if (hdr)
+		ipc_stats_record_tx(((uint32_t *)hdr)[0], ((uint32_t *)hdr)[1], false, ret);
+	return ret;
 }
 
 void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
@@ -286,6 +294,9 @@ void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
 	/* prepare the message and copy to mailbox */
 	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
 	int ret = ipc_service_send_critical(&sof_ipc_ept, hdr, sizeof(*hdr));
+
+	if (hdr)
+		ipc_stats_record_tx(((uint32_t *)hdr)[0], ((uint32_t *)hdr)[1], true, ret);
 
 	if (ret < 0)
 		tr_err(&ipc_tr, "ipc_service_send_critical() failed: %d", ret);

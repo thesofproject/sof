@@ -336,6 +336,23 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	return 0;
 }
 
+static void scheduler_dp_dump_tasks(void *data,
+				    void (*cb)(struct task *task, void *ctx),
+				    void *ctx)
+{
+	struct scheduler_dp_data *dp_sch = data;
+	struct list_item *tlist;
+	unsigned int lock_key;
+
+	lock_key = scheduler_dp_lock(cpu_get_id());
+	list_for_item(tlist, &dp_sch->tasks) {
+		struct task *task = container_of(tlist, struct task, list);
+
+		cb(task, ctx);
+	}
+	scheduler_dp_unlock(lock_key);
+}
+
 static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task		= scheduler_dp_task_shedule,
 #if CONFIG_SOF_USERSPACE_APPLICATION
@@ -344,6 +361,7 @@ static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task_cancel	= scheduler_dp_task_stop,
 #endif
 	.schedule_task_free	= scheduler_dp_task_free,
+	.scheduler_dump_tasks	= scheduler_dp_dump_tasks,
 };
 
 int scheduler_dp_init(void)

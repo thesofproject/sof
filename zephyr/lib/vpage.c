@@ -12,6 +12,7 @@
 #include <sof/lib/regions_mm.h>
 #include <sof/lib/vpage.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
+#include <zephyr/shell/shell.h>
 
 LOG_MODULE_REGISTER(vpage, CONFIG_SOF_LOG_LEVEL);
 
@@ -249,6 +250,26 @@ void vpage_free(void *ptr)
 	if (!ret)
 		LOG_INF("vptr %p free/total pages %d/%d", ptr, vpage_ctx.free_pages,
 			vpage_ctx.total_pages);
+}
+
+void vpage_info(const struct shell *sh)
+{
+	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
+
+	shell_fprintf(sh, SHELL_NORMAL, "Virtual Page Allocator Status:\n");
+	shell_fprintf(sh, SHELL_NORMAL, "  Region Base: %p, Size: %#zx bytes, Total Pages: %u\n",
+		      (void *)vpage_ctx.virtual_region->addr,
+		      vpage_ctx.virtual_region->size, vpage_ctx.total_pages);
+	shell_fprintf(sh, SHELL_NORMAL, "  Free Pages: %u\n", vpage_ctx.free_pages);
+	shell_fprintf(sh, SHELL_NORMAL, "  Allocated Elements in use: %u / %d\n",
+		      vpage_ctx.num_elems_in_use, VPAGE_MAX_ALLOCS);
+
+	for (unsigned int i = 0; i < vpage_ctx.num_elems_in_use; i++) {
+		shell_fprintf(sh, SHELL_NORMAL, "    [%u] vpage %u, pages %u\n",
+			      i, vpage_ctx.velems[i].vpage, vpage_ctx.velems[i].pages);
+	}
+
+	k_mutex_unlock(&vpage_ctx.lock);
 }
 
 /**

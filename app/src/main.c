@@ -79,7 +79,11 @@ void test_main(void)
 	sof_app_main();
 #if CONFIG_SOF_BOOT_TEST && defined(QEMU_BOOT_TESTS)
 	sof_run_boot_tests();
+#ifdef CONFIG_SHELL
+	k_sleep(K_FOREVER);
+#else
 	qemu_xtensa_exit(0);
+#endif
 #endif
 }
 #else
