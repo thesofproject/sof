@@ -57,13 +57,15 @@ int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
 
 	if (!dst->data) {
 		/* No space for config available yet, allocate now */
-		dst->data = rballoc(SOF_MEM_FLAG_USER, size);
+		dst->data = sof_heap_alloc(sof_sys_user_heap_get(),
+					   SOF_MEM_FLAG_USER, size, 0);
 	} else if (dst->size != size) {
 		/* The size allocated for previous config doesn't match the new one.
 		 * Free old container and allocate new one.
 		 */
-		rfree(dst->data);
-		dst->data = rballoc(SOF_MEM_FLAG_USER, size);
+		sof_heap_free(sof_sys_user_heap_get(), dst->data);
+		dst->data = sof_heap_alloc(sof_sys_user_heap_get(),
+					   SOF_MEM_FLAG_USER, size, 0);
 	}
 	if (!dst->data) {
 		comp_err(dev, "failed to allocate space for setup config.");
@@ -282,6 +284,63 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 }
 EXPORT_SYMBOL(z_impl_mod_alloc_ext);
 
+struct ipc_msg *mod_ipc_msg_w_ext_init(struct processing_module *mod,
+					      uint32_t header,
+					      uint32_t extension,
+					      uint32_t size)
+{
+	struct module_resources *res = &mod->priv.resources;
+	struct module_resource *container;
+	struct ipc_msg *msg;
+
+	MEM_API_CHECK_THREAD(res);
+
+	container = container_get(mod);
+	if (!container)
+		return NULL;
+
+	if (res->alloc->vreg)
+		msg = vregion_alloc(res->alloc->vreg, VREGION_MEM_TYPE_INTERIM, sizeof(*msg));
+	else
+		msg = sof_heap_alloc(res->alloc->heap, SOF_MEM_FLAG_COHERENT, sizeof(*msg), 0);
+
+	if (!msg) {
+		container_put(mod, container);
+		return NULL;
+	}
+
+	memset(msg, 0, sizeof(*msg));
+
+	if (size) {
+		if (res->alloc->vreg)
+			msg->tx_data = vregion_alloc(res->alloc->vreg,
+						     VREGION_MEM_TYPE_INTERIM, size);
+		else
+			msg->tx_data = sof_heap_alloc(res->alloc->heap,
+						      SOF_MEM_FLAG_COHERENT, size, 0);
+		if (!msg->tx_data) {
+			if (res->alloc->vreg)
+				vregion_free(res->alloc->vreg, msg);
+			else
+				sof_heap_free(res->alloc->heap, msg);
+			container_put(mod, container);
+			return NULL;
+		}
+	}
+
+	msg->header = header;
+	msg->extension = extension;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	container->msg = msg;
+	container->size = 0;
+	container->type = MOD_RES_IPC_MSG;
+
+	return msg;
+}
+EXPORT_SYMBOL(mod_ipc_msg_w_ext_init);
+
 /**
  * Creates a blob handler and releases it when the module is unloaded
  * @param mod	Pointer to module this memory block is allocated for.
@@ -292,7 +351,7 @@ EXPORT_SYMBOL(z_impl_mod_alloc_ext);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod)
 {
-	struct module_resources * __maybe_unused res = &mod->priv.resources;
+	struct module_resources *res = &mod->priv.resources;
 	struct comp_data_blob_handler *bhp;
 	struct module_resource *container;
 
@@ -302,7 +361,7 @@ struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_modul
 	if (!container)
 		return NULL;
 
-	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
+	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL, res->alloc->heap);
 	if (!bhp) {
 		container_put(mod, container);
 		return NULL;
@@ -383,6 +442,23 @@ static int free_contents(struct processing_module *mod, struct module_resource *
 		fast_put(res->alloc, mdom, container->sram_ptr);
 		return 0;
 #endif
+	case MOD_RES_IPC_MSG: {
+		struct ipc *ipc = ipc_get();
+		k_spinlock_key_t key;
+
+		key = k_spin_lock(&ipc->lock);
+		list_item_del(&container->msg->list);
+		k_spin_unlock(&ipc->lock, key);
+
+		if (res->alloc->vreg) {
+			vregion_free(res->alloc->vreg, container->msg->tx_data);
+			vregion_free(res->alloc->vreg, container->msg);
+		} else {
+			sof_heap_free(res->alloc->heap, container->msg->tx_data);
+			sof_heap_free(res->alloc->heap, container->msg);
+		}
+		return 0;
+	}
 	default:
 		comp_err(mod->dev, "Unknown resource type: %d", container->type);
 	}
@@ -486,6 +562,20 @@ int z_vrfy_mod_free(struct processing_module *mod, const void *ptr)
 	return z_impl_mod_free(mod, ptr);
 }
 #include <zephyr/syscalls/mod_free_mrsh.c>
+
+void z_vrfy_mod_free_all(struct processing_module *mod)
+{
+	size_t h_size = 0;
+	uintptr_t h_start;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	mod_heap_info(mod, &h_size, &h_start);
+	if (h_size)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+
+	z_impl_mod_free_all(mod);
+}
+#include <zephyr/syscalls/mod_free_all_mrsh.c>
 #endif
 
 #if CONFIG_COMP_BLOB
@@ -550,7 +640,7 @@ int module_prepare(struct processing_module *mod,
 	 * as it has been applied during the procedure - it is safe to
 	 * free it.
 	 */
-	rfree(md->cfg.data);
+	sof_heap_free(sof_sys_user_heap_get(), md->cfg.data);
 
 	md->cfg.avail = false;
 	md->cfg.data = NULL;
@@ -685,7 +775,7 @@ int module_reset(struct processing_module *mod)
 
 	md->cfg.avail = false;
 	md->cfg.size = 0;
-	rfree(md->cfg.data);
+	sof_heap_free(sof_sys_user_heap_get(), md->cfg.data);
 	md->cfg.data = NULL;
 
 #if CONFIG_IPC_MAJOR_3
@@ -704,7 +794,7 @@ int module_reset(struct processing_module *mod)
  *
  * This function is called automatically when the module is unloaded.
  */
-void mod_free_all(struct processing_module *mod)
+void z_impl_mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
 
@@ -719,6 +809,7 @@ void mod_free_all(struct processing_module *mod)
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);
 }
+EXPORT_SYMBOL(z_impl_mod_free_all);
 
 int module_free(struct processing_module *mod)
 {
@@ -736,10 +827,10 @@ int module_free(struct processing_module *mod)
 	/* Free all memory shared by module_adapter & module */
 	md->cfg.avail = false;
 	md->cfg.size = 0;
-	rfree(md->cfg.data);
+	sof_heap_free(sof_sys_user_heap_get(), md->cfg.data);
 	md->cfg.data = NULL;
 	if (md->runtime_params) {
-		rfree(md->runtime_params);
+		sof_heap_free(sof_sys_user_heap_get(), md->runtime_params);
 		md->runtime_params = NULL;
 	}
 #if CONFIG_IPC_MAJOR_3
@@ -806,7 +897,9 @@ int module_set_configuration(struct processing_module *mod,
 		}
 
 		/* Allocate buffer for new params */
-		md->runtime_params = rballoc(SOF_MEM_FLAG_USER, md->new_cfg_size);
+		md->runtime_params = sof_heap_alloc(sof_sys_user_heap_get(),
+						    SOF_MEM_FLAG_USER,
+						    md->new_cfg_size, 0);
 		if (!md->runtime_params) {
 			comp_err(dev, "space allocation for new params failed");
 			return -ENOMEM;
@@ -847,7 +940,7 @@ int module_set_configuration(struct processing_module *mod,
 	md->new_cfg_size = 0;
 
 	if (md->runtime_params)
-		rfree(md->runtime_params);
+		sof_heap_free(sof_sys_user_heap_get(), md->runtime_params);
 	md->runtime_params = NULL;
 
 	return ret;

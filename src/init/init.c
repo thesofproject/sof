@@ -32,6 +32,7 @@
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/audio/pipeline.h>
 #include <ipc/trace.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/fw_reg.h>
@@ -46,6 +47,10 @@
 #include <sof/lib/ams.h>
 
 LOG_MODULE_REGISTER(init, CONFIG_SOF_LOG_LEVEL);
+
+#if CONFIG_SOF_USERSPACE_LL
+SOF_DEFINE_REG_UUID(sec_core_init);
+#endif
 
 /* main firmware context */
 static struct sof sof;
@@ -135,6 +140,18 @@ __cold int secondary_core_init(struct sof *sof)
 		return err;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
+#if CONFIG_SOF_USERSPACE_LL
+	/* Create domain thread for this secondary core's LL scheduler */
+	{
+		struct task *task = zephyr_ll_task_alloc();
+
+		schedule_task_init_ll(task, SOF_UUID(sec_core_init_uuid),
+				      SOF_SCHEDULE_LL_TIMER,
+				      0, NULL, NULL, cpu_get_id(), 0);
+		scheduler_init_context(task);
+	}
+#endif
+
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
 	err = idc_init();
@@ -223,6 +240,11 @@ __cold static int primary_core_init(int argc, char *argv[], struct sof *sof)
 #if CONFIG_SOF_USERSPACE_LL
 	zephyr_ll_user_resources_init();
 #endif
+
+	/* init pipeline position offsets - must be before platform_init()
+	 * which calls ipc_init() -> ipc_user_init() that needs the posn mutex.
+	 */
+	pipeline_posn_init(sof);
 
 	/* init the platform */
 	if (platform_init(sof) < 0)

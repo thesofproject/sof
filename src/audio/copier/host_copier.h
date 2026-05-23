@@ -106,7 +106,10 @@ struct host_data {
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
+	struct processing_module *mod;	/**< module pointer for tracked allocs */
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 	struct ipc_msg *msg;	/**< host notification */
+#endif
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	bool xrun_notification_sent;
 #endif
@@ -117,9 +120,13 @@ struct host_data {
 	uint64_t next_sync;
 	uint64_t period_in_cycles;
 #endif
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	struct io_perf_data_item *io_perf_host_byte_count;
 #endif
+
+	struct k_heap *heap;
+	struct mod_alloc_ctx *alloc_ctx;
 };
 
 int host_common_new(struct host_data *hd, struct comp_dev *dev,

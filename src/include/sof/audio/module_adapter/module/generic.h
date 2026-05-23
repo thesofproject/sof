@@ -18,6 +18,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
+#include <sof/ipc/msg.h>
 #include "module_interface.h"
 
 /* The __ZEPHYR__ condition is to keep cmocka tests working */
@@ -143,6 +144,7 @@ enum mod_resource_type {
 	MOD_RES_HEAP,
 	MOD_RES_BLOB_HANDLER,
 	MOD_RES_FAST_GET,
+	MOD_RES_IPC_MSG,
 };
 
 /**
@@ -154,6 +156,7 @@ struct module_resource {
 		void *ptr; /**< Pointer to heap allocated memory */
 		struct comp_data_blob_handler *bhp; /**< Blob handler ptr */
 		const void *sram_ptr; /**< SRAM ptr from fast_get() */
+		struct ipc_msg *msg; /**< IPC message from mod_ipc_msg_w_ext_init() */
 	};
 	struct list_item list; /**< list element */
 	size_t size; /**< Size of allocated heap memory, 0 if not from heap */
@@ -198,12 +201,15 @@ void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start
 __syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			      size_t alignment);
 __syscall int mod_free(struct processing_module *mod, const void *ptr);
+__syscall void mod_free_all(struct processing_module *mod);
 #else
 void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			   size_t alignment);
 int z_impl_mod_free(struct processing_module *mod, const void *ptr);
+void z_impl_mod_free_all(struct processing_module *mod);
 #define mod_alloc_ext z_impl_mod_alloc_ext
 #define mod_free z_impl_mod_free
+#define mod_free_all z_impl_mod_free_all
 #endif
 
 /**
@@ -240,6 +246,25 @@ static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 	return ret;
 }
 
+/**
+ * \brief Initialize a new IPC message using the module allocator.
+ * @param mod Module to allocate from
+ * @param header Message header metadata
+ * @param extension Message header extension metadata
+ * @param size Message data size in bytes.
+ * @return New IPC message.
+ */
+struct ipc_msg *mod_ipc_msg_w_ext_init(struct processing_module *mod,
+					      uint32_t header,
+					      uint32_t extension,
+					      uint32_t size);
+
+static inline struct ipc_msg *mod_ipc_msg_init(struct processing_module *mod,
+					       uint32_t header, uint32_t size)
+{
+	return mod_ipc_msg_w_ext_init(mod, header, 0, size);
+}
+
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
@@ -255,7 +280,6 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 #endif
 void mod_fast_put(struct processing_module *mod, const void *sram_ptr);
 #endif
-void mod_free_all(struct processing_module *mod);
 int module_prepare(struct processing_module *mod,
 		   struct sof_source **sources, int num_of_sources,
 		   struct sof_sink **sinks, int num_of_sinks);

@@ -146,6 +146,7 @@ d7f6712d-131c-45a7-82ed6aa9dc2291ea pm_runtime
 9302adf5-88be-4234-a0a7dca538ef81f4 sai
 3dee06de-f25a-4e10-ae1fabc9573873ea schedule
 70d223ef-2b91-4aac-b444d89a0db2793a sdma
+bdcb1461-34f5-4047-b9cc70fdf8dfb234 sec_core_init
 55a88ed5-3d18-46ca-88f10ee6eae9930f selector
 32fe92c1-1e17-4fc2-9758c7f3542e980a selector4
 cf90d851-68a2-4987-a2de85aed0c8531c sgen_mt8186
