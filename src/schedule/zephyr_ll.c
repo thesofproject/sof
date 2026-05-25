@@ -360,17 +360,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 
 	ret = domain_register(sch->ll_domain, task, &schedule_ll_callback, sch);
 	if (ret < 0)
-		tr_err(&ll_tr, "cannot register domain %d",
-		       ret);
-
-#if CONFIG_SOF_USERSPACE_LL
-	k_thread_access_grant(zephyr_domain_thread_tid(sch->ll_domain), sch->lock);
-
-	tr_dbg(&ll_tr, "granting access to lock %p for thread %p", sch->lock,
-	       zephyr_domain_thread_tid(sch->ll_domain));
-	tr_dbg(&ll_tr, "granting access to domain lock %p for thread %p", &sch->ll_domain->lock,
-	       zephyr_domain_thread_tid(sch->ll_domain));
-#endif
+		tr_err(&ll_tr, "cannot register domain %d", ret);
 
 	return 0;
 }
@@ -509,7 +499,40 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 	if (sch->n_tasks)
 		tr_err(&ll_tr, "%u tasks are still active!",
 		       sch->n_tasks);
+
+#if CONFIG_SOF_USERSPACE_LL
+	domain_thread_free(sch->ll_domain, sch->n_tasks);
+#endif
 }
+
+#if CONFIG_SOF_USERSPACE_LL
+struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
+{
+	struct zephyr_ll *sch = data;
+	int ret;
+
+	/*
+	 * Use domain_thread_init() for privileged setup (thread creation,
+	 * timer, access grants). domain_register() is now bookkeeping only
+	 * and will be called later from user context when scheduling tasks.
+	 */
+	ret = domain_thread_init(sch->ll_domain, task);
+	if (ret < 0) {
+		tr_err(&ll_tr, "cannot init_context %d", ret);
+		return NULL;
+	}
+
+	assert(!k_is_user_context());
+	k_thread_access_grant(zephyr_domain_thread_tid(sch->ll_domain), sch->lock);
+
+	tr_dbg(&ll_tr, "granting access to lock %p for thread %p", sch->lock,
+	       zephyr_domain_thread_tid(sch->ll_domain));
+	tr_dbg(&ll_tr, "granting access to domain lock %p for thread %p", &sch->ll_domain->lock,
+	       zephyr_domain_thread_tid(sch->ll_domain));
+
+	return zephyr_domain_thread_tid(sch->ll_domain);
+}
+#endif
 
 static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task		= zephyr_ll_task_schedule,
@@ -518,6 +541,9 @@ static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task_free	= zephyr_ll_task_free,
 	.schedule_task_cancel	= zephyr_ll_task_cancel,
 	.scheduler_free		= zephyr_ll_scheduler_free,
+#if CONFIG_SOF_USERSPACE_LL
+	.scheduler_init_context	= zephyr_ll_init_context,
+#endif
 };
 
 #if CONFIG_SOF_USERSPACE_LL
