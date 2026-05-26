@@ -289,8 +289,11 @@ static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t 
  * really be the head of the list, not a list head within another buffer. We
  * don't synchronise its cache, so it must not be embedded in an object, using
  * the coherent API. The caller takes care to protect list heads.
+ *
+ * Returns -EINVAL if the buffer is already linked in this direction
+ * (re-attaching would create a self-loop and corrupt the list).
  */
-void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir);
+int buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir);
 
 /*
  * Detach a buffer from anywhere in the list. "head" is again the head of the
