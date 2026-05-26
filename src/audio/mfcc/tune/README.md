@@ -5,7 +5,7 @@ MFCC component. It's simply run in Matlab or Octave with command
 `setup_mfcc`. The MFCC configuration parameters can be edited from the
 script.
 
-## Testbench
+## Testbench run
 
 The configuration can be test run with testbench. First the test topologies
 need to be created with `scripts/build-tools.sh -t`. Next the testbench
@@ -69,18 +69,30 @@ The 80 bands Mel output can be visualized with command:
 
 The directory contains a Python script `sof_mel_to_text_live_dsp_vad.py`.
 It can be used with development topologies
-`sof-arl-cs42l43-l0-cs35l56-l23-mfcc.tplg` and
-`sof-mtl-rt713-l0-rt1316-l12-mfcc.tplg`. It captures from default audio
-device `hw:0,47` (headset microphone) Mel audio features and VAD flags.
-The captured frames with detected speech are sent to Whisper speech
-recognizer model for conversion to text.
+`sof-arl-cs42l43-l0-cs35l56-l23-mfcc-mel-normal.tplg` and
+`sof-mtl-rt713-l0-rt1316-l12-mfcc-mel-normal.tplg`.
+
+It captures from default audio device `hw:0,47` (headset microphone PCM).
+The Mel audio features and VAD flags are packed to be compatible with a
+normal PCM stream. The captured frames with detected speech are sent to the
+Whisper speech recognizer model for conversion to text.
+
+The more efficient method for audio features capture uses the compress PCM without
+continuous redundant data. Such MFCC development topologies are:
+
+- `sof-mtl-rt713-l0-rt1316-l12-mfcc-mel-compr.tplg`
+- `sof-mtl-rt713-l0-rt1316-l12-mfcc-ceps-compr.tplg`
+- `sof-arl-cs42l43-l0-cs35l56-l23-mfcc-mel-compr.tplg`
+- `sof-arl-cs42l43-l0-cs35l56-l23-mfcc-ceps-compr.tplg`
+
+E.g. the script `sof_mel_spectrogram_compress.py` uses the mfcc-mel-compr topology version.
 
 ### Prerequisites
 
 The script needs OpenVINO. Please follow the install procedure from
 <https://docs.openvino.ai/2025/get-started/install-openvino.html>.
 
-The following Python pip installs are needed into the same OpenVINO venv:
+The following Python pip installs are needed into the same OpenVINO venv.
 
 ```bash
 pip install openvino openvino-tokenizers openvino-genai
@@ -88,6 +100,9 @@ pip install optimum[intel]
 pip install transformers
 pip install huggingface_hub
 ```
+
+The real-time spectrogram viewers in this directory use GTK 4; their setup is described
+under [Live Spectrogram Viewers](#live-spectrogram-viewers) below.
 
 ### NPU / GPU Support
 
@@ -149,4 +164,96 @@ Whisper model: whisper-medium-int4-ov (encoder: CPU, decoder: CPU)
   [Whisper] decoder: 0.59s (3 tokens)
 
   >> "Hello computer"
+```
+## Live Whisper Transcription with Compress PCM
+
+The `sof_mel_to_text_live_compress.py` script captures Mel spectrogram
+frames from a SOF compress PCM device and performs live Whisper
+transcription using OpenVINO. Unlike `sof_mel_to_text_live_dsp_vad.py`
+which uses `arecord`, this script reads directly from the compress PCM
+device with discontinuous frames handling.
+
+The same OpenVINO prerequisites and pip packages apply as described above
+for `sof_mel_to_text_live_dsp_vad.py`.
+
+```bash
+# Microphone compress audio features
+python3 sof_mel_to_text_live_compress.py --card 0 --device 54 --model whisper-medium-int4-ov
+
+# Jack In compress audio features
+python3 sof_mel_to_text_live_compress.py --card 0 --device 53 --model whisper-medium-int4-ov
+```
+
+### Compress PCM device IDs
+
+The compress audio-features capture PCMs in the topology2 platform
+configs use the following IDs (see
+`tools/topology/topology2/platform/intel/sdw-*-audio-feature-compress.conf`):
+
+| Device | Name                              | PCM ID |
+|--------|-----------------------------------|--------|
+| Jack   | "Jack In Compress Audio Features" | 53     |
+| Mic    | "Microphone Compress Audio Features" | 54  |
+
+The non-compress PCMs (`47` jack, `48` mic, "Audio Features") are PCM
+streams intended for `arecord`/`hw:0,N` (used by
+`sof_mel_to_text_live_dsp_vad.py` above) and will not work with the
+compress scripts below.
+
+## Live Spectrogram Viewers
+
+These viewers are helpful for interactively checking VAD operation and
+developing improvements, or for educational visualization of Mel and
+cepstral-coefficient spectrograms.
+
+#### Additional dependencies to install
+
+GTK 4 and the introspection bindings are shipped by the distribution.
+On Debian / Ubuntu (24.04 or newer):
+
+```bash
+sudo apt install python3-gi gir1.2-gtk-4.0 python3-numpy
+sudo apt install libgirepository-2.0-dev libcairo2-dev pkg-config \
+                 python3-dev gir1.2-gtk-4.0 build-essential
+pip install PyGObject pycairo numpy
+```
+
+#### Renderer selection
+
+GSK auto-selects the renderer; to force the GL or Vulkan back-ends
+(usually the smoothest):
+
+```bash
+GSK_RENDERER=ngl    python3 sof_mel_spectrogram_compress.py ...
+GSK_RENDERER=vulkan python3 sof_mel_spectrogram_compress.py ...
+```
+
+### Mel Spectrogram
+
+The `sof_mel_spectrogram_compress.py` script captures Mel spectrogram
+frames from a SOF compress PCM device and displays them as a live
+scrolling spectrogram with VAD status in a GTK 4 window. This is a
+lightweight viewer that does not run Whisper inference.
+
+```bash
+# Microphone compress audio features
+python3 sof_mel_spectrogram_compress.py --card 0 --device 54 --width 300
+
+# Jack In compress audio features
+python3 sof_mel_spectrogram_compress.py --card 0 --device 53 --width 300
+```
+
+### Cepstral Spectrogram
+
+The `sof_ceps_spectrogram_compress.py` script is the counterpart
+that displays cepstral coefficients (MFCC) instead of Mel bands. It
+imports the GPU-accelerated widgets from `sof_mel_spectrogram_compress.py`,
+so both files must remain in the same directory.
+
+```bash
+# Microphone compress audio features
+python3 sof_ceps_spectrogram_compress.py --card 0 --device 54 --num-ceps 13 --width 300
+
+# Jack In compress audio features
+python3 sof_ceps_spectrogram_compress.py --card 0 --device 53 --num-ceps 13 --width 300
 ```

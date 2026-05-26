@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026, Intel Corporation.
+
 """Live SOF mel capture with DSP VAD-triggered Whisper transcription.
 
 Captures mel frames from ALSA with embedded VAD flag from the DSP.
@@ -8,7 +14,6 @@ Capture continues running during Whisper inference.
 
 Usage:
     python sof_mel_to_text_live_dsp_vad.py [--device hw:0,47] [--model whisper-medium-int4-ov]
-    python sof_mel_to_text_live_dsp_vad.py --plot  # with live spectrogram
 """
 
 import argparse
@@ -21,10 +26,6 @@ import numpy as np
 import openvino as ov
 import huggingface_hub as hf_hub
 from pathlib import Path
-
-# Graphics imports deferred until --plot is used
-matplotlib = None
-plt = None
 
 # SOF mel_s32.raw format constants (with DSP data header)
 SOF_MAGIC_BYTES = struct.pack('<i', 0x6D666363)  # ASCII 'mfcc' as int32
@@ -50,71 +51,6 @@ WHISPER_NB_MAX_FRAMES = 3000  # 30 seconds at 10ms per frame
 def decode_mel_frame(raw_ints):
     """Convert 80 int32 Q9.23 values to float32 mel coefficients."""
     return raw_ints.astype(np.float32) / (2 ** SOF_Q_FORMAT)
-
-
-# ---------- Optional scrolling plot ----------
-
-SPECTROGRAM_WIDTH = 100
-
-
-class MelPlotter:
-    """Real-time scrolling mel spectrogram + VAD strip."""
-
-    def __init__(self, num_mel=SOF_NUM_MEL, width=SPECTROGRAM_WIDTH):
-        global matplotlib, plt
-        import matplotlib as _mpl
-        _mpl.use('TkAgg')
-        import matplotlib.pyplot as _plt
-        matplotlib = _mpl
-        plt = _plt
-
-        self.num_mel = num_mel
-        self.width = width
-
-        self.mel_buf = np.zeros((num_mel, width), dtype=np.float32)
-        self.vad_buf = np.zeros(width, dtype=np.float32)
-        self.x = np.arange(width)
-
-        self.fig, (self.ax_mel, self.ax_vad) = plt.subplots(
-            2, 1, figsize=(10, 5),
-            gridspec_kw={'height_ratios': [5, 1]},
-            sharex=True
-        )
-        self.fig.tight_layout(pad=2.0)
-
-        self.im_mel = self.ax_mel.imshow(
-            self.mel_buf, aspect='auto', origin='lower',
-            interpolation='nearest', cmap='turbo',
-            vmin=-2.0, vmax=2.0
-        )
-        self.ax_mel.set_ylabel('Mel bin')
-        self.ax_mel.set_title('Mel Spectrogram (scrolling) — DSP VAD')
-
-        self.line_vad, = self.ax_vad.plot(
-            self.x, self.vad_buf, color='green', linewidth=1.5,
-            drawstyle='steps-post')
-        self.ax_vad.set_ylabel('VAD')
-        self.ax_vad.set_xlabel('Frame')
-        self.ax_vad.set_ylim(-0.1, 1.1)
-        self.ax_vad.set_yticks([0, 1])
-        self.ax_vad.set_yticklabels(['Silent', 'Speech'])
-
-        plt.ion()
-        plt.show(block=False)
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
-    def update(self, mel_frame, is_speech):
-        self.mel_buf[:, :-1] = self.mel_buf[:, 1:]
-        self.mel_buf[:, -1] = mel_frame
-        self.vad_buf[:-1] = self.vad_buf[1:]
-        self.vad_buf[-1] = 1.0 if is_speech else 0.0
-
-        self.im_mel.set_data(self.mel_buf)
-        self.line_vad.set_ydata(self.vad_buf)
-
-        self.fig.canvas.draw_idle()
-        self.fig.canvas.flush_events()
 
 
 # ---------- Whisper inference ----------
@@ -296,11 +232,9 @@ def find_frame_in_buffer(buf):
 
 # ---------- Main capture + transcription loop ----------
 
-def run_capture(device, rate, model_path, encoder_device, decoder_device,
-                enable_plot=False):
+def run_capture(device, rate, model_path, encoder_device, decoder_device):
     """Main capture loop: ALSA → DSP VAD → buffer speech → Whisper."""
 
-    plotter = MelPlotter() if enable_plot else None
     transcriber = WhisperTranscriber(model_path, encoder_device=encoder_device,
                                      decoder_device=decoder_device)
 
@@ -357,16 +291,12 @@ def run_capture(device, rate, model_path, encoder_device, decoder_device,
                 mel = decode_mel_frame(frame_ints)
                 speech = vad_flag != 0
 
-                # Print VAD transitions when not plotting
-                if plotter is None and speech != prev_speech:
+                # Print VAD transitions
+                if speech != prev_speech:
                     t = frame_num * 0.01
                     tag = "SPEECH" if speech else "SILENCE"
                     print(f"  [{t:7.2f}s] {tag}", flush=True)
                 prev_speech = speech
-
-                # Update plot
-                if plotter is not None:
-                    plotter.update(mel, speech)
 
                 # --- Speech buffering logic ---
                 if speech:
@@ -429,11 +359,6 @@ def run_capture(device, rate, model_path, encoder_device, decoder_device,
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
-        if plotter is not None:
-            try:
-                plt.close(plotter.fig)
-            except Exception:
-                pass
         print("\n\nCapture stopped.")
 
 
@@ -450,8 +375,6 @@ def main():
                         help='OpenVINO device for encoder (default: NPU)')
     parser.add_argument('--decoder-device', default='CPU',
                         help='OpenVINO device for decoder (default: CPU)')
-    parser.add_argument('--plot', action='store_true',
-                        help='Show live scrolling mel spectrogram and VAD plot')
     args = parser.parse_args()
     model_id = "OpenVINO/" + os.path.basename(args.model)
     if not os.path.isdir(args.model):
@@ -460,7 +383,7 @@ def main():
 
     print("=== Live SOF Mel → Whisper Transcription (DSP VAD) ===\n")
     run_capture(args.device, args.rate, args.model, args.encoder_device,
-                args.decoder_device, enable_plot=args.plot)
+                args.decoder_device)
 
 
 if __name__ == '__main__':
