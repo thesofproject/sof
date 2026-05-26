@@ -25,6 +25,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc4/module.h>
+#include <ipc4/pipeline.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -135,6 +136,16 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 
 	/* init pipeline */
 	p->heap = heap;
+
+	/* Create vregion for pipeline and its modules if size info is available */
+	if (IS_ENABLED(CONFIG_SOF_VREGIONS) &&
+	    pparams && pparams->mem_data && pparams->mem_data->heap_bytes) {
+		alloc->vreg = vregion_create(pparams->mem_data->heap_bytes);
+		if (!alloc->vreg)
+			pipe_cl_err("Failed to create pipeline vregion of %zu bytes, using heap",
+				    pparams->mem_data->heap_bytes);
+	}
+
 	p->comp_id = comp_id;
 	p->priority = priority;
 	p->pipeline_id = pipeline_id;
@@ -344,6 +355,10 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 
 	p->source_comp = source;
 	p->sink_comp = sink;
+
+	if (p->vreg)
+		vregion_set_interim(p->vreg);
+
 	p->status = COMP_STATE_READY;
 
 	/* show heap status */

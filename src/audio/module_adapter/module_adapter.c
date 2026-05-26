@@ -88,7 +88,8 @@ static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *
 static
 struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
 						   const struct comp_ipc_config *config,
-						   const struct module_ext_init_data *ext_init)
+						   const struct module_ext_init_data *ext_init,
+						   struct vregion *ppl_vreg)
 {
 	struct k_heap *mod_heap;
 	struct vregion *mod_vreg;
@@ -113,6 +114,10 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 			return NULL;
 		}
 		mod_heap = NULL;
+	} else if (ppl_vreg && config->proc_domain == COMP_PROCESSING_DOMAIN_LL) {
+		mod_vreg = vregion_get(ppl_vreg);
+		mod_heap = NULL;
+		heap_size = 0;
 	} else {
 #ifdef CONFIG_SOF_USERSPACE_LL
 		mod_heap = sof_sys_user_heap_get();
@@ -198,10 +203,11 @@ static void module_adapter_mem_free(struct processing_module *mod)
 #endif
 	if (alloc->vreg) {
 		struct vregion *mod_vreg = alloc->vreg;
+		uint32_t proc_domain = mod->dev->ipc_config.proc_domain;
 
 		vregion_free(mod_vreg, mod->dev);
 		vregion_free(mod_vreg, mod);
-		if (!vregion_put(mod_vreg))
+		if (!vregion_put(mod_vreg) || proc_domain == COMP_PROCESSING_DOMAIN_LL)
 			sof_heap_free(alloc->heap, alloc);
 	} else {
 		sof_heap_free(mod_heap, mod->dev);
@@ -256,7 +262,25 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		NULL;
 #endif
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init);
+#if CONFIG_IPC_MAJOR_4
+	struct ipc_comp_dev *ipc_pipe;
+	struct ipc *ipc = ipc_get();
+	struct vregion *ppl_vreg = NULL;
+
+	/* resolve the pipeline pointer early to pass its vregion to mem_alloc */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
+	if (ipc_pipe && ipc_pipe->pipeline)
+		ppl_vreg = ipc_pipe->pipeline->vreg;
+#endif
+
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init,
+#if CONFIG_IPC_MAJOR_4
+								 ppl_vreg
+#else
+								 NULL
+#endif
+								 );
 
 	if (!mod)
 		return NULL;
@@ -315,12 +339,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		goto err;
 
 #if CONFIG_IPC_MAJOR_4
-	struct ipc_comp_dev *ipc_pipe;
-	struct ipc *ipc = ipc_get();
-
 	/* set the pipeline pointer if ipc_pipe is valid */
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
-					  IPC_COMP_IGNORE_REMOTE);
 	if (ipc_pipe) {
 		dev->pipeline = ipc_pipe->pipeline;
 
