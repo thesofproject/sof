@@ -118,9 +118,9 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	}
 
 	struct mod_alloc_ctx *alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
-
 	if (!alloc)
 		goto ealloc;
+	memset(alloc, 0, sizeof(*alloc));
 
 	memset(mod, 0, sizeof(*mod));
 	alloc->heap = mod_heap;

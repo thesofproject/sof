@@ -504,6 +504,10 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 					   stack_size, dp_thread_fn, ptask, NULL, NULL,
 					   CONFIG_DP_THREAD_PRIORITY, ptask->flags, K_FOREVER);
 	scheduler_dp_thread_name_set(pdata->thread_id, mod);
+#if CONFIG_MODULE_MEMORY_API_DEBUG
+	/* For a DP module the resource manager can also be the DP thread */
+	mod->priv.resources.dp_thread = pdata->thread_id;
+#endif
 
 	unsigned int pidx;
 	size_t size;
