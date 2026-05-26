@@ -622,6 +622,8 @@ zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/module_adapter/module/ge
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/fast-get.h)
 zephyr_syscall_header(include/rtos/alloc.h)
 zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_INTERFACE_ALLOC syscall/alloc.c)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/dai-zephyr.h)
+zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/dai.c)
 
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
