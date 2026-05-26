@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 /* runtime assertion */
-#define assert(x)	do { if (!(x)) while (1); } while (0)
+#define assert(x) do {if (!(x)) while (1);} while (0)
 
 #ifdef __cplusplus
 }
