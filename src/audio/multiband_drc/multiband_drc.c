@@ -5,10 +5,8 @@
 // Author: Pin-chih Lin <johnylin@google.com>
 
 #include <sof/audio/module_adapter/module/generic.h>
-#include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
 #include <sof/audio/ipc-config.h>
-#include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
@@ -301,15 +299,12 @@ __cold static int multiband_drc_get_config(struct processing_module *mod,
 }
 
 static int multiband_drc_process(struct processing_module *mod,
-				 struct input_stream_buffer *input_buffers, int num_input_buffers,
-				 struct output_stream_buffer *output_buffers,
-				 int num_output_buffers)
+				 struct sof_source **sources, int num_of_sources,
+				 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct multiband_drc_comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	int frames = input_buffers[0].size;
+	int frames = source_get_data_frames_available(sources[0]);
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -317,8 +312,8 @@ static int multiband_drc_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = multiband_drc_setup(mod, (int16_t)audio_stream_get_channels(sink),
-					  audio_stream_get_rate(sink));
+		ret = multiband_drc_setup(mod, (int16_t)sink_get_channels(sinks[0]),
+					  sink_get_rate(sinks[0]));
 		if (ret < 0) {
 			comp_err(dev, "failed DRC setup");
 			return ret;
@@ -326,13 +321,14 @@ static int multiband_drc_process(struct processing_module *mod,
 	}
 
 	if (cd->process_enabled)
-		cd->multiband_drc_func(mod, source, sink, frames);
+		ret = cd->multiband_drc_func(mod, sources[0], sinks[0], frames);
 	else
-		multiband_drc_default_pass(mod, source, sink, frames);
+		ret = multiband_drc_default_pass(mod, sources[0], sinks[0], frames);
 
-	/* calc new free and available */
-	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
-	return 0;
+	if (ret < 0)
+		comp_err(dev, "processing failed: %d", ret);
+
+	return ret;
 }
 
 static int multiband_drc_prepare(struct processing_module *mod,
@@ -341,7 +337,6 @@ static int multiband_drc_prepare(struct processing_module *mod,
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb;
 	size_t data_size;
 	int channels;
 	int rate;
@@ -353,17 +348,10 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	if (ret < 0)
 		return ret;
 
-	/* DRC component will only ever have 1 source and 1 sink buffer */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	if (!sourceb) {
-		comp_err(dev, "no source buffer");
-		return -ENOTCONN;
-	}
-
 	/* get source data format */
-	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
-	channels = audio_stream_get_channels(&sourceb->stream);
-	rate = audio_stream_get_rate(&sourceb->stream);
+	cd->source_format = source_get_frm_fmt(sources[0]);
+	channels = (int16_t)source_get_channels(sources[0]);
+	rate = source_get_rate(sources[0]);
 
 	/* Initialize DRC */
 	comp_dbg(dev, "source_format=%d, sink_format=%d",
@@ -404,7 +392,7 @@ static int multiband_drc_reset(struct processing_module *mod)
 static const struct module_interface multiband_drc_interface = {
 	.init = multiband_drc_init,
 	.prepare = multiband_drc_prepare,
-	.process_audio_stream = multiband_drc_process,
+	.process = multiband_drc_process,
 	.set_configuration = multiband_drc_set_config,
 	.get_configuration = multiband_drc_get_config,
 	.reset = multiband_drc_reset,
