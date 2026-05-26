@@ -117,23 +117,25 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 		return NULL;
 	}
 
-	/*
-	 * Align up lifetime sizes and interim sizes to nearest page, the
-	 * vregion structure is stored in lifetime area so account for its size too.
-	 */
-	lifetime_size += sizeof(*vr);
+	/* Align up lifetime sizes and interim sizes to nearest page */
 	lifetime_size = ALIGN_UP(lifetime_size, CONFIG_MM_DRV_PAGE_SIZE);
 	interim_size = ALIGN_UP(interim_size, CONFIG_MM_DRV_PAGE_SIZE);
 	total_size = lifetime_size + interim_size;
 
+	/* allocate vregion metadata separately to keep it inaccessible to the user */
+	vr = rmalloc(0, sizeof(*vr));
+	if (!vr)
+		return NULL;
+
 	/* allocate pages for vregion */
 	pages = total_size / CONFIG_MM_DRV_PAGE_SIZE;
 	vregion_base = vpage_alloc(pages);
-	if (!vregion_base)
+	if (!vregion_base) {
+		rfree(vr);
 		return NULL;
+	}
 
-	/* init vregion - place it at the start of the lifetime region */
-	vr = (struct vregion *)(vregion_base + interim_size);
+	/* init vregion */
 	vr->base = vregion_base;
 	vr->size = total_size;
 	vr->pages = pages;
@@ -147,9 +149,9 @@ struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 	vr->lifetime.base = vr->base + interim_size;
 
 	/* set alloc ptr addresses for lifetime linear partitions */
-	vr->lifetime.ptr = vr->lifetime.base +
-		ALIGN_UP(sizeof(*vr), CONFIG_DCACHE_LINE_SIZE); /* skip vregion struct */
-	vr->lifetime.used = ALIGN_UP(sizeof(*vr), CONFIG_DCACHE_LINE_SIZE);
+	vr->lifetime.ptr = vr->lifetime.base;
+	vr->lifetime.used = 0;
+	vr->lifetime.free_count = 0;
 
 	/* init interim heaps */
 	k_heap_init(&vr->interim.heap, vr->interim.heap.heap.init_mem, interim_size);
@@ -205,6 +207,7 @@ struct vregion *vregion_put(struct vregion *vr)
 	LOG_DBG("destroy %p size %#zx pages %u", (void *)vr->base, vr->size, vr->pages);
 	LOG_DBG(" lifetime used %zu free count %d", vr->lifetime.used, vr->lifetime.free_count);
 	vpage_free(vr->base);
+	rfree(vr);
 
 	return NULL;
 }
