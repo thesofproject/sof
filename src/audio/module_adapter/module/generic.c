@@ -28,8 +28,10 @@
 /* The __ZEPHYR__ condition is to keep cmocka tests working */
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 #define MEM_API_CHECK_THREAD(res) do { \
-	if ((res)->rsrc_mngr != k_current_get()) \
-		LOG_WRN("mngr %p != cur %p", (res)->rsrc_mngr, k_current_get()); \
+	k_tid_t tid = k_current_get(); \
+	if (((res)->rsrc_mngr != NULL || (res)->dp_thread != NULL) &&	\
+	    (res)->rsrc_mngr != tid && (res)->dp_thread != tid)		\
+		LOG_WRN("cur %p != mngr %p or dp %p", tid, (res)->rsrc_mngr, (res)->dp_thread); \
 } while (0)
 #else
 #define MEM_API_CHECK_THREAD(res)
