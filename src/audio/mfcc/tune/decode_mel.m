@@ -1,10 +1,10 @@
-% [mel, t, n, vad, energy, noise_energy, frame_number] = decode_mel(fn, num_mel, fmt, num_channels)
+% [mel, t, n, vad, energy, noise_energy, frame_number] = decode_mel(fn, num_mel, hop, num_channels)
 %
 % Input
 %   fn - File with Mel data in .raw or .wav format
+%   hop - STFT hop in seconds, defaults to 10e-3 for 10 ms
 %   num_mel - number of Mel coefficients per frame
-%   fmt - format of the Mel data ('s16', 's24', 's32')
-%   num_channels - needed for .raw format, omit for .wav, default 2
+%   num_channels - needed for .raw format, omit for .wav, default 1
 %
 % Outputs
 %   mel - Mel coefficients
@@ -19,56 +19,31 @@
 % Copyright(c) 2026 Intel Corporation.
 
 function [mel, t, n, vad, energy, noise_energy, frame_number] = ...
-	decode_mel(fn, num_mel, fmt, num_channels)
+	decode_mel(fn, num_mel, hop, num_channels)
 
 if nargin < 3
-	fmt = 's16';
+	hop = 10e-3;
 end
-
 if nargin < 4
-	num_channels = 2;
+	num_channels = 1;
 end
 
 % MFCC stream
 fs = 16e3;
+qformat = 23; % Q9.23 in int32
 
-switch fmt
-  case 's16'
-    qformat = 7;
-    magic = [25443 28006]; % ASCII 'mfcc' as two int16
-    word_size_multiplier = 2;
-  case 's24'
-    qformat = 15;
-    magic = int32(1835426659); % 0x6D666363 as int32
-    word_size_multiplier = 1;
-  case 's32'
-    qformat = 23;
-    magic = int32(1835426659); % 0x6D666363 as int32
-    word_size_multiplier = 1;
-    otherwise
-    error("Use 's16', 's24', or 's32' as format.");
+magic = int32(1835426659); % 0x6D666363 as int32
+num_magic = 1; % magic word is 1 x int32
+num_other_header = 5; % frame_number, reserved, energy, noise, vad (all int32)
+
+% Load output data (always int32)
+[data, num_channels] = get_file(fn, num_channels);
+
+if isempty(data)
+	error('File %s is empty', fn);
 end
 
-num_magic = word_size_multiplier; % magic word is 2 x int16 or 1 x int32
-num_other_header = 5 *  word_size_multiplier; % frame_number, reserved, energy, noise, vad
-
-% Load output data
-[data, num_channels] = get_file(fn, num_channels, fmt);
-
-if strcmp(fmt, 's16')
-	idx1 = find(data == magic(1));
-	idx = [];
-	for i = 1:length(idx1)
-		next_word = idx1(i) + 1;
-		if next_word <= length(data)
-			if data(next_word) == magic(2)
-				idx = [idx idx1(i)];
-			end
-		end
-	end
-else
-	idx = find(data == magic);
-end
+idx = find(data == magic);
 
 if isempty(idx)
 	error('No magic value markers found from stream');
@@ -95,26 +70,50 @@ for i = 1:num_frames
 	payload(:,i) = double(data(i1:i2));
 end
 
-if strcmp(fmt, 's16')
-	% Reassemble int32 from pairs of int16 (little-endian).
-	% Low half must be treated as unsigned with mod() to handle negative int16.
-	frame_number = mod(payload(1,:), 65536) + payload(2,:) * 65536;
-	% payload(3:4,:) is reserved, skip
-	energy = (mod(payload(5,:), 65536) + payload(6,:) * 65536) / 2^23;
-	noise_energy = (mod(payload(7,:), 65536) + payload(8,:) * 65536) / 2^23;
-	vad = mod(payload(9,:), 65536) + payload(10,:) * 65536;
-	mel = payload(11:payload_len, :) / 2^qformat;
-else
-	frame_number = payload(1, :);
-	% payload(2,:) is reserved, skip
-	energy = payload(3, :) / 2^23;
-	noise_energy = payload(4, :) / 2^23;
-	vad = payload(5, :);
-	mel = payload(6:payload_len, :) / 2^qformat;
+frame_number = payload(1, :);
+% payload(2,:) is reserved, skip
+energy = payload(3, :) / 2^23;
+noise_energy = payload(4, :) / 2^23;
+vad = payload(5, :);
+mel = payload(6:payload_len, :) / 2^qformat;
+
+% Fill gaps from DTX-suppressed VAD=0 frames to create continuous timeline.
+% Missing frames are filled with the minimum Mel value found in the data.
+first_frame = frame_number(1);
+last_frame = frame_number(end);
+total_frames = last_frame - first_frame + 1;
+if total_frames > num_frames
+	mel_fill = min(mel(:));
+	mel_full = ones(num_mel, total_frames) * mel_fill;
+	vad_full = zeros(1, total_frames);
+	energy_full = zeros(1, total_frames);
+	noise_energy_full = zeros(1, total_frames);
+	frame_number_full = first_frame:last_frame;
+	has_data = false(1, total_frames);
+	for i = 1:num_frames
+		fi = frame_number(i) - first_frame + 1;
+		mel_full(:, fi) = mel(:, i);
+		vad_full(fi) = vad(i);
+		energy_full(fi) = energy(i);
+		noise_energy_full(fi) = noise_energy(i);
+		has_data(fi) = true;
+	end
+	% Forward-fill gaps with last received values
+	for fi = 2:total_frames
+		if ~has_data(fi)
+			mel_full(:, fi) = mel_full(:, fi - 1);
+			energy_full(fi) = energy_full(fi - 1);
+			noise_energy_full(fi) = noise_energy_full(fi - 1);
+		end
+	end
+	mel = mel_full;
+	vad = vad_full;
+	energy = energy_full;
+	noise_energy = noise_energy_full;
+	frame_number = frame_number_full;
 end
 
-t_mel = period_mel / num_channels / fs;
-t = (0:num_frames -1) * t_mel;
+t = (frame_number - first_frame) * hop;
 n = 1:num_mel;
 
 figure
@@ -145,36 +144,20 @@ ylabel('Energy');
 
 end
 
-function [data, num_channels] = get_file(fn, num_channels, fmt)
+function [data, num_channels] = get_file(fn, num_channels)
 
 [~, ~, ext] = fileparts(fn);
-
-switch fmt
-	case 's16'
-		read_fmt = 'int16';
-	case {'s24', 's32'}
-		read_fmt = 'int32';
-	otherwise
-		error("Use 's16', 's24', or 's32' as format.");
-end
 
 switch lower(ext)
 	case '.raw'
 		fh = fopen(fn, 'r');
-		data = fread(fh, read_fmt);
+		data = fread(fh, 'int32');
 		fclose(fh);
 	case '.wav'
 		tmp = audioread(fn, 'native');
 		t = whos('tmp');
-		switch fmt
-			case 's16'
-				if ~strcmp(t.class, 'int16')
-					error('Expected 16-bit wav for s16 format');
-				end
-			case {'s24', 's32'}
-				if ~strcmp(t.class, 'int32')
-					error('Expected 32-bit wav for %s format', fmt);
-				end
+		if ~strcmp(t.class, 'int32')
+			error('Expected 32-bit wav for int32 MFCC output format');
 		end
 		s = size(tmp);
 		num_channels = s(2);
