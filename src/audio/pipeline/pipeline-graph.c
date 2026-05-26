@@ -198,6 +198,7 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir)
 {
 	struct list_item *comp_list;
+	int ret;
 	PPL_LOCK_DECLARE;
 
 	if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
@@ -208,7 +209,13 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	PPL_LOCK();
 
 	comp_list = comp_buffer_list(comp, dir);
-	buffer_attach(buffer, comp_list, dir);
+	ret = buffer_attach(buffer, comp_list, dir);
+	if (ret < 0) {
+		comp_err(comp, "buffer %d already connected dir %d",
+			 buf_get_id(buffer), dir);
+		PPL_UNLOCK();
+		return ret;
+	}
 	buffer_set_comp(buffer, comp, dir);
 
 	PPL_UNLOCK();

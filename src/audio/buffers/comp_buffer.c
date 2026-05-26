@@ -604,12 +604,20 @@ static inline struct list_item *buffer_comp_list(struct comp_buffer *buffer,
  * from racing attach / detach calls, but the scheduler can interrupt the IPC
  * thread and begin using the buffer for streaming. FIXME: this is still a
  * problem with different cores.
+ *
+ * Returns -EALREADY if the buffer is already attached in this direction.
+ * Attaching the same buffer twice would corrupt the list (list_item_prepend
+ * on an already-linked node creates a self-loop), so callers must propagate
+ * the error.
  */
-void buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
+int buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir)
 {
 	struct list_item *list = buffer_comp_list(buffer, dir);
 	CORE_CHECK_STRUCT(&buffer->audio_buffer);
+	if (!list_is_empty(list))
+		return -EALREADY;
 	list_item_prepend(list, head);
+	return 0;
 }
 
 /*
