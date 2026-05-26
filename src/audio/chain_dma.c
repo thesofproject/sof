@@ -142,21 +142,16 @@ static size_t chain_get_transferred_data_size(const uint32_t out_read_pos, const
 	return buff_size - in_read_pos + out_read_pos;
 }
 
-/* get status from dma and check for xrun */
-static int chain_get_dma_status(struct chain_dma_data *cd, struct dma_chan_data *chan,
-				struct dma_status *stat)
-{
-	int ret = dma_get_status(chan->dma->z_dev, chan->index, stat);
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
-	if (ret == -EPIPE && !cd->xrun_notification_sent) {
-		cd->xrun_notification_sent = send_gateway_xrun_notif_msg
-			(cd->link_connector_node_id.dw, cd->stream_direction);
-	} else if (!ret) {
-		cd->xrun_notification_sent = false;
-	}
-#endif
-	return ret;
+static void chain_dma_send_xrun_notif(struct chain_dma_data *cd)
+{
+	uint32_t resource_id = cd->link_connector_node_id.dw;
+	enum sof_ipc_stream_direction dir = cd->stream_direction;
+
+	if (!cd->xrun_notification_sent)
+		cd->xrun_notification_sent = send_gateway_xrun_notif_msg(resource_id, dir);
 }
+#endif
 
 static enum task_state chain_task_run(void *data)
 {
@@ -170,11 +165,17 @@ static enum task_state chain_task_run(void *data)
 	/* Link DMA can return -EPIPE and current status if xrun occurs, then it is not critical
 	 * and flow shall continue. Other error values will be treated as critical.
 	 */
-	ret = chain_get_dma_status(cd, cd->chan_link, &stat);
+	ret = dma_get_status(cd->chan_link->dma->z_dev, cd->chan_link->index, &stat);
 	switch (ret) {
 	case 0:
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+		cd->xrun_notification_sent = false;
+#endif
 		break;
 	case -EPIPE:
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+		chain_dma_send_xrun_notif(cd);
+#endif
 		tr_warn(&chain_dma_tr, "dma_get_status() link xrun occurred,"
 			" ret = %d", ret);
 		break;
@@ -188,7 +189,7 @@ static enum task_state chain_task_run(void *data)
 	link_read_pos = stat.read_position;
 
 	/* Host DMA does not report xruns. All error values will be treated as critical. */
-	ret = chain_get_dma_status(cd, cd->chan_host, &stat);
+	ret = dma_get_status(cd->chan_host->dma->z_dev, cd->chan_host->index, &stat);
 	if (ret < 0) {
 		tr_err(&chain_dma_tr, "dma_get_status() error, ret = %d", ret);
 		return SOF_TASK_STATE_COMPLETED;
