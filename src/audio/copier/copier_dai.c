@@ -327,7 +327,7 @@ __cold int copier_dai_create(struct comp_dev *dev, struct copier_data *cd,
 		dai.type = SOF_DAI_INTEL_UAOL;
 		dai.is_config_blob = true;
 		cd->gtw_type = ipc4_gtw_alh;
-		ret = ipc4_find_dma_config(&dai, gtw_cfg_data, gtw_cfg_size);
+		ret = ipc4_find_all_dma_configs_tlvs_only(&dai, gtw_cfg_data, gtw_cfg_size);
 		if (ret != IPC4_SUCCESS) {
 			comp_err(dev, "No uaol dma_config found in blob!");
 			return -EINVAL;

@@ -1299,6 +1299,49 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
 	return IPC4_SUCCESS;
 }
 
+/* Unlike the above ipc4_find_dma_config(), this can find multiple DMA configs.
+ * For example, a UAOL copier may use two DMA channels: one for audio and one
+ * for clock feedback. This function can only work when all data in data_buffer
+ * is in TLV format; however, this is not always the case for all gateway types.
+ * Therefore, the above ipc4_find_dma_config() is still used as it can skip non-TLV
+ * blob data at the beginning of data_buffer.
+ */
+int ipc4_find_all_dma_configs_tlvs_only(struct ipc_config_dai *dai,
+					uint8_t *data_buffer, size_t size)
+{
+	uintptr_t end_addr = (uintptr_t)data_buffer + size;
+	struct sof_tlv *tlvs;
+	struct ipc_dma_config *dma_cfg;
+	int count = 0;
+
+	for (tlvs = (struct sof_tlv *)data_buffer; tlvs && (uintptr_t)tlvs < end_addr;
+	     tlvs = tlv_next(tlvs)) {
+		if ((uintptr_t)tlvs->value + tlvs->length > end_addr) {
+			tr_err(&ipc_tr, "Unexpected TLV length %d: exceeds buffer size", tlvs->length);
+			return IPC4_INVALID_REQUEST;
+		}
+
+		dma_cfg = tlv_value_ptr_get(tlvs, GTW_DMA_CONFIG_ID);
+		if (!dma_cfg)
+			continue;
+
+		if (count >= GTW_DMA_DEVICE_MAX_COUNT) {
+			tr_err(&ipc_tr, "Unexpected DMA config count %d, max %d",
+			       count, GTW_DMA_DEVICE_MAX_COUNT);
+			return IPC4_INVALID_REQUEST;
+		}
+
+		dai->host_dma_config[count++] = dma_cfg;
+	}
+
+	if (count == 0) {
+		tr_err(&ipc_tr, "No DMA config found");
+		return IPC4_INVALID_REQUEST;
+	}
+
+	return IPC4_SUCCESS;
+}
+
 int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
 				  uint32_t size, uint32_t device_id, int dma_cfg_idx)
 {
