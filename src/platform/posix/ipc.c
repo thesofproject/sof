@@ -58,16 +58,26 @@ void posix_fuzz_case_abort(void)
 	fuzz_in_sz = 0;
 }
 
-// The protocol here is super simple: the first byte is a message size
-// in units of 16 bits (the buffer maximum defaults to 384 bytes, and
-// I didn't want to waste space early in the buffer lest I confuse the
-// fuzzing heuristics).  We then copy that much of the input buffer
-// (subject to clamping obviously) into the incoming IPC message
-// buffer and invoke the ISR.  Any remainder will be delivered
-// synchronously as another message after receipt of "complete_cmd()"
-// from the SOF engine, etc...  Eventually we'll receive another fuzz
-// input after some amount of simulated time has passed (c.f.
-// CONFIG_ZEPHYR_POSIX_FUZZ_TICKS)
+// The framing protocol is super simple: the first two bytes are a
+// little-endian message size in bytes (capped below at
+// SOF_IPC_MSG_MAX_SIZE - 4 so it always fits in the IPC message
+// buffer).  We then copy that much of the input buffer (subject to
+// clamping obviously) into the incoming IPC message buffer and invoke
+// the ISR.  Any remainder will be delivered synchronously as another
+// message after receipt of "complete_cmd()" from the SOF engine,
+// etc...  Eventually we'll receive another fuzz input after some
+// amount of simulated time has passed (c.f.
+// CONFIG_ZEPHYR_POSIX_FUZZ_TICKS).
+//
+// The historical encoding used a single byte multiplied by 2, which
+// capped each message at 510 bytes.  That was fine for IPC3
+// (SOF_IPC_MSG_MAX_SIZE = 384) but limited IPC4 (max 4096) to ~12%
+// of its envelope, hiding all large_config / vendor_config /
+// pipeline-state-data paths from coverage feedback.  Widening to two
+// bytes lets the fuzzer reach the full IPC4 message range; existing
+// corpora are reinterpreted but libFuzzer recovers within minutes.
+#define POSIX_FUZZ_HDR_LEN 2
+
 static void fuzz_isr(const void *arg)
 {
 	size_t rem, i, n = MIN(posix_fuzz_sz, sizeof(fuzz_in) - fuzz_in_sz);
@@ -75,20 +85,22 @@ static void fuzz_isr(const void *arg)
 	for (i = 0; i < n; i++)
 		fuzz_in[fuzz_in_sz++] = posix_fuzz_buf[i];
 
-	if (fuzz_in_sz == 0)
+	if (fuzz_in_sz < POSIX_FUZZ_HDR_LEN)
 		return;
 
 	if (!global_ipc->comp_data)
 		return;
 
-	size_t maxsz = SOF_IPC_MSG_MAX_SIZE - 4, msgsz = fuzz_in[0] * 2;
+	size_t maxsz = SOF_IPC_MSG_MAX_SIZE - 4;
+	size_t msgsz = (size_t)fuzz_in[0] | ((size_t)fuzz_in[1] << 8);
 
-	n = MIN(msgsz, MIN(fuzz_in_sz - 1, maxsz));
-	rem = fuzz_in_sz - (n + 1);
+	msgsz = MIN(msgsz, maxsz);
+	n = MIN(msgsz, fuzz_in_sz - POSIX_FUZZ_HDR_LEN);
+	rem = fuzz_in_sz - (n + POSIX_FUZZ_HDR_LEN);
 
 	memset(global_ipc->comp_data, 0, maxsz);
-	memcpy(global_ipc->comp_data, &fuzz_in[1], n);
-	memmove(&fuzz_in[0], &fuzz_in[n + 1], rem);
+	memcpy(global_ipc->comp_data, &fuzz_in[POSIX_FUZZ_HDR_LEN], n);
+	memmove(&fuzz_in[0], &fuzz_in[n + POSIX_FUZZ_HDR_LEN], rem);
 	fuzz_in_sz = rem;
 
 #ifdef CONFIG_IPC_MAJOR_3
