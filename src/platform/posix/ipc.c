@@ -146,11 +146,38 @@ static void fuzz_isr(const void *arg)
 // ipc_platform_compact_read_msg(), writing 8 bytes unconditionally on
 // the header object it receives, which is then returned here, and
 // then passed to ipc_cmd().
+//
+// The harness also mirrors the framed message into MAILBOX_HOSTBOX so
+// that handlers reading payload directly from the hostbox region
+// (large_config_set/get, set_dx, set_pipeline_state, vendor_config and
+// friends in ipc4/handler-user.c and ipc4/handler-kernel.c) observe
+// the fuzz bytes rather than stale or zero-filled memory.
+//
+// The two IPC majors split header and payload differently:
+//
+//  * IPC3 carries the header in-band at the start of the message, and
+//    mailbox_validate() walks the full message starting from offset 0
+//    of the hostbox. The full message is mirrored as-is.
+//
+//  * IPC4 splits the 8-byte compact header (consumed via
+//    ipc_compact_read_msg()) from the payload, which on real hardware
+//    lives in HOSTBOX. The harness therefore mirrors only the
+//    post-header bytes, so the first dword of MAILBOX_HOSTBOX matches
+//    the first dword of the IPC4 payload (e.g. pipelines_count for
+//    SET_PIPELINE_STATE) instead of header bits.
+//
+// posix_hostbox is sized to SOF_IPC_MSG_MAX_SIZE (see
+// platform/lib/memory.h), so the copy is always in bounds for both
+// IPC3 and IPC4 message envelopes.
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct ipc_cmd_hdr *hdr;
 
 #ifdef CONFIG_IPC_MAJOR_4
+	memset(posix_hostbox, 0, SOF_IPC_MSG_MAX_SIZE);
+	memcpy(posix_hostbox,
+	       (const uint8_t *)global_ipc->comp_data + sizeof(struct ipc_cmd_hdr),
+	       SOF_IPC_MSG_MAX_SIZE - sizeof(struct ipc_cmd_hdr));
 	hdr = ipc_compact_read_msg();
 #else
 	memcpy(posix_hostbox, global_ipc->comp_data, SOF_IPC_MSG_MAX_SIZE);
