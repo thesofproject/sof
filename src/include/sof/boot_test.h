@@ -13,6 +13,8 @@
 #endif
 #include <stdbool.h>
 
+struct k_thread;
+
 #if CONFIG_SOF_BOOT_TEST
 #define TEST_RUN_ONCE(fn, ...) do { \
 	static bool once; \
@@ -35,5 +37,19 @@
 } while (0)
 
 void sof_run_boot_tests(void);
+
+/**
+ * Mark a boot-test thread as expected to trigger a fatal error.
+ *
+ * @param thread Thread that is allowed to fault once, or NULL to clear.
+ */
+#if CONFIG_SOF_BOOT_TEST
+void sof_boot_test_set_fault_valid(struct k_thread *thread);
+#else
+static inline void sof_boot_test_set_fault_valid(struct k_thread *thread)
+{
+	(void)thread;
+}
+#endif
 
 #endif

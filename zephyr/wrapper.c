@@ -6,6 +6,7 @@
  */
 
 #include <sof/init.h>
+#include <sof/boot_test.h>
 #include <sof/llext_manager.h>
 #include <rtos/idc.h>
 #include <rtos/interrupt.h>
@@ -325,10 +326,35 @@ volatile int *_sof_fatal_null = NULL;
 
 struct arch_esf;
 
+#if CONFIG_SOF_BOOT_TEST
+static struct k_thread *sof_boot_test_fault_thread;
+
+void sof_boot_test_set_fault_valid(struct k_thread *thread)
+{
+	sof_boot_test_fault_thread = thread;
+}
+
+static bool sof_boot_test_fault_expected(void)
+{
+	if (sof_boot_test_fault_thread != k_current_get())
+		return false;
+
+	sof_boot_test_fault_thread = NULL;
+	return true;
+}
+#endif
+
 void k_sys_fatal_error_handler(unsigned int reason,
 			       const struct arch_esf *esf)
 {
 	ARG_UNUSED(esf);
+
+#if CONFIG_SOF_BOOT_TEST
+	if (sof_boot_test_fault_expected()) {
+		LOG_ERR("Expected fatal error as part of boot test");
+		return;
+	}
+#endif
 
 	/* flush and switch to immediate mode */
 	LOG_PANIC();
