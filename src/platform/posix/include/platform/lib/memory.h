@@ -6,13 +6,14 @@
 #define PLATFORM_HOST_PLATFORM_MEMORY_H
 
 #include <stdint.h>
+#include <ipc/header.h>
 
 #define PLATFORM_DCACHE_ALIGN 64
 #define uncache_to_cache(addr) (addr)
 #define cache_to_uncache(addr) (addr)
 
 extern uint32_t posix_hostbox[];
-#define MAILBOX_HOSTBOX_SIZE 1024
+#define MAILBOX_HOSTBOX_SIZE SOF_IPC_MSG_MAX_SIZE
 #define MAILBOX_HOSTBOX_BASE (&posix_hostbox[0])
 
 extern uint32_t posix_dspbox[];
