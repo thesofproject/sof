@@ -437,7 +437,7 @@ static int memif_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
 		*value = 4;
 		break;
 	case DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT:
-		*value = 16;
+		*value = DCACHE_LINE_SIZE;
 		break;
 	case DMA_ATTR_BUFFER_PERIOD_COUNT:
 		*value = 4;
