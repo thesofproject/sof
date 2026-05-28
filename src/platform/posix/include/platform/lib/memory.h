@@ -12,20 +12,32 @@
 #define uncache_to_cache(addr) (addr)
 #define cache_to_uncache(addr) (addr)
 
+/*
+ * Mailbox base macros must yield byte-pointer arithmetic so that the
+ * generic mailbox API in `sof/src/include/sof/lib/mailbox.h`
+ * (`MAILBOX_HOSTBOX_BASE + offset`, etc., where `offset` is a byte
+ * offset) addresses the intended byte.  The backing storage is
+ * declared as `uint32_t[]` only for natural-alignment; addressing is
+ * done through a `uint8_t *` cast so byte offsets do not get scaled
+ * by `sizeof(uint32_t)`.  Every other SOF platform defines these
+ * bases as plain byte addresses (integer literals or
+ * `SRAM_INBOX_BASE`), so the cast keeps POSIX consistent with that
+ * ABI.
+ */
 extern uint32_t posix_hostbox[];
 #define MAILBOX_HOSTBOX_SIZE SOF_IPC_MSG_MAX_SIZE
-#define MAILBOX_HOSTBOX_BASE (&posix_hostbox[0])
+#define MAILBOX_HOSTBOX_BASE ((uint8_t *)&posix_hostbox[0])
 
 extern uint32_t posix_dspbox[];
 #define MAILBOX_DSPBOX_SIZE 4096
-#define MAILBOX_DSPBOX_BASE (&posix_dspbox[0])
+#define MAILBOX_DSPBOX_BASE ((uint8_t *)&posix_dspbox[0])
 
 extern uint32_t posix_stream[];
 #define MAILBOX_STREAM_SIZE 4096
-#define MAILBOX_STREAM_BASE (&posix_stream[0])
+#define MAILBOX_STREAM_BASE ((uint8_t *)&posix_stream[0])
 
 extern uint32_t posix_trace[];
-#define MAILBOX_TRACE_BASE (&posix_trace[0])
+#define MAILBOX_TRACE_BASE ((uint8_t *)&posix_trace[0])
 #define MAILBOX_TRACE_SIZE 4096
 
 #define PLATFORM_HEAP_SYSTEM 1
