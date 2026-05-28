@@ -441,6 +441,21 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 
 	if (state.extension.r.multi_ppl) {
 		ppl_count = ppl_data->pipelines_count;
+		/*
+		 * pipelines_count is read straight from the host-provided
+		 * mailbox payload, so cap it at what the mailbox can
+		 * physically hold. Anything larger means the host promised
+		 * more ppl_id[] entries than fit in MAILBOX_HOSTBOX, and
+		 * dereferencing the flex array would read out of bounds.
+		 */
+		if (ppl_count > (MAILBOX_HOSTBOX_SIZE -
+				 sizeof(struct ipc4_pipeline_set_state_data)) /
+				sizeof(uint32_t)) {
+			ipc_cmd_err(&ipc_tr,
+				    "ipc: pipelines_count %u exceeds mailbox bound",
+				    ppl_count);
+			return IPC4_ERROR_INVALID_PARAM;
+		}
 		ppl_id = ppl_data->ppl_id;
 		dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_id,
 					 sizeof(int) * ppl_count);
