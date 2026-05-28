@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright(c) 2022 Google LLC.  All rights reserved.
 // Author: Andy Ross <andyross@google.com>
+#include <platform/fuzz.h>
 #include <sof/lib/uuid.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
@@ -8,6 +9,8 @@
 #include <sof/ipc/schedule.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/audio/component_ext.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 // 6c8f0d53-ff77-4ca1-b825-c0c4e1b0d322
 SOF_DEFINE_REG_UUID(ipc_task_posix);
@@ -32,6 +35,28 @@ extern size_t posix_fuzz_sz;
 // time...
 static uint8_t fuzz_in[65536];
 static size_t fuzz_in_sz;
+
+/*
+ * Testcase-isolation helpers used by the libFuzzer entry point in
+ * fuzz.c. They keep ownership of the cross-call state in one module
+ * so a new testcase never observes leftovers from a previous one that
+ * failed to drain inside the simulator tick budget.
+ */
+void posix_fuzz_case_begin(void)
+{
+	fuzz_in_sz = 0;
+}
+
+bool posix_fuzz_case_pending(void)
+{
+	return posix_fuzz_sz != 0 || fuzz_in_sz != 0;
+}
+
+void posix_fuzz_case_abort(void)
+{
+	posix_fuzz_sz = 0;
+	fuzz_in_sz = 0;
+}
 
 // The protocol here is super simple: the first byte is a message size
 // in units of 16 bits (the buffer maximum defaults to 384 bytes, and
