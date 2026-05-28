@@ -89,7 +89,7 @@ static
 struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
 						   const struct comp_ipc_config *config,
 						   const struct module_ext_init_data *ext_init,
-						   struct vregion *ppl_vreg)
+						   struct mod_alloc_ctx *ppl_alloc)
 {
 	struct k_heap *mod_heap;
 	struct vregion *mod_vreg;
@@ -105,6 +105,8 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 	size_t heap_size;
+	bool use_ppl_alloc = ppl_alloc &&
+			     config->proc_domain == COMP_PROCESSING_DOMAIN_LL;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_SOF_VREGIONS) &&
 	    IS_ENABLED(CONFIG_USERSPACE) && !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
@@ -114,9 +116,9 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 			return NULL;
 		}
 		mod_heap = NULL;
-	} else if (ppl_vreg && config->proc_domain == COMP_PROCESSING_DOMAIN_LL) {
-		mod_vreg = vregion_get(ppl_vreg);
-		mod_heap = NULL;
+	} else if (use_ppl_alloc) {
+		mod_vreg = ppl_alloc->vreg ? vregion_get(ppl_alloc->vreg) : NULL;
+		mod_heap = ppl_alloc->heap;
 		heap_size = 0;
 	} else {
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -129,26 +131,38 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 		mod_vreg = NULL;
 	}
 
-	if (!mod_vreg)
+	if (use_ppl_alloc) {
+		/* LL modules use the pipeline's alloc context */
+		mod = sof_ctx_alloc(ppl_alloc, flags, sizeof(*mod), 0);
+	} else if (!mod_vreg) {
 		mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
-	else if (flags & SOF_MEM_FLAG_COHERENT)
+	} else if (flags & SOF_MEM_FLAG_COHERENT) {
 		mod = vregion_alloc_coherent(mod_vreg, sizeof(*mod));
-	else
+	} else {
 		mod = vregion_alloc(mod_vreg, sizeof(*mod));
+	}
 
 	if (!mod) {
 		comp_cl_err(drv, "failed to allocate memory for module");
 		goto emod;
 	}
 
-	struct mod_alloc_ctx *alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
-	if (!alloc)
-		goto ealloc;
-	memset(alloc, 0, sizeof(*alloc));
+	struct mod_alloc_ctx *alloc;
+
+	if (use_ppl_alloc) {
+		/* LL modules share the pipeline's alloc context */
+		alloc = ppl_alloc;
+	} else {
+		alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
+		if (!alloc)
+			goto ealloc;
+
+		memset(alloc, 0, sizeof(*alloc));
+		alloc->heap = mod_heap;
+		alloc->vreg = mod_vreg;
+	}
 
 	memset(mod, 0, sizeof(*mod));
-	alloc->heap = mod_heap;
-	alloc->vreg = mod_vreg;
 	mod->priv.resources.alloc = alloc;
 	mod_resource_init(mod);
 
@@ -158,7 +172,9 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	 * then it can be cached. Effectively it can be only cached in
 	 * single-core configurations.
 	 */
-	if (mod_vreg)
+	if (use_ppl_alloc)
+		dev = sof_ctx_alloc(ppl_alloc, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
+	else if (mod_vreg)
 		dev = vregion_alloc_coherent(mod_vreg, sizeof(*dev));
 	else
 		dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
@@ -177,14 +193,20 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	return mod;
 
 edev:
-	sof_heap_free(mod_heap, alloc);
+	if (!use_ppl_alloc)
+		sof_heap_free(mod_heap, alloc);
 ealloc:
-	if (mod_vreg)
+	if (use_ppl_alloc)
+		sof_ctx_free(ppl_alloc, mod);
+	else if (mod_vreg)
 		vregion_free(mod_vreg, mod);
 	else
 		sof_heap_free(mod_heap, mod);
 emod:
-	vregion_put(mod_vreg);
+	if (use_ppl_alloc)
+		vregion_put(ppl_alloc->vreg);
+	else
+		vregion_put(mod_vreg);
 
 	return NULL;
 }
@@ -192,27 +214,27 @@ emod:
 static void module_adapter_mem_free(struct processing_module *mod)
 {
 	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
-	struct k_heap *mod_heap = alloc->heap;
+	bool ppl_alloc = mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL &&
+			 mod->dev->pipeline && mod->dev->pipeline->alloc == alloc;
 
 	/*
 	 * In principle it shouldn't even be needed to free individual objects
 	 * on the module heap since we're freeing the heap itself too
 	 */
 #if CONFIG_IPC_MAJOR_4
-	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
+	sof_heap_free(alloc->heap, mod->priv.cfg.input_pins);
 #endif
-	if (alloc->vreg) {
-		struct vregion *mod_vreg = alloc->vreg;
-		uint32_t proc_domain = mod->dev->ipc_config.proc_domain;
+	sof_ctx_free(alloc, mod->dev);
+	sof_ctx_free(alloc, mod);
 
-		vregion_free(mod_vreg, mod->dev);
-		vregion_free(mod_vreg, mod);
-		if (!vregion_put(mod_vreg) || proc_domain == COMP_PROCESSING_DOMAIN_LL)
-			sof_heap_free(alloc->heap, alloc);
+	if (ppl_alloc) {
+		/* alloc belongs to pipeline, just release vregion reference */
+		vregion_put(alloc->vreg);
+	} else if (alloc->vreg) {
+		if (!vregion_put(alloc->vreg))
+			rfree(alloc);
 	} else {
-		sof_heap_free(mod_heap, mod->dev);
-		sof_heap_free(mod_heap, mod);
-		sof_heap_free(mod_heap, alloc);
+		rfree(alloc);
 	}
 }
 
@@ -265,18 +287,18 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 #if CONFIG_IPC_MAJOR_4
 	struct ipc_comp_dev *ipc_pipe;
 	struct ipc *ipc = ipc_get();
-	struct vregion *ppl_vreg = NULL;
+	struct mod_alloc_ctx *ppl_alloc = NULL;
 
-	/* resolve the pipeline pointer early to pass its vregion to mem_alloc */
+	/* resolve the pipeline pointer early to pass its alloc to mem_alloc */
 	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
 					  IPC_COMP_IGNORE_REMOTE);
 	if (ipc_pipe && ipc_pipe->pipeline)
-		ppl_vreg = ipc_pipe->pipeline->vreg;
+		ppl_alloc = ipc_pipe->pipeline->alloc;
 #endif
 
 	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init,
 #if CONFIG_IPC_MAJOR_4
-								 ppl_vreg
+								 ppl_alloc
 #else
 								 NULL
 #endif

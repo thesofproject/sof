@@ -26,7 +26,7 @@ struct comp_dev;
 struct ipc;
 struct ipc_msg;
 struct k_heap;
-struct vregion;
+struct mod_alloc_ctx;
 
 /*
  * Pipeline status to stop execution of current path, but to keep the
@@ -55,7 +55,7 @@ struct vregion;
  */
 struct pipeline {
 	struct k_heap *heap;	/**< heap used for allocating this pipeline */
-	struct vregion *vreg;	/**< shared vregion for pipeline modules */
+	struct mod_alloc_ctx *alloc;	/**< shared alloc context for pipeline modules */
 	uint32_t comp_id;	/**< component id for pipeline */
 	uint32_t pipeline_id;	/**< pipeline id */
 	uint32_t sched_id;	/**< Scheduling component id */

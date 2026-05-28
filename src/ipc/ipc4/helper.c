@@ -513,11 +513,6 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 		return ret;
 	}
 
-	if (ipc_pipe->pipeline->vreg) {
-		if (vregion_put(ipc_pipe->pipeline->vreg))
-			tr_warn(&ipc_tr, "pipeline vregion still in use");
-	}
-
 	/* free buffer, delete all tasks and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
