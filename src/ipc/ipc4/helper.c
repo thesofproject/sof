@@ -271,6 +271,7 @@ __cold static int ipc4_create_pipeline_payload_decode(char *data,
 	if (size > MAILBOX_HOSTBOX_SIZE) {
 		tr_err(&ipc_tr, "Payload size too large: %u : %#x", hdr->payload_words,
 		       *((uint32_t *)hdr));
+		return -EINVAL;
 	}
 	tr_info(&ipc_tr, "payload size %u array %u: %#x", hdr->payload_words, hdr->data_obj_array,
 		*((uint32_t *)hdr));
