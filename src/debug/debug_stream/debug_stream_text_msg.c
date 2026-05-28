@@ -43,6 +43,7 @@ void ds_msg(const char *format, ...)
 	ds_vamsg(format, args);
 	va_end(args);
 }
+EXPORT_SYMBOL(ds_msg);
 
 #if defined(CONFIG_EXCEPTION_DUMP_HOOK)
 /* The debug stream debug window slot is 4k, and when it is split
