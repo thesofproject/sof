@@ -32,9 +32,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t sz)
 	}
 
 	/* Provide the fuzz data to the embedded OS as an interrupt, with
-	 * "DMA-like" data placed into native_fuzz_buf/sz
+	 * "DMA-like" data placed into posix_fuzz_buf/sz.
 	 */
-	posix_fuzz_buf = (void *)data;
+	posix_fuzz_buf = data;
 	posix_fuzz_sz = sz;
 	hw_irq_ctrl_set_irq(CONFIG_ZEPHYR_POSIX_FUZZ_IRQ);
 

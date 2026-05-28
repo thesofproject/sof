@@ -22,8 +22,9 @@ static void posix_ipc_isr(void *arg)
 	ipc_schedule_process(global_ipc);
 }
 
-// External symbols set up by the fuzzing layer
-extern uint8_t *posix_fuzz_buf, posix_fuzz_sz;
+// External symbols set up by the fuzzing layer in fuzz.c.
+extern const uint8_t *posix_fuzz_buf;
+extern size_t posix_fuzz_sz;
 
 // Lots of space.  Should really synchronize with the -max_len
 // parameter to libFuzzer (defaults to 4096), but that requires
