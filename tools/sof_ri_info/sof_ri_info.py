@@ -2038,6 +2038,13 @@ TGL_H_MEMORY_SPACE = DspMemory('Intel Tigerlake-H',
         DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
     ])
 
+PTL_MEMORY_SPACE = DspMemory('Intel Pantherlake',
+    [
+        DspMemorySegment('imr', 0xb0000000, 16*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 30*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
 DSP_MEM_SPACE_EXT = {
     'apl' : APL_MEMORY_SPACE,
     'glk' : APL_MEMORY_SPACE,
@@ -2062,7 +2069,8 @@ DSP_MEM_SPACE_EXT = {
     'adl-s' : TGL_H_MEMORY_SPACE,
     'rpl-s' : TGL_H_MEMORY_SPACE,
     'arl-s' : TGL_H_MEMORY_SPACE,
-    'ptl' : TGL_H_MEMORY_SPACE,
+    'ptl' : PTL_MEMORY_SPACE,
+    'nvl' : PTL_MEMORY_SPACE,
 }
 
 
