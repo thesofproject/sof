@@ -40,6 +40,11 @@
 #include <rtos/string.h>
 #include <sof/lib_manager.h>
 
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#include <zephyr/internal/syscall_handler.h>
+#endif
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -509,13 +514,22 @@ void ipc_send_buffer_status_notify(void)
 }
 #endif
 
-void ipc_msg_reply(struct sof_ipc_reply *reply)
+void z_impl_ipc_msg_reply(struct sof_ipc_reply *reply)
 {
 	struct ipc4_message_request in;
 
 	in.primary.dat = msg_data.msg_in.pri;
 	ipc_compound_msg_done(in.primary.r.type, reply->error);
 }
+
+#ifdef CONFIG_USERSPACE
+void z_vrfy_ipc_msg_reply(struct sof_ipc_reply *reply)
+{
+	K_OOPS(K_SYSCALL_MEMORY_READ(reply, sizeof(*reply)));
+	z_impl_ipc_msg_reply(reply);
+}
+#include <zephyr/syscalls/ipc_msg_reply_mrsh.c>
+#endif
 
 void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 {

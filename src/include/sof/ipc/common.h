@@ -310,7 +310,7 @@ int ipc_process_on_core(uint32_t core, bool blocking);
  * \brief reply to an IPC message.
  * @param[in] reply pointer to the reply structure.
  */
-void ipc_msg_reply(struct sof_ipc_reply *reply);
+#include <sof/ipc/ipc_reply.h>
 
 /**
  * \brief Call platform-specific IPC completion function.
