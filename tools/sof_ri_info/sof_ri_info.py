@@ -984,20 +984,27 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
         if ext_type == 0xffffffff:
             continue
         reader.set_offset(reader.get_offset() - 4)
-        css_mft.add_comp(parse_mft_extension(reader, ext_idx))
+        css_mft.add_comp(parse_mft_extension(reader, ext_idx, size_limit))
         ext_idx += 1
 
-    assert reader.get_offset() == size_limit # wrong extension length
+    if reader.get_offset() != size_limit:
+        reader.info('warning: CSS extension parser finished at 0x{:x}, expected 0x{:x}; clamping'.format(
+            reader.get_offset(), size_limit))
+        reader.set_offset(size_limit)
 
     css_mft.length = reader.get_offset() - css_mft.file_offset
     return css_mft
 
-def parse_mft_extension(reader, ext_id):
+def parse_mft_extension(reader, ext_id, max_end=None):
     """ Parses mft extension from sof binary
     """
     begin_off = reader.get_offset()
     ext_type = reader.read_dw()
     ext_len = reader.read_dw()
+    ext_end = begin_off + ext_len
+    if max_end is not None and ext_end > max_end:
+        reader.info('warning: extension 0x{:x} length 0x{:x} exceeds CSS entry end; truncating'.format(ext_type, ext_len))
+        ext_end = max_end
     if ext_type == 3:
         reader.info("Partition info extension")
         ext = PartitionInfoExtension(ext_id, reader.get_offset()-8)
@@ -1012,7 +1019,7 @@ def parse_mft_extension(reader, ext_id):
         ext.add_a(Abytes('reserved', reader.read_bytes(20), 'red'))
 
         mod_idx = 0
-        while reader.get_offset() < begin_off + ext_len:
+        while reader.get_offset() < ext_end:
             mod = Component('partition_info_module_{}'.format(mod_idx),
                             'Partition Info Module', reader.get_offset())
             mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
@@ -1023,8 +1030,10 @@ def parse_mft_extension(reader, ext_id):
             ext.add_comp(mod)
             mod_idx += 1
 
-        if reader.get_offset() != begin_off + ext_len:
+        if reader.get_offset() > ext_end:
             raise Exception('Malformed partition info extension length')
+        if reader.get_offset() < ext_end:
+            reader.ff_data(ext_end - reader.get_offset())
     elif ext_type == 15:
         reader.info("Plat Fw Auth extension")
         ext = PlatFwAuthExtension(ext_id, reader.get_offset()-8)
@@ -1039,7 +1048,7 @@ def parse_mft_extension(reader, ext_id):
         ext.add_a(Abytes('reserved', reader.read_bytes(14), 'red'))
 
         mod_idx = 0
-        while reader.get_offset() < begin_off + ext_len:
+        while reader.get_offset() < ext_end:
             mod = Component('signed_pkg_module_{}'.format(mod_idx),
                             'Signed Package Module', reader.get_offset())
             mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
@@ -1052,8 +1061,10 @@ def parse_mft_extension(reader, ext_id):
             ext.add_comp(mod)
             mod_idx += 1
 
-        if reader.get_offset() != begin_off + ext_len:
+        if reader.get_offset() > ext_end:
             raise Exception('Malformed signed package extension length')
+        if reader.get_offset() < ext_end:
+            reader.ff_data(ext_end - reader.get_offset())
     elif ext_type == 0x16:
         reader.info("Info extension 0x16")
         ext = InfoExtension0x16(ext_id, reader.get_offset()-8)
@@ -1071,21 +1082,62 @@ def parse_mft_extension(reader, ext_id):
         ext.add_a(Auint('data1_3', reader.read_dw()))
         ext.add_a(Auint('data1_4', reader.read_dw()))
         read_len = reader.get_offset() - begin_off
-        reader.ff_data(ext_len - read_len)
+        effective_len = ext_end - begin_off
+        if read_len < effective_len:
+            reader.ff_data(effective_len - read_len)
     elif ext_type == 17:
         reader.info("ADSP metadata file extension")
         ext = AdspMetadataFileExt(ext_id, reader.get_offset()-8)
         ext.add_a(Auint('adsp_imr_type', reader.read_dw(), 'red'))
-        # skip reserved part
-        reader.read_bytes(16)
-        reader.read_dw()
-        reader.read_dw()
-        #
-        ext.add_a(Auint('version', reader.read_dw()))
-        ext.add_a(Abytes('sha_hash', reader.read_bytes(32)))
-        ext.add_a(Auint('base_offset', reader.read_dw()))
-        ext.add_a(Auint('limit_offset', reader.read_dw()))
-        ext.add_a(Abytes('attributes', reader.read_bytes(16)))
+        ext.add_a(Abytes('reserved', reader.read_bytes(16), 'red'))
+
+        comp_desc = Component('adsp_comp_desc', 'Component Descriptor',
+                              reader.get_offset())
+        comp_desc_res0 = reader.read_dw()
+        comp_desc_res1 = reader.read_dw()
+        comp_desc_ver = reader.read_dw()
+        comp_desc.add_a(Auint('reserved0', comp_desc_res0))
+        comp_desc.add_a(Auint('reserved1', comp_desc_res1))
+        comp_desc.add_a(Auint('version', comp_desc_ver))
+        ext.add_a(Auint('comp_desc_reserved0', comp_desc_res0))
+        ext.add_a(Auint('comp_desc_reserved1', comp_desc_res1))
+        ext.add_a(Auint('version', comp_desc_ver))
+
+        remaining = ext_end - reader.get_offset()
+        if remaining >= 72:
+            hash_len = 48
+        else:
+            hash_len = 32
+
+        comp_hash = reader.read_bytes(hash_len)
+        comp_desc.add_a(Abytes('hash', comp_hash))
+        ext.add_a(Abytes('sha_hash', comp_hash))
+
+        base_offset = reader.read_dw()
+        limit_offset = reader.read_dw()
+        comp_desc.add_a(Auint('base_offset', base_offset))
+        comp_desc.add_a(Auint('limit_offset', limit_offset))
+        ext.add_a(Auint('base_offset', base_offset))
+        ext.add_a(Auint('limit_offset', limit_offset))
+
+        attr0 = reader.read_dw()
+        attr1 = reader.read_dw()
+        attr2 = reader.read_dw()
+        attr3 = reader.read_dw()
+        comp_desc.add_a(Auint('attribute0', attr0))
+        comp_desc.add_a(Auint('attribute1', attr1))
+        comp_desc.add_a(Auint('attribute2', attr2))
+        comp_desc.add_a(Auint('attribute3', attr3))
+        ext.add_a(Abytes('attributes', struct.pack('IIII', attr0, attr1,
+                                                   attr2, attr3)))
+        ext.add_comp(comp_desc)
+
+        read_len = reader.get_offset() - begin_off
+        effective_len = ext_end - begin_off
+        if read_len < effective_len:
+            reader.ff_data(effective_len - read_len)
+        elif read_len > effective_len:
+            raise Exception('Malformed ADSP metadata file extension length')
     elif ext_type == 35:
         reader.info("Signed package info extension")
         ext = SignedPkgInfoExtension(ext_id, reader.get_offset()-8)
@@ -1102,7 +1154,7 @@ def parse_mft_extension(reader, ext_id):
         ext.add_a(Abytes('reserved', reader.read_bytes(14), 'red'))
 
         mod_idx = 0
-        while reader.get_offset() < begin_off + ext_len:
+        while reader.get_offset() < ext_end:
             mod = Component('signed_pkg_ace_module_{}'.format(mod_idx),
                             'Signed Package Module', reader.get_offset())
             mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
@@ -1114,12 +1166,14 @@ def parse_mft_extension(reader, ext_id):
             ext.add_comp(mod)
             mod_idx += 1
 
-        if reader.get_offset() != begin_off + ext_len:
+        if reader.get_offset() > ext_end:
             raise Exception('Malformed signed package ACE extension length')
+        if reader.get_offset() < ext_end:
+            reader.ff_data(ext_end - reader.get_offset())
     else:
         reader.info("Other extension")
         ext = MftExtension(ext_id, 'Other Extension', reader.get_offset()-8)
-        reader.ff_data(ext_len-8)
+        reader.ff_data(max(0, ext_end - reader.get_offset()))
     ext.add_a(Auint('type', ext_type))
     ext.add_a(Auint('length', ext_len))
     reader.info("... end of extension")
@@ -1142,16 +1196,22 @@ def parse_adsp_manifest_hdr(reader):
                     reader.get_offset() -4)
     hdr.add_a(Astring('sig', sig))
 
-    hdr.add_a(Auint('size', reader.read_dw()))
+    header_len = reader.read_dw()
+    hdr.add_a(Auint('header_len', header_len))
+    hdr.add_a(Auint('size', header_len))
     hdr.add_a(Astring('name', chararr_to_string(reader.read_bytes(8), 8)))
-    hdr.add_a(Auint('preload', reader.read_dw()))
+    preload_page_count = reader.read_dw()
+    hdr.add_a(Auint('preload_page_count', preload_page_count))
+    hdr.add_a(Auint('preload', preload_page_count))
     hdr.add_a(Auint('fw_image_flags', reader.read_dw()))
     hdr.add_a(Auint('feature_mask', reader.read_dw()))
     hdr.add_a(Aversion('build_version', reader.read_w(), reader.read_w(),
                        reader.read_w(), reader.read_w()))
 
     hdr.add_a(Adec('num_module_entries', reader.read_dw()))
-    hdr.add_a(Ahex('hw_buf_base_addr', reader.read_dw()))
+    fw_compat = reader.read_dw()
+    hdr.add_a(Ahex('fw_compat', fw_compat))
+    hdr.add_a(Ahex('hw_buf_base_addr', fw_compat))
     hdr.add_a(Auint('hw_buf_length', reader.read_dw()))
     hdr.add_a(Ahex('load_offset', reader.read_dw()))
 
@@ -1186,7 +1246,9 @@ def parse_adsp_manifest_mod_entry(index, reader):
     mod.add_a(Adec('cfg_count', reader.read_w()))
     mod.add_a(Auint('affinity_mask', reader.read_dw()))
     mod.add_a(Adec('instance_max_count', reader.read_w()))
-    mod.add_a(Auint('instance_stack_size', reader.read_w()))
+    instance_bss_size = reader.read_w()
+    mod.add_a(Auint('instance_bss_size', instance_bss_size))
+    mod.add_a(Auint('instance_stack_size', instance_bss_size))
     for i in range(0, 3):
         seg_flags = reader.read_dw()
         mod.add_a(Astring('seg_'+repr(i)+'_flags',
@@ -1197,6 +1259,24 @@ def parse_adsp_manifest_mod_entry(index, reader):
 
     return mod
 
+def parse_adsp_manifest_mod_config(index, reader):
+    """ Parses ADSP manifest module config from sof binary
+    """
+    cfg = Component('mod_cfg_'+repr(index), 'Module Config',
+                    reader.get_offset())
+    cfg.add_a(Auint('par0', reader.read_dw()))
+    cfg.add_a(Auint('par1', reader.read_dw()))
+    cfg.add_a(Auint('par2', reader.read_dw()))
+    cfg.add_a(Auint('par3', reader.read_dw()))
+    cfg.add_a(Auint('is_pages', reader.read_dw()))
+    cfg.add_a(Auint('cps', reader.read_dw()))
+    cfg.add_a(Auint('ibs', reader.read_dw()))
+    cfg.add_a(Auint('obs', reader.read_dw()))
+    cfg.add_a(Auint('module_flags', reader.read_dw()))
+    cfg.add_a(Auint('cpc', reader.read_dw()))
+    cfg.add_a(Auint('obls', reader.read_dw()))
+    return cfg
+
 def parse_adsp_manifest(reader, name):
     """ Parses ADSP manifest from sof binary
     """
@@ -1206,6 +1286,10 @@ def parse_adsp_manifest(reader, name):
     for i in range(0, num_module_entries):
         mod_entry = parse_adsp_manifest_mod_entry(i, reader)
         adsp_mft.add_comp(mod_entry)
+
+    for i in range(0, num_module_entries):
+        mod_cfg = parse_adsp_manifest_mod_config(i, reader)
+        adsp_mft.add_comp(mod_cfg)
 
     return adsp_mft
 
@@ -1719,6 +1803,12 @@ class AdspMetadataFileExt(MftExtension):
         out += ' limit offset {}'.format(self.adir['limit_offset'])
         print(out)
         print('{}  IMR type {}'.format(pref, self.adir['adsp_imr_type']))
+        print('{}  Reserved {}'.format(pref, self.adir['reserved']))
+        print('{}  Component desc reserved0 {}'.format(pref,
+                                                      self.adir['comp_desc_reserved0']))
+        print('{}  Component desc reserved1 {}'.format(pref,
+                                                      self.adir['comp_desc_reserved1']))
+        print('{}  SHA hash {}'.format(pref, self.adir['sha_hash']))
         print('{}  Attributes'.format(pref))
         print('{}    {}'.format(pref, self.adir['attributes']))
 
@@ -1735,6 +1825,7 @@ class AdspManifest(Component):
         out += ' build ver {}'.format(hdr.adir['build_version'])
         out += ' feature mask {}'.format(hdr.adir['feature_mask'])
         out += ' image flags {}'.format(hdr.adir['fw_image_flags'])
+        out += ' fw compat {}'.format(hdr.adir['fw_compat'])
         print(out)
         print('{}  HW buffers base address {} length {}'.
               format(pref,
@@ -2089,6 +2180,7 @@ def main(args):
     comp_filter = []
     if args.headers or args.no_modules:
         comp_filter.append('Module Entry')
+        comp_filter.append('Module Config')
     if args.no_headers:
         comp_filter.append('CSE Manifest')
     fw_bin.dump_info('', comp_filter)
