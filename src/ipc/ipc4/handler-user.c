@@ -1040,6 +1040,14 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 
 	/* check for vendor param first */
 	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+		/* data_off_size is a 20-bit host-controlled field, so it can
+		 * claim far more than the hostbox can physically hold.
+		 */
+		if (data_offset > MAILBOX_HOSTBOX_SIZE) {
+			ipc_cmd_err(&ipc_tr, "data_off_size %u exceeds mailbox bound",
+				    data_offset);
+			return IPC4_INVALID_CONFIG_DATA_STRUCT;
+		}
 		/* For now only vendor_config case uses payload from hostbox */
 		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 					 config.extension.r.data_off_size);
