@@ -141,6 +141,7 @@ SectionVendorTokens."sof_acp_tokens" {
 	SOF_TKN_AMD_ACP_RATE			"1700"
 	SOF_TKN_AMD_ACP_CH			"1701"
 	SOF_TKN_AMD_ACP_I2S_TDM_MODE		"1702"
+	SOF_TKN_AMD_ACP_I2S_BITDEPTH		"1703"
 }
 
 SectionVendorTokens."sof_acpdmic_tokens" {
