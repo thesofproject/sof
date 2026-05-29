@@ -998,13 +998,78 @@ def parse_mft_extension(reader, ext_id):
     begin_off = reader.get_offset()
     ext_type = reader.read_dw()
     ext_len = reader.read_dw()
-    if ext_type == 15:
+    if ext_type == 3:
+        reader.info("Partition info extension")
+        ext = PartitionInfoExtension(ext_id, reader.get_offset()-8)
+        ext.add_a(Astring('name', reader.read_string(4)))
+        ext.add_a(Auint('partition_length', reader.read_dw()))
+        ext.add_a(Abytes('hash', reader.read_bytes(32)))
+        ext.add_a(Auint('vcn', reader.read_dw()))
+        ext.add_a(Auint('part_version', reader.read_dw()))
+        ext.add_a(Auint('fmt_version', reader.read_dw()))
+        ext.add_a(Auint('instance_id', reader.read_dw()))
+        ext.add_a(Auint('part_flags', reader.read_dw()))
+        ext.add_a(Abytes('reserved', reader.read_bytes(20), 'red'))
+
+        mod_idx = 0
+        while reader.get_offset() < begin_off + ext_len:
+            mod = Component('partition_info_module_{}'.format(mod_idx),
+                            'Partition Info Module', reader.get_offset())
+            mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
+            mod.add_a(Auint('type', reader.read_b()))
+            mod.add_a(Abytes('reserved', reader.read_bytes(3), 'red'))
+            mod.add_a(Auint('meta_size', reader.read_dw()))
+            mod.add_a(Abytes('hash', reader.read_bytes(32)))
+            ext.add_comp(mod)
+            mod_idx += 1
+
+        if reader.get_offset() != begin_off + ext_len:
+            raise Exception('Malformed partition info extension length')
+    elif ext_type == 15:
         reader.info("Plat Fw Auth extension")
         ext = PlatFwAuthExtension(ext_id, reader.get_offset()-8)
         ext.add_a(Astring('name', reader.read_string(4)))
         ext.add_a(Auint('vcn', reader.read_dw()))
         ext.add_a(Abytes('bitmap', reader.read_bytes(16), 'red'))
         ext.add_a(Auint('svn', reader.read_dw()))
+
+        # Signed package info extension common fields
+        ext.add_a(Auint('fw_type', reader.read_b()))
+        ext.add_a(Auint('fw_sub_type', reader.read_b()))
+        ext.add_a(Abytes('reserved', reader.read_bytes(14), 'red'))
+
+        mod_idx = 0
+        while reader.get_offset() < begin_off + ext_len:
+            mod = Component('signed_pkg_module_{}'.format(mod_idx),
+                            'Signed Package Module', reader.get_offset())
+            mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
+            mod.add_a(Auint('type', reader.read_b()))
+            mod.add_a(Auint('hash_algo', reader.read_b()))
+            hash_size = reader.read_w()
+            mod.add_a(Auint('hash_size', hash_size))
+            mod.add_a(Auint('meta_size', reader.read_dw()))
+            mod.add_a(Abytes('hash', reader.read_bytes(hash_size)))
+            ext.add_comp(mod)
+            mod_idx += 1
+
+        if reader.get_offset() != begin_off + ext_len:
+            raise Exception('Malformed signed package extension length')
+    elif ext_type == 0x16:
+        reader.info("Info extension 0x16")
+        ext = InfoExtension0x16(ext_id, reader.get_offset()-8)
+        ext.add_a(Astring('name', reader.read_string(4)))
+        ext.add_a(Auint('size', reader.read_dw()))
+        ext.add_a(Auint('data0', reader.read_dw()))
+        ext.add_a(Auint('data1', reader.read_dw()))
+        ext.add_a(Auint('data2', reader.read_dw()))
+        ext.add_a(Auint('data3', reader.read_dw()))
+        ext.add_a(Auint('data4', reader.read_dw()))
+        ext.add_a(Abytes('hash', reader.read_bytes(48)))
+        ext.add_a(Auint('data1_0', reader.read_dw()))
+        ext.add_a(Auint('data1_1', reader.read_dw()))
+        ext.add_a(Auint('data1_2', reader.read_dw()))
+        ext.add_a(Auint('data1_3', reader.read_dw()))
+        ext.add_a(Auint('data1_4', reader.read_dw()))
         read_len = reader.get_offset() - begin_off
         reader.ff_data(ext_len - read_len)
     elif ext_type == 17:
@@ -1027,9 +1092,30 @@ def parse_mft_extension(reader, ext_id):
         ext.add_a(Astring('name', reader.read_string(4)))
         ext.add_a(Auint('vcn', reader.read_dw()))
         ext.add_a(Auint('svn', reader.read_dw()))
-        ext.add_a(Auint('partition_usage', reader.read_b(), 'red'))
-        read_len = reader.get_offset() - begin_off
-        reader.ff_data(ext_len - read_len)
+        ext.add_a(Auint('partition_usage', reader.read_b()))
+        ext.add_a(Auint('reserved0', reader.read_b(), 'red'))
+        ext.add_a(Auint('fw_type', reader.read_b()))
+        ext.add_a(Auint('fw_sub_type', reader.read_b()))
+        number_of_modules = reader.read_b()
+        ext.add_a(Auint('number_of_modules', number_of_modules))
+        ext.add_a(Auint('boot_strap_svn', reader.read_b()))
+        ext.add_a(Abytes('reserved', reader.read_bytes(14), 'red'))
+
+        mod_idx = 0
+        while reader.get_offset() < begin_off + ext_len:
+            mod = Component('signed_pkg_ace_module_{}'.format(mod_idx),
+                            'Signed Package Module', reader.get_offset())
+            mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
+            mod.add_a(Auint('type', reader.read_b()))
+            mod.add_a(Auint('hash_algo', reader.read_b()))
+            mod.add_a(Abytes('reserved', reader.read_bytes(2), 'red'))
+            mod.add_a(Auint('meta_size', reader.read_dw()))
+            mod.add_a(Abytes('hash', reader.read_bytes(48)))
+            ext.add_comp(mod)
+            mod_idx += 1
+
+        if reader.get_offset() != begin_off + ext_len:
+            raise Exception('Malformed signed package ACE extension length')
     else:
         reader.info("Other extension")
         ext = MftExtension(ext_id, 'Other Extension', reader.get_offset()-8)
@@ -1532,6 +1618,7 @@ class MftExtension(Component):
         print('{}{} type {} file offset 0x{:x} length {}'.
               format(pref, self.name,
                      self.adir['type'], self.file_offset, self.adir['length']))
+        self.dump_comp_info(pref, comp_filter)
 
 class PlatFwAuthExtension(MftExtension):
     """ Platform FW Auth Extension
@@ -1547,6 +1634,9 @@ class PlatFwAuthExtension(MftExtension):
         out += ' vcn {}'.format(self.adir['vcn'])
         out += ' bitmap {}'.format(self.adir['bitmap'])
         out += ' svn {}'.format(self.adir['svn'])
+        out += ' fw_type {}'.format(self.adir['fw_type'])
+        out += ' fw_sub_type {}'.format(self.adir['fw_sub_type'])
+        out += ' reserved {}'.format(self.adir['reserved'])
         print(out)
 
 class SignedPkgInfoExtension(MftExtension):
@@ -1563,6 +1653,54 @@ class SignedPkgInfoExtension(MftExtension):
         out += ' vcn {}'.format(self.adir['vcn'])
         out += ' svn {}'.format(self.adir['svn'])
         out += ' partition_usage {}'.format(self.adir['partition_usage'])
+        out += ' reserved0 {}'.format(self.adir['reserved0'])
+        out += ' fw_type {}'.format(self.adir['fw_type'])
+        out += ' fw_sub_type {}'.format(self.adir['fw_sub_type'])
+        out += ' number_of_modules {}'.format(self.adir['number_of_modules'])
+        out += ' boot_strap_svn {}'.format(self.adir['boot_strap_svn'])
+        out += ' reserved {}'.format(self.adir['reserved'])
+        print(out)
+
+class PartitionInfoExtension(MftExtension):
+    """ Partition info Extension
+    """
+    def __init__(self, ext_id, offset):
+        super(PartitionInfoExtension,
+              self).__init__(ext_id, 'Partition info Extension', offset)
+
+    def dump_info(self, pref, comp_filter):
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
+        out += ' name {}'.format(self.adir['name'])
+        out += ' partition_length {}'.format(self.adir['partition_length'])
+        out += ' hash {}'.format(self.adir['hash'])
+        out += ' vcn {}'.format(self.adir['vcn'])
+        out += ' part_version {}'.format(self.adir['part_version'])
+        out += ' fmt_version {}'.format(self.adir['fmt_version'])
+        out += ' instance_id {}'.format(self.adir['instance_id'])
+        out += ' part_flags {}'.format(self.adir['part_flags'])
+        out += ' reserved {}'.format(self.adir['reserved'])
+        print(out)
+
+class InfoExtension0x16(MftExtension):
+    """ info_ext_0x16 Extension
+    """
+    def __init__(self, ext_id, offset):
+        super(InfoExtension0x16,
+              self).__init__(ext_id, 'Info Extension 0x16', offset)
+
+    def dump_info(self, pref, comp_filter):
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
+        out += ' name {}'.format(self.adir['name'])
+        out += ' size {}'.format(self.adir['size'])
+        out += ' data [{}, {}, {}, {}, {}]'.format(
+            self.adir['data0'], self.adir['data1'], self.adir['data2'],
+            self.adir['data3'], self.adir['data4'])
+        out += ' hash {}'.format(self.adir['hash'])
+        out += ' data1 [{}, {}, {}, {}, {}]'.format(
+            self.adir['data1_0'], self.adir['data1_1'], self.adir['data1_2'],
+            self.adir['data1_3'], self.adir['data1_4'])
         print(out)
 
 class AdspMetadataFileExt(MftExtension):
