@@ -846,13 +846,21 @@ def parse_cse_manifest(reader):
     nb_entries = reader.read_dw()
     reader.info('# of entries {}'.format(nb_entries))
     hdr.add_a(Adec('nb_entries', nb_entries))
-    # read version (1byte for header ver and 1 byte for entry ver)
-    ver = reader.read_w()
-    hdr.add_a(Ahex('header_version', ver))
+    # read version bytes
+    hdr.add_a(Ahex('header_version', reader.read_b()))
+    hdr.add_a(Ahex('entry_version', reader.read_b()))
     header_length = reader.read_b()
     hdr.add_a(Ahex('header_length', header_length))
-    hdr.add_a(Ahex('checksum', reader.read_b()))
+    legacy_or_unused = reader.read_b()
+    if header_length > 12:
+        hdr.add_a(Ahex('not_used', legacy_or_unused))
+    else:
+        hdr.add_a(Ahex('checksum', legacy_or_unused))
     hdr.add_a(Astring('partition_name', reader.read_string(4)))
+
+    # CSE v2.5 extends header with a CRC32 checksum dword
+    if header_length > 12:
+        hdr.add_a(Ahex('checksum32', reader.read_dw()))
 
     reader.set_offset(cse_mft.file_offset + header_length)
     # Read entries
@@ -862,13 +870,13 @@ def parse_cse_manifest(reader):
         entry_name = reader.read_string(12)
         entry_offset = reader.read_dw()
         entry_length = reader.read_dw()
-        # reserved field
-        reader.read_dw()
+        entry_reserved = reader.read_dw()
 
         hdr_entry = Component('cse_hdr_entry', 'Entry', reader.get_offset())
         hdr_entry.add_a(Astring('entry_name', entry_name))
         hdr_entry.add_a(Ahex('entry_offset', entry_offset))
         hdr_entry.add_a(Ahex('entry_length', entry_length))
+        hdr_entry.add_a(Ahex('entry_reserved', entry_reserved))
         hdr.add_comp(hdr_entry)
 
         assert cse_mft.file_offset == reader.ext_mft_length
@@ -916,12 +924,16 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     hdr = Component('css_mft_hdr', 'Header', reader.get_offset())
     css_mft.add_comp(hdr)
 
-    hdr.add_a(Auint('type', reader.read_dw()))
+    header_type = reader.read_dw()
+    hdr.add_a(Auint('type', header_type))
+    hdr.add_a(Auint('header_type', header_type))
     header_len_dw = reader.read_dw()
     hdr.add_a(Auint('header_len_dw', header_len_dw))
     hdr.add_a(Auint('header_version', reader.read_dw()))
     hdr.add_a(Auint('reserved0', reader.read_dw(), 'red'))
-    hdr.add_a(Ahex('mod_vendor', reader.read_dw()))
+    module_vendor = reader.read_dw()
+    hdr.add_a(Ahex('mod_vendor', module_vendor))
+    hdr.add_a(Ahex('module_vendor', module_vendor))
     date_start = reader.get_offset()
     hdr.add_a(Auint('date_start', date_start))
     hdr.add_a(Adate('date', hex(reader.read_dw())))
@@ -930,10 +942,17 @@ def parse_css_manifest_4(css_mft, reader, size_limit):
     hdr.add_a(Auint('size', size))
     hdr.add_a(Astring('header_id', reader.read_string(4)))
     hdr.add_a(Auint('padding', reader.read_dw()))
-    hdr.add_a(Aversion('fw_version', reader.read_w(), reader.read_w(),
-                       reader.read_w(), reader.read_w()))
+    fw_major = reader.read_w()
+    fw_minor = reader.read_w()
+    fw_hotfix = reader.read_w()
+    fw_build = reader.read_w()
+    hdr.add_a(Auint('fw_major_version', fw_major))
+    hdr.add_a(Auint('fw_minor_version', fw_minor))
+    hdr.add_a(Auint('fw_hotfix_version', fw_hotfix))
+    hdr.add_a(Auint('fw_build_version', fw_build))
+    hdr.add_a(Aversion('fw_version', fw_major, fw_minor, fw_hotfix, fw_build))
     hdr.add_a(Auint('svn', reader.read_dw()))
-    reader.read_bytes(18*4)
+    hdr.add_a(Abytes('reserved1', reader.read_bytes(18*4)))
     modulus_size = reader.read_dw()
     hdr.add_a(Adec('modulus_size', modulus_size))
     exponent_size = reader.read_dw()
@@ -1456,10 +1475,19 @@ class CseManifest(Component):
 
     def dump_info(self, pref, comp_filter):
         hdr = self.cdir['cse_mft_hdr']
-        print('{}{} ver {} checksum {} partition name {}'.
-              format(pref,
-                     self.name, hdr.adir['header_version'],
-                     hdr.adir['checksum'], hdr.adir['partition_name']))
+        out = '{}{} header_ver {} entry_ver {} partition name {}'.format(
+            pref,
+            self.name,
+            hdr.adir['header_version'],
+            hdr.adir['entry_version'],
+            hdr.adir['partition_name'])
+        if 'checksum' in hdr.adir:
+            out += ' checksum {}'.format(hdr.adir['checksum'])
+        if 'not_used' in hdr.adir:
+            out += ' not_used {}'.format(hdr.adir['not_used'])
+        if 'checksum32' in hdr.adir:
+            out += ' checksum32 {}'.format(hdr.adir['checksum32'])
+        print(out)
         self.dump_comp_info(pref, comp_filter + ['Header'])
 
 class CssManifest(Component):
