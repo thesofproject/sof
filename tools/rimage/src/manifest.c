@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
 
@@ -25,6 +26,29 @@
 #include <rimage/file_utils.h>
 #include <rimage/misc_utils.h>
 #include <rimage/hash.h>
+
+static bool cse_header_is_valid(const struct image *image, const void *buffer, size_t size)
+{
+	if (image->adsp->man_v2_5 || image->adsp->man_ace_v1_5) {
+		const struct CsePartitionDirHeader_v2_5 *cse_hdr = buffer;
+
+		return cse_hdr->header_marker == CSE_HEADER_MAKER &&
+			cse_hdr->nb_entries == MAN_CSE_PARTS &&
+			cse_hdr->header_length >= sizeof(*cse_hdr) &&
+			size >= sizeof(*cse_hdr);
+	}
+
+	if (image->adsp->man_v1_5 || image->adsp->man_v1_8) {
+		const struct CsePartitionDirHeader *cse_hdr = buffer;
+
+		return cse_hdr->header_marker == CSE_HEADER_MAKER &&
+			cse_hdr->nb_entries == MAN_CSE_PARTS &&
+			cse_hdr->header_length >= sizeof(*cse_hdr) &&
+			size >= sizeof(*cse_hdr);
+	}
+
+	return false;
+}
 
 static int man_open_rom_file(struct image *image)
 {
@@ -1644,7 +1668,7 @@ err:
 int verify_image(struct image *image)
 {
 	FILE *in_file;
-	int ret;
+	int ret = -EINVAL;
 	void *buffer;
 	size_t size, read, i;
 
@@ -1680,7 +1704,7 @@ int verify_image(struct image *image)
 	}
 	for (i = 0; i + sizeof(uint32_t) <= size; i += sizeof(uint32_t)) {
 		/* find CSE header marker "$CPD" */
-		if (*(uint32_t *)(buffer + i) == CSE_HEADER_MAKER) {
+		if (cse_header_is_valid(image, buffer + i, size - i)) {
 			image->fw_image = buffer + i;
 			/* size of the image from the CSE header to the end of the
 			 * file, used by v1.5 verification and the signed-payload
@@ -1706,6 +1730,7 @@ int verify_image(struct image *image)
 		image->verify_file);
 	ret = -EINVAL;
 out:
+	free(buffer);
 	fclose(in_file);
 	/* propagate verification result so callers (and the exit code) can
 	 * detect a failed/missing verification instead of always seeing success
@@ -1751,7 +1776,7 @@ int resign_image(struct image *image)
 
 	for (i = 0; i + sizeof(uint32_t) <= size; i += sizeof(uint32_t)) {
 		/* find CSE header marker "$CPD" */
-		if (*(uint32_t *)(buffer + i) == CSE_HEADER_MAKER) {
+		if (cse_header_is_valid(image, buffer + i, size - i)) {
 			image->fw_image = buffer + i;
 			break;
 		}
@@ -1813,7 +1838,22 @@ int resign_image(struct image *image)
 		goto out;
 	}
 
-	man_write_fw_mod(image);
+	ret = man_write_fw_mod(image);
+	if (ret < 0)
+		goto out;
+
+	if (fclose(image->out_fd)) {
+		ret = file_error("unable to close file after signing", image->out_file);
+		goto out;
+	}
+	image->out_fd = NULL;
+
+	/* validate the re-signed output with the same private key */
+	image->verify_file = image->out_file;
+	ret = verify_image(image);
+	image->verify_file = NULL;
+	if (ret < 0)
+		unlink(image->out_file);
 
 out:
 	free(buffer);
