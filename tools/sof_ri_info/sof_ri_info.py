@@ -2054,10 +2054,15 @@ DSP_MEM_SPACE_EXT = {
     'ehl' : TGL_LP_MEMORY_SPACE,
     'adl' : TGL_LP_MEMORY_SPACE,
     'rpl' : TGL_LP_MEMORY_SPACE,
+    'mtl' : TGL_LP_MEMORY_SPACE,
+    'lnl' : TGL_LP_MEMORY_SPACE,
+    'arl' : TGL_LP_MEMORY_SPACE,
 
     'tgl-h' : TGL_H_MEMORY_SPACE,
     'adl-s' : TGL_H_MEMORY_SPACE,
     'rpl-s' : TGL_H_MEMORY_SPACE,
+    'arl-s' : TGL_H_MEMORY_SPACE,
+    'ptl' : TGL_H_MEMORY_SPACE,
 }
 
 
