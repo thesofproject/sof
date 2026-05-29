@@ -548,6 +548,9 @@ struct sdw_pin_data {
 	uint32_t instance1;
 };
 
+#define ACP_TDM_INVALID_32	0xFFFFFFFFU
+#define ACP_TDM_INVALID_16	0xFFFFU
+
 struct tdm_context {
 	uint64_t prev_pos;
 	uint32_t buff_size;

@@ -421,6 +421,9 @@ struct sdw_pin_data {
 	uint32_t instance;
 };
 
+#define ACP_TDM_INVALID_32	0xFFFFFFFFU
+#define ACP_TDM_INVALID_16	0xFFFFU
+
 struct tdm_context {
 	uint32_t tdm_instance;
 	uint32_t pin_dir;

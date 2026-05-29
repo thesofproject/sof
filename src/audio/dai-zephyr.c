@@ -201,6 +201,7 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	case SOF_DAI_AMD_SP:
 	case SOF_DAI_AMD_SP_VIRTUAL:
 	case SOF_DAI_AMD_BT:
+	case SOF_DAI_AMD_TDM:
 		cfg.type = DAI_AMD_TDM;
 		cfg_params = &sof_cfg->acptdm;
 		break;

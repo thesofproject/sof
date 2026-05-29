@@ -96,8 +96,8 @@ enum sof_ipc_dai_type {
 	SOF_DAI_AMD_HS_VIRTUAL,		/**<Amd HS VIRTUAL */
 	SOF_DAI_IMX_MICFIL,		/**< i.MX MICFIL */
 	SOF_DAI_AMD_SDW,		/**< Amd SDW */
-	SOF_DAI_INTEL_UAOL,		/**< Intel UAOL */
-	SOF_DAI_AMD_TDM			/**< Amd TDM */
+	SOF_DAI_AMD_TDM,		/**< Amd TDM */
+	SOF_DAI_INTEL_UAOL		/**< Intel UAOL */
 };
 
 #define SOF_DAI_CONFIG_HW_SPEC_OFFSET offsetof(struct sof_ipc_dai_config, ssp)

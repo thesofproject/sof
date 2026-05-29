@@ -238,6 +238,7 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 	case SOF_DAI_AMD_SP:
 	case SOF_DAI_AMD_SP_VIRTUAL:
 	case SOF_DAI_AMD_BT:
+	case SOF_DAI_AMD_TDM:
 		return DAI_AMD_TDM;
 	default:
 		return -EINVAL;
@@ -314,6 +315,10 @@ static void dai_set_device_params(struct dai *d)
 	case SOF_DAI_AMD_BT:
 		d->dma_dev = SOF_DMA_DEV_HS | SOF_DMA_DEV_SP | SOF_DMA_DEV_BT;
 		d->dma_caps = SOF_DMA_CAP_HS | SOF_DMA_CAP_SP | SOF_DMA_CAP_BT;
+		break;
+	case SOF_DAI_AMD_TDM:
+		d->dma_dev = SOF_DMA_DEV_TDM;
+		d->dma_caps = SOF_DMA_CAP_TDM;
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
 		d->dma_dev = SOF_DMA_DEV_AFE_MEMIF;

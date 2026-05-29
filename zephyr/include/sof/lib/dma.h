@@ -81,6 +81,7 @@ struct k_heap;
 #define SOF_DMA_CAP_HS_VIRTUAL	BIT(7) /**< HS VIRTUAL DMA */
 #define SOF_DMA_CAP_HS		BIT(8) /**< HS DMA */
 #define SOF_DMA_CAP_SW		BIT(9) /**< SW DMA */
+#define SOF_DMA_CAP_TDM		BIT(16) /**< connectable to ACP TDM I2S */
 
 /* DMA dev type bitmasks used to define the type of DMA */
 
@@ -100,6 +101,7 @@ struct k_heap;
 #define SOF_DMA_DEV_HS		BIT(13) /**< connectable to ACP HS I2S */
 #define SOF_DMA_DEV_MICFIL	BIT(14) /**< connectable to MICFIL fifo */
 #define SOF_DMA_DEV_SW		BIT(15) /**< connectable to ACP SW */
+#define SOF_DMA_DEV_TDM		BIT(16) /**< connectable to ACP TDM I2S */
 
 /* DMA access privilege flag */
 #define SOF_DMA_ACCESS_EXCLUSIVE	1

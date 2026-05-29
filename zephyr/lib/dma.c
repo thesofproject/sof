@@ -243,8 +243,13 @@ APP_SYSUSER_DATA SHARED_DATA struct sof_dma dma[] = {
 	.plat_data = {
 		.dir		= SOF_DMA_DIR_MEM_TO_DEV |
 				  SOF_DMA_DIR_DEV_TO_MEM,
+#if defined(CONFIG_SOC_ACP_7_X)
+		.devs		= SOF_DMA_DEV_TDM,
+		.caps		= SOF_DMA_CAP_TDM,
+#elif defined(CONFIG_SOC_ACP_7_0)
 		.devs		= SOF_DMA_DEV_HS | SOF_DMA_DEV_SP | SOF_DMA_DEV_BT,
 		.caps		= SOF_DMA_CAP_HS | SOF_DMA_CAP_SP | SOF_DMA_CAP_BT,
+#endif
 		.base		= DMA0_BASE,
 		.chan_size	= DMA0_SIZE,
 		.channels	= 6,
