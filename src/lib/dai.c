@@ -188,6 +188,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_AMD_SDW
 	DT_FOREACH_STATUS_OKAY(amd_acp_sdw_dai, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_AMD_TDM
+	DT_FOREACH_STATUS_OKAY(amd_tdm_dai, GET_DEVICE_LIST)
+#endif
 #if CONFIG_DAI_INTEL_UAOL
 	DT_FOREACH_STATUS_OKAY(intel_uaol_dai, GET_DEVICE_LIST)
 #endif
@@ -222,21 +225,20 @@ static int sof_dai_type_to_zephyr(uint32_t type)
 		return DAI_IMX_SAI;
 	case SOF_DAI_IMX_ESAI:
 		return DAI_IMX_ESAI;
-	case SOF_DAI_AMD_BT:
-		return DAI_AMD_BT;
-	case SOF_DAI_AMD_SP:
-		return DAI_AMD_SP;
 	case SOF_DAI_AMD_DMIC:
 		return DAI_AMD_DMIC;
 	case SOF_DAI_MEDIATEK_AFE:
 		return DAI_MEDIATEK_AFE;
 	case SOF_DAI_IMX_MICFIL:
 		return DAI_IMX_MICFIL;
-	case SOF_DAI_AMD_HS:
-	case SOF_DAI_AMD_SP_VIRTUAL:
-	case SOF_DAI_AMD_HS_VIRTUAL:
 	case SOF_DAI_AMD_SDW:
 		return DAI_AMD_SDW;
+	case SOF_DAI_AMD_HS:
+	case SOF_DAI_AMD_HS_VIRTUAL:
+	case SOF_DAI_AMD_SP:
+	case SOF_DAI_AMD_SP_VIRTUAL:
+	case SOF_DAI_AMD_BT:
+		return DAI_AMD_TDM;
 	default:
 		return -EINVAL;
 	}
@@ -303,6 +305,15 @@ static void dai_set_device_params(struct dai *d)
 	case SOF_DAI_AMD_SDW:
 		d->dma_dev = SOF_DMA_DEV_SW;
 		d->dma_caps = SOF_DMA_CAP_SW;
+		break;
+	/* All TDM-capable AMD DAIs share acp_tdm_dma. */
+	case SOF_DAI_AMD_HS:
+	case SOF_DAI_AMD_HS_VIRTUAL:
+	case SOF_DAI_AMD_SP:
+	case SOF_DAI_AMD_SP_VIRTUAL:
+	case SOF_DAI_AMD_BT:
+		d->dma_dev = SOF_DMA_DEV_HS | SOF_DMA_DEV_SP | SOF_DMA_DEV_BT;
+		d->dma_caps = SOF_DMA_CAP_HS | SOF_DMA_CAP_SP | SOF_DMA_CAP_BT;
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
 		d->dma_dev = SOF_DMA_DEV_AFE_MEMIF;
