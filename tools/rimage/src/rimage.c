@@ -33,7 +33,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -e build extended manifest\n");
 	fprintf(stdout, "\t -l build loadable modules image (don't treat the first module as a bootloader)\n");
 	fprintf(stdout, "\t -y verify signed file\n");
-	fprintf(stdout, "\t -q resign binary\n");
+	fprintf(stdout, "\t -q resign binary from infile and validate the output signature\n");
 	fprintf(stdout, "\t -p set PV bit\n");
 	fprintf(stdout, "\t -d ignore detached sections\n");
 	fprintf(stdout, "\t -Q, --quiet suppress informational stdout logs\n");
@@ -141,6 +141,11 @@ int main(int argc, char *argv[])
 	/* make sure we have an outfile if not verifying */
 	if ((!image.out_file && !image.verify_file)) {
 		usage(argv[0]);
+		return -EINVAL;
+	}
+
+	if (image.in_file && image.verify_file) {
+		fprintf(stderr, "error: resign and verify modes are mutually exclusive\n");
 		return -EINVAL;
 	}
 
