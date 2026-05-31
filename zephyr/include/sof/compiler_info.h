@@ -6,7 +6,17 @@
 #ifndef __SOF_COMPILER_INFO_H__
 #define __SOF_COMPILER_INFO_H__
 
-#if defined(__XCC__)
+#if defined(__XCC_CLANG__)
+/* Upstream LLVM clang targeting Xtensa; build system also sets -D__XCC__ */
+
+#define CC_MAJOR __clang_major__
+#define CC_MINOR __clang_minor__
+#define CC_MICRO __clang_patchlevel__
+#define CC_NAME "CLANG"
+#define CC_DESC ""
+
+#elif defined(__XCC__)
+/* Cadence Xtensa toolchain (xt-cc or xt-clang) */
 
 #include <xtensa/hal.h>
 
@@ -15,6 +25,14 @@
 #define CC_MICRO XTHAL_RELEASE_MINOR
 #define CC_NAME "XCC"
 #define CC_DESC " " XCC_TOOLS_VERSION
+
+#elif defined(__clang__)
+
+#define CC_MAJOR __clang_major__
+#define CC_MINOR __clang_minor__
+#define CC_MICRO __clang_patchlevel__
+#define CC_NAME "CLANG"
+#define CC_DESC ""
 
 #elif defined(__GNUC__)
 
