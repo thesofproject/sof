@@ -17,7 +17,6 @@
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/vregion.h>
-#include <sof/ctx_alloc.h>
 #include <sof/list.h>
 #include <sof/schedule/dp_schedule.h>
 #include <rtos/spinlock.h>
