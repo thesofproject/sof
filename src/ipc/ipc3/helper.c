@@ -439,6 +439,8 @@ int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
 	int ret;
 
 	/* check whether pipeline exists */
@@ -456,6 +458,19 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	/* check core */
 	if (!cpu_is_me(ipc_pipe->core))
 		return ipc_process_on_core(ipc_pipe->core, false);
+
+	/* Clear stale cd->pipeline pointers on all components and buffers
+	 * that still belong to this pipeline. A well-behaved host driver
+	 * frees components before freeing the pipeline, but if it does not
+	 * (or in fuzz/error paths) the dangling pointer would be a
+	 * use-after-free on any subsequent IPC referencing that component.
+	 */
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type == COMP_TYPE_COMPONENT &&
+		    icd->cd && icd->cd->pipeline == ipc_pipe->pipeline)
+			icd->cd->pipeline = NULL;
+	}
 
 	/* free buffer and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
