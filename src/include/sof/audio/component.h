@@ -23,7 +23,6 @@
 #include <rtos/idc.h>
 #include <rtos/mutex.h>
 #include <rtos/userspace_helper.h>
-#include <sof/ctx_alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/schedule/schedule.h>
 #include <ipc/control.h>

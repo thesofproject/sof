@@ -7,7 +7,6 @@
 #include <sof/trace/trace.h>
 #include <sof/lib/uuid.h>
 #include <sof/lib/vregion.h>
-#include <sof/ctx_alloc.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/ring_buffer.h>

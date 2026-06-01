@@ -18,7 +18,6 @@
 #include <sof/audio/data_blob.h>
 #include <sof/lib/fast-get.h>
 #include <sof/lib/vregion.h>
-#include <sof/ctx_alloc.h>
 #include <sof/schedule/dp_schedule.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/header.h>
