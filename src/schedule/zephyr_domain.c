@@ -305,7 +305,7 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 	k_tid_t thread;
 	int core = task->core;
 
-	tr_dbg(&ll_tr, "thread_init entry");
+	tr_dbg(&ll_tr, "entry");
 
 	if (core >= CONFIG_CORE_COUNT)
 		return -EINVAL;
