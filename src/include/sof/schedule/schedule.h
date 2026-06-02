@@ -203,149 +203,106 @@ static inline void *scheduler_get_data(uint16_t type)
 /** See scheduler_ops::schedule_task_running */
 static inline int schedule_task_running(struct task *task)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
-	struct list_item *slist;
 
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type) {
-			/* optional operation */
-			if (!sch->ops->schedule_task_running)
-				return 0;
+	assert(task);
+	sch = task->sch;
 
-			return sch->ops->schedule_task_running(sch->data, task);
-		}
-	}
+	if (!sch->ops->schedule_task_running)
+		return 0;
 
-	return -ENODEV;
+	return sch->ops->schedule_task_running(sch->data, task);
 }
 
 /** See scheduler_ops::schedule_task */
 static inline int schedule_task(struct task *task, uint64_t start,
 				uint64_t period)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
-	struct list_item *slist;
 
 	if (!task)
 		return -EINVAL;
 
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type)
-			return sch->ops->schedule_task(sch->data, task, start,
-						       period);
-	}
+	sch = task->sch;
 
-	return -ENODEV;
+	return sch->ops->schedule_task(sch->data, task, start, period);
 }
 
 /** See scheduler_ops::schedule_task_before */
 static inline int schedule_task_before(struct task *task, uint64_t start,
 				       uint64_t period, struct task *before)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
-	struct list_item *slist;
 
 	if (!task || !before)
 		return -EINVAL;
 
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type) {
-			if (sch->ops->schedule_task_before)
-				return sch->ops->schedule_task_before(sch->data, task, start,
-								      period, before);
+	sch = task->sch;
 
-			return sch->ops->schedule_task(sch->data, task, start,
-						       period);
-		}
-	}
+	if (sch->ops->schedule_task_before)
+		return sch->ops->schedule_task_before(sch->data, task, start,
+						      period, before);
 
-	return -ENODEV;
+	return sch->ops->schedule_task(sch->data, task, start, period);
 }
 
 /** See scheduler_ops::schedule_task_after */
 static inline int schedule_task_after(struct task *task, uint64_t start,
 				      uint64_t period, struct task *after)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
-	struct list_item *slist;
 
 	if (!task || !after)
 		return -EINVAL;
 
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type) {
-			if (sch->ops->schedule_task_after)
-				return sch->ops->schedule_task_after(sch->data, task, start,
-								     period, after);
+	sch = task->sch;
 
-			return sch->ops->schedule_task(sch->data, task, start,
-						       period);
-		}
-	}
+	if (sch->ops->schedule_task_after)
+		return sch->ops->schedule_task_after(sch->data, task, start,
+						     period, after);
 
-	return -ENODEV;
+	return sch->ops->schedule_task(sch->data, task, start, period);
 }
 
 /** See scheduler_ops::reschedule_task */
 static inline int reschedule_task(struct task *task, uint64_t start)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
-	struct list_item *slist;
 
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type) {
-			/* optional operation */
-			if (!sch->ops->reschedule_task)
-				return 0;
+	assert(task);
+	sch = task->sch;
 
-			return sch->ops->reschedule_task(sch->data, task,
-							 start);
-		}
-	}
+	/* optional operation */
+	if (!sch->ops->reschedule_task)
+		return 0;
 
-	return -ENODEV;
+	return sch->ops->reschedule_task(sch->data, task, start);
 }
 
 /** See scheduler_ops::schedule_task_cancel */
 static inline int schedule_task_cancel(struct task *task)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
-	struct list_item *slist;
 
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type)
-			return sch->ops->schedule_task_cancel(sch->data, task);
-	}
+	if (!task || !task->sch)
+		return -EINVAL;
 
-	return -ENODEV;
+	sch = task->sch;
+
+	return sch->ops->schedule_task_cancel(sch->data, task);
 }
 
 /** See scheduler_ops::schedule_task_free */
 static inline int schedule_task_free(struct task *task)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
-	struct list_item *slist;
 
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (task->type == sch->type)
-			return sch->ops->schedule_task_free(sch->data, task);
-	}
+	if (!task || !task->sch)
+		return -EINVAL;
 
-	return -ENODEV;
+	sch = task->sch;
+
+	return sch->ops->schedule_task_free(sch->data, task);
 }
 
 /** See scheduler_ops::scheduler_free */
