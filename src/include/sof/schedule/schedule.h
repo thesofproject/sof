@@ -151,15 +151,6 @@ struct scheduler_ops {
 	void (*scheduler_free)(void *data, uint32_t flags);
 
 	/**
-	 * Restores scheduler's resources.
-	 * @param data Private data of selected scheduler.
-	 * @return 0 if succeeded, error code otherwise.
-	 *
-	 * This operation is optional.
-	 */
-	int (*scheduler_restore)(void *data);
-
-	/**
 	 * Initializes context
 	 * @param data Private data of selected scheduler.
 	 * @param task task that needs to be scheduled
@@ -369,24 +360,6 @@ static inline void schedule_free(uint32_t flags)
 		if (sch->ops->scheduler_free)
 			sch->ops->scheduler_free(sch->data, flags);
 	}
-}
-
-/** See scheduler_ops::scheduler_restore */
-static inline int schedulers_restore(void)
-{
-	struct schedulers *schedulers = *arch_schedulers_get();
-	struct schedule_data *sch;
-	struct list_item *slist;
-
-	assert(schedulers);
-
-	list_for_item(slist, &schedulers->list) {
-		sch = container_of(slist, struct schedule_data, list);
-		if (sch->ops->scheduler_restore)
-			return sch->ops->scheduler_restore(sch->data);
-	}
-
-	return 0;
 }
 
 /** See scheduler_ops::scheduler_init_context */
