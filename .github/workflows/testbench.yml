@@ -49,12 +49,27 @@ jobs:
                   octave octave-signal automake autoconf libtool
                   gettext libasound2-dev
 
+      # Ubuntu 24.04 ships autoconf 2.71, but current alsa-lib/alsa-utils
+      # require >= 2.72. Build a newer autoconf from the GNU release
+      # tarball and install it into /usr/local (ahead of /usr/bin in PATH).
+      - name: Install autoconf 2.72
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          wget -q https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.gz
+          tar xf autoconf-2.72.tar.gz
+          cd autoconf-2.72
+          ./configure --prefix=/usr/local
+          make -j"$(nproc)"
+          sudo make install
+          hash -r
+          autoconf --version | head -n1
+
       - name: Build Alsa-lib
         run: |
           cd ${GITHUB_WORKSPACE}
           git clone https://github.com/thesofproject/alsa-lib.git
           cd alsa-lib
-          git checkout df8f1cc1ec9d9ee15be5e2c23ad25b9389fd8766 -b build
+          git checkout 08b532cd3da9ac8f683bcb4e4beb9b74c39c1782 -b build
           ./gitcompile --prefix=${GITHUB_WORKSPACE}/tools
           make install
 
@@ -63,7 +78,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}
           git clone https://github.com/thesofproject/alsa-utils.git
           cd alsa-utils
-          git checkout 0ffa105942a06cdfa98e5918b8dc82e3cac12792 -b build
+          git checkout 9feb22ba45b48729729c8d194aaf1bc082a6842a -b build
           ./gitcompile --prefix=${GITHUB_WORKSPACE}/tools \
              --with-alsa-prefix=${GITHUB_WORKSPACE}/tools \
              --with-alsa-inc-prefix=${GITHUB_WORKSPACE}/tools/include \
