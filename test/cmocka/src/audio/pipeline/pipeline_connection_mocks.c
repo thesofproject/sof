@@ -49,6 +49,9 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 	sch->ops = &schedule_mock_ops;
 	list_item_append(&sch->list, &schedulers->list);
 
+	/* Bind the scheduler to the task, as schedule_task_init() would */
+	pipe->pipe_task->sch = sch;
+
 	struct comp_dev *first = calloc(sizeof(struct comp_dev), 1);
 	struct comp_ipc_config *first_comp = &first->ipc_config;
 

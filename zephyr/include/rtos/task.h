@@ -17,6 +17,7 @@
 
 struct comp_dev;
 struct sof;
+struct schedule_data;
 
 /** \brief Predefined LL task priorities. */
 #define SOF_TASK_PRI_HIGH	0	/* priority level 0 - high */
@@ -59,6 +60,7 @@ struct task {
 	uint16_t priority;	/**< priority of the task (used by LL) */
 	uint16_t core;		/**< execution core */
 	uint16_t flags;		/**< custom flags */
+	struct schedule_data *sch;	/**< scheduler bound to task */
 	enum task_state state;	/**< current state */
 	void *data;		/**< custom data passed to all ops */
 	struct list_item list;	/**< used by schedulers to hold tasks */

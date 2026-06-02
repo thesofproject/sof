@@ -25,8 +25,28 @@ int schedule_task_init(struct task *task,
 		       uint16_t priority, enum task_state (*run)(void *data),
 		       void *data, uint16_t core, uint32_t flags)
 {
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch = NULL;
+	struct list_item *slist;
+
 	if (type >= SOF_SCHEDULE_COUNT)
 		return -EINVAL;
+
+	if (!schedulers)
+		return -ENODEV;
+
+	task->sch = NULL;
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (type == sch->type) {
+			task->sch = sch;
+			break;
+		}
+	}
+
+	if (!task->sch) {
+		return -ENODEV;
+	}
 
 	task->uid = uid;
 	task->type = type;
