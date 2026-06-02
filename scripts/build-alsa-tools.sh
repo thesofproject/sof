@@ -16,8 +16,8 @@ declare -a REPOS=(
 # the repository if this commit ID is not found.  Leave empty to skip.
 # This array order must align with REPO array above.
 declare -a COMMIT_ID=(
-    "df8f1cc1ec9d9ee15be5e2c23ad25b9389fd8766"
-    "09550cd393b1a7d307ee6f26637b1ed7bd275e38"
+    "08b532cd3da9ac8f683bcb4e4beb9b74c39c1782"
+    "9feb22ba45b48729729c8d194aaf1bc082a6842a"
     # Add more IDs here...
 )
 
