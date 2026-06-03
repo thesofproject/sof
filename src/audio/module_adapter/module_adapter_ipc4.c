@@ -81,10 +81,9 @@ int module_ext_init_decode(const struct comp_driver *drv, struct module_ext_init
 			}
 			ext_data->dp_data = dp_data;
 			comp_cl_info(drv,
-				     "init_ext_obj_dp_data domain %u stack %u interim %u lifetime %u shared %u",
+				     "init_ext_obj_dp_data domain %u stack %u heap %u",
 				     dp_data->domain_id, dp_data->stack_bytes,
-				     dp_data->interim_heap_bytes, dp_data->lifetime_heap_bytes,
-				     dp_data->shared_bytes);
+				     dp_data->heap_bytes);
 			break;
 		}
 		case IPC4_MOD_INIT_DATA_ID_MODULE_DATA:
