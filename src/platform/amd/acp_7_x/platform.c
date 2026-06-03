@@ -39,6 +39,7 @@
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(platform_file, CONFIG_SOF_LOG_LEVEL);
+/* add platform specific header files here */
 
 #define INTERRUPT_DISABLE 0
 extern void acp_dsp_to_host_intr_trig(void);
