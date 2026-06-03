@@ -317,10 +317,9 @@ __cold static int ipc4_create_pipeline_payload_decode(char *data,
 			}
 			pparams->mem_data = mem_data;
 			tr_info(&ipc_tr,
-				"init_ext_obj_mem_data domain %u stack %u interim %u lifetime %u shared %u",
+				"init_ext_obj_mem_data domain %u stack %u heap %u",
 				mem_data->domain_id, mem_data->stack_bytes,
-				mem_data->interim_heap_bytes, mem_data->lifetime_heap_bytes,
-				mem_data->shared_bytes);
+				mem_data->heap_bytes);
 			break;
 		}
 		default:

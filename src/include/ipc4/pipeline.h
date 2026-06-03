@@ -88,9 +88,7 @@ struct ipc4_pipeline_ext_object {
 struct ipc4_pipeline_ext_obj_mem_data {
 	uint32_t domain_id;		/* userspace domain ID */
 	uint32_t stack_bytes;		/* required stack size in bytes */
-	uint32_t interim_heap_bytes;	/* required interim heap size in bytes */
-	uint32_t lifetime_heap_bytes;	/* required lifetime heap size in bytes */
-	uint32_t shared_bytes;		/* required shared memory in bytes */
+	uint32_t heap_bytes;			/* required heap size in bytes */
 } __packed __aligned(4);
 
 /*
