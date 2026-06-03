@@ -26,6 +26,7 @@ DECLARE_TR_CTX(ll_tr, SOF_UUID(zll_sched_uuid), LOG_LEVEL_INFO);
 
 /* per-scheduler data */
 struct zephyr_ll {
+	struct list_item startup_tasks;
 	struct list_item tasks;			/* list of ll tasks */
 	unsigned int n_tasks;			/* task counter */
 	struct ll_schedule_domain *ll_domain;	/* scheduling domain */
@@ -104,11 +105,16 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 /* The caller must hold the lock and possibly disable interrupts */
 static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *task)
 {
+#if 0
 	struct task *task_iter;
 	struct list_item *list;
+#endif	// 0
 
 	task->state = SOF_TASK_STATE_QUEUED;
 
+	list_item_append(&task->list, &sch->startup_tasks);
+
+#if 0
 	/*
 	 * Tasks are added into the list in priority order. List order
 	 * defines schedule order. Priority 0 indicates highest
@@ -129,6 +135,7 @@ static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *t
 	 */
 	if (list == &sch->tasks)
 		list_item_append(&task->list, &sch->tasks);
+#endif	// 0
 }
 
 static void zephyr_ll_task_insert_before_unlocked(struct task *task, struct task *before)
@@ -187,11 +194,66 @@ static void zephyr_ll_run(void *data)
 	struct zephyr_ll *sch = data;
 	struct task *task;
 	struct list_item *list, *tmp, task_head = LIST_INIT(task_head);
+	struct list_item *list2, removed_startup_task_head = LIST_INIT(removed_startup_task_head);
 	uint32_t flags;
 
 	tr_dbg(&ll_tr, "entry");
 
 	zephyr_ll_lock(sch, &flags);
+
+	for (list = sch->startup_tasks.next; !list_is_empty(&sch->startup_tasks); list = sch->startup_tasks.next) {
+		enum task_state state;
+		struct zephyr_ll_pdata *pdata;
+
+		task = container_of(list, struct task, list);
+		pdata = task->priv_data;
+
+		if (task->state == SOF_TASK_STATE_CANCEL) {
+			list = list->next;	///!!! A BUG IS HEHE???!!!
+			zephyr_ll_task_done(sch, task);
+			continue;
+		}
+
+		pdata->run = true;
+		task->state = SOF_TASK_STATE_RUNNING;
+
+		/* Move the task to a temporary list */
+		list_item_del(list);
+		list_item_append(list, &removed_startup_task_head);
+
+		zephyr_ll_unlock(sch, &flags);
+
+		/*
+		 * task's .run() should only return either
+		 * SOF_TASK_STATE_COMPLETED or SOF_TASK_STATE_RESCHEDULE
+		 */
+		state = do_task_run(task);
+		if (state != SOF_TASK_STATE_COMPLETED &&
+		    state != SOF_TASK_STATE_RESCHEDULE) {
+			tr_err(&ll_tr,
+			       "invalid return state %u",
+			       state);
+			state = SOF_TASK_STATE_RESCHEDULE;
+		}
+
+		zephyr_ll_lock(sch, &flags);
+
+		if (pdata->freeing || state == SOF_TASK_STATE_COMPLETED) {
+			zephyr_ll_task_done(sch, task);
+		} else {
+			/*
+			 * task->state could've been changed to
+			 * SOF_TASK_STATE_CANCEL
+			 */
+			switch (task->state) {
+			case SOF_TASK_STATE_CANCEL:
+				zephyr_ll_task_done(sch, task);
+				break;
+			default:
+				break;
+			}
+		}
+	}
 
 	/*
 	 * We drop the lock while executing tasks, at that time tasks can be
@@ -261,6 +323,28 @@ static void zephyr_ll_run(void *data)
 		list_item_append(list, &sch->tasks);
 	}
 
+	/* Move startup tasks back but respecting priorities */
+	list_for_item_safe(list, tmp, &removed_startup_task_head) {
+		list_item_del(list);
+
+		struct task *task_iter = container_of(list, struct task, list);
+
+		list_for_item(list2, &sch->tasks) {
+			struct task *task_iter2 = container_of(list2, struct task, list);
+			if (task_iter->priority < task_iter2->priority) {
+				list_item_append(list, &task_iter2->list);
+				break;
+			}
+		}
+
+		/*
+		 * If the task has not been added, it means that it has the lowest
+		 * priority and should be added at the end of the list
+		 */
+		if (list_is_empty(list))
+			list_item_append(list, &sch->tasks);
+	}
+
 	zephyr_ll_unlock(sch, &flags);
 
 #ifndef CONFIG_SOF_USERSPACE_LL
@@ -318,6 +402,26 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 		 */
 		zephyr_ll_unlock(sch, &flags);
 		return -EDEADLK;
+	}
+
+	/* check if the task is already scheduled */
+	list_for_item(list, &sch->startup_tasks) {
+		task_iter = container_of(list, struct task, list);
+
+		if (task_iter == task) {
+			/* if cancelled, reschedule the task */
+			if (task->state == SOF_TASK_STATE_CANCEL)
+				break;
+
+			/*
+			 * keep original start. TODO: this shouldn't be happening.
+			 * Remove after verification
+			 */
+			zephyr_ll_unlock(sch, &flags);
+			tr_warn(&ll_tr, "task %p (%pU) already scheduled",
+				task, task->uid);
+			return 0;
+		}
 	}
 
 	/* check if the task is already scheduled */
@@ -593,6 +697,7 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	memset(sch, 0, sizeof(*sch));
 
 	list_init(&sch->tasks);
+	list_init(&sch->startup_tasks);
 	sch->ll_domain = domain;
 	sch->core = core;
 	sch->n_tasks = 0;
@@ -625,6 +730,7 @@ void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
 	struct zephyr_ll *ll_sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
 
 	zephyr_ll_lock(ll_sch, &flags);
+	///TODO: !!! CONCATENATE LISTS, MAYBE???!!!
 	scheduler_get_task_info(scheduler_props, data_off_size, &ll_sch->tasks);
 	zephyr_ll_unlock(ll_sch, &flags);
 }

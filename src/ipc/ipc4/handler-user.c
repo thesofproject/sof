@@ -543,6 +543,7 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 			ipc_compound_pre_start(state.primary.r.type);
 			ret = ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
 			ipc_compound_post_start(state.primary.r.type, ret, delayed);
+delayed = false;	///!!!
 			if (delayed) {
 				/* To maintain pipeline order for triggers, we must
 				 * do a blocking wait until trigger is processed.
