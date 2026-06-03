@@ -120,6 +120,56 @@ void sof_heap_free(struct k_heap *heap, void *addr);
 struct k_heap *sof_sys_heap_get(void);
 struct k_heap *sof_sys_user_heap_get(void);
 
+/* Posix version of struct mod_alloc_ctx without vregion support */ 
+struct vregion;
+
+struct mod_alloc_ctx {
+	struct k_heap *heap;
+	struct vregion *vreg;
+};
+
+/**
+ * Allocate memory from a mod_alloc_ctx context.
+ * Dummy version, only heap allocation is supported
+ */
+static inline void *sof_ctx_alloc(struct mod_alloc_ctx *ctx, uint32_t flags,
+				  size_t size, size_t alignment)
+{
+	return sof_heap_alloc(ctx ? ctx->heap : NULL, flags, size, alignment);
+}
+
+/**
+ * Allocate zero-initialized memory from a mod_alloc_ctx context.
+ * @param ctx		Allocation context.
+ * @param flags		Allocation flags (SOF_MEM_FLAG_*).
+ * @param size		Size in bytes.
+ * @param alignment	Required alignment in bytes.
+ * @return Pointer to allocated memory or NULL on failure.
+ */
+static inline void *sof_ctx_zalloc(struct mod_alloc_ctx *ctx, uint32_t flags,
+				   size_t size, size_t alignment)
+{
+	void *ptr = sof_ctx_alloc(ctx, flags, size, alignment);
+
+	if (ptr)
+		memset(ptr, 0, size);
+
+	return ptr;
+}
+
+/**
+ * Free memory allocated from a mod_alloc_ctx context.
+ * @param ctx	Allocation context.
+ * @param ptr	Pointer to free.
+ */
+static inline void sof_ctx_free(struct mod_alloc_ctx *ctx, void *ptr)
+{
+	if (!ptr)
+		return;
+
+	sof_heap_free(ctx ? ctx->heap : NULL, ptr);
+}
+
 /**
  * Calculates length of the null-terminated string.
  * @param s String.
