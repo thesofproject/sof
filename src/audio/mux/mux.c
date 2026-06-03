@@ -290,9 +290,11 @@ static int demux_trigger(struct processing_module *mod, int cmd)
 	 */
 	if (cmd == COMP_TRIGGER_PRE_START) {
 		struct comp_buffer *b;
+		struct comp_dev *sink_comp;
 
-		comp_dev_for_each_producer(mod->dev, b) {
-			if (comp_buffer_get_sink_component(b)->pipeline != mod->dev->pipeline)
+		comp_dev_for_each_consumer(mod->dev, b) {
+			sink_comp = comp_buffer_get_sink_component(b);
+			if (sink_comp && sink_comp->pipeline != mod->dev->pipeline)
 				audio_stream_set_overrun(&b->stream, true);
 		}
 	}
