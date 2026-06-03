@@ -125,29 +125,20 @@ void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
 #else /* CONFIG_SOF_VREGIONS */
 
-#include <rtos/alloc.h>
-
 struct vregion {
 	unsigned int use_count;
 };
 
 static inline struct vregion *vregion_create(size_t lifetime_size, size_t interim_size)
 {
-	struct vregion *vr = rmalloc(0, sizeof(*vr));
-
-	vr->use_count = 1;
-	return vr;
+	return NULL;
 }
 static inline struct vregion *vregion_get(struct vregion *vr)
 {
-	if (vr)
-		vr->use_count++;
 	return vr;
 }
 static inline struct vregion *vregion_put(struct vregion *vr)
 {
-	if (vr && !--vr->use_count)
-		rfree(vr);
 	return vr;
 }
 static inline void *vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size)
