@@ -25,6 +25,7 @@ SOF_DEFINE_REG_UUID(dolby_dax_audio_processing);
 #define DAX_CP_MASK 0x8
 #define DAX_VOLUME_MASK 0x10
 #define DAX_CTC_MASK 0x20
+#define DAX_TUNING_FILE_MASK 0x40
 #define DAX_PROCESSING_MASK 0x10000
 #define DAX_RESET_MASK 0x20000
 #define DAX_FREE_MASK 0x40000
@@ -241,24 +242,27 @@ static bool is_enabled(struct processing_module *mod)
 	return dax_ctx->enable && dax_ctx->p_dax;
 }
 
-static int set_tuning_file(struct processing_module *mod, void *value, uint32_t size)
+static int set_tuning_file(struct processing_module *mod)
 {
-	int ret = 0;
+	int ret = -EINVAL;
 	struct comp_dev *dev = mod->dev;
 	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
 	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
+	struct dax_buffer old_tuning_buf = {0};
+	k_spinlock_key_t key;
 
-	if (dax_buffer_alloc(mod, &dax_ctx->tuning_file_buffer, size) != 0) {
-		comp_err(dev, "allocate %u bytes failed for tuning file", size);
-		ret = -ENOMEM;
-	} else {
-		memcpy_s(dax_ctx->tuning_file_buffer.addr,
-			 dax_ctx->tuning_file_buffer.free,
-			 value,
-			 size);
+	key = k_spin_lock(&adapter_data->lock);
+	if (adapter_data->cache_tuning_buf.addr && adapter_data->cache_tuning_buf.size > 0) {
+		old_tuning_buf = dax_ctx->tuning_file_buffer;
+		dax_ctx->tuning_file_buffer = adapter_data->cache_tuning_buf;
+		adapter_data->cache_tuning_buf = (struct dax_buffer){0};
+		ret = 0;
 	}
+	k_spin_unlock(&adapter_data->lock, key);
 
-	comp_info(dev, "allocated: tuning %u, ret %d", dax_ctx->tuning_file_buffer.size, ret);
+	dax_buffer_release(mod, &old_tuning_buf);
+
+	comp_info(dev, "apply tuning %p, ret %d", dax_ctx->tuning_file_buffer.addr, ret);
 	return ret;
 }
 
@@ -363,11 +367,33 @@ static int dax_set_param_wrapper(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
 	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
+	struct dax_buffer new_tuning_buf = { 0 };
+	struct dax_buffer old_tuning_buf = { 0 };
+	k_spinlock_key_t key;
 	int32_t tmp_val;
 
 	switch (id) {
 	case DAX_PARAM_ID_TUNING_FILE:
-		set_tuning_file(mod, value, size);
+		ret = dax_buffer_alloc(mod, &new_tuning_buf, size);
+		if (ret != 0) {
+			comp_err(dev, "allocate %u bytes failed for tuning file, ret %d", size,
+				 ret);
+			break;
+		}
+		ret = memcpy_s(new_tuning_buf.addr, new_tuning_buf.free, value, size);
+		if (ret != 0) {
+			comp_err(dev, "copy tuning file failed, ret %d", ret);
+			dax_buffer_release(mod, &new_tuning_buf);
+			break;
+		}
+		key = k_spin_lock(&adapter_data->lock);
+		old_tuning_buf = adapter_data->cache_tuning_buf;
+		adapter_data->cache_tuning_buf = new_tuning_buf;
+		k_spin_unlock(&adapter_data->lock, key);
+		dax_buffer_release(mod, &old_tuning_buf);
+		flag_process(adapter_data, DAX_TUNING_FILE_MASK, DAX_FLAG_SET);
+		comp_info(dev, "allocated: tuning %p, size %u", new_tuning_buf.addr,
+			  new_tuning_buf.size);
 		break;
 	case DAX_PARAM_ID_ENABLE:
 		tmp_val = *((int32_t *)value);
@@ -488,6 +514,12 @@ static void check_and_update_settings(struct processing_module *mod)
 	if (!is_enabled(mod))
 		return;
 
+	if (flag_process(adapter_data, DAX_TUNING_FILE_MASK, DAX_FLAG_READ_AND_CLEAR)) {
+		set_tuning_file(mod);
+		flag_process(adapter_data, DAX_DEVICE_MASK, DAX_FLAG_SET);
+		flag_process(adapter_data, DAX_VOLUME_MASK, DAX_FLAG_SET);
+	}
+
 	if (flag_process(adapter_data, DAX_DEVICE_MASK, DAX_FLAG_READ_AND_CLEAR)) {
 		set_device(mod, dax_ctx->out_device);
 		set_tuning_device(mod, dax_ctx->tuning_device);
@@ -547,6 +579,7 @@ static int sof_dax_free(struct processing_module *mod)
 			dax_buffer_release(mod, &dax_ctx->tuning_file_buffer);
 			mod_data_blob_handler_free(mod, dax_ctx->blob_handler);
 			dax_ctx->blob_handler = NULL;
+			dax_buffer_release(mod, &adapter_data->cache_tuning_buf);
 			mod_free(mod, adapter_data);
 			module_set_private_data(mod, NULL);
 		}
@@ -584,6 +617,7 @@ static int sof_dax_init(struct processing_module *mod)
 	adapter_data = module_get_private_data(mod);
 	adapter_data->comp_id = dev->ipc_config.id;
 	adapter_data->priority = DAX_USER_PRIORITY_DEFAULT;
+	k_spinlock_init(&adapter_data->lock);
 	dax_ctx = &adapter_data->dax_ctx;
 	dax_ctx->enable = 0;
 	dax_ctx->profile = 0;
