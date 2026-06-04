@@ -29,11 +29,13 @@ uint32_t dax_query_period_frames(struct sof_dax *dax_ctx)
 
 int dax_free(struct sof_dax *dax_ctx)
 {
+	dax_ctx->p_dax = NULL;
 	return 0;
 }
 
 int dax_init(struct sof_dax *dax_ctx)
 {
+	dax_ctx->p_dax = dax_ctx->persist_buffer.addr;
 	return 0;
 }
 
@@ -81,7 +83,7 @@ int dax_set_ctc_enable(int32_t enable, struct sof_dax *dax_ctx)
 
 const char *dax_get_version(void)
 {
-	return "";
+	return "mock_version";
 }
 
 void *dax_find_params(uint32_t query_id,
