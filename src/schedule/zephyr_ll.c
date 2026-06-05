@@ -118,6 +118,20 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 	domain_unregister(sch->ll_domain, task, --sch->n_tasks);
 }
 
+#if CONFIG_SOF_USERSPACE_LL
+/* The caller must hold the scheduler lock */
+static bool zephyr_ll_task_on_run_list(struct zephyr_ll *sch, struct task *task)
+{
+	struct list_item *list;
+
+	list_for_item(list, &sch->tasks)
+		if (list == &task->list)
+			return true;
+
+	return false;
+}
+#endif
+
 /* The caller must hold the lock and possibly disable interrupts */
 static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *task)
 {
@@ -468,6 +482,33 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 		zephyr_ll_task_done(sch, task);
 
 	pdata->freeing = true;
+
+#if CONFIG_SOF_USERSPACE_LL
+	/*
+	 * Under CONFIG_SOF_USERSPACE_LL this function runs in kernel context
+	 * while the scheduler itself runs in a user-mode thread. The pdata->sem
+	 * handshake used below cannot synchronise across that privilege boundary
+	 * (sys_sem_take() returns -EINVAL when called from kernel context), so
+	 * relying on it would free an active task while it is still linked in
+	 * sch->tasks, leaving the scheduler to dereference freed memory on the
+	 * next timer tick.
+	 *
+	 * Instead remove the task directly here. Mark it cancelled first so that,
+	 * in the unlikely event it is currently mid-execution on the scheduler's
+	 * temporary list, it is removed via the cancel path without re-running
+	 * task->run() on resources the caller (e.g. pipeline_free()) may already
+	 * have freed. If the task is still linked on the run list, the scheduler
+	 * thread is not executing it (a running task is moved off sch->tasks with
+	 * the lock dropped), so it is safe to remove it now and skip the wait.
+	 */
+	if (must_wait) {
+		task->state = SOF_TASK_STATE_CANCEL;
+		if (zephyr_ll_task_on_run_list(sch, task)) {
+			zephyr_ll_task_done(sch, task);
+			must_wait = false;
+		}
+	}
+#endif
 
 	zephyr_ll_unlock(sch, &flags);
 
