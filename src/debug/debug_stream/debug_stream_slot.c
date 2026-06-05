@@ -12,6 +12,10 @@
 #include <user/debug_stream_slot.h>
 #include <zephyr/kernel.h>
 
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+#endif
+
 LOG_MODULE_REGISTER(debug_stream_slot);
 
 struct cpu_mutex {
@@ -66,7 +70,7 @@ debug_stream_get_circular_buffer(struct debug_stream_section_descriptor *desc, u
 	return (struct debug_stream_circular_buf *) (((uint8_t *)hdr) + desc->offset);
 }
 
-int debug_stream_slot_send_record(struct debug_stream_record *rec)
+int z_impl_debug_stream_slot_send_record(struct debug_stream_record *rec)
 {
 	struct debug_stream_section_descriptor desc = { 0 };
 	struct debug_stream_circular_buf *buf =
@@ -118,6 +122,16 @@ int debug_stream_slot_send_record(struct debug_stream_record *rec)
 	LOG_DBG("Record %u id %u len %u sent", rec->seqno, rec->id, record_size);
 	return 0;
 }
+
+#ifdef CONFIG_USERSPACE
+static inline int z_vrfy_debug_stream_slot_send_record(struct debug_stream_record *rec)
+{
+	K_OOPS(K_SYSCALL_MEMORY_READ(rec, sizeof(*rec)));
+	K_OOPS(K_SYSCALL_MEMORY_READ(rec, rec->size_words * sizeof(uint32_t)));
+	return z_impl_debug_stream_slot_send_record(rec);
+}
+#include <zephyr/syscalls/debug_stream_slot_send_record_mrsh.c>
+#endif
 
 static int debug_stream_slot_init(void)
 {

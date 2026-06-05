@@ -127,6 +127,8 @@ struct debug_stream_record;
  *         -ENODEV if debug stream slot is not configured
  *         -ENOMEM if the record is too big
  */
-int debug_stream_slot_send_record(struct debug_stream_record *rec);
+__syscall int debug_stream_slot_send_record(struct debug_stream_record *rec);
+
+#include <zephyr/syscalls/debug_stream_slot.h>
 
 #endif /* __SOC_DEBUG_WINDOW_SLOT_H__ */
