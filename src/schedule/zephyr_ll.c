@@ -562,6 +562,13 @@ struct task *zephyr_ll_task_alloc(void)
 
 	return task;
 }
+
+void user_ll_grant_access(struct k_thread *thread)
+{
+	struct zephyr_ll *ll_sch = (struct zephyr_ll *)scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER, 0);
+
+	k_thread_access_grant(thread, ll_sch->lock);
+}
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 int zephyr_ll_task_init(struct task *task,
