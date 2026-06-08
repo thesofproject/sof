@@ -458,8 +458,13 @@ static int mixin_process(struct processing_module *mod,
 			size_t free_bytes = sink_get_free_size(sink);
 			size_t buf_size;
 
-			sink_get_buffer(sink, free_bytes, &mixout_data->acquired_buf.ptr,
-					&mixout_data->acquired_buf.buf_start, &buf_size);
+			ret = sink_get_buffer(sink, free_bytes, &mixout_data->acquired_buf.ptr,
+					      &mixout_data->acquired_buf.buf_start, &buf_size);
+			/* on failed acquire, skip this mixout and keep mixing the rest;
+			 * source is consumed once after the loop so it is not reprocessed
+			 */
+			if (ret < 0)
+				continue;
 			mixout_data->acquired_buf.buf_end =
 				(uint8_t *)mixout_data->acquired_buf.buf_start + buf_size;
 			mixout_data->acquired_buf_free_frames =
@@ -513,7 +518,7 @@ static int mixout_process(struct processing_module *mod,
 	uint32_t frames_to_produce = INT32_MAX;
 	uint32_t bytes_to_produce;
 	struct pending_frames *pending_frames;
-	int i;
+	int i, ret;
 
 	comp_dbg(dev, "entry");
 
@@ -574,8 +579,11 @@ static int mixout_process(struct processing_module *mod,
 		if (!md->acquired_buf.ptr) {
 			size_t buf_size;
 
-			sink_get_buffer(sinks[0], bytes_to_produce, &md->acquired_buf.ptr,
-					&md->acquired_buf.buf_start, &buf_size);
+			ret = sink_get_buffer(sinks[0], bytes_to_produce, &md->acquired_buf.ptr,
+					      &md->acquired_buf.buf_start, &buf_size);
+			if (ret < 0)
+				return ret;
+
 			md->acquired_buf.buf_end = (uint8_t *)md->acquired_buf.buf_start + buf_size;
 		}
 
