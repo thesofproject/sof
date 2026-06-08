@@ -513,9 +513,12 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 			return ret;
 	}
 
+	bool delayed = false;
+	int prev_core = -1;
+
 	/* Run the trigger phase on the pipelines */
 	for (i = 0; i < ppl_count; i++) {
-		bool delayed = false;
+///		bool delayed = false;
 
 		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
 						 ppl_id[i], IPC_COMP_IGNORE_REMOTE);
@@ -529,6 +532,14 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 		 */
 		if (!cpu_is_me(ppl_icd->core)) {
 			if (use_idc) {
+
+				if (delayed && prev_core >= 0 && prev_core != ppl_icd->core) {
+					if (ipc_wait_for_compound_msg() != 0) {
+						ipc_cmd_err(&ipc_tr, "ipc4: fail with delayed trigger");
+						return IPC4_FAILURE;
+					}
+				}
+
 				struct idc_msg msg = { IDC_MSG_PPL_STATE,
 					IDC_MSG_PPL_STATE_EXT(ppl_id[i],
 							      IDC_PPL_STATE_PHASE_TRIGGER),
@@ -536,15 +547,25 @@ static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 					sizeof(cmd), &cmd, };
 
 				ret = idc_send_msg(&msg, IDC_BLOCKING);
+				delayed = (ret >= 0);
 			} else {
+				assert(false);	///!!! THIS SHOULD NEVER HAPPEN!!!
 				return ipc4_process_on_core(ppl_icd->core, false);
 			}
 		} else {
+			if (delayed && prev_core >= 0 && prev_core != ppl_icd->core) {
+				if (ipc_wait_for_compound_msg() != 0) {
+					ipc_cmd_err(&ipc_tr, "ipc4: fail with delayed trigger");
+					return IPC4_FAILURE;
+				}
+			}
+
 			ipc_compound_pre_start(state.primary.r.type);
 			ret = ipc4_pipeline_trigger(ppl_icd, cmd, &delayed);
 			ipc_compound_post_start(state.primary.r.type, ret, delayed);
-delayed = false;	///!!!
-			if (delayed) {
+
+#if 0
+			if (delayed /* && use_idc */) {
 				/* To maintain pipeline order for triggers, we must
 				 * do a blocking wait until trigger is processed.
 				 * This will add a max delay of 'ppl_count' LL ticks
@@ -555,7 +576,10 @@ delayed = false;	///!!!
 					return IPC4_FAILURE;
 				}
 			}
+#endif	// 0
 		}
+
+		prev_core = ppl_icd->core;
 
 		if (ret != 0)
 			return ret;
