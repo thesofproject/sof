@@ -1033,7 +1033,7 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 {
 	struct audio_stream *istream = &source->stream;
 	struct audio_stream *ostream = &sink->stream;
-	uint16_t ch;
+	uint32_t ch;
 	size_t i;
 
 	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
@@ -1066,7 +1066,7 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 {
 	struct audio_stream *istream = &source->stream;
 	struct audio_stream *ostream = &sink->stream;
-	uint16_t ch;
+	uint32_t ch;
 	size_t i;
 
 	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
@@ -1103,7 +1103,7 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 
 	buffer_stream_invalidate(source, size);
 	size_t out_samples;
-	uint16_t ch;
+	uint32_t ch;
 
 	const int16_t *in_data;
 	int16_t *out_data;
@@ -1135,7 +1135,7 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 
 	buffer_stream_invalidate(source, size);
 	size_t out_samples;
-	uint16_t ch;
+	uint32_t ch;
 	const int32_t *in_data;
 	int32_t *out_data;
 	const size_t samples_per_chan = size / (sizeof(uint32_t) * micsel_channels);
