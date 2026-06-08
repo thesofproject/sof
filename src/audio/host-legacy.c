@@ -686,7 +686,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	uint32_t period_bytes;
 	uint32_t buffer_size;
 	uint32_t addr_align;
-	uint32_t align;
+	uint32_t align = 0;
 	int err;
 
 	/* host params always installed by pipeline IPC */
