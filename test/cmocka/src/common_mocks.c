@@ -119,6 +119,11 @@ struct k_heap * WEAK sof_sys_heap_get(void)
 	return NULL;
 }
 
+struct k_heap * WEAK sof_sys_user_heap_get(void)
+{
+	return NULL;
+}
+
 void WEAK *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		     size_t alignment)
 {
