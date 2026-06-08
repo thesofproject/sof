@@ -977,7 +977,7 @@ static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
 	uint32_t buffer_size;
 	uint32_t buffer_size_preferred;
 	uint32_t addr_align;
-	uint32_t align;
+	uint32_t align = 0;
 	int err;
 
 	comp_dbg(dev, "entry");

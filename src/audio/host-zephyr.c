@@ -887,7 +887,7 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 	uint32_t buffer_size;
 	uint32_t buffer_size_preferred;
 	uint32_t addr_align;
-	uint32_t align;
+	uint32_t align = 0;
 	int i, err;
 	bool is_scheduling_source = dev == dev->pipeline->sched_comp;
 	uint32_t round_up_size;
