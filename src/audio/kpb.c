@@ -1107,7 +1107,7 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 
 	const int16_t *in_data;
 	int16_t *out_data;
-	const uint32_t samples_per_chan = size / (sizeof(uint16_t) * micsel_channels);
+	const size_t samples_per_chan = size / (sizeof(uint16_t) * micsel_channels);
 
 	for (ch = 0; ch < micsel_channels; ch++) {
 		out_samples = 0;
@@ -1138,7 +1138,7 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 	uint16_t ch;
 	const int32_t *in_data;
 	int32_t *out_data;
-	const uint32_t samples_per_chan = size / (sizeof(uint32_t) * micsel_channels);
+	const size_t samples_per_chan = size / (sizeof(uint32_t) * micsel_channels);
 
 	for (ch = 0; ch < micsel_channels; ch++) {
 		out_samples = 0;
@@ -1607,7 +1607,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	bool is_sink_ready = (comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
-	size_t drain_req = cli->drain_req * kpb->config.channels *
+	size_t drain_req = (size_t)cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
 	struct history_buffer *buff = kpb->hd.c_hb;
@@ -1616,7 +1616,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t local_buffered;
 	size_t drain_interval;
 	size_t host_period_size = kpb->host_period_size;
-	size_t bytes_per_ms = KPB_SAMPLES_PER_MS *
+	size_t bytes_per_ms = (size_t)KPB_SAMPLES_PER_MS *
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
 	size_t period_bytes_limit;
@@ -1788,7 +1788,7 @@ static void adjust_drain_interval(struct comp_data *kpb, struct draining_data *d
 		/* average drained bytes per second */
 		actual_pace = (size_t)k_ms_to_cyc_ceil64(1000) / elapsed * drained;
 
-		pipeline_period = KPB_SAMPLES_PER_MS *
+		pipeline_period = (size_t)KPB_SAMPLES_PER_MS *
 			(KPB_SAMPLE_CONTAINER_SIZE(dd->sample_width) / 8) * kpb->config.channels;
 		/* desired draining pace in bytes per second */
 		optimal_pace = pipeline_period * KPB_DRAIN_NUM_OF_PPL_PERIODS_AT_ONCE * 1000;
@@ -2394,7 +2394,7 @@ static inline bool validate_host_params(struct comp_dev *dev,
 	 */
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	size_t sample_width = kpb->config.sampling_width;
-	size_t bytes_per_ms = KPB_SAMPLES_PER_MS *
+	size_t bytes_per_ms = (size_t)KPB_SAMPLES_PER_MS *
 			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
 			      kpb->config.channels;
 	size_t pipeline_period_size = (dev->pipeline->period / 1000)
