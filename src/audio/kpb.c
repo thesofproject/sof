@@ -1039,12 +1039,13 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
 	AE_SETCEND0(audio_stream_get_end_addr(ostream));
 
-	buffer_stream_invalidate(source, size);
+	const size_t samples_per_chan = size / (sizeof(ae_int16) * micsel_channels);
+
+	buffer_stream_invalidate(source, samples_per_chan * in_channels * sizeof(ae_int16));
 	const ae_int16 *in_ptr = audio_stream_get_rptr(istream);
 	ae_int16x4 d16 = AE_ZERO16();
 	const size_t in_offset = in_channels * sizeof(ae_int16);
 	const size_t out_offset = micsel_channels * sizeof(ae_int16);
-	const size_t samples_per_chan = size / (sizeof(uint16_t) * micsel_channels);
 	ae_int16 *out_ptr;
 
 	for (ch = 0; ch < micsel_channels; ch++) {
@@ -1072,13 +1073,14 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
 	AE_SETCEND0(audio_stream_get_end_addr(ostream));
 
-	buffer_stream_invalidate(source, size);
+	const size_t samples_per_chan = size / (sizeof(ae_int32) * micsel_channels);
+
+	buffer_stream_invalidate(source, samples_per_chan * in_channels * sizeof(ae_int32));
 
 	const ae_int32 *in_ptr = audio_stream_get_rptr(istream);
 	ae_int32x2 d32 = AE_ZERO32();
 	const size_t in_offset = in_channels * sizeof(ae_int32);
 	const size_t out_offset = micsel_channels * sizeof(ae_int32);
-	const size_t samples_per_chan = size / (sizeof(uint32_t) * micsel_channels);
 	ae_int32 *out_ptr;
 
 	for (ch = 0; ch < micsel_channels; ch++) {
@@ -1100,14 +1102,14 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 {
 	struct audio_stream *istream = &source->stream;
 	struct audio_stream *ostream = &sink->stream;
-
-	buffer_stream_invalidate(source, size);
 	size_t out_samples;
 	uint32_t ch;
 
 	const int16_t *in_data;
 	int16_t *out_data;
 	const size_t samples_per_chan = size / (sizeof(uint16_t) * micsel_channels);
+
+	buffer_stream_invalidate(source, samples_per_chan * in_channels * sizeof(uint16_t));
 
 	for (ch = 0; ch < micsel_channels; ch++) {
 		out_samples = 0;
@@ -1132,13 +1134,13 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 {
 	struct audio_stream *istream = &source->stream;
 	struct audio_stream *ostream = &sink->stream;
-
-	buffer_stream_invalidate(source, size);
 	size_t out_samples;
 	uint32_t ch;
 	const int32_t *in_data;
 	int32_t *out_data;
 	const size_t samples_per_chan = size / (sizeof(uint32_t) * micsel_channels);
+
+	buffer_stream_invalidate(source, samples_per_chan * in_channels * sizeof(uint32_t));
 
 	for (ch = 0; ch < micsel_channels; ch++) {
 		out_samples = 0;
