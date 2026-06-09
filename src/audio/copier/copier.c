@@ -360,7 +360,7 @@ static int copier_comp_trigger(struct comp_dev *dev, int cmd)
 {
 	struct processing_module *mod = comp_mod(dev);
 	struct copier_data *cd = module_get_private_data(mod);
-	struct sof_ipc_stream_posn posn;
+	struct sof_ipc_stream_posn posn = { 0 };
 	struct comp_dev *dai_copier;
 	struct comp_buffer *buffer;
 	uint32_t latency;
@@ -930,8 +930,9 @@ __cold static int copier_get_configuration(struct processing_module *mod,
 	struct copier_data *cd = module_get_private_data(mod);
 	struct ipc4_llp_reading_extended llp_ext;
 	struct comp_dev *dev = mod->dev;
-	struct sof_ipc_stream_posn posn;
+	struct sof_ipc_stream_posn posn = { 0 };
 	struct ipc4_llp_reading llp;
+	int ret;
 
 	assert_can_be_cold();
 
@@ -961,7 +962,9 @@ __cold static int copier_get_configuration(struct processing_module *mod,
 		}
 
 		/* get llp from dai */
-		comp_position(dev, &posn);
+		ret = comp_position(dev, &posn);
+		if (ret < 0)
+			return ret;
 
 		convert_u64_to_u32s(posn.comp_posn, &llp.llp_l, &llp.llp_u);
 		convert_u64_to_u32s(posn.wallclock, &llp.wclk_l, &llp.wclk_u);
@@ -991,7 +994,9 @@ __cold static int copier_get_configuration(struct processing_module *mod,
 		}
 
 		/* get llp from dai */
-		comp_position(dev, &posn);
+		ret = comp_position(dev, &posn);
+		if (ret < 0)
+			return ret;
 
 		convert_u64_to_u32s(posn.comp_posn, &llp_ext.llp_reading.llp_l,
 				    &llp_ext.llp_reading.llp_u);
