@@ -104,7 +104,7 @@ static char *filter_parse_component_name(char *input_str, struct filter_element 
 	 */
 	if (strlen(scan_format_string) == 0) {
 		ret = snprintf(scan_format_string, sizeof(scan_format_string),
-				"%%%d[^0-9* ]s", UUID_NAME_MAX_LEN);
+				"%%%d[^0-9* ]s", UUID_NAME_MAX_LEN - 1);
 		if (ret <= 0)
 			return NULL;
 	}
