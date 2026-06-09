@@ -21,12 +21,12 @@ DECLARE_TR_CTX(power_tr, SOF_UUID(power_uuid), LOG_LEVEL_INFO);
 #if defined(CONFIG_PM_POLICY_CUSTOM)
 const struct pm_state_info *pm_policy_next_state(uint8_t cpu, int32_t ticks)
 {
-	unsigned int num_cpu_states;
+	uint8_t num_cpu_states;
 	const struct pm_state_info *cpu_states;
 
 	num_cpu_states = pm_state_cpu_get_all(cpu, &cpu_states);
 
-	for (int i = num_cpu_states - 1; i >= 0; i--) {
+	for (int i = (int)num_cpu_states - 1; i >= 0; i--) {
 		const struct pm_state_info *state = &cpu_states[i];
 		uint32_t min_residency, exit_latency;
 
