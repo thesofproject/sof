@@ -135,6 +135,7 @@ struct module_resources {
 	struct mod_alloc_ctx *alloc;
 #if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
 	k_tid_t rsrc_mngr;
+	k_tid_t dp_thread;
 #endif
 };
 

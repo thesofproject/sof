@@ -118,7 +118,7 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 		goto emod;
 	}
 
-	struct mod_alloc_ctx *alloc = rmalloc(flags, sizeof(*alloc));
+	struct mod_alloc_ctx *alloc = rzalloc(flags, sizeof(*alloc));
 
 	if (!alloc)
 		goto ealloc;
