@@ -726,7 +726,7 @@ void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
 	uint32_t flags;
 
 	scheduler_props->processing_domain = COMP_PROCESSING_DOMAIN_LL;
-	struct zephyr_ll *ll_sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+	struct zephyr_ll *ll_sch = (struct zephyr_ll *)scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER, 0);
 
 	zephyr_ll_lock(ll_sch, &flags);
 	scheduler_get_task_info(scheduler_props, data_off_size, &ll_sch->tasks);
@@ -736,7 +736,7 @@ void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
 /* Return a pointer to the LL scheduler timer domain */
 struct ll_schedule_domain *zephyr_ll_domain(void)
 {
-	struct zephyr_ll *ll_sch = scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+	struct zephyr_ll *ll_sch = scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER, 0);
 
 	return ll_sch->ll_domain;
 }
