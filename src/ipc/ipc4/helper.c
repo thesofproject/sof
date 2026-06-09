@@ -1312,12 +1312,20 @@ int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buff
 		if (!dma_cfg)
 			continue;
 
+		uint32_t device_count = dma_cfg->channel_map.device_count;
+
+		if (device_count > GTW_DMA_DEVICE_MAX_COUNT) {
+			tr_err(&ipc_tr, "device_count %u exceeds max %u",
+			       device_count, GTW_DMA_DEVICE_MAX_COUNT);
+			return IPC4_INVALID_REQUEST;
+		}
+
 		/* To be able to retrieve proper DMA config we need to check if
 		 * device_id value (which is alh_id) is equal to device_address.
 		 * They both contain SNDW master id and PDI. If they match then
 		 * proper config is found.
 		 */
-		for (uint32_t i = 0; i < dma_cfg->channel_map.device_count; i++) {
+		for (uint32_t i = 0; i < device_count; i++) {
 			if (dma_cfg->channel_map.map[i].device_address == device_id) {
 				dai->host_dma_config[dma_cfg_idx] = dma_cfg;
 				return IPC4_SUCCESS;
