@@ -6,6 +6,8 @@
 #define __SOF_LIB_VREGION_H__
 
 #include <stddef.h>
+#include <stdint.h>
+#include <zephyr/toolchain.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,12 +72,16 @@ struct vregion *vregion_put(struct vregion *vr);
  * @param[in] size Size of memory to allocate in bytes.
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-void *vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size);
+__syscall void *vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size);
+
+void *z_impl_vregion_alloc(struct vregion *vr, enum vregion_mem_type type, size_t size);
 
 /**
  * @brief like vregion_alloc() but allocates coherent memory
  */
-void *vregion_alloc_coherent(struct vregion *vr, enum vregion_mem_type type, size_t size);
+__syscall void *vregion_alloc_coherent(struct vregion *vr, enum vregion_mem_type type, size_t size);
+
+void *z_impl_vregion_alloc_coherent(struct vregion *vr, enum vregion_mem_type type, size_t size);
 
 /**
  * @brief Allocate aligned memory from the specified virtual region.
@@ -88,14 +94,20 @@ void *vregion_alloc_coherent(struct vregion *vr, enum vregion_mem_type type, siz
  * @param[in] alignment Alignment of memory to allocate in bytes.
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-void *vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
-			  size_t size, size_t alignment);
+__syscall void *vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
+				    size_t size, size_t alignment);
+
+void *z_impl_vregion_alloc_align(struct vregion *vr, enum vregion_mem_type type,
+				 size_t size, size_t alignment);
 
 /**
  * @brief like vregion_alloc_align() but allocates coherent memory
  */
-void *vregion_alloc_coherent_align(struct vregion *vr, enum vregion_mem_type type,
-				   size_t size, size_t alignment);
+__syscall void *vregion_alloc_coherent_align(struct vregion *vr, enum vregion_mem_type type,
+					     size_t size, size_t alignment);
+
+void *z_impl_vregion_alloc_coherent_align(struct vregion *vr, enum vregion_mem_type type,
+					  size_t size, size_t alignment);
 
 /**
  * @brief Free memory allocated from the specified virtual region.
@@ -105,7 +117,9 @@ void *vregion_alloc_coherent_align(struct vregion *vr, enum vregion_mem_type typ
  * @param[in] vr Pointer to the virtual region instance.
  * @param[in] ptr Pointer to the memory to free.
  */
-void vregion_free(struct vregion *vr, void *ptr);
+__syscall void vregion_free(struct vregion *vr, void *ptr);
+
+void z_impl_vregion_free(struct vregion *vr, void *ptr);
 
 /**
  * @brief Log virtual region memory usage.
@@ -172,6 +186,10 @@ static inline void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t 
 
 #ifdef __cplusplus
 }
+#endif
+
+#if CONFIG_SOF_VREGIONS
+#include <zephyr/syscalls/vregion.h>
 #endif
 
 #endif /* __SOF_LIB_VREGION_H__ */
