@@ -9,6 +9,7 @@
 #include <rtos/symbol.h>
 #include <sof/audio/component.h>
 #include <rtos/interrupt.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
@@ -604,12 +605,14 @@ EXPORT_SYMBOL(zephyr_ll_task_init);
 
 /* TODO: low-power mode clock support */
 /* Runs on each core during initialisation with the same domain argument */
-int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
+__cold int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 {
 	struct zephyr_ll *sch;
 	int core = cpu_get_id();
 	struct k_heap *heap = sof_sys_heap_get();
 	int flags = SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT;
+
+	assert_can_be_cold();
 
 #if CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();

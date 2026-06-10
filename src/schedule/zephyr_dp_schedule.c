@@ -21,6 +21,7 @@
 #include <zephyr/sys_clock.h>
 #include <zephyr/sys/sem.h>
 #include <zephyr/sys/mutex.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <ipc4/base_fw.h>
 
@@ -346,9 +347,12 @@ static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task_free	= scheduler_dp_task_free,
 };
 
-int scheduler_dp_init(void)
+__cold int scheduler_dp_init(void)
 {
 	int ret;
+
+	assert_can_be_cold();
+
 	struct scheduler_dp_data *dp_sch = rzalloc(SOF_MEM_FLAG_KERNEL,
 						   sizeof(struct scheduler_dp_data));
 	if (!dp_sch)

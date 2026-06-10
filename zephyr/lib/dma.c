@@ -270,9 +270,11 @@ const struct dma_info lib_dma = {
 };
 
 /* Initialize all platform DMAC's */
-int dmac_init(struct sof *sof)
+__cold int dmac_init(struct sof *sof)
 {
 	int i;
+
+	assert_can_be_cold();
 
 	sof->dma_info = &lib_dma;
 

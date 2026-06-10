@@ -65,6 +65,8 @@ __cold int platform_boot_complete(uint32_t boot_message)
 {
 	struct ipc_cmd_hdr header;
 
+	assert_can_be_cold();
+
 	/* get any IPC specific boot message and optional data */
 	ipc_boot_complete_msg(&header, 0);
 	header.pri |= boot_message;
@@ -91,6 +93,8 @@ static struct pm_notifier pm_state_notifier = {
 __cold int platform_init(struct sof *sof)
 {
 	int ret;
+
+	assert_can_be_cold();
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	platform_clock_init(sof);

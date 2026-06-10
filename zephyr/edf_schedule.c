@@ -5,6 +5,7 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
 #include <sof/audio/component.h>
+#include <sof/lib/memory.h>
 #include <rtos/alloc.h>
 #include <rtos/task.h>
 #include <stdint.h>
@@ -99,9 +100,11 @@ static struct scheduler_ops schedule_edf_ops = {
 	.schedule_task_free	= schedule_edf_task_free,
 };
 
-int scheduler_init_edf(void)
+__cold int scheduler_init_edf(void)
 {
 	struct k_thread *thread = &edf_workq.thread;
+
+	assert_can_be_cold();
 
 	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, NULL);
 

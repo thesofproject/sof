@@ -16,7 +16,6 @@
 #include <sof/ipc/topology.h>
 #include <rtos/idc.h>
 #include <rtos/alloc.h>
-#include <sof/lib/memory.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -578,12 +577,14 @@ static int ams_create_shared_context(struct ams_shared_context *ctx)
 	return 0;
 }
 
-int ams_init(void)
+__cold int ams_init(void)
 {
 	struct ams_shared_context *ams_shared_ctx;
 	struct async_message_service **ams = arch_ams_get();
 	struct sof *sof;
 	int ret = 0;
+
+	assert_can_be_cold();
 
 	*ams = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 		       sizeof(**ams));
