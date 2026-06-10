@@ -185,9 +185,7 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 	p->status = COMP_STATE_INIT;
 	p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
 
-#ifdef CONFIG_SOF_USERSPACE_LL
-	LOG_WRN("pipeline trace settings cannot be copied");
-#else
+#ifndef CONFIG_SOF_USERSPACE_LL
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
 	if (ret < 0) {
