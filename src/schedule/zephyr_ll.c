@@ -51,12 +51,50 @@ struct zephyr_ll_pdata {
  * in kernel memory, there are just handles!
  */
 static APP_SYSUSER_BSS struct k_mutex *zephyr_ll_locks[CONFIG_CORE_COUNT];
+
+/*
+ * Shadow ownership tracking for the per-core LL mutex, used only to
+ * power user_ll_assert_locked(). The kernel k_mutex object is not
+ * readable from user-space threads, so its owner cannot be inspected
+ * directly; instead record the owner and recursion depth here, in a
+ * user-accessible partition. Updated on every lock/unlock of the LL
+ * mutex, by both the LL thread (zephyr_ll_lock()) and IPC handlers
+ * (user_ll_lock_sched()). Only ever mutated by the current lock holder
+ * while the lock is held, so no extra synchronization is required.
+ */
+#ifdef CONFIG_ASSERT
+static APP_SYSUSER_BSS k_tid_t zephyr_ll_lock_owner[CONFIG_CORE_COUNT];
+static APP_SYSUSER_BSS uint32_t zephyr_ll_lock_depth[CONFIG_CORE_COUNT];
+
+static inline void zephyr_ll_lock_acquired(int core)
+{
+	zephyr_ll_lock_owner[core] = k_current_get();
+	zephyr_ll_lock_depth[core]++;
+}
+
+static inline void zephyr_ll_lock_releasing(int core)
+{
+	assert(zephyr_ll_lock_owner[core] == k_current_get());
+	if (--zephyr_ll_lock_depth[core] == 0)
+		zephyr_ll_lock_owner[core] = NULL;
+}
+
+void user_ll_assert_locked(int core)
+{
+	assert(core < CONFIG_CORE_COUNT &&
+	       zephyr_ll_lock_owner[core] == k_current_get());
+}
+#else
+static inline void zephyr_ll_lock_acquired(int core) { (void)core; }
+static inline void zephyr_ll_lock_releasing(int core) { (void)core; }
+#endif /* CONFIG_ASSERT */
 #endif
 
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 {
 #if CONFIG_SOF_USERSPACE_LL
 	k_mutex_lock(sch->lock, K_FOREVER);
+	zephyr_ll_lock_acquired(sch->core);
 #else
 	irq_local_disable(*flags);
 #endif
@@ -65,6 +103,7 @@ static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 {
 #if CONFIG_SOF_USERSPACE_LL
+	zephyr_ll_lock_releasing(sch->core);
 	k_mutex_unlock(sch->lock);
 #else
 	irq_local_enable(*flags);
@@ -593,6 +632,7 @@ void user_ll_lock_sched(int core)
 	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
 	int __maybe_unused ret = k_mutex_lock(zephyr_ll_locks[core], K_FOREVER);
 	assert(!ret);
+	zephyr_ll_lock_acquired(core);
 }
 
 /**
@@ -601,6 +641,7 @@ void user_ll_lock_sched(int core)
 void user_ll_unlock_sched(int core)
 {
 	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
+	zephyr_ll_lock_releasing(core);
 	int __maybe_unused ret = k_mutex_unlock(zephyr_ll_locks[core]);
 	assert(!ret);
 }

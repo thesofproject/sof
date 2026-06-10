@@ -10,6 +10,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/ipc/msg.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/lib/vregion.h>
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
@@ -29,6 +30,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/schedule/ll_schedule_domain.h>
 
 LOG_MODULE_REGISTER(pipe, CONFIG_SOF_LOG_LEVEL);
 
@@ -181,19 +183,24 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * User-space LL: callers (IPC handlers) already hold the per-core LL
+ * lock via user_ll_lock_sched()/ll_block() while modifying pipeline
+ * connections, which provides mutual exclusion with the LL thread. No
+ * additional lock is taken here; instead assert that the lock is held.
+ */
 #define PPL_LOCK_DECLARE
-#define PPL_LOCK() do { \
-		int ret = sys_mutex_lock(&comp->list_mutex, K_FOREVER); \
-		assert(ret == 0); \
-	} while (0)
-#define PPL_UNLOCK() do { \
-		int ret = sys_mutex_unlock(&comp->list_mutex); \
-		assert(ret == 0); \
-	} while (0)
+#define PPL_LOCK(x) user_ll_assert_locked(x)
+#define PPL_UNLOCK(x)
 #else
+/*
+ * Kernel-space LL. When modifying pipeline connections, block IRQs
+ * and prevent LL from running. No locking needed when iterating
+ * the pipeline in the LL thread.
+ */
 #define PPL_LOCK_DECLARE uint32_t flags
-#define PPL_LOCK() irq_local_disable(flags)
-#define PPL_UNLOCK()  irq_local_enable(flags)
+#define PPL_LOCK(x) irq_local_disable(flags)
+#define PPL_UNLOCK(x)  irq_local_enable(flags)
 #endif
 
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
@@ -208,19 +215,19 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	else
 		comp_info(comp, "connect buffer %d as source", buf_get_id(buffer));
 
-	PPL_LOCK();
+	PPL_LOCK(buffer->core);
 
 	comp_list = comp_buffer_list(comp, dir);
 	ret = buffer_attach(buffer, comp_list, dir);
 	if (ret < 0) {
 		comp_err(comp, "buffer %d already connected dir %d",
 			 buf_get_id(buffer), dir);
-		PPL_UNLOCK();
+		PPL_UNLOCK(buffer->core);
 		return ret;
 	}
 	buffer_set_comp(buffer, comp, dir);
 
-	PPL_UNLOCK();
+	PPL_UNLOCK(buffer->core);
 
 	return 0;
 }
@@ -235,13 +242,13 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 	else
 		comp_dbg(comp, "disconnect buffer %d as source", buf_get_id(buffer));
 
-	PPL_LOCK();
+	PPL_LOCK(buffer->core);
 
 	comp_list = comp_buffer_list(comp, dir);
 	buffer_detach(buffer, comp_list, dir);
 	buffer_set_comp(buffer, NULL, dir);
 
-	PPL_UNLOCK();
+	PPL_UNLOCK(buffer->core);
 }
 
 /* pipelines must be inactive */

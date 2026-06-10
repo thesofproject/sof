@@ -122,6 +122,12 @@ bool zephyr_ll_user_heap_verify(struct k_heap *heap);
 void zephyr_ll_user_resources_init(void);
 void user_ll_lock_sched(int core);
 void user_ll_unlock_sched(int core);
+#ifdef CONFIG_ASSERT
+/* Assert that the calling context already holds the LL lock for 'core'. */
+void user_ll_assert_locked(int core);
+#else
+static inline void user_ll_assert_locked(int core) { (void)core; }
+#endif
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 static inline struct ll_schedule_domain *domain_init
