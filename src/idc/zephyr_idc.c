@@ -196,10 +196,12 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	return ret;
 }
 
-void idc_init_thread(void)
+__cold void idc_init_thread(void)
 {
 	char thread_name[] = "idc_p4wq0";
 	int cpu = cpu_get_id();
+
+	assert_can_be_cold();
 
 	k_p4wq_enable_static_thread(q_zephyr_idc + cpu,
 				    _p4threads_q_zephyr_idc + cpu, BIT(cpu));

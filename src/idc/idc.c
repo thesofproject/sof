@@ -15,6 +15,7 @@
 #include <rtos/alloc.h>
 #include <rtos/clk.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
@@ -419,9 +420,11 @@ void idc_cmd(struct idc_msg *msg)
 }
 
 /* Runs on each CPU */
-int idc_init(void)
+__cold int idc_init(void)
 {
 	struct idc **idc = idc_get();
+
+	assert_can_be_cold();
 
 	tr_dbg(&idc_tr, "entry");
 
