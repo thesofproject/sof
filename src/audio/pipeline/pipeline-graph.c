@@ -369,7 +369,7 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	 * scheduled together, except for IPC4, where each pipeline receives
 	 * commands from the host separately
 	 */
-	if (!is_single_ppl && IPC4_MOD_ID(current->ipc_config.id))
+	if (!is_single_ppl && IS_ENABLED(CONFIG_IPC_MAJOR_4))
 		return 0;
 
 	/* Propagate reset across pipelines only in the same direction

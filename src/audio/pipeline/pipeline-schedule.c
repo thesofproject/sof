@@ -140,7 +140,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 			err = SOF_TASK_STATE_RESCHEDULE;
 		} else if (p->status == COMP_STATE_PAUSED) {
 			/* reset the pipeline components for IPC4 after the STOP trigger */
-			if (cmd == COMP_TRIGGER_STOP && IPC4_MOD_ID(host->ipc_config.id)) {
+			if (cmd == COMP_TRIGGER_STOP && IS_ENABLED(CONFIG_IPC_MAJOR_4)) {
 				err = pipeline_reset(host->pipeline, host);
 				if (err < 0)
 					reply->error = err;
