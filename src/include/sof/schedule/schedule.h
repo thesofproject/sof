@@ -207,6 +207,31 @@ static inline void *scheduler_get_data(uint16_t type)
 	return NULL;
 }
 
+#if CONFIG_SOF_USERSPACE_LL
+/**
+ * Retrieves scheduler's data for a specific core.
+ * @param type SOF_SCHEDULE_ type.
+ * @param core Core ID to get scheduler data for.
+ * @return Pointer to scheduler's data.
+ *
+ * Safe to call from user-space context — does not use cpu_get_id().
+ */
+static inline void *scheduler_get_data_for_core(uint16_t type, int core)
+{
+	struct schedulers *schedulers = *arch_user_schedulers_get_for_core(core);
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (type == sch->type)
+			return sch->data;
+	}
+
+	return NULL;
+}
+#endif
+
 /** See scheduler_ops::schedule_task_running */
 static inline int schedule_task_running(struct task *task)
 {
