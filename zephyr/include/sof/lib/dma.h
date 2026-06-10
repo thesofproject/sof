@@ -200,7 +200,9 @@ struct dma_plat_data {
 };
 
 #ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+struct k_heap;
 struct sof_dma {
+	struct k_heap *heap;
 #else
 struct dma {
 #endif
