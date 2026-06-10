@@ -394,7 +394,8 @@ void ipc_schedule_process(struct ipc *ipc)
 #define IPC_USER_EVENT_CMD      BIT(0)
 #define IPC_USER_EVENT_STOP     BIT(1)
 
-static K_THREAD_STACK_DEFINE(ipc_user_stack, CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
+static K_THREAD_STACK_ARRAY_DEFINE(ipc_user_stack, CONFIG_CORE_COUNT,
+				   CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
 
 /**
  * @brief Forward an IPC4 command to the user-space thread.
@@ -408,7 +409,7 @@ static K_THREAD_STACK_DEFINE(ipc_user_stack, CONFIG_SOF_IPC_USER_THREAD_STACK_SI
  * @param ipc4 Pointer to the IPC4 message request
  * @return Result from user thread processing
  */
-int ipc_user_forward_cmd(struct ipc4_message_request *ipc4)
+int ipc_user_forward_cmd(struct ipc4_message_request *ipc4, unsigned int core)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_user *pdata = ipc->ipc_user_pdata;
@@ -422,13 +423,22 @@ int ipc_user_forward_cmd(struct ipc4_message_request *ipc4)
 	pdata->ipc_msg_ext = ipc4->extension.dat;
 	pdata->ipc = ipc;
 
+	/*
+	 * Forwarding the first IPC to this core, wait for its userspace IPC
+	 * thread to start
+	 */
+	if (pdata->init_needed[core]) {
+		pdata->init_needed[core] = false;
+		k_sem_take(pdata->sem, K_FOREVER);
+	}
+
 	/* Prevent host completion until user thread finishes */
 	key = k_spin_lock(&ipc->lock);
 	ipc->task_mask |= IPC_TASK_IN_THREAD;
 	k_spin_unlock(&ipc->lock, key);
 
 	/* Wake the user thread */
-	k_event_set(pdata->event, IPC_USER_EVENT_CMD);
+	k_event_set(pdata->event[core], IPC_USER_EVENT_CMD);
 
 	/* Wait for user thread to complete */
 	ret = k_sem_take(pdata->sem, K_MSEC(100));
@@ -453,8 +463,8 @@ int ipc_user_forward_cmd(struct ipc4_message_request *ipc4)
 static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 {
 	struct ipc_user *ipc_user = p1;
+	unsigned int core = POINTER_TO_UINT(p2);
 
-	ARG_UNUSED(p2);
 	ARG_UNUSED(p3);
 
 	__ASSERT(k_is_user_context(), "expected user context");
@@ -464,7 +474,7 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 	LOG_INF("IPC user-space thread started");
 
 	for (;;) {
-		uint32_t mask = k_event_wait_safe(ipc_user->event,
+		uint32_t mask = k_event_wait_safe(ipc_user->event[core],
 						  IPC_USER_EVENT_CMD | IPC_USER_EVENT_STOP,
 						  false, K_MSEC(5000));
 
@@ -616,7 +626,7 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 	}
 }
 
-__cold static int ipc_user_init_thread(struct ipc_user *ipc_user)
+__cold static int ipc_user_init_thread(struct ipc_user *ipc_user, unsigned int core)
 {
 	char thread_name[] = "ll_user0";
 	int ret;
@@ -624,45 +634,82 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user)
 	assert_can_be_cold();
 
 	/* Allocate kernel objects for the user-space thread */
-	ipc_user->event = k_object_alloc(K_OBJ_EVENT);
-	if (!ipc_user->event) {
+	ipc_user->event[core] = k_object_alloc(K_OBJ_EVENT);
+	if (!ipc_user->event[core]) {
 		LOG_ERR("user IPC event alloc failed");
 		return -ENOMEM;
 	}
-	k_event_init(ipc_user->event);
+	k_event_init(ipc_user->event[core]);
 
-	ipc_user->thread = k_object_alloc(K_OBJ_THREAD);
-	if (!ipc_user->thread) {
+	ipc_user->thread[core] = k_object_alloc(K_OBJ_THREAD);
+	if (!ipc_user->thread[core]) {
 		LOG_ERR("user IPC thread alloc failed");
 		ret = -ENOMEM;
 		goto e_event;
 	}
 
-	k_thread_create(ipc_user->thread, ipc_user_stack,
+	k_thread_create(ipc_user->thread[core], ipc_user_stack[core],
 			CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
-			ipc_user_thread_fn, ipc_user, NULL, NULL,
+			ipc_user_thread_fn, ipc_user, UINT_TO_POINTER(core), NULL,
 			-1, K_USER, K_FOREVER);
 
-	k_thread_cpu_pin(ipc_user->thread, PLATFORM_PRIMARY_CORE_ID);
-	k_thread_name_set(ipc_user->thread, thread_name);
+	k_thread_cpu_pin(ipc_user->thread[core], core);
+	thread_name[sizeof(thread_name) - 2] = '0' + core;
+	k_thread_name_set(ipc_user->thread[core], thread_name);
 
 	/*
 	 * Each userspace IPC thread must be able to wait on its private event
 	 * and signal completion on the primary core semaphore
 	 */
-	k_thread_access_grant(ipc_user->thread, ipc_user->sem, ipc_user->event);
-	user_grant_dai_access_all(ipc_user->thread);
-	user_grant_dma_access_all(ipc_user->thread);
-	pipeline_posn_grant_access(ipc_user->thread);
-	k_mem_domain_add_thread(zephyr_ll_mem_domain(), ipc_user->thread);
-	user_ll_grant_access(ipc_user->thread);
+	k_thread_access_grant(ipc_user->thread[core], ipc_user->sem, ipc_user->event[core]);
+	user_grant_dai_access_all(ipc_user->thread[core]);
+	user_grant_dma_access_all(ipc_user->thread[core]);
+	pipeline_posn_grant_access(ipc_user->thread[core]);
+	k_mem_domain_add_thread(zephyr_ll_mem_domain(), ipc_user->thread[core]);
+	user_ll_grant_access(ipc_user->thread[core]);
 
 	return 0;
 
 e_event:
-	k_object_free(ipc_user->event);
+	k_object_free(ipc_user->event[core]);
 
 	return ret;
+}
+
+__cold int ipc_user_init_secondary(unsigned int core)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_user *ipc_user = ipc->ipc_user_pdata;
+	int ret = ipc_user_init_thread(ipc_user, core);
+
+	if (ret < 0)
+		return ret;
+
+	assert_can_be_cold();
+
+	k_thread_start(ipc_user->thread[core]);
+
+	struct task *task = zephyr_ll_task_alloc();
+
+	if (!task) {
+		LOG_ERR("user LL task allocation failed");
+		k_panic();
+	}
+
+	schedule_task_init_ll(task, SOF_UUID(ipc_uuid), SOF_SCHEDULE_LL_TIMER,
+			      0, NULL, NULL, core, 0);
+
+	ipc_user->audio_thread[core] = scheduler_init_context(task);
+	if (!ipc_user->audio_thread[core]) {
+		LOG_ERR("user LL thread init failed");
+		k_panic();
+	}
+
+	k_thread_access_grant(ipc_user->thread[core], ipc_user->audio_thread[core]);
+	ipc_user->init_needed[core] = true;
+
+	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
+	return 0;
 }
 
 /* Primary core only */
@@ -673,6 +720,8 @@ __cold static int ipc_user_init(void)
 						   SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 						   sizeof(*ipc_user), 0);
 	int ret;
+
+	assert_can_be_cold();
 
 	ipc_user->sem = k_object_alloc(K_OBJ_SEM);
 	if (!ipc_user->sem) {
@@ -713,40 +762,51 @@ __cold static int ipc_user_init(void)
 			ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(),
 							 &cold_part);
 			if (ret < 0)
-				LOG_WRN("cold rodata partition %#zx @ %#lx add failed: %d", cold_part.size,
-					cold_part.start, ret);
+				LOG_WRN("cold rodata partition %#zx @ %#lx add failed: %d",
+					cold_part.size, cold_part.start, ret);
 		}
 	}
 #endif
 
 	k_sem_init(ipc_user->sem, 0, 1);
 
-	ret = ipc_user_init_thread(ipc_user);
+	ret = ipc_user_init_thread(ipc_user, PLATFORM_PRIMARY_CORE_ID);
 	if (ret < 0) {
 		LOG_ERR("user IPC thread initialization failed");
 		k_panic();
 	}
 
-	user_access_to_mailbox(zephyr_ll_mem_domain(), ipc_user->thread);
+	user_access_to_mailbox(zephyr_ll_mem_domain(), ipc_user->thread[PLATFORM_PRIMARY_CORE_ID]);
 
 	/* Store references in ipc struct so kernel handler can forward commands */
 	ipc->ipc_user_pdata = ipc_user;
 
-	k_thread_start(ipc_user->thread);
-
 	struct task *task = zephyr_ll_task_alloc();
+
+	if (!task) {
+		LOG_ERR("task allocation failed");
+		k_panic();
+	}
+
 	schedule_task_init_ll(task, SOF_UUID(ipc_uuid), SOF_SCHEDULE_LL_TIMER,
-			0, NULL, NULL, cpu_get_id(), 0);
-	ipc_user->audio_thread = scheduler_init_context(task);
+			      0, NULL, NULL, PLATFORM_PRIMARY_CORE_ID, 0);
+	ipc_user->audio_thread[PLATFORM_PRIMARY_CORE_ID] = scheduler_init_context(task);
+	if (!ipc_user->audio_thread[PLATFORM_PRIMARY_CORE_ID]) {
+		LOG_ERR("user LL thread init failed");
+		k_panic();
+	}
 
 	/* Grant ipc_user thread permission on the audio thread object.
 	 * Needed so user-space dai_common_new() can call
 	 * k_thread_access_grant(audio_thread, dai_mutex) from user context.
 	 */
-	k_thread_access_grant(ipc_user->thread, ipc_user->audio_thread);
+	k_thread_access_grant(ipc_user->thread[PLATFORM_PRIMARY_CORE_ID],
+			      ipc_user->audio_thread[PLATFORM_PRIMARY_CORE_ID]);
+
+	k_thread_start(ipc_user->thread[PLATFORM_PRIMARY_CORE_ID]);
 
 	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
-	k_sem_take(ipc->ipc_user_pdata->sem, K_FOREVER);
+	k_sem_take(ipc_user->sem, K_FOREVER);
 
 	return 0;
 }

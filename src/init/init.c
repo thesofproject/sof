@@ -13,6 +13,7 @@
 #include <rtos/init.h>
 #include <rtos/interrupt.h>
 #include <sof/init.h>
+#include <sof/ipc/common.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/memory.h>
@@ -112,6 +113,7 @@ static inline int secondary_core_restore(void) { return 0; };
 
 __cold int secondary_core_init(struct sof *sof)
 {
+	unsigned int core = cpu_get_id();
 	int err;
 	struct ll_schedule_domain *dma_domain;
 
@@ -134,23 +136,17 @@ __cold int secondary_core_init(struct sof *sof)
 	if (dma_domain)
 		scheduler_init_ll(dma_domain);
 
+#if CONFIG_SOF_USERSPACE_LL
+	err = ipc_user_init_secondary(core);
+	if (err < 0)
+		return err;
+#endif
+
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	err = scheduler_dp_init();
 	if (err < 0)
 		return err;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
-
-#if CONFIG_SOF_USERSPACE_LL
-	/* Create domain thread for this secondary core's LL scheduler */
-	{
-		struct task *task = zephyr_ll_task_alloc();
-
-		schedule_task_init_ll(task, SOF_UUID(sec_core_init_uuid),
-				      SOF_SCHEDULE_LL_TIMER,
-				      0, NULL, NULL, cpu_get_id(), 0);
-		scheduler_init_context(task);
-	}
-#endif
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
@@ -164,7 +160,7 @@ __cold int secondary_core_init(struct sof *sof)
 		return err;
 #endif
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-	err = core_kcps_adjust(cpu_get_id(), SECONDARY_CORE_BASE_CPS_USAGE);
+	err = core_kcps_adjust(core, SECONDARY_CORE_BASE_CPS_USAGE);
 	if (err < 0)
 		return err;
 #endif
