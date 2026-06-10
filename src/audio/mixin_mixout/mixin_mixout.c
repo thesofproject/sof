@@ -412,8 +412,10 @@ static int mixin_process(struct processing_module *mod,
 		frames_to_copy = MIN(source_avail_frames, sinks_free_frames);
 		bytes_to_consume = frames_to_copy * source_get_frame_bytes(sources[0]);
 
-		source_get_data(sources[0], bytes_to_consume, (const void **)&source_ptr.ptr,
-				(const void **)&source_ptr.buf_start, &buf_size);
+		ret = source_get_data(sources[0], bytes_to_consume, (const void **)&source_ptr.ptr,
+				      (const void **)&source_ptr.buf_start, &buf_size);
+		if (ret < 0)
+			return ret;
 		source_ptr.buf_end = (uint8_t *)source_ptr.buf_start + buf_size;
 	} else {
 		/* if source does not produce any data -- do NOT block mixing but generate
