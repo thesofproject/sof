@@ -235,58 +235,90 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	return dai_config_set(dev, &cfg, cfg_params, dai_cfg_size);
 }
 
+static int dai_get_properties_safe(struct dai *dai, int direction,
+				   int stream_id, struct dai_properties *props)
+{
+	const struct dai_properties *props_p;
+	int ret;
+
+	ret = dai_get_properties_copy(dai->dev, direction, stream_id, props);
+
+	/*
+	 * User LL builds require DAI drivers to implement the copy method.
+	 * Allow fallback to dai_get_properties() in kernel LL builds.
+	 */
+	if (ret == -ENOSYS && !IS_ENABLED(CONFIG_SOF_USERSPACE_LL)) {
+		k_spinlock_key_t key = k_spin_lock(&dai->lock);
+
+		/* legacy support for drivers that do not implement copy */
+		props_p = dai_get_properties(dai->dev, direction, stream_id);
+		if (props_p) {
+			*props = *props_p;
+			ret = 0;
+		} else {
+			ret = -ENOENT;
+		}
+
+		k_spin_unlock(&dai->lock, key);
+	}
+
+	return ret;
+}
+
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int hs_id = props->dma_hs_id;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	ret = dai_get_properties_safe(dai, direction, stream_id, &props);
+	if (ret < 0)
+		return ret;
 
-	return hs_id;
+	return props.dma_hs_id;
 }
 
 /* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
-	const struct dai_properties *props;
-	k_spinlock_key_t key;
-	int fifo_depth;
+	struct dai_properties props;
+	int ret;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
-	props = dai_get_properties(dai->dev, direction, 0);
-	fifo_depth = props->fifo_depth;
-	k_spin_unlock(&dai->lock, key);
+	ret = dai_get_properties_safe(dai, direction, 0, &props);
 
-	return fifo_depth;
+	if (ret < 0)
+		return 0;
+
+	return props.fifo_depth;
 }
 
 int dai_get_stream_id(struct dai *dai, int direction)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
-	int stream_id = props->stream_id;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	ret = dai_get_properties_safe(dai, direction, 0, &props);
 
-	return stream_id;
+	if (ret < 0)
+		return ret;
+
+	return props.stream_id;
 }
 
 static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
-	k_spinlock_key_t key = k_spin_lock(&dai->lock);
-	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
-								stream_id);
-	int fifo_address = props->fifo_address;
+	struct dai_properties props;
+	int ret;
 
-	k_spin_unlock(&dai->lock, key);
+	ret = dai_get_properties_safe(dai, direction, stream_id, &props);
 
-	return fifo_address;
+	if (ret < 0)
+		return ret;
+
+	return props.fifo_address;
 }
 
 /* this is called by DMA driver every time descriptor has completed */
@@ -1982,17 +2014,17 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
-	const struct dai_properties *props;
-	k_spinlock_key_t key;
-	uint32_t init_delay;
+	struct dai_properties props;
+	uint32_t init_delay = 0;
+	int ret;
 
 	if (!dai)
 		return 0;
 
-	key = k_spin_lock(&dai->lock);
-	props = dai_get_properties(dai->dev, 0, 0);
-	init_delay = props->reg_init_delay;
-	k_spin_unlock(&dai->lock, key);
+	ret = dai_get_properties_safe(dai, 0, 0, &props);
+
+	if (!ret)
+		init_delay = props.reg_init_delay;
 
 	return init_delay;
 }
