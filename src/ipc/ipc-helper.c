@@ -68,6 +68,7 @@ __cold struct comp_buffer *buffer_new(struct mod_alloc_ctx *alloc,
 		return NULL;
 	}
 
+#if CONFIG_IPC_MAJOR_3
 	/* memory zones and caps are deprecated - convert to flags */
 	if (desc->caps & SOF_MEM_CAPS_DMA)
 		flags |= SOF_MEM_FLAG_DMA;
@@ -78,6 +79,7 @@ __cold struct comp_buffer *buffer_new(struct mod_alloc_ctx *alloc,
 	if (desc->caps)
 		tr_warn(&buffer_tr, "Deprecated buffer caps 0x%x used, convert to flags 0x%x",
 			desc->caps, flags);
+#endif
 
 	/* allocate buffer */
 	buffer = buffer_alloc(alloc, desc->size, flags, PLATFORM_DCACHE_ALIGN,
