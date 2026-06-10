@@ -237,12 +237,18 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 /* called from ipc/ipc3/dai.c */
 int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
+	/* Remove for all builds once Zephyr drivers fixed to make
+	 * get_properties() safe. */
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spinlock_key_t key = k_spin_lock(&dai->lock);
+#endif
 	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
 								stream_id);
 	int hs_id = props->dma_hs_id;
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spin_unlock(&dai->lock, key);
+#endif
 
 	return hs_id;
 }
@@ -251,40 +257,52 @@ int dai_get_handshake(struct dai *dai, int direction, int stream_id)
 int dai_get_fifo_depth(struct dai *dai, int direction)
 {
 	const struct dai_properties *props;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spinlock_key_t key;
+#endif
 	int fifo_depth;
 
 	if (!dai)
 		return 0;
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	key = k_spin_lock(&dai->lock);
+#endif
 	props = dai_get_properties(dai->dev, direction, 0);
 	fifo_depth = props->fifo_depth;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spin_unlock(&dai->lock, key);
-
+#endif
 	return fifo_depth;
 }
 
 int dai_get_stream_id(struct dai *dai, int direction)
 {
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spinlock_key_t key = k_spin_lock(&dai->lock);
+#endif
 	const struct dai_properties *props = dai_get_properties(dai->dev, direction, 0);
 	int stream_id = props->stream_id;
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spin_unlock(&dai->lock, key);
+#endif
 
 	return stream_id;
 }
 
 static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spinlock_key_t key = k_spin_lock(&dai->lock);
+#endif
 	const struct dai_properties *props = dai_get_properties(dai->dev, direction,
 								stream_id);
 	int fifo_address = props->fifo_address;
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spin_unlock(&dai->lock, key);
-
+#endif
 	return fifo_address;
 }
 
@@ -1982,17 +2000,22 @@ static int dai_ts_stop_op(struct comp_dev *dev)
 uint32_t dai_get_init_delay_ms(struct dai *dai)
 {
 	const struct dai_properties *props;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spinlock_key_t key;
+#endif
 	uint32_t init_delay;
 
 	if (!dai)
 		return 0;
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 	key = k_spin_lock(&dai->lock);
+#endif
 	props = dai_get_properties(dai->dev, 0, 0);
 	init_delay = props->reg_init_delay;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	k_spin_unlock(&dai->lock, key);
-
+#endif
 	return init_delay;
 }
 
