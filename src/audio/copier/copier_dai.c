@@ -108,7 +108,7 @@ static int copier_alh_assign_dai_index(struct comp_dev *dev,
 		}
 
 		dai_num = alh_blob->alh_cfg.count;
-		if (dai_num > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_num < 0) {
+		if (dai_num > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_num <= 0) {
 			comp_err(mod->dev, "Invalid dai_count: %d", dai_num);
 			return -EINVAL;
 		}
@@ -138,7 +138,7 @@ static int copier_alh_assign_dai_index(struct comp_dev *dev,
 		}
 
 		dai_num = alh_blob->alh_cfg.count;
-		if (dai_num > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_num < 0) {
+		if (dai_num > IPC4_ALH_MAX_NUMBER_OF_GTW || dai_num <= 0) {
 			comp_err(mod->dev, "Invalid dai_count: %d", dai_num);
 			return -EINVAL;
 		}
