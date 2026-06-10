@@ -318,7 +318,6 @@ void ipc_schedule_process(struct ipc *ipc)
 #define IPC_USER_EVENT_CMD      BIT(0)
 #define IPC_USER_EVENT_STOP     BIT(1)
 
-static struct k_thread ipc_user_thread;
 static K_THREAD_STACK_DEFINE(ipc_user_stack, CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
 
 /**
@@ -419,6 +418,54 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 	}
 }
 
+__cold static int ipc_user_init_thread(struct ipc_user *ipc_user)
+{
+	char thread_name[] = "ll_user0";
+	int ret;
+
+	assert_can_be_cold();
+
+	/* Allocate kernel objects for the user-space thread */
+	ipc_user->event = k_object_alloc(K_OBJ_EVENT);
+	if (!ipc_user->event) {
+		LOG_ERR("user IPC event alloc failed");
+		return -ENOMEM;
+	}
+	k_event_init(ipc_user->event);
+
+	ipc_user->thread = k_object_alloc(K_OBJ_THREAD);
+	if (!ipc_user->thread) {
+		LOG_ERR("user IPC thread alloc failed");
+		ret = -ENOMEM;
+		goto e_event;
+	}
+
+	k_thread_create(ipc_user->thread, ipc_user_stack,
+			CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
+			ipc_user_thread_fn, ipc_user, NULL, NULL,
+			-1, K_USER, K_FOREVER);
+
+	k_thread_cpu_pin(ipc_user->thread, PLATFORM_PRIMARY_CORE_ID);
+	k_thread_name_set(ipc_user->thread, thread_name);
+
+	/*
+	 * Each userspace IPC thread must be able to wait on its private event
+	 * and signal completion on the primary core semaphore
+	 */
+	k_thread_access_grant(ipc_user->thread, ipc_user->sem, ipc_user->event);
+	user_grant_dai_access_all(ipc_user->thread);
+	user_grant_dma_access_all(ipc_user->thread);
+	k_mem_domain_add_thread(zephyr_ll_mem_domain(), ipc_user->thread);
+	user_ll_grant_access(ipc_user->thread, PLATFORM_PRIMARY_CORE_ID);
+
+	return 0;
+
+e_event:
+	k_object_free(ipc_user->event);
+
+	return ret;
+}
+
 __cold static void ipc_user_init(void)
 {
 	struct ipc *ipc = ipc_get();
@@ -443,38 +490,22 @@ __cold static void ipc_user_init(void)
 
 	k_sem_init(ipc_user->sem, 0, 1);
 
-	/* Allocate kernel objects for the user-space thread */
-	ipc_user->event = k_object_alloc(K_OBJ_EVENT);
-	if (!ipc_user->event) {
-		LOG_ERR("user IPC event alloc failed");
+	ret = ipc_user_init_thread(ipc_user);
+	if (ret < 0) {
+		LOG_ERR("user IPC thread initialization failed");
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
-	k_event_init(ipc_user->event);
 
-	k_thread_create(&ipc_user_thread, ipc_user_stack,
-			CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
-			ipc_user_thread_fn, ipc_user, NULL, NULL,
-			-1, K_USER, K_FOREVER);
-
-	ipc_user->thread = &ipc_user_thread;
-	k_thread_access_grant(&ipc_user_thread, ipc_user->sem, ipc_user->event);
-	user_grant_dai_access_all(&ipc_user_thread);
-	user_grant_dma_access_all(&ipc_user_thread);
-	ret = user_access_to_mailbox(zephyr_ll_mem_domain(), &ipc_user_thread);
+	ret = user_access_to_mailbox(zephyr_ll_mem_domain(), ipc_user->thread);
 	if (ret < 0) {
 		LOG_ERR("ipc user: mailbox access grant failed: %d", ret);
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
-	user_ll_grant_access(&ipc_user_thread, PLATFORM_PRIMARY_CORE_ID);
-	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &ipc_user_thread);
-
-	k_thread_cpu_pin(&ipc_user_thread, PLATFORM_PRIMARY_CORE_ID);
-	k_thread_name_set(&ipc_user_thread, "ipc_user");
 
 	/* Store references in ipc struct so kernel handler can forward commands */
 	ipc->ipc_user_pdata = ipc_user;
 
-	k_thread_start(&ipc_user_thread);
+	k_thread_start(ipc_user->thread);
 
 	struct task *task = zephyr_ll_task_alloc();
 
@@ -486,7 +517,7 @@ __cold static void ipc_user_init(void)
 	 * Needed so user-space dai_common_new() can call
 	 * k_thread_access_grant(audio_thread, dai_mutex) from user context.
 	 */
-	k_thread_access_grant(&ipc_user_thread, ipc_user->audio_thread);
+	k_thread_access_grant(ipc_user->thread, ipc_user->audio_thread);
 
 	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
 	k_sem_take(ipc->ipc_user_pdata->sem, K_FOREVER);
