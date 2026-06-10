@@ -229,7 +229,7 @@ static int pipeline_comp_list(struct comp_dev *current,
 	 * component and we aren't using IPC4. With IPC4 each pipeline receives
 	 * commands separately so we don't need to trigger them together
 	 */
-	if (!is_single_ppl && (!is_same_sched || IPC4_MOD_ID(current->ipc_config.id))) {
+	if (!is_single_ppl && (!is_same_sched || IS_ENABLED(CONFIG_IPC_MAJOR_4))) {
 		pipe_dbg(current->pipeline,
 			 "current is from another pipeline");
 		return 0;
