@@ -284,6 +284,16 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	struct pipeline *p;
 	uint32_t flags;
 
+#ifdef CONFIG_IPC_MAJOR_4
+	/*
+	 * With IPC4, each pipeline is triggered separately. Exactly 1 pipeline
+	 * is expected in the pipelines list (it's unclear whether an empty list
+	 * should be tolerated).
+	 */
+	assert(list_is_empty(&ctx->pipelines) ||
+	   list_item_is_last(ctx->pipelines.next, &ctx->pipelines));
+#endif
+
 	/*
 	 * Interrupts have to be disabled while adding tasks to or removing them
 	 * from the scheduler list. Without that scheduling can begin
