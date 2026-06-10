@@ -17,6 +17,7 @@
 #include <sof/ipc/msg.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
 #include <sof/lib/cpu.h>
@@ -336,7 +337,15 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		return -EINVAL;
 	}
 
+	/* Lock buffer lists to prevent racing with the LL scheduler.
+	 * In user-space builds, use the LL scheduler's sys_mutex
+	 * (re-entrant, so safe if caller already holds it).
+	 */
+#ifdef CONFIG_SOF_USERSPACE_LL
+	user_ll_lock_sched(icd->core);
+#else
 	irq_local_disable(flags);
+#endif
 	comp_dev_for_each_producer_safe(icd->cd, buffer, safe) {
 		comp_buffer_set_sink_component(buffer, NULL);
 		/* This breaks the list, but we anyway delete all buffers */
@@ -349,7 +358,11 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		comp_buffer_reset_source_list(buffer);
 	}
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	user_ll_unlock_sched(icd->core);
+#else
 	irq_local_enable(flags);
+#endif
 
 	/*
 	 * A completed pipeline stores raw comp_dev pointers in its

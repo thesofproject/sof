@@ -448,10 +448,21 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
 	int ret;
+#ifdef CONFIG_SOF_USERSPACE_LL
+	int ppl_core;
+#endif
 
 	assert_can_be_cold();
 
 	icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
+	if (!icd)
+		return IPC4_SUCCESS;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	ppl_core = icd->core;
+	user_ll_lock_sched(ppl_core);
+#endif
+
 	while (icd) {
 		struct comp_buffer *buffer;
 		struct comp_buffer *safe;
@@ -481,11 +492,19 @@ __cold static int ipc_pipeline_module_free(uint32_t pipeline_id)
 		else
 			ret = ipc_comp_free(ipc, icd->id);
 
-		if (ret)
+		if (ret) {
+#ifdef CONFIG_SOF_USERSPACE_LL
+			user_ll_unlock_sched(ppl_core);
+#endif
 			return IPC4_INVALID_RESOURCE_STATE;
+		}
 
 		icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_COMPONENT, pipeline_id, IPC_COMP_ALL);
 	}
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	user_ll_unlock_sched(ppl_core);
+#endif
 
 	return IPC4_SUCCESS;
 }
@@ -560,21 +579,25 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
  * disable any interrupts.
  */
 
-#define ll_block(cross_core_bind, flags) \
+#if CONFIG_SOF_USERSPACE_LL
+#error "CONFIG_SOF_USERSPACE_LL not compatible with cross-core streams"
+#else
+#define ll_block(src_core, dst_core, flags) \
 	do { \
-		if (cross_core_bind) \
+		if (src_core != dst_core) \
 			domain_block(sof_get()->platform_timer_domain); \
 		else \
 			irq_local_disable(flags); \
 	} while (0)
 
-#define ll_unblock(cross_core_bind, flags) \
+#define ll_unblock(src_core, dst_core, flags) \
 	do { \
-		if (cross_core_bind) \
+		if (src_core != dst_core) \
 			domain_unblock(sof_get()->platform_timer_domain); \
 		else \
 			irq_local_enable(flags); \
 	} while (0)
+#endif
 
 /* Calling both ll_block() and ll_wait_finished_on_core() makes sure LL will not start its
  * next cycle and its current cycle on specified core has finished.
@@ -606,8 +629,15 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 
 #else
 
-#define ll_block(cross_core_bind, flags)	irq_local_disable(flags)
-#define ll_unblock(cross_core_bind, flags)	irq_local_enable(flags)
+#if CONFIG_SOF_USERSPACE_LL
+/* note: cross-core streams are disabled in the build in this branch,
+ * so we can safely use 'src_core' only */
+#define ll_block(src_core, dst_core, flags)	do { user_ll_lock_sched(src_core); (void)flags; } while(0)
+#define ll_unblock(src_core, dst_core, flags)	do { user_ll_unlock_sched(src_core) ; (void)flags; } while(0)
+#else
+#define ll_block(src_core, dst_core, flags)	irq_local_disable(flags)
+#define ll_unblock(src_core, dst_core, flags)	irq_local_enable(flags)
+#endif
 
 #endif
 
@@ -794,7 +824,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 * blocked on corresponding core(s) to prevent IPC or IDC task getting preempted which
 	 * could result in buffers being only half connected when a pipeline task gets executed.
 	 */
-	ll_block(cross_core_bind, flags);
+	ll_block(source->ipc_config.core, sink->ipc_config.core, flags);
 
 	if (cross_core_bind) {
 #if CONFIG_CROSS_CORE_STREAM
@@ -851,7 +881,7 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		source->direction_set = true;
 	}
 
-	ll_unblock(cross_core_bind, flags);
+	ll_unblock(source->ipc_config.core, sink->ipc_config.core, flags);
 
 	return IPC4_SUCCESS;
 
@@ -865,7 +895,7 @@ e_src_bind:
 e_sink_connect:
 	pipeline_disconnect(source, buffer, PPL_CONN_DIR_COMP_TO_BUFFER);
 free:
-	ll_unblock(cross_core_bind, flags);
+	ll_unblock(source->ipc_config.core, sink->ipc_config.core, flags);
 	buffer_free(buffer);
 	return IPC4_INVALID_RESOURCE_STATE;
 }
@@ -938,24 +968,24 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	 * IPC or IDC task getting preempted which could result in buffers being only half connected
 	 * when a pipeline task gets executed.
 	 */
-	ll_block(cross_core_unbind, flags);
+	ll_block(src->ipc_config.core, sink->ipc_config.core, flags);
 
 	if (cross_core_unbind) {
 #if CONFIG_CROSS_CORE_STREAM
 		/* Make sure LL has finished on both cores */
 		if (!cpu_is_me(src->ipc_config.core))
 			if (ll_wait_finished_on_core(src) < 0) {
-				ll_unblock(cross_core_unbind, flags);
+				ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
 				return IPC4_FAILURE;
 			}
 		if (!cpu_is_me(sink->ipc_config.core))
 			if (ll_wait_finished_on_core(sink) < 0) {
-				ll_unblock(cross_core_unbind, flags);
+				ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
 				return IPC4_FAILURE;
 			}
 #else
 		tr_err(&ipc_tr, "Cross-core binding is disabled");
-		ll_unblock(cross_core_unbind, flags);
+		ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
 		return IPC4_FAILURE;
 #endif
 	}
@@ -972,7 +1002,7 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	unbind_data.source = audio_buffer_get_source(&buffer->audio_buffer);
 	ret1 = comp_unbind(sink, &unbind_data);
 
-	ll_unblock(cross_core_unbind, flags);
+	ll_unblock(src->ipc_config.core, sink->ipc_config.core, flags);
 
 	buffer_free(buffer);
 
