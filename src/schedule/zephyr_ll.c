@@ -619,8 +619,15 @@ static const struct scheduler_ops zephyr_ll_ops = {
 #if CONFIG_SOF_USERSPACE_LL
 struct task *zephyr_ll_task_alloc(void)
 {
-	return sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER,
-			      sizeof(struct task), sizeof(void *));
+	struct task *task = sof_heap_alloc(zephyr_ll_user_heap(),
+					   SOF_MEM_FLAG_USER/* | SOF_MEM_FLAG_COHERENT*/,
+					   sizeof(*task), sizeof(void *));
+
+	if (task)
+		/* At least .priv_data must be NULL for zephyr_ll_task_init() */
+		memset(task, 0, sizeof(*task));
+
+	return task;
 }
 
 void user_ll_grant_access(struct k_thread *thread)
