@@ -57,9 +57,9 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_POWERDOWN      BIT(3)
 
 struct ipc_user {
-	struct k_thread *thread;
+	struct k_thread *thread[CONFIG_CORE_COUNT];
 	struct k_sem *sem;
-	struct k_event *event;
+	struct k_event *event[CONFIG_CORE_COUNT];
 	/** @brief Copy of IPC4 message primary word forwarded to user thread */
 	uint32_t ipc_msg_pri;
 	/** @brief Copy of IPC4 message extension word forwarded to user thread */
@@ -73,9 +73,10 @@ struct ipc_user {
 	/** @brief Reply TX data pointer from user thread (e.g. LARGE_CONFIG_GET result) */
 	void *reply_tx_data;
 	struct ipc *ipc;
-	struct k_thread *audio_thread;
+	struct k_thread *audio_thread[CONFIG_CORE_COUNT];
 	/** @brief Original kernel driver pointer for restoring dev->drv after create */
 	const struct comp_driver *init_drv;
+	bool init_needed[CONFIG_CORE_COUNT];
 	/**
 	 * @brief User-accessible copy of comp_driver + tr_ctx for create().
 	 *
@@ -326,7 +327,7 @@ extern bool ipc_enter_gdb;
  * @param extension Extension message word
  * @return Result code from user thread processing
  */
-int ipc_user_forward_cmd(uint32_t primary, uint32_t extension);
+int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core);
 
 /**
  * @brief Protocol-specific dispatch of a forwarded IPC command.
@@ -338,6 +339,14 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension);
  * @return Result code to report back to the host
  */
 int ipc_user_thread_dispatch(struct ipc_user *ipc_user);
+
+/**
+ * @brief Initialize IPC and LL scheduler threads on a booting secondary core.
+ *
+ * @param core Secondary core ID
+ * @return 0 or a negative error code
+ */
+int ipc_user_init_secondary(unsigned int core);
 #endif
 
 #endif /* __SOF_DRIVERS_IPC_H__ */
