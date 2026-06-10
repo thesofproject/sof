@@ -668,7 +668,8 @@ e_event:
 __cold int ipc_user_init(void)
 {
 	struct ipc *ipc = ipc_get();
-	struct ipc_user *ipc_user = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER,
+	struct ipc_user *ipc_user = sof_heap_alloc(sof_sys_user_heap_get(),
+						   SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 						   sizeof(*ipc_user), 0);
 	int ret;
 
