@@ -319,6 +319,12 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 	dt->handler = NULL;
 	dt->arg = NULL;
 
+	dt->sem = k_object_alloc(K_OBJ_SEM);
+	if (!dt->sem) {
+		tr_err(&ll_tr, "Failed to allocate semaphore for core %d", core);
+		return -ENOMEM;
+	}
+
 	/* 10 is rather random, we better not accumulate 10 missed timer interrupts */
 	k_sem_init(dt->sem, 0, 10);
 
@@ -328,6 +334,8 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 	dt->ll_thread = k_object_alloc(K_OBJ_THREAD);
 	if (!dt->ll_thread) {
 		tr_err(&ll_tr, "Failed to allocate thread object for core %d", core);
+		k_object_free(dt->sem);
+		dt->sem = NULL;
 		return -ENOMEM;
 	}
 
@@ -530,11 +538,11 @@ APP_TASK_DATA static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 #endif
 };
 
+/* Core 0 only */
 struct ll_schedule_domain *zephyr_domain_init(int clk)
 {
 	struct ll_schedule_domain *domain;
 	struct zephyr_domain *zephyr_domain;
-	struct zephyr_domain_thread *dt;
 	int core;
 
 	domain = domain_init(SOF_SCHEDULE_LL_TIMER, clk, false,
@@ -584,14 +592,9 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 	ll_sch_domain_set_pdata(domain, zephyr_domain);
 
 	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
-		dt = zephyr_domain->domain_thread + core;
-#ifdef CONFIG_SOF_USERSPACE_LL
-		dt->sem = k_object_alloc(K_OBJ_SEM);
-		if (!dt->sem) {
-			tr_err(&ll_tr, "Failed to allocate semaphore for core %d", core);
-			k_panic();
-		}
-#else
+#ifndef CONFIG_SOF_USERSPACE_LL
+		struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+
 		/* not allocated dynamically when LL in kernel space */
 		dt->sem = &dt->sem_obj;
 #endif
