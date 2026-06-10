@@ -5,6 +5,7 @@
  * Author: Adrian Warecki <adrian.warecki@intel.com>
  */
 
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <rtos/idc.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -72,13 +73,15 @@ static void watchdog_timeout(const struct device *dev, int core)
 		watchdog_secondary_core_action_on_timeout();
 }
 
-void watchdog_init(void)
+__cold void watchdog_init(void)
 {
 	int i, ret;
 	const struct wdt_timeout_cfg watchdog_config = {
 		.window.max = LL_WATCHDOG_TIMEOUT_US / 1000,
 		.callback = watchdog_timeout,
 	};
+
+	assert_can_be_cold();
 
 	secondary_timeout_ipc.tx_data = NULL;
 	secondary_timeout_ipc.tx_size = 0;

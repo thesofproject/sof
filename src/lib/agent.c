@@ -93,9 +93,11 @@ static enum task_state validate(void *data)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
-void sa_init(struct sof *sof, uint64_t timeout)
+__cold void sa_init(struct sof *sof, uint64_t timeout)
 {
 	uint64_t ticks;
+
+	assert_can_be_cold();
 
 	if (timeout > UINT_MAX)
 		tr_warn(&sa_tr, "timeout > %u", UINT_MAX);

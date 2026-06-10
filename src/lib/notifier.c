@@ -190,10 +190,13 @@ void notifier_event(const void *caller, enum notify_id type, uint32_t core_mask,
 	}
 }
 
-void init_system_notify(struct sof *sof)
+__cold void init_system_notify(struct sof *sof)
 {
 	struct notify **notify = arch_notify_get();
 	int i;
+
+	assert_can_be_cold();
+
 	*notify = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 			  sizeof(**notify));
 	if (!*notify) {

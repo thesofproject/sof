@@ -10,6 +10,7 @@
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/mic_privacy_manager.h>
+#include <sof/lib/memory.h>
 
 const struct device *mic_priv_dev;
 
@@ -88,9 +89,11 @@ void mic_privacy_enable_dmic_irq(bool enable_irq)
 	}
 }
 
-int mic_privacy_manager_init(void)
+__cold int mic_privacy_manager_init(void)
 {
 	mic_priv_dev = DEVICE_DT_GET(DT_NODELABEL(mic_privacy));
+
+	assert_can_be_cold();
 
 	if (!mic_priv_dev)
 		return -EINVAL;

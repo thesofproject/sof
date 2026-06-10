@@ -7,6 +7,7 @@
 
 #include <rtos/task.h>
 #include <stdint.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/ll_schedule.h>
@@ -348,11 +349,13 @@ static struct scheduler_ops schedule_twb_ops = {
 	.schedule_task_free	= scheduler_twb_task_free,
 };
 
-int scheduler_twb_init(void)
+__cold int scheduler_twb_init(void)
 {
 	struct scheduler_twb_data *twb_sch = rzalloc(SOF_MEM_FLAG_KERNEL,
 						   sizeof(struct scheduler_twb_data));
 	int ret;
+
+	assert_can_be_cold();
 
 	if (!twb_sch)
 		return -ENOMEM;

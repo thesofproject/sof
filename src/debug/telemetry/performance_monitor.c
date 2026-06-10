@@ -8,6 +8,7 @@
 #include <sof/debug/telemetry/performance_monitor.h>
 #include <sof/debug/telemetry/telemetry.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/lib_manager.h>
 
 #include <zephyr/sys/bitarray.h>
@@ -427,10 +428,12 @@ SYS_BITARRAY_DEFINE_STATIC(io_performance_data_bit_array, PERFORMANCE_DATA_ENTRI
 static struct io_perf_monitor_ctx perf_monitor_ctx;
 static struct io_perf_data_item io_perf_data_items[IO_PERFORMANCE_MAX_ENTRIES];
 
-int io_perf_monitor_init(void)
+__cold int io_perf_monitor_init(void)
 {
 	int ret;
 	struct io_perf_monitor_ctx *self = &perf_monitor_ctx;
+
+	assert_can_be_cold();
 
 	k_spinlock_init(&self->lock);
 	k_spinlock_key_t key = k_spin_lock(&self->lock);

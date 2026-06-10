@@ -110,6 +110,8 @@ __cold int secondary_core_init(struct sof *sof)
 	int err;
 	struct ll_schedule_domain *dma_domain;
 
+	assert_can_be_cold();
+
 	/* check whether we are in a cold boot process or not (e.g. D0->D0ix
 	 * flow when primary core disables all secondary cores). If not, we do
 	 * not have allocate basic structures like e.g. schedulers, notifier,
@@ -163,6 +165,8 @@ __cold int secondary_core_init(struct sof *sof)
 
 __cold static void print_version_banner(void)
 {
+	assert_can_be_cold();
+
 	/*
 	 * Non-Zephyr builds emit the version banner in DMA-trace
 	 * init and this is done at a later time as otherwise the
@@ -193,6 +197,8 @@ static log_timestamp_t default_get_timestamp(void)
 
 __cold static int primary_core_init(int argc, char *argv[], struct sof *sof)
 {
+	assert_can_be_cold();
+
 	/* setup context */
 	sof->argc = argc;
 	sof->argv = argv;
