@@ -73,8 +73,15 @@ static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 
 static void zephyr_ll_assert_core(const struct zephyr_ll *sch)
 {
-	assert(CONFIG_CORE_COUNT == 1 || IS_ENABLED(CONFIG_SOF_USERSPACE_LL) ||
-	       sch->core == cpu_get_id());
+#if CONFIG_SOF_USERSPACE_LL
+	/* In user-space mode, cpu_get_id() is not available.
+	 * Core correctness is ensured by task->core routing in
+	 * schedule.h and verified at task schedule time.
+	 */
+	(void)sch;
+#else
+	assert(CONFIG_CORE_COUNT == 1 || sch->core == cpu_get_id());
+#endif
 }
 
 /* Locking: caller should hold the domain lock */
