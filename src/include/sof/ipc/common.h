@@ -56,9 +56,9 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_POWERDOWN      BIT(3)
 
 struct ipc_user {
-	struct k_thread *thread;
+	struct k_thread *thread[CONFIG_CORE_COUNT];
 	struct k_sem *sem;
-	struct k_event *event;
+	struct k_event *event[CONFIG_CORE_COUNT];
 	/** @brief Copy of IPC4 message primary word forwarded to user thread */
 	uint32_t ipc_msg_pri;
 	/** @brief Copy of IPC4 message extension word forwarded to user thread */
@@ -72,9 +72,10 @@ struct ipc_user {
 	/** @brief Reply TX data pointer from user thread (e.g. LARGE_CONFIG_GET result) */
 	void *reply_tx_data;
 	struct ipc *ipc;
-	struct k_thread *audio_thread;
+	struct k_thread *audio_thread[CONFIG_CORE_COUNT];
 	/** @brief Original kernel driver pointer for restoring dev->drv after create */
 	const struct comp_driver *init_drv;
+	bool init_needed[CONFIG_CORE_COUNT];
 	/**
 	 * @brief User-accessible copy of comp_driver + tr_ctx for create().
 	 *
@@ -353,7 +354,8 @@ struct ipc4_message_request;
  * @param ipc4 Pointer to the IPC4 message request
  * @return Result from user thread processing
  */
-int ipc_user_forward_cmd(struct ipc4_message_request *ipc4);
+int ipc_user_forward_cmd(struct ipc4_message_request *ipc4, unsigned int core);
+int ipc_user_init_secondary(unsigned int core);
 #endif
 
 #endif /* __SOF_DRIVERS_IPC_H__ */
