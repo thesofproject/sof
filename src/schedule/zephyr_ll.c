@@ -622,7 +622,7 @@ __cold int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 
 #if CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();
-	flags = SOF_MEM_FLAG_USER;
+	flags = SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT;
 #endif
 	tr_dbg(&ll_tr, "init on core %d", core);
 
