@@ -5,6 +5,7 @@
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
 #include <rtos/atomic.h>
+#include <rtos/kernel.h>
 #include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
@@ -134,7 +135,7 @@ void z_impl_sof_dma_put(struct sof_dma *dma)
 
 	key = k_spin_lock(&dma->lock);
 	if (--dma->sref == 0) {
-		rfree(dma->chan);
+		sof_heap_free(dma->heap, dma->chan);
 		dma->chan = NULL;
 	}
 
@@ -146,18 +147,20 @@ void z_impl_sof_dma_put(struct sof_dma *dma)
 static int dma_init(struct sof_dma *dma)
 {
 	struct dma_chan_data *chan;
+	struct k_heap *heap = sof_sys_user_heap_get();
 	int i;
 
 	/* allocate dma channels */
-	dma->chan = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-			    sizeof(struct dma_chan_data) * dma->plat_data.channels);
-
+	dma->chan = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				   sizeof(struct dma_chan_data) * dma->plat_data.channels, 0);
 	if (!dma->chan) {
-		tr_err(&dma_tr, "dma_probe_sof(): dma %d allocaction of channels failed",
+		tr_err(&dma_tr, "dma %d allocation of channels failed",
 		       dma->plat_data.id);
 		return -ENOMEM;
 	}
 
+	dma->heap = heap;
+	memset(dma->chan, 0, sizeof(struct dma_chan_data) * dma->plat_data.channels);
 	/* init work */
 	for (i = 0, chan = dma->chan; i < dma->plat_data.channels;
 	     i++, chan++) {
