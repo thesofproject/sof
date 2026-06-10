@@ -13,6 +13,7 @@
 #include <sof/lib/agent.h>
 #include <sof/list.h>
 #include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -282,7 +283,6 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	struct list_item *tlist;
 	struct pipeline *p;
-	uint32_t flags;
 
 #ifdef CONFIG_IPC_MAJOR_4
 	/*
@@ -295,11 +295,19 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 #endif
 
 	/*
-	 * Interrupts have to be disabled while adding tasks to or removing them
+	 * Block scheduler execution when adding tasks or removing them
 	 * from the scheduler list. Without that scheduling can begin
 	 * immediately before all pipelines achieved a consistent state.
 	 */
+#ifdef CONFIG_SOF_USERSPACE_LL
+	int sched_core = ppl_data->start->ipc_config.core;
+
+	user_ll_lock_sched(sched_core);
+#else
+	uint32_t flags;
+
 	irq_local_disable(flags);
+#endif
 
 	switch (cmd) {
 	case COMP_TRIGGER_PAUSE:
@@ -355,8 +363,11 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				p->xrun_bytes = 1;
 		}
 	}
-
+#ifdef CONFIG_SOF_USERSPACE_LL
+	user_ll_unlock_sched(sched_core);
+#else
 	irq_local_enable(flags);
+#endif
 }
 
 int pipeline_comp_ll_task_init(struct pipeline *p)
