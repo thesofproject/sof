@@ -578,15 +578,11 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 #if CONFIG_COMP_CHAIN_DMA
 	struct ipc_comp_dev *cdma_comp;
 	struct ipc *ipc = ipc_get();
-	struct ipc4_chain_dma cdma;
+	const struct ipc4_chain_dma *cdma = (const struct ipc4_chain_dma *)ipc4;
 	int comp_id;
 	int ret;
 
-	ret = memcpy_s(&cdma, sizeof(cdma), ipc4, sizeof(*ipc4));
-	if (ret < 0)
-		return IPC4_FAILURE;
-
-	comp_id = IPC4_COMP_ID(cdma.primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT, 0);
+	comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT, 0);
 	cdma_comp = ipc_get_comp_by_id(ipc, comp_id);
 
 	if (!cdma_comp) {
@@ -594,10 +590,10 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 		 * Nothing to do when the chainDMA is not allocated and asked to
 		 * be freed
 		 */
-		if (!cdma.primary.r.allocate && !cdma.primary.r.enable)
+		if (!cdma->primary.r.allocate && !cdma->primary.r.enable)
 			return IPC4_SUCCESS;
 
-		ret = ipc4_chain_manager_create(&cdma);
+		ret = ipc4_chain_manager_create(cdma);
 		if (ret < 0)
 			return IPC4_FAILURE;
 
@@ -606,7 +602,7 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 			return IPC4_FAILURE;
 		}
 
-		ret = ipc4_chain_dma_state(cdma_comp->cd, &cdma);
+		ret = ipc4_chain_dma_state(cdma_comp->cd, cdma);
 		if (ret < 0) {
 			comp_free(cdma_comp->cd);
 			return IPC4_FAILURE;
@@ -615,7 +611,7 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 		return IPC4_SUCCESS;
 	}
 
-	ret = ipc4_chain_dma_state(cdma_comp->cd, &cdma);
+	ret = ipc4_chain_dma_state(cdma_comp->cd, cdma);
 	if (ret < 0)
 		return IPC4_INVALID_CHAIN_STATE_TRANSITION;
 
@@ -754,31 +750,25 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 
 __cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 {
-	struct ipc4_module_init_instance module_init;
+	const struct ipc4_module_init_instance *module_init =
+		(const struct ipc4_module_init_instance *)ipc4;
 	struct comp_dev *dev;
 
 	assert_can_be_cold();
 
-	/* we only need the common header here, all we have from the IPC */
-	int ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
-
-	if (ret < 0)
-		return IPC4_FAILURE;
-
-	tr_dbg(&ipc_tr,
-		"%x : %x",
-		(uint32_t)module_init.primary.r.module_id,
-		(uint32_t)module_init.primary.r.instance_id);
+	tr_dbg(&ipc_tr, "%x : %x",
+	       (uint32_t)module_init->primary.r.module_id,
+	       (uint32_t)module_init->primary.r.instance_id);
 
 	/* Pass IPC to target core */
-	if (!cpu_is_me(module_init.extension.r.core_id))
-		return ipc4_process_on_core(module_init.extension.r.core_id, false);
+	if (!cpu_is_me(module_init->extension.r.core_id))
+		return ipc4_process_on_core(module_init->extension.r.core_id, false);
 
-	dev = comp_new_ipc4(&module_init);
+	dev = comp_new_ipc4(module_init);
 	if (!dev) {
 		ipc_cmd_err(&ipc_tr, "error: failed to init module %x : %x",
-			    (uint32_t)module_init.primary.r.module_id,
-			    (uint32_t)module_init.primary.r.instance_id);
+			    (uint32_t)module_init->primary.r.module_id,
+			    (uint32_t)module_init->primary.r.instance_id);
 		return IPC4_MOD_NOT_INITIALIZED;
 	}
 
@@ -787,40 +777,30 @@ __cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 
 __cold static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 {
-	struct ipc4_module_bind_unbind bu;
+	struct ipc4_module_bind_unbind *bu = (struct ipc4_module_bind_unbind *)ipc4;
 	struct ipc *ipc = ipc_get();
 
 	assert_can_be_cold();
 
-	int ret = memcpy_s(&bu, sizeof(bu), ipc4, sizeof(*ipc4));
-
-	if (ret < 0)
-		return IPC4_FAILURE;
-
 	tr_dbg(&ipc_tr, "%x : %x with %x : %x",
-	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
-	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
+	       (uint32_t)bu->primary.r.module_id, (uint32_t)bu->primary.r.instance_id,
+	       (uint32_t)bu->extension.r.dst_module_id, (uint32_t)bu->extension.r.dst_instance_id);
 
-	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)&bu);
+	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)bu);
 }
 
 __cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 {
-	struct ipc4_module_bind_unbind bu;
+	struct ipc4_module_bind_unbind *bu = (struct ipc4_module_bind_unbind *)ipc4;
 	struct ipc *ipc = ipc_get();
 
 	assert_can_be_cold();
 
-	int ret = memcpy_s(&bu, sizeof(bu), ipc4, sizeof(*ipc4));
-
-	if (ret < 0)
-		return IPC4_FAILURE;
-
 	tr_dbg(&ipc_tr, "%x : %x with %x : %x",
-	       (uint32_t)bu.primary.r.module_id, (uint32_t)bu.primary.r.instance_id,
-	       (uint32_t)bu.extension.r.dst_module_id, (uint32_t)bu.extension.r.dst_instance_id);
+	       (uint32_t)bu->primary.r.module_id, (uint32_t)bu->primary.r.instance_id,
+	       (uint32_t)bu->extension.r.dst_module_id, (uint32_t)bu->extension.r.dst_instance_id);
 
-	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
+	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)bu);
 }
 
 /**
@@ -1038,30 +1018,27 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 					void **reply_tx_data)
 {
 	struct ipc4_module_large_config_reply reply;
-	struct ipc4_module_large_config config;
+	const struct ipc4_module_large_config *config =
+		(const struct ipc4_module_large_config *)ipc4;
 	char *data = ipc_get()->comp_data;
 	const struct comp_driver *drv;
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
+	int ret;
 
 	assert_can_be_cold();
 
-	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
-
-	if (ret < 0)
-		return IPC4_FAILURE;
-
 	tr_dbg(&ipc_tr, "%x : %x",
-	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
+	       (uint32_t)config->primary.r.module_id, (uint32_t)config->primary.r.instance_id);
 
 	/* get component dev for non-basefw since there is no
 	 * component dev for basefw
 	 */
-	if (config.primary.r.module_id) {
+	if (config->primary.r.module_id) {
 		uint32_t comp_id;
 
-		comp_id = IPC4_COMP_ID(config.primary.r.module_id,
-				       config.primary.r.instance_id);
+		comp_id = IPC4_COMP_ID(config->primary.r.module_id,
+				       config->primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
@@ -1072,7 +1049,7 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 		 * non-userspace path retains ipc4_process_on_core()
 		 */
 	} else {
-		drv = ipc4_get_comp_drv(config.primary.r.module_id);
+		drv = ipc4_get_comp_drv(config->primary.r.module_id);
 	}
 
 	if (!drv)
@@ -1081,16 +1058,16 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 	if (!drv->ops.get_large_config)
 		return IPC4_INVALID_REQUEST;
 
-	data_offset = config.extension.r.data_off_size;
+	data_offset = config->extension.r.data_off_size;
 
 	/* check for vendor param first */
-	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+	if (config->extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
 		/* For now only vendor_config case uses payload from hostbox */
 		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-					 config.extension.r.data_off_size);
+					 config->extension.r.data_off_size);
 		ret = ipc4_get_vendor_config_module_instance(dev, drv,
-							     config.extension.r.init_block,
-							     config.extension.r.final_block,
+							     config->extension.r.init_block,
+							     config->extension.r.final_block,
 							     &data_offset,
 							     data,
 							     (const char *)MAILBOX_HOSTBOX_BASE);
@@ -1098,12 +1075,12 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 #if CONFIG_LIBRARY
 		data += sizeof(reply);
 #endif
-		ipc4_prepare_for_kcontrol_get(dev, config.extension.r.large_param_id,
+		ipc4_prepare_for_kcontrol_get(dev, config->extension.r.large_param_id,
 					      data, data_offset);
 
-		ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
-						config.extension.r.init_block,
-						config.extension.r.final_block,
+		ret = drv->ops.get_large_config(dev, config->extension.r.large_param_id,
+						config->extension.r.init_block,
+						config->extension.r.final_block,
 						&data_offset, data);
 	}
 
@@ -1112,11 +1089,11 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 		ret = IPC4_MOD_INVALID_ID;
 
 	/* Copy host config and overwrite */
-	reply.extension.dat = config.extension.dat;
+	reply.extension.dat = config->extension.dat;
 	reply.extension.r.data_off_size = data_offset;
 
 	/* The last block, no more data */
-	if (!config.extension.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
+	if (!config->extension.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
 		reply.extension.r.final_block = 1;
 
 	/* Indicate last block if error occurs */
@@ -1137,30 +1114,27 @@ __cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
 __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_large_config_reply reply;
-	struct ipc4_module_large_config config;
+	const struct ipc4_module_large_config *config =
+		(const struct ipc4_module_large_config *)ipc4;
 	char *data = ipc_get()->comp_data;
 	const struct comp_driver *drv;
 	struct comp_dev *dev = NULL;
 	uint32_t data_offset;
+	int ret;
 
 	assert_can_be_cold();
 
-	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
-
-	if (ret < 0)
-		return IPC4_FAILURE;
-
 	tr_dbg(&ipc_tr, "%x : %x",
-	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
+	       (uint32_t)config->primary.r.module_id, (uint32_t)config->primary.r.instance_id);
 
 	/* get component dev for non-basefw since there is no
 	 * component dev for basefw
 	 */
-	if (config.primary.r.module_id) {
+	if (config->primary.r.module_id) {
 		uint32_t comp_id;
 
-		comp_id = IPC4_COMP_ID(config.primary.r.module_id,
-				       config.primary.r.instance_id);
+		comp_id = IPC4_COMP_ID(config->primary.r.module_id,
+				       config->primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_INVALID_RESOURCE_ID;
@@ -1172,10 +1146,10 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 			return ipc4_process_on_core(dev->ipc_config.core, false);
 	} else {
 		/* BaseFW module has only 0th instance */
-		if (config.primary.r.instance_id)
+		if (config->primary.r.instance_id)
 			return IPC4_INVALID_RESOURCE_ID;
 
-		drv = ipc4_get_comp_drv(config.primary.r.module_id);
+		drv = ipc4_get_comp_drv(config->primary.r.module_id);
 	}
 
 	if (!drv)
@@ -1184,10 +1158,10 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 	if (!drv->ops.get_large_config)
 		return IPC4_INVALID_REQUEST;
 
-	data_offset =  config.extension.r.data_off_size;
+	data_offset = config->extension.r.data_off_size;
 
 	/* check for vendor param first */
-	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+	if (config->extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
 		/* data_off_size is a 20-bit host-controlled field, so it can
 		 * claim far more than the hostbox can physically hold.
 		 */
@@ -1198,23 +1172,22 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 		}
 		/* For now only vendor_config case uses payload from hostbox */
 		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-					 config.extension.r.data_off_size);
+					 config->extension.r.data_off_size);
 		ret = ipc4_get_vendor_config_module_instance(dev, drv,
-							     config.extension.r.init_block,
-							     config.extension.r.final_block,
-							     &data_offset,
-							     data,
+							     config->extension.r.init_block,
+							     config->extension.r.final_block,
+							     &data_offset, data,
 							     (const char *)MAILBOX_HOSTBOX_BASE);
 	} else {
 #if CONFIG_LIBRARY
 		data += sizeof(reply);
 #endif
-		ipc4_prepare_for_kcontrol_get(dev, config.extension.r.large_param_id,
+		ipc4_prepare_for_kcontrol_get(dev, config->extension.r.large_param_id,
 					      data, data_offset);
 
-		ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
-						config.extension.r.init_block,
-						config.extension.r.final_block,
+		ret = drv->ops.get_large_config(dev, config->extension.r.large_param_id,
+						config->extension.r.init_block,
+						config->extension.r.final_block,
 						&data_offset, data);
 	}
 
@@ -1223,11 +1196,11 @@ __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_requ
 		ret = IPC4_INVALID_RESOURCE_ID;
 
 	/* Copy host config and overwrite */
-	reply.extension.dat = config.extension.dat;
+	reply.extension.dat = config->extension.dat;
 	reply.extension.r.data_off_size = data_offset;
 
 	/* The last block, no more data */
-	if (!config.extension.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
+	if (!config->extension.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
 		reply.extension.r.final_block = 1;
 
 	/* Indicate last block if error occurs */
@@ -1322,26 +1295,23 @@ __cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 
 __cold int ipc4_process_large_config_set(struct ipc4_message_request *ipc4)
 {
-	struct ipc4_module_large_config config;
+	const struct ipc4_module_large_config *config =
+		(const struct ipc4_module_large_config *)ipc4;
 	struct comp_dev *dev = NULL;
 	const struct comp_driver *drv;
+	int ret;
 
 	assert_can_be_cold();
 
-	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
-
-	if (ret < 0)
-		return IPC4_FAILURE;
-
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-				 config.extension.r.data_off_size);
+				 config->extension.r.data_off_size);
 	tr_dbg(&ipc_tr, "%x : %x",
-	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
+	       (uint32_t)config->primary.r.module_id, (uint32_t)config->primary.r.instance_id);
 
-	if (config.primary.r.module_id) {
+	if (config->primary.r.module_id) {
 		uint32_t comp_id;
 
-		comp_id = IPC4_COMP_ID(config.primary.r.module_id, config.primary.r.instance_id);
+		comp_id = IPC4_COMP_ID(config->primary.r.module_id, config->primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_MOD_INVALID_ID;
@@ -1352,7 +1322,7 @@ __cold int ipc4_process_large_config_set(struct ipc4_message_request *ipc4)
 		 * non-userspace path retains ipc4_process_on_core()
 		 */
 	} else {
-		drv = ipc4_get_comp_drv(config.primary.r.module_id);
+		drv = ipc4_get_comp_drv(config->primary.r.module_id);
 	}
 
 	if (!drv)
@@ -1362,13 +1332,13 @@ __cold int ipc4_process_large_config_set(struct ipc4_message_request *ipc4)
 		return IPC4_INVALID_REQUEST;
 
 	/* check for vendor param first */
-	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+	if (config->extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
 		ret = ipc4_set_vendor_config_module_instance(dev, drv,
-							     (uint32_t)config.primary.r.module_id,
-							     (uint32_t)config.primary.r.instance_id,
-							     config.extension.r.init_block,
-							     config.extension.r.final_block,
-							     config.extension.r.data_off_size,
+							     (uint32_t)config->primary.r.module_id,
+							     (uint32_t)config->primary.r.instance_id,
+							     config->extension.r.init_block,
+							     config->extension.r.final_block,
+							     config->extension.r.data_off_size,
 							     (const char *)MAILBOX_HOSTBOX_BASE);
 	} else {
 #if CONFIG_LIBRARY
@@ -1377,13 +1347,13 @@ __cold int ipc4_process_large_config_set(struct ipc4_message_request *ipc4)
 #else
 		const char *data = (const char *)MAILBOX_HOSTBOX_BASE;
 #endif
-		ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
-			config.extension.r.init_block, config.extension.r.final_block,
-			config.extension.r.data_off_size, data);
+		ret = drv->ops.set_large_config(dev, config->extension.r.large_param_id,
+			config->extension.r.init_block, config->extension.r.final_block,
+			config->extension.r.data_off_size, data);
 		if (ret < 0) {
 			ipc_cmd_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
-				    (uint32_t)config.primary.r.module_id,
-				    (uint32_t)config.primary.r.instance_id);
+				    (uint32_t)config->primary.r.module_id,
+				    (uint32_t)config->primary.r.instance_id);
 			ret = IPC4_INVALID_RESOURCE_ID;
 		}
 	}
@@ -1393,26 +1363,23 @@ __cold int ipc4_process_large_config_set(struct ipc4_message_request *ipc4)
 
 __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
 {
-	struct ipc4_module_large_config config;
+	const struct ipc4_module_large_config *config =
+		(const struct ipc4_module_large_config *)ipc4;
 	struct comp_dev *dev = NULL;
 	const struct comp_driver *drv;
+	int ret;
 
 	assert_can_be_cold();
 
-	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
-
-	if (ret < 0)
-		return IPC4_FAILURE;
-
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
-				 config.extension.r.data_off_size);
+				 config->extension.r.data_off_size);
 	tr_dbg(&ipc_tr, "%x : %x",
-	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
+	       (uint32_t)config->primary.r.module_id, (uint32_t)config->primary.r.instance_id);
 
-	if (config.primary.r.module_id) {
+	if (config->primary.r.module_id) {
 		uint32_t comp_id;
 
-		comp_id = IPC4_COMP_ID(config.primary.r.module_id, config.primary.r.instance_id);
+		comp_id = IPC4_COMP_ID(config->primary.r.module_id, config->primary.r.instance_id);
 		dev = ipc4_get_comp_dev(comp_id);
 		if (!dev)
 			return IPC4_INVALID_RESOURCE_ID;
@@ -1424,10 +1391,10 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 			return ipc4_process_on_core(dev->ipc_config.core, false);
 	} else {
 		/* BaseFW module has only 0th instance */
-		if (config.primary.r.instance_id)
+		if (config->primary.r.instance_id)
 			return IPC4_INVALID_RESOURCE_ID;
 
-		drv = ipc4_get_comp_drv(config.primary.r.module_id);
+		drv = ipc4_get_comp_drv(config->primary.r.module_id);
 	}
 
 	if (!drv)
@@ -1437,13 +1404,13 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 		return IPC4_INVALID_REQUEST;
 
 	/* check for vendor param first */
-	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+	if (config->extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
 		ret = ipc4_set_vendor_config_module_instance(dev, drv,
-							     (uint32_t)config.primary.r.module_id,
-							     (uint32_t)config.primary.r.instance_id,
-							     config.extension.r.init_block,
-							     config.extension.r.final_block,
-							     config.extension.r.data_off_size,
+							     (uint32_t)config->primary.r.module_id,
+							     (uint32_t)config->primary.r.instance_id,
+							     config->extension.r.init_block,
+							     config->extension.r.final_block,
+							     config->extension.r.data_off_size,
 							     (const char *)MAILBOX_HOSTBOX_BASE);
 	} else {
 #if CONFIG_LIBRARY
@@ -1452,13 +1419,13 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 #else
 		const char *data = (const char *)MAILBOX_HOSTBOX_BASE;
 #endif
-		ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
-			config.extension.r.init_block, config.extension.r.final_block,
-			config.extension.r.data_off_size, data);
+		ret = drv->ops.set_large_config(dev, config->extension.r.large_param_id,
+			config->extension.r.init_block, config->extension.r.final_block,
+			config->extension.r.data_off_size, data);
 		if (ret < 0) {
 			ipc_cmd_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
-				    (uint32_t)config.primary.r.module_id,
-				    (uint32_t)config.primary.r.instance_id);
+				    (uint32_t)config->primary.r.module_id,
+				    (uint32_t)config->primary.r.instance_id);
 			ret = IPC4_INVALID_RESOURCE_ID;
 		}
 	}
@@ -1569,10 +1536,10 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
 #ifdef CONFIG_SOF_USERSPACE_LL
 	{
-		struct ipc4_module_large_config config;
+		const struct ipc4_module_large_config *config =
+			(const struct ipc4_module_large_config *)ipc4;
 
-		memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
-		if (config.primary.r.module_id) {
+		if (config->primary.r.module_id) {
 			/* Module case: forward to user thread */
 			ret = ipc_user_forward_cmd(ipc4);
 			if (!ret) {

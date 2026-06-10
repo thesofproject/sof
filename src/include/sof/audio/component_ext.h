@@ -37,7 +37,7 @@ struct comp_driver_list {
 #if CONFIG_IPC_MAJOR_3
 struct comp_dev *comp_new(struct sof_ipc_comp *comp);
 #elif CONFIG_IPC_MAJOR_4
-struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init);
+struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *module_init);
 #endif
 
 /** See comp_ops::free */

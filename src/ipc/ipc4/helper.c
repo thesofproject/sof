@@ -110,7 +110,7 @@ __cold static inline char *ipc4_get_comp_new_data(void)
 #endif
 
 /* Only called from ipc4_init_module_instance(), which is __cold */
-__cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init)
+__cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *module_init)
 {
 	struct comp_ipc_config ipc_config;
 	const struct comp_driver *drv;
@@ -1127,7 +1127,7 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 #if CONFIG_COMP_CHAIN_DMA
 /* Only called from ipc4_process_chain_dma(), which is __cold */
-__cold int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
+__cold int ipc4_chain_manager_create(const struct ipc4_chain_dma *cdma)
 {
 	const struct sof_uuid uuid = SOF_REG_UUID(chain_dma);
 	const struct comp_driver *drv;
@@ -1154,7 +1154,7 @@ __cold int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma)
 }
 
 /* Only called from ipc4_process_chain_dma(), which is __cold */
-__cold int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma)
+__cold int ipc4_chain_dma_state(struct comp_dev *dev, const struct ipc4_chain_dma *cdma)
 {
 	const bool allocate = cdma->primary.r.allocate;
 	const bool enable = cdma->primary.r.enable;

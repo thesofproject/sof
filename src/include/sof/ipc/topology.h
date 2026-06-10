@@ -56,8 +56,8 @@ struct comp_driver;
 struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 				    const struct comp_driver *drv);
 #endif
-int ipc4_chain_manager_create(struct ipc4_chain_dma *cdma);
-int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdma);
+int ipc4_chain_manager_create(const struct ipc4_chain_dma *cdma);
+int ipc4_chain_dma_state(struct comp_dev *dev, const struct ipc4_chain_dma *cdma);
 int ipc4_create_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma);
 int ipc4_trigger_chain_dma(struct ipc *ipc, struct ipc4_chain_dma *cdma, bool *delay);
 int ipc4_process_on_core(uint32_t core, bool blocking);
