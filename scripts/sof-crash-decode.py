@@ -35,6 +35,76 @@ import bisect
 import os
 import json
 import shlex
+import ast
+import operator
+
+
+# Largest shift we accept: linker addresses/sizes fit well under 2**64, so a
+# bigger shift is nonsensical and only serves to build a huge integer.
+_MAX_SHIFT = 64
+# Reject any literal or intermediate result beyond 64 bits, and cap the source
+# length, so a crafted expression can't build a huge integer or stall the parse.
+_MAX_VALUE = 1 << 64
+_MAX_EXPR_LEN = 256
+
+
+def _trunc_div(a, b):
+    # truncate toward zero (C semantics); Python's // floors instead
+    q = abs(a) // abs(b)
+    return -q if (a < 0) != (b < 0) else q
+
+
+def _lshift(a, b):
+    # reject absurd shift counts to avoid building a massive integer
+    if b < 0 or b > _MAX_SHIFT:
+        raise ValueError("shift count out of range")
+    return a << b
+
+
+# Operators allowed when evaluating arithmetic from an untrusted linker script.
+_SAFE_OPS = {
+    ast.Add: operator.add, ast.Sub: operator.sub,
+    ast.Mult: operator.mul, ast.Div: _trunc_div,
+    ast.Mod: operator.mod, ast.LShift: _lshift,
+    ast.RShift: operator.rshift, ast.BitOr: operator.or_,
+    ast.BitAnd: operator.and_, ast.BitXor: operator.xor,
+    ast.USub: operator.neg, ast.UAdd: operator.pos,
+}
+
+
+def safe_eval_int(expr):
+    """Evaluate an integer arithmetic expression without executing code.
+
+    A crash bundle's linker.cmd is attacker-controllable, so its MEMORY
+    expressions must never be passed to eval(). Only integer literals and
+    basic arithmetic operators are accepted, and values are bounded to 64
+    bits. Anything unsupported or out of range raises an exception
+    (ValueError, or ZeroDivisionError on '/ 0'); the caller treats any such
+    failure as 'skip this entry'.
+    """
+    def _check(value):
+        if abs(value) >= _MAX_VALUE:
+            raise ValueError("value out of range")
+        return value
+
+    def _eval(node):
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            # reject bool (a subclass of int) and everything non-integer
+            if type(node.value) is int:
+                return _check(node.value)
+            raise ValueError("non-integer constant")
+        if isinstance(node, ast.BinOp) and type(node.op) in _SAFE_OPS:
+            return _check(_SAFE_OPS[type(node.op)](_eval(node.left),
+                                                   _eval(node.right)))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in _SAFE_OPS:
+            return _check(_SAFE_OPS[type(node.op)](_eval(node.operand)))
+        raise ValueError("unsupported expression")
+
+    if len(expr) > _MAX_EXPR_LEN:
+        raise ValueError("expression too long")
+    return _eval(ast.parse(expr, mode='eval'))
 
 XTENSA_EXCCAUSE = {
     0: "No Error (or IllegalInstruction)",
@@ -151,8 +221,8 @@ def parse_linker_cmd(filepath):
                         org_expr = m_org.group(1).strip()
                         len_expr = m_len.group(1).strip()
                         try:
-                            org_val = eval(org_expr)
-                            len_val = eval(len_expr)
+                            org_val = safe_eval_int(org_expr)
+                            len_val = safe_eval_int(len_expr)
                             # Ignore debug regions
                             if not (name.startswith('.debug') or name.startswith('.stab')):
                                 regions.append({'name': name, 'start': org_val, 'end': org_val + len_val})
