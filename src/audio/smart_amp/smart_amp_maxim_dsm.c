@@ -325,6 +325,17 @@ static int maxim_dsm_get_param(struct smart_amp_mod_struct_t *hspk,
 			return -EINVAL;
 		}
 
+		/* Host controls msg_index and therefore data_pos; make sure the
+		 * fragment stays inside caldata->data to avoid leaking adjacent
+		 * heap back to the host.
+		 */
+		if (caldata->data_pos >= caldata->data_size ||
+		    bs > caldata->data_size - caldata->data_pos) {
+			comp_err(dev, "[DSM] invalid data_pos %u, size %zu, total %u",
+				 caldata->data_pos, bs, caldata->data_size);
+			return -EINVAL;
+		}
+
 		/* copy required size of data */
 		ret = memcpy_s(cdata->data->data, size,
 			       (char *)caldata->data + caldata->data_pos,
