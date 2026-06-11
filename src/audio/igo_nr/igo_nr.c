@@ -719,17 +719,32 @@ static void igo_nr_print_config(struct processing_module *mod)
 static void igo_nr_set_igo_params(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+	size_t config_size;
+	struct sof_igo_nr_config *p_config = comp_get_data_blob(cd->model_handler,
+								&config_size, NULL);
 	struct comp_dev *dev = mod->dev;
 
 	comp_info(dev, "entry");
 
-	/* Adopt the host blob only when new config is valid */
-	if (p_config && igo_nr_check_config_validity(dev, cd) == 0) {
-		comp_info(dev, "New config detected.");
-		cd->config = *p_config;
-		igo_nr_print_config(mod);
+	if (!p_config)
+		return;
+
+	/* the whole config struct is copied below, so the blob must be at
+	 * least that large
+	 */
+	if (config_size < sizeof(cd->config)) {
+		comp_err(dev, "New config too small: %zu < %zu",
+			 config_size, sizeof(cd->config));
+		return;
 	}
+
+	/* Adopt the host blob only when the new config is valid */
+	if (igo_nr_check_config_validity(dev, cd) != 0)
+		return;
+
+	comp_info(dev, "New config detected.");
+	cd->config = *p_config;
+	igo_nr_print_config(mod);
 }
 
 /* copy and process stream data from source to sink buffers */
