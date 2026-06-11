@@ -44,6 +44,15 @@ struct zephyr_ll_pdata {
 	struct sys_sem sem;
 };
 
+#if CONFIG_SOF_USERSPACE_LL
+/*
+ * Mutex pointer in user-accessible partition so user-space threads
+ * can read the pointer for syscalls. The actual lock object resides
+ * in kernel memory, there are just handles!
+ */
+static APP_SYSUSER_BSS struct k_mutex *zephyr_ll_locks[CONFIG_CORE_COUNT];
+#endif
+
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 {
 #if CONFIG_SOF_USERSPACE_LL
@@ -562,6 +571,31 @@ void user_ll_grant_access(struct k_thread *thread)
 
 	k_thread_access_grant(thread, ll_sch->lock);
 }
+
+/**
+ * Lock the LL scheduler to prevent it from processing tasks.
+ *
+ * Uses the LL scheduler's own k_mutex which is re-entrant, so
+ * schedule_task() calls within the locked section will not deadlock.
+ * Must be paired with user_ll_unlock_sched().
+ */
+void user_ll_lock_sched(int core)
+{
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
+	int __maybe_unused ret = k_mutex_lock(zephyr_ll_locks[core], K_FOREVER);
+	assert(!ret);
+}
+
+/**
+ * Unlock the LL scheduler after a previous user_ll_lock_sched() call.
+ */
+void user_ll_unlock_sched(int core)
+{
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
+	int __maybe_unused ret = k_mutex_unlock(zephyr_ll_locks[core]);
+	assert(!ret);
+}
+
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 int zephyr_ll_task_init(struct task *task,
@@ -648,6 +682,8 @@ int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 		sof_heap_free(sch->heap, sch);
 		return -ENOMEM;
 	}
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] == NULL);
+	zephyr_ll_locks[core] = sch->lock;
 	k_mutex_init(sch->lock);
 
 	tr_dbg(&ll_tr, "ll-scheduler init done, sch %p sch->lock %p", sch, sch->lock);
