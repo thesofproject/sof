@@ -314,6 +314,7 @@ static int acp_dma_probe(struct dma *dma)
 				   sizeof(struct acp_dma_chan_data));
 		if (!acp_dma_chan) {
 			rfree(dma->chan);
+			dma->chan = NULL;
 			tr_err(&acpdma_tr, "acp-dma: %d channel %d private data alloc failed",
 			       dma->plat_data.id, channel);
 			return -ENOMEM;
