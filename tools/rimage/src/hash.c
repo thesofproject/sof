@@ -174,7 +174,10 @@ int hash_single(const void *data, size_t size, const EVP_MD *algo, void *output,
 	if (algo_out_size <= 0)
 		return -EINVAL;
 
-	if (output_len > algo_out_size)
+	/* EVP_Digest writes algo_out_size bytes into output, so the buffer
+	 * must be at least that large; reject an undersized output buffer
+	 */
+	if (output_len < (size_t)algo_out_size)
 		return -ENOBUFS;
 
 	if (!EVP_Digest(data, size, output, NULL, algo, NULL)) {
