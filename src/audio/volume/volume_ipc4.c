@@ -286,8 +286,10 @@ static int volume_set_attenuation(struct processing_module *mod, const uint8_t *
 	struct comp_dev *dev = mod->dev;
 	uint32_t attenuation;
 
-	/* only support attenuation in format of 32bit */
-	if (data_size > sizeof(uint32_t)) {
+	/* only support attenuation in format of 32bit; the payload is
+	 * dereferenced as a uint32_t below so it must be exactly that size
+	 */
+	if (data_size != (int)sizeof(uint32_t)) {
 		comp_err(dev, "attenuation data size %d is incorrect", data_size);
 		return -EINVAL;
 	}
