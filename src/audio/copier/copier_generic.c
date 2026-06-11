@@ -330,6 +330,12 @@ void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
 		int j;
 		j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
 
+		/* src_queue id is host-controlled; bound it before indexing out_fmt[] */
+		if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
+			comp_err(dev, "invalid src_queue id %d", j);
+			continue;
+		}
+
 		ipc4_update_buffer_format(sink, &cd->out_fmt[j]);
 	}
 
