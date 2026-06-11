@@ -112,6 +112,9 @@ static int tdfb_cmd_get_value(struct processing_module *mod, struct sof_ipc_ctrl
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 
+	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS)
+		return -EINVAL;
+
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
 		comp_dbg(mod->dev, "SOF_CTRL_CMD_ENUM index=%d",
