@@ -1682,7 +1682,21 @@ int verify_image(struct image *image)
 		/* find CSE header marker "$CPD" */
 		if (*(uint32_t *)(buffer + i) == CSE_HEADER_MAKER) {
 			image->fw_image = buffer + i;
+			/* size of the image from the CSE header to the end of the
+			 * file, used by v1.5 verification and the signed-payload
+			 * bounds checks
+			 */
+			image->image_end = size - i;
 			ret = image->adsp->verify_firmware(image);
+			/* verify_firmware() returns 1 = valid, 0 = invalid and
+			 * < 0 = error (OpenSSL RSA_verify semantics); map valid
+			 * to 0 and invalid to -EINVAL, and leave a < 0 error code
+			 * as-is, so the CLI exit code reflects the result
+			 */
+			if (ret == 1)
+				ret = 0;
+			else if (ret == 0)
+				ret = -EINVAL;
 			goto out;
 		}
 	}
@@ -1690,9 +1704,13 @@ int verify_image(struct image *image)
 	/* no header found */
 	fprintf(stderr, "error: could not find valid CSE header $CPD in %s\n",
 		image->verify_file);
+	ret = -EINVAL;
 out:
 	fclose(in_file);
-	return 0;
+	/* propagate verification result so callers (and the exit code) can
+	 * detect a failed/missing verification instead of always seeing success
+	 */
+	return ret;
 }
 
 
