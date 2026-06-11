@@ -203,6 +203,13 @@ struct processing_module {
 	struct userspace_context *user_ctx;
 	struct k_mem_domain *mdom;
 #endif /* CONFIG_USERSPACE */
+
+	/* total size of a fragmented runtime-params (get/set) transfer, kept
+	 * per instance so concurrent transfers to different components do not
+	 * corrupt each other's reassembly state. Appended here to avoid shifting
+	 * the offsets of the fields above.
+	 */
+	uint32_t runtime_params_size;
 #endif /* SOF_MODULE_PRIVATE */
 };
 

@@ -184,21 +184,25 @@ static int module_adapter_get_set_params(struct comp_dev *dev, struct sof_ipc_ct
 	const struct module_interface *const interface = mod->dev->drv->adapter_ops;
 	enum module_cfg_fragment_position pos;
 	uint32_t data_offset_size;
-	static uint32_t size;
 
 	comp_dbg(dev, "num_of_elem %d, elem remain %d msg_index %u",
 		 cdata->num_elems, cdata->elems_remaining, cdata->msg_index);
 
-	/* set the fragment position, data offset and config data size */
+	/*
+	 * The total fragmented-transfer size is kept per instance in
+	 * mod->runtime_params_size; a file-scope static would be shared across
+	 * all module_adapter components and corrupted by interleaved transfers.
+	 */
 	if (!cdata->msg_index) {
-		size = cdata->num_elems + cdata->elems_remaining;
-		data_offset_size = size;
+		mod->runtime_params_size = cdata->num_elems + cdata->elems_remaining;
+		data_offset_size = mod->runtime_params_size;
 		if (cdata->elems_remaining)
 			pos = MODULE_CFG_FRAGMENT_FIRST;
 		else
 			pos = MODULE_CFG_FRAGMENT_SINGLE;
 	} else {
-		data_offset_size = size - (cdata->num_elems + cdata->elems_remaining);
+		data_offset_size = mod->runtime_params_size -
+			(cdata->num_elems + cdata->elems_remaining);
 		if (cdata->elems_remaining)
 			pos = MODULE_CFG_FRAGMENT_MIDDLE;
 		else
