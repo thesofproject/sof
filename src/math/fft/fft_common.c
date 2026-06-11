@@ -53,6 +53,7 @@ struct fft_plan *fft_plan_common_new(struct processing_module *mod, void *inb,
 		break;
 	default:
 		comp_cl_err(mod->dev, "Invalid word length.");
+		mod_free(mod, plan);
 		return NULL;
 	}
 
