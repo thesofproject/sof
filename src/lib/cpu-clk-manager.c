@@ -28,6 +28,13 @@ static int request_freq_change(unsigned int core, int freq)
 			break;
 	}
 
+	/* if no entry was larger than the requested frequency the loop ends with
+	 * selected_freq_id == clk->freqs_num; clamp to the last valid entry
+	 * before indexing
+	 */
+	if (selected_freq_id == clk->freqs_num)
+		selected_freq_id = clk->freqs_num - 1;
+
 	/* don't change clock frequency if already using proper clock */
 	current_freq = clock_get_freq(core);
 	if (clk->freqs[selected_freq_id].freq != current_freq)
