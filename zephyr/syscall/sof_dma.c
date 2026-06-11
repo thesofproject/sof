@@ -190,7 +190,8 @@ static inline int z_vrfy_sof_dma_config(struct sof_dma *dma, uint32_t channel,
 					struct dma_config *config)
 {
 	struct dma_block_config *blk_cfgs;
-	struct dma_config kern_cfg, user_cfg;
+	struct dma_config kern_cfg = { 0 };
+	struct dma_config user_cfg;
 	int ret;
 
 	K_OOPS(!sof_dma_is_valid(dma));
