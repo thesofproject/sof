@@ -921,6 +921,18 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 		return IPC4_INVALID_RESOURCE_ID;
 
 	/*
+	 * The buffer was located on the source's consumer list, but the sink was
+	 * resolved solely from the host-supplied dst_module_id/dst_instance_id.
+	 * Make sure the buffer is actually connected to that sink, otherwise an
+	 * incorrect dst would leave the real sink bound to a buffer we are about
+	 * to free, while unbinding an unrelated component instead.
+	 */
+	if (comp_buffer_get_sink_component(buffer) != sink) {
+		tr_err(&ipc_tr, "buffer %#x is not connected to sink %#x", buffer_id, sink_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	/*
 	 * Disconnect and unbind buffer from source/sink components and continue to free the buffer
 	 * even in case of errors. Block LL processing during disconnect and unbinding to prevent
 	 * IPC or IDC task getting preempted which could result in buffers being only half connected
