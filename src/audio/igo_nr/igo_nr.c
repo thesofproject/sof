@@ -69,10 +69,10 @@ static int igo_nr_capture_s16(struct comp_data *cd,
 			      struct sof_sink *sink,
 			      int32_t frames)
 {
-	int16_t *x, *y1, *y2;
-	int16_t *x_start, *y_start, *x_end, *y_end;
+	int16_t const *x, *x_start, *x_end;
+	int16_t *y1, *y2, *y_start, *y_end;
 	int16_t sample;
-	size_t x_size, y_size;
+	int x_size, y_size;
 	size_t request_size = frames * source_get_frame_bytes(source);
 	int sink_samples_without_wrap;
 	int samples_without_wrap;
@@ -93,12 +93,14 @@ static int igo_nr_capture_s16(struct comp_data *cd,
 
 #endif
 
-	ret = source_get_data(source, request_size, (void const **)&x,
-			      (void const **)&x_start, &x_size);
+	/* use the sample-count source/sink accessors so the returned sizes are
+	 * already in samples and need no byte-to-element conversion
+	 */
+	ret = source_get_data_s16(source, request_size, &x, &x_start, &x_size);
 	if (ret)
 		return ret;
 
-	ret = sink_get_buffer(sink, request_size, (void **)&y1, (void **)&y_start, &y_size);
+	ret = sink_get_buffer_s16(sink, request_size, &y1, &y_start, &y_size);
 	if (ret) {
 		source_release_data(source, 0);
 		return ret;
@@ -130,7 +132,10 @@ static int igo_nr_capture_s16(struct comp_data *cd,
 			i++;
 		}
 
-		x = cir_buf_wrap(x, x_start, x_end);
+		/* x is const (read-only source), so wrap manually instead of
+		 * cir_buf_wrap() which takes a non-const void *
+		 */
+		x = (x >= x_end) ? x - x_size : x;
 		y1 = cir_buf_wrap(y1, y_start, y_end);
 		samples_left -= samples_without_wrap;
 	}
@@ -172,9 +177,9 @@ static int igo_nr_capture_s24(struct comp_data *cd,
 			      struct sof_sink *sink,
 			      int32_t frames)
 {
-	int32_t *x, *y1, *y2;
-	int32_t *x_start, *y_start, *x_end, *y_end;
-	size_t x_size, y_size;
+	int32_t const *x, *x_start, *x_end;
+	int32_t *y1, *y2, *y_start, *y_end;
+	int x_size, y_size;
 	size_t request_size = frames * source_get_frame_bytes(source);
 	int sink_samples_without_wrap;
 	int samples_without_wrap;
@@ -195,12 +200,14 @@ static int igo_nr_capture_s24(struct comp_data *cd,
 
 #endif
 
-	ret = source_get_data(source, request_size, (void const **)&x,
-			      (void const **)&x_start, &x_size);
+	/* use the sample-count source/sink accessors so the returned sizes are
+	 * already in samples and need no byte-to-element conversion
+	 */
+	ret = source_get_data_s32(source, request_size, &x, &x_start, &x_size);
 	if (ret)
 		return ret;
 
-	ret = sink_get_buffer(sink, request_size, (void **)&y1, (void **)&y_start, &y_size);
+	ret = sink_get_buffer_s32(sink, request_size, &y1, &y_start, &y_size);
 	if (ret) {
 		source_release_data(source, 0);
 		return ret;
@@ -231,7 +238,10 @@ static int igo_nr_capture_s24(struct comp_data *cd,
 			i++;
 		}
 
-		x = cir_buf_wrap(x, x_start, x_end);
+		/* x is const (read-only source), so wrap manually instead of
+		 * cir_buf_wrap() which takes a non-const void *
+		 */
+		x = (x >= x_end) ? x - x_size : x;
 		y1 = cir_buf_wrap(y1, y_start, y_end);
 		samples_left -= samples_without_wrap;
 	}
@@ -273,9 +283,9 @@ static int igo_nr_capture_s32(struct comp_data *cd,
 			      struct sof_sink *sink,
 			      int32_t frames)
 {
-	int32_t *x, *y1, *y2;
-	int32_t *x_start, *y_start, *x_end, *y_end;
-	size_t x_size, y_size;
+	int32_t const *x, *x_start, *x_end;
+	int32_t *y1, *y2, *y_start, *y_end;
+	int x_size, y_size;
 	size_t request_size = frames * source_get_frame_bytes(source);
 	int sink_samples_without_wrap;
 	int samples_without_wrap;
@@ -296,12 +306,14 @@ static int igo_nr_capture_s32(struct comp_data *cd,
 
 #endif
 
-	ret = source_get_data(source, request_size, (void const **)&x,
-			      (void const **)&x_start, &x_size);
+	/* use the sample-count source/sink accessors so the returned sizes are
+	 * already in samples and need no byte-to-element conversion
+	 */
+	ret = source_get_data_s32(source, request_size, &x, &x_start, &x_size);
 	if (ret)
 		return ret;
 
-	ret = sink_get_buffer(sink, request_size, (void **)&y1, (void **)&y_start, &y_size);
+	ret = sink_get_buffer_s32(sink, request_size, &y1, &y_start, &y_size);
 	if (ret) {
 		source_release_data(source, 0);
 		return ret;
@@ -332,7 +344,10 @@ static int igo_nr_capture_s32(struct comp_data *cd,
 			i++;
 		}
 
-		x = cir_buf_wrap(x, x_start, x_end);
+		/* x is const (read-only source), so wrap manually instead of
+		 * cir_buf_wrap() which takes a non-const void *
+		 */
+		x = (x >= x_end) ? x - x_size : x;
 		y1 = cir_buf_wrap(y1, y_start, y_end);
 		samples_left -= samples_without_wrap;
 	}
