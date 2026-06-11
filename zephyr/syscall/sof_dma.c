@@ -111,9 +111,9 @@ static inline void z_vrfy_sof_dma_release_channel(struct sof_dma *dma,
 static inline struct dma_block_config *deep_copy_dma_blk_cfg_list(struct dma_config *cfg)
 {
 	struct dma_block_config *kern_cfg;
-	struct dma_block_config *kern_prev = NULL, *kern_next, *user_next;
+	struct dma_block_config *kern_next, *user_next;
 	size_t alloc_size;
-	int i = 0;
+	uint32_t i;
 
 	if (!cfg->block_count)
 		return NULL;
@@ -131,17 +131,16 @@ static inline struct dma_block_config *deep_copy_dma_blk_cfg_list(struct dma_con
 	if (!kern_cfg)
 		return NULL;
 
-	for (user_next = cfg->head_block, kern_next = kern_cfg;
-	     user_next;
-	     user_next = user_next->next_block, kern_next++, i++) {
-		if (i == cfg->block_count) {
-			/* last block can point to first one */
-			if (user_next != cfg->head_block)
-				goto err;
-
-			kern_prev->next_block = kern_cfg;
-			break;
-		}
+	user_next = cfg->head_block;
+	for (i = 0, kern_next = kern_cfg; i < cfg->block_count; i++, kern_next++) {
+		/*
+		 * The user list must contain exactly block_count entries.
+		 * A list that terminates early (NULL before the count is
+		 * reached) is rejected so the kernel copy and block_count
+		 * stay consistent and the driver never walks past the copy.
+		 */
+		if (!user_next)
+			goto err;
 
 		if (k_usermode_from_copy(kern_next, user_next, sizeof(*kern_next)))
 			goto err;
@@ -169,10 +168,29 @@ static inline struct dma_block_config *deep_copy_dma_blk_cfg_list(struct dma_con
 			goto err;
 		}
 
-		if (kern_prev)
-			kern_prev->next_block = kern_next;
+		/*
+		 * kern_next->next_block now holds the untrusted user-space
+		 * pointer copied above. Never let the kernel walk it: relink
+		 * every block to the kernel copy so the list can never point
+		 * outside the kern_cfg array.
+		 */
+		user_next = kern_next->next_block;
 
-		kern_prev = kern_next;
+		if (i + 1 < cfg->block_count) {
+			/* link to the next kernel block */
+			kern_next->next_block = kern_next + 1;
+		} else {
+			/*
+			 * Last block: the user list must end here, either
+			 * NULL-terminated or cyclic back to the first block.
+			 */
+			if (user_next == cfg->head_block)
+				kern_next->next_block = kern_cfg;
+			else if (!user_next)
+				kern_next->next_block = NULL;
+			else
+				goto err;
+		}
 	}
 
 	/* set transfer list to point to first kernel transfer config object */
