@@ -56,8 +56,23 @@ declare -a TARGET_ARGS=(
 # Function to update the repository
 update_repo() {
     local repo_dir="$1"
+    local default_branch
     echo "Updating repository: $repo_dir"
     git -C "$repo_dir" fetch --all
+
+    if ! git -C "$repo_dir" symbolic-ref -q HEAD >/dev/null; then
+        default_branch=$(git -C "$repo_dir" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)
+        default_branch="${default_branch#origin/}"
+
+        if [[ -z "$default_branch" ]]; then
+            echo "Error: unable to determine default branch in $repo_dir" >&2
+            exit 1
+        fi
+
+        git -C "$repo_dir" checkout "$default_branch" 2>/dev/null || \
+            git -C "$repo_dir" checkout -b "$default_branch" --track "origin/$default_branch"
+    fi
+
     git -C "$repo_dir" pull
 }
 
