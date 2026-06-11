@@ -5,6 +5,7 @@
 #include <sof/lib/dma.h>
 #include <zephyr/kernel.h>
 #include <zephyr/internal/syscall_handler.h>
+#include <zephyr/sys/math_extras.h>
 
 #ifdef CONFIG_SOF_USERSPACE_INTERFACE_DMA
 
@@ -111,12 +112,22 @@ static inline struct dma_block_config *deep_copy_dma_blk_cfg_list(struct dma_con
 {
 	struct dma_block_config *kern_cfg;
 	struct dma_block_config *kern_prev = NULL, *kern_next, *user_next;
+	size_t alloc_size;
 	int i = 0;
 
 	if (!cfg->block_count)
 		return NULL;
 
-	kern_cfg = rmalloc(0, sizeof(*kern_cfg) * cfg->block_count);
+	/*
+	 * block_count is user-controlled, so compute the allocation size
+	 * with an overflow check. Without it, a large block_count would
+	 * wrap the product on 32-bit size_t, yield an undersized buffer,
+	 * and let the copy loop below overflow the kernel heap.
+	 */
+	if (size_mul_overflow(sizeof(*kern_cfg), cfg->block_count, &alloc_size))
+		return NULL;
+
+	kern_cfg = rmalloc(0, alloc_size);
 	if (!kern_cfg)
 		return NULL;
 
