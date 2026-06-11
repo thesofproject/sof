@@ -567,12 +567,25 @@ static enum buildinfo_mod_type lib_manager_get_module_type(const struct sof_man_
 	const struct sof_module_api_build_info *const build_info =
 		(const struct sof_module_api_build_info *)((const char *)desc -
 		SOF_MAN_ELF_TEXT_OFFSET + mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset);
+	const size_t lib_size = (size_t)desc->header.preload_page_count * PAGE_SZ;
+	const uint32_t text_off = mod->segment[SOF_MAN_SEGMENT_TEXT].file_offset;
 
 	/*
 	 * llext modules store build info structure in separate section which is not accessible now.
 	 */
 	if (module_is_llext(mod))
 		return MOD_TYPE_LLEXT;
+
+	/*
+	 * build_info is derived from a manifest-supplied file_offset; bound it
+	 * against the library image size before dereferencing so a crafted
+	 * offset cannot read outside the library buffer.
+	 */
+	if (text_off > lib_size || lib_size - text_off < sizeof(*build_info)) {
+		tr_err(&lib_manager_tr, "Invalid TEXT file_offset %u, lib_size %zu",
+		       text_off, lib_size);
+		return MOD_TYPE_INVALID;
+	}
 
 	tr_info(&lib_manager_tr, "Module API version: %u.%u.%u, format: 0x%x",
 		build_info->api_version_number.fields.major,
