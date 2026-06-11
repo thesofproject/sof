@@ -277,6 +277,9 @@ __cold static uint32_t basefw_set_system_time(uint32_t param_id, bool first_bloc
 	if (!(first_block && last_block))
 		return IPC4_INVALID_REQUEST;
 
+	if (data_offset < sizeof(struct ipc4_system_time))
+		return IPC4_ERROR_INVALID_PARAM;
+
 	global_system_time_info.host_time.val_l = ((const struct ipc4_system_time *)data)->val_l;
 	global_system_time_info.host_time.val_u = ((const struct ipc4_system_time *)data)->val_u;
 
