@@ -770,6 +770,13 @@ __cold static int basefw_dma_control(bool first_block, bool last_block, uint32_t
 	}
 
 	dma_control = (struct ipc4_dma_control *)data;
+
+	/* data_offset must cover the fixed header before computing the payload size */
+	if (data_offset < sizeof(struct ipc4_dma_control)) {
+		tr_err(&ipc_tr, "DMA Control message too short: %u", data_offset);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
 	data_size = data_offset - sizeof(struct ipc4_dma_control);
 
 	if (data_size < (dma_control->config_length * sizeof(uint32_t))) {
