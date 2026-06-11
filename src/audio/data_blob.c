@@ -365,8 +365,16 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		valid_data_size = last_block ? data_offset : MAILBOX_DSPBOX_SIZE;
 
 		ret = memcpy_s((char *)blob_handler->data_new,
-			       valid_data_size, data, valid_data_size);
-		assert(!ret);
+			       blob_handler->new_data_size, data, valid_data_size);
+		if (ret) {
+			comp_err(blob_handler->dev, "failed to copy fragment");
+			blob_handler->free(blob_handler->data_new);
+			blob_handler->data_new = NULL;
+			blob_handler->new_data_size = 0;
+			blob_handler->data_pos = 0;
+			blob_handler->data_ready = false;
+			return ret;
+		}
 
 		blob_handler->data_pos += valid_data_size;
 	} else {
@@ -391,8 +399,17 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 			valid_data_size = blob_handler->new_data_size - data_offset;
 
 		ret = memcpy_s((char *)blob_handler->data_new + data_offset,
-			       valid_data_size, data, valid_data_size);
-		assert(!ret);
+			       blob_handler->new_data_size - data_offset,
+			       data, valid_data_size);
+		if (ret) {
+			comp_err(blob_handler->dev, "failed to copy fragment");
+			blob_handler->free(blob_handler->data_new);
+			blob_handler->data_new = NULL;
+			blob_handler->new_data_size = 0;
+			blob_handler->data_pos = 0;
+			blob_handler->data_ready = false;
+			return ret;
+		}
 
 		blob_handler->data_pos += valid_data_size;
 	}
