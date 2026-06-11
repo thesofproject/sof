@@ -628,6 +628,18 @@ int comp_data_blob_get_cmd(struct comp_data_blob_handler *blob_handler,
 			return -EINVAL;
 		}
 
+		/* Bound data_pos against data_size: host-controlled num_elems
+		 * advances it per fragment and could leak adjacent heap.
+		 */
+		if (blob_handler->data_pos >= blob_handler->data_size ||
+		    cdata->num_elems > blob_handler->data_size - blob_handler->data_pos) {
+			comp_err(blob_handler->dev,
+				 "out of bounds read: pos %u elems %u size %u",
+				 blob_handler->data_pos, cdata->num_elems,
+				 blob_handler->data_size);
+			return -EINVAL;
+		}
+
 		/* copy required size of data */
 		ret = memcpy_s(cdata->data->data, size,
 			       (char *)blob_handler->data + blob_handler->data_pos,
