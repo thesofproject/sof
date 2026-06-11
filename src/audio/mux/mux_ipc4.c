@@ -36,8 +36,20 @@ static int build_config(struct processing_module *mod, struct mux_data *cfg)
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
+	uint32_t base_ch = cfg->base_cfg.audio_fmt.channels_count;
+	uint32_t ref_ch = cfg->reference_format.channels_count;
+	uint32_t out_ch = cfg->output_format.channels_count;
 	int mask = 1;
 	int i;
+
+	/* base+reference map 1:1 to contiguous output channels: sink width
+	 * must equal their sum and fit the 8-bit output mask
+	 */
+	if (base_ch + ref_ch > PLATFORM_MAX_CHANNELS || out_ch != base_ch + ref_ch) {
+		comp_err(dev, "invalid channel count: base %u + reference %u -> output %u (max %d)",
+			 base_ch, ref_ch, out_ch, PLATFORM_MAX_CHANNELS);
+		return -EINVAL;
+	}
 
 	cd->config.num_streams = MUX_MAX_STREAMS;
 
@@ -46,12 +58,12 @@ static int build_config(struct processing_module *mod, struct mux_data *cfg)
 		memset(cd->config.streams[i].mask, 0, sizeof(cd->config.streams[i].mask));
 
 	/* Setting masks for streams */
-	for (i = 0; i < cfg->base_cfg.audio_fmt.channels_count; i++) {
+	for (i = 0; i < base_ch; i++) {
 		cd->config.streams[0].mask[i] = mask;
 		mask <<= 1;
 	}
 
-	for (i = 0; i < cfg->reference_format.channels_count; i++) {
+	for (i = 0; i < ref_ch; i++) {
 		cd->config.streams[1].mask[i] = mask;
 		mask <<= 1;
 	}
