@@ -69,6 +69,12 @@ static int ext_man_validate(uint32_t section_size, const void *section_data)
 
 	/* copy each head to local struct to omit memory align issues */
 	while (offset < section_size) {
+		/* make sure a whole header remains before copying it out */
+		if (offset + sizeof(head) > section_size) {
+			fprintf(stderr,
+				"error: extended manifest header straddles section end\n");
+			return -EINVAL;
+		}
 		memcpy(&head, &sbuf[offset], sizeof(head));
 		fprintf(stdout, "Extended manifest found module, type: 0x%04X size: 0x%04X (%4d) offset: 0x%04X\n",
 			head.type, head.elem_size, head.elem_size, offset);
@@ -150,10 +156,12 @@ int ext_man_write(struct image *image)
 	/* validate metadata section */
 	ret = ext_man_validate(ext_man->full_size - ext_man->header_size,
 			       (char *)ext_man + ext_man->header_size);
-	if (ret) {
-		ret = -errno;
+	if (ret)
+		/* ext_man_validate() already returns a negative errno; do not
+		 * overwrite it with -errno, which is not set on validation
+		 * failure and would mask the error
+		 */
 		goto out;
-	}
 
 	/* write extended metadata to file */
 	count = fwrite(ext_man, 1, ext_man->full_size, image->out_ext_man_fd);
