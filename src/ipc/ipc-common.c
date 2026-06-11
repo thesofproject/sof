@@ -453,7 +453,7 @@ __cold int ipc_user_init(void)
 	user_grant_dai_access_all(&ipc_user_thread);
 	user_grant_dma_access_all(&ipc_user_thread);
 	user_access_to_mailbox(zephyr_ll_mem_domain(), &ipc_user_thread);
-	zephyr_ll_grant_access(&ipc_user_thread);
+	user_ll_grant_access(&ipc_user_thread);
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &ipc_user_thread);
 
 	k_thread_name_set(&ipc_user_thread, __func__);
