@@ -12,29 +12,25 @@
 
 #if CONFIG_FORMAT_S16LE
 /* Mix n 16 bit PCM source streams to one sink stream */
-static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
-		      uint32_t frames)
+static void mix_n_s16(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+		      int num_sources, size_t samples)
 {
-	int16_t *src[PLATFORM_MAX_CHANNELS];
-	int16_t *dest;
+	const int16_t *src[PLATFORM_MAX_CHANNELS];
+	int16_t *dest = sink->ptr;
 	int32_t val;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = audio_stream_get_channels(sink);
-	int samples = frames * nch;
+	size_t nmax, ns, n;
+	int i, j;
+	size_t processed = 0;
 
-	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
-		src[j] = audio_stream_get_rptr(sources[j]);
+		src[j] = sources[j].ptr;
 
 	while (processed < samples) {
 		nmax = samples - processed;
-		n = audio_stream_samples_without_wrap_s16(sink, dest);
+		n = cir_buf_samples_without_wrap_s16(dest, sink->buf_end);
 		n = MIN(n, nmax);
 		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_samples_without_wrap_s16(sources[i], src[i]);
+			ns = cir_buf_samples_without_wrap_s16(src[i], sources[i].buf_end);
 			n = MIN(n, ns);
 		}
 		for (i = 0; i < n; i++) {
@@ -49,39 +45,36 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 			dest++;
 		}
 		processed += n;
-		dest = audio_stream_wrap(sink, dest);
+		dest = cir_buf_wrap(dest, sink->buf_start, sink->buf_end);
 		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
+			src[i] = source_cir_buf_wrap(src[i], sources[i].buf_start,
+						     sources[i].buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
 /* Mix n 24 bit PCM source streams to one sink stream */
-static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
-		      uint32_t frames)
+static void mix_n_s24(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+		      int num_sources, size_t samples)
 {
-	int32_t *src[PLATFORM_MAX_CHANNELS];
-	int32_t *dest;
+	const int32_t *src[PLATFORM_MAX_CHANNELS];
+	int32_t *dest = sink->ptr;
 	int32_t val;
 	int32_t x;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = audio_stream_get_channels(sink);
-	int samples = frames * nch;
+	size_t nmax, ns, n;
+	int i, j;
+	size_t processed = 0;
 
-	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
-		src[j] = audio_stream_get_rptr(sources[j]);
+		src[j] = sources[j].ptr;
 
 	while (processed < samples) {
 		nmax = samples - processed;
-		n = audio_stream_samples_without_wrap_s24(sink, dest);
+		n = cir_buf_samples_without_wrap_s32(dest, sink->buf_end);
 		n = MIN(n, nmax);
 		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_samples_without_wrap_s24(sources[i], src[i]);
+			ns = cir_buf_samples_without_wrap_s32(src[i], sources[i].buf_end);
 			n = MIN(n, ns);
 		}
 		for (i = 0; i < n; i++) {
@@ -97,38 +90,35 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
 			dest++;
 		}
 		processed += n;
-		dest = audio_stream_wrap(sink, dest);
+		dest = cir_buf_wrap(dest, sink->buf_start, sink->buf_end);
 		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
+			src[i] = source_cir_buf_wrap(src[i], sources[i].buf_start,
+						     sources[i].buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
 /* Mix n 32 bit PCM source streams to one sink stream */
-static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
-		      uint32_t frames)
+static void mix_n_s32(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+		      int num_sources, size_t samples)
 {
-	int32_t *src[PLATFORM_MAX_CHANNELS];
-	int32_t *dest;
+	const int32_t *src[PLATFORM_MAX_CHANNELS];
+	int32_t *dest = sink->ptr;
 	int64_t val;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = audio_stream_get_channels(sink);
-	int samples = frames * nch;
+	size_t nmax, ns, n;
+	int i, j;
+	size_t processed = 0;
 
-	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
-		src[j] = audio_stream_get_rptr(sources[j]);
+		src[j] = sources[j].ptr;
 
 	while (processed < samples) {
 		nmax = samples - processed;
-		n = audio_stream_samples_without_wrap_s32(sink, dest);
+		n = cir_buf_samples_without_wrap_s32(dest, sink->buf_end);
 		n = MIN(n, nmax);
 		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_samples_without_wrap_s32(sources[i], src[i]);
+			ns = cir_buf_samples_without_wrap_s32(src[i], sources[i].buf_end);
 			n = MIN(n, ns);
 		}
 		for (i = 0; i < n; i++) {
@@ -143,9 +133,10 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 			dest++;
 		}
 		processed += n;
-		dest = audio_stream_wrap(sink, dest);
+		dest = cir_buf_wrap(dest, sink->buf_start, sink->buf_end);
 		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
+			src[i] = source_cir_buf_wrap(src[i], sources[i].buf_start,
+						     sources[i].buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */

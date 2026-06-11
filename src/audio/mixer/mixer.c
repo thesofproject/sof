@@ -9,6 +9,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
@@ -71,39 +72,36 @@ static int mixer_free(struct processing_module *mod)
  * Mix N source PCM streams to one sink PCM stream. Frames copied is constant.
  */
 static int mixer_process(struct processing_module *mod,
-			 struct input_stream_buffer *input_buffers, int num_input_buffers,
-			 struct output_stream_buffer *output_buffers, int num_output_buffers)
+			 struct sof_source **sources, int num_of_sources,
+			 struct sof_sink **sinks, int num_of_sinks)
 {
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	const struct audio_stream *sources_stream[PLATFORM_MAX_STREAMS];
-	int sources_indices[PLATFORM_MAX_STREAMS];
-	int32_t i = 0, j = 0;
-	uint32_t frames = INT32_MAX;
-	/* Redundant, but helps the compiler */
-	uint32_t source_bytes = 0;
-	uint32_t sink_bytes;
+	struct sof_source *active_sources[PLATFORM_MAX_STREAMS];
+	struct cir_buf_source source_bufs[PLATFORM_MAX_STREAMS];
+	struct cir_buf_sink sink_buf;
+	size_t bytes, samples, source_bytes, sink_bytes;
+	size_t frames = SIZE_MAX;
 	int active_input_buffers = 0;
+	int i, j, ret;
 
-	comp_dbg(dev, "%d", num_input_buffers);
+	comp_dbg(dev, "%d", num_of_sources);
 
 	/* too many sources ? */
-	if (num_input_buffers >= PLATFORM_MAX_STREAMS)
+	if (num_of_sources >= PLATFORM_MAX_STREAMS)
 		return -EINVAL;
 
-	/* check for underruns */
-	for (i = 0; i < num_input_buffers; i++) {
-		uint32_t avail_frames;
-
-		avail_frames = audio_stream_avail_frames_aligned(mod->input_buffers[i].data,
-								 mod->output_buffers[0].data);
+	/* find active sources and compute frame count */
+	for (i = 0; i < num_of_sources; i++) {
+		size_t avail_frames = source_sink_avail_frames_aligned(sources[i], sinks[0]);
 
 		/* if one source is inactive, skip it */
 		if (avail_frames == 0)
 			continue;
 
-		active_input_buffers++;
 		frames = MIN(frames, avail_frames);
+		active_sources[active_input_buffers] = sources[i];
+		active_input_buffers++;
 	}
 
 	if (!active_input_buffers) {
@@ -113,43 +111,43 @@ static int mixer_process(struct processing_module *mod,
 		 * generating silence until at least one of the
 		 * sources start to have data available (frames!=0).
 		 */
-		sink_bytes = dev->frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
-		if (!audio_stream_set_zero(mod->output_buffers[0].data, sink_bytes))
-			mod->output_buffers[0].size = sink_bytes;
-
-		return 0;
+		return sink_fill_with_silence(sinks[0],
+					      dev->frames * sink_get_frame_bytes(sinks[0]));
 	}
+
+	comp_dbg(dev, "frames = %zu", frames);
+
+	sink_bytes = frames * sink_get_frame_bytes(sinks[0]);
+	samples = frames * sink_get_channels(sinks[0]);
+
+	/* acquire the sink buffer */
+	ret = sink_get_buffer(sinks[0], sink_bytes, &sink_buf.ptr, &sink_buf.buf_start, &bytes);
+	if (ret < 0)
+		return ret;
+	sink_buf.buf_end = (char *)sink_buf.buf_start + bytes;
 
 	/* Every source has the same format, so calculate bytes based on the first one */
-	source_bytes = frames * audio_stream_frame_bytes(mod->input_buffers[0].data);
+	source_bytes = frames * source_get_frame_bytes(active_sources[0]);
 
-	sink_bytes = frames * audio_stream_frame_bytes(mod->output_buffers[0].data);
-
-	comp_dbg(dev, "source_bytes = 0x%x, sink_bytes = 0x%x",
-		 source_bytes, sink_bytes);
-
-	/* mix streams */
-	for (i = 0; i < num_input_buffers; i++) {
-		uint32_t avail_frames;
-
-		avail_frames = audio_stream_avail_frames_aligned(mod->input_buffers[i].data,
-								 mod->output_buffers[0].data);
-
-		/* if one source is inactive, skip it */
-		if (avail_frames == 0)
-			continue;
-
-		sources_indices[j] = i;
-		sources_stream[j++] = mod->input_buffers[i].data;
+	/* acquire all active source buffers */
+	for (i = 0; i < active_input_buffers; i++) {
+		ret = source_get_data(active_sources[i], source_bytes, &source_bufs[i].ptr,
+				      &source_bufs[i].buf_start, &bytes);
+		if (ret < 0) {
+			for (j = 0; j < i; j++)
+				source_release_data(active_sources[j], 0);
+			sink_commit_buffer(sinks[0], 0);
+			return ret;
+		}
+		source_bufs[i].buf_end = (const char *)source_bufs[i].buf_start + bytes;
 	}
 
-	if (j)
-		md->mix_func(dev, mod->output_buffers[0].data, sources_stream, j, frames);
-	mod->output_buffers[0].size = sink_bytes;
+	md->mix_func(&sink_buf, source_bufs, active_input_buffers, samples);
 
-	/* update source buffer consumed bytes */
-	for (i = 0; i < j; i++)
-		mod->input_buffers[sources_indices[i]].consumed = source_bytes;
+	/* commit the consumed and produced data */
+	for (i = 0; i < active_input_buffers; i++)
+		source_release_data(active_sources[i], source_bytes);
+	sink_commit_buffer(sinks[0], sink_bytes);
 
 	return 0;
 }
@@ -163,13 +161,13 @@ static int mixer_reset(struct processing_module *mod)
 	comp_dbg(dev, "entry");
 
 	if (dir == SOF_IPC_STREAM_PLAYBACK) {
-		struct comp_buffer *source;
+		int i;
 
-		comp_dev_for_each_producer(dev, source) {
+		for (i = 0; i < mod->num_of_sources; i++) {
 			/* FIXME: this is racy and implicitly protected by serialised IPCs */
 			bool stop = false;
 
-			if (comp_buffer_get_source_state(source) > COMP_STATE_READY)
+			if (source_get_comp_state(mod->sources[i]) > COMP_STATE_READY)
 				stop = true;
 
 			/* only mix the sources with the same state with mixer */
@@ -185,21 +183,35 @@ static int mixer_reset(struct processing_module *mod)
 }
 
 /* init and calculate the aligned setting for available frames and free frames retrieve*/
-static inline void mixer_set_frame_alignment(struct audio_stream *source)
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+static inline uint32_t mixer_get_byte_align(uint32_t channels)
 {
-
 	/* Xtensa intrinsics ask for 8-byte aligned. 5.1 format SSE audio
-	 * requires 16-byte aligned. Note: The SOF_FRAME_BYTE_ALIGN is the
-	 * same value 16 with HiFi5.
+	 * requires 16-byte aligned.
 	 */
-	const uint32_t byte_align = audio_stream_get_channels(source) == 6 ?
-		MIXER_HIFI_FRAME_BYTE_ALIGN_6CH : SOF_FRAME_BYTE_ALIGN;
-
-	/* There is no limit for frame number, so set it as default (1). */
-	const uint32_t frame_align_req = SOF_FRAME_COUNT_ALIGN;
-
-	audio_stream_set_align(byte_align, frame_align_req, source);
+	return channels == 6 ? 16 : 8;
 }
+
+static void mixer_set_source_frame_alignment(struct sof_source *src)
+{
+	const uint32_t byte_align = mixer_get_byte_align(source_get_channels(src));
+
+	/* There is no limit for frame number, so set it as 1 */
+	const uint32_t frame_align_req = 1;
+
+	source_set_alignment_constants(src, byte_align, frame_align_req);
+}
+
+static void mixer_set_sink_frame_alignment(struct sof_sink *snk)
+{
+	const uint32_t byte_align = mixer_get_byte_align(sink_get_channels(snk));
+
+	/* There is no limit for frame number, so set it as 1 */
+	const uint32_t frame_align_req = 1;
+
+	sink_set_alignment_constants(snk, byte_align, frame_align_req);
+}
+#endif
 
 static int mixer_prepare(struct processing_module *mod,
 			 struct sof_source **sources, int num_of_sources,
@@ -207,24 +219,24 @@ static int mixer_prepare(struct processing_module *mod,
 {
 	struct mixer_data *md = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sink;
+	int i;
 
-	sink = comp_dev_get_first_data_consumer(dev);
-	if (!sink) {
+	if (!num_of_sinks) {
 		comp_err(dev, "no sink");
 		return -ENOTCONN;
 	}
 
-	md->mix_func = mixer_get_processing_function(dev, sink);
+#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+	mixer_set_sink_frame_alignment(sinks[0]);
+	for (i = 0; i < num_of_sources; i++)
+		mixer_set_source_frame_alignment(sources[i]);
+#endif
 
-	/* No need to set sink align constraints, set constraints for each
-	 * source next. The sink align will follow to common source alignment.
-	 */
+	md->mix_func = mixer_get_processing_function(dev, sink_get_frm_fmt(sinks[0]));
 
 	/* check each mixer source state */
-	struct comp_buffer *source;
-
-	comp_dev_for_each_producer(dev, source) {
+	for (i = 0; i < num_of_sources; i++) {
+		int state = source_get_comp_state(sources[i]);
 		bool stop;
 
 		/*
@@ -235,9 +247,7 @@ static int mixer_prepare(struct processing_module *mod,
 		 * preparing the mixer, so they shouldn't touch it until we're
 		 * done.
 		 */
-		mixer_set_frame_alignment(&source->stream);
-		stop = comp_buffer_get_source_state(source) == COMP_STATE_PAUSED ||
-		       comp_buffer_get_source_state(source) == COMP_STATE_ACTIVE;
+		stop = state == COMP_STATE_PAUSED || state == COMP_STATE_ACTIVE;
 
 		/* only prepare downstream if we have no active sources */
 		if (stop)
@@ -251,7 +261,7 @@ static int mixer_prepare(struct processing_module *mod,
 static const struct module_interface mixer_interface = {
 	.init = mixer_init,
 	.prepare = mixer_prepare,
-	.process_audio_stream = mixer_process,
+	.process = mixer_process,
 	.reset = mixer_reset,
 	.free = mixer_free,
 };
