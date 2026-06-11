@@ -302,7 +302,11 @@ static int comp_specific_builder(struct sof_ipc_comp *comp,
 		if (IPC_TAIL_IS_SIZE_INVALID(*proc))
 			return -EBADMSG;
 
-		if (proc->comp.hdr.size + proc->size > SOF_IPC_MSG_MAX_SIZE)
+		/* compare without adding the two host-supplied uint32_t values,
+		 * which could wrap and let an oversized proc->size pass
+		 */
+		if (proc->comp.hdr.size > SOF_IPC_MSG_MAX_SIZE ||
+		    proc->size > SOF_IPC_MSG_MAX_SIZE - proc->comp.hdr.size)
 			return -EBADMSG;
 
 		config->process.type = proc->type;
