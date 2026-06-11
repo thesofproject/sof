@@ -44,8 +44,29 @@ static int elf_read_sections(struct elf_module *module, bool verbose)
 		return count > 0 ? -ENODATA : -errno;
 	}
 
-	/* read in strings */
-	module->strings = calloc(1, section[hdr->shstrndx].size);
+	/* the string-table section index comes from the ELF header and is used
+	 * to index section[]; reject an out-of-range value before dereferencing
+	 */
+	if (hdr->shstrndx >= hdr->shnum) {
+		fprintf(stderr, "error: %s invalid shstrndx %u >= shnum %u\n",
+			module->elf_file, hdr->shstrndx, hdr->shnum);
+		return -ENOEXEC;
+	}
+
+	/* a zero-size string section leaves module->strings unusable and would
+	 * break later string lookups; reject it explicitly
+	 */
+	if (section[hdr->shstrndx].size == 0) {
+		fprintf(stderr, "error: %s has zero-size string section\n",
+			module->elf_file);
+		return -ENOEXEC;
+	}
+
+	/* read in strings; allocate one extra byte (calloc zeroes it) so the
+	 * table is always NUL-terminated and string lookups cannot run off the
+	 * end even if the section itself lacks a terminator
+	 */
+	module->strings = calloc(1, section[hdr->shstrndx].size + 1);
 	if (!module->strings) {
 		fprintf(stderr, "error: failed %s to read ELF strings for %d\n",
 			module->elf_file, -errno);
@@ -392,7 +413,21 @@ int elf_find_section(const struct elf_module *module, const char *name)
 		return -EINVAL;
 	}
 
+	if (hdr->shstrndx >= hdr->shnum) {
+		fprintf(stderr, "error: invalid shstrndx %u >= shnum %u\n",
+			hdr->shstrndx, hdr->shnum);
+		return -EINVAL;
+	}
+
 	section = &module->section[hdr->shstrndx];
+
+	/* a zero-size string section would make the buffer[size - 1]
+	 * NUL-termination below write before the allocation
+	 */
+	if (section->size == 0) {
+		fprintf(stderr, "error: zero-size string section\n");
+		return -EINVAL;
+	}
 
 	/* alloc data data */
 	buffer = calloc(1, section->size);
