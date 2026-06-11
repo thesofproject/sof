@@ -126,7 +126,17 @@ int init_wave(struct dma_frame_parser *p, uint32_t buffer_id, uint32_t format)
 	p->files[i].header.fmt.subchunk_size = 16;
 	p->files[i].header.fmt.audio_format = 1;
 	p->files[i].header.fmt.num_channels = ((format & PROBE_MASK_NB_CHANNELS) >> PROBE_SHIFT_NB_CHANNELS) + 1;
-	p->files[i].header.fmt.sample_rate = sample_rate[(format & PROBE_MASK_SAMPLE_RATE) >> PROBE_SHIFT_SAMPLE_RATE];
+	/* the sample-rate field is 4 bits (0-15) but the table has fewer
+	 * entries; fall back to a valid default (48000 Hz) for an out-of-range
+	 * index so the read stays in bounds and the WAV header keeps a usable
+	 * rate
+	 */
+	uint32_t rate_idx = (format & PROBE_MASK_SAMPLE_RATE) >> PROBE_SHIFT_SAMPLE_RATE;
+
+	if (rate_idx >= sizeof(sample_rate) / sizeof(sample_rate[0]))
+		p->files[i].header.fmt.sample_rate = 48000;
+	else
+		p->files[i].header.fmt.sample_rate = sample_rate[rate_idx];
 	p->files[i].header.fmt.bits_per_sample = (((format & PROBE_MASK_CONTAINER_SIZE) >> PROBE_SHIFT_CONTAINER_SIZE) + 1) * 8;
 	p->files[i].header.fmt.byte_rate = p->files[i].header.fmt.sample_rate *
 					p->files[i].header.fmt.num_channels *
