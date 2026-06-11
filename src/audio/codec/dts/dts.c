@@ -328,13 +328,26 @@ static int dts_codec_apply_config(struct processing_module *mod)
 
 	/* Allow for multiple module_params to be packed into the data pointed to by config
 	 */
+	param_header_size = sizeof(param->id) + sizeof(param->size);
 	for (i = 0; i < config_data_size; param_number++) {
+		/* Need at least a param header in the remaining bytes to read id/size */
+		if (config_data_size - i < param_header_size) {
+			comp_err(dev, "param header truncated");
+			return -EINVAL;
+		}
+
 		param = (struct module_param *)((char *)config->data + i);
-		param_header_size = sizeof(param->id) + sizeof(param->size);
 
 		/* If param->size is less than param_header_size, then this param is not valid */
 		if (param->size < param_header_size) {
 			comp_err(dev, "param is invalid");
+			return -EINVAL;
+		}
+
+		/* The whole param (header + data) must fit in the remaining config data */
+		if (param->size > config_data_size - i) {
+			comp_err(dev, "param size %u exceeds remaining %u",
+				 param->size, config_data_size - i);
 			return -EINVAL;
 		}
 
