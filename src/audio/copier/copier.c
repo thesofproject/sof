@@ -147,6 +147,18 @@ __cold static int copier_init(struct processing_module *mod)
 		cfg_total_size += gtw_cfg_var_size;
 	}
 
+	/*
+	 * gtw_cfg.config_length is host-controlled; make sure the resulting
+	 * copy length does not read past the init payload in the mailbox.
+	 * cfg_total_size is at least sizeof(*copier), so this also rejects an
+	 * empty (md->cfg.size == 0) or otherwise too-small init payload.
+	 */
+	if (cfg_total_size > md->cfg.size) {
+		comp_err(dev, "copier_init(): cfg size %zu exceeds init payload %zu",
+			 cfg_total_size, md->cfg.size);
+		return -EINVAL;
+	}
+
 	cd = mod_zalloc(mod, sizeof(*cd) + gtw_cfg_var_size);
 	if (!cd)
 		return -ENOMEM;
