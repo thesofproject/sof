@@ -123,6 +123,13 @@ static int aria_init(struct processing_module *mod)
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 
+	/* sample group size is used as a divisor below, reject configs that make it zero */
+	if (!base_cfg->audio_fmt.channels_count || base_cfg->audio_fmt.depth < 8) {
+		comp_err(dev, "invalid channels:%u depth:%d",
+			 base_cfg->audio_fmt.channels_count, base_cfg->audio_fmt.depth);
+		return -EINVAL;
+	}
+
 	cd = mod_zalloc(mod, sizeof(*cd));
 	if (!cd) {
 		return -ENOMEM;
