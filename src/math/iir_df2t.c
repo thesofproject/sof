@@ -16,9 +16,13 @@
 
 int iir_delay_size_df2t(struct sof_eq_iir_header *config)
 {
-	int n = config->num_sections; /* One section uses two unit delays */
+	uint32_t n = config->num_sections; /* One section uses two unit delays */
 
-	if (n > SOF_EQ_IIR_BIQUADS_MAX || n < 1)
+	if (!n || n > SOF_EQ_IIR_BIQUADS_MAX)
+		return -EINVAL;
+
+	if (!config->num_sections_in_series ||
+	    config->num_sections_in_series > n)
 		return -EINVAL;
 
 	return 2 * n * sizeof(int64_t);
