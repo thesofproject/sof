@@ -32,6 +32,7 @@ struct comp_dev;
 
 #if CONFIG_IPC_MAJOR_3
 /** \brief Supported channel count on input. */
+#define SEL_SOURCE_1CH 1
 #define SEL_SOURCE_2CH 2
 #define SEL_SOURCE_4CH 4
 
