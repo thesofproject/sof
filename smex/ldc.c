@@ -26,6 +26,13 @@ static int fw_version_copy(const struct elf_module *src,
 	if (section_size < 0)
 		return section_size;
 
+	if ((size_t)section_size < sizeof(struct sof_ipc_fw_ready)) {
+		fprintf(stderr, "error: .fw_ready section too small: %d\n",
+			section_size);
+		free(buffer);
+		return -EINVAL;
+	}
+
 	memcpy(&header->version,
 	       &((struct sof_ipc_fw_ready *)buffer)->version,
 	       sizeof(header->version));
