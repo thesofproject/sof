@@ -330,6 +330,14 @@ int ipc4_comp_data_blob_set(struct comp_data_blob_handler *blob_handler,
 		 "data_offset = %d",
 		 data_offset);
 
+	/* Reject a new first_block mid-transfer: reusing stale data_new while
+	 * overwriting new_data_size defeats the memcpy_s bound (heap overflow).
+	 */
+	if (blob_handler->data_new && first_block) {
+		comp_err(blob_handler->dev, "busy with previous request");
+		return -EBUSY;
+	}
+
 	/* in case when the current package is the first, we should allocate
 	 * memory for whole model data
 	 */
