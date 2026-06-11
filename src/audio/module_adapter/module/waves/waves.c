@@ -612,6 +612,15 @@ static int waves_effect_apply_config(struct processing_module *mod)
 	for (index = 0; index < cfg->size && (!ret); param_number++) {
 		uint32_t param_data_size;
 
+		/* make sure a whole param header remains before reading
+		 * param->size / param->id below
+		 */
+		if (index + header_size > cfg->size) {
+			comp_err(dev, "module_param header at index %u (header %u) exceeds cfg size %zu",
+				 index, header_size, cfg->size);
+			return -EINVAL;
+		}
+
 		param = (struct module_param *)((char *)cfg->data + index);
 		param_data_size = param->size - sizeof(param->size) - sizeof(param->id);
 
