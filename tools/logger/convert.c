@@ -126,8 +126,14 @@ static const char *format_uid(uint32_t uid_ptr, int use_colors, bool be, bool up
 	const struct sof_uuid_entry *uid_entry;
 	char *str;
 
+	/*
+	 * The whole struct sof_uuid_entry is read at uid_ptr, so require that
+	 * many bytes to remain in the uids region; a bare ">=" upper bound
+	 * would accept a pointer whose entry straddles the end of the buffer.
+	 */
 	if (uid_ptr < uids_dict->base_address ||
-	    uid_ptr >= uids_dict->base_address + uids_dict->data_length) {
+	    uid_ptr + sizeof(struct sof_uuid_entry) >
+		uids_dict->base_address + uids_dict->data_length) {
 		str = calloc(1, strlen(BAD_PTR_STR) + 1 + 6);
 		if (!str) {
 			log_err("can't allocate memory\n");
