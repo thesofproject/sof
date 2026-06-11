@@ -2688,6 +2688,15 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 		const struct kpb_task_params *cfg = (struct kpb_task_params *)data;
 		uint32_t outpin_id = extended_param_id.part.parameter_instance;
 
+		/* payload must cover the header and all declared dev_ids[] entries */
+		if (!cfg || data_offset < offsetof(struct kpb_task_params, dev_ids))
+			return -EINVAL;
+
+		if (cfg->number_of_modules >
+		    (data_offset - offsetof(struct kpb_task_params, dev_ids)) /
+		    sizeof(cfg->dev_ids[0]))
+			return -EINVAL;
+
 		return configure_fast_mode_task(dev, cfg, outpin_id);
 	}
 #endif
