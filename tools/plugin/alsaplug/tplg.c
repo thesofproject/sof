@@ -999,6 +999,12 @@ static int plug_prepare_widget(snd_sof_plug_t *plug, struct tplg_pcm_info *pcm_i
 	}
 
 	if (i == pipeline_list->count) {
+		if (pipeline_list->count >= TPLG_MAX_PCM_PIPELINES) {
+			SNDERR("error: too many pipelines for PCM, max %d\n",
+			       TPLG_MAX_PCM_PIPELINES);
+			return -EINVAL;
+		}
+
 		pipeline_list->pipelines[pipeline_list->count] = comp_info->pipe_info;
 		pipeline_list->count++;
 	}
