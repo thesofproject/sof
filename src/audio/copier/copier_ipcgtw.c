@@ -223,6 +223,20 @@ __cold int copier_ipcgtw_create(struct processing_module *mod,
 		return -EINVAL;
 	}
 
+	/* config_length is in dwords; require enough dwords to cover the
+	 * gateway config header and the blob read below. Compare dword counts
+	 * (rather than scaling config_length by 4) so a large host-supplied
+	 * value cannot overflow the multiplication on 32-bit size_t.
+	 */
+	if (gtw_cfg->config_length <
+	    SOF_DIV_ROUND_UP(sizeof(struct ipc4_gateway_config_data) +
+			     sizeof(struct ipc4_ipc_gateway_config_blob),
+			     sizeof(uint32_t))) {
+		comp_err(dev, "ipc4_gateway_config_data too small: %u",
+			 gtw_cfg->config_length);
+		return -EINVAL;
+	}
+
 	cd->ipc_gtw = true;
 
 	/* The IPC gateway is treated as a host gateway */
