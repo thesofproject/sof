@@ -1678,7 +1678,7 @@ int verify_image(struct image *image)
 		ret = file_error("unable to read whole file", image->verify_file);
 		goto out;
 	}
-	for (i = 0; i < size; i += sizeof(uint32_t)) {
+	for (i = 0; i + sizeof(uint32_t) <= size; i += sizeof(uint32_t)) {
 		/* find CSE header marker "$CPD" */
 		if (*(uint32_t *)(buffer + i) == CSE_HEADER_MAKER) {
 			image->fw_image = buffer + i;
@@ -1749,7 +1749,7 @@ int resign_image(struct image *image)
 
 	fclose(in_file);
 
-	for (i = 0; i < size; i += sizeof(uint32_t)) {
+	for (i = 0; i + sizeof(uint32_t) <= size; i += sizeof(uint32_t)) {
 		/* find CSE header marker "$CPD" */
 		if (*(uint32_t *)(buffer + i) == CSE_HEADER_MAKER) {
 			image->fw_image = buffer + i;
