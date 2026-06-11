@@ -80,7 +80,7 @@ static int build_config(struct processing_module *mod, struct mux_data *cfg)
  * set up param then verify param. BTW for IPC3 path, the param is sent by
  * host driver.
  */
-static void set_mux_params(struct processing_module *mod, struct mux_data *cfg)
+static int set_mux_params(struct processing_module *mod, struct mux_data *cfg)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
@@ -119,6 +119,12 @@ static void set_mux_params(struct processing_module *mod, struct mux_data *cfg)
 
 		comp_dev_for_each_producer(dev, source) {
 			j = IPC4_SINK_QUEUE_ID(buf_get_id(source));
+			/* host-supplied queue ID indexes streams[] */
+			if (j >= MUX_MAX_STREAMS) {
+				comp_err(dev, "invalid source queue ID %d (valid range 0..%d)",
+					 j, MUX_MAX_STREAMS - 1);
+				return -EINVAL;
+			}
 			cd->config.streams[j].pipeline_id = buffer_pipeline_id(source);
 			if (j == BASE_CFG_QUEUED_ID)
 				audio_fmt = &cfg->base_cfg.audio_fmt;
@@ -130,6 +136,8 @@ static void set_mux_params(struct processing_module *mod, struct mux_data *cfg)
 	}
 
 	mux_prepare_look_up_table(mod);
+
+	return 0;
 }
 
 int mux_params(struct processing_module *mod)
@@ -149,8 +157,6 @@ int mux_params(struct processing_module *mod)
 	if (ret < 0)
 		return ret;
 
-	set_mux_params(mod, cfg);
-
-	return ret;
+	return set_mux_params(mod, cfg);
 }
 #endif /* CONFIG_COMP_MUX */
