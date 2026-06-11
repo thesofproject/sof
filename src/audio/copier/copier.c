@@ -797,9 +797,11 @@ __cold static int set_attenuation(struct comp_dev *dev, uint32_t data_offset, co
 
 	assert_can_be_cold();
 
-	/* only support attenuation in format of 32bit */
-	if (data_offset > sizeof(uint32_t)) {
-		comp_err(dev, "attenuation data size %d is incorrect", data_offset);
+	/* only support attenuation in format of 32bit; the payload is
+	 * dereferenced as a uint32_t below so it must be exactly that size
+	 */
+	if (data_offset != sizeof(uint32_t)) {
+		comp_err(dev, "attenuation data size %u is incorrect", data_offset);
 		return -EINVAL;
 	}
 
