@@ -385,6 +385,13 @@ static int maxim_dsm_set_param(struct smart_amp_mod_struct_t *hspk,
 			id = DSM_CH_MASK(param->param.id);
 			ch = (param->param.id & DSM_CH1_BITMASK) ? 0 : 1;
 
+			/* id indexes the model database; reject values past its size */
+			if (id >= hspk->param.max_param) {
+				comp_err(dev, "[DSM] invalid param id:%x max:%d",
+					 id, hspk->param.max_param);
+				return -EINVAL;
+			}
+
 			/* 2nd channel has (hspk->param.max_param * DSM_PARAM_MAX) sized offset */
 			db[(id + ch * hspk->param.max_param) * DSM_PARAM_MAX + DSM_PARAM_VALUE] =
 				param->param.value;
