@@ -2459,12 +2459,27 @@ static int kpb_set_micselect(struct comp_dev *dev, const void *data,
 {
 	const struct kpb_micselector_config *mic_sel = data;
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	const size_t mic_cnt = kpb->config.channels - KPB_REFERENCE_SUPPORT_CHANNELS;
-	const uint8_t valid_mask = KPB_COUNT_TO_BITMASK(mic_cnt);
+	size_t mic_cnt;
+	uint8_t valid_mask;
 	size_t i;
 
+	if (max_data_size < (int)sizeof(*mic_sel)) {
+		comp_err(dev, "micselector payload too small: got %d, need %d",
+			 max_data_size, (int)sizeof(*mic_sel));
+		return -EINVAL;
+	}
+
+	if (kpb->config.channels < KPB_REFERENCE_SUPPORT_CHANNELS ||
+	    kpb->config.channels > KPB_MAX_SUPPORTED_CHANNELS) {
+		comp_err(dev, "unsupported channel count %u", kpb->config.channels);
+		return -EINVAL;
+	}
+
+	mic_cnt = kpb->config.channels - KPB_REFERENCE_SUPPORT_CHANNELS;
+	valid_mask = KPB_COUNT_TO_BITMASK(mic_cnt);
+
 	if ((valid_mask & mic_sel->mask) == 0) {
-		comp_err(dev, "error: invalid micselector bit mask");
+		comp_err(dev, "invalid micselector bit mask");
 		return -EINVAL;
 	}
 	 /* selected mics counter */
@@ -2472,6 +2487,10 @@ static int kpb_set_micselect(struct comp_dev *dev, const void *data,
 
 	for (i = 0; i < mic_cnt; i++) {
 		if (KPB_IS_BIT_SET(mic_sel->mask, i)) {
+			if (num_of_sel_mic >= ARRAY_SIZE(kpb->offsets)) {
+				comp_err(dev, "too many selected mics");
+				return -EINVAL;
+			}
 			kpb->offsets[num_of_sel_mic] = i;
 			num_of_sel_mic++;
 		}
