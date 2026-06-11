@@ -157,8 +157,8 @@ int volume_init(struct processing_module *mod)
 		break;
 	default:
 		comp_err(dev, "invalid ramp type %d", vol->ramp);
-		mod_free(mod, cd);
 		mod_free(mod, cd->vol);
+		mod_free(mod, cd);
 		return -EINVAL;
 	}
 
