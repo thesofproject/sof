@@ -200,6 +200,7 @@ static int idc_prepare(uint32_t comp_id)
 					    dev->ipc_config.core, 0);
 		if (ret < 0) {
 			sof_heap_free(dev->drv->user_heap, dev->task);
+			dev->task = NULL;
 			goto out;
 		}
 	}
