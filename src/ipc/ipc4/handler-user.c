@@ -601,6 +601,8 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 		ret = ipc4_chain_dma_state(cdma_comp->cd, &cdma);
 		if (ret < 0) {
 			comp_free(cdma_comp->cd);
+			list_item_del(&cdma_comp->list);
+			rfree(cdma_comp);
 			return IPC4_FAILURE;
 		}
 
