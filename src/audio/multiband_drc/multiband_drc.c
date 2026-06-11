@@ -369,7 +369,14 @@ static int multiband_drc_prepare(struct processing_module *mod,
 	comp_dbg(dev, "source_format=%d, sink_format=%d",
 		 cd->source_format, cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
-	if (cd->config && data_size > 0) {
+	/* the blob holds a base struct followed by num_bands variable-length
+	 * band coefficients; require the base struct first, then the full
+	 * per-band payload, so setup cannot read past the blob
+	 */
+	if (cd->config && data_size >= sizeof(struct sof_multiband_drc_config) &&
+	    cd->config->num_bands <= SOF_MULTIBAND_DRC_MAX_BANDS &&
+	    data_size >= sizeof(struct sof_multiband_drc_config) +
+		    (size_t)cd->config->num_bands * sizeof(struct sof_drc_params)) {
 		ret = multiband_drc_setup(mod, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "error: multiband_drc_setup failed.");
