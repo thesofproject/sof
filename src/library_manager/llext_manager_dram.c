@@ -200,9 +200,13 @@ int llext_manager_restore_from_dram(void)
 			continue;
 		}
 
-		/* Panics on failure - use the same zone as during the first boot */
 		struct lib_manager_mod_ctx *ctx = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 							  sizeof(*ctx));
+
+		if (!ctx) {
+			tr_err(&lib_manager_tr, "library context allocation failure");
+			goto nomem;
+		}
 
 		/* Restore the library context */
 		*ctx = lib_manager_dram.ctx[j++];
