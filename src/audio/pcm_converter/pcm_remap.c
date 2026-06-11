@@ -68,12 +68,13 @@ static int remap_c16(const struct audio_stream *source, uint32_t dummy1,
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
 
-		if (src_channel == 0xf) {
+		/* 0xf means "mute"; also mute any out-of-range source channel so
+		 * a crafted chmap nibble cannot index past the source frame.
+		 */
+		if (src_channel == 0xf || src_channel >= num_src_channels) {
 			mute_channel_c16(sink, sink_channel, frames);
 			continue;
 		}
-
-		assert(src_channel < num_src_channels);
 
 		src = (int16_t *)audio_stream_get_rptr(source) + src_channel;
 		dst = (int16_t *)audio_stream_get_wptr(sink) + sink_channel;
@@ -126,12 +127,13 @@ static inline int remap_c32_left_shift(const struct audio_stream *source,
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
 
-		if (src_channel == 0xf) {
+		/* 0xf means "mute"; also mute any out-of-range source channel so
+		 * a crafted chmap nibble cannot index past the source frame.
+		 */
+		if (src_channel == 0xf || src_channel >= num_src_channels) {
 			mute_channel_c32(sink, sink_channel, frames);
 			continue;
 		}
-
-		assert(src_channel < num_src_channels);
 
 		src = (int32_t *)audio_stream_get_rptr(source) + src_channel;
 		dst = (int32_t *)audio_stream_get_wptr(sink) + sink_channel;
@@ -184,12 +186,13 @@ static inline int remap_c32_right_shift(const struct audio_stream *source,
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
 
-		if (src_channel == 0xf) {
+		/* 0xf means "mute"; also mute any out-of-range source channel so
+		 * a crafted chmap nibble cannot index past the source frame.
+		 */
+		if (src_channel == 0xf || src_channel >= num_src_channels) {
 			mute_channel_c32(sink, sink_channel, frames);
 			continue;
 		}
-
-		assert(src_channel < num_src_channels);
 
 		src = (int32_t *)audio_stream_get_rptr(source) + src_channel;
 		dst = (int32_t *)audio_stream_get_wptr(sink) + sink_channel;
@@ -243,12 +246,13 @@ static inline int remap_c16_to_c32(const struct audio_stream *source,
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
 
-		if (src_channel == 0xf) {
+		/* 0xf means "mute"; also mute any out-of-range source channel so
+		 * a crafted chmap nibble cannot index past the source frame.
+		 */
+		if (src_channel == 0xf || src_channel >= num_src_channels) {
 			mute_channel_c32(sink, sink_channel, frames);
 			continue;
 		}
-
-		assert(src_channel < num_src_channels);
 
 		src = (int16_t *)audio_stream_get_rptr(source) + src_channel;
 		dst = (int32_t *)audio_stream_get_wptr(sink) + sink_channel;
@@ -302,12 +306,13 @@ static inline int remap_c32_to_c16(const struct audio_stream *source,
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
 
-		if (src_channel == 0xf) {
+		/* 0xf means "mute"; also mute any out-of-range source channel so
+		 * a crafted chmap nibble cannot index past the source frame.
+		 */
+		if (src_channel == 0xf || src_channel >= num_src_channels) {
 			mute_channel_c16(sink, sink_channel, frames);
 			continue;
 		}
-
-		assert(src_channel < num_src_channels);
 
 		src = (int32_t *)audio_stream_get_rptr(source) + src_channel;
 		dst = (int16_t *)audio_stream_get_wptr(sink) + sink_channel;
