@@ -532,8 +532,6 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	/* do we need to realloc descriptors */
 	if (config->elem_array.count != channel->desc_count) {
 
-		channel->desc_count = config->elem_array.count;
-
 		/*
 		 * Allocate descriptors for channel. They must be cache-line
 		 * size aligned to avoid corrupting adjacent memory when
@@ -542,18 +540,25 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 		 * allocations on Zephyr to always force cache-line size
 		 * alignment.
 		 */
-		if (dw_chan->lli)
-			rfree(dw_chan->lli);
+		rfree(dw_chan->lli);
 
 		dw_chan->lli = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-				       sizeof(struct dw_lli) * channel->desc_count);
+				       sizeof(struct dw_lli) * config->elem_array.count);
 		if (!dw_chan->lli) {
 			tr_err(&dwdma_tr, "dma %d channel %d lli alloc failed",
 			       channel->dma->plat_data.id,
 			       channel->index);
+			/* allocation failed, so dw_chan->lli is now NULL; reset
+			 * the count to match it so a later config does not
+			 * bzero() a NULL pointer using a stale count
+			 */
+			channel->desc_count = 0;
 			ret = -ENOMEM;
 			goto out;
 		}
+
+		/* only commit the new count once the buffer is allocated */
+		channel->desc_count = config->elem_array.count;
 	}
 
 	/* initialise descriptors */
