@@ -70,8 +70,10 @@ static int mux_set_values(struct processing_module *mod)
 	}
 
 	if (cd->comp_type == SOF_COMP_MUX) {
-		if (mux_mix_check(cfg))
+		if (mux_mix_check(cfg)) {
 			comp_err(dev, "mux component is not able to mix channels");
+			return -EINVAL;
+		}
 	}
 
 	for (i = 0; i < cfg->num_streams; i++) {
