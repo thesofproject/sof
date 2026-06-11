@@ -88,6 +88,18 @@ static int elf_read_sections(struct elf_module *module, bool verbose)
 		return count > 0 ? -ENODATA : -errno;
 	}
 
+	/* every section name is used as an offset into the string table; make
+	 * sure each stays within it so later "module->strings + name" reads
+	 * cannot run past the table
+	 */
+	for (i = 0; i < hdr->shnum; i++) {
+		if (section[i].name >= section[hdr->shstrndx].size) {
+			fprintf(stderr, "error: %s section %d name offset %u out of range\n",
+				module->elf_file, i, section[i].name);
+			return -ENOEXEC;
+		}
+	}
+
 	module->bss_index = elf_find_section(module, ".bss");
 	if (module->bss_index < 0) {
 		fprintf(stderr, "Can't find .bss section in %s",
