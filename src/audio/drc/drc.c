@@ -353,7 +353,10 @@ static int drc_prepare(struct processing_module *mod,
 	/* Initialize DRC */
 	comp_info(dev, "source_format=%d", cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
-	if (cd->config && data_size > 0) {
+	/* the blob is dereferenced as a struct sof_drc_config below and in
+	 * drc_setup(), so require it to be at least that large
+	 */
+	if (cd->config && data_size >= sizeof(struct sof_drc_config)) {
 		ret = drc_setup(mod, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "error: drc_setup failed.");
