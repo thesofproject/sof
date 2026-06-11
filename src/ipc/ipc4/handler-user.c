@@ -611,9 +611,6 @@ __cold static int ipc4_process_chain_dma(struct ipc4_message_request *ipc4)
 	if (ret < 0)
 		return IPC4_INVALID_CHAIN_STATE_TRANSITION;
 
-	if (!cdma.primary.r.allocate && !cdma.primary.r.enable)
-		list_item_del(&cdma_comp->list);
-
 	return IPC4_SUCCESS;
 #else
 	return IPC4_UNAVAILABLE;
