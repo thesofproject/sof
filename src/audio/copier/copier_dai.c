@@ -88,6 +88,16 @@ static int copier_alh_assign_dai_index(struct comp_dev *dev,
 	switch (dai->type) {
 	case SOF_DAI_INTEL_HDA:
 		/* We use DAI_INTEL_HDA for ACE 2.0 platforms */
+		/*
+		 * alh_cfg.count is host-controlled and scales the config size
+		 * and mapping[] walk below; bound it before any arithmetic so a
+		 * crafted blob cannot read past the gateway config.
+		 */
+		if (alh_blob->alh_cfg.count > IPC4_ALH_MAX_NUMBER_OF_GTW) {
+			comp_err(mod->dev, "Invalid ALH count: %u",
+				 alh_blob->alh_cfg.count);
+			return -EINVAL;
+		}
 		alh_cfg_size = get_alh_config_size(alh_blob);
 		dma_config = (uint8_t *)gtw_cfg_data + alh_cfg_size;
 		dma_config_length = (cd->config.gtw_cfg.config_length << 2) - alh_cfg_size;
