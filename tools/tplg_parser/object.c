@@ -62,6 +62,14 @@ int tplg_create_object(struct tplg_context *ctx,
 			return -EINVAL;
 		}
 
+		/* a zero-size array never advances the cursor below: bail out
+		 * instead of looping forever on a malformed topology
+		 */
+		if (array->size == 0) {
+			fprintf(stderr, "error: load %s zero-size array\n", name);
+			return -EINVAL;
+		}
+
 		for (i = 0; i < ipc->num_groups; i++) {
 			const struct sof_topology_token *tokens = ipc->grp[i].tokens;
 			int num_tokens = ipc->grp[i].num_tokens;
