@@ -531,10 +531,23 @@ int elf_strings_read_by_index(const struct elf_file *elf, int index, struct elf_
 
 int elf_strings_get(const struct elf_strings *strings, int index, char **str)
 {
-	if (index >= strings->section.header.data.size)
+	size_t size = strings->section.header.data.size;
+	const char *base = (const char *)strings->section.data;
+
+	if (index < 0 || (size_t)index >= size)
 		return -EINVAL;
 
-	*str = strdup((const char *)strings->section.data + index);
+	/*
+	 * A crafted ELF may provide a string table that is not NUL-terminated;
+	 * make sure a terminator exists within the section before strdup() so
+	 * it cannot read past the end of the mapped section.
+	 */
+	if (strnlen(base + index, size - index) == size - index) {
+		fprintf(stderr, "error: unterminated string in string table\n");
+		return -EINVAL;
+	}
+
+	*str = strdup(base + index);
 	if (!*str)
 		return -ENOMEM;
 
