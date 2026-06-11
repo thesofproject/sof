@@ -110,15 +110,16 @@ static int lib_manager_auth_proc(const void *buffer_data, size_t buffer_size,
 	while (auth_api_busy(auth_ctx))
 		;
 
+	if (phase != AUTH_PHASE_LAST)
+		return 0;
+
 	ret = auth_api_result(auth_ctx);
+	auth_api_cleanup(auth_ctx);
 
 	if (ret != AUTH_IMAGE_TRUSTED) {
 		tr_err(&lib_manager_tr, "Untrusted library!");
 		return -EACCES;
 	}
-
-	if (phase == AUTH_PHASE_LAST)
-		auth_api_cleanup(auth_ctx);
 
 	return 0;
 }
