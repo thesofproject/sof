@@ -291,6 +291,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
 	struct comp_buffer *safe;
+	struct list_item *clist;
 	uint32_t flags;
 
 	assert_can_be_cold();
@@ -347,6 +348,24 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	}
 
 	irq_local_enable(flags);
+
+	/*
+	 * A completed pipeline stores raw comp_dev pointers in its
+	 * source_comp/sink_comp/sched_comp fields.
+	 */
+	list_for_item(clist, &ipc->comp_list) {
+		struct ipc_comp_dev *ppl_icd = container_of(clist, struct ipc_comp_dev, list);
+
+		if (ppl_icd->type != COMP_TYPE_PIPELINE)
+			continue;
+
+		if (ppl_icd->pipeline->source_comp == icd->cd)
+			ppl_icd->pipeline->source_comp = NULL;
+		if (ppl_icd->pipeline->sink_comp == icd->cd)
+			ppl_icd->pipeline->sink_comp = NULL;
+		if (ppl_icd->pipeline->sched_comp == icd->cd)
+			ppl_icd->pipeline->sched_comp = NULL;
+	}
 
 	/* free component and remove from list */
 	comp_free(icd->cd);

@@ -149,6 +149,11 @@ static struct ipc_comp_dev *pipeline_get_host_dev(struct ipc_comp_dev *ppl_icd)
 	struct ipc *ipc = ipc_get();
 	int host_id;
 
+	if (!ppl_icd->pipeline->source_comp || !ppl_icd->pipeline->sink_comp) {
+		ipc_cmd_err(&ipc_tr, "pipeline %d: source/sink comp freed", ppl_icd->id);
+		return NULL;
+	}
+
 	/* If the source component's direction is not set but the sink's direction is,
 	 * this block will copy the direction from the sink to the source component and
 	 * mark the source's direction as set.
