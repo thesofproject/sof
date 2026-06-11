@@ -929,8 +929,27 @@ int ri_manifest_verify_v1_8(struct image *image)
 		 MAN_RSA_SIGNATURE_LEN);
 
 	char *const data2 = (char *)man + MAN_SIG_PKG_OFFSET_V1_8;
+
+	/* css.size and css.header_len come from the (untrusted) image; reject
+	 * a reversed ordering that would underflow the unsigned size2 below.
+	 */
+	if (man->css.size < man->css.header_len) {
+		fprintf(stderr, "error: invalid css size %u < header_len %u\n",
+			man->css.size, man->css.header_len);
+		return -EINVAL;
+	}
+
 	unsigned const size2 =
 		(man->css.size - man->css.header_len) * sizeof(uint32_t);
+
+	/* size2 is derived from untrusted css fields and is hashed starting at
+	 * data2; make sure that range stays within the verified image buffer.
+	 */
+	if (image->image_end < MAN_SIG_PKG_OFFSET_V1_8 ||
+	    size2 > image->image_end - MAN_SIG_PKG_OFFSET_V1_8) {
+		fprintf(stderr, "error: signed payload size 0x%x exceeds image\n", size2);
+		return -EINVAL;
+	}
 
 	return pkcs_v1_5_verify_man_v1_8(image, man, data1, size1, data2, size2);
 }
@@ -946,8 +965,27 @@ int ri_manifest_verify_v2_5(struct image *image)
 		 MAN_RSA_SIGNATURE_LEN_2_5);
 
 	char *const data2 = (char *)man + MAN_SIG_PKG_OFFSET_V2_5;
+
+	/* css.size and css.header_len come from the (untrusted) image; reject
+	 * a reversed ordering that would underflow the unsigned size2 below.
+	 */
+	if (man->css.size < man->css.header_len) {
+		fprintf(stderr, "error: invalid css size %u < header_len %u\n",
+			man->css.size, man->css.header_len);
+		return -EINVAL;
+	}
+
 	unsigned const size2 =
 			(man->css.size - man->css.header_len) * sizeof(uint32_t);
+
+	/* size2 is derived from untrusted css fields and is hashed starting at
+	 * data2; make sure that range stays within the verified image buffer.
+	 */
+	if (image->image_end < MAN_SIG_PKG_OFFSET_V2_5 ||
+	    size2 > image->image_end - MAN_SIG_PKG_OFFSET_V2_5) {
+		fprintf(stderr, "error: signed payload size 0x%x exceeds image\n", size2);
+		return -EINVAL;
+	}
 
 	return pkcs_v1_5_verify_man_v2_5(image, man, data1, size1, data2, size2);
 }
