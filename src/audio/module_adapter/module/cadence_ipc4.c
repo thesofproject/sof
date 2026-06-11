@@ -245,6 +245,16 @@ static int cadence_codec_init(struct processing_module *mod)
 	if (codec->state == MODULE_DISABLED && ext_data->module_data_size > 0) {
 		int size = ext_data->module_data_size;
 		uint8_t *init_bytes;
+		uint32_t direction;
+
+		/* the init payload holds the codec params followed by the
+		 * direction word; validate the size up front before using it
+		 */
+		if (size < (int)(sizeof(struct snd_codec) + sizeof(uint32_t))) {
+			comp_err(dev, "setup config too small: %d", size);
+			ret = -EINVAL;
+			goto free_cd;
+		}
 
 		setup_cfg = &cd->setup_cfg;
 
@@ -265,9 +275,13 @@ static int cadence_codec_init(struct processing_module *mod)
 		setup_cfg->avail = true;
 		codec->cfg.avail = false;
 
-		/* direction follows the codec params in init data */
+		/* direction follows the codec params; copy it out rather than
+		 * dereferencing a possibly unaligned uint32_t pointer
+		 */
 		init_bytes = (uint8_t *)ext_data->module_data;
-		cd->direction = *(uint32_t *)(init_bytes + sizeof(struct snd_codec));
+		memcpy(&direction, init_bytes + sizeof(struct snd_codec),
+		       sizeof(direction));
+		cd->direction = direction;
 
 		comp_info(dev, "codec direction set to %u", cd->direction);
 	}
