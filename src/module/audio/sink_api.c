@@ -109,6 +109,11 @@ EXPORT_SYMBOL(sink_get_frame_bytes);
 
 size_t sink_get_free_frames(struct sof_sink *sink)
 {
+	/* The frame size is a valid divisor: a host channel count of zero is
+	 * rejected at module init (module_adapter_ipc4.c) before it reaches
+	 * the stream, and the sample size is fixed by a valid frame format, so
+	 * this is not re-checked on the hot path.
+	 */
 	return sink_get_free_size(sink) / sink_get_frame_bytes(sink);
 }
 EXPORT_SYMBOL(sink_get_free_frames);
