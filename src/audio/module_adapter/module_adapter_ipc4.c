@@ -263,10 +263,16 @@ int module_get_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 		else
 			fragment_size = SOF_IPC_MSG_MAX_SIZE;
 	} else {
-		if (!last_block)
+		if (!last_block) {
 			fragment_size = SOF_IPC_MSG_MAX_SIZE;
-		else
+		} else {
+			if (*data_offset_size > md->cfg.size) {
+				comp_err(dev, "invalid data_offset_size %u > cfg size %zu",
+					 *data_offset_size, md->cfg.size);
+				return -EINVAL;
+			}
 			fragment_size = md->cfg.size - *data_offset_size;
+		}
 	}
 
 	if (interface->get_configuration)
