@@ -521,8 +521,15 @@ static int smart_amp_ff_process(struct processing_module *mod,
 		return 0;
 	}
 
-	if (frames > SMART_AMP_FF_BUF_DB_SZ) {
-		comp_err(dev, "feed forward frame size overflow: %u", frames);
+	/*
+	 * The remap functions write frames * ff_mod.channels samples into
+	 * ff_mod.buf, which holds SMART_AMP_FF_BUF_DB_SZ samples. Bound the
+	 * total sample count, not just the frame count, so an unexpected
+	 * channel count cannot overflow the buffer.
+	 */
+	if ((uint64_t)frames * sad->ff_mod.channels > SMART_AMP_FF_BUF_DB_SZ) {
+		comp_err(dev, "feed forward frame size overflow: %u frames, %u ch",
+			 frames, sad->ff_mod.channels);
 		sad->ff_mod.consumed = frames;
 		return -EINVAL;
 	}
@@ -556,8 +563,10 @@ static int smart_amp_fb_process(struct processing_module *mod,
 		return 0;
 	}
 
-	if (frames > SMART_AMP_FB_BUF_DB_SZ) {
-		comp_err(dev, "feedback frame size overflow: %u", frames);
+	/* bound total samples (frames * channels) against the buffer size */
+	if ((uint64_t)frames * sad->fb_mod.channels > SMART_AMP_FB_BUF_DB_SZ) {
+		comp_err(dev, "feedback frame size overflow: %u frames, %u ch",
+			 frames, sad->fb_mod.channels);
 		sad->fb_mod.consumed = frames;
 		return -EINVAL;
 	}
