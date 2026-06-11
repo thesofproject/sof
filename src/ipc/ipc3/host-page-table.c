@@ -17,6 +17,25 @@
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
 /*
+ * Size in bytes of the DSP-side buffer that receives the compressed host page
+ * table. DSP targets define PLATFORM_PAGE_TABLE_SIZE; the host/library builds
+ * (e.g. testbench, fuzzer) allocate it as HOST_PAGE_SIZE in drivers/host/ipc.c
+ * and do not define PLATFORM_PAGE_TABLE_SIZE, so fall back to that.
+ */
+#ifndef PLATFORM_PAGE_TABLE_SIZE
+#define PLATFORM_PAGE_TABLE_SIZE HOST_PAGE_SIZE
+#endif
+
+/*
+ * The compressed page table stores one 20-bit entry per host page, so the
+ * number of pages whose entries fit in the page table buffer is
+ * (buffer bytes * 8 bits/byte) / 20 bits/page.
+ */
+#define HOST_PAGE_TABLE_BITS_PER_PAGE	20
+#define HOST_PAGE_TABLE_MAX_PAGES \
+	(PLATFORM_PAGE_TABLE_SIZE * 8 / HOST_PAGE_TABLE_BITS_PER_PAGE)
+
+/*
  * Parse the host page tables and create the audio DMA SG configuration
  * for host audio DMA buffer. This involves creating a dma_sg_elem for each
  * page table entry and adding each elem to a list in struct dma_sg_config.
@@ -215,6 +234,19 @@ int ipc_process_host_buffer(struct ipc *ipc,
 {
 	struct ipc_data_host_buffer *data_host_buffer;
 	int err;
+
+	/*
+	 * The host-supplied page count is used both to size DSP-side
+	 * allocations and to compute the DMA transfer length for the
+	 * compressed page table. Reject a count that would not fit in the
+	 * page table buffer before doing any arithmetic that could overflow
+	 * (ring->pages * 20). pages == 0 is also invalid and would underflow
+	 * the ring->size sanity check in ipc_parse_page_descriptors().
+	 */
+	if (ring->pages == 0 || ring->pages > HOST_PAGE_TABLE_MAX_PAGES) {
+		tr_err(&ipc_tr, "ipc: invalid page count %u", ring->pages);
+		return -EINVAL;
+	}
 
 	data_host_buffer = ipc_platform_get_host_buffer(ipc);
 	dma_sg_init(elem_array);
