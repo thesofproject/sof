@@ -151,6 +151,11 @@ static int process_append_data3(void *_process_ipc,
 
 	/* Size is process IPC plus private data minus ABI header */
 	bytes_ctl = (struct snd_soc_tplg_bytes_control *)ctl;
+	if (bytes_ctl->priv.size < sizeof(struct sof_abi_hdr)) {
+		fprintf(stderr, "error: process priv data too small: %u\n",
+			bytes_ctl->priv.size);
+		return -EINVAL;
+	}
 	size = bytes_ctl->priv.size - sizeof(struct sof_abi_hdr);
 	ipc_size = sizeof(struct sof_ipc_comp_process) + UUID_SIZE +
 			process_ipc->size + size;
@@ -184,6 +189,11 @@ static int process_append_data4(void *_process_ipc,
 
 	/* Size is process IPC plus private data minus ABI header */
 	bytes_ctl = (struct snd_soc_tplg_bytes_control *)ctl;
+	if (bytes_ctl->priv.size < sizeof(struct sof_abi_hdr)) {
+		fprintf(stderr, "error: process priv data too small: %u\n",
+			bytes_ctl->priv.size);
+		return -EINVAL;
+	}
 	size = bytes_ctl->priv.size - sizeof(struct sof_abi_hdr);
 
 	/* validate if everything will fit */
