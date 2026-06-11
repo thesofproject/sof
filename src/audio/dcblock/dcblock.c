@@ -205,7 +205,11 @@ static int dcblock_prepare(struct processing_module *mod,
 		  cd->source_format, cd->sink_format);
 
 	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
-	if (cd->config && data_size > 0)
+	/* dcblock_copy_coefficients() copies sizeof(R_coeffs) from the blob, so
+	 * require the blob to actually hold that many bytes; fall back to
+	 * passthrough otherwise instead of over-reading the blob
+	 */
+	if (cd->config && data_size >= sizeof(cd->R_coeffs))
 		dcblock_copy_coefficients(mod);
 	else
 		dcblock_set_passthrough(mod);
