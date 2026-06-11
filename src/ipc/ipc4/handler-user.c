@@ -1109,15 +1109,15 @@ __cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 
 	assert_can_be_cold();
 
+	/* Validate host-controlled payload size before any use or arithmetic. */
+	if (data_off_size > MAILBOX_HOSTBOX_SIZE)
+		return IPC4_INVALID_CONFIG_DATA_STRUCT;
+	if (init_block && data_off_size < sizeof(struct sof_tlv))
+		return IPC4_INVALID_CONFIG_DATA_STRUCT;
+
 	/* Old FW comment: bursted configs */
 	if (init_block && final_block) {
 		const struct sof_tlv *tlv = (struct sof_tlv *)data;
-		/* if there is no payload in this large config set
-		 * (4 bytes type | 4 bytes length=0 | no value)
-		 * we do not handle such case
-		 */
-		if (data_off_size < sizeof(struct sof_tlv) || data_off_size > MAILBOX_HOSTBOX_SIZE)
-			return IPC4_INVALID_CONFIG_DATA_STRUCT;
 
 		/* ===Iterate over payload===
 		 * Payload can have multiple sof_tlv structures inside,
