@@ -386,7 +386,7 @@ static int16_t distance_from_source(struct tdfb_comp_data *cd, int mic_n,
 
 static void theoretical_time_differences(struct tdfb_comp_data *cd, int16_t az)
 {
-	int16_t d[PLATFORM_MAX_CHANNELS];
+	int16_t d[SOF_TDFB_MAX_MICROPHONES];
 	int16_t src_x;
 	int16_t src_y;
 	int16_t sin_az;

@@ -323,6 +323,11 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	int i;
 
 	/* Sanity checks */
+	if (config->size != cd->config_size) {
+		comp_err(dev, "Incorrect configuration blob size");
+		return -EINVAL;
+	}
+
 	if (config->num_output_channels > PLATFORM_MAX_CHANNELS ||
 	    !config->num_output_channels) {
 		comp_err(dev, "invalid num_output_channels %d",
@@ -342,9 +347,18 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 		return -EINVAL;
 	}
 
-	if (config->num_angles > SOF_TDFB_MAX_ANGLES) {
+	/* In SOF v1.6 - 1.8 based beamformer topologies the multiple angles, mic locations,
+	 * and beam on/off switch were not defined. A most basic supported blob has num_angles
+	 * equal to 1. Mic locations data is optional.
+	 */
+	if (config->num_angles == 0 || config->num_angles > SOF_TDFB_MAX_ANGLES) {
 		comp_err(dev, "invalid num_angles %d",
 			 config->num_angles);
+		return -EINVAL;
+	}
+
+	if (!config->angle_enum_mult) {
+		comp_err(dev, "invalid angle_enum_mult");
 		return -EINVAL;
 	}
 
@@ -357,15 +371,6 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	if (config->num_mic_locations > SOF_TDFB_MAX_MICROPHONES) {
 		comp_err(dev, "invalid num_mic_locations %d",
 			 config->num_mic_locations);
-		return -EINVAL;
-	}
-
-	/* In SOF v1.6 - 1.8 based beamformer topologies the multiple angles, mic locations,
-	 * and beam on/off switch were not defined. Return error if such configuration is seen.
-	 * A most basic blob has num_angles equals 1. Mic locations data is optional.
-	 */
-	if (config->num_angles == 0 && config->num_mic_locations == 0) {
-		comp_err(dev, "ABI version less than 3.19.1 is not supported.");
 		return -EINVAL;
 	}
 
@@ -423,6 +428,12 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 			  cd->filter_angles[min_delta_idx].azimuth, idx);
 	}
 
+	if (idx < 0 || idx + (int)config->num_filters > num_filters) {
+		comp_err(dev, "invalid filter_index %d for angle %d",
+			 idx, cd->filter_angles[min_delta_idx].azimuth);
+		return -EINVAL;
+	}
+
 	/* Seek to proper filter for requested angle or beam off configuration */
 	coefp = tdfb_filter_seek(config, idx);
 
@@ -451,6 +462,11 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	for (i = 0; i < config->num_filters; i++) {
 		if (cd->input_channel_select[i] > max_ch)
 			max_ch = cd->input_channel_select[i];
+
+		if (cd->input_channel_select[i] < 0) {
+			comp_err(dev, "invalid channel select for filter %d", i);
+			return -EINVAL;
+		}
 	}
 
 	/* The stream must contain at least the number of channels that is
@@ -641,7 +657,12 @@ static int tdfb_process(struct processing_module *mod,
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
-		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
+		if (!cd->config || cd->config_size < sizeof(*cd->config) ||
+		    cd->config_size > SOF_TDFB_MAX_SIZE) {
+			comp_err(dev, "invalid configuration blob, size %zu", cd->config_size);
+			return -EINVAL;
+		}
 		ret = tdfb_setup(mod, audio_stream_get_channels(source),
 				 audio_stream_get_channels(sink),
 				 audio_stream_get_frm_fmt(source));
@@ -705,7 +726,6 @@ static int tdfb_prepare(struct processing_module *mod,
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame frame_fmt;
-	size_t data_size;
 	int source_channels;
 	int sink_channels;
 	int rate;
@@ -735,9 +755,10 @@ static int tdfb_prepare(struct processing_module *mod,
 	rate = audio_stream_get_rate(&sourceb->stream);
 
 	/* Initialize filter */
-	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
-	if (!cd->config || !data_size) {
-		comp_err(dev, "Missing a configuration blob.");
+	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
+	if (!cd->config || cd->config_size < sizeof(*cd->config) ||
+	    cd->config_size > SOF_TDFB_MAX_SIZE) {
+		comp_err(dev, "invalid configuration blob, size %zu", cd->config_size);
 		ret = -EINVAL;
 		goto out;
 	}

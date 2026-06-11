@@ -8,16 +8,17 @@
 #ifndef __USER_TDFB_H__
 #define __USER_TDFB_H__
 
+#include <sof/platform.h>
 #include <stdint.h>
 
 #define SOF_TDFB_NUM_INPUT_PINS 1	/* One source */
 #define SOF_TDFB_NUM_OUTPUT_PINS 1	/* One sink */
-#define SOF_TDFB_MAX_SIZE 4096		/* Max size for coef data in bytes */
+#define SOF_TDFB_MAX_SIZE 16384		/* Max size for coef data in bytes */
 #define SOF_TDFB_FIR_MAX_LENGTH 256	/* Max length for individual filter */
 #define SOF_TDFB_FIR_MAX_COUNT 16	/* A blob can define max 16 FIR EQs */
 #define SOF_TDFB_MAX_STREAMS 8		/* Support 1..8 sinks */
 #define SOF_TDFB_MAX_ANGLES 360		/* Up to 1 degree precision for 360 degrees coverage */
-#define SOF_TDFB_MAX_MICROPHONES 16	/* Up to 16 microphone locations */
+#define SOF_TDFB_MAX_MICROPHONES PLATFORM_MAX_CHANNELS	/* Bounded by direction state arrays */
 
 /* The driver assigns running numbers for control index. If there's single control of
  * type switch, enum, binary they all have index 0.
