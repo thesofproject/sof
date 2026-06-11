@@ -566,6 +566,10 @@ static int igo_nr_get_config(struct processing_module *mod,
 		comp_info(dev, "SOF_CTRL_CMD_BINARY");
 		return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 	case SOF_CTRL_CMD_SWITCH:
+		if (cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
+			comp_err(dev, "num_elems %u out of range", cdata->num_elems);
+			return -EINVAL;
+		}
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->process_enable[j];
