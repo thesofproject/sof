@@ -115,6 +115,7 @@ int volume_init(struct processing_module *mod)
 	uint32_t channels_count;
 	uint8_t channel_cfg;
 	uint8_t channel;
+	bool all_channels;
 	uint32_t instance_id = IPC4_INST_ID(dev_comp_id(dev));
 
 	if (instance_id >= IPC4_MAX_PEAK_VOL_REG_SLOTS) {
@@ -124,6 +125,26 @@ int volume_init(struct processing_module *mod)
 	channels_count = mod->priv.cfg.base_cfg.audio_fmt.channels_count;
 	if (channels_count > SOF_IPC_MAX_CHANNELS || !channels_count) {
 		comp_err(dev, "Invalid channels count %u", channels_count);
+		return -EINVAL;
+	}
+
+	/* The payload must hold at least one config entry, which is read below
+	 * to detect the all-channels form.
+	 */
+	if (cfg->size < sizeof(*vol) + sizeof(vol->config[0])) {
+		comp_err(dev, "Invalid init payload size %zu", cfg->size);
+		return -EINVAL;
+	}
+
+	/* In the all-channels form a single entry applies to every channel;
+	 * otherwise the payload must hold one entry per channel as they are
+	 * each read below.
+	 */
+	all_channels = vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK;
+	if (!all_channels &&
+	    cfg->size < sizeof(*vol) + channels_count * sizeof(vol->config[0])) {
+		comp_err(dev, "Invalid init payload size %zu for %u channels",
+			 cfg->size, channels_count);
 		return -EINVAL;
 	}
 
@@ -156,16 +177,13 @@ int volume_init(struct processing_module *mod)
 	md->private = cd;
 
 	for (channel = 0; channel < channels_count; channel++) {
-		if (vol->config[0].channel_id == IPC4_ALL_CHANNELS_MASK)
-			channel_cfg = 0;
-		else
-			channel_cfg = channel;
+		channel_cfg = all_channels ? 0 : channel;
 
 		target_volume[channel] =
-			convert_volume_ipc4_to_ipc3(dev, vol->config[channel].target_volume);
+			convert_volume_ipc4_to_ipc3(dev, vol->config[channel_cfg].target_volume);
 
 		set_volume_ipc4(cd, channel,
-				target_volume[channel_cfg],
+				target_volume[channel],
 				vol->config[channel_cfg].curve_type,
 				vol->config[channel_cfg].curve_duration);
 
