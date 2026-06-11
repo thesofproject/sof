@@ -443,7 +443,7 @@ static void sdma_enable_event(struct dma_chan_data *channel, int eventnum)
 
 	tr_dbg(&sdma_tr, "channel %d, event %d", channel->index, eventnum);
 
-	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
+	if (eventnum < 0 || eventnum >= SDMA_HWEVENTS_COUNT)
 		return; /* No change if request is invalid */
 
 	dma_reg_update_bits(channel->dma, SDMA_CHNENBL(eventnum),
@@ -461,7 +461,7 @@ static void sdma_disable_event(struct dma_chan_data *channel, int eventnum)
 {
 	tr_dbg(&sdma_tr, "channel %d, event %d", channel->index, eventnum);
 
-	if (eventnum < 0 || eventnum > SDMA_HWEVENTS_COUNT)
+	if (eventnum < 0 || eventnum >= SDMA_HWEVENTS_COUNT)
 		return; /* No change if request is invalid */
 
 	dma_reg_update_bits(channel->dma, SDMA_CHNENBL(eventnum),
