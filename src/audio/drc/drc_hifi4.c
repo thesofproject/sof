@@ -116,7 +116,7 @@ void drc_update_detector_average(struct drc_state *state,
 				 int nch)
 {
 	ae_f32 detector_average = state->detector_average; /* Q2.30 */
-	ae_int32 abs_input_array[DRC_DIVISION_FRAMES]; /* Q1.31 */
+	ae_int32 abs_input_array[DRC_DIVISION_FRAMES] __attribute__((aligned(8))); /* Q1.31 */
 	ae_int32 *abs_input_array_p;
 	int div_start, i, ch;
 	ae_int16 *sample16_p; /* for s16 format case */
