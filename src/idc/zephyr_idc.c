@@ -135,6 +135,11 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	int ret;
 	int idc_send_memcpy_err __unused;
 
+	if (!cpu_is_core_enabled(target_cpu)) {
+		tr_err(&zephyr_idc_tr, "Core %u is down, cannot send IDC message", target_cpu);
+		return -EACCES;
+	}
+
 	k_mutex_lock(&idc_mutex, K_FOREVER);
 
 	if (unlikely(work->thread)) {
@@ -153,10 +158,6 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	work->handler = idc_handler;
 	work->sync = mode == IDC_BLOCKING;
 
-	if (!cpu_is_core_enabled(target_cpu)) {
-		tr_err(&zephyr_idc_tr, "Core %u is down, cannot sent IDC message", target_cpu);
-		return -EACCES;
-	}
 	if (msg->payload) {
 		idc_send_memcpy_err = memcpy_s(payload->data, sizeof(payload->data),
 					       msg->payload, msg->size);
