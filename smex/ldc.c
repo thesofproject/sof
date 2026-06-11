@@ -57,12 +57,36 @@ static int fw_version_copy(const struct elf_module *src,
 		return section_size;
 
 	ext_hdr = (struct ext_man_elem_header *)buffer;
-	while ((uintptr_t)ext_hdr < (uintptr_t)buffer + section_size) {
+	while ((uintptr_t)ext_hdr + sizeof(*ext_hdr) <=
+	       (uintptr_t)buffer + section_size) {
 		if (ext_hdr->type == EXT_MAN_ELEM_DBG_ABI) {
+			/* make sure the whole dbg-abi element is within the
+			 * section before reading it
+			 */
+			if (ext_hdr->elem_size < sizeof(struct ext_man_dbg_abi) ||
+			    (uintptr_t)ext_hdr + sizeof(struct ext_man_dbg_abi) >
+			    (uintptr_t)buffer + section_size) {
+				fprintf(stderr, "error: %s truncated dbg-abi element\n",
+					src->elf_file);
+				free(buffer);
+				return -ENOEXEC;
+			}
 			header->version.abi_version =
 				((struct ext_man_dbg_abi *)
 						ext_hdr)->dbg_abi.abi_dbg_version;
 			break;
+		}
+		/* a malformed element size would loop forever (0) or advance
+		 * the cursor past the section; reject the image rather than
+		 * silently stopping
+		 */
+		if (ext_hdr->elem_size == 0 ||
+		    (uintptr_t)ext_hdr + ext_hdr->elem_size >
+		    (uintptr_t)buffer + section_size) {
+			fprintf(stderr, "error: %s malformed ext-manifest element\n",
+				src->elf_file);
+			free(buffer);
+			return -ENOEXEC;
 		}
 		//move to the next entry
 		ext_hdr = (struct ext_man_elem_header *)
