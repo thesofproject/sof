@@ -534,6 +534,20 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 		return -ENOEXEC;
 	}
 
+	/*
+	 * n_mod comes from the (potentially untrusted) ELF and each manifest
+	 * consumes a sof_man_module descriptor slot written into fw_image.
+	 * Bound the cumulative count across all input modules (this ELF adds
+	 * n_mod to the running output_mod_cfg_count) so a crafted .module
+	 * section cannot overflow the fixed manifest descriptor array.
+	 */
+	if (modules->output_mod_cfg_count + n_mod > MAX_MODULES) {
+		fprintf(stderr, "error: too many module manifests (%u + %u > %u).\n",
+			modules->output_mod_cfg_count, n_mod, MAX_MODULES);
+		elf_section_free(&section);
+		return -ENOEXEC;
+	}
+
 	unsigned int i;
 
 	for (i = 0, sof_mod = section.data; i < n_mod; i++, sof_mod++) {
