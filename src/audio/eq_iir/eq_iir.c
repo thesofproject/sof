@@ -107,6 +107,16 @@ static int eq_iir_get_config(struct processing_module *mod,
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
+static int eq_iir_check_blob_size(struct comp_dev *dev, size_t size)
+{
+	if (size < sizeof(struct sof_eq_iir_config) || size > SOF_EQ_IIR_MAX_SIZE) {
+		comp_err(dev, "invalid configuration blob, size %zu", size);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int eq_iir_process(struct processing_module *mod,
 			  struct input_stream_buffer *input_buffers, int num_input_buffers,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
@@ -119,7 +129,9 @@ static int eq_iir_process(struct processing_module *mod,
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
-		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
+		if (!cd->config || eq_iir_check_blob_size(mod->dev, cd->config_size) < 0)
+			return -EINVAL;
 		ret = eq_iir_new_blob(mod, audio_stream_get_frm_fmt(source),
 				      audio_stream_get_frm_fmt(sink),
 				      audio_stream_get_channels(source));
@@ -158,7 +170,6 @@ static int eq_iir_prepare(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
-	size_t data_size;
 	int channels;
 	int ret = 0;
 
@@ -183,7 +194,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 	source_format = audio_stream_get_frm_fmt(&sourceb->stream);
 	sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
 
-	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
+	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
 
 	/* Initialize EQ */
 	comp_info(dev, "source_format=%d, sink_format=%d",
@@ -192,7 +203,9 @@ static int eq_iir_prepare(struct processing_module *mod,
 	eq_iir_set_passthrough_func(cd, source_format, sink_format);
 
 	/* Initialize EQ */
-	if (cd->config && data_size > 0) {
+	if (cd->config && cd->config_size > 0) {
+		if (eq_iir_check_blob_size(dev, cd->config_size) < 0)
+			return -EINVAL;
 		ret = eq_iir_new_blob(mod, source_format, sink_format, channels);
 		if (ret)
 			return ret;

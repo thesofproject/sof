@@ -180,6 +180,65 @@ void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffe
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+static int eq_iir_blob_words_max(struct comp_dev *dev,
+				 const struct sof_eq_iir_config *config,
+				 size_t blob_size,
+				 uint32_t *coef_words_max)
+{
+	size_t payload_bytes;
+
+	/* Compute the size of the coefficient area in int32_t words from the
+	 * framework-reported blob size. The blob layout is:
+	 *   sizeof(*config) header bytes
+	 *   channels_in_config int32_t assign_response[]
+	 *   coefficient data[]
+	 * channels_in_config is bounded above, so the multiply fits in size_t.
+	 * The blob's self-declared config->size is cross-checked against the
+	 * authoritative blob_size so all later parsing stays within the buffer.
+	 */
+	if (blob_size < sizeof(*config) || config->size != blob_size) {
+		comp_err(dev, "blob size %zu / header size %u mismatch or too small",
+			 blob_size, config->size);
+		return -EINVAL;
+	}
+	payload_bytes = blob_size - sizeof(*config);
+	if (payload_bytes % sizeof(int32_t) ||
+	    payload_bytes < (size_t)config->channels_in_config * sizeof(int32_t)) {
+		comp_err(dev, "blob size %zu misaligned or too small", blob_size);
+		return -EINVAL;
+	}
+	*coef_words_max = payload_bytes / sizeof(int32_t) - config->channels_in_config;
+	return 0;
+}
+
+static int eq_iir_init_response(struct comp_dev *dev, int idx,
+				int32_t *coef_data, uint32_t coef_words_max,
+				uint32_t *j, struct sof_eq_iir_header **eq_out)
+{
+	struct sof_eq_iir_header *eq;
+	uint32_t header_end = *j + SOF_EQ_IIR_NHEADER;
+	uint32_t section_end;
+
+	/* Header must fit before reading num_sections */
+	if (header_end > coef_words_max) {
+		comp_err(dev, "response %d header out of bounds", idx);
+		return -EINVAL;
+	}
+	eq = (struct sof_eq_iir_header *)&coef_data[*j];
+	/* Bound num_sections so the multiply cannot overflow and the section
+	 * data stays within the blob.
+	 */
+	section_end = header_end + (uint32_t)SOF_EQ_IIR_NBIQUAD * eq->num_sections;
+	if (eq->num_sections > SOF_EQ_IIR_BIQUADS_MAX || section_end > coef_words_max) {
+		comp_err(dev, "response %d num_sections %u out of bounds",
+			 idx, eq->num_sections);
+		return -EINVAL;
+	}
+	*eq_out = eq;
+	*j = section_end;
+	return 0;
+}
+
 static int eq_iir_init_coef(struct processing_module *mod, int nch)
 {
 	struct comp_data *cd = module_get_private_data(mod);
@@ -187,13 +246,15 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 	struct iir_state_df1 *iir = cd->iir;
 	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
 	struct sof_eq_iir_header *eq;
+	uint32_t coef_words_max;
 	int32_t *assign_response;
 	int32_t *coef_data;
 	int size_sum = 0;
 	int resp = 0;
 	int i;
-	int j;
+	uint32_t j;
 	int s;
+	int ret;
 
 	comp_info(mod->dev, "%u responses, %u channels, stream %d channels",
 		  config->number_of_responses, config->channels_in_config, nch);
@@ -210,17 +271,21 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 		return -EINVAL;
 	}
 
+	ret = eq_iir_blob_words_max(mod->dev, config, cd->config_size, &coef_words_max);
+	if (ret < 0)
+		return ret;
+
 	/* Collect index of response start positions in all_coefficients[]  */
 	j = 0;
 	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
-	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config],
-				   4);
+	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config], 4);
 	for (i = 0; i < SOF_EQ_IIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			eq = (struct sof_eq_iir_header *)&coef_data[j];
+			ret = eq_iir_init_response(mod->dev, i, coef_data,
+						   coef_words_max, &j, &eq);
+			if (ret < 0)
+				return ret;
 			lookup[i] = eq;
-			j += SOF_EQ_IIR_NHEADER
-				+ SOF_EQ_IIR_NBIQUAD * eq->num_sections;
 		} else {
 			lookup[i] = NULL;
 		}
@@ -318,7 +383,10 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 	/* Free existing IIR channels data if it was allocated */
 	eq_iir_free_delaylines(mod);
 
-	/* Set coefficients for each channel EQ from coefficient blob */
+	/* Set coefficients for each channel EQ from coefficient blob.
+	 * eq_iir_init_coef() / eq_iir_blob_words_max() perform all blob size
+	 * sanity checks, including config->size vs cd->config_size.
+	 */
 	delay_size = eq_iir_init_coef(mod, nch);
 	if (delay_size < 0)
 		return delay_size; /* Contains error code */

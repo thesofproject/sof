@@ -39,6 +39,7 @@ struct comp_data {
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_iir_config *config;
 	int32_t *iir_delay;			/**< pointer to allocated RAM */
+	size_t config_size;			/**< configuration size */
 	size_t iir_delay_size;			/**< allocated size */
 	eq_iir_func eq_iir_func;		/**< processing function */
 };
