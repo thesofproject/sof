@@ -14,31 +14,30 @@
 
 #if CONFIG_FORMAT_S16LE
 /* Mix n 16 bit PCM source streams to one sink stream */
-static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
-		      uint32_t frames)
+static void mix_n_s16(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+		      int num_sources, size_t samples)
 {
-	ae_int16x4 * in[PLATFORM_MAX_CHANNELS];
-	ae_int16x4 *out = audio_stream_get_wptr(sink);
+	const ae_int16x4 *in[PLATFORM_MAX_CHANNELS];
+	ae_int16x4 *out = (ae_int16x4 *)sink->ptr;
 	ae_int16x4 sample = AE_ZERO16();
 	ae_int16x4 res = AE_ZERO16();
 	ae_int32x2 val1;
 	ae_int32x2 val2;
 	ae_int32x2 sample_1;
 	ae_int32x2 sample_2;
-	unsigned int n, m, nmax, i, j, left_samples;
-	unsigned int samples = frames * audio_stream_get_channels(sink);
+	size_t n, m, nmax;
+	size_t i;
+	int j;
+	size_t left_samples;
 
 	for (j = 0; j < num_sources; j++)
-		in[j] = audio_stream_get_rptr(sources[j]);
+		in[j] = (const ae_int16x4 *)sources[j].ptr;
 
 	for (left_samples = samples; left_samples; left_samples -= n) {
-		out = audio_stream_wrap(sink,  out);
-		nmax = audio_stream_samples_without_wrap_s16(sink, out);
+		nmax = cir_buf_samples_without_wrap_s16(out, sink->buf_end);
 		n = MIN(left_samples, nmax);
 		for (j = 0; j < num_sources; j++) {
-			in[j] = audio_stream_wrap(sources[j], in[j]);
-			nmax = audio_stream_samples_without_wrap_s16(sources[j], in[j]);
+			nmax = cir_buf_samples_without_wrap_s16(in[j], sources[j].buf_end);
 			n = MIN(n, nmax);
 		}
 		m = n >> 2;
@@ -64,33 +63,37 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 			/* store four 16 bit samples, 8 is sizeof(ae_int16x4) */
 			AE_S16X4_IP(res, out, 8);
 		}
+		out = (ae_int16x4 *)cir_buf_wrap(out, sink->buf_start, sink->buf_end);
+		for (j = 0; j < num_sources; j++)
+			in[j] = (const ae_int16x4 *)source_cir_buf_wrap(in[j],
+									sources[j].buf_start,
+									sources[j].buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
 /* Mix n 24 bit PCM source streams to one sink stream */
-static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
-		      uint32_t frames)
+static void mix_n_s24(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+		      int num_sources, size_t samples)
 {
-	ae_int32x2 *in[PLATFORM_MAX_CHANNELS];
-	ae_int32x2 *out = audio_stream_get_wptr(sink);
+	const ae_int32x2 *in[PLATFORM_MAX_CHANNELS];
+	ae_int32x2 *out = (ae_int32x2 *)sink->ptr;
 	ae_int32x2 val;
 	ae_int32x2 sample = AE_ZERO32();
-	unsigned int n, m, nmax, i, j, left_samples;
-	unsigned int samples = frames * audio_stream_get_channels(sink);
+	size_t n, m, nmax;
+	size_t i;
+	int j;
+	size_t left_samples;
 
 	for (j = 0; j < num_sources; j++)
-		in[j] = audio_stream_get_rptr(sources[j]);
+		in[j] = (const ae_int32x2 *)sources[j].ptr;
 
 	for (left_samples = samples; left_samples; left_samples -= n) {
-		out = audio_stream_wrap(sink,  out);
-		nmax = audio_stream_samples_without_wrap_s32(sink, out);
+		nmax = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
 		n = MIN(left_samples, nmax);
 		for (j = 0; j < num_sources; j++) {
-			in[j] = audio_stream_wrap(sources[j], in[j]);
-			nmax = audio_stream_samples_without_wrap_s32(sources[j], in[j]);
+			nmax = cir_buf_samples_without_wrap_s32(in[j], sources[j].buf_end);
 			n = MIN(n, nmax);
 		}
 		m = n >> 1;
@@ -109,48 +112,56 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
 			/* store two 32 bit samples, 8 is sizeof(ae_int32x2) */
 			AE_S32X2_IP(val, out, 8);
 		}
+		out = (ae_int32x2 *)cir_buf_wrap(out, sink->buf_start, sink->buf_end);
+		for (j = 0; j < num_sources; j++)
+			in[j] = (const ae_int32x2 *)source_cir_buf_wrap(in[j],
+									sources[j].buf_start,
+									sources[j].buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
 /* Mix n 32 bit PCM source streams to one sink stream */
-static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t num_sources,
-		      uint32_t frames)
+static void mix_n_s32(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+		      int num_sources, size_t samples)
 {
-	ae_q32s * in[PLATFORM_MAX_CHANNELS];
-	ae_int32 *out = audio_stream_get_wptr(sink);
+	const ae_q32s *in[PLATFORM_MAX_CHANNELS];
+	ae_int32 *out = (ae_int32 *)sink->ptr;
 	ae_int64 sample;
 	ae_int64 val;
 	ae_int32x2 res;
-	unsigned int n, nmax, i, j, left_samples;
-	unsigned int m = 0;
-	unsigned int samples = frames * audio_stream_get_channels(sink);
+	size_t n, nmax;
+	size_t i;
+	int j;
+	size_t m = 0;
+	size_t left_samples;
 
 	for (j = 0; j < num_sources; j++)
-		in[j] = audio_stream_get_rptr(sources[j]);
+		in[j] = (const ae_q32s *)sources[j].ptr;
 
 	for (left_samples = samples; left_samples; left_samples -= n) {
-		out = audio_stream_wrap(sink,  out);
-		nmax = audio_stream_samples_without_wrap_s32(sink, out);
+		out = (ae_int32 *)cir_buf_wrap(out, sink->buf_start, sink->buf_end);
+		nmax = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
 		n = MIN(left_samples, nmax);
 		for (j = 0; j < num_sources; j++) {
-			in[j] = audio_stream_wrap(sources[j], in[j] + m);
-			nmax = audio_stream_samples_without_wrap_s32(sources[j], in[j]);
+			in[j] = (const ae_q32s *)source_cir_buf_wrap((const int32_t *)in[j] + m,
+								     sources[j].buf_start,
+								     sources[j].buf_end);
+			nmax = cir_buf_samples_without_wrap_s32(in[j], sources[j].buf_end);
 			n = MIN(n, nmax);
 		}
 		/*record the processed samples for next address iteration */
 		m = n;
 		for (i = 0; i < m; i++) {
-			val =  AE_ZERO64();
+			val = AE_ZERO64();
 			for (j = 0; j < num_sources; j++) {
 				/* load one 32 bit sample */
 				sample = AE_L32M_X(in[j],  i * sizeof(ae_q32s));
 				val = AE_ADD64S(val, sample);
 			}
 			/*Saturate to 32 bits */
-			res =  AE_ROUND32X2F48SSYM(val, val);
+			res = AE_ROUND32X2F48SSYM(val, val);
 
 			/* store one 32 bit samples */
 			AE_S32_L_IP(res, out, sizeof(ae_int32));

@@ -83,7 +83,8 @@ static int test_setup(void **state)
 	md = test_malloc(sizeof(*md));
 	mod_data->private = md;
 
-	md->mix_func = mixer_get_processing_function(test_data->mod->dev, test_data->sinks[0]);
+	md->mix_func = mixer_get_processing_function(test_data->mod->dev,
+			audio_stream_get_frm_fmt(&test_data->sinks[0]->stream));
 
 	*state = test_data;
 
@@ -109,7 +110,8 @@ static void test_audio_mixer_copy(void **state)
 	struct processing_module_test_data *tc = *state;
 	struct processing_module *mod = tc->mod;
 	struct mixer_data *md = module_get_private_data(tc->mod);
-	const struct audio_stream *sources_stream[PLATFORM_MAX_STREAMS];
+	struct cir_buf_source sources_buf[PLATFORM_MAX_STREAMS];
+	struct cir_buf_sink sink_buf;
 
 	for (src_idx = 0; src_idx < tc->num_sources; ++src_idx) {
 		uint32_t *samples = tc->sources[src_idx]->stream.addr;
@@ -123,11 +125,20 @@ static void test_audio_mixer_copy(void **state)
 		audio_stream_produce(&tc->sources[src_idx]->stream,
 				     tc->sources[src_idx]->stream.size / sizeof(int32_t));
 
-		sources_stream[src_idx] = &tc->sources[src_idx]->stream;
+		sources_buf[src_idx].buf_start =
+			audio_stream_get_addr(&tc->sources[src_idx]->stream);
+		sources_buf[src_idx].buf_end =
+			audio_stream_get_end_addr(&tc->sources[src_idx]->stream);
+		sources_buf[src_idx].ptr =
+			audio_stream_get_rptr(&tc->sources[src_idx]->stream);
 	}
 
-	md->mix_func(mod->dev, &tc->sinks[0]->stream, sources_stream, tc->num_sources,
-		     mod->dev->frames);
+	sink_buf.buf_start = audio_stream_get_addr(&tc->sinks[0]->stream);
+	sink_buf.buf_end = audio_stream_get_end_addr(&tc->sinks[0]->stream);
+	sink_buf.ptr = audio_stream_get_wptr(&tc->sinks[0]->stream);
+
+	md->mix_func(&sink_buf, sources_buf, tc->num_sources,
+		     mod->dev->frames * tc->parameters.channels);
 
 	for (smp = 0; smp < tc->sinks[0]->stream.size / sizeof(int32_t); ++smp) {
 		uint64_t sum = 0;

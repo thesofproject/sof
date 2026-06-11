@@ -32,22 +32,25 @@ void sys_comp_module_mixer_interface_init(void);
 
 #define MIXER_MAX_SOURCES	2
 
-/* Xtensa HiFi optimized version needs this for 5.1ch */
-#define MIXER_HIFI_FRAME_BYTE_ALIGN_6CH 16
+/**
+ * \brief mixer processing function interface
+ *
+ * The buffers are acquired and committed by the module's process callback. Each
+ * processing function receives ready-to-use circular buffer descriptors and only
+ * performs the mixing.
+ *
+ * \param[in,out] sink Sink circular buffer descriptor to write mixed data to.
+ * \param[in] sources Array of source circular buffer descriptors to mix.
+ * \param[in] num_sources Number of valid entries in \p sources.
+ * \param[in] samples Total number of samples (frames * channels) to mix.
+ */
+typedef void (*mixer_func)(struct cir_buf_sink *sink, struct cir_buf_source *sources,
+			   int num_sources, size_t samples);
 
 /* mixer component private data */
 struct mixer_data {
-	void (*mix_func)(struct comp_dev *dev, struct audio_stream *sink,
-			 const struct audio_stream **sources, uint32_t count,
-			 uint32_t frames);
+	mixer_func mix_func;
 };
-
-/**
- * \brief mixer processing function interface
- */
-typedef void (*mixer_func)(struct comp_dev *dev, struct audio_stream *sink,
-			   const struct audio_stream **sources, uint32_t num_sources,
-			   uint32_t frames);
 
 /** \brief Volume processing functions map. */
 struct mixer_func_map {
@@ -64,16 +67,16 @@ extern const size_t mixer_func_count;
 /**
  * \brief Retrievies mixer processing function.
  * \param[in,out] dev Mixer base component device.
- * \param[in] sinkb Sink buffer to match against
+ * \param[in] fmt Frame format to match against.
  */
 static inline mixer_func mixer_get_processing_function(struct comp_dev *dev,
-						       struct comp_buffer *sinkb)
+						       enum sof_ipc_frame fmt)
 {
 	int i;
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < mixer_func_count; i++) {
-		if (audio_stream_get_frm_fmt(&sinkb->stream) != mixer_func_map[i].frame_fmt)
+		if (fmt != mixer_func_map[i].frame_fmt)
 			continue;
 
 		return mixer_func_map[i].func;
