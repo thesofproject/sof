@@ -517,6 +517,10 @@ int elf_read_section(const struct elf_module *module, const char *section_name,
 
 error:
 	free(*dst_buff);
+	/* clear the caller's pointer so a caller cleanup path (e.g. ldc.c's
+	 * "if (buffer) free(buffer)") does not free the same buffer again
+	 */
+	*dst_buff = NULL;
 	return ret;
 }
 
