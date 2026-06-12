@@ -307,6 +307,13 @@ static int init_mix(struct processing_module *mod,
 		return -EINVAL;
 	}
 
+	/* select_mix_out_*() return NULL for unsupported in/out combos */
+	if (!cd->mix_routine) {
+		comp_err(dev, "unsupported channel configuration (in=%d out=%d)",
+			 format->ch_cfg, out_channel_config);
+		return -EINVAL;
+	}
+
 	/* Update audio format. */
 	cd->out_fmt[0].valid_bit_depth = IPC4_DEPTH_24BIT;
 	cd->out_fmt[0].depth = IPC4_DEPTH_32BIT;
