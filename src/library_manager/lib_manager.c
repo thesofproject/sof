@@ -37,6 +37,7 @@
 #if CONFIG_LLEXT
 #include <zephyr/llext/llext.h>
 #endif
+#include <zephyr/sys/math_extras.h>
 
 #if CONFIG_LIBRARY_AUTH_SUPPORT
 #include <auth/intel_auth_api.h>
@@ -129,7 +130,7 @@ static int lib_manager_auth_proc(const void *buffer_data, size_t buffer_size,
 
 #define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
 
-static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr, uint32_t size,
+static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_addr, size_t size,
 					      uint32_t flags)
 {
 	/* Region must be first mapped as writable in order to initialize its contents. */
@@ -147,15 +148,25 @@ static int lib_manager_load_data_from_storage(void __sparse_cache *vma, void *s_
 	return sys_mm_drv_update_region_flags((__sparse_force void *)vma, size, flags);
 }
 
-static int lib_manager_load_module(const uint32_t module_id, const struct sof_man_module *const mod)
+static int lib_manager_load_module(const struct sof_man_fw_desc *const desc,
+				   const uint32_t module_id, const struct sof_man_module *const mod)
 {
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const uintptr_t load_offset = POINTER_TO_UINT(ctx->base_addr);
+	size_t lib_size;
+	size_t file_offset;
 	void *src;
 	void __sparse_cache *va_base;
 	size_t size;
 	uint32_t flags;
 	int ret, idx;
+
+	/*
+	 * ELF file segment offsets and sizes come from library files, so they
+	 * have to be validated.
+	 */
+	if (size_mul_overflow(desc->header.preload_page_count, PAGE_SZ, &lib_size))
+		return -EOVERFLOW;
 
 	for (idx = 0; idx < ARRAY_SIZE(mod->segment); ++idx) {
 		if (!mod->segment[idx].flags.r.load)
@@ -168,9 +179,23 @@ static int lib_manager_load_module(const uint32_t module_id, const struct sof_ma
 		else if (!mod->segment[idx].flags.r.readonly)
 			flags = SYS_MM_MEM_PERM_RW;
 
-		src = UINT_TO_POINTER(mod->segment[idx].file_offset + load_offset);
+		file_offset = mod->segment[idx].file_offset;
+		if (size_mul_overflow(mod->segment[idx].flags.r.length, PAGE_SZ, &size)) {
+			ret = -EOVERFLOW;
+			goto err;
+		}
+
+		/* Reject segments that would read outside the loaded library image. */
+		if (file_offset > lib_size || size > lib_size - file_offset) {
+			tr_err(&lib_manager_tr,
+			       "segment %d out of bounds: file_offset %#zx, size %#zx, total %#zx",
+			       idx, file_offset, size, lib_size);
+			ret = -ENOSPC;
+			goto err;
+		}
+
+		src = UINT_TO_POINTER(file_offset + load_offset);
 		va_base = (void __sparse_cache *)UINT_TO_POINTER(mod->segment[idx].v_base_addr);
-		size = mod->segment[idx].flags.r.length * PAGE_SZ;
 		ret = lib_manager_load_data_from_storage(va_base, src, size, flags);
 		if (ret < 0)
 			goto err;
@@ -230,7 +255,8 @@ static int lib_manager_load_libcode_modules(const uint32_t module_id)
 
 	for (idx = 0; idx < desc->header.num_module_entries; ++idx, ++module_entry) {
 		if (module_entry->type.lib_code) {
-			ret = lib_manager_load_module(lib_id << LIB_MANAGER_LIB_ID_SHIFT | idx,
+			ret = lib_manager_load_module(desc,
+						      lib_id << LIB_MANAGER_LIB_ID_SHIFT | idx,
 						      module_entry);
 			if (ret < 0)
 				goto err;
@@ -338,7 +364,8 @@ static int lib_manager_free_module_instance(uint32_t instance_id, const struct s
  *
  * Function is responsible to allocate module in available free memory and assigning proper address.
  */
-static uintptr_t lib_manager_allocate_module(const struct sof_man_module *mod,
+static uintptr_t lib_manager_allocate_module(const struct sof_man_fw_desc *const desc,
+					     const struct sof_man_module *mod,
 					     const struct comp_ipc_config *ipc_config,
 					     const void *ipc_specific_config)
 {
@@ -351,7 +378,7 @@ static uintptr_t lib_manager_allocate_module(const struct sof_man_module *mod,
 	if (module_is_llext(mod))
 		return llext_manager_allocate_module(ipc_config, ipc_specific_config);
 
-	ret = lib_manager_load_module(module_id, mod);
+	ret = lib_manager_load_module(desc, module_id, mod);
 	if (ret < 0)
 		return 0;
 
@@ -424,7 +451,8 @@ static int lib_manager_free_module(const uint32_t component_id)
 
 #define PAGE_SZ		4096 /* equals to MAN_PAGE_SIZE used by rimage */
 
-static uintptr_t lib_manager_allocate_module(const struct comp_ipc_config *ipc_config,
+static uintptr_t lib_manager_allocate_module(const struct sof_man_fw_desc *const desc,
+					const struct comp_ipc_config *ipc_config,
 					const void *ipc_specific_config, const void **buildinfo)
 {
 	tr_err(&lib_manager_tr, "Dynamic module allocation is not supported");
@@ -644,7 +672,8 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 	mod = (const struct sof_man_module *)
 		((const uint8_t *)desc + SOF_MAN_MODULE_OFFSET(entry_index));
 
-	const uintptr_t module_entry_point = lib_manager_allocate_module(mod, config, args->data);
+	const uintptr_t module_entry_point = lib_manager_allocate_module(desc, mod, config,
+									 args->data);
 
 	if (!module_entry_point) {
 		tr_err(&lib_manager_tr, "lib_manager_allocate_module() failed!");
