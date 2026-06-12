@@ -358,6 +358,19 @@ int cadence_codec_apply_params(struct processing_module *mod, int size, void *da
 	 */
 	while (size > 0) {
 		param = data;
+
+		if (size < (int)sizeof(*param)) {
+			comp_err(dev, "param header truncated, %d bytes left", size);
+			return -EINVAL;
+		}
+
+		/* param->size covers the whole record and must fit */
+		if (param->size <= sizeof(*param) || param->size > (uint32_t)size) {
+			comp_err(dev, "invalid param size %u, %d bytes left",
+				 param->size, size);
+			return -EINVAL;
+		}
+
 		comp_dbg(dev, "cadence_codec_apply_config() applying param %d value %d",
 			 param->id, param->data[0]);
 
