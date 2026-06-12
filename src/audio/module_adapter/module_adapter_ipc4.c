@@ -155,6 +155,14 @@ int module_adapter_init_data(struct comp_dev *dev,
 	dst->base_cfg = cfg->base_cfg;
 	dst->size = cfgsz;
 
+	/* Host-supplied channel count indexes PLATFORM_MAX_CHANNELS arrays. */
+	if (dst->base_cfg.audio_fmt.channels_count == 0 ||
+	    dst->base_cfg.audio_fmt.channels_count > PLATFORM_MAX_CHANNELS) {
+		comp_err(dev, "invalid channels count %u",
+			 dst->base_cfg.audio_fmt.channels_count);
+		return -EINVAL;
+	}
+
 	if (cfgsz >= sizeof(*cfg)) {
 		int n_in = cfg->base_cfg_ext.nb_input_pins;
 		int n_out = cfg->base_cfg_ext.nb_output_pins;
