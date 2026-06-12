@@ -350,16 +350,40 @@ static int crossover_free(struct processing_module *mod)
  * \brief Verifies that the config is formatted correctly.
  *
  * The function can only be called after the buffers have been initialized.
+ *
+ * \param[in] mod      Processing module owning the configuration. The blob
+ *                     under validation is read from the module's private data
+ *                     (\c cd->config); callers must store it there beforehand.
+ * \param[in] new_size Size in bytes reported by the framework for the blob;
+ *                     must match the size field embedded in the blob header.
+ * \return 0 on success, negative errno on invalid configuration.
  */
-static int crossover_validate_config(struct processing_module *mod,
-				     struct sof_crossover_config *config)
+static int crossover_validate_config(struct processing_module *mod, size_t new_size)
 {
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_crossover_config *config = cd->config;
 	struct comp_dev *dev = mod->dev;
-	uint32_t size = config->size;
+	size_t required_size;
 	int32_t num_assigned_sinks;
+	int32_t num_lr4s;
+	uint32_t size;
 
-	if (size > SOF_CROSSOVER_MAX_SIZE || !size) {
-		comp_err(dev, "size %d is invalid", size);
+	if (!config) {
+		comp_err(dev, "NULL config blob");
+		return -EINVAL;
+	}
+
+	/* Reject truncated blobs before touching config->size: the framework-
+	 * reported new_size must cover at least the fixed header.
+	 */
+	if (new_size < sizeof(*config)) {
+		comp_err(dev, "size %u is smaller than header", (uint32_t)new_size);
+		return -EINVAL;
+	}
+
+	size = config->size;
+	if (size > SOF_CROSSOVER_MAX_SIZE || size != new_size) {
+		comp_err(dev, "size %u is invalid", size);
 		return -EINVAL;
 	}
 
@@ -367,6 +391,17 @@ static int crossover_validate_config(struct processing_module *mod,
 	    config->num_sinks < 2) {
 		comp_err(dev, "invalid num_sinks %i, expected number between 2 and %i",
 			 config->num_sinks, SOF_CROSSOVER_MAX_STREAMS);
+		return -EINVAL;
+	}
+
+	/* Each channel reads 2 * num_lr4s biquads from config->coef[]; the
+	 * runtime uses 1 LR4 pair for 2-way and 3 LR4 pairs otherwise.
+	 * See tune/sof_crossover_generate_config.m script.
+	 */
+	num_lr4s = (config->num_sinks == CROSSOVER_2WAY_NUM_SINKS) ? 1 : 3;
+	required_size = sizeof(*config) + (size_t)num_lr4s * 2 * sizeof(struct sof_eq_iir_biquad);
+	if (size < required_size) {
+		comp_err(dev, "size %u too small for num_sinks %u", size, config->num_sinks);
 		return -EINVAL;
 	}
 
@@ -448,6 +483,9 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 	uint32_t frames = input_buffers[0].size;
 	uint32_t frame_bytes = audio_stream_frame_bytes(input_buffers[0].data);
 	uint32_t processed_bytes;
+	struct sof_crossover_config *prev_config;
+	uint32_t prev_num_sinks;
+	size_t cfg_size;
 	int ret;
 	int i;
 
@@ -455,7 +493,26 @@ static int crossover_process_audio_stream(struct processing_module *mod,
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
-		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+		prev_config = cd->config;
+		prev_num_sinks = prev_config ? prev_config->num_sinks : 0;
+
+		cd->config = comp_get_data_blob(cd->model_handler, &cfg_size, NULL);
+		ret = crossover_validate_config(mod, cfg_size);
+		if (ret < 0)
+			return ret;
+
+		/* num_sinks must not change at runtime: cd->crossover_split was
+		 * selected for the previous count, and a smaller value would
+		 * cause the split function to write past the sink array.
+		 * Reject the blob; the previous config and split stay in use.
+		 */
+		if (prev_num_sinks && cd->config->num_sinks != prev_num_sinks) {
+			comp_err(dev, "runtime num_sinks change %u -> %u not supported",
+				 prev_num_sinks, cd->config->num_sinks);
+			cd->config = prev_config;
+			return -EINVAL;
+		}
+
 		ret = crossover_setup(mod, audio_stream_get_channels(source));
 		if (ret < 0) {
 			comp_err(dev, "failed Crossover setup");
@@ -513,6 +570,7 @@ static int crossover_prepare(struct processing_module *mod,
 	struct comp_buffer *source, *sink;
 	size_t data_size;
 	int channels;
+	int ret;
 
 	comp_info(dev, "entry");
 
@@ -545,17 +603,16 @@ static int crossover_prepare(struct processing_module *mod,
 
 	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
 
-	/* Initialize Crossover */
-	if (cd->config &&
-	    (!data_size || crossover_validate_config(mod, cd->config) < 0)) {
-		/* If the configuration is invalid fail the prepare */
-		comp_err(dev, "invalid binary config format");
-		return -EINVAL;
-	}
-
+	/* A NULL cd->config is a supported operating mode: the component runs
+	 * in passthrough (see the else-branch below), so only validate when a
+	 * blob is actually present.
+	 */
 	if (cd->config) {
-		int ret = crossover_setup(mod, channels);
+		ret = crossover_validate_config(mod, data_size);
+		if (ret < 0)
+			return ret;
 
+		ret = crossover_setup(mod, channels);
 		if (ret < 0) {
 			comp_err(dev, "setup failed");
 			return ret;
