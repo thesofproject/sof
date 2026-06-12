@@ -85,6 +85,9 @@ extern "C" {
 			nd->infer_request[i] = compiled_model.create_infer_request();
 
 		nd->inp_shape = nd->model->input("input").get_shape();
+		for (auto dim : nd->inp_shape)
+			if (!dim || dim > (1u << 24))
+				return -EINVAL;
 
 		return 0;
 	}
@@ -141,6 +144,9 @@ extern "C" {
 				ov::Shape state_shape;
 
 				state_shape = nd->model->input(inp_state_name).get_shape();
+				for (auto dim : state_shape)
+					if (!dim || dim > (1u << 24))
+						return -EINVAL;
 				if (nd->iter > 0) {
 					/*
 					 * set input state by corresponding output state from prev
