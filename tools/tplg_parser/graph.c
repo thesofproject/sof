@@ -23,6 +23,7 @@
 /* load pipeline graph DAPM widget*/
 int tplg_create_graph(struct tplg_context *ctx, int count, int pipeline_id,
 		      struct tplg_comp_info *temp_comp_list, char *pipeline_string,
+		      size_t pipeline_string_size,
 		      struct sof_ipc_pipe_comp_connect *connection,
 		      int route_num)
 {
@@ -64,13 +65,21 @@ int tplg_create_graph(struct tplg_context *ctx, int count, int pipeline_id,
 
 	printf("loading route %s -> %s\n", source, sink);
 
-	strcat(pipeline_string, graph_elem->source);
-	strcat(pipeline_string, "->");
+	size_t cur_len = strnlen(pipeline_string, pipeline_string_size);
+	size_t remaining = pipeline_string_size > cur_len ?
+		pipeline_string_size - cur_len : 0;
+	int written;
 
-	if (route_num == (count - 1)) {
-		strcat(pipeline_string, graph_elem->sink);
-		strcat(pipeline_string, "\n");
-	}
+	if (route_num == (count - 1))
+		written = snprintf(pipeline_string + cur_len, remaining,
+				   "%s->%s\n", graph_elem->source,
+				   graph_elem->sink);
+	else
+		written = snprintf(pipeline_string + cur_len, remaining,
+				   "%s->", graph_elem->source);
+
+	if (written < 0 || (size_t)written >= remaining)
+		fprintf(stderr, "warning: pipeline string truncated\n");
 
 	return 0;
 }
