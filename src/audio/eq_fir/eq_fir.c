@@ -72,12 +72,13 @@ static void eq_fir_free_delaylines(struct processing_module *mod)
 }
 
 static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *config,
-			    struct fir_state_32x16 *fir, int nch)
+			    size_t config_size, struct fir_state_32x16 *fir, int nch)
 {
 	struct sof_fir_coef_data *lookup[SOF_EQ_FIR_MAX_RESPONSES];
 	struct sof_fir_coef_data *eq;
 	int16_t *assign_response;
 	int16_t *coef_data;
+	size_t coef_words_max;
 	size_t size_sum = 0;
 	int resp = 0;
 	int i;
@@ -101,10 +102,24 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 		  config->number_of_responses, config->channels_in_config, nch);
 
 	/* Sanity checks */
+	if (config->size != config_size) {
+		comp_err(dev, "Incorrect configuration blob size");
+		return -EINVAL;
+	}
+
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
 		comp_err(dev, "invalid channels count");
+		return -EINVAL;
+	}
+	/* channels_in_config indexes into a int16_t array. An odd count would
+	 * leave the coefficient area at a 2-byte alignment, breaking the
+	 * 4-byte aligned int32_t loads in the optimized FIR kernels.
+	 */
+	if (config->channels_in_config & 0x1) {
+		comp_err(dev, "channels_in_config %u must be even",
+			 config->channels_in_config);
 		return -EINVAL;
 	}
 	if (config->number_of_responses > SOF_EQ_FIR_MAX_RESPONSES) {
@@ -112,16 +127,45 @@ static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *conf
 		return -EINVAL;
 	}
 
+	/* Compute the size of the coefficient area in int16_t words from the
+	 * blob's self-declared size. The blob layout is:
+	 *   sizeof(*config) header bytes
+	 *   channels_in_config int16_t assign_response[]
+	 *   coefficient data[]
+	 */
+	if (config->size < sizeof(*config) ||
+	    config->size - sizeof(*config) <
+		(size_t)config->channels_in_config * sizeof(int16_t)) {
+		comp_err(dev, "config size %u too small", config->size);
+		return -EINVAL;
+	}
+	coef_words_max = (config->size - sizeof(*config)) / sizeof(int16_t) -
+		config->channels_in_config;
+
 	/* Collect index of response start positions in all_coefficients[]  */
 	j = 0;
 	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
-	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config],
-				   4);
+	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config], 4);
 	for (i = 0; i < SOF_EQ_FIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
+			/* Header must fit before reading length */
+			if (j + SOF_FIR_COEF_NHEADER > coef_words_max) {
+				comp_err(dev, "response %d header out of bounds", i);
+				return -EINVAL;
+			}
 			eq = (struct sof_fir_coef_data *)&coef_data[j];
+			/* Bound length so it is valid and the coefficient data
+			 * stays within the blob.
+			 */
+			if (eq->length <= 0 || eq->length > SOF_FIR_MAX_LENGTH ||
+			    (eq->length & 0x3) ||
+			    j + SOF_FIR_COEF_NHEADER + eq->length > coef_words_max) {
+				comp_err(dev, "response %d length %d out of bounds",
+					 i, eq->length);
+				return -EINVAL;
+			}
 			lookup[i] = eq;
-			j += SOF_FIR_COEF_NHEADER + coef_data[j];
+			j += SOF_FIR_COEF_NHEADER + eq->length;
 		} else {
 			lookup[i] = NULL;
 		}
@@ -209,7 +253,7 @@ static int eq_fir_setup(struct processing_module *mod, int nch)
 	cd->nch = nch;
 
 	/* Set coefficients for each channel EQ from coefficient blob */
-	delay_size = eq_fir_init_coef(dev, cd->config, cd->fir, nch);
+	delay_size = eq_fir_init_coef(dev, cd->config, cd->config_size, cd->fir, nch);
 	if (delay_size < 0)
 		return delay_size; /* Contains error code */
 
@@ -234,9 +278,25 @@ static int eq_fir_setup(struct processing_module *mod, int nch)
 	return 0;
 }
 
+static int eq_fir_check_blob_size(struct comp_dev *dev, size_t size)
+{
+	if (size < sizeof(struct sof_eq_fir_config) || size > SOF_EQ_FIR_MAX_SIZE) {
+		comp_err(dev, "invalid configuration blob, size %zu", size);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int eq_fir_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
 {
-	return eq_fir_init_coef(dev, new_data, NULL, -1);
+	int ret;
+
+	ret = eq_fir_check_blob_size(dev, new_data_size);
+	if (ret < 0)
+		return ret;
+
+	return eq_fir_init_coef(dev, new_data, new_data_size, NULL, -1);
 }
 
 /*
@@ -332,7 +392,9 @@ static int eq_fir_process(struct processing_module *mod,
 
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
-		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
+		if (!cd->config || eq_fir_check_blob_size(mod->dev, cd->config_size) < 0)
+			return -EINVAL;
 		ret = eq_fir_setup(mod, audio_stream_get_channels(source));
 		if (ret < 0) {
 			comp_err(mod->dev, "failed FIR setup");
@@ -384,7 +446,6 @@ static int eq_fir_prepare(struct processing_module *mod,
 	int channels;
 	enum sof_ipc_frame frame_fmt;
 	int ret = 0;
-	size_t data_size;
 
 	comp_dbg(dev, "entry");
 
@@ -407,8 +468,11 @@ static int eq_fir_prepare(struct processing_module *mod,
 	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
 
 	cd->eq_fir_func = eq_fir_passthrough;
-	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
-	if (cd->config && data_size > 0) {
+	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
+	if (cd->config) {
+		if (eq_fir_check_blob_size(dev, cd->config_size) < 0)
+			return -EINVAL;
+
 		ret = eq_fir_setup(mod, channels);
 		if (ret < 0)
 			comp_err(dev, "eq_fir_setup failed.");

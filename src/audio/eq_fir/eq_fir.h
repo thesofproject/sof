@@ -36,6 +36,7 @@ struct comp_data {
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_fir_config *config;
 	int32_t *fir_delay;			/**< pointer to allocated RAM */
+	size_t config_size;			/**< configuration size */
 	size_t fir_delay_size;			/**< allocated size */
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
 			    struct input_stream_buffer *bsource,
