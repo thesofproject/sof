@@ -23,6 +23,7 @@
 #define APP_NAME "sof-probes"
 
 #define PACKET_MAX_SIZE	4096	/**< Size limit for probe data packet */
+#define PACKET_DATA_SIZE_MAX (16u * 1024u * 1024u)	/**< Sanity limit for packet data size */
 #define DATA_READ_LIMIT 4096	/**< Data limit for file read */
 #define FILES_LIMIT	32	/**< Maximum num of probe output files */
 #define FILE_PATH_LIMIT 128	/**< Path limit for probe output files */
@@ -193,6 +194,12 @@ int validate_data_packet(struct probe_data_packet *packet)
 int process_sync(struct dma_frame_parser *p)
 {
 	struct probe_data_packet *temp_packet;
+
+	if (p->packet->data_size_bytes > PACKET_DATA_SIZE_MAX) {
+		fprintf(stderr, "error: packet data size %u exceeds maximum %u\n",
+			p->packet->data_size_bytes, PACKET_DATA_SIZE_MAX);
+		return -EINVAL;
+	}
 
 	/* request to copy data_size from probe packet and 64-bit checksum */
 	p->total_data_to_copy = p->packet->data_size_bytes + sizeof(uint64_t);
