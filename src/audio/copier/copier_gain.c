@@ -150,7 +150,7 @@ int copier_gain_dma_control(union ipc4_connector_node_id node, const char *confi
 		}
 
 		struct ipc4_copier_module_cfg *copier_cfg = cd->dd[0]->dai_spec_config;
-		const int channels = copier_cfg->base.audio_fmt.channels_count;
+		const uint32_t channels = copier_cfg->base.audio_fmt.channels_count;
 
 		ret = copier_set_gain(dev, cd->dd[0]->gain_data, gain_data, channels);
 		if (ret)
@@ -162,13 +162,18 @@ int copier_gain_dma_control(union ipc4_connector_node_id node, const char *confi
 }
 
 int copier_set_gain(struct comp_dev *dev, struct copier_gain_params *gain_params,
-		    struct gain_dma_control_data *gain_data, int channels)
+		    struct gain_dma_control_data *gain_data, uint32_t channels)
 {
 	uint16_t static_gain[MAX_GAIN_COEFFS_CNT];
 	int ret;
 
 	if (!gain_data) {
 		comp_err(dev, "Gain data is NULL");
+		return -EINVAL;
+	}
+
+	if (channels == 0 || channels > MAX_GAIN_COEFFS_CNT) {
+		comp_err(dev, "invalid channels count %u", channels);
 		return -EINVAL;
 	}
 

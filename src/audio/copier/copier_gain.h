@@ -8,6 +8,7 @@
 #ifndef __SOF_COPIER_GAIN_H__
 #define __SOF_COPIER_GAIN_H__
 
+#include <stdint.h>
 #include <sof/audio/buffer.h>
 #include <ipc4/base_fw.h>
 #include <ipc4/gateway.h>
@@ -219,7 +220,7 @@ enum copier_gain_state copier_gain_eval_state(struct copier_gain_params *gain_pa
  * @return 0 on success, otherwise a negative error code.
  */
 int copier_set_gain(struct comp_dev *dev, struct copier_gain_params *gain_params,
-		    struct gain_dma_control_data *gain_data, int channels);
+		    struct gain_dma_control_data *gain_data, uint32_t channels);
 
 /**
  * Checks for unity gain mode.
