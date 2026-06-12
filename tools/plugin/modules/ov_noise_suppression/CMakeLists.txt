@@ -39,4 +39,22 @@ set_target_properties(sof_ns
 	INSTALL_RPATH "${sof_install_directory}/alsa-lib"
 	INSTALL_RPATH_USE_LINK_PATH TRUE
 )
+
+# Regression test for the input-shape validation guard. Gated on
+# OpenVINO_FOUND alongside the module itself, so a host without
+# OpenVINO simply skips it.
+add_executable(test_ns_shape_validation test_ns_shape_validation.cpp)
+target_link_libraries(test_ns_shape_validation PRIVATE sof_ns_interface)
+target_include_directories(test_ns_shape_validation PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${sof_source_directory}/src/include
+	${sof_source_directory}/posix/include
+	${sof_source_directory}/src/arch/host/include
+	${sof_source_directory}/src/platform/posix/include)
+set_target_properties(test_ns_shape_validation PROPERTIES LINKER_LANGUAGE CXX)
+
+add_test(NAME ns_shape_zero
+	COMMAND test_ns_shape_validation --dim 0 --dim 480)
+add_test(NAME ns_shape_overflow
+	COMMAND test_ns_shape_validation --dim 9223372036854775807 --dim 1024)
 endif()
