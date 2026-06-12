@@ -98,7 +98,8 @@ static int tb_register_graph(struct tplg_context *ctx, struct tplg_comp_info *te
 
 	for (i = 0; i < num_connections; i++) {
 		ret = tplg_create_graph(ctx, num_comps, pipeline_id, temp_comp_list,
-					pipeline_string, &connection, i);
+					pipeline_string, sizeof(pipeline_string),
+					&connection, i);
 		if (ret < 0)
 			return ret;
 

@@ -338,6 +338,7 @@ int tplg_new_process(struct tplg_context *ctx, void *process, size_t process_siz
 
 int tplg_create_graph(struct tplg_context *ctx, int count, int pipeline_id,
 		      struct tplg_comp_info *temp_comp_list, char *pipeline_string,
+		      size_t pipeline_string_size,
 		      struct sof_ipc_pipe_comp_connect *connection,
 		      int route_num);
 
