@@ -284,10 +284,9 @@ static uint32_t ams_push_slot(struct ams_shared_context __sparse_cache *ctx_shar
 
 	for (uint32_t i = 0; i < ARRAY_SIZE(ctx_shared->slots); ++i) {
 		if (ctx_shared->slot_uses[i] == 0) {
-			/* the slot stores the payload struct (read back via
-			 * u.msg); AMS_MESSAGE_SIZE() adds message_length, which
-			 * over-reads past the struct since message is a pointer,
-			 * not inline data
+			/* the slot only carries the payload struct (read back
+			 * via u.msg); message points to a caller-owned buffer
+			 * rather than inline data, so copy exactly the struct
 			 */
 			err = memcpy_s((__sparse_force void *)ctx_shared->slots[i].u.msg_raw,
 				       sizeof(ctx_shared->slots[i].u.msg_raw),

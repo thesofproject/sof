@@ -29,10 +29,6 @@
 /* Space allocated for async message content*/
 #define AMS_MAX_MSG_SIZE 0x1000
 
-/* Size of slots message, module id and instance id */
-#define AMS_SLOT_SIZE(msg) (AMS_MESSAGE_SIZE(msg) + sizeof(uint16_t) * 2)
-#define AMS_MESSAGE_SIZE(msg) (sizeof(*msg) - sizeof(char) + (sizeof(char) * (msg->message_length)))
-
 /**
  * \brief IXC message payload
  *
