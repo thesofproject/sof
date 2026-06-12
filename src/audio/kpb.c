@@ -2561,32 +2561,42 @@ static int prepare_fmt_modules_list(struct comp_dev *kpb_dev,
 	struct kpb_fmt_dev_list *fmt_device_list =
 		&((struct comp_data *)comp_get_drvdata(kpb_dev))->fmt_device_list;
 
+	if (outpin_idx >= KPB_MAX_SINK_CNT)
+		return -EINVAL;
+
 	fmt_device_list->kpb_list_item[outpin_idx] = kpb_dev;
 	ret = devicelist_push(&fmt_device_list->device_list[outpin_idx],
 			      &fmt_device_list->kpb_list_item[outpin_idx]);
 	if (ret < 0)
-		return ret;
+		goto err;
 
 	for (size_t mod_idx = 0; mod_idx < modules_to_prepare->number_of_modules; ++mod_idx) {
 		uint32_t comp_id = IPC4_COMP_ID(modules_to_prepare->dev_ids[mod_idx].module_id,
 						modules_to_prepare->dev_ids[mod_idx].instance_id);
 
 		dev = ipc4_get_comp_dev(comp_id);
-		if (!dev)
-			return -EINVAL;
+		if (!dev) {
+			ret = -EINVAL;
+			goto err;
+		}
 
 		struct comp_dev **new_list_item_ptr;
 
 		ret = alloc_fmt_module_list_item(fmt_device_list, dev, &new_list_item_ptr);
 		if (ret < 0)
-			return ret;
+			goto err;
 		*new_list_item_ptr = dev;
 		ret = devicelist_push(&fmt_device_list->device_list[outpin_idx],
 				      new_list_item_ptr);
 		if (ret < 0)
-			return ret;
+			goto err;
 	}
 	return 0;
+
+err:
+	/* drop any entries pushed so far to avoid leaving a half-configured list */
+	clear_fmt_modules_list(fmt_device_list, outpin_idx);
+	return ret;
 }
 
 static int clear_fmt_modules_list(struct kpb_fmt_dev_list *fmt_device_list,
