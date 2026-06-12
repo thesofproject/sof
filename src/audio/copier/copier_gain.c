@@ -182,7 +182,7 @@ int copier_set_gain(struct comp_dev *dev, struct copier_gain_params *gain_params
 
 	size_t gain_coef_size = channels * sizeof(uint16_t);
 
-	ret = memcpy_s(static_gain, gain_coef_size, gain_data->gain_coeffs,
+	ret = memcpy_s(static_gain, sizeof(static_gain), gain_data->gain_coeffs,
 		       gain_coef_size);
 	if (ret) {
 		comp_err(dev, "memcpy_s failed with error %d", ret);
