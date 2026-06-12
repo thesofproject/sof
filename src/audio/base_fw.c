@@ -344,6 +344,12 @@ __cold static int basefw_kcps_allocation_request(struct ipc4_resource_kcps *requ
 	assert_can_be_cold();
 
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	if (request->core_id >= CONFIG_CORE_COUNT) {
+		tr_err(&ipc_tr, "invalid core_id %u",
+		       request->core_id);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
 	if (core_kcps_adjust(request->core_id, request->kcps))
 		return IPC4_ERROR_INVALID_PARAM;
 #endif
