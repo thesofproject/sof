@@ -1247,7 +1247,7 @@ void downmix16bit_4ch_mono(struct up_down_mixer_data *cd, const uint8_t * const 
 	uint32_t idx3 = get_channel_index(cd->in_channel_map, 2);
 	uint32_t idx4 = get_channel_index(cd->in_channel_map, 3);
 
-	uint16_t coeffs[4] = {cd->downmix_coefficients[idx1],
+	uint16_t coeffs[4] __attribute__((aligned(8))) = {cd->downmix_coefficients[idx1],
 			      cd->downmix_coefficients[idx2],
 			      cd->downmix_coefficients[idx3],
 			      cd->downmix_coefficients[idx4]
