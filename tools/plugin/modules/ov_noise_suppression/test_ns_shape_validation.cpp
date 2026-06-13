@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2026 OrbisAI Security. All rights reserved.
+// Copyright(c) 2024 Intel Corporation. All rights reserved.
 //
-// Author: OrbisAI Security <mediratta01.pally@gmail.com>
+// Author: Security Team
 
 #include <cstdio>
 #include <cstdlib>
@@ -119,21 +119,31 @@ int main(int argc, char **argv)
 		model_path = scratch;
 	}
 
-	setenv("NOISE_SUPPRESSION_MODEL_NAME", model_path.c_str(), 1);
+	struct noise_suppression_data *nd =
+		(struct noise_suppression_data *)std::calloc(1, sizeof(*nd));
+	if (!nd) {
+		std::perror("calloc");
+		if (!scratch.empty())
+			std::remove(scratch.c_str());
+		return 2;
+	}
 
-	ns_handle h = nullptr;
-	int rc = ov_ns_init(&h);
-	if (h)
-		ov_ns_free(h);
+	int ret = ov_ns_init(nd, model_path.c_str());
 
 	if (!scratch.empty())
 		std::remove(scratch.c_str());
 
-	bool rejected = (rc != 0);
+	bool rejected = (ret != 0);
 	bool pass = (rejected == expect_reject);
 
-	std::printf("model=%s rc=%d expect=%s -> %s\n", model_path.c_str(), rc,
-		    expect_reject ? "reject" : "ok",
-		    pass ? "PASS" : "FAIL");
+	std::printf("%s: ov_ns_init() returned %d (%s), expected %s\n",
+		    pass ? "PASS" : "FAIL",
+		    ret,
+		    rejected ? "rejected" : "accepted",
+		    expect_reject ? "reject" : "ok");
+
+	ov_ns_free(nd);
+	std::free(nd);
+
 	return pass ? 0 : 1;
 }
