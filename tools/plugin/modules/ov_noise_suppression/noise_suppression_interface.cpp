@@ -12,6 +12,7 @@
 
 #include "noise_suppression_interface.h"
 #define NS_MAX_SOURCE_CHANNELS 2
+#define NS_MAX_SHAPE_DIM (1u << 24)
 
 extern "C" {
 	struct ns_data {
@@ -86,7 +87,7 @@ extern "C" {
 
 		nd->inp_shape = nd->model->input("input").get_shape();
 		for (auto dim : nd->inp_shape)
-			if (!dim || dim > (1u << 24))
+			if (!dim || dim > NS_MAX_SHAPE_DIM)
 				return -EINVAL;
 
 		return 0;
@@ -145,7 +146,7 @@ extern "C" {
 
 				state_shape = nd->model->input(inp_state_name).get_shape();
 				for (auto dim : state_shape)
-					if (!dim || dim > (1u << 24))
+					if (!dim || dim > NS_MAX_SHAPE_DIM)
 						return -EINVAL;
 				if (nd->iter > 0) {
 					/*

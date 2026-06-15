@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2024 Intel Corporation. All rights reserved.
+// Copyright(c) 2026 Intel Corporation. All rights reserved.
 //
-// Author: Security Team
+// Author: Pally Mediratta <mediratta01.pally@gmail.com>
 
 #include <cstdio>
 #include <cstdlib>
