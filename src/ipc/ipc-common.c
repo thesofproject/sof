@@ -431,7 +431,7 @@ int ipc_user_forward_cmd(struct ipc4_message_request *ipc4)
 	k_event_set(pdata->event, IPC_USER_EVENT_CMD);
 
 	/* Wait for user thread to complete */
-	ret = k_sem_take(pdata->sem, K_MSEC(10));
+	ret = k_sem_take(pdata->sem, K_MSEC(100));
 	if (ret) {
 		LOG_ERR("IPC user: sem error %d\n", ret);
 		return ret;
