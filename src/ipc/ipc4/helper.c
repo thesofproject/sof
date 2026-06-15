@@ -1302,12 +1302,18 @@ int ipc4_find_dma_config(struct ipc_config_dai *dai, uint8_t *data_buffer, uint3
 int ipc4_find_dma_config_multiple(struct ipc_config_dai *dai, uint8_t *data_buffer,
 				  uint32_t size, uint32_t device_id, int dma_cfg_idx)
 {
-	uint32_t end_addr = (uint32_t)data_buffer + size;
+	uintptr_t end_addr = (uintptr_t)data_buffer + size;
 	struct ipc_dma_config *dma_cfg;
 	struct sof_tlv *tlvs;
 
-	for (tlvs = (struct sof_tlv *)data_buffer; tlvs && (uint32_t)tlvs < end_addr;
+	for (tlvs = (struct sof_tlv *)data_buffer; tlvs && (uintptr_t)tlvs < end_addr;
 	     tlvs = tlv_next(tlvs)) {
+		/* Reject a host TLV that overruns the buffer or wraps tlv_next(). */
+		uintptr_t remaining = end_addr - (uintptr_t)tlvs;
+
+		if (remaining < sizeof(*tlvs) || tlvs->length > remaining - sizeof(*tlvs))
+			return IPC4_INVALID_REQUEST;
+
 		dma_cfg = tlv_value_ptr_get(tlvs, GTW_DMA_CONFIG_ID);
 		if (!dma_cfg)
 			continue;
