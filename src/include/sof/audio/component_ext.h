@@ -26,7 +26,6 @@
 /** \brief Holds list of registered components' drivers */
 struct comp_driver_list {
 	struct list_item list;	/**< list of component drivers */
-	struct k_spinlock lock;	/**< list lock */
 };
 
 /** \brief Retrieves the component device buffer list. */
