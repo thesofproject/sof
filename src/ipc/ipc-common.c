@@ -356,7 +356,7 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension)
 	k_event_set(pdata->event, IPC_USER_EVENT_CMD);
 
 	/* Wait for user thread to complete */
-	ret = k_sem_take(pdata->sem, K_MSEC(10));
+	ret = k_sem_take(pdata->sem, K_MSEC(100));
 	if (ret) {
 		LOG_ERR("IPC user: sem error %d\n", ret);
 		/* fall through to complete the cmd */
