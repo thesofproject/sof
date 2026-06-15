@@ -12,9 +12,12 @@
 #include <sof/math/fft.h>
 #include <sof/math/log.h>
 #include <sof/math/numbers.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>
+
+LOG_MODULE_REGISTER(math_auditory, CONFIG_SOF_LOG_LEVEL);
 
 #define ONE_Q16 Q_CONVERT_FLOAT(1, 16)
 #define ONE_Q20 Q_CONVERT_FLOAT(1, 20)
@@ -117,6 +120,16 @@ int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_fil
 	if (!fb->scratch_data1 || !fb->scratch_data2)
 		return -ENOMEM;
 
+	/* fb->mel_bins is used both as the loop bound and as part of the
+	 * (mel_bins + 1) divisor below. Reject non-positive values up front to
+	 * avoid a divide by zero (mel_bins == -1) and to keep mel_step
+	 * meaningful.
+	 */
+	if (fb->mel_bins <= 0 || fb->mel_bins > AUDITORY_MAX_MEL_BANDS) {
+		comp_cl_err(mod->dev, "Invalid mel_bins %d", fb->mel_bins);
+		return -EINVAL;
+	}
+
 	/* Log power can be log, or log10 or dB, get multiply coef to convert
 	 * log to desired format.
 	 */
@@ -149,6 +162,17 @@ int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_fil
 	mel_start = psy_hz_to_mel(fb->start_freq);
 	mel_end = psy_hz_to_mel(fb->end_freq);
 	mel_step = (mel_end - mel_start) / (fb->mel_bins + 1);
+	/* delta_cl / delta_rc below are both equal to mel_step; guard against
+	 * a non-positive step (start_freq >= end_freq, or so many bins that
+	 * the integer division truncates to zero) before using them as
+	 * divisors.
+	 */
+	if (mel_step <= 0) {
+		comp_cl_err(mod->dev, "Invalid mel_step %d (start_freq=%d end_freq=%d mel_bins=%d)",
+			    mel_step, fb->start_freq, fb->end_freq, fb->mel_bins);
+		return -EINVAL;
+	}
+
 	for (i = 0; i < fb->mel_bins; i++) {
 		left_mel = mel_start + i * mel_step;
 		center_mel = mel_start + (i + 1) * mel_step;
@@ -160,6 +184,11 @@ int mod_psy_get_mel_filterbank(struct processing_module *mod, struct psy_mel_fil
 		if (fb->slaney_normalize) {
 			left_hz = psy_mel_to_hz(left_mel);
 			right_hz = psy_mel_to_hz(right_mel);
+			if (right_hz <= left_hz) {
+				comp_cl_err(mod->dev, "Invalid Hz range left=%d right=%d at mel bin %d",
+					    left_hz, right_hz, i);
+				return -EINVAL;
+			}
 			scale = Q_SHIFT_RND(TWO_Q29 / (right_hz - left_hz), 29, 16); /* Q16.16*/
 			if (i == 0) {
 				scale_inv = Q_SHIFT_LEFT(ONE_Q30 / scale, 14, 16);
