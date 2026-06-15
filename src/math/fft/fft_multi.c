@@ -75,7 +75,7 @@ struct fft_multi_plan *mod_fft_multi_plan_new(struct processing_module *mod, voi
 			plan->tmp_i32[0] = mod_balloc(mod, tmp_size);
 			if (!plan->tmp_i32[0]) {
 				comp_cl_err(mod->dev, "Failed to allocate FFT buffers");
-				goto err_free_bit_reverse;
+				goto err;
 			}
 
 			/* Set up buffers */
@@ -95,7 +95,7 @@ struct fft_multi_plan *mod_fft_multi_plan_new(struct processing_module *mod, voi
 								plan->tmp_o32[i],
 								plan->fft_size, 32);
 			if (!plan->fft_plan[i])
-				goto err_free_buffer;
+				goto err;
 
 			plan->fft_plan[i]->bit_reverse_idx = plan->bit_reverse_idx;
 		}
@@ -110,14 +110,13 @@ struct fft_multi_plan *mod_fft_multi_plan_new(struct processing_module *mod, voi
 				  plan->fft_plan[0]->len);
 	return plan;
 
-err_free_buffer:
-	mod_free(mod, plan->tmp_i32[0]);
-
-err_free_bit_reverse:
-	mod_free(mod, plan->bit_reverse_idx);
-
 err:
-	mod_free(mod, plan);
+	/* mod_fft_multi_plan_free() handles partial state safely:
+	 *  - fft_plan[i] entries left NULL by mod_zalloc are skipped by mod_free,
+	 *  - tmp_i32[0] is freed only when num_ffts > 1, so it does not free
+	 *    the caller-provided inb in the single-FFT case.
+	 */
+	mod_fft_multi_plan_free(mod, plan);
 	return NULL;
 }
 
