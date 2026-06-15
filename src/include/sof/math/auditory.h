@@ -14,6 +14,7 @@
 #include <sof/math/log.h>
 #include <stdint.h>
 
+#define AUDITORY_MAX_MEL_BANDS	256
 #define AUDITORY_EPS_Q31	1 /* Smallest nonzero Q1.31 value */
 #define AUDITORY_LOG2_2P25_Q16	Q_CONVERT_FLOAT(25.0, 16) /* log2(2^25) */
 
