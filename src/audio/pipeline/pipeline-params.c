@@ -267,7 +267,7 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		/* ipc4 module is only prepared in its parent pipeline */
-		if (IPC4_MOD_ID(current->ipc_config.id))
+		if (IS_ENABLED(CONFIG_IPC_MAJOR_4))
 			return 0;
 
 		/* Propagate prepare only to pipelines in the same direction */

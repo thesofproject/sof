@@ -140,7 +140,7 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 			err = SOF_TASK_STATE_RESCHEDULE;
 		} else if (p->status == COMP_STATE_PAUSED) {
 			/* reset the pipeline components for IPC4 after the STOP trigger */
-			if (cmd == COMP_TRIGGER_STOP && IPC4_MOD_ID(host->ipc_config.id)) {
+			if (cmd == COMP_TRIGGER_STOP && IS_ENABLED(CONFIG_IPC_MAJOR_4)) {
 				err = pipeline_reset(host->pipeline, host);
 				if (err < 0)
 					reply->error = err;
@@ -283,6 +283,16 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	struct list_item *tlist;
 	struct pipeline *p;
 	uint32_t flags;
+
+#ifdef CONFIG_IPC_MAJOR_4
+	/*
+	 * With IPC4, each pipeline is triggered separately. Exactly 1 pipeline
+	 * is expected in the pipelines list (it's unclear whether an empty list
+	 * should be tolerated).
+	 */
+	assert(list_is_empty(&ctx->pipelines) ||
+	   list_item_is_last(ctx->pipelines.next, &ctx->pipelines));
+#endif
 
 	/*
 	 * Interrupts have to be disabled while adding tasks to or removing them
