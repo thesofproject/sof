@@ -199,7 +199,7 @@ struct tplg_context {
 #define tplg_check_bounds(ctx, advance)						\
 	do {									\
 		if ((long)(advance) < 0 ||					\
-		    ctx->tplg_offset + (long)(advance) > (long)ctx->tplg_size) { \
+		    (ctx)->tplg_offset + (long)(advance) > (long)(ctx)->tplg_size) { \
 			printf("%s %d topology offset %ld + %ld > size %zu\n",	\
 			       __func__, __LINE__, (ctx)->tplg_offset,	\
 			       (long)(advance), (ctx)->tplg_size);	\
@@ -210,51 +210,51 @@ struct tplg_context {
 #define tplg_get_hdr(ctx)							\
 	({struct snd_soc_tplg_hdr *ptr;						\
 	tplg_check_bounds(ctx, sizeof(*ptr));					\
-	ptr = (struct snd_soc_tplg_hdr *)(ctx->tplg_base + ctx->tplg_offset);	\
+	ptr = (struct snd_soc_tplg_hdr *)((ctx)->tplg_base + (ctx)->tplg_offset); \
 	if (ptr->size != sizeof(*ptr)) {					\
 		printf("%s %d hdr size mismatch 0x%x:0x%zx at offset %ld\n",	\
 				__func__, __LINE__, ptr->size, sizeof(*ptr),	\
-				ctx->tplg_offset); assert(0);			\
+		       (ctx)->tplg_offset); assert(0);			\
 	}									\
 	ctx->tplg_offset += sizeof(*ptr); (void *)ptr; })
 
 #define tplg_skip_hdr_payload(ctx)						\
 	({struct snd_soc_tplg_hdr *ptr;						\
 	tplg_check_bounds(ctx, hdr->payload_size);				\
-	ptr = (struct snd_soc_tplg_hdr *)(ctx->tplg_base + ctx->tplg_offset);	\
-	ctx->tplg_offset += hdr->payload_size; (void *)ptr; })
+	ptr = (struct snd_soc_tplg_hdr *)((ctx)->tplg_base + (ctx)->tplg_offset); \
+	(ctx)->tplg_offset += hdr->payload_size; (void *)ptr; })
 
 #define tplg_get_object(ctx, obj)						\
 	({void *ptr;								\
 	tplg_check_bounds(ctx, sizeof(*(obj)));					\
-	ptr = ctx->tplg_base + ctx->tplg_offset;				\
-	ctx->tplg_offset += sizeof(*(obj)); ptr; })
+	ptr = (ctx)->tplg_base + (ctx)->tplg_offset;			\
+	(ctx)->tplg_offset += sizeof(*(obj)); ptr; })
 
 #define tplg_get_object_priv(ctx, obj, priv_size)				\
 	({void *ptr;								\
 	tplg_check_bounds(ctx, sizeof(*(obj)) + (priv_size));			\
-	ptr = ctx->tplg_base + ctx->tplg_offset;				\
-	ctx->tplg_offset += sizeof(*(obj)) + priv_size; ptr; })
+	ptr = (ctx)->tplg_base + (ctx)->tplg_offset;			\
+	(ctx)->tplg_offset += sizeof(*(obj)) + (priv_size); ptr; })
 
 #define tplg_get_widget(ctx)							\
 	({struct snd_soc_tplg_dapm_widget *w;					\
 	tplg_check_bounds(ctx, sizeof(*w));					\
-	w = (struct snd_soc_tplg_dapm_widget *)(ctx->tplg_base + ctx->tplg_offset); \
+	w = (struct snd_soc_tplg_dapm_widget *)((ctx)->tplg_base + (ctx)->tplg_offset); \
 	tplg_check_bounds(ctx, sizeof(*w) + w->priv.size);			\
-	ctx->tplg_offset += sizeof(*w) + w->priv.size; w; })
+	(ctx)->tplg_offset += sizeof(*w) + w->priv.size; w; })
 
 #define tplg_get_graph(ctx)							\
 	({struct snd_soc_tplg_dapm_graph_elem *w;				\
 	tplg_check_bounds(ctx, sizeof(*w));					\
-	w = (struct snd_soc_tplg_dapm_graph_elem *)(ctx->tplg_base + ctx->tplg_offset); \
-	ctx->tplg_offset += sizeof(*w); w; })
+	w = (struct snd_soc_tplg_dapm_graph_elem *)((ctx)->tplg_base + (ctx)->tplg_offset); \
+	(ctx)->tplg_offset += sizeof(*w); w; })
 
 #define tplg_get_pcm(ctx)                                                       \
 	({struct snd_soc_tplg_pcm *pcm;                         \
 	tplg_check_bounds(ctx, sizeof(*pcm));					\
-	pcm = (struct snd_soc_tplg_pcm *)(ctx->tplg_base + ctx->tplg_offset); \
+	pcm = (struct snd_soc_tplg_pcm *)((ctx)->tplg_base + (ctx)->tplg_offset); \
 	tplg_check_bounds(ctx, sizeof(*pcm) + pcm->priv.size);			\
-	ctx->tplg_offset += sizeof(*pcm) + pcm->priv.size; pcm; })
+	(ctx)->tplg_offset += sizeof(*pcm) + pcm->priv.size; pcm; })
 
 static inline int tplg_valid_widget(struct snd_soc_tplg_dapm_widget *widget)
 {
