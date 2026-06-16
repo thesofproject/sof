@@ -844,6 +844,9 @@ static int lib_manager_dma_init(struct lib_manager_dma_ext *dma_ext, uint32_t dm
 	}
 
 	chan_index = dma_request_channel(dma_ext->dma->z_dev, &dma_id);
+	if (chan_index < 0)
+		return chan_index;
+
 	dma_ext->chan = &dma_ext->dma->chan[chan_index];
 	if (!dma_ext->chan)
 		return -EINVAL;
