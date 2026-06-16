@@ -32,6 +32,7 @@
 #include <zephyr/llext/llext.h>
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/llext/inspect.h>
+#include <zephyr/sys/math_extras.h>
 #include <kernel_arch_interface.h>
 
 #include <rimage/sof/user/manifest.h>
@@ -457,8 +458,21 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 {
 	struct sof_man_module *mod_array = (struct sof_man_module *)((uint8_t *)desc +
 								     SOF_MAN_MODULE_OFFSET(0));
+	/* preload_page_count was checked when library was loaded */
+	size_t lib_size = desc->header.preload_page_count * PAGE_SZ;
 	unsigned int i, n_mod;
 	size_t offs;
+
+	/* We'll check overflows below */
+	uintptr_t mod_end_addr = (uintptr_t)(mod_array + desc->header.num_module_entries);
+	uintptr_t img_end_addr = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET + lib_size;
+
+	if (mod_end_addr < (uintptr_t)mod_array || img_end_addr < (uintptr_t)desc ||
+	    mod_end_addr >= img_end_addr) {
+		tr_err(&lib_manager_tr, "invalid module entry count: %u",
+		       desc->header.num_module_entries);
+		return -EOVERFLOW;
+	}
 
 	/* count modules */
 	for (i = 0, n_mod = 0, offs = ~0; i < desc->header.num_module_entries; i++)
@@ -1055,9 +1069,13 @@ int llext_manager_add_library(uint32_t module_id)
 
 	const struct sof_man_fw_desc *desc = lib_manager_get_library_manifest(module_id);
 	unsigned int i;
+	int ret;
 
-	if (!ctx->mod)
-		llext_manager_mod_init(ctx, desc);
+	if (!ctx->mod) {
+		ret = llext_manager_mod_init(ctx, desc);
+		if (ret < 0)
+			return ret;
+	}
 
 	for (i = 0; i < ctx->n_mod; i++) {
 		const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id + i);
@@ -1065,9 +1083,9 @@ int llext_manager_add_library(uint32_t module_id)
 		if (mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX) {
 			const struct sof_man_module_manifest *mod_manifest;
 			const struct sof_module_api_build_info *buildinfo;
-			int ret = llext_manager_link_single(module_id + i, desc, ctx,
-							(const void **)&buildinfo, &mod_manifest);
 
+			ret = llext_manager_link_single(module_id + i, desc, ctx,
+							(const void **)&buildinfo, &mod_manifest);
 			if (ret < 0)
 				return ret;
 		}
