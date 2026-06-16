@@ -414,11 +414,13 @@ void scheduler_dp_internal_free(struct task *task)
 #ifdef CONFIG_THREAD_NAME
 static void scheduler_dp_thread_name_set(k_tid_t thread_id, struct processing_module *mod)
 {
+#ifdef CONFIG_THREAD_NAME
 	char name[CONFIG_THREAD_MAX_NAME_LEN];
 
 	snprintf(name, sizeof(name), "DP:%#x", mod->dev->ipc_config.id);
 
 	k_thread_name_set(thread_id, name);
+#endif
 }
 #else
 /* k_thread_name_set() is a no-op so skip constructing a thread name */
