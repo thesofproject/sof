@@ -281,7 +281,10 @@ void lib_manager_get_instance_bss_address(uint32_t instance_id,
 					  const struct sof_man_module *mod,
 					  void __sparse_cache **va_addr, size_t *size)
 {
-	*size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / mod->instance_max_count *
+	/* mod->instance_max_count should never be 0, assume 1 if that happens */
+	unsigned int inst_cnt = mod->instance_max_count ? : 1;
+
+	*size = mod->segment[SOF_MAN_SEGMENT_BSS].flags.r.length / inst_cnt *
 		PAGE_SZ;
 	size_t inst_offset = *size * instance_id;
 	*va_addr = (void __sparse_cache *)(mod->segment[SOF_MAN_SEGMENT_BSS].v_base_addr +
