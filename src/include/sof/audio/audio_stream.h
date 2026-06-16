@@ -412,25 +412,6 @@ static inline void *audio_stream_wrap(const struct audio_stream *buffer, void *p
 
 /**
  * Verifies the pointer and performs rollover when reached the end of
- * the circular buffer.
- * @param ptr Pointer
- * @param buf_addr Start address of the circular buffer.
- * @param buf_end End address of the circular buffer.
- * @return Pointer, adjusted if necessary.
- */
-static inline void *cir_buf_wrap(void *ptr, void *buf_addr, void *buf_end)
-{
-	if (ptr >= buf_end)
-		ptr = (char *)buf_addr +
-			((char *)ptr - (char *)buf_end);
-
-	assert((intptr_t)ptr <= (intptr_t)buf_end);
-
-	return ptr;
-}
-
-/**
- * Verifies the pointer and performs rollover when reached the end of
  * the buffer.
  * @param buffer Buffer accessed by the pointer.
  * @param ptr Pointer
@@ -925,22 +906,6 @@ static inline int cir_buf_bytes_without_wrap(void *ptr, void *buf_end)
 {
 	assert((intptr_t)buf_end >= (intptr_t)ptr);
 	return (intptr_t)buf_end - (intptr_t)ptr;
-}
-
-/**
- * @brief Calculates numbers of s32 samples to buffer wrap when reading stream
- *	  backwards from current sample pointed by ptr towards begin.
- * @param ptr Read or write pointer og circular buffer.
- * @param buf_end End address of circular buffer.
- * @return Number of bytes to buffer wrap. For number of samples calculate
- *	   need to add size of sample to returned bytes count.
- */
-static inline int cir_buf_samples_without_wrap_s32(void *ptr, void *buf_end)
-{
-	int to_end = (int32_t *)buf_end - (int32_t *)ptr;
-
-	assert((intptr_t)buf_end >= (intptr_t)ptr);
-	return to_end;
 }
 
 /**
