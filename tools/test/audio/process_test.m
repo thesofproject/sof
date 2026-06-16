@@ -427,12 +427,39 @@ function test = test_defaults(t)
 
 	% No need to collect trace
 	test.trace = [tempname('/tmp') '.txt'];
+
+        switch t.comp
+		case 'phase_vocoder'
+			[fh, name, msg] = mkstemp('/tmp/phase_vocoder_enable.sh.XXXXXX');
+			if (fh < 0)
+				error("mkstemp() failed: %s", msg);
+			end
+			test.extra_opts = sprintf('-s %s', name);
+			test.extra_opts_file = name;
+			fprintf(fh, "amixer -c0 cset name='Analog Playback Phase Vocoder speed' 1.0\n");
+			fprintf(fh, "amixer -c0 cset name='Analog Playback Phase Vocoder enable' on\n");
+			fclose(fh);
+		case 'tdfb'
+			[fh, name, msg] = mkstemp('/tmp/tdfb_enable.sh.XXXXXX');
+			if (fh < 0)
+				error("mkstemp() failed: %s", msg);
+			end
+			test.extra_opts = sprintf('-s %s', name);
+			test.extra_opts_file = name;
+			fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB track' off\n");
+			fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB angle set' 90\n");
+			fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB beam' on\n");
+			fclose(fh);
+	end
 end
 
 function test = test_run_process(test)
 	delete_check(1, test.fn_out);
 	test = test_run(test);
 	delete_check(1, test.trace);
+	if isfield(test, 'extra_opts_file') && ~isempty(test.extra_opts_file)
+		delete_check(1, test.extra_opts_file);
+	end
 end
 
 function test_result_print(t, testverbose, testacronym, test)
