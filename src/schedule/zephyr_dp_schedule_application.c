@@ -411,6 +411,7 @@ void scheduler_dp_internal_free(struct task *task)
 	mod_free(pdata->mod, container_of(task, struct scheduler_dp_task_memory, task));
 }
 
+#ifdef CONFIG_THREAD_NAME
 static void scheduler_dp_thread_name_set(k_tid_t thread_id, struct processing_module *mod)
 {
 	char name[CONFIG_THREAD_MAX_NAME_LEN];
@@ -419,6 +420,10 @@ static void scheduler_dp_thread_name_set(k_tid_t thread_id, struct processing_mo
 
 	k_thread_name_set(thread_id, name);
 }
+#else
+/* k_thread_name_set() is a no-op so skip constructing a thread name */
+#define scheduler_dp_thread_name_set(x, y)
+#endif
 
 /* Called only in IPC context */
 int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
