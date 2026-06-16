@@ -22,12 +22,25 @@ SOF_DEFINE_REG_UUID(schedule);
 
 DECLARE_TR_CTX(sch_tr, SOF_UUID(schedule_uuid), LOG_LEVEL_INFO);
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+static inline bool scheduler_is_user(int type)
+{
+	/*
+	 * currently only LL managed in user-space, but longterm
+	 * goal is to move all audio application level scheduling
+	 * to user-space and only keep Zephyr scheduler logic in
+	 * kernel
+	 */
+	return type == SOF_SCHEDULE_LL_TIMER;
+}
+#endif
+
 int schedule_task_init(struct task *task,
 		       const struct sof_uuid_entry *uid, uint16_t type,
 		       uint16_t priority, enum task_state (*run)(void *data),
 		       void *data, uint16_t core, uint32_t flags)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedulers *schedulers;
 	struct schedule_data *sch = NULL;
 	struct list_item *slist;
 
@@ -35,6 +48,15 @@ int schedule_task_init(struct task *task,
 		tr_err(&sch_tr, "invalid task type");
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (scheduler_is_user(type))
+		schedulers = *arch_user_schedulers_get_for_core(core);
+	else
+		schedulers = *arch_schedulers_get();
+#else
+	schedulers = *arch_schedulers_get();
+#endif
 
 	if (!schedulers)
 		return -ENODEV;
@@ -68,6 +90,12 @@ int schedule_task_init(struct task *task,
 static void scheduler_register(struct schedule_data *scheduler)
 {
 	struct schedulers **sch = arch_schedulers_get();
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (scheduler_is_user(scheduler->type)) {
+		sch = arch_user_schedulers_get();
+	}
+#endif
 
 	if (!*sch) {
 		/* init schedulers list */
