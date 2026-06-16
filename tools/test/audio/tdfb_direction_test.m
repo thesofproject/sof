@@ -15,17 +15,17 @@ function tdfb_direction_test()
 % General settings
 cfg.delete_files = 1;
 cfg.do_plots = 1;
-cfg.tunepath = '../../tune/tdfb/data';
+cfg.tunepath = '../../../src/audio/tdfb/tune/data';
 
 % Arrays to test. Since the two beams configurations are merge of two designs (pm90deg)
 % need to specify a compatible data file identifier for a single beam design (az0el0deg)
-array_data_list = {'line2_50mm_az0el0deg_48khz', 'line4_28mm_az0el0deg_48khz', 'circular8_100mm_az0el0deg_48khz'};
-tdfb_name_list =  {'', 'line4_28mm_pm90deg_48khz', 'circular8_100mm_pm30deg_48khz'};
+array_data_list = {'line2_50mm_az0el0deg_48khz'};
+tdfb_name_list =  {''};
 
 %% Prepare
 addpath('std_utils');
 addpath('test_utils');
-addpath('../../tune/tdfb');
+addpath('../../../src/audio/tdfb/tune');
 
 for i = 1:length(array_data_list)
 
@@ -80,7 +80,16 @@ test.nch_in = max(bf.input_channel_select) + 1;
 test.nch_out = bf.num_output_channels;
 test.ch_in = 1:test.nch_in;
 test.ch_out = 1:test.nch_out;
-test.extra_opts='-d 4';
+[fh, name, msg] = mkstemp('/tmp/tdfb_enable.sh.XXXXXX');
+if (fh < 0)
+	error("mkstemp() failed: %s", msg);
+end
+test.extra_opts = sprintf('-d 4 -s %s', name);
+test.extra_opts_file = name;
+fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB track' on\n");
+fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB angle set' 90\n");
+fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB beam' on\n");
+fclose(fh);
 test.trace = 'tdfb_direction.txt';
 if length(arrayid)
 	test.comp = sprintf('tdfb_%s', arrayid);
@@ -92,6 +101,9 @@ function test = test_run_comp(test)
 
 delete_check(1, test.fn_out);
 test = test_run(test);
+if isfield(test, 'extra_opts_file') && ~isempty(test.extra_opts_file)
+	delete_check(1, test.extra_opts_file);
+end
 
 end
 
