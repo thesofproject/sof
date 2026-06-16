@@ -231,7 +231,15 @@ static void zephyr_ll_run(void *data)
 		list_item_del(list);
 		list_item_append(list, &task_head);
 
+		/* in user-space LL builds, the LL lock protects LL
+		 * tasks against IPC thread, so the lock must be held
+		 * while running the tasks.
+		 * in kernel LL builds, IPC thread blocks interrupts for
+		 * critical section, so lock can be freed here.
+		 */
+#ifndef CONFIG_SOF_USERSPACE_LL
 		zephyr_ll_unlock(sch, &flags);
+#endif
 
 		/*
 		 * task's .run() should only return either
@@ -246,7 +254,9 @@ static void zephyr_ll_run(void *data)
 			state = SOF_TASK_STATE_RESCHEDULE;
 		}
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 		zephyr_ll_lock(sch, &flags);
+#endif
 
 		if (pdata->freeing || state == SOF_TASK_STATE_COMPLETED) {
 			zephyr_ll_task_done(sch, task);
