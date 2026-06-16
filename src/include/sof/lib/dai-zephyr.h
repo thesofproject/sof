@@ -29,6 +29,9 @@
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/component.h>
+#ifdef CONFIG_DAI_INTEL_UAOL
+#include <sof/audio/dsrc.h>
+#endif
 #include <ipc/dai.h>
 #include <errno.h>
 #include <stddef.h>
@@ -113,6 +116,24 @@ typedef int (*channel_copy_func)(const struct audio_stream *src, unsigned int sr
 				 struct audio_stream *dst, unsigned int dst_channel,
 				 unsigned int frames);
 
+#ifdef CONFIG_DAI_INTEL_UAOL
+struct uaol_dai_data {
+	int feedback_drift;
+	uint32_t ms_since_last_adjustment;
+
+	int fb_chan_idx;
+	uint32_t *fb_dma_buf;
+	size_t fb_dma_buf_size;
+	struct dma_config *fb_z_config;
+
+	struct dsrc dsrc;
+	struct comp_buffer *dsrc_buf;
+
+	int link_id;
+	int stream_id;
+};
+#endif
+
 /**
  * \brief DAI runtime data
  */
@@ -146,6 +167,10 @@ struct dai_data {
 	void *dai_spec_config;			/* dai specific config from the host */
 
 	uint64_t wallclock;			/* wall clock at stream start */
+
+#ifdef CONFIG_DAI_INTEL_UAOL
+	struct uaol_dai_data uaol;
+#endif
 
 	/*
 	 * flag indicating two-step stop/pause for DAI comp and DAI DMA.
