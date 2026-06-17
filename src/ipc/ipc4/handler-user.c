@@ -1618,10 +1618,10 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
 #ifdef CONFIG_SOF_USERSPACE_LL
 	{
-		struct ipc4_module_large_config config;
+		const struct ipc4_module_large_config *config =
+			(const struct ipc4_module_large_config *)ipc4;
 
-		memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
-		if (config.primary.r.module_id) {
+		if (config->primary.r.module_id) {
 			ret = ipc_user_forward_cmd(ipc4);
 		} else {
 			/* Base firmware: keep in kernel (IMR access) */
