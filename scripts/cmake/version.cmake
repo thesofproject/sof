@@ -86,9 +86,21 @@ string(JSON SOF_MICRO ERROR_VARIABLE micro_error
 # Don't confuse "error not found" with "version not found"
 if(NOT "${micro_error}" STREQUAL "NOTFOUND")
 	message(STATUS "versions.json: ${micro_error}, defaulting to 0")
-	# TODO: default this to .99 on the main, never released branch like zephyr does
-	# Keep this default SOF_MICRO the same as the one in xtensa-build-zephyr.py
-	set(SOF_MICRO 0)
+	# Detect if the current branch is "main"
+	execute_process(
+		COMMAND git rev-parse --abbrev-ref HEAD
+		WORKING_DIRECTORY ${SOF_ROOT_SOURCE_DIRECTORY}
+		OUTPUT_VARIABLE GIT_BRANCH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+
+	# Set SOF_MICRO to 99 only on the "main" branch
+	if("${GIT_BRANCH}" STREQUAL "main")
+		set(SOF_MICRO 99)
+	else()
+		# Keep this default SOF_MICRO the same as the one in xtensa-build-zephyr.py
+		set(SOF_MICRO 0)
+	endif()
 endif()
 
 string(SUBSTRING "${GIT_LOG_HASH}" 0 5 SOF_TAG)
