@@ -454,6 +454,11 @@ static int rtnr_get_config(struct processing_module *mod,
 		return rtnr_get_bin_data(mod, cdata, fragment_size);
 
 	case SOF_CTRL_CMD_SWITCH:
+		if (cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
+			comp_err(dev, "num_elems %u > max %u",
+				 cdata->num_elems, SOF_IPC_MAX_CHANNELS);
+			return -EINVAL;
+		}
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->process_enable;
@@ -559,6 +564,12 @@ static int32_t rtnr_set_value(struct processing_module *mod, void *ctl_data)
 	struct comp_data *cd = module_get_private_data(mod);
 	uint32_t val = 0;
 	int32_t j;
+
+	if (cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
+		comp_err(dev, "num_elems %u > max %u",
+			 cdata->num_elems, SOF_IPC_MAX_CHANNELS);
+		return -EINVAL;
+	}
 
 	for (j = 0; j < cdata->num_elems; j++) {
 		val |= cdata->chanv[j].value;
