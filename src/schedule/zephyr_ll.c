@@ -807,6 +807,7 @@ __cold int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 	return 0;
 }
 
+#if CONFIG_SOF_USERSPACE_LL
 void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
 				uint32_t *data_off_size)
 {
@@ -827,3 +828,4 @@ struct ll_schedule_domain *zephyr_ll_domain(void)
 
 	return ll_sch->ll_domain;
 }
+#endif
