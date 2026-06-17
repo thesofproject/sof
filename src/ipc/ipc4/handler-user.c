@@ -1114,10 +1114,16 @@ __cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 	assert_can_be_cold();
 
 	/* Validate host-controlled payload size before any use or arithmetic. */
-	if (data_off_size > MAILBOX_HOSTBOX_SIZE)
+	if (data_off_size > MAILBOX_HOSTBOX_SIZE) {
+		tr_err(&ipc_tr, "data_off_size greater than mailbox %u > %u",
+		       data_off_size, (uint32_t)MAILBOX_HOSTBOX_SIZE);
 		return IPC4_INVALID_CONFIG_DATA_STRUCT;
-	if (init_block && data_off_size < sizeof(struct sof_tlv))
+	}
+	if (init_block && data_off_size < sizeof(struct sof_tlv)) {
+		tr_err(&ipc_tr, "init_block data_off_size too small %u < %zu",
+		       data_off_size, sizeof(struct sof_tlv));
 		return IPC4_INVALID_CONFIG_DATA_STRUCT;
+	}
 
 	/* Old FW comment: bursted configs */
 	if (init_block && final_block) {
