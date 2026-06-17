@@ -443,7 +443,7 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 
 	assert_can_be_cold();
 
-	LOG_INF("pipe_desc %x, instance %u", pipe_desc, pipe_desc->primary.r.instance_id);
+	LOG_INF("pipe_desc %p, instance %u", pipe_desc, pipe_desc->primary.r.instance_id);
 
 	/* check whether pipeline id is already taken or in use */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipe_desc->primary.r.instance_id);
