@@ -18,6 +18,7 @@
 #include <user/trace.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
+#include <sof/ipc/ipc_reply.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -25,6 +26,7 @@
 struct comp_driver;
 struct dma_sg_elem_array;
 struct ipc_msg;
+struct ipc4_message_request;
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
@@ -212,6 +214,29 @@ struct dai_data;
 int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev);
 
 /**
+ * \brief Processes IPC4 userspace module message.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] reply IPC message reply structure.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_user_process_module_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
+
+/**
+ * \brief Processes IPC4 userspace global message.
+ * @param[in] ipc4 IPC4 message request.
+ * @param[in] reply IPC message reply structure.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
+
+/**
+ * \brief Complete the IPC compound message.
+ * @param[in] msg_id IPC message ID.
+ * @param[in] error Error code of the IPC command.
+ */
+void ipc_compound_msg_done(uint32_t msg_id, int error);
+
+/**
  * \brief create a IPC boot complete message.
  * @param[in] header header.
  * @param[in] data data.
@@ -280,12 +305,6 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr);
  * @return 1 if successful (reply sent by other core), error code otherwise.
  */
 int ipc_process_on_core(uint32_t core, bool blocking);
-
-/**
- * \brief reply to an IPC message.
- * @param[in] reply pointer to the reply structure.
- */
-void ipc_msg_reply(struct sof_ipc_reply *reply);
 
 /**
  * \brief Call platform-specific IPC completion function.
