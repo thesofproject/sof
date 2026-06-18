@@ -88,6 +88,8 @@ struct tdfb_comp_data {
 	int16_t *output_stream_mix;         /**< for each FIR define stream */
 	int16_t az_value;		    /**< beam steer azimuth as in control enum */
 	int16_t az_value_estimate;	    /**< beam steer azimuth as in control enum */
+	int16_t source_channels;	    /**< source channel count cached for validator */
+	int16_t sink_channels;		    /**< sink channel count cached for validator */
 	size_t config_size;		    /**< size of the configuration blob */
 	size_t fir_delay_size;              /**< allocated size */
 	unsigned int max_frames;	    /**< max frames to process */

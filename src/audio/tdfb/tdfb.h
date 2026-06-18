@@ -29,6 +29,13 @@
 #define SOF_TDFB_CTRL_INDEX_AZIMUTH_ESTIMATE	1	/* enum */
 #define SOF_TDFB_CTRL_INDEX_FILTERBANK		0	/* bytes */
 
+/* Helper for magic value for number of words for input_channel_select, output_channel_mix,
+ * and output_stream_mix. It used to validate that the blob size is sufficient for all the
+ * filters defined for controllable beam angles. The words count is in the check code
+ * multiplied with num_filters and sizeof(). See the configuration data description below:
+ */
+#define SOF_TDFB_CONFIG_FILTER_CONTROL_NUM_WORDS 3
+
 /*
  * sof_tdfb_config data[]
 
