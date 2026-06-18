@@ -39,6 +39,7 @@ struct comp_data {
 	struct comp_data_blob_handler *model_handler;
 	struct sof_eq_iir_config *config;
 	int32_t *iir_delay;			/**< pointer to allocated RAM */
+	size_t config_size;			/**< configuration size */
 	size_t iir_delay_size;			/**< allocated size */
 	eq_iir_func eq_iir_func;		/**< processing function */
 };
@@ -69,6 +70,10 @@ void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsou
 		 struct output_stream_buffer *bsink, uint32_t frames);
 
 int eq_iir_setup(struct processing_module *mod, int nch);
+
+int eq_iir_validate_config(struct comp_dev *dev,
+			   struct sof_eq_iir_config *config,
+			   size_t config_size);
 
 void eq_iir_free_delaylines(struct processing_module *mod);
 #endif /* __SOF_AUDIO_EQ_IIR_EQ_IIR_H__ */

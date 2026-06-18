@@ -180,6 +180,142 @@ void eq_iir_s32_default(struct processing_module *mod, struct input_stream_buffe
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+static int eq_iir_blob_words_max(struct comp_dev *dev,
+				 const struct sof_eq_iir_config *config,
+				 size_t blob_size,
+				 uint32_t *coef_words_max)
+{
+	size_t payload_bytes;
+
+	/* Compute the size of the coefficient area in int32_t words from the
+	 * framework-reported blob size. The blob layout is:
+	 *   sizeof(*config) header bytes
+	 *   channels_in_config int32_t assign_response[]
+	 *   coefficient data[]
+	 * channels_in_config is bounded above, so the multiply fits in size_t.
+	 * The blob's self-declared config->size is cross-checked against the
+	 * authoritative blob_size so all later parsing stays within the buffer.
+	 */
+	if (blob_size < sizeof(*config) || config->size != blob_size) {
+		comp_err(dev, "blob size %zu / header size %u mismatch or too small",
+			 blob_size, config->size);
+		return -EINVAL;
+	}
+	payload_bytes = blob_size - sizeof(*config);
+	if (payload_bytes % sizeof(int32_t) ||
+	    payload_bytes < (size_t)config->channels_in_config * sizeof(int32_t)) {
+		comp_err(dev, "blob size %zu misaligned or too small", blob_size);
+		return -EINVAL;
+	}
+	*coef_words_max = payload_bytes / sizeof(int32_t) - config->channels_in_config;
+	return 0;
+}
+
+static int eq_iir_init_response(struct comp_dev *dev, int idx,
+				int32_t *coef_data, uint32_t coef_words_max,
+				uint32_t *j, struct sof_eq_iir_header **eq_out)
+{
+	struct sof_eq_iir_header *eq;
+	uint32_t header_end = *j + SOF_EQ_IIR_NHEADER;
+	uint32_t section_end;
+
+	/* Header must fit before reading num_sections */
+	if (header_end > coef_words_max) {
+		comp_err(dev, "response %d header out of bounds", idx);
+		return -EINVAL;
+	}
+	eq = (struct sof_eq_iir_header *)&coef_data[*j];
+	/* Bound num_sections so the multiply cannot overflow and the section
+	 * data stays within the blob.
+	 */
+	section_end = header_end + (uint32_t)SOF_EQ_IIR_NBIQUAD * eq->num_sections;
+	if (eq->num_sections > SOF_EQ_IIR_BIQUADS_MAX || section_end > coef_words_max) {
+		comp_err(dev, "response %d num_sections %u out of bounds",
+			 idx, eq->num_sections);
+		return -EINVAL;
+	}
+	*eq_out = eq;
+	*j = section_end;
+	return 0;
+}
+
+/* Validate the config blob layout and, if lookup is non-NULL, populate it
+ * with pointers to each response header. Pass lookup = NULL to validate only.
+ */
+static int eq_iir_walk_config(struct comp_dev *dev,
+			      struct sof_eq_iir_config *config,
+			      size_t config_size,
+			      struct sof_eq_iir_header **lookup)
+{
+	struct sof_eq_iir_header *eq;
+	uint32_t coef_words_max;
+	int32_t *coef_data;
+	int ret;
+	int i;
+	uint32_t j;
+
+	if (config->channels_in_config > PLATFORM_MAX_CHANNELS ||
+	    !config->channels_in_config) {
+		comp_err(dev, "invalid channels_in_config %u", config->channels_in_config);
+		return -EINVAL;
+	}
+	if (config->number_of_responses > SOF_EQ_IIR_MAX_RESPONSES) {
+		comp_err(dev, "# of resp %u exceeds max", config->number_of_responses);
+		return -EINVAL;
+	}
+
+	ret = eq_iir_blob_words_max(dev, config, config_size, &coef_words_max);
+	if (ret < 0)
+		return ret;
+
+	j = 0;
+	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config], 4);
+	for (i = 0; i < config->number_of_responses; i++) {
+		ret = eq_iir_init_response(dev, i, coef_data, coef_words_max, &j, &eq);
+		if (ret < 0)
+			return ret;
+		if (lookup)
+			lookup[i] = eq;
+	}
+	if (lookup) {
+		for (; i < SOF_EQ_IIR_MAX_RESPONSES; i++)
+			lookup[i] = NULL;
+	}
+
+	return 0;
+}
+
+int eq_iir_validate_config(struct comp_dev *dev,
+			   struct sof_eq_iir_config *config,
+			   size_t config_size)
+{
+	int32_t *assign_response;
+	int32_t resp;
+	int ret;
+	int i;
+
+	ret = eq_iir_walk_config(dev, config, config_size, NULL);
+	if (ret < 0)
+		return ret;
+
+	/* Validate every assign_response[] entry that the per-channel loop in
+	 * eq_iir_init_coef() could pick up. Entries beyond channels_in_config
+	 * reuse the last assigned value, so checking [0, channels_in_config)
+	 * covers all reachable nch.
+	 */
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
+	for (i = 0; i < config->channels_in_config; i++) {
+		resp = assign_response[i];
+		if (resp >= 0 && resp >= config->number_of_responses) {
+			comp_err(dev, "assign_response[%d] = %d exceeds %u",
+				 i, resp, config->number_of_responses);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 static int eq_iir_init_coef(struct processing_module *mod, int nch)
 {
 	struct comp_data *cd = module_get_private_data(mod);
@@ -188,45 +324,26 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
 	struct sof_eq_iir_header *eq;
 	int32_t *assign_response;
-	int32_t *coef_data;
 	int size_sum = 0;
 	int resp = 0;
 	int i;
-	int j;
 	int s;
+	int ret;
 
 	comp_info(mod->dev, "%u responses, %u channels, stream %d channels",
 		  config->number_of_responses, config->channels_in_config, nch);
 
-	/* Sanity checks */
-	if (nch > PLATFORM_MAX_CHANNELS ||
-	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
-	    !config->channels_in_config) {
-		comp_err(mod->dev, "invalid channels count");
-		return -EINVAL;
-	}
-	if (config->number_of_responses > SOF_EQ_IIR_MAX_RESPONSES) {
-		comp_err(mod->dev, "# of resp exceeds max");
+	if (nch > PLATFORM_MAX_CHANNELS) {
+		comp_err(mod->dev, "invalid stream channels %d", nch);
 		return -EINVAL;
 	}
 
-	/* Collect index of response start positions in all_coefficients[]  */
-	j = 0;
-	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
-	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config],
-				   4);
-	for (i = 0; i < SOF_EQ_IIR_MAX_RESPONSES; i++) {
-		if (i < config->number_of_responses) {
-			eq = (struct sof_eq_iir_header *)&coef_data[j];
-			lookup[i] = eq;
-			j += SOF_EQ_IIR_NHEADER
-				+ SOF_EQ_IIR_NBIQUAD * eq->num_sections;
-		} else {
-			lookup[i] = NULL;
-		}
-	}
+	ret = eq_iir_walk_config(mod->dev, config, cd->config_size, lookup);
+	if (ret < 0)
+		return ret;
 
 	/* Initialize 1st phase */
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
 	for (i = 0; i < nch; i++) {
 		/* Check for not reading past blob response to channel assign
 		 * map. The previous channel response is assigned for any
@@ -318,7 +435,10 @@ int eq_iir_setup(struct processing_module *mod, int nch)
 	/* Free existing IIR channels data if it was allocated */
 	eq_iir_free_delaylines(mod);
 
-	/* Set coefficients for each channel EQ from coefficient blob */
+	/* Set coefficients for each channel EQ from coefficient blob.
+	 * eq_iir_init_coef() / eq_iir_blob_words_max() perform all blob size
+	 * sanity checks, including config->size vs cd->config_size.
+	 */
 	delay_size = eq_iir_init_coef(mod, nch);
 	if (delay_size < 0)
 		return delay_size; /* Contains error code */
