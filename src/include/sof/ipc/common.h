@@ -346,4 +346,14 @@ void ipc_complete_cmd(struct ipc *ipc);
 /* GDB stub: should enter GDB after completing the IPC processing */
 extern bool ipc_enter_gdb;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct ipc4_message_request;
+/**
+ * @brief Forward an IPC4 command to the user-space thread.
+ * @param ipc4 Pointer to the IPC4 message request
+ * @return Result from user thread processing
+ */
+int ipc_user_forward_cmd(struct ipc4_message_request *ipc4);
+#endif
+
 #endif /* __SOF_DRIVERS_IPC_H__ */
