@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct comp_driver;
 struct dma_sg_elem_array;
 struct ipc_msg;
 
@@ -53,6 +54,37 @@ extern struct tr_ctx ipc_tr;
 #define IPC_TASK_SECONDARY_CORE	BIT(2)
 #define IPC_TASK_POWERDOWN      BIT(3)
 
+struct ipc_user {
+	struct k_thread *thread;
+	struct k_sem *sem;
+	struct k_event *event;
+	/** @brief Copy of IPC4 message primary word forwarded to user thread */
+	uint32_t ipc_msg_pri;
+	/** @brief Copy of IPC4 message extension word forwarded to user thread */
+	uint32_t ipc_msg_ext;
+	/** @brief Result code from user thread processing */
+	int result;
+	/** @brief Reply extension word from user thread (e.g. CONFIG_GET result) */
+	uint32_t reply_ext;
+	/** @brief Reply TX data size from user thread (e.g. LARGE_CONFIG_GET result) */
+	uint32_t reply_tx_size;
+	/** @brief Reply TX data pointer from user thread (e.g. LARGE_CONFIG_GET result) */
+	void *reply_tx_data;
+	struct ipc *ipc;
+	struct k_thread *audio_thread;
+	/** @brief Original kernel driver pointer for restoring dev->drv after create */
+	const struct comp_driver *init_drv;
+	/**
+	 * @brief User-accessible copy of comp_driver + tr_ctx for create().
+	 *
+	 * The comp_driver and tr_ctx structs reside in kernel memory
+	 * (.rodata/.data) which is not user-readable. The kernel handler
+	 * copies them here before forwarding to the user thread.
+	 * Size verified by BUILD_ASSERT in handler-user.c.
+	 */
+	uint8_t init_drv_data[160] __aligned(4);
+};
+
 struct ipc {
 	struct k_spinlock lock;	/* locking mechanism */
 	void *comp_data;
@@ -72,6 +104,11 @@ struct ipc {
 	struct task *ipc_task;
 #else
 	struct task ipc_task;
+#endif
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct ipc_user *ipc_user_pdata;
+	struct mod_alloc_ctx *ll_alloc;
 #endif
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
@@ -95,6 +132,12 @@ struct ipc {
 
 extern struct task_ops ipc_task_ops;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+
+struct ipc *ipc_get(void);
+
+#else
+
 /**
  * \brief Get the IPC global context.
  * @return The global IPC context.
@@ -103,6 +146,8 @@ static inline struct ipc *ipc_get(void)
 {
 	return sof_get()->ipc;
 }
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /**
  * \brief Initialise global IPC context.

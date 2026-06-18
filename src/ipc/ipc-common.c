@@ -24,6 +24,8 @@
 #include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/sof.h>
 #include <rtos/spinlock.h>
 #include <ipc/dai.h>
@@ -35,6 +37,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#endif
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+#include <rtos/userspace_helper.h>
+#include <sof/schedule/ll_schedule_domain.h>
+#endif
+
 #include <sof/debug/telemetry/performance_monitor.h>
 
 LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
@@ -42,6 +53,18 @@ LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(ipc);
 
 DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+K_APPMEM_PARTITION_DEFINE(ipc_context_part);
+
+K_APP_BMEM(ipc_context_part) static struct ipc ipc_context;
+
+struct ipc *ipc_get(void)
+{
+	return &ipc_context;
+}
+EXPORT_SYMBOL(ipc_get);
+#endif
 
 int ipc_process_on_core(uint32_t core, bool blocking)
 {
@@ -288,29 +311,56 @@ void ipc_schedule_process(struct ipc *ipc)
 #endif
 }
 
+static int ipc_user_init(void)
+{
+	return 0;
+}
+
 __cold int ipc_init(struct sof *sof)
 {
+	struct k_heap *heap;
+	struct ipc *ipc;
+
 	assert_can_be_cold();
 
 	tr_dbg(&ipc_tr, "entry");
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	heap = zephyr_ll_user_heap();
+
+	ipc = ipc_get();
+	memset(ipc, 0, sizeof(*ipc));
+	ipc->ll_alloc = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, sizeof(*ipc->ll_alloc), 0);
+	if (!ipc->ll_alloc) {
+		tr_err(&ipc_tr, "Unable to allocate IPC ll_alloc");
+		return -ENOMEM;
+	}
+	ipc->ll_alloc->heap = heap;
+	ipc->ll_alloc->vreg = NULL;
+#else
+	heap = NULL;
+
 	/* init ipc data */
-	sof->ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->ipc));
-	if (!sof->ipc) {
+	ipc = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*ipc));
+	if (!ipc) {
 		tr_err(&ipc_tr, "Unable to allocate IPC data");
 		return -ENOMEM;
 	}
-	sof->ipc->comp_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-				      SOF_IPC_MSG_MAX_SIZE);
-	if (!sof->ipc->comp_data) {
+	sof->ipc = ipc;
+#endif
+
+	ipc->comp_data = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					SOF_IPC_MSG_MAX_SIZE, 0);
+	if (!ipc->comp_data) {
 		tr_err(&ipc_tr, "Unable to allocate IPC component data");
-		rfree(sof->ipc);
+		sof_heap_free(heap, ipc);
 		return -ENOMEM;
 	}
+	memset(ipc->comp_data, 0, SOF_IPC_MSG_MAX_SIZE);
 
-	k_spinlock_init(&sof->ipc->lock);
-	list_init(&sof->ipc->msg_list);
-	list_init(&sof->ipc->comp_list);
+	k_spinlock_init(&ipc->lock);
+	list_init(&ipc->msg_list);
+	list_init(&ipc->comp_list);
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	struct io_perf_data_item init_data = {IO_PERF_IPC_ID,
@@ -319,20 +369,17 @@ __cold int ipc_init(struct sof *sof)
 					      IO_PERF_POWERED_UP_ENABLED,
 					      IO_PERF_D0IX_POWER_MODE,
 					      0, 0, 0 };
-	io_perf_monitor_init_data(&sof->ipc->io_perf_in_msg_count, &init_data);
+	io_perf_monitor_init_data(&ipc->io_perf_in_msg_count, &init_data);
 	init_data.direction = IO_PERF_OUTPUT_DIRECTION;
-	io_perf_monitor_init_data(&sof->ipc->io_perf_out_msg_count, &init_data);
+	io_perf_monitor_init_data(&ipc->io_perf_out_msg_count, &init_data);
 #endif
 
-#if CONFIG_SOF_BOOT_TEST_STANDALONE
-	LOG_INF("SOF_BOOT_TEST_STANDALONE, disabling IPC.");
-	return 0;
-#endif
 
 #ifdef __ZEPHYR__
-	struct k_thread *thread = &sof->ipc->ipc_send_wq.thread;
+	struct k_thread *thread = &ipc->ipc_send_wq.thread;
 
-	k_work_queue_start(&sof->ipc->ipc_send_wq, ipc_send_wq_stack,
+	k_work_queue_init(&ipc->ipc_send_wq);
+	k_work_queue_start(&ipc->ipc_send_wq, ipc_send_wq_stack,
 			   K_THREAD_STACK_SIZEOF(ipc_send_wq_stack), 1, NULL);
 
 	k_thread_suspend(thread);
@@ -344,10 +391,17 @@ __cold int ipc_init(struct sof *sof)
 
 	k_thread_resume(thread);
 
-	k_work_init_delayable(&sof->ipc->z_delayed_work, ipc_work_handler);
+	k_work_init_delayable(&ipc->z_delayed_work, ipc_work_handler);
 #endif
 
-	return platform_ipc_init(sof->ipc);
+	ipc_user_init();
+
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+	LOG_INF("SOF_BOOT_TEST_STANDALONE, skipping platform IPC init.");
+	return 0;
+#endif
+
+	return platform_ipc_init(ipc);
 }
 
 /* Locking: call with ipc->lock held and interrupts disabled */
