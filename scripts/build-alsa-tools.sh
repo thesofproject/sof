@@ -12,14 +12,17 @@ declare -a REPOS=(
     # Add more repositories here...
 )
 
-# Commit ID to check for (optional). If specified, the script will update
-# the repository if this commit ID is not found.  Leave empty to skip.
-# This array order must align with REPO array above.
-declare -a COMMIT_ID=(
-    "df8f1cc1ec9d9ee15be5e2c23ad25b9389fd8766"
-    "09550cd393b1a7d307ee6f26637b1ed7bd275e38"
-    # Add more IDs here...
-)
+# Per-repo commit/tag overrides via --<repo-name>-commit=<ref>.
+# Example: --alsa-lib-commit=v1.2.3  --alsa-utils-commit=abc1234
+# If not provided for a repo the original update logic (fetch + pull) applies.
+declare -A REPO_COMMIT
+for arg in "$@"; do
+    case "$arg" in
+        --*-commit=*)
+            key="${arg#--}"
+            REPO_COMMIT["${key%-commit=*}"]="${key#*-commit=}" ;;
+    esac
+done
 
 # Directory where repositories will be cloned/updated.
 if [[ -z "$SOF_WORKSPACE" ]]; then
@@ -50,28 +53,26 @@ declare -a TARGET_ARGS=(
     "--enable-alsatopology"
 )
 
-# Function to check if a commit ID exists in a repository
-check_commit() {
-    local repo_dir="$1"
-    local commit_id="$2"
-
-    if [ -z "$commit_id" ]; then
-        return 0  # Skip check if no commit ID is provided
-    fi
-
-    if ! git -C "$repo_dir" rev-parse --quiet --verify "$commit_id" >/dev/null 2>&1; then
-        return 1  # Commit ID not found
-    else
-        return 0  # Commit ID found
-    fi
-}
-
-
 # Function to update the repository
 update_repo() {
     local repo_dir="$1"
+    local default_branch
     echo "Updating repository: $repo_dir"
     git -C "$repo_dir" fetch --all
+
+    if ! git -C "$repo_dir" symbolic-ref -q HEAD >/dev/null; then
+        default_branch=$(git -C "$repo_dir" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)
+        default_branch="${default_branch#origin/}"
+
+        if [[ -z "$default_branch" ]]; then
+            echo "Error: unable to determine default branch in $repo_dir" >&2
+            exit 1
+        fi
+
+        git -C "$repo_dir" checkout "$default_branch" 2>/dev/null || \
+            git -C "$repo_dir" checkout -b "$default_branch" --track "origin/$default_branch"
+    fi
+
     git -C "$repo_dir" pull
 }
 
@@ -114,10 +115,15 @@ for ((i = 0; i < ${#REPOS[@]}; i++)); do
     if [ ! -d "$repo_dir" ]; then
         echo "Cloning repository: $repo_url"
         git clone "$repo_url" "$repo_dir" || { echo "git clone failed for $repo_url"; exit 1; }
-    elif ! check_commit "$repo_dir" "${COMMIT_ID[i]}"; then
-        update_repo "$repo_dir"
+    fi
+
+    ref="${REPO_COMMIT[$repo_name]}"
+    if [[ -n "$ref" ]]; then
+        git -C "$repo_dir" fetch --all
+        git -C "$repo_dir" checkout "$ref" ||
+            { echo "git checkout $ref failed in $repo_dir"; exit 1; }
     else
-        echo "Repository $repo_name is up to date."
+        update_repo "$repo_dir"
     fi
 
     build_and_install "$repo_dir" "${CONFIGURE_ARGS[i]}"
