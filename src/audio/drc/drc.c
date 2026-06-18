@@ -139,6 +139,20 @@ static int drc_setup(struct processing_module *mod, uint16_t channels, uint32_t 
 	return drc_set_pre_delay_time(&cd->state, cd->config->params.pre_delay_time, rate);
 }
 
+static int drc_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
+{
+	struct sof_drc_config *config = new_data;
+
+	if (new_data_size != sizeof(struct sof_drc_config) ||
+	    new_data_size != config->size) {
+		comp_err(dev, "invalid configuration blob, size %u, expected %zu",
+			 new_data_size, sizeof(struct sof_drc_config));
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /*
  * End of DRC setup code. Next the standard component methods.
  */
@@ -167,6 +181,11 @@ __cold static int drc_init(struct processing_module *mod)
 		ret = -ENOMEM;
 		goto cd_fail;
 	}
+
+	/* Reject malformed blobs at IPC time so a bad run-time update cannot
+	 * replace the working configuration.
+	 */
+	comp_data_blob_set_validator(cd->model_handler, drc_validator);
 
 	drc_reset_state(mod, &cd->state);
 
@@ -326,7 +345,6 @@ static int drc_prepare(struct processing_module *mod,
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
-	size_t data_size;
 	int channels;
 	int rate;
 	int ret;
@@ -352,11 +370,9 @@ static int drc_prepare(struct processing_module *mod,
 
 	/* Initialize DRC */
 	comp_info(dev, "source_format=%d", cd->source_format);
-	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
-	/* the blob is dereferenced as a struct sof_drc_config below and in
-	 * drc_setup(), so require it to be at least that large
-	 */
-	if (cd->config && data_size >= sizeof(struct sof_drc_config)) {
+	cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
+
+	if (cd->config) {
 		ret = drc_setup(mod, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "error: drc_setup failed.");
