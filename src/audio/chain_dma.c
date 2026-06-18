@@ -61,24 +61,15 @@ struct chain_dma_data {
 	bool xrun_notification_sent;
 #endif
 
-#ifdef CONFIG_SOF_USERSPACE_LL
-	/** Kernel workqueue scheduling for chain DMA in userspace builds.
-	 *  Chain DMA needs kernel context for DMA operations, so it cannot
-	 *  run on the user-space LL timer thread.
-	 */
-	struct k_work_delayable dma_work;
-	bool stopped;
-#endif
-
 	/* local host DMA config */
 	struct sof_dma *dma_host;
-	struct dma_chan_data *chan_host;
+	int chan_host_index;
 	struct dma_config z_config_host;
 	struct dma_block_config dma_block_cfg_host;
 
 	/* local link DMA config */
 	struct sof_dma *dma_link;
-	struct dma_chan_data *chan_link;
+	int chan_link_index;
 	struct dma_config z_config_link;
 	struct dma_block_config dma_block_cfg_link;
 
@@ -90,12 +81,12 @@ static int chain_host_start(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	int err;
 
-	err = dma_start(cd->chan_host->dma->z_dev, cd->chan_host->index);
+	err = sof_dma_start(cd->dma_host, cd->chan_host_index);
 	if (err < 0)
 		return err;
 
 	comp_info(dev, "dma_start() host chan_index = %u",
-		  cd->chan_host->index);
+		  cd->chan_host_index);
 	return 0;
 }
 
@@ -104,12 +95,12 @@ static int chain_link_start(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	int err;
 
-	err = dma_start(cd->chan_link->dma->z_dev, cd->chan_link->index);
+	err = sof_dma_start(cd->dma_link, cd->chan_link_index);
 	if (err < 0)
 		return err;
 
 	comp_info(dev, "dma_start() link chan_index = %u",
-		  cd->chan_link->index);
+		  cd->chan_link_index);
 	return 0;
 }
 
@@ -118,12 +109,12 @@ static int chain_link_stop(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	int err;
 
-	err = dma_stop(cd->chan_link->dma->z_dev, cd->chan_link->index);
+	err = sof_dma_stop(cd->dma_link, cd->chan_link_index);
 	if (err < 0)
 		return err;
 
 	comp_info(dev, "dma_stop() link chan_index = %u",
-		  cd->chan_link->index);
+		  cd->chan_link_index);
 
 	return 0;
 }
@@ -133,12 +124,12 @@ static int chain_host_stop(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	int err;
 
-	err = dma_stop(cd->chan_host->dma->z_dev, cd->chan_host->index);
+	err = sof_dma_stop(cd->dma_host, cd->chan_host_index);
 	if (err < 0)
 		return err;
 
 	comp_info(dev, "dma_stop() host chan_index = %u",
-		  cd->chan_host->index);
+		  cd->chan_host_index);
 
 	return 0;
 }
@@ -176,7 +167,7 @@ static enum task_state chain_task_run(void *data)
 	/* Link DMA can return -EPIPE and current status if xrun occurs, then it is not critical
 	 * and flow shall continue. Other error values will be treated as critical.
 	 */
-	ret = dma_get_status(cd->chan_link->dma->z_dev, cd->chan_link->index, &stat);
+	ret = sof_dma_get_status(cd->dma_link, cd->chan_link_index, &stat);
 	switch (ret) {
 	case 0:
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
@@ -200,7 +191,7 @@ static enum task_state chain_task_run(void *data)
 	link_read_pos = stat.read_position;
 
 	/* Host DMA does not report xruns. All error values will be treated as critical. */
-	ret = dma_get_status(cd->chan_host->dma->z_dev, cd->chan_host->index, &stat);
+	ret = sof_dma_get_status(cd->dma_host, cd->chan_host_index, &stat);
 	if (ret < 0) {
 		tr_err(&chain_dma_tr, "dma_get_status() error, ret = %d", ret);
 		return SOF_TASK_STATE_COMPLETED;
@@ -218,14 +209,14 @@ static enum task_state chain_task_run(void *data)
 		 */
 		const size_t increment = MIN(host_free_bytes, link_avail_bytes);
 
-		ret = dma_reload(cd->chan_host->dma->z_dev, cd->chan_host->index, 0, 0, increment);
+		ret = sof_dma_reload(cd->dma_host, cd->chan_host_index, increment);
 		if (ret < 0) {
 			tr_err(&chain_dma_tr,
 			       "dma_reload() host error, ret = %d", ret);
 			return SOF_TASK_STATE_COMPLETED;
 		}
 
-		ret = dma_reload(cd->chan_link->dma->z_dev, cd->chan_link->index, 0, 0, increment);
+		ret = sof_dma_reload(cd->dma_link, cd->chan_link_index, increment);
 		if (ret < 0) {
 			tr_err(&chain_dma_tr,
 			       "dma_reload() link error, ret = %d", ret);
@@ -241,9 +232,8 @@ static enum task_state chain_task_run(void *data)
 		const size_t half_buff_size = buff_size / 2;
 
 		if (!cd->first_data_received && host_avail_bytes > half_buff_size) {
-			ret = dma_reload(cd->chan_link->dma->z_dev,
-					 cd->chan_link->index, 0, 0,
-					 MIN(host_avail_bytes, link_free_bytes));
+			ret = sof_dma_reload(cd->dma_link, cd->chan_link_index,
+					     MIN(host_avail_bytes, link_free_bytes));
 			if (ret < 0) {
 				tr_err(&chain_dma_tr,
 				       "dma_reload() link error, ret = %d", ret);
@@ -257,8 +247,8 @@ static enum task_state chain_task_run(void *data)
 								host_read_pos,
 								buff_size);
 
-			ret = dma_reload(cd->chan_host->dma->z_dev, cd->chan_host->index,
-					 0, 0, transferred);
+			ret = sof_dma_reload(cd->dma_host, cd->chan_host_index,
+					     transferred);
 			if (ret < 0) {
 				tr_err(&chain_dma_tr,
 				       "dma_reload() host error, ret = %d", ret);
@@ -267,8 +257,8 @@ static enum task_state chain_task_run(void *data)
 
 			if (host_avail_bytes >= half_buff_size &&
 			    link_free_bytes >= half_buff_size) {
-				ret = dma_reload(cd->chan_link->dma->z_dev, cd->chan_link->index,
-						 0, 0, half_buff_size);
+				ret = sof_dma_reload(cd->dma_link, cd->chan_link_index,
+						     half_buff_size);
 				if (ret < 0) {
 					tr_err(&chain_dma_tr,
 					       "dma_reload() link error, ret = %d", ret);
@@ -279,25 +269,6 @@ static enum task_state chain_task_run(void *data)
 	}
 	return SOF_TASK_STATE_RESCHEDULE;
 }
-
-#ifdef CONFIG_SOF_USERSPACE_LL
-/** Kernel workqueue handler for chain DMA periodic task.
- *  Runs chain_task_run() in kernel context and reschedules if needed.
- */
-static void chain_dma_work_handler(struct k_work *work)
-{
-	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
-	struct chain_dma_data *cd = CONTAINER_OF(dwork, struct chain_dma_data, dma_work);
-	enum task_state state;
-
-	if (cd->stopped)
-		return;
-
-	state = chain_task_run(cd);
-	if (state == SOF_TASK_STATE_RESCHEDULE && !cd->stopped)
-		k_work_reschedule(dwork, K_USEC(LL_TIMER_PERIOD_US));
-}
-#endif
 
 static int chain_task_start(struct comp_dev *dev)
 {
@@ -340,12 +311,6 @@ static int chain_task_start(struct comp_dev *dev)
 		}
 	}
 
-#ifdef CONFIG_SOF_USERSPACE_LL
-	cd->stopped = false;
-	k_work_init_delayable(&cd->dma_work, chain_dma_work_handler);
-	k_work_reschedule(&cd->dma_work, K_NO_WAIT);
-	cd->chain_task.state = SOF_TASK_STATE_QUEUED;
-#else
 	ret = schedule_task_init_ll(&cd->chain_task, SOF_UUID(chain_dma_uuid),
 				    SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
 				    chain_task_run, cd, 0, 0);
@@ -360,19 +325,16 @@ static int chain_task_start(struct comp_dev *dev)
 		schedule_task_free(&cd->chain_task);
 		goto error_task;
 	}
-#endif
 
 	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 
 	return 0;
 
-#ifndef CONFIG_SOF_USERSPACE_LL
 error_task:
 	chain_host_stop(dev);
 	chain_link_stop(dev);
 
 	return ret;
-#endif
 }
 
 static int chain_task_pause(struct comp_dev *dev)
@@ -380,18 +342,11 @@ static int chain_task_pause(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	int ret, ret2;
 
-#ifdef CONFIG_SOF_USERSPACE_LL
-	if (cd->chain_task.state == SOF_TASK_STATE_FREE)
-		return 0;
-
-	cd->stopped = true;
-	cd->first_data_received = false;
-#else
 	if (cd->chain_task.state == SOF_TASK_STATE_FREE)
 		return 0;
 
 	cd->first_data_received = false;
-#endif
+
 	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = chain_host_stop(dev);
 		ret2 = chain_link_stop(dev);
@@ -402,12 +357,7 @@ static int chain_task_pause(struct comp_dev *dev)
 	if (!ret)
 		ret = ret2;
 
-#ifdef CONFIG_SOF_USERSPACE_LL
-	k_work_cancel_delayable_sync(&cd->dma_work, &(struct k_work_sync){});
-	cd->chain_task.state = SOF_TASK_STATE_FREE;
-#else
 	schedule_task_free(&cd->chain_task);
-#endif
 	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
 
 	return ret;
@@ -419,9 +369,9 @@ __cold static void chain_release(struct comp_dev *dev)
 
 	assert_can_be_cold();
 
-	dma_release_channel(cd->chan_host->dma->z_dev, cd->chan_host->index);
+	sof_dma_release_channel(cd->dma_host, cd->chan_host_index);
 	sof_dma_put(cd->dma_host);
-	dma_release_channel(cd->chan_link->dma->z_dev, cd->chan_link->index);
+	sof_dma_release_channel(cd->dma_link, cd->chan_link_index);
 	sof_dma_put(cd->dma_link);
 
 	if (cd->dma_buffer) {
@@ -509,16 +459,16 @@ __cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 
 	/* get host DMA channel */
 	channel = cd->host_connector_node_id.f.v_index;
-	channel = dma_request_channel(cd->dma_host->z_dev, &channel);
+	channel = sof_dma_request_channel(cd->dma_host, channel);
 	if (channel < 0) {
 		comp_err(dev, "host dma_request_channel() failed for %u",
 			 cd->host_connector_node_id.f.v_index);
 		return channel;
 	}
 
-	cd->chan_host = &cd->dma_host->chan[channel];
+	cd->chan_host_index = channel;
 
-	err = dma_config(cd->dma_host->z_dev, cd->chan_host->index, dma_cfg_host);
+	err = sof_dma_config(cd->dma_host, cd->chan_host_index, dma_cfg_host);
 	if (err < 0) {
 		comp_err(dev, "host dma_config() failed for %d", channel);
 		goto error_host;
@@ -526,7 +476,7 @@ __cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 
 	/* get link DMA channel */
 	channel = cd->link_connector_node_id.f.v_index;
-	channel = dma_request_channel(cd->dma_link->z_dev, &channel);
+	channel = sof_dma_request_channel(cd->dma_link, channel);
 	if (channel < 0) {
 		comp_err(dev, "link dma_request_channel() failed for %u",
 			 cd->link_connector_node_id.f.v_index);
@@ -534,9 +484,9 @@ __cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 		goto error_host;
 	}
 
-	cd->chan_link = &cd->dma_link->chan[channel];
+	cd->chan_link_index = channel;
 
-	err = dma_config(cd->dma_link->z_dev, cd->chan_link->index, dma_cfg_link);
+	err = sof_dma_config(cd->dma_link, cd->chan_link_index, dma_cfg_link);
 	if (err < 0) {
 		comp_err(dev, "link dma_config() failed for %d", channel);
 		goto error_link;
@@ -544,11 +494,9 @@ __cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
 	return 0;
 
 error_link:
-	dma_release_channel(cd->dma_link->z_dev, cd->chan_link->index);
-	cd->chan_link = NULL;
+	sof_dma_release_channel(cd->dma_link, cd->chan_link_index);
 error_host:
-	dma_release_channel(cd->dma_host->z_dev, cd->chan_host->index);
-	cd->chan_host = NULL;
+	sof_dma_release_channel(cd->dma_host, cd->chan_host_index);
 	return err;
 }
 
@@ -606,8 +554,8 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 	}
 
 	/* retrieve DMA buffer address alignment */
-	ret = dma_get_attribute(cd->dma_host->z_dev, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
-				&addr_align);
+	ret = sof_dma_get_attribute(cd->dma_host, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				    &addr_align);
 	if (ret < 0) {
 		comp_err(dev,
 			 "could not get dma buffer address alignment, err = %d", ret);
