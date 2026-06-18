@@ -949,8 +949,16 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 	void __sparse_cache *library_base_address;
 	const struct sof_man_fw_desc *man_desc = (struct sof_man_fw_desc *)
 		((__sparse_force uint8_t *)man_buffer + SOF_MAN_ELF_TEXT_OFFSET);
-	uint32_t preload_size = man_desc->header.preload_page_count * PAGE_SZ;
 	int ret;
+
+	/* Zephyr UINT_MAX is explicitly 32 bits, and so is preload_page_count */
+	if (man_desc->header.preload_page_count >= UINT_MAX / PAGE_SZ) {
+		tr_err(&lib_manager_tr, "Invalid preload page count %u.",
+		       man_desc->header.preload_page_count);
+		return -EINVAL;
+	}
+
+	uint32_t preload_size = man_desc->header.preload_page_count * PAGE_SZ;
 
 	/*
 	 * The module manifest structure always has its maximum size regardless of
@@ -961,10 +969,10 @@ static int lib_manager_store_library(struct lib_manager_dma_ext *dma_ext,
 		return -EINVAL;
 	}
 
-	/* Prepare storage memory, note: it is never freed, library unloading is unsupported */
 	/*
-	 * Prepare storage memory, note: it is never freed, it is assumed, that this
-	 * memory is abundant, so we store all loaded modules there permanently
+	 * Prepare storage memory, note: it is never freed, it is assumed, that
+	 * this memory is abundant, so we store all loaded modules there
+	 * permanently, unloading is unsupported
 	 */
 	library_base_address = lib_manager_allocate_store_mem(preload_size, 0);
 	if (!library_base_address)
