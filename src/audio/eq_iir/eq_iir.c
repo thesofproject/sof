@@ -117,6 +117,17 @@ static int eq_iir_check_blob_size(struct comp_dev *dev, size_t size)
 	return 0;
 }
 
+static int eq_iir_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
+{
+	int ret;
+
+	ret = eq_iir_check_blob_size(dev, new_data_size);
+	if (ret < 0)
+		return ret;
+
+	return eq_iir_validate_config(dev, new_data, new_data_size);
+}
+
 static int eq_iir_process(struct processing_module *mod,
 			  struct input_stream_buffer *input_buffers, int num_input_buffers,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
@@ -127,7 +138,11 @@ static int eq_iir_process(struct processing_module *mod,
 	uint32_t frame_count = input_buffers[0].size;
 	int ret;
 
-	/* Check for changed configuration */
+	/* Check for changed configuration. Note that the IPC-time validator set
+	 * in eq_iir_prepare() already runs eq_iir_check_blob_size() and
+	 * eq_iir_validate_config() on every blob, so the next check is not
+	 * mandatory.
+	 */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
 		if (!cd->config || eq_iir_check_blob_size(mod->dev, cd->config_size) < 0)
@@ -216,6 +231,11 @@ static int eq_iir_prepare(struct processing_module *mod,
 		ret = -EINVAL;
 	}
 
+	/* Reject malformed blobs at IPC time so a bad run-time update cannot
+	 * replace the working configuration.
+	 */
+	comp_data_blob_set_validator(cd->model_handler, eq_iir_validator);
+
 	return ret;
 }
 
@@ -223,6 +243,8 @@ static int eq_iir_reset(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	int i;
+
+	comp_data_blob_set_validator(cd->model_handler, NULL);
 
 	eq_iir_free_delaylines(mod);
 
