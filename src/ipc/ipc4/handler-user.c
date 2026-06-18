@@ -424,8 +424,12 @@ __cold const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper
 	return ipc4_get_pipeline_data();
 }
 
-/* Entry point for ipc4_pipeline_trigger(), therefore cannot be cold */
-static int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
+/**
+ * \brief Process SET_PIPELINE_STATE IPC4 message (prepare + trigger phases).
+ * @param[in] ipc4 IPC4 message request.
+ * @return 0 on success, IPC4 error code otherwise.
+ */
+int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 {
 	const struct ipc4_pipeline_set_state_data *ppl_data;
 	struct ipc4_pipeline_set_state state;
@@ -809,7 +813,22 @@ __cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
 
-static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4, bool set)
+/**
+ * @brief Process MOD_CONFIG_GET or MOD_CONFIG_SET in any execution context.
+ *
+ * Looks up the target component by module_id:instance_id, verifies the
+ * driver supports get_attribute/set_attribute, and dispatches the
+ * operation. For GET, the retrieved value is written to @p reply_ext.
+ *
+ * Callable from both the IPC kernel task and the IPC user thread.
+ *
+ * @param ipc4      Pointer to the IPC4 message request (primary + extension)
+ * @param set       true for CONFIG_SET, false for CONFIG_GET
+ * @param reply_ext Output: receives the extension value for CONFIG_GET (may be NULL for SET)
+ * @return IPC4 status code (0 on success)
+ */
+__cold int ipc4_process_module_config(struct ipc4_message_request *ipc4,
+				      bool set, uint32_t *reply_ext)
 {
 	struct ipc4_module_config *config = (struct ipc4_module_config *)ipc4;
 	int (*function)(struct comp_dev *dev, uint32_t type, void *value);
@@ -859,8 +878,21 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 		ret = IPC4_INVALID_CONFIG_PARAM_ID;
 	}
 
+	if (!set && reply_ext)
+		*reply_ext = config->extension.dat;
+
+	return ret;
+}
+
+static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4, bool set)
+{
+	uint32_t reply_ext;
+	int ret;
+
+	ret = ipc4_process_module_config(ipc4, set, &reply_ext);
+
 	if (!set)
-		msg_reply->extension = config->extension.dat;
+		msg_reply->extension = reply_ext;
 
 	return ret;
 }
@@ -988,6 +1020,108 @@ __cold static int ipc4_get_vendor_config_module_instance(struct comp_dev *dev,
 		}
 	}
 	return IPC4_SUCCESS;
+}
+
+__cold int ipc4_process_large_config_get(struct ipc4_message_request *ipc4,
+					uint32_t *reply_ext,
+					uint32_t *reply_tx_size,
+					void **reply_tx_data)
+{
+	struct ipc4_module_large_config_reply reply;
+	struct ipc4_module_large_config config;
+	char *data = ipc_get()->comp_data;
+	const struct comp_driver *drv;
+	struct comp_dev *dev = NULL;
+	uint32_t data_offset;
+
+	assert_can_be_cold();
+
+	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+
+	if (ret < 0)
+		return IPC4_FAILURE;
+
+	tr_dbg(&ipc_tr, "%x : %x",
+	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
+
+	/* get component dev for non-basefw since there is no
+	 * component dev for basefw
+	 */
+	if (config.primary.r.module_id) {
+		uint32_t comp_id;
+
+		comp_id = IPC4_COMP_ID(config.primary.r.module_id,
+				       config.primary.r.instance_id);
+		dev = ipc4_get_comp_dev(comp_id);
+		if (!dev)
+			return IPC4_MOD_INVALID_ID;
+
+		drv = dev->drv;
+
+		/* Multicore disabled for userspace forwarding;
+		 * non-userspace path retains ipc4_process_on_core()
+		 */
+	} else {
+		drv = ipc4_get_comp_drv(config.primary.r.module_id);
+	}
+
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	if (!drv->ops.get_large_config)
+		return IPC4_INVALID_REQUEST;
+
+	data_offset = config.extension.r.data_off_size;
+
+	/* check for vendor param first */
+	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+		/* For now only vendor_config case uses payload from hostbox */
+		dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+					 config.extension.r.data_off_size);
+		ret = ipc4_get_vendor_config_module_instance(dev, drv,
+							     config.extension.r.init_block,
+							     config.extension.r.final_block,
+							     &data_offset,
+							     data,
+							     (const char *)MAILBOX_HOSTBOX_BASE);
+	} else {
+#if CONFIG_LIBRARY
+		data += sizeof(reply);
+#endif
+		ipc4_prepare_for_kcontrol_get(dev, config.extension.r.large_param_id,
+					      data, data_offset);
+
+		ret = drv->ops.get_large_config(dev, config.extension.r.large_param_id,
+						config.extension.r.init_block,
+						config.extension.r.final_block,
+						&data_offset, data);
+	}
+
+	/* set up ipc4 error code for reply data */
+	if (ret < 0)
+		ret = IPC4_MOD_INVALID_ID;
+
+	/* Copy host config and overwrite */
+	reply.extension.dat = config.extension.dat;
+	reply.extension.r.data_off_size = data_offset;
+
+	/* The last block, no more data */
+	if (!config.extension.r.final_block && data_offset < SOF_IPC_MSG_MAX_SIZE)
+		reply.extension.r.final_block = 1;
+
+	/* Indicate last block if error occurs */
+	if (ret)
+		reply.extension.r.final_block = 1;
+
+	/* no need to allocate memory for reply msg */
+	if (ret)
+		return ret;
+
+	/* Output via parameters instead of msg_reply */
+	*reply_ext = reply.extension.dat;
+	*reply_tx_size = data_offset;
+	*reply_tx_data = data;
+	return ret;
 }
 
 __cold static int ipc4_get_large_config_module_instance(struct ipc4_message_request *ipc4)
@@ -1180,6 +1314,77 @@ __cold static int ipc4_set_vendor_config_module_instance(struct comp_dev *dev,
 	}
 	return drv->ops.set_large_config(dev, param_id, init_block, final_block,
 					 data_off_size, data);
+}
+
+__cold int ipc4_process_large_config_set(struct ipc4_message_request *ipc4)
+{
+	struct ipc4_module_large_config config;
+	struct comp_dev *dev = NULL;
+	const struct comp_driver *drv;
+
+	assert_can_be_cold();
+
+	int ret = memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+
+	if (ret < 0)
+		return IPC4_FAILURE;
+
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
+				 config.extension.r.data_off_size);
+	tr_dbg(&ipc_tr, "%x : %x",
+	       (uint32_t)config.primary.r.module_id, (uint32_t)config.primary.r.instance_id);
+
+	if (config.primary.r.module_id) {
+		uint32_t comp_id;
+
+		comp_id = IPC4_COMP_ID(config.primary.r.module_id, config.primary.r.instance_id);
+		dev = ipc4_get_comp_dev(comp_id);
+		if (!dev)
+			return IPC4_MOD_INVALID_ID;
+
+		drv = dev->drv;
+
+		/* Multicore disabled for userspace forwarding;
+		 * non-userspace path retains ipc4_process_on_core()
+		 */
+	} else {
+		drv = ipc4_get_comp_drv(config.primary.r.module_id);
+	}
+
+	if (!drv)
+		return IPC4_MOD_INVALID_ID;
+
+	if (!drv->ops.set_large_config)
+		return IPC4_INVALID_REQUEST;
+
+	/* check for vendor param first */
+	if (config.extension.r.large_param_id == VENDOR_CONFIG_PARAM) {
+		ret = ipc4_set_vendor_config_module_instance(dev, drv,
+							     (uint32_t)config.primary.r.module_id,
+							     (uint32_t)config.primary.r.instance_id,
+							     config.extension.r.init_block,
+							     config.extension.r.final_block,
+							     config.extension.r.data_off_size,
+							     (const char *)MAILBOX_HOSTBOX_BASE);
+	} else {
+#if CONFIG_LIBRARY
+		struct ipc *ipc = ipc_get();
+		const char *data = (const char *)ipc->comp_data + sizeof(config);
+#else
+		const char *data = (const char *)MAILBOX_HOSTBOX_BASE;
+#endif
+		ret = drv->ops.set_large_config(dev, config.extension.r.large_param_id,
+			config.extension.r.init_block, config.extension.r.final_block,
+			config.extension.r.data_off_size, data);
+		if (ret < 0) {
+			ipc_cmd_err(&ipc_tr, "failed to set large_config_module_instance %x : %x",
+				    (uint32_t)config.primary.r.module_id,
+				    (uint32_t)config.primary.r.instance_id);
+			ret = IPC4_INVALID_RESOURCE_ID;
+		}
+	}
+
+	return ret;
 }
 
 __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_request *ipc4)
