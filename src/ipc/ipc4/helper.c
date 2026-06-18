@@ -558,7 +558,10 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 	ipc_buf.size = buf_size;
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
-	ipc_buf.comp.core = cpu_get_id();
+
+	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || src->ipc_config.core == cpu_get_id());
+	ipc_buf.comp.core = src->ipc_config.core;
+
 	return buffer_new(alloc, &ipc_buf, is_shared);
 }
 
@@ -694,6 +697,11 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 #else
 	alloc = NULL;
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (!alloc)
+		alloc = ipc->ll_alloc;
+#endif
 	bool cross_core_bind = source->ipc_config.core != sink->ipc_config.core;
 
 	/* If both components are on same core -- process IPC on that core,
