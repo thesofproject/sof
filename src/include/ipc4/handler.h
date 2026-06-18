@@ -62,10 +62,18 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4, struct ipc_
 int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4);
 
 /**
+ * \brief Complete the IPC compound message.
+ * @param[in] msg_id IPC message ID.
+ * @param[in] error Error code of the IPC command.
+ */
+void ipc_compound_msg_done(uint32_t msg_id, int error);
+
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_USERSPACE_LL)
+/**
  * \brief Increment the IPC compound message pre-start counter.
  * @param[in] msg_id IPC message ID.
  */
-void ipc_compound_pre_start(int msg_id);
+__syscall void ipc_compound_pre_start(int msg_id);
 
 /**
  * \brief Decrement the IPC compound message pre-start counter on return value status.
@@ -73,19 +81,24 @@ void ipc_compound_pre_start(int msg_id);
  * @param[in] ret Return value of the IPC command.
  * @param[in] delayed True if the reply is delayed.
  */
-void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed);
-
-/**
- * \brief Complete the IPC compound message.
- * @param[in] msg_id IPC message ID.
- * @param[in] error Error code of the IPC command.
- */
-void ipc_compound_msg_done(uint32_t msg_id, int error);
+__syscall void ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed);
 
 /**
  * \brief Wait for the IPC compound message to complete.
  * @return 0 on success, error code otherwise on timeout.
  */
-int ipc_wait_for_compound_msg(void);
+__syscall int ipc_wait_for_compound_msg(void);
+#else
+void z_impl_ipc_compound_pre_start(int msg_id);
+#define ipc_compound_pre_start z_impl_ipc_compound_pre_start
+void z_impl_ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed);
+#define ipc_compound_post_start z_impl_ipc_compound_post_start
+int z_impl_ipc_wait_for_compound_msg(void);
+#define ipc_wait_for_compound_msg z_impl_ipc_wait_for_compound_msg
+#endif
+
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_USERSPACE_LL)
+#include <zephyr/syscalls/handler.h>
+#endif
 
 #endif /* __SOF_IPC4_HANDLER_H__ */
