@@ -139,6 +139,34 @@ static int drc_setup(struct processing_module *mod, uint16_t channels, uint32_t 
 	return drc_set_pre_delay_time(&cd->state, cd->config->params.pre_delay_time, rate);
 }
 
+static int drc_check_blob_size(struct comp_dev *dev, size_t size)
+{
+	if (size != sizeof(struct sof_drc_config)) {
+		comp_err(dev, "invalid configuration blob, size %zu", size);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int drc_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
+{
+	struct sof_drc_config *config = new_data;
+	int ret;
+
+	ret = drc_check_blob_size(dev, new_data_size);
+	if (ret < 0)
+		return ret;
+
+	if (config->size != new_data_size) {
+		comp_err(dev, "blob size %u / header size %u mismatch",
+			 new_data_size, config->size);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /*
  * End of DRC setup code. Next the standard component methods.
  */
@@ -353,10 +381,10 @@ static int drc_prepare(struct processing_module *mod,
 	/* Initialize DRC */
 	comp_info(dev, "source_format=%d", cd->source_format);
 	cd->config = comp_get_data_blob(cd->model_handler, &data_size, NULL);
-	/* the blob is dereferenced as a struct sof_drc_config below and in
-	 * drc_setup(), so require it to be at least that large
+	/* The blob is dereferenced as a struct sof_drc_config below and in
+	 * drc_setup(), so size-check it before use.
 	 */
-	if (cd->config && data_size >= sizeof(struct sof_drc_config)) {
+	if (cd->config && drc_check_blob_size(dev, data_size) == 0) {
 		ret = drc_setup(mod, channels, rate);
 		if (ret < 0) {
 			comp_err(dev, "error: drc_setup failed.");
@@ -382,6 +410,11 @@ static int drc_prepare(struct processing_module *mod,
 		cd->drc_func = drc_default_pass;
 	}
 
+	/* Reject malformed blobs at IPC time so a bad run-time update cannot
+	 * replace the working configuration.
+	 */
+	comp_data_blob_set_validator(cd->model_handler, drc_validator);
+
 	comp_info(dev, "DRC is configured.");
 	return 0;
 }
@@ -389,6 +422,8 @@ static int drc_prepare(struct processing_module *mod,
 static int drc_reset(struct processing_module *mod)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
+
+	comp_data_blob_set_validator(cd->model_handler, NULL);
 
 	drc_reset_state(mod, &cd->state);
 
