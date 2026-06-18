@@ -182,8 +182,7 @@ static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap
 	if (ret)
 		return ret;
 
-	/* TODO: this can probably be allocated as cached? */
-	work_item = sof_heap_alloc(user_heap, SOF_MEM_FLAG_COHERENT, sizeof(*work_item), 0);
+	work_item = sof_heap_alloc(user_heap, 0, sizeof(*work_item), 0);
 	if (!work_item) {
 		user_worker_put(cpu);
 		return -ENOMEM;
