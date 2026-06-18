@@ -64,7 +64,6 @@ LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx comp_tr;
 
 static const struct comp_driver *ipc4_get_drv(const void *uuid);
-static int ipc4_add_comp_dev(struct comp_dev *dev);
 
 void ipc_build_stream_posn(struct sof_ipc_stream_posn *posn, uint32_t type,
 			   uint32_t id)
@@ -341,8 +340,11 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc *ipc = ipc_get();
+	struct k_heap *heap = sof_sys_user_heap_get();
 
 	assert_can_be_cold();
+
+	LOG_INF("pipe_desc %x, instance %u", pipe_desc, pipe_desc->primary.r.instance_id);
 
 	/* check whether pipeline id is already taken or in use */
 	ipc_pipe = ipc_get_pipeline_by_id(ipc, pipe_desc->primary.r.instance_id);
@@ -353,8 +355,9 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(NULL, pipe_desc->primary.r.instance_id,
+	pipe = pipeline_new(heap, pipe_desc->primary.r.instance_id,
 			    pipe_desc->primary.r.ppl_priority, 0, pparams);
+	LOG_INF("pipeline_new() -> %p", pipe);
 	if (!pipe) {
 		tr_err(&ipc_tr, "ipc: pipeline_new() failed");
 		return IPC4_OUT_OF_MEMORY;
@@ -369,12 +372,13 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 	pipe->core = pipe_desc->extension.r.core_id;
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-			   sizeof(struct ipc_comp_dev));
+	ipc_pipe = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				  sizeof(struct ipc_comp_dev), 0);
 	if (!ipc_pipe) {
 		pipeline_free(pipe);
 		return IPC4_OUT_OF_MEMORY;
 	}
+	memset(ipc_pipe, 0, sizeof(*ipc_pipe));
 
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
@@ -384,6 +388,8 @@ __cold static int ipc4_create_pipeline(struct ipc4_pipeline_create *pipe_desc,
 
 	/* add new pipeline to the list */
 	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+
+	LOG_INF("success");
 
 	return IPC4_SUCCESS;
 }
@@ -541,7 +547,7 @@ __cold int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 
 	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
-	rfree(ipc_pipe);
+	sof_heap_free(sof_sys_user_heap_get(), ipc_pipe);
 
 	return IPC4_SUCCESS;
 }
@@ -1082,7 +1088,7 @@ __cold int ipc4_chain_dma_state(struct comp_dev *dev, struct ipc4_chain_dma *cdm
 			if (icd->cd != dev)
 				continue;
 			list_item_del(&icd->list);
-			rfree(icd);
+			sof_heap_free(sof_sys_user_heap_get(), icd);
 			break;
 		}
 		comp_free(dev);
@@ -1298,7 +1304,7 @@ struct comp_dev *ipc4_get_comp_dev(uint32_t comp_id)
 }
 EXPORT_SYMBOL(ipc4_get_comp_dev);
 
-__cold static int ipc4_add_comp_dev(struct comp_dev *dev)
+__cold int ipc4_add_comp_dev(struct comp_dev *dev)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_comp_dev *icd;
@@ -1313,12 +1319,13 @@ __cold static int ipc4_add_comp_dev(struct comp_dev *dev)
 	}
 
 	/* allocate the IPC component container */
-	icd = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
-		      sizeof(struct ipc_comp_dev));
+	icd = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+			     sizeof(struct ipc_comp_dev), 0);
 	if (!icd) {
 		tr_err(&ipc_tr, "alloc failed");
 		return IPC4_OUT_OF_MEMORY;
 	}
+	memset(icd, 0, sizeof(*icd));
 
 	icd->cd = dev;
 	icd->type = COMP_TYPE_COMPONENT;
