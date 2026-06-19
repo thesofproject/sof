@@ -852,14 +852,17 @@ def parse_cse_manifest(reader):
     header_length = reader.read_b()
     hdr.add_a(Ahex('header_length', header_length))
     legacy_or_unused = reader.read_b()
-    if header_length > 12:
+    # The v2.5 header (length 20) moves the checksum to a trailing CRC32 dword
+    # and leaves this byte unused. The legacy v1.x header (length 16) keeps the
+    # single-byte BSD checksum here, so discriminate on the v2.5 header length.
+    if header_length >= 20:
         hdr.add_a(Ahex('not_used', legacy_or_unused))
     else:
         hdr.add_a(Ahex('checksum', legacy_or_unused))
     hdr.add_a(Astring('partition_name', reader.read_string(4)))
 
     # CSE v2.5 extends header with a CRC32 checksum dword
-    if header_length > 12:
+    if header_length >= 20:
         hdr.add_a(Ahex('checksum32', reader.read_dw()))
 
     reader.set_offset(cse_mft.file_offset + header_length)
@@ -1283,11 +1286,16 @@ def parse_adsp_manifest(reader, name):
     adsp_mft = AdspManifest(name, reader.get_offset())
     adsp_mft.add_comp(parse_adsp_manifest_hdr(reader))
     num_module_entries = adsp_mft.cdir['adsp_mft_hdr'].adir['num_module_entries'].val
+    # Each module advertises its own cfg_count; the configs are packed
+    # contiguously after the module entries, so the total number written is the
+    # sum of every module's cfg_count (which can exceed num_module_entries).
+    num_mod_configs = 0
     for i in range(0, num_module_entries):
         mod_entry = parse_adsp_manifest_mod_entry(i, reader)
         adsp_mft.add_comp(mod_entry)
+        num_mod_configs += mod_entry.adir['cfg_count'].val
 
-    for i in range(0, num_module_entries):
+    for i in range(0, num_mod_configs):
         mod_cfg = parse_adsp_manifest_mod_config(i, reader)
         adsp_mft.add_comp(mod_cfg)
 
