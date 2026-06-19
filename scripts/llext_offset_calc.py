@@ -39,7 +39,7 @@ def get_elf_size(elf_name):
 
 			# Ignore detached sections, to be used in DRAM, their addresses
 			# are below min_start
-			if section.header['sh_addr'] < min_start:
+			if section.header['sh_addr'] > 0 and section.header['sh_addr'] < min_start:
 				continue
 
 			if section.header['sh_addr'] < start:
