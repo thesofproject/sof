@@ -58,12 +58,45 @@ function(sof_llext_build module)
 		file(WRITE ${PROJECT_BINARY_DIR}/${module}_llext/lib_name.txt ${SOF_LLEXT_LIB})
 	endif()
 
+	set(SOF_LLEXT_LITERAL_FLAG "")
 	if("${ARCH}" STREQUAL "xtensa")
 		# This makes sure literals are placed in memory before they are used by
 		# the L32R instruction. Usually this is guaranteed by the linker script.
 		# However, since a linker script is not used for LLEXT modules builds,
 		# correct literal placement is ensured with a compilation option here.
-		set(SOF_LLEXT_CFLAGS ${SOF_LLEXT_CFLAGS} -mtext-section-literals)
+		if("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+			set(SOF_LLEXT_CFLAGS ${SOF_LLEXT_CFLAGS} "SHELL:-mllvm -text-section-literals")
+			set(SOF_LLEXT_LITERAL_FLAG "SHELL:-mllvm -text-section-literals")
+		else()
+			check_c_compiler_flag(-mtext-section-literals HAS_MTEXT_SECTION_LITERALS)
+			if(HAS_MTEXT_SECTION_LITERALS)
+				set(SOF_LLEXT_CFLAGS ${SOF_LLEXT_CFLAGS} -mtext-section-literals)
+			endif()
+			set(SOF_LLEXT_LITERAL_FLAG "-mtext-section-literals")
+		endif()
+	endif()
+
+	set(SOF_LLEXT_LINK_FLAGS "")
+	if("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+		message(STATUS "DEBUG: ZEPHYR_SDK_INSTALL_DIR=${ZEPHYR_SDK_INSTALL_DIR} ENV=$ENV{ZEPHYR_SDK_INSTALL_DIR}")
+		set(SOF_LLEXT_LINK_FLAGS "--target=${CMAKE_C_COMPILER_TARGET}")
+		set(REAL_CROSS_COMPILE "${CROSS_COMPILE}")
+		if(REAL_CROSS_COMPILE AND NOT EXISTS "${REAL_CROSS_COMPILE}gcc")
+			if(EXISTS "${ZEPHYR_SDK_INSTALL_DIR}${REAL_CROSS_COMPILE}gcc")
+				set(REAL_CROSS_COMPILE "${ZEPHYR_SDK_INSTALL_DIR}${REAL_CROSS_COMPILE}")
+			endif()
+		endif()
+
+		if(REAL_CROSS_COMPILE)
+			get_filename_component(CROSS_COMPILE_DIR "${REAL_CROSS_COMPILE}" DIRECTORY)
+			get_filename_component(CROSS_COMPILE_TARGET_DIR "${CROSS_COMPILE_DIR}" DIRECTORY)
+			get_filename_component(CROSS_COMPILE_TARGET_NAME "${CROSS_COMPILE_TARGET_DIR}" NAME)
+			set(SOF_LLEXT_LINK_FLAGS ${SOF_LLEXT_LINK_FLAGS} "-B${CROSS_COMPILE_DIR}")
+			set(SOF_LLEXT_LINK_FLAGS ${SOF_LLEXT_LINK_FLAGS} "-B${CROSS_COMPILE_TARGET_DIR}/${CROSS_COMPILE_TARGET_NAME}/bin")
+		elseif(CROSS_COMPILE_TARGET)
+			set(SOF_LLEXT_LINK_FLAGS ${SOF_LLEXT_LINK_FLAGS} "-B$ENV{ZEPHYR_SDK_INSTALL_DIR}/gnu/${CROSS_COMPILE_TARGET}/bin")
+			set(SOF_LLEXT_LINK_FLAGS ${SOF_LLEXT_LINK_FLAGS} "-B$ENV{ZEPHYR_SDK_INSTALL_DIR}/gnu/${CROSS_COMPILE_TARGET}/${CROSS_COMPILE_TARGET}/bin")
+		endif()
 	endif()
 
 	target_include_directories(${module}_llext_lib PRIVATE
@@ -84,6 +117,20 @@ function(sof_llext_build module)
 		"${SOF_LLEXT_LIBS}"
 	)
 
+	if(CONFIG_LLVM_NO_ZEPHYR_SDK OR LLVM_NO_ZEPHYR_SDK)
+		target_link_options(${module}_llext_lib PRIVATE
+			-fuse-ld=lld
+		)
+	elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" AND NOT CONFIG_LLEXT_TYPE_ELF_RELOCATABLE)
+		target_link_options(${module}_llext_lib PRIVATE
+			-fuse-ld=lld
+		)
+	else()
+		target_link_options(${module}_llext_lib PRIVATE
+			-fuse-ld=bfd
+		)
+	endif()
+
 	foreach(lib ${SOF_LLEXT_LIBS})
 		set(EXTRA_LIBS ${EXTRA_LIBS} -l${lib})
 	endforeach()
@@ -99,10 +146,21 @@ function(sof_llext_build module)
 			-o rimage_config.toml
 	)
 
-	if(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE)
-		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -r)
+	if(CONFIG_LLVM_NO_ZEPHYR_SDK OR LLVM_NO_ZEPHYR_SDK)
+		if(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE)
+			set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -r -fuse-ld=lld)
+		else()
+			set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared -fuse-ld=lld)
+		endif()
+	elseif(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE)
+		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -r -fuse-ld=bfd)
 	else()
 		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared)
+		if("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+			set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared -fuse-ld=lld)
+		else()
+			set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared -fuse-ld=bfd)
+		endif()
 	endif()
 
 	foreach(path ${SOF_LLEXT_LIBS_PATH})
@@ -127,13 +185,28 @@ function(sof_llext_build module)
 			-P ${SOF_BASE}scripts/cmake/llext_write_uuids.cmake
 	)
 
+	set(SOF_LLEXT_LINKER_DRIVER "${CMAKE_C_COMPILER}")
+	if(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE)
+		if(REAL_CROSS_COMPILE AND EXISTS "${REAL_CROSS_COMPILE}gcc")
+			set(SOF_LLEXT_LINKER_DRIVER "${REAL_CROSS_COMPILE}gcc")
+		elseif(CROSS_COMPILE_TARGET AND EXISTS "${ZEPHYR_SDK_INSTALL_DIR}/gnu/${CROSS_COMPILE_TARGET}/bin/${CROSS_COMPILE_TARGET}-gcc")
+			set(SOF_LLEXT_LINKER_DRIVER "${ZEPHYR_SDK_INSTALL_DIR}/gnu/${CROSS_COMPILE_TARGET}/bin/${CROSS_COMPILE_TARGET}-gcc")
+		endif()
+	endif()
+
+	set(SOF_LLEXT_DRIVER_FLAGS "")
+	if("${SOF_LLEXT_LINKER_DRIVER}" STREQUAL "${CMAKE_C_COMPILER}")
+		set(SOF_LLEXT_DRIVER_FLAGS "${SOF_LLEXT_LINK_FLAGS}")
+	endif()
+
 	add_llext_command(TARGET ${module}
 		POST_BUILD
 		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_link_helper.py -s ${size_file}
 			--text-addr=${CONFIG_LIBRARY_BASE_ADDRESS}
 			-c $<TARGET_PROPERTY:bintools,elfconvert_command>
-			-f ${proc_in_file} -o ${proc_out_file} ${CMAKE_C_COMPILER} --
-			${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib> ${EXTRA_LIBS}
+			-f ${proc_in_file} -o ${proc_out_file}
+			${SOF_LLEXT_LINKER_DRIVER} --
+			${SOF_LLEXT_DRIVER_FLAGS} ${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib> ${EXTRA_LIBS}
 	)
 
 	add_llext_command(TARGET ${module}
