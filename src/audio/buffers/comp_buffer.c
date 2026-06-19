@@ -100,6 +100,20 @@ static int comp_buffer_commit_buffer(struct sof_sink *sink, size_t commit_size)
 	return 0;
 }
 
+static int comp_buffer_sink_get_state(struct sof_sink *sink)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_sink(sink);
+
+	return comp_get_state(comp_buffer_get_sink_component(buffer));
+}
+
+static int comp_buffer_source_get_state(struct sof_source *source)
+{
+	struct comp_buffer *buffer = comp_buffer_get_from_source(source);
+
+	return comp_get_state(comp_buffer_get_source_component(buffer));
+}
+
 static int comp_buffer_set_ipc_params(struct sof_audio_buffer *audio_buffer,
 				      struct sof_ipc_stream_params *params,
 				      bool force_update)
@@ -179,6 +193,7 @@ APP_TASK_DATA static const struct source_ops comp_buffer_source_ops = {
 	.audio_set_ipc_params = audio_buffer_source_set_ipc_params,
 	.on_audio_format_set = audio_buffer_source_on_audio_format_set,
 	.set_alignment_constants = audio_buffer_source_set_alignment_constants,
+	.get_state = comp_buffer_source_get_state,
 };
 
 APP_TASK_DATA static const struct sink_ops comp_buffer_sink_ops = {
@@ -189,6 +204,7 @@ APP_TASK_DATA static const struct sink_ops comp_buffer_sink_ops = {
 	.on_audio_format_set = audio_buffer_sink_on_audio_format_set,
 	.set_alignment_constants = audio_buffer_sink_set_alignment_constants,
 	.get_lft = audio_buffer_sink_get_lft,
+	.get_state = comp_buffer_sink_get_state,
 };
 
 static const struct audio_buffer_ops audio_buffer_ops = {

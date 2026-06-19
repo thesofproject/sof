@@ -76,6 +76,24 @@ struct sof_audio_stream_params {
 };
 
 /**
+ * @brief Number of whole frames available before a circular buffer wraps.
+ *
+ * Computes (end - began) / channels expressed in frames. The pointer distance
+ * is evaluated in bytes so the helper works for any sample width.
+ *
+ * @param began current position in the circular buffer
+ * @param end one past the last sample of the circular buffer
+ * @param sample_bytes size of a single sample in bytes (2 for s16, 4 for s32)
+ * @param channels number of channels, i.e. samples per frame
+ * @return number of frames that can be processed without wrapping
+ */
+static inline int circ_buf_frames_without_wrap(const void *began, const void *end,
+					       int sample_bytes, int channels)
+{
+	return ((const char *)end - (const char *)began) / sample_bytes / channels;
+}
+
+/**
  * @brief Read-only view of source data in a circular buffer.
  *
  * Describes a contiguous fragment of a circular buffer obtained from the source
