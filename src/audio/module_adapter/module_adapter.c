@@ -59,23 +59,37 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #endif
 
 static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
+						  const struct module_ext_init_data *ext_init,
 						  size_t *heap_size)
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
-	/* FIXME: the size will be derived from configuration */
-	const size_t buf_size = 28 * 1024;
+	size_t buf_size = CONFIG_SOF_USERSPACE_DP_DEFAULT_HEAP_SIZE;
 
-	/*
-	 * A 1-to-1 replacement of the original heap implementation would be to
-	 * have "lifetime size" equal to 0. But (1) this is invalid for
-	 * vregion_create() and (2) we gradually move objects, that are simple
-	 * to move to the lifetime buffer. Make it 4k for the beginning.
-	 */
-	return vregion_create(4096, buf_size - 4096);
+#if CONFIG_IPC_MAJOR_4
+	if (config->ipc_extended_init && ext_init && ext_init->dp_data &&
+	    ext_init->dp_data->heap_bytes > 0) {
+		if (ext_init->dp_data->heap_bytes > 64*1024*1024) {
+			LOG_ERR("Bad heap size %u bytes for %#x",
+				ext_init->dp_data->heap_bytes, config->id);
+			return NULL;
+		}
+
+		buf_size = ext_init->dp_data->heap_bytes;
+
+		LOG_INF("%zu byte heap size requested in IPC for %#x", buf_size, config->id);
+	}
+#endif
+
+	*heap_size = buf_size;
+
+	return vregion_create(buf_size);
 }
 
-static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
-							  const struct comp_ipc_config *config)
+static
+struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+						   const struct comp_ipc_config *config,
+						   const struct module_ext_init_data *ext_init,
+						   struct mod_alloc_ctx *ppl_alloc)
 {
 	struct k_heap *mod_heap;
 	struct vregion *mod_vreg;
@@ -91,15 +105,21 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 	size_t heap_size;
+	bool use_ppl_alloc = ppl_alloc &&
+			     config->proc_domain == COMP_PROCESSING_DOMAIN_LL;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_SOF_VREGIONS) &&
 	    IS_ENABLED(CONFIG_USERSPACE) && !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_vreg = module_adapter_dp_heap_new(config, &heap_size);
+		mod_vreg = module_adapter_dp_heap_new(config, ext_init, &heap_size);
 		if (!mod_vreg) {
 			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
 			return NULL;
 		}
 		mod_heap = NULL;
+	} else if (use_ppl_alloc) {
+		mod_vreg = ppl_alloc->vreg ? vregion_get(ppl_alloc->vreg) : NULL;
+		mod_heap = ppl_alloc->heap;
+		heap_size = 0;
 	} else {
 #ifdef CONFIG_SOF_USERSPACE_LL
 		mod_heap = sof_sys_user_heap_get();
@@ -111,26 +131,38 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 		mod_vreg = NULL;
 	}
 
-	if (!mod_vreg)
+	if (use_ppl_alloc) {
+		/* LL modules use the pipeline's alloc context */
+		mod = sof_ctx_alloc(ppl_alloc, flags, sizeof(*mod), 0);
+	} else if (!mod_vreg) {
 		mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
-	else if (flags & SOF_MEM_FLAG_COHERENT)
-		mod = vregion_alloc_coherent(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*mod));
-	else
-		mod = vregion_alloc(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*mod));
+	} else if (flags & SOF_MEM_FLAG_COHERENT) {
+		mod = vregion_alloc_coherent(mod_vreg, sizeof(*mod));
+	} else {
+		mod = vregion_alloc(mod_vreg, sizeof(*mod));
+	}
 
 	if (!mod) {
 		comp_cl_err(drv, "failed to allocate memory for module");
 		goto emod;
 	}
 
-	struct mod_alloc_ctx *alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
+	struct mod_alloc_ctx *alloc;
 
-	if (!alloc)
-		goto ealloc;
+	if (use_ppl_alloc) {
+		/* LL modules share the pipeline's alloc context */
+		alloc = ppl_alloc;
+	} else {
+		alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
+		if (!alloc)
+			goto ealloc;
+
+		memset(alloc, 0, sizeof(*alloc));
+		alloc->heap = mod_heap;
+		alloc->vreg = mod_vreg;
+	}
 
 	memset(mod, 0, sizeof(*mod));
-	alloc->heap = mod_heap;
-	alloc->vreg = mod_vreg;
 	mod->priv.resources.alloc = alloc;
 	mod_resource_init(mod);
 
@@ -140,8 +172,10 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 * then it can be cached. Effectively it can be only cached in
 	 * single-core configurations.
 	 */
-	if (mod_vreg)
-		dev = vregion_alloc_coherent(mod_vreg, VREGION_MEM_TYPE_LIFETIME, sizeof(*dev));
+	if (use_ppl_alloc)
+		dev = sof_ctx_alloc(ppl_alloc, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
+	else if (mod_vreg)
+		dev = vregion_alloc_coherent(mod_vreg, sizeof(*dev));
 	else
 		dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
 
@@ -159,14 +193,20 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	return mod;
 
 edev:
-	sof_heap_free(mod_heap, alloc);
+	if (!use_ppl_alloc)
+		sof_heap_free(mod_heap, alloc);
 ealloc:
-	if (mod_vreg)
+	if (use_ppl_alloc)
+		sof_ctx_free(ppl_alloc, mod);
+	else if (mod_vreg)
 		vregion_free(mod_vreg, mod);
 	else
 		sof_heap_free(mod_heap, mod);
 emod:
-	vregion_put(mod_vreg);
+	if (use_ppl_alloc)
+		vregion_put(ppl_alloc->vreg);
+	else
+		vregion_put(mod_vreg);
 
 	return NULL;
 }
@@ -174,26 +214,27 @@ emod:
 static void module_adapter_mem_free(struct processing_module *mod)
 {
 	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
-	struct k_heap *mod_heap = alloc->heap;
+	bool ppl_alloc = mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL &&
+			 mod->dev->pipeline && mod->dev->pipeline->alloc == alloc;
 
 	/*
 	 * In principle it shouldn't even be needed to free individual objects
 	 * on the module heap since we're freeing the heap itself too
 	 */
 #if CONFIG_IPC_MAJOR_4
-	sof_heap_free(mod_heap, mod->priv.cfg.input_pins);
+	sof_heap_free(alloc->heap, mod->priv.cfg.input_pins);
 #endif
-	if (alloc->vreg) {
-		struct vregion *mod_vreg = alloc->vreg;
+	sof_ctx_free(alloc, mod->dev);
+	sof_ctx_free(alloc, mod);
 
-		vregion_free(mod_vreg, mod->dev);
-		vregion_free(mod_vreg, mod);
-		if (!vregion_put(mod_vreg))
-			sof_heap_free(alloc->heap, alloc);
+	if (ppl_alloc) {
+		/* alloc belongs to pipeline, just release vregion reference */
+		vregion_put(alloc->vreg);
+	} else if (alloc->vreg) {
+		if (!vregion_put(alloc->vreg))
+			rfree(alloc);
 	} else {
-		sof_heap_free(mod_heap, mod->dev);
-		sof_heap_free(mod_heap, mod);
-		sof_heap_free(mod_heap, alloc);
+		rfree(alloc);
 	}
 }
 
@@ -236,8 +277,32 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 			return NULL;
 	}
 #endif
+	const struct module_ext_init_data *ext_init =
+#if CONFIG_IPC_MAJOR_4
+		&ext_data;
+#else
+		NULL;
+#endif
 
-	struct processing_module *mod = module_adapter_mem_alloc(drv, config);
+#if CONFIG_IPC_MAJOR_4
+	struct ipc_comp_dev *ipc_pipe;
+	struct ipc *ipc = ipc_get();
+	struct mod_alloc_ctx *ppl_alloc = NULL;
+
+	/* resolve the pipeline pointer early to pass its alloc to mem_alloc */
+	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
+					  IPC_COMP_IGNORE_REMOTE);
+	if (ipc_pipe && ipc_pipe->pipeline)
+		ppl_alloc = ipc_pipe->pipeline->alloc;
+#endif
+
+	struct processing_module *mod = module_adapter_mem_alloc(drv, config, ext_init,
+#if CONFIG_IPC_MAJOR_4
+								 ppl_alloc
+#else
+								 NULL
+#endif
+								 );
 
 	if (!mod)
 		return NULL;
@@ -249,6 +314,18 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 #endif /* CONFIG_USERSPACE */
 
 	struct comp_dev *dev = mod->dev;
+
+	dst = &mod->priv.cfg;
+	/*
+	 * NOTE: dst->ext_data points to stack variable and contains
+	 *       pointers to IPC payload mailbox, so its only valid in
+	 *       functions that are called from this function. This is
+	 *       why the pointer is set to NULL before this function
+	 *       exits.
+	 */
+#if CONFIG_IPC_MAJOR_4
+	dst->ext_data = &ext_data;
+#endif
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	/* create a task for DP processing */
@@ -262,16 +339,6 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 	}
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
-	dst = &mod->priv.cfg;
-	/*
-	 * NOTE: dst->ext_data points to stack variable and contains
-	 *       pointers to IPC payload mailbox, so its only valid in
-	 *       functions that called from this function. This why
-	 *       the pointer is set NULL before this function exits.
-	 */
-#if CONFIG_IPC_MAJOR_4
-	dst->ext_data = &ext_data;
-#endif
 	ret = module_adapter_init_data(dev, dst, config, &spec);
 	if (ret) {
 		comp_err(dev, "%d: module init data failed",
@@ -294,12 +361,7 @@ struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 		goto err;
 
 #if CONFIG_IPC_MAJOR_4
-	struct ipc_comp_dev *ipc_pipe;
-	struct ipc *ipc = ipc_get();
-
 	/* set the pipeline pointer if ipc_pipe is valid */
-	ipc_pipe = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE, config->pipeline_id,
-					  IPC_COMP_IGNORE_REMOTE);
 	if (ipc_pipe) {
 		dev->pipeline = ipc_pipe->pipeline;
 

@@ -189,10 +189,9 @@ static inline void *sof_ctx_alloc(struct mod_alloc_ctx *ctx, uint32_t flags,
 		return sof_heap_alloc(ctx ? ctx->heap : NULL, flags, size, alignment);
 
 	if (flags & SOF_MEM_FLAG_COHERENT)
-		return vregion_alloc_coherent_align(ctx->vreg, VREGION_MEM_TYPE_INTERIM,
-						    size, alignment);
+		return vregion_alloc_coherent_align(ctx->vreg, size, alignment);
 
-	return vregion_alloc_align(ctx->vreg, VREGION_MEM_TYPE_INTERIM, size, alignment);
+	return vregion_alloc_align(ctx->vreg, size, alignment);
 }
 
 /**
