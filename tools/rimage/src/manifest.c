@@ -32,19 +32,23 @@ static bool cse_header_is_valid(const struct image *image, const void *buffer, s
 	if (image->adsp->man_v2_5 || image->adsp->man_ace_v1_5) {
 		const struct CsePartitionDirHeader_v2_5 *cse_hdr = buffer;
 
+		if (size < sizeof(*cse_hdr))
+			return false;
+
 		return cse_hdr->header_marker == CSE_HEADER_MAKER &&
 			cse_hdr->nb_entries == MAN_CSE_PARTS &&
-			cse_hdr->header_length >= sizeof(*cse_hdr) &&
-			size >= sizeof(*cse_hdr);
+			cse_hdr->header_length >= sizeof(*cse_hdr);
 	}
 
-	if (image->adsp->man_v1_5 || image->adsp->man_v1_8) {
+	if (image->adsp->man_v1_5 || image->adsp->man_v1_5_sue || image->adsp->man_v1_8) {
 		const struct CsePartitionDirHeader *cse_hdr = buffer;
+
+		if (size < sizeof(*cse_hdr))
+			return false;
 
 		return cse_hdr->header_marker == CSE_HEADER_MAKER &&
 			cse_hdr->nb_entries == MAN_CSE_PARTS &&
-			cse_hdr->header_length >= sizeof(*cse_hdr) &&
-			size >= sizeof(*cse_hdr);
+			cse_hdr->header_length >= sizeof(*cse_hdr);
 	}
 
 	return false;
@@ -1669,7 +1673,7 @@ int verify_image(struct image *image)
 {
 	FILE *in_file;
 	int ret = -EINVAL;
-	void *buffer;
+	void *buffer = NULL;
 	size_t size, read, i;
 
 	/* is verify supported for target ? */
@@ -1842,11 +1846,15 @@ int resign_image(struct image *image)
 	if (ret < 0)
 		goto out;
 
-	if (fclose(image->out_fd)) {
+	/* fclose() closes the stream even when it reports an error, so clear the
+	 * handle first to stop the caller's cleanup from closing it a second time.
+	 */
+	ret = fclose(image->out_fd);
+	image->out_fd = NULL;
+	if (ret) {
 		ret = file_error("unable to close file after signing", image->out_file);
 		goto out;
 	}
-	image->out_fd = NULL;
 
 	/* validate the re-signed output with the same private key */
 	image->verify_file = image->out_file;
