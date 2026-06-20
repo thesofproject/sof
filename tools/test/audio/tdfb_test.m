@@ -77,7 +77,12 @@ test.nch_in = max(bf.input_channel_select) + 1;
 test.nch_out = bf.num_output_channels;
 test.ch_in = 1:test.nch_in;
 test.ch_out = 1:test.nch_out;
-test.extra_opts='-s tdfb_enable.sh';
+[fh, name, msg] = mkstemp('/tmp/tdfb_enable.sh.XXXXXX');
+test.extra_opts = sprintf('-s %s', name);
+fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB track' off\n");
+fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB angle set' 90\n");
+fprintf(fh, "amixer -c0 cset name='Analog Playback TDFB beam' on\n");
+fclose(fh);
 if length(arrayid)
 	test.comp = sprintf('tdfb_%s', arrayid);
 end
