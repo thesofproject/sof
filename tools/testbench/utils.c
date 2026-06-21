@@ -368,10 +368,18 @@ static int tb_parse_amixer(struct testbench_prm *tp, char *line)
 	}
 
 	len = end_str - name_str - find_len;
+	if (len < 0 || len >= TB_MAX_CTL_NAME_CHARS) {
+		fprintf(stderr, "error: control name too long in script line: %s\n", line);
+		return -EINVAL;
+	}
 	memcpy(control_name, name_str + find_len, len);
 
 	line_end = line + strlen(line);
 	len = line_end - end_str - find_end_len;
+	if (len < 0 || len >= TB_MAX_CTL_NAME_CHARS) {
+		fprintf(stderr, "error: control value too long in script line: %s\n", line);
+		return -EINVAL;
+	}
 	memcpy(control_params, &end_str[find_end_len], len);
 
 	printf("Info: Setting control name '%s' to value (%s)\n", control_name, control_params);
