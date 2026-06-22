@@ -508,4 +508,12 @@ SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 SDW_JACK_COMPR_AUDIO_FEATURE_CAPTURE=true,SDW_DMIC_COMPR_AUDIO_FEATURE_CAPTURE=true,\
 MFCC_FRAME_BYTES=76,MFCC_BLOB=ceps"
+
+# Soundwire compressed feature topologies
+"cavs-sdw\;sof-sdca-jack-compr\;SDW_JACK=false,NUM_HDMIS=0,COMPRESSED=true,\
+COMPRESSED_1=true,COMPRESSED_2=false"
+
+"cavs-sdw\;sof-sdca-amp-compr\;SDW_JACK=false,NUM_HDMIS=0,COMPRESSED=true,\
+COMPRESSED_1=false,COMPRESSED_2=true"
+
 )
