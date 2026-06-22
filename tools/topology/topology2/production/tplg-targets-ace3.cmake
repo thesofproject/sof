@@ -174,6 +174,13 @@ SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=SDW1-Playback,\
 SDW_JACK_OUT_STREAM=SDW3-Playback,SDW_JACK_IN_STREAM=SDW3-Capture,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt713-l3-rt1320-l1.bin"
 
+# MSI Prestige 14/16 Flip AI+ (D3MTG/C3MTG) with RT713 on link 3 and double stereo RT1320 on link 2
+"cavs-sdw\;sof-ptl-rt713-l3-rt1320-l2\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=SDW2-Playback,\
+SDW_JACK_OUT_STREAM=SDW3-Playback,SDW_JACK_IN_STREAM=SDW3-Capture,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt713-l3-rt1320-l2.bin,\
+DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true"
+
 "cavs-sdw\;sof-ptl-cs42l43-l2-cs35l56x6-l13\;NUM_SDW_AMP_LINKS=3,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
