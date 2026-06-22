@@ -423,6 +423,44 @@ __cold const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data_wrapper
 	return ipc4_get_pipeline_data();
 }
 
+static int ipc4_pipeline_id_get(struct ipc4_message_request *ipc4,
+				struct ipc4_pipeline_set_state *state,
+				const uint32_t **ppl_id, unsigned int *ppl_count)
+{
+	if (!state->extension.r.multi_ppl) {
+		if (ppl_count)
+			*ppl_count = 1;
+		if (ppl_id)
+			*ppl_id = NULL;
+		return state->primary.r.ppl_id;
+	}
+
+	const struct ipc4_pipeline_set_state_data *ppl_data = ipc4_get_pipeline_data();
+	unsigned int cnt = ppl_data->pipelines_count;
+
+	/*
+	 * pipelines_count is read straight from the host-provided
+	 * mailbox payload, so cap it at what the mailbox can
+	 * physically hold. Anything larger means the host promised
+	 * more ppl_id[] entries than fit in MAILBOX_HOSTBOX, and
+	 * dereferencing the flex array would read out of bounds.
+	 */
+	if (cnt > (MAILBOX_HOSTBOX_SIZE - sizeof(struct ipc4_pipeline_set_state_data)) /
+	    sizeof(uint32_t)) {
+		ipc_cmd_err(&ipc_tr, "ipc: pipelines_count %u exceeds mailbox bound",
+			    cnt);
+		return -EINVAL;
+	}
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_data->ppl_id,
+				 sizeof(int) * cnt);
+	if (ppl_count)
+		*ppl_count = cnt;
+	if (ppl_id)
+		*ppl_id = ppl_data->ppl_id;
+
+	return ppl_data->ppl_id[0];
+}
+
 /**
  * \brief Process SET_PIPELINE_STATE IPC4 message (prepare + trigger phases).
  * @param[in] ipc4 IPC4 message request.
@@ -435,7 +473,7 @@ int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 	struct ipc_comp_dev *ppl_icd;
 	struct ipc *ipc = ipc_get();
 	uint32_t cmd, ppl_count;
-	uint32_t id = 0;
+	int id;
 	const uint32_t *ppl_id;
 	bool use_idc = false;
 	uint32_t idx;
@@ -447,31 +485,12 @@ int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4)
 	cmd = state.primary.r.ppl_state;
 	ppl_data = ipc4_get_pipeline_data();
 
-	if (state.extension.r.multi_ppl) {
-		ppl_count = ppl_data->pipelines_count;
-		/*
-		 * pipelines_count is read straight from the host-provided
-		 * mailbox payload, so cap it at what the mailbox can
-		 * physically hold. Anything larger means the host promised
-		 * more ppl_id[] entries than fit in MAILBOX_HOSTBOX, and
-		 * dereferencing the flex array would read out of bounds.
-		 */
-		if (ppl_count > (MAILBOX_HOSTBOX_SIZE -
-				 sizeof(struct ipc4_pipeline_set_state_data)) /
-				sizeof(uint32_t)) {
-			ipc_cmd_err(&ipc_tr,
-				    "ipc: pipelines_count %u exceeds mailbox bound",
-				    ppl_count);
-			return IPC4_ERROR_INVALID_PARAM;
-		}
-		ppl_id = ppl_data->ppl_id;
-		dcache_invalidate_region((__sparse_force void __sparse_cache *)ppl_id,
-					 sizeof(int) * ppl_count);
-	} else {
-		ppl_count = 1;
-		id = state.primary.r.ppl_id;
+	id = ipc4_pipeline_id_get(ipc4, &state, &ppl_id, &ppl_count);
+	if (id < 0)
+		return IPC4_ERROR_INVALID_PARAM;
+
+	if (ppl_count == 1)
 		ppl_id = &id;
-	}
 
 	for (i = 0; i < ppl_count; i++) {
 		ppl_icd = ipc_get_comp_by_ppl_id(ipc, COMP_TYPE_PIPELINE,
