@@ -665,7 +665,8 @@ e_event:
 	return ret;
 }
 
-__cold int ipc_user_init(void)
+/* Primary core only */
+__cold static int ipc_user_init(void)
 {
 	struct ipc *ipc = ipc_get();
 	struct ipc_user *ipc_user = sof_heap_alloc(sof_sys_user_heap_get(),
@@ -770,7 +771,8 @@ __cold int ipc_init(struct sof *sof)
 
 	ipc = ipc_get();
 	memset(ipc, 0, sizeof(*ipc));
-	ipc->ll_alloc = sof_heap_alloc(heap, SOF_MEM_FLAG_USER, sizeof(*ipc->ll_alloc), 0);
+	ipc->ll_alloc = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				       sizeof(*ipc->ll_alloc), 0);
 	if (!ipc->ll_alloc) {
 		tr_err(&ipc_tr, "Unable to allocate IPC ll_alloc");
 		return -ENOMEM;
