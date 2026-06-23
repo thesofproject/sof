@@ -12,7 +12,8 @@ static inline void *z_vrfy_sof_heap_alloc(struct k_heap *heap, uint32_t flags,
 {
 	/* only allow flags that are safe for user-space heap isolation */
 	static const uint32_t allowed_flags =
-		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA;
+		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA |
+		SOF_MEM_FLAG_LARGE_BUFFER;
 
 	K_OOPS(flags & ~allowed_flags);
 
