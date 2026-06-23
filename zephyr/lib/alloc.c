@@ -631,11 +631,26 @@ EXPORT_SYMBOL(rfree);
 void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 			    size_t alignment)
 {
-	if (flags & (SOF_MEM_FLAG_LARGE_BUFFER | SOF_MEM_FLAG_USER_SHARED_BUFFER))
+#if CONFIG_SOF_USERSPACE_USE_SHARED_HEAP
+	/*
+	 * FLAG_USER_SHARED_BUFFER maps to a specific heap, so
+	 * the passed 'heap' can be ignored
+	 */
+	if (flags & SOF_MEM_FLAG_USER_SHARED_BUFFER)
 		return rballoc_align(flags, bytes, alignment);
+#endif
 
-	if (!heap)
+	if (!heap) {
+		/*
+		 * Ensure virtual heap is utilized for large buffers
+		 * if no heap is explicitly passed. rballoc_align()
+		 * has this logic.
+		 */
+		if (flags & SOF_MEM_FLAG_LARGE_BUFFER)
+			return rballoc_align(flags, bytes, alignment);
+
 		heap = &sof_heap;
+	}
 
 	if (flags & SOF_MEM_FLAG_COHERENT)
 		return heap_alloc_aligned(heap, alignment, bytes);
