@@ -683,7 +683,7 @@ int zephyr_ll_task_init(struct task *task,
 	 * schedule_task_init() must be run on target core, see
 	 * sof/zephyr/schedule.c:arch_schedulers_get()
 	 */
-	assert(cpu_get_id() == core);
+	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || cpu_get_id() == core);
 
 	ret = schedule_task_init(task, uid, type, priority, run, data, core,
 				 flags);
