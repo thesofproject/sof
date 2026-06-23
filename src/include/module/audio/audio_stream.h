@@ -76,6 +76,31 @@ struct sof_audio_stream_params {
 };
 
 /**
+ * @brief Read-only view of source data in a circular buffer.
+ *
+ * Describes a contiguous fragment of a circular buffer obtained from the source
+ * API together with the buffer boundaries needed for wrap handling. All pointers
+ * are const because the source data must not be modified.
+ */
+struct cir_buf_source {
+	const void *buf_start;	/**< Start address of the circular buffer. */
+	const void *buf_end;	/**< End address of the circular buffer. */
+	const void *ptr;	/**< Current read pointer within the buffer. */
+};
+
+/**
+ * @brief Writable view of sink data in a circular buffer.
+ *
+ * Describes a contiguous fragment of a circular buffer obtained from the sink
+ * API together with the buffer boundaries needed for wrap handling.
+ */
+struct cir_buf_sink {
+	void *buf_start;	/**< Start address of the circular buffer. */
+	void *buf_end;		/**< End address of the circular buffer. */
+	void *ptr;		/**< Current write pointer within the buffer. */
+};
+
+/**
  * @brief Calculates numbers of s16 samples to buffer wrap.
  * @param ptr Read or write pointer of circular buffer.
  * @param buf_start Start address of circular buffer.
