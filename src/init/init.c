@@ -32,6 +32,7 @@
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/audio/module_adapter/library/userspace_proxy.h>
 #include <ipc/trace.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/fw_reg.h>
@@ -229,6 +230,12 @@ __cold static int primary_core_init(int argc, char *argv[], struct sof *sof)
 #if CONFIG_SOF_USERSPACE_LL
 	zephyr_ll_user_resources_init();
 #endif
+
+	/* Create the userspace IPC worker for the primary core. Secondary cores get
+	 * theirs from cpu_enable_core(). Resolves to a no-op when unused.
+	 */
+	if (user_worker_create(cpu_get_id()) < 0)
+		sof_panic(SOF_IPC_PANIC_MEM);
 
 	/* init the platform */
 	if (platform_init(sof) < 0)

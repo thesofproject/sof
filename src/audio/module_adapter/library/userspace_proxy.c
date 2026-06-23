@@ -103,16 +103,15 @@ struct user_worker {
 	struct k_event event;
 };
 
-static struct user_worker worker[CONFIG_CORE_COUNT];
+static struct user_worker worker[CONFIG_CORE_COUNT] = { { 0 } };
 
-static int user_worker_get(int cpu)
+int user_worker_create(int cpu)
 {
-	int ret = 0;
-
+	assert(cpu_is_me(0));
 	assert(cpu >= 0 && cpu < (int)ARRAY_SIZE(worker));
 
-	if (worker[cpu].reference_count) {
-		worker[cpu].reference_count++;
+	if (worker[cpu].stack_ptr) {
+		tr_err(&userspace_proxy_tr, "Userspace worker already created for core %d.", cpu);
 		return 0;
 	}
 
@@ -130,45 +129,42 @@ static int user_worker_get(int cpu)
 	worker[cpu].thread_id = k_work_user_queue_thread_get(&worker[cpu].work_queue);
 
 #ifdef CONFIG_SCHED_CPU_MASK
-	/*
-	 * k_work_user_queue_start() starts the worker thread immediately.
-	 * We need to make sure it is not running when pinning it to a specific core.
-	 */
-	k_thread_suspend(worker[cpu].thread_id);
-
-	/* Pin worker thread to the same core as the module */
-	ret = k_thread_cpu_pin(worker[cpu].thread_id, cpu);
+	int ret = k_thread_cpu_pin(worker[cpu].thread_id, cpu);
 	if (ret) {
 		tr_err(&userspace_proxy_tr, "Failed to pin worker to core %d, error: %d",
 		       cpu, ret);
 		k_panic();
 	}
-
-	k_thread_resume(worker[cpu].thread_id);
-
 #elif CONFIG_CORE_COUNT > 1
 #error "CONFIG_SCHED_CPU_MASK is not enabled"
 #endif
 
 	k_thread_access_grant(worker[cpu].thread_id, &worker[cpu].event);
 
-	worker[cpu].reference_count++;
+	return 0;
+}
+
+void user_worker_free(int cpu)
+{
+	assert(cpu >= 0 && cpu < (int)ARRAY_SIZE(worker));
+	assert(worker[cpu].stack_ptr);
+
+	k_thread_abort(worker[cpu].thread_id);
+	user_stack_free(worker[cpu].stack_ptr);
+	worker[cpu].stack_ptr = NULL;
+}
+
+static int user_worker_get(int cpu)
+{
+	assert(cpu >= 0 && cpu < (int)ARRAY_SIZE(worker));
+	assert(worker[cpu].stack_ptr);
 
 	return 0;
 }
 
 static void user_worker_put(int cpu)
 {
-	assert(cpu >= 0 && cpu < (int)ARRAY_SIZE(worker));
-
-	/* Module removed so decrement counter */
-	worker[cpu].reference_count--;
-
-	/* Free worker resources if no more active user space modules */
-	if (worker[cpu].reference_count == 0) {
-		k_thread_abort(worker[cpu].thread_id);
-		user_stack_free(worker[cpu].stack_ptr);
-	}
+	ARG_UNUSED(cpu);
 }
 #endif
 
