@@ -111,6 +111,18 @@ extra_platform_configs = {
 		"rmb_LX7_HiFi5_PROD",
 		RIMAGE_KEY = "key param ignored by acp_6_0"
 	),
+	"acp_7_0" : PlatformConfig(
+		"amd", "acp_7_0_adsp/acp_7_0",
+		f"RI-2023.11{xtensa_tools_version_postfix}",
+		"ACP_7_0_HiFi5_NNE_PROD",
+		RIMAGE_KEY = "key param ignored by acp_7_0"
+	),
+	"acp_7_x" : PlatformConfig(
+		"amd", "acp_7_x_adsp/acp_7_x",
+		f"RI-2022.9{xtensa_tools_version_postfix}",
+		"ACP73x_HiFi5_NNE_PROD",
+		RIMAGE_KEY = "key param ignored by acp_7_x"
+	),
 	# MediaTek platforms
 	# (move to platform_configs_all on next Zephyr SDK release after 0.17.0)
 	"mt8195" : PlatformConfig(
@@ -1119,24 +1131,26 @@ def build_platforms():
 			# selects the correct -mcpu for the LLVM backend.
 			# Platforms that share an SDK toolchain (e.g. NVL uses PTL's
 			# assembler) need an explicit CPU override for HiFi5 support.
-			parts = PLAT_CONFIG.split("/")
-			if len(parts) >= 3:
-				core_id = f"{parts[1]}_{parts[2]}"  # e.g. "ace40_nvl" -> "intel_ace40_adsp"
-				# Map board-level names to LLVM processor names
-				core_id_map = {
-					"ace30_ptl": "intel_ace30_adsp",
-					"ace40_nvl": "intel_ace40_adsp",
-					"ace40_nvls": "intel_ace40_adsp",
-				}
-				platf_build_environ["XTENSA_CORE_ID"] = core_id_map.get(core_id, "intel_ace30_adsp")
+			platform_vendor = platform_dict["vendor"]
+			if platform_vendor == "intel":
+				parts = PLAT_CONFIG.split("/")
+				if len(parts) >= 3:
+					core_id = f"{parts[1]}_{parts[2]}"  # e.g. "ace40_nvl" -> "intel_ace40_adsp"
+					# Map board-level names to LLVM processor names
+					core_id_map = {
+						"ace30_ptl": "intel_ace30_adsp",
+						"ace40_nvl": "intel_ace40_adsp",
+						"ace40_nvls": "intel_ace40_adsp",
+					}
+					platf_build_environ["XTENSA_CORE_ID"] = core_id_map.get(core_id, "intel_ace30_adsp")
 
-				# Map board-level names to Zephyr SDK toolchain names
-				sdk_target_map = {
-					"ace30_ptl": "intel_ace30_ptl",
-					"ace40_nvl": "intel_ace40",
-					"ace40_nvls": "intel_ace40",
-				}
-				platf_build_environ["XTENSA_TOOLCHAIN_TARGET"] = sdk_target_map.get(core_id, f"intel_{core_id}")
+					# Map board-level names to Zephyr SDK toolchain names
+					sdk_target_map = {
+						"ace30_ptl": "intel_ace30_ptl",
+						"ace40_nvl": "intel_ace40",
+						"ace40_nvls": "intel_ace40",
+					}
+					platf_build_environ["XTENSA_TOOLCHAIN_TARGET"] = sdk_target_map.get(core_id, f"intel_{core_id}")
 
 		extra_conf_files = [str(item.resolve(True)) for item in args.overlay]
 		# The '-d' option is a shortcut for '-o path_to_debug_overlay', we are good
@@ -1527,7 +1541,7 @@ def gzip_compress(fname, gzdst=None):
 RI_INFO_UNSUPPORTED = []
 
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp', 'imx95']
-RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0']
+RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0', 'acp_7_0', 'acp_7_x']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196', 'mt8365']
 RI_INFO_UNSUPPORTED += ['qemu_xtensa', 'qemu_xtensa_mmu', 'native_sim']
 
