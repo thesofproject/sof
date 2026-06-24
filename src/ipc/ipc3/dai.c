@@ -97,9 +97,11 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	case SOF_DAI_AMD_HS_VIRTUAL:
 	case SOF_DAI_AMD_TDM:
 	case SOF_DAI_AMD_SDW: {
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
 		struct dai_config *params = (struct dai_config *)dd->dai->dev->config;
 
 		params->dai_index = dd->dai->index;
+#endif
 		channel = dai_get_handshake(dd->dai, dai->direction,
 					    dd->stream_id);
 #if defined(CONFIG_SOC_ACP_7_0)
@@ -361,7 +363,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		return;
 	}
 
-#if defined(CONFIG_AMD)
+#if defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0)
 	/* Free DAI-specific data allocated in ipc_dai_data_config() */
 	if (dd->dma && dd->dma->z_dev && dd->dma->z_dev->data) {
 		struct acp_dma_dev_data *dev_data = dd->dma->z_dev->data;

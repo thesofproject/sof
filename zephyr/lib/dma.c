@@ -239,6 +239,7 @@ APP_SYSUSER_DATA SHARED_DATA struct sof_dma dma[] = {
 	},
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(acp_sdw_dma)),
 },
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(acp_tdm_dma), okay)
 {
 	.plat_data = {
 		.dir 		= SOF_DMA_DIR_MEM_TO_DEV |
@@ -257,6 +258,7 @@ APP_SYSUSER_DATA SHARED_DATA struct sof_dma dma[] = {
 	},
 	.z_dev = DEVICE_DT_GET(DT_NODELABEL(acp_tdm_dma)),
 },
+#endif
 #endif
 #if DT_HAS_COMPAT_STATUS_OKAY(mediatek_afe_memif_dma)
 {

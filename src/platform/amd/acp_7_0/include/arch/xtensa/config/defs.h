@@ -30,9 +30,11 @@
 
 #ifdef __XTENSA__
 
+#if defined(__has_include) && __has_include(<xtensa/tie/xt_core.h>)
 #include <xtensa/tie/xt_core.h>
 #include <xtensa/tie/xt_misc.h>
 #include <xtensa/tie/xt_booleans.h>
+#endif
 
 #endif /* __XTENSA__ */
 #endif /* !_XTENSA_BASE_HEADER */

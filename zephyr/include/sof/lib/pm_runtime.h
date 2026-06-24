@@ -96,6 +96,10 @@ static inline void platform_pm_runtime_prepare_d0ix_en(uint32_t index)
 {
 }
 
+static inline void platform_pm_runtime_power_off(void)
+{
+}
+
 #if CONFIG_DSP_RESIDENCY_COUNTERS
 
 /**

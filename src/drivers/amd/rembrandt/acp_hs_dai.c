@@ -37,7 +37,7 @@ static inline int hsdai_set_config(struct dai *dai, struct ipc_config_dai *commo
 	acp_i2stdm_mstrclkgen_t i2stdm_mstrclkgen;
 
 	acpdata->config = *config;
-	acpdata->params = config->acphs;
+	acpdata->params = config->acptdm;
 	i2stdm_mstrclkgen.u32all = io_reg_read(PU_REGISTER_BASE + ACP_I2STDM2_MSTRCLKGEN);
 	i2stdm_mstrclkgen.bits.i2stdm_master_mode = 1;
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {

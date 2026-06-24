@@ -200,7 +200,11 @@ void idc_cmd(struct idc_msg *msg);
 
 int idc_msg_status_get(uint32_t core);
 
+#if CONFIG_SMP
 int idc_init(void);
+#else
+static inline int idc_init(void) { return 0; }
+#endif
 
 void idc_init_thread(void);
 
