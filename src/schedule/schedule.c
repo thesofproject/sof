@@ -84,18 +84,21 @@ int schedule_task_init(struct task *task,
 static void scheduler_register(struct schedule_data *scheduler)
 {
 	struct schedulers **sch = arch_schedulers_get();
+	struct k_heap *heap = NULL;
 
-	if (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) && scheduler_is_user(scheduler->type))
+	if (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) && scheduler_is_user(scheduler->type)) {
 		sch = arch_user_schedulers_get();
+		heap = sof_sys_user_heap_get();
+	}
 
 	if (!*sch) {
 		/* init schedulers list */
-		*sch = rzalloc(SOF_MEM_FLAG_KERNEL,
-			       sizeof(**sch));
+		*sch = sof_heap_alloc(heap, 0, sizeof(**sch), 0);
 		if (!*sch) {
 			tr_err(&sch_tr, "allocation failed");
 			return;
 		}
+		memset(*sch, 0, sizeof(**sch));
 		list_init(&(*sch)->list);
 	}
 
@@ -105,16 +108,21 @@ static void scheduler_register(struct schedule_data *scheduler)
 void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 {
 	struct schedule_data *sch;
+	struct k_heap *heap = NULL;
+
+	if (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) && scheduler_is_user(type))
+		heap = sof_sys_user_heap_get();
 
 	if (!ops || !ops->schedule_task || !ops->schedule_task_cancel ||
 	    !ops->schedule_task_free)
 		return;
 
-	sch = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*sch));
+	sch = sof_heap_alloc(heap, SOF_MEM_FLAG_KERNEL, sizeof(*sch), 0);
 	if (!sch) {
 		tr_err(&sch_tr, "allocation failed");
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
+	memset(sch, 0, sizeof(*sch));
 	list_init(&sch->list);
 	sch->type = type;
 	sch->ops = ops;
