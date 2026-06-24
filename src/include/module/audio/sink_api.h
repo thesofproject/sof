@@ -145,6 +145,17 @@ static inline size_t sink_get_free_size(struct sof_sink *sink)
 	return sink->ops->get_free_size(sink);
 }
 
+/**
+ * Retrieves number of free frames in sink aligned to the alignment constants
+ * set by sink_set_alignment_constants().
+ * @return Number of aligned free frames.
+ */
+static inline size_t sink_get_free_frames_aligned(struct sof_sink *sink)
+{
+	return (sink_get_free_size(sink) >> sink->audio_stream_params->align_shift_idx) *
+		sink->audio_stream_params->align_frame_cnt;
+}
+
 static inline enum sof_ipc_frame sink_get_frm_fmt(struct sof_sink *sink)
 {
 	return sink->audio_stream_params->frame_fmt;
