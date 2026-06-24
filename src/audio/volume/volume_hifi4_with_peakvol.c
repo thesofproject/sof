@@ -49,13 +49,11 @@ static inline void vol_store_gain(struct vol_data *cd, const int channels_count)
  * \param[in] frames Number of frames to process.
  * \param[in] attenuation factor for peakmeter adjustment
  */
-static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames,
+static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, uint32_t frames,
 			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample;
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
@@ -63,11 +61,9 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 *vol;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
-	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
-						     + bsource->consumed);
-	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
-						      + bsink->size);
-	const int channels_count = audio_stream_get_channels(sink);
+	const ae_f32x2 *in = source->ptr;
+	ae_f32x2 *out = sink->ptr;
+	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
 	ae_f32x2 temp;
@@ -89,13 +85,10 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 	AE_SETCBEGIN0(vol);
 	AE_SETCEND0(cd->vol + channels_count * 2);
 
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
-
 	while (samples) {
-		m = audio_stream_samples_without_wrap_s32(source, in);
+		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
 		n = MIN(m, samples);
-		m = audio_stream_samples_without_wrap_s16(sink, out);
+		m = cir_buf_samples_without_wrap_s16(out, sink->buf_end);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		/* process two continuous sample data once */
@@ -128,8 +121,8 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = audio_stream_wrap(source, in);
-		out = audio_stream_wrap(sink, out);
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 	for (i = 0; i < channels_count; i++)
 		cd->peak_regs.peak_meter[i] = MAX(cd->peak_vol[i],
@@ -146,23 +139,19 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct input_strea
  * \param[in] attenuation factor for peakmeter adjustment
  */
 static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
-					   struct input_stream_buffer *bsource,
-					   struct output_stream_buffer *bsink, uint32_t frames,
+					   struct cir_buf_source *source,
+					   struct cir_buf_sink *sink, uint32_t frames,
 					   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample;
 
 	int i, n, m;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
-	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
-						     + bsource->consumed);
-	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
-						      + bsink->size);
-	const int channels_count = audio_stream_get_channels(sink);
+	const ae_f32x2 *in = source->ptr;
+	ae_f32x2 *out = sink->ptr;
+	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
 	ae_f32x2 temp;
@@ -172,13 +161,10 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 2);
 
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
-
 	while (samples) {
-		m = audio_stream_samples_without_wrap_s32(source, in);
+		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
 		n = MIN(m, samples);
-		m = audio_stream_samples_without_wrap_s16(sink, out);
+		m = cir_buf_samples_without_wrap_s16(out, sink->buf_end);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		/* process two continuous sample data once */
@@ -194,8 +180,8 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = audio_stream_wrap(source, in);
-		out = audio_stream_wrap(sink, out);
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 	for (i = 0; i < channels_count; i++)
 		cd->peak_regs.peak_meter[i] = MAX(cd->peak_vol[i],
@@ -213,13 +199,11 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
  * \param[in] frames Number of frames to process.
  * \param[in] attenuation factor for peakmeter adjustment
  */
-static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			       struct output_stream_buffer *bsink, uint32_t frames,
+static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, uint32_t frames,
 			       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample;
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
@@ -229,13 +213,11 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	ae_f32x2 *vol;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
-	const int channels_count = audio_stream_get_channels(sink);
+	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
-	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
-						     + bsource->consumed);
-	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
-						      + bsink->size);
+	const ae_f32x2 *in = source->ptr;
+	ae_f32x2 *out = sink->ptr;
 	ae_f32x2 temp;
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
@@ -257,13 +239,10 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 	AE_SETCBEGIN0(buf);
 	AE_SETCEND0(buf_end);
 
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
-
 	while (samples) {
-		m = audio_stream_samples_without_wrap_s32(source, in);
+		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
 		n = MIN(m, samples);
-		m = audio_stream_samples_without_wrap_s32(sink, out);
+		m = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		/* process two continuous sample data once */
@@ -297,8 +276,8 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = audio_stream_wrap(source, in);
-		out = audio_stream_wrap(sink, out);
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 	for (i = 0; i < channels_count; i++)
 		cd->peak_regs.peak_meter[i] = MAX(cd->peak_vol[i],
@@ -314,37 +293,30 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct input_strea
  * \param[in] attenuation factor for peakmeter adjustment
  */
 static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
-					   struct input_stream_buffer *bsource,
-					   struct output_stream_buffer *bsink, uint32_t frames,
+					   struct cir_buf_source *source,
+					   struct cir_buf_sink *sink, uint32_t frames,
 					   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	ae_f32x2 in_sample;
 	int i, n, m;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
-	const int channels_count = audio_stream_get_channels(sink);
+	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
-	ae_f32x2 *in = (ae_f32x2 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
-						     + bsource->consumed);
-	ae_f32x2 *out = (ae_f32x2 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
-						      + bsink->size);
+	const ae_f32x2 *in = source->ptr;
+	ae_f32x2 *out = sink->ptr;
 	ae_f32x2 temp;
 	ae_f32x2 *peakvol = (ae_f32x2 *)cd->peak_vol;
 
 	/* Set peakvol(which stores the peak volume data twice) as circular buffer */
 	AE_SETCBEGIN1(cd->peak_vol);
 	AE_SETCEND1(cd->peak_vol  + channels_count * 2);
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(samples);
-
 	while (samples) {
-		m = audio_stream_samples_without_wrap_s32(source, in);
+		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
 		n = MIN(m, samples);
-		m = audio_stream_samples_without_wrap_s32(sink, out);
+		m = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		/* process two continuous sample data once */
@@ -360,8 +332,8 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = audio_stream_wrap(source, in);
-		out = audio_stream_wrap(sink, out);
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 	for (i = 0; i < channels_count; i++)
 		cd->peak_regs.peak_meter[i] = MAX(cd->peak_vol[i],
@@ -378,13 +350,11 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
  * \param[in] frames Number of frames to process.
  * \param[in] attenuation factor for peakmeter adjustment (unused for 16bit)
  */
-static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames,
+static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames,
 			   uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	ae_f32x2 volume0;
 	ae_f32x2 volume1;
 	ae_f32x2 out_sample0;
@@ -397,11 +367,9 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	ae_f32x2 *vol;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
-	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
-						     + bsource->consumed);
-	ae_f16x4 *out = (ae_f16x4 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
-						      + bsink->size);
-	const int channels_count = audio_stream_get_channels(sink);
+	const ae_f16x4 *in = source->ptr;
+	ae_f16x4 *out = sink->ptr;
+	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
 	ae_f32x2 temp;
@@ -427,9 +395,9 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 	AE_SETCEND0(buf_end);
 
 	while (samples) {
-		m = audio_stream_samples_without_wrap_s16(source, in);
+		m = cir_buf_samples_without_wrap_s16(in, source->buf_end);
 		n = MIN(m, samples);
-		m = audio_stream_samples_without_wrap_s16(sink, out);
+		m = cir_buf_samples_without_wrap_s16(out, sink->buf_end);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		m = n >> 2;
@@ -509,10 +477,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 		}
 
 		samples -= n;
-		in = audio_stream_wrap(source, in);
-		out = audio_stream_wrap(sink, out);
-		bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(n);
-		bsink->size += VOL_S16_SAMPLES_TO_BYTES(n);
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 	for (i = 0; i < channels_count; i++) {
 		m = MAX(cd->peak_vol[i], cd->peak_vol[i + channels_count]);
@@ -531,22 +497,18 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
  * \param[in] attenuation factor for peakmeter adjustment (unused for 16bit)
  */
 static void vol_passthrough_s16_to_s16(struct processing_module *mod,
-				       struct input_stream_buffer *bsource,
-				       struct output_stream_buffer *bsink, uint32_t frames,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
 	ae_f16x4 in_sample;
 	int i, n, m, left;
 	ae_valign inu;
 	ae_valign outu = AE_ZALIGN64();
-	ae_f16x4 *in = (ae_f16x4 *)audio_stream_wrap(source, (char *)audio_stream_get_rptr(source)
-						     + bsource->consumed);
-	ae_f16x4 *out = (ae_f16x4 *)audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink)
-						      + bsink->size);
-	const int channels_count = audio_stream_get_channels(sink);
+	const ae_f16x4 *in = source->ptr;
+	ae_f16x4 *out = sink->ptr;
+	const int channels_count = cd->channels;
 	const int inc = sizeof(ae_f32x2);
 	int samples = channels_count * frames;
 	ae_f32x2 temp;
@@ -557,9 +519,9 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	AE_SETCEND1(cd->peak_vol  + channels_count * 4);
 
 	while (samples) {
-		m = audio_stream_samples_without_wrap_s16(source, in);
+		m = cir_buf_samples_without_wrap_s16(in, source->buf_end);
 		n = MIN(m, samples);
-		m = audio_stream_samples_without_wrap_s16(sink, out);
+		m = cir_buf_samples_without_wrap_s16(out, sink->buf_end);
 		n = MIN(m, n);
 		inu = AE_LA64_PP(in);
 		m = n >> 2;
@@ -594,10 +556,8 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 		}
 
 		samples -= n;
-		in = (ae_f16x4 *)audio_stream_wrap(source, in);
-		out = (ae_f16x4 *)audio_stream_wrap(sink, out);
-		bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(n);
-		bsink->size += VOL_S16_SAMPLES_TO_BYTES(n);
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
 	for (i = 0; i < channels_count; i++) {

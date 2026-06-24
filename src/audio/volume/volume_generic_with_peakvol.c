@@ -52,30 +52,24 @@ static inline int32_t vol_mult_s24_to_s24(int32_t x, int32_t vol)
  * Copy and scale volume from 24/32 bit source buffer
  * to 24/32 bit destination buffer.
  */
-static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames,
-			   uint32_t attenuation)
+static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t vol;
-	int32_t *x, *x0;
+	const int32_t *x, *x0;
 	int32_t *y, *y0;
-	int nmax, n, i, j;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
+	int32_t vol;
 	int32_t tmp;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
-
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
+	x = source->ptr;
+	y = sink->ptr;
 	while (remaining_samples) {
-		nmax = audio_stream_samples_without_wrap_s24(source, x);
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
 		n = MIN(remaining_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s24(sink, y);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n, nmax);
 		for (j = 0; j < nch; j++) {
 			x0 = x + j;
@@ -90,8 +84,8 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 
@@ -107,29 +101,24 @@ static void vol_s24_to_s24(struct processing_module *mod, struct input_stream_bu
  * to 24/32 bit destination buffer.
  */
 static void vol_passthrough_s24_to_s24(struct processing_module *mod,
-				       struct input_stream_buffer *bsource,
-				       struct output_stream_buffer *bsink, uint32_t frames,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t *x, *x0;
+	const int32_t *x, *x0;
 	int32_t *y, *y0;
-	int nmax, n, i, j;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
 	int32_t tmp;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
-
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
+	x = source->ptr;
+	y = sink->ptr;
 	while (remaining_samples) {
-		nmax = audio_stream_samples_without_wrap_s24(source, x);
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
 		n = MIN(remaining_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s24(sink, y);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n, nmax);
 		for (j = 0; j < nch; j++) {
 			x0 = x + j;
@@ -143,8 +132,8 @@ static void vol_passthrough_s24_to_s24(struct processing_module *mod,
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -161,29 +150,24 @@ static void vol_passthrough_s24_to_s24(struct processing_module *mod,
  * Copy and scale volume from 32 bit source buffer
  * to 32 bit destination buffer.
  */
-static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames,
-			   uint32_t attenuation)
+static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t vol;
-	int32_t *x, *x0;
+	const int32_t *x, *x0;
 	int32_t *y, *y0;
-	int nmax, n, i, j;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
+	int32_t vol;
 	int32_t tmp;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
+	x = source->ptr;
+	y = sink->ptr;
 	while (remaining_samples) {
-		nmax = audio_stream_samples_without_wrap_s32(source, x);
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
 		n = MIN(remaining_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s32(sink, y);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n, nmax);
 		/* Note: on Xtensa processing one channel volume at time performed slightly
 		 * better than simpler interleaved code version (average 19 us vs. 20 us).
@@ -202,8 +186,8 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 
@@ -219,28 +203,24 @@ static void vol_s32_to_s32(struct processing_module *mod, struct input_stream_bu
  * to 32 bit destination buffer.
  */
 static void vol_passthrough_s32_to_s32(struct processing_module *mod,
-				       struct input_stream_buffer *bsource,
-				       struct output_stream_buffer *bsink, uint32_t frames,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t *x, *x0;
+	const int32_t *x, *x0;
 	int32_t *y, *y0;
-	int nmax, n, i, j;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
 	int32_t tmp;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
-	bsource->consumed += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S32_SAMPLES_TO_BYTES(remaining_samples);
+	x = source->ptr;
+	y = sink->ptr;
 	while (remaining_samples) {
-		nmax = audio_stream_samples_without_wrap_s32(source, x);
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
 		n = MIN(remaining_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s32(sink, y);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
 		n = MIN(n, nmax);
 		/* Note: on Xtensa processing one channel volume at time performed slightly
 		 * better than simpler interleaved code version (average 19 us vs. 20 us).
@@ -257,8 +237,8 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
@@ -275,30 +255,24 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
  * Copy and scale volume from 16 bit source buffer
  * to 16 bit destination buffer.
  */
-static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_buffer *bsource,
-			   struct output_stream_buffer *bsink, uint32_t frames,
-			   uint32_t attenuation)
+static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int32_t vol;
-	int16_t *x, *x0;
+	const int16_t *x, *x0;
 	int16_t *y, *y0;
-	int nmax, n, i, j;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
+	int32_t vol;
 	uint32_t tmp;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
-
-	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
+	x = source->ptr;
+	y = sink->ptr;
 	while (remaining_samples) {
-		nmax = audio_stream_samples_without_wrap_s16(source, x);
+		nmax = cir_buf_samples_without_wrap_s16(x, source->buf_end);
 		n = MIN(remaining_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s16(sink, y);
+		nmax = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
 		n = MIN(n, nmax);
 		for (j = 0; j < nch; j++) {
 			x0 = x + j;
@@ -314,8 +288,8 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 
@@ -331,29 +305,24 @@ static void vol_s16_to_s16(struct processing_module *mod, struct input_stream_bu
  * to 16 bit destination buffer.
  */
 static void vol_passthrough_s16_to_s16(struct processing_module *mod,
-				       struct input_stream_buffer *bsource,
-				       struct output_stream_buffer *bsink, uint32_t frames,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
 				       uint32_t attenuation)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = bsource->data;
-	struct audio_stream *sink = bsink->data;
-	int16_t *x, *x0;
+	const int16_t *x, *x0;
 	int16_t *y, *y0;
-	int nmax, n, i, j;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
 	uint32_t tmp;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	x = audio_stream_wrap(source, (char *)audio_stream_get_rptr(source) + bsource->consumed);
-	y = audio_stream_wrap(sink, (char *)audio_stream_get_wptr(sink) + bsink->size);
-
-	bsource->consumed += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
-	bsink->size += VOL_S16_SAMPLES_TO_BYTES(remaining_samples);
+	x = source->ptr;
+	y = sink->ptr;
 	while (remaining_samples) {
-		nmax = audio_stream_samples_without_wrap_s16(source, x);
+		nmax = cir_buf_samples_without_wrap_s16(x, source->buf_end);
 		n = MIN(remaining_samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s16(sink, y);
+		nmax = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
 		n = MIN(n, nmax);
 		for (j = 0; j < nch; j++) {
 			x0 = x + j;
@@ -367,8 +336,8 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif

@@ -21,6 +21,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/ipc-config.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -51,30 +52,31 @@ LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
 #if CONFIG_FORMAT_S16LE
 /**
  * \brief Used to find nearest zero crossing frame for 16 bit format.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Source circular buffer view.
+ * \param[in] channels Number of channels in the stream.
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s16(const struct audio_stream *source,
+static uint32_t vol_zc_get_s16(struct cir_buf_source *source, const int channels,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	uint32_t curr_frames = frames;
 	int32_t sum;
-	int16_t *x = audio_stream_get_rptr(source);
+	const int16_t *x = source->ptr;
 	int bytes;
 	int nmax;
 	int i, j, n;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
+	int remaining_samples = frames * channels;
 
-	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	/* Go to last channel */
+	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
 	while (remaining_samples) {
-		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
 		nmax = VOL_BYTES_TO_S16_SAMPLES(bytes) + 1;
 		n = MIN(nmax, remaining_samples);
-		for (i = 0; i < n; i += nch) {
+		for (i = 0; i < n; i += channels) {
 			sum = 0;
-			for (j = 0; j < nch; j++) {
+			for (j = 0; j < channels; j++) {
 				sum += *x;
 				x--;
 			}
@@ -87,7 +89,7 @@ static uint32_t vol_zc_get_s16(const struct audio_stream *source,
 			curr_frames--;
 		}
 		remaining_samples -= n;
-		x = audio_stream_rewind_wrap(source, x);
+		x = source_cir_buf_rewind_wrap(x, source->buf_start, source->buf_end);
 	}
 
 	/* sign change not detected, process all samples */
@@ -99,30 +101,31 @@ static uint32_t vol_zc_get_s16(const struct audio_stream *source,
 #if CONFIG_FORMAT_S24LE
 /**
  * \brief Used to find nearest zero crossing frame for 24 in 32 bit format.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Source circular buffer view.
+ * \param[in] channels Number of channels in the stream.
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s24(const struct audio_stream *source,
+static uint32_t vol_zc_get_s24(struct cir_buf_source *source, const int channels,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
 	uint32_t curr_frames = frames;
-	int32_t *x = audio_stream_get_rptr(source);
+	const int32_t *x = source->ptr;
 	int bytes;
 	int nmax;
 	int i, j, n;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
+	int remaining_samples = frames * channels;
 
-	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	/* Go to last channel */
+	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
 	while (remaining_samples) {
-		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
 		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
 		n = MIN(nmax, remaining_samples);
-		for (i = 0; i < n; i += nch) {
+		for (i = 0; i < n; i += channels) {
 			sum = 0;
-			for (j = 0; j < nch; j++) {
+			for (j = 0; j < channels; j++) {
 				sum += sign_extend_s24(*x);
 				x--;
 			}
@@ -135,7 +138,7 @@ static uint32_t vol_zc_get_s24(const struct audio_stream *source,
 			curr_frames--;
 		}
 		remaining_samples -= n;
-		x = audio_stream_rewind_wrap(source, x);
+		x = source_cir_buf_rewind_wrap(x, source->buf_start, source->buf_end);
 	}
 
 	/* sign change not detected, process all samples */
@@ -147,30 +150,31 @@ static uint32_t vol_zc_get_s24(const struct audio_stream *source,
 #if CONFIG_FORMAT_S32LE
 /**
  * \brief Used to find nearest zero crossing frame for 32 bit format.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Source circular buffer view.
+ * \param[in] channels Number of channels in the stream.
  * \param[in] frames Number of frames.
  * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static uint32_t vol_zc_get_s32(const struct audio_stream *source,
+static uint32_t vol_zc_get_s32(struct cir_buf_source *source, const int channels,
 			       uint32_t frames, int64_t *prev_sum)
 {
 	int64_t sum;
 	uint32_t curr_frames = frames;
-	int32_t *x = audio_stream_get_rptr(source);
+	const int32_t *x = source->ptr;
 	int bytes;
 	int nmax;
 	int i, j, n;
-	const int nch = audio_stream_get_channels(source);
-	int remaining_samples = frames * nch;
+	int remaining_samples = frames * channels;
 
-	x = audio_stream_wrap(source, x + remaining_samples - 1); /* Go to last channel */
+	/* Go to last channel */
+	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
 	while (remaining_samples) {
-		bytes = audio_stream_rewind_bytes_without_wrap(source, x);
+		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
 		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
 		n = MIN(nmax, remaining_samples);
-		for (i = 0; i < n; i += nch) {
+		for (i = 0; i < n; i += channels) {
 			sum = 0;
-			for (j = 0; j < nch; j++) {
+			for (j = 0; j < channels; j++) {
 				sum += *x;
 				x--;
 			}
@@ -183,7 +187,7 @@ static uint32_t vol_zc_get_s32(const struct audio_stream *source,
 			curr_frames--;
 		}
 		remaining_samples -= n;
-		x = audio_stream_rewind_wrap(source, x);
+		x = source_cir_buf_rewind_wrap(x, source->buf_start, source->buf_end);
 	}
 
 	/* sign change not detected, process all samples */
@@ -552,16 +556,45 @@ void volume_set_chan_unmute(struct processing_module *mod, int chan)
  * \return Error code.
  */
 static int volume_process(struct processing_module *mod,
-			  struct input_stream_buffer *input_buffers, int num_input_buffers,
-			  struct output_stream_buffer *output_buffers, int num_output_buffers)
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
 	struct vol_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = input_buffers[0].data;
-	uint32_t avail_frames = input_buffers[0].size;
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
+	const int nch = cd->channels;
+	size_t source_frame_bytes = source_get_frame_bytes(source);
+	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
+	size_t source_bytes, sink_bytes, bytes;
+	uint32_t avail_frames;
 	uint32_t frames;
 	int64_t prev_sum = 0;
+	int ret;
 
 	comp_dbg(mod->dev, "entry");
+
+	avail_frames = source_sink_avail_frames_aligned(source, sink);
+	if (!avail_frames)
+		return 0;
+
+	source_bytes = avail_frames * source_frame_bytes;
+	sink_bytes = avail_frames * sink_frame_bytes;
+
+	/* acquire source and sink buffers once for the whole available period */
+	ret = source_get_data(source, source_bytes, &source_buf.ptr,
+			      &source_buf.buf_start, &bytes);
+	if (ret < 0)
+		return ret;
+	source_buf.buf_end = (const char *)source_buf.buf_start + bytes;
+
+	ret = sink_get_buffer(sink, sink_bytes, &sink_buf.ptr, &sink_buf.buf_start, &bytes);
+	if (ret < 0) {
+		source_release_data(source, 0);
+		return ret;
+	}
+	sink_buf.buf_end = (char *)sink_buf.buf_start + bytes;
 
 	while (avail_frames) {
 #if CONFIG_COMP_PEAK_VOL
@@ -572,19 +605,19 @@ static int volume_process(struct processing_module *mod,
 			frames = avail_frames;
 		} else if (cd->ramp_type == SOF_VOLUME_LINEAR_ZC) {
 			/* with ZC ramping look for next ZC offset */
-			frames = cd->zc_get(source, cd->vol_ramp_frames, &prev_sum);
+			frames = cd->zc_get(&source_buf, nch, cd->vol_ramp_frames, &prev_sum);
 			/* Align frames count to audio stream constraints. If it rounds to zero
 			 * round it up to smallest nonzero aligned frames count.
 			 */
-			frames = audio_stream_align_frames_round_nearest(source, frames);
+			frames = source_align_frames_round_nearest(source, frames);
 			if (!frames)
-				frames = audio_stream_align_frames_round_up(source, 1);
+				frames = source_align_frames_round_up(source, 1);
 		} else {
 			/* During volume ramp align the number of frames used in this
 			 * gain step. Align up since with low rates this would typically
 			 * become zero.
 			 */
-			frames = audio_stream_align_frames_round_up(source, cd->vol_ramp_frames);
+			frames = source_align_frames_round_up(source, cd->vol_ramp_frames);
 		}
 
 		/* Cancel the gain step for ZC or smaller ramp step if it exceeds
@@ -599,10 +632,22 @@ static int volume_process(struct processing_module *mod,
 		}
 
 		/* copy and scale volume */
-		cd->scale_vol(mod, &input_buffers[0], &output_buffers[0], frames, cd->attenuation);
+		cd->scale_vol(mod, &source_buf, &sink_buf, frames, cd->attenuation);
+
+		/* advance the views by the processed frames */
+		source_buf.ptr = cir_buf_wrap((const char *)source_buf.ptr +
+					      frames * source_frame_bytes,
+					      source_buf.buf_start, source_buf.buf_end);
+		sink_buf.ptr = cir_buf_wrap((char *)sink_buf.ptr + frames * sink_frame_bytes,
+					    sink_buf.buf_start, sink_buf.buf_end);
 
 		avail_frames -= frames;
 	}
+
+	/* commit the consumed and produced data */
+	source_release_data(source, source_bytes);
+	sink_commit_buffer(sink, sink_bytes);
+
 #if CONFIG_COMP_PEAK_VOL
 	cd->peak_cnt++;
 	if (cd->peak_cnt == cd->peak_report_cnt) {
@@ -623,13 +668,13 @@ static int volume_process(struct processing_module *mod,
  * \param[in,out] dev Volume base component device.
  */
 static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
-				       struct comp_buffer *sinkb)
+				       struct sof_sink *sink)
 {
 	int i;
 
 	/* map the zc function to frame format */
 	for (i = 0; i < ARRAY_SIZE(zc_func_map); i++) {
-		if (audio_stream_get_valid_fmt(&sinkb->stream) == zc_func_map[i].frame_fmt)
+		if (sink_get_valid_fmt(sink) == zc_func_map[i].frame_fmt)
 			return zc_func_map[i].func;
 	}
 
@@ -640,9 +685,9 @@ static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
  * \brief Set volume frames alignment limit.
  * \param[in,out] source Structure pointer of source.
  */
-static void volume_set_alignment(struct audio_stream *source)
+static void volume_set_alignment(struct sof_source *source)
 {
-	const int channels = audio_stream_get_channels(source);
+	const int channels = source_get_channels(source);
 
 	/* The source buffer in HiFi5 processing version needs 16 bytes alignment. The
 	 * macro SOF_FRAME_BYTE_ALIGN is set in common.h to the requirement align.
@@ -662,14 +707,14 @@ static void volume_set_alignment(struct audio_stream *source)
 	 * frame align need to be 4, 2, 1, 2, ...
 	 */
 #if SOF_USE_HIFI(5, VOLUME)
-	const int n = (audio_stream_get_valid_fmt(source) == SOF_IPC_FRAME_S16_LE) ? 8 : 4;
+	const int n = (source_get_valid_fmt(source) == SOF_IPC_FRAME_S16_LE) ? 8 : 4;
 #else
-	const int n = (audio_stream_get_valid_fmt(source) == SOF_IPC_FRAME_S16_LE) ? 4 : 2;
+	const int n = (source_get_valid_fmt(source) == SOF_IPC_FRAME_S16_LE) ? 4 : 2;
 #endif
 
 	const uint32_t frame_align_req = (uint32_t)(n / gcd(n, channels));
 
-	audio_stream_set_align(byte_align, frame_align_req, source);
+	source_set_alignment_constants(source, byte_align, frame_align_req);
 }
 
 /**
@@ -688,7 +733,6 @@ static int volume_prepare(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
 	uint32_t sink_period_bytes;
 	int ret;
 	int i;
@@ -696,27 +740,17 @@ static int volume_prepare(struct processing_module *mod,
 	comp_dbg(dev, "entry");
 
 	/* volume component will only ever have 1 sink and source buffer */
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	sourceb = comp_dev_get_first_data_producer(dev);
-	if (!sourceb || !sinkb) {
+	if (num_of_sources < 1 || num_of_sinks < 1 ) {
 		comp_err(dev, "no source or sink buffer");
 		return -ENOTCONN;
 	}
 
 	ret = volume_peak_prepare(cd, mod);
 
-	volume_set_alignment(&sourceb->stream);
+	volume_set_alignment(sources[0]);
 
 	/* get sink period bytes */
-	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
-						      dev->frames);
-
-	if (audio_stream_get_size(&sinkb->stream) < sink_period_bytes) {
-		comp_err(dev, "sink buffer size %d is insufficient < %d",
-			 audio_stream_get_size(&sinkb->stream), sink_period_bytes);
-		ret = -ENOMEM;
-		goto err;
-	}
+	sink_period_bytes = dev->frames * sink_get_frame_bytes(sinks[0]);
 
 	set_volume_process(cd, dev, false);
 
@@ -727,7 +761,7 @@ static int volume_prepare(struct processing_module *mod,
 		goto err;
 	}
 
-	cd->zc_get = vol_get_zc_function(dev, sinkb);
+	cd->zc_get = vol_get_zc_function(dev, sinks[0]);
 	if (!cd->zc_get) {
 		comp_err(dev, "invalid cd->zc_get");
 		ret = -EINVAL;
@@ -742,14 +776,14 @@ static int volume_prepare(struct processing_module *mod,
 	 */
 	cd->ramp_finished = false;
 
-	cd->channels = audio_stream_get_channels(&sinkb->stream);
+	cd->channels = sink_get_channels(sinks[0]);
 	if (cd->channels > SOF_IPC_MAX_CHANNELS) {
 		ret = -EINVAL;
 		goto err;
 	}
 
 	cd->sample_rate_inv = (int32_t)(1000LL * INT32_MAX /
-					audio_stream_get_rate(&sinkb->stream));
+					sink_get_rate(sinks[0]));
 
 	for (i = 0; i < cd->channels; i++) {
 		cd->volume[i] = cd->vol_min;
@@ -808,7 +842,7 @@ static int volume_free(struct processing_module *mod)
 static const struct module_interface volume_interface = {
 	.init = volume_init,
 	.prepare = volume_prepare,
-	.process_audio_stream = volume_process,
+	.process = volume_process,
 	.set_configuration = volume_set_config,
 	.get_configuration = volume_get_config,
 	.reset = volume_reset,
@@ -819,7 +853,7 @@ static const struct module_interface volume_interface = {
 static const struct module_interface gain_interface = {
 	.init = volume_init,
 	.prepare = volume_prepare,
-	.process_audio_stream = volume_process,
+	.process = volume_process,
 	.set_configuration = volume_set_config,
 	.get_configuration = volume_get_config,
 	.reset = volume_reset,
