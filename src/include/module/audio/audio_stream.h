@@ -184,4 +184,37 @@ static inline void *cir_buf_wrap(const void *ptr, const void *buf_addr, const vo
 	return (void *)ptr;
 }
 
+/**
+ * @brief Calculates number of bytes to buffer wrap when reading a circular
+ *	  buffer backwards from current pointer towards the buffer start.
+ * @param ptr Read or write pointer of circular buffer.
+ * @param buf_start Start address of circular buffer.
+ * @return Number of bytes between the buffer start and the pointer.
+ */
+static inline int cir_buf_bytes_without_wrap_rewind(const void *ptr, const void *buf_start)
+{
+	assert((intptr_t)ptr >= (intptr_t)buf_start);
+
+	return (intptr_t)ptr - (intptr_t)buf_start;
+}
+
+/**
+ * @brief Verifies the pointer and performs rollover when reading a read-only circular
+ *	  buffer backwards past its start address.
+ * @param ptr Pointer that may have moved below the buffer start.
+ * @param buf_start Start address of the circular buffer.
+ * @param buf_end End address of the circular buffer.
+ * @return Pointer, wrapped to the end of the buffer if necessary.
+ */
+static inline const void *source_cir_buf_rewind_wrap(const void *ptr, const void *buf_start,
+						     const void *buf_end)
+{
+	if (ptr < buf_start)
+		ptr = (const char *)buf_end - ((const char *)buf_start - (const char *)ptr);
+
+	assert((intptr_t)ptr >= (intptr_t)buf_start);
+
+	return ptr;
+}
+
 #endif /* __MODULE_AUDIO_AUDIO_STREAM_H__ */
