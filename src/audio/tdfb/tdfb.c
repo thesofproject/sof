@@ -302,8 +302,158 @@ static int wrap_180(int a)
 	return a;
 }
 
-static int tdfb_init_coef(struct processing_module *mod, int source_nch,
-			  int sink_nch)
+static int tdfb_check_blob_size(struct comp_dev *dev, size_t size)
+{
+	if (size < sizeof(struct sof_tdfb_config) || size > SOF_TDFB_MAX_SIZE) {
+		comp_err(dev, "invalid configuration blob, size %zu", size);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* Walk the TDFB blob and verify that every FIR section and trailing array
+ * fits exactly inside the IPC payload. The walk mirrors tdfb_init_coef()
+ * but stays bounded so a malformed blob cannot push tdfb_filter_seek()
+ * past the buffer end at setup time. The channel-vs-stream relationships
+ * are also checked here so a mismatching blob cannot replace the working
+ * configuration during streaming.
+ */
+static int tdfb_validate_config(struct comp_dev *dev,
+				struct sof_tdfb_config *config,
+				size_t config_size)
+{
+	struct processing_module *mod = comp_mod(dev);
+	struct tdfb_comp_data *cd = module_get_private_data(mod);
+	struct sof_fir_coef_data *coef_data;
+	int16_t *input_channel_select;
+	uint8_t *p;
+	uint8_t *end;
+	size_t remaining;
+	size_t step;
+	size_t expected;
+	size_t total_filters;
+	int16_t max_ch;
+	int i;
+
+	if ((size_t)config->size != config_size) {
+		comp_err(dev, "blob size %zu / header size %u mismatch",
+			 config_size, config->size);
+		return -EINVAL;
+	}
+	if (!config->num_output_channels ||
+	    config->num_output_channels > PLATFORM_MAX_CHANNELS) {
+		comp_err(dev, "invalid num_output_channels %u",
+			 config->num_output_channels);
+		return -EINVAL;
+	}
+	if (!config->num_filters || config->num_filters > SOF_TDFB_FIR_MAX_COUNT) {
+		comp_err(dev, "invalid num_filters %u", config->num_filters);
+		return -EINVAL;
+	}
+	if (!config->num_angles || config->num_angles > SOF_TDFB_MAX_ANGLES) {
+		comp_err(dev, "invalid num_angles %u", config->num_angles);
+		return -EINVAL;
+	}
+	if (!config->angle_enum_mult) {
+		comp_err(dev, "invalid angle_enum_mult");
+		return -EINVAL;
+	}
+	if (config->beam_off_defined > 1) {
+		comp_err(dev, "invalid beam_off_defined %u",
+			 config->beam_off_defined);
+		return -EINVAL;
+	}
+	if (config->num_mic_locations > SOF_TDFB_MAX_MICROPHONES) {
+		comp_err(dev, "invalid num_mic_locations %u",
+			 config->num_mic_locations);
+		return -EINVAL;
+	}
+
+	total_filters = (size_t)config->num_filters *
+		((size_t)config->num_angles + config->beam_off_defined);
+
+	p = (uint8_t *)&config->data[0];
+	end = (uint8_t *)config + config_size;
+	for (i = 0; i < total_filters; i++) {
+		remaining = end - p;
+		if (remaining < sizeof(struct sof_fir_coef_data)) {
+			comp_err(dev, "FIR %d header out of bounds", i);
+			return -EINVAL;
+		}
+		coef_data = (struct sof_fir_coef_data *)p;
+		if (fir_delay_size(coef_data) <= 0) {
+			comp_err(dev, "FIR %d invalid length %u",
+				 i, coef_data->length);
+			return -EINVAL;
+		}
+		step = sizeof(struct sof_fir_coef_data) +
+			(size_t)coef_data->length * sizeof(int16_t);
+		if (step > remaining) {
+			comp_err(dev, "FIR %d coefs out of bounds", i);
+			return -EINVAL;
+		}
+		p += step;
+	}
+
+	/* p now points at input_channel_select[]. The remaining bytes must
+	 * hold exactly: 3 per-filter int16 arrays (input_channel_select,
+	 * output_channel_mix, output_stream_mix), an optional beam-off output
+	 * channel mix, num_angles angle entries and num_mic_locations
+	 * microphone entries.
+	 */
+	input_channel_select = (int16_t *)p;
+	expected = ((size_t)config->num_filters * 3 +
+		    (size_t)config->beam_off_defined * config->num_filters) *
+			sizeof(int16_t) +
+		   (size_t)config->num_angles * sizeof(struct sof_tdfb_angle) +
+		   (size_t)config->num_mic_locations *
+			sizeof(struct sof_tdfb_mic_location);
+	if ((size_t)(end - p) != expected) {
+		comp_err(dev, "blob trailer size mismatch");
+		return -EINVAL;
+	}
+
+	/* The blob must match the running stream. Skip these checks when no
+	 * stream is bound yet (cached channel counts are zero before prepare).
+	 */
+	if (cd->sink_channels && config->num_output_channels != cd->sink_channels) {
+		comp_err(dev, "blob num_output_channels %u does not match sink %d",
+			 config->num_output_channels, cd->sink_channels);
+		return -EINVAL;
+	}
+	if (cd->source_channels) {
+		max_ch = 0;
+		for (i = 0; i < config->num_filters; i++) {
+			if (input_channel_select[i] < 0) {
+				comp_err(dev, "invalid channel select for filter %d", i);
+				return -EINVAL;
+			}
+			if (input_channel_select[i] > max_ch)
+				max_ch = input_channel_select[i];
+		}
+		if (max_ch + 1 > cd->source_channels) {
+			comp_err(dev, "blob needs %d source channels, stream has %d",
+				 max_ch + 1, cd->source_channels);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static int tdfb_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
+{
+	int ret;
+
+	ret = tdfb_check_blob_size(dev, new_data_size);
+	if (ret < 0)
+		return ret;
+
+	return tdfb_validate_config(dev, new_data, new_data_size);
+}
+
+static int tdfb_init_coef(struct processing_module *mod)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
 	struct sof_fir_coef_data *coef_data;
@@ -314,65 +464,15 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	int size_sum = 0;
 	int min_delta_idx; /* Index to beam angle with smallest delta vs. target */
 	int min_delta; /* Smallest angle difference found in degrees */
-	int max_ch;
 	int num_filters;
 	int target_az; /* Target azimuth angle in degrees */
 	int delta; /* Target minus found angle in degrees absolute value */
 	int idx;
-	int s;
 	int i;
 
-	/* Sanity checks */
-	if (config->size != cd->config_size) {
-		comp_err(dev, "Incorrect configuration blob size");
-		return -EINVAL;
-	}
-
-	if (config->num_output_channels > PLATFORM_MAX_CHANNELS ||
-	    !config->num_output_channels) {
-		comp_err(dev, "invalid num_output_channels %d",
-			 config->num_output_channels);
-		return -EINVAL;
-	}
-
-	if (config->num_output_channels != sink_nch) {
-		comp_err(dev, "stream output channels count %d does not match configuration %d",
-			 sink_nch, config->num_output_channels);
-		return -EINVAL;
-	}
-
-	if (config->num_filters > SOF_TDFB_FIR_MAX_COUNT) {
-		comp_err(dev, "invalid num_filters %d",
-			 config->num_filters);
-		return -EINVAL;
-	}
-
-	/* In SOF v1.6 - 1.8 based beamformer topologies the multiple angles, mic locations,
-	 * and beam on/off switch were not defined. A most basic supported blob has num_angles
-	 * equal to 1. Mic locations data is optional.
+	/* Blob layout, bounds, size and stream channel relationships are
+	 * pre-validated by tdfb_validator() / tdfb_validate_config().
 	 */
-	if (config->num_angles == 0 || config->num_angles > SOF_TDFB_MAX_ANGLES) {
-		comp_err(dev, "invalid num_angles %d",
-			 config->num_angles);
-		return -EINVAL;
-	}
-
-	if (!config->angle_enum_mult) {
-		comp_err(dev, "invalid angle_enum_mult");
-		return -EINVAL;
-	}
-
-	if (config->beam_off_defined > 1) {
-		comp_err(dev, "invalid beam_off_defined %d",
-			 config->beam_off_defined);
-		return -EINVAL;
-	}
-
-	if (config->num_mic_locations > SOF_TDFB_MAX_MICROPHONES) {
-		comp_err(dev, "invalid num_mic_locations %d",
-			 config->num_mic_locations);
-		return -EINVAL;
-	}
 
 	/* Skip filter coefficients */
 	num_filters = config->num_filters * (config->num_angles + config->beam_off_defined);
@@ -386,8 +486,8 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	cd->output_stream_mix = coefp;
 	coefp += config->num_filters;
 
-	/* Check if there's beam-off configured, then get pointers to beam angles data
-	 * and microphone locations. Finally check that size matches.
+	/* Check if there's beam-off configured, then get pointers to beam angles
+	 * data and microphone locations.
 	 */
 	if (config->beam_off_defined) {
 		output_channel_mix_beam_off = coefp;
@@ -396,11 +496,6 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	cd->filter_angles = (struct sof_tdfb_angle *)coefp;
 	cd->mic_locations = (struct sof_tdfb_mic_location *)
 		(&cd->filter_angles[config->num_angles]);
-	if ((uint8_t *)&cd->mic_locations[config->num_mic_locations] !=
-	    (uint8_t *)config + config->size) {
-		comp_err(dev, "invalid config size");
-		return -EINVAL;
-	}
 
 	/* Skip to requested coefficient set */
 	min_delta = 360;
@@ -437,45 +532,14 @@ static int tdfb_init_coef(struct processing_module *mod, int source_nch,
 	/* Seek to proper filter for requested angle or beam off configuration */
 	coefp = tdfb_filter_seek(config, idx);
 
-	/* Initialize filter bank */
+	/* Initialize filter bank. FIR header bounds and length validity were
+	 * already checked when the blob entered the component.
+	 */
 	for (i = 0; i < config->num_filters; i++) {
-		/* Get delay line size */
 		coef_data = (struct sof_fir_coef_data *)coefp;
-		s = fir_delay_size(coef_data);
-		if (s > 0) {
-			size_sum += s;
-		} else {
-			comp_err(dev, "FIR length %d is invalid",
-				 coef_data->length);
-			return -EINVAL;
-		}
-
-		/* Initialize coefficients for FIR filter and find next
-		 * filter.
-		 */
+		size_sum += fir_delay_size(coef_data);
 		fir_init_coef(&cd->fir[i], coef_data);
 		coefp = coef_data->coef + coef_data->length;
-	}
-
-	/* Find max used input channel */
-	max_ch = 0;
-	for (i = 0; i < config->num_filters; i++) {
-		if (cd->input_channel_select[i] > max_ch)
-			max_ch = cd->input_channel_select[i];
-
-		if (cd->input_channel_select[i] < 0) {
-			comp_err(dev, "invalid channel select for filter %d", i);
-			return -EINVAL;
-		}
-	}
-
-	/* The stream must contain at least the number of channels that is
-	 * used for filters input.
-	 */
-	if (max_ch + 1 > source_nch) {
-		comp_err(dev, "stream input channels count %d is not sufficient for configuration %d",
-			 source_nch, max_ch + 1);
-		return -EINVAL;
 	}
 
 	return size_sum;
@@ -513,7 +577,7 @@ static int tdfb_setup(struct processing_module *mod, int source_nch, int sink_nc
 	}
 
 	/* Set coefficients for each channel from coefficient blob */
-	delay_size = tdfb_init_coef(mod, source_nch, sink_nch);
+	delay_size = tdfb_init_coef(mod);
 	if (delay_size < 0)
 		return delay_size; /* Contains error code */
 
@@ -658,11 +722,8 @@ static int tdfb_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
-		if (!cd->config || cd->config_size < sizeof(*cd->config) ||
-		    cd->config_size > SOF_TDFB_MAX_SIZE) {
-			comp_err(dev, "invalid configuration blob, size %zu", cd->config_size);
+		if (!cd->config || tdfb_check_blob_size(dev, cd->config_size) < 0)
 			return -EINVAL;
-		}
 		ret = tdfb_setup(mod, audio_stream_get_channels(source),
 				 audio_stream_get_channels(sink),
 				 audio_stream_get_frm_fmt(source));
@@ -754,14 +815,25 @@ static int tdfb_prepare(struct processing_module *mod,
 	sink_channels = audio_stream_get_channels(&sinkb->stream);
 	rate = audio_stream_get_rate(&sourceb->stream);
 
+	/* Cache stream channel counts for the blob validator before any
+	 * validate_config() call runs.
+	 */
+	cd->source_channels = source_channels;
+	cd->sink_channels = sink_channels;
+
 	/* Initialize filter */
 	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
-	if (!cd->config || cd->config_size < sizeof(*cd->config) ||
-	    cd->config_size > SOF_TDFB_MAX_SIZE) {
-		comp_err(dev, "invalid configuration blob, size %zu", cd->config_size);
+	if (!cd->config || tdfb_check_blob_size(dev, cd->config_size) < 0) {
 		ret = -EINVAL;
 		goto out;
 	}
+
+	/* The initial blob from topology has not been seen by the IPC-time
+	 * validator yet, so check the layout here before tdfb_setup() walks it.
+	 */
+	ret = tdfb_validate_config(dev, cd->config, cd->config_size);
+	if (ret < 0)
+		goto out;
 
 	ret = tdfb_setup(mod, source_channels, sink_channels, frame_fmt);
 	if (ret < 0) {
@@ -797,6 +869,11 @@ out:
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
+	/* Reject malformed blobs at IPC time so a bad run-time update cannot
+	 * replace the working configuration.
+	 */
+	comp_data_blob_set_validator(cd->model_handler, tdfb_validator);
+
 	return ret;
 }
 
@@ -806,6 +883,11 @@ static int tdfb_reset(struct processing_module *mod)
 	int i;
 
 	comp_dbg(mod->dev, "entry");
+
+	comp_data_blob_set_validator(cd->model_handler, NULL);
+
+	cd->source_channels = 0;
+	cd->sink_channels = 0;
 
 	tdfb_free_delaylines(mod);
 
