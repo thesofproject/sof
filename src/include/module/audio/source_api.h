@@ -140,6 +140,17 @@ static inline size_t source_get_data_available(struct sof_source *source)
 	return source->ops->get_data_available(source);
 }
 
+/**
+ * Retrieves number of available data frames aligned to the alignment constants
+ * set by source_set_alignment_constants().
+ * @return Number of aligned available frames.
+ */
+static inline size_t source_get_aligned_frames_available(struct sof_source *source)
+{
+	return (source_get_data_available(source) >> source->audio_stream_params->align_shift_idx) *
+		source->audio_stream_params->align_frame_cnt;
+}
+
 static inline enum sof_ipc_frame source_get_frm_fmt(struct sof_source *source)
 {
 	return source->audio_stream_params->frame_fmt;
