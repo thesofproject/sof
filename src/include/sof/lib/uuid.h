@@ -87,11 +87,19 @@ struct sof_uuid_entry {
  */
 #define _UUID(uuid_name)    (&_##uuid_name)
 #define _RT_UUID(uuid_name) (&uuid_name)
+#ifdef __clang__
+#define _DEF_UUID(entity_name, uuid_name, initializer)			\
+	const STRUCT_SECTION_ITERABLE(sof_uuid_entry, _##uuid_name) =	\
+		{ .id = initializer, .name = entity_name };		\
+	extern const struct sof_uuid uuid_name;				\
+	const struct sof_uuid uuid_name = initializer
+#else
 #define _DEF_UUID(entity_name, uuid_name, initializer)			\
 	const STRUCT_SECTION_ITERABLE(sof_uuid_entry, _##uuid_name) =	\
 		{ .id = initializer, .name = entity_name };		\
 	extern const struct sof_uuid					\
 		__attribute__((alias("_" #uuid_name))) uuid_name
+#endif
 
 #else
 /* XTOS SOF emits two definitions, one into the runtime (which may not

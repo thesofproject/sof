@@ -31,7 +31,7 @@
 #endif
 #include <sof/common.h>
 
-#if CONFIG_ZEPHYR_LOG || CONFIG_LIBRARY || CONFIG_ARCH_POSIX_LIBFUZZER
+#if defined(__ZEPHYR__) || CONFIG_ZEPHYR_LOG || CONFIG_LIBRARY || CONFIG_ARCH_POSIX_LIBFUZZER
 #include <sof/lib/uuid.h>
 #endif
 #include <sof/trace/preproc.h>
