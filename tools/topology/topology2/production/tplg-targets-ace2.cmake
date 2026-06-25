@@ -28,7 +28,8 @@ SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
 "cavs-sdw\;sof-lnl-rt713-l0-rt1318-l1\;PLATFORM=lnl,NUM_SDW_AMP_LINKS=1,\
-SDW_SPK_STREAM=SDW1-Playback,SDW_AMP_FEEDBACK=false"
+SDW_SPK_STREAM=SDW1-Playback,SDW_AMP_FEEDBACK=false,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6"
 
 "cavs-sdw\;sof-lnl-rt713-l0-rt1318-l1-2ch\;PLATFORM=lnl,NUM_SDW_AMP_LINKS=1,\
 SDW_SPK_STREAM=SDW1-Playback,SDW_AMP_FEEDBACK=false,\
