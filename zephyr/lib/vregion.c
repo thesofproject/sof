@@ -407,7 +407,7 @@ static void lifetime_free(struct vlinear_heap *heap, void *ptr)
  * @param vr Pointer to the virtual region instance.
  * @param ptr Pointer to the memory to free.
  */
-void vregion_free(struct vregion *vr, void *ptr)
+void z_impl_vregion_free(struct vregion *vr, void *ptr)
 {
 	if (!vr || !ptr)
 		return;
@@ -432,7 +432,7 @@ void vregion_free(struct vregion *vr, void *ptr)
 
 	k_mutex_unlock(&vr->lock);
 }
-EXPORT_SYMBOL(vregion_free);
+EXPORT_SYMBOL(z_impl_vregion_free);
 
 /**
  * @brief Allocate memory from the virtual region.
@@ -443,7 +443,8 @@ EXPORT_SYMBOL(vregion_free);
  *
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment)
+void *z_impl_vregion_alloc_align(struct vregion *vr,
+				 size_t size, size_t alignment)
 {
 	void *p;
 
@@ -471,7 +472,7 @@ void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment)
 
 	return p;
 }
-EXPORT_SYMBOL(vregion_alloc_align);
+EXPORT_SYMBOL(z_impl_vregion_alloc_align);
 
 /**
  * @brief Allocate memory from the virtual region.
@@ -479,17 +480,17 @@ EXPORT_SYMBOL(vregion_alloc_align);
  * @param[in] size Size of the allocation.
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-void *vregion_alloc(struct vregion *vr, size_t size)
+void *z_impl_vregion_alloc(struct vregion *vr, size_t size)
 {
-	return vregion_alloc_align(vr, size, 0);
+	return z_impl_vregion_alloc_align(vr, size, 0);
 }
-EXPORT_SYMBOL(vregion_alloc);
+EXPORT_SYMBOL(z_impl_vregion_alloc);
 
-void *vregion_alloc_coherent(struct vregion *vr, size_t size)
+void *z_impl_vregion_alloc_coherent(struct vregion *vr, size_t size)
 {
 	size = ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE);
 
-	void *p = vregion_alloc_align(vr, size, CONFIG_DCACHE_LINE_SIZE);
+	void *p = z_impl_vregion_alloc_align(vr, size, CONFIG_DCACHE_LINE_SIZE);
 
 	if (!p)
 		return NULL;
@@ -498,14 +499,15 @@ void *vregion_alloc_coherent(struct vregion *vr, size_t size)
 
 	return sys_cache_uncached_ptr_get(p);
 }
+EXPORT_SYMBOL(z_impl_vregion_alloc_coherent);
 
-void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment)
+void *z_impl_vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment)
 {
 	if (alignment < CONFIG_DCACHE_LINE_SIZE)
 		alignment = CONFIG_DCACHE_LINE_SIZE;
 	size = ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE);
 
-	void *p = vregion_alloc_align(vr, size, alignment);
+	void *p = z_impl_vregion_alloc_align(vr, size, alignment);
 
 	if (!p)
 		return NULL;
@@ -514,6 +516,7 @@ void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t align
 
 	return sys_cache_uncached_ptr_get(p);
 }
+EXPORT_SYMBOL(z_impl_vregion_alloc_coherent_align);
 
 /**
  * @brief Log virtual region memory usage.
