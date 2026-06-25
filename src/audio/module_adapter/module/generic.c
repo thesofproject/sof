@@ -283,7 +283,7 @@ EXPORT_SYMBOL(z_impl_mod_alloc_ext);
  * Like comp_data_blob_handler_new() but the handler is automatically freed.
  */
 #if CONFIG_COMP_BLOB
-struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod)
+struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod)
 {
 	struct module_resources * __maybe_unused res = &mod->priv.resources;
 	struct comp_data_blob_handler *bhp;
@@ -307,7 +307,7 @@ struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_modul
 
 	return bhp;
 }
-EXPORT_SYMBOL(mod_data_blob_handler_new);
+EXPORT_SYMBOL(z_impl_mod_data_blob_handler_new);
 #endif
 
 /**
@@ -476,6 +476,22 @@ int z_vrfy_mod_free(struct processing_module *mod, const void *ptr)
 	return z_impl_mod_free(mod, ptr);
 }
 #include <zephyr/syscalls/mod_free_mrsh.c>
+
+#if CONFIG_COMP_BLOB
+struct comp_data_blob_handler *z_vrfy_mod_data_blob_handler_new(struct processing_module *mod)
+{
+	size_t h_size = 0;
+	uintptr_t h_start;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	mod_heap_info(mod, &h_size, &h_start);
+	if (h_size)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+
+	return z_impl_mod_data_blob_handler_new(mod);
+}
+#include <zephyr/syscalls/mod_data_blob_handler_new_mrsh.c>
+#endif
 #endif
 
 #if CONFIG_COMP_BLOB

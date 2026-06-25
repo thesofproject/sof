@@ -241,7 +241,12 @@ static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 }
 
 #if CONFIG_COMP_BLOB
-struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
+#else
+struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod);
+#define mod_data_blob_handler_new z_impl_mod_data_blob_handler_new
+#endif
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
 #endif
 #if CONFIG_FAST_GET
