@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <rtos/panic.h>
 #include "../ipc/stream.h"
 
 
@@ -73,5 +74,39 @@ struct sof_audio_stream_params {
 
 	enum sof_audio_buffer_state state;	/**< audio stream state */
 };
+
+/**
+ * @brief Calculates numbers of s16 samples to buffer wrap.
+ * @param ptr Read or write pointer of circular buffer.
+ * @param buf_start Start address of circular buffer.
+ * @param buf_samples Total size of circular buffer in samples.
+ * @return Number of samples to buffer wrap.
+ */
+static inline size_t cir_buf_samples_to_wrap_s16(const int16_t *ptr, const int16_t *buf_start,
+						 size_t buf_samples)
+{
+	const int16_t *const buf_end = buf_start + buf_samples;
+
+	assert(buf_end >= ptr);
+
+	return buf_end - ptr;
+}
+
+/**
+ * @brief Calculates numbers of s32 samples to buffer wrap.
+ * @param ptr Read or write pointer of circular buffer.
+ * @param buf_start Start address of circular buffer.
+ * @param buf_samples Total size of circular buffer in samples.
+ * @return Number of samples to buffer wrap.
+ */
+static inline size_t cir_buf_samples_to_wrap_s32(const int32_t *ptr, const int32_t *buf_start,
+						 size_t buf_samples)
+{
+	const int32_t *const buf_end = buf_start + buf_samples;
+
+	assert(buf_end >= ptr);
+
+	return buf_end - ptr;
+}
 
 #endif /* __MODULE_AUDIO_AUDIO_STREAM_H__ */
