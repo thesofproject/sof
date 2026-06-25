@@ -629,6 +629,8 @@ zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/schedule/ll_schedule_domain.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/ipc4/handler.h)
 zephyr_syscall_header(include/rtos/alloc.h)
 zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_INTERFACE_ALLOC syscall/alloc.c)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/vregion.h)
+zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_INTERFACE_VREGION syscall/vregion.c)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/dai-zephyr.h)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/dai.c)
 
