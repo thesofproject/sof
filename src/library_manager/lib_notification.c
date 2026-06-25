@@ -53,7 +53,7 @@ struct ipc_msg *lib_notif_msg_init(uint32_t header, uint32_t size)
 					sizeof(*msg_pool_elem));
 		if (!msg_pool_elem)
 			return NULL;
-		msg = ipc_msg_init(header, SRAM_OUTBOX_SIZE);
+		msg = ipc_msg_init(NULL, header, SRAM_OUTBOX_SIZE);
 		if (!msg) {
 			rfree(msg_pool_elem);
 			return NULL;
