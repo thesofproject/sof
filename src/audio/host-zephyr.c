@@ -728,7 +728,7 @@ __cold int host_common_new(struct host_data *hd, struct comp_dev *dev,
 	ipc_build_stream_posn(&hd->posn, SOF_IPC_STREAM_POSITION, config_id);
 
 #if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
-	hd->msg = ipc_msg_init(hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
+	hd->msg = ipc_msg_init(hd->heap, hd->posn.rhdr.hdr.cmd, sizeof(hd->posn));
 	if (!hd->msg) {
 		comp_err(dev, "ipc_msg_init failed");
 		sof_dma_put(hd->dma);
