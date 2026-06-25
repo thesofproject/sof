@@ -12,6 +12,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <sof/math/numbers.h>
+
 #include "audio_stream.h"
 #include "format.h"
 
@@ -337,6 +339,36 @@ static inline struct processing_module *source_get_bound_module(struct sof_sourc
 static inline enum sof_audio_buffer_state source_get_state(const struct sof_source *source)
 {
 	return source->audio_stream_params->state;
+}
+
+static inline uint32_t source_align_frames_round_up(struct sof_source *source, uint32_t frames)
+{
+	uint16_t align = source->audio_stream_params->align_frame_cnt;
+
+	if (align <= 1)
+		return frames;
+
+	return ROUND_UP(frames, align);
+}
+
+static inline uint32_t source_align_frames_round_down(struct sof_source *source, uint32_t frames)
+{
+	uint16_t align = source->audio_stream_params->align_frame_cnt;
+
+	if (align <= 1)
+		return frames;
+
+	return ROUND_DOWN(frames, align);
+}
+
+static inline uint32_t source_align_frames_round_nearest(struct sof_source *source, uint32_t frames)
+{
+	uint16_t align = source->audio_stream_params->align_frame_cnt;
+
+	if (!align)
+		return frames;
+
+	return ROUND_DOWN(frames + (align >> 1), align);
 }
 
 #endif /* __MODULE_AUDIO_SOURCE_API_H__ */
