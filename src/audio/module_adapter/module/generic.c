@@ -26,16 +26,6 @@
 #include <ipc4/pipeline.h>
 #endif
 
-/* The __ZEPHYR__ condition is to keep cmocka tests working */
-#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-#define MEM_API_CHECK_THREAD(res) do { \
-	if ((res)->rsrc_mngr != k_current_get()) \
-		LOG_WRN("mngr %p != cur %p", (res)->rsrc_mngr, k_current_get()); \
-} while (0)
-#else
-#define MEM_API_CHECK_THREAD(res)
-#endif
-
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
 
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size)
@@ -124,9 +114,6 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
-#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-	mod->priv.resources.rsrc_mngr = k_current_get();
-#endif
 	/* Now we can proceed with module specific initialization */
 #if CONFIG_SOF_USERSPACE_APPLICATION
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
@@ -192,8 +179,6 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 
-	MEM_API_CHECK_THREAD(res);
-
 	k_mutex_lock(&res->lock, K_FOREVER);
 
 	container = container_get(mod);
@@ -250,8 +235,6 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 
-	MEM_API_CHECK_THREAD(res);
-
 	k_mutex_lock(&res->lock, K_FOREVER);
 
 	container = container_get(mod);
@@ -305,8 +288,6 @@ struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processin
 	struct comp_data_blob_handler *bhp;
 	struct module_resource *container;
 
-	MEM_API_CHECK_THREAD(res);
-
 	k_mutex_lock(&res->lock, K_FOREVER);
 
 	container = container_get(mod);
@@ -346,8 +327,6 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 	const void *ptr;
-
-	MEM_API_CHECK_THREAD(res);
 
 	k_mutex_lock(&res->lock, K_FOREVER);
 
@@ -440,7 +419,6 @@ int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
 
-	MEM_API_CHECK_THREAD(res);
 	if (!ptr)
 		return 0;
 
@@ -759,8 +737,6 @@ int module_reset(struct processing_module *mod)
 void mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
-
-	MEM_API_CHECK_THREAD(res);
 
 	/* Free all contents found in used containers */
 	struct mod_res_cb_arg cb_arg = {mod, NULL};
