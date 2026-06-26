@@ -859,8 +859,7 @@ static SHARED_DATA struct comp_driver_info comp_basefw_info = {
 
 UT_STATIC void sys_comp_basefw_init(void)
 {
-	comp_register(platform_shared_get(&comp_basefw_info,
-					  sizeof(comp_basefw_info)));
+	comp_register(&comp_basefw_info);
 }
 
 DECLARE_MODULE(sys_comp_basefw_init);

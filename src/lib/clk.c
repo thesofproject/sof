@@ -89,7 +89,6 @@ uint64_t clock_ticks_per_sample(int clock, uint32_t sample_rate)
 	uint32_t ticks_per_msec;
 	uint64_t ticks_per_sample;
 
-	platform_shared_get(clk_info, sizeof(*clk_info));
 	ticks_per_msec = clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
 	ticks_per_sample = sample_rate ? ticks_per_msec * 1000 / sample_rate : 0;
 

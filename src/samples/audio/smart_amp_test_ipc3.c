@@ -555,8 +555,7 @@ static SHARED_DATA struct comp_driver_info comp_smart_amp_info = {
 
 UT_STATIC void sys_comp_smart_amp_test_init(void)
 {
-	comp_register(platform_shared_get(&comp_smart_amp_info,
-					  sizeof(comp_smart_amp_info)));
+	comp_register(&comp_smart_amp_info);
 }
 
 DECLARE_MODULE(sys_comp_smart_amp_test_init);

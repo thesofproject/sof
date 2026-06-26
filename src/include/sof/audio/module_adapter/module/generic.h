@@ -87,8 +87,7 @@ static SHARED_DATA struct comp_driver_info comp_module_##adapter##_info = { \
 \
 UT_STATIC void sys_comp_module_##adapter##_init(void) \
 { \
-	comp_register(platform_shared_get(&comp_module_##adapter##_info, \
-					  sizeof(comp_module_##adapter##_info))); \
+	comp_register(&comp_module_##adapter##_info); \
 } \
 \
 DECLARE_MODULE(sys_comp_module_##adapter##_init)

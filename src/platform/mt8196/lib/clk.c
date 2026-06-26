@@ -37,7 +37,7 @@ void platform_clock_init(struct sof *sof)
 	int i;
 
 	tr_dbg(&clkdrv_tr, "clock init\n");
-	sof->clocks = platform_shared_get(platform_clocks_info, sizeof(platform_clocks_info));
+	sof->clocks = platform_clocks_info;
 
 	/* When the system is in an active state, the DSP clock operates at 800MHz (0.75V).
 	 * In a low power scenario, the DSP enters WFI state, and the clock reduces to 26MHz.

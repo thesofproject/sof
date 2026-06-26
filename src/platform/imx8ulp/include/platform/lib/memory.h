@@ -195,11 +195,6 @@ void platform_init_memmap(struct sof *sof);
 #define cache_to_uncache_init(address)	address
 #define is_uncached(address)		0
 
-static inline void *platform_shared_get(void *ptr, int bytes)
-{
-	return ptr;
-}
-
 /**
  * \brief Function for keeping shared data synchronized.
  * It's used after usage of data shared by different cores.

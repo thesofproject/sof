@@ -2748,8 +2748,7 @@ static SHARED_DATA struct comp_driver_info comp_kpb_info = {
 
 UT_STATIC void sys_comp_kpb_init(void)
 {
-	comp_register(platform_shared_get(&comp_kpb_info,
-					  sizeof(comp_kpb_info)));
+	comp_register(&comp_kpb_info);
 }
 
 DECLARE_MODULE(sys_comp_kpb_init);

@@ -47,11 +47,6 @@ extern uint32_t posix_trace[];
 
 #define host_to_local(addr) (addr)
 
-static inline void *platform_shared_get(void *ptr, int bytes)
-{
-	return ptr;
-}
-
 #define SHARED_DATA /**/
 
 #endif /* PLATFORM_HOST_PLATFORM_MEMORY_H */

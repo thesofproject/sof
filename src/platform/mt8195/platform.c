@@ -182,7 +182,7 @@ int platform_init(struct sof *sof)
 {
 	int ret;
 
-	sof->platform_timer = platform_shared_get(&timer_shared, sizeof(timer_shared));
+	sof->platform_timer = &timer_shared;
 	sof->cpu_timers = sof->platform_timer;
 
 	platform_interrupt_init();

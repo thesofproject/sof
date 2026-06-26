@@ -37,11 +37,6 @@ uint8_t *get_library_mailbox(void);
 
 #define SHARED_DATA
 
-static inline void *platform_shared_get(void *ptr, int bytes)
-{
-	return ptr;
-}
-
 void platform_init_memmap(struct sof *sof);
 
 static inline void *platform_rfree_prepare(void *ptr)

@@ -539,8 +539,7 @@ static SHARED_DATA struct comp_driver_info comp_selector_info = {
 /** \brief Initializes selector component. */
 UT_STATIC void sys_comp_selector_init(void)
 {
-	comp_register(platform_shared_get(&comp_selector_info,
-					  sizeof(comp_selector_info)));
+	comp_register(&comp_selector_info);
 }
 
 DECLARE_MODULE(sys_comp_selector_init);

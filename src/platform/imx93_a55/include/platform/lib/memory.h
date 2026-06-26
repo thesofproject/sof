@@ -58,11 +58,6 @@
 /* WM8962 is connected to SAI3 */
 #define SAI3_BASE 0x42660000
 
-static inline void *platform_shared_get(void *ptr, int bytes)
-{
-	return ptr;
-}
-
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

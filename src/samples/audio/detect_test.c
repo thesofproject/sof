@@ -1113,8 +1113,7 @@ static SHARED_DATA struct comp_driver_info comp_keyword_info = {
 
 UT_STATIC void sys_comp_keyword_init(void)
 {
-	comp_register(platform_shared_get(&comp_keyword_info,
-					  sizeof(comp_keyword_info)));
+	comp_register(&comp_keyword_info);
 }
 
 DECLARE_MODULE(sys_comp_keyword_init);
