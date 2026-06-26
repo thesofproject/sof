@@ -54,12 +54,16 @@ static const struct module_interface userspace_proxy_interface;
 #include <sof/audio/module_adapter/iadk/system_agent.h>
 #include <sof/schedule/dp_schedule.h>
 
-static inline int user_worker_get(void)
+static inline int user_worker_get(int cpu)
 {
+	ARG_UNUSED(cpu);
 	return 0;
 }
 
-static inline void user_worker_put(void) { }
+static inline void user_worker_put(int cpu)
+{
+	ARG_UNUSED(cpu);
+}
 
 struct k_work_user *userspace_proxy_register_ipc_handler(struct processing_module *mod,
 							 struct k_event *event)
@@ -86,9 +90,10 @@ struct k_work_user *userspace_proxy_register_ipc_handler(struct processing_modul
  * It invokes the appropriate module function in userspace context and writes the operation
  * result back into the work item.
  *
- * There is only a single work queue, which is shared by all userspace modules. It is created
- * dynamically when needed. Because SOF uses a single dedicated thread for handling IPC, there
- * is no need to perform any additional serialization when accessing the worker.
+ * There is a separate work queue per core. Each core's work queue is shared by all
+ * userspace modules running on that core and is created dynamically when needed. A given
+ * core's worker is only accessed from that same core's IPC handling context, so there is no
+ * need to perform any additional serialization when accessing it.
  */
 struct user_worker {
 	k_tid_t thread_id;			/* ipc worker thread ID			*/
@@ -98,70 +103,91 @@ struct user_worker {
 	struct k_event event;
 };
 
-static struct user_worker worker;
+static struct user_worker worker[CONFIG_CORE_COUNT] = { { 0 } };
 
-static int user_worker_get(void)
+int user_worker_create(int cpu)
 {
-	if (worker.reference_count) {
-		worker.reference_count++;
+	assert(cpu_is_me(0));
+	assert(cpu >= 0 && cpu < (int)ARRAY_SIZE(worker));
+
+	if (worker[cpu].stack_ptr) {
+		tr_err(&userspace_proxy_tr, "Userspace worker already created for core %d.", cpu);
 		return 0;
 	}
 
-	worker.stack_ptr = user_stack_allocate(CONFIG_SOF_USERSPACE_PROXY_WORKER_STACK_SIZE,
-					       K_USER);
-	if (!worker.stack_ptr) {
+	worker[cpu].stack_ptr = user_stack_allocate(CONFIG_SOF_USERSPACE_PROXY_WORKER_STACK_SIZE,
+						    K_USER);
+	if (!worker[cpu].stack_ptr) {
 		tr_err(&userspace_proxy_tr, "Userspace worker stack allocation failed.");
 		return -ENOMEM;
 	}
 
-	k_event_init(&worker.event);
-	k_work_user_queue_start(&worker.work_queue, worker.stack_ptr,
+	k_event_init(&worker[cpu].event);
+	k_work_user_queue_start(&worker[cpu].work_queue, worker[cpu].stack_ptr,
 				CONFIG_SOF_USERSPACE_PROXY_WORKER_STACK_SIZE, 0, NULL);
 
-	worker.thread_id = k_work_user_queue_thread_get(&worker.work_queue);
+	worker[cpu].thread_id = k_work_user_queue_thread_get(&worker[cpu].work_queue);
 
-	k_thread_access_grant(worker.thread_id, &worker.event);
+#ifdef CONFIG_SCHED_CPU_MASK
+	int ret = k_thread_cpu_pin(worker[cpu].thread_id, cpu);
+	if (ret) {
+		tr_err(&userspace_proxy_tr, "Failed to pin worker to core %d, error: %d",
+		       cpu, ret);
+		k_panic();
+	}
+#elif CONFIG_CORE_COUNT > 1
+#error "CONFIG_SCHED_CPU_MASK is not enabled"
+#endif
 
-	worker.reference_count++;
+	k_thread_access_grant(worker[cpu].thread_id, &worker[cpu].event);
+
 	return 0;
 }
 
-static void user_worker_put(void)
+void user_worker_free(int cpu)
 {
-	/* Module removed so decrement counter */
-	worker.reference_count--;
+	assert(cpu >= 0 && cpu < (int)ARRAY_SIZE(worker));
+	assert(worker[cpu].stack_ptr);
 
-	/* Free worker resources if no more active user space modules */
-	if (worker.reference_count == 0) {
-		k_thread_abort(worker.thread_id);
-		user_stack_free(worker.stack_ptr);
-	}
+	k_thread_abort(worker[cpu].thread_id);
+	user_stack_free(worker[cpu].stack_ptr);
+	worker[cpu].stack_ptr = NULL;
+}
+
+static int user_worker_get(int cpu)
+{
+	assert(cpu >= 0 && cpu < (int)ARRAY_SIZE(worker));
+	assert(worker[cpu].stack_ptr);
+
+	return 0;
+}
+
+static void user_worker_put(int cpu)
+{
+	ARG_UNUSED(cpu);
 }
 #endif
 
 static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap *user_heap)
 {
+	int cpu = cpu_get_id();
 	struct user_work_item *work_item = NULL;
 	int ret;
 
-	ret = user_worker_get();
+	ret = user_worker_get(cpu);
 	if (ret)
 		return ret;
 
-	/* We have only a single userspace IPC worker. It handles requests for all userspace
-	 * modules, which may run on different cores. Because the worker processes work items
-	 * coming from any core, the work item must be allocated in coherent memory.
-	 */
-	work_item = sof_heap_alloc(user_heap, SOF_MEM_FLAG_COHERENT, sizeof(*work_item), 0);
+	work_item = sof_heap_alloc(user_heap, 0, sizeof(*work_item), 0);
 	if (!work_item) {
-		user_worker_put();
+		user_worker_put(cpu);
 		return -ENOMEM;
 	}
 
 	k_work_user_init(&work_item->work_item, userspace_proxy_worker_handler);
 
 #if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
-	work_item->event = &worker.event;
+	work_item->event = &worker[cpu].event;
 #endif
 	work_item->params.context = user_ctx;
 	work_item->params.mod = NULL;
@@ -173,7 +199,7 @@ static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap
 static void user_work_item_free(struct userspace_context *user_ctx, struct k_heap *user_heap)
 {
 	sof_heap_free(user_heap, user_ctx->work_item);
-	user_worker_put();
+	user_worker_put(cpu_get_id());
 }
 
 static inline struct module_params *user_work_get_params(struct userspace_context *user_ctx)
@@ -193,7 +219,8 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 #if IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
 	struct k_event * const event = user_ctx->dp_event;
 #else
-	struct k_event * const event = &worker.event;
+	int cpu = cpu_get_id();
+	struct k_event * const event = &worker[cpu].event;
 #endif
 	struct module_params *params = user_work_get_params(user_ctx);
 	const uintptr_t ipc_req_buf = (uintptr_t)MAILBOX_HOSTBOX_BASE;
@@ -216,22 +243,13 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 
 #if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
 	/* Switch worker thread to module memory domain */
-	ret = k_mem_domain_add_thread(user_ctx->comp_dom, worker.thread_id);
+	ret = k_mem_domain_add_thread(user_ctx->comp_dom, worker[cpu].thread_id);
 	if (ret < 0) {
 		tr_err(&userspace_proxy_tr, "Failed to switch memory domain, error: %d", ret);
 		goto done;
 	}
 
-#ifdef CONFIG_SCHED_CPU_MASK
-	/* Pin worker thread to the same core as the module */
-	ret = k_thread_cpu_pin(worker.thread_id, cpu_get_id());
-	if (ret < 0) {
-		tr_err(&userspace_proxy_tr, "Failed to pin cpu, error: %d", ret);
-		goto done;
-	}
-#endif
-
-	ret = k_work_user_submit_to_queue(&worker.work_queue, &user_ctx->work_item->work_item);
+	ret = k_work_user_submit_to_queue(&worker[cpu].work_queue, &user_ctx->work_item->work_item);
 	if (ret < 0) {
 		tr_err(&userspace_proxy_tr, "Submit to queue error: %d", ret);
 		goto done;

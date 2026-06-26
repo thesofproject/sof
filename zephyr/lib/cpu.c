@@ -22,6 +22,7 @@ static uint32_t mic_disable_status;
 #include <sof/lib/pm_runtime.h>
 #include <ipc/topology.h>
 #include <module/module/base.h>
+#include <sof/audio/module_adapter/library/userspace_proxy.h>
 #include <rtos/alloc.h>
 
 #include "../audio/copier/copier.h"
@@ -230,6 +231,8 @@ void cpu_notify_state_exit(enum pm_state state)
 
 int cpu_enable_core(int id)
 {
+	int ret = 0;
+
 	/* only called from single core, no RMW lock */
 	__ASSERT_NO_MSG(cpu_is_primary(arch_proc_id()));
 	/*
@@ -247,15 +250,18 @@ int cpu_enable_core(int id)
 	 * initialization. By reinitializing the idle thread, we would overwrite the kernel structs
 	 * and the idle thread stack.
 	 */
-	if (pm_state_next_get(id)->state == PM_STATE_ACTIVE) {
+	if (pm_state_next_get(id)->state == PM_STATE_ACTIVE)
 		k_smp_cpu_start(id, secondary_init, NULL);
-		return 0;
-	}
+	else
+		k_smp_cpu_resume(id, secondary_init, NULL, true, false);
 
-	k_smp_cpu_resume(id, secondary_init, NULL, true, false);
+	/* The core is up now; create its userspace IPC worker on the primary core.
+	 * Resolves to a no-op when no per-core userspace worker is used.
+	 */
+	ret = user_worker_create(id);
 #endif /* CONFIG_PM */
 
-	return 0;
+	return ret;
 }
 
 void cpu_disable_core(int id)
@@ -267,6 +273,12 @@ void cpu_disable_core(int id)
 		tr_warn(&zephyr_tr, "core %d is already disabled", id);
 		return;
 	}
+
+	/* Free the core's userspace IPC worker while the core is still running; the
+	 * worker thread is aborted cross-core. Resolves to a no-op when unused.
+	 */
+	user_worker_free(id);
+
 #if defined(CONFIG_PM)
 	/* TODO: before requesting core shut down check if it's not actively used */
 	if (!pm_state_force(id, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0})) {
