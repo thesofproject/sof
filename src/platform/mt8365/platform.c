@@ -164,7 +164,7 @@ int platform_init(struct sof *sof)
 	mailbox_sw_reg_write(SRAM_REG_OP_CPU2DSP, 0);
 	mailbox_sw_reg_write(SRAM_REG_OP_DSP2CPU, 0);
 
-	sof->platform_timer = platform_shared_get(&timer_shared, sizeof(timer_shared));
+	sof->platform_timer = &timer_shared;
 	sof->cpu_timers = sof->platform_timer;
 
 	platform_interrupt_init();

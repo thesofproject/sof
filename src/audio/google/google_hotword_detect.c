@@ -472,8 +472,7 @@ static SHARED_DATA struct comp_driver_info ghd_driver_info = {
 
 UT_STATIC void sys_comp_ghd_init(void)
 {
-	comp_register(platform_shared_get(&ghd_driver_info,
-					  sizeof(ghd_driver_info)));
+	comp_register(&ghd_driver_info);
 }
 
 DECLARE_MODULE(sys_comp_ghd_init);

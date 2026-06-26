@@ -209,8 +209,7 @@ __cold void init_system_notify(struct sof *sof)
 		list_init(&(*notify)->list[i]);
 
 	if (cpu_get_id() == PLATFORM_PRIMARY_CORE_ID)
-		sof->notify_data = platform_shared_get(notify_data_shared,
-						       sizeof(notify_data_shared));
+		sof->notify_data = notify_data_shared;
 }
 
 void free_system_notify(void)

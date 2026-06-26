@@ -187,7 +187,7 @@ EXPORT_SYMBOL(comp_set_state);
 
 void sys_comp_init(struct sof *sof)
 {
-	sof->comp_drivers = platform_shared_get(&cd, sizeof(cd));
+	sof->comp_drivers = &cd;
 
 	list_init(&sof->comp_drivers->list);
 	k_spinlock_init(&sof->comp_drivers->lock);

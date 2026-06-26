@@ -168,8 +168,7 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 
 void interrupt_init(struct sof *sof)
 {
-	sof->cascade_root = platform_shared_get(&cascade_root,
-						sizeof(cascade_root));
+	sof->cascade_root = &cascade_root;
 
 	sof->cascade_root->last_irq = PLATFORM_IRQ_FIRST_CHILD - 1;
 	k_spinlock_init(&sof->cascade_root->lock);

@@ -76,26 +76,6 @@ static inline void *cache_to_uncache(void __sparse_cache *address)
 #endif
 
 /**
- * \brief Returns pointer to the memory shared by multiple cores.
- * \param[in,out] ptr Initial pointer to the allocated memory.
- * \param[in] bytes Size of the allocated memory
- * \return Appropriate pointer to the shared memory.
- *
- * This function is called only once right after allocation of shared memory.
- * Platforms with uncached memory region should return aliased address.
- * On platforms without such region simple invalidate is enough.
- */
-static inline void *platform_shared_get(void *ptr, int bytes)
-{
-#if CONFIG_CORE_COUNT > 1 && !defined __ZEPHYR__
-	dcache_invalidate_region((__sparse_force void __sparse_cache *)ptr, bytes);
-	return cache_to_uncache(ptr);
-#else
-	return ptr;
-#endif
-}
-
-/**
  * \brief Transforms pointer if necessary before freeing the memory.
  * \param[in,out] ptr Pointer to the allocated memory.
  * \return Appropriate pointer to the memory ready to be freed.

@@ -28,11 +28,6 @@
 /* WAKEUP domain MU7 side B */
 #define MU_BASE 0x42440000UL
 
-static inline void *platform_shared_get(void *ptr, int bytes)
-{
-	return ptr;
-}
-
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 
 #else

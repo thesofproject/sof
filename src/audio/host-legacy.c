@@ -1074,8 +1074,7 @@ static SHARED_DATA struct comp_driver_info comp_host_info = {
 
 UT_STATIC void sys_comp_host_init(void)
 {
-	comp_register(platform_shared_get(&comp_host_info,
-					  sizeof(comp_host_info)));
+	comp_register(&comp_host_info);
 }
 
 DECLARE_MODULE(sys_comp_host_init);

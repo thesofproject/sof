@@ -430,7 +430,7 @@ __cold int idc_init(void)
 	tr_dbg(&idc_tr, "entry");
 
 	/* initialize idc data */
-	(*idc)->payload = platform_shared_get(static_payload, sizeof(static_payload));
+	(*idc)->payload = static_payload;
 
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	struct io_perf_data_item init_data = {IO_PERF_IDC_ID,

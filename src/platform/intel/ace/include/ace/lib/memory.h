@@ -33,21 +33,6 @@
 #define cache_to_uncache(address)       sys_cache_uncached_ptr_get(address)
 #define is_uncached(address)            (!sys_cache_is_ptr_cached(address))
 
-/**
- * \brief Returns pointer to the memory shared by multiple cores.
- * \param[in,out] ptr Initial pointer to the allocated memory.
- * \param[in] bytes Size of the allocated memory
- * \return Appropriate pointer to the shared memory.
- *
- * This function is called only once right after allocation of shared memory.
- * Platforms with uncached memory region should return aliased address.
- * On platforms without such region simple invalidate is enough.
- */
-static inline void *platform_shared_get(void *ptr, int bytes)
-{
-	return ptr;
-}
-
 #endif /* __ACE_LIB_MEMORY_H__ */
 
 #else
