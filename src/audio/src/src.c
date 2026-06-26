@@ -34,18 +34,15 @@
 
 LOG_MODULE_DECLARE(src, CONFIG_SOF_LOG_LEVEL);
 
-static int src_prepare(struct processing_module *mod,
-		       struct sof_source **sources, int num_of_sources,
-		       struct sof_sink **sinks, int num_of_sinks)
+/* Set rate table pointers, compute rate indices, and copy filter stages.
+ * Must be in src.c because src_table1/2, src_in_fs, etc. come from
+ * the coefficient headers included by this file.
+ */
+static int src_setup_stages(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct src_param *a = &cd->param;
 	int ret;
-
-	comp_info(mod->dev, "entry");
-
-	if (num_of_sources != 1 || num_of_sinks != 1)
-		return -EINVAL;
 
 	a->in_fs = src_in_fs;
 	a->out_fs = src_out_fs;
@@ -54,27 +51,46 @@ static int src_prepare(struct processing_module *mod,
 	a->max_fir_delay_size_xnch = (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE);
 	a->max_out_delay_size_xnch = (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE);
 
-	src_get_source_sink_params(mod->dev, sources[0], sinks[0]);
-
 	ret = src_param_set(mod->dev, cd);
 	if (ret < 0)
 		return ret;
 
-	ret = src_allocate_copy_stages(mod, a,
-				       src_table1[a->idx_out][a->idx_in],
-				       src_table2[a->idx_out][a->idx_in]);
+	return src_allocate_copy_stages(mod, a,
+					src_table1[a->idx_out][a->idx_in],
+					src_table2[a->idx_out][a->idx_in]);
+}
+
+static int src_do_init(struct processing_module *mod)
+{
+	struct comp_data *cd;
+	int ret;
+
+	ret = src_init(mod);
 	if (ret < 0)
 		return ret;
 
-	ret = src_params_general(mod, sources[0], sinks[0]);
-	if (ret < 0)
-		return ret;
+	cd = module_get_private_data(mod);
+	cd->setup_stages = src_setup_stages;
 
-	return src_prepare_general(mod, sources[0], sinks[0]);
+	return src_init_stages(mod);
+}
+
+static int src_prepare(struct processing_module *mod,
+		       struct sof_source **sources, int num_of_sources,
+		       struct sof_sink **sinks, int num_of_sinks)
+{
+	comp_info(mod->dev, "entry");
+
+	if (num_of_sources != 1 || num_of_sinks != 1)
+		return -EINVAL;
+
+	src_get_source_sink_params(mod->dev, sources[0], sinks[0]);
+
+	return src_prepare_do(mod, sources[0], sinks[0]);
 }
 
 static const struct module_interface src_interface = {
-	.init = src_init,
+	.init = src_do_init,
 	.prepare = src_prepare,
 	.process = src_process,
 	.is_ready_to_process = src_is_ready_to_process,
