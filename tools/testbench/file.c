@@ -819,6 +819,14 @@ static int file_prepare(struct processing_module *mod,
 
 	/* set file function */
 	stream = &buffer->stream;
+
+	/*
+	 * Real copier/DAI components call ipc4_update_buffer_format() to populate
+	 * valid_sample_fmt; the testbench file component is the host endpoint stub
+	 * so propagate cd->frame_fmt to the buffer's valid format too.
+	 */
+	audio_stream_set_valid_fmt(stream, cd->frame_fmt);
+
 	switch (audio_stream_get_frm_fmt(stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		cd->file_func = file_s16;
