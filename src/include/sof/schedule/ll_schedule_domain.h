@@ -120,6 +120,7 @@ struct task *zephyr_ll_task_alloc(void);
 struct k_heap *zephyr_ll_user_heap(void);
 bool zephyr_ll_user_heap_verify(struct k_heap *heap);
 void zephyr_ll_user_resources_init(void);
+void user_ll_grant_access(struct k_thread *thread, int core);
 void user_ll_lock_sched(int core);
 void user_ll_unlock_sched(int core);
 #ifdef CONFIG_ASSERT
