@@ -44,10 +44,57 @@ struct zephyr_ll_pdata {
 	struct k_sem sem;
 };
 
+#if CONFIG_SOF_USERSPACE_LL
+/*
+ * Mutex pointer in user-accessible partition so user-space threads
+ * can read the pointer for syscalls. The actual lock object resides
+ * in kernel memory, there are just handles!
+ */
+static APP_SYSUSER_BSS struct k_mutex *zephyr_ll_locks[CONFIG_CORE_COUNT];
+
+/*
+ * Shadow ownership tracking for the per-core LL mutex, used only to
+ * power user_ll_assert_locked(). The kernel k_mutex object is not
+ * readable from user-space threads, so its owner cannot be inspected
+ * directly; instead record the owner and recursion depth here, in a
+ * user-accessible partition. Updated on every lock/unlock of the LL
+ * mutex, by both the LL thread (zephyr_ll_lock()) and IPC handlers
+ * (user_ll_lock_sched()). Only ever mutated by the current lock holder
+ * while the lock is held, so no extra synchronization is required.
+ */
+#ifdef CONFIG_ASSERT
+static APP_SYSUSER_BSS k_tid_t zephyr_ll_lock_owner[CONFIG_CORE_COUNT];
+static APP_SYSUSER_BSS uint32_t zephyr_ll_lock_depth[CONFIG_CORE_COUNT];
+
+static inline void zephyr_ll_lock_acquired(int core)
+{
+	zephyr_ll_lock_owner[core] = k_current_get();
+	zephyr_ll_lock_depth[core]++;
+}
+
+static inline void zephyr_ll_lock_releasing(int core)
+{
+	assert(zephyr_ll_lock_owner[core] == k_current_get());
+	if (--zephyr_ll_lock_depth[core] == 0)
+		zephyr_ll_lock_owner[core] = NULL;
+}
+
+void user_ll_assert_locked(int core)
+{
+	assert(core < CONFIG_CORE_COUNT &&
+	       zephyr_ll_lock_owner[core] == k_current_get());
+}
+#else
+static inline void zephyr_ll_lock_acquired(int core) { (void)core; }
+static inline void zephyr_ll_lock_releasing(int core) { (void)core; }
+#endif /* CONFIG_ASSERT */
+#endif
+
 static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 {
 #if CONFIG_SOF_USERSPACE_LL
 	k_mutex_lock(sch->lock, K_FOREVER);
+	zephyr_ll_lock_acquired(sch->core);
 #else
 	irq_local_disable(*flags);
 #endif
@@ -56,6 +103,7 @@ static void zephyr_ll_lock(struct zephyr_ll *sch, uint32_t *flags)
 static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 {
 #if CONFIG_SOF_USERSPACE_LL
+	zephyr_ll_lock_releasing(sch->core);
 	k_mutex_unlock(sch->lock);
 #else
 	irq_local_enable(*flags);
@@ -222,7 +270,15 @@ static void zephyr_ll_run(void *data)
 		list_item_del(list);
 		list_item_append(list, &task_head);
 
+		/* in user-space LL builds, the LL lock protects LL
+		 * tasks against IPC thread, so the lock must be held
+		 * while running the tasks.
+		 * in kernel LL builds, IPC thread blocks interrupts for
+		 * critical section, so lock can be freed here.
+		 */
+#ifndef CONFIG_SOF_USERSPACE_LL
 		zephyr_ll_unlock(sch, &flags);
+#endif
 
 		/*
 		 * task's .run() should only return either
@@ -237,7 +293,9 @@ static void zephyr_ll_run(void *data)
 			state = SOF_TASK_STATE_RESCHEDULE;
 		}
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 		zephyr_ll_lock(sch, &flags);
+#endif
 
 		if (pdata->freeing || state == SOF_TASK_STATE_COMPLETED) {
 			zephyr_ll_task_done(sch, task);
@@ -561,6 +619,33 @@ struct task *zephyr_ll_task_alloc(void)
 
 	return task;
 }
+
+/**
+ * Lock the LL scheduler to prevent it from processing tasks.
+ *
+ * Uses the LL scheduler's own k_mutex which is re-entrant, so
+ * schedule_task() calls within the locked section will not deadlock.
+ * Must be paired with user_ll_unlock_sched().
+ */
+void user_ll_lock_sched(int core)
+{
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
+	int __maybe_unused ret = k_mutex_lock(zephyr_ll_locks[core], K_FOREVER);
+	assert(!ret);
+	zephyr_ll_lock_acquired(core);
+}
+
+/**
+ * Unlock the LL scheduler after a previous user_ll_lock_sched() call.
+ */
+void user_ll_unlock_sched(int core)
+{
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
+	zephyr_ll_lock_releasing(core);
+	int __maybe_unused ret = k_mutex_unlock(zephyr_ll_locks[core]);
+	assert(!ret);
+}
+
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 int zephyr_ll_task_init(struct task *task,
@@ -649,6 +734,8 @@ __cold int zephyr_ll_scheduler_init(struct ll_schedule_domain *domain)
 		sof_heap_free(sch->heap, sch);
 		return -ENOMEM;
 	}
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] == NULL);
+	zephyr_ll_locks[core] = sch->lock;
 	k_mutex_init(sch->lock);
 
 	tr_dbg(&ll_tr, "ll-scheduler init done, sch %p sch->lock %p", sch, sch->lock);

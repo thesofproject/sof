@@ -21,6 +21,7 @@
 #include <rtos/kernel.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/lib/cpu-clk-manager.h>
+#include <sof/schedule/ll_schedule_domain.h>
 
 #ifdef CONFIG_IPC_MAJOR_4
 #include <ipc4/notification.h>
@@ -145,6 +146,20 @@ static int pipeline_comp_copy(struct comp_dev *current,
 	return err;
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * User-space LL: pipeline_copy() runs as an LL task, with the per-core
+ * LL lock already held by the LL thread for the whole tick. Taking the
+ * lock again here would only add syscall overhead on this hot path, so
+ * we just assert that the lock is in fact held.
+ */
+#define PPL_LOCK(x) user_ll_assert_locked(x)
+#define PPL_UNLOCK(x)
+#else
+#define PPL_LOCK(x)
+#define PPL_UNLOCK(x)
+#endif
+
 /* Copy data across all pipeline components.
  * For capture pipelines it always starts from source component
  * and continues downstream and for playback pipelines it first
@@ -162,6 +177,8 @@ int pipeline_copy(struct pipeline *p)
 	uint32_t dir;
 	int ret;
 
+	PPL_LOCK(p->core);
+
 	if (p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dir = PPL_DIR_UPSTREAM;
 		start = p->sink_comp;
@@ -177,6 +194,8 @@ int pipeline_copy(struct pipeline *p)
 	if (ret < 0)
 		pipe_err(p, "ret = %d, start->comp.id = %u, dir = %u",
 			 ret, dev_comp_id(start), dir);
+
+	PPL_UNLOCK(p->core);
 
 	return ret;
 }
