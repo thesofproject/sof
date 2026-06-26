@@ -13,6 +13,7 @@
 #ifndef __SOF_AUDIO_MODULE_GENERIC__
 #define __SOF_AUDIO_MODULE_GENERIC__
 
+#include <rtos/mutex.h>
 #include <sof/objpool.h>
 #include <sof/ut.h>
 #include <sof/audio/component.h>
@@ -20,10 +21,6 @@
 #include <sof/audio/source_api.h>
 #include "module_interface.h"
 
-/* The __ZEPHYR__ condition is to keep cmocka tests working */
-#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-#include <zephyr/kernel/thread.h>
-#endif
 #include <sof/compiler_attributes.h>
 
 /*
@@ -129,13 +126,11 @@ struct module_param {
  * when the module unloads.
  */
 struct module_resources {
+	struct k_mutex lock;
 	struct objpool_head objpool;
 	size_t heap_usage;
 	size_t heap_high_water_mark;
 	struct mod_alloc_ctx *alloc;
-#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
-	k_tid_t rsrc_mngr;
-#endif
 };
 
 enum mod_resource_type {
@@ -191,7 +186,12 @@ struct module_processing_data {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
-void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+#else
+void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+#define mod_balloc_align z_impl_mod_balloc_align
+#endif
 void mod_resource_init(struct processing_module *mod);
 void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start);
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
@@ -241,7 +241,12 @@ static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 }
 
 #if CONFIG_COMP_BLOB
-struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
+#else
+struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod);
+#define mod_data_blob_handler_new z_impl_mod_data_blob_handler_new
+#endif
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
 #endif
 #if CONFIG_FAST_GET
