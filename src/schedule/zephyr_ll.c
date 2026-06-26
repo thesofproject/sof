@@ -626,6 +626,13 @@ struct task *zephyr_ll_task_alloc(void)
 	return task;
 }
 
+void user_ll_grant_access(struct k_thread *thread, int core)
+{
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
+
+	k_thread_access_grant(thread, zephyr_ll_locks[core]);
+}
+
 /**
  * Lock the LL scheduler to prevent it from processing tasks.
  *
