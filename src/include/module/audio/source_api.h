@@ -140,6 +140,17 @@ static inline size_t source_get_data_available(struct sof_source *source)
 	return source->ops->get_data_available(source);
 }
 
+/**
+ * Retrieves number of available data frames aligned to the alignment constants
+ * set by source_set_alignment_constants().
+ * @return Number of aligned available frames.
+ */
+static inline size_t source_get_aligned_frames_available(struct sof_source *source)
+{
+	return (source_get_data_available(source) >> source->audio_stream_params->align_shift_idx) *
+		source->audio_stream_params->align_frame_cnt;
+}
+
 static inline enum sof_ipc_frame source_get_frm_fmt(struct sof_source *source)
 {
 	return source->audio_stream_params->frame_fmt;
@@ -326,6 +337,31 @@ static inline struct processing_module *source_get_bound_module(struct sof_sourc
 static inline enum sof_audio_buffer_state source_get_state(const struct sof_source *source)
 {
 	return source->audio_stream_params->state;
+}
+
+static inline uint32_t source_align_frames_round_up(struct sof_source *source, uint32_t frames)
+{
+	uint16_t align = source->audio_stream_params->align_frame_cnt;
+	uint32_t aligned_frames;
+
+	if (!align)
+		return frames;
+
+	aligned_frames = ROUND_DOWN(frames, align);
+	if (aligned_frames < frames)
+		aligned_frames += align;
+
+	return aligned_frames;
+}
+
+static inline uint32_t source_align_frames_round_nearest(struct sof_source *source, uint32_t frames)
+{
+	uint16_t align = source->audio_stream_params->align_frame_cnt;
+
+	if (!align)
+		return frames;
+
+	return ROUND_DOWN(frames + (align >> 1), align);
 }
 
 #endif /* __MODULE_AUDIO_SOURCE_API_H__ */

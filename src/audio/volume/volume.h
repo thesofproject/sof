@@ -146,14 +146,18 @@ struct sof_ipc_ctrl_value_chan;
 
 /**
  * \brief volume processing function interface
+ *
+ * The source and sink circular buffers are acquired and committed once by the
+ * module's process callback. Each processing function receives ready-to-use
+ * circular buffer views and only performs the gain scaling.
  */
-typedef void (*vol_scale_func)(struct processing_module *mod, struct input_stream_buffer *source,
-			struct output_stream_buffer *sink, uint32_t frames, uint32_t attenuation);
+typedef void (*vol_scale_func)(struct processing_module *mod, struct cir_buf_source *source,
+			struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation);
 
 /**
  * \brief volume interface for function getting nearest zero crossing frame
  */
-typedef uint32_t (*vol_zc_func)(const struct audio_stream *source,
+typedef uint32_t (*vol_zc_func)(struct cir_buf_source *source, const int channels,
 				uint32_t frames, int64_t *prev_sum);
 
 /**

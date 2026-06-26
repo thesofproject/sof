@@ -71,6 +71,9 @@ static int setup(void **state)
 
 	cd->vol = test_malloc(vol_size);
 
+	/* number of channels used by the processing functions */
+	cd->channels = vol_state->parameters.channels;
+
 	/* set processing function and volume */
 #if CONFIG_IPC_MAJOR_4
 	cd->scale_vol = vol_get_processing_function(vol_state->mod->dev, cd);
@@ -266,6 +269,8 @@ static void test_audio_vol(void **state)
 	struct processing_module_test_data *vol_state = *state;
 	struct processing_module *mod = vol_state->mod;
 	struct vol_data *cd = module_get_private_data(mod);
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
 
 	switch (audio_stream_get_frm_fmt(&vol_state->sinks[0]->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
@@ -289,7 +294,15 @@ static void test_audio_vol(void **state)
 	vol_state->input_buffers[0]->consumed = 0;
 	vol_state->output_buffers[0]->size = 0;
 
-	cd->scale_vol(mod, vol_state->input_buffers[0], vol_state->output_buffers[0],
+	source_buf.buf_start = audio_stream_get_addr(&vol_state->sources[0]->stream);
+	source_buf.buf_end = audio_stream_get_end_addr(&vol_state->sources[0]->stream);
+	source_buf.ptr = audio_stream_get_rptr(&vol_state->sources[0]->stream);
+
+	sink_buf.buf_start = audio_stream_get_addr(&vol_state->sinks[0]->stream);
+	sink_buf.buf_end = audio_stream_get_end_addr(&vol_state->sinks[0]->stream);
+	sink_buf.ptr = audio_stream_get_wptr(&vol_state->sinks[0]->stream);
+
+	cd->scale_vol(mod, &source_buf, &sink_buf,
 		      mod->dev->frames, cd->attenuation);
 
 	vol_state->verify(mod, vol_state->sinks[0], vol_state->sources[0]);
