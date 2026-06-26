@@ -218,8 +218,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 				 NULL, CONFIG_LL_THREAD_PRIORITY, 0, K_FOREVER);
 
 #ifdef CONFIG_SCHED_CPU_MASK
-	k_thread_cpu_mask_clear(thread);
-	k_thread_cpu_mask_enable(thread, core);
+	k_thread_cpu_pin(thread, core);
 #endif
 	k_thread_name_set(thread, thread_name);
 
@@ -345,8 +344,7 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 				 K_USER, K_FOREVER);
 
 #ifdef CONFIG_SCHED_CPU_MASK
-	k_thread_cpu_mask_clear(thread);
-	k_thread_cpu_mask_enable(thread, core);
+	k_thread_cpu_pin(thread, core);
 #endif
 	k_thread_name_set(thread, thread_name);
 
