@@ -191,7 +191,12 @@ struct module_processing_data {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
-void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+#else
+void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
+#define mod_balloc_align z_impl_mod_balloc_align
+#endif
 void mod_resource_init(struct processing_module *mod);
 void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start);
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)

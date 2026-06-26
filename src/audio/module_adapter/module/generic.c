@@ -185,7 +185,7 @@ void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start
  * unloaded. The back-end, rballoc(), always aligns the memory to
  * PLATFORM_DCACHE_ALIGN at the minimum.
  */
-void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
+void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
 {
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
@@ -223,7 +223,7 @@ void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignm
 
 	return ptr;
 }
-EXPORT_SYMBOL(mod_balloc_align);
+EXPORT_SYMBOL(z_impl_mod_balloc_align);
 
 /**
  * Allocates aligned memory block with flags for module.
@@ -462,6 +462,20 @@ void *z_vrfy_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	return z_impl_mod_alloc_ext(mod, flags, size, alignment);
 }
 #include <zephyr/syscalls/mod_alloc_ext_mrsh.c>
+
+void *z_vrfy_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment)
+{
+	size_t h_size = 0;
+	uintptr_t h_start;
+
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	mod_heap_info(mod, &h_size, &h_start);
+	if (h_size)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+
+	return z_impl_mod_balloc_align(mod, size, alignment);
+}
+#include <zephyr/syscalls/mod_balloc_align_mrsh.c>
 
 int z_vrfy_mod_free(struct processing_module *mod, const void *ptr)
 {
