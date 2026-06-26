@@ -38,6 +38,14 @@ LOG_MODULE_REGISTER(component, CONFIG_SOF_LOG_LEVEL);
 
 static APP_SYSUSER_BSS SHARED_DATA struct comp_driver_list cd;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct comp_driver_list *comp_drivers_get(void)
+{
+	return platform_shared_get(&cd, sizeof(cd));
+}
+EXPORT_SYMBOL(comp_drivers_get);
+#endif
+
 SOF_DEFINE_REG_UUID(component);
 
 DECLARE_TR_CTX(comp_tr, SOF_UUID(component_uuid), LOG_LEVEL_INFO);
@@ -45,11 +53,14 @@ DECLARE_TR_CTX(comp_tr, SOF_UUID(component_uuid), LOG_LEVEL_INFO);
 int comp_register(struct comp_driver_info *drv)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
-	k_spinlock_key_t key;
 
-	key = k_spin_lock(&drivers->lock);
+	/*
+	 * No locking needed: the driver list is only modified at FW boot,
+	 * where module init runs serially on the primary core, and at
+	 * runtime from the serialized IPC thread (library load). These
+	 * never overlap, so concurrent modification is not possible.
+	 */
 	list_item_prepend(&drv->list, &drivers->list);
-	k_spin_unlock(&drivers->lock, key);
 
 	return 0;
 }
@@ -57,11 +68,9 @@ int comp_register(struct comp_driver_info *drv)
 void comp_unregister(struct comp_driver_info *drv)
 {
 	struct comp_driver_list *drivers = comp_drivers_get();
-	k_spinlock_key_t key;
 
-	key = k_spin_lock(&drivers->lock);
+	/* see comp_register() on why no locking is needed */
 	list_item_del(&drv->list);
-	k_spin_unlock(&drivers->lock, key);
 }
 
 int comp_set_adapter_ops(const struct comp_driver *drv, const struct module_interface *ops)
@@ -190,7 +199,6 @@ void sys_comp_init(struct sof *sof)
 	sof->comp_drivers = platform_shared_get(&cd, sizeof(cd));
 
 	list_init(&sof->comp_drivers->list);
-	k_spinlock_init(&sof->comp_drivers->lock);
 }
 
 void comp_get_copy_limits(struct comp_buffer *source,

@@ -282,6 +282,18 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	struct pipeline_data *ppl_data = ctx->comp_data;
 	struct list_item *tlist;
 	struct pipeline *p;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * In user-space irq_local_disable() is not available. Use the LL
+	 * scheduler mutex to prevent the scheduler from processing tasks
+	 * while pipeline state is being updated. The k_mutex is re-entrant
+	 * so schedule_task() calls inside the critical section are safe.
+	 */
+	int sched_core = ppl_data->start->ipc_config.core;
+
+	user_ll_lock_sched(sched_core);
+#else
 	uint32_t flags;
 
 #ifdef CONFIG_IPC_MAJOR_4
@@ -300,6 +312,7 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 	 * immediately before all pipelines achieved a consistent state.
 	 */
 	irq_local_disable(flags);
+#endif
 
 	switch (cmd) {
 	case COMP_TRIGGER_PAUSE:
@@ -355,8 +368,11 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				p->xrun_bytes = 1;
 		}
 	}
-
+#ifdef CONFIG_SOF_USERSPACE_LL
+	user_ll_unlock_sched(sched_core);
+#else
 	irq_local_enable(flags);
+#endif
 }
 
 int pipeline_comp_ll_task_init(struct pipeline *p)

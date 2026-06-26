@@ -36,11 +36,20 @@ config SOF_USERSPACE_INTERFACE_ALLOC
 	  Allow user-space threads to use sof_heap_alloc/sof_heap_free
 	  as Zephyr system calls.
 
+config SOF_USERSPACE_INTERFACE_VREGION
+	bool "Enable SOF vregion interface to userspace threads"
+	depends on USERSPACE
+	depends on SOF_VREGIONS
+	help
+	  Allow user-space threads to use vregion_alloc/vregion_free
+	  and their variants as Zephyr system calls.
+
 config SOF_USERSPACE_LL
 	bool "Run Low-Latency pipelines in userspace threads"
 	depends on USERSPACE
 	select SOF_USERSPACE_INTERFACE_ALLOC
 	select SOF_USERSPACE_INTERFACE_DMA
+	select SOF_USERSPACE_INTERFACE_VREGION if SOF_VREGIONS
 	help
 	  Run Low-Latency (LL) pipelines in userspace threads. This adds
 	  memory protection between operating system resources and
@@ -310,3 +319,11 @@ config STACK_SIZE_IPC_TX
 	default 2048
 	help
 	  IPC sender work-queue thread stack size. Keep a power of 2.
+
+config SOF_IPC_USER_THREAD_STACK_SIZE
+	int "IPC user thread stack size"
+	default 8192
+	depends on SOF_USERSPACE_LL
+	help
+	  Stack size for the userspace IPC thread.
+	  Keep a power of 2.

@@ -230,7 +230,7 @@ static struct ipc_msg *cadence_codec_notification_init(struct processing_module 
 	primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
 	primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-	msg = ipc_msg_w_ext_init(primary.dat, 0, sizeof(*msg_module_data));
+	msg = mod_ipc_msg_w_ext_init(mod, primary.dat, 0, sizeof(*msg_module_data));
 	if (!msg)
 		return NULL;
 

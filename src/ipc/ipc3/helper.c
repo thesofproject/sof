@@ -81,7 +81,6 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 	struct comp_driver_info *info;
 	struct sof_ipc_comp_ext *comp_ext;
 	uintptr_t offset;
-	k_spinlock_key_t key;
 
 	/* do we have extended data ? */
 	if (!comp->ext_data_length) {
@@ -127,9 +126,10 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 		goto out;
 	}
 
-	/* search driver list with UUID */
-	key = k_spin_lock(&drivers->lock);
-
+	/*
+	 * search driver list with UUID; no locking needed as the driver
+	 * list is only modified at boot and from the serialized IPC thread
+	 */
 	list_for_item(clist, &drivers->list) {
 		info = container_of(clist, struct comp_driver_info,
 				    list);
@@ -147,8 +147,6 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 		       *(uint32_t *)(&comp_ext->uuid[4]),
 		       *(uint32_t *)(&comp_ext->uuid[8]),
 		       *(uint32_t *)(&comp_ext->uuid[12]));
-
-	k_spin_unlock(&drivers->lock, key);
 
 out:
 	if (drv)
@@ -729,7 +727,7 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 	return 0;
 }
 
-void ipc_msg_reply(struct sof_ipc_reply *reply)
+void z_impl_ipc_msg_reply(struct sof_ipc_reply *reply)
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;

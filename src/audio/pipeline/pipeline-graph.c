@@ -14,6 +14,7 @@
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <rtos/alloc.h>
+#include <rtos/userspace_helper.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
@@ -43,10 +44,20 @@ DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
 /* lookup table to determine busy/free pipeline metadata objects */
 struct pipeline_posn {
 	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
+#ifndef CONFIG_SOF_USERSPACE_LL
 	struct k_spinlock lock;			/**< lock mechanism */
+#endif
 };
 /* the pipeline position lookup table */
-static SHARED_DATA struct pipeline_posn pipeline_posn_shared;
+static APP_SYSUSER_BSS SHARED_DATA struct pipeline_posn pipeline_posn_shared;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+/* Mutex pointer in user-accessible partition so user-space threads
+ * can read the pointer for syscalls. Kept outside the SHARED_DATA
+ * struct to avoid kernel object tracking issues.
+ */
+static APP_SYSUSER_BSS struct k_mutex *pipeline_posn_lock;
+#endif
 
 /**
  * \brief Retrieves pipeline position structure.
@@ -54,7 +65,12 @@ static SHARED_DATA struct pipeline_posn pipeline_posn_shared;
  */
 static inline struct pipeline_posn *pipeline_posn_get(void)
 {
+#ifdef CONFIG_SOF_USERSPACE_LL
+	return platform_shared_get(&pipeline_posn_shared,
+				   sizeof(pipeline_posn_shared));
+#else
 	return sof_get()->pipeline_posn;
+#endif
 }
 
 /**
@@ -67,9 +83,14 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
 	int ret = -EINVAL;
 	uint32_t i;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	k_mutex_lock(pipeline_posn_lock, K_FOREVER);
+#else
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&pipeline_posn->lock);
+#endif
 
 	for (i = 0; i < PPL_POSN_OFFSETS; ++i) {
 		if (!pipeline_posn->posn_offset[i]) {
@@ -80,8 +101,11 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 		}
 	}
 
-
+#ifdef CONFIG_SOF_USERSPACE_LL
+	k_mutex_unlock(pipeline_posn_lock);
+#else
 	k_spin_unlock(&pipeline_posn->lock, key);
+#endif
 
 	return ret;
 }
@@ -94,21 +118,42 @@ static inline void pipeline_posn_offset_put(uint32_t posn_offset)
 {
 	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
 	int i = posn_offset / sizeof(struct sof_ipc_stream_posn);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	k_mutex_lock(pipeline_posn_lock, K_FOREVER);
+	pipeline_posn->posn_offset[i] = false;
+	k_mutex_unlock(pipeline_posn_lock);
+#else
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&pipeline_posn->lock);
-
 	pipeline_posn->posn_offset[i] = false;
-
 	k_spin_unlock(&pipeline_posn->lock, key);
+#endif
 }
 
 void pipeline_posn_init(struct sof *sof)
 {
 	sof->pipeline_posn = platform_shared_get(&pipeline_posn_shared,
 						 sizeof(pipeline_posn_shared));
+#ifdef CONFIG_SOF_USERSPACE_LL
+	pipeline_posn_lock = k_object_alloc(K_OBJ_MUTEX);
+	if (!pipeline_posn_lock) {
+		pipe_cl_err("pipeline posn mutex alloc failed");
+		k_panic();
+	}
+	k_mutex_init(pipeline_posn_lock);
+#else
 	k_spinlock_init(&sof->pipeline_posn->lock);
+#endif
 }
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+void pipeline_posn_grant_access(struct k_thread *thread)
+{
+	k_thread_access_grant(thread, pipeline_posn_lock);
+}
+#endif
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_t priority,
@@ -140,12 +185,17 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 	p->pipeline_id = pipeline_id;
 	p->status = COMP_STATE_INIT;
 	p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	LOG_WRN("pipeline trace settings cannot be copied");
+#else
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
 	if (ret < 0) {
 		pipe_err(p, "failed to copy trace settings");
 		goto free;
 	}
+#endif
 
 	ret = pipeline_posn_offset_get(&p->posn_offset);
 	if (ret < 0) {
@@ -158,7 +208,7 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 	ipc_build_stream_posn(&posn, SOF_IPC_STREAM_TRIG_XRUN, p->comp_id);
 
 	if (posn.rhdr.hdr.size) {
-		p->msg = ipc_msg_init(posn.rhdr.hdr.cmd, posn.rhdr.hdr.size);
+		p->msg = ipc_msg_init(heap, posn.rhdr.hdr.cmd, posn.rhdr.hdr.size);
 		if (!p->msg) {
 			pipe_err(p, "ipc_msg_init failed");
 			goto free;
@@ -181,19 +231,22 @@ static void buffer_set_comp(struct comp_buffer *buffer, struct comp_dev *comp,
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * User-space LL: IPC-level user_ll_lock_sched() provides mutual
+ * exclusion with the LL thread. No per-pipeline lock needed.
+ */
 #define PPL_LOCK_DECLARE
-#define PPL_LOCK() do { \
-		int ret = sys_mutex_lock(&comp->list_mutex, K_FOREVER); \
-		assert(ret == 0); \
-	} while (0)
-#define PPL_UNLOCK() do { \
-		int ret = sys_mutex_unlock(&comp->list_mutex); \
-		assert(ret == 0); \
-	} while (0)
+#define PPL_LOCK(x) user_ll_lock_sched(x)
+#define PPL_UNLOCK(x) user_ll_unlock_sched(x)
 #else
+/*
+ * Kernel-space LL. When modifying pipeline connections, block IRQs
+ * and prevent LL from running. No locking needed when iterating
+ * the pipeline in the LL thread.
+ */
 #define PPL_LOCK_DECLARE uint32_t flags
-#define PPL_LOCK() irq_local_disable(flags)
-#define PPL_UNLOCK()  irq_local_enable(flags)
+#define PPL_LOCK(x) irq_local_disable(flags)
+#define PPL_UNLOCK(x)  irq_local_enable(flags)
 #endif
 
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
@@ -208,19 +261,19 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	else
 		comp_info(comp, "connect buffer %d as source", buf_get_id(buffer));
 
-	PPL_LOCK();
+	PPL_LOCK(buffer->core);
 
 	comp_list = comp_buffer_list(comp, dir);
 	ret = buffer_attach(buffer, comp_list, dir);
 	if (ret < 0) {
 		comp_err(comp, "buffer %d already connected dir %d",
 			 buf_get_id(buffer), dir);
-		PPL_UNLOCK();
+		PPL_UNLOCK(buffer->core);
 		return ret;
 	}
 	buffer_set_comp(buffer, comp, dir);
 
-	PPL_UNLOCK();
+	PPL_UNLOCK(buffer->core);
 
 	return 0;
 }
@@ -235,13 +288,13 @@ void pipeline_disconnect(struct comp_dev *comp, struct comp_buffer *buffer, int 
 	else
 		comp_dbg(comp, "disconnect buffer %d as source", buf_get_id(buffer));
 
-	PPL_LOCK();
+	PPL_LOCK(buffer->core);
 
 	comp_list = comp_buffer_list(comp, dir);
 	buffer_detach(buffer, comp_list, dir);
 	buffer_set_comp(buffer, NULL, dir);
 
-	PPL_UNLOCK();
+	PPL_UNLOCK(buffer->core);
 }
 
 /* pipelines must be inactive */
@@ -518,6 +571,10 @@ struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir)
  */
 struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *latency)
 {
+#ifdef CONFIG_SOF_USERSPACE_LL
+	LOG_WRN("latency cannot be computed in user-space pipelines!");
+	*latency = 0;
+#else
 	struct ipc_comp_dev *ipc_sink;
 	struct ipc_comp_dev *ipc_source;
 	struct comp_dev *source;
@@ -585,7 +642,7 @@ struct comp_dev *pipeline_get_dai_comp_latency(uint32_t pipeline_id, uint32_t *l
 		/* Get a next sink component */
 		ipc_sink = ipc_get_ppl_sink_comp(ipc, source->pipeline->pipeline_id);
 	}
-
+#endif
 	return NULL;
 }
 EXPORT_SYMBOL(pipeline_get_dai_comp_latency);

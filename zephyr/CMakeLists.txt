@@ -620,12 +620,19 @@ zephyr_library_sources_ifdef(CONFIG_SHELL
 
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/module_adapter/module/generic.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/fast-get.h)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/ipc/ipc_reply.h)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/ipc4/handler.h)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/ipc/ipc_msg_send.h)
 zephyr_syscall_header(include/rtos/alloc.h)
 zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_INTERFACE_ALLOC syscall/alloc.c)
+zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/vregion.h)
+zephyr_library_sources(syscall/vregion.c)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/dai-zephyr.h)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/dai.c)
 
 zephyr_syscall_header(${SOF_SRC_PATH}/include/user/debug_stream_slot.h)
+
+zephyr_syscall_header(${SOF_SRC_PATH}/include/ipc4/notification.h)
 
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
