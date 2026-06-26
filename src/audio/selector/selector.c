@@ -231,15 +231,84 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 				  struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *src;
 	struct sof_sel_config *cfg;
+	uint32_t src_channels;
 	int ret = 0;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_dbg(dev, "SOF_CTRL_CMD_BINARY");
 
+		if (cdata->data->size < sizeof(struct sof_sel_config)) {
+			comp_err(dev, "invalid config blob size %u", cdata->data->size);
+			return -EINVAL;
+		}
+
 		cfg = (struct sof_sel_config *)
 		      ASSUME_ALIGNED(&cdata->data->data, 4);
+
+		/*
+		 * The config validated at .params() time can be replaced here at
+		 * runtime, so re-validate the new channel counts and selected
+		 * channel before accepting them; otherwise an out-of-range value
+		 * later indexes past the source channels in the copy routine.
+		 */
+		switch (cfg->in_channels_count) {
+		case 0:
+		case SEL_SOURCE_2CH:
+		case SEL_SOURCE_4CH:
+			break;
+		default:
+			comp_err(dev, "invalid in_channels_count %u",
+				 cfg->in_channels_count);
+			return -EINVAL;
+		}
+
+		switch (cfg->out_channels_count) {
+		case 0:
+		case SEL_SINK_1CH:
+		case SEL_SINK_2CH:
+		case SEL_SINK_4CH:
+			break;
+		default:
+			comp_err(dev, "invalid out_channels_count %u",
+				 cfg->out_channels_count);
+			return -EINVAL;
+		}
+
+		/* sel_channel indexes the source channels, so it must be below
+		 * the source channel count, otherwise the copy routine reads
+		 * past the end of each source frame. The copy routine strides by
+		 * the live producer stream channel count, so when the source is
+		 * already connected that live count is the authority for both the
+		 * selected channel and any fixed input count; before connection
+		 * fall back to the configured input count. Always cap by the
+		 * maximum supported source width.
+		 */
+		src = comp_dev_get_first_data_producer(dev);
+		if (src)
+			src_channels = audio_stream_get_channels(&src->stream);
+		else
+			src_channels = cfg->in_channels_count;
+
+		/* A fixed (non-zero) input count must not exceed the live source
+		 * width, otherwise sel_channel could be accepted below the
+		 * requested count yet still index past the actual stream.
+		 */
+		if (src && cfg->in_channels_count &&
+		    cfg->in_channels_count > src_channels) {
+			comp_err(dev, "in_channels_count %u exceeds source channels %u",
+				 cfg->in_channels_count, src_channels);
+			return -EINVAL;
+		}
+
+		if (cfg->sel_channel >= SEL_SOURCE_4CH ||
+		    (src_channels && cfg->sel_channel >= src_channels)) {
+			comp_err(dev, "invalid sel_channel %u (source channels %u)",
+				 cfg->sel_channel, src_channels);
+			return -EINVAL;
+		}
 
 		/* Just set the configuration */
 		cd->config.in_channels_count = cfg->in_channels_count;
