@@ -28,10 +28,10 @@ struct multiband_drc_state {
 	struct iir_state_df1 deemphasis[PLATFORM_MAX_CHANNELS];
 };
 
-typedef void (*multiband_drc_func)(const struct processing_module *mod,
-				   const struct audio_stream *source,
-				   struct audio_stream *sink,
-				   uint32_t frames);
+typedef int (*multiband_drc_func)(const struct processing_module *mod,
+				  struct sof_source *source,
+				  struct sof_sink *sink,
+				  uint32_t frames);
 
 /* Multiband DRC component private data */
 struct multiband_drc_comp_data {
@@ -54,10 +54,10 @@ extern const struct multiband_drc_proc_fnmap multiband_drc_proc_fnmap[];
 extern const struct multiband_drc_proc_fnmap multiband_drc_proc_fnmap_pass[];
 extern const size_t multiband_drc_proc_fncount;
 
-void multiband_drc_default_pass(const struct processing_module *mod,
-                                const struct audio_stream *source,
-                                struct audio_stream *sink,
-                                uint32_t frames);
+int multiband_drc_default_pass(const struct processing_module *mod,
+			       struct sof_source *source,
+			       struct sof_sink *sink,
+			       uint32_t frames);
 
 /**
  * \brief Returns Multiband DRC processing function.

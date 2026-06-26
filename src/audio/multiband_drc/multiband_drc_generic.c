@@ -6,17 +6,18 @@
 
 #include <stdint.h>
 #include <sof/audio/format.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/math/iir_df1.h>
 
 #include "multiband_drc.h"
 #include "../drc/drc_algorithm.h"
 
-void multiband_drc_default_pass(const struct processing_module *mod,
-				const struct audio_stream *source,
-				struct audio_stream *sink,
-				uint32_t frames)
+int multiband_drc_default_pass(const struct processing_module *mod,
+			       struct sof_source *source,
+			       struct sof_sink *sink,
+			       uint32_t frames)
 {
-	audio_stream_copy(source, 0, sink, 0, audio_stream_get_channels(source) * frames);
+	return source_to_sink_copy(source, sink, true, frames * source_get_frame_bytes(source));
 }
 
 static void multiband_drc_process_emp_crossover(struct multiband_drc_state *state,
@@ -203,10 +204,10 @@ static void multiband_drc_process_deemp(struct multiband_drc_state *state,
   *                                          :buf_drc_src[nch*nband]        :buf_sink[nch]
   */
 #if CONFIG_FORMAT_S16LE
-static void multiband_drc_s16_default(const struct processing_module *mod,
-				      const struct audio_stream *source,
-				      struct audio_stream *sink,
-				      uint32_t frames)
+static int multiband_drc_s16_default(const struct processing_module *mod,
+				     struct sof_source *source,
+				     struct sof_sink *sink,
+				     uint32_t frames)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
@@ -216,22 +217,35 @@ static void multiband_drc_s16_default(const struct processing_module *mod,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int16_t *x = audio_stream_get_rptr(source);
-	int16_t *y = audio_stream_get_wptr(sink);
+	const int16_t *x, *buf_x_start;
+	int16_t *y, *buf_y_start;
+	int buf_x_samples, buf_y_samples;
+	size_t n_bytes = frames * source_get_frame_bytes(source);
 	int band;
 	int nbuf;
 	int npcm;
+	int ret;
 	int ch;
 	int i;
-	int nch = audio_stream_get_channels(source);
+	int nch = source_get_channels(source);
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
 	int samples = frames * nch;
 
+	ret = source_get_data_s16(source, n_bytes, &x, &buf_x_start, &buf_x_samples);
+	if (ret)
+		return ret;
+
+	ret = sink_get_buffer_s16(sink, n_bytes, &y, &buf_y_start, &buf_y_samples);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
 	while (samples) {
-		nbuf = audio_stream_samples_without_wrap_s16(source, x);
+		nbuf = cir_buf_samples_to_wrap_s16(x, buf_x_start, buf_x_samples);
 		npcm = MIN(samples, nbuf);
-		nbuf = audio_stream_samples_without_wrap_s16(sink, y);
+		nbuf = cir_buf_samples_to_wrap_s16(y, buf_y_start, buf_y_samples);
 		npcm = MIN(npcm, nbuf);
 		for (i = 0; i < npcm; i += nch) {
 			for (ch = 0; ch < nch; ch++) {
@@ -263,17 +277,22 @@ static void multiband_drc_s16_default(const struct processing_module *mod,
 			}
 		}
 		samples -= npcm;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		if (x >= buf_x_start + buf_x_samples)
+			x = buf_x_start;
+		if (y >= buf_y_start + buf_y_samples)
+			y = buf_y_start;
 	}
+	source_release_data(source, n_bytes);
+	sink_commit_buffer(sink, n_bytes);
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void multiband_drc_s24_default(const struct processing_module *mod,
-				      const struct audio_stream *source,
-				      struct audio_stream *sink,
-				      uint32_t frames)
+static int multiband_drc_s24_default(const struct processing_module *mod,
+				     struct sof_source *source,
+				     struct sof_sink *sink,
+				     uint32_t frames)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
@@ -283,22 +302,35 @@ static void multiband_drc_s24_default(const struct processing_module *mod,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
+	const int32_t *x, *buf_x_start;
+	int32_t *y, *buf_y_start;
+	int buf_x_samples, buf_y_samples;
+	size_t n_bytes = frames * source_get_frame_bytes(source);
 	int band;
 	int nbuf;
 	int npcm;
+	int ret;
 	int ch;
 	int i;
-	int nch = audio_stream_get_channels(source);
+	int nch = source_get_channels(source);
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
 	int samples = frames * nch;
 
+	ret = source_get_data_s32(source, n_bytes, &x, &buf_x_start, &buf_x_samples);
+	if (ret)
+		return ret;
+
+	ret = sink_get_buffer_s32(sink, n_bytes, &y, &buf_y_start, &buf_y_samples);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
 	while (samples) {
-		nbuf = audio_stream_samples_without_wrap_s24(source, x);
+		nbuf = cir_buf_samples_to_wrap_s32(x, buf_x_start, buf_x_samples);
 		npcm = MIN(samples, nbuf);
-		nbuf = audio_stream_samples_without_wrap_s24(sink, y);
+		nbuf = cir_buf_samples_to_wrap_s32(y, buf_y_start, buf_y_samples);
 		npcm = MIN(npcm, nbuf);
 		for (i = 0; i < npcm; i += nch) {
 			for (ch = 0; ch < nch; ch++) {
@@ -330,17 +362,22 @@ static void multiband_drc_s24_default(const struct processing_module *mod,
 			}
 		}
 		samples -= npcm;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		if (x >= buf_x_start + buf_x_samples)
+			x = buf_x_start;
+		if (y >= buf_y_start + buf_y_samples)
+			y = buf_y_start;
 	}
+	source_release_data(source, n_bytes);
+	sink_commit_buffer(sink, n_bytes);
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void multiband_drc_s32_default(const struct processing_module *mod,
-				      const struct audio_stream *source,
-				      struct audio_stream *sink,
-				      uint32_t frames)
+static int multiband_drc_s32_default(const struct processing_module *mod,
+				     struct sof_source *source,
+				     struct sof_sink *sink,
+				     uint32_t frames)
 {
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 	struct multiband_drc_state *state = &cd->state;
@@ -350,22 +387,35 @@ static void multiband_drc_s32_default(const struct processing_module *mod,
 	int32_t buf_drc_sink[PLATFORM_MAX_CHANNELS * SOF_MULTIBAND_DRC_MAX_BANDS];
 	int32_t *band_buf_drc_src;
 	int32_t *band_buf_drc_sink;
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
+	const int32_t *x, *buf_x_start;
+	int32_t *y, *buf_y_start;
+	int buf_x_samples, buf_y_samples;
+	size_t n_bytes = frames * source_get_frame_bytes(source);
 	int band;
 	int nbuf;
 	int npcm;
+	int ret;
 	int ch;
 	int i;
-	int nch = audio_stream_get_channels(source);
+	int nch = source_get_channels(source);
 	int nband = cd->config->num_bands;
 	int enable_emp_deemp = cd->config->enable_emp_deemp;
 	int samples = frames * nch;
 
+	ret = source_get_data_s32(source, n_bytes, &x, &buf_x_start, &buf_x_samples);
+	if (ret)
+		return ret;
+
+	ret = sink_get_buffer_s32(sink, n_bytes, &y, &buf_y_start, &buf_y_samples);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+
 	while (samples) {
-		nbuf = audio_stream_samples_without_wrap_s32(source, x);
+		nbuf = cir_buf_samples_to_wrap_s32(x, buf_x_start, buf_x_samples);
 		npcm = MIN(samples, nbuf);
-		nbuf = audio_stream_samples_without_wrap_s32(sink, y);
+		nbuf = cir_buf_samples_to_wrap_s32(y, buf_y_start, buf_y_samples);
 		npcm = MIN(npcm, nbuf);
 		for (i = 0; i < npcm; i += nch) {
 			for (ch = 0; ch < nch; ch++) {
@@ -397,9 +447,14 @@ static void multiband_drc_s32_default(const struct processing_module *mod,
 			}
 		}
 		samples -= npcm;
-		x = audio_stream_wrap(source, x);
-		y = audio_stream_wrap(sink, y);
+		if (x >= buf_x_start + buf_x_samples)
+			x = buf_x_start;
+		if (y >= buf_y_start + buf_y_samples)
+			y = buf_y_start;
 	}
+	source_release_data(source, n_bytes);
+	sink_commit_buffer(sink, n_bytes);
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
