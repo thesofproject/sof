@@ -435,7 +435,7 @@ xt-clang or GCC. Specify the LLVM build directory containing bin/clang.
 A wrapper script is auto-generated to handle GCC flag translation,
 external assembler usage, and Xtensa target configuration.
 Example: --llvm-clang /home/user/llvm-project/build""")
-	parser.add_argument("--llvm-no-sdk", required=False, action="store_true", default=True,
+	parser.add_argument("--llvm-no-sdk", required=False, action="store_true", default=False,
 				help="""Use LLVM/Clang with no Zephyr SDK support.
 This enables the integrated assembler and pure LLD linking, with zero dependency on the Zephyr SDK.""")
 	parser.add_argument("--build-dir-suffix", default="",
