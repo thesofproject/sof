@@ -13,6 +13,16 @@ menu "Processing modules"
 		  containers to allocate at once is selected by this
 		  config option.
 
+	config SOF_USERSPACE_DP_DEFAULT_HEAP_SIZE
+		int "Default heap size for DP userspace threads"
+		default 20480
+		help
+		  Defines the default heap size for userspace DP processing
+		  threads. The value can be overridden with IPC module init
+		  ext_init module payload. The default is derived from what is
+		  required for SRC module to produce all supported conversions.
+		  (This is a dummy Kconfig option to help testbench to build.)
+
 	config CADENCE_CODEC
 		bool "Cadence codec"
 		help
