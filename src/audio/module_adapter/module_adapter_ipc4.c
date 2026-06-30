@@ -187,11 +187,16 @@ int module_adapter_init_data(struct comp_dev *dev,
 		}
 	}
 
-	/* Assume legacy API if module data was not found in ext_init payload */
-	if (!config->ipc_extended_init || !dst->ext_data->module_data) {
-		dst->init_data = cfg; /* legacy API */
+	/* Always provide init_data so legacy modules have a valid pointer.
+	 * Extended-init-aware modules (e.g. cadence) read
+	 * ext_data->module_data directly and never dereference init_data.
+	 * Note: cfg points into the IPC mailbox and must not be used
+	 * persistently; it is reset to NULL by module_adapter_reset_data()
+	 * in module_adapter_new_ext() after module_init() returns.
+	 */
+	dst->init_data = cfg;
+	if (!config->ipc_extended_init || !dst->ext_data->module_data)
 		dst->avail = true;
-	}
 
 	return 0;
 }
