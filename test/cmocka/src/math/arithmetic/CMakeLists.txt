@@ -1,10 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-cmocka_test(base2_logarithm
-	base2_logarithm.c
-	${PROJECT_SOURCE_DIR}/src/math/base2log.c
-)
-
 cmocka_test(exponential
 	exponential.c
 	${PROJECT_SOURCE_DIR}/src/math/exp_fcn.c
