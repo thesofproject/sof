@@ -71,5 +71,7 @@ void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsou
 
 int eq_iir_setup(struct processing_module *mod, int nch);
 
+int eq_iir_validate_config(struct comp_dev *dev, void *new_data, uint32_t new_data_size);
+
 void eq_iir_free_delaylines(struct processing_module *mod);
 #endif /* __SOF_AUDIO_EQ_IIR_EQ_IIR_H__ */

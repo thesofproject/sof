@@ -63,6 +63,11 @@ static int eq_iir_init(struct processing_module *mod)
 		return -ENOMEM;
 	}
 
+	/* Reject malformed blobs at IPC time so a bad run-time update cannot
+	 * replace the working configuration.
+	 */
+	comp_data_blob_set_validator(cd->model_handler, eq_iir_validate_config);
+
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df1(&cd->iir[i]);
 
@@ -107,16 +112,6 @@ static int eq_iir_get_config(struct processing_module *mod,
 	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-static int eq_iir_check_blob_size(struct comp_dev *dev, size_t size)
-{
-	if (size < sizeof(struct sof_eq_iir_config) || size > SOF_EQ_IIR_MAX_SIZE) {
-		comp_err(dev, "invalid configuration blob, size %zu", size);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static int eq_iir_process(struct processing_module *mod,
 			  struct input_stream_buffer *input_buffers, int num_input_buffers,
 			  struct output_stream_buffer *output_buffers, int num_output_buffers)
@@ -127,11 +122,15 @@ static int eq_iir_process(struct processing_module *mod,
 	uint32_t frame_count = input_buffers[0].size;
 	int ret;
 
-	/* Check for changed configuration */
+	/* Check for changed configuration. The IPC-time validator installed
+	 * in eq_iir_init() has already structurally validated the blob, so
+	 * only NULL needs to be guarded here.
+	 */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
-		if (!cd->config || eq_iir_check_blob_size(mod->dev, cd->config_size) < 0)
+		if (!cd->config)
 			return -EINVAL;
+
 		ret = eq_iir_new_blob(mod, audio_stream_get_frm_fmt(source),
 				      audio_stream_get_frm_fmt(sink),
 				      audio_stream_get_channels(source));
@@ -203,9 +202,7 @@ static int eq_iir_prepare(struct processing_module *mod,
 	eq_iir_set_passthrough_func(cd, source_format, sink_format);
 
 	/* Initialize EQ */
-	if (cd->config && cd->config_size > 0) {
-		if (eq_iir_check_blob_size(dev, cd->config_size) < 0)
-			return -EINVAL;
+	if (cd->config) {
 		ret = eq_iir_new_blob(mod, source_format, sink_format, channels);
 		if (ret)
 			return ret;

@@ -211,6 +211,26 @@ static int eq_iir_blob_words_max(struct comp_dev *dev,
 	return 0;
 }
 
+/**
+ * @brief Parse one response header from the coefficient blob.
+ *
+ * Reads the response at word offset *j in @p coef_data, checks that both
+ * the fixed header and the following biquad sections fit inside the
+ * @p coef_words_max blob budget, and advances *j past this response so
+ * the next call continues where this one left off. On success @p *eq_out
+ * is set to point at the in-place header; callers that only want to walk
+ * the blob for validation can discard that pointer.
+ *
+ * @param dev            Component device, used for error logging.
+ * @param idx            Response index, used in error messages.
+ * @param coef_data      Base of the coefficient word array in the blob.
+ * @param coef_words_max Total words available in @p coef_data.
+ * @param j              In/out cursor in words; advanced past this response.
+ * @param eq_out         Out; pointer to the parsed response header.
+ *
+ * @return 0 on success, -EINVAL if the header or sections would run off
+ *         the end of the blob or num_sections exceeds the platform limit.
+ */
 static int eq_iir_init_response(struct comp_dev *dev, int idx,
 				int32_t *coef_data, uint32_t coef_words_max,
 				uint32_t *j, struct sof_eq_iir_header **eq_out)
@@ -239,6 +259,92 @@ static int eq_iir_init_response(struct comp_dev *dev, int idx,
 	return 0;
 }
 
+/* Validate the config blob layout and, if lookup is non-NULL, populate it
+ * with pointers to each response header. Pass lookup = NULL to validate only.
+ */
+static int eq_iir_walk_config(struct comp_dev *dev,
+			      struct sof_eq_iir_config *config,
+			      size_t config_size,
+			      struct sof_eq_iir_header **lookup)
+{
+	struct sof_eq_iir_header *eq;
+	uint32_t coef_words_max;
+	int32_t *coef_data;
+	int ret;
+	int i;
+	uint32_t j;
+
+	if (config->channels_in_config > PLATFORM_MAX_CHANNELS ||
+	    !config->channels_in_config) {
+		comp_err(dev, "invalid channels_in_config %u", config->channels_in_config);
+		return -EINVAL;
+	}
+	if (config->number_of_responses > SOF_EQ_IIR_MAX_RESPONSES) {
+		comp_err(dev, "# of resp %u exceeds max", config->number_of_responses);
+		return -EINVAL;
+	}
+
+	ret = eq_iir_blob_words_max(dev, config, config_size, &coef_words_max);
+	if (ret < 0)
+		return ret;
+
+	j = 0;
+	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config], 4);
+	if (lookup)
+		memset(lookup, 0, SOF_EQ_IIR_MAX_RESPONSES * sizeof(*lookup));
+
+	for (i = 0; i < config->number_of_responses; i++) {
+		/* Bounds-check response i, advance the walk cursor j past it,
+		 * and get a pointer to its in-place header. Stored in lookup[]
+		 * for later use, or discarded when we are walking the blob
+		 * only to validate it.
+		 */
+		ret = eq_iir_init_response(dev, i, coef_data, coef_words_max, &j, &eq);
+		if (ret < 0)
+			return ret;
+		if (lookup)
+			lookup[i] = eq;
+	}
+
+	return 0;
+}
+
+int eq_iir_validate_config(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
+{
+	struct sof_eq_iir_config *config = new_data;
+	int32_t *assign_response;
+	int32_t resp;
+	int ret;
+	int i;
+
+	if (new_data_size < sizeof(struct sof_eq_iir_config) ||
+	    new_data_size > SOF_EQ_IIR_MAX_SIZE) {
+		comp_err(dev, "invalid configuration blob, size %u", new_data_size);
+		return -EINVAL;
+	}
+
+	ret = eq_iir_walk_config(dev, config, new_data_size, NULL);
+	if (ret < 0)
+		return ret;
+
+	/* Validate every assign_response[] entry that the per-channel loop in
+	 * eq_iir_init_coef() could pick up. Entries beyond channels_in_config
+	 * reuse the last assigned value, so checking [0, channels_in_config)
+	 * covers all reachable nch.
+	 */
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
+	for (i = 0; i < config->channels_in_config; i++) {
+		resp = assign_response[i];
+		if (resp >= 0 && resp >= config->number_of_responses) {
+			comp_err(dev, "assign_response[%d] = %d exceeds %u",
+				 i, resp, config->number_of_responses);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 static int eq_iir_init_coef(struct processing_module *mod, int nch)
 {
 	struct comp_data *cd = module_get_private_data(mod);
@@ -246,52 +352,27 @@ static int eq_iir_init_coef(struct processing_module *mod, int nch)
 	struct iir_state_df1 *iir = cd->iir;
 	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
 	struct sof_eq_iir_header *eq;
-	uint32_t coef_words_max;
 	int32_t *assign_response;
-	int32_t *coef_data;
 	int size_sum = 0;
 	int resp = 0;
 	int i;
-	uint32_t j;
 	int s;
 	int ret;
 
 	comp_info(mod->dev, "%u responses, %u channels, stream %d channels",
 		  config->number_of_responses, config->channels_in_config, nch);
 
-	/* Sanity checks */
-	if (nch > PLATFORM_MAX_CHANNELS ||
-	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
-	    !config->channels_in_config) {
-		comp_err(mod->dev, "invalid channels count");
-		return -EINVAL;
-	}
-	if (config->number_of_responses > SOF_EQ_IIR_MAX_RESPONSES) {
-		comp_err(mod->dev, "# of resp exceeds max");
+	if (nch > PLATFORM_MAX_CHANNELS) {
+		comp_err(mod->dev, "invalid stream channels %d", nch);
 		return -EINVAL;
 	}
 
-	ret = eq_iir_blob_words_max(mod->dev, config, cd->config_size, &coef_words_max);
+	ret = eq_iir_walk_config(mod->dev, config, cd->config_size, lookup);
 	if (ret < 0)
 		return ret;
 
-	/* Collect index of response start positions in all_coefficients[]  */
-	j = 0;
-	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
-	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config], 4);
-	for (i = 0; i < SOF_EQ_IIR_MAX_RESPONSES; i++) {
-		if (i < config->number_of_responses) {
-			ret = eq_iir_init_response(mod->dev, i, coef_data,
-						   coef_words_max, &j, &eq);
-			if (ret < 0)
-				return ret;
-			lookup[i] = eq;
-		} else {
-			lookup[i] = NULL;
-		}
-	}
-
 	/* Initialize 1st phase */
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
 	for (i = 0; i < nch; i++) {
 		/* Check for not reading past blob response to channel assign
 		 * map. The previous channel response is assigned for any
