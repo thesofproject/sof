@@ -329,6 +329,9 @@ static int up_down_mixer_free(struct processing_module *mod)
 {
 	struct up_down_mixer_data *cd = module_get_private_data(mod);
 
+	if (!cd)
+		return 0;
+
 	mod_free(mod, cd->buf_in);
 	mod_free(mod, cd->buf_out);
 	mod_free(mod, cd);
@@ -346,10 +349,8 @@ static int up_down_mixer_init(struct processing_module *mod)
 	int ret;
 
 	cd = mod_zalloc(mod, sizeof(*cd));
-	if (!cd) {
-		comp_free(dev);
+	if (!cd)
 		return -ENOMEM;
-	}
 
 	mod_data->private = cd;
 
