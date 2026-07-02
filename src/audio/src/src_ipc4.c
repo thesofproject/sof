@@ -285,14 +285,21 @@ int src_do_prepare(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
+	unsigned int source_channels = source_get_channels(source);
+	unsigned int source_rate = source_get_rate(source);
 	int ret;
 
-	if (cd->source_rate != cd->ipc_config.base.audio_fmt.sampling_frequency ||
+	if (cd->source_rate != source_rate ||
 	    cd->sink_rate != cd->ipc_config.sink_rate) {
-		comp_err(mod->dev, "rate mismatch: source %u/%u sink %u/%u",
-			 cd->source_rate,
-			 cd->ipc_config.base.audio_fmt.sampling_frequency,
-			 cd->sink_rate, cd->ipc_config.sink_rate);
+		comp_err(dev, "rate mismatch: init %u/%u, stream %u/%u",
+			 cd->source_rate, cd->sink_rate,
+			 source_rate, cd->ipc_config.sink_rate);
+		return -EINVAL;
+	}
+
+	if (cd->channels_count != (int)source_channels) {
+		comp_err(dev, "channels mismatch: init %d, stream %u",
+			 cd->channels_count, source_channels);
 		return -EINVAL;
 	}
 
