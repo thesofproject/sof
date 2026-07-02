@@ -19,6 +19,8 @@
 
 struct comp_buffer;
 struct comp_dev;
+struct sof_source;
+struct sof_sink;
 
 /**
  * The Crossover filter will have from 2 to 4 outputs.
@@ -52,11 +54,11 @@ struct comp_dev;
 
 struct comp_data;
 
-typedef void (*crossover_process)(struct comp_data *cd,
-				  struct input_stream_buffer *bsource,
-				  struct output_stream_buffer *bsinks[],
-				  int32_t num_sinks,
-				  uint32_t frames);
+typedef int (*crossover_process_func)(struct comp_data *cd,
+				      struct sof_source *source,
+				      struct sof_sink **sinks,
+				      int32_t num_sinks,
+				      uint32_t frames);
 
 /* Crossover component private data */
 struct comp_data {
@@ -69,13 +71,13 @@ struct comp_data {
 	struct comp_data_blob_handler *model_handler;
 	struct sof_crossover_config *config;      /**< pointer to setup blob */
 	enum sof_ipc_frame source_format;         /**< source frame format */
-	crossover_process crossover_process;      /**< processing function */
+	crossover_process_func crossover_process;      /**< processing function */
 	crossover_split crossover_split;          /**< split function */
 };
 
 struct crossover_proc_fnmap {
 	enum sof_ipc_frame frame_fmt;
-	crossover_process crossover_proc_func;
+	crossover_process_func crossover_proc_func;
 };
 
 extern const struct crossover_proc_fnmap crossover_proc_fnmap[];
@@ -85,7 +87,7 @@ extern const size_t crossover_proc_fncount;
 /**
  * \brief Returns Crossover processing function.
  */
-static inline crossover_process
+static inline crossover_process_func
 	crossover_find_proc_func(enum sof_ipc_frame src_fmt)
 {
 	int i;
@@ -101,7 +103,7 @@ static inline crossover_process
 /**
  * \brief Returns Crossover passthrough functions.
  */
-static inline crossover_process
+static inline crossover_process_func
 	crossover_find_proc_func_pass(enum sof_ipc_frame src_fmt)
 {
 	int i;
