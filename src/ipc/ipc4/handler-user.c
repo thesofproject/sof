@@ -1556,6 +1556,7 @@ __cold static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 					    struct ipc_msg *reply)
 {
+	struct ipc4_module_init_instance *mi;
 	uint32_t type;
 	int ret;
 
@@ -1566,36 +1567,37 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 
 	switch (type) {
 	case SOF_IPC4_MOD_INIT_INSTANCE:
+		mi = (struct ipc4_module_init_instance *)ipc4;
+
+		if (mi->extension.r.proc_domain || !IS_ENABLED(CONFIG_SOF_USERSPACE_LL)) {
+			ret = ipc4_init_module_instance(ipc4);
+		} else {
 #ifdef CONFIG_SOF_USERSPACE_LL
-	{
-		/* User-space init: kernel does driver lookup only (requires
-		 * access to IMR manifest and driver list in kernel memory).
-		 * Component creation (drv->ops.create) runs in user thread
-		 * so untrusted module code does not execute in kernel context.
-		 */
-		struct ipc4_module_init_instance *mi = (struct ipc4_module_init_instance *)ipc4;
-		struct ipc *ipc = ipc_get();
-		uint32_t comp_id = IPC4_COMP_ID(mi->primary.r.module_id,
-						mi->primary.r.instance_id);
-		const struct comp_driver *drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
+			/* User-space init: kernel does driver lookup only (requires
+			 * access to IMR manifest and driver list in kernel memory).
+			 * Component creation (drv->ops.create) runs in user thread
+			 * so untrusted module code does not execute in kernel context.
+			 */
+			struct ipc *ipc = ipc_get();
+			uint32_t comp_id = IPC4_COMP_ID(mi->primary.r.module_id,
+							mi->primary.r.instance_id);
+			const struct comp_driver *drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
 
-		if (!drv) {
-			ret = IPC4_MOD_NOT_INITIALIZED;
-			break;
-		}
+			if (!drv) {
+				ret = IPC4_MOD_NOT_INITIALIZED;
+				break;
+			}
 
-		struct ipc_user *pdata = ipc->ipc_user_pdata;
+			ret = llext_manager_map_lib(comp_id);
+			if (ret < 0)
+				break;
 
-		ret = llext_manager_map_lib(comp_id);
-		if (ret < 0)
-			break;
+			struct ipc_user *pdata = ipc->ipc_user_pdata;
 
-		pdata->init_drv = drv;
-		ret = ipc_user_forward_cmd(ipc4, mi->extension.r.core_id);
-	}
-#else
-		ret = ipc4_init_module_instance(ipc4);
+			pdata->init_drv = drv;
+			ret = ipc_user_forward_cmd(ipc4, mi->extension.r.core_id);
 #endif
+		}
 		break;
 	case SOF_IPC4_MOD_CONFIG_GET:
 #ifdef CONFIG_SOF_USERSPACE_LL
