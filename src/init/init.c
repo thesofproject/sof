@@ -115,7 +115,9 @@ static inline int secondary_core_restore(void) { return 0; };
 
 __cold int secondary_core_init(struct sof *sof)
 {
+#if CONFIG_SOF_USERSPACE_LL || CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
 	unsigned int core = cpu_get_id();
+#endif
 	int err;
 	struct ll_schedule_domain *dma_domain;
 
