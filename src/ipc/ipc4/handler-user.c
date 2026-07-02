@@ -1490,6 +1490,7 @@ __cold static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 					    struct ipc_msg *reply)
 {
+	const struct ipc4_module_init_instance *mi;
 	uint32_t type;
 	int ret;
 
@@ -1500,24 +1501,21 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 
 	switch (type) {
 	case SOF_IPC4_MOD_INIT_INSTANCE:
+		mi = (const struct ipc4_module_init_instance *)ipc4;
+
+		if (cpu_is_me(mi->extension.r.core_id) && !mi->extension.r.proc_domain &&
+		    IS_ENABLED(CONFIG_SOF_USERSPACE_LL)) {
 #ifdef CONFIG_SOF_USERSPACE_LL
-	{
-		BUILD_ASSERT(sizeof(struct comp_driver) + sizeof(struct tr_ctx) <=
-			     sizeof(((struct ipc_user *)0)->init_drv_data),
-			     "ipc_user.init_drv_data too small for driver copy");
+			BUILD_ASSERT(sizeof(struct comp_driver) + sizeof(struct tr_ctx) <=
+				     sizeof(((struct ipc_user *)0)->init_drv_data),
+				     "ipc_user.init_drv_data too small for driver copy");
 
-		/* User-space init: kernel does driver lookup only (requires
-		 * access to IMR manifest and driver list in kernel memory).
-		 * Component creation (drv->ops.create) runs in user thread
-		 * so untrusted module code does not execute in kernel context.
-		 * Cross-core creation stays fully in kernel.
-		 */
-		const struct ipc4_module_init_instance *mi =
-			(const struct ipc4_module_init_instance *)ipc4;
-
-		if (!cpu_is_me(mi->extension.r.core_id)) {
-			ret = ipc4_init_module_instance(ipc4);
-		} else {
+			/* User-space init: kernel does driver lookup only (requires
+			 * access to IMR manifest and driver list in kernel memory).
+			 * Component creation (drv->ops.create) runs in user thread
+			 * so untrusted module code does not execute in kernel context.
+			 * Cross-core creation stays fully in kernel.
+			 */
 			struct ipc *ipc = ipc_get();
 			uint32_t comp_id = IPC4_COMP_ID(mi->primary.r.module_id,
 							mi->primary.r.instance_id);
@@ -1550,11 +1548,10 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 
 			pdata->init_drv = drv;
 			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
-		}
-	}
-#else
-		ret = ipc4_init_module_instance(ipc4);
 #endif
+		} else {
+			ret = ipc4_init_module_instance(ipc4);
+		}
 		break;
 	case SOF_IPC4_MOD_CONFIG_GET:
 #ifdef CONFIG_SOF_USERSPACE_LL
