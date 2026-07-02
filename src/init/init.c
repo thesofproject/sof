@@ -94,13 +94,15 @@ static bool check_restore(void)
 {
 	struct idc *idc = *idc_get();
 	struct notify *notifier = *arch_notify_get();
-	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedulers **schedulers = arch_schedulers_get();
+	struct schedulers **user_schedulers = arch_user_schedulers_get();
 
 	/* check whether basic core structures has been already allocated. If they
 	 * are available in memory, it means that this is not cold boot and memory
 	 * has not been powered off.
 	 */
-	return !!idc && !!notifier && !!schedulers;
+	return !!idc && !!notifier &&
+		((schedulers && *schedulers) || (user_schedulers && *user_schedulers));
 }
 
 static inline int secondary_core_restore(void) { return 0; };
