@@ -17,14 +17,14 @@
 #define __cold_rodata
 #endif
 
-#if CONFIG_COLD_STORE_EXECUTE_DEBUG
-#include <rtos/panic.h>
-
 #ifdef __ZEPHYR__
 bool ll_sch_is_current(void);
 #else
 #define ll_sch_is_current() false
 #endif
+
+#if CONFIG_COLD_STORE_EXECUTE_DEBUG
+#include <rtos/panic.h>
 
 void dbg_path_hot_start_watching(void);
 void dbg_path_hot_stop_watching(void);
