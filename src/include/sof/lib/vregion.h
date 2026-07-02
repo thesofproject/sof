@@ -84,14 +84,10 @@ struct vregion *vregion_put(struct vregion *vr);
  */
 __syscall void *vregion_alloc(struct vregion *vr, size_t size);
 
-void *z_impl_vregion_alloc(struct vregion *vr, size_t size);
-
 /**
  * @brief like vregion_alloc() but allocates coherent memory
  */
 __syscall void *vregion_alloc_coherent(struct vregion *vr, size_t size);
-
-void *z_impl_vregion_alloc_coherent(struct vregion *vr, size_t size);
 
 /**
  * @brief Allocate aligned memory from the specified virtual region.
@@ -106,14 +102,10 @@ void *z_impl_vregion_alloc_coherent(struct vregion *vr, size_t size);
  */
 __syscall void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment);
 
-void *z_impl_vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment);
-
 /**
  * @brief like vregion_alloc_align() but allocates coherent memory
  */
 __syscall void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment);
-
-void *z_impl_vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment);
 
 /**
  * @brief Free memory allocated from the specified virtual region.
@@ -124,8 +116,6 @@ void *z_impl_vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_
  * @param[in] ptr Pointer to the memory to free.
  */
 __syscall void vregion_free(struct vregion *vr, void *ptr);
-
-void z_impl_vregion_free(struct vregion *vr, void *ptr);
 
 /**
  * @brief Log virtual region memory usage.
