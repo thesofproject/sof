@@ -546,16 +546,17 @@ static int zephyr_ll_task_cancel(void *data, struct task *task)
 	return 0;
 }
 
-/*
- * Runs on secondary cores in their shutdown sequence. In theory tasks can still
- * be active, but other schedulers ignore them too... And we don't need to free
- * the scheduler data - it's allocated in the SYS zone.
- */
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 {
 	struct zephyr_ll *sch = data;
 
 	zephyr_ll_assert_core(sch);
+
+#if CONFIG_SOF_USERSPACE_LL
+	zephyr_ll_locks[sch->core] = NULL;
+	k_object_free(sch->lock);
+#endif
 
 	if (sch->n_tasks)
 		tr_err(&ll_tr, "%u tasks are still active!",
@@ -564,7 +565,9 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 #if CONFIG_SOF_USERSPACE_LL
 	domain_thread_free(sch->ll_domain, sch->n_tasks);
 #endif
+	sof_heap_free(sch->heap, sch);
 }
+#endif
 
 #if CONFIG_SOF_USERSPACE_LL
 struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
@@ -601,7 +604,9 @@ static const struct scheduler_ops zephyr_ll_ops = {
 	.schedule_task_after	= zephyr_ll_task_schedule_after,
 	.schedule_task_free	= zephyr_ll_task_free,
 	.schedule_task_cancel	= zephyr_ll_task_cancel,
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 	.scheduler_free		= zephyr_ll_scheduler_free,
+#endif
 #if CONFIG_SOF_USERSPACE_LL
 	.scheduler_init_context	= zephyr_ll_init_context,
 #endif

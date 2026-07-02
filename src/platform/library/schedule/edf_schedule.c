@@ -49,10 +49,12 @@ static int schedule_edf_task(void *data, struct task *task, uint64_t start,
 	return 0;
 }
 
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 static void edf_scheduler_free(void *data, uint32_t flags)
 {
 	free(data);
 }
+#endif
 
 static int schedule_edf_task_cancel(void *data, struct task *task)
 {
@@ -83,7 +85,9 @@ static struct scheduler_ops schedule_edf_ops = {
 	.reschedule_task	= NULL,
 	.schedule_task_cancel	= schedule_edf_task_cancel,
 	.schedule_task_free	= schedule_edf_task_free,
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 	.scheduler_free		= edf_scheduler_free,
+#endif
 };
 
 int schedule_task_init_edf(struct task *task, const struct sof_uuid_entry *uid,

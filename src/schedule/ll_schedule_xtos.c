@@ -724,6 +724,7 @@ out:
 }
 #endif
 
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 static void scheduler_free_ll(void *data, uint32_t flags)
 {
 	struct ll_schedule_data *sch = data;
@@ -739,6 +740,7 @@ static void scheduler_free_ll(void *data, uint32_t flags)
 
 	irq_local_enable(irq_flags);
 }
+#endif
 
 static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 					   struct clock_notify_data *clk_data)
@@ -807,6 +809,8 @@ static const struct scheduler_ops schedule_ll_ops = {
 	.schedule_task_free	= schedule_ll_task_free,
 	.schedule_task_cancel	= schedule_ll_task_cancel,
 	.reschedule_task	= reschedule_ll_task,
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 	.scheduler_free		= scheduler_free_ll,
+#endif
 	.schedule_task_running	= NULL,
 };

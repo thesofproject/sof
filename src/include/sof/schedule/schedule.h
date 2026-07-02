@@ -140,6 +140,7 @@ struct scheduler_ops {
 	 */
 	int (*schedule_task_free)(void *data, struct task *task);
 
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 	/**
 	 * Frees scheduler's resources.
 	 * @param data Private data of selected scheduler.
@@ -149,6 +150,7 @@ struct scheduler_ops {
 	 * This operation is optional.
 	 */
 	void (*scheduler_free)(void *data, uint32_t flags);
+#endif
 
 	/**
 	 * Initializes context
@@ -309,6 +311,8 @@ static inline int schedule_task_free(struct task *task)
 	return sch->ops->schedule_task_free(sch->data, task);
 }
 
+/* Only used in a stand-alone test and in a testbench test */
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 /** See scheduler_ops::scheduler_free */
 static inline void schedule_free(uint32_t flags)
 {
@@ -322,6 +326,7 @@ static inline void schedule_free(uint32_t flags)
 			sch->ops->scheduler_free(sch->data, flags);
 	}
 }
+#endif
 
 /** See scheduler_ops::scheduler_init_context */
 static inline struct k_thread *scheduler_init_context(struct task *task)

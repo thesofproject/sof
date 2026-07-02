@@ -66,10 +66,12 @@ static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 	return 0;
 }
 
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 static void ll_scheduler_free(void *data, uint32_t flags)
 {
 	free(data);
 }
+#endif
 
 /* TODO: scheduler free and cancel APIs can merge as part of Zephyr */
 static int schedule_ll_task_cancel(void *data, struct task *task)
@@ -96,7 +98,9 @@ static struct scheduler_ops schedule_ll_ops = {
 	.reschedule_task	= NULL,
 	.schedule_task_cancel	= schedule_ll_task_cancel,
 	.schedule_task_free	= schedule_ll_task_free,
+#if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 	.scheduler_free		= ll_scheduler_free,
+#endif
 };
 
 int schedule_task_init_ll(struct task *task,
