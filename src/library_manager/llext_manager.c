@@ -334,12 +334,10 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	mctx->mapped = true;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	if (!mctx->domain_dp) {
-		ret = llext_manager_add_mod_domain(mctx, zephyr_ll_mem_domain());
-		if (ret < 0) {
-			tr_err(&lib_manager_tr, "failed to add domain: %d", ret);
-			goto e_data;
-		}
+	ret = llext_manager_add_mod_domain(mctx, zephyr_ll_mem_domain());
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "failed to add domain: %d", ret);
+		goto e_data;
 	}
 #endif
 
@@ -426,8 +424,7 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	mctx->mapped = false;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	if (!mctx->domain_dp)
-		llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
+	llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
 #endif
 
 	return err;
@@ -831,7 +828,7 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 			dep_ctx[i] = dep;
 		}
 
-		/* Avoid mapping DP modules to the LL domain */
+		/* Save module scheduling domain for memory domain management */
 		mctx->domain_dp = ipc_config->proc_domain == COMP_PROCESSING_DOMAIN_DP;
 		/* Map executable code and data */
 		ret = llext_manager_load_module(mctx);
