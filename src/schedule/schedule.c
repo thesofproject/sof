@@ -30,7 +30,7 @@ static inline bool scheduler_is_user(int type)
 	 * to user-space and only keep Zephyr scheduler logic in
 	 * kernel
 	 */
-	return type == SOF_SCHEDULE_LL_TIMER;
+	return type == SOF_SCHEDULE_LL_TIMER || type == SOF_SCHEDULE_DP;
 }
 
 int schedule_task_init(struct task *task,
