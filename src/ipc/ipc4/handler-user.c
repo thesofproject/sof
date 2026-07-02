@@ -708,7 +708,9 @@ static int ipc_glb_gdb_debug(struct ipc4_message_request *ipc4)
 int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 				  struct ipc_msg *reply)
 {
+#ifdef CONFIG_SOF_USERSPACE_LL
 	struct ipc *ipc = ipc_get();
+#endif
 	uint32_t type;
 	int ret;
 
