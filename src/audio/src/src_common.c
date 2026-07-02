@@ -755,7 +755,12 @@ int src_reset(struct processing_module *mod)
 	comp_info(mod->dev, "entry");
 
 	cd->src_func = src_fallback;
-	src_polyphase_reset(&cd->src);
+	src_polyphase_reset_state(&cd->src);
+
+	/* Reset stage buffer */
+	cd->sbuf_r_ptr = cd->delay_lines;
+	cd->sbuf_w_ptr = cd->delay_lines;
+	cd->sbuf_avail = 0;
 
 	return 0;
 }
