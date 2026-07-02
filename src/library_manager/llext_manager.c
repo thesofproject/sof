@@ -299,18 +299,20 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	memset((__sparse_force void *)bss_addr, 0, bss_size);
 	mctx->mapped = true;
 
-	if (!mctx->domain_dp) {
-		ret = llext_manager_add_mod_domain(mctx, zephyr_ll_mem_domain());
-		if (ret < 0) {
-			tr_err(&lib_manager_tr, "failed to add domain: %d", ret);
-			goto e_data;
-		}
+#ifdef CONFIG_SOF_USERSPACE_LL
+	ret = llext_manager_add_mod_domain(mctx, zephyr_ll_mem_domain());
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "failed to add domain: %d", ret);
+		goto e_data;
 	}
+#endif
 
 	return 0;
+#ifdef CONFIG_SOF_USERSPACE_LL
 e_data:
 	if (data_size)
 		llext_manager_align_unmap(va_base_data, data_size);
+#endif
 e_rodata:
 	if (rodata_size)
 		llext_manager_align_unmap(va_base_rodata, rodata_size);
@@ -370,8 +372,9 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 
 	mctx->mapped = false;
 
-	if (!mctx->domain_dp)
-		llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
+#ifdef CONFIG_SOF_USERSPACE_LL
+	llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
+#endif
 
 	return err;
 }
