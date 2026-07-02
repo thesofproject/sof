@@ -22,6 +22,10 @@
 #include <sof/ipc/msg.h>
 #include "module_interface.h"
 
+/* The __ZEPHYR__ condition is to keep cmocka tests working */
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+#include <zephyr/kernel/thread.h>
+#endif
 #include <sof/compiler_attributes.h>
 
 /*
@@ -131,6 +135,9 @@ struct module_resources {
 	size_t heap_usage;
 	size_t heap_high_water_mark;
 	struct mod_alloc_ctx *alloc;
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+	k_tid_t rsrc_mngr;
+#endif
 };
 
 enum mod_resource_type {
