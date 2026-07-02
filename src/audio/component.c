@@ -41,6 +41,7 @@ static APP_SYSUSER_BSS SHARED_DATA struct comp_driver_list cd;
 #ifdef CONFIG_SOF_USERSPACE_LL
 struct comp_driver_list *comp_drivers_get(void)
 {
+	assert(!ll_sch_is_current());
 	return &cd;
 }
 #endif
