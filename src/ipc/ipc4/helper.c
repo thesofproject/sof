@@ -177,18 +177,16 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 	if (!drv)
 		return NULL;
 
-#if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (module_init->extension.r.proc_domain)
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
-	else
+	if (!module_init->extension.r.proc_domain) {
 		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-#else /* CONFIG_ZEPHYR_DP_SCHEDULER */
-	if (module_init->extension.r.proc_domain) {
-		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp 0x%x", comp_id);
+	} else if (IS_ENABLED(CONFIG_ZEPHYR_DP_SCHEDULER)) {
+		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
+	} else {
+		tr_err(&ipc_tr,
+		       "ipc: DP scheduling is disabled, cannot create comp 0x%x",
+		       comp_id);
 		return NULL;
 	}
-	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
@@ -288,20 +286,16 @@ __cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 #endif
 	data = ipc4_get_comp_new_data();
 
-#if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (module_init.extension.r.proc_domain)
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
-	else
+	if (!module_init.extension.r.proc_domain) {
 		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-#else
-	if (module_init.extension.r.proc_domain) {
+	} else if (IS_ENABLED(CONFIG_ZEPHYR_DP_SCHEDULER)) {
+		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
+	} else {
 		tr_err(&ipc_tr,
 		       "ipc: DP scheduling is disabled, cannot create comp 0x%x",
 		       comp_id);
 		return NULL;
 	}
-	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-#endif
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
