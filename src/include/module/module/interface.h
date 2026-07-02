@@ -239,13 +239,13 @@ struct module_interface {
 				 uint8_t *fragment, size_t fragment_size);
 
 	/**
-	 * (unused) Set processing mode for the module
+	 * (IADK) Set processing mode for the module
 	 */
 	int (*set_processing_mode)(struct processing_module *mod,
 				   enum module_processing_mode mode);
 
 	/**
-	 * (unused) Get the current processing mode for the module
+	 * (IADK) Get the current processing mode for the module
 	 */
 	enum module_processing_mode (*get_processing_mode)(struct processing_module *mod);
 
