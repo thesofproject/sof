@@ -14,15 +14,13 @@ struct sof_ipc_reply;
  * \brief reply to an IPC message.
  * @param[in] reply pointer to the reply structure.
  */
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_USERSPACE_LL)
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall void ipc_msg_reply(struct sof_ipc_reply *reply);
+
+#include <zephyr/syscalls/ipc_reply.h>
 #else
 void z_impl_ipc_msg_reply(struct sof_ipc_reply *reply);
 #define ipc_msg_reply z_impl_ipc_msg_reply
-#endif
-
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_USERSPACE_LL)
-#include <zephyr/syscalls/ipc_reply.h>
 #endif
 
 #endif /* __SOF_IPC_IPC_REPLY_H__ */
