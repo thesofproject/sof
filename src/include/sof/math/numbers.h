@@ -24,6 +24,12 @@
 	__typeof__(alignment) __alignment = (alignment);	\
 	__size - (__size % __alignment);		\
 })
+
+#define ROUND_UP(size, alignment) ({			\
+	__typeof__(size) __size = (size);			\
+	__typeof__(alignment) __alignment = (alignment);	\
+	((__size + __alignment - 1) / __alignment) * __alignment;	\
+})
 #endif /* ! __ZEPHYR__ */
 
 #define ABS(a) ({		\
