@@ -536,6 +536,7 @@ __cold static void ipc_user_init(void)
 		sof_panic(SOF_IPC_PANIC_IPC);
 	}
 	user_ll_grant_access(&ipc_user_thread, PLATFORM_PRIMARY_CORE_ID);
+	pipeline_posn_grant_access(&ipc_user_thread);
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &ipc_user_thread);
 
 	k_thread_cpu_pin(&ipc_user_thread, PLATFORM_PRIMARY_CORE_ID);
