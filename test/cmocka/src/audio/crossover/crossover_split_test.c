@@ -45,19 +45,9 @@
 #include <stdio.h>
 #include <cmocka.h>
 
-/* audio_stream_copy is referenced by crossover_default_pass() which is
- * compiled as part of crossover_generic.c.  The split functions under test
- * never call it, but the linker needs a definition.
+/* The source/sink API stubs required to link crossover_generic.c live in
+ * crossover_test_mocks.c, added to this test's sources via CMake.
  */
-#include <sof/audio/audio_stream.h>
-
-int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
-		      struct audio_stream *sink, uint32_t ooffset, uint32_t samples)
-{
-	(void)source; (void)ioffset; (void)sink; (void)ooffset; (void)samples;
-	return 0;
-}
-
 #include <sof/audio/format.h>
 #include <sof/math/iir_df1.h>
 #include <module/crossover/crossover_common.h>

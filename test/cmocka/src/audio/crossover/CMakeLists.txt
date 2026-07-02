@@ -13,14 +13,16 @@ cmocka_test(crossover_lr4_test
 target_link_libraries(crossover_lr4_test PRIVATE m)
 
 # crossover_split_test: tests the split_2way / split_3way / split_4way routing
-# topology by compiling crossover_generic.c directly.  The FORMAT macros are
-# left undefined so that only the split functions (no audio_stream dependency)
-# are exercised; audio_stream_copy is stubbed inside crossover_split_test.c.
+# topology by compiling crossover_generic.c directly.  The per-format processing
+# functions in crossover_generic.c reference the source/sink API; those symbols
+# are satisfied by the trivial stubs in crossover_test_mocks.c (shareable by any
+# test that links crossover_generic.c).
 
 add_compile_options(-DUNIT_TEST)
 
 cmocka_test(crossover_split_test
 	crossover_split_test.c
+	crossover_test_mocks.c
 	${PROJECT_SOURCE_DIR}/src/audio/crossover/crossover_generic.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df1.c
 	${PROJECT_SOURCE_DIR}/src/math/iir_df1_generic.c
