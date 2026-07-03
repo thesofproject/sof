@@ -271,7 +271,7 @@ static const struct module_interface phase_vocoder_interface = {
 #include <rimage/sof/user/manifest.h>
 
 static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
-	SOF_LLEXT_MODULE_MANIFEST("PHASE_VOCODER", &phase_vocoder_interface, 1,
+	SOF_LLEXT_MODULE_MANIFEST("PHASEVOC", &phase_vocoder_interface, 1,
 				  SOF_REG_UUID(phase_vocoder), 40);
 
 SOF_LLEXT_BUILDINFO;
