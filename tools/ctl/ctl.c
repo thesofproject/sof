@@ -121,7 +121,8 @@ static int read_setup(struct ctl_data *ctl_data)
 	int n = 0;
 	FILE *fh;
 	int data_start_int_index = 0;
-	int data_int_index;
+	int val_index = 0;
+	int val_max;
 
 	/* open input file */
 	fh = fdopen(ctl_data->in_fd, mode);
@@ -144,22 +145,25 @@ static int read_setup(struct ctl_data *ctl_data)
 	}
 
 	/* reading for ASCII CSV txt */
-	data_int_index = data_start_int_index;
+	/* whole uint32_t values the data area can hold, the trailing bytes of an
+	 * unaligned control size are unusable
+	 */
+	val_max = (n_max - abi_size) / (int)sizeof(uint32_t);
 	while (fscanf(fh, "%u", &x) != EOF) {
-		if (n < n_max)
-			ctl_data->buffer[data_int_index] = x;
+		if (val_index < val_max)
+			ctl_data->buffer[data_start_int_index + val_index] = x;
 
-		if (n > 0)
+		if (val_index > 0)
 			fprintf(stdout, ",");
 
 		fprintf(stdout, "%u", x);
 		separator = fgetc(fh);
 		while (separator != ',' && separator != EOF)
 			separator = fgetc(fh);
-		data_int_index++;
-		n += sizeof(uint32_t);
+		val_index++;
 	}
 
+	n = val_index * (int)sizeof(uint32_t);
 	fprintf(stdout, "\n");
 
 read_done:
