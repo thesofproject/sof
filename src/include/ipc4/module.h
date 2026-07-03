@@ -151,6 +151,10 @@ struct ipc4_module_init_data {
 
   \remark hide_methods
 */
+
+/* Reserved ppl_instance_id: module has no parent pipeline (e.g. probe). */
+#define IPC4_INVALID_PIPELINE_ID 0xFF
+
 struct ipc4_module_init_instance {
 
 	union {

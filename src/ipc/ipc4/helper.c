@@ -145,6 +145,20 @@ __cold struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_i
 		       ipc_config.ipc_config_size);
 		return NULL;
 	}
+
+	/* Reject a module naming a non-existent parent pipeline: otherwise
+	 * dev->pipeline stays NULL and a later init path (e.g. the copier)
+	 * dereferences it. IPC4_INVALID_PIPELINE_ID is exempt - it marks base FW
+	 * modules with no parent pipeline. IPC_COMP_ALL: the pipeline may run on a
+	 * different core than this module.
+	 */
+	if (ipc_config.pipeline_id != IPC4_INVALID_PIPELINE_ID &&
+	    !ipc_get_comp_by_ppl_id(ipc_get(), COMP_TYPE_PIPELINE, ipc_config.pipeline_id,
+				    IPC_COMP_ALL)) {
+		tr_err(&ipc_tr, "comp 0x%x: parent pipeline %u does not exist", comp_id,
+		       (uint32_t)ipc_config.pipeline_id);
+		return NULL;
+	}
 #ifdef CONFIG_DCACHE_LINE_SIZE
 	if (!IS_ENABLED(CONFIG_LIBRARY))
 		sys_cache_data_invd_range((__sparse_force void __sparse_cache *)
