@@ -51,16 +51,6 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL, NULL, NULL);
 }
 
-static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
-						  size_t *heap_size)
-{
-	/* src-lite with 8 channels has been seen allocating 14k in one go */
-	/* FIXME: the size will be derived from configuration */
-	const size_t buf_size = 28 * 1024;
-
-	return vregion_create(buf_size);
-}
-
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
 							  const struct comp_ipc_config *config)
 {
@@ -77,11 +67,15 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 */
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-	size_t heap_size;
+	size_t vreg_size;
+	uintptr_t vreg_start;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_SOF_VREGIONS) &&
 	    IS_ENABLED(CONFIG_USERSPACE) && !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_vreg = module_adapter_dp_heap_new(config, &heap_size);
+		/* src-lite with 8 channels has been seen allocating 14k in one go */
+		/* FIXME: the size will be derived from configuration */
+		vreg_size = 28 * 1024;
+		mod_vreg = vregion_create_map(&vreg_start, &vreg_size);
 		if (!mod_vreg) {
 			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
 			return NULL;
@@ -98,7 +92,8 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 #else
 		mod_heap = drv->user_heap;
 #endif
-		heap_size = 0;
+		vreg_size = 0;
+		vreg_start = 0;
 		mod_vreg = NULL;
 	}
 
@@ -199,6 +194,7 @@ static void module_adapter_mem_free(struct processing_module *mod)
  *
  * Note: Use the ext version if you need to set the module's private data before calling
  *	 the create method.
+ * Note 2: ATM runs in privileged / kernel mode for DP modules
  */
 struct comp_dev *module_adapter_new_ext(const struct comp_driver *drv,
 					const struct comp_ipc_config *config,

@@ -66,6 +66,14 @@ struct vregion *z_vrfy_vregion_put(struct vregion *vr)
 }
 #include <zephyr/syscalls/vregion_put_mrsh.c>
 
+struct vregion *z_vrfy_vregion_create_map(uintptr_t *vreg_start, size_t *vreg_size)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(vreg_start, sizeof(*vreg_start)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(vreg_size, sizeof(*vreg_size)));
+	return z_impl_vregion_create_map(vreg_start, vreg_size);
+}
+#include <zephyr/syscalls/vregion_create_map_mrsh.c>
+
 void z_vrfy_vregion_set_interim(struct vregion *vr)
 {
 	if (vregion_verify(vr))

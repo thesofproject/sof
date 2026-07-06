@@ -8,11 +8,13 @@
 #include <sys/types.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
+#include <zephyr/app_memory/mem_domain.h>
 #include <zephyr/logging/log.h>
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
 #include <rtos/alloc.h>
 #include <sof/common.h>
+#include <sof/schedule/ll_schedule_domain.h>
 
 LOG_MODULE_REGISTER(vregion, CONFIG_SOF_LOG_LEVEL);
 
@@ -87,6 +89,7 @@ struct vregion {
 	unsigned int pages;		/* size of whole region in pages */
 	struct k_mutex lock;		/* protect vregion heaps and use-count */
 	unsigned int use_count;
+	struct k_mem_domain *domain;
 
 	/* current allocation mode */
 	enum vregion_mem_type type;	/* LIFETIME at creation, switch to INTERIM */
@@ -144,6 +147,7 @@ struct vregion *vregion_create(size_t memsize)
 	vr->base = vregion_base;
 	vr->size = total_size;
 	vr->pages = pages;
+	vr->domain = NULL;
 
 	/* lifetime linear allocator starts at the beginning of the vregion memory */
 	vr->lifetime.base = vregion_base;
@@ -178,6 +182,72 @@ struct vregion *z_impl_vregion_get(struct vregion *vr)
 	return vr;
 }
 
+struct vregion *z_impl_vregion_create_map(uintptr_t *vreg_start, size_t *vreg_size)
+{
+	if (!vreg_start || !vreg_size || !*vreg_size)
+		return NULL;
+
+	struct vregion *vr = vregion_create(*vreg_size);
+
+	if (!vr)
+		return NULL;
+
+#if CONFIG_USERSPACE && CONFIG_SOF_USERSPACE_LL
+	vregion_mem_info(vr, vreg_size, vreg_start);
+
+	/*
+	 * In the userspace LL case allocations are also performed by the
+	 * userspace IPC thread, which is also the one, executing this syscall
+	 */
+	struct k_mem_domain *domain = zephyr_ll_mem_domain();
+	struct k_mem_partition part = {
+		.start = *vreg_start,
+		.size = *vreg_size,
+		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
+	};
+	int ret = k_mem_domain_add_partition(domain, &part);
+
+	if (ret < 0) {
+		vregion_put(vr);
+		return NULL;
+	}
+
+	part.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)part.start);
+	part.attr = K_MEM_PARTITION_P_RW_U_RW;
+
+	ret = k_mem_domain_add_partition(domain, &part);
+	if (ret < 0) {
+		vregion_put(vr);
+		return NULL;
+	}
+
+	vr->domain = domain;
+#endif
+
+	return vr;
+}
+
+static void vregion_unmap(struct vregion *vr)
+{
+#if CONFIG_USERSPACE && CONFIG_SOF_USERSPACE_LL
+	if (!vr->domain)
+		return;
+
+	struct k_mem_partition part = {
+		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
+		.start = (uintptr_t)vr->base,
+		.size = vr->size,
+	};
+
+	k_mem_domain_remove_partition(vr->domain, &part);
+
+	part.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)part.start);
+	part.attr = K_MEM_PARTITION_P_RW_U_RW;
+
+	k_mem_domain_remove_partition(vr->domain, &part);
+#endif
+}
+
 /**
  * @brief Decrement virtual region's user count or destroy it.
  *
@@ -204,6 +274,8 @@ struct vregion *z_impl_vregion_put(struct vregion *vr)
 	LOG_DBG("destroy %p size %#zx pages %u", (void *)vr->base, vr->size, vr->pages);
 	LOG_DBG(" lifetime used %zu free count %d", vr->lifetime.used, vr->lifetime.free_count);
 	vpage_free(vr->base);
+
+	vregion_unmap(vr);
 	rfree(vr);
 
 	return NULL;
