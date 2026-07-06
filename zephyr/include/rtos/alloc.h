@@ -167,6 +167,8 @@ size_t get_shared_buffer_heap_size(void);
 struct mod_alloc_ctx {
 	struct k_heap *heap;
 	struct vregion *vreg;
+	uintptr_t vreg_start;
+	size_t vreg_size;
 };
 
 /**

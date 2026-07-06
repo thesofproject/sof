@@ -11,6 +11,7 @@
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
 #include <sof/audio/sink_source_utils.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/userspace_helper.h>
 #include <sof/common.h>
 #include <rtos/interrupt.h>
@@ -165,8 +166,7 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	if (alloc && alloc->vreg) {
 		vregion_free(alloc->vreg, buffer);
-		if (!vregion_put(alloc->vreg))
-			rfree(alloc);
+		module_adapter_vreg_free(alloc);
 	} else {
 		sof_heap_free(alloc ? alloc->heap : NULL, buffer);
 	}
