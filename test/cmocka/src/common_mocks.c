@@ -141,6 +141,11 @@ void WEAK sof_heap_free(struct k_heap *heap, void *addr)
 	free(addr);
 }
 
+void WEAK module_adapter_vreg_free(struct mod_alloc_ctx *alloc)
+{
+	(void)alloc;
+}
+
 int WEAK memcpy_s(void *dest, size_t dest_size,
 		  const void *src, size_t count)
 {
