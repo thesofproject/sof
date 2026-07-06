@@ -166,7 +166,7 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 	if (alloc && alloc->vreg) {
 		vregion_free(alloc->vreg, buffer);
 		if (!vregion_put(alloc->vreg))
-			rfree(alloc);
+			sof_heap_free(alloc->heap, alloc);
 	} else {
 		sof_heap_free(alloc ? alloc->heap : NULL, buffer);
 	}

@@ -43,6 +43,13 @@ enum vregion_mem_type {
 struct vregion *vregion_create(size_t memsize);
 
 /**
+ * @brief Create and map a new virtual region instance.
+ *
+ * Like above, but usable by userspace and can add domain access.
+ */
+__syscall struct vregion *vregion_create_map(uintptr_t *vreg_start, size_t *vreg_size);
+
+/**
  * @brief Switch virtual region allocations to interim mode.
  *
  * After this call, all allocations from this vregion will use the interim
@@ -154,6 +161,10 @@ struct vregion {
 };
 
 static inline struct vregion *vregion_create(size_t memsize)
+{
+	return NULL;
+}
+static inline struct vregion *vregion_create_map(uintptr_t *vreg_start, size_t *vreg_size)
 {
 	return NULL;
 }
