@@ -161,12 +161,12 @@ struct vregion *vregion_create(size_t memsize)
 
 	/* log the new vregion */
 	LOG_INF("new at base %p size %#zx pages %u metadata at %p",
-		(void *)vr->base, total_size, pages, (void *)vr);
+		(void *)vregion_base, total_size, pages, (void *)vr);
 
 	return vr;
 }
 
-struct vregion *vregion_get(struct vregion *vr)
+struct vregion *z_impl_vregion_get(struct vregion *vr)
 {
 	if (!vr)
 		return NULL;
@@ -184,7 +184,7 @@ struct vregion *vregion_get(struct vregion *vr)
  * @param[in] vr Pointer to the virtual region instance to release.
  * @return struct vregion* Pointer to the virtual region instance or NULL if it has been destroyed.
  */
-struct vregion *vregion_put(struct vregion *vr)
+struct vregion *z_impl_vregion_put(struct vregion *vr)
 {
 	unsigned int use_count;
 
@@ -259,7 +259,7 @@ static void interim_heap_init(struct vregion *vr)
 	vr->lifetime.used = (uint8_t *)vr->lifetime.ptr - (uint8_t *)vr->lifetime.base;
 }
 
-void vregion_set_interim(struct vregion *vr)
+void z_impl_vregion_set_interim(struct vregion *vr)
 {
 	if (!vr)
 		return;
@@ -491,7 +491,6 @@ void vregion_info(struct vregion *vr)
 	LOG_INF("lifetime used %#zx free count %d",
 		vr->lifetime.used, vr->lifetime.free_count);
 }
-EXPORT_SYMBOL(vregion_info);
 
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
 {
