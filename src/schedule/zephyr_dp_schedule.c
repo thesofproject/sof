@@ -224,7 +224,7 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  * needed 1.2ms for processing - but the example would be too complicated)
  */
 
-void scheduler_dp_ll_tick(void)
+void z_impl_scheduler_dp_ll_tick(unsigned int core)
 {
 	unsigned int lock_key;
 	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
@@ -235,10 +235,19 @@ void scheduler_dp_ll_tick(void)
 	/* remember current timestamp as "NOW" */
 	dp_sch->last_ll_tick_timestamp = k_cycle_get_32();
 
-	lock_key = scheduler_dp_lock(cpu_get_id());
+	lock_key = scheduler_dp_lock(core);
 	scheduler_dp_recalculate(dp_sch);
 	scheduler_dp_unlock(lock_key);
 }
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+void z_vrfy_scheduler_dp_ll_tick(unsigned int core)
+{
+	z_impl_scheduler_dp_ll_tick(core);
+}
+#include <zephyr/syscalls/scheduler_dp_ll_tick_mrsh.c>
+#endif
 
 #if CONFIG_SOF_USERSPACE_APPLICATION
 static int scheduler_dp_task_cancel(void *data, struct task *task)
