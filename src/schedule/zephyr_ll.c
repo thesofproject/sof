@@ -344,7 +344,7 @@ static void zephyr_ll_run(void *data)
 
 	zephyr_ll_unlock(sch, &flags);
 
-	scheduler_dp_ll_tick();
+	scheduler_dp_ll_tick(sch->core);
 }
 
 static void schedule_ll_callback(void *data)
