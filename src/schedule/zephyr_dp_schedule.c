@@ -224,7 +224,7 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  * needed 1.2ms for processing - but the example would be too complicated)
  */
 
-void scheduler_dp_ll_tick(void)
+void z_impl_scheduler_dp_ll_tick(void)
 {
 	unsigned int lock_key;
 #if CONFIG_SOF_USERSPACE_LL
@@ -243,6 +243,15 @@ void scheduler_dp_ll_tick(void)
 	scheduler_dp_recalculate(dp_sch);
 	scheduler_dp_unlock(lock_key);
 }
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+void z_vrfy_scheduler_dp_ll_tick(void)
+{
+	z_impl_scheduler_dp_ll_tick();
+}
+#include <zephyr/syscalls/scheduler_dp_ll_tick_mrsh.c>
+#endif
 
 #if CONFIG_SOF_USERSPACE_APPLICATION
 static int scheduler_dp_task_cancel(void *data, struct task *task)
