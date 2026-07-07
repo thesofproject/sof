@@ -30,7 +30,7 @@ extern struct tr_ctx dp_tr;
 /* Go through all DP tasks and recalculate their readiness and deadlines
  * NOT REENTRANT, should be called with scheduler_dp_lock()
  */
-void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run)
+static void scheduler_dp_recalculate_thread(struct scheduler_dp_data *dp_sch, bool is_ll_post_run)
 {
 	struct list_item *tlist;
 	struct task *curr_task;
@@ -106,6 +106,11 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_
 	}
 }
 
+void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
+{
+	scheduler_dp_recalculate_thread(dp_sch, true);
+}
+
 /* Thread function called in component context, on target core */
 void dp_thread_fn(void *p1, void *p2, void *p3)
 {
@@ -177,7 +182,7 @@ void dp_thread_fn(void *p1, void *p2, void *p3)
 			 * currently its limited to current core only
 			 */
 			if (dp_sch)
-				scheduler_dp_recalculate(dp_sch, false);
+				scheduler_dp_recalculate_thread(dp_sch, false);
 
 			scheduler_dp_unlock(lock_key);
 		}

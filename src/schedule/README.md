@@ -50,7 +50,7 @@ graph TD
     DMADomain --> |Wakeup| LL
     LL -->|Runs tasks| Threads
 
-    LL -->|NOTIFIER_ID_LL_POST_RUN| DP
+    LL -->|LL Tick Source| DP
     DP -->|Recalculate Deadlines| DPThread
     DPThread -->|Update Thread Deadlines| Threads
 
@@ -69,7 +69,7 @@ The LL scheduler (`zephyr_ll.c`) is designed for extreme low-latency processing.
 -   **Domain Threads**: The LL scheduler runs within a dedicated high-priority Zephyr thread (`ll_thread0`, etc.) pinned to each core (`zephyr_domain.c`).
 -   **Triggers**: It is woken up by a hardware timer (e.g., a 1ms tick) or directly by hardware DMA interrupts (`zephyr_dma_domain.c`).
 -   **Execution**: Once woken up, it locks the domain, iterates through all scheduled tasks in priority order, moves them to a temporary list, and calls their `.run()` functions.
--   **Post-Run**: After all tasks execute, it triggers a `NOTIFIER_ID_LL_POST_RUN` event. This event cascades to wake up other dependent schedulers like DP and TWB. Event not run on LL userspace configuration.
+-   **Post-Run**: After all tasks execute, it triggers the DP scheduler for task deadline recalculation.
 
 ### Task State Diagram
 

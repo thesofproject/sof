@@ -20,6 +20,7 @@
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/platform.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
@@ -317,8 +318,9 @@ static void schedule_ll_tasks_run(void *data)
 	if (schedule_ll_is_pending(sch))
 		schedule_ll_tasks_execute(sch);
 
-	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
-		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
+#ifdef CONFIG_ZEPHYR_DP_SCHEDULER
+	scheduler_dp_ll_tick();
+#endif
 
 	perf_cnt_stamp(&sch->pcd, perf_ll_sched_trace, 0 /* ignored */);
 	perf_cnt_average(&sch->pcd, perf_avg_ll_sched_trace, 0 /* ignored */);

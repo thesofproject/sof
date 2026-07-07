@@ -78,6 +78,7 @@ int scheduler_dp_task_init(struct task **task,
 			   uint16_t core,
 			   size_t stack_size,
 			   uint32_t options);
+void scheduler_dp_ll_tick(void);
 
 /**
  * \brief Extract information about scheduler's tasks

@@ -197,7 +197,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 /* Go through all DP tasks and recalculate their readiness and deadlines
  * NOT REENTRANT, called with scheduler_dp_lock() held
  */
-void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run)
+void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch)
 {
 	struct list_item *tlist;
 	struct task *curr_task;
@@ -210,7 +210,7 @@ void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_
 		bool trigger_task = false;
 
 		/* decrease number of LL ticks/cycles left till the module reaches its deadline */
-		if (mod->dp_startup_delay && is_ll_post_run && pdata->ll_cycles_to_start) {
+		if (mod->dp_startup_delay && pdata->ll_cycles_to_start) {
 			pdata->ll_cycles_to_start--;
 			if (!pdata->ll_cycles_to_start)
 				/* delayed start complete, clear startup delay flag.

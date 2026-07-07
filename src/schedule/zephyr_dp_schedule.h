@@ -52,7 +52,7 @@ struct task_dp_pdata {
 #endif
 };
 
-void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch, bool is_ll_post_run);
+void scheduler_dp_recalculate(struct scheduler_dp_data *dp_sch);
 void dp_thread_fn(void *p1, void *p2, void *p3);
 unsigned int scheduler_dp_lock(uint16_t core);
 void scheduler_dp_unlock(unsigned int key);
