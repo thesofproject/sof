@@ -11,6 +11,7 @@
 #include <zephyr/logging/log.h>
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/alloc.h>
 #include <sof/common.h>
 
@@ -161,12 +162,12 @@ struct vregion *vregion_create(size_t memsize)
 
 	/* log the new vregion */
 	LOG_INF("new at base %p size %#zx pages %u metadata at %p",
-		(void *)vr->base, total_size, pages, (void *)vr);
+		(void *)vregion_base, total_size, pages, (void *)vr);
 
 	return vr;
 }
 
-struct vregion *vregion_get(struct vregion *vr)
+struct vregion *z_impl_vregion_get(struct vregion *vr)
 {
 	if (!vr)
 		return NULL;
@@ -184,7 +185,7 @@ struct vregion *vregion_get(struct vregion *vr)
  * @param[in] vr Pointer to the virtual region instance to release.
  * @return struct vregion* Pointer to the virtual region instance or NULL if it has been destroyed.
  */
-struct vregion *vregion_put(struct vregion *vr)
+struct vregion *z_impl_vregion_put(struct vregion *vr)
 {
 	unsigned int use_count;
 
@@ -259,7 +260,7 @@ static void interim_heap_init(struct vregion *vr)
 	vr->lifetime.used = (uint8_t *)vr->lifetime.ptr - (uint8_t *)vr->lifetime.base;
 }
 
-void vregion_set_interim(struct vregion *vr)
+void z_impl_vregion_set_interim(struct vregion *vr)
 {
 	if (!vr)
 		return;
@@ -270,6 +271,47 @@ void vregion_set_interim(struct vregion *vr)
 
 	k_mutex_unlock(&vr->lock);
 }
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+static bool vregion_verify(struct vregion *vr)
+{
+	if (!vr)
+		return false;
+
+	size_t vr_size = 0;
+	uintptr_t vr_start;
+
+	vregion_mem_info(vr, &vr_size, &vr_start);
+	if (vr_size)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE((void *)vr_start, vr_size));
+
+	return true;
+}
+
+struct vregion *z_vrfy_vregion_get(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_get(vr);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_get_mrsh.c>
+
+struct vregion *z_vrfy_vregion_put(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_put(vr);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_put_mrsh.c>
+
+void z_vrfy_vregion_set_interim(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		z_impl_vregion_set_interim(vr);
+}
+#include <zephyr/syscalls/vregion_set_interim_mrsh.c>
+#endif
 
 /**
  * @brief Allocate memory with alignment from the virtual region dynamic heap.
@@ -488,7 +530,6 @@ void vregion_info(struct vregion *vr)
 	LOG_INF("lifetime used %#zx free count %d",
 		vr->lifetime.used, vr->lifetime.free_count);
 }
-EXPORT_SYMBOL(vregion_info);
 
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
 {
