@@ -33,8 +33,7 @@ static APP_SYSUSER_BSS struct schedulers *_u_schedulers[CONFIG_CORE_COUNT];
  */
 struct schedulers **arch_schedulers_get(void)
 {
-#if CONFIG_SOF_USERSPACE_LL
-	/* user-space callers must use arch_user_schedulers_get() */
+#ifdef __ZEPHYR__
 	assert(!k_is_user_context());
 #endif
 	return _k_schedulers + cpu_get_id();
@@ -53,6 +52,7 @@ EXPORT_SYMBOL(arch_schedulers_get);
 struct schedulers **arch_user_schedulers_get(void)
 {
 #ifdef CONFIG_SOF_USERSPACE_LL
+	assert(!k_is_user_context());
 	return _u_schedulers + cpu_get_id();
 #else
 	return NULL;
