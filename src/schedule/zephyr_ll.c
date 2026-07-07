@@ -10,7 +10,7 @@
 #include <sof/audio/component.h>
 #include <rtos/interrupt.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/notifier.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>
@@ -344,11 +344,7 @@ static void zephyr_ll_run(void *data)
 
 	zephyr_ll_unlock(sch, &flags);
 
-#ifndef CONFIG_SOF_USERSPACE_LL
-	/* TODO: to be replaced with direct function calls */
-	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
-		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
-#endif
+	scheduler_dp_ll_tick();
 }
 
 static void schedule_ll_callback(void *data)
