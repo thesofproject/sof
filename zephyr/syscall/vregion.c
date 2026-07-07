@@ -49,3 +49,26 @@ static inline void z_vrfy_vregion_free(struct vregion *vr, void *ptr)
 		z_impl_vregion_free(vr, ptr);
 }
 #include <zephyr/syscalls/vregion_free_mrsh.c>
+
+struct vregion *z_vrfy_vregion_get(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_get(vr);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_get_mrsh.c>
+
+struct vregion *z_vrfy_vregion_put(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_put(vr);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_put_mrsh.c>
+
+void z_vrfy_vregion_set_interim(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		z_impl_vregion_set_interim(vr);
+}
+#include <zephyr/syscalls/vregion_set_interim_mrsh.c>

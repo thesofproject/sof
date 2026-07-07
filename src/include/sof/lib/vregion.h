@@ -51,7 +51,7 @@ struct vregion *vregion_create(size_t memsize);
  *
  * @param[in] vr Pointer to the virtual region instance.
  */
-void vregion_set_interim(struct vregion *vr);
+__syscall void vregion_set_interim(struct vregion *vr);
 
 /**
  * @brief Increment virtual region's user count.
@@ -62,7 +62,7 @@ void vregion_set_interim(struct vregion *vr);
  * @param[in] vr Pointer to the virtual region instance to release.
  * @return struct vregion* Pointer to the virtual region instance.
  */
-struct vregion *vregion_get(struct vregion *vr);
+__syscall struct vregion *vregion_get(struct vregion *vr);
 
 /**
  * @brief Decrement virtual region's user count or destroy it.
@@ -73,7 +73,7 @@ struct vregion *vregion_get(struct vregion *vr);
  * @param[in] vr Pointer to the virtual region instance to release.
  * @return struct vregion* Pointer to the virtual region instance or NULL if it has been destroyed.
  */
-struct vregion *vregion_put(struct vregion *vr);
+__syscall struct vregion *vregion_put(struct vregion *vr);
 
 /**
  * @brief Allocate memory from the specified virtual region.
@@ -145,6 +145,8 @@ void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
 bool vregion_verify(struct vregion *vr);
 
+#include <zephyr/syscalls/vregion.h>
+
 #else /* CONFIG_SOF_VREGIONS */
 
 struct vregion {
@@ -194,10 +196,6 @@ static inline bool vregion_verify(struct vregion *vr) {return false;}
 
 #ifdef __cplusplus
 }
-#endif
-
-#if CONFIG_SOF_VREGIONS
-#include <zephyr/syscalls/vregion.h>
 #endif
 
 #endif /* __SOF_LIB_VREGION_H__ */
