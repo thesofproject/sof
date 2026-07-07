@@ -8,6 +8,7 @@
 #include <rtos/task.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/component.h>
 #include <sof/common.h>
 #include <sof/list.h>
 #include <sof/llext_manager.h>
@@ -400,7 +401,7 @@ struct scheduler_dp_task_memory {
 	struct ipc4_flat flat;
 };
 
-void scheduler_dp_internal_free(struct task *task)
+void z_impl_scheduler_dp_internal_free(struct task *task)
 {
 	struct task_dp_pdata *pdata = task->priv_data;
 
@@ -617,3 +618,41 @@ e_tmem:
 	mod_free(mod, task_memory);
 	return ret;
 }
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+
+static void scheduler_dp_mod_vrfy(struct processing_module *mod)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod->dev, sizeof(*mod->dev)));
+	K_OOPS(K_SYSCALL_MEMORY_READ(mod->dev->drv, sizeof(*mod->dev->drv)));
+
+	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
+
+	assert(alloc);
+	if (alloc->heap) {
+		size_t h_size = 0;
+		uintptr_t h_start;
+
+		mod_heap_info(mod, &h_size, &h_start);
+		if (h_size)
+			K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+	}
+	if (alloc->vreg)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(alloc->vreg_start, alloc->vreg_size));
+}
+
+void z_vrfy_scheduler_dp_internal_free(struct task *task)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
+
+	struct task_dp_pdata *pdata = task->priv_data;
+
+	K_OOPS(K_SYSCALL_OBJ(pdata->event, K_OBJ_EVENT));
+	K_OOPS(K_SYSCALL_OBJ_INIT(pdata->thread, K_OBJ_THREAD));
+	scheduler_dp_mod_vrfy(pdata->mod);
+	return z_impl_scheduler_dp_internal_free(task);
+}
+#include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
+#endif
