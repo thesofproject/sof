@@ -525,6 +525,18 @@ struct k_thread *zephyr_domain_thread_tid_for_core(int core)
 	return ll_thread_tid[core];
 }
 
+struct k_thread *zephyr_ll_domain_thread(void)
+{
+	struct ll_schedule_domain *ll_domain = zephyr_ll_domain();
+
+	if (!ll_domain)
+		return NULL;
+
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(ll_domain);
+
+	return zephyr_domain->domain_thread[cpu_get_id()].ll_thread;
+}
+
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 #if CONFIG_CROSS_CORE_STREAM
