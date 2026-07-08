@@ -55,13 +55,24 @@ int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd)
 	return cd->dai_dev->drv->ops.dai_ts_get(cd->dai_dev, tsd);
 }
 
-void asrc_update_buffer_format(struct comp_buffer *buf_c, struct comp_data *cd)
+void asrc_update_source_format(struct sof_source *source, struct comp_data *cd)
 {
+	(void)source;
+	(void)cd;
+	/* IPC3 don't need to update audio stream format here. */
+}
+
+void asrc_update_sink_format(struct sof_sink *sink, struct comp_data *cd)
+{
+	(void)sink;
+	(void)cd;
 	/* IPC3 don't need to update audio stream format here. */
 }
 
 void asrc_set_stream_params(struct comp_data *cd, struct sof_ipc_stream_params *params)
 {
+	(void)cd;
+	(void)params;
 	/* IPC3 don't need to update audio stream format here. */
 }
 

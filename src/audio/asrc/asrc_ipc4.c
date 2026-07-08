@@ -66,9 +66,14 @@ int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd)
 	return ops->endpoint_ops->dai_ts_get(cd->dai_dev, tsd);
 }
 
-void asrc_update_buffer_format(struct comp_buffer *buf_c, struct comp_data *cd)
+void asrc_update_source_format(struct sof_source *source, struct comp_data *cd)
 {
-	ipc4_update_buffer_format(buf_c, &cd->ipc_config.base.audio_fmt);
+	ipc4_update_source_format(source, &cd->ipc_config.base.audio_fmt);
+}
+
+void asrc_update_sink_format(struct sof_sink *sink, struct comp_data *cd)
+{
+	ipc4_update_sink_format(sink, &cd->ipc_config.base.audio_fmt);
 }
 
 void asrc_set_stream_params(struct comp_data *cd, struct sof_ipc_stream_params *params)
