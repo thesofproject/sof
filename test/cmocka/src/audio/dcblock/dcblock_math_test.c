@@ -11,13 +11,33 @@
 #include <string.h>
 #include <cmocka.h>
 
-#include <sof/audio/audio_stream.h>
+#include <sof/common.h>
 #include <sof/audio/format.h>
+#include <sof/audio/audio_stream.h>
 
 #include "dcblock.h"
 
 #define TEST_CHANNELS	2
 #define TEST_FRAMES	256
+
+/*
+ * The dcblock processing functions operate on struct cir_buf_source /
+ * struct cir_buf_sink circular buffer views. The tests use static, non
+ * wrapping sample buffers, so the views simply span the whole array.
+ */
+static void cir_buf_src_setup(struct cir_buf_source *s, const void *data, size_t bytes)
+{
+	s->buf_start = data;
+	s->buf_end = (const char *)data + bytes;
+	s->ptr = data;
+}
+
+static void cir_buf_snk_setup(struct cir_buf_sink *s, void *data, size_t bytes)
+{
+	s->buf_start = data;
+	s->buf_end = (char *)data + bytes;
+	s->ptr = data;
+}
 
 /* Q2.30 coefficient close to 1.0 used for the DC removal test cases. */
 #define R_COEF_NEAR_ONE	1063004406 /* ~0.99 in Q2.30 */
@@ -39,20 +59,6 @@ static double dcblock_ref(struct ref_state *s, double r, double x)
 	s->x_prev = x;
 	s->y_prev = y;
 	return y;
-}
-
-/* Build an audio_stream over a linear (non wrapping) sample buffer. */
-static void setup_stream(struct audio_stream *stream, void *data,
-			 size_t bytes, enum sof_ipc_frame fmt, int channels)
-{
-	memset(stream, 0, sizeof(*stream));
-	stream->addr = data;
-	stream->end_addr = (char *)data + bytes;
-	stream->r_ptr = data;
-	stream->w_ptr = data;
-	stream->size = bytes;
-	stream->runtime_stream_params.frame_fmt = fmt;
-	stream->runtime_stream_params.channels = channels;
 }
 
 /* Fill the source buffer with a per-channel sinusoid plus a DC offset. */
@@ -77,7 +83,8 @@ static void gen_input(double *ref_in, int channels, int frames, double dc)
 static double run_s32_case(int32_t r_coeff, double dc, double tol_rel)
 {
 	struct comp_data cd;
-	struct audio_stream source, sink;
+	struct cir_buf_source csrc;
+	struct cir_buf_sink csnk;
 	int32_t src[TEST_FRAMES * TEST_CHANNELS];
 	int32_t dst[TEST_FRAMES * TEST_CHANNELS];
 	double ref_in[TEST_FRAMES * TEST_CHANNELS];
@@ -89,6 +96,7 @@ static double run_s32_case(int32_t r_coeff, double dc, double tol_rel)
 	int ch, i;
 
 	memset(&cd, 0, sizeof(cd));
+	cd.channels = TEST_CHANNELS;
 	for (ch = 0; ch < TEST_CHANNELS; ch++)
 		cd.R_coeffs[ch] = r_coeff;
 
@@ -98,8 +106,8 @@ static double run_s32_case(int32_t r_coeff, double dc, double tol_rel)
 	for (i = 0; i < TEST_FRAMES * TEST_CHANNELS; i++)
 		src[i] = (int32_t)round(ref_in[i] * 2147483647.0);
 
-	setup_stream(&source, src, sizeof(src), SOF_IPC_FRAME_S32_LE, TEST_CHANNELS);
-	setup_stream(&sink, dst, sizeof(dst), SOF_IPC_FRAME_S32_LE, TEST_CHANNELS);
+	cir_buf_src_setup(&csrc, src, sizeof(src));
+	cir_buf_snk_setup(&csnk, dst, sizeof(dst));
 
 	func = dcblock_find_func(SOF_IPC_FRAME_S32_LE);
 	assert_non_null(func);
@@ -156,13 +164,15 @@ static void test_dcblock_saturation(void **state)
 	(void)state;
 
 	struct comp_data cd;
-	struct audio_stream source, sink;
+	struct cir_buf_source csrc;
+	struct cir_buf_sink csnk;
 	int32_t src[TEST_FRAMES * TEST_CHANNELS];
 	int32_t dst[TEST_FRAMES * TEST_CHANNELS];
 	dcblock_func func;
 	int i;
 
 	memset(&cd, 0, sizeof(cd));
+	cd.channels = TEST_CHANNELS;
 	for (i = 0; i < TEST_CHANNELS; i++)
 		cd.R_coeffs[i] = ONE_Q2_30;
 
@@ -170,8 +180,8 @@ static void test_dcblock_saturation(void **state)
 	for (i = 0; i < TEST_FRAMES * TEST_CHANNELS; i++)
 		src[i] = (i & 1) ? INT32_MAX : INT32_MIN;
 
-	setup_stream(&source, src, sizeof(src), SOF_IPC_FRAME_S32_LE, TEST_CHANNELS);
-	setup_stream(&sink, dst, sizeof(dst), SOF_IPC_FRAME_S32_LE, TEST_CHANNELS);
+	cir_buf_src_setup(&csrc, src, sizeof(src));
+	cir_buf_snk_setup(&csnk, dst, sizeof(dst));
 
 	func = dcblock_find_func(SOF_IPC_FRAME_S32_LE);
 	assert_non_null(func);
@@ -199,7 +209,8 @@ static void test_dcblock_bitexact_s32(void **state)
 static void run_s16_case(int32_t r_coeff, double dc)
 {
 	struct comp_data cd;
-	struct audio_stream source, sink;
+	struct cir_buf_source csrc;
+	struct cir_buf_sink csnk;
 	int16_t src[TEST_FRAMES * TEST_CHANNELS];
 	int16_t dst[TEST_FRAMES * TEST_CHANNELS];
 	double ref_in[TEST_FRAMES * TEST_CHANNELS];
@@ -210,6 +221,7 @@ static void run_s16_case(int32_t r_coeff, double dc)
 	int ch, i;
 
 	memset(&cd, 0, sizeof(cd));
+	cd.channels = TEST_CHANNELS;
 	for (ch = 0; ch < TEST_CHANNELS; ch++)
 		cd.R_coeffs[ch] = r_coeff;
 
@@ -219,8 +231,8 @@ static void run_s16_case(int32_t r_coeff, double dc)
 	for (i = 0; i < TEST_FRAMES * TEST_CHANNELS; i++)
 		src[i] = (int16_t)round(ref_in[i] * 32767.0);
 
-	setup_stream(&source, src, sizeof(src), SOF_IPC_FRAME_S16_LE, TEST_CHANNELS);
-	setup_stream(&sink, dst, sizeof(dst), SOF_IPC_FRAME_S16_LE, TEST_CHANNELS);
+	cir_buf_src_setup(&csrc, src, sizeof(src));
+	cir_buf_snk_setup(&csnk, dst, sizeof(dst));
 
 	func = dcblock_find_func(SOF_IPC_FRAME_S16_LE);
 	assert_non_null(func);
@@ -258,7 +270,8 @@ static void test_dcblock_bitexact_s16(void **state)
 static void run_s24_case(int32_t r_coeff, double dc)
 {
 	struct comp_data cd;
-	struct audio_stream source, sink;
+	struct cir_buf_source csrc;
+	struct cir_buf_sink csnk;
 	int32_t src[TEST_FRAMES * TEST_CHANNELS];
 	int32_t dst[TEST_FRAMES * TEST_CHANNELS];
 	double ref_in[TEST_FRAMES * TEST_CHANNELS];
@@ -269,6 +282,7 @@ static void run_s24_case(int32_t r_coeff, double dc)
 	int ch, i;
 
 	memset(&cd, 0, sizeof(cd));
+	cd.channels = TEST_CHANNELS;
 	for (ch = 0; ch < TEST_CHANNELS; ch++)
 		cd.R_coeffs[ch] = r_coeff;
 
@@ -278,12 +292,12 @@ static void run_s24_case(int32_t r_coeff, double dc)
 	for (i = 0; i < TEST_FRAMES * TEST_CHANNELS; i++)
 		src[i] = (int32_t)round(ref_in[i] * 8388607.0);
 
-	setup_stream(&source, src, sizeof(src), SOF_IPC_FRAME_S24_4LE, TEST_CHANNELS);
-	setup_stream(&sink, dst, sizeof(dst), SOF_IPC_FRAME_S24_4LE, TEST_CHANNELS);
+	cir_buf_src_setup(&csrc, src, sizeof(src));
+	cir_buf_snk_setup(&csnk, dst, sizeof(dst));
 
 	func = dcblock_find_func(SOF_IPC_FRAME_S24_4LE);
 	assert_non_null(func);
-	func(&cd, &source, &sink, TEST_FRAMES);
+	func(&cd, &csrc, &csnk, TEST_FRAMES);
 
 	for (i = 0; i < TEST_FRAMES; i++) {
 		for (ch = 0; ch < TEST_CHANNELS; ch++) {
