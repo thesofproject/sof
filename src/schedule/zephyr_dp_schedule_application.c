@@ -534,6 +534,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	k_thread_access_grant(thread_ipc, pdata->event, pdata->thread_id, p_stack, &dp_sync[core]);
 	scheduler_dp_grant(thread_ipc, core);
+	scheduler_dp_grant(zephyr_ll_domain_thread(), core);
 #endif
 
 	struct k_mem_domain *mdom = objpool_alloc(&dp_mdom_head, sizeof(*mdom),
