@@ -331,4 +331,9 @@ int ipc_user_forward_cmd(struct ipc4_message_request *ipc4, unsigned int core);
 int ipc_user_init_secondary(unsigned int core);
 #endif
 
+/**
+ * \brief get pointer to the userspace IPC thread for core
+ */
+struct k_thread *ipc_thread_user(unsigned int core);
+
 #endif /* __SOF_DRIVERS_IPC_H__ */
