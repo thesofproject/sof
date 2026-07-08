@@ -12,6 +12,9 @@
 #include <kernel/header.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/audio_buffer.h>
+#include <sof/audio/source_api.h>
+#include <sof/audio/sink_api.h>
 #include <sof/audio/format.h>
 #include <ipc/control.h>
 
@@ -99,6 +102,9 @@ static struct sof_ipc_comp_process *create_dcblock_comp_ipc(struct test_data *td
 	const struct sof_uuid uuid = SOF_REG_UUID(dcblock);
 
 	ipc = calloc(1, ipc_size + SOF_UUID_SIZE);
+	if (!ipc)
+		return NULL;
+
 	memcpy_s(ipc + 1, SOF_UUID_SIZE, &uuid, SOF_UUID_SIZE);
 	ipc->comp.hdr.size = ipc_size + SOF_UUID_SIZE;
 	ipc->comp.type = SOF_COMP_MODULE_ADAPTER;
@@ -111,7 +117,6 @@ static struct sof_ipc_comp_process *create_dcblock_comp_ipc(struct test_data *td
 /* Send a configuration blob holding the per-channel R coefficients. */
 static int dcblock_send_config(struct processing_module *mod)
 {
-	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
 	const size_t coeff_size = PLATFORM_MAX_CHANNELS * sizeof(int32_t);
 	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) +
 			    sizeof(struct sof_abi_hdr) + coeff_size;
@@ -135,9 +140,7 @@ static int dcblock_send_config(struct processing_module *mod)
 	cdata->data[0].abi = SOF_ABI_VERSION;
 	memcpy_s(cdata->data[0].data, coeff_size, coeffs, coeff_size);
 
-	ret = ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
-				     coeff_size, (const uint8_t *)cdata,
-				     coeff_size, NULL, 0);
+	ret = module_adapter_cmd(mod->dev, COMP_CMD_SET_DATA, cdata, cdata_size);
 
 	free(cdata);
 	return ret;
@@ -181,28 +184,77 @@ static void prepare_source(struct test_data *td, struct processing_module *mod)
 	assert_int_equal(free, size);
 }
 
+static void cleanup_test_data(struct test_data *td)
+{
+	struct processing_module *mod;
+
+	if (!td)
+		return;
+
+	if (td->dev) {
+		mod = comp_mod(td->dev);
+		if (mod) {
+			test_free(mod->input_buffers);
+			mod->input_buffers = NULL;
+			test_free(mod->output_buffers);
+			mod->output_buffers = NULL;
+			test_free(mod->stream_params);
+			mod->stream_params = NULL;
+		}
+	}
+
+	if (td->source) {
+		free_test_source(td->source);
+		td->source = NULL;
+	}
+
+	if (td->sink) {
+		free_test_sink(td->sink);
+		td->sink = NULL;
+	}
+
+	if (td->dev) {
+		comp_free(td->dev);
+		td->dev = NULL;
+	}
+
+	test_free(td->params);
+	test_free(td);
+}
+
 static int setup(void **state)
 {
 	struct test_parameters *params = *state;
 	struct processing_module *mod;
 	struct test_data *td;
-	struct sof_ipc_comp_process *ipc;
+	struct sof_ipc_comp_process *ipc = NULL;
 	struct comp_dev *dev;
+	struct sof_source *sources[1];
+	struct sof_sink *sinks[1];
 	int ret;
 	int i;
 
 	td = test_malloc(sizeof(*td));
-	if (!td)
+	if (!td) {
+		*state = NULL;
 		return -EINVAL;
+	}
 
+	*td = (struct test_data){ 0 };
+	*state = td;
 	td->params = test_malloc(sizeof(*params));
 	if (!td->params) {
-		test_free(td);
-		return -EINVAL;
+		ret = -ENOMEM;
+		goto error;
 	}
 
 	memcpy_s(td->params, sizeof(*td->params), params, sizeof(*params));
 	ipc = create_dcblock_comp_ipc(td);
+	if (!ipc) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
 	buffer_fill_data.idx = 0;
 	buffer_verify_data.idx = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
@@ -212,8 +264,11 @@ static int setup(void **state)
 
 	dev = comp_new((struct sof_ipc_comp *)ipc);
 	free(ipc);
-	if (!dev)
-		return -EINVAL;
+	ipc = NULL;
+	if (!dev) {
+		ret = -EINVAL;
+		goto error;
+	}
 
 	td->dev = dev;
 	dev->frames = params->frames;
@@ -221,43 +276,54 @@ static int setup(void **state)
 
 	ret = dcblock_send_config(mod);
 	if (ret)
-		return ret;
+		goto error;
 
 	prepare_sink(td, mod);
 	prepare_source(td, mod);
 
 	mod->input_buffers = test_malloc(sizeof(struct input_stream_buffer));
+	if (!mod->input_buffers) {
+		ret = -ENOMEM;
+		goto error;
+	}
 	mod->input_buffers[0].data = &td->source->stream;
 	mod->output_buffers = test_malloc(sizeof(struct output_stream_buffer));
+	if (!mod->output_buffers) {
+		ret = -ENOMEM;
+		goto error;
+	}
 	mod->output_buffers[0].data = &td->sink->stream;
 	mod->stream_params = test_malloc(sizeof(struct sof_ipc_stream_params));
+	if (!mod->stream_params) {
+		ret = -ENOMEM;
+		goto error;
+	}
 	mod->stream_params->channels = params->channels;
 	mod->period_bytes = get_frame_bytes(params->source_format, params->channels) * 48000 / 1000;
 
-	ret = module_prepare(mod, NULL, 0, NULL, 0);
+	sources[0] = audio_buffer_get_source(&td->source->audio_buffer);
+	sinks[0] = audio_buffer_get_sink(&td->sink->audio_buffer);
+	ret = module_prepare(mod, sources, 1, sinks, 1);
 	if (ret)
-		return ret;
+		goto error;
 
 	td->continue_loop = true;
 
 	*state = td;
 	return 0;
+
+error:
+	free(ipc);
+	cleanup_test_data(td);
+	*state = NULL;
+	return ret;
 }
 
 static int teardown(void **state)
 {
 	struct test_data *td = *state;
-	struct processing_module *mod = comp_mod(td->dev);
 
-	test_free(mod->input_buffers);
-	test_free(mod->output_buffers);
-	test_free(mod->stream_params);
-	mod->stream_params = NULL;
-	test_free(td->params);
-	free_test_source(td->source);
-	free_test_sink(td->sink);
-	comp_free(td->dev);
-	test_free(td);
+	cleanup_test_data(td);
 	return 0;
 }
 
@@ -485,8 +551,14 @@ static void test_audio_dcblock(void **state)
 	struct processing_module *mod = comp_mod(td->dev);
 	struct comp_buffer *source = td->source;
 	struct comp_buffer *sink = td->sink;
+	struct sof_source *sources[1];
+	struct sof_sink *sinks[1];
+	uint32_t avail_before;
 	int ret;
 	int frames;
+
+	sources[0] = audio_buffer_get_source(&source->audio_buffer);
+	sinks[0] = audio_buffer_get_sink(&sink->audio_buffer);
 
 	while (td->continue_loop) {
 		frames = frames_jitter(td->params->frames);
@@ -505,14 +577,16 @@ static void test_audio_dcblock(void **state)
 			break;
 		}
 
-		mod->input_buffers[0].consumed = 0;
-		mod->output_buffers[0].size = 0;
-		ret = module_process_legacy(mod, mod->input_buffers, 1,
-					    mod->output_buffers, 1);
+		/* Process exactly the frames just filled. The source/sink API
+		 * updates the buffer read/write positions internally, so record
+		 * the sink fill level to know how many bytes were produced.
+		 */
+		td->dev->frames = mod->input_buffers[0].size;
+		avail_before = audio_stream_get_avail_bytes(&sink->stream);
+		ret = module_process_sink_src(mod, sources, 1, sinks, 1);
 		assert_int_equal(ret, 0);
-
-		comp_update_buffer_consume(source, mod->input_buffers[0].consumed);
-		comp_update_buffer_produce(sink, mod->output_buffers[0].size);
+		mod->output_buffers[0].size =
+			audio_stream_get_avail_bytes(&sink->stream) - avail_before;
 
 		switch (audio_stream_get_frm_fmt(&sink->stream)) {
 		case SOF_IPC_FRAME_S16_LE:
