@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/audio/audio_stream.h>
 
 #include "dcblock.h"
 
@@ -36,119 +37,141 @@ static int32_t dcblock_generic(struct dcblock_state *state,
 }
 
 #if CONFIG_FORMAT_S16LE
-static void dcblock_s16_default(struct comp_data *cd,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
-				uint32_t frames)
+/**
+ * dcblock_s16_default() - Process S16_LE format.
+ * @cd: DC blocking filter component private data.
+ * @source: Source for PCM samples data.
+ * @sink: Sink for PCM samples data.
+ * @frames: Number of audio data frames to process.
+ *
+ * Return: Value zero for success, otherwise an error code.
+ */
+static int dcblock_s16_default(struct comp_data *cd,
+			       struct cir_buf_source *source,
+			       struct cir_buf_sink *sink,
+			       uint32_t frames)
 {
-	struct dcblock_state *state;
-	int16_t *x = audio_stream_get_rptr(source);
-	int16_t *y = audio_stream_get_wptr(sink);
-	int32_t R;
+	const int16_t *x = source->ptr;
+	int16_t *y = sink->ptr;
+	int samples_without_wrap;
+	int nch = cd->channels;
+	int remaining_samples = frames * nch;
 	int32_t tmp;
-	int idx;
-	int ch;
-	int i, n, nmax;
-	int nch = audio_stream_get_channels(source);
-	int samples = nch * frames;
+	int ch = 0;
+	int i;
 
-	while (samples) {
-		nmax = audio_stream_samples_without_wrap_s16(source, x);
-		n = MIN(samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s16(sink, y);
-		n = MIN(n, nmax);
-		for (ch = 0; ch < nch; ch++) {
-			state = &cd->state[ch];
-			R = cd->R_coeffs[ch];
-			idx = ch;
-			for (i = 0; i < n; i += nch) {
-				tmp = dcblock_generic(state, R, x[idx] << 16);
-				y[idx] = sat_int16(Q_SHIFT_RND(tmp, 31, 15));
-				idx += nch;
-			}
+	while (remaining_samples) {
+		samples_without_wrap = cir_buf_samples_without_wrap_s16(x, source->buf_end);
+		samples_without_wrap = MIN(samples_without_wrap,
+					   cir_buf_samples_without_wrap_s16(y, sink->buf_end));
+		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
+		for (i = 0; i < samples_without_wrap; i++) {
+			tmp = dcblock_generic(&cd->state[ch], cd->R_coeffs[ch],
+					      *x << 16);
+			*y = sat_int16(Q_SHIFT_RND(tmp, 31, 15));
+			x++;
+			y++;
+			if (++ch == nch)
+				ch = 0;
 		}
-		samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap((void *)x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
+		remaining_samples -= samples_without_wrap;
 	}
 
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void dcblock_s24_default(struct comp_data *cd,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
-				uint32_t frames)
+/**
+ * dcblock_s24_default() - Process S24_4LE format.
+ * @cd: DC blocking filter component private data.
+ * @source: Source for PCM samples data.
+ * @sink: Sink for PCM samples data.
+ * @frames: Number of audio data frames to process.
+ *
+ * Return: Value zero for success, otherwise an error code.
+ */
+static int dcblock_s24_default(struct comp_data *cd,
+			       struct cir_buf_source *source,
+			       struct cir_buf_sink *sink,
+			       uint32_t frames)
 {
-	struct dcblock_state *state;
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
-	int32_t R;
+	const int32_t *x = source->ptr;
+	int32_t *y = sink->ptr;
+	int samples_without_wrap;
+	int nch = cd->channels;
+	int remaining_samples = frames * nch;
 	int32_t tmp;
-	int idx;
-	int ch;
-	int i, n, nmax;
-	int nch = audio_stream_get_channels(source);
-	int samples = nch * frames;
+	int ch = 0;
+	int i;
 
-	while (samples) {
-		nmax = audio_stream_samples_without_wrap_s24(source, x);
-		n = MIN(samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s24(sink, y);
-		n = MIN(n, nmax);
-		for (ch = 0; ch < nch; ch++) {
-			state = &cd->state[ch];
-			R = cd->R_coeffs[ch];
-			idx = ch;
-			for (i = 0; i < n; i += nch) {
-				tmp = dcblock_generic(state, R, x[idx] << 8);
-				y[idx] = sat_int24(Q_SHIFT_RND(tmp, 31, 23));
-				idx += nch;
-			}
+	while (remaining_samples) {
+		samples_without_wrap = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		samples_without_wrap = MIN(samples_without_wrap,
+					   cir_buf_samples_without_wrap_s32(y, sink->buf_end));
+		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
+		for (i = 0; i < samples_without_wrap; i++) {
+			tmp = dcblock_generic(&cd->state[ch], cd->R_coeffs[ch],
+					      *x << 8);
+			*y = sat_int24(Q_SHIFT_RND(tmp, 31, 23));
+			x++;
+			y++;
+			if (++ch == nch)
+				ch = 0;
 		}
-		samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap((void *)x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
+		remaining_samples -= samples_without_wrap;
 	}
 
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void dcblock_s32_default(struct comp_data *cd,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
-				uint32_t frames)
+/**
+ * dcblock_s32_default() - Process S32_LE format.
+ * @cd: DC blocking filter component private data.
+ * @source: Source for PCM samples data.
+ * @sink: Sink for PCM samples data.
+ * @frames: Number of audio data frames to process.
+ *
+ * Return: Value zero for success, otherwise an error code.
+ */
+static int dcblock_s32_default(struct comp_data *cd,
+			       struct cir_buf_source *source,
+			       struct cir_buf_sink *sink,
+			       uint32_t frames)
 {
-	struct dcblock_state *state;
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
-	int32_t R;
-	int idx;
-	int ch;
-	int i, n, nmax;
-	int nch = audio_stream_get_channels(source);
-	int samples = nch * frames;
+	const int32_t *x = source->ptr;
+	int32_t *y = sink->ptr;
+	int samples_without_wrap;
+	int nch = cd->channels;
+	int remaining_samples = frames * nch;
+	int ch = 0;
+	int i;
 
-	while (samples) {
-		nmax = audio_stream_samples_without_wrap_s32(source, x);
-		n = MIN(samples, nmax);
-		nmax = audio_stream_samples_without_wrap_s32(sink, y);
-		n = MIN(n, nmax);
-		for (ch = 0; ch < nch; ch++) {
-			state = &cd->state[ch];
-			R = cd->R_coeffs[ch];
-			idx = ch;
-			for (i = 0; i < n; i += nch) {
-				y[idx] = dcblock_generic(state, R, x[idx]);
-				idx += nch;
-			}
+	while (remaining_samples) {
+		samples_without_wrap = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		samples_without_wrap = MIN(samples_without_wrap,
+					   cir_buf_samples_without_wrap_s32(y, sink->buf_end));
+		samples_without_wrap = MIN(samples_without_wrap, remaining_samples);
+		for (i = 0; i < samples_without_wrap; i++) {
+			*y = dcblock_generic(&cd->state[ch], cd->R_coeffs[ch],
+					     *x);
+			x++;
+			y++;
+			if (++ch == nch)
+				ch = 0;
 		}
-		samples -= n;
-		x = audio_stream_wrap(source, x + n);
-		y = audio_stream_wrap(sink, y + n);
+		x = cir_buf_wrap((void *)x, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
+		remaining_samples -= samples_without_wrap;
 	}
+
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
