@@ -498,6 +498,20 @@ struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain)
 	return dt->ll_thread;
 }
 
+struct k_thread *zephyr_ll_domain_thread(unsigned int core)
+{
+	struct ll_schedule_domain *ll_domain = zephyr_ll_domain_for_core(core);
+
+	if (!ll_domain)
+		return NULL;
+
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(ll_domain);
+
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
+
+	return dt->ll_thread;
+}
+
 #endif /* CONFIG_SOF_USERSPACE_LL */
 
 #if CONFIG_CROSS_CORE_STREAM

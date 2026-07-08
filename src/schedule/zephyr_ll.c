@@ -831,3 +831,15 @@ struct ll_schedule_domain *zephyr_ll_domain(void)
 
 	return ll_sch ? ll_sch->ll_domain : NULL;
 }
+
+/* Return a pointer to the LL scheduler timer domain */
+struct ll_schedule_domain *zephyr_ll_domain_for_core(unsigned int core)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	struct zephyr_ll *ll_sch = scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER, core);
+#else
+	struct zephyr_ll *ll_sch = scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+#endif
+
+	return ll_sch ? ll_sch->ll_domain : NULL;
+}
