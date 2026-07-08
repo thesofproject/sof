@@ -255,7 +255,7 @@ static int scheduler_dp_task_stop(void *data, struct task *task)
 	struct task_dp_pdata *pdata = task->priv_data;
 
 	/* this is asyn cancel - mark the task as canceled and remove it from scheduling */
-	lock_key = scheduler_dp_lock(cpu_get_id());
+	lock_key = scheduler_dp_lock(task->core);
 
 	task->state = SOF_TASK_STATE_CANCEL;
 	list_item_del(&task->list);
@@ -307,7 +307,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	struct task_dp_pdata *pdata = task->priv_data;
 	unsigned int lock_key;
 
-	lock_key = scheduler_dp_lock(cpu_get_id());
+	lock_key = scheduler_dp_lock(task->core);
 
 	if (task_is_active(task)) {
 		scheduler_dp_unlock(lock_key);
