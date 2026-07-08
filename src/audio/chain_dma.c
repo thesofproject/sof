@@ -79,6 +79,12 @@ static int chain_host_start(struct comp_dev *dev)
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
 	int err;
 
+	if (!cd->chan_host || !cd->chan_host->dma) {
+		comp_err(dev, "incomplete initialization detected, aborting host %p",
+			 cd->chan_host);
+		return -ENODEV;
+	}
+
 	err = dma_start(cd->chan_host->dma->z_dev, cd->chan_host->index);
 	if (err < 0)
 		return err;
