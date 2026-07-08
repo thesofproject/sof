@@ -10,6 +10,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/common.h>
+#include <sof/ipc/common.h>
 #include <sof/list.h>
 #include <sof/llext_manager.h>
 #include <sof/objpool.h>
@@ -156,6 +157,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    const union scheduler_dp_thread_ipc_param *param)
 {
 	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
+	unsigned int core = pmod->dev->task->core;
 	int ret;
 
 	if (!pmod) {
@@ -165,14 +167,14 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
-		ret = k_sem_take(&dp_sync[pmod->dev->task->core], DP_THREAD_IPC_TIMEOUT);
+		ret = k_sem_take(&dp_sync[core], DP_THREAD_IPC_TIMEOUT);
 		if (ret < 0) {
 			tr_err(&dp_tr, "Failed waiting for DP thread to start: %d", ret);
 			return ret;
 		}
 	}
 
-	unsigned int lock_key = scheduler_dp_lock(pmod->dev->task->core);
+	unsigned int lock_key = scheduler_dp_lock(core);
 
 	/* IPCs are serialised */
 	pdata->flat->ret = -ENOSYS;
@@ -185,7 +187,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 
 	if (!ret) {
 		/* Wait for completion */
-		ret = k_sem_take(&dp_sync[cpu_get_id()], DP_THREAD_IPC_TIMEOUT);
+		ret = k_sem_take(&dp_sync[core], DP_THREAD_IPC_TIMEOUT);
 		if (ret < 0)
 			tr_err(&dp_tr, "Failed waiting for DP thread: %d", ret);
 		else
@@ -529,6 +531,12 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	k_thread_access_grant(pdata->thread_id, pdata->event, &dp_sync[core]);
 	scheduler_dp_grant(pdata->thread_id, core);
+#if CONFIG_SOF_USERSPACE_LL
+	struct k_thread *thread_ipc = ipc_thread_user(core);
+
+	k_thread_access_grant(thread_ipc, pdata->event, pdata->thread_id, p_stack, &dp_sync[core]);
+	scheduler_dp_grant(thread_ipc, core);
+#endif
 
 	struct k_mem_domain *mdom = objpool_alloc(&dp_mdom_head, sizeof(*mdom),
 						  SOF_MEM_FLAG_COHERENT);
