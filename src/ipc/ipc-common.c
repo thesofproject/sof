@@ -604,6 +604,14 @@ __cold int ipc_user_init_secondary(unsigned int core)
 	return 0;
 }
 
+struct k_thread *ipc_thread_user(unsigned int core)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_user *ipc_user = ipc->ipc_user_pdata;
+
+	return ipc_user->thread[core];
+}
+
 /* Primary core only */
 __cold static void ipc_user_init(void)
 {
