@@ -349,4 +349,9 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user);
 int ipc_user_init_secondary(unsigned int core);
 #endif
 
+/**
+ * \brief get pointer to the userspace IPC thread for core
+ */
+struct k_thread *ipc_thread_user(unsigned int core);
+
 #endif /* __SOF_DRIVERS_IPC_H__ */
