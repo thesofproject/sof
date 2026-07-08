@@ -10,6 +10,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component.h>
 #include <sof/common.h>
+#include <sof/ipc/common.h>
 #include <sof/list.h>
 #include <sof/llext_manager.h>
 #include <sof/objpool.h>
@@ -530,6 +531,10 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 	k_thread_access_grant(pdata->thread_id, pdata->event, &dp_sync[core]);
 	scheduler_dp_grant(pdata->thread_id, core);
 #if CONFIG_SOF_USERSPACE_LL
+	struct k_thread *thread_ipc = ipc_thread_user(core);
+
+	k_thread_access_grant(thread_ipc, pdata->event, pdata->thread_id, p_stack, &dp_sync[core]);
+	scheduler_dp_grant(thread_ipc, core);
 	scheduler_dp_grant(zephyr_ll_domain_thread(), core);
 #endif
 
