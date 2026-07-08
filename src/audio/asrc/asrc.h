@@ -12,6 +12,8 @@
 #include "asrc_farrow.h"
 
 struct comp_data;
+struct sof_source;
+struct sof_sink;
 #ifdef CONFIG_IPC_MAJOR_4
 
 #include <ipc4/base-config.h>
@@ -82,10 +84,11 @@ int asrc_dai_get_timestamp(struct comp_data *cd, struct timestamp_data *tsd);
 #define COEF_C2		Q_CONVERT_FLOAT(0.99, 30)
 
 typedef void (*asrc_proc_func)(struct processing_module *mod,
-			       const struct audio_stream *source,
-			       struct audio_stream *sink,
-			       int *consumed,
-			       int *produced);
+			       struct cir_buf_source *source,
+			       struct cir_buf_sink *sink,
+			       int channels,
+			       size_t *consumed,
+			       size_t *produced);
 /* asrc component private data */
 struct comp_data {
 	ipc_asrc_cfg ipc_config;
@@ -122,7 +125,8 @@ struct comp_data {
 int asrc_dai_configure_timestamp(struct comp_data *cd);
 int asrc_dai_start_timestamp(struct comp_data *cd);
 int asrc_dai_stop_timestamp(struct comp_data *cd);
-void asrc_update_buffer_format(struct comp_buffer *buf_c, struct comp_data *cd);
+void asrc_update_source_format(struct sof_source *source, struct comp_data *cd);
+void asrc_update_sink_format(struct sof_sink *sink, struct comp_data *cd);
 void asrc_set_stream_params(struct comp_data *cd, struct sof_ipc_stream_params *params);
 int asrc_verify_stream_params(struct processing_module *mod, struct sof_ipc_stream_params *params);
 extern struct tr_ctx asrc_tr;
