@@ -12,11 +12,17 @@
 #include <sof/platform.h>
 #include <ipc/stream.h>
 #include <sof/compiler_info.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <module/module/base.h>
 #include <module/module/interface.h>
 
 struct audio_stream;
 struct comp_dev;
+struct sof_source;
+struct sof_sink;
+struct cir_buf_source;
+struct cir_buf_sink;
 
 struct dcblock_state {
 	int32_t x_prev; /**< state variable referring to x[n-1] */
@@ -30,10 +36,10 @@ struct dcblock_state {
 
 struct comp_data;
 
-typedef void (*dcblock_func)(struct comp_data *cd,
-			     const struct audio_stream *source,
-			     const struct audio_stream *sink,
-			     uint32_t frames);
+typedef int (*dcblock_func)(struct comp_data *cd,
+			    struct cir_buf_source *source,
+			    struct cir_buf_sink *sink,
+			    uint32_t frames);
 
 /* DC Blocking Filter component private data */
 struct comp_data {
@@ -48,6 +54,7 @@ struct comp_data {
 
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
+	int channels; /**< number of channels */
 	dcblock_func dcblock_func; /**< processing function */
 };
 

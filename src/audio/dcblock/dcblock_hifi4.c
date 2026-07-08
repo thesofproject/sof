@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/audio/audio_stream.h>
 
 #include "dcblock.h"
 
@@ -29,37 +30,40 @@ static inline ae_int32x2  dcblock_cal(ae_int32x2 R, ae_int32x2 state_x, ae_int32
 	return AE_ROUND32F64SSYM(AE_SLAI64S(out, 1));
 }
 
-/* Setup circular for component sink and source */
-static inline void dcblock_set_circular(const struct audio_stream *source,
-					const struct audio_stream *sink)
+/* Set source as circular buffer 0 and sink as circular buffer 1 */
+static inline void dcblock_set_circular(void *src_begin, void *src_end,
+					void *sink_begin, void *sink_end)
 {
-	/* Set source as circular buffer 0 */
-	AE_SETCBEGIN0(audio_stream_get_addr(source));
-	AE_SETCEND0(audio_stream_get_end_addr(source));
-
-	/* Set sink as circular buffer 1 */
-	AE_SETCBEGIN1(audio_stream_get_addr(sink));
-	AE_SETCEND1(audio_stream_get_end_addr(sink));
+	AE_SETCBEGIN0(src_begin);
+	AE_SETCEND0(src_end);
+	AE_SETCBEGIN1(sink_begin);
+	AE_SETCEND1(sink_end);
 }
 
 #if CONFIG_FORMAT_S16LE
-static void dcblock_s16_default(struct comp_data *cd,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
-				uint32_t frames)
+static int dcblock_s16_default(struct comp_data *cd,
+			       struct cir_buf_source *source,
+			       struct cir_buf_sink *sink,
+			       uint32_t frames)
 {
-	ae_int16 *in;
-	ae_int16 *out;
+	ae_int16 *src = (ae_int16 *)source->ptr;
+	ae_int16 *dst = (ae_int16 *)sink->ptr;
+	ae_int16 *x_start = (ae_int16 *)source->buf_start;
+	ae_int16 *y_start = (ae_int16 *)sink->buf_start;
+	ae_int16 *x_end = (ae_int16 *)source->buf_end;
+	ae_int16 *y_end = (ae_int16 *)sink->buf_end;
+	ae_int16 *in, *out;
 	ae_int32x2 R, state_x, state_y, sample;
 	ae_int16x4 in_sample, out_sample;
-	int ch, i;
-	int nch = audio_stream_get_channels(source);
+	int nch = cd->channels;
 	const int inc = nch * sizeof(ae_int16);
+	int ch, i;
 
-	dcblock_set_circular(source, sink);
+	dcblock_set_circular(x_start, x_end, y_start, y_end);
+
 	for (ch = 0; ch < nch; ch++) {
-		in = (ae_int16 *)audio_stream_get_rptr(source) + ch;
-		out = (ae_int16 *)audio_stream_get_wptr(sink) + ch;
+		in = src + ch;
+		out = dst + ch;
 		state_x = cd->state[ch].x_prev;
 		state_y = cd->state[ch].y_prev;
 		R = cd->R_coeffs[ch];
@@ -76,28 +80,35 @@ static void dcblock_s16_default(struct comp_data *cd,
 		cd->state[ch].x_prev = state_x;
 		cd->state[ch].y_prev = state_y;
 	}
+
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-static void dcblock_s24_default(struct comp_data *cd,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
-				uint32_t frames)
+static int dcblock_s24_default(struct comp_data *cd,
+			       struct cir_buf_source *source,
+			       struct cir_buf_sink *sink,
+			       uint32_t frames)
 {
-	ae_int32 *in;
-	ae_int32 *out;
+	ae_int32 *src = (ae_int32 *)source->ptr;
+	ae_int32 *dst = (ae_int32 *)sink->ptr;
+	ae_int32 *x_start = (ae_int32 *)source->buf_start;
+	ae_int32 *y_start = (ae_int32 *)sink->buf_start;
+	ae_int32 *x_end = (ae_int32 *)source->buf_end;
+	ae_int32 *y_end = (ae_int32 *)sink->buf_end;
+	ae_int32 *in, *out;
 	ae_int32x2 R, state_x, state_y;
 	ae_int32x2 in_sample, out_sample;
-	int ch, i;
-	int nch = audio_stream_get_channels(source);
+	int nch = cd->channels;
 	const int inc = nch * sizeof(ae_int32);
+	int ch, i;
 
-	dcblock_set_circular(source, sink);
+	dcblock_set_circular(x_start, x_end, y_start, y_end);
+
 	for (ch = 0; ch < nch; ch++) {
-		in = (ae_int32 *)audio_stream_get_rptr(source) + ch;
-		out = (ae_int32 *)audio_stream_get_wptr(sink) + ch;
-
+		in = src + ch;
+		out = dst + ch;
 		state_x = cd->state[ch].x_prev;
 		state_y = cd->state[ch].y_prev;
 		R = cd->R_coeffs[ch];
@@ -114,28 +125,35 @@ static void dcblock_s24_default(struct comp_data *cd,
 		cd->state[ch].x_prev = state_x;
 		cd->state[ch].y_prev = state_y;
 	}
+
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void dcblock_s32_default(struct comp_data *cd,
-				const struct audio_stream *source,
-				const struct audio_stream *sink,
-				uint32_t frames)
+static int dcblock_s32_default(struct comp_data *cd,
+			       struct cir_buf_source *source,
+			       struct cir_buf_sink *sink,
+			       uint32_t frames)
 {
-	ae_int32 *in;
-	ae_int32 *out;
+	ae_int32 *src = (ae_int32 *)source->ptr;
+	ae_int32 *dst = (ae_int32 *)sink->ptr;
+	ae_int32 *x_start = (ae_int32 *)source->buf_start;
+	ae_int32 *y_start = (ae_int32 *)sink->buf_start;
+	ae_int32 *x_end = (ae_int32 *)source->buf_end;
+	ae_int32 *y_end = (ae_int32 *)sink->buf_end;
+	ae_int32 *in, *out;
 	ae_int32x2 R, state_x, state_y;
 	ae_int32x2 in_sample;
-	int ch, i;
-	int nch = audio_stream_get_channels(source);
+	int nch = cd->channels;
 	const int inc = nch * sizeof(ae_int32);
+	int ch, i;
 
-	dcblock_set_circular(source, sink);
+	dcblock_set_circular(x_start, x_end, y_start, y_end);
+
 	for (ch = 0; ch < nch; ch++) {
-		in = (ae_int32 *)audio_stream_get_rptr(source) + ch;
-		out = (ae_int32 *)audio_stream_get_wptr(sink) + ch;
-
+		in = src + ch;
+		out = dst + ch;
 		state_x = cd->state[ch].x_prev;
 		state_y = cd->state[ch].y_prev;
 		R = cd->R_coeffs[ch];
@@ -148,6 +166,8 @@ static void dcblock_s32_default(struct comp_data *cd,
 		cd->state[ch].x_prev = state_x;
 		cd->state[ch].y_prev = state_y;
 	}
+
+	return 0;
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
