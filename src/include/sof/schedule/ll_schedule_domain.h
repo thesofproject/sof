@@ -330,6 +330,7 @@ struct ll_schedule_domain *zephyr_domain_init(int clk);
 struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain);
 struct k_thread *zephyr_domain_thread_tid_for_core(int core);
 struct k_mem_domain *zephyr_ll_mem_domain(void);
+struct k_thread *zephyr_ll_domain_thread(void);
 #endif /* CONFIG_SOF_USERSPACE_LL */
 #ifdef CONFIG_SOF_FULL_ZEPHYR_APPLICATION
 __syscall int zephyr_ll_task_sem_alloc(struct task *task);

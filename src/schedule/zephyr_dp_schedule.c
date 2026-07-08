@@ -62,7 +62,8 @@ void scheduler_dp_unlock(unsigned int key)
 
 void scheduler_dp_grant(k_tid_t thread_id, uint16_t core)
 {
-	k_thread_access_grant(thread_id, &dp_lock[core]);
+	if (thread_id)
+		k_thread_access_grant(thread_id, &dp_lock[core]);
 }
 
 /* dummy LL task - to start LL on secondary cores */
