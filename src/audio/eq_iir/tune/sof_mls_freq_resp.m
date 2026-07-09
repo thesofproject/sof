@@ -1,13 +1,18 @@
-function [f, m_db] = sof_mls_freq_resp(id)
+function [f, m_db] = sof_mls_freq_resp(id, play_config_fn, rec_config_fn, data_dir)
 %% Measure frequency response with MLS test signal
 %
-%  [f, m] = sof_mls_freq_resp(id)
+%  [f, m] = sof_mls_freq_resp(id, play_config_fn, rec_config_fn, data_dir)
 %
 %  Input parameters
-%  id - A string identifier for test case. An id 'selftest' is for special
-%       usage. It calculates response of filtered MLS signal and computes
-%       the measurement vs. known. Deviation is reported as error. It can
-%       be useful if the internal MLS measurement parameters are adjusted.
+%  id             - A string identifier for test case. An id 'selftest' is for
+%                   special usage. It calculates response of filtered MLS signal
+%                   and computes the measurement vs. known. Deviation is
+%                   reported as error. It can be useful if the internal MLS
+%                   measurement parameters are adjusted.
+%  play_config_fn - Playback config file (default 'mls_play_config.txt').
+%  rec_config_fn  - Capture config file  (default 'mls_rec_config.txt').
+%  data_dir       - Directory for the mls-<id>.{wav,txt} outputs and the
+%                   mls-ref.wav reference (default '.'). Created if missing.
 %
 %  Output parameters
 %  f - Frequency vector in Hz
@@ -17,7 +22,8 @@ function [f, m_db] = sof_mls_freq_resp(id)
 %  mls_play_config.txt
 %  mls_rec_config.txt
 %
-%  The script will return also a text CSV format file with name mls-<id>.txt.
+%  The script will also write a text CSV format file with name mls-<id>.txt
+%  and a PNG plot of the aligned response as mls-<id>.png into data_dir.
 %
 
 % SPDX-License-Identifier: BSD-3-Clause
@@ -25,6 +31,13 @@ function [f, m_db] = sof_mls_freq_resp(id)
 % Copyright (c) 2018-2025, Intel Corporation.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+
+%% Octave dependencies: mlsp12/sync_chirp and the resampling path pull in
+%% functions from the signal package. On most distros it ships separately
+%% from core Octave, so load it explicitly rather than fail cryptically.
+if exist('OCTAVE_VERSION', 'builtin')
+	pkg load signal;
+end
 
 %% Settings
 np = 1024;                  % Number of frequency points to use
@@ -45,6 +58,16 @@ capture_level_min_db = -30; % Expected min. level
 if nargin < 1
 	id = 'unknown';
 end
+if nargin < 2 || isempty(play_config_fn)
+	play_config_fn = 'mls_play_config.txt';
+end
+if nargin < 3 || isempty(rec_config_fn)
+	rec_config_fn = 'mls_rec_config.txt';
+end
+if nargin < 4 || isempty(data_dir)
+	data_dir = '.';
+end
+ensure_dir(data_dir);
 
 if strcmp(id, 'selftest')
 	selftest = 1;
@@ -58,8 +81,8 @@ if strcmp(id, 'selftest')
 else
 	selftest = 0;
 end
-measfn = sprintf('mls-%s.wav', id);
-csvfn = sprintf('mls-%s.txt', id);
+measfn = fullfile(data_dir, sprintf('mls-%s.wav', id));
+csvfn  = fullfile(data_dir, sprintf('mls-%s.txt', id));
 
 %% Paths
 % Resolve the test_utils dir from the script location so the script works
@@ -74,7 +97,7 @@ path_cleanup = onCleanup(@() rmpath(test_utils_dir));  %#ok<NASGU>
 %% MLS
 n_mls = round(fs*t_mls_s);
 mls = 10^(a_mls_db/20) * (2 * mlsp12(1, n_mls) - 1);
-mlsfn = 'mls-ref.wav';
+mlsfn = fullfile(data_dir, 'mls-ref.wav');
 audiowrite(mlsfn, mls, fs);
 
 %% Chip markers and parameters for find sync
@@ -101,8 +124,8 @@ z(i1:i2) = mls;
 z(i2 + 1:end) = x2;
 
 %% Get config
-rec_cfg = meas_remote_rec_config(fs, fmt);
-play_cfg = meas_remote_play_config;
+rec_cfg = meas_remote_rec_config(fs, fmt, rec_config_fn);
+play_cfg = meas_remote_play_config(play_config_fn);
 
 %% Capture MLS from all playback channel at time
 mixfn = 'mlsmix.wav';
@@ -129,7 +152,16 @@ for i=1:play_cfg.nch
 	else
 		x = zeros(length(z), play_cfg.nch);
 		x(:,i) = z;
-		mixdfn = sprintf('%s/%s', tmp_dir, mixfn);
+		% For an ssh play target we stage the WAV under tmp_dir and let
+		% copy_playback scp it over to play_cfg.dir. For a local play
+		% target copy_playback is a no-op, so write the WAV directly
+		% into play_cfg.dir where remote_play (which is local aplay in
+		% that case) will look for it.
+		if play_cfg.ssh
+			mixdfn = fullfile(tmp_dir, mixfn);
+		else
+			mixdfn = fullfile(play_cfg.dir, mixfn);
+		end
 		audiowrite(mixdfn, x, fs, 'BitsPerSample', bits);
 		copy_playback(mixdfn, play_cfg);
 		tcap = floor(6 + t_mls_s); % Capture for MLS +6s
@@ -159,7 +191,7 @@ for i=1:play_cfg.nch
 		return
 	else
 		% nt is the sample count of the test signal, so the range
-		% highlighted here must is r(d:d+nt-1, :).
+		% highlighted here must be r(d:d+nt-1, :).
 		si = d:d + nt - 1;
 		hold on
 		plot(ts(si), r(si, 1), 'g');
@@ -198,7 +230,7 @@ fprintf('Done.\n');
 
 [f, m_db] = apply_mic_calibration(f, m_db, rec_cfg);
 
-figure
+main_fig = figure;
 idx = find(f > f_align_hz, 1, 'first') - 1;
 if isempty(idx) || idx < 1
 	error('No frequency bin at or below %.0f Hz for alignment', f_align_hz);
@@ -218,9 +250,27 @@ if selftest
 	hold on;
 	plot(f, ref_db_align, 'r--');
 	hold off;
+else
+	% Interpreter 'none' so underscores in the id are drawn literally
+	% instead of being taken as TeX subscript markers.
+	title(sprintf('Measured frequency response: %s', id), ...
+	      'Interpreter', 'none');
 end
 
 legend(labels);
+
+%% Save the plot as PNG next to the CSV so the response is easy to share
+%% without pulling the raw capture through Octave again. print() picks
+%% whichever graphics toolkit is active (qt on desktop, gnuplot in
+%% --no-window-system runs), so both interactive and headless invocations
+%% produce a file.
+plot_fn = fullfile(data_dir, sprintf('mls-%s.png', id));
+try
+	print(main_fig, plot_fn, '-dpng', '-r150');
+	fprintf('Wrote %s\n', plot_fn);
+catch err
+	warning('Could not save %s: %s', plot_fn, err.message);
+end
 
 if selftest
         idx = find(f < f_hi);
@@ -326,9 +376,19 @@ function q = shq(s)
 	q = [sq, strrep(s, sq, esc), sq];
 end
 
-function play = meas_remote_play_config()
-	play = get_config('mls_play_config.txt', 'play');
+function ensure_dir(d)
+	if ~exist(d, 'dir')
+		[ok, msg] = mkdir(d);
+		if ~ok
+			error('mkdir %s failed: %s', d, msg);
+		end
+	end
+end
+
+function play = meas_remote_play_config(fn)
+	play = get_config(fn, 'play');
 	fprintf('\nThe settings for remote playback are\n');
+	fprintf('Config    : %s\n', fn);
 	fprintf('Use ssh   : %d\n', play.ssh);
 	fprintf('User      : %s\n', play.user);
 	fprintf('Directory : %s\n', play.dir);
@@ -336,12 +396,21 @@ function play = meas_remote_play_config()
 	fprintf('Channels  : %d\n', play.nch);
 end
 
-function rec = meas_remote_rec_config(fs, fmt)
-	rec = get_config('mls_rec_config.txt', 'rec');
+function rec = meas_remote_rec_config(fs, fmt, fn)
+	rec = get_config(fn, 'rec');
+	% Let the config file override the ALSA format: some capture
+	% devices (e.g. SOF DMIC) only expose S32_LE, so the shell driver
+	% probes --dump-hw-params and writes rec.fmt_name / rec.bits in.
+	if isfield(rec, 'fmt_name') && ~isempty(rec.fmt_name)
+		fmt_use = rec.fmt_name;
+	else
+		fmt_use = fmt;
+	end
 	rec.fmt = sprintf('-t wav -c %d -f %s -r %d', ...
-			     rec.nch, fmt, fs);
+			     rec.nch, fmt_use, fs);
 
 	fprintf('\nThe settings for remote capture are\n');
+	fprintf('Config           : %s\n', fn);
 	fprintf('Use ssh          : %d\n', rec.ssh);
 	fprintf('User             : %s\n', rec.user);
 	fprintf('Directory        : %s\n', rec.dir);
