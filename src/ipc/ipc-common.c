@@ -44,7 +44,6 @@
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 #include <rtos/userspace_helper.h>
-#include <sof/schedule/ll_schedule_domain.h>
 #include <ipc4/pipeline.h>
 #include <ipc4/module.h>
 #include <ipc4/handler.h>
