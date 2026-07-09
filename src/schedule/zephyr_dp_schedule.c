@@ -10,7 +10,6 @@
 #include <sof/llext_manager.h>
 #include <rtos/task.h>
 #include <rtos/userspace_helper.h>
-#include <stdint.h>
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -27,6 +26,9 @@
 #include "zephyr_dp_schedule.h"
 
 #include <zephyr/kernel/thread.h>
+
+#include <stdint.h>
+#include <string.h>
 
 LOG_MODULE_REGISTER(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dp_sched);
@@ -336,7 +338,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	return 0;
 }
 
-static struct scheduler_ops schedule_dp_ops = {
+APP_SYSUSER_DATA static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task		= scheduler_dp_task_shedule,
 #if CONFIG_SOF_USERSPACE_APPLICATION
 	.schedule_task_cancel	= scheduler_dp_task_cancel,
@@ -351,12 +353,12 @@ __cold int scheduler_dp_init(void)
 {
 	assert_can_be_cold();
 
-	struct scheduler_dp_data *dp_sch = rzalloc(SOF_MEM_FLAG_KERNEL,
-						   sizeof(struct scheduler_dp_data));
+	struct scheduler_dp_data *dp_sch = sof_heap_alloc(sof_sys_user_heap_get(),
+							  SOF_MEM_FLAG_KERNEL, sizeof(*dp_sch), 0);
 	if (!dp_sch)
 		return -ENOMEM;
 
-	dp_sch->ll_tick_src.priv_data = NULL;
+	memset(dp_sch, 0, sizeof(*dp_sch));
 	list_init(&dp_sch->tasks);
 
 	scheduler_init(SOF_SCHEDULE_DP, &schedule_dp_ops, dp_sch);
