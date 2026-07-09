@@ -160,7 +160,11 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
 			return NULL;
 		}
+#ifdef CONFIG_SOF_USERSPACE_LL
+		mod_heap = sof_sys_user_heap_get();
+#else
 		mod_heap = NULL;
+#endif
 	} else {
 #ifdef CONFIG_SOF_USERSPACE_LL
 		mod_heap = sof_sys_user_heap_get();
