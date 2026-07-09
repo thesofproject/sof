@@ -1,7 +1,7 @@
 function [f, m_db] = sof_mls_freq_resp(id)
 %% Measure frequency response with MLS test signal
 %
-%  [f, m] = mls_freq_resp(id)
+%  [f, m] = sof_mls_freq_resp(id)
 %
 %  Input parameters
 %  id - A string identifier for test case. An id 'selftest' is for special
@@ -30,15 +30,16 @@ function [f, m_db] = sof_mls_freq_resp(id)
 np = 1024;                  % Number of frequency points to use
 f_lo = 100;                 % Lower frequency limit for analysis
 f_hi = 20e3;                % Upper frequency limit for analysis
-t_tot = 10e-3;              % MLS analysis window length in s
+f_align_hz = 1000;          % Response is normalized to 0 dB at this frequency
+t_tot = 10e-3;              % MLS analysis window length in s (480 samples @ 48 kHz)
 t_mls_s = 1.0;              % MLS test signal length in s
 a_mls_db = -10;             % MLS test signal amplitude in dB
 fs = 48e3;                  % Sample rate in Hz
 bits = 16;                  % Audio format to use (bits)
 fmt = 'S16_LE';             % Audio format to use (ALSA)
-dir = '/tmp';               % Directory for temporary files
+tmp_dir = '/tmp';           % Directory for temporary files
 capture_level_max_db = -1;  % Expected max. level
-capture_level_min_db = -30; % Expacted min. level
+capture_level_min_db = -30; % Expected min. level
 
 %% Get device identifier to use
 if nargin < 1
@@ -61,7 +62,14 @@ measfn = sprintf('mls-%s.wav', id);
 csvfn = sprintf('mls-%s.txt', id);
 
 %% Paths
-addpath('../../../../tools/test/audio/test_utils');
+% Resolve the test_utils dir from the script location so the script works
+% independent of the caller's current working directory. onCleanup makes
+% sure rmpath still runs if an error is raised later on.
+script_dir = fileparts(mfilename('fullpath'));
+test_utils_dir = fullfile(script_dir, '..', '..', '..', '..', ...
+                          'tools', 'test', 'audio', 'test_utils');
+addpath(test_utils_dir);
+path_cleanup = onCleanup(@() rmpath(test_utils_dir));  %#ok<NASGU>
 
 %% MLS
 n_mls = round(fs*t_mls_s);
@@ -99,12 +107,14 @@ play_cfg = meas_remote_play_config;
 %% Capture MLS from all playback channel at time
 mixfn = 'mlsmix.wav';
 recfn = 'recch.wav';
-y = [];
+nrec = play_cfg.nch * rec_cfg.nch;
+y = [];  % Preallocated once nt is known from the first find_test_signal
+nt_expected = [];
 if selftest
-	labels = cell(play_cfg.nch * rec_cfg.nch + 1, 1);
-	labels(end) = 'Reference';
+	labels = cell(nrec + 1, 1);
+	labels{end} = 'Reference';
 else
-	labels = cell(play_cfg.nch * rec_cfg.nch, 1);
+	labels = cell(nrec, 1);
 end
 label_idx = 1;
 for i=1:play_cfg.nch
@@ -119,7 +129,7 @@ for i=1:play_cfg.nch
 	else
 		x = zeros(length(z), play_cfg.nch);
 		x(:,i) = z;
-		mixdfn = sprintf('%s/%s', dir, mixfn);
+		mixdfn = sprintf('%s/%s', tmp_dir, mixfn);
 		audiowrite(mixdfn, x, fs, 'BitsPerSample', bits);
 		copy_playback(mixdfn, play_cfg);
 		tcap = floor(6 + t_mls_s); % Capture for MLS +6s
@@ -130,7 +140,7 @@ for i=1:play_cfg.nch
 		r = get_recording(recfn, rec_cfg);
 	end
 	for j = 1:rec_cfg.nch
-		labels(label_idx) = sprintf('p%d-r%d', i, j);
+		labels{label_idx} = sprintf('p%d-r%d', i, j);
 		label_idx = label_idx + 1;
 	end
 	[d, nt] = find_test_signal(r(:,1), fnd);
@@ -148,10 +158,20 @@ for i=1:play_cfg.nch
 		m_db = [];
 		return
 	else
-		si = d:d + nt;
+		% nt is the sample count of the test signal, so the range
+		% highlighted here must is r(d:d+nt-1, :).
+		si = d:d + nt - 1;
 		hold on
-		plot(ts(si), r(si), 'g');
+		plot(ts(si), r(si, 1), 'g');
 		hold off
+	end
+	if isempty(nt_expected)
+		nt_expected = nt;
+		y = zeros(nt, nrec);
+	elseif nt ~= nt_expected
+		error(['find_test_signal returned length %d on playback channel ' ...
+		       '%d but %d on the first channel; captures are inconsistent'], ...
+		      nt, i, nt_expected);
 	end
 	for j = 1:rec_cfg.nch
 		y(:, rec_cfg.nch*(i-1) + j) = r(d:d + nt -1, j);
@@ -179,7 +199,10 @@ fprintf('Done.\n');
 [f, m_db] = apply_mic_calibration(f, m_db, rec_cfg);
 
 figure
-idx = find(f>1e3, 1, 'first') - 1;
+idx = find(f > f_align_hz, 1, 'first') - 1;
+if isempty(idx) || idx < 1
+	error('No frequency bin at or below %.0f Hz for alignment', f_align_hz);
+end
 m_db_align = m_db - m_db(idx);
 semilogx(f, m_db_align);
 ax=axis(); axis([f_lo f_hi ax(3:4)]);
@@ -221,15 +244,16 @@ if selftest
         fprintf('Response RMS error is %4.1f dB.\n', e_db);
 end
 
-rmpath('../../../../tools/test/audio/test_utils');
+% path_cleanup / onCleanup takes care of rmpath on both normal return and
+% error paths.
 
 end
 
 function copy_playback(fn, cfg)
 	if cfg.ssh
-		cmd = sprintf('scp %s %s:%s/', fn, cfg.user, cfg.dir);
+		cmd = sprintf('scp %s %s:%s/', shq(fn), cfg.user, shq(cfg.dir));
 		fprintf('Remote copy: %s\n', cmd);
-		system(cmd);
+		run_shell(cmd);
 	else
 		%cmd = sprintf('cp %s %s/', fn, cfg.dir);
 		%fprintf('Local copy: %s\n', cmd);
@@ -238,39 +262,68 @@ end
 
 function y = get_recording(fn, cfg)
 	if cfg.ssh
-		cmd = sprintf('scp %s:%s/%s %s', cfg.user, cfg.dir, fn, fn);
+		cmd = sprintf('scp %s:%s/%s %s', cfg.user, shq(cfg.dir), ...
+		              shq(fn), shq(fn));
 		fprintf('Remote copy: %s\n', cmd);
 	else
-		cmd = sprintf('cp %s/%s %s', cfg.dir, fn, fn);
+		cmd = sprintf('cp %s/%s %s', shq(cfg.dir), shq(fn), shq(fn));
 		fprintf('Local copy: %s\n', cmd);
 	end
-	system(cmd);
+	run_shell(cmd);
 	y = audioread(fn);
 	delete(fn);
 end
 
 function remote_play(fn, cfg)
 	if cfg.ssh
-		cmd = sprintf('ssh %s aplay -D%s %s/%s', cfg.user, cfg.dev, cfg.dir, fn);
+		cmd = sprintf('ssh %s aplay -D%s %s/%s', cfg.user, cfg.dev, ...
+		              shq(cfg.dir), shq(fn));
 		fprintf('Remote play: %s\n', cmd);
 	else
-		cmd = sprintf('aplay -D%s %s/%s', cfg.dev, cfg.dir, fn);
+		cmd = sprintf('aplay -D%s %s/%s', cfg.dev, shq(cfg.dir), shq(fn));
 		fprintf('Local play: %s\n', cmd);
 	end
-	system(cmd);
+	run_shell(cmd);
 end
 
 function remote_capture(fn, cfg, t)
 	if cfg.ssh
 		cmd = sprintf('ssh %s arecord -q -D%s %s -d %d %s/%s &', ...
-			      cfg.user, cfg.dev, cfg.fmt, t, cfg.dir, fn);
+		              cfg.user, cfg.dev, cfg.fmt, t, ...
+		              shq(cfg.dir), shq(fn));
 		fprintf('Remote capture: %s\n', cmd);
 	else
 		cmd = sprintf('arecord -q -D%s %s -d %d %s/%s &', ...
-			      cfg.dev, cfg.fmt, t, cfg.dir, fn);
+		              cfg.dev, cfg.fmt, t, shq(cfg.dir), shq(fn));
 		fprintf('Local capture: %s\n', cmd);
 	end
-	system(cmd);
+	% Backgrounded capture: system() returns immediately with the shell's
+	% own exit code (0 for a successful fork), so a non-zero return here
+	% is a startup failure worth surfacing.
+	run_shell(cmd);
+end
+
+function run_shell(cmd)
+% Wrapper around system() that fails loudly instead of letting a broken
+% aplay/arecord/scp step propagate as silent NaNs later on.
+	status = system(cmd);
+	if status ~= 0
+		error('Shell command failed (status %d): %s', status, cmd);
+	end
+end
+
+function q = shq(s)
+% Wrap a string in POSIX single quotes for use in a shell command line,
+% escaping any embedded single quotes. Cheap defense against paths that
+% contain spaces or shell metacharacters. Any ' in s becomes the standard
+% POSIX-shell '\'' close/escape/reopen sequence.
+	sq = char(39);           % single quote
+	esc = [sq, '\', sq, sq]; % '\''
+	if isempty(s)
+		q = [sq, sq];
+		return;
+	end
+	q = [sq, strrep(s, sq, esc), sq];
 end
 
 function play = meas_remote_play_config()
@@ -326,6 +379,7 @@ function [f, m, sens, desc] = get_calibration(fn)
 	if fh < 0
 		error('Cannot open calibration data file');
 	end
+	fh_cleanup = onCleanup(@() fclose(fh));  %#ok<NASGU>
 	n = 1;
 	f = [];
 	m = [];
@@ -333,13 +387,13 @@ function [f, m, sens, desc] = get_calibration(fn)
 	desc = '';
 	str = fgets(fh);
 	idx = strfind(str, '"');
-	while length(idx) > 0
+	while ~isempty(idx)
 		line = str(idx(1)+1:idx(2)-1);
 		desc = sprintf('%s%s ', desc, line);
 		str = fgets(fh);
 		idx = strfind(str, '"');
 	end
-	if length(strfind(str, 'Sens'))
+	if ~isempty(strfind(str, 'Sens'))
 		desc = str;
 		str = fgets(fh);
 	end
@@ -352,7 +406,7 @@ function [f, m, sens, desc] = get_calibration(fn)
 	end
 
 	% Strip possible linefeed from description end
-	if double(desc(end)) == 10
+	if ~isempty(desc) && double(desc(end)) == 10
 		desc = desc(1:end-1);
 	end
 	fprintf('Calibration Info : %s\n', desc);
@@ -426,6 +480,11 @@ function [cal_f, cal_m_db] = apply_mic_calibration(f, m_db, rec)
 end
 
 function ret = get_config(fn, var)
+% WARNING: this reads `fn` and executes it as Octave/MATLAB source via
+% eval(). The config files (mls_play_config.txt / mls_rec_config.txt) are
+% assumed to be locally owned and trusted; do not point this at anything
+% you did not write yourself. Kept as-is for backward compatibility with
+% existing user config files that rely on full script syntax.
     s = fileread(fn);
     eval(s);
     cmd = sprintf('ret = %s;', var);
