@@ -349,7 +349,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	return 0;
 }
 
-static struct scheduler_ops schedule_dp_ops = {
+APP_SYSUSER_DATA static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task		= scheduler_dp_task_shedule,
 #if CONFIG_SOF_USERSPACE_APPLICATION
 	.schedule_task_cancel	= scheduler_dp_task_cancel,
@@ -364,8 +364,8 @@ __cold int scheduler_dp_init(void)
 {
 	assert_can_be_cold();
 
-	struct scheduler_dp_data *dp_sch = rzalloc(SOF_MEM_FLAG_KERNEL,
-						   sizeof(struct scheduler_dp_data));
+	struct scheduler_dp_data *dp_sch = sof_heap_alloc(sof_sys_user_heap_get(),
+							  SOF_MEM_FLAG_KERNEL, sizeof(*dp_sch), 0);
 	if (!dp_sch)
 		return -ENOMEM;
 
