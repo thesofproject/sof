@@ -1570,6 +1570,11 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 		mi = (struct ipc4_module_init_instance *)ipc4;
 
 		if (mi->extension.r.proc_domain || !IS_ENABLED(CONFIG_SOF_USERSPACE_LL)) {
+			/*
+			 * DP module creation starts running in kernel mode and
+			 * switches to userspace later via a scheduler_dp_thread_ipc()
+			 * call in module_init().
+			 */
 			ret = ipc4_init_module_instance(ipc4);
 		} else {
 #ifdef CONFIG_SOF_USERSPACE_LL
