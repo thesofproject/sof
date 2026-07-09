@@ -1550,6 +1550,11 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
 #endif
 		} else {
+			/*
+			 * DP module creation starts running in kernel mode and
+			 * switches to userspace later via a scheduler_dp_thread_ipc()
+			 * call in module_init().
+			 */
 			ret = ipc4_init_module_instance(ipc4);
 		}
 		break;
