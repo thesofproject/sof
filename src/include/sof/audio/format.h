@@ -10,7 +10,13 @@
 #ifndef __SOF_AUDIO_FORMAT_H__
 #define __SOF_AUDIO_FORMAT_H__
 
-#if defined __XCC__
+/* __XCC_CLANG__ is defined when the Zephyr LLVM toolchain wraps clang with
+ * -D__XCC__ for compatibility.  The HiFi3 intrinsic path in format_hifi3.h
+ * relies on XCC-specific AE built-ins that clang does not support the same
+ * way; LLVM selects HiFi3 instructions automatically from the target feature
+ * set and may emit them in FLIX-encoded form even on targets (e.g. TGL)
+ * without a FLIX execution unit.  Use the generic C path for clang. */
+#if defined __XCC__ && !defined __XCC_CLANG__
 #include <xtensa/config/core-isa.h>
 #if XCHAL_HAVE_HIFI3 == 1
 #define __AUDIO_FORMAT_GENERIC__	0
@@ -21,10 +27,10 @@
 #define __AUDIO_FORMAT_HIFI3__		0
 #endif /* !XCHAL_HAVE_HIFI3 */
 #else
-/* GCC */
+/* GCC or clang (__XCC_CLANG__) */
 #define __AUDIO_FORMAT_GENERIC__	1
 #define __AUDIO_FORMAT_HIFI3__		0
-#endif /* !__XCC__ */
+#endif /* !__XCC__ || __XCC_CLANG__ */
 
 #include <ipc/stream.h>
 #include <stdint.h>
