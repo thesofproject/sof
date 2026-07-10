@@ -358,6 +358,7 @@ __cold int scheduler_dp_init(void)
 	if (!dp_sch)
 		return -ENOMEM;
 
+	dp_sch->ll_tick_src.priv_data = NULL;
 	list_init(&dp_sch->tasks);
 
 	scheduler_init(SOF_SCHEDULE_DP, &schedule_dp_ops, dp_sch);
