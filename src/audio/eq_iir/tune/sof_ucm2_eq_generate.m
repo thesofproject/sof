@@ -25,6 +25,13 @@ function sof_ucm2_eq_generate(sys_vendor, product_name, endpoint, meas_file)
 %                layout with no header row, matching
 %                sof_ucm2_eq_example.xlsx.
 %
+%                A cell array of paths is also accepted, e.g.
+%                { 'mls-a.txt', 'mls-b.txt', 'mls-c.txt' }. Each file is
+%                loaded independently (per-file column averaging still
+%                applies) and the per-file magnitudes are then averaged
+%                together. All files must share the same frequency
+%                grid; a mismatch raises an error.
+%
 %   The binary IIR and FIR blobs consumed by UCM are written to
 %     ./ucm2_blobs_sof/ipc4/eq_iir/<endpoint>_<vendor>_<product>_iir.bin
 %     ./ucm2_blobs_sof/ipc4/eq_fir/<endpoint>_<vendor>_<product>_fir.bin
@@ -149,31 +156,79 @@ end
 %% Measurement loading
 %% -----------------------------------------------------------------------
 function eq = load_measurement(eq, meas_file)
-if ~exist(meas_file, 'file')
-	error('Measurement file not found: %s', meas_file);
-end
-[~, ~, ext] = fileparts(meas_file);
-switch lower(ext)
-case {'.xls', '.xlsx', '.xlsm', '.ods'}
-	pkg load io;
-	meas = xlsread(meas_file);
-otherwise
-	%% dlmread with no explicit delimiter auto-detects whitespace or
-	%% comma separation, which covers both the sof_mls_freq_resp.m
-	%% output and legacy whitespace-delimited measurement files.
-	meas = dlmread(meas_file);
-end
-if size(meas, 2) < 2
-	error('%s must have at least a frequency column and one response column', ...
-	      meas_file);
-end
-eq.raw_f = meas(:,1);
-if size(meas, 2) == 2
-	eq.raw_m_db = meas(:,2);
+%% meas_file is either a single path or a cell array of paths. Each file
+%% is loaded and its response columns (if more than one) are averaged
+%% into a single trace, then the per-file traces are averaged together.
+%% All files must share the exact same frequency grid; any mismatch
+%% aborts before any fit is attempted.
+if iscell(meas_file)
+	files = meas_file;
+elseif ischar(meas_file)
+	files = { meas_file };
 else
-	%% Average of the response columns
-	eq.raw_m_db = mean(meas(:, 2:end), 2);
-	fprintf('Averaged %d response columns from %s\n', size(meas, 2) - 1, meas_file);
+	error(['meas_file must be a char path or a cell array of ' ...
+	       'char paths (got %s)'], class(meas_file));
+end
+
+if isempty(files)
+	error('meas_file must not be an empty cell array');
+end
+for k = 1:numel(files)
+	if ~ischar(files{k}) || isempty(files{k})
+		error(['meas_file{%d} must be a non-empty char path ' ...
+		       '(got %s)'], k, class(files{k}));
+	end
+end
+
+f_ref = [];
+m_stack = [];
+for k = 1:numel(files)
+	fn = files{k};
+	if ~exist(fn, 'file')
+		error('Measurement file not found: %s', fn);
+	end
+	[~, ~, ext] = fileparts(fn);
+	switch lower(ext)
+	case {'.xls', '.xlsx', '.xlsm', '.ods'}
+		pkg load io;
+		meas = xlsread(fn);
+	otherwise
+		%% dlmread with no explicit delimiter auto-detects whitespace or
+		%% comma separation, which covers both the sof_mls_freq_resp.m
+		%% output and legacy whitespace-delimited measurement files.
+		meas = dlmread(fn);
+	end
+	if size(meas, 2) < 2
+		error('%s must have at least a frequency column and one response column', ...
+		      fn);
+	end
+	f_k = meas(:, 1);
+	if size(meas, 2) == 2
+		m_k = meas(:, 2);
+	else
+		m_k = mean(meas(:, 2:end), 2);
+		fprintf('Averaged %d response columns from %s\n', ...
+		        size(meas, 2) - 1, fn);
+	end
+	if isempty(f_ref)
+		f_ref = f_k;
+		m_stack = m_k;
+	else
+		if ~isequal(size(f_k), size(f_ref)) || any(f_k(:) ~= f_ref(:))
+			error(['Frequency grid of %s does not match %s. ' ...
+			       'All measurement files must share the same ' ...
+			       '[freq, resp...] grid.'], fn, files{1});
+		end
+		m_stack = [m_stack, m_k];
+	end
+end
+
+eq.raw_f = f_ref;
+if size(m_stack, 2) == 1
+	eq.raw_m_db = m_stack;
+else
+	eq.raw_m_db = mean(m_stack, 2);
+	fprintf('Averaged %d measurement files\n', size(m_stack, 2));
 end
 end
 
