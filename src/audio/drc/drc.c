@@ -11,6 +11,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/uuid.h>
@@ -269,16 +270,22 @@ __cold static int drc_get_config(struct processing_module *mod,
 }
 
 static int drc_process(struct processing_module *mod,
-		       struct input_stream_buffer *input_buffers,
-		       int num_input_buffers,
-		       struct output_stream_buffer *output_buffers,
-		       int num_output_buffers)
+		       struct sof_source **sources,
+		       int num_of_sources,
+		       struct sof_sink **sinks,
+		       int num_of_sinks)
 {
 	struct drc_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	int frames = input_buffers[0].size;
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
+	size_t source_frame_bytes = source_get_frame_bytes(source);
+	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
+	size_t source_bytes, sink_bytes;
+	size_t source_buf_size, sink_buf_size;
+	uint32_t frames;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -286,8 +293,8 @@ static int drc_process(struct processing_module *mod,
 	/* Check for changed configuration */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
 		cd->config = comp_get_data_blob(cd->model_handler, NULL, NULL);
-		ret = drc_setup(mod, audio_stream_get_channels(source),
-				audio_stream_get_rate(source));
+		ret = drc_setup(mod, source_get_channels(source),
+				source_get_rate(source));
 		if (ret < 0) {
 			comp_err(dev, "drc_copy(), failed DRC setup");
 			return ret;
@@ -309,10 +316,46 @@ static int drc_process(struct processing_module *mod,
 	/* Control pass-though in processing function with switch control */
 	cd->enabled = cd->config && cd->config->params.enabled && cd->enable_switch;
 
-	cd->drc_func(mod, source, sink, frames);
+	frames = source_sink_avail_frames_aligned(source, sink);
+	if (!frames)
+		return 0;
 
-	/* calc new free and available */
-	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
+	source_bytes = frames * source_frame_bytes;
+	sink_bytes = frames * sink_frame_bytes;
+
+	/* acquire source and sink circular buffers for the whole period */
+	ret = source_get_data(source, source_bytes, &source_buf.ptr,
+			      &source_buf.buf_start, &source_buf_size);
+	if (ret < 0)
+		return ret;
+	if (source_buf_size < source_bytes) {
+		comp_err(dev, "source buffer size %zu is insufficient for %zu bytes",
+			 source_buf_size, source_bytes);
+		source_release_data(source, 0);
+		return -EINVAL;
+	}
+	source_buf.buf_end = (const char *)source_buf.buf_start + source_buf_size;
+
+	ret = sink_get_buffer(sink, sink_bytes, &sink_buf.ptr, &sink_buf.buf_start,
+			      &sink_buf_size);
+	if (ret < 0) {
+		source_release_data(source, 0);
+		return ret;
+	}
+	if (sink_buf_size < sink_bytes) {
+		comp_err(dev, "sink buffer size %zu is insufficient for %zu bytes",
+			 sink_buf_size, sink_bytes);
+		source_release_data(source, 0);
+		sink_commit_buffer(sink, 0);
+		return -EINVAL;
+	}
+	sink_buf.buf_end = (char *)sink_buf.buf_start + sink_buf_size;
+
+	cd->drc_func(mod, &source_buf, &sink_buf, frames);
+
+	/* commit the consumed and produced data */
+	source_release_data(source, source_bytes);
+	sink_commit_buffer(sink, sink_bytes);
 	return 0;
 }
 
@@ -367,6 +410,7 @@ static int drc_prepare(struct processing_module *mod,
 	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
 	channels = audio_stream_get_channels(&sinkb->stream);
 	rate = audio_stream_get_rate(&sinkb->stream);
+	cd->channels = channels;
 
 	/* Initialize DRC */
 	comp_info(dev, "source_format=%d", cd->source_format);
@@ -414,7 +458,7 @@ static int drc_reset(struct processing_module *mod)
 static const struct module_interface drc_interface = {
 	.init = drc_init,
 	.prepare = drc_prepare,
-	.process_audio_stream = drc_process,
+	.process = drc_process,
 	.set_configuration = drc_set_config,
 	.get_configuration = drc_get_config,
 	.reset = drc_reset,
