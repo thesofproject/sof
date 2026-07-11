@@ -211,12 +211,6 @@ function(sof_llext_build module)
 			${SOF_LLEXT_LINKER_DRIVER} --
 			${SOF_LLEXT_DRIVER_FLAGS} ${EXTRA_LINKER_PARAMS} $<TARGET_OBJECTS:${module}_llext_lib> ${EXTRA_LIBS}
 	)
-
-	add_llext_command(TARGET ${module}
-		POST_PKG
-		COMMAND ${PYTHON_EXECUTABLE} ${SOF_BASE}scripts/llext_offset_calc.py
-			-i ${proc_pkg_file} -s ${size_file}
-	)
 endfunction()
 
 # Initial SOF module will contain
