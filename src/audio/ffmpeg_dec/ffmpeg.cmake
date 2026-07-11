@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Cross-build decoder-only FFmpeg static libraries for the ffmpeg_dec module.
+#
+# Invokes FFmpeg's autotools build as an ExternalProject, cross-compiled with the
+# Zephyr target toolchain, enabling only the decoders selected in Kconfig. The
+# source comes from the west-pinned FFmpeg project (see west.yml). Produces
+# libavcodec/libavutil/libswresample .a under ${FFMPEG_INSTALL_DIR} for the LLEXT
+# to link, and defines the 'ffmpeg_ext' target it must depend on.
+
+include(ExternalProject)
+
+# --- 1. Locate the FFmpeg source (west module), overridable for local trees ---
+if(NOT DEFINED SOF_FFMPEG_SRC_DIR)
+	set(SOF_FFMPEG_SRC_DIR "${sof_top_dir}/../modules/audio/ffmpeg"
+	    CACHE PATH "FFmpeg source tree (west-pinned)")
+endif()
+cmake_path(NORMAL_PATH SOF_FFMPEG_SRC_DIR)
+if(NOT EXISTS "${SOF_FFMPEG_SRC_DIR}/configure")
+	message(FATAL_ERROR
+		"ffmpeg_dec: FFmpeg source not found at '${SOF_FFMPEG_SRC_DIR}'.\n"
+		"Run 'west update' (FFmpeg is pinned in west.yml) or pass "
+		"-DSOF_FFMPEG_SRC_DIR=<path-to-clean-ffmpeg-checkout>.")
+endif()
+
+# --- 2. Kconfig -> --enable-decoder / --enable-parser lists ---
+set(_ff_decoders "")
+set(_ff_parsers "")
+if(CONFIG_FFMPEG_DEC_FLAC)
+	list(APPEND _ff_decoders flac)
+	list(APPEND _ff_parsers  flac)
+endif()
+if(CONFIG_FFMPEG_DEC_AAC)
+	list(APPEND _ff_decoders aac aac_latm)
+	list(APPEND _ff_parsers  aac aac_latm)
+endif()
+if(CONFIG_FFMPEG_DEC_OPUS)
+	list(APPEND _ff_decoders opus)
+	list(APPEND _ff_parsers  opus)
+endif()
+if(NOT _ff_decoders)
+	message(FATAL_ERROR "ffmpeg_dec: no decoder selected (Kconfig FFMPEG_DEC_*)")
+endif()
+list(JOIN _ff_decoders "," _ff_dec_csv)
+list(JOIN _ff_parsers  "," _ff_par_csv)
+
+# --- 2b. Kconfig -> libavfilter audio filters (off unless a filter is chosen) ---
+set(_ff_avfilter_cfg --disable-avfilter)
+if(CONFIG_FFMPEG_BUILD_AVFILTER)
+	set(_ff_filters "")
+	if(CONFIG_FFMPEG_FILTER_AFFTDN)
+		list(APPEND _ff_filters afftdn)
+	endif()
+	list(JOIN _ff_filters "," _ff_filt_csv)
+	# abuffer/abuffersink feed/drain a filter graph; aformat negotiates format.
+	set(_ff_avfilter_cfg
+		--enable-avfilter
+		--enable-filter=abuffer,abuffersink,aformat,${_ff_filt_csv})
+	message(STATUS "ffmpeg_dec: enabling avfilter, filters [${_ff_filt_csv}]")
+endif()
+
+# --- 3. Derive the cross toolchain prefix from the Zephyr target compiler ---
+# e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-gcc
+#   -> prefix .../bin/xtensa-intel_ace30_ptl_zephyr-elf-
+get_filename_component(_tc_dir  "${CMAKE_C_COMPILER}" DIRECTORY)
+get_filename_component(_tc_name "${CMAKE_C_COMPILER}" NAME)
+string(REGEX REPLACE "gcc$" "" _tc_prefix_name "${_tc_name}")
+set(_ff_cross_prefix "${_tc_dir}/${_tc_prefix_name}")
+
+# GCC 14 (Zephyr SDK) promotes these to errors; FFmpeg 7.x trips them.
+set(_ff_extra_cflags "-fPIC -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration")
+
+set(FFMPEG_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-install" CACHE INTERNAL "ffmpeg_dec libs")
+
+# Hot/cold split: GCC emits av_cold (init/setup) functions into .text.unlikely.
+# We rename that to SOF's .cold (post-install, below) so the LLEXT loader places
+# it in DRAM. -mtext-section-literals interleaves each function's Xtensa L32R
+# literals into its text section (as SOF does for LLEXT module code) so the
+# renamed section carries its literals and L32R stays in range. We deliberately
+# do NOT use -ffunction-sections: keeping one .text.unlikely per object lets a
+# single objcopy --rename-section catch it, and lets .cold be placed by SOF's
+# existing orphan .cold handling (a hand-written linker script that forces .cold
+# ahead of .text overruns the SRAM budget and overlaps .rodata for big codecs).
+if(CONFIG_FFMPEG_DEC_COLD_SPLIT)
+	# -mlongcalls: cold code lives in DRAM (.cold, relocated by the loader) far
+	# from the hot SRAM .text, so calls between them exceed call8 range; longcalls
+	# emit an indirect L32R+CALLX with unlimited range. -mtext-section-literals
+	# keeps each function's literals in its own text section so the rename carries
+	# them. Coarse split: rename the whole FFmpeg .text (not just av_cold) into
+	# .cold so essentially all of libav* executes from DRAM, freeing SRAM.
+	set(_ff_extra_cflags "${_ff_extra_cflags} -mtext-section-literals -mlongcalls")
+	set(_ff_objcopy "${_ff_cross_prefix}objcopy")
+	set(_ff_cold_rename
+		COMMAND ${_ff_objcopy} --rename-section .text=.cold
+			${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
+		COMMAND ${_ff_objcopy} --rename-section .text=.cold
+			${FFMPEG_INSTALL_DIR}/lib/libavutil.a
+		COMMAND ${_ff_objcopy} --rename-section .text=.cold
+			${FFMPEG_INSTALL_DIR}/lib/libswresample.a)
+endif()
+
+# --- 4. Configure + make + install (out-of-tree; source must be clean) ---
+ExternalProject_Add(ffmpeg_ext
+	SOURCE_DIR      "${SOF_FFMPEG_SRC_DIR}"
+	BUILD_IN_SOURCE 0
+	CONFIGURE_COMMAND
+		${CMAKE_COMMAND} -E env "PATH=${_tc_dir}:$ENV{PATH}"
+		<SOURCE_DIR>/configure
+			--prefix=${FFMPEG_INSTALL_DIR}
+			--enable-cross-compile --target-os=none --arch=xtensa
+			--cross-prefix=${_ff_cross_prefix} --cc=${CMAKE_C_COMPILER}
+			--disable-asm --disable-all --disable-everything --disable-autodetect
+			--disable-programs --disable-doc --disable-network
+			--disable-avformat --disable-avdevice ${_ff_avfilter_cfg}
+			--disable-swscale --disable-postproc
+			--disable-pthreads --disable-w32threads --disable-os2threads
+			--disable-runtime-cpudetect --disable-debug
+			--enable-avcodec --enable-avutil --enable-swresample
+			--enable-decoder=${_ff_dec_csv} --enable-parser=${_ff_par_csv}
+			--enable-small --enable-pic
+			"--extra-cflags=${_ff_extra_cflags}"
+	BUILD_COMMAND
+		${CMAKE_COMMAND} -E env "PATH=${_tc_dir}:$ENV{PATH}" make -j 8
+	INSTALL_COMMAND make install
+		${_ff_cold_rename}
+	BUILD_BYPRODUCTS
+		${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
+		${FFMPEG_INSTALL_DIR}/lib/libavutil.a
+		${FFMPEG_INSTALL_DIR}/lib/libswresample.a
+)
+
+message(STATUS "ffmpeg_dec: cross-building FFmpeg decoders [${_ff_dec_csv}] from ${SOF_FFMPEG_SRC_DIR}")

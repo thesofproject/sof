@@ -59,6 +59,9 @@
 #if defined(CONFIG_COMP_FIR) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/eq_fir/eq_fir.toml>
 #endif
+#if defined(CONFIG_COMP_FFMPEG_DEC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/ffmpeg_dec/ffmpeg_dec.toml>
+#endif
 
 #ifdef CONFIG_SAMPLE_KEYPHRASE
 #include <samples/audio/detect_test.toml>
