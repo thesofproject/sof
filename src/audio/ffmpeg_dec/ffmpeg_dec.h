@@ -32,6 +32,7 @@ enum ffmpeg_dec_codec {
 	FFMPEG_DEC_CODEC_FLAC,
 	FFMPEG_DEC_CODEC_AAC,
 	FFMPEG_DEC_CODEC_OPUS,
+	FFMPEG_DEC_CODEC_MP3,
 };
 
 /* Default codec for a new instance, picked from the Kconfig selection until the
@@ -43,6 +44,8 @@ enum ffmpeg_dec_codec {
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_AAC
 #elif defined(CONFIG_FFMPEG_DEC_OPUS)
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_OPUS
+#elif defined(CONFIG_FFMPEG_DEC_MP3)
+#define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_MP3
 #else
 #define FFMPEG_DEC_DEFAULT_CODEC	FFMPEG_DEC_CODEC_NONE
 #endif

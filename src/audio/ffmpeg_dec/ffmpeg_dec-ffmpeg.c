@@ -101,6 +101,10 @@ static enum AVCodecID ffmpeg_dec_av_codec_id(enum ffmpeg_dec_codec codec)
 	case FFMPEG_DEC_CODEC_OPUS:
 		return AV_CODEC_ID_OPUS;
 #endif
+#if defined(CONFIG_FFMPEG_DEC_MP3)
+	case FFMPEG_DEC_CODEC_MP3:
+		return AV_CODEC_ID_MP3;
+#endif
 	default:
 		return AV_CODEC_ID_NONE;
 	}

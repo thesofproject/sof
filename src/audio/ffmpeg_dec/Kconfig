@@ -45,6 +45,12 @@ config FFMPEG_DEC_OPUS
 	  Opus (SILK+CELT) decoder. Pulls in the single-precision float math
 	  layer. Enables --enable-decoder=opus in the libavcodec build.
 
+config FFMPEG_DEC_MP3
+	bool "MP3 decoder"
+	help
+	  MPEG-1/2 Layer III decoder. Enables --enable-decoder=mp3 and the
+	  mpegaudio parser in the libavcodec build. Uses the float math layer.
+
 comment "FFmpeg audio filters (libavfilter; need the avfilter-graph backend to run)"
 
 config FFMPEG_FILTER_AFFTDN
@@ -75,7 +81,7 @@ config FFMPEG_BUILD_AVFILTER
 # built. Gates compilation of the fast single-precision libm (fastmathf.c).
 config FFMPEG_DEC_FLOAT_MATH
 	bool
-	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_FILTER_AFFTDN
+	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_DEC_MP3 || FFMPEG_FILTER_AFFTDN
 
 config FFMPEG_DEC_COLD_SPLIT
 	bool "Place cold FFmpeg code (av_cold init/setup) in DRAM [EXPERIMENTAL]"
