@@ -51,6 +51,15 @@ char *getenv(const char *name) { (void)name; return NULL; }
 unsigned long clock(void) { return 0; }
 void *gmtime_r(const void *timep, void *result) { (void)timep; (void)result; return NULL; }
 void *localtime(const void *timep) { (void)timep; return NULL; }
+void *localtime_r(const void *timep, void *result) { (void)timep; (void)result; return NULL; }
+
+/* iconv (avutil text/metadata charset conversion) - unused on the audio path. */
+void *iconv_open(const char *to, const char *from) { (void)to; (void)from; return (void *)-1; }
+int iconv_close(void *cd) { (void)cd; return 0; }
+size_t iconv(void *cd, char **in, size_t *inb, char **out, size_t *outb)
+{ (void)cd; (void)in; (void)inb; (void)out; (void)outb; return (size_t)-1; }
+int __xpg_strerror_r(int errnum, char *buf, size_t buflen)
+{ (void)errnum; if (buflen) buf[0] = '\0'; return 0; }
 long mktime(void *tm) { (void)tm; return -1; }
 size_t strftime(char *s, size_t max, const char *fmt, const void *tm)
 { (void)fmt; (void)tm; if (max) s[0] = '\0'; return 0; }
@@ -211,6 +220,8 @@ double sqrt(double x)             { (void)x; return 0; }
 double tan(double x)              { (void)x; return 0; }
 double tanh(double x)             { (void)x; return 0; }
 double trunc(double x)            { (void)x; return 0; }
+double modf(double x, double *iptr)
+{ long long i = (long long)x; if (iptr) *iptr = (double)i; return x - (double)i; }
 
 /* Small real libm helpers pulled in by libavfilter (afftdn). fmax/fmin/rint
  * are exact; log10 is routed through the fast single-precision log2f (see

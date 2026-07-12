@@ -23,9 +23,10 @@ SOF_DEFINE_REG_UUID(ffmpeg_dec);
 LOG_MODULE_REGISTER(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
 
 /* Decoder-mode ops (compressed -> PCM). In filter mode the module uses the
- * avfilter-graph PCM effect ops from ffmpeg_dec-filter.c instead.
+ * avfilter-graph PCM effect ops (ffmpeg_dec-filter.c); in encode mode the
+ * PCM->compressed ops (ffmpeg_dec-encode.c) instead.
  */
-#if !CONFIG_FFMPEG_DEC_FILTER_MODE
+#if !CONFIG_FFMPEG_DEC_FILTER_MODE && !CONFIG_FFMPEG_DEC_ENCODE_MODE
 int ffmpeg_dec_store_extradata(struct processing_module *mod,
 			       const uint8_t *data, size_t size)
 {
@@ -277,10 +278,18 @@ __cold static int ffmpeg_dec_free(struct processing_module *mod)
 	mod_free(mod, cd);
 	return 0;
 }
-#endif /* !CONFIG_FFMPEG_DEC_FILTER_MODE */
+#endif /* !CONFIG_FFMPEG_DEC_FILTER_MODE && !CONFIG_FFMPEG_DEC_ENCODE_MODE */
 
 /* This defines the module operations */
-#if CONFIG_FFMPEG_DEC_FILTER_MODE
+#if CONFIG_FFMPEG_DEC_ENCODE_MODE
+/* PCM -> compressed encoder (ffmpeg_dec-encode.c). */
+static const struct module_interface ffmpeg_dec_interface = {
+	.init = ffmpeg_enc_mod_init,
+	.prepare = ffmpeg_enc_mod_prepare,
+	.process_raw_data = ffmpeg_enc_mod_process,
+	.free = ffmpeg_enc_mod_free
+};
+#elif CONFIG_FFMPEG_DEC_FILTER_MODE
 /* PCM source/sink effect driving an avfilter graph (ffmpeg_dec-filter.c). */
 static const struct module_interface ffmpeg_dec_interface = {
 	.init = ffmpeg_af_mod_init,

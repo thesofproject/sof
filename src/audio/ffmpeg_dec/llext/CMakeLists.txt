@@ -21,16 +21,27 @@ else()
 		../ffmpeg_dec-ffmpeg.c
 		../ffmpeg_dec-shims.c
 		../ffmpeg_dec-alloc.c)
-	if(CONFIG_FFMPEG_DEC_FLOAT_MATH)
-		list(APPEND ffmpeg_dec_srcs ../fastmathf.c)
-	endif()
+	# fastmathf provides the single-precision libm the codecs need AND sofm_log2f
+	# used by the shims' log10(); always built for the real (non-stub) backend.
+	list(APPEND ffmpeg_dec_srcs ../fastmathf.c)
 
 	# avfilter graph backend (PCM effects, e.g. afftdn noise reduction). Pulls
 	# libavfilter into the link; it must precede the libs it depends on.
 	set(ffmpeg_dec_libs avcodec swresample avutil)
+	set(ffmpeg_dec_libpaths "${FFMPEG_INSTALL_DIR}/lib")
 	if(CONFIG_FFMPEG_BUILD_AVFILTER)
 		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-filter.c)
 		set(ffmpeg_dec_libs avfilter ${ffmpeg_dec_libs})
+	endif()
+
+	# Encode mode: PCM->compressed backend + libshine (linked AFTER libavcodec,
+	# which references it), from its own cross-build install dir.
+	if(CONFIG_FFMPEG_DEC_ENCODE_MODE)
+		list(APPEND ffmpeg_dec_srcs ../ffmpeg_dec-encode.c)
+	endif()
+	if(CONFIG_FFMPEG_ENC_MP3)
+		list(APPEND ffmpeg_dec_libs shine)
+		list(APPEND ffmpeg_dec_libpaths "${SHINE_INSTALL}/lib")
 	endif()
 
 	# Cold split: module code must also use -mlongcalls to reach FFmpeg code
@@ -43,7 +54,7 @@ else()
 	sof_llext_build("ffmpeg_dec"
 		SOURCES ${ffmpeg_dec_srcs}
 		INCLUDES  "${FFMPEG_INSTALL_DIR}/include"
-		LIBS_PATH "${FFMPEG_INSTALL_DIR}/lib"
+		LIBS_PATH ${ffmpeg_dec_libpaths}
 		LIBS ${ffmpeg_dec_libs}
 		CFLAGS ${ffmpeg_dec_cflags}
 		LIB openmodules

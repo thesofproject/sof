@@ -77,3 +77,27 @@ void *realloc(void *ptr, size_t size)
 
 	return new_ptr;
 }
+
+void *calloc(size_t nmemb, size_t size)
+{
+	size_t total = nmemb * size;
+	void *ptr = malloc(total);
+
+	if (ptr)
+		memset(ptr, 0, total);
+	return ptr;
+}
+
+/* av_malloc may use posix_memalign. Our allocator returns 16-byte-aligned blocks,
+ * which is sufficient for the --disable-asm (no-SIMD) build; larger alignment
+ * requests are satisfied at 16 bytes. */
+int posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+	void *ptr = malloc(size);
+
+	(void)alignment;
+	if (!ptr)
+		return 12;	/* ENOMEM */
+	*memptr = ptr;
+	return 0;
+}

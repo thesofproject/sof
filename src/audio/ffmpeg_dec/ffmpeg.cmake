@@ -42,11 +42,16 @@ if(CONFIG_FFMPEG_DEC_MP3)
 	list(APPEND _ff_decoders mp3)
 	list(APPEND _ff_parsers  mpegaudio)
 endif()
-if(NOT _ff_decoders)
-	message(FATAL_ERROR "ffmpeg_dec: no decoder selected (Kconfig FFMPEG_DEC_*)")
+# A decoder is required unless this is an encoder-only build.
+if(NOT _ff_decoders AND NOT CONFIG_FFMPEG_ENC_MP3)
+	message(FATAL_ERROR "ffmpeg_dec: no decoder or encoder selected (Kconfig FFMPEG_DEC_*/FFMPEG_ENC_*)")
 endif()
-list(JOIN _ff_decoders "," _ff_dec_csv)
-list(JOIN _ff_parsers  "," _ff_par_csv)
+set(_ff_dec_cfg "")
+if(_ff_decoders)
+	list(JOIN _ff_decoders "," _ff_dec_csv)
+	list(JOIN _ff_parsers  "," _ff_par_csv)
+	set(_ff_dec_cfg --enable-decoder=${_ff_dec_csv} --enable-parser=${_ff_par_csv})
+endif()
 
 # --- 2b. Kconfig -> libavfilter audio filters (off unless a filter is chosen) ---
 set(_ff_avfilter_cfg --disable-avfilter)
@@ -182,7 +187,7 @@ ExternalProject_Add(ffmpeg_ext
 			--disable-pthreads --disable-w32threads --disable-os2threads
 			--disable-runtime-cpudetect --disable-debug
 			--enable-avcodec --enable-avutil --enable-swresample
-			--enable-decoder=${_ff_dec_csv} --enable-parser=${_ff_par_csv}
+			${_ff_dec_cfg}
 			${_ff_shine_cfg}
 			--enable-small --enable-pic
 			"--extra-cflags=${_ff_extra_cflags}"

@@ -71,6 +71,16 @@ config FFMPEG_FILTER_AFFTDN
 	  once the module gains an avfilter-graph backend; selecting it here just
 	  builds the filter into the archive.
 
+config FFMPEG_DEC_ENCODE_MODE
+	bool "Build as an audio encoder (PCM -> compressed) instead of a decoder [EXPERIMENTAL]"
+	select FFMPEG_ENC_MP3
+	help
+	  Build the module as an encoder: PCM in, compressed elementary stream out
+	  (MP3 via libshine), driven with avcodec_send_frame/avcodec_receive_packet
+	  (the reverse of the decoder). Selects the libshine MP3 encoder. Do not set
+	  together with FFMPEG_DEC_FILTER_MODE. Structurally complete and load-ready;
+	  real-time framing (MP3 fixed 1152-sample frames) needs on-hardware tuning.
+
 config FFMPEG_DEC_FILTER_MODE
 	bool "Build as a PCM filter effect instead of a decoder [EXPERIMENTAL]"
 	select FFMPEG_FILTER_AFFTDN

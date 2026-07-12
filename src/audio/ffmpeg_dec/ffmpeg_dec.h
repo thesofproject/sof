@@ -116,6 +116,16 @@ struct ffmpeg_dec_comp_data {
 	void *af_graph;
 };
 
+/* Encode-mode module ops (PCM -> compressed), in ffmpeg_dec-encode.c. */
+int ffmpeg_enc_mod_init(struct processing_module *mod);
+int ffmpeg_enc_mod_prepare(struct processing_module *mod,
+			   struct sof_source **sources, int num_of_sources,
+			   struct sof_sink **sinks, int num_of_sinks);
+int ffmpeg_enc_mod_process(struct processing_module *mod,
+			   struct input_stream_buffer *input_buffers, int num_input_buffers,
+			   struct output_stream_buffer *output_buffers, int num_output_buffers);
+int ffmpeg_enc_mod_free(struct processing_module *mod);
+
 /* Filter-mode module ops (PCM source/sink effect), in ffmpeg_dec-filter.c. */
 int ffmpeg_af_mod_init(struct processing_module *mod);
 int ffmpeg_af_mod_prepare(struct processing_module *mod,
