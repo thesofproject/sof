@@ -17,6 +17,9 @@ manifest:
     # the 'revision:' SHA below.
     - name: ffmpeg
       url-base: https://github.com/lgirdwood
+    # libshine fixed-point MP3 encoder for FFMPEG_ENC_MP3 (upstream mirror).
+    - name: shine
+      url-base: https://github.com/toots
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -56,6 +59,14 @@ manifest:
       path: modules/audio/ffmpeg
       revision: bc25d8d606e63c1ae8663fc0523adad908bc29e5
       remote: ffmpeg
+
+    # libshine: small fixed-point MP3 encoder for FFMPEG_ENC_MP3 (FFmpeg has no
+    # native MP3 encoder). Cross-built by ffmpeg.cmake.
+    - name: shine
+      repo-path: shine
+      path: modules/audio/shine
+      revision: ab5e3526b64af1a2eaa43aa6f441a7312e013519
+      remote: shine
 
     - name: zephyr
       repo-path: zephyr

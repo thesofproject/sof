@@ -103,12 +103,74 @@ if(CONFIG_FFMPEG_DEC_COLD_SPLIT)
 			${FFMPEG_INSTALL_DIR}/lib/libswresample.a)
 endif()
 
+# --- 3b. MP3 encoder via libshine (fixed-point; FFmpeg has no native one) ---
+set(_ff_cfg_env "PATH=${_tc_dir}:$ENV{PATH}")
+set(_ff_shine_cfg "")
+set(_ff_shine_dep "")
+if(CONFIG_FFMPEG_ENC_MP3)
+	set(SHINE_SRC "${sof_top_dir}/../modules/audio/shine")
+	if(NOT EXISTS "${SHINE_SRC}/src/lib/layer3.h")
+		message(FATAL_ERROR "ffmpeg_dec: libshine source not at '${SHINE_SRC}'; run 'west update'")
+	endif()
+	set(SHINE_INSTALL "${CMAKE_CURRENT_BINARY_DIR}/shine-install")
+	file(MAKE_DIRECTORY "${SHINE_INSTALL}/lib/pkgconfig" "${SHINE_INSTALL}/include/shine")
+	# pkg-config file for FFmpeg's require_pkg_config libshine.
+	file(WRITE "${SHINE_INSTALL}/lib/pkgconfig/shine.pc"
+"prefix=${SHINE_INSTALL}
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+Name: shine
+Description: Shine fixed-point MP3 encoder
+Version: 3.1.1
+Libs: -L\${libdir} -lshine
+Cflags: -I\${includedir}
+")
+	# FFmpeg's -lshine link *test* pulls newlib malloc -> Zephyr runtime syms
+	# (z_errno_wrap, ...) that only exist at module load. Provide dummies so the
+	# configure test links; --extra-ldflags only affects tests, not the .a build.
+	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c"
+"int z_errno_wrap(void){return 0;}
+void *stdout;
+int open(const char *p, int f, ...){return -1;}
+void *sbrk(int i){return (void *)-1;}
+")
+	# libshine's lib needs no config.h; build the objects directly and archive
+	# (its autotools CLI/shared link cannot work bare-metal).
+	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/shine-build.sh"
+"#!/bin/sh
+set -e
+export PATH=${_tc_dir}:\$PATH
+mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/shine-obj
+for f in ${SHINE_SRC}/src/lib/*.c; do
+	${CMAKE_C_COMPILER} -O2 -fPIC -mtext-section-literals -DSHINE_HAVE_BSWAP_H \\
+		-I${SHINE_SRC}/src/lib -c \"\$f\" \\
+		-o ${CMAKE_CURRENT_BINARY_DIR}/shine-obj/\$(basename \"\$f\").o
+done
+${_ff_cross_prefix}ar rcs ${SHINE_INSTALL}/lib/libshine.a ${CMAKE_CURRENT_BINARY_DIR}/shine-obj/*.o
+cp ${SHINE_SRC}/src/lib/layer3.h ${SHINE_INSTALL}/include/shine/layer3.h
+${CMAKE_C_COMPILER} -fPIC -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
+	-o ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o
+")
+	add_custom_command(
+		OUTPUT "${SHINE_INSTALL}/lib/libshine.a" "${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o"
+		COMMAND sh "${CMAKE_CURRENT_BINARY_DIR}/shine-build.sh"
+		VERBATIM)
+	add_custom_target(shine_ext DEPENDS "${SHINE_INSTALL}/lib/libshine.a")
+
+	set(_ff_cfg_env "PATH=${_tc_dir}:$ENV{PATH}" "PKG_CONFIG_PATH=${SHINE_INSTALL}/lib/pkgconfig")
+	set(_ff_shine_cfg --enable-libshine --enable-encoder=libshine --pkg-config=pkg-config
+		"--extra-ldflags=${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o")
+	set(_ff_shine_dep shine_ext)
+	message(STATUS "ffmpeg_dec: enabling MP3 encoder via libshine (${SHINE_SRC})")
+endif()
+
 # --- 4. Configure + make + install (out-of-tree; source must be clean) ---
 ExternalProject_Add(ffmpeg_ext
+	DEPENDS ${_ff_shine_dep}
 	SOURCE_DIR      "${SOF_FFMPEG_SRC_DIR}"
 	BUILD_IN_SOURCE 0
 	CONFIGURE_COMMAND
-		${CMAKE_COMMAND} -E env "PATH=${_tc_dir}:$ENV{PATH}"
+		${CMAKE_COMMAND} -E env ${_ff_cfg_env}
 		<SOURCE_DIR>/configure
 			--prefix=${FFMPEG_INSTALL_DIR}
 			--enable-cross-compile --target-os=none --arch=xtensa
@@ -121,6 +183,7 @@ ExternalProject_Add(ffmpeg_ext
 			--disable-runtime-cpudetect --disable-debug
 			--enable-avcodec --enable-avutil --enable-swresample
 			--enable-decoder=${_ff_dec_csv} --enable-parser=${_ff_par_csv}
+			${_ff_shine_cfg}
 			--enable-small --enable-pic
 			"--extra-cflags=${_ff_extra_cflags}"
 	BUILD_COMMAND

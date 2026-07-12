@@ -51,6 +51,15 @@ config FFMPEG_DEC_MP3
 	  MPEG-1/2 Layer III decoder. Enables --enable-decoder=mp3 and the
 	  mpegaudio parser in the libavcodec build. Uses the float math layer.
 
+config FFMPEG_ENC_MP3
+	bool "MP3 encoder (libshine, fixed-point)"
+	help
+	  MPEG-1 Layer III encoder via libshine, a small fixed-point encoder
+	  (west-pinned; FFmpeg has no native MP3 encoder). Cross-builds libshine
+	  and enables --enable-libshine --enable-encoder=libshine. Fixed-point, so
+	  no float math dependency. The encoder is built into the archive; a module
+	  encode path (PCM->MP3) is a separate build mode.
+
 comment "FFmpeg audio filters (libavfilter; need the avfilter-graph backend to run)"
 
 config FFMPEG_FILTER_AFFTDN
