@@ -389,7 +389,11 @@ static int llext_manager_link(const char *name,
 		 */
 		struct llext_load_param ldr_parm = {
 			.relocate_local = !*llext,
+#if defined(CONFIG_SOC_ACE30)
+			.pre_located = false,
+#else
 			.pre_located = true,
+#endif
 			.section_detached = llext_manager_section_detached,
 			.keep_section_info = true,
 		};
