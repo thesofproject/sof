@@ -16,6 +16,7 @@
 #include <ipc4/gateway.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
+#include <rtos/alloc.h>
 #include <rtos/task.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
@@ -657,6 +658,70 @@ static int chain_task_trigger(struct comp_dev *dev, int cmd)
 	}
 }
 
+/*
+ * comp_dev and private data allocation helpers. For user-space LL both
+ * objects must live on the user heap so the (unprivileged) user LL thread
+ * can access them; otherwise the normal component/rmalloc paths are used.
+ */
+#ifdef CONFIG_SOF_USERSPACE_LL
+__cold static struct comp_dev *chain_dev_alloc(const struct comp_driver *drv)
+{
+	struct comp_dev *dev;
+
+	dev = sof_heap_alloc(sof_sys_user_heap_get(),
+			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+			     sizeof(*dev), 0);
+	if (!dev)
+		return NULL;
+
+	memset(dev, 0, sizeof(*dev));
+	comp_init(drv, dev, sizeof(*dev));
+
+	return dev;
+}
+
+__cold static struct chain_dma_data *chain_cd_alloc(void)
+{
+	struct chain_dma_data *cd;
+
+	cd = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER, sizeof(*cd), 0);
+	if (cd)
+		memset(cd, 0, sizeof(*cd));
+
+	return cd;
+}
+
+__cold static void chain_dev_free(struct comp_dev *dev)
+{
+	sof_heap_free(sof_sys_user_heap_get(), dev);
+}
+
+__cold static void chain_cd_free(struct chain_dma_data *cd)
+{
+	sof_heap_free(sof_sys_user_heap_get(), cd);
+}
+#else
+__cold static struct comp_dev *chain_dev_alloc(const struct comp_driver *drv)
+{
+	return comp_alloc(drv, sizeof(struct comp_dev));
+}
+
+__cold static struct chain_dma_data *chain_cd_alloc(void)
+{
+	return rzalloc(SOF_MEM_FLAG_USER, sizeof(struct chain_dma_data));
+}
+
+__cold static void chain_dev_free(struct comp_dev *dev)
+{
+	comp_free_device(dev);
+}
+
+__cold static void chain_cd_free(struct chain_dma_data *cd)
+{
+	rfree(cd);
+}
+#endif
+
 __cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 						 const struct comp_ipc_config *ipc_config,
 						 const void *ipc_specific_config)
@@ -675,11 +740,11 @@ __cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 	if (host_dma_id >= max_chain_number)
 		return NULL;
 
-	dev = comp_alloc(drv, sizeof(*dev));
+	dev = chain_dev_alloc(drv);
 	if (!dev)
 		return NULL;
 
-	cd = rzalloc(SOF_MEM_FLAG_USER, sizeof(*cd));
+	cd = chain_cd_alloc();
 	if (!cd)
 		goto error;
 
@@ -695,9 +760,9 @@ __cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
 	if (!ret)
 		return dev;
 
-	rfree(cd);
+	chain_cd_free(cd);
 error:
-	comp_free_device(dev);
+	chain_dev_free(dev);
 	return NULL;
 }
 
@@ -708,8 +773,8 @@ __cold static void chain_task_free(struct comp_dev *dev)
 	assert_can_be_cold();
 
 	chain_release(dev);
-	rfree(cd);
-	comp_free_device(dev);
+	chain_cd_free(cd);
+	chain_dev_free(dev);
 }
 
 static const struct comp_driver comp_chain_dma = {
