@@ -15,6 +15,7 @@
 #include <ipc/dai.h>
 #include <ipc4/gateway.h>
 #include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/alloc.h>
 #include <rtos/task.h>
@@ -537,6 +538,7 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 				  uint32_t fifo_size)
 {
 	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	struct mod_alloc_ctx *alloc_ctx = NULL;
 	uint32_t addr_align;
 	size_t buff_size;
 	void *buff_addr;
@@ -615,8 +617,14 @@ __cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uin
 	}
 
 	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	alloc_ctx = ipc_get()->ll_alloc;
+#endif
+
 	/* allocate not shared buffer */
-	cd->dma_buffer = buffer_alloc(NULL, fifo_size, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
+	cd->dma_buffer = buffer_alloc(alloc_ctx, fifo_size,
+				      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
 				      addr_align, BUFFER_USAGE_NOT_SHARED);
 
 	if (!cd->dma_buffer) {
