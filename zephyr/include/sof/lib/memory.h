@@ -7,6 +7,7 @@
 #define __SOF_LIB_MEMORY_H__
 
 #include <platform/lib/memory.h>
+#include <stdbool.h>
 
 #ifndef __cold
 #define __cold
