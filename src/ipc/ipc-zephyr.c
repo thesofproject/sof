@@ -9,7 +9,7 @@
 //         Andrey Borisovich <andrey.borisovich@intel.com>
 //         Adrian Warecki <adrian.warecki@intel.com>
 
-#include <autoconf.h>
+#include <zephyr/autoconf.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/ipc/ipc_service.h>

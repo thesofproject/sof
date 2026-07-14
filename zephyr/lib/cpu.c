@@ -27,7 +27,7 @@ static uint32_t mic_disable_status;
 #include "../audio/copier/copier.h"
 
 /* Zephyr includes */
-#include <version.h>
+#include <zephyr/version.h>
 #include <zephyr/kernel.h>
 #include <zephyr/kernel/smp.h>
 #include <zephyr/device.h>

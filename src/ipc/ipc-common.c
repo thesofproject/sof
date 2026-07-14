@@ -330,10 +330,12 @@ __cold int ipc_init(struct sof *sof)
 #endif
 
 #ifdef __ZEPHYR__
-	struct k_thread *thread = &sof->ipc->ipc_send_wq.thread;
+	k_tid_t thread;
 
 	k_work_queue_start(&sof->ipc->ipc_send_wq, ipc_send_wq_stack,
 			   K_THREAD_STACK_SIZEOF(ipc_send_wq_stack), 1, NULL);
+
+	thread = k_work_queue_thread_get(&sof->ipc->ipc_send_wq);
 
 	k_thread_suspend(thread);
 
