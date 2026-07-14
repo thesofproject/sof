@@ -90,6 +90,7 @@ static inline const struct ipc4_pipeline_set_state_data *ipc4_get_pipeline_data(
 /*
  * Global IPC Operations.
  */
+#ifndef CONFIG_SOF_USERSPACE_LL
 __cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc *ipc = ipc_get();
@@ -98,7 +99,9 @@ __cold static int ipc4_new_pipeline(struct ipc4_message_request *ipc4)
 
 	return ipc_pipeline_new(ipc, (ipc_pipe_new *)ipc4);
 }
+#endif
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 __cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_pipeline_delete *pipe;
@@ -111,6 +114,7 @@ __cold static int ipc4_delete_pipeline(struct ipc4_message_request *ipc4)
 
 	return ipc_pipeline_free(ipc, pipe->primary.r.instance_id);
 }
+#endif
 
 static int ipc4_pcm_params(struct ipc_comp_dev *pcm_dev)
 {
@@ -689,13 +693,25 @@ int ipc4_user_process_glb_message(struct ipc4_message_request *ipc4,
 
 	/* pipeline settings */
 	case SOF_IPC4_GLB_CREATE_PIPELINE:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+#else
 		ret = ipc4_new_pipeline(ipc4);
+#endif
 		break;
 	case SOF_IPC4_GLB_DELETE_PIPELINE:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+#else
 		ret = ipc4_delete_pipeline(ipc4);
+#endif
 		break;
 	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+#else
 		ret = ipc4_set_pipeline_state(ipc4);
+#endif
 		break;
 
 	case SOF_IPC4_GLB_GET_PIPELINE_STATE:
@@ -775,6 +791,7 @@ __cold static int ipc4_init_module_instance(struct ipc4_message_request *ipc4)
 	return 0;
 }
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 __cold static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_bind_unbind bu;
@@ -812,6 +829,7 @@ __cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 
 	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)&bu);
 }
+#endif /* !CONFIG_SOF_USERSPACE_LL */
 
 /**
  * @brief Process MOD_CONFIG_GET or MOD_CONFIG_SET in any execution context.
@@ -884,6 +902,7 @@ __cold int ipc4_process_module_config(struct ipc4_message_request *ipc4,
 	return ret;
 }
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4, bool set)
 {
 	uint32_t reply_ext;
@@ -896,6 +915,7 @@ static int ipc4_set_get_config_module_instance(struct ipc4_message_request *ipc4
 
 	return ret;
 }
+#endif /* !CONFIG_SOF_USERSPACE_LL */
 
 __cold static void ipc4_prepare_for_kcontrol_get(struct comp_dev *dev, uint8_t param_id,
 						 char *data_out, uint32_t data_size)
@@ -1462,6 +1482,7 @@ __cold static int ipc4_set_large_config_module_instance(struct ipc4_message_requ
 	return ret;
 }
 
+#ifndef CONFIG_SOF_USERSPACE_LL
 __cold static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 {
 	struct ipc4_module_delete_instance module;
@@ -1489,6 +1510,7 @@ __cold static int ipc4_delete_module_instance(struct ipc4_message_request *ipc4)
 
 	return ret;
 }
+#endif /* !CONFIG_SOF_USERSPACE_LL */
 
 __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 					    struct ipc_msg *reply)
@@ -1503,28 +1525,155 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 
 	switch (type) {
 	case SOF_IPC4_MOD_INIT_INSTANCE:
+#ifdef CONFIG_SOF_USERSPACE_LL
+	{
+		/* User-space init: kernel does driver lookup only (requires
+		 * access to IMR manifest and driver list in kernel memory).
+		 * Component creation (drv->ops.create) runs in user thread
+		 * so untrusted module code does not execute in kernel context.
+		 * Cross-core creation stays fully in kernel.
+		 */
+		struct ipc4_module_init_instance mi;
+
+		BUILD_ASSERT(sizeof(struct comp_driver) + sizeof(struct tr_ctx) <=
+			     sizeof(((struct ipc_user *)0)->init_drv_data),
+			     "ipc_user.init_drv_data too small for driver copy");
+
+		ret = memcpy_s(&mi, sizeof(mi), ipc4, sizeof(*ipc4));
+		if (ret < 0)
+			break;
+
+		if (!cpu_is_me(mi.extension.r.core_id)) {
+			ret = ipc4_init_module_instance(ipc4);
+		} else {
+			struct ipc *ipc = ipc_get();
+			uint32_t comp_id = IPC4_COMP_ID(mi.primary.r.module_id,
+							mi.primary.r.instance_id);
+			const struct comp_driver *drv = ipc4_get_comp_drv(
+				IPC4_MOD_ID(comp_id));
+			struct ipc_user *pdata = ipc->ipc_user_pdata;
+
+			if (!drv) {
+				ret = IPC4_MOD_NOT_INITIALIZED;
+				break;
+			}
+
+			/* Copy comp_driver and tr_ctx into user-accessible ipc_user buffer
+			 * originals are in kernel .rodata/.data and not readable from user mode.
+			 */
+			struct comp_driver *drv_copy = (struct comp_driver *)pdata->init_drv_data;
+			struct tr_ctx *tctx_copy =
+				(struct tr_ctx *)(pdata->init_drv_data +
+						sizeof(struct comp_driver));
+
+			ret = memcpy_s(drv_copy, sizeof(*drv_copy), drv, sizeof(*drv));
+			if (!ret && drv->tctx) {
+				ret = memcpy_s(tctx_copy, sizeof(*tctx_copy),
+					       drv->tctx, sizeof(*drv->tctx));
+				drv_copy->tctx = tctx_copy;
+			}
+
+			if (ret < 0)
+				break;
+
+			pdata->init_drv = drv;
+			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+		}
+	}
+#else
 		ret = ipc4_init_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_CONFIG_GET:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		/* Forward to user thread for privilege-separated execution */
+		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+		if (!ret) {
+			struct ipc *ipc = ipc_get();
+			struct ipc_user *pdata = ipc->ipc_user_pdata;
+
+			msg_reply->extension = pdata->reply_ext;
+		}
+#else
 		ret = ipc4_set_get_config_module_instance(ipc4, false);
+#endif
 		break;
 	case SOF_IPC4_MOD_CONFIG_SET:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		/* Forward to user thread for privilege-separated execution */
+		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+#else
 		ret = ipc4_set_get_config_module_instance(ipc4, true);
+#endif
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_GET:
+#ifdef CONFIG_SOF_USERSPACE_LL
+	{
+		struct ipc4_module_large_config config;
+
+		memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+		if (config.primary.r.module_id) {
+			/* Module case: forward to user thread */
+			ret = ipc_user_forward_cmd(ipc4->primary.dat,
+						   ipc4->extension.dat);
+			if (!ret) {
+				struct ipc *ipc = ipc_get();
+				struct ipc_user *pdata = ipc->ipc_user_pdata;
+
+				msg_reply->extension = pdata->reply_ext;
+				msg_reply->tx_size = pdata->reply_tx_size;
+				msg_reply->tx_data = pdata->reply_tx_data;
+			}
+		} else {
+			/* Base firmware (module_id==0): keep in kernel —
+			 * ipc4_get_comp_drv() accesses IMR manifest which
+			 * has no user-space partition.
+			 */
+			ret = ipc4_get_large_config_module_instance(ipc4);
+		}
+	}
+#else
 		ret = ipc4_get_large_config_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_LARGE_CONFIG_SET:
+#ifdef CONFIG_SOF_USERSPACE_LL
+	{
+		struct ipc4_module_large_config config;
+
+		memcpy_s(&config, sizeof(config), ipc4, sizeof(*ipc4));
+		if (config.primary.r.module_id) {
+			ret = ipc_user_forward_cmd(ipc4->primary.dat,
+						   ipc4->extension.dat);
+		} else {
+			/* Base firmware: keep in kernel (IMR access) */
+			ret = ipc4_set_large_config_module_instance(ipc4);
+		}
+	}
+#else
 		ret = ipc4_set_large_config_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_BIND:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+#else
 		ret = ipc4_bind_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_UNBIND:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+#else
 		ret = ipc4_unbind_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_DELETE_INSTANCE:
+#ifdef CONFIG_SOF_USERSPACE_LL
+		ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat);
+#else
 		ret = ipc4_delete_module_instance(ipc4);
+#endif
 		break;
 	case SOF_IPC4_MOD_ENTER_MODULE_RESTORE:
 	case SOF_IPC4_MOD_EXIT_MODULE_RESTORE:
