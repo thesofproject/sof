@@ -506,11 +506,6 @@ __cold int ipc_init(struct sof *sof)
 
 	tr_dbg(&ipc_tr, "entry");
 
-#if CONFIG_SOF_BOOT_TEST_STANDALONE
-	LOG_INF("SOF_BOOT_TEST_STANDALONE, skipping platform IPC init.");
-	return 0;
-#endif
-
 #ifdef CONFIG_SOF_USERSPACE_LL
 	heap = zephyr_ll_user_heap();
 
@@ -558,6 +553,11 @@ __cold int ipc_init(struct sof *sof)
 	io_perf_monitor_init_data(&ipc->io_perf_in_msg_count, &init_data);
 	init_data.direction = IO_PERF_OUTPUT_DIRECTION;
 	io_perf_monitor_init_data(&ipc->io_perf_out_msg_count, &init_data);
+#endif
+
+#if CONFIG_SOF_BOOT_TEST_STANDALONE
+	LOG_INF("SOF_BOOT_TEST_STANDALONE, disabling IPC.");
+	return 0;
 #endif
 
 #ifdef __ZEPHYR__
