@@ -1537,3 +1537,148 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 
 	return ret;
 }
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+/*
+ * IPC4 implementation of the user-thread dispatch hook. Runs in the
+ * user-space IPC thread; reconstructs the IPC4 message from the forwarded
+ * words and executes the privilege-separated part of each command.
+ */
+int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
+{
+	struct ipc4_message_request msg;
+	int result = -EINVAL;
+
+	/* Reconstruct the IPC4 message from copied words */
+	msg.primary.dat = ipc_user->ipc_msg_pri;
+	msg.extension.dat = ipc_user->ipc_msg_ext;
+
+	ipc_user->reply_ext = 0;
+
+	if (msg.primary.r.msg_tgt == SOF_IPC4_MESSAGE_TARGET_MODULE_MSG) {
+		/* Module message dispatch */
+		switch (msg.primary.r.type) {
+		case SOF_IPC4_MOD_CONFIG_GET:
+			result = ipc4_process_module_config(&msg, false,
+							    &ipc_user->reply_ext);
+			break;
+		case SOF_IPC4_MOD_CONFIG_SET:
+			result = ipc4_process_module_config(&msg, true, NULL);
+			break;
+		case SOF_IPC4_MOD_BIND: {
+			struct ipc4_module_bind_unbind bu;
+
+			result = memcpy_s(&bu, sizeof(bu), &msg, sizeof(msg));
+			if (result < 0)
+				break;
+
+			result = ipc_comp_connect(ipc_user->ipc,
+						  (ipc_pipe_comp_connect *)&bu);
+			break;
+		}
+		case SOF_IPC4_MOD_UNBIND: {
+			struct ipc4_module_bind_unbind bu;
+
+			result = memcpy_s(&bu, sizeof(bu), &msg, sizeof(msg));
+			if (result < 0)
+				break;
+
+			result = ipc_comp_disconnect(ipc_user->ipc,
+						     (ipc_pipe_comp_connect *)&bu);
+			break;
+		}
+		case SOF_IPC4_MOD_INIT_INSTANCE: {
+			/* User thread creates the component —
+			 * drv->ops.create() runs in user-space so untrusted
+			 * module code does not execute with kernel privileges.
+			 *
+			 * init_drv = original kernel pointer
+			 * init_drv_data = user-accessible copy
+			 */
+			const struct comp_driver *orig_drv = ipc_user->init_drv;
+			const struct comp_driver *drv_copy =
+				(const struct comp_driver *)ipc_user->init_drv_data;
+			struct comp_dev *dev;
+
+			ipc_user->init_drv = NULL;
+			if (!orig_drv) {
+				result = IPC4_MOD_NOT_INITIALIZED;
+				break;
+			}
+
+			dev = comp_new_ipc4_user(&msg, drv_copy);
+			if (!dev) {
+				result = IPC4_MOD_NOT_INITIALIZED;
+				break;
+			}
+
+			/* Restore original kernel driver pointer. comp_init()
+			 * set dev->drv to the copy; runtime code expects the
+			 * canonical kernel address.
+			 */
+			dev->drv = orig_drv;
+
+			result = ipc4_add_comp_dev(dev);
+			if (result != IPC4_SUCCESS)
+				break;
+
+			comp_update_ibs_obs_cpc(dev);
+			result = 0;
+			break;
+		}
+		case SOF_IPC4_MOD_DELETE_INSTANCE: {
+			struct ipc4_module_delete_instance module;
+			uint32_t comp_id;
+
+			memcpy_s(&module, sizeof(module), &msg, sizeof(msg));
+			comp_id = IPC4_COMP_ID(module.primary.r.module_id,
+					       module.primary.r.instance_id);
+			result = ipc_comp_free(ipc_user->ipc, comp_id);
+			if (result < 0)
+				result = IPC4_INVALID_RESOURCE_ID;
+			break;
+		}
+		case SOF_IPC4_MOD_LARGE_CONFIG_GET:
+			result = ipc4_process_large_config_get(&msg,
+							       &ipc_user->reply_ext,
+							       &ipc_user->reply_tx_size,
+							       &ipc_user->reply_tx_data);
+			break;
+		case SOF_IPC4_MOD_LARGE_CONFIG_SET:
+			result = ipc4_process_large_config_set(&msg);
+			break;
+		default:
+			LOG_ERR("IPC user: unsupported module cmd type %d",
+				msg.primary.r.type);
+			result = -EINVAL;
+			break;
+		}
+	} else {
+		/* Global message dispatch */
+		switch (msg.primary.r.type) {
+		case SOF_IPC4_GLB_CREATE_PIPELINE:
+			result = ipc_pipeline_new(ipc_user->ipc,
+						  (ipc_pipe_new *)&msg);
+			break;
+		case SOF_IPC4_GLB_DELETE_PIPELINE: {
+			struct ipc4_pipeline_delete *pipe =
+				(struct ipc4_pipeline_delete *)&msg;
+
+			result = ipc_pipeline_free(ipc_user->ipc,
+						   pipe->primary.r.instance_id);
+			break;
+		}
+		case SOF_IPC4_GLB_SET_PIPELINE_STATE:
+			result = ipc4_set_pipeline_state(&msg);
+			break;
+		default:
+			LOG_ERR("IPC user: unsupported glb cmd type %d",
+				msg.primary.r.type);
+			result = -EINVAL;
+			break;
+		}
+	}
+
+	return result;
+}
+#endif /* CONFIG_SOF_USERSPACE_LL */
