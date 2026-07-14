@@ -309,9 +309,193 @@ void ipc_schedule_process(struct ipc *ipc)
 #endif
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/* Generic user-space IPC handling thread infrastructure. Protocol-specific
+ * command interpretation lives in ipc_user_thread_dispatch(), implemented by
+ * the active IPC major (see src/ipc/ipc4/).
+ */
+
+#define IPC_USER_EVENT_CMD      BIT(0)
+#define IPC_USER_EVENT_STOP     BIT(1)
+
+static struct k_thread ipc_user_thread;
+static K_THREAD_STACK_DEFINE(ipc_user_stack, CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE);
+
+/**
+ * @brief Forward an IPC command to the user-space thread.
+ *
+ * Called from kernel context (IPC EDF task) to forward the message words
+ * to the user-space thread for processing. Sets IPC_TASK_IN_THREAD in
+ * task_mask so the host is not signaled until the user thread completes.
+ * Blocks until the user thread finishes processing and returns the result.
+ *
+ * @param primary   Primary message word
+ * @param extension Extension message word
+ * @return Result from user thread processing
+ */
+int ipc_user_forward_cmd(uint32_t primary, uint32_t extension)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_user *pdata = ipc->ipc_user_pdata;
+	k_spinlock_key_t key;
+	int ret;
+
+	LOG_DBG("IPC: forward cmd %08x", primary);
+
+	/* Copy message words — original buffer may be reused */
+	pdata->ipc_msg_pri = primary;
+	pdata->ipc_msg_ext = extension;
+	pdata->ipc = ipc;
+
+	/* Prevent host completion until user thread finishes */
+	key = k_spin_lock(&ipc->lock);
+	ipc->task_mask |= IPC_TASK_IN_THREAD;
+	k_spin_unlock(&ipc->lock, key);
+
+	/* Wake the user thread */
+	k_event_set(pdata->event, IPC_USER_EVENT_CMD);
+
+	/* Wait for user thread to complete */
+	ret = k_sem_take(pdata->sem, K_MSEC(10));
+	if (ret) {
+		LOG_ERR("IPC user: sem error %d\n", ret);
+		/* fall through to complete the cmd */
+	}
+
+	/* Clear the task mask bit and check for completion */
+	key = k_spin_lock(&ipc->lock);
+	ipc->task_mask &= ~IPC_TASK_IN_THREAD;
+	ipc_complete_cmd(ipc);
+	k_spin_unlock(&ipc->lock, key);
+
+	return !ret ? pdata->result : ret;
+}
+
+/**
+ * @brief Protocol-specific dispatch of a forwarded IPC command.
+ *
+ * Weak default; the active IPC major overrides this. Runs in the user
+ * thread context with the forwarded message words in @p ipc_user.
+ */
+__weak int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
+{
+	ARG_UNUSED(ipc_user);
+	return -ENOSYS;
+}
+
+/**
+ * User-space IPC thread entry point. p1 points to the ipc_user context
+ * shared with the kernel launcher.
+ */
+static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
+{
+	struct ipc_user *ipc_user = p1;
+
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	__ASSERT(k_is_user_context(), "expected user context");
+
+	/* Signal startup complete — unblocks init waiting on semaphore */
+	k_sem_give(ipc_user->sem);
+	LOG_INF("IPC user-space thread started");
+
+	for (;;) {
+		uint32_t mask = k_event_wait_safe(ipc_user->event,
+						  IPC_USER_EVENT_CMD | IPC_USER_EVENT_STOP,
+						  false, K_FOREVER);
+
+		LOG_DBG("IPC user wake, mask %u", mask);
+
+		if (mask & IPC_USER_EVENT_CMD) {
+			ipc_user->result = ipc_user_thread_dispatch(ipc_user);
+
+			/* Signal completion — kernel side will finish IPC */
+			k_sem_give(ipc_user->sem);
+		}
+
+		if (mask & IPC_USER_EVENT_STOP)
+			break;
+	}
+}
+
+__cold static void ipc_user_init(void)
+{
+	struct ipc *ipc = ipc_get();
+	struct ipc_user *ipc_user = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER,
+						   sizeof(*ipc_user), 0);
+	int ret;
+
+	if (!ipc_user) {
+		LOG_ERR("user IPC pdata alloc failed");
+		sof_panic(SOF_IPC_PANIC_IPC);
+	}
+
+	ipc_user->sem = k_object_alloc(K_OBJ_SEM);
+	if (!ipc_user->sem) {
+		LOG_ERR("user IPC sem alloc failed");
+		k_panic();
+	}
+
+	ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(), &ipc_context_part);
+	if (ret < 0)
+		LOG_WRN("ipc context partition add failed: %d", ret);
+
+	k_sem_init(ipc_user->sem, 0, 1);
+
+	/* Allocate kernel objects for the user-space thread */
+	ipc_user->event = k_object_alloc(K_OBJ_EVENT);
+	if (!ipc_user->event) {
+		LOG_ERR("user IPC event alloc failed");
+		sof_panic(SOF_IPC_PANIC_IPC);
+	}
+	k_event_init(ipc_user->event);
+
+	k_thread_create(&ipc_user_thread, ipc_user_stack,
+			CONFIG_SOF_IPC_USER_THREAD_STACK_SIZE,
+			ipc_user_thread_fn, ipc_user, NULL, NULL,
+			-1, K_USER, K_FOREVER);
+
+	ipc_user->thread = &ipc_user_thread;
+	k_thread_access_grant(&ipc_user_thread, ipc_user->sem, ipc_user->event);
+	user_grant_dai_access_all(&ipc_user_thread);
+	user_grant_dma_access_all(&ipc_user_thread);
+	ret = user_access_to_mailbox(zephyr_ll_mem_domain(), &ipc_user_thread);
+	if (ret < 0) {
+		LOG_ERR("ipc user: mailbox access grant failed: %d", ret);
+		sof_panic(SOF_IPC_PANIC_IPC);
+	}
+	user_ll_grant_access(&ipc_user_thread, PLATFORM_PRIMARY_CORE_ID);
+	k_mem_domain_add_thread(zephyr_ll_mem_domain(), &ipc_user_thread);
+
+	k_thread_cpu_pin(&ipc_user_thread, PLATFORM_PRIMARY_CORE_ID);
+	k_thread_name_set(&ipc_user_thread, "ipc_user");
+
+	/* Store references in ipc struct so kernel handler can forward commands */
+	ipc->ipc_user_pdata = ipc_user;
+
+	k_thread_start(&ipc_user_thread);
+
+	struct task *task = zephyr_ll_task_alloc();
+
+	schedule_task_init_ll(task, SOF_UUID(ipc_uuid), SOF_SCHEDULE_LL_TIMER,
+			0, NULL, NULL, cpu_get_id(), 0);
+	ipc_user->audio_thread = scheduler_init_context(task);
+
+	/* Grant ipc_user thread permission on the audio thread object.
+	 * Needed so user-space dai_common_new() can call
+	 * k_thread_access_grant(audio_thread, dai_mutex) from user context.
+	 */
+	k_thread_access_grant(&ipc_user_thread, ipc_user->audio_thread);
+
+	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
+	k_sem_take(ipc->ipc_user_pdata->sem, K_FOREVER);
+}
+#else
 static void ipc_user_init(void)
 {
 }
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 __cold int ipc_init(struct sof *sof)
 {

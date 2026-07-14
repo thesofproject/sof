@@ -314,4 +314,30 @@ void ipc_complete_cmd(struct ipc *ipc);
 /* GDB stub: should enter GDB after completing the IPC processing */
 extern bool ipc_enter_gdb;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * @brief Forward an IPC command to the user-space thread and wait for it.
+ *
+ * Protocol-agnostic: only the two raw message words are handed across the
+ * kernel/user boundary. The active IPC major's ipc_user_thread_dispatch()
+ * interprets them in the user thread.
+ *
+ * @param primary   Primary message word
+ * @param extension Extension message word
+ * @return Result code from user thread processing
+ */
+int ipc_user_forward_cmd(uint32_t primary, uint32_t extension);
+
+/**
+ * @brief Protocol-specific dispatch of a forwarded IPC command.
+ *
+ * Runs in the user-space IPC thread. A __weak default returns -ENOSYS;
+ * the active IPC major (e.g. IPC4) provides the real implementation.
+ *
+ * @param ipc_user User IPC context holding the forwarded message words
+ * @return Result code to report back to the host
+ */
+int ipc_user_thread_dispatch(struct ipc_user *ipc_user);
+#endif
+
 #endif /* __SOF_DRIVERS_IPC_H__ */
