@@ -270,7 +270,7 @@ static void mixin_check_notify_underrun(struct comp_dev *dev, struct mixin_data 
 		    (eos_detected && mixin_data->eos_delay_periods == 0)) {
 			mixin_data->last_reported_underrun = 0;
 
-			send_mixer_underrun_notif_msg(dev->ipc_config.id, eos_detected,
+			send_mixer_underrun_notif_msg(dev->pipeline->pipeline_id, eos_detected,
 						      source_avail, sinks_free);
 		}
 	}
