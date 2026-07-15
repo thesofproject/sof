@@ -74,6 +74,10 @@ struct ipc {
 	struct task ipc_task;
 #endif
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct mod_alloc_ctx *ll_alloc;
+#endif
+
 #ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
 	/* io performance measurement */
 	struct io_perf_data_item *io_perf_in_msg_count;
@@ -95,6 +99,12 @@ struct ipc {
 
 extern struct task_ops ipc_task_ops;
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+
+struct ipc *ipc_get(void);
+
+#else
+
 /**
  * \brief Get the IPC global context.
  * @return The global IPC context.
@@ -103,6 +113,8 @@ static inline struct ipc *ipc_get(void)
 {
 	return sof_get()->ipc;
 }
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 /**
  * \brief Initialise global IPC context.
