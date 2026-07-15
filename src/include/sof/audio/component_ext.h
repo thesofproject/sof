@@ -37,7 +37,7 @@ struct comp_driver_list {
 #if CONFIG_IPC_MAJOR_3
 struct comp_dev *comp_new(struct sof_ipc_comp *comp);
 #elif CONFIG_IPC_MAJOR_4
-struct comp_dev *comp_new_ipc4(struct ipc4_module_init_instance *module_init);
+struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *module_init);
 #endif
 
 /** See comp_ops::free */
@@ -424,10 +424,14 @@ static inline void comp_make_shared(struct comp_dev *dev)
 	dev->is_shared = true;
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct comp_driver_list *comp_drivers_get(void);
+#else
 static inline struct comp_driver_list *comp_drivers_get(void)
 {
 	return sof_get()->comp_drivers;
 }
+#endif
 
 #if CONFIG_IPC_MAJOR_4
 static inline int comp_ipc4_bind_remote(struct comp_dev *dev, struct bind_info *bind_data)

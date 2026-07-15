@@ -10,12 +10,13 @@
 #include <sof/audio/component.h>
 #include <rtos/interrupt.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/notifier.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
 #include <rtos/task.h>
 #include <sof/lib/perf_cnt.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/sem.h>
 #include <ipc4/base_fw.h>
 #include <sof/debug/telemetry/telemetry.h>
 
@@ -41,7 +42,7 @@ struct zephyr_ll {
 struct zephyr_ll_pdata {
 	bool run;
 	bool freeing;
-	struct k_sem sem;
+	struct sys_sem sem;
 };
 
 #if CONFIG_SOF_USERSPACE_LL
@@ -112,8 +113,15 @@ static void zephyr_ll_unlock(struct zephyr_ll *sch, uint32_t *flags)
 
 static void zephyr_ll_assert_core(const struct zephyr_ll *sch)
 {
-	assert(CONFIG_CORE_COUNT == 1 || IS_ENABLED(CONFIG_SOF_USERSPACE_LL) ||
-	       sch->core == cpu_get_id());
+#if CONFIG_SOF_USERSPACE_LL
+	/* In user-space mode, cpu_get_id() is not available.
+	 * Core correctness is ensured by task->core routing in
+	 * schedule.h and verified at task schedule time.
+	 */
+	(void)sch;
+#else
+	assert(CONFIG_CORE_COUNT == 1 || sch->core == cpu_get_id());
+#endif
 }
 
 /* Locking: caller should hold the domain lock */
@@ -136,7 +144,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 		 * zephyr_ll_task_free() is trying to free this task. Complete
 		 * it and signal the semaphore to let the function proceed
 		 */
-		k_sem_give(&pdata->sem);
+		sys_sem_give(&pdata->sem);
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
@@ -149,6 +157,20 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 	 */
 	domain_unregister(sch->ll_domain, task, --sch->n_tasks);
 }
+
+#if CONFIG_SOF_USERSPACE_LL
+/* The caller must hold the scheduler lock */
+static bool zephyr_ll_task_on_run_list(struct zephyr_ll *sch, struct task *task)
+{
+	struct list_item *list;
+
+	list_for_item(list, &sch->tasks)
+		if (list == &task->list)
+			return true;
+
+	return false;
+}
+#endif
 
 /* The caller must hold the lock and possibly disable interrupts */
 static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *task)
@@ -322,11 +344,7 @@ static void zephyr_ll_run(void *data)
 
 	zephyr_ll_unlock(sch, &flags);
 
-#ifndef CONFIG_SOF_USERSPACE_LL
-	/* TODO: to be replaced with direct function calls */
-	notifier_event(sch, NOTIFIER_ID_LL_POST_RUN,
-		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
-#endif
+	scheduler_dp_ll_tick(sch->core);
 }
 
 static void schedule_ll_callback(void *data)
@@ -501,11 +519,38 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	pdata->freeing = true;
 
+#if CONFIG_SOF_USERSPACE_LL
+	/*
+	 * Under CONFIG_SOF_USERSPACE_LL this function runs in kernel context
+	 * while the scheduler itself runs in a user-mode thread. The pdata->sem
+	 * handshake used below cannot synchronise across that privilege boundary
+	 * (sys_sem_take() returns -EINVAL when called from kernel context), so
+	 * relying on it would free an active task while it is still linked in
+	 * sch->tasks, leaving the scheduler to dereference freed memory on the
+	 * next timer tick.
+	 *
+	 * Instead remove the task directly here. Mark it cancelled first so that,
+	 * in the unlikely event it is currently mid-execution on the scheduler's
+	 * temporary list, it is removed via the cancel path without re-running
+	 * task->run() on resources the caller (e.g. pipeline_free()) may already
+	 * have freed. If the task is still linked on the run list, the scheduler
+	 * thread is not executing it (a running task is moved off sch->tasks with
+	 * the lock dropped), so it is safe to remove it now and skip the wait.
+	 */
+	if (must_wait) {
+		task->state = SOF_TASK_STATE_CANCEL;
+		if (zephyr_ll_task_on_run_list(sch, task)) {
+			zephyr_ll_task_done(sch, task);
+			must_wait = false;
+		}
+	}
+#endif
+
 	zephyr_ll_unlock(sch, &flags);
 
 	if (must_wait)
 		/* Wait for up to 100 periods */
-		k_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
+		sys_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
 
 	/* Protect against racing with schedule_task() */
 	zephyr_ll_lock(sch, &flags);
@@ -625,6 +670,13 @@ struct task *zephyr_ll_task_alloc(void)
 	return task;
 }
 
+void user_ll_grant_access(struct k_thread *thread, int core)
+{
+	assert(core < CONFIG_CORE_COUNT && zephyr_ll_locks[core] != NULL);
+
+	k_thread_access_grant(thread, zephyr_ll_locks[core]);
+}
+
 /**
  * Lock the LL scheduler to prevent it from processing tasks.
  *
@@ -672,7 +724,7 @@ int zephyr_ll_task_init(struct task *task,
 	 * schedule_task_init() must be run on target core, see
 	 * sof/zephyr/schedule.c:arch_schedulers_get()
 	 */
-	assert(cpu_get_id() == core);
+	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || cpu_get_id() == core);
 
 	ret = schedule_task_init(task, uid, type, priority, run, data, core,
 				 flags);
@@ -691,7 +743,7 @@ int zephyr_ll_task_init(struct task *task,
 
 	memset(pdata, 0, sizeof(*pdata));
 
-	k_sem_init(&pdata->sem, 0, 1);
+	sys_sem_init(&pdata->sem, 0, 1);
 
 	task->priv_data = pdata;
 
@@ -757,7 +809,11 @@ void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
 	uint32_t flags;
 
 	scheduler_props->processing_domain = COMP_PROCESSING_DOMAIN_LL;
-	struct zephyr_ll *ll_sch = (struct zephyr_ll *)scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+#if CONFIG_SOF_USERSPACE_LL
+	struct zephyr_ll *ll_sch = scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER, cpu_get_id());
+#else
+	struct zephyr_ll *ll_sch = scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+#endif
 
 	zephyr_ll_lock(ll_sch, &flags);
 	scheduler_get_task_info(scheduler_props, data_off_size, &ll_sch->tasks);
@@ -767,7 +823,23 @@ void scheduler_get_task_info_ll(struct scheduler_props *scheduler_props,
 /* Return a pointer to the LL scheduler timer domain */
 struct ll_schedule_domain *zephyr_ll_domain(void)
 {
+#if CONFIG_SOF_USERSPACE_LL
+	struct zephyr_ll *ll_sch = scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER, cpu_get_id());
+#else
 	struct zephyr_ll *ll_sch = scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+#endif
 
-	return ll_sch->ll_domain;
+	return ll_sch ? ll_sch->ll_domain : NULL;
+}
+
+/* Return a pointer to the LL scheduler timer domain */
+struct ll_schedule_domain *zephyr_ll_domain_for_core(unsigned int core)
+{
+#if CONFIG_SOF_USERSPACE_LL
+	struct zephyr_ll *ll_sch = scheduler_get_data_for_core(SOF_SCHEDULE_LL_TIMER, core);
+#else
+	struct zephyr_ll *ll_sch = scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
+#endif
+
+	return ll_sch ? ll_sch->ll_domain : NULL;
 }

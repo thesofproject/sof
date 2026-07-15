@@ -79,6 +79,17 @@ int scheduler_dp_task_init(struct task **task,
 			   size_t stack_size,
 			   uint32_t options);
 
+#if defined(__ZEPHYR__) && CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+#if CONFIG_SOF_USERSPACE_APPLICATION
+__syscall void scheduler_dp_internal_free(struct task *task);
+#else
+void scheduler_dp_internal_free(struct task *task);
+#endif
+
+__syscall void scheduler_dp_ll_tick(unsigned int core);
+#include <zephyr/syscalls/dp_schedule.h>
+#endif
+
 /**
  * \brief Extract information about scheduler's tasks
  *

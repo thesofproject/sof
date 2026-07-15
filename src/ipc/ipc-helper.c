@@ -89,8 +89,10 @@ __cold struct comp_buffer *buffer_new(struct mod_alloc_ctx *alloc,
 		buffer->stream.runtime_stream_params.pipeline_id = desc->comp.pipeline_id;
 		buffer->core = desc->comp.core;
 
+#if !defined(CONFIG_SOF_USERSPACE_LL)
 		memcpy_s(&buffer->tctx, sizeof(struct tr_ctx),
 			 &buffer_tr, sizeof(struct tr_ctx));
+#endif
 	}
 
 	return buffer;
@@ -388,7 +390,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	icd->cd = NULL;
 
 	list_item_del(&icd->list);
-	rfree(icd);
+	sof_heap_free(sof_sys_user_heap_get(), icd);
 
 	return 0;
 }

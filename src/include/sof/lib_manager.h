@@ -115,6 +115,7 @@ struct lib_manager_module {
 	struct llext_buf_loader *ebl; /* Zephyr loadable extension buffer loader */
 	unsigned int n_dependent; /* For auxiliary modules: number of dependents */
 	bool mapped;
+	bool domain_dp;
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
 };
 
@@ -122,6 +123,7 @@ struct lib_manager_mod_ctx {
 	void *base_addr;	/* library cold storage address (e.g. DRAM) */
 	unsigned int n_mod;
 	struct lib_manager_module *mod;
+	bool user_mapped;
 };
 
 struct ext_library {
@@ -249,5 +251,16 @@ void lib_notif_msg_send(struct ipc_msg *msg);
  * Remove them keeping one if leave_one_handle == true.
  */
 void lib_notif_msg_clean(bool leave_one_handle);
+
+#include <zephyr/toolchain/common.h>
+__syscall int lib_manager_free_module(const uint32_t component_id);
+__syscall int lib_manager_mod_create_priv(const struct comp_driver *drv,
+					  const struct comp_ipc_config *config,
+					  const void *spec,
+					  void **adapter_priv,
+					  struct userspace_context **userspace,
+					  const struct module_interface **ops);
+
+#include <zephyr/syscalls/lib_manager.h>
 
 #endif /* __SOF_LIB_MANAGER_H__ */

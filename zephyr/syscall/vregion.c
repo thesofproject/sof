@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2026 Intel Corporation.
+
+#include <sof/lib/vregion.h>
+#include <zephyr/kernel.h>
+#include <zephyr/internal/syscall_handler.h>
+
+static bool vregion_verify(struct vregion *vr)
+{
+	if (!vr)
+		return false;
+
+	size_t vr_size = 0;
+	uintptr_t vr_start;
+
+	vregion_mem_info(vr, &vr_size, &vr_start);
+	if (vr_size)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE((void *)vr_start, vr_size));
+
+	return true;
+}
+
+static inline void *z_vrfy_vregion_alloc(struct vregion *vr, size_t size)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_alloc(vr, size);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_alloc_mrsh.c>
+
+static inline void *z_vrfy_vregion_alloc_coherent(struct vregion *vr, size_t size)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_alloc_coherent(vr, size);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_alloc_coherent_mrsh.c>
+
+static inline void *z_vrfy_vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_alloc_align(vr, size, alignment);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_alloc_align_mrsh.c>
+
+static inline void *z_vrfy_vregion_alloc_coherent_align(struct vregion *vr,
+							size_t size, size_t alignment)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_alloc_coherent_align(vr, size, alignment);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_alloc_coherent_align_mrsh.c>
+
+static inline void z_vrfy_vregion_free(struct vregion *vr, void *ptr)
+{
+	if (vregion_verify(vr))
+		z_impl_vregion_free(vr, ptr);
+}
+#include <zephyr/syscalls/vregion_free_mrsh.c>
+
+struct vregion *z_vrfy_vregion_get(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_get(vr);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_get_mrsh.c>
+
+struct vregion *z_vrfy_vregion_put(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		return z_impl_vregion_put(vr);
+	return NULL;
+}
+#include <zephyr/syscalls/vregion_put_mrsh.c>
+
+void z_vrfy_vregion_set_interim(struct vregion *vr)
+{
+	if (vregion_verify(vr))
+		z_impl_vregion_set_interim(vr);
+}
+#include <zephyr/syscalls/vregion_set_interim_mrsh.c>

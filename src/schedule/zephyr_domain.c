@@ -218,8 +218,7 @@ static int zephyr_domain_register(struct ll_schedule_domain *domain,
 				 NULL, CONFIG_LL_THREAD_PRIORITY, 0, K_FOREVER);
 
 #ifdef CONFIG_SCHED_CPU_MASK
-	k_thread_cpu_mask_clear(thread);
-	k_thread_cpu_mask_enable(thread, core);
+	k_thread_cpu_pin(thread, core);
 #endif
 	k_thread_name_set(thread, thread_name);
 
@@ -301,7 +300,7 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 {
 	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(domain);
 	struct zephyr_domain_thread *dt;
-	char thread_name[] = "ll_thread0";
+	char thread_name[] = "userll_thread0";
 	k_tid_t thread;
 	int core = task->core;
 
@@ -345,8 +344,7 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 				 K_USER, K_FOREVER);
 
 #ifdef CONFIG_SCHED_CPU_MASK
-	k_thread_cpu_mask_clear(thread);
-	k_thread_cpu_mask_enable(thread, core);
+	k_thread_cpu_pin(thread, core);
 #endif
 	k_thread_name_set(thread, thread_name);
 
@@ -496,6 +494,20 @@ struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain)
 	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
 	tr_dbg(&ll_tr, "entry");
+
+	return dt->ll_thread;
+}
+
+struct k_thread *zephyr_ll_domain_thread(unsigned int core)
+{
+	struct ll_schedule_domain *ll_domain = zephyr_ll_domain_for_core(core);
+
+	if (!ll_domain)
+		return NULL;
+
+	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(ll_domain);
+
+	struct zephyr_domain_thread *dt = zephyr_domain->domain_thread + core;
 
 	return dt->ll_thread;
 }

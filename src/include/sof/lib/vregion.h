@@ -6,6 +6,8 @@
 #define __SOF_LIB_VREGION_H__
 
 #include <stddef.h>
+#include <stdint.h>
+#include <zephyr/toolchain.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,7 +51,7 @@ struct vregion *vregion_create(size_t memsize);
  *
  * @param[in] vr Pointer to the virtual region instance.
  */
-void vregion_set_interim(struct vregion *vr);
+__syscall void vregion_set_interim(struct vregion *vr);
 
 /**
  * @brief Increment virtual region's user count.
@@ -60,7 +62,7 @@ void vregion_set_interim(struct vregion *vr);
  * @param[in] vr Pointer to the virtual region instance to release.
  * @return struct vregion* Pointer to the virtual region instance.
  */
-struct vregion *vregion_get(struct vregion *vr);
+__syscall struct vregion *vregion_get(struct vregion *vr);
 
 /**
  * @brief Decrement virtual region's user count or destroy it.
@@ -71,7 +73,7 @@ struct vregion *vregion_get(struct vregion *vr);
  * @param[in] vr Pointer to the virtual region instance to release.
  * @return struct vregion* Pointer to the virtual region instance or NULL if it has been destroyed.
  */
-struct vregion *vregion_put(struct vregion *vr);
+__syscall struct vregion *vregion_put(struct vregion *vr);
 
 /**
  * @brief Allocate memory from the specified virtual region.
@@ -80,12 +82,12 @@ struct vregion *vregion_put(struct vregion *vr);
  * @param[in] size Size of memory to allocate in bytes.
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-void *vregion_alloc(struct vregion *vr, size_t size);
+__syscall void *vregion_alloc(struct vregion *vr, size_t size);
 
 /**
  * @brief like vregion_alloc() but allocates coherent memory
  */
-void *vregion_alloc_coherent(struct vregion *vr, size_t size);
+__syscall void *vregion_alloc_coherent(struct vregion *vr, size_t size);
 
 /**
  * @brief Allocate aligned memory from the specified virtual region.
@@ -98,12 +100,12 @@ void *vregion_alloc_coherent(struct vregion *vr, size_t size);
  * @param[in] alignment Alignment of memory to allocate in bytes.
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment);
+__syscall void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment);
 
 /**
  * @brief like vregion_alloc_align() but allocates coherent memory
  */
-void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment);
+__syscall void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment);
 
 /**
  * @brief Free memory allocated from the specified virtual region.
@@ -113,7 +115,7 @@ void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t align
  * @param[in] vr Pointer to the virtual region instance.
  * @param[in] ptr Pointer to the memory to free.
  */
-void vregion_free(struct vregion *vr, void *ptr);
+__syscall void vregion_free(struct vregion *vr, void *ptr);
 
 /**
  * @brief Log virtual region memory usage.
@@ -130,6 +132,8 @@ void vregion_info(struct vregion *vr);
  * @param[in] start Pointer to start
  */
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
+
+#include <zephyr/syscalls/vregion.h>
 
 #else /* CONFIG_SOF_VREGIONS */
 

@@ -11,6 +11,7 @@
 #include <zephyr/logging/log.h>
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/alloc.h>
 #include <sof/common.h>
 
@@ -161,12 +162,12 @@ struct vregion *vregion_create(size_t memsize)
 
 	/* log the new vregion */
 	LOG_INF("new at base %p size %#zx pages %u metadata at %p",
-		(void *)vr->base, total_size, pages, (void *)vr);
+		(void *)vregion_base, total_size, pages, (void *)vr);
 
 	return vr;
 }
 
-struct vregion *vregion_get(struct vregion *vr)
+struct vregion *z_impl_vregion_get(struct vregion *vr)
 {
 	if (!vr)
 		return NULL;
@@ -184,7 +185,7 @@ struct vregion *vregion_get(struct vregion *vr)
  * @param[in] vr Pointer to the virtual region instance to release.
  * @return struct vregion* Pointer to the virtual region instance or NULL if it has been destroyed.
  */
-struct vregion *vregion_put(struct vregion *vr)
+struct vregion *z_impl_vregion_put(struct vregion *vr)
 {
 	unsigned int use_count;
 
@@ -259,7 +260,7 @@ static void interim_heap_init(struct vregion *vr)
 	vr->lifetime.used = (uint8_t *)vr->lifetime.ptr - (uint8_t *)vr->lifetime.base;
 }
 
-void vregion_set_interim(struct vregion *vr)
+void z_impl_vregion_set_interim(struct vregion *vr)
 {
 	if (!vr)
 		return;
@@ -365,7 +366,7 @@ static void lifetime_free(struct vlinear_heap *heap, void *ptr)
  * @param vr Pointer to the virtual region instance.
  * @param ptr Pointer to the memory to free.
  */
-void vregion_free(struct vregion *vr, void *ptr)
+void z_impl_vregion_free(struct vregion *vr, void *ptr)
 {
 	if (!vr || !ptr)
 		return;
@@ -390,7 +391,6 @@ void vregion_free(struct vregion *vr, void *ptr)
 
 	k_mutex_unlock(&vr->lock);
 }
-EXPORT_SYMBOL(vregion_free);
 
 /**
  * @brief Allocate memory from the virtual region.
@@ -401,7 +401,8 @@ EXPORT_SYMBOL(vregion_free);
  *
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment)
+void *z_impl_vregion_alloc_align(struct vregion *vr,
+				 size_t size, size_t alignment)
 {
 	void *p;
 
@@ -429,7 +430,6 @@ void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment)
 
 	return p;
 }
-EXPORT_SYMBOL(vregion_alloc_align);
 
 /**
  * @brief Allocate memory from the virtual region.
@@ -437,17 +437,16 @@ EXPORT_SYMBOL(vregion_alloc_align);
  * @param[in] size Size of the allocation.
  * @return void* Pointer to the allocated memory, or NULL on failure.
  */
-void *vregion_alloc(struct vregion *vr, size_t size)
+void *z_impl_vregion_alloc(struct vregion *vr, size_t size)
 {
-	return vregion_alloc_align(vr, size, 0);
+	return z_impl_vregion_alloc_align(vr, size, 0);
 }
-EXPORT_SYMBOL(vregion_alloc);
 
-void *vregion_alloc_coherent(struct vregion *vr, size_t size)
+void *z_impl_vregion_alloc_coherent(struct vregion *vr, size_t size)
 {
 	size = ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE);
 
-	void *p = vregion_alloc_align(vr, size, CONFIG_DCACHE_LINE_SIZE);
+	void *p = z_impl_vregion_alloc_align(vr, size, CONFIG_DCACHE_LINE_SIZE);
 
 	if (!p)
 		return NULL;
@@ -457,13 +456,13 @@ void *vregion_alloc_coherent(struct vregion *vr, size_t size)
 	return sys_cache_uncached_ptr_get(p);
 }
 
-void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment)
+void *z_impl_vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment)
 {
 	if (alignment < CONFIG_DCACHE_LINE_SIZE)
 		alignment = CONFIG_DCACHE_LINE_SIZE;
 	size = ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE);
 
-	void *p = vregion_alloc_align(vr, size, alignment);
+	void *p = z_impl_vregion_alloc_align(vr, size, alignment);
 
 	if (!p)
 		return NULL;
@@ -488,7 +487,6 @@ void vregion_info(struct vregion *vr)
 	LOG_INF("lifetime used %#zx free count %d",
 		vr->lifetime.used, vr->lifetime.free_count);
 }
-EXPORT_SYMBOL(vregion_info);
 
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
 {

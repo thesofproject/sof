@@ -22,7 +22,6 @@
 #include <zephyr/sys/sem.h>
 #include <zephyr/sys/mutex.h>
 #include <sof/lib/memory.h>
-#include <sof/lib/notifier.h>
 #include <ipc4/base_fw.h>
 
 #include "zephyr_dp_schedule.h"
@@ -223,21 +222,34 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
  * needed 1.2ms for processing - but the example would be too complicated)
  */
 
-void scheduler_dp_ll_tick(void *receiver_data, enum notify_id event_type, void *caller_data)
+void z_impl_scheduler_dp_ll_tick(unsigned int core)
 {
-	(void)receiver_data;
-	(void)event_type;
-	(void)caller_data;
 	unsigned int lock_key;
+#ifndef CONFIG_SOF_USERSPACE_LL
 	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+#else
+	struct scheduler_dp_data *dp_sch = scheduler_get_data_for_core(SOF_SCHEDULE_DP, core);
+#endif
+
+	if (!dp_sch)
+		return;
 
 	/* remember current timestamp as "NOW" */
 	dp_sch->last_ll_tick_timestamp = k_cycle_get_32();
 
-	lock_key = scheduler_dp_lock(cpu_get_id());
-	scheduler_dp_recalculate(dp_sch, event_type == NOTIFIER_ID_LL_POST_RUN);
+	lock_key = scheduler_dp_lock(core);
+	scheduler_dp_recalculate(dp_sch);
 	scheduler_dp_unlock(lock_key);
 }
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+void z_vrfy_scheduler_dp_ll_tick(unsigned int core)
+{
+	z_impl_scheduler_dp_ll_tick(core);
+}
+#include <zephyr/syscalls/scheduler_dp_ll_tick_mrsh.c>
+#endif
 
 #if CONFIG_SOF_USERSPACE_APPLICATION
 static int scheduler_dp_task_cancel(void *data, struct task *task)
@@ -337,7 +349,7 @@ static int scheduler_dp_task_shedule(void *data, struct task *task, uint64_t sta
 	return 0;
 }
 
-static struct scheduler_ops schedule_dp_ops = {
+APP_SYSUSER_DATA static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task		= scheduler_dp_task_shedule,
 #if CONFIG_SOF_USERSPACE_APPLICATION
 	.schedule_task_cancel	= scheduler_dp_task_cancel,
@@ -347,14 +359,13 @@ static struct scheduler_ops schedule_dp_ops = {
 	.schedule_task_free	= scheduler_dp_task_free,
 };
 
+/* Runs on each core */
 __cold int scheduler_dp_init(void)
 {
-	int ret;
-
 	assert_can_be_cold();
 
-	struct scheduler_dp_data *dp_sch = rzalloc(SOF_MEM_FLAG_KERNEL,
-						   sizeof(struct scheduler_dp_data));
+	struct scheduler_dp_data *dp_sch = sof_heap_alloc(sof_sys_user_heap_get(),
+							  SOF_MEM_FLAG_KERNEL, sizeof(*dp_sch), 0);
 	if (!dp_sch)
 		return -ENOMEM;
 
@@ -364,18 +375,11 @@ __cold int scheduler_dp_init(void)
 	scheduler_init(SOF_SCHEDULE_DP, &schedule_dp_ops, dp_sch);
 
 	/* init src of DP tick */
-	ret = schedule_task_init_ll(&dp_sch->ll_tick_src,
-				    SOF_UUID(dp_sched_uuid),
-				    SOF_SCHEDULE_LL_TIMER,
-				    0, scheduler_dp_ll_tick_dummy, dp_sch,
-				    cpu_get_id(), 0);
-
-	if (ret)
-		return ret;
-
-	notifier_register(NULL, NULL, NOTIFIER_ID_LL_POST_RUN, scheduler_dp_ll_tick, 0);
-
-	return 0;
+	return schedule_task_init_ll(&dp_sch->ll_tick_src,
+				     SOF_UUID(dp_sched_uuid),
+				     SOF_SCHEDULE_LL_TIMER,
+				     0, scheduler_dp_ll_tick_dummy, dp_sch,
+				     cpu_get_id(), 0);
 }
 
 void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props, uint32_t *data_off_size)

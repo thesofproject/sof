@@ -13,14 +13,18 @@
 #ifndef __SOF_AUDIO_MODULE_GENERIC__
 #define __SOF_AUDIO_MODULE_GENERIC__
 
-#include <rtos/mutex.h>
 #include <sof/objpool.h>
 #include <sof/ut.h>
 #include <sof/audio/component.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
+#include <sof/ipc/msg.h>
 #include "module_interface.h"
 
+/* The __ZEPHYR__ condition is to keep cmocka tests working */
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+#include <zephyr/kernel/thread.h>
+#endif
 #include <sof/compiler_attributes.h>
 
 /*
@@ -125,11 +129,13 @@ struct module_param {
  * when the module unloads.
  */
 struct module_resources {
-	struct k_mutex lock;
 	struct objpool_head objpool;
 	size_t heap_usage;
 	size_t heap_high_water_mark;
 	struct mod_alloc_ctx *alloc;
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+	k_tid_t rsrc_mngr;
+#endif
 };
 
 enum mod_resource_type {
@@ -193,11 +199,18 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 #endif
 void mod_resource_init(struct processing_module *mod);
 void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start);
+void module_adapter_vreg_free(struct mod_alloc_ctx *alloc);
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall struct vregion *module_adapter_vreg_new(const struct comp_ipc_config *config,
+						  uintptr_t *vreg_start, size_t *vreg_size);
+__syscall void module_adapter_vreg_unmap(const struct mod_alloc_ctx *alloc);
 __syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			      size_t alignment);
 __syscall int mod_free(struct processing_module *mod, const void *ptr);
 #else
+struct vregion *z_impl_module_adapter_vreg_new(const struct comp_ipc_config *config,
+					       uintptr_t *vreg_start, size_t *vreg_size);
+void z_impl_module_adapter_vreg_unmap(const struct mod_alloc_ctx *alloc);
 void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			   size_t alignment);
 int z_impl_mod_free(struct processing_module *mod, const void *ptr);
@@ -237,6 +250,47 @@ static inline void *mod_zalloc(struct processing_module *mod, size_t size)
 		memset(ret, 0, size);
 
 	return ret;
+}
+
+/**
+ * \brief Initialize a new IPC message using the module allocator.
+ * @param mod Module to allocate from
+ * @param header Message header metadata
+ * @param extension Message header extension metadata
+ * @param size Message data size in bytes.
+ * @return New IPC message.
+ */
+static inline struct ipc_msg *mod_ipc_msg_w_ext_init(struct processing_module *mod,
+						     uint32_t header,
+						     uint32_t extension,
+						     uint32_t size)
+{
+	struct ipc_msg *msg;
+
+	msg = mod_zalloc(mod, sizeof(*msg));
+	if (!msg)
+		return NULL;
+
+	if (size) {
+		msg->tx_data = mod_zalloc(mod, size);
+		if (!msg->tx_data) {
+			mod_free(mod, msg);
+			return NULL;
+		}
+	}
+
+	msg->header = header;
+	msg->extension = extension;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	return msg;
+}
+
+static inline struct ipc_msg *mod_ipc_msg_init(struct processing_module *mod,
+					       uint32_t header, uint32_t size)
+{
+	return mod_ipc_msg_w_ext_init(mod, header, 0, size);
 }
 
 #if CONFIG_COMP_BLOB

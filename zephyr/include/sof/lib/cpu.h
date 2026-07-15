@@ -55,7 +55,7 @@ static inline bool cpu_is_primary(int id)
 
 static inline bool cpu_is_me(int id)
 {
-	return id == cpu_get_id();
+	return k_is_user_context() || id == cpu_get_id();
 }
 
 int cpu_enable_core(int id);

@@ -120,6 +120,7 @@ struct task *zephyr_ll_task_alloc(void);
 struct k_heap *zephyr_ll_user_heap(void);
 bool zephyr_ll_user_heap_verify(struct k_heap *heap);
 void zephyr_ll_user_resources_init(void);
+void user_ll_grant_access(struct k_thread *thread, int core);
 void user_ll_lock_sched(int core);
 void user_ll_unlock_sched(int core);
 #ifdef CONFIG_ASSERT
@@ -328,6 +329,8 @@ struct ll_schedule_domain *zephyr_domain_init(int clk);
 #ifdef CONFIG_SOF_USERSPACE_LL
 struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain);
 struct k_mem_domain *zephyr_ll_mem_domain(void);
+struct ll_schedule_domain *zephyr_ll_domain_for_core(unsigned int core);
+struct k_thread *zephyr_ll_domain_thread(unsigned int core);
 #endif /* CONFIG_SOF_USERSPACE_LL */
 #endif /* __ZEPHYR__ */
 

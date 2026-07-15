@@ -13,6 +13,7 @@
 #include <rtos/init.h>
 #include <rtos/interrupt.h>
 #include <sof/init.h>
+#include <sof/ipc/common.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib/memory.h>
@@ -32,6 +33,7 @@
 #include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
+#include <sof/audio/pipeline.h>
 #include <ipc/trace.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/fw_reg.h>
@@ -46,6 +48,10 @@
 #include <sof/lib/ams.h>
 
 LOG_MODULE_REGISTER(init, CONFIG_SOF_LOG_LEVEL);
+
+#if CONFIG_SOF_USERSPACE_LL
+SOF_DEFINE_REG_UUID(sec_core_init);
+#endif
 
 /* main firmware context */
 static struct sof sof;
@@ -109,6 +115,9 @@ static inline int secondary_core_restore(void) { return 0; };
 
 __cold int secondary_core_init(struct sof *sof)
 {
+#if CONFIG_SOF_USERSPACE_LL || CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	unsigned int core = cpu_get_id();
+#endif
 	int err;
 	struct ll_schedule_domain *dma_domain;
 
@@ -133,6 +142,12 @@ __cold int secondary_core_init(struct sof *sof)
 	if (dma_domain)
 		scheduler_init_ll(dma_domain);
 
+#if CONFIG_SOF_USERSPACE_LL
+	err = ipc_user_init_secondary(core);
+	if (err < 0)
+		return err;
+#endif
+
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	err = scheduler_dp_init();
 	if (err < 0)
@@ -151,7 +166,7 @@ __cold int secondary_core_init(struct sof *sof)
 		return err;
 #endif
 #if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
-	err = core_kcps_adjust(cpu_get_id(), SECONDARY_CORE_BASE_CPS_USAGE);
+	err = core_kcps_adjust(core, SECONDARY_CORE_BASE_CPS_USAGE);
 	if (err < 0)
 		return err;
 #endif
@@ -231,6 +246,11 @@ __cold static int primary_core_init(int argc, char *argv[], struct sof *sof)
 #if CONFIG_SOF_USERSPACE_LL
 	zephyr_ll_user_resources_init();
 #endif
+
+	/* init pipeline position offsets - must be before platform_init()
+	 * which calls ipc_init() -> ipc_user_init() that needs the posn mutex.
+	 */
+	pipeline_posn_init(sof);
 
 	/* init the platform */
 	if (platform_init(sof) < 0)

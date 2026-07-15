@@ -62,4 +62,25 @@ static inline int sys_mutex_unlock(struct sys_mutex *mutex)
 	return 0;
 }
 
+/* provide a no-op implementation for zephyr/sys/sem.h */
+
+struct sys_sem {
+};
+
+static inline int sys_sem_init(struct sys_sem *sem, unsigned int initial_count,
+			       unsigned int limit)
+{
+	return 0;
+}
+
+static inline int sys_sem_give(struct sys_sem *sem)
+{
+	return 0;
+}
+
+static inline int sys_sem_take(struct sys_sem *sem, k_timeout_t timeout)
+{
+	return 0;
+}
+
 #endif

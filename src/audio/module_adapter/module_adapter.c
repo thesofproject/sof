@@ -58,14 +58,80 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 #define PAGE_SZ HOST_PAGE_SIZE
 #endif
 
-static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
-						  size_t *heap_size)
+struct vregion *z_impl_module_adapter_vreg_new(const struct comp_ipc_config *config,
+					       uintptr_t *vreg_start, size_t *vreg_size)
 {
 	/* src-lite with 8 channels has been seen allocating 14k in one go */
 	/* FIXME: the size will be derived from configuration */
 	const size_t buf_size = 28 * 1024;
+	struct vregion *vr = vregion_create(buf_size);
 
-	return vregion_create(buf_size);
+	if (!vr)
+		return NULL;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	vregion_mem_info(vr, vreg_size, vreg_start);
+
+	/*
+	 * In the userspace LL case allocations are also performed by the
+	 * userspace IPC thread, which is also the one, executing this syscall
+	 */
+	struct k_mem_partition part = {
+		.start = *vreg_start,
+		.size = *vreg_size,
+		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
+	};
+	int ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(), &part);
+
+	if (ret < 0) {
+		vregion_put(vr);
+		return NULL;
+	}
+
+	part.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)part.start);
+	part.attr = K_MEM_PARTITION_P_RW_U_RW;
+
+	ret = k_mem_domain_add_partition(zephyr_ll_mem_domain(), &part);
+	if (ret < 0) {
+		vregion_put(vr);
+		return NULL;
+	}
+#else
+	ARG_UNUSED(vreg_start);
+	ARG_UNUSED(vreg_size);
+#endif
+
+	return vr;
+}
+
+void z_impl_module_adapter_vreg_unmap(const struct mod_alloc_ctx *alloc)
+{
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct k_mem_partition part = {
+		.start = alloc->vreg_start,
+		.size = alloc->vreg_size,
+		.attr = K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB,
+	};
+
+	k_mem_domain_remove_partition(zephyr_ll_mem_domain(), &part);
+
+	part.start = (uintptr_t)sys_cache_uncached_ptr_get((void *)part.start);
+	part.attr = K_MEM_PARTITION_P_RW_U_RW;
+
+	k_mem_domain_remove_partition(zephyr_ll_mem_domain(), &part);
+#else
+	ARG_UNUSED(alloc);
+#endif
+}
+
+void module_adapter_vreg_free(struct mod_alloc_ctx *alloc)
+{
+	if (vregion_put(alloc->vreg))
+		return;
+
+	module_adapter_vreg_unmap(alloc);
+
+	sof_heap_free(alloc->heap, alloc);
 }
 
 static struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
@@ -84,16 +150,21 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	 */
 	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
 		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
-	size_t heap_size;
+	size_t vreg_size;
+	uintptr_t vreg_start;
 
 	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_SOF_VREGIONS) &&
 	    IS_ENABLED(CONFIG_USERSPACE) && !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
-		mod_vreg = module_adapter_dp_heap_new(config, &heap_size);
+		mod_vreg = module_adapter_vreg_new(config, &vreg_start, &vreg_size);
 		if (!mod_vreg) {
 			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
 			return NULL;
 		}
+#ifdef CONFIG_SOF_USERSPACE_LL
+		mod_heap = sof_sys_user_heap_get();
+#else
 		mod_heap = NULL;
+#endif
 	} else {
 #ifdef CONFIG_SOF_USERSPACE_LL
 		mod_heap = sof_sys_user_heap_get();
@@ -101,7 +172,6 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 #else
 		mod_heap = drv->user_heap;
 #endif
-		heap_size = 0;
 		mod_vreg = NULL;
 	}
 
@@ -125,6 +195,8 @@ static struct processing_module *module_adapter_mem_alloc(const struct comp_driv
 	memset(mod, 0, sizeof(*mod));
 	alloc->heap = mod_heap;
 	alloc->vreg = mod_vreg;
+	alloc->vreg_start = vreg_start;
+	alloc->vreg_size = vreg_size;
 	mod->priv.resources.alloc = alloc;
 	mod_resource_init(mod);
 
@@ -165,6 +237,25 @@ emod:
 	return NULL;
 }
 
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+struct vregion *z_vrfy_module_adapter_vreg_new(const struct comp_ipc_config *config,
+					       uintptr_t *vreg_start, size_t *vreg_size)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(vreg_start, sizeof(*vreg_start)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(vreg_size, sizeof(*vreg_size)));
+	K_OOPS(K_SYSCALL_MEMORY_READ(config, sizeof(*config)));
+	return z_impl_module_adapter_vreg_new(config, vreg_start, vreg_size);
+}
+#include <zephyr/syscalls/module_adapter_vreg_new_mrsh.c>
+void z_vrfy_module_adapter_vreg_unmap(const struct mod_alloc_ctx *alloc)
+{
+	K_OOPS(K_SYSCALL_MEMORY_READ(alloc, sizeof(*alloc)));
+	z_impl_module_adapter_vreg_unmap(alloc);
+}
+#include <zephyr/syscalls/module_adapter_vreg_unmap_mrsh.c>
+#endif
+
 static void module_adapter_mem_free(struct processing_module *mod)
 {
 	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
@@ -182,8 +273,7 @@ static void module_adapter_mem_free(struct processing_module *mod)
 
 		vregion_free(mod_vreg, mod->dev);
 		vregion_free(mod_vreg, mod);
-		if (!vregion_put(mod_vreg))
-			sof_heap_free(alloc->heap, alloc);
+		module_adapter_vreg_free(alloc);
 	} else {
 		sof_heap_free(mod_heap, mod->dev);
 		sof_heap_free(mod_heap, mod);
