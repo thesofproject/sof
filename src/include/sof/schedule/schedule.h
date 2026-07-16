@@ -197,6 +197,9 @@ static inline void *scheduler_get_data(uint16_t type)
 	struct schedule_data *sch;
 	struct list_item *slist;
 
+	if (!schedulers)
+		return NULL;
+
 	list_for_item(slist, &schedulers->list) {
 		sch = container_of(slist, struct schedule_data, list);
 		if (type == sch->type)

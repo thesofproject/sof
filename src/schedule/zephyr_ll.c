@@ -769,5 +769,5 @@ struct ll_schedule_domain *zephyr_ll_domain(void)
 {
 	struct zephyr_ll *ll_sch = scheduler_get_data(SOF_SCHEDULE_LL_TIMER);
 
-	return ll_sch->ll_domain;
+	return ll_sch ? ll_sch->ll_domain : NULL;
 }

@@ -609,7 +609,8 @@ struct ll_schedule_domain *zephyr_domain_init(int clk)
 /* Check if currently running in the LL scheduler thread context */
 bool ll_sch_is_current(void)
 {
-	struct zephyr_domain *zephyr_domain = ll_sch_domain_get_pdata(zephyr_ll_domain());
+	struct ll_schedule_domain *ll_dom = zephyr_ll_domain();
+	struct zephyr_domain *zephyr_domain = ll_dom ? ll_sch_domain_get_pdata(ll_dom) : NULL;
 
 	if (!zephyr_domain)
 		return false;
