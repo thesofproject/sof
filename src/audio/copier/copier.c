@@ -143,6 +143,21 @@ __cold static int copier_init(struct processing_module *mod)
 	assert_can_be_cold();
 
 	if (copier->gtw_cfg.config_length > 1) {
+		/*
+		 * config_length is host-controlled and expressed in dwords. A
+		 * huge value overflows the 32-bit size arithmetic below: the
+		 * "<< 2" wraps around, which shrinks both cfg_total_size and the
+		 * mod_zalloc() size to a small value and defeats the payload
+		 * check further down. The gateway blob must fit within the
+		 * received init payload, so reject anything larger than that
+		 * before doing any size arithmetic on it.
+		 */
+		if (copier->gtw_cfg.config_length > md->cfg.size / sizeof(uint32_t)) {
+			comp_err(dev, "copier_init(): invalid gtw_cfg.config_length %u",
+				 copier->gtw_cfg.config_length);
+			return -EINVAL;
+		}
+
 		/* one word already included in gateway_cfg struct hence subtraction */
 		gtw_cfg_var_size += (copier->gtw_cfg.config_length - 1) << 2;
 		cfg_total_size += gtw_cfg_var_size;
