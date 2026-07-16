@@ -81,10 +81,12 @@ int schedule_task_init(struct task *task,
 	return 0;
 }
 
-static void scheduler_register(struct schedule_data *scheduler)
+__cold static void scheduler_register(struct schedule_data *scheduler)
 {
 	struct schedulers **sch = arch_schedulers_get();
 	struct k_heap *heap = NULL;
+
+	assert_can_be_cold();
 
 	if (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) && scheduler_is_user(scheduler->type)) {
 		sch = arch_user_schedulers_get();
@@ -105,10 +107,12 @@ static void scheduler_register(struct schedule_data *scheduler)
 	list_item_append(&scheduler->list, &(*sch)->list);
 }
 
-void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
+__cold void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 {
 	struct schedule_data *sch;
 	struct k_heap *heap = NULL;
+
+	assert_can_be_cold();
 
 	if (IS_ENABLED(CONFIG_SOF_USERSPACE_LL) && scheduler_is_user(type))
 		heap = sof_sys_user_heap_get();
