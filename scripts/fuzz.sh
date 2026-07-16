@@ -21,6 +21,8 @@ Usage:
   -j n       Number of concurrent -jobs=n. Defaults to 1.
              The value 0 uses the output of the 'nproc' command.
   -a arch    The architecture to build against (i386, x86_64)
+  -d dfile   Pass -dict=dfile to libFuzzer. A missing or empty dfile
+             is a non-fatal warning: the fuzzer then runs without it.
 
 Arguments after -- are passed as is to CMake (through west).
 When passing conflicting -DVAR='VAL UE1' -DVAR='VAL UE2' to CMake,
@@ -93,9 +95,10 @@ main()
   local ARCH=i386
   local IPC
   local BOARD
+  local DICT
 
   # Parse "$@". getopts stops after '--'
-  while getopts "i:hj:ps:a:o:t:b" opt; do
+  while getopts "i:hj:ps:a:o:t:bd:" opt; do
       case "$opt" in
           i) IPC="$OPTARG";;
           h) print_help; exit 0;;
@@ -105,6 +108,7 @@ main()
           o) FUZZER_STDOUT="$OPTARG";;
           t) TEST_DURATION="$OPTARG";;
           a) ARCH="$OPTARG";;
+          d) DICT="$OPTARG";;
           b) BUILD_ONLY=true;;
           *) print_help; exit 1;;
       esac
@@ -169,11 +173,23 @@ main()
       jobs_opts+=( -jobs="$JOBS" -close_fd_mask=1 )
   fi
 
+  # Optional libFuzzer dictionary (-d). An absent or empty file is a
+  # non-fatal warning: the dictionary is a pure enhancement and must
+  # never block a fuzzing run (e.g. when its generator fails in CI).
+  local dict_opts=( )
+  if [ -n "$DICT" ]; then
+      if [ -s "$DICT" ]; then
+          dict_opts+=( -dict="$DICT" )
+      else
+          >&2 printf 'WARN: dictionary %s missing or empty; running without it\n' "$DICT"
+      fi
+  fi
+
   date
   # Help is at: -help=1
   ( set -x
     >"$FUZZER_STDOUT" build-fuzz/zephyr/zephyr.exe -max_total_time="$TEST_DURATION" \
-     -verbosity=0 "${jobs_opts[@]}" ./fuzz_corpus ) || {
+     -verbosity=0 "${jobs_opts[@]}" "${dict_opts[@]}" ./fuzz_corpus ) || {
       ret=$?
       >&2 printf 'zephyr.exe returned: %d\n' $ret
       date
