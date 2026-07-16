@@ -75,6 +75,16 @@ jobs:
           west init -l
           west update --narrow --fetch-opt=--filter=tree:0
 
+      - name: generate IPC dictionary
+        # A generator failure (e.g. after a header rename) must not break
+        # fuzzing: the step is best-effort and fuzz.sh runs without the
+        # dictionary when the file is missing or empty (see -d below).
+        continue-on-error: true
+        run: |
+          cd workspace
+          python3 sof/scripts/gen_fuzz_ipc${{ matrix.IPC }}_dict.py \
+            -o "$RUNNER_TEMP/ipc${{ matrix.IPC }}.dict"
+
       - name: build and run fuzzer for a few minutes
         run: |
           cd workspace
@@ -83,7 +93,8 @@ jobs:
           duration="${{inputs.fuzzing_duration_s}}"
           duration="${duration:-301}"  # pull_request has not 'inputs.' :-(
           # Note libFuzzer makes a difference between -jobs and -workers (capped at nproc/2)
-          sof/scripts/fuzz.sh -i '${{ matrix.IPC }}' -o fuzz-stdout.txt -t "$duration" -j"$(nproc)"
+          sof/scripts/fuzz.sh -i '${{ matrix.IPC }}' -o fuzz-stdout.txt -t "$duration" \
+            -j"$(nproc)" -d "$RUNNER_TEMP/ipc${{ matrix.IPC }}.dict"
 
       - name: Upload stdout
         uses: actions/upload-artifact@v4
