@@ -173,7 +173,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev);
  */
 void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data);
 
-#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_INTEL_ADSP_IPC)
+#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC)
 /**
  * @brief Send an IPC response to Host power transition request informing
  * that power transition failed.
@@ -186,7 +186,7 @@ void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data);
  * IPC task but during power transition logic in the Idle thread.
  */
 void ipc_send_failed_power_transition_response(void);
-#endif /* CONFIG_PM_DEVICE && CONFIG_INTEL_ADSP_IPC */
+#endif /* CONFIG_PM_DEVICE && CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC */
 /**
  * \brief Send a IPC notification that FW has hit
  *        a DSP notification.
