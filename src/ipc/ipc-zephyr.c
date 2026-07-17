@@ -13,8 +13,10 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/ipc/ipc_service.h>
-#ifdef CONFIG_INTEL_ADSP_IPC
+#ifdef CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC
 #include <zephyr/ipc/backends/intel_adsp_host_ipc.h>
+#endif
+#ifdef CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE
 #include <intel_adsp_ipc.h>
 #endif
 
@@ -97,7 +99,7 @@ static void sof_ipc_receive_cb(const void *data, size_t len, void *priv)
 	k_spin_unlock(&ipc->lock, key);
 }
 
-#ifdef CONFIG_PM_DEVICE
+#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC)
 /**
  * @brief IPC device suspend handler callback function.
  * Checks whether device power state should be actually changed.
@@ -179,7 +181,7 @@ static int ipc_device_resume_handler(const struct device *dev, void *arg)
 #endif
 	return 0;
 }
-#endif /* CONFIG_PM_DEVICE */
+#endif /* CONFIG_PM_DEVICE && CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC */
 
 #if CONFIG_DEBUG_IPC_COUNTERS
 
@@ -328,7 +330,7 @@ int platform_ipc_init(struct ipc *ipc)
 	if (ret < 0)
 		return ret;
 
-#if defined(CONFIG_PM) && defined(CONFIG_INTEL_ADSP_IPC)
+#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC)
 	intel_adsp_ipc_set_suspend_handler(INTEL_ADSP_IPC_HOST_DEV,
 					   ipc_device_suspend_handler, ipc);
 	intel_adsp_ipc_set_resume_handler(INTEL_ADSP_IPC_HOST_DEV,
@@ -338,7 +340,7 @@ int platform_ipc_init(struct ipc *ipc)
 	return 0;
 }
 
-#ifdef CONFIG_INTEL_ADSP_IPC
+#ifdef CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE
 static bool ipc_wait_complete(const struct device *dev, void *arg)
 {
 	k_sem_give(arg);
@@ -358,4 +360,4 @@ void ipc_platform_wait_ack(struct ipc *ipc)
 
 	intel_adsp_ipc_set_done_handler(INTEL_ADSP_IPC_HOST_DEV, NULL, NULL);
 }
-#endif /* CONFIG_INTEL_ADSP_IPC */
+#endif /* CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE */

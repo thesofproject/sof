@@ -443,7 +443,7 @@ __cold void ipc_boot_complete_msg(struct ipc_cmd_hdr *header, uint32_t data)
 	header->ext = 0;
 }
 
-#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_INTEL_ADSP_IPC)
+#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC)
 __cold void ipc_send_failed_power_transition_response(void)
 {
 	struct ipc4_message_request *request = ipc_from_hdr(&msg_data.msg_in);
@@ -461,7 +461,7 @@ __cold void ipc_send_failed_power_transition_response(void)
 
 	ipc_msg_send_direct(&msg_reply, NULL);
 }
-#endif /* defined(CONFIG_PM_DEVICE) && defined(CONFIG_INTEL_ADSP_IPC) */
+#endif /* defined(CONFIG_PM_DEVICE) && defined(CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC) */
 
 __cold void ipc_send_panic_notification(void)
 {
