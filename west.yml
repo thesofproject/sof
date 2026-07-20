@@ -20,6 +20,20 @@ manifest:
     # libshine fixed-point MP3 encoder for FFMPEG_ENC_MP3 (upstream mirror).
     - name: shine
       url-base: https://github.com/toots
+    # libfvad: pure-C BSD-3 extraction of the WebRTC GMM VAD for the
+    # webrtc_vad module (CONFIG_COMP_WEBRTC_VAD). Cross-built by
+    # src/audio/webrtc_vad/webrtc_vad.cmake.
+    - name: libfvad
+      url-base: https://github.com/dpirch
+    # webrtc-apm: webrtc-audio-processing 0.3.x source used for the classic
+    # WebRTC Noise Suppression module (CONFIG_COMP_WEBRTC_NS). Pure-C subset,
+    # no abseil. Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake.
+    - name: webrtc-apm
+      url-base: https://gitlab.freedesktop.org/gstreamer
+    # rnnoise: xiph/rnnoise deep-learning noise suppressor used by webrtc_ns2.
+    # Pure C, BSD-3-Clause. Pinned at Feb-2025 tip.
+    - name: rnnoise
+      url-base: https://github.com/xiph
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -67,6 +81,31 @@ manifest:
       path: modules/audio/shine
       revision: ab5e3526b64af1a2eaa43aa6f441a7312e013519
       remote: shine
+
+    # libfvad: standalone WebRTC GMM VAD for the webrtc_vad module.
+    # Cross-built by src/audio/webrtc_vad/webrtc_vad.cmake.
+    - name: libfvad
+      repo-path: libfvad
+      path: modules/audio/libfvad
+      revision: 532ab666c20d3cfda38bca63abbb0f152706c369
+      remote: libfvad
+
+    # webrtc-audio-processing 0.3.1 — classic WebRTC APM for webrtc_ns module.
+    # Pure-C NS subset only; no C++ or abseil dependency.
+    # Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake.
+    - name: webrtc-apm
+      repo-path: webrtc-audio-processing
+      path: modules/audio/webrtc-apm
+      revision: v0.3.1
+      remote: webrtc-apm
+
+    # rnnoise — xiph/rnnoise deep-learning noise suppressor (webrtc_ns2).
+    # Pure C, BSD-3-Clause. Pinned at Feb-2025 tip (post RNNoise 2.0 refactor).
+    - name: rnnoise
+      repo-path: rnnoise
+      path: modules/audio/rnnoise
+      revision: 70f1d256acd4b34a572f999a05c87bf00b67730d
+      remote: rnnoise
 
     - name: zephyr
       repo-path: zephyr

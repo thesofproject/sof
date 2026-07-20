@@ -179,6 +179,10 @@ e93326d8-0d14-4bf0-bcb9e063d3d80136 twb_sched
 b77e677e-5ff4-4188-af14fba8bdbf8682 volume
 8a171323-94a3-4e1d-afe9fe5dbaa4c393 volume4
 1028070e-04e8-46ab-8d8110a0116ce738 wait
+c790b11d-5d14-e54e-be36ba4ad732cc14 webrtc_vad
+0fc8faef-945f-004b-8d5f315047f1136a webrtc_ns
+e5da7b5b-133a-ba46-b517651d6300bb83 webrtc_aec
+eacfacdc-2a87-c942-97e894c917a740db webrtc_ns2
 d944281a-afe9-4695-a043d7f62b89538e waves
 13c8bc59-c4fa-4ad1-b93ace97cd30acc7 wdt
 300aaad4-45d2-8313-25d05e1d6086cdd1 zephyr
