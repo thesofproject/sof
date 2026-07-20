@@ -132,7 +132,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 
 	task->state = SOF_TASK_STATE_FREE;
 
-	if (pdata->freeing)
+	if (pdata && pdata->freeing)
 		/*
 		 * zephyr_ll_task_free() is trying to free this task. Complete
 		 * it and signal the semaphore to let the function proceed
@@ -258,7 +258,7 @@ static void zephyr_ll_run(void *data)
 		task = container_of(list, struct task, list);
 		pdata = task->priv_data;
 
-		if (task->state == SOF_TASK_STATE_CANCEL) {
+		if (!pdata || task->state == SOF_TASK_STATE_CANCEL) {
 			list = list->next;
 			zephyr_ll_task_done(sch, task);
 			continue;
