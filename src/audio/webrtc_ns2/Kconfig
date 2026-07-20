@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_WEBRTC_NS2
+	tristate "RNNoise deep-learning noise suppressor (floating-point)"
+	help
+	  Select to include the RNNoise module — a recurrent neural network
+	  noise suppressor originally developed by Jean-Marc Valin (Mozilla /
+	  Opus). RNNoise operates at 48 kHz on 10 ms (480-sample) mono frames
+	  and achieves significantly better suppression of non-stationary noise
+	  (music, babble, keyboard) than the classic spectral Wiener filter
+	  (COMP_WEBRTC_NS).
+
+	  The module is single-input, single-output and internally emits a
+	  per-frame VAD probability (0.0–1.0) via NOTIFIER_ID_VAD, making it
+	  a combined denoiser and activity detector.
+
+	  Requirements:
+	    - Floating-point unit (FPU=y on ACE30/PTL; soft-float also works
+	      but at significant CPU cost)
+	    - ~30 KB of state per channel (DenoiseState + RNN weights)
+	    - Pipeline sample rate exactly 48000 Hz
+	    - Pipeline period must be a multiple of 480 samples (10 ms)
+
+	  The real backend builds RNNoise from source (west module rnnoise,
+	  pinned at commit 70f1d256). For CI/stub builds select
+	  COMP_WEBRTC_NS2_STUB.
+
+	  License: BSD-3-Clause (xiph/rnnoise).
+
+if COMP_WEBRTC_NS2
+
+config COMP_WEBRTC_NS2_STUB
+	bool "RNNoise stub backend (no RNNoise source dependency)"
+	default y if COMP_STUBS
+	help
+	  Build webrtc_ns2 against a dependency-free pass-through stub instead
+	  of the real RNNoise library. The stub passes audio through unmodified
+	  and always reports VAD probability = 1.0. Used for CI and LLEXT
+	  packaging validation without the RNNoise source.
+
+config WEBRTC_NS2_CHANNELS_MAX
+	int "Maximum channel count (each channel gets its own RNNoise instance)"
+	range 1 8
+	default 2
+	help
+	  RNNoise is strictly mono; the module runs one DenoiseState per
+	  channel. Increasing this raises SRAM usage by ~30 KB per extra
+	  channel. Set to 1 for pure mono capture pipelines.
+
+config WEBRTC_NS2_VAD_NOTIFY
+	bool "Emit NOTIFIER_ID_VAD event from RNNoise VAD probability"
+	default y
+	help
+	  RNNoise returns a per-frame speech probability in [0.0, 1.0]. When
+	  this option is enabled the module broadcasts a NOTIFIER_ID_VAD event
+	  (speech=1 / silence=0) using a configurable threshold, providing a
+	  combined denoiser + VAD without running a separate webrtc_vad module.
+
+config WEBRTC_NS2_VAD_THRESHOLD_PCT
+	int "VAD threshold as percentage of max probability (0-100)"
+	range 0 100
+	default 50
+	depends on WEBRTC_NS2_VAD_NOTIFY
+	help
+	  Speech is declared when rnnoise_process_frame() returns a probability
+	  >= this value / 100.0. 50 is a good default; lower values increase
+	  sensitivity (more false positives), higher values reduce it.
+
+endif # COMP_WEBRTC_NS2
