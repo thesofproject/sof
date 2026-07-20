@@ -1,7 +1,112 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-mainmenu "SOF $(PROJECTVERSION) Configuration"
+config COMP_FFMPEG_DEC
+	tristate "FFmpeg (libavcodec) audio decoder"
+	select COMP_FFMPEG_DEC_STUB if COMP_STUBS
+	help
+	  Select to include the FFmpeg audio decoder module. It wraps
+	  libavcodec decoders behind the SOF module interface, decoding a
+	  compressed elementary stream to PCM. The real backend cross-builds
+	  libavcodec/libavutil/libswresample from the FFmpeg source pulled in
+	  by west (see west.yml), enabling only the decoders selected below.
+	  Without the source (or for CI) select COMP_FFMPEG_DEC_STUB to build
+	  the dependency-free passthrough stub.
 
-comment "Compiler: $(CC_VERSION_TEXT)"
+config COMP_FFMPEG_DEC_STUB
+	bool "FFmpeg decoder stub backend"
+	depends on COMP_FFMPEG_DEC
+	help
+	  Build the ffmpeg_dec module against a dependency-free passthrough
+	  backend instead of libavcodec. Intended for testing and CI so the
+	  SOF glue and LLEXT packaging can be validated without the FFmpeg
+	  source or a cross-built archive.
 
-source "Kconfig.sof"
+if COMP_FFMPEG_DEC && !COMP_FFMPEG_DEC_STUB
+
+comment "FFmpeg decoders to build (footprint scales with selection)"
+
+config FFMPEG_DEC_FLAC
+	bool "FLAC decoder"
+	default y
+	help
+	  Lossless integer decoder. Smallest footprint, no floating-point
+	  math. Enables --enable-decoder=flac in the libavcodec build.
+
+config FFMPEG_DEC_AAC
+	bool "AAC-LC decoder"
+	help
+	  AAC Low Complexity decoder. Pulls in the single-precision float
+	  math layer (see FFMPEG_DEC_FLOAT_MATH). Enables
+	  --enable-decoder=aac in the libavcodec build.
+
+config FFMPEG_DEC_OPUS
+	bool "Opus decoder"
+	help
+	  Opus (SILK+CELT) decoder. Pulls in the single-precision float math
+	  layer. Enables --enable-decoder=opus in the libavcodec build.
+
+config FFMPEG_DEC_MP3
+	bool "MP3 decoder"
+	help
+	  MPEG-1/2 Layer III decoder. Enables --enable-decoder=mp3 and the
+	  mpegaudio parser in the libavcodec build. Uses the float math layer.
+
+config FFMPEG_ENC_MP3
+	bool "MP3 encoder (libshine, fixed-point)"
+	help
+	  MPEG-1 Layer III encoder via libshine, a small fixed-point encoder
+	  (west-pinned; FFmpeg has no native MP3 encoder). Cross-builds libshine
+	  and enables --enable-libshine --enable-encoder=libshine. Fixed-point, so
+	  no float math dependency. The encoder is built into the archive; a module
+	  encode path (PCM->MP3) is a separate build mode.
+
+comment "FFmpeg audio filters (libavfilter; need the avfilter-graph backend to run)"
+
+config FFMPEG_FILTER_AFFTDN
+	bool "FFT noise reduction (afftdn)"
+	help
+	  Build FFmpeg's FFT-based denoiser (afftdn) into libavfilter. Pure DSP,
+	  no external model file (unlike arnndn). Enabling any filter turns on
+	  libavfilter in the cross-build. NOTE: a filter is only usable at runtime
+	  once the module gains an avfilter-graph backend; selecting it here just
+	  builds the filter into the archive.
+
+config FFMPEG_DEC_FILTER_MODE
+	bool "Build as a PCM filter effect instead of a decoder [EXPERIMENTAL]"
+	select FFMPEG_FILTER_AFFTDN
+	help
+	  Build the module as a PCM source->sink effect that runs an FFmpeg
+	  audio filter graph (default afftdn noise reduction) via the modern
+	  .process interface, instead of the compressed-stream decoder. Turns on
+	  libavfilter and the fast float math. Structurally complete and
+	  load-ready; real-time latency/format tuning needs on-hardware bring-up.
+
+# Turns on libavfilter in the FFmpeg cross-build when any filter is selected.
+config FFMPEG_BUILD_AVFILTER
+	bool
+	default y if FFMPEG_FILTER_AFFTDN
+
+# Selected automatically when a decoder or filter that needs IEEE float math is
+# built. Gates compilation of the fast single-precision libm (fastmathf.c).
+config FFMPEG_DEC_FLOAT_MATH
+	bool
+	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_DEC_MP3 || FFMPEG_FILTER_AFFTDN
+
+config FFMPEG_DEC_COLD_SPLIT
+	bool "Place cold FFmpeg code (av_cold init/setup) in DRAM [EXPERIMENTAL]"
+	depends on COLD_STORE_EXECUTE_DRAM
+	default n
+	help
+	  EXPERIMENTAL. Build libavcodec with -mtext-section-literals and rename
+	  FFmpeg's cold functions (its av_cold init/table-generation code, which GCC
+	  emits into .text.unlikely) into SOF's .cold section so the LLEXT loader
+	  places them in DRAM, keeping the hot per-frame decode in fast SRAM.
+
+	  Measured cold code is small (~1 KB for FLAC, ~26 KB for AAC) because
+	  FFmpeg only marks init functions av_cold. Placing that much cold code in a
+	  -shared LLEXT currently hits Xtensa linker limits (cold->hot call8 range
+	  needs -mlongcalls; the orphan .cold lands at a bad LMA and overlaps .hash),
+	  so this is off by default pending proper cold-region placement in the LLEXT
+	  memory map. See git history / TESTING notes.
+
+endif # COMP_FFMPEG_DEC && !COMP_FFMPEG_DEC_STUB
