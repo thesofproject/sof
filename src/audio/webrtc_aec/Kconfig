@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_WEBRTC_AEC
+	tristate "WebRTC AECm — fixed-point Acoustic Echo Canceller"
+	help
+	  Select to include the WebRTC AECm (Mobile) acoustic echo canceller.
+	  AECm is a fixed-point Q15 implementation derived from the WebRTC
+	  audio processing library. It requires no floating-point unit and is
+	  well suited to Xtensa HiFi3/HiFi4 class DSPs.
+
+	  The module accepts two input streams (2 input pins):
+	    Pin 0 — microphone capture (same pipeline as the output)
+	    Pin 1 — playback echo reference (from the render pipeline)
+	  and produces one denoised microphone output stream.
+
+	  This module is intended as an open-source drop-in replacement for
+	  the google_rtc_audio_processing module that requires a proprietary
+	  library. Both implement the same two-input / one-output topology so
+	  topologies are interchangeable.
+
+	  The real backend requires webrtc-audio-processing 0.3.x source
+	  (west module modules/audio/webrtc-apm, same as COMP_WEBRTC_NS).
+	  For CI/testing without that source, select COMP_WEBRTC_AEC_STUB.
+
+if COMP_WEBRTC_AEC
+
+config COMP_WEBRTC_AEC_STUB
+	bool "WebRTC AECm stub backend (no WebRTC source dependency)"
+	default y if COMP_STUBS
+	help
+	  Build the webrtc_aec module against a dependency-free stub backend
+	  that passes microphone audio through without modification. Useful
+	  for CI validation, topology testing, and LLEXT packaging without
+	  the cross-built WebRTC AECm archive.
+
+config WEBRTC_AEC_FILTER_LEN_MS
+	int "AECm adaptive filter length in ms (32, 64 or 128)"
+	default 64
+	help
+	  Length of the adaptive echo-cancellation filter. Longer filters
+	  can handle larger acoustic echo delays (e.g. in rooms with long
+	  reverb tails) at the cost of increased memory and CPU.
+	  Valid values: 32, 64, 128.
+
+config WEBRTC_AEC_SUPPRESSION_LEVEL
+	int "AECm comfort-noise suppression level (0=off, 1=low, 2=medium)"
+	range 0 2
+	default 1
+	help
+	  Controls how aggressively residual echo / background noise is
+	  suppressed in the CNG (comfort noise generator) post-filter:
+	    0 - disabled (only echo suppression, no CNG)
+	    1 - low suppression (recommended)
+	    2 - medium suppression
+
+config WEBRTC_AEC_SAMPLE_RATE_HZ
+	int "AECm processing sample rate in Hz"
+	default 16000
+	help
+	  AECm operates at 8000 or 16000 Hz. When the pipeline runs at a
+	  higher rate (e.g. 48 kHz), the module downsamples before AEC
+	  processing and upsamples afterward. 16 kHz is recommended for
+	  best echo suppression quality.
+	  Valid values: 8000, 16000.
+
+endif # COMP_WEBRTC_AEC
