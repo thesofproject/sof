@@ -1,0 +1,25 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
+	REM # WebRTC VAD (libfvad) module config
+	[[module.entry]]
+	REM # NOTE: module name is limited to 8 chars (manifest name field);
+	REM # it must match the SOF_LLEXT_MODULE_MANIFEST() name in webrtc_vad.c.
+	name = "WRTCVAD"
+	uuid = UUIDREG_STR_WEBRTC_VAD
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = LOAD_TYPE
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # Single input pin (source), single output pin (sink). PCM pass-through.
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x45ff]
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	REM # VAD is pure pass-through: IBS == OBS, modest CPU (fixed-point GMM).
+	mod_cfg = [0, 0, 0, 0, 0, 500000, 8192, 8192, 0, 500, 0]
+
+	index = __COUNTER__
