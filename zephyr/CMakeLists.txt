@@ -599,6 +599,10 @@ zephyr_library_sources(
 	lib.c
 )
 
+zephyr_library_sources_ifndef(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD
+	lib/user_work.c
+)
+
 # SOF module interface functions
 add_subdirectory(../src/module module_unused_install/)
 
