@@ -1,59 +1,100 @@
-# FFmpeg audio decoder module (ffmpeg_dec)
+# FFmpeg Audio Processing Module (`ffmpeg_dec`)
 
-Wraps FFmpeg's `libavcodec` audio decoders behind the SOF `module_interface`,
-decoding a compressed elementary stream to PCM inside the DSP. First target
-codec is **FLAC**.
+Wraps FFmpeg's `libavcodec` and `libavfilter` libraries behind the SOF `module_interface`. This module enables running on-DSP audio decoders, encoders, and real-time audio filter graphs.
 
-## Design
+---
 
-The SOF glue and the decoder are separated so the integration can be validated
-without libavcodec:
+## Features
 
-- `ffmpeg_dec.c` — SOF module core: `init` / `prepare` / `process_raw_data` /
-  `set_configuration` / `reset` / `free`, plus the LLEXT manifest. Input is the
-  compressed byte stream (raw data), output is interleaved PCM. Decoding is
-  delegated to a `struct ffmpeg_dec_backend`.
-- `ffmpeg_dec-stub.c` — dependency-free passthrough backend. Lets CI build and
-  exercise the module (pipeline, IPC config, LLEXT packaging) with **no** FFmpeg
-  libraries. Selected by `CONFIG_COMP_FFMPEG_DEC_STUB`.
-- `ffmpeg_dec-ffmpeg.c` — real backend driving the standalone `libavcodec`
-  send-packet / receive-frame API. A raw stream is framed on-DSP with an
-  `AVCodecParser` (`av_parser_parse2`); decode is forced single-threaded
-  (`thread_count = 1`). Requires pre-compiled static libraries and headers under
-  `third_party/` (see below).
-- `ffmpeg_dec.h` — private data (`struct ffmpeg_dec_comp_data`) and the backend
-  interface.
+- **Decoder Mode**: Decodes compressed audio streams (e.g., FLAC, MP3) to raw PCM.
+- **Encoder Mode**: Encodes raw PCM streams to compressed formats (e.g., MP3 using `libshine`).
+- **Filter Mode**: Runs FFmpeg's `libavfilter` graphs directly on raw PCM data (e.g., `afftdn` for noise reduction).
+- **Embedded-Optimized**: Supports single-threaded execution, memory shims for dynamic allocation, and LLEXT packaging.
+- **CI-Friendly**: Includes a pass-through stub backend to allow pipeline, IPC, and topology verification without external dependencies.
 
-The codec setup header (e.g. FLAC STREAMINFO) is delivered as a binary control
-via `set_configuration` and stored as `extradata`, which the libavcodec backend
-installs before `avcodec_open2()`.
+---
 
-## Build
+## Architecture & Data Flow
 
-- **Stub (default for testing/CI):** `CONFIG_COMP_FFMPEG_DEC=y` (or `=m` for
-  LLEXT) with `CONFIG_COMP_FFMPEG_DEC_STUB=y`. No external dependencies.
-- **Real decoder:** `CONFIG_COMP_FFMPEG_DEC=m`, `CONFIG_COMP_FFMPEG_DEC_STUB=n`.
-  Requires cross-compiled decoder-only FFmpeg static libraries installed as:
-  - `third_party/lib/libavcodec.a`, `libavutil.a`, `libswresample.a`
-  - `third_party/include/libavcodec/…`, `libavutil/…`, `libswresample/…`
-  Configure FFmpeg with `--disable-everything --disable-avformat
-  --disable-pthreads --enable-decoder=flac --enable-parser=flac` (plus the
-  target cross-compile flags).
+The following Mermaid diagram illustrates the module's internal architecture and the interaction between the SOF pipeline, the `ffmpeg_dec` core, and its backend translation units:
 
-## Files
+```mermaid
+graph TD
+    %% Audio Data Flow
+    InBuf[Input Audio Buffer] -->|Raw Bytes or PCM| Core[ffmpeg_dec.c Core]
+    Core -->|Pass-through| BackendStub[ffmpeg_dec-stub.c Stub]
+    Core -->|Process| BackendFFmpeg[ffmpeg_dec-ffmpeg.c FFmpeg Backend]
+    
+    BackendFFmpeg -->|Parse/Decode/Filter| Libavcodec[libavcodec / libavfilter]
+    Libavcodec -->|Output PCM Frame| Core
+    BackendStub -->|Pass-through S16/S32| Core
+    Core -->|Interleaved PCM or Encoded Bytes| OutBuf[Output Audio Buffer]
 
-- `Kconfig` — `COMP_FFMPEG_DEC` (tristate) and `COMP_FFMPEG_DEC_STUB`.
-- `CMakeLists.txt` / `llext/CMakeLists.txt` — static and LLEXT builds; the LLEXT
-  target name is `ffmpeg_dec` and links the FFmpeg libraries in the non-stub
-  branch.
-- `ffmpeg_dec.toml` / `llext/llext.toml.h` — rimage module manifest
-  (`UUIDREG_STR_FFMPEG_DEC`); OBS is sized above IBS since PCM out ≫ compressed
-  in.
+    %% Control Flow
+    IPC[SOF IPC set_configuration] -.->|Metadata/Extradata| Core
+    Core -.->|avcodec_open2 / init| Libavcodec
+```
 
-## Status / TODO
+### Modular Design
+- **`ffmpeg_dec.c` (Core Glue)**: Implements the standard `module_interface` functions (`init`, `prepare`, `process`, `reset`, `free`).
+- **`ffmpeg_dec-stub.c`**: Pass-through stub backend that bypasses FFmpeg libraries.
+- **`ffmpeg_dec-ffmpeg.c` / `ffmpeg_dec-filter.c` / `ffmpeg_dec-encode.c`**: Real backend implementations interfacing with `libavcodec` and `libavfilter`.
+- **`ffmpeg_dec-shims.c`**: Overrides dynamic memory allocations (`malloc`, `realloc`, `free`, `calloc`) inside FFmpeg to use SOF's `rballoc` pools.
 
-- Codec id is currently hard-coded to FLAC in `init`; wire it from topology/IPC
-  init config for other codecs.
-- Output is assumed to already match the sink sample format; add
-  `libswresample` (or a fixed-point path) for format/rate conversion.
-- Topology and host test tooling for end-to-end (bit-exact) FLAC decode.
+---
+
+## Build Instructions
+
+### 1. Stub Mode (Default / CI / Staging)
+No external libraries are required. The module acts as a simple pass-through.
+```ini
+CONFIG_COMP_FFMPEG_DEC=y      # or =m for LLEXT
+CONFIG_COMP_FFMPEG_DEC_STUB=y
+```
+
+### 2. Real FFmpeg Backend
+Requires pre-compiled static libraries and headers placed under the `third_party/` directory of the workspace.
+```ini
+CONFIG_COMP_FFMPEG_DEC=m
+CONFIG_COMP_FFMPEG_DEC_STUB=n
+```
+
+#### Configuring the FFmpeg Build
+When cross-compiling FFmpeg for Xtensa DSP targets, disable unnecessary components to minimize code size:
+```bash
+./configure \
+  --target-os=none \
+  --arch=xtensa \
+  --enable-cross-compile \
+  --disable-everything \
+  --disable-avformat \
+  --disable-pthreads \
+  --enable-decoder=flac,mp3 \
+  --enable-encoder=mp3 \
+  --enable-parser=flac,mpegaudio \
+  --enable-filter=afftdn \
+  --enable-static \
+  --disable-shared
+```
+
+#### Useful Kconfig Options
+- `CONFIG_FFMPEG_DEC_FILTER_MODE`: Configures the module to run as a PCM filter graph instead of a decoder.
+- `CONFIG_FFMPEG_DEC_FLOAT_MATH`: Automatically selected to pull in optimized floating-point shims (`fastmathf.c`).
+- `CONFIG_FFMPEG_DEC_COLD_SPLIT`: Relocates initialization tables and code to DRAM to conserve fast SRAM.
+
+---
+
+## Usage & Topology
+
+### 1. Decoder Mode
+The topology should feed compressed bytes (e.g., from a host gateway) into the decoder input pin. The decoder outputs decoded PCM.
+- **Initialization**: Provide codec-specific setup data (e.g., FLAC `STREAMINFO` or MP3 headers) via IPC bytes control `set_configuration`.
+- **Buffer Period**: Keep period size large enough (typically 10ms or 20ms) to reduce parsing overhead.
+
+### 2. Filter Mode
+The module is placed in the capture or playback pipeline as a normal 1-in / 1-out effect.
+- **Routing Example**:
+```
+DAI Copier (Mic Capture) ---> [ ffmpeg_dec (Filter Mode) ] ---> Host Copier (PCM)
+```
+- **Control**: Filter coefficients and parameters can be set dynamically via standard TLV bytes controls.

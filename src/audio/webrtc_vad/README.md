@@ -1,82 +1,88 @@
-# WebRTC Voice Activity Detection module (`webrtc_vad`)
+# WebRTC Voice Activity Detection Module (`webrtc_vad`)
 
-Wraps [libfvad](https://github.com/dpirch/libfvad) — a standalone pure-C
-BSD-3 extraction of the WebRTC GMM Voice Activity Detection algorithm — behind
-the SOF `module_interface`.
+Wraps [libfvad](https://github.com/dpirch/libfvad) — a standalone, pure-C, BSD-3 licensed extraction of the WebRTC GMM Voice Activity Detection algorithm — behind the SOF `module_interface`.
 
-## What it does
+---
 
-The module is a **pass-through PCM effect**: audio is copied from source to
-sink without modification. On each complete VAD frame (10, 20 or 30 ms,
-Kconfig-selectable), the module classifies channel-0 audio as speech or
-non-speech using the libfvad GMM classifier and broadcasts the binary decision
-(`WEBRTC_VAD_SPEECH` / `WEBRTC_VAD_SILENCE`) via `NOTIFIER_ID_VAD`.
+## Features
 
-Downstream consumers (keyword detection gating, host-side VAD forwarding,
-noise suppression activation) subscribe to this notifier without needing to
-poll the module.
+- **GMM Classifier**: Uses Gaussian Mixture Models (GMM) for robust speech vs. noise classification.
+- **Pass-through Data Flow**: Does not modify PCM audio; passes it through untouched.
+- **Notifier Integration**: Broadcasts binary speech/silence decisions (`1` or `0`) via SOF's `NOTIFIER_ID_VAD` event channel.
+- **Low Power & Fixed-Point**: Operates entirely in Q15 fixed-point; requires no floating-point hardware (FPU).
+- **Flexible Frame Sizes**: Supports 10 ms, 20 ms, and 30 ms classification frame windows.
+- **Multichannel Support**: Classifies channel-0 and copies remaining channels.
+- **LLEXT Packaging**: Full support for loading as a shared library module.
 
-## Algorithm
+---
 
-libfvad implements the WebRTC Gaussian Mixture Model VAD:
-- Operates in **Q15 fixed-point** — no FPU required
-- Internally resamples any 8/16/32/48 kHz input to **8 kHz** for classification
-- 6 sub-band log-energy features feed a per-band GMM; bands are aggregated to
-  a single speech/non-speech bit
-- Four aggressiveness modes (0 = most conservative, 3 = most aggressive)
+## Architecture & Data Flow
 
-## Design
+The following Mermaid diagram outlines how audio data flows through the pipeline and how the classification events are broadcast to other modules:
 
+```mermaid
+graph TD
+    %% Audio Data Flow
+    InBuf[Input Audio Buffer] -->|S16 or S32 PCM| Core[webrtc_vad.c Core]
+    Core -->|Pass-through| OutBuf[Output Audio Buffer]
+    
+    %% Accumulation & Classification
+    Core -->|Extract Channel 0 S16| RingBuf[Ring Buffer Accumulator]
+    RingBuf -->|10/20/30 ms Block| Backend[webrtc_vad-fvad.c Backend]
+    Backend -->|libfvad GMM Classify| Decision{Speech Detected?}
+    
+    %% Notifications
+    Decision -->|Yes: 1 / No: 0| Notifier[NOTIFIER_ID_VAD Event]
+    Notifier -->|.subscribe| SubscribedModules[e.g., webrtc_ns2, Host, KWD]
 ```
-webrtc_vad.c       — SOF module_interface glue (init/prepare/process/reset/free)
-webrtc_vad.h       — private data (struct webrtc_vad_comp_data) + backend API
-webrtc_vad-stub.c  — dependency-free passthrough stub; always reports SPEECH
-webrtc_vad-fvad.c  — real libfvad backend
-webrtc_vad-shims.c — malloc/free/mem* shims for LLEXT (backed by rballoc)
-webrtc_vad.cmake   — ExternalProject cross-build of libfvad static library
-```
 
-The `struct webrtc_vad_backend` interface mirrors `struct ffmpeg_dec_backend`:
-a named set of function pointers (`init`, `configure`, `classify`, `reset`,
-`free`). The SOF glue calls only these and remains independent of libfvad.
+### Components
+- `webrtc_vad.c`: SOF module interface glue (handles pipeline buffers and state transitions).
+- `webrtc_vad-fvad.c`: Standard libfvad execution backend.
+- `webrtc_vad-stub.c`: Pass-through stub that always reports `1` (speech) to satisfy CI validation.
+- `webrtc_vad-shims.c`: Cross-compilation memory wrapper mappings.
+- `webrtc_vad.cmake`: External build driving the download and build of the `libfvad` library.
 
-## Build
+---
 
-**Stub (CI/testing):**
-```
-CONFIG_COMP_WEBRTC_VAD=y   # or =m for LLEXT
+## Build Instructions
+
+### 1. Stub Mode (CI / Staging)
+Building without external repository dependencies:
+```ini
+CONFIG_COMP_WEBRTC_VAD=y      # or =m for LLEXT
 CONFIG_COMP_WEBRTC_VAD_STUB=y
 ```
-No external dependencies. The stub always reports speech.
 
-**Real libfvad backend:**
-```
-CONFIG_COMP_WEBRTC_VAD=m    # LLEXT
+### 2. Real VAD Integration
+Pulls `libfvad` automatically via West and compiles the full GMM detector:
+```ini
+CONFIG_COMP_WEBRTC_VAD=m
 CONFIG_COMP_WEBRTC_VAD_STUB=n
 ```
-Requires `west update` to pull `modules/audio/libfvad` (pinned in
-`west.yml`). The cross-build is driven by `webrtc_vad.cmake` invoked from
-`llext/CMakeLists.txt`.
+Ensure you run `west update` after updating `west.yml` to retrieve `modules/audio/libfvad`.
 
-## Kconfig options
+---
 
-| Option | Default | Description |
-|---|---|---|
-| `COMP_WEBRTC_VAD` | — | Enable module (y=built-in, m=LLEXT) |
-| `COMP_WEBRTC_VAD_STUB` | y if COMP_STUBS | Use passthrough stub backend |
-| `WEBRTC_VAD_MODE` | 2 | Aggressiveness 0–3 |
-| `WEBRTC_VAD_FRAME_MS` | 10 | VAD frame size in ms (10/20/30) |
+## Kconfig Parameters
 
-## Frame accumulation
+| Option | Default | Range / Value | Description |
+|---|---|---|---|
+| `CONFIG_COMP_WEBRTC_VAD` | n | y / m / n | Enable WebRTC GMM VAD module |
+| `CONFIG_COMP_WEBRTC_VAD_STUB` | y | y / n | Use pass-through stub |
+| `CONFIG_WEBRTC_VAD_MODE` | 2 | 0 - 3 | Aggressiveness (3 = most restrictive) |
+| `CONFIG_WEBRTC_VAD_FRAME_MS` | 10 | 10, 20, 30 | Window size for classification (ms) |
 
-SOF pipeline periods may be shorter than the VAD frame size. The module
-accumulates channel-0 S16 samples in a ring buffer (`accumulator[]`) and
-calls `classify()` once per full frame, introducing at most `WEBRTC_VAD_FRAME_MS`
-ms of additional latency.
+---
 
-## Status / TODO
+## Usage & Topology
 
-- Topology wiring for IPC4 (`.toml` mod_cfg tuning for target platform)
-- `set_configuration` handler for runtime mode/frame-ms changes via IPC
-- Forward VAD decision to host via a SOF IPC notification message
-- Unit test with reference speech/noise WAV files in `west twister`
+### Pipeline Integration
+The module functions as a simple 1-in / 1-out effect widget. Connect it directly in your capture stream path.
+
+#### Example Topology Route
+```
+DAI Copier (Mic) ---> [ webrtc-vad ] ---> [ webrtc-ns ] ---> Host Copier
+```
+
+In this routing model, `webrtc-vad` runs first. Any downstream module or host application subscribing to the `NOTIFIER_ID_VAD` event will receive real-time classification changes instantly without querying the module adapter.
