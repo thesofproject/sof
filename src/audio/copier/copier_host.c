@@ -194,10 +194,12 @@ __cold int copier_host_create(struct processing_module *mod,
 	}
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
 	/* Size of a configuration without optional parameters. */
+	const uint32_t extra_cfg_len = copier_cfg->gtw_cfg.config_length;
 	const uint32_t basic_size = sizeof(*copier_cfg) +
-				    (copier_cfg->gtw_cfg.config_length - 1) * sizeof(uint32_t);
+				    (extra_cfg_len > 0 ? (extra_cfg_len - 1) * sizeof(uint32_t) : 0);
 	/* Additional data size */
-	const uint32_t tlv_buff_size = config->ipc_config_size - basic_size;
+	const uint32_t tlv_buff_size = config->ipc_config_size > basic_size ?
+				       config->ipc_config_size - basic_size : 0;
 	const uint32_t min_tlv_size = sizeof(struct ipc4_copier_sync_group) + 2 * sizeof(uint32_t);
 
 	if (tlv_buff_size >= min_tlv_size) {
