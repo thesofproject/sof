@@ -12,6 +12,7 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/rtnr/rtnr.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -305,8 +306,8 @@ static int rtnr_free(struct processing_module *mod)
 }
 
 /* Check component audio stream parameters */
-static int rtnr_check_params(struct processing_module *mod, struct audio_stream *source,
-			     struct audio_stream *sink)
+static int rtnr_check_params(struct processing_module *mod, struct sof_source *source,
+			     struct sof_sink *sink)
 {
 	struct comp_dev *dev = mod->dev;
 	struct comp_data *cd = module_get_private_data(mod);
@@ -315,11 +316,11 @@ static int rtnr_check_params(struct processing_module *mod, struct audio_stream 
 	comp_info(dev, "entry");
 
 	/* set source/sink_frames/rate */
-	cd->source_rate = audio_stream_get_rate(source);
-	cd->sink_rate = audio_stream_get_rate(sink);
-	cd->sources_stream[0].rate = audio_stream_get_rate(source);
-	cd->sink_stream.rate = audio_stream_get_rate(sink);
-	channels_valid = audio_stream_get_channels(source) == audio_stream_get_channels(sink);
+	cd->source_rate = source_get_rate(source);
+	cd->sink_rate = sink_get_rate(sink);
+	cd->sources_stream[0].rate = cd->source_rate;
+	cd->sink_stream.rate = cd->sink_rate;
+	channels_valid = source_get_channels(source) == sink_get_channels(sink);
 
 	if (!cd->sink_rate) {
 		comp_err(dev, "rtnr_nr_params(), zero sink rate");
@@ -346,14 +347,18 @@ static int rtnr_check_params(struct processing_module *mod, struct audio_stream 
 	}
 
 	/* set source/sink stream channels */
-	cd->sources_stream[0].channels = audio_stream_get_channels(source);
-	cd->sink_stream.channels = audio_stream_get_channels(sink);
+	cd->sources_stream[0].channels = source_get_channels(source);
+	cd->sink_stream.channels = sink_get_channels(sink);
 
-	/* set source/sink stream overrun/underrun permitted */
-	cd->sources_stream[0].overrun_permitted = audio_stream_get_overrun(source);
-	cd->sink_stream.overrun_permitted = audio_stream_get_overrun(sink);
-	cd->sources_stream[0].underrun_permitted = audio_stream_get_underrun(source);
-	cd->sink_stream.underrun_permitted = audio_stream_get_underrun(sink);
+	/*
+	 * Set source/sink stream overrun/underrun permitted. The sink/source API exposes only
+	 * the direction-relevant flag (a reader can underrun, a writer can overrun); the
+	 * cross-direction flags have no getter and are hardcoded to false.
+	 */
+	cd->sources_stream[0].overrun_permitted = false;
+	cd->sink_stream.overrun_permitted = sink_get_overrun(sink);
+	cd->sources_stream[0].underrun_permitted = source_get_underrun(source);
+	cd->sink_stream.underrun_permitted = false;
 
 	return 0;
 }
@@ -691,41 +696,76 @@ static int rtnr_set_config(struct processing_module *mod, uint32_t param_id,
 #endif
 }
 
-void rtnr_copy_from_sof_stream(struct audio_stream_rtnr *dst, struct audio_stream *src)
+/*
+ * Acquire the source's circular buffer and describe it for the RTNR library, which does its
+ * own circular-buffer arithmetic. It needs the buffer base/end address, the read pointer and
+ * the number of bytes to process this cycle. Only the acquired bytes are reported as available
+ * (with the write pointer placed at the end of that window), so the library processes exactly
+ * the amount released afterwards and never more than the sink can accept.
+ */
+static int rtnr_source_get_stream(struct audio_stream_rtnr *dst, struct sof_source *source,
+				  size_t bytes)
 {
+	const void *data_ptr, *buf_start;
+	size_t buf_size;
+	int ret;
 
-	dst->size = audio_stream_get_size(src);
-	dst->avail = audio_stream_get_avail(src);
-	dst->free = audio_stream_get_free(src);
-	dst->w_ptr = audio_stream_get_wptr(src);
-	dst->r_ptr = audio_stream_get_rptr(src);
-	dst->addr = audio_stream_get_addr(src);
-	dst->end_addr = audio_stream_get_end_addr(src);
+	ret = source_get_data(source, bytes, &data_ptr, &buf_start, &buf_size);
+	if (ret)
+		return ret;
+
+	dst->addr = (void *)buf_start;
+	dst->end_addr = (char *)buf_start + buf_size;
+	dst->size = buf_size;
+	dst->r_ptr = (void *)data_ptr;
+	dst->avail = bytes;
+	dst->free = buf_size - bytes;
+	dst->w_ptr = cir_buf_wrap((char *)data_ptr + bytes, dst->addr, dst->end_addr);
+
+	return 0;
 }
 
-void rtnr_copy_to_sof_stream(struct audio_stream *dst, struct audio_stream_rtnr *src)
+/*
+ * Acquire the sink's circular buffer and describe it for the RTNR library. See
+ * rtnr_source_get_stream(); here data_ptr is the write pointer, only the acquired bytes are
+ * reported as free and the read pointer is placed at the end of that window.
+ */
+static int rtnr_sink_get_stream(struct audio_stream_rtnr *dst, struct sof_sink *sink,
+				size_t bytes)
 {
-	audio_stream_set_size(dst, src->size);
-	audio_stream_set_avail(dst, src->avail);
-	audio_stream_set_free(dst, src->free);
-	audio_stream_set_wptr(dst, src->w_ptr);
-	audio_stream_set_rptr(dst, src->r_ptr);
-	audio_stream_set_addr(dst, src->addr);
-	audio_stream_set_end_addr(dst, src->end_addr);
+	void *data_ptr, *buf_start;
+	size_t buf_size;
+	int ret;
+
+	ret = sink_get_buffer(sink, bytes, &data_ptr, &buf_start, &buf_size);
+	if (ret)
+		return ret;
+
+	dst->addr = buf_start;
+	dst->end_addr = (char *)buf_start + buf_size;
+	dst->size = buf_size;
+	dst->w_ptr = data_ptr;
+	dst->free = bytes;
+	dst->avail = buf_size - bytes;
+	dst->r_ptr = cir_buf_wrap((char *)data_ptr + bytes, dst->addr, dst->end_addr);
+
+	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
 static int rtnr_process(struct processing_module *mod,
-			struct input_stream_buffer *input_buffers, int num_input_buffers,
-			struct output_stream_buffer *output_buffers, int num_output_buffers)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
-	struct comp_dev *dev = mod->dev;
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	int frames = input_buffers[0].size;
 	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	size_t src_frame_bytes = source_get_frame_bytes(source);
+	size_t snk_frame_bytes = sink_get_frame_bytes(sink);
 	struct audio_stream_rtnr *sources_stream[RTNR_MAX_SOURCES];
 	struct audio_stream_rtnr *sink_stream = &cd->sink_stream;
+	struct comp_dev *dev = mod->dev;
+	uint32_t frames;
 	int32_t i;
 	int ret;
 
@@ -741,18 +781,25 @@ static int rtnr_process(struct processing_module *mod,
 	comp_dbg(dev, "rtnr_copy()");
 
 	/* put empty data into output queue*/
-	RTKMA_API_First_Copy(cd->rtk_agl, cd->source_rate, audio_stream_get_channels(source));
+	RTKMA_API_First_Copy(cd->rtk_agl, cd->source_rate, source_get_channels(source));
 
+	frames = MIN(source_get_data_frames_available(source), sink_get_free_frames(sink));
 	if (!frames)
 		return 0;
 
-	comp_dbg(dev, "rtnr_copy() frames = %d", frames);
+	comp_dbg(dev, "rtnr_copy() frames = %u", frames);
 	if (cd->process_enable) {
-		/* Run processing function */
 
-		/* copy required data from sof audio stream to RTNR audio stream */
-		rtnr_copy_from_sof_stream(sources_stream[0], source);
-		rtnr_copy_from_sof_stream(sink_stream, sink);
+		/* acquire the source/sink circular buffers and describe them for the library */
+		ret = rtnr_source_get_stream(sources_stream[0], source, frames * src_frame_bytes);
+		if (ret)
+			return ret;
+
+		ret = rtnr_sink_get_stream(sink_stream, sink, frames * snk_frame_bytes);
+		if (ret) {
+			source_release_data(source, 0);
+			return ret;
+		}
 
 		/*
 		 * Processing function uses an array of pointers to source streams
@@ -766,38 +813,30 @@ static int rtnr_process(struct processing_module *mod,
 		 */
 		RTKMA_API_Process(cd->rtk_agl, 0, cd->source_rate, MicNum);
 
-		/* copy required data from RTNR audio stream to sof audio stream */
-		rtnr_copy_to_sof_stream(source, sources_stream[0]);
-		rtnr_copy_to_sof_stream(sink, sink_stream);
-
+		source_release_data(source, frames * src_frame_bytes);
+		sink_commit_buffer(sink, frames * snk_frame_bytes);
 	} else {
 		comp_dbg(dev, "rtnr_copy() passthrough");
 
-		audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
+		return source_to_sink_copy(source, sink, true, frames * src_frame_bytes);
 	}
 
-	/* Track consume and produce */
-	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
 	return 0;
 }
 
 #if CONFIG_IPC_MAJOR_4
-static void rtnr_params(struct processing_module *mod)
+static void rtnr_params(struct processing_module *mod, struct sof_source *source,
+			struct sof_sink *sink)
 {
 	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
 	struct comp_dev *dev = mod->dev;
 
 	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
 	component_set_nearest_period_frames(dev, params->rate);
 
 	/* The caller has checked validity of source and sink buffers */
-
-	sourceb = comp_dev_get_first_data_producer(dev);
-	ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
-
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_source_format(source, &mod->priv.cfg.base_cfg.audio_fmt);
+	ipc4_update_sink_format(sink, &mod->priv.cfg.base_cfg.audio_fmt);
 }
 #endif
 
@@ -807,20 +846,17 @@ static int rtnr_prepare(struct processing_module *mod,
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
 	int ret;
 
 	comp_dbg(dev, "entry");
 
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	sourceb = comp_dev_get_first_data_producer(dev);
-	if (!sourceb || !sinkb) {
+	if (!num_of_sources || !num_of_sinks) {
 		comp_err(dev, "no source or sink buffer");
 		return -ENOTCONN;
 	}
 
 #if CONFIG_IPC_MAJOR_4
-	rtnr_params(mod);
+	rtnr_params(mod, sources[0], sinks[0]);
 #endif
 
 	/* Check config */
@@ -833,9 +869,9 @@ static int rtnr_prepare(struct processing_module *mod,
 	/* Initialize RTNR */
 
 	/* Get sink data format */
-	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
-	cd->sink_stream.frame_fmt = audio_stream_get_frm_fmt(&sinkb->stream);
-	ret = rtnr_check_params(mod, &sourceb->stream, &sinkb->stream);
+	cd->sink_format = sink_get_frm_fmt(sinks[0]);
+	cd->sink_stream.frame_fmt = cd->sink_format;
+	ret = rtnr_check_params(mod, sources[0], sinks[0]);
 	if (ret)
 		goto err;
 
@@ -877,7 +913,7 @@ static int rtnr_reset(struct processing_module *mod)
 static const struct module_interface rtnr_interface = {
 	.init = rtnr_init,
 	.prepare = rtnr_prepare,
-	.process_audio_stream = rtnr_process,
+	.process = rtnr_process,
 	.set_configuration = rtnr_set_config,
 	.get_configuration = rtnr_get_config,
 	.reset = rtnr_reset,
