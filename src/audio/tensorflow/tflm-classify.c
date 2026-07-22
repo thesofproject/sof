@@ -254,24 +254,23 @@ static int tflm_process(struct processing_module *mod,
 {
 	struct tflm_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	size_t frame_bytes = source_get_frame_bytes(sources[0]);
-	int features = source_get_data_frames_available(sources[0]);
+	int features_available = source_get_data_frames_available(sources[0]);
 	const void *data_ptr, *buf_start;
 	size_t buf_size;
-	int ret;
+	int ret = 0;
 
 	comp_dbg(dev, "entry");
 
-	/* Window size is TFLM_FEATURE_ELEM_COUNT and we increment
-	 * by TFLM_FEATURE_SIZE until buffer empty.
+	/* Window size is TFLM_FEATURE_ELEM_COUNT (1960 bytes int8_t) and we increment
+	 * by TFLM_FEATURE_SIZE (40 bytes int8_t) until buffer empty.
 	 */
-	while (features >= TFLM_FEATURE_ELEM_COUNT) {
-		ret = source_get_data(sources[0], TFLM_FEATURE_ELEM_COUNT * frame_bytes,
+	while (features_available >= TFLM_FEATURE_ELEM_COUNT) {
+		ret = source_get_data(sources[0], TFLM_FEATURE_ELEM_COUNT,
 				      &data_ptr, &buf_start, &buf_size);
 		if (ret)
 			return ret;
 
-		cd->tfc.audio_features = data_ptr;
+		cd->tfc.audio_features = (int8_t *)data_ptr;
 		cd->tfc.audio_data_size = TFLM_FEATURE_ELEM_COUNT;
 		ret = TF_ProcessClassify(&cd->tfc);
 		if (!ret) {
@@ -281,7 +280,7 @@ static int tflm_process(struct processing_module *mod,
 			return ret;
 		}
 
-		/* debug - dump the output */
+		/* Evaluate predictions */
 		int max_idx = 0;
 		float max_score = cd->tfc.predictions[0];
 
@@ -301,9 +300,9 @@ static int tflm_process(struct processing_module *mod,
 			tflm_send_keyword_notification(mod, max_idx);
 		}
 
-		/* advance by one stride */
-		source_release_data(sources[0], TFLM_FEATURE_SIZE * frame_bytes);
-		features = source_get_data_frames_available(sources[0]);
+		/* advance by one 20ms stride (40 int8_t features) */
+		source_release_data(sources[0], TFLM_FEATURE_SIZE);
+		features_available = source_get_data_frames_available(sources[0]);
 	}
 
 	return ret;
