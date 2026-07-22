@@ -36,6 +36,8 @@
 #include <ipc4/header.h>
 #include <ipc4/module.h>
 #include <ipc4/notification.h>
+#include <sof/audio/kpb.h>
+#include <sof/lib/notifier.h>
 
 #include "speech.h"
 
@@ -50,7 +52,27 @@ struct tflm_comp_data {
 	struct comp_data_blob_handler *model_handler;
 	struct tf_classify tfc;
 	struct ipc_msg *msg;
+	struct kpb_event_data event_data;
+	struct kpb_client client_data;
 };
+
+static void tflm_notify_kpb(struct processing_module *mod)
+{
+	struct tflm_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+
+	comp_info(dev, "TFLM keyword trigger -> notifying KPB to begin draining");
+
+	cd->client_data.r_ptr = NULL;
+	cd->client_data.sink = NULL;
+	cd->client_data.id = 0;
+	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
+	cd->event_data.client_data = &cd->client_data;
+
+	notifier_event(dev, NOTIFIER_ID_KPB_CLIENT_EVT,
+		       NOTIFIER_TARGET_CORE_ALL_MASK, &cd->event_data,
+		       sizeof(cd->event_data));
+}
 
 static int tflm_ipc_notification_init(struct processing_module *mod)
 {
@@ -298,6 +320,7 @@ static int tflm_process(struct processing_module *mod,
 			comp_info(dev, "TFLM keyword detected: %s (confidence %1.3f)",
 				  prediction[max_idx], (double)max_score);
 			tflm_send_keyword_notification(mod, max_idx);
+			tflm_notify_kpb(mod);
 		}
 
 		/* advance by one 20ms stride (40 int8_t features) */
