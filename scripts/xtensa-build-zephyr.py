@@ -1079,6 +1079,7 @@ def build_platforms():
 			# following variables.
 			platf_build_environ["ZEPHYR_TOOLCHAIN_VARIANT"] = platf_build_environ.get("ZEPHYR_TOOLCHAIN_VARIANT",
 				platform_dict["DEFAULT_TOOLCHAIN_VARIANT"])
+			platf_build_environ["ZEPHYR_BASE"] = str(pathlib.Path(west_top, "zephyr"))
 			platf_build_environ["XTENSA_TOOLCHAIN_PATH"] = str(
 				xtensa_tools_root_dir / "install" / "tools"
 			)
