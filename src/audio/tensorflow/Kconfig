@@ -10,3 +10,25 @@ config COMP_TENSORFLOW
 	  Tensorflow Micro library. It is used for running machine learning
 	  models on DSP. It is a lightweight version of Tensorflow library
 	  designed for microcontrollers and embedded systems.
+
+if COMP_TENSORFLOW
+
+config COMP_TENSORFLOW_DEBUG_TRACE
+	bool "Verbose per-hop / per-inference debug traces"
+	default n
+	help
+	  Enable the tflmcly per-hop ("[DBG hop N]"), per-inference
+	  ("[PERF] TFLM Inference #N", "[DBG raw_output]", "TFLM top
+	  prediction", per-node cycle counters, model-graph node count)
+	  and sliding-window ("[DBG window] nonsat=…") debug prints in
+	  the tflm-classify hot path. These fire ~50 times per second
+	  (once per 20 ms MFCC hop) plus a burst every 500 ms and go
+	  through printk/mtrace, which is not free on the DSP and can
+	  contribute to backpressure on log/RTT paths.
+
+	  Leave disabled for production and normal capture tuning. Enable
+	  only when actively debugging feature extraction, quantization,
+	  or per-node timing. The keyword-detected line and the shutdown
+	  summary remain enabled regardless of this option.
+
+endif # COMP_TENSORFLOW
