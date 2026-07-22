@@ -134,6 +134,79 @@ per-sample loop), so they are a secondary target. HiFi wins come from:
   vector of them (e.g. AAC scalefactor gains), and use FMA for the polynomials.
   Mirror `src/math/exp_fcn_hifi.c`.
 
+## Appendix: AAC-LC decode hot spots (per-frame detail)
+
+Where the cycles actually go decoding one AAC-LC frame (1024 samples long, or
+8×128 short) per channel, mapped to the code in the tree. Everything below runs as
+**scalar C** on Xtensa today (`--disable-asm`, no `_xtensa` DSP init).
+
+### Toolchain requirement (applies to all FFmpeg-side HiFi work)
+
+The Cadence HiFi intrinsic headers (`<xtensa/tie/xt_hifi{3,4,5}.h>`) and a
+`core-isa.h` with `XCHAL_HAVE_HIFI4 == 1` are **only** available through the
+**LLVM/xt-clang Xtensa** toolchain (on this build host under
+`llvm-project/.../clang/lib/Headers/xtensa/tie/` plus the ace30 core config at
+`modules/hal/xtensa/.../soc/intel_ace30_ptl/xtensa/config/core-isa.h`). The
+Zephyr-SDK GCC that `ffmpeg.cmake` currently drives does **not** ship these headers.
+
+Consequence: the `ff_*_init_xtensa` kernels must be written with `#if
+XCHAL_HAVE_HIFI*` intrinsics **and** a scalar `#else` fallback. Under the current
+GCC cross-build the guard is 0, so the fallback compiles (correct, but no speedup).
+Actual HiFi codegen requires cross-building FFmpeg with the LLVM Xtensa clang and
+adding the ace30 core-config include dir to the FFmpeg `CFLAGS` — the same
+toolchain SOF's own `src/math/*_hifi*.c` already rely on.
+
+### Tier 1 — dominant, best return
+
+1. **IMDCT** — `mdct1024_fn` / `mdct128_fn` (short blocks) via `libavutil/tx`,
+   driven from `imdct_and_windowing()` (`libavcodec/aac/aacdec_dsp_template.c:341-343`).
+   One 1024-pt (or 8×128) inverse MDCT per channel per frame — the single largest
+   compute. Dispatch: `AVTXContext`. HiFi = complex-FMA butterflies, via HiFi `tx`
+   codelets or a bridge to SOF's HiFi3 FFT (`src/math/fft/`). Highest cost, most work.
+
+2. **`AVFloatDSPContext` vector kernels** — pervasive for windowing / overlap-add /
+   stereo, and the easiest high-leverage target:
+   - `vector_fmul_window` — windowed overlap-add, ~10 call sites (`:354-419`); *the*
+     per-sample AAC output kernel.
+   - `vector_fmul` / `vector_fmul_reverse` — window application (`:235-308`).
+   - `vector_fmul_scalar` — intensity-stereo gain (`:146`).
+   - `butterflies_float` — M/S stereo (`:102`).
+   One `ff_float_dsp_init_xtensa` (in `libavutil/`) covers all of them and also
+   accelerates MP3 and Opus. **Start here** (lowest effort, cross-codec).
+
+### Tier 2 — AAC-specific loops (in `aacdec_dsp_template.c`, HiFi'd inline in the fork)
+
+3. **Inverse quantization `x^(4/3)`** — `decode_spectrum_and_dequant()`
+   (`libavcodec/aac/aacdec.c:1768`) + `dequant_scalefactors()` (`:41`): up to 1024
+   coeffs, each `ff_cbrt_tab` lookup for `|x|^(4/3)` × scalefactor gain
+   `2^(0.25·sf)`. HiFi = vectorised table gather + FMA (per-SFB gain is a
+   `vector_fmul_scalar`).
+4. **TNS** — `apply_tns()` (`:164`): LPC all-pole filter (order ≤ ~20) over spectral
+   coeffs per window. HiFi = MAC filter (mirror `src/math/iir_df1_hifi*`).
+
+### Tier 3 — HE-AAC only (skip unless SBR/PS enabled)
+
+5. **SBR QMF** — `libavcodec/sbrdsp.c`: `sbr_qmf_pre/post_shuffle`, `sbr_hf_gen`,
+   `sbr_hf_g_filt`, `sbr_sum64x5` + a 64-pt QMF transform. Dispatch:
+   `AACSBRDSPContext` (`sbrdsp.h`, `ff_sbrdsp_init`). Nearly as heavy as the base IMDCT.
+6. **PS** — `libavcodec/aacps.c` `hybrid_analysis` / `stereo_interpolate` via
+   `PSDSPContext` (`aacpsdsp.h`, `ff_psdsp_init`).
+
+### Where the HiFi hooks land + priority
+
+| Priority | Target | Dispatch / location | Effort |
+|---|--------|---------------------|--------|
+| 1 | `vector_fmul_window` + friends | `AVFloatDSPContext` → `ff_float_dsp_init_xtensa` (libavutil) | low; AAC+MP3+Opus |
+| 2 | IMDCT (mdct128/1024) | `libavutil/tx` — HiFi codelets or SOF-FFT bridge | high |
+| 3 | dequant `x^(4/3)` | `aac/aacdec.c` + dsp_template (cbrt gather+FMA) | med |
+| 4 | TNS | `apply_tns` (LPC MAC) | med |
+| 5 | SBR / PS | `sbrdsp`/`aacpsdsp` `_xtensa` inits | med, HE-AAC only |
+
+AAC-LC order: **float_dsp (2) → IMDCT (1) → dequant (3) → TNS (4)**; SBR/PS only if
+HE-AAC. `float_dsp`/`tx`/`sbrdsp`/`psdsp` are `libavutil`/`libavcodec` and take
+`_xtensa` inits mirroring the existing `aarch64`/`x86` dirs; dequant/TNS are AAC
+decoder code patched in place. All on the `lgirdwood/FFmpeg` `sof-hifi` branch.
+
 ## Recommendations
 
 1. **Quick wins we own** — hand-vectorise the four conversion loops (§A) with
