@@ -32,6 +32,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <ipc4/base-config.h>
+#include <ipc4/header.h>
+#include <ipc4/module.h>
+#include <ipc4/notification.h>
+
 #include "speech.h"
 
 SOF_DEFINE_REG_UUID(tflmcly);
@@ -44,7 +49,66 @@ static const char * const prediction[] = TFLM_CATEGORY_DATA;
 struct tflm_comp_data {
 	struct comp_data_blob_handler *model_handler;
 	struct tf_classify tfc;
+	struct ipc_msg *msg;
 };
+
+static int tflm_ipc_notification_init(struct processing_module *mod)
+{
+	struct tflm_comp_data *cd = module_get_private_data(mod);
+	struct ipc_msg msg_proto;
+	struct comp_dev *dev = mod->dev;
+	struct comp_ipc_config *ipc_config = &dev->ipc_config;
+	union ipc4_notification_header *primary =
+		(union ipc4_notification_header *)&msg_proto.header;
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	struct sof_ipc4_control_msg_payload *msg_payload;
+
+	memset_s(&msg_proto, sizeof(msg_proto), 0, sizeof(msg_proto));
+	primary->r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+	primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
+	primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+	cd->msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
+				     sizeof(struct sof_ipc4_notify_module_data) +
+				     sizeof(struct sof_ipc4_control_msg_payload) +
+				     sizeof(struct sof_ipc4_ctrl_value_chan));
+	if (!cd->msg) {
+		comp_err(dev, "Failed to initialize TFLM notification");
+		return -ENOMEM;
+	}
+
+	msg_module_data = (struct sof_ipc4_notify_module_data *)cd->msg->tx_data;
+	msg_module_data->instance_id = IPC4_INST_ID(ipc_config->id);
+	msg_module_data->module_id = IPC4_MOD_ID(ipc_config->id);
+	msg_module_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_ALSA_MAGIC_VAL |
+		SOF_IPC4_SWITCH_CONTROL_PARAM_ID;
+	msg_module_data->event_data_size = sizeof(struct sof_ipc4_control_msg_payload) +
+		sizeof(struct sof_ipc4_ctrl_value_chan);
+
+	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
+	msg_payload->id = 0;
+	msg_payload->num_elems = 1;
+	msg_payload->chanv[0].channel = 0;
+
+	comp_dbg(dev, "TFLM notification init: instance_id = 0x%08x, module_id = 0x%08x",
+		 msg_module_data->instance_id, msg_module_data->module_id);
+	return 0;
+}
+
+static void tflm_send_keyword_notification(struct processing_module *mod, uint32_t category_idx)
+{
+	struct tflm_comp_data *cd = module_get_private_data(mod);
+	struct sof_ipc4_notify_module_data *msg_module_data;
+	struct sof_ipc4_control_msg_payload *msg_payload;
+
+	if (!cd->msg)
+		return;
+
+	msg_module_data = (struct sof_ipc4_notify_module_data *)cd->msg->tx_data;
+	msg_payload = (struct sof_ipc4_control_msg_payload *)msg_module_data->event_data;
+	msg_payload->chanv[0].value = category_idx;
+	ipc_msg_send(cd->msg, NULL, false);
+}
 
 __cold static int tflm_init(struct processing_module *mod)
 {
@@ -97,11 +161,19 @@ __cold static int tflm_init(struct processing_module *mod)
 		goto fail;
 	}
 
+	ret = tflm_ipc_notification_init(mod);
+	if (ret < 0) {
+		comp_err(dev, "failed to init notification");
+		goto fail;
+	}
+
 	return ret;
 
 fail:
 	/* Passing NULL pointer to free functions is Ok */
 	mod_data_blob_handler_free(mod, cd->model_handler);
+	if (cd->msg)
+		ipc_msg_free(cd->msg);
 	mod_free(mod, cd);
 	return ret;
 }
@@ -112,6 +184,8 @@ __cold static int tflm_free(struct processing_module *mod)
 
 	assert_can_be_cold();
 
+	if (cd->msg)
+		ipc_msg_free(cd->msg);
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	mod_free(mod, cd);
 	return 0;
@@ -208,9 +282,23 @@ static int tflm_process(struct processing_module *mod,
 		}
 
 		/* debug - dump the output */
+		int max_idx = 0;
+		float max_score = cd->tfc.predictions[0];
+
 		for (int i = 0; i < cd->tfc.categories; i++) {
 			comp_dbg(dev, "tf: predictions %1.3f %s",
 				 cd->tfc.predictions[i], prediction[i]);
+			if (cd->tfc.predictions[i] > max_score) {
+				max_score = cd->tfc.predictions[i];
+				max_idx = i;
+			}
+		}
+
+		/* Check if a keyword ("yes" or "no", category indices 2 and 3) is detected */
+		if (max_idx >= 2 && max_score >= 0.70f) {
+			comp_info(dev, "TFLM keyword detected: %s (confidence %1.3f)",
+				  prediction[max_idx], (double)max_score);
+			tflm_send_keyword_notification(mod, max_idx);
 		}
 
 		/* advance by one stride */
