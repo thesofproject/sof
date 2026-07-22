@@ -66,12 +66,13 @@ manifest:
 
     # FFmpeg (libavcodec) source for the ffmpeg_dec module. Cross-built by
     # src/audio/ffmpeg_dec/ffmpeg.cmake, enabling only the Kconfig-selected
-    # decoders. SOF fork branch sof-ffmpeg-dec (release/7.1 + the av_tx table-size
-    # cap that drops the module .bss from ~17MB to ~415KB). Bump to move versions.
+    # decoders. SOF fork branch sof-hifi (release/7.1 + av_tx table-size cap that drops
+    # the module .bss from ~17MB to ~415KB, + Xtensa HiFi float_dsp). Bump to move
+    # versions.
     - name: ffmpeg
       repo-path: FFmpeg
       path: modules/audio/ffmpeg
-      revision: bc25d8d606e63c1ae8663fc0523adad908bc29e5
+      revision: a600a78acded219a98c426af0e353e6f2d689b9d
       remote: ffmpeg
 
     # libshine: small fixed-point MP3 encoder for FFMPEG_ENC_MP3 (FFmpeg has no

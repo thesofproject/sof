@@ -180,7 +180,12 @@ ExternalProject_Add(ffmpeg_ext
 			--prefix=${FFMPEG_INSTALL_DIR}
 			--enable-cross-compile --target-os=none --arch=xtensa
 			--cross-prefix=${_ff_cross_prefix} --cc=${CMAKE_C_COMPILER}
-			--disable-asm --disable-all --disable-everything --disable-autodetect
+			# NOTE: do NOT pass --disable-asm. FFmpeg treats every per-arch
+			# optimisation dir (incl. our C-intrinsic libavutil/xtensa/) as
+			# "asm"; --disable-asm forces arch=c and drops them. There is no
+			# Xtensa assembly, so leaving asm enabled is safe (HiFi kernels are
+			# C intrinsics) and is required to build ff_float_dsp_init_xtensa.
+			--disable-all --disable-everything --disable-autodetect
 			--disable-programs --disable-doc --disable-network
 			--disable-avformat --disable-avdevice ${_ff_avfilter_cfg}
 			--disable-swscale --disable-postproc
