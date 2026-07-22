@@ -68,16 +68,45 @@ if(CONFIG_FFMPEG_BUILD_AVFILTER)
 	message(STATUS "ffmpeg_dec: enabling avfilter, filters [${_ff_filt_csv}]")
 endif()
 
-# --- 3. Derive the cross toolchain prefix from the Zephyr target compiler ---
-# e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-gcc
-#   -> prefix .../bin/xtensa-intel_ace30_ptl_zephyr-elf-
-get_filename_component(_tc_dir  "${CMAKE_C_COMPILER}" DIRECTORY)
-get_filename_component(_tc_name "${CMAKE_C_COMPILER}" NAME)
-string(REGEX REPLACE "gcc$" "" _tc_prefix_name "${_tc_name}")
-set(_ff_cross_prefix "${_tc_dir}/${_tc_prefix_name}")
-
+# --- 3. Derive the cross toolchain + per-compiler cross flags ---
 # GCC 14 (Zephyr SDK) promotes these to errors; FFmpeg 7.x trips them.
 set(_ff_extra_cflags "-fPIC -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration")
+
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+	# LLVM/xt-clang build. clang is a generic driver, so unlike the target-
+	# specific GCC it needs the target/core/sysroot spelled out, it uses the
+	# Zephyr-SDK GNU binutils for ar/as/nm/objcopy, and it cannot link the bare-
+	# metal configure *test* executables itself (no default crt/linker script) --
+	# so those are linked with the GNU gcc via --ld. We only ever build .a
+	# archives (ar), so the linker choice affects configure tests only.
+	# Everything is derived from CMAKE_AR (Zephyr uses GNU binutils even under
+	# clang), e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-ar:
+	string(REGEX REPLACE "ar$" "" _ff_cross_prefix "${CMAKE_AR}")   # ...-elf-
+	get_filename_component(_tc_dir  "${CMAKE_AR}" DIRECTORY)         # .../bin
+	get_filename_component(_ff_gnuroot "${_tc_dir}" DIRECTORY)       # gnu root
+	get_filename_component(_ff_triple  "${_ff_cross_prefix}" NAME)   # ...-elf-
+	string(REGEX REPLACE "-$" "" _ff_triple "${_ff_triple}")        # triple
+	set(_ff_sysroot "${_ff_gnuroot}/${_ff_triple}")
+	# core name for -mcpu: triple minus the xtensa- prefix and _zephyr-elf suffix
+	# (xtensa-intel_ace30_ptl_zephyr-elf -> intel_ace30_ptl).
+	string(REGEX REPLACE "^xtensa-" "" _ff_core "${_ff_triple}")
+	string(REGEX REPLACE "_zephyr-elf$" "" _ff_core "${_ff_core}")
+	set(_ff_cc "${CMAKE_C_COMPILER} --target=xtensa -mcpu=${_ff_core} --sysroot=${_ff_sysroot}")
+	set(_ff_ld "${_ff_cross_prefix}gcc")
+	# The LLVM Xtensa backend cannot lower the SLP-vectorised v2i32 bswap that
+	# FFmpeg byteswap code produces ("Cannot select: v2i32 = bswap"); disable
+	# vectorisation to avoid it (and it buys nothing -- no packed float SIMD).
+	set(_ff_extra_cflags "${_ff_extra_cflags} -fno-vectorize -fno-slp-vectorize")
+else()
+	# GCC (Zephyr SDK): target-specific driver, brings its own sysroot + crt.
+	# e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-gcc -> prefix ...-elf-
+	get_filename_component(_tc_dir  "${CMAKE_C_COMPILER}" DIRECTORY)
+	get_filename_component(_tc_name "${CMAKE_C_COMPILER}" NAME)
+	string(REGEX REPLACE "gcc$" "" _tc_prefix_name "${_tc_name}")
+	set(_ff_cross_prefix "${_tc_dir}/${_tc_prefix_name}")
+	set(_ff_cc "${CMAKE_C_COMPILER}")
+	set(_ff_ld "${CMAKE_C_COMPILER}")
+endif()
 
 set(FFMPEG_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-install" CACHE INTERNAL "ffmpeg_dec libs")
 
@@ -179,7 +208,7 @@ ExternalProject_Add(ffmpeg_ext
 		<SOURCE_DIR>/configure
 			--prefix=${FFMPEG_INSTALL_DIR}
 			--enable-cross-compile --target-os=none --arch=xtensa
-			--cross-prefix=${_ff_cross_prefix} --cc=${CMAKE_C_COMPILER}
+			--cross-prefix=${_ff_cross_prefix} "--cc=${_ff_cc}" "--ld=${_ff_ld}"
 			# NOTE: do NOT pass --disable-asm. FFmpeg treats every per-arch
 			# optimisation dir (incl. our C-intrinsic libavutil/xtensa/) as
 			# "asm"; --disable-asm forces arch=c and drops them. There is no
