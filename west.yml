@@ -72,7 +72,7 @@ manifest:
     - name: ffmpeg
       repo-path: FFmpeg
       path: modules/audio/ffmpeg
-      revision: a600a78acded219a98c426af0e353e6f2d689b9d
+      revision: 181d38ad362cb22afac3fbd7207d29f7239212b3
       remote: ffmpeg
 
     # libshine: small fixed-point MP3 encoder for FFMPEG_ENC_MP3 (FFmpeg has no
