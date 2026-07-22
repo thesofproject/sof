@@ -157,32 +157,44 @@ def parse_crash_log(content):
             elif re.match(r'^AR\d{2}$', reg):
                 reg = f"AR{int(reg[2:])}"
 
-            if re.match(r'^(PC|PR|SP|A\d+|AR\d+|EXCCAUSE|VADDR|LBEG|LEND|SAR|EPC\d+|EPS\d+|PS)$', reg):
+            if re.match(r'^(PC|PR|SP|A\d+|AR\d+|EXCCAUSE|VADDR|LBEG|LEND|LCOUNT|SAR|EPC\d+|EPS\d+|PS|THREADPTR)$', reg):
                 registers[reg] = val
     else:
         # Standard format
         # regex for registers: we want standalone pairs like PC 0x123 or A0 0x123 or EXCCAUSE 9
-        reg_pattern = re.compile(r'\b([A-Z0-9]+)\s+(0x[0-9a-fA-F]+|\d+|(?:nil))\b')
+        # Also handle (nil) for zero-valued registers like A4 (nil) or THREADPTR (nil)
+        reg_pattern = re.compile(r'\b([A-Z0-9]+)\s+(?:(0x[0-9a-fA-F]+)\b|(\d+)\b|\(nil\))')
         for match in reg_pattern.finditer(content):
             reg = match.group(1)
-            val_str = match.group(2)
-            if val_str == "(nil)":
-                val = 0
-            elif val_str.startswith("0x"):
-                val = int(val_str, 16)
+            hex_str = match.group(2)
+            dec_str = match.group(3)
+            if hex_str:
+                val = int(hex_str, 16)
+            elif dec_str:
+                val = int(dec_str)
             else:
-                val = int(val_str)
+                val = 0
 
             # Keep only known registers or likely candidates
-            if re.match(r'^(PC|PR|SP|A\d+|AR\d+|EXCCAUSE|VADDR|LBEG|LEND|SAR|EPC\d+|EPS\d+|PS)$', reg):
+            if re.match(r'^(PC|PR|SP|A\d+|AR\d+|EXCCAUSE|VADDR|LBEG|LEND|LCOUNT|SAR|EPC\d+|EPS\d+|PS|THREADPTR)$', reg):
                 registers[reg] = val
 
-    # Backtrace parsing
+    # Backtrace parsing: support both single-line and multi-line formats
+    # Single-line: "Backtrace: 0xPC:0xSP 0xPC:0xSP ..."
+    # Multi-line:  "Backtrace:\n0xPC:0xSP\n0xPC:0xSP\n..."
     bt_idx = content.find("Backtrace:")
     if bt_idx != -1:
-        bt_line = content[bt_idx:content.find('\n', bt_idx)]
+        bt_rest = content[bt_idx + len("Backtrace:"):]
         bt_pattern = re.compile(r'(0x[0-9a-fA-F]+):(0x[0-9a-fA-F]+)')
-        for match in bt_pattern.finditer(bt_line):
+        for match in bt_pattern.finditer(bt_rest):
+            # Stop if we hit a line that doesn't look like backtrace data
+            preceding = bt_rest[:match.start()]
+            # Allow only whitespace/newlines between entries
+            last_newline = preceding.rfind('\n')
+            if last_newline != -1:
+                line_before = preceding[last_newline + 1:match.start()].strip()
+                if line_before and not bt_pattern.match(line_before):
+                    break
             pc = int(match.group(1), 16)
             sp = int(match.group(2), 16)
             backtraces.append((pc, sp))
