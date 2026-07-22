@@ -190,30 +190,41 @@ def main():
 	addr_map = {'.text': text_addr}
 	dram_addr2 = text_addr if (text_size == 0 and executable) else 0
 
+	tmp_sec_map = {}
+	try:
+		tmp_elf = ELFFile(open(f'{args.file}.tmp', 'rb'))
+		tmp_sec_map = {s.name: s for s in tmp_elf.iter_sections() if s.header['sh_flags'] & SH_FLAGS.SHF_ALLOC}
+	except Exception:
+		pass
+
 	for section in executable:
-		dram_addr2 = do_align_up(dram_addr2, section.header['sh_addralign'])
+		s_obj = tmp_sec_map.get(section.name, section)
+		dram_addr2 = do_align_up(dram_addr2, s_obj.header['sh_addralign'])
 		addr_map[section.name] = dram_addr2
-		dram_addr2 += section.header['sh_size']
+		dram_addr2 += s_obj.header['sh_size']
 
 	for section in readonly_dram:
-		dram_addr2 = do_align_up(dram_addr2, section.header['sh_addralign'])
+		s_obj = tmp_sec_map.get(section.name, section)
+		dram_addr2 = do_align_up(dram_addr2, s_obj.header['sh_addralign'])
 		addr_map[section.name] = dram_addr2
-		dram_addr2 += section.header['sh_size']
+		dram_addr2 += s_obj.header['sh_size']
 
 	if text_size == 0 and executable:
 		ro_start = do_align_up(dram_addr2, 0x1000)
 	else:
 		ro_start = do_align_up(text_addr + text_size, 0x1000)
 	for section in readonly:
-		ro_start = do_align_up(ro_start, section.header['sh_addralign'])
+		s_obj = tmp_sec_map.get(section.name, section)
+		ro_start = do_align_up(ro_start, s_obj.header['sh_addralign'])
 		addr_map[section.name] = ro_start
-		ro_start += section.header['sh_size']
+		ro_start += s_obj.header['sh_size']
 
 	wr_start = do_align_up(ro_start, 0x1000)
 	for section in writable:
-		wr_start = do_align_up(wr_start, section.header['sh_addralign'])
+		s_obj = tmp_sec_map.get(section.name, section)
+		wr_start = do_align_up(wr_start, s_obj.header['sh_addralign'])
 		addr_map[section.name] = wr_start
-		wr_start += section.header['sh_size']
+		wr_start += s_obj.header['sh_size']
 
 	if addr_map:
 		out_path = f'{args.file}.tmp'
