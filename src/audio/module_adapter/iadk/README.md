@@ -58,8 +58,11 @@ keep their API 4.5.0 layout.
 
 1. The OS host driver sends an IPC `INIT_INSTANCE` command for the module.
 2. The `system_agent_start()` function intercepts this, invokes the dynamic module's `create_instance` entry point (which invokes a `ModuleFactory`).
-3. The `SystemAgent` deduces the pin count (interfaces) and initial pipeline configurations using `ModuleInitialSettingsConcrete`.
-4. The factory allocates the concrete algorithm and checks it back into SOF through `SystemAgent::CheckIn`.
+3. If the entry point provides a null module placeholder, the `SystemAgent`
+   resolves it to the instance BSS allocated by the library manager after
+   verifying that the module object fits in that region.
+4. The `SystemAgent` deduces the pin count (interfaces) and initial pipeline configurations using `ModuleInitialSettingsConcrete`.
+5. The factory allocates the concrete algorithm and checks it back into SOF through `SystemAgent::CheckIn`.
 
 ```mermaid
 sequenceDiagram
@@ -70,6 +73,7 @@ sequenceDiagram
 
     IPC->>SA: Trigger Mod Creation
     SA->>Fac: CI invokes create_instance
+    SA->>SA: Resolve instance BSS placeholder
     Fac->>Fac: Deduce BaseModuleCfgExt
     Fac->>Mod: operator new instantiate
 
