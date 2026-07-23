@@ -628,7 +628,8 @@ static enum buildinfo_mod_type lib_manager_get_module_type(const struct sof_man_
 	/* Check if module is IADK */
 	if (IS_ENABLED(CONFIG_INTEL_MODULES) &&
 	    build_info->format == IADK_MODULE_API_BUILD_INFO_FORMAT &&
-	    build_info->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION) {
+	    (build_info->api_version_number.full == IADK_MODULE_API_CURRENT_VERSION ||
+	     build_info->api_version_number.full == IADK_MODULE_API_VERSION_4_5_0)) {
 		return MOD_TYPE_IADK;
 	} else {
 		/* Check if module is NOT native */

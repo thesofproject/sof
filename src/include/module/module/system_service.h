@@ -79,7 +79,8 @@ enum interface_id {
 	INTERFACE_ID_SDCA = 0x1002,			/* See SdcaInterface */
 	INTERFACE_ID_ASYNC_MESSAGE_SERVICE = 0x1003,	/* See AsyncMessageInterface */
 	INTERFACE_ID_AM_SERVICE = 0x1005,		/* Reserved for ADSP system */
-	INTERFACE_ID_KPB_SERVICE = 0x1006		/* See KpbInterface */
+	INTERFACE_ID_KPB_SERVICE = 0x1006,		/* See KpbInterface */
+	INTERFACE_ID_TIMESTAMPING_SERVICE = 0x1007	/* See TimestampingInterface */
 };
 
 /* sub interface definition.
@@ -109,5 +110,8 @@ struct system_service {
 					   uint32_t actual_payload_size);
 
 	AdspErrorCode (*get_interface)(enum interface_id id, struct system_service_iface **iface);
+
+	AdspErrorCode (*get_interface_versioned)(enum interface_id id, uint32_t version,
+						 struct system_service_iface **iface);
 };
 #endif /* MODULE_MODULE_SYSTEM_SERVICE_H */

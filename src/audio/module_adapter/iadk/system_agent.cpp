@@ -24,6 +24,14 @@
 #include <sof/audio/module_adapter/library/native_system_service.h>
 #include <sof/audio/module_adapter/library/native_system_agent.h>
 
+struct sof_man_module;
+extern "C" const struct sof_man_module *
+lib_manager_get_module_manifest(const uint32_t module_id);
+extern "C" void
+lib_manager_get_instance_bss_address(uint32_t instance_id,
+				     const struct sof_man_module *mod,
+				     void **va_addr, size_t *size);
+
 using namespace intel_adsp;
 using namespace intel_adsp::system;
 using namespace dsp_fw;
@@ -47,6 +55,7 @@ const APP_TASK_DATA AdspSystemService SystemAgent::system_service_ = {
 	native_system_service_create_notification,
 	native_system_service_send_notif_msg,
 	native_system_service_get_interface,
+	native_system_service_get_interface_versioned,
 };
 
 SystemAgent::SystemAgent(uint32_t module_id,
@@ -77,6 +86,27 @@ void SystemAgent::CheckIn(ProcessingModuleInterface& processing_module,
 		);
 	(void)module_adapter;
 	log_handle = reinterpret_cast<LogHandle*>(log_handle_);
+}
+
+void SystemAgent::CheckInDetector(DetectorModuleInterface& processing_module,
+				  ModuleHandle &module_handle,
+				  LogHandle *&log_handle)
+{
+	CheckIn(static_cast<ProcessingModuleInterface&>(processing_module),
+		module_handle, log_handle);
+}
+
+void *SystemAgent::GetBssBase(void)
+{
+	const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id_);
+	void *base = NULL;
+	size_t size = 0;
+
+	if (!mod)
+		return NULL;
+
+	lib_manager_get_instance_bss_address(instance_id_, mod, &base, &size);
+	return base;
 }
 
 int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
@@ -148,4 +178,3 @@ extern "C" void __cxa_pure_virtual()  __attribute__((weak));
 void __cxa_pure_virtual()
 {
 }
-

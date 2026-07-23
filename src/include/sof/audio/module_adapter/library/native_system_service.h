@@ -42,6 +42,18 @@ AdspErrorCode native_system_service_send_notif_msg(enum notification_target noti
 AdspErrorCode native_system_service_get_interface(enum interface_id id,
 						  struct system_service_iface **iface);
 
+/**
+ * \brief Retrieve a versioned system service interface.
+ *
+ * \param id Service interface identifier.
+ * \param version Requested interface version.
+ * \param iface Location for the returned interface pointer.
+ * \return ADSP_INVALID_PARAMETERS if the interface is unavailable.
+ */
+AdspErrorCode native_system_service_get_interface_versioned(enum interface_id id,
+							    uint32_t version,
+							    struct system_service_iface **iface);
+
 extern const struct native_system_service native_system_service;
 
 #ifdef __cplusplus
