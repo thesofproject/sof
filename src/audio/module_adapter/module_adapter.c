@@ -366,6 +366,18 @@ static void module_adapter_calculate_dp_period(struct comp_dev *dev)
 
 	}
 
+	/* Sinkless modules derive their deadline from one input buffer. */
+	if (period == UINT32_MAX && mod->num_of_sources > 0) {
+		size_t frame_bytes = source_get_frame_bytes(mod->sources[0]);
+		unsigned int rate = source_get_rate(mod->sources[0]);
+
+		if (frame_bytes && rate)
+			period = 1000000ULL * source_get_min_available(mod->sources[0]) /
+				 (frame_bytes * rate);
+		else
+			period = 0;
+	}
+
 	dev->period = period;
 }
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
@@ -473,12 +485,18 @@ int module_adapter_prepare(struct comp_dev *dev)
 	 * Hence check for NULL.
 	 */
 	sink = comp_dev_get_first_data_consumer(dev);
-	if (!sink) {
+	if (!sink && !IS_PROCESSING_MODE_SINK_SOURCE(mod)) {
 		comp_err(dev, "no sink present on period size calculation");
 		return -EINVAL;
 	}
 
-	mod->period_bytes = audio_stream_period_bytes(&sink->stream, dev->frames);
+	/* A sinkless module still needs at least one source. */
+	if (!sink && !comp_dev_get_first_data_producer(dev)) {
+		comp_err(dev, "no source or sink buffer connected");
+		return -EINVAL;
+	}
+
+	mod->period_bytes = sink ? audio_stream_period_bytes(&sink->stream, dev->frames) : 0;
 	comp_dbg(dev, "got period_bytes = %u", mod->period_bytes);
 
 	/* no more to do for sink/source mode */

@@ -89,7 +89,12 @@ A significant task of `IadkModuleAdapter_Process` is converting SOF's underlying
 
 Instead of letting the module directly touch the SOF `comp_buffer` (which could change with SOF version updates), the adapter uses the abstraction APIs (`source_get_data` / `sink_get_buffer`) and wraps them:
 
-1. Request raw continuous memory pointers from `source_get_data()`.
+1. Limit each input to one source `min_available` portion (one IBS), then
+   request its continuous memory pointer from `source_get_data()`.
 2. Construct an `intel_adsp::InputStreamBuffer` pointing to that continuous memory chunk.
 3. Call the IADK `processing_module_.Process()`.
 4. Release precisely the amount of consumed data using `source_release_data()`.
+
+Input-only detector endpoints are processed even when no audio sink is
+connected. Their output descriptors remain empty, so the module can consume
+and inspect each IBS without producing downstream audio.

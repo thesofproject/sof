@@ -104,6 +104,11 @@ sequenceDiagram
     deactivate DP
 ```
 
+A sinkless DP module derives its period from the first source's
+`min_available` value (its IBS) and audio format. This schedules input-only
+detectors according to data arrival; a zero or otherwise invalid period is
+rejected by the normal minimum-period check during prepare.
+
 ## Error Handling and Memory Sandboxing
 
 * **Sandboxing (`mod_balloc_align`, `z_impl_mod_fast_get`, `z_impl_mod_free`)**: Since third-party DSP code is treated as semi-untrusted in memory lifetimes, module allocations grab slices from a dedicated component `dp_heap_user` heap instead of the global system heap (`mod_heap_info`). The wrapper automatically prunes leaked objects (`mod_free_all(mod)`) during teardown by keeping an `objpool` of all resource containers.
