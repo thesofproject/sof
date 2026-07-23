@@ -93,6 +93,19 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	string(REGEX REPLACE "_zephyr-elf$" "" _ff_core "${_ff_core}")
 	set(_ff_cc "${CMAKE_C_COMPILER} --target=xtensa -mcpu=${_ff_core} --sysroot=${_ff_sysroot}")
 	set(_ff_ld "${_ff_cross_prefix}gcc")
+	# clang --sysroot does NOT add GCC's internal fixed-include directory, and
+	# that is where <xtensa/config/core-isa.h> lives (the GNU driver adds it
+	# implicitly). Without it __has_include(<xtensa/config/core-isa.h>) fails,
+	# XCHAL_HAVE_HIFI*_VFPU stay undefined, and libavutil/xtensa/float_dsp_init.c
+	# silently falls back to scalar C -- i.e. the HiFi5 .sx2x2 float SIMD is
+	# dropped from the ace40 build. Ask the matching GNU gcc for that directory
+	# and put it on the include path so the VFPU path actually compiles in.
+	execute_process(
+		COMMAND ${_ff_cross_prefix}gcc -print-file-name=include
+		OUTPUT_VARIABLE _ff_gcc_inc OUTPUT_STRIP_TRAILING_WHITESPACE)
+	if(_ff_gcc_inc AND IS_DIRECTORY "${_ff_gcc_inc}/xtensa/config")
+		set(_ff_cc "${_ff_cc} -I${_ff_gcc_inc}")
+	endif()
 	# The LLVM Xtensa backend cannot lower the SLP-vectorised v2i32 bswap that
 	# FFmpeg byteswap code produces ("Cannot select: v2i32 = bswap"); disable
 	# vectorisation to avoid it (and it buys nothing -- no packed float SIMD).
