@@ -154,13 +154,19 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    const union scheduler_dp_thread_ipc_param *param)
 {
-	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
 	int ret;
 
 	if (!pmod) {
 		tr_err(&dp_tr, "no thread module");
 		return -EINVAL;
 	}
+
+	if (!pmod->dev || !pmod->dev->task || !pmod->dev->task->priv_data) {
+		tr_err(&dp_tr, "no thread task or pdata");
+		return -EINVAL;
+	}
+
+	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
 
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
