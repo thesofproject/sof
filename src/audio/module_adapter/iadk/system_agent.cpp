@@ -173,7 +173,6 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 
 	IadkModuleAdapter& module_adapter = *reinterpret_cast<IadkModuleAdapter*>(module_handle_);
 	*obfuscated_modinst_p = &module_adapter;
-	reinterpret_cast<intel_adsp::ProcessingModuleInterface*>(module_placeholder)->Init();
 	return 0;
 }
 
