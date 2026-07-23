@@ -158,9 +158,20 @@ AdspErrorCode native_system_service_send_notif_msg(enum notification_target noti
 AdspErrorCode native_system_service_get_interface(enum interface_id id,
 						  struct system_service_iface **iface)
 {
-	if (id < 0)
+	if (id < 0 || !iface)
 		return ADSP_INVALID_PARAMETERS;
-	return ADSP_NO_ERROR;
+
+	*iface = NULL;
+	return ADSP_INVALID_PARAMETERS;
+}
+
+AdspErrorCode native_system_service_get_interface_versioned(enum interface_id id,
+							    uint32_t version,
+							    struct system_service_iface **iface)
+{
+	(void)version;
+
+	return native_system_service_get_interface(id, iface);
 }
 
 const APP_TASK_DATA struct native_system_service native_system_service = {
@@ -171,6 +182,7 @@ const APP_TASK_DATA struct native_system_service native_system_service = {
 		.vec_memset = native_system_service_vec_memset,
 		.notification_create = native_system_service_create_notification,
 		.notification_send = native_system_service_send_notif_msg,
-		.get_interface = native_system_service_get_interface
+		.get_interface = native_system_service_get_interface,
+		.get_interface_versioned = native_system_service_get_interface_versioned
 	}
 };

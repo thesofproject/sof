@@ -50,6 +50,12 @@ classDiagram
 
 Because the actual module resides in an external binary, it requires a "System Agent" to correctly instantiate the C++ objects during the component's `init` phase.
 
+The adapter accepts IADK API 4.5.0 and 4.5.2 binaries. API 4.5.2
+extends the detector interface with `WritePattern()`, adds
+`SystemAgentInterface3::GetBssBase()`, and appends a versioned lookup
+entry to the system service table. The existing table and vtable slots
+keep their API 4.5.0 layout.
+
 1. The OS host driver sends an IPC `INIT_INSTANCE` command for the module.
 2. The `system_agent_start()` function intercepts this, invokes the dynamic module's `create_instance` entry point (which invokes a `ModuleFactory`).
 3. The `SystemAgent` deduces the pin count (interfaces) and initial pipeline configurations using `ModuleInitialSettingsConcrete`.
