@@ -46,7 +46,7 @@ int IadkModuleAdapter::IadkModuleAdapter_Process(struct sof_source **sources,
 {
 	int ret = 0;
 
-	if ((num_of_sources > 0) && (num_of_sinks > 0)) {
+	if (num_of_sources > 0) {
 		intel_adsp::InputStreamBuffer input_stream_buffers[INPUT_PIN_COUNT];
 		intel_adsp::OutputStreamBuffer output_stream_buffers[OUTPUT_PIN_COUNT];
 		for (int i = 0; i < (int)num_of_sources; i++) {
@@ -55,6 +55,11 @@ int IadkModuleAdapter::IadkModuleAdapter_Process(struct sof_source **sources,
 
 			intel_adsp::InputStreamFlags flags = {};
 			i_size = source_get_data_available(sources[i]);
+			size_t min_available = source_get_min_available(sources[i]);
+
+			if (min_available && i_size > min_available)
+				i_size = min_available;
+
 			ret = source_get_data(sources[i], i_size, (const void **)&input,
 					      (const void **)&input_start, &input_end);
 			if (ret != 0)
@@ -255,4 +260,3 @@ void* operator new(size_t size, intel_adsp::OutputStreamBuffer* placeholder) thr
 	return placeholder;
 }
 #endif
-
