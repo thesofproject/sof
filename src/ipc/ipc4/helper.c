@@ -1482,10 +1482,19 @@ int ipc4_find_all_dma_configs_tlvs_only(struct ipc_config_dai *dai,
 	struct ipc_dma_config *dma_cfg;
 	int count = 0;
 
-	for (tlvs = (struct sof_tlv *)data_buffer; tlvs && (uintptr_t)tlvs < end_addr;
+	for (tlvs = (struct sof_tlv *)data_buffer;
+	     tlvs && (uintptr_t)tlvs + sizeof(*tlvs) <= end_addr;
 	     tlvs = tlv_next(tlvs)) {
-		if ((uintptr_t)tlvs->value + tlvs->length > end_addr) {
-			tr_err(&ipc_tr, "Unexpected TLV length %d: exceeds buffer size", tlvs->length);
+		/*
+		 * tlvs->length is host-controlled: computing
+		 * "tlvs->value + tlvs->length" can overflow the pointer and
+		 * wrap below end_addr, bypassing this check and letting
+		 * tlv_next() advance to a wild address. Compare against the
+		 * remaining space instead. The loop condition guarantees the
+		 * TLV header fits, so end_addr - tlvs->value does not underflow.
+		 */
+		if (tlvs->length > end_addr - (uintptr_t)tlvs->value) {
+			tr_err(&ipc_tr, "Unexpected TLV length %u: exceeds buffer size", tlvs->length);
 			return IPC4_INVALID_REQUEST;
 		}
 
