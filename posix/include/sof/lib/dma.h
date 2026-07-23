@@ -265,10 +265,11 @@ struct dma_info {
 	size_t num_dmas;
 };
 
-struct audio_stream;
-typedef int (*dma_process_func)(const struct audio_stream __sparse_cache *source,
-				uint32_t ioffset, struct audio_stream __sparse_cache *sink,
-				uint32_t ooffset, uint32_t source_samples, uint32_t chmap);
+struct cir_buf_source;
+struct cir_buf_sink;
+typedef int (*dma_process_func)(const struct cir_buf_source *source,
+				uint32_t src_channels, struct cir_buf_sink *sink,
+				uint32_t sink_channels, size_t source_samples, uint32_t chmap);
 
 /**
  * \brief API to initialize a platform DMA controllers.

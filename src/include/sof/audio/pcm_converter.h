@@ -23,6 +23,8 @@
 #include <stdint.h>
 
 struct audio_stream;
+struct cir_buf_source;
+struct cir_buf_sink;
 
 #if __XCC__
 #include <xtensa/config/core-isa.h>
@@ -38,17 +40,17 @@ struct audio_stream;
 
 /**
  * \brief PCM conversion function interface for data in circular buffer
- * \param source buffer with samples to process, read pointer is not modified
- * \param ioffset offset to first sample in source stream
- * \param sink output buffer, write pointer is not modified
- * \param ooffset offset to first sample in sink stream
+ * \param source circular-buffer source descriptor, read pointer is not modified
+ * \param src_channels number of channels in the source stream
+ * \param sink circular-buffer sink descriptor, write pointer is not modified
+ * \param sink_channels number of channels in the sink stream
  * \param source_samples number of samples to convert, for remapping -- number of source samples
  * \param chmap channel map for remapping, ignored by non-remapping conversion func
  * \return error code or number of processed samples (source samples in case of remapping).
  */
-typedef int (*pcm_converter_func)(const struct audio_stream *source,
-				  uint32_t ioffset, struct audio_stream *sink,
-				  uint32_t ooffset, uint32_t source_samples, uint32_t chmap);
+typedef int (*pcm_converter_func)(const struct cir_buf_source *source,
+				  uint32_t src_channels, struct cir_buf_sink *sink,
+				  uint32_t sink_channels, size_t source_samples, uint32_t chmap);
 
 /* A channel map that does not perform any remapping. */
 #define DUMMY_CHMAP 0x76543210
@@ -60,7 +62,7 @@ typedef int (*pcm_converter_func)(const struct audio_stream *source,
  * \param samples number of samples to convert
  */
 typedef void (*pcm_converter_lin_func)(const void *psrc, void *pdst,
-				       uint32_t samples);
+				       size_t samples);
 
 /** \brief PCM conversion functions map. */
 struct pcm_func_map {
@@ -184,20 +186,30 @@ pcm_get_conversion_vc_function(enum sof_ipc_frame in_bits,
 /**
  * \brief Convert data from circular buffer using converter working on linear
  *	  memory space
- * \param source buffer with samples to process, read pointer is not modified
- * \param ioffset offset to first sample in source stream
- * \param sink output buffer, write pointer is not modified
- * \param ooffset offset to first sample in sink stream
+ * \param source circular-buffer source descriptor, read pointer is not modified
+ * \param s_size_in source sample size in bytes
+ * \param sink circular-buffer sink descriptor, write pointer is not modified
+ * \param s_size_out sink sample size in bytes
  * \param samples number of samples to convert
  * \param converter core conversion function working on linear memory regions
  * \return error code or number of processed samples
  */
-int pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
-			  struct audio_stream *sink, uint32_t ooffset,
-			  uint32_t samples, pcm_converter_lin_func converter);
+int pcm_convert_as_linear(const struct cir_buf_source *source, size_t s_size_in,
+			  struct cir_buf_sink *sink, size_t s_size_out,
+			  size_t samples, pcm_converter_lin_func converter);
 
-/* Copy stream without conversion. chmap parameter is ignored. */
-int just_copy(const struct audio_stream *source, uint32_t ioffset,
-	      struct audio_stream *sink, uint32_t ooffset, uint32_t samples, uint32_t chmap);
+/* Copy stream without conversion, typed by sample size in bytes. chmap is ignored. */
+int just_copy_1b(const struct cir_buf_source *source, uint32_t src_channels,
+		 struct cir_buf_sink *sink, uint32_t sink_channels,
+		 size_t samples, uint32_t chmap);
+int just_copy_2b(const struct cir_buf_source *source, uint32_t src_channels,
+		 struct cir_buf_sink *sink, uint32_t sink_channels,
+		 size_t samples, uint32_t chmap);
+int just_copy_3b(const struct cir_buf_source *source, uint32_t src_channels,
+		 struct cir_buf_sink *sink, uint32_t sink_channels,
+		 size_t samples, uint32_t chmap);
+int just_copy_4b(const struct cir_buf_source *source, uint32_t src_channels,
+		 struct cir_buf_sink *sink, uint32_t sink_channels,
+		 size_t samples, uint32_t chmap);
 
 #endif /* __SOF_AUDIO_PCM_CONVERTER_H__ */

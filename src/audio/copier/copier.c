@@ -531,6 +531,16 @@ static int do_conversion_copy(struct comp_dev *dev,
 			      struct comp_buffer *sink,
 			      struct comp_copy_limits *processed_data)
 {
+	struct cir_buf_source src_cir = {
+		.buf_start = audio_stream_get_addr(&src->stream),
+		.buf_end = audio_stream_get_end_addr(&src->stream),
+		.ptr = audio_stream_get_rptr(&src->stream),
+	};
+	struct cir_buf_sink snk_cir = {
+		.buf_start = audio_stream_get_addr(&sink->stream),
+		.buf_end = audio_stream_get_end_addr(&sink->stream),
+		.ptr = audio_stream_get_wptr(&sink->stream),
+	};
 	int i;
 
 	/* buffer params might be not yet configured by component on another pipeline */
@@ -550,7 +560,8 @@ static int do_conversion_copy(struct comp_dev *dev,
 		return -EINVAL;
 	buffer_stream_invalidate(src, processed_data->source_bytes);
 
-	cd->converter[i](&src->stream, 0, &sink->stream, 0,
+	cd->converter[i](&src_cir, audio_stream_get_channels(&src->stream),
+			 &snk_cir, audio_stream_get_channels(&sink->stream),
 			 processed_data->frames * audio_stream_get_channels(&src->stream),
 			 DUMMY_CHMAP);
 
@@ -619,8 +630,22 @@ static int copier_module_copy(struct processing_module *mod,
 		sink_dev = comp_buffer_get_sink_component(sink_c);
 		processed_data.sink_bytes = 0;
 		if (sink_dev->state == COMP_STATE_ACTIVE) {
+			/* Bridge the legacy audio_stream buffers into cir_buf descriptors for
+			 * the new pcm_converter interface (read/write pointers = offset 0).
+			 */
+			struct cir_buf_source src_cir = {
+				.buf_start = audio_stream_get_addr(input_buffers[0].data),
+				.buf_end = audio_stream_get_end_addr(input_buffers[0].data),
+				.ptr = audio_stream_get_rptr(input_buffers[0].data),
+			};
+			struct cir_buf_sink snk_cir = {
+				.buf_start = audio_stream_get_addr(output_buffers[i].data),
+				.buf_end = audio_stream_get_end_addr(output_buffers[i].data),
+				.ptr = audio_stream_get_wptr(output_buffers[i].data),
+			};
 			uint32_t source_samples;
 			int sink_queue_id;
+			pcm_converter_func converter;
 
 			/*
 			 * Buffer ID is constructed as IPC4_COMP_ID(src_queue, dst_queue).
@@ -630,14 +655,15 @@ static int copier_module_copy(struct processing_module *mod,
 			sink_queue_id = IPC4_SRC_QUEUE_ID(buf_get_id(sink_c));
 			if (sink_queue_id >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT)
 				return -EINVAL;
+			converter = cd->converter[sink_queue_id];
 
 			comp_get_copy_limits(src_c, sink_c, &processed_data);
 
 			source_samples = processed_data.frames *
 					audio_stream_get_channels(input_buffers[0].data);
-			cd->converter[sink_queue_id](input_buffers[0].data, 0,
-						     output_buffers[i].data, 0,
-						     source_samples, DUMMY_CHMAP);
+			converter(&src_cir, audio_stream_get_channels(input_buffers[0].data),
+				  &snk_cir, audio_stream_get_channels(output_buffers[i].data),
+				  source_samples, DUMMY_CHMAP);
 
 			output_buffers[i].size = processed_data.sink_bytes;
 			cd->output_total_data_processed += processed_data.sink_bytes;

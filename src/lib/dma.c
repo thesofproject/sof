@@ -380,8 +380,19 @@ int dma_buffer_copy_from(struct comp_buffer *source,
 	/* source buffer contains data copied by DMA */
 	audio_stream_invalidate(istream, source_bytes);
 
-	/* process data */
-	ret = process(istream, 0, &sink->stream, 0, source_samples, chmap);
+	/* process data; the converter consumes cir_buf descriptors */
+	struct cir_buf_source cir_src = {
+		.buf_start = audio_stream_get_addr(istream),
+		.buf_end = audio_stream_get_end_addr(istream),
+		.ptr = audio_stream_get_rptr(istream),
+	};
+	struct cir_buf_sink cir_snk = {
+		.buf_start = audio_stream_get_addr(&sink->stream),
+		.buf_end = audio_stream_get_end_addr(&sink->stream),
+		.ptr = audio_stream_get_wptr(&sink->stream),
+	};
+
+	ret = process(&cir_src, source_channels, &cir_snk, sink_channels, source_samples, chmap);
 
 	buffer_stream_writeback(sink, sink_bytes);
 
@@ -443,8 +454,19 @@ int dma_buffer_copy_to(struct comp_buffer *source,
 
 	buffer_stream_invalidate(source, source_bytes);
 
-	/* process data */
-	ret = process(&source->stream, 0, ostream, 0, source_samples, chmap);
+	/* process data; the converter consumes cir_buf descriptors */
+	struct cir_buf_source cir_src = {
+		.buf_start = audio_stream_get_addr(&source->stream),
+		.buf_end = audio_stream_get_end_addr(&source->stream),
+		.ptr = audio_stream_get_rptr(&source->stream),
+	};
+	struct cir_buf_sink cir_snk = {
+		.buf_start = audio_stream_get_addr(ostream),
+		.buf_end = audio_stream_get_end_addr(ostream),
+		.ptr = audio_stream_get_wptr(ostream),
+	};
+
+	ret = process(&cir_src, source_channels, &cir_snk, sink_channels, source_samples, chmap);
 
 	/* sink buffer contains data meant to copied to DMA */
 	audio_stream_writeback(ostream, sink_bytes);
@@ -505,8 +527,19 @@ int stream_copy_from_no_consume(struct comp_dev *dev, struct comp_buffer *source
 		source_samples = frames * source_channels;
 	}
 
-	/* process data */
-	ret = process(istream, 0, &sink->stream, 0, source_samples, chmap);
+	/* process data; the converter consumes cir_buf descriptors */
+	struct cir_buf_source cir_src = {
+		.buf_start = audio_stream_get_addr(istream),
+		.buf_end = audio_stream_get_end_addr(istream),
+		.ptr = audio_stream_get_rptr(istream),
+	};
+	struct cir_buf_sink cir_snk = {
+		.buf_start = audio_stream_get_addr(&sink->stream),
+		.buf_end = audio_stream_get_end_addr(&sink->stream),
+		.ptr = audio_stream_get_wptr(&sink->stream),
+	};
+
+	ret = process(&cir_src, source_channels, &cir_snk, sink_channels, source_samples, chmap);
 
 #if CONFIG_INTEL_ADSP_MIC_PRIVACY
 	struct processing_module *mod = comp_mod(dev);
