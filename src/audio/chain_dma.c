@@ -168,6 +168,9 @@ static enum task_state chain_task_run(void *data)
 	uint32_t link_type;
 	int ret;
 
+	if (!cd || !cd->dma_buffer || !cd->chan_link || !cd->chan_host)
+		return SOF_TASK_STATE_COMPLETED;
+
 	/* Link DMA can return -EPIPE and current status if xrun occurs, then it is not critical
 	 * and flow shall continue. Other error values will be treated as critical.
 	 */
