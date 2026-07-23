@@ -132,7 +132,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 
 	task->state = SOF_TASK_STATE_FREE;
 
-	if (pdata->freeing)
+	if (pdata && pdata->freeing)
 		/*
 		 * zephyr_ll_task_free() is trying to free this task. Complete
 		 * it and signal the semaphore to let the function proceed
@@ -297,8 +297,9 @@ static void zephyr_ll_run(void *data)
 #ifndef CONFIG_SOF_USERSPACE_LL
 		zephyr_ll_lock(sch, &flags);
 #endif
+		pdata = task->priv_data;
 
-		if (pdata->freeing || state == SOF_TASK_STATE_COMPLETED) {
+		if (!pdata || pdata->freeing || state == SOF_TASK_STATE_COMPLETED) {
 			zephyr_ll_task_done(sch, task);
 		} else {
 			/*
@@ -457,8 +458,15 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 {
 	struct zephyr_ll *sch = data;
 	uint32_t flags;
-	struct zephyr_ll_pdata *pdata = task->priv_data;
+	struct zephyr_ll_pdata *pdata;
 	bool must_wait, on_list = true;
+
+	if (!task)
+		return 0;
+
+	pdata = task->priv_data;
+	if (!pdata)
+		return 0;
 
 	zephyr_ll_assert_core(sch);
 
