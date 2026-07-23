@@ -1,9 +1,17 @@
 # Copyright (c) 2025 Intel Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# -mllvm --text-section-literals=false is a Clang-only flag; guard it
+# Newer xt-clang LLVMs accept this to keep literals in .rodata; older
+# xt-clang (e.g. RI-2022.10, LLVM 10) rejects the sub-option. Detect it.
+set(TFLM_TEXT_SECTION_LITERALS_FALSE_FLAG "")
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  add_compile_options(-mllvm --text-section-literals=false)
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag("-mllvm --text-section-literals=false"
+    TFLM_HAS_MLLVM_TEXT_SECTION_LITERALS_FALSE)
+  if(TFLM_HAS_MLLVM_TEXT_SECTION_LITERALS_FALSE)
+    set(TFLM_TEXT_SECTION_LITERALS_FALSE_FLAG -mllvm --text-section-literals=false)
+    add_compile_options(${TFLM_TEXT_SECTION_LITERALS_FALSE_FLAG})
+  endif()
 endif()
 
 # are we building the llext module ?
@@ -47,10 +55,6 @@ set(TFLM_TOOLCHAIN_INCLUDE_ROOT
 set(TFLM_HAL_SOC_PATH ${sof_top_dir}/../modules/hal/xtensa/zephyr/soc/${SOC_TOOLCHAIN_NAME})
 
 if(TENSORFLOW_HAVE_NNLIB_HIFI4)
-
-# nnlib-hifi4 requires Cadence XCC/Clang-specific TIE headers (xtensa/tie/xt_hifi2.h)
-# and therefore can ONLY be built with Clang. Skip entirely when using gcc.
-if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
 add_library(nn_hifi_lib STATIC
 	${NN_HIFI_PATH}/algo/common/src/xa_nnlib_common_api.c
@@ -98,18 +102,18 @@ target_include_directories(nn_hifi_lib PRIVATE
 	${NN_HIFI_PATH}/algo/common/include/
 	${NN_HIFI_PATH}/include/nnlib/
 	${NN_HIFI_PATH}/algo/ndsp/hifi4/include
-	/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include
-	${sof_top_dir}/../modules/hal/xtensa/zephyr/soc/intel_ace15_mtpm
+	${TFLM_TOOLCHAIN_INCLUDE_ROOT}
+	${TFLM_HAL_SOC_PATH}
 )
 
 target_compile_options(nn_hifi_lib PRIVATE
-  -mllvm --text-section-literals=false
+  ${TFLM_TEXT_SECTION_LITERALS_FALSE_FLAG}
 )
 
-endif() # CMAKE_C_COMPILER_ID STREQUAL "Clang"
+endif() # TENSORFLOW_HAVE_NNLIB_HIFI4
 
 
-if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
 
 # TODO: Need to detect and add mul16/32 options.
 target_compile_definitions(nn_hifi_lib PRIVATE
@@ -147,12 +151,12 @@ target_compile_definitions(nn_hifi_lib PRIVATE
 	__XCC_CLANG__
 )
 target_compile_options(nn_hifi_lib PRIVATE
-	-mcpu=intel_ace15_mtpm
+	-mcpu=${SOC_TOOLCHAIN_NAME}
 	"SHELL:-include xtensahifiintrin.h"
 	"SHELL:-include ${NN_HIFI_PATH}/algo/common/include/xa_nnlib_hifi_isa_compat.h"
 )
 
-endif() # CMAKE_C_COMPILER_ID STREQUAL "Clang" (nn_hifi_lib defs/opts)
+endif() # TENSORFLOW_HAVE_NNLIB_HIFI4 (nn_hifi_lib defs/opts)
 
 
 # TODO: complete sources have been added here from userspace build but
@@ -319,9 +323,6 @@ if(TENSORFLOW_HAVE_NNLIB_HIFI4)
 target_include_directories(tflm_lib PRIVATE
 	${NN_HIFI_PATH}
 	${NN_HIFI_PATH}/include
-	${sof_top_dir}/posix/include
-	${sof_top_dir}/../modules/hal/xtensa/include
-	${sof_top_dir}/../modules/hal/xtensa/zephyr/soc/intel_ace15_mtpm
 )
 endif()
 
@@ -332,6 +333,12 @@ endif()
 #ifeq "$(has_mul32)" "0"
 #CFLAGS += -mno-mul32 -mno-div32
 #endif
+
+# These select/enable the HiFi4 nnlib-optimized code paths in some TFLM
+# kernels. Only valid when nn_hifi_lib is actually built and linked --
+# forcing XCHAL_HAVE_HIFI4 on a non-HiFi4 target risks enabling HiFi4-only
+# branches in system/toolchain headers that don't apply to this core.
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
 target_compile_definitions(tflm_lib PRIVATE
 	-DHIFI4=1
 	-DHAVE_VFPU=1
@@ -349,6 +356,12 @@ target_compile_definitions(tflm_lib PRIVATE
 	"AE_CVT64F32_H(v)=((ae_int64)(int64_t)(int32_t)AE_MOVAD32_H(v))"
 	"AE_CVT64F32_L(v)=((ae_int64)(int64_t)(int32_t)AE_MOVAD32_L(v))"
 )
+target_compile_options(tflm_lib PRIVATE
+	-DHIFI4
+	-DKERNELS_OPTIMIZED_FOR_SPEED
+	-DNNLIB_V2
+)
+endif() # TENSORFLOW_HAVE_NNLIB_HIFI4
 
 target_compile_options(tflm_lib PRIVATE
 	-std=c++17
@@ -373,7 +386,6 @@ target_compile_options(tflm_lib PRIVATE
 	-DXTENSA
 	-DTF_LITE_MCU_DEBUG_LOG
 	-DTF_LITE_USE_CTIME
-	-DHIFI4
 	-mlongcalls
 	-Wno-shadow
 )
@@ -400,35 +412,90 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Xtensa")
 	)
 elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	target_compile_options(tflm_lib PRIVATE
-		-mcpu=intel_ace15_mtpm
+		-mcpu=${SOC_TOOLCHAIN_NAME}
 	)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	target_include_directories(tflm_lib SYSTEM PRIVATE
-		/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include/c++/14.3.0
-		/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include/c++/14.3.0/xtensa-intel_ace15_mtpm_zephyr-elf
-		/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include
+		${TFLM_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0
+		${TFLM_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf
+		${TFLM_TOOLCHAIN_INCLUDE_ROOT}
 	)
 endif()
 
-add_local_sources(sof tflm-classify.c speech.cc micro_speech_quantized_model_data.cc llext-wrap.c math_stubs.c)
+add_local_sources(sof tflm-classify.c llext-wrap.c)
 
-# Link nnlib only when Clang is available (nnlib requires XCC/Clang TIE headers)
-if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+# Link nnlib only when it was actually built (HiFi4 target + Clang)
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
   zephyr_link_libraries(tflm_lib nn_hifi_lib)
 else()
   zephyr_link_libraries(tflm_lib)
+endif()
+
+# CONFIG_MINIMAL_LIBC (SOF's global default) has no libm and is missing a
+# few libc functions (e.g. abs()) that TFLM needs in a statically-linked
+# (non-LLEXT) image. Linking the toolchain's whole libc.a is too broad: it
+# conflicts with Zephyr's own malloc/free (multiple definition) and pulls in
+# an __assert_no_args that needs an unavailable stderr. Instead, extract just
+# the specific archive members TFLM actually needs into a small private
+# archive and link only that.
+if(NOT CONFIG_COMP_TENSORFLOW STREQUAL "m")
+  set(TFLM_TOOLCHAIN_LIBC_ARCHIVE
+    ${ZEPHYR_SDK_INSTALL_DIR}/gnu/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/lib/libc.a)
+  set(TFLM_LIBC_SHIM_MEMBERS
+    libc_stdlib_abs.c.o
+    libm_math_s_floor.c.o
+    # TFLM QuantizeMultiplier() uses double frexp() + round() at Prepare time.
+    libm_math_s_frexp.c.o
+    libm_common_s_round.c.o
+    libm_math_sf_exp.c.o
+    libm_math_sf_log.c.o
+    libm_math_sf_ceil.c.o
+    libm_common_sf_fmax.c.o
+    libm_common_sf_fmin.c.o
+    libm_common_sf_round.c.o
+    # error-handling/predicate helpers the above call internally
+    libm_common_sf_isnan.c.o
+    libm_common_sf_issignaling.c.o
+    libm_common_math_errf_uflowf.c.o
+    libm_common_math_errf_oflowf.c.o
+    libm_common_math_errf_divzerof.c.o
+    libm_common_math_errf_invalidf.c.o
+  )
+  set(TFLM_LIBC_SHIM_DIR ${CMAKE_CURRENT_BINARY_DIR}/tflm_libc_shim)
+  set(TFLM_LIBC_SHIM_ARCHIVE ${CMAKE_CURRENT_BINARY_DIR}/libtflm_libc_shim.a)
+  file(MAKE_DIRECTORY ${TFLM_LIBC_SHIM_DIR})
+  add_custom_command(
+    OUTPUT ${TFLM_LIBC_SHIM_ARCHIVE}
+    COMMAND ${CMAKE_AR} x ${TFLM_TOOLCHAIN_LIBC_ARCHIVE} ${TFLM_LIBC_SHIM_MEMBERS}
+    COMMAND ${CMAKE_AR} rcs ${TFLM_LIBC_SHIM_ARCHIVE} ${TFLM_LIBC_SHIM_MEMBERS}
+    WORKING_DIRECTORY ${TFLM_LIBC_SHIM_DIR}
+    DEPENDS ${TFLM_TOOLCHAIN_LIBC_ARCHIVE} ${CMAKE_CURRENT_LIST_FILE}
+    COMMENT "Extracting abs()/libm members TFLM needs from the toolchain libc.a"
+  )
+  add_custom_target(tflm_libc_shim_gen DEPENDS ${TFLM_LIBC_SHIM_ARCHIVE})
+  add_library(tflm_libc_shim STATIC IMPORTED GLOBAL)
+  set_target_properties(tflm_libc_shim PROPERTIES IMPORTED_LOCATION ${TFLM_LIBC_SHIM_ARCHIVE})
+  add_dependencies(tflm_libc_shim tflm_libc_shim_gen)
+  zephyr_link_libraries(tflm_libc_shim)
+
+  # TFLM/flatbuffers use assert() internally; the toolchain's own
+  # __assert_no_args implementation needs an unavailable stderr, so disable
+  # assert() outright instead (standard practice for release TFLM builds).
+  target_compile_definitions(tflm_lib PRIVATE NDEBUG)
 endif()
 zephyr_include_directories(${TFLM_PATH})
 zephyr_include_directories(${FLATBUFFERS_PATH}/include)
 zephyr_include_directories(${GEMMLOWP_PATH})
 zephyr_include_directories(${RUY_PATH})
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
 zephyr_include_directories(${NN_HIFI_PATH}/algo/kernels/include)
 zephyr_include_directories(${NN_HIFI_PATH}/include)
+endif()
 target_include_directories(modules_sof SYSTEM PRIVATE
-	/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include/c++/14.3.0
-	/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include/c++/14.3.0/xtensa-intel_ace15_mtpm_zephyr-elf
-	/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include
+	${TFLM_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0
+	${TFLM_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf
+	${TFLM_TOOLCHAIN_INCLUDE_ROOT}
 )
 
