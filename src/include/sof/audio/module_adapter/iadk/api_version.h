@@ -14,10 +14,13 @@
 
 #define IADK_MODULE_API_MAJOR_VERSION		4
 #define IADK_MODULE_API_MIDDLE_VERSION		5
-#define IADK_MODULE_API_MINOR_VERSION		0
+#define IADK_MODULE_API_MINOR_VERSION		2
 
 #define IADK_MODULE_API_CURRENT_VERSION	MODULE_API_VERSION_ENCODE(IADK_MODULE_API_MAJOR_VERSION, \
 	IADK_MODULE_API_MIDDLE_VERSION, IADK_MODULE_API_MINOR_VERSION)
+
+/* API 4.5.0 remains compatible with the extended interface tables. */
+#define IADK_MODULE_API_VERSION_4_5_0	MODULE_API_VERSION_ENCODE(4, 5, 0)
 
 /* Defines the size of the space reserved within ModuleHandle for SOF to store its private data.
  * This size comes from the IADK header files and must match the IADK API version.

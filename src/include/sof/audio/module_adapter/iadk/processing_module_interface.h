@@ -399,6 +399,10 @@ namespace intel_adsp
 		virtual void OnStreamState(uint64_t counter,
 					uint32_t stream_index,
 					State state) = 0;
+
+		/*! Write a pattern when an output stream resumes processing. */
+		virtual void WritePattern(uint16_t stream_index,
+					  OutputStreamBuffer *output_buffer) = 0;
 	};
 } /*namespace intel_adsp */
 

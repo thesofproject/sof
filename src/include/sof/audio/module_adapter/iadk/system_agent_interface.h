@@ -134,6 +134,14 @@ namespace internal
 					    ) = 0;
 	};
 
+	class SystemAgentInterface3 : public SystemAgentInterface2
+	{
+	public:
+
+		/*! \brief Gets the BSS base for the current module instance. */
+		virtual void *GetBssBase(void) = 0;
+	};
+
 } /* namespace intel_adsp */
 
 #endif /* _ADSP_SYSTEM_AGENT_H_ */

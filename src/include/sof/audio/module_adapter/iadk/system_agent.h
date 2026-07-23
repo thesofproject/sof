@@ -21,7 +21,7 @@ namespace system
 	 * A SystemAgent can only be delivered by the ADSP System.
 	 * Once registered, a ModuleHandle instance can be handled by the ADSP System.
 	 */
-	class SystemAgent : public intel_adsp::SystemAgentInterface
+	class SystemAgent : public intel_adsp::SystemAgentInterface3
 	{
 	public:
 		SystemAgent(uint32_t module_id,
@@ -33,6 +33,15 @@ namespace system
 		virtual void CheckIn(intel_adsp::ProcessingModuleInterface & processing_module,
 				     intel_adsp::ModuleHandle & module_handle,
 				     intel_adsp::LogHandle * &log_handle) /*override*/;
+
+		/*! \brief Registers a detector module. */
+		virtual void CheckInDetector(
+			DetectorModuleInterface & processing_module,
+			ModuleHandle & module_handle,
+			LogHandle * &log_handle) /*override*/;
+
+		/*! \brief Returns the BSS base for the current module instance. */
+		virtual void *GetBssBase(void) /*override*/;
 
 		/*! \return a value part of error code list defined within the adsp_error.h*/
 		virtual int CheckIn(intel_adsp::ProcessingModuleFactoryInterface & module_factory,
