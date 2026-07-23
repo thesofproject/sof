@@ -24,13 +24,14 @@
 #include <sof/audio/module_adapter/library/native_system_service.h>
 #include <sof/audio/module_adapter/library/native_system_agent.h>
 
+/* sof/lib_manager.h pulls C-only component headers into this C++ unit. */
 struct sof_man_module;
 extern "C" const struct sof_man_module *
 lib_manager_get_module_manifest(const uint32_t module_id);
 extern "C" void
 lib_manager_get_instance_bss_address(uint32_t instance_id,
 				     const struct sof_man_module *mod,
-				     void **va_addr, size_t *size);
+				     void __sparse_cache **va_addr, size_t *size);
 
 using namespace intel_adsp;
 using namespace intel_adsp::system;
@@ -45,6 +46,21 @@ namespace intel_adsp
 {
 namespace system
 {
+
+static void *system_agent_get_instance_bss(uint32_t module_id,
+					   uint32_t instance_id,
+					   size_t *size)
+{
+	const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id);
+	void __sparse_cache *base = NULL;
+
+	*size = 0;
+	if (!mod)
+		return NULL;
+
+	lib_manager_get_instance_bss_address(instance_id, mod, &base, size);
+	return reinterpret_cast<void *>(base);
+}
 
 /* Structure storing handles to system service operations */
 const APP_TASK_DATA AdspSystemService SystemAgent::system_service_ = {
@@ -98,15 +114,9 @@ void SystemAgent::CheckInDetector(DetectorModuleInterface& processing_module,
 
 void *SystemAgent::GetBssBase(void)
 {
-	const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id_);
-	void *base = NULL;
 	size_t size = 0;
 
-	if (!mod)
-		return NULL;
-
-	lib_manager_get_instance_bss_address(instance_id_, mod, &base, &size);
-	return base;
+	return system_agent_get_instance_bss(module_id_, instance_id_, &size);
 }
 
 int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
@@ -117,6 +127,19 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 			 void *obfuscated_parent_ppl,
 			 void **obfuscated_modinst_p)
 {
+	if (!module_placeholder) {
+		size_t bss_size;
+		void *bss_base = system_agent_get_instance_bss(module_id_, instance_id_,
+							       &bss_size);
+
+		if (!bss_base || processing_module_size > bss_size)
+			return -ENOMEM;
+
+		module_placeholder = reinterpret_cast<ModulePlaceholder *>(bss_base);
+	}
+
+	module_size_ = processing_module_size;
+
 	IoPinsInfo pins_info;
 	const dsp_fw::DwordArray& cfg_ipc_msg =
 			*reinterpret_cast<const dsp_fw::DwordArray*>(obfuscated_mod_cfg);
@@ -140,7 +163,14 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 	settings.DeduceBaseModuleCfgExt(prerequisites.input_pins_count,
 					prerequisites.output_pins_count);
 
-	module_factory.Create(*this, module_placeholder, ModuleInitialSettings(settings), pins_info);
+	int ret = module_factory.Create(*this, module_placeholder,
+					ModuleInitialSettings(settings), pins_info);
+	if (ret)
+		return ret;
+
+	if (!module_handle_)
+		return -EINVAL;
+
 	IadkModuleAdapter& module_adapter = *reinterpret_cast<IadkModuleAdapter*>(module_handle_);
 	*obfuscated_modinst_p = &module_adapter;
 	reinterpret_cast<intel_adsp::ProcessingModuleInterface*>(module_placeholder)->Init();
