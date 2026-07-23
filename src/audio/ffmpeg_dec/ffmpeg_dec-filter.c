@@ -152,6 +152,25 @@ void ffmpeg_af_close(struct ffmpeg_af_graph *g)
 #include <sof/audio/sink_api.h>
 #include <sof/math/numbers.h>
 
+/*
+ * On HiFi4/HiFi5 VFPU cores our LLVM Xtensa clang provides packed int<->float
+ * conversion intrinsics (float.sx2 / trunc.sx2), each converting two lanes per
+ * op. float.sx2(x, 31) yields (float)x * 2^-31 (fusing the /2^31 normalize) and
+ * trunc.sx2(f, 31) yields (int32_t)(f * 2^31) with int32 saturation (replacing
+ * the manual clamp). Fall back to scalar C on GCC and on non-VFPU cores.
+ */
+#if defined(__XTENSA__) && defined(__has_include)
+#if __has_include(<xtensa/config/core-isa.h>)
+#include <xtensa/config/core-isa.h>
+#endif
+#if defined(__has_builtin) && __has_builtin(__builtin_xtensa_float_sx2) && \
+	defined(XCHAL_HAVE_HIFI4_VFPU) && XCHAL_HAVE_HIFI4_VFPU && \
+	__has_include(<xtensahifiintrin.h>)
+#include <xtensahifiintrin.h>
+#define FFMPEG_AF_VFPU_CONV 1
+#endif
+#endif
+
 #define FFMPEG_AF_MAX_CHUNK	4096
 #define FFMPEG_AF_S32_SCALE	2147483648.0f	/* 2^31 */
 #ifndef CONFIG_FFMPEG_AF_FILTER_NAME
@@ -227,9 +246,41 @@ int ffmpeg_af_mod_process(struct processing_module *mod,
 		av_frame_free(&in);
 		return ret;
 	}
+#ifdef FFMPEG_AF_VFPU_CONV
+	/*
+	 * Packed S32 -> float per channel. float.sx2(x, 31) converts both lanes
+	 * as (float)x * 2^-31, fusing the /2^31 normalize. The interleaved
+	 * source is strided, so gather two samples into an 8-byte aligned temp
+	 * and load them packed; the planar float destination is contiguous and
+	 * aligned, so store the packed result directly. The AE load/store
+	 * intrinsics (not raw pointer deref) keep the packed value in the AE
+	 * register file - the backend has no generic 64-bit-vector memory op.
+	 * AE_L32X2/AE_S32X2 are mutual inverses, so lane order needs no
+	 * reasoning about: temp slot k maps to plane slot k.
+	 */
+	for (c = 0; c < ch; c++) {
+		float *pl = (float *)in->data[c];
+		const int32_t *sc = src + c;
+
+		for (i = 0; i + 2 <= n; i += 2) {
+			int32_t tmp[2] __attribute__((aligned(8)));
+			ae_int32x2 p;
+			ae_xtfloatx2 r;
+
+			tmp[0] = sc[i * ch];
+			tmp[1] = sc[(i + 1) * ch];
+			p = AE_L32X2_I((const ae_int32x2 *)tmp, 0);
+			r = XT_FLOAT_SX2(p, 31);
+			AE_S32X2_I((ae_int32x2)r, (ae_int32x2 *)&pl[i], 0);
+		}
+		for (; i < n; i++)
+			pl[i] = (float)sc[i * ch] / FFMPEG_AF_S32_SCALE;
+	}
+#else
 	for (i = 0; i < n; i++)
 		for (c = 0; c < ch; c++)
 			((float *)in->data[c])[i] = (float)src[i * ch + c] / FFMPEG_AF_S32_SCALE;
+#endif
 	source_release_data(source, n * cd->out_frame_bytes);
 
 	/* Run the graph. */
@@ -252,6 +303,40 @@ int ffmpeg_af_mod_process(struct processing_module *mod,
 	/* Interleave + denormalize float -> S32 into the sink. */
 	m = MIN(out->nb_samples, sink_get_free_frames(sink));
 	if (m > 0 && sink_get_buffer_s32(sink, m * cd->out_frame_bytes, &dst, NULL, NULL) == 0) {
+#ifdef FFMPEG_AF_VFPU_CONV
+		/*
+		 * Packed float -> S32 per channel. trunc.sx2(f, 31) converts both
+		 * lanes as (int32_t)(f * 2^31) with int32 saturation, fusing the
+		 * *2^31 denormalize and replacing the manual clamp in the
+		 * vectorized body (the scalar tail keeps the explicit clamp). The
+		 * planar float source is contiguous/aligned (packed load); the
+		 * interleaved sink is strided, so spill the packed result to an
+		 * aligned temp and scatter the two lanes. AE_L32X2/AE_S32X2 are
+		 * mutual inverses, so temp slot k maps to plane slot k.
+		 */
+		for (c = 0; c < ch; c++) {
+			const float *pl = (const float *)out->data[c];
+			int32_t *dc = dst + c;
+
+			for (i = 0; i + 2 <= m; i += 2) {
+				int32_t tmp[2] __attribute__((aligned(8)));
+				ae_int32x2 f, q;
+
+				f = AE_L32X2_I((const ae_int32x2 *)&pl[i], 0);
+				q = XT_TRUNC_SX2((ae_xtfloatx2)f, 31);
+				AE_S32X2_I(q, tmp, 0);
+				dc[i * ch] = tmp[0];
+				dc[(i + 1) * ch] = tmp[1];
+			}
+			for (; i < m; i++) {
+				float f = pl[i] * FFMPEG_AF_S32_SCALE;
+
+				f = f > 2147483647.0f ? 2147483647.0f :
+				    (f < -2147483648.0f ? -2147483648.0f : f);
+				dc[i * ch] = (int32_t)f;
+			}
+		}
+#else
 		for (i = 0; i < m; i++)
 			for (c = 0; c < ch; c++) {
 				float f = ((const float *)out->data[c])[i] * FFMPEG_AF_S32_SCALE;
@@ -260,6 +345,7 @@ int ffmpeg_af_mod_process(struct processing_module *mod,
 				    (f < -2147483648.0f ? -2147483648.0f : f);
 				dst[i * ch + c] = (int32_t)f;
 			}
+#endif
 		sink_commit_buffer(sink, m * cd->out_frame_bytes);
 	}
 	av_frame_free(&out);
