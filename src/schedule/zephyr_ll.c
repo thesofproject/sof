@@ -38,11 +38,14 @@ struct zephyr_ll {
 	struct k_heap *heap;
 };
 
+/* sys_sem objects must be statically allocated and in kernel memory */
+static struct sys_sem ll_sem[CONFIG_CORE_COUNT];
+
 /* per-task scheduler data */
 struct zephyr_ll_pdata {
 	bool run;
 	bool freeing;
-	struct sys_sem sem;
+	struct sys_sem *sem;
 };
 
 #if CONFIG_SOF_USERSPACE_LL
@@ -132,12 +135,16 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 
 	task->state = SOF_TASK_STATE_FREE;
 
-	if (pdata->freeing)
+	if (pdata->freeing) {
 		/*
 		 * zephyr_ll_task_free() is trying to free this task. Complete
 		 * it and signal the semaphore to let the function proceed
 		 */
-		sys_sem_give(&pdata->sem);
+		int ret = sys_sem_give(pdata->sem);
+
+		if (ret < 0)
+			tr_err(&ll_tr, "sys_sem_give() err: %d", ret);
+	}
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
@@ -504,9 +511,13 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	zephyr_ll_unlock(sch, &flags);
 
-	if (must_wait)
+	if (must_wait) {
 		/* Wait for up to 100 periods */
-		sys_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
+		int ret = sys_sem_take(pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
+
+		if (ret < 0)
+			tr_err(&ll_tr, "sys_sem_take() err: %d", ret);
+	}
 
 	/* Protect against racing with schedule_task() */
 	zephyr_ll_lock(sch, &flags);
@@ -698,8 +709,9 @@ int zephyr_ll_task_init(struct task *task,
 	}
 
 	memset(pdata, 0, sizeof(*pdata));
+	pdata->sem = ll_sem + core;
 
-	sys_sem_init(&pdata->sem, 0, 1);
+	sys_sem_init(pdata->sem, 0, 1);
 
 	task->priv_data = pdata;
 
