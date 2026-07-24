@@ -954,6 +954,7 @@ void sys_comp_module_drc_interface_init(void);
 void sys_comp_module_dts_interface_init(void);
 void sys_comp_module_eq_fir_interface_init(void);
 void sys_comp_module_eq_iir_interface_init(void);
+void sys_comp_module_ffmpeg_dec_interface_init(void);
 void sys_comp_module_gain_interface_init(void);
 void sys_comp_module_google_rtc_audio_processing_interface_init(void);
 void sys_comp_module_google_ctc_audio_processing_interface_init(void);

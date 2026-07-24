@@ -304,6 +304,18 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
+# WebRTC noise suppressor (webrtc_ns + webrtc_vad) on TGL nocodec SSP
+"development/cavs-nocodec-webrtc-ns\;sof-tgl-nocodec-webrtc-ns\;PLATFORM=tgl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns.bin"
+
+# WebRTC AECm echo canceller (dual SSP: mic + ref) on TGL nocodec
+"development/cavs-nocodec-webrtc-aec\;sof-tgl-nocodec-webrtc-aec\;PLATFORM=tgl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-aec.bin"
+
+# WebRTC NS2/RNNoise (48 kHz float) on TGL nocodec SSP
+"development/cavs-nocodec-webrtc-ns2\;sof-tgl-nocodec-webrtc-ns2\;PLATFORM=tgl,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-webrtc-ns2.bin"
+
 # SSP test topology for Data Processing SRC on MTL
 "cavs-nocodec\;sof-mtl-nocodec-dp-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin,SRC_DOMAIN=DP"

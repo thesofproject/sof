@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_WEBRTC_VAD
+	tristate "WebRTC Voice Activity Detection (libfvad)"
+	help
+	  Select to include the WebRTC Voice Activity Detection module. It
+	  wraps the libfvad library (a standalone pure-C extraction of the
+	  WebRTC GMM VAD) behind the SOF module interface. The module
+	  inspects each 10/20/30 ms PCM frame and annotates it as speech or
+	  non-speech via a NOTIFIER_ID_VAD notifier event, leaving the audio
+	  stream unmodified (pass-through).
+
+	  libfvad supports 8, 16, 32 and 48 kHz; it resamples to 8 kHz
+	  internally. The GMM classifier operates in Q15 fixed-point and
+	  requires no FPU.
+
+	  The real backend requires libfvad cross-built for the target
+	  (west module: modules/audio/libfvad). Without the source, or for
+	  CI/stub builds, select COMP_WEBRTC_VAD_STUB.
+
+if COMP_WEBRTC_VAD
+
+config COMP_WEBRTC_VAD_STUB
+	bool "WebRTC VAD stub backend (no libfvad dependency)"
+	default y if COMP_STUBS
+	help
+	  Build the webrtc_vad module against a dependency-free stub backend
+	  instead of libfvad. The stub always reports speech (VAD = 1) so
+	  the audio data flow and LLEXT packaging can be validated without
+	  the libfvad source or a cross-built archive.
+
+config WEBRTC_VAD_MODE
+	int "VAD aggressiveness mode (0=quality ... 3=aggressive)"
+	range 0 3
+	default 2
+	help
+	  Sets the libfvad operating mode which controls the trade-off
+	  between false-positive rate and missed-speech rate:
+	    0 - highest quality (fewest false alarms, may miss quiet speech)
+	    1 - moderate quality
+	    2 - moderate aggressiveness (default)
+	    3 - most aggressive (detects most speech, more false alarms)
+	  This option is also used by the stub backend (mode value is ignored
+	  by the stub but must be a valid integer for compilation).
+
+config WEBRTC_VAD_FRAME_MS
+	int "VAD frame length in milliseconds (10, 20 or 30)"
+	default 10
+	help
+	  libfvad processes audio in fixed-size frames. Valid values are
+	  10, 20 and 30 ms. Smaller frames give lower latency; 10 ms is
+	  the recommended default and matches the WebRTC pipeline convention.
+	  The SOF pipeline period must be a multiple of this value (the
+	  module accumulates sub-frames internally if needed).
+
+endif # COMP_WEBRTC_VAD

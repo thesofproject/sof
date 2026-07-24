@@ -1,0 +1,24 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
+	REM # WebRTC AECm acoustic echo canceller module config.
+	REM # Two input pins: pin 0 = mic capture, pin 1 = echo reference.
+	[[module.entry]]
+	name = "WRTCAEC"
+	uuid = UUIDREG_STR_WEBRTC_AEC
+	affinity_mask = "0x1"
+	instance_count = "40"
+	domain_types = "0"
+	load_type = LOAD_TYPE
+	module_type = "9"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	REM # 2 input pins (mic + echo ref), 1 output pin (processed mic).
+	pin = [0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 0, 0, 0xfeef, 0xf, 0xf, 0x45ff, 1, 0, 0xfeef, 0xf, 0xf, 0x45ff]
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+	REM # AECm is fixed-point, modest CPU; 2×10ms buffers for mic+ref at 16kHz S32.
+	mod_cfg = [0, 0, 0, 0, 0, 2000000, 16384, 8192, 0, 2000, 0]
+
+	index = __COUNTER__

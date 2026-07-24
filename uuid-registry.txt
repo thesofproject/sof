@@ -77,6 +77,7 @@ f6d15ad3-b122-458c-ae9b0ab0b5867aa0 dummy_dma
 43a90ce7-f3a5-41df-ac06ba98651ae6a3 eq_fir
 5150c0e6-27f9-4ec8-8351c705b642d12f eq_iir
 889f6dcd-ddcd-4e05-aa5b0d39f8bca961 esai
+1207af73-f9c0-4f65-92b49d45178fc9a8 ffmpeg_dec
 bfc7488c-75aa-4ce8-9dbed8da08a698c2 file
 93446e12-1864-4e04-afe03b1d778ffb79 fir
 61bca9a8-18d0-4a18-8e7b2639219804b7 gain
@@ -178,6 +179,10 @@ e93326d8-0d14-4bf0-bcb9e063d3d80136 twb_sched
 b77e677e-5ff4-4188-af14fba8bdbf8682 volume
 8a171323-94a3-4e1d-afe9fe5dbaa4c393 volume4
 1028070e-04e8-46ab-8d8110a0116ce738 wait
+c790b11d-5d14-e54e-be36ba4ad732cc14 webrtc_vad
+0fc8faef-945f-004b-8d5f315047f1136a webrtc_ns
+e5da7b5b-133a-ba46-b517651d6300bb83 webrtc_aec
+eacfacdc-2a87-c942-97e894c917a740db webrtc_ns2
 d944281a-afe9-4695-a043d7f62b89538e waves
 13c8bc59-c4fa-4ad1-b93ace97cd30acc7 wdt
 300aaad4-45d2-8313-25d05e1d6086cdd1 zephyr

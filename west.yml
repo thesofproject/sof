@@ -11,6 +11,29 @@ manifest:
       url-base: https://github.com/thesofproject
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
+    # FFmpeg source for the ffmpeg_dec module (CONFIG_COMP_FFMPEG_DEC). Points at
+    # a SOF fork carrying SOF-local FFmpeg patches (branch sof-ffmpeg-dec, based
+    # on release/7.1). To move versions or add patches, update the branch and bump
+    # the 'revision:' SHA below.
+    - name: ffmpeg
+      url-base: https://github.com/lgirdwood
+    # libshine fixed-point MP3 encoder for FFMPEG_ENC_MP3 (upstream mirror).
+    - name: shine
+      url-base: https://github.com/toots
+    # libfvad: pure-C BSD-3 extraction of the WebRTC GMM VAD for the
+    # webrtc_vad module (CONFIG_COMP_WEBRTC_VAD). Cross-built by
+    # src/audio/webrtc_vad/webrtc_vad.cmake.
+    - name: libfvad
+      url-base: https://github.com/dpirch
+    # webrtc-apm: webrtc-audio-processing 0.3.x source used for the classic
+    # WebRTC Noise Suppression module (CONFIG_COMP_WEBRTC_NS). Pure-C subset,
+    # no abseil. Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake.
+    - name: webrtc-apm
+      url-base: https://gitlab.freedesktop.org/gstreamer
+    # rnnoise: xiph/rnnoise deep-learning noise suppressor used by webrtc_ns2.
+    # Pure C, BSD-3-Clause. Pinned at Feb-2025 tip.
+    - name: rnnoise
+      url-base: https://github.com/xiph
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -40,6 +63,50 @@ manifest:
       repo-path: tomlc99
       path: sof/tools/rimage/tomlc99
       revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
+
+    # FFmpeg (libavcodec) source for the ffmpeg_dec module. Cross-built by
+    # src/audio/ffmpeg_dec/ffmpeg.cmake, enabling only the Kconfig-selected
+    # decoders. SOF fork branch sof-hifi (release/7.1 + av_tx table-size cap that drops
+    # the module .bss from ~17MB to ~415KB, + Xtensa HiFi float_dsp). Bump to move
+    # versions.
+    - name: ffmpeg
+      repo-path: FFmpeg
+      path: modules/audio/ffmpeg
+      revision: 181d38ad362cb22afac3fbd7207d29f7239212b3
+      remote: ffmpeg
+
+    # libshine: small fixed-point MP3 encoder for FFMPEG_ENC_MP3 (FFmpeg has no
+    # native MP3 encoder). Cross-built by ffmpeg.cmake.
+    - name: shine
+      repo-path: shine
+      path: modules/audio/shine
+      revision: ab5e3526b64af1a2eaa43aa6f441a7312e013519
+      remote: shine
+
+    # libfvad: standalone WebRTC GMM VAD for the webrtc_vad module.
+    # Cross-built by src/audio/webrtc_vad/webrtc_vad.cmake.
+    - name: libfvad
+      repo-path: libfvad
+      path: modules/audio/libfvad
+      revision: 532ab666c20d3cfda38bca63abbb0f152706c369
+      remote: libfvad
+
+    # webrtc-audio-processing 0.3.1 — classic WebRTC APM for webrtc_ns module.
+    # Pure-C NS subset only; no C++ or abseil dependency.
+    # Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake.
+    - name: webrtc-apm
+      repo-path: webrtc-audio-processing
+      path: modules/audio/webrtc-apm
+      revision: v0.3.1
+      remote: webrtc-apm
+
+    # rnnoise — xiph/rnnoise deep-learning noise suppressor (webrtc_ns2).
+    # Pure C, BSD-3-Clause. Pinned at Feb-2025 tip (post RNNoise 2.0 refactor).
+    - name: rnnoise
+      repo-path: rnnoise
+      path: modules/audio/rnnoise
+      revision: 70f1d256acd4b34a572f999a05c87bf00b67730d
+      remote: rnnoise
 
     - name: zephyr
       repo-path: zephyr
