@@ -10,6 +10,8 @@ set(FLATBUFFERS_PATH ${sof_top_dir}/../flatbuffers)
 set(GEMMLOWP_PATH ${sof_top_dir}/../gemmlowp)
 set(RUY_PATH ${sof_top_dir}/../ruy)
 
+if(CMAKE_C_COMPILER_ID STREQUAL "Xtensa")
+set(TFLM_EXTRA_LIBS nn_hifi_lib)
 add_library(nn_hifi_lib STATIC
 	${NN_HIFI_PATH}/algo/common/src/xa_nnlib_common_api.c
 	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_pad_8.c
@@ -43,6 +45,7 @@ add_library(nn_hifi_lib STATIC
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_sym8sxsym16s.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_8x16.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_circ_buf.c
+
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_8x8.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_16x16_16_circ.c
@@ -206,17 +209,78 @@ target_compile_options(nn_hifi_lib PRIVATE
 	-fsigned-char
 	-fno-exceptions
 	-mlongcalls
-	-INLINE:requested
-	-mcoproc
 	-fno-zero-initialized-in-bss
 	-mtext-section-literals
 	-Wsign-compare
-	-m32
 	-DMODEL_INT16
 	-DNNLIB_V2
 	-Dhifi4
 	-DTFLITE_SINGLE_ROUNDING=1
 )
+
+target_compile_options(nn_hifi_lib PRIVATE
+	-INLINE:requested
+	-mcoproc
+	-m32
+)
+else()
+set(TFLM_EXTRA_LIBS "")
+endif()
+
+
+
+if(CMAKE_C_COMPILER_ID STREQUAL "Xtensa")
+	set(TFLM_KERNEL_SOURCES
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/sub.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_hifi.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling_vision.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax_vision.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/unidirectional_sequence_lstm.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/transpose_conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_common_xtensa.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/lstm_eval_hifi.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/add_vision.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reshape.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv_hifi.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int16_reference.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int8_reference.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_int8.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pad_vision.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_vision.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int8_int16.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax_int8_int16.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/logistic.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reduce.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/lstm_eval.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reshape_vision.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pad.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reduce_vision.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/dequantize.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/add.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling_int8.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv_vision.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/strided_slice.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_common_xtensa.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/svdf.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/leaky_relu.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/quantize.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_vision.cc
+	)
+else()
+	set(TFLM_KERNEL_SOURCES
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/sub.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/depthwise_conv.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/fully_connected.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/reshape.cc
+		${TFLM_PATH}/tensorflow/lite/micro/kernels/softmax.cc
+	)
+endif()
 
 # TODO: complete sources have been added here from userspace build but
 # not all are needed so this is a list of "needed" sources to build
@@ -325,46 +389,9 @@ add_library(tflm_lib STATIC
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/var_handle.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/while.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/zeros_like.cc
-	# xtensa kernels
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/sub.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_hifi.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/unidirectional_sequence_lstm.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/transpose_conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_common_xtensa.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/lstm_eval_hifi.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/add_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reshape.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv_hifi.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int16_reference.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int8_reference.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_int8.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pad_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int8_int16.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax_int8_int16.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/logistic.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reduce.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/lstm_eval.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reshape_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pad.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reduce_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/dequantize.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/add.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling_int8.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/strided_slice.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_common_xtensa.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/svdf.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/leaky_relu.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/quantize.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_vision.cc
+
+	${TFLM_KERNEL_SOURCES}
+
 	${TFLM_PATH}/tensorflow/lite/micro/mock_micro_graph.cc
 	${TFLM_PATH}/tensorflow/lite/micro/flatbuffer_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_graph.cc
@@ -420,7 +447,6 @@ target_include_directories(tflm_lib PRIVATE
 #endif
 target_compile_options(tflm_lib PRIVATE
 	-std=c++17
-	-stdlib=libc++
 	-fno-rtti
 	-fno-exceptions
 	-fno-threadsafe-statics
@@ -443,13 +469,29 @@ target_compile_options(tflm_lib PRIVATE
 	-DKERNELS_OPTIMIZED_FOR_SPEED
 	-DTF_LITE_MCU_DEBUG_LOG
 	-DTF_LITE_USE_CTIME
-	--xtensa-core=ace10_LX7HiFi4_2022_10
-	-mcoproc
 	-DHIFI4
 	-mlongcalls
 	-DNNLIB_V2
 	-Wno-shadow
 )
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	target_compile_options(tflm_lib PRIVATE -stdlib=libc++)
+endif()
+
+if(CMAKE_C_COMPILER_ID STREQUAL "Xtensa")
+	target_compile_options(tflm_lib PRIVATE
+		--xtensa-core=ace10_LX7HiFi4_2022_10
+		-mcoproc
+	)
+endif()
+
+
+if(CMAKE_C_COMPILER_ID STREQUAL "Xtensa")
+	set(TFLM_STD_LIBS c++ hal)
+else()
+	set(TFLM_STD_LIBS stdc++)
+endif()
 
 sof_llext_build("tflm"
 	SOURCES ../tflm-classify.c ../llext-wrap.c
@@ -459,7 +501,8 @@ sof_llext_build("tflm"
 
 	# TFLM is a C++ userspace application so hence we need to link
 	# userspace C++, C, maths and C runtime for llext module usage.
-	LIBS tflm_lib nn_hifi_lib c++ m c gcc hal
+	LIBS tflm_lib ${TFLM_EXTRA_LIBS} ${TFLM_STD_LIBS} m c gcc
 	LIBS_PATH .
 )
+
 
