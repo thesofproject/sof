@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_VAD_GATE
+	bool "VAD gate component"
+	depends on IPC_MAJOR_4
+	help
+	  Select to build the VAD (Voice Activity Detection) gate component.
+	  The gate sits between the DMIC copier and the downstream Mixin in
+	  a WOV capture pipeline.  During silence it drains the DMIC input
+	  and returns PPL_STATUS_PATH_STOP so KPB and WOV detectors idle.
+	  When voice onset is detected audio flows through and the downstream
+	  chain wakes and begins buffering.
