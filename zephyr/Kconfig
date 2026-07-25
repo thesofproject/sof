@@ -318,9 +318,19 @@ config VIRTUAL_HEAP
 
 config STACK_SIZE_EDF
 	int "EDF scheduler stack size"
+	default 32768 if FFMPEG_DEC_FLOAT_MATH
 	default 8192
 	help
 	  EDF scheduler work-queue thread stack size. Keep a power of 2.
+
+	  SOF runs module init and prepare (including the backend configure
+	  step) on this EDF work-queue thread. The ffmpeg_dec lossy decoders
+	  (MP3/AAC/Opus) build large cos/pow tables in avcodec_open2(), whose
+	  call chain is ~13 KiB deep and overflows the 8 KiB default -- spilling
+	  into the adjacent thread's stack and faulting on its next context
+	  switch. FFMPEG_DEC_FLOAT_MATH is auto-selected by exactly those
+	  decoders, so bump the default to 32 KiB for them; the integer FLAC
+	  decoder does not need it and keeps 8 KiB.
 
 config STACK_SIZE_IPC_TX
 	int "IPC sender stack size"
