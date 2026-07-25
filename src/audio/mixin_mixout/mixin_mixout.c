@@ -4,6 +4,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
@@ -309,7 +310,9 @@ static int mixin_process(struct processing_module *mod,
 	int i, ret;
 	struct cir_buf_ptr source_ptr;
 
-	comp_dbg(dev, "entry");
+	source_avail_frames = source_get_data_frames_available(sources[0]);
+	comp_err(dev, "mixin_process entry: num_sinks=%d sources=%d avail=%u",
+		 num_of_sinks, num_of_sources, source_avail_frames);
 
 	source_avail_frames = source_get_data_frames_available(sources[0]);
 	sinks_free_frames = INT32_MAX;
@@ -342,14 +345,8 @@ static int mixin_process(struct processing_module *mod,
 		unused_in_between_buf = comp_buffer_get_from_sink(sinks[i]);
 		mixout = comp_buffer_get_sink_component(unused_in_between_buf);
 
-		/* Skip non-active mixout like it is not connected so it does not
-		 * block other possibly connected mixouts. In addition, non-active
-		 * mixouts might have their sink buffer/interface not yet configured.
-		 */
-		if (mixout->state != COMP_STATE_ACTIVE) {
-			active_mixouts[i] = NULL;
-			continue;
-		}
+		if (mixout->state != COMP_STATE_ACTIVE)
+			mixout->state = COMP_STATE_ACTIVE;
 
 		mixout_mod = comp_mod(mixout);
 		active_mixouts[i] = mixout_mod;
@@ -394,8 +391,10 @@ static int mixin_process(struct processing_module *mod,
 		sinks_free_frames = MIN(sinks_free_frames, free_frames - pending_frames->frames);
 	}
 
-	if (sinks_free_frames == 0 || sinks_free_frames == INT32_MAX)
+	if (sinks_free_frames == 0 || sinks_free_frames == INT32_MAX) {
+		comp_err(dev, "mixin_process early return 0: sinks_free=%u", sinks_free_frames);
 		return 0;
+	}
 
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	frame_bytes = source_get_frame_bytes(sources[0]);
@@ -502,6 +501,9 @@ static int mixin_process(struct processing_module *mod,
 
 		if (frames_to_copy + start_frame > mixout_data->mixed_frames)
 			mixout_data->mixed_frames = frames_to_copy + start_frame;
+
+		if (mixout_mod && mixout_mod->dev)
+			comp_copy(mixout_mod->dev);
 	}
 
 	if (bytes_to_consume)
@@ -595,6 +597,18 @@ static int mixout_process(struct processing_module *mod,
 
 	sink_commit_buffer(sinks[0], bytes_to_produce);
 	md->acquired_buf.ptr = NULL;
+
+	if (bytes_to_produce > 0) {
+		struct comp_buffer *sink_buf = comp_buffer_get_from_sink(sinks[0]);
+		if (sink_buf && comp_buffer_get_sink_component(sink_buf)) {
+			struct comp_dev *sink_comp = comp_buffer_get_sink_component(sink_buf);
+			comp_err(dev, "mixout_process: sink_buf=0x%x produced=%u bytes, triggering kpb=0x%x",
+				 sink_buf, bytes_to_produce, dev_comp_id(sink_comp));
+			comp_copy(sink_comp);
+		} else {
+			comp_err(dev, "mixout_process: produced=%u bytes, BUT sink_buf/comp NULL", bytes_to_produce);
+		}
+	}
 
 	return 0;
 }
