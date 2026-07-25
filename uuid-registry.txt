@@ -175,11 +175,13 @@ c51dc642-a2e1-48df-a490e2748cb6363e tflmcly
 e93326d8-0d14-4bf0-bcb9e063d3d80136 twb_sched
 42f8060c-832f-4dbf-b24751e961997b34 up_down_mixer
 6f6b6f4b-6f73-7466-20e1e62b9779f003 userspace_proxy
+8c7d6e5f-4a3b-2c1d-0e9f8a7b6c5d4e3f vad_gate
 b77e677e-5ff4-4188-af14fba8bdbf8682 volume
 8a171323-94a3-4e1d-afe9fe5dbaa4c393 volume4
 1028070e-04e8-46ab-8d8110a0116ce738 wait
 d944281a-afe9-4695-a043d7f62b89538e waves
 13c8bc59-c4fa-4ad1-b93ace97cd30acc7 wdt
+4a5b6c7d-8e9f-4a1b-2c3d4e5f60718293 wov_arbiter
 300aaad4-45d2-8313-25d05e1d6086cdd1 zephyr
 5f1ec3f8-faaf-4099-903ccee98351f169 zephyr_idc
 8fa1d42f-bc6f-464b-867f547af08834da zipc_task
