@@ -79,37 +79,90 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	# metal configure *test* executables itself (no default crt/linker script) --
 	# so those are linked with the GNU gcc via --ld. We only ever build .a
 	# archives (ar), so the linker choice affects configure tests only.
-	# Everything is derived from CMAKE_AR (Zephyr uses GNU binutils even under
-	# clang), e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-ar:
-	string(REGEX REPLACE "ar$" "" _ff_cross_prefix "${CMAKE_AR}")   # ...-elf-
-	get_filename_component(_tc_dir  "${CMAKE_AR}" DIRECTORY)         # .../bin
-	get_filename_component(_ff_gnuroot "${_tc_dir}" DIRECTORY)       # gnu root
-	get_filename_component(_ff_triple  "${_ff_cross_prefix}" NAME)   # ...-elf-
+	# The GNU binutils cross-prefix normally comes from CMAKE_AR, but the Zephyr
+	# LLVM toolchain (cmake/toolchain/llvm/target.cmake, BINTOOLS=llvm) sets
+	# CMAKE_AR=llvm-ar and only names the SDK GNU tools through the ld it puts in
+	# CMAKE_EXE_LINKER_FLAGS (--ld-path=.../xtensa-<core>_zephyr-elf-ld). Prefer
+	# CMAKE_AR when it is already the SDK's xtensa ar (xt-clang), else recover the
+	# SDK cross-prefix from that --ld-path. e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-ar:
+	get_filename_component(_ff_ar_name "${CMAKE_AR}" NAME)
+	if(_ff_ar_name MATCHES "^xtensa-.+_zephyr-elf-ar$")
+		set(_ff_ar "${CMAKE_AR}")
+	elseif(CMAKE_EXE_LINKER_FLAGS MATCHES "--ld-path=([^ ]+xtensa-[^ /]+_zephyr-elf)-ld")
+		set(_ff_ar "${CMAKE_MATCH_1}-ar")
+	else()
+		message(FATAL_ERROR
+			"ffmpeg_dec: cannot locate the Zephyr SDK xtensa binutils for the "
+			"FFmpeg cross-build (CMAKE_AR='${CMAKE_AR}' is not an SDK ar and no "
+			"--ld-path in CMAKE_EXE_LINKER_FLAGS). FFmpeg's configure needs the "
+			"SDK sysroot/linker; clang alone has no bare-metal libc/crt.")
+	endif()
+	string(REGEX REPLACE "ar$" "" _ff_cross_prefix "${_ff_ar}")     # ...-elf-
+	get_filename_component(_tc_dir  "${_ff_ar}" DIRECTORY)          # .../bin
+	get_filename_component(_ff_gnuroot "${_tc_dir}" DIRECTORY)      # gnu root
+	get_filename_component(_ff_triple  "${_ff_cross_prefix}" NAME)  # ...-elf-
 	string(REGEX REPLACE "-$" "" _ff_triple "${_ff_triple}")        # triple
 	set(_ff_sysroot "${_ff_gnuroot}/${_ff_triple}")
-	# core name for -mcpu: triple minus the xtensa- prefix and _zephyr-elf suffix
+	# SDK toolchain core: triple minus the xtensa- prefix and _zephyr-elf suffix
 	# (xtensa-intel_ace30_ptl_zephyr-elf -> intel_ace30_ptl).
 	string(REGEX REPLACE "^xtensa-" "" _ff_core "${_ff_triple}")
 	string(REGEX REPLACE "_zephyr-elf$" "" _ff_core "${_ff_core}")
-	set(_ff_cc "${CMAKE_C_COMPILER} --target=xtensa -mcpu=${_ff_core} --sysroot=${_ff_sysroot}")
+	# clang's -mcpu is the upstream LLVM Xtensa core id, which for some Intel ADSP
+	# cores differs from the SDK toolchain target (intel_ace30_ptl -> intel_ace30_adsp).
+	# Mirror the mapping in cmake/toolchain/llvm/target.cmake (env override first,
+	# then the few names that differ, else identity) so the FFmpeg objects target
+	# the exact same core as the rest of the image.
+	set(_ff_mcpu "$ENV{XTENSA_CORE_ID}")
+	if(NOT _ff_mcpu)
+		if(_ff_core STREQUAL "intel_ace30_ptl")
+			set(_ff_mcpu "intel_ace30_adsp")
+		elseif(_ff_core STREQUAL "intel_ace40")
+			set(_ff_mcpu "intel_ace40_adsp")
+		elseif(_ff_core STREQUAL "intel_ace15_mtpm")
+			set(_ff_mcpu "intel_ace15_adsp")
+		else()
+			set(_ff_mcpu "${_ff_core}")
+		endif()
+	endif()
+	set(_ff_cc "${CMAKE_C_COMPILER} --target=xtensa -mcpu=${_ff_mcpu} --sysroot=${_ff_sysroot}")
 	set(_ff_ld "${_ff_cross_prefix}gcc")
 	# clang --sysroot does NOT add GCC's internal fixed-include directory, and
 	# that is where <xtensa/config/core-isa.h> lives (the GNU driver adds it
 	# implicitly). Without it __has_include(<xtensa/config/core-isa.h>) fails,
 	# XCHAL_HAVE_HIFI*_VFPU stay undefined, and libavutil/xtensa/float_dsp_init.c
 	# silently falls back to scalar C -- i.e. the HiFi5 .sx2x2 float SIMD is
-	# dropped from the ace40 build. Ask the matching GNU gcc for that directory
-	# and put it on the include path so the VFPU path actually compiles in.
+	# dropped from the ace40 build. The header lives under xtensa/ in GCC's fixed-
+	# include dir, but that dir ALSO holds GCC's own <stdatomic.h> -- and putting
+	# the whole dir on the include path (any of -I/-idirafter/-isystem) makes
+	# clang's hosted <stdatomic.h> #include_next into GCC's, whose atomic_* macros
+	# expand to the GNU __atomic_* builtins on _Atomic(int)* pointers that clang
+	# rejects ("address argument to atomic operation must be a pointer to a
+	# trivially-copyable type" -- hit by libavcodec/threadprogress.h). So expose
+	# ONLY the xtensa/ subtree via a private dir (symlink) and -I that: clang finds
+	# <xtensa/config/core-isa.h> for the VFPU detection but keeps using its own
+	# freestanding <stdatomic.h> (__c11_atomic_*). (core-isa.h includes nothing
+	# outside xtensa/, so the single symlink is sufficient.)
 	execute_process(
 		COMMAND ${_ff_cross_prefix}gcc -print-file-name=include
 		OUTPUT_VARIABLE _ff_gcc_inc OUTPUT_STRIP_TRAILING_WHITESPACE)
 	if(_ff_gcc_inc AND IS_DIRECTORY "${_ff_gcc_inc}/xtensa/config")
-		set(_ff_cc "${_ff_cc} -I${_ff_gcc_inc}")
+		set(_ff_xinc "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-xtensa-inc")
+		file(MAKE_DIRECTORY "${_ff_xinc}")
+		file(REMOVE "${_ff_xinc}/xtensa")
+		file(CREATE_LINK "${_ff_gcc_inc}/xtensa" "${_ff_xinc}/xtensa" SYMBOLIC)
+		set(_ff_cc "${_ff_cc} -I${_ff_xinc}")
 	endif()
 	# The LLVM Xtensa backend cannot lower the SLP-vectorised v2i32 bswap that
 	# FFmpeg byteswap code produces ("Cannot select: v2i32 = bswap"); disable
 	# vectorisation to avoid it (and it buys nothing -- no packed float SIMD).
 	set(_ff_extra_cflags "${_ff_extra_cflags} -fno-vectorize -fno-slp-vectorize")
+	# A switch() compiles to a jump table whose base address is materialised with
+	# an L32R against a literal pool. This Xtensa target has L32R-range/relocation
+	# issues (see the zephyr auto-litpool revert), and a mis-relocated table base
+	# sends the switch dispatch into garbage -- observed as a silent spin (no
+	# exception breadcrumb) inside av_opt_set_defaults2's switch on option type.
+	# Force branch-chain lowering (no jump-table base literal) instead.
+	set(_ff_extra_cflags "${_ff_extra_cflags} -fno-jump-tables")
 else()
 	# GCC (Zephyr SDK): target-specific driver, brings its own sysroot + crt.
 	# e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-gcc -> prefix ...-elf-

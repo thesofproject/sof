@@ -41,8 +41,12 @@
 #define SRAM_STREAM_BASE		(SRAM_EXCEPT_BASE + SRAM_EXCEPT_SIZE)
 #define SRAM_STREAM_SIZE		0x1000
 
-/* Stack configuration */
-#define SOF_STACK_SIZE			0x1000
+/* Stack configuration.
+ * On ace30 this feeds only the per-core IDC p4wq worker threads (zephyr_idc.c),
+ * which run cross-core module .init/.set_config synchronously. libavcodec
+ * (ffmpeg_dec) init needs far more than the historical 4 KiB, so size it up.
+ */
+#define SOF_STACK_SIZE			0x8000
 
 #define PLATFORM_HEAP_SYSTEM		CONFIG_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT /* one per core */
