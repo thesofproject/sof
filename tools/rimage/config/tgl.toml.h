@@ -60,13 +60,14 @@
 #include <audio/eq_fir/eq_fir.toml>
 #endif
 
-#ifdef CONFIG_SAMPLE_KEYPHRASE
 #include <samples/audio/detect_test.toml>
-#endif
 
 #if defined(CONFIG_COMP_KPB) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/kpb.toml>
 #endif
+
+#include <audio/vad_gate/vad_gate.toml>
+#include <audio/wov_arbiter/wov_arbiter.toml>
 
 #if defined(CONFIG_COMP_SEL) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/selector/selector.toml>
