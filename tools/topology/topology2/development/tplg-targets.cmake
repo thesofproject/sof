@@ -218,6 +218,12 @@ NUM_DMICS=2,PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_RATE=96000"
 "sof-hda-generic\;sof-hda-generic-96k\;HDA_CONFIG=mix,\
 DEEPBUFFER_FW_DMA_MS=false,HDA_ANALOG_CAPTURE_RATE=96000,HDA_ANALOG_PLAYBACK_RATE=96000,NUM_DMICS=0"
 
+# HDA generic with a compress PCM driven by the FFmpeg (libavcodec) decoder
+# widget (ffmpeg_dec) instead of the Cadence decoder. COMPR_FFMPEG gates
+# compr-ffmpeg.conf independently of COMPRESSED (which gates the Cadence
+# compr.conf), so the stock compress path stays off here.
+"sof-hda-generic\;sof-hda-generic-ffmpeg-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true"
+
 # SDW + DMIC + HDMI, with 16 kHz DMIC1
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k\;PLATFORM=mtl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k.bin,\
