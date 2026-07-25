@@ -125,6 +125,10 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 		endif()
 	endif()
 	set(_ff_cc "${CMAKE_C_COMPILER} --target=xtensa -mcpu=${_ff_mcpu} --sysroot=${_ff_sysroot}")
+	# NOTE: FFmpeg is built soft-float for the scalar FPU -- see the _ff_cc_ff
+	# definition at the end of this branch. (It is scoped to FFmpeg's own --cc and
+	# must NOT reach the newlib libm build, so it is applied there, not here where
+	# _ff_cc is shared with libm.)
 	set(_ff_ld "${_ff_cross_prefix}gcc")
 	# clang --sysroot does NOT add GCC's internal fixed-include directory, and
 	# that is where <xtensa/config/core-isa.h> lives (the GNU driver adds it
@@ -163,6 +167,28 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	# exception breadcrumb) inside av_opt_set_defaults2's switch on option type.
 	# Force branch-chain lowering (no jump-table base literal) instead.
 	set(_ff_extra_cflags "${_ff_extra_cflags} -fno-jump-tables")
+	# Scalar soft-float for FFmpeg. The ace30/40 core-isa reports XCHAL_HAVE_FP=1
+	# (a single-precision scalar FP0 unit), so LLVM lowers plain-C float math to
+	# hardware FP0 ops (mul.s, mov.s, ...). But the firmware is built CONFIG_FPU=n:
+	# the scalar FP coprocessor is never enabled for any thread (SOF's own float
+	# code uses the HiFi VECTOR VFPU, a separate always-available feature). An FP0
+	# instruction therefore faults at runtime as EXCCAUSE 0 (illegal instruction)
+	# the first time a libav* codec runs scalar float math (e.g. ff_mpadsp_init's
+	# MP3 synthesis-window table setup). Integer codecs (FLAC) never emit one, which
+	# is why they worked. Disabling the 'fp' target feature makes LLVM emit
+	# soft-float libcalls (__mulsf3, __truncdfsf2, ...) -- correct on a CONFIG_FPU=n
+	# image, and free for MP3 whose per-frame decode is fixed-point (float appears
+	# only in one-time table init). The HiFi VFPU vector-float intrinsics use a
+	# separate feature and are unaffected.
+	#
+	# This is scoped to FFmpeg's own --cc, NOT the shared _ff_cc: the newlib libm
+	# build must keep 'fp' enabled, because <fenv.h> selects machine/fenv-fp.h via
+	# `#if XCHAL_HAVE_FP` (a core-isa.h macro, still 1 here) and its rur.fcr/rur.fsr
+	# inline asm needs the 'fp' feature to name the FPU control regs -- disabling it
+	# makes those uncompilable (s_fma.c). libm's double math is soft-float
+	# regardless of the feature, and its single-precision (sinf/...) FP0 variants are
+	# unreferenced by the fixed-point codecs and get GC'd, so libm is safe on _ff_cc.
+	set(_ff_cc_ff "${_ff_cc} -Xclang -target-feature -Xclang -fp")
 else()
 	# GCC (Zephyr SDK): target-specific driver, brings its own sysroot + crt.
 	# e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-gcc -> prefix ...-elf-
@@ -172,6 +198,11 @@ else()
 	set(_ff_cross_prefix "${_tc_dir}/${_tc_prefix_name}")
 	set(_ff_cc "${CMAKE_C_COMPILER}")
 	set(_ff_ld "${CMAKE_C_COMPILER}")
+endif()
+# FFmpeg's compile uses _ff_cc_ff (the scalar soft-float variant on LLVM); libm and
+# everything else use plain _ff_cc. On the GCC branch they are identical.
+if(NOT DEFINED _ff_cc_ff)
+	set(_ff_cc_ff "${_ff_cc}")
 endif()
 
 # --- 3c. Build a private newlib math archive (vendored source, -mlongcalls) ---
@@ -341,7 +372,7 @@ ExternalProject_Add(ffmpeg_ext
 		<SOURCE_DIR>/configure
 			--prefix=${FFMPEG_INSTALL_DIR}
 			--enable-cross-compile --target-os=none --arch=xtensa
-			--cross-prefix=${_ff_cross_prefix} "--cc=${_ff_cc}" "--ld=${_ff_ld}"
+			--cross-prefix=${_ff_cross_prefix} "--cc=${_ff_cc_ff}" "--ld=${_ff_ld}"
 			# NOTE: do NOT pass --disable-asm. FFmpeg treats every per-arch
 			# optimisation dir (incl. our C-intrinsic libavutil/xtensa/) as
 			# "asm"; --disable-asm forces arch=c and drops them. There is no
