@@ -24,6 +24,21 @@
 /* Maximum codec setup header (extradata) we accept, e.g. FLAC STREAMINFO. */
 #define FFMPEG_DEC_MAX_EXTRADATA	4096
 
+/*
+ * Compressed input is pulled from the circular source buffer into a linear,
+ * padded bounce buffer one block at a time (the parser needs contiguous bytes
+ * and libavcodec over-reads past the packet by AV_INPUT_BUFFER_PADDING_SIZE).
+ */
+#define FFMPEG_DEC_IN_BLOCK_SIZE	4096
+#define FFMPEG_DEC_INPUT_PADDING	64
+
+/*
+ * A single decoded frame (e.g. a 4096-sample FLAC block, stereo S32 = 32 KiB)
+ * can exceed the sink's free space, so decode into a linear staging buffer and
+ * drain it into the circular sink across as many process() cycles as needed.
+ */
+#define FFMPEG_DEC_PCM_BUF_SIZE		65536
+
 /* Which codec this instance decodes. Kept as an explicit enum so it can be
  * carried in topology/IPC config and mapped to an AVCodecID by the backend.
  */
@@ -51,6 +66,7 @@ enum ffmpeg_dec_codec {
 #endif
 
 struct ffmpeg_dec_comp_data;
+struct ipc_msg;
 
 /**
  * struct ffmpeg_dec_backend - decode backend operations.
@@ -98,6 +114,12 @@ struct ffmpeg_dec_backend {
  * @out_frame_fmt:   Decoded PCM sample format (enum sof_ipc_frame).
  * @out_frame_bytes: Bytes per PCM frame (all channels).
  * @configured:      True once the backend decoder has been opened.
+ * @in_buf:          Linear+padded bounce buffer for compressed input.
+ * @in_buf_size:     Usable capacity of @in_buf (excludes trailing padding).
+ * @pcm_buf:         Linear staging buffer for one decoded frame's PCM.
+ * @pcm_buf_size:    Capacity of @pcm_buf.
+ * @pcm_avail:       Staged PCM bytes not yet drained into the sink.
+ * @pcm_rd:          Read offset of the next byte to drain from @pcm_buf.
  */
 struct ffmpeg_dec_comp_data {
 	const struct ffmpeg_dec_backend *backend;
@@ -110,6 +132,24 @@ struct ffmpeg_dec_comp_data {
 	int out_frame_fmt;
 	uint32_t out_frame_bytes;
 	bool configured;
+	uint8_t *in_buf;
+	size_t in_buf_size;
+	uint8_t *pcm_buf;
+	size_t pcm_buf_size;
+	size_t pcm_avail;
+	size_t pcm_rd;
+	bool hdr_done;
+#if CONFIG_IPC_MAJOR_4
+	/*
+	 * Compress end-of-stream (drain) support. On a DRAIN trigger the kernel
+	 * sets pipeline->expect_eos and blocks in compress_drain() until the
+	 * module reports the drain is complete. @eos_msg is the pre-built module
+	 * notification sent once the last PCM has been flushed; @eos_sent guards
+	 * it against being sent more than once.
+	 */
+	struct ipc_msg *eos_msg;
+	bool eos_sent;
+#endif
 	/* Filter mode (CONFIG_FFMPEG_DEC_FILTER_MODE): avfilter graph handle
 	 * (struct ffmpeg_af_graph *, see ffmpeg_dec-filter.c). Unused for decode.
 	 */

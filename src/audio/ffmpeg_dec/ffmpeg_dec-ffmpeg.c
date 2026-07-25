@@ -17,6 +17,7 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/string.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include "ffmpeg_dec.h"
@@ -57,9 +58,24 @@ static void ffmpeg_dec_av_log(void *avcl, int level, const char *fmt, va_list vl
 	if (n < (int)sizeof(ffmpeg_dec_log_line) && ffmpeg_dec_log_line[n - 1] == '\n')
 		ffmpeg_dec_log_line[n - 1] = '\0';
 
-	if (level <= AV_LOG_ERROR)
+	if (level <= AV_LOG_ERROR) {
+		/* A stalled/hostile stream (e.g. the silence padding a compress
+		 * host emits after the file ends) can make libavcodec log the
+		 * same error every DSP cycle. Collapse identical repeats so the
+		 * trace ring keeps room for other messages.
+		 */
+		static char last[64];
+		static int reps;
+
+		if (!strncmp(last, ffmpeg_dec_log_line, sizeof(last) - 1)) {
+			if (++reps > 3)
+				return;
+		} else {
+			reps = 0;
+			strncpy(last, ffmpeg_dec_log_line, sizeof(last) - 1);
+		}
 		LOG_ERR("ffmpeg: %s", ffmpeg_dec_log_line);
-	else if (level <= AV_LOG_WARNING)
+	} else if (level <= AV_LOG_WARNING)
 		LOG_WRN("ffmpeg: %s", ffmpeg_dec_log_line);
 	else if (level <= AV_LOG_INFO)
 		LOG_INF("ffmpeg: %s", ffmpeg_dec_log_line);
@@ -144,6 +160,7 @@ static int ffmpeg_dec_ff_init(struct processing_module *mod)
 		comp_err(dev, "libavcodec object allocation failed");
 		goto err;
 	}
+	comp_info(dev, "ff_init: libavcodec ready (%s)", ff->codec->name);
 
 	cd->backend_data = ff;
 	return 0;
@@ -188,6 +205,14 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 	 * and get_buffer2 need not be thread-safe.
 	 */
 	ff->avctx->thread_count = 1;
+
+	/* avcodec_alloc_context3() does not apply the AVOption defaults on this
+	 * cut-down static build, so max_samples is left zero-initialised. That
+	 * makes ff_get_buffer() reject every audio frame ("samples per frame N
+	 * exceeds max_samples 0", -EINVAL). Restore the upstream default.
+	 */
+	if (ff->avctx->max_samples <= 0)
+		ff->avctx->max_samples = INT_MAX;
 
 	ret = avcodec_open2(ff->avctx, ff->codec, NULL);
 	if (ret < 0) {
@@ -304,7 +329,14 @@ static int ffmpeg_dec_ff_reset(struct processing_module *mod)
 
 	ffmpeg_dec_libc_bind(mod);
 
-	if (ff && ff->avctx)
+	/*
+	 * The pipeline may issue COMP_TRIGGER_RESET before prepare() has run
+	 * ffmpeg_dec_ff_configure()/avcodec_open2(), so avctx->internal is still
+	 * NULL. avcodec_flush_buffers() -> ff_decode_flush_buffers() dereferences
+	 * that internal state unconditionally and faults (EXCCAUSE 13) on a
+	 * not-yet-opened context. Only flush once the decoder is actually open.
+	 */
+	if (ff && ff->avctx && avcodec_is_open(ff->avctx))
 		avcodec_flush_buffers(ff->avctx);
 
 	return 0;
