@@ -2,7 +2,7 @@
 //
 // Copyright(c) 2026 Intel Corporation.
 //
-// Built-in (=y) libc/libm surface for the ffmpeg_dec libavcodec backend.
+// Built-in (=y) libc surface for the ffmpeg_dec libavcodec backend.
 //
 // The LLEXT (=m) build uses ffmpeg_dec-shims.c, which defines a full private
 // libc (string/stdio/stdlib/snprintf/...) because an isolated module cannot
@@ -20,11 +20,16 @@
 //     the FLAC decode path -> no-op stubs. av_log()'s stderr path is bypassed by
 //     the Zephyr LOG wrapper installed in ffmpeg_dec-ffmpeg.c.
 //   * strtod: not on the FLAC decode path -> return-0 stub.
-//   * double libm (acos/sin/pow/...): FLAC is lossless integer and never calls
-//     these; SOF has no double libm. RESOLVE-ONLY STUBS that let the image link.
-//     THEY MUST BE REPLACED WITH A REAL DOUBLE libm before enabling any lossy
-//     codec (AAC/Opus/Vorbis), which would otherwise decode to garbage.
-//   * __isinfd / __isnand: double classify helpers newlib would provide.
+//   * __errno: the double libm libav* references (acos/sin/exp/log/pow/scalbn/
+//     __isinfd/...) is NOT stubbed here -- it is the real newlib math for this
+//     core, compiled from vendored newlib source with -mlongcalls into
+//     FFMPEG_TARGET_LIBM and linked in CMakeLists.txt (see ffmpeg.cmake 3c +
+//     libm/README). Those kernels report domain/range
+//     errors through *__errno(); it is the only libc-side symbol they need that
+//     the image doesn't already provide (the soft-float builtins __adddf3/
+//     __muldf3/... and memset are already linked), so bridge it to Zephyr's real
+//     per-thread errno below. This replaces the former return-0 libm stubs, so
+//     lossy codecs (AAC/Opus/Vorbis) now decode with correct math, not garbage.
 //   * z_errno_wrap: a Zephyr libc runtime errno wrapper referenced by
 //     libavutil/avsscanf; harmless stub (errno unused on the decode path).
 //   * ffmpeg_dec_libc_bind: in the =y build av_malloc() bottoms out in the
@@ -71,34 +76,17 @@ double strtod(const char *nptr, char **endptr)
 int z_errno_wrap(void) { return 0; }
 
 /* ================================== libm =================================== */
-/* RESOLVE-ONLY double libm stubs -- see file header. FLAC never calls these. */
-
-double acos(double x)            { (void)x; return 0; }
-double asin(double x)            { (void)x; return 0; }
-double atan(double x)            { (void)x; return 0; }
-double atan2(double y, double x) { (void)y; (void)x; return 0; }
-double ceil(double x)            { (void)x; return 0; }
-double cos(double x)             { (void)x; return 0; }
-double cosh(double x)            { (void)x; return 0; }
-double exp(double x)             { (void)x; return 0; }
-double exp2(double x)            { (void)x; return 0; }
-double fabs(double x)            { return x < 0 ? -x : x; }
-double floor(double x)           { (void)x; return 0; }
-double fmod(double x, double y)  { (void)x; (void)y; return 0; }
-double frexp(double x, int *e)   { (void)x; if (e) *e = 0; return 0; }
-double hypot(double x, double y) { (void)x; (void)y; return 0; }
-double log(double x)             { (void)x; return 0; }
-double pow(double x, double y)   { (void)x; (void)y; return 0; }
-double round(double x)           { (void)x; return 0; }
-double scalbn(double x, int n)   { (void)x; (void)n; return 0; }
-double sin(double x)             { (void)x; return 0; }
-double sinh(double x)            { (void)x; return 0; }
-double tan(double x)             { (void)x; return 0; }
-double tanh(double x)            { (void)x; return 0; }
-double trunc(double x)           { (void)x; return 0; }
-long long llrint(double x)       { (void)x; return 0; }
-int __isinfd(double x)           { (void)x; return 0; }
-int __isnand(double x)           { (void)x; return 0; }
+/*
+ * The double libm itself is the real newlib libm.a for this core (linked in
+ * CMakeLists.txt) -- no math stubs live here. newlib's kernels record domain/
+ * range errors through *__errno(); it is the only libm-side symbol the base image
+ * lacks. Bridge it to Zephyr's genuine per-thread errno (z_impl_z_errno, the
+ * implementation behind the z_errno syscall) so those writes land in the calling
+ * thread's errno rather than a shared dummy. The decode path never reads errno,
+ * but the reference must resolve for libm.a to link.
+ */
+extern int *z_impl_z_errno(void);
+int *__errno(void) { return z_impl_z_errno(); }
 
 /* ============================ module heap binding ========================== */
 /* No-op: the =y build allocates from common-libc malloc (DSP SRAM heap), so no

@@ -1,0 +1,74 @@
+newlib libm (double + float math) — vendored for ffmpeg_dec's built-in (=y) build
+=================================================================================
+
+Why this is here
+----------------
+libavcodec/libavutil reference the C double math library (sin/cos/exp/log/pow/
+scalbn/...); the lossy decoders (AAC/Opus/Vorbis) actually call it at runtime.
+The SOF base image is built with CONFIG_MINIMAL_LIBC, which ships NO double libm,
+so the math has to come from newlib.
+
+The Zephyr SDK's *pre-built* newlib math cannot be linked into this image:
+
+  * The image is compiled -mlongcalls and linked --no-relax. The SDK's pre-built
+    math objects use direct call8 (there is no -mlongcalls multilib), so an
+    out-of-range inter-object call (e.g. -> memset) fails at link time with
+    "dangerous relocation: call8: call target out of range".
+  * (SDK >= 1.0 also ships an *empty* libm.a and folds math into libc.a, which we
+    cannot whole-link -- it would multiply-define malloc/str*/memcpy against the
+    minimal libc.)
+
+So we compile newlib's math from source with -mlongcalls -mtext-section-literals
+(the compiler then emits callx8 = L32R+CALLX, unlimited range) into a private
+archive, libnewlib_m.a (see ../ffmpeg.cmake, section 3c). Linked as an archive it
+pulls only the math objects a decoder actually calls; the whole set's external
+tail is compiler soft-float builtins (__adddf3/__muldf3/... comparisons/
+conversions) + memset -- all already in the image -- plus __errno on the error
+paths, bridged to Zephyr's per-thread errno in ffmpeg_dec-builtin-libc.c.
+
+FLAC is integer-only and never calls libm at runtime, but the references still
+resolve to real kernels now (not return-0 stubs), so lossy codecs decode with
+correct math instead of garbage.
+
+Provenance
+----------
+Source: Zephyr's picolibc module, newlib/libm/
+  https://github.com/zephyrproject-rtos/picolibc
+  commit 01254932e8e81085817ed61fd858648584ffe37c  (git describe: 1.8.9-492-g01254932e)
+
+Only the double + float math is vendored:
+  math/     86 .c   (fdlibm kernels: s_sin, k_rem_pio2, e_pow, ...)
+  common/  124 .c   (ARM-optimized routines + fdlibm.h/math_config.h etc.)
+  common/   5  .h   (fdlibm.h, fma_inc.h, local.h, math_config.h, sincosf.h)
+
+Excluded on purpose: libm/complex/ (complex.h -- FFmpeg audio uses its own FFT,
+never libc complex), libm/ld/ (long double -- FFmpeg audio never calls *l
+functions; the double impls carry their own long-double aliases), libm/fenv/,
+libm/machine/, libm/test/. The math/ + common/ subset is self-contained for
+FFmpeg: verified that the double-math symbol closure resolves with no dangling
+references into ld/ or complex/.
+
+Which files are compiled
+------------------------
+newlib_math_sources.cmake lists the exact set to COMPILE (197 files) -- this is
+the same member set the SDK's newlib libc.a selects, so there are no duplicate
+definitions. 13 additional common/*.c (cosf/exp/exp2/log/log2/pow/sf_*/sincosf/
+sinf) are present in this tree but NOT in that list: they are only textually
+#included by their math/s_*.c or common/s_*.c wrappers (e.g. math/s_exp.c does
+#include "../common/exp.c"). Compiling them standalone would multiply-define
+exp/log/pow/..., so ffmpeg.cmake compiles only newlib_math_sources.cmake.
+
+Regenerating (when bumping the picolibc revision)
+-------------------------------------------------
+From a checked-out picolibc newlib libm (LM) and this core's SDK libc.a (LIBC),
+using the SDK ar (AR):
+
+  # the member set newlib itself selected, mapped back to sources:
+  "$AR" t "$LIBC" | sed 's/^libm_//;s/\.c\.o$//' \
+    | awk -F_ '$1=="math"||$1=="common"{s=$1; sub("^"s"_","");print s"/"$0".c"}' \
+    > newlib_math_sources.list
+  # copy those .c + every .c they textually #include + all common/*.h into
+  # math/ and common/, then rebuild newlib_math_sources.cmake from the .list.
+
+Keep math/ + common/ only; do not add ld/complex/fenv unless a future codec
+genuinely needs long-double or complex math (then re-verify the symbol closure).

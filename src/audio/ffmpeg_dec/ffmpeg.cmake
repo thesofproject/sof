@@ -174,6 +174,73 @@ else()
 	set(_ff_ld "${CMAKE_C_COMPILER}")
 endif()
 
+# --- 3c. Build a private newlib math archive (vendored source, -mlongcalls) ---
+# libavcodec/libavutil reference double libm (sin/cos/exp/log/pow/scalbn/...); the
+# lossy decoders (AAC/Opus/Vorbis) actually call it. The base image uses
+# CONFIG_MINIMAL_LIBC, which ships NO double libm, so the math must come from
+# newlib.
+#
+# The SDK's PRE-BUILT newlib math cannot be linked as-is: the image is compiled
+# -mlongcalls and linked --no-relax, but the SDK objects use direct call8 (there is
+# no -mlongcalls multilib), so an out-of-range inter-object call (e.g. -> memset)
+# is a link-time "dangerous relocation: call8: call target out of range". So we
+# compile newlib's math FROM SOURCE with -mlongcalls -mtext-section-literals -- the
+# compiler then emits callx8 (L32R+CALLX, unlimited range), which links cleanly
+# under --no-relax. The sources are vendored under libm/ (newlib libm math/ +
+# common/, the exact member set the SDK's libc.a selects -- see libm/README).
+#
+# Linked as an archive (FFMPEG_TARGET_LIBM, last on the link line) it pulls only
+# the math objects a decoder actually calls; the whole set's external tail is
+# compiler soft-float builtins (__adddf3/__muldf3/comparisons/conversions) + memset
+# (already in the image) + __errno on the error paths (bridged to Zephyr's
+# per-thread errno in ffmpeg_dec-builtin-libc.c).
+set(_ff_libm_src "${CMAKE_CURRENT_LIST_DIR}/libm")
+set(_ff_libm_dir "${CMAKE_CURRENT_BINARY_DIR}/newlib-libm")
+set(FFMPEG_TARGET_LIBM "${_ff_libm_dir}/libnewlib_m.a"
+    CACHE INTERNAL "newlib math compiled from source (-mlongcalls) for libav* double math")
+# newlib_math_sources.cmake defines NEWLIB_MATH_SOURCES: the exact files to compile
+# (relative to libm/). The 13 common/*.c it omits are only textually #included by
+# their s_*.c wrappers -- compiling them standalone would multiply-define exp/log/
+# pow/... (see libm/README).
+include("${_ff_libm_src}/newlib_math_sources.cmake")
+if(NOT NEWLIB_MATH_SOURCES)
+	message(FATAL_ERROR
+		"ffmpeg_dec: vendored newlib math manifest empty/missing "
+		"('${_ff_libm_src}/newlib_math_sources.cmake').")
+endif()
+set(_ff_libm_abs "")
+foreach(_s IN LISTS NEWLIB_MATH_SOURCES)
+	list(APPEND _ff_libm_abs "${_ff_libm_src}/${_s}")
+endforeach()
+# Compile each source with the same core/sysroot as the rest of the image (_ff_cc)
+# plus the same codegen guards (_ff_extra_cflags: -fno-vectorize/-fno-jump-tables/
+# ...) and -mlongcalls -mtext-section-literals for --no-relax linkability, then
+# archive. -ffreestanding: this is bare-metal math, no hosted libc assumptions.
+string(REPLACE ";" " " _ff_libm_srclist "${_ff_libm_abs}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/newlib-m-build.sh"
+"#!/bin/sh
+set -e
+CC=\"${_ff_cc}\"
+OBJDIR=${_ff_libm_dir}/obj
+mkdir -p \"\$OBJDIR\"
+: > ${_ff_libm_dir}/objs.txt
+for f in ${_ff_libm_srclist}; do
+	o=\"\$OBJDIR/\$(basename \"\$f\").o\"
+	\$CC ${_ff_extra_cflags} -mlongcalls -mtext-section-literals -O2 -ffreestanding \\
+		-I${_ff_libm_src}/common -I${_ff_libm_src}/math -c \"\$f\" -o \"\$o\"
+	echo \"\$o\" >> ${_ff_libm_dir}/objs.txt
+done
+rm -f ${FFMPEG_TARGET_LIBM}
+${_ff_cross_prefix}ar rcs ${FFMPEG_TARGET_LIBM} \$(cat ${_ff_libm_dir}/objs.txt)
+")
+add_custom_command(
+	OUTPUT "${FFMPEG_TARGET_LIBM}"
+	COMMAND sh "${CMAKE_CURRENT_BINARY_DIR}/newlib-m-build.sh"
+	DEPENDS ${_ff_libm_abs} "${_ff_libm_src}/newlib_math_sources.cmake"
+	COMMENT "ffmpeg_dec: building newlib math archive (libnewlib_m.a, -mlongcalls)"
+	VERBATIM)
+add_custom_target(newlib_m DEPENDS "${FFMPEG_TARGET_LIBM}")
+
 set(FFMPEG_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-install" CACHE INTERNAL "ffmpeg_dec libs")
 
 # Hot/cold split: GCC emits av_cold (init/setup) functions into .text.unlikely.
