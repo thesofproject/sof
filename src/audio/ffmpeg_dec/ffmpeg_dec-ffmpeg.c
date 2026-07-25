@@ -292,6 +292,25 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 	if (ff->pkt->size == 0)
 		return 0;
 
+	/*
+	 * FFmpeg decoders read AV_INPUT_BUFFER_PADDING_SIZE bytes past the
+	 * packet payload (the bitstream reader over-reads its word cache). The
+	 * parser can hand back a packet pointing into the unpadded host input,
+	 * so copy the payload into the padded scratch and zero the tail before
+	 * decoding.
+	 */
+	{
+		size_t pktbuf_sz = cd->out_frame_bytes ?
+			(size_t)cd->out_frame_bytes * 4096 : 65536;
+
+		if ((size_t)ff->pkt->size + AV_INPUT_BUFFER_PADDING_SIZE <= pktbuf_sz) {
+			memcpy_s(ff->pktbuf, pktbuf_sz, ff->pkt->data, ff->pkt->size);
+			memset(ff->pktbuf + ff->pkt->size, 0,
+			       AV_INPUT_BUFFER_PADDING_SIZE);
+			ff->pkt->data = ff->pktbuf;
+		}
+	}
+
 	ret = avcodec_send_packet(ff->avctx, ff->pkt);
 	if (ret < 0) {
 		comp_err(dev, "avcodec_send_packet failed %d", ret);

@@ -321,19 +321,22 @@ static void ffmpeg_dec_drain_pcm(struct ffmpeg_dec_comp_data *cd,
 }
 
 /*
- * Consume and discard a FLAC container header ("fLaC" marker + metadata blocks)
- * from the source so the decoder is fed a bare frame elementary stream.
+ * Consume and discard a container header from the source so the decoder is fed a
+ * bare frame elementary stream. Handles two prefixes:
+ *   - "fLaC" : FLAC magic + metadata blocks (STREAMINFO reaches the decoder
+ *     separately as extradata, so the whole header is skipped here).
+ *   - "ID3"  : an ID3v2 tag prepended to an MP3 elementary stream. The mpegaudio
+ *     parser syncs on the 0xFFEx frame header and would mis-parse the tag, so the
+ *     syncsafe-encoded tag length is skipped.
  *
- * cplay/tinycompress hand the firmware the whole .flac *file* (magic + STREAMINFO
- * + other metadata blocks + frames), but libavcodec's raw FLAC parser syncs on the
- * frame marker (0xFFF8) and errors ("Error buffering data") if it is fed the
- * container prefix. STREAMINFO reaches the decoder separately as extradata, so the
- * whole header is simply skipped here.
+ * cplay/tinycompress hand the firmware the whole *file*, but libavcodec's raw
+ * parsers sync on the frame marker and error ("Error buffering data") if fed the
+ * container/tag prefix.
  *
- * The header (a few hundred bytes) is far smaller than in_buf_size and the entire
- * clip is already resident in the source ring, so a single pass suffices. Returns
- * 0 once skipped (or when there is no container marker), -ENODATA while the full
- * header is not yet buffered, or a negative errno on a malformed/oversized header.
+ * The header is far smaller than in_buf_size and the entire clip is already
+ * resident in the source ring, so a single pass suffices. Returns 0 once skipped
+ * (or when there is no container marker), -ENODATA while the full header is not yet
+ * buffered, or a negative errno on a malformed/oversized header.
  */
 static int ffmpeg_dec_skip_container(struct ffmpeg_dec_comp_data *cd,
 				     struct comp_dev *dev, struct sof_source *src)
@@ -351,6 +354,35 @@ static int ffmpeg_dec_skip_container(struct ffmpeg_dec_comp_data *cd,
 	if (ret)
 		return ret;
 	ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes, req);
+
+	/*
+	 * ID3v2 tag (common on real-world MP3 files): 10-byte header ("ID3",
+	 * 2-byte version, 1-byte flags, 4-byte syncsafe size), then the tag body,
+	 * then (if flags bit 0x10) a 10-byte footer. Skip the whole tag so the
+	 * mpegaudio parser sees frames.
+	 */
+	if (memcmp(cd->in_buf, "ID3", 3) == 0) {
+		uint32_t tag;
+
+		if (req < 10) {
+			source_release_data(src, 0);
+			return -ENODATA;
+		}
+		/* syncsafe: 7 bits per byte */
+		tag = ((uint32_t)(cd->in_buf[6] & 0x7f) << 21) |
+		      ((uint32_t)(cd->in_buf[7] & 0x7f) << 14) |
+		      ((uint32_t)(cd->in_buf[8] & 0x7f) << 7) |
+		      (uint32_t)(cd->in_buf[9] & 0x7f);
+		off = 10 + tag + ((cd->in_buf[5] & 0x10) ? 10 : 0);
+		if (off > req) {
+			source_release_data(src, 0);
+			comp_err(dev, "ID3v2 tag (%zu) exceeds input block (%zu)", off, req);
+			return -EINVAL;
+		}
+		source_release_data(src, off);
+		comp_info(dev, "skipped %zu-byte ID3v2 tag", off);
+		return 0;
+	}
 
 	/* No container marker: the stream already starts with frames. */
 	if (memcmp(cd->in_buf, "fLaC", 4) != 0) {

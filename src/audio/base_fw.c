@@ -109,6 +109,13 @@ static void get_codec_info(struct sof_tlv **tuple)
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_PLAYBACK);
 #endif
+#if defined(CONFIG_FFMPEG_DEC_MP3) && !defined(CONFIG_CADENCE_CODEC_MP3_DEC)
+	/* MP3 decode is provided by the ffmpeg_dec (libavcodec) module (guarded so
+	 * it is not advertised twice when the Cadence MP3 decoder is also present).
+	 */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
+#endif
 
 	if (!codec_info.count)
 		return;
