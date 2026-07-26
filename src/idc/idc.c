@@ -30,6 +30,7 @@
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <ipc4/base-config.h>
 #include <errno.h>
 #include <stdint.h>
 #include <sof/lib/ams.h>
@@ -120,6 +121,8 @@ static int idc_get_attribute(uint32_t comp_id)
 	struct ipc_comp_dev *ipc_dev;
 	struct idc_payload *idc_payload;
 	struct get_attribute_remote_payload *get_attr_payload;
+	struct ipc4_base_module_cfg local_cfg;
+	int ret;
 
 	ipc_dev = ipc_get_comp_by_id(ipc_get(), comp_id);
 	if (!ipc_dev)
@@ -128,7 +131,21 @@ static int idc_get_attribute(uint32_t comp_id)
 	idc_payload = idc_payload_get(*idc_get(), cpu_get_id());
 	get_attr_payload = (struct get_attribute_remote_payload *)idc_payload;
 
-	return comp_get_attribute(ipc_dev->cd, get_attr_payload->type, get_attr_payload->value);
+	/*
+	 * Let the module fill a local (cacheable) copy, then publish it to the
+	 * caller's coherent buffer with aligned 32-bit stores. Passing the
+	 * coherent buffer straight to the module makes it memcpy() a whole
+	 * struct into the uncached alias, which faults (EXCCAUSE 9) on Xtensa.
+	 * Only COMP_ATTR_BASE_CONFIG is supported remotely (enforced by the
+	 * sender), so local_cfg is always the right size.
+	 */
+	ret = comp_get_attribute(ipc_dev->cd, get_attr_payload->type, &local_cfg);
+	if (ret < 0)
+		return ret;
+
+	ipc4_coherent_copy32(get_attr_payload->value, &local_cfg, sizeof(local_cfg));
+
+	return ret;
 }
 
 /**

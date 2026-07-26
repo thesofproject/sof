@@ -211,6 +211,29 @@ struct get_attribute_remote_payload {
 	void *value;
 };
 
+/*
+ * Copy to/from a coherent (uncached) buffer using aligned 32-bit word accesses.
+ *
+ * A whole-struct memcpy() straight into (or out of) the uncached alias faults
+ * on Xtensa with EXCCAUSE 9: the compiler lowers the struct copy to wide/HiFi
+ * accesses (e.g. AE_L32X2 / 64-bit loads) that the uncached window does not
+ * support. The IDC status word (a single aligned uint32_t) already round-trips
+ * through this same coherent region without faulting, so restricting the copy
+ * to volatile 32-bit word transactions is safe. @bytes must be a multiple of 4
+ * and both pointers 32-bit aligned (guaranteed here: ipc4_base_module_cfg is
+ * aligned(4) and rzalloc() returns >=4-byte-aligned memory).
+ */
+static inline void ipc4_coherent_copy32(void *dst, const void *src, size_t bytes)
+{
+	volatile uint32_t *d = dst;
+	const volatile uint32_t *s = src;
+	size_t words = bytes / sizeof(uint32_t);
+	size_t i;
+
+	for (i = 0; i < words; i++)
+		d[i] = s[i];
+}
+
 static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t type,
 						 void *value)
 {
@@ -234,9 +257,12 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 
 	ret = idc_send_msg(&msg, IDC_BLOCKING);
 
+	/* base_cfg is coherent (uncached) -- read it back with 32-bit word
+	 * accesses, not a struct memcpy that would fault on the uncached alias.
+	 */
 	if (ret == 0)
-		memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
-			 base_cfg, sizeof(struct ipc4_base_module_cfg));
+		ipc4_coherent_copy32(value, base_cfg,
+				     sizeof(struct ipc4_base_module_cfg));
 
 	rfree(base_cfg);
 	return ret;
