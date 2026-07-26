@@ -1385,7 +1385,7 @@ __cold static int cmd_sof_kctl_list(const struct shell *sh,
 
 
 
-#if CONFIG_SOF_SHELL_HEAP_USAGE || CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_MODULE_LIST
+#if CONFIG_SOF_SHELL_HEAP_USAGE || CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_MODULE_LIST || CONFIG_SOF_SHELL_PIPELINE_OPS
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_module,
 #if CONFIG_SOF_SHELL_HEAP_USAGE
 	SHELL_CMD(heap, NULL,
@@ -1402,6 +1402,22 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_module,
 		      "List all available modules (name, inst, cpc, text, bss)\n"
 		      "  [-v]  also show uuid, affinity, cps, ibs, obs\n",
 		      cmd_sof_module_list, 1, 1),
+#endif
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+	SHELL_CMD_ARG(init, NULL,
+		  "Instantiate module: <mod_id> <inst_id> <ppl_id> [core=0] [dp=0]\n",
+		  cmd_sof_mod_init, 4, 2),
+	SHELL_CMD_ARG(delete, NULL,
+		  "Delete module instance: <mod_id> <inst_id>\n",
+		  cmd_sof_mod_delete, 3, 0),
+	SHELL_CMD_ARG(bind, NULL,
+		  "Bind two module instances: <src_mod> <src_inst> <dst_mod> <dst_inst>"
+		  " [src_q=0] [dst_q=0]\n",
+		  cmd_sof_mod_bind, 5, 2),
+	SHELL_CMD_ARG(unbind, NULL,
+		  "Unbind two module instances: <src_mod> <src_inst> <dst_mod> <dst_inst>"
+		  " [src_q=0] [dst_q=0]\n",
+		  cmd_sof_mod_unbind, 5, 2),
 #endif
 	SHELL_SUBCMD_SET_END
 );
@@ -1420,6 +1436,17 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_pipeline,
 	SHELL_CMD_ARG(latency, NULL,
 		      "Calculate pipeline latency from sink to source: [ppl_id]\n",
 		      cmd_sof_pipeline_latency, 1, 1),
+#if CONFIG_SOF_SHELL_PIPELINE_OPS
+	SHELL_CMD_ARG(create, NULL,
+		  "Create IPC4 pipeline: <ppl_id> [priority=0] [pages=2] [core=0] [lp=0]\n",
+		  cmd_sof_ppl_create, 2, 4),
+	SHELL_CMD_ARG(delete, NULL,
+		  "Delete IPC4 pipeline: <ppl_id>\n",
+		  cmd_sof_ppl_delete, 2, 0),
+	SHELL_CMD_ARG(state, NULL,
+		  "Set IPC4 pipeline state: <ppl_id> <running|paused|reset>\n",
+		  cmd_sof_ppl_state, 3, 0),
+#endif
 	SHELL_SUBCMD_SET_END
 );
 #endif
