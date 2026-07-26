@@ -42,6 +42,7 @@
 #include <zephyr/shell/shell.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #if CONFIG_SOF_SHELL_HEAP_USAGE
 __cold static int cmd_sof_module_heap_usage(const struct shell *sh,
@@ -76,9 +77,7 @@ __cold static int cmd_sof_module_heap_usage(const struct shell *sh,
 	return 0;
 }
 
-SHELL_SUBCMD_ADD((sof), module_heap_usage, NULL,
-		 "Print heap memory usage of each module\n",
-		 cmd_sof_module_heap_usage, 0, 0);
+
 #endif /* CONFIG_SOF_SHELL_HEAP_USAGE */
 
 #if CONFIG_SOF_SHELL_PIPELINE_STATUS || CONFIG_SOF_SHELL_MODULE_STATUS
@@ -141,10 +140,192 @@ __cold static int cmd_sof_pipeline_status(const struct shell *sh,
 	return 0;
 }
 
-SHELL_SUBCMD_ADD((sof), pipeline_status, NULL,
-		 "Print status of all active pipelines\n",
-		 cmd_sof_pipeline_status, 0, 0);
+
 #endif /* CONFIG_SOF_SHELL_PIPELINE_STATUS */
+
+#if CONFIG_SOF_SHELL_PIPELINE_STATUS || CONFIG_SOF_SHELL_BUFFER_INFO
+
+__cold static const char *comp_dev_name(const struct comp_dev *cd)
+{
+	if (cd && cd->drv && cd->drv->tctx && cd->drv->tctx->uuid_p &&
+	    cd->drv->tctx->uuid_p->name[0])
+		return cd->drv->tctx->uuid_p->name;
+	return "?";
+}
+
+__cold static const char *comp_id_name(struct ipc *ipc, uint32_t comp_id)
+{
+	struct ipc_comp_dev *icd = ipc_get_comp_by_id(ipc, comp_id);
+
+	if (icd && icd->cd)
+		return comp_dev_name(icd->cd);
+
+	return "?";
+}
+
+__cold static int shell_for_each_buffer(struct ipc *ipc,
+				 void (*cb)(const struct shell *sh,
+					    struct comp_buffer *buf,
+					    uint32_t src_id, uint32_t sink_id,
+					    void *ctx),
+				 const struct shell *sh, void *ctx);
+
+struct ppl_lat_calc_ctx {
+	uint32_t ppl_id;
+	uint64_t total_lat_us;
+	uint64_t total_max_lat_us;
+	int buf_count;
+	bool verbose;
+};
+
+__cold static void ppl_lat_buf_cb(const struct shell *sh, struct comp_buffer *buf,
+				  uint32_t src_id, uint32_t sink_id, void *ctx)
+{
+	struct ppl_lat_calc_ctx *calc = ctx;
+	const struct audio_stream *s = &buf->stream;
+	bool matches = false;
+
+	if (buf->source && buf->source->pipeline &&
+	    buf->source->pipeline->pipeline_id == calc->ppl_id)
+		matches = true;
+	else if (buf->sink && buf->sink->pipeline &&
+		 buf->sink->pipeline->pipeline_id == calc->ppl_id)
+		matches = true;
+
+	if (matches) {
+		uint32_t rate = audio_stream_get_rate(s);
+		uint32_t channels = audio_stream_get_channels(s);
+		uint32_t sample_bytes = audio_stream_sample_bytes(s);
+		uint32_t bytes_per_sec = rate * channels * sample_bytes;
+		uint32_t avail = audio_stream_get_avail(s);
+		uint32_t size = audio_stream_get_size(s);
+		uint64_t lat_us = 0;
+		uint64_t max_lat_us = 0;
+
+		if (bytes_per_sec > 0) {
+			lat_us = ((uint64_t)avail * 1000000ULL) / bytes_per_sec;
+			max_lat_us = ((uint64_t)size * 1000000ULL) / bytes_per_sec;
+		}
+
+		calc->total_lat_us += lat_us;
+		calc->total_max_lat_us += max_lat_us;
+		calc->buf_count++;
+
+		if (calc->verbose) {
+			struct ipc *ipc = sof_get()->ipc;
+			const char *src_name = comp_id_name(ipc, src_id);
+			const char *sink_name = comp_id_name(ipc, sink_id);
+
+			shell_print(sh, "  [Buf 0x%08x] Comp 0x%08x (%s) -> Comp 0x%08x (%s)",
+				    buf_get_id(buf), src_id, src_name, sink_id, sink_name);
+			shell_print(sh, "    Format: %u Hz, %u ch, %u B/sample | Fill: %u / %u B",
+				    rate, channels, sample_bytes, avail, size);
+			shell_print(sh, "    Stage Latency: %u.%02u ms (%llu us) [Max Depth: %u.%02u ms]",
+				    (uint32_t)(lat_us / 1000), (uint32_t)((lat_us % 1000) / 10),
+				    (unsigned long long)lat_us,
+				    (uint32_t)(max_lat_us / 1000), (uint32_t)((max_lat_us % 1000) / 10));
+		}
+	}
+}
+
+__cold static int cmd_sof_pipeline_latency(const struct shell *sh, size_t argc, char *argv[])
+{
+	struct ipc *ipc = sof_get()->ipc;
+	struct list_item *clist;
+	struct ipc_comp_dev *icd;
+	int count = 0;
+	bool single_ppl = false;
+	uint32_t target_ppl_id = 0;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	if (argc > 1) {
+		char *endptr;
+		target_ppl_id = (uint32_t)strtoul(argv[1], &endptr, 0);
+		if (endptr != argv[1])
+			single_ppl = true;
+	}
+
+	if (!single_ppl) {
+		shell_print(sh, "%-10s %-5s %-10s %-10s %-20s %-20s %s",
+			    "ppl_id", "core", "state", "period", "buffered_latency", "max_depth", "xrun_b");
+	}
+
+	list_for_item(clist, &ipc->comp_list) {
+		struct pipeline *p;
+		struct ppl_lat_calc_ctx calc = {0};
+
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_PIPELINE)
+			continue;
+
+		p = icd->pipeline;
+
+		if (single_ppl && p->pipeline_id != target_ppl_id)
+			continue;
+
+		calc.ppl_id = p->pipeline_id;
+		calc.verbose = single_ppl;
+
+		if (single_ppl) {
+			shell_print(sh, "Pipeline 0x%08x Latency Trace (Source -> Sink):", p->pipeline_id);
+			shell_print(sh, "  Pipeline State: %s | Core: %u | Period: %u us | Priority: %u",
+				    comp_state_str((uint16_t)p->status), p->core, p->period, p->priority);
+			if (p->source_comp)
+				shell_print(sh, "  Source Comp:   0x%08x (%s)",
+					    p->source_comp->ipc_config.id,
+					    comp_dev_name(p->source_comp));
+		}
+
+		shell_for_each_buffer(ipc, ppl_lat_buf_cb, sh, &calc);
+
+		if (single_ppl) {
+			if (p->sink_comp)
+				shell_print(sh, "  Sink Comp:     0x%08x (%s)",
+					    p->sink_comp->ipc_config.id,
+					    comp_dev_name(p->sink_comp));
+
+			shell_print(sh, "Total Pipeline Latency: %u.%02u ms (%llu us) [Max Capacity: %u.%02u ms (%llu us)]",
+				    (uint32_t)(calc.total_lat_us / 1000), (uint32_t)((calc.total_lat_us % 1000) / 10),
+				    (unsigned long long)calc.total_lat_us,
+				    (uint32_t)(calc.total_max_lat_us / 1000), (uint32_t)((calc.total_max_lat_us % 1000) / 10),
+				    (unsigned long long)calc.total_max_lat_us);
+		} else {
+			char lat_str[24];
+			char max_str[24];
+			char period_str[12];
+
+			snprintf(lat_str, sizeof(lat_str), "%u.%02u ms (%llu us)",
+				 (uint32_t)(calc.total_lat_us / 1000), (uint32_t)((calc.total_lat_us % 1000) / 10),
+				 (unsigned long long)calc.total_lat_us);
+
+			snprintf(max_str, sizeof(max_str), "%u.%02u ms (%llu us)",
+				 (uint32_t)(calc.total_max_lat_us / 1000), (uint32_t)((calc.total_max_lat_us % 1000) / 10),
+				 (unsigned long long)calc.total_max_lat_us);
+
+			snprintf(period_str, sizeof(period_str), "%u us", p->period);
+
+			shell_print(sh, "0x%-8x %-5u %-10s %-10s %-20s %-20s %d B",
+				    p->pipeline_id, p->core,
+				    comp_state_str((uint16_t)p->status),
+				    period_str, lat_str, max_str, p->xrun_bytes);
+		}
+		count++;
+	}
+
+	if (!count) {
+		if (single_ppl)
+			shell_print(sh, "Pipeline 0x%08x not found.", target_ppl_id);
+		else
+			shell_print(sh, "No active pipelines found.");
+	}
+
+	return 0;
+}
+#endif
 
 #if CONFIG_SOF_SHELL_MODULE_STATUS
 __cold static int cmd_sof_module_status(const struct shell *sh,
@@ -160,18 +341,19 @@ __cold static int cmd_sof_module_status(const struct shell *sh,
 		return 0;
 	}
 
-	shell_print(sh, "%-12s %-8s %-5s %s",
-		    "comp_id", "ppl_id", "core", "state");
+	shell_print(sh, "%-12s %-8s %-5s %-24s %s",
+		    "comp_id", "ppl_id", "core", "module", "state");
 
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type != COMP_TYPE_COMPONENT)
 			continue;
 
-		shell_print(sh, "0x%-10x %-8u %-5u %s",
+		shell_print(sh, "0x%-10x %-8u %-5u %-24s %s",
 			    icd->id,
 			    icd->cd->pipeline ? icd->cd->pipeline->pipeline_id : 0,
 			    icd->core,
+			    comp_dev_name(icd->cd),
 			    comp_state_str(icd->cd->state));
 		count++;
 	}
@@ -182,9 +364,7 @@ __cold static int cmd_sof_module_status(const struct shell *sh,
 	return 0;
 }
 
-SHELL_SUBCMD_ADD((sof), module_status, NULL,
-		 "Print status of all active components\n",
-		 cmd_sof_module_status, 0, 0);
+
 #endif /* CONFIG_SOF_SHELL_MODULE_STATUS */
 
 #if CONFIG_SOF_SHELL_MODULE_LIST
@@ -335,10 +515,7 @@ __cold static int cmd_sof_module_list(const struct shell *sh,
 	return 0;
 }
 
-SHELL_SUBCMD_ADD((sof), module_list, NULL,
-		 "List all available modules (name, inst, cpc, text, bss)\n"
-		 "  [-v]  also show uuid, affinity, cps, ibs, obs\n",
-		 cmd_sof_module_list, 1, 1);
+
 #endif /* CONFIG_SOF_SHELL_MODULE_LIST */
 
 #if CONFIG_SOF_SHELL_PIPELINE_OPS
@@ -720,27 +897,7 @@ __cold static int cmd_sof_mod_unbind(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_PIPELINE_OPS */
 
 #if CONFIG_SOF_SHELL_PIPELINE_OPS
-SHELL_SUBCMD_ADD((sof), ppl_create, NULL,
-		 "Create IPC4 pipeline: <ppl_id> [priority=0] [pages=2] [core=0] [lp=0]\n",
-		 cmd_sof_ppl_create, 2, 4);
-SHELL_SUBCMD_ADD((sof), ppl_delete, NULL,
-		 "Delete IPC4 pipeline: <ppl_id>\n",
-		 cmd_sof_ppl_delete, 2, 0);
-SHELL_SUBCMD_ADD((sof), ppl_state, NULL,
-		 "Set IPC4 pipeline state: <ppl_id> <running|paused|reset>\n",
-		 cmd_sof_ppl_state, 3, 0);
-SHELL_SUBCMD_ADD((sof), mod_init, NULL,
-		 "Instantiate module: <mod_id> <inst_id> <ppl_id> [core=0] [dp=0]\n",
-		 cmd_sof_mod_init, 4, 2);
-SHELL_SUBCMD_ADD((sof), mod_delete, NULL,
-		 "Delete module instance: <mod_id> <inst_id>\n",
-		 cmd_sof_mod_delete, 3, 0);
-SHELL_SUBCMD_ADD((sof), mod_bind, NULL,
-		 "Bind two module instances: <src_mod> <src_inst> <dst_mod> <dst_inst> [src_q=0] [dst_q=0]\n",
-		 cmd_sof_mod_bind, 5, 2);
-SHELL_SUBCMD_ADD((sof), mod_unbind, NULL,
-		 "Unbind two module instances: <src_mod> <src_inst> <dst_mod> <dst_inst> [src_q=0] [dst_q=0]\n",
-		 cmd_sof_mod_unbind, 5, 2);
+
 #endif /* CONFIG_SOF_SHELL_PIPELINE_OPS */
 
 __cold static int cmd_sof_pipeline_list(const struct shell *sh, size_t argc, char *argv[])
@@ -768,9 +925,7 @@ __cold static int cmd_sof_pipeline_list(const struct shell *sh, size_t argc, cha
 	return 0;
 }
 
-SHELL_SUBCMD_ADD((sof), pipeline_list, NULL,
-		 "List all active audio pipelines\n",
-		 cmd_sof_pipeline_list, 0, 0);
+
 
 #if CONFIG_SOF_SHELL_BUFFER_INFO
 
@@ -927,14 +1082,7 @@ __cold static int cmd_sof_buffer_info(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_BUFFER_INFO */
 
-#if CONFIG_SOF_SHELL_BUFFER_INFO
-SHELL_SUBCMD_ADD((sof), buffer_list, NULL,
-		 "List all audio buffers (id, source/sink, fill, format)\n",
-		 cmd_sof_buffer_list, 0, 0);
-SHELL_SUBCMD_ADD((sof), buffer_info, NULL,
-		 "Detailed info for a single buffer: <buffer_id>\n",
-		 cmd_sof_buffer_info, 2, 0);
-#endif
+
 
 #if CONFIG_SOF_SHELL_DAI_LIST || CONFIG_SOF_SHELL_DMA_STATUS
 #include <sof/lib/dai.h>
@@ -1131,19 +1279,7 @@ __cold static int cmd_sof_dma_status(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_DMA_STATUS */
 
-#if CONFIG_SOF_SHELL_DAI_LIST
-SHELL_SUBCMD_ADD((sof), dai_list, NULL,
-		 "List all registered DAIs (name, type, channels, rate)\n"
-		 "  [-v]  also show TX/RX fifo address, depth, hs, stream\n",
-		 cmd_sof_dai_list, 1, 1);
-#endif
 
-#if CONFIG_SOF_SHELL_DMA_STATUS
-SHELL_SUBCMD_ADD((sof), dma_status, NULL,
-		 "List DMA controllers, or per-channel status: "
-		 "[dma_idx] [chan]\n",
-		 cmd_sof_dma_status, 1, 2);
-#endif
 
 #if CONFIG_SOF_SHELL_KCTL_LIST
 
@@ -1247,26 +1383,14 @@ __cold static int cmd_sof_kctl_list(const struct shell *sh,
 
 #endif /* CONFIG_SOF_SHELL_KCTL_LIST */
 
-#if CONFIG_SOF_SHELL_KCTL_LIST
-SHELL_SUBCMD_ADD((sof), kctl_list, NULL,
-		 "List components and their decoded module name / kind\n",
-		 cmd_sof_kctl_list, 0, 0);
-#endif
+
 
 #if CONFIG_SOF_SHELL_HEAP_USAGE || CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_MODULE_LIST
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_module_heap,
-#if CONFIG_SOF_SHELL_HEAP_USAGE
-	SHELL_CMD(usage, NULL,
-		  "Print heap memory usage of each module\n",
-		  cmd_sof_module_heap_usage),
-#endif
-	SHELL_SUBCMD_SET_END
-);
-
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_module,
 #if CONFIG_SOF_SHELL_HEAP_USAGE
-	SHELL_CMD(heap, &sof_cmd_module_heap,
-		  "Module heap commands\n", NULL),
+	SHELL_CMD(heap, NULL,
+		  "Print heap memory usage of each module\n",
+		  cmd_sof_module_heap_usage),
 #endif
 #if CONFIG_SOF_SHELL_MODULE_STATUS
 	SHELL_CMD(status, NULL,
@@ -1293,6 +1417,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_pipeline,
 	SHELL_CMD(list, NULL,
 		  "List all active audio pipelines\n",
 		  cmd_sof_pipeline_list),
+	SHELL_CMD_ARG(latency, NULL,
+		      "Calculate pipeline latency from sink to source: [ppl_id]\n",
+		      cmd_sof_pipeline_latency, 1, 1),
 	SHELL_SUBCMD_SET_END
 );
 #endif
@@ -1342,43 +1469,26 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_buffer,
 );
 #endif
 
-#if CONFIG_SOF_SHELL_DAI_LIST
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_dai,
-	SHELL_CMD_ARG(list, NULL,
-		      "List all registered DAIs (name, type, channels, rate)\n"
-		      "  [-v]  also show TX/RX fifo address, depth, hs, stream\n",
-		      cmd_sof_dai_list, 1, 1),
-	SHELL_SUBCMD_SET_END
-);
-#endif
 
-#if CONFIG_SOF_SHELL_DMA_STATUS
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_dma,
-	SHELL_CMD_ARG(status, NULL,
-		  "List DMA controllers, or per-channel status: "
-		  "[dma_idx] [chan]\n",
-		  cmd_sof_dma_status, 1, 2),
-	SHELL_SUBCMD_SET_END
-);
-#endif
-
-#if CONFIG_SOF_SHELL_KCTL_LIST
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_kctl,
-	SHELL_CMD(list, NULL,
-		  "List components and their decoded module name / kind\n",
-		  cmd_sof_kctl_list),
-	SHELL_SUBCMD_SET_END
-);
-#endif
 
 #if CONFIG_SOF_SHELL_HEAP_USAGE || CONFIG_SOF_SHELL_MODULE_STATUS || CONFIG_SOF_SHELL_MODULE_LIST
 SHELL_SUBCMD_ADD((sof), module, &sof_cmd_module,
-		 "Module commands\n", NULL, 0, 0);
+		 "Module commands\n",
+#if CONFIG_SOF_SHELL_MODULE_STATUS
+		 cmd_sof_module_status, 1, 0);
+#else
+		 NULL, 0, 0);
+#endif
 #endif
 
 #if CONFIG_SOF_SHELL_PIPELINE_STATUS || CONFIG_SOF_SHELL_PIPELINE_OPS
 SHELL_SUBCMD_ADD((sof), pipeline, &sof_cmd_pipeline,
-		 "Pipeline commands\n", NULL, 0, 0);
+		 "Pipeline commands\n",
+#if CONFIG_SOF_SHELL_PIPELINE_STATUS
+		 cmd_sof_pipeline_status, 1, 0);
+#else
+		 NULL, 0, 0);
+#endif
 #endif
 
 #if CONFIG_SOF_SHELL_PIPELINE_OPS
@@ -1390,20 +1500,127 @@ SHELL_SUBCMD_ADD((sof), mod, &sof_cmd_mod,
 
 #if CONFIG_SOF_SHELL_BUFFER_INFO
 SHELL_SUBCMD_ADD((sof), buffer, &sof_cmd_buffer,
-		 "Buffer commands\n", NULL, 0, 0);
+		 "Buffer commands\n",
+		 cmd_sof_buffer_list, 1, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_DAI_LIST
-SHELL_SUBCMD_ADD((sof), dai, &sof_cmd_dai,
-		 "DAI commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), dai, NULL,
+		 "List all registered DAIs (name, type, channels, rate)\n"
+		 "  [-v]  also show TX/RX fifo address, depth, hs, stream\n",
+		 cmd_sof_dai_list, 1, 1);
 #endif
 
 #if CONFIG_SOF_SHELL_DMA_STATUS
-SHELL_SUBCMD_ADD((sof), dma, &sof_cmd_dma,
-		 "DMA commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), dma, NULL,
+		 "List DMA controllers, or per-channel status: [dma_idx] [chan]\n",
+		 cmd_sof_dma_status, 1, 2);
 #endif
 
 #if CONFIG_SOF_SHELL_KCTL_LIST
-SHELL_SUBCMD_ADD((sof), kctl, &sof_cmd_kctl,
-		 "Kernel-control commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), kctl, NULL,
+		 "List components and their decoded module name / kind\n",
+		 cmd_sof_kctl_list, 1, 0);
+#endif
+
+#if CONFIG_SOF_SHELL_PIPELINE_STATUS || CONFIG_SOF_SHELL_BUFFER_INFO
+
+struct stream_agg_ctx {
+	uint32_t ppl_id;
+	uint32_t total_size;
+	uint32_t total_avail;
+	uint32_t sample_rate;
+	uint32_t channels;
+	int fmt;
+	int buf_count;
+};
+
+__cold static void stream_buf_cb(const struct shell *sh, struct comp_buffer *buf,
+				 uint32_t src_id, uint32_t sink_id, void *ctx)
+{
+	struct stream_agg_ctx *agg = ctx;
+	const struct audio_stream *s = &buf->stream;
+	bool matches = false;
+
+	if (buf->source && buf->source->pipeline &&
+	    buf->source->pipeline->pipeline_id == agg->ppl_id)
+		matches = true;
+	else if (buf->sink && buf->sink->pipeline &&
+		 buf->sink->pipeline->pipeline_id == agg->ppl_id)
+		matches = true;
+
+	if (matches) {
+		agg->buf_count++;
+		agg->total_size += audio_stream_get_size(s);
+		agg->total_avail += audio_stream_get_avail(s);
+		if (!agg->sample_rate) {
+			agg->sample_rate = audio_stream_get_rate(s);
+			agg->channels = audio_stream_get_channels(s);
+			agg->fmt = (int)audio_stream_get_frm_fmt(s);
+		}
+	}
+}
+
+__cold static int cmd_sof_stream(const struct shell *sh, size_t argc, char *argv[])
+{
+	struct ipc *ipc = sof_get()->ipc;
+	struct list_item *clist;
+	struct ipc_comp_dev *icd;
+	int count = 0;
+
+	if (!ipc) {
+		shell_print(sh, "No IPC");
+		return 0;
+	}
+
+	shell_print(sh, "%-10s %-6s %-5s %-10s %-14s %-16s %s",
+		    "ppl_id", "dir", "core", "state", "fmt/rate", "fill_level", "xrun_b");
+
+	list_for_item(clist, &ipc->comp_list) {
+		struct pipeline *p;
+		struct stream_agg_ctx agg = {0};
+		const char *dir_str = "PB";
+
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type != COMP_TYPE_PIPELINE)
+			continue;
+
+		p = icd->pipeline;
+		agg.ppl_id = p->pipeline_id;
+
+		shell_for_each_buffer(ipc, stream_buf_cb, sh, &agg);
+
+		if ((p->source_comp && p->source_comp->direction == SOF_IPC_STREAM_CAPTURE) ||
+		    (p->sink_comp && p->sink_comp->direction == SOF_IPC_STREAM_CAPTURE))
+			dir_str = "CAP";
+
+		if (agg.sample_rate) {
+			char fmt_str[16];
+			char fill_str[20];
+
+			snprintf(fmt_str, sizeof(fmt_str), "%uHz/%uch", agg.sample_rate, agg.channels);
+			snprintf(fill_str, sizeof(fill_str), "%u/%u B", agg.total_avail, agg.total_size);
+
+			shell_print(sh, "0x%-8x %-6s %-5u %-10s %-14s %-16s %d B",
+				    p->pipeline_id, dir_str, p->core,
+				    comp_state_str((uint16_t)p->status),
+				    fmt_str, fill_str, p->xrun_bytes);
+		} else {
+			shell_print(sh, "0x%-8x %-6s %-5u %-10s %-14s %-16s %d B",
+				    p->pipeline_id, dir_str, p->core,
+				    comp_state_str((uint16_t)p->status),
+				    "-", "-/0 B", p->xrun_bytes);
+		}
+		count++;
+	}
+
+	if (!count)
+		shell_print(sh, "No active audio streams. Start playback/capture on host.");
+
+	return 0;
+}
+
+SHELL_SUBCMD_ADD((sof), stream, NULL,
+		 "List active audio streams: direction, rate/ch, fill level, xruns\n",
+		 cmd_sof_stream, 1, 0);
 #endif

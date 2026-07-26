@@ -149,9 +149,7 @@ __cold static int cmd_sof_test_inject_sched_gap(const struct shell *sh,
 	return 0;
 }
 
-SHELL_SUBCMD_ADD((sof), test_inject_sched_gap, NULL,
-		 "Inject a gap to audio scheduling\n",
-		 cmd_sof_test_inject_sched_gap, 0, 0);
+
 
 #if CONFIG_SOF_SHELL_CORE_STATUS
 __cold static int cmd_sof_core_status(const struct shell *sh,
@@ -165,18 +163,15 @@ __cold static int cmd_sof_core_status(const struct shell *sh,
 	shell_print(sh, "%-6s %-8s %s", "core", "enabled", "current");
 
 	for (i = 0; i < cs.core_count; i++) {
+		bool is_curr = (i == cs.current);
+
 		shell_print(sh, "%-6u %-8s %s",
-			    i,
-			    cs.enabled[i] ? "yes" : "no",
-			    (i == cs.current) ? "<--" : "");
+			    i, cs.enabled[i] ? "yes" : "no",
+			    is_curr ? "<--" : "");
 	}
 
 	return 0;
 }
-
-SHELL_SUBCMD_ADD((sof), core_status, NULL,
-		 "Print enabled/active state of each DSP core\n",
-		 cmd_sof_core_status, 0, 0);
 #endif /* CONFIG_SOF_SHELL_CORE_STATUS */
 
 #if CONFIG_SOF_SHELL_SRAM_STATUS
@@ -202,10 +197,6 @@ __cold static int cmd_sof_sram_status(const struct shell *sh,
 
 	return 0;
 }
-
-SHELL_SUBCMD_ADD((sof), sram_status, NULL,
-		 "Print HPSRAM heap usage statistics\n",
-		 cmd_sof_sram_status, 0, 0);
 #endif /* CONFIG_SOF_SHELL_SRAM_STATUS */
 
 #if CONFIG_SOF_SHELL_CLOCK_STATUS
@@ -233,10 +224,6 @@ __cold static int cmd_sof_clock_status(const struct shell *sh,
 
 	return 0;
 }
-
-SHELL_SUBCMD_ADD((sof), clock_status, NULL,
-		 "Print current clock frequency for each DSP core\n",
-		 cmd_sof_clock_status, 0, 0);
 #endif /* CONFIG_SOF_SHELL_CLOCK_STATUS */
 
 
@@ -443,17 +430,6 @@ __cold static int cmd_sof_tlb_lookup(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_MMU_DBG */
 
 #if CONFIG_SOF_SHELL_MMU_DBG
-#if CONFIG_MM_DRV_INTEL_ADSP_MTL_TLB
-SHELL_SUBCMD_ADD((sof), mmu_status, NULL,
-		 "Print Intel ADSP MTL TLB / virtual memory status\n",
-		 cmd_sof_mmu_status, 0, 0);
-SHELL_SUBCMD_ADD((sof), tlb_dump, NULL,
-		 "Dump all active TLB entries (vaddr/paddr/flags)\n",
-		 cmd_sof_tlb_dump, 0, 0);
-SHELL_SUBCMD_ADD((sof), tlb_lookup, NULL,
-		 "Query TLB for a page or range: <vaddr> [end_vaddr]\n",
-		 cmd_sof_tlb_lookup, 2, 1);
-#endif
 #endif
 
 #if CONFIG_XTENSA_MMU
@@ -619,17 +595,6 @@ __cold static int cmd_sof_page_info(const struct shell *sh,
 
 #endif /* CONFIG_XTENSA_MMU */
 
-#if CONFIG_XTENSA_MMU
-SHELL_SUBCMD_ADD((sof), rasid, NULL,
-		 "Decode RASID register: ring 0-3 to ASID mapping\n",
-		 cmd_sof_rasid, 0, 0);
-SHELL_SUBCMD_ADD((sof), page_info, NULL,
-		 "Probe DTLB for a page or range: <vaddr> [end_vaddr]\n"
-		 "Reports physical address, ring, ASID, R/W/X permissions"
-		 " and cache mode for each page currently in the DTLB.\n",
-		 cmd_sof_page_info, 2, 1);
-#endif
-
 #if CONFIG_SOF_SHELL_LLEXT_LOAD || (CONFIG_SOF_SHELL_LLEXT_CTOR && CONFIG_LLEXT) || \
 	(CONFIG_SOF_SHELL_LLEXT_CALL && CONFIG_LLEXT)
 /* parse_long: shared numeric argument parser for kernel shell commands.
@@ -748,13 +713,6 @@ __cold static int cmd_sof_llext_load(const struct shell *sh,
 	return -ETIMEDOUT;
 }
 
-SHELL_SUBCMD_ADD((sof), llext_load, NULL,
-		 "Load llext module from host: <name> [lib_id=1]\n"
-		 "Sets up the DMA handshake slot then waits for:\n"
-		 "  dd if=<module.ri> of=/sys/kernel/debug/sof/llext_load\\\n"
-		 "     bs=$(stat -c%s <module.ri>) count=1\n"
-		 "on the host. Prints result when DMA and IPC4 load complete.\n",
-		 cmd_sof_llext_load, 2, 1);
 #endif /* CONFIG_SOF_SHELL_LLEXT_LOAD */
 
 #if CONFIG_SOF_SHELL_LLEXT_LIST
@@ -873,19 +831,9 @@ __cold static int cmd_sof_llext_purge(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_LLEXT_PURGE */
 
 #if CONFIG_SOF_SHELL_LLEXT_LIST
-SHELL_SUBCMD_ADD((sof), llext_list, NULL,
-		 "List llext libraries stored in IMR/DRAM.\n"
-		 "For each library shows base address, storage size and per-module\n"
-		 "SRAM mapping state (yes/no), use count and dependency count.\n",
-		 cmd_sof_llext_list, 0, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_LLEXT_PURGE
-SHELL_SUBCMD_ADD((sof), llext_purge, NULL,
-		 "Purge llext library from IMR/DRAM: <lib_id>\n"
-		 "Fails with -EBUSY if any module in the library is still\n"
-		 "mapped in SRAM (i.e. a pipeline using it is still active).\n",
-		 cmd_sof_llext_purge, 2, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_LLEXT_CTOR && CONFIG_LLEXT
@@ -1014,18 +962,9 @@ __cold static int cmd_sof_llext_call(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_LLEXT_CALL && CONFIG_LLEXT */
 
 #if CONFIG_SOF_SHELL_LLEXT_CTOR && CONFIG_LLEXT
-SHELL_SUBCMD_ADD((sof), llext_ctor, NULL,
-		 "Call constructors for all modules in a library: <lib_id>\n",
-		 cmd_sof_llext_ctor, 2, 0);
-SHELL_SUBCMD_ADD((sof), llext_dtor, NULL,
-		 "Call destructors for all modules in a library: <lib_id>\n",
-		 cmd_sof_llext_dtor, 2, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_LLEXT_CALL && CONFIG_LLEXT
-SHELL_SUBCMD_ADD((sof), llext_call, NULL,
-		 "Call a named symbol in all modules of a library: <lib_id> <sym_name>\n",
-		 cmd_sof_llext_call, 3, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_CORE_POWER
@@ -1095,14 +1034,6 @@ __cold static int cmd_sof_core_off(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_CORE_POWER */
 
 #if CONFIG_SOF_SHELL_CORE_POWER
-SHELL_SUBCMD_ADD((sof), core_on, NULL,
-		 "Power on a secondary DSP core: <core_id>\n"
-		 "core_id must be 1..CONFIG_CORE_COUNT-1 (core 0 is primary).\n",
-		 cmd_sof_core_on, 2, 0);
-SHELL_SUBCMD_ADD((sof), core_off, NULL,
-		 "Power off a secondary DSP core: <core_id>\n"
-		 "core_id must be 1..CONFIG_CORE_COUNT-1 (core 0 is primary).\n",
-		 cmd_sof_core_off, 2, 0);
 #endif
 
 __cold static int cmd_sof_version(const struct shell *sh, size_t argc, char *argv[])
@@ -1189,13 +1120,6 @@ __cold static int cmd_sof_vregion_info(const struct shell *sh, size_t argc, char
 }
 
 
-SHELL_SUBCMD_ADD((sof), vpage_status, NULL,
-		 "Print virtual page allocator status\n",
-		 cmd_sof_vpage_info, 0, 0);
-
-SHELL_SUBCMD_ADD((sof), vregion_status, NULL,
-		 "Print virtual regions status\n",
-		 cmd_sof_vregion_info, 0, 0);
 
 __cold static int cmd_sof_ipc_stats(const struct shell *sh, size_t argc, char *argv[])
 {
@@ -1229,13 +1153,6 @@ __cold static int cmd_sof_ipc_last(const struct shell *sh, size_t argc, char *ar
 	return 0;
 }
 
-SHELL_SUBCMD_ADD((sof), ipc_stats, NULL,
-		 "Print IPC RX/TX counters; 'sof ipc stats reset' clears them\n",
-		 cmd_sof_ipc_stats, 1, 1);
-
-SHELL_SUBCMD_ADD((sof), ipc_last, NULL,
-		 "Print the last received and sent IPC headers\n",
-		 cmd_sof_ipc_last, 0, 0);
 
 #if CONFIG_SOF_SHELL_SCHED_INFO
 
@@ -1353,12 +1270,6 @@ __cold static int cmd_sof_sched_load(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_SCHED_INFO */
 
 #if CONFIG_SOF_SHELL_SCHED_INFO
-SHELL_SUBCMD_ADD((sof), sched_tasks, NULL,
-		 "List all scheduler tasks (type, core, prio, state)\n",
-		 cmd_sof_sched_tasks, 0, 0);
-SHELL_SUBCMD_ADD((sof), sched_load, NULL,
-		 "Show per-task cycle counters and totals\n",
-		 cmd_sof_sched_load, 0, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_LOG_INFO
@@ -1454,15 +1365,9 @@ __cold static int cmd_sof_mtrace_dump(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_MTRACE_DUMP */
 
 #if CONFIG_SOF_SHELL_LOG_INFO
-SHELL_SUBCMD_ADD((sof), log_status, NULL,
-		 "List Zephyr log backends with state and source count\n",
-		 cmd_sof_log_status, 0, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_MTRACE_DUMP
-SHELL_SUBCMD_ADD((sof), mtrace_dump, NULL,
-		 "Snapshot the mtrace SRAM ring buffer (does not advance host_ptr)\n",
-		 cmd_sof_mtrace_dump, 0, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_MAILBOX_HEX || CONFIG_SOF_SHELL_DBGWIN_DUMP
@@ -1667,15 +1572,9 @@ __cold static int cmd_sof_dbgwin_dump(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_DBGWIN_DUMP */
 
 #if CONFIG_SOF_SHELL_MAILBOX_HEX
-SHELL_SUBCMD_ADD((sof), mailbox_hex, NULL,
-		 "Hex-dump a mailbox region: <region> [offset] [length]\n",
-		 cmd_sof_mailbox_hex, 1, 3);
 #endif
 
 #if CONFIG_SOF_SHELL_DBGWIN_DUMP
-SHELL_SUBCMD_ADD((sof), dbgwin_dump, NULL,
-		 "List ADSP debug-window slots, or hex-dump one: [slot] [length]\n",
-		 cmd_sof_dbgwin_dump, 1, 2);
 #endif
 
 #if CONFIG_SOF_SHELL_PERF_STATUS
@@ -1768,10 +1667,6 @@ __cold static int cmd_sof_perf_status(const struct shell *sh,
 #endif /* CONFIG_SOF_SHELL_PERF_STATUS */
 
 #if CONFIG_SOF_SHELL_PERF_STATUS
-SHELL_SUBCMD_ADD((sof), perf_status, NULL,
-		 "Show telemetry perf state and per-core systick;"
-		 " optional [reset|start|stop|pause]\n",
-		 cmd_sof_perf_status, 1, 1);
 #endif
 
 /*
@@ -1781,32 +1676,15 @@ SHELL_SUBCMD_ADD((sof), perf_status, NULL,
  * preferred tokenized form, e.g. "sof core on" for "sof core_on".
  */
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_test_inject_sched,
-	SHELL_CMD(gap, NULL,
-		  "Inject a gap to audio scheduling\n",
-		  cmd_sof_test_inject_sched_gap),
-	SHELL_SUBCMD_SET_END
-);
-
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_test_inject,
-	SHELL_CMD(sched, &sof_cmd_test_inject_sched,
-		  "Scheduler injection commands\n", NULL),
-	SHELL_SUBCMD_SET_END
-);
-
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_test,
-	SHELL_CMD(inject, &sof_cmd_test_inject,
-		  "Injection test commands\n", NULL),
+	SHELL_CMD_ARG(inject-sched-gap, NULL,
+		  "Inject a gap to audio scheduling: [usec]\n",
+		  cmd_sof_test_inject_sched_gap, 1, 1),
 	SHELL_SUBCMD_SET_END
 );
 
 #if CONFIG_SOF_SHELL_CORE_STATUS || CONFIG_SOF_SHELL_CORE_POWER
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_core,
-#if CONFIG_SOF_SHELL_CORE_STATUS
-	SHELL_CMD(status, NULL,
-		  "Print enabled/active state of each DSP core\n",
-		  cmd_sof_core_status),
-#endif
 #if CONFIG_SOF_SHELL_CORE_POWER
 	SHELL_CMD_ARG(on, NULL,
 		  "Power on a secondary DSP core: <core_id>\n"
@@ -1821,33 +1699,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_core,
 );
 #endif
 
-#if CONFIG_SOF_SHELL_SRAM_STATUS
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_sram,
-	SHELL_CMD(status, NULL,
-		  "Print HPSRAM heap usage statistics\n",
-		  cmd_sof_sram_status),
-	SHELL_SUBCMD_SET_END
-);
-#endif
-
-#if CONFIG_SOF_SHELL_CLOCK_STATUS
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_clock,
-	SHELL_CMD(status, NULL,
-		  "Print current clock frequency for each DSP core\n",
-		  cmd_sof_clock_status),
-	SHELL_SUBCMD_SET_END
-);
-#endif
-
 #if CONFIG_SOF_SHELL_MMU_DBG
 #if CONFIG_MM_DRV_INTEL_ADSP_MTL_TLB
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_mmu,
-	SHELL_CMD(status, NULL,
-		  "Print Intel ADSP MTL TLB / virtual memory status\n",
-		  cmd_sof_mmu_status),
-	SHELL_SUBCMD_SET_END
-);
-
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_tlb,
 	SHELL_CMD(dump, NULL,
 		  "Dump all active TLB entries (vaddr/paddr/flags)\n",
@@ -1912,19 +1765,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_llext,
 );
 #endif
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_vpage,
-	SHELL_CMD(status, NULL,
-		  "Print virtual page allocator status\n",
-		  cmd_sof_vpage_info),
-	SHELL_SUBCMD_SET_END
-);
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_vregion,
-	SHELL_CMD(status, NULL,
-		  "Print virtual regions status\n",
-		  cmd_sof_vregion_info),
-	SHELL_SUBCMD_SET_END
-);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_ipc,
 	SHELL_CMD_ARG(stats, NULL,
@@ -1948,14 +1789,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_sched,
 );
 #endif
 
-#if CONFIG_SOF_SHELL_LOG_INFO
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_log,
-	SHELL_CMD(status, NULL,
-		  "List Zephyr log backends with state and source count\n",
-		  cmd_sof_log_status),
-	SHELL_SUBCMD_SET_END
-);
-#endif
+
 
 #if CONFIG_SOF_SHELL_MTRACE_DUMP
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_mtrace,
@@ -1984,38 +1818,38 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_dbgwin,
 );
 #endif
 
-#if CONFIG_SOF_SHELL_PERF_STATUS
-SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmd_perf,
-	SHELL_CMD_ARG(status, NULL,
-		  "Show telemetry perf state and per-core systick;"
-		  " optional [reset|start|stop|pause]\n",
-		  cmd_sof_perf_status, 1, 1),
-	SHELL_SUBCMD_SET_END
-);
-#endif
+
 
 SHELL_SUBCMD_ADD((sof), test, &sof_cmd_test,
 		 "Test commands\n", NULL, 0, 0);
 
 #if CONFIG_SOF_SHELL_CORE_STATUS || CONFIG_SOF_SHELL_CORE_POWER
 SHELL_SUBCMD_ADD((sof), core, &sof_cmd_core,
-		 "Core commands\n", NULL, 0, 0);
+		 "Core status & power control\n",
+#if CONFIG_SOF_SHELL_CORE_STATUS
+		 cmd_sof_core_status, 1, 0);
+#else
+		 NULL, 0, 0);
+#endif
 #endif
 
 #if CONFIG_SOF_SHELL_SRAM_STATUS
-SHELL_SUBCMD_ADD((sof), sram, &sof_cmd_sram,
-		 "SRAM commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), sram, NULL,
+		 "Print HPSRAM heap usage statistics\n",
+		 cmd_sof_sram_status, 1, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_CLOCK_STATUS
-SHELL_SUBCMD_ADD((sof), clock, &sof_cmd_clock,
-		 "Clock commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), clock, NULL,
+		 "Print current clock frequency for each DSP core\n",
+		 cmd_sof_clock_status, 1, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_MMU_DBG
 #if CONFIG_MM_DRV_INTEL_ADSP_MTL_TLB
-SHELL_SUBCMD_ADD((sof), mmu, &sof_cmd_mmu,
-		 "MMU status commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), mmu, NULL,
+		 "Print Intel ADSP MTL TLB / virtual memory status\n",
+		 cmd_sof_mmu_status, 1, 0);
 SHELL_SUBCMD_ADD((sof), tlb, &sof_cmd_tlb,
 		 "TLB commands\n", NULL, 0, 0);
 #endif
@@ -2027,13 +1861,20 @@ SHELL_SUBCMD_ADD((sof), page, &sof_cmd_page,
 
 #if CONFIG_SOF_SHELL_LLEXT_LOAD || CONFIG_SOF_SHELL_LLEXT_LIST || CONFIG_SOF_SHELL_LLEXT_PURGE || CONFIG_SOF_SHELL_LLEXT_CTOR || CONFIG_SOF_SHELL_LLEXT_CALL
 SHELL_SUBCMD_ADD((sof), llext, &sof_cmd_llext,
-		 "LLEXT commands\n", NULL, 0, 0);
+		 "LLEXT commands\n",
+#if CONFIG_SOF_SHELL_LLEXT_LIST
+		 cmd_sof_llext_list, 1, 0);
+#else
+		 NULL, 0, 0);
+#endif
 #endif
 
-SHELL_SUBCMD_ADD((sof), vpage, &sof_cmd_vpage,
-		 "Virtual page commands\n", NULL, 0, 0);
-SHELL_SUBCMD_ADD((sof), vregion, &sof_cmd_vregion,
-		 "Virtual region commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), vpage, NULL,
+		 "Print virtual page allocator status\n",
+		 cmd_sof_vpage_info, 1, 0);
+SHELL_SUBCMD_ADD((sof), vregion, NULL,
+		 "Print virtual regions status\n",
+		 cmd_sof_vregion_info, 1, 0);
 SHELL_SUBCMD_ADD((sof), ipc, &sof_cmd_ipc,
 		 "IPC commands\n", NULL, 0, 0);
 
@@ -2043,8 +1884,9 @@ SHELL_SUBCMD_ADD((sof), sched, &sof_cmd_sched,
 #endif
 
 #if CONFIG_SOF_SHELL_LOG_INFO
-SHELL_SUBCMD_ADD((sof), log, &sof_cmd_log,
-		 "Log commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), log, NULL,
+		 "List Zephyr log backends with state and source count\n",
+		 cmd_sof_log_status, 1, 0);
 #endif
 
 #if CONFIG_SOF_SHELL_MTRACE_DUMP
@@ -2063,8 +1905,9 @@ SHELL_SUBCMD_ADD((sof), dbgwin, &sof_cmd_dbgwin,
 #endif
 
 #if CONFIG_SOF_SHELL_PERF_STATUS
-SHELL_SUBCMD_ADD((sof), perf, &sof_cmd_perf,
-		 "Performance commands\n", NULL, 0, 0);
+SHELL_SUBCMD_ADD((sof), perf, NULL,
+		 "Show telemetry perf state and per-core systick; optional [reset|start|stop|pause]\n",
+		 cmd_sof_perf_status, 1, 1);
 #endif
 SHELL_CMD_REGISTER(sof, &sub_sof,
 		   "SOF application commands", NULL);
