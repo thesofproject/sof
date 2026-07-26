@@ -99,6 +99,35 @@ Automated verifier for executing firmware builds under QEMU emulation.
 * Supported platforms are: `imx8`, `imx8x`, `imx8m`.
 * Runs all supported platforms by default if none are provided.
 
+## Firmware GDB Helpers
+
+For Spider and similar DUTs, helper scripts are available for SOF fw_gdb transport and host attach.
+
+### DUT bridge (`sof-fw-gdb-bridge.py`)
+
+Run this on the DUT to bridge `/sys/kernel/debug/sof/fw_gdb` to a TCP port:
+
+```bash
+python3 ./scripts/sof-fw-gdb-bridge.py --port 1235
+```
+
+### Host one-command attach (`sof-fw-gdb-attach.sh`)
+
+This script:
+
+* verifies DUT and `fw_gdb` node
+* copies and starts the DUT bridge script over SSH
+* launches Xtensa GDB and connects with `target remote`
+
+```bash
+./scripts/sof-fw-gdb-attach.sh --elf build-tgl-gdb-llvm/zephyr/zephyr.elf
+
+# Non-interactive smoke run and auto-cleanup of DUT bridge
+./scripts/sof-fw-gdb-attach.sh --elf build-tgl-gdb-llvm/zephyr/zephyr.elf --smoke --cleanup-bridge
+```
+
+VS Code includes a one-click task named `SOF FW GDB Smoke Attach (Spider)`.
+
 ## SDK Support
 
 There is some SDK support in this directory for speeding up or simplifying tasks with multiple steps.

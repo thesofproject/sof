@@ -11,6 +11,9 @@
 #include <ipc/probe.h>
 #include <sys/types.h>
 
+/* Buffer id used in probe extraction packets for mirrored shell text output. */
+#define PROBE_SHELL_BUFFER_ID 0x01000001
+
 /**
  * A buffer of logging data is available for processing.
  */
@@ -28,6 +31,20 @@ bool probe_is_backend_configured(void);
  *             out by the logger.
  */
 void probe_logging_init(probe_logging_hook_t hook);
+
+/**
+ * @brief Write shell output text to the probe extraction stream.
+ *
+ * The payload is packetized with the probe extraction header and can be
+ * consumed from compressed capture endpoints together with other probe data.
+ * If extraction DMA is not active, bytes are dropped and 0 is returned.
+ *
+ * @param buffer Shell output bytes to transmit.
+ * @param length Number of bytes in @p buffer.
+ * @return Number of bytes written (can be less than length when buffer is
+ *         near full), 0 when probes are inactive, negative errno on error.
+ */
+ssize_t probe_shell_output(const uint8_t *buffer, size_t length);
 
 /*
  * \brief Initialize probes subsystem
