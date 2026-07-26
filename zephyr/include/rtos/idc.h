@@ -149,10 +149,20 @@
 /** \brief IDC free function flags */
 #define IDC_FREE_IRQ_ONLY	BIT(0)	/**< disable only irqs */
 
-/** \brief IDC message payload. */
+/**
+ * \brief IDC message payload.
+ *
+ * Placed in coherent (SHARED_DATA) memory and shared across cores. The struct
+ * is only a byte array, so without an explicit alignment the linker may drop
+ * it (and every per-core slot) on an odd address. Handlers that read the
+ * payload as wider types -- e.g. the cross-core get_attribute path reads a
+ * uint32 'type' field -- then take an EXCCAUSE 9 (load/store alignment) fault.
+ * Align to the cache line, which is the size this payload is already built
+ * around (IDC_MAX_PAYLOAD_SIZE == DCACHE_LINE_SIZE * 2).
+ */
 struct idc_payload {
 	uint8_t data[IDC_MAX_PAYLOAD_SIZE];
-};
+} __aligned(DCACHE_LINE_SIZE);
 
 /** \brief IDC message. */
 struct idc_msg {
