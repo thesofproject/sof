@@ -47,6 +47,9 @@ def get_elf_size(elf_name):
 			if section.header['sh_addr'] + section.header['sh_size'] > end:
 				end = section.header['sh_addr'] + section.header['sh_size']
 
+		if start == 0xffffffff:
+			return 0
+
 		size = end - start
 
 	return size

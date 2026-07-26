@@ -50,6 +50,101 @@ extern struct tr_ctx lib_manager_tr;
 
 #define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
 
+#include <zephyr/sys/bitarray.h>
+#include <zephyr/llext/elf.h>
+
+#define LLEXT_LIB_PAGES (CONFIG_LIBRARY_REGION_SIZE / PAGE_SZ)
+SYS_BITARRAY_DEFINE_STATIC(lib_vma_bitarray, LLEXT_LIB_PAGES);
+
+static uintptr_t llext_manager_alloc_vma(size_t size)
+{
+	size_t num_pages = ALIGN_UP(size, PAGE_SZ) / PAGE_SZ;
+	size_t offset;
+	int ret;
+
+	ret = sys_bitarray_alloc(&lib_vma_bitarray, num_pages, &offset);
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "llext_manager_alloc_vma: failed to allocate %zu pages", num_pages);
+		return 0;
+	}
+
+	return CONFIG_LIBRARY_BASE_ADDRESS + offset * PAGE_SZ;
+}
+
+void llext_manager_free_vma(uintptr_t vma, size_t size)
+{
+	if (!vma || !size)
+		return;
+
+	size_t num_pages = ALIGN_UP(size, PAGE_SZ) / PAGE_SZ;
+	size_t offset = (vma - CONFIG_LIBRARY_BASE_ADDRESS) / PAGE_SZ;
+
+	sys_bitarray_free(&lib_vma_bitarray, num_pages, offset);
+}
+
+static enum llext_mem llext_manager_get_sec_mem_idx(const char *name, const elf_shdr_t *shdr)
+{
+	if (strcmp(name, ".exported_sym") == 0)
+		return LLEXT_MEM_EXPORT;
+
+	switch (shdr->sh_type) {
+	case SHT_NOBITS:
+		return LLEXT_MEM_BSS;
+	case SHT_PROGBITS:
+		if (shdr->sh_flags & SHF_EXECINSTR)
+			return LLEXT_MEM_TEXT;
+		else if (shdr->sh_flags & SHF_WRITE)
+			return LLEXT_MEM_DATA;
+		else
+			return LLEXT_MEM_RODATA;
+	case SHT_PREINIT_ARRAY:
+		return LLEXT_MEM_PREINIT;
+	case SHT_INIT_ARRAY:
+		return LLEXT_MEM_INIT;
+	case SHT_FINI_ARRAY:
+		return LLEXT_MEM_FINI;
+	default:
+		return LLEXT_MEM_COUNT;
+	}
+}
+
+static size_t llext_manager_layout_sections(uint8_t *elf_buf, uintptr_t vma_base)
+{
+	elf_ehdr_t *hdr = (elf_ehdr_t *)elf_buf;
+	elf_shdr_t *shdrs = (elf_shdr_t *)(elf_buf + hdr->e_shoff);
+	elf_shdr_t *shstr_shdr = shdrs + hdr->e_shstrndx;
+	const char *shstrtab = (const char *)(elf_buf + shstr_shdr->sh_offset);
+
+	uintptr_t current_vma = vma_base;
+	enum llext_mem last_region = LLEXT_MEM_COUNT;
+
+	for (int i = 0; i < hdr->e_shnum; i++) {
+		elf_shdr_t *shdr = shdrs + i;
+
+		if (!(shdr->sh_flags & SHF_ALLOC) || shdr->sh_size == 0)
+			continue;
+
+		const char *name = shstrtab + shdr->sh_name;
+		enum llext_mem s_region = llext_manager_get_sec_mem_idx(name, shdr);
+
+		if (s_region == LLEXT_MEM_COUNT)
+			continue;
+
+		if (last_region != LLEXT_MEM_COUNT && last_region != s_region) {
+			current_vma = ALIGN_UP(current_vma, PAGE_SZ);
+		}
+		last_region = s_region;
+
+		current_vma = ALIGN_UP(current_vma, shdr->sh_addralign);
+		if (vma_base) {
+			shdr->sh_addr = current_vma;
+		}
+		current_vma += shdr->sh_size;
+	}
+
+	return current_vma - vma_base;
+}
+
 static int llext_manager_update_flags(void __sparse_cache *vma, size_t size, uint32_t flags)
 {
 	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
@@ -383,6 +478,26 @@ static int llext_manager_link(const char *name,
 	}
 
 	if (!*llext || mctx->mapped) {
+		if (!*llext) {
+			uint8_t *elf_buf = (uint8_t *)mctx->ebl->buf;
+			size_t total_size = llext_manager_layout_sections(elf_buf, 0);
+			if (total_size == 0) {
+				tr_err(&lib_manager_tr, "llext_manager_link: layout sections failed");
+				return -EINVAL;
+			}
+
+			uintptr_t vma_base = llext_manager_alloc_vma(total_size);
+			if (!vma_base) {
+				tr_err(&lib_manager_tr, "llext_manager_link: VMA allocation failed");
+				return -ENOMEM;
+			}
+
+			mctx->vma_base = vma_base;
+			mctx->vma_size = total_size;
+
+			llext_manager_layout_sections(elf_buf, vma_base);
+		}
+
 		/*
 		 * Either the very first time loading this module, or the module
 		 * is already mapped, we just call llext_load() to refcount it
@@ -395,8 +510,15 @@ static int llext_manager_link(const char *name,
 		};
 
 		ret = llext_load(ldr, name, llext, &ldr_parm);
-		if (ret)
+		if (ret) {
+			tr_err(&lib_manager_tr, "llext_load failed: ret=%d", ret);
+			if (mctx->vma_base) {
+				llext_manager_free_vma(mctx->vma_base, mctx->vma_size);
+				mctx->vma_base = 0;
+				mctx->vma_size = 0;
+			}
 			return ret;
+		}
 	}
 
 	/* All code sections */
@@ -426,6 +548,42 @@ static int llext_manager_link(const char *name,
 	       mctx->segment[LIB_MANAGER_DATA].addr,
 	       mctx->segment[LIB_MANAGER_DATA].size);
 
+	/*
+	 * LLEXT classifies SHT_INIT_ARRAY sections as LLEXT_MEM_INIT, not
+	 * LLEXT_MEM_DATA.  When a module has an .init_array but an empty (or
+	 * absent) .data section the DATA segment ends up with size=0, which
+	 * causes the adjacency check for .bss in llext_manager_load_module()
+	 * to fail with -EPROTO.  Merge the INIT region into the DATA segment
+	 * so that the check sees a contiguous writable range that covers both
+	 * .init_array and .bss.
+	 */
+	{
+		const elf_shdr_t *init_hdr;
+
+		llext_get_region_info(ldr, *llext, LLEXT_MEM_INIT, &init_hdr, NULL, NULL);
+		if (init_hdr->sh_size > 0) {
+			if (!mctx->segment[LIB_MANAGER_DATA].size) {
+				mctx->segment[LIB_MANAGER_DATA].addr = init_hdr->sh_addr;
+				mctx->segment[LIB_MANAGER_DATA].size = init_hdr->sh_size;
+			} else {
+				uintptr_t d_end = mctx->segment[LIB_MANAGER_DATA].addr +
+						  mctx->segment[LIB_MANAGER_DATA].size;
+				uintptr_t i_end = init_hdr->sh_addr + init_hdr->sh_size;
+				uintptr_t new_start =
+					MIN(mctx->segment[LIB_MANAGER_DATA].addr,
+					    init_hdr->sh_addr);
+				uintptr_t new_end = MAX(d_end, i_end);
+
+				mctx->segment[LIB_MANAGER_DATA].addr = new_start;
+				mctx->segment[LIB_MANAGER_DATA].size = new_end - new_start;
+			}
+			tr_dbg(&lib_manager_tr,
+			       ".init_array merged into .data: start: %#lx size %#x",
+			       mctx->segment[LIB_MANAGER_DATA].addr,
+			       mctx->segment[LIB_MANAGER_DATA].size);
+		}
+	}
+
 	/* Writable uninitialized data section */
 	llext_get_region_info(ldr, *llext, LLEXT_MEM_BSS, &hdr, NULL, NULL);
 	mctx->segment[LIB_MANAGER_BSS].addr = hdr->sh_addr;
@@ -449,7 +607,12 @@ static int llext_manager_link(const char *name,
 		*mod_manifest = llext_peek(ldr, hdr->sh_offset);
 	}
 
-	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
+	int link_ret = *buildinfo && *mod_manifest ? 0 : -EPROTO;
+
+	if (link_ret)
+		tr_err(&lib_manager_tr, "llext_manager_link: buildinfo=%p mod_manifest=%p ret=%d",
+		       *buildinfo, *mod_manifest, link_ret);
+	return link_ret;
 }
 
 /* Count "module files" in the library, allocate and initialize memory for their descriptors */
@@ -618,7 +781,6 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 		       mod_array[entry_index].name, (*mod_manifest)->module.name);
 		return -ENOEXEC;
 	}
-
 	return mod_ctx_idx;
 }
 
@@ -1086,8 +1248,10 @@ int llext_manager_add_library(uint32_t module_id)
 
 			ret = llext_manager_link_single(module_id + i, desc, ctx,
 							(const void **)&buildinfo, &mod_manifest);
-			if (ret < 0)
+			if (ret < 0) {
+				tr_err(&lib_manager_tr, "llext_manager_link_single failed: %d", ret);
 				return ret;
+			}
 		}
 	}
 

@@ -77,6 +77,8 @@ def main():
 
 	command = [args.command]
 
+	is_relocatable = '-r' in args.params
+
 	executable = []
 	writable = []
 	readonly = []
@@ -111,7 +113,8 @@ def main():
 				text_found = True
 				text_addr = max_alignment(text_addr, 0x1000, s_alignment)
 				text_size = s_size
-				command.append(f'-Wl,-Ttext=0x{text_addr:x}')
+				if not is_relocatable:
+					command.append(f'-Wl,-Ttext=0x{text_addr:x}')
 			else:
 				executable.append(section)
 
@@ -164,7 +167,8 @@ def main():
 
 		dram_addr = align_up(dram_addr, s_alignment)
 
-		command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
+		if not is_relocatable:
+			command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
 
 		dram_addr += section.header['sh_size']
 
@@ -177,7 +181,8 @@ def main():
 
 		dram_addr = align_up(dram_addr, s_alignment)
 
-		command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
+		if not is_relocatable:
+			command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
 
 		dram_addr += section.header['sh_size']
 
@@ -189,7 +194,8 @@ def main():
 
 		start_addr = align_up(start_addr, s_alignment)
 
-		command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
+		if not is_relocatable:
+			command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
 
 		start_addr += section.header['sh_size']
 
@@ -201,10 +207,11 @@ def main():
 
 		start_addr = align_up(start_addr, s_alignment)
 
-		if s_name == '.data':
-			command.append(f'-Wl,-Tdata=0x{start_addr:x}')
-		else:
-			command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
+		if not is_relocatable:
+			if s_name == '.data':
+				command.append(f'-Wl,-Tdata=0x{start_addr:x}')
+			else:
+				command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
 
 		start_addr += section.header['sh_size']
 

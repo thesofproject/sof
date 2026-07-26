@@ -24,14 +24,40 @@ config LIBCODE_MODULE_SUPPORT
 	  a multiple modules. This option adds support for modules
 	  of this type.
 
+menu "LLEXT module authentication"
+
+comment "Module authentication options."
+
 config LIBRARY_AUTH_SUPPORT
 	bool "Library Authentication Support"
 	default n
 	help
-	  This is support for dynamic modules authentication.
-	  Externally developed modules both for SOF and Zephyr
-	  could be used if enabled.
+	  Enable ROM-based authentication of dynamically loaded LLEXT modules.
+	  When enabled signed modules must carry a valid CSS signature verified by
+	  the platform ROM auth engine before it is mapped into SRAM.
+
+	  Use an authenticated module if you need guranteed memory isolation for
+	  module. e.g. to protect biometric data or other sensitive information.
+
 	  If unsure say N.
+
+config LIBRARY_ALLOW_UNSIGNED_MODULES
+	bool "Allow loading unsigned modules"
+	default n
+	depends on LIBRARY_AUTH_SUPPORT
+	help
+	  When enabled, modules without a authentication signature may be loaded
+	  as low privilege userspace code. These modules can exist alongside
+	  authenticated modules, but do not receive hardware memory isolation
+	  from other modules. 
+	  
+	  Use unsigned modules if you have no need for memory isolation and
+	  want to avoid the overhead of signing and domain switching. Note that
+	  unsigned modules are not protected from other modules.
+
+	  If unsure say N.
+
+endmenu # LLEXT module authentication
 
 config LIBRARY_DEFAULT_MODULAR
 	bool "Build LLEXT modules by default"
