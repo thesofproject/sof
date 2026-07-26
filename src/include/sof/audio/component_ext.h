@@ -190,7 +190,21 @@ static inline int comp_prepare_remote(struct comp_dev *dev)
 	struct idc_msg msg = { IDC_MSG_PREPARE,
 		IDC_MSG_PREPARE_EXT(dev->ipc_config.id), dev->ipc_config.core, };
 
-	return idc_send_msg(&msg, IDC_BLOCKING);
+	/*
+	 * Non-blocking: a remote component's prepare may be expensive (e.g. a DP
+	 * decoder's one-time codec open building large trig tables -- measured
+	 * ~580 ms for mp3 on a secondary core). Waiting for it here stalls the
+	 * initiator core's IPC/EDF thread for that whole time, and with the
+	 * default CONFIG_IDC_TIMEOUT_US the k_p4wq_wait() would instead time out
+	 * mid-prepare (-EAGAIN) and race the pipeline teardown into a crash.
+	 *
+	 * Ordering is preserved without the wait: each core drains its IDC work
+	 * through a single in-order p4wq worker, so this prepare completes before
+	 * the subsequent cross-core trigger (START) that is queued behind it. For
+	 * a compress stream the START IPC also arrives only after the app's first
+	 * write, giving the remote prepare time to finish off the critical path.
+	 */
+	return idc_send_msg(&msg, IDC_NON_BLOCKING);
 }
 
 /** See comp_ops::prepare */
