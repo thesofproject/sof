@@ -251,6 +251,36 @@ void vpage_free(void *ptr)
 			vpage_ctx.total_pages);
 }
 
+void vpage_get_stats(struct vpage_stats *stats)
+{
+	if (!stats)
+		return;
+
+	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
+	stats->region_base = (void *)vpage_ctx.virtual_region->addr;
+	stats->region_size = vpage_ctx.virtual_region->size;
+	stats->total_pages = vpage_ctx.total_pages;
+	stats->free_pages = vpage_ctx.free_pages;
+	stats->num_elems_in_use = vpage_ctx.num_elems_in_use;
+	stats->max_allocs = VPAGE_MAX_ALLOCS;
+	k_mutex_unlock(&vpage_ctx.lock);
+}
+EXPORT_SYMBOL(vpage_get_stats);
+
+void vpage_for_each_alloc(void (*cb)(unsigned int idx, unsigned int vpage,
+				     unsigned int pages, void *ctx),
+			  void *ctx)
+{
+	if (!cb)
+		return;
+
+	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
+	for (unsigned int i = 0; i < vpage_ctx.num_elems_in_use; i++)
+		cb(i, vpage_ctx.velems[i].vpage, vpage_ctx.velems[i].pages, ctx);
+	k_mutex_unlock(&vpage_ctx.lock);
+}
+EXPORT_SYMBOL(vpage_for_each_alloc);
+
 /**
  * @brief Initialize virtual page allocator
  *
