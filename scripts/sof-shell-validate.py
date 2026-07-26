@@ -41,15 +41,16 @@ COMMANDS = [
     # Basic info
     ("sof version",           ["SOF Version"]),
     # Heap
-    ("sof module heap usage", ["No components found", "comp id"]),
+    ("sof module heap",       ["No components found", "comp id"]),
     # Pipeline / module introspection
-    # pipeline_list always prints "ID  Core  Status  Priority  Period" header
+    # pipeline list always prints "ID  Core  Status  Priority  Period" header
     ("sof pipeline list",     ["ID"]),
-    ("sof pipeline status",   ["No pipelines found", "ppl_id"]),
-    ("sof module status",     ["No components found", "comp_id"]),
-    # Hardware / platform (sof sram_status / sof clock_status require
-    # CONFIG_SOF_SHELL_SRAM_STATUS / _CLOCK_STATUS which are not in this build)
-    ("sof core status",       ["core", "enabled"]),
+    ("sof pipeline",          ["No pipelines found", "ppl_id"]),
+    ("sof pipeline latency",  ["No active pipelines", "ppl_id"]),
+    ("sof module",            ["No components found", "comp_id"]),
+    ("sof stream",            ["ppl_id", "No active audio streams"]),
+    # Hardware / platform
+    ("sof core",              ["core", "enabled"]),
     # IPC
     ("sof ipc stats",         ["rx_count", "tx_count"]),
     ("sof ipc last",          []),          # ok even when empty (no IPC yet)
@@ -58,12 +59,12 @@ COMMANDS = [
     ("sof sched tasks",       ["Active scheduler"]),
     ("sof sched load",        ["Scheduler task cycle"]),
     # Logging
-    ("sof log status",        ["Log backends"]),
+    ("sof log",               ["Log backends"]),
     # Controls
     ("sof kctl list",         ["No components found", "comp_id"]),
     # DAI and DMA
     ("sof dai list",          ["DAI", "dai", "SSP", "HDA", "DMIC", "ALH", "UAOL", "SAI", "ESAI"]),
-    ("sof dma status",        ["No DMA controllers", "DMA controller"]),
+    ("sof dma",               ["No DMA controllers", "DMA controller"]),
     # Verbose/multi-line commands last
     ("sof module list",       ["Module", "module", "UUID"]),
     ("sof mailbox hex",       ["Mailbox regions", "exception"]),
