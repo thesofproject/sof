@@ -532,7 +532,16 @@ int src_params_general(struct processing_module *mod,
 	/* free any existing delay lines. TODO reuse if same size */
 	mod_free(mod, cd->delay_lines);
 
-	cd->delay_lines = mod_alloc(mod, delay_lines_size);
+	/*
+	 * The base of delay_lines (and hence buffer_start, which is offset
+	 * from it by a multiple of 8 bytes) must itself be 8-byte aligned:
+	 * the HiFi FIR cores issue 64-bit AE_L32X2/AE_S32X2 circular
+	 * accesses into it and fault (EXCCAUSE 9) on a 4-byte-aligned base.
+	 * ALIGN_UP above only rounds the size; request the alignment on the
+	 * allocation explicitly rather than relying on the allocator default
+	 * (mod_alloc()/alignment 0 may return a 4-byte-aligned pointer).
+	 */
+	cd->delay_lines = mod_alloc_align(mod, delay_lines_size, sizeof(int32_t) * 2);
 	if (!cd->delay_lines) {
 		comp_err(dev, "failed to alloc cd->delay_lines, delay_lines_size = %zu",
 			 delay_lines_size);
