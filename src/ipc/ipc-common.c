@@ -36,6 +36,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
@@ -46,6 +47,7 @@
 #endif
 
 #include <sof/debug/telemetry/performance_monitor.h>
+#include <rtos/timer.h>
 
 LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
 
@@ -63,6 +65,70 @@ struct ipc *ipc_get(void)
 	return &ipc_context;
 }
 #endif
+
+/* Lightweight IPC stats. Protected by a dedicated spinlock so stats
+ * functions can be called from ipc_send_queued_msg (which already holds
+ * ipc->lock) without causing a deadlock.
+ */
+static struct ipc_stats g_ipc_stats;
+static struct k_spinlock g_ipc_stats_lock;
+
+void ipc_stats_record_rx(uint32_t pri, uint32_t ext)
+{
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
+
+	g_ipc_stats.rx_count++;
+	g_ipc_stats.last_rx_pri = pri;
+	g_ipc_stats.last_rx_ext = ext;
+	g_ipc_stats.last_rx_time = sof_cycle_get_64();
+	k_spin_unlock(&g_ipc_stats_lock, key);
+}
+
+void ipc_stats_record_tx(uint32_t pri, uint32_t ext, bool direct, int err)
+{
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
+
+	if (err < 0) {
+		g_ipc_stats.tx_errors++;
+	} else {
+		if (direct)
+			g_ipc_stats.tx_direct_count++;
+		else
+			g_ipc_stats.tx_count++;
+		g_ipc_stats.last_tx_pri = pri;
+		g_ipc_stats.last_tx_ext = ext;
+		g_ipc_stats.last_tx_time = sof_cycle_get_64();
+	}
+	k_spin_unlock(&g_ipc_stats_lock, key);
+}
+
+void ipc_stats_inc_rx_error(void)
+{
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
+
+	g_ipc_stats.rx_errors++;
+	k_spin_unlock(&g_ipc_stats_lock, key);
+}
+
+void ipc_stats_get(struct ipc_stats *out)
+{
+	k_spinlock_key_t key;
+
+	if (!out)
+		return;
+
+	key = k_spin_lock(&g_ipc_stats_lock);
+	*out = g_ipc_stats;
+	k_spin_unlock(&g_ipc_stats_lock, key);
+}
+
+void ipc_stats_reset(void)
+{
+	k_spinlock_key_t key = k_spin_lock(&g_ipc_stats_lock);
+
+	memset(&g_ipc_stats, 0, sizeof(g_ipc_stats));
+	k_spin_unlock(&g_ipc_stats_lock, key);
+}
 
 int ipc_process_on_core(uint32_t core, bool blocking)
 {
