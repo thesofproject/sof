@@ -17,36 +17,35 @@ uart:~$ sof <command> [arguments]
 - **Usage**: `sof version`
 - **Output**: Major/Minor/Micro version, Git tag, and source hash.
 
-### 2. `sof module_heap_usage`
-- **Description**: Dumps heap memory usage for all active audio modules.
-- **Usage**: `sof module_heap_usage`
-- **Output**: Component ID, current heap usage, and high-water mark (HWM) in bytes.
+### 2. `sof module` / `sof module heap` / `sof module list`
+- **Description**: Dumps component status, heap memory usage, or instantiated module list.
+- **Usage**: `sof module`, `sof module heap`, or `sof module list`
 
-### 3. `sof pipeline_list`
-- **Description**: Lists all active audio pipelines in the system.
-- **Usage**: `sof pipeline_list`
-- **Output**: Pipeline ID, Core affinity, Status, Priority, and Period (us).
+### 3. `sof stream`
+- **Description**: Inspects active host audio streams (direction, core, state, rate/channels, buffer fill level, and XRUN bytes).
+- **Usage**: `sof stream`
 
-### 4. `sof module_list`
-- **Description**: Lists all instantiated audio modules (components).
-- **Usage**: `sof module_list`
-- **Output**: Component ID, Module Type, State, Pipeline ID, and Core affinity.
+### 4. `sof pipeline` / `sof pipeline list` / `sof pipeline latency`
+- **Description**: Reports pipeline status, lists active audio pipelines, or calculates total buffered audio latency from sink to source.
+- **Usage**: `sof pipeline`, `sof pipeline list`, or `sof pipeline latency [ppl_id]`
 
-### 5. `sof vpage_status`
+### 4. `sof core`
+- **Description**: Prints enabled/active state of DSP cores (`sof core`) or powers secondary cores on/off (`sof core on <id>`).
+- **Usage**: `sof core`
+
+### 5. `sof vpage`
 - **Description**: Reports the status of the virtual page allocator.
-- **Usage**: `sof vpage_status`
-- **Output**: Base address, total/free pages, and a list of active virtual page allocations.
+- **Usage**: `sof vpage`
 - **Dependency**: Requires `CONFIG_SOF_VREGIONS=y`.
 
-### 6. `sof vregion_status`
+### 6. `sof vregion`
 - **Description**: Reports status and metrics for all active virtual memory regions.
-- **Usage**: `sof vregion_status`
-- **Output**: Region base addresses, sizes, lifetime bytes used/free, and current reference counts.
+- **Usage**: `sof vregion`
 - **Dependency**: Requires `CONFIG_SOF_VREGIONS=y`.
 
-### 7. `sof test_inject_sched_gap`
+### 7. `sof test inject-sched-gap`
 - **Description**: Injects a timing delay into the audio scheduling domain for stress testing.
-- **Usage**: `sof test_inject_sched_gap [usec]`
+- **Usage**: `sof test inject-sched-gap [usec]`
 - **Arguments**: `usec` (optional, default 1500) - microseconds to block the domain.
 - **Warning**: Not reliable on SMP systems without explicit cross-core support.
 
