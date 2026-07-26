@@ -255,13 +255,17 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 		  cd->out_rate, cd->out_channels, cd->out_frame_fmt,
 		  cd->out_frame_bytes);
 
-	if (cd->backend->configure) {
-		ret = cd->backend->configure(mod);
-		if (ret) {
-			comp_err(dev, "backend configure failed %d", ret);
-			return ret;
-		}
-	}
+	/*
+	 * NB: the backend decoder is NOT opened here. prepare() is dispatched to
+	 * this component's core over IDC and runs on that core's single IDC worker
+	 * thread; the codec open (avcodec_open2) builds large trig tables and can
+	 * take hundreds of ms (~580 ms measured for mp3). Doing that here would
+	 * monopolise the IDC worker, so a cross-core prepare/trigger on the
+	 * initiator core stalls or times out (-EAGAIN) and crashes on teardown.
+	 * Defer the open to the first process() call, which runs on the module's
+	 * own DP thread (deep 64 KiB stack, off the IDC critical path). See the
+	 * lazy-open block in ffmpeg_dec_process().
+	 */
 
 	/*
 	 * Linear scratch buffers used by process(): a padded input bounce buffer
@@ -286,7 +290,6 @@ static int ffmpeg_dec_prepare(struct processing_module *mod,
 	cd->pcm_rd = 0;
 	cd->hdr_done = false;
 
-	cd->configured = true;
 	return 0;
 }
 
@@ -516,6 +519,27 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 
 	src = sources[0];
 	sink = sinks[0];
+
+	/*
+	 * Lazy backend open, one-time, on the DP thread. prepare() deliberately
+	 * skips avcodec_open2 because it runs on the core's single IDC worker where
+	 * a ~580 ms mp3 table build would stall/timeout a cross-core prepare or
+	 * trigger. Here we are on the module's own DP thread with a deep stack, so
+	 * the open is off the IDC critical path. reset() flushes but keeps the
+	 * decoder open (configured stays true), so this runs only on the first
+	 * process() after a fresh prepare().
+	 */
+	if (!cd->configured) {
+		if (cd->backend->configure) {
+			ret = cd->backend->configure(mod);
+			if (ret) {
+				comp_err(dev, "backend configure failed %d", ret);
+				return ret;
+			}
+		}
+		cd->configured = true;
+		return 0;	/* decode on the next cycle */
+	}
 
 	/* Drain leftover PCM from a previous decode before consuming more input. */
 	if (cd->pcm_avail) {
