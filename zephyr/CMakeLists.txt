@@ -617,8 +617,12 @@ zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
 )
 
 zephyr_library_sources_ifdef(CONFIG_SHELL
-       sof_shell.c
+       shell/kernel.c
+       shell/user.c
+       shell/syscall.c
 )
+
+zephyr_syscall_header_ifdef(CONFIG_SHELL ${SOF_SRC_PATH}/include/sof/sof_shell_syscall.h)
 
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/audio/module_adapter/module/generic.h)
 zephyr_syscall_header(${SOF_SRC_PATH}/include/sof/lib/fast-get.h)
