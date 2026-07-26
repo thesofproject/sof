@@ -119,6 +119,22 @@ static void ffmpeg_dec_signal_eos(struct processing_module *mod, struct sof_sink
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+/*
+ * Largest number of PCM samples-per-channel one decoded frame of @codec can
+ * yield. Used only to size the DP output ring buffer (see ffmpeg_dec_init);
+ * a generous value is harmless, an undersized one throttles playback.
+ */
+static uint32_t ffmpeg_dec_max_frame_samples(enum ffmpeg_dec_codec codec)
+{
+	switch (codec) {
+	case FFMPEG_DEC_CODEC_FLAC:	return 4096;	/* typical max block */
+	case FFMPEG_DEC_CODEC_AAC:	return 2048;	/* HE-AAC (SBR) */
+	case FFMPEG_DEC_CODEC_OPUS:	return 2880;	/* 60 ms @ 48k */
+	case FFMPEG_DEC_CODEC_MP3:	return 1152;	/* MPEG-1 layer 3 */
+	default:			return 1152;
+	}
+}
+
 /**
  * ffmpeg_dec_init() - Initialize the ffmpeg_dec component.
  * @mod: Pointer to module data.
@@ -133,6 +149,7 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct ffmpeg_dec_comp_data *cd;
+	uint32_t frame_bytes;
 	int ret;
 
 	comp_info(dev, "entry");
@@ -147,6 +164,25 @@ __cold static int ffmpeg_dec_init(struct processing_module *mod)
 	 * default from the Kconfig decoder selection (first enabled).
 	 */
 	cd->codec = FFMPEG_DEC_DEFAULT_CODEC;
+
+	/*
+	 * Advertise the decoder's output block size so the DP scheduler sizes the
+	 * ring buffer between this (data-processing) module and the downstream LL
+	 * chain to hold several decoded frames (bind reads mpd.out_buff_size ->
+	 * ring = 3 x this, see ipc4 helper.c). A whole decoded frame (up to ~24 ms
+	 * of audio for MP3) must fit in one drain, otherwise process() can only
+	 * dribble a fraction per LL period and stalls waiting for the sink to
+	 * drain at real time - serialising decode behind playback and running the
+	 * stream slow. Size for ~2 frames (worst case, stereo S32), capped so the
+	 * 3x ring stays bounded; clamp up to at least one frame for large blocks.
+	 */
+	frame_bytes = ffmpeg_dec_max_frame_samples(cd->codec) * 2 /* ch */ * 4 /* S32 */;
+	md->mpd.out_buff_size = 2 * frame_bytes;
+	if (md->mpd.out_buff_size > 32768)		/* cap the 3x ring */
+		md->mpd.out_buff_size = 32768;
+	if (md->mpd.out_buff_size < frame_bytes)	/* but always hold >=1 frame */
+		md->mpd.out_buff_size = frame_bytes;
+	comp_info(dev, "DP out ring block=%u (frame=%u)", md->mpd.out_buff_size, frame_bytes);
 
 	comp_info(dev, "backend '%s'", cd->backend->name);
 
