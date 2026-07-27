@@ -95,13 +95,13 @@ static struct name_val p_flags[] = {
  * 
  * @param elf elf file structure
  * @param msg error message
- * @param error error code to return
- * @return error code
+ * @param error positive errno value, or an already negative error code
+ * @return negative error code
  */
 static int elf_error(const struct elf_file *elf, const char *msg, int error)
 {
 	fprintf(stderr, "Error: %s: %s\n", elf->filename, msg);
-	return -error;
+	return error < 0 ? error : -error;
 }
 
 /**
