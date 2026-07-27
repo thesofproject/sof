@@ -141,6 +141,8 @@ int platform_init(struct sof *sof)
 	int ret;
 
 	platform_clock_init(sof);
+	/* Use Bypass Mode */
+	io_reg_write((PU_REGISTER_BASE + ACP_AUDIO_CLK_SEL), 1);
 	scheduler_init_edf();
 	/* init low latency domains and schedulers */
 	/* CONFIG_SYSTICK_PERIOD set as PLATFORM_DEFAULT_CLOCK */
