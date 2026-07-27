@@ -254,6 +254,11 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 		return -EINVAL;
 	}
 
+	if (fragment_size > MAILBOX_HOSTBOX_SIZE) {
+		comp_err(dev, "invalid large_config fragment size %u", fragment_size);
+		return -EINVAL;
+	}
+
 	if (interface->set_configuration)
 		return interface->set_configuration(mod, param_id, pos, data_offset_size,
 						    (const uint8_t *)data, fragment_size,
