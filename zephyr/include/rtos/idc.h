@@ -28,6 +28,15 @@
 /** \brief IDC send non-blocking flag. */
 #define IDC_NON_BLOCKING	1
 
+/** \brief IDC send blocking flag, wait for completion without timing out.
+ * Like IDC_BLOCKING but waits (K_FOREVER) for the handler to finish rather
+ * than only CONFIG_IDC_TIMEOUT_US. For remote ops whose completion the
+ * caller depends on and which are bounded but can exceed the IDC timeout
+ * (e.g. a DP component reset that joins a decoder thread mid codec
+ * cold-start).
+ */
+#define IDC_BLOCKING_NO_TIMEOUT	4
+
 /** \brief IDC send core power up flag. */
 #define IDC_POWER_UP		2
 
