@@ -902,7 +902,7 @@ audio_stream_samples_without_wrap_s32(const struct audio_stream *source, const v
  * @return Number of bytes to buffer wrap. For number of samples calculate
  *	   need to add size of sample to returned bytes count.
  */
-static inline int cir_buf_bytes_without_wrap(void *ptr, void *buf_end)
+static inline int cir_buf_bytes_without_wrap(const void *ptr, const void *buf_end)
 {
 	assert((intptr_t)buf_end >= (intptr_t)ptr);
 	return (intptr_t)buf_end - (intptr_t)ptr;
@@ -946,7 +946,7 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
  * @param dst_end End address of sink circular buffer.
  * @param byte_size Number of bytes to copy.
  */
-void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
+void cir_buf_copy(const void *src, const void *src_addr, const void *src_end, void *dst,
 		  void *dst_addr, void *dst_end, size_t byte_size);
 
 /**
