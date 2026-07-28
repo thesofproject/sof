@@ -269,7 +269,7 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 	return samples;
 }
 
-void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
+void cir_buf_copy(const void *src, const void *src_addr, const void *src_end, void *dst,
 		  void *dst_addr, void *dst_end, size_t byte_size)
 {
 	size_t bytes = byte_size;
@@ -281,7 +281,7 @@ void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
 	ae_int16x4 in_sample1, in_sample2;
 	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
-	ae_int16x8 *in = (ae_int16x8 *)src;
+	const ae_int16x8 *in = cir_buf_wrap(src, src_addr, src_end);
 	ae_int16x8 *out = (ae_int16x8 *)dst;
 
 	while (bytes) {
@@ -360,7 +360,7 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 	return samples;
 }
 
-void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
+void cir_buf_copy(const void *src, const void *src_addr, const void *src_end, void *dst,
 		  void *dst_addr, void *dst_end, size_t byte_size)
 {
 	size_t bytes = byte_size;
@@ -373,7 +373,7 @@ void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
 	ae_int16x4 in_sample = AE_ZERO16();
 	ae_valign inu = AE_ZALIGN64();
 	ae_valign outu = AE_ZALIGN64();
-	ae_int16x4 *in = (ae_int16x4 *)src;
+	ae_int16x4 *in = cir_buf_wrap(src, src_addr, src_end);
 	ae_int16x4 *out = (ae_int16x4 *)dst;
 
 	while (bytes) {
@@ -433,14 +433,14 @@ int audio_stream_copy(const struct audio_stream *source, uint32_t ioffset,
 	return samples;
 }
 
-void cir_buf_copy(void *src, void *src_addr, void *src_end, void *dst,
+void cir_buf_copy(const void *src, const void *src_addr, const void *src_end, void *dst,
 		  void *dst_addr, void *dst_end, size_t byte_size)
 {
 	size_t bytes = byte_size;
 	size_t bytes_src;
 	size_t bytes_dst;
 	size_t bytes_copied;
-	uint8_t *in = (uint8_t *)src;
+	const uint8_t *in = src;
 	uint8_t *out = (uint8_t *)dst;
 
 	while (bytes) {
