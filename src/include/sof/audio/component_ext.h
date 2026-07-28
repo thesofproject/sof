@@ -318,7 +318,22 @@ static inline int comp_reset_remote(struct comp_dev *dev)
 	struct idc_msg msg = { IDC_MSG_RESET,
 		IDC_MSG_RESET_EXT(dev->ipc_config.id), dev->ipc_config.core, };
 
-	return idc_send_msg(&msg, IDC_BLOCKING);
+	/*
+	 * Blocking, and waiting for actual completion (no timeout): the caller
+	 * (pipeline_reset -> host) depends on the reset being finished before it
+	 * frees the component and powers down the remote core. A DP decoder's
+	 * reset runs schedule_task_cancel() -> k_thread_join() on that core, which
+	 * only returns once the DP thread finishes its in-flight process() call.
+	 * That call is bounded but can be long during codec cold-start (a deferred
+	 * avcodec_open2 table build, ~1.4 s for aac, or the first decode after it),
+	 * exceeding CONFIG_IDC_TIMEOUT_US. A plain IDC_BLOCKING would give up at
+	 * that timeout (-EAGAIN) while the reset is still running remotely, leaving
+	 * the component un-reset; pipeline_reset() then fails and the subsequent
+	 * free is refused (invalid state) / the core cannot be disabled, wedging
+	 * every teardown until reboot. A normal end-of-stream teardown joins an
+	 * idle DP thread and returns immediately, so this only waits when it must.
+	 */
+	return idc_send_msg(&msg, IDC_BLOCKING_NO_TIMEOUT);
 }
 
 /**

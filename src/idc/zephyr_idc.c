@@ -156,7 +156,7 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	work->priority = CONFIG_EDF_THREAD_PRIORITY;
 	work->deadline = 0;
 	work->handler = idc_handler;
-	work->sync = mode == IDC_BLOCKING;
+	work->sync = mode == IDC_BLOCKING || mode == IDC_BLOCKING_NO_TIMEOUT;
 
 	if (msg->payload) {
 		idc_send_memcpy_err = memcpy_s(payload->data, sizeof(payload->data),
@@ -186,6 +186,13 @@ int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 		ret = k_p4wq_wait(work, K_USEC(CONFIG_IDC_TIMEOUT_US));
 		if (!ret)
 			/* message was sent and executed successfully, get status code */
+			ret = idc_msg_status_get(msg->core);
+		break;
+	case IDC_BLOCKING_NO_TIMEOUT:
+		/* wait for completion; the handler is bounded but may exceed
+		 * CONFIG_IDC_TIMEOUT_US (see IDC_BLOCKING_NO_TIMEOUT) */
+		ret = k_p4wq_wait(work, K_FOREVER);
+		if (!ret)
 			ret = idc_msg_status_get(msg->core);
 		break;
 	case IDC_POWER_UP:
