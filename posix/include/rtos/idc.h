@@ -28,6 +28,9 @@
 /** \brief IDC send non-blocking flag. */
 #define IDC_NON_BLOCKING	1
 
+/** \brief IDC send blocking flag, wait for completion without timing out. */
+#define IDC_BLOCKING_NO_TIMEOUT	4
+
 /** \brief IDC send core power up flag. */
 #define IDC_POWER_UP		2
 
