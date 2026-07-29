@@ -223,9 +223,10 @@ DEEPBUFFER_FW_DMA_MS=false,HDA_ANALOG_CAPTURE_RATE=96000,HDA_ANALOG_PLAYBACK_RAT
 # compr-ffmpeg.conf independently of COMPRESSED (which gates the Cadence
 # compr.conf), so the stock compress path stays off here.
 # Default (COMPR_FFMPEG_CODEC=flac) carries the FLAC STREAMINFO codec-setup
-# control; the mp3 variant omits it (mp3 is a self-describing stream).
+# control; the mp3 and aac variants omit it (both are self-describing streams).
 "sof-hda-generic\;sof-hda-generic-ffmpeg-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-mp3-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=mp3"
+"sof-hda-generic\;sof-hda-generic-ffmpeg-aac-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=aac"
 
 # SDW + DMIC + HDMI, with 16 kHz DMIC1
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k\;PLATFORM=mtl,\
