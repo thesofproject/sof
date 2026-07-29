@@ -591,17 +591,18 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	cd->pcm_avail = produced;
 
 	/* Drain whatever fits this cycle; the rest goes out on the next one. */
-	if (cd->pcm_avail) {
+	if (cd->pcm_avail)
 		ffmpeg_dec_drain_pcm(cd, sink);
-#if CONFIG_IPC_MAJOR_4
-	} else if (dev->pipeline->expect_eos) {
-		/*
-		 * Draining and the decoder yielded no more PCM (the host is now
-		 * feeding only end-of-stream silence): the stream has ended.
-		 */
-		ffmpeg_dec_signal_eos(mod, sink);
-#endif
-	}
+	/*
+	 * produced == 0 is NOT end-of-stream. A compressed chunk can end mid-frame
+	 * (variable-size ADTS AAC frames routinely do), leaving the parser holding a
+	 * partial frame it completes from the next chunk: input is consumed while no
+	 * PCM comes out. The real drain completes on a later cycle once the input is
+	 * genuinely exhausted (avail == 0 with expect_eos, handled at the top of
+	 * process()). Signalling EOS on a transient produced == 0 truncated AAC to
+	 * its first few frames, since the host sets expect_eos as soon as it has
+	 * written the whole (buffer-resident) file, long before decode catches up.
+	 */
 
 	return 0;
 }
