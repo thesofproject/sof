@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include "ffmpeg_dec.h"
 
+LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
+
 #define FFMPEG_DEC_ALLOC_HDR	16
 
 static struct processing_module *ffmpeg_dec_alloc_mod;
@@ -29,6 +31,16 @@ static struct processing_module *ffmpeg_dec_alloc_mod;
 void ffmpeg_dec_libc_bind(struct processing_module *mod)
 {
 	ffmpeg_dec_alloc_mod = mod;
+}
+
+size_t ffmpeg_dec_heap_free(void)
+{
+	return 0;
+}
+
+size_t ffmpeg_dec_heap_lastfail(void)
+{
+	return 0;
 }
 
 void *malloc(size_t size)

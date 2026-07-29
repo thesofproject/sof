@@ -58,24 +58,9 @@ static void ffmpeg_dec_av_log(void *avcl, int level, const char *fmt, va_list vl
 	if (n < (int)sizeof(ffmpeg_dec_log_line) && ffmpeg_dec_log_line[n - 1] == '\n')
 		ffmpeg_dec_log_line[n - 1] = '\0';
 
-	if (level <= AV_LOG_ERROR) {
-		/* A stalled/hostile stream (e.g. the silence padding a compress
-		 * host emits after the file ends) can make libavcodec log the
-		 * same error every DSP cycle. Collapse identical repeats so the
-		 * trace ring keeps room for other messages.
-		 */
-		static char last[64];
-		static int reps;
-
-		if (!strncmp(last, ffmpeg_dec_log_line, sizeof(last) - 1)) {
-			if (++reps > 3)
-				return;
-		} else {
-			reps = 0;
-			strncpy(last, ffmpeg_dec_log_line, sizeof(last) - 1);
-		}
+	if (level <= AV_LOG_ERROR)
 		LOG_ERR("ffmpeg: %s", ffmpeg_dec_log_line);
-	} else if (level <= AV_LOG_WARNING)
+	else if (level <= AV_LOG_WARNING)
 		LOG_WRN("ffmpeg: %s", ffmpeg_dec_log_line);
 	else if (level <= AV_LOG_INFO)
 		LOG_INF("ffmpeg: %s", ffmpeg_dec_log_line);
@@ -219,9 +204,15 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 		comp_err(dev, "avcodec_open2 failed %d", ret);
 		return -EIO;
 	}
+	comp_info(dev, "libavcodec decoder opened (%s)", ff->codec->name);
 
-	/* Padded scratch for a parsed packet payload, sized to OBS as a bound. */
-	ff->pktbuf = mod_alloc(mod, cd->out_frame_bytes ?
+	/*
+	 * Padded scratch for a parsed packet payload, sized to OBS as a bound.
+	 * Route through av_malloc (the sys_heap-backed FFmpeg heap, see
+	 * ffmpeg_dec-builtin-alloc.c) rather than mod_alloc: the SOF per-module
+	 * heap is far too small for this tens-of-KiB scratch.
+	 */
+	ff->pktbuf = av_malloc(cd->out_frame_bytes ?
 			       cd->out_frame_bytes * 4096 : 65536);
 	if (!ff->pktbuf)
 		return -ENOMEM;
@@ -444,7 +435,7 @@ static int ffmpeg_dec_ff_free(struct processing_module *mod)
 	if (ff->parser)
 		av_parser_close(ff->parser);
 	if (ff->pktbuf)
-		mod_free(mod, ff->pktbuf);
+		av_free(ff->pktbuf);
 
 	mod_free(mod, ff);
 	cd->backend_data = NULL;

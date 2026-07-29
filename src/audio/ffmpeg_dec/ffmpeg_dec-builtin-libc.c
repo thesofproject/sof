@@ -88,8 +88,6 @@ int z_errno_wrap(void) { return 0; }
 extern int *z_impl_z_errno(void);
 int *__errno(void) { return z_impl_z_errno(); }
 
-/* ============================ module heap binding ========================== */
-/* No-op: the =y build allocates from common-libc malloc (DSP SRAM heap), so no
- * per-module heap binding is needed (cf. ffmpeg_dec-alloc.c in the =m build).
+/* ffmpeg_dec_libc_bind() + the malloc/free/realloc/calloc heap routing live in
+ * ffmpeg_dec-builtin-alloc.c (the =y build --wraps them onto the SOF DSP heap).
  */
-void ffmpeg_dec_libc_bind(struct processing_module *mod) { (void)mod; }

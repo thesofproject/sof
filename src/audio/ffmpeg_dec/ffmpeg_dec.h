@@ -201,4 +201,11 @@ int ffmpeg_dec_store_extradata(struct processing_module *mod,
  */
 void ffmpeg_dec_libc_bind(struct processing_module *mod);
 
+/**
+ * ffmpeg_dec_heap_free() - Free bytes in the FFmpeg backing heap.
+ * Returns 0 for allocator backends without a dedicated heap.
+ */
+size_t ffmpeg_dec_heap_free(void);
+size_t ffmpeg_dec_heap_lastfail(void); /*DBG*/
+
 #endif /* __SOF_AUDIO_FFMPEG_DEC_H__ */

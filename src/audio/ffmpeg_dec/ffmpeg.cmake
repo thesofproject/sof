@@ -72,6 +72,14 @@ endif()
 # GCC 14 (Zephyr SDK) promotes these to errors; FFmpeg 7.x trips them.
 set(_ff_extra_cflags "-fPIC -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration")
 
+# SOF decodes AAC-LC only. Tell the AAC decoder to skip the per-element SBR/PS
+# storage (~437 KiB of a ~554 KiB ExtChannelElement); LC never exercises SBR,
+# parametric stereo or AAC-Main prediction, so this keeps the element small
+# enough for the DSP heap. See libavcodec/aacsbr_template.c.
+if(CONFIG_FFMPEG_DEC_AAC)
+	set(_ff_extra_cflags "${_ff_extra_cflags} -DSOF_AAC_LC_ONLY=1")
+endif()
+
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	# LLVM/xt-clang build. clang is a generic driver, so unlike the target-
 	# specific GCC it needs the target/core/sysroot spelled out, it uses the
@@ -181,14 +189,63 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 	# only in one-time table init). The HiFi VFPU vector-float intrinsics use a
 	# separate feature and are unaffected.
 	#
-	# This is scoped to FFmpeg's own --cc, NOT the shared _ff_cc: the newlib libm
-	# build must keep 'fp' enabled, because <fenv.h> selects machine/fenv-fp.h via
-	# `#if XCHAL_HAVE_FP` (a core-isa.h macro, still 1 here) and its rur.fcr/rur.fsr
-	# inline asm needs the 'fp' feature to name the FPU control regs -- disabling it
-	# makes those uncompilable (s_fma.c). libm's double math is soft-float
-	# regardless of the feature, and its single-precision (sinf/...) FP0 variants are
-	# unreferenced by the fixed-point codecs and get GC'd, so libm is safe on _ff_cc.
+	# This is applied to FFmpeg's own --cc (_ff_cc_ff) AND to the newlib libm build
+	# (_ff_cc_libm, below). The float decoders (AAC/Opus) pull in libm's single-
+	# precision functions (sinf/cosf/__rem_pio2f/...) which emit the same faulting
+	# FP0 ops, so libm needs -fp off too -- see the _ff_cc_libm block for the fenv
+	# shim that unblocks compiling libm with the feature disabled.
 	set(_ff_cc_ff "${_ff_cc} -Xclang -target-feature -Xclang -fp")
+
+	# newlib libm: scalar soft-float (-fp off) like FFmpeg. Its single-precision
+	# functions (sinf/cosf/__rem_pio2f, reached by the AAC/Opus float MDCT/tx path)
+	# otherwise emit scalar FP0 instructions (wfr/rfr/add.s) that fault EXCCAUSE 0 on
+	# this CONFIG_FPU=n image -- exactly the class the FFmpeg -fp off above avoids.
+	# The blocker to -fp off used to be <fenv.h>: machine/fenv.h selects fenv-fp.h
+	# `#if XCHAL_HAVE_FP` (a core-isa.h macro, still 1 -- the core HAS an FP0 unit,
+	# we simply never enable it), and fenv-fp.h's rur.fcr/rur.fsr inline asm needs the
+	# 'fp' feature to name the FPU control regs, so fma/nearbyint/sqrt failed to build.
+	# Shadow machine/fenv.h with a shim that unconditionally pulls the SDK's own no-op
+	# soft-float variant (machine/fenv-softfloat.h): its feclearexcept/fe*round/
+	# feholdexcept/... are stubs (no exception flags, round-to-nearest only) -- the
+	# correct semantics for a soft-float image, and no FPU-control-reg access. This
+	# also fixes the fenv wrapper in the DOUBLE nearbyint/rint (linked by AAC), which
+	# with 'fp' on emitted rur.fcr/wur.fcr even though its arithmetic is soft-float.
+	set(_ff_fenv_shim "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-fenv-soft")
+	file(MAKE_DIRECTORY "${_ff_fenv_shim}/machine")
+	file(WRITE "${_ff_fenv_shim}/machine/fenv.h"
+"#ifndef _MACHINE_FENV_H
+#define _MACHINE_FENV_H
+#include <sys/cdefs.h>
+_BEGIN_STD_C
+typedef unsigned long fenv_t;
+typedef unsigned long fexcept_t;
+#define FE_DIVBYZERO 0x08
+#define FE_INEXACT 0x01
+#define FE_INVALID 0x10
+#define FE_OVERFLOW 0x04
+#define FE_UNDERFLOW 0x02
+#define FE_ALL_EXCEPT (FE_DIVBYZERO|FE_INEXACT|FE_INVALID|FE_OVERFLOW|FE_UNDERFLOW)
+#define FE_DOWNWARD 0x3
+#define FE_TONEAREST 0x0
+#define FE_TOWARDZERO 0x1
+#define FE_UPWARD 0x2
+#define _FE_EXCEPTION_FLAGS_OFFSET 7
+#define _FE_EXCEPTION_FLAG_MASK (FE_ALL_EXCEPT << _FE_EXCEPTION_FLAGS_OFFSET)
+#define _FE_EXCEPTION_ENABLE_OFFSET 2
+#define _FE_EXCEPTION_ENABLE_MASK (FE_ALL_EXCEPT << _FE_EXCEPTION_ENABLE_OFFSET)
+#define _FE_ROUND_MODE_OFFSET 0
+#define _FE_ROUND_MODE_MASK (0x3 << _FE_ROUND_MODE_OFFSET)
+#define _FE_FLOATING_ENV_MASK (_FE_EXCEPTION_FLAG_MASK|_FE_EXCEPTION_ENABLE_MASK|_FE_ROUND_MODE_MASK)
+#if !defined(__declare_fenv_inline) && defined(__declare_extern_inline)
+#define __declare_fenv_inline(type) __declare_extern_inline(type)
+#endif
+#ifdef __declare_fenv_inline
+#include <machine/fenv-softfloat.h>
+#endif
+_END_STD_C
+#endif
+")
+	set(_ff_cc_libm "${_ff_cc} -I${_ff_fenv_shim} -Xclang -target-feature -Xclang -fp")
 else()
 	# GCC (Zephyr SDK): target-specific driver, brings its own sysroot + crt.
 	# e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-gcc -> prefix ...-elf-
@@ -199,10 +256,14 @@ else()
 	set(_ff_cc "${CMAKE_C_COMPILER}")
 	set(_ff_ld "${CMAKE_C_COMPILER}")
 endif()
-# FFmpeg's compile uses _ff_cc_ff (the scalar soft-float variant on LLVM); libm and
-# everything else use plain _ff_cc. On the GCC branch they are identical.
+# FFmpeg's compile uses _ff_cc_ff and the newlib libm uses _ff_cc_libm (both the
+# scalar soft-float variant on LLVM; libm additionally with the soft-float fenv
+# shim); everything else uses plain _ff_cc. On the GCC branch they are identical.
 if(NOT DEFINED _ff_cc_ff)
 	set(_ff_cc_ff "${_ff_cc}")
+endif()
+if(NOT DEFINED _ff_cc_libm)
+	set(_ff_cc_libm "${_ff_cc}")
 endif()
 
 # --- 3c. Build a private newlib math archive (vendored source, -mlongcalls) ---
@@ -243,15 +304,16 @@ set(_ff_libm_abs "")
 foreach(_s IN LISTS NEWLIB_MATH_SOURCES)
 	list(APPEND _ff_libm_abs "${_ff_libm_src}/${_s}")
 endforeach()
-# Compile each source with the same core/sysroot as the rest of the image (_ff_cc)
-# plus the same codegen guards (_ff_extra_cflags: -fno-vectorize/-fno-jump-tables/
-# ...) and -mlongcalls -mtext-section-literals for --no-relax linkability, then
-# archive. -ffreestanding: this is bare-metal math, no hosted libc assumptions.
+# Compile each source with the same core/sysroot as the rest of the image, soft-float
+# (_ff_cc_libm = _ff_cc + soft-float fenv shim + -fp off) plus the same codegen guards
+# (_ff_extra_cflags: -fno-vectorize/-fno-jump-tables/...) and -mlongcalls
+# -mtext-section-literals for --no-relax linkability, then archive. -ffreestanding:
+# this is bare-metal math, no hosted libc assumptions.
 string(REPLACE ";" " " _ff_libm_srclist "${_ff_libm_abs}")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/newlib-m-build.sh"
 "#!/bin/sh
 set -e
-CC=\"${_ff_cc}\"
+CC=\"${_ff_cc_libm}\"
 OBJDIR=${_ff_libm_dir}/obj
 mkdir -p \"\$OBJDIR\"
 : > ${_ff_libm_dir}/objs.txt
@@ -387,7 +449,7 @@ ExternalProject_Add(ffmpeg_ext
 			--enable-avcodec --enable-avutil --enable-swresample
 			${_ff_dec_cfg}
 			${_ff_shine_cfg}
-			--enable-small --enable-pic
+			--enable-small --enable-pic --enable-hardcoded-tables
 			"--extra-cflags=${_ff_extra_cflags}"
 	BUILD_COMMAND
 		${CMAKE_COMMAND} -E env "PATH=${_tc_dir}:$ENV{PATH}" make -j 8
