@@ -673,8 +673,13 @@ __cold static struct comp_buffer *ipc4_create_buffer(struct comp_dev *src, bool 
 	ipc_buf.comp.id = IPC4_COMP_ID(src_queue, dst_queue);
 	ipc_buf.comp.pipeline_id = src->ipc_config.pipeline_id;
 
-	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || src->ipc_config.core == cpu_get_id());
-	ipc_buf.comp.core = src->ipc_config.core;
+	/* The buffer belongs to the core on which it is created. For a same-core bind
+	 * ipc4_process_on_core() has already migrated us to the src core (== dst core),
+	 * while a cross-core bind is always processed on the primary core. cpu_get_id()
+	 * is privileged and so avoided here.
+	 */
+	ipc_buf.comp.core = is_shared ? PLATFORM_PRIMARY_CORE_ID : src->ipc_config.core;
+	assert(IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || ipc_buf.comp.core == cpu_get_id());
 
 	return buffer_new(alloc, &ipc_buf, is_shared);
 }
