@@ -144,8 +144,7 @@ def main():
 	# critical functions in a .cold ELF section, read-only data in a
 	# .coldrodata ELF section, etc. When compiling and linking such
 	# functions, an additional .cold.literal section is automatically
-	# created. Note, that for some reason the compiler also marks .cold as
-	# executable.
+	# created.
 	# This script links those sections at address 0. We could hard-code
 	# section names, but so far we choose to only link .text the "original"
 	# way and all other executable sections we link at 0. For data sections
@@ -167,6 +166,8 @@ def main():
 		command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
 
 		dram_addr += section.header['sh_size']
+
+	dram_addr = align_up(dram_addr, 0x1000)
 
 	for section in readonly_dram:
 		s_alignment = section.header['sh_addralign']
