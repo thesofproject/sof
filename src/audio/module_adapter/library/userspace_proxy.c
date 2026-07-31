@@ -30,6 +30,7 @@
 #include <sof/audio/component.h>
 #include <sof/schedule/dp_schedule.h>
 #include <rtos/userspace_helper.h>
+#include <rtos/user_work.h>
 #include <utilities/array.h>
 #include <zephyr/sys/sem.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -54,12 +55,16 @@ static const struct module_interface userspace_proxy_interface;
 #include <sof/audio/module_adapter/iadk/system_agent.h>
 #include <sof/schedule/dp_schedule.h>
 
-static inline int user_worker_get(void)
+static inline int user_worker_get(int core)
 {
+	ARG_UNUSED(core);
 	return 0;
 }
 
-static inline void user_worker_put(void) { }
+static inline void user_worker_put(int core)
+{
+	ARG_UNUSED(core);
+}
 
 struct k_work_user *userspace_proxy_register_ipc_handler(struct processing_module *mod,
 							 struct k_event *event)
@@ -86,9 +91,9 @@ struct k_work_user *userspace_proxy_register_ipc_handler(struct processing_modul
  * It invokes the appropriate module function in userspace context and writes the operation
  * result back into the work item.
  *
- * There is only a single work queue, which is shared by all userspace modules. It is created
- * dynamically when needed. Because SOF uses a single dedicated thread for handling IPC, there
- * is no need to perform any additional serialization when accessing the worker.
+ * Each core owns one work queue, shared by the userspace modules assigned to that core.
+ * Each work queue has its own worker thread, which is pinned to its core before it is first
+ * started and never migrates.
  */
 struct user_worker {
 	k_tid_t thread_id;			/* ipc worker thread ID			*/
@@ -98,43 +103,69 @@ struct user_worker {
 	struct k_event event;
 };
 
-static struct user_worker worker;
+static struct user_worker workers[CONFIG_CORE_COUNT];
 
-static int user_worker_get(void)
+static int user_worker_get(int core)
 {
-	if (worker.reference_count) {
-		worker.reference_count++;
+	struct user_worker *worker;
+	int ret;
+
+	if (core < 0 || core >= CONFIG_CORE_COUNT)
+		return -EINVAL;
+
+	worker = &workers[core];
+	if (worker->reference_count) {
+		worker->reference_count++;
 		return 0;
 	}
 
-	worker.stack_ptr = user_stack_allocate(CONFIG_SOF_USERSPACE_PROXY_WORKER_STACK_SIZE,
-					       K_USER);
-	if (!worker.stack_ptr) {
+	worker->stack_ptr = user_stack_allocate(CONFIG_SOF_USERSPACE_PROXY_WORKER_STACK_SIZE,
+						K_USER);
+	if (!worker->stack_ptr) {
 		tr_err(&userspace_proxy_tr, "Userspace worker stack allocation failed.");
 		return -ENOMEM;
 	}
 
-	k_event_init(&worker.event);
-	k_work_user_queue_start(&worker.work_queue, worker.stack_ptr,
-				CONFIG_SOF_USERSPACE_PROXY_WORKER_STACK_SIZE, 0, NULL);
+	k_event_init(&worker->event);
+	sof_work_user_queue_create(&worker->work_queue, worker->stack_ptr,
+				   CONFIG_SOF_USERSPACE_PROXY_WORKER_STACK_SIZE, 0, NULL);
+	worker->thread_id = k_work_user_queue_thread_get(&worker->work_queue);
+	k_thread_access_grant(worker->thread_id, &worker->event);
 
-	worker.thread_id = k_work_user_queue_thread_get(&worker.work_queue);
+#ifdef CONFIG_SCHED_CPU_MASK
+	ret = k_thread_cpu_pin(worker->thread_id, core);
+	if (ret < 0) {
+		tr_err(&userspace_proxy_tr, "Failed to pin userspace worker to core %d: %d",
+		       core, ret);
+		k_thread_abort(worker->thread_id);
+		user_stack_free(worker->stack_ptr);
+		worker->stack_ptr = NULL;
+		worker->thread_id = NULL;
+		return ret;
+	}
+#elif CONFIG_CORE_COUNT > 1
+#error "CONFIG_SCHED_CPU_MASK is not enabled"
+#endif
 
-	k_thread_access_grant(worker.thread_id, &worker.event);
+	k_thread_start(worker->thread_id);
 
-	worker.reference_count++;
+	worker->reference_count++;
 	return 0;
 }
 
-static void user_worker_put(void)
+static void user_worker_put(int core)
 {
+	struct user_worker *worker = &workers[core];
+
 	/* Module removed so decrement counter */
-	worker.reference_count--;
+	worker->reference_count--;
 
 	/* Free worker resources if no more active user space modules */
-	if (worker.reference_count == 0) {
-		k_thread_abort(worker.thread_id);
-		user_stack_free(worker.stack_ptr);
+	if (worker->reference_count == 0) {
+		k_thread_abort(worker->thread_id);
+		user_stack_free(worker->stack_ptr);
+		worker->stack_ptr = NULL;
+		worker->thread_id = NULL;
 	}
 }
 #endif
@@ -142,26 +173,24 @@ static void user_worker_put(void)
 static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap *user_heap)
 {
 	struct user_work_item *work_item = NULL;
+	const int core = cpu_get_id();
 	int ret;
 
-	ret = user_worker_get();
+	ret = user_worker_get(core);
 	if (ret)
 		return ret;
 
-	/* We have only a single userspace IPC worker. It handles requests for all userspace
-	 * modules, which may run on different cores. Because the worker processes work items
-	 * coming from any core, the work item must be allocated in coherent memory.
-	 */
-	work_item = sof_heap_alloc(user_heap, SOF_MEM_FLAG_COHERENT, sizeof(*work_item), 0);
+	/* Work item is allocated, submitted and processed on the same core -- can be cached. */
+	work_item = sof_heap_alloc(user_heap, 0, sizeof(*work_item), 0);
 	if (!work_item) {
-		user_worker_put();
+		user_worker_put(core);
 		return -ENOMEM;
 	}
 
 	k_work_user_init(&work_item->work_item, userspace_proxy_worker_handler);
 
 #if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
-	work_item->event = &worker.event;
+	work_item->event = &workers[core].event;
 #endif
 	work_item->params.context = user_ctx;
 	work_item->params.mod = NULL;
@@ -173,7 +202,7 @@ static int user_work_item_init(struct userspace_context *user_ctx, struct k_heap
 static void user_work_item_free(struct userspace_context *user_ctx, struct k_heap *user_heap)
 {
 	sof_heap_free(user_heap, user_ctx->work_item);
-	user_worker_put();
+	user_worker_put(cpu_get_id());
 }
 
 static inline struct module_params *user_work_get_params(struct userspace_context *user_ctx)
@@ -193,7 +222,8 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 #if IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
 	struct k_event * const event = user_ctx->dp_event;
 #else
-	struct k_event * const event = &worker.event;
+	struct user_worker *worker = &workers[cpu_get_id()];
+	struct k_event * const event = &worker->event;
 #endif
 	struct module_params *params = user_work_get_params(user_ctx);
 	const uintptr_t ipc_req_buf = (uintptr_t)MAILBOX_HOSTBOX_BASE;
@@ -216,22 +246,13 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 
 #if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
 	/* Switch worker thread to module memory domain */
-	ret = k_mem_domain_add_thread(user_ctx->comp_dom, worker.thread_id);
+	ret = k_mem_domain_add_thread(user_ctx->comp_dom, worker->thread_id);
 	if (ret < 0) {
 		tr_err(&userspace_proxy_tr, "Failed to switch memory domain, error: %d", ret);
 		goto done;
 	}
 
-#ifdef CONFIG_SCHED_CPU_MASK
-	/* Pin worker thread to the same core as the module */
-	ret = k_thread_cpu_pin(worker.thread_id, cpu_get_id());
-	if (ret < 0) {
-		tr_err(&userspace_proxy_tr, "Failed to pin cpu, error: %d", ret);
-		goto done;
-	}
-#endif
-
-	ret = k_work_user_submit_to_queue(&worker.work_queue, &user_ctx->work_item->work_item);
+	ret = k_work_user_submit_to_queue(&worker->work_queue, &user_ctx->work_item->work_item);
 	if (ret < 0) {
 		tr_err(&userspace_proxy_tr, "Submit to queue error: %d", ret);
 		goto done;
