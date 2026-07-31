@@ -519,6 +519,9 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 
 	src = sources[0];
 	sink = sinks[0];
+	enum sof_audio_buffer_state src_state = source_get_state(src);
+	bool host_eos = src_state == AUDIOBUF_STATE_END_OF_STREAM ||
+			src_state == AUDIOBUF_STATE_END_OF_STREAM_FLUSH;
 
 	/*
 	 * Lazy backend open, one-time, on the DP thread. prepare() deliberately
@@ -564,7 +567,7 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 		 * file has been fully consumed. With no input left and no staged
 		 * PCM, the stream is flushed - complete the drain.
 		 */
-		if (dev->pipeline->expect_eos)
+		if (host_eos)
 			ffmpeg_dec_signal_eos(mod, sink);
 #endif
 		return -ENODATA;
@@ -603,6 +606,21 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	 * its first few frames, since the host sets expect_eos as soon as it has
 	 * written the whole (buffer-resident) file, long before decode catches up.
 	 */
+
+#if CONFIG_IPC_MAJOR_4
+	/*
+	 * End-of-stream completion. The host copier flips the source to
+	 * END_OF_STREAM only after delivering the whole committed file, so every
+	 * real frame is already buffered and decodes (produced > 0) before this
+	 * point. The free-running HDA gateway then keeps re-presenting stale 384 B
+	 * junk chunks that avail never drains and that yield no PCM - so once we
+	 * are at EOS and a cycle produces nothing, the real stream is exhausted:
+	 * signal EOS to complete the host compress_drain(). ffmpeg_dec_signal_eos
+	 * is idempotent (guarded by cd->eos_sent).
+	 */
+	if (host_eos && !produced)
+		ffmpeg_dec_signal_eos(mod, sink);
+#endif
 
 	return 0;
 }
