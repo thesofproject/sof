@@ -119,6 +119,11 @@ def main():
 
 		if (s_flags & (SH_FLAGS.SHF_WRITE | SH_FLAGS.SHF_ALLOC) ==
                     SH_FLAGS.SHF_WRITE | SH_FLAGS.SHF_ALLOC):
+			# .rodata may be marked writable by the Clang/objcopy LLEXT
+			# pipeline but should still be placed near .text for l32r reach
+			if s_name == '.rodata' or s_name.startswith('.rodata.'):
+				readonly.append(section)
+				continue
 			# .data, .bss or other writable sections
 			writable.append(section)
 			continue
@@ -181,17 +186,30 @@ def main():
 
 		dram_addr += section.header['sh_size']
 
-	start_addr = align_up(text_addr + text_size, 0x1000)
+	# Place readonly sections BEFORE .text so that Xtensa l32r instructions
+	# (which can only reach backwards up to 256KB) can access .rodata literals.
+	readonly_size = 0
+	for section in readonly:
+		readonly_size += align_up(section.header['sh_size'], section.header['sh_addralign'])
+	# Reserve space for readonly before .text
+	readonly_start = max_alignment(text_addr, 0x1000, 4)
+	text_addr = align_up(readonly_start + readonly_size, 0x1000)
+	# Now re-place .text at the updated address
+	command = [c for c in command if not c.startswith('-Wl,-Ttext=')]
+	command.append(f'-Wl,-Ttext=0x{text_addr:x}')
 
+	ro_addr = readonly_start
 	for section in readonly:
 		s_alignment = section.header['sh_addralign']
 		s_name = section.name
 
-		start_addr = align_up(start_addr, s_alignment)
+		ro_addr = align_up(ro_addr, s_alignment)
 
-		command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
+		command.append(f'-Wl,--section-start={s_name}=0x{ro_addr:x}')
 
-		start_addr += section.header['sh_size']
+		ro_addr += section.header['sh_size']
+
+	start_addr = align_up(text_addr + text_size, 0x1000)
 
 	start_addr = align_up(start_addr, 0x1000)
 
