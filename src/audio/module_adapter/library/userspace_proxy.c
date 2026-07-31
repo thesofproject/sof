@@ -206,10 +206,30 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 
 	params->cmd = cmd;
 
+#if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
+	/* The worker must not run while its CPU affinity and memory domain are reconfigured. */
+	k_thread_suspend(worker.thread_id);
+
+#ifdef CONFIG_SCHED_CPU_MASK
+	/* Pin worker thread to the same core as the module */
+	ret = k_thread_cpu_pin(worker.thread_id, cpu_get_id());
+	if (ret < 0) {
+		tr_err(&userspace_proxy_tr, "Failed to pin cpu, error: %d", ret);
+		k_thread_resume(worker.thread_id);
+		return ret;
+	}
+#elif CONFIG_CORE_COUNT > 1
+#error "CONFIG_SCHED_CPU_MASK is required"
+#endif
+#endif
+
 	if (ipc_payload_access) {
 		ret = k_mem_domain_add_partition(user_ctx->comp_dom, &ipc_part);
 		if (ret < 0) {
 			tr_err(&userspace_proxy_tr, "Add mailbox to domain error: %d", ret);
+#if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
+			k_thread_resume(worker.thread_id);
+#endif
 			return ret;
 		}
 	}
@@ -217,19 +237,11 @@ static int userspace_proxy_invoke(struct userspace_context *user_ctx, uint32_t c
 #if !IS_ENABLED(CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD)
 	/* Switch worker thread to module memory domain */
 	ret = k_mem_domain_add_thread(user_ctx->comp_dom, worker.thread_id);
+	k_thread_resume(worker.thread_id);
 	if (ret < 0) {
 		tr_err(&userspace_proxy_tr, "Failed to switch memory domain, error: %d", ret);
 		goto done;
 	}
-
-#ifdef CONFIG_SCHED_CPU_MASK
-	/* Pin worker thread to the same core as the module */
-	ret = k_thread_cpu_pin(worker.thread_id, cpu_get_id());
-	if (ret < 0) {
-		tr_err(&userspace_proxy_tr, "Failed to pin cpu, error: %d", ret);
-		goto done;
-	}
-#endif
 
 	ret = k_work_user_submit_to_queue(&worker.work_queue, &user_ctx->work_item->work_item);
 	if (ret < 0) {
