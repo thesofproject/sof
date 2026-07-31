@@ -189,7 +189,14 @@ enum ipc4_copier_module_config_params {
 	 * from gateway buffer to copier with any order.
 	 * Same mapping will be applied for all copier sinks.
 	 */
-	IPC4_COPIER_MODULE_CFG_PARAM_CHANNEL_MAP = 7
+	IPC4_COPIER_MODULE_CFG_PARAM_CHANNEL_MAP = 7,
+	/*
+	 * SOF extension (compress drain): total committed gateway bytes. The host
+	 * sends this on DRAIN so the host copier can flag end-of-stream once it has
+	 * delivered exactly this many bytes downstream - the free-running HDA
+	 * gateway write pointer cannot serve as an EOS boundary. Payload: u64.
+	 */
+	IPC4_COPIER_MODULE_CFG_PARAM_DRAIN_BYTES = 100
 };
 
 struct ipc4_copier_config_timestamp_init_data {

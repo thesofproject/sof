@@ -914,6 +914,7 @@ __cold static int copier_set_configuration(struct processing_module *mod,
 					   size_t response_size)
 {
 	struct comp_dev *dev = mod->dev;
+	struct copier_data *cd = module_get_private_data(mod);
 
 	assert_can_be_cold();
 
@@ -926,6 +927,13 @@ __cold static int copier_set_configuration(struct processing_module *mod,
 		return set_attenuation(dev, fragment_size, (const char *)fragment);
 	case IPC4_COPIER_MODULE_CFG_PARAM_CHANNEL_MAP:
 		return set_chmap(dev, fragment, fragment_size);
+	case IPC4_COPIER_MODULE_CFG_PARAM_DRAIN_BYTES:
+		if (!cd->hd || fragment_size < sizeof(uint64_t))
+			return -EINVAL;
+		memcpy_s(&cd->hd->drain_bytes, sizeof(cd->hd->drain_bytes),
+			 fragment, sizeof(uint64_t));
+		comp_dbg(dev, "copier drain_bytes=%u", (uint32_t)cd->hd->drain_bytes);
+		return 0;
 	default:
 		return -EINVAL;
 	}

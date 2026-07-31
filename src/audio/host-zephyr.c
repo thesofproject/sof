@@ -400,6 +400,21 @@ static inline bool host_handle_eos(struct host_data *hd, struct comp_dev *dev,
 	if (!dev->pipeline->expect_eos)
 		return false;
 
+	/*
+	 * Compress drain over a free-running HDA gateway: the write pointer never
+	 * settles so avail_samples cannot reach 0. The host instead tells us the
+	 * committed byte total (drain_bytes); once we have delivered that many
+	 * bytes downstream the real input is exhausted - flag end-of-stream.
+	 */
+	if (hd->drain_bytes && hd->total_data_processed >= hd->drain_bytes) {
+		if (state != AUDIOBUF_STATE_END_OF_STREAM) {
+			audio_buffer_set_eos(buffer);
+			comp_info(dev, "- EOS detected (drain %u bytes)",
+				  (uint32_t)hd->drain_bytes);
+		}
+		return true;
+	}
+
 	if (!avail_samples) {
 		/* EOS is detected, so we need to set the sink
 		 * state to AUDIOBUF_STATE_END_OF_STREAM.
@@ -1226,6 +1241,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 	hd->report_pos = 0;
 #endif
 	hd->total_data_processed = 0;
+	hd->drain_bytes = 0;
 
 	hd->copy_type = COMP_COPY_NORMAL;
 	hd->source = NULL;
