@@ -401,6 +401,21 @@ static inline bool host_handle_eos(struct host_data *hd, struct comp_dev *dev,
 	if (!dev->expect_eos)
 		return false;
 
+	/*
+	 * Compress drain over a free-running HDA gateway: the write pointer never
+	 * settles so avail_samples cannot reach 0. The host instead tells us the
+	 * committed byte total (drain_bytes); once we have delivered that many
+	 * bytes downstream the real input is exhausted - flag end-of-stream.
+	 */
+	if (hd->drain_bytes && hd->total_data_processed >= hd->drain_bytes) {
+		if (state != AUDIOBUF_STATE_END_OF_STREAM) {
+			audio_buffer_set_eos(buffer);
+			comp_info(dev, "- EOS detected (drain %u bytes)",
+				  (uint32_t)hd->drain_bytes);
+		}
+		return true;
+	}
+
 	if (!avail_samples) {
 		/* EOS is detected, so we need to set the sink
 		 * state to AUDIOBUF_STATE_END_OF_STREAM.
@@ -474,6 +489,21 @@ static uint32_t host_get_copy_bytes_normal(struct host_data *hd, struct comp_dev
 	}
 
 	dma_copy_bytes = MIN(avail_samples, free_samples) * dma_sample_bytes;
+
+	/*
+	 * Clamp playback copy bytes to remaining committed drain bytes so we do not
+	 * enqueue stale free-running HDA gateway data past the committed file boundary.
+	 * Bound the 64-bit remainder against the current copy size before narrowing to uint32_t.
+	 */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK && dev->expect_eos && hd->drain_bytes) {
+		if (hd->total_data_processed < hd->drain_bytes) {
+			uint64_t remaining = hd->drain_bytes - hd->total_data_processed;
+
+			remaining = ALIGN_UP(remaining, (uint64_t)dma_sample_bytes);
+			if (remaining < (uint64_t)dma_copy_bytes)
+				dma_copy_bytes = (uint32_t)remaining;
+		}
+	}
 
 	/* limit bytes per copy to one period for the whole pipeline
 	 * in order to avoid high load spike
@@ -1239,6 +1269,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 	hd->report_pos = 0;
 #endif
 	hd->total_data_processed = 0;
+	hd->drain_bytes = 0;
 
 	hd->copy_type = COMP_COPY_NORMAL;
 	hd->source = NULL;
