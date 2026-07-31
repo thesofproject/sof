@@ -81,4 +81,38 @@ struct k_work_user *userspace_proxy_register_ipc_handler(struct processing_modul
 
 #endif /* CONFIG_SOF_USERSPACE_PROXY */
 
+/*
+ * Per-core userspace IPC worker lifecycle.
+ *
+ * A userspace IPC worker is a user-mode work queue (and its worker thread) that
+ * services IPC requests targeting userspace modules running on a given core. The
+ * worker is created on, and managed from, the primary core. Configurations that do
+ * not use a dedicated per-core worker resolve these calls to no-ops.
+ */
+#if CONFIG_SOF_USERSPACE_PROXY && !CONFIG_SOF_USERSPACE_MOD_IPC_BY_DP_THREAD
+/**
+ * Create the userspace IPC worker for the given core.
+ *
+ * Must be called while running on the primary core. The worker thread is pinned to
+ * the target core. Calling it again for a core that already has a worker is a no-op.
+ *
+ * @param cpu - target core id the worker is created for
+ * @return 0 on success, negative error code otherwise.
+ */
+int user_worker_create(int cpu);
+
+/**
+ * Free the userspace IPC worker for the given core.
+ *
+ * Must be called from the primary core while the target core is still running, as it
+ * aborts the worker thread.
+ *
+ * @param cpu - target core id whose worker is freed
+ */
+void user_worker_free(int cpu);
+#else
+static inline int user_worker_create(int cpu) { return 0; }
+static inline void user_worker_free(int cpu) { }
+#endif
+
 #endif /* __SOF_AUDIO_USERSPACE_PROXY_H__ */

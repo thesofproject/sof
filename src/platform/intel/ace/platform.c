@@ -7,6 +7,7 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
+#include <sof/audio/module_adapter/library/userspace_proxy.h>
 #include <sof/debug/debug.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/driver.h>
@@ -157,6 +158,13 @@ __cold int platform_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 #endif
+
+	/* Create the userspace IPC worker for the primary core. Secondary cores get
+	 * theirs from cpu_enable_core(). Resolves to a no-op when unused.
+	 */
+	ret = user_worker_create(cpu_get_id());
+	if (ret < 0)
+		return ret;
 
 	/* show heap status */
 	heap_trace_all(1);
