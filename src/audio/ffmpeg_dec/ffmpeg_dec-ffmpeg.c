@@ -227,6 +227,42 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
  * S16, 16-bit FLAC -> S16, 24-bit FLAC -> S32); the float paths cover the
  * planar-float decoders (AAC, Opus) added later.
  */
+/*
+ * Branch-free soft-float-free float -> Q1.31 for f in [-1, 1).
+ *
+ * On this DSP scalar float compiles to libgcc soft-float (no scalar HW-FP0),
+ * so the naive `(int32_t)(f * 2147483648.0f)` per sample dominates the whole
+ * AAC decode (profiled: ~65-82% of every frame, and its soft-float cost is
+ * data-dependent: near-silence cheap, full-scale ~4x). Multiplying an IEEE-754
+ * float by 2^31 is EXACT (it only bumps the exponent), and the cast truncates
+ * toward zero, so the same value is obtained by shifting the 24-bit significand
+ * -- pure integer, constant-time, and bit-exact with the old float path.
+ *
+ *   f = (-1)^s * M * 2^(e-150),  M = (1<<23)|mant   (normalised)
+ *   f * 2^31   = M * 2^(e-119)                       (shift = e-119)
+ * |f| >= 1.0 (e >= 127) saturates; denormals/zero (e < 96) round to 0.
+ */
+static inline int32_t ffmpeg_dec_f32_to_q31(float f)
+{
+	union { float f; uint32_t u; } v = { .f = f };
+	uint32_t u = v.u;
+	uint32_t sign = u >> 31;
+	int e = (int)((u >> 23) & 0xFF);
+	uint32_t mant = (u & 0x7FFFFFU) | 0x800000U;	/* 24-bit significand */
+	int shift = e - 119;
+	int32_t q;
+
+	if (e >= 127)					/* |f| >= 1.0 -> full scale */
+		return sign ? INT32_MIN : INT32_MAX;
+	if (shift >= 0)
+		q = (int32_t)(mant << shift);
+	else if (shift > -32)
+		q = (int32_t)(mant >> (-shift));
+	else
+		q = 0;
+	return sign ? -q : q;
+}
+
 static inline int32_t ffmpeg_dec_src_to_q31(const uint8_t *p, int fmt)
 {
 	switch (fmt) {
@@ -240,15 +276,8 @@ static inline int32_t ffmpeg_dec_src_to_q31(const uint8_t *p, int fmt)
 	case AV_SAMPLE_FMT_S32P:
 		return *(const int32_t *)p;
 	case AV_SAMPLE_FMT_FLT:
-	case AV_SAMPLE_FMT_FLTP: {
-		float f = *(const float *)p;
-
-		if (f >= 1.0f)
-			return INT32_MAX;
-		if (f <= -1.0f)
-			return INT32_MIN;
-		return (int32_t)(f * 2147483648.0f);
-	}
+	case AV_SAMPLE_FMT_FLTP:
+		return ffmpeg_dec_f32_to_q31(*(const float *)p);
 	default:
 		return 0;
 	}
