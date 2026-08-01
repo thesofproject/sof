@@ -392,12 +392,12 @@ add_library(tflm_lib STATIC
 
 	${TFLM_KERNEL_SOURCES}
 
-	${TFLM_PATH}/tensorflow/lite/micro/mock_micro_graph.cc
+	#${TFLM_PATH}/tensorflow/lite/micro/mock_micro_graph.cc
 	${TFLM_PATH}/tensorflow/lite/micro/flatbuffer_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_graph.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_resource_variable.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_context.cc
-	${TFLM_PATH}/tensorflow/lite/micro/fake_micro_context.cc
+	#${TFLM_PATH}/tensorflow/lite/micro/fake_micro_context.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/persistent_arena_buffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/recording_single_arena_buffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/non_persistent_arena_buffer_allocator.cc
@@ -407,14 +407,14 @@ add_library(tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/tflite_bridge/micro_error_reporter.cc
 	${TFLM_PATH}/tensorflow/lite/micro/system_setup.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/span_test.cc
-	${TFLM_PATH}/tensorflow/lite/micro/test_helper_custom_ops.cc
+	#${TFLM_PATH}/tensorflow/lite/micro/test_helper_custom_ops.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_context.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_log.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_profiler.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_time.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/static_vector_test.cc
 	${TFLM_PATH}/tensorflow/lite/micro/debug_log.cc
-	${TFLM_PATH}/tensorflow/lite/micro/test_helpers.cc
+	#${TFLM_PATH}/tensorflow/lite/micro/test_helpers.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_op_resolver.cc
 	${TFLM_PATH}/tensorflow/lite/micro/recording_micro_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/memory_helpers.cc
@@ -473,10 +473,43 @@ target_compile_options(tflm_lib PRIVATE
 	-mlongcalls
 	-DNNLIB_V2
 	-Wno-shadow
+	-fno-function-sections
+	-fno-data-sections
 )
 
+# Use GNU libstdc++ headers (from zephyr-sdk gcc toolchain) which work with
+# both gcc and Clang. The -stdlib=libc++ approach requires an installed libc++
+# runtime that is not available for the xtensa target in this LLVM build.
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-	target_compile_options(tflm_lib PRIVATE -stdlib=libc++)
+	# Add GNU libstdc++ headers so Clang can find <algorithm>, <cstdarg>, etc.
+	file(GLOB _gnu_cxx_dirs
+		"/home/lrg/zephyr-sdk-*/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include/c++/*/")
+	file(GLOB _gnu_c_dirs
+		"/home/lrg/zephyr-sdk-*/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/include/")
+	if(_gnu_cxx_dirs)
+		list(GET _gnu_cxx_dirs 0 _gnu_cxx_dir)
+		target_include_directories(tflm_lib SYSTEM PRIVATE
+			${_gnu_cxx_dir}
+			${_gnu_cxx_dir}/xtensa-intel_ace15_mtpm_zephyr-elf
+		)
+	endif()
+	if(_gnu_c_dirs)
+		list(GET _gnu_c_dirs 0 _gnu_c_dir)
+		target_include_directories(tflm_lib SYSTEM PRIVATE
+			${_gnu_c_dir}
+		)
+	endif()
+	# Clang builtin headers (stdarg.h, stdint.h wrappers, etc.)
+	execute_process(
+		COMMAND ${CMAKE_CXX_COMPILER} -print-resource-dir
+		OUTPUT_VARIABLE _clang_res_dir
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	if(_clang_res_dir AND EXISTS "${_clang_res_dir}/include")
+		target_include_directories(tflm_lib SYSTEM PRIVATE
+			${_clang_res_dir}/include
+		)
+	endif()
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "Xtensa")
@@ -498,11 +531,32 @@ sof_llext_build("tflm"
 
 	INCLUDES
 		${TFLM_PATH}
+		${sof_top_dir}/src/include
+		${sof_top_dir}/src/arch/xtensa/include
+		${ZEPHYR_BASE}/include
+		${ZEPHYR_BASE}/soc/intel/intel_adsp/ace/include/ace15_mtpm
+		${ZEPHYR_BASE}/../modules/hal/xtensa/include
+		${ZEPHYR_BASE}/../modules/hal/xtensa/zephyr/soc/intel_ace15_mtpm
 
 	# TFLM is a C++ userspace application so hence we need to link
 	# userspace C++, C, maths and C runtime for llext module usage.
 	LIBS tflm_lib ${TFLM_EXTRA_LIBS} ${TFLM_STD_LIBS} m c gcc
 	LIBS_PATH .
+		/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/xtensa-intel_ace15_mtpm_zephyr-elf/lib
+		/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/lib/gcc/xtensa-intel_ace15_mtpm_zephyr-elf/14.3.0
 )
+
+# Note: format_hifi3.h needs xtensa/config/defs.h and xtensa/tie/xt_hifi3.h.
+# Stub headers for these are provided in the intel_ace15_mtpm HAL for LLVM builds.
+
+# The llext link helper uses CMAKE_C_COMPILER (clang) as the linker driver.
+# Without --target, clang defaults to the host (x86_64) linker and cannot link
+# xtensa ELF objects. Add the target triple and xtensa linker path explicitly.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	llext_link_options(tflm
+		--target=xtensa-intel_ace15_mtpm_zephyr-elf
+		--ld-path=/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-intel_ace15_mtpm_zephyr-elf/bin/xtensa-intel_ace15_mtpm_zephyr-elf-ld
+	)
+endif()
 
 
