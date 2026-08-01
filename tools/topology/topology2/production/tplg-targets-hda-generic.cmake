@@ -124,6 +124,8 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-hda-generic-ace3-2ch-dax.bin,\
 DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
 EFX_DMIC0_DRC_PARAMS=dmic_default,DOLBY_DAX_CORE_ID=1"
 
-# HDA Mic TFLM Topology Target
+# HDA Mic TFLM Topology Targets with KPB
 "sof-hda-tflm\;sof-hda-tflm\;"
+"sof-hda-tflm\;sof-mtl-hda-tflm-kpb\;PLATFORM=mtl"
+"sof-hda-tflm\;sof-ptl-hda-tflm-kpb\;PLATFORM=ptl"
 )
