@@ -178,6 +178,33 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt713-l3-rt1320-l1.bin"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
 
+# Lenovo Yoga 9 2-in-1 14IPH11 with CS42L43 and two CS35L57 all on link 0
+# The CS35L57 firmware applies the excursion protection tuned for these woofers,
+# so the generic 100 Hz speaker high-pass is relaxed to 30 Hz on all three.
+"cavs-sdw\;sof-ptl-cs42l43-l0\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+EFX_SPK_IIR_PARAMS=highpass_30hz_0db_48khz,\
+DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,BT_PCM_ID=20,BT_ID=8,BT_PCM_NAME=Bluetooth,ADD_BT=true"
+
+"cavs-sdw\;sof-ptl-cs42l43-l0-4ch\;PLATFORM=ptl,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
+PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,DMIC0_ID=3,DMIC1_ID=4,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-cs42l43-l0-4ch.bin,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
+EFX_SPK_IIR_PARAMS=highpass_30hz_0db_48khz,\
+DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,BT_PCM_ID=20,BT_ID=8,BT_PCM_NAME=Bluetooth,ADD_BT=true"
+
+"cavs-sdw\;sof-ptl-cs42l43-l0-2ch\;PLATFORM=ptl,NUM_SDW_AMP_LINKS=1,NUM_DMICS=2,\
+PDM1_MIC_A_ENABLE=0,PDM1_MIC_B_ENABLE=0,DMIC0_ID=3,DMIC1_ID=4,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-cs42l43-l0-2ch.bin,\
+DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,EFX_DMIC0_DRC_PARAMS=dmic_default,\
+EFX_SPK_IIR_PARAMS=highpass_30hz_0db_48khz,\
+DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true,BT_PCM_ID=20,BT_ID=8,BT_PCM_NAME=Bluetooth,ADD_BT=true"
+
 "cavs-sdw\;sof-ptl-cs42l43-agg-l3-cs35l56-l2\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=2,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
