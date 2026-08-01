@@ -1,12 +1,12 @@
 # TensorFlow Lite Micro (TFLM) & Wake-on-Voice (WoV) Architecture
 
-This directory provides the TensorFlow Lite for Microcontrollers (TFLM) classification module (`TFLMCLY`) for Sound Open Firmware (SOF), including integration with MFCC feature extraction, mtrace logging, IPC host notifications, and Key Phrase Buffer (KPB) Wake-on-Voice (WoV) trigger infrastructure.
+This directory provides the TensorFlow Lite for Microcontrollers (TFLM) classification module (`TFLMCLY`) for Sound Open Firmware (SOF), including integration with MFCC feature extraction, `mtrace` stream shutdown summary logging, IPC host notifications, Key Phrase Buffer (KPB) Wake-on-Voice (WoV) trigger infrastructure, and abstracted audio input sources across **HDA**, **DMIC**, **SSP (I2S)**, and **SoundWire (ALH)**.
 
 ---
 
 ## Overview
 
-The TFLM module evaluates pre-trained micro speech neural network models inline within the SOF audio processing graph. It receives pre-processed audio feature tensors (e.g. 40-bin mel spectrograms from the MFCC component), runs model inference, logs keyword detections to `mtrace`, issues IPC4 notifications to the host audio driver, and signals the KPB module to drain buffered pre-keyword audio for Wake-on-Voice.
+The TFLM module evaluates pre-trained micro speech neural network models inline within the SOF audio processing graph. It receives pre-processed audio feature tensors (e.g. 80-bin mel spectrograms from the `mfcc` component), runs model inference in the **Data Processing (DP) domain**, logs keyword detections and stream shutdown event summaries to `mtrace`, issues IPC4 notifications to the host audio driver, and signals the KPB module to drain pre-roll audio history upon keyword detection.
 
 ---
 
@@ -18,55 +18,115 @@ To allow continuous keyword evaluation without streaming audio to the host until
 
 ```mermaid
 graph TD
-    DAI[HDA Mic DAI] --> Gain[Gain Component]
-    Gain --> KPB[KPB Buffer Module]
-
-    subgraph "Real-Time Detection Path (KPB Pin 1)"
-        KPB -- Live Audio Stream --> SRC[SRC: 48kHz -> 16kHz]
-        SRC --> MFCC[MFCC Feature Extractor]
-        MFCC -- 40-bin Mel Tensors --> TFLM[TFLM Classifier: tflmcly]
-        TFLM --> VSink[Virtual Sink: virtual.tflm_sink]
+    subgraph Audio_Inputs ["Abstracted Hardware DAI Input Sources"]
+        HDA["HDA Analog Input (dai_type: HDA)"]
+        DMIC["PCH DMIC Digital Mic (dai_type: DMIC)"]
+        SSP["I2S / Bluetooth Codec (dai_type: SSP)"]
+        SDW["SoundWire SmartMic (dai_type: ALH)"]
     end
 
-    subgraph "Host Draining Path (KPB Pin 2)"
-        KPB -- History Draining Stream --> Host[Host Copier: PCM Capture]
+    subgraph DAI_Abstraction ["Backend DAI Copier Widget"]
+        DAI["dai-copier.1 (dai_type: $CAPTURE_DAI_TYPE)"]
     end
 
-    TFLM -- "1. Log to mtrace (comp_info)" --> MTrace[mtrace / SOF Trace Log]
-    TFLM -- "2. IPC4 Host Notification" --> IPC[Host Audio Driver]
-    TFLM -- "3. KPB_EVENT_BEGIN_DRAINING (notifier_event)" --> KPB
+    subgraph KPB_Pipeline ["Capture & KPB Pipeline"]
+        Gain["gain.2.1 (Volume Control)"]
+        KPB["kpb.2.1 (Key Phrase Buffer)"]
+    end
+
+    subgraph Detect_Pipeline ["Real-Time Detection Path (KPB Pin 1) - DP Domain"]
+        SRC["src.1.1 (Resampler: 48kHz -> 16kHz)"]
+        MFCC["mfcc.1.1 (Mel-80 Feature Extractor)"]
+        TFLM["tflmcly.1.1 (TFLM Keyword Classifier LLEXT)"]
+        VSink["virtual.tflm_sink (Termination)"]
+    end
+
+    subgraph Host_Pipeline ["Host WoV Draining Path (KPB Pin 2)"]
+        Host["host-copier.0.capture (PCM Capture Stream)"]
+    end
+
+    HDA --> DAI
+    DMIC --> DAI
+    SSP --> DAI
+    SDW --> DAI
+
+    DAI --> Gain
+    Gain --> KPB
+    KPB -- Pin 1: Live Audio --> SRC
+    SRC --> MFCC
+    MFCC -- Mel-80 Tensors --> TFLM
+    TFLM --> VSink
+
+    TFLM -.->|1. KPB_EVENT_BEGIN_DRAINING Notifier| KPB
+    TFLM -.->|2. IPC4 Notification| Host_Driver[Host Driver]
+    TFLM -.->|3. Stream Shutdown Event Logging| MTrace[mtrace / Trace Log]
+
+    KPB -- Pin 2: Pre-roll History Buffer --> Host
 ```
 
 ---
 
-## Pipeline Execution & Event Flow
+## Domain Execution Model (LL vs. DP)
 
-1. **Continuous Real-Time Listening**:
-   - Live microphone audio is captured by the HDA DAI and passed into `KPB` (`kpb.2.1`).
-   - KPB Output Pin 1 continuously streams audio to `SRC` (resampling 48kHz $\to$ 16kHz), `MFCC` (generating 40-bin `int8_t` mel spectrogram features), and `TFLM` (`tflmcly.1.1`).
-   - KPB stores the raw PCM audio continuously in its circular history buffer (e.g. 2100ms – 3000ms history).
+- **Low Latency (LL) Domain (Timer Task / 1ms tick loop)**:
+  - Components: `dai-copier`, `eqiir`, `tdfb`, `drc`, `host-copier`
+  - Purpose: Fixed 1 ms tick loop executed on Core 0 to meet hard real-time audio hardware deadlines.
+  - Metrics: Reported via `ll_schedule.stats_report` (e.g. `ll core 0 timer avg 22,049 cycles (~56 µs)`).
 
-2. **Inference & Keyword Detection**:
-   - `tflm_process()` feeds 1960-byte feature tensors ($40 \text{ features} \times 49 \text{ windows}$) into the Micro Speech TFLM interpreter (`[1, 49, 40]` `int8_t` input tensor).
-   - Upon `TF_ProcessClassify()`, predictions are evaluated across categories:
-     - `0`: `silence`
-     - `1`: `unknown`
-     - `2`: `yes` (Keyword)
-     - `3`: `no` (Keyword)
+- **Data Processing (DP) Domain (Asynchronous Task)**:
+  - Components: `src`, `micsel`, `mfcc`, `tflmcly` (`tflm.llext`)
+  - Purpose: Runs asynchronously in background thread whenever 344-byte feature frames are produced by `mfcc`.
+  - **Separation**: Because TFLM runs in the DP domain, model inference cycles take place outside the 1 ms LL tick loop, guaranteeing zero impact on real-time LL audio latency or buffer overruns.
 
-3. **Wake-on-Voice Trigger & Notification**:
-   When a keyword (`yes` or `no`) is detected with $\ge 0.70$ confidence:
-   - **mtrace Logging**: Logs detection with keyword label and confidence score via `comp_info()`:
-     `"TFLM keyword detected: yes (confidence 0.852)"`
-   - **Host IPC Notification**: Sends an IPC4 module notification (`SOF_IPC4_MODULE_NOTIFICATION`) to inform the host driver.
-   - **KPB Draining Signal**: Fires a system notification event (`NOTIFIER_ID_KPB_CLIENT_EVT`) with `KPB_EVENT_BEGIN_DRAINING`.
-   - **Host PCM Draining**: KPB opens Output Pin 2 to `host-copier`, draining pre-keyword history buffer audio followed by live mic audio to the host capture stream.
+---
+
+## Stream Shutdown Summary Event Logging
+
+Upon stream reset or module destruction (`tflm_reset()` / `tflm_free()`), TFLM emits a comprehensive summary log to `printk` and DSP trace logs detailing total event occurrences:
+
+```text
+[TFLM STREAM SHUTDOWN SUMMARY] Total Inferences=142 | Keyword Events: Silence=120, Unknown=18, Yes=3, No=1 | Total KPB Triggers=4
+```
+
+### Log Fields:
+- `Total Inferences`: Cumulative number of classification inferences completed during the stream session.
+- `Keyword Events`: Per-category classification breakdown (`silence`, `unknown`, `yes`, `no`).
+- `Total KPB Triggers`: Number of high-confidence keyword detections that triggered pre-roll audio history draining (`KPB_EVENT_BEGIN_DRAINING`).
+
+---
+
+## Abstracted Audio Input Sources in Topology v2
+
+The TFLM Keyword Detection and KPB pre-roll pipeline is decoupled from the physical DAI input source using the generic `dai-copier` widget:
+
+```conf
+Object.Widget.dai-copier.1 {
+    dai_type    $CAPTURE_DAI_TYPE     # "HDA", "DMIC", "SSP", or "ALH" (SoundWire)
+    copier_type $CAPTURE_COPIER_TYPE  # "HDA", "DMIC", "SSP", or "ALH"
+    stream_name $CAPTURE_DAI_NAME    # "Analog", "DMIC01", "SSP0", "SDW0-Capture"
+    node_type   $CAPTURE_NODE_TYPE    # $HDA_LINK_INPUT_CLASS, $DMIC_LINK_INPUT_CLASS, etc.
+}
+```
+
+Platform wrappers select the input source cleanly via configuration defines:
+```conf
+Define {
+    CAPTURE_SOURCE "hda" # Options: "hda", "dmic", "ssp", "soundwire"
+}
+
+IncludeByKey.CAPTURE_SOURCE {
+    "hda"       "platform/intel/capture-hda.conf"
+    "dmic"      "platform/intel/capture-dmic.conf"
+    "ssp"       "platform/intel/capture-ssp.conf"
+    "soundwire" "platform/intel/capture-sdw.conf"
+}
+```
 
 ---
 
 ## Topology v2 Integration & Usage
 
-### 1. Component Widget (`include/components/tflm.conf`)
+### 1. Component Widget Definition (`include/components/tflm.conf`)
 
 Defines `Class.Widget."tflmcly"`:
 - **UUID**: `42:c6:1d:c5:e1:a2:df:48:a4:90:e2:74:8c:b6:36:3e` (`c51dc642-a2e1-48df-a490e2748cb6363e`)
@@ -93,7 +153,7 @@ Object.Base.route [
     { source "dai-copier.HDA.Analog.capture"; sink "gain.2.1" }
     { source "gain.2.1"; sink "kpb.2.1" }
 
-    # KPB Pin 1 -> Real-time Detection Path
+    # KPB Pin 1 -> Real-time Detection Path (DP Domain)
     { source "kpb.2.1"; sink "src.1.1" }
 
     # KPB Pin 2 -> Host WoV Draining Path
@@ -105,42 +165,29 @@ Object.Base.route [
 
 ## Building and Testing Topologies
 
-### Pre-processing and Compiling with `alsatplg`
+### 1. Building Topology Targets with Ninja
 
-Build `sof-hda-tflm.tplg` using the Topology v2 pre-processor:
-
-```bash
-ALSA_CONFIG_DIR=tools/topology/topology2 \
-  tools/bin/alsatplg \
-  -I tools/topology/topology2/ \
-  -p -c tools/topology/topology2/sof-hda-tflm.conf \
-  -o build/sof-hda-tflm.tplg
-```
-
-### Inspecting Decoded Topology Graphs
-
-Decode and verify the compiled `.tplg` binary:
+From `sof/tools/build_tools`:
 
 ```bash
-tools/bin/alsatplg -d build/sof-hda-tflm.tplg -o decoded.txt
-grep -A 20 "SectionGraph" decoded.txt
+# Build HDA TFLM KPB Topologies (MTL / PTL)
+ninja topology2_prod_sof-mtl-hda-tflm-kpb
+ninja topology2_prod_sof-ptl-hda-tflm-kpb
+
+# Build SoundWire TFLM Topology (ARL-S)
+ninja topology2_dev_sof-arl-cs42l43-l0-cs35l56-l23-mfcc-mel-normal
 ```
 
-Expected graph output:
-```text
-SectionGraph {
-    set0 {
-        gain.2.1 <- dai-copier.HDA.Analog.capture
-        kpb.2.1 <- gain.2.1
-        src.1.1 <- kpb.2.1                 (Real-Time Detection Path)
-        host-copier.0.capture <- kpb.2.1   (Host WoV Draining Path)
-    }
-    set1 {
-        mfcc.1.1 <- src.1.1
-        tflmcly.1.1 <- mfcc.1.1
-        virtual.tflm_sink <- tflmcly.1.1   (Detection Sink Termination)
-    }
-}
+### 2. Streaming & Capturing Performance / Trace Logs on Target DUT
+
+Run `arecord` with standard mandatory timeouts:
+
+```bash
+# Record 10s audio stream to trigger TFLM pipeline execution
+ssh root@dragon-fly 'timeout 10s arecord -D hw:0,4 -f S32_LE -r 48000 -c 2 -d 10 /tmp/test_stream.wav'
+
+# Read DSP mtrace logs to observe inferences and shutdown summary
+ssh root@dragon-fly 'timeout 10s /usr/local/bin/mtrace-reader.py'
 ```
 
 ---
