@@ -7,6 +7,7 @@
 #include <zephyr/logging/log_output.h>
 #include <zephyr/logging/log_backend_std.h>
 #include <zephyr/kernel.h>
+#include <rtos/symbol.h>
 
 #include <sof/audio/buffer.h>
 #include <sof/ipc/topology.h>
