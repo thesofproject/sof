@@ -593,6 +593,7 @@ struct comp_driver {
 							  * Currently used by module_adapter.
 							  */
 	struct k_heap *user_heap;			/**< Userspace heap */
+	struct sof_uuid uid_cp;				/**< UUID copy for LLEXT modules */
 };
 
 /** \brief Holds constant pointer to component driver */
