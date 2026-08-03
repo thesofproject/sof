@@ -111,41 +111,64 @@ __cold static inline unsigned char *ipc4_get_comp_new_data(void)
 }
 #endif
 
+__cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
+				       const struct ipc4_module_init_instance *module_init)
+{
+	uint32_t comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
+					module_init->primary.r.instance_id);
+
+	assert_can_be_cold();
+
+	if (ipc4_get_comp_dev(comp_id)) {
+		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
+		return -EEXIST;
+	}
+
+	if (module_init->extension.r.core_id >= CONFIG_CORE_COUNT) {
+		tr_err(&ipc_tr, "ipc: comp->core = %u", (uint32_t)module_init->extension.r.core_id);
+		return -EINVAL;
+	}
+
+	memset(ipc_config, 0, sizeof(*ipc_config));
+	ipc_config->id = comp_id;
+	ipc_config->pipeline_id = module_init->extension.r.ppl_instance_id;
+	ipc_config->core = module_init->extension.r.core_id;
+	ipc_config->ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
+	ipc_config->ipc_extended_init = module_init->extension.r.extended_init;
+	if (ipc_config->ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
+		tr_err(&ipc_tr, "IPC payload size %u too big for the message window",
+		       ipc_config->ipc_config_size);
+		return -ENOSPC;
+	}
+
+	if (!module_init->extension.r.proc_domain) {
+		ipc_config->proc_domain = COMP_PROCESSING_DOMAIN_LL;
+	} else if (IS_ENABLED(CONFIG_ZEPHYR_DP_SCHEDULER)) {
+		ipc_config->proc_domain = COMP_PROCESSING_DOMAIN_DP;
+	} else {
+		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp 0x%x", comp_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* Only called from ipc4_init_module_instance(), which is __cold */
 __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *module_init)
 {
 	struct comp_ipc_config ipc_config;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
-	uint32_t comp_id;
 	unsigned char *data;
+	uint32_t comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
+					module_init->primary.r.instance_id);
 
 	assert_can_be_cold();
 
-	comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
-			       module_init->primary.r.instance_id);
+	int ret = ipc4_comp_new_config(&ipc_config, module_init);
 
-	if (ipc4_get_comp_dev(comp_id)) {
-		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
+	if (ret < 0)
 		return NULL;
-	}
-
-	if (module_init->extension.r.core_id >= CONFIG_CORE_COUNT) {
-		tr_err(&ipc_tr, "ipc: comp->core = %u", (uint32_t)module_init->extension.r.core_id);
-		return NULL;
-	}
-
-	memset(&ipc_config, 0, sizeof(ipc_config));
-	ipc_config.id = comp_id;
-	ipc_config.pipeline_id = module_init->extension.r.ppl_instance_id;
-	ipc_config.core = module_init->extension.r.core_id;
-	ipc_config.ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
-	ipc_config.ipc_extended_init = module_init->extension.r.extended_init;
-	if (ipc_config.ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
-		tr_err(&ipc_tr, "IPC payload size %u too big for the message window",
-		       ipc_config.ipc_config_size);
-		return NULL;
-	}
 
 	/* Reject a module naming a non-existent parent pipeline: otherwise
 	 * dev->pipeline stays NULL and a later init path (e.g. the copier)
@@ -160,6 +183,7 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 		       (uint32_t)ipc_config.pipeline_id);
 		return NULL;
 	}
+
 #ifdef CONFIG_DCACHE_LINE_SIZE
 	if (!IS_ENABLED(CONFIG_LIBRARY))
 		sys_cache_data_invd_range((__sparse_force void __sparse_cache *)
@@ -176,15 +200,6 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 #endif
 	if (!drv)
 		return NULL;
-
-	if (!module_init->extension.r.proc_domain) {
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-	} else if (IS_ENABLED(CONFIG_ZEPHYR_DP_SCHEDULER)) {
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
-	} else {
-		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp 0x%x", comp_id);
-		return NULL;
-	}
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
@@ -238,43 +253,19 @@ __cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 	struct ipc4_module_init_instance module_init;
 	struct comp_ipc_config ipc_config;
 	struct comp_dev *dev;
-	uint32_t comp_id;
 	unsigned char *data;
-	int ret;
 
 	assert_can_be_cold();
 
-	ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
+	int ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
+
 	if (ret < 0)
 		return NULL;
 
-	comp_id = IPC4_COMP_ID(module_init.primary.r.module_id,
-			       module_init.primary.r.instance_id);
-
-	if (ipc4_get_comp_dev(comp_id)) {
-		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
+	ret = ipc4_comp_new_config(&ipc_config, &module_init);
+	if (ret < 0)
 		return NULL;
-	}
 
-	if (module_init.extension.r.core_id >= CONFIG_CORE_COUNT) {
-		tr_err(&ipc_tr, "ipc: comp->core = %u",
-		       (uint32_t)module_init.extension.r.core_id);
-		return NULL;
-	}
-
-	memset(&ipc_config, 0, sizeof(ipc_config));
-	ipc_config.id = comp_id;
-	ipc_config.pipeline_id = module_init.extension.r.ppl_instance_id;
-	ipc_config.core = module_init.extension.r.core_id;
-	ipc_config.ipc_config_size =
-		module_init.extension.r.param_block_size * sizeof(uint32_t);
-	ipc_config.ipc_extended_init = module_init.extension.r.extended_init;
-	if (ipc_config.ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
-		tr_err(&ipc_tr,
-		       "IPC payload size %u too big for the message window",
-		       ipc_config.ipc_config_size);
-		return NULL;
-	}
 #ifdef CONFIG_DCACHE_LINE_SIZE
 	if (!IS_ENABLED(CONFIG_LIBRARY))
 		sys_cache_data_invd_range(
@@ -283,17 +274,6 @@ __cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 				 CONFIG_DCACHE_LINE_SIZE));
 #endif
 	data = ipc4_get_comp_new_data();
-
-	if (!module_init.extension.r.proc_domain) {
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-	} else if (IS_ENABLED(CONFIG_ZEPHYR_DP_SCHEDULER)) {
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
-	} else {
-		tr_err(&ipc_tr,
-		       "ipc: DP scheduling is disabled, cannot create comp 0x%x",
-		       comp_id);
-		return NULL;
-	}
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
