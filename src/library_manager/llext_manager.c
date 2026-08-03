@@ -572,7 +572,7 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 }
 
 /* Find a module context, containing the driver with the supplied index */
-static int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
+int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
 {
 	unsigned int i;
 
