@@ -295,9 +295,7 @@ __cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
 #else
 	if (module_init.extension.r.proc_domain) {
-		tr_err(&ipc_tr,
-		       "ipc: DP scheduling is disabled, cannot create comp 0x%x",
-		       comp_id);
+		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp 0x%x", comp_id);
 		return NULL;
 	}
 	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
@@ -1172,8 +1170,7 @@ __cold int ipc4_chain_manager_create(const struct ipc4_chain_dma *cdma)
 	const uint32_t comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id
 					      + IPC4_MAX_MODULE_COUNT, 0);
 	dev->ipc_config.id = comp_id;
-	dev->ipc_config.pipeline_id = cdma->primary.r.host_dma_id
-				      + IPC4_MAX_MODULE_COUNT;
+	dev->ipc_config.pipeline_id = cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT;
 
 	return ipc4_add_comp_dev(dev);
 }
@@ -1315,13 +1312,10 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 
 	/* search driver list with UUID */
 	list_for_item(clist, &drivers->list) {
-		info = container_of(clist, struct comp_driver_info,
-				    list);
+		info = container_of(clist, struct comp_driver_info, list);
 		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
-			tr_dbg(&comp_tr,
-			       "found type %d, uuid %pU",
-			       info->drv->type,
-			       info->drv->tctx->uuid_p);
+			tr_dbg(&comp_tr, "found type %d, uuid %pU",
+			       info->drv->type, info->drv->tctx->uuid_p);
 			drv = info->drv;
 			break;
 		}
@@ -1403,8 +1397,7 @@ static const struct comp_driver *ipc4_get_fuzzer_drv(uint32_t module_id)
 			return inf->drv;
 	}
 
-	tr_err(&comp_tr,
-	       "no instantiable driver at module_id %u (%u available)",
+	tr_err(&comp_tr, "no instantiable driver at module_id %u (%u available)",
 	       module_id, idx);
 	return NULL;
 }
@@ -1648,10 +1641,8 @@ void ipc4_audio_format_to_stream_params(const struct ipc4_audio_format *audio_fm
 	params->sample_valid_bytes = audio_fmt->valid_bit_depth / 8;
 	params->buffer_fmt = audio_fmt->interleaving_style;
 
-	audio_stream_fmt_conversion(audio_fmt->depth,
-				    audio_fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    audio_fmt->s_type);
+	audio_stream_fmt_conversion(audio_fmt->depth, audio_fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, audio_fmt->s_type);
 	params->frame_fmt = frame_fmt;
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
@@ -1676,10 +1667,8 @@ void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 
 	audio_stream_set_channels(&buf_c->stream, fmt->channels_count);
 	audio_stream_set_rate(&buf_c->stream, fmt->sampling_frequency);
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
+	audio_stream_fmt_conversion(fmt->depth, fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, fmt->s_type);
 
 	audio_stream_set_frm_fmt(&buf_c->stream, frame_fmt);
 	audio_stream_set_valid_fmt(&buf_c->stream, valid_fmt);
@@ -1698,10 +1687,8 @@ void ipc4_update_source_format(struct sof_source *source,
 
 	source_set_channels(source, fmt->channels_count);
 	source_set_rate(source, fmt->sampling_frequency);
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
+	audio_stream_fmt_conversion(fmt->depth, fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, fmt->s_type);
 
 	source_set_frm_fmt(source, frame_fmt);
 	source_set_valid_fmt(source, valid_fmt);
@@ -1716,10 +1703,8 @@ void ipc4_update_sink_format(struct sof_sink *sink,
 
 	sink_set_channels(sink, fmt->channels_count);
 	sink_set_rate(sink, fmt->sampling_frequency);
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
+	audio_stream_fmt_conversion(fmt->depth, fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, fmt->s_type);
 
 	sink_set_frm_fmt(sink, frame_fmt);
 	sink_set_valid_fmt(sink, valid_fmt);

@@ -82,8 +82,7 @@ __cold struct comp_buffer *buffer_new(struct mod_alloc_ctx *alloc,
 #endif
 
 	/* allocate buffer */
-	buffer = buffer_alloc(alloc, desc->size, flags, PLATFORM_DCACHE_ALIGN,
-			      is_shared);
+	buffer = buffer_alloc(alloc, desc->size, flags, PLATFORM_DCACHE_ALIGN, is_shared);
 	if (buffer) {
 		buffer->stream.runtime_stream_params.id = desc->comp.id;
 		buffer->stream.runtime_stream_params.pipeline_id = desc->comp.pipeline_id;
@@ -188,14 +187,12 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		if (dir == PPL_DIR_DOWNSTREAM) {
 			comp_dev_for_each_consumer(dev, buf) {
 				comp_update_params(flag, params, buf);
-				buffer_set_params(buf, params,
-						  BUFFER_UPDATE_FORCE);
+				buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
 			}
 		} else {
 			comp_dev_for_each_producer(dev, buf) {
 				comp_update_params(flag, params, buf);
-				buffer_set_params(buf, params,
-						  BUFFER_UPDATE_FORCE);
+				buffer_set_params(buf, params, BUFFER_UPDATE_FORCE);
 			}
 		}
 
@@ -284,11 +281,9 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 	pipeline_id = ipc_pipe->pipeline->pipeline_id;
 
-	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp 0x%x", pipeline_id,
-	       comp_id);
+	tr_dbg(&ipc_tr, "ipc: pipe %d -> complete on comp 0x%x", pipeline_id, comp_id);
 
-	return pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
-				 ipc_ppl_sink->cd);
+	return pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd, ipc_ppl_sink->cd);
 }
 
 __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
@@ -306,8 +301,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
 	if (!icd) {
-		tr_err(&ipc_tr, "comp id: 0x%x is not found",
-		       comp_id);
+		tr_err(&ipc_tr, "comp id: 0x%x is not found", comp_id);
 		return -ENODEV;
 	}
 
@@ -336,8 +330,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 		 * leak on error.  Bug-free host drivers won't do
 		 * this, this was found via fuzzing.
 		 */
-		tr_err(&ipc_tr, "uninitialized buffer lists on comp 0x%x\n",
-		       icd->id);
+		tr_err(&ipc_tr, "uninitialized buffer lists on comp 0x%x\n", icd->id);
 		return -EINVAL;
 	}
 
