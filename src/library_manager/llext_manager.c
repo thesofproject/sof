@@ -380,6 +380,18 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 		mctx->segment[LIB_MANAGER_BSS].size;
 	int err = 0, ret;
 
+	unsigned int sect_cnt = llext_section_count(ext);
+	size_t total = sect_cnt * sizeof(elf_shdr_t);
+	const elf_shdr_t *shdr;
+
+	ret = llext_get_section_info(ldr, ext, 0, &shdr, NULL, NULL);
+	if (ret < 0)
+		return ret;
+
+	/* Temporarily map ELF section headers */
+	llext_manager_add_partition(zephyr_ll_mem_domain(), (uintptr_t)shdr, total,
+				    K_MEM_PARTITION_P_RW_U_NA | XTENSA_MMU_CACHED_WB);
+
 	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_TEXT,
 					      va_base_text, text_size);
 	ret = llext_manager_align_unmap(va_base_text, text_size);
@@ -403,6 +415,9 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	ret = llext_manager_align_unmap(va_base_rodata, rodata_size);
 	if (ret < 0 && !err)
 		err = ret;
+
+	llext_manager_rm_partition(zephyr_ll_mem_domain(), (uintptr_t)shdr, total,
+				   K_MEM_PARTITION_P_RW_U_NA | XTENSA_MMU_CACHED_WB);
 
 	mctx->mapped = false;
 
