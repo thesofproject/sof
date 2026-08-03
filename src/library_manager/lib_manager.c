@@ -760,7 +760,8 @@ static void lib_manager_module_free(struct comp_dev *dev)
 static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const struct sof_uuid *uuid)
 {
 	drv->type = SOF_COMP_MODULE_ADAPTER;
-	drv->uid = uuid;
+	drv->uid_cp = *uuid;
+	drv->uid = &drv->uid_cp;
 	drv->tctx = &lib_manager_tr;
 	drv->ops.create = lib_manager_module_create;
 	drv->ops.prepare = module_adapter_prepare;
