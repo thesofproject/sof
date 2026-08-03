@@ -88,24 +88,25 @@ void ipc_build_trace_posn(struct sof_ipc_dma_trace_posn *posn)
 }
 
 #if CONFIG_LIBRARY
-static inline char *ipc4_get_comp_new_data(void)
+static inline unsigned char *ipc4_get_comp_new_data(void)
 {
 	struct ipc *ipc = ipc_get();
-	char *data = (char *)ipc->comp_data + sizeof(struct ipc4_module_init_instance);
+	unsigned char *data = (unsigned char *)ipc->comp_data +
+		sizeof(struct ipc4_module_init_instance);
 
 	return data;
 }
 
-static const struct comp_driver *ipc4_library_get_comp_drv(char *data)
+static const struct comp_driver *ipc4_library_get_comp_drv(unsigned char *data)
 {
 	return ipc4_get_drv(data);
 }
 #else
-__cold static inline char *ipc4_get_comp_new_data(void)
+__cold static inline unsigned char *ipc4_get_comp_new_data(void)
 {
 	assert_can_be_cold();
 
-	return (char *)MAILBOX_HOSTBOX_BASE;
+	return (unsigned char *)MAILBOX_HOSTBOX_BASE;
 }
 #endif
 
@@ -116,7 +117,7 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
 	uint32_t comp_id;
-	char *data;
+	unsigned char *data;
 
 	assert_can_be_cold();
 
@@ -190,13 +191,13 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
-			.data = (const unsigned char *)data,
+			.data = data,
 			.size = ipc_config.ipc_config_size,
 		};
 
-		dev = drv->ops.create(drv, &ipc_config, (const void *)&spec);
+		dev = drv->ops.create(drv, &ipc_config, &spec);
 	} else {
-		dev = drv->ops.create(drv, &ipc_config, (const void *)data);
+		dev = drv->ops.create(drv, &ipc_config, data);
 	}
 	if (!dev)
 		return NULL;
@@ -241,7 +242,7 @@ __cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 	struct comp_ipc_config ipc_config;
 	struct comp_dev *dev;
 	uint32_t comp_id;
-	char *data;
+	unsigned char *data;
 	int ret;
 
 	assert_can_be_cold();
@@ -303,13 +304,13 @@ __cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
-			.data = (const unsigned char *)data,
+			.data = data,
 			.size = ipc_config.ipc_config_size,
 		};
 
-		dev = drv->ops.create(drv, &ipc_config, (const void *)&spec);
+		dev = drv->ops.create(drv, &ipc_config, &spec);
 	} else {
-		dev = drv->ops.create(drv, &ipc_config, (const void *)data);
+		dev = drv->ops.create(drv, &ipc_config, data);
 	}
 	if (!dev)
 		return NULL;
