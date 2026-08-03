@@ -5,13 +5,18 @@ project(test_fast_get)
 
 set(SOF_ROOT "${PROJECT_SOURCE_DIR}/../../../..")
 
+# Set SOF top directory for UUID registry generation
+set(sof_top_dir ${SOF_ROOT})
+
 # Include SOF CMake functions
 include(${SOF_ROOT}/scripts/cmake/misc.cmake)
+include(${SOF_ROOT}/scripts/cmake/uuid-registry.cmake)
 
 target_include_directories(app PRIVATE
 	${SOF_ROOT}/zephyr/include
 	${SOF_ROOT}/src/include
 	${SOF_ROOT}/src/platform/posix/include
+	${PROJECT_BINARY_DIR}/include/generated  # For uuid-registry.h
 )
 
 # Define SOF-specific configurations for unit testing
