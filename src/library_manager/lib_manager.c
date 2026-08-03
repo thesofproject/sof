@@ -645,6 +645,7 @@ static enum buildinfo_mod_type lib_manager_get_module_type(const struct sof_man_
 	}
 }
 
+/* Error path resource freeing */
 static void lib_manager_mod_free_priv(const struct comp_driver *drv,
 				      const struct comp_ipc_config *config,
 				      struct userspace_context *userspace)
@@ -766,13 +767,18 @@ static struct comp_dev *lib_manager_module_create(const struct comp_driver *drv,
 						  const void *spec)
 {
 	struct userspace_context *userspace = NULL;
-	const struct module_interface *ops;
+	const struct module_interface *ops = NULL;
 	void *adapter_priv = NULL;
 	struct comp_dev *dev;
-	int ret = lib_manager_mod_create_priv(drv, config, spec, &adapter_priv, &userspace, &ops);
 
-	if (ret < 0)
-		return NULL;
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP ||
+	    !IS_ENABLED(CONFIG_SOF_USERSPACE_LL)) {
+		int ret = lib_manager_mod_create_priv(drv, config, spec, &adapter_priv,
+						      &userspace, &ops);
+
+		if (ret < 0)
+			return NULL;
+	}
 
 	dev = module_adapter_new_ext(drv, config, spec, adapter_priv, userspace, ops);
 	if (!dev)

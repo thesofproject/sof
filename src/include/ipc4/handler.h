@@ -17,6 +17,14 @@ struct ipc4_message_request;
 int ipc4_user_process_module_message(struct ipc4_message_request *ipc4, struct ipc_msg *reply);
 
 /**
+ * \brief Load a dynamically loadable module.
+ * @param[in] drv Component driver.
+ * @param[in] mi SOF_IPC4_MOD_INIT_INSTANCE data
+ */
+int ipc4_user_module_load(const struct comp_driver *drv,
+			  const struct ipc4_module_init_instance *mi);
+
+/**
  * @brief Process MOD_CONFIG_GET or MOD_CONFIG_SET in any execution context.
  * @param[in] ipc4 IPC4 message request.
  * @param[in] set true for CONFIG_SET, false for CONFIG_GET.

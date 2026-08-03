@@ -1583,7 +1583,6 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			 * Component creation (drv->ops.create) runs in user thread
 			 * so untrusted module code does not execute in kernel context.
 			 */
-			struct ipc *ipc = ipc_get();
 			uint32_t comp_id = IPC4_COMP_ID(mi->primary.r.module_id,
 							mi->primary.r.instance_id);
 			const struct comp_driver *drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
@@ -1593,13 +1592,18 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 				break;
 			}
 
-			ret = llext_manager_map_lib(comp_id);
-			if (ret < 0)
-				break;
+			struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(comp_id);
 
-			struct ipc_user *pdata = ipc->ipc_user_pdata;
+			if (ctx && !ctx->user_mapped && drv->type == SOF_COMP_MODULE_ADAPTER) {
+				int err = ipc4_user_module_load(drv, mi);
 
-			pdata->init_drv = drv;
+				if (err < 0) {
+					ret = IPC4_MOD_NOT_INITIALIZED;
+					break;
+				}
+			}
+
+			ipc_get()->ipc_user_pdata->init_drv = drv;
 			ret = ipc_user_forward_cmd(ipc4, mi->extension.r.core_id);
 #endif
 		}
