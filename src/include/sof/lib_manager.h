@@ -114,6 +114,7 @@ struct lib_manager_module {
 	struct llext *llext; /* Zephyr loadable extension context */
 	struct llext_buf_loader *ebl; /* Zephyr loadable extension buffer loader */
 	unsigned int n_dependent; /* For auxiliary modules: number of dependents */
+	unsigned int n_mod;
 	bool mapped;
 	bool domain_dp;
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
