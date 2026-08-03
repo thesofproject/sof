@@ -578,8 +578,7 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 					break;
 				case SOF_IPC4_MOD_LARGE_CONFIG_SET:
 					ipc_user->result =
-						ipc4_process_large_config_set(
-							&msg);
+						ipc4_process_large_config_set(&msg);
 					break;
 				default:
 					LOG_ERR("IPC user: unsupported module cmd type %d",
@@ -599,9 +598,8 @@ static void ipc_user_thread_fn(void *p1, void *p2, void *p3)
 					struct ipc4_pipeline_delete *pipe =
 						(struct ipc4_pipeline_delete *)&msg;
 					ipc_user->result =
-						ipc_pipeline_free(
-							ipc_user->ipc,
-							pipe->primary.r.instance_id);
+						ipc_pipeline_free(ipc_user->ipc,
+								  pipe->primary.r.instance_id);
 					break;
 				}
 				case SOF_IPC4_GLB_SET_PIPELINE_STATE:

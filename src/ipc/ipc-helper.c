@@ -304,8 +304,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	/* check whether component exists */
 	icd = ipc_get_comp_by_id(ipc, comp_id);
 	if (!icd) {
-		tr_err(&ipc_tr, "comp id: 0x%x is not found",
-		       comp_id);
+		tr_err(&ipc_tr, "comp id: 0x%x is not found", comp_id);
 		return -ENODEV;
 	}
 

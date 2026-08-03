@@ -1291,13 +1291,10 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 
 	/* search driver list with UUID */
 	list_for_item(clist, &drivers->list) {
-		info = container_of(clist, struct comp_driver_info,
-				    list);
+		info = container_of(clist, struct comp_driver_info, list);
 		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
-			tr_dbg(&comp_tr,
-			       "found type %d, uuid %pU",
-			       info->drv->type,
-			       info->drv->tctx->uuid_p);
+			tr_dbg(&comp_tr, "found type %d, uuid %pU",
+			       info->drv->type, info->drv->tctx->uuid_p);
 			drv = info->drv;
 			break;
 		}
