@@ -168,6 +168,36 @@ static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *
 	return ret;
 }
 
+static int llext_manager_add_partition(struct k_mem_domain *domain,
+				       uintptr_t addr, size_t size,
+				       k_mem_partition_attr_t attr)
+{
+	size_t pre_pad_size = addr & (PAGE_SZ - 1);
+	struct k_mem_partition part = {
+		.start = addr - pre_pad_size,
+		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
+		.attr = attr,
+	};
+
+	tr_dbg(&lib_manager_tr, "add %#zx @ %lx partition", part.size, part.start);
+	return k_mem_domain_add_partition(domain, &part);
+}
+
+static int llext_manager_rm_partition(struct k_mem_domain *domain,
+				       uintptr_t addr, size_t size,
+				       k_mem_partition_attr_t attr)
+{
+	size_t pre_pad_size = addr & (PAGE_SZ - 1);
+	struct k_mem_partition part = {
+		.start = addr - pre_pad_size,
+		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
+		.attr = attr,
+	};
+
+	tr_dbg(&lib_manager_tr, "remove %#zx @ %lx partition", part.size, part.start);
+	return k_mem_domain_remove_partition(domain, &part);
+}
+
 static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr,
 						  const struct llext *ext,
 						  enum llext_mem region,
@@ -813,36 +843,6 @@ int llext_manager_map_lib(uint32_t comp_id)
 	return 0;
 }
 #endif
-
-static int llext_manager_add_partition(struct k_mem_domain *domain,
-				       uintptr_t addr, size_t size,
-				       k_mem_partition_attr_t attr)
-{
-	size_t pre_pad_size = addr & (PAGE_SZ - 1);
-	struct k_mem_partition part = {
-		.start = addr - pre_pad_size,
-		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
-		.attr = attr,
-	};
-
-	tr_dbg(&lib_manager_tr, "add %#zx @ %lx partition", part.size, part.start);
-	return k_mem_domain_add_partition(domain, &part);
-}
-
-static int llext_manager_rm_partition(struct k_mem_domain *domain,
-				       uintptr_t addr, size_t size,
-				       k_mem_partition_attr_t attr)
-{
-	size_t pre_pad_size = addr & (PAGE_SZ - 1);
-	struct k_mem_partition part = {
-		.start = addr - pre_pad_size,
-		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
-		.attr = attr,
-	};
-
-	tr_dbg(&lib_manager_tr, "remove %#zx @ %lx partition", part.size, part.start);
-	return k_mem_domain_remove_partition(domain, &part);
-}
 
 static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct k_mem_domain *domain)
 {
