@@ -528,20 +528,31 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 			ctx->mod[n_mod].llext = NULL;
 			ctx->mod[n_mod].ebl = NULL;
 			ctx->mod[n_mod].n_dependent = 0;
-			ctx->mod[n_mod++].start_idx = i;
+			ctx->mod[n_mod].start_idx = i;
+			if (n_mod)
+				ctx->mod[n_mod - 1].n_mod = i - ctx->mod[n_mod - 1].start_idx;
+			n_mod++;
 		}
+
+	ctx->mod[n_mod - 1].n_mod = desc->header.num_module_entries - ctx->mod[n_mod - 1].start_idx;
 
 	return 0;
 }
 
 /* Find a module context, containing the driver with the supplied index */
-static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
+static int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
 {
 	unsigned int i;
 
 	for (i = 0; i < ctx->n_mod; i++)
 		if (ctx->mod[i].start_idx > idx)
 			break;
+
+	if (i == ctx->n_mod && ctx->mod[i - 1].start_idx + ctx->mod[i - 1].n_mod <= idx) {
+		tr_err(&lib_manager_tr, "%u beyond %u + %u after %u", idx,
+		       ctx->mod[i - 1].start_idx, ctx->mod[i - 1].n_mod, i);
+		return -ENOENT;
+	}
 
 	return i - 1;
 }
@@ -564,7 +575,11 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 		return -EINVAL;
 	}
 
-	unsigned int mod_ctx_idx = llext_manager_mod_find(ctx, entry_index);
+	int mod_ctx_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_ctx_idx < 0)
+		return mod_ctx_idx;
+
 	struct lib_manager_module *mctx = ctx->mod + mod_ctx_idx;
 	size_t mod_size;
 	int i, inst_idx;
@@ -952,7 +967,11 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-	const unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+	const int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
 	struct lib_manager_module *mctx = ctx->mod + mod_idx;
 
 	/* FIXME: handle dependencies */
@@ -1033,7 +1052,11 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-	const unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+	const int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
 	struct lib_manager_module *mctx = ctx->mod + mod_idx;
 
 	return llext_manager_rm_mod_domain(mctx, domain);
@@ -1058,7 +1081,11 @@ int llext_manager_free_module(const uint32_t component_id)
 		return -ENOENT;
 	}
 
-	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+	int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
 	struct lib_manager_module *mctx = ctx->mod + mod_idx;
 
 	/* Protected by IPC serialization */
