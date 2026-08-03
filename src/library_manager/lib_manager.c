@@ -423,14 +423,17 @@ static int lib_manager_free_module(const uint32_t component_id)
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
+	const struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+
+	if (ctx->load_type == SOF_MAN_MOD_TYPE_LLEXT ||
+	    ctx->load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX)
+		return llext_manager_free_module(component_id);
+
 	mod = lib_manager_get_module_manifest(module_id);
 	if (!mod) {
 		tr_err(&lib_manager_tr, "failed to get module descriptor");
 		return -EINVAL;
 	}
-
-	if (module_is_llext(mod))
-		return llext_manager_free_module(component_id);
 
 	ret = lib_manager_unload_module(mod);
 	if (ret < 0)
@@ -500,6 +503,7 @@ static void lib_manager_update_sof_ctx(void *base_addr, uint32_t lib_id)
 	}
 
 	ctx->base_addr = base_addr;
+	ctx->load_type = SOF_MAN_MOD_TYPE_MODULE;
 
 	_ext_lib->desc[lib_id] = ctx;
 	/* TODO: maybe need to call dcache_writeback here? */

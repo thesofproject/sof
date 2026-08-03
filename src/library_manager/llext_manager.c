@@ -1170,6 +1170,7 @@ int llext_manager_add_library(uint32_t module_id)
 				return ret;
 		}
 	}
+	ctx->load_type = SOF_MAN_MOD_TYPE_LLEXT;
 
 	return 0;
 }
