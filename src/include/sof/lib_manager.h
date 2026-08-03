@@ -123,6 +123,7 @@ struct lib_manager_module {
 struct lib_manager_mod_ctx {
 	void *base_addr;	/* library cold storage address (e.g. DRAM) */
 	unsigned int n_mod;
+	unsigned int load_type;
 	struct lib_manager_module *mod;
 };
 
