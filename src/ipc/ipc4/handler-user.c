@@ -1576,7 +1576,6 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 			 * Component creation (drv->ops.create) runs in user thread
 			 * so untrusted module code does not execute in kernel context.
 			 */
-			struct ipc *ipc = ipc_get();
 			uint32_t comp_id = IPC4_COMP_ID(mi->primary.r.module_id,
 							mi->primary.r.instance_id);
 			const struct comp_driver *drv = ipc4_get_comp_drv(IPC4_MOD_ID(comp_id));
@@ -1586,26 +1585,18 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 				break;
 			}
 
-			/* Copy comp_driver and tr_ctx into user-accessible ipc_user buffer
-			 * originals are in kernel .rodata/.data and not readable from user mode.
-			 */
-			struct ipc_user *pdata = ipc->ipc_user_pdata;
-			struct comp_driver *drv_copy = (struct comp_driver *)pdata->init_drv_data;
-			struct tr_ctx *tctx_copy =
-				(struct tr_ctx *)(pdata->init_drv_data +
-						sizeof(struct comp_driver));
+			struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(comp_id);
 
-			ret = memcpy_s(drv_copy, sizeof(*drv_copy), drv, sizeof(*drv));
-			if (!ret && drv->tctx) {
-				ret = memcpy_s(tctx_copy, sizeof(*tctx_copy),
-					       drv->tctx, sizeof(*drv->tctx));
-				drv_copy->tctx = tctx_copy;
+			if (ctx && drv->type == SOF_COMP_MODULE_ADAPTER) {
+				int err = ipc4_user_module_load(drv, mi);
+
+				if (err < 0) {
+					ret = IPC4_MOD_NOT_INITIALIZED;
+					break;
+				}
 			}
 
-			if (ret < 0)
-				break;
-
-			pdata->init_drv = drv;
+			ipc_get()->ipc_user_pdata->init_drv = drv;
 			ret = ipc_user_forward_cmd(ipc4->primary.dat, ipc4->extension.dat,
 						   mi->extension.r.core_id);
 #endif
@@ -1779,36 +1770,28 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 			 * module code does not execute with kernel privileges.
 			 *
 			 * init_drv = original kernel pointer
-			 * init_drv_data = user-accessible copy
 			 */
-			const struct comp_driver *orig_drv = ipc_user->init_drv;
-			const struct comp_driver *drv_copy =
-				(const struct comp_driver *)ipc_user->init_drv_data;
-			struct comp_dev *dev;
+			const struct comp_driver *drv = ipc_user->init_drv;
 
 			ipc_user->init_drv = NULL;
-			if (!orig_drv) {
+			if (!drv) {
 				result = IPC4_MOD_NOT_INITIALIZED;
 				break;
 			}
 
-			dev = comp_new_ipc4_user(&msg, drv_copy);
+			struct comp_dev *dev = comp_new_ipc4_user(&msg, drv);
+
 			if (!dev) {
 				result = IPC4_MOD_NOT_INITIALIZED;
 				break;
 			}
-
-			/* Restore original kernel driver pointer. comp_init()
-			 * set dev->drv to the copy; runtime code expects the
-			 * canonical kernel address.
-			 */
-			dev->drv = orig_drv;
 
 			result = ipc4_add_comp_dev(dev);
 			if (result != IPC4_SUCCESS)
 				break;
 
 			comp_update_ibs_obs_cpc(dev);
+
 			result = 0;
 			break;
 		}

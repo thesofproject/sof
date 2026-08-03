@@ -236,6 +236,38 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+
+int ipc4_user_module_load(const struct comp_driver *drv,
+			  const struct ipc4_module_init_instance *mi)
+{
+	/*
+	 * A large part of module instantiation is executed in the userspace
+	 * mode, including calling the module's .init() method. But another part
+	 * of it has to be executed in the kernel mode, including calling
+	 * lib_manager_mod_create_priv(). This is the privileged part of module
+	 * instantiation.
+	 */
+	struct comp_ipc_config ipc_config;
+	int ret = ipc4_comp_new_config(&ipc_config, mi);
+
+	if (ret < 0)
+		return ret;
+
+	const struct ipc_config_process spec = {
+		.data = ipc4_get_comp_new_data(),
+		.size = ipc_config.ipc_config_size,
+	};
+
+#if CONFIG_DCACHE_LINE_SIZE && !CONFIG_LIBRARY
+	sys_cache_data_invd_range((__sparse_force void __sparse_cache *)spec.data, spec.size);
+#endif
+
+	struct userspace_context *userspace = NULL;
+	const struct module_interface *ops = NULL;
+
+	return lib_manager_mod_create_priv(drv, &ipc_config, &spec, NULL, &userspace, &ops);
+}
+
 /**
  * comp_new_ipc4_user - Create component in user-space IPC thread context.
  *
