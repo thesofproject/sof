@@ -236,6 +236,39 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+
+int ipc4_user_module_load(const struct comp_driver *drv,
+			  const struct ipc4_module_init_instance *mi)
+{
+	/*
+	 * move a part to the kernel thread:
+	 * the userspace IPC handling thread would call comp_new_ipc4_user() to
+	 * then call library manager .create method lib_manager_module_create().
+	 * That one calls lib_manager_mod_create_priv(), then
+	 * lib_manager_allocate_module() and eventually
+	 * llext_manager_allocate_module() for LLEXT modules.
+	 */
+	struct comp_ipc_config ipc_config;
+	int ret = ipc4_comp_new_config(&ipc_config, mi);
+
+	if (ret < 0)
+		return ret;
+
+	const struct ipc_config_process spec = {
+		.data = ipc4_get_comp_new_data(),
+		.size = ipc_config.ipc_config_size,
+	};
+
+#if CONFIG_DCACHE_LINE_SIZE && !CONFIG_LIBRARY
+	sys_cache_data_invd_range((__sparse_force void __sparse_cache *)spec.data, spec.size);
+#endif
+
+	struct userspace_context *userspace = NULL;
+	const struct module_interface *ops = NULL;
+
+	return lib_manager_mod_create_priv(drv, &ipc_config, &spec, NULL, &userspace, &ops);
+}
+
 /**
  * comp_new_ipc4_user - Create component in user-space IPC thread context.
  *
