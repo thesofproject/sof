@@ -1081,15 +1081,8 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 int llext_manager_free_module(const uint32_t component_id)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
-	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-
-	if (entry_index >= desc->header.num_module_entries) {
-		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
-		       entry_index, desc->header.num_module_entries - 1);
-		return -ENOENT;
-	}
 
 	if (!ctx->mod) {
 		tr_err(&lib_manager_tr, "NULL module array: ID %#x ctx %p", component_id, ctx);
