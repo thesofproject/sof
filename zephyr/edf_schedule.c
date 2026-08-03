@@ -102,8 +102,6 @@ static struct scheduler_ops schedule_edf_ops = {
 
 __cold int scheduler_init_edf(void)
 {
-	struct k_thread *thread = &edf_workq.thread;
-
 	assert_can_be_cold();
 
 	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, NULL);
@@ -112,6 +110,8 @@ __cold int scheduler_init_edf(void)
 		       edf_workq_stack,
 		       K_THREAD_STACK_SIZEOF(edf_workq_stack),
 		       CONFIG_EDF_THREAD_PRIORITY, NULL);
+
+	struct k_thread *thread = edf_workq.thread_id;
 
 	k_thread_suspend(thread);
 

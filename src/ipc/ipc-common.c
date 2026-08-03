@@ -884,11 +884,11 @@ __cold int ipc_init(struct sof *sof)
 
 
 #ifdef __ZEPHYR__
-	struct k_thread *thread = &ipc->ipc_send_wq.thread;
-
 	k_work_queue_init(&ipc->ipc_send_wq);
 	k_work_queue_start(&ipc->ipc_send_wq, ipc_send_wq_stack,
 			   K_THREAD_STACK_SIZEOF(ipc_send_wq_stack), 1, NULL);
+
+	struct k_thread *thread = ipc->ipc_send_wq.thread_id;
 
 	k_thread_suspend(thread);
 
