@@ -215,6 +215,12 @@ static int32_t unwrap_angle_q27(int32_t angle)
 void phase_vocoder_reset_for_new_speed(struct phase_vocoder_comp_data *cd)
 {
 	struct phase_vocoder_state *state = &cd->state;
+	struct phase_vocoder_polar *polar = &state->polar;
+	struct phase_vocoder_fft *fft = &state->fft;
+	struct ipolar32 *polar_prev_ch;
+	int32_t *angle_delta_prev_ch;
+	int32_t *output_phase_ch;
+	int ch, i;
 
 	state->speed = cd->speed_ctrl;
 
@@ -232,6 +238,27 @@ void phase_vocoder_reset_for_new_speed(struct phase_vocoder_comp_data *cd)
 	 */
 	state->num_input_fft = 1;
 	state->num_output_ifft = 0;
+
+	/* Re-anchor synthesis phase so the first post-reset IFFT lands
+	 * output_phase back on polar_prev.angle (the steady-state invariant).
+	 * Between speed changes output_phase advances by one analysis-hop
+	 * delta per output IFFT regardless of speed, so at speed != 1 it
+	 * drifts away from the true polar angle; and each reset also adds
+	 * one extra angle_delta_prev on the first no-consume IFFT. If not done,
+	 * both accumulate across interactive speed changes as a per-bin
+	 * phase offset that smears transients and dulls the sound.
+	 */
+	for (ch = 0; ch < cd->process_channels; ch++) {
+		polar_prev_ch = polar->polar_prev[ch];
+		angle_delta_prev_ch = polar->angle_delta_prev[ch];
+		output_phase_ch = polar->output_phase[ch];
+		if (!polar_prev_ch || !angle_delta_prev_ch || !output_phase_ch)
+			continue;
+
+		for (i = 0; i < fft->half_fft_size; i++)
+			output_phase_ch[i] =
+				unwrap_angle_q27(polar_prev_ch[i].angle - angle_delta_prev_ch[i]);
+	}
 }
 
 static void copy_polar_angles(int32_t *angle_delta_ch, struct ipolar32 *polar_data_ch,
