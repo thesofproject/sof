@@ -736,7 +736,8 @@ __cold static int ffmpeg_dec_free(struct processing_module *mod)
 static const struct module_interface ffmpeg_dec_interface = {
 	.init = ffmpeg_enc_mod_init,
 	.prepare = ffmpeg_enc_mod_prepare,
-	.process_raw_data = ffmpeg_enc_mod_process,
+	.process = ffmpeg_enc_mod_process,
+	.is_ready_to_process = ffmpeg_enc_is_ready_to_process,
 	.free = ffmpeg_enc_mod_free
 };
 #elif CONFIG_FFMPEG_DEC_FILTER_MODE

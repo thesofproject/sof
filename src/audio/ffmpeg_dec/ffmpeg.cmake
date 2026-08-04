@@ -382,7 +382,7 @@ includedir=\${prefix}/include
 Name: shine
 Description: Shine fixed-point MP3 encoder
 Version: 3.1.1
-Libs: -L\${libdir} -lshine
+Libs: -L\${libdir} -lshine ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o
 Cflags: -I\${includedir}
 ")
 	# FFmpeg's -lshine link *test* pulls newlib malloc -> Zephyr runtime syms
@@ -400,15 +400,16 @@ void *sbrk(int i){return (void *)-1;}
 "#!/bin/sh
 set -e
 export PATH=${_tc_dir}:\$PATH
+CC=\"${_ff_cc}\"
 mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/shine-obj
 for f in ${SHINE_SRC}/src/lib/*.c; do
-	${CMAKE_C_COMPILER} -O2 -fPIC -mtext-section-literals -DSHINE_HAVE_BSWAP_H \\
+	$CC -O2 -fPIC -mlongcalls -mtext-section-literals -DSHINE_HAVE_BSWAP_H \\
 		-I${SHINE_SRC}/src/lib -c \"\$f\" \\
 		-o ${CMAKE_CURRENT_BINARY_DIR}/shine-obj/\$(basename \"\$f\").o
 done
 ${_ff_cross_prefix}ar rcs ${SHINE_INSTALL}/lib/libshine.a ${CMAKE_CURRENT_BINARY_DIR}/shine-obj/*.o
 cp ${SHINE_SRC}/src/lib/layer3.h ${SHINE_INSTALL}/include/shine/layer3.h
-${CMAKE_C_COMPILER} -fPIC -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
+$CC -fPIC -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
 	-o ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o
 ")
 	add_custom_command(
@@ -418,8 +419,24 @@ ${CMAKE_C_COMPILER} -fPIC -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
 	add_custom_target(shine_ext DEPENDS "${SHINE_INSTALL}/lib/libshine.a")
 
 	set(_ff_cfg_env "PATH=${_tc_dir}:$ENV{PATH}" "PKG_CONFIG_PATH=${SHINE_INSTALL}/lib/pkgconfig")
+	# NOTE: the cfgstub is scoped to libshine's OWN detection via shine.pc
+	# Libs (as an object), NOT a global --extra-ldflags. A global stub makes
+	# FFmpeg's generic check_func tests (posix_memalign/strerror_r/iconv)
+	# link against sbrk and false-positive HAVE_*=1, emitting libc calls that
+	# do not exist in the =y newlib env -> final firmware link fails. Scoping
+	# keeps this build's FFmpeg config identical to the decoder builds.
+	# --disable-iconv guards the one live check (iconv, probed after libshine).
 	set(_ff_shine_cfg --enable-libshine --enable-encoder=libshine --pkg-config=pkg-config
-		"--extra-ldflags=${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.o")
+		--disable-iconv
+		# The precomputed shine init tables (shine_precomp.h) add ~52KB of
+		# .rodata to libshine. FFmpeg's bare-metal -lshine configure *probe*
+		# links against the default GNU linker script whose 'flash' region is
+		# only 64KB, so the probe overflows ("region flash overflowed"). Grow
+		# the probe's flash region via --defsym. This affects configure test
+		# links ONLY (--disable-programs builds .a archives, no real link) and
+		# provides no symbols, so unlike a global libc stub it cannot trigger
+		# false-positive HAVE_* detection.
+		"--extra-ldflags=-Wl,--defsym,__flash_size=0x400000")
 	set(_ff_shine_dep shine_ext)
 	message(STATUS "ffmpeg_dec: enabling MP3 encoder via libshine (${SHINE_SRC})")
 endif()

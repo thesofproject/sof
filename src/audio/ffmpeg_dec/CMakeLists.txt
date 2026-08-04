@@ -45,6 +45,11 @@ else()
     # that the arena cannot hold). Also provides ffmpeg_dec_libc_bind().
     add_local_sources(sof ffmpeg_dec-builtin-alloc.c)
 
+    # Encode mode (PCM -> MP3 via libshine): add the encode backend.
+    if(CONFIG_FFMPEG_DEC_ENCODE_MODE)
+      add_local_sources(sof ffmpeg_dec-encode.c)
+    endif()
+
 
     # Built-in (=y) real backend: cross-build the FFmpeg archive via ffmpeg.cmake
     # and statically link it into the base firmware. Mirrors the google_rtc =y
@@ -67,7 +72,18 @@ else()
       # stubs in ffmpeg_dec-builtin-libc.c). FLAC is integer-only so it never
       # calls libm at runtime, but the references still resolve to real kernels
       # now, and lossy decoders (AAC/Opus/Vorbis) need them to decode correctly.
-      target_link_libraries(SOF INTERFACE avcodec swresample avutil ${FFMPEG_TARGET_LIBM})
+      target_link_libraries(SOF INTERFACE avcodec swresample avutil)
+      # Encode mode: libshine MP3 encoder archive (built by ffmpeg.cmake
+      # section 3b when FFMPEG_ENC_MP3 is set). Linked AFTER avcodec,
+      # which references its shine_* symbols.
+      if(CONFIG_FFMPEG_ENC_MP3)
+        target_link_directories(SOF INTERFACE ${SHINE_INSTALL}/lib)
+        target_link_libraries(SOF INTERFACE shine)
+        add_dependencies(modules_sof shine_ext)
+      endif()
+      # libm (newlib double math) LAST so libav*/libshine references
+      # (modf/cos/sin/log/sqrt/exp2) resolve against it.
+      target_link_libraries(SOF INTERFACE ${FFMPEG_TARGET_LIBM})
       # Redirect libav* malloc/free/realloc/calloc to __wrap_* in
       # ffmpeg_dec-builtin-alloc.c (SOF DSP heap). --wrap resolves references to
       # the symbol -> __wrap_<sym>, and __real_<sym> -> the original common-libc

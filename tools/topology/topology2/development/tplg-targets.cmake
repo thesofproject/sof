@@ -228,6 +228,12 @@ DEEPBUFFER_FW_DMA_MS=false,HDA_ANALOG_CAPTURE_RATE=96000,HDA_ANALOG_PLAYBACK_RAT
 "sof-hda-generic\;sof-hda-generic-ffmpeg-mp3-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=mp3"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-aac-compr\;HDA_CONFIG=mix,COMPR_FFMPEG=true,COMPR_FFMPEG_CODEC=aac"
 
+# HDA generic with a compress *capture* PCM driven by the FFmpeg encoder
+# widget (ffmpeg_enc, PCM -> MP3 via libshine). COMPR_FFMPEG_ENC gates
+# compr-capture-ffmpeg.conf, which taps the HDA analog capture BE, so it may
+# be built alongside or independently of the decode COMPR_FFMPEG path above.
+"sof-hda-generic\;sof-hda-generic-ffmpeg-mp3-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+
 # SDW + DMIC + HDMI, with 16 kHz DMIC1
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k\;PLATFORM=mtl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k.bin,\
