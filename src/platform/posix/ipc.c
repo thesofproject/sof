@@ -7,10 +7,12 @@
 #include <sof/lib/mailbox.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/schedule.h>
+#include <sof/ipc/topology.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/audio/component_ext.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <errno.h>
 
 // 6c8f0d53-ff77-4ca1-b825-c0c4e1b0d322
 SOF_DEFINE_REG_UUID(ipc_task_posix);
@@ -38,6 +40,153 @@ static uint8_t fuzz_in[65536];
 static size_t fuzz_in_sz;
 
 /*
+ * posix_ipc_teardown - drop all IPC-tracked objects left over from the
+ * previous fuzz testcase so the next one starts from a clean topology.
+ *
+ * Walking and freeing comp_list in the same pass is unsafe because the
+ * SOF free helpers unlink the entry from the list, so we snapshot the
+ * IDs of one type into a local array first and then call the typed
+ * free function for each one. Passes run in dependency order
+ * (COMPONENT -> BUFFER -> PIPELINE) to keep the SOF topology layer
+ * from dereferencing already-freed parents.
+ *
+ * Each typed pass drains in batches: it snapshots up to
+ * POSIX_TEARDOWN_BATCH ids, frees them, and repeats until no entry of
+ * that type is left, so the number of objects a testcase may create is
+ * not bounded by the snapshot size.
+ *
+ * A final force-drain pass then walks anything still on the list with
+ * list_for_item_safe() and removes it with list_item_del() + rfree()
+ * directly. That keeps the harness future-proof against new COMP_TYPE_*
+ * values and against entries a typed free could not release: whatever
+ * the reason, comp_list is guaranteed empty on return. The inner union
+ * object (cd/cb/pipeline) is leaked in that edge case, which is
+ * acceptable for a fuzzing harness.
+ */
+#define POSIX_TEARDOWN_BATCH 256
+
+static void posix_ipc_teardown(void)
+{
+	static const uint16_t free_order[] = {
+		COMP_TYPE_COMPONENT,
+#if CONFIG_IPC_MAJOR_3
+		/*
+		 * IPC4 never stores COMP_TYPE_BUFFER in comp_list
+		 * (see ipc4/helper.c) and ipc_buffer_free() is not
+		 * compiled for IPC4, so skip the buffer pass there.
+		 */
+		COMP_TYPE_BUFFER,
+#endif
+		COMP_TYPE_PIPELINE,
+	};
+	uint32_t ids[POSIX_TEARDOWN_BATCH];
+	struct ipc_comp_dev *icd;
+	struct list_item *pos, *tmp;
+	int n;
+
+	if (!global_ipc)
+		return;
+
+	/*
+	 * Pre-pass: prepare components and pipelines for the ordered free
+	 * passes below.
+	 *
+	 * ipc_comp_free() refuses to free a component unless its state is
+	 * COMP_STATE_READY.  A fuzz testcase that ran INIT_INSTANCE followed
+	 * by SET_PIPELINE_STATE:RUNNING will leave components in PREPARE,
+	 * PAUSED, or ACTIVE state.  Force every component back to READY so
+	 * the free pass can proceed without silently skipping entries.
+	 *
+	 * For pipelines with an active scheduler task, cancel the task before
+	 * ipc_pipeline_free() calls schedule_task_free() on it.  Without this,
+	 * schedule_task_free() blocks waiting for the task to complete, which
+	 * on native_sim can stall for up to 100 LL periods.
+	 */
+	list_for_item(pos, &global_ipc->comp_list) {
+		icd = container_of(pos, struct ipc_comp_dev, list);
+		if (icd->type == COMP_TYPE_COMPONENT && icd->cd) {
+			icd->cd->state = COMP_STATE_READY;
+			/* Ensure buffer lists are valid so ipc_comp_free()
+			 * does not bail at the uninitialized-list check.
+			 * A component whose init failed partway may have
+			 * NULL list pointers.
+			 */
+			if (!icd->cd->bsource_list.next)
+				list_init(&icd->cd->bsource_list);
+			if (!icd->cd->bsink_list.next)
+				list_init(&icd->cd->bsink_list);
+		}
+		if (icd->type == COMP_TYPE_PIPELINE &&
+		    icd->pipeline && icd->pipeline->pipe_task)
+			schedule_task_cancel(icd->pipeline->pipe_task);
+	}
+
+	for (int pass = 0; pass < (int)ARRAY_SIZE(free_order); pass++) {
+		uint16_t type = free_order[pass];
+
+		/*
+		 * Drain this type in batches.  The ipc_*_free() helpers
+		 * unlink each entry internally, so snapshot up to
+		 * POSIX_TEARDOWN_BATCH ids, free them, and repeat until no
+		 * entry of this type is left.  A batch that frees nothing
+		 * (e.g. an entry ipc_comp_free() refuses to release) ends the
+		 * loop so it cannot spin forever; the force-drain pass below
+		 * removes any such straggler.
+		 */
+		do {
+			int freed = 0;
+
+			n = 0;
+			list_for_item(pos, &global_ipc->comp_list) {
+				icd = container_of(pos, struct ipc_comp_dev,
+						   list);
+				if (icd->type == type &&
+				    n < POSIX_TEARDOWN_BATCH)
+					ids[n++] = icd->id;
+			}
+
+			for (int i = 0; i < n; i++) {
+				int ret = -EINVAL;
+
+				switch (type) {
+				case COMP_TYPE_COMPONENT:
+					ret = ipc_comp_free(global_ipc, ids[i]);
+					break;
+#if CONFIG_IPC_MAJOR_3
+				case COMP_TYPE_BUFFER:
+					ret = ipc_buffer_free(global_ipc, ids[i]);
+					break;
+#endif
+				case COMP_TYPE_PIPELINE:
+					ret = ipc_pipeline_free(global_ipc,
+								ids[i]);
+					break;
+				}
+				if (!ret)
+					freed++;
+			}
+
+			if (!freed)
+				break;
+		} while (n == POSIX_TEARDOWN_BATCH);
+	}
+
+	/*
+	 * Force-drain anything still on the list: unknown/future
+	 * COMP_TYPE_* values or entries a typed free could not release.
+	 * Walk with the _safe variant because each entry is unlinked as it
+	 * is visited.  The inner union pointer leaks, but comp_list is empty
+	 * on return regardless of how many objects remained, so the next
+	 * testcase never observes a stale entry.
+	 */
+	list_for_item_safe(pos, tmp, &global_ipc->comp_list) {
+		icd = container_of(pos, struct ipc_comp_dev, list);
+		list_item_del(&icd->list);
+		rfree(icd);
+	}
+}
+
+/*
  * Testcase-isolation helpers used by the libFuzzer entry point in
  * fuzz.c. They keep ownership of the cross-call state in one module
  * so a new testcase never observes leftovers from a previous one that
@@ -45,6 +194,7 @@ static size_t fuzz_in_sz;
  */
 void posix_fuzz_case_begin(void)
 {
+	posix_ipc_teardown();
 	fuzz_in_sz = 0;
 }
 
