@@ -38,6 +38,10 @@ LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
  * 320 kbps; 16 KiB holds several frames comfortably.
  */
 #define FFMPEG_ENC_MP3_STAGE		16384
+/* LL->DP input ring depth hint (bytes). bind allocates a ~3x ring; this must
+ * hold one whole worst-case encode of real-time capture PCM so a blocking
+ * libshine frame encode does not overflow the input and overrun the DAI. */
+#define FFMPEG_ENC_PCM_STAGE		16384
 
 struct ffmpeg_enc_data {
 	const AVCodec *codec;
@@ -144,6 +148,17 @@ int ffmpeg_enc_mod_init(struct processing_module *mod)
 	 * between this DP module and the downstream host copier as 3x this.
 	 */
 	md->mpd.out_buff_size = FFMPEG_ENC_MP3_STAGE;
+
+	/* Size the LL->DP *input* ring deep enough to absorb one whole worst-case
+	 * encode. process() blocks the DP thread for the full duration of a single
+	 * libshine frame encode while the LL side keeps producing real-time capture
+	 * PCM; a too-shallow input ring (the default when in_buff_size is 0) then
+	 * overflows mid-encode, backs up the shared HDA-capture fan-out copier, and
+	 * overruns the capture DAI gateway before the first MP3 byte exists. bind
+	 * sizes the ring as ~3x this. The module heap_bytes_requirement in topology
+	 * must cover this ring + pcm_in + mp3_out.
+	 */
+	md->mpd.in_buff_size = FFMPEG_ENC_PCM_STAGE;
 
 	e = mod_zalloc(mod, sizeof(*e));
 	if (!e) {
