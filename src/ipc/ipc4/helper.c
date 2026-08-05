@@ -1344,6 +1344,68 @@ __cold static const struct comp_driver *ipc4_get_drv(const void *uuid)
 	return drv;
 }
 
+#if defined(CONFIG_ARCH_POSIX_LIBFUZZER) && !defined(RIMAGE_MANIFEST)
+/*
+ * ipc4_get_fuzzer_drv - resolve a module driver for native_sim fuzz builds.
+ *
+ * native_sim fuzz builds have no rimage manifest, so the manifest lookup in
+ * ipc4_get_comp_drv() can never resolve a driver and every module instance
+ * verb (INIT_INSTANCE, CONFIG_GET/SET, LARGE_CONFIG, BIND, UNBIND,
+ * DELETE_INSTANCE) would be unreachable from the fuzzer.
+ *
+ * Mirror the IPC3 whitebox hack in posix/ipc.c and treat module_id as a
+ * 1-based index into the runtime component driver list, counting only
+ * instantiable module-adapter drivers so the fuzzer's module_id space matches
+ * what a real signed manifest would expose.
+ *
+ * module_id 0 (BaseFW) is deliberately not mapped: BaseFW is never created as
+ * a pipeline component - its messages are dispatched directly by base_fw.c -
+ * so returning NULL for it here is correct.
+ */
+static const struct comp_driver *ipc4_get_fuzzer_drv(uint32_t module_id)
+{
+	struct comp_driver_list *dlist = comp_drivers_get();
+	struct list_item *iter;
+	uint32_t idx = 0;
+
+	if (!module_id)
+		return NULL;
+
+	list_for_item(iter, &dlist->list) {
+		struct comp_driver_info *inf =
+			container_of(iter, struct comp_driver_info, list);
+
+		/*
+		 * Skip query-only entries (e.g. BaseFW) that cannot be
+		 * instantiated because they have no create op.
+		 */
+		if (!inf->drv->ops.create)
+			continue;
+
+		/*
+		 * A real signed manifest only lists module-adapter modules.
+		 * The internal gateway drivers (SOF_COMP_HOST, SOF_COMP_DAI)
+		 * are registered for IPC3 but are never IPC4 modules: on the
+		 * IPC4 path they receive no params() pass and cannot be
+		 * configured (e.g. their DMA buffer is never allocated). Skip
+		 * non-module-adapter drivers so the fuzzer's module_id space
+		 * matches a real manifest and cannot map to an unconfigurable
+		 * component.
+		 */
+		if (inf->drv->type != SOF_COMP_MODULE_ADAPTER)
+			continue;
+
+		if (++idx == module_id)
+			return inf->drv;
+	}
+
+	tr_err(&comp_tr,
+	       "no instantiable driver at module_id %u (%u available)",
+	       module_id, idx);
+	return NULL;
+}
+#endif
+
 /*
  * Called from
  * - ipc4_get_large_config_module_instance()
@@ -1361,6 +1423,8 @@ __cold const struct comp_driver *ipc4_get_comp_drv(uint32_t module_id)
 
 #ifdef RIMAGE_MANIFEST
 	desc = (const struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+#elif defined(CONFIG_ARCH_POSIX_LIBFUZZER)
+	return ipc4_get_fuzzer_drv(module_id);
 #else
 	/* Non-rimage platforms have no component facility yet.
 	 * This needs to move to the platform layer.
