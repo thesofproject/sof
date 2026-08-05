@@ -6,6 +6,7 @@
 #include <sof/audio/sink_source_utils.h>
 #include <sof/audio/sink_api.h>
 #include <sof/audio/source_api.h>
+#include <ipc4/base-config.h>
 #include <rtos/init.h>
 #include "phase_vocoder.h"
 
@@ -176,6 +177,12 @@ static int phase_vocoder_prepare(struct processing_module *mod, struct sof_sourc
 		comp_err(dev, "Can't prepare without bytes control configuration.");
 		return -EINVAL;
 	}
+
+#if CONFIG_IPC_MAJOR_4
+	/* Push base_cfg.audio_fmt onto endpoints so valid_sample_fmt is not left at 0 (S16_LE). */
+	ipc4_update_source_format(sources[0], &base_cfg->audio_fmt);
+	ipc4_update_sink_format(sinks[0], &base_cfg->audio_fmt);
+#endif
 
 	/* get source data format */
 	cd->frame_bytes = source_get_frame_bytes(sources[0]);
