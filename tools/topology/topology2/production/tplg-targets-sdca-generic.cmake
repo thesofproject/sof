@@ -27,8 +27,13 @@ DEEP_BUF_SPK=true"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
 DEEP_BUF_SPK=true"
 
+#default NUM_DMICS=2
 "cavs-sdw\;sof-sdca-mic-id4\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
 SDW_DMIC_STREAM=Capture-SmartMic"
+
+"cavs-sdw\;sof-sdca-mic-4ch-id4\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
+SDW_DMIC_STREAM=Capture-SmartMic,SDW_DMIC_PCM_CHANNELS=4,TDFB_DMIC_PCM_CHANNELS=4,\
+EFX_MIC_TDFB_PARAMS=line4_pass"
 
 "cavs-sdw\;sof-hdmi-pcm5-id2\;SDW_JACK=false,HDMI1_ID=2,HDMI2_ID=3,HDMI3_ID=4"
 "cavs-sdw\;sof-hdmi-pcm5-id3\;SDW_JACK=false,HDMI1_ID=3,HDMI2_ID=4,HDMI3_ID=5"
