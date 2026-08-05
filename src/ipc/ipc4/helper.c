@@ -1679,6 +1679,7 @@ void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 
 	audio_buffer_set_hw_params_configured(&buf_c->audio_buffer);
 }
+EXPORT_SYMBOL(ipc4_update_buffer_format);
 
 void ipc4_update_source_format(struct sof_source *source,
 			       const struct ipc4_audio_format *fmt)
@@ -1710,4 +1711,4 @@ void ipc4_update_sink_format(struct sof_sink *sink,
 	sink_set_valid_fmt(sink, valid_fmt);
 	sink_set_buffer_fmt(sink, fmt->interleaving_style);
 }
-EXPORT_SYMBOL(ipc4_update_buffer_format);
+EXPORT_SYMBOL(ipc4_update_sink_format);
