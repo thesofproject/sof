@@ -83,7 +83,7 @@ static int remap_c16(const struct cir_buf_source *source, uint32_t src_channels,
 		while (frames_left) {
 			size_t samples_wo_wrap, n, i;
 
-			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
 			samples_wo_wrap = cir_buf_samples_without_wrap_s16(src, source->buf_end);
@@ -141,7 +141,7 @@ static inline int remap_c32_left_shift(const struct cir_buf_source *source,
 		while (frames_left) {
 			size_t samples_wo_wrap, n, i;
 
-			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
 			samples_wo_wrap = cir_buf_samples_without_wrap_s32(src, source->buf_end);
@@ -199,7 +199,7 @@ static inline int remap_c32_right_shift(const struct cir_buf_source *source,
 		while (frames_left) {
 			size_t samples_wo_wrap, n, i;
 
-			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
 			samples_wo_wrap = cir_buf_samples_without_wrap_s32(src, source->buf_end);
@@ -257,7 +257,7 @@ static inline int remap_c16_to_c32(const struct cir_buf_source *source,
 		while (frames_left) {
 			size_t samples_wo_wrap, n, i;
 
-			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
 			samples_wo_wrap = cir_buf_samples_without_wrap_s16(src, source->buf_end);
@@ -315,7 +315,7 @@ static inline int remap_c32_to_c16(const struct cir_buf_source *source,
 		while (frames_left) {
 			size_t samples_wo_wrap, n, i;
 
-			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
 			samples_wo_wrap = cir_buf_samples_without_wrap_s32(src, source->buf_end);
