@@ -41,7 +41,7 @@ struct zephyr_ll {
 struct zephyr_ll_pdata {
 	bool run;
 	bool freeing;
-	struct k_sem sem;
+	struct k_sem *sem;
 };
 
 #if CONFIG_SOF_USERSPACE_LL
@@ -136,7 +136,7 @@ static void zephyr_ll_task_done(struct zephyr_ll *sch,
 		 * zephyr_ll_task_free() is trying to free this task. Complete
 		 * it and signal the semaphore to let the function proceed
 		 */
-		k_sem_give(&pdata->sem);
+		k_sem_give(pdata->sem);
 
 	tr_info(&ll_tr, "task complete %p %pU", task, task->uid);
 	tr_info(&ll_tr, "num_tasks %d total_num_tasks %ld",
@@ -448,6 +448,96 @@ static int zephyr_ll_task_schedule_after(void *data, struct task *task, uint64_t
 	return zephyr_ll_task_schedule_common(sch, task, start, period, after, false);
 }
 
+static struct list_item zephyr_ll_task_sem_list = LIST_INIT(zephyr_ll_task_sem_list);
+
+struct zephyr_ll_task_sem {
+	struct task *task;
+	struct k_sem *sem;
+	struct list_item list;
+};
+
+int z_impl_zephyr_ll_task_sem_alloc(struct task *task)
+{
+	struct zephyr_ll_pdata *pdata = task->priv_data;
+	struct zephyr_ll_task_sem *ts = rmalloc(SOF_MEM_FLAG_COHERENT, sizeof(*ts));
+
+	if (!ts)
+		return -ENOMEM;
+
+	ts->sem = k_object_alloc(K_OBJ_SEM);
+	if (!ts->sem) {
+		rfree(ts);
+		return -ENOMEM;
+	}
+
+	k_sem_init(ts->sem, 0, 1);
+
+	ts->task = task;
+	pdata->sem = ts->sem;
+	/* List is protected by IPC serialization */
+	list_item_append(&ts->list, &zephyr_ll_task_sem_list);
+
+	return 0;
+}
+
+int z_impl_zephyr_ll_task_sem_free(struct task *task)
+{
+	struct zephyr_ll_pdata *pdata = task->priv_data;
+	struct list_item *list;
+	struct zephyr_ll_task_sem *ts;
+	bool found = false;
+
+	/* List is protected by IPC serialization */
+	list_for_item(list, &zephyr_ll_task_sem_list) {
+		ts = container_of(list, struct zephyr_ll_task_sem, list);
+		if (ts->task == task) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return -ENOENT;
+
+	if (pdata->sem != ts->sem)
+		return -EINVAL;
+
+	list_item_del(list);
+	k_object_free(ts->sem);
+	rfree(ts);
+
+	return 0;
+}
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+static inline int z_vrfy_zephyr_ll_task_sem_alloc(struct task *task)
+{
+	if (!task)
+		return -EINVAL;
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
+	if (!task->priv_data)
+		return -EINVAL;
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(task->priv_data, sizeof(struct zephyr_ll_pdata)));
+
+	return z_impl_zephyr_ll_task_sem_alloc(task);
+}
+#include <zephyr/syscalls/zephyr_ll_task_sem_alloc_mrsh.c>
+
+static inline int z_vrfy_zephyr_ll_task_sem_free(struct task *task)
+{
+	if (!task)
+		return -EINVAL;
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
+	if (!task->priv_data)
+		return -EINVAL;
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(task->priv_data, sizeof(struct zephyr_ll_pdata)));
+
+	return z_impl_zephyr_ll_task_sem_free(task);
+}
+#include <zephyr/syscalls/zephyr_ll_task_sem_free_mrsh.c>
+#endif
+
 /*
  * This is synchronous - after this returns the object can be destroyed!
  * Assertion: under Zephyr this is always called from a thread context!
@@ -505,10 +595,11 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	if (must_wait)
 		/* Wait for up to 100 periods */
-		k_sem_take(&pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
+		k_sem_take(pdata->sem, K_USEC(LL_TIMER_PERIOD_US * 100));
 
 	/* Protect against racing with schedule_task() */
 	zephyr_ll_lock(sch, &flags);
+	zephyr_ll_task_sem_free(task);
 	task->priv_data = NULL;
 	sof_heap_free(sch->heap, pdata);
 	zephyr_ll_unlock(sch, &flags);
@@ -573,6 +664,7 @@ static void zephyr_ll_scheduler_free(void *data, uint32_t flags)
 struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
 {
 	struct zephyr_ll *sch = data;
+	struct zephyr_ll_pdata *pdata = task->priv_data;
 	int ret;
 
 	/*
@@ -587,7 +679,7 @@ struct k_thread *zephyr_ll_init_context(void *data, struct task *task)
 	}
 
 	assert(!k_is_user_context());
-	k_thread_access_grant(zephyr_domain_thread_tid(sch->ll_domain), sch->lock);
+	k_thread_access_grant(zephyr_domain_thread_tid(sch->ll_domain), sch->lock, pdata->sem);
 
 	tr_dbg(&ll_tr, "granting access to lock %p for thread %p", sch->lock,
 	       zephyr_domain_thread_tid(sch->ll_domain));
@@ -698,9 +790,14 @@ int zephyr_ll_task_init(struct task *task,
 
 	memset(pdata, 0, sizeof(*pdata));
 
-	k_sem_init(&pdata->sem, 0, 1);
-
 	task->priv_data = pdata;
+
+	ret = zephyr_ll_task_sem_alloc(task);
+	if (ret < 0) {
+		sof_heap_free(heap, pdata);
+		task->priv_data = NULL;
+		return ret;
+	}
 
 	return 0;
 }
