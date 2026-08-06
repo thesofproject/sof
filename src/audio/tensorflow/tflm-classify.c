@@ -31,7 +31,10 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
 
-extern void sof_ut_log(const char *msg);
+static void sof_ut_log(const char *msg)
+{
+	printk("%s\n", msg);
+}
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -44,9 +47,15 @@ extern void sof_ut_log(const char *msg);
 #include <sof/lib/notifier.h>
 
 #include <rtos/timer.h>
-#include <platform/lib/clk.h>
-#include <sof/lib/cpu-clk-manager.h>
+#include <sof/audio/mfcc/mfcc_comp.h>
 #include "speech.h"
+
+/* MFCC's non-compress output prepends a struct mfcc_data_header (24 bytes)
+ * to each hop, followed by TFLM_FEATURE_SIZE int32_t Q9.23 mel-log values
+ * (mel40.conf: 40 bins, 20ms hop). This must match MFCC_FRAME_BYTES in
+ * host-gateway-src-mfcc-tflm-capture.conf.
+ */
+#define MFCC_HOP_BYTES (sizeof(struct mfcc_data_header) + TFLM_FEATURE_SIZE * sizeof(int32_t))
 
 void start_tflm_ut_thread(void);
 void run_unit_tests(void);
@@ -62,8 +71,10 @@ static inline uint32_t get_ccount(void)
 
 SOF_DEFINE_REG_UUID(tflmcly);
 LOG_MODULE_REGISTER(tflmcly, CONFIG_SOF_LOG_LEVEL);
+#if CONFIG_COMP_TENSORFLOW_MODULE
 EXPORT_SYMBOL(tflmcly_uuid);
 EXPORT_SYMBOL(log_const_tflmcly);
+#endif
 
 static const char * const prediction[] = TFLM_CATEGORY_DATA;
 
@@ -202,6 +213,29 @@ static const int8_t expected_feature_yes[TFLM_FEATURE_SIZE] = {
 };
 
 /*
+ * MFCC's mel-log output is Q9.23 fixed point, normalized by the mel40.conf
+ * profile's mel_offset/mel_scale/top_db tuning to approximately the 0..1
+ * range (see the dynamic_mmax clamp + offset + scale in mfcc_common.c).
+ * Requantize that real-valued range against the model's own input tensor
+ * scale/zero_point (as populated by TF_InitOps()/Init_Interpreter() in
+ * speech.cc), instead of assuming a fixed scale/zero_point.
+ */
+static inline int8_t mfcc_mel_q23_to_int8(int32_t mel_q23, float input_scale,
+					   int input_zero_point)
+{
+	float norm = (float)mel_q23 / (float)(1 << 23); /* Q9.23 -> float, ~0..1 */
+	float q = norm / input_scale + (float)input_zero_point;
+	int32_t scaled = (int32_t)(q >= 0.0f ? q + 0.5f : q - 0.5f);
+
+	if (scaled > 127)
+		scaled = 127;
+	else if (scaled < -128)
+		scaled = -128;
+
+	return (int8_t)scaled;
+}
+
+/*
  * This expects features from 16kHz mono 16 bit input stream.
  *
  * Features must be processed using the following flow
@@ -228,9 +262,6 @@ static int tflm_process(struct processing_module *mod,
 	struct comp_dev *dev = mod->dev;
 	g_tflm_dev = dev;
 
-	if (mod->priv.state != MODULE_PROCESSING)
-		return 0;
-
 	/* Guard: skip processing if TFLM interpreter was not prepared */
 	if (!g_tflm_initialized) {
 		printk("[TFLM PROCESS] WARNING: not initialized, skipping frame\n");
@@ -256,38 +287,74 @@ static int tflm_process(struct processing_module *mod,
 	static int8_t feature_buf[TFLM_FEATURE_ELEM_COUNT];
 	static int frame_counter = 0;
 
-	if (bytes_to_process > 0) {
-		ret = source_get_data(sources[0], bytes_to_process,
+	while (bytes_to_process >= MFCC_HOP_BYTES) {
+		ret = source_get_data(sources[0], MFCC_HOP_BYTES,
 				      &data_ptr, &buf_start, &buf_size);
-		if (ret == 0 && data_ptr) {
-			/* Shift 49-frame sliding window history by 1 frame (40 bytes = 10ms) */
-			size_t copy_feat_size = MIN(bytes_to_process, TFLM_FEATURE_SIZE);
-			memmove(&feature_buf[0], &feature_buf[copy_feat_size],
-				TFLM_FEATURE_ELEM_COUNT - copy_feat_size);
-			memcpy(&feature_buf[TFLM_FEATURE_ELEM_COUNT - copy_feat_size],
-			       data_ptr, copy_feat_size);
+		if (ret != 0 || !data_ptr)
+			break;
+
+		{
+			/* Strip the mfcc_data_header and requantize the
+			 * TFLM_FEATURE_SIZE int32 Q9.23 mel-log values into
+			 * int8 features for this hop.
+			 */
+			const int32_t *mel = (const int32_t *)
+				((const uint8_t *)data_ptr + sizeof(struct mfcc_data_header));
+			int8_t hop_features[TFLM_FEATURE_SIZE];
+
+			for (int i = 0; i < TFLM_FEATURE_SIZE; i++)
+				hop_features[i] = mfcc_mel_q23_to_int8(mel[i],
+					cd->tfc.input_scale, cd->tfc.input_zero_point);
+
+			{
+				static int dbg_hop_count;
+				dbg_hop_count++;
+				if (dbg_hop_count % 25 == 0) {
+					int32_t mel_min = mel[0], mel_max = mel[0];
+					int8_t f_min = hop_features[0], f_max = hop_features[0];
+					for (int i = 1; i < TFLM_FEATURE_SIZE; i++) {
+						if (mel[i] < mel_min) mel_min = mel[i];
+						if (mel[i] > mel_max) mel_max = mel[i];
+						if (hop_features[i] < f_min) f_min = hop_features[i];
+						if (hop_features[i] > f_max) f_max = hop_features[i];
+					}
+					char dbg_buf[160];
+					snprintk(dbg_buf, sizeof(dbg_buf),
+						 "[DBG hop %d] mel[0..3]=%d,%d,%d,%d mel_min=%d mel_max=%d f_min=%d f_max=%d",
+						 dbg_hop_count, mel[0], mel[1], mel[2], mel[3],
+						 mel_min, mel_max, f_min, f_max);
+					sof_ut_log(dbg_buf);
+				}
+			}
+
+			/* Shift 49-frame sliding window history by 1 frame (20ms hop) */
+			memmove(&feature_buf[0], &feature_buf[TFLM_FEATURE_SIZE],
+				TFLM_FEATURE_ELEM_COUNT - TFLM_FEATURE_SIZE);
+			memcpy(&feature_buf[TFLM_FEATURE_ELEM_COUNT - TFLM_FEATURE_SIZE],
+			       hop_features, TFLM_FEATURE_SIZE);
 
 			/* Copy source data to sink first, before releasing source data */
 			if (num_of_sinks > 0 && sinks[0]) {
 				void *snk_ptr, *snk_buf_start;
 				size_t snk_buf_size;
-				int sret = sink_get_buffer(sinks[0], bytes_to_process,
+				int sret = sink_get_buffer(sinks[0], MFCC_HOP_BYTES,
 							   &snk_ptr, &snk_buf_start, &snk_buf_size);
 				if (sret == 0 && snk_ptr) {
 					size_t size_to_wrap = (uint8_t *)snk_buf_start + snk_buf_size - (uint8_t *)snk_ptr;
-					if (bytes_to_process <= size_to_wrap) {
-						memcpy(snk_ptr, data_ptr, bytes_to_process);
+					if (MFCC_HOP_BYTES <= size_to_wrap) {
+						memcpy(snk_ptr, data_ptr, MFCC_HOP_BYTES);
 					} else {
 						memcpy(snk_ptr, data_ptr, size_to_wrap);
 						memcpy(snk_buf_start, (const uint8_t *)data_ptr + size_to_wrap,
-						       bytes_to_process - size_to_wrap);
+						       MFCC_HOP_BYTES - size_to_wrap);
 					}
-					sink_commit_buffer(sinks[0], bytes_to_process);
+					sink_commit_buffer(sinks[0], MFCC_HOP_BYTES);
 				}
 			}
 
 			/* Release source data immediately after reading */
-			source_release_data(sources[0], bytes_to_process);
+			source_release_data(sources[0], MFCC_HOP_BYTES);
+			bytes_to_process -= MFCC_HOP_BYTES;
 
 			frame_counter++;
 
@@ -302,6 +369,18 @@ static int tflm_process(struct processing_module *mod,
 
 				cd->tfc.audio_features = feature_buf;
 				cd->tfc.audio_data_size = TFLM_FEATURE_ELEM_COUNT;
+
+				{
+					int nonsat = 0;
+					for (int fi = 0; fi < TFLM_FEATURE_ELEM_COUNT; fi++)
+						if (feature_buf[fi] != -128)
+							nonsat++;
+					char nb[96];
+					snprintk(nb, sizeof(nb),
+						 "[DBG window] nonsat=%d/%d",
+						 nonsat, TFLM_FEATURE_ELEM_COUNT);
+					sof_ut_log(nb);
+				}
 
 				uint32_t c_start = get_ccount();
 				uint64_t t_start = sof_cycle_get_64();
@@ -326,6 +405,12 @@ static int tflm_process(struct processing_module *mod,
 				       inf_count, cycles, (unsigned long long)timer_delta, mcps_x100 / 100, mcps_x100 % 100);
 
 				snprintk(ut_buf, sizeof(ut_buf), "[TFLM MODEL GRAPH] Total Nodes = %d", cd->tfc.op_count);
+				sof_ut_log(ut_buf);
+
+				snprintk(ut_buf, sizeof(ut_buf),
+					 "[DBG raw_output] ret=%d silence=%d unknown=%d yes=%d no=%d",
+					 ret, cd->tfc.raw_output[0], cd->tfc.raw_output[1],
+					 cd->tfc.raw_output[2], cd->tfc.raw_output[3]);
 				sof_ut_log(ut_buf);
 
 				for (int k = 0; k < cd->tfc.op_count && k < 10; k++) {
@@ -417,6 +502,8 @@ static int tflm_prepare(struct processing_module *mod,
 	g_tflm_initialized = true;
 	last_inference_timer = sof_cycle_get_64();
 	printk("[TFLM PREPARE] TFLM model & ops initialized successfully!\n");
+	printk("[DBG quant] input_scale_x1e6=%d input_zero_point=%d\n",
+	       (int)(cd->tfc.input_scale * 1000000.0f), cd->tfc.input_zero_point);
 	return 0;
 }
 
@@ -442,12 +529,14 @@ DECLARE_TR_CTX(tflm_tr, SOF_UUID(tflmcly_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tflmcly_interface, tflmcly_uuid, tflm_tr);
 SOF_MODULE_INIT(tflmcly_interface, sys_comp_module_tflmcly_interface_init);
 
+#if CONFIG_COMP_TENSORFLOW_MODULE
 int llext_entry(void)
 {
 	printk("[TFLM LLEXT] llext_entry initialized cleanly.\n");
 	return 0;
 }
 EXPORT_SYMBOL(llext_entry);
+#endif
 
 
 
