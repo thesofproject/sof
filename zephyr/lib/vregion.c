@@ -257,6 +257,11 @@ static void interim_heap_init(struct vregion *vr)
 	k_heap_init(&vr->interim.heap, interim_base, interim_size);
 	vr->type = VREGION_MEM_TYPE_INTERIM;
 
+	/* Flush the heap metadata written by k_heap_init to main memory
+	 * so other cores can access the interim heap without stale cache.
+	 */
+	sys_cache_data_flush_range(interim_base, interim_size);
+
 	/* Update lifetime heap with the interim heap usage. */
 	vr->lifetime.ptr = (void *)(interim_base + interim_size);
 	vr->lifetime.used = (uint8_t *)vr->lifetime.ptr - (uint8_t *)vr->lifetime.base;
