@@ -40,13 +40,32 @@ void cpu_notify_state_exit(enum pm_state state);
 
 #endif /* CONFIG_PM */
 
+/*
+ * cpu_get_id() is exposed as a Zephyr system call so that user-mode
+ * threads (e.g. user-space LL pipelines) can query the current core
+ * id. The underlying arch_proc_id() reads a privileged special
+ * register (e.g. Xtensa PRID) which would fault if executed directly
+ * from user mode. In supervisor context the generated wrapper inlines
+ * the z_impl_cpu_get_id() body, so there is no overhead there.
+ */
+#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall int cpu_get_id(void);
+#endif
+
 /* let the compiler optimise when in single core mode */
 #if CONFIG_MULTICORE && CONFIG_SMP
 
+#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+static inline int z_impl_cpu_get_id(void)
+{
+	return arch_proc_id();
+}
+#else
 static inline int cpu_get_id(void)
 {
 	return arch_proc_id();
 }
+#endif
 
 static inline bool cpu_is_primary(int id)
 {
@@ -73,7 +92,11 @@ int cpu_restore_secondary_cores(void);
 int cpu_secondary_cores_prepare_d0ix(void);
 #else
 
+#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+static inline int z_impl_cpu_get_id(void) { return 0; };
+#else
 static inline int cpu_get_id(void) { return 0; };
+#endif
 
 static inline bool cpu_is_primary(int id) { return 1; };
 
@@ -92,6 +115,10 @@ static inline int cpu_restore_secondary_cores(void) { return 0; };
 static inline int cpu_secondary_cores_prepare_d0ix(void) { return 0; };
 
 #endif /* CONFIG_MULTICORE && CONFIG_SMP */
+
+#if defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#include <zephyr/syscalls/cpu.h>
+#endif
 
 #endif
 
