@@ -539,7 +539,7 @@ int probe_dma_add(uint32_t count, const struct probe_dma *probe_dma)
 		err = probe_dma_init(&_probe->inject_dma[first_free],
 				     SOF_DMA_DIR_HMEM_TO_LMEM);
 		if (err < 0) {
-			tr_err(&pr_tr, "probe_dma_init() failed");
+				tr_err(&pr_tr, "probe_dma_init() failed");
 			_probe->inject_dma[first_free].stream_tag =
 				PROBE_DMA_INVALID;
 			return err;
@@ -865,33 +865,50 @@ static void kick_probe_task(struct probe_pdata *_probe)
 		reschedule_task(&_probe->dmap_work, 0);
 }
 
-#if CONFIG_LOG_BACKEND_SOF_PROBE
-static ssize_t probe_logging_hook(uint8_t *buffer, size_t length)
+static ssize_t probe_write_payload(uint32_t buffer_id, const uint8_t *buffer,
+				   size_t length)
 {
 	struct probe_pdata *_probe = probe_get();
+	const size_t overhead = sizeof(struct probe_data_packet) + sizeof(uint64_t);
 	uint64_t checksum;
-	size_t max_len;
+	size_t free_space;
 	int ret;
 
-	max_len = _probe->ext_dma.dmapb.avail - sizeof(struct probe_data_packet) - sizeof(checksum);
-	length = MIN(max_len, length);
+	if (!_probe || _probe->ext_dma.stream_tag == PROBE_DMA_INVALID || !buffer || !length)
+		return 0;
 
-	ret = probe_gen_header(PROBE_LOGGING_BUFFER_ID, length, 0, &checksum);
+	free_space = _probe->ext_dma.dmapb.size - _probe->ext_dma.dmapb.avail;
+	if (free_space <= overhead)
+		return 0;
+
+	length = MIN(length, free_space - overhead);
+
+	ret = probe_gen_header(buffer_id, length, 0, &checksum);
 	if (ret < 0)
 		return ret;
 
-	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
-			      buffer, length);
+	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb, (void *)buffer, length);
 	if (ret < 0)
 		return ret;
 
-	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb,
-			      &checksum, sizeof(checksum));
+	ret = copy_to_pbuffer(&_probe->ext_dma.dmapb, &checksum, sizeof(checksum));
 	if (ret < 0)
 		return ret;
 
 	kick_probe_task(_probe);
+
 	return length;
+}
+
+ssize_t probe_shell_output(const uint8_t *buffer, size_t length)
+{
+	return probe_write_payload(PROBE_SHELL_BUFFER_ID, buffer, length);
+}
+
+#if CONFIG_LOG_BACKEND_SOF_PROBE
+static ssize_t probe_logging_hook(uint8_t *buffer, size_t length)
+{
+	return probe_write_payload(PROBE_LOGGING_BUFFER_ID, buffer, length);
 }
 #endif
 

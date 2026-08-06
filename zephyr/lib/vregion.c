@@ -9,12 +9,16 @@
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/dlist.h>
 #include <sof/lib/vpage.h>
 #include <sof/lib/vregion.h>
 #include <rtos/alloc.h>
 #include <sof/common.h>
 
 LOG_MODULE_REGISTER(vregion, CONFIG_SOF_LOG_LEVEL);
+
+static sys_dlist_t vregion_list = SYS_DLIST_STATIC_INIT(&vregion_list);
+static K_MUTEX_DEFINE(vregion_list_lock);
 
 /*
  * Pre Allocated Contiguous Virtual Memory Region Allocator
@@ -81,6 +85,8 @@ struct interim_heap {
  * TODO: Add support to flag which heaps should have their contexts saved and restored.
  */
 struct vregion {
+	sys_dnode_t node;
+
 	/* region context */
 	uint8_t *base;			/* base address of entire region */
 	size_t size;			/* size of whole region in bytes */
@@ -163,6 +169,10 @@ struct vregion *vregion_create(size_t memsize)
 	LOG_INF("new at base %p size %#zx pages %u metadata at %p",
 		(void *)vr->base, total_size, pages, (void *)vr);
 
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+	sys_dlist_append(&vregion_list, &vr->node);
+	k_mutex_unlock(&vregion_list_lock);
+
 	return vr;
 }
 
@@ -203,6 +213,11 @@ struct vregion *vregion_put(struct vregion *vr)
 	/* log the vregion being destroyed */
 	LOG_DBG("destroy %p size %#zx pages %u", (void *)vr->base, vr->size, vr->pages);
 	LOG_DBG(" lifetime used %zu free count %d", vr->lifetime.used, vr->lifetime.free_count);
+	
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+	sys_dlist_remove(&vr->node);
+	k_mutex_unlock(&vregion_list_lock);
+
 	vpage_free(vr->base);
 	rfree(vr);
 
@@ -498,3 +513,33 @@ void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
 	if (start)
 		*start = (uintptr_t)vr->base;
 }
+
+void vregion_for_each(void (*cb)(int idx, const struct vregion_snapshot *s, void *ctx),
+		      void *ctx)
+{
+	struct vregion *vr;
+	int idx = 0;
+
+	if (!cb)
+		return;
+
+	k_mutex_lock(&vregion_list_lock, K_FOREVER);
+
+	SYS_DLIST_FOR_EACH_CONTAINER(&vregion_list, vr, node) {
+		struct vregion_snapshot s;
+
+		k_mutex_lock(&vr->lock, K_FOREVER);
+		s.base = (uintptr_t)vr->base;
+		s.size = vr->size;
+		s.pages = vr->pages;
+		s.lifetime_used = vr->lifetime.used;
+		s.lifetime_free_count = vr->lifetime.free_count;
+		s.use_count = vr->use_count;
+		k_mutex_unlock(&vr->lock);
+
+		cb(idx++, &s, ctx);
+	}
+
+	k_mutex_unlock(&vregion_list_lock);
+}
+EXPORT_SYMBOL(vregion_for_each);

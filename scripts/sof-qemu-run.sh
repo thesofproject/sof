@@ -59,3 +59,4 @@ source ${VENV_DIR}/bin/activate
 
 # Finally run the python script which will now correctly inherit 'west' from the sourced environment.
 python3 "${SCRIPT_DIR}/sof-qemu-run.py" --build-dir "${BUILD_DIR}" $VALGRIND_ARG
+
