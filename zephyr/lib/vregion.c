@@ -127,8 +127,11 @@ struct vregion *vregion_create(size_t memsize)
 	 */
 	total_size = ALIGN_UP(memsize, CONFIG_MM_DRV_PAGE_SIZE);
 
-	/* allocate vregion metadata separately to keep it inaccessible to the user */
-	vr = rmalloc(0, sizeof(*vr));
+	/* allocate vregion metadata separately to keep it inaccessible to the user.
+	 * Use coherent memory so interim heap state written on one core is
+	 * visible to other cores during cross-core buffer allocation.
+	 */
+	vr = rmalloc(SOF_MEM_FLAG_COHERENT, sizeof(*vr));
 	if (!vr)
 		return NULL;
 
