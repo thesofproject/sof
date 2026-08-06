@@ -77,7 +77,7 @@ static int pcm_convert_s16_to_s24(const struct cir_buf_source *source,
 				    sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -158,7 +158,7 @@ static int pcm_convert_s24_to_s16(const struct cir_buf_source *source,
 				    sizeof(ae_int16));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 	return samples;
@@ -215,7 +215,7 @@ static int pcm_convert_s16_to_s32(const struct cir_buf_source *source,
 			AE_S32_L_IP(AE_CVT32X2F16_32(sample), (ae_int32 *)out, sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 	return samples;
@@ -273,7 +273,7 @@ static int pcm_convert_s32_to_s16(const struct cir_buf_source *source,
 				    sizeof(ae_int16));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -324,7 +324,7 @@ static int pcm_convert_s24_to_s32(const struct cir_buf_source *source,
 				    sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -388,7 +388,7 @@ static int pcm_convert_s32_to_s24(const struct cir_buf_source *source,
 			AE_S32_L_IP(sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -433,7 +433,7 @@ static int pcm_convert_s32_to_s24_be(const struct cir_buf_source *source,
 			AE_S32_L_IP(sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -824,7 +824,7 @@ static int pcm_convert_s16_c16_to_s16_c32(const struct cir_buf_source *source,
 			AE_S32_L_IP(AE_SEXT32X2D16_32(sample), (ae_int32 *)out, sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 	return samples;
@@ -877,7 +877,7 @@ static int pcm_convert_s16_c32_to_s16_c16(const struct cir_buf_source *source,
 			AE_S16_0_IP(AE_MOVAD16_0(sample), (ae_int16 *)out, sizeof(ae_int16));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -919,7 +919,7 @@ static int pcm_convert_s16_c32_to_s32_c32(const struct cir_buf_source *source,
 			AE_S32_L_IP(AE_SLAI32(sample, 16), (ae_int32 *)out, sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -959,7 +959,7 @@ static int pcm_convert_s32_c32_to_s16_c32(const struct cir_buf_source *source,
 			AE_S32_L_IP(AE_SRAA32RS(sample, 16), (ae_int32 *)out, sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -1001,7 +1001,7 @@ static int pcm_convert_s16_c32_to_s24_c32(const struct cir_buf_source *source,
 			AE_S32_L_IP(AE_SLAI32(sample, 8), (ae_int32 *)out, sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -1055,7 +1055,7 @@ static int pcm_convert_s24_c32_to_s16_c32(const struct cir_buf_source *source,
 			AE_S32_L_IP(sample, (ae_int32 *)out, sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -1101,7 +1101,7 @@ static int pcm_convert_s24_c24_to_s24_c32(const struct cir_buf_source *source,
 				    sizeof(ae_int32));
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 
@@ -1143,7 +1143,7 @@ static int pcm_convert_s24_c32_to_s24_c24(const struct cir_buf_source *source,
 			AE_SA24_IP(sample24, outu, out);
 		}
 
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 

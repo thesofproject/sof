@@ -39,8 +39,8 @@ int pcm_convert_as_linear(const struct cir_buf_source *source, size_t s_size_in,
 		converter(r_ptr, w_ptr, chunk);
 
 		/* move pointers */
-		r_ptr = cir_buf_wrap(r_ptr + chunk * s_size_in,
-				     source->buf_start, source->buf_end);
+		r_ptr = source_cir_buf_wrap(r_ptr + chunk * s_size_in,
+					    source->buf_start, source->buf_end);
 		w_ptr = cir_buf_wrap(w_ptr + chunk * s_size_out,
 				     sink->buf_start, sink->buf_end);
 		i += chunk;
