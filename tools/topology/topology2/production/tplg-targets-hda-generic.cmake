@@ -125,7 +125,8 @@ DMIC0_ENHANCED_CAPTURE=true,EFX_DMIC0_TDFB_PARAMS=line2_generic_pm10deg,\
 EFX_DMIC0_DRC_PARAMS=dmic_default,DOLBY_DAX_CORE_ID=1"
 
 # HDA Mic TFLM Topology Targets with KPB
-"sof-hda-tflm\;sof-hda-tflm\;"
-"sof-hda-tflm\;sof-mtl-hda-tflm-kpb\;PLATFORM=mtl"
-"sof-hda-tflm\;sof-ptl-hda-tflm-kpb\;PLATFORM=ptl"
+"sof-hda-tflm\;sof-hda-tflm\;HDA_MIC_MFCC_PARAMS=default"
+"sof-hda-tflm\;sof-mtl-hda-tflm-kpb\;PLATFORM=mtl,HDA_MIC_MFCC_PARAMS=default"
+"sof-hda-tflm\;sof-ptl-hda-tflm-kpb\;PLATFORM=ptl,HDA_MIC_MFCC_PARAMS=default"
+"sof-hda-tflm\;sof-tgl-hda-tflm-kpb\;PLATFORM=tgl,HDA_MIC_MFCC_PARAMS=default"
 )
