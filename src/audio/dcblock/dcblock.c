@@ -10,6 +10,8 @@
 #include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
@@ -140,25 +142,63 @@ static int dcblock_set_config(struct processing_module *mod, uint32_t config_id,
 
 /**
  * \brief Copies and processes stream data.
- * \param[in,out] dev DC Blocking Filter module.
+ * \param[in,out] mod DC Blocking Filter module.
  * \return Error code.
  */
 static int dcblock_process(struct processing_module *mod,
-			   struct input_stream_buffer *input_buffers,
-			   int num_input_buffers,
-			   struct output_stream_buffer *output_buffers,
-			   int num_output_buffers)
+			   struct sof_source **sources, int num_of_sources,
+			   struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	uint32_t frames = input_buffers[0].size;
+	struct comp_dev *dev = mod->dev;
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
+	size_t source_frame_bytes = source_get_frame_bytes(source);
+	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
+	size_t source_bytes, sink_bytes, bytes;
+	uint32_t frames = source_get_data_frames_available(source);
+	uint32_t sink_frames = sink_get_free_frames(sink);
+	int ret;
 
-	comp_dbg(mod->dev, "entry");
+	comp_dbg(dev, "entry");
 
-	cd->dcblock_func(cd, source, sink, frames);
+	frames = MIN(frames, sink_frames);
+	frames = MIN(frames, dev->frames);
+	if (!frames)
+		return 0;
 
-	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
+	source_bytes = frames * source_frame_bytes;
+	sink_bytes = frames * sink_frame_bytes;
+
+	/* acquire the source and sink circular buffer views once */
+	ret = source_get_data(source, source_bytes, &source_buf.ptr,
+			      &source_buf.buf_start, &bytes);
+	if (ret)
+		return ret;
+	source_buf.buf_end = (const char *)source_buf.buf_start + bytes;
+
+	ret = sink_get_buffer(sink, sink_bytes, &sink_buf.ptr,
+			      &sink_buf.buf_start, &bytes);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
+	}
+	sink_buf.buf_end = (char *)sink_buf.buf_start + bytes;
+
+	ret = cd->dcblock_func(cd, &source_buf, &sink_buf, frames);
+	if (ret) {
+		/* Undo the acquire without consuming source data or
+		 * publishing partially-written output.
+		 */
+		source_release_data(source, 0);
+		sink_commit_buffer(sink, 0);
+		return ret;
+	}
+
+	source_release_data(source, source_bytes);
+	sink_commit_buffer(sink, sink_bytes);
 	return 0;
 }
 
@@ -172,27 +212,35 @@ static int dcblock_prepare(struct processing_module *mod,
 			   struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
-	struct comp_buffer *sourceb, *sinkb;
 	struct comp_dev *dev = mod->dev;
 	size_t data_size;
 
 	comp_info(dev, "entry");
 
 	/* DC Filter component will only ever have one source and sink buffer */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	if (!sourceb || !sinkb) {
-		comp_err(dev, "no source or sink buffer");
-		return -ENOTCONN;
+	if (num_of_sources != 1 || num_of_sinks != 1) {
+		comp_err(dev, "Invalid number of sources/sinks");
+		return -EINVAL;
 	}
 
 	dcblock_params(mod);
 
 	/* get source data format */
-	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
+	cd->source_format = source_get_frm_fmt(sources[0]);
 
-	/* get sink data format and period bytes */
-	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
+	/* get sink data format */
+	cd->sink_format = sink_get_frm_fmt(sinks[0]);
+
+	/* The processing uses a single channel count as the frame stride for
+	 * both source and sink, so they must match to avoid corrupt output.
+	 */
+	if (source_get_channels(sources[0]) != sink_get_channels(sinks[0])) {
+		comp_err(dev, "mismatch source/sink stream channels");
+		return -EINVAL;
+	}
+
+	/* get channel count for processing */
+	cd->channels = source_get_channels(sources[0]);
 
 	dcblock_init_state(cd);
 	cd->dcblock_func = dcblock_find_func(cd->source_format);
@@ -238,7 +286,7 @@ static int dcblock_reset(struct processing_module *mod)
 static const struct module_interface dcblock_interface = {
 	.init = dcblock_init,
 	.prepare = dcblock_prepare,
-	.process_audio_stream = dcblock_process,
+	.process = dcblock_process,
 	.set_configuration = dcblock_set_config,
 	.get_configuration = dcblock_get_config,
 	.reset = dcblock_reset,
