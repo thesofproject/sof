@@ -10,3 +10,54 @@ cmocka_test(drc_math_test
 )
 
 target_include_directories(drc_math_test PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
+
+cmocka_test(drc_process
+	drc_process.c
+)
+
+target_include_directories(drc_process PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
+
+# make small version of libaudio so we don't have to care
+# about unused missing references
+
+add_compile_options(-DUNIT_TEST)
+
+add_library(audio_for_drc STATIC
+	${PROJECT_SOURCE_DIR}/src/audio/drc/drc.c
+	${PROJECT_SOURCE_DIR}/src/audio/drc/drc_generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/drc/drc_math_generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/drc/drc_math_hifi3.c
+	${PROJECT_SOURCE_DIR}/src/audio/drc/drc_log.c
+	${PROJECT_SOURCE_DIR}/src/math/numbers.c
+	${PROJECT_SOURCE_DIR}/src/math/exp_fcn.c
+	${PROJECT_SOURCE_DIR}/src/math/exp_fcn_hifi.c
+	${PROJECT_SOURCE_DIR}/src/math/lut_trig.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
+	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
+	${PROJECT_SOURCE_DIR}/src/lib/objpool.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+)
+sof_append_relative_path_definitions(audio_for_drc)
+
+target_link_libraries(audio_for_drc PRIVATE sof_options)
+
+target_link_libraries(drc_process PRIVATE audio_for_drc)
