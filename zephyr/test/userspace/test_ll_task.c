@@ -49,7 +49,7 @@ static enum task_state task_callback(void *arg)
 static void ll_task_test(void)
 {
 	struct task *task;
-	int priority = 0;
+	int16_t priority = -1;
 	int core = 0;
 	int ret;
 
@@ -67,6 +67,7 @@ static void ll_task_test(void)
 				    priority, task_callback,
 				    (void *)&test_runs, core, 0);
 	zassert_equal(ret, 0);
+	zassert_equal(task->priority, priority, "negative priority was not preserved");
 
 	LOG_INF("task init done");
 

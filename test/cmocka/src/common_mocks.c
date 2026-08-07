@@ -312,7 +312,7 @@ struct schedulers ** WEAK arch_schedulers_get(void)
 
 int WEAK schedule_task_init(struct task *task,
 			    const struct sof_uuid_entry *uid, uint16_t type,
-			    uint16_t priority, enum task_state (*run)(void *data),
+			    int16_t priority, enum task_state (*run)(void *data),
 			    void *data, uint16_t core, uint32_t flags)
 {
 	(void)task;
@@ -329,7 +329,7 @@ int WEAK schedule_task_init(struct task *task,
 
 int WEAK schedule_task_init_ll(struct task *task,
 			       const struct sof_uuid_entry *uid, uint16_t type,
-			       uint16_t priority, enum task_state (*run)(void *data),
+			       int16_t priority, enum task_state (*run)(void *data),
 			       void *data, uint16_t core, uint32_t flags)
 {
 	return 0;
