@@ -12,7 +12,6 @@
  */
 
 #include <rtos/symbol.h>
-#include <rtos/mutex.h>
 #include <sof/compiler_attributes.h>
 #include <sof/objpool.h>
 #include <sof/audio/module_adapter/module/generic.h>
@@ -24,6 +23,16 @@
 #include <ipc4/header.h>
 #include <ipc4/module.h>
 #include <ipc4/pipeline.h>
+#endif
+
+/* The __ZEPHYR__ condition is to keep cmocka tests working */
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+#define MEM_API_CHECK_THREAD(res) do { \
+	if ((res)->rsrc_mngr != k_current_get()) \
+		LOG_WRN("mngr %p != cur %p", (res)->rsrc_mngr, k_current_get()); \
+} while (0)
+#else
+#define MEM_API_CHECK_THREAD(res)
 #endif
 
 LOG_MODULE_DECLARE(module_adapter, CONFIG_SOF_LOG_LEVEL);
@@ -79,7 +88,6 @@ void mod_resource_init(struct processing_module *mod)
 	struct module_resources *res = &mod->priv.resources;
 
 	/* Init memory list */
-	k_mutex_init(&res->lock);
 	list_init(&res->objpool.list);
 	res->objpool.heap = res->alloc->heap;
 	res->objpool.vreg = res->alloc->vreg;
@@ -114,6 +122,9 @@ int module_init(struct processing_module *mod)
 		return -EIO;
 	}
 
+#if CONFIG_MODULE_MEMORY_API_DEBUG && defined(__ZEPHYR__)
+	mod->priv.resources.rsrc_mngr = k_current_get();
+#endif
 	/* Now we can proceed with module specific initialization */
 #if CONFIG_SOF_USERSPACE_APPLICATION
 	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
@@ -179,18 +190,15 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 
-	k_mutex_lock(&res->lock, K_FOREVER);
+	MEM_API_CHECK_THREAD(res);
 
 	container = container_get(mod);
-	if (!container) {
-		k_mutex_unlock(&res->lock);
+	if (!container)
 		return NULL;
-	}
 
 	if (!size) {
 		comp_err(mod->dev, "requested allocation of 0 bytes.");
 		container_put(mod, container);
-		k_mutex_unlock(&res->lock);
 		return NULL;
 	}
 
@@ -202,7 +210,6 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
 			 size, alignment, dev_comp_id(mod->dev));
 		container_put(mod, container);
-		k_mutex_unlock(&res->lock);
 		return NULL;
 	}
 	/* Store reference to allocated memory */
@@ -214,7 +221,6 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 	if (res->heap_usage > res->heap_high_water_mark)
 		res->heap_high_water_mark = res->heap_usage;
 
-	k_mutex_unlock(&res->lock);
 	return ptr;
 }
 EXPORT_SYMBOL(z_impl_mod_balloc_align);
@@ -235,18 +241,15 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	struct module_resources *res = &mod->priv.resources;
 	struct module_resource *container;
 
-	k_mutex_lock(&res->lock, K_FOREVER);
+	MEM_API_CHECK_THREAD(res);
 
 	container = container_get(mod);
-	if (!container) {
-		k_mutex_unlock(&res->lock);
+	if (!container)
 		return NULL;
-	}
 
 	if (!size) {
 		comp_err(mod->dev, "requested allocation of 0 bytes.");
 		container_put(mod, container);
-		k_mutex_unlock(&res->lock);
 		return NULL;
 	}
 
@@ -257,7 +260,6 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
 			 size, alignment, dev_comp_id(mod->dev));
 		container_put(mod, container);
-		k_mutex_unlock(&res->lock);
 		return NULL;
 	}
 	/* Store reference to allocated memory */
@@ -269,7 +271,6 @@ void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t
 	if (res->heap_usage > res->heap_high_water_mark)
 		res->heap_high_water_mark = res->heap_usage;
 
-	k_mutex_unlock(&res->lock);
 	return ptr;
 }
 EXPORT_SYMBOL(z_impl_mod_alloc_ext);
@@ -284,22 +285,19 @@ EXPORT_SYMBOL(z_impl_mod_alloc_ext);
 #if CONFIG_COMP_BLOB
 struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod)
 {
-	struct module_resources *res = &mod->priv.resources;
+	struct module_resources * __maybe_unused res = &mod->priv.resources;
 	struct comp_data_blob_handler *bhp;
 	struct module_resource *container;
 
-	k_mutex_lock(&res->lock, K_FOREVER);
+	MEM_API_CHECK_THREAD(res);
 
 	container = container_get(mod);
-	if (!container) {
-		k_mutex_unlock(&res->lock);
+	if (!container)
 		return NULL;
-	}
 
 	bhp = comp_data_blob_handler_new_ext(mod->dev, false, NULL, NULL);
 	if (!bhp) {
 		container_put(mod, container);
-		k_mutex_unlock(&res->lock);
 		return NULL;
 	}
 
@@ -307,7 +305,6 @@ struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processin
 	container->size = 0;
 	container->type = MOD_RES_BLOB_HANDLER;
 
-	k_mutex_unlock(&res->lock);
 	return bhp;
 }
 EXPORT_SYMBOL(z_impl_mod_data_blob_handler_new);
@@ -328,18 +325,15 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 	struct module_resource *container;
 	const void *ptr;
 
-	k_mutex_lock(&res->lock, K_FOREVER);
+	MEM_API_CHECK_THREAD(res);
 
 	container = container_get(mod);
-	if (!container) {
-		k_mutex_unlock(&res->lock);
+	if (!container)
 		return NULL;
-	}
 
 	ptr = fast_get(res->alloc, dram_ptr, size);
 	if (!ptr) {
 		container_put(mod, container);
-		k_mutex_unlock(&res->lock);
 		return NULL;
 	}
 
@@ -347,7 +341,6 @@ const void *z_impl_mod_fast_get(struct processing_module *mod, const void * cons
 	container->size = 0;
 	container->type = MOD_RES_FAST_GET;
 
-	k_mutex_unlock(&res->lock);
 	return ptr;
 }
 EXPORT_SYMBOL(z_impl_mod_fast_get);
@@ -419,16 +412,13 @@ int z_impl_mod_free(struct processing_module *mod, const void *ptr)
 {
 	struct module_resources *res = &mod->priv.resources;
 
+	MEM_API_CHECK_THREAD(res);
 	if (!ptr)
 		return 0;
 
 	/* Find which container holds this memory */
 	struct mod_res_cb_arg cb_arg = {mod, ptr};
-
-	k_mutex_lock(&res->lock, K_FOREVER);
 	int ret = objpool_iterate(&res->objpool, mod_res_free, &cb_arg);
-
-	k_mutex_unlock(&res->lock);
 
 	if (ret < 0)
 		comp_err(mod->dev, "error: could not find memory pointed by %p", ptr);
@@ -738,13 +728,13 @@ void mod_free_all(struct processing_module *mod)
 {
 	struct module_resources *res = &mod->priv.resources;
 
+	MEM_API_CHECK_THREAD(res);
+
 	/* Free all contents found in used containers */
 	struct mod_res_cb_arg cb_arg = {mod, NULL};
 
-	k_mutex_lock(&res->lock, K_FOREVER);
 	objpool_iterate(&res->objpool, mod_res_free, &cb_arg);
 	objpool_prune(&res->objpool);
-	k_mutex_unlock(&res->lock);
 
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);

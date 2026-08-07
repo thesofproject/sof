@@ -49,10 +49,10 @@ int mfcc_ipc_notification_init(struct processing_module *mod)
 	primary->r.type = SOF_IPC4_GLB_NOTIFICATION;
 	primary->r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	primary->r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-	cd->msg = ipc_msg_w_ext_init(msg_proto.header, msg_proto.extension,
-				     sizeof(struct sof_ipc4_notify_module_data) +
-				     sizeof(struct sof_ipc4_control_msg_payload) +
-				     sizeof(struct sof_ipc4_ctrl_value_chan));
+	cd->msg = mod_ipc_msg_w_ext_init(mod, msg_proto.header, msg_proto.extension,
+					 sizeof(struct sof_ipc4_notify_module_data) +
+					 sizeof(struct sof_ipc4_control_msg_payload) +
+					 sizeof(struct sof_ipc4_ctrl_value_chan));
 	if (!cd->msg) {
 		comp_err(dev, "Failed to initialize VAD notification");
 		return -ENOMEM;

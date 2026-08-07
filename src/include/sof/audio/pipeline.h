@@ -206,6 +206,14 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
  */
 void pipeline_posn_init(struct sof *sof);
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+/**
+ * \brief Grants user-space thread access to pipeline position mutex.
+ * \param[in] thread Thread to grant access to.
+ */
+void pipeline_posn_grant_access(struct k_thread *thread);
+#endif
+
 /**
  * \brief Resets the pipeline and free runtime resources.
  * \param[in] p pipeline.

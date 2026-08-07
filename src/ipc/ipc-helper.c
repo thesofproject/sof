@@ -297,7 +297,7 @@ __cold int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 	struct comp_buffer *buffer;
 	struct comp_buffer *safe;
 	struct list_item *clist;
-	uint32_t flags;
+	uint32_t __maybe_unused flags;
 
 	assert_can_be_cold();
 
