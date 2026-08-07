@@ -20,6 +20,7 @@
 #include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
+#include <rtos/userspace_helper.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -36,6 +37,9 @@ SOF_DEFINE_REG_UUID(pipe_task);
 SOF_DEFINE_REG_UUID(pipe_trigger_task);
 
 #define PIPELINE_TRIGGER_TASK_PRIORITY	(SOF_TASK_PRI_HIGH - 1)
+
+/** Pipeline whose delayed trigger sequence must complete first on each core. */
+static APP_SYSUSER_BSS struct pipeline *delayed_trigger_owner[CONFIG_CORE_COUNT];
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 
@@ -215,12 +219,19 @@ static enum task_state pipeline_trigger_task(void *arg)
 	};
 	struct pipeline *p = arg;
 	enum task_state state;
+	struct pipeline *owner = delayed_trigger_owner[p->core];
+
+	if (owner && owner != p)
+		return SOF_TASK_STATE_RESCHEDULE;
 
 	/*
 	 * A connected pipeline can enter xrun before its trigger task runs.
 	 * Complete the delayed IPC with an error instead of triggering it.
 	 */
 	if (p->xrun_bytes) {
+		if (owner == p)
+			delayed_trigger_owner[p->core] = NULL;
+
 		if (p->trigger.cmd != COMP_TRIGGER_NO_ACTION) {
 			p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
 			reply.error = -EPIPE;
@@ -235,10 +246,21 @@ static enum task_state pipeline_trigger_task(void *arg)
 		return SOF_TASK_STATE_RESCHEDULE;
 	}
 
-	if (p->trigger.cmd == COMP_TRIGGER_NO_ACTION)
+	if (p->trigger.cmd == COMP_TRIGGER_NO_ACTION) {
+		if (owner == p)
+			delayed_trigger_owner[p->core] = NULL;
+
 		return SOF_TASK_STATE_COMPLETED;
+	}
 
 	state = pipeline_trigger_task_cmd(p, &reply);
+	if (state == SOF_TASK_STATE_RESCHEDULE && p->trigger.delay) {
+		delayed_trigger_owner[p->core] = p;
+		return state;
+	}
+
+	if (delayed_trigger_owner[p->core] == p)
+		delayed_trigger_owner[p->core] = NULL;
 
 	/* RUNNING means that the independent copy task should keep running. */
 	return state == SOF_TASK_STATE_RUNNING ? SOF_TASK_STATE_COMPLETED : state;
