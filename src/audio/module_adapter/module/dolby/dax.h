@@ -7,6 +7,7 @@
  * Author: Jun Lai <jun.lai@dolby.com>
  */
 
+#include <rtos/spinlock.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <dax_inf.h>
 
@@ -24,6 +25,8 @@ struct dax_adapter_data {
 	atomic_t proc_flags;
 	uint32_t comp_id;
 	int32_t priority;
+	struct dax_buffer cache_tuning_buf;
+	struct k_spinlock lock;
 };
 
 /**
