@@ -21,6 +21,7 @@
 
 #endif
 struct comp_buffer;
+struct comp_dev *get_wov_detector_comp(uint32_t ppl_id);
 
 /* KPB internal defines */
 

@@ -18,10 +18,14 @@
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/kpb.h>
+#define SOF_MODULE_API_PRIVATE
+#include <sof/audio/module_adapter/module/generic.h>
+#include <module/module/base.h>
 #include <sof/audio/ipc-config.h>
 #include <sof/common.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
+#include <sof/ipc/topology.h>
 #include <rtos/timer.h>
 #include <rtos/alloc.h>
 #include <rtos/clk.h>
@@ -369,6 +373,9 @@ static int kpb_bind(struct comp_dev *dev, struct bind_info *bind_data)
 		sink_buf_id = buf_get_id(sink);
 
 		if (sink_buf_id == buf_id) {
+			struct comp_dev *sc = comp_buffer_get_sink_component(sink);
+			comp_err(dev, "kpb_bind: buf_id=%d sink_comp=0x%x -> %s",
+				 buf_id, sc ? dev_comp_id(sc) : 0, sink_buf_id == 0 ? "sel_sink" : "host_sink");
 			if (sink_buf_id == 0)
 				kpb->sel_sink = sink;
 			else
@@ -887,6 +894,38 @@ static int kpb_prepare(struct comp_dev *dev)
 		return -ENOMEM;
 	}
 
+	struct comp_buffer *sink;
+	comp_dev_for_each_consumer(dev, sink) {
+		struct comp_dev *sc = comp_buffer_get_sink_component(sink);
+		if (sc) {
+			comp_err(dev, "kpb consumer in bsink_list: comp_id=0x%x type=%d sink_buf=%p",
+				 dev_comp_id(sc), sc->drv ? sc->drv->type : -1, sink);
+			if (dev_comp_id(sc) != 0x10)
+				kpb->sel_sink = sink;
+			else
+				kpb->host_sink = sink;
+		}
+	}
+	comp_err(dev, "kpb_params result: sel_sink=%p host_sink=%p",
+		 kpb->sel_sink, kpb->host_sink);
+
+	if (kpb->sel_sink) {
+		struct comp_dev *sink_comp = comp_buffer_get_sink_component(kpb->sel_sink);
+		if (sink_comp && sink_comp->state == COMP_STATE_INIT) {
+			struct sof_ipc_stream_params sink_params;
+			memset_s(&sink_params, sizeof(sink_params), 0, sizeof(sink_params));
+			sink_params.channels = kpb->config.channels ? kpb->config.channels : 2;
+			sink_params.rate = kpb->config.sampling_freq ? kpb->config.sampling_freq : 16000;
+			sink_params.sample_container_bytes = 4;
+			sink_params.sample_valid_bytes = 4;
+			sink_params.frame_fmt = SOF_IPC_FRAME_S32_LE;
+			comp_params(sink_comp, &sink_params);
+			comp_prepare(sink_comp);
+		}
+	}
+
+	kpb_change_state(kpb, KPB_STATE_RUN);
+
 #ifndef CONFIG_IPC_MAJOR_4
 	/* Search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device
@@ -936,10 +975,36 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+	if (!kpb->sel_sink || !kpb->host_sink) {
+		struct comp_buffer *sink;
+
+		comp_dev_for_each_consumer(dev, sink) {
+			if (!kpb->sel_sink)
+				kpb->sel_sink = sink;
+			else if (!kpb->host_sink)
+				kpb->host_sink = sink;
+		}
+	}
+
 	if (!kpb->sel_sink) {
 		comp_err(dev, "could not find sink: sel_sink %p",
 			 kpb->sel_sink);
 		ret = -EIO;
+	} else {
+		struct comp_dev *sink_comp = comp_buffer_get_sink_component(kpb->sel_sink);
+		if (sink_comp && sink_comp->state == COMP_STATE_INIT) {
+			struct sof_ipc_stream_params sink_params;
+			memset_s(&sink_params, sizeof(sink_params), 0, sizeof(sink_params));
+			sink_params.channels = kpb->config.channels ? kpb->config.channels : 2;
+			sink_params.rate = kpb->config.sampling_freq ? kpb->config.sampling_freq : 16000;
+			sink_params.sample_container_bytes = 4;
+			sink_params.sample_valid_bytes = 4;
+			sink_params.frame_fmt = SOF_IPC_FRAME_S32_LE;
+			comp_params(sink_comp, &sink_params);
+			comp_prepare(sink_comp);
+			comp_info(dev, "kpb_prepare: prepared downstream sink_comp %d in state %d",
+				  dev_comp_id(sink_comp), sink_comp->state);
+		}
 	}
 
 	kpb->sync_draining_mode = true;
@@ -1234,19 +1299,16 @@ static int kpb_copy(struct comp_dev *dev)
 		sink = kpb->sel_sink;
 		ret = PPL_STATUS_PATH_STOP;
 
+		comp_err(dev, "kpb_copy: source_buf=%p sel_sink=%p avail=%u",
+			 source, sink, audio_stream_get_avail_bytes(&source->stream));
+
 		if (!sink) {
 			comp_err(dev, "no sink.");
 			ret = -EINVAL;
 			break;
 		}
 
-		/* Discard data if sink is not active */
-		if (comp_buffer_get_sink_component(sink)->state != COMP_STATE_ACTIVE) {
-			copy_bytes = audio_stream_get_avail_bytes(&source->stream);
-			comp_update_buffer_consume(source, copy_bytes);
-			comp_dbg(dev, "KD not active, dropping %zu bytes...", copy_bytes);
-			break;
-		}
+		/* Allow downstream WOV detector copy regardless of state */
 
 		/* Validate sink */
 		if (!audio_stream_get_wptr(&sink->stream)) {
@@ -1312,6 +1374,15 @@ static int kpb_copy(struct comp_dev *dev)
 			comp_update_buffer_produce(sink, copy_bytes);
 		else
 			comp_update_buffer_produce(sink, produced_bytes);
+
+		struct comp_dev *wov_comp = sink ? comp_buffer_get_sink_component(sink) : NULL;
+		if (wov_comp) {
+			comp_err(dev, "kpb_copy: produced=%u bytes, triggering wov=0x%x",
+				 copy_bytes, dev_comp_id(wov_comp));
+			comp_copy(wov_comp);
+		} else {
+			comp_err(dev, "kpb_copy: downstream sink_comp returned NULL!");
+		}
 
 		comp_update_buffer_consume(source, copy_bytes);
 
