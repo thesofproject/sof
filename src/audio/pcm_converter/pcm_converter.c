@@ -15,35 +15,23 @@
 #include <sof/audio/pcm_converter.h>
 #include <rtos/panic.h>
 
-int pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
-			  struct audio_stream *sink, uint32_t ooffset,
-			  uint32_t samples, pcm_converter_lin_func converter)
+int pcm_convert_as_linear(const struct cir_buf_source *source, size_t s_size_in,
+			  struct cir_buf_sink *sink, size_t s_size_out,
+			  size_t samples, pcm_converter_lin_func converter)
 {
-	const int s_size_in = audio_stream_sample_bytes(source);
-	const int s_size_out = audio_stream_sample_bytes(sink);
 	const int log2_s_size_in = ffs(s_size_in) - 1;
 	const int log2_s_size_out = ffs(s_size_out) - 1;
-	char *r_ptr = audio_stream_get_frag(source, audio_stream_get_rptr(source), ioffset,
-					    s_size_in);
-	char *w_ptr = audio_stream_get_frag(sink, audio_stream_get_wptr(sink), ooffset,
-					    s_size_out);
-	int i = 0;
-	int chunk;
-	int N1, N2;
+	const char *r_ptr = source->ptr;
+	char *w_ptr = sink->ptr;
+	size_t i = 0;
+	size_t chunk;
+	size_t N1, N2;
 
-	/* assert enough avail/free samples in source and sink buffer */
-	if (audio_stream_get_avail_samples(source) < samples + ioffset)
-		return -EINVAL;
-	if (audio_stream_get_free_samples(sink) < samples + ooffset)
-		return -EINVAL;
 
 	while (i < samples) {
-		/* calculate chunk size */
-		/* "">> log2_s_size" is equal "/ s_size" here */
-		N1 = audio_stream_bytes_without_wrap(source, r_ptr) >>
-			log2_s_size_in;
-		N2 = audio_stream_bytes_without_wrap(sink, w_ptr) >>
-			log2_s_size_out;
+		/* calculate chunk size; shifting by log2_s_size is dividing by s_size */
+		N1 = ((const char *)source->buf_end - r_ptr) >> log2_s_size_in;
+		N2 = ((char *)sink->buf_end - w_ptr) >> log2_s_size_out;
 		chunk = MIN(N1, N2);
 		chunk = MIN(chunk, samples - i);
 
@@ -51,16 +39,52 @@ int pcm_convert_as_linear(const struct audio_stream *source, uint32_t ioffset,
 		converter(r_ptr, w_ptr, chunk);
 
 		/* move pointers */
-		r_ptr = audio_stream_wrap(source, r_ptr + chunk * s_size_in);
-		w_ptr = audio_stream_wrap(sink, w_ptr + chunk * s_size_out);
+		r_ptr = cir_buf_wrap(r_ptr + chunk * s_size_in,
+				     source->buf_start, source->buf_end);
+		w_ptr = cir_buf_wrap(w_ptr + chunk * s_size_out,
+				     sink->buf_start, sink->buf_end);
 		i += chunk;
 	}
 
 	return samples;
 }
 
-int just_copy(const struct audio_stream *source, uint32_t ioffset,
-	      struct audio_stream *sink, uint32_t ooffset, uint32_t samples, uint32_t chmap)
+/* Copy "bytes" of raw data from a source to a sink circular buffer. */
+static void just_copy_bytes(const struct cir_buf_source *source, struct cir_buf_sink *sink,
+			    size_t bytes)
 {
-	return audio_stream_copy(source, ioffset, sink, ooffset, samples);
+	cir_buf_copy(source->ptr, source->buf_start, source->buf_end,
+		     sink->ptr, sink->buf_start, sink->buf_end, bytes);
+}
+
+int just_copy_1b(const struct cir_buf_source *source, uint32_t src_channels,
+		 struct cir_buf_sink *sink, uint32_t sink_channels,
+		 size_t samples, uint32_t chmap)
+{
+	just_copy_bytes(source, sink, samples);
+	return samples;
+}
+
+int just_copy_2b(const struct cir_buf_source *source, uint32_t src_channels,
+		 struct cir_buf_sink *sink, uint32_t sink_channels,
+		 size_t samples, uint32_t chmap)
+{
+	just_copy_bytes(source, sink, samples * sizeof(int16_t));
+	return samples;
+}
+
+int just_copy_3b(const struct cir_buf_source *source, uint32_t src_channels,
+		 struct cir_buf_sink *sink, uint32_t sink_channels,
+		 size_t samples, uint32_t chmap)
+{
+	just_copy_bytes(source, sink, samples * 3);
+	return samples;
+}
+
+int just_copy_4b(const struct cir_buf_source *source, uint32_t src_channels,
+		 struct cir_buf_sink *sink, uint32_t sink_channels,
+		 size_t samples, uint32_t chmap)
+{
+	just_copy_bytes(source, sink, samples * sizeof(int32_t));
+	return samples;
 }

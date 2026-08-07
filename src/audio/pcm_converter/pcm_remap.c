@@ -6,17 +6,17 @@
 #include <sof/audio/pcm_converter.h>
 #include <sof/audio/audio_stream.h>
 
-static void mute_channel_c16(struct audio_stream *stream, int channel, int frames)
+static void mute_channel_c16(struct cir_buf_sink *sink, uint32_t num_channels, uint32_t channel,
+			     size_t frames)
 {
-	int num_channels = audio_stream_get_channels(stream);
-	int16_t *ptr = (int16_t *)audio_stream_get_wptr(stream) + channel;
+	int16_t *ptr = (int16_t *)sink->ptr + channel;
 
 	while (frames) {
-		int samples_wo_wrap, n, i;
+		size_t samples_wo_wrap, n, i;
 
-		ptr = audio_stream_wrap(stream, ptr);
+		ptr = cir_buf_wrap(ptr, sink->buf_start, sink->buf_end);
 
-		samples_wo_wrap = audio_stream_samples_without_wrap_s16(stream, ptr);
+		samples_wo_wrap = cir_buf_samples_without_wrap_s16(ptr, sink->buf_end);
 		n = SOF_DIV_ROUND_UP(samples_wo_wrap, num_channels);
 		n = MIN(n, frames);
 
@@ -29,17 +29,17 @@ static void mute_channel_c16(struct audio_stream *stream, int channel, int frame
 	}
 }
 
-static void mute_channel_c32(struct audio_stream *stream, int channel, int frames)
+static void mute_channel_c32(struct cir_buf_sink *sink, uint32_t num_channels, uint32_t channel,
+			     size_t frames)
 {
-	int num_channels = audio_stream_get_channels(stream);
-	int32_t *ptr = (int32_t *)audio_stream_get_wptr(stream) + channel;
+	int32_t *ptr = (int32_t *)sink->ptr + channel;
 
 	while (frames) {
-		int samples_wo_wrap, n, i;
+		size_t samples_wo_wrap, n, i;
 
-		ptr = audio_stream_wrap(stream, ptr);
+		ptr = cir_buf_wrap(ptr, sink->buf_start, sink->buf_end);
 
-		samples_wo_wrap = audio_stream_samples_without_wrap_s32(stream, ptr);
+		samples_wo_wrap = cir_buf_samples_without_wrap_s32(ptr, sink->buf_end);
 		n = SOF_DIV_ROUND_UP(samples_wo_wrap, num_channels);
 		n = MIN(n, frames);
 
@@ -52,18 +52,17 @@ static void mute_channel_c32(struct audio_stream *stream, int channel, int frame
 	}
 }
 
-static int remap_c16(const struct audio_stream *source, uint32_t dummy1,
-		     struct audio_stream *sink, uint32_t dummy2,
-		     uint32_t source_samples, uint32_t chmap)
+static int remap_c16(const struct cir_buf_source *source, uint32_t src_channels,
+		     struct cir_buf_sink *sink, uint32_t sink_channels,
+		     size_t source_samples, uint32_t chmap)
 {
-	int src_channel, sink_channel;
-	int num_src_channels = audio_stream_get_channels(source);
-	int num_sink_channels = audio_stream_get_channels(sink);
-	int frames = source_samples / num_src_channels;
+	uint32_t src_channel, sink_channel;
+	size_t frames = source_samples / src_channels;
 
-	for (sink_channel = 0; sink_channel < num_sink_channels; sink_channel++) {
-		int16_t *src, *dst;
-		int frames_left;
+	for (sink_channel = 0; sink_channel < sink_channels; sink_channel++) {
+		const int16_t *src;
+		int16_t *dst;
+		size_t frames_left;
 
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
@@ -71,36 +70,34 @@ static int remap_c16(const struct audio_stream *source, uint32_t dummy1,
 		/* 0xf means "mute"; also mute any out-of-range source channel so
 		 * a crafted chmap nibble cannot index past the source frame.
 		 */
-		if (src_channel == 0xf || src_channel >= num_src_channels) {
-			mute_channel_c16(sink, sink_channel, frames);
+		if (src_channel == 0xf || src_channel >= src_channels) {
+			mute_channel_c16(sink, sink_channels, sink_channel, frames);
 			continue;
 		}
 
-		src = (int16_t *)audio_stream_get_rptr(source) + src_channel;
-		dst = (int16_t *)audio_stream_get_wptr(sink) + sink_channel;
+		src = (const int16_t *)source->ptr + src_channel;
+		dst = (int16_t *)sink->ptr + sink_channel;
 
 		frames_left = frames;
 
 		while (frames_left) {
-			int src_samples_wo_wrap, dst_samples_wo_wrap;
-			int src_loops, dst_loops, n, i;
+			size_t samples_wo_wrap, n, i;
 
-			src = audio_stream_wrap(source, src);
-			dst = audio_stream_wrap(sink, dst);
+			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
-			src_samples_wo_wrap = audio_stream_samples_without_wrap_s16(source, src);
-			src_loops = SOF_DIV_ROUND_UP(src_samples_wo_wrap, num_src_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s16(src, source->buf_end);
+			n = SOF_DIV_ROUND_UP(samples_wo_wrap, src_channels);
 
-			dst_samples_wo_wrap = audio_stream_samples_without_wrap_s16(sink, dst);
-			dst_loops = SOF_DIV_ROUND_UP(dst_samples_wo_wrap, num_sink_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s16(dst, sink->buf_end);
+			n = MIN(n, SOF_DIV_ROUND_UP(samples_wo_wrap, sink_channels));
 
-			n = MIN(src_loops, dst_loops);
 			n = MIN(n, frames_left);
 
 			for (i = 0; i < n; i++) {
 				*dst = *src;
-				src += num_src_channels;
-				dst += num_sink_channels;
+				src += src_channels;
+				dst += sink_channels;
 			}
 
 			frames_left -= n;
@@ -110,19 +107,20 @@ static int remap_c16(const struct audio_stream *source, uint32_t dummy1,
 	return source_samples;
 }
 
-static inline int remap_c32_left_shift(const struct audio_stream *source,
-				       struct audio_stream *sink,
-				       uint32_t source_samples, uint32_t chmap,
+static inline int remap_c32_left_shift(const struct cir_buf_source *source,
+				       uint32_t num_src_channels,
+				       struct cir_buf_sink *sink,
+				       uint32_t num_sink_channels,
+				       size_t source_samples, uint32_t chmap,
 				       int shift)
 {
-	int src_channel, sink_channel;
-	int num_src_channels = audio_stream_get_channels(source);
-	int num_sink_channels = audio_stream_get_channels(sink);
-	int frames = source_samples / num_src_channels;
+	uint32_t src_channel, sink_channel;
+	size_t frames = source_samples / num_src_channels;
 
 	for (sink_channel = 0; sink_channel < num_sink_channels; sink_channel++) {
-		int32_t *src, *dst;
-		int frames_left;
+		const int32_t *src;
+		int32_t *dst;
+		size_t frames_left;
 
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
@@ -131,29 +129,27 @@ static inline int remap_c32_left_shift(const struct audio_stream *source,
 		 * a crafted chmap nibble cannot index past the source frame.
 		 */
 		if (src_channel == 0xf || src_channel >= num_src_channels) {
-			mute_channel_c32(sink, sink_channel, frames);
+			mute_channel_c32(sink, num_sink_channels, sink_channel, frames);
 			continue;
 		}
 
-		src = (int32_t *)audio_stream_get_rptr(source) + src_channel;
-		dst = (int32_t *)audio_stream_get_wptr(sink) + sink_channel;
+		src = (const int32_t *)source->ptr + src_channel;
+		dst = (int32_t *)sink->ptr + sink_channel;
 
 		frames_left = frames;
 
 		while (frames_left) {
-			int src_samples_wo_wrap, dst_samples_wo_wrap;
-			int src_loops, dst_loops, n, i;
+			size_t samples_wo_wrap, n, i;
 
-			src = audio_stream_wrap(source, src);
-			dst = audio_stream_wrap(sink, dst);
+			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
-			src_samples_wo_wrap = audio_stream_samples_without_wrap_s32(source, src);
-			src_loops = SOF_DIV_ROUND_UP(src_samples_wo_wrap, num_src_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s32(src, source->buf_end);
+			n = SOF_DIV_ROUND_UP(samples_wo_wrap, num_src_channels);
 
-			dst_samples_wo_wrap = audio_stream_samples_without_wrap_s32(sink, dst);
-			dst_loops = SOF_DIV_ROUND_UP(dst_samples_wo_wrap, num_sink_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s32(dst, sink->buf_end);
+			n = MIN(n, SOF_DIV_ROUND_UP(samples_wo_wrap, num_sink_channels));
 
-			n = MIN(src_loops, dst_loops);
 			n = MIN(n, frames_left);
 
 			for (i = 0; i < n; i++) {
@@ -169,19 +165,20 @@ static inline int remap_c32_left_shift(const struct audio_stream *source,
 	return source_samples;
 }
 
-static inline int remap_c32_right_shift(const struct audio_stream *source,
-					struct audio_stream *sink,
-					uint32_t source_samples, uint32_t chmap,
+static inline int remap_c32_right_shift(const struct cir_buf_source *source,
+					uint32_t num_src_channels,
+					struct cir_buf_sink *sink,
+					uint32_t num_sink_channels,
+					size_t source_samples, uint32_t chmap,
 					int shift)
 {
-	int src_channel, sink_channel;
-	int num_src_channels = audio_stream_get_channels(source);
-	int num_sink_channels = audio_stream_get_channels(sink);
-	int frames = source_samples / num_src_channels;
+	uint32_t src_channel, sink_channel;
+	size_t frames = source_samples / num_src_channels;
 
 	for (sink_channel = 0; sink_channel < num_sink_channels; sink_channel++) {
-		int32_t *src, *dst;
-		int frames_left;
+		const int32_t *src;
+		int32_t *dst;
+		size_t frames_left;
 
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
@@ -190,29 +187,27 @@ static inline int remap_c32_right_shift(const struct audio_stream *source,
 		 * a crafted chmap nibble cannot index past the source frame.
 		 */
 		if (src_channel == 0xf || src_channel >= num_src_channels) {
-			mute_channel_c32(sink, sink_channel, frames);
+			mute_channel_c32(sink, num_sink_channels, sink_channel, frames);
 			continue;
 		}
 
-		src = (int32_t *)audio_stream_get_rptr(source) + src_channel;
-		dst = (int32_t *)audio_stream_get_wptr(sink) + sink_channel;
+		src = (const int32_t *)source->ptr + src_channel;
+		dst = (int32_t *)sink->ptr + sink_channel;
 
 		frames_left = frames;
 
 		while (frames_left) {
-			int src_samples_wo_wrap, dst_samples_wo_wrap;
-			int src_loops, dst_loops, n, i;
+			size_t samples_wo_wrap, n, i;
 
-			src = audio_stream_wrap(source, src);
-			dst = audio_stream_wrap(sink, dst);
+			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
-			src_samples_wo_wrap = audio_stream_samples_without_wrap_s32(source, src);
-			src_loops = SOF_DIV_ROUND_UP(src_samples_wo_wrap, num_src_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s32(src, source->buf_end);
+			n = SOF_DIV_ROUND_UP(samples_wo_wrap, num_src_channels);
 
-			dst_samples_wo_wrap = audio_stream_samples_without_wrap_s32(sink, dst);
-			dst_loops = SOF_DIV_ROUND_UP(dst_samples_wo_wrap, num_sink_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s32(dst, sink->buf_end);
+			n = MIN(n, SOF_DIV_ROUND_UP(samples_wo_wrap, num_sink_channels));
 
-			n = MIN(src_loops, dst_loops);
 			n = MIN(n, frames_left);
 
 			for (i = 0; i < n; i++) {
@@ -228,20 +223,20 @@ static inline int remap_c32_right_shift(const struct audio_stream *source,
 	return source_samples;
 }
 
-static inline int remap_c16_to_c32(const struct audio_stream *source,
-				   struct audio_stream *sink,
-				   uint32_t source_samples, uint32_t chmap,
+static inline int remap_c16_to_c32(const struct cir_buf_source *source,
+				   uint32_t num_src_channels,
+				   struct cir_buf_sink *sink,
+				   uint32_t num_sink_channels,
+				   size_t source_samples, uint32_t chmap,
 				   int shift)
 {
-	int src_channel, sink_channel;
-	int num_src_channels = audio_stream_get_channels(source);
-	int num_sink_channels = audio_stream_get_channels(sink);
-	int frames = source_samples / num_src_channels;
+	uint32_t src_channel, sink_channel;
+	size_t frames = source_samples / num_src_channels;
 
 	for (sink_channel = 0; sink_channel < num_sink_channels; sink_channel++) {
-		int16_t *src;
+		const int16_t *src;
 		int32_t *dst;
-		int frames_left;
+		size_t frames_left;
 
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
@@ -250,29 +245,27 @@ static inline int remap_c16_to_c32(const struct audio_stream *source,
 		 * a crafted chmap nibble cannot index past the source frame.
 		 */
 		if (src_channel == 0xf || src_channel >= num_src_channels) {
-			mute_channel_c32(sink, sink_channel, frames);
+			mute_channel_c32(sink, num_sink_channels, sink_channel, frames);
 			continue;
 		}
 
-		src = (int16_t *)audio_stream_get_rptr(source) + src_channel;
-		dst = (int32_t *)audio_stream_get_wptr(sink) + sink_channel;
+		src = (const int16_t *)source->ptr + src_channel;
+		dst = (int32_t *)sink->ptr + sink_channel;
 
 		frames_left = frames;
 
 		while (frames_left) {
-			int src_samples_wo_wrap, dst_samples_wo_wrap;
-			int src_loops, dst_loops, n, i;
+			size_t samples_wo_wrap, n, i;
 
-			src = audio_stream_wrap(source, src);
-			dst = audio_stream_wrap(sink, dst);
+			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
-			src_samples_wo_wrap = audio_stream_samples_without_wrap_s16(source, src);
-			src_loops = SOF_DIV_ROUND_UP(src_samples_wo_wrap, num_src_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s16(src, source->buf_end);
+			n = SOF_DIV_ROUND_UP(samples_wo_wrap, num_src_channels);
 
-			dst_samples_wo_wrap = audio_stream_samples_without_wrap_s32(sink, dst);
-			dst_loops = SOF_DIV_ROUND_UP(dst_samples_wo_wrap, num_sink_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s32(dst, sink->buf_end);
+			n = MIN(n, SOF_DIV_ROUND_UP(samples_wo_wrap, num_sink_channels));
 
-			n = MIN(src_loops, dst_loops);
 			n = MIN(n, frames_left);
 
 			for (i = 0; i < n; i++) {
@@ -288,20 +281,20 @@ static inline int remap_c16_to_c32(const struct audio_stream *source,
 	return source_samples;
 }
 
-static inline int remap_c32_to_c16(const struct audio_stream *source,
-				   struct audio_stream *sink,
-				   uint32_t source_samples, uint32_t chmap,
+static inline int remap_c32_to_c16(const struct cir_buf_source *source,
+				   uint32_t num_src_channels,
+				   struct cir_buf_sink *sink,
+				   uint32_t num_sink_channels,
+				   size_t source_samples, uint32_t chmap,
 				   int shift)
 {
-	int src_channel, sink_channel;
-	int num_src_channels = audio_stream_get_channels(source);
-	int num_sink_channels = audio_stream_get_channels(sink);
-	int frames = source_samples / num_src_channels;
+	uint32_t src_channel, sink_channel;
+	size_t frames = source_samples / num_src_channels;
 
 	for (sink_channel = 0; sink_channel < num_sink_channels; sink_channel++) {
-		int32_t *src;
+		const int32_t *src;
 		int16_t *dst;
-		int frames_left;
+		size_t frames_left;
 
 		src_channel = chmap & 0xf;
 		chmap >>= 4;
@@ -310,29 +303,27 @@ static inline int remap_c32_to_c16(const struct audio_stream *source,
 		 * a crafted chmap nibble cannot index past the source frame.
 		 */
 		if (src_channel == 0xf || src_channel >= num_src_channels) {
-			mute_channel_c16(sink, sink_channel, frames);
+			mute_channel_c16(sink, num_sink_channels, sink_channel, frames);
 			continue;
 		}
 
-		src = (int32_t *)audio_stream_get_rptr(source) + src_channel;
-		dst = (int16_t *)audio_stream_get_wptr(sink) + sink_channel;
+		src = (const int32_t *)source->ptr + src_channel;
+		dst = (int16_t *)sink->ptr + sink_channel;
 
 		frames_left = frames;
 
 		while (frames_left) {
-			int src_samples_wo_wrap, dst_samples_wo_wrap;
-			int src_loops, dst_loops, n, i;
+			size_t samples_wo_wrap, n, i;
 
-			src = audio_stream_wrap(source, src);
-			dst = audio_stream_wrap(sink, dst);
+			src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+			dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 
-			src_samples_wo_wrap = audio_stream_samples_without_wrap_s32(source, src);
-			src_loops = SOF_DIV_ROUND_UP(src_samples_wo_wrap, num_src_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s32(src, source->buf_end);
+			n = SOF_DIV_ROUND_UP(samples_wo_wrap, num_src_channels);
 
-			dst_samples_wo_wrap = audio_stream_samples_without_wrap_s16(sink, dst);
-			dst_loops = SOF_DIV_ROUND_UP(dst_samples_wo_wrap, num_sink_channels);
+			samples_wo_wrap = cir_buf_samples_without_wrap_s16(dst, sink->buf_end);
+			n = MIN(n, SOF_DIV_ROUND_UP(samples_wo_wrap, num_sink_channels));
 
-			n = MIN(src_loops, dst_loops);
 			n = MIN(n, frames_left);
 
 			for (i = 0; i < n; i++) {
@@ -348,81 +339,96 @@ static inline int remap_c32_to_c16(const struct audio_stream *source,
 	return source_samples;
 }
 
-static int remap_c32(const struct audio_stream *source, uint32_t dummy1,
-		     struct audio_stream *sink, uint32_t dummy2,
-		     uint32_t source_samples, uint32_t chmap)
+static int remap_c32(const struct cir_buf_source *source, uint32_t src_channels,
+		     struct cir_buf_sink *sink, uint32_t sink_channels,
+		     size_t source_samples, uint32_t chmap)
 {
-	return remap_c32_left_shift(source, sink, source_samples, chmap, 0);
+	return remap_c32_left_shift(source, src_channels, sink, sink_channels,
+				    source_samples, chmap, 0);
 }
 
-static int remap_c32_to_c16_right_shift_16(const struct audio_stream *source, uint32_t dummy1,
-					   struct audio_stream *sink, uint32_t dummy2,
-					   uint32_t source_samples, uint32_t chmap)
+static int remap_c32_to_c16_right_shift_16(const struct cir_buf_source *source,
+					   uint32_t src_channels, struct cir_buf_sink *sink,
+					   uint32_t sink_channels,
+					   size_t source_samples, uint32_t chmap)
 {
-	return remap_c32_to_c16(source, sink, source_samples, chmap, 16);
+	return remap_c32_to_c16(source, src_channels, sink, sink_channels,
+				source_samples, chmap, 16);
 }
 
-static int remap_c16_to_c32_left_shift_16(const struct audio_stream *source, uint32_t dummy1,
-					  struct audio_stream *sink, uint32_t dummy2,
-					  uint32_t source_samples, uint32_t chmap)
+static int remap_c16_to_c32_left_shift_16(const struct cir_buf_source *source,
+					  uint32_t src_channels, struct cir_buf_sink *sink,
+					  uint32_t sink_channels,
+					  size_t source_samples, uint32_t chmap)
 {
-	return remap_c16_to_c32(source, sink, source_samples, chmap, 16);
+	return remap_c16_to_c32(source, src_channels, sink, sink_channels,
+				source_samples, chmap, 16);
 }
 
-static int remap_c32_to_c16_right_shift_8(const struct audio_stream *source, uint32_t dummy1,
-					  struct audio_stream *sink, uint32_t dummy2,
-					  uint32_t source_samples, uint32_t chmap)
+static int remap_c32_to_c16_right_shift_8(const struct cir_buf_source *source,
+					  uint32_t src_channels, struct cir_buf_sink *sink,
+					  uint32_t sink_channels,
+					  size_t source_samples, uint32_t chmap)
 {
-	return remap_c32_to_c16(source, sink, source_samples, chmap, 8);
+	return remap_c32_to_c16(source, src_channels, sink, sink_channels,
+				source_samples, chmap, 8);
 }
 
-static int remap_c16_to_c32_left_shift_8(const struct audio_stream *source, uint32_t dummy1,
-					 struct audio_stream *sink, uint32_t dummy2,
-					 uint32_t source_samples, uint32_t chmap)
+static int remap_c16_to_c32_left_shift_8(const struct cir_buf_source *source,
+					 uint32_t src_channels, struct cir_buf_sink *sink,
+					 uint32_t sink_channels,
+					 size_t source_samples, uint32_t chmap)
 {
-	return remap_c16_to_c32(source, sink, source_samples, chmap, 8);
+	return remap_c16_to_c32(source, src_channels, sink, sink_channels,
+				source_samples, chmap, 8);
 }
 
-static int remap_c32_right_shift_8(const struct audio_stream *source, uint32_t dummy1,
-				   struct audio_stream *sink, uint32_t dummy2,
-				   uint32_t source_samples, uint32_t chmap)
+static int remap_c32_right_shift_8(const struct cir_buf_source *source, uint32_t src_channels,
+				   struct cir_buf_sink *sink, uint32_t sink_channels,
+				   size_t source_samples, uint32_t chmap)
 {
-	return remap_c32_right_shift(source, sink, source_samples, chmap, 8);
+	return remap_c32_right_shift(source, src_channels, sink, sink_channels,
+				     source_samples, chmap, 8);
 }
 
-static int remap_c32_left_shift_8(const struct audio_stream *source, uint32_t dummy1,
-				  struct audio_stream *sink, uint32_t dummy2,
-				  uint32_t source_samples, uint32_t chmap)
+static int remap_c32_left_shift_8(const struct cir_buf_source *source, uint32_t src_channels,
+				  struct cir_buf_sink *sink, uint32_t sink_channels,
+				  size_t source_samples, uint32_t chmap)
 {
-	return remap_c32_left_shift(source, sink, source_samples, chmap, 8);
+	return remap_c32_left_shift(source, src_channels, sink, sink_channels,
+				    source_samples, chmap, 8);
 }
 
-static int remap_c32_right_shift_16(const struct audio_stream *source, uint32_t dummy1,
-				    struct audio_stream *sink, uint32_t dummy2,
-				    uint32_t source_samples, uint32_t chmap)
+static int remap_c32_right_shift_16(const struct cir_buf_source *source, uint32_t src_channels,
+				    struct cir_buf_sink *sink, uint32_t sink_channels,
+				    size_t source_samples, uint32_t chmap)
 {
-	return remap_c32_right_shift(source, sink, source_samples, chmap, 16);
+	return remap_c32_right_shift(source, src_channels, sink, sink_channels,
+				     source_samples, chmap, 16);
 }
 
-static int remap_c32_left_shift_16(const struct audio_stream *source, uint32_t dummy1,
-				   struct audio_stream *sink, uint32_t dummy2,
-				   uint32_t source_samples, uint32_t chmap)
+static int remap_c32_left_shift_16(const struct cir_buf_source *source, uint32_t src_channels,
+				   struct cir_buf_sink *sink, uint32_t sink_channels,
+				   size_t source_samples, uint32_t chmap)
 {
-	return remap_c32_left_shift(source, sink, source_samples, chmap, 16);
+	return remap_c32_left_shift(source, src_channels, sink, sink_channels,
+				    source_samples, chmap, 16);
 }
 
-static int remap_c32_to_c16_no_shift(const struct audio_stream *source, uint32_t dummy1,
-				     struct audio_stream *sink, uint32_t dummy2,
-				     uint32_t source_samples, uint32_t chmap)
+static int remap_c32_to_c16_no_shift(const struct cir_buf_source *source, uint32_t src_channels,
+				     struct cir_buf_sink *sink, uint32_t sink_channels,
+				     size_t source_samples, uint32_t chmap)
 {
-	return remap_c32_to_c16(source, sink, source_samples, chmap, 0);
+	return remap_c32_to_c16(source, src_channels, sink, sink_channels,
+				source_samples, chmap, 0);
 }
 
-static int remap_c16_to_c32_no_shift(const struct audio_stream *source, uint32_t dummy1,
-				     struct audio_stream *sink, uint32_t dummy2,
-				     uint32_t source_samples, uint32_t chmap)
+static int remap_c16_to_c32_no_shift(const struct cir_buf_source *source, uint32_t src_channels,
+				     struct cir_buf_sink *sink, uint32_t sink_channels,
+				     size_t source_samples, uint32_t chmap)
 {
-	return remap_c16_to_c32(source, sink, source_samples, chmap, 0);
+	return remap_c16_to_c32(source, src_channels, sink, sink_channels,
+				source_samples, chmap, 0);
 }
 
 /* Unfortunately, all these nice "if"s were commented out to suppress

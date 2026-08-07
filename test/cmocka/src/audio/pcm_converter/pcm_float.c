@@ -99,7 +99,20 @@ static struct comp_buffer *_test_pcm_convert(enum sof_ipc_frame frm_in, enum sof
 	/* run conversion */
 	fun = pcm_get_conversion_function(frm_in, frm_out);
 	assert_non_null(fun);
-	fun(&source->stream, 0, &sink->stream, 0, samples, DUMMY_CHMAP);
+
+	struct cir_buf_source cir_src = {
+		.buf_start = source->stream.addr,
+		.buf_end = source->stream.end_addr,
+		.ptr = source->stream.r_ptr,
+	};
+	struct cir_buf_sink cir_snk = {
+		.buf_start = sink->stream.addr,
+		.buf_end = sink->stream.end_addr,
+		.ptr = sink->stream.w_ptr,
+	};
+
+	fun(&cir_src, audio_stream_get_channels(&source->stream),
+	    &cir_snk, audio_stream_get_channels(&sink->stream), samples, DUMMY_CHMAP);
 
 	/* assert last value in sink is untouched */
 	assert_int_equal(((uint8_t *)sink->stream.w_ptr)[outbytes - 1], fillval);
