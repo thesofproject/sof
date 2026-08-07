@@ -10,6 +10,7 @@
  */
 
 #include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
 #include <sof/audio/component_ext.h>
 #include <sof/common.h>
 #include <sof/compiler_attributes.h>
@@ -23,6 +24,7 @@
 #include <sof/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
+#include <sof/schedule/ll_schedule_domain.h>
 
 #include <zephyr/cache.h>
 #include <zephyr/app_memory/mem_domain.h>
@@ -199,6 +201,13 @@ static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr
 #endif
 }
 
+#ifdef CONFIG_USERSPACE
+static int llext_manager_add_mod_domain(struct lib_manager_module *mctx,
+					struct k_mem_domain *domain);
+static int llext_manager_rm_mod_domain(struct lib_manager_module *mctx,
+				       struct k_mem_domain *domain);
+#endif
+
 static int llext_manager_load_module(struct lib_manager_module *mctx)
 {
 	/* Executable code (.text) */
@@ -292,8 +301,22 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	memset((__sparse_force void *)bss_addr, 0, bss_size);
 	mctx->mapped = true;
 
-	return 0;
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (!mctx->domain_dp) {
+		ret = llext_manager_add_mod_domain(mctx, zephyr_ll_mem_domain());
+		if (ret < 0) {
+			tr_err(&lib_manager_tr, "failed to add domain: %d", ret);
+			goto e_data;
+		}
+	}
+#endif
 
+	return 0;
+#ifdef CONFIG_SOF_USERSPACE_LL
+e_data:
+	if (data_size)
+		llext_manager_align_unmap(va_base_data, data_size);
+#endif
 e_rodata:
 	if (rodata_size)
 		llext_manager_align_unmap(va_base_rodata, rodata_size);
@@ -352,6 +375,11 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 		err = ret;
 
 	mctx->mapped = false;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (!mctx->domain_dp)
+		llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
+#endif
 
 	return err;
 }
@@ -496,23 +524,35 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != offs) {
 			offs = mod_array[i].segment[LIB_MANAGER_TEXT].file_offset;
 			ctx->mod[n_mod].mapped = false;
+			ctx->mod[n_mod].domain_dp = false;
 			ctx->mod[n_mod].llext = NULL;
 			ctx->mod[n_mod].ebl = NULL;
 			ctx->mod[n_mod].n_dependent = 0;
-			ctx->mod[n_mod++].start_idx = i;
+			ctx->mod[n_mod].start_idx = i;
+			if (n_mod)
+				ctx->mod[n_mod - 1].n_mod = i - ctx->mod[n_mod - 1].start_idx;
+			n_mod++;
 		}
+
+	ctx->mod[n_mod - 1].n_mod = desc->header.num_module_entries - ctx->mod[n_mod - 1].start_idx;
 
 	return 0;
 }
 
 /* Find a module context, containing the driver with the supplied index */
-static unsigned int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
+static int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
 {
 	unsigned int i;
 
 	for (i = 0; i < ctx->n_mod; i++)
 		if (ctx->mod[i].start_idx > idx)
 			break;
+
+	if (i == ctx->n_mod && ctx->mod[i - 1].start_idx + ctx->mod[i - 1].n_mod <= idx) {
+		tr_err(&lib_manager_tr, "%u beyond %u + %u after %u", idx,
+		       ctx->mod[i - 1].start_idx, ctx->mod[i - 1].n_mod, i);
+		return -ENOENT;
+	}
 
 	return i - 1;
 }
@@ -535,7 +575,11 @@ static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw
 		return -EINVAL;
 	}
 
-	unsigned int mod_ctx_idx = llext_manager_mod_find(ctx, entry_index);
+	int mod_ctx_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_ctx_idx < 0)
+		return mod_ctx_idx;
+
 	struct lib_manager_module *mctx = ctx->mod + mod_ctx_idx;
 	size_t mod_size;
 	int i, inst_idx;
@@ -738,6 +782,8 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 			dep_ctx[i] = dep;
 		}
 
+		/* Avoid mapping DP modules to the LL domain */
+		mctx->domain_dp = ipc_config->proc_domain == COMP_PROCESSING_DOMAIN_DP;
 		/* Map executable code and data */
 		ret = llext_manager_load_module(mctx);
 		if (ret < 0)
@@ -778,13 +824,8 @@ static int llext_manager_rm_partition(struct k_mem_domain *domain,
 	return k_mem_domain_remove_partition(domain, &part);
 }
 
-int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *domain)
+static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct k_mem_domain *domain)
 {
-	const uint32_t module_id = IPC4_MOD_ID(component_id);
-	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
-	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-	const unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
-	struct lib_manager_module *mctx = ctx->mod + mod_idx;
 	const struct llext *ext = mctx->llext;
 	const struct llext_loader *ldr = &mctx->ebl->loader;
 
@@ -799,6 +840,13 @@ int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *d
 	/* Writable data (.data, .bss and others) */
 	uintptr_t va_base_data = mctx->segment[LIB_MANAGER_DATA].addr;
 	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
+
+	/*
+	 * Add to domain on first load: for "normal" modules use_count == 1,
+	 * for dependencies use_count == 2 and n_dependent == 1
+	 */
+	if (ext->use_count > 1 && mctx->n_dependent != 1)
+		return 0;
 
 	int ret = llext_manager_add_partition(domain, va_base_text, text_size,
 					      K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
@@ -914,14 +962,24 @@ e_text:
 	return ret;
 }
 
-int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *domain)
+int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *domain)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-	const unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+	const int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
 	struct lib_manager_module *mctx = ctx->mod + mod_idx;
 
+	/* FIXME: handle dependencies */
+	return llext_manager_add_mod_domain(mctx, domain);
+}
+
+static int llext_manager_rm_mod_domain(struct lib_manager_module *mctx, struct k_mem_domain *domain)
+{
 	/* Executable code (.text) */
 	uintptr_t va_base_text = mctx->segment[LIB_MANAGER_TEXT].addr;
 	size_t text_size = mctx->segment[LIB_MANAGER_TEXT].size;
@@ -988,6 +1046,21 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 
 	return ret;
 }
+
+int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *domain)
+{
+	const uint32_t module_id = IPC4_MOD_ID(component_id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	const int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
+	struct lib_manager_module *mctx = ctx->mod + mod_idx;
+
+	return llext_manager_rm_mod_domain(mctx, domain);
+}
 #endif
 
 int llext_manager_free_module(const uint32_t component_id)
@@ -1008,7 +1081,11 @@ int llext_manager_free_module(const uint32_t component_id)
 		return -ENOENT;
 	}
 
-	unsigned int mod_idx = llext_manager_mod_find(ctx, entry_index);
+	int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
 	struct lib_manager_module *mctx = ctx->mod + mod_idx;
 
 	/* Protected by IPC serialization */

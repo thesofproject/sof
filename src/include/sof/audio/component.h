@@ -24,6 +24,7 @@
 #include <rtos/mutex.h>
 #include <rtos/userspace_helper.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/uuid.h>
 #include <sof/schedule/schedule.h>
 #include <ipc/control.h>
 #include <sof/ipc/topology.h>
@@ -593,6 +594,7 @@ struct comp_driver {
 							  * Currently used by module_adapter.
 							  */
 	struct k_heap *user_heap;			/**< Userspace heap */
+	struct sof_uuid uid_cp;				/**< UUID copy for LLEXT modules */
 };
 
 /** \brief Holds constant pointer to component driver */
