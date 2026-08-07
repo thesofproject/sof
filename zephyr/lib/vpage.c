@@ -64,16 +64,16 @@ struct vpage_context {
 static struct vpage_context vpage_ctx;
 
 /**
- * @brief Allocate and map virtual memory pages
+ * @brief Reserve virtual memory pages
  *
- * Allocates memory pages from the virtual page allocator.
- * Maps physical memory pages to the virtual region as needed.
+ * Reserves memory pages from the virtual page allocator, without mapping
+ * any physical memory to them.
  *
- * @param pages Number of pages to allocate.
- * @param ptr Pointer to store the address of allocated pages.
+ * @param pages Number of pages to reserve.
+ * @param ptr Pointer to store the address of the reserved pages.
  * @retval 0 if successful.
  */
-static int vpages_alloc_and_map(unsigned int pages, void **ptr)
+static int vpages_reserve(unsigned int pages, void **ptr)
 {
 	void *vaddr;
 	int ret;
@@ -108,16 +108,6 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 		return ret;
 	}
 
-	/* map the virtual blocks in virtual region to free physical blocks */
-	ret = sys_mm_drv_map_region_safe(vpage_ctx.virtual_region, vaddr,
-					 0, pages * CONFIG_MM_DRV_PAGE_SIZE, SYS_MM_MEM_PERM_RW);
-	if (ret < 0) {
-		LOG_ERR("error: failed to map virtual region %p to physical region %p, error %d",
-			vaddr, vpage_ctx.virtual_region->addr, ret);
-		sys_mem_blocks_free_contiguous(&vpage_ctx.vpage_blocks, vaddr, pages);
-		return ret;
-	}
-
 	/* success update the free pages */
 	vpage_ctx.free_pages -= pages;
 
@@ -131,6 +121,96 @@ static int vpages_alloc_and_map(unsigned int pages, void **ptr)
 
 	/* return the virtual address */
 	*ptr = vaddr;
+
+	return 0;
+}
+
+/**
+ * @brief Release reserved virtual memory pages
+ *
+ * @param ptr Pointer to the reserved memory pages to release.
+ * @retval 0 if successful.
+ * @retval -EINVAL if ptr is invalid.
+ */
+static int vpages_unreserve(void *ptr)
+{
+	unsigned int alloc_idx, elem_idx;
+	unsigned int pages = 0;
+	int ret;
+
+	/* check for valid ptr which must be page aligned */
+	CHECKIF(!IS_ALIGNED(ptr, CONFIG_MM_DRV_PAGE_SIZE)) {
+		LOG_ERR("error: invalid non aligned page pointer %p", ptr);
+		return -EINVAL;
+	}
+
+	alloc_idx = (POINTER_TO_UINT(ptr) - POINTER_TO_UINT(vpage_ctx.virtual_region->addr)) /
+		CONFIG_MM_DRV_PAGE_SIZE;
+
+	/* find the allocation element */
+	for (elem_idx = 0; elem_idx < VPAGE_MAX_ALLOCS; elem_idx++) {
+		if (vpage_ctx.velems[elem_idx].pages > 0 &&
+		    vpage_ctx.velems[elem_idx].vpage == alloc_idx) {
+			pages = vpage_ctx.velems[elem_idx].pages;
+			break;
+		}
+	}
+
+	/* check we found allocation element */
+	CHECKIF(!pages) {
+		LOG_ERR("error: invalid page pointer %p not found", ptr);
+		return -EINVAL;
+	}
+
+	/* free physical blocks */
+	ret = sys_mem_blocks_free_contiguous(&vpage_ctx.vpage_blocks, ptr, pages);
+	if (ret < 0) {
+		LOG_ERR("error: failed to free %u continuous virtual page blocks at %p, error %d",
+			pages, ptr, ret);
+		return ret;
+	}
+
+	/* move the last element over the released one, clear the last element */
+	if (vpage_ctx.num_elems_in_use != elem_idx)
+		vpage_ctx.velems[elem_idx] = vpage_ctx.velems[vpage_ctx.num_elems_in_use];
+	vpage_ctx.velems[vpage_ctx.num_elems_in_use].pages = 0;
+	vpage_ctx.velems[vpage_ctx.num_elems_in_use].vpage = 0;
+	vpage_ctx.num_elems_in_use--;
+
+	/* success update the free pages */
+	vpage_ctx.free_pages += pages;
+
+	return 0;
+}
+
+/**
+ * @brief Allocate and map virtual memory pages
+ *
+ * Allocates memory pages from the virtual page allocator.
+ * Maps physical memory pages to the virtual region as needed.
+ *
+ * @param pages Number of pages to allocate.
+ * @param ptr Pointer to store the address of allocated pages.
+ * @retval 0 if successful.
+ */
+static int vpages_alloc_and_map(unsigned int pages, void **ptr)
+{
+	int ret;
+
+	ret = vpages_reserve(pages, ptr);
+	if (ret < 0 || !*ptr)
+		return ret;
+
+	/* map the virtual blocks in virtual region to free physical blocks */
+	ret = sys_mm_drv_map_region_safe(vpage_ctx.virtual_region, *ptr,
+					 0, pages * CONFIG_MM_DRV_PAGE_SIZE, SYS_MM_MEM_PERM_RW);
+	if (ret < 0) {
+		LOG_ERR("error: failed to map virtual region %p to physical region %p, error %d",
+			*ptr, vpage_ctx.virtual_region->addr, ret);
+		vpages_unreserve(*ptr);
+		*ptr = NULL;
+		return ret;
+	}
 
 	return 0;
 }
@@ -211,25 +291,7 @@ static int vpages_free_and_unmap(uintptr_t *ptr)
 		return ret;
 	}
 
-	/* free physical blocks */
-	ret = sys_mem_blocks_free_contiguous(&vpage_ctx.vpage_blocks, ptr, pages);
-	if (ret < 0) {
-		LOG_ERR("error: failed to free %u continuous virtual page blocks at %p, error %d",
-			pages, ptr, ret);
-		return ret;
-	}
-
-	/* move the last element over the released one, clear the last element */
-	if (vpage_ctx.num_elems_in_use != elem_idx)
-		vpage_ctx.velems[elem_idx] = vpage_ctx.velems[vpage_ctx.num_elems_in_use];
-	vpage_ctx.velems[vpage_ctx.num_elems_in_use].pages = 0;
-	vpage_ctx.velems[vpage_ctx.num_elems_in_use].vpage = 0;
-	vpage_ctx.num_elems_in_use--;
-
-	/* success update the free pages */
-	vpage_ctx.free_pages += pages;
-
-	return ret;
+	return vpages_unreserve((void *)ptr);
 }
 
 /**
@@ -252,6 +314,62 @@ void vpage_free(void *ptr)
 }
 
 /**
+ * @brief Reserve virtual memory pages
+ *
+ * Reserves virtual memory pages from the virtual page allocator, without
+ * mapping any physical memory to them.
+ *
+ * @param pages Number of pages (usually 4kB large) to reserve.
+ * @retval NULL on reservation failure.
+ */
+void *vpage_reserve(unsigned int pages)
+{
+	void *ptr = NULL;
+	int ret;
+
+	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
+	ret = vpages_reserve(pages, &ptr);
+	k_mutex_unlock(&vpage_ctx.lock);
+	if (ret < 0)
+		LOG_ERR("vpage_reserve failed %d for %d pages, total %d free %d",
+			ret, pages, vpage_ctx.total_pages, vpage_ctx.free_pages);
+	else
+		LOG_INF("vpage_reserve ptr %p pages %u free %u/%u", ptr, pages,
+			vpage_ctx.free_pages, vpage_ctx.total_pages);
+	return ptr;
+}
+
+/**
+ * @brief Release reserved virtual pages
+ * Releases virtual memory pages previously reserved with vpage_reserve().
+ *
+ * @param ptr Pointer to the reserved memory pages to release.
+ */
+void vpage_release(void *ptr)
+{
+	int ret;
+
+	k_mutex_lock(&vpage_ctx.lock, K_FOREVER);
+	ret = vpages_unreserve(ptr);
+	k_mutex_unlock(&vpage_ctx.lock);
+
+	if (!ret)
+		LOG_INF("vptr %p release free/total pages %d/%d", ptr, vpage_ctx.free_pages,
+			vpage_ctx.total_pages);
+}
+
+/**
+ * @brief Get the shared virtual page allocator's memory region
+ *
+ * @return Pointer to the virtual memory region backing the virtual page
+ * allocator.
+ */
+const struct sys_mm_drv_region *vpage_get_region(void)
+{
+	return vpage_ctx.virtual_region;
+}
+
+/**
  * @brief Initialize virtual page allocator
  *
  * Initializes a virtual page allocator that manages a virtual memory region
@@ -271,8 +389,7 @@ static int vpage_init(void)
 	/* create the virtual memory region and add it to the system */
 	size_t remaining_ram = L2_SRAM_BASE + L2_SRAM_SIZE -
 		(adsp_mm_get_unused_l2_start_aligned() +
-		 CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE +
-		 CONFIG_LIBRARY_REGION_SIZE);
+		 CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE);
 
 	ret = adsp_add_virtual_memory_region(adsp_mm_get_unused_l2_start_aligned() +
 					     CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE,
