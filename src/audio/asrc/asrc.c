@@ -8,6 +8,8 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <sof/audio/ipc-config.h>
 #include <rtos/panic.h>
 #include <sof/ipc/msg.h>
@@ -32,31 +34,18 @@
 
 LOG_MODULE_REGISTER(asrc, CONFIG_SOF_LOG_LEVEL);
 
-/* In-line functions */
-
-static inline void src_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
-{
-	if (*ptr >= end)
-		*ptr = (int32_t *)((uint8_t *)*ptr - size);
-}
-
-static inline void src_inc_wrap_s16(int16_t **ptr, int16_t *end, size_t size)
-{
-	if (*ptr >= end)
-		*ptr = (int16_t *)((uint8_t *)*ptr - size);
-}
-
 /* A fast copy function for same in and out rate */
 static void src_copy_s32(struct processing_module *mod,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
-			 int *n_read, int *n_written)
+			 struct cir_buf_source *source,
+			 struct cir_buf_sink *sink,
+			 int channels,
+			 size_t *n_read, size_t *n_written)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
 	int32_t *buf;
-	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *snk = audio_stream_get_wptr(sink);
+	const int32_t *src = source->ptr;
+	int32_t *snk = sink->ptr;
 	int n_wrap_src;
 	int n_wrap_snk;
 	int n_copy;
@@ -72,17 +61,16 @@ static void src_copy_s32(struct processing_module *mod,
 
 	/* Copy input data from source */
 	buf = (int32_t *)cd->ibuf[0];
-	n = cd->source_frames * audio_stream_get_channels(source);
+	n = cd->source_frames * channels;
 	while (n > 0) {
-		n_wrap_src = (int32_t *)audio_stream_get_end_addr(source) - src;
+		n_wrap_src = cir_buf_samples_without_wrap_s32(src, source->buf_end);
 		n_copy = (n < n_wrap_src) ? n : n_wrap_src;
 		for (i = 0; i < n_copy; i++)
 			*buf++ = (*src++) << cd->data_shift;
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
-		src_inc_wrap(&src, audio_stream_get_end_addr(source),
-			     audio_stream_get_size(source));
+		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
 	}
 
 	/* Run ASRC */
@@ -103,17 +91,16 @@ static void src_copy_s32(struct processing_module *mod,
 		comp_err(dev, "error %d", ret);
 
 	buf = (int32_t *)cd->obuf[0];
-	n = out_frames * audio_stream_get_channels(sink);
+	n = out_frames * channels;
 	while (n > 0) {
-		n_wrap_snk = (int32_t *)audio_stream_get_end_addr(sink) - snk;
+		n_wrap_snk = cir_buf_samples_without_wrap_s32(snk, sink->buf_end);
 		n_copy = (n < n_wrap_snk) ? n : n_wrap_snk;
 		for (i = 0; i < n_copy; i++)
 			*snk++ = (*buf++) >> cd->data_shift;
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
-		src_inc_wrap(&snk, audio_stream_get_end_addr(sink),
-			     audio_stream_get_size(sink));
+		snk = cir_buf_wrap(snk, sink->buf_start, sink->buf_end);
 	}
 
 	*n_read = in_frames;
@@ -121,14 +108,15 @@ static void src_copy_s32(struct processing_module *mod,
 }
 
 static void src_copy_s16(struct processing_module *mod,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
-			 int *n_read, int *n_written)
+			 struct cir_buf_source *source,
+			 struct cir_buf_sink *sink,
+			 int channels,
+			 size_t *n_read, size_t *n_written)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	int16_t *src = audio_stream_get_rptr(source);
-	int16_t *snk = audio_stream_get_wptr(sink);
+	const int16_t *src = source->ptr;
+	int16_t *snk = sink->ptr;
 	int16_t *buf;
 	int n_wrap_src;
 	int n_wrap_snk;
@@ -144,9 +132,9 @@ static void src_copy_s16(struct processing_module *mod,
 
 	/* Copy input data from source */
 	buf = (int16_t *)cd->ibuf[0];
-	n = cd->source_frames * audio_stream_get_channels(source);
+	n = cd->source_frames * channels;
 	while (n > 0) {
-		n_wrap_src = (int16_t *)audio_stream_get_end_addr(source) - src;
+		n_wrap_src = cir_buf_samples_without_wrap_s16(src, source->buf_end);
 		n_copy = (n < n_wrap_src) ? n : n_wrap_src;
 		s_copy = n_copy * sizeof(int16_t);
 		ret = memcpy_s(buf, s_copy, src, s_copy);
@@ -156,8 +144,7 @@ static void src_copy_s16(struct processing_module *mod,
 		n -= n_copy;
 		src += n_copy;
 		buf += n_copy;
-		src_inc_wrap_s16(&src, audio_stream_get_end_addr(source),
-				 audio_stream_get_size(source));
+		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
 	}
 
 	/* Run ASRC */
@@ -179,9 +166,9 @@ static void src_copy_s16(struct processing_module *mod,
 		comp_err(dev, "error %d", ret);
 
 	buf = (int16_t *)cd->obuf[0];
-	n = out_frames * audio_stream_get_channels(sink);
+	n = out_frames * channels;
 	while (n > 0) {
-		n_wrap_snk = (int16_t *)audio_stream_get_end_addr(sink) - snk;
+		n_wrap_snk = cir_buf_samples_without_wrap_s16(snk, sink->buf_end);
 		n_copy = (n < n_wrap_snk) ? n : n_wrap_snk;
 		s_copy = n_copy * sizeof(int16_t);
 		ret = memcpy_s(snk, s_copy, buf, s_copy);
@@ -191,8 +178,7 @@ static void src_copy_s16(struct processing_module *mod,
 		n -= n_copy;
 		snk += n_copy;
 		buf += n_copy;
-		src_inc_wrap_s16(&snk, audio_stream_get_end_addr(sink),
-				 audio_stream_get_size(sink));
+		snk = cir_buf_wrap(snk, sink->buf_start, sink->buf_end);
 	}
 
 	*n_read = in_frames;
@@ -337,12 +323,12 @@ static int asrc_set_config(struct processing_module *mod, uint32_t config_id,
 }
 
 /* set component audio stream parameters */
-static int asrc_params(struct processing_module *mod)
+static int asrc_params(struct processing_module *mod,
+		       struct sof_source *source, struct sof_sink *sink)
 {
 	struct sof_ipc_stream_params *pcm_params = mod->stream_params;
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
 	int err;
 
 	comp_info(dev, "entry");
@@ -359,24 +345,17 @@ static int asrc_params(struct processing_module *mod)
 		return -EINVAL;
 	}
 
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
-	if (!sourceb || !sinkb) {
-		comp_err(dev, "no source or sink buffer");
-		return -ENOTCONN;
-	}
-
 	/* update the source/sink buffer formats. Sink rate will be modified below */
-	asrc_update_buffer_format(sourceb, cd);
-	asrc_update_buffer_format(sinkb, cd);
+	asrc_update_source_format(source, cd);
+	asrc_update_sink_format(sink, cd);
 
 	/* Don't change sink rate if value from IPC is 0 (auto detect) */
 	if (asrc_get_sink_rate(&cd->ipc_config))
-		audio_stream_set_rate(&sinkb->stream, asrc_get_sink_rate(&cd->ipc_config));
+		sink_set_rate(sink, asrc_get_sink_rate(&cd->ipc_config));
 
 	/* set source/sink_frames/rate */
-	cd->source_rate = audio_stream_get_rate(&sourceb->stream);
-	cd->sink_rate = audio_stream_get_rate(&sinkb->stream);
+	cd->source_rate = source_get_rate(source);
+	cd->sink_rate = sink_get_rate(sink);
 
 	if (!cd->sink_rate) {
 		comp_err(dev, "zero sink rate");
@@ -498,7 +477,8 @@ static int asrc_prepare(struct processing_module *mod,
 {
 	struct comp_data *cd =  module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *sourceb, *sinkb;
+	struct sof_source *source;
+	struct sof_sink *sink;
 	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
 	int sample_bytes;
@@ -511,35 +491,26 @@ static int asrc_prepare(struct processing_module *mod,
 
 	comp_info(dev, "entry");
 
-	ret = asrc_params(mod);
+	/* SRC component will only ever have 1 source and 1 sink buffer */
+	if (num_of_sources != 1 || num_of_sinks != 1) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
+	}
+
+	source = sources[0];
+	sink = sinks[0];
+
+	ret = asrc_params(mod, source, sink);
 	if (ret < 0)
 		return ret;
 
-	/*
-	 * SRC component will only ever have 1 source and 1 sink buffer,
-	 * asrc_params() has checked their validity already
-	 */
-	sourceb = comp_dev_get_first_data_producer(dev);
-	sinkb = comp_dev_get_first_data_consumer(dev);
-
 	/* get source data format and period bytes */
-	cd->source_format = audio_stream_get_frm_fmt(&sourceb->stream);
-	source_period_bytes = audio_stream_period_bytes(&sourceb->stream,
-							cd->source_frames);
+	cd->source_format = source_get_frm_fmt(source);
+	source_period_bytes = source_get_frame_bytes(source) * cd->source_frames;
 
 	/* get sink data format and period bytes */
-	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
-	sink_period_bytes = audio_stream_period_bytes(&sinkb->stream,
-						      cd->sink_frames);
-
-	if (audio_stream_get_size(&sinkb->stream) <
-	    dev->ipc_config.periods_sink * sink_period_bytes) {
-		comp_err(dev, "sink buffer size %d is insufficient < %d * %d",
-			 audio_stream_get_size(&sinkb->stream), dev->ipc_config.periods_sink,
-			 sink_period_bytes);
-		ret = -ENOMEM;
-		goto err;
-	}
+	cd->sink_format = sink_get_frm_fmt(sink);
+	sink_period_bytes = sink_get_frame_bytes(sink) * cd->sink_frames;
 
 	/* validate */
 	if (!sink_period_bytes) {
@@ -554,7 +525,7 @@ static int asrc_prepare(struct processing_module *mod,
 	}
 
 	/* ASRC supports S16_LE, S24_4LE and S32_LE formats */
-	switch (audio_stream_get_frm_fmt(&sourceb->stream)) {
+	switch (source_get_frm_fmt(source)) {
 	case SOF_IPC_FRAME_S16_LE:
 		cd->asrc_func = src_copy_s16;
 		break;
@@ -572,7 +543,7 @@ static int asrc_prepare(struct processing_module *mod,
 	}
 
 	/* Allocate input and output data buffer for ASRC processing */
-	frame_bytes = audio_stream_frame_bytes(&sourceb->stream);
+	frame_bytes = source_get_frame_bytes(source);
 	cd->buf_size = (cd->source_frames_max + cd->sink_frames_max) *
 		frame_bytes;
 
@@ -585,8 +556,8 @@ static int asrc_prepare(struct processing_module *mod,
 		goto err;
 	}
 
-	sample_bytes = frame_bytes / audio_stream_get_channels(&sourceb->stream);
-	for (i = 0; i < audio_stream_get_channels(&sourceb->stream); i++) {
+	sample_bytes = frame_bytes / source_get_channels(source);
+	for (i = 0; i < source_get_channels(source); i++) {
 		cd->ibuf[i] = cd->buf + i * sample_bytes;
 		cd->obuf[i] = cd->ibuf[i] + cd->source_frames_max * frame_bytes;
 	}
@@ -594,7 +565,7 @@ static int asrc_prepare(struct processing_module *mod,
 	/* Get required size and allocate memory for ASRC */
 	sample_bits = sample_bytes * 8;
 	ret = asrc_get_required_size(mod, &cd->asrc_size,
-				     audio_stream_get_channels(&sourceb->stream),
+				     source_get_channels(source),
 				     sample_bits);
 	if (ret) {
 		comp_err(dev, "get_required_size_bytes failed");
@@ -619,7 +590,7 @@ static int asrc_prepare(struct processing_module *mod,
 		fs_sec = cd->source_rate;
 	}
 
-	ret = asrc_initialise(mod, cd->asrc_obj, audio_stream_get_channels(&sourceb->stream),
+	ret = asrc_initialise(mod, cd->asrc_obj, source_get_channels(source),
 			      fs_prim, fs_sec,
 			      ASRC_IOF_INTERLEAVED, ASRC_IOF_INTERLEAVED,
 			      ASRC_BM_LINEAR, cd->frames, sample_bits,
@@ -747,16 +718,17 @@ static int asrc_control_loop(struct comp_dev *dev, struct comp_data *cd)
 
 /* copy and process stream data from source to sink buffers */
 static int asrc_process(struct processing_module *mod,
-			struct input_stream_buffer *input_buffers, int num_input_buffers,
-			struct output_stream_buffer *output_buffers, int num_output_buffers)
+			struct sof_source **sources, int num_of_sources,
+			struct sof_sink **sinks, int num_of_sinks)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *source, *sink;
-	struct audio_stream *source_s = input_buffers[0].data;
-	struct audio_stream *sink_s = output_buffers[0].data;
-	int frames_src;
-	int frames_snk;
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	int channels = source_get_channels(source);
+	size_t src_frame_bytes = source_get_frame_bytes(source);
+	size_t snk_frame_bytes = sink_get_frame_bytes(sink);
+	size_t frames_src, frames_snk;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -765,12 +737,8 @@ static int asrc_process(struct processing_module *mod,
 	if (ret)
 		return ret;
 
-	/* asrc component needs 1 source and 1 sink buffer */
-	source = comp_dev_get_first_data_producer(dev);
-	sink = comp_dev_get_first_data_consumer(dev);
-
-	frames_src = audio_stream_get_avail_frames(source_s);
-	frames_snk = audio_stream_get_free_frames(sink_s);
+	frames_src = source_get_data_frames_available(source);
+	frames_snk = sink_get_free_frames(sink);
 
 	if (cd->mode == ASRC_OM_PULL) {
 		/* Let ASRC access max number of source frames in pull mode.
@@ -796,18 +764,32 @@ static int asrc_process(struct processing_module *mod,
 	}
 
 	if (cd->source_frames && cd->sink_frames) {
-		int consumed = 0;
-		int produced = 0;
+		struct cir_buf_source source_buf;
+		struct cir_buf_sink sink_buf;
+		size_t bytes;
+		size_t consumed = 0;
+		size_t produced = 0;
 
-		/* consumed bytes are not known at this point */
-		buffer_stream_invalidate(source, audio_stream_get_size(source_s));
-		cd->asrc_func(mod, source_s, sink_s, &consumed, &produced);
-		buffer_stream_writeback(sink, produced * audio_stream_frame_bytes(sink_s));
+		ret = source_get_data(source, cd->source_frames * src_frame_bytes,
+				      &source_buf.ptr, &source_buf.buf_start, &bytes);
+		if (ret)
+			return ret;
+		source_buf.buf_end = (const char *)source_buf.buf_start + bytes;
 
-		comp_dbg(dev, "consumed = %u,  produced = %u", consumed, produced);
+		ret = sink_get_buffer(sink, cd->sink_frames * snk_frame_bytes,
+				      &sink_buf.ptr, &sink_buf.buf_start, &bytes);
+		if (ret) {
+			source_release_data(source, 0);
+			return ret;
+		}
+		sink_buf.buf_end = (char *)sink_buf.buf_start + bytes;
 
-		output_buffers[0].size = produced * audio_stream_frame_bytes(sink_s);
-		input_buffers[0].consumed = consumed * audio_stream_frame_bytes(source_s);
+		cd->asrc_func(mod, &source_buf, &sink_buf, channels, &consumed, &produced);
+
+		comp_dbg(dev, "consumed = %zu,  produced = %zu", consumed, produced);
+
+		source_release_data(source, consumed * src_frame_bytes);
+		sink_commit_buffer(sink, produced * snk_frame_bytes);
 	}
 
 	return 0;
@@ -838,7 +820,7 @@ static int asrc_reset(struct processing_module *mod)
 static const struct module_interface asrc_interface = {
 	.init = asrc_init,
 	.prepare = asrc_prepare,
-	.process_audio_stream = asrc_process,
+	.process = asrc_process,
 	.trigger = asrc_trigger,
 	.set_configuration = asrc_set_config,
 	.reset = asrc_reset,
