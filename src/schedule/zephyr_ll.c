@@ -163,8 +163,8 @@ static void zephyr_ll_task_insert_unlocked(struct zephyr_ll *sch, struct task *t
 
 	/*
 	 * Tasks are added into the list in priority order. List order
-	 * defines schedule order. Priority 0 indicates highest
-	 * priority and is run first. Tasks with the same priority are
+	 * defines schedule order. Lower values indicate higher priority
+	 * and run first. Tasks with the same priority are
 	 * served on a first-come-first-served basis.
 	 */
 	list_for_item(list, &sch->tasks) {
@@ -761,7 +761,7 @@ void user_ll_unlock_sched(int core)
 
 int zephyr_ll_task_init(struct task *task,
 			const struct sof_uuid_entry *uid, uint16_t type,
-			uint16_t priority, enum task_state (*run)(void *data),
+			int16_t priority, enum task_state (*run)(void *data),
 			void *data, uint16_t core, uint32_t flags)
 {
 	struct zephyr_ll_pdata *pdata;
