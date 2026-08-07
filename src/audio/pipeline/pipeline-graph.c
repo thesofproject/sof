@@ -266,6 +266,12 @@ int pipeline_free(struct pipeline *p)
 #endif
 		sof_heap_free(p->heap, p->pipe_task);
 	}
+	if (p->trigger_task) {
+#if !CONFIG_LIBRARY || UNIT_TEST
+		schedule_task_free(p->trigger_task);
+#endif
+		sof_heap_free(p->heap, p->trigger_task);
+	}
 
 	ipc_msg_free(p->msg);
 
