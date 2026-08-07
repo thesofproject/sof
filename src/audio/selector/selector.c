@@ -411,7 +411,7 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 static int selector_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_buffer *sourceb;
-	enum sof_comp_type type;
+	struct comp_dev *source_comp;
 	int ret;
 
 	comp_dbg(dev, "entry");
@@ -423,6 +423,8 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	}
 
 	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		ret = 0;
 
@@ -430,9 +432,14 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	 * kpb_init_draining() and kpb_draining_task() are interrupted by
 	 * new pipeline_task()
 	 */
-	type = dev_comp_type(comp_buffer_get_source_component(sourceb));
+	/* The source buffer may be present without an attached producer
+	 * component (e.g. a partially connected pipeline), so guard against a
+	 * NULL source component before dereferencing it.
+	 */
+	source_comp = comp_buffer_get_source_component(sourceb);
 
-	return type == SOF_COMP_KPB ? PPL_STATUS_PATH_TERMINATE : ret;
+	return source_comp && dev_comp_type(source_comp) == SOF_COMP_KPB ?
+		PPL_STATUS_PATH_TERMINATE : ret;
 }
 
 /**

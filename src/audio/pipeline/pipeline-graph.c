@@ -506,8 +506,10 @@ struct comp_dev *pipeline_get_dai_comp(uint32_t pipeline_id, int dir)
 		buffer = buffer_from_list(blist->next, dir);
 		comp = buffer_get_comp(buffer, dir);
 
-		/* buffer_comp is in another pipeline and it is not complete */
-		if (!comp->pipeline)
+		/* A half-connected buffer has no peer component on this side, or
+		 * buffer_comp is in another pipeline and it is not complete.
+		 */
+		if (!comp || !comp->pipeline)
 			return NULL;
 
 		crt = ipc_get_ppl_comp(ipc, comp->pipeline->pipeline_id, dir);
