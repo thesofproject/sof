@@ -19,7 +19,7 @@ int scheduler_init_ll(struct ll_schedule_domain *domain);
 
 int schedule_task_init_ll(struct task *task,
 			  const struct sof_uuid_entry *uid, uint16_t type,
-			  uint16_t priority, enum task_state (*run)(void *data),
+			  int16_t priority, enum task_state (*run)(void *data),
 			  void *data, uint16_t core, uint32_t flags);
 
 #endif /* __LIBRARY_INCLUDE_LIB_SCHEDULE_H__ */
