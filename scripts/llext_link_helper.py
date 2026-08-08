@@ -77,6 +77,23 @@ def main():
 
 	command = [args.command]
 
+	# If the linker command is clang, extract --target= and --ld-path= from params
+	# and add them to the command (before the linker flags). Without --target,
+	# clang uses the host target (x86_64) when invoking the linker, which fails
+	# for cross-compiled (e.g. xtensa) object files.
+	clang_flags_to_hoist = []
+	remaining_params = []
+	for p_arg in args.params:
+		if p_arg.startswith('--target=') or p_arg.startswith('--ld-path='):
+			clang_flags_to_hoist.append(p_arg)
+		else:
+			remaining_params.append(p_arg)
+	if clang_flags_to_hoist:
+		command.extend(clang_flags_to_hoist)
+		args.params = remaining_params
+
+	is_relocatable = '-r' in args.params
+
 	executable = []
 	writable = []
 	readonly = []
@@ -111,7 +128,8 @@ def main():
 				text_found = True
 				text_addr = max_alignment(text_addr, 0x1000, s_alignment)
 				text_size = s_size
-				command.append(f'-Wl,-Ttext=0x{text_addr:x}')
+				if not is_relocatable:
+					command.append(f'-Wl,-Ttext=0x{text_addr:x}')
 			else:
 				executable.append(section)
 
@@ -163,7 +181,8 @@ def main():
 
 		dram_addr = align_up(dram_addr, s_alignment)
 
-		command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
+		if not is_relocatable:
+			command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
 
 		dram_addr += section.header['sh_size']
 
@@ -178,7 +197,8 @@ def main():
 
 		dram_addr = align_up(dram_addr, s_alignment)
 
-		command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
+		if not is_relocatable:
+			command.append(f'-Wl,--section-start={s_name}=0x{dram_addr:x}')
 
 		dram_addr += section.header['sh_size']
 
@@ -190,7 +210,8 @@ def main():
 
 		start_addr = align_up(start_addr, s_alignment)
 
-		command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
+		if not is_relocatable:
+			command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
 
 		start_addr += section.header['sh_size']
 
@@ -202,12 +223,22 @@ def main():
 
 		start_addr = align_up(start_addr, s_alignment)
 
-		if s_name == '.data':
-			command.append(f'-Wl,-Tdata=0x{start_addr:x}')
-		else:
-			command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
+		if not is_relocatable:
+			if s_name == '.data':
+				command.append(f'-Wl,-Tdata=0x{start_addr:x}')
+			else:
+				command.append(f'-Wl,--section-start={s_name}=0x{start_addr:x}')
 
-		start_addr += section.header['sh_size']
+	ld_script_path = pathlib.Path(args.file).parent / 'llext_merge.ld'
+	with open(ld_script_path, 'w') as f_ld:
+		f_ld.write('SECTIONS\n{\n'
+			   '  .text : { *(.text .text.* .stub .gnu.linkonce.t.*) }\n'
+			   '  .literal : { *(.literal .literal.*) }\n'
+			   '  .rodata : { *(.rodata .rodata.* .gnu.linkonce.r.*) }\n'
+			   '  .data : { *(.data .data.* .gnu.linkonce.d.*) }\n'
+			   '  .bss : { *(.bss .bss.* COMMON) }\n'
+			   '}\n')
+	command.append(f'-Wl,-T,{ld_script_path}')
 
 	command.extend(['-o', f'{args.file}.tmp'])
 	command.extend(args.params)
@@ -215,6 +246,18 @@ def main():
 	subprocess.run(command)
 
 	copy_command = [args.copy]
+
+	copy_command.extend([
+		'--strip-debug',
+		'--remove-section=.comment',
+		'--remove-section=.llvm_addrsig',
+		'--remove-section=.eh_frame',
+		'--remove-section=.rela.eh_frame',
+		'--remove-section=.xt.prop',
+		'--remove-section=.rela.xt.prop',
+		'--remove-section=.xt.lit',
+		'--remove-section=.rela.xt.lit',
+	])
 
 	if first_dram_text:
 		copy_command.extend(['--set-section-alignment', f'{first_dram_text}=4096'])
