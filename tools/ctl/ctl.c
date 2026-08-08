@@ -507,7 +507,7 @@ static int ctl_set_get(struct ctl_data *ctl_data)
 		ref_size = ctl_data->buffer[BUFFER_SIZE_OFFSET] + BUFFER_TLV_HEADER_BYTES;
 		if (read_size != ref_size) {
 			fprintf(stderr,
-				"Error: Blob TLV header size %u (plus %lu) does not match with read bytes count %zu.\n",
+				"Error: Blob TLV header size %u (plus %zu) does not match with read bytes count %zu.\n",
 				ctl_data->buffer[BUFFER_SIZE_OFFSET], BUFFER_TLV_HEADER_BYTES,
 				read_size);
 			return -EINVAL;
