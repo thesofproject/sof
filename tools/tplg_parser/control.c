@@ -100,7 +100,16 @@ int tplg_create_controls(struct tplg_context *ctx, int num_kcontrols,
 	for (j = 0; j < num_kcontrols; j++) {
 
 		ctl_hdr = tplg_get(ctx);
-
+		#define MAX_CONTROL_NAME_LEN 64
+		// if (strlen(ctl_hdr->name) > MAX_CONTROL_NAME_LEN) {
+    	// fprintf(stderr, "error: control name too long: %s\n", ctl_hdr->name);
+    	// return -EINVAL;
+		// }
+		mixer_ctl = (struct snd_soc_tplg_mixer_control *)ctl_hdr;
+		if (strlen(mixer_ctl->name) > MAX_CONTROL_NAME_LEN) {
+    		fprintf(stderr, "error: control name too long: %s\n", mixer_ctl->name);
+    		return -EINVAL;
+		}
 		/* load control based on type */
 		switch (ctl_hdr->ops.info) {
 		case SND_SOC_TPLG_CTL_VOLSW:
