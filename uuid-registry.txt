@@ -181,6 +181,7 @@ b77e677e-5ff4-4188-af14fba8bdbf8682 volume
 1028070e-04e8-46ab-8d8110a0116ce738 wait
 d944281a-afe9-4695-a043d7f62b89538e waves
 13c8bc59-c4fa-4ad1-b93ace97cd30acc7 wdt
+4a5b6c7d-8e9f-4a1b-2c3d4e5f60718293 wov_arbiter
 300aaad4-45d2-8313-25d05e1d6086cdd1 zephyr
 5f1ec3f8-faaf-4099-903ccee98351f169 zephyr_idc
 8fa1d42f-bc6f-464b-867f547af08834da zipc_task
