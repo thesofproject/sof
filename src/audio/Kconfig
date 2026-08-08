@@ -109,6 +109,20 @@ config COMP_KPB
 	  Select for KPB component
 if COMP_KPB
 
+config KPB_MAX_NO_OF_CLIENTS
+	int "Maximum number of KPB clients"
+	default 4
+	help
+	  Maximum number of simultaneous KPB drain clients (host + WOV detectors).
+	  Increase if more than 4 clients need concurrent KPB access.
+
+config KPB_MAX_BUFF_TIME
+	int "KPB history buffer time (ms)"
+	default 6000 if XCHAL_HW_VERSION_MAJOR >= 300
+	default 2100
+	help
+	  KPB history ring-buffer length in milliseconds.
+
 config KPB_FORCE_COPY_TYPE_NORMAL
 	bool "KPB force copy type normal"
 	default y
