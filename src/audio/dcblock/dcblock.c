@@ -194,6 +194,11 @@ static int dcblock_prepare(struct processing_module *mod,
 	/* get sink data format and period bytes */
 	cd->sink_format = audio_stream_get_frm_fmt(&sinkb->stream);
 
+	if (cd->source_format != cd->sink_format) {
+		comp_err(dev, "source and sink frame formats do not match");
+		return -EINVAL;
+	}
+
 	dcblock_init_state(cd);
 	cd->dcblock_func = dcblock_find_func(cd->source_format);
 	if (!cd->dcblock_func) {
