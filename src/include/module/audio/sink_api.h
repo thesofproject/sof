@@ -84,6 +84,13 @@ struct sink_ops {
 	uint32_t (*get_lft)(struct sof_sink *sink);
 
 	/**
+	 * OPTIONAL: get the state of the component consuming data from this sink
+	 *
+	 * see comment of sink_get_state()
+	 */
+	int (*get_state)(struct sof_sink *sink);
+
+	/**
 	 * OPTIONAL: Notification to the sink implementation about changes in audio format
 	 *
 	 * Once any of *audio_stream_params elements changes, the implementation of
@@ -316,6 +323,25 @@ static inline uint32_t sink_get_id(struct sof_sink *sink)
 static inline uint32_t sink_get_pipeline_id(struct sof_sink *sink)
 {
 	return sink->audio_stream_params->pipeline_id;
+}
+
+/**
+ * @brief get the state of the component consuming data from this sink
+ *
+ * This allows a data producer to query the state of its downstream consumer
+ * without reaching into the underlying buffer implementation.
+ *
+ * @param sink a sink to be checked
+ *
+ * @return state of the consuming component, or COMP_STATE_NOT_EXIST (0) if there
+ *         is no connected consumer or the sink implementation does not track it
+ */
+static inline int sink_get_state(struct sof_sink *sink)
+{
+	if (!sink->ops->get_state)
+		return 0; /* COMP_STATE_NOT_EXIST */
+
+	return sink->ops->get_state(sink);
 }
 
 /**
