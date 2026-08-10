@@ -474,6 +474,25 @@ int z_impl_zephyr_ll_task_sem_alloc(struct task *task)
 
 	k_sem_init(ts->sem, 0, 1);
 
+#if CONFIG_SOF_USERSPACE_LL
+	/*
+	 * The per-task semaphore is signalled from zephyr_ll_task_done(),
+	 * which runs in the (unprivileged) LL scheduler thread when a task is
+	 * freed while it is still running. k_object_alloc() only grants access
+	 * to the calling thread (the IPC handler that creates the task), so the
+	 * LL thread must be granted access explicitly, otherwise its
+	 * k_sem_give() traps with a userspace permission fault.
+	 *
+	 * Resolve the LL thread from kernel-only per-core state keyed by the
+	 * task's target core; never traverse the user-accessible scheduler or
+	 * domain objects from privileged context.
+	 */
+	struct k_thread *ll_tid = zephyr_domain_thread_tid_for_core(task->core);
+
+	if (ll_tid)
+		k_thread_access_grant(ll_tid, ts->sem);
+#endif
+
 	ts->task = task;
 	pdata->sem_p = ts->sem;
 	/* List is protected by IPC serialization */
