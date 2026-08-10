@@ -290,6 +290,14 @@ static int zephyr_domain_unregister(struct ll_schedule_domain *domain,
 #else /* CONFIG_SOF_USERSPACE_LL */
 
 /*
+ * Kernel-owned per-core LL thread table. Populated from the privileged
+ * domain-thread init path and consulted by z_impl_zephyr_ll_task_sem_alloc()
+ * so that privileged code never has to traverse the user-accessible
+ * scheduler/domain objects to find the LL thread of a given core.
+ */
+static struct k_thread *ll_thread_tid[CONFIG_CORE_COUNT];
+
+/*
  * Privileged thread initialization for userspace LL scheduling.
  * Creates the scheduling thread, sets up timer, grants access to kernel
  * objects. Must be called from kernel context before any user-space
@@ -342,6 +350,9 @@ static int zephyr_domain_thread_init(struct ll_schedule_domain *domain,
 				 zephyr_domain_thread_fn, zephyr_domain,
 				 INT_TO_POINTER(core), NULL, CONFIG_LL_THREAD_PRIORITY,
 				 K_USER, K_FOREVER);
+
+	/* record in the kernel-only table for syscall-context lookups */
+	ll_thread_tid[core] = dt->ll_thread;
 
 #ifdef CONFIG_SCHED_CPU_MASK
 	k_thread_cpu_pin(thread, core);
@@ -477,6 +488,7 @@ static void zephyr_domain_thread_free(struct ll_schedule_domain *domain,
 		k_thread_abort(dt->ll_thread);
 		k_object_free(dt->ll_thread);
 		dt->ll_thread = NULL;
+		ll_thread_tid[core] = NULL;
 	}
 
 	if (dt->sem) {
@@ -496,6 +508,21 @@ struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain)
 	tr_dbg(&ll_tr, "entry");
 
 	return dt->ll_thread;
+}
+
+/*
+ * Return the LL scheduling thread for an explicitly given core.
+ *
+ * Reads a kernel-only table keyed by core, so it is safe to call from a
+ * privileged syscall context without dereferencing any user-accessible
+ * scheduler or domain object, and without relying on cpu_get_id().
+ */
+struct k_thread *zephyr_domain_thread_tid_for_core(int core)
+{
+	if (core < 0 || core >= CONFIG_CORE_COUNT)
+		return NULL;
+
+	return ll_thread_tid[core];
 }
 
 #endif /* CONFIG_SOF_USERSPACE_LL */
