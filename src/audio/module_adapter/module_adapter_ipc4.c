@@ -132,8 +132,14 @@ int module_adapter_init_data(struct comp_dev *dev,
 
 	if (cfg == NULL)
 		return -EINVAL;
-	if (cfgsz < sizeof(cfg->base_cfg))
-		return -EINVAL;
+	if (cfgsz < sizeof(cfg->base_cfg)) {
+		memset(&dst->base_cfg, 0, sizeof(dst->base_cfg));
+		if (cfgsz > 0 && cfg)
+			memcpy(&dst->base_cfg, cfg, cfgsz);
+		dst->size = cfgsz;
+		dst->avail = true;
+		return 0;
+	}
 
 	dst->base_cfg = cfg->base_cfg;
 	dst->size = cfgsz;
