@@ -80,6 +80,13 @@ struct source_ops {
 	int (*release_data)(struct sof_source *source, size_t free_size);
 
 	/**
+	 * OPTIONAL: get the state of the component producing data to this source
+	 *
+	 * see comment of source_get_comp_state()
+	 */
+	int (*get_state)(struct sof_source *source);
+
+	/**
 	 * OPTIONAL: Notification to the source implementation about changes in audio format
 	 *
 	 * Once any of *audio_stream_params elements changes, the implementation of
@@ -339,6 +346,25 @@ static inline struct processing_module *source_get_bound_module(struct sof_sourc
 static inline enum sof_audio_buffer_state source_get_state(const struct sof_source *source)
 {
 	return source->audio_stream_params->state;
+}
+
+/**
+ * @brief get the state of the component producing data to this source
+ *
+ * This allows a data consumer to query the state of its upstream producer
+ * without reaching into the underlying buffer implementation.
+ *
+ * @param source a source to be checked
+ *
+ * @return state of the producing component, or COMP_STATE_NOT_EXIST (0) if there
+ *         is no connected producer or the source implementation does not track it
+ */
+static inline int source_get_comp_state(struct sof_source *source)
+{
+	if (!source->ops->get_state)
+		return 0; /* COMP_STATE_NOT_EXIST */
+
+	return source->ops->get_state(source);
 }
 
 static inline uint32_t source_align_frames_round_up(struct sof_source *source, uint32_t frames)
