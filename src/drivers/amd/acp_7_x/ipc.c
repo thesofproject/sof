@@ -42,8 +42,7 @@ LOG_MODULE_REGISTER(ipc_handler_file, LOG_LEVEL_DBG);
 
 #define HOST_TO_DSP_INTR 1
 #define INTERRUPT_DISABLE 0
-#define IRQ_NUM_EXT_LEVEL3 3
-#define IRQ_EXT_IPC_LEVEL_3 3
+#define IRQ_EXT_IPC_LEVEL_5 5
 
 /* This function triggers a host interrupt from ACP DSP */
 void acp_dsp_to_host_intr_trig(void)
@@ -123,11 +122,11 @@ int platform_ipc_init(struct ipc *ipc)
 	/* schedule */
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_amd_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
-	interrupt_disable(IRQ_EXT_IPC_LEVEL_3, ipc);
-	interrupt_unregister(IRQ_EXT_IPC_LEVEL_3, ipc);
-	interrupt_register(IRQ_EXT_IPC_LEVEL_3, amd_irq_handler, ipc);
-	/* Enabling software interuppts */
-	interrupt_enable(IRQ_EXT_IPC_LEVEL_3, ipc);
+	interrupt_disable(IRQ_EXT_IPC_LEVEL_5, ipc);
+	interrupt_unregister(IRQ_EXT_IPC_LEVEL_5, ipc);
+	interrupt_register(IRQ_EXT_IPC_LEVEL_5, amd_irq_handler, ipc);
+	/* Enabling software interrupts */
+	interrupt_enable(IRQ_EXT_IPC_LEVEL_5, ipc);
 	return 0;
 }
 
