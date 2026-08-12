@@ -125,7 +125,6 @@ struct module_param {
  * when the module unloads.
  */
 struct module_resources {
-	struct k_mutex lock;
 	struct objpool_head objpool;
 	size_t heap_usage;
 	size_t heap_high_water_mark;
