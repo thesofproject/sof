@@ -609,7 +609,7 @@ static int schedule_ll_task_after(void *data, struct task *task, uint64_t start,
 
 int schedule_task_init_ll(struct task *task,
 			  const struct sof_uuid_entry *uid, uint16_t type,
-			  uint16_t priority, enum task_state (*run)(void *data),
+			  int16_t priority, enum task_state (*run)(void *data),
 			  void *data, uint16_t core, uint32_t flags)
 {
 	struct ll_task_pdata *ll_pdata;

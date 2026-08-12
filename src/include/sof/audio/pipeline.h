@@ -74,6 +74,7 @@ struct pipeline {
 
 	/* scheduling */
 	struct task *pipe_task;		/* pipeline processing task */
+	struct task *trigger_task;	/* pipeline trigger task */
 	struct pipeline *sched_next;	/* pipeline scheduled after this */
 	struct pipeline *sched_prev;	/* pipeline scheduled before this */
 

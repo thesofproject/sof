@@ -20,6 +20,7 @@
 #include <rtos/task.h>
 #include <rtos/spinlock.h>
 #include <rtos/string.h>
+#include <rtos/userspace_helper.h>
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -33,6 +34,12 @@
 LOG_MODULE_DECLARE(pipe, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(pipe_task);
+SOF_DEFINE_REG_UUID(pipe_trigger_task);
+
+#define PIPELINE_TRIGGER_TASK_PRIORITY	(SOF_TASK_PRI_HIGH - 1)
+
+/** Pipeline whose delayed trigger sequence must complete first on each core. */
+static APP_SYSUSER_BSS struct pipeline *delayed_trigger_owner[CONFIG_CORE_COUNT];
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 
@@ -56,8 +63,8 @@ static void pipeline_schedule_cancel(struct pipeline *p)
 	sa_set_panic_on_delay(true);
 }
 
-static enum task_state pipeline_task_cmd(struct pipeline *p,
-					 struct sof_ipc_reply *reply)
+static enum task_state pipeline_trigger_task_cmd(struct pipeline *p,
+						 struct sof_ipc_reply *reply)
 {
 	struct comp_dev *host = p->trigger.host;
 	int err, cmd = p->trigger.cmd;
@@ -162,10 +169,6 @@ static enum task_state pipeline_task_cmd(struct pipeline *p,
 
 static enum task_state pipeline_task(void *arg)
 {
-	struct sof_ipc_reply reply = {
-		.hdr.cmd = SOF_IPC_GLB_REPLY,
-		.hdr.size = sizeof(reply),
-	};
 	struct pipeline *p = arg;
 	int err;
 
@@ -173,25 +176,6 @@ static enum task_state pipeline_task(void *arg)
 
 	/* are we in xrun ? */
 	if (p->xrun_bytes) {
-		/*
-		 * This happens when one of the connected pipelines runs into an xrun even before
-		 * this pipeline task gets a chance to run. But the host is still waiting for a
-		 * trigger IPC response. So, send an error response to prevent it from getting
-		 * timed out. No point triggering the pipeline in this case. It will be stopped
-		 * anyway by the host.
-		 */
-		if (p->trigger.cmd != COMP_TRIGGER_NO_ACTION) {
-			struct sof_ipc_reply reply = {
-				.hdr.cmd = SOF_IPC_GLB_REPLY,
-				.hdr.size = sizeof(reply),
-				.error = -EPIPE,
-			};
-
-			p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
-
-			ipc_msg_reply(&reply);
-		}
-
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
 		if (err < 0)
@@ -199,17 +183,9 @@ static enum task_state pipeline_task(void *arg)
 			return SOF_TASK_STATE_COMPLETED;
 	}
 
-	if (p->trigger.delay) {
-		p->trigger.delay--;
+	/* Do not copy until the pipeline trigger sequence has completed. */
+	if (task_is_active(p->trigger_task))
 		return SOF_TASK_STATE_RESCHEDULE;
-	}
-
-	if (p->trigger.cmd != COMP_TRIGGER_NO_ACTION) {
-		/* Process an offloaded command */
-		err = pipeline_task_cmd(p, &reply);
-		if (err != SOF_TASK_STATE_RUNNING)
-			return err;
-	}
 
 	if (p->status == COMP_STATE_PAUSED)
 		/*
@@ -218,11 +194,6 @@ static enum task_state pipeline_task(void *arg)
 		 */
 		return SOF_TASK_STATE_COMPLETED;
 
-	/*
-	 * The first execution of the pipeline task above has triggered all
-	 * pipeline components. Subsequent iterations actually perform data
-	 * copying below.
-	 */
 	err = pipeline_copy(p);
 	if (err < 0) {
 		/* try to recover */
@@ -237,6 +208,83 @@ static enum task_state pipeline_task(void *arg)
 	pipe_dbg(p, "sched");
 
 	return SOF_TASK_STATE_RESCHEDULE;
+}
+
+/** Run a pipeline trigger task. */
+static enum task_state pipeline_trigger_task(void *arg)
+{
+	struct sof_ipc_reply reply = {
+		.hdr.cmd = SOF_IPC_GLB_REPLY,
+		.hdr.size = sizeof(reply),
+	};
+	struct pipeline *p = arg;
+	enum task_state state;
+	struct pipeline *owner = delayed_trigger_owner[p->core];
+
+	if (owner && owner != p)
+		return SOF_TASK_STATE_RESCHEDULE;
+
+	/*
+	 * A connected pipeline can enter xrun before its trigger task runs.
+	 * Complete the delayed IPC with an error instead of triggering it.
+	 */
+	if (p->xrun_bytes) {
+		if (owner == p)
+			delayed_trigger_owner[p->core] = NULL;
+
+		if (p->trigger.cmd != COMP_TRIGGER_NO_ACTION) {
+			p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
+			reply.error = -EPIPE;
+			ipc_msg_reply(&reply);
+		}
+
+		return SOF_TASK_STATE_COMPLETED;
+	}
+
+	if (p->trigger.delay) {
+		p->trigger.delay--;
+		return SOF_TASK_STATE_RESCHEDULE;
+	}
+
+	if (p->trigger.cmd == COMP_TRIGGER_NO_ACTION) {
+		if (owner == p)
+			delayed_trigger_owner[p->core] = NULL;
+
+		return SOF_TASK_STATE_COMPLETED;
+	}
+
+	state = pipeline_trigger_task_cmd(p, &reply);
+	if (state == SOF_TASK_STATE_RESCHEDULE && p->trigger.delay) {
+		delayed_trigger_owner[p->core] = p;
+		return state;
+	}
+
+	if (delayed_trigger_owner[p->core] == p)
+		delayed_trigger_owner[p->core] = NULL;
+
+	/* RUNNING means that the independent copy task should keep running. */
+	return state == SOF_TASK_STATE_RUNNING ? SOF_TASK_STATE_COMPLETED : state;
+}
+
+/** Allocate and initialize a pipeline trigger task. */
+static struct task *pipeline_trigger_task_init(struct pipeline *p, uint32_t type)
+{
+	struct task *task;
+
+	task = sof_heap_alloc(p->heap, SOF_MEM_FLAG_USER, sizeof(*task), 0);
+	if (!task)
+		return NULL;
+
+	memset(task, 0, sizeof(*task));
+
+	if (schedule_task_init_ll(task, SOF_UUID(pipe_trigger_task_uuid), type,
+				  PIPELINE_TRIGGER_TASK_PRIORITY, pipeline_trigger_task,
+				  p, p->core, 0) < 0) {
+		sof_heap_free(p->heap, task);
+		return NULL;
+	}
+
+	return task;
 }
 
 static struct task *pipeline_task_init(struct pipeline *p, uint32_t type)
@@ -325,6 +373,8 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				p->trigger.pending = true;
 				p->trigger.host = ppl_data->start;
 				ppl_data->start = NULL;
+				if (schedule_task(p->trigger_task, 0, 0) < 0)
+					pipe_err(p, "failed to schedule trigger task");
 			} else {
 				pipeline_schedule_cancel(p);
 				p->status = COMP_STATE_PAUSED;
@@ -346,6 +396,8 @@ void pipeline_schedule_triggered(struct pipeline_walk_context *ctx,
 				p->trigger.pending = true;
 				p->trigger.host = ppl_data->start;
 				ppl_data->start = NULL;
+				if (schedule_task(p->trigger_task, 0, 0) < 0)
+					pipe_err(p, "failed to schedule trigger task");
 			} else {
 				p->status = COMP_STATE_ACTIVE;
 			}
@@ -374,17 +426,28 @@ int pipeline_comp_ll_task_init(struct pipeline *p)
 {
 	uint32_t type;
 
-	/* initialize task if necessary */
-	if (!p->pipe_task) {
+	/* initialize tasks if necessary */
+	if (!p->trigger_task || !p->pipe_task) {
 		/* right now we always consider pipeline as a low latency
 		 * component, but it may change in the future
 		 */
 		type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL_TIMER :
 			SOF_SCHEDULE_LL_DMA;
 
+		if (!p->trigger_task) {
+			p->trigger_task = pipeline_trigger_task_init(p, type);
+			if (!p->trigger_task) {
+				pipe_err(p, "trigger task init failed");
+				return -ENOMEM;
+			}
+		}
+
+		if (p->pipe_task)
+			return 0;
+
 		p->pipe_task = pipeline_task_init(p, type);
 		if (!p->pipe_task) {
-			pipe_err(p, "task init failed");
+			pipe_err(p, "copy task init failed");
 			return -ENOMEM;
 		}
 	}

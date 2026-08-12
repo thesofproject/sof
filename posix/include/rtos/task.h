@@ -58,7 +58,7 @@ struct task {
 	uint64_t start;		/**< start time in [ms] since now (LL only) */
 	const struct sof_uuid_entry *uid; /**< Uuid */
 	uint16_t type;		/**< type of the task (LL or EDF) */
-	uint16_t priority;	/**< priority of the task (used by LL) */
+	int16_t priority;	/**< priority of the task (used by LL); lower runs first */
 	uint16_t core;		/**< execution core */
 	uint16_t flags;		/**< custom flags */
 	struct schedule_data *sch;	/**< scheduler bound to task */
