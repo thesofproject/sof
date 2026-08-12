@@ -48,7 +48,7 @@ main() {
 	if [ -n "$XTENSA_PATH" ]; then
 		TESTBENCH_RUN="$XTENSA_PATH/xt-run $SOF_WORKSPACE/sof/tools/testbench/build_xt_testbench/sof-testbench4"
 		run_testbench "sof-hda-benchmark-mfcc" xt_mfcc_s16.raw xt_mfcc_s24.raw xt_mfcc_s32.raw "Xtensa MFCC"
-		run_testbench "sof-hda-benchmark-mfccmel" xt_mel_s16.raw xt_mel_s24.raw xt_mel_s32.raw "Xtensa MFCC Mel"
+		run_testbench "sof-hda-benchmark-mfccmel40" xt_mel_s16.raw xt_mel_s24.raw xt_mel_s32.raw "Xtensa MFCC Mel"
 	fi
 }
 
