@@ -73,7 +73,10 @@ struct pipeline {
 	bool expect_eos;		/* pipeline is expecting end of stream */
 
 	/* scheduling */
-	struct task *pipe_task;		/* pipeline processing task */
+#ifdef CONFIG_IPC_MAJOR_4
+	struct task *trigger_task;	/* IPC4 pipeline trigger task */
+#endif
+	struct task *pipe_task;		/* IPC3 pipeline processing task or IPC4 pipeline copy task */
 	struct pipeline *sched_next;	/* pipeline scheduled after this */
 	struct pipeline *sched_prev;	/* pipeline scheduled before this */
 
@@ -360,6 +363,12 @@ static inline bool pipeline_is_this_cpu(struct pipeline *p)
  * \return 0 on success.
  */
 int pipeline_comp_ll_task_init(struct pipeline *p);
+
+/**
+ * \brief Free the LL tasks owned by a pipeline.
+ * \param[in] p pipeline.
+ */
+void pipeline_comp_ll_task_free(struct pipeline *p);
 
 /**
  * \brief Init a DP task for a component

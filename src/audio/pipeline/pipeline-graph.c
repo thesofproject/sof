@@ -260,12 +260,7 @@ int pipeline_free(struct pipeline *p)
 	 */
 
 	/* remove from any scheduling */
-	if (p->pipe_task) {
-#if !CONFIG_LIBRARY || UNIT_TEST
-		schedule_task_free(p->pipe_task);
-#endif
-		sof_heap_free(p->heap, p->pipe_task);
-	}
+	pipeline_comp_ll_task_free(p);
 
 	ipc_msg_free(p->msg);
 
