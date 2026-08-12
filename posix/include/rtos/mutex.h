@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #define K_FOREVER ((k_timeout_t) { .ticks = 0xffffffff })
+#define K_MUTEX_DEFINE(name) struct k_mutex name
 
 struct k_mutex {
 	struct k_spinlock lock;
