@@ -75,10 +75,14 @@ static void update_alloc_state_l(struct processing_module *mod)
 static int destroy_instance(struct processing_module *mod)
 {
 	struct dax_adapter_data *adapter_data = module_get_private_data(mod);
-	struct sof_dax *dax_ctx = &adapter_data->dax_ctx;
+	struct sof_dax *dax_ctx;
 
+	if (!adapter_data)
+		return 0;
+
+	dax_ctx = &adapter_data->dax_ctx;
 	if (!dax_ctx->p_dax)
-		return -EFAULT;
+		return 0;
 
 	/* free internal dax instance data and set dax_ctx->p_dax to NULL */
 	dax_free(dax_ctx);
@@ -99,7 +103,7 @@ static int establish_instance(struct processing_module *mod)
 	uint32_t scratch_sz;
 
 	if (dax_ctx->p_dax && dax_ctx->persist_buffer.addr && dax_ctx->scratch_buffer.addr)
-		return -EEXIST;
+		return 0;
 
 	if (dax_ctx->persist_buffer.addr || dax_ctx->scratch_buffer.addr)
 		destroy_instance(mod);
@@ -188,7 +192,7 @@ int dax_register_user(struct processing_module *mod)
 
 		if (inst_mgr.users[i].id == adapter_data->comp_id) {
 			k_spin_unlock(&inst_mgr.lock, key);
-			return -EEXIST;
+			return 0;
 		}
 	}
 
@@ -238,7 +242,7 @@ int dax_unregister_user(struct processing_module *mod)
 
 	if (!user) {
 		k_spin_unlock(&inst_mgr.lock, key);
-		return -EINVAL;
+		return 0;
 	}
 	k_spin_unlock(&inst_mgr.lock, key);
 
