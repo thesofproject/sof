@@ -301,8 +301,9 @@ chains four steps into one command:
 
 | Step | Script | What it does |
 |------|--------|-------------|
-| 0 | [sof_tflm_generate_keyword_dataset.sh](./tune/sof_tflm_generate_keyword_dataset.sh) | Synthesize `<label>/*.wav` for one keyword with Piper-TTS + augmentation (rerun once per keyword) |
-| 1 | [sof_tflm_prepare_silence_unknown.sh](./tune/sof_tflm_prepare_silence_unknown.sh) | Slice `silence/` + sample `unknown/` from Speech Commands v2 |
+| 0a | [sof_tflm_generate_keyword_dataset.sh](./tune/sof_tflm_generate_keyword_dataset.sh) | Synthesize `<label>/*.wav` for one English keyword with `piper-sample-generator` (multi-speaker LibriTTS-R) + augmentation |
+| 0b | [sof_tflm_generate_keyword_dataset_piper_tts.sh](./tune/sof_tflm_generate_keyword_dataset_piper_tts.sh) | Same output layout, but for any single-speaker Piper voice (Finnish, Swedish, Hungarian, German, ...). Recovers speaker diversity via per-utterance prosody randomization + sox pitch/tempo perturbation |
+| 1 | [sof_tflm_prepare_silence_unknown.sh](./tune/sof_tflm_prepare_silence_unknown.sh) | Slice `silence/` + sample `unknown/` from Speech Commands v2 (English is fine as a negative-class source even for non-English keywords) |
 | 2 | [sof_mfcc_extract_features.sh](./tune/sof_mfcc_extract_features.sh) | Emit SOF mel40 features via `sof-testbench4` |
 | 3 | [sof_tflm_train.py](./tune/sof_tflm_train.py) | Train `tiny_conv`, int8-quantize, write `.tflite` + C array |
 
@@ -399,6 +400,82 @@ PIPER_REPO=~/git/piper-sample-generator \
 
 `PIPER_REPO` is required because upstream ships the `piper_train`
 package only in the git tree, not in the PyPI wheel.
+
+### 1b. Non-English keywords: single-speaker Piper voices
+
+`piper-sample-generator` only ships the English `en_US-libritts_r-medium`
+multi-speaker checkpoint. For a keyword in another language use
+[sof_tflm_generate_keyword_dataset_piper_tts.sh](./tune/sof_tflm_generate_keyword_dataset_piper_tts.sh),
+which drives the regular `piper-tts` package against any voice from the
+[rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) set
+(Finnish `fi_FI-harri`, Swedish `sv_SE-nst`, Hungarian `hu_HU-anna`,
+German `de_DE-thorsten`, etc.). Because those voices are single-speaker,
+this variant recovers diversity by (a) randomizing Piper's
+`--noise-scale` / `--noise-w` per utterance while cycling several
+`--length-scale` values, and (b) fanning each synthesized clip out into
+`PERTURB_PER_UTT` sox copies with a random pitch shift in cents and a
+pitch-preserving `tempo -s` factor.
+Set up the venv once:
+
+```bash
+python3 -m venv ~/venvs/piper-tts
+source ~/venvs/piper-tts/bin/activate
+pip install --upgrade pip
+pip install piper-tts
+```
+
+Fetch one voice per language (example: Finnish, Swedish, Hungarian):
+
+```bash
+BASE=https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0
+mkdir -p ~/git/piper-voices/fi_FI ~/git/piper-voices/sv_SE ~/git/piper-voices/hu_HU
+cd ~/git/piper-voices/fi_FI
+wget "$BASE/fi/fi_FI/harri/medium/fi_FI-harri-medium.onnx"
+wget "$BASE/fi/fi_FI/harri/medium/fi_FI-harri-medium.onnx.json"
+cd ~/git/piper-voices/sv_SE
+wget "$BASE/sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx"
+wget "$BASE/sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx.json"
+cd ~/git/piper-voices/hu_HU
+wget "$BASE/hu/hu_HU/anna/medium/hu_HU-anna-medium.onnx"
+wget "$BASE/hu/hu_HU/anna/medium/hu_HU-anna-medium.onnx.json"
+```
+
+Generate the Finnish "piparkakku" dataset:
+
+```bash
+source ~/venvs/piper-tts/bin/activate
+MAX_SAMPLES=1000 \
+PIPER_VOICE=~/git/piper-voices/fi_FI/fi_FI-harri-medium.onnx \
+PIPER_REPO=~/git/piper-sample-generator \
+    ./sof_tflm_generate_keyword_dataset_piper_tts.sh \
+        --keyword piparkakku ~/wov/wavs
+deactivate
+```
+
+`PIPER_REPO` is optional here: if set, the same IR-convolution +
+volume-jitter augment stage the English pipeline uses runs after
+synthesis; if unset, the pipeline falls back to a plain 16 kHz resample
+plus the built-in gain jitter. `PIPER_TTS_VENV` is an alternative to
+sourcing `activate` yourself — the script only auto-activates when the
+venv path actually contains `bin/activate`.
+
+Mixed-language multi-keyword models work by pairing `--keyword` with
+`--voice` positionally:
+
+```bash
+source ~/venvs/piper-tts/bin/activate
+MAX_SAMPLES=1000 \
+    ./sof_tflm_generate_keyword_dataset_piper_tts.sh \
+        --keyword piparkakku  --voice ~/git/piper-voices/fi_FI/fi_FI-harri-medium.onnx \
+        --keyword pepparkaka  --voice ~/git/piper-voices/sv_SE/sv_SE-nst-medium.onnx \
+        --keyword mézeskalács --voice ~/git/piper-voices/hu_HU/hu_HU-anna-medium.onnx \
+        ~/wov/wavs
+deactivate
+```
+
+Everything downstream (silence/unknown from Speech Commands v2, feature
+extraction, training) is identical to the English recipe — Speech
+Commands v2 English clips remain a valid negative source.
 
 ### 2. End-to-end pipeline: silence/unknown → features → train → quantize
 
