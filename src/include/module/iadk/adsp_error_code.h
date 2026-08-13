@@ -35,6 +35,8 @@ typedef uint32_t AdspErrorCode;
 #define ADSP_INVALID_TARGET 142
 /* Service is not supported on target platform. */
 #define ADSP_SERVICE_UNAVAILABLE 143
+/* Service version is not supported on target platform. */
+#define ADSP_SERVICE_VERSION_UNAVAILABLE 145
 
 /* SystemAgentInterface */
 #define ADSP_MODULE_CREATION_FAILURE	16

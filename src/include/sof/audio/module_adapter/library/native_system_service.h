@@ -48,7 +48,10 @@ AdspErrorCode native_system_service_get_interface(enum interface_id id,
  * \param id Service interface identifier.
  * \param version Requested interface version.
  * \param iface Location for the returned interface pointer.
- * \return ADSP_INVALID_PARAMETERS if the interface is unavailable.
+ * \return ADSP_INVALID_PARAMETERS for invalid arguments. If the requested
+ * service has no provider, return ADSP_SERVICE_UNAVAILABLE without checking
+ * its version. A provider returns ADSP_SERVICE_VERSION_UNAVAILABLE when it
+ * exists but does not support the requested version.
  */
 AdspErrorCode native_system_service_get_interface_versioned(enum interface_id id,
 							    uint32_t version,
