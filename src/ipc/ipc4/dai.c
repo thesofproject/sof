@@ -66,7 +66,7 @@ void dai_set_link_hda_config(uint16_t *link_config,
 	case SOF_DAI_INTEL_UAOL:
 		link_cfg.full = 0;
 		link_cfg.part.hchan = gtw_fmt->channels_count - 1;
-		link_cfg.part.dir = common_config->direction;
+		/* UAOLxPCMSyCM has no direction bit, the stream selects it */
 		link_cfg.part.stream = common_config->host_dma_config[0]->stream_id;
 		break;
 	default:
