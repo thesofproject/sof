@@ -529,6 +529,12 @@ __cold int ipc_pipeline_new(struct ipc *ipc, ipc_pipe_new *_pipe_desc)
 
 	tr_dbg(&ipc_tr, "ipc: pipeline id = %u", (uint32_t)pipe_desc->primary.r.instance_id);
 
+	if (pipe_desc->extension.r.core_id >= CONFIG_CORE_COUNT) {
+		tr_err(&ipc_tr, "invalid pipeline core ID: %u",
+		       (uint32_t)pipe_desc->extension.r.core_id);
+		return IPC4_INVALID_CORE_ID;
+	}
+
 	/* pass IPC to target core */
 	if (!cpu_is_me(pipe_desc->extension.r.core_id))
 		return ipc4_process_on_core(pipe_desc->extension.r.core_id, false);
