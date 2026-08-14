@@ -13,7 +13,7 @@ permissions:
 jobs:
   # This is not the same as building every ./build-tools.sh option.
   top-level_default_CMake_target_ALL:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -81,7 +81,7 @@ jobs:
 
 
   SOF-alsa-plugin:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
         with: {filter: 'tree:0'}

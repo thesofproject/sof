@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container:
       image: thesofproject/zephyr-lite:v0.29.3-rc1
 
