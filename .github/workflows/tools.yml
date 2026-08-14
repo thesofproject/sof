@@ -19,7 +19,7 @@ concurrency:
 jobs:
   # This is not the same as building every ./build-tools.sh option.
   top-level_default_CMake_target_ALL:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -87,6 +87,9 @@ jobs:
 
 
   SOF-alsa-plugin:
+    # TODO: Update ubuntu to 26.04 when openvino situation is resolved
+    # It's not in the base ubuntu 26.04 OS and installation fails
+    # https://github.com/openvinotoolkit/openvino/issues/37509
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

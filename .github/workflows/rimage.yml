@@ -35,7 +35,7 @@ jobs:
 
   # Basic build test
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       # FIXME: add  -Wpointer-arith
       _CFLGS: -Werror -Wall -Wmissing-prototypes
@@ -55,7 +55,7 @@ jobs:
 
   # cppcheck
   cppcheck:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
         with: {submodules: recursive, fetch-depth: 0, filter: 'tree:0'}
