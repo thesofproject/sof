@@ -33,7 +33,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     container:
-      image: thesofproject/zephyr-lite:v0.29.0
+      image: thesofproject/zephyr-lite:v0.29.3
 
     strategy:
       fail-fast: false
