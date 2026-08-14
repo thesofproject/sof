@@ -34,7 +34,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.0
+      image: thesofproject/zephyr-lite:v0.29.3-rc1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,7 +84,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.0
+      image: thesofproject/zephyr-lite:v0.29.3-rc1
 
     steps:
       - uses: actions/checkout@v4
@@ -115,7 +115,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.0
+      image: thesofproject/zephyr-lite:v0.29.3-rc1
     strategy:
       fail-fast: false
       matrix:
