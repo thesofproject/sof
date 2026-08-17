@@ -26,6 +26,7 @@ LOG_MODULE_REGISTER(irq, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(irq);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(irq_tr, SOF_UUID(irq_uuid), LOG_LEVEL_INFO);
 
 /* For i.MX, when building SOF with Zephyr, we use wrapper.c,

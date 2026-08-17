@@ -9,6 +9,7 @@
 
 SOF_DEFINE_REG_UUID(drc);
 LOG_MODULE_REGISTER(drc, CONFIG_SOF_LOG_LEVEL);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(drc_tr, SOF_UUID(drc_uuid), LOG_LEVEL_INFO);
 EXPORT_SYMBOL(log_const_drc);
 #ifdef CONFIG_LOG_RUNTIME_FILTERING

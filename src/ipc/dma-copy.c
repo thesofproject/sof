@@ -21,6 +21,7 @@ LOG_MODULE_REGISTER(dma_copy, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dma_copy);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dmacpy_tr, SOF_UUID(dma_copy_uuid), LOG_LEVEL_INFO);
 
 static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,

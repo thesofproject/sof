@@ -28,6 +28,7 @@
 
 SOF_DEFINE_REG_UUID(memif);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(memif_tr, SOF_UUID(memif_uuid), LOG_LEVEL_INFO);
 LOG_MODULE_REGISTER(mtk_afe, CONFIG_SOF_LOG_LEVEL);
 

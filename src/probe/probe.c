@@ -40,6 +40,7 @@ SOF_DEFINE_REG_UUID(probe);
 #error "No or invalid IPC MAJOR version selected."
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(pr_tr, SOF_UUID(PROBE_UUID), LOG_LEVEL_INFO);
 
 SOF_DEFINE_REG_UUID(probe_task);

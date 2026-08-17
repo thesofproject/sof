@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(sdma, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(sdma);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(sdma_tr, SOF_UUID(sdma_uuid), LOG_LEVEL_INFO);
 
 #define SDMA_BUFFER_PERIOD_COUNT 2

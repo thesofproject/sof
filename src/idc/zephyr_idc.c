@@ -39,6 +39,7 @@ LOG_MODULE_REGISTER(zephyr_idc, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(zephyr_idc);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(zephyr_idc_tr, SOF_UUID(zephyr_idc_uuid), LOG_LEVEL_INFO);
 
 /*

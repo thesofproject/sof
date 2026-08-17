@@ -16,6 +16,7 @@
 
 SOF_DEFINE_REG_UUID(asrc4);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc4_uuid), LOG_LEVEL_INFO);
 
 int asrc_dai_configure_timestamp(struct comp_data *cd)

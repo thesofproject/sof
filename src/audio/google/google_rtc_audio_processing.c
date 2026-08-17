@@ -860,6 +860,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(google_rtc_audio_processing_tr, SOF_UUID(google_rtc_audio_processing_uuid),
 			   LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(google_rtc_audio_processing_interface,

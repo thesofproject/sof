@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 SOF_DEFINE_REG_UUID(intc_mt8196);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(intc_tr, SOF_UUID(intc_mt8196_uuid), LOG_LEVEL_INFO);
 
 static struct intc_desc_t intc_desc;

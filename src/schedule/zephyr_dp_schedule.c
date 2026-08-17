@@ -33,6 +33,7 @@
 LOG_MODULE_REGISTER(dp_schedule, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(dp_sched);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dp_tr, SOF_UUID(dp_sched_uuid), LOG_LEVEL_INFO);
 
 #define DP_LOCK_INIT(i, _)	Z_SEM_INITIALIZER(dp_lock[i], 1, 1)

@@ -248,6 +248,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(tester_tr, SOF_UUID(tester_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tester_interface, tester_uuid, tester_tr);
 SOF_MODULE_INIT(tester, sys_comp_module_tester_interface_init);

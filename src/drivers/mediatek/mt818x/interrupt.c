@@ -25,6 +25,7 @@
 
 SOF_DEFINE_REG_UUID(irq_mt818x);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(int_tr, SOF_UUID(irq_mt818x_uuid), LOG_LEVEL_INFO);
 
 static void mtk_irq_init(void)
