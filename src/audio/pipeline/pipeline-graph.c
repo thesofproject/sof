@@ -15,6 +15,7 @@
 #include <rtos/interrupt.h>
 #include <rtos/symbol.h>
 #include <rtos/alloc.h>
+#include <rtos/userspace_helper.h>
 #include <sof/lib/mm_heap.h>
 #include <sof/lib/uuid.h>
 #include <sof/compiler_attributes.h>
@@ -44,10 +45,20 @@ DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
 /* lookup table to determine busy/free pipeline metadata objects */
 struct pipeline_posn {
 	bool posn_offset[PPL_POSN_OFFSETS];	/**< available offsets */
+#ifndef CONFIG_SOF_USERSPACE_LL
 	struct k_spinlock lock;			/**< lock mechanism */
+#endif
 };
 /* the pipeline position lookup table */
-static SHARED_DATA struct pipeline_posn pipeline_posn_shared;
+static APP_SYSUSER_BSS SHARED_DATA struct pipeline_posn pipeline_posn_shared;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+/* Mutex pointer in user-accessible partition so user-space threads
+ * can read the pointer for syscalls. Kept outside the SHARED_DATA
+ * struct to avoid kernel object tracking issues.
+ */
+static APP_SYSUSER_BSS struct k_mutex *pipeline_posn_mutex;
+#endif
 
 /**
  * \brief Retrieves pipeline position structure.
@@ -55,8 +66,47 @@ static SHARED_DATA struct pipeline_posn pipeline_posn_shared;
  */
 static inline struct pipeline_posn *pipeline_posn_get(void)
 {
+#ifdef CONFIG_SOF_USERSPACE_LL
+	return &pipeline_posn_shared;
+#else
 	return sof_get()->pipeline_posn;
+#endif
 }
+
+/*
+ * Position table locking. User-space LL cannot use a spinlock (disabling
+ * interrupts is privileged), so it uses a mutex; the config split is kept
+ * here so the callers below stay identical for both configurations.
+ */
+#ifdef CONFIG_SOF_USERSPACE_LL
+typedef int pipeline_posn_key_t;
+
+static inline pipeline_posn_key_t pipeline_posn_lock(struct pipeline_posn *posn)
+{
+	(void)posn;
+	k_mutex_lock(pipeline_posn_mutex, K_FOREVER);
+	return 0;
+}
+
+static inline void pipeline_posn_unlock(struct pipeline_posn *posn, pipeline_posn_key_t key)
+{
+	(void)posn;
+	(void)key;
+	k_mutex_unlock(pipeline_posn_mutex);
+}
+#else
+typedef k_spinlock_key_t pipeline_posn_key_t;
+
+static inline pipeline_posn_key_t pipeline_posn_lock(struct pipeline_posn *posn)
+{
+	return k_spin_lock(&posn->lock);
+}
+
+static inline void pipeline_posn_unlock(struct pipeline_posn *posn, pipeline_posn_key_t key)
+{
+	k_spin_unlock(&posn->lock, key);
+}
+#endif
 
 /**
  * \brief Retrieves first free pipeline position offset.
@@ -68,9 +118,7 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
 	int ret = -EINVAL;
 	uint32_t i;
-	k_spinlock_key_t key;
-
-	key = k_spin_lock(&pipeline_posn->lock);
+	pipeline_posn_key_t key = pipeline_posn_lock(pipeline_posn);
 
 	for (i = 0; i < PPL_POSN_OFFSETS; ++i) {
 		if (!pipeline_posn->posn_offset[i]) {
@@ -81,8 +129,7 @@ static inline int pipeline_posn_offset_get(uint32_t *posn_offset)
 		}
 	}
 
-
-	k_spin_unlock(&pipeline_posn->lock, key);
+	pipeline_posn_unlock(pipeline_posn, key);
 
 	return ret;
 }
@@ -95,20 +142,34 @@ static inline void pipeline_posn_offset_put(uint32_t posn_offset)
 {
 	struct pipeline_posn *pipeline_posn = pipeline_posn_get();
 	int i = posn_offset / sizeof(struct sof_ipc_stream_posn);
-	k_spinlock_key_t key;
-
-	key = k_spin_lock(&pipeline_posn->lock);
+	pipeline_posn_key_t key = pipeline_posn_lock(pipeline_posn);
 
 	pipeline_posn->posn_offset[i] = false;
 
-	k_spin_unlock(&pipeline_posn->lock, key);
+	pipeline_posn_unlock(pipeline_posn, key);
 }
 
 void pipeline_posn_init(struct sof *sof)
 {
 	sof->pipeline_posn = &pipeline_posn_shared;
+#ifdef CONFIG_SOF_USERSPACE_LL
+	pipeline_posn_mutex = k_object_alloc(K_OBJ_MUTEX);
+	if (!pipeline_posn_mutex) {
+		pipe_cl_err("pipeline posn mutex alloc failed");
+		k_panic();
+	}
+	k_mutex_init(pipeline_posn_mutex);
+#else
 	k_spinlock_init(&sof->pipeline_posn->lock);
+#endif
 }
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+void pipeline_posn_grant_access(struct k_thread *thread)
+{
+	k_thread_access_grant(thread, pipeline_posn_mutex);
+}
+#endif
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_t priority,
@@ -140,12 +201,21 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 	p->pipeline_id = pipeline_id;
 	p->status = COMP_STATE_INIT;
 	p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
+
+#ifndef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * pipe_tr lives in the .trace_ctx section, which is not mapped into
+	 * the sysuser partition, so it cannot be read from a user-mode thread.
+	 * The copy is also unnecessary in that configuration: with Zephyr
+	 * logging the pipe_*() macros use the global pipe_tr, not p->tctx.
+	 */
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
 	if (ret < 0) {
 		pipe_err(p, "failed to copy trace settings");
 		goto free;
 	}
+#endif
 
 	ret = pipeline_posn_offset_get(&p->posn_offset);
 	if (ret < 0) {
