@@ -70,6 +70,7 @@ LOG_MODULE_REGISTER(kd_test, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(keyword);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(keyword_tr, SOF_UUID(keyword_uuid), LOG_LEVEL_INFO);
 
 struct comp_data {
@@ -1088,7 +1089,9 @@ void test_keyword_set_drain_req(struct comp_dev *dev, uint32_t drain_req)
 static const struct comp_driver comp_keyword = {
 	.type	= SOF_COMP_KEYWORD_DETECT,
 	.uid	= SOF_RT_UUID(keyword_uuid),
+#ifndef __ZEPHYR__
 	.tctx	= &keyword_tr,
+#endif
 	.ops	= {
 		.create			= test_keyword_new,
 		.free			= test_keyword_free,

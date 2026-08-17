@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(sai, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(sai);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(sai_tr, SOF_UUID(sai_uuid), LOG_LEVEL_INFO);
 
 #define REG_TX_DIR 0
@@ -559,7 +560,9 @@ static int sai_get_hw_params(struct dai *dai,
 const struct dai_driver sai_driver = {
 	.type = SOF_DAI_IMX_SAI,
 	.uid = SOF_UUID(sai_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &sai_tr,
+#endif
 	.dma_dev = SOF_DMA_DEV_SAI,
 	.ops = {
 		.trigger		= sai_trigger,

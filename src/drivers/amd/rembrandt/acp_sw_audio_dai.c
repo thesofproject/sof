@@ -12,6 +12,7 @@
 
 SOF_DEFINE_REG_UUID(swaudiodai);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(swaudiodai_tr, SOF_UUID(swaudiodai_uuid), LOG_LEVEL_INFO);
 
 static inline int swaudiodai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
@@ -98,7 +99,9 @@ static int swaudiodai_get_hw_params(struct dai *dai,
 const struct dai_driver acp_swaudiodai_driver = {
 	.type = SOF_DAI_AMD_SDW,
 	.uid = SOF_UUID(swaudiodai_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &swaudiodai_tr,
+#endif
 	.dma_dev = DMA_DEV_SW,
 	.dma_caps = DMA_CAP_SW,
 	.ops = {

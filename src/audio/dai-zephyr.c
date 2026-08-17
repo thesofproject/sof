@@ -2067,12 +2067,15 @@ int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, struct bind_inf
 }
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.uid	= SOF_RT_UUID(dai_uuid),
+#ifndef __ZEPHYR__
 	.tctx	= &dai_comp_tr,
+#endif
 	.ops	= {
 		.create				= dai_new,
 		.free				= dai_free,
