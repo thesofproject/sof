@@ -570,6 +570,7 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 	uint32_t flags;
 	struct zephyr_ll_pdata *pdata = task->priv_data;
 	bool must_wait, on_list = true;
+	int wait_ret = 0;
 
 	zephyr_ll_assert_core(sch);
 
@@ -617,10 +618,17 @@ static int zephyr_ll_task_free(void *data, struct task *task)
 
 	if (must_wait)
 		/* Wait for up to 100 periods */
-		k_sem_take(pdata->sem_p, K_USEC(LL_TIMER_PERIOD_US * 100));
+		wait_ret = k_sem_take(pdata->sem_p, K_USEC(LL_TIMER_PERIOD_US * 100));
 
 	/* Protect against racing with schedule_task() */
 	zephyr_ll_lock(sch, &flags);
+
+	if (wait_ret && task->state != SOF_TASK_STATE_FREE) {
+		tr_warn(&ll_tr, "task %p still active on free (state %d, semret %d)",
+			task, task->state, wait_ret);
+		zephyr_ll_task_done(sch, task);
+	}
+
 #if CONFIG_DYNAMIC_OBJECTS
 	zephyr_ll_task_sem_free(task);
 #endif
