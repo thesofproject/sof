@@ -28,6 +28,7 @@ static struct mtk_base_afe mtk_afe;
 
 SOF_DEFINE_REG_UUID(afedrv);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(afedrv_tr, SOF_UUID(afedrv_uuid), LOG_LEVEL_INFO);
 LOG_MODULE_DECLARE(mtk_afe, CONFIG_SOF_LOG_LEVEL);
 

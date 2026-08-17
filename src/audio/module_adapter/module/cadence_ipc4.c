@@ -16,6 +16,7 @@
 
 SOF_DEFINE_REG_UUID(cadence_codec);
 LOG_MODULE_DECLARE(cadence_codec, CONFIG_SOF_LOG_LEVEL);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(cadence_codec_tr, SOF_UUID(cadence_codec_uuid), LOG_LEVEL_INFO);
 
 int cadence_codec_resolve_api(struct processing_module *mod)

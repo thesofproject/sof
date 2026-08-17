@@ -44,6 +44,7 @@
 
 SOF_DEFINE_REG_UUID(src4);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(src_tr, SOF_UUID(src4_uuid), LOG_LEVEL_INFO);
 
 LOG_MODULE_DECLARE(src, CONFIG_SOF_LOG_LEVEL);

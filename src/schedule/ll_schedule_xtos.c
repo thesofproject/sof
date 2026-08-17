@@ -38,6 +38,7 @@ LOG_MODULE_REGISTER(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(ll_sched);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(ll_tr, SOF_UUID(ll_sched_uuid), LOG_LEVEL_INFO);
 
 /*

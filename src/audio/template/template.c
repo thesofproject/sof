@@ -201,6 +201,7 @@ SOF_LLEXT_BUILDINFO;
 #else
 
 /* Only used for the module adapter trace context, soon to be deprecated */
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(template_tr, SOF_UUID(template_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(template_interface, template_uuid, template_tr);
 SOF_MODULE_INIT(template, sys_comp_module_template_interface_init);

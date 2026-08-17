@@ -491,6 +491,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dts_tr, SOF_UUID(dts_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(dts_interface, dts_uuid, dts_tr);
 SOF_MODULE_INIT(dts, sys_comp_module_dts_interface_init);

@@ -361,6 +361,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(sound_dose_tr, SOF_UUID(sound_dose_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(sound_dose_interface, sound_dose_uuid, sound_dose_tr);
 SOF_MODULE_INIT(sound_dose, sys_comp_module_sound_dose_interface_init);

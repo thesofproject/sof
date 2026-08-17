@@ -25,10 +25,12 @@ LOG_MODULE_DECLARE(muxdemux, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(mux);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(mux_tr, SOF_UUID(mux_uuid), LOG_LEVEL_INFO);
 
 SOF_DEFINE_REG_UUID(demux);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(demux_tr, SOF_UUID(demux_uuid), LOG_LEVEL_INFO);
 
 static int mux_set_values(struct processing_module *mod)

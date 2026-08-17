@@ -20,9 +20,11 @@ SOF_DEFINE_REG_UUID(volume4);
 
 SOF_DEFINE_REG_UUID(gain);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(gain_tr, SOF_UUID(gain_uuid), LOG_LEVEL_INFO);
 #endif
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(volume_tr, SOF_UUID(volume_uuid), LOG_LEVEL_INFO);
 
 #endif /* __SOF_AUDIO_VOLUME_UUID_H__ */

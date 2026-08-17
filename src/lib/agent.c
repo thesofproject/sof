@@ -39,6 +39,7 @@ LOG_MODULE_REGISTER(sa, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(sa);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(sa_tr, SOF_UUID(sa_uuid), LOG_LEVEL_INFO);
 
 SOF_DEFINE_REG_UUID(agent_work);

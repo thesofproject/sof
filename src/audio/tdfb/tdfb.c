@@ -941,6 +941,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(tdfb_tr, SOF_UUID(tdfb_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tdfb_interface, tdfb_uuid, tdfb_tr);
 SOF_MODULE_INIT(tdfb, sys_comp_module_tdfb_interface_init);

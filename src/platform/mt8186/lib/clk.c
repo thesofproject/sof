@@ -20,6 +20,7 @@
 
 SOF_DEFINE_REG_UUID(clkdrv_mt8186);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(clkdrv_tr, SOF_UUID(clkdrv_mt8186_uuid), LOG_LEVEL_INFO);
 
 /* default voltage is 0.8V */

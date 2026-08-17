@@ -29,6 +29,7 @@
 LOG_MODULE_REGISTER(buffer, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(buffer);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(buffer_tr, SOF_UUID(buffer_uuid), LOG_LEVEL_INFO);
 
 static size_t comp_buffer_get_data_available(struct sof_source *source)

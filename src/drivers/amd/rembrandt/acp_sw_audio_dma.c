@@ -16,6 +16,7 @@
 
 SOF_DEFINE_REG_UUID(acp_sw_audio);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_sw_audio_tr, SOF_UUID(acp_sw_audio_uuid), LOG_LEVEL_INFO);
 
 #if defined(CONFIG_ACP_6_3)

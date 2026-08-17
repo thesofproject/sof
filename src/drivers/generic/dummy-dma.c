@@ -50,6 +50,7 @@ LOG_MODULE_REGISTER(dummy_dma, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dummy_dma);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(ddma_tr, SOF_UUID(dummy_dma_uuid), LOG_LEVEL_INFO);
 
 struct dma_chan_pdata {

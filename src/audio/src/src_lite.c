@@ -67,6 +67,7 @@ const struct module_interface src_lite_interface = {
 
 SOF_DEFINE_REG_UUID(src_lite);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(src_lite_tr, SOF_UUID(src_lite_uuid), LOG_LEVEL_INFO);
 
 #if !CONFIG_COMP_SRC_MODULE

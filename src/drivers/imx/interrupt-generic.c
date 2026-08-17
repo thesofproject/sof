@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(generic_irq_imx, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(interrupt);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(noirq_i_tr, SOF_UUID(interrupt_uuid), LOG_LEVEL_INFO);
 
 /* this is needed because i.MX8 implementation assumes all boards have an irqsteer.

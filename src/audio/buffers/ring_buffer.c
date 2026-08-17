@@ -18,6 +18,7 @@
 LOG_MODULE_REGISTER(ring_buffer, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(ring_buffer);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(ring_buffer_tr, SOF_UUID(ring_buffer_uuid), LOG_LEVEL_INFO);
 
 static inline struct ring_buffer *ring_buffer_from_sink(struct sof_sink *sink)

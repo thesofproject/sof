@@ -27,6 +27,7 @@ LOG_MODULE_REGISTER(ams, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(ams);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(ams_tr, SOF_UUID(ams_uuid), LOG_LEVEL_INFO);
 
 static struct ams_context ctx[CONFIG_CORE_COUNT];

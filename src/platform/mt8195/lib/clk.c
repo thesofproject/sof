@@ -16,6 +16,7 @@
 
 SOF_DEFINE_REG_UUID(clkdrv_mt8195);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(clkdrv_tr, SOF_UUID(clkdrv_mt8195_uuid), LOG_LEVEL_INFO);
 
 static int dsppll_enable; /* default no adsp clock*/

@@ -200,6 +200,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(level_multiplier_tr, SOF_UUID(level_multiplier_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(level_multiplier_interface, level_multiplier_uuid, level_multiplier_tr);
 SOF_MODULE_INIT(level_multiplier, sys_comp_module_level_multiplier_interface_init);

@@ -256,6 +256,7 @@ static const struct module_interface mixer_interface = {
 	.free = mixer_free,
 };
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(mixer_tr, SOF_UUID(mixer_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(mixer_interface, mixer_uuid, mixer_tr);
 SOF_MODULE_INIT(mixer, sys_comp_module_mixer_interface_init);

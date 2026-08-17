@@ -22,6 +22,7 @@
 
 SOF_DEFINE_REG_UUID(interrupt);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(int_tr, SOF_UUID(interrupt_uuid), LOG_LEVEL_INFO);
 
 /* os timer reg value * 77ns 13M os timer

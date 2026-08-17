@@ -18,6 +18,7 @@
 
 SOF_DEFINE_REG_UUID(math_power);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(math_power_tr, SOF_UUID(math_power_uuid), LOG_LEVEL_INFO);
 /* define constant */
 #define POWER_MAX_LIMIT 0x8000

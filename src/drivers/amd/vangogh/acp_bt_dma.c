@@ -34,6 +34,7 @@
 
 SOF_DEFINE_REG_UUID(acp_bt_dma);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_bt_dma_tr, SOF_UUID(acp_bt_dma_uuid), LOG_LEVEL_INFO);
 
 /* DMA number of buffer periods */

@@ -34,6 +34,7 @@
 #include <platform/acp_sp_dma.h>
 
 SOF_DEFINE_REG_UUID(acp_sp);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_sp_vgh_tr, SOF_UUID(acp_sp_uuid), LOG_LEVEL_INFO);
 
 /* Vangogh hw specific addr map */

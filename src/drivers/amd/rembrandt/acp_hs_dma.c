@@ -33,6 +33,7 @@
 #include <platform/chip_registers.h>
 
 SOF_DEFINE_REG_UUID(acp_hs);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_hs_tr, SOF_UUID(acp_hs_uuid), LOG_LEVEL_INFO);
 
 #define HS_FIFO_SIZE		512
