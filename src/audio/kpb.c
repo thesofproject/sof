@@ -2716,12 +2716,15 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 	}
 }
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(kpb_tr, SOF_UUID(KPB_UUID), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
 	.uid = SOF_RT_UUID(KPB_UUID),
+#if !CONFIG_ZEPHYR_LOG
 	.tctx = &kpb_tr,
+#endif
 	.ops = {
 		.create		= kpb_new,
 		.free		= kpb_free,
