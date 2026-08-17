@@ -467,8 +467,16 @@ SDW_JACK_ECHO_REF=true,SDW_SPK_ECHO_REF=true,SDW_ECHO_REF_DAI=true"
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
 SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,COMPRESSED=true"
 
+"cavs-sdw\;sof-arl-cs42l43-l0-compr-speed\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=1,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+COMPRESSED=true,COMPRESSED_SPEED=true"
+
 "cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-compr\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
 HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,COMPRESSED=true"
+
+"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-compr-speed\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,COMPRESSED=true,COMPRESSED_SPEED=true"
 
 "cavs-sdw\;sof-ptl-rt721-compr\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
