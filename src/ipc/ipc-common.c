@@ -457,6 +457,7 @@ __cold static int ipc_user_init_thread(struct ipc_user *ipc_user)
 	user_grant_dma_access_all(ipc_user->thread);
 	k_mem_domain_add_thread(zephyr_ll_mem_domain(), ipc_user->thread);
 	user_ll_grant_access(ipc_user->thread, PLATFORM_PRIMARY_CORE_ID);
+	pipeline_posn_grant_access(ipc_user->thread);
 
 	return 0;
 
