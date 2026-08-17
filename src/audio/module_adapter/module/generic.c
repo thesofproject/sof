@@ -770,7 +770,6 @@ void z_impl_mod_free_all(struct processing_module *mod)
 	/* Make sure resource lists and accounting are reset */
 	mod_resource_init(mod);
 }
-EXPORT_SYMBOL(z_impl_mod_free_all);
 
 int module_free(struct processing_module *mod)
 {
