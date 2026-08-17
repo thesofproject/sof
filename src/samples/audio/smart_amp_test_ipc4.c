@@ -21,6 +21,7 @@ LOG_MODULE_REGISTER(smart_amp_test, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(smart_amp_test);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(smart_amp_test_comp_tr, SOF_UUID(smart_amp_test_uuid),
 	       LOG_LEVEL_INFO);
 

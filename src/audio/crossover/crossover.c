@@ -689,6 +689,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(crossover_tr, SOF_UUID(crossover_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(crossover_interface, crossover_uuid, crossover_tr);
 SOF_MODULE_INIT(crossover, sys_comp_module_crossover_interface_init);

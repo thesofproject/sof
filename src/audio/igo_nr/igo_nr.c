@@ -932,6 +932,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(igo_nr_tr, SOF_UUID(igo_nr_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(igo_nr_interface, igo_nr_uuid, igo_nr_tr);
 SOF_MODULE_INIT(igo_nr, sys_comp_module_igo_nr_interface_init);

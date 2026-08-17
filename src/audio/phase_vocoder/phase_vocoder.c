@@ -21,6 +21,7 @@ LOG_MODULE_REGISTER(phase_vocoder, CONFIG_SOF_LOG_LEVEL);
 /* Creates the component trace. Traces show in trace console the component
  * info, warning, and error messages.
  */
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(phase_vocoder_tr, SOF_UUID(phase_vocoder_uuid), LOG_LEVEL_INFO);
 
 #if STFT_DEBUG

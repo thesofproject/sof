@@ -247,6 +247,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(stft_process_tr, SOF_UUID(stft_process_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(stft_process_interface, stft_process_uuid, stft_process_tr);
 SOF_MODULE_INIT(stft_process, sys_comp_module_stft_process_interface_init);

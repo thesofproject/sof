@@ -1298,6 +1298,7 @@ static APP_SYSUSER_DATA const struct module_interface copier_interface = {
 	.endpoint_ops = &copier_endpoint_ops,
 };
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(copier_comp_tr, SOF_UUID(copier_uuid), LOG_LEVEL_INFO);
 
 DECLARE_MODULE_ADAPTER(copier_interface, copier_uuid, copier_comp_tr);

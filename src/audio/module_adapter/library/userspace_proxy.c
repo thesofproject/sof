@@ -46,6 +46,7 @@ LOG_MODULE_REGISTER(userspace_proxy, CONFIG_SOF_LOG_LEVEL);
 /* 6f6b6f4b-6f73-7466-20e1e62b9779f003 */
 SOF_DEFINE_REG_UUID(userspace_proxy);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(userspace_proxy_tr, SOF_UUID(userspace_proxy_uuid), LOG_LEVEL_INFO);
 
 static const struct module_interface userspace_proxy_interface;

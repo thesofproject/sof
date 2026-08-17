@@ -17,6 +17,7 @@
 
 LOG_MODULE_REGISTER(math_fft, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(math_fft);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(math_fft_tr, SOF_UUID(math_fft_uuid), LOG_LEVEL_INFO);
 
 struct fft_plan *fft_plan_common_new(struct processing_module *mod, void *inb,
