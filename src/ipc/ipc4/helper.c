@@ -18,6 +18,7 @@
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <ipc/dai.h>
+#include <ipc4/handler.h>
 #include <sof/ipc/msg.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
@@ -772,9 +773,8 @@ static int ll_wait_finished_on_core(struct comp_dev *dev)
 #endif
 
 /* Only called from ipc4_bind_module_instance(), which is __cold */
-__cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+__cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbind *bu)
 {
-	struct ipc4_module_bind_unbind *bu;
 	struct bind_info bind_data;
 	struct comp_buffer *buffer;
 	struct comp_dev *source;
@@ -790,7 +790,6 @@ __cold int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	assert_can_be_cold();
 
-	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
 	sink_id = IPC4_COMP_ID(bu->extension.r.dst_module_id, bu->extension.r.dst_instance_id);
 	source = ipc4_get_comp_dev(src_id);
@@ -1041,9 +1040,8 @@ free:
  * pipeline and create it in modified form.
  */
 /* Only called from ipc4_unbind_module_instance(), which is __cold */
-__cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
+__cold int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_unbind *bu)
 {
-	struct ipc4_module_bind_unbind *bu;
 	struct comp_buffer *buffer = NULL;
 	struct comp_buffer *buf;
 	struct comp_dev *src, *sink;
@@ -1055,7 +1053,6 @@ __cold int ipc_comp_disconnect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 
 	assert_can_be_cold();
 
-	bu = (struct ipc4_module_bind_unbind *)_connect;
 	src_id = IPC4_COMP_ID(bu->primary.r.module_id, bu->primary.r.instance_id);
 	sink_id = IPC4_COMP_ID(bu->extension.r.dst_module_id, bu->extension.r.dst_instance_id);
 	src = ipc4_get_comp_dev(src_id);

@@ -812,7 +812,7 @@ __cold static int ipc4_bind_module_instance(struct ipc4_message_request *ipc4)
 	       (uint32_t)bu->primary.r.module_id, (uint32_t)bu->primary.r.instance_id,
 	       (uint32_t)bu->extension.r.dst_module_id, (uint32_t)bu->extension.r.dst_instance_id);
 
-	return ipc_comp_connect(ipc, (ipc_pipe_comp_connect *)bu);
+	return ipc4_comp_connect(ipc, bu);
 }
 
 __cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
@@ -826,7 +826,7 @@ __cold static int ipc4_unbind_module_instance(struct ipc4_message_request *ipc4)
 	       (uint32_t)bu->primary.r.module_id, (uint32_t)bu->primary.r.instance_id,
 	       (uint32_t)bu->extension.r.dst_module_id, (uint32_t)bu->extension.r.dst_instance_id);
 
-	return ipc_comp_disconnect(ipc, (ipc_pipe_comp_connect *)bu);
+	return ipc4_comp_disconnect(ipc, bu);
 }
 #endif /* !CONFIG_SOF_USERSPACE_LL */
 
@@ -1707,8 +1707,7 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 			if (result < 0)
 				break;
 
-			result = ipc_comp_connect(ipc_user->ipc,
-						  (ipc_pipe_comp_connect *)&bu);
+			result = ipc4_comp_connect(ipc_user->ipc, &bu);
 			break;
 		}
 		case SOF_IPC4_MOD_UNBIND: {
@@ -1718,8 +1717,7 @@ int ipc_user_thread_dispatch(struct ipc_user *ipc_user)
 			if (result < 0)
 				break;
 
-			result = ipc_comp_disconnect(ipc_user->ipc,
-						     (ipc_pipe_comp_connect *)&bu);
+			result = ipc4_comp_disconnect(ipc_user->ipc, &bu);
 			break;
 		}
 		case SOF_IPC4_MOD_INIT_INSTANCE: {

@@ -68,6 +68,22 @@ int ipc4_set_pipeline_state(struct ipc4_message_request *ipc4);
  */
 void ipc_compound_msg_done(uint32_t msg_id, int error);
 
+/**
+ * \brief Connect components together on a pipeline.
+ * @param ipc The global IPC context.
+ * @param bu IPC4 bind-unbind data.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbind *bu);
+
+/**
+ * \brief Disconnect components in a pipeline.
+ * @param ipc The global IPC context.
+ * @param bu IPC4 bind-unbind data.
+ * @return IPC4_SUCCESS on success, error code otherwise.
+ */
+int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_unbind *bu);
+
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 /**
  * \brief Increment the IPC compound message pre-start counter.
