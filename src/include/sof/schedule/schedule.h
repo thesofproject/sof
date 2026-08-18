@@ -186,14 +186,8 @@ struct schedulers **arch_user_schedulers_get(void);
 
 struct schedulers **arch_user_schedulers_get_for_core(int core);
 
-/**
- * Retrieves scheduler's data.
- * @param type SOF_SCHEDULE_ type.
- * @return Pointer to scheduler's data.
- */
-static inline void *scheduler_get_data(uint16_t type)
+static inline void *scheduler_list_get_data(struct schedulers *schedulers, uint16_t type)
 {
-	struct schedulers *schedulers = *arch_schedulers_get();
 	struct schedule_data *sch;
 	struct list_item *slist;
 
@@ -207,6 +201,26 @@ static inline void *scheduler_get_data(uint16_t type)
 	}
 
 	return NULL;
+}
+
+/**
+ * Retrieves scheduler's data.
+ * @param type SOF_SCHEDULE_ type.
+ * @return Pointer to scheduler's data.
+ */
+static inline void *scheduler_get_data(uint16_t type)
+{
+	return scheduler_list_get_data(*arch_schedulers_get(), type);
+}
+
+/**
+ * Retrieves userspace scheduler's data.
+ * @param type SOF_SCHEDULE_ type.
+ * @return Pointer to scheduler's data.
+ */
+static inline void *scheduler_get_user_data(uint16_t type)
+{
+	return scheduler_list_get_data(*arch_user_schedulers_get(), type);
 }
 
 /** See scheduler_ops::schedule_task_running */
