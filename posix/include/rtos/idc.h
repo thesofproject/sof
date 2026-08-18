@@ -160,7 +160,7 @@ struct idc_msg {
 	uint32_t extension;	/**< extension value */
 	uint32_t core;		/**< core id */
 	uint32_t size;		/**< payload size in bytes */
-	void *payload;		/**< pointer to payload data */
+	const void *payload;	/**< pointer to payload data */
 };
 
 /** \brief IDC data. */
