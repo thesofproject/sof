@@ -1513,28 +1513,25 @@ __cold int ipc4_user_process_module_message(struct ipc4_message_request *ipc4,
 	case SOF_IPC4_MOD_INIT_INSTANCE:
 #ifdef CONFIG_SOF_USERSPACE_LL
 	{
+		BUILD_ASSERT(sizeof(struct comp_driver) + sizeof(struct tr_ctx) <=
+			     sizeof(((struct ipc_user *)0)->init_drv_data),
+			     "ipc_user.init_drv_data too small for driver copy");
+
 		/* User-space init: kernel does driver lookup only (requires
 		 * access to IMR manifest and driver list in kernel memory).
 		 * Component creation (drv->ops.create) runs in user thread
 		 * so untrusted module code does not execute in kernel context.
 		 * Cross-core creation stays fully in kernel.
 		 */
-		struct ipc4_module_init_instance mi;
+		const struct ipc4_module_init_instance *mi =
+			(const struct ipc4_module_init_instance *)ipc4;
 
-		BUILD_ASSERT(sizeof(struct comp_driver) + sizeof(struct tr_ctx) <=
-			     sizeof(((struct ipc_user *)0)->init_drv_data),
-			     "ipc_user.init_drv_data too small for driver copy");
-
-		ret = memcpy_s(&mi, sizeof(mi), ipc4, sizeof(*ipc4));
-		if (ret < 0)
-			break;
-
-		if (!cpu_is_me(mi.extension.r.core_id)) {
+		if (!cpu_is_me(mi->extension.r.core_id)) {
 			ret = ipc4_init_module_instance(ipc4);
 		} else {
 			struct ipc *ipc = ipc_get();
-			uint32_t comp_id = IPC4_COMP_ID(mi.primary.r.module_id,
-							mi.primary.r.instance_id);
+			uint32_t comp_id = IPC4_COMP_ID(mi->primary.r.module_id,
+							mi->primary.r.instance_id);
 			const struct comp_driver *drv = ipc4_get_comp_drv(
 				IPC4_MOD_ID(comp_id));
 			struct ipc_user *pdata = ipc->ipc_user_pdata;
