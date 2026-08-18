@@ -165,7 +165,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
 /**
  * \brief Connect components together on a pipeline.
  * @param ipc The global IPC context.
- * @param connect Components to connect together..
+ * @param connect Components to connect together.
  * @return 0 on success or negative error.
  */
 int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *connect);
