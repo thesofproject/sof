@@ -27,7 +27,9 @@ namespace system
 		SystemAgent(uint32_t module_id,
 			    uint32_t instance_id,
 			    uint32_t core_id,
-			    uint32_t log_handle);
+			    uint32_t log_handle,
+			    void *module_bss,
+			    size_t module_bss_size);
 
 		/*! \brief Initializes a new instance of ModuleAdapter in the ModuleHandle buffer*/
 		virtual void CheckIn(intel_adsp::ProcessingModuleInterface & processing_module,
@@ -69,6 +71,8 @@ namespace system
 		uint32_t const core_id_;
 		uint32_t module_id_;
 		uint32_t instance_id_;
+		void * const module_bss_;
+		size_t const module_bss_size_;
 		uint32_t module_size_;
 		intel_adsp::ModuleHandle * module_handle_;
 

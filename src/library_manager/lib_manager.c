@@ -556,6 +556,8 @@ static int lib_manager_start_agent(const struct comp_driver *drv,
 				   const struct module_interface **ops)
 {
 	struct system_agent_params agent_params;
+	void __sparse_cache *module_bss;
+	size_t module_bss_size;
 	byte_array_t mod_cfg;
 	int ret = 0;
 
@@ -571,6 +573,10 @@ static int lib_manager_start_agent(const struct comp_driver *drv,
 	agent_params.log_handle = (uint32_t)drv->tctx;
 #endif
 	agent_params.mod_cfg = &mod_cfg;
+	lib_manager_get_instance_bss_address(agent_params.instance_id, mod_manifest,
+					     &module_bss, &module_bss_size);
+	agent_params.module_bss = (__sparse_force void *)module_bss;
+	agent_params.module_bss_size = module_bss_size;
 
 #if CONFIG_SOF_USERSPACE_PROXY
 	/* If drv->user_heap is allocated, it means the module is userspace. */

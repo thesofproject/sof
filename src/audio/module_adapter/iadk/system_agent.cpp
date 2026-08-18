@@ -24,15 +24,6 @@
 #include <sof/audio/module_adapter/library/native_system_service.h>
 #include <sof/audio/module_adapter/library/native_system_agent.h>
 
-/* sof/lib_manager.h pulls C-only component headers into this C++ unit. */
-struct sof_man_module;
-extern "C" const struct sof_man_module *
-lib_manager_get_module_manifest(const uint32_t module_id);
-extern "C" void
-lib_manager_get_instance_bss_address(uint32_t instance_id,
-				     const struct sof_man_module *mod,
-				     void __sparse_cache **va_addr, size_t *size);
-
 using namespace intel_adsp;
 using namespace intel_adsp::system;
 using namespace dsp_fw;
@@ -46,22 +37,6 @@ namespace intel_adsp
 {
 namespace system
 {
-
-static void *system_agent_get_instance_bss(uint32_t module_id,
-					   uint32_t instance_id,
-					   size_t *size)
-{
-	const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id);
-	void __sparse_cache *base = NULL;
-
-	*size = 0;
-	if (!mod)
-		return NULL;
-
-	lib_manager_get_instance_bss_address(instance_id, mod, &base, size);
-	return reinterpret_cast<void *>(base);
-}
-
 /* Structure storing handles to system service operations */
 const APP_TASK_DATA AdspSystemService SystemAgent::system_service_ = {
 	native_system_service_log_message,
@@ -77,11 +52,15 @@ const APP_TASK_DATA AdspSystemService SystemAgent::system_service_ = {
 SystemAgent::SystemAgent(uint32_t module_id,
 			 uint32_t instance_id,
 			 uint32_t core_id,
-			 uint32_t log_handle) :
+			 uint32_t log_handle,
+			 void *module_bss,
+			 size_t module_bss_size) :
 			     log_handle_(log_handle),
 			     core_id_(core_id),
 			     module_id_(module_id),
 			     instance_id_(instance_id),
+			     module_bss_(module_bss),
+			     module_bss_size_(module_bss_size),
 			     module_handle_(NULL),
 			     module_size_(0)
 {}
@@ -114,9 +93,7 @@ void SystemAgent::CheckInDetector(DetectorModuleInterface& processing_module,
 
 void *SystemAgent::GetBssBase(void)
 {
-	size_t size = 0;
-
-	return system_agent_get_instance_bss(module_id_, instance_id_, &size);
+	return module_bss_;
 }
 
 int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
@@ -130,14 +107,10 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 	ErrorCode::Type error;
 
 	if (!module_placeholder) {
-		size_t bss_size;
-		void *bss_base = system_agent_get_instance_bss(module_id_, instance_id_,
-							       &bss_size);
-
-		if (!bss_base || processing_module_size > bss_size)
+		if (!module_bss_ || processing_module_size > module_bss_size_)
 			return -ENOMEM;
 
-		module_placeholder = reinterpret_cast<ModulePlaceholder *>(bss_base);
+		module_placeholder = reinterpret_cast<ModulePlaceholder *>(module_bss_);
 	}
 
 	module_size_ = processing_module_size;
@@ -194,7 +167,7 @@ int system_agent_start(const struct system_agent_params *params,
 {
 	uint32_t ret;
 	SystemAgent system_agent(params->module_id, params->instance_id, params->core_id,
-				 params->log_handle);
+				 params->log_handle, params->module_bss, params->module_bss_size);
 	void* system_agent_p = reinterpret_cast<void*>(&system_agent);
 
 	create_instance_f ci = (create_instance_f)(params->entry_point);
