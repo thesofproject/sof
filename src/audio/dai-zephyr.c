@@ -2045,10 +2045,10 @@ static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no,
 }
 
 #ifdef CONFIG_IPC_MAJOR_4
-__cold
-int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev, struct bind_info *unbind_data)
+__cold int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev,
+			     const struct bind_info *unbind_data)
 {
-	struct ipc4_module_bind_unbind *bu;
+	const struct ipc4_module_bind_unbind *bu;
 	int buf_id;
 
 	assert_can_be_cold();

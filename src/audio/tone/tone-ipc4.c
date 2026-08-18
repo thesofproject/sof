@@ -169,7 +169,7 @@ static int tone_reset(struct processing_module *mod)
 	return 0;
 }
 
-static int tone_bind(struct processing_module *mod, struct bind_info *bind_data)
+static int tone_bind(struct processing_module *mod, const struct bind_info *bind_data)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 
@@ -183,7 +183,7 @@ static int tone_bind(struct processing_module *mod, struct bind_info *bind_data)
 	return 0;
 }
 
-static int tone_unbind(struct processing_module *mod, struct bind_info *unbind_data)
+static int tone_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
 {
 	struct comp_data *cd = module_get_private_data(mod);
 

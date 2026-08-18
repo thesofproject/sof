@@ -438,7 +438,7 @@ static inline struct comp_driver_list *comp_drivers_get(void)
 #endif
 
 #if CONFIG_IPC_MAJOR_4
-static inline int comp_ipc4_bind_remote(struct comp_dev *dev, struct bind_info *bind_data)
+static inline int comp_ipc4_bind_remote(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 	struct idc_msg msg = { IDC_MSG_BIND,
 		IDC_EXTENSION(dev->ipc_config.id), dev->ipc_config.core,
@@ -448,7 +448,7 @@ static inline int comp_ipc4_bind_remote(struct comp_dev *dev, struct bind_info *
 }
 #endif
 
-static inline int comp_bind(struct comp_dev *dev, struct bind_info *bind_data)
+static inline int comp_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 #if CONFIG_IPC_MAJOR_4
 	if (dev->drv->ops.bind)
@@ -467,7 +467,7 @@ static inline int comp_bind(struct comp_dev *dev, struct bind_info *bind_data)
 }
 
 #if CONFIG_IPC_MAJOR_4
-static inline int comp_ipc4_unbind_remote(struct comp_dev *dev, struct bind_info *unbind_data)
+static inline int comp_ipc4_unbind_remote(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 	struct idc_msg msg = { IDC_MSG_UNBIND,
 		IDC_EXTENSION(dev->ipc_config.id), dev->ipc_config.core,
@@ -477,7 +477,7 @@ static inline int comp_ipc4_unbind_remote(struct comp_dev *dev, struct bind_info
 }
 #endif
 
-static inline int comp_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
+static inline int comp_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 #if CONFIG_IPC_MAJOR_4
 	if (dev->drv->ops.unbind)

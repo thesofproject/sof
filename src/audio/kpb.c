@@ -338,10 +338,10 @@ static int kpb_get_attribute(struct comp_dev *dev,
  * \param[in] bind_data - bind/unbind data.
  * \return: none.
  */
-static int kpb_bind(struct comp_dev *dev, struct bind_info *bind_data)
+static int kpb_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	struct ipc4_module_bind_unbind *bu;
+	const struct ipc4_module_bind_unbind *bu;
 	int buf_id;
 	int ret = 0;
 
@@ -385,10 +385,10 @@ static int kpb_bind(struct comp_dev *dev, struct bind_info *bind_data)
  * \param[in] data - ipc4 bind/unbind data.
  * \return: none.
  */
-static int kpb_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
+static int kpb_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	struct ipc4_module_bind_unbind *bu;
+	const struct ipc4_module_bind_unbind *bu;
 	int buf_id;
 
 	comp_dbg(dev, "entry");
