@@ -18,6 +18,8 @@ struct system_agent_params {
 	uint32_t core_id;	/* Core on which the module will run. */
 	uint32_t log_handle;	/* The handle for logging purposes. */
 	void *mod_cfg;		/* Pointer to the module configuration data. */
+	void *module_bss;	/* Base of this module instance's BSS. */
+	size_t module_bss_size;	/* Size of this module instance's BSS. */
 };
 
 typedef int (*system_agent_start_fn)(const struct system_agent_params *params,
