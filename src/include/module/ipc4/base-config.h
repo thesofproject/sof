@@ -115,14 +115,14 @@ enum ipc4_stream_type {
 };
 
 struct ipc4_audio_format {
-	enum ipc4_sampling_frequency sampling_frequency;
-	enum ipc4_bit_depth depth;
+	uint32_t sampling_frequency;	/* enum ipc4_sampling_frequency */
+	uint32_t depth;			/* enum ipc4_bit_depth */
 	uint32_t ch_map;
-	enum ipc4_channel_config ch_cfg;
+	uint32_t ch_cfg;		/* enum ipc4_channel_config */
 	uint32_t interleaving_style;
 	uint32_t channels_count : 8;
 	uint32_t valid_bit_depth : 8;
-	enum ipc4_sample_type s_type : 8;
+	uint32_t s_type : 8;		/* enum ipc4_sample_type */
 	uint32_t reserved : 8;
 } __attribute__((packed, aligned(4)));
 
