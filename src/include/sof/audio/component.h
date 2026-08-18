@@ -283,7 +283,7 @@ enum bind_type {
 
 struct bind_info {
 	/* pointer to IPC4 bind/unbind data */
-	struct ipc4_module_bind_unbind *ipc4_data;
+	const struct ipc4_module_bind_unbind *ipc4_data;
 
 	/* type of binding
 	 * bind call will be called twice for every component, first when binding a data source,
@@ -516,7 +516,7 @@ struct comp_ops {
 	 *
 	 * Usually can be __cold.
 	 */
-	int (*bind)(struct comp_dev *dev, struct bind_info *bind_data);
+	int (*bind)(struct comp_dev *dev, const struct bind_info *bind_data);
 
 	/**
 	 * Unbind, atomic - used to notify component of unbind event.
@@ -525,7 +525,7 @@ struct comp_ops {
 	 *
 	 * Usually can be __cold.
 	 */
-	int (*unbind)(struct comp_dev *dev, struct bind_info *unbind_data);
+	int (*unbind)(struct comp_dev *dev, const struct bind_info *unbind_data);
 
 	/**
 	 * Gets config in component.

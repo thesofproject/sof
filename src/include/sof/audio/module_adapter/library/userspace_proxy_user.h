@@ -72,7 +72,7 @@ struct module_params {
 		struct module_large_cfg_get_params	get_conf;
 		struct module_processing_mode_params	proc_mode;
 		struct module_process_params		proc;
-		struct bind_info			*bind_data;
+		const struct bind_info			*bind_data;
 		int					trigger_data;
 	} ext;
 };

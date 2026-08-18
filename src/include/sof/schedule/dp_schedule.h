@@ -109,7 +109,7 @@ struct sof_sink;
  * that would add multiple functions to the API.
  */
 union scheduler_dp_thread_ipc_param {
-	struct bind_info *bind_data;
+	const struct bind_info *bind_data;
 	struct {
 		unsigned int trigger_cmd;
 		enum ipc4_pipeline_state state;

@@ -186,7 +186,7 @@ static int tester_free(struct processing_module *mod)
 	return ret;
 }
 
-static int tester_bind(struct processing_module *mod, struct bind_info *bind_data)
+static int tester_bind(struct processing_module *mod, const struct bind_info *bind_data)
 {
 	struct tester_module_data *cd = module_get_private_data(mod);
 	int ret = 0;
@@ -197,7 +197,7 @@ static int tester_bind(struct processing_module *mod, struct bind_info *bind_dat
 	return ret;
 }
 
-static int tester_unbind(struct processing_module *mod, struct bind_info *unbind_data)
+static int tester_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
 {
 	struct tester_module_data *cd = module_get_private_data(mod);
 	int ret = 0;

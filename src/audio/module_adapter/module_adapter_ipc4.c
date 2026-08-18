@@ -376,7 +376,7 @@ static bool module_adapter_multi_sink_source_prepare(struct comp_dev *dev)
 }
 
 static int module_update_source_buffer_params(struct processing_module *mod,
-					      struct bind_info *bind_data)
+					      const struct bind_info *bind_data)
 {
 	struct module_config *dst = &mod->priv.cfg;
 	struct sof_ipc_stream_params params;
@@ -407,7 +407,7 @@ static int module_update_source_buffer_params(struct processing_module *mod,
 	return 0;
 }
 
-int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
+int module_adapter_bind(struct comp_dev *dev, const struct bind_info *bind_data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	int ret;
@@ -425,7 +425,7 @@ int module_adapter_bind(struct comp_dev *dev, struct bind_info *bind_data)
 	return 0;
 }
 
-int module_adapter_unbind(struct comp_dev *dev, struct bind_info *unbind_data)
+int module_adapter_unbind(struct comp_dev *dev, const struct bind_info *unbind_data)
 {
 	struct processing_module *mod = comp_mod(dev);
 	int ret;

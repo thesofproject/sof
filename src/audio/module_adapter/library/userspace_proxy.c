@@ -849,7 +849,7 @@ static bool userspace_proxy_is_ready_to_process(struct processing_module *mod,
  * @param bind_data - pointer to bind_info structure.
  * @return 0 for success, error otherwise.
  */
-static int userspace_proxy_bind(struct processing_module *mod, struct bind_info *bind_data)
+static int userspace_proxy_bind(struct processing_module *mod, const struct bind_info *bind_data)
 {
 	struct module_params *params = user_work_get_params(mod->user_ctx);
 	int ret;
@@ -877,7 +877,7 @@ static int userspace_proxy_bind(struct processing_module *mod, struct bind_info 
  * @param unbind_data - pointer to bind_info structure.
  * @return 0 for success, error otherwise.
  */
-static int userspace_proxy_unbind(struct processing_module *mod, struct bind_info *unbind_data)
+static int userspace_proxy_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
 {
 	struct module_params *params = user_work_get_params(mod->user_ctx);
 	int ret;

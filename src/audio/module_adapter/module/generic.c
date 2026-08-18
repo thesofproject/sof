@@ -908,7 +908,7 @@ int module_set_configuration(struct processing_module *mod,
 }
 EXPORT_SYMBOL(module_set_configuration);
 
-int module_bind(struct processing_module *mod, struct bind_info *bind_data)
+int module_bind(struct processing_module *mod, const struct bind_info *bind_data)
 {
 	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;
@@ -941,7 +941,7 @@ int module_bind(struct processing_module *mod, struct bind_info *bind_data)
 	return ret;
 }
 
-int module_unbind(struct processing_module *mod, struct bind_info *unbind_data)
+int module_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
 {
 	int ret;
 	const struct module_interface *const ops = mod->dev->drv->adapter_ops;

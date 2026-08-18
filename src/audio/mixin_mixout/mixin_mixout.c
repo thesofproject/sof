@@ -806,9 +806,9 @@ static int mixout_prepare(struct processing_module *mod,
 	return 0;
 }
 
-static int mixout_bind(struct processing_module *mod, struct bind_info *bind_data)
+static int mixout_bind(struct processing_module *mod, const struct bind_info *bind_data)
 {
-	struct ipc4_module_bind_unbind *bu;
+	const struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *mixin;
 	struct pending_frames *pending_frames;
 	int src_id;
@@ -853,9 +853,9 @@ static int mixout_bind(struct processing_module *mod, struct bind_info *bind_dat
 	return 0;
 }
 
-static int mixout_unbind(struct processing_module *mod, struct bind_info *unbind_data)
+static int mixout_unbind(struct processing_module *mod, const struct bind_info *unbind_data)
 {
-	struct ipc4_module_bind_unbind *bu;
+	const struct ipc4_module_bind_unbind *bu;
 	struct comp_dev *mixin;
 	struct pending_frames *pending_frames;
 	int src_id;
