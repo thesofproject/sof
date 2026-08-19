@@ -274,8 +274,8 @@ slot assignment at runtime.  The topology creates three such kcontrols:
 | ALSA kcontrol name | numid | Target module | Slot |
 |---|---|---|---|
 | `wov_init_101` | 8 | `wov.101.1` (Core 0) | 0 |
-| `wov_init_102` | 9 | `wov.102.1` (Core 0) | 1 |
-| `wov_init_103` | 10 | `wov.103.1` (Core 1) | 2 |
+| `wov_init_102` | 10 | `wov.102.1` (Core 0) | 1 |
+| `wov_init_103` | 12 | `wov.103.1` (Core 1) | 2 |
 
 The write must be issued **before** `PREPARE` fires — write the kcontrols
 immediately after forking `arecord` into the background, before it has finished
@@ -285,6 +285,34 @@ registered for that slot.
 
 The TLV payload format and a ready-to-use Python helper are in
 [Testing and Verification](#testing-and-verification).
+
+#### `detect_test` — per-slot mute via `wov_mute_1NN` switch kcontrol
+
+Each `detect_test` instance also exposes a boolean switch kcontrol that gates
+detection at runtime without tearing down the pipeline.
+
+| ALSA kcontrol name | numid | Default | Effect when set |
+|---|---|---|---|
+| `wov_mute_101` | 9 | `off` | `off` = muted (no detection), `on` = detection active |
+| `wov_mute_102` | 11 | `off` | `off` = muted (no detection), `on` = detection active |
+| `wov_mute_103` | 13 | `off` | `off` = muted (no detection), `on` = detection active |
+
+The default at pipeline open is `off` (muted). Userspace must explicitly write `on`
+to arm a slot. When muted, `test_keyword_copy` drains the source buffer and returns
+without running the detection algorithm, keeping the LL scheduler running at zero
+detection cost. When re-enabled, detection resumes immediately on the next LL tick.
+
+Wire format: `LARGE_CONFIG_SET` with `PARAM_ID = 200`
+(`SOF_IPC4_SWITCH_CONTROL_PARAM_ID`), payload
+`struct sof_ipc4_control_msg_payload { .num_elems=1, .chanv[0].value=0|1 }`.
+
+```bash
+# Arm slot 1 for detection (numid=11 = wov_mute_102)
+amixer -c 0 cset numid=11 on
+
+# Mute slot 1 again
+amixer -c 0 cset numid=11 off
+```
 
 #### `wov_arbiter` — slot count from `nb_input_pins`
 
@@ -652,7 +680,10 @@ tools/topology/topology2/
 ├── platform/intel/
 │   └── dmic-wov-multi.conf          ← main topology (edit here)
 ├── include/components/
+│   ├── wov.conf                     ← detect_test widget class (wov_init + wov_mute kcontrols)
 │   └── wov-arbiter.conf             ← wov_arbiter widget class definition
+├── include/controls/
+│   └── mixer.conf                   ← Class.Control.mixer definition (required by wov.conf)
 └── dmic-wov-multi-manifest.conf     ← top-level manifest (includes above)
 ```
 
@@ -661,19 +692,22 @@ tools/topology/topology2/
 From the root of the SOF repository:
 
 ```bash
-ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_CONFIG_DIR=$(pwd)/tools/topology/topology2 \
 alsatplg \
-    -I tools/topology/topology2 \
+    -I $(pwd)/tools/topology/topology2 \
     -p \
     -c tools/topology/topology2/dmic-wov-multi-manifest.conf \
-    -o sof-hda-generic-wov.tplg
+    -o sof-tgl-dmic-wov-multi.tplg
 ```
+
+`ALSA_CONFIG_DIR` must be an absolute path; the `$(pwd)` expansion ensures this
+when running from the repo root.
 
 Copy the compiled topology to the DUT:
 
 ```bash
-scp sof-hda-generic-wov.tplg \
-    root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/sof-hda-generic-wov.tplg
+scp sof-tgl-dmic-wov-multi.tplg \
+    root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/sof-tgl-dmic-wov-multi.tplg
 ```
 
 Tell the SOF driver which topology to load (edit `/etc/modprobe.d/sof.conf` on the DUT):
@@ -794,10 +828,26 @@ arecord -l | grep "DMIC Multi-WOV"   # expect: card 0: device 11
 
 ---
 
+### kcontrol numid reference
+
+After driver load the full WOV kcontrol set is:
+
+| numid | name | type | Purpose |
+|---|---|---|---|
+| 8 | `wov_init_101` | bytes TLV | Set slot ID for detect_test in pipeline 101 |
+| 9 | `wov_mute_101` | boolean switch | Arm/mute detection for slot 0 |
+| 10 | `wov_init_102` | bytes TLV | Set slot ID for detect_test in pipeline 102 |
+| 11 | `wov_mute_102` | boolean switch | Arm/mute detection for slot 1 |
+| 12 | `wov_init_103` | bytes TLV | Set slot ID for detect_test in pipeline 103 |
+| 13 | `wov_mute_103` | boolean switch | Arm/mute detection for slot 2 |
+| 14 | `wov_trigger_id` | bytes TLV (read-only) | Read active slot after detection |
+
+---
+
 ### Slot Assignment via `wov_init_1NN` kcontrol
 
 Each `detect_test` instance reads its `wov_slot_id` from a bytes TLV kcontrol
-(`wov_init_101 / 102 / 103`, numids 8 / 9 / 10).  The assignment must arrive
+(`wov_init_101 / 102 / 103`, numids 8 / 10 / 12).  The assignment must arrive
 **before** the PCM `PREPARE` IPC — write the kcontrols immediately after forking
 `arecord` into the background:
 
@@ -805,8 +855,8 @@ Each `detect_test` instance reads its `wov_slot_id` from a bytes TLV kcontrol
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 10 /tmp/wov.wav &
 # Race the PREPARE: write all three kcontrols before hw_params completes
 python3 set_wov_slot.py 8 0    # wov_init_101 → slot 0
-python3 set_wov_slot.py 9 1    # wov_init_102 → slot 1
-python3 set_wov_slot.py 10 2   # wov_init_103 → slot 2
+python3 set_wov_slot.py 10 1   # wov_init_102 → slot 1
+python3 set_wov_slot.py 12 2   # wov_init_103 → slot 2
 wait
 ```
 
@@ -826,7 +876,7 @@ Copy to the DUT as `/tmp/set_wov_slot.py`.  The script builds the two-level
 ```python
 #!/usr/bin/env python3
 # Usage: set_wov_slot.py <numid> <slot_id>
-#   numid: 8=wov_init_101 (slot 0), 9=wov_init_102 (slot 1), 10=wov_init_103 (slot 2)
+#   numid: 8=wov_init_101 (slot 0), 10=wov_init_102 (slot 1), 12=wov_init_103 (slot 2)
 #   slot_id: 0-2 to enable; 255 to disable (WOV_SLOT_INVALID)
 import sys, fcntl, struct, os
 
@@ -875,9 +925,13 @@ batch, `frames_total >= KD_DP_FRAMES`).  The first batch fires the trigger appro
 dmesg -C
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 10 /tmp/wov_all.wav &
 AREC=$!
-python3 set_wov_slot.py 8 0
-python3 set_wov_slot.py 9 1
-python3 set_wov_slot.py 10 2
+python3 set_wov_slot.py 8 0    # wov_init_101 → slot 0
+python3 set_wov_slot.py 10 1   # wov_init_102 → slot 1
+python3 set_wov_slot.py 12 2   # wov_init_103 → slot 2
+# Arm all three slots
+amixer -c 0 cset numid=9  on   # wov_mute_101
+amixer -c 0 cset numid=11 on   # wov_mute_102
+amixer -c 0 cset numid=13 on   # wov_mute_103
 wait $AREC
 echo "rc=$?"
 ```
@@ -890,16 +944,76 @@ and 2 via `NOTIFIER_ID_WOV_CTRL`.
 ```bash
 # Disable the other two slots before starting arecord
 python3 set_wov_slot.py 8 255   # disable slot 0 (persists across sessions)
-python3 set_wov_slot.py 10 255  # disable slot 2
+python3 set_wov_slot.py 12 255  # disable slot 2
 
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 5 /tmp/wov_s1.wav &
 AREC=$!
-python3 set_wov_slot.py 9 1     # enable slot 1 only
+python3 set_wov_slot.py 10 1    # wov_init_102 → slot 1
+amixer -c 0 cset numid=11 on    # arm wov_mute_102
 wait $AREC
 echo "rc=$?"
 ```
 
 Repeat for each slot, rotating which `set_wov_slot.py` calls use `255` vs a valid ID.
+
+---
+
+### Per-Slot Mute Test
+
+Verify that `wov_mute_1NN` suppresses detection when `off` and restores it when `on`.
+The test uses the 8-second auto-trigger path (no physical audio needed):
+
+```bash
+# Reload driver for a clean state
+rmmod snd_sof_pci_intel_tgl && modprobe snd_sof_pci_intel_tgl && sleep 4
+
+# Open PCM (keeps DSP in D0 — required for kcontrol reads)
+arecord -D hw:0,11 -r 16000 -c 1 -f S16_LE -d 60 /dev/null &
+AREC=$!
+sleep 2
+
+# Set slot IDs
+python3 set_wov_slot.py 8 0
+python3 set_wov_slot.py 10 1
+python3 set_wov_slot.py 12 2
+
+# Leave all wov_mute controls at default (off = muted)
+echo "All muted — waiting 12s, no trigger expected:"
+sleep 12
+python3 read_wov_trigger.py     # expect: active_slot = 255
+
+# Arm slot 1
+amixer -c 0 cset numid=11 on
+echo "Slot 1 armed — waiting 12s, trigger expected:"
+sleep 12
+python3 read_wov_trigger.py     # expect: active_slot = 1
+
+kill $AREC
+```
+
+#### `read_wov_trigger.py` — read active slot via TLV
+
+```python
+#!/usr/bin/env python3
+# Reads wov_trigger_id (numid=14) to get active_slot after detection.
+# DSP must be in D0 (arecord open) or ENOSPC is returned.
+import fcntl, os, struct
+
+SNDRV_CTL_IOCTL_TLV_READ = (2 << 30) | (8 << 16) | (0x55 << 8) | 0x1a
+
+def read_active_slot(card=0, numid=14):
+    response_size = 44
+    buf = bytearray(struct.pack('<II', numid, response_size) + bytes(response_size))
+    fd = os.open(f'/dev/snd/controlC{card}', os.O_RDWR)
+    try:
+        fcntl.ioctl(fd, SNDRV_CTL_IOCTL_TLV_READ, buf)
+    finally:
+        os.close(fd)
+    return struct.unpack_from('<I', buf, 48)[0]
+
+slot = read_active_slot()
+print(f'active_slot = {slot}  (255 = no detection yet)')
+```
 
 #### Verify audio content
 
@@ -935,8 +1049,9 @@ capture pipeline-prepare and trigger messages.
 dd if=/sys/kernel/debug/sof/mtrace/core0 bs=65536 count=16 of=/tmp/mt.bin &
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 5 /tmp/wov.wav &
 python3 set_wov_slot.py 8 0
-python3 set_wov_slot.py 9 1
-python3 set_wov_slot.py 10 2
+python3 set_wov_slot.py 10 1
+python3 set_wov_slot.py 12 2
+amixer -c 0 cset numid=9 on && amixer -c 0 cset numid=11 on && amixer -c 0 cset numid=13 on
 wait
 
 # strings works because SOF embeds full format strings in the binary
@@ -998,7 +1113,8 @@ DUT and `speaker-test` on a test machine whose audio output is wired to the DUT 
 ```bash
 # On the DUT: start capture and set all slots
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 30 /tmp/wov_sweep.wav &
-python3 set_wov_slot.py 8 0 && python3 set_wov_slot.py 9 1 && python3 set_wov_slot.py 10 2
+python3 set_wov_slot.py 8 0 && python3 set_wov_slot.py 10 1 && python3 set_wov_slot.py 12 2
+amixer -c 0 cset numid=9 on && amixer -c 0 cset numid=11 on && amixer -c 0 cset numid=13 on
 
 # On test machine: drive tone sweep (one frequency band per slot)
 speaker-test -c 1 -t sine -f 120 -l 3   # -> slot 0 (Male 80-170 Hz)
