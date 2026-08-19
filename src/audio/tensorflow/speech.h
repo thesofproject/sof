@@ -31,15 +31,6 @@ struct tf_classify {
 	int op_count;
 	uint32_t node_cycles[10];
 	int node_codes[10];
-	float input_scale;
-	int input_zero_point;
-	/* Precomputed integer requantizer for the Q9.23 mel-log -> int8
-	 * feature path: pre_zp = round((int64)mel_q23 * input_mult >> input_shift).
-	 * The factor of 2^-23 from Q9.23 is folded into input_mult so runtime
-	 * does no float math. See Init_Interpreter() in speech.cc.
-	 */
-	int32_t input_mult;
-	int input_shift;
 };
 
 /* Export of C++ APIs into C namespace for linkage */

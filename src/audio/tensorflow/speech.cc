@@ -18,7 +18,6 @@
 
 // The following values are derived from values used during model training.
 // If you change the way you preprocess the input, update all these constants.
-//constexpr int kAudioSampleFrequency = TFLM_SAMPLE_RATE;
 static constexpr int kFeatureSize = TFLM_FEATURE_SIZE;
 static constexpr int kFeatureCount = TFLM_FEATURE_COUNT;
 static constexpr int kFeatureElementCount = TFLM_FEATURE_ELEM_COUNT;
@@ -55,32 +54,6 @@ int RegisterOps(MicroSpeechOpResolver *op_resolver) {
 }
 
 static int Init_Interpreter(struct tf_classify *tfc);
-
-// Decompose the Q9.23 -> int8 requantize factor
-//     M = 1 / (input_scale * 2^23)
-// into a normalized int32 multiplier in [2^30, 2^31) and a right-shift, so the
-// runtime hot path can do (mel_q23 * mult) >> shift in pure integer math.
-// Unpacks IEEE 754 bits directly rather than calling frexpf so that this file
-// pulls in no libm symbols on the minimal-libc SOF build.
-static void ComputeInputRequantizeMultiplier(float input_scale,
-					     int32_t *out_mult, int *out_shift)
-{
-	float m = 1.0f / (input_scale * static_cast<float>(1 << 23));
-	if (!(m > 0.0f)) {
-		*out_mult = 0;
-		*out_shift = 0;
-		return;
-	}
-	uint32_t bits;
-	std::memcpy(&bits, &m, sizeof(bits));
-	// IEEE 754 binary32: bias-127 exponent; frexp uses [0.5, 1.0) => bias-126.
-	int exp = static_cast<int>((bits >> 23) & 0xffu) - 126;
-	// Reinsert the implicit leading 1, then shift the 24-bit mantissa into bit
-	// 30 so the result is Q0.31 with MSB set, i.e. in [2^30, 2^31).
-	int32_t mult = static_cast<int32_t>(((bits & 0x7fffffu) | 0x800000u) << 7);
-	*out_mult = mult;
-	*out_shift = 31 - exp;
-}
 
 int TF_InitOps(struct tf_classify *tfc)
 {
@@ -159,14 +132,6 @@ static int Init_Interpreter(struct tf_classify *tfc)
 			    output->dims->size, output_elems, tfc->categories);
 		return -EINVAL;
 	}
-
-	// expose the model's real input quantization params so callers can
-	// requantize their features correctly instead of assuming a fixed
-	// scale/zero_point.
-	tfc->input_scale = input->params.scale;
-	tfc->input_zero_point = input->params.zero_point;
-	ComputeInputRequantizeMultiplier(tfc->input_scale,
-					 &tfc->input_mult, &tfc->input_shift);
 
 	return 0;
 }
