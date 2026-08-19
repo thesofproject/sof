@@ -31,7 +31,7 @@ config VAD_GATE_DEFAULT_ONSET_FRAMES
 
 config VAD_GATE_DEFAULT_HANGOVER_FRAMES
 	int "VAD gate default hangover frame count"
-	default 30
+	default 200
 	help
 	  Number of consecutive below-threshold frames required before the gate
 	  closes (SILENCE).

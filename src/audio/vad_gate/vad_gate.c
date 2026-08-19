@@ -33,6 +33,7 @@
 #include <ipc/topology.h>
 #include <ipc4/base-config.h>
 #include <sof/lib/memory.h>
+#include <adsp_clk.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -94,14 +95,16 @@ static void vad_update_energy(struct comp_dev *dev,
 		cd->silence_cnt = 0;
 		if (++cd->speech_cnt >= cd->config.onset_frames && !cd->vad_active) {
 			cd->vad_active = true;
-			comp_info(dev, "SPEECH onset (energy=%d >= threshold=%d)",
+			adsp_clock_set_cpu_freq(ADSP_CPU_CLOCK_FREQ_HPRO);
+			comp_info(dev, "SPEECH onset (energy=%d >= threshold=%d) -> HPRO",
 				  cd->energy, cd->config.threshold);
 		}
 	} else {
 		cd->speech_cnt = 0;
 		if (++cd->silence_cnt >= cd->config.hangover_frames && cd->vad_active) {
 			cd->vad_active = false;
-			comp_info(dev, "SILENCE hangover expired (energy=%d < threshold=%d)",
+			adsp_clock_set_cpu_freq(ADSP_CPU_CLOCK_FREQ_WOVCRO);
+			comp_info(dev, "SILENCE hangover expired (energy=%d < threshold=%d) -> WOVCRO",
 				  cd->energy, cd->config.threshold);
 		}
 	}
@@ -169,6 +172,9 @@ static int vad_gate_prepare(struct comp_dev *dev)
 	cd->speech_cnt  = 0;
 	cd->silence_cnt = 0;
 	cd->vad_active  = false;
+
+	/* Start at WOVCRO; clock escalates to HPRO on first voice onset. */
+	adsp_clock_set_cpu_freq(ADSP_CPU_CLOCK_FREQ_WOVCRO);
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
