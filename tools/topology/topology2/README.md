@@ -416,11 +416,20 @@ The Yoga Book topology can be built directly with:
 
 ```bash
 cmake --build . --target topology2_prod_ipc3_sof-cht-rt5677
+python3 ../tools/topology/topology2/verify-topology.py \
+    topology/topology2/production/ipc3/sof-cht-rt5677.tplg
 ```
 
 `sof-cht-rt5677.tplg` configures SSP2 for DSP_B with an inverted bit clock and
 non-inverted frame clock, 48 kHz stereo S24_LE, four 25-bit TDM slots, a
-4.8 MHz bit clock, and a 19.2 MHz codec MCLK. These values must stay aligned
-with the Linux `cht-yogabook` machine driver.
+4.8 MHz bit clock, and a 19.2 MHz codec MCLK. The Linux `cht_rt5677` machine
+driver configures the same frame and activates slots 0 and 1 with mask `0x3`.
+IPC3 derives the DAI channel count from the population count of this mask, so
+using `0xf` would incorrectly advertise four channels for the stereo stream.
+The verifier parses the compiled artifact and rejects changes to the SSP link
+or the PCM0/PCM1 stereo contract. Its Yoga Book values are defaults;
+command-line options can override the PCM, clock, format, frame, slot-mask, and
+sample-width expectations for other topologies. Run `verify-topology.py --help`
+for the complete interface.
 
 Development and testing topologies go in `development/tplg-targets.cmake`.
