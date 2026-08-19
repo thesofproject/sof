@@ -136,6 +136,7 @@ struct comp_data {
 	 */
 	uint8_t  wov_slot_id;
 	bool     paused;
+	bool     muted;
 
 	/* DP thread: double-buffered 20ms batch */
 	int16_t  dp_buf[2][KD_DP_FRAMES];
@@ -649,6 +650,16 @@ static int test_keyword_set_large_config(struct comp_dev *dev,
 			cd->wov_slot_id = cp->data[0];
 		return 0;
 	}
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID: {
+		/* Mute switch: value=0 disables detection, value=1 enables it. */
+		const struct sof_ipc4_control_msg_payload *cp =
+			(const struct sof_ipc4_control_msg_payload *)data;
+		if (cp->num_elems < 1)
+			return -EINVAL;
+		cd->muted = (cp->chanv[0].value == 0);
+		comp_dbg(dev, "muted=%d", cd->muted);
+		return 0;
+	}
 	default:
 		return -EINVAL;
 	}
@@ -1157,6 +1168,11 @@ static int test_keyword_copy(struct comp_dev *dev)
 
 	frames = audio_stream_get_avail_frames(&source->stream);
 	avail_bytes = audio_stream_get_avail_bytes(&source->stream);
+
+	if (cd->muted) {
+		comp_update_buffer_consume(source, avail_bytes);
+		return 0;
+	}
 
 	/* copy and perform detection */
 	buffer_stream_invalidate(source, avail_bytes);
