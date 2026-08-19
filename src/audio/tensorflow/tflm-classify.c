@@ -109,6 +109,33 @@ static const char * const prediction[] = TFLM_CATEGORY_DATA;
 #define TFLM_MFCC_HOP_MS            20
 #define TFLM_INFERENCE_STRIDE_HOPS  25
 
+/* Soft mel-log AGC (units: Q9.23, matches MFCC output). One decade = +10 dB.
+ * Target +2.5 dB (+0.25 in Q9.23), floor -20 dB. Attack: instant clamp so peak+gain
+ * never exceeds MEL_CLIP_MAX_Q23 (+1.0, +10 dB). Release: dual-rate additive recovery:
+ *   - Normal release during silence (VAD == 0): ~0.5 dB/s (hop=20 ms, 50 hops/s).
+ *   - Super-slow leak during speech (VAD == 1): ~0.05 dB/s (1/10th speed) to guarantee
+ *     the AGC never stays permanently trapped at minimum gain even if VAD gets stuck.
+ */
+#define TFLM_AGC_GAIN_TARGET_Q23        2097152 /* +2.5 dB (0.25 * 2^23) */
+#define TFLM_AGC_GAIN_FLOOR_Q23         -16777216 /* -20 dB, int32(-20 * 0.1 * 2^23) */
+#define TFLM_AGC_RELEASE_STEP_Q23       8389 /* 0.5 dB/s, int32((0.5 * 0.1 / 50) * 2^23) */
+#define TFLM_AGC_RELEASE_STEP_SPEECH_Q23 839 /* 0.05 dB/s, 1/10th normal release */
+
+/* This needs to match with sof_tflm_train.py and sof_tflm_verify.py.
+ *
+ * The range -1.0 to +1.0 of Q9.23 Mel values is scaled to +/-1.0 Q1.7.
+ *
+ * in = [-1.0 1.0]; out = [-1 1];
+ * offset = -(in(1) + in(2)) / 2 = 0
+ * scale = (out(2) - out(1)) / (in(2) - in(1)) = 1.0
+ */
+#define MEL_OFFSET_Q23		0 /* 0 */
+#define MEL_SCALE_Q30		(1 << 30) /* 1.0 in Q30 */
+#define MEL_CLIP_MAX_Q23	(1 << 23) /* +1.0 in Q23 */
+#define MEL_CLIP_MIN_Q23	(-1 << 23) /* -1.0 in Q23 */
+#define MEL_CLIP_MAX_Q7		127
+#define MEL_CLIP_MIN_Q7		-128
+
 struct tflm_comp_data {
 	struct comp_data_blob_handler *model_handler;
 	struct tf_classify tfc;
@@ -122,6 +149,10 @@ struct tflm_comp_data {
 	/* Per-instance sliding window and inference cadence. */
 	int8_t feature_buf[TFLM_FEATURE_ELEM_COUNT];
 	int frame_counter;
+	/* Bitmask of VAD flags for the TFLM_FEATURE_COUNT frames in feature_buf. */
+	uint64_t vad_history;
+	/* Persistent AGC gain applied to every Q9.23 mel value (see AGC defines). */
+	int32_t agc_gain_q23;
 	/* Per-instance shutdown-summary counters. */
 	uint32_t category_totals[TFLM_CATEGORY_COUNT];
 	uint32_t total_inferences;
@@ -190,15 +221,11 @@ static __maybe_unused void tflm_send_keyword_notification(struct processing_modu
 
 /* Shared TFLM backend state. speech.cc has one static arena/model/interpreter,
  * so TF_SetModel/TF_InitOps must run only once no matter how many tflmcly
- * instances the topology creates; secondary instances copy the resolved input
- * quant params from the first-init cache below.
+ * instances the topology creates; secondary instances attach to the first-init
+ * instance.
  */
 static bool g_tflm_initialized;
 static int g_tflm_instance_count;
-static float g_tflm_shared_input_scale;
-static int g_tflm_shared_input_zero_point;
-static int32_t g_tflm_shared_input_mult;
-static int32_t g_tflm_shared_input_shift;
 static int g_tflm_shared_categories;
 
 __cold static void tflm_log_summary_at_shutdown(struct processing_module *mod)
@@ -251,6 +278,7 @@ __cold static int tflm_init(struct processing_module *mod)
 	md->private = cd;
 	cd->tfc.categories = TFLM_CATEGORY_COUNT;
 	cd->drain_req_ms = TFLM_KPB_DRAIN_REQ_MS;
+	cd->agc_gain_q23 = TFLM_AGC_GAIN_TARGET_Q23;
 #if CONFIG_AMS
 	cd->kpd_uuid_id = AMS_INVALID_MSG_TYPE;
 #endif
@@ -284,39 +312,6 @@ __cold static int tflm_set_config(struct processing_module *mod, uint32_t param_
 }
 
 /*
- * MFCC's mel-log output is Q9.23 fixed point, normalized by the mel40.conf
- * profile's mel_offset/mel_scale/top_db tuning to approximately the 0..1
- * range (see the dynamic_mmax clamp + offset + scale in mfcc_common.c).
- * We requantize that into int8 features using the model's own input tensor
- * scale/zero_point (populated by TF_InitOps()/Init_Interpreter() in speech.cc).
- *
- * The float-domain operation is
- *   int8_pre = round((mel_q23 / 2^23) / input_scale) + input_zero_point
- * which we execute in integer math using a pre-decomposed multiplier and
- * right-shift so this per-sample hot path (40 features x ~50 hops/sec)
- * needs no float divides or FPU support:
- *   int8_pre = round((int64)mel_q23 * input_mult >> input_shift) + input_zero_point
- * with input_mult/input_shift set once at model prepare time.
- */
-static inline int8_t mfcc_mel_q23_to_int8(int32_t mel_q23, int32_t input_mult,
-					   int input_shift, int input_zero_point)
-{
-	int64_t prod = (int64_t)mel_q23 * (int64_t)input_mult;
-	int64_t abs_prod = prod >= 0 ? prod : -prod;
-	int64_t rounding = (int64_t)1 << (input_shift - 1);
-	int32_t abs_scaled = (int32_t)((abs_prod + rounding) >> input_shift);
-	int32_t scaled = prod >= 0 ? abs_scaled : -abs_scaled;
-
-	scaled += input_zero_point;
-	if (scaled > 127)
-		scaled = 127;
-	else if (scaled < -128)
-		scaled = -128;
-
-	return (int8_t)scaled;
-}
-
-/*
  * This expects features from 16kHz mono 16 bit input stream.
  *
  * Features must be processed using the following flow
@@ -331,9 +326,6 @@ static inline int8_t mfcc_mel_q23_to_int8(int32_t mel_q23, int32_t input_mult,
  * call TF_ProcessClassify() until we have less than TFLM_FEATURE_COUNT
  * features in the input buffer.
  */
-
-
-
 
 static int tflm_process(struct processing_module *mod,
 			struct sof_source **sources, int num_of_sources,
@@ -396,45 +388,70 @@ static int tflm_process(struct processing_module *mod,
 			 * TFLM_FEATURE_SIZE int32 Q9.23 mel-log values into
 			 * int8 features for this hop.
 			 */
+			const struct mfcc_data_header *hdr =
+				(const struct mfcc_data_header *)hop_scratch;
 			const int32_t *mel = (const int32_t *)
 				(hop_scratch + sizeof(struct mfcc_data_header));
 			int8_t hop_features[TFLM_FEATURE_SIZE];
 
-			/* Match training preprocessing exactly: clip Q9.23 mel to
-			 * [-1.0, +4.0] and then rescale to [-1.0, +1.0] centered
-			 * on 0 (np.clip + (X - 1.5) / 2.5 in train_wov_tflm.py).
-			 * TFLite calibration on that range picks
-			 * input_scale=1/128, input_zero_point=0, so the model
-			 * consumes the full int8 dynamic range.
-			 */
-			enum {
-				MEL_CLIP_MIN_Q23 = -(1 << 23),        /* -1.0 */
-				MEL_CLIP_MAX_Q23 =  (4 << 23),        /* +4.0 */
-				MEL_CENTER_Q23   =  (3 << 22),        /* +1.5 */
-				TWO_FIFTHS_Q31   =  858993459,        /* round(0.4 * (1<<31)) */
-			};
+			/* Update VAD history bitmask (tracks last TFLM_FEATURE_COUNT hops). */
+			cd->vad_history = ((cd->vad_history << 1) | (hdr->vad_flag ? 1ULL : 0ULL)) &
+					  ((1ULL << TFLM_FEATURE_COUNT) - 1);
 
-			for (int i = 0; i < TFLM_FEATURE_SIZE; i++) {
-				int32_t mel_c = mel[i];
+			/* AGC: attack on this hop's peak (always track energy). */
+			int32_t hop_peak_q23 = mel[0];
+			for (int i = 1; i < TFLM_FEATURE_SIZE; i++)
+				if (mel[i] > hop_peak_q23)
+					hop_peak_q23 = mel[i];
 
-				if (mel_c < MEL_CLIP_MIN_Q23)
-					mel_c = MEL_CLIP_MIN_Q23;
-				else if (mel_c > MEL_CLIP_MAX_Q23)
-					mel_c = MEL_CLIP_MAX_Q23;
+			int32_t clip_headroom_q23 = MEL_CLIP_MAX_Q23 - hop_peak_q23;
+			if (cd->agc_gain_q23 > clip_headroom_q23)
+				cd->agc_gain_q23 = clip_headroom_q23;
+			if (cd->agc_gain_q23 < TFLM_AGC_GAIN_FLOOR_Q23)
+				cd->agc_gain_q23 = TFLM_AGC_GAIN_FLOOR_Q23;
 
-				/* Fold (mel - 1.5) * (2/5) into one Q1.31 multiply. */
-				mel_c = Q_MULTSR_32X32((int64_t)(mel_c - MEL_CENTER_Q23),
-						       TWO_FIFTHS_Q31, 23, 31, 23);
+			int32_t agc_gain_q23 = cd->agc_gain_q23;
 
-				hop_features[i] = mfcc_mel_q23_to_int8(mel_c,
-					cd->tfc.input_mult, cd->tfc.input_shift,
-					cd->tfc.input_zero_point);
+			comp_info(mod->dev, "tflm agc: peak_q23=%d gain_q23=%d",
+				  hop_peak_q23, agc_gain_q23);
+
+			/* Requantize to int8: skip if no speech in the 49-hop window (fill with silence) */
+			if (cd->vad_history) {
+				for (int i = 0; i < TFLM_FEATURE_SIZE; i++) {
+					int32_t mel_c = mel[i] + agc_gain_q23;
+
+					/* Clamp to [-1.0, +1.0] Q9.23 range before Q1.7 conversion */
+					if (mel_c > MEL_CLIP_MAX_Q23)
+						mel_c = MEL_CLIP_MAX_Q23;
+					else if (mel_c < MEL_CLIP_MIN_Q23)
+						mel_c = MEL_CLIP_MIN_Q23;
+
+					/* Rescale with offset and gain. */
+					mel_c = Q_MULTSR_32X32((int64_t)(mel_c + MEL_OFFSET_Q23),
+							       MEL_SCALE_Q30, 23, 30, 7);
+					if (mel_c > MEL_CLIP_MAX_Q7)
+						mel_c = MEL_CLIP_MAX_Q7;
+					else if (mel_c < MEL_CLIP_MIN_Q7)
+						mel_c = MEL_CLIP_MIN_Q7;
+
+					hop_features[i] = (int8_t)mel_c;
+				}
+			} else {
+				memset(hop_features, MEL_CLIP_MIN_Q7, sizeof(hop_features));
+			}
+
+			/* Release: normal recovery during silence, super-slow leak during speech */
+			if (cd->agc_gain_q23 < TFLM_AGC_GAIN_TARGET_Q23) {
+				int32_t step = hdr->vad_flag ?
+					TFLM_AGC_RELEASE_STEP_SPEECH_Q23 : TFLM_AGC_RELEASE_STEP_Q23;
+
+				cd->agc_gain_q23 += step;
+				if (cd->agc_gain_q23 > TFLM_AGC_GAIN_TARGET_Q23)
+					cd->agc_gain_q23 = TFLM_AGC_GAIN_TARGET_Q23;
 			}
 
 #if CONFIG_COMP_TENSORFLOW_DEBUG_TRACE
 			{
-				const struct mfcc_data_header *hdr =
-					(const struct mfcc_data_header *)hop_scratch;
 				static int dbg_hop_count;
 				int32_t mel_min = mel[0], mel_max = mel[0];
 				int8_t f_min = hop_features[0], f_max = hop_features[0];
@@ -448,11 +465,12 @@ static int tflm_process(struct processing_module *mod,
 					if (hop_features[i] > f_max) f_max = hop_features[i];
 				}
 				snprintk(dbg_buf, sizeof(dbg_buf),
-					 "[DBG hop %d] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d",
+					 "[DBG hop %d] vad=%d E=%d Ne=%d mel_min=%d mel_max=%d f_min=%d f_max=%d agc_q23=%d",
 					 dbg_hop_count, (int)hdr->vad_flag,
 					 (int)hdr->energy, (int)hdr->noise_energy,
 					 mel_min, mel_max,
-					 f_min, f_max);
+					 f_min, f_max,
+					 (int)cd->agc_gain_q23);
 				sof_ut_log(dbg_buf);
 			}
 #endif
@@ -505,6 +523,14 @@ static int tflm_process(struct processing_module *mod,
 			/* Run inference every TFLM_INFERENCE_STRIDE_HOPS MFCC hops. */
 			if (cd->frame_counter >= TFLM_INFERENCE_STRIDE_HOPS) {
 				cd->frame_counter = 0;
+
+				/* VAD gate: skip inference computation if no active speech in the 49-hop window */
+				if (!cd->vad_history) {
+#if CONFIG_COMP_TENSORFLOW_DEBUG_TRACE
+					sof_ut_log("[DBG inference] skipped: VAD=0 in entire 49-hop window");
+#endif
+					continue;
+				}
 
 				cd->tfc.audio_features = feature_buf;
 				cd->tfc.audio_data_size = TFLM_FEATURE_ELEM_COUNT;
@@ -605,8 +631,9 @@ static int tflm_process(struct processing_module *mod,
 					}
 #endif
 
-					// Only announce a keyword hit for real keyword classes
-					// (indices >= 2, i.e. not silence/unknown).
+					/* Only announce a keyword hit for real keyword classes
+					 * (indices >= 2, i.e. not silence/unknown).
+					 */
 					if (max_idx >= 2 && max_score >= 0.50f) {
 						char kw_buf[96];
 						int max_pct = (int)(max_score * 100.0f);
@@ -651,14 +678,7 @@ static int tflm_prepare(struct processing_module *mod,
 	printk("[TFLM PREPARE] tflm_prepare called, loading model...\n");
 
 	if (g_tflm_initialized) {
-		/* Shared TFLM engine already up. Copy the resolved input quant
-		 * params so this instance's requantize path uses the same
-		 * scale/zero_point/mult/shift as the first-initialized instance.
-		 */
-		cd->tfc.input_scale      = g_tflm_shared_input_scale;
-		cd->tfc.input_zero_point = g_tflm_shared_input_zero_point;
-		cd->tfc.input_mult       = g_tflm_shared_input_mult;
-		cd->tfc.input_shift      = g_tflm_shared_input_shift;
+		/* Shared TFLM engine already up. */
 		cd->tfc.categories       = g_tflm_shared_categories;
 		printk("[TFLM PREPARE] shared engine already initialized; attach instance\n");
 		goto post_init;
@@ -677,17 +697,11 @@ static int tflm_prepare(struct processing_module *mod,
 		return ret;
 	}
 
-	g_tflm_shared_input_scale      = cd->tfc.input_scale;
-	g_tflm_shared_input_zero_point = cd->tfc.input_zero_point;
-	g_tflm_shared_input_mult       = cd->tfc.input_mult;
-	g_tflm_shared_input_shift      = cd->tfc.input_shift;
 	g_tflm_shared_categories       = cd->tfc.categories;
 	g_tflm_initialized = true;
 	printk("[TFLM PREPARE] TFLM model & ops initialized successfully!\n");
 	printk("[TFLM PREPARE] arena_used=%zu / capacity=%zu bytes\n",
 	       TF_ArenaUsedBytes(), TF_ArenaCapacity());
-	printk("[DBG quant] input_scale_x1e6=%d input_zero_point=%d\n",
-	       (int)(cd->tfc.input_scale * 1000000.0f), cd->tfc.input_zero_point);
 
 post_init:
 #if CONFIG_AMS
@@ -711,6 +725,9 @@ static int tflm_reset(struct processing_module *mod)
 	struct tflm_comp_data *cd = module_get_private_data(mod);
 
 	tflm_log_summary_at_shutdown(mod);
+	cd->vad_history = 0;
+	cd->frame_counter = 0;
+	memset(cd->feature_buf, 0, sizeof(cd->feature_buf));
 #if CONFIG_AMS
 	if (cd->kpd_uuid_id != AMS_INVALID_MSG_TYPE) {
 		int ret = ams_helper_unregister_producer(mod->dev,
@@ -730,7 +747,6 @@ static const struct module_interface tflmcly_interface = {
 	.prepare = tflm_prepare,
 	.process = tflm_process,
 	.set_configuration = tflm_set_config,
-//	.get_configuration = tflm_get_config,
 	.reset = tflm_reset,
 	.free = tflm_free
 };
