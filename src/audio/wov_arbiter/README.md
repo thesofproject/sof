@@ -5,8 +5,13 @@
 The Multi-Slot WOV subsystem lets a single DMIC feed up to 3 concurrent keyword detectors
 running on the DSP. Each detector has its own Keyphrase Buffer (KPB) that continuously records
 a pre-roll window (6 seconds on TigerLake, 2.1 seconds on other platforms). When any detector
-fires the `wov_arbiter` drains that KPB's ring buffer to the single host PCM device and pauses
+fires the `wov_arbiter` drains that KPB's ring buffer to the host via an ALSA compress device and pauses
 the other detectors. When the host closes the stream the arbiter resumes all detectors.
+
+The ALSA compress framework (`snd_compr`) decouples HDA DMA from the audio sample-rate clock.
+During the pre-roll burst the KPB draining EDF task fills HDA DMA fragments as fast as the bus allows
+rather than at the rate-locked 16 kHz × sample-size pace of a regular PCM device.
+After the pre-roll drains the live DMIC stream continues over the same compress device at realtime rate.
 
 This design keeps host DMA live and eliminates the wakeup latency normally incurred by starting
 DMA after detection.
@@ -67,7 +72,7 @@ graph TD
 
     subgraph P104["Pipeline 104 — Arbitration & Host Capture  (Core 0)"]
         ARB["wov_arbiter\n(first-wins)"]
-        HC["host-copier\nPCM 11\n'DMIC Multi-WOV'"]
+        HC["host-copier\ncomprC0D11\n'DMIC Multi-WOV'"]
         ARB --> HC
     end
 
@@ -103,7 +108,9 @@ graph TD
 | Max arbiter slots | 3 (topology), 8 (header constant) |
 | Arbitration policy | First-wins; subsequent detections ignored until RESUME |
 | Slot 2 core affinity | DSP Core 1 (cross-core scheduling validation) |
-| Host PCM | card 0, device 11 — `hw:0,11` |
+| Host capture device | card 0, device 11 — `comprC0D11` (ALSA compress) |
+| Pre-roll delivery | Compress burst — KPB drain fills HDA fragments at EDF rate, not rate-locked to 16 kHz |
+| D0i3 / S0iX | Supported — `capture_compatible_d0i3 1` on host-copier and PCM widget |
 
 ---
 
@@ -224,7 +231,7 @@ sequenceDiagram
     participant KPB   as KPB N
     participant DET   as detect_test (slot N)
     participant ARB   as wov_arbiter
-    participant HOST  as Host PCM (arecord)
+    participant HOST  as Host Compress (comprC0D11)
     participant OTHER as detect_test (slots ≠ N)
 
     Note over DMIC,OTHER: Listening state — all slots accumulating pre-roll
@@ -273,9 +280,9 @@ slot assignment at runtime.  The topology creates three such kcontrols:
 
 | ALSA kcontrol name | numid | Target module | Slot |
 |---|---|---|---|
-| `wov_init_101` | 8 | `wov.101.1` (Core 0) | 0 |
-| `wov_init_102` | 10 | `wov.102.1` (Core 0) | 1 |
-| `wov_init_103` | 12 | `wov.103.1` (Core 1) | 2 |
+| `wov_init_101` | 9 | `wov.101.1` (Core 0) | 0 |
+| `wov_init_102` | 11 | `wov.102.1` (Core 0) | 1 |
+| `wov_init_103` | 13 | `wov.103.1` (Core 1) | 2 |
 
 The write must be issued **before** `PREPARE` fires — write the kcontrols
 immediately after forking `arecord` into the background, before it has finished
@@ -293,9 +300,9 @@ detection at runtime without tearing down the pipeline.
 
 | ALSA kcontrol name | numid | Default | Effect when set |
 |---|---|---|---|
-| `wov_mute_101` | 9 | `off` | `off` = muted (no detection), `on` = detection active |
-| `wov_mute_102` | 11 | `off` | `off` = muted (no detection), `on` = detection active |
-| `wov_mute_103` | 13 | `off` | `off` = muted (no detection), `on` = detection active |
+| `wov_mute_101` | 10 | `off` | `off` = muted (no detection), `on` = detection active |
+| `wov_mute_102` | 12 | `off` | `off` = muted (no detection), `on` = detection active |
+| `wov_mute_103` | 14 | `off` | `off` = muted (no detection), `on` = detection active |
 
 The default at pipeline open is `off` (muted). Userspace must explicitly write `on`
 to arm a slot. When muted, `test_keyword_copy` drains the source buffer and returns
@@ -307,12 +314,58 @@ Wire format: `LARGE_CONFIG_SET` with `PARAM_ID = 200`
 `struct sof_ipc4_control_msg_payload { .num_elems=1, .chanv[0].value=0|1 }`.
 
 ```bash
-# Arm slot 1 for detection (numid=11 = wov_mute_102)
-amixer -c 0 cset numid=11 on
+# Arm slot 1 for detection (numid=12 = wov_mute_102)
+amixer -c 0 cset numid=12 on
 
 # Mute slot 1 again
-amixer -c 0 cset numid=11 off
+amixer -c 0 cset numid=12 off
 ```
+
+
+### VAD Gate Runtime Configuration (`vad_gate_cfg_100`)
+
+The `vad_gate` component exposes a bytes TLV kcontrol (`numid=8`) for runtime calibration
+of the energy-based gating.  The gate runs a first-order IIR energy estimator on each
+10 ms block and transitions between two DSP clock domains:
+
+| VAD state | DSP domain | Approximate frequency | Condition |
+|---|---|---|---|
+| Silence | WOVCRO | 38.4 MHz | `smoothed_energy < threshold` for `hangover_frames` consecutive frames |
+| Speech | HPRO | ~400 MHz | `smoothed_energy ≥ threshold` for `onset_frames` consecutive frames |
+
+**Default (compiled-in)**: threshold = 0 = pass-through (always HPRO). Always override at runtime.
+
+**Calibration procedure** (TGL / spider lab):
+
+```bash
+# Install helper (once per DUT session)
+scp /tmp/set_vad_threshold.py root@spider:/tmp/
+
+# Set threshold to 100 M (lab default; ambient floor ≈ 42–74 M on spider)
+python3 /tmp/set_vad_threshold.py --threshold 100000000
+
+# Read back current configuration
+python3 /tmp/set_vad_threshold.py --read
+
+# For quieter environments lower the threshold; for noisier environments raise it.
+# Watch mtrace for "SPEECH onset energy=X >= threshold=Y -> HPRO" to confirm.
+```
+
+**Configuration fields:**
+
+| Field | Default | Description |
+|---|---|---|
+| `threshold` | 0 (pass-through) | Peak energy level (IIR units) to distinguish speech from silence |
+| `onset_frames` | 3 | Consecutive frames above threshold before SPEECH declared (3 × 10 ms = 30 ms) |
+| `hangover_frames` | 200 | Frames below threshold before SILENCE declared (200 × 10 ms = 2 s) |
+| `energy_shift` | 6 | IIR smoothing factor: α = 1/2^shift = 1/64 |
+
+> **Note on auto-trigger at 8 s:** When the `wov_mute_1NN` arm is raised, `detect_test`
+> auto-triggers after 8 s if threshold gating is active (Mixout silence-fill activates
+> the auto-trigger path). This is expected bench-test behaviour — it is not a timeout bug.
+
+The `set_vad_threshold.py` script uses `SNDRV_CTL_IOCTL_TLV_COMMAND` (ioctl 0xc008551b)
+because the 7.x kernel running on spider does not register `TLV_WRITE` for bytes kcontrols.
 
 #### `wov_arbiter` — slot count from `nb_input_pins`
 
@@ -366,75 +419,133 @@ Missing a give (while thread is still processing) drops that batch silently
 
 ## Linux Host API Reference
 
-### ALSA Capture
+### ALSA Compress Capture
 
-The WOV audio is exposed as a standard ALSA PCM capture device:
+The WOV audio is exposed as an **ALSA compress** device, not a regular PCM device.
+`arecord` cannot open it; use the `snd_compr` API or a compress-capable tool.
 
 ```
-Card: 0   Device: 11   Name: "DMIC Multi-WOV"
-Formats:  S16_LE, S24_LE, S32_LE
+Card: 0   Compress device: 11   Name: "DMIC Multi-WOV"   (/dev/snd/comprC0D11)
+Formats:  SND_AUDIOCODEC_PCM (raw PCM — no encoding)
 Rate:     16000 Hz
 Channels: 1 (mono)
 ```
 
-Open and capture with `arecord`:
+Using `tinycompress` (`crecord`) if installed:
 
 ```bash
-arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 10 /tmp/wov_capture.wav
+# crecord from alsa-utils / tinycompress: card=0 device=11 codec=PCM rate=16000 ch=1
+# Adjust -l (fragments) and -z (fragment bytes) as needed.
+crecord -c 0 -d 11 -r 16000 -C 1 -f 0 -l 8 -z 4096 /tmp/wov.raw
+sox -r 16000 -e signed -b 16 -c 1 -t raw /tmp/wov.raw /tmp/wov.wav
 ```
 
-Or via libasound in code:
+Minimal C API flow:
 
 ```c
-snd_pcm_t *handle;
-snd_pcm_open(&handle, "hw:0,11", SND_PCM_STREAM_CAPTURE, 0);
-snd_pcm_set_params(handle, SND_PCM_FORMAT_S16_LE,
-                   SND_PCM_ACCESS_RW_INTERLEAVED,
-                   1, 16000, 1, 100000 /* 100ms latency */);
+#include <sound/compress_offload.h>
+
+int fd = open("/dev/snd/comprC0D11", O_RDWR);
+
+struct snd_compr_params p = {};
+p.buffer.fragment_size = 4096;   /* 64 ms of S16LE at 16 kHz */
+p.buffer.fragments     = 8;
+p.codec.id             = SND_AUDIOCODEC_PCM;
+p.codec.ch_in          = 1;
+p.codec.sample_rate    = 16000;
+ioctl(fd, SNDRV_COMPRESS_SET_PARAMS, &p);
+ioctl(fd, SNDRV_COMPRESS_START);
+
+/* Poll POLLIN, then read() fragments of raw PCM (S16LE by default) */
+while (more_data_needed) {
+    struct pollfd pfd = { fd, POLLIN, 0 };
+    poll(&pfd, 1, -1);
+    ssize_t n = read(fd, buf, sizeof(buf));
+    /* process n bytes of raw PCM */
+}
+
+ioctl(fd, SNDRV_COMPRESS_STOP);
+close(fd);
 ```
+
+**Pre-roll burst delivery:** after a WOV trigger the KPB draining EDF task fills HDA
+fragments without a rate limiter — fragments arrive faster than realtime until the
+pre-roll ring buffer is exhausted, then settle to one fragment per ~64 ms at 16 kHz.
+The silence-to-audio boundary in the stream marks the trigger point.
 
 ### Voice Detection Notification from Firmware
 
-When a keyword is detected the firmware sends an IPC4 `SOF_IPC4_NOTIFY_PHRASE_DETECTED`
-notification. The SOF kernel driver surfaces this as an ALSA control-change event on a
-`SOUNDWIRE_DETECT` or `KWD_DETECT` kcontrol (exact name depends on machine driver).
+When a keyword is detected the `detect_test` DP thread calls `detect_test_notify()` which:
 
-To poll for the notification from userspace:
+1. Sends `SOF_IPC4_NOTIFY_PHRASE_DETECTED` (IPC4 global notification, type=4) to the host.
+2. Fires the KPB notifier to start pre-roll draining on the host sink.
+3. Fires the `NOTIFIER_ID_WOV_DETECT` SOF notifier to the `wov_arbiter`.
+
+The `word_id` field (bits 15:0 of the primary DW) carries the `wov_slot_id` (0, 1, or 2).
+
+**Kernel handler (`linux-arl`):** `sof_ipc4_phrase_detected()` in
+`sound/soc/sof/ipc4-compress.c` is called from `sof_ipc4_rx_msg()` when
+`SOF_IPC4_NOTIFY_PHRASE_DETECTED` arrives.  It walks the PCM list to find the
+active compress capture stream and calls `snd_sof_compr_fragment_elapsed()` to wake
+any `poll()` or `read()` blocked on the compress device before the first HDA DMA
+interrupt fires.
 
 ```c
-/* Open ALSA control interface */
-snd_ctl_t *ctl;
-snd_ctl_open(&ctl, "hw:0", 0);
+/* ipc4-compress.c — simplified */
+void sof_ipc4_phrase_detected(struct snd_sof_dev *sdev, u32 primary, u32 extension)
+{
+    u32 word_id = SOF_IPC4_NOTIFY_PHRASE_WORD_ID_GET(primary);  /* bits 15:0 */
+    struct snd_sof_pcm *spcm;
 
-/* Subscribe to events */
-snd_ctl_subscribe_events(ctl, 1);
-
-/* Block until a control change event arrives */
-snd_ctl_event_t *event;
-snd_ctl_event_alloca(&event);
-while (snd_ctl_read(ctl, event) >= 0) {
-    if (snd_ctl_event_get_type(event) == SND_CTL_EVENT_ELEM) {
-        /* Trigger: start reading from hw:0,11 */
-        break;
+    list_for_each_entry(spcm, &sdev->pcm_list, list) {
+        struct snd_compr_stream *cs =
+            spcm->stream[SNDRV_PCM_STREAM_CAPTURE].cstream;
+        if (cs && cs->direction == SND_COMPRESS_CAPTURE) {
+            snd_sof_compr_fragment_elapsed(cs);  /* wake blocked reads */
+            return;
+        }
     }
 }
 ```
 
-The `word_id` field in the IPC4 notification carries the `wov_slot_id` (0, 1, or 2),
-identifying which detector fired.
+Userspace therefore does not need to poll an ALSA control-change event.
+The `read()` or `poll(POLLIN)` on `/dev/snd/comprC0D11` unblocks naturally
+when the first fragment is available after trigger.
 
 ### Audio Capture Timing
 
-Because host DMA is live from the moment `arecord` opens `hw:0,11`, the ALSA
-buffer begins filling with `wov_arbiter` output immediately:
+Because the compress device is opened before trigger, the `wov_arbiter` feeds the DMA
+pipeline immediately.  Fragment arrival pattern:
 
-- **Before any trigger**: arbiter writes silence (all-zero samples)
-- **On trigger**: arbiter drains the KPB ring buffer (up to 6 s of pre-roll) then
-  continues forwarding live DMIC audio
+- **Before any trigger**: arbiter writes silence (all-zero samples) at realtime rate
+- **On trigger**: arbiter drains the KPB ring buffer (up to 6 s of pre-roll) in a
+  **burst** (multiple fragments per ms), then continues forwarding live DMIC audio
+  at one fragment per ~64 ms
 - **On STOP**: arbiter returns to silence mode; detectors resume listening
 
 The host sees a seamless audio stream. The silence-to-audio transition marks the
 trigger point in the buffer.
+
+
+### D0i3 / S0iX Support
+
+The WOV compress stream remains live during D0i3 system suspend (`S0iX`).  Two topology
+attributes enable this:
+
+```
+# dmic-wov-multi-manifest.conf
+Object.Widget.host-copier."...":
+    capture_compatible_d0i3  1   # host-copier keeps DMA active in D0i3
+
+Object.PCM.pcm."$DMIC_PCM_ID":
+    capture_compatible_d0i3  1   # PCM object allows D0i3 while stream open
+    compress "true"             # expose as ALSA compress device
+```
+
+On the kernel side `ipc4_pcm_ops.d0i3_supported_in_s0ix` is set for IPC4 compress PCMs
+in `sound/soc/sof/ipc4-pcm.c`, which prevents the compress stream from being torn down
+during `S0iX` entry.  The DSP clock scales down to WOVCRO during silence
+(via the `vad_gate`) so there is no meaningful power cost while waiting for a trigger.
 
 ### IPC4 Module Control via `sof-ctl`
 
@@ -692,36 +803,47 @@ tools/topology/topology2/
 From the root of the SOF repository:
 
 ```bash
-ALSA_CONFIG_DIR=$(pwd)/tools/topology/topology2 \
-alsatplg \
-    -I $(pwd)/tools/topology/topology2 \
-    -p \
+# Run from the repo root (e.g. ~/work/sof-tgl/sof-wov)
+TPLG2=$(pwd)/tools/topology/topology2
+ALSA_TMP=/tmp/alsa-tplg-wov
+
+mkdir -p $ALSA_TMP
+cp /usr/share/alsa/alsa.conf $ALSA_TMP/
+ln -sf $TPLG2/include  $ALSA_TMP/include
+ln -sf $TPLG2/platform $ALSA_TMP/platform
+
+ALSA_CONFIG_DIR=$ALSA_TMP alsatplg \
+    -I $TPLG2 -p \
     -c tools/topology/topology2/dmic-wov-multi-manifest.conf \
-    -o sof-tgl-dmic-wov-multi.tplg
+    -o /tmp/sof-tgl-dmic-wov-multi.tplg
 ```
 
-`ALSA_CONFIG_DIR` must be an absolute path; the `$(pwd)` expansion ensures this
-when running from the repo root.
+`ALSA_CONFIG_DIR` must point to a directory that contains `alsa.conf` plus
+`include/` and `platform/` symlinks into `topology2/`.  The `$(pwd)/tools/topology/topology2`
+directory alone does not satisfy this requirement because `/usr/share/alsa/include`
+is absent on most build machines.
 
 Copy the compiled topology to the DUT:
 
 ```bash
-scp sof-tgl-dmic-wov-multi.tplg \
+scp /tmp/sof-tgl-dmic-wov-multi.tplg \
     root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/sof-tgl-dmic-wov-multi.tplg
 ```
 
 Tell the SOF driver which topology to load (edit `/etc/modprobe.d/sof.conf` on the DUT):
 
 ```
-options snd_sof_pci_intel_tgl fw_path=intel/sof-ipc4/tgl \
-    tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-hda-generic-wov.tplg
+# /etc/modprobe.d/sof.conf (TGL / spider)
+options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-tgl-dmic-wov-multi.tplg
 ```
 
 Or pass directly at `modprobe` time:
 
 ```bash
+rmmod snd_sof_pci_intel_tgl
 modprobe snd_sof_pci_intel_tgl \
-    tplg_filename=intel/sof-ipc4-tplg/sof-hda-generic-wov.tplg
+    tplg_path=intel/sof-ipc4-tplg \
+    tplg_filename=sof-tgl-dmic-wov-multi.tplg
 ```
 
 ### Build Firmware with WOV Arbiter
@@ -797,6 +919,13 @@ CONFIG_MP_MAX_NUM_CPUS=4       # TGL has 4 DSP cores
 CONFIG_SCHED_CPU_MASK_PIN_ONLY=y
 ```
 
+The `CONFIG_VAD_GATE_DEFAULT_THRESHOLD` (if exposed) compiles in a non-zero threshold; otherwise
+the compiled-in default is 0 (pass-through).  Always set the threshold at runtime via
+`set_vad_threshold.py` after driver load (see [VAD Gate Runtime Configuration](#vad-gate-runtime-configuration-vad_gate_cfg_100)).
+
+**Kernel dependency**: the compress WOV path requires `CONFIG_SND_SOC_SOF_COMPRESS=y` in
+the kernel configuration.
+
 These can be set via `west build -- -DCONFIG_...=y` or by editing the build directory's `zephyr/.config`.
 
 ### Module UUIDs
@@ -820,8 +949,9 @@ modprobe snd_sof_pci_intel_tgl \
     fw_path=intel/sof-ipc4/tgl/community \
     tplg_filename=intel/sof-ipc4-tplg/sof-tgl-dmic-wov-multi.tplg
 
-# 1. Verify the capture PCM is visible
-arecord -l | grep "DMIC Multi-WOV"   # expect: card 0: device 11
+# 1. Verify the compress device is visible
+ls /dev/snd/comprC*                       # expect: /dev/snd/comprC0D11
+cat /proc/asound/card0/compr              # lists compress devices
 
 # 2. Run a per-slot trigger test (see below)
 ```
@@ -834,29 +964,43 @@ After driver load the full WOV kcontrol set is:
 
 | numid | name | type | Purpose |
 |---|---|---|---|
-| 8 | `wov_init_101` | bytes TLV | Set slot ID for detect_test in pipeline 101 |
-| 9 | `wov_mute_101` | boolean switch | Arm/mute detection for slot 0 |
-| 10 | `wov_init_102` | bytes TLV | Set slot ID for detect_test in pipeline 102 |
-| 11 | `wov_mute_102` | boolean switch | Arm/mute detection for slot 1 |
-| 12 | `wov_init_103` | bytes TLV | Set slot ID for detect_test in pipeline 103 |
-| 13 | `wov_mute_103` | boolean switch | Arm/mute detection for slot 2 |
-| 14 | `wov_trigger_id` | bytes TLV (read-only) | Read active slot after detection |
+| 8 | `vad_gate_cfg_100` | bytes TLV | VAD gate energy threshold / onset / hangover / shift |
+| 9 | `wov_init_101` | bytes TLV | Set slot ID for detect_test in pipeline 101 |
+| 10 | `wov_mute_101` | boolean switch | Arm/mute detection for slot 0 |
+| 11 | `wov_init_102` | bytes TLV | Set slot ID for detect_test in pipeline 102 |
+| 12 | `wov_mute_102` | boolean switch | Arm/mute detection for slot 1 |
+| 13 | `wov_init_103` | bytes TLV | Set slot ID for detect_test in pipeline 103 |
+| 14 | `wov_mute_103` | boolean switch | Arm/mute detection for slot 2 |
+| 15 | `wov_trigger_id` | bytes TLV (read-only) | Read active slot after detection |
+
+> **Note:** numids are assigned in ALSA registration order. Run `amixer -c 0 controls`
+> to confirm actual numids after any topology rebuild.
+
+#### VAD gate kcontrol
+Set the energy threshold via `set_vad_threshold.py` **after** driver load and **before**
+opening the capture device.  A threshold of 0 (default) makes the gate transparent (always HPRO);
+set it to ~100M for typical lab use on TGL/spider:
+
+```bash
+python3 /tmp/set_vad_threshold.py --threshold 100000000
+python3 /tmp/set_vad_threshold.py --read   # verify
+```
 
 ---
 
 ### Slot Assignment via `wov_init_1NN` kcontrol
 
 Each `detect_test` instance reads its `wov_slot_id` from a bytes TLV kcontrol
-(`wov_init_101 / 102 / 103`, numids 8 / 10 / 12).  The assignment must arrive
+(`wov_init_101 / 102 / 103`, numids 9 / 11 / 13).  The assignment must arrive
 **before** the PCM `PREPARE` IPC — write the kcontrols immediately after forking
 `arecord` into the background:
 
 ```bash
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 10 /tmp/wov.wav &
 # Race the PREPARE: write all three kcontrols before hw_params completes
-python3 set_wov_slot.py 8 0    # wov_init_101 → slot 0
-python3 set_wov_slot.py 10 1   # wov_init_102 → slot 1
-python3 set_wov_slot.py 12 2   # wov_init_103 → slot 2
+python3 set_wov_slot.py 9 0    # wov_init_101 → slot 0
+python3 set_wov_slot.py 11 1   # wov_init_102 → slot 1
+python3 set_wov_slot.py 13 2   # wov_init_103 → slot 2
 wait
 ```
 
@@ -864,7 +1008,7 @@ To **disable** a slot (useful for per-slot isolation tests), write
 `slot_id = 255` (`WOV_SLOT_INVALID`) — the DP thread is not started for that slot:
 
 ```bash
-python3 set_wov_slot.py 8 255   # disable slot 0
+python3 set_wov_slot.py 9 255   # disable slot 0
 ```
 
 #### `set_wov_slot.py` — TLV helper script
@@ -925,9 +1069,9 @@ batch, `frames_total >= KD_DP_FRAMES`).  The first batch fires the trigger appro
 dmesg -C
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 10 /tmp/wov_all.wav &
 AREC=$!
-python3 set_wov_slot.py 8 0    # wov_init_101 → slot 0
-python3 set_wov_slot.py 10 1   # wov_init_102 → slot 1
-python3 set_wov_slot.py 12 2   # wov_init_103 → slot 2
+python3 set_wov_slot.py 9 0    # wov_init_101 → slot 0
+python3 set_wov_slot.py 11 1   # wov_init_102 → slot 1
+python3 set_wov_slot.py 13 2   # wov_init_103 → slot 2
 # Arm all three slots
 amixer -c 0 cset numid=9  on   # wov_mute_101
 amixer -c 0 cset numid=11 on   # wov_mute_102
@@ -943,13 +1087,13 @@ and 2 via `NOTIFIER_ID_WOV_CTRL`.
 
 ```bash
 # Disable the other two slots before starting arecord
-python3 set_wov_slot.py 8 255   # disable slot 0 (persists across sessions)
-python3 set_wov_slot.py 12 255  # disable slot 2
+python3 set_wov_slot.py 9 255   # disable slot 0 (persists across sessions)
+python3 set_wov_slot.py 13 255  # disable slot 2
 
-arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 5 /tmp/wov_s1.wav &
+crecord -c 0 -d 11 -r 16000 -C 1 -f 0 -l 8 -z 4096 /tmp/wov_s1.raw &
 AREC=$!
-python3 set_wov_slot.py 10 1    # wov_init_102 → slot 1
-amixer -c 0 cset numid=11 on    # arm wov_mute_102
+python3 set_wov_slot.py 11 1    # wov_init_102 → slot 1
+amixer -c 0 cset numid=12 on    # arm wov_mute_102
 wait $AREC
 echo "rc=$?"
 ```
@@ -967,15 +1111,15 @@ The test uses the 8-second auto-trigger path (no physical audio needed):
 # Reload driver for a clean state
 rmmod snd_sof_pci_intel_tgl && modprobe snd_sof_pci_intel_tgl && sleep 4
 
-# Open PCM (keeps DSP in D0 — required for kcontrol reads)
-arecord -D hw:0,11 -r 16000 -c 1 -f S16_LE -d 60 /dev/null &
+# Open compress device (keeps DSP in D0 — required for kcontrol reads)
+crecord -c 0 -d 11 -r 16000 -C 1 -f 0 -l 8 -z 4096 /dev/null &
 AREC=$!
 sleep 2
 
 # Set slot IDs
-python3 set_wov_slot.py 8 0
-python3 set_wov_slot.py 10 1
-python3 set_wov_slot.py 12 2
+python3 set_wov_slot.py 9 0
+python3 set_wov_slot.py 11 1
+python3 set_wov_slot.py 13 2
 
 # Leave all wov_mute controls at default (off = muted)
 echo "All muted — waiting 12s, no trigger expected:"
@@ -983,7 +1127,7 @@ sleep 12
 python3 read_wov_trigger.py     # expect: active_slot = 255
 
 # Arm slot 1
-amixer -c 0 cset numid=11 on
+amixer -c 0 cset numid=12 on
 echo "Slot 1 armed — waiting 12s, trigger expected:"
 sleep 12
 python3 read_wov_trigger.py     # expect: active_slot = 1
@@ -995,13 +1139,13 @@ kill $AREC
 
 ```python
 #!/usr/bin/env python3
-# Reads wov_trigger_id (numid=14) to get active_slot after detection.
-# DSP must be in D0 (arecord open) or ENOSPC is returned.
+# Reads wov_trigger_id (numid=15) to get active_slot after detection.
+# DSP must be in D0 (crecord/compress device open) or ENOSPC is returned.
 import fcntl, os, struct
 
 SNDRV_CTL_IOCTL_TLV_READ = (2 << 30) | (8 << 16) | (0x55 << 8) | 0x1a
 
-def read_active_slot(card=0, numid=14):
+def read_active_slot(card=0, numid=15):
     response_size = 44
     buf = bytearray(struct.pack('<II', numid, response_size) + bytes(response_size))
     fd = os.open(f'/dev/snd/controlC{card}', os.O_RDWR)
@@ -1047,11 +1191,11 @@ capture pipeline-prepare and trigger messages.
 ```bash
 # Capture ~1 MB of firmware trace concurrently with an arecord session
 dd if=/sys/kernel/debug/sof/mtrace/core0 bs=65536 count=16 of=/tmp/mt.bin &
-arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 5 /tmp/wov.wav &
-python3 set_wov_slot.py 8 0
-python3 set_wov_slot.py 10 1
-python3 set_wov_slot.py 12 2
-amixer -c 0 cset numid=9 on && amixer -c 0 cset numid=11 on && amixer -c 0 cset numid=13 on
+crecord -c 0 -d 11 -r 16000 -C 1 -f 0 -l 8 -z 4096 /tmp/wov.raw &
+python3 set_wov_slot.py 9 0
+python3 set_wov_slot.py 11 1
+python3 set_wov_slot.py 13 2
+amixer -c 0 cset numid=10 on && amixer -c 0 cset numid=12 on && amixer -c 0 cset numid=14 on
 wait
 
 # strings works because SOF embeds full format strings in the binary
@@ -1069,7 +1213,7 @@ dd if=/sys/kernel/debug/sof/mtrace/core1 bs=65536 count=4 2>/dev/null | \
 
 ### Expected Trace Events
 
-After `arecord` opens `hw:0,11` (pipeline prepare + RUNNING):
+After opening `/dev/snd/comprC0D11` (pipeline prepare + RUNNING):
 
 ```
 kd_test.test_keyword_prepare: comp:4 0x2000d  kd_dp thread started for slot 0
@@ -1112,9 +1256,9 @@ DUT and `speaker-test` on a test machine whose audio output is wired to the DUT 
 
 ```bash
 # On the DUT: start capture and set all slots
-arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 30 /tmp/wov_sweep.wav &
-python3 set_wov_slot.py 8 0 && python3 set_wov_slot.py 10 1 && python3 set_wov_slot.py 12 2
-amixer -c 0 cset numid=9 on && amixer -c 0 cset numid=11 on && amixer -c 0 cset numid=13 on
+crecord -c 0 -d 11 -r 16000 -C 1 -f 0 -l 8 -z 4096 /tmp/wov_sweep.raw &
+python3 set_wov_slot.py 9 0 && python3 set_wov_slot.py 11 1 && python3 set_wov_slot.py 13 2
+amixer -c 0 cset numid=10 on && amixer -c 0 cset numid=12 on && amixer -c 0 cset numid=14 on
 
 # On test machine: drive tone sweep (one frequency band per slot)
 speaker-test -c 1 -t sine -f 120 -l 3   # -> slot 0 (Male 80-170 Hz)
