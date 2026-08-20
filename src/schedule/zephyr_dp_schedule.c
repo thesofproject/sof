@@ -227,7 +227,7 @@ static enum task_state scheduler_dp_ll_tick_dummy(void *data)
 void scheduler_dp_ll_tick(void)
 {
 	unsigned int lock_key;
-	struct scheduler_dp_data *dp_sch = scheduler_get_data(SOF_SCHEDULE_DP);
+	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
 
 	if (!dp_sch)
 		return;
@@ -376,8 +376,7 @@ void scheduler_get_task_info_dp(struct scheduler_props *scheduler_props, uint32_
 	unsigned int lock_key;
 
 	scheduler_props->processing_domain = COMP_PROCESSING_DOMAIN_DP;
-	struct scheduler_dp_data *dp_sch =
-		(struct scheduler_dp_data *)scheduler_get_data(SOF_SCHEDULE_DP);
+	struct scheduler_dp_data *dp_sch = scheduler_get_user_data(SOF_SCHEDULE_DP);
 
 	lock_key = scheduler_dp_lock(cpu_get_id());
 	scheduler_get_task_info(scheduler_props, data_off_size,  &dp_sch->tasks);
