@@ -882,6 +882,11 @@ Key parameters in `dmic-wov-multi.conf`:
 | `VAD_GATE_CPC` | `5000` | cycles per chunk for VAD gate |
 | `FORMAT` | `s16le` | audio format throughout |
 
+> **KPB history depth is not a topology parameter.** It is controlled exclusively by the
+> `CONFIG_KPB_MAX_BUFF_TIME` Kconfig option (see [Build System Configuration](#build-system-configuration)).
+> The topology `kpb.conf` class exposes no history-depth attribute; the buffer is
+> allocated at `prepare()` time using the compiled-in value.
+
 Slot 2 (`Pipeline 103`) is deliberately placed on Core 1 (`core_id = 1`) to validate
 cross-core scheduling. Set all three to `core_id = 0` if a single-core topology is needed.
 
@@ -917,7 +922,23 @@ CONFIG_COMP_VAD_GATE=y         # or any other gate component
 CONFIG_SMP=y
 CONFIG_MP_MAX_NUM_CPUS=4       # TGL has 4 DSP cores
 CONFIG_SCHED_CPU_MASK_PIN_ONLY=y
+
+# KPB history buffer length (compile-time only — not exposed in topology)
+# Default: 6000 ms on CAVS2.5+ (TigerLake), 2100 ms on all other platforms
+# Override example: west build -- -DCONFIG_KPB_MAX_BUFF_TIME=4000
+CONFIG_KPB_MAX_BUFF_TIME=6000  # TGL / CAVS2.5
 ```
+
+The KPB history depth is **not** configurable via topology.  The buffer size is computed
+at prepare time as:
+
+```
+buffer_bytes = (16000 / 1000) × (sample_width_bytes) × CONFIG_KPB_MAX_BUFF_TIME × channels
+             = 16 × 2 × 6000 × 1  =  192 000 bytes   (TGL, S16LE mono)
+             = 16 × 2 × 2100 × 1  =   67 200 bytes   (other platforms)
+```
+
+To change the pre-roll window, rebuild with `-DCONFIG_KPB_MAX_BUFF_TIME=<ms>`.
 
 The `CONFIG_VAD_GATE_DEFAULT_THRESHOLD` (if exposed) compiles in a non-zero threshold; otherwise
 the compiled-in default is 0 (pass-through).  Always set the threshold at runtime via
