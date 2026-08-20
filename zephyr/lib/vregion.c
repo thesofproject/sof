@@ -501,3 +501,25 @@ void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start)
 	if (start)
 		*start = (uintptr_t)vr->base;
 }
+
+#if CONFIG_SOF_VREGIONS && CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+
+bool vregion_verify(struct vregion *vr)
+{
+	if (!vr)
+		return false;
+
+	/* vregion instances must not be accessible to the userspace. */
+	K_OOPS(!K_SYSCALL_MEMORY_READ(vr, sizeof(*vr)));
+
+	size_t vr_size = 0;
+	uintptr_t vr_start;
+
+	vregion_mem_info(vr, &vr_size, &vr_start);
+	if (vr_size)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE((void *)vr_start, vr_size));
+
+	return true;
+}
+#endif
