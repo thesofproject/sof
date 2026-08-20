@@ -882,10 +882,10 @@ Key parameters in `dmic-wov-multi.conf`:
 | `VAD_GATE_CPC` | `5000` | cycles per chunk for VAD gate |
 | `FORMAT` | `s16le` | audio format throughout |
 
-> **KPB history depth is not a topology parameter.** It is controlled exclusively by the
-> `CONFIG_KPB_MAX_BUFF_TIME` Kconfig option (see [Build System Configuration](#build-system-configuration)).
-> The topology `kpb.conf` class exposes no history-depth attribute; the buffer is
-> allocated at `prepare()` time using the compiled-in value.
+> **KPB history depth is configurable via topology.** Set `KPB_BUFF_TIME_MS` in the topology
+> manifest (e.g. `dmic-wov-multi-manifest.conf`) to override `CONFIG_KPB_MAX_BUFF_TIME` at
+> runtime — no firmware rebuild required.  Omit the define or set it to `0` to fall back to
+> the Kconfig default (6000 ms on TGL/CAVS2.5, 2100 ms on other platforms).
 
 Slot 2 (`Pipeline 103`) is deliberately placed on Core 1 (`core_id = 1`) to validate
 cross-core scheduling. Set all three to `core_id = 0` if a single-core topology is needed.
@@ -923,22 +923,35 @@ CONFIG_SMP=y
 CONFIG_MP_MAX_NUM_CPUS=4       # TGL has 4 DSP cores
 CONFIG_SCHED_CPU_MASK_PIN_ONLY=y
 
-# KPB history buffer length (compile-time only — not exposed in topology)
-# Default: 6000 ms on CAVS2.5+ (TigerLake), 2100 ms on all other platforms
+# KPB history buffer length — compile-time floor; topology can override at runtime.
+# Default: 6000 ms on CAVS2.5+ (TigerLake), 2100 ms on all other platforms.
 # Override example: west build -- -DCONFIG_KPB_MAX_BUFF_TIME=4000
 CONFIG_KPB_MAX_BUFF_TIME=6000  # TGL / CAVS2.5
 ```
 
-The KPB history depth is **not** configurable via topology.  The buffer size is computed
-at prepare time as:
+The KPB history depth can be set **per-platform in the topology manifest** without a
+firmware rebuild.  The buffer size is computed at prepare time from whichever source wins:
+
+| Source | Priority | How to set |
+|---|---|---|
+| Topology `KPB_BUFF_TIME_MS` | **highest** | `Define { KPB_BUFF_TIME_MS "6000" }` in manifest |
+| `CONFIG_KPB_MAX_BUFF_TIME` | fallback | `west build -- -DCONFIG_KPB_MAX_BUFF_TIME=4000` |
+
+Buffer byte formula (16 kHz S16LE mono):
 
 ```
-buffer_bytes = (16000 / 1000) × (sample_width_bytes) × CONFIG_KPB_MAX_BUFF_TIME × channels
-             = 16 × 2 × 6000 × 1  =  192 000 bytes   (TGL, S16LE mono)
-             = 16 × 2 × 2100 × 1  =   67 200 bytes   (other platforms)
+buffer_bytes = 16 x 2 x buff_time_ms x channels
+             = 16 x 2 x 6000 x 1  =  192 000 bytes   (TGL, S16LE mono, 6000 ms)
+             = 16 x 2 x 2100 x 1  =   67 200 bytes   (other platforms, 2100 ms)
 ```
 
-To change the pre-roll window, rebuild with `-DCONFIG_KPB_MAX_BUFF_TIME=<ms>`.
+The topology kcontrol `kpb_cfg_<N>` carries a 36-byte SOF ABI blob with
+`type = KP_BUF_CFG_BUFF_TIME_MS = 2` and a 4-byte `uint32_t` payload.  It is sent
+automatically to the firmware LARGE_CONFIG_SET handler when the pipeline is first opened;
+no userspace script is required.  Supported values in `kpb.conf`: `6000`, `4000`, `2100`.
+To add a new value, compute the 4-byte LE payload and add an `IncludeByKey` entry.
+
+To change the compile-time fallback, rebuild with `-DCONFIG_KPB_MAX_BUFF_TIME=<ms>`.
 
 The `CONFIG_VAD_GATE_DEFAULT_THRESHOLD` (if exposed) compiles in a non-zero threshold; otherwise
 the compiled-in default is 0 (pass-through).  Always set the threshold at runtime via

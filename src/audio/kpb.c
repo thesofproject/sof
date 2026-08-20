@@ -104,6 +104,7 @@ struct comp_data {
 	enum comp_copy_type force_copy_type; /**< should we force copy_type on kpb sink? */
 #ifdef CONFIG_IPC_MAJOR_4
 	struct ipc4_kpb_module_cfg ipc4_cfg;
+	uint32_t buff_time_ms; /**< history depth in ms; 0 = CONFIG_KPB_MAX_BUFF_TIME */
 #endif /* CONFIG_IPC_MAJOR_4 */
 	uint32_t num_of_sel_mic;
 	uint32_t num_of_in_channels;
@@ -236,6 +237,17 @@ static void kpb_lock_init(struct comp_data *kpb)
 
 #endif /* __ZEPHYR__ */
 
+
+/* Return per-instance history depth (ms); fall back to Kconfig if not set via topology. */
+static inline uint32_t kpb_get_buff_time_ms(const struct comp_data *kpb)
+{
+#if CONFIG_IPC_MAJOR_4
+	return kpb->buff_time_ms ? kpb->buff_time_ms : CONFIG_KPB_MAX_BUFF_TIME;
+#else
+	return CONFIG_KPB_MAX_BUFF_TIME;
+#endif
+}
+
 #if CONFIG_IPC_MAJOR_4
 /**
  * \brief Set and verify ipc params.
@@ -298,7 +310,7 @@ static void kpb_set_params(struct comp_dev *dev,
 	params->sample_valid_bytes =
 		kpb->ipc4_cfg.base_cfg.audio_fmt.valid_bit_depth / 8;
 	params->buffer_fmt = kpb->ipc4_cfg.base_cfg.audio_fmt.interleaving_style;
-	params->buffer.size = kpb->ipc4_cfg.base_cfg.ibs * KPB_MAX_BUFF_TIME * params->channels;
+	params->buffer.size = kpb->ipc4_cfg.base_cfg.ibs * kpb_get_buff_time_ms(kpb) * params->channels;
 
 	params->host_period_bytes = params->channels *
 				    params->sample_container_bytes *
@@ -809,7 +821,11 @@ static int kpb_prepare(struct comp_dev *dev)
 	struct sof_ipc_stream_params params;
 	int ret = 0;
 	int i;
-	size_t hb_size_req = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width, kpb->config.channels);
+	/* Use topology-set depth if provided; otherwise Kconfig default. */
+	uint32_t buff_ms = kpb_get_buff_time_ms(kpb);
+	size_t hb_size_req = (KPB_SAMPLNG_FREQUENCY / 1000) *
+		(KPB_SAMPLE_CONTAINER_SIZE(kpb->config.sampling_width) / 8) *
+		buff_ms * kpb->config.channels;
 
 	comp_dbg(dev, "entry");
 
@@ -1768,7 +1784,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	/* TODO: check also if client is registered */
 	} else if (!is_sink_ready) {
 		comp_err(dev, "sink not ready for draining");
-	} else if (cli->drain_req > KPB_MAX_DRAINING_REQ) {
+	} else if (cli->drain_req > kpb_get_buff_time_ms(kpb)) {
 		comp_cl_err(&comp_kpb, "drain request exceeds max");
 	} else {
 		if (kpb->hd.buffered < drain_req) {
@@ -2854,6 +2870,16 @@ static int kpb_set_large_config(struct comp_dev *dev, uint32_t param_id,
 #endif
 	case KP_BUF_CLIENT_MIC_SELECT:
 		return kpb_set_micselect(dev, data, data_offset);
+#if CONFIG_IPC_MAJOR_4
+	case KP_BUF_CFG_BUFF_TIME_MS: {
+		struct comp_data *kpb = comp_get_drvdata(dev);
+		if (data_offset < sizeof(uint32_t))
+			return -EINVAL;
+		kpb->buff_time_ms = *(const uint32_t *)data;
+		comp_info(dev, "kpb: buff_time_ms set to %u ms", kpb->buff_time_ms);
+		return 0;
+	}
+#endif
 	default:
 		return -EINVAL;
 	}
