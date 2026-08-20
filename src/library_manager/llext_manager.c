@@ -168,6 +168,38 @@ static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *
 	return ret;
 }
 
+#ifdef CONFIG_USERSPACE
+static int llext_manager_add_partition(struct k_mem_domain *domain,
+				       uintptr_t addr, size_t size,
+				       k_mem_partition_attr_t attr)
+{
+	size_t pre_pad_size = addr & (PAGE_SZ - 1);
+	struct k_mem_partition part = {
+		.start = addr - pre_pad_size,
+		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
+		.attr = attr,
+	};
+
+	tr_dbg(&lib_manager_tr, "add %#zx @ %lx partition", part.size, part.start);
+	return k_mem_domain_add_partition(domain, &part);
+}
+
+static int llext_manager_rm_partition(struct k_mem_domain *domain,
+				       uintptr_t addr, size_t size,
+				       k_mem_partition_attr_t attr)
+{
+	size_t pre_pad_size = addr & (PAGE_SZ - 1);
+	struct k_mem_partition part = {
+		.start = addr - pre_pad_size,
+		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
+		.attr = attr,
+	};
+
+	tr_dbg(&lib_manager_tr, "remove %#zx @ %lx partition", part.size, part.start);
+	return k_mem_domain_remove_partition(domain, &part);
+}
+#endif
+
 static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr,
 						  const struct llext *ext,
 						  enum llext_mem region,
@@ -302,12 +334,10 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	mctx->mapped = true;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	if (!mctx->domain_dp) {
-		ret = llext_manager_add_mod_domain(mctx, zephyr_ll_mem_domain());
-		if (ret < 0) {
-			tr_err(&lib_manager_tr, "failed to add domain: %d", ret);
-			goto e_data;
-		}
+	ret = llext_manager_add_mod_domain(mctx, zephyr_ll_mem_domain());
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "failed to add domain: %d", ret);
+		goto e_data;
 	}
 #endif
 
@@ -350,6 +380,18 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 		mctx->segment[LIB_MANAGER_BSS].size;
 	int err = 0, ret;
 
+	unsigned int sect_cnt = llext_section_count(ext);
+	size_t total = sect_cnt * sizeof(elf_shdr_t);
+	const elf_shdr_t *shdr;
+
+	ret = llext_get_section_info(ldr, ext, 0, &shdr, NULL, NULL);
+	if (ret < 0)
+		return ret;
+
+	/* Temporarily map ELF section headers */
+	llext_manager_add_partition(zephyr_ll_mem_domain(), (uintptr_t)shdr, total,
+				    K_MEM_PARTITION_P_RW_U_NA | XTENSA_MMU_CACHED_WB);
+
 	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_TEXT,
 					      va_base_text, text_size);
 	ret = llext_manager_align_unmap(va_base_text, text_size);
@@ -374,11 +416,13 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	if (ret < 0 && !err)
 		err = ret;
 
+	llext_manager_rm_partition(zephyr_ll_mem_domain(), (uintptr_t)shdr, total,
+				   K_MEM_PARTITION_P_RW_U_NA | XTENSA_MMU_CACHED_WB);
+
 	mctx->mapped = false;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
-	if (!mctx->domain_dp)
-		llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
+	llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
 #endif
 
 	return err;
@@ -540,7 +584,7 @@ static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
 }
 
 /* Find a module context, containing the driver with the supplied index */
-static int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
+int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
 {
 	unsigned int i;
 
@@ -794,35 +838,6 @@ uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config
 }
 
 #ifdef CONFIG_USERSPACE
-static int llext_manager_add_partition(struct k_mem_domain *domain,
-				       uintptr_t addr, size_t size,
-				       k_mem_partition_attr_t attr)
-{
-	size_t pre_pad_size = addr & (PAGE_SZ - 1);
-	struct k_mem_partition part = {
-		.start = addr - pre_pad_size,
-		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
-		.attr = attr,
-	};
-
-	tr_dbg(&lib_manager_tr, "add %#zx @ %lx partition", part.size, part.start);
-	return k_mem_domain_add_partition(domain, &part);
-}
-
-static int llext_manager_rm_partition(struct k_mem_domain *domain,
-				       uintptr_t addr, size_t size,
-				       k_mem_partition_attr_t attr)
-{
-	size_t pre_pad_size = addr & (PAGE_SZ - 1);
-	struct k_mem_partition part = {
-		.start = addr - pre_pad_size,
-		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
-		.attr = attr,
-	};
-
-	tr_dbg(&lib_manager_tr, "remove %#zx @ %lx partition", part.size, part.start);
-	return k_mem_domain_remove_partition(domain, &part);
-}
 
 static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct k_mem_domain *domain)
 {
@@ -1066,15 +1081,8 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 int llext_manager_free_module(const uint32_t component_id)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
-	struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)lib_manager_get_library_manifest(module_id);
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
-
-	if (entry_index >= desc->header.num_module_entries) {
-		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
-		       entry_index, desc->header.num_module_entries - 1);
-		return -ENOENT;
-	}
 
 	if (!ctx->mod) {
 		tr_err(&lib_manager_tr, "NULL module array: ID %#x ctx %p", component_id, ctx);

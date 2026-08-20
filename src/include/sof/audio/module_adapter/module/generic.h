@@ -192,16 +192,25 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 #endif
 void mod_resource_init(struct processing_module *mod);
 void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start);
+void module_adapter_vreg_free(struct mod_alloc_ctx *alloc);
 #if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+__syscall struct vregion *module_adapter_vreg_new(const struct comp_ipc_config *config,
+						  uintptr_t *vreg_start, size_t *vreg_size);
+__syscall void module_adapter_vreg_unmap(const struct mod_alloc_ctx *alloc);
 __syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			      size_t alignment);
 __syscall int mod_free(struct processing_module *mod, const void *ptr);
 __syscall void mod_free_all(struct processing_module *mod);
 #else
+struct vregion *z_impl_module_adapter_vreg_new(const struct comp_ipc_config *config,
+					       uintptr_t *vreg_start, size_t *vreg_size);
+void z_impl_module_adapter_vreg_unmap(const struct mod_alloc_ctx *alloc);
 void *z_impl_mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			   size_t alignment);
 int z_impl_mod_free(struct processing_module *mod, const void *ptr);
 void z_impl_mod_free_all(struct processing_module *mod);
+#define module_adapter_vreg_new z_impl_module_adapter_vreg_new
+#define module_adapter_vreg_unmap z_impl_module_adapter_vreg_unmap
 #define mod_alloc_ext z_impl_mod_alloc_ext
 #define mod_free z_impl_mod_free
 #define mod_free_all z_impl_mod_free_all

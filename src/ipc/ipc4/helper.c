@@ -111,41 +111,64 @@ __cold static inline unsigned char *ipc4_get_comp_new_data(void)
 }
 #endif
 
+__cold static int ipc4_comp_new_config(struct comp_ipc_config *ipc_config,
+				       const struct ipc4_module_init_instance *module_init)
+{
+	uint32_t comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
+					module_init->primary.r.instance_id);
+
+	assert_can_be_cold();
+
+	if (ipc4_get_comp_dev(comp_id)) {
+		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
+		return -EEXIST;
+	}
+
+	if (module_init->extension.r.core_id >= CONFIG_CORE_COUNT) {
+		tr_err(&ipc_tr, "ipc: comp->core = %u", (uint32_t)module_init->extension.r.core_id);
+		return -EINVAL;
+	}
+
+	memset(ipc_config, 0, sizeof(*ipc_config));
+	ipc_config->id = comp_id;
+	ipc_config->pipeline_id = module_init->extension.r.ppl_instance_id;
+	ipc_config->core = module_init->extension.r.core_id;
+	ipc_config->ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
+	ipc_config->ipc_extended_init = module_init->extension.r.extended_init;
+	if (ipc_config->ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
+		tr_err(&ipc_tr, "IPC payload size %u too big for the message window",
+		       ipc_config->ipc_config_size);
+		return -ENOSPC;
+	}
+
+	if (!module_init->extension.r.proc_domain) {
+		ipc_config->proc_domain = COMP_PROCESSING_DOMAIN_LL;
+	} else if (IS_ENABLED(CONFIG_ZEPHYR_DP_SCHEDULER)) {
+		ipc_config->proc_domain = COMP_PROCESSING_DOMAIN_DP;
+	} else {
+		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp 0x%x", comp_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* Only called from ipc4_init_module_instance(), which is __cold */
 __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *module_init)
 {
 	struct comp_ipc_config ipc_config;
 	const struct comp_driver *drv;
 	struct comp_dev *dev;
-	uint32_t comp_id;
 	unsigned char *data;
+	uint32_t comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
+					module_init->primary.r.instance_id);
 
 	assert_can_be_cold();
 
-	comp_id = IPC4_COMP_ID(module_init->primary.r.module_id,
-			       module_init->primary.r.instance_id);
+	int ret = ipc4_comp_new_config(&ipc_config, module_init);
 
-	if (ipc4_get_comp_dev(comp_id)) {
-		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
+	if (ret < 0)
 		return NULL;
-	}
-
-	if (module_init->extension.r.core_id >= CONFIG_CORE_COUNT) {
-		tr_err(&ipc_tr, "ipc: comp->core = %u", (uint32_t)module_init->extension.r.core_id);
-		return NULL;
-	}
-
-	memset(&ipc_config, 0, sizeof(ipc_config));
-	ipc_config.id = comp_id;
-	ipc_config.pipeline_id = module_init->extension.r.ppl_instance_id;
-	ipc_config.core = module_init->extension.r.core_id;
-	ipc_config.ipc_config_size = module_init->extension.r.param_block_size * sizeof(uint32_t);
-	ipc_config.ipc_extended_init = module_init->extension.r.extended_init;
-	if (ipc_config.ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
-		tr_err(&ipc_tr, "IPC payload size %u too big for the message window",
-		       ipc_config.ipc_config_size);
-		return NULL;
-	}
 
 	/* Reject a module naming a non-existent parent pipeline: otherwise
 	 * dev->pipeline stays NULL and a later init path (e.g. the copier)
@@ -160,6 +183,7 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 		       (uint32_t)ipc_config.pipeline_id);
 		return NULL;
 	}
+
 #ifdef CONFIG_DCACHE_LINE_SIZE
 	if (!IS_ENABLED(CONFIG_LIBRARY))
 		sys_cache_data_invd_range((__sparse_force void __sparse_cache *)
@@ -176,19 +200,6 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 #endif
 	if (!drv)
 		return NULL;
-
-#if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (module_init->extension.r.proc_domain)
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
-	else
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-#else /* CONFIG_ZEPHYR_DP_SCHEDULER */
-	if (module_init->extension.r.proc_domain) {
-		tr_err(&ipc_tr, "ipc: DP scheduling is disabled, cannot create comp 0x%x", comp_id);
-		return NULL;
-	}
-	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
@@ -225,6 +236,39 @@ __cold struct comp_dev *comp_new_ipc4(const struct ipc4_module_init_instance *mo
 }
 
 #ifdef CONFIG_SOF_USERSPACE_LL
+
+int ipc4_user_module_load(const struct comp_driver *drv,
+			  const struct ipc4_module_init_instance *mi)
+{
+	/*
+	 * move a part to the kernel thread:
+	 * the userspace IPC handling thread would call comp_new_ipc4_user() to
+	 * then call library manager .create method lib_manager_module_create().
+	 * That one calls lib_manager_mod_create_priv(), then
+	 * lib_manager_allocate_module() and eventually
+	 * llext_manager_allocate_module() for LLEXT modules.
+	 */
+	struct comp_ipc_config ipc_config;
+	int ret = ipc4_comp_new_config(&ipc_config, mi);
+
+	if (ret < 0)
+		return ret;
+
+	const struct ipc_config_process spec = {
+		.data = ipc4_get_comp_new_data(),
+		.size = ipc_config.ipc_config_size,
+	};
+
+#if CONFIG_DCACHE_LINE_SIZE && !CONFIG_LIBRARY
+	sys_cache_data_invd_range((__sparse_force void __sparse_cache *)spec.data, spec.size);
+#endif
+
+	struct userspace_context *userspace = NULL;
+	const struct module_interface *ops = NULL;
+
+	return lib_manager_mod_create_priv(drv, &ipc_config, &spec, NULL, &userspace, &ops);
+}
+
 /**
  * comp_new_ipc4_user - Create component in user-space IPC thread context.
  *
@@ -242,43 +286,19 @@ __cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 	struct ipc4_module_init_instance module_init;
 	struct comp_ipc_config ipc_config;
 	struct comp_dev *dev;
-	uint32_t comp_id;
 	unsigned char *data;
-	int ret;
 
 	assert_can_be_cold();
 
-	ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
+	int ret = memcpy_s(&module_init, sizeof(module_init), ipc4, sizeof(*ipc4));
+
 	if (ret < 0)
 		return NULL;
 
-	comp_id = IPC4_COMP_ID(module_init.primary.r.module_id,
-			       module_init.primary.r.instance_id);
-
-	if (ipc4_get_comp_dev(comp_id)) {
-		tr_err(&ipc_tr, "comp 0x%x exists", comp_id);
+	ret = ipc4_comp_new_config(&ipc_config, &module_init);
+	if (ret < 0)
 		return NULL;
-	}
 
-	if (module_init.extension.r.core_id >= CONFIG_CORE_COUNT) {
-		tr_err(&ipc_tr, "ipc: comp->core = %u",
-		       (uint32_t)module_init.extension.r.core_id);
-		return NULL;
-	}
-
-	memset(&ipc_config, 0, sizeof(ipc_config));
-	ipc_config.id = comp_id;
-	ipc_config.pipeline_id = module_init.extension.r.ppl_instance_id;
-	ipc_config.core = module_init.extension.r.core_id;
-	ipc_config.ipc_config_size =
-		module_init.extension.r.param_block_size * sizeof(uint32_t);
-	ipc_config.ipc_extended_init = module_init.extension.r.extended_init;
-	if (ipc_config.ipc_config_size > MAILBOX_HOSTBOX_SIZE) {
-		tr_err(&ipc_tr,
-		       "IPC payload size %u too big for the message window",
-		       ipc_config.ipc_config_size);
-		return NULL;
-	}
 #ifdef CONFIG_DCACHE_LINE_SIZE
 	if (!IS_ENABLED(CONFIG_LIBRARY))
 		sys_cache_data_invd_range(
@@ -287,21 +307,6 @@ __cold struct comp_dev *comp_new_ipc4_user(struct ipc4_message_request *ipc4,
 				 CONFIG_DCACHE_LINE_SIZE));
 #endif
 	data = ipc4_get_comp_new_data();
-
-#if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (module_init.extension.r.proc_domain)
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_DP;
-	else
-		ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-#else
-	if (module_init.extension.r.proc_domain) {
-		tr_err(&ipc_tr,
-		       "ipc: DP scheduling is disabled, cannot create comp 0x%x",
-		       comp_id);
-		return NULL;
-	}
-	ipc_config.proc_domain = COMP_PROCESSING_DOMAIN_LL;
-#endif
 
 	if (drv->type == SOF_COMP_MODULE_ADAPTER) {
 		const struct ipc_config_process spec = {
@@ -1166,8 +1171,7 @@ __cold int ipc4_chain_manager_create(const struct ipc4_chain_dma *cdma)
 	const uint32_t comp_id = IPC4_COMP_ID(cdma->primary.r.host_dma_id
 					      + IPC4_MAX_MODULE_COUNT, 0);
 	dev->ipc_config.id = comp_id;
-	dev->ipc_config.pipeline_id = cdma->primary.r.host_dma_id
-				      + IPC4_MAX_MODULE_COUNT;
+	dev->ipc_config.pipeline_id = cdma->primary.r.host_dma_id + IPC4_MAX_MODULE_COUNT;
 
 	return ipc4_add_comp_dev(dev);
 }
@@ -1309,13 +1313,10 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 
 	/* search driver list with UUID */
 	list_for_item(clist, &drivers->list) {
-		info = container_of(clist, struct comp_driver_info,
-				    list);
+		info = container_of(clist, struct comp_driver_info, list);
 		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
-			tr_dbg(&comp_tr,
-			       "found type %d, uuid %pU",
-			       info->drv->type,
-			       info->drv->tctx->uuid_p);
+			tr_dbg(&comp_tr, "found type %d, uuid %pU",
+			       info->drv->type, info->drv->tctx->uuid_p);
 			drv = info->drv;
 			break;
 		}
@@ -1397,8 +1398,7 @@ static const struct comp_driver *ipc4_get_fuzzer_drv(uint32_t module_id)
 			return inf->drv;
 	}
 
-	tr_err(&comp_tr,
-	       "no instantiable driver at module_id %u (%u available)",
+	tr_err(&comp_tr, "no instantiable driver at module_id %u (%u available)",
 	       module_id, idx);
 	return NULL;
 }
@@ -1642,10 +1642,8 @@ void ipc4_audio_format_to_stream_params(const struct ipc4_audio_format *audio_fm
 	params->sample_valid_bytes = audio_fmt->valid_bit_depth / 8;
 	params->buffer_fmt = audio_fmt->interleaving_style;
 
-	audio_stream_fmt_conversion(audio_fmt->depth,
-				    audio_fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    audio_fmt->s_type);
+	audio_stream_fmt_conversion(audio_fmt->depth, audio_fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, audio_fmt->s_type);
 	params->frame_fmt = frame_fmt;
 
 	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++)
@@ -1670,10 +1668,8 @@ void ipc4_update_buffer_format(struct comp_buffer *buf_c,
 
 	audio_stream_set_channels(&buf_c->stream, fmt->channels_count);
 	audio_stream_set_rate(&buf_c->stream, fmt->sampling_frequency);
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
+	audio_stream_fmt_conversion(fmt->depth, fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, fmt->s_type);
 
 	audio_stream_set_frm_fmt(&buf_c->stream, frame_fmt);
 	audio_stream_set_valid_fmt(&buf_c->stream, valid_fmt);
@@ -1692,10 +1688,8 @@ void ipc4_update_source_format(struct sof_source *source,
 
 	source_set_channels(source, fmt->channels_count);
 	source_set_rate(source, fmt->sampling_frequency);
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
+	audio_stream_fmt_conversion(fmt->depth, fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, fmt->s_type);
 
 	source_set_frm_fmt(source, frame_fmt);
 	source_set_valid_fmt(source, valid_fmt);
@@ -1710,10 +1704,8 @@ void ipc4_update_sink_format(struct sof_sink *sink,
 
 	sink_set_channels(sink, fmt->channels_count);
 	sink_set_rate(sink, fmt->sampling_frequency);
-	audio_stream_fmt_conversion(fmt->depth,
-				    fmt->valid_bit_depth,
-				    &frame_fmt, &valid_fmt,
-				    fmt->s_type);
+	audio_stream_fmt_conversion(fmt->depth, fmt->valid_bit_depth,
+				    &frame_fmt, &valid_fmt, fmt->s_type);
 
 	sink_set_frm_fmt(sink, frame_fmt);
 	sink_set_valid_fmt(sink, valid_fmt);

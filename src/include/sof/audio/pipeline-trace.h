@@ -59,6 +59,10 @@ extern struct tr_ctx pipe_tr;
 
 #else
 
+#if defined(__ZEPHYR__) && defined(CONFIG_SOF_USERSPACE_LL)
+#error "Invalid build config: User-space cannot access trace context."
+#endif
+
 #define pipe_err(pipe_p, __e, ...)					\
 	trace_dev_err(trace_pipe_get_tr_ctx, trace_pipe_get_id,		\
 		      trace_pipe_get_subid, pipe_p, __e, ##__VA_ARGS__)

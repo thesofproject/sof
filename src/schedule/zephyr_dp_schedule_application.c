@@ -8,7 +8,9 @@
 #include <rtos/task.h>
 
 #include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/component.h>
 #include <sof/common.h>
+#include <sof/ipc/common.h>
 #include <sof/list.h>
 #include <sof/llext_manager.h>
 #include <sof/objpool.h>
@@ -155,6 +157,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 			    const union scheduler_dp_thread_ipc_param *param)
 {
 	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
+	unsigned int core = pmod->dev->task->core;
 	int ret;
 
 	if (!pmod) {
@@ -164,14 +167,14 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
-		ret = k_sem_take(&dp_sync[pmod->dev->task->core], DP_THREAD_IPC_TIMEOUT);
+		ret = k_sem_take(&dp_sync[core], DP_THREAD_IPC_TIMEOUT);
 		if (ret < 0) {
 			tr_err(&dp_tr, "Failed waiting for DP thread to start: %d", ret);
 			return ret;
 		}
 	}
 
-	unsigned int lock_key = scheduler_dp_lock(pmod->dev->task->core);
+	unsigned int lock_key = scheduler_dp_lock(core);
 
 	/* IPCs are serialised */
 	pdata->flat->ret = -ENOSYS;
@@ -184,7 +187,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 
 	if (!ret) {
 		/* Wait for completion */
-		ret = k_sem_take(&dp_sync[cpu_get_id()], DP_THREAD_IPC_TIMEOUT);
+		ret = k_sem_take(&dp_sync[core], DP_THREAD_IPC_TIMEOUT);
 		if (ret < 0)
 			tr_err(&dp_tr, "Failed waiting for DP thread: %d", ret);
 		else
@@ -400,7 +403,7 @@ struct scheduler_dp_task_memory {
 	struct ipc4_flat flat;
 };
 
-void scheduler_dp_internal_free(struct task *task)
+void z_impl_scheduler_dp_internal_free(struct task *task)
 {
 	struct task_dp_pdata *pdata = task->priv_data;
 
@@ -526,6 +529,13 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	k_thread_access_grant(pdata->thread_id, pdata->event, &dp_sync[core]);
 	scheduler_dp_grant(pdata->thread_id, core);
+#if CONFIG_SOF_USERSPACE_LL
+	struct k_thread *thread_ipc = ipc_thread_user(core);
+
+	k_thread_access_grant(thread_ipc, pdata->event, pdata->thread_id, p_stack, &dp_sync[core]);
+	scheduler_dp_grant(thread_ipc, core);
+	scheduler_dp_grant(zephyr_ll_domain_thread(), core);
+#endif
 
 	struct k_mem_domain *mdom = objpool_alloc(&dp_mdom_head, sizeof(*mdom),
 						  SOF_MEM_FLAG_COHERENT);
@@ -615,3 +625,41 @@ e_tmem:
 	mod_free(mod, task_memory);
 	return ret;
 }
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+
+static void scheduler_dp_mod_vrfy(struct processing_module *mod)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod, sizeof(*mod)));
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(mod->dev, sizeof(*mod->dev)));
+	K_OOPS(K_SYSCALL_MEMORY_READ(mod->dev->drv, sizeof(*mod->dev->drv)));
+
+	struct mod_alloc_ctx *alloc = mod->priv.resources.alloc;
+
+	assert(alloc);
+	if (alloc->heap) {
+		size_t h_size = 0;
+		uintptr_t h_start;
+
+		mod_heap_info(mod, &h_size, &h_start);
+		if (h_size)
+			K_OOPS(K_SYSCALL_MEMORY_WRITE(h_start, h_size));
+	}
+	if (alloc->vreg)
+		K_OOPS(K_SYSCALL_MEMORY_WRITE(alloc->vreg_start, alloc->vreg_size));
+}
+
+void z_vrfy_scheduler_dp_internal_free(struct task *task)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(task, sizeof(*task)));
+
+	struct task_dp_pdata *pdata = task->priv_data;
+
+	K_OOPS(K_SYSCALL_OBJ(pdata->event, K_OBJ_EVENT));
+	K_OOPS(K_SYSCALL_OBJ_INIT(pdata->thread, K_OBJ_THREAD));
+	scheduler_dp_mod_vrfy(pdata->mod);
+	return z_impl_scheduler_dp_internal_free(task);
+}
+#include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
+#endif
