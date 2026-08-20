@@ -143,6 +143,8 @@ void vregion_info(struct vregion *vr);
  */
 void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t *start);
 
+bool vregion_verify(struct vregion *vr);
+
 #else /* CONFIG_SOF_VREGIONS */
 
 struct vregion {
@@ -186,6 +188,7 @@ static inline void vregion_mem_info(struct vregion *vr, size_t *size, uintptr_t 
 	if (size)
 		*size = 0;
 }
+static inline bool vregion_verify(struct vregion *vr) {return false;}
 
 #endif /* CONFIG_SOF_VREGIONS */
 
