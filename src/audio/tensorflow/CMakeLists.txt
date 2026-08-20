@@ -306,9 +306,14 @@ add_library(tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/memory_planner/linear_memory_planner.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter.cc
-	sof_tflm_quantized_model_data.cc
 	speech.cc
 )
+
+if(CONFIG_COMP_TENSORFLOW_MODEL_FROM_CONTROL)
+	target_compile_definitions(tflm_lib PRIVATE CONFIG_COMP_TENSORFLOW_MODEL_FROM_CONTROL=1)
+else()
+	target_sources(tflm_lib PRIVATE sof_tflm_quantized_model_data.cc)
+endif()
 
 target_include_directories(tflm_lib PRIVATE
 	${TFLM_PATH}

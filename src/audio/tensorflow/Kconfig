@@ -31,4 +31,13 @@ config COMP_TENSORFLOW_DEBUG_TRACE
 	  or per-node timing. The keyword-detected line and the shutdown
 	  summary remain enabled regardless of this option.
 
+config COMP_TENSORFLOW_MODEL_FROM_CONTROL
+	bool "Load TFLM model from bytes control instead of built-in header"
+	default n
+	help
+	  When enabled, the TFLM wake-word model is loaded from a runtime
+	  or topology configuration data blob via binary kcontrol (bytes control)
+	  instead of using the static g_sof_tflm_quantized_model_data embedded
+	  in the firmware image.
+
 endif # COMP_TENSORFLOW

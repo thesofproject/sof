@@ -14,7 +14,9 @@
 #include "tensorflow/lite/micro/testing/micro_test.h"
 #include "speech.h"
 
+#if !CONFIG_COMP_TENSORFLOW_MODEL_FROM_CONTROL
 #include "sof_tflm_quantized_model_data.h"
+#endif
 
 // The following values are derived from values used during model training.
 // If you change the way you preprocess the input, update all these constants.
@@ -122,15 +124,55 @@ static int Init_Interpreter(struct tf_classify *tfc)
 		return -EINVAL;
 	}
 
-	// Accept any output rank as long as total element count == categories.
+	// Accept any output rank as long as 1 <= total element count <= TFLM_MAX_CATEGORY_COUNT.
 	int output_elems = 1;
 	for (int i = 0; i < output->dims->size; i++)
 		output_elems *= output->dims->data[i];
-	if (tfc->categories != output_elems) {
-		tfc->error = "output shape != categories";
-		MicroPrintf("TFLM: output rank=%d elems=%d categories=%d",
-			    output->dims->size, output_elems, tfc->categories);
+	if (output_elems <= 0 || output_elems > TFLM_MAX_CATEGORY_COUNT) {
+		tfc->error = "output shape out of range";
+		MicroPrintf("TFLM: output rank=%d elems=%d max=%d",
+			    output->dims->size, output_elems, TFLM_MAX_CATEGORY_COUNT);
 		return -EINVAL;
+	}
+
+	tfc->categories = output_elems;
+
+	// Populate category names: first check if model description has comma-separated labels
+	bool have_labels = false;
+	if (model->description() && model->description()->c_str()) {
+		const char *desc = model->description()->c_str();
+		if (desc[0] != '\0') {
+			int cat_idx = 0;
+			int char_idx = 0;
+			for (int i = 0; desc[i] != '\0' && cat_idx < tfc->categories; i++) {
+				if (desc[i] == ',') {
+					tfc->category_names[cat_idx][char_idx] = '\0';
+					cat_idx++;
+					char_idx = 0;
+				} else if (char_idx < TFLM_MAX_LABEL_LEN - 1) {
+					tfc->category_names[cat_idx][char_idx++] = desc[i];
+				}
+			}
+			if (cat_idx < tfc->categories) {
+				tfc->category_names[cat_idx][char_idx] = '\0';
+				cat_idx++;
+			}
+			if (cat_idx == tfc->categories)
+				have_labels = true;
+		}
+	}
+
+	// Fallback to static labels if description was absent or didn't match category count
+	if (!have_labels) {
+		static const char * const default_labels[] = TFLM_CATEGORY_DATA;
+		for (int i = 0; i < tfc->categories; i++) {
+			if (i < (int)(sizeof(default_labels) / sizeof(default_labels[0]))) {
+				strncpy(tfc->category_names[i], default_labels[i], TFLM_MAX_LABEL_LEN - 1);
+			} else {
+				snprintf(tfc->category_names[i], TFLM_MAX_LABEL_LEN, "class_%d", i);
+			}
+			tfc->category_names[i][TFLM_MAX_LABEL_LEN - 1] = '\0';
+		}
 	}
 
 	return 0;
@@ -138,11 +180,19 @@ static int Init_Interpreter(struct tf_classify *tfc)
 
 int TF_SetModel(struct tf_classify *tfc, unsigned char *model_tflite)
 {
-	// ignore passed in model today until we can load via binary kcontrol
+#if !CONFIG_COMP_TENSORFLOW_MODEL_FROM_CONTROL
+	if (!model_tflite)
+		model_tflite = const_cast<unsigned char *>(g_sof_tflm_quantized_model_data);
+#endif
+
+	if (!model_tflite) {
+		tfc->error = "no model provided";
+		return -EINVAL;
+	}
 
 	// Map the model into a usable data structure. This doesn't involve any
 	// copying or parsing, it's a very lightweight operation.
-	model = tflite::GetModel(g_sof_tflm_quantized_model_data);
+	model = tflite::GetModel(model_tflite);
 	if (model->version() != TFLITE_SCHEMA_VERSION) {
 		tfc->error = "failed to load model";
 		return -EINVAL;

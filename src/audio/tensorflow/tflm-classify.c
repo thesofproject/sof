@@ -154,10 +154,23 @@ struct tflm_comp_data {
 	/* Persistent AGC gain applied to every Q9.23 mel value (see AGC defines). */
 	int32_t agc_gain_q23;
 	/* Per-instance shutdown-summary counters. */
-	uint32_t category_totals[TFLM_CATEGORY_COUNT];
+	uint32_t category_totals[TFLM_MAX_CATEGORY_COUNT];
 	uint32_t total_inferences;
 	uint32_t kpb_trigger_events;
 } __attribute__((aligned(8)));
+
+static const char *tflm_category_name(const struct tflm_comp_data *cd, int idx)
+{
+	if (cd && idx >= 0 && idx < cd->tfc.categories && cd->tfc.category_names[idx][0] != '\0')
+		return cd->tfc.category_names[idx];
+	if (idx >= 0 && idx < (int)ARRAY_SIZE(prediction))
+		return prediction[idx];
+	if (idx == 0)
+		return "silence";
+	if (idx == 1)
+		return "unknown";
+	return "keyword";
+}
 
 #if CONFIG_AMS
 /* Key-phrase detected AMS message UUID (matches KPB consumer). */
@@ -227,6 +240,7 @@ static __maybe_unused void tflm_send_keyword_notification(struct processing_modu
 static bool g_tflm_initialized;
 static int g_tflm_instance_count;
 static int g_tflm_shared_categories;
+static char g_tflm_shared_category_names[TFLM_MAX_CATEGORY_COUNT][TFLM_MAX_LABEL_LEN];
 
 __cold static void tflm_log_summary_at_shutdown(struct processing_module *mod)
 {
@@ -234,18 +248,22 @@ __cold static void tflm_log_summary_at_shutdown(struct processing_module *mod)
 	struct comp_dev *dev = mod ? mod->dev : NULL;
 	char summary_buf[256];
 	size_t off;
+	int num_cats = cd ? cd->tfc.categories : g_tflm_shared_categories;
 	int i;
 
 	if (!cd)
 		return;
 
+	if (num_cats <= 0 || num_cats > TFLM_MAX_CATEGORY_COUNT)
+		num_cats = TFLM_CATEGORY_COUNT;
+
 	off = snprintk(summary_buf, sizeof(summary_buf),
 		       "[TFLM STREAM SHUTDOWN SUMMARY] Total Inferences=%u | Keyword Events:",
 		       cd->total_inferences);
-	for (i = 0; i < TFLM_CATEGORY_COUNT && off < sizeof(summary_buf); i++) {
+	for (i = 0; i < num_cats && off < sizeof(summary_buf); i++) {
 		off += snprintk(summary_buf + off, sizeof(summary_buf) - off,
 				"%s %s=%u", i ? "," : "",
-				prediction[i], cd->category_totals[i]);
+				tflm_category_name(cd, i), cd->category_totals[i]);
 	}
 	if (off < sizeof(summary_buf))
 		snprintk(summary_buf + off, sizeof(summary_buf) - off,
@@ -276,6 +294,13 @@ __cold static int tflm_init(struct processing_module *mod)
 	}
 
 	md->private = cd;
+	cd->model_handler = mod_data_blob_handler_new(mod);
+	if (!cd->model_handler) {
+		printk("[TFLM INIT] FAILED: mod_data_blob_handler_new failed\n");
+		rfree(cd);
+		return -ENOMEM;
+	}
+
 	cd->tfc.categories = TFLM_CATEGORY_COUNT;
 	cd->drain_req_ms = TFLM_KPB_DRAIN_REQ_MS;
 	cd->agc_gain_q23 = TFLM_AGC_GAIN_TARGET_Q23;
@@ -299,6 +324,7 @@ __cold static int tflm_free(struct processing_module *mod)
 		g_tflm_instance_count = 0;
 		g_tflm_initialized = false;
 	}
+	mod_data_blob_handler_free(mod, cd->model_handler);
 	rfree(cd);
 	return 0;
 }
@@ -308,7 +334,26 @@ __cold static int tflm_set_config(struct processing_module *mod, uint32_t param_
 	const uint8_t *fragment, size_t fragment_size, uint8_t *response,
 	size_t response_size)
 {
-	return 0;
+	struct tflm_comp_data *cd = module_get_private_data(mod);
+
+	if (mod->dev->state != COMP_STATE_INIT && mod->dev->state != COMP_STATE_READY) {
+		comp_warn(mod->dev, "tflm_set_config(): model update ignored while not idle (state %d)",
+			  mod->dev->state);
+		return 0;
+	}
+
+	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
+				  fragment, fragment_size);
+}
+
+__cold static int tflm_get_config(struct processing_module *mod,
+				  uint32_t config_id, uint32_t *data_offset_size,
+				  uint8_t *fragment, size_t fragment_size)
+{
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct tflm_comp_data *cd = module_get_private_data(mod);
+
+	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
 /*
@@ -579,12 +624,12 @@ static int tflm_process(struct processing_module *mod,
 					char raw_buf[160];
 					int off = snprintk(raw_buf, sizeof(raw_buf),
 							   "[DBG raw_output] ret=%d", ret);
-					for (int i = 0; i < TFLM_CATEGORY_COUNT &&
+					for (int i = 0; i < cd->tfc.categories &&
 					     off < (int)sizeof(raw_buf); i++)
 						off += snprintk(raw_buf + off,
 								sizeof(raw_buf) - off,
 								" %s=%d",
-								prediction[i],
+								tflm_category_name(cd, i),
 								cd->tfc.raw_output[i]);
 					sof_ut_log(raw_buf);
 				}
@@ -608,7 +653,7 @@ static int tflm_process(struct processing_module *mod,
 					}
 
 					cd->total_inferences++;
-					if (max_idx >= 0 && max_idx < TFLM_CATEGORY_COUNT)
+					if (max_idx >= 0 && max_idx < TFLM_MAX_CATEGORY_COUNT)
 						cd->category_totals[max_idx]++;
 
 #if CONFIG_COMP_TENSORFLOW_DEBUG_TRACE
@@ -618,14 +663,14 @@ static int tflm_process(struct processing_module *mod,
 						if (max_pct_dbg < 0) max_pct_dbg = 0;
 						int off = snprintk(result_buf, sizeof(result_buf),
 								   "TFLM top prediction: %s confidence=%d pct (inferences=%u):",
-								   prediction[max_idx], max_pct_dbg,
+								   tflm_category_name(cd, max_idx), max_pct_dbg,
 								   cd->total_inferences);
-						for (int i = 0; i < TFLM_CATEGORY_COUNT &&
+						for (int i = 0; i < cd->tfc.categories &&
 						     off < (int)sizeof(result_buf); i++)
 							off += snprintk(result_buf + off,
 									sizeof(result_buf) - off,
 									" %s=%u",
-									prediction[i],
+									tflm_category_name(cd, i),
 									cd->category_totals[i]);
 						sof_ut_log(result_buf);
 					}
@@ -640,7 +685,7 @@ static int tflm_process(struct processing_module *mod,
 						if (max_pct < 0) max_pct = 0;
 						snprintk(kw_buf, sizeof(kw_buf),
 							 "TFLM KEYWORD DETECTED: %s confidence=%d pct",
-							 prediction[max_idx], max_pct);
+							 tflm_category_name(cd, max_idx), max_pct);
 						sof_ut_log(kw_buf);
 
 						cd->kpb_trigger_events++;
@@ -680,11 +725,27 @@ static int tflm_prepare(struct processing_module *mod,
 	if (g_tflm_initialized) {
 		/* Shared TFLM engine already up. */
 		cd->tfc.categories       = g_tflm_shared_categories;
+		memcpy(cd->tfc.category_names, g_tflm_shared_category_names,
+		       sizeof(g_tflm_shared_category_names));
 		printk("[TFLM PREPARE] shared engine already initialized; attach instance\n");
 		goto post_init;
 	}
 
-	int ret = TF_SetModel(&cd->tfc, NULL);
+	unsigned char *model_ptr = NULL;
+
+#if CONFIG_COMP_TENSORFLOW_MODEL_FROM_CONTROL
+	size_t blob_size;
+
+	model_ptr = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
+	if (!model_ptr || !blob_size) {
+		printk("[TFLM PREPARE] FAILED: model blob not set from control\n");
+		comp_err(mod->dev, "TFLM: model blob not set from control");
+		return -EINVAL;
+	}
+	printk("[TFLM PREPARE] loaded model from control blob, size=%zu\n", blob_size);
+#endif
+
+	int ret = TF_SetModel(&cd->tfc, model_ptr);
 	if (ret < 0) {
 		printk("[TFLM PREPARE] FAILED: TF_SetModel returned %d\n", ret);
 		return ret;
@@ -698,6 +759,8 @@ static int tflm_prepare(struct processing_module *mod,
 	}
 
 	g_tflm_shared_categories       = cd->tfc.categories;
+	memcpy(g_tflm_shared_category_names, cd->tfc.category_names,
+	       sizeof(g_tflm_shared_category_names));
 	g_tflm_initialized = true;
 	printk("[TFLM PREPARE] TFLM model & ops initialized successfully!\n");
 	printk("[TFLM PREPARE] arena_used=%zu / capacity=%zu bytes\n",
@@ -747,6 +810,7 @@ static const struct module_interface tflmcly_interface = {
 	.prepare = tflm_prepare,
 	.process = tflm_process,
 	.set_configuration = tflm_set_config,
+	.get_configuration = tflm_get_config,
 	.reset = tflm_reset,
 	.free = tflm_free
 };
