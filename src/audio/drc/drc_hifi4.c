@@ -9,6 +9,7 @@
 #include <sof/math/exp_fcn.h>
 #include <sof/math/numbers.h>
 #include <sof/common.h>
+#include <rtos/string.h>
 #include <stdint.h>
 
 #include "drc.h"
@@ -525,10 +526,26 @@ static void drc_process_one_division(struct drc_state *state,
 }
 
 void drc_default_pass(struct processing_module *mod,
-		      const struct audio_stream *source,
-		      struct audio_stream *sink, uint32_t frames)
+		      const struct cir_buf_source *source,
+		      struct cir_buf_sink *sink, uint32_t frames)
 {
-	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
+	struct drc_comp_data *cd = module_get_private_data(mod);
+	const int sample_bytes = get_sample_bytes(cd->source_format);
+	size_t bytes = (size_t)frames * cd->channels * sample_bytes;
+	const uint8_t *src = source->ptr;
+	uint8_t *dst = sink->ptr;
+	int n;
+
+	while (bytes) {
+		n = MIN((const uint8_t *)source->buf_end - src,
+			(uint8_t *)sink->buf_end - dst);
+		n = MIN(n, bytes);
+		memcpy_s(dst, n, src, n);
+		src = cir_buf_wrap((void *)(src + n), (void *)source->buf_start,
+				   (void *)source->buf_end);
+		dst = cir_buf_wrap(dst + n, sink->buf_start, sink->buf_end);
+		bytes -= n;
+	}
 }
 
 static inline void drc_pre_delay_index_inc(int *idx, int increment)
@@ -538,9 +555,9 @@ static inline void drc_pre_delay_index_inc(int *idx, int increment)
 
 #if CONFIG_FORMAT_S16LE
 static void drc_delay_input_sample_s16(struct drc_state *state,
-				       const struct audio_stream *source,
-				       struct audio_stream *sink,
-				       int16_t **x, int16_t **y, int samples)
+				       const struct cir_buf_source *source,
+				       struct cir_buf_sink *sink,
+				       int16_t **x, int16_t **y, int samples, int nch)
 {
 	ae_int16 *x1;
 	ae_int16 *y1;
@@ -553,15 +570,14 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 	ae_int16 *x0 = (ae_int16 *)*x;
 	ae_int16 *y0 = (ae_int16 *)*y;
 	int remaining_samples = samples;
-	int nch = audio_stream_get_channels(source);
 	const int sample_inc = nch * sizeof(int16_t);
 	const int delay_inc = sizeof(int16_t);
 	ae_int16x4 sample;
 
 	while (remaining_samples) {
-		nbuf = audio_stream_samples_without_wrap_s16(source, x0);
+		nbuf = cir_buf_samples_without_wrap_s16(x0, source->buf_end);
 		npcm = MIN(remaining_samples, nbuf);
-		nbuf = audio_stream_samples_without_wrap_s16(sink, y0);
+		nbuf = cir_buf_samples_without_wrap_s16(y0, sink->buf_end);
 		npcm = MIN(npcm, nbuf);
 		nfrm = npcm / nch;
 		for (ch = 0; ch < nch; ++ch) {
@@ -580,8 +596,8 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 			}
 		}
 		remaining_samples -= npcm;
-		x0 = audio_stream_wrap(source, x0 + npcm);
-		y0 = audio_stream_wrap(sink, y0 + npcm);
+		x0 = cir_buf_wrap(x0 + npcm, source->buf_start, source->buf_end);
+		y0 = cir_buf_wrap(y0 + npcm, sink->buf_start, sink->buf_end);
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, nfrm);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
 	}
@@ -591,15 +607,15 @@ static void drc_delay_input_sample_s16(struct drc_state *state,
 }
 
 static void drc_s16_default(struct processing_module *mod,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
+			    const struct cir_buf_source *source,
+			    struct cir_buf_sink *sink,
 			    uint32_t frames)
 {
-	int16_t *x = audio_stream_get_rptr(source);
-	int16_t *y = audio_stream_get_wptr(sink);
-	int nch = audio_stream_get_channels(source);
-	int samples = frames * nch;
 	struct drc_comp_data *cd = module_get_private_data(mod);
+	int nch = cd->channels;
+	int16_t *x = (int16_t *)source->ptr;
+	int16_t *y = (int16_t *)sink->ptr;
+	int samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
 	int fragment;
@@ -618,7 +634,7 @@ static void drc_s16_default(struct processing_module *mod,
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case.
 		 */
-		drc_delay_input_sample_s16(state, source, sink, &x, &y, samples);
+		drc_delay_input_sample_s16(state, source, sink, &x, &y, samples, nch);
 		return;
 	}
 
@@ -628,8 +644,8 @@ static void drc_s16_default(struct processing_module *mod,
 		state->processed = 1;
 	}
 
-	set_circular_buf0(source->addr, source->end_addr);
-	set_circular_buf1(sink->addr, sink->end_addr);
+	set_circular_buf0((void *)source->buf_start, (void *)source->buf_end);
+	set_circular_buf1(sink->buf_start, sink->buf_end);
 
 	while (frames) {
 		fragment = DRC_DIVISION_FRAMES -
@@ -659,8 +675,8 @@ static void drc_s16_default(struct processing_module *mod,
 		}
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, fragment);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, fragment);
-		x = audio_stream_wrap(source, x + fragment * nch);
-		y = audio_stream_wrap(sink, y + fragment * nch);
+		x = cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + fragment * nch, sink->buf_start, sink->buf_end);
 		frames -= fragment;
 
 		/* Process the input division (32 frames). */
@@ -672,9 +688,9 @@ static void drc_s16_default(struct processing_module *mod,
 
 #if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 static void drc_delay_input_sample_s32(struct drc_state *state,
-				       const struct audio_stream *source,
-				       struct audio_stream *sink,
-				       int32_t **x, int32_t **y, int samples)
+				       const struct cir_buf_source *source,
+				       struct cir_buf_sink *sink,
+				       int32_t **x, int32_t **y, int samples, int nch)
 {
 	ae_int32 *x1;
 	ae_int32 *y1;
@@ -689,14 +705,13 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 	ae_int32x2 sample;
 
 	int remaining_samples = samples;
-	int nch = audio_stream_get_channels(source);
 	const int sample_inc = nch * sizeof(int32_t);
 	const int delay_inc = sizeof(int32_t);
 
 	while (remaining_samples) {
-		nbuf = audio_stream_samples_without_wrap_s32(source, x0);
+		nbuf = cir_buf_samples_without_wrap_s32(x0, source->buf_end);
 		npcm = MIN(remaining_samples, nbuf);
-		nbuf = audio_stream_samples_without_wrap_s32(sink, y0);
+		nbuf = cir_buf_samples_without_wrap_s32(y0, sink->buf_end);
 		npcm = MIN(npcm, nbuf);
 		nfrm = npcm / nch;
 		for (ch = 0; ch < nch; ++ch) {
@@ -718,8 +733,8 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 			}
 		}
 		remaining_samples -= npcm;
-		x0 = audio_stream_wrap(source, x0 + npcm);
-		y0 = audio_stream_wrap(sink, y0 + npcm);
+		x0 = cir_buf_wrap(x0 + npcm, source->buf_start, source->buf_end);
+		y0 = cir_buf_wrap(y0 + npcm, sink->buf_start, sink->buf_end);
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, nfrm);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, nfrm);
 	}
@@ -732,15 +747,15 @@ static void drc_delay_input_sample_s32(struct drc_state *state,
 #if CONFIG_FORMAT_S24LE
 
 static void drc_s24_default(struct processing_module *mod,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
+			    const struct cir_buf_source *source,
+			    struct cir_buf_sink *sink,
 			    uint32_t frames)
 {
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
-	int nch = audio_stream_get_channels(source);
-	int samples = frames * nch;
 	struct drc_comp_data *cd = module_get_private_data(mod);
+	int nch = cd->channels;
+	int32_t *x = (int32_t *)source->ptr;
+	int32_t *y = (int32_t *)sink->ptr;
+	int samples = frames * nch;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
 	int fragment;
@@ -759,7 +774,7 @@ static void drc_s24_default(struct processing_module *mod,
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case. Note: use 32 bit delay function.
 		 */
-		drc_delay_input_sample_s32(state, source, sink, &x, &y, samples);
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, samples, nch);
 		return;
 	}
 
@@ -769,8 +784,8 @@ static void drc_s24_default(struct processing_module *mod,
 		state->processed = 1;
 	}
 
-	set_circular_buf0(source->addr, source->end_addr);
-	set_circular_buf1(sink->addr, sink->end_addr);
+	set_circular_buf0((void *)source->buf_start, (void *)source->buf_end);
+	set_circular_buf1(sink->buf_start, sink->buf_end);
 
 	while (frames) {
 		fragment = DRC_DIVISION_FRAMES -
@@ -807,8 +822,8 @@ static void drc_s24_default(struct processing_module *mod,
 		}
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, fragment);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, fragment);
-		x = audio_stream_wrap(source, x + fragment * nch);
-		y = audio_stream_wrap(sink, y + fragment * nch);
+		x = cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + fragment * nch, sink->buf_start, sink->buf_end);
 		frames -= fragment;
 
 		/* Process the input division (32 frames). */
@@ -820,14 +835,14 @@ static void drc_s24_default(struct processing_module *mod,
 
 #if CONFIG_FORMAT_S32LE
 static void drc_s32_default(struct processing_module *mod,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
+			    const struct cir_buf_source *source,
+			    struct cir_buf_sink *sink,
 			    uint32_t frames)
 {
-	int32_t *x = audio_stream_get_rptr(source);
-	int32_t *y = audio_stream_get_wptr(sink);
-	int nch = audio_stream_get_channels(source);
 	struct drc_comp_data *cd = module_get_private_data(mod);
+	int nch = cd->channels;
+	int32_t *x = (int32_t *)source->ptr;
+	int32_t *y = (int32_t *)sink->ptr;
 	struct drc_state *state = &cd->state;
 	const struct sof_drc_params *p = &cd->config->params; /* Read-only */
 	int fragment;
@@ -846,7 +861,7 @@ static void drc_s32_default(struct processing_module *mod,
 		 * DRC is disabled. We want to do this to match the processing delay of other bands
 		 * in multi-band DRC kernel case.
 		 */
-		drc_delay_input_sample_s32(state, source, sink, &x, &y, frames * nch);
+		drc_delay_input_sample_s32(state, source, sink, &x, &y, frames * nch, nch);
 		return;
 	}
 
@@ -856,8 +871,8 @@ static void drc_s32_default(struct processing_module *mod,
 		state->processed = 1;
 	}
 
-	set_circular_buf0(source->addr, source->end_addr);
-	set_circular_buf1(sink->addr, sink->end_addr);
+	set_circular_buf0((void *)source->buf_start, (void *)source->buf_end);
+	set_circular_buf1(sink->buf_start, sink->buf_end);
 
 	while (frames) {
 		fragment = DRC_DIVISION_FRAMES -
@@ -889,8 +904,8 @@ static void drc_s32_default(struct processing_module *mod,
 		}
 		drc_pre_delay_index_inc(&state->pre_delay_write_index, fragment);
 		drc_pre_delay_index_inc(&state->pre_delay_read_index, fragment);
-		x = audio_stream_wrap(source, x + fragment * nch);
-		y = audio_stream_wrap(sink, y + fragment * nch);
+		x = cir_buf_wrap(x + fragment * nch, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + fragment * nch, sink->buf_start, sink->buf_end);
 		frames -= fragment;
 
 		/* Process the input division (32 frames). */
