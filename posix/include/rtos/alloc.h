@@ -126,6 +126,8 @@ struct vregion;
 struct mod_alloc_ctx {
 	struct k_heap *heap;
 	struct vregion *vreg;
+	uintptr_t vreg_start;
+	size_t vreg_size;
 };
 
 /**
