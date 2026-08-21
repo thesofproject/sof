@@ -51,13 +51,6 @@ struct comp_dev *module_adapter_new(const struct comp_driver *drv,
 	return module_adapter_new_ext(drv, config, spec, NULL, NULL, NULL);
 }
 
-#if CONFIG_MM_DRV
-#define PAGE_SZ CONFIG_MM_DRV_PAGE_SIZE
-#else
-#include <sof/platform.h>
-#define PAGE_SZ HOST_PAGE_SIZE
-#endif
-
 static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *config,
 						  size_t *heap_size)
 {
