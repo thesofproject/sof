@@ -129,7 +129,7 @@ static int mfcc_free(struct processing_module *mod)
 	struct mfcc_comp_data *cd = module_get_private_data(mod);
 
 	comp_info(mod->dev, "entry");
-	ipc_msg_free(cd->msg);
+	mod_ipc_msg_free(mod, cd->msg);
 	cd->msg = NULL;
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	mfcc_free_buffers(mod);

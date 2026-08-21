@@ -15,6 +15,7 @@
 #include <sof/ipc/topology.h>
 #include <sof/ipc/common.h>
 #include <sof/ipc/msg.h>
+#include <sof/ipc/ipc_msg_list_remove.h>
 #include <sof/ipc/driver.h>
 #include <sof/ipc/schedule.h>
 #include <rtos/alloc.h>
@@ -39,6 +40,7 @@
 
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
+#include <zephyr/internal/syscall_handler.h>
 #endif
 
 #ifdef CONFIG_SOF_USERSPACE_LL
@@ -63,6 +65,50 @@ struct ipc *ipc_get(void)
 	return &ipc_context;
 }
 #endif
+
+struct ipc_msg *ipc_msg_w_ext_init(struct k_heap *heap, uint32_t header,
+				   uint32_t extension, uint32_t size)
+{
+	struct ipc_msg *msg;
+
+	if (heap) {
+		msg = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				     sizeof(*msg), 0);
+		if (msg)
+			memset(msg, 0, sizeof(*msg));
+	} else {
+		msg = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*msg));
+	}
+	if (!msg)
+		return NULL;
+
+	if (size) {
+		if (heap) {
+			msg->tx_data = sof_heap_alloc(heap,
+					SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					size, 0);
+			if (msg->tx_data)
+				memset(msg->tx_data, 0, size);
+		} else {
+			msg->tx_data = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					       size);
+		}
+		if (!msg->tx_data) {
+			if (heap)
+				sof_heap_free(heap, msg);
+			else
+				rfree(msg);
+			return NULL;
+		}
+	}
+
+	msg->header = header;
+	msg->extension = extension;
+	msg->tx_size = size;
+	list_init(&msg->list);
+
+	return msg;
+}
 
 int ipc_process_on_core(uint32_t core, bool blocking)
 {
@@ -237,7 +283,11 @@ __cold void ipc_msg_send_direct(struct ipc_msg *msg, void *data)
 	k_spin_unlock(&ipc->lock, key);
 }
 
+#ifdef CONFIG_SOF_USERSPACE_LL
+void z_impl_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+#else
 void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+#endif
 {
 	struct ipc *ipc = ipc_get();
 	k_spinlock_key_t key;
@@ -282,6 +332,53 @@ void ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
 	k_spin_unlock(&ipc->lock, key);
 }
 EXPORT_SYMBOL(ipc_msg_send);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+static inline bool z_vrfy_ipc_msg_send_check_data(struct ipc_msg *msg, void *data)
+{
+	K_OOPS(K_SYSCALL_VERIFY(msg->tx_size <= SOF_IPC_MSG_MAX_SIZE));
+
+	if (msg->tx_size > 0) {
+                K_OOPS(K_SYSCALL_VERIFY(msg->tx_data != NULL));
+                K_OOPS(K_SYSCALL_MEMORY_WRITE(msg->tx_data, msg->tx_size));
+        }
+
+	/* If data != NULL and tx_size > 0, verify the data buffer */
+	if (data && msg->tx_size > 0)
+		K_OOPS(K_SYSCALL_MEMORY_READ(data, msg->tx_size));
+
+	return true;
+}
+
+void z_vrfy_ipc_msg_send(struct ipc_msg *msg, void *data, bool high_priority)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(msg, sizeof(*msg)));
+
+	z_vrfy_ipc_msg_send_check_data(msg, data);
+
+	z_impl_ipc_msg_send(msg, data, high_priority);
+}
+#include <zephyr/syscalls/ipc_msg_send_mrsh.c>
+#endif
+
+void z_impl_ipc_msg_list_remove(struct ipc_msg *msg)
+{
+	struct ipc *ipc = ipc_get();
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&ipc->lock);
+	list_item_del(&msg->list);
+	k_spin_unlock(&ipc->lock, key);
+}
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+void z_vrfy_ipc_msg_list_remove(struct ipc_msg *msg)
+{
+	K_OOPS(K_SYSCALL_MEMORY_WRITE(msg, sizeof(*msg)));
+	z_impl_ipc_msg_list_remove(msg);
+}
+#include <zephyr/syscalls/ipc_msg_list_remove_mrsh.c>
+#endif
 
 #ifdef __ZEPHYR__
 static void ipc_work_handler(struct k_work *work)
