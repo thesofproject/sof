@@ -148,7 +148,7 @@ int mux_params(struct processing_module *mod)
 	int ret;
 
 	cfg = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
-	if (!cfg || blob_size > MUX_BLOB_MAX_SIZE) {
+	if (!cfg || blob_size != sizeof(*cfg)) {
 		comp_err(mod->dev, "illegal blob size %zu", blob_size);
 		return -EINVAL;
 	}
