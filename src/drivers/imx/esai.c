@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(esai, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(esai);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(esai_tr, SOF_UUID(esai_uuid), LOG_LEVEL_INFO);
 
 struct esai_pdata {
@@ -429,7 +430,9 @@ static int esai_get_hw_params(struct dai *dai,
 const struct dai_driver esai_driver = {
 	.type = SOF_DAI_IMX_ESAI,
 	.uid = SOF_UUID(esai_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &esai_tr,
+#endif
 	.dma_dev = DMA_DEV_ESAI,
 	.ops = {
 		.trigger		= esai_trigger,

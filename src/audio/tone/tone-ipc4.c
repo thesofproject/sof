@@ -222,6 +222,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(tone_tr, SOF_UUID(tone_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tone_interface, tone_uuid, tone_tr);
 SOF_MODULE_INIT(tone, sys_comp_module_tone_interface_init);

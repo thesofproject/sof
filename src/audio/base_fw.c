@@ -41,6 +41,7 @@
 LOG_MODULE_REGISTER(basefw, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(basefw);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(basefw_comp_tr, SOF_UUID(basefw_uuid), LOG_LEVEL_INFO);
 
 static struct ipc4_system_time_info global_system_time_info;
@@ -850,7 +851,9 @@ __cold static int basefw_set_large_config(struct comp_dev *dev, uint32_t param_i
 
 static const struct comp_driver comp_basefw = {
 	.uid	= SOF_RT_UUID(basefw_uuid),
+#ifndef __ZEPHYR__
 	.tctx	= &basefw_comp_tr,
+#endif
 	.ops	= {
 		.get_large_config = basefw_get_large_config,
 		.set_large_config = basefw_set_large_config,

@@ -25,6 +25,7 @@
 
 SOF_DEFINE_REG_UUID(irq_acp);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_irq_tr, SOF_UUID(irq_acp_uuid), LOG_LEVEL_INFO);
 
 #define IRQ_INT_MASK(irq)	(1 << (irq))

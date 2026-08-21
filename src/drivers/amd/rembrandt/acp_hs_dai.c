@@ -20,6 +20,7 @@
 #include <platform/chip_offset_byte.h>
 
 SOF_DEFINE_REG_UUID(hsdai);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(hsdai_tr, SOF_UUID(hsdai_uuid), LOG_LEVEL_INFO);
 
 #if defined(__ZEPHYR__)
@@ -193,7 +194,9 @@ static int hsdai_get_hw_params(struct dai *dai,
 const struct dai_driver acp_hsdai_driver = {
 	.type = SOF_DAI_AMD_HS,
 	.uid = SOF_UUID(hsdai_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &hsdai_tr,
+#endif
 	.dma_dev = SOF_DMA_DEV_SP,
 	.dma_caps = SOF_DMA_CAP_SP,
 	.ops = {

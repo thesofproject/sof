@@ -26,6 +26,7 @@
 
 SOF_DEFINE_REG_UUID(afe_dai);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(afe_dai_tr, SOF_UUID(afe_dai_uuid), LOG_LEVEL_INFO);
 LOG_MODULE_DECLARE(mtk_afe, CONFIG_SOF_LOG_LEVEL);
 
@@ -100,7 +101,9 @@ static int afe_dai_drv_get_fifo(struct dai *dai, int direction, int stream_id)
 const struct dai_driver afe_dai_driver = {
 	.type = SOF_DAI_MEDIATEK_AFE,
 	.uid = SOF_UUID(afe_dai_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &afe_dai_tr,
+#endif
 	.dma_dev = SOF_DMA_DEV_AFE_MEMIF,
 	.ops = {
 		.trigger		= afe_dai_drv_trigger,

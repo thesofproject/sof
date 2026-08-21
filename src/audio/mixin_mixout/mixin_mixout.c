@@ -1052,10 +1052,12 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(mixin_tr, SOF_UUID(mixin_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(mixin_interface, mixin_uuid, mixin_tr);
 SOF_MODULE_INIT(mixin, sys_comp_module_mixin_interface_init);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(mixout_tr, SOF_UUID(mixout_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(mixout_interface, mixout_uuid, mixout_tr);
 SOF_MODULE_INIT(mixout, sys_comp_module_mixout_interface_init);

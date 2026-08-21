@@ -37,6 +37,7 @@ extern uint32_t dmic_rngbuff_size;
 struct acp_dmic_silence acp_initsilence;
 
 SOF_DEFINE_REG_UUID(acp_dmic_dma_common);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_dmic_dma_tr, SOF_UUID(acp_dmic_dma_common_uuid), LOG_LEVEL_INFO);
 
 /* allocate next free DMA channel */

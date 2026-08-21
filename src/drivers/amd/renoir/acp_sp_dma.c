@@ -35,6 +35,7 @@
 #include <platform/acp_sp_dma.h>
 
 SOF_DEFINE_REG_UUID(acp_sp);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_sp_rn_tr, SOF_UUID(acp_sp_uuid), LOG_LEVEL_INFO);
 
 static uint64_t prev_tx_pos;

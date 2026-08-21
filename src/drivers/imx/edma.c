@@ -23,6 +23,7 @@ LOG_MODULE_REGISTER(edma, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(edma);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(edma_tr, SOF_UUID(edma_uuid), LOG_LEVEL_INFO);
 
 static void chan_addr_convert(struct dma_chan_data *channel, uint32_t *sbase, uint32_t *dbase)

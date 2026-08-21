@@ -43,6 +43,7 @@ static SHARED_DATA struct idc_payload static_payload[CONFIG_CORE_COUNT];
 
 SOF_DEFINE_REG_UUID(idc);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(idc_tr, SOF_UUID(idc_uuid), LOG_LEVEL_INFO);
 
 SOF_DEFINE_REG_UUID(idc_task);

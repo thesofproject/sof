@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(schedule, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(schedule);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(sch_tr, SOF_UUID(schedule_uuid), LOG_LEVEL_INFO);
 
 static inline bool scheduler_is_user(int type)

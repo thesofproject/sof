@@ -31,6 +31,7 @@ LOG_MODULE_REGISTER(dma, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dma);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dma_tr, SOF_UUID(dma_uuid), LOG_LEVEL_INFO);
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS

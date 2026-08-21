@@ -590,13 +590,16 @@ static int selector_reset(struct comp_dev *dev)
 	return ret;
 }
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(selector_tr, SOF_UUID(selector_uuid), LOG_LEVEL_INFO);
 
 /** \brief Selector component definition. */
 static const struct comp_driver comp_selector = {
 	.type	= SOF_COMP_SELECTOR,
 	.uid	= SOF_RT_UUID(selector_uuid),
+#ifndef __ZEPHYR__
 	.tctx	= &selector_tr,
+#endif
 	.ops	= {
 		.create		= selector_new,
 		.free		= selector_free,
@@ -1176,6 +1179,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(selector_tr, SOF_UUID(selector4_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(selector_interface, selector4_uuid, selector_tr);
 SOF_MODULE_INIT(selector, sys_comp_module_selector_interface_init);

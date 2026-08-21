@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(clock, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(clock);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(clock_tr, SOF_UUID(clock_uuid), LOG_LEVEL_INFO);
 
 SHARED_DATA struct k_spinlock clk_lock;

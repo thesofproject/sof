@@ -446,12 +446,15 @@ static int ghd_prepare(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(ghd_tr, SOF_UUID(ghd_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver ghd_driver = {
 	.type	= SOF_COMP_KEYWORD_DETECT,
 	.uid	= SOF_RT_UUID(ghd_uuid),
+#ifndef __ZEPHYR__
 	.tctx	= &ghd_tr,
+#endif
 	.ops	= {
 		.create		= ghd_create,
 		.free		= ghd_free,

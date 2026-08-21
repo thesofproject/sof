@@ -333,6 +333,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(mfcc_tr, SOF_UUID(mfcc_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(mfcc_interface, mfcc_uuid, mfcc_tr);
 SOF_MODULE_INIT(mfcc, sys_comp_module_mfcc_interface_init);

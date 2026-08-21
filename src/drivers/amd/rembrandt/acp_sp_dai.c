@@ -20,6 +20,7 @@
 #include <platform/chip_offset_byte.h>
 
 SOF_DEFINE_REG_UUID(spdai);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(spdai_tr, SOF_UUID(spdai_uuid), LOG_LEVEL_INFO);
 
 static inline int spdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
@@ -79,7 +80,9 @@ static int spdai_get_hw_params(struct dai *dai,
 const struct dai_driver acp_spdai_driver = {
 	.type = SOF_DAI_AMD_SP,
 	.uid = SOF_UUID(spdai_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &spdai_tr,
+#endif
 	.dma_dev = SOF_DMA_DEV_SP,
 	.dma_caps = SOF_DMA_CAP_SP,
 	.ops = {
