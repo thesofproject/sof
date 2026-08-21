@@ -289,8 +289,14 @@ if (CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
 		${SOF_PLATFORM_PATH}/novalake/lib/clk.c
 	)
 
+	# vpage.c is the shared virtual-page allocator: needed by the vregion
+	# pipeline-resource allocator (CONFIG_SOF_VREGIONS) and independently by
+	# the LLEXT library manager (CONFIG_LIBRARY_MANAGER) for library VMAs.
+	if(CONFIG_SOF_VREGIONS OR CONFIG_LIBRARY_MANAGER)
+		zephyr_library_sources(lib/vpage.c)
+	endif()
+
 	zephyr_library_sources_ifdef(CONFIG_SOF_VREGIONS
-		lib/vpage.c
 		lib/vregion.c
 	)
 

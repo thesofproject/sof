@@ -20,7 +20,7 @@
 #include <rtos/spinlock.h>
 #include <sof/lib/cpu-clk-manager.h>
 #include <sof/lib_manager.h>
-#include <sof/lib/regions_mm.h>
+#include <sof/lib/vpage.h>
 #include <sof/llext_manager.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/module_adapter/module/modules.h>
@@ -51,6 +51,94 @@ LOG_MODULE_DECLARE(lib_manager, CONFIG_SOF_LOG_LEVEL);
 extern struct tr_ctx lib_manager_tr;
 
 #define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
+
+#include <zephyr/llext/elf.h>
+
+static uintptr_t llext_manager_alloc_vma(size_t size)
+{
+	size_t num_pages = ALIGN_UP(size, PAGE_SZ) / PAGE_SZ;
+	void *vma;
+
+	vma = vpage_reserve(num_pages);
+	if (!vma) {
+		tr_err(&lib_manager_tr, "llext_manager_alloc_vma: failed to reserve %zu pages",
+		       num_pages);
+		return 0;
+	}
+
+	return (uintptr_t)vma;
+}
+
+void llext_manager_free_vma(uintptr_t vma, size_t size)
+{
+	if (!vma || !size)
+		return;
+
+	vpage_release((void *)vma);
+}
+
+static enum llext_mem llext_manager_get_sec_mem_idx(const char *name, const elf_shdr_t *shdr)
+{
+	if (strcmp(name, ".exported_sym") == 0)
+		return LLEXT_MEM_EXPORT;
+
+	switch (shdr->sh_type) {
+	case SHT_NOBITS:
+		return LLEXT_MEM_BSS;
+	case SHT_PROGBITS:
+		if (shdr->sh_flags & SHF_EXECINSTR)
+			return LLEXT_MEM_TEXT;
+		else if (shdr->sh_flags & SHF_WRITE)
+			return LLEXT_MEM_DATA;
+		else
+			return LLEXT_MEM_RODATA;
+	case SHT_PREINIT_ARRAY:
+		return LLEXT_MEM_PREINIT;
+	case SHT_INIT_ARRAY:
+		return LLEXT_MEM_INIT;
+	case SHT_FINI_ARRAY:
+		return LLEXT_MEM_FINI;
+	default:
+		return LLEXT_MEM_COUNT;
+	}
+}
+
+static size_t llext_manager_layout_sections(uint8_t *elf_buf, uintptr_t vma_base)
+{
+	elf_ehdr_t *hdr = (elf_ehdr_t *)elf_buf;
+	elf_shdr_t *shdrs = (elf_shdr_t *)(elf_buf + hdr->e_shoff);
+	elf_shdr_t *shstr_shdr = shdrs + hdr->e_shstrndx;
+	const char *shstrtab = (const char *)(elf_buf + shstr_shdr->sh_offset);
+
+	uintptr_t current_vma = vma_base;
+	enum llext_mem last_region = LLEXT_MEM_COUNT;
+
+	for (int i = 0; i < hdr->e_shnum; i++) {
+		elf_shdr_t *shdr = shdrs + i;
+
+		if (!(shdr->sh_flags & SHF_ALLOC) || shdr->sh_size == 0)
+			continue;
+
+		const char *name = shstrtab + shdr->sh_name;
+		enum llext_mem s_region = llext_manager_get_sec_mem_idx(name, shdr);
+
+		if (s_region == LLEXT_MEM_COUNT)
+			continue;
+
+		if (last_region != LLEXT_MEM_COUNT && last_region != s_region) {
+			current_vma = ALIGN_UP(current_vma, PAGE_SZ);
+		}
+		last_region = s_region;
+
+		current_vma = ALIGN_UP(current_vma, shdr->sh_addralign);
+		if (vma_base) {
+			shdr->sh_addr = current_vma;
+		}
+		current_vma += shdr->sh_size;
+	}
+
+	return current_vma - vma_base;
+}
 
 static int llext_manager_update_flags(void __sparse_cache *vma, size_t size, uint32_t flags)
 {
@@ -260,19 +348,10 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	const struct llext_loader *ldr = &mctx->ebl->loader;
 	const struct llext *ext = mctx->llext;
 
-	/* find dedicated virtual memory zone */
-	const struct sys_mm_drv_region *virtual_memory_regions = sys_mm_drv_query_memory_regions();
-	const struct sys_mm_drv_region *virtual_region;
+	/* use the shared virtual page allocator's memory region */
+	const struct sys_mm_drv_region *virtual_region = vpage_get_region();
 
-	if (!virtual_memory_regions)
-		return -EFAULT;
-
-	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, virtual_region) {
-		if (virtual_region->attr == VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR)
-			break;
-	}
-
-	if (!virtual_region->size)
+	if (!virtual_region || !virtual_region->size)
 		return -EFAULT;
 
 	/* Copy Code */
@@ -411,6 +490,26 @@ static int llext_manager_link(const char *name,
 	}
 
 	if (!*llext || mctx->mapped) {
+		if (!*llext) {
+			uint8_t *elf_buf = (uint8_t *)mctx->ebl->buf;
+			size_t total_size = llext_manager_layout_sections(elf_buf, 0);
+			if (total_size == 0) {
+				tr_err(&lib_manager_tr, "llext_manager_link: layout sections failed");
+				return -EINVAL;
+			}
+
+			uintptr_t vma_base = llext_manager_alloc_vma(total_size);
+			if (!vma_base) {
+				tr_err(&lib_manager_tr, "llext_manager_link: VMA allocation failed");
+				return -ENOMEM;
+			}
+
+			mctx->vma_base = vma_base;
+			mctx->vma_size = total_size;
+
+			llext_manager_layout_sections(elf_buf, vma_base);
+		}
+
 		/*
 		 * Either the very first time loading this module, or the module
 		 * is already mapped, we just call llext_load() to refcount it
@@ -423,8 +522,15 @@ static int llext_manager_link(const char *name,
 		};
 
 		ret = llext_load(ldr, name, llext, &ldr_parm);
-		if (ret)
+		if (ret) {
+			tr_err(&lib_manager_tr, "llext_load failed: ret=%d", ret);
+			if (mctx->vma_base) {
+				llext_manager_free_vma(mctx->vma_base, mctx->vma_size);
+				mctx->vma_base = 0;
+				mctx->vma_size = 0;
+			}
 			return ret;
+		}
 	}
 
 	/* All code sections */
@@ -1181,16 +1287,3 @@ bool comp_is_llext(struct comp_dev *comp)
 	return mod && module_is_llext(mod);
 }
 
-static int llext_memory_region_init(void)
-{
-	int ret;
-
-	/* add a region for loadable libraries */
-	ret = adsp_add_virtual_memory_region(CONFIG_LIBRARY_BASE_ADDRESS,
-					     CONFIG_LIBRARY_REGION_SIZE,
-					     VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR);
-
-	return ret;
-}
-
-SYS_INIT(llext_memory_region_init, POST_KERNEL, 1);
