@@ -19,14 +19,7 @@
 #include <rtos/symbol.h>
 #include <ipc/topology.h>
 
-#ifdef __ZEPHYR__
 #include <zephyr/logging/log.h>
-#else
-#define LOG_DBG(...) do {} while (0)
-#define LOG_INF(...) do {} while (0)
-#define LOG_WRN(...) do {} while (0)
-#define LOG_ERR(...) do {} while (0)
-#endif
 
 struct sof_fast_get_entry {
 	const void *dram_ptr;
@@ -154,7 +147,7 @@ const void *fast_get(struct mod_alloc_ctx *alloc, const void *dram_ptr, size_t s
 
 	if (entry->sram_ptr) {
 		if (entry->size != size || entry->dram_ptr != dram_ptr) {
-			LOG_ERR("size %u != %u or ptr %p != %p mismatch",
+			LOG_ERR("size %zu != %zu or ptr %p != %p mismatch",
 				entry->size, size, entry->dram_ptr, dram_ptr);
 			ret = NULL;
 			goto out;
