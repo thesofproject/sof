@@ -423,14 +423,17 @@ static int lib_manager_free_module(const uint32_t component_id)
 
 	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
 
+	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	const struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+
+	if (llext_manager_mod_find(ctx, entry_index) >= 0)
+		return llext_manager_free_module(component_id);
+
 	mod = lib_manager_get_module_manifest(module_id);
 	if (!mod) {
 		tr_err(&lib_manager_tr, "failed to get module descriptor");
 		return -EINVAL;
 	}
-
-	if (module_is_llext(mod))
-		return llext_manager_free_module(component_id);
 
 	ret = lib_manager_unload_module(mod);
 	if (ret < 0)
