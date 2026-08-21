@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2026 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Secondary DSP cores are started on demand, not at kernel boot.
+ * Replaces the former CONFIG_SMP_BOOT_DELAY=y default.
+ */
+
+&cpu1 {
+	zephyr,deferred-start;
+};
+
+&cpu2 {
+	zephyr,deferred-start;
+};
