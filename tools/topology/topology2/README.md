@@ -242,6 +242,8 @@ default ID ranges for the same endpoint types.
 | Jack Echo Ref | 11 | `SDW_JACK_ECHO_REF_PCM_ID` |
 | Speaker Echo Ref | 12 | `SDW_SPK_ECHO_REF_PCM_ID` |
 | Bluetooth | 2 or 20 | `BT_PCM_ID` |
+| USB Audio Offload (UAOL) | 21 | `UAOL_PCM_ID` |
+| Deepbuffer UAOL | 22 | `DEEP_BUFFER_PCM_ID` |
 | Deep Buffer (Jack) | 31 | `DEEP_BUFFER_PCM_ID` |
 | Deep Buffer (Speaker) | 35 | `DEEP_BUFFER_PCM_ID_2` |
 | DMIC Deep Buffer | 46 | `DMIC0_DEEP_BUFFER_PCM_ID` |
@@ -301,6 +303,9 @@ is at N1 (50/51, 60/61, 70/71, 80/81).
 | HDMI 4 Host / DAI | 80 / 81 | `HDMI4_HOST_PIPELINE_ID` / `HDMI4_DAI_PIPELINE_ID` |
 | Compress Jack / Speaker | 90 / 92 | `COMPR_PIPELINE_ID` / `COMPR_2_PIPELINE_ID` |
 | PCH DMIC0 Host / DAI | 100 / 101 | `DMIC0_HOST_PIPELINE_ID` / `DMIC0_DAI_PIPELINE_ID` |
+| UAOL Playback Host / DAI | 210 / 211 | `UAOL_PB_HOST_PIPELINE_ID` / `UAOL_PB_DAI_PIPELINE_ID` |
+| UAOL Capture Host / DAI | 212 / 213 | `UAOL_CP_HOST_PIPELINE_ID` / `UAOL_CP_DAI_PIPELINE_ID` |
+| UAOL Deepbuffer | 214 | `DEEP_BUFFER_PIPELINE_ID` |
 
 **Intel HDA Pipeline IDs:**
 
