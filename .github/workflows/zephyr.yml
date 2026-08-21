@@ -34,7 +34,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.0
+      image: thesofproject/zephyr-lite:v0.29.3-rc1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -79,12 +79,12 @@ jobs:
   # sof/scripts/xtensa-build-zephyr.py configuration script. Then this
   # job will be disappear, folded back in the regular build-* jobs below.
   LP64-WIP:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.0
+      image: thesofproject/zephyr-lite:v0.29.3-rc1
 
     steps:
       - uses: actions/checkout@v4
@@ -110,12 +110,12 @@ jobs:
             -DEXTRA_AFLAGS=-Werror
 
   build-linux:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         shell: bash
     container:
-      image: thesofproject/zephyr-lite:v0.29.0
+      image: thesofproject/zephyr-lite:v0.29.3-rc1
     strategy:
       fail-fast: false
       matrix:
