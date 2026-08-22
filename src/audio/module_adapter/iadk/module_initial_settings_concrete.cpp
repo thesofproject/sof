@@ -54,11 +54,11 @@ ModuleInitialSettingsConcrete::ModuleInitialSettingsConcrete(DwordArray const &c
 		const size_t computed_msg_size =
 			sizeof(CompoundCfg) -
 			/* CompoundCfg already contains one InputPinFormat and
-			 * one InputPinFormat
+			 * one OutputPinFormat
 			 */
 			(sizeof(InputPinFormat) + sizeof(OutputPinFormat)) +
 			unvalidated_compound_cfg->cfg_ext.nb_input_pins*sizeof(InputPinFormat) +
-			unvalidated_compound_cfg->cfg_ext.nb_output_pins*sizeof(InputPinFormat);
+			unvalidated_compound_cfg->cfg_ext.nb_output_pins*sizeof(OutputPinFormat);
 
 		/* check size consistency */
 		if (ipc_msg_size != computed_msg_size) {
