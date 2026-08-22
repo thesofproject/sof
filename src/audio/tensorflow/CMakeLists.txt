@@ -1,6 +1,19 @@
 # Copyright (c) 2025 Intel Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
+# Newer xt-clang LLVMs accept this to keep literals in .rodata; older
+# xt-clang (e.g. RI-2022.10, LLVM 10) rejects the sub-option. Detect it.
+set(TFLM_TEXT_SECTION_LITERALS_FALSE_FLAG "")
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag("-mllvm --text-section-literals=false"
+    TFLM_HAS_MLLVM_TEXT_SECTION_LITERALS_FALSE)
+  if(TFLM_HAS_MLLVM_TEXT_SECTION_LITERALS_FALSE)
+    set(TFLM_TEXT_SECTION_LITERALS_FALSE_FLAG -mllvm --text-section-literals=false)
+    add_compile_options(${TFLM_TEXT_SECTION_LITERALS_FALSE_FLAG})
+  endif()
+endif()
+
 # are we building the llext module ?
 if(CONFIG_COMP_TENSORFLOW STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(llext ${PROJECT_BINARY_DIR}/tflm_llext)
@@ -8,73 +21,68 @@ if(CONFIG_COMP_TENSORFLOW STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   return()
 endif()
 
-# TODO: detect Hifi4/5 for NN lib kernels
+# nnlib-hifi4's NN kernels are HiFi4-specific (HiFi4 TIE intrinsics/headers);
+# they don't exist for HiFi3 targets (e.g. tgl/cavs2.5) and there is no
+# nnlib-hifi3 equivalent checked out. Gate on the actual core ISA
+# (CONFIG_XTENSA_HIFI4), not just "is the compiler Clang" -- Clang is also
+# used to build for HiFi3 targets, where this library must not be built.
+set(TENSORFLOW_HAVE_NNLIB_HIFI4 FALSE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CONFIG_XTENSA_HIFI4)
+  set(TENSORFLOW_HAVE_NNLIB_HIFI4 TRUE)
+endif()
+
 set(NN_HIFI_PATH ${sof_top_dir}/../nnlib-hifi4/xa_nnlib)
 
-# paths for dependencies
-set(TFLM_PATH ${sof_top_dir}/../tflite-micro)
-set(FLATBUFFERS_PATH ${sof_top_dir}/../flatbuffers)
-set(GEMMLOWP_PATH ${sof_top_dir}/../gemmlowp)
-set(RUY_PATH ${sof_top_dir}/../ruy)
+# paths for dependencies (each may be overridden with -D<var>=<path>)
+if(NOT TFLM_PATH)
+	set(TFLM_PATH ${sof_top_dir}/../tflite-micro)
+endif()
+if(NOT FLATBUFFERS_PATH)
+	set(FLATBUFFERS_PATH ${sof_top_dir}/../flatbuffers)
+endif()
+if(NOT GEMMLOWP_PATH)
+	set(GEMMLOWP_PATH ${sof_top_dir}/../gemmlowp)
+endif()
+if(NOT RUY_PATH)
+	set(RUY_PATH ${sof_top_dir}/../ruy)
+endif()
+
+# Toolchain include dirs are per-platform (SOC_TOOLCHAIN_NAME matches both
+# the zephyr-sdk gnu/xtensa-<name>_zephyr-elf toolchain dir and the
+# modules/hal/xtensa/zephyr/soc/<name> HAL dir for every supported SoC).
+set(TFLM_TOOLCHAIN_INCLUDE_ROOT
+	${ZEPHYR_SDK_INSTALL_DIR}/gnu/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/include)
+set(TFLM_HAL_SOC_PATH ${sof_top_dir}/../modules/hal/xtensa/zephyr/soc/${SOC_TOOLCHAIN_NAME})
+
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
 
 add_library(nn_hifi_lib STATIC
 	${NN_HIFI_PATH}/algo/common/src/xa_nnlib_common_api.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_pad_8.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_stride_slice_int16.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_batch_to_space_nd_8.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_transpose_8.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_depth_to_space_8.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_pad_16.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_stride_slice_int32.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_space_to_batch_nd_8.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_pad_32.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_stride_slice_int8.c
-	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_space_to_depth_8.c
 	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_activations_32_32.c
 	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_activations_f32_f32.c
-	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_activations_sym16_sym16.c
-	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_softmax_asym8_asym8.c
-	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_activations_32_16.c
-	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_activations_16_16.c
-	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_activations_8_8.c
-	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_activations_asym16_asym16.c
-	${NN_HIFI_PATH}/algo/kernels/activations/hifi4/xa_nn_activations_32_8.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_16x16_16_circ_nb.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_16x16.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise_16x16.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_transpose_conv_circ_buf.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_group_sym8sxasym8s.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_asym8xasym8_asym8_circ_nb.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise_sym8sxasym8s.c
+	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_add_f32.c
+	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_sub_f32.c
+	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_mul_f32.c
+	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_abs_f32.c
+	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/nanf_tbl.c
+	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/inff_tbl.c
+	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/pow2f_tbl.c
+	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/expf_tbl.c
+
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_8x8_8_circ.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_sym8sxsym16s.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_8x16.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_circ_buf.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_8x8.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_16x16_16_circ.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_transpose_conv_f32.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise_f32.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_f32_circ.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_circ_buf.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_transpose_conv_sym8sxasym8s.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_8x16_16_circ.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_sym8sxsym16s_sym16s_circ.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv1d_std_8x8.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_8x16.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_sym8sxsym16s.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_f32.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_f32_circ_nb.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_sym8sxasym8s.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_asym8xasym8_asym8_circ.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_sym8sxasym8s.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise_8x8.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_transpose_conv_sym8sxsym16s.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_f32.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv1d_std_8x16.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_8x8.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_16x16.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_sym8sxasym8s_asym8s_circ.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_pointwise_asym8xasym8.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_asym8xasym8.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv1d_std_circ_buf.c
@@ -82,117 +90,11 @@ add_library(nn_hifi_lib STATIC
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_8x16_16_circ_nb.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv1d_std_16x16.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_matXvec_8x8_8_circ_nb.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_std_sym4sxasym8s.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv1d_std_f32.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise_sym8sxsym16s.c
 	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise_asym8xasym8.c
-	${NN_HIFI_PATH}/algo/kernels/cnn/hifi4/xa_nn_conv2d_depthwise_8x16.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matmul_f32.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_asym8xasym8_batch.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matmul_sym8sxasym8s.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matmul_8x8.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matmul_8x16.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_asym4sxasym8s.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matmul_sym8sxsym16s.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_f32_batch.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_f32.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_16x16_batch.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_sym8sxsym16s.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matmul_asym8sxasym8s.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_16x8.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_8x16.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_8x8.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_asym8sxasym8s.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matmul_asym8xasym8.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matmul_16x16.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_8x16_batch.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_16x16.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_asym8xasym8.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_sym8sxasym8s.c
-	${NN_HIFI_PATH}/algo/kernels/matXvec/hifi4/xa_nn_matXvec_8x8_batch.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool_f32.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool_8.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool_asym8_nhwc.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool_f32_nhwc.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool_16_nhwc.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool_16.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool_16_nhwc.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool_asym8.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_inv_256_tbl.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool_8_nhwc.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool_16.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool_8.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool_f32_nhwc.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool_asym8_nhwc.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool_f32.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_maxpool_asym8.c
-	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_avgpool_8_nhwc.c
-	${NN_HIFI_PATH}/algo/kernels/norm/hifi4/xa_nn_l2_norm_asym8s.c
-	${NN_HIFI_PATH}/algo/kernels/norm/hifi4/xa_nn_l2_norm_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_sqrt_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_mul_16x16.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_add_quant8.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_mul_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_lstm_utils.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_dot_prod_16x16.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_sub_quant16.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_round_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_mul_acc_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_cosine_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_reduce_asym8s_asym8s.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_memset_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_floor_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_squared_diff_quant8.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_add_quant16.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_reduce_asym16s_asym16s.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_minmax_8.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_logn_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_div_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_sub_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_compare_quant8.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_logical_bool.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_broadcast_8_8.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_quantize.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_neg_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_mul_quant16.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_add_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_vec_interpolation_q15.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_square_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_sine_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_abs_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_memmove.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_mul_quant8.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_squared_diff_quant16.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_memmove_16.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_sub_quant8.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_ceil_f32.c
-	${NN_HIFI_PATH}/algo/kernels/basic/hifi4/xa_nn_elm_rsqrt_f32.c
 	${NN_HIFI_PATH}/algo/kernels/fc/hifi4/xa_nn_fully_connected.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_tanh32x32_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/scl_sigmoidf_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/inv2pif_tbl.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/nanf_tbl.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/pow2f_tbl.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_sigmoidf_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_reluf_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/expf_tbl.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_tanhf_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_sigmoid32x32_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/lognf_tbl.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/sinf_tbl.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_cosinef_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_sinef_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_softmaxf_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/scl_tanhf_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_softmax32x32_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_lognf_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/sqrt2f_tbl.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/inff_tbl.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_alognf_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/vec_relu32x32_hifi4.c
-	${NN_HIFI_PATH}/algo/ndsp/hifi4/src/tanhf_tbl.c
+	${NN_HIFI_PATH}/algo/kernels/pool/hifi4/xa_nn_inv_256_tbl.c
+	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_transpose_8.c
+	${NN_HIFI_PATH}/algo/kernels/reorg/hifi4/xa_nn_pad_8.c
 )
 
 target_include_directories(nn_hifi_lib PRIVATE
@@ -200,30 +102,62 @@ target_include_directories(nn_hifi_lib PRIVATE
 	${NN_HIFI_PATH}/algo/common/include/
 	${NN_HIFI_PATH}/include/nnlib/
 	${NN_HIFI_PATH}/algo/ndsp/hifi4/include
+	${TFLM_TOOLCHAIN_INCLUDE_ROOT}
+	${TFLM_HAL_SOC_PATH}
 )
 
+target_compile_options(nn_hifi_lib PRIVATE
+  ${TFLM_TEXT_SECTION_LITERALS_FALSE_FLAG}
+)
+
+endif() # TENSORFLOW_HAVE_NNLIB_HIFI4
+
+
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
+
 # TODO: Need to detect and add mul16/32 options.
-#ifeq "$(has_mul16)" "0"
-#CFLAGS += -mno-mul16
-#endif
-#ifeq "$(has_mul32)" "0"
-#CFLAGS += -mno-mul32 -mno-div32
-#endif
+target_compile_definitions(nn_hifi_lib PRIVATE
+	-DHIFI4=1
+	-DHAVE_VFPU=1
+	-DHAVE_VFPU_SINGLE_PRECISION=1
+	-DXCHAL_HAVE_HIFI4=1
+	-DXCHAL_HAVE_HIFI4_VFPU=1
+
+	__xtensa__=1
+	__XTENSA__=1
+	__XCC__
+	__XCC_CLANG__
+	"XT_MAX(a,b)=((a)>(b)?(a):(b))"
+	"XT_MIN(a,b)=((a)<(b)?(a):(b))"
+	"AE_MOVINT16_FROMINT32(v)=((ae_int16)(v))"
+	"AE_CVT64F32_H(v)=((ae_int64)(int64_t)(int32_t)AE_MOVAD32_H(v))"
+	"AE_CVT64F32_L(v)=((ae_int64)(int64_t)(int32_t)AE_MOVAD32_L(v))"
+)
+
 target_compile_options(nn_hifi_lib PRIVATE
 	-fsigned-char
 	-fno-exceptions
 	-mlongcalls
-	-INLINE:requested
-	-mcoproc
 	-fno-zero-initialized-in-bss
-	-mtext-section-literals
 	-Wsign-compare
-	-m32
 	-DMODEL_INT16
 	-DNNLIB_V2
 	-Dhifi4
 	-DTFLITE_SINGLE_ROUNDING=1
 )
+
+target_compile_definitions(nn_hifi_lib PRIVATE
+	__XCC__
+	__XCC_CLANG__
+)
+target_compile_options(nn_hifi_lib PRIVATE
+	-mcpu=${SOC_TOOLCHAIN_NAME}
+	"SHELL:-include xtensahifiintrin.h"
+	"SHELL:-include ${NN_HIFI_PATH}/algo/common/include/xa_nnlib_hifi_isa_compat.h"
+)
+
+endif() # TENSORFLOW_HAVE_NNLIB_HIFI4 (nn_hifi_lib defs/opts)
+
 
 # TODO: complete sources have been added here from userspace build but
 # not all are needed so this is a list of "needed" sources to build
@@ -302,7 +236,7 @@ add_library(tflm_lib STATIC
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/mul_common.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/mul.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/neg.cc
-	#${TFLM_PATH}/tensorflow/lite/micro/kernels/pack.cc
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/pack.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/pooling_common.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/prelu_common.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/prelu.cc
@@ -314,7 +248,7 @@ add_library(tflm_lib STATIC
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/resize_nearest_neighbor.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/round.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/select.cc
-	#${TFLM_PATH}/tensorflow/lite/micro/kernels/shape.cc
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/shape.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/slice.cc
 	${TFLM_PATH}/tensorflow/lite/micro/kernels/softmax_common.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/space_to_batch_nd.cc
@@ -323,7 +257,8 @@ add_library(tflm_lib STATIC
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/split_v.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/squared_difference.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/squeeze.cc
-	#${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice_common.cc
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice.cc
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/strided_slice_common.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/sub_common.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/svdf_common.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/tanh.cc
@@ -332,46 +267,12 @@ add_library(tflm_lib STATIC
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/var_handle.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/while.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/kernels/zeros_like.cc
-	# xtensa kernels
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/sub.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_hifi.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/unidirectional_sequence_lstm.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/transpose_conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_common_xtensa.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/lstm_eval_hifi.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/add_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reshape.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv_hifi.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int16_reference.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int8_reference.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_int8.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pad_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_int8_int16.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/softmax_int8_int16.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/logistic.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reduce.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/lstm_eval.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reshape_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pad.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/reduce_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/dequantize.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/add.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling_int8.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/depthwise_conv_vision.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/strided_slice.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_common_xtensa.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/svdf.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/fully_connected.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/leaky_relu.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/quantize.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/pooling.cc
-	${TFLM_PATH}/tensorflow/lite/micro/kernels/xtensa/conv_vision.cc
+	# reference kernels for speech model ops
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/conv.cc
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/depthwise_conv.cc
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/fully_connected.cc
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/reshape.cc
+	${TFLM_PATH}/tensorflow/lite/micro/kernels/softmax.cc
 	${TFLM_PATH}/tensorflow/lite/micro/mock_micro_graph.cc
 	${TFLM_PATH}/tensorflow/lite/micro/flatbuffer_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_graph.cc
@@ -393,7 +294,8 @@ add_library(tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/micro_profiler.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_time.cc
 	#${TFLM_PATH}/tensorflow/lite/micro/static_vector_test.cc
-	${TFLM_PATH}/tensorflow/lite/micro/debug_log.cc
+	# debug_log.cc is replaced by our printk-backed DebugLog() in tflm-classify.c.
+	#${TFLM_PATH}/tensorflow/lite/micro/debug_log.cc
 	${TFLM_PATH}/tensorflow/lite/micro/test_helpers.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_op_resolver.cc
 	${TFLM_PATH}/tensorflow/lite/micro/recording_micro_allocator.cc
@@ -404,7 +306,7 @@ add_library(tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/memory_planner/linear_memory_planner.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_utils.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter.cc
-	micro_speech_quantized_model_data.cc
+	sof_tflm_quantized_model_data.cc
 	speech.cc
 )
 
@@ -413,10 +315,16 @@ target_include_directories(tflm_lib PRIVATE
 	${FLATBUFFERS_PATH}/include
 	${GEMMLOWP_PATH}
 	${RUY_PATH}
+	${sof_top_dir}/posix/include
+	${sof_top_dir}/../modules/hal/xtensa/include
+	${TFLM_HAL_SOC_PATH}
+)
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
+target_include_directories(tflm_lib PRIVATE
 	${NN_HIFI_PATH}
 	${NN_HIFI_PATH}/include
-	${sof_top_dir}/posix/include
 )
+endif()
 
 # TODO: Need to detect and add mul16/32 options.
 #ifeq "$(has_mul16)" "0"
@@ -425,9 +333,38 @@ target_include_directories(tflm_lib PRIVATE
 #ifeq "$(has_mul32)" "0"
 #CFLAGS += -mno-mul32 -mno-div32
 #endif
+
+# These select/enable the HiFi4 nnlib-optimized code paths in some TFLM
+# kernels. Only valid when nn_hifi_lib is actually built and linked --
+# forcing XCHAL_HAVE_HIFI4 on a non-HiFi4 target risks enabling HiFi4-only
+# branches in system/toolchain headers that don't apply to this core.
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
+target_compile_definitions(tflm_lib PRIVATE
+	-DHIFI4=1
+	-DHAVE_VFPU=1
+	-DHAVE_VFPU_SINGLE_PRECISION=1
+	-DXCHAL_HAVE_HIFI4=1
+	-DXCHAL_HAVE_HIFI4_VFPU=1
+
+	__xtensa__=1
+	__XTENSA__=1
+	__XCC__
+	__XCC_CLANG__
+	"XT_MAX(a,b)=((a)>(b)?(a):(b))"
+	"XT_MIN(a,b)=((a)<(b)?(a):(b))"
+	"AE_MOVINT16_FROMINT32(v)=((ae_int16)(v))"
+	"AE_CVT64F32_H(v)=((ae_int64)(int64_t)(int32_t)AE_MOVAD32_H(v))"
+	"AE_CVT64F32_L(v)=((ae_int64)(int64_t)(int32_t)AE_MOVAD32_L(v))"
+)
+target_compile_options(tflm_lib PRIVATE
+	-DHIFI4
+	-DKERNELS_OPTIMIZED_FOR_SPEED
+	-DNNLIB_V2
+)
+endif() # TENSORFLOW_HAVE_NNLIB_HIFI4
+
 target_compile_options(tflm_lib PRIVATE
 	-std=c++17
-	-stdlib=libc++
 	-fno-rtti
 	-fno-exceptions
 	-fno-threadsafe-statics
@@ -447,19 +384,118 @@ target_compile_options(tflm_lib PRIVATE
 	-Wstrict-aliasing
 	-Wno-unused-parameter
 	-DXTENSA
-	-DKERNELS_OPTIMIZED_FOR_SPEED
 	-DTF_LITE_MCU_DEBUG_LOG
 	-DTF_LITE_USE_CTIME
-	--xtensa-core=ace10_LX7HiFi4_2022_10
-	-mcoproc
-	-DHIFI4
 	-mlongcalls
-	-DNNLIB_V2
 	-Wno-shadow
 )
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	target_compile_options(tflm_lib PRIVATE
+		-stdlib=libc++
+		"SHELL:-include xtensahifiintrin.h"
+		-fno-vectorize
+		-fno-slp-vectorize
+	)
+else()
+	# gcc equivalents for vectorize disabling
+	target_compile_options(tflm_lib PRIVATE
+		-fno-tree-vectorize
+		-fno-tree-slp-vectorize
+	)
+endif()
+
+if(CMAKE_C_COMPILER_ID STREQUAL "Xtensa")
+	target_compile_options(tflm_lib PRIVATE
+		--xtensa-core=ace10_LX7HiFi4_2022_10
+		-mcoproc
+	)
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+	target_compile_options(tflm_lib PRIVATE
+		-mcpu=${SOC_TOOLCHAIN_NAME}
+	)
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	target_include_directories(tflm_lib SYSTEM PRIVATE
+		${TFLM_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0
+		${TFLM_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf
+		${TFLM_TOOLCHAIN_INCLUDE_ROOT}
+	)
+endif()
+
 add_local_sources(sof tflm-classify.c llext-wrap.c)
 
-# Need to link libc++ and libc after tflm and nnlib
-zephyr_link_libraries(tflm_lib nn_hifi_lib c++ c)
+# Link nnlib only when it was actually built (HiFi4 target + Clang)
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
+  zephyr_link_libraries(tflm_lib nn_hifi_lib)
+else()
+  zephyr_link_libraries(tflm_lib)
+endif()
+
+# CONFIG_MINIMAL_LIBC (SOF's global default) has no libm and is missing a
+# few libc functions (e.g. abs()) that TFLM needs in a statically-linked
+# (non-LLEXT) image. Linking the toolchain's whole libc.a is too broad: it
+# conflicts with Zephyr's own malloc/free (multiple definition) and pulls in
+# an __assert_no_args that needs an unavailable stderr. Instead, extract just
+# the specific archive members TFLM actually needs into a small private
+# archive and link only that.
+if(NOT CONFIG_COMP_TENSORFLOW STREQUAL "m")
+  set(TFLM_TOOLCHAIN_LIBC_ARCHIVE
+    ${ZEPHYR_SDK_INSTALL_DIR}/gnu/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf/lib/libc.a)
+  set(TFLM_LIBC_SHIM_MEMBERS
+    libc_stdlib_abs.c.o
+    libm_math_s_floor.c.o
+    # TFLM QuantizeMultiplier() uses double frexp() + round() at Prepare time.
+    libm_math_s_frexp.c.o
+    libm_common_s_round.c.o
+    libm_math_sf_exp.c.o
+    libm_math_sf_log.c.o
+    libm_math_sf_ceil.c.o
+    libm_common_sf_fmax.c.o
+    libm_common_sf_fmin.c.o
+    libm_common_sf_round.c.o
+    # error-handling/predicate helpers the above call internally
+    libm_common_sf_isnan.c.o
+    libm_common_sf_issignaling.c.o
+    libm_common_math_errf_uflowf.c.o
+    libm_common_math_errf_oflowf.c.o
+    libm_common_math_errf_divzerof.c.o
+    libm_common_math_errf_invalidf.c.o
+  )
+  set(TFLM_LIBC_SHIM_DIR ${CMAKE_CURRENT_BINARY_DIR}/tflm_libc_shim)
+  set(TFLM_LIBC_SHIM_ARCHIVE ${CMAKE_CURRENT_BINARY_DIR}/libtflm_libc_shim.a)
+  file(MAKE_DIRECTORY ${TFLM_LIBC_SHIM_DIR})
+  add_custom_command(
+    OUTPUT ${TFLM_LIBC_SHIM_ARCHIVE}
+    COMMAND ${CMAKE_AR} x ${TFLM_TOOLCHAIN_LIBC_ARCHIVE} ${TFLM_LIBC_SHIM_MEMBERS}
+    COMMAND ${CMAKE_AR} rcs ${TFLM_LIBC_SHIM_ARCHIVE} ${TFLM_LIBC_SHIM_MEMBERS}
+    WORKING_DIRECTORY ${TFLM_LIBC_SHIM_DIR}
+    DEPENDS ${TFLM_TOOLCHAIN_LIBC_ARCHIVE} ${CMAKE_CURRENT_LIST_FILE}
+    COMMENT "Extracting abs()/libm members TFLM needs from the toolchain libc.a"
+  )
+  add_custom_target(tflm_libc_shim_gen DEPENDS ${TFLM_LIBC_SHIM_ARCHIVE})
+  add_library(tflm_libc_shim STATIC IMPORTED GLOBAL)
+  set_target_properties(tflm_libc_shim PROPERTIES IMPORTED_LOCATION ${TFLM_LIBC_SHIM_ARCHIVE})
+  add_dependencies(tflm_libc_shim tflm_libc_shim_gen)
+  zephyr_link_libraries(tflm_libc_shim)
+
+  # TFLM/flatbuffers use assert() internally; the toolchain's own
+  # __assert_no_args implementation needs an unavailable stderr, so disable
+  # assert() outright instead (standard practice for release TFLM builds).
+  target_compile_definitions(tflm_lib PRIVATE NDEBUG)
+endif()
 zephyr_include_directories(${TFLM_PATH})
+zephyr_include_directories(${FLATBUFFERS_PATH}/include)
+zephyr_include_directories(${GEMMLOWP_PATH})
+zephyr_include_directories(${RUY_PATH})
+if(TENSORFLOW_HAVE_NNLIB_HIFI4)
+zephyr_include_directories(${NN_HIFI_PATH}/algo/kernels/include)
+zephyr_include_directories(${NN_HIFI_PATH}/include)
+endif()
+target_include_directories(modules_sof SYSTEM PRIVATE
+	${TFLM_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0
+	${TFLM_TOOLCHAIN_INCLUDE_ROOT}/c++/14.3.0/xtensa-${SOC_TOOLCHAIN_NAME}_zephyr-elf
+	${TFLM_TOOLCHAIN_INCLUDE_ROOT}
+)
+

@@ -60,6 +60,12 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 # HDA topology with passthrough analog codec pipelines using CHAIN_DMA
 "sof-hda-generic\;sof-hda-passthrough-chain-dma\;HDA_CONFIG=passthrough,CODEC_HDA_CHAIN_DMA=true"
 
+# HDA generic + KPB-based Wake-on-Voice (TFLM) capture branch.
+# Adds a WoV drain PCM and an MFCC/TFLM detect PCM tapped off the
+# Analog capture endpoint (module-copier.4.2). Applies to all IPC4
+# HDA platforms; no NHLT differentiation.
+"sof-hda-generic\;sof-hda-generic-tflm-kpb\;HDA_CONFIG=mix,HDA_MIC_TFLM_KPB_CAPTURE=true"
+
 # SSP topology for PTL, includes Data Processing SRC
 "cavs-nocodec\;sof-ptl-nocodec\;PLATFORM=ptl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-nocodec.bin,SRC_DOMAIN=DP"
@@ -496,6 +502,15 @@ MFCC_FRAME_BYTES=344,MFCC_BLOB=mel"
 "cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-mfcc-ceps-compr\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
 HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_JACK_COMPR_AUDIO_FEATURE_CAPTURE=true,\
 MFCC_FRAME_BYTES=76,MFCC_BLOB=ceps"
+
+# Soundwire topologies with TFLM/KPB Wake-on-Voice on jack
+"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-tflm-kpb\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_JACK_TFLM_KPB_CAPTURE=true"
+
+"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-tflm-kpb\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_JACK_TFLM_KPB_CAPTURE=true,SDW_DMIC_TFLM_KPB_CAPTURE=true"
 
 "cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-mfcc-mel-compr\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
