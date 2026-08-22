@@ -68,6 +68,13 @@
 #include <audio/kpb.toml>
 #endif
 
+#if defined(CONFIG_COMP_VAD_GATE) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/vad_gate/vad_gate.toml>
+#endif
+#if defined(CONFIG_COMP_WOV_ARBITER) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/wov_arbiter/wov_arbiter.toml>
+#endif
+
 #if defined(CONFIG_COMP_SEL) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/selector/selector.toml>
 #endif
