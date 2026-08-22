@@ -87,6 +87,7 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 			 void *obfuscated_parent_ppl,
 			 void **obfuscated_modinst_p)
 {
+	ErrorCode::Type error;
 	IoPinsInfo pins_info;
 	const dsp_fw::DwordArray& cfg_ipc_msg =
 			*reinterpret_cast<const dsp_fw::DwordArray*>(obfuscated_mod_cfg);
@@ -112,7 +113,11 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 	settings.DeduceBaseModuleCfgExt(prerequisites.input_pins_count,
 					prerequisites.output_pins_count);
 
-	module_factory.Create(*this, module_placeholder, ModuleInitialSettings(settings), pins_info);
+	error = module_factory.Create(*this, module_placeholder, ModuleInitialSettings(settings),
+				      pins_info);
+	if (error != ErrorCode::NO_ERROR)
+		return -EINVAL;
+
 	IadkModuleAdapter& module_adapter = *reinterpret_cast<IadkModuleAdapter*>(module_handle_);
 	*obfuscated_modinst_p = &module_adapter;
 	reinterpret_cast<intel_adsp::ProcessingModuleInterface*>(module_placeholder)->Init();
