@@ -91,6 +91,8 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 	const dsp_fw::DwordArray& cfg_ipc_msg =
 			*reinterpret_cast<const dsp_fw::DwordArray*>(obfuscated_mod_cfg);
 	ModuleInitialSettingsConcrete settings(cfg_ipc_msg);
+	if (!settings.IsParsable())
+		return -EINVAL;
 
 	ProcessingModulePrerequisites prerequisites;
 	module_factory.GetPrerequisites(prerequisites);
