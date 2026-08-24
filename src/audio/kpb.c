@@ -1615,7 +1615,14 @@ static void kpb_event_handler(void *arg, enum notify_id type, void *event_data)
 		kpb_register_client(kpb, cli);
 		break;
 	case KPB_EVENT_UNREGISTER_CLIENT:
-		/*TODO*/
+		if (!cli || cli->id >= KPB_MAX_NO_OF_CLIENTS ||
+		    kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED)
+			break;
+
+		kpb->clients[cli->id].state = KPB_CLIENT_UNREGISTERED;
+		kpb->clients[cli->id].r_ptr = NULL;
+		kpb->clients[cli->id].sink = NULL;
+		kpb->kpb_no_of_clients--;
 		break;
 	case KPB_EVENT_BEGIN_DRAINING:
 		kpb_init_draining(dev, cli);
