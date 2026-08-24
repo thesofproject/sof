@@ -425,7 +425,7 @@ static void scheduler_dp_thread_name_set(k_tid_t thread_id, struct processing_mo
 #define scheduler_dp_thread_name_set(x, y)
 #endif
 
-/* Called only in IPC context */
+/* Called only in IPC context in kernel mode (this can change) */
 int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 			   const struct task_ops *ops, struct processing_module *mod,
 			   uint16_t core, size_t stack_size, uint32_t options)
@@ -437,6 +437,7 @@ int scheduler_dp_task_init(struct task **task, const struct sof_uuid_entry *uid,
 
 	/* must be called on the same core the task will be bound to */
 	assert(cpu_get_id() == core);
+	assert(!k_is_user_context());
 
 	/*
 	 * allocate memory
