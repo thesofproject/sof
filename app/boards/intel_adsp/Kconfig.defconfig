@@ -87,6 +87,9 @@ config L3_HEAP
 config ZEPHYR_DP_SCHEDULER
 	default y
 
+config DP_TO_DP_BIND
+	default y
+
 config ZEPHYR_NATIVE_DRIVERS
 	default y
 

@@ -28,6 +28,7 @@
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
 #include <sof/platform.h>
+#include <sof/schedule/dp_schedule.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
@@ -121,6 +122,12 @@ int platform_init(struct sof *sof)
 	/* clk is ignored on Zephyr so pass 0 */
 	sof->platform_timer_domain = timer_domain_init(sof->platform_timer, 0);
 	scheduler_init_ll(sof->platform_timer_domain);
+
+#if CONFIG_ZEPHYR_DP_SCHEDULER
+	ret = scheduler_dp_init();
+	if (ret < 0)
+		return ret;
+#endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);
