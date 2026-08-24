@@ -53,7 +53,7 @@
  * from output files tdfb_iir_emphasis_48k.h and tdfb_iir_emphasis_16k.h.
  */
 
-uint32_t iir_emphasis_48k[20] = {
+static const uint32_t iir_emphasis_48k[20] = {
 	0x00000002, 0x00000002, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0xc8cf47b5, 0x7689916a,
 	0x1dc95968, 0xc46d4d30, 0x1dc95968, 0x00000000,
@@ -61,7 +61,7 @@ uint32_t iir_emphasis_48k[20] = {
 	0x032cc4ce, 0x01966267, 0xfffffffe, 0x00004222
 };
 
-uint32_t iir_emphasis_16k[20] = {
+static const uint32_t iir_emphasis_16k[20] = {
 	0x00000002, 0x00000002, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0xd6f418ae, 0x63e7b85c,
 	0x19ae069b, 0xcca3f2ca, 0x19ae069b, 0x00000000,
