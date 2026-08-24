@@ -59,6 +59,25 @@ struct wov_arb_data {
  * Notifier callbacks
  * ---------------------------------------------------------------------- */
 
+/* Notifier callback: VAD gate entered sustained silence.  Resets the active
+ * slot and resumes all detectors so they can re-arm for the next trigger. */
+static void arb_on_vad_silence(void *arg, enum notify_id id, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct wov_arb_data *cd = comp_get_drvdata(dev);
+
+	if (cd->active_slot == WOV_ARB_NO_ACTIVE)
+		return; /* no drain in progress, nothing to re-arm */
+
+	comp_info(dev, "wov_arb: VAD silence, re-arming all slots (was active=%u)",
+		  cd->active_slot);
+	cd->active_slot = WOV_ARB_NO_ACTIVE;
+
+	struct wov_ctrl_notif ctrl = { .cmd = WOV_ARB_CMD_RESUME, .slot_id = WOV_SLOT_INVALID };
+	notifier_event(dev, NOTIFIER_ID_WOV_CTRL, NOTIFIER_TARGET_CORE_ALL_MASK,
+		       &ctrl, sizeof(ctrl));
+}
+
 /* Notifier callback: a WOV detector has fired.  Activates the winning slot
  * and broadcasts PAUSE to all detectors via NOTIFIER_ID_WOV_CTRL. */
 static void arb_on_detect(void *arg, enum notify_id id, void *data)
@@ -147,6 +166,7 @@ static void wov_arb_free(struct comp_dev *dev)
 	comp_info(dev, "wov_arb_free");
 
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
+	notifier_unregister(dev, NULL, NOTIFIER_ID_VAD_SILENCE);
 
 	struct wov_arb_data *cd = comp_get_drvdata(dev);
 	rfree(cd);
@@ -163,6 +183,8 @@ static int wov_arb_prepare(struct comp_dev *dev)
 
 	/* Subscribe to keyword-detected events from any WOV detector. */
 	notifier_register(dev, NULL, NOTIFIER_ID_WOV_DETECT, arb_on_detect, 0);
+	/* Subscribe to VAD gate silence events for no-reset re-arm. */
+	notifier_register(dev, NULL, NOTIFIER_ID_VAD_SILENCE, arb_on_vad_silence, 0);
 
 	/* Broadcast RESUME so all WOV detector slots start unpaused. */
 	struct wov_ctrl_notif ctrl = { .cmd = WOV_ARB_CMD_RESUME };
@@ -181,6 +203,7 @@ static int wov_arb_reset(struct comp_dev *dev)
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
 
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
+	notifier_unregister(dev, NULL, NOTIFIER_ID_VAD_SILENCE);
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }

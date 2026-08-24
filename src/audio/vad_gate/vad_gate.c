@@ -33,6 +33,7 @@
 #include <ipc/topology.h>
 #include <ipc4/base-config.h>
 #include <sof/lib/memory.h>
+#include <sof/lib/notifier.h>
 #include <adsp_clk.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -111,6 +112,8 @@ static void vad_update_energy(struct comp_dev *dev,
 			adsp_clock_set_cpu_freq(ADSP_CPU_CLOCK_FREQ_WOVCRO);
 			comp_info(dev, "SILENCE hangover expired (energy=%d < threshold=%d) -> WOVCRO",
 				  cd->energy, cd->config.threshold);
+			notifier_event(dev, NOTIFIER_ID_VAD_SILENCE,
+				       NOTIFIER_TARGET_CORE_ALL_MASK, NULL, 0);
 		}
 	}
 }
@@ -194,6 +197,7 @@ static int vad_gate_reset(struct comp_dev *dev)
 	cd->speech_cnt  = 0;
 	cd->silence_cnt = 0;
 	cd->vad_active  = false;
+	adsp_clock_set_cpu_freq(ADSP_CPU_CLOCK_FREQ_WOVCRO);
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
