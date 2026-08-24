@@ -11,7 +11,7 @@ Usage:
 
   --cycles N      : number of WOV events to capture (default: unlimited)
   --out FILE      : output file for PCM (default: /tmp/wov_daemon.raw)
-  --threshold THR : VAD threshold to write at startup (default: no write)
+  --threshold THR : VAD threshold to write at startup (e.g. 300000000)
   --compress N    : compress PCM device number (default: 11)
   --card N        : sound card number (default: 0)
 """
@@ -19,15 +19,14 @@ import argparse
 import ctypes
 import fcntl
 import os
-import queue
 import struct
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
 CARD_PATH = "/dev/snd/controlC{card}"
-COMPRESS_PATH = "/dev/snd/comprC{card}D{device}"
 
 CFG_NUMID    = 8    # vad_gate_cfg_100
 STATUS_NUMID = 9    # vad_gate_status_100
@@ -42,11 +41,11 @@ ABI_HDR_SIZE  = 32
 CFG_SIZE      = 12
 STATUS_SIZE   =  8
 
-POLL_INTERVAL_S   = 0.2   # kcontrol poll rate while streaming
-DRAIN_TIMEOUT_S   = 5.0   # max seconds waiting for KPB drain after VAD silence
-DRAIN_IDLE_S      = 0.5   # declare drain done after this many seconds of no new data
-FRAGMENT_BYTES    = 65536
-IDLE_TIMEOUT_MS   = 3000  # wov_capture -i value
+POLL_INTERVAL_S = 0.2    # kcontrol poll rate while streaming
+DRAIN_IDLE_S    = 0.5    # declare drain done after this many seconds of no new data
+DRAIN_TIMEOUT_S = 5.0    # max seconds waiting for KPB drain after VAD silence
+FRAGMENT_BYTES  = 65536
+IDLE_TIMEOUT_MS = 3000   # wov_capture -i value
 
 
 def _ctl_open(card):
@@ -90,20 +89,19 @@ def write_threshold(card, threshold, onset=5, hangover=100, shift=0):
         os.close(fd)
 
 
-def run_wov_cycle(card, device, outfile, cycle_num, max_silence_s=None):
+def run_wov_cycle(card, device, outfile, cycle_num):
     """
-    Run one WOV capture cycle using wov_capture.
+    Run one WOV capture cycle using wov_capture writing to a temp file.
 
-    wov_capture blocks until detect_test fires (PHRASE_DETECTED), then
-    streams PCM. We detect VAD silence via kcontrol polling and drain
-    the remaining data before returning.
-
-    Returns bytes written for this cycle.
+    Returns bytes written for this cycle (0 means no trigger).
     """
-    print(f"[cycle {cycle_num}] starting wov_capture (blocks until WOV trigger)...")
+    print(f"[cycle {cycle_num}] starting wov_capture (blocks until WOV trigger)...",
+          flush=True)
 
-    mode = "ab" if cycle_num > 1 else "wb"
-    out_fh = open(outfile, mode)
+    tmpf = tempfile.NamedTemporaryFile(delete=False, suffix=".raw",
+                                       prefix=f"/tmp/wov_cyc{cycle_num}_")
+    tmppath = tmpf.name
+    tmpf.close()
 
     cmd = [
         "wov_capture",
@@ -112,73 +110,82 @@ def run_wov_cycle(card, device, outfile, cycle_num, max_silence_s=None):
         "-b", str(FRAGMENT_BYTES),
         "-i", str(IDLE_TIMEOUT_MS),
         "-n", "1",
-        "/dev/stdout",
+        tmppath,
     ]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    bytes_written = 0
-    last_data_t   = time.monotonic()
+    # Forward wov_capture log lines while monitoring VAD
     triggered     = False
     silence_seen  = False
     drain_start_t = None
+    last_size     = 0
+    last_data_t   = time.monotonic()
 
-    poll_q = queue.Queue()
+    log_lines = []
+    log_lock  = threading.Lock()
 
-    def reader():
-        while True:
-            chunk = proc.stdout.read(4096)
-            if not chunk:
-                break
-            poll_q.put(chunk)
+    def log_reader():
+        for line in proc.stdout:
+            txt = line.decode(errors="replace").rstrip()
+            with log_lock:
+                log_lines.append(txt)
 
-    rt = threading.Thread(target=reader, daemon=True)
-    rt.start()
+    lt = threading.Thread(target=log_reader, daemon=True)
+    lt.start()
 
     while True:
-        # Drain data queue
-        drained_this_tick = False
-        try:
-            while True:
-                chunk = poll_q.get_nowait()
-                out_fh.write(chunk)
-                bytes_written += len(chunk)
-                last_data_t = time.monotonic()
-                drained_this_tick = True
-                if not triggered:
-                    triggered = True
-                    print(f"[cycle {cycle_num}] WOV triggered, receiving PCM...")
-        except queue.Empty:
-            pass
+        # Print any new log lines
+        with log_lock:
+            while log_lines:
+                print(f"  [wov] {log_lines.pop(0)}", flush=True)
 
-        # Poll VAD status while triggered
+        # Check temp file size
+        try:
+            sz = os.path.getsize(tmppath)
+        except OSError:
+            sz = 0
+
+        if sz > last_size:
+            last_size  = sz
+            last_data_t = time.monotonic()
+            if not triggered:
+                triggered = True
+                print(f"[cycle {cycle_num}] WOV triggered, receiving PCM...", flush=True)
+
+        # Poll VAD status once triggered
         if triggered and not silence_seen:
             e, active = read_status(card)
             if e is not None and not active:
-                print(f"[cycle {cycle_num}] VAD silence detected (energy={e}), draining...")
-                silence_seen = True
+                print(f"[cycle {cycle_num}] VAD silence (energy={e}), draining...",
+                      flush=True)
+                silence_seen  = True
                 drain_start_t = time.monotonic()
 
-        # Check drain complete
+        # Drain complete?
         if silence_seen:
-            idle_s = time.monotonic() - last_data_t
+            idle_s  = time.monotonic() - last_data_t
             drain_s = time.monotonic() - drain_start_t
             if idle_s >= DRAIN_IDLE_S:
                 print(f"[cycle {cycle_num}] drain complete ({drain_s:.1f}s), "
-                      f"{bytes_written} bytes captured")
+                      f"{last_size} bytes captured", flush=True)
                 break
             if drain_s >= DRAIN_TIMEOUT_S:
-                print(f"[cycle {cycle_num}] drain timeout ({DRAIN_TIMEOUT_S}s), "
-                      f"{bytes_written} bytes captured")
+                print(f"[cycle {cycle_num}] drain timeout, "
+                      f"{last_size} bytes captured", flush=True)
                 break
 
-        # Check process ended (e.g. idle timeout before trigger)
-        if proc.poll() is not None and poll_q.empty():
+        # Process ended?
+        if proc.poll() is not None:
+            lt.join(timeout=1)
+            with log_lock:
+                while log_lines:
+                    print(f"  [wov] {log_lines.pop(0)}", flush=True)
             if not triggered:
                 print(f"[cycle {cycle_num}] wov_capture exited without trigger "
-                      f"(rc={proc.returncode})")
+                      f"(rc={proc.returncode})", flush=True)
             break
 
-        time.sleep(0.05)
+        time.sleep(0.1)
 
     proc.terminate()
     try:
@@ -187,7 +194,17 @@ def run_wov_cycle(card, device, outfile, cycle_num, max_silence_s=None):
         proc.kill()
         proc.wait()
 
-    out_fh.close()
+    # Append cycle data to main output file
+    bytes_written = os.path.getsize(tmppath) if os.path.exists(tmppath) else 0
+    if bytes_written > 0:
+        mode = "ab" if os.path.exists(outfile) else "wb"
+        with open(outfile, mode) as out, open(tmppath, "rb") as src:
+            out.write(src.read())
+    try:
+        os.unlink(tmppath)
+    except OSError:
+        pass
+
     return bytes_written
 
 
@@ -220,9 +237,9 @@ def main():
         else:
             print(f"  WARNING: threshold write failed (pipeline not yet active?)")
 
-    total_cycles  = args.cycles if args.cycles > 0 else float("inf")
-    cycle_num     = 0
-    total_bytes   = 0
+    total_cycles = args.cycles if args.cycles > 0 else float("inf")
+    cycle_num    = 0
+    total_bytes  = 0
 
     print(f"\nStarting capture loop (cycles={'unlimited' if args.cycles==0 else args.cycles})...")
     print("Press Ctrl+C to stop.\n")
@@ -235,10 +252,12 @@ def main():
             if b == 0 and cycle_num == 1:
                 print("[daemon] No data on first cycle — exiting.")
                 break
-            print(f"[cycle {cycle_num}] done. Total: {total_bytes} bytes in {args.out}")
+            print(f"[cycle {cycle_num}] done. Total: {total_bytes} bytes → {args.out}",
+                  flush=True)
             if cycle_num < total_cycles:
-                print(f"[cycle {cycle_num}] re-arming for next WOV trigger...\n")
-                time.sleep(0.5)
+                print(f"[cycle {cycle_num}] re-arming for next WOV trigger...\n",
+                      flush=True)
+                time.sleep(0.3)
     except KeyboardInterrupt:
         print("\n[daemon] stopped by user")
 
