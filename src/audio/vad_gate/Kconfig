@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_VAD_GATE
+	bool "VAD gate component"
+	depends on IPC_MAJOR_4
+	help
+	  Select to build the VAD (Voice Activity Detection) gate component.
+	  The gate sits between the DMIC copier and the downstream Mixin in
+	  a WOV capture pipeline.  During silence it drains the DMIC input
+	  and returns PPL_STATUS_PATH_STOP so KPB and WOV detectors idle.
+	  When voice onset is detected audio flows through and the downstream
+	  chain wakes and begins buffering.
+
+if COMP_VAD_GATE
+
+config VAD_GATE_DEFAULT_THRESHOLD
+	int "VAD gate default energy threshold"
+	default 0
+	help
+	  Default peak energy threshold below which frames are treated as silence.
+	  0 = bypass (pass-through) — all audio reaches downstream; useful for lab
+	  testing where stimulus is a hand clap.  Set to a non-zero value to enable
+	  energy-based gating.
+
+config VAD_GATE_DEFAULT_ONSET_FRAMES
+	int "VAD gate default onset frame count"
+	default 3
+	help
+	  Number of consecutive above-threshold frames required before the gate
+	  opens (SPEECH onset).
+
+config VAD_GATE_DEFAULT_HANGOVER_FRAMES
+	int "VAD gate default hangover frame count"
+	default 200
+	help
+	  Number of consecutive below-threshold frames required before the gate
+	  closes (SILENCE).
+
+endif # COMP_VAD_GATE
