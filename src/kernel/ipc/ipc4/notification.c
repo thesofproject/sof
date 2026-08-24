@@ -114,3 +114,26 @@ static inline bool z_vrfy_send_resource_notif(uint32_t resource_id, uint32_t eve
 }
 #include <zephyr/syscalls/send_resource_notif_mrsh.c>
 #endif /* CONFIG_USERSPACE */
+
+bool send_host_period_elapsed_notif_msg(uint32_t gtw_id)
+{
+	union ipc4_notification_header header;
+	struct ipc_msg *msg;
+
+	msg = ipc_notification_pool_get(0);
+	if (!msg)
+		return false;
+
+	header.dat = 0;
+	header.r.notif_type = SOF_IPC4_IMX_HOST_PERIOD_ELAPSED;
+	header.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	header.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+	msg->header = header.dat;
+	msg->extension = gtw_id;
+
+	ipc_msg_send(msg, NULL, false);
+
+	return true;
+}
