@@ -239,19 +239,19 @@ config DMA_DOMAIN_SEM_LIMIT
 config PIPELINE_2_0
 	bool "Enable pipeline 2.0 changes"
 	depends on IPC_MAJOR_4
-	default y if ACE
+	default y if (ACE || CAVS)
 	help
 	  This flag enables changes to new pipeline structure, known as pipeline2_0
 	  It is required for certain new features, like DP_SCHEDULER.
 
 config ZEPHYR_DP_SCHEDULER
 	bool "use Zephyr thread based DP scheduler"
-	default y if ACE
+	default y if (ACE || CAVS)
 	depends on IPC_MAJOR_4
 	depends on ZEPHYR_SOF_MODULE
-	depends on ACE
+	depends on (ACE || CAVS)
 	depends on PIPELINE_2_0
-	imply XTENSA_HIFI_SHARING if XTENSA_HIFI
+	imply XTENSA_HIFI_SHARING if (XTENSA_HIFI && ACE)
 	help
 	  Enable Data Processing preemptive scheduler based on
 	  Zephyr preemptive threads.
