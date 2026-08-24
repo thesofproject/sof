@@ -1708,7 +1708,6 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	bool is_sink_ready = (comp_buffer_get_sink_state(kpb->host_sink) == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
 	size_t drain_req = (size_t)cli->drain_req * kpb->config.channels *
 			       (kpb->config.sampling_freq / 1000) *
@@ -1727,12 +1726,18 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	comp_info(dev, "requested draining of %d [ms] from history buffer",
 		  cli->drain_req);
 
+	/* The drain pin stays unbound when a client only signals detections. */
+	if (!kpb->host_sink) {
+		comp_dbg(dev, "no draining sink, ignoring request");
+		return;
+	}
+
 	if (kpb->state != KPB_STATE_RUN) {
 		comp_err(dev, "wrong KPB state");
 	} else if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		comp_err(dev, "wrong client id");
 	/* TODO: check also if client is registered */
-	} else if (!is_sink_ready) {
+	} else if (comp_buffer_get_sink_state(kpb->host_sink) != COMP_STATE_ACTIVE) {
 		comp_err(dev, "sink not ready for draining");
 	} else if (kpb->hd.buffered < drain_req ||
 		   cli->drain_req > KPB_MAX_DRAINING_REQ) {
