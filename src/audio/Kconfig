@@ -166,6 +166,14 @@ config KPB_CLI_Q
 	help
 	  Use a Zephyr queue instead of SOF notifiers
 
+config KPB_NOTIFIER
+	bool "Enable Notifier for KPB events"
+	default y
+	help
+	  Enable KPB client events delivered through the SOF notifier API.
+	  This transport can be enabled independently of the Async Messaging
+	  Service (AMS), including together with AMS.
+
 config KPB_FORCE_COPY_TYPE_NORMAL
 	bool "KPB force copy type normal"
 	default y
