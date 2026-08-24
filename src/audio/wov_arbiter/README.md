@@ -23,13 +23,14 @@ DMA after detection.
 1. [System Architecture](#system-architecture)
 2. [Signal Processing Flow](#signal-processing-flow)
 3. [Arbiter State Machine](#arbiter-state-machine)
-4. [SOF Notifier Inter-Module Signaling](#sof-notifier-inter-module-signaling)
-5. [Firmware API Reference](#firmware-api-reference)
-6. [Linux Host API Reference](#linux-host-api-reference)
-7. [Adding a New WOV Algorithm](#adding-a-new-wov-algorithm)
-8. [Topology: Build and Deploy](#topology-build-and-deploy)
-9. [Build System Configuration](#build-system-configuration)
-10. [Testing and Verification](#testing-and-verification)
+4. [Pipeline State Transitions & Re-Arm Cycle](#pipeline-state-transitions--re-arm-cycle)
+5. [SOF Notifier Inter-Module Signaling](#sof-notifier-inter-module-signaling)
+6. [Firmware API Reference](#firmware-api-reference)
+7. [Linux Host API Reference](#linux-host-api-reference)
+8. [Adding a New WOV Algorithm](#adding-a-new-wov-algorithm)
+9. [Topology: Build and Deploy](#topology-build-and-deploy)
+10. [Build System Configuration](#build-system-configuration)
+11. [Testing and Verification](#testing-and-verification)
 
 ---
 
@@ -102,7 +103,7 @@ graph TD
 
 | Property | Value |
 |---|---|
-| Audio format | 16 kHz · 1ch · S16_LE throughout |
+| Audio format | 16 kHz · 1ch · **S32LE on TGL/CAVS2.5** (spider); S16LE on other platforms |
 | KPB pre-roll (TigerLake) | 6 000 ms (192 000 bytes) |
 | KPB pre-roll (other) | 2 100 ms |
 | Max arbiter slots | 3 (topology), 8 (header constant) |
@@ -184,8 +185,15 @@ stateDiagram-v2
 
     Active --> Idle : trigger(STOP or PAUSE)\nactive_slot = NO_ACTIVE\nbroadcast RESUME
 
+    Active --> Idle : Notifier VAD_SILENCE (DSP-initiated re-arm)\narb_on_vad_silence() resets active_slot\nbroadcast RESUME — compress stays OPEN
+
     Idle --> [*] : wov_arb_free()
 ```
+
+The `VAD_SILENCE` path is the **no-reset re-arm** path: the compress device (`comprC0D11`)
+stays open throughout, the pipeline stays in RUNNING state, and all three detectors simply
+restart their DP threads on `WOV_ARB_CMD_RESUME`.  No `SET_PIPELINE_STATE(RESET)` is
+required and no re-arm delay is introduced.
 
 ### `wov_arb_copy()` Routing Logic
 
@@ -206,6 +214,87 @@ if (cd->active_slot != WOV_ARB_NO_ACTIVE) {
 
 ---
 
+## Pipeline State Transitions & Re-Arm Cycle
+
+### Usage Flow (Compress Device Open Once)
+
+The compress device is opened **once** at startup and kept open across all WOV cycles.
+No pipeline close/reopen is needed between triggers.
+
+```
+Host                        Kernel / ASoC               Firmware
+────                        ─────────────               ────────
+open comprC0D11         ──► SET_PIPELINE_STATE(RUNNING) ──► VAD: vad_active=false (threshold default=0 → open)
+                                                             KPBs: KPB_STATE_BUFFERING (filling history)
+                                                             detect_tests: dp_thread running, listening
+
+[optional] write
+vad_gate_cfg_100 TLV     ──► MODULE_LARGE_CONFIG_SET  ──► threshold, onset, hangover updated
+
+write wov_init_1NN TLV   ──► MODULE_LARGE_CONFIG_SET  ──► wov_slot_id programmed (slot 0/1/2)
+amixer cset wov_mute on  ──► MODULE_LARGE_CONFIG_SET  ──► detection armed for that slot
+
+─────────────────────── Listening (blocking) ───────────────────────────
+read() blocks on comprC0D11
+arbiter writes silence (zero-fill) into HDA DMA fragments at realtime rate
+```
+
+### WOV Trigger Sequence
+
+```
+[voice detected]                                     ──► detect_test auto/real trigger
+                        ◄── SOF_IPC4_NOTIFY_PHRASE_DETECTED  (word_id = slot_id)
+                        ◄── snd_sof_compr_fragment_elapsed() wakes blocked read()
+read() returns PCM ◄────────────────────────────────────────
+  (burst: 6 s pre-roll arrives fast, then realtime)
+```
+
+### DSP-Initiated Re-Arm (VAD Silence Path)
+
+This is the **no-reset re-arm**: compress device stays open, pipeline stays RUNNING.
+
+```
+[speech ends, ambient noise below threshold for hangover_frames]
+                                                     ──► vad_update_energy(): energy < threshold
+                                                         for hangover_frames (default 200 × 10ms = 2s)
+                                                         → notifier_event(NOTIFIER_ID_VAD_SILENCE)
+                                                         → arb_on_vad_silence():
+                                                             active_slot = WOV_ARB_NO_ACTIVE
+                                                             broadcast WOV_ARB_CMD_RESUME
+                                                         → detect_tests: cd->paused=false, cd->detected=0
+                                                         → KPBs resume BUFFERING (drain complete)
+                                                         → DSP clock → WOVCRO (38.4 MHz)
+
+poll vad_gate_status_100 ────────────────────────────►  MODULE_LARGE_CONFIG_GET(param_id=2)
+(TLV ioctl read)                                        returns energy + vad_active=false
+
+Host detects silence, drains remaining compress data
+read() blocks again on comprC0D11 ◄───────────────── arbiter back to silence-fill (zero frames)
+─────────────────────── Re-armed, listening ─────────────────────────────────
+```
+
+### Host-Initiated Re-Arm
+
+```
+[host decides to stop current cycle]
+compress_stop() / SNDRV_COMPRESS_STOP ──►  trigger(PAUSE)
+                                            arb: active_slot = WOV_ARB_NO_ACTIVE
+                                            broadcast WOV_ARB_CMD_RESUME
+compress_start() / SNDRV_COMPRESS_START ──► DSP resumes silence-fill
+read() blocks on comprC0D11 (re-armed)
+```
+
+### State Transition Summary
+
+| State | Transition | Trigger | Compress device |
+|---|---|---|---|
+| Listening → Active | WOV_DETECT | detect_test fires | Stays OPEN |
+| Active → Listening | VAD_SILENCE | hangover expires | Stays OPEN |
+| Active → Listening | STOP/PAUSE | host or driver closes | Stays OPEN (re-armed) |
+| Any → closed | compress_close() | host exits | Closed |
+
+---
+
 ## SOF Notifier Inter-Module Signaling
 
 The SOF Notifier system (`src/include/sof/lib/notifier.h`) is SOF's intra-DSP
@@ -219,8 +308,15 @@ all registered listeners on the calling core.
 |---|---|---|---|
 | `NOTIFIER_ID_WOV_DETECT` | detector → arbiter | `struct wov_detect_notif { uint8_t slot_id; }` | Announce keyword detection |
 | `NOTIFIER_ID_WOV_CTRL` | arbiter → all detectors | `struct wov_ctrl_notif { uint8_t cmd; }` | Pause/resume detectors |
+| `NOTIFIER_ID_VAD_SILENCE` | vad_gate → arbiter | `NULL` (no payload) | Silence hangover expired — re-arm for next trigger |
 
 `cmd` values: `WOV_ARB_CMD_PAUSE`, `WOV_ARB_CMD_RESUME` (defined in `wov_arbiter.h`).
+
+`NOTIFIER_ID_VAD_SILENCE` is fired by `vad_update_energy()` when the IIR energy drops
+below threshold for `hangover_frames` consecutive frames.  The arbiter's
+`arb_on_vad_silence()` callback handles it: resets `active_slot = WOV_ARB_NO_ACTIVE`
+and broadcasts `WOV_ARB_CMD_RESUME` to all detectors so they re-arm without any
+pipeline RESET or compress device close/reopen.
 
 ### Full Detect-to-Drain Sequence
 
@@ -280,9 +376,9 @@ slot assignment at runtime.  The topology creates three such kcontrols:
 
 | ALSA kcontrol name | numid | Target module | Slot |
 |---|---|---|---|
-| `wov_init_101` | 9 | `wov.101.1` (Core 0) | 0 |
-| `wov_init_102` | 11 | `wov.102.1` (Core 0) | 1 |
-| `wov_init_103` | 13 | `wov.103.1` (Core 1) | 2 |
+| `wov_init_101` | 11 | `wov.101.1` (Core 0) | 0 |
+| `wov_init_102` | 14 | `wov.102.1` (Core 0) | 1 |
+| `wov_init_103` | 17 | `wov.103.1` (Core 1) | 2 |
 
 The write must be issued **before** `PREPARE` fires — write the kcontrols
 immediately after forking `arecord` into the background, before it has finished
@@ -300,9 +396,9 @@ detection at runtime without tearing down the pipeline.
 
 | ALSA kcontrol name | numid | Default | Effect when set |
 |---|---|---|---|
-| `wov_mute_101` | 10 | `off` | `off` = muted (no detection), `on` = detection active |
-| `wov_mute_102` | 12 | `off` | `off` = muted (no detection), `on` = detection active |
-| `wov_mute_103` | 14 | `off` | `off` = muted (no detection), `on` = detection active |
+| `wov_mute_101` | 12 | `off` | `off` = muted (no detection), `on` = detection active |
+| `wov_mute_102` | 15 | `off` | `off` = muted (no detection), `on` = detection active |
+| `wov_mute_103` | 18 | `off` | `off` = muted (no detection), `on` = detection active |
 
 The default at pipeline open is `off` (muted). Userspace must explicitly write `on`
 to arm a slot. When muted, `test_keyword_copy` drains the source buffer and returns
@@ -314,11 +410,11 @@ Wire format: `LARGE_CONFIG_SET` with `PARAM_ID = 200`
 `struct sof_ipc4_control_msg_payload { .num_elems=1, .chanv[0].value=0|1 }`.
 
 ```bash
-# Arm slot 1 for detection (numid=12 = wov_mute_102)
-amixer -c 0 cset numid=12 on
+# Arm slot 1 for detection (numid=15 = wov_mute_102)
+amixer -c 0 cset numid=15 on
 
 # Mute slot 1 again
-amixer -c 0 cset numid=12 off
+amixer -c 0 cset numid=15 off
 ```
 
 
@@ -339,13 +435,13 @@ of the energy-based gating.  The gate runs a first-order IIR energy estimator on
 
 ```bash
 # Install helper (once per DUT session)
-scp /tmp/set_vad_threshold.py root@spider:/tmp/
+scp tools/wov_capture/vad_calibrate.py root@spider:/tmp/
 
-# Set threshold to 100 M (lab default; ambient floor ≈ 42–74 M on spider)
-python3 /tmp/set_vad_threshold.py --threshold 100000000
+# Set threshold to 300 M (spider lab; ambient floor ≈ 100–300 M on spider S32LE)
+python3 /tmp/vad_calibrate.py --threshold 300000000
 
 # Read back current configuration
-python3 /tmp/set_vad_threshold.py --read
+python3 /tmp/vad_calibrate.py --read-config
 
 # For quieter environments lower the threshold; for noisier environments raise it.
 # Watch mtrace for "SPEECH onset energy=X >= threshold=Y -> HPRO" to confirm.
@@ -364,8 +460,9 @@ python3 /tmp/set_vad_threshold.py --read
 > auto-triggers after 8 s if threshold gating is active (Mixout silence-fill activates
 > the auto-trigger path). This is expected bench-test behaviour — it is not a timeout bug.
 
-The `set_vad_threshold.py` script uses `SNDRV_CTL_IOCTL_TLV_COMMAND` (ioctl 0xc008551b)
-because the 7.x kernel running on spider does not register `TLV_WRITE` for bytes kcontrols.
+The `vad_calibrate.py` script (successor to `set_vad_threshold.py`) uses
+`SNDRV_CTL_IOCTL_TLV_COMMAND` (ioctl 0xc008551b) because the 7.x kernel running on spider
+does not register `TLV_WRITE` for bytes kcontrols.
 
 #### `wov_arbiter` — slot count from `nb_input_pins`
 
@@ -880,7 +977,7 @@ Key parameters in `dmic-wov-multi.conf`:
 | `KWD_CPC` | `100000` | cycles per chunk for detector widgets |
 | `WOV_ARB_CPC` | `20000` | cycles per chunk for arbiter |
 | `VAD_GATE_CPC` | `5000` | cycles per chunk for VAD gate |
-| `FORMAT` | `s16le` | audio format throughout |
+| `FORMAT` | `s32le` (TGL/CAVS2.5) | audio format; `s16le` on other platforms |
 
 > **KPB history depth is configurable via topology.** Set `KPB_BUFF_TIME_MS` in the topology
 > manifest (e.g. `dmic-wov-multi-manifest.conf`) to override `CONFIG_KPB_MAX_BUFF_TIME` at
@@ -998,26 +1095,41 @@ After driver load the full WOV kcontrol set is:
 
 | numid | name | type | Purpose |
 |---|---|---|---|
-| 8 | `vad_gate_cfg_100` | bytes TLV | VAD gate energy threshold / onset / hangover / shift |
-| 9 | `wov_init_101` | bytes TLV | Set slot ID for detect_test in pipeline 101 |
-| 10 | `wov_mute_101` | boolean switch | Arm/mute detection for slot 0 |
-| 11 | `wov_init_102` | bytes TLV | Set slot ID for detect_test in pipeline 102 |
-| 12 | `wov_mute_102` | boolean switch | Arm/mute detection for slot 1 |
-| 13 | `wov_init_103` | bytes TLV | Set slot ID for detect_test in pipeline 103 |
-| 14 | `wov_mute_103` | boolean switch | Arm/mute detection for slot 2 |
-| 15 | `wov_trigger_id` | bytes TLV (read-only) | Read active slot after detection |
+| 8 | `vad_gate_cfg_100` | bytes TLV (R/W) | VAD gate config: threshold, onset_frames, hangover_frames, energy_shift |
+| 9 | `vad_gate_status_100` | bytes TLV (RO) | VAD gate status: current IIR energy + vad_active flag |
+| 10 | `kpb_cfg_101` | bytes TLV | KPB 0 buffer config (history depth in ms) |
+| 11 | `wov_init_101` | bytes TLV | Slot ID assignment for detect_test in pipeline 101 |
+| 12 | `wov_mute_101` | boolean switch | Arm (`on`) / mute (`off`) detection for slot 0 |
+| 13 | `kpb_cfg_102` | bytes TLV | KPB 1 buffer config |
+| 14 | `wov_init_102` | bytes TLV | Slot ID assignment for detect_test in pipeline 102 |
+| 15 | `wov_mute_102` | boolean switch | Arm / mute detection for slot 1 |
+| 16 | `kpb_cfg_103` | bytes TLV | KPB 2 buffer config |
+| 17 | `wov_init_103` | bytes TLV | Slot ID assignment for detect_test in pipeline 103 |
+| 18 | `wov_mute_103` | boolean switch | Arm / mute detection for slot 2 |
+| 19 | `wov_trigger_id` | bytes TLV (RO) | Active slot ID after detection (255 = none) |
 
 > **Note:** numids are assigned in ALSA registration order. Run `amixer -c 0 controls`
 > to confirm actual numids after any topology rebuild.
 
+**Runtime usage summary:**
+
+| kcontrol | When to use |
+|---|---|
+| `vad_gate_cfg_100` (8) | Write threshold before opening the compress device. Calibrate to silence floor × 1.5–3×. A threshold of 0 (default) is pass-through — gate always open (HPRO clock). |
+| `vad_gate_status_100` (9) | Poll during capture to detect voice activity. `vad_active=true` → speech detected; `false` → silence/hangover. Energy field tracks the IIR level. Valid while compress device is open (pipeline in D0). |
+| `kpb_cfg_1NN` (10/13/16) | Written automatically by the kernel from topology at pipeline open. Normally not written by userspace. |
+| `wov_init_1NN` (11/14/17) | Write slot IDs **before** pipeline PREPARE IPC arrives. Race-write immediately after opening the compress device. |
+| `wov_mute_1NN` (12/15/18) | Write `on` to arm a slot for detection after slot IDs are programmed. Default is `off` (muted). |
+| `wov_trigger_id` (19) | Read after detection to confirm which slot fired. Returns 255 while no active detection. Requires pipeline in D0 (compress device open). |
+
 #### VAD gate kcontrol
-Set the energy threshold via `set_vad_threshold.py` **after** driver load and **before**
+Set the energy threshold via `vad_calibrate.py` **after** driver load and **before**
 opening the capture device.  A threshold of 0 (default) makes the gate transparent (always HPRO);
-set it to ~100M for typical lab use on TGL/spider:
+set it to ~300M for typical lab use on TGL/spider (ambient floor ≈ 100–300M on spider):
 
 ```bash
-python3 /tmp/set_vad_threshold.py --threshold 100000000
-python3 /tmp/set_vad_threshold.py --read   # verify
+python3 /tmp/vad_calibrate.py --threshold 300000000
+python3 /tmp/vad_calibrate.py --read-config   # verify written config
 ```
 
 ---
@@ -1025,16 +1137,16 @@ python3 /tmp/set_vad_threshold.py --read   # verify
 ### Slot Assignment via `wov_init_1NN` kcontrol
 
 Each `detect_test` instance reads its `wov_slot_id` from a bytes TLV kcontrol
-(`wov_init_101 / 102 / 103`, numids 9 / 11 / 13).  The assignment must arrive
+(`wov_init_101 / 102 / 103`, numids 11 / 14 / 17).  The assignment must arrive
 **before** the PCM `PREPARE` IPC — write the kcontrols immediately after forking
 `arecord` into the background:
 
 ```bash
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 10 /tmp/wov.wav &
 # Race the PREPARE: write all three kcontrols before hw_params completes
-python3 set_wov_slot.py 9 0    # wov_init_101 → slot 0
-python3 set_wov_slot.py 11 1   # wov_init_102 → slot 1
-python3 set_wov_slot.py 13 2   # wov_init_103 → slot 2
+python3 set_wov_slot.py 11 0   # wov_init_101 → slot 0
+python3 set_wov_slot.py 14 1   # wov_init_102 → slot 1
+python3 set_wov_slot.py 17 2   # wov_init_103 → slot 2
 wait
 ```
 
@@ -1042,7 +1154,7 @@ To **disable** a slot (useful for per-slot isolation tests), write
 `slot_id = 255` (`WOV_SLOT_INVALID`) — the DP thread is not started for that slot:
 
 ```bash
-python3 set_wov_slot.py 9 255   # disable slot 0
+python3 set_wov_slot.py 11 255   # disable slot 0
 ```
 
 #### `set_wov_slot.py` — TLV helper script
@@ -1054,7 +1166,7 @@ Copy to the DUT as `/tmp/set_wov_slot.py`.  The script builds the two-level
 ```python
 #!/usr/bin/env python3
 # Usage: set_wov_slot.py <numid> <slot_id>
-#   numid: 8=wov_init_101 (slot 0), 10=wov_init_102 (slot 1), 12=wov_init_103 (slot 2)
+#   numid: 11=wov_init_101 (slot 0), 14=wov_init_102 (slot 1), 17=wov_init_103 (slot 2)
 #   slot_id: 0-2 to enable; 255 to disable (WOV_SLOT_INVALID)
 import sys, fcntl, struct, os
 
@@ -1103,13 +1215,13 @@ batch, `frames_total >= KD_DP_FRAMES`).  The first batch fires the trigger appro
 dmesg -C
 arecord -Dhw:0,11 -r 16000 -c 1 -f S16_LE -d 10 /tmp/wov_all.wav &
 AREC=$!
-python3 set_wov_slot.py 9 0    # wov_init_101 → slot 0
-python3 set_wov_slot.py 11 1   # wov_init_102 → slot 1
-python3 set_wov_slot.py 13 2   # wov_init_103 → slot 2
+python3 set_wov_slot.py 11 0   # wov_init_101 → slot 0
+python3 set_wov_slot.py 14 1   # wov_init_102 → slot 1
+python3 set_wov_slot.py 17 2   # wov_init_103 → slot 2
 # Arm all three slots
-amixer -c 0 cset numid=9  on   # wov_mute_101
-amixer -c 0 cset numid=11 on   # wov_mute_102
-amixer -c 0 cset numid=13 on   # wov_mute_103
+amixer -c 0 cset numid=12 on   # wov_mute_101
+amixer -c 0 cset numid=15 on   # wov_mute_102
+amixer -c 0 cset numid=18 on   # wov_mute_103
 wait $AREC
 echo "rc=$?"
 ```
@@ -1121,13 +1233,13 @@ and 2 via `NOTIFIER_ID_WOV_CTRL`.
 
 ```bash
 # Disable the other two slots before starting arecord
-python3 set_wov_slot.py 9 255   # disable slot 0 (persists across sessions)
-python3 set_wov_slot.py 13 255  # disable slot 2
+python3 set_wov_slot.py 11 255  # disable slot 0 (persists across sessions)
+python3 set_wov_slot.py 17 255  # disable slot 2
 
 crecord -c 0 -d 11 -r 16000 -C 1 -f 0 -l 8 -z 4096 /tmp/wov_s1.raw &
 AREC=$!
-python3 set_wov_slot.py 11 1    # wov_init_102 → slot 1
-amixer -c 0 cset numid=12 on    # arm wov_mute_102
+python3 set_wov_slot.py 14 1    # wov_init_102 → slot 1
+amixer -c 0 cset numid=15 on    # arm wov_mute_102
 wait $AREC
 echo "rc=$?"
 ```
@@ -1151,9 +1263,9 @@ AREC=$!
 sleep 2
 
 # Set slot IDs
-python3 set_wov_slot.py 9 0
-python3 set_wov_slot.py 11 1
-python3 set_wov_slot.py 13 2
+python3 set_wov_slot.py 11 0
+python3 set_wov_slot.py 14 1
+python3 set_wov_slot.py 17 2
 
 # Leave all wov_mute controls at default (off = muted)
 echo "All muted — waiting 12s, no trigger expected:"
@@ -1161,7 +1273,7 @@ sleep 12
 python3 read_wov_trigger.py     # expect: active_slot = 255
 
 # Arm slot 1
-amixer -c 0 cset numid=12 on
+amixer -c 0 cset numid=15 on
 echo "Slot 1 armed — waiting 12s, trigger expected:"
 sleep 12
 python3 read_wov_trigger.py     # expect: active_slot = 1
@@ -1173,13 +1285,13 @@ kill $AREC
 
 ```python
 #!/usr/bin/env python3
-# Reads wov_trigger_id (numid=15) to get active_slot after detection.
+# Reads wov_trigger_id (numid=19) to get active_slot after detection.
 # DSP must be in D0 (crecord/compress device open) or ENOSPC is returned.
 import fcntl, os, struct
 
 SNDRV_CTL_IOCTL_TLV_READ = (2 << 30) | (8 << 16) | (0x55 << 8) | 0x1a
 
-def read_active_slot(card=0, numid=15):
+def read_active_slot(card=0, numid=19):
     response_size = 44
     buf = bytearray(struct.pack('<II', numid, response_size) + bytes(response_size))
     fd = os.open(f'/dev/snd/controlC{card}', os.O_RDWR)
@@ -1226,10 +1338,10 @@ capture pipeline-prepare and trigger messages.
 # Capture ~1 MB of firmware trace concurrently with an arecord session
 dd if=/sys/kernel/debug/sof/mtrace/core0 bs=65536 count=16 of=/tmp/mt.bin &
 crecord -c 0 -d 11 -r 16000 -C 1 -f 0 -l 8 -z 4096 /tmp/wov.raw &
-python3 set_wov_slot.py 9 0
-python3 set_wov_slot.py 11 1
-python3 set_wov_slot.py 13 2
-amixer -c 0 cset numid=10 on && amixer -c 0 cset numid=12 on && amixer -c 0 cset numid=14 on
+python3 set_wov_slot.py 11 0
+python3 set_wov_slot.py 14 1
+python3 set_wov_slot.py 17 2
+amixer -c 0 cset numid=12 on && amixer -c 0 cset numid=15 on && amixer -c 0 cset numid=18 on
 wait
 
 # strings works because SOF embeds full format strings in the binary
@@ -1291,8 +1403,8 @@ DUT and `speaker-test` on a test machine whose audio output is wired to the DUT 
 ```bash
 # On the DUT: start capture and set all slots
 crecord -c 0 -d 11 -r 16000 -C 1 -f 0 -l 8 -z 4096 /tmp/wov_sweep.raw &
-python3 set_wov_slot.py 9 0 && python3 set_wov_slot.py 11 1 && python3 set_wov_slot.py 13 2
-amixer -c 0 cset numid=10 on && amixer -c 0 cset numid=12 on && amixer -c 0 cset numid=14 on
+python3 set_wov_slot.py 11 0 && python3 set_wov_slot.py 14 1 && python3 set_wov_slot.py 17 2
+amixer -c 0 cset numid=12 on && amixer -c 0 cset numid=15 on && amixer -c 0 cset numid=18 on
 
 # On test machine: drive tone sweep (one frequency band per slot)
 speaker-test -c 1 -t sine -f 120 -l 3   # -> slot 0 (Male 80-170 Hz)
@@ -1300,3 +1412,196 @@ speaker-test -c 1 -t sine -f 220 -l 3   # -> slot 1 (Female 175-270 Hz)
 speaker-test -c 1 -t sine -f 350 -l 3   # -> slot 2 (Child 275-500 Hz)
 wait
 ```
+
+---
+
+### VAD Calibration Tool (`vad_calibrate.py`)
+
+`tools/wov_capture/vad_calibrate.py` is the recommended runtime tool for configuring and
+monitoring the VAD gate.  It supersedes `set_vad_threshold.py`.
+
+```bash
+# Write threshold to VAD gate (compress device may be open or closed)
+python3 vad_calibrate.py --threshold 300000000   # 300M — typical spider lab value
+
+# Read back current configuration
+python3 vad_calibrate.py --read-config
+
+# Monitor energy in real-time (poll vad_gate_status_100 while comprC0D11 is open)
+python3 vad_calibrate.py --monitor
+```
+
+**TGL/CAVS2.5 (spider) calibration guide:**
+
+| Environment | Recommended threshold |
+|---|---|
+| Silent lab (ambient < 100M) | 150M–200M |
+| Typical lab (ambient 100M–300M) | 300M–500M |
+| Always-open / pass-through (test only) | 0 or 10000 |
+
+The VAD energy estimator tracks `|sample|` (IIR, not RMS) on S32LE data.  The IIR
+smoothing factor is controlled by `energy_shift` (default 6 → α = 1/64).
+
+> **Note:** `vad_gate_status_100` (numid=9) returns `energy=0, vad_active=false` when the
+> pipeline is idle (compress device closed / pipeline not in RUNNING).  Poll status only while
+> `comprC0D11` is open and the pipeline is active.
+
+---
+
+### Multi-Cycle Re-Arm Daemon (`wov_daemon.py`)
+
+`tools/wov_capture/wov_daemon.py` runs a fully automated multi-cycle WOV capture loop on the
+DUT.  It wraps `wov_capture` and polls `vad_gate_status_100` to detect silence and re-arm
+between triggers, without closing the compress device.
+
+```bash
+# Basic usage — unlimited cycles, raw PCM appended to /tmp/wov_daemon.raw
+python3 wov_daemon.py
+
+# Capture exactly 3 WOV events, set threshold at startup
+python3 wov_daemon.py --cycles 3 --threshold 300000000 --out /tmp/wov3.raw
+
+# Options
+python3 wov_daemon.py --help
+```
+
+```
+usage: wov_daemon.py [-h] [--cycles N] [--out FILE] [--threshold THR]
+                     [--compress N] [--card N]
+
+  --cycles N      Number of WOV events to capture (0=unlimited, default)
+  --out FILE      Output raw PCM file (default: /tmp/wov_daemon.raw)
+  --threshold THR VAD threshold to write at startup (int, e.g. 300000000)
+  --compress N    Compress PCM device number (default: 11)
+  --card N        Sound card number (default: 0)
+```
+
+Post-processing raw output to WAV:
+
+```bash
+sox -r 16000 -e signed -b 32 -c 1 /tmp/wov_daemon.raw /tmp/wov_daemon.wav
+```
+
+---
+
+### C Host Application (`wov_capture_app`)
+
+`tools/wov_capture/wov_capture_app.c` is a self-contained C host application that
+implements the full WOV capture loop with no-reset re-arm, timestamped WAV output,
+and structured logging.  It links against `libtinycompress` and uses raw ioctl for
+kcontrol access.
+
+#### Build
+
+```bash
+cd tools/wov_capture
+
+# Auto-detects tinycompress at ../../../tinycompress relative to the Makefile
+make
+
+# Override tinycompress location
+make TINYCOMPRESS_DIR=/home/lrg/work/tinycompress
+
+# Install to DUT (scp)
+make install DUT=root@spider
+```
+
+The binary `wov_capture_app` is statically linked against `libtinycompress.a` via rpath
+so it runs on the DUT without any extra library setup.
+
+#### Usage
+
+```
+Usage: wov_capture_app [options]
+
+Options:
+  -o DIR   Output directory for WAV files (default: /tmp)
+  -n N     Number of WOV cycles to capture (default: unlimited, 0)
+  -t THR   VAD gate threshold to write at startup (int32, e.g. 300000000)
+  -T ONS   VAD onset frames (default: 5)
+  -H HNG   VAD hangover frames (default: 100)
+  -c CARD  Sound card number (default: 0)
+  -d DEV   Compress device number (default: 11)
+  -b FRAG  Fragment size in bytes (default: 65536)
+  -f FRAGS Number of fragments (default: 8)
+  -v       Verbose: print energy values during VAD polling
+  -h       Show help
+```
+
+**Quick start on spider:**
+
+```bash
+# Deploy binary
+make install DUT=root@spider
+
+# On spider: run 2 cycles with VAD threshold 300M, verbose logging
+wov_capture_app -n 2 -t 300000000 -v
+
+# Unlimited cycles, save to /data/wov/
+wov_capture_app -o /data/wov
+```
+
+#### Log Format
+
+All output is prefixed with a timestamp tag:
+
+```
+[YYYY-MM-DD HH:MM:SS.mmm] INFO  compress device opened: card=0 device=11
+[YYYY-MM-DD HH:MM:SS.mmm] STATE cycle 1: waiting for WOV trigger
+[YYYY-MM-DD HH:MM:SS.mmm] STATE cycle 1: WOV triggered, receiving PCM
+[YYYY-MM-DD HH:MM:SS.mmm] CTL   vad_gate_status: energy=0 active=false (silence detected)
+[YYYY-MM-DD HH:MM:SS.mmm] STATE cycle 1: drain complete — 655360 bytes → wov_20260824_143022_001.wav
+[YYYY-MM-DD HH:MM:SS.mmm] STATE cycle 2: waiting for WOV trigger
+```
+
+| Tag | Meaning |
+|---|---|
+| `INFO` | Startup, device open/close, configuration |
+| `STATE` | Cycle transitions (waiting → triggered → drain) |
+| `CTL` | kcontrol reads/writes (VAD threshold, status polls) |
+| `ERROR` | Fatal errors (device open failure, ioctl error) |
+
+#### WAV Output
+
+Each WOV event produces a separate WAV file with a timestamp and cycle ID in the name:
+
+```
+wov_YYYYMMDD_HHMMSS_NNN.wav
+```
+
+Example: `wov_20260824_143022_001.wav`
+
+Format: RIFF PCM, mono, 16000 Hz, S32LE (32-bit signed), IEC 60908 WAVE container.
+
+To play back or inspect:
+
+```bash
+# Playback (convert S32LE to float for aplay)
+sox wov_20260824_143022_001.wav -t alsa default
+
+# Check first non-zero sample offset (silence → audio boundary = trigger point)
+python3 -c "
+import struct, sys
+d = open(sys.argv[1], 'rb').read()[44:]
+n = len(d)//4
+s = struct.unpack_from(f'<{n}i', d)
+nz = next((i for i,x in enumerate(s) if x != 0), n)
+print(f'first non-zero at frame {nz} ({nz*1000/16000:.1f} ms)')
+" wov_20260824_143022_001.wav
+```
+
+#### Multi-Cycle Re-Arm Verification
+
+The application implements no-reset re-arm via DSP-initiated VAD silence path:
+
+1. Opens `comprC0D11` once at startup
+2. Starts capture (`compress_start`)
+3. Optionally writes VAD threshold via `vad_gate_cfg_100` (numid=8)
+4. For each cycle:
+   - Blocks on `compress_wait()` until WOV triggers
+   - Reads PCM fragments, writes to timestamped WAV
+   - Polls `vad_gate_status_100` (numid=9) — detects `vad_active=false`
+   - Drains remaining data after silence detected (idle timeout = 500 ms)
+   - Finalizes WAV header (patches data_size)
+   - Waits 300 ms then loops to next cycle
+5. Compress device stays open throughout; no pipeline RESET between cycles
