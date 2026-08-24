@@ -223,6 +223,7 @@ endif # Cadence
 	config INTEL_MODULES
 	bool "Intel modules"
 	depends on LIBRARY_MANAGER
+	select KPB_NOTIFIER if COMP_KPB
 	help
 		Select for a Intel modules API implementation.
 		This will cause module adapter component to include IADK module

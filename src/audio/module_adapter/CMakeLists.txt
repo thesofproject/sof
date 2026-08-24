@@ -75,6 +75,12 @@ endif()
 		iadk/system_agent.cpp
 		library/native_system_service.c
 	)
+	if(CONFIG_INTEL_MODULES AND CONFIG_COMP_KPB)
+		zephyr_library_sources(
+			iadk/kpb_service.cpp
+			library/kpb_service_bridge.c
+		)
+	endif()
 
 	zephyr_library_sources_ifdef(CONFIG_SOF_USERSPACE_PROXY
 		library/userspace_proxy.c

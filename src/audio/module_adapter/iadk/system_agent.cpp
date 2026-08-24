@@ -21,6 +21,7 @@
 #include <module_initial_settings_concrete.h>
 #include <iadk_module_adapter.h>
 #include <system_agent.h>
+#include <sof/audio/module_adapter/iadk/iadk_kpb_service.h>
 #include <sof/audio/module_adapter/library/native_system_service.h>
 #include <sof/audio/module_adapter/library/native_system_agent.h>
 
@@ -37,6 +38,40 @@ namespace intel_adsp
 {
 namespace system
 {
+/* IADK interfaces are C++ objects, not ABI-compatible with native ones: no native fallback */
+static AdspErrorCode iadk_system_service_get_interface(enum interface_id id,
+						       struct system_service_iface **iface)
+{
+	if (!iface)
+		return ADSP_INVALID_PARAMETERS;
+
+	*iface = NULL;
+
+#if CONFIG_COMP_KPB
+	if (id == INTERFACE_ID_KPB_SERVICE)
+		return GetKpbServiceInterface(INTERFACE_VERSION_KPB_SERVICE_V1, iface);
+#endif
+
+	return ADSP_SERVICE_UNAVAILABLE;
+}
+
+static AdspErrorCode iadk_system_service_get_interface_versioned(enum interface_id id,
+								 uint32_t version,
+								 struct system_service_iface **iface)
+{
+	if (!iface)
+		return ADSP_INVALID_PARAMETERS;
+
+	*iface = NULL;
+
+#if CONFIG_COMP_KPB
+	if (id == INTERFACE_ID_KPB_SERVICE)
+		return GetKpbServiceInterface(version, iface);
+#endif
+
+	return ADSP_SERVICE_UNAVAILABLE;
+}
+
 /* Structure storing handles to system service operations */
 const APP_TASK_DATA AdspSystemService SystemAgent::system_service_ = {
 	native_system_service_log_message,
@@ -45,8 +80,8 @@ const APP_TASK_DATA AdspSystemService SystemAgent::system_service_ = {
 	native_system_service_vec_memset,
 	native_system_service_create_notification,
 	native_system_service_send_notif_msg,
-	native_system_service_get_interface,
-	native_system_service_get_interface_versioned,
+	iadk_system_service_get_interface,
+	iadk_system_service_get_interface_versioned,
 };
 
 SystemAgent::SystemAgent(uint32_t module_id,
