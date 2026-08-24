@@ -43,6 +43,7 @@ static const uint32_t max_chain_number = DT_NUM_HDA_HOST_OUT + DT_NUM_HDA_HOST_I
 LOG_MODULE_REGISTER(chain_dma, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(chain_dma);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(chain_dma_tr, SOF_UUID(chain_dma_uuid), LOG_LEVEL_INFO);
 
 /* chain dma component private data */
@@ -787,7 +788,9 @@ __cold static void chain_task_free(struct comp_dev *dev)
 
 static const struct comp_driver comp_chain_dma = {
 	.uid = SOF_RT_UUID(chain_dma_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &chain_dma_tr,
+#endif
 	.ops = {
 		.create = chain_task_create,
 		.trigger = chain_task_trigger,

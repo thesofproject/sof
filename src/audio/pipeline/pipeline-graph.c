@@ -35,6 +35,7 @@ LOG_MODULE_REGISTER(pipe, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(pipe);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
 
 /* number of pipeline stream metadata objects we export in mailbox */
@@ -140,12 +141,15 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 	p->pipeline_id = pipeline_id;
 	p->status = COMP_STATE_INIT;
 	p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
+#ifndef __ZEPHYR__
+	/* Zephyr's tr_*() macros ignore the trace context, no need to copy it */
 	ret = memcpy_s(&p->tctx, sizeof(struct tr_ctx), &pipe_tr,
 		       sizeof(struct tr_ctx));
 	if (ret < 0) {
 		pipe_err(p, "failed to copy trace settings");
 		goto free;
 	}
+#endif
 
 	ret = pipeline_posn_offset_get(&p->posn_offset);
 	if (ret < 0) {

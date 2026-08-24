@@ -34,6 +34,7 @@
 #include <platform/acp_dmic_dma.h>
 
 SOF_DEFINE_REG_UUID(acp_dmic_dma);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_dmic_dma_rmb_tr, SOF_UUID(acp_dmic_dma_uuid), LOG_LEVEL_INFO);
 
 uint32_t dmic_rngbuff_size;

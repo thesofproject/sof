@@ -24,6 +24,7 @@ extern struct acp_dmic_silence acp_initsilence;
 
 SOF_DEFINE_REG_UUID(acp_dmic_dai);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_dmic_dai_tr, SOF_UUID(acp_dmic_dai_uuid), LOG_LEVEL_INFO);
 
 static inline int acp_dmic_dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
@@ -157,7 +158,9 @@ static int acp_dmic_dai_get_hw_params(struct dai *dai,
 const struct dai_driver acp_dmic_dai_driver = {
 	.type = SOF_DAI_AMD_DMIC,
 	.uid = SOF_UUID(acp_dmic_dai_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &acp_dmic_dai_tr,
+#endif
 	.dma_dev = SOF_DMA_DEV_DMIC,
 	.dma_caps = SOF_DMA_CAP_DMIC,
 	.ops = {

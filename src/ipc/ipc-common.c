@@ -51,6 +51,7 @@ LOG_MODULE_REGISTER(ipc, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(ipc);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(ipc_tr, SOF_UUID(ipc_uuid), LOG_LEVEL_INFO);
 
 #ifdef CONFIG_SOF_USERSPACE_LL

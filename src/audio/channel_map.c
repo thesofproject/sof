@@ -18,6 +18,7 @@ LOG_MODULE_REGISTER(channel_map, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(chmap);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(chmap_tr, SOF_UUID(chmap_uuid), LOG_LEVEL_INFO);
 
 struct sof_ipc_channel_map *chmap_get(struct sof_ipc_stream_map *smap,

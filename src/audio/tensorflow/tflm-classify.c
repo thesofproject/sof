@@ -238,6 +238,7 @@ static const struct module_interface tflmcly_interface = {
 	.free = tflm_free
 };
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(tflm_tr, SOF_UUID(tflmcly_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(tflmcly_interface, tflmcly_uuid, tflm_tr);
 SOF_MODULE_INIT(tflmcly, sys_comp_module_tflmcly_interface_init);

@@ -48,6 +48,7 @@ struct comp_driver_list *comp_drivers_get(void)
 
 SOF_DEFINE_REG_UUID(component);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(comp_tr, SOF_UUID(component_uuid), LOG_LEVEL_INFO);
 
 int comp_register(struct comp_driver_info *drv)

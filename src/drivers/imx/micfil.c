@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(micfil_dai, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(micfil);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(micfil_tr, SOF_UUID(micfil_uuid), LOG_LEVEL_INFO);
 
 #define MICFIL_OSR_DEFAULT		16
@@ -318,7 +319,9 @@ static int micfil_remove(struct dai *dai)
 const struct dai_driver micfil_driver = {
 	.type = SOF_DAI_IMX_MICFIL,
 	.uid = SOF_UUID(micfil_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &micfil_tr,
+#endif
 	.dma_dev = SOF_DMA_DEV_MICFIL,
 	.ops = {
 		.trigger		= micfil_trigger,

@@ -24,6 +24,7 @@
 LOG_MODULE_REGISTER(twb_schedule, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(twb_sched);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(twb_tr, SOF_UUID(twb_sched_uuid), LOG_LEVEL_INFO);
 
 struct scheduler_twb_data {

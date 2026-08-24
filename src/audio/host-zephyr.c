@@ -1311,12 +1311,15 @@ static uint64_t host_get_processed_data(struct comp_dev *dev, uint32_t stream_no
 	return ret;
 }
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(host_tr, SOF_UUID(host_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
 	.uid	= SOF_RT_UUID(host_uuid),
+#ifndef __ZEPHYR__
 	.tctx	= &host_tr,
+#endif
 	.ops	= {
 		.create				= host_new,
 		.free				= host_free,

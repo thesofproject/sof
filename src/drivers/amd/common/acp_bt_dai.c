@@ -21,6 +21,7 @@
 
 SOF_DEFINE_REG_UUID(btdai);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(btdai_tr, SOF_UUID(btdai_uuid), LOG_LEVEL_INFO);
 
 static inline int btdai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
@@ -79,7 +80,9 @@ static int btdai_get_hw_params(struct dai *dai,
 const struct dai_driver acp_btdai_driver = {
 	.type	  = SOF_DAI_AMD_BT,
 	.uid	  = SOF_UUID(btdai_uuid),
+#ifndef __ZEPHYR__
 	.tctx	  = &btdai_tr,
+#endif
 	.dma_dev  = SOF_DMA_DEV_BT,
 	.dma_caps = SOF_DMA_CAP_BT,
 	.ops = {

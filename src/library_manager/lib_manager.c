@@ -55,6 +55,7 @@ LOG_MODULE_REGISTER(lib_manager, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(lib_manager);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(lib_manager_tr, SOF_UUID(lib_manager_uuid), LOG_LEVEL_INFO);
 
 struct lib_manager_dma_ext {
@@ -762,7 +763,9 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 	drv->type = SOF_COMP_MODULE_ADAPTER;
 	drv->uid_cp = *uuid;
 	drv->uid = &drv->uid_cp;
+#ifndef __ZEPHYR__
 	drv->tctx = &lib_manager_tr;
+#endif
 	drv->ops.create = lib_manager_module_create;
 	drv->ops.prepare = module_adapter_prepare;
 	drv->ops.params = module_adapter_params;

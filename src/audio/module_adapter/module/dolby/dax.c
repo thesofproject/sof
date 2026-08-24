@@ -1000,6 +1000,7 @@ SOF_LLEXT_BUILDINFO;
 
 #else
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dolby_dax_audio_processing_tr, SOF_UUID(dolby_dax_audio_processing_uuid),
 	       LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(dolby_dax_audio_processing_interface, dolby_dax_audio_processing_uuid,

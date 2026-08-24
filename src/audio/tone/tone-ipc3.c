@@ -375,12 +375,15 @@ static int tone_reset(struct comp_dev *dev)
 	return 0;
 }
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(tone_tr, SOF_UUID(tone_uuid), LOG_LEVEL_INFO);
 
 static const struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
 	.uid = SOF_RT_UUID(tone_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &tone_tr,
+#endif
 	.ops = {
 		.create = tone_new,
 		.free = tone_free,

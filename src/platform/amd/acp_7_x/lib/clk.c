@@ -40,6 +40,7 @@
 
 SOF_DEFINE_REG_UUID(acp_clk);
 LOG_MODULE_REGISTER(acp_clk, CONFIG_SOF_LOG_LEVEL);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acp_clk_tr, SOF_UUID(acp_clk_uuid), LOG_LEVEL_INFO);
 
 /* Frequency tables */

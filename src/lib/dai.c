@@ -27,6 +27,7 @@ LOG_MODULE_REGISTER(dai, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dai_lib);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dai_tr, SOF_UUID(dai_lib_uuid), LOG_LEVEL_INFO);
 
 struct dai_group_list {

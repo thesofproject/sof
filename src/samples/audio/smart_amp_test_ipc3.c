@@ -22,6 +22,7 @@ LOG_MODULE_REGISTER(smart_amp_test, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(smart_amp_test);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(smart_amp_test_comp_tr, SOF_UUID(smart_amp_test_uuid),
 	       LOG_LEVEL_INFO);
 
@@ -546,7 +547,9 @@ static int smart_amp_prepare(struct comp_dev *dev)
 static const struct comp_driver comp_smart_amp = {
 	.type = SOF_COMP_SMART_AMP,
 	.uid = SOF_RT_UUID(smart_amp_test_uuid),
+#ifndef __ZEPHYR__
 	.tctx = &smart_amp_test_comp_tr,
+#endif
 	.ops = {
 		.create			= smart_amp_new,
 		.free			= smart_amp_free,

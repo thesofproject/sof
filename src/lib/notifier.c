@@ -24,6 +24,7 @@ LOG_MODULE_REGISTER(notifier, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(notifier);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(nt_tr, SOF_UUID(notifier_uuid), LOG_LEVEL_INFO);
 
 static SHARED_DATA struct notify_data notify_data_shared[CONFIG_CORE_COUNT];

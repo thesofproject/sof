@@ -16,6 +16,7 @@
 
 SOF_DEFINE_REG_UUID(asrc);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(asrc_tr, SOF_UUID(asrc_uuid), LOG_LEVEL_INFO);
 LOG_MODULE_DECLARE(asrc, CONFIG_SOF_LOG_LEVEL);
 
