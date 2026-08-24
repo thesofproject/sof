@@ -110,7 +110,7 @@ int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 	if (ret < 0)
 		return ret;
 
-#if defined(CONFIG_SOF_USERSPACE_LL) && defined(CONFIG_IPC_MAJOR_4)
+#ifdef CONFIG_IPC_MAJOR_4
 	/* HOSTBOX partitions for IPC4 module init parameter block reads.
 	 * comp_new_ipc4() accesses MAILBOX_HOSTBOX_BASE directly to get
 	 * the module configuration data sent by the host.
@@ -141,9 +141,7 @@ int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
 	ret = k_mem_domain_add_partition(domain, &hostbox_partition);
 	if (ret < 0)
 		return ret;
-#endif /* CONFIG_IPC_MAJOR_4 */
-
-#ifndef CONFIG_IPC_MAJOR_4
+#else /* CONFIG_IPC_MAJOR_4 */
 	/*
 	 * Next mailbox_stream (not available in IPC4). Stream access is cached,
 	 * so different mapping this time.
