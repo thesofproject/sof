@@ -73,6 +73,7 @@ endif()
 		iadk/module_initial_settings_concrete.cpp
 		iadk/iadk_module_adapter.cpp
 		iadk/system_agent.cpp
+		iadk/timestamping_service_provider.cpp
 		library/native_system_service.c
 	)
 	if(CONFIG_INTEL_MODULES AND CONFIG_COMP_KPB)
