@@ -64,16 +64,18 @@ struct vad_gate_data {
  * Energy estimation and VAD state machine
  * ---------------------------------------------------------------------- */
 
-/* Per-period energy update; assumes single-channel S32LE (mono DMIC capture).
+/* Per-period energy update — handles both S16LE and S32LE mono capture.
+ * sample_bytes is 2 for S16LE, 4 for S32LE.
  * data_ptr, buf_start, buf_size describe the circular source buffer so wrap
  * is handled without the legacy audio_stream API. */
 static void vad_update_energy(struct comp_dev *dev,
 			       const void *data_ptr, const void *buf_start,
-			       size_t buf_size, uint32_t frames)
+			       size_t buf_size, uint32_t frames,
+			       uint32_t sample_bytes)
 {
 	struct vad_gate_data *cd = comp_get_drvdata(dev);
-	const int32_t *ptr = data_ptr;
-	const int32_t *end = (const int32_t *)((const uint8_t *)buf_start + buf_size);
+	const uint8_t *ptr = data_ptr;
+	const uint8_t *end = (const uint8_t *)buf_start + buf_size;
 	bool above;
 	uint32_t i;
 
@@ -82,9 +84,12 @@ static void vad_update_energy(struct comp_dev *dev,
 	for (i = 0; i < frames; i++) {
 		if (ptr >= end)
 			ptr = buf_start;
-		int32_t diff = abs(*ptr) - abs(cd->energy);
+		int32_t sample = (sample_bytes == 2) ?
+			(int32_t)(*(const int16_t *)ptr) :
+			*(const int32_t *)ptr;
+		int32_t diff = abs(sample) - abs(cd->energy);
 		cd->energy += diff >> cd->config.energy_shift;
-		ptr++;
+		ptr += sample_bytes;
 	}
 
 
@@ -228,8 +233,12 @@ static int vad_gate_set_large_config(struct comp_dev *dev,
 {
 	struct vad_gate_data *cd = comp_get_drvdata(dev);
 
-	if (param_id != IPC4_VAD_GATE_SET_CONFIG)
+	if (param_id != IPC4_VAD_GATE_SET_CONFIG) {
+		/* Accept initial SET from topology for RO status kcontrol; ignore data. */
+		if (param_id == IPC4_VAD_GATE_GET_STATUS)
+			return 0;
 		return -EINVAL;
+	}
 
 	if (data_offset < sizeof(struct ipc4_vad_gate_config))
 		return -EINVAL;
@@ -289,7 +298,7 @@ static int vad_gate_copy(struct comp_dev *dev)
 	if (ret)
 		return ret;
 
-	vad_update_energy(dev, data_ptr, buf_start, buf_size, frames);
+	vad_update_energy(dev, data_ptr, buf_start, buf_size, frames, frame_bytes);
 
 	if (!cd->vad_active) {
 		/* Drain input to keep DMIC DMA running during silence. */
@@ -351,6 +360,39 @@ static int vad_gate_copy(struct comp_dev *dev)
 }
 
 /* -------------------------------------------------------------------------
+ * IPC4 large-config get: volatile RO status kcontrol.
+ * param_id=2 returns ipc4_vad_gate_status (energy + vad_active).
+ * ---------------------------------------------------------------------- */
+static int vad_gate_get_large_config(struct comp_dev *dev,
+				      uint32_t param_id,
+				      bool first_block,
+				      bool last_block,
+				      uint32_t *data_offset,
+				      char *data)
+{
+	struct vad_gate_data *cd = comp_get_drvdata(dev);
+	struct ipc4_vad_gate_status *st;
+	struct ipc4_vad_gate_config *cfg;
+
+	if (param_id == IPC4_VAD_GATE_SET_CONFIG) {
+		cfg = (struct ipc4_vad_gate_config *)data;
+		*cfg = cd->config;
+		*data_offset = sizeof(*cfg);
+		return 0;
+	}
+
+	if (param_id != IPC4_VAD_GATE_GET_STATUS)
+		return -EINVAL;
+
+	st = (struct ipc4_vad_gate_status *)data;
+	st->energy     = (uint32_t)abs(cd->energy);
+	st->vad_active = cd->vad_active ? 1 : 0;
+	memset(st->_pad, 0, sizeof(st->_pad));
+	*data_offset = sizeof(*st);
+	return 0;
+}
+
+/* -------------------------------------------------------------------------
  * Component driver registration
  * ---------------------------------------------------------------------- */
 
@@ -367,6 +409,7 @@ static const struct comp_driver vad_gate_drv = {
 		.prepare          = vad_gate_prepare,
 		.reset            = vad_gate_reset,
 		.set_large_config = vad_gate_set_large_config,
+		.get_large_config = vad_gate_get_large_config,
 		.get_attribute    = vad_gate_get_attribute,
 	},
 };

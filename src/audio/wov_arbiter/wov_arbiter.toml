@@ -2,7 +2,7 @@
 	name = "WOVARB"
 	uuid = UUIDREG_STR_WOV_ARBITER
 	affinity_mask = "0x1"
-	instance_count = "1"
+	instance_count = "3"
 	domain_types = "0"
 	load_type = "0"
 	module_type = "0xB"
