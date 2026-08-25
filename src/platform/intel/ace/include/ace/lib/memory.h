@@ -19,14 +19,6 @@
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN		DCACHE_LINE_SIZE
 
-/**
- * \brief Data shared between different cores.
- * Placed into dedicated section, which should be accessed through
- * uncached memory region. SMP platforms without uncache can simply
- * align to cache line size instead.
- */
-#define SHARED_DATA
-
 #include <zephyr/cache.h>
 
 #define uncache_to_cache(address)       sys_cache_cached_ptr_get(address)

@@ -35,8 +35,6 @@ uint8_t *get_library_mailbox(void);
 #define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_RUNTIME_SHARED	1
 
-#define SHARED_DATA
-
 void platform_init_memmap(struct sof *sof);
 
 static inline void *platform_rfree_prepare(void *ptr)

@@ -50,12 +50,11 @@ struct pipeline_posn {
 #endif
 };
 /* the pipeline position lookup table */
-static APP_SYSUSER_BSS SHARED_DATA struct pipeline_posn pipeline_posn_shared;
+static APP_SYSUSER_BSS struct pipeline_posn pipeline_posn_shared;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 /* Mutex pointer in user-accessible partition so user-space threads
- * can read the pointer for syscalls. Kept outside the SHARED_DATA
- * struct to avoid kernel object tracking issues.
+ * can read the pointer for syscalls.
  */
 static APP_SYSUSER_BSS struct k_mutex *pipeline_posn_mutex;
 #endif

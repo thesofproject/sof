@@ -162,7 +162,6 @@
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 struct sof;
 
-#define SHARED_DATA
 void platform_init_memmap(struct sof *sof);
 
 static inline void *platform_rfree_prepare(void *ptr)

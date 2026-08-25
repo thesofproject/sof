@@ -23,8 +23,6 @@ BUILD_ASSERT(PLATFORM_DCACHE_ALIGN == XCHAL_DCACHE_LINESIZE);
 #define PLATFORM_HEAP_RUNTIME 1
 #define PLATFORM_HEAP_BUFFER 1
 
-#define SHARED_DATA /* no special section attribute needed */
-
 /* Mailbox window addresses for the rimage extended manifest.  The
  * struct is optimized out in generated code, it's just here to be a
  * little clearer than the pages of #defines used traditionally.

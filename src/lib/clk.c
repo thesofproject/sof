@@ -24,7 +24,7 @@ SOF_DEFINE_REG_UUID(clock);
 
 DECLARE_TR_CTX(clock_tr, SOF_UUID(clock_uuid), LOG_LEVEL_INFO);
 
-SHARED_DATA struct k_spinlock clk_lock;
+struct k_spinlock clk_lock;
 
 static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
 						  uint32_t size, uint32_t hz)

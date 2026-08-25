@@ -24,7 +24,7 @@ extern struct dma_ops acp_dai_bt_dma_ops;
 #endif
 extern struct dma_ops acp_dai_sp_dma_ops;
 
-static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+static struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_DMA0,

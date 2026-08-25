@@ -26,7 +26,7 @@ SOF_DEFINE_REG_UUID(notifier);
 
 DECLARE_TR_CTX(nt_tr, SOF_UUID(notifier_uuid), LOG_LEVEL_INFO);
 
-static SHARED_DATA struct notify_data notify_data_shared[CONFIG_CORE_COUNT];
+static struct notify_data notify_data_shared[CONFIG_CORE_COUNT];
 
 struct callback_handle {
 	void *receiver;

@@ -1107,7 +1107,7 @@ static const struct comp_driver comp_keyword = {
 	},
 };
 
-static SHARED_DATA struct comp_driver_info comp_keyword_info = {
+static struct comp_driver_info comp_keyword_info = {
 	.drv = &comp_keyword,
 };
 

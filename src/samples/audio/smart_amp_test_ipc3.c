@@ -559,7 +559,7 @@ static const struct comp_driver comp_smart_amp = {
 	},
 };
 
-static SHARED_DATA struct comp_driver_info comp_smart_amp_info = {
+static struct comp_driver_info comp_smart_amp_info = {
 	.drv = &comp_smart_amp,
 };
 

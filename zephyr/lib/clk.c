@@ -13,7 +13,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/clock_control.h>
 
-static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
+static struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 static int select_cpu_freq(int clock, int hz)
 {

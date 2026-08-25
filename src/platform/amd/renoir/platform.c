@@ -124,7 +124,7 @@ const struct ext_man_windows xsram_window
 	},
 };
 
-static SHARED_DATA struct timer timer_shared = {
+static struct timer timer_shared = {
 	.id = TIMER0,
 	.irq = IRQ_NUM_TIMER0,
 };

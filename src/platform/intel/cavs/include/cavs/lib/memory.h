@@ -33,18 +33,6 @@
 
 struct sof;
 
-/**
- * \brief Data shared between different cores.
- * Placed into dedicated section, which should be accessed through
- * uncached memory region. SMP platforms without uncache can simply
- * align to cache line size instead.
- */
-#if !defined(UNIT_TEST) && !defined __ZEPHYR__
-#define SHARED_DATA	__section(".shared_data") __attribute__((aligned(PLATFORM_DCACHE_ALIGN)))
-#else
-#define SHARED_DATA
-#endif
-
 #define SRAM_ALIAS_BASE		0x9E000000
 #define SRAM_ALIAS_MASK		0xFF000000
 #define SRAM_ALIAS_OFFSET	SRAM_UNCACHED_ALIAS

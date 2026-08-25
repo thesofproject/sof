@@ -41,7 +41,7 @@ const uint32_t cpu_freq_enc[] = {
 STATIC_ASSERT(ARRAY_SIZE(platform_cpu_freq) == NUM_CPU_FREQ,
 	      invalid_number_of_cpu_frequencies);
 
-static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
+static struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 static inline void clk_setl(uint32_t addr, uint32_t val)
 {

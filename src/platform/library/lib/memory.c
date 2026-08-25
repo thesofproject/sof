@@ -27,22 +27,22 @@
 #define HEAP_BUFFER_BASE       0xBE1C0000
 
 /* Heap blocks for system runtime for primary core */
-static SHARED_DATA struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
-static SHARED_DATA struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
-static SHARED_DATA struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
+static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
+static struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
+static struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
 
 /* Heap blocks for system runtime for secondary core */
 #if CONFIG_CORE_COUNT > 1
-static SHARED_DATA struct block_hdr
+static struct block_hdr
 	sys_rt_x_block64[CONFIG_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT64];
-static SHARED_DATA struct block_hdr
+static struct block_hdr
 	sys_rt_x_block512[CONFIG_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT512];
-static SHARED_DATA struct block_hdr
+static struct block_hdr
 	sys_rt_x_block1024[CONFIG_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT1024];
 #endif
 
 /* Heap memory for system runtime */
-static SHARED_DATA struct block_map sys_rt_heap_map[CONFIG_CORE_COUNT][3] = {
+static struct block_map sys_rt_heap_map[CONFIG_CORE_COUNT][3] = {
 	{ BLOCK_DEF(64, HEAP_SYS_RT_0_COUNT64,
 		    uncached_block_hdr(sys_rt_0_block64)),
 	  BLOCK_DEF(512, HEAP_SYS_RT_0_COUNT512,
@@ -76,16 +76,16 @@ static SHARED_DATA struct block_map sys_rt_heap_map[CONFIG_CORE_COUNT][3] = {
 };
 
 /* Heap blocks for modules */
-static SHARED_DATA struct block_hdr mod_block64[HEAP_COUNT64];
-static SHARED_DATA struct block_hdr mod_block128[HEAP_COUNT128];
-static SHARED_DATA struct block_hdr mod_block256[HEAP_COUNT256];
-static SHARED_DATA struct block_hdr mod_block512[HEAP_COUNT512];
-static SHARED_DATA struct block_hdr mod_block1024[HEAP_COUNT1024];
-static SHARED_DATA struct block_hdr mod_block2048[HEAP_COUNT2048];
-static SHARED_DATA struct block_hdr mod_block4096[HEAP_COUNT4096];
+static struct block_hdr mod_block64[HEAP_COUNT64];
+static struct block_hdr mod_block128[HEAP_COUNT128];
+static struct block_hdr mod_block256[HEAP_COUNT256];
+static struct block_hdr mod_block512[HEAP_COUNT512];
+static struct block_hdr mod_block1024[HEAP_COUNT1024];
+static struct block_hdr mod_block2048[HEAP_COUNT2048];
+static struct block_hdr mod_block4096[HEAP_COUNT4096];
 
 /* Heap memory map for modules */
-static SHARED_DATA struct block_map rt_heap_map[] = {
+static struct block_map rt_heap_map[] = {
 	BLOCK_DEF(64, HEAP_COUNT64, uncached_block_hdr(mod_block64)),
 	BLOCK_DEF(128, HEAP_COUNT128, uncached_block_hdr(mod_block128)),
 	BLOCK_DEF(256, HEAP_COUNT256, uncached_block_hdr(mod_block256)),
@@ -97,14 +97,14 @@ static SHARED_DATA struct block_map rt_heap_map[] = {
 
 #if CONFIG_CORE_COUNT > 1
 /* Heap blocks for runtime shared */
-static SHARED_DATA struct block_hdr rt_shared_block64[HEAP_RUNTIME_SHARED_COUNT64];
-static SHARED_DATA struct block_hdr rt_shared_block128[HEAP_RUNTIME_SHARED_COUNT128];
-static SHARED_DATA struct block_hdr rt_shared_block256[HEAP_RUNTIME_SHARED_COUNT256];
-static SHARED_DATA struct block_hdr rt_shared_block512[HEAP_RUNTIME_SHARED_COUNT512];
-static SHARED_DATA struct block_hdr rt_shared_block1024[HEAP_RUNTIME_SHARED_COUNT1024];
+static struct block_hdr rt_shared_block64[HEAP_RUNTIME_SHARED_COUNT64];
+static struct block_hdr rt_shared_block128[HEAP_RUNTIME_SHARED_COUNT128];
+static struct block_hdr rt_shared_block256[HEAP_RUNTIME_SHARED_COUNT256];
+static struct block_hdr rt_shared_block512[HEAP_RUNTIME_SHARED_COUNT512];
+static struct block_hdr rt_shared_block1024[HEAP_RUNTIME_SHARED_COUNT1024];
 
 /* Heap memory map for runtime shared */
-static SHARED_DATA struct block_map rt_shared_heap_map[] = {
+static struct block_map rt_shared_heap_map[] = {
 	BLOCK_DEF(64, HEAP_RUNTIME_SHARED_COUNT64, uncached_block_hdr(rt_shared_block64)),
 	BLOCK_DEF(128, HEAP_RUNTIME_SHARED_COUNT128, uncached_block_hdr(rt_shared_block128)),
 	BLOCK_DEF(256, HEAP_RUNTIME_SHARED_COUNT256, uncached_block_hdr(rt_shared_block256)),
@@ -114,21 +114,21 @@ static SHARED_DATA struct block_map rt_shared_heap_map[] = {
 #endif
 
 /* Heap blocks for buffers */
-static SHARED_DATA struct block_hdr buf_block[HEAP_BUFFER_COUNT_MAX];
-static SHARED_DATA struct block_hdr lp_buf_block[HEAP_LP_BUFFER_COUNT];
+static struct block_hdr buf_block[HEAP_BUFFER_COUNT_MAX];
+static struct block_hdr lp_buf_block[HEAP_LP_BUFFER_COUNT];
 
 /* Heap memory map for buffers */
-static SHARED_DATA struct block_map buf_heap_map[] = {
+static struct block_map buf_heap_map[] = {
 	BLOCK_DEF(HEAP_BUFFER_BLOCK_SIZE, HEAP_BUFFER_COUNT_MAX,
 		  uncached_block_hdr(buf_block)),
 };
 
-static SHARED_DATA struct block_map lp_buf_heap_map[] = {
+static struct block_map lp_buf_heap_map[] = {
 	BLOCK_DEF(HEAP_LP_BUFFER_BLOCK_SIZE, HEAP_LP_BUFFER_COUNT,
 		  uncached_block_hdr(lp_buf_block)),
 };
 
-static SHARED_DATA struct mm memmap;
+static struct mm memmap;
 
 void platform_init_memmap(struct sof *sof)
 {

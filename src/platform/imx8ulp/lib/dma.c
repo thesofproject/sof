@@ -20,7 +20,7 @@ static const int edma2_ints[IMX8ULP_EDMA2_CHAN_MAX] = {
 	[IMX8ULP_EDMA2_CHAN1] = IMX8ULP_EDMA2_CHAN1_IRQ,
 };
 
-static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+static struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_EDMA2,

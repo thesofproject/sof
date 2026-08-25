@@ -38,7 +38,7 @@
 #define EXT_MANIFEST_ELF_SIZE		(SRAM_BASE + SRAM_SIZE - EXT_MANIFEST_ELF_BASE)
 
 /*
- * The Memory Layout on MT8189 are organised like this :-
+ * The Memory Layout on MT8196 are organised like this :-
  *
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
@@ -183,12 +183,6 @@
 
 struct sof;
 
-/**
- * \brief Data shared between different cores.
- * Does nothing, since mt8186 doesn't support SMP.
- */
-#define SHARED_DATA
-
 void platform_init_memmap(struct sof *sof);
 
 #define uncache_to_cache(address)	address
@@ -199,9 +193,8 @@ void platform_init_memmap(struct sof *sof);
 /**
  * \brief Function for keeping shared data synchronized.
  * It's used after usage of data shared by different cores.
- * Such data is either statically marked with SHARED_DATA
- * or dynamically allocated with SOF_MEM_FLAG_SHARED flag.
- * Does nothing, since mt8186 doesn't support SMP.
+ * Such data is dynamically allocated with SOF_MEM_FLAG_SHARED
+ * flag. Does nothing, since mt8196 doesn't support SMP.
  */
 
 static inline void *platform_rfree_prepare(void *ptr)

@@ -26,7 +26,7 @@
 #include <rtos/alloc.h>
 #include <rtos/clk.h>
 #include <rtos/init.h>
-#include <sof/lib/memory.h> /* for SHARED_DATA */
+#include <sof/lib/memory.h> /* likely unneeded */
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -2742,7 +2742,7 @@ static const struct comp_driver comp_kpb = {
 	},
 };
 
-static SHARED_DATA struct comp_driver_info comp_kpb_info = {
+static struct comp_driver_info comp_kpb_info = {
 	.drv = &comp_kpb,
 };
 

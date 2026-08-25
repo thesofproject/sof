@@ -15,7 +15,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
-#include <sof/lib/memory.h> /* for SHARED_DATA */
+#include <sof/lib/memory.h> /* likely unneeded */
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
 #include <sof/lib/uuid.h>
@@ -466,7 +466,7 @@ static const struct comp_driver ghd_driver = {
 	},
 };
 
-static SHARED_DATA struct comp_driver_info ghd_driver_info = {
+static struct comp_driver_info ghd_driver_info = {
 	.drv = &ghd_driver,
 };
 
