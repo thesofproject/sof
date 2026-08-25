@@ -13,6 +13,12 @@
 #define NUM_CPU_FREQ 1
 #define NUM_CLOCKS 1
 
+/* single fixed frequency, so lowest == default */
+#define CPU_LOWEST_FREQ_IDX	CPU_DEFAULT_IDX
+
+/* i.MX is not a CAVS platform; report 0 (unspecified) */
+#define HW_CFG_VERSION		0
+
 struct sof;
 
 void platform_clock_init(struct sof *sof);

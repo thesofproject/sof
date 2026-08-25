@@ -18,6 +18,7 @@
 #include <kernel/ext_manifest.h>
 #include <sof/drivers/mu.h>
 
+#if !CONFIG_IPC_MAJOR_4
 static const struct sof_ipc_fw_ready ready = {
 	.hdr = {
 		.cmd = SOF_IPC_FW_READY,
@@ -70,15 +71,20 @@ const struct ext_man_windows windows
 		},
 	},
 };
+#endif /* !CONFIG_IPC_MAJOR_4 */
 
 int platform_boot_complete(uint32_t boot_message)
 {
+#if CONFIG_IPC_MAJOR_4
+	return imx_ipc4_boot_complete(boot_message);
+#else
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
 	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR,
 		       IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
 
 	return 0;
+#endif
 }
 
 int platform_context_save(struct sof *sof)

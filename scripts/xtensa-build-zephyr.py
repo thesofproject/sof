@@ -274,6 +274,14 @@ platform_configs_all = {
 		"imx", "imx95_evk/mimx9596/m7/ddr",
 		"", "", "", ""
 	),
+	# i.MX95 IPC4 build. Opt-in target; the default 'imx95' stays IPC3.
+	"imx95-ipc4" : PlatformConfig(
+		"imx", "imx95_evk/mimx9596/m7/ddr",
+		"", "", "", "",
+		ipc4 = True,
+		extra_conf = pathlib.Path(SOF_TOP, "app", "boards",
+		                          "imx95_evk_mimx9596_m7_ddr_ipc4.conf")
+	),
 	"qemu_xtensa" : PlatformConfig(
 		"zephyr", "qemu_xtensa/dc233c",
 		"", "", "zephyr"

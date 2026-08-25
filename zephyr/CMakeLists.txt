@@ -475,6 +475,17 @@ if (CONFIG_SOC_MIMX9596_M7)
 			   DEPENDS ${CMAKE_BINARY_DIR}/zephyr/${KERNEL_ELF_NAME})
 
 	board_set_rimage_target(imx95)
+
+	# IPC4 rimage target; FORCE since board.cmake already set it
+	if (CONFIG_IPC_MAJOR_4)
+		set(RIMAGE_TARGET imx95_ipc4 CACHE STRING "rimage target" FORCE)
+		set(CACHED_RIMAGE_TARGET imx95_ipc4 CACHE STRING
+		    "Selected rimage target" FORCE)
+
+		# keep .module from --gc-sections
+		zephyr_linker_sources(DATA_SECTIONS
+			${sof_top_dir}/src/platform/imx95/linker/module-section.ld)
+	endif()
 endif()
 
 # AMD RMB platforms
