@@ -34,4 +34,7 @@
 int ext_man_write(struct image *image);
 int ext_man_write_cavs_25(struct image *image);
 
+/* i.MX IPC4 ext-manifest (v4) generator */
+int ext_man_write_imx_ipc4(struct image *image);
+
 #endif /* __EXT_MAN_H__ */

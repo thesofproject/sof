@@ -253,3 +253,111 @@ out:
 		fclose(image->out_ext_man_fd);
 	return ret;
 }
+
+/* gap before the fw header; must match kernel manifest_fw_hdr_offset (!= 0) */
+#define IMX_EXT_MAN4_FW_HDR_OFFSET	48
+
+/*
+ * i.MX IPC4 extended manifest: the cAVS ext-manifest header, a gap, the fw
+ * binary header and one module entry per ".module" record of the base FW.
+ */
+int ext_man_write_imx_ipc4(struct image *image)
+{
+	static const uint8_t fw_hdr_id[] = SOF_MAN_FW_HDR_ID;
+	const struct sof_man_module_manifest *sof_mod;
+	const struct manifest_module *module = NULL;
+	struct fw_ext_man_cavs_header *ext_hdr;
+	struct elf_section section = { 0 };
+	struct sof_man_fw_header *fw_hdr;
+	struct sof_man_module *mods;
+	unsigned int n_mod, i;
+	size_t ext_man_len;
+	uint8_t *buf = NULL;
+	int ret;
+
+	for (i = 0; i < (unsigned int)image->num_modules; i++) {
+		if (!image->module[i].is_bootloader) {
+			module = &image->module[i];
+			break;
+		}
+	}
+
+	if (!module) {
+		fprintf(stderr, "error: no base firmware module for IPC4 manifest\n");
+		return -EINVAL;
+	}
+
+	ret = elf_section_read_by_name(&module->file.elf, ".module", &section);
+	if (ret) {
+		fprintf(stderr, "error: can't read '.module' section for IPC4 manifest\n");
+		return ret;
+	}
+
+	n_mod = section.header.data.size / sizeof(*sof_mod);
+	if (!n_mod || n_mod * sizeof(*sof_mod) != section.header.data.size) {
+		fprintf(stderr, "error: invalid '.module' section for IPC4 manifest\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ext_man_len = sizeof(*ext_hdr) + IMX_EXT_MAN4_FW_HDR_OFFSET +
+		      sizeof(*fw_hdr) + n_mod * sizeof(*mods);
+	buf = calloc(1, ext_man_len);
+	if (!buf) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* the kernel finds the fw header at ext_hdr->len + manifest_fw_hdr_offset */
+	ext_hdr = (struct fw_ext_man_cavs_header *)buf;
+	ext_hdr->id = EXTENDED_MANIFEST_MAGIC_HEADER_ID;
+	ext_hdr->len = sizeof(*ext_hdr);
+	ext_hdr->version_major = 4;
+	ext_hdr->version_minor = 0;
+	ext_hdr->num_module_entries = n_mod;
+
+	fw_hdr = (struct sof_man_fw_header *)(buf + sizeof(*ext_hdr) +
+					      IMX_EXT_MAN4_FW_HDR_OFFSET);
+	memcpy(fw_hdr->header_id, fw_hdr_id, sizeof(fw_hdr->header_id));
+	fw_hdr->header_len = sizeof(*fw_hdr);
+	memcpy(fw_hdr->name, SOF_MAN_FW_HDR_NAME, sizeof(SOF_MAN_FW_HDR_NAME) - 1);
+	fw_hdr->major_version = image->fw_ver_major;
+	fw_hdr->minor_version = image->fw_ver_minor;
+	fw_hdr->hotfix_version = image->fw_ver_micro;
+	fw_hdr->build_version = image->fw_ver_build;
+	fw_hdr->num_module_entries = n_mod;
+
+	/* module id == table index; no config blocks or segments on i.MX */
+	mods = (struct sof_man_module *)(fw_hdr + 1);
+	sof_mod = section.data;
+	for (i = 0; i < n_mod; i++) {
+		memcpy(&mods[i], &sof_mod[i].module, sizeof(mods[i]));
+		mods[i].runtime_info.module_id = i;
+		mods[i].runtime_info.state_flags = 0;
+		mods[i].cfg_offset = 0;
+		mods[i].cfg_count = 0;
+		mods[i].instance_bss_size = 0;
+		memset(mods[i].segment, 0, sizeof(mods[i].segment));
+	}
+
+	ret = ext_man_open_file(image);
+	if (ret)
+		goto out;
+
+	if (fwrite(buf, ext_man_len, 1, image->out_ext_man_fd) != 1) {
+		ret = file_error("can't write IPC4 extended manifest",
+				 image->out_ext_man_file);
+		goto out;
+	}
+
+	fprintf(stdout, "imx: IPC4 extended manifest: %zu bytes, %u module(s)\n",
+		ext_man_len, n_mod);
+out:
+	if (image->out_ext_man_fd) {
+		fclose(image->out_ext_man_fd);
+		image->out_ext_man_fd = NULL;
+	}
+	free(buf);
+	elf_section_free(&section);
+	return ret;
+}
