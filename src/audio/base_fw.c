@@ -4,7 +4,6 @@
 //
 
 #include <sof/audio/component.h>
-#include <sof/lib/memory.h> /* likely unneeded */
 #include <sof/ut.h>
 #include <sof/tlv.h>
 #include <ipc4/base_fw.h>

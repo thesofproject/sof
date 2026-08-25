@@ -14,7 +14,6 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
-#include <sof/lib/memory.h> /* likely unneeded */
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/trig.h>
