@@ -17,7 +17,7 @@
 #include <rtos/wait.h>
 #include <rtos/interrupt.h>
 #include <zephyr/kernel.h>
-#include <zephyr/sys_clock.h>
+#include <zephyr/sys/clock.h>
 #include <zephyr/sys/sem.h>
 #include <zephyr/sys/mutex.h>
 #include <sof/lib/memory.h>
