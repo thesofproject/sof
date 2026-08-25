@@ -542,6 +542,11 @@ static int man_module_create_reloc(struct image *image, struct manifest_module *
 	struct elf_section section;
 	int err;
 
+	if (!modules) {
+		fprintf(stderr, "error: relocatable image requires module configuration\n");
+		return -EINVAL;
+	}
+
 	/* load in module manifest data */
 	err = elf_section_read_by_name(&module->file.elf, ".module", &section);
 	if (err) {
