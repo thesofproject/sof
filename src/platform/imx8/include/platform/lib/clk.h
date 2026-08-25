@@ -18,6 +18,12 @@ struct sof;
 
 #define CPU_DEFAULT_IDX		0
 
+/* single fixed frequency, so lowest == default */
+#define CPU_LOWEST_FREQ_IDX	CPU_DEFAULT_IDX
+
+/* i.MX is not a CAVS platform; report 0 (unspecified) */
+#define HW_CFG_VERSION		0
+
 #ifdef CONFIG_IMX8
 #define CLK_DEFAULT_CPU_HZ	666000000
 #define CLK_MAX_CPU_HZ		666000000

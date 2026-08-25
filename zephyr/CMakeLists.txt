@@ -331,6 +331,23 @@ if (CONFIG_SOC_MIMX8QM6_ADSP OR CONFIG_SOC_MIMX8QX6_ADSP)
 	)
 
 	set(PLATFORM "imx8")
+
+	# IPC4 rimage target; FORCE since board.cmake already set it.
+	# imx8 (QM) and imx8x (QXP) use distinct targets.
+	if (CONFIG_IPC_MAJOR_4)
+		if (CONFIG_SOC_MIMX8QX6_ADSP)
+			set(rimage_ipc4_target imx8x_ipc4)
+		else()
+			set(rimage_ipc4_target imx8_ipc4)
+		endif()
+		set(RIMAGE_TARGET ${rimage_ipc4_target} CACHE STRING "rimage target" FORCE)
+		set(CACHED_RIMAGE_TARGET ${rimage_ipc4_target} CACHE STRING
+		    "Selected rimage target" FORCE)
+
+		# keep .module from --gc-sections
+		zephyr_linker_sources(DATA_SECTIONS
+			${sof_top_dir}/src/platform/imx8/linker/module-section.ld)
+	endif()
 endif()
 
 if (CONFIG_SOC_MIMX8ML8_ADSP)

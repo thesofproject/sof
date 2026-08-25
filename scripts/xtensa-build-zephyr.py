@@ -218,11 +218,31 @@ platform_configs_all = {
 		"hifi4_nxp_v5_3_1_prod",
 		RIMAGE_KEY = "key param ignored by imx8",
 	),
+	# i.MX8QM IPC4 build. Opt-in target; the default 'imx8' stays IPC3.
+	"imx8-ipc4" : PlatformConfig(
+		"imx", "imx8qm_mek/mimx8qm6/adsp",
+		f"RI-2023.11{xtensa_tools_version_postfix}",
+		"hifi4_nxp_v5_3_1_prod",
+		RIMAGE_KEY = "key param ignored by imx8",
+		ipc4 = True,
+		extra_conf = pathlib.Path(SOF_TOP, "app", "boards",
+		                          "imx8qm_mek_mimx8qm6_adsp_ipc4.conf")
+	),
 	"imx8x" : PlatformConfig(
 		"imx", "imx8qxp_mek/mimx8qx6/adsp",
 		f"RI-2023.11{xtensa_tools_version_postfix}",
 		"hifi4_nxp_v5_3_1_prod",
 		RIMAGE_KEY = "key param ignored by imx8x"
+	),
+	# i.MX8QXP IPC4 build. Opt-in target; the default 'imx8x' stays IPC3.
+	"imx8x-ipc4" : PlatformConfig(
+		"imx", "imx8qxp_mek/mimx8qx6/adsp",
+		f"RI-2023.11{xtensa_tools_version_postfix}",
+		"hifi4_nxp_v5_3_1_prod",
+		RIMAGE_KEY = "key param ignored by imx8x",
+		ipc4 = True,
+		extra_conf = pathlib.Path(SOF_TOP, "app", "boards",
+		                          "imx8qxp_mek_mimx8qx6_adsp_ipc4.conf")
 	),
 	"imx8m" : PlatformConfig(
 		"imx", "imx8mp_evk/mimx8ml8/adsp",
@@ -1364,7 +1384,7 @@ def gzip_compress(fname, gzdst=None):
 # Don't run sof_ri_info and ignore silently .ri files that don't have one.
 RI_INFO_UNSUPPORTED = []
 
-RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8m-ipc4', 'imx8m_cm7', 'imx8ulp', 'imx95']
+RI_INFO_UNSUPPORTED += ['imx8', 'imx8-ipc4', 'imx8x', 'imx8x-ipc4', 'imx8m', 'imx8m-ipc4', 'imx8m_cm7', 'imx8ulp', 'imx95', 'imx95-ipc4']
 RI_INFO_UNSUPPORTED += ['rn', 'acp_6_0', 'acp_7_0', 'acp_7_x']
 RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196', 'mt8365']
 RI_INFO_UNSUPPORTED += ['qemu_xtensa', 'qemu_xtensa_mmu', 'native_sim']
