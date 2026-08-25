@@ -170,6 +170,14 @@ if CADENCE_CODEC
 		  implementation; no Cadence binary is required. To use it,
 		  build tinycompress cplay with the --enable-pcm option.
 
+	config SOF_COMPRESS_CODEC_PCM_CAP
+		bool "SOF PCM compress capture"
+		help
+		  Select to advertise raw PCM as a supported compress capture
+		  codec. No additional module adapter is required; the HDA
+		  host-copier pipeline handles the data path. Required for
+		  WOV pre-roll capture via the ALSA compress framework.
+
 endif # Cadence
 
 	config COMP_DOLBY_DAX_AUDIO_PROCESSING
