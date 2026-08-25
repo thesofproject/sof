@@ -270,6 +270,10 @@ GOOGLE_RTC_AEC_SUPPORT=1,DEEP_BUF_SPK=true,GOOGLE_AEC_DP_CORE_ID=2"
 # CAVS HDA topology with gain and SRC before mixin for HDA and passthrough pipelines for HDMI
 "sof-hda-generic\;sof-hda-src-generic\;HDA_CONFIG=src"
 
+# Like above but with SRC in DP mode on core 2
+"sof-hda-generic\;sof-hda-src-generic-dp\;HDA_CONFIG=src,DEEP_BUFFER_CORE=2,SRC_CORE=2,\
+SRC_DOMAIN=DP"
+
 # BT offload for tgl
 "cavs-nocodec-bt\;sof-nocodec-bt-tgl\;PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-nocodec-bt-tgl.bin,\
 PLATFORM=tgl"
