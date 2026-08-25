@@ -50,6 +50,7 @@ Tooling and topology can be built together using one script. To build all topolo
 * `-T` : Rebuild ALL `topology/` targets
 * `-X` : Rebuild topology1 only
 * `-Y` : Rebuild topology2 only
+* `-s` : Force sequential (one at a time) topology builds, for debugging. Topologies build in parallel by default.
 * `-t` : Rebuild test topologies
 * `-A` : Clone and rebuild the local ALSA git version for `alsa-lib` and `alsa-utils` with latest non-distro features.
 * `-C` : No build, only CMake re-configuration. Shows CMake targets.

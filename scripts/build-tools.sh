@@ -16,7 +16,7 @@ Attention: the list of selected shortcuts below is _not_ exhaustive. To
 build _everything_ don't select any particular target; this will build
 CMake's default target "ALL".
 
-usage: $0 [-c|-f|-h|-l|-p|-t|-T|-X|-Y|-A]
+usage: $0 [-c|-f|-h|-l|-p|-s|-t|-T|-X|-Y|-A]
        -h Display help
 
        -c Rebuild ctl/
@@ -25,6 +25,8 @@ usage: $0 [-c|-f|-h|-l|-p|-t|-T|-X|-Y|-A]
        -T Rebuild topology/ (not topology/development/! Use ALL)
        -X Rebuild topology1 only
        -Y Rebuild topology2 only
+       -s Force sequential (one at a time) topology builds, for debugging.
+          Normally topologies build in parallel with -j "$NO_PROCESSORS".
        -t Rebuild test/topology/ (or tools/test/topology/tplg-build.sh directly)
        -A Clone and rebuild local ALSA lib and utils.
 
@@ -41,8 +43,17 @@ reconfigure_build()
         mkdir -p "$BUILD_TOOLS_DIR"
 
         ( cd "$BUILD_TOOLS_DIR"
-          cmake -GNinja -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" "${SOF_REPO}/tools"
+          cmake -GNinja -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" \
+                -DTPLG_SEQUENTIAL_BUILD="$TPLG_SEQUENTIAL_BUILD" "${SOF_REPO}/tools"
         )
+}
+
+# Update the TPLG_SEQUENTIAL_BUILD CMake cache entry without wiping an
+# existing, already configured build tree.
+update_sequential_build_option()
+{
+        cmake -S "${SOF_REPO}/tools" -B "$BUILD_TOOLS_DIR" \
+              -DTPLG_SEQUENTIAL_BUILD="$TPLG_SEQUENTIAL_BUILD"
 }
 
 make_tool()
@@ -95,12 +106,13 @@ main()
 {
         local DO_BUILD_ctl DO_BUILD_logger DO_BUILD_probes \
                 DO_BUILD_tests DO_BUILD_topologies1 DO_BUILD_topologies2 SCRIPT_DIR SOF_REPO \
-                CMAKE_ONLY BUILD_ALL
+                CMAKE_ONLY BUILD_ALL TPLG_SEQUENTIAL_BUILD
         SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
         SOF_REPO=$(dirname "$SCRIPT_DIR")
         : "${BUILD_TOOLS_DIR:=$SOF_REPO/tools/build_tools}"
         : "${NO_PROCESSORS:=$(nproc)}"
         BUILD_ALL=false
+        TPLG_SEQUENTIAL_BUILD=OFF
 
         if [ $# -eq 0 ]; then
                 BUILD_ALL=true
@@ -120,11 +132,12 @@ main()
 
         # eval is a sometimes necessary evil
         # shellcheck disable=SC2034
-        while getopts "cfhlptTCXYA" OPTION; do
+        while getopts "cfhlpstTCXYA" OPTION; do
                 case "$OPTION" in
                 c) DO_BUILD_ctl=true ;;
                 l) DO_BUILD_logger=true ;;
                 p) DO_BUILD_probes=true ;;
+                s) TPLG_SEQUENTIAL_BUILD=ON ;;
                 t) DO_BUILD_tests=true ;;
                 T) DO_BUILD_topologies1=true ; DO_BUILD_topologies2=true ;;
                 X) DO_BUILD_topologies1=true ;;
@@ -152,6 +165,10 @@ main()
             warn_incremental_build=false
             reconfigure_build
         }
+
+        # Switching -s on or off must apply even to an already configured,
+        # incremental build tree, so update the cache unconditionally.
+        update_sequential_build_option
 
         if "$BUILD_ALL"; then
                 # default CMake targets
