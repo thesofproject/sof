@@ -19,7 +19,7 @@
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/kernel/thread.h>
-#include <zephyr/sys_clock.h>
+#include <zephyr/sys/clock.h>
 
 LOG_MODULE_REGISTER(twb_schedule, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(twb_sched);
