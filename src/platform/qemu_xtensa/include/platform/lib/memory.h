@@ -10,6 +10,5 @@
 
 #define PLATFORM_DCACHE_ALIGN sizeof(void *)
 #define HOST_PAGE_SIZE 4096
-#define SHARED_DATA
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */

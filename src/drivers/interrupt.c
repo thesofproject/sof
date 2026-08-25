@@ -43,7 +43,7 @@ DECLARE_TR_CTX(irq_tr, SOF_UUID(irq_uuid), LOG_LEVEL_INFO);
 #define interrupt_disable mux_interrupt_disable
 #endif
 
-static SHARED_DATA struct cascade_root cascade_root;
+static struct cascade_root cascade_root;
 
 static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 				       void *arg, struct irq_desc *desc);

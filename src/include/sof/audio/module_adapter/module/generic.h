@@ -78,7 +78,7 @@ static const struct comp_driver comp_##adapter##_module = { \
 	.adapter_ops = &(adapter), \
 }; \
 \
-static SHARED_DATA struct comp_driver_info comp_module_##adapter##_info = { \
+static struct comp_driver_info comp_module_##adapter##_info = { \
 	.drv = &comp_##adapter##_module, \
 }; \
 \

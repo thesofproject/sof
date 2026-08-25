@@ -13,7 +13,7 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/cache.h>
-#include <sof/lib/memory.h> /* for SHARED_DATA */
+#include <sof/lib/memory.h> /* likely unneeded */
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <rtos/sof.h>
@@ -36,7 +36,7 @@
 
 LOG_MODULE_REGISTER(component, CONFIG_SOF_LOG_LEVEL);
 
-static APP_SYSUSER_BSS SHARED_DATA struct comp_driver_list cd;
+static APP_SYSUSER_BSS struct comp_driver_list cd;
 
 #ifdef CONFIG_SOF_USERSPACE_LL
 struct comp_driver_list *comp_drivers_get(void)

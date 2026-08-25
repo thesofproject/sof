@@ -15,7 +15,7 @@
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 
-static SHARED_DATA struct dai sai[] = {
+static struct dai sai[] = {
 {
 	.index = 1,
 	.plat_data = {
@@ -144,7 +144,7 @@ static SHARED_DATA struct dai sai[] = {
 
 };
 
-static SHARED_DATA struct dai micfil[] = {
+static struct dai micfil[] = {
 {
 	.index = 2,
 	.plat_data = {

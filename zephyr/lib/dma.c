@@ -21,7 +21,7 @@
 #define DW_DMA_BUFFER_PERIOD_COUNT	0x4
 #define HDA_DMA_BUFFER_PERIOD_COUNT	4
 
-APP_SYSUSER_DATA SHARED_DATA struct sof_dma dma[] = {
+APP_SYSUSER_DATA struct sof_dma dma[] = {
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(lpgpdma0), okay)
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {

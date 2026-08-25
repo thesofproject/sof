@@ -19,7 +19,7 @@ static struct freq_table platform_cpu_freq[] = {
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
 			      invalid_number_of_cpu_frequencies);
 
-static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
+static struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 static int acp_reg_read_via_smn(uint32_t reg_offset,
 				uint32_t size)

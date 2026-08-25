@@ -19,7 +19,7 @@ const struct freq_table platform_cpu_freq[] = {
 STATIC_ASSERT(NUM_CPU_FREQ == ARRAY_SIZE(platform_cpu_freq),
 	      invalid_number_of_cpu_frequencies);
 
-static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
+static struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 void platform_clock_init(struct sof *sof)
 {

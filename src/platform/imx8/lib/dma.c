@@ -22,7 +22,7 @@ static const int edma0_ints[EDMA0_CHAN_MAX] = {
 	[EDMA0_SAI_CHAN_TX] = EDMA0_SAI_CHAN_TX_IRQ,
 };
 
-static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+static struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_EDMA0,

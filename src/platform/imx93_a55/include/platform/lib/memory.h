@@ -20,8 +20,6 @@
  * thing so all the below cache/shared data "management"
  * functions aren't necessary.
  */
-#define SHARED_DATA
-
 #define uncache_to_cache(address) address
 #define cache_to_uncache(address) address
 #define cache_to_uncache_init(address) address

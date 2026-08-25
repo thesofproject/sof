@@ -17,7 +17,7 @@
 #include <rtos/init.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h> /* for SHARED_DATA */
+#include <sof/lib/memory.h> /* likely unneeded */
 #include <sof/lib/notifier.h>
 #include <sof/lib/uuid.h>
 #include <sof/list.h>
@@ -1068,7 +1068,7 @@ static const struct comp_driver comp_host = {
 	},
 };
 
-static SHARED_DATA struct comp_driver_info comp_host_info = {
+static struct comp_driver_info comp_host_info = {
 	.drv = &comp_host,
 };
 

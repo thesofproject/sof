@@ -795,7 +795,7 @@ static const struct comp_driver comp_chain_dma = {
 	},
 };
 
-static SHARED_DATA struct comp_driver_info comp_chain_dma_info = {
+static struct comp_driver_info comp_chain_dma_info = {
 	.drv = &comp_chain_dma,
 };
 

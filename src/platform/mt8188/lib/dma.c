@@ -19,7 +19,7 @@
 
 extern const struct dma_ops dummy_dma_ops;
 
-static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+static struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_HOST,

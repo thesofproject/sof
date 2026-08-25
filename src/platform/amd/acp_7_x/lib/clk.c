@@ -68,7 +68,7 @@ typedef enum _acp_clock_type_ {
 } acp_clock_type_t;
 
 /* Static variables */
-static SHARED_DATA struct clock_info platform_clocks_info[NUM_CLOCKS];
+static struct clock_info platform_clocks_info[NUM_CLOCKS];
 
 /* Function prototypes */
 void audio_pll_power_off(void);

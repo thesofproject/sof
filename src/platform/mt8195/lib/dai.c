@@ -23,7 +23,7 @@ static int afe_dai_handshake[MT8195_DAI_NUM] = {
 	AFE_HANDSHAKE(MT8195_AFE_IO_ETDM2_IN, MT8195_IRQ_22, MT8195_MEMIF_UL5),
 };
 
-static SHARED_DATA struct dai afe_dai[MT8195_DAI_NUM];
+static struct dai afe_dai[MT8195_DAI_NUM];
 
 const struct dai_type_info dti[] = {
 	{

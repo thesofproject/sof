@@ -4,7 +4,7 @@
 //
 
 #include <sof/audio/component.h>
-#include <sof/lib/memory.h> /* for SHARED_DATA */
+#include <sof/lib/memory.h> /* likely unneeded */
 #include <sof/ut.h>
 #include <sof/tlv.h>
 #include <ipc4/base_fw.h>
@@ -857,7 +857,7 @@ static const struct comp_driver comp_basefw = {
 	},
 };
 
-static SHARED_DATA struct comp_driver_info comp_basefw_info = {
+static struct comp_driver_info comp_basefw_info = {
 	.drv = &comp_basefw,
 };
 
