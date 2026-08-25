@@ -15,7 +15,6 @@
 #include <sof/ipc/msg.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
-#include <sof/lib/memory.h> /* likely unneeded */
 #include <sof/lib/notifier.h>
 #include <rtos/wait.h>
 #include <sof/lib/uuid.h>
