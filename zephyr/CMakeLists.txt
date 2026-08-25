@@ -425,6 +425,17 @@ if (CONFIG_SOC_MIMX8UD7_ADSP)
 	)
 
 	set(PLATFORM "imx8ulp")
+
+	# IPC4 rimage target; FORCE since board.cmake already set it
+	if (CONFIG_IPC_MAJOR_4)
+		set(RIMAGE_TARGET imx8ulp_ipc4 CACHE STRING "rimage target" FORCE)
+		set(CACHED_RIMAGE_TARGET imx8ulp_ipc4 CACHE STRING
+		    "Selected rimage target" FORCE)
+
+		# keep .module from --gc-sections
+		zephyr_linker_sources(DATA_SECTIONS
+			${sof_top_dir}/src/platform/imx8ulp/linker/module-section.ld)
+	endif()
 endif()
 
 if (CONFIG_SOC_MIMX9352_A55)
