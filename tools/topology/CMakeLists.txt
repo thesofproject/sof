@@ -2,6 +2,16 @@ set(SOF_TOPOLOGY_BINARY_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 set(SOF_ALSA_TOOLS_DIR "${SOF_ROOT_SOURCE_DIRECTORY}/../tools/bin")
 set(ALSATPLG_CMD "${SOF_ALSA_TOOLS_DIR}/alsatplg")
 
+# With the Ninja generator, USES_TERMINAL forces the single-job "console"
+# pool, serializing every topology build regardless of -j. Enable this
+# option to force that serialized, easier to debug behavior back on.
+option(TPLG_SEQUENTIAL_BUILD "Build topologies one at a time (for debugging)" OFF)
+if(TPLG_SEQUENTIAL_BUILD)
+	set(TPLG_USES_TERMINAL USES_TERMINAL)
+else()
+	set(TPLG_USES_TERMINAL "")
+endif()
+
 function(alsatplg_version  OUT_STATUS  OUT_VERSION)
 	execute_process(COMMAND ${ALSATPLG_CMD} --version
 	  RESULT_VARIABLE status
@@ -69,7 +79,7 @@ macro(add_alsatplg_command)
 		# the -o(utput) file.
 		# See bug https://github.com/alsa-project/alsa-utils/issues/126
 		COMMAND ${ALSATPLG_CMD} \$\${VERBOSE:+-v 1} -c ${ARGV0} -o ${ARGV1}
-		USES_TERMINAL
+		${TPLG_USES_TERMINAL}
 	)
 endmacro()
 
@@ -97,7 +107,7 @@ macro(add_alsatplg2_command conf_header conf_target input_name output_name inclu
 		# -p to pre-process Topology2.0 conf file
 		COMMAND ALSA_CONFIG_DIR=${CMAKE_SOURCE_DIR}/topology/topology2 ${ALSATPLG_CMD} \$\${VERBOSE:+-v 1}
 		        -I ${include_path} -D "'${defines}'" -p -c ${output_name}.conf -o ${output_name}.tplg
-		USES_TERMINAL
+		${TPLG_USES_TERMINAL}
 		)
 endmacro()
 
