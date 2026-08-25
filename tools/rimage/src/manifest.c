@@ -1791,8 +1791,12 @@ int resign_image(struct image *image)
 		}
 	}
 
-	if (i >= size) {
-		fprintf(stderr, "error: didn't found header marker %d\n", i);
+	/* the scan stops a full marker before the end, so a trailing partial word
+	 * leaves the loop index below the size; test the result of the scan itself
+	 */
+	if (!image->fw_image) {
+		fprintf(stderr, "error: could not find valid CSE header $CPD in %s\n",
+			image->in_file);
 		ret = -EINVAL;
 		goto out;
 	}
