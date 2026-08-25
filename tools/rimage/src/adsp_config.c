@@ -2052,7 +2052,7 @@ static int parse_adsp_config_v1_5(const toml_table_t *toml, struct image *image)
 
 		/* assign correct write functions */
 		out->write_firmware = man_write_fw_v1_5_sue;
-		out->write_firmware_meu = man_write_fw_meu_v1_5;
+		out->write_firmware_meu = NULL;
 		out->verify_firmware = ri_manifest_verify_v1_5;
 
 		/* parse others sibtables */
@@ -2235,7 +2235,7 @@ static int parse_adsp_config_ace_v1_5(const toml_table_t *toml, struct image *im
 
 	/* assign correct write functions */
 	out->write_firmware = man_write_fw_ace_v1_5;
-	out->write_firmware_meu = man_write_fw_meu_v2_5;
+	out->write_firmware_meu = NULL;
 	out->verify_firmware = ri_manifest_verify_v2_5;
 
 	/* version array has already been parsed, so increment ctx.array_cnt */

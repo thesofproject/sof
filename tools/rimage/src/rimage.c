@@ -202,6 +202,12 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (image.meu_offset && !image.adsp->write_firmware_meu) {
+		fprintf(stderr, "error: MEU signing is not supported for this target\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* set IMR Type and the PV bit in found machine definition */
 	if (image.adsp->man_v1_8) {
 		if (imr_type_override)
@@ -274,7 +280,6 @@ int main(int argc, char *argv[])
 
 	/* process and write output */
 	if (image.meu_offset) {
-		assert(image.adsp->write_firmware_meu);
 		ret = image.adsp->write_firmware_meu(&image);
 	} else {
 		assert(image.adsp->write_firmware);
