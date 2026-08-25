@@ -13,7 +13,7 @@
 #include <rtos/wait.h>
 
 #include <zephyr/kernel.h>
-#include <zephyr/sys_clock.h>
+#include <zephyr/sys/clock.h>
 
 static struct k_work_q edf_workq;
 static K_THREAD_STACK_DEFINE(edf_workq_stack, CONFIG_STACK_SIZE_EDF);
