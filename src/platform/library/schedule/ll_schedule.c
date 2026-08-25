@@ -31,6 +31,7 @@ void schedule_ll_run_tasks(void)
 {
 	struct list_item *tlist, *tlist_;
 	struct task *task;
+	enum task_state state;
 
 	/* list empty then return */
 	if (list_is_empty(&sched_list))
@@ -44,12 +45,14 @@ void schedule_ll_run_tasks(void)
 		if (task->state == SOF_TASK_STATE_QUEUED) {
 			task->state = SOF_TASK_STATE_RUNNING;
 
-			task->ops.run(task->data);
+			state = task_run(task);
 
-			/* only re-queue if not cancelled */
-			if (task->state == SOF_TASK_STATE_RUNNING)
+			if (state == SOF_TASK_STATE_COMPLETED) {
+				task->state = SOF_TASK_STATE_COMPLETED;
+				list_item_del(&task->list);
+			} else if (task->state == SOF_TASK_STATE_RUNNING) {
 				task->state = SOF_TASK_STATE_QUEUED;
-
+			}
 		}
 	}
 }
@@ -58,6 +61,10 @@ void schedule_ll_run_tasks(void)
 static int schedule_ll_task(void *data, struct task *task, uint64_t start,
 			    uint64_t period)
 {
+	if (task->state == SOF_TASK_STATE_QUEUED ||
+	    task->state == SOF_TASK_STATE_RUNNING)
+		return 0;
+
 	/* add task to list */
 	list_item_prepend(&task->list, &sched_list);
 	task->state = SOF_TASK_STATE_QUEUED;
@@ -76,9 +83,12 @@ static void ll_scheduler_free(void *data, uint32_t flags)
 /* TODO: scheduler free and cancel APIs can merge as part of Zephyr */
 static int schedule_ll_task_cancel(void *data, struct task *task)
 {
+	if (task->state == SOF_TASK_STATE_QUEUED ||
+	    task->state == SOF_TASK_STATE_RUNNING)
+		list_item_del(&task->list);
+
 	/* delete task */
 	task->state = SOF_TASK_STATE_CANCEL;
-	list_item_del(&task->list);
 
 	return 0;
 }
@@ -86,8 +96,11 @@ static int schedule_ll_task_cancel(void *data, struct task *task)
 /* TODO: scheduler free and cancel APIs can merge as part of Zephyr */
 static int schedule_ll_task_free(void *data, struct task *task)
 {
+	if (task->state == SOF_TASK_STATE_QUEUED ||
+	    task->state == SOF_TASK_STATE_RUNNING)
+		list_item_del(&task->list);
+
 	task->state = SOF_TASK_STATE_FREE;
-	list_item_del(&task->list);
 
 	return 0;
 }
