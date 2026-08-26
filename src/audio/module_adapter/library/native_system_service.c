@@ -168,6 +168,13 @@ AdspErrorCode native_system_service_send_notif_msg(enum notification_target noti
 {
 	struct ipc_msg *msg = (struct ipc_msg *)message;
 
+	switch (notification_target) {
+	case NOTIFICATION_TARGET_DSP_TO_HOST:
+		break;
+	default:
+		return ADSP_INVALID_TARGET;
+	}
+
 	if (!msg || actual_payload_size > msg->tx_size)
 		return ADSP_INVALID_PARAMETERS;
 
