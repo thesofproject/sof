@@ -107,7 +107,7 @@ int SystemAgent::CheckIn(ProcessingModuleFactoryInterface& module_factory,
 		(prerequisites.input_pins_count > INPUT_PIN_COUNT) ||
 		(prerequisites.output_pins_count < 1) ||
 		(prerequisites.output_pins_count > OUTPUT_PIN_COUNT))
-		return -1;
+		return -EINVAL;
 
 	/* Deduce BaseModuleCfgExt if it was not part of the INIT_INSTANCE IPC message */
 	settings.DeduceBaseModuleCfgExt(prerequisites.input_pins_count,
