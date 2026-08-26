@@ -17,6 +17,12 @@ on: [pull_request, workflow_dispatch, workflow_call]
 permissions:
   contents: read
 
+# Group workflows together to cancel outdated runs, do not cancel manual runs
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event_name }}-\
+          ${{ github.event_name == 'pull_request' && github.ref || github.run_id }}"
+  cancel-in-progress: true
+
 jobs:
   main:
     runs-on: ubuntu-24.04
