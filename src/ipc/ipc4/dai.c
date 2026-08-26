@@ -25,6 +25,7 @@
 #include <ipc4/fw_reg.h>
 #include <ipc/dai.h>
 #include <ipc/dai-imx.h>
+#include <sof/tlv.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -459,6 +460,36 @@ __cold int dai_config(struct dai_data *dd, struct comp_dev *dev,
 	ret = dai_init_llp_info(dd, dev);
 	if (ret < 0)
 		return ret;
+
+#if CONFIG_IMX
+	/* pass the DAI config TLV; dai_spec_config must stay the copier cfg */
+	switch (common_config->type) {
+	case SOF_DAI_IMX_SAI:
+	case SOF_DAI_IMX_ESAI:
+	case SOF_DAI_IMX_MICFIL: {
+		uint32_t total = copier_cfg->gtw_cfg.config_length << 2;
+		uint32_t prefix = sizeof(struct sof_ipc4_gtw_attributes);
+		void *dai_cfg = NULL;
+		uint32_t dai_cfg_len = 0;
+
+		if (total > prefix)
+			tlv_value_get((const uint8_t *)copier_cfg->gtw_cfg.config_data +
+					      prefix,
+				      total - prefix, GTW_IMX_DAI_CONFIG_ID,
+				      &dai_cfg, &dai_cfg_len);
+
+		if (!dai_cfg || dai_cfg_len < sizeof(struct sof_ipc_dai_config)) {
+			comp_err(dev, "missing i.MX DAI config TLV (dai type %d)",
+				 common_config->type);
+			return -EINVAL;
+		}
+
+		return dai_set_config(dd->dai, common_config, dai_cfg, dai_cfg_len);
+	}
+	default:
+		break;
+	}
+#endif
 
 	/* gtw_cfg.config_length is in words */
 	size = copier_cfg->gtw_cfg.config_length << 2;

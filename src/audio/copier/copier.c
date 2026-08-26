@@ -234,6 +234,8 @@ __cold static int copier_init(struct processing_module *mod)
 		case ipc4_dmic_link_input_class:
 		case ipc4_i2s_link_output_class:
 		case ipc4_i2s_link_input_class:
+		case ipc4_sai_link_output_class:
+		case ipc4_sai_link_input_class:
 		case ipc4_alh_link_output_class:
 		case ipc4_alh_link_input_class:
 		case ipc4_alh_uaol_stream_link_output_class:

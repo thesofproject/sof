@@ -157,6 +157,9 @@ struct sof_ipc4_imx_host_config {
 	uint32_t host_period_bytes;
 } __attribute__((packed, aligned(4)));
 
+/* i.MX SAI config TLV (struct sof_ipc_dai_config) */
+#define GTW_IMX_DAI_CONFIG_ID 0x2000
+
 /**
  * \brief Generic gateway configuration blob container.
  * \ingroup ipc4_gateway_api
