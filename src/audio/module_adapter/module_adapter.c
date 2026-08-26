@@ -1357,6 +1357,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 	if (dev->ipc_config.type == SOF_COMP_HOST || dev->ipc_config.type == SOF_COMP_DAI)
 		return interface->endpoint_ops->trigger(dev, cmd);
 
+#if CONFIG_IPC_MAJOR_3
 	/*
 	 * If the module doesn't support pause, keep it active along with the rest of the
 	 * downstream modules
@@ -1365,6 +1366,7 @@ int module_adapter_trigger(struct comp_dev *dev, int cmd)
 		dev->state = COMP_STATE_ACTIVE;
 		return PPL_STATUS_PATH_STOP;
 	}
+#endif
 
 	if (interface->trigger) {
 #if CONFIG_SOF_USERSPACE_APPLICATION

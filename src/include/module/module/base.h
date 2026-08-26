@@ -168,8 +168,10 @@ struct processing_module {
 	 */
 	bool dp_startup_delay;
 
+#if CONFIG_IPC_MAJOR_3
 	/* flag to indicate module does not pause */
 	bool no_pause;
+#endif
 
 	/*
 	 * flag to indicate that the sink buffer writeback should be skipped. It will be handled
