@@ -17,11 +17,12 @@ on:
         required: false
         default: 'mnfst'
 
-# Specifies group name that stops previous wokrflows if the name matches
+# Group workflows together to cancel outdated runs, do not cancel manual runs
 concurrency:
-  # eg. "Zephyr-pull_request-my_fork_branch_to_merge"
-  # eg. "Zephyr-push-refs/heads/my_branch_merging"
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  # eg. 'Zephyr-workflow_dispatch-62137'
+  # eg. 'Zephyr-pull_request-refs/pull/{pr_number}/merge'
+  group: "${{ github.workflow }}-${{ github.event_name }}-\
+          ${{ github.event_name == 'pull_request' && github.ref || github.run_id }}"
   cancel-in-progress: true
 
 permissions:

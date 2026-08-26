@@ -14,6 +14,12 @@ defaults:
 permissions:
   contents: read
 
+# Group workflows together to cancel outdated runs, do not cancel manual runs
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event_name }}-\
+          ${{ github.event_name == 'pull_request' && github.ref || github.run_id }}"
+  cancel-in-progress: true
+
 jobs:
   # As of sparse commit ce1a6720f69e / Sept 2022, the exit status of
   # sparse.c is an unusable mess and always zero in practice. Moreover
