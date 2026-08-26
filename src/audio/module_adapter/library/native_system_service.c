@@ -166,11 +166,12 @@ AdspErrorCode native_system_service_send_notif_msg(enum notification_target noti
 						   struct notification_handle *message,
 						   uint32_t actual_payload_size)
 {
-	if ((message == NULL) || (actual_payload_size == 0))
-		return ADSP_INVALID_PARAMETERS;
-
 	struct ipc_msg *msg = (struct ipc_msg *)message;
 
+	if (!msg || actual_payload_size > msg->tx_size)
+		return ADSP_INVALID_PARAMETERS;
+
+	msg->tx_size = actual_payload_size;
 	lib_notif_msg_send(msg);
 	return ADSP_NO_ERROR;
 }
