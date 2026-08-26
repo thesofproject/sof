@@ -428,7 +428,9 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 		arch_irq_lock();
 		platform_timer_stop(timer_get());
 #endif
+#if defined(CONFIG_PM)
 		ipc_get()->pm_prepare_D3 = 1;
+#endif
 	}
 
 	return IPC4_SUCCESS;
