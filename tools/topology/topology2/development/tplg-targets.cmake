@@ -308,6 +308,11 @@ PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-crossover.bin,EFX_CROSSOVE
 "development/cavs-nocodec-rtcaec\;sof-tgl-nocodec-rtcaec\;PLATFORM=tgl,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-tgl-nocodec-rtcaec.bin"
 
+# Topology to test the USB audio offload on an HDA machine, load it with
+# snd_sof.tplg_filename=sof-hda-generic-uaol.tplg
+"development/sof-hda-generic-uaol\;sof-hda-generic-uaol\;HDA_CONFIG=mix,HDA_MIC_ENHANCED_CAPTURE=true,\
+EFX_HDA_MIC_TDFB_PARAMS=line2_pass,EFX_HDA_MIC_DRC_PARAMS=passthrough"
+
 # SSP test topology for Data Processing SRC on MTL
 "cavs-nocodec\;sof-mtl-nocodec-dp-test\;PLATFORM=mtl,NUM_DMICS=4,PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-mtl-nocodec.bin,SRC_DOMAIN=DP"
