@@ -22,6 +22,8 @@
 #include <rtos/userspace_helper.h>
 
 #define RSIZE_MAX 0x7FFFFFFF
+#define IADK_NOTIFICATION_HEADER_SIZE 48
+#define IADK_NOTIFICATION_USER_VAL_2_MASK 0x3fffffffU
 
  /*! Module log level priority to sof log level conversion array */
 const int log_priority_map[L_MAX] = {
@@ -120,24 +122,42 @@ AdspErrorCode native_system_service_create_notification(struct notification_para
 							uint32_t notification_buffer_size,
 							struct notification_handle **handle)
 {
-	if ((params == NULL) || (notification_buffer == NULL)
-		|| (notification_buffer_size <= 0) || (handle == NULL))
+	union ipc4_notification_header header = { 0 };
+	uint32_t payload_capacity;
+	struct ipc_msg *msg;
+
+	if (!params || !notification_buffer || !notification_buffer_size || !handle)
 		return ADSP_INVALID_PARAMETERS;
 
-	union ipc4_notification_header header;
+	*handle = NULL;
+	params->payload = NULL;
+
+	if (notification_buffer_size < IADK_NOTIFICATION_HEADER_SIZE)
+		return ADSP_OUT_OF_MEMORY;
+
+	payload_capacity = notification_buffer_size - IADK_NOTIFICATION_HEADER_SIZE;
+	if (params->max_payload_size > payload_capacity)
+		return ADSP_OUT_OF_MEMORY;
+
+	if (params->type == NOTIFICATION_TYPE_MODULE_EVENT_NOTIFICATION &&
+	    params->max_payload_size < sizeof(struct module_event_notification))
+		return ADSP_INVALID_PARAMETERS;
 
 	header.r.notif_type = params->type;
-	header.r._reserved_0 = params->user_val_1;
+	header.r.rsvd0 = params->user_val_1;
 	header.r.type = SOF_IPC4_GLB_NOTIFICATION;
 	header.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
 	header.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-	struct ipc_msg *msg = lib_notif_msg_init((uint32_t)header.dat, notification_buffer_size);
 
-	if (msg) {
-		*handle = (struct notification_handle *)msg;
-		params->payload = msg->tx_data;
-	}
+	msg = lib_notif_msg_init(header.dat, params->max_payload_size);
+	if (!msg)
+		return ADSP_OUT_OF_MEMORY;
 
+	msg->extension = params->user_val_2 & IADK_NOTIFICATION_USER_VAL_2_MASK;
+	params->payload = msg->tx_data;
+	params->max_payload_size = msg->tx_size;
+
+	*handle = (struct notification_handle *)msg;
 	return ADSP_NO_ERROR;
 }
 
