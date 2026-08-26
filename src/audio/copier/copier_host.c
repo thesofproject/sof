@@ -10,8 +10,12 @@
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/lib/mailbox.h>
 #include <ipc4/gateway.h>
+#include <ipc4/fw_reg.h>
+#include <ipc4/notification.h>
 #include "copier.h"
 #include "host_copier.h"
+
+#include <stddef.h>
 
 LOG_MODULE_DECLARE(copier, CONFIG_SOF_LOG_LEVEL);
 
@@ -231,6 +235,13 @@ __cold int copier_host_create(struct processing_module *mod,
 	}
 
 #if CONFIG_IMX
+	if (copier_cfg->gtw_cfg.node_id.f.v_index >= IPC4_MAX_HOST_BYTE_CNT_SLOTS) {
+		comp_err(dev, "host gateway id %u exceeds byte counter slots",
+			 copier_cfg->gtw_cfg.node_id.f.v_index);
+		ret = -EINVAL;
+		goto e_conv;
+	}
+
 	ret = copier_host_imx_dma_setup(hd, copier_cfg);
 	if (ret < 0)
 		goto e_conv;
@@ -320,6 +331,28 @@ __cold void copier_host_free(struct processing_module *mod)
 	mod_free(mod, cd->hd);
 }
 
+#if CONFIG_IMX
+/* publish the host byte count for the PCM pointer, notify once per ALSA period */
+static void copier_host_imx_update_pos(struct copier_data *cd, size_t bytes)
+{
+	uint32_t gtw_id = cd->config.gtw_cfg.node_id.f.v_index;
+	uint32_t off = offsetof(struct ipc4_fw_registers, host_byte_cnt) +
+		       gtw_id * sizeof(uint64_t);
+
+	mailbox_sw_regs_write(off, &cd->hd->total_data_processed,
+			      sizeof(cd->hd->total_data_processed));
+
+	if (!cd->hd->host_period_bytes)
+		return;
+
+	cd->hd->report_pos += bytes;
+	if (cd->hd->report_pos >= cd->hd->host_period_bytes) {
+		cd->hd->report_pos -= cd->hd->host_period_bytes;
+		send_host_period_elapsed_notif_msg(gtw_id);
+	}
+}
+#endif
+
 /* This is called by DMA driver every time when DMA completes its current
  * transfer between host and DSP.
  */
@@ -333,6 +366,10 @@ void copier_host_dma_cb(struct comp_dev *dev, size_t bytes)
 
 	/* update position */
 	host_common_update(cd->hd, dev, bytes);
+
+#if CONFIG_IMX
+	copier_host_imx_update_pos(cd, bytes);
+#endif
 
 	/* callback for one shot copy */
 	if (cd->hd->copy_type == COMP_COPY_ONE_SHOT)

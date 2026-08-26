@@ -1293,7 +1293,7 @@ void host_common_reset(struct host_data *hd, uint16_t state)
 
 	/* reset buffer pointers */
 	hd->local_pos = 0;
-#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES || CONFIG_IMX
 	hd->report_pos = 0;
 #endif
 	hd->total_data_processed = 0;

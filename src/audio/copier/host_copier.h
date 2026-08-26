@@ -105,8 +105,10 @@ struct host_data {
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
-#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES || CONFIG_IMX
 	uint32_t report_pos;	/**< Position in current report period */
+#endif
+#if CONFIG_HOST_DMA_IPC_POSITION_UPDATES
 	struct ipc_msg *msg;	/**< host notification */
 #endif
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
