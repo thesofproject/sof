@@ -112,7 +112,9 @@ static int mux_demux_common_init(struct processing_module *mod, enum sof_comp_ty
 	}
 
 	mod->verify_params_flags = BUFF_PARAMS_CHANNELS;
+#if CONFIG_IPC_MAJOR_3
 	mod->no_pause = true;
+#endif
 	cd->comp_type = type;
 	return 0;
 
