@@ -9,6 +9,7 @@
 #include <sof/trace/trace.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/lib/mailbox.h>
+#include <ipc4/gateway.h>
 #include "copier.h"
 #include "host_copier.h"
 
@@ -131,6 +132,43 @@ __cold static int init_pipeline_reg(struct comp_dev *dev)
 	return 0;
 }
 
+#if CONFIG_IMX
+static int copier_host_imx_dma_setup(struct host_data *hd,
+				     const struct ipc4_copier_module_cfg *copier_cfg)
+{
+	uint32_t total = copier_cfg->gtw_cfg.config_length << 2;
+	uint32_t prefix = sizeof(struct sof_ipc4_gtw_attributes);
+	struct sof_ipc4_imx_host_config *host_cfg = NULL;
+	uint32_t host_cfg_len = 0;
+
+	if (total > prefix)
+		tlv_value_get((const uint8_t *)copier_cfg->gtw_cfg.config_data + prefix,
+			      total - prefix, GTW_IMX_HOST_CONFIG_ID,
+			      (void **)&host_cfg, &host_cfg_len);
+
+	if (host_cfg && host_cfg_len >= sizeof(*host_cfg) && host_cfg->phy_addr) {
+		struct dma_sg_elem *host_elem;
+
+		host_elem = sof_heap_alloc(hd->alloc_ctx.heap, SOF_MEM_FLAG_USER,
+					   sizeof(*host_elem), 0);
+		if (!host_elem)
+			return -ENOMEM;
+
+		host_elem->src = host_cfg->phy_addr;
+		host_elem->dest = host_cfg->phy_addr;
+		host_elem->size = host_cfg->dma_buffer_size;
+
+		hd->host.elem_array.count = 1;
+		hd->host.elem_array.elems = host_elem;
+		hd->host_period_bytes = host_cfg->host_period_bytes;
+	}
+
+	hd->copy_type = COMP_COPY_ONE_SHOT;
+
+	return 0;
+}
+#endif
+
 /* if copier is linked to host gateway, it will manage host dma.
  * Sof host component can support this case so copier reuses host
  * component to support host gateway.
@@ -191,6 +229,13 @@ __cold int copier_host_create(struct processing_module *mod,
 		comp_err(dev, "copier: host new failed with exit");
 		goto e_data;
 	}
+
+#if CONFIG_IMX
+	ret = copier_host_imx_dma_setup(hd, copier_cfg);
+	if (ret < 0)
+		goto e_conv;
+#endif
+
 #if CONFIG_HOST_DMA_STREAM_SYNCHRONIZATION
 	/* Size of a configuration without optional parameters. */
 	const uint32_t basic_size = sizeof(*copier_cfg) +
@@ -323,11 +368,18 @@ static void copier_notifier_cb(void *arg, enum notify_id type, void *data)
 int copier_host_params(struct copier_data *cd, struct comp_dev *dev,
 		       struct sof_ipc_stream_params *params)
 {
+#if CONFIG_IMX
+	/* keep host_period_bytes from the TLV; IPC4 params lack it */
+	uint32_t host_period_bytes = cd->hd->host_period_bytes;
+#endif
 	int ret;
 
 	component_set_nearest_period_frames(dev, params->rate);
 	ret = host_common_params(cd->hd, dev, params,
 				 copier_notifier_cb);
+#if CONFIG_IMX
+	cd->hd->host_period_bytes = host_period_bytes;
+#endif
 
 	cd->hd->process = cd->converter[IPC4_COPIER_GATEWAY_PIN];
 

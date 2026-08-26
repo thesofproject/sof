@@ -135,6 +135,23 @@ union ipc4_gateway_attributes {
 	} bits; /**< Bitfield access structure. */
 } __attribute__((packed, aligned(4)));
 
+/* Generic default-gateway attributes prefix. Mirrors the kernel struct. */
+struct sof_ipc4_gtw_attributes {
+	uint32_t lp_buffer_alloc : 1;
+	uint32_t alloc_from_reg_file : 1;
+	uint32_t rsvd : 30;
+} __attribute__((packed, aligned(4)));
+
+/* i.MX host PCM buffer TLV; matches kernel SOF_IPC4_GTW_IMX_HOST_CONFIG_ID */
+#define GTW_IMX_HOST_CONFIG_ID 0x2001
+
+struct sof_ipc4_imx_host_config {
+	uint32_t phy_addr;
+	uint32_t dma_buffer_size;
+	/* ALSA period size; one period-elapsed notification per this many bytes */
+	uint32_t host_period_bytes;
+} __attribute__((packed, aligned(4)));
+
 /**
  * \brief Generic gateway configuration blob container.
  * \ingroup ipc4_gateway_api

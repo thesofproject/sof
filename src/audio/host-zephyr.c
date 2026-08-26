@@ -1027,8 +1027,11 @@ int host_common_params(struct host_data *hd, struct comp_dev *dev,
 
 	/* TODO: should be taken from DMA */
 	if (hd->host.elem_array.count) {
-		period_bytes *= period_count;
-		period_count = 1;
+		/* i.MX software DMA copies one element per LL tick; keep the ring */
+		if (!(IS_ENABLED(CONFIG_IMX) && hd->host.elem_array.count == 1)) {
+			period_bytes *= period_count;
+			period_count = 1;
+		}
 	}
 
 	/* calculate DMA buffer size */
