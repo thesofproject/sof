@@ -1143,13 +1143,23 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 	ae_int16 *out_ptr;
 
 	for (ch = 0; ch < micsel_channels; ch++) {
-		const ae_int16 *input_data = (const ae_int16 *)(in_ptr) + offsets[ch];
+		const ae_int16 *input_frame = in_ptr;
+		size_t copied = 0;
 
 		out_ptr = audio_stream_get_wptr(ostream);
 		out_ptr += ch;
-		for (i = 0; i < samples_per_chan; i++) {
-			AE_L16_XP(d16, input_data, in_offset);
-			AE_S16_0_XC(d16, out_ptr, out_offset);
+		while (copied < samples_per_chan) {
+			size_t frames = audio_stream_frames_without_wrap(istream, input_frame);
+			const ae_int16 *input_data = input_frame + offsets[ch];
+
+			frames = MIN(frames, samples_per_chan - copied);
+			for (i = 0; i < frames; i++) {
+				AE_L16_XP(d16, input_data, in_offset);
+				AE_S16_0_XC(d16, out_ptr, out_offset);
+			}
+			input_frame = audio_stream_wrap(istream,
+						(void *)(input_frame + frames * in_channels));
+			copied += frames;
 		}
 	}
 }
@@ -1178,13 +1188,23 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 	ae_int32 *out_ptr;
 
 	for (ch = 0; ch < micsel_channels; ch++) {
-		const ae_int32 *input_data = (const ae_int32 *)(in_ptr) + offsets[ch];
+		const ae_int32 *input_frame = in_ptr;
+		size_t copied = 0;
 
 		out_ptr = audio_stream_get_wptr(ostream);
 		out_ptr += ch;
-		for (i = 0; i < samples_per_chan; i++) {
-			AE_L32_XP(d32, input_data, in_offset);
-			AE_S32_L_XC(d32, out_ptr, out_offset);
+		while (copied < samples_per_chan) {
+			size_t frames = audio_stream_frames_without_wrap(istream, input_frame);
+			const ae_int32 *input_data = input_frame + offsets[ch];
+
+			frames = MIN(frames, samples_per_chan - copied);
+			for (i = 0; i < frames; i++) {
+				AE_L32_XP(d32, input_data, in_offset);
+				AE_S32_L_XC(d32, out_ptr, out_offset);
+			}
+			input_frame = audio_stream_wrap(istream,
+						(void *)(input_frame + frames * in_channels));
+			copied += frames;
 		}
 	}
 }
@@ -1211,12 +1231,16 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 		out_data = audio_stream_get_wptr(ostream);
 
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
+			const int16_t *in_sample = audio_stream_get_frag(istream, in_data,
+								       i + offsets[ch],
+								       sizeof(*in_sample));
+
 			if (&out_data[out_samples + ch]
 					>= (int16_t *)audio_stream_get_end_addr(ostream)) {
 				out_data = (int16_t *)audio_stream_get_addr(ostream);
 				out_samples = 0;
 			}
-			out_data[out_samples + ch] = in_data[i + offsets[ch]];
+			out_data[out_samples + ch] = *in_sample;
 			out_samples += micsel_channels;
 		}
 	}
@@ -1242,12 +1266,16 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 		out_data = audio_stream_get_wptr(ostream);
 
 		for (size_t i = 0; i < samples_per_chan * in_channels; i += in_channels) {
+			const int32_t *in_sample = audio_stream_get_frag(istream, in_data,
+								       i + offsets[ch],
+								       sizeof(*in_sample));
+
 			if (&out_data[out_samples + ch]
 					>= (int32_t *)audio_stream_get_end_addr(ostream)) {
 				out_data = (int32_t *)audio_stream_get_addr(ostream);
 				out_samples = 0;
 			}
-			out_data[out_samples + ch] = in_data[i + offsets[ch]];
+			out_data[out_samples + ch] = *in_sample;
 			out_samples += micsel_channels;
 		}
 	}
