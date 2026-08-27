@@ -31,6 +31,50 @@ function setup_mfcc()
 	setup.tplg_fn = 'mel80_compress.conf';
 	export_mfcc_setup(gen_cfg, setup);
 
+	% Blob for 40-bin/20ms-hop mel spectrogram, matching TFLM micro_speech's
+	% front-end shape (TFLM_FEATURE_SIZE=40, TFLM_FEATURE_STRIDE_MS=20,
+	% TFLM_FEATURE_DURATION_MS=30) for interim wake-word sanity-checking.
+	setup = get_mel_spectrogram_config();
+	setup.frame_length = 30.0; % 480 samples at 16 kHz
+	setup.frame_shift = 20.0; % 320 samples at 16 kHz
+	setup.num_mel_bins = 40;
+	setup.tplg_fn = 'mel40.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+	% Same 40-bin/20ms-hop mel spectrogram with compress PCM output for the
+	% on-device TFLM wake-word path (KPB -> SRC -> MFCC -> tflmcly).
+	setup = get_mel_spectrogram_config();
+	setup.frame_length = 30.0;
+	setup.frame_shift = 20.0;
+	setup.num_mel_bins = 40;
+	setup.compress_output = true;
+	setup.tplg_fn = 'mel40_compress.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+	% Blob for 40-bin/10ms-hop mel spectrogram, matching microWakeWord's
+	% MixConv front-end shape (40 features per 10ms stride over a 30ms
+	% window, 125 Hz to 7500 Hz bandwidth) -- see src/audio/microwakeword.
+	setup = get_mel_spectrogram_config();
+	setup.frame_length = 30.0; % 480 samples at 16 kHz
+	setup.frame_shift = 10.0; % 160 samples at 16 kHz
+	setup.num_mel_bins = 40;
+	setup.low_freq = 125;
+	setup.high_freq = 7500;
+	setup.tplg_fn = 'mel40_10ms.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+	% Same 40-bin/10ms-hop mel spectrogram with compress PCM output for
+	% microWakeWord compress stream capture.
+	setup = get_mel_spectrogram_config();
+	setup.frame_length = 30.0;
+	setup.frame_shift = 10.0;
+	setup.num_mel_bins = 40;
+	setup.low_freq = 125;
+	setup.high_freq = 7500;
+	setup.compress_output = true;
+	setup.tplg_fn = 'mel40_10ms_compress.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
 	% Blob for mel spectrogram with compress PCM output and DTX
 	setup = get_mel_spectrogram_config();
 	setup.compress_output = true;
