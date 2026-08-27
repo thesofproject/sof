@@ -504,33 +504,6 @@ void *z_impl_vregion_alloc_align(struct vregion *vr,
 }
 EXPORT_SYMBOL(z_impl_vregion_alloc_align);
 
-/**
- * @brief Allocate memory from the virtual region.
- * @param[in] vr Pointer to the virtual region instance.
- * @param[in] size Size of the allocation.
- * @return void* Pointer to the allocated memory, or NULL on failure.
- */
-void *z_impl_vregion_alloc(struct vregion *vr, size_t size)
-{
-	return z_impl_vregion_alloc_align(vr, size, 0);
-}
-EXPORT_SYMBOL(z_impl_vregion_alloc);
-
-void *z_impl_vregion_alloc_coherent(struct vregion *vr, size_t size)
-{
-	size = ALIGN_UP(size, CONFIG_DCACHE_LINE_SIZE);
-
-	void *p = z_impl_vregion_alloc_align(vr, size, CONFIG_DCACHE_LINE_SIZE);
-
-	if (!p)
-		return NULL;
-
-	sys_cache_data_invd_range(p, size);
-
-	return sys_cache_uncached_ptr_get(p);
-}
-EXPORT_SYMBOL(z_impl_vregion_alloc_coherent);
-
 void *z_impl_vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment)
 {
 	if (alignment < CONFIG_DCACHE_LINE_SIZE)

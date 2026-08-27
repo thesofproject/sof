@@ -6,24 +6,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/internal/syscall_handler.h>
 
-static inline void *z_vrfy_vregion_alloc(struct vregion *vr, size_t size)
-{
-	if (vregion_verify(vr))
-		return z_impl_vregion_alloc(vr, size);
-
-	return NULL;
-}
-#include <zephyr/syscalls/vregion_alloc_mrsh.c>
-
-static inline void *z_vrfy_vregion_alloc_coherent(struct vregion *vr, size_t size)
-{
-	if (vregion_verify(vr))
-		return z_impl_vregion_alloc_coherent(vr, size);
-
-	return NULL;
-}
-#include <zephyr/syscalls/vregion_alloc_coherent_mrsh.c>
-
 static inline void *z_vrfy_vregion_alloc_align(struct vregion *vr, size_t size, size_t alignment)
 {
 	if (vregion_verify(vr))
