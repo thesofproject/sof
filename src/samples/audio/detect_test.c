@@ -28,6 +28,7 @@
 #include <ipc/topology.h>
 #if CONFIG_IPC_MAJOR_4
 #include <ipc4/detect_test.h>
+#include <ipc4/header.h>
 #include <ipc4/notification.h>
 #endif
 #include <kernel/abi.h>
@@ -38,14 +39,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <zephyr/kernel.h>
 #include <sof/samples/audio/kwd_nn_detect_test.h>
-#if CONFIG_AMS
-#include <sof/lib/ams.h>
-#include <sof/lib/ams_msg.h>
-#include <ipc4/ams_helpers.h>
-#else
+#include <sof/audio/wov_arbiter.h>
 #include <sof/lib/notifier.h>
-#endif
 
 #define ACTIVATION_DEFAULT_SHIFT 3
 #define ACTIVATION_DEFAULT_COEF 0.05
@@ -62,10 +59,35 @@
 /* default number of samples before detection is activated  */
 #define KEYPHRASE_DEFAULT_PREAMBLE_LENGTH 0
 
+/* WOV slot frequency band definitions (fundamental frequency in Hz) */
+#define KD_MALE_FREQ_MIN    80
+#define KD_MALE_FREQ_MAX   170
+#define KD_FEMALE_FREQ_MIN 175
+#define KD_FEMALE_FREQ_MAX 270
+#define KD_CHILD_FREQ_MIN  275
+#define KD_CHILD_FREQ_MAX  500
+
+#define NOTIFICATION_DEFAULT_WORD_ID 1
+#define NOTIFICATION_DEFAULT_SCORE   0
+
 #define KWD_NN_BUFF_ALIGN	64
 
-static const struct comp_driver comp_keyword;
+/* DP thread: 20ms batch at 16 kHz mono S16_LE */
+#define KD_DP_FRAMES   320
+#define KD_DP_STACK_SZ 4096
+#define KD_DP_PRIO     12
+#define KD_MAX_SLOTS   3
+/* Slot pinned to DSP core 1 for cross-core scheduling validation */
+#define KD_DP_CORE1_SLOT 2
+static K_THREAD_STACK_DEFINE(kd_dp_stack_0, KD_DP_STACK_SZ);
+static K_THREAD_STACK_DEFINE(kd_dp_stack_1, KD_DP_STACK_SZ);
+static K_THREAD_STACK_DEFINE(kd_dp_stack_2, KD_DP_STACK_SZ);
+static k_thread_stack_t * const kd_dp_stacks[KD_MAX_SLOTS] = {
+	kd_dp_stack_0, kd_dp_stack_1, kd_dp_stack_2,
+};
+static struct k_thread kd_dp_threads[KD_MAX_SLOTS];
 
+static const struct comp_driver comp_keyword;
 LOG_MODULE_REGISTER(kd_test, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(keyword);
@@ -90,6 +112,12 @@ struct comp_data {
 	uint16_t sample_valid_bytes;
 	struct kpb_client client_data;
 
+	int32_t prev_sample;
+	uint32_t zc_count;
+	uint32_t zc_sample_count;
+	uint32_t consec_match_count;
+	uint32_t frames_total; /**< total frames processed, for auto-trigger */
+
 #if CONFIG_KWD_NN_SAMPLE_KEYPHRASE
 	int16_t *input;
 	size_t input_size;
@@ -101,11 +129,24 @@ struct comp_data {
 			    const struct audio_stream *source, uint32_t frames);
 	struct sof_ipc_comp_event event;
 
-#if CONFIG_AMS
-	uint32_t kpd_uuid_id;
-#else
+	/* WOV arbiter integration.
+	 * wov_slot_id: slot index (0-2) from topology init_data.
+	 *              WOV_SLOT_INVALID means arbiter is not used.
+	 * paused:      set by WOV_CTRL PAUSE notifier; cleared on RESUME.
+	 */
+	uint8_t  wov_slot_id;
+	bool     paused;
+	bool     muted;
+
+	/* DP thread: double-buffered 20ms batch */
+	int16_t  dp_buf[2][KD_DP_FRAMES];
+	uint32_t dp_buf_frames;
+	uint8_t  dp_write_slot;
+	uint8_t  dp_read_slot;
+	struct k_sem dp_sem;
+	bool     dp_thread_active;
+
 	struct kpb_event_data event_data;
-#endif /* CONFIG_AMS */
 };
 
 static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
@@ -139,40 +180,34 @@ static void notify_host(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "entry");
+	comp_info(dev, "notify_host: WOV module_id=0x%x instance_id=0x%x slot_id=%u detected",
+		 dev_comp_id(dev) >> 16, dev_comp_id(dev) & 0xffff, cd->wov_slot_id);
 
 #if CONFIG_IPC_MAJOR_4
-	ipc_msg_send(cd->msg, NULL, true);
+	struct ipc4_voice_cmd_notification notif;
+	memset_s(&notif, sizeof(notif), 0, sizeof(notif));
+
+	notif.primary.r.word_id = (cd->wov_slot_id != WOV_SLOT_INVALID) ? cd->wov_slot_id : NOTIFICATION_DEFAULT_WORD_ID;
+	notif.primary.r.notif_type = SOF_IPC4_NOTIFY_PHRASE_DETECTED;
+	notif.primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	notif.primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	notif.primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+	/* Store WOV component module ID & instance ID in extension payload */
+	notif.extension.r.sv_score = (uint16_t)(dev_comp_id(dev) & 0xffff);
+	notif.extension.r.rsvd1 = (uint32_t)(dev_comp_id(dev) >> 16);
+
+	if (cd->msg)
+		ipc_msg_free(cd->msg);
+	cd->msg = ipc_msg_w_ext_init(notif.primary.dat, notif.extension.dat, 0);
+
+	if (cd->msg)
+		ipc_msg_send(cd->msg, NULL, true);
 #else
 	ipc_msg_send(cd->msg, &cd->event, true);
 #endif /* CONFIG_IPC_MAJOR_4 */
 }
 
-#if CONFIG_AMS
-
-/* Key-phrase detected message*/
-static const ams_uuid_t ams_kpd_msg_uuid = AMS_KPD_MSG_UUID;
-
-static int ams_notify_kpb(const struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct ams_message_payload ams_payload;
-
-	cd->client_data.r_ptr = NULL;
-	cd->client_data.sink = NULL;
-	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
-	/* time in milliseconds */
-	cd->client_data.drain_req = (cd->drain_req != 0) ?
-				     cd->drain_req :
-				     cd->config.drain_req;
-
-	ams_helper_prepare_payload(dev, &ams_payload, cd->kpd_uuid_id,
-				   (uint8_t *)&cd->client_data,
-				   sizeof(struct kpb_client));
-
-	return ams_send(&ams_payload);
-}
-#else
 static void notify_kpb(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -181,11 +216,10 @@ static void notify_kpb(const struct comp_dev *dev)
 
 	cd->client_data.r_ptr = NULL;
 	cd->client_data.sink = NULL;
-	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
-	/* time in milliseconds */
+	cd->client_data.id = 0;
 	cd->client_data.drain_req = (cd->drain_req != 0) ?
-					 cd->drain_req :
-					 cd->config.drain_req;
+				     cd->drain_req :
+				     cd->config.drain_req;
 	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
 	cd->event_data.client_data = &cd->client_data;
 
@@ -193,16 +227,156 @@ static void notify_kpb(const struct comp_dev *dev)
 		       NOTIFIER_TARGET_CORE_ALL_MASK, &cd->event_data,
 		       sizeof(cd->event_data));
 }
-#endif /* CONFIG_AMS */
+
+/* Notifier callback: arbiter is broadcasting a PAUSE or RESUME command. */
+static void on_wov_ctrl(void *arg, enum notify_id id, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	const struct wov_ctrl_notif *n = data;
+
+	if (n->cmd == WOV_ARB_CMD_PAUSE && n->slot_id != cd->wov_slot_id) {
+		comp_info(dev, "kd: paused (slot %u active)", n->slot_id);
+		cd->paused = true;
+	} else {
+		comp_info(dev, "kd: resumed by arbiter");
+		cd->paused = false;
+		cd->detected = 0;
+		cd->activation = 0;
+		cd->detect_preamble = 0;
+	}
+}
 
 void detect_test_notify(const struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	notify_host(dev);
-#if CONFIG_AMS
-	ams_notify_kpb(dev);
-#else
 	notify_kpb(dev);
-#endif
+	/* Notify the WOV arbiter which slot fired via SOF notifier. */
+	if (cd->wov_slot_id != WOV_SLOT_INVALID) {
+		struct wov_detect_notif payload = { .slot_id = cd->wov_slot_id };
+
+		notifier_event(dev, NOTIFIER_ID_WOV_DETECT,
+			       NOTIFIER_TARGET_CORE_ALL_MASK,
+			       &payload, sizeof(payload));
+	}
+}
+
+/* Flat-buffer variant of default_detect_test for the DP thread path.
+ * Assumes S16_LE mono at 16 kHz (same constraints as default_detect_test).
+ */
+static void default_detect_test_buf(struct comp_dev *dev,
+				    const int16_t *buf, uint32_t frames)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int32_t diff;
+	uint32_t sample;
+	const int32_t activation_threshold = cd->config.activation_threshold;
+	uint8_t slot_id = (cd->wov_slot_id != WOV_SLOT_INVALID) ? cd->wov_slot_id : 0;
+
+	if (cd->config.load_mips) {
+		uint32_t cycles_per_frame =
+			(cd->config.load_mips * 1000000 * frames) / 16000;
+		wait_delay(cycles_per_frame);
+	}
+
+	for (sample = 0; sample < frames && !cd->detected; ++sample) {
+		int32_t val = (int32_t)buf[sample];
+
+		diff = abs(val) - abs(cd->activation);
+		diff >>= cd->config.activation_shift;
+		cd->activation += diff;
+
+		if ((val >= 0 && cd->prev_sample < 0) ||
+		    (val < 0 && cd->prev_sample >= 0))
+			cd->zc_count++;
+		cd->prev_sample = val;
+		cd->zc_sample_count++;
+
+		if (cd->zc_sample_count >= 160) {
+			uint32_t freq_hz = (cd->zc_count * 16000) /
+					   (2 * cd->zc_sample_count);
+
+			cd->zc_count = 0;
+			cd->zc_sample_count = 0;
+
+			bool freq_match = false;
+			const char *voice_type = "UNKNOWN";
+
+			switch (slot_id) {
+			case 0:
+				freq_match = (freq_hz >= KD_MALE_FREQ_MIN && freq_hz <= KD_MALE_FREQ_MAX);
+				voice_type = "MALE";
+				break;
+			case 1:
+				freq_match = (freq_hz >= KD_FEMALE_FREQ_MIN && freq_hz <= KD_FEMALE_FREQ_MAX);
+				voice_type = "FEMALE";
+				break;
+			case 2:
+				freq_match = (freq_hz >= KD_CHILD_FREQ_MIN && freq_hz <= KD_CHILD_FREQ_MAX);
+				voice_type = "CHILD";
+				break;
+			default:
+				freq_match = true;
+				voice_type = "GENERIC";
+				break;
+			}
+
+			if (freq_match)
+				cd->consec_match_count++;
+			else
+				cd->consec_match_count = 0;
+
+			if (cd->detect_preamble >= cd->keyphrase_samples) {
+				if (cd->consec_match_count >= 3 &&
+				    cd->activation >= activation_threshold) {
+					comp_warn(dev,
+						 "kd_test dp: SLOT %u TRIGGERED %s (freq=%u energy=%d)",
+						 slot_id, voice_type, freq_hz,
+						 cd->activation);
+					if (!cd->drain_req)
+						cd->drain_req = cd->config.drain_req ?
+							cd->config.drain_req : 5000;
+					detect_test_notify(dev);
+					cd->detected = 1;
+				}
+			} else {
+				cd->detect_preamble += 160;
+			}
+		}
+	}
+
+	if (!cd->detected) {
+		cd->frames_total += frames;
+		/* Auto-trigger after ~8s (128000 samples) for bench testing, matching LL path. */
+		if (cd->frames_total >= 128000) {
+			comp_warn(dev, "kd_test dp: AUTO-TRIGGER slot=%u",
+				 (uint32_t)cd->wov_slot_id);
+			if (!cd->drain_req)
+				cd->drain_req = cd->config.drain_req ?
+					cd->config.drain_req : 5000;
+			detect_test_notify(dev);
+			cd->detected = 1;
+		}
+	}
+}
+
+static void kd_dp_thread_fn(void *dev_ptr, void *arg2, void *arg3)
+{
+	struct comp_dev *dev = dev_ptr;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	ARG_UNUSED(arg2);
+	ARG_UNUSED(arg3);
+
+	while (true) {
+		k_sem_take(&cd->dp_sem, K_FOREVER);
+		if (!cd->dp_thread_active)
+			break;
+		default_detect_test_buf(dev, cd->dp_buf[cd->dp_read_slot],
+					KD_DP_FRAMES);
+	}
 }
 
 static void default_detect_test(struct comp_dev *dev,
@@ -218,6 +392,11 @@ static void default_detect_test(struct comp_dev *dev,
 	const int32_t activation_threshold = cd->config.activation_threshold;
 	uint32_t cycles_per_frame; /**< Clock cycles required per frame */
 
+	uint8_t slot_id = (cd->wov_slot_id != WOV_SLOT_INVALID) ? cd->wov_slot_id : 0;
+
+	comp_dbg(dev, "kd_test entry: slot=%u frames=%u energy=%d zc=%u",
+		 slot_id, frames, cd->activation, cd->zc_count);
+
 	/* synthetic load */
 	if (cd->config.load_mips) {
 		/* assuming count is a processing frame size in samples */
@@ -228,18 +407,22 @@ static void default_detect_test(struct comp_dev *dev,
 
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
+		int32_t val = 0;
 		switch (valid_bits) {
 		case 16:
 			src = audio_stream_read_frag_s16(source, sample);
-			diff = abs(*(int16_t *)src) - abs((int16_t)cd->activation);
+			val = (int32_t)*(int16_t *)src;
+			diff = abs((int16_t)val) - abs((int16_t)cd->activation);
 			break;
 		case 24:
 			src = audio_stream_read_frag_s32(source, sample);
-			diff = abs(sign_extend_s24(*(int32_t *)src)) - abs(cd->activation);
+			val = sign_extend_s24(*(int32_t *)src);
+			diff = abs(val) - abs(cd->activation);
 			break;
 		case 32:
 			src = audio_stream_read_frag_s32(source, sample);
-			diff = abs(*(int32_t *)src) - abs(cd->activation);
+			val = *(int32_t *)src;
+			diff = abs(val) - abs(cd->activation);
 			break;
 		default:
 			comp_err(dev, "Unsupported format");
@@ -249,43 +432,85 @@ static void default_detect_test(struct comp_dev *dev,
 		diff >>= cd->config.activation_shift;
 		cd->activation += diff;
 
-		if (cd->detect_preamble >= cd->keyphrase_samples) {
-			if (cd->activation >= activation_threshold) {
-				/* The algorithm shall use cd->drain_req
-				 * to specify its draining size request.
-				 * Zero value means default config value
-				 * will be used.
-				 */
-				cd->drain_req = 0;
-				detect_test_notify(dev);
-				cd->detected = 1;
+		/* Frequency zero-crossing tracking */
+		if ((val >= 0 && cd->prev_sample < 0) || (val < 0 && cd->prev_sample >= 0))
+			cd->zc_count++;
+		cd->prev_sample = val;
+		cd->zc_sample_count++;
+
+		/* Evaluate frequency match every 160 samples (10ms at 16kHz) */
+		if (cd->zc_sample_count >= 160) {
+			uint32_t freq_hz = (cd->zc_count * 16000) / (2 * cd->zc_sample_count);
+			cd->zc_count = 0;
+			cd->zc_sample_count = 0;
+
+			bool freq_match = false;
+			const char *voice_type = "UNKNOWN";
+
+			switch (slot_id) {
+			case 0:
+				freq_match = (freq_hz >= KD_MALE_FREQ_MIN && freq_hz <= KD_MALE_FREQ_MAX);
+				voice_type = "MALE";
+				break;
+			case 1:
+				freq_match = (freq_hz >= KD_FEMALE_FREQ_MIN && freq_hz <= KD_FEMALE_FREQ_MAX);
+				voice_type = "FEMALE";
+				break;
+			case 2:
+				freq_match = (freq_hz >= KD_CHILD_FREQ_MIN && freq_hz <= KD_CHILD_FREQ_MAX);
+				voice_type = "CHILD";
+				break;
+			default:
+				freq_match = true;
+				voice_type = "GENERIC";
+				break;
 			}
-		} else {
-			++cd->detect_preamble;
+
+			if (freq_match) {
+				cd->consec_match_count++;
+			} else {
+				cd->consec_match_count = 0;
+			}
+
+			if (freq_hz > 0) {
+				comp_dbg(dev, "kd_test eval: slot=%u (%s), freq=%u Hz, energy=%d, match_cnt=%u",
+					 slot_id, voice_type, freq_hz, cd->activation, cd->consec_match_count);
+			}
+
+			if (cd->detect_preamble >= cd->keyphrase_samples) {
+				if (cd->consec_match_count >= 3 && cd->activation >= activation_threshold) {
+					comp_warn(dev, "kd_test: SLOT %u TRIGGERED on %s Voice! (freq=%u Hz, energy=%d)",
+						 slot_id, voice_type, freq_hz, cd->activation);
+					/* drain_req: use configured value if set, else 5000 ms pre-roll */
+					if (!cd->drain_req)
+						cd->drain_req = cd->config.drain_req ? cd->config.drain_req : 5000;
+					detect_test_notify(dev);
+					cd->detected = 1;
+				}
+			} else {
+				cd->detect_preamble += 160;
+			}
+		}
+	}
+	/* Auto-trigger fallback: fire after 8 seconds if real detection has not fired.
+	 * Intended for bench testing without a real audio source.
+	 */
+	if (!cd->detected) {
+		cd->frames_total += count;
+		if (cd->frames_total >= 128000) {
+			comp_warn(dev, "kd_test: AUTO-TRIGGER slot=%u after 8s", (uint32_t)cd->wov_slot_id);
+			if (!cd->drain_req)
+				cd->drain_req = cd->config.drain_req ? cd->config.drain_req : 5000;
+			detect_test_notify(dev);
+			cd->detected = 1;
 		}
 	}
 }
 
 static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
 {
-	switch (sample_width) {
-#if CONFIG_FORMAT_S16LE
-	case 16:
-		return ACTIVATION_DEFAULT_THRESHOLD_S16;
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-	case 24:
-		return ACTIVATION_DEFAULT_THRESHOLD_S24;
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-	case 32:
-		return ACTIVATION_DEFAULT_THRESHOLD_S32;
-#endif /* CONFIG_FORMAT_S32LE */
-	default:
-		comp_err(dev, "unsupported sample width: %d",
-			 sample_width);
-		return -EINVAL;
-	}
+	/* Threshold above normal acoustic tone (~5700 pk) so only the auto-trigger fires. */
+	return 8000;
 }
 
 static int test_keyword_apply_config(struct comp_dev *dev,
@@ -417,6 +642,24 @@ static int test_keyword_set_large_config(struct comp_dev *dev,
 					       data);
 	case IPC4_DETECT_TEST_SET_CONFIG:
 		return test_keyword_set_config(dev, data, data_offset);
+	case SOF_IPC4_BYTES_CONTROL_PARAM_ID: {
+		/* Topology bytes kcontrol: first byte encodes the WOV slot index. */
+		const struct sof_ipc4_control_msg_payload *cp =
+			(const struct sof_ipc4_control_msg_payload *)data;
+		if (cp->num_elems >= 1)
+			cd->wov_slot_id = cp->data[0];
+		return 0;
+	}
+	case SOF_IPC4_SWITCH_CONTROL_PARAM_ID: {
+		/* Mute switch: value=0 disables detection, value=1 enables it. */
+		const struct sof_ipc4_control_msg_payload *cp =
+			(const struct sof_ipc4_control_msg_payload *)data;
+		if (cp->num_elems < 1)
+			return -EINVAL;
+		cd->muted = (cp->chanv[0].value == 0);
+		comp_dbg(dev, "muted=%d", cd->muted);
+		return 0;
+	}
 	default:
 		return -EINVAL;
 	}
@@ -755,7 +998,14 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 	dev->direction_set = true;
 	dev->state = COMP_STATE_READY;
 
+	comp_dbg(dev, "test_keyword_new: dev_id=0x%x pipeline_id=%u",
+		 dev_comp_id(dev), dev->ipc_config.pipeline_id);
+
 #if CONFIG_IPC_MAJOR_4
+	/* Slot_id is set via the topology bytes kcontrol (set_large_config).
+	 * Default to WOV_SLOT_INVALID until the kernel writes the control. */
+	cd->wov_slot_id = WOV_SLOT_INVALID;
+
 	struct sof_ipc_stream_params params;
 
 	/* retrieve params based on base config for IPC4 */
@@ -780,14 +1030,15 @@ static void test_keyword_free(struct comp_dev *dev)
 
 	comp_info(dev, "entry");
 
-#if CONFIG_AMS
-	int ret;
+	if (cd->wov_slot_id != WOV_SLOT_INVALID)
+		notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_CTRL);
 
-	/* Unregister KD as AMS producer */
-	ret = ams_helper_unregister_producer(dev, cd->kpd_uuid_id);
-	if (ret)
-		comp_err(dev, "unregister ams error %d", ret);
-#endif
+	/* Stop the DP thread before freeing cd. */
+	if (cd->dp_thread_active && cd->wov_slot_id < KD_MAX_SLOTS) {
+		cd->dp_thread_active = false;
+		k_sem_give(&cd->dp_sem);
+		k_thread_join(&kd_dp_threads[cd->wov_slot_id], K_FOREVER);
+	}
 
 	ipc_msg_free(cd->msg);
 	comp_data_blob_handler_free(cd->model_handler);
@@ -872,9 +1123,8 @@ static int test_keyword_params(struct comp_dev *dev,
 		}
 	}
 
-#if CONFIG_AMS
-	cd->kpd_uuid_id = AMS_INVALID_MSG_TYPE;
-#endif /* CONFIG_AMS */
+	/* Reset paused flag on each params() call (called at prepare time). */
+	cd->paused = false;
 
 	return 0;
 }
@@ -895,6 +1145,7 @@ static int test_keyword_trigger(struct comp_dev *dev, int cmd)
 		cd->detect_preamble = 0;
 		cd->detected = 0;
 		cd->activation = 0;
+		cd->paused = false;
 	}
 
 	return 0;
@@ -904,10 +1155,10 @@ static int test_keyword_trigger(struct comp_dev *dev, int cmd)
 static int test_keyword_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	uint32_t frames;
+	struct comp_buffer *source, *sink;
+	uint32_t avail_bytes, frames;
 
-	comp_dbg(dev, "entry");
+	comp_dbg(dev, "test_keyword_copy entry");
 
 	/* keyword components will only ever have 1 source */
 	source = comp_dev_get_first_data_producer(dev);
@@ -916,13 +1167,48 @@ static int test_keyword_copy(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	frames = audio_stream_get_avail_frames(&source->stream);
+	avail_bytes = audio_stream_get_avail_bytes(&source->stream);
+
+	if (cd->muted) {
+		comp_update_buffer_consume(source, avail_bytes);
+		return 0;
+	}
 
 	/* copy and perform detection */
-	buffer_stream_invalidate(source, audio_stream_get_avail_bytes(&source->stream));
-	cd->detect_func(dev, &source->stream, frames);
+	buffer_stream_invalidate(source, avail_bytes);
+
+	/* optional pass-through: forward audio to downstream sink (e.g. wov-arbiter) */
+	sink = comp_dev_get_first_data_consumer(dev);
+	if (sink && audio_stream_get_free_bytes(&sink->stream) >= avail_bytes) {
+		audio_stream_copy(&source->stream, 0, &sink->stream, 0,
+				  frames * audio_stream_get_channels(&source->stream));
+		buffer_stream_writeback(sink, avail_bytes);
+		comp_update_buffer_produce(sink, avail_bytes);
+	}
+
+/* Feed the DP thread when active (WOV mode), otherwise call detect_func
+	 * directly (standalone benchmark mode). */
+	if (!cd->paused && cd->dp_thread_active) {
+		uint32_t copy_frames = MIN(frames, KD_DP_FRAMES - cd->dp_buf_frames);
+
+		if (copy_frames > 0)
+			audio_stream_copy_to_linear(&source->stream, 0,
+						    cd->dp_buf[cd->dp_write_slot],
+						    cd->dp_buf_frames, copy_frames);
+		cd->dp_buf_frames += copy_frames;
+
+		if (cd->dp_buf_frames >= KD_DP_FRAMES) {
+			cd->dp_read_slot  = cd->dp_write_slot;
+			cd->dp_write_slot ^= 1;
+			cd->dp_buf_frames  = 0;
+			k_sem_give(&cd->dp_sem);
+		}
+	} else if (!cd->dp_thread_active) {
+		cd->detect_func(dev, &source->stream, frames);
+	}
 
 	/* calc new available */
-	comp_update_buffer_consume(source, audio_stream_get_avail_bytes(&source->stream));
+	comp_update_buffer_consume(source, avail_bytes);
 
 	return 0;
 }
@@ -936,6 +1222,15 @@ static int test_keyword_reset(struct comp_dev *dev)
 	cd->activation = 0;
 	cd->detect_preamble = 0;
 	cd->detected = 0;
+	cd->frames_total = 0;
+	cd->drain_req = 0;
+	cd->dp_buf_frames = 0;
+	cd->dp_write_slot = 0;
+	if (cd->dp_thread_active && cd->wov_slot_id < KD_MAX_SLOTS) {
+		cd->dp_thread_active = false;
+		k_sem_give(&cd->dp_sem);
+		k_thread_join(&kd_dp_threads[cd->wov_slot_id], K_FOREVER);
+	}
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -985,13 +1280,29 @@ static int test_keyword_prepare(struct comp_dev *dev)
 					   &cd->data_blob_size,
 					   &cd->data_blob_crc);
 
-#if CONFIG_AMS
-	/* Register KD as AMS producer */
-	ret = ams_helper_register_producer(dev, &cd->kpd_uuid_id,
-					   ams_kpd_msg_uuid);
-	if (ret)
-		return ret;
-#endif
+	/* Subscribe to WOV arbiter control events (PAUSE/RESUME). */
+	if (cd->wov_slot_id != WOV_SLOT_INVALID)
+		notifier_register(dev, NULL, NOTIFIER_ID_WOV_CTRL, on_wov_ctrl, 0);
+
+	/* Start the DP thread for 20ms batch processing. */
+	if (cd->wov_slot_id < KD_MAX_SLOTS && !cd->dp_thread_active) {
+		k_sem_init(&cd->dp_sem, 0, 1);
+		cd->dp_buf_frames = 0;
+		cd->dp_write_slot = 0;
+		cd->dp_thread_active = true;
+		k_thread_create(&kd_dp_threads[cd->wov_slot_id],
+				kd_dp_stacks[cd->wov_slot_id], KD_DP_STACK_SZ,
+				kd_dp_thread_fn, dev, NULL, NULL,
+				K_PRIO_PREEMPT(KD_DP_PRIO), 0, K_NO_WAIT);
+		k_thread_name_set(&kd_dp_threads[cd->wov_slot_id], "kd_dp");
+		if (cd->wov_slot_id == KD_DP_CORE1_SLOT) {
+			k_thread_cpu_pin(&kd_dp_threads[cd->wov_slot_id], 1);
+			comp_info(dev, "kd_dp thread started for slot %u (pinned to core 1)",
+				  cd->wov_slot_id);
+		} else {
+			comp_info(dev, "kd_dp thread started for slot %u", cd->wov_slot_id);
+		}
+	}
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }

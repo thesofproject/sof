@@ -31,6 +31,8 @@ enum notify_id {
 	NOTIFIER_ID_DMA_IRQ,			/* struct dma_chan_data * */
 	NOTIFIER_ID_DAI_TRIGGER,		/* struct dai_group * */
 	NOTIFIER_ID_MIC_PRIVACY_STATE_CHANGE,	/* struct mic_privacy_settings * */
+	NOTIFIER_ID_WOV_DETECT,		/* struct wov_detect_notif *: keyword detected */
+	NOTIFIER_ID_WOV_CTRL,			/* struct wov_ctrl_notif *: pause/resume detectors */
 	NOTIFIER_ID_COUNT
 };
 
