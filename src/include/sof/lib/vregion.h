@@ -83,20 +83,6 @@ __syscall struct vregion *vregion_get(struct vregion *vr);
 __syscall struct vregion *vregion_put(struct vregion *vr);
 
 /**
- * @brief Allocate memory from the specified virtual region.
- *
- * @param[in] vr Pointer to the virtual region instance.
- * @param[in] size Size of memory to allocate in bytes.
- * @return void* Pointer to the allocated memory, or NULL on failure.
- */
-__syscall void *vregion_alloc(struct vregion *vr, size_t size);
-
-/**
- * @brief like vregion_alloc() but allocates coherent memory
- */
-__syscall void *vregion_alloc_coherent(struct vregion *vr, size_t size);
-
-/**
  * @brief Allocate aligned memory from the specified virtual region.
  *
  * Allocate aligned memory from the specified virtual region using the
@@ -113,6 +99,26 @@ __syscall void *vregion_alloc_align(struct vregion *vr, size_t size, size_t alig
  * @brief like vregion_alloc_align() but allocates coherent memory
  */
 __syscall void *vregion_alloc_coherent_align(struct vregion *vr, size_t size, size_t alignment);
+
+/**
+ * @brief Allocate memory from the specified virtual region.
+ *
+ * @param[in] vr Pointer to the virtual region instance.
+ * @param[in] size Size of memory to allocate in bytes.
+ * @return void* Pointer to the allocated memory, or NULL on failure.
+ */
+static inline void *vregion_alloc(struct vregion *vr, size_t size)
+{
+	return vregion_alloc_align(vr, size, 0);
+}
+
+/**
+ * @brief like vregion_alloc() but allocates coherent memory
+ */
+static inline void *vregion_alloc_coherent(struct vregion *vr, size_t size)
+{
+	return vregion_alloc_coherent_align(vr, size, 0);
+}
 
 /**
  * @brief Free memory allocated from the specified virtual region.
