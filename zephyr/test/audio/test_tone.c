@@ -27,10 +27,12 @@ static void *setup(void)
 
 	if (!sof->ipc) {
 		sof->ipc = rzalloc(SOF_MEM_FLAG_COHERENT, sizeof(*sof->ipc));
-		sof->ipc->comp_data = rzalloc(SOF_MEM_FLAG_COHERENT, 4096);
-		k_spinlock_init(&sof->ipc->lock);
-		list_init(&sof->ipc->msg_list);
-		list_init(&sof->ipc->comp_list);
+		if (sof->ipc) {
+			sof->ipc->comp_data = rzalloc(SOF_MEM_FLAG_COHERENT, 4096);
+			k_spinlock_init(&sof->ipc->lock);
+			list_init(&sof->ipc->msg_list);
+			list_init(&sof->ipc->comp_list);
+		}
 	}
 
 	sys_comp_module_tone_interface_init();
@@ -108,11 +110,11 @@ ZTEST(audio_tone, test_tone_config)
 {
 	struct comp_dev *comp = test_tone_create();
 
-	int ret = 0;
 	if (comp->drv->ops.set_large_config) {
 		uint32_t val = 0;
-		ret = comp->drv->ops.set_large_config(comp, 0, true, true,
+		int ret = comp->drv->ops.set_large_config(comp, 0, true, true,
 			sizeof(val), (uint8_t *)&val);
+		zassert_ok(ret, "set_large_config failed");
 	}
 
 	comp->drv->ops.free(comp);

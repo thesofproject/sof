@@ -119,10 +119,10 @@ ZTEST(audio_sound_dose, test_sound_dose_process)
 
 	struct sof_ipc_stream_params params = {0};
 	params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.channels = 2;
-	params.rate = 48000;
-	params.sample_container_bytes = 4;
-	params.sample_valid_bytes = 4;
+	params.channels = 1;
+	params.rate = 16000;
+	params.sample_container_bytes = 2;
+	params.sample_valid_bytes = 2;
 
 	test_audio_helper_setup_buffers(comp, 4096, &params);
 	test_audio_helper_process(comp);

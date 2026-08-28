@@ -34,20 +34,24 @@ static inline void test_audio_helper_setup_buffers(struct comp_dev *comp, uint32
 	if (comp->drv->ops.bind) {
 		uint32_t dummy_ipc4_data[8] = {0};
 		struct bind_info binfo;
+		int ret;
 		memset(&binfo, 0, sizeof(binfo));
 		binfo.ipc4_data = (void *)dummy_ipc4_data;
 
 		binfo.bind_type = COMP_BIND_TYPE_SOURCE;
 		binfo.source = audio_buffer_get_source(&source_buf->audio_buffer);
-		comp->drv->ops.bind(comp, &binfo);
+		ret = comp->drv->ops.bind(comp, &binfo);
+		zassert_equal(ret, 0, "bind source failed: %d", ret);
 
 		binfo.bind_type = COMP_BIND_TYPE_SINK;
 		binfo.sink = audio_buffer_get_sink(&sink_buf->audio_buffer);
-		comp->drv->ops.bind(comp, &binfo);
+		ret = comp->drv->ops.bind(comp, &binfo);
+		zassert_equal(ret, 0, "bind sink failed: %d", ret);
 	}
 
 	if (comp->drv->ops.params) {
-		comp->drv->ops.params(comp, params);
+		int ret = comp->drv->ops.params(comp, params);
+		zassert_equal(ret, 0, "params failed: %d", ret);
 	}
 }
 
