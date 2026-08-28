@@ -254,6 +254,12 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	return ret;
 }
 
+/**
+ * \brief Prepare a component after initializing its pipeline's LL task.
+ *
+ * DP modules have their own processing tasks, but their pipelines still need
+ * LL scheduling for trigger handling and secondary-buffer synchronization.
+ */
 static int pipeline_comp_prepare(struct comp_dev *current,
 				 struct comp_buffer *calling_buf,
 				 struct pipeline_walk_context *ctx, int dir)
@@ -274,12 +280,9 @@ static int pipeline_comp_prepare(struct comp_dev *current,
 			return 0;
 	}
 
-	if (current->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL) {
-		/* init a task for LL module, DP task has been created in during init_instance */
-		err = pipeline_comp_ll_task_init(current->pipeline);
-		if (err < 0)
-			return err;
-	}
+	err = pipeline_comp_ll_task_init(current->pipeline);
+	if (err < 0)
+		return err;
 
 	err = comp_prepare(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
