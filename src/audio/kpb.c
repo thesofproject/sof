@@ -57,7 +57,9 @@
 #include <sof/lib/notifier.h>
 #endif
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI4
+#include <xtensa/tie/xt_hifi4.h>
+#elif defined(KPB_HIFI3)
 #include <xtensa/tie/xt_hifi3.h>
 #endif
 
@@ -1119,7 +1121,7 @@ static int kpb_reset(struct comp_dev *dev)
 	return ret;
 }
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI
 #if CONFIG_FORMAT_S16LE
 static void kpb_micselect_copy16(struct comp_buffer *sink,
 				 struct comp_buffer *source, size_t size,
@@ -1130,8 +1132,15 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 	uint32_t ch;
 	size_t i;
 
+#ifdef KPB_HIFI4
+	AE_SETCBEGIN0(audio_stream_get_addr(istream));
+	AE_SETCEND0(audio_stream_get_end_addr(istream));
+	AE_SETCBEGIN1(audio_stream_get_addr(ostream));
+	AE_SETCEND1(audio_stream_get_end_addr(ostream));
+#else
 	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
 	AE_SETCEND0(audio_stream_get_end_addr(ostream));
+#endif
 
 	const size_t samples_per_chan = size / (sizeof(ae_int16) * micsel_channels);
 
@@ -1143,11 +1152,21 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 	ae_int16 *out_ptr;
 
 	for (ch = 0; ch < micsel_channels; ch++) {
+#ifdef KPB_HIFI4
+		const ae_int16 *input_data = in_ptr + offsets[ch];
+#else
 		const ae_int16 *input_frame = in_ptr;
 		size_t copied = 0;
+#endif
 
 		out_ptr = audio_stream_get_wptr(ostream);
 		out_ptr += ch;
+#ifdef KPB_HIFI4
+		for (i = 0; i < samples_per_chan; i++) {
+			AE_L16_XC(d16, input_data, in_offset);
+			AE_S16_0_XC1(d16, out_ptr, out_offset);
+		}
+#else
 		while (copied < samples_per_chan) {
 			size_t frames = audio_stream_frames_without_wrap(istream, input_frame);
 			const ae_int16 *input_data = input_frame + offsets[ch];
@@ -1161,6 +1180,7 @@ static void kpb_micselect_copy16(struct comp_buffer *sink,
 						(void *)(input_frame + frames * in_channels));
 			copied += frames;
 		}
+#endif
 	}
 }
 #endif
@@ -1174,8 +1194,15 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 	uint32_t ch;
 	size_t i;
 
+#ifdef KPB_HIFI4
+	AE_SETCBEGIN0(audio_stream_get_addr(istream));
+	AE_SETCEND0(audio_stream_get_end_addr(istream));
+	AE_SETCBEGIN1(audio_stream_get_addr(ostream));
+	AE_SETCEND1(audio_stream_get_end_addr(ostream));
+#else
 	AE_SETCBEGIN0(audio_stream_get_addr(ostream));
 	AE_SETCEND0(audio_stream_get_end_addr(ostream));
+#endif
 
 	const size_t samples_per_chan = size / (sizeof(ae_int32) * micsel_channels);
 
@@ -1188,11 +1215,21 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 	ae_int32 *out_ptr;
 
 	for (ch = 0; ch < micsel_channels; ch++) {
+#ifdef KPB_HIFI4
+		const ae_int32 *input_data = in_ptr + offsets[ch];
+#else
 		const ae_int32 *input_frame = in_ptr;
 		size_t copied = 0;
+#endif
 
 		out_ptr = audio_stream_get_wptr(ostream);
 		out_ptr += ch;
+#ifdef KPB_HIFI4
+		for (i = 0; i < samples_per_chan; i++) {
+			AE_L32_XC(d32, input_data, in_offset);
+			AE_S32_L_XC1(d32, out_ptr, out_offset);
+		}
+#else
 		while (copied < samples_per_chan) {
 			size_t frames = audio_stream_frames_without_wrap(istream, input_frame);
 			const ae_int32 *input_data = input_frame + offsets[ch];
@@ -1206,6 +1243,7 @@ static void kpb_micselect_copy32(struct comp_buffer *sink,
 						(void *)(input_frame + frames * in_channels));
 			copied += frames;
 		}
+#endif
 	}
 }
 #endif
@@ -2117,7 +2155,7 @@ out:
 	return SOF_TASK_STATE_COMPLETED;
 }
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI
 static void kpb_convert_24b_to_32b(const void *linear_source, int ioffset,
 				   struct audio_stream *sink, int ooffset,
 				   unsigned int n_samples)
@@ -2227,7 +2265,7 @@ static void kpb_drain_samples(void *source, struct audio_stream *sink,
 	}
 }
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI
 static void kpb_convert_32b_to_24b(const struct audio_stream *source, int ioffset,
 				   void *linear_sink, int ooffset, unsigned int n_samples)
 {
@@ -2385,7 +2423,7 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 	return ret;
 }
 
-#ifdef KPB_HIFI3
+#ifdef KPB_HIFI
 static void kpb_copy_24b_in_32b(const struct audio_stream *source, uint32_t ioffset,
 				struct audio_stream *sink, uint32_t ooffset,
 				uint32_t n_samples)
