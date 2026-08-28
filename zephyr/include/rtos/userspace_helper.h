@@ -95,7 +95,7 @@ int user_stack_free(void *p_stack);
 
 /**
  * Free private processing module heap.
- * @param sys_heap pointer to the sys_heap structure.
+ * @param mod_drv_heap pointer to the k_heap structure.
  *
  * @note
  * Function used only when CONFIG_USERSPACE is set.
