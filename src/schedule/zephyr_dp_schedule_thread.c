@@ -340,7 +340,7 @@ err:
 	return ret;
 }
 
-void scheduler_dp_internal_free(struct task *task)
+void z_impl_scheduler_dp_internal_free(struct task *task)
 {
 	struct task_dp_pdata *pdata = task->priv_data;
 
@@ -354,3 +354,17 @@ void scheduler_dp_internal_free(struct task *task)
 	/* task is the first member in task_memory above */
 	sof_heap_free(pdata->mod->dev->drv->user_heap, task);
 }
+
+#ifdef CONFIG_USERSPACE
+#include <zephyr/internal/syscall_handler.h>
+
+void z_vrfy_scheduler_dp_internal_free(struct task *task)
+{
+	/*
+	 * With the thread DP scheduler variant scheduler_dp_internal_free() is
+	 * never called from the userspace context
+	 */
+	K_OOPS(true);
+}
+#include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
+#endif
