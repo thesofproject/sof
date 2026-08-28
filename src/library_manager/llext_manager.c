@@ -863,9 +863,15 @@ static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct 
 
 	/*
 	 * Add to domain on first load: for "normal" modules use_count == 1,
-	 * for dependencies use_count == 2 and n_dependent == 1
+	 * for dependencies use_count == 2 and n_dependent == 1.
+	 * This does not apply to DP modules, since they are, for now,
+	 * all in their own memory domains.
+	 *
+	 * NOTE: This approach will make it impossible for a single
+	 *       module to have both LL and DP instances within one
+	 *       configuration.  This will be fixed in the future.
 	 */
-	if (ext->use_count > 1 && mctx->n_dependent != 1)
+	if (!mctx->domain_dp && ext->use_count > 1 && mctx->n_dependent != 1)
 		return 0;
 
 	int ret = llext_manager_add_partition(domain, va_base_text, text_size,
