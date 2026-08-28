@@ -54,7 +54,7 @@ extern struct tr_ctx lib_manager_tr;
 
 static uintptr_t llext_manager_alloc_vma(size_t size)
 {
-	size_t num_pages = ALIGN_UP(size, PAGE_SZ) / PAGE_SZ;
+	size_t num_pages = DIV_ROUND_UP(size, PAGE_SZ);
 	void *vma;
 
 	vma = vpage_reserve(num_pages);
@@ -128,7 +128,9 @@ static size_t llext_manager_layout_sections(uint8_t *elf_buf, uintptr_t vma_base
 		}
 		last_region = s_region;
 
-		current_vma = ALIGN_UP(current_vma, shdr->sh_addralign);
+		if (shdr->sh_addralign > 1) {
+			current_vma = ALIGN_UP(current_vma, shdr->sh_addralign);
+		}
 		if (vma_base) {
 			shdr->sh_addr = current_vma;
 		}

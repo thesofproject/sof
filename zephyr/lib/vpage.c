@@ -171,10 +171,12 @@ static int vpages_unreserve(void *ptr)
 	}
 
 	/* move the last element over the released one, clear the last element */
-	if (vpage_ctx.num_elems_in_use != elem_idx)
-		vpage_ctx.velems[elem_idx] = vpage_ctx.velems[vpage_ctx.num_elems_in_use];
-	vpage_ctx.velems[vpage_ctx.num_elems_in_use].pages = 0;
-	vpage_ctx.velems[vpage_ctx.num_elems_in_use].vpage = 0;
+	unsigned int last_idx = vpage_ctx.num_elems_in_use - 1;
+
+	if (last_idx != elem_idx)
+		vpage_ctx.velems[elem_idx] = vpage_ctx.velems[last_idx];
+	vpage_ctx.velems[last_idx].pages = 0;
+	vpage_ctx.velems[last_idx].vpage = 0;
 	vpage_ctx.num_elems_in_use--;
 
 	/* success update the free pages */
