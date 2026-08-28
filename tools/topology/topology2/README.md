@@ -254,6 +254,31 @@ default ID ranges for the same endpoint types.
 > `BT_PCM_ID` override variable to set the correct value when BT coexists with a speaker
 > amplifier (which also uses PCM ID 2 by default).
 
+### Wake-on-voice parameters
+
+For a CAVS topology with PCH DMIC enabled and `PASSTHROUGH=false`, set
+`INCLUDE_WOV=true` to add the DMIC1, KPB, detector, and drain PCM
+pipelines. IPC4 targets must also override `KPB_UUID` with the `kpb4`
+UUID registered by their firmware. The class default is the IPC3 KPB
+UUID so existing IPC3 users are unchanged.
+
+The detector's module manifest determines its frame and memory settings.
+Override these variables together when selecting a detector:
+
+| Variable | Default | Purpose |
+|---|---:|---|
+| `WOV_FORMAT` | `s32le` | Pipeline sample format |
+| `WOV_PCM_FMT` | `S32_LE` | Drain PCM sample format |
+| `WOV_BIT_DEPTH` | 32 | Audio container width |
+| `WOV_VALID_BIT_DEPTH` | 32 | Valid sample width |
+| `WOV_IBS` | 64 | Detector input frame bytes |
+| `WOV_OBS` | 64 | Detector output frame bytes |
+| `WOV_IS_PAGES` | 0 | Module instance memory pages |
+| `WOV_CONTROL_MAX` | 4096 | Maximum bytes-control payload |
+
+The `wov_init` bytes control supports runtime TLV reads and writes. Increase
+`WOV_CONTROL_MAX` only when a detector accepts a larger configuration.
+
 **Intel HDA PCM IDs:**
 
 | Endpoint | Default PCM ID | Override Variable |
