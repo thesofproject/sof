@@ -15,8 +15,13 @@
 #if defined(__XCC__)
 
 #include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI3 || XCHAL_HAVE_HIFI4
+#if XCHAL_HAVE_HIFI4 || XCHAL_HAVE_HIFI5
+#define KPB_HIFI4
+#elif XCHAL_HAVE_HIFI3
 #define KPB_HIFI3
+#endif
+#if defined(KPB_HIFI3) || defined(KPB_HIFI4)
+#define KPB_HIFI
 #endif
 
 #endif
