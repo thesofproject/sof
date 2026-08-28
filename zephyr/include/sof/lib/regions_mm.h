@@ -49,17 +49,9 @@
  */
 #define DEFAULT_CONFIG_ALOCATORS_COUNT 5
 
-/** @struct vmh_block_bundle_descriptor
- *
- *  @brief This is a struct describing one bundle of blocks
- *  used as base for allocators blocks.
- *
- *  @var block_size size of memory block.
- *  @var number_of_blocks number of memory blocks.
- */
 struct vmh_block_bundle_descriptor {
-	size_t block_size;
-	size_t number_of_blocks;
+	size_t block_size; /**< size of memory block. */
+	size_t number_of_blocks; /**< number of memory blocks. */
 };
 
 /*
@@ -75,8 +67,6 @@ struct vmh_block_bundle_descriptor {
  *  Provided config size must be physical page aligned so it
  *  will not overlap in physical space with other heaps during mapping.
  *  So every block has to have its overall size aligned to CONFIG_MM_DRV_PAGE_SIZE
- *
- *  @vmh_block_bundle_descriptor[] aggregation of bundle descriptors.
  */
 struct vmh_heap_config {
 	struct vmh_block_bundle_descriptor block_bundles_table[MAX_MEMORY_ALLOCATORS_COUNT];
