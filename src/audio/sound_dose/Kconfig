@@ -2,7 +2,7 @@
 
 config COMP_SOUND_DOSE
 	tristate "Sound Dose module"
-	default m if LIBRARY_DEFAULT_MODULAR
+	default n
 	depends on COMP_MODULE_ADAPTER
 	depends on IPC_MAJOR_4
 	select MATH_IIR

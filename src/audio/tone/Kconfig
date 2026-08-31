@@ -2,8 +2,7 @@
 
 config COMP_TONE
 	tristate "Tone component"
-	default m if LIBRARY_DEFAULT_MODULAR
-	default y
+	default n
 	depends on COMP_MODULE_ADAPTER
 	depends on IPC_MAJOR_4
 	select CORDIC_FIXED
