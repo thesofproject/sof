@@ -151,6 +151,7 @@ int platform_init(struct sof *sof)
 
 	/*CONFIG_SYSTICK_PERIOD hardcoded as 200000*/
 	sa_init(sof, 200000);
+	acp_clk_tick_cnt_enable();
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 	/* init DMA */
 	ret = dmac_init(sof);

@@ -65,6 +65,8 @@ struct timer;
 /* debug offset */
 #define ACP_SOF_FW_STATUS	0
 
+void acp_clk_tick_cnt_enable(void);
+
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {
