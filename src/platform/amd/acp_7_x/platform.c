@@ -42,6 +42,7 @@ LOG_MODULE_REGISTER(platform_file, CONFIG_SOF_LOG_LEVEL);
 
 #define INTERRUPT_DISABLE 0
 extern void acp_dsp_to_host_intr_trig(void);
+extern uint32_t mp1_mailbox_send(uint32_t reg_id, uint32_t value);
 struct sof;
 static const struct sof_ipc_fw_ready ready
 	__attribute__((section(".fw_ready"))) = {
@@ -151,6 +152,8 @@ int platform_init(struct sof *sof)
 
 	/*CONFIG_SYSTICK_PERIOD hardcoded as 200000*/
 	sa_init(sof, 200000);
+	mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_ON_REQ);
+	acp_change_clock_notify(CLK_MAX_CPU_HZ);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 	/* init DMA */
 	ret = dmac_init(sof);
