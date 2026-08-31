@@ -222,8 +222,7 @@ void acp_clk_d0_sequence(uint32_t clock_freq)
 {
 	clk_tick_cnt_config_reg_t clk_tick_config;
 
-	/* Send message to PMFW to power on Audio PLL */
-	mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_ON_REQ);
+	/* Audio PLL is powered on in platform_init(). */
 
 	/* Enable clk tick count */
 	clk_tick_config.u32All = acp_reg_read_via_smn(CLK_TICK_CNT_CONFIG_REG, sizeof(uint32_t));
@@ -257,8 +256,7 @@ void acp_clk_d3_sequence(void)
 	acp_reg_write_via_smn(mmCLK6_CLK1_BYPASS_CNTL, bypass_cntl.u32All, sizeof(uint32_t));
 	/* mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_OFF_REQ); */
 
-	/* Send message to PMFW to power off Audio PLL */
-	mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_OFF_REQ_WITH_WOV_EN);
+	/* Leave Audio PLL powered; D3 does not request PMFW power-off. */
 }
 
 void change_clock_notify(uint32_t clock_freq)
