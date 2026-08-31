@@ -220,8 +220,16 @@ uint32_t mp1_mailbox_send(uint32_t _reg_id, uint32_t _value)
 
 void acp_clk_d0_sequence(uint32_t clock_freq)
 {
+	clk_tick_cnt_config_reg_t clk_tick_config;
+
 	/* Send message to PMFW to power on Audio PLL */
 	mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_ON_REQ);
+
+	/* Enable clk tick count */
+	clk_tick_config.u32All = acp_reg_read_via_smn(CLK_TICK_CNT_CONFIG_REG, sizeof(uint32_t));
+	clk_tick_config.bitfields.TIMER_ENABLE = 1;
+	clk_tick_config.bitfields.TIMER_THRESHOLD = 0x1E0;
+	acp_reg_write_via_smn(CLK_TICK_CNT_CONFIG_REG, clk_tick_config.u32All, sizeof(uint32_t));
 
 	change_clock_notify(clock_freq);
 
