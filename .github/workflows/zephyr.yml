@@ -511,7 +511,8 @@ jobs:
 
           set -x
           for windir in windows-build*; do
-            lindir=linux-"${windir#windows-}"
+            # Remove "windows-build" prefix and prepend "linux-build"
+            lindir="linux-build${windir#windows-build}"
             diff -qr "$lindir" "$windir" || : $((diffs++))
           done
           exit $diffs
