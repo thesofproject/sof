@@ -55,11 +55,24 @@ def main():
             emit_uuid_rec(uu, sym)
             print(f"Added UUID {uu} with symbol {sym}")
 
+    new_content = header + "".join(l + "\n" for l in out_recs) \
+        + "#endif /* _UUID_REGISTRY_H */\n"
+
+    # Write only when the content actually changed.  This header is
+    # force-included (-imacros) into nearly every SOF translation unit,
+    # so rewriting it unconditionally would bump its mtime on every
+    # build and make Ninja recompile the whole tree even when the UUID
+    # registry is unchanged.  Same idea as sof_check_version_h() in
+    # scripts/cmake/version.cmake for sof_versions.h.
+    try:
+        with open(sys.argv[2]) as f:
+            if f.read() == new_content:
+                return
+    except FileNotFoundError:
+        pass
+
     with open(sys.argv[2], "w") as f:
-        f.write(header)
-        for l in out_recs:
-            f.write(l + "\n")
-        f.write("#endif /* _UUID_REGISTRY_H */\n")
+        f.write(new_content)
 
 if __name__ == "__main__":
 	main()
