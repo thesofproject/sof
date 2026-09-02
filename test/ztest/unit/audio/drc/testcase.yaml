@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation.
+
+common:
+  tags:
+    - SOF
+    - unit_test
+    - audio
+    - drc
+  integration_platforms:
+    - native_sim
+  arch_exclude: xtensa
+
+tests:
+  sof.unit.audio.drc:
+    platform_allow:
+      - native_sim
