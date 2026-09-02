@@ -356,6 +356,15 @@ void z_vrfy_ipc_msg_list_remove(struct ipc_msg *msg)
 	bool found = false;
 
 	K_OOPS(K_SYSCALL_MEMORY_WRITE(msg, sizeof(*msg)));
+
+	/*
+	 * special case: empty list was passed. we can't trust where
+	 * list->prev points to, so do not pass to
+	 * z_impl_ipc_msg_list_remove(), but handle here
+	 */
+	if (list_is_empty(&msg->list))
+		return;
+
 	list_for_item_safe(mlist, _mlist, &ipc->msg_list)  {
 		if (mlist == &msg->list) {
 			found = true;
