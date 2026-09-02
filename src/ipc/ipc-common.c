@@ -362,7 +362,17 @@ void z_vrfy_ipc_msg_list_remove(struct ipc_msg *msg)
 			break;
 		}
 	}
-	K_OOPS(K_SYSCALL_VERIFY(found));
+
+	/*
+	 * ipc_msg_list_remove() is normally called from ipc_msg_free() to drop
+	 * a message that may or may not still be queued. A message that has
+	 * already been sent (or was never queued) has a self-linked, empty list
+	 * node, so removing it via list_item_del() is a harmless no-op that only
+	 * touches &msg->list, which was already validated above. Only reject a
+	 * non-empty node that is not on ipc->msg_list, i.e. one whose list
+	 * pointers would make list_item_del() corrupt unrelated memory.
+	 */
+	K_OOPS(K_SYSCALL_VERIFY(found || list_is_empty(&msg->list)));
 	z_impl_ipc_msg_list_remove(msg);
 }
 #include <zephyr/syscalls/ipc_msg_list_remove_mrsh.c>
