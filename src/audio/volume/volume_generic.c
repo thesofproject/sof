@@ -83,7 +83,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source 
 			}
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -120,7 +120,7 @@ static void vol_passthrough_s24_to_s24(struct processing_module *mod,
 		n = MIN(n, nmax);
 		memcpy_s(y, n * sizeof(int32_t), x, n * sizeof(int32_t));
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -169,7 +169,7 @@ static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source 
 			}
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -206,7 +206,7 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 		n = MIN(n, nmax);
 		memcpy_s(y, n * sizeof(int32_t), x, n * sizeof(int32_t));
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -252,7 +252,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 			}
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -289,7 +289,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 		n = MIN(n, nmax);
 		memcpy_s(y, n * sizeof(int16_t), x, n * sizeof(int16_t));
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }

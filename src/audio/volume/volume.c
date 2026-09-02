@@ -69,7 +69,7 @@ static uint32_t vol_zc_get_s16(struct cir_buf_source *source, const int channels
 	int remaining_samples = frames * channels;
 
 	/* Go to last channel */
-	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
+	x = source_cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
 	while (remaining_samples) {
 		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
 		nmax = VOL_BYTES_TO_S16_SAMPLES(bytes) + 1;
@@ -118,7 +118,7 @@ static uint32_t vol_zc_get_s24(struct cir_buf_source *source, const int channels
 	int remaining_samples = frames * channels;
 
 	/* Go to last channel */
-	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
+	x = source_cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
 	while (remaining_samples) {
 		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
 		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
@@ -167,7 +167,7 @@ static uint32_t vol_zc_get_s32(struct cir_buf_source *source, const int channels
 	int remaining_samples = frames * channels;
 
 	/* Go to last channel */
-	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
+	x = source_cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
 	while (remaining_samples) {
 		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
 		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
@@ -635,7 +635,7 @@ static int volume_process(struct processing_module *mod,
 		cd->scale_vol(mod, &source_buf, &sink_buf, frames, cd->attenuation);
 
 		/* advance the views by the processed frames */
-		source_buf.ptr = cir_buf_wrap((const char *)source_buf.ptr +
+		source_buf.ptr = source_cir_buf_wrap((const char *)source_buf.ptr +
 					      frames * source_frame_bytes,
 					      source_buf.buf_start, source_buf.buf_end);
 		sink_buf.ptr = cir_buf_wrap((char *)sink_buf.ptr + frames * sink_frame_bytes,

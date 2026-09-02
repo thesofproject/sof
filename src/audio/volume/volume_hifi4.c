@@ -123,7 +123,7 @@ static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 }
@@ -165,7 +165,7 @@ static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 }
@@ -248,7 +248,7 @@ static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_sou
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 }
@@ -290,7 +290,7 @@ static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
 		}
 		AE_SA64POS_FP(outu, out);
 		samples -= n;
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 }
@@ -413,7 +413,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 		}
 
 		samples -= n;
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 }
@@ -465,7 +465,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 		}
 
 		samples -= n;
-		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		in = source_cir_buf_wrap(in, source->buf_start, source->buf_end);
 		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 }
