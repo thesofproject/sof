@@ -243,6 +243,10 @@ int module_set_large_config(struct comp_dev *dev, uint32_t param_id, bool first_
 		fragment_size = MAILBOX_DSPBOX_SIZE;
 		break;
 	case MODULE_CFG_FRAGMENT_FIRST:
+		if (md->runtime_params) {
+			comp_err(dev, "FIRST fragment while a request is in progress");
+			return -EBUSY;
+		}
 		md->new_cfg_size = data_offset_size;
 		fragment_size = MAILBOX_DSPBOX_SIZE;
 		break;
