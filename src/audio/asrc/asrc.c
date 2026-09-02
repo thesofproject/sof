@@ -70,7 +70,7 @@ static void src_copy_s32(struct processing_module *mod,
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 	}
 
 	/* Run ASRC */
@@ -144,7 +144,7 @@ static void src_copy_s16(struct processing_module *mod,
 		n -= n_copy;
 		src += n_copy;
 		buf += n_copy;
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 	}
 
 	/* Run ASRC */
