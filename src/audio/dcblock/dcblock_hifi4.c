@@ -31,7 +31,7 @@ static inline ae_int32x2  dcblock_cal(ae_int32x2 R, ae_int32x2 state_x, ae_int32
 }
 
 /* Set source as circular buffer 0 and sink as circular buffer 1 */
-static inline void dcblock_set_circular(void *src_begin, void *src_end,
+static inline void dcblock_set_circular(const void *src_begin, const void *src_end,
 					void *sink_begin, void *sink_end)
 {
 	AE_SETCBEGIN0(src_begin);
@@ -46,13 +46,14 @@ static int dcblock_s16_default(struct comp_data *cd,
 			       struct cir_buf_sink *sink,
 			       uint32_t frames)
 {
-	ae_int16 *src = (ae_int16 *)source->ptr;
+	const ae_int16 *src = source->ptr;
 	ae_int16 *dst = (ae_int16 *)sink->ptr;
-	ae_int16 *x_start = (ae_int16 *)source->buf_start;
+	const ae_int16 *x_start = source->buf_start;
 	ae_int16 *y_start = (ae_int16 *)sink->buf_start;
-	ae_int16 *x_end = (ae_int16 *)source->buf_end;
+	const ae_int16 *x_end = source->buf_end;
 	ae_int16 *y_end = (ae_int16 *)sink->buf_end;
-	ae_int16 *in, *out;
+	const ae_int16 *in;
+	ae_int16 *out;
 	ae_int32x2 R, state_x, state_y, sample;
 	ae_int16x4 in_sample, out_sample;
 	int nch = cd->channels;
@@ -91,13 +92,14 @@ static int dcblock_s24_default(struct comp_data *cd,
 			       struct cir_buf_sink *sink,
 			       uint32_t frames)
 {
-	ae_int32 *src = (ae_int32 *)source->ptr;
+	const ae_int32 *src = source->ptr;
 	ae_int32 *dst = (ae_int32 *)sink->ptr;
-	ae_int32 *x_start = (ae_int32 *)source->buf_start;
+	const ae_int32 *x_start = source->buf_start;
 	ae_int32 *y_start = (ae_int32 *)sink->buf_start;
-	ae_int32 *x_end = (ae_int32 *)source->buf_end;
+	const ae_int32 *x_end = source->buf_end;
 	ae_int32 *y_end = (ae_int32 *)sink->buf_end;
-	ae_int32 *in, *out;
+	const ae_int32 *in;
+	ae_int32 *out;
 	ae_int32x2 R, state_x, state_y;
 	ae_int32x2 in_sample, out_sample;
 	int nch = cd->channels;
@@ -136,13 +138,14 @@ static int dcblock_s32_default(struct comp_data *cd,
 			       struct cir_buf_sink *sink,
 			       uint32_t frames)
 {
-	ae_int32 *src = (ae_int32 *)source->ptr;
+	const ae_int32 *src = source->ptr;
 	ae_int32 *dst = (ae_int32 *)sink->ptr;
-	ae_int32 *x_start = (ae_int32 *)source->buf_start;
+	const ae_int32 *x_start = source->buf_start;
 	ae_int32 *y_start = (ae_int32 *)sink->buf_start;
-	ae_int32 *x_end = (ae_int32 *)source->buf_end;
+	const ae_int32 *x_end = source->buf_end;
 	ae_int32 *y_end = (ae_int32 *)sink->buf_end;
-	ae_int32 *in, *out;
+	const ae_int32 *in;
+	ae_int32 *out;
 	ae_int32x2 R, state_x, state_y;
 	ae_int32x2 in_sample;
 	int nch = cd->channels;
