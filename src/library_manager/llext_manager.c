@@ -955,6 +955,16 @@ static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct 
 			goto e_data;
 		mctx->segment[LIB_MANAGER_COLD].addr = (uintptr_t)text_addr + text_offset;
 		mctx->segment[LIB_MANAGER_COLD].size = shdr_cold.sh_size;
+	} else {
+		/*
+		 * No .cold section: make sure the descriptor is empty so that
+		 * llext_manager_rm_mod_domain() doesn't later try to remove a
+		 * partition that was never added. The module context is
+		 * allocated with rmalloc() and these fields are otherwise left
+		 * uninitialised.
+		 */
+		mctx->segment[LIB_MANAGER_COLD].addr = 0;
+		mctx->segment[LIB_MANAGER_COLD].size = 0;
 	}
 
 	if (rodata) {
@@ -967,6 +977,10 @@ static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct 
 			goto e_cold;
 		mctx->segment[LIB_MANAGER_COLDRODATA].addr = (uintptr_t)rodata_addr + rodata_offset;
 		mctx->segment[LIB_MANAGER_COLDRODATA].size = shdr_coldrodata.sh_size;
+	} else {
+		/* No .coldrodata section, see the comment above */
+		mctx->segment[LIB_MANAGER_COLDRODATA].addr = 0;
+		mctx->segment[LIB_MANAGER_COLDRODATA].size = 0;
 	}
 
 	return 0;
