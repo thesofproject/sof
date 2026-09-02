@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright(c) 2026 Intel Corporation.
+#
+# Crossover audio component unit tests
+#
+
+common:
+  tags:
+    - SOF
+    - unit_test
+    - audio
+    - crossover
+  integration_platforms:
+    - native_sim
+  arch_exclude: xtensa
+
+tests:
+  sof.unit.audio.crossover:
+    platform_allow:
+      - native_sim
