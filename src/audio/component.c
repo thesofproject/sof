@@ -280,7 +280,7 @@ void cir_buf_copy(const void *src, const void *src_addr, const void *src_end, vo
 	ae_int16x4 in_sample1, in_sample2;
 	ae_valignx2 inu;
 	ae_valignx2 outu = AE_ZALIGN128();
-	const ae_int16x8 *in = cir_buf_wrap(src, src_addr, src_end);
+	const ae_int16x8 *in = source_cir_buf_wrap(src, src_addr, src_end);
 	ae_int16x8 *out = (ae_int16x8 *)dst;
 
 	while (bytes) {
@@ -307,7 +307,7 @@ void cir_buf_copy(const void *src, const void *src_addr, const void *src_end, vo
 		}
 
 		bytes -= bytes_copied;
-		in = cir_buf_wrap(in, src_addr, src_end);
+		in = source_cir_buf_wrap(in, src_addr, src_end);
 		out = cir_buf_wrap(out, dst_addr, dst_end);
 	}
 }
