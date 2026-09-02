@@ -336,6 +336,21 @@ err:
 	if (dev->task)
 		schedule_task_free(dev->task);
 #endif
+	/* When module_init is called in this function, it can store this dev in its pipeline.
+	 * This happens in the case of the copier (copier_dai_init and copier_host_create).
+	 * The pointers remain set even after a failure. The dev is freed below on this
+	 * creation-failure path before it was added to the IPC component list, so ipc_comp_free()'s
+	 * back-pointer cleanup will never run for it. Clear the stale references now to prevent
+	 * a later use-after-free when the pipeline is prepared or triggered.
+	 */
+	if (dev->pipeline) {
+		if (dev->pipeline->source_comp == dev)
+			dev->pipeline->source_comp = NULL;
+		if (dev->pipeline->sink_comp == dev)
+			dev->pipeline->sink_comp = NULL;
+		if (dev->pipeline->sched_comp == dev)
+			dev->pipeline->sched_comp = NULL;
+	}
 	module_adapter_mem_free(mod);
 	return NULL;
 }
