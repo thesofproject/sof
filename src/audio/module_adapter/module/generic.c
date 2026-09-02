@@ -839,31 +839,32 @@ int module_set_configuration(struct processing_module *mod,
 		 * verify input params & allocate memory for the config blob when the first
 		 * fragment arrives
 		 */
-		md->new_cfg_size = data_offset_size;
 
 		/* Check that there is no previous request in progress */
 		if (md->runtime_params) {
-			comp_err(dev, "error: busy with previous request");
+			comp_err(dev, "busy with previous request");
 			return -EBUSY;
 		}
 
-		if (!md->new_cfg_size)
+		if (!data_offset_size)
 			return 0;
 
-		if (md->new_cfg_size > CONFIG_MODULE_MAX_BLOB_SIZE) {
-			comp_err(dev, "error: blob size is too big cfg size %zu, allowed %d",
-				 md->new_cfg_size, CONFIG_MODULE_MAX_BLOB_SIZE);
+		if (data_offset_size > CONFIG_MODULE_MAX_BLOB_SIZE) {
+			comp_err(dev, "blob size is too big cfg size %zu, allowed %d",
+				 data_offset_size, CONFIG_MODULE_MAX_BLOB_SIZE);
 			return -EINVAL;
 		}
 
 		/* Allocate buffer for new params */
 		md->runtime_params = sof_heap_alloc(sof_sys_user_heap_get(),
 						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER,
-						    md->new_cfg_size, 0);
+						    data_offset_size, 0);
 		if (!md->runtime_params) {
 			comp_err(dev, "space allocation for new params failed");
 			return -ENOMEM;
 		}
+
+		md->new_cfg_size = data_offset_size;
 
 		memset(md->runtime_params, 0, md->new_cfg_size);
 		break;
@@ -875,6 +876,12 @@ int module_set_configuration(struct processing_module *mod,
 
 		/* set offset for intermediate and last fragments */
 		offset = data_offset_size;
+		if (offset > md->new_cfg_size ||
+			fragment_size > md->new_cfg_size - offset) {
+				comp_err(dev, "fragment (offset %zu, size %zu) exceeds config buffer %zu",
+					 offset, fragment_size, md->new_cfg_size);
+					return -EINVAL;
+		}
 		break;
 	}
 
