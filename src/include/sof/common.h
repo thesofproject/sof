@@ -14,9 +14,7 @@
 /* callers must check/use the return value */
 #define __must_check __attribute__((warn_unused_result))
 
-#ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
-#endif
 
 /* Align the number to the nearest alignment value */
 #ifndef IS_ALIGNED

@@ -23,8 +23,8 @@
 
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
-#include <zephyr/logging/log.h>
 #endif
+#include <zephyr/logging/log.h>
 
 #if !CONFIG_LIBRARY
 #include <platform/trace/trace.h>
@@ -154,13 +154,5 @@ struct tr_ctx {
 		.uuid_p = uuid,					\
 		.level = default_log_level,			\
 	}
-
-/* Only define these two macros for XTOS to avoid the collision with
- * zephyr/include/zephyr/logging/log.h
- */
-#ifndef __ZEPHYR__
-#define LOG_MODULE_REGISTER(ctx, level)
-#define LOG_MODULE_DECLARE(ctx, level)
-#endif
 
 #endif /* __SOF_TRACE_TRACE_H__ */
