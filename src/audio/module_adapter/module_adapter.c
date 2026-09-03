@@ -75,34 +75,17 @@ static struct vregion *module_adapter_dp_heap_new(const struct comp_ipc_config *
 }
 
 static
-struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
-						   const struct comp_ipc_config *config,
-						   const struct module_ext_init_data *ext_init,
-						   struct mod_alloc_ctx *ppl_alloc)
+struct mod_alloc_ctx *module_adapter_dp_alloc_ctx_new(const struct comp_driver *drv,
+						      const struct comp_ipc_config *config,
+						      const struct module_ext_init_data *ext_init,
+						      uint32_t flags)
 {
 	struct k_heap *mod_heap;
 	struct vregion *mod_vreg;
-	struct processing_module *mod;
 	struct mod_alloc_ctx *alloc;
-	struct comp_dev *dev;
-	bool use_ppl_alloc = ppl_alloc && config->proc_domain == COMP_PROCESSING_DOMAIN_LL;
-	/*
-	 * For DP shared modules the struct processing_module object must be
-	 * accessible from all cores. Unfortunately at this point there's no
-	 * information of components the module will be bound to. So we need to
-	 * allocate shared memory for each DP module.
-	 * To be removed when pipeline 2.0 is ready.
-	 */
-	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
-		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
 
-	if (use_ppl_alloc) {
-		/* LL modules share the pipeline's alloc context */
-		mod_heap = ppl_alloc->heap;
-		mod_vreg = ppl_alloc->vreg;
-		vregion_get(mod_vreg);
-	} else if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP && IS_ENABLED(CONFIG_SOF_VREGIONS) &&
-	    IS_ENABLED(CONFIG_USERSPACE) && !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
+	if (IS_ENABLED(CONFIG_SOF_VREGIONS) && IS_ENABLED(CONFIG_USERSPACE) &&
+	    !IS_ENABLED(CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP)) {
 		mod_vreg = module_adapter_dp_heap_new(config, ext_init);
 		if (!mod_vreg) {
 			comp_cl_err(drv, "Failed to allocate DP module heap / vregion");
@@ -122,28 +105,56 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 #endif
 		mod_vreg = NULL;
 	}
+	alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
+	if (!alloc) {
+		comp_cl_err(drv, "sof_alloc_ctx allocation failed");
+		vregion_put(mod_vreg);
+		return NULL;
+	}
 
-	if (!mod_vreg)
-		mod = sof_heap_alloc(mod_heap, flags, sizeof(*mod), 0);
-	else if (flags & SOF_MEM_FLAG_COHERENT)
-		mod = vregion_alloc_coherent(mod_vreg, sizeof(*mod));
-	else
-		mod = vregion_alloc(mod_vreg, sizeof(*mod));
+	memset(alloc, 0, sizeof(*alloc));
+	alloc->heap = mod_heap;
+	alloc->vreg = mod_vreg;
 
+	return alloc;
+}
+
+static
+struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv,
+						   const struct comp_ipc_config *config,
+						   const struct module_ext_init_data *ext_init,
+						   struct mod_alloc_ctx *ppl_alloc)
+{
+	struct processing_module *mod;
+	struct mod_alloc_ctx *alloc;
+	struct comp_dev *dev;
+	/*
+	 * For DP shared modules the struct processing_module object must be
+	 * accessible from all cores. Unfortunately at this point there's no
+	 * information of components the module will be bound to. So we need to
+	 * allocate shared memory for each DP module.
+	 * To be removed when pipeline 2.0 is ready.
+	 */
+	uint32_t flags = config->proc_domain == COMP_PROCESSING_DOMAIN_DP ?
+		SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT : SOF_MEM_FLAG_USER;
+
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_LL) {
+		/* LL modules share the pipeline's alloc context */
+		alloc = ppl_alloc;
+		vregion_get(alloc->vreg);
+	} else if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		alloc = module_adapter_dp_alloc_ctx_new(drv, config, ext_init, flags);
+		if (!alloc)
+			return NULL;
+	} else {
+		comp_cl_err(drv, "bad proc_domain %d", config->proc_domain);
+		return NULL;
+	}
+
+	mod = sof_ctx_alloc(alloc, flags, sizeof(*mod), 0);
 	if (!mod) {
 		comp_cl_err(drv, "failed to allocate memory for module");
 		goto emod;
-	}
-
-	if (use_ppl_alloc) {
-		alloc = ppl_alloc;
-	} else {
-		alloc = sof_heap_alloc(mod_heap, flags, sizeof(*alloc), 0);
-		if (!alloc)
-			goto ealloc;
-
-		alloc->heap = mod_heap;
-		alloc->vreg = mod_vreg;
 	}
 
 	memset(mod, 0, sizeof(*mod));
@@ -156,11 +167,7 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	 * then it can be cached. Effectively it can be only cached in
 	 * single-core configurations.
 	 */
-	if (mod_vreg)
-		dev = vregion_alloc_coherent(mod_vreg, sizeof(*dev));
-	else
-		dev = sof_heap_alloc(mod_heap, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
-
+	dev = sof_ctx_alloc(alloc, SOF_MEM_FLAG_COHERENT, sizeof(*dev), 0);
 	if (!dev) {
 		comp_cl_err(drv, "failed to allocate memory for comp_dev");
 		goto edev;
@@ -175,15 +182,11 @@ struct processing_module *module_adapter_mem_alloc(const struct comp_driver *drv
 	return mod;
 
 edev:
-	if (!use_ppl_alloc)
-		sof_heap_free(mod_heap, alloc);
-ealloc:
-	if (mod_vreg)
-		vregion_free(mod_vreg, mod);
-	else
-		sof_heap_free(mod_heap, mod);
+	sof_ctx_free(alloc, mod);
 emod:
-	vregion_put(mod_vreg);
+	vregion_put(alloc->vreg);
+	if (config->proc_domain == COMP_PROCESSING_DOMAIN_DP)
+		sof_heap_free(alloc->heap, alloc);
 
 	return NULL;
 }
