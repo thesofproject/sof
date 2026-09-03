@@ -966,6 +966,36 @@ Reload the driver on the DUT:
 rmmod snd_sof_pci_intel_tgl && modprobe snd_sof_pci_intel_tgl
 ```
 
+### Kernel Requirements & Build
+
+The Multi-Slot WOV and ALSA compress pipeline requires the kernel branch with multi-KPB and compress PCM support:
+
+- **Kernel Repository**: `git@github.com:lgirdwood/linux.git`
+- **Kernel Branch**: `feature/wov-multi-kpb-v2`
+- **Firmware Repository**: `git@github.com:lgirdwood/sof.git`
+- **Firmware Branch**: `feature/wov-multi-kpb-v2`
+
+#### Checkout and Build Kernel
+
+```bash
+# Clone or fetch the kernel branch
+git clone -b feature/wov-multi-kpb-v2 git@github.com:lgirdwood/linux.git linux-wov
+cd linux-wov
+
+# Configure for x86_64 with SOF and compress audio support
+make x86_64_defconfig
+# Ensure CONFIG_SND_SOC_SOF=m, CONFIG_SND_SOC_SOF_INTEL_TOPLEVEL=y,
+# CONFIG_SND_SOC_SOF_HDA=m, CONFIG_SND_SOC_COMPRESS=y
+
+# Build kernel and modules
+make -j$(nproc) bzImage modules
+
+# Install modules and kernel to DUT (e.g. TigerLake DUT)
+INSTALL_MOD_PATH=/tmp/modules make modules_install
+scp -r /tmp/modules/lib/modules/* root@<dut>:/lib/modules/
+scp arch/x86/boot/bzImage root@<dut>:/boot/vmlinuz-wov
+```
+
 ### Topology Configuration Reference
 
 Key parameters in `dmic-wov-multi.conf`:
