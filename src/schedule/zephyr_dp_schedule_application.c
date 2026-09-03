@@ -161,18 +161,19 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 	}
 
 	struct task_dp_pdata *pdata = pmod->dev->task->priv_data;
+	unsigned int core = pmod->dev->task->core;
 	int ret;
 
 	if (cmd == SOF_IPC4_MOD_INIT_INSTANCE) {
 		/* Wait for the DP thread to start */
-		ret = k_sem_take(&dp_sync[pmod->dev->task->core], DP_THREAD_IPC_TIMEOUT);
+		ret = k_sem_take(&dp_sync[core], DP_THREAD_IPC_TIMEOUT);
 		if (ret < 0) {
 			tr_err(&dp_tr, "Failed waiting for DP thread to start: %d", ret);
 			return ret;
 		}
 	}
 
-	unsigned int lock_key = scheduler_dp_lock(pmod->dev->task->core);
+	unsigned int lock_key = scheduler_dp_lock(core);
 
 	/* IPCs are serialised */
 	pdata->flat->ret = -ENOSYS;
@@ -185,7 +186,7 @@ int scheduler_dp_thread_ipc(struct processing_module *pmod, unsigned int cmd,
 
 	if (!ret) {
 		/* Wait for completion */
-		ret = k_sem_take(&dp_sync[cpu_get_id()], DP_THREAD_IPC_TIMEOUT);
+		ret = k_sem_take(&dp_sync[core], DP_THREAD_IPC_TIMEOUT);
 		if (ret < 0)
 			tr_err(&dp_tr, "Failed waiting for DP thread: %d", ret);
 		else
