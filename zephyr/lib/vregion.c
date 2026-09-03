@@ -554,8 +554,15 @@ bool vregion_verify(struct vregion *vr)
 	if (!vr)
 		return false;
 
-	/* vregion instances must not be accessible to the userspace. */
-	K_OOPS(!K_SYSCALL_MEMORY_READ(vr, sizeof(*vr)));
+	/*
+	 * vregion instances must not be accessible to the userspace.
+	 *
+	 * Don't use K_SYSCALL_MEMORY_READ() here: it logs an "access denied"
+	 * error whenever the region is inaccessible, which is exactly the
+	 * expected (good) case for a kernel-only vregion. Omit false
+	 * error messages by using arch_buffer_validate() directly.
+	 */
+	K_OOPS(arch_buffer_validate((void *)vr, sizeof(*vr), 0) == 0);
 
 	size_t vr_size = 0;
 	uintptr_t vr_start;
