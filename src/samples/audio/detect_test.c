@@ -349,8 +349,8 @@ static void default_detect_test_buf(struct comp_dev *dev,
 
 	if (!cd->detected) {
 		cd->frames_total += frames;
-		/* Auto-trigger after ~8s (128000 samples) for bench testing, matching LL path. */
-		if (cd->frames_total >= 128000) {
+		/* Auto-trigger after ~1s (16000 samples) for bench testing, matching LL path. */
+		if (cd->frames_total >= 16000) {
 			comp_warn(dev, "kd_test dp: AUTO-TRIGGER slot=%u",
 				 (uint32_t)cd->wov_slot_id);
 			if (!cd->drain_req)
@@ -497,8 +497,8 @@ static void default_detect_test(struct comp_dev *dev,
 	 */
 	if (!cd->detected) {
 		cd->frames_total += count;
-		if (cd->frames_total >= 128000) {
-			comp_warn(dev, "kd_test: AUTO-TRIGGER slot=%u after 8s", (uint32_t)cd->wov_slot_id);
+		if (cd->frames_total >= 16000) {
+			comp_warn(dev, "kd_test: AUTO-TRIGGER slot=%u after 1s", (uint32_t)cd->wov_slot_id);
 			if (!cd->drain_req)
 				cd->drain_req = cd->config.drain_req ? cd->config.drain_req : 5000;
 			detect_test_notify(dev);
@@ -509,8 +509,8 @@ static void default_detect_test(struct comp_dev *dev,
 
 static int test_keyword_get_threshold(struct comp_dev *dev, int sample_width)
 {
-	/* Threshold above normal acoustic tone (~5700 pk) so only the auto-trigger fires. */
-	return 8000;
+	/* Responsive threshold so real acoustic tone triggers promptly */
+	return 500;
 }
 
 static int test_keyword_apply_config(struct comp_dev *dev,
@@ -1179,11 +1179,18 @@ static int test_keyword_copy(struct comp_dev *dev)
 
 	/* optional pass-through: forward audio to downstream sink (e.g. wov-arbiter) */
 	sink = comp_dev_get_first_data_consumer(dev);
-	if (sink && audio_stream_get_free_bytes(&sink->stream) >= avail_bytes) {
-		audio_stream_copy(&source->stream, 0, &sink->stream, 0,
-				  frames * audio_stream_get_channels(&source->stream));
-		buffer_stream_writeback(sink, avail_bytes);
-		comp_update_buffer_produce(sink, avail_bytes);
+	if (sink) {
+		uint32_t free_bytes = audio_stream_get_free_bytes(&sink->stream);
+		uint32_t sink_frame_bytes = audio_stream_frame_bytes(&sink->stream);
+		uint32_t copy_frames = MIN(frames, free_bytes / sink_frame_bytes);
+
+		if (copy_frames > 0) {
+			uint32_t to_copy = copy_frames * sink_frame_bytes;
+			audio_stream_copy(&source->stream, 0, &sink->stream, 0,
+					  copy_frames * audio_stream_get_channels(&source->stream));
+			buffer_stream_writeback(sink, to_copy);
+			comp_update_buffer_produce(sink, to_copy);
+		}
 	}
 
 /* Feed the DP thread when active (WOV mode), otherwise call detect_func

@@ -269,10 +269,18 @@ static int wov_arb_set_large_config(struct comp_dev *dev,
 	struct wov_arb_data *cd = comp_get_drvdata(dev);
 
 	if (param_id == IPC4_WOV_ARB_SET_ACTIVE_SLOT) {
-		if (data_offset < sizeof(uint8_t))
-			return -EINVAL;
 		cd->active_slot = *(const uint8_t *)data;
 		comp_info(dev, "wov_arb: force active_slot=%u", cd->active_slot);
+		return 0;
+	}
+
+	if (param_id == SOF_IPC4_BYTES_CONTROL_PARAM_ID) {
+		const struct sof_ipc4_control_msg_payload *cp =
+			(const struct sof_ipc4_control_msg_payload *)data;
+		if (cp->num_elems >= 1) {
+			cd->active_slot = cp->data[0];
+			comp_info(dev, "wov_arb: kcontrol active_slot=%u", cd->active_slot);
+		}
 		return 0;
 	}
 
@@ -337,25 +345,52 @@ static int wov_arb_copy(struct comp_dev *dev)
 
 	copy_bytes = MIN(active_avail, sink_free);
 
+	uint32_t copied_dst_bytes = 0;
+
 	/* Second pass: copy active slot, silently drain idle slots. */
 	slot = 0;
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
 
 		if (slot == cd->active_slot && copy_bytes > 0) {
-			uint32_t frame_bytes = audio_stream_frame_bytes(&source->stream);
+			uint32_t src_frame_bytes = audio_stream_frame_bytes(&source->stream);
+			uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
+			uint32_t src_frames = copy_bytes / src_frame_bytes;
+			uint32_t dst_frames = sink_free / dst_frame_bytes;
+			uint32_t frames = MIN(src_frames, dst_frames);
 
-			/* Round down to whole frames to avoid splitting a sample. */
-			if (copy_bytes >= frame_bytes) {
-				uint32_t aligned = (copy_bytes / frame_bytes) * frame_bytes;
+			if (frames > 0) {
+				uint32_t src_bytes = frames * src_frame_bytes;
+				uint32_t dst_bytes = frames * dst_frame_bytes;
+				uint32_t src_ch = audio_stream_get_channels(&source->stream);
+				uint32_t dst_ch = audio_stream_get_channels(&sink->stream);
 
-				buffer_stream_invalidate(source, aligned);
-				audio_stream_copy(&source->stream, 0,
-						  &sink->stream, 0,
-						  aligned / audio_stream_sample_bytes(&source->stream));
-				comp_update_buffer_consume(source, aligned);
-				buffer_stream_writeback(sink, aligned);
-				comp_update_buffer_produce(sink, aligned);
+				buffer_stream_invalidate(source, src_bytes);
+
+				if (src_ch == 1 && dst_ch == 2) {
+					if (audio_stream_sample_bytes(&source->stream) == sizeof(int16_t)) {
+						for (uint32_t i = 0; i < frames; i++) {
+							int16_t s = *(int16_t *)audio_stream_read_frag_s16(&source->stream, i);
+							*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i) = s;
+							*(int16_t *)audio_stream_write_frag_s16(&sink->stream, 2 * i + 1) = s;
+						}
+					} else {
+						for (uint32_t i = 0; i < frames; i++) {
+							int32_t s = *(int32_t *)audio_stream_read_frag_s32(&source->stream, i);
+							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i) = s;
+							*(int32_t *)audio_stream_write_frag_s32(&sink->stream, 2 * i + 1) = s;
+						}
+					}
+				} else {
+					audio_stream_copy(&source->stream, 0,
+							  &sink->stream, 0,
+							  src_bytes / audio_stream_sample_bytes(&source->stream));
+				}
+
+				comp_update_buffer_consume(source, src_bytes);
+				buffer_stream_writeback(sink, dst_bytes);
+				comp_update_buffer_produce(sink, dst_bytes);
+				copied_dst_bytes = dst_bytes;
 			}
 		} else {
 			uint32_t avail = audio_stream_get_avail_bytes(&source->stream);
@@ -368,22 +403,17 @@ static int wov_arb_copy(struct comp_dev *dev)
 			break;
 	}
 
-	if (cd->active_slot == WOV_ARB_NO_ACTIVE && sink_free > 0) {
-		/* No active drain: push silence so the host copier always has data.
-		 * Split the memset at the circular-buffer wrap point if needed. */
-		uint32_t fill_bytes = sink_free;
-		void *wptr = audio_stream_get_wptr(&sink->stream);
-		uint32_t bytes_to_end = audio_stream_bytes_without_wrap(&sink->stream, wptr);
+	if (copied_dst_bytes == 0 && sink_free > 0) {
+		/* No active audio copied: push period-sized silence so the host copier stays fed. */
+		uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
+		uint32_t period_dst_bytes = dev->frames * dst_frame_bytes;
+		uint32_t fill_bytes = MIN(sink_free, period_dst_bytes ? period_dst_bytes : 640);
 
-		if (fill_bytes <= bytes_to_end) {
-			memset(wptr, 0, fill_bytes);
-		} else {
-			/* Wrap: zero to end of buffer then continue from the start. */
-			memset(wptr, 0, bytes_to_end);
-			memset(audio_stream_get_addr(&sink->stream), 0, fill_bytes - bytes_to_end);
+		if (fill_bytes > 0) {
+			audio_stream_set_zero(&sink->stream, fill_bytes);
+			buffer_stream_writeback(sink, fill_bytes);
+			comp_update_buffer_produce(sink, fill_bytes);
 		}
-		buffer_stream_writeback(sink, fill_bytes);
-		comp_update_buffer_produce(sink, fill_bytes);
 	}
 
 	return 0;
