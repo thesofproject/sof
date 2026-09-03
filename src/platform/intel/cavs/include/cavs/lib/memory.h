@@ -10,60 +10,75 @@
 #ifndef __CAVS_LIB_MEMORY_H__
 #define __CAVS_LIB_MEMORY_H__
 
-#include <sof/lib/cache.h>
-#include <config.h>
+#include <sof/common.h>
+#include <rtos/cache.h>
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+#include <sof/lib/cpu.h>
+#endif
 
 /* data cache line alignment */
 #define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
 
-#define SRAM_BANK_SIZE			(64 * 1024)
-
-#define EBB_BANKS_IN_SEGMENT		32
-
-#define EBB_SEGMENT_SIZE		EBB_BANKS_IN_SEGMENT
-
-#if CONFIG_LP_MEMORY_BANKS
-#define PLATFORM_LPSRAM_EBB_COUNT	CONFIG_LP_MEMORY_BANKS
-#else
-#define PLATFORM_LPSRAM_EBB_COUNT	0
-#endif
-
-#define PLATFORM_HPSRAM_EBB_COUNT	CONFIG_HP_MEMORY_BANKS
-
-#define MAX_MEMORY_SEGMENTS		PLATFORM_HPSRAM_SEGMENTS
-
-#if CONFIG_LP_MEMORY_BANKS
-#define LP_SRAM_SIZE \
-	(CONFIG_LP_MEMORY_BANKS * SRAM_BANK_SIZE)
-#else
-#define LP_SRAM_SIZE 0
-#endif
-
-#define HP_SRAM_SIZE \
-	(CONFIG_HP_MEMORY_BANKS * SRAM_BANK_SIZE)
-
-#define PLATFORM_HPSRAM_SEGMENTS	((PLATFORM_HPSRAM_EBB_COUNT \
-	+ EBB_BANKS_IN_SEGMENT - 1) / EBB_BANKS_IN_SEGMENT)
-
-#if defined(__ASSEMBLER__)
-#define LPSRAM_MASK(ignored)	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
-
-#define HPSRAM_MASK(seg_idx)	((1 << (PLATFORM_HPSRAM_EBB_COUNT \
-	- EBB_BANKS_IN_SEGMENT * seg_idx)) - 1)
-#else
-#define LPSRAM_MASK(ignored)	((1ULL << PLATFORM_LPSRAM_EBB_COUNT) - 1)
-
-#define HPSRAM_MASK(seg_idx)	((1ULL << (PLATFORM_HPSRAM_EBB_COUNT \
-	- EBB_BANKS_IN_SEGMENT * seg_idx)) - 1)
-#endif
-
-#define LPSRAM_SIZE (PLATFORM_LPSRAM_EBB_COUNT * SRAM_BANK_SIZE)
-
 #define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
 
-#if !defined(__ASSEMBLER__) && !defined(LINKER)
-void platform_init_memmap(void);
+/** \brief EDF task's default stack size in bytes. */
+/* increase stack size for RTNR and GOOGLE_RTC_AUDIO_PROCESSING */
+#if defined(CONFIG_COMP_RTNR) || defined(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE        0x2000
+#else
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE	0x1000
 #endif
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+
+struct sof;
+
+#define SRAM_ALIAS_BASE		0x9E000000
+#define SRAM_ALIAS_MASK		0xFF000000
+#define SRAM_ALIAS_OFFSET	SRAM_UNCACHED_ALIAS
+
+#if !defined UNIT_TEST
+static inline void __sparse_cache *uncache_to_cache(void *address)
+{
+	return (void __sparse_cache *)((uintptr_t)(address) | SRAM_ALIAS_OFFSET);
+}
+
+static inline void *cache_to_uncache(void __sparse_cache *address)
+{
+	return (void *)((uintptr_t)(address) & ~SRAM_ALIAS_OFFSET);
+}
+
+#define is_uncached(address) \
+	(((uint32_t)(address) & SRAM_ALIAS_MASK) == SRAM_ALIAS_BASE)
+#else
+#define uncache_to_cache(address)	address
+#define cache_to_uncache(address)	address
+#define is_uncached(address)		0
+#endif
+
+#if !defined UNIT_TEST && !defined __ZEPHYR__
+#define cache_to_uncache_init(address) \
+	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
+#else
+#define cache_to_uncache_init(address)	address
+#endif
+
+/**
+ * \brief Transforms pointer if necessary before freeing the memory.
+ * \param[in,out] ptr Pointer to the allocated memory.
+ * \return Appropriate pointer to the memory ready to be freed.
+ */
+static inline void *platform_rfree_prepare(void *ptr)
+{
+	return ptr;
+}
+
+void platform_init_memmap(struct sof *sof);
+
+#endif
+
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
 
 #endif /* __CAVS_LIB_MEMORY_H__ */
 

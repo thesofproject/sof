@@ -1,0 +1,322 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Math functions"
+
+config CORDIC_FIXED
+	bool "Trigonometric functions"
+	default n
+	help
+	  Select this to enable sin(), cos(), asin(), acos(),
+	  and cexp() functions as 16 bit and 32 bit versions.
+
+config MATH_ATAN2
+	bool "Four-quadrant arctangent function"
+	default n
+	help
+	  Select this to enable sofm_atan2_32b(y, x) function. It computes
+	  the four-quadrant arctangent using a polynomial approximation.
+	  Input arguments y and x are Q1.31 format and the output angle
+	  is Q3.29 format with range [-pi, pi]. The maximum approximation
+	  error is ~0.001 degrees.
+
+config MATH_LUT_SINE_FIXED
+	bool "Lookup table based sine function"
+	default n
+	help
+	  Select this to enable sofm_lut_sin_fixed_16b() function. The
+	  calculation is using 1/4 wave lookup and interpolation. Use
+	  this for fast sine calculation in hot code parts. Sine
+	  calculation in component initialization should use the cordic
+	  version. This option consumes 1026 bytes .bss RAM for the
+	  lookup table.
+
+config POWER_FIXED
+       bool "Power function"
+       default n
+       help
+	  This option builds the 32 bit power_int32(). A power represents repeated
+	  multiplication of the same number. power_int32() calculates the power
+	  raised to the base value. The power function works for even, odd and
+	  fractional base and exponent argument.Operating range of power_int32()
+	  with base having values from -32 to + 32 . Exponent values range from
+	  -3 to +3. Power out MIN/MAX range is -/+32768.
+
+config BINARY_LOGARITHM_FIXED
+       bool "Binary Logarithm function"
+       default n
+       help
+	  This option builds Binary Logarithm function (log2n) is the logarithm to
+	  the base 2. The binary logarithm of x is the power to which the number 2
+	  must be raised to obtain the value x. Base 2 logarithm function is implemented
+	  with a short lookup table. (log2n) operates for a range of 32 bit width size
+	  i.e. 1 to 4294967295.
+
+config SQRT_FIXED
+	bool "Square Root functions"
+	default n
+	help
+	  Select this to enable sqrt_int() functions as 16 bit version
+	  to  calculate square root.square function having positive number
+	  y as input and return the positive number x multiplied by itself (squared)
+
+config MATH_EXP
+	bool "Exponential functions"
+	default n
+	help
+	  By selecting this, the 32-bit sofm_exp_int32() function can be used to calculate
+	  exponential values. With a maximum ulp of 5, an exponential function with
+	  an input range of -5 to +5 gives positive numbers between 0.00673794699908547 and
+	  148.413159102577. The precision of this function is 1e-4.
+
+config NATURAL_LOGARITHM_FIXED
+	bool "Natural Logarithm function"
+	default n
+	select BINARY_LOGARITHM_FIXED
+	help
+	  This option builds Natural Logarithm function (loge(N)) which is the logarithm to
+	  the base e.
+
+config COMMON_LOGARITHM_FIXED
+	bool "Common Logarithm function"
+	default n
+	select BINARY_LOGARITHM_FIXED
+	help
+	  This option builds common Logarithm function (log10(N)) which is the logarithm to
+	  the base 10.
+
+config NUMBERS_NORM
+	bool "Norm function"
+	default n
+	help
+	  Norm function counts the left shifts needed to
+	  normalize integer value.
+
+config NUMBERS_VECTOR_FIND
+	bool "Find operations for numbers vecter"
+	default n
+	help
+	  This option provides functions func_equal_int16(),
+	  find_min_int16(), and find_max_abs32().
+
+config MATH_DECIBELS
+	bool "Convert decibels to linear"
+	default n
+	help
+	  Select this to enable db2lin_fixed() and exp_fixed()
+	  functions.
+
+config MATH_COMPLEX
+	bool "Operations for complex numbers"
+	default n
+	select CORDIC_FIXED
+	select MATH_ATAN2
+	select SQRT_FIXED
+	help
+	  Select this to enable functions for complex numbers
+	  arithmetic such as conversions to/from polar format.
+
+config MATH_FFT
+	bool "FFT library"
+	default n
+	select MATH_COMPLEX
+	help
+	  Enable Fast Fourier Transform library, this should not be selected
+	  directly, please select it from other audio components where need it.
+
+config MATH_FFT_MULTI
+	bool "FFT library for some non-power-of-two sizes"
+	depends on MATH_FFT
+	default n
+	help
+	  Enable Fast Fourier Transform library for e.g. sizes 1536 and 3072,
+	  this should not be selected directly, please select it from other
+	  audio components where need it.
+
+menu "Supported FFT word lengths"
+	visible if MATH_FFT
+
+config MATH_16BIT_FFT
+	bool "S16_LE data support"
+	default y
+	help
+	  This option enables support
+	  for 16 bit PCM data. The twiddle
+	  factors data consumes
+	  4096 bytes.
+
+config MATH_32BIT_FFT
+	bool "S32_LE data support"
+	default n
+	help
+	  This option enables support
+	  for 32 bit PCM data. The twiddle
+	  factors data consumes
+	  8192 bytes.
+
+endmenu
+
+# this choice covers math iir, math fir, tdfb, and eqfir, eqiir.
+choice "FILTER_SIMD_LEVEL_SELECT"
+	prompt "choose which SIMD level used for IIR/FIR/TDFB module"
+	depends on COMP_FIR || COMP_IIR || COMP_TDFB
+	default FILTER_HIFI_MAX
+
+	config FILTER_HIFI_MAX
+		prompt "SIMD will selected by toolchain pre-defined header"
+		bool
+		help
+			When this was selected, optimization level will be determined
+			by toolchain pre-defined macros in core isa header file.
+
+	config FILTER_HIFI_5
+		prompt "choose HIFI5 intrinsic optimized FILTER module"
+		bool
+		help
+			This option used to build HIFI5 optimized FILTER code
+
+	config FILTER_HIFI_4
+		prompt "choose HIFI4 intrinsic optimized FILTER module"
+		bool
+		help
+			This option used to build HIFI4 optimized FILTER code
+
+	config FILTER_HIFI_3
+		prompt "choose HIFI3 intrinsic optimized FILTER module"
+		bool
+		help
+			This option used to build HIFI3 intrinsic optimized FILTER code
+
+	config FILTER_HIFI_2
+		prompt "choose HIFI2ep intrinsic optimized FILTER module"
+		bool
+		help
+			This option used to build HIFI2ep intrinsic optimized FILTER code
+
+	config FILTER_HIFI_NONE
+		prompt "choose generic C FILTER module, no HIFI SIMD involved"
+		bool
+		help
+			This option used to build FILTER generic code.
+endchoice
+
+config MATH_FIR
+	tristate "FIR filter library"
+	default n
+	help
+	  This option builds FIR (Finite Impulse Response) filter library. It
+	  is selected by components for their digital signal processing. A FIR
+	  filter calculates a convolution of input PCM sample and a configurable
+	  impulse response.
+
+config MATH_IIR
+	tristate "Select IIR filter library build method"
+	default m if LIBRARY_DEFAULT_MODULAR
+	default y
+	help
+	  A helper option for MATH_IIR_DF2T and MATH_IIR_DF1
+
+config MATH_IIR_DF2T
+	bool "IIR DF2T filter library"
+	depends on MATH_IIR != "n"
+	default n
+	help
+	  Select this to build IIR (Infinite Impulse Response) filter
+	  or type 2-transposed library.
+
+config MATH_IIR_DF1
+	bool "IIR DF1 filter library"
+	depends on MATH_IIR != "n"
+	default n
+	help
+	  Select this to build IIR (Infinite Impulse Response) filter
+	  or type Direct-1 library.
+
+config MATH_WINDOW
+	bool "Window functions library"
+	default n
+	select CORDIC_FIXED
+	select NATURAL_LOGARITHM_FIXED
+	help
+          Select this to build a library for window functions. The window functions
+          are used to mitigate artefacts (from nature of FFT) to spectra when
+          computing FFT for a finite long chunk of audio. The sample values within
+          the window length need to be multiplied by the weight of coefficient value.
+          The currently provided window functions are Blackman, Hamming, Povey, and
+          rectangular.
+
+config MATH_MATRIX
+	bool "Matrix functions library"
+	default n
+	help
+	  Select this to build a matrix arithmetic library. Currently it supports
+	  matrix initialization, clear, set values, get values, and a multiply
+	  function for 16 bit fractional format. Multiplication functions exist
+	  for normal matrix multiply and elementwise multiplication.
+
+config MATH_AUDITORY
+	bool "Auditory functions library"
+	default n
+	select NATURAL_LOGARITHM_FIXED
+	help
+	  Select this to build a psychoacoustics and auditory system related
+	  functions library. Currently the library provides functions for Mel
+	  frequency scale. Functions are provided to convert between Mel and
+	  Hz, initialize a Mel filterbank and apply Mel filterbank to convert
+	  a linear power spectrum into an auditory power spectrum.
+
+menu "Supported Mel filterbank word lengths"
+	visible if MATH_AUDITORY
+
+config MATH_16BIT_MEL_FILTERBANK
+	bool "icomplex16 data support"
+	default n
+	help
+	  This option enables function psy_apply_mel_filterbank_16().
+	  It takes as input an array of icomplex16
+	  struct data from FFT. Output is 16 bit
+	  logarithmic Mel spectrum.
+
+config MATH_32BIT_MEL_FILTERBANK
+	bool "icomplex32 data support"
+	default n
+	help
+	  This option enables function psy_apply_mel_filterbank_32().
+	  It takes as input an array of icomplex32
+	  struct data from FFT. Output is 16 bit
+	  logarithmic Mel spectrum.
+
+endmenu
+
+config MATH_DCT
+	bool "DCT transform library"
+	default n
+	select MATH_MATRIX
+	select CORDIC_FIXED
+	help
+	  Select this to build library for discrete cosine transform
+	  (DCT). The library currently supports initialization of a
+	  matrix for ortho normalized DCT type II. The actual DCT
+	  transform for data is done as matrix multiply with the
+	  returned DCT matrix.
+
+config MATH_A_LAW_CODEC
+	bool "A-law encoder and decoder"
+	help
+	  This option enables functions sofm_a_law_encode() and
+	  sofm_a_law_decode(). The A-law codec is defined in
+	  ITU-T G.711 standard and has been used in telecommunications
+	  in e.g. Europe. The A-law coding compresses 13 bit samples
+	  to 8 bit coded data. A-law codec can be used in VoIP and
+	  8-bit wav formats.
+
+config MATH_MU_LAW_CODEC
+	bool "mu-law encoder and decoder"
+	help
+	  This option enables functions sofm_mu_law_encode() and
+	  sofm_mu_law_decode(). The mu-law codec is defined in
+	  ITU-T G.711 standard and has been used in telecommunications
+	  in USA and Japan. The mu-law coding compresses 14 bit samples
+	  to 8 bit coded data. Mu-law codec can be used in VoIP and
+	  8-bit wav formats.
+
+endmenu

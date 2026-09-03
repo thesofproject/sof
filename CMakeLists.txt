@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 	message(FATAL_ERROR
@@ -10,17 +10,17 @@ if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 	)
 endif()
 
-if(NOT (${CMAKE_VERSION} VERSION_LESS "3.13.0"))
-	# CMake 3.13+ has less restrictive rules for target_link_libraries()
-	# Until we make 3.13 as required minimum version we want to
-	# use old behaviour for compatibility
-	cmake_policy(SET CMP0079 OLD)
-endif()
+find_package(Python3 COMPONENTS Interpreter)
+set(PYTHON3 "${Python3_EXECUTABLE}")
 
-option(BUILD_LIBRARY "Build library" OFF)
 option(BUILD_UNIT_TESTS "Build unit tests" OFF)
+option(BUILD_UNIT_TESTS_HOST "Build unit tests for host" OFF)
+option(BUILD_UNIT_TESTS_XTENSA_GCC "Build xtensa unit test using GCC" OFF)
+option(BUILD_CLANG_SCAN "Build for clang's scan-build" OFF)
+option(BUILD_COUNTERS "Enable build counter(s), timestamps and any other
+non-deterministic build features" OFF)
 
-if(BUILD_LIBRARY)
+if(CONFIG_LIBRARY OR BUILD_UNIT_TESTS_HOST OR CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 else()
 	# firmware build supports only xtensa arch for now
@@ -43,8 +43,13 @@ project(SOF C ASM)
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set(SOF_ROOT_BINARY_DIRECTORY "${PROJECT_BINARY_DIR}")
 
+set(RIMAGE_TOP "${PROJECT_SOURCE_DIR}/tools/rimage")
+
 # check git hooks
 include(scripts/cmake/git-hooks.cmake)
+
+# Check submodules
+include(scripts/cmake/git-submodules.cmake)
 
 # most of other options are set on per-arch and per-target basis
 set(CMAKE_ASM_FLAGS -DASSEMBLY)
@@ -60,6 +65,12 @@ target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/sr
 add_library(sof_options INTERFACE)
 
 target_link_libraries(sof_options INTERFACE sof_public_headers)
+
+if(BUILD_COUNTERS)
+target_compile_definitions(sof_options INTERFACE BLD_COUNTERS=1)
+else()
+target_compile_definitions(sof_options INTERFACE BLD_COUNTERS=0)
+endif()
 
 # interface library that is used only as container for sof statically
 # linked libraries
@@ -83,43 +94,34 @@ set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
 
 set(DOT_CONFIG_PATH ${GENERATED_DIRECTORY}/.config)
-set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/config.h)
-set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
+set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/autoconfig.h CACHE
+  PATH "Path to kconfig's .h output file")
+set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/sof_versions.h)
 
 include(scripts/cmake/version.cmake)
 
 include(scripts/cmake/dist.cmake)
 
-# cmake itself cannot depend on files that don't exist
-# so to make it regenerate when .config file is created,
-# we make it depend on containing directory
-# NOTE: some filesystems may be unable to watch directory change,
-#       in that case cmake may need to be regenerated from CLI
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-	${GENERATED_DIRECTORY} ${DOT_CONFIG_PATH})
-
-if(EXISTS ${DOT_CONFIG_PATH})
-	read_kconfig_config(${DOT_CONFIG_PATH})
-endif()
-
-if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
-	# FindPythonInterp is bugged and may sometimes be unable to find
-	# Python 3 when both Python 2 & 3 are in PATH,
-	# so it's always better to use CMake 3.12+
-	find_package(PythonInterp 3.0)
-	set(PYTHON3 "${PYTHON_EXECUTABLE}")
-else()
-	find_package(Python3 COMPONENTS Interpreter)
-	set(PYTHON3 "${Python3_EXECUTABLE}")
-endif()
-
 include(scripts/cmake/kconfig.cmake)
+read_kconfig_config(${DOT_CONFIG_PATH})
+
+# FIXME: this successful triggers CMake to re-run, however -imacros
+# hides the generated .h dependency from CMake and most sources are NOT
+# recompiled.
+set_property(DIRECTORY APPEND
+	PROPERTY CMAKE_CONFIGURE_DEPENDS ${DOT_CONFIG_PATH})
 
 add_dependencies(sof_public_headers genconfig check_version_h)
 target_include_directories(sof_public_headers INTERFACE ${GENERATED_DIRECTORY}/include)
 
-if(BUILD_LIBRARY)
-	add_library(sof SHARED "")
+include(scripts/cmake/uuid-registry.cmake)
+
+if(CONFIG_LIBRARY)
+	if (CONFIG_LIBRARY_STATIC)
+		add_library(sof STATIC "")
+	else()
+		add_library(sof SHARED "")
+	endif()
 	target_link_libraries(sof PRIVATE sof_options)
 	target_link_libraries(sof PRIVATE sof_static_libraries)
 	install(TARGETS sof DESTINATION lib)
@@ -161,12 +163,17 @@ install(
 		${PROJECT_SOURCE_DIR}/src/include/ipc
 		${PROJECT_SOURCE_DIR}/src/include/kernel
 		${PROJECT_SOURCE_DIR}/src/include/user
+		${RIMAGE_TOP}/src/include/sof/kernel
+		${RIMAGE_TOP}/src/include/sof/user
 	DESTINATION include/sof
 	PATTERN "*.h"
 )
 
 add_library(sof_ld_flags INTERFACE)
 add_library(sof_ld_scripts INTERFACE)
+
+target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/third_party_include)
+link_directories(${PROJECT_SOURCE_DIR}/third_party_libraries)
 
 # declare target with no sources to let cmake know about it
 add_executable(sof "")
@@ -175,7 +182,9 @@ target_link_libraries(sof PRIVATE sof_ld_scripts)
 target_link_libraries(sof PRIVATE sof_ld_flags)
 target_link_libraries(sof PRIVATE sof_static_libraries)
 
+if (BUILD_COUNTERS)
 sof_add_build_counter_rule()
+endif()
 
 add_subdirectory(src)
 

@@ -8,6 +8,16 @@
 #ifndef __SOF_DEBUG_GDB_GDB_H__
 #define __SOF_DEBUG_GDB_GDB_H__
 
+/* unconditionally including this header will cause
+ * problems on architectures such as ARM64 with Zephyr
+ * since they don't have an entry in arch/.
+ *
+ * since GDB debug is only to be used when CONFIG_GDB_DEBUG=y
+ * we can safely avoid this problem with the below conditional
+ * definition of the symbols.
+ */
+#ifdef CONFIG_GDB_DEBUG
+
 #include <arch/debug/gdb/init.h>
 #include <arch/debug/gdb/utilities.h>
 
@@ -28,6 +38,9 @@
 void gdb_handle_exception(void);
 void gdb_debug_info(unsigned char *str);
 void gdb_init_debug_exception(void);
+
+#endif /* CONFIG_GDB_DEBUG */
+
 void gdb_init(void);
 
 #endif /* __SOF_DEBUG_GDB_GDB_H__ */

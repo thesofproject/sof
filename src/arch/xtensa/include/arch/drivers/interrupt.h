@@ -14,7 +14,7 @@
 #include <xtensa/xtruntime.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <config.h>
+
 
 static inline int arch_interrupt_register(int irq,
 	void (*handler)(void *arg), void *arg)
@@ -73,14 +73,14 @@ static inline uint32_t arch_interrupt_global_disable(void)
 {
 	uint32_t flags;
 
-	asm volatile("rsil	%0, 5"
+	__asm__ __volatile__("rsil	%0, 5"
 		     : "=a" (flags) :: "memory");
 	return flags;
 }
 
 static inline void arch_interrupt_global_enable(uint32_t flags)
 {
-	asm volatile("wsr %0, ps; rsync"
+	__asm__ __volatile__("wsr %0, ps; rsync"
 		     :: "a" (flags) : "memory");
 }
 

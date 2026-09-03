@@ -7,39 +7,24 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/drivers/timer.h>
-#include <sof/lib/alloc.h>
-#include <sof/lib/clk.h>
-#include <sof/lib/cpu.h>
+#include <rtos/timer.h>
+#include <rtos/clk.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
 #include <sof/platform.h>
-#include <sof/spinlock.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
-#include <ipc/topology.h>
 #include <user/trace.h>
-#include <stddef.h>
 #include <stdint.h>
 
-/* clock tracing */
-#define trace_clk(__e, ...) \
-	trace_event(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
-#define tracev_clk(__e, ...) \
-	tracev_event(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
-#define trace_clk_error(__e, ...) \
-	trace_error(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
+LOG_MODULE_REGISTER(clock, CONFIG_SOF_LOG_LEVEL);
 
-struct clk_data {
-	uint32_t freq;
-	uint32_t ticks_per_msec;
+SOF_DEFINE_REG_UUID(clock);
 
-	spinlock_t *lock;	/* for synchronizing freq set for each clock */
-};
+DECLARE_TR_CTX(clock_tr, SOF_UUID(clock_uuid), LOG_LEVEL_INFO);
 
-struct clk_pdata {
-	struct clk_data clk[NUM_CLOCKS];
-};
-
-static struct clk_pdata *clk_pdata;
+struct k_spinlock clk_lock;
 
 static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
 						  uint32_t size, uint32_t hz)
@@ -58,82 +43,54 @@ static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
 
 uint32_t clock_get_freq(int clock)
 {
-	return clk_pdata->clk[clock].freq;
+	struct clock_info *clk_info = clocks_get() + clock;
+	uint32_t freq = clk_info->freqs[clk_info->current_freq_idx].freq;
+
+	return freq;
 }
 
 void clock_set_freq(int clock, uint32_t hz)
 {
-	struct notify_data notify_data;
-	struct clock_notify_data clk_notify_data;
-	struct clock_info *clk_info = &clocks[clock];
+	struct clock_info *clk_info = clocks_get() + clock;
 	uint32_t idx;
-	uint32_t flags;
-
-	notify_data.data_size = sizeof(clk_notify_data);
-	notify_data.data = &clk_notify_data;
-
-	clk_notify_data.old_freq = clk_pdata->clk[clock].freq;
-	clk_notify_data.old_ticks_per_msec =
-		clk_pdata->clk[clock].ticks_per_msec;
+	k_spinlock_key_t key;
 
 	/* atomic context for changing clocks */
-	spin_lock_irq(clk_pdata->clk[clock].lock, flags);
-
-	notify_data.id = clk_info->notification_id;
-	notify_data.target_core_mask = clk_info->notification_mask;
+	key = clock_lock();
 
 	/* get nearest frequency that is >= requested Hz */
 	idx = clock_get_nearest_freq_idx(clk_info->freqs, clk_info->freqs_num,
 					 hz);
-	clk_notify_data.freq = clk_info->freqs[idx].freq;
 
-	/* tell anyone interested we are about to change freq */
-	notify_data.message = CLOCK_NOTIFY_PRE;
-	notifier_event(&notify_data);
+	if (clk_info->current_freq_idx != idx &&
+	    (!clk_info->set_freq ||
+	     clk_info->set_freq(clock, idx) == 0)) {
+		tr_info(&clock_tr, "clock %d set freq %dHz freq_idx %d old %d",
+			clock, hz, idx, clk_info->current_freq_idx);
 
-	if (!clk_info->set_freq ||
-	    clk_info->set_freq(clock, idx) == 0) {
 		/* update clock frequency */
-		clk_pdata->clk[clock].freq = clk_info->freqs[idx].freq;
-		clk_pdata->clk[clock].ticks_per_msec =
-			clk_info->freqs[idx].ticks_per_msec;
+		clk_info->current_freq_idx = idx;
 	}
 
-	/* tell anyone interested we have now changed freq */
-	notify_data.message = CLOCK_NOTIFY_POST;
-	notifier_event(&notify_data);
-
-	spin_unlock_irq(clk_pdata->clk[clock].lock, flags);
+	clock_unlock(key);
 }
 
-uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
+void clock_low_power_mode(int clock, bool enable)
 {
-	return clk_pdata->clk[clock].ticks_per_msec * ms;
+	struct clock_info *clk_info = clocks_get() + clock;
+
+	if (clk_info->low_power_mode)
+		clk_info->low_power_mode(clock, enable);
 }
 
-void platform_timer_set_delta(struct timer *timer, uint64_t ns)
+uint64_t clock_ticks_per_sample(int clock, uint32_t sample_rate)
 {
-	uint64_t ticks;
+	struct clock_info *clk_info = clocks_get() + clock;
+	uint32_t ticks_per_msec;
+	uint64_t ticks_per_sample;
 
-	ticks = clk_pdata->clk[PLATFORM_DEFAULT_CLOCK].ticks_per_msec /
-		1000 * ns / 1000;
-	timer->delta = ticks - platform_timer_get(timer);
-}
+	ticks_per_msec = clk_info->freqs[clk_info->current_freq_idx].ticks_per_msec;
+	ticks_per_sample = sample_rate ? ticks_per_msec * 1000 / sample_rate : 0;
 
-void clock_init(void)
-{
-	int i = 0;
-	uint32_t def;
-
-	clk_pdata = rmalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-			    sizeof(*clk_pdata));
-
-	/* set defaults */
-	for (i = 0; i < NUM_CLOCKS; i++) {
-		def = clocks[i].default_freq_idx;
-		clk_pdata->clk[i].freq = clocks[i].freqs[def].freq;
-		clk_pdata->clk[i].ticks_per_msec =
-			clocks[i].freqs[def].ticks_per_msec;
-		spinlock_init(&clk_pdata->clk[i].lock);
-	}
+	return ticks_per_sample;
 }

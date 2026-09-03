@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Google components"
+
+config COMP_GOOGLE_HOTWORD_DETECT
+	bool "Google hotword detector component"
+	select COMP_BLOB
+	help
+	  Select for Google hotword detector component. It uses the Google
+	  hotword library to do keyword detection. A language model needs to
+	  be set using the byte control 'Hotword Model' before running the
+	  detector.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING
+	tristate "Google Real Time Communication Audio processing"
+	select COMP_BLOB
+	help
+	  Select for Google real-time communication audio processing. It
+	  uses the Google real-time audio processing library to perform
+	  echo-cancelling and other processing.
+	  This component takes raw microphones input and playback reference
+	  and outputs an echo-free microphone signal.
+
+if COMP_GOOGLE_RTC_AUDIO_PROCESSING
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
+	int "Sample rate for Google Real Time Communication Audio processing"
+	default 48000
+	help
+	  Sets the sample rate for the memory buffer for the Google real-time
+	  communication audio processing.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_CHANNEL_MAX
+	int "Max number of AEC channels"
+	default 2
+	help
+	  Sets the maximum number source/sink processing channels Google Real
+	  Time Communication Audio Processing will use for. This is a
+	  computation and memory budget tunable. Channel counts are
+	  retrieved at runtime, but channels higher than this number
+	  are ignored (on input) or cleared (output).
+
+
+config COMP_GOOGLE_RTC_AUDIO_REFERENCE_CHANNEL_MAX
+	int "Max number of AEC reference channels"
+	default 2
+	help
+	  Sets the maximum number source/sink reference channels Google Real
+	  Time Communication Audio Processing will use for. This is a
+	  computation and memory budget tunable. Channel counts are
+	  retrieved at runtime, but channels higher than this number
+	  are ignored
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_KB
+	int "Memory buffer size for Google Real Time Communication Audio processing"
+	default 200
+	help
+	  Sets the size of the memory buffer for the Google real-time
+	  communication audio processing.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_ECHO_PATH_DELAY_MS
+	int "Echo path delay for Google Real Time Communication Audio processing"
+	default 44
+	help
+	  Sets the echo path delay to use for the Google real-time communication
+	  audio processing.
+
+config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MIC_HEADROOM_LINEAR
+	int "Microphone headroom for Google Real Time Communication Audio processing"
+	default 4
+	help
+	  Sets the microphone headroom for the Google real-time communication audio
+	  processing.
+
+config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
+	bool "Google Real Time Communication Audio processing mock"
+	default y if COMP_STUBS
+	help
+	  Mock Google real-time communication audio processing.
+	  It allows for compilation check and basic audio flow checking.
+
+endif # COMP_GOOGLE_RTC_AUDIO_PROCESSING
+
+config COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	tristate "Google Crosstalk Cancellation Audio processing"
+	select COMP_BLOB
+	select GOOGLE_CTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
+	select STATIC_INIT_GNU if ZEPHYR_SOF_MODULE
+	depends on ZEPHYR_SOF_MODULE
+	help
+	  Select for Google crosstalk cancellation audio processing. It
+	  uses the Google real-time audio processing library to perform
+	  crosstalk cancellation.
+
+config GOOGLE_CTC_AUDIO_PROCESSING_MOCK
+	bool "Google Crosstalk Cancellation Audio processing mock"
+	default y if COMP_STUBS
+	depends on COMP_GOOGLE_CTC_AUDIO_PROCESSING
+	help
+	  Mock Google crosstalk cancellation audio processing.
+	  It allows for compilation check and basic audio flow checking.
+
+endmenu

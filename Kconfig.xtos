@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+# This file contains build options needed to support
+# legacy driver code that still partially rely on XTOS
+# definitions, even when used with Zephyr RTOS.
+#
+# When all platforms have moved over to native Zephyr
+# drivers, this file can be removed
+
+config XT_WAITI_DELAY
+	bool
+	default n
+	help
+	  LX6 Xtensa platforms may require additional delay to flush loads
+	  and stores before entering WAITI.
+
+config XT_HAVE_RESET_VECTOR_ROM
+	bool
+	default n
+	help
+	  Select if your platform has the reset vector
+	  in ROM.
+
+config XT_IRQ_MAP
+	bool
+	default n
+
+config DMA_HW_LLI
+	bool
+	default n
+	help
+	  Hardware linked list is DMA feature, which allows
+	  to automatically reload the next programmed linked list
+	  item from memory without stopping the transfer. Without
+	  it the transfer stops after every lli read and FW needs
+	  to manually setup the next transfer.
+
+	  Any platforms with hardware linked list support
+	  should set this.
+
+config DMA_SUSPEND_DRAIN
+	bool
+	default n
+	help
+	  Some platforms cannot just simple disable DMA
+	  channel during the transfer, because it will
+	  hang the whole DMA controller. Instead we can
+	  suspend the channel and drain the FIFO in order
+	  to stop the channel as soon as possible.
+
+	  Any platforms without the ability to disable
+	  the DMA channel right away should set this.
+
+config DMA_FIFO_PARTITION
+	bool
+	default n
+	help
+	  Some platforms require to manually set DMA
+	  FIFO partitions before starting any transfer.
+
+	  Any platforms without automatic FIFO partitions
+	  should set this.
+
+config XT_INTERRUPT_LEVEL_1
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 1.
+	  Disabling this option allows for less memory consumption.
+
+config XT_INTERRUPT_LEVEL_2
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 2.
+	  Disabling this option allows for less memory consumption.
+
+config XT_INTERRUPT_LEVEL_3
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 3.
+	  Disabling this option allows for less memory consumption.
+
+config XT_INTERRUPT_LEVEL_4
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 4.
+	  Disabling this option allows for less memory consumption.
+
+config XT_INTERRUPT_LEVEL_5
+	bool
+	default n
+	help
+	  Select if the platform supports any interrupts of level 5.
+	  Disabling this option allows for less memory consumption.

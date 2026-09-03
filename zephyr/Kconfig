@@ -1,0 +1,346 @@
+config SOF_FULL_ZEPHYR_APPLICATION
+	bool "Build full SOF Zephyr application"
+	default y
+	help
+	  Top-level build option to enable full build of the SOF application
+	  on top of Zephyr. This should be set to no only for unit test and
+	  such special build targets.
+
+config SOF_STAGING
+	bool "Enable SOF staging features and modules"
+	help
+	  SOF staging features are not ready for production but are
+	  upstream to enable developers to continue development in order
+	  to bring the feature to production level faster using the
+	  upstream codebase.
+
+rsource "../Kconfig.sof"
+
+config SOF_USERSPACE
+	bool "Enable SOF support for userspace modules"
+	help
+	  SOF userspace modules support will enable modules to run in DP
+	  processing mode as userspace code and data. This feature is WIP
+	  and is not yet ready for production, for developers only.
+
+config SOF_USERSPACE_INTERFACE_DMA
+	bool "Enable SOF DMA interface to userspace threads"
+	depends on USERSPACE
+	help
+	  Allow user-space threads to use the SOF DMA interface.
+
+config SOF_USERSPACE_INTERFACE_ALLOC
+	bool "Enable SOF heap alloc interface to userspace threads"
+	depends on USERSPACE
+	help
+	  Allow user-space threads to use sof_heap_alloc/sof_heap_free
+	  as Zephyr system calls.
+
+config SOF_USERSPACE_INTERFACE_VREGION
+	bool "Enable SOF vregion interface to userspace threads"
+	depends on USERSPACE
+	depends on SOF_VREGIONS
+	help
+	  Allow user-space threads to use vregion_alloc/vregion_free
+	  and their variants as Zephyr system calls.
+
+config SOF_USERSPACE_LL
+	bool "Run Low-Latency pipelines in userspace threads"
+	depends on USERSPACE
+	select SOF_USERSPACE_INTERFACE_ALLOC
+	select SOF_USERSPACE_INTERFACE_DMA
+	select SOF_USERSPACE_INTERFACE_VREGION if SOF_VREGIONS
+	help
+	  Run Low-Latency (LL) pipelines in userspace threads. This adds
+	  memory protection between operating system resources and
+	  audio application threads.
+          If unsure, select "N".
+
+config SOF_ZEPHYR_HEAP_CACHED
+	bool "Cached Zephyr heap for SOF memory non-shared zones"
+	default y if CAVS || ACE
+	help
+	  Enable cached heap by mapping cached SOF memory zones to different
+	  Zephyr sys_heap objects and enable caching for non-shared zones.
+
+config SOF_NATIVE_SIM_HOST_HEAP
+	bool "Use the host C library heap on native_sim"
+	depends on BOARD_NATIVE_SIM
+	default n
+	help
+	  When enabled on the native_sim board, SOF heap allocations
+	  (rmalloc/rzalloc/rballoc/rfree etc.) are routed through the
+	  host C library via the Zephyr native simulator host trampolines
+	  (nsi_host_malloc/nsi_host_free). This makes tools like Valgrind
+	  effective at finding heap errors in SOF code.
+
+	  When disabled, the regular Zephyr sys_heap based implementation
+	  is used, matching the behavior on real targets. This is the
+	  default so that tooling relying on sys_heap (e.g. ASAN/fuzzer
+	  setups) keeps working; enable it explicitly in memory-testing or
+	  Valgrind-focused CI configurations.
+
+config SOF_ZEPHYR_HEAP_SIZE
+	hex "Size of the Zephyr heap for SOF"
+	default 0x40000 if VIRTUAL_HEAP
+	default 0xF0000 if SOC_ACE15_MTPM || SOC_ACE20_LNL
+	default 0xD0000 if SOC_ACE30 || SOC_ACE40
+	default 0x0
+	help
+	 Support scaling of the heap size for different platforms and different types
+	 of heaps. This is the default heap size for most users.
+	 TODO: Currently this setting is only available on platforms with a
+	 simplified heap size configuration. i.e. a single macro that defines the
+	 heap size. This is not the case for all platforms.
+	 NOTE: Keep in mind that the heap size should not be greater than the physical
+	 memory size of the system defined in DT (and this includes baseFW text/data).
+
+config SOF_USERSPACE_USE_SHARED_HEAP
+	bool "Use shared heap for SOF userspace modules"
+	depends on USERSPACE
+	help
+	  When set a shared heap will be used for audio buffers between SOF
+	  kernel and userspace modules.
+
+config SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE
+	hex "Size of the shared buffer heap for SOF userspace modules"
+	default 0x0 if !SOF_USERSPACE_USE_SHARED_HEAP
+	default 0x1E000 if SOC_ACE15_MTPM || SOC_ACE20_LNL
+	default 0x10000 if SOC_ACE30
+	default 0x0
+	depends on USERSPACE
+	help
+	 The size of the zephyr heap portion designated as the shared buffer heap.
+	 This heap is shared between the sof and userspace modules. It is used exclusively for
+	 allocating audio buffers between the kernel and userspace modules.
+	 NOTE: Keep in mind that the shared heap size should not be greater than the
+	 heap size.
+
+config VIRTUAL_HEAP_EXTENDED
+	bool "Extend the Virtual Heap configuration with additional buffers"
+	depends on MM_DRV_INTEL_ADSP_MTL_TLB
+	default y
+	help
+	  Enable additional Virtual Heap buffers. Some configurations need this
+	  while others need the memory for other purposes, e.g. for the virtual
+	  page / virtual region storage.
+
+config SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE
+	hex "Size in bytes of virtual memory region for virtual heap shared for all cores"
+	depends on MM_DRV_INTEL_ADSP_MTL_TLB
+	default 0x140000 if VIRTUAL_HEAP_EXTENDED
+	default 0x100000
+	help
+	  This config defines size of virtual heap region shared between all cores
+
+config SOF_USERSPACE_USE_DRIVER_HEAP
+	bool "Use driver heap for SOF userspace modules"
+	depends on USERSPACE
+	help
+	  When selected, multiple instances of the same userspace module will share
+	  a private heap created for that module's driver. Otherwise, each module
+	  instance will have its own independent private heap.
+
+config SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE
+	hex "Size of the private heap created for each userspace module"
+	default 0x1000
+	depends on USERSPACE
+	help
+	 The size of the private heap created for each userspace module. Each userspace
+	 module has its own independent heap to which only it has access. This heap is
+	 shared between instances of the same module.
+
+config SOF_ZEPHYR_SYS_USER_HEAP_SIZE
+	hex "Size of the shared LL user-space heap"
+	default 0x20000
+	depends on SOF_USERSPACE_LL
+	help
+	 The size of the shared heap used by the low-latency (LL) scheduler
+	 user-space thread. This heap is shared across all pipelines running
+	 on the LL thread and must be large enough to hold all host DMA
+	 buffers, chain DMA data, SG elements, and module adapter buffers
+	 for all simultaneously active pipelines.
+
+config SOF_USERSPACE_PROXY
+	bool "Use userspace proxy to support userspace modules"
+	select SOF_USERSPACE_USE_DRIVER_HEAP
+	select SOF_USERSPACE_USE_SHARED_HEAP
+	help
+	  When set, userspace modules are launched inside a container created by userspace proxy.
+	  It is responsible for forwarding module function calls coming from sof running in
+	  kernelspace to the module code executed with user privileges.
+
+config SOF_USERSPACE_MOD_IPC_BY_DP_THREAD
+	bool "Handle modules IPC in DP thread"
+	depends on SOF_USERSPACE_PROXY
+	help
+	  When enabled, IPC requests targeted to a userspace module are executed
+	  in its DP thread instead of the shared user worker thread.
+
+config SOF_USERSPACE_PROXY_WORKER_STACK_SIZE
+	int "Userspace IPC worker stack size"
+	default 4096
+	help
+	  Size of the stack used by the IPC worker thread created by the
+	  userspace proxy. This worker handles IPC requests for modules
+	  running in userspace.
+
+config SOF_USERSPACE_APPLICATION
+	bool
+	default USERSPACE && !SOF_USERSPACE_PROXY
+	depends on SOF_VREGIONS
+	help
+	  Not manually settable. This is effectively a shortcut to replace numerous
+	  checks for (CONFIG_USERSPACE && !CONFIG_SOF_USERSPACE_PROXY)
+
+config SOF_VPAGE_MAX_ALLOCS
+	int "Number of virtual memory page allocations"
+	default 128
+	help
+	  This setting defines the maximum number of virtual memory page
+	  allocations that can be tracked. Each allocation represents a
+	  contiguous block of virtual memory allocated from the virtual memory
+	  region. This API isn't intended for end-user allocations, instead it
+	  should be used by the framework to allocate memory, which is then
+	  used, e.g. to create one or multiple heap allocators in it. Increasing
+	  this number allows for more simultaneous allocations, but also
+	  increases the memory overhead for tracking these allocations.
+
+config ZEPHYR_NATIVE_DRIVERS
+	bool "Use Zephyr native drivers"
+	help
+	  Enable Zephyr native api drivers for host and dai audio components
+	  host-zephyr
+	  dai-zephyr
+	  will be used instead of legacy xtos version.
+
+config DMA_MTK_SOF_HOST_DMA
+	bool "MediaTek SOF host DMA driver"
+	default y if SOC_FAMILY_MTK && ZEPHYR_NATIVE_DRIVERS
+	help
+	  Software-based DMA driver for MTK SOF host component.
+	  MTK DSP can access host memory directly, so this driver
+	  implements DMA transfers using memcpy + cache management.
+
+config DMA_DOMAIN
+	bool "Enable the usage of DMA domain."
+	help
+	  This enables the usage of the DMA domain in scheduling.
+
+config DMA_DOMAIN_SEM_LIMIT
+	int "Number of resources the Zephyr's DMA domain can accumulate"
+	depends on DMA_DOMAIN
+	default 10
+	help
+	  Set this value according to the load of the system. Please make sure
+	  that SEM_LIMIT covers the maximum number of tasks your system will be
+	  executing at some point (worst case).
+
+config PIPELINE_2_0
+	bool "Enable pipeline 2.0 changes"
+	depends on IPC_MAJOR_4
+	default y if ACE
+	help
+	  This flag enables changes to new pipeline structure, known as pipeline2_0
+	  It is required for certain new features, like DP_SCHEDULER.
+
+config ZEPHYR_DP_SCHEDULER
+	bool "use Zephyr thread based DP scheduler"
+	default y if ACE
+	depends on IPC_MAJOR_4
+	depends on ZEPHYR_SOF_MODULE
+	depends on ACE
+	depends on PIPELINE_2_0
+	imply XTENSA_HIFI_SHARING if XTENSA_HIFI
+	help
+	  Enable Data Processing preemptive scheduler based on
+	  Zephyr preemptive threads.
+	  DP modules can be located in dieffrent cores than LL pipeline modules, may have
+	  different tick (i.e. 300ms for speech reccognition, etc.)
+
+config CROSS_CORE_STREAM
+	bool "Enable cross-core connected pipelines"
+	default y if IPC_MAJOR_4
+	help
+	  Enables support for pipelines from different cores to be
+	  connected together cross-core. So stream can travel from one
+	  core to another. Note, this is different from "multicore"
+	  support. In SOF "multicore" support means different streams
+	  can be processed on different cores, however, each stream
+	  is processed entirely on single core.
+
+config SOF_BOOT_TEST_ALLOWED
+	bool "Enable SOF boot-time testing"
+	help
+	  boot-time testing enabled if supported by the platform
+
+config SOF_BOOT_TEST_SUPPORTED
+	bool "Platform supports boot-time testing"
+	default y
+	help
+	  boot-time testing supported by the platform
+
+config SOF_BOOT_TEST
+	bool
+	depends on ZTEST
+	default y
+	help
+	  Run tests during boot. This enables an SOF boot-time self-test. When
+	  enabled, the resulting image will run a number of self-tests when the
+	  first global IPC command is received, i.e. when SOF is completely
+	  initialized. After that SOF will continue running and be usable as
+	  usual.
+
+config SOF_BOOT_TEST_STANDALONE
+	bool "enable tests at boot time that are run instead of SOF main"
+	select SOF_BOOT_TEST
+	select ZTEST
+	help
+	  Run extended set of tests at boot that can use IPC and interfere
+	  with system state. Normal IPC handling of the SOF application
+	  is disabled to allow more complex tests to run.
+
+config SOF_ZEPHYR_NO_SOF_CLOCK
+	bool
+	help
+	  Do not use SOF clk.h interface to set the DSP clock frequency.
+	  Requires implementation of platform/lib/clk.h.
+
+config SOF_VREGIONS
+	bool "Enable virtual memory regions"
+	default y if ACE && !ACE_VERSION_1_5 && !ACE_VERSION_2_0
+	depends on ACE
+	help
+	  Enable the virtual regions memory allocator for pipeline resource management.
+	  This provides a way to manage memory resources for audio pipelines,
+	  including
+	    1) multiple pipeline static lifetime allocations.
+	    2) runtime pipeline allocations.
+
+config VIRTUAL_HEAP
+	bool "Use virtual memory heap to allocate buffers"
+	default y if ACE
+	depends on ACE
+	help
+	  Enabling this option will use the virtual memory heap allocator to allocate buffers.
+	  It is based on a set of buffers whose size is predetermined.
+
+config STACK_SIZE_EDF
+	int "EDF scheduler stack size"
+	default 8192
+	help
+	  EDF scheduler work-queue thread stack size. Keep a power of 2.
+
+config STACK_SIZE_IPC_TX
+	int "IPC sender stack size"
+	default 2048
+	help
+	  IPC sender work-queue thread stack size. Keep a power of 2.
+
+config SOF_IPC_USER_THREAD_STACK_SIZE
+	int "IPC user thread stack size"
+	default 8192
+	depends on SOF_USERSPACE_LL
+	help
+	  Stack size for the userspace IPC thread.
+	  Keep a power of 2.

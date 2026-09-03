@@ -6,11 +6,12 @@
 
 /* HiFi EP optimized code parts for SRC */
 
-#include <sof/audio/src/src_config.h>
+#include "src_config.h"
 
 #if SRC_HIFIEP
 
-#include <sof/audio/src/src.h>
+#include "src_common.h"
+
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
 #include <stddef.h>
@@ -312,7 +313,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	int n_wrap_buf;
 	int n_min;
 	struct src_state *fir = s->state;
-	struct src_stage *cfg = s->stage;
+	const struct src_stage *cfg = s->stage;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
 	int32_t *out_delay_end = &fir->out_delay[fir->out_delay_size];
 	const char *cp; /* Can be int32_t or int16_t */
@@ -323,8 +324,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	const int blk_out_words = nch * cfg->num_of_subfilters;
 	const int sz = sizeof(int32_t);
 	const int n_sz = -sizeof(int32_t);
-	const int rewind_sz = sz * (nch * (cfg->blk_in
-		+ (cfg->num_of_subfilters - 1) * cfg->idm) - nch);
+	const int rewind_sz = sz * nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
 	const int nch_x_idm_sz = -nch * cfg->idm * sizeof(int32_t);
 	const int taps_div_4 = cfg->subfilter_length >> 2;
 	int32_t *x_rptr = (int32_t *)s->x_rptr;
@@ -438,7 +438,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	int n_wrap_buf;
 	int n_min;
 	struct src_state *fir = s->state;
-	struct src_stage *cfg = s->stage;
+	const struct src_stage *cfg = s->stage;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
 	int32_t *out_delay_end = &fir->out_delay[fir->out_delay_size];
 	const char *cp; /* Can be int32_t or int16_t */
@@ -449,8 +449,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	const int blk_out_words = nch * cfg->num_of_subfilters;
 	const int sz = sizeof(int32_t);
 	const int n_sz = -sizeof(int32_t);
-	const int rewind_sz = sz * (nch * (cfg->blk_in
-		+ (cfg->num_of_subfilters - 1) * cfg->idm) - nch);
+	const int rewind_sz = sz * nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
 	const int nch_x_idm_sz = -nch * cfg->idm * sizeof(int32_t);
 	const int taps_div_4 = cfg->subfilter_length >> 2;
 	int16_t *x_rptr = (int16_t *)s->x_rptr;

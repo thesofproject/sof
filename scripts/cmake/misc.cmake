@@ -25,6 +25,47 @@ function(read_kconfig_config config_file)
 	endforeach()
 endfunction()
 
+# create optimization flags based on cmake variables set from Kconfig
+function(get_optimization_flag OUT_VAR)
+	if(CONFIG_OPTIMIZE_FOR_PERFORMANCE)
+		set(${OUT_VAR} "O2" PARENT_SCOPE)
+	elseif(CONFIG_OPTIMIZE_FOR_SIZE)
+		set(${OUT_VAR} "Os" PARENT_SCOPE)
+	elseif(CONFIG_OPTIMIZE_FOR_DEBUG)
+		set(${OUT_VAR} "Og" PARENT_SCOPE)
+	elseif(CONFIG_OPTIMIZE_FOR_NONE)
+		set(${OUT_VAR} "O0" PARENT_SCOPE)
+	else()
+		message(FATAL_ERROR "no CONFIG_OPTIMIZE_ found")
+	endif()
+endfunction()
+
+# Zephyr duplicate in sof/zephyr/CMakeLists.txt; keep in sync
+macro(is_zephyr ret)
+	if(CONFIG_ZEPHYR_SOF_MODULE)
+		set(${ret} TRUE)
+	else()
+		set(${ret} FALSE)
+	endif()
+endmacro()
+
+# This macro
+# - saves a LOT of repetition, and
+# - mimics Zephyr, which helps with compatibility.
+macro(add_local_sources_ifdef condition target)
+	if(${condition})
+		add_local_sources(${target} ${ARGN})
+	endif()
+endmacro()
+
+# helper macro used similarly as add_local_sources_ifdef
+# Zephyr duplicate in sof/zephyr/CMakeLists.txt; keep in sync
+macro(sof_list_append_ifdef feature_toggle list)
+  if(${${feature_toggle}})
+    list(APPEND ${list} ${ARGN})
+  endif()
+endmacro()
+
 # Adds sources to target like target_sources, but assumes that
 # paths are relative to subdirectory.
 # Works like:
@@ -41,6 +82,12 @@ function(add_local_sources target)
 		endif()
 
 		target_sources(${target} PRIVATE ${path})
+	# -imacros${CONFIG_H_PATH} escapes regular .h dep scanning
+	#	add_dependencies(${target} genconfig) # has no effect?
+		set_source_files_properties(${path}
+			PROPERTIES
+			OBJECT_DEPENDS ${CONFIG_H_PATH}
+		)
 	endforeach()
 endfunction()
 

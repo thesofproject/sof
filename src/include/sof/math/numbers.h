@@ -12,27 +12,41 @@
 
 #include <stdint.h>
 
-#define MIN(a, b) ({		\
-	typeof(a) __a = (a);	\
-	typeof(b) __b = (b);	\
-	__a > __b ? __b : __a;	\
+#ifndef __ZEPHYR__
+/* Unsafe and portable macros for consistency with Zephyr.
+ * See SEI CERT-C PRE31-C
+ */
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) < (b) ? (b) : (a))
+
+#define ROUND_DOWN(size, alignment) ({			\
+	__typeof__(size) __size = (size);			\
+	__typeof__(alignment) __alignment = (alignment);	\
+	__size - (__size % __alignment);		\
 })
-#define MAX(a, b) ({		\
-	typeof(a) __a = (a);	\
-	typeof(b) __b = (b);	\
-	__a < __b ? __b : __a;	\
+
+#define ROUND_UP(size, alignment) ({			\
+	__typeof__(size) __size = (size);			\
+	__typeof__(alignment) __alignment = (alignment);	\
+	((__size + __alignment - 1) / __alignment) * __alignment;	\
 })
+#endif /* ! __ZEPHYR__ */
+
 #define ABS(a) ({		\
-	typeof(a) __a = (a);	\
+	__typeof__(a) __a = (a);	\
 	__a < 0 ? -__a : __a;	\
 })
 #define SGN(a) ({		\
-	typeof(a) __a = (a);	\
+	__typeof__(a) __a = (a);	\
 	__a < 0 ? -1 :		\
 	__a > 0 ? 1 : 0;	\
 })
 
+/* Zephyr added gcd() in 2025/Nov to sys/util.h */
+#ifndef gcd
+#define USE_SOF_GCD 1
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */
+#endif
 
 /* This is a divide function that returns ceil of the quotient.
  * E.g. ceil_divide(9, 3) returns 3, ceil_divide(10, 3) returns 4.
@@ -50,10 +64,36 @@ static inline int ceil_divide(int a, int b)
 	 * If the signs are the same, we check if there was any remainder in
 	 * the division by multiplying the number back.
 	 */
-	if (!((a ^ b) & (1 << ((sizeof(int) * 8) - 1))) && c * b != a)
+	if (!((a ^ b) & (1U << ((sizeof(int) * 8) - 1))) && c * b != a)
 		c++;
 
 	return c;
+}
+
+/**
+ * \brief Cross product function
+ *
+ * Calculate cross product for vectors AB(a, b, c) and AC(d, e, f), where A, B, and C
+ * are points of a triangle in 3D space. Cross product is used in computational
+ * geometry. Cross product AB x AC is (b * f - c * e, c * d - a * f, a * e - b * d)
+ *
+ * \param[out]	px	x-axis component of cross product vector
+ * \param[out]	py	y-axis component of cross product vector
+ * \param[out]	pz	z-axis component of cross product vector
+ * \param[in]	a	x-axis component of vector AB
+ * \param[in]	b	y-axis component of vector AB
+ * \param[in]	c	z-axis component of vector AB
+ * \param[in]	d	x-axis component of vector AC
+ * \param[in]	e	y-axis component of vector AC
+ * \param[in]	f	z-axis component of vector AC
+ */
+static inline void cross_product_s16(int32_t *px, int32_t *py, int32_t *pz,
+				     int16_t a, int16_t b, int16_t c,
+				     int16_t d, int16_t e, int16_t f)
+{
+	*px = (int32_t)b * f - (int32_t)c * e;
+	*py = (int32_t)c * d - (int32_t)a * f;
+	*pz = (int32_t)a * e - (int32_t)b * d;
 }
 
 /* Find indices of equal values in a vector of integer values */
@@ -71,7 +111,7 @@ int32_t find_max_abs_int32(int32_t vec[], int vec_length);
  */
 int norm_int32(int32_t val);
 
-uint32_t crc32(const void *data, uint32_t bytes);
+uint32_t crc32(uint32_t base, const void *data, uint32_t bytes);
 
 /* merges two 16-bit values into a single 32-bit value */
 #define merge_16b16b(high, low) (((uint32_t)(high) << 16) | \
@@ -80,5 +120,13 @@ uint32_t crc32(const void *data, uint32_t bytes);
 /* merges two 4-bit values into a single 8-bit value */
 #define merge_4b4b(high, low) (((uint8_t)(high) << 4) | \
 			       ((low) & 0xF))
+
+/* Get max and min signed integer values for N bits word length */
+#define INT_MAX_FOR_NUMBER_OF_BITS(N)	((int64_t)((1ULL << ((N) - 1)) - 1))
+#define INT_MIN_FOR_NUMBER_OF_BITS(N)	((int64_t)(-((1ULL << ((N) - 1)) - 1) - 1))
+
+/* Speed of sound (m/s) in 20 C temperature at standard atmospheric pressure */
+#define SPEED_OF_SOUND		343
+#define RECIPROCAL_SPEED_OF_SOUND_Q31 6260885 /* Q1.31 */
 
 #endif /* __SOF_MATH_NUMBERS_H__ */

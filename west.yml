@@ -1,0 +1,67 @@
+---
+# SOF west manifest
+manifest:
+  version: "0.13"
+
+  defaults:
+    remote: thesofproject
+
+  remotes:
+    - name: thesofproject
+      url-base: https://github.com/thesofproject
+    - name: zephyrproject
+      url-base: https://github.com/zephyrproject-rtos
+
+  # When upgrading projects here please run git log --oneline in the
+  # project and if not too long then include the output in your commit
+  # message. See examples of good commit messages at
+  # https://github.com/thesofproject/sof/commits/4e1d3ba61abd3/rimage
+  # (git log 4e1d3ba61abd3 -- rimage/)
+
+  # WARNING: for backwards compatibility with non-Zephyr platforms,
+  # rimage and toml99 are STILL git submodules! Every time you change
+  # their `revision` revision here you MUST keep their git submodules in
+  # sync. This is as simple as `git add rimage` before committing (+
+  # `git commit --amend` if you forgot and already committed this
+  # west manifest file).
+
+  # When a submodule is out of sync then both `git status` and `git
+  # describe` notice and a "-dirty" suffix appears in the SOF version.
+  # It is generally very bad practice to git push without looking
+  # at "git status"; even without submodules.
+  # rimage and tomlc99 to Zephyr's west manifest discussion:
+  # https://github.com/zephyrproject-rtos/zephyr/issues/58212
+
+  projects:
+    # West convenience for Zephyr people who forgot --recursive when
+    # cloning sof.git.  This adds the burden of keeping both tomlc99
+    # SHA1s synchronized but in practice it barely ever moves.
+    - name: tomlc99
+      repo-path: tomlc99
+      path: sof/tools/rimage/tomlc99
+      revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
+
+    - name: zephyr
+      repo-path: zephyr
+      revision: 133c2eb7d3cb4625f74cbeb3e8d99a705b21543d
+      remote: zephyrproject
+
+      # Import some projects listed in zephyr/west.yml@revision
+      #
+      # Warning: changes to zephyr/west.yml or to any other _imported_
+      # west.yml file are _ignored_ by design!  Only the above
+      # 'revision:' of zephyr/west.yml is used.
+      import:
+        name-whitelist:
+          - hal_xtensa
+          - hal_nxp
+          - mbedtls
+          - mipi-sys-t
+          - lz4
+          - tinycrypt
+          - cmsis_6
+
+  self:
+    # Changes to submanifests/*.yml files _are_ effective; these have no
+    # specified 'revision:'
+    import: submanifests

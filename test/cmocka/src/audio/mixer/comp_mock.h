@@ -11,3 +11,4 @@
 #define SOF_COMP_MOCK ((uint32_t)-1)
 
 void sys_comp_mock_init(void);
+int mock_comp_register(struct comp_driver_info *info);

@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+# Array of "input-file-name;output-file-name;comma separated pre-processor variables"
+list(APPEND TPLGS
+
+"cavs-sdw\;sof-sdw-generic\;SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack"
+
+# Split topologies
+"cavs-sdw\;sof-sdca-jack-id0\;SDW_JACK_OUT_STREAM=Playback-SimpleJack,\
+SDW_JACK_IN_STREAM=Capture-SimpleJack,NUM_HDMIS=0"
+
+"cavs-sdw\;sof-sdca-1amp-id2\;NUM_SDW_AMP_LINKS=1,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true"
+
+"cavs-sdw\;sof-sdca-2amp-id2\;NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true"
+
+"cavs-sdw\;sof-sdca-3amp-id2\;NUM_SDW_AMP_LINKS=3,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true"
+
+"cavs-sdw\;sof-sdca-4amp-id2\;NUM_SDW_AMP_LINKS=4,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+DEEP_BUF_SPK=true"
+
+#default NUM_DMICS=2
+"cavs-sdw\;sof-sdca-mic-id4\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
+SDW_DMIC_STREAM=Capture-SmartMic"
+
+"cavs-sdw\;sof-sdca-mic-4ch-id4\;SDW_JACK=false,SDW_DMIC=1,NUM_HDMIS=0,\
+SDW_DMIC_STREAM=Capture-SmartMic,SDW_DMIC_PCM_CHANNELS=4,TDFB_DMIC_PCM_CHANNELS=4,\
+EFX_MIC_TDFB_PARAMS=line4_pass"
+
+"cavs-sdw\;sof-hdmi-pcm5-id2\;SDW_JACK=false,HDMI1_ID=2,HDMI2_ID=3,HDMI3_ID=4"
+"cavs-sdw\;sof-hdmi-pcm5-id3\;SDW_JACK=false,HDMI1_ID=3,HDMI2_ID=4,HDMI3_ID=5"
+"cavs-sdw\;sof-hdmi-pcm5-id4\;SDW_JACK=false,HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6"
+"cavs-sdw\;sof-hdmi-pcm5-id5\;SDW_JACK=false"
+"cavs-sdw\;sof-hdmi-pcm5-id6\;SDW_JACK=false,HDMI1_ID=6,HDMI2_ID=7,HDMI3_ID=8"
+"cavs-sdw\;sof-hdmi-pcm5-id7\;SDW_JACK=false,HDMI1_ID=7,HDMI2_ID=8,HDMI3_ID=9"
+
+# USB Audio Offload Link function topology. The UAOL backend is the last one
+# sof_sdw creates, so its dai link ID depends on the composition of the board:
+# it follows the SoundWire links, the PCH DMIC pair, the three HDMI links and
+# the BT link. Each direction is a separate link, so two consecutive IDs are
+# taken. The range below covers a jack and amplifier board without DMIC and BT
+# (6) up to a jack, amplifier with feedback, PCH DMIC and BT board (10).
+# Add a variant here for every further ID that is needed.
+"cavs-uaol\;sof-uaol-id6\;UAOL_PB_BE_ID=6,UAOL_CP_BE_ID=7"
+"cavs-uaol\;sof-uaol-id7\;UAOL_PB_BE_ID=7,UAOL_CP_BE_ID=8"
+"cavs-uaol\;sof-uaol-id8\;UAOL_PB_BE_ID=8,UAOL_CP_BE_ID=9"
+"cavs-uaol\;sof-uaol-id9\;UAOL_PB_BE_ID=9,UAOL_CP_BE_ID=10"
+"cavs-uaol\;sof-uaol-id10\;UAOL_PB_BE_ID=10,UAOL_CP_BE_ID=11"
+
+# Feature topologies which should work with the function topologies above
+"cavs-sdw\;sof-sdca-amp-ref\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_ECHO_REF=true,SDW_SPK_ECHO_REF_PCM_ID=12"
+
+"cavs-sdw\;sof-sdca-amp-ref-dai\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_AMP_FEEDBACK=false,SDW_ECHO_REF_DAI=true,SDW_SPK_ECHO_REF=true,SDW_SPK_ECHO_REF_PCM_ID=12"
+
+"cavs-sdw\;sof-sdca-jack-ref-dai\;SDW_JACK=false,NUM_HDMIS=0,JACK_RATE=48000,\
+SDW_ECHO_REF_DAI=true,SDW_JACK_ECHO_REF=true,SDW_JACK_ECHO_REF_PCM_ID=11"
+
+# Topology for speaker with 2-way crossover filter in SOF
+# with channels order L-low, R-low, L-high, R-high
+"cavs-sdw\;sof-sdca-2amp-id2-xover\;NUM_SDW_AMP_LINKS=2,SDW_JACK=false,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,NUM_HDMIS=0,\
+SDW_AMP_NUM_CHANNELS=4,SDW_AMP_XOVER=true,\
+SDW_AMP_XOVER_SELECTOR_PARAMS=xover_selector_lr_to_lrlr,\
+SDW_AMP_XOVER_EQIIR_PARAMS=xover_lr4_2000hz_llhh_48khz"
+
+"cavs-sdw\;sof-sdca-2amp-feedback-id3-xover\;NUM_SDW_AMP_LINKS=2,\
+SDW_JACK=false,SDW_AMP_FEEDBACK=true,SDW_SPK_STREAM=Playback-SmartAmp,\
+SDW_SPK_IN_STREAM=Capture-SmartAmp,NUM_HDMIS=0,\
+SDW_AMP_NUM_CHANNELS=4,SDW_AMP_XOVER=true,\
+SDW_AMP_XOVER_SELECTOR_PARAMS=xover_selector_lr_to_lrlr,\
+SDW_AMP_XOVER_EQIIR_PARAMS=xover_lr4_2000hz_llhh_48khz"
+)

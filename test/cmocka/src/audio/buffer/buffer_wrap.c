@@ -6,7 +6,10 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/schedule.h>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -24,36 +27,51 @@ static void test_audio_buffer_write_fill_10_bytes_and_write_5(void **state)
 		.size = 10
 	};
 
-	struct comp_buffer *buf = buffer_new(&test_buf_desc);
+	struct comp_buffer *buf = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 
 	assert_non_null(buf);
-	assert_int_equal(buf->avail, 0);
-	assert_int_equal(buf->free, 10);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr);
+	assert_int_equal(audio_stream_get_avail_bytes(&buf->stream), 0);
+	assert_int_equal(audio_stream_get_free_bytes(&buf->stream), 10);
+	assert_ptr_equal(buf->stream.w_ptr, buf->stream.r_ptr);
 
 	uint8_t bytes[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-	memcpy(buf->w_ptr, &bytes, 10);
-	comp_update_buffer_produce(buf, 10);
+	int i;
+	uint8_t *ptr;
 
-	assert_int_equal(buf->avail, 10);
-	assert_int_equal(buf->free, 0);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr);
+	for (i = 0; i < ARRAY_SIZE(bytes); i++) {
+		ptr = audio_stream_write_frag(&buf->stream, i, sizeof(uint8_t));
+		*ptr = bytes[i];
+	}
+	comp_update_buffer_produce(buf, sizeof(bytes));
+
+	assert_int_equal(audio_stream_get_avail_bytes(&buf->stream), sizeof(bytes));
+	assert_int_equal(audio_stream_get_free_bytes(&buf->stream), 0);
+	assert_ptr_equal(buf->stream.w_ptr, buf->stream.r_ptr);
 
 	uint8_t more_bytes[5] = {10, 11, 12, 13, 14};
 
-	memcpy(buf->w_ptr, &more_bytes, 5);
-	comp_update_buffer_produce(buf, 5);
+	for (i = 0; i < ARRAY_SIZE(more_bytes); i++) {
+		ptr = audio_stream_write_frag(&buf->stream, i, sizeof(uint8_t));
+		*ptr = more_bytes[i];
+	}
+	comp_update_buffer_produce(buf, sizeof(more_bytes));
 
 	uint8_t ref_1[5] = {5, 6, 7, 8, 9};
 	uint8_t ref_2[5] = {10, 11, 12, 13, 14};
 
-	assert_int_equal(buf->avail, 10);
-	assert_int_equal(buf->free, 0);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr);
-	assert_int_equal(memcmp(buf->r_ptr, &ref_1, 5), 0);
-	comp_update_buffer_consume(buf, 5);
-	assert_int_equal(memcmp(buf->r_ptr, &ref_2, 5), 0);
+	assert_int_equal(audio_stream_get_avail_bytes(&buf->stream), 10);
+	assert_int_equal(audio_stream_get_free_bytes(&buf->stream), 0);
+	assert_ptr_equal(buf->stream.w_ptr, buf->stream.r_ptr);
+	for (i = 0; i < ARRAY_SIZE(ref_1); i++) {
+		ptr = audio_stream_read_frag(&buf->stream, i, sizeof(uint8_t));
+		assert_int_equal(*ptr, ref_1[i]);
+	}
+	comp_update_buffer_consume(buf, sizeof(ref_1));
+	for (i = 0; i < ARRAY_SIZE(ref_2); i++) {
+		ptr = audio_stream_read_frag(&buf->stream, i, sizeof(uint8_t));
+		assert_int_equal(*ptr, ref_2[i]);
+	}
 
 	buffer_free(buf);
 }

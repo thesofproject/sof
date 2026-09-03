@@ -1,0 +1,23 @@
+.
+├── community
+│   ├── sof-adl-s.ri -> sof-tgl-h.ri
+│   ├── sof-adl.ri -> sof-tgl.ri
+│   ├── sof-rpl-s.ri -> sof-tgl-h.ri
+│   ├── sof-rpl.ri -> sof-tgl.ri
+│   ├── sof-tgl-h.ri
+│   └── sof-tgl.ri
+├── intel-signed
+├── sof-adl-s.ldc -> sof-tgl-h.ldc
+├── sof-adl-s.ri -> intel-signed/sof-adl-s.ri
+├── sof-adl.ldc -> sof-tgl.ldc
+├── sof-adl.ri -> intel-signed/sof-adl.ri
+├── sof-rpl-s.ldc -> sof-tgl-h.ldc
+├── sof-rpl-s.ri -> intel-signed/sof-rpl-s.ri
+├── sof-rpl.ldc -> sof-tgl.ldc
+├── sof-rpl.ri -> intel-signed/sof-rpl.ri
+├── sof-tgl-h.ldc
+├── sof-tgl-h.ri -> intel-signed/sof-tgl-h.ri
+├── sof-tgl.ldc
+└── sof-tgl.ri -> intel-signed/sof-tgl.ri
+
+2 directories, 18 files

@@ -56,10 +56,19 @@
 #define SOF_DAI_INTEL_SSP_CLKCTRL_FS_KA			BIT(4)
 /* bclk idle */
 #define SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_IDLE_HIGH	BIT(5)
+/* mclk early start */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_ES		BIT(6)
+/* bclk early start */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_ES		BIT(7)
+/* mclk always on */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_AON		BIT(8)
+
+/* DMIC max. four controllers for eight microphone channels */
+#define SOF_DAI_INTEL_DMIC_NUM_CTRL			4
 
 /* SSP Configuration Request - SOF_IPC_DAI_SSP_CONFIG */
 struct sof_ipc_dai_ssp_params {
-	struct sof_ipc_hdr hdr;
+	uint32_t reserved0;
 	uint16_t reserved1;
 	uint16_t mclk_id;
 
@@ -87,22 +96,26 @@ struct sof_ipc_dai_ssp_params {
 	uint32_t bclk_delay;	/* guaranteed time (ms) for which BCLK
 				 * will be driven, before sending data
 				 */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* HDA Configuration Request - SOF_IPC_DAI_HDA_CONFIG */
 struct sof_ipc_dai_hda_params {
-	struct sof_ipc_hdr hdr;
+	uint32_t reserved0;
 	uint32_t link_dma_ch;
-} __attribute__((packed));
+	uint32_t rate;
+	uint32_t channels;
+} __attribute__((packed, aligned(4)));
 
 /* ALH Configuration Request - SOF_IPC_DAI_ALH_CONFIG */
 struct sof_ipc_dai_alh_params {
-	struct sof_ipc_hdr hdr;
+	uint32_t reserved0;
 	uint32_t stream_id;
+	uint32_t rate;
+	uint32_t channels;
 
 	/* reserved for future use */
-	uint32_t reserved[15];
-} __attribute__((packed));
+	uint32_t reserved[13];
+} __attribute__((packed, aligned(4)));
 
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
 
@@ -124,7 +137,7 @@ struct sof_ipc_dai_alh_params {
  * data integrity problems.
  */
 struct sof_ipc_dai_dmic_pdm_ctrl {
-	struct sof_ipc_hdr hdr;
+	uint32_t reserved0;
 	uint16_t id;		/**< PDM controller ID */
 
 	uint16_t enable_mic_a;	/**< Use A (left) channel mic (0 or 1)*/
@@ -137,13 +150,13 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
 	uint16_t skew;		/**< Adjust PDM data sampling vs. clock (0..15) */
 
 	uint16_t reserved[3];	/**< Make sure the total size is 4 bytes aligned */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /* This struct contains the global settings for all 2ch PDM controllers. The
  * version number used in configuration data is checked vs. version used by
  * device driver src/drivers/dmic.c need to match. It is incremented from
  * initial value 1 if updates done for the to driver would alter the operation
- * of the microhone.
+ * of the microphone.
  *
  * Note: The microphone clock (pdmclk_min, pdmclk_max, duty_min, duty_max)
  * parameters need to be set as defined in microphone data sheet. E.g. clock
@@ -168,8 +181,9 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
  * met. The unit for both is microseconds (us). Exceed of 100 ms will be
  * treated as an error.
  */
+
 struct sof_ipc_dai_dmic_params {
-	struct sof_ipc_hdr hdr;
+	uint32_t reserved0;
 	uint32_t driver_ipc_version;	/**< Version (1..N) */
 
 	uint32_t pdmclk_min;	/**< Minimum microphone clock in Hz (100000..N) */
@@ -178,12 +192,13 @@ struct sof_ipc_dai_dmic_params {
 	uint32_t fifo_fs;	/**< FIFO sample rate in Hz (8000..96000) */
 	uint32_t reserved_1;	/**< Reserved */
 	uint16_t fifo_bits;	/**< FIFO word length (16 or 32) */
-	uint16_t reserved_2;	/**< Reserved */
+	uint16_t fifo_bits_b;	/**< Deprecated since firmware ABI 3.0.1 */
 
 	uint16_t duty_min;	/**< Min. mic clock duty cycle in % (20..80) */
 	uint16_t duty_max;	/**< Max. mic clock duty cycle in % (min..80) */
 
-	uint32_t num_pdm_active; /**< Number of active pdm controllers */
+	uint32_t num_pdm_active; /**< Number of active pdm controllers. */
+				 /**< Range is 1..SOF_DAI_INTEL_DMIC_NUM_CTRL */
 
 	uint32_t wake_up_time;      /**< Time from clock start to data (us) */
 	uint32_t min_clock_on_time; /**< Min. time that clk is kept on (us) */
@@ -192,8 +207,8 @@ struct sof_ipc_dai_dmic_params {
 	/* reserved for future use */
 	uint32_t reserved[5];
 
-	/**< variable number of pdm controller config */
-	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
-} __attribute__((packed));
+	/**< PDM controllers configuration */
+	struct sof_ipc_dai_dmic_pdm_ctrl pdm[SOF_DAI_INTEL_DMIC_NUM_CTRL];
+} __attribute__((packed, aligned(4)));
 
 #endif /* __IPC_DAI_INTEL_H__ */

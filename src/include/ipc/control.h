@@ -101,7 +101,7 @@ enum sof_ipc_ctrl_cmd {
 struct sof_ipc_ctrl_value_chan {
 	uint32_t channel;	/**< channel map - enum sof_ipc_chmap */
 	uint32_t value;
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Generic component mapped value data.
@@ -112,7 +112,7 @@ struct sof_ipc_ctrl_value_comp {
 		uint32_t uvalue;
 		int32_t svalue;
 	};
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Generic control data.
@@ -136,6 +136,13 @@ struct sof_ipc_ctrl_data {
 	/* reserved for future use */
 	uint32_t reserved[6];
 
+	/* Flexible array members[] are forbidden in unions but this
+	 * does not seem to bother gcc as long as non-standard
+	 * zero-length arrays[0] are used instead.  Nesting flexible
+	 * array member declarations in arrays or structures is
+	 * forbidden too. Cleaning this up would likely require code
+	 * changes to explicitly cast intermediate steps.
+	 */
 	/* control data - add new types if needed */
 	union {
 		/* channel values can be used by volume type controls */
@@ -145,7 +152,7 @@ struct sof_ipc_ctrl_data {
 		/* data can be used by binary controls */
 		struct sof_abi_hdr data[0];
 	};
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /** Event type */
 enum sof_ipc_ctrl_event_type {
@@ -167,7 +174,7 @@ struct sof_ipc_comp_event {
 
 	/* reserved for future use */
 	uint32_t reserved[8];
-	
+
 	/* control data - add new types if needed */
 	union {
 		/* data can be used by binary controls */
@@ -175,7 +182,7 @@ struct sof_ipc_comp_event {
 		/* event specific values */
 		uint32_t event_value;
 	};
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /** @}*/
 

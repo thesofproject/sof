@@ -35,7 +35,7 @@ int gpio_write(const struct gpio *gpio, unsigned int port,
 
 int gpio_read(const struct gpio *gpio, unsigned int port)
 {
-	return (io_reg_read(gpio->base + PORTA_DAT_REG) >> port) & 1 ?
+	return ((io_reg_read(gpio->base + PORTA_DAT_REG) >> port) & 1) ?
 		GPIO_LEVEL_HIGH : GPIO_LEVEL_LOW;
 }
 

@@ -1,0 +1,2104 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2016 Intel Corporation. All rights reserved.
+//
+// Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+//         Keyon Jie <yang.jie@linux.intel.com>
+
+#include <sof/audio/buffer.h>
+#include <sof/audio/component_ext.h>
+#include <sof/audio/format.h>
+#include <sof/audio/pipeline.h>
+#include <module/module/base.h>
+#include <sof/common.h>
+#include <rtos/panic.h>
+#include <sof/ipc/msg.h>
+#include <rtos/interrupt.h>
+#include <rtos/timer.h>
+#include <rtos/alloc.h>
+#include <rtos/cache.h>
+#include <rtos/init.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
+#include <sof/lib/dma.h>
+#include <sof/list.h>
+#include <rtos/spinlock.h>
+#include <rtos/string.h>
+#include <sof/ut.h>
+#include <sof/trace/trace.h>
+#include <ipc/dai.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <user/trace.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+#include <ipc4/notification.h>
+#endif
+
+#include "copier/copier.h"
+#include "copier/dai_copier.h"
+#include "copier/copier_gain.h"
+
+#include <zephyr/device.h>
+#include <zephyr/drivers/dai.h>
+
+#include <sof/debug/telemetry/performance_monitor.h>
+
+/* note: if this macro is not defined
+ * then that means the HOST and the DSP
+ * have the same view of the address space.
+ */
+#ifndef local_to_host
+#define local_to_host(addr) (addr)
+#endif /* local_to_host */
+
+static const struct comp_driver comp_dai;
+
+LOG_MODULE_REGISTER(dai_comp, CONFIG_SOF_LOG_LEVEL);
+
+SOF_DEFINE_REG_UUID(dai);
+
+#if CONFIG_COMP_DAI_GROUP
+
+static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd);
+
+static void dai_atomic_trigger(void *arg, enum notify_id type, void *data)
+{
+	struct comp_dev *dev = arg;
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct dai_group *group = dd->group;
+
+	/* Atomic context set by the last DAI to receive trigger command */
+	group->trigger_ret = dai_comp_trigger_internal(dd, dev, group->trigger_cmd);
+}
+
+/* Assign DAI to a group */
+__cold int dai_assign_group(struct dai_data *dd, struct comp_dev *dev, uint32_t group_id)
+{
+	assert_can_be_cold();
+
+	if (dd->group) {
+		if (dd->group->group_id != group_id) {
+			comp_err(dev, "DAI already in group %d, requested %d",
+				 dd->group->group_id, group_id);
+			return -EINVAL;
+		}
+
+		/* No need to re-assign to the same group, do nothing */
+		return 0;
+	}
+
+	dd->group = dai_group_get(group_id, DAI_CREAT);
+	if (!dd->group) {
+		comp_err(dev, "failed to assign group %d",
+			 group_id);
+		return -EINVAL;
+	}
+
+	comp_dbg(dev, "group %d num %d",
+		 group_id, dd->group->num_dais);
+
+	/* Register for the atomic trigger event */
+	notifier_register(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER,
+			  dai_atomic_trigger, 0);
+
+	return 0;
+}
+#endif
+
+static int dai_trigger_op(struct dai *dai, int cmd, int direction)
+{
+	const struct device *dev = dai->dev;
+	enum dai_trigger_cmd zephyr_cmd;
+
+	switch (cmd) {
+	case COMP_TRIGGER_STOP:
+		zephyr_cmd = DAI_TRIGGER_STOP;
+		break;
+	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_RELEASE:
+		zephyr_cmd = DAI_TRIGGER_START;
+		break;
+	case COMP_TRIGGER_PAUSE:
+		zephyr_cmd = DAI_TRIGGER_PAUSE;
+		break;
+	case COMP_TRIGGER_PRE_START:
+	case COMP_TRIGGER_PRE_RELEASE:
+		zephyr_cmd = DAI_TRIGGER_PRE_START;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return dai_trigger(dev, direction, zephyr_cmd);
+}
+
+/* called from src/ipc/ipc3/handler.c and src/ipc/ipc4/dai.c */
+__cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+			  const void *spec_config, size_t size)
+{
+	const struct device *dev = dai->dev;
+	const struct sof_ipc_dai_config *sof_cfg = spec_config;
+	struct dai_config cfg = {0};
+	const void *cfg_params;
+	size_t dai_cfg_size = size;
+	bool is_blob;
+
+	assert_can_be_cold();
+
+	cfg.dai_index = common_config->dai_index;
+	is_blob = common_config->is_config_blob;
+	cfg.format = common_config->format;
+	cfg.options = is_blob ? 0 : sof_cfg->flags;
+	cfg.rate = common_config->sampling_frequency;
+
+	switch (common_config->type) {
+	case SOF_DAI_INTEL_SSP:
+		cfg.type = is_blob ? DAI_INTEL_SSP_NHLT : DAI_INTEL_SSP;
+		cfg_params = is_blob ? spec_config : &sof_cfg->ssp;
+		dai_set_link_hda_config(&cfg.link_config,
+					common_config, cfg_params);
+		/* Store tdm slot group index*/
+		cfg.tdm_slot_group = common_config->dai_index & 0xF;
+		break;
+	case SOF_DAI_INTEL_ALH:
+		cfg.type = is_blob ? DAI_INTEL_ALH_NHLT : DAI_INTEL_ALH;
+		cfg_params = is_blob ? spec_config : &sof_cfg->alh;
+		break;
+	case SOF_DAI_INTEL_DMIC:
+		cfg.type = is_blob ? DAI_INTEL_DMIC_NHLT : DAI_INTEL_DMIC;
+		cfg_params = is_blob ? spec_config : &sof_cfg->dmic;
+		dai_set_link_hda_config(&cfg.link_config,
+					common_config, cfg_params);
+		break;
+	case SOF_DAI_INTEL_HDA:
+		cfg.type = is_blob ? DAI_INTEL_HDA_NHLT : DAI_INTEL_HDA;
+		cfg_params = is_blob ? spec_config : &sof_cfg->hda;
+		break;
+	case SOF_DAI_IMX_SAI:
+		cfg.type = DAI_IMX_SAI;
+		cfg_params = &sof_cfg->sai;
+		break;
+	case SOF_DAI_IMX_ESAI:
+		cfg.type = DAI_IMX_ESAI;
+		cfg_params = &sof_cfg->esai;
+		break;
+	case SOF_DAI_IMX_MICFIL:
+		cfg.type = DAI_IMX_MICFIL;
+		cfg_params = &sof_cfg->micfil;
+		break;
+	case SOF_DAI_AMD_SDW:
+		cfg.type = DAI_AMD_SDW;
+		cfg_params = &sof_cfg->acpsdw;
+		break;
+	case SOF_DAI_AMD_HS:
+	case SOF_DAI_AMD_HS_VIRTUAL:
+	case SOF_DAI_AMD_SP:
+	case SOF_DAI_AMD_SP_VIRTUAL:
+	case SOF_DAI_AMD_BT:
+	case SOF_DAI_AMD_TDM:
+		cfg.type = DAI_AMD_TDM;
+		cfg_params = &sof_cfg->acptdm;
+		break;
+	case SOF_DAI_INTEL_UAOL:
+		cfg.type = DAI_INTEL_UAOL;
+		cfg.channels = common_config->gtw_fmt->channels_count;
+		/*
+		 * FIXME: The spec says HW expects container size here, not valid_bit_depth.
+		 * However, tests fail if container size is used and work fine with
+		 * valid_bit_depth. Needs investigation. Perhaps tests have a bug?
+		 */
+		cfg.word_size = common_config->gtw_fmt->valid_bit_depth;
+		cfg_params = spec_config;
+		dai_set_link_hda_config(&cfg.link_config, common_config, spec_config);
+		break;
+	case SOF_DAI_MEDIATEK_AFE:
+		cfg.type = DAI_MEDIATEK_AFE;
+		cfg_params = &sof_cfg->afe;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (!is_blob) {
+		if (size < SOF_DAI_CONFIG_HW_SPEC_OFFSET)
+			return -EINVAL;
+
+		dai_cfg_size -= SOF_DAI_CONFIG_HW_SPEC_OFFSET;
+	}
+
+	return dai_config_set(dev, &cfg, cfg_params, dai_cfg_size);
+}
+
+static int dai_get_properties_safe(struct dai *dai, int direction,
+				   int stream_id, struct dai_properties *props)
+{
+	const struct dai_properties *props_p;
+	int ret;
+
+	ret = dai_get_properties_copy(dai->dev, direction, stream_id, props);
+
+	/*
+	 * User LL builds require DAI drivers to implement the copy method.
+	 * Allow fallback to dai_get_properties() in kernel LL builds.
+	 */
+	if (ret == -ENOSYS && !IS_ENABLED(CONFIG_SOF_USERSPACE_LL)) {
+		k_spinlock_key_t key = k_spin_lock(&dai->lock);
+
+		/* legacy support for drivers that do not implement copy */
+		props_p = dai_get_properties(dai->dev, direction, stream_id);
+		if (props_p) {
+			*props = *props_p;
+			ret = 0;
+		} else {
+			ret = -ENOENT;
+		}
+
+		k_spin_unlock(&dai->lock, key);
+	}
+
+	return ret;
+}
+
+/* called from ipc/ipc3/dai.c */
+int dai_get_handshake(struct dai *dai, int direction, int stream_id)
+{
+	struct dai_properties props;
+	int ret;
+
+	ret = dai_get_properties_safe(dai, direction, stream_id, &props);
+	if (ret < 0)
+		return ret;
+
+	return props.dma_hs_id;
+}
+
+/* called from ipc/ipc3/dai.c and ipc/ipc4/dai.c */
+int dai_get_fifo_depth(struct dai *dai, int direction)
+{
+	struct dai_properties props;
+	int ret;
+
+	if (!dai)
+		return 0;
+
+	ret = dai_get_properties_safe(dai, direction, 0, &props);
+
+	if (ret < 0)
+		return 0;
+
+	return props.fifo_depth;
+}
+
+int dai_get_stream_id(struct dai *dai, int direction)
+{
+	struct dai_properties props;
+	int ret;
+
+	ret = dai_get_properties_safe(dai, direction, 0, &props);
+
+	if (ret < 0)
+		return ret;
+
+	return props.stream_id;
+}
+
+static int dai_get_fifo(struct dai *dai, int direction, int stream_id)
+{
+	struct dai_properties props;
+	int ret;
+
+	ret = dai_get_properties_safe(dai, direction, stream_id, &props);
+
+	if (ret < 0)
+		return ret;
+
+	return props.fifo_address;
+}
+
+/* this is called by DMA driver every time descriptor has completed */
+static enum sof_dma_cb_status
+dai_dma_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes,
+	   pcm_converter_func *converter)
+{
+	enum sof_dma_cb_status dma_status = SOF_DMA_CB_STATUS_RELOAD;
+	int ret;
+
+	comp_dbg(dev, "entry");
+
+	/* stop dma copy for pause/stop/xrun */
+	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
+		/* stop the DAI */
+		dai_trigger_op(dd->dai, COMP_TRIGGER_STOP, dev->direction);
+
+		/* tell DMA not to reload */
+		dma_status = SOF_DMA_CB_STATUS_END;
+	}
+
+	/* is our pipeline handling an XRUN ? */
+	if (dd->xrun) {
+		/* make sure we only playback silence during an XRUN */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			/* fill buffer with silence */
+			buffer_zero(dd->dma_buffer);
+
+		return dma_status;
+	}
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+#if CONFIG_IPC_MAJOR_4
+		/*
+		 * copy from local buffer to all sinks that are not gateway buffers
+		 * using the right PCM converter function.
+		 * Skip in case of endpoint DAI devices created by the copier.
+		 */
+		if (converter) {
+			struct comp_buffer *sink;
+
+			comp_dev_for_each_consumer(dev, sink) {
+				struct comp_dev *sink_dev;
+				int j;
+
+				if (sink == dd->dma_buffer)
+					continue;
+
+				sink_dev = comp_buffer_get_sink_component(sink);
+
+				j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
+
+				if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
+					comp_err(dev, "Sink queue ID: %d >= max output pin count: %d\n",
+						 j, IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT);
+					ret = -EINVAL;
+					continue;
+				}
+
+				if (!converter[j]) {
+					comp_err(dev, "No PCM converter for sink queue %d\n", j);
+					ret = -EINVAL;
+					continue;
+				}
+
+				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE  &&
+				    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
+					ret = stream_copy_from_no_consume(dev, dd->local_buffer,
+									  sink, converter[j],
+									  bytes, dd->chmap);
+				}
+			}
+		}
+#endif
+		ret = dma_buffer_copy_to(dd->local_buffer, dd->dma_buffer,
+					 dd->process, bytes, dd->chmap);
+	} else {
+		audio_stream_invalidate(&dd->dma_buffer->stream, bytes);
+		/*
+		 * The PCM converter functions used during DMA buffer copy can never fail,
+		 * so no need to check the return value of stream_copy_from_no_consume().
+		 */
+
+		ret = stream_copy_from_no_consume(dev, dd->dma_buffer, dd->local_buffer,
+						  dd->process, bytes, dd->chmap);
+#if CONFIG_IPC_MAJOR_4
+		/* Apply gain to the local buffer */
+		if (dd->ipc_config.apply_gain) {
+			ret = copier_gain_input(dev, dd->local_buffer, dd->gain_data,
+						GAIN_ADD, bytes);
+			if (ret)
+				comp_err(dev, "copier_gain_input() failed err=%d", ret);
+			buffer_stream_writeback(dd->local_buffer, bytes);
+		}
+
+		/* Skip in case of endpoint DAI devices created by the copier */
+		if (converter) {
+			/*
+			 * copy from DMA buffer to all sink buffers using the right PCM converter
+			 * function
+			 */
+			struct comp_buffer *sink;
+
+			comp_dev_for_each_consumer(dev, sink) {
+				struct comp_dev *sink_dev;
+				int j;
+
+				/* this has been handled above already */
+				if (sink == dd->local_buffer)
+					continue;
+
+				sink_dev = comp_buffer_get_sink_component(sink);
+
+				j = IPC4_SRC_QUEUE_ID(buf_get_id(sink));
+
+				if (j >= IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT) {
+					comp_err(dev, "Sink queue ID: %d >= max output pin count: %d\n",
+						 j, IPC4_COPIER_MODULE_OUTPUT_PINS_COUNT);
+					ret = -EINVAL;
+					continue;
+				}
+
+				if (!converter[j]) {
+					comp_err(dev, "No PCM converter for sink queue %d\n", j);
+					ret = -EINVAL;
+					continue;
+				}
+
+				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
+				    audio_buffer_hw_params_configured(&sink->audio_buffer))
+					ret = stream_copy_from_no_consume(dev, dd->dma_buffer,
+									  sink, converter[j],
+									  bytes, dd->chmap);
+			}
+		}
+#endif
+		audio_stream_consume(&dd->dma_buffer->stream, bytes);
+	}
+
+	/* assert dma_buffer_copy succeed */
+	if (ret < 0) {
+		struct comp_buffer *source_c, *sink_c;
+
+		source_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
+					dd->local_buffer : dd->dma_buffer;
+		sink_c = dev->direction == SOF_IPC_STREAM_PLAYBACK ?
+					dd->dma_buffer : dd->local_buffer;
+		comp_err(dev, "dma buffer copy failed, dir %d bytes %d avail %d free %d",
+			 dev->direction, bytes,
+			 audio_stream_get_avail_samples(&source_c->stream) *
+				audio_stream_frame_bytes(&source_c->stream),
+			 audio_stream_get_free_samples(&sink_c->stream) *
+				audio_stream_frame_bytes(&sink_c->stream));
+	} else {
+		/* update host position (in bytes offset) for drivers */
+		dd->total_data_processed += bytes;
+	}
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	/* Increment performance counters */
+	io_perf_monitor_update_data(dd->io_perf_dai_byte_count, bytes);
+#endif
+
+	return dma_status;
+}
+
+/* this is called by DMA driver every time descriptor has completed */
+static enum sof_dma_cb_status
+dai_dma_multi_endpoint_cb(struct dai_data *dd, struct comp_dev *dev, uint32_t frames,
+			  struct comp_buffer *multi_endpoint_buffer)
+{
+	enum sof_dma_cb_status dma_status = SOF_DMA_CB_STATUS_RELOAD;
+	uint32_t i, bytes;
+
+	comp_dbg(dev, "entry");
+
+	/* stop dma copy for pause/stop/xrun */
+	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
+		/* stop the DAI */
+		dai_trigger_op(dd->dai, COMP_TRIGGER_STOP, dev->direction);
+
+		/* tell DMA not to reload */
+		dma_status = SOF_DMA_CB_STATUS_END;
+	}
+
+	/* is our pipeline handling an XRUN ? */
+	if (dd->xrun) {
+		/* make sure we only playback silence during an XRUN */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			/* fill buffer with silence */
+			buffer_zero(dd->dma_buffer);
+
+		return dma_status;
+	}
+
+	bytes = frames * audio_stream_frame_bytes(&dd->dma_buffer->stream);
+	if (dev->direction == SOF_IPC_STREAM_CAPTURE)
+		audio_stream_invalidate(&dd->dma_buffer->stream, bytes);
+
+	assert(dd->channel_copy);
+
+	/* copy all channels one by one */
+	for (i = 0; i < audio_stream_get_channels(&dd->dma_buffer->stream); i++) {
+		uint32_t multi_buf_channel = audio_buffer_get_chmap(&dd->dma_buffer->audio_buffer,
+								    i);
+
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			dd->channel_copy(&multi_endpoint_buffer->stream, multi_buf_channel,
+					 &dd->dma_buffer->stream, i, frames);
+		else
+			dd->channel_copy(&dd->dma_buffer->stream, i,
+					 &multi_endpoint_buffer->stream, multi_buf_channel,
+					 frames);
+	}
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		audio_stream_writeback(&dd->dma_buffer->stream, bytes);
+		audio_stream_produce(&dd->dma_buffer->stream, bytes);
+	} else {
+		audio_stream_consume(&dd->dma_buffer->stream, bytes);
+	}
+
+	/* update host position (in bytes offset) for drivers */
+	dd->total_data_processed += bytes;
+
+	return dma_status;
+}
+
+__cold int dai_common_new(struct dai_data *dd, struct comp_dev *dev,
+			  const struct ipc_config_dai *dai_cfg)
+{
+	uint32_t dir;
+
+	assert_can_be_cold();
+
+	dd->dai = dai_get(dai_cfg->type, dai_cfg->dai_index, DAI_CREAT);
+	if (!dd->dai) {
+		comp_err(dev, "dai_get() failed to create DAI.");
+		return -ENODEV;
+	}
+
+	dd->ipc_config = *dai_cfg;
+
+	/* request GP LP DMA with shared access privilege */
+	dir = dai_cfg->direction == SOF_IPC_STREAM_PLAYBACK ?
+		SOF_DMA_DIR_MEM_TO_DEV : SOF_DMA_DIR_DEV_TO_MEM;
+
+	dd->chan_index = -EINVAL;
+	dd->dma = sof_dma_get(dir, dd->dai->dma_caps, dd->dai->dma_dev, SOF_DMA_ACCESS_SHARED);
+	if (!dd->dma) {
+		dai_put(dd->dai);
+		comp_err(dev, "dma_get() failed to get shared access to DMA.");
+		return -ENODEV;
+	}
+
+	k_spinlock_init(&dd->dai->lock);
+
+	dma_sg_init(&dd->config.elem_array);
+	dd->xrun = 0;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/*
+	 * copier_dai_create() uses mod_zalloc() to allocate
+	 * the 'dd' dai data object and does not set dd->alloc_ctx.
+	 * If LL is run in user-space, assign the 'heap' here.
+	 */
+	dd->alloc_ctx.heap = sof_sys_user_heap_get();
+#else
+	dd->alloc_ctx.heap = NULL;
+#endif
+
+	/* I/O performance init, keep it last so the function does not reach this in case
+	 * of return on error, so that we do not waste a slot
+	 */
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	enum io_perf_data_item_id perf_type;
+	enum io_perf_data_item_dir perf_dir;
+
+	switch (dai_cfg->type) {
+	case SOF_DAI_INTEL_SSP:
+		perf_type = IO_PERF_I2S_ID;
+		break;
+	case SOF_DAI_INTEL_ALH:
+		perf_type = IO_PERF_SOUND_WIRE_ID;
+		break;
+	case SOF_DAI_INTEL_DMIC:
+		perf_type = IO_PERF_DMIC_ID;
+		break;
+	case SOF_DAI_INTEL_HDA:
+		perf_type = IO_PERF_HDA_ID;
+		break;
+
+	default:
+		perf_type = IO_PERF_INVALID_ID;
+		comp_warn(dev, "Unsupported DAI type");
+	}
+	if (dai_cfg->direction == SOF_IPC_STREAM_PLAYBACK)
+		perf_dir = IO_PERF_OUTPUT_DIRECTION;
+	else
+		perf_dir = IO_PERF_INPUT_DIRECTION;
+
+	/* ignore perf meas init on case of other dai types */
+	if (perf_type != IO_PERF_INVALID_ID) {
+		struct io_perf_data_item init_data = {perf_type,
+						      dai_cfg->dai_index,
+						      perf_dir,
+						      IO_PERF_POWERED_UP_ENABLED,
+						      IO_PERF_D0IX_POWER_MODE,
+						      0, 0, 0 };
+		io_perf_monitor_init_data(&dd->io_perf_dai_byte_count, &init_data);
+	}
+#endif
+
+	return 0;
+}
+
+__cold static struct comp_dev *dai_new(const struct comp_driver *drv,
+				       const struct comp_ipc_config *config,
+				       const void *spec)
+{
+	struct comp_dev *dev;
+	const struct ipc_config_dai *dai_cfg = spec;
+	struct dai_data *dd;
+	struct k_heap *heap = NULL;
+	int ret;
+
+	assert_can_be_cold();
+
+	comp_cl_dbg(&comp_dai, "dai_new()");
+
+	dev = comp_alloc(drv, sizeof(*dev));
+	if (!dev)
+		return NULL;
+
+	dev->ipc_config = *config;
+
+	dd = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*dd), 0);
+	if (!dd)
+		goto e_data;
+
+	memset(dd, 0, sizeof(*dd));
+
+	comp_set_drvdata(dev, dd);
+
+	ret = dai_common_new(dd, dev, dai_cfg);
+	if (ret < 0)
+		goto error;
+
+	dd->chmap = DUMMY_CHMAP;
+
+	dev->state = COMP_STATE_READY;
+
+	return dev;
+
+error:
+	sof_heap_free(heap, dd);
+e_data:
+	comp_free_device(dev);
+	return NULL;
+}
+
+__cold void dai_common_free(struct dai_data *dd)
+{
+	assert_can_be_cold();
+
+#ifdef CONFIG_SOF_TELEMETRY_IO_PERFORMANCE_MEASUREMENTS
+	io_perf_monitor_release_slot(dd->io_perf_dai_byte_count);
+#endif
+
+	if (dd->group)
+		dai_group_put(dd->group);
+
+	if (dd->chan_index >= 0) {
+		sof_dma_release_channel(dd->dma, dd->chan_index);
+		dd->chan_index = -EINVAL;
+	}
+
+	sof_dma_put(dd->dma);
+
+	dai_release_llp_slot(dd);
+
+	dai_put(dd->dai);
+
+	sof_heap_free(dd->alloc_ctx.heap, dd->dai_spec_config);
+}
+
+__cold static void dai_free(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
+
+	if (dd->group)
+		notifier_unregister(dev, dd->group, NOTIFIER_ID_DAI_TRIGGER);
+
+	dai_common_free(dd);
+
+	/* heap is NULL to match what is passed in dai_new() */
+	sof_heap_free(NULL, dd);
+	comp_free_device(dev);
+}
+
+int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
+				    struct sof_ipc_stream_params *params, int dir)
+{
+	struct dai_config cfg;
+	int ret;
+
+	comp_dbg(dev, "entry");
+
+	ret = dai_config_get(dd->dai->dev, &cfg, dir);
+	if (ret)
+		return ret;
+
+	params->rate = cfg.rate;
+	params->buffer_fmt = 0;
+	params->channels = cfg.channels;
+
+	/* dai_comp_get_hw_params() function fetches hardware dai parameters,
+	 * which then are propagating back through the pipeline, so that any
+	 * component can convert specific stream parameter. Here, we overwrite
+	 * frame_fmt hardware parameter as DAI component is able to convert
+	 * stream with different frame_fmt's (using pcm converter)
+	 */
+	params->frame_fmt = dev->ipc_config.frame_fmt;
+
+	return ret;
+}
+
+__cold static int dai_comp_get_hw_params(struct comp_dev *dev,
+					 struct sof_ipc_stream_params *params,
+					 int dir)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
+
+	return dai_common_get_hw_params(dd, dev, params, dir);
+}
+
+static int dai_verify_params(struct dai_data *dd, struct comp_dev *dev,
+			     struct sof_ipc_stream_params *params)
+{
+	struct sof_ipc_stream_params hw_params;
+	int ret;
+
+	memset(&hw_params, 0, sizeof(hw_params));
+
+	ret = dai_common_get_hw_params(dd, dev, &hw_params, params->direction);
+	if (ret < 0) {
+		comp_err(dev, "failed ret %d", ret);
+		return ret;
+	}
+
+	/* checks whether pcm parameters match hardware DAI parameter set
+	 * during dai_set_config(). If hardware parameter is equal to 0, it
+	 * means that it can vary, so any value is acceptable. We do not check
+	 * format parameter, because DAI is able to change format using
+	 * pcm_converter functions.
+	 */
+	if (hw_params.rate && hw_params.rate != params->rate) {
+		comp_err(dev, "pcm rate parameter %d does not match hardware rate %d",
+			 params->rate, hw_params.rate);
+		return -EINVAL;
+	}
+
+	if (hw_params.channels && hw_params.channels != params->channels) {
+		comp_err(dev, "pcm channels parameter %d does not match hardware channels %d",
+			 params->channels, hw_params.channels);
+		return -EINVAL;
+	}
+
+	/* set component period frames */
+	component_set_nearest_period_frames(dev, params->rate);
+
+	return 0;
+}
+
+static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t *slot)
+{
+	struct dai_config cfg;
+	int ret;
+	int hs;
+
+	ret = dai_config_get(dd->dai->dev, &cfg, dev->direction);
+	if (ret < 0) {
+		comp_err(dev, "failed to fetch DAI configuration");
+		return ret;
+	}
+
+	hs = dai_get_handshake(dd->dai, dev->direction, dd->stream_id);
+	if (ret < 0) {
+		comp_err(dev, "failed to fetch DAI handshake");
+		return ret;
+	}
+
+	switch (cfg.type) {
+	case DAI_IMX_SAI:
+	case DAI_IMX_ESAI:
+	case DAI_IMX_MICFIL:
+		*slot = (hs & GENMASK(15, 8)) >> 8;
+		break;
+	default:
+		*slot = hs;
+		break;
+	}
+
+	return 0;
+}
+
+static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
+			     uint32_t period_count)
+{
+	struct dma_sg_config *config = &dd->config;
+	uint32_t local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
+	uint32_t fifo, max_block_count, buf_size;
+	int err = 0;
+
+	/* set up DMA configuration */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
+		config->direction = SOF_DMA_DIR_MEM_TO_DEV;
+		err = dai_get_dma_slot(dd, dev, &config->dest_dev);
+		if (err < 0)
+			return err;
+	} else {
+		dd->process = pcm_get_conversion_function(dma_fmt, local_fmt);
+		config->direction = SOF_DMA_DIR_DEV_TO_MEM;
+		err = dai_get_dma_slot(dd, dev, &config->src_dev);
+		if (err < 0)
+			return err;
+	}
+
+	if (!dd->process) {
+		comp_err(dev, "converter NULL: local fmt %d dma fmt %d\n",
+			 local_fmt, dma_fmt);
+		return -EINVAL;
+	}
+
+	if (dd->dai->type == SOF_DAI_INTEL_DMIC) {
+		/* For DMIC the DMA src and dest widths should always be 4 bytes
+		 * due to 32 bit FIFO packer. Setting width to 2 bytes for
+		 * 16 bit format would result in recording at double rate.
+		 */
+		config->src_width = 4;
+		config->dest_width = 4;
+	} else {
+		config->src_width = get_sample_bytes(dma_fmt);
+		config->dest_width = config->src_width;
+	}
+
+	config->cyclic = 1;
+	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
+	config->is_scheduling_source = comp_is_scheduling_source(dev);
+	config->period = dev->pipeline->period;
+
+	comp_dbg(dev, "dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
+		 config->dest_dev, dd->stream_id, config->src_width, config->dest_width);
+
+	if (!config->elem_array.elems) {
+		fifo = dai_get_fifo(dd->dai, dev->direction, dd->stream_id);
+
+		comp_dbg(dev, "fifo 0x%x", fifo);
+
+		err = sof_dma_get_attribute(dd->dma, DMA_ATTR_MAX_BLOCK_COUNT, &max_block_count);
+		if (err < 0) {
+			comp_err(dev, "can't get max block count, err = %d",
+				 err);
+			goto out;
+		}
+
+		if (!max_block_count) {
+			comp_err(dev, "invalid max-block-count of zero");
+			goto out;
+		}
+
+		if (max_block_count < period_count) {
+			comp_dbg(dev, "unsupported period count %d",
+				 period_count);
+			buf_size = period_count * period_bytes;
+			do {
+				if (IS_ALIGNED(buf_size, max_block_count)) {
+					period_count = max_block_count;
+					period_bytes = buf_size / period_count;
+					break;
+				} else {
+					comp_warn(dev, "alignment error for buf_size = %d, block count = %d",
+						  buf_size, max_block_count);
+				}
+			} while (--max_block_count > 0);
+		}
+
+		err = dma_sg_alloc(dd->alloc_ctx.heap, &config->elem_array, SOF_MEM_FLAG_USER,
+				   config->direction,
+				   period_count,
+				   period_bytes,
+				   (uintptr_t)audio_stream_get_addr(&dd->dma_buffer->stream),
+				   fifo);
+		if (err < 0) {
+			comp_err(dev, "sg alloc failed period_count %d period_bytes %d err = %d",
+				 period_count, period_bytes, err);
+			return err;
+		}
+	}
+out:
+	return err;
+}
+
+static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
+{
+	struct dma_sg_config *config = &dd->config;
+	struct dma_config *dma_cfg;
+	struct dma_block_config *dma_block_cfg;
+	struct dma_block_config *prev = NULL;
+	int i;
+
+	comp_dbg(dev, "entry");
+
+	dma_cfg = sof_heap_alloc(dd->alloc_ctx.heap,
+				 SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				 sizeof(struct dma_config), 0);
+	if (!dma_cfg) {
+		comp_err(dev, "dma_cfg allocation failed");
+		return -ENOMEM;
+	}
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		dma_cfg->channel_direction = MEMORY_TO_PERIPHERAL;
+	else
+		dma_cfg->channel_direction = PERIPHERAL_TO_MEMORY;
+
+	dma_cfg->source_data_size = config->src_width;
+	dma_cfg->dest_data_size = config->dest_width;
+
+	if (config->burst_elems)
+		dma_cfg->source_burst_length = config->burst_elems;
+	else
+		dma_cfg->source_burst_length = 8;
+
+	dma_cfg->dest_burst_length = dma_cfg->source_burst_length;
+	dma_cfg->cyclic = config->cyclic;
+	dma_cfg->user_data = NULL;
+	dma_cfg->dma_callback = NULL;
+	dma_cfg->block_count = config->elem_array.count;
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		dma_cfg->dma_slot = config->dest_dev;
+	else
+		dma_cfg->dma_slot = config->src_dev;
+
+	dma_block_cfg = sof_heap_alloc(dd->alloc_ctx.heap,
+				       SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				       sizeof(struct dma_block_config) * dma_cfg->block_count, 0);
+	if (!dma_block_cfg) {
+		sof_heap_free(dd->alloc_ctx.heap, dma_cfg);
+		comp_err(dev, "dma_block_config allocation failed");
+		return -ENOMEM;
+	}
+
+	dma_cfg->head_block = dma_block_cfg;
+	for (i = 0; i < dma_cfg->block_count; i++) {
+		dma_block_cfg->dest_scatter_en = config->scatter;
+		dma_block_cfg->block_size = config->elem_array.elems[i].size;
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+			dma_block_cfg->source_address =
+				local_to_host(config->elem_array.elems[i].src);
+			dma_block_cfg->dest_address =
+				config->elem_array.elems[i].dest;
+			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_DECREMENT;
+			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+		} else {
+			dma_block_cfg->source_address =
+				config->elem_array.elems[i].src;
+			dma_block_cfg->dest_address =
+				local_to_host(config->elem_array.elems[i].dest);
+			dma_block_cfg->source_addr_adj = DMA_ADDR_ADJ_INCREMENT;
+			dma_block_cfg->dest_addr_adj = DMA_ADDR_ADJ_DECREMENT;
+		}
+		prev = dma_block_cfg;
+		prev->next_block = ++dma_block_cfg;
+	}
+	if (prev)
+		prev->next_block = dma_cfg->head_block;
+
+	dd->z_config = dma_cfg;
+
+	return 0;
+}
+
+static int dai_set_dma_buffer(struct dai_data *dd, struct comp_dev *dev,
+			      const struct sof_ipc_stream_params *params,
+			      uint32_t *pb, uint32_t *pc)
+{
+	struct sof_ipc_stream_params hw_params = *params;
+	uint32_t frame_size;
+	uint32_t period_count;
+	uint32_t period_bytes;
+	uint32_t buffer_size;
+	uint32_t buffer_size_preferred;
+	uint32_t addr_align;
+	uint32_t align = 0;
+	int err;
+
+	comp_dbg(dev, "entry");
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		dd->local_buffer = comp_dev_get_first_data_producer(dev);
+	else
+		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
+
+	/* check if already configured */
+	if (dev->state == COMP_STATE_PREPARE) {
+		comp_info(dev, "component has been already configured.");
+		return 0;
+	}
+
+	/* can set params on only init state */
+	if (dev->state != COMP_STATE_READY) {
+		comp_err(dev, "comp state %d, expected COMP_STATE_READY.",
+			 dev->state);
+		return -EINVAL;
+	}
+
+	err = sof_dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT, &addr_align);
+	if (err < 0) {
+		comp_err(dev, "can't get dma buffer addr align, err = %d",
+			 err);
+		return err;
+	}
+
+	err = sof_dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_SIZE_ALIGNMENT, &align);
+	if (err < 0 || !align) {
+		comp_err(dev, "no valid dma align, err = %d, align = %u",
+			 err, align);
+		return -EINVAL;
+	}
+
+	/* calculate frame size */
+	frame_size = get_frame_bytes(dev->ipc_config.frame_fmt, params->channels);
+
+	/* calculate period size */
+	period_bytes = dev->frames * frame_size;
+	if (!period_bytes) {
+		comp_err(dev, "invalid period_bytes.");
+		return -EINVAL;
+	}
+
+	dd->period_bytes = period_bytes;
+	*pb = period_bytes;
+
+	/* calculate DMA buffer size */
+	period_count = dd->dma->plat_data.period_count;
+
+#if CONFIG_IPC_MAJOR_4
+	struct ipc4_copier_module_cfg *copier_cfg = dd->dai_spec_config;
+	uint32_t dma_buff_length_periods;
+
+	/* copier ibs/obs is set to size of one period */
+	if (dev->direction == SOF_IPC_STREAM_CAPTURE)
+		dma_buff_length_periods = dd->ipc_config.dma_buffer_size / copier_cfg->base.ibs;
+	else
+		dma_buff_length_periods = dd->ipc_config.dma_buffer_size / copier_cfg->base.obs;
+
+	period_count = MAX(period_count, dma_buff_length_periods);
+#else
+	period_count = MAX(period_count,
+			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+	if (!period_count) {
+		comp_err(dev, "no valid dma buffer period count");
+		return -EINVAL;
+	}
+	buffer_size = ALIGN_UP(period_count * period_bytes, align);
+	period_count = MAX(period_count,
+			   SOF_DIV_ROUND_UP(dd->ipc_config.dma_buffer_size, period_bytes));
+	buffer_size_preferred = ALIGN_UP(period_count * period_bytes, align);
+
+	/* alloc DMA buffer or change its size if exists */
+	if (dd->dma_buffer) {
+		err = buffer_set_size_range(dd->dma_buffer, buffer_size_preferred, buffer_size,
+					    addr_align);
+
+		if (err < 0) {
+			comp_err(dev, "buffer_size = %u failed", buffer_size);
+			return err;
+		}
+	} else {
+		dd->dma_buffer = buffer_alloc_range(&dd->alloc_ctx, buffer_size_preferred, buffer_size,
+						    SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
+						    addr_align, BUFFER_USAGE_NOT_SHARED);
+		if (!dd->dma_buffer) {
+			comp_err(dev, "failed to alloc dma buffer");
+			return -ENOMEM;
+		}
+
+		/*
+		 * dma_buffer should reffer to hardware dai parameters.
+		 * Here, we overwrite frame_fmt hardware parameter as DAI
+		 * component is able to convert stream with different
+		 * frame_fmt's (using pcm converter).
+		 */
+		hw_params.frame_fmt = dev->ipc_config.frame_fmt;
+		buffer_set_params(dd->dma_buffer, &hw_params, BUFFER_UPDATE_FORCE);
+	}
+
+	*pc = audio_stream_get_size(&dd->dma_buffer->stream) / period_bytes;
+	dd->fast_mode = dd->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE);
+	return 0;
+}
+
+int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
+		      struct sof_ipc_stream_params *base_cfg_params)
+{
+	struct sof_ipc_stream_params params = *base_cfg_params;
+	struct sof_ipc_stream_params hw_params;
+	struct dma_sg_config *config = &dd->config;
+	uint32_t period_bytes = 0;
+	uint32_t period_count = 0;
+	int err = 0;
+
+	comp_dbg(dev, "dai_zephyr_params()");
+
+	/* configure dai_data first */
+	err = ipc_dai_data_config(dd, dev);
+	if (err < 0) {
+		comp_err(dev, "ipc dai data config failed.");
+		return err;
+	}
+
+	/* When the hardware is able to return a valid number of DMA buffer audio channels
+	 * (e.g., extracted from a blob), give the returned number of channels higher precedence
+	 * over the number supplied via the base config params.
+	 */
+	memset(&hw_params, 0, sizeof(hw_params));
+	err = dai_common_get_hw_params(dd, dev, &hw_params, params.direction);
+	if (err < 0) {
+		comp_err(dev, "dai_common_get_hw_params() failed: %d", err);
+		return err;
+	}
+
+	if (hw_params.channels != 0 && hw_params.channels != params.channels) {
+		params.channels = hw_params.channels;
+		comp_info(dev, "Replacing %d base config channels with %d hw params channels.",
+			  base_cfg_params->channels, params.channels);
+	}
+
+	err = dai_verify_params(dd, dev, &params);
+	if (err < 0) {
+		comp_err(dev, "pcm params verification failed.");
+		return -EINVAL;
+	}
+
+	err = dai_set_dma_buffer(dd, dev, &params, &period_bytes, &period_count);
+	if (err < 0) {
+		comp_err(dev, "alloc dma buffer failed.");
+		goto out;
+	}
+
+	err = dai_set_sg_config(dd, dev, period_bytes, period_count);
+	if (err < 0) {
+		comp_err(dev, "set sg config failed.");
+		goto out;
+	}
+
+	err = dai_set_dma_config(dd, dev);
+	if (err < 0)
+		comp_err(dev, "set dma config failed.");
+out:
+	/*
+	 * Make sure to free all allocated items, all functions
+	 * can be called with null pointer.
+	 */
+	if (err < 0) {
+		buffer_free(dd->dma_buffer);
+		dd->dma_buffer = NULL;
+		dma_sg_free(dd->alloc_ctx.heap, &config->elem_array);
+		sof_heap_free(dd->alloc_ctx.heap, dd->z_config);
+		dd->z_config = NULL;
+	}
+
+	return err;
+}
+
+static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "entry");
+
+	return dai_common_params(dd, dev, params);
+}
+
+int dai_common_config_prepare(struct dai_data *dd, struct comp_dev *dev)
+{
+	int channel;
+
+	/* cannot configure DAI while active */
+	if (dev->state == COMP_STATE_ACTIVE) {
+		comp_info(dev, "Component is in active state.");
+		return 0;
+	}
+
+	if (!dd->dai_spec_config) {
+		comp_err(dev, "dai specific config is not set yet!");
+		return -EINVAL;
+	}
+
+	if (dd->chan_index >= 0) {
+		comp_info(dev, "dma channel index %d already configured",
+			  dd->chan_index);
+		return 0;
+	}
+
+	channel = dai_config_dma_channel(dd, dev, dd->dai_spec_config);
+	comp_dbg(dev, "channel = %d", channel);
+
+	/* do nothing for asking for channel free, for compatibility. */
+	if (channel == SOF_DMA_CHAN_INVALID) {
+		comp_err(dev, "dai_config is not set yet!");
+		return -EINVAL;
+	}
+
+	/* get DMA channel */
+	dd->chan_index = sof_dma_request_channel(dd->dma, channel);
+	if (dd->chan_index < 0) {
+		comp_err(dev, "dma_request_channel() failed ch %d ret %d", channel, dd->chan_index);
+		return dd->chan_index;
+	}
+
+	comp_dbg(dev, "new configured dma channel index %d",
+		 dd->chan_index);
+
+	return 0;
+}
+
+int dai_common_prepare(struct dai_data *dd, struct comp_dev *dev)
+{
+	int ret;
+
+	dd->total_data_processed = 0;
+
+	if (dd->chan_index < 0) {
+		comp_err(dev, "Missing dd->chan_index.");
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return -EINVAL;
+	}
+
+	if (!dd->config.elem_array.elems) {
+		comp_err(dev, "Missing dd->config.elem_array.elems.");
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return -EINVAL;
+	}
+
+	/* clear dma buffer to avoid pop noise */
+	buffer_zero(dd->dma_buffer);
+
+	/* dma reconfig not required if XRUN handling */
+	if (dd->xrun) {
+		/* after prepare, we have recovered from xrun */
+		dd->xrun = 0;
+		return 0;
+	}
+
+	ret = sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
+	if (ret < 0)
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+
+	return ret;
+}
+
+static int dai_prepare(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_dbg(dev, "entry");
+
+	ret = dai_common_config_prepare(dd, dev);
+	if (ret < 0)
+		return ret;
+
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
+
+	return dai_common_prepare(dd, dev);
+}
+
+void dai_common_reset(struct dai_data *dd, struct comp_dev *dev)
+{
+	struct dma_sg_config *config = &dd->config;
+
+	/*
+	 * DMA channel release should be skipped now for DAI's that support the two-step stop
+	 * option. It will be done when the host sends the DAI_CONFIG IPC during hw_free.
+	 */
+	if (!dd->delayed_dma_stop)
+		dai_dma_release(dd, dev);
+
+	dma_sg_free(dd->alloc_ctx.heap, &config->elem_array);
+	if (dd->z_config) {
+		sof_heap_free(dd->alloc_ctx.heap, dd->z_config->head_block);
+		sof_heap_free(dd->alloc_ctx.heap, dd->z_config);
+		dd->z_config = NULL;
+	}
+
+	if (dd->dma_buffer) {
+		buffer_free(dd->dma_buffer);
+		dd->dma_buffer = NULL;
+	}
+
+	dd->wallclock = 0;
+	dd->total_data_processed = 0;
+	dd->xrun = 0;
+}
+
+static int dai_reset(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "entry");
+
+	dai_common_reset(dd, dev);
+
+	comp_set_state(dev, COMP_TRIGGER_RESET);
+
+	return 0;
+}
+
+/* used to pass standard and bespoke command (with data) to component */
+static int dai_comp_trigger_internal(struct dai_data *dd, struct comp_dev *dev, int cmd)
+{
+	int ret = 0;
+
+	comp_dbg(dev, "command = %u", cmd);
+
+#ifdef CONFIG_IPC_MAJOR_3
+	if (dev->state == comp_get_requested_state(cmd))
+		return PPL_STATUS_PATH_STOP;
+#endif /* CONFIG_IPC_MAJOR_3 */
+
+	switch (cmd) {
+	case COMP_TRIGGER_START:
+		comp_dbg(dev, "START");
+
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun == 0) {
+			ret = sof_dma_start(dd->dma, dd->chan_index);
+			if (ret < 0)
+				return ret;
+
+			/* start the DAI */
+			dai_trigger_op(dd->dai, cmd, dev->direction);
+		} else {
+			dd->xrun = 0;
+		}
+
+		platform_dai_wallclock(dev, &dd->wallclock);
+		break;
+	case COMP_TRIGGER_RELEASE:
+		/* before release, we clear the buffer data to 0s,
+		 * then there is no history data sent out after release.
+		 * this is only supported at capture mode.
+		 */
+		if (dev->direction == SOF_IPC_STREAM_CAPTURE) {
+			buffer_zero(dd->dma_buffer);
+		}
+
+		/* DMA driver and SOF's view of the DMA buffer's
+		 * read and write cursors must be the same to
+		 * avoid scenarios in which the DMA driver
+		 * reports false "free" and "pending" values, thus
+		 * leading to the DMA copying stale data due to
+		 * dma_status() stopping dai_common_copy() from
+		 * updating the data.
+		 *
+		 * Only applies to non HD-DMA links as HD-DMA read/write pointer
+		 * is not reset during stop/config/start
+		 */
+		if (!(dd->dai->dma_caps & SOF_DMA_CAP_HDA))
+			audio_stream_reset(&dd->dma_buffer->stream);
+
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun == 0) {
+			/* recover valid start position */
+			ret = sof_dma_stop(dd->dma, dd->chan_index);
+			if (ret < 0)
+				return ret;
+
+			/* dma_config needed after stop */
+			ret = sof_dma_config(dd->dma, dd->chan_index, dd->z_config);
+			if (ret < 0)
+				return ret;
+
+			ret = sof_dma_start(dd->dma, dd->chan_index);
+			if (ret < 0)
+				return ret;
+
+			/* start the DAI */
+			dai_trigger_op(dd->dai, cmd, dev->direction);
+		} else {
+			dd->xrun = 0;
+		}
+
+		platform_dai_wallclock(dev, &dd->wallclock);
+		break;
+	case COMP_TRIGGER_XRUN:
+		comp_info(dev, "XRUN");
+		dd->xrun = 1;
+
+		COMPILER_FALLTHROUGH;
+	case COMP_TRIGGER_STOP:
+		comp_dbg(dev, "STOP");
+/*
+ * Some platforms cannot just simple disable
+ * DMA channel during the transfer,
+ * because it will hang the whole DMA controller.
+ * Therefore, stop the DMA first and let the DAI
+ * drain the FIFO in order to stop the channel
+ * as soon as possible.
+ */
+#if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
+		ret = sof_dma_stop(dd->dma, dd->chan_index);
+		dai_trigger_op(dd->dai, cmd, dev->direction);
+#else
+		dai_trigger_op(dd->dai, cmd, dev->direction);
+		ret = sof_dma_stop(dd->dma, dd->chan_index);
+		if (ret) {
+			comp_warn(dev, "dma was stopped earlier");
+			ret = 0;
+		}
+#endif
+		break;
+	case COMP_TRIGGER_PAUSE:
+		comp_dbg(dev, "PAUSE");
+#if CONFIG_COMP_DAI_STOP_TRIGGER_ORDER_REVERSE
+		ret = sof_dma_suspend(dd->dma, dd->chan_index);
+		dai_trigger_op(dd->dai, cmd, dev->direction);
+#else
+		dai_trigger_op(dd->dai, cmd, dev->direction);
+		ret = sof_dma_suspend(dd->dma, dd->chan_index);
+#endif
+		break;
+	case COMP_TRIGGER_PRE_START:
+	case COMP_TRIGGER_PRE_RELEASE:
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun)
+			dd->xrun = 0;
+		else
+			dai_trigger_op(dd->dai, cmd, dev->direction);
+		break;
+	}
+
+#ifdef CONFIG_IPC_MAJOR_3
+	/* TODO: investigate why making this IPC version-agnostic
+	 * breaks some Intel tests and check if doing so would be
+	 * possible (or even make sense) on Intel platforms.
+	 *
+	 * See issue #8920 for details.
+	 */
+	if (!ret)
+		return comp_set_state(dev, cmd);
+#endif /* CONFIG_IPC_MAJOR_3 */
+
+	return ret;
+}
+
+int dai_common_trigger(struct dai_data *dd, struct comp_dev *dev, int cmd)
+{
+	struct dai_group *group = dd->group;
+	uint32_t irq_flags;
+	int ret = 0;
+
+	/* DAI not in a group, use normal trigger */
+	if (!group) {
+		comp_dbg(dev, "non-atomic trigger");
+		return dai_comp_trigger_internal(dd, dev, cmd);
+	}
+
+	/* DAI is grouped, so only trigger when the entire group is ready */
+
+	if (!group->trigger_counter) {
+		/* First DAI to receive the trigger command,
+		 * prepare for atomic trigger
+		 */
+		comp_dbg(dev, "begin atomic trigger for group %d",
+			 group->group_id);
+		group->trigger_cmd = cmd;
+		group->trigger_counter = group->num_dais - 1;
+	} else if (group->trigger_cmd != cmd) {
+		/* Already processing a different trigger command */
+		comp_err(dev, "already processing atomic trigger");
+		ret = -EAGAIN;
+	} else {
+		/* Count down the number of remaining DAIs required
+		 * to receive the trigger command before atomic trigger
+		 * takes place
+		 */
+		group->trigger_counter--;
+		comp_dbg(dev, "trigger counter %d, group %d",
+			 group->trigger_counter, group->group_id);
+
+		if (!group->trigger_counter) {
+			/* The counter has reached 0, which means
+			 * all DAIs have received the same trigger command
+			 * and we may begin the actual trigger process
+			 * synchronously.
+			 */
+
+			irq_local_disable(irq_flags);
+			notifier_event(group, NOTIFIER_ID_DAI_TRIGGER,
+				       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
+			irq_local_enable(irq_flags);
+
+			/* return error of last trigger */
+			ret = group->trigger_ret;
+		}
+	}
+
+	return ret;
+}
+
+static int dai_comp_trigger(struct comp_dev *dev, int cmd)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_common_trigger(dd, dev, cmd);
+}
+
+/**
+ * Get status from the DMA driver.
+ *
+ * After status call, a check for xrun condition is done and
+ * depending on configuration, a xrun report is optionally sent.
+ * See also xrun reporting done in dai_report_reload_xrun().
+ */
+static int dai_get_status(struct comp_dev *dev, struct dai_data *dd, struct dma_status *stat)
+{
+	int ret = sof_dma_get_status(dd->dma, dd->chan_index, stat);
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	if (ret == -EPIPE && !dd->xrun_notification_sent) {
+		dd->xrun_notification_sent = send_copier_gateway_xrun_notif_msg
+			(dev->pipeline->pipeline_id, dev->direction);
+	} else if (!ret) {
+		dd->xrun_notification_sent = false;
+	}
+#endif
+	return ret;
+}
+
+/**
+ * Report xrun occurrence after DAI DMA driver reports
+ * an error for a reload attempt of 'bytes' of data.
+ *
+ * See also xrun detection done in dai_get_status().
+ */
+static void dai_report_reload_xrun(struct dai_data *dd, struct comp_dev *dev, uint32_t bytes)
+{
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		comp_err(dev, "underrun due to no data available");
+		comp_underrun(dev, dd->local_buffer, bytes);
+	} else {
+		comp_err(dev, "overrun due to no space available");
+		comp_overrun(dev, dd->local_buffer, bytes);
+	}
+}
+
+/* process and copy stream data from multiple DMA source buffers to sink buffer */
+int dai_zephyr_multi_endpoint_copy(struct dai_data **dd, struct comp_dev *dev,
+				   struct comp_buffer *multi_endpoint_buffer,
+				   int num_endpoints)
+{
+	uint32_t avail_bytes = UINT32_MAX;
+	uint32_t free_bytes = UINT32_MAX;
+	uint32_t frames;
+	uint32_t src_frames, sink_frames;
+	uint32_t frame_bytes;
+	int ret, i;
+	int direction;
+
+	if (!num_endpoints || !dd || !multi_endpoint_buffer)
+		return 0;
+
+	frame_bytes = audio_stream_frame_bytes(&dd[0]->dma_buffer->stream);
+
+	direction = dev->direction;
+
+	/* calculate min available/free from all endpoint DMA buffers */
+	for (i = 0; i < num_endpoints; i++) {
+		struct dma_status stat;
+
+		/* get data sizes from DMA */
+		ret = dai_get_status(dev, dd[i], &stat);
+		switch (ret) {
+		case 0:
+			break;
+		case -EPIPE:
+			/* DMA status can return -EPIPE and current status content if xrun occurs */
+			if (direction == SOF_IPC_STREAM_PLAYBACK)
+				comp_dbg(dev, "dma_get_status() underrun occurred, endpoint: %d ret = %u",
+					 i, ret);
+			else
+				comp_dbg(dev, "dma_get_status() overrun occurred, enpdoint: %d ret = %u",
+					 i, ret);
+			break;
+		default:
+			return ret;
+		}
+
+		if (dd[i]->dma->plat_data.caps & SOF_DMA_CAP_HDA)
+			audio_stream_sync_to_hw(&dd[i]->dma_buffer->stream, &stat);
+
+		avail_bytes = MIN(avail_bytes, stat.pending_length);
+		free_bytes = MIN(free_bytes, stat.free);
+	}
+
+	/* calculate minimum size to copy */
+	if (direction == SOF_IPC_STREAM_PLAYBACK) {
+		src_frames = audio_stream_get_avail_frames(&multi_endpoint_buffer->stream);
+		sink_frames = free_bytes / frame_bytes;
+	} else {
+		src_frames = avail_bytes / frame_bytes;
+		sink_frames = audio_stream_get_free_frames(&multi_endpoint_buffer->stream);
+	}
+
+	frames = MIN(src_frames, sink_frames);
+
+	/* limit bytes per copy to one period for the whole pipeline in order to avoid high load
+	 * spike if FAST_MODE is enabled, then one period limitation is omitted.
+	 */
+	if (!(dd[0]->ipc_config.feature_mask & BIT(IPC4_COPIER_FAST_MODE)))
+		frames = MIN(frames, dev->frames);
+	comp_dbg(dev, "dir: %d copy frames= 0x%x",
+		 dev->direction, frames);
+
+	/* return if nothing to copy */
+	if (!frames) {
+#if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
+		comp_warn(dev, "nothing to copy, src_frames: %u, sink_frames: %u",
+			  src_frames, sink_frames);
+#endif
+
+		for (i = 0; i < num_endpoints; i++) {
+			ret = sof_dma_reload(dd[i]->dma, dd[i]->chan_index, 0);
+			if (ret < 0) {
+				dai_report_reload_xrun(dd[i], dev, 0);
+				return ret;
+			}
+		}
+
+		return 0;
+	}
+
+	if (direction == SOF_IPC_STREAM_PLAYBACK) {
+		frame_bytes = audio_stream_frame_bytes(&multi_endpoint_buffer->stream);
+		buffer_stream_invalidate(multi_endpoint_buffer, frames * frame_bytes);
+	}
+
+	for (i = 0; i < num_endpoints; i++) {
+		enum sof_dma_cb_status status;
+		uint32_t copy_bytes;
+
+		/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
+		ret = dai_trigger(dd[i]->dai->dev, direction, DAI_TRIGGER_COPY);
+		if (ret < 0)
+			comp_warn(dev, "dai trigger copy failed");
+
+		status = dai_dma_multi_endpoint_cb(dd[i], dev, frames, multi_endpoint_buffer);
+		if (status == SOF_DMA_CB_STATUS_END)
+			sof_dma_stop(dd[i]->dma, dd[i]->chan_index);
+
+		copy_bytes = frames * audio_stream_frame_bytes(&dd[i]->dma_buffer->stream);
+		ret = sof_dma_reload(dd[i]->dma, dd[i]->chan_index, copy_bytes);
+		if (ret < 0) {
+			dai_report_reload_xrun(dd[i], dev, copy_bytes);
+			return ret;
+		}
+
+		dai_dma_position_update(dd[i], dev);
+	}
+
+	frame_bytes = audio_stream_frame_bytes(&multi_endpoint_buffer->stream);
+	if (direction == SOF_IPC_STREAM_PLAYBACK) {
+		comp_update_buffer_consume(multi_endpoint_buffer, frames * frame_bytes);
+	} else {
+		buffer_stream_writeback(multi_endpoint_buffer, frames * frame_bytes);
+		comp_update_buffer_produce(multi_endpoint_buffer, frames * frame_bytes);
+	}
+
+	return 0;
+}
+
+static void set_new_local_buffer(struct dai_data *dd, struct comp_dev *dev)
+{
+	uint32_t dma_fmt = audio_stream_get_frm_fmt(&dd->dma_buffer->stream);
+	uint32_t local_fmt;
+
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		dd->local_buffer = comp_dev_get_first_data_producer(dev);
+	else
+		dd->local_buffer = comp_dev_get_first_data_consumer(dev);
+
+	local_fmt = audio_stream_get_frm_fmt(&dd->local_buffer->stream);
+
+	dd->process = pcm_get_conversion_function(local_fmt, dma_fmt);
+
+	if (!dd->process) {
+		comp_err(dev, "converter function NULL: local fmt %d dma fmt %d\n",
+			 local_fmt, dma_fmt);
+		dd->local_buffer = NULL;
+	}
+}
+
+/* copy and process stream data from source to sink buffers */
+int dai_common_copy(struct dai_data *dd, struct comp_dev *dev, pcm_converter_func *converter)
+{
+	struct dma_status stat;
+	uint32_t avail_bytes;
+	uint32_t free_bytes;
+	uint32_t copy_bytes;
+	uint32_t src_frames;
+	uint32_t sink_frames = 0;
+	uint32_t frames = UINT32_MAX;
+	int ret;
+
+	/* get data sizes from DMA */
+	ret = dai_get_status(dev, dd, &stat);
+	switch (ret) {
+	case 0:
+		break;
+	case -EPIPE:
+		/* DMA status can return -EPIPE and current status content if xrun occurs */
+		if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+			comp_dbg(dev, "dma_get_status() underrun occurred, ret = %d",
+				 ret);
+		else
+			comp_dbg(dev, "dma_get_status() overrun occurred, ret = %d",
+				 ret);
+		break;
+	default:
+		return ret;
+	}
+
+	/* HDA DMA Write and Read Position registers are not cleared by hardware on
+	 * dma_stop() or dma_start(). However, the dma_buffer is recreated after a reset
+	 * with its w_ptr and r_ptr set to NULL. The w_ptr and r_ptr must be kept in sync
+	 * with the hardware DMA Write and Read Positions.
+	 * Other types of DMA clear their hardware Read/Write Positions upon dma_stop()
+	 * or dma_start(). Additionally, some DMAs, such as GPDMA, do not populate
+	 * dma_status::write_position and read_position. Therefore, synchronization is
+	 * done here only for HDA DMA.
+	 */
+	if (dd->dma->plat_data.caps & SOF_DMA_CAP_HDA)
+		audio_stream_sync_to_hw(&dd->dma_buffer->stream, &stat);
+
+	avail_bytes = stat.pending_length;
+	free_bytes = stat.free;
+
+	/* handle module runtime unbind */
+	if (!dd->local_buffer) {
+		set_new_local_buffer(dd, dev);
+
+		if (!dd->local_buffer) {
+			comp_warn(dev, "local buffer unbound, cannot copy");
+			return 0;
+		}
+	}
+
+	assert(audio_stream_get_channels(&dd->dma_buffer->stream));
+	assert(audio_stream_get_channels(&dd->local_buffer->stream));
+
+	/* calculate minimum size to copy */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
+		src_frames = audio_stream_get_avail_frames(&dd->local_buffer->stream);
+		sink_frames = free_bytes / audio_stream_frame_bytes(&dd->dma_buffer->stream);
+		frames = MIN(src_frames, sink_frames);
+
+		/*
+		 * In the case of playback DAI's with multiple sink buffers, compute the
+		 * minimum number of frames based on the DMA avail_bytes and the free
+		 * samples in all active sink buffers.
+		 */
+		struct comp_buffer *sink;
+
+		comp_dev_for_each_consumer(dev, sink) {
+			struct comp_dev *sink_dev;
+
+			sink_dev = comp_buffer_get_sink_component(sink);
+
+			if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
+			    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
+				sink_frames =
+					audio_stream_get_free_frames(&sink->stream);
+				frames = MIN(frames, sink_frames);
+			}
+		}
+	} else {
+		src_frames = avail_bytes / audio_stream_frame_bytes(&dd->dma_buffer->stream);
+
+		/*
+		 * there's only one sink buffer in the case of endpoint DAI devices created by
+		 * a DAI copier and it is chosen as the dd->local buffer
+		 */
+		if (!converter) {
+			sink_frames = audio_stream_get_free_frames(&dd->local_buffer->stream);
+			frames = sink_frames;
+		} else {
+			/*
+			 * In the case of capture DAI's with multiple sink buffers, compute the
+			 * minimum number of samples based on the DMA avail_bytes and the free
+			 * samples in all active sink buffers.
+			 */
+			struct comp_buffer *sink;
+
+			comp_dev_for_each_consumer(dev, sink) {
+				struct comp_dev *sink_dev;
+
+				sink_dev = comp_buffer_get_sink_component(sink);
+
+				if (sink_dev && sink_dev->state == COMP_STATE_ACTIVE &&
+				    audio_buffer_hw_params_configured(&sink->audio_buffer)) {
+					sink_frames =
+						audio_stream_get_free_frames(&sink->stream);
+					frames = MIN(frames, sink_frames);
+				}
+			}
+		}
+
+		frames = MIN(frames, src_frames);
+	}
+
+	/* limit bytes per copy to one period for the whole pipeline
+	 * in order to avoid high load spike
+	 * if FAST_MODE is enabled, then one period limitation is omitted
+	 */
+	if (!dd->fast_mode)
+		frames = MIN(frames, dev->frames);
+
+	copy_bytes = frames * audio_stream_frame_bytes(&dd->dma_buffer->stream);
+
+	comp_dbg(dev, "dir: %d copy_bytes= 0x%x",
+		 dev->direction, copy_bytes);
+
+#if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
+	/* Check possibility of glitch occurrence */
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK &&
+	    copy_bytes + avail_bytes < dd->period_bytes)
+		comp_warn(dev, "Copy_bytes %d + avail bytes %d < period bytes %d, possible glitch",
+			  copy_bytes, avail_bytes, dd->period_bytes);
+	else if (dev->direction == SOF_IPC_STREAM_CAPTURE &&
+		 copy_bytes + free_bytes < dd->period_bytes)
+		comp_warn(dev, "Copy_bytes %d + free bytes %d < period bytes %d, possible glitch",
+			  copy_bytes, free_bytes, dd->period_bytes);
+#endif
+
+	/* return if nothing to copy */
+	if (!copy_bytes) {
+#if CONFIG_DAI_VERBOSE_GLITCH_WARNINGS
+		comp_warn(dev, "nothing to copy, src_frames: %u, sink_frames: %u",
+			  src_frames, sink_frames);
+#endif
+		sof_dma_reload(dd->dma, dd->chan_index, 0);
+		return 0;
+	}
+
+	/* trigger optional DAI_TRIGGER_COPY which prepares dai to copy */
+	ret = dai_trigger(dd->dai->dev, dev->direction, DAI_TRIGGER_COPY);
+	if (ret < 0)
+		comp_warn(dev, "dai trigger copy failed");
+
+	if (dai_dma_cb(dd, dev, copy_bytes, converter) == SOF_DMA_CB_STATUS_END)
+		sof_dma_stop(dd->dma, dd->chan_index);
+
+	ret = sof_dma_reload(dd->dma, dd->chan_index, copy_bytes);
+	if (ret < 0) {
+		dai_report_reload_xrun(dd, dev, copy_bytes);
+		return ret;
+	}
+
+	dai_dma_position_update(dd, dev);
+
+	return ret;
+}
+
+static int dai_copy(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/*
+	 * DAI devices will only ever have 1 sink, so no need to pass an array of PCM converter
+	 * functions. The default one to use is set in dd->process.
+	 */
+	return dai_common_copy(dd, dev, NULL);
+}
+
+/**
+ * \brief Get DAI parameters and configure timestamping
+ * \param[in, out] dev DAI device.
+ * \return Error code.
+ *
+ * This function retrieves various DAI parameters such as type, direction, index, and DMA
+ * controller information those are needed when configuring HW timestamping. Note that
+ * DAI must be prepared before this function is used (for DMA information). If not, an error
+ * is returned.
+ */
+int dai_common_ts_config_op(struct dai_data *dd, struct comp_dev *dev)
+{
+	struct ipc_config_dai *dai = &dd->ipc_config;
+	struct dai_ts_cfg *cfg = &dd->ts_config;
+
+	comp_dbg(dev, "dai_ts_config()");
+	if (dd->chan_index < 0) {
+		comp_err(dev, "No DMA channel information");
+		return -EINVAL;
+	}
+
+	switch (dai->type) {
+	case SOF_DAI_INTEL_SSP:
+		cfg->type = DAI_INTEL_SSP;
+		break;
+	case SOF_DAI_INTEL_ALH:
+		cfg->type = DAI_INTEL_ALH;
+		break;
+	case SOF_DAI_INTEL_DMIC:
+		cfg->type = DAI_INTEL_DMIC;
+		break;
+	default:
+		comp_err(dev, "not supported dai type");
+		return -EINVAL;
+	}
+
+	cfg->direction = dai->direction;
+	cfg->index = dd->dai->index;
+	cfg->dma_id = dd->dma->plat_data.id;
+	cfg->dma_chan_index = dd->chan_index;
+	cfg->dma_chan_count = dd->dma->plat_data.channels;
+
+	return dai_ts_config(dd->dai->dev, cfg);
+}
+
+static int dai_ts_config_op(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_common_ts_config_op(dd, dev);
+}
+
+int dai_common_ts_start(struct dai_data *dd, struct comp_dev *dev)
+{
+	return dai_ts_start(dd->dai->dev, (struct dai_ts_cfg *)&dd->ts_config);
+}
+
+static int dai_ts_start_op(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "dai_ts_start()");
+	return dai_common_ts_start(dd, dev);
+}
+
+int dai_common_ts_get(struct dai_data *dd, struct comp_dev *dev, struct dai_ts_data *tsd)
+{
+	struct dai_ts_cfg *cfg = (struct dai_ts_cfg *)&dd->ts_config;
+
+	return dai_ts_get(dd->dai->dev, cfg, tsd);
+}
+
+static int dai_ts_get_op(struct comp_dev *dev, struct dai_ts_data *tsd)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "dai_ts_get()");
+
+	return dai_common_ts_get(dd, dev, tsd);
+}
+
+int dai_common_ts_stop(struct dai_data *dd, struct comp_dev *dev)
+{
+	return dai_ts_stop(dd->dai->dev, (struct dai_ts_cfg *)&dd->ts_config);
+}
+
+static int dai_ts_stop_op(struct comp_dev *dev)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	comp_dbg(dev, "dai_ts_stop()");
+
+	return dai_common_ts_stop(dd, dev);
+}
+
+uint32_t dai_get_init_delay_ms(struct dai *dai)
+{
+	struct dai_properties props;
+	uint32_t init_delay = 0;
+	int ret;
+
+	if (!dai)
+		return 0;
+
+	ret = dai_get_properties_safe(dai, 0, 0, &props);
+
+	if (!ret)
+		init_delay = props.reg_init_delay;
+
+	return init_delay;
+}
+
+static uint64_t dai_get_processed_data(struct comp_dev *dev, uint32_t stream_no, bool input)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	uint64_t ret = 0;
+	bool source = dev->direction == SOF_IPC_STREAM_CAPTURE;
+
+	/* Return value only if direction and stream number match.
+	 * The dai supports only one stream.
+	 */
+	if (stream_no == 0 && source == input)
+		ret = dd->total_data_processed;
+
+	return ret;
+}
+
+#ifdef CONFIG_IPC_MAJOR_4
+__cold int dai_zephyr_unbind(struct dai_data *dd, struct comp_dev *dev,
+			     const struct bind_info *unbind_data)
+{
+	const struct ipc4_module_bind_unbind *bu;
+	int buf_id;
+
+	assert_can_be_cold();
+
+	bu = unbind_data->ipc4_data;
+	buf_id = IPC4_COMP_ID(bu->extension.r.src_queue, bu->extension.r.dst_queue);
+
+	if (dd && dd->local_buffer) {
+		if (buf_get_id(dd->local_buffer) == buf_id) {
+			comp_dbg(dev, "local_buffer %x unbound", buf_id);
+			dd->local_buffer = NULL;
+		}
+	}
+
+	return 0;
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
+DECLARE_TR_CTX(dai_comp_tr, SOF_UUID(dai_uuid), LOG_LEVEL_INFO);
+
+static const struct comp_driver comp_dai = {
+	.type	= SOF_COMP_DAI,
+	.uid	= SOF_RT_UUID(dai_uuid),
+	.tctx	= &dai_comp_tr,
+	.ops	= {
+		.create				= dai_new,
+		.free				= dai_free,
+		.params				= dai_params,
+		.dai_get_hw_params		= dai_comp_get_hw_params,
+		.trigger			= dai_comp_trigger,
+		.copy				= dai_copy,
+		.prepare			= dai_prepare,
+		.reset				= dai_reset,
+		.position			= dai_position,
+		.dai_config			= dai_config,
+		.dai_ts_config			= dai_ts_config_op,
+		.dai_ts_start			= dai_ts_start_op,
+		.dai_ts_stop			= dai_ts_stop_op,
+		.dai_ts_get			= dai_ts_get_op,
+		.get_total_data_processed	= dai_get_processed_data,
+},
+};
+
+static struct comp_driver_info comp_dai_info = {
+	.drv = &comp_dai,
+};
+
+UT_STATIC void sys_comp_dai_init(void)
+{
+	comp_register(&comp_dai_info);
+}
+
+DECLARE_MODULE(sys_comp_dai_init);
+SOF_MODULE_INIT(dai, sys_comp_dai_init);

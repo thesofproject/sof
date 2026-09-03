@@ -1,0 +1,38 @@
+---
+# SPDX-License-Identifier: BSD-3-Clause
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable this.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand this.yml exp.yml && diff -w -u this.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: Reproducible builds
+
+# yamllint disable-line rule:truthy
+on: [pull_request, workflow_dispatch, workflow_call]
+
+permissions:
+  contents: read
+
+# Group workflows together to cancel outdated runs, do not cancel manual runs
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event_name }}-\
+          ${{ github.event_name == 'pull_request' && github.ref || github.run_id }}"
+  cancel-in-progress: true
+
+jobs:
+  main:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, submodules: recursive, filter: 'tree:0'}
+
+      - name: docker pull
+        run: docker pull thesofproject/sof &&  docker tag thesofproject/sof sof
+
+      - name: repro test
+        run: ./scripts/docker-run.sh ./scripts/test-repro-build.sh

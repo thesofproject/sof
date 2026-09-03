@@ -8,7 +8,7 @@
 #ifndef __CAVS_MEM_WINDOW_H__
 #define __CAVS_MEM_WINDOW_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <stdint.h>
 
 /** \brief Zero memory window during initialization */

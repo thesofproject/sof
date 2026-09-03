@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config AMD_BINARY_BUILD
+	bool
+	default n
+	help
+	  Select this if the platform need firmware binaries.

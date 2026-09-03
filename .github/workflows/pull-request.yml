@@ -1,0 +1,72 @@
+---
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable pull_request.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand pull_request.yml exp.yml &&
+#    diff -w -u pull_request.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+# TODO: finish scattering this very old workflow to more specific
+# .yml files
+name: Main Actions
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - 'main'
+      - 'stable-**'
+      - '**-stable'
+  pull_request:
+    branches:
+      - 'main'
+      - 'stable-**'
+      - '**-stable'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  # Allows to call this forkflow from other workflows
+  workflow_call:
+
+permissions:
+  contents: read
+
+# Group workflows together to cancel outdated runs, do not cancel manual runs
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event_name }}-\
+          ${{ github.event_name == 'pull_request' && github.ref || github.run_id }}"
+  cancel-in-progress: true
+
+jobs:
+
+  doxygen:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: 'tree:0'
+
+      - name: apt get doxygen graphviz
+        run: sudo apt-get -y install ninja-build doxygen graphviz
+
+      - name: Show warnings but fail only on errors
+        run: cmake -GNinja -S doc -B docbuild && ninja -C docbuild -v doc
+
+      # Build again (it's very quick) so warnings don't go unnoticed.
+      # For older doxygen versions that don't have FAIL_ON_WARNINGS, use
+      # WARN_AS_ERROR = YES instead. 'YES' is inferior because it stops
+      # on the first error.
+      #
+      # Note some doxygen bug(s) can cause some specific error types to
+      # escape WARN_AS_ERROR, example:
+      # https://github.com/doxygen/doxygen/issues/7970 and
+      # https://github.com/thesofproject/sof/pull/5978
+
+      - name: Fail on warnings
+        run: printf
+          'WARN_AS_ERROR = FAIL_ON_WARNINGS\n' >> doc/sof.doxygen.in &&
+          ninja -C docbuild -v doc

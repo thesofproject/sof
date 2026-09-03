@@ -29,8 +29,8 @@
 
 /** \brief SOF ABI version major, minor and patch numbers */
 #define SOF_ABI_MAJOR 3
-#define SOF_ABI_MINOR 11
-#define SOF_ABI_PATCH 0
+#define SOF_ABI_MINOR 29
+#define SOF_ABI_PATCH 1
 
 /** \brief SOF ABI version number. Format within 32bit word is MMmmmppp */
 #define SOF_ABI_MAJOR_SHIFT	24
@@ -61,5 +61,7 @@
 
 /** \brief SOF ABI magic number "SOF\0". */
 #define SOF_ABI_MAGIC		0x00464F53
+/** \brief SOF IPC4 ABI magic number "SOF4". */
+#define SOF_IPC4_ABI_MAGIC	0x34464F53
 
 #endif /* __KERNEL_ABI_H__ */

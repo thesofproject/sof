@@ -5,21 +5,40 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 #include <sof/audio/component.h>
-#include <sof/bit.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/drivers/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/bit.h>
+#include <rtos/interrupt.h>
+#include <rtos/timer.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
+#include <rtos/task.h>
 #include <ipc/topology.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
+
+/* For i.MX, when building SOF with Zephyr, we use wrapper.c,
+ * interrupt.c and interrupt-irqsteer.c which causes name
+ * collisions.
+ * In order to avoid this and make any second level interrupt
+ * handling go through interrupt-irqsteer.c define macros to
+ * rename the duplicated functions.
+ */
+#if defined(__ZEPHYR__) && (defined(CONFIG_IMX) || defined(CONFIG_AMD))
+#define interrupt_get_irq mux_interrupt_get_irq
+#define interrupt_register mux_interrupt_register
+#define interrupt_unregister mux_interrupt_unregister
+#define interrupt_enable mux_interrupt_enable
+#define interrupt_disable mux_interrupt_disable
+#endif
 
 struct dma_domain_data {
 	int irq;
@@ -34,14 +53,14 @@ struct dma_domain {
 	bool aggregated_irq;	/* true if aggregated interrupts */
 
 	/* mask of currently running channels */
-	uint32_t channel_mask[PLATFORM_NUM_DMACS][PLATFORM_CORE_COUNT];
+	uint32_t channel_mask[PLATFORM_NUM_DMACS][CONFIG_CORE_COUNT];
 	/* array of arguments for aggregated mode */
-	struct dma_domain_data *arg[PLATFORM_NUM_DMACS][PLATFORM_CORE_COUNT];
+	struct dma_domain_data *arg[PLATFORM_NUM_DMACS][CONFIG_CORE_COUNT];
 	/* array of registered channels data */
 	struct dma_domain_data data[PLATFORM_NUM_DMACS][PLATFORM_MAX_DMA_CHAN];
 };
 
-struct ll_schedule_domain_ops dma_multi_chan_domain_ops;
+const struct ll_schedule_domain_ops dma_multi_chan_domain_ops;
 
 /**
  * \brief Generic DMA interrupt handler.
@@ -53,6 +72,7 @@ static void dma_multi_chan_domain_irq_handler(void *data)
 
 	/* just call registered handler */
 	domain_data->handler(domain_data->arg);
+
 }
 
 /**
@@ -66,7 +86,7 @@ static int dma_multi_chan_domain_irq_register(struct dma_domain_data *data,
 {
 	int ret;
 
-	trace_ll("dma_multi_chan_domain_irq_register()");
+	tr_info(&ll_tr, "entry");
 
 	/* always go through dma_multi_chan_domain_irq_handler,
 	 * so we have different arg registered for every channel
@@ -83,8 +103,8 @@ static int dma_multi_chan_domain_irq_register(struct dma_domain_data *data,
 
 /**
  * \brief Registers task to DMA domain.
+ *
  * \param[in,out] domain Pointer to schedule domain.
- * \param[in] period Period of the scheduled task.
  * \param[in,out] task Task to be registered.
  * \param[in,out] handler Pointer to DMA interrupt handler.
  * \param[in,out] arg Pointer to DMA interrupt handler's argument.
@@ -94,25 +114,27 @@ static int dma_multi_chan_domain_irq_register(struct dma_domain_data *data,
  * DMA interrupts (different irq number per DMA channel).
  */
 static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
-					  uint64_t period, struct task *task,
+					  struct task *task,
 					  void (*handler)(void *arg), void *arg)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct pipeline_task *pipe_task = pipeline_task_get(task);
 	struct dma *dmas = dma_domain->dma_array;
 	int core = cpu_get_id();
-	int ret;
+	int ret = 0;
 	int i;
 	int j;
 
-	trace_ll("dma_multi_chan_domain_register()");
+	tr_info(&ll_tr, "entry");
 
 	/* check if task should be registered */
 	if (!pipe_task->registrable)
-		return 0;
+		goto out;
 
-	for (i = 0; i < dma_domain->num_dma; ++i) {
-		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
+	for (i = 0; i < dma_domain->num_dma ; ++i) {
+		if (dmas[i].chan == NULL)
+			continue;
+		for (j = 0; j < dmas[i].plat_data.channels ; ++j) {
 			/* channel not set as scheduling source */
 			if (!dma_is_scheduling_source(&dmas[i].chan[j]))
 				continue;
@@ -129,7 +151,7 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 			if (dma_domain->channel_mask[i][core] & BIT(j))
 				continue;
 
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+			dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
 
 			/* register only if not aggregated or not registered */
 			if (!dma_domain->aggregated_irq ||
@@ -138,7 +160,7 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 						&dma_domain->data[i][j],
 						handler);
 				if (ret < 0)
-					return ret;
+					goto out;
 
 				dma_domain->data[i][j].handler = handler;
 				dma_domain->data[i][j].arg = arg;
@@ -151,16 +173,17 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
 			interrupt_clear_mask(dma_domain->data[i][j].irq,
 					     BIT(j));
 
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_UNMASK);
+			dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_UNMASK);
 
 			dma_domain->data[i][j].task = pipe_task;
 			dma_domain->channel_mask[i][core] |= BIT(j);
 
-			return 0;
+			goto out;
 		}
 	}
 
-	return 0;
+out:
+	return ret;
 }
 
 /**
@@ -169,7 +192,7 @@ static int dma_multi_chan_domain_register(struct ll_schedule_domain *domain,
  */
 static void dma_multi_chan_domain_irq_unregister(struct dma_domain_data *data)
 {
-	trace_ll("dma_multi_chan_domain_irq_unregister()");
+	tr_info(&ll_tr, "entry");
 
 	interrupt_disable(data->irq, data);
 
@@ -181,10 +204,11 @@ static void dma_multi_chan_domain_irq_unregister(struct dma_domain_data *data)
  * \param[in,out] domain Pointer to schedule domain.
  * \param[in,out] task Task to be unregistered from the domain..
  * \param[in] num_tasks Number of currently scheduled tasks.
+ * \return Error code.
  */
-static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
-					     struct task *task,
-					     uint32_t num_tasks)
+static int dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
+					    struct task *task,
+					    uint32_t num_tasks)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct pipeline_task *pipe_task = pipeline_task_get(task);
@@ -193,14 +217,16 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 	int i;
 	int j;
 
-	trace_ll("dma_multi_chan_domain_unregister()");
+	tr_info(&ll_tr, "entry");
 
 	/* check if task should be unregistered */
-	if (!pipe_task->registrable)
-		return;
+	if (!task || !pipe_task->registrable)
+		return 0;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
-		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
+		if (dmas[i].chan == NULL)
+			continue;
+		for (j = 0; j < dmas[i].plat_data.channels ; ++j) {
 			/* channel not set as scheduling source */
 			if (!dma_is_scheduling_source(&dmas[i].chan[j]))
 				continue;
@@ -217,8 +243,8 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 			if (!(dma_domain->channel_mask[i][core] & BIT(j)))
 				continue;
 
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_MASK);
-			dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+			dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_MASK);
+			dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
 			interrupt_clear_mask(dma_domain->data[i][j].irq,
 					     BIT(j));
 
@@ -232,10 +258,12 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
 			else if (!dma_domain->channel_mask[i][core])
 				dma_multi_chan_domain_irq_unregister(
 						dma_domain->arg[i][core]);
-
-			return;
+			return 0;
 		}
 	}
+
+	/* task in running or unregistered at all, can't unregister it */
+	return -EINVAL;
 }
 
 /**
@@ -245,40 +273,69 @@ static void dma_multi_chan_domain_unregister(struct ll_schedule_domain *domain,
  * \return True is task should be executed, false otherwise.
  */
 static bool dma_multi_chan_domain_is_pending(struct ll_schedule_domain *domain,
-					     struct task *task)
+					     struct task *task, struct comp_dev **comp)
 {
 	struct dma_domain *dma_domain = ll_sch_domain_get_pdata(domain);
 	struct pipeline_task *pipe_task = pipeline_task_get(task);
 	struct dma *dmas = dma_domain->dma_array;
+	struct ll_task_pdata *pdata;
 	uint32_t status;
 	int i;
 	int j;
 
 	for (i = 0; i < dma_domain->num_dma; ++i) {
+		if (dmas[i].chan == NULL)
+			continue;
 		for (j = 0; j < dmas[i].plat_data.channels; ++j) {
-			status = dma_interrupt(&dmas[i].chan[j],
-					       DMA_IRQ_STATUS_GET);
-			if (!status)
+			if (!*comp) {
+				status = dma_interrupt_legacy(&dmas[i].chan[j],
+							      DMA_IRQ_STATUS_GET);
+				if (!status)
+					continue;
+
+				*comp = dma_domain->data[i][j].task->sched_comp;
+			} else if (!dma_domain->data[i][j].task ||
+				   dma_domain->data[i][j].task->sched_comp != *comp) {
 				continue;
+			}
 
 			/* not the same scheduling component */
 			if (dma_domain->data[i][j].task->sched_comp !=
 			    pipe_task->sched_comp)
 				continue;
 
-			/* it's too soon for this task */
-			if (!pipe_task->registrable &&
-			    pipe_task->task.start >
-			    platform_timer_get(platform_timer))
-				continue;
+			/* Schedule task based on the frequency they
+			 * were configured with, not time (task.start)
+			 *
+			 * There are cases when a DMA transfer from a DAI
+			 * is finished earlier than task.start and,
+			 * without full_sync mode, this task will not
+			 * be scheduled
+			 */
+			if (domain->full_sync) {
+				pdata = ll_sch_get_pdata(&pipe_task->task);
+				pdata->skip_cnt++;
+				if (pdata->skip_cnt == pdata->ratio)
+					pdata->skip_cnt = 0;
 
-			/* execute callback if exists */
-			if (dmas[i].chan[j].irq_callback)
-				dmas[i].chan[j].irq_callback(&dmas[i].chan[j]);
+				if (pdata->skip_cnt != 0)
+					continue;
+			} else {
+				/* it's too soon for this task */
+				if (!pipe_task->registrable &&
+				    pipe_task->task.start >
+				    sof_cycle_get_64_atomic())
+					continue;
+			}
+
+			notifier_event(&dmas[i].chan[j], NOTIFIER_ID_DMA_IRQ,
+				       NOTIFIER_TARGET_CORE_LOCAL,
+				       &dmas[i].chan[j],
+				       sizeof(struct dma_chan_data));
 
 			/* clear interrupt */
 			if (pipe_task->registrable) {
-				dma_interrupt(&dmas[i].chan[j], DMA_IRQ_CLEAR);
+				dma_interrupt_legacy(&dmas[i].chan[j], DMA_IRQ_CLEAR);
 				interrupt_clear_mask(dma_domain->data[i][j].irq,
 						     BIT(j));
 			}
@@ -308,14 +365,22 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 	int i;
 	int j;
 
-	trace_ll("dma_multi_chan_domain_init(): num_dma %d, clk %d, "
-		 "aggregated_irq %d", num_dma, clk, aggregated_irq);
+	tr_info(&ll_tr, "num_dma %d, clk %d, aggregated_irq %d",
+		num_dma, clk, aggregated_irq);
 
 	domain = domain_init(SOF_SCHEDULE_LL_DMA, clk, true,
 			     &dma_multi_chan_domain_ops);
+	if (!domain) {
+		tr_err(&ll_tr, "domain init failed");
+		return NULL;
+	}
 
-	dma_domain = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-			     sizeof(*dma_domain));
+	dma_domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*dma_domain));
+	if (!dma_domain) {
+		tr_err(&ll_tr, "allocation failed");
+		rfree(domain);
+		return NULL;
+	}
 	dma_domain->dma_array = dma_array;
 	dma_domain->num_dma = num_dma;
 	dma_domain->aggregated_irq = aggregated_irq;
@@ -334,7 +399,7 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 	return domain;
 }
 
-struct ll_schedule_domain_ops dma_multi_chan_domain_ops = {
+const struct ll_schedule_domain_ops dma_multi_chan_domain_ops = {
 	.domain_register	= dma_multi_chan_domain_register,
 	.domain_unregister	= dma_multi_chan_domain_unregister,
 	.domain_is_pending	= dma_multi_chan_domain_is_pending,

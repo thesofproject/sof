@@ -8,7 +8,7 @@
 #ifndef __SOF_DRIVERS_EDMA_H__
 #define __SOF_DRIVERS_EDMA_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 
@@ -20,6 +20,7 @@
 #define EDMA_CH_INT                     0x08
 #define EDMA_CH_SBR                     0x0C
 #define EDMA_CH_PRI                     0x10
+#define EDMA_CH_MUX                     0x14
 #define EDMA_TCD_SADDR                  0x20
 #define EDMA_TCD_SOFF                   0x24
 #define EDMA_TCD_ATTR                   0x26
@@ -73,8 +74,6 @@
 #define EDMA_TCD_ATTR_DSIZE_32BYTE	0x0005
 #define EDMA_TCD_ATTR_DSIZE_64BYTE	0x0006
 
-int edma_init(void);
-
 #define EDMA_BUFFER_PERIOD_COUNT	2
 
 #define EDMA_TCD_ALIGNMENT		32
@@ -83,15 +82,10 @@ int edma_init(void);
 #define EDMA_HS_SET_IRQ(irq) SET_BITS(8, 0, irq)
 #define EDMA_HS_GET_CHAN(hs) (((hs) & MASK(13, 9)) >> 9)
 #define EDMA_HS_SET_CHAN(chan) SET_BITS(13, 9, chan)
-#define EDMA_HANDSHAKE(irq, channel)\
-	(EDMA_HS_SET_CHAN(channel) | EDMA_HS_SET_IRQ(irq))
-
-#define trace_edma(format, ...) trace_event(TRACE_CLASS_DMA,\
-					    format, ##__VA_ARGS__)
-#define tracev_edma(format, ...) tracev_event(TRACE_CLASS_DMA,\
-					      format, ##__VA_ARGS__)
-#define trace_edma_error(format, ...) trace_error(TRACE_CLASS_DMA,\
-						  format, ##__VA_ARGS__)
+#define EDMA_HS_GET_DMAMUX_CFG(hs) (((hs) & MASK(21, 14)) >> 14)
+#define EDMA_HS_SET_DMAMUX_CFG(cfg) SET_BITS(21, 14, cfg)
+#define EDMA_HANDSHAKE(irq, channel, cfg)\
+	(EDMA_HS_SET_CHAN(channel) | EDMA_HS_SET_IRQ(irq) | EDMA_HS_SET_DMAMUX_CFG(cfg))
 
 #define EDMA0_ESAI_CHAN_RX	6
 #define EDMA0_ESAI_CHAN_TX	7
@@ -103,5 +97,55 @@ int edma_init(void);
 #define EDMA0_ESAI_CHAN_TX_IRQ	442
 #define EDMA0_SAI_CHAN_RX_IRQ	349
 #define EDMA0_SAI_CHAN_TX_IRQ	349
+
+#ifdef CONFIG_IMX93_A55
+/* encase all of these macros in an
+ * ifdef block to avoid possible future
+ * naming clashes and pointlessly adding
+ * macros for all other platforms.
+ */
+#define EDMA2_SAI3_CHAN_RX 1
+#define EDMA2_SAI3_CHAN_TX 0
+/* EDMA2 (aka EDMA4 in the TRM) supports
+ * up to 64 channels.
+ */
+#define EDMA2_CHAN_MAX 64
+
+/* need to add SPI_BASE to the INTID as
+ * the values from the TRM are all SPIs.
+ */
+#define EDMA2_SAI3_CHAN_RX_IRQ (128 + 32)
+#define EDMA2_SAI3_CHAN_TX_IRQ (128 + 32)
+
+/* SAI3 is connected to EDMA2 through
+ * lines 60 (TX) and 61 (RX).
+ */
+#define EDMA2_SAI3_TX_MUX 60
+#define EDMA2_SAI3_RX_MUX 61
+
+#endif /* CONFIG_IMX93_A55 */
+
+/* EDMA doesn't bound channels to IPs, we make use of the first two channels for now */
+#define IMX8ULP_EDMA2_CHAN0	0
+#define IMX8ULP_EDMA2_CHAN1	1
+#define IMX8ULP_EDMA2_CHAN_MAX	8
+
+/* EDMA provides one interrupt per channel */
+#define IMX8ULP_EDMA2_CHAN0_IRQ	6
+#define IMX8ULP_EDMA2_CHAN1_IRQ	7
+#define IMX8ULP_EDMA2_CHAN2_IRQ	8
+#define IMX8ULP_EDMA2_CHAN3_IRQ	9
+#define IMX8ULP_EDMA2_CHAN4_IRQ	10
+#define IMX8ULP_EDMA2_CHAN5_IRQ	11
+#define IMX8ULP_EDMA2_CHAN6_IRQ	12
+#define IMX8ULP_EDMA2_CHAN7_IRQ	13
+
+/* i.MXULP uses a MUX configuration to map EDMA channels to IPs.
+ * This is a list with DMAMUX configuration for IPs used by SOF
+ */
+#define IMX8ULP_DMAMUX2_SAI5_RX	69
+#define IMX8ULP_DMAMUX2_SAI5_TX	70
+#define IMX8ULP_DMAMUX2_SAI6_RX	71
+#define IMX8ULP_DMAMUX2_SAI6_TX	72
 
 #endif /* __SOF_DRIVERS_EDMA_H__ */

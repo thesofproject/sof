@@ -5,13 +5,14 @@
 // Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
 
 #include <sof/debug/gdb/ringbuffer.h>
-#include <sof/lib/memory.h>
+#include <sof/lib/mailbox.h>
 
 #define BUFFER_OFFSET 0x120
 
-volatile struct ring * const rx = (void *) SRAM_DEBUG_BASE;
-volatile struct ring * const tx = (void *)(SRAM_DEBUG_BASE + BUFFER_OFFSET);
-volatile struct ring * const debug = (void *)(SRAM_DEBUG_BASE +
+volatile struct ring * const rx = (void *)mailbox_get_debug_base();
+volatile struct ring * const tx = (void *)(mailbox_get_debug_base() +
+					   BUFFER_OFFSET);
+volatile struct ring * const debug = (void *)(mailbox_get_debug_base() +
 					      (2 * BUFFER_OFFSET));
 
 void init_buffers(void)

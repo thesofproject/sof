@@ -1,0 +1,1216 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2022 Intel Corporation. All rights reserved.
+//
+// Author: Jaroslaw Stelter <jaroslaw.stelter@intel.com>
+//         Pawel Dobrowolski<pawelx.dobrowolski@intel.com>
+
+/*
+ * Dynamic module loading functions using Zephyr Linkable Loadable Extensions (LLEXT) interface.
+ */
+
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
+#include <sof/common.h>
+#include <sof/compiler_attributes.h>
+#include <sof/ipc/topology.h>
+
+#include <rtos/sof.h>
+#include <rtos/spinlock.h>
+#include <sof/lib/cpu-clk-manager.h>
+#include <sof/lib_manager.h>
+#include <sof/lib/regions_mm.h>
+#include <sof/llext_manager.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/module_adapter/module/modules.h>
+#include <sof/schedule/ll_schedule_domain.h>
+
+#include <zephyr/cache.h>
+#include <zephyr/app_memory/mem_domain.h>
+#include <zephyr/drivers/mm/system_mm.h>
+#include <zephyr/llext/buf_loader.h>
+#include <zephyr/llext/loader.h>
+#include <zephyr/llext/llext.h>
+#include <zephyr/logging/log_ctrl.h>
+#include <zephyr/llext/inspect.h>
+#include <zephyr/sys/math_extras.h>
+#include <kernel_arch_interface.h>
+
+#include <rimage/sof/user/manifest.h>
+#include <module/module/api_ver.h>
+
+#include <adsp_memory_regions.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+LOG_MODULE_DECLARE(lib_manager, CONFIG_SOF_LOG_LEVEL);
+
+extern struct tr_ctx lib_manager_tr;
+
+#define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
+
+static int llext_manager_update_flags(void __sparse_cache *vma, size_t size, uint32_t flags)
+{
+	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
+	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+
+	return sys_mm_drv_update_region_flags(aligned_vma,
+					      ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
+}
+
+static int llext_manager_align_map(const struct sys_mm_drv_region *virtual_region,
+				   void __sparse_cache *vma, size_t size, uint32_t flags)
+{
+	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
+	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+	return sys_mm_drv_map_region_safe(virtual_region, aligned_vma, POINTER_TO_UINT(NULL),
+					  ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
+}
+
+static int llext_manager_align_unmap(void __sparse_cache *vma, size_t size)
+{
+	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
+	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+
+	return sys_mm_drv_unmap_region(aligned_vma, ALIGN_UP(pre_pad_size + size, PAGE_SZ));
+}
+
+static void llext_manager_detached_update_flags(void __sparse_cache *vma,
+						size_t size, uint32_t flags)
+{
+#ifdef CONFIG_MMU
+	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
+	void *aligned_vma = (__sparse_force uint8_t *)vma - pre_pad_size;
+
+	/* Use cached virtual address */
+	uintptr_t va = POINTER_TO_UINT(sys_cache_cached_ptr_get(aligned_vma));
+
+	arch_mem_map(aligned_vma, va, ALIGN_UP(pre_pad_size + size, PAGE_SZ), flags);
+#endif
+}
+
+/*
+ * Map the memory range covered by 'vma' and 'size' as writable, copy all
+ * sections that belong to the specified 'region' and are contained in the
+ * memory range, then remap the same area according to the 'flags' parameter.
+ */
+static int llext_manager_load_data_from_storage(const struct sys_mm_drv_region *virtual_region,
+						const struct llext_loader *ldr,
+						const struct llext *ext,
+						enum llext_mem region,
+						void __sparse_cache *vma,
+						size_t size, uint32_t flags)
+{
+	unsigned int i;
+	const void *region_addr;
+
+	/* check if there region to be mapped exists */
+	if (size == 0)
+		return 0;
+
+	int ret = llext_manager_align_map(virtual_region, vma, size, SYS_MM_MEM_PERM_RW);
+
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "cannot map %u of %p", size, (__sparse_force void *)vma);
+		return ret;
+	}
+
+	llext_get_region_info(ldr, ext, region, NULL, &region_addr, NULL);
+
+	/* Need to copy sections within regions individually, offsets may differ */
+	for (i = 0; i < llext_section_count(ext); i++) {
+		const elf_shdr_t *shdr;
+		enum llext_mem s_region = LLEXT_MEM_COUNT;
+		size_t s_offset = 0;
+		int ret = llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
+
+		if (ret < 0) {
+			tr_err(&lib_manager_tr, "no section info: %d", ret);
+			continue;
+		}
+
+		/* skip sections not in the requested region */
+		if (s_region != region)
+			continue;
+
+		/* skip detached sections (will be outside requested VMA area) */
+		if ((uintptr_t)shdr->sh_addr < (uintptr_t)vma ||
+		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size) {
+			llext_manager_detached_update_flags((__sparse_cache void *)
+							    ((uint8_t *)region_addr + s_offset),
+							    shdr->sh_size, flags);
+			if (flags & SYS_MM_MEM_PERM_EXEC)
+				icache_invalidate_region((__sparse_cache void *)
+							 ((uint8_t *)region_addr + s_offset),
+							 shdr->sh_size);
+			continue;
+		}
+
+		ret = memcpy_s((__sparse_force void *)shdr->sh_addr, size - s_offset,
+			       (const uint8_t *)region_addr + s_offset, shdr->sh_size);
+		if (ret < 0)
+			return ret;
+	}
+
+	/*
+	 * We don't know what flags we're changing to, maybe the buffer will be
+	 * executable or read-only. Need to write back caches now
+	 */
+	dcache_writeback_region(vma, size);
+
+	ret = llext_manager_update_flags(vma, size, flags);
+	if (!ret && (flags & SYS_MM_MEM_PERM_EXEC))
+		icache_invalidate_region(vma, size);
+
+	return ret;
+}
+
+#ifdef CONFIG_USERSPACE
+static int llext_manager_add_partition(struct k_mem_domain *domain,
+				       uintptr_t addr, size_t size,
+				       k_mem_partition_attr_t attr)
+{
+	size_t pre_pad_size = addr & (PAGE_SZ - 1);
+	struct k_mem_partition part = {
+		.start = addr - pre_pad_size,
+		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
+		.attr = attr,
+	};
+
+	tr_dbg(&lib_manager_tr, "add %#zx @ %lx partition", part.size, part.start);
+	return k_mem_domain_add_partition(domain, &part);
+}
+
+static int llext_manager_rm_partition(struct k_mem_domain *domain,
+				       uintptr_t addr, size_t size,
+				       k_mem_partition_attr_t attr)
+{
+	size_t pre_pad_size = addr & (PAGE_SZ - 1);
+	struct k_mem_partition part = {
+		.start = addr - pre_pad_size,
+		.size = ALIGN_UP(pre_pad_size + size, PAGE_SZ),
+		.attr = attr,
+	};
+
+	tr_dbg(&lib_manager_tr, "remove %#zx @ %lx partition", part.size, part.start);
+	return k_mem_domain_remove_partition(domain, &part);
+}
+#endif
+
+static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr,
+						  const struct llext *ext,
+						  enum llext_mem region,
+						  void __sparse_cache *vma,
+						  size_t size)
+{
+#ifdef CONFIG_MMU
+	unsigned int i;
+	const void *region_addr;
+
+	llext_get_region_info(ldr, ext, region, NULL, &region_addr, NULL);
+
+	for (i = 0; i < llext_section_count(ext); i++) {
+		const elf_shdr_t *shdr;
+		enum llext_mem s_region = LLEXT_MEM_COUNT;
+		size_t s_offset = 0;
+
+		llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
+
+		/* skip sections not in the requested region */
+		if (s_region != region)
+			continue;
+
+		/* unmap detached sections (will be outside requested VMA area) */
+		if ((uintptr_t)shdr->sh_addr < (uintptr_t)vma ||
+		    (uintptr_t)shdr->sh_addr >= (uintptr_t)vma + size)
+			llext_manager_detached_update_flags((__sparse_force void *)
+							    ((uint8_t *)region_addr + s_offset),
+							    shdr->sh_size, 0);
+	}
+#endif
+}
+
+#ifdef CONFIG_USERSPACE
+static int llext_manager_add_mod_domain(struct lib_manager_module *mctx,
+					struct k_mem_domain *domain);
+static int llext_manager_rm_mod_domain(struct lib_manager_module *mctx,
+				       struct k_mem_domain *domain);
+#endif
+
+static int llext_manager_load_module(struct lib_manager_module *mctx)
+{
+	/* Executable code (.text) */
+	void __sparse_cache *va_base_text = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_TEXT].addr;
+	size_t text_size = mctx->segment[LIB_MANAGER_TEXT].size;
+
+	/* Read-only data (.rodata and others) */
+	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_RODATA].addr;
+	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
+
+	/* Writable data (.data, .bss and others) */
+	void __sparse_cache *va_base_data = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_DATA].addr;
+	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
+
+	/* .bss, should be within writable data above */
+	void __sparse_cache *bss_addr = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_BSS].addr;
+	size_t bss_size = mctx->segment[LIB_MANAGER_BSS].size;
+	int ret;
+
+	/* Check, that .bss is within .data */
+	if (bss_size &&
+	    ((uintptr_t)bss_addr + bss_size <= (uintptr_t)va_base_data ||
+	     (uintptr_t)bss_addr >= (uintptr_t)va_base_data + data_size)) {
+		size_t bss_align = MIN(PAGE_SZ, BIT(__builtin_ctz((uintptr_t)bss_addr)));
+
+		if ((!data_size || (uintptr_t)bss_addr + bss_size == (uintptr_t)va_base_data) &&
+		    bss_align >= PAGE_SZ) {
+			/*
+			 * .bss is properly aligned and either there's no writable data,
+			 * or .bss is directly in front of writable data, prepend .bss
+			 */
+			va_base_data = bss_addr;
+			data_size += bss_size;
+		} else if ((uintptr_t)bss_addr == (uintptr_t)va_base_data +
+			   ALIGN_UP(data_size, bss_align)) {
+			/* .bss directly behind writable data, append */
+			data_size += bss_size;
+		} else {
+			tr_err(&lib_manager_tr, ".bss %#x @%p isn't within writable data %#x @%p!",
+			       bss_size, (__sparse_force void *)bss_addr,
+			       data_size, (__sparse_force void *)va_base_data);
+			return -EPROTO;
+		}
+	}
+
+	const struct llext_loader *ldr = &mctx->ebl->loader;
+	const struct llext *ext = mctx->llext;
+
+	/* find dedicated virtual memory zone */
+	const struct sys_mm_drv_region *virtual_memory_regions = sys_mm_drv_query_memory_regions();
+	const struct sys_mm_drv_region *virtual_region;
+
+	if (!virtual_memory_regions)
+		return -EFAULT;
+
+	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, virtual_region) {
+		if (virtual_region->attr == VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR)
+			break;
+	}
+
+	if (!virtual_region->size)
+		return -EFAULT;
+
+	/* Copy Code */
+	ret = llext_manager_load_data_from_storage(virtual_region, ldr, ext, LLEXT_MEM_TEXT,
+						   va_base_text, text_size, SYS_MM_MEM_PERM_EXEC);
+	if (ret < 0)
+		return ret;
+
+	/* Copy read-only data */
+	ret = llext_manager_load_data_from_storage(virtual_region, ldr, ext, LLEXT_MEM_RODATA,
+						   va_base_rodata, rodata_size, 0);
+	if (ret < 0)
+		goto e_text;
+
+	/* Copy writable data */
+	/*
+	 * NOTE: va_base_data and data_size refer to an address range that
+	 *       spans over the BSS area as well, so the mapping will cover
+	 *       both, but only LLEXT_MEM_DATA sections will be copied.
+	 */
+	ret = llext_manager_load_data_from_storage(virtual_region, ldr, ext, LLEXT_MEM_DATA,
+						   va_base_data, data_size, SYS_MM_MEM_PERM_RW);
+	if (ret < 0)
+		goto e_rodata;
+
+	memset((__sparse_force void *)bss_addr, 0, bss_size);
+	mctx->mapped = true;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (!mctx->domain_dp) {
+		ret = llext_manager_add_mod_domain(mctx, zephyr_ll_mem_domain());
+		if (ret < 0) {
+			tr_err(&lib_manager_tr, "failed to add domain: %d", ret);
+			goto e_data;
+		}
+	}
+#endif
+
+	return 0;
+#ifdef CONFIG_SOF_USERSPACE_LL
+e_data:
+	if (data_size)
+		llext_manager_align_unmap(va_base_data, data_size);
+#endif
+e_rodata:
+	if (rodata_size)
+		llext_manager_align_unmap(va_base_rodata, rodata_size);
+e_text:
+	llext_manager_align_unmap(va_base_text, text_size);
+
+	return ret;
+}
+
+static int llext_manager_unload_module(struct lib_manager_module *mctx)
+{
+	const struct llext_loader *ldr = &mctx->ebl->loader;
+	const struct llext *ext = mctx->llext;
+
+	/* Executable code (.text) */
+	void __sparse_cache *va_base_text = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_TEXT].addr;
+	size_t text_size = mctx->segment[LIB_MANAGER_TEXT].size;
+
+	/* Read-only data (.rodata, etc.) */
+	void __sparse_cache *va_base_rodata = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_RODATA].addr;
+	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
+
+	/* Writable data (.data, .bss, etc.) */
+	void __sparse_cache *va_base_data = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_DATA].addr;
+	void __sparse_cache *va_base_bss = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_BSS].addr;
+	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size +
+		mctx->segment[LIB_MANAGER_BSS].size;
+	int err = 0, ret;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	unsigned int sect_cnt = llext_section_count(ext);
+	size_t total = sect_cnt * sizeof(elf_shdr_t);
+	const elf_shdr_t *shdr;
+
+	ret = llext_get_section_info(ldr, ext, 0, &shdr, NULL, NULL);
+	if (ret < 0)
+		return ret;
+
+	/* Temporarily map ELF section headers */
+	llext_manager_add_partition(zephyr_ll_mem_domain(), (uintptr_t)shdr, total,
+				    K_MEM_PARTITION_P_RW_U_NA | XTENSA_MMU_CACHED_WB);
+#endif
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_TEXT,
+					      va_base_text, text_size);
+	ret = llext_manager_align_unmap(va_base_text, text_size);
+	if (ret < 0)
+		err = ret;
+
+	/* Mimic the logic from load_module where the .bss address is used for mapping
+	 * in case of e.g. lack of writable .data section
+	 */
+	if (!va_base_data)
+		va_base_data = va_base_bss;
+
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_DATA,
+					      va_base_data, data_size);
+	ret = llext_manager_align_unmap(va_base_data, data_size);
+	if (ret < 0 && !err)
+		err = ret;
+
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_RODATA,
+					      va_base_rodata, rodata_size);
+	ret = llext_manager_align_unmap(va_base_rodata, rodata_size);
+	if (ret < 0 && !err)
+		err = ret;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	llext_manager_rm_partition(zephyr_ll_mem_domain(), (uintptr_t)shdr, total,
+				   K_MEM_PARTITION_P_RW_U_NA | XTENSA_MMU_CACHED_WB);
+#endif
+	mctx->mapped = false;
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	if (!mctx->domain_dp)
+		llext_manager_rm_mod_domain(mctx, zephyr_ll_mem_domain());
+#endif
+
+	return err;
+}
+
+static bool llext_manager_section_detached(const elf_shdr_t *shdr)
+{
+	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
+}
+
+static int llext_manager_link(const char *name,
+			      struct lib_manager_module *mctx, const void **buildinfo,
+			      const struct sof_man_module_manifest **mod_manifest)
+{
+	struct llext **llext = &mctx->llext;
+	struct llext_loader *ldr = &mctx->ebl->loader;
+	const elf_shdr_t *hdr;
+	int ret;
+
+	if (*llext && !mctx->mapped) {
+		/*
+		 * All module instances have been terminated, so we freed SRAM,
+		 * but we kept the full Zephyr LLEXT context. Now a new instance
+		 * is starting, so we just re-use all the configuration and only
+		 * re-allocate SRAM and copy the module into it
+		 */
+		*mod_manifest = mctx->mod_manifest;
+
+		return 0;
+	}
+
+	if (!*llext || mctx->mapped) {
+		/*
+		 * Either the very first time loading this module, or the module
+		 * is already mapped, we just call llext_load() to refcount it
+		 */
+		struct llext_load_param ldr_parm = {
+			.relocate_local = !*llext,
+			.pre_located = true,
+			.section_detached = llext_manager_section_detached,
+			.keep_section_info = true,
+		};
+
+		ret = llext_load(ldr, name, llext, &ldr_parm);
+		if (ret)
+			return ret;
+	}
+
+	/* All code sections */
+	llext_get_region_info(ldr, *llext, LLEXT_MEM_TEXT, &hdr, NULL, NULL);
+	mctx->segment[LIB_MANAGER_TEXT].addr = hdr->sh_addr;
+	mctx->segment[LIB_MANAGER_TEXT].size = hdr->sh_size;
+
+	tr_dbg(&lib_manager_tr, ".text: start: %#lx size %#x",
+	       mctx->segment[LIB_MANAGER_TEXT].addr,
+	       mctx->segment[LIB_MANAGER_TEXT].size);
+
+	/* All read-only data sections */
+	llext_get_region_info(ldr, *llext, LLEXT_MEM_RODATA, &hdr, NULL, NULL);
+	mctx->segment[LIB_MANAGER_RODATA].addr = hdr->sh_addr;
+	mctx->segment[LIB_MANAGER_RODATA].size = hdr->sh_size;
+
+	tr_dbg(&lib_manager_tr, ".rodata: start: %#lx size %#x",
+	       mctx->segment[LIB_MANAGER_RODATA].addr,
+	       mctx->segment[LIB_MANAGER_RODATA].size);
+
+	/* All writable data sections */
+	llext_get_region_info(ldr, *llext, LLEXT_MEM_DATA, &hdr, NULL, NULL);
+	mctx->segment[LIB_MANAGER_DATA].addr = hdr->sh_addr;
+	mctx->segment[LIB_MANAGER_DATA].size = hdr->sh_size;
+
+	tr_dbg(&lib_manager_tr, ".data: start: %#lx size %#x",
+	       mctx->segment[LIB_MANAGER_DATA].addr,
+	       mctx->segment[LIB_MANAGER_DATA].size);
+
+	/* Writable uninitialized data section */
+	llext_get_region_info(ldr, *llext, LLEXT_MEM_BSS, &hdr, NULL, NULL);
+	mctx->segment[LIB_MANAGER_BSS].addr = hdr->sh_addr;
+	mctx->segment[LIB_MANAGER_BSS].size = hdr->sh_size;
+
+	tr_dbg(&lib_manager_tr, ".bss: start: %#lx size %#x",
+	       mctx->segment[LIB_MANAGER_BSS].addr,
+	       mctx->segment[LIB_MANAGER_BSS].size);
+
+	*buildinfo = NULL;
+	ret = llext_section_shndx(ldr, *llext, ".mod_buildinfo");
+	if (ret >= 0) {
+		llext_get_section_info(ldr, *llext, ret, &hdr, NULL, NULL);
+		*buildinfo = llext_peek(ldr, hdr->sh_offset);
+	}
+
+	*mod_manifest = NULL;
+	ret = llext_section_shndx(ldr, *llext, ".module");
+	if (ret >= 0) {
+		llext_get_section_info(ldr, *llext, ret, &hdr, NULL, NULL);
+		*mod_manifest = llext_peek(ldr, hdr->sh_offset);
+	}
+
+	return *buildinfo && *mod_manifest ? 0 : -EPROTO;
+}
+
+/* Count "module files" in the library, allocate and initialize memory for their descriptors */
+static int llext_manager_mod_init(struct lib_manager_mod_ctx *ctx,
+				  const struct sof_man_fw_desc *desc)
+{
+	struct sof_man_module *mod_array = (struct sof_man_module *)((uint8_t *)desc +
+								     SOF_MAN_MODULE_OFFSET(0));
+	/* preload_page_count was checked when library was loaded */
+	size_t lib_size = desc->header.preload_page_count * PAGE_SZ;
+	unsigned int i, n_mod;
+	size_t offs;
+
+	/* We'll check overflows below */
+	uintptr_t mod_end_addr = (uintptr_t)(mod_array + desc->header.num_module_entries);
+	uintptr_t img_end_addr = (uintptr_t)desc - SOF_MAN_ELF_TEXT_OFFSET + lib_size;
+
+	if (mod_end_addr < (uintptr_t)mod_array || img_end_addr < (uintptr_t)desc ||
+	    mod_end_addr >= img_end_addr) {
+		tr_err(&lib_manager_tr, "invalid module entry count: %u",
+		       desc->header.num_module_entries);
+		return -EOVERFLOW;
+	}
+
+	/* count modules */
+	for (i = 0, n_mod = 0, offs = ~0; i < desc->header.num_module_entries; i++)
+		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != offs) {
+			offs = mod_array[i].segment[LIB_MANAGER_TEXT].file_offset;
+			n_mod++;
+		}
+
+	/*
+	 * Loadable modules are loaded to DRAM once and never unloaded from it.
+	 * Context, related to them, is never freed
+	 */
+	ctx->mod = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+			   n_mod * sizeof(ctx->mod[0]));
+	if (!ctx->mod)
+		return -ENOMEM;
+
+	ctx->n_mod = n_mod;
+
+	for (i = 0, n_mod = 0, offs = ~0; i < desc->header.num_module_entries; i++)
+		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != offs) {
+			offs = mod_array[i].segment[LIB_MANAGER_TEXT].file_offset;
+			ctx->mod[n_mod].mapped = false;
+			ctx->mod[n_mod].domain_dp = false;
+			ctx->mod[n_mod].llext = NULL;
+			ctx->mod[n_mod].ebl = NULL;
+			ctx->mod[n_mod].n_dependent = 0;
+			ctx->mod[n_mod].start_idx = i;
+			if (n_mod)
+				ctx->mod[n_mod - 1].n_mod = i - ctx->mod[n_mod - 1].start_idx;
+			n_mod++;
+		}
+
+	ctx->mod[n_mod - 1].n_mod = desc->header.num_module_entries - ctx->mod[n_mod - 1].start_idx;
+
+	return 0;
+}
+
+/* Find a module context, containing the driver with the supplied index */
+static int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigned int idx)
+{
+	unsigned int i;
+
+	for (i = 0; i < ctx->n_mod; i++)
+		if (ctx->mod[i].start_idx > idx)
+			break;
+
+	if (i == ctx->n_mod && ctx->mod[i - 1].start_idx + ctx->mod[i - 1].n_mod <= idx) {
+		tr_err(&lib_manager_tr, "%u beyond %u + %u after %u", idx,
+		       ctx->mod[i - 1].start_idx, ctx->mod[i - 1].n_mod, i);
+		return -ENOENT;
+	}
+
+	return i - 1;
+}
+
+static int llext_manager_link_single(uint32_t module_id, const struct sof_man_fw_desc *desc,
+				     struct lib_manager_mod_ctx *ctx, const void **buildinfo,
+				     const struct sof_man_module_manifest **mod_manifest)
+{
+	struct sof_man_module *mod_array = (struct sof_man_module *)((uint8_t *)desc +
+								     SOF_MAN_MODULE_OFFSET(0));
+	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	size_t mod_offset = mod_array[entry_index].segment[LIB_MANAGER_TEXT].file_offset;
+	int ret;
+
+	tr_dbg(&lib_manager_tr, "mod_id: %u", module_id);
+
+	if (entry_index >= desc->header.num_module_entries) {
+		tr_err(&lib_manager_tr, "Invalid driver index %u exceeds %d",
+		       entry_index, desc->header.num_module_entries - 1);
+		return -EINVAL;
+	}
+
+	int mod_ctx_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_ctx_idx < 0)
+		return mod_ctx_idx;
+
+	struct lib_manager_module *mctx = ctx->mod + mod_ctx_idx;
+	size_t mod_size;
+	int i, inst_idx;
+
+	/*
+	 * We don't know the number of ELF files that this library is built of.
+	 * We know the number of module drivers, but each of those ELF files can
+	 * also contain multiple such drivers. Each driver brings two copies of
+	 * its manifest with it: one in the ".module" ELF section and one in an
+	 * array of manifests at the beginning of the library. This latter array
+	 * is created from a TOML configuration file. The order is preserved -
+	 * this is guaranteed by rimage.
+	 * All module drivers within a single ELF file have equal .file_offset,
+	 * this makes it possible to find borders between them.
+	 * We know the global index of the requested driver in that array, but
+	 * we need to find the matching manifest in ".module" because only it
+	 * contains the entry point. For safety we calculate the ELF driver
+	 * index and then also check the driver name.
+	 * We also need a module size. For this we search the manifest array for
+	 * the next ELF file, then the difference between offsets gives us the
+	 * module size.
+	 */
+	for (i = entry_index - 1; i >= 0; i--)
+		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != mod_offset)
+			break;
+
+	/* Driver index within a single module */
+	inst_idx = entry_index - i - 1;
+
+	/* Find the next module or stop at the end */
+	for (i = entry_index + 1; i < desc->header.num_module_entries; i++)
+		if (mod_array[i].segment[LIB_MANAGER_TEXT].file_offset != mod_offset)
+			break;
+
+	if (i == desc->header.num_module_entries)
+		mod_size = desc->header.preload_page_count * PAGE_SZ - mod_offset;
+	else
+		mod_size = ALIGN_UP(mod_array[i].segment[LIB_MANAGER_TEXT].file_offset - mod_offset,
+				    PAGE_SZ);
+
+	if (!mctx->ebl) {
+		/* allocate once, never freed */
+		mctx->ebl = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
+				    sizeof(struct llext_buf_loader));
+		if (!mctx->ebl) {
+			tr_err(&lib_manager_tr, "loader alloc failed");
+			return -ENOMEM;
+		}
+
+		uint8_t *dram_base = (uint8_t *)desc - SOF_MAN_ELF_TEXT_OFFSET;
+
+		*mctx->ebl = (struct llext_buf_loader)LLEXT_BUF_LOADER(dram_base + mod_offset,
+								       mod_size);
+	}
+
+	/*
+	 * LLEXT linking is only needed once for all the "drivers" in the
+	 * module. This calls llext_load(), which also takes references to any
+	 * dependencies, sets up sections and retrieves buildinfo and
+	 * mod_manifest
+	 */
+	ret = llext_manager_link(mod_array[entry_index - inst_idx].name, mctx,
+				 buildinfo, mod_manifest);
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "linking failed: %d", ret);
+		return ret;
+	}
+
+	/* if ret > 0, then the "driver" is already loaded */
+	if (!ret)
+		/* mctx->mod_manifest points to a const array of module manifests */
+		mctx->mod_manifest = *mod_manifest;
+
+	/* Return the manifest, related to the specific instance */
+	*mod_manifest = mctx->mod_manifest + inst_idx;
+
+	if (strncmp(mod_array[entry_index].name, (*mod_manifest)->module.name,
+		    sizeof(mod_array[0].name))) {
+		tr_err(&lib_manager_tr, "Name mismatch %s vs. %s",
+		       mod_array[entry_index].name, (*mod_manifest)->module.name);
+		return -ENOEXEC;
+	}
+
+	return mod_ctx_idx;
+}
+
+static int llext_lib_find(const struct llext *llext, struct lib_manager_module **dep_ctx)
+{
+	struct ext_library *_ext_lib = ext_lib_get();
+	unsigned int i, j;
+
+	if (!llext)
+		return -EINVAL;
+
+	for (i = 0; i < ARRAY_SIZE(_ext_lib->desc); i++) {
+		if (!_ext_lib->desc[i])
+			continue;
+
+		for (j = 0; j < _ext_lib->desc[i]->n_mod; j++)
+			if (_ext_lib->desc[i]->mod[j].llext == llext) {
+				*dep_ctx = _ext_lib->desc[i]->mod + j;
+				return i;
+			}
+	}
+
+	return -ENOENT;
+}
+
+/* n can be -1 */
+static void llext_manager_depend_unlink_rollback(struct lib_manager_module *dep_ctx[], int n)
+{
+	for (; n >= 0; n--)
+		if (!dep_ctx[n])
+			tr_err(&lib_manager_tr, "dependency %d NULL", n);
+		else if (!--dep_ctx[n]->n_dependent)
+			llext_manager_unload_module(dep_ctx[n]);
+}
+
+uintptr_t llext_manager_allocate_module(const struct comp_ipc_config *ipc_config,
+					const void *ipc_specific_config)
+{
+	uint32_t module_id = IPC4_MOD_ID(ipc_config->id);
+	/* Library manifest */
+	const struct sof_man_fw_desc *desc = (struct sof_man_fw_desc *)
+		lib_manager_get_library_manifest(module_id);
+	/* Library context */
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+
+	if (!ctx || !desc) {
+		tr_err(&lib_manager_tr, "failed to get module descriptor");
+		return 0;
+	}
+
+	/* Array of all "module drivers" (manifests) in the library */
+	const struct sof_man_module_manifest *mod_manifest;
+	const struct sof_module_api_build_info *buildinfo = NULL;
+
+	/* "module file" index in the ctx->mod array */
+	int mod_ctx_idx = llext_manager_link_single(module_id, desc, ctx,
+						    (const void **)&buildinfo, &mod_manifest);
+
+	if (mod_ctx_idx < 0)
+		return 0;
+
+	struct lib_manager_module *mctx = ctx->mod + mod_ctx_idx;
+
+	if (buildinfo) {
+		/* First instance: check that the module is native */
+		if (buildinfo->format != SOF_MODULE_API_BUILD_INFO_FORMAT ||
+		    buildinfo->api_version_number.full != SOF_MODULE_API_CURRENT_VERSION) {
+			tr_err(&lib_manager_tr, "Unsupported module API version");
+			return 0;
+		}
+	}
+
+	if (!mctx->mapped) {
+		int i, ret;
+
+		/*
+		 * Check if any dependencies need to be mapped - collect
+		 * pointers to library contexts
+		 */
+		struct lib_manager_module *dep_ctx[LLEXT_MAX_DEPENDENCIES] = {};
+
+		for (i = 0; i < ARRAY_SIZE(mctx->llext->dependency); i++) {
+			struct lib_manager_module *dep;
+
+			/* Dependencies are filled from the beginning of the array upwards */
+			if (!mctx->llext->dependency[i])
+				break;
+
+			ret = llext_lib_find(mctx->llext->dependency[i], &dep);
+			if (ret < 0) {
+				tr_err(&lib_manager_tr,
+				       "Unmet dependency: cannot find dependency %u", i);
+				continue;
+			}
+
+			tr_dbg(&lib_manager_tr, "%s depending on %s index %u, %u users",
+			       mctx->llext->name, mctx->llext->dependency[i]->name,
+			       dep->start_idx, dep->n_dependent);
+
+			/*
+			 * Protected by the IPC serialization, but maybe we should protect the
+			 * dependent-count explicitly too. It is incremented when a new dependent
+			 * is identified. If it's non-zero, then some other modules also depend
+			 * on it and have already mapped it.
+			 */
+			if (dep->n_dependent++)
+				continue;
+
+			/* First user of this dependency, load it into SRAM */
+			ret = llext_manager_load_module(dep);
+			if (ret < 0) {
+				dep->n_dependent--;
+				llext_manager_depend_unlink_rollback(dep_ctx, i - 1);
+				return 0;
+			}
+
+			dep_ctx[i] = dep;
+		}
+
+		/* Avoid mapping DP modules to the LL domain */
+		mctx->domain_dp = ipc_config->proc_domain == COMP_PROCESSING_DOMAIN_DP;
+		/* Map executable code and data */
+		ret = llext_manager_load_module(mctx);
+		if (ret < 0)
+			return 0;
+	}
+
+	return mod_manifest->module.entry_point;
+}
+
+#ifdef CONFIG_USERSPACE
+
+static int llext_manager_add_mod_domain(struct lib_manager_module *mctx, struct k_mem_domain *domain)
+{
+	const struct llext *ext = mctx->llext;
+	const struct llext_loader *ldr = &mctx->ebl->loader;
+
+	/* Executable code (.text) */
+	uintptr_t va_base_text = mctx->segment[LIB_MANAGER_TEXT].addr;
+	size_t text_size = mctx->segment[LIB_MANAGER_TEXT].size;
+
+	/* Read-only data (.rodata and others) */
+	uintptr_t va_base_rodata = mctx->segment[LIB_MANAGER_RODATA].addr;
+	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
+
+	/* Writable data (.data, .bss and others) */
+	uintptr_t va_base_data = mctx->segment[LIB_MANAGER_DATA].addr;
+	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
+
+	/*
+	 * Add to domain on first load: for "normal" modules use_count == 1,
+	 * for dependencies use_count == 2 and n_dependent == 1.
+	 * This does not apply to DP modules, since they are, for now,
+	 * all in their own memory domains.
+	 *
+	 * NOTE: This approach will make it impossible for a single
+	 *       module to have both LL and DP instances within one
+	 *       configuration.  This will be fixed in the future.
+	 */
+	if (!mctx->domain_dp && ext->use_count > 1 && mctx->n_dependent != 1)
+		return 0;
+
+	int ret = llext_manager_add_partition(domain, va_base_text, text_size,
+					      K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
+
+	if (ret < 0)
+		return ret;
+
+	if (rodata_size) {
+		ret = llext_manager_add_partition(domain, va_base_rodata, rodata_size,
+						  K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
+		if (ret < 0)
+			goto e_text;
+	}
+
+	if (data_size) {
+		ret = llext_manager_add_partition(domain, va_base_data, data_size,
+						  K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB);
+		if (ret < 0)
+			goto e_rodata;
+	}
+
+	elf_shdr_t shdr_cold, shdr_coldrodata;
+	bool rodata = false, text = false;
+	const void *rodata_addr = NULL, *text_addr = NULL;
+	size_t text_offset = 0, rodata_offset = 0;
+
+	shdr_cold.sh_size = 0;
+	shdr_coldrodata.sh_size = 0;
+
+	ret = llext_get_section_header(ldr, ext, ".cold", &shdr_cold);
+	if (ret < 0)
+		tr_warn(&lib_manager_tr, "couldn't get .cold header");
+	else
+		llext_get_region_info(ldr, ext, LLEXT_MEM_TEXT, NULL, &text_addr, NULL);
+
+	ret = llext_get_section_header(ldr, ext, ".coldrodata", &shdr_coldrodata);
+	if (ret < 0)
+		tr_warn(&lib_manager_tr, "couldn't get .coldrodata header");
+	else
+		llext_get_region_info(ldr, ext, LLEXT_MEM_RODATA, NULL, &rodata_addr, NULL);
+
+	for (unsigned int i = 0; i < llext_section_count(ext) && (!rodata || !text); i++) {
+		const elf_shdr_t *shdr;
+		enum llext_mem s_region = LLEXT_MEM_COUNT;
+		size_t s_offset = 0;
+
+		ret = llext_get_section_info(ldr, ext, i, &shdr, &s_region, &s_offset);
+		if (ret < 0)
+			continue;
+
+		switch (s_region) {
+		case LLEXT_MEM_TEXT:
+			if (shdr_cold.sh_size &&
+			    shdr->sh_name == shdr_cold.sh_name &&
+			    shdr->sh_offset == shdr_cold.sh_offset && !text) {
+				text = true;
+				text_offset = s_offset;
+			}
+			break;
+		case LLEXT_MEM_RODATA:
+			if (shdr_coldrodata.sh_size &&
+			    shdr->sh_name == shdr_coldrodata.sh_name &&
+			    shdr->sh_offset == shdr_coldrodata.sh_offset && !rodata) {
+				rodata = true;
+				rodata_offset = s_offset;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (text) {
+		tr_dbg(&lib_manager_tr, ".cold %#x @ %#lx",
+		       shdr_cold.sh_size, (uintptr_t)text_addr + text_offset);
+		ret = llext_manager_add_partition(domain, (uintptr_t)text_addr + text_offset,
+						  shdr_cold.sh_size,
+						  K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
+		if (ret < 0)
+			goto e_data;
+		mctx->segment[LIB_MANAGER_COLD].addr = (uintptr_t)text_addr + text_offset;
+		mctx->segment[LIB_MANAGER_COLD].size = shdr_cold.sh_size;
+	}
+
+	if (rodata) {
+		tr_dbg(&lib_manager_tr, ".coldrodata %#x @ %#lx",
+		       shdr_coldrodata.sh_size, (uintptr_t)rodata_addr + rodata_offset);
+		ret = llext_manager_add_partition(domain, (uintptr_t)rodata_addr + rodata_offset,
+						  shdr_coldrodata.sh_size,
+						  K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
+		if (ret < 0)
+			goto e_cold;
+		mctx->segment[LIB_MANAGER_COLDRODATA].addr = (uintptr_t)rodata_addr + rodata_offset;
+		mctx->segment[LIB_MANAGER_COLDRODATA].size = shdr_coldrodata.sh_size;
+	}
+
+	return 0;
+
+e_cold:
+	llext_manager_rm_partition(domain, (uintptr_t)text_addr + text_offset, shdr_cold.sh_size,
+				   K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
+	mctx->segment[LIB_MANAGER_COLD].addr = 0;
+	mctx->segment[LIB_MANAGER_COLD].size = 0;
+e_data:
+	llext_manager_rm_partition(domain, va_base_data, data_size,
+				   K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB);
+e_rodata:
+	llext_manager_rm_partition(domain, va_base_rodata, rodata_size,
+				   K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
+e_text:
+	llext_manager_rm_partition(domain, va_base_text, text_size,
+				   K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
+	return ret;
+}
+
+int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *domain)
+{
+	const uint32_t module_id = IPC4_MOD_ID(component_id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	const int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
+	struct lib_manager_module *mctx = ctx->mod + mod_idx;
+
+	/* FIXME: handle dependencies */
+	return llext_manager_add_mod_domain(mctx, domain);
+}
+
+static int llext_manager_rm_mod_domain(struct lib_manager_module *mctx, struct k_mem_domain *domain)
+{
+	/* Executable code (.text) */
+	uintptr_t va_base_text = mctx->segment[LIB_MANAGER_TEXT].addr;
+	size_t text_size = mctx->segment[LIB_MANAGER_TEXT].size;
+
+	/* Read-only data (.rodata and others) */
+	uintptr_t va_base_rodata = mctx->segment[LIB_MANAGER_RODATA].addr;
+	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
+
+	/* Writable data (.data, .bss and others) */
+	uintptr_t va_base_data = mctx->segment[LIB_MANAGER_DATA].addr;
+	size_t data_size = mctx->segment[LIB_MANAGER_DATA].size;
+
+	int err, ret = llext_manager_rm_partition(domain, va_base_text, text_size,
+						  K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
+
+	if (ret < 0)
+		tr_err(&lib_manager_tr, "failed to remove .text memory partition: %d", ret);
+
+	if (rodata_size) {
+		err = llext_manager_rm_partition(domain, va_base_rodata, rodata_size,
+						 K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
+		if (err < 0) {
+			tr_err(&lib_manager_tr, "failed to remove .rodata memory partition: %d",
+			       err);
+			if (!ret)
+				ret = err;
+		}
+	}
+
+	if (data_size) {
+		err = llext_manager_rm_partition(domain, va_base_data, data_size,
+						 K_MEM_PARTITION_P_RW_U_RW | XTENSA_MMU_CACHED_WB);
+		if (err < 0) {
+			tr_err(&lib_manager_tr, "failed to remove .data memory partition: %d", err);
+			if (!ret)
+				ret = err;
+		}
+	}
+
+	if (mctx->segment[LIB_MANAGER_COLD].addr) {
+		err = llext_manager_rm_partition(domain,
+						 mctx->segment[LIB_MANAGER_COLD].addr,
+						 mctx->segment[LIB_MANAGER_COLD].size,
+						 K_MEM_PARTITION_P_RX_U_RX | XTENSA_MMU_CACHED_WB);
+		if (err < 0) {
+			tr_err(&lib_manager_tr, "failed to remove .cold memory partition: %d", err);
+			if (!ret)
+				ret = err;
+		}
+	}
+
+	if (mctx->segment[LIB_MANAGER_COLDRODATA].addr) {
+		err = llext_manager_rm_partition(domain,
+						 mctx->segment[LIB_MANAGER_COLDRODATA].addr,
+						 mctx->segment[LIB_MANAGER_COLDRODATA].size,
+						 K_MEM_PARTITION_P_RO_U_RO | XTENSA_MMU_CACHED_WB);
+		if (err < 0) {
+			tr_err(&lib_manager_tr,
+			       "failed to remove .coldrodata memory partition: %d", err);
+			if (!ret)
+				ret = err;
+		}
+	}
+
+	return ret;
+}
+
+int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *domain)
+{
+	const uint32_t module_id = IPC4_MOD_ID(component_id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+	const int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
+	struct lib_manager_module *mctx = ctx->mod + mod_idx;
+
+	return llext_manager_rm_mod_domain(mctx, domain);
+}
+#endif
+
+int llext_manager_free_module(const uint32_t component_id)
+{
+	const uint32_t module_id = IPC4_MOD_ID(component_id);
+	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
+	uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
+
+	if (!ctx->mod) {
+		tr_err(&lib_manager_tr, "NULL module array: ID %#x ctx %p", component_id, ctx);
+		return -ENOENT;
+	}
+
+	int mod_idx = llext_manager_mod_find(ctx, entry_index);
+
+	if (mod_idx < 0)
+		return mod_idx;
+
+	struct lib_manager_module *mctx = ctx->mod + mod_idx;
+
+	/* Protected by IPC serialization */
+	if (mctx->llext->use_count > 1) {
+		/*
+		 * At least 2 users: llext_unload() will never actually free
+		 * the extension but only reduce the refcount and return its
+		 * new value (must be a positive number).
+		 * NOTE: if this is modified to allow extension unload, the
+		 * inspection data in the loader must be freed as well by
+		 * calling the llext_free_inspection_data() function.
+		 */
+		int ret = llext_unload(&mctx->llext);
+
+		if (ret <= 0) {
+			tr_err(&lib_manager_tr,
+			       "mod_id: %#x: invalid return code from llext_unload(): %d",
+			       component_id, ret);
+			return ret ? : -EPROTO;
+		}
+
+		/* More users are active */
+		return 0;
+	}
+
+	struct lib_manager_module *dep_ctx[LLEXT_MAX_DEPENDENCIES] = {};
+	int i;	/* signed to match llext_manager_depend_unlink_rollback() */
+
+	for (i = 0; i < ARRAY_SIZE(mctx->llext->dependency); i++)
+		if (llext_lib_find(mctx->llext->dependency[i], &dep_ctx[i]) < 0)
+			break;
+
+	/* Last user cleaning up, put dependencies */
+	if (i)
+		llext_manager_depend_unlink_rollback(dep_ctx, i - 1);
+
+	/*
+	 * The last instance of the module has been destroyed and it can now be
+	 * unloaded from SRAM
+	 */
+	tr_dbg(&lib_manager_tr, "mod_id: %#x", component_id);
+
+	/* Since the LLEXT context now is preserved, we have to flush logs ourselves */
+	log_flush();
+
+	return llext_manager_unload_module(mctx);
+}
+
+/* An auxiliary library has been loaded, need to read in its exported symbols */
+int llext_manager_add_library(uint32_t module_id)
+{
+	struct lib_manager_mod_ctx *const ctx = lib_manager_get_mod_ctx(module_id);
+
+	if (ctx->mod) {
+		tr_err(&lib_manager_tr, "module_id: %#x: repeated load!", module_id);
+		return -EBUSY;
+	}
+
+	const struct sof_man_fw_desc *desc = lib_manager_get_library_manifest(module_id);
+	unsigned int i;
+	int ret;
+
+	if (!ctx->mod) {
+		ret = llext_manager_mod_init(ctx, desc);
+		if (ret < 0)
+			return ret;
+	}
+
+	for (i = 0; i < ctx->n_mod; i++) {
+		const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id + i);
+
+		if (mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX) {
+			const struct sof_man_module_manifest *mod_manifest;
+			const struct sof_module_api_build_info *buildinfo;
+
+			ret = llext_manager_link_single(module_id + i, desc, ctx,
+							(const void **)&buildinfo, &mod_manifest);
+			if (ret < 0)
+				return ret;
+		}
+	}
+	ctx->load_type = SOF_MAN_MOD_TYPE_LLEXT;
+
+	return 0;
+}
+
+bool comp_is_llext(struct comp_dev *comp)
+{
+	const uint32_t module_id = IPC4_MOD_ID(comp->ipc_config.id);
+	const unsigned int base_module_id = LIB_MANAGER_GET_LIB_ID(module_id) <<
+		LIB_MANAGER_LIB_ID_SHIFT;
+	const struct sof_man_module *mod = lib_manager_get_module_manifest(base_module_id);
+
+	return mod && module_is_llext(mod);
+}
+
+static int llext_memory_region_init(void)
+{
+	int ret;
+
+	/* add a region for loadable libraries */
+	ret = adsp_add_virtual_memory_region(CONFIG_LIBRARY_BASE_ADDRESS,
+					     CONFIG_LIBRARY_REGION_SIZE,
+					     VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR);
+
+	return ret;
+}
+
+SYS_INIT(llext_memory_region_init, POST_KERNEL, 1);

@@ -11,10 +11,12 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
-#include <arch/lib/wait.h>
-#include <sof/lib/clk.h>
+#include <rtos/wait.h>
+#include <rtos/clk.h>
+#include <sof/lib/mailbox.h>
 #include <stdint.h>
 
+struct ipc_msg;
 struct timer;
 
 /*! \def PLATFORM_DEFAULT_CLOCK
@@ -39,6 +41,23 @@ struct timer;
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
+/* local buffer size of DMA tracing */
+#define DMA_TRACE_LOCAL_SIZE    HOST_PAGE_SIZE
+
+/* trace bytes flushed during panic */
+#define DMA_FLUSH_TRACE_SIZE    (MAILBOX_TRACE_SIZE >> 2)
+
+/* the interval of DMA trace copying */
+#define DMA_TRACE_PERIOD        500000
+
+/*
+ * the interval of reschedule DMA trace copying in special case like half
+ * fullness of local DMA trace buffer
+ */
+#define DMA_TRACE_RESCHEDULE_TIME       100
+
+#define HW_CFG_VERSION		0
+
 static inline void platform_panic(uint32_t p) {}
 
 /**
@@ -46,12 +65,12 @@ static inline void platform_panic(uint32_t p) {}
  * May be power-optimized using platform specific capabilities.
  * @param level Interrupt level.
  */
-static inline void platform_wait_for_interrupt(int level)
-{
-	arch_wait_for_interrupt(level);
-}
+static inline void platform_wait_for_interrupt(int level) {}
 
-extern struct timer *platform_timer;
+
+static inline int ipc_platform_send_msg(const struct ipc_msg *msg) { return 0; }
+
+static inline void ipc_platform_send_msg_direct(const struct ipc_msg *msg) {}
 
 #endif /* __PLATFORM_PLATFORM_H__ */
 

@@ -8,50 +8,135 @@
 #ifndef __SOF_AUDIO_BUFFER_H__
 #define __SOF_AUDIO_BUFFER_H__
 
+#include <sof/audio/audio_stream.h>
+#include <sof/audio/audio_buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/math/numbers.h>
 #include <sof/common.h>
-#include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/panic.h>
+#include <rtos/alloc.h>
+#include <rtos/cache.h>
 #include <sof/list.h>
+#include <sof/coherent.h>
+#include <sof/math/numbers.h>
+#include <rtos/spinlock.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
+#include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+#include <sof/audio/format.h>
+
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 struct comp_dev;
+struct buffer_cb_transact;
+
+/** \name Trace macros
+ *  @{
+ */
 
 /* buffer tracing */
-#define trace_buffer(__e, ...) \
-	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define trace_buffer_error(__e, ...) \
-	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define tracev_buffer(__e, ...) \
-	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define trace_buffer_error_atomic(__e, ...) \
-	trace_error_atomic(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+extern struct tr_ctx buffer_tr;
+
+/** \brief Retrieves trace context from the buffer */
+#define trace_buf_get_tr_ctx(buf_ptr) (&(buf_ptr)->tctx)
+
+/** \brief Retrieves subid (comp id) from the buffer */
+#define buf_get_id(buf_ptr) ((buf_ptr)->stream.runtime_stream_params.id)
+
+#if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
+
+#if CONFIG_IPC_MAJOR_4
+#define __BUF_FMT "buf:%u %#x "
+#else
+#define __BUF_FMT "buf:%u.%u "
+#endif
+
+#define buf_err(buf_ptr, __e, ...) LOG_ERR(__BUF_FMT __e, buffer_pipeline_id(buf_ptr), \
+					   buf_get_id(buf_ptr), ##__VA_ARGS__)
+
+#define buf_warn(buf_ptr, __e, ...) LOG_WRN(__BUF_FMT __e, buffer_pipeline_id(buf_ptr), \
+					    buf_get_id(buf_ptr), ##__VA_ARGS__)
+
+#define buf_info(buf_ptr, __e, ...) LOG_INF(__BUF_FMT __e, buffer_pipeline_id(buf_ptr), \
+					    buf_get_id(buf_ptr), ##__VA_ARGS__)
+
+#define buf_dbg(buf_ptr, __e, ...) LOG_DBG(__BUF_FMT __e, buffer_pipeline_id(buf_ptr), \
+					   buf_get_id(buf_ptr), ##__VA_ARGS__)
+
+#else
+/** \brief Trace error message from buffer */
+#define buf_err(buf_ptr, __e, ...)						\
+	trace_dev_err(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
+		      buf_get_id,					\
+		      (__sparse_force const struct comp_buffer *)buf_ptr,	\
+		      __e, ##__VA_ARGS__)
+
+/** \brief Trace warning message from buffer */
+#define buf_warn(buf_ptr, __e, ...)						\
+	trace_dev_warn(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
+		       buf_get_id,					\
+		       (__sparse_force const struct comp_buffer *)buf_ptr,	\
+		        __e, ##__VA_ARGS__)
+
+/** \brief Trace info message from buffer */
+#define buf_info(buf_ptr, __e, ...)						\
+	trace_dev_info(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
+		       buf_get_id,					\
+		       (__sparse_force const struct comp_buffer *)buf_ptr,	\
+		       __e, ##__VA_ARGS__)
+
+/** \brief Trace debug message from buffer */
+#if defined(CONFIG_LIBRARY)
+#define buf_dbg(buf_ptr, __e, ...)
+#else
+#define buf_dbg(buf_ptr, __e, ...)						\
+	trace_dev_dbg(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
+		      buf_get_id,					\
+		      (__sparse_force const struct comp_buffer *)buf_ptr,	\
+		      __e, ##__VA_ARGS__)
+#endif
+
+#endif /* #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG) */
+
+/** @}*/
 
 /* buffer callback types */
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
 #define BUFF_CB_TYPE_CONSUME	BIT(1)
 
-/* audio component buffer - connects 2 audio components together in pipeline */
-struct comp_buffer {
+#define BUFFER_UPDATE_IF_UNSET	0
+#define BUFFER_UPDATE_FORCE	1
 
-	/* runtime data */
-	uint32_t size;	/* runtime buffer size in bytes (period multiple) */
-	uint32_t alloc_size;	/* allocated size in bytes */
-	uint32_t avail;		/* available bytes for reading */
-	uint32_t free;		/* free bytes for writing */
-	void *w_ptr;		/* buffer write pointer */
-	void *r_ptr;		/* buffer read position */
-	void *addr;		/* buffer base address */
-	void *end_addr;		/* buffer end address */
+/* buffer parameters */
+#define BUFF_PARAMS_FRAME_FMT	BIT(0)
+#define BUFF_PARAMS_BUFFER_FMT	BIT(1)
+#define BUFF_PARAMS_RATE	BIT(2)
+#define BUFF_PARAMS_CHANNELS	BIT(3)
+
+/* buffer usage */
+#define BUFFER_USAGE_SHARED	true	/* buffer used by multiple DSP core and/or HW blocks */
+#define BUFFER_USAGE_NOT_SHARED false	/* buffer only used by one HW block */
+
+/*
+ * audio component buffer - connects 2 audio components together in pipeline.
+ *
+ * this is a legacy component connector for pipeline 1.0
+ *
+ */
+struct comp_buffer {
+	/* data buffer */
+	struct sof_audio_buffer audio_buffer;
+
+	struct audio_stream stream;
 
 	/* configuration */
-	uint32_t id;
-	uint32_t pipeline_id;
-	uint32_t caps;
+	uint32_t flags;
+	uint32_t core;
+	struct tr_ctx tctx;			/* trace settings */
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
@@ -61,32 +146,68 @@ struct comp_buffer {
 	struct list_item source_list;	/* list in comp buffers */
 	struct list_item sink_list;	/* list in comp buffers */
 
-	/* callbacks */
-	void (*cb)(void *data, uint32_t bytes);
-	void *cb_data;
-	int cb_type;
+	/* list of buffers, to be used i.e. in raw data processing mode*/
+	struct list_item buffers_list;
+
+#if CONFIG_PROBE
+	/** probe produce callback, called on buffer produce */
+	void (*probe_cb_produce)(void *arg, struct buffer_cb_transact *cb_data);
+	/** probe free callback, called on buffer free */
+	void (*probe_cb_free)(void *arg);
+	/** opaque argument passed to probe callbacks */
+	void *probe_cb_arg;
+#endif
 };
 
-#define buffer_comp_list(buffer, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->source_list : \
-	 &buffer->sink_list)
+/*
+ * get a component providing data to the buffer
+ */
+static inline struct comp_dev *comp_buffer_get_source_component(const struct comp_buffer *buffer)
+{
+	return buffer->source;
+}
 
-#define buffer_from_list(ptr, type, dir) \
+/*
+ * get a component consuming data from the buffer
+ */
+static inline struct comp_dev *comp_buffer_get_sink_component(const struct comp_buffer *buffer)
+{
+	return buffer->sink;
+}
+
+static inline
+void comp_buffer_set_source_component(struct comp_buffer *buffer, struct comp_dev *comp)
+{
+	buffer->source = comp;
+}
+
+static inline
+void comp_buffer_set_sink_component(struct comp_buffer *buffer, struct comp_dev *comp)
+{
+	buffer->sink = comp;
+}
+
+static inline void comp_buffer_reset_source_list(struct comp_buffer *buffer)
+{
+	list_init(&buffer->source_list);
+}
+
+static inline void comp_buffer_reset_sink_list(struct comp_buffer *buffer)
+{
+	list_init(&buffer->sink_list);
+}
+
+/* Used as parameter for probe produce callback */
+struct buffer_cb_transact {
+	struct comp_buffer *buffer;
+	uint32_t transaction_amount;
+	void *transaction_begin_address;
+};
+
+#define buffer_from_list(ptr, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? \
-	 container_of(ptr, type, source_list) : \
-	 container_of(ptr, type, sink_list))
-
-#define buffer_get_comp(buffer, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? buffer->sink : \
-	 buffer->source)
-
-#define buffer_set_comp(buffer, comp, dir) \
-	do {						\
-		if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)	\
-			buffer->source = comp;		\
-		else					\
-			buffer->sink = comp;		\
-	} while (0)					\
+	 container_of(ptr, struct comp_buffer, source_list) : \
+	 container_of(ptr, struct comp_buffer, sink_list))
 
 #define buffer_set_cb(buffer, func, data, type) \
 	do {				\
@@ -95,31 +216,44 @@ struct comp_buffer {
 		buffer->cb_type = type;	\
 	} while (0)
 
-#define buffer_read_frag(buffer, idx, size) \
-	buffer_get_frag(buffer, buffer->r_ptr, idx, size)
-
-#define buffer_read_frag_s16(buffer, idx) \
-	buffer_get_frag(buffer, buffer->r_ptr, idx, sizeof(int16_t))
-
-#define buffer_read_frag_s32(buffer, idx) \
-	buffer_get_frag(buffer, buffer->r_ptr, idx, sizeof(int32_t))
-
-#define buffer_write_frag(buffer, idx, size) \
-	buffer_get_frag(buffer, buffer->w_ptr, idx, size)
-
-#define buffer_write_frag_s16(buffer, idx) \
-	buffer_get_frag(buffer, buffer->w_ptr, idx, sizeof(int16_t))
-
-#define buffer_write_frag_s32(buffer, idx) \
-	buffer_get_frag(buffer, buffer->w_ptr, idx, sizeof(int32_t))
-
-typedef void (*cache_buff_op)(struct comp_buffer *);
+struct mod_alloc_ctx;
 
 /* pipeline buffer creation and destruction */
-struct comp_buffer *buffer_alloc(uint32_t size, uint32_t caps, uint32_t align);
-struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
-int buffer_set_size(struct comp_buffer *buffer, uint32_t size);
-void buffer_free(struct comp_buffer *buffer);
+struct comp_buffer *buffer_alloc(struct mod_alloc_ctx *alloc, size_t size, uint32_t flags,
+				 uint32_t align, bool is_shared);
+struct comp_buffer *buffer_alloc_range(struct mod_alloc_ctx *alloc, size_t preferred_size,
+				       size_t minimum_size,
+				       uint32_t flags, uint32_t align, bool is_shared);
+struct comp_buffer *buffer_new(struct mod_alloc_ctx *alloc, const struct sof_ipc_buffer *desc,
+			       bool is_shared);
+
+int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignment);
+int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, size_t minimum_size,
+			  uint32_t alignment);
+
+/* legacy wrappers, to be removed. Don't use them if possible */
+static inline struct comp_buffer *comp_buffer_get_from_source(struct sof_source *source)
+{
+	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_source(source);
+
+	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
+}
+
+static inline struct comp_buffer *comp_buffer_get_from_sink(struct sof_sink *sink)
+{
+	struct sof_audio_buffer *audio_buffer = sof_audio_buffer_from_sink(sink);
+
+	return container_of(audio_buffer, struct comp_buffer, audio_buffer);
+}
+
+static inline void buffer_free(struct comp_buffer *buffer)
+{
+	audio_buffer_free(&buffer->audio_buffer);
+}
+
+/* end of legacy wrappers */
+
+void buffer_zero(struct comp_buffer *buffer);
 
 /* called by a component after producing data into this buffer */
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
@@ -127,142 +261,66 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
 /* called by a component after consuming data from this buffer */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
-static inline void buffer_zero(struct comp_buffer *buffer)
-{
-	tracev_buffer("buffer_zero()");
+int buffer_set_params(struct comp_buffer *buffer,
+		      struct sof_ipc_stream_params *params, bool force_update);
 
-	bzero(buffer->addr, buffer->size);
-	if (buffer->caps & SOF_MEM_CAPS_DMA)
-		dcache_writeback_region(buffer->addr, buffer->size);
+bool buffer_params_match(struct comp_buffer *buffer,
+			 struct sof_ipc_stream_params *params, uint32_t flag);
+
+static inline void buffer_stream_invalidate(struct comp_buffer *buffer, uint32_t bytes)
+{
+#if CONFIG_INCOHERENT
+	if (audio_buffer_is_shared(&buffer->audio_buffer))
+		audio_stream_invalidate(&buffer->stream, bytes);
+#endif
 }
 
-/* get the max number of bytes that can be copied between sink and source */
-static inline int comp_buffer_can_copy_bytes(struct comp_buffer *source,
-					     struct comp_buffer *sink,
-					     uint32_t bytes)
+static inline void buffer_stream_writeback(struct comp_buffer *buffer, uint32_t bytes)
 {
-	/* check for underrun */
-	if (source->avail < bytes)
-		return -1;
-
-	/* check for overrun */
-	if (sink->free < bytes)
-		return 1;
-
-	/* we are good to copy */
-	return 0;
+#if CONFIG_INCOHERENT
+	if (audio_buffer_is_shared(&buffer->audio_buffer))
+		audio_stream_writeback(&buffer->stream, bytes);
+#endif
 }
 
-static inline uint32_t comp_buffer_get_copy_bytes(struct comp_buffer *source,
-						  struct comp_buffer *sink)
+
+/*
+ * Attach a new buffer at the beginning of the list. Note, that "head" must
+ * really be the head of the list, not a list head within another buffer. We
+ * don't synchronise its cache, so it must not be embedded in an object, using
+ * the coherent API. The caller takes care to protect list heads.
+ *
+ * Returns -EINVAL if the buffer is already linked in this direction
+ * (re-attaching would create a self-loop and corrupt the list).
+ */
+int buffer_attach(struct comp_buffer *buffer, struct list_item *head, int dir);
+
+/*
+ * Detach a buffer from anywhere in the list. "head" is again the head of the
+ * list, we need it to verify, whether this buffer was the first or the last on
+ * the list. Again it is assumed that the head's cache doesn't need to be
+ * synchronized. The caller takes care to protect list heads.
+ */
+void buffer_detach(struct comp_buffer *buffer, struct list_item *head, int dir);
+
+static inline struct comp_dev *buffer_get_comp(struct comp_buffer *buffer, int dir)
 {
-	if (source->avail > sink->free)
-		return sink->free;
-	else
-		return source->avail;
+	struct comp_dev *comp = (dir == PPL_DIR_DOWNSTREAM) ?
+					comp_buffer_get_sink_component(buffer) :
+					comp_buffer_get_source_component(buffer);
+	return comp;
 }
 
-static inline void comp_buffer_cache_wtb_inv(struct comp_buffer *buffer)
+static inline uint32_t buffer_pipeline_id(const struct comp_buffer *buffer)
 {
-	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+	return buffer->stream.runtime_stream_params.pipeline_id;
 }
 
-static inline void comp_buffer_cache_inv(struct comp_buffer *buffer)
+/* Run-time buffer re-configuration calls this too, so it must use cached access */
+static inline void buffer_init_stream(struct comp_buffer *buffer, size_t size)
 {
-	dcache_invalidate_region(buffer, sizeof(*buffer));
-}
-
-static inline cache_buff_op comp_buffer_cache_op(int cmd)
-{
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		return &comp_buffer_cache_wtb_inv;
-	case CACHE_INVALIDATE:
-		return &comp_buffer_cache_inv;
-	default:
-		trace_buffer_error("comp_buffer_cache_op() error: "
-				   "invalid cmd = %u", cmd);
-		return NULL;
-	}
-}
-
-static inline void buffer_reset_pos(struct comp_buffer *buffer)
-{
-	/* reset read and write pointer to buffer bas */
-	buffer->w_ptr = buffer->addr;
-	buffer->r_ptr = buffer->addr;
-
-	/* free space is buffer size */
-	buffer->free = buffer->size;
-
-	/* there are no avail samples at reset */
-	buffer->avail = 0;
-
-	/* clear buffer contents */
-	buffer_zero(buffer);
-}
-
-static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
-				    uint32_t idx, uint32_t size)
-{
-	void *current = (char *)ptr + (idx * size);
-
-	/* check for pointer wrap */
-	if (current >= buffer->end_addr)
-		current = (char *)buffer->addr +
-			((char *)current - (char *)buffer->end_addr);
-
-	return current;
-}
-
-static inline void buffer_init(struct comp_buffer *buffer, uint32_t size,
-			       uint32_t caps)
-{
-	buffer->alloc_size = size;
-	buffer->size = size;
-	buffer->caps = caps;
-	buffer->w_ptr = buffer->addr;
-	buffer->r_ptr = buffer->addr;
-	buffer->end_addr = (char *)buffer->addr + size;
-	buffer->free = size;
-	buffer->avail = 0;
-	buffer_zero(buffer);
-}
-
-static inline void buffer_copy_s16(struct comp_buffer *source,
-				   struct comp_buffer *sink, uint32_t bytes)
-{
-	uint32_t frames = bytes / sizeof(int16_t);
-	uint32_t buff_frag = 0;
-	int16_t *src;
-	int16_t *dst;
-	uint32_t i;
-
-	for (i = 0; i < frames; i++) {
-		src = buffer_read_frag_s16(source, buff_frag);
-		dst = buffer_write_frag_s16(sink, buff_frag);
-		*dst = *src;
-
-		buff_frag++;
-	}
-}
-
-static inline void buffer_copy_s32(struct comp_buffer *source,
-				   struct comp_buffer *sink, uint32_t bytes)
-{
-	uint32_t frames = bytes / sizeof(int32_t);
-	uint32_t buff_frag = 0;
-	int32_t *src;
-	int32_t *dst;
-	uint32_t i;
-
-	for (i = 0; i < frames; i++) {
-		src = buffer_read_frag_s32(source, buff_frag);
-		dst = buffer_write_frag_s32(sink, buff_frag);
-		*dst = *src;
-
-		buff_frag++;
-	}
+	/* addr should be set in alloc function */
+	audio_stream_init(&buffer->stream, buffer->stream.addr, size);
 }
 
 #endif /* __SOF_AUDIO_BUFFER_H__ */

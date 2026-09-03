@@ -8,20 +8,20 @@
  * architecture.
  */
 
-#include <sof/audio/src/src_config.h>
+#include "src_config.h"
 
 #if SRC_GENERIC
 
 #include <sof/audio/format.h>
-#include <sof/audio/src/src.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "src_common.h"
 
 #if SRC_SHORT /* 16 bit coefficients version */
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
-				      const int fir_delay_length,
 				      const int taps_x_nch,
 				      const int shift, const int nch)
 {
@@ -59,22 +59,18 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		 * output shift includes the shift by 15 for Qx.46 to
 		 * Qx.31.
 		 */
-		for (i = 0; i < n1; i++) {
-			y0 += (int64_t)(*coef) * (*data);
-			data++;
-			y1 += (int64_t)(*coef) * (*data);
-			data++;
-			coef++;
+		for (i = 0; i < n1; i++, coef++, data += 2) {
+			y0 += (int64_t)(*coef) * data[0];
+			y1 += (int64_t)(*coef) * data[1];
 		}
-		if (data == fir_end)
-			data = fir_start;
 
-		for (i = 0; i < n2; i++) {
-			y0 += (int64_t)(*coef) * (*data);
-			data++;
-			y1 += (int64_t)(*coef) * (*data);
-			data++;
-			coef++;
+		/* No need to check for circular wrap. Pointer data is moved to
+		 * fir_start to be used by next loop if n2 is greater than zero.
+		 */
+		data = fir_start;
+		for (i = 0; i < n2; i++, coef++, data += 2) {
+			y0 += (int64_t)(*coef) * data[0];
+			y1 += (int64_t)(*coef) * data[1];
 		}
 
 		*wp = sat_int32(y1 >> qshift);
@@ -100,19 +96,15 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		 * output shift includes the shift by 15 for Qx.46 to
 		 * Qx.31.
 		 */
-		for (i = 0; i < n1; i += nch) {
+		for (i = 0; i < n1; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef) * (*data);
-			coef++;
-			data += nch;
-		}
-		if (data >= fir_end)
-			data -= fir_delay_length;
 
-		for (i = 0; i < n2; i += nch) {
+		/* No need to check for circular wrap. Pointer data is moved to fir_start
+		 * plus actual channel to be used by next loop if n2 is greater than zero.
+		 */
+		data = fir_start + nch - j - 1;
+		for (i = 0; i < n2; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef) * (*data);
-			coef++;
-			data += nch;
-		}
 
 		*wp = sat_int32(y0 >> qshift);
 		wp++;
@@ -123,12 +115,12 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
-				      int fir_delay_length,
 				      const int taps_x_nch, const int shift,
 				      const int nch)
 {
 	int64_t y0;
 	int64_t y1;
+	int32_t scaled_coef;
 	int32_t *data;
 	const int32_t *coef;
 	int i;
@@ -162,22 +154,20 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		 * output shift includes the shift by 23 for Qx.54 to
 		 * Qx.31.
 		 */
-		for (i = 0; i < n1; i++) {
-			y0 += (int64_t)(*coef >> 8) * (*data);
-			data++;
-			y1 += (int64_t)(*coef >> 8) * (*data);
-			data++;
-			coef++;
+		for (i = 0; i < n1; i++, coef++, data += 2) {
+			scaled_coef = *coef >> 8;
+			y0 += (int64_t)scaled_coef * data[0];
+			y1 += (int64_t)scaled_coef * data[1];
 		}
-		if (data == fir_end)
-			data = fir_start;
 
-		for (i = 0; i < n2; i++) {
-			y0 += (int64_t)(*coef >> 8) * (*data);
-			data++;
-			y1 += (int64_t)(*coef >> 8) * (*data);
-			data++;
-			coef++;
+		/* No need to check for circular wrap. Pointer data is moved to
+		 * fir_start to be used by next loop if n2 is greater than zero.
+		 */
+		data = fir_start;
+		for (i = 0; i < n2; i++, coef++, data += 2) {
+			scaled_coef = *coef >> 8;
+			y0 += (int64_t)scaled_coef * data[0];
+			y1 += (int64_t)scaled_coef * data[1];
 		}
 		*wp = sat_int32(y1 >> qshift);
 		*(wp + 1) = sat_int32(y0 >> qshift);
@@ -202,19 +192,16 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 		 * output shift includes the shift by 23 for Qx.54 to
 		 * Qx.31.
 		 */
-		for (i = 0; i < n1; i += nch) {
+		for (i = 0; i < n1; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef >> 8) * (*data);
-			coef++;
-			data += nch;
-		}
-		if (data >= fir_end)
-			data -= fir_delay_length;
 
-		for (i = 0; i < n2; i += nch) {
+		/* No need to check for circular wrap. Pointer data is moved to fir_start
+		 * plus actual channel to be used by next loop if n2 is greater than zero.
+		 */
+		data = fir_start + nch - j - 1;
+		for (i = 0; i < n2; i += nch, coef++, data += nch)
 			y0 += (int64_t)(*coef >> 8) * (*data);
-			coef++;
-			data += nch;
-		}
+
 		*wp = sat_int32(y0 >> qshift);
 		wp++;
 	}
@@ -235,7 +222,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	int32_t *wp;
 
 	struct src_state *fir = s->state;
-	struct src_stage *cfg = s->stage;
+	const struct src_stage *cfg = s->stage;
 	int32_t *fir_delay = fir->fir_delay;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
 	int32_t *out_delay_end = &fir->out_delay[fir->out_delay_size];
@@ -245,9 +232,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	const int nch_x_odm = cfg->odm * nch;
 	const int blk_in_words = nch * cfg->blk_in;
 	const int blk_out_words = nch * cfg->num_of_subfilters;
-	const int fir_length = fir->fir_delay_size;
-	const int rewind = nch * (cfg->blk_in
-		+ (cfg->num_of_subfilters - 1) * cfg->idm) - nch;
+	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
 	const int nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
 	const int taps_x_nch = cfg->subfilter_length * nch;
@@ -289,8 +274,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 		src_inc_wrap(&rp, fir_end, fir_size);
 		wp = fir->out_rp;
 		for (i = 0; i < cfg->num_of_subfilters; i++) {
-			fir_filter_generic(rp, cp, wp,
-					   fir_delay, fir_end, fir_length,
+			fir_filter_generic(rp, cp, wp, fir_delay, fir_end,
 					   taps_x_nch, cfg->shift, nch);
 			wp += nch_x_odm;
 			cp = (char *)cp + subfilter_size;
@@ -336,7 +320,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	int32_t *wp;
 
 	struct src_state *fir = s->state;
-	struct src_stage *cfg = s->stage;
+	const struct src_stage *cfg = s->stage;
 	int32_t *fir_delay = fir->fir_delay;
 	int32_t *fir_end = &fir->fir_delay[fir->fir_delay_size];
 	int32_t *out_delay_end = &fir->out_delay[fir->out_delay_size];
@@ -346,9 +330,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	const int nch_x_odm = cfg->odm * nch;
 	const int blk_in_words = nch * cfg->blk_in;
 	const int blk_out_words = nch * cfg->num_of_subfilters;
-	const int fir_length = fir->fir_delay_size;
-	const int rewind = nch * (cfg->blk_in
-		+ (cfg->num_of_subfilters - 1) * cfg->idm) - nch;
+	const int rewind = nch * (cfg->blk_in + (cfg->num_of_subfilters - 1) * cfg->idm);
 	const int nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
 	const int taps_x_nch = cfg->subfilter_length * nch;
@@ -390,8 +372,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 		src_inc_wrap(&rp, fir_end, fir_size);
 		wp = fir->out_rp;
 		for (i = 0; i < cfg->num_of_subfilters; i++) {
-			fir_filter_generic(rp, cp, wp,
-					   fir_delay, fir_end, fir_length,
+			fir_filter_generic(rp, cp, wp, fir_delay, fir_end,
 					   taps_x_nch, cfg->shift, nch);
 			wp += nch_x_odm;
 			cp = (char *)cp + subfilter_size;
@@ -410,7 +391,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 			n_min = (m < n_min) ? m : n_min;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				*y_wptr = Q_SHIFT_RND(*fir->out_rp, 31, 15);
+				*y_wptr = sat_int16(Q_SHIFT_RND(*fir->out_rp, 31, 15));
 				y_wptr++;
 				fir->out_rp++;
 			}

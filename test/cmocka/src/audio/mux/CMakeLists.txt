@@ -10,8 +10,26 @@ add_library(
 	audio_mux
 	STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux.c
+	${PROJECT_SOURCE_DIR}/src/audio/mux/mux_ipc3.c
 	${PROJECT_SOURCE_DIR}/src/audio/mux/mux_generic.c
 	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/audio/data_blob.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
+	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
+	${PROJECT_SOURCE_DIR}/src/math/numbers.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
+	${PROJECT_SOURCE_DIR}/src/lib/objpool.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module_adapter_ipc3.c
+	${PROJECT_SOURCE_DIR}/src/audio/module_adapter/module/generic.c
 )
 sof_append_relative_path_definitions(audio_mux)
 
@@ -20,44 +38,21 @@ target_link_libraries(audio_mux PRIVATE sof_options)
 link_libraries(audio_mux)
 
 cmocka_test(
-	mux_prepare
-	mux_prepare.c
-	mock.c
+	mux_get_processing_function
+	mux_get_processing_function.c
 )
 
 cmocka_test(
 	mux_copy
 	mux_copy.c
-	mock.c
 )
 
 cmocka_test(
 	demux_copy
 	demux_copy.c
-	mock.c
 )
 
-if(CONFIG_FORMAT_S16LE)
-cmocka_test(
-	mux_generic_calc_sample_s16le
-	mux_generic_calc_sample_s16le.c
-	mock.c
-)
-endif()
-
-if(CONFIG_FORMAT_S24LE)
-cmocka_test(
-	mux_generic_calc_sample_s24le
-	mux_generic_calc_sample_s24le.c
-	mock.c
-)
-endif()
-
-
-if(CONFIG_FORMAT_S32LE)
-cmocka_test(
-	mux_generic_calc_sample_s32le
-	mux_generic_calc_sample_s32le.c
-	mock.c
-)
-endif()
+target_include_directories(audio_mux PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
+target_include_directories(mux_get_processing_function PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
+target_include_directories(mux_copy PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)
+target_include_directories(demux_copy PRIVATE ${PROJECT_SOURCE_DIR}/src/audio)

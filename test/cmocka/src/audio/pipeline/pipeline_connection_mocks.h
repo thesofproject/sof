@@ -12,8 +12,13 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
-#include <malloc.h>
 #include <cmocka.h>
+
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 #define PIPELINE_ID_SAME 3
 #define PIPELINE_ID_DIFFERENT 4
@@ -27,12 +32,15 @@ struct pipeline_connect_data {
 };
 
 struct pipeline_connect_data *get_standard_connect_objects(void);
+void free_standard_connect_objects(struct pipeline_connect_data *data);
 
 void cleanup_test_data(struct pipeline_connect_data *data);
 
-static inline void schedule_task_mock_free(void *data, struct task *task)
+static inline int schedule_task_mock_free(void *data, struct task *task)
 {
 	task->state = SOF_TASK_STATE_FREE;
-	task->run = NULL;
+	task->ops.run = NULL;
 	task->data = NULL;
+
+	return 0;
 }

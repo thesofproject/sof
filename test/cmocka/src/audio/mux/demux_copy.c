@@ -5,11 +5,12 @@
 // Author: Daniel Bogdzia <danielx.bogdzia@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include "util.h"
+#include "../../util.h"
 
-#include <sof/audio/component.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/format.h>
-#include <sof/audio/mux.h>
+#include <mux/mux.h>
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -20,17 +21,24 @@
 #include <cmocka.h>
 
 struct test_data {
+	struct comp_dev *dev;
+	struct processing_module *mod;
+	struct comp_data *cd;
+	struct comp_buffer *sinks[MUX_MAX_STREAMS];
+	struct comp_buffer *source;
+	void *outputs[MUX_MAX_STREAMS];
 	uint32_t format;
 	uint8_t mask[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS];
-	void *outputs[MUX_MAX_STREAMS];
-	struct comp_dev *dev;
-	struct comp_buffer *source;
-	struct comp_buffer *sinks[MUX_MAX_STREAMS];
 };
 
 static int16_t input_16b[PLATFORM_MAX_CHANNELS] = {
 	0x101, 0x102, 0x104, 0x108,
 	0x111, 0x112, 0x114, 0x118,
+};
+
+static int32_t input_24b[PLATFORM_MAX_CHANNELS] = {
+	0x1a1001, 0x2a2002, 0x4a4004, 0x8a8008,
+	0x1b1011, 0x2b2012, 0x4b4014, 0x8b8018,
 };
 
 static int32_t input_32b[PLATFORM_MAX_CHANNELS] = {
@@ -46,69 +54,63 @@ static uint16_t valid_formats[] = {
 
 static uint8_t masks[][MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS] = {
 	{ { 0x01, }, },
+	{ { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
+	{ { },
+	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
+	{ { },
+	  { },
+	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
+	{ { },
+	  { },
+	  { },
+	  { 0x01, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80}, },
 	{ { 0x01, },
-	  { 0x01, },
-	  { 0x01, },
-	  { 0x01, }, },
-	{ { 0x00, 0x00, 0x00, 0x01, },
+	  { 0x00, 0x01, },
+	  { 0x00, 0x00, 0x01, },
+	  { 0x00, 0x00, 0x00, 0x01, 0x02, 0x04, 0x08, 0x10}, },
+	{ { 0x00, 0x00, 0x00, 0x01, 0x02, 0x04, 0x08, 0x10},
 	  { 0x00, 0x00, 0x01, },
 	  { 0x00, 0x01, },
 	  { 0x01, }, },
 	{ { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, },
 	  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, },
 	  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, },
-	  { 0x00, 0x00, 0x00, 0x00, 0x01, }, },
-	{ { 0x02, 0x01, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, },
-	  { 0x00, 0x02, 0x01, 0x00, 0x00, 0x00, 0x0f, 0x00, },
-	  { 0x00, 0x00, 0x02, 0x01, 0x00, 0x00, 0x00, 0x3f, },
-	  { 0x00, 0x00, 0x00, 0x02, 0x01, 0x00, 0x00, 0xff, }, },
-	{ { 0x0f, 0x00, 0xf0, 0x00, 0x0f, 0x00, 0xf0, 0x00, },
-	  { 0x00, 0x0f, 0x00, 0xf0, 0x00, 0x0f, 0x00, 0xf0, },
-	  { 0x0f, 0x00, 0xf0, 0x00, 0x0f, 0x00, 0xf0, 0x00, },
-	  { 0x00, 0x0f, 0x00, 0xf0, 0x00, 0x0f, 0x00, 0xf0, }, },
-	{ { 0xf0, 0x00, 0x0f, 0x00, 0xf0, 0x00, 0x0f, 0x00, },
-	  { 0x00, 0xf0, 0x00, 0x0f, 0x00, 0xf0, 0x00, 0x0f, },
-	  { 0xf0, 0x00, 0x0f, 0x00, 0xf0, 0x00, 0x0f, 0x00, },
-	  { 0x00, 0xf0, 0x00, 0x0f, 0x00, 0xf0, 0x00, 0x0f, }, },
-	{ { 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, },
-	  { 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, },
-	  { 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, },
-	  { 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, }, },
-	{ { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, },
-	  { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, },
-	  { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, },
-	  { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, }, },
+	  { 0x10, 0x08, 0x04, 0x02, 0x01, },},
+	{ { 0x01, },
+	  { 0x00, 0x01, },
+	  { 0x00, 0x00, 0x01, },
+	  { 0x00, 0x00, 0x00, 0x01, },},
 };
 
 static int setup_group(void **state)
 {
-	sys_comp_init();
-	sys_comp_mux_init();
-
+	sys_comp_init(sof_get());
+	sys_comp_module_demux_interface_init();
 	return 0;
 }
 
 static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 {
+	struct sof_ipc_comp_process *ipc;
+	struct sof_mux_config *mux;
 	size_t ipc_size = sizeof(struct sof_ipc_comp_process);
-	size_t mux_size = sizeof(struct sof_mux_config)
-			  + MUX_MAX_STREAMS * sizeof(struct mux_stream_data);
-	struct sof_ipc_comp_process *ipc = calloc(1, ipc_size + mux_size);
-	struct sof_mux_config *mux = (struct sof_mux_config *)&ipc->data;
+	size_t mux_size = sizeof(struct sof_mux_config) +
+		MUX_MAX_STREAMS * sizeof(struct mux_stream_data);
+	const struct sof_uuid uuid = SOF_REG_UUID(demux);
 	int i, j;
 
-	ipc->comp.hdr.size = sizeof(struct sof_ipc_comp_process);
-	ipc->comp.type = SOF_COMP_DEMUX;
+	ipc = calloc(1, ipc_size + mux_size + SOF_UUID_SIZE);
+	memcpy_s(ipc + 1, SOF_UUID_SIZE, &uuid, SOF_UUID_SIZE);
+	mux = (struct sof_mux_config *)((char *)(ipc + 1) + SOF_UUID_SIZE);
+	ipc->comp.hdr.size = ipc_size + SOF_UUID_SIZE;
+	ipc->comp.type = SOF_COMP_MODULE_ADAPTER;
 	ipc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
 	ipc->size = mux_size;
+	ipc->comp.ext_data_length = SOF_UUID_SIZE;
 
-	mux->frame_format = td->format;
-	mux->num_channels = PLATFORM_MAX_CHANNELS;
 	mux->num_streams = MUX_MAX_STREAMS;
-
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
 		mux->streams[i].pipeline_id = i;
-		mux->streams[i].num_channels = PLATFORM_MAX_CHANNELS;
 		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j)
 			mux->streams[i].mask[j] = td->mask[i][j];
 	}
@@ -119,55 +121,66 @@ static struct sof_ipc_comp_process *create_demux_comp_ipc(struct test_data *td)
 static void prepare_sinks(struct test_data *td, size_t sample_size)
 {
 	int i;
+	uint16_t buffer_size = sample_size * PLATFORM_MAX_CHANNELS;
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		td->sinks[i] = create_test_sink(td->dev,
-						i,
-						td->format,
-						PLATFORM_MAX_CHANNELS);
-		td->sinks[i]->free = sample_size * PLATFORM_MAX_CHANNELS;
-		td->outputs[i] = malloc(sample_size * PLATFORM_MAX_CHANNELS);
-		td->sinks[i]->w_ptr = td->outputs[i];
+		td->sinks[i] = create_test_sink(td->dev, i, td->format, PLATFORM_MAX_CHANNELS,
+						buffer_size);
+
+		td->outputs[i] = td->sinks[i]->stream.addr;
+		assert_int_equal(audio_stream_get_free_bytes(&td->sinks[i]->stream), buffer_size);
 	}
 }
 
 static void prepare_source(struct test_data *td, size_t sample_size)
 {
-	td->source = create_test_source(td->dev,
-					MUX_MAX_STREAMS + 1,
-					td->format,
-					PLATFORM_MAX_CHANNELS);
-	td->source->avail = sample_size * PLATFORM_MAX_CHANNELS;
+	uint16_t buffer_size = sample_size * PLATFORM_MAX_CHANNELS;
+
+	td->source = create_test_source(td->dev, MUX_MAX_STREAMS + 1, td->format,
+					PLATFORM_MAX_CHANNELS, buffer_size);
 
 	if (td->format == SOF_IPC_FRAME_S16_LE)
-		td->source->r_ptr = input_16b;
+		memcpy_s(td->source->stream.addr, buffer_size, input_16b, buffer_size);
+	else if (td->format == SOF_IPC_FRAME_S24_4LE)
+		memcpy_s(td->source->stream.addr, buffer_size, input_24b, buffer_size);
 	else
-		td->source->r_ptr = input_32b;
+		memcpy_s(td->source->stream.addr, buffer_size, input_32b, buffer_size);
+
+	audio_stream_produce(&td->source->stream, buffer_size);
+	assert_int_equal(audio_stream_get_avail_bytes(&td->source->stream), buffer_size);
 }
 
 static int setup_test_case(void **state)
 {
 	struct test_data *td = *((struct test_data **)state);
-	struct sof_ipc_comp_process *ipc = create_demux_comp_ipc(td);
-	size_t sample_size = td->format == SOF_IPC_FRAME_S16_LE ?
-			     sizeof(int16_t) : sizeof(int32_t);
-	int ret = 0;
+	struct comp_dev *dev;
+	struct processing_module *mod;
+	struct sof_ipc_comp_process *ipc;
+	size_t sample_size = td->format == SOF_IPC_FRAME_S16_LE ? sizeof(int16_t) : sizeof(int32_t);
+	struct pipeline *dummy_pipe;
 
-	td->dev = comp_new((struct sof_ipc_comp *)ipc);
+	ipc = create_demux_comp_ipc(td);
+	dev = comp_new((struct sof_ipc_comp *)ipc);
 	free(ipc);
-
-	if (!td->dev)
+	if (!dev)
 		return -EINVAL;
 
-	prepare_sinks(td, sample_size);
+	/* Add dummy pipeline to bypass comp_check_eos() */
+	dummy_pipe = test_malloc(sizeof(*dummy_pipe));
+	if (!dummy_pipe)
+		return -ENOMEM;
+	dummy_pipe->expect_eos = false;
+	dev->pipeline = dummy_pipe;
 
+	mod = comp_mod(dev);
+	td->dev = dev;
+	td->mod = mod;
+	td->cd = module_get_private_data(mod);
+
+	prepare_sinks(td, sample_size);
 	prepare_source(td, sample_size);
 
-	ret = comp_prepare(td->dev);
-	if (ret)
-		return ret;
-
-	return 0;
+	return comp_prepare(td->dev);
 }
 
 static int teardown_test_case(void **state)
@@ -175,13 +188,16 @@ static int teardown_test_case(void **state)
 	struct test_data *td = *((struct test_data **)state);
 	int i;
 
+	rfree(td->mod->input_buffers);
+	rfree(td->mod->output_buffers);
+
 	free_test_source(td->source);
 
-	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
-		free(td->outputs[i]);
+	for (i = 0; i < MUX_MAX_STREAMS; ++i)
 		free_test_sink(td->sinks[i]);
-	}
 
+	test_free(td->dev->pipeline);
+	td->dev->pipeline = NULL;
 	comp_free(td->dev);
 
 	return 0;
@@ -201,9 +217,9 @@ static void test_demux_copy_proc_16(void **state)
 
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
 				if (td->mask[i][j] & BIT(k))
-					sample += input_16b[k];
+					sample = input_16b[k];
 
-			expected_results[i][j] = sat_int16(sample);
+			expected_results[i][j] = sample;
 		}
 	}
 
@@ -222,13 +238,13 @@ static void test_demux_copy_proc_24(void **state)
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
 		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j) {
-			int64_t sample = 0;
+			int32_t sample = 0;
 
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
 				if (td->mask[i][j] & BIT(k))
-					sample += sign_extend_s24(input_32b[k]);
+					sample = input_24b[k];
 
-			expected_results[i][j] = sat_int24(sample);
+			expected_results[i][j] = sample;
 		}
 	}
 
@@ -247,13 +263,13 @@ static void test_demux_copy_proc_32(void **state)
 
 	for (i = 0; i < MUX_MAX_STREAMS; ++i) {
 		for (j = 0; j < PLATFORM_MAX_CHANNELS; ++j) {
-			int64_t sample = 0;
+			int32_t sample = 0;
 
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; ++k)
 				if (td->mask[i][j] & BIT(k))
-					sample += input_32b[k];
+					sample = input_32b[k];
 
-			expected_results[i][j] = sat_int32(sample);
+			expected_results[i][j] = sample;
 		}
 	}
 
@@ -276,13 +292,14 @@ static char *get_test_name(int mask_index, const char *format_name)
 
 int main(void)
 {
-	int i, j;
 	struct CMUnitTest tests[ARRAY_SIZE(valid_formats) * ARRAY_SIZE(masks)];
+	struct test_data *td;
+	int i, j, ti, ret;
 
 	for (i = 0; i < ARRAY_SIZE(valid_formats); ++i) {
 		for (j = 0; j < ARRAY_SIZE(masks); ++j) {
-			int ti = i * ARRAY_SIZE(masks) + j;
-			struct test_data *td = malloc(sizeof(struct test_data));
+			ti = i * ARRAY_SIZE(masks) + j;
+			td = malloc(sizeof(struct test_data));
 
 			td->format = valid_formats[i];
 
@@ -308,6 +325,10 @@ int main(void)
 				tests[ti].test_func = test_demux_copy_proc_32;
 				break;
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_S24_3LE
+			case SOF_IPC_FRAME_S24_3LE:
+				break;
+#endif /* CONFIG_FORMAT_S24_3LE */
 			default:
 				return -EINVAL;
 			}
@@ -319,6 +340,12 @@ int main(void)
 	}
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
+	ret = cmocka_run_group_tests(tests, setup_group, NULL);
 
-	return cmocka_run_group_tests(tests, setup_group, NULL);
+	for (ti = 0; ti < ARRAY_SIZE(valid_formats) * ARRAY_SIZE(masks); ti++) {
+		free(tests[ti].initial_state);
+		free((void *)tests[ti].name);
+	}
+
+	return ret;
 }

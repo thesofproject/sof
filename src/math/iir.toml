@@ -1,0 +1,6 @@
+	[[module.entry]]
+	name = "IIR"
+	uuid = "B0CDCD9E-EF8B-404F-8480-0F287FC9D44D"
+	load_type = "3"
+
+	index = __COUNTER__

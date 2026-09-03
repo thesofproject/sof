@@ -12,18 +12,23 @@
 # ./scripts/docker-qemu.sh scrpits-or-command-you-want-run
 #
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 ARG UID=1000
 
-# Set up proxy from host
-COPY apt.conf /etc/apt/
 ARG host_http_proxy
 ARG host_https_proxy
 ENV http_proxy $host_http_proxy
 ENV https_proxy $host_https_proxy
 
+# for non-interactive package install
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get -y update && \
 	    apt-get install -y \
+		vim \
+		jed \
+		dialog \
+		apt-utils \
 		autoconf \
 		build-essential \
 		git \
@@ -33,17 +38,22 @@ RUN apt-get -y update && \
 		libpixman-1-dev \
 		pkg-config \
 		sudo \
-		bsdmainutils
+		bsdmainutils \
+		bison \
+		flex
 
 # Set up sof user
 RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
 echo "sof:test0000" | chpasswd && adduser sof sudo
 ENV HOME /home/sof
 
+ARG GITHUB_SOF=https://github.com/thesofproject
+ARG SOF_REPO=$GITHUB_SOF/qemu.git
+ARG CLONE_DEFAULTS="--depth 5"
 # build qemu
 USER sof
-RUN cd /home/sof && git clone https://github.com/thesofproject/qemu.git && \
-	cd qemu && git checkout sof-stable && \
+RUN cd /home/sof && git clone $CLONE_DEFAULTS --branch sof-v4.2 $SOF_REPO && \
+	cd qemu && \
 # replace the submodule git repo to github mirror
 	sed -i 's#git://git.qemu.org#https://github.com/qemu#g' .gitmodules && \
 	sed -i 's#git://git.qemu-project.org#https://github.com/qemu#g' .gitmodules && \

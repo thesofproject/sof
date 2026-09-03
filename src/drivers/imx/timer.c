@@ -4,9 +4,10 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/audio/component.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/drivers/timer.h>
+#include <sof/audio/component_ext.h>
+#include <rtos/interrupt.h>
+#include <rtos/timer.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <ipc/stream.h>
 #include <errno.h>
@@ -37,6 +38,12 @@ uint64_t platform_timer_get(struct timer *timer)
 	return arch_timer_get_system(timer);
 }
 
+/* IRQs off in arch_timer_get_system() */
+uint64_t platform_timer_get_atomic(struct timer *timer)
+{
+	return arch_timer_get_system(timer);
+}
+
 /* get timestamp for host stream DMA position */
 void platform_host_timestamp(struct comp_dev *host,
 			     struct sof_ipc_stream_posn *posn)
@@ -61,7 +68,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
-	posn->wallclock = timer_get_system(platform_timer) - posn->wallclock;
+	posn->wallclock = timer_get_system(timer_get()) - posn->wallclock;
 	posn->flags |= SOF_TIME_WALL_VALID | SOF_TIME_WALL_64;
 }
 
@@ -69,18 +76,24 @@ void platform_dai_timestamp(struct comp_dev *dai,
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
 	/* only 1 wallclock on imx8 */
-	*wallclock = timer_get_system(platform_timer);
+	*wallclock = timer_get_system(timer_get());
 }
 
 int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
+	int ret;
+
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
-		return arch_timer_register(timer, handler, arg);
+		ret = arch_timer_register(timer, handler, arg);
+		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
+
+	return ret;
 }
 
 void timer_unregister(struct timer *timer, void *arg)

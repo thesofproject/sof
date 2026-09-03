@@ -16,8 +16,6 @@
 
 #define SOF_EQ_FIR_MAX_SIZE 4096 /* Max size allowed for coef data in bytes */
 
-#define SOF_EQ_FIR_MAX_LENGTH 192 /* Max length for individual filter */
-
 #define SOF_EQ_FIR_MAX_RESPONSES 8 /* A blob can define max 8 FIR EQs */
 
 /*
@@ -61,23 +59,6 @@ struct sof_eq_fir_config {
 
 	int16_t data[];
 } __attribute__((packed));
-
-struct sof_eq_fir_coef_data {
-	int16_t length; /* Number of FIR taps */
-	int16_t out_shift; /* Amount of right shifts at output */
-
-	/* reserved */
-	uint32_t reserved[4];
-
-	int16_t coef[]; /* FIR coefficients */
-} __attribute__((packed));
-
-/* In the struct above there's two 16 bit words (length, shift) and four
- * reserved 32 bit words before the actual FIR coefficients. This information
- * is used in parsing of the configuration blob.
- */
-#define SOF_EQ_FIR_COEF_NHEADER \
-	(sizeof(struct sof_eq_fir_coef_data) / sizeof(int16_t))
 
 /* IIR EQ type */
 
@@ -133,7 +114,7 @@ struct sof_eq_iir_config {
 	int32_t data[]; /* eq_assign[channels], eq 0, eq 1, ... */
 } __attribute__((packed));
 
-struct sof_eq_iir_header_df2t {
+struct sof_eq_iir_header {
 	uint32_t num_sections;
 	uint32_t num_sections_in_series;
 
@@ -143,7 +124,7 @@ struct sof_eq_iir_header_df2t {
 	int32_t biquads[]; /* Repeated biquad coefficients */
 } __attribute__((packed));
 
-struct sof_eq_iir_biquad_df2t {
+struct sof_eq_iir_biquad {
 	int32_t a2; /* Q2.30 */
 	int32_t a1; /* Q2.30 */
 	int32_t b2; /* Q2.30 */
@@ -154,20 +135,20 @@ struct sof_eq_iir_biquad_df2t {
 } __attribute__((packed));
 
 /* A full 22th order equalizer with 11 biquads cover octave bands 1-11 in
- * in the 0 - 20 kHz bandwidth.
+ * the 0 - 20 kHz bandwidth.
  */
-#define SOF_EQ_IIR_DF2T_BIQUADS_MAX 11
+#define SOF_EQ_IIR_BIQUADS_MAX 11
 
-/* The number of int32_t words in sof_eq_iir_header_df2t:
+/* The number of int32_t words in sof_eq_iir_header:
  *	num_sections, num_sections_in_series, reserved[4]
  */
-#define SOF_EQ_IIR_NHEADER_DF2T \
-	(sizeof(struct sof_eq_iir_header_df2t) / sizeof(int32_t))
+#define SOF_EQ_IIR_NHEADER \
+	(sizeof(struct sof_eq_iir_header) / sizeof(int32_t))
 
-/* The number of int32_t words in sof_eq_iir_biquad_df2t:
+/* The number of int32_t words in sof_eq_iir_biquad:
  *	a2, a1, b2, b1, b0, output_shift, output_gain
  */
-#define SOF_EQ_IIR_NBIQUAD_DF2T \
-	(sizeof(struct sof_eq_iir_biquad_df2t) / sizeof(int32_t))
+#define SOF_EQ_IIR_NBIQUAD \
+	(sizeof(struct sof_eq_iir_biquad) / sizeof(int32_t))
 
 #endif /* __USER_EQ_H__ */

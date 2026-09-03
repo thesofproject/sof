@@ -1,6 +1,6 @@
 function test = thdnf_test_input(test)
 
-%% t = dr_test_input(t)
+%% t = thdnf_test_test_input(t)
 %
 % Create tone data file for playback & record on real device or
 % for algorithm simulation.
@@ -47,11 +47,11 @@ for ch = test.ch
         test.f_start, test.f_end, test.fs/1e3, test.bits_in, ch, test.nch );
 end
 
-pid = getpid();
-test.fn_in = sprintf('thdnf_test_in_%d.%s', pid, test.fmt);
-test.fn_out = sprintf('thdnf_test_out_%d.%s', pid, test.fmt);
+id = floor(rand(1,1) * 1e6);
+test.fn_in = sprintf('thdnf_test_in_%d.%s', id, test.fmt);
+test.fn_out = sprintf('thdnf_test_out_%d.%s', id, test.fmt);
 noct = ceil(log(test.f_end/test.f_start)/log(2)); % Max 1 octave steps
-test.f = logspace(log10(test.f_start),log10(test.f_end), noct);
+test.f = logspace(log10(test.f_start),log10(test.f_end), noct+1);
 
 %% Tone sweep parameters
 test.is = 20e-3; % Ignore signal from tone start

@@ -13,28 +13,52 @@
  * called.
  */
 
-#include <sof/drivers/timer.h>
+#include <rtos/timer.h>
 #include <sof/lib/agent.h>
-#include <sof/lib/alloc.h>
-#include <sof/lib/clk.h>
-#include <sof/debug/panic.h>
+#include <rtos/alloc.h>
+#include <rtos/clk.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
+#include <rtos/panic.h>
 #include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
-#include <sof/sof.h>
+#include <rtos/task.h>
+#include <rtos/sof.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
+#include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <rtos/kernel.h>
 
-#define trace_sa(__e, ...) \
-	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
-#define trace_sa_error(__e, ...) \
-	trace_error(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
+LOG_MODULE_REGISTER(sa, CONFIG_SOF_LOG_LEVEL);
 
-struct sa *sa;
+SOF_DEFINE_REG_UUID(sa);
+
+DECLARE_TR_CTX(sa_tr, SOF_UUID(sa_uuid), LOG_LEVEL_INFO);
+
+SOF_DEFINE_REG_UUID(agent_work);
+
+#if CONFIG_PERFORMANCE_COUNTERS
+static void perf_sa_trace(struct perf_cnt_data *pcd, int ignored)
+{
+	tr_info(&sa_tr, "perf sys_load peak plat %u cpu %u",
+		(uint32_t)((pcd)->plat_delta_peak),
+		(uint32_t)((pcd)->cpu_delta_peak));
+}
+
+static void perf_avg_sa_trace(struct perf_cnt_data *pcd, int ignored)
+{
+	tr_info(&sa_tr, "perf sys_load cpu avg %u (current peak %u)",
+		(uint32_t)((pcd)->cpu_delta_sum),
+		(uint32_t)((pcd)->cpu_delta_peak));
+}
+
+#endif
 
 static enum task_state validate(void *data)
 {
@@ -42,17 +66,26 @@ static enum task_state validate(void *data)
 	uint64_t current;
 	uint64_t delta;
 
-	current = platform_timer_get(platform_timer);
+	current = sof_cycle_get_64();
 	delta = current - sa->last_check;
 
+	perf_cnt_stamp(&sa->pcd, perf_sa_trace, 0 /* ignored */);
+	perf_cnt_average(&sa->pcd, perf_avg_sa_trace, 0 /* ignored */);
+
+#if CONFIG_AGENT_PANIC_ON_DELAY
 	/* panic timeout */
-	if (delta > sa->panic_timeout)
-		panic(SOF_IPC_PANIC_IDLE);
+	if (sa->panic_on_delay && delta > sa->panic_timeout)
+		sof_panic(SOF_IPC_PANIC_IDLE);
+#endif
 
 	/* warning timeout */
-	if (delta > sa->warn_timeout)
-		trace_sa_error("validate(), ll drift detected, delta = "
-			       "%u", delta);
+	if (delta > sa->warn_timeout) {
+		if (delta > UINT_MAX)
+			tr_warn(&sa_tr, "ll drift detected, delta > %u", UINT_MAX);
+		else
+			tr_warn(&sa_tr, "ll drift detected, delta = %u",
+				(unsigned int)delta);
+	}
 
 	/* update last_check to current */
 	sa->last_check = current;
@@ -60,31 +93,51 @@ static enum task_state validate(void *data)
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
-void sa_init(struct sof *sof, uint64_t timeout)
+__cold void sa_init(struct sof *sof, uint64_t timeout)
 {
 	uint64_t ticks;
 
-	trace_sa("sa_init(), timeout = %u", timeout);
+	assert_can_be_cold();
 
-	sa = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sa));
-	sof->sa = sa;
+	if (timeout > UINT_MAX)
+		tr_warn(&sa_tr, "timeout > %u", UINT_MAX);
+	else
+		tr_info(&sa_tr, "timeout = %u", (unsigned int)timeout);
+
+	sof->sa = rzalloc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT, sizeof(*sof->sa));
 
 	/* set default timeouts */
-	ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * timeout / 1000;
+	ticks = k_us_to_cyc_ceil64(timeout);
 
 	/* TODO: change values after minimal drifts will be assured */
-	sa->panic_timeout = 2 * ticks;	/* 100% delay */
-	sa->warn_timeout = ticks + ticks / 20;	/* 5% delay */
+	sof->sa->panic_timeout = 2 * ticks;	/* 100% delay */
+	sof->sa->warn_timeout = ticks + ticks / 20;	/* 5% delay */
 
-	trace_sa("sa_init(), ticks = %u, sa->warn_timeout = %u, "
-		 "sa->panic_timeout = %u", ticks, sa->warn_timeout,
-		 sa->panic_timeout);
+	atomic_init(&sof->sa->panic_cnt, 0);
+	sof->sa->panic_on_delay = true;
 
-	schedule_task_init(&sa->work, SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
-			   validate, NULL, sa, 0, 0);
+	if (ticks > UINT_MAX || sof->sa->warn_timeout > UINT_MAX ||
+	    sof->sa->panic_timeout > UINT_MAX)
+		tr_info(&sa_tr,
+			"some of the values are > %u", UINT_MAX);
+	else
+		tr_info(&sa_tr,
+			"ticks = %u, sof->sa->warn_timeout = %u, sof->sa->panic_timeout = %u",
+			(unsigned int)ticks, (unsigned int)sof->sa->warn_timeout,
+			(unsigned int)sof->sa->panic_timeout);
 
-	schedule_task(&sa->work, 0, timeout);
+	schedule_task_init_ll(&sof->sa->work, SOF_UUID(agent_work_uuid),
+			      SOF_SCHEDULE_LL_TIMER,
+			      SOF_TASK_PRI_HIGH, validate, sof->sa, 0, 0);
+
+	schedule_task(&sof->sa->work, 0, timeout);
 
 	/* set last check time to now to give time for boot completion */
-	sa->last_check = platform_timer_get(platform_timer);
+	sof->sa->last_check = sof_cycle_get_64();
+
+}
+
+void sa_exit(struct sof *sof)
+{
+	schedule_task_cancel(&sof->sa->work);
 }

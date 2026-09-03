@@ -38,7 +38,7 @@ level_in = test.a_db;
 level_out = level_dbfs(y);
 test.g_db = level_out - level_in + test.att_rec_db;
 for i = 1:length(test.g_db)
-	fprintf('Gain = %6.3f dB (expect %6.3f dB)\n', test.g_db(i), test.g_db_expect);
+	fprintf('Gain = %6.3f dB (expect %6.3f dB)\n', test.g_db(i), test.g_db_expect(i));
 end
 
 %% Check pass/fail

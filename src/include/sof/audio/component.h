@@ -17,90 +17,73 @@
 #define __SOF_AUDIO_COMPONENT_H__
 
 #include <sof/audio/buffer.h>
+#include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
-#include <sof/debug/panic.h>
-#include <sof/list.h>
-#include <sof/math/numbers.h>
-#include <sof/trace/trace.h>
+#include <sof/debug/telemetry/telemetry.h>
+#include <rtos/idc.h>
+#include <rtos/mutex.h>
+#include <rtos/userspace_helper.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/uuid.h>
+#include <sof/schedule/schedule.h>
 #include <ipc/control.h>
-#include <ipc/stream.h>
-#include <ipc/topology.h>
+#include <sof/ipc/topology.h>
 #include <kernel/abi.h>
-#include <user/trace.h>
-#include <config.h>
-#include <errno.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+
+#include <limits.h>
 
 struct comp_dev;
-struct sof_ipc_dai_config;
 struct sof_ipc_stream_posn;
+struct dai_hw_params;
+struct timestamp_data;
+struct dai_ts_data;
 
 /** \addtogroup component_api Component API
- *  Component API specification.
  *  @{
+ */
+
+/* NOTE: Keep the component state diagram up to date:
+ * sof-docs/developer_guides/firmware/components/images/comp-dev-states.pu
  */
 
 /** \name Audio Component States
  *  @{
  */
-
-/**
- * States may transform as below:-
- * \verbatim
- *                                  +---------------------------------------+
- *                                  |                                       |
- *                            -------------                                 |
- *                   pause    |           |    stop                         |
- *              +-------------| ACTIVITY  |---------------+                 |
- *              |             |           |               |      prepare    |
- *              |             -------------               |   +---------+   |
- *              |                ^     ^                  |   |         |   |
- *              |                |     |                  |   |         |   |
- *              v                |     |                  v   |         |   |
- *       -------------           |     |             -------------      |   |
- *       |           |   release |     |   start     |           |      |   |
- *       |   PAUSED  |-----------+     +-------------|  PREPARE  |<-----+   |
- *       |           |                               |           |          |
- *       -------------                               -------------          |
- *              |                                      ^     ^              |
- *              |               stop                   |     |              |
- *              +--------------------------------------+     |              |
- *                                                           | prepare      |
- *                            -------------                  |              |
- *                            |           |                  |              |
- *                ----------->|   READY   |------------------+              |
- *                    reset   |           |                                 |
- *                            -------------                                 |
- *                                  ^                                       |
- *                                  |                 xrun                  |
- *                                  +---------------------------------------+
- *
- * \endverbatim
- */
-
-#define COMP_STATE_INIT		0	/**< Component being initialised */
-#define COMP_STATE_READY	1       /**< Component inactive, but ready */
-#define COMP_STATE_SUSPEND	2       /**< Component suspended */
-#define COMP_STATE_PREPARE	3	/**< Component prepared */
-#define COMP_STATE_PAUSED	4	/**< Component paused */
-#define COMP_STATE_ACTIVE	5	/**< Component active */
+#define COMP_STATE_NOT_EXIST    0	/**< Component does not exist */
+#define COMP_STATE_INIT		1	/**< Component being initialised */
+#define COMP_STATE_READY	2	/**< Component inactive, but ready */
+#define COMP_STATE_SUSPEND	3	/**< Component suspended */
+#define COMP_STATE_PREPARE	4	/**< Component prepared */
+#define COMP_STATE_PAUSED	5	/**< Component paused */
+#define COMP_STATE_ACTIVE	6	/**< Component active */
+#define COMP_STATE_PRE_ACTIVE	7	/**< Component after early initialisation */
 /** @}*/
 
 /** \name Standard Component Stream Commands
  *  TODO: use IPC versions after 1.1
+ *
+ * Most component stream commands match one-to-one IPC stream trigger commands.
+ * However we add two PRE_ and two POST_ commands to the set. They are issued
+ * internally without matching IPC commands. A single START IPC command is
+ * translated into a sequence of PRE_START and START component commands, etc.
+ * POST_* commands aren't used so far.
+ *
  *  @{
  */
-#define COMP_TRIGGER_STOP	0	/**< Stop component stream */
-#define COMP_TRIGGER_START	1	/**< Start component stream */
-#define COMP_TRIGGER_PAUSE	2	/**< Pause the component stream */
-#define COMP_TRIGGER_RELEASE	3	/**< Release paused component stream */
-#define COMP_TRIGGER_SUSPEND	4	/**< Suspend component */
-#define COMP_TRIGGER_RESUME	5	/**< Resume component */
-#define COMP_TRIGGER_RESET	6	/**< Reset component */
-#define COMP_TRIGGER_PREPARE	7	/**< Prepare component */
-#define COMP_TRIGGER_XRUN	8	/**< XRUN component */
+enum {
+	COMP_TRIGGER_STOP,		/**< Stop component stream */
+	COMP_TRIGGER_START,		/**< Start component stream */
+	COMP_TRIGGER_PAUSE,		/**< Pause the component stream */
+	COMP_TRIGGER_RELEASE,		/**< Release paused component stream */
+	COMP_TRIGGER_RESET,		/**< Reset component */
+	COMP_TRIGGER_PREPARE,		/**< Prepare component */
+	COMP_TRIGGER_XRUN,		/**< XRUN component */
+	COMP_TRIGGER_PRE_START,		/**< Prepare to start component stream */
+	COMP_TRIGGER_PRE_RELEASE,	/**< Prepare to release paused component stream */
+	COMP_TRIGGER_POST_STOP,		/**< Finalize stop component stream */
+	COMP_TRIGGER_POST_PAUSE,	/**< Finalize pause component stream */
+	COMP_TRIGGER_NO_ACTION,		/**< No action required */
+};
 /** @}*/
 
 /** \name Standard Component Control Commands
@@ -136,104 +119,523 @@ struct sof_ipc_stream_posn;
  */
 #define COMP_ATTR_COPY_TYPE	0	/**< Comp copy type attribute */
 #define COMP_ATTR_HOST_BUFFER	1	/**< Comp host buffer attribute */
+#define COMP_ATTR_COPY_DIR	2	/**< Comp copy direction */
+#define COMP_ATTR_VDMA_INDEX	3	/**< Comp index of the virtual DMA at the gateway. */
+#define COMP_ATTR_BASE_CONFIG	4	/**< Component base config */
+#define COMP_ATTR_IPC4_CONFIG	5	/**< Component ipc4 set/get config */
 /** @}*/
 
 /** \name Trace macros
  *  @{
  */
-#define trace_comp(__e, ...) \
-	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define trace_comp_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
 
-#define tracev_comp(__e, ...) \
-	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define tracev_comp_with_ids(comp_ptr, __e, ...)		\
-	tracev_event_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
+/** \brief Retrieves trace context from the component driver */
+#define trace_comp_drv_get_tr_ctx(drv_p) ((drv_p)->tctx)
 
-#define trace_comp_error(__e, ...) \
-	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define trace_comp_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_COMP, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
+/** \brief Retrieves id (-1 = undefined) from the component driver */
+#define trace_comp_drv_get_id(drv_p) (-1)
+
+/** \brief Retrieves subid (-1 = undefined) from the component driver */
+#define trace_comp_drv_get_subid(drv_p) (-1)
+
+/** \brief Retrieves trace context from the component device */
+#define trace_comp_get_tr_ctx(comp_p) (&(comp_p)->tctx)
+
+/** \brief Retrieves id (pipe id) from the component device */
+#define trace_comp_get_id(comp_p) ((comp_p)->ipc_config.pipeline_id)
+
+/** \brief Retrieves subid (comp id) from the component device */
+#define trace_comp_get_subid(comp_p) ((comp_p)->ipc_config.id)
+
+#if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG)
+/* class (driver) level (no device object) tracing */
+#define comp_cl_err(drv_p, __e, ...) LOG_ERR(__e, ##__VA_ARGS__)
+
+#define comp_cl_warn(drv_p, __e, ...) LOG_WRN(__e, ##__VA_ARGS__)
+
+#define comp_cl_info(drv_p, __e, ...) LOG_INF(__e, ##__VA_ARGS__)
+
+#define comp_cl_dbg(drv_p, __e, ...) LOG_DBG(__e, ##__VA_ARGS__)
+
+/* device level tracing */
+
+#if CONFIG_IPC_MAJOR_4
+#define __COMP_FMT "comp:%u %#x "
+#else
+#define __COMP_FMT "comp:%u.%u "
+#endif
+
+#define comp_err(comp_p, __e, ...) LOG_ERR(__COMP_FMT __e, trace_comp_get_id(comp_p), \
+					   trace_comp_get_subid(comp_p), ##__VA_ARGS__)
+
+#define comp_warn(comp_p, __e, ...) LOG_WRN(__COMP_FMT __e, trace_comp_get_id(comp_p), \
+					    trace_comp_get_subid(comp_p), ##__VA_ARGS__)
+
+#define comp_info(comp_p, __e, ...) LOG_INF(__COMP_FMT __e, trace_comp_get_id(comp_p), \
+					    trace_comp_get_subid(comp_p), ##__VA_ARGS__)
+
+#define comp_dbg(comp_p, __e, ...) LOG_DBG(__COMP_FMT __e, trace_comp_get_id(comp_p), \
+					   trace_comp_get_subid(comp_p), ##__VA_ARGS__)
+
+#else
+/* class (driver) level (no device object) tracing */
+
+/** \brief Trace error message from component driver (no comp instance) */
+#define comp_cl_err(drv_p, __e, ...)			\
+	trace_dev_err(trace_comp_drv_get_tr_ctx,	\
+		      trace_comp_drv_get_id,		\
+		      trace_comp_drv_get_subid,		\
+		      drv_p,				\
+		      __e, ##__VA_ARGS__)
+
+/** \brief Trace warning message from component driver (no comp instance) */
+#define comp_cl_warn(drv_p, __e, ...)			\
+	trace_dev_warn(trace_comp_drv_get_tr_ctx,	\
+		       trace_comp_drv_get_id,		\
+		       trace_comp_drv_get_subid,	\
+		       drv_p,				\
+		       __e, ##__VA_ARGS__)
+
+/** \brief Trace info message from component driver (no comp instance) */
+#define comp_cl_info(drv_p, __e, ...)			\
+	trace_dev_info(trace_comp_drv_get_tr_ctx,	\
+		       trace_comp_drv_get_id,		\
+		       trace_comp_drv_get_subid,	\
+		       drv_p,				\
+		       __e, ##__VA_ARGS__)
+
+/** \brief Trace debug message from component driver (no comp instance) */
+#define comp_cl_dbg(drv_p, __e, ...)			\
+	trace_dev_dbg(trace_comp_drv_get_tr_ctx,	\
+		      trace_comp_drv_get_id,		\
+		      trace_comp_drv_get_subid,		\
+		      drv_p,				\
+		      __e, ##__VA_ARGS__)
+
+/* device tracing */
+
+/** \brief Trace error message from component device */
+#define comp_err(comp_p, __e, ...)					\
+	trace_dev_err(trace_comp_get_tr_ctx, trace_comp_get_id,		\
+		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+/** \brief Trace warning message from component device */
+#define comp_warn(comp_p, __e, ...)					\
+	trace_dev_warn(trace_comp_get_tr_ctx, trace_comp_get_id,	\
+		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+/** \brief Trace info message from component device */
+#define comp_info(comp_p, __e, ...)					\
+	trace_dev_info(trace_comp_get_tr_ctx, trace_comp_get_id,	\
+		       trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+/** \brief Trace debug message from component device */
+#define comp_dbg(comp_p, __e, ...)					\
+	trace_dev_dbg(trace_comp_get_tr_ctx, trace_comp_get_id,		\
+		      trace_comp_get_subid, comp_p, __e, ##__VA_ARGS__)
+
+#endif /* #if defined(__ZEPHYR__) && defined(CONFIG_ZEPHYR_LOG) */
+
+#define comp_perf_info(pcd, comp_p)					\
+	comp_info(comp_p, "perf comp_copy peak plat %u cpu %u",		\
+		  (uint32_t)((pcd)->plat_delta_peak),			\
+		  (uint32_t)((pcd)->cpu_delta_peak))
+
+#define comp_perf_avg_info(pcd, comp_p)					\
+	comp_info(comp_p, "perf comp_copy samples %u period %u cpu avg %u peak %u %u",\
+		  (uint32_t)((comp_p)->frames),            \
+		  (uint32_t)((comp_p)->period),			    \
+		  (uint32_t)((pcd)->cpu_delta_sum),			\
+		  (uint32_t)((pcd)->cpu_delta_peak),			\
+		  (uint32_t)((pcd)->peak_mcps_period_cnt))
+
 /** @}*/
 
-/* \brief Type of endpoint this component is connected to in a pipeline */
+/** \brief Type of endpoint this component is connected to in a pipeline */
 enum comp_endpoint_type {
-	COMP_ENDPOINT_HOST,
-	COMP_ENDPOINT_DAI,
-	COMP_ENDPOINT_NODE
-};
-
- /* \brief Type of component copy, which can be changed on runtime */
-enum comp_copy_type {
-	COMP_COPY_NORMAL = 0,
-	COMP_COPY_BLOCKING,
-	COMP_COPY_ONE_SHOT,
+	COMP_ENDPOINT_HOST,	/**< Connected to host dma */
+	COMP_ENDPOINT_DAI,	/**< Connected to dai dma */
+	COMP_ENDPOINT_NODE	/**< No dma connection */
 };
 
 /**
- * Audio component operations - all mandatory.
+ * \brief Type of next dma copy mode, changed on runtime.
+ *
+ * Supported by host as COMP_ATTR_COPY_TYPE parameter
+ * to comp_set_attribute().
+ */
+enum comp_copy_type {
+	COMP_COPY_INVALID = -1,	/**< Invalid */
+	COMP_COPY_NORMAL = 0,	/**< Normal */
+	COMP_COPY_BLOCKING,	/**< Blocking */
+	COMP_COPY_ONE_SHOT,	/**< One-shot */
+};
+
+struct comp_driver;
+struct comp_ipc_config;
+union ipc_config_specific;
+struct ipc4_module_bind_unbind;
+
+enum bind_type {
+	COMP_BIND_TYPE_SOURCE,
+	COMP_BIND_TYPE_SINK
+};
+
+struct bind_info {
+	/* pointer to IPC4 bind/unbind data */
+	const struct ipc4_module_bind_unbind *ipc4_data;
+
+	/* type of binding
+	 * bind call will be called twice for every component, first when binding a data source,
+	 * than when binding data sink.
+	 *
+	 * bind_type is indicating type of binding
+	 */
+	enum bind_type bind_type;
+
+	/* pointers to sink or source API of the data provider/consumer
+	 * that is being bound to the module
+	 *
+	 * if bind_type == COMP_BIND_TYPE_SOURCE, the pointer points to source being bound/unbound
+	 * if bind_type == COMP_BIND_TYPE_SINK, the pointer points to sink being bound/unbound
+	 *
+	 * NOTE! As in pipeline2.0 there may be a binding between modules,
+	 * without a buffer in between, it cannot be a pointer to any buffer type, module should
+	 * use sink/source API
+	 */
+	union {
+		struct sof_source *source;
+		struct sof_sink *sink;
+	};
+};
+
+/**
+ * Audio component operations.
  *
  * All component operations must return 0 for success, negative values for
- * errors and 1 to stop the pipeline walk operation.
+ * errors and 1 to stop the pipeline walk operation unless specified otherwise
+ * in the operation documentation.
  */
 struct comp_ops {
-	/** component creation */
-	struct comp_dev *(*new)(struct sof_ipc_comp *comp);
+	/**
+	 * Creates a new component device.
+	 * @param drv Parent component driver.
+	 * @param ipc_config Component parameters.
+	 * @param spec Pointer to initialization data
+	 * @return Pointer to the new component device.
+	 *
+	 * Any component-specific private data is allocated separately and
+	 * pointer is connected to the comp_dev::private by using
+	 * comp_set_drvdata() and later retrieved by comp_get_drvdata().
+	 *
+	 * All parameters should be initialized to their default values.
+	 * Usually can be __cold.
+	 */
+	struct comp_dev *(*create)(const struct comp_driver *drv,
+				   const struct comp_ipc_config *ipc_config,
+				   const void *spec);
 
-	/** component destruction */
+	/**
+	 * Called to delete the specified component device.
+	 * @param dev Component device to be deleted.
+	 *
+	 * All data structures previously allocated on the run-time heap
+	 * must be freed by the implementation of <code>free()</code>.
+	 * Usually can be __cold.
+	 */
 	void (*free)(struct comp_dev *dev);
 
-	/** set component audio stream parameters */
-	int (*params)(struct comp_dev *dev);
+	/**
+	 * Sets component audio stream parameters.
+	 * @param dev Component device.
+	 * @param params Audio (PCM) stream parameters to be set.
+	 *
+	 * Infrastructure calls comp_verify_params() if this handler is not
+	 * defined, therefore it should be left NULL if no extra steps are
+	 * required.
+	 * Usually shouldn't be __cold.
+	 */
+	int (*params)(struct comp_dev *dev,
+		      struct sof_ipc_stream_params *params);
 
-	/** set component audio stream parameters */
-	int (*dai_config)(struct comp_dev *dev,
-		struct sof_ipc_dai_config *dai_config);
+	/**
+	 * Fetches hardware stream parameters.
+	 * @param dev Component device.
+	 * @param params Receives copy of stream parameters retrieved from
+	 *	DAI hw settings.
+	 * @param dir Stream direction (see enum sof_ipc_stream_direction).
+	 *
+	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
+	 */
+	int (*dai_get_hw_params)(struct comp_dev *dev,
+				 struct sof_ipc_stream_params *params, int dir);
 
-	/** used to pass standard and bespoke commands (with optional data) */
+	/**
+	 * Configures attached DAI.
+	 * @param dev Component device.
+	 * @param dai_config DAI configuration.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
+	 */
+	int (*dai_config)(struct dai_data *dd, struct comp_dev *dev,
+			  struct ipc_config_dai *dai_config, const void *dai_spec_config);
+
+#if CONFIG_IPC_MAJOR_3 || CONFIG_LIBRARY
+	/**
+	 * Used to pass standard and bespoke commands (with optional data).
+	 * @param dev Component device.
+	 * @param cmd Command.
+	 * @param data Command data.
+	 * @param max_data_size Max size of returned data acceptable by the
+	 *	caller in case of 'get' commands.
+	 */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data,
 		   int max_data_size);
+#endif
 
-	/** atomic - used to start/stop/pause stream operations */
+	/**
+	 * Trigger, atomic - used to start/stop/pause stream operations.
+	 * @param dev Component device.
+	 * @param cmd Command, one of COMP_TRIGGER_...
+	 *
+	 * Usually shouldn't be __cold.
+	 */
 	int (*trigger)(struct comp_dev *dev, int cmd);
 
-	/** prepare component after params are set */
+	/**
+	 * Prepares component after params are set.
+	 * @param dev Component device.
+	 *
+	 * Prepare should be used to get the component ready for starting
+	 * processing after it's hw_params are known or after an XRUN.
+	 * Usually shouldn't be __cold.
+	 */
 	int (*prepare)(struct comp_dev *dev);
 
-	/** reset component */
+	/**
+	 * Resets component.
+	 * @param dev Component device.
+	 *
+	 * Resets the component state and any hw_params to default component
+	 * state. Should also free any resources acquired during hw_params.
+	 * Usually shouldn't be __cold.
+	 */
 	int (*reset)(struct comp_dev *dev);
 
-	/** copy and process stream data from source to sink buffers */
+	/**
+	 * Copy and process stream data from source to sink buffers.
+	 * @param dev Component device.
+	 * @return Number of copied frames.
+	 *
+	 * Usually shouldn't be __cold.
+	 */
 	int (*copy)(struct comp_dev *dev);
 
-	/** position */
+	/**
+	 * Retrieves component rendering position.
+	 * @param dev Component device.
+	 * @param posn Receives reported position.
+	 *
+	 * Usually shouldn't be __cold.
+	 */
 	int (*position)(struct comp_dev *dev,
 		struct sof_ipc_stream_posn *posn);
 
-	/** cache operation on component data */
-	void (*cache)(struct comp_dev *dev, int cmd);
+	/**
+	 * Gets attribute in component.
+	 * @param dev Component device.
+	 * @param type Attribute type.
+	 * @param value Attribute value.
+	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * Usually can be __cold.
+	 */
+	int (*get_attribute)(struct comp_dev *dev, uint32_t type,
+			     void *value);
 
-	/** set attribute in component */
+	/**
+	 * Sets attribute in component.
+	 * @param dev Component device.
+	 * @param type Attribute type.
+	 * @param value Attribute value.
+	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * Usually can be __cold.
+	 */
 	int (*set_attribute)(struct comp_dev *dev, uint32_t type,
 			     void *value);
-};
 
+	/**
+	 * Configures timestamping in attached DAI.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
+	 */
+	int (*dai_ts_config)(struct comp_dev *dev);
+
+	/**
+	 * Starts timestamping.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
+	 */
+	int (*dai_ts_start)(struct comp_dev *dev);
+
+	/**
+	 * Stops timestamping.
+	 * @param dev Component device.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 * Usually can be __cold.
+	 */
+	int (*dai_ts_stop)(struct comp_dev *dev);
+
+	/**
+	 * Gets timestamp.
+	 * @param dev Component device.
+	 * @param tsd Receives timestamp data.
+	 *
+	 * Mandatory for components that allocate DAI.
+	 * Usually shouldn't be __cold.
+	 */
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+	int (*dai_ts_get)(struct comp_dev *dev, struct dai_ts_data *tsd);
+#else
+	int (*dai_ts_get)(struct comp_dev *dev,
+			  struct timestamp_data *tsd);
+#endif
+
+	/**
+	 * Bind, atomic - used to notify component of bind event.
+	 * @param dev Component device.
+	 * @param data Bind info
+	 *
+	 * Usually can be __cold.
+	 */
+	int (*bind)(struct comp_dev *dev, const struct bind_info *bind_data);
+
+	/**
+	 * Unbind, atomic - used to notify component of unbind event.
+	 * @param dev Component device.
+	 * @param data unBind info
+	 *
+	 * Usually can be __cold.
+	 */
+	int (*unbind)(struct comp_dev *dev, const struct bind_info *unbind_data);
+
+	/**
+	 * Gets config in component.
+	 * @param dev Component device
+	 * @param param_id param id for each component
+	 * @param first_block first block of large block.
+	 * @param last_block last block of large block.
+	 * @param data_offset block offset filled by callee.
+	 * @param data block data.
+	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * Callee fills up *data with config data and save the config
+	 * size in *data_offset for host to reconstruct the config
+	 * Usually can be __cold.
+	 */
+	int (*get_large_config)(struct comp_dev *dev, uint32_t param_id,
+				bool first_block,
+				bool last_block,
+				uint32_t *data_offset,
+				char *data);
+
+	/**
+	 * Set config in component.
+	 * @param dev Component device
+	 * @param param_id param id for each component
+	 * @param first_block first block of large block.
+	 * @param last_block last block of large block.
+	 * @param data_offset block offset in large block.
+	 * @param data block data.
+	 * @return 0 if succeeded, error code otherwise.
+	 *
+	 * Host divides large block into small blocks and sends them
+	 * to fw. The data_offset indicates the offset in the large
+	 * block data.
+	 * Usually can be __cold.
+	 */
+	int (*set_large_config)(struct comp_dev *dev, uint32_t param_id,
+				bool first_block,
+				bool last_block,
+				uint32_t data_offset,
+				const char *data);
+
+	/**
+	 * Returns total data processed in number bytes.
+	 * @param dev Component device
+	 * @param stream_no Index of input/output stream
+	 * @param input Selects between input (true) or output (false) stream direction
+	 * @return total data processed if succeeded, 0 otherwise.
+	 *
+	 * Usually shouldn't be __cold.
+	 */
+	uint64_t (*get_total_data_processed)(struct comp_dev *dev, uint32_t stream_no, bool input);
+};
 
 /**
  * Audio component base driver "class"
  * - used by all other component types.
  */
 struct comp_driver {
-	uint32_t type;		/**< SOF_COMP_ for driver */
-	uint32_t module_id;	/**< module id */
+	uint32_t type;					/**< SOF_COMP_ for driver */
+	const struct sof_uuid *uid;			/**< Address to UUID value */
+	struct tr_ctx *tctx;				/**< Pointer to trace context */
+	struct comp_ops ops;				/**< component operations */
+	const struct module_interface *adapter_ops;	/**< module specific operations.
+							  * Intended to replace the ops field.
+							  * Currently used by module_adapter.
+							  */
+	struct k_heap *user_heap;			/**< Userspace heap */
+	struct sof_uuid uid_cp;				/**< UUID copy for LLEXT modules */
+};
 
-	struct comp_ops ops;	/**< component operations */
+/** \brief Holds constant pointer to component driver */
+struct comp_driver_info {
+	const struct comp_driver *drv;			/**< pointer to component driver */
+	const struct module_interface **adapter_ops;	/**< pointer for updating ops */
+	struct list_item list;				/**< list of component drivers */
+};
 
-	struct list_item list;	/**< list of component drivers */
+#define COMP_PROCESSING_DOMAIN_LL 0
+#define COMP_PROCESSING_DOMAIN_DP 1
+
+/**
+ * Audio component base configuration from IPC at creation.
+ */
+struct comp_ipc_config {
+	uint32_t core;			/**< core we run on */
+	uint32_t id;			/**< component id */
+	uint32_t pipeline_id;		/**< component pipeline id */
+	uint32_t proc_domain;		/**< processing domain - LL or DP */
+	enum sof_comp_type type;	/**< component type */
+	uint32_t periods_sink;		/**< 0 means variable */
+	uint32_t periods_source;	/**< 0 means variable */
+	uint32_t frame_fmt;		/**< SOF_IPC_FRAME_ */
+	uint32_t xrun_action;		/**< action we should take on XRUN */
+#if CONFIG_IPC_MAJOR_4
+	bool ipc_extended_init;		/**< true if extended init is included in ipc payload */
+	uint32_t ipc_config_size;	/**< size of a config received by ipc */
+#endif
+};
+
+struct comp_perf_data {
+	/* maximum measured cpc on run-time.
+	 *
+	 * if current measured cpc exceeds peak_of_measured_cpc_ then
+	 * ResoruceEvent(BUDGET_VIOLATION) notification must be send.
+	 * Otherwise there is no new information for host to care about
+	 */
+	size_t peak_of_measured_cpc;
+	/* Pointer to performance data structure. */
+	struct perf_data_item_comp *perf_data_item;
 };
 
 /**
@@ -244,48 +646,175 @@ struct comp_dev {
 
 	/* runtime */
 	uint16_t state;		   /**< COMP_STATE_ */
-	uint64_t position;	   /**< component rendering position */
 	uint32_t frames;	   /**< number of frames we copy to sink */
-	uint32_t output_rate;      /**< 0 means all output rates are fine */
 	struct pipeline *pipeline; /**< pipeline we belong to */
 
-	uint32_t min_sink_bytes;   /**< min free sink buffer size measured in
-				     *  bytes required to run component's
-				     *  processing
-				     */
-	uint32_t min_source_bytes; /**< amount of data measured in bytes
-				     *  available at source buffer required
-				     *  to run component's processing
-				     */
+	struct task *task;	/**< component's processing task used
+				  *  1) for components running on different core
+				  *    than the rest of the pipeline
+				  *  2) for all DP tasks
+				  */
+	uint32_t size;		/**< component's allocated size */
+	uint32_t period;	/**< component's processing period
+				  *  for LL modules is set to LL pipeline's period
+				  *  for DP module its meaning is "the time the module MUST
+				  *  provide data that allows the following module to perform
+				  *  without glitches"
+				  */
+	uint32_t priority;	/**< component's processing priority */
+	bool is_shared;		/**< indicates whether component is shared
+				  *  across cores
+				  */
+	struct comp_ipc_config ipc_config;	/**< Component IPC configuration */
+	struct tr_ctx tctx;	/**< trace settings */
 
-	/** common runtime configuration for downstream/upstream */
-	struct sof_ipc_stream_params params;
+	/* common runtime configuration for downstream/upstream */
+	uint32_t direction;	/**< enum sof_ipc_stream_direction */
+	bool direction_set; /**< flag indicating that the direction has been set */
 
-	/** driver */
-	struct comp_driver *drv;
+	const struct comp_driver *drv;	/**< driver */
+
+	struct processing_module *mod; /**< self->mod->dev == self, NULL if component is not using
+					 *  module adapter
+					 */
 
 	/* lists */
 	struct list_item bsource_list;	/**< list of source buffers */
 	struct list_item bsink_list;	/**< list of sink buffers */
 
-	/* private data - core does not touch this */
-	void *private;		/**< private data */
+	/* performance data*/
+	struct comp_perf_data perf_data;
+	/* Input Buffer Size for pin 0, add array for other pins if needed */
+	size_t ibs;
+	/* Output Buffers Size for pin 0, add array for other pins if needed */
+	size_t obs;
+	/* max dsp cycles per chunk */
+	size_t cpc;
+	/* size of 1ms for input format in bytes */
+	size_t ll_chunk_size : 16;
 
-	/**
-	 * IPC config object header - MUST be at end as it's
-	 * variable size/type
-	 */
-	struct sof_ipc_comp comp;
+	/* private data - core does not touch this */
+	void *priv_data;	/**< private data */
+
+#if CONFIG_PERFORMANCE_COUNTERS_COMPONENT
+	struct perf_cnt_data pcd;
+#endif
+
+#if CONFIG_KCPS_DYNAMIC_CLOCK_CONTROL
+	int32_t kcps_inc[CONFIG_CORE_COUNT];
+#endif
 };
 
-/** \name Helpers.
+/**
+ * Get a pointer to the first comp_buffer object providing data to the component
+ * The function will return NULL if there's no data provider
+ */
+static inline struct comp_buffer *comp_dev_get_first_data_producer(struct comp_dev *component)
+{
+	return list_is_empty(&component->bsource_list) ? NULL :
+	       list_first_item(&component->bsource_list, struct comp_buffer, sink_list);
+}
+
+/**
+ * Get a pointer to the next comp_buffer object providing data to the component
+ * The function will return NULL if there're no more data providers
+ * _save version also checks if producer != NULL
+ */
+static inline struct comp_buffer *comp_dev_get_next_data_producer(struct comp_dev *component,
+								  struct comp_buffer *producer)
+{
+	return producer->sink_list.next == &component->bsource_list ? NULL :
+	       list_item(producer->sink_list.next, struct comp_buffer, sink_list);
+}
+
+static inline struct comp_buffer *comp_dev_get_next_data_producer_safe(struct comp_dev *component,
+								       struct comp_buffer *producer)
+{
+	return producer ? comp_dev_get_next_data_producer(component, producer) : NULL;
+}
+
+/**
+ * Get a pointer to the first comp_buffer object receiving data from the component
+ * The function will return NULL if there's no data consumers
+ */
+static inline struct comp_buffer *comp_dev_get_first_data_consumer(struct comp_dev *component)
+{
+	return list_is_empty(&component->bsink_list) ? NULL :
+	       list_first_item(&component->bsink_list, struct comp_buffer, source_list);
+}
+
+/**
+ * Get a pointer to the next comp_buffer object receiving data from the component
+ * The function will return NULL if there're no more data consumers
+ * _safe version also checks if consumer is != NULL
+ */
+static inline struct comp_buffer *comp_dev_get_next_data_consumer(struct comp_dev *component,
+								  struct comp_buffer *consumer)
+{
+	return consumer->source_list.next == &component->bsink_list ? NULL :
+			list_item(consumer->source_list.next, struct comp_buffer, source_list);
+}
+
+static inline struct comp_buffer *comp_dev_get_next_data_consumer_safe(struct comp_dev *component,
+								       struct comp_buffer *consumer)
+{
+	return consumer ? comp_dev_get_next_data_consumer(component, consumer) : NULL;
+}
+
+/*
+ * a macro for easy iteration through component's list of producers
+ */
+#define comp_dev_for_each_producer(_dev, _producer)			\
+	for (_producer = comp_dev_get_first_data_producer(_dev);	\
+	     _producer != NULL;						\
+	     _producer = comp_dev_get_next_data_producer(_dev, _producer))
+
+/*
+ * a macro for easy iteration through component's list of producers
+ * allowing deletion of a buffer during iteration
+ *
+ * additional "safe storage" pointer to struct comp_buffer must be provided
+ */
+#define comp_dev_for_each_producer_safe(_dev, _producer, _next_producer)		\
+	for (_producer = comp_dev_get_first_data_producer(_dev),			\
+	     _next_producer = comp_dev_get_next_data_producer_safe(_dev, _producer);	\
+	     _producer != NULL;								\
+	     _producer = _next_producer,						\
+	     _next_producer = comp_dev_get_next_data_producer_safe(_dev, _producer))
+
+/*
+ * a macro for easy iteration through component's list of consumers
+ */
+#define comp_dev_for_each_consumer(_dev, _consumer)				\
+	for (_consumer = comp_dev_get_first_data_consumer(_dev);		\
+	     _consumer != NULL;							\
+	     _consumer = comp_dev_get_next_data_consumer(_dev, _consumer))	\
+
+/*
+ * a macro for easy iteration through component's list of consumers
+ * allowing deletion of a buffer during iteration
+ *
+ * additional "safe storage" pointer to struct comp_buffer must be provided
+ */
+#define comp_dev_for_each_consumer_safe(_dev, _consumer, _next_consumer)		\
+	for (_consumer = comp_dev_get_first_data_consumer(_dev),			\
+	     _next_consumer = comp_dev_get_next_data_consumer_safe(_dev, _consumer);	\
+	     _consumer != NULL;								\
+	     _consumer = _next_consumer,						\
+	     _next_consumer = comp_dev_get_next_data_consumer_safe(_dev, _consumer))
+
+/** @}*/
+
+/* Common helper function used internally by the component implementations
+ * begin here.
+ */
+
+/** \addtogroup component_common_int Component's Common Helpers
  *  @{
  */
 
 /** \brief Struct for use with comp_get_copy_limits() function. */
 struct comp_copy_limits {
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
 	int frames;
 	int source_bytes;
 	int sink_bytes;
@@ -293,55 +822,177 @@ struct comp_copy_limits {
 	int sink_frame_bytes;
 };
 
-/** \brief Computes size of the component device including ipc config. */
-#define COMP_SIZE(x) \
-	(sizeof(struct comp_dev) - sizeof(struct sof_ipc_comp) + sizeof(x))
-
-/** \brief Retrieves component device IPC configuration. */
-#define COMP_GET_IPC(dev, type) \
-	(struct type *)(&dev->comp)
-
-/** \brief Retrieves component device runtime configuration. */
-#define COMP_GET_PARAMS(dev) \
-	(struct type *)(&dev->params)
-
-/** \brief Retrieves component device config data. */
-#define COMP_GET_CONFIG(dev) \
-	(struct sof_ipc_comp_config *)((char *)&dev->comp + \
-	sizeof(struct sof_ipc_comp))
-
-/** \brief Sets the driver private data. */
-#define comp_set_drvdata(c, data) \
-	(c->private = data)
-
-/** \brief Retrieves the driver private data. */
-#define comp_get_drvdata(c) \
-	c->private
-
-/** \brief Retrieves the component device buffer list. */
-#define comp_buffer_list(comp, dir) \
-	((dir) == PPL_DIR_DOWNSTREAM ? &comp->bsink_list : \
-	 &comp->bsource_list)
-
-/** @}*/
-
-/** \name Declare module macro
- *  \brief Usage at the end of an independent module file:
- *         DECLARE_MODULE(sys_*_init);
- *  @{
+/**
+ * Retrieves Component id from device.
+ * @param dev Device.
+ * @return Component id.
  */
-#ifdef UNIT_TEST
+static inline uint32_t dev_comp_id(const struct comp_dev *dev)
+{
+	return dev->ipc_config.id;
+}
+
+/**
+ * Retrieves Component pipeline id from device.
+ * @param dev Device.
+ * @return Component pipeline id.
+ */
+static inline uint32_t dev_comp_pipe_id(const struct comp_dev *dev)
+{
+	return dev->ipc_config.pipeline_id;
+}
+
+/**
+ * Retrieves component type from device.
+ * @param dev Device.
+ * @return Component type.
+ */
+static inline enum sof_comp_type dev_comp_type(const struct comp_dev *dev)
+{
+	return dev->ipc_config.type;
+}
+
+/**
+ * Initialize common part of a component device
+ * @param drv Parent component driver.
+ * @param dev Device.
+ * @param bytes Size of the component device in bytes.
+ */
+static inline void comp_init(const struct comp_driver *drv,
+			     struct comp_dev *dev, size_t bytes)
+{
+	dev->size = bytes;
+	dev->drv = drv;
+	dev->state = COMP_STATE_INIT;
+	list_init(&dev->bsink_list);
+	list_init(&dev->bsource_list);
+#ifndef __ZEPHYR__
+	memcpy_s(&dev->tctx, sizeof(dev->tctx),
+		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
+#endif
+}
+
+/**
+ * Allocates memory for the component device and initializes common part.
+ * @param drv Parent component driver.
+ * @param bytes Size of the component device in bytes.
+ * @return Pointer to the component device.
+ */
+static inline struct comp_dev *comp_alloc(const struct comp_driver *drv, size_t bytes)
+{
+	/*
+	 * Use uncached address everywhere to access components to rule out
+	 * multi-core failures. TODO: verify if cached alias may be used in some cases
+	 */
+	struct comp_dev *dev = sof_heap_alloc(drv->user_heap,
+					      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+					      bytes, 0);
+
+	if (!dev)
+		return NULL;
+
+	memset(dev, 0, sizeof(*dev));
+	comp_init(drv, dev, bytes);
+
+	return dev;
+}
+
+/**
+ * Frees memory allocated for component device.
+ *
+ * This is a counterpart to comp_alloc() and not to be confused with
+ * comp_free().
+ *
+ * @param dev Pointer to the component device.
+ */
+static inline void comp_free_device(struct comp_dev *dev)
+{
+	sof_heap_free(dev->drv->user_heap, dev);
+}
+
+/**
+ * \brief Module adapter associated with a component
+ * @param dev Component device
+ */
+static inline struct processing_module *comp_mod(const struct comp_dev *dev)
+{
+	return dev->mod;
+}
+
+/**
+ * \brief Assigns private data to component device.
+ * @param c Component device.
+ * @param data Private data.
+ */
+#define comp_set_drvdata(c, data) \
+	(c->priv_data = data)
+
+/**
+ * \brief Retrieves driver private data from component device.
+ * @param c Component device.
+ * @return Private data.
+ */
+#define comp_get_drvdata(c) \
+	(c->priv_data)
+
+#if defined UNIT_TEST || defined __ZEPHYR__  || CONFIG_LIBRARY_STATIC
 #define DECLARE_MODULE(init)
+
+/* declared modules */
+void sys_comp_dai_init(void);
+void sys_comp_host_init(void);
+void sys_comp_kpb_init(void);
+void sys_comp_selector_init(void);
+
+/* Start of modules in alphabetical order */
+void sys_comp_module_aria_interface_init(void);
+void sys_comp_module_asrc_interface_init(void);
+void sys_comp_module_copier_interface_init(void);
+void sys_comp_module_crossover_interface_init(void);
+void sys_comp_module_dcblock_interface_init(void);
+void sys_comp_module_demux_interface_init(void);
+void sys_comp_module_dolby_dax_audio_processing_interface_init(void);
+void sys_comp_module_drc_interface_init(void);
+void sys_comp_module_dts_interface_init(void);
+void sys_comp_module_eq_fir_interface_init(void);
+void sys_comp_module_eq_iir_interface_init(void);
+void sys_comp_module_gain_interface_init(void);
+void sys_comp_module_google_rtc_audio_processing_interface_init(void);
+void sys_comp_module_google_ctc_audio_processing_interface_init(void);
+void sys_comp_module_igo_nr_interface_init(void);
+void sys_comp_module_level_multiplier_interface_init(void);
+void sys_comp_module_mfcc_interface_init(void);
+void sys_comp_module_mixer_interface_init(void);
+void sys_comp_module_mixin_interface_init(void);
+void sys_comp_module_mixout_interface_init(void);
+void sys_comp_module_multiband_drc_interface_init(void);
+void sys_comp_module_mux_interface_init(void);
+void sys_comp_module_nxp_eap_interface_init(void);
+void sys_comp_module_phase_vocoder_interface_init(void);
+void sys_comp_module_rtnr_interface_init(void);
+void sys_comp_module_selector_interface_init(void);
+void sys_comp_module_sound_dose_interface_init(void);
+void sys_comp_module_src_interface_init(void);
+void sys_comp_module_src_lite_interface_init(void);
+void sys_comp_module_stft_process_interface_init(void);
+void sys_comp_module_tdfb_interface_init(void);
+void sys_comp_module_tone_interface_init(void);
+void sys_comp_module_template_interface_init(void);
+void sys_comp_module_tester_interface_init(void);
+void sys_comp_module_volume_interface_init(void);
+/* End of modules in alphabetical order */
+
 #elif CONFIG_LIBRARY
 /* In case of shared libs components are initialised in dlopen */
 #define DECLARE_MODULE(init) __attribute__((constructor)) \
-	static void _module_init(void) { init(); }
+	static void _module_##init(void) { init(); }
 #else
+/** \brief Usage at the end of an independent module file:
+ *	DECLARE_MODULE(sys_*_init);
+ */
 #define DECLARE_MODULE(init) __attribute__((__used__)) \
-	__attribute__((section(".module_init"))) static void(*f)(void) = init
+	__section(".initcall") static void(*f##init)(void) = init
 #endif
-
-/** @}*/
 
 /** \name Component registration
  *  @{
@@ -352,390 +1003,79 @@ struct comp_copy_limits {
  * @param drv Component driver to be registered.
  * @return 0 if succeeded, error code otherwise.
  */
-int comp_register(struct comp_driver *drv);
+int comp_register(struct comp_driver_info *drv);
 
 /**
  * Unregisters the component driver from the list of available components.
  * @param drv Component driver to be unregistered.
  */
-void comp_unregister(struct comp_driver *drv);
-
-/** @}*/
-
-/** \name Component creation and destruction - mandatory
- *  @{
- */
+void comp_unregister(struct comp_driver_info *drv);
 
 /**
- * Creates a new component device.
- * @param comp Parameters of the new component device.
- * @return Pointer to the new component device.
+ * Set adapter ops for a dynamically created driver.
+ *
+ * @param drv Component driver to update.
+ * @param ops Module interface operations.
+ * @return 0 or a negative error code
  */
-struct comp_dev *comp_new(struct sof_ipc_comp *comp);
-
-/**
- * Called to delete the specified component device.
- * All data structures previously allocated on the run-time heap
- * must be freed by the implementation of <code>free()</code>.
- * @param dev Component device to be deleted.
- */
-static inline void comp_free(struct comp_dev *dev)
-{
-	assert(dev->drv->ops.free);
-
-	dev->drv->ops.free(dev);
-}
+int comp_set_adapter_ops(const struct comp_driver *drv, const struct module_interface *ops);
 
 /** @}*/
-
-/** \name Component API.
- *  @{
- */
 
 /**
  * Component state set.
  * @param dev Component device.
  * @param cmd Command, one of <i>COMP_TRIGGER_...</i>.
  * @return 0 if succeeded, error code otherwise.
+ *
+ * This function should be called by a component implementation at the beginning
+ * of its state transition to verify whether the trigger is valid in the
+ * current state and abort the transition otherwise.
+ *
+ * Typically the COMP_STATE_READY as the initial state is set directly
+ * by the component's implementation of _new().
+ *
+ * COMP_TRIGGER_PREPARE is called from the component's prepare().
+ *
+ * COMP_TRIGGER_START/STOP is called from trigger().
+ *
+ * COMP_TRIGGER_RESET is called from reset().
  */
 int comp_set_state(struct comp_dev *dev, int cmd);
 
-/**
- * Component parameter init.
- * @param dev Component device.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_params(struct comp_dev *dev)
+/* \brief Set component period frames */
+static inline void component_set_nearest_period_frames(struct comp_dev *current,
+						       uint32_t rate)
 {
-	if (dev->drv->ops.params)
-		return dev->drv->ops.params(dev);
-	return 0;
-}
+	uint64_t frames;
 
-/**
- * Send component command.
- * @param dev Component device.
- * @param cmd Command.
- * @param data Command data.
- * @param max_data_size Max data size.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
-			   int max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = data;
+	/* Sample rate is in Hz and period in microseconds.
+	 * As we don't have floats use scale divider 1000000.
+	 * Also integer round up the result.
+	 * dma buffer size should align with 32bytes which can't be
+	 * compatible with current 45K adjustment. 48K is a suitable
+	 * adjustment.
+	 */
 
-	if (cmd == COMP_CMD_SET_DATA &&
-	    (cdata->data->magic != SOF_ABI_MAGIC ||
-	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
-		trace_comp_error_with_ids(dev, "comp_cmd() error: "
-					  "invalid version, "
-					  "data->magic = %u, data->abi = %u",
-					  cdata->data->magic, cdata->data->abi);
-		return -EINVAL;
-	}
-
-	if (dev->drv->ops.cmd)
-		return dev->drv->ops.cmd(dev, cmd, data, max_data_size);
-	return -EINVAL;
-}
-
-/**
- * Trigger component - mandatory and atomic.
- * @param dev Component device.
- * @param cmd Command.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_trigger(struct comp_dev *dev, int cmd)
-{
-	assert(dev->drv->ops.trigger);
-
-	return dev->drv->ops.trigger(dev, cmd);
-}
-
-/**
- * Prepare component.
- * @param dev Component device.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_prepare(struct comp_dev *dev)
-{
-	if (dev->drv->ops.prepare)
-		return dev->drv->ops.prepare(dev);
-	return 0;
-}
-
-/**
- * Copy component buffers - mandatory.
- * @param dev Component device.
- * @return Number of frames copied.
- */
-static inline int comp_copy(struct comp_dev *dev)
-{
-	assert(dev->drv->ops.copy);
-
-	return dev->drv->ops.copy(dev);
-}
-
-/**
- * Component reset and free runtime resources.
- * @param dev Component device.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_reset(struct comp_dev *dev)
-{
-	if (dev->drv->ops.reset)
-		return dev->drv->ops.reset(dev);
-	return 0;
-}
-
-/**
- * DAI configuration - only mandatory for DAI components.
- * @param dev Component device.
- * @param config DAI configuration.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_dai_config(struct comp_dev *dev,
-	struct sof_ipc_dai_config *config)
-{
-	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dev, config);
-	return 0;
-}
-
-/**
- * Retrieves component rendering position.
- * @param dev Component device.
- * @param posn Position reported by the component device.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_position(struct comp_dev *dev,
-	struct sof_ipc_stream_posn *posn)
-{
-	if (dev->drv->ops.position)
-		return dev->drv->ops.position(dev, posn);
-	return 0;
-}
-
-/**
- * Component L1 cache command (invalidate, writeback, ...).
- * @param dev Component device
- * @param cmd Command.
- */
-static inline void comp_cache(struct comp_dev *dev, int cmd)
-{
-	if (dev->drv->ops.cache)
-		dev->drv->ops.cache(dev, cmd);
-}
-
-/**
- * Sets component attribute.
- * @param dev Component device.
- * @param type Attribute type.
- * @param value Attribute value.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
-				     void *value)
-{
-	if (dev->drv->ops.set_attribute)
-		return dev->drv->ops.set_attribute(dev, type, value);
-	return 0;
-}
-
-/** @}*/
-
-/** \name Components API for infrastructure.
- *  @{
- */
-
-/**
- * Allocates and initializes audio component list.
- * To be called once at boot time.
- */
-void sys_comp_init(void);
-
-/** @}*/
-
-/** \name Helpers.
- *  @{
- */
-
-/**
- * Checks if two component devices belong to the same parent pipeline.
- * @param current Component device.
- * @param previous Another component device.
- * @return 1 if children of the same pipeline, 0 otherwise.
- */
-static inline int comp_is_single_pipeline(struct comp_dev *current,
-					  struct comp_dev *previous)
-{
-	return current->comp.pipeline_id == previous->comp.pipeline_id;
-}
-
-/**
- * Checks if component device is active.
- * @param current Component device.
- * @return 1 if active, 0 otherwise.
- */
-static inline int comp_is_active(struct comp_dev *current)
-{
-	return current->state == COMP_STATE_ACTIVE;
-}
-
-/**
- * Retrieves previous connected component.
- * @param dev Component device.
- * @param dir Component stream direction.
- * @return Previous connected component device.
- */
-static inline struct comp_dev *comp_get_previous(struct comp_dev *dev, int dir)
-{
-	struct list_item *buffer_list = comp_buffer_list(dev, dir);
-	struct comp_dev *prev = NULL;
-	struct comp_buffer *buffer;
-
-	if (!list_is_empty(buffer_list)) {
-		buffer = buffer_from_list(buffer_list->next,
-					  struct comp_buffer, dir);
-		prev = buffer_get_comp(buffer, dir);
-	}
-
-	return prev;
-}
-
-/**
- * Calculates period size in bytes based on component device's parameters.
- * @param dev Component device.
- * @return Period size in bytes.
- */
-static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
-{
-	/* calculate period size based on params */
-	switch (dev->params.frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		return 2 * dev->params.channels;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-	case SOF_IPC_FRAME_FLOAT:
-		return 4 * dev->params.channels;
-	default:
-		return 0;
-	}
-}
-
-/**
- * Calculates sample size in bytes based on component device's parameters.
- * @param dev Component device.
- * @return Size of sample in bytes.
- */
-static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
-{
-	/* calculate period size based on params */
-	switch (dev->params.frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		return 2;
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-	case SOF_IPC_FRAME_FLOAT:
-		return 4;
-	default:
-		return 0;
-	}
-}
-
-/**
- * Calculates period size in bytes based on component device's parameters.
- * @param dev Component device.
- * @param frames Number of processing frames.
- * @return Period size in bytes.
- */
-static inline uint32_t comp_period_bytes(struct comp_dev *dev, uint32_t frames)
-{
-	return frames * comp_frame_bytes(dev);
-}
-
-static inline uint32_t comp_avail_frames(struct comp_buffer *source,
-					 struct comp_buffer *sink)
-{
-	uint32_t src_frames = source->avail / comp_frame_bytes(source->source);
-	uint32_t sink_frames = sink->free / comp_frame_bytes(sink->sink);
-
-	return MIN(src_frames, sink_frames);
-}
-
-/**
- * Returns frame format based on component device's type.
- * @param dev Component device.
- * @return Frame format.
- */
-static inline enum sof_ipc_frame comp_frame_fmt(struct comp_dev *dev)
-{
-	struct sof_ipc_comp_config *sconfig;
-	enum sof_ipc_frame frame_fmt;
-
-	switch (dev->comp.type) {
-	case SOF_COMP_DAI:
-	case SOF_COMP_SG_DAI:
-		/* format comes from DAI/comp config */
-		sconfig = COMP_GET_CONFIG(dev);
-		frame_fmt = sconfig->frame_fmt;
+	switch (rate) {
+	case 44100:
+		rate = 48000;
 		break;
-	default:
-		/* format comes from IPC params */
-		frame_fmt = dev->params.frame_fmt;
+	case 88200:
+		rate = 96000;
 		break;
-	}
-
-	return frame_fmt;
-}
-
-/**
- * Returns component state based on requested command.
- * @param cmd Request command.
- * @return Component state.
- */
-static inline int comp_get_requested_state(int cmd)
-{
-	int state = COMP_STATE_INIT;
-
-	switch (cmd) {
-	case COMP_TRIGGER_START:
-	case COMP_TRIGGER_RELEASE:
-		state = COMP_STATE_ACTIVE;
-		break;
-	case COMP_TRIGGER_PREPARE:
-	case COMP_TRIGGER_STOP:
-		state = COMP_STATE_PREPARE;
-		break;
-	case COMP_TRIGGER_PAUSE:
-		state = COMP_STATE_PAUSED;
-		break;
-	case COMP_TRIGGER_XRUN:
-	case COMP_TRIGGER_RESET:
-		state = COMP_STATE_READY;
+	case 176400:
+		rate = 192000;
 		break;
 	default:
 		break;
 	}
 
-	return state;
-}
+	frames = SOF_DIV_ROUND_UP((uint64_t)rate * current->period, 1000000);
 
-/* \brief Returns comp_endpoint_type of given component */
-static inline int comp_get_endpoint_type(struct comp_dev *dev)
-{
-	switch (dev->comp.type) {
-	case SOF_COMP_HOST:
-		return COMP_ENDPOINT_HOST;
-	case SOF_COMP_DAI:
-		return COMP_ENDPOINT_DAI;
-	default:
-		return COMP_ENDPOINT_NODE;
-	}
+	assert(frames <= UINT_MAX);
+	current->frames = (uint32_t)frames;
 }
-
-/** @}*/
 
 /** \name XRUN handling.
  *  @{
@@ -751,15 +1091,17 @@ static inline void comp_underrun(struct comp_dev *dev,
 				 struct comp_buffer *source,
 				 uint32_t copy_bytes)
 {
-	trace_comp_error_with_ids(dev, "comp_underrun() error: "
-				  "dev->comp.id = %u, "
-				  "source->avail = %u, "
-				  "copy_bytes = %u",
-				  dev->comp.id,
-				  source->avail,
-				  copy_bytes);
+	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
 
-	pipeline_xrun(dev->pipeline, dev, (int32_t)source->avail - copy_bytes);
+	int32_t bytes = (int32_t)audio_stream_get_avail_bytes(&source->stream) -
+			copy_bytes;
+
+	comp_err(dev, "comp_underrun(): dev->comp.id = %u, source->avail = %u, copy_bytes = %u",
+		 dev_comp_id(dev),
+		 audio_stream_get_avail_bytes(&source->stream),
+		 copy_bytes);
+
+	pipeline_xrun(dev->pipeline, dev, bytes);
 }
 
 /**
@@ -771,32 +1113,133 @@ static inline void comp_underrun(struct comp_dev *dev,
 static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 				uint32_t copy_bytes)
 {
-	trace_comp_error("comp_overrun() error: dev->comp.id = %u, sink->free "
-			 "= %u, copy_bytes = %u", dev->comp.id, sink->free,
-			 copy_bytes);
+	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
 
-	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
+	int32_t bytes = (int32_t)copy_bytes -
+			audio_stream_get_free_bytes(&sink->stream);
+
+	comp_err(dev, "comp_overrun(): sink->free = %u, copy_bytes = %u",
+		 audio_stream_get_free_bytes(&sink->stream), copy_bytes);
+
+	pipeline_xrun(dev->pipeline, dev, bytes);
 }
 
+/** @}*/
+
 /**
- * Called to check whether component schedules its pipeline.
- * @param dev Component device.
- * @return True if this is scheduling component, false otherwise.
+ * Computes source to sink copy operation boundaries including maximum number
+ * of frames that can be transferred (data available in source vs. free space
+ * available in sink).
+ *
+ * @param[in] source Source buffer.
+ * @param[in] sink Sink buffer.
+ * @param[out] cl Current copy limits.
  */
-static inline bool comp_is_scheduling_source(struct comp_dev *dev)
+void comp_get_copy_limits(struct comp_buffer *source,
+			  struct comp_buffer *sink,
+			  struct comp_copy_limits *cl);
+
+/**
+ * Computes source to sink copy operation boundaries including maximum number
+ * of frames aligned with requirement that can be transferred (data available in
+ * source vs. free space available in sink).
+ *
+ * @param[in] source Buffer of source.
+ * @param[in] sink Buffer of sink.
+ * @param[out] cl Current copy limits.
+ */
+void comp_get_copy_limits_frame_aligned(const struct comp_buffer *source,
+					const struct comp_buffer *sink,
+					struct comp_copy_limits *cl);
+
+/**
+ * Get component state.
+ *
+ * @param dev Component from which user wants to read status.
+ *
+ * @retval COMP_STATE_NOT_EXIST if there's no connected component
+ * @return state of the component
+ */
+static inline int comp_get_state(const struct comp_dev *dev)
 {
-	return dev == dev->pipeline->sched_comp;
+	if (!dev)
+		return COMP_STATE_NOT_EXIST;
+	return dev->state;
 }
 
 /**
- * Called by component in copy.
- * @param dev Component device.
- * @param cl Struct of parameters for use in copy function.
+ * @brief helper, provide state of a component connected to a buffer as a data provider
+ *
+ * @param buffer a buffer to be checked
+ *
+ * @retval COMP_STATE_NOT_EXIST if there's no connected component
+ * @return state of the component
  */
-int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl);
+static inline int comp_buffer_get_source_state(const struct comp_buffer *buffer)
+{
+	return comp_get_state(comp_buffer_get_source_component(buffer));
+}
+
+/**
+ * @brief helper, provide state of a component connected to a buffer as a data consumer
+ *
+ * @param buffer a buffer to be checked
+ *
+ * @retval COMP_STATE_NOT_EXIST if there's no connected component
+ * @return state of the component
+ */
+static inline int comp_buffer_get_sink_state(const struct comp_buffer *buffer)
+{
+	return comp_get_state(comp_buffer_get_sink_component(buffer));
+}
+
+/**
+ * Warning: duplicate declaration in topology.h
+ *
+ * Called by component in  params() function in order to set and update some of
+ * downstream (playback) or upstream (capture) buffer parameters with pcm
+ * parameters. There is a possibility to specify which of parameters won't be
+ * overwritten (e.g. SRC component should not overwrite rate parameter, because
+ * it is able to change it).
+ *
+ * @param dev Component device
+ * @param flag Specifies which parameter should not be updated
+ * @param params pcm params
+ */
+int comp_verify_params(struct comp_dev *dev, uint32_t flag,
+		       struct sof_ipc_stream_params *params);
 
 /** @}*/
 
-/** @}*/
+/**
+ * Update ibs, obs, cpc, ll chunk size for component.
+ *
+ * @param dev Component to update.
+ */
+void comp_update_ibs_obs_cpc(struct comp_dev *dev);
 
+/**
+ * If component has assigned slot in performance measurement window,
+ * initialize its fields.
+ * @param dev Component to init.
+ */
+void comp_init_performance_data(struct comp_dev *dev);
+
+/**
+ * Update performance data entry for component. Also checks for budget violation.
+ *
+ * @param dev Component to update.
+ * @param cycles_used Execution time.
+ * @return true if budget violation occurred
+ */
+bool comp_update_performance_data(struct comp_dev *dev, uint32_t cycles_used);
+
+static inline int user_get_buffer_memory_region(const struct comp_driver *drv)
+{
+#if CONFIG_SOF_USERSPACE_USE_DRIVER_HEAP
+	return drv->user_heap ? SOF_MEM_FLAG_USER_SHARED_BUFFER : SOF_MEM_FLAG_USER;
+#else
+	return SOF_MEM_FLAG_USER;
+#endif
+}
 #endif /* __SOF_AUDIO_COMPONENT_H__ */

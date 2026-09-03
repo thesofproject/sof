@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_ARIA
+	tristate "ARIA component"
+	default m if LIBRARY_DEFAULT_MODULAR
+	depends on IPC_MAJOR_4
+	help
+	  Select for Automatic Regressive Input Amplifier Module component
+	  ARIA applies variable gain into incoming signal. Target gain is
+	  0, 6, 12, 18 dB with allowed configuration parameter values
+	  0, 1, 2, 3. Gain is reduced from target with high level signals
+	  to avoid clipping. Currently ARIA introduces gain transition and
+	  algorithmic latency equal to 1 ms.
+
+choice
+	prompt "ARIA HIFI level"
+	depends on COMP_ARIA
+	default ARIA_HIFI_MAX
+
+config ARIA_HIFI_MAX
+	bool "Max level available in the toolchain"
+
+config ARIA_HIFI_4
+	bool "HIFI4 ARIA"
+
+config ARIA_HIFI_3
+	bool "HIFI3 ARIA"
+
+config ARIA_HIFI_NONE
+	bool "Generic ARIA, no HIFI"
+
+endchoice

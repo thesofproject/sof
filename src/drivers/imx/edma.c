@@ -7,15 +7,31 @@
 
 #include <sof/audio/component.h>
 #include <sof/drivers/edma.h>
-#include <sof/drivers/timer.h>
-#include <sof/lib/alloc.h>
+#include <rtos/timer.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/io.h>
+#include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+LOG_MODULE_REGISTER(edma, CONFIG_SOF_LOG_LEVEL);
+
+SOF_DEFINE_REG_UUID(edma);
+
+DECLARE_TR_CTX(edma_tr, SOF_UUID(edma_uuid), LOG_LEVEL_INFO);
+
+static void chan_addr_convert(struct dma_chan_data *channel, uint32_t *sbase, uint32_t *dbase)
+{
+	if (channel->direction == DMA_DIR_MEM_TO_DEV)
+		*sbase = local_to_host(*sbase);
+	else
+		*dbase = local_to_host(*dbase);
+}
 
 static int edma_encode_tcd_attr(int src_width, int dest_width)
 {
@@ -80,28 +96,28 @@ static int edma_encode_tcd_attr(int src_width, int dest_width)
 static struct dma_chan_data *edma_channel_get(struct dma *dma,
 					      unsigned int req_chan)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 	struct dma_chan_data *channel;
 
-	tracev_edma("EDMA: channel_get(%d)", req_chan);
+	tr_dbg(&edma_tr, "EDMA: channel_get(%d)", req_chan);
 
-	spin_lock_irq(dma->lock, flags);
+	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
-		spin_unlock_irq(dma->lock, flags);
-		trace_edma_error("EDMA: Channel %d out of range", req_chan);
+		k_spin_unlock(&dma->lock, key);
+		tr_err(&edma_tr, "EDMA: Channel %d out of range", req_chan);
 		return NULL;
 	}
 
 	channel = &dma->chan[req_chan];
 	if (channel->status != COMP_STATE_INIT) {
-		spin_unlock_irq(dma->lock, flags);
-		trace_edma_error("EDMA: Cannot reuse channel %d", req_chan);
+		k_spin_unlock(&dma->lock, key);
+		tr_err(&edma_tr, "EDMA: Cannot reuse channel %d", req_chan);
 		return NULL;
 	}
 
 	atomic_add(&dma->num_channels_busy, 1);
 	channel->status = COMP_STATE_READY;
-	spin_unlock_irq(dma->lock, flags);
+	k_spin_unlock(&dma->lock, key);
 
 	return channel;
 }
@@ -109,31 +125,30 @@ static struct dma_chan_data *edma_channel_get(struct dma *dma,
 /* channel must not be running when this is called */
 static void edma_channel_put(struct dma_chan_data *channel)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 
 	/* Assuming channel is stopped, we thus don't need hardware to
 	 * do anything right now
 	 */
-	trace_edma("EDMA: channel_put(%d)", channel->index);
+	tr_info(&edma_tr, "EDMA: channel_put(%d)", channel->index);
 
-	spin_lock_irq(dma->lock, flags);
+	notifier_unregister_all(NULL, channel);
+
+	key = k_spin_lock(&channel->dma->lock);
 	channel->status = COMP_STATE_INIT;
 	atomic_sub(&channel->dma->num_channels_busy, 1);
-	spin_unlock_irq(dma->lock, flags);
+	k_spin_unlock(&channel->dma->lock, key);
 }
 
 static int edma_start(struct dma_chan_data *channel)
 {
-	trace_edma("EDMA: start(%d)", channel->index);
+	tr_info(&edma_tr, "EDMA: start(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_PREPARE &&
-	    channel->status != COMP_STATE_SUSPEND)
+	    channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
 
 	channel->status = COMP_STATE_ACTIVE;
-	/* Do the HW start of the DMA */
-	dma_chan_reg_update_bits(channel, EDMA_TCD_CSR,
-				 EDMA_TCD_CSR_START, EDMA_TCD_CSR_START);
 	/* Allow the HW to automatically trigger further transfers */
 	dma_chan_reg_update_bits(channel, EDMA_CH_CSR,
 				 EDMA_CH_CSR_ERQ_EARQ, EDMA_CH_CSR_ERQ_EARQ);
@@ -143,19 +158,19 @@ static int edma_start(struct dma_chan_data *channel)
 static int edma_release(struct dma_chan_data *channel)
 {
 	/* TODO actually handle pause/release properly? */
-	trace_edma("EDMA: release(%d)", channel->index);
+	tr_info(&edma_tr, "EDMA: release(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_PAUSED)
 		return -EINVAL;
 
-	channel->status = COMP_STATE_ACTIVE;
+	channel->status = COMP_STATE_PREPARE;
 	return 0;
 }
 
 static int edma_pause(struct dma_chan_data *channel)
 {
 	/* TODO actually handle pause/release properly? */
-	trace_edma("EDMA: pause(%d)", channel->index);
+	tr_info(&edma_tr, "EDMA: pause(%d)", channel->index);
 
 	if (channel->status != COMP_STATE_ACTIVE)
 		return -EINVAL;
@@ -170,7 +185,7 @@ static int edma_pause(struct dma_chan_data *channel)
 
 static int edma_stop(struct dma_chan_data *channel)
 {
-	trace_edma("EDMA: stop(%d)", channel->index);
+	tr_info(&edma_tr, "EDMA: stop(%d)", channel->index);
 	/* Validate state */
 	// TODO: Should we?
 	switch (channel->status) {
@@ -195,10 +210,14 @@ static int edma_stop(struct dma_chan_data *channel)
 
 static int edma_copy(struct dma_chan_data *channel, int bytes, uint32_t flags)
 {
-	struct dma_cb_data next = { .elem.size = bytes };
+	struct dma_cb_data next = {
+		.channel = channel,
+		.elem.size = bytes,
+	};
 
-	if (channel->cb && channel->cb_type & DMA_CB_TYPE_COPY)
-		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
+
 	return 0;
 }
 
@@ -212,7 +231,7 @@ static int edma_status(struct dma_chan_data *channel,
 	 */
 	status->r_pos = dma_chan_reg_read(channel, EDMA_TCD_SADDR);
 	status->w_pos = dma_chan_reg_read(channel, EDMA_TCD_DADDR);
-	status->timestamp = timer_get_system(platform_timer);
+	status->timestamp = sof_cycle_get_64();
 	return 0;
 }
 
@@ -264,6 +283,10 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 			  int dest_width, uint32_t burst_elems)
 {
 	int rc;
+#if defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55)
+	struct dai_data *dd = channel->dev_data;
+	int direction, handshake, dmamux_cfg;
+#endif
 	uint32_t sbase, dbase, total_size, elem_count, elem_size, size;
 
 	assert(!sg);
@@ -297,7 +320,7 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 	/* burst_elems is in words translate it in bytes and divide by two
 	 * to fill the FIFO to half its size
 	 */
-	burst_elems = burst_elems * 4U / 2U;
+	burst_elems = burst_elems * src_width / 2U;
 
 	size = MIN(elem_size, burst_elems);
 	while (size >= 4U) {
@@ -309,6 +332,24 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 	rc = edma_encode_tcd_attr(src_width, dest_width);
 	if (rc < 0)
 		return rc;
+
+#if defined(CONFIG_IMX8ULP) || defined(CONFIG_IMX93_A55)
+	/* Do not write EDMA_CH_MUX register when it has value,
+	 * otherwise the register will be cleared.
+	 */
+	if (channel->direction == DMA_DIR_MEM_TO_DEV)
+		direction = DAI_DIR_PLAYBACK;
+	else
+		direction = DAI_DIR_CAPTURE;
+
+	handshake = dai_get_handshake(dd->dai, direction, 0);
+	dmamux_cfg = EDMA_HS_GET_DMAMUX_CFG(handshake);
+
+	if (!dma_chan_reg_read(channel, EDMA_CH_MUX))
+		dma_chan_reg_write(channel, EDMA_CH_MUX, dmamux_cfg);
+#endif
+
+	chan_addr_convert(channel, &sbase, &dbase);
 
 	/* Configure the in-hardware TCD */
 	dma_chan_reg_write(channel, EDMA_TCD_SADDR, sbase);
@@ -332,17 +373,10 @@ static int edma_setup_tcd(struct dma_chan_data *channel, int16_t soff,
 static int edma_set_config(struct dma_chan_data *channel,
 			   struct dma_sg_config *config)
 {
-	int handshake, irq;
 	int16_t soff = 0;
 	int16_t doff = 0;
 
-	/* We may need to pass some data through the handshake in the
-	 * future, so we just have them here, even if unused for now
-	 */
-	(void)handshake;
-	(void)irq;
-
-	trace_edma("EDMA: set config");
+	tr_info(&edma_tr, "EDMA: set config");
 
 	channel->is_scheduling_source = config->is_scheduling_source;
 	channel->direction = config->direction;
@@ -351,24 +385,22 @@ static int edma_set_config(struct dma_chan_data *channel,
 	case DMA_DIR_MEM_TO_DEV:
 		soff = config->src_width;
 		doff = 0;
-		handshake = config->dest_dev;
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		soff = 0;
 		doff = config->dest_width;
-		handshake = config->src_dev;
 		break;
 	default:
-		trace_edma_error("edma_set_config() unsupported config direction");
+		tr_err(&edma_tr, "unsupported config direction");
 		return -EINVAL;
 	}
 
 	if (!config->cyclic) {
-		trace_edma_error("EDMA: Only cyclic configurations are supported!");
+		tr_err(&edma_tr, "EDMA: Only cyclic configurations are supported!");
 		return -EINVAL;
 	}
 	if (config->scatter) {
-		trace_edma_error("EDMA: scatter enabled, that is not supported for now!");
+		tr_err(&edma_tr, "EDMA: scatter enabled, that is not supported for now!");
 		return -EINVAL;
 	}
 
@@ -378,46 +410,21 @@ static int edma_set_config(struct dma_chan_data *channel,
 			      config->dest_width, config->burst_elems);
 }
 
-/* restore DMA context after leaving D3 */
-static int edma_pm_context_restore(struct dma *dma)
-{
-	/* External to the DSP, won't lose power */
-	return 0;
-}
-
-/* store DMA context after leaving D3 */
-static int edma_pm_context_store(struct dma *dma)
-{
-	/* External to the DSP, won't lose power */
-	return 0;
-}
-
-static int edma_set_cb(struct dma_chan_data *channel, int type,
-		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
-		void *data)
-{
-	channel->cb = cb;
-	channel->cb_type = type;
-	channel->cb_data = data;
-
-	return 0;
-}
-
 static int edma_probe(struct dma *dma)
 {
 	int channel;
 
 	if (dma->chan) {
-		trace_edma_error("EDMA: Repeated probe");
+		tr_err(&edma_tr, "EDMA: Repeated probe");
 		return -EEXIST;
 	}
-	trace_edma("EDMA: probe");
+	tr_info(&edma_tr, "EDMA: probe");
 
-	dma->chan = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_FLAG_KERNEL,
 			    dma->plat_data.channels *
 			    sizeof(struct dma_chan_data));
 	if (!dma->chan) {
-		trace_edma_error("EDMA: Probe failure, unable to allocate channel descriptors");
+		tr_err(&edma_tr, "EDMA: Probe failure, unable to allocate channel descriptors");
 		return -ENOMEM;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -432,7 +439,7 @@ static int edma_remove(struct dma *dma)
 	int channel;
 
 	if (!dma->chan) {
-		trace_edma_error("EDMA: remove called without probe, it's a no-op");
+		tr_err(&edma_tr, "EDMA: remove called without probe, it's a no-op");
 		return 0;
 	}
 	for (channel = 0; channel < dma->plat_data.channels; channel++) {
@@ -534,8 +541,8 @@ static int edma_get_data_size(struct dma_chan_data *channel,
 		*avail = ABS(capture_data_size) / 2;
 		break;
 	default:
-		trace_edma_error("edma_get_data_size() unsupported direction %d",
-				 channel->direction);
+		tr_err(&edma_tr, "unsupported direction %d",
+		       channel->direction);
 		return -EINVAL;
 	}
 	return 0;
@@ -551,9 +558,6 @@ const struct dma_ops edma_ops = {
 	.copy		= edma_copy,
 	.status		= edma_status,
 	.set_config	= edma_set_config,
-	.set_cb		= edma_set_cb,
-	.pm_context_restore	= edma_pm_context_restore,
-	.pm_context_store	= edma_pm_context_store,
 	.probe		= edma_probe,
 	.remove		= edma_remove,
 	.interrupt	= edma_interrupt,

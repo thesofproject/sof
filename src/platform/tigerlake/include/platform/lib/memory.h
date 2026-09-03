@@ -14,7 +14,11 @@
 
 #include <cavs/lib/memory.h>
 #include <sof/lib/cpu.h>
-#include <config.h>
+
+/* prioritize definitions in Zephyr SoC layer */
+#ifdef __ZEPHYR__
+#include <adsp_memory.h>
+#endif
 
 /* physical DSP addresses */
 
@@ -107,6 +111,9 @@
 #define ALH_RXDA_OFFSET		0x000000500
 #define ALH_STREAM_OFFSET	0x000000004
 
+/* Timestamping */
+#define TIMESTAMP_BASE		0x00071800
+
 /* low power DMACs */
 #define LP_GP_DMA_SIZE		0x00001000
 #define LP_GP_DMA_BASE(x)	(0x0007C000 + x * LP_GP_DMA_SIZE)
@@ -121,67 +128,67 @@
 
 #define L2_VECTOR_SIZE		0x1000
 
+#define UUID_ENTRY_ELF_BASE	0x1FFFA000
+#define UUID_ENTRY_ELF_SIZE	0x6000
+
 #define LOG_ENTRY_ELF_BASE	0x20000000
 #define LOG_ENTRY_ELF_SIZE	0x2000000
 
+#define EXT_MANIFEST_ELF_BASE	(LOG_ENTRY_ELF_BASE + LOG_ENTRY_ELF_SIZE)
+#define EXT_MANIFEST_ELF_SIZE	0x2000000
+
 /*
  * The HP SRAM Region on Tigerlake is organised like this :-
- * +--------------------------------------------------------------------------+
- * | Offset           | Region                  |  Size                       |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_SW_REG_BASE | SW Registers W0         |  SRAM_SW_REG_SIZE           |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_OUTBOX_BASE | Outbox W0               |  SRAM_MAILBOX_SIZE          |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_INBOX_BASE  | Inbox  W1               |  SRAM_INBOX_SIZE            |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_DEBUG_BASE  | Debug data  W2          |  SRAM_DEBUG_SIZE            |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_EXCEPT_BASE | Debug data  W2          |  SRAM_EXCEPT_SIZE           |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_STREAM_BASE | Stream data W2          |  SRAM_STREAM_SIZE           |
- * +------------------+-------------------------+-----------------------------+
- * | SRAM_TRACE_BASE  | Trace Buffer W3         |  SRAM_TRACE_SIZE            |
- * +------------------+-------------------------+-----------------------------+
- * | HP_SRAM_BASE     | DMA                     |  HEAP_HP_BUFFER_SIZE        |
- * +------------------+-------------------------+-----------------------------+
- * | SOF_FW_START     | text                    |                             |
- * |                  | data                    |                             |
- * |                  | BSS                     |                             |
- * +------------------+-------------------------+-----------------------------+
- * |                  | Runtime Heap            |  HEAP_RUNTIME_SIZE          |
- * +------------------+-------------------------+-----------------------------+
- * |                  | Module Buffers          |  HEAP_BUFFER_SIZE           |
- * +------------------+-------------------------+-----------------------------+
- * |                  | Master core Sys Heap    |  HEAP_SYSTEM_M_SIZE         |
- * +------------------+-------------------------+-----------------------------+
- * |                  | Master Sys Runtime Heap |  HEAP_SYS_RUNTIME_M_SIZE    |
- * +------------------+-------------------------+-----------------------------+
- * |                  | Master core Stack       |  SOF_STACK_SIZE             |
- * +------------------+-------------------------+-----------------------------+
- * |                  | Slave core Sys Heap     |  SOF_CORE_S_T_SIZE          |
- * |                  | Slave Sys Runtime Heap  |                             |
- * |                  | Slave core Stack        |                             |
- * +------------------+-------------------------+-----------------------------+
+ * +----------------------------------------------------------------------------+
+ * | Offset             | Region                  |  Size                       |
+ * +--------------------+-------------------------+-----------------------------+
+ * | SRAM_SW_REG_BASE   | SW Registers W0         |  SRAM_SW_REG_SIZE           |
+ * +--------------------+-------------------------+-----------------------------+
+ * | SRAM_OUTBOX_BASE   | Outbox W0               |  SRAM_OUTBOX_SIZE           |
+ * +--------------------+-------------------------+-----------------------------+
+ * | SRAM_INBOX_BASE    | Inbox  W1               |  SRAM_INBOX_SIZE            |
+ * +--------------------+-------------------------+-----------------------------+
+ * | SRAM_DEBUG_BASE    | Debug data  W2          |  SRAM_DEBUG_SIZE            |
+ * +--------------------+-------------------------+-----------------------------+
+ * | SRAM_EXCEPT_BASE   | Debug data  W2          |  SRAM_EXCEPT_SIZE           |
+ * +--------------------+-------------------------+-----------------------------+
+ * | SRAM_STREAM_BASE   | Stream data W2          |  SRAM_STREAM_SIZE           |
+ * +--------------------+-------------------------+-----------------------------+
+ * | SRAM_TRACE_BASE    | Trace Buffer W3         |  SRAM_TRACE_SIZE            |
+ * +--------------------+-------------------------+-----------------------------+
+ * | HEAP_HP_BUFFER_BASE| DMA                     |  HEAP_HP_BUFFER_SIZE        |
+ * +--------------------+-------------------------+-----------------------------+
+ * | SOF_FW_START       | text                    |                             |
+ * |                    | data                    |                             |
+ * |                    | BSS                     |                             |
+ * +--------------------+-------------------------+-----------------------------+
+ * |                    | Runtime Heap            |  HEAP_RUNTIME_SIZE          |
+ * +--------------------+-------------------------+-----------------------------+
+ * |                    | Runtime shared Heap     |  HEAP_RUNTIME_SHARED_SIZE   |
+ * |                    |-------------------------+-----------------------------+
+ * |                    | System shared Heap      |  HEAP_SYSTEM_SHARED_SIZE    |
+ * |                    |-------------------------+-----------------------------+
+ * |                    | Module Buffers          |  HEAP_BUFFER_SIZE           |
+ * +--------------------+-------------------------+-----------------------------+
+ * |                    | Primary core Sys Heap   |  HEAP_SYSTEM_M_SIZE         |
+ * +--------------------+-------------------------+-----------------------------+
+ * |                    | Pri. Sys Runtime Heap   |  HEAP_SYS_RUNTIME_M_SIZE    |
+ * +--------------------+-------------------------+-----------------------------+
+ * |                    | Primary core Stack      |  SOF_STACK_SIZE             |
+ * +--------------------+-------------------------+-----------------------------+
+ * |                    | Sec. core Sys Heap      |  SOF_CORE_S_T_SIZE          |
+ * |                    | Sec. Sys Runtime Heap   |                             |
+ * |                    | Secondary core Stack    |                             |
+ * +--------------------+-------------------------+-----------------------------+
  */
 
 /* HP SRAM */
-#define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
-#define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM windows */
 /* window 0 */
 #define SRAM_SW_REG_BASE	(HP_SRAM_BASE + 0x4000)
 #define SRAM_SW_REG_SIZE	0x1000
-
-/* SRAM window 0 FW "registers" */
-#define SRAM_REG_ROM_STATUS			0x0
-#define SRAM_REG_FW_STATUS			0x4
-#define SRAM_REG_FW_TRACEP			0x8
-#define SRAM_REG_FW_IPC_RECEIVED_COUNT		0xc
-#define SRAM_REG_FW_IPC_PROCESSED_COUNT		0x10
-#define SRAM_REG_FW_END				0x14
 
 #define SRAM_OUTBOX_BASE	(SRAM_SW_REG_BASE + SRAM_SW_REG_SIZE)
 #define SRAM_OUTBOX_SIZE	0x1000
@@ -233,40 +240,82 @@
 /* max size for all var-size sections (text/rodata/bss) */
 #define SOF_FW_MAX_SIZE		(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_FW_BASE)
 
+#define SOF_FW_END             (HP_SRAM_BASE + HP_SRAM_SIZE)
+
 #define SOF_TEXT_START		(SOF_FW_START)
 #define SOF_TEXT_BASE		(SOF_FW_START)
 
-/* Heap section sizes for system runtime heap for master core */
+/* Heap section sizes for system runtime heap for primary core */
 #define HEAP_SYS_RT_0_COUNT64		128
 #define HEAP_SYS_RT_0_COUNT512		16
 #define HEAP_SYS_RT_0_COUNT1024		4
 
-/* Heap section sizes for system runtime heap for slave core */
-#define HEAP_SYS_RT_X_COUNT64		32
+/* Heap section sizes for system runtime heap for secondary core */
+#define HEAP_SYS_RT_X_COUNT64		64
 #define HEAP_SYS_RT_X_COUNT512		8
 #define HEAP_SYS_RT_X_COUNT1024		4
 
+/* Heap section counts base */
+#define HEAP_COUNT64		128
+#define HEAP_COUNT128		128
+#define HEAP_COUNT256		96
+#define HEAP_COUNT512		8
+#define HEAP_COUNT1024		4
+#define HEAP_COUNT2048		2
+#define HEAP_COUNT4096		1
+
+#if HP_SRAM_SIZE < 0x200000
+#define RT_TIMES	3
+#define RT_SHARED_TIMES	6
+#else
+/* Reserve more memory for RTNR */
+#if defined(CONFIG_COMP_RTNR) || defined(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING)
+#define RT_TIMES	2
+#define RT_SHARED_TIMES	4
+#else
+#define RT_TIMES	8
+#define RT_SHARED_TIMES	16
+#endif /* CONFIG_COMP_RTNR */
+#endif
+
 /* Heap section sizes for module pool */
-#define HEAP_RT_COUNT64			128
-#define HEAP_RT_COUNT128		64
-#define HEAP_RT_COUNT256		128
-#define HEAP_RT_COUNT512		8
-#define HEAP_RT_COUNT1024		4
+#define HEAP_RT_COUNT64			(HEAP_COUNT64 * RT_TIMES)
+#define HEAP_RT_COUNT128		(HEAP_COUNT128 * RT_TIMES)
+#define HEAP_RT_COUNT256		(HEAP_COUNT256 * RT_TIMES)
+#define HEAP_RT_COUNT512		(HEAP_COUNT512 * RT_TIMES)
+#define HEAP_RT_COUNT1024		(HEAP_COUNT1024 * RT_TIMES)
+#define HEAP_RT_COUNT2048		(HEAP_COUNT2048 * RT_TIMES)
+#define HEAP_RT_COUNT4096		(HEAP_COUNT4096 * RT_TIMES)
 
 /* Heap configuration */
 #define HEAP_RUNTIME_SIZE \
 	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
 	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
-	HEAP_RT_COUNT1024 * 1024)
+	HEAP_RT_COUNT1024 * 1024 + HEAP_RT_COUNT2048 * 2048 + \
+	HEAP_RT_COUNT4096 * 4096)
 
-#define HEAP_BUFFER_SIZE	0xF000
-#define HEAP_BUFFER_BLOCK_SIZE		0x180
-#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+/* Heap section sizes for runtime shared heap */
+#define HEAP_RUNTIME_SHARED_COUNT64	(HEAP_COUNT64 * RT_SHARED_TIMES)
+#define HEAP_RUNTIME_SHARED_COUNT128	(HEAP_COUNT128 * RT_SHARED_TIMES)
+#define HEAP_RUNTIME_SHARED_COUNT256	(HEAP_COUNT256 * RT_SHARED_TIMES)
+#define HEAP_RUNTIME_SHARED_COUNT512	(HEAP_COUNT512 * RT_SHARED_TIMES)
+#define HEAP_RUNTIME_SHARED_COUNT1024	(HEAP_COUNT1024 * RT_SHARED_TIMES)
 
-#define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
-#define HEAP_SYSTEM_S_SIZE		0x6000	/* heap slave core size */
+#define HEAP_RUNTIME_SHARED_SIZE \
+	(HEAP_RUNTIME_SHARED_COUNT64 * 64 + HEAP_RUNTIME_SHARED_COUNT128 * 128 + \
+	HEAP_RUNTIME_SHARED_COUNT256 * 256 + HEAP_RUNTIME_SHARED_COUNT512 * 512 + \
+	HEAP_RUNTIME_SHARED_COUNT1024 * 1024)
+
+/* Heap section sizes for system shared heap */
+#define HEAP_SYSTEM_SHARED_SIZE		0x1500
+
+#define HEAP_BUFFER_BLOCK_SIZE		0x100
+#define HEAP_BUFFER_COUNT_MAX  (HP_SRAM_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+
+#define HEAP_SYSTEM_M_SIZE		0x8000	/* heap primary core size */
+#define HEAP_SYSTEM_S_SIZE		0x6000	/* heap secondary core size */
 #define HEAP_SYSTEM_T_SIZE \
-	(HEAP_SYSTEM_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
+	(HEAP_SYSTEM_M_SIZE + ((CONFIG_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
 
 #define HEAP_SYS_RUNTIME_M_SIZE \
 	(HEAP_SYS_RT_0_COUNT64 * 64 + HEAP_SYS_RT_0_COUNT512 * 512 + \
@@ -277,18 +326,12 @@
 	HEAP_SYS_RT_X_COUNT1024 * 1024)
 
 #define HEAP_SYS_RUNTIME_T_SIZE \
-	(HEAP_SYS_RUNTIME_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * \
+	(HEAP_SYS_RUNTIME_M_SIZE + ((CONFIG_CORE_COUNT - 1) * \
 	HEAP_SYS_RUNTIME_S_SIZE))
 
 /* Stack configuration */
-#define SOF_STACK_SIZE		0x1000
-#define SOF_STACK_TOTAL_SIZE	(PLATFORM_CORE_COUNT * SOF_STACK_SIZE)
-
-/* SOF Core S configuration */
-#define SOF_CORE_S_SIZE \
-	ALIGN((HEAP_SYSTEM_S_SIZE + HEAP_SYS_RUNTIME_S_SIZE + SOF_STACK_SIZE),\
-	SRAM_BANK_SIZE)
-#define SOF_CORE_S_T_SIZE ((PLATFORM_CORE_COUNT - 1) * SOF_CORE_S_SIZE)
+#define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
+#define SOF_STACK_TOTAL_SIZE	(CONFIG_CORE_COUNT * SOF_STACK_SIZE)
 
 /*
  * The LP SRAM Heap and Stack on Tigerlake are organised like this :-
@@ -313,34 +356,30 @@
  */
 
 /* LP SRAM */
-#define LP_SRAM_BASE		0xBE800000
+#ifndef __ZEPHYR__
+#define LP_SRAM_BASE			0xBE800000
+#endif
 
-/* Heap section sizes for module pool */
-#define HEAP_RT_LP_COUNT8			0
-#define HEAP_RT_LP_COUNT16			256
-#define HEAP_RT_LP_COUNT32			128
-#define HEAP_RT_LP_COUNT64			64
-#define HEAP_RT_LP_COUNT128			64
-#define HEAP_RT_LP_COUNT256			96
-#define HEAP_RT_LP_COUNT512			8
-#define HEAP_RT_LP_COUNT1024			4
+#if CONFIG_MULTICORE
+/* alternate reset vector */
+#define LP_SRAM_ALT_RESET_VEC_BASE	LP_SRAM_BASE
+#define LP_SRAM_ALT_RESET_VEC_SIZE	0x180
 
-/* Heap configuration */
-#define SOF_LP_DATA_SIZE			0x4000
+#define LP_SRAM_ALT_RESET_INT_VEC_BASE	(LP_SRAM_ALT_RESET_VEC_BASE + \
+					LP_SRAM_ALT_RESET_VEC_SIZE)
+#define LP_SRAM_ALT_RESET_INT_VEC_SIZE	0x10
 
-#define HEAP_LP_SYSTEM_BASE		(LP_SRAM_BASE + SOF_LP_DATA_SIZE)
-#define HEAP_LP_SYSTEM_SIZE		0x1000
+#define LP_SRAM_CODE_BASE		(LP_SRAM_ALT_RESET_INT_VEC_BASE + \
+					LP_SRAM_ALT_RESET_INT_VEC_SIZE)
+#define LP_SRAM_CODE_SIZE		0x220
 
-#define HEAP_LP_RUNTIME_BASE \
-	(HEAP_LP_SYSTEM_BASE + HEAP_LP_SYSTEM_SIZE)
-#define HEAP_LP_RUNTIME_SIZE \
-	(HEAP_RT_LP_COUNT8 * 8 + HEAP_RT_LP_COUNT16 * 16 + \
-	HEAP_RT_LP_COUNT32 * 32 + HEAP_RT_LP_COUNT64 * 64 + \
-	HEAP_RT_LP_COUNT128 * 128 + HEAP_RT_LP_COUNT256 * 256 + \
-	HEAP_RT_LP_COUNT512 * 512 + HEAP_RT_LP_COUNT1024 * 1024)
+#define LP_SRAM_START			(LP_SRAM_CODE_BASE + LP_SRAM_CODE_SIZE)
+#else
+#define LP_SRAM_START			LP_SRAM_BASE
+#endif
 
-#define HEAP_LP_BUFFER_BASE LP_SRAM_BASE
-#define HEAP_LP_BUFFER_SIZE LP_SRAM_SIZE
+#define HEAP_LP_BUFFER_BASE LP_SRAM_START
+#define HEAP_LP_BUFFER_SIZE (LP_SRAM_SIZE - (LP_SRAM_START - LP_SRAM_BASE))
 
 #define HEAP_LP_BUFFER_BLOCK_SIZE		0x180
 
@@ -351,9 +390,11 @@
 #define	HEAP_LP_BUFFER_COUNT 0
 #endif
 
-#define PLATFORM_HEAP_SYSTEM		PLATFORM_CORE_COUNT /* one per core */
-#define PLATFORM_HEAP_SYSTEM_RUNTIME	PLATFORM_CORE_COUNT /* one per core */
+#define PLATFORM_HEAP_SYSTEM		CONFIG_CORE_COUNT /* one per core */
+#define PLATFORM_HEAP_SYSTEM_RUNTIME	CONFIG_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
+#define PLATFORM_HEAP_RUNTIME_SHARED	1
+#define PLATFORM_HEAP_SYSTEM_SHARED	1
 #define PLATFORM_HEAP_BUFFER		2
 
 /* Stack configuration */
@@ -369,6 +410,9 @@
 #define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + \
 					SOF_MEM_VECT_LIT_SIZE)
 
+/* Size of dynamic vectors unpacked from WindowOverflow4 */
+#define SOF_DYNAMIC_VECTORS_SIZE	0x400
+
 #define SOF_MEM_ERROR_TEXT_SIZE	0x180
 #define SOF_MEM_ERROR_LIT_SIZE		0x8
 
@@ -383,11 +427,18 @@
 #define ROM_RESET_LIT_SIZE	0x200
 
 /* boot loader in IMR */
+
+#ifndef __ZEPHYR__
 #define IMR_BOOT_LDR_MANIFEST_BASE	0xB0032000
 #define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
 
+#ifndef IMR_BOOT_LDR_TEXT_ENTRY_BASE
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB0038000
+#endif
+
 #define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x120
+#endif
+
 #define IMR_BOOT_LDR_LIT_BASE		(IMR_BOOT_LDR_TEXT_ENTRY_BASE + \
 					IMR_BOOT_LDR_TEXT_ENTRY_SIZE)
 #define IMR_BOOT_LDR_LIT_SIZE		0x22
@@ -403,12 +454,39 @@
 #define BOOT_LDR_STACK_BASE		HEAP_HP_BUFFER_BASE
 #define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
-#define uncache_to_cache(address) \
-	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
-#define cache_to_uncache(address) \
-	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
-#define is_uncached(address) \
-	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
+/* L1 memory */
+#define L1_MEM_BASE			0x9F000000
+#define L1_DRAM_SIZE			(CONFIG_L1_DRAM_BANKS * CONFIG_L1_DRAM_BANK_SIZE)
+#define L1_MEM_REG_BASE			0x9F080000
+#define L1_MEM_CAP			(L1_MEM_REG_BASE + 0x00)
+#define L1_MEM_DRAM_PGCTL		(L1_MEM_REG_BASE + 0x20)
+#define L1_MEM_DRAM_PGISTS		(L1_MEM_REG_BASE + 0x28)
+
+/* L1 init */
+#define L1CC_ADDR			(0x9F080080)
+#define CxL1CCAP			(L1CC_ADDR + 0x0000)
+#define CxL1CCFG			(L1CC_ADDR + 0x0004)
+#define CxL1PCFG			(L1CC_ADDR + 0x0008)
+
+#define L1_CACHE_ALL_DATA_WAY_ENABLED_MASK	(BIT(XCHAL_DCACHE_WAYS) - 1)
+#define L1_CACHE_ALL_INSTR_WAY_ENABLED_MASK	((BIT(XCHAL_ICACHE_WAYS) - 1) << 8)
+#define L1_CACHE_ALL_WAY_ENABLED_MASK	((L1_CACHE_ALL_DATA_WAY_ENABLED_MASK) \
+	| (L1_CACHE_ALL_INSTR_WAY_ENABLED_MASK))
+#define L1_CACHE_ALL_WAY_ACTIVE_MASK	(L1_CACHE_ALL_WAY_ENABLED_MASK << 16)
+
+#define L1_CACHE_ONE_DATA_WAY_ENABLED_MASK	BIT(0)
+#define L1_CACHE_ONE_INSTR_WAY_ENABLED_MASK	BIT(8)
+#define L1_CACHE_ONE_WAY_ENABLED_MASK	(L1_CACHE_ONE_DATA_WAY_ENABLED_MASK \
+	| L1_CACHE_ONE_INSTR_WAY_ENABLED_MASK)
+#define L1_CACHE_ONE_WAY_ACTIVE_MASK	(L1_CACHE_ONE_WAY_ENABLED_MASK << 16)
+
+#define L1_CACHE_PREFETCHER_ENABLED	1
+#define L1_CACHE_PREFETCHER_ACTIVE	0x10000
+
+#define L1_CACHE_PREFCTL_VALUE		0x1038
+
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 

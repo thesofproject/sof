@@ -1,0 +1,2223 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2019, Intel Corporation. All rights reserved.
+#
+# Author: Marcin Maka <marcin.maka@linux.intel.com>
+
+""" Parses manifests included in sof binary and prints extracted metadata
+    in readable form.
+"""
+
+# pylint: disable=too-few-public-methods
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=invalid-name
+# pylint: disable=missing-function-docstring
+
+import sys
+import argparse
+import struct
+import io
+import pathlib
+import hashlib
+
+# Required for open(pathlib)
+assert sys.version_info >= (3, 6)
+
+# To extend the DSP memory layout list scroll down to DSP_MEM_SPACE_EXT
+
+# Public keys signatures recognized by parse_css_manifest()
+# - add a new one as array of bytes and append entry to KNOWN_KEYS below.
+#   you can use --full_bytes to dump the bytes in below format
+
+APL_INTEL_PROD_KEY = bytes([0x1f, 0xf4, 0x58, 0x74, 0x64, 0xd4, 0xae, 0x90,
+                            0x03, 0xb6, 0x71, 0x0d, 0xb5, 0xaf, 0x6d, 0xd6,
+                            0x96, 0xce, 0x28, 0x95, 0xd1, 0x5b, 0x40, 0x59,
+                            0xcd, 0xdf, 0x0c, 0x55, 0xd2, 0xc1, 0xbd, 0x58,
+                            0xc3, 0x0d, 0x83, 0xe2, 0xac, 0xfa, 0xe0, 0xcc,
+                            0x54, 0xf6, 0x5f, 0x72, 0xc2, 0x11, 0x05, 0x93,
+                            0x1d, 0xb7, 0xe4, 0x4f, 0xa4, 0x95, 0xf5, 0x84,
+                            0x77, 0x07, 0x24, 0x6e, 0x72, 0xce, 0x57, 0x41,
+                            0xf2, 0x0b, 0x49, 0x49, 0x0c, 0xe2, 0x76, 0xf8,
+                            0x19, 0xc7, 0x9f, 0xe1, 0xca, 0x77, 0x20, 0x1b,
+                            0x5d, 0x1d, 0xed, 0xee, 0x5c, 0x54, 0x1d, 0xf6,
+                            0x76, 0x14, 0xce, 0x6a, 0x24, 0x80, 0xc9, 0xce,
+                            0x2e, 0x92, 0xe9, 0x35, 0xc7, 0x1a, 0xe9, 0x97,
+                            0x7f, 0x25, 0x2b, 0xa8, 0xf3, 0xc1, 0x4d, 0x6b,
+                            0xae, 0xd9, 0xcd, 0x0c, 0xbb, 0x08, 0x6d, 0x2b,
+                            0x01, 0x44, 0xe2, 0xb9, 0x44, 0x4e, 0x4d, 0x5c,
+                            0xdf, 0x8a, 0x89, 0xa5, 0x3c, 0x27, 0xa0, 0x54,
+                            0xde, 0xc5, 0x5b, 0xde, 0x58, 0x10, 0x8c, 0xaa,
+                            0xc4, 0x37, 0x5b, 0x73, 0x58, 0xfb, 0xe3, 0xcf,
+                            0x57, 0xf5, 0x65, 0xd3, 0x19, 0x06, 0xed, 0x36,
+                            0x47, 0xb0, 0x91, 0x67, 0xec, 0xc1, 0xe1, 0x7b,
+                            0x4f, 0x85, 0x66, 0x61, 0x31, 0x99, 0xfc, 0x98,
+                            0x7a, 0x56, 0x70, 0x95, 0x85, 0x52, 0xa0, 0x30,
+                            0x37, 0x92, 0x11, 0x9e, 0x7f, 0x33, 0x44, 0xd3,
+                            0x81, 0xfd, 0x14, 0x74, 0x51, 0x1c, 0x01, 0x14,
+                            0xc8, 0x4b, 0xf6, 0xd6, 0xeb, 0x67, 0xef, 0xfc,
+                            0x0a, 0x5f, 0xcc, 0x31, 0x73, 0xf8, 0xa9, 0xe3,
+                            0xcb, 0xb4, 0x8b, 0x91, 0xa1, 0xf0, 0xb9, 0x6e,
+                            0x1f, 0xea, 0xd3, 0xa3, 0xe4, 0x0f, 0x96, 0x74,
+                            0x3c, 0x17, 0x5b, 0x68, 0x7c, 0x87, 0xfc, 0x90,
+                            0x10, 0x89, 0x23, 0xca, 0x5d, 0x17, 0x5b, 0xc1,
+                            0xb5, 0xc2, 0x49, 0x4e, 0x2a, 0x5f, 0x47, 0xc2])
+
+CNL_INTEL_PROD_KEY = bytes([0x41, 0xa0, 0x3e, 0x14, 0x1e, 0x7e, 0x29, 0x72,
+                            0x89, 0x97, 0xc2, 0xa7, 0x7d, 0xbc, 0x1d, 0x25,
+                            0xf4, 0x9a, 0xa8, 0xb7, 0x89, 0x10, 0x73, 0x31,
+                            0x58, 0xbd, 0x46, 0x55, 0x78, 0xcf, 0xd9, 0xe1,
+                            0x7d, 0xfa, 0x24, 0x23, 0xfa, 0x5c, 0x7c, 0xc9,
+                            0x3d, 0xc8, 0xb5, 0x74, 0x87, 0xa, 0x8c, 0xe7,
+                            0x33, 0xc2, 0x71, 0x26, 0xb1, 0x4d, 0x32, 0x45,
+                            0x23, 0x17, 0xcb, 0xa6, 0xa2, 0xd0, 0xcc, 0x9e,
+                            0x2b, 0xa6, 0x9, 0x42, 0x52, 0xf1, 0xe6, 0xbd,
+                            0x73, 0x92, 0x2a, 0xfb, 0x7f, 0xc4, 0x8d, 0x5,
+                            0xec, 0x69, 0x7f, 0xd4, 0xa2, 0x6c, 0x46, 0xd4,
+                            0x5d, 0x92, 0x1d, 0x17, 0x75, 0x39, 0x16, 0x4c,
+                            0x61, 0xa8, 0xda, 0x93, 0xd6, 0x26, 0x23, 0xa,
+                            0xc8, 0x2d, 0xcc, 0x81, 0xf4, 0xcc, 0x85, 0x42,
+                            0xaa, 0xa3, 0x15, 0x8, 0x62, 0x8f, 0x72, 0x9b,
+                            0x5f, 0x90, 0x2f, 0xd5, 0x94, 0xdc, 0xad, 0xf,
+                            0xa9, 0x8, 0x8c, 0x2e, 0x20, 0xf4, 0xdf, 0x12,
+                            0xf, 0xe2, 0x1e, 0xeb, 0xfb, 0xf7, 0xe9, 0x22,
+                            0xef, 0xa7, 0x12, 0x3d, 0x43, 0x3b, 0x62, 0x8e,
+                            0x2e, 0xeb, 0x78, 0x8, 0x6e, 0xd0, 0xb0, 0xea,
+                            0x37, 0x43, 0x16, 0xd8, 0x11, 0x5a, 0xb5, 0x5,
+                            0x60, 0xf2, 0x91, 0xa7, 0xaa, 0x7d, 0x7, 0x17,
+                            0xb7, 0x5b, 0xec, 0x45, 0xf4, 0x4a, 0xaf, 0x5c,
+                            0xa3, 0x30, 0x62, 0x8e, 0x4d, 0x63, 0x2, 0x2,
+                            0xed, 0x4b, 0x1f, 0x1b, 0x9a, 0x2, 0x29, 0x9,
+                            0xc1, 0x7a, 0xc5, 0xeb, 0xc7, 0xdb, 0xa1, 0x6f,
+                            0x61, 0x31, 0xfa, 0x7b, 0x3b, 0xe0, 0x6a, 0x1c,
+                            0xee, 0x55, 0xed, 0xf0, 0xf9, 0x7a, 0xaf, 0xaa,
+                            0xc7, 0x76, 0xf5, 0xfb, 0x6a, 0xbc, 0x65, 0xde,
+                            0x42, 0x3e, 0x1c, 0xdf, 0xcc, 0x69, 0x75, 0x1,
+                            0x38, 0x8, 0x66, 0x20, 0xea, 0x6, 0x91, 0xb8,
+                            0xcd, 0x1d, 0xfa, 0xfd, 0xe8, 0xa0, 0xba, 0x91])
+
+ICL_INTEL_PROD_KEY = bytes([0x63, 0xdf, 0x54, 0xe3, 0xc1, 0xe5, 0xd9, 0xd2,
+                            0xb8, 0xb5, 0x13, 0xb3, 0xec, 0xc2, 0x64, 0xb5,
+                            0x16, 0xb4, 0xfc, 0x56, 0x92, 0x67, 0x17, 0xc7,
+                            0x91, 0x7b, 0x3d, 0xb0, 0x22, 0xbf, 0x7f, 0x92,
+                            0x39, 0x35, 0xcc, 0x64, 0x1c, 0xad, 0x8, 0x75,
+                            0xe7, 0x67, 0xb, 0x8, 0xf8, 0x57, 0xdb, 0x9c,
+                            0xde, 0xab, 0xe, 0xbd, 0x27, 0x5f, 0x5, 0x51,
+                            0xcf, 0x6e, 0x3e, 0xc9, 0xdd, 0xe6, 0x51, 0x14,
+                            0x57, 0xe1, 0x8a, 0x23, 0xae, 0x7a, 0xa5, 0x5f,
+                            0xdc, 0x16, 0x13, 0x1b, 0x28, 0x3b, 0xab, 0xf1,
+                            0xc3, 0xb5, 0x73, 0xc0, 0x72, 0xd8, 0x86, 0x7a,
+                            0x76, 0x3a, 0x2, 0xbe, 0x2f, 0x3e, 0xfe, 0x93,
+                            0x83, 0xa1, 0xd, 0xa0, 0xfc, 0x26, 0x7f, 0x6b,
+                            0x2e, 0x5a, 0xfd, 0xac, 0x6b, 0x53, 0xd3, 0xb8,
+                            0xff, 0x5e, 0xc7, 0x5, 0x25, 0xff, 0xe7, 0x78,
+                            0x9c, 0x45, 0xe4, 0x17, 0xbd, 0xf4, 0x52, 0x4e,
+                            0x3c, 0xa2, 0xa, 0x4d, 0x54, 0xb5, 0x40, 0x30,
+                            0xb3, 0x48, 0xba, 0x6c, 0xfa, 0x63, 0xc0, 0x65,
+                            0x2e, 0xde, 0x9, 0x2e, 0xa1, 0x95, 0x85, 0xc0,
+                            0x78, 0xd9, 0x98, 0x64, 0x3c, 0x29, 0x2e, 0x48,
+                            0x66, 0x1e, 0xaf, 0x1d, 0xa0, 0x7c, 0x15, 0x3,
+                            0x7f, 0x9e, 0x5f, 0x38, 0xf5, 0xc1, 0xe1, 0xe9,
+                            0xbe, 0x77, 0xa2, 0x9c, 0x83, 0xf2, 0x25, 0x54,
+                            0x22, 0xfe, 0x29, 0x66, 0x5, 0xc2, 0xc9, 0x6b,
+                            0x8b, 0xa6, 0xa3, 0xf9, 0xb1, 0x6b, 0xaf, 0xe7,
+                            0x14, 0x77, 0xff, 0x17, 0xc9, 0x7c, 0x7c, 0x4e,
+                            0x83, 0x28, 0x2a, 0xe5, 0xc3, 0xcc, 0x6e, 0x25,
+                            0xa, 0x62, 0xbb, 0x97, 0x44, 0x86, 0x7c, 0xa2,
+                            0xd4, 0xf1, 0xd4, 0xf8, 0x8, 0x17, 0xf4, 0x6c,
+                            0xcc, 0x95, 0x99, 0xd4, 0x86, 0x37, 0x4, 0x9f,
+                            0x5, 0x76, 0x1b, 0x44, 0x55, 0x75, 0xd9, 0x32,
+                            0x35, 0xf1, 0xec, 0x4d, 0x93, 0x73, 0xe6, 0xc4])
+
+JSL_INTEL_PROD_KEY = bytes([0x6f, 0xe4, 0xd5, 0xc9, 0x52, 0xf4, 0x01, 0xc1,
+                            0x89, 0xc7, 0x2b, 0x16, 0x9b, 0xe6, 0x5d, 0x8e,
+                            0x91, 0x28, 0x63, 0x16, 0x4f, 0x7b, 0x18, 0x6e,
+                            0xa7, 0x89, 0x0c, 0xea, 0x24, 0x62, 0xc7, 0x94,
+                            0x75, 0x43, 0xfd, 0x6d, 0xa8, 0x67, 0x47, 0x36,
+                            0x50, 0xaf, 0x37, 0x46, 0x15, 0x82, 0x45, 0x4a,
+                            0xa3, 0x2e, 0xae, 0xa4, 0x1f, 0x92, 0x67, 0x4b,
+                            0x5e, 0x67, 0x7e, 0x02, 0xfc, 0x18, 0x6f, 0x68,
+                            0x0d, 0xe3, 0xc1, 0x00, 0xdf, 0xea, 0xed, 0x9f,
+                            0xdc, 0x61, 0xa0, 0xfd, 0x36, 0x61, 0x84, 0xa7,
+                            0x8c, 0x2a, 0x4b, 0x2c, 0x2d, 0xed, 0x8d, 0x0b,
+                            0x35, 0xe9, 0x79, 0x59, 0x3f, 0x22, 0xdc, 0x3c,
+                            0xd4, 0x43, 0x32, 0x22, 0xf0, 0xda, 0x0d, 0xa1,
+                            0x3a, 0xec, 0x47, 0x87, 0x5e, 0xa0, 0xd2, 0xaa,
+                            0xf8, 0x1c, 0x61, 0x08, 0x05, 0x64, 0xb4, 0xa8,
+                            0x75, 0xc8, 0x20, 0x34, 0xbf, 0x04, 0x10, 0x75,
+                            0x8c, 0xb7, 0x6d, 0x49, 0xde, 0x3d, 0x3c, 0x66,
+                            0x08, 0xfe, 0x67, 0xc8, 0x77, 0x04, 0x7c, 0xa5,
+                            0xf0, 0x9e, 0xe7, 0x5e, 0x70, 0xbf, 0xde, 0xf1,
+                            0xcb, 0x1c, 0xc0, 0x84, 0x4a, 0x89, 0x76, 0x37,
+                            0x4f, 0xad, 0x3b, 0x8f, 0x04, 0x91, 0xd0, 0x1b,
+                            0x0b, 0xa8, 0x20, 0x6e, 0x1e, 0x97, 0x1e, 0xff,
+                            0x1f, 0xef, 0xde, 0x7a, 0xd7, 0x93, 0x3c, 0xa9,
+                            0x46, 0xe5, 0x74, 0x66, 0x9c, 0x85, 0xfa, 0xaa,
+                            0x4a, 0xe4, 0x39, 0xc5, 0x33, 0xbb, 0x8e, 0xca,
+                            0x1f, 0xd9, 0x4c, 0xbc, 0xcd, 0x7c, 0xa1, 0x30,
+                            0xdb, 0x15, 0xed, 0xa1, 0x24, 0x9d, 0xcb, 0xf0,
+                            0xbe, 0xeb, 0x92, 0x60, 0xb0, 0xab, 0x60, 0xa0,
+                            0xcc, 0xd8, 0x04, 0xf9, 0xf1, 0xa0, 0x04, 0x98,
+                            0x6a, 0x20, 0xd8, 0x86, 0xff, 0xd4, 0x9d, 0x09,
+                            0xa1, 0x22, 0xce, 0x0a, 0x3e, 0x21, 0x27, 0xcd,
+                            0xf8, 0x7c, 0xb0, 0x09, 0x09, 0xc2, 0xa3, 0xcc])
+
+TGL_INTEL_PROD_KEY = bytes([0xd3, 0x72, 0x92, 0x99, 0x4e, 0xb9, 0xcd, 0x67,
+                            0x41, 0x86, 0x16, 0x77, 0x35, 0xa1, 0x34, 0x85,
+                            0x43, 0x96, 0xd9, 0x53, 0x76, 0x4d, 0xd0, 0x63,
+                            0x17, 0x72, 0x96, 0xee, 0xf6, 0xdc, 0x50, 0x53,
+                            0x4b, 0x4, 0xaa, 0xfe, 0x3d, 0xd7, 0x21, 0x29,
+                            0x79, 0x6, 0x76, 0xee, 0xb3, 0x70, 0x23, 0x8,
+                            0x26, 0xa8, 0x83, 0x3d, 0x70, 0x13, 0x9d, 0x65,
+                            0xcb, 0xd5, 0xc6, 0xf, 0x92, 0x93, 0x38, 0x29,
+                            0x19, 0xa6, 0x7c, 0xbf, 0xf1, 0x76, 0x75, 0x2,
+                            0x9e, 0x32, 0x8f, 0x1f, 0x5, 0xa6, 0x2d, 0x89,
+                            0x6d, 0x38, 0xba, 0x38, 0xd, 0xf1, 0xe9, 0xe8,
+                            0xed, 0xf7, 0x6c, 0x20, 0x8d, 0x91, 0xc, 0xf8,
+                            0xdd, 0x9a, 0x56, 0xd3, 0xf7, 0xbf, 0x3c, 0xda,
+                            0xc8, 0x5d, 0xb, 0xef, 0x20, 0x5a, 0xc1, 0x5f,
+                            0x91, 0x94, 0xee, 0x90, 0xb8, 0xfc, 0x2c, 0x31,
+                            0x75, 0xc3, 0x7e, 0x86, 0xf6, 0x4f, 0x45, 0x4c,
+                            0x64, 0xe1, 0xe9, 0xe5, 0xcd, 0xf0, 0xec, 0xef,
+                            0xa7, 0xbd, 0x31, 0x62, 0x40, 0xa8, 0x48, 0x52,
+                            0xd5, 0x23, 0xce, 0x4, 0x45, 0x2f, 0xb, 0x3d,
+                            0xe0, 0x7a, 0xcf, 0xe5, 0x2a, 0x45, 0x5e, 0x91,
+                            0x1d, 0x41, 0xa7, 0x40, 0x85, 0x34, 0xe, 0x50,
+                            0x45, 0x59, 0xbf, 0xd, 0xa6, 0x6, 0xf9, 0xf6,
+                            0xce, 0xa2, 0x76, 0x72, 0x0, 0x62, 0x73, 0x37,
+                            0x1a, 0xbe, 0xd2, 0xe3, 0x1b, 0x7b, 0x26, 0x7b,
+                            0x32, 0xaa, 0x79, 0xed, 0x59, 0x23, 0xb6, 0xdb,
+                            0x9f, 0x3c, 0x3d, 0x65, 0xf3, 0xbb, 0x4b, 0xb4,
+                            0x97, 0xaa, 0x2a, 0xae, 0x48, 0xf4, 0xc5, 0x59,
+                            0x8d, 0x82, 0x4a, 0xb, 0x15, 0x4d, 0xd5, 0x4,
+                            0xa6, 0xc1, 0x2d, 0x83, 0x19, 0xc4, 0xc6, 0x49,
+                            0xba, 0x0, 0x1b, 0x2b, 0x70, 0xb, 0x26, 0x7c,
+                            0xb8, 0x94, 0x18, 0xe4, 0x9a, 0xf6, 0x5a, 0x68,
+                            0x9d, 0x44, 0xd2, 0xed, 0xd5, 0x67, 0x42, 0x47,
+                            0x5f, 0x73, 0xc5, 0xa7, 0xe5, 0x87, 0xa9, 0x4d,
+                            0xae, 0xc1, 0xb, 0x2c, 0x46, 0x16, 0xd7, 0x4e,
+                            0xf0, 0xdc, 0x61, 0x58, 0x51, 0xb1, 0x2, 0xbc,
+                            0xca, 0x17, 0xb1, 0x1a, 0xa, 0x96, 0x3b, 0x25,
+                            0x1c, 0x63, 0x56, 0x65, 0x20, 0x6e, 0x1b, 0x21,
+                            0xb1, 0x94, 0x7a, 0xf5, 0xbf, 0x83, 0x21, 0x86,
+                            0x38, 0xf1, 0x66, 0x1a, 0xa, 0x75, 0x73, 0xa,
+                            0xe, 0xc7, 0x64, 0x68, 0xc7, 0xf9, 0xc3, 0x4a,
+                            0x73, 0xfb, 0x86, 0xa5, 0x7, 0xb8, 0x8b, 0xf0,
+                            0xa3, 0x3b, 0xa9, 0x8f, 0x33, 0xa7, 0xce, 0xfe,
+                            0x36, 0x60, 0xbd, 0x5, 0xf0, 0x9a, 0x30, 0xe5,
+                            0xe1, 0x43, 0x25, 0x1c, 0x1, 0x4a, 0xd4, 0x23,
+                            0x1e, 0x8f, 0xb9, 0xdd, 0xd8, 0xb2, 0x24, 0xef,
+                            0x36, 0x4d, 0x5b, 0x8f, 0xba, 0x4f, 0xe9, 0x48,
+                            0xe7, 0x51, 0x42, 0x59, 0x56, 0xa, 0x1c, 0xf,
+                            0x5d, 0x62, 0x4a, 0x80, 0x96, 0x31, 0xf8, 0xb5])
+
+EHL_INTEL_PROD_KEY = bytes([0xb5, 0xb0, 0xe2, 0x25, 0x3d, 0xc7, 0x54, 0x10,
+                            0xde, 0x3c, 0xc9, 0x24, 0x97, 0x74, 0xbc, 0x02,
+                            0x7d, 0x0b, 0xd6, 0x61, 0x2e, 0x35, 0x65, 0xed,
+                            0x78, 0xf6, 0x85, 0x73, 0x1f, 0x8c, 0xda, 0x8f,
+                            0x50, 0x79, 0xc7, 0x0c, 0x9e, 0xb4, 0x09, 0x3b,
+                            0xfc, 0x2e, 0x4e, 0xf3, 0x46, 0xfe, 0x3f, 0x20,
+                            0x9d, 0x8d, 0xf6, 0x3e, 0xc3, 0x46, 0x92, 0xf9,
+                            0xce, 0xbb, 0x7d, 0x0b, 0xb3, 0x45, 0x35, 0x76,
+                            0xbe, 0x19, 0x87, 0x21, 0x6c, 0x79, 0xfa, 0xf4,
+                            0xc8, 0x8e, 0x07, 0x26, 0x03, 0x0d, 0xe9, 0xe3,
+                            0x1e, 0x61, 0x7c, 0xd1, 0x45, 0x10, 0x61, 0x1c,
+                            0x79, 0x3f, 0x10, 0xa9, 0x42, 0x60, 0x2c, 0x7a,
+                            0x7a, 0x89, 0x1b, 0x54, 0xda, 0x0e, 0x54, 0x08,
+                            0x30, 0x0f, 0x6e, 0x37, 0xea, 0xb7, 0x58, 0xa0,
+                            0xaf, 0x4a, 0x94, 0x2c, 0x43, 0x50, 0x74, 0xed,
+                            0x16, 0xdc, 0x11, 0xa1, 0xd3, 0x6e, 0x54, 0xa6,
+                            0x56, 0xf9, 0x40, 0x8c, 0x3f, 0xa3, 0x74, 0xae,
+                            0x4f, 0x48, 0xc8, 0x79, 0x30, 0x5a, 0x99, 0x79,
+                            0x26, 0xe1, 0x52, 0x9b, 0xfe, 0x9e, 0xaf, 0x96,
+                            0xcc, 0xe6, 0x9a, 0x53, 0x2e, 0xe4, 0x40, 0xcc,
+                            0xad, 0x19, 0x8e, 0x23, 0x53, 0x63, 0xc8, 0xfd,
+                            0x96, 0xeb, 0x27, 0x9b, 0x3e, 0x49, 0x0d, 0x90,
+                            0xb0, 0x67, 0xb4, 0x05, 0x4a, 0x55, 0x5b, 0xb0,
+                            0xa5, 0x68, 0xb8, 0x60, 0xa4, 0x81, 0x6a, 0x3e,
+                            0x8c, 0xbc, 0x29, 0xcd, 0x85, 0x45, 0x3c, 0xf4,
+                            0x86, 0xf8, 0x9b, 0x69, 0xb5, 0xc5, 0xb9, 0xaa,
+                            0xc8, 0xed, 0x7d, 0x70, 0x45, 0xb6, 0xf6, 0x5b,
+                            0x48, 0x62, 0xf6, 0x68, 0xe8, 0xdd, 0x79, 0xda,
+                            0xb0, 0xe9, 0x3c, 0x8f, 0x01, 0x92, 0x80, 0x73,
+                            0x89, 0x7d, 0x9a, 0xaf, 0x31, 0x85, 0x75, 0x7c,
+                            0x89, 0xf3, 0x6c, 0x77, 0x95, 0x5b, 0xa9, 0xc5,
+                            0xe1, 0x33, 0xe0, 0x44, 0x81, 0x7e, 0x72, 0xa5,
+                            0xbb, 0x3d, 0x40, 0xb7, 0xc9, 0x77, 0xd8, 0xc3,
+                            0xe3, 0xef, 0x42, 0xae, 0x57, 0x91, 0x63, 0x0c,
+                            0x26, 0xac, 0x5e, 0x10, 0x51, 0x28, 0xe6, 0x61,
+                            0xad, 0x4d, 0xc4, 0x93, 0xb2, 0xe0, 0xb4, 0x31,
+                            0x60, 0x5a, 0x97, 0x0e, 0x80, 0x86, 0x91, 0xc9,
+                            0xcd, 0xfc, 0x97, 0xc3, 0x78, 0xbd, 0xca, 0xce,
+                            0xd3, 0x96, 0xee, 0x75, 0x81, 0xe0, 0x8b, 0x45,
+                            0x8e, 0x20, 0x4b, 0x98, 0x31, 0x0f, 0xf9, 0x66,
+                            0xb3, 0x04, 0xb7, 0x0d, 0xde, 0x68, 0x1e, 0x2a,
+                            0xe4, 0xec, 0x45, 0x2a, 0x0a, 0x24, 0x81, 0x82,
+                            0xcb, 0x86, 0xa0, 0x61, 0x7f, 0xe7, 0x96, 0x84,
+                            0x4b, 0x30, 0xc4, 0x7d, 0x5c, 0x1b, 0x2c, 0x1e,
+                            0x66, 0x68, 0x71, 0x1d, 0x39, 0x6c, 0x23, 0x07,
+                            0x6d, 0xf3, 0x3e, 0x64, 0xc3, 0x03, 0x97, 0x84,
+                            0x14, 0xd1, 0xf6, 0x50, 0xf4, 0x32, 0x5d, 0xae,
+                            0xad, 0x23, 0x46, 0x0c, 0x9f, 0xfc, 0x3e, 0xb9])
+
+ADL_INTEL_PROD_KEY = bytes([0xd3, 0x42, 0x11, 0x78, 0xf4, 0x4a, 0xa5, 0x85,
+                            0x4b, 0x78, 0x7a, 0x9b, 0xbd, 0x71, 0xc1, 0x84,
+                            0x0f, 0x54, 0xe4, 0x07, 0x47, 0x65, 0x9e, 0xdc,
+                            0x79, 0x85, 0x14, 0x52, 0x3c, 0xa1, 0xe1, 0x06,
+                            0x4c, 0x25, 0x31, 0x56, 0xb2, 0xba, 0x7c, 0xfd,
+                            0x3d, 0x2d, 0x87, 0x28, 0xf4, 0xb3, 0x19, 0xe9,
+                            0x38, 0xd9, 0x78, 0x3c, 0x45, 0x7d, 0xfa, 0x9c,
+                            0x58, 0x3a, 0xaf, 0xda, 0x4b, 0xe1, 0x94, 0xcc,
+                            0xb0, 0xdb, 0x41, 0x5d, 0x5f, 0xd5, 0xf9, 0xeb,
+                            0x53, 0xcc, 0xd7, 0x14, 0xab, 0xdb, 0x13, 0x20,
+                            0x26, 0x59, 0xc0, 0x7e, 0xaa, 0x14, 0x7f, 0x80,
+                            0x0f, 0x73, 0x9a, 0xb2, 0xc4, 0x8c, 0x8b, 0x0d,
+                            0x56, 0xd0, 0x7a, 0xd1, 0x52, 0xca, 0xaa, 0x96,
+                            0x28, 0x8e, 0x98, 0xad, 0x6e, 0xf6, 0x36, 0x1a,
+                            0x6e, 0xdd, 0xba, 0x4f, 0xd5, 0xb1, 0x06, 0xe6,
+                            0xc8, 0x5a, 0x06, 0x93, 0x06, 0x51, 0xd1, 0x44,
+                            0xe1, 0x87, 0x54, 0x49, 0x2f, 0xfd, 0xa5, 0x2b,
+                            0x86, 0xbe, 0xea, 0x59, 0xa9, 0x09, 0xf5, 0x1f,
+                            0x01, 0xa4, 0x7a, 0x0b, 0xd9, 0xd0, 0x73, 0x13,
+                            0x1a, 0x4a, 0xb3, 0xd5, 0x4d, 0x37, 0x06, 0x6b,
+                            0x84, 0x48, 0xce, 0xbb, 0x0b, 0x81, 0x71, 0xa1,
+                            0x97, 0x3f, 0x95, 0x64, 0x6b, 0xfd, 0xb0, 0x37,
+                            0x4e, 0xfd, 0xa5, 0x0b, 0x08, 0xb3, 0xd0, 0xbc,
+                            0xbe, 0x27, 0x64, 0x72, 0x89, 0xc7, 0xc8, 0x58,
+                            0x7e, 0x83, 0x8a, 0x0f, 0xf5, 0x56, 0xa7, 0x53,
+                            0x06, 0x24, 0xa1, 0x9e, 0x2c, 0xd2, 0x35, 0x86,
+                            0xdf, 0x6d, 0x68, 0xdd, 0x7a, 0x95, 0xbf, 0xf5,
+                            0x7a, 0xa4, 0x52, 0xf9, 0xc2, 0x03, 0xa8, 0xa1,
+                            0x63, 0x38, 0x1e, 0xc9, 0x2b, 0x1d, 0xcb, 0x55,
+                            0x04, 0x4b, 0xed, 0x53, 0x06, 0xb4, 0x96, 0xc8,
+                            0x84, 0x73, 0x66, 0x66, 0xbe, 0xb9, 0xca, 0xfc,
+                            0x8b, 0x81, 0xe2, 0xbd, 0x0b, 0x8e, 0xa3, 0x93,
+                            0x98, 0x82, 0x1d, 0x8e, 0x99, 0xf7, 0x29, 0x48,
+                            0x3d, 0xeb, 0x70, 0xda, 0x02, 0x6e, 0x2e, 0xc7,
+                            0x6c, 0x60, 0x7c, 0x3d, 0xff, 0x78, 0xdc, 0x95,
+                            0x4b, 0xec, 0x89, 0x7a, 0x97, 0x61, 0x32, 0x7e,
+                            0x00, 0x59, 0x1d, 0x1d, 0xbe, 0x3a, 0x55, 0xb8,
+                            0x2e, 0xa1, 0xb4, 0xf8, 0x6c, 0xad, 0x92, 0xbc,
+                            0x47, 0x27, 0xe8, 0x0e, 0xad, 0x80, 0xca, 0xca,
+                            0xb2, 0x92, 0x71, 0xaa, 0x19, 0x2b, 0x3a, 0x4e,
+                            0xbb, 0x01, 0x76, 0x9b, 0x6d, 0x42, 0xd3, 0xc4,
+                            0x2f, 0x29, 0x8f, 0x3f, 0xd2, 0xd1, 0xd9, 0xcb,
+                            0x48, 0xb3, 0x99, 0xce, 0x78, 0xfa, 0x29, 0x69,
+                            0xdc, 0x55, 0xde, 0xcf, 0xc0, 0xc9, 0x2f, 0xbe,
+                            0x67, 0x22, 0xb4, 0x02, 0x38, 0x18, 0xbd, 0xa6,
+                            0x98, 0xcf, 0xc9, 0x42, 0x8e, 0xdd, 0xbd, 0xa0,
+                            0xcc, 0x17, 0xb2, 0x12, 0xd3, 0x32, 0x0f, 0x1e,
+                            0x0c, 0x8e, 0x94, 0x8b, 0x7c, 0xbe, 0x79, 0xeb])
+
+ADL_N_INTEL_PROD_KEY = bytes([0xe1, 0x71, 0x6a, 0xed, 0xfa, 0x0b, 0x75, 0xb3,
+                              0xd3, 0x1a, 0x7b, 0xd9, 0xb8, 0x56, 0x43, 0x90,
+                              0x81, 0x9e, 0x6e, 0x4f, 0xb6, 0x94, 0xa2, 0x44,
+                              0x3c, 0xd7, 0x80, 0x98, 0x54, 0x48, 0xa2, 0xbb,
+                              0x4a, 0xd2, 0xeb, 0x25, 0x8d, 0x5b, 0x5c, 0x18,
+                              0x5d, 0x0c, 0xa8, 0x87, 0xb7, 0xb7, 0xec, 0xeb,
+                              0x49, 0xf9, 0x03, 0x14, 0x81, 0x13, 0x11, 0xe0,
+                              0xbb, 0x41, 0x84, 0x93, 0xa1, 0x09, 0x2e, 0xbf,
+                              0xa3, 0xe6, 0xc5, 0x80, 0x76, 0x86, 0x08, 0xf3,
+                              0x37, 0x21, 0xd6, 0xce, 0x7e, 0xf2, 0x47, 0x31,
+                              0xd0, 0x07, 0x6c, 0x98, 0x15, 0x1f, 0x93, 0x07,
+                              0x31, 0x57, 0xc6, 0x90, 0x53, 0xcf, 0x27, 0x2d,
+                              0x01, 0x89, 0x22, 0xc0, 0xe0, 0x00, 0x86, 0xf8,
+                              0x8c, 0x58, 0x94, 0x97, 0x2c, 0x09, 0x6a, 0x26,
+                              0xda, 0x6b, 0x0d, 0x1d, 0xcd, 0x8e, 0x7f, 0x0b,
+                              0xed, 0xaf, 0xeb, 0x14, 0x79, 0x8c, 0x1f, 0xec,
+                              0xe4, 0xc6, 0xd2, 0x39, 0x20, 0x26, 0x2b, 0xec,
+                              0xf3, 0x07, 0x89, 0xfd, 0x13, 0x6f, 0xa7, 0x58,
+                              0xe0, 0xa9, 0xb2, 0xaa, 0xab, 0x7f, 0x87, 0xfd,
+                              0x7c, 0xcb, 0x92, 0xc0, 0x54, 0x06, 0x46, 0xef,
+                              0xb0, 0xab, 0xfc, 0x52, 0xd7, 0x18, 0x82, 0x18,
+                              0xa2, 0x4a, 0xa6, 0xe8, 0xf6, 0x1e, 0xbe, 0xcd,
+                              0xf3, 0x94, 0x4f, 0xd8, 0xd8, 0x94, 0xa8, 0x26,
+                              0xb2, 0x25, 0x28, 0x12, 0x33, 0x07, 0x69, 0xf5,
+                              0x55, 0x2c, 0xcd, 0x94, 0x83, 0x42, 0xe3, 0x4e,
+                              0xf2, 0xe8, 0x49, 0x0a, 0x40, 0xe9, 0x03, 0x1a,
+                              0x05, 0x34, 0x45, 0xab, 0x82, 0x1f, 0xad, 0x0d,
+                              0x5d, 0x24, 0x08, 0x25, 0x49, 0x7d, 0xaa, 0x06,
+                              0x30, 0x3e, 0x25, 0xf4, 0x47, 0x94, 0xba, 0x20,
+                              0xd2, 0xc2, 0x1d, 0x20, 0x83, 0x3f, 0xb1, 0xc7,
+                              0x9c, 0x69, 0x05, 0x82, 0xf4, 0x9e, 0x70, 0x8e,
+                              0x06, 0x67, 0x9d, 0xe2, 0x8a, 0x25, 0x86, 0x95,
+                              0xaf, 0xe0, 0x41, 0x56, 0x68, 0x84, 0xa5, 0x91,
+                              0xdb, 0x8e, 0xc6, 0xa7, 0xd6, 0xcb, 0xb3, 0x1f,
+                              0x46, 0x53, 0xe5, 0x52, 0x4d, 0xb7, 0x3f, 0x0d,
+                              0x98, 0x13, 0x80, 0xc0, 0xd5, 0x9f, 0x21, 0x55,
+                              0xcf, 0x38, 0x1e, 0xcf, 0x4f, 0x58, 0xf7, 0x68,
+                              0x98, 0xda, 0x15, 0xd4, 0x54, 0x89, 0xea, 0xdf,
+                              0x52, 0x98, 0x97, 0x92, 0xd8, 0xcc, 0x4b, 0xdc,
+                              0xf7, 0x1b, 0xc4, 0xe5, 0xdb, 0x5d, 0xe7, 0xae,
+                              0x9e, 0x00, 0x77, 0x32, 0x4c, 0x5f, 0x3b, 0x11,
+                              0xa0, 0xcf, 0xbe, 0xc3, 0xe6, 0x84, 0xd8, 0xa6,
+                              0x58, 0x36, 0x90, 0xbc, 0xc5, 0x98, 0xdc, 0xff,
+                              0x48, 0x2f, 0xe7, 0xdd, 0x26, 0xa6, 0x4d, 0x15,
+                              0xe6, 0x39, 0x7e, 0x41, 0xd2, 0x7d, 0xb6, 0x8f,
+                              0xf8, 0xec, 0x54, 0xb0, 0xec, 0xad, 0x0c, 0x30,
+                              0x7b, 0x6f, 0x9c, 0x5a, 0xe1, 0x92, 0xf7, 0x48,
+                              0x63, 0x32, 0xad, 0xad, 0xe3, 0x34, 0x59, 0xcc])
+
+MTL_INTEL_PROD_KEY = bytes([
+    0xf3, 0x23, 0x78, 0xe7, 0xeb, 0x85, 0x31, 0xd8,
+    0xa3, 0x2e, 0xf6, 0x44, 0xb8, 0x0e, 0x0f, 0xc7,
+    0xbd, 0xe0, 0x6a, 0xd4, 0xb5, 0x2a, 0xbd, 0x8d,
+    0x54, 0x31, 0x00, 0x26, 0xfb, 0x70, 0x09, 0x87,
+    0xf9, 0x50, 0x02, 0x78, 0x2f, 0x66, 0xe4, 0x35,
+    0xa3, 0xa4, 0x62, 0x12, 0x53, 0x3e, 0x46, 0xc2,
+    0x03, 0xd2, 0x87, 0x45, 0x4e, 0x53, 0x89, 0x2f,
+    0x65, 0x2d, 0x6e, 0x61, 0x9f, 0x1c, 0x4f, 0x0c,
+    0xb7, 0x8f, 0xfc, 0xee, 0x8b, 0x36, 0x57, 0x6c,
+    0x87, 0xa1, 0xee, 0x34, 0x15, 0x05, 0xed, 0x42,
+    0x46, 0x3b, 0x4c, 0x1a, 0x75, 0xf7, 0xa8, 0xe9,
+    0xe0, 0x0e, 0x1c, 0x70, 0x68, 0x8e, 0x1a, 0xbb,
+    0xcb, 0xa7, 0xa1, 0xef, 0x75, 0xad, 0x91, 0x0b,
+    0xd4, 0x23, 0xbc, 0xc3, 0x0b, 0xa7, 0x5c, 0xfe,
+    0xbf, 0x71, 0x31, 0x00, 0xa9, 0xda, 0xbe, 0xaf,
+    0x2d, 0x26, 0x60, 0x8a, 0x99, 0x47, 0x89, 0x94,
+    0x70, 0xfe, 0xd4, 0x05, 0x0a, 0x3d, 0xe5, 0x82,
+    0xa6, 0xf4, 0x16, 0x94, 0xca, 0x36, 0x0a, 0x37,
+    0x5c, 0xc9, 0xef, 0xa1, 0xf0, 0x20, 0x61, 0x66,
+    0xac, 0xfe, 0x60, 0x85, 0x51, 0x31, 0xad, 0x60,
+    0x7a, 0x1b, 0x0a, 0x5d, 0x18, 0x04, 0x98, 0x52,
+    0xa5, 0x1a, 0x13, 0x1c, 0x4b, 0x66, 0xfe, 0x5e,
+    0x09, 0x03, 0x00, 0x6c, 0x7d, 0xee, 0xce, 0xb5,
+    0x77, 0xe5, 0x3d, 0xcf, 0x0f, 0x45, 0xa8, 0x85,
+    0x4d, 0xdb, 0x70, 0x1d, 0xc1, 0xda, 0xf4, 0x36,
+    0x3e, 0x3e, 0x78, 0x9e, 0x50, 0x75, 0xf7, 0x9c,
+    0x0b, 0x32, 0xe1, 0x9e, 0x29, 0x42, 0x19, 0x43,
+    0x0d, 0x5b, 0xae, 0x48, 0x3f, 0x95, 0xc7, 0x5a,
+    0x73, 0x30, 0xf1, 0xb5, 0xa4, 0x4f, 0x4b, 0xed,
+    0x3c, 0xa3, 0xb6, 0xde, 0xab, 0x5f, 0xf5, 0xf8,
+    0xd9, 0x4d, 0x5b, 0x98, 0xdf, 0x1c, 0x0c, 0xbf,
+    0x4f, 0x2d, 0xd2, 0x62, 0x74, 0x66, 0xe4, 0x71,
+    0x09, 0x8e, 0xcc, 0xcf, 0xde, 0x3c, 0x9b, 0x02,
+    0x16, 0x26, 0xf4, 0x20, 0x25, 0x6c, 0x07, 0x16,
+    0x2e, 0x2e, 0x2e, 0xa5, 0x2a, 0x69, 0x66, 0xb1,
+    0x95, 0x68, 0x13, 0x5a, 0x70, 0x6f, 0xc5, 0xc1,
+    0x3a, 0x29, 0x4c, 0x9c, 0xe9, 0x9e, 0x7f, 0x6c,
+    0x87, 0x0a, 0x0d, 0xa2, 0xdb, 0xb8, 0x38, 0x34,
+    0x16, 0x3a, 0x7c, 0x18, 0x92, 0x5c, 0x69, 0x30,
+    0x81, 0xd7, 0x68, 0x55, 0xd2, 0xd1, 0xcf, 0x7d,
+    0x06, 0x49, 0xaf, 0x6a, 0x41, 0x3f, 0x06, 0x3b,
+    0x9d, 0x9c, 0xcd, 0x4f, 0xa1, 0x08, 0xcf, 0x17,
+    0x3a, 0x46, 0x9b, 0xcd, 0xe8, 0xd3, 0xc8, 0x47,
+    0xe8, 0xd5, 0xc4, 0xd6, 0x30, 0xb3, 0xe0, 0x33,
+    0xcf, 0x9a, 0x9f, 0x91, 0x22, 0x1e, 0x02, 0x17,
+    0xe6, 0xf9, 0x35, 0xc2, 0xac, 0xb5, 0x83, 0xf7,
+    0xec, 0x0a, 0x9e, 0xd8, 0x85, 0x13, 0x06, 0x87,
+    0xbf, 0x42, 0x60, 0x6b, 0x12, 0xa5, 0x1e, 0xcc,
+])
+
+LNL_INTEL_PROD_KEY = bytes([0x1b, 0xd4, 0xbb, 0x79, 0xc2, 0x27, 0xa0, 0x59,
+                            0xab, 0xaf, 0x61, 0x7e, 0x7f, 0x06, 0xe9, 0x70,
+                            0xe2, 0xef, 0xc8, 0x4c, 0xea, 0x10, 0x71, 0xbb,
+                            0xa8, 0xf2, 0x4e, 0x1f, 0x56, 0x44, 0xe1, 0x7a,
+                            0x46, 0x2b, 0xcb, 0x6d, 0x3d, 0xc2, 0x5d, 0x84,
+                            0x83, 0xd7, 0xd1, 0xe7, 0x20, 0xec, 0xf6, 0x80,
+                            0xfc, 0x38, 0x08, 0x78, 0xac, 0x00, 0x49, 0xea,
+                            0xd1, 0xce, 0x1f, 0x8d, 0x37, 0xa6, 0x63, 0x4a,
+                            0x54, 0x6b, 0x2f, 0xd8, 0x49, 0xb0, 0x13, 0x9b,
+                            0x1a, 0x29, 0xee, 0xbf, 0xaa, 0x82, 0xae, 0x69,
+                            0xaf, 0x8e, 0xfc, 0xa6, 0x60, 0x5d, 0xd6, 0x09,
+                            0xe0, 0xa4, 0x75, 0x1b, 0xb1, 0xf4, 0x54, 0xc5,
+                            0xae, 0x92, 0x13, 0xa5, 0x66, 0xaa, 0xad, 0x95,
+                            0x94, 0x4f, 0xd6, 0xfb, 0x90, 0x11, 0x5f, 0xad,
+                            0x89, 0x33, 0x48, 0xf1, 0x2d, 0xb3, 0xc4, 0xe4,
+                            0xef, 0x78, 0x25, 0x54, 0xf8, 0xda, 0xf3, 0x8f,
+                            0x1d, 0xf4, 0x3c, 0xc9, 0xa8, 0x49, 0x94, 0x6c,
+                            0xb9, 0x45, 0xe0, 0x18, 0x46, 0x62, 0xd0, 0x4f,
+                            0x59, 0x05, 0x2e, 0x19, 0x10, 0xba, 0xad, 0x4d,
+                            0xc5, 0xe4, 0xab, 0x5d, 0x08, 0x00, 0x88, 0x6e,
+                            0xcc, 0x5f, 0x7c, 0x42, 0x7a, 0xf7, 0x53, 0x4a,
+                            0xa7, 0xc2, 0x32, 0xe1, 0xa3, 0x08, 0xe7, 0xc4,
+                            0xef, 0x38, 0x14, 0xba, 0x86, 0x79, 0xcb, 0x99,
+                            0xda, 0xc3, 0xf1, 0xf8, 0xe8, 0xf6, 0x21, 0x28,
+                            0xb1, 0xce, 0x1a, 0xed, 0xf4, 0xa0, 0x89, 0x9e,
+                            0x45, 0x1c, 0x6c, 0xb8, 0x07, 0x89, 0x57, 0xaf,
+                            0xbc, 0x67, 0xb2, 0x52, 0x7e, 0xc4, 0x0e, 0x98,
+                            0x91, 0xe8, 0x94, 0x40, 0x93, 0xf2, 0x0e, 0xa4,
+                            0x34, 0x7a, 0x37, 0xd0, 0x25, 0x1c, 0xc9, 0x0f,
+                            0xe1, 0x16, 0xc0, 0xdf, 0xc1, 0xa3, 0xb4, 0x91,
+                            0xca, 0x6a, 0xfa, 0x3a, 0x7b, 0x19, 0x31, 0xe2,
+                            0x41, 0xa1, 0xf9, 0x67, 0x09, 0x79, 0xf8, 0x79,
+                            0x1b, 0x7e, 0x3d, 0x3e, 0x41, 0xa6, 0xfb, 0x26,
+                            0x24, 0xfe, 0xeb, 0x19, 0xb2, 0x7e, 0x51, 0x7b,
+                            0x39, 0x1e, 0x94, 0x77, 0x70, 0xe3, 0xd2, 0x43,
+                            0xba, 0x38, 0xbf, 0xe5, 0x9f, 0x54, 0xd8, 0xac,
+                            0x17, 0x82, 0x5c, 0x55, 0x21, 0x28, 0xae, 0x39,
+                            0xac, 0xbc, 0xf0, 0xac, 0x0a, 0xe0, 0xf2, 0xfb,
+                            0x92, 0x5e, 0x51, 0x04, 0xad, 0xaf, 0x7a, 0x30,
+                            0x65, 0xf5, 0xe3, 0xa6, 0xab, 0xfc, 0x7d, 0xc6,
+                            0x26, 0x7b, 0x6c, 0xf1, 0x95, 0xb4, 0x7c, 0xe6,
+                            0x99, 0x5c, 0xf2, 0xbb, 0x35, 0x57, 0xc4, 0xa5,
+                            0x20, 0xc7, 0x3b, 0xbb, 0x95, 0x1d, 0xbd, 0x9c,
+                            0x3e, 0x78, 0x51, 0x13, 0xa0, 0x16, 0xd5, 0xbc,
+                            0x32, 0xc7, 0xd5, 0xc1, 0xfa, 0x8a, 0xd1, 0xc5,
+                            0x59, 0x75, 0x71, 0xbe, 0x93, 0x90, 0xb1, 0x4e,
+                            0x6d, 0x40, 0xe4, 0x5d, 0xaf, 0xc4, 0x5f, 0xee,
+                            0x09, 0xbd, 0x57, 0x5b, 0x74, 0x2b, 0x19, 0xbc])
+
+ARL_S_INTEL_PROD_KEY = bytes([0x99, 0x37, 0xee, 0x99, 0xe1, 0x2e, 0x33, 0x3c,
+                              0xbd, 0x56, 0xa5, 0x8b, 0x55, 0xb5, 0x5e, 0x1d,
+                              0xe6, 0x1a, 0x1a, 0x0f, 0xef, 0xb3, 0xa0, 0x21,
+                              0x93, 0x76, 0xab, 0xa8, 0xf3, 0xa7, 0xfa, 0x18,
+                              0x54, 0xa2, 0x04, 0xc1, 0x64, 0xa6, 0x2a, 0xeb,
+                              0x3c, 0xf9, 0x3b, 0xf0, 0x23, 0x32, 0x75, 0xd7,
+                              0xa7, 0x24, 0x37, 0x44, 0x8c, 0xb9, 0xdb, 0xeb,
+                              0xbf, 0xe5, 0x11, 0xc1, 0x3a, 0xe5, 0xae, 0xc1,
+                              0x15, 0xca, 0x89, 0xf7, 0x71, 0xd7, 0x5d, 0xe3,
+                              0x73, 0xe8, 0x64, 0x6d, 0x9f, 0xa3, 0xec, 0xc0,
+                              0xd6, 0xa5, 0xd1, 0x1d, 0x44, 0x3d, 0xbb, 0xcc,
+                              0x55, 0xcf, 0xf3, 0x91, 0x2e, 0xd1, 0xa3, 0x5a,
+                              0x05, 0xb8, 0x6e, 0x62, 0xba, 0xc3, 0x1c, 0x06,
+                              0x20, 0x7f, 0xbd, 0xf2, 0x22, 0xee, 0xaa, 0x43,
+                              0x79, 0xb9, 0x38, 0xeb, 0xa8, 0x22, 0xb2, 0x5c,
+                              0xbf, 0x67, 0x64, 0xec, 0x60, 0x60, 0xa2, 0x3c,
+                              0x56, 0x05, 0x46, 0x61, 0xcf, 0x24, 0x2f, 0x3e,
+                              0xf5, 0x36, 0x2d, 0x2f, 0xa7, 0xb7, 0x45, 0x9a,
+                              0xb9, 0xf8, 0xe9, 0x89, 0x27, 0x34, 0x17, 0xf8,
+                              0xef, 0x6f, 0x35, 0x07, 0x59, 0x77, 0xb0, 0x63,
+                              0x91, 0xd6, 0x29, 0xa9, 0x22, 0xd9, 0x0f, 0xa2,
+                              0xc6, 0xd3, 0x9f, 0x42, 0x9d, 0x91, 0x3d, 0x02,
+                              0x60, 0x8a, 0x5d, 0x6a, 0xfe, 0x0d, 0x7f, 0x8e,
+                              0xcf, 0xee, 0x9d, 0xdf, 0x39, 0x8b, 0xdc, 0x2a,
+                              0x68, 0x22, 0xa4, 0x98, 0x82, 0x0a, 0x00, 0x79,
+                              0xb8, 0x74, 0x66, 0xd1, 0xfa, 0x8e, 0xc0, 0x59,
+                              0x60, 0x2d, 0x27, 0x4d, 0x10, 0x26, 0xf7, 0x1e,
+                              0xf6, 0x69, 0x39, 0x9b, 0xa8, 0xd8, 0x00, 0x1b,
+                              0x38, 0x54, 0x26, 0x92, 0x2c, 0x92, 0x0f, 0xee,
+                              0x44, 0x3c, 0x6f, 0x63, 0x62, 0xe5, 0x8b, 0x00,
+                              0xe2, 0xa8, 0x3b, 0x91, 0xe5, 0xfe, 0x55, 0x3a,
+                              0xf3, 0x25, 0x67, 0x6b, 0x99, 0xc0, 0xdf, 0x28,
+                              0x2d, 0x51, 0xd2, 0xd3, 0xa9, 0xf8, 0x55, 0x20,
+                              0x50, 0xa3, 0x7e, 0xec, 0x8a, 0x4f, 0x72, 0x91,
+                              0x74, 0x4f, 0x87, 0x40, 0xeb, 0xad, 0x33, 0xdf,
+                              0x9e, 0xb0, 0x3f, 0xb9, 0x5b, 0x9b, 0xcf, 0xe9,
+                              0x8a, 0x09, 0x88, 0xd7, 0x38, 0x4c, 0xd2, 0xd2,
+                              0xf1, 0x6c, 0x14, 0x3d, 0xe3, 0x1c, 0x39, 0xd7,
+                              0xcf, 0x57, 0x1d, 0xb8, 0x92, 0x81, 0xe3, 0x67,
+                              0x8f, 0xc7, 0xb8, 0xe6, 0xc7, 0x7e, 0x72, 0xda,
+                              0x03, 0xc6, 0x29, 0x89, 0x9c, 0x47, 0xc3, 0x9d,
+                              0x74, 0x6e, 0x0b, 0xc3, 0x54, 0x06, 0x25, 0x06,
+                              0x73, 0x28, 0x97, 0x73, 0xe0, 0xbd, 0xc8, 0x7d,
+                              0x83, 0x25, 0x09, 0x7e, 0xa4, 0xf9, 0x9f, 0x85,
+                              0x54, 0xbd, 0xf3, 0x6d, 0xef, 0xa9, 0x59, 0xc4,
+                              0xed, 0x70, 0x92, 0x97, 0x95, 0xcc, 0xce, 0x29,
+                              0x6c, 0xa0, 0x50, 0x65, 0x92, 0x39, 0x96, 0x34,
+                              0x61, 0xa4, 0xeb, 0x6b, 0x11, 0xd9, 0xbe, 0xb8])
+
+PTL_INTEL_PROD_KEY = bytes([0x89, 0xa8, 0x6a, 0xff, 0x6b, 0x1a, 0x78, 0xae,
+                            0x96, 0x0f, 0x50, 0x1a, 0xfb, 0xfc, 0x7b, 0x71,
+                            0x62, 0x00, 0x50, 0x03, 0x5b, 0x28, 0x32, 0x1c,
+                            0xe9, 0x99, 0x8a, 0xeb, 0xf0, 0xc0, 0xf9, 0x08,
+                            0xa5, 0xec, 0xc5, 0xeb, 0xc0, 0x8e, 0x99, 0x9c,
+                            0x31, 0x1c, 0x9e, 0xdf, 0x33, 0x5f, 0x8b, 0x27,
+                            0xc6, 0x82, 0x05, 0x50, 0xfb, 0xfa, 0xcb, 0x3d,
+                            0x96, 0x7a, 0x39, 0xcd, 0x03, 0x77, 0x69, 0xce,
+                            0x04, 0x1e, 0x10, 0x52, 0x01, 0x96, 0xb4, 0x1d,
+                            0x46, 0x28, 0x49, 0xc9, 0x43, 0x31, 0x23, 0x04,
+                            0xe1, 0x0f, 0x49, 0x84, 0x3f, 0xdf, 0xe8, 0xe8,
+                            0x69, 0x49, 0x60, 0x3a, 0x25, 0x71, 0x14, 0x2c,
+                            0xee, 0x06, 0x3f, 0x5b, 0x79, 0x67, 0x9a, 0xb4,
+                            0x5b, 0xa3, 0xf9, 0x64, 0xb9, 0xfe, 0xf6, 0x07,
+                            0x0c, 0x8e, 0x09, 0x79, 0xda, 0xbc, 0xb9, 0xd6,
+                            0x50, 0xe4, 0xef, 0x82, 0x0d, 0x6d, 0x30, 0x9c,
+                            0xa6, 0xa9, 0xbf, 0x9c, 0x88, 0x68, 0xe7, 0x95,
+                            0xa7, 0x6e, 0x09, 0xa8, 0xa7, 0x92, 0xd5, 0x2f,
+                            0x3f, 0x22, 0x19, 0x97, 0x0a, 0x41, 0x3f, 0x21,
+                            0x67, 0x1a, 0x80, 0xb4, 0x10, 0xdd, 0xaa, 0x3b,
+                            0xd3, 0x1b, 0x83, 0xc7, 0x02, 0x3c, 0x89, 0x88,
+                            0xd1, 0x3f, 0xdb, 0xdf, 0xf2, 0xaa, 0x79, 0x5f,
+                            0xbf, 0xf6, 0x6d, 0x3c, 0x6f, 0xbd, 0x90, 0x31,
+                            0xa8, 0x7d, 0x05, 0x9a, 0x7f, 0x0d, 0x51, 0x44,
+                            0xee, 0x0d, 0xa2, 0x26, 0x08, 0x4d, 0x39, 0x4b,
+                            0xd1, 0x4d, 0x7d, 0x24, 0xd1, 0xdb, 0x69, 0x42,
+                            0xf9, 0x81, 0x3a, 0xc7, 0xe6, 0x1f, 0x09, 0x4d,
+                            0x67, 0x90, 0x0e, 0xcc, 0xe6, 0x5e, 0xd0, 0x5d,
+                            0xc0, 0x72, 0x07, 0xb8, 0x29, 0xc5, 0x38, 0xb2,
+                            0x95, 0x24, 0xef, 0x92, 0xf0, 0x43, 0x06, 0x07,
+                            0xe5, 0xe3, 0x7c, 0x9f, 0xba, 0x68, 0x59, 0x76,
+                            0x41, 0xd3, 0xac, 0x8c, 0x0a, 0xe0, 0xc0, 0xd9,
+                            0x50, 0x21, 0xd6, 0x8f, 0xdf, 0x8d, 0x31, 0xa7,
+                            0x7f, 0xf9, 0x38, 0xc5, 0x4b, 0x6e, 0x32, 0xbf,
+                            0x73, 0x0d, 0x93, 0x3a, 0x47, 0xad, 0x3a, 0xbd,
+                            0xbe, 0x5b, 0x2b, 0xaf, 0xff, 0xc9, 0x7f, 0x37,
+                            0x30, 0x29, 0x13, 0x0e, 0x61, 0xe6, 0x93, 0xb9,
+                            0x2c, 0x28, 0x3e, 0x8d, 0x38, 0x3f, 0xea, 0xf4,
+                            0xf4, 0xf3, 0x23, 0x0c, 0xd2, 0x06, 0x05, 0x22,
+                            0x51, 0x64, 0x72, 0x6f, 0xfa, 0x1b, 0x7e, 0x81,
+                            0x22, 0x76, 0xc9, 0x8d, 0xbb, 0xa0, 0xe0, 0xa7,
+                            0xa4, 0xf9, 0x55, 0x24, 0x9c, 0x4c, 0xd1, 0x80,
+                            0x97, 0x44, 0x55, 0xe1, 0xfc, 0xa8, 0x6c, 0x8a,
+                            0x41, 0x67, 0x2f, 0x02, 0x32, 0x05, 0xe5, 0xb7,
+                            0x7f, 0x8e, 0xda, 0x4d, 0x25, 0x91, 0xf2, 0xc0,
+                            0x0b, 0xf2, 0x1f, 0x28, 0xeb, 0x5d, 0x05, 0xfe,
+                            0x70, 0x64, 0xcf, 0x7c, 0xec, 0x79, 0xf8, 0x2e,
+                            0x84, 0x49, 0x82, 0xa4, 0xf2, 0x20, 0xf6, 0xbd])
+
+COMMUNITY_KEY = bytes([0x85, 0x00, 0xe1, 0x68, 0xaa, 0xeb, 0xd2, 0x07,
+                       0x1b, 0x7c, 0x5e, 0xed, 0xd6, 0xe7, 0xe5, 0xf9,
+                       0xc1, 0x0e, 0x47, 0xd4, 0x4c, 0xab, 0x8c, 0xf0,
+                       0xe8, 0xee, 0x8b, 0x40, 0x36, 0x35, 0x58, 0x8f,
+                       0xf4, 0x6f, 0xfc, 0xfd, 0x0f, 0xdd, 0x55, 0x8b,
+                       0x45, 0x8c, 0xf0, 0x47, 0xdc, 0xb4, 0xac, 0x21,
+                       0x3b, 0x4b, 0x20, 0xe6, 0x81, 0xb3, 0xcc, 0x90,
+                       0xd4, 0x5e, 0xf1, 0xa4, 0x9b, 0x68, 0x52, 0xc8,
+                       0xf1, 0x2d, 0xf9, 0xc4, 0x77, 0xc6, 0x4d, 0xa9,
+                       0x90, 0xc7, 0x10, 0xfd, 0x43, 0xc8, 0x4b, 0x6b,
+                       0x23, 0x5e, 0x92, 0xf5, 0x8f, 0xac, 0xd5, 0x7d,
+                       0x60, 0x27, 0x36, 0x7c, 0x21, 0x4e, 0x21, 0x99,
+                       0xde, 0xcb, 0xc0, 0x45, 0xf3, 0x04, 0x22, 0xb8,
+                       0x7d, 0x16, 0x68, 0x40, 0xf9, 0x5c, 0xf0, 0xb9,
+                       0x7e, 0x8c, 0x05, 0xb6, 0xfc, 0x28, 0xbb, 0x3d,
+                       0xd8, 0xff, 0xb6, 0xa4, 0xd4, 0x54, 0x27, 0x3b,
+                       0x1a, 0x42, 0x4e, 0xf5, 0xa6, 0xa8, 0x5e, 0x44,
+                       0xe2, 0x9e, 0xed, 0x68, 0x6a, 0x27, 0x60, 0x13,
+                       0x8d, 0x2f, 0x27, 0x70, 0xcd, 0x57, 0xc9, 0x18,
+                       0xa3, 0xb0, 0x30, 0xa1, 0xf4, 0xe6, 0x32, 0x12,
+                       0x89, 0x2a, 0xaf, 0x40, 0xa5, 0xfd, 0x52, 0xf1,
+                       0xaa, 0x8a, 0xa4, 0xef, 0x20, 0x3d, 0x10, 0xa3,
+                       0x70, 0xf2, 0x39, 0xc5, 0x05, 0x99, 0x22, 0x10,
+                       0x81, 0x83, 0x6e, 0x45, 0xa4, 0xf3, 0x5a, 0x9d,
+                       0x6a, 0xb8, 0x88, 0xfe, 0x69, 0x40, 0xd1, 0xb1,
+                       0xcb, 0x2a, 0xdb, 0x28, 0x05, 0xde, 0x54, 0xbf,
+                       0x3d, 0x86, 0x5f, 0x39, 0x8b, 0xc1, 0xf4, 0xaf,
+                       0x00, 0x61, 0x86, 0x01, 0xfa, 0x22, 0xac, 0xf6,
+                       0x2c, 0xa4, 0x17, 0x6a, 0xa7, 0xd8, 0x0a, 0x8c,
+                       0x9f, 0xbf, 0x1f, 0x62, 0xb2, 0x2e, 0x68, 0x52,
+                       0x3f, 0x82, 0x8f, 0xe5, 0x28, 0x4d, 0xdb, 0xb5,
+                       0x5a, 0x96, 0x28, 0x27, 0x19, 0xaf, 0x43, 0xb9])
+
+COMMUNITY_KEY2 = bytes([0x6b, 0x75, 0xed, 0x58, 0x20, 0x08, 0x85, 0x95,
+                        0xa0, 0x49, 0x8b, 0x9e, 0xbd, 0x5f, 0x34, 0x82,
+                        0x0a, 0x9d, 0x1e, 0x9a, 0xb6, 0x76, 0x43, 0x19,
+                        0xb7, 0x76, 0x45, 0x5b, 0x59, 0xab, 0xbb, 0xf3,
+                        0x9e, 0x72, 0xf2, 0x41, 0x24, 0x92, 0x97, 0xef,
+                        0x39, 0xc0, 0xed, 0xc4, 0x7a, 0x4e, 0xdb, 0xec,
+                        0xeb, 0xc7, 0x4c, 0xf6, 0x45, 0xbe, 0xb2, 0xe0,
+                        0x13, 0x6a, 0xdc, 0x06, 0x7a, 0x1c, 0xbd, 0x8d,
+                        0xd8, 0xd2, 0xd7, 0x82, 0x6d, 0xbe, 0x03, 0x76,
+                        0x3b, 0x6b, 0xb8, 0x2f, 0xcc, 0xbe, 0x30, 0x56,
+                        0x61, 0x87, 0x09, 0xdf, 0x44, 0x51, 0xf8, 0x82,
+                        0xc5, 0x78, 0x05, 0x45, 0x8c, 0xe3, 0x78, 0x0e,
+                        0xd3, 0x7a, 0xd4, 0xf4, 0xbe, 0x96, 0xde, 0xb8,
+                        0x3b, 0x78, 0x90, 0x8b, 0xd3, 0xdd, 0x0b, 0xdd,
+                        0xbe, 0x56, 0xf3, 0x9a, 0x34, 0xc9, 0x38, 0x47,
+                        0x8d, 0xc4, 0xbd, 0x5e, 0x68, 0xf8, 0x62, 0xc4,
+                        0x28, 0xdd, 0x00, 0x48, 0x93, 0xb5, 0xad, 0x74,
+                        0x52, 0xe5, 0xf3, 0xd2, 0x97, 0xde, 0xbc, 0x0a,
+                        0x85, 0x95, 0xe9, 0xfa, 0xd2, 0xac, 0xdc, 0xdc,
+                        0x59, 0x74, 0xfa, 0x57, 0xf2, 0xd3, 0x61, 0xc6,
+                        0x2b, 0x26, 0xde, 0x57, 0x50, 0xe2, 0x58, 0x6b,
+                        0x79, 0x65, 0x0b, 0x49, 0x2c, 0x59, 0x28, 0x25,
+                        0x64, 0x31, 0x93, 0x65, 0x9a, 0x0a, 0x88, 0x98,
+                        0x9a, 0x77, 0x00, 0x47, 0x8f, 0xa0, 0xc7, 0x6b,
+                        0x58, 0x90, 0xa9, 0xb5, 0x15, 0xff, 0x65, 0x7c,
+                        0x84, 0x02, 0xd4, 0xdd, 0x09, 0xf1, 0x25, 0xad,
+                        0xf9, 0x30, 0xaa, 0x34, 0x5b, 0x77, 0xef, 0xb2,
+                        0x75, 0x3d, 0x54, 0x9d, 0xcc, 0x0d, 0x11, 0xda,
+                        0x91, 0x01, 0x2e, 0x51, 0xdc, 0x0c, 0x8a, 0x92,
+                        0x71, 0x44, 0x9a, 0xd5, 0x69, 0x5d, 0x7a, 0xad,
+                        0xaf, 0xdf, 0x25, 0xea, 0x95, 0x21, 0xbb, 0x99,
+                        0x53, 0x89, 0xbc, 0x54, 0xca, 0xf3, 0x54, 0xf5,
+                        0xbb, 0x38, 0x27, 0x64, 0xce, 0xf2, 0x17, 0x25,
+                        0x75, 0x33, 0x1a, 0x2d, 0x19, 0x00, 0xff, 0x9b,
+                        0xd9, 0x4d, 0x0c, 0xb1, 0xa5, 0x55, 0x55, 0xa9,
+                        0x29, 0x8e, 0xfb, 0x82, 0x43, 0xeb, 0xfa, 0xc8,
+                        0x33, 0x76, 0xf3, 0x7d, 0xee, 0x95, 0xe1, 0x39,
+                        0xba, 0xa5, 0x4a, 0xd5, 0xb1, 0x8a, 0xa6, 0xff,
+                        0x8f, 0x4b, 0x45, 0x8c, 0xe9, 0x7b, 0x87, 0xae,
+                        0x8d, 0x32, 0x6e, 0x16, 0xe7, 0x9e, 0x85, 0x22,
+                        0x71, 0x3d, 0x17, 0xba, 0x54, 0xed, 0x73, 0x87,
+                        0xe5, 0x9d, 0xbf, 0xc0, 0xcd, 0x76, 0xfa, 0x83,
+                        0xd4, 0xc5, 0x30, 0xd1, 0xc7, 0x25, 0x49, 0x25,
+                        0x75, 0x4d, 0x0a, 0x4a, 0x2d, 0x13, 0x1c, 0x12,
+                        0x2e, 0x5d, 0x2a, 0xe2, 0xa9, 0xae, 0xbf, 0x8f,
+                        0xdf, 0x24, 0x76, 0xf5, 0x81, 0x1e, 0x09, 0x5d,
+                        0x63, 0x04, 0xaf, 0x24, 0x45, 0x87, 0xf4, 0x96,
+                        0x55, 0xd1, 0x7d, 0xc6, 0x0d, 0x79, 0x12, 0xa9])
+
+KNOWN_KEYS = {APL_INTEL_PROD_KEY : 'APL Intel prod key',
+              CNL_INTEL_PROD_KEY : 'CNL Intel prod key',
+              ICL_INTEL_PROD_KEY : 'ICL Intel prod key',
+              JSL_INTEL_PROD_KEY : 'JSL Intel prod key',
+              TGL_INTEL_PROD_KEY : 'TGL Intel prod key',
+              EHL_INTEL_PROD_KEY : 'EHL Intel prod key',
+              ADL_INTEL_PROD_KEY : 'ADL Intel prod key',
+              ADL_N_INTEL_PROD_KEY : 'ADL-N Intel prod key',
+              MTL_INTEL_PROD_KEY : 'MTL Intel prod key',
+              LNL_INTEL_PROD_KEY : 'LNL Intel prod key',
+              ARL_S_INTEL_PROD_KEY : 'ARL-S Intel prod key',
+              PTL_INTEL_PROD_KEY : 'PTL Intel prod key',
+              COMMUNITY_KEY : 'Community key',
+              COMMUNITY_KEY2 : 'Community 3k key'}
+
+def parse_params():
+    """ Parses parameters
+    """
+    parser = argparse.ArgumentParser(description='SOF Binary Info Utility')
+    parser.add_argument('-v', '--verbose', help='increase output verbosity',
+                        action='store_true')
+    parser.add_argument('--headers', help='display headers only',
+                        action='store_true')
+    parser.add_argument('--full_bytes', help='display full byte arrays',
+                        action='store_true')
+    parser.add_argument('--no_colors', help='disable colors in output',
+                        action='store_true')
+    parser.add_argument('--no_cse', help='disable cse manifest parsing',
+                        action='store_true')
+    parser.add_argument('--no_headers', help='skip information about headers',
+                        action='store_true')
+    parser.add_argument('--no_modules', help='skip information about modules',
+                        action='store_true')
+    parser.add_argument('--no_memory', help='skip information about memory',
+                        action='store_true')
+    parser.add_argument('--erase_vars', help='''
+    Replace the variable signature and any other variable element with constants
+    ''', type=pathlib.Path, dest='erased_vars_image')
+    parser.add_argument('sof_ri_path', help='path to fw binary file to parse')
+    parsed_args = parser.parse_args()
+
+    return parsed_args
+
+# Helper Functions
+
+def change_color(color):
+    """ Prints escape code to change text color
+    """
+    color_code = {'red':91, 'green':92, 'yellow':93, 'blue':94,
+                  'magenta':95, 'cyan':96, 'white':98, 'none':0}
+    return '\033[{}m'.format(color_code[color])
+
+def uint_to_string(uint, both=False):
+    """ Prints uint in readable form
+    """
+    if both:
+        return hex(uint) + ' (' + repr(uint) + ')'
+    return hex(uint)
+
+def date_to_string(date):
+    """ Prints BCD date in readable form
+    """
+    return date[2:6]+'/'+date[6:8]+'/'+date[8:10]
+
+def chararr_to_string(chararr, max_len):
+    """ Prints array of characters (null terminated or till max_len)
+        in readable form
+    """
+    out = ''
+    for i in range(0, max_len):
+        if chararr[i] == 0:
+            return out
+        out += '{:c}'.format(chararr[i])
+    return out
+
+def mod_type_to_string(mod_type):
+    """ Prints module type in readable form
+    """
+    out = '('
+    # type
+    if (mod_type & 0xf) == 0:
+        out += ' builtin'
+    elif (mod_type & 0xf) == 1:
+        out += ' loadable'
+    # Module that may be instantiated by fw on startup
+    if ((mod_type >> 4) & 0x1) == 1:
+        out += ' auto_start'
+    # Module designed to run with low latency scheduler
+    if ((mod_type >> 5) & 0x1) == 1:
+        out += ' LL'
+    # Module designed to run with edf scheduler
+    if ((mod_type >> 6) & 0x1) == 1:
+        out += ' DP'
+    out += ' )'
+    return out
+
+def seg_flags_to_string(flags):
+    """ Prints module segment flags in readable form
+    """
+    out = '('
+    if flags & 0x1 == 0x1:
+        out = out + ' contents'
+    if flags & 0x2 == 0x2:
+        out = out + ' alloc'
+    if flags & 0x4 == 0x4:
+        out = out + ' load'
+    if flags & 0x8 == 0x8:
+        out = out + ' readonly'
+    if flags & 0x10 == 0x10:
+        out = out + ' code'
+    if flags & 0x20 == 0x20:
+        out = out + ' data'
+    out = out + ' type=' + repr((flags>>8)&0xf)
+    out = out + ' pages=' + repr((flags>>16)&0xffff)
+    out = out + ' )'
+    return out
+
+# Parsers
+
+def parse_extended_manifest_ae1(reader):
+    ext_mft = ExtendedManifestAE1()
+    hdr = Component('ext_mft_hdr', 'Header', 0)
+    ext_mft.add_comp(hdr)
+
+    sig = reader.read_string(4)
+    reader.info('Extended Manifest (' + sig + ')', -4)
+    hdr.add_a(Astring('sig', sig))
+
+    # Next dword is the total length of the extended manifest
+    # (need to use it for further parsing)
+    reader.ext_mft_length = reader.read_dw()
+    hdr.add_a(Auint('length', reader.ext_mft_length))
+    hdr.add_a(Astring('ver', '{}.{}'.format(reader.read_w(), reader.read_w())))
+    hdr.add_a(Auint('entries', reader.read_dw()))
+
+    reader.ff_data(reader.ext_mft_length-16)
+    return ext_mft
+
+def parse_extended_manifest_xman(reader):
+    ext_mft = ExtendedManifestXMan()
+    hdr = Component('ext_mft_hdr', 'Header', 0)
+    ext_mft.add_comp(hdr)
+
+    sig = reader.read_string(4)
+    reader.info('Extended Manifest (' + sig + ')', -4)
+    hdr.add_a(Astring('sig', sig))
+
+    # Next dword is the total length of the extended manifest
+    # (need to use it for further parsing)
+    reader.ext_mft_length = reader.read_dw()
+    hdr_length = reader.read_dw()
+    hdr_ver = reader.read_dw()
+
+    major = hdr_ver >> 24
+    minor = (hdr_ver >> 12) & 0xFFF
+    patch = hdr_ver & 0xFFF
+
+    hdr.add_a(Auint('length', reader.ext_mft_length))
+    hdr.add_a(Astring('ver', '{}.{}.{}'.format(major, minor, patch)))
+    hdr.add_a(Auint('hdr_length', hdr_length))
+
+    reader.ff_data(reader.ext_mft_length-16)
+    return ext_mft
+
+def parse_extended_manifest(reader):
+    """ Parses extended manifest from sof binary
+    """
+
+    reader.info('Looking for Extended Manifest')
+    # Try to detect signature first
+    sig = reader.read_string(4)
+    reader.set_offset(0)
+    if sig == '$AE1':
+        ext_mft = parse_extended_manifest_ae1(reader)
+    elif sig == 'XMan':
+        ext_mft = parse_extended_manifest_xman(reader)
+    else:
+        ext_mft = ExtendedManifestAE1()
+        hdr = Component('ext_mft_hdr', 'Header', 0)
+        ext_mft.add_comp(hdr)
+        reader.info('info: Extended Manifest not found (sig = '+sig+')')
+        reader.ext_mft_length = 0
+        hdr.add_a(Auint('length', reader.ext_mft_length))
+
+    return ext_mft
+
+def parse_cse_manifest(reader):
+    """ Parses CSE manifest form sof binary
+    """
+    reader.info('Looking for CSE Manifest')
+    cse_mft = CseManifest(reader.get_offset())
+
+    # Try to detect signature first
+    sig = reader.read_string(4)
+    if sig != '$CPD':
+        raise Exception('CSE Manifest magic number NOT found, instead: ('
+                     + sig + ')', -4)
+    reader.info('CSE Manifest (' + sig + ')', -4)
+
+    # Read the header
+    hdr = Component('cse_mft_hdr', 'Header', reader.get_offset())
+    cse_mft.add_comp(hdr)
+    hdr.add_a(Astring('sig', sig))
+    # read number of entries
+    nb_entries = reader.read_dw()
+    reader.info('# of entries {}'.format(nb_entries))
+    hdr.add_a(Adec('nb_entries', nb_entries))
+    # read version bytes
+    hdr.add_a(Ahex('header_version', reader.read_b()))
+    hdr.add_a(Ahex('entry_version', reader.read_b()))
+    header_length = reader.read_b()
+    hdr.add_a(Ahex('header_length', header_length))
+    legacy_or_unused = reader.read_b()
+    # The v2.5 header (length 20) moves the checksum to a trailing CRC32 dword
+    # and leaves this byte unused. The legacy v1.x header (length 16) keeps the
+    # single-byte BSD checksum here, so discriminate on the v2.5 header length.
+    if header_length >= 20:
+        hdr.add_a(Ahex('not_used', legacy_or_unused))
+    else:
+        hdr.add_a(Ahex('checksum', legacy_or_unused))
+    hdr.add_a(Astring('partition_name', reader.read_string(4)))
+
+    # CSE v2.5 extends header with a CRC32 checksum dword
+    if header_length >= 20:
+        hdr.add_a(Ahex('checksum32', reader.read_dw()))
+
+    reader.set_offset(cse_mft.file_offset + header_length)
+    # Read entries
+    nb_index = 0
+    while nb_index < nb_entries:
+        reader.info('Reading CSE Manifest entry %d...' % nb_index)
+        entry_name = reader.read_string(12)
+        entry_offset = reader.read_dw()
+        entry_length = reader.read_dw()
+        entry_reserved = reader.read_dw()
+
+        hdr_entry = Component('cse_hdr_entry', 'Entry', reader.get_offset())
+        hdr_entry.add_a(Astring('entry_name', entry_name))
+        hdr_entry.add_a(Ahex('entry_offset', entry_offset))
+        hdr_entry.add_a(Ahex('entry_length', entry_length))
+        hdr_entry.add_a(Ahex('entry_reserved', entry_reserved))
+        hdr.add_comp(hdr_entry)
+
+        assert cse_mft.file_offset == reader.ext_mft_length
+        entry_file_offset = reader.ext_mft_length + entry_offset
+        reader.info('... CSE Entry name {} file offset 0x{:x} length {}'.format(entry_name,
+                    entry_file_offset, entry_length))
+
+        if '.man' in entry_name:
+            entry = CssManifest(entry_name, entry_file_offset)
+            cur_off = reader.set_offset(entry_file_offset)
+            parse_css_manifest(entry, reader,
+                               entry_file_offset + entry_length)
+            reader.set_offset(cur_off)
+        elif '.met' in entry_name:
+            cur_off = reader.set_offset(entry_file_offset)
+            entry = parse_mft_extension(reader, 0)
+            entry.name = '{} ({})'.format(entry_name, entry.name)
+            reader.set_offset(cur_off)
+        else:
+            # indicate the place, the entry is enumerated. mft parsed later
+            entry = Component('adsp_mft_cse_entry', entry_name, entry_file_offset)
+        cse_mft.add_comp(entry)
+
+        nb_index += 1
+
+    return cse_mft
+
+def parse_css_manifest(css_mft, reader, limit):
+    """ Parses CSS manifest from sof binary
+    """
+    reader.info('Parsing CSS Manifest')
+    ver, = struct.unpack('I', reader.get_data(0, 4))
+    if ver == 4:
+        reader.info('CSS Manifest type 4')
+        return parse_css_manifest_4(css_mft, reader, limit)
+
+    raise Exception('CSS Manifest NOT found or NOT recognized!')
+
+def parse_css_manifest_4(css_mft, reader, size_limit):
+    """ Parses CSS manifest type 4 from sof binary
+    """
+
+    reader.info('Parsing CSS Manifest type 4')
+    # CSS Header
+    hdr = Component('css_mft_hdr', 'Header', reader.get_offset())
+    css_mft.add_comp(hdr)
+
+    header_type = reader.read_dw()
+    hdr.add_a(Auint('type', header_type))
+    hdr.add_a(Auint('header_type', header_type))
+    header_len_dw = reader.read_dw()
+    hdr.add_a(Auint('header_len_dw', header_len_dw))
+    hdr.add_a(Auint('header_version', reader.read_dw()))
+    hdr.add_a(Auint('reserved0', reader.read_dw(), 'red'))
+    module_vendor = reader.read_dw()
+    hdr.add_a(Ahex('mod_vendor', module_vendor))
+    hdr.add_a(Ahex('module_vendor', module_vendor))
+    date_start = reader.get_offset()
+    hdr.add_a(Auint('date_start', date_start))
+    hdr.add_a(Adate('date', hex(reader.read_dw())))
+    hdr.add_a(Auint('date_length', reader.get_offset() - date_start))
+    size = reader.read_dw()
+    hdr.add_a(Auint('size', size))
+    hdr.add_a(Astring('header_id', reader.read_string(4)))
+    hdr.add_a(Auint('padding', reader.read_dw()))
+    fw_major = reader.read_w()
+    fw_minor = reader.read_w()
+    fw_hotfix = reader.read_w()
+    fw_build = reader.read_w()
+    hdr.add_a(Auint('fw_major_version', fw_major))
+    hdr.add_a(Auint('fw_minor_version', fw_minor))
+    hdr.add_a(Auint('fw_hotfix_version', fw_hotfix))
+    hdr.add_a(Auint('fw_build_version', fw_build))
+    hdr.add_a(Aversion('fw_version', fw_major, fw_minor, fw_hotfix, fw_build))
+    hdr.add_a(Auint('svn', reader.read_dw()))
+    hdr.add_a(Abytes('reserved1', reader.read_bytes(18*4)))
+    modulus_size = reader.read_dw()
+    hdr.add_a(Adec('modulus_size', modulus_size))
+    exponent_size = reader.read_dw()
+    hdr.add_a(Adec('exponent_size', exponent_size))
+    modulus = reader.read_bytes(modulus_size * 4)
+    hdr.add_a(Amodulus('modulus', modulus, KNOWN_KEYS.get(modulus, 'Unknown key')))
+    hdr.add_a(Abytes('exponent', reader.read_bytes(exponent_size * 4)))
+
+    sig_start = reader.get_offset()
+    hdr.add_a(Auint('signature_start', sig_start))
+    hdr.add_a(Abytes('signature', reader.read_bytes(modulus_size * 4)))
+    hdr.add_a(Auint('signature_length', reader.get_offset() - sig_start))
+
+    # Move right after the header
+    reader.set_offset(css_mft.file_offset + header_len_dw*4)
+
+    # Anything packed here is
+    #   either an 'Extension' beginning with
+    #     dw0 - extension type
+    #     dw1 - extension length (in bytes)
+    #   that could be parsed if extension type is recognized
+    #
+    #   or series of 0xffffffff that should be skipped
+    reader.info('Parsing CSS Manifest extensions, end at 0x{:x}'.format(size_limit))
+    ext_idx = 0
+    while reader.get_offset() < size_limit:
+        ext_type = reader.read_dw()
+        reader.info('Reading CSS extension type 0x{:x}:'.format(ext_type))
+        if ext_type == 0xffffffff:
+            continue
+        reader.set_offset(reader.get_offset() - 4)
+        css_mft.add_comp(parse_mft_extension(reader, ext_idx, size_limit))
+        ext_idx += 1
+
+    if reader.get_offset() != size_limit:
+        reader.info('warning: CSS extension parser finished at 0x{:x}, expected 0x{:x}; clamping'.format(
+            reader.get_offset(), size_limit))
+        reader.set_offset(size_limit)
+
+    css_mft.length = reader.get_offset() - css_mft.file_offset
+    return css_mft
+
+def parse_mft_extension(reader, ext_id, max_end=None):
+    """ Parses mft extension from sof binary
+    """
+    begin_off = reader.get_offset()
+    ext_type = reader.read_dw()
+    ext_len = reader.read_dw()
+    ext_end = begin_off + ext_len
+    if max_end is not None and ext_end > max_end:
+        reader.info('warning: extension 0x{:x} length 0x{:x} exceeds CSS entry end; truncating'.format(ext_type, ext_len))
+        ext_end = max_end
+    if ext_type == 3:
+        reader.info("Partition info extension")
+        ext = PartitionInfoExtension(ext_id, reader.get_offset()-8)
+        ext.add_a(Astring('name', reader.read_string(4)))
+        ext.add_a(Auint('partition_length', reader.read_dw()))
+        ext.add_a(Abytes('hash', reader.read_bytes(32)))
+        ext.add_a(Auint('vcn', reader.read_dw()))
+        ext.add_a(Auint('part_version', reader.read_dw()))
+        ext.add_a(Auint('fmt_version', reader.read_dw()))
+        ext.add_a(Auint('instance_id', reader.read_dw()))
+        ext.add_a(Auint('part_flags', reader.read_dw()))
+        ext.add_a(Abytes('reserved', reader.read_bytes(20), 'red'))
+
+        mod_idx = 0
+        while reader.get_offset() < ext_end:
+            mod = Component('partition_info_module_{}'.format(mod_idx),
+                            'Partition Info Module', reader.get_offset())
+            mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
+            mod.add_a(Auint('type', reader.read_b()))
+            mod.add_a(Abytes('reserved', reader.read_bytes(3), 'red'))
+            mod.add_a(Auint('meta_size', reader.read_dw()))
+            mod.add_a(Abytes('hash', reader.read_bytes(32)))
+            ext.add_comp(mod)
+            mod_idx += 1
+
+        if reader.get_offset() > ext_end:
+            raise Exception('Malformed partition info extension length')
+        if reader.get_offset() < ext_end:
+            reader.ff_data(ext_end - reader.get_offset())
+    elif ext_type == 15:
+        reader.info("Plat Fw Auth extension")
+        ext = PlatFwAuthExtension(ext_id, reader.get_offset()-8)
+        ext.add_a(Astring('name', reader.read_string(4)))
+        ext.add_a(Auint('vcn', reader.read_dw()))
+        ext.add_a(Abytes('bitmap', reader.read_bytes(16), 'red'))
+        ext.add_a(Auint('svn', reader.read_dw()))
+
+        # Signed package info extension common fields
+        ext.add_a(Auint('fw_type', reader.read_b()))
+        ext.add_a(Auint('fw_sub_type', reader.read_b()))
+        ext.add_a(Abytes('reserved', reader.read_bytes(14), 'red'))
+
+        mod_idx = 0
+        while reader.get_offset() < ext_end:
+            mod = Component('signed_pkg_module_{}'.format(mod_idx),
+                            'Signed Package Module', reader.get_offset())
+            mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
+            mod.add_a(Auint('type', reader.read_b()))
+            mod.add_a(Auint('hash_algo', reader.read_b()))
+            hash_size = reader.read_w()
+            mod.add_a(Auint('hash_size', hash_size))
+            mod.add_a(Auint('meta_size', reader.read_dw()))
+            mod.add_a(Abytes('hash', reader.read_bytes(hash_size)))
+            ext.add_comp(mod)
+            mod_idx += 1
+
+        if reader.get_offset() > ext_end:
+            raise Exception('Malformed signed package extension length')
+        if reader.get_offset() < ext_end:
+            reader.ff_data(ext_end - reader.get_offset())
+    elif ext_type == 0x16:
+        reader.info("Info extension 0x16")
+        ext = InfoExtension0x16(ext_id, reader.get_offset()-8)
+        ext.add_a(Astring('name', reader.read_string(4)))
+        ext.add_a(Auint('size', reader.read_dw()))
+        ext.add_a(Auint('data0', reader.read_dw()))
+        ext.add_a(Auint('data1', reader.read_dw()))
+        ext.add_a(Auint('data2', reader.read_dw()))
+        ext.add_a(Auint('data3', reader.read_dw()))
+        ext.add_a(Auint('data4', reader.read_dw()))
+        ext.add_a(Abytes('hash', reader.read_bytes(48)))
+        ext.add_a(Auint('data1_0', reader.read_dw()))
+        ext.add_a(Auint('data1_1', reader.read_dw()))
+        ext.add_a(Auint('data1_2', reader.read_dw()))
+        ext.add_a(Auint('data1_3', reader.read_dw()))
+        ext.add_a(Auint('data1_4', reader.read_dw()))
+        read_len = reader.get_offset() - begin_off
+        effective_len = ext_end - begin_off
+        if read_len < effective_len:
+            reader.ff_data(effective_len - read_len)
+    elif ext_type == 17:
+        reader.info("ADSP metadata file extension")
+        ext = AdspMetadataFileExt(ext_id, reader.get_offset()-8)
+        ext.add_a(Auint('adsp_imr_type', reader.read_dw(), 'red'))
+        ext.add_a(Abytes('reserved', reader.read_bytes(16), 'red'))
+
+        comp_desc = Component('adsp_comp_desc', 'Component Descriptor',
+                              reader.get_offset())
+        comp_desc_res0 = reader.read_dw()
+        comp_desc_res1 = reader.read_dw()
+        comp_desc_ver = reader.read_dw()
+        comp_desc.add_a(Auint('reserved0', comp_desc_res0))
+        comp_desc.add_a(Auint('reserved1', comp_desc_res1))
+        comp_desc.add_a(Auint('version', comp_desc_ver))
+        ext.add_a(Auint('comp_desc_reserved0', comp_desc_res0))
+        ext.add_a(Auint('comp_desc_reserved1', comp_desc_res1))
+        ext.add_a(Auint('version', comp_desc_ver))
+
+        remaining = ext_end - reader.get_offset()
+        if remaining >= 72:
+            hash_len = 48
+        else:
+            hash_len = 32
+
+        comp_hash = reader.read_bytes(hash_len)
+        comp_desc.add_a(Abytes('hash', comp_hash))
+        ext.add_a(Abytes('sha_hash', comp_hash))
+
+        base_offset = reader.read_dw()
+        limit_offset = reader.read_dw()
+        comp_desc.add_a(Auint('base_offset', base_offset))
+        comp_desc.add_a(Auint('limit_offset', limit_offset))
+        ext.add_a(Auint('base_offset', base_offset))
+        ext.add_a(Auint('limit_offset', limit_offset))
+
+        attr0 = reader.read_dw()
+        attr1 = reader.read_dw()
+        attr2 = reader.read_dw()
+        attr3 = reader.read_dw()
+        comp_desc.add_a(Auint('attribute0', attr0))
+        comp_desc.add_a(Auint('attribute1', attr1))
+        comp_desc.add_a(Auint('attribute2', attr2))
+        comp_desc.add_a(Auint('attribute3', attr3))
+        ext.add_a(Abytes('attributes', struct.pack('IIII', attr0, attr1,
+                                                   attr2, attr3)))
+        ext.add_comp(comp_desc)
+
+        read_len = reader.get_offset() - begin_off
+        effective_len = ext_end - begin_off
+        if read_len < effective_len:
+            reader.ff_data(effective_len - read_len)
+        elif read_len > effective_len:
+            raise Exception('Malformed ADSP metadata file extension length')
+    elif ext_type == 35:
+        reader.info("Signed package info extension")
+        ext = SignedPkgInfoExtension(ext_id, reader.get_offset()-8)
+        ext.add_a(Astring('name', reader.read_string(4)))
+        ext.add_a(Auint('vcn', reader.read_dw()))
+        ext.add_a(Auint('svn', reader.read_dw()))
+        ext.add_a(Auint('partition_usage', reader.read_b()))
+        ext.add_a(Auint('reserved0', reader.read_b(), 'red'))
+        ext.add_a(Auint('fw_type', reader.read_b()))
+        ext.add_a(Auint('fw_sub_type', reader.read_b()))
+        number_of_modules = reader.read_b()
+        ext.add_a(Auint('number_of_modules', number_of_modules))
+        ext.add_a(Auint('boot_strap_svn', reader.read_b()))
+        ext.add_a(Abytes('reserved', reader.read_bytes(14), 'red'))
+
+        mod_idx = 0
+        while reader.get_offset() < ext_end:
+            mod = Component('signed_pkg_ace_module_{}'.format(mod_idx),
+                            'Signed Package Module', reader.get_offset())
+            mod.add_a(Astring('name', chararr_to_string(reader.read_bytes(12), 12)))
+            mod.add_a(Auint('type', reader.read_b()))
+            mod.add_a(Auint('hash_algo', reader.read_b()))
+            mod.add_a(Abytes('reserved', reader.read_bytes(2), 'red'))
+            mod.add_a(Auint('meta_size', reader.read_dw()))
+            mod.add_a(Abytes('hash', reader.read_bytes(48)))
+            ext.add_comp(mod)
+            mod_idx += 1
+
+        if reader.get_offset() > ext_end:
+            raise Exception('Malformed signed package ACE extension length')
+        if reader.get_offset() < ext_end:
+            reader.ff_data(ext_end - reader.get_offset())
+    else:
+        reader.info("Other extension")
+        ext = MftExtension(ext_id, 'Other Extension', reader.get_offset()-8)
+        reader.ff_data(max(0, ext_end - reader.get_offset()))
+    ext.add_a(Auint('type', ext_type))
+    ext.add_a(Auint('length', ext_len))
+    reader.info("... end of extension")
+    return ext
+
+def parse_adsp_manifest_hdr(reader):
+    """ Parses ADSP manifest hader from sof binary
+    """
+    # Verify signature
+    try:
+        sig = reader.read_string(4)
+    except UnicodeDecodeError:
+        raise Exception('\n' + reader.offset_to_string() + \
+              '\terror: Failed to decode signature, wrong position?')
+    if sig != '$AM1':
+        raise Exception('ADSP Manifest NOT found!', -4)
+    reader.info('ADSP Manifest (' + sig + ')', -4)
+
+    hdr = Component('adsp_mft_hdr', 'ADSP Manifest Header',
+                    reader.get_offset() -4)
+    hdr.add_a(Astring('sig', sig))
+
+    header_len = reader.read_dw()
+    hdr.add_a(Auint('header_len', header_len))
+    hdr.add_a(Auint('size', header_len))
+    hdr.add_a(Astring('name', chararr_to_string(reader.read_bytes(8), 8)))
+    preload_page_count = reader.read_dw()
+    hdr.add_a(Auint('preload_page_count', preload_page_count))
+    hdr.add_a(Auint('preload', preload_page_count))
+    hdr.add_a(Auint('fw_image_flags', reader.read_dw()))
+    hdr.add_a(Auint('feature_mask', reader.read_dw()))
+    hdr.add_a(Aversion('build_version', reader.read_w(), reader.read_w(),
+                       reader.read_w(), reader.read_w()))
+
+    hdr.add_a(Adec('num_module_entries', reader.read_dw()))
+    fw_compat = reader.read_dw()
+    hdr.add_a(Ahex('fw_compat', fw_compat))
+    hdr.add_a(Ahex('hw_buf_base_addr', fw_compat))
+    hdr.add_a(Auint('hw_buf_length', reader.read_dw()))
+    hdr.add_a(Ahex('load_offset', reader.read_dw()))
+
+    return hdr
+
+def parse_adsp_manifest_mod_entry(index, reader):
+    """ Parses ADSP manifest module entry from sof binary
+    """
+    # Verify Mod Entry signature
+    try:
+        sig = reader.read_string(4)
+    except UnicodeDecodeError:
+        raise Exception(reader.offset_to_string() + \
+              '\terror: Failed to decode ModuleEntry signature')
+    if sig != '$AME':
+        raise Exception('ModuleEntry signature NOT found!')
+    reader.info('Module Entry signature found (' + sig + ')', -4)
+
+    mod = AdspModuleEntry('mod_entry_'+repr(index),
+                          reader.get_offset() -4)
+    mod.add_a(Astring('sig', sig))
+
+    mod.add_a(Astring('mod_name',
+                      chararr_to_string(reader.read_bytes(8), 8)))
+    mod.add_a(Astring('uuid', reader.read_uuid()))
+    me_type = reader.read_dw()
+    mod.add_a(Astring('type',
+                      hex(me_type) + ' ' + mod_type_to_string(me_type)))
+    mod.add_a(Abytes('hash', reader.read_bytes(32)))
+    mod.add_a(Ahex('entry_point', reader.read_dw()))
+    mod.add_a(Adec('cfg_offset', reader.read_w()))
+    mod.add_a(Adec('cfg_count', reader.read_w()))
+    mod.add_a(Auint('affinity_mask', reader.read_dw()))
+    mod.add_a(Adec('instance_max_count', reader.read_w()))
+    instance_bss_size = reader.read_w()
+    mod.add_a(Auint('instance_bss_size', instance_bss_size))
+    mod.add_a(Auint('instance_stack_size', instance_bss_size))
+    for i in range(0, 3):
+        seg_flags = reader.read_dw()
+        mod.add_a(Astring('seg_'+repr(i)+'_flags',
+                          hex(seg_flags) + ' ' + seg_flags_to_string(seg_flags)))
+        mod.add_a(Ahex('seg_'+repr(i)+'_v_base_addr', reader.read_dw()))
+        mod.add_a(Ahex('seg_'+repr(i)+'_size', ((seg_flags>>16)&0xffff)*0x1000))
+        mod.add_a(Ahex('seg_'+repr(i)+'_file_offset', reader.read_dw()))
+
+    return mod
+
+def parse_adsp_manifest_mod_config(index, reader):
+    """ Parses ADSP manifest module config from sof binary
+    """
+    cfg = Component('mod_cfg_'+repr(index), 'Module Config',
+                    reader.get_offset())
+    cfg.add_a(Auint('par0', reader.read_dw()))
+    cfg.add_a(Auint('par1', reader.read_dw()))
+    cfg.add_a(Auint('par2', reader.read_dw()))
+    cfg.add_a(Auint('par3', reader.read_dw()))
+    cfg.add_a(Auint('is_pages', reader.read_dw()))
+    cfg.add_a(Auint('cps', reader.read_dw()))
+    cfg.add_a(Auint('ibs', reader.read_dw()))
+    cfg.add_a(Auint('obs', reader.read_dw()))
+    cfg.add_a(Auint('module_flags', reader.read_dw()))
+    cfg.add_a(Auint('cpc', reader.read_dw()))
+    cfg.add_a(Auint('obls', reader.read_dw()))
+    return cfg
+
+def parse_adsp_manifest(reader, name):
+    """ Parses ADSP manifest from sof binary
+    """
+    adsp_mft = AdspManifest(name, reader.get_offset())
+    adsp_mft.add_comp(parse_adsp_manifest_hdr(reader))
+    num_module_entries = adsp_mft.cdir['adsp_mft_hdr'].adir['num_module_entries'].val
+    # Each module advertises its own cfg_count; the configs are packed
+    # contiguously after the module entries, so the total number written is the
+    # sum of every module's cfg_count (which can exceed num_module_entries).
+    num_mod_configs = 0
+    for i in range(0, num_module_entries):
+        mod_entry = parse_adsp_manifest_mod_entry(i, reader)
+        adsp_mft.add_comp(mod_entry)
+        num_mod_configs += mod_entry.adir['cfg_count'].val
+
+    for i in range(0, num_mod_configs):
+        mod_cfg = parse_adsp_manifest_mod_config(i, reader)
+        adsp_mft.add_comp(mod_cfg)
+
+    return adsp_mft
+
+def parse_fw_bin(path, no_cse, verbose):
+    """ Parses sof binary
+    """
+    reader = BinReader(path, verbose)
+
+    parsed_bin = FwBin()
+    parsed_bin.add_a(Astring('file_name', reader.file_name))
+    parsed_bin.add_a(Auint('file_size', reader.file_size))
+    parsed_bin.add_comp(parse_extended_manifest(reader))
+    if not no_cse:
+        parsed_bin.add_comp(parse_cse_manifest(reader))
+    reader.set_offset(reader.ext_mft_length + 0x2000)
+    parsed_bin.add_comp(parse_adsp_manifest(reader, 'cavs0015'))
+
+    reader.info('Parsing finished', show_offset = False)
+    return parsed_bin
+
+class BinReader():
+    """ sof binary reader
+    """
+    def __init__(self, path, verbose):
+        self.verbose = verbose
+        self.cur_offset = 0
+        self.ext_mft_length = 0
+        self.info(f'Reading SOF ri image {path}', show_offset=False)
+        self.file_name = path
+        # read the content
+        self.data = open(path, 'rb').read()
+        self.file_size = len(self.data)
+        self.info('File size ' + uint_to_string(self.file_size, True),
+                  show_offset=False)
+
+    def get_offset(self):
+        """ Retrieve the offset, the reader is at
+        """
+        return self.cur_offset
+
+    def ff_data(self, delta_offset):
+        """ Forwards the read pointer by specified number of bytes
+        """
+        self.cur_offset += delta_offset
+
+    def set_offset(self, offset):
+        """ Set current reader offset
+        """
+        old_offset = self.cur_offset
+        self.cur_offset = offset
+        return old_offset
+
+    def get_data(self, beg, length):
+        """ Retrieves the data from beg to beg+length.
+            This one is good to peek the data w/o advancing the read pointer
+        """
+        return self.data[self.cur_offset +beg : self.cur_offset +beg +length]
+
+    def read_bytes(self, count):
+        """ Reads the specified number of bytes from the stream
+        """
+        bts = self.get_data(0, count)
+        self.ff_data(count)
+        return bts
+
+    def read_dw(self):
+        """ Reads a dword from the stream
+        """
+        dword, = struct.unpack('I', self.get_data(0, 4))
+        self.ff_data(4)
+        return dword
+
+    def read_w(self):
+        """ Reads a word from the stream
+        """
+        word, = struct.unpack('H', self.get_data(0, 2))
+        self.ff_data(2)
+        return word
+
+    def read_b(self):
+        """ Reads a byte from the stream
+        """
+        byte, = struct.unpack('B', self.get_data(0, 1))
+        self.ff_data(1)
+        return byte
+
+    def read_string(self, size_in_file):
+        """ Reads a string from the stream, potentially padded with zeroes
+        """
+        return self.read_bytes(size_in_file).decode().rstrip('\0')
+
+    def read_uuid(self):
+        """ Reads a UUID from the stream and returns as string
+        """
+        out = '{:08x}'.format(self.read_dw())
+        out += '-'+'{:04x}'.format(self.read_w())
+        out += '-'+'{:04x}'.format(self.read_w())
+        out += '-'+'{:02x}'.format(self.read_b()) + \
+               '{:02x}'.format(self.read_b()) + '-'
+        for _ in range(0, 6):
+            out += '{:02x}'.format(self.read_b())
+        return out
+
+    def offset_to_string(self, delta=0):
+        """ Retrieves readable representation of the current offset value
+        """
+        return uint_to_string(self.cur_offset+delta)
+
+    def info(self, loginfo, off_delta=0, verb_info=True, show_offset=True):
+        """ Prints 'info' log to the output, respects verbose mode
+        """
+        if verb_info and not self.verbose:
+            return
+        if show_offset:
+            print(self.offset_to_string(off_delta) + '\t' + loginfo)
+        else:
+            print(loginfo)
+
+    def error(self, logerror, off_delta=0):
+        """ Prints 'error' log to the output
+        """
+        print(self.offset_to_string(off_delta) + '\terror: ' + logerror,
+              file=sys.stderr)
+
+# Data Model
+
+class Attribute():
+    """ Attribute: base class with global formatting options
+    """
+    no_colors = False
+    full_bytes = True
+
+class Auint(Attribute):
+    """ Attribute : unsigned integer
+    """
+    def __init__(self, name, val, color='none'):
+        self.name = name
+        self.val = val
+        self.color = color
+
+    def __str__(self):
+        if Attribute.no_colors:
+            return uint_to_string(self.val)
+        return '{}{}{}'.format(change_color(self.color),
+                               uint_to_string(self.val),
+                               change_color('none'))
+
+class Ahex(Attribute):
+    """ Attribute : unsigned integer printed as hex
+    """
+    def __init__(self, name, val, color='none'):
+        self.name = name
+        self.val = val
+        self.color = color
+
+    def __str__(self):
+        if Attribute.no_colors:
+            return hex(self.val)
+        return '{}{}{}'.format(change_color(self.color), hex(self.val),
+                               change_color('none'))
+
+class Adec(Attribute):
+    """ Attribute: integer printed as dec
+    """
+    def __init__(self, name, val):
+        self.name = name
+        self.val = val
+
+    def __str__(self):
+        return repr(self.val)
+
+class Abytes(Attribute):
+    """ Attribute: array of bytes
+    """
+    def __init__(self, name, val, color='none'):
+        self.name = name
+        self.val = val
+        self.color = color
+
+    def __str__(self):
+        length = len(self.val)
+        if Attribute.no_colors:
+            out = ''
+        else:
+            out = '{}'.format(change_color(self.color))
+        if length <= 16:
+            out += ' '.join(['{:02x}'.format(b) for b in self.val])
+        elif Attribute.full_bytes:
+            """ n is bytes per line
+                8 bytes per line is useful for adding more KEYs at the top
+            """
+            n = 8
+            out += '\n'
+            out += ',\n'.join([', '.join(['0x{:02x}'.format(b) for b in self.val[i:i + n]]) for i in range(0, length, n)])
+        else:
+            out += ' '.join('{:02x}'.format(b) for b in self.val[:8])
+            out += ' ... '
+            out += ' '.join('{:02x}'.format(b) for b in self.val[length-8:length])
+        if not Attribute.no_colors:
+            out += '{}'.format(change_color('none'))
+        return out
+
+class Adate(Attribute):
+    """ Attribute: Date in BCD format
+    """
+    def __init__(self, name, val):
+        self.name = name
+        self.val = val
+
+    def __str__(self):
+        return date_to_string(self.val)
+
+class Astring(Attribute):
+    """ Attribute: String
+    """
+    def __init__(self, name, val):
+        self.name = name
+        self.val = val
+
+    def __str__(self):
+        return self.val
+
+class Aversion(Attribute):
+    """ Attribute: version
+    """
+    def __init__(self, name, major, minor, hotfix, build):
+        self.name = name
+        self.val = '{:d}.{:d}.{:d}.{:d}'.format(major, minor, hotfix, build)
+
+    def __str__(self):
+        return self.val
+
+class Amodulus(Abytes):
+    """ Attribute: modulus from RSA public key
+    """
+    def __init__(self, name, val, val_type):
+        super().__init__(name, val)
+        self.val_type = val_type
+
+    def __str__(self):
+        out = super().__str__()
+        if not Attribute.full_bytes:
+            if Attribute.no_colors:
+                out += ' ({})'.format(self.val_type)
+            else:
+                out += ' {}({}){}'.format(change_color('red'), self.val_type,
+                                          change_color('none'))
+        return out
+
+class Component():
+    """ A component of sof binary
+    """
+    def __init__(self, uid, name, file_offset):
+        self.uid = uid
+        self.name = name
+        self.file_offset = file_offset
+        self.attribs = []
+        self.adir = {}
+        self.max_attr_name_len = 0
+        self.components = []
+        self.cdir = {}
+
+    def add_a(self, attrib):
+        """ Adds an attribute
+        """
+        self.max_attr_name_len = max(self.max_attr_name_len,
+                                     len(attrib.name))
+        self.attribs.append(attrib)
+        self.adir[attrib.name] = attrib
+
+    def add_comp(self, comp):
+        """ Adds a nested component
+        """
+        self.components.append(comp)
+        self.cdir[comp.uid] = comp
+
+    def get_comp(self, comp_uid):
+        """ Retrieves a nested component by id
+        """
+        for comp in self.components:
+            if comp.uid == comp_uid:
+                return comp
+        return None
+
+    def dump_info(self, pref, comp_filter):
+        """ Prints out the content (name, all attributes, and nested comps)
+        """
+        print(pref + self.name)
+        for attrib in self.attribs:
+            print("{:}  {:<{:}} {:}".format(pref, attrib.name,
+                                            self.max_attr_name_len, attrib))
+        self.dump_comp_info(pref, comp_filter)
+
+    def dump_attrib_info(self, pref, attr_name):
+        """ Prints out a single attribute
+        """
+        attrib = self.adir[attr_name]
+        print("{:}  {:<{:}} {:}".format(pref, attrib.name,
+                                        self.max_attr_name_len, attrib))
+
+    def dump_comp_info(self, pref, comp_filter=''):
+        """ Prints out all nested components (filtered by name set to 'filter')
+        """
+        for comp in self.components:
+            if comp.name in comp_filter:
+                continue
+            print()
+            comp.dump_info(pref + '  ', comp_filter)
+
+    def add_comp_to_mem_map(self, mem_map):
+        for comp in self.components:
+            comp.add_comp_to_mem_map(mem_map)
+
+class ExtendedManifestAE1(Component):
+    """ Extended manifest
+    """
+    def __init__(self):
+        super(ExtendedManifestAE1, self).__init__('ext_mft',
+                                               'Extended Manifest', 0)
+
+    def dump_info(self, pref, comp_filter):
+        hdr = self.cdir['ext_mft_hdr']
+        if hdr.adir['length'].val == 0:
+            return
+        out = '{}{}'.format(pref, self.name)
+        out += ' ver {}'.format(hdr.adir['ver'])
+        out += ' entries {}'.format(hdr.adir['entries'])
+        print(out)
+        self.dump_comp_info(pref, comp_filter + ['Header'])
+
+class ExtendedManifestXMan(Component):
+    """ Extended manifest
+    """
+    def __init__(self):
+        super(ExtendedManifestXMan, self).__init__('ext_mft',
+                                               'Extended Manifest', 0)
+
+    def dump_info(self, pref, comp_filter):
+        hdr = self.cdir['ext_mft_hdr']
+        if hdr.adir['length'].val == 0:
+            return
+        out = '{}{}'.format(pref, self.name)
+        out += ' ver {}'.format(hdr.adir['ver'])
+        out += ' length {}'.format(hdr.adir['length'].val)
+        print(out)
+        self.dump_comp_info(pref, comp_filter + ['Header'])
+
+class CseManifest(Component):
+    """ CSE Manifest
+    """
+    def __init__(self, offset):
+        super(CseManifest, self).__init__('cse_mft', 'CSE Manifest', offset)
+
+    def dump_info(self, pref, comp_filter):
+        hdr = self.cdir['cse_mft_hdr']
+        out = '{}{} header_ver {} entry_ver {} partition name {}'.format(
+            pref,
+            self.name,
+            hdr.adir['header_version'],
+            hdr.adir['entry_version'],
+            hdr.adir['partition_name'])
+        if 'checksum' in hdr.adir:
+            out += ' checksum {}'.format(hdr.adir['checksum'])
+        if 'not_used' in hdr.adir:
+            out += ' not_used {}'.format(hdr.adir['not_used'])
+        if 'checksum32' in hdr.adir:
+            out += ' checksum32 {}'.format(hdr.adir['checksum32'])
+        print(out)
+        self.dump_comp_info(pref, comp_filter + ['Header'])
+
+class CssManifest(Component):
+    """ CSS Manifest
+    """
+    def __init__(self, name, offset):
+        super(CssManifest, self).__init__('css_mft', name, offset)
+
+    def dump_info(self, pref, comp_filter):
+        hdr = self.cdir['css_mft_hdr']
+        out = '{}{} (CSS Manifest)'.format(pref, self.name)
+        out += ' type {}'.format(hdr.adir['type'])
+        out += ' file offset {:#x} hdr_len {}'.format(
+            self.file_offset, hdr.adir['header_len_dw'].val * 4
+        )
+        out += ' ver {}'.format(hdr.adir['header_version'])
+        out += ' date {}'.format(hdr.adir['date'])
+        print(out)
+        print('{}  Rsvd0 {}'.
+              format(pref, hdr.adir['reserved0']))
+        print('{}  Modulus size (dwords) {}'.
+              format(pref, hdr.adir['modulus_size']))
+        print('{}    {}'.format(pref, hdr.adir['modulus']))
+        print('{}  Exponent size (dwords) {}'.
+              format(pref,
+                     hdr.adir['exponent_size']))
+        print('{}    {}'.format(pref, hdr.adir['exponent']))
+        print('{}  Signature (file offset {}, length {})'.format(
+            pref, hdr.adir['signature_start'], hdr.adir['signature_length']))
+        print('{}    {}'.format(pref, hdr.adir['signature']))
+        # super().dump_info(pref)
+        self.dump_comp_info(pref, comp_filter + ['Header'])
+
+class MftExtension(Component):
+    """ Manifest Extension
+    """
+    def __init__(self, ext_id, name, offset):
+        super(MftExtension, self).__init__('mft_ext'+repr(ext_id), name,
+                                           offset)
+
+    def dump_info(self, pref, comp_filter):
+        print('{}{} type {} file offset 0x{:x} length {}'.
+              format(pref, self.name,
+                     self.adir['type'], self.file_offset, self.adir['length']))
+        self.dump_comp_info(pref, comp_filter)
+
+class PlatFwAuthExtension(MftExtension):
+    """ Platform FW Auth Extension
+    """
+    def __init__(self, ext_id, offset):
+        super(PlatFwAuthExtension,
+              self).__init__(ext_id, 'Plat Fw Auth Extension', offset)
+
+    def dump_info(self, pref, comp_filter):
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
+        out += ' name {}'.format(self.adir['name'])
+        out += ' vcn {}'.format(self.adir['vcn'])
+        out += ' bitmap {}'.format(self.adir['bitmap'])
+        out += ' svn {}'.format(self.adir['svn'])
+        out += ' fw_type {}'.format(self.adir['fw_type'])
+        out += ' fw_sub_type {}'.format(self.adir['fw_sub_type'])
+        out += ' reserved {}'.format(self.adir['reserved'])
+        print(out)
+
+class SignedPkgInfoExtension(MftExtension):
+    """ Signed package info Extension
+    """
+    def __init__(self, ext_id, offset):
+        super(SignedPkgInfoExtension,
+              self).__init__(ext_id, 'Signed package info Extension', offset)
+
+    def dump_info(self, pref, comp_filter):
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
+        out += ' name {}'.format(self.adir['name'])
+        out += ' vcn {}'.format(self.adir['vcn'])
+        out += ' svn {}'.format(self.adir['svn'])
+        out += ' partition_usage {}'.format(self.adir['partition_usage'])
+        out += ' reserved0 {}'.format(self.adir['reserved0'])
+        out += ' fw_type {}'.format(self.adir['fw_type'])
+        out += ' fw_sub_type {}'.format(self.adir['fw_sub_type'])
+        out += ' number_of_modules {}'.format(self.adir['number_of_modules'])
+        out += ' boot_strap_svn {}'.format(self.adir['boot_strap_svn'])
+        out += ' reserved {}'.format(self.adir['reserved'])
+        print(out)
+
+class PartitionInfoExtension(MftExtension):
+    """ Partition info Extension
+    """
+    def __init__(self, ext_id, offset):
+        super(PartitionInfoExtension,
+              self).__init__(ext_id, 'Partition info Extension', offset)
+
+    def dump_info(self, pref, comp_filter):
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
+        out += ' name {}'.format(self.adir['name'])
+        out += ' partition_length {}'.format(self.adir['partition_length'])
+        out += ' hash {}'.format(self.adir['hash'])
+        out += ' vcn {}'.format(self.adir['vcn'])
+        out += ' part_version {}'.format(self.adir['part_version'])
+        out += ' fmt_version {}'.format(self.adir['fmt_version'])
+        out += ' instance_id {}'.format(self.adir['instance_id'])
+        out += ' part_flags {}'.format(self.adir['part_flags'])
+        out += ' reserved {}'.format(self.adir['reserved'])
+        print(out)
+
+class InfoExtension0x16(MftExtension):
+    """ info_ext_0x16 Extension
+    """
+    def __init__(self, ext_id, offset):
+        super(InfoExtension0x16,
+              self).__init__(ext_id, 'Info Extension 0x16', offset)
+
+    def dump_info(self, pref, comp_filter):
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
+        out += ' name {}'.format(self.adir['name'])
+        out += ' size {}'.format(self.adir['size'])
+        out += ' data [{}, {}, {}, {}, {}]'.format(
+            self.adir['data0'], self.adir['data1'], self.adir['data2'],
+            self.adir['data3'], self.adir['data4'])
+        out += ' hash {}'.format(self.adir['hash'])
+        out += ' data1 [{}, {}, {}, {}, {}]'.format(
+            self.adir['data1_0'], self.adir['data1_1'], self.adir['data1_2'],
+            self.adir['data1_3'], self.adir['data1_4'])
+        print(out)
+
+class AdspMetadataFileExt(MftExtension):
+    """ ADSP Metadata File Extension
+    """
+    def __init__(self, ext_id, offset):
+        super(AdspMetadataFileExt,
+              self).__init__(ext_id, 'ADSP Metadata File Extension',
+                             offset)
+
+    def dump_info(self, pref, comp_filter):
+        super().dump_info(pref, comp_filter)
+        out = '{}'.format(pref)
+        out += ' ver {}'.format(self.adir['version'])
+        out += ' base offset {}'.format(self.adir['base_offset'])
+        out += ' limit offset {}'.format(self.adir['limit_offset'])
+        print(out)
+        print('{}  IMR type {}'.format(pref, self.adir['adsp_imr_type']))
+        print('{}  Reserved {}'.format(pref, self.adir['reserved']))
+        print('{}  Component desc reserved0 {}'.format(pref,
+                                                      self.adir['comp_desc_reserved0']))
+        print('{}  Component desc reserved1 {}'.format(pref,
+                                                      self.adir['comp_desc_reserved1']))
+        print('{}  SHA hash {}'.format(pref, self.adir['sha_hash']))
+        print('{}  Attributes'.format(pref))
+        print('{}    {}'.format(pref, self.adir['attributes']))
+
+class AdspManifest(Component):
+    """ ADSP Manifest
+    """
+    def __init__(self, name, offset):
+        super(AdspManifest, self).__init__('adsp_mft', name, offset)
+
+    def dump_info(self, pref, comp_filter):
+        hdr = self.cdir['adsp_mft_hdr']
+        out = '{}{} (ADSP Manifest) file offset 0x{:x}'.format(pref, self.name, self.file_offset)
+        out += ' name {}'.format(hdr.adir['name'])
+        out += ' build ver {}'.format(hdr.adir['build_version'])
+        out += ' feature mask {}'.format(hdr.adir['feature_mask'])
+        out += ' image flags {}'.format(hdr.adir['fw_image_flags'])
+        out += ' fw compat {}'.format(hdr.adir['fw_compat'])
+        print(out)
+        print('{}  HW buffers base address {} length {}'.
+              format(pref,
+                     hdr.adir['hw_buf_base_addr'],
+                     hdr.adir['hw_buf_length']))
+        print('{}  Load offset {}'.format(pref,
+                                          hdr.adir['load_offset']))
+        self.dump_comp_info(pref, comp_filter + ['ADSP Manifest Header'])
+
+class AdspModuleEntry(Component):
+    """ ADSP Module Entry
+    """
+    def __init__(self, uid, offset):
+        super(AdspModuleEntry, self).__init__(uid, 'Module Entry', offset)
+
+    def dump_info(self, pref, comp_filter):
+        print('{}{:9} {}'.format(pref, str(self.adir['mod_name']),
+            self.adir['uuid']))
+        print('{}  entry point {} type {}'.format(pref, self.adir['entry_point'],
+            self.adir['type']))
+        out = '{}  cfg offset {} count {} affinity {}'.format(pref,
+            self.adir['cfg_offset'], self.adir['cfg_count'],
+            self.adir['affinity_mask'])
+        out += ' instance max count {} stack size {}'.format(
+            self.adir['instance_max_count'], self.adir['instance_stack_size'])
+        print(out)
+        print('{}  .text   {} file offset {} flags {}'.format(pref,
+            self.adir['seg_0_v_base_addr'], self.adir['seg_0_file_offset'],
+            self.adir['seg_0_flags']))
+        print('{}  .rodata {} file offset {} flags {}'.format(pref,
+            self.adir['seg_1_v_base_addr'], self.adir['seg_1_file_offset'],
+            self.adir['seg_1_flags']))
+        print('{}  .bss    {} file offset {} flags {}'.format(pref,
+            self.adir['seg_2_v_base_addr'], self.adir['seg_2_file_offset'],
+            self.adir['seg_2_flags']))
+
+    def add_comp_to_mem_map(self, mem_map):
+        mem_map.insert_segment(DspMemorySegment(
+            self.adir['mod_name'].val + '.text',
+            self.adir['seg_0_v_base_addr'].val,
+            self.adir['seg_0_size'].val));
+        mem_map.insert_segment(DspMemorySegment(
+            self.adir['mod_name'].val + '.rodata',
+            self.adir['seg_1_v_base_addr'].val,
+            self.adir['seg_1_size'].val));
+        mem_map.insert_segment(DspMemorySegment(
+            self.adir['mod_name'].val + '.bss',
+            self.adir['seg_2_v_base_addr'].val,
+            self.adir['seg_2_size'].val));
+
+class FwBin(Component):
+    """ Parsed sof binary
+    """
+    def __init__(self):
+        super(FwBin, self).__init__('bin', 'SOF Binary', 0)
+
+    def dump_info(self, pref, comp_filter):
+        """ Print out the content
+        """
+        print('SOF Binary {} size {}'.format(
+            self.adir['file_name'], self.adir['file_size']))
+        self.dump_comp_info(pref, comp_filter)
+
+    def populate_mem_map(self, mem_map):
+        """ Adds modules' segments to the memory map
+        """
+        self.add_comp_to_mem_map(mem_map)
+
+# DSP Memory Layout
+def get_mem_map(ri_path):
+    """ Retrieves memory map for platform determined by the file name
+    """
+    for plat_name in DSP_MEM_SPACE_EXT:
+        # use full firmware name for match
+        if "sof-{}.ri".format(plat_name) in ri_path:
+            return DSP_MEM_SPACE_EXT[plat_name]
+
+    # Widen the search and match anything in directory names like
+    # `___/build_tgl_xcc/sof.ri`
+    found = None
+    for plat_name in DSP_MEM_SPACE_EXT:
+        if plat_name in ri_path:
+            if found and len(found) > len(plat_name):
+                continue
+            found = plat_name
+
+    return DSP_MEM_SPACE_EXT[found] if found else DspMemory(
+        'No platform found in name "{}"'.format(ri_path)
+        + "; unknown memory layout.", [])
+
+def add_lmap_mem_info(ri_path, mem_map):
+    """ Optional lmap processing
+    """
+    lmap_path = ri_path[0:ri_path.rfind('.')] + '.lmap'
+    try:
+        with open(lmap_path) as lmap:
+            it_lines = iter(lmap.readlines())
+            for line in it_lines:
+                if 'Sections:' in line:
+                    next(it_lines)
+                    break;
+            for line in it_lines:
+                tok = line.split()
+                mem_map.insert_segment(DspMemorySegment(tok[1],
+                    int(tok[3], 16), int(tok[2], 16)))
+                next(it_lines)
+
+    except FileNotFoundError:
+        return
+
+class DspMemorySegment(object):
+    """ Single continuous memory space
+    """
+    def __init__(self, name, base_address, size):
+        self.name = name
+        self.base_address = base_address
+        self.size = size
+        self.used_size = 0
+        self.inner_segments = []
+
+    def is_inner(self, segment):
+        return self.base_address <= segment.base_address and \
+            segment.base_address + segment.size <= self.base_address + self.size
+
+    def insert_segment(self, segment):
+        for seg in self.inner_segments:
+            if seg.is_inner(segment):
+                seg.insert_segment(segment)
+                return
+        self.inner_segments.append(segment)
+        self.used_size += segment.size
+
+    def dump_info(self, pref):
+        free_size = self.size - self.used_size
+        out = '{}{:<35} 0x{:x}'.format(pref, self.name, self.base_address)
+        if self.used_size > 0:
+            out += ' ({} + {}  {:.2f}% used)'.format(self.used_size, free_size,
+                self.used_size*100/self.size)
+        else:
+            out += ' ({})'.format(free_size)
+        print(out)
+        for seg in self.inner_segments:
+            seg.dump_info(pref + '  ')
+
+class DspMemory(object):
+    """ Dsp Memory, all top-level segments
+    """
+    def __init__(self, platform_name, segments):
+        self.platform_name = platform_name
+        self.segments = segments
+
+    def insert_segment(self, segment):
+        """ Inserts segment
+        """
+        for seg in self.segments:
+            if seg.is_inner(segment):
+                seg.insert_segment(segment)
+                return
+
+    def dump_info(self):
+        if not self.segments:
+            print(self.platform_name) # "no platform found"
+            return
+
+        print("Memory layout for: " + self.platform_name)
+        for seg in self.segments:
+            seg.dump_info('  ')
+
+# Layouts of DSP memory for known platforms
+
+APL_MEMORY_SPACE = DspMemory('Intel Apollolake',
+    [
+        DspMemorySegment('imr', 0xa0000000, 4*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 8*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 2*64*1024)
+    ])
+
+CNL_MEMORY_SPACE = DspMemory('Intel Cannonlake',
+    [
+        DspMemorySegment('imr', 0xb0000000, 8*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 48*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+ICL_MEMORY_SPACE = DspMemory('Intel Icelake',
+    [
+        DspMemorySegment('imr', 0xb0000000, 8*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 47*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+TGL_LP_MEMORY_SPACE = DspMemory('Intel Tigerlake-LP',
+    [
+        DspMemorySegment('imr', 0xb0000000,16*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 46*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+JSL_MEMORY_SPACE = DspMemory('Intel Jasperlake',
+    [
+        DspMemorySegment('imr', 0xb0000000, 8*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 16*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+TGL_H_MEMORY_SPACE = DspMemory('Intel Tigerlake-H',
+    [
+        DspMemorySegment('imr', 0xb0000000, 16*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 30*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+PTL_MEMORY_SPACE = DspMemory('Intel Pantherlake',
+    [
+        DspMemorySegment('imr', 0xb0000000, 16*1024*1024),
+        DspMemorySegment('l2 hpsram', 0xbe000000, 30*64*1024),
+        DspMemorySegment('l2 lpsram', 0xbe800000, 1*64*1024)
+    ])
+
+DSP_MEM_SPACE_EXT = {
+    'apl' : APL_MEMORY_SPACE,
+    'glk' : APL_MEMORY_SPACE,
+
+    'cnl' : CNL_MEMORY_SPACE,
+    'cfl' : CNL_MEMORY_SPACE,
+    'cml' : CNL_MEMORY_SPACE,
+
+    'icl' : ICL_MEMORY_SPACE,
+
+    'jsl' : JSL_MEMORY_SPACE,
+
+    'tgl' : TGL_LP_MEMORY_SPACE,
+    'ehl' : TGL_LP_MEMORY_SPACE,
+    'adl' : TGL_LP_MEMORY_SPACE,
+    'rpl' : TGL_LP_MEMORY_SPACE,
+    'mtl' : TGL_LP_MEMORY_SPACE,
+    'lnl' : TGL_LP_MEMORY_SPACE,
+    'arl' : TGL_LP_MEMORY_SPACE,
+
+    'tgl-h' : TGL_H_MEMORY_SPACE,
+    'adl-s' : TGL_H_MEMORY_SPACE,
+    'rpl-s' : TGL_H_MEMORY_SPACE,
+    'arl-s' : TGL_H_MEMORY_SPACE,
+    'ptl' : PTL_MEMORY_SPACE,
+    'nvl' : PTL_MEMORY_SPACE,
+}
+
+
+def getCssManifest(parsed_fw):
+    "Also known as 'ADSP.man'"
+    cse_mft = parsed_fw.cdir['cse_mft']
+    return cse_mft.cdir['css_mft']
+
+
+def Erase(input_reader, start, length, padding):
+
+    padding = padding * (length // len(padding) + 1)
+    output_bytes = input_reader.read(start)
+
+    # Skip and replace with padding
+    input_reader.seek(length, 1)
+    output_bytes += padding[:length]
+
+    output_bytes += input_reader.read()
+
+    input_reader.seek(0)
+    return io.BytesIO(output_bytes)
+
+
+def EraseSignature(signed_input, parsed_fw):
+
+    hdr = getCssManifest(parsed_fw).cdir['css_mft_hdr']
+
+    return Erase(signed_input,
+                 hdr.adir['signature_start'].val,
+                 hdr.adir['signature_length'].val,
+                 b'Erased signature. ')
+
+
+def EraseCssManifestDate(dated_input, parsed_fw):
+
+    hdr = getCssManifest(parsed_fw).cdir['css_mft_hdr']
+
+    return Erase(dated_input,
+                 hdr.adir['date_start'].val,
+                 hdr.adir['date_length'].val,
+                 b'\x11' * 6) # = 1111/11/11
+
+
+def EraseCssManifest(image_input, parsed_fw):
+
+    css_man = getCssManifest(parsed_fw)
+
+    return Erase(image_input, css_man.file_offset,
+                 css_man.length, b"Erased CSS manifest. ")
+
+
+def EraseImrType(image_input, parsed_fw):
+
+    cse_mft = parsed_fw.cdir['cse_mft']
+    adsp_meta_ext = cse_mft.cdir['mft_ext0']
+
+    # IMR type is the very first field after extension type and length
+    imr_start = adsp_meta_ext.file_offset + 4 + 4
+
+    # Health check: re-read the imr_type to make sure the offset is
+    # still correct, no copy/paste/diverge.
+    true_imr_type = adsp_meta_ext.adir['adsp_imr_type'].val
+    image_input.seek(imr_start)
+    imr_type, = struct.unpack("<I", image_input.read(4))
+    assert imr_type == true_imr_type
+    image_input.seek(0)
+
+    return Erase(image_input, imr_start, 4, b'IMRt')
+
+
+def EraseVariables(input_path, parsed_fw, output_path):
+    """This is not smart but it gets the current job done. This entire
+    script should be re-written and based on a more advanced framework
+    like Construct, then a hierarchical, diffoscope-like diff should be
+    easy to implement on top.
+    """
+    with open(input_path, 'rb') as reader:
+
+        if True:
+            # Massive erasure required to compare .ri files produced by
+            # different tools (e.g. rimage vs MEU)
+            cse_mft = parsed_fw.cdir['cse_mft']
+            adsp_mft = parsed_fw.cdir['adsp_mft']
+
+            cse_plus_padding_len = adsp_mft.file_offset - cse_mft.file_offset
+
+            reader = Erase(reader, cse_mft.file_offset,
+                           cse_plus_padding_len,
+                           b'Erased CSE manifest + padding. ')
+
+        else:
+            # This is much smaller and enough to deal with date and
+            # random salt when signing with the same tool
+            reader = EraseCssManifestDate(reader, parsed_fw)
+            reader = EraseSignature(reader, parsed_fw)
+
+        with open(output_path, 'wb') as output:
+            for chunk in reader:
+                output.write(chunk)
+
+    assert input_path.stat().st_size == output_path.stat().st_size
+
+    with open(output_path, 'rb') as output:
+        return hashlib.sha256(output.read()).hexdigest()
+
+
+def main(args):
+    """ main function
+    """
+    if sys.stdout.isatty():
+        Attribute.no_colors = args.no_colors
+    else:
+        Attribute.no_colors = True
+
+    Attribute.full_bytes = args.full_bytes
+
+    fw_bin = parse_fw_bin(args.sof_ri_path, args.no_cse, args.verbose)
+
+    comp_filter = []
+    if args.headers or args.no_modules:
+        comp_filter.append('Module Entry')
+        comp_filter.append('Module Config')
+    if args.no_headers:
+        comp_filter.append('CSE Manifest')
+    fw_bin.dump_info('', comp_filter)
+    if not args.no_memory:
+        mem = get_mem_map(args.sof_ri_path)
+        fw_bin.populate_mem_map(mem)
+        add_lmap_mem_info(args.sof_ri_path, mem)
+        print()
+        mem.dump_info()
+
+    if args.erased_vars_image:
+        chk256 = EraseVariables(pathlib.Path(args.sof_ri_path), fw_bin,
+                       args.erased_vars_image)
+        print('sha256sum {0}\n{1} {0}'.format(args.erased_vars_image, chk256))
+
+
+if __name__ == "__main__":
+    ARGS = parse_params()
+    main(ARGS)

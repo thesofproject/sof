@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 project(SOF_DOC NONE)
 
@@ -13,7 +13,7 @@ configure_file(
 	"${PROJECT_BINARY_DIR}/sof.doxygen"
 )
 
-add_custom_target("doc"
+add_custom_target("doc" ALL
 	COMMAND doxygen sof.doxygen
 	VERBATIM
 	USES_TERMINAL

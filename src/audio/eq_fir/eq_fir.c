@@ -8,321 +8,164 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
-#include <sof/audio/eq_fir/fir_config.h>
+#include <sof/audio/data_blob.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/common.h>
-#include <sof/debug/panic.h>
-#include <sof/drivers/ipc.h>
-#include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/panic.h>
+#include <sof/ipc/msg.h>
+#include <rtos/init.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
+#include <sof/math/fir_config.h>
 #include <sof/platform.h>
-#include <sof/string.h>
+#include <rtos/string.h>
+#include <sof/ut.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <kernel/abi.h>
 #include <user/eq.h>
+#include <user/fir.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#if FIR_GENERIC
-#include <sof/audio/eq_fir/fir.h>
-#endif
+#include "eq_fir.h"
 
-#if FIR_HIFIEP
-#include <sof/audio/eq_fir/fir_hifi2ep.h>
-#endif
+LOG_MODULE_REGISTER(eq_fir, CONFIG_SOF_LOG_LEVEL);
 
-#if FIR_HIFI3
-#include <sof/audio/eq_fir/fir_hifi3.h>
-#endif
+SOF_DEFINE_REG_UUID(eq_fir);
 
-/* tracing */
-#define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
-#define trace_eq_with_ids(comp_ptr, __e, ...)			\
-	trace_event_comp(TRACE_CLASS_EQ_FIR, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-#define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
-#define tracev_eq_with_ids(comp_ptr, __e, ...)			\
-	tracev_event_comp(TRACE_CLASS_EQ_FIR, comp_ptr,		\
-			  __e, ##__VA_ARGS__)
-
-#define trace_eq_error(__e, ...) \
-	trace_error(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
-#define trace_eq_error_with_ids(comp_ptr, __e, ...)		\
-	trace_error_comp(TRACE_CLASS_EQ_FIR, comp_ptr,		\
-			 __e, ##__VA_ARGS__)
-
-/* src component private data */
-struct comp_data {
-	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct sof_eq_fir_config *config; /**< pointer to setup blob */
-	enum sof_ipc_frame source_format; /**< source frame format */
-	enum sof_ipc_frame sink_format;   /**< sink frame format */
-	int32_t *fir_delay;		  /**< pointer to allocated RAM */
-	size_t fir_delay_size;		  /**< allocated size */
-	void (*eq_fir_func_even)(struct fir_state_32x16 fir[],
-				 struct comp_buffer *source,
-				 struct comp_buffer *sink,
-				 int frames, int nch);
-	void (*eq_fir_func)(struct fir_state_32x16 fir[],
-			    struct comp_buffer *source,
-			    struct comp_buffer *sink,
-			    int frames, int nch);
-};
-
-/* The optimized FIR functions variants need to be updated into function
- * set_fir_func. The cd->eq_fir_func is a function that can process any
- * number of samples. The cd->eq_fir_func_even is for optimized version
- * that is guaranteed to be called with even samples number.
- */
-
-#if FIR_HIFI3
-#if CONFIG_FORMAT_S16LE
-static inline void set_s16_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s16_hifi3;
-	cd->eq_fir_func = eq_fir_s16_hifi3;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-static inline void set_s24_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s24_hifi3;
-	cd->eq_fir_func = eq_fir_s24_hifi3;
-}
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-static inline void set_s32_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s32_hifi3;
-	cd->eq_fir_func = eq_fir_s32_hifi3;
-}
-#endif /* CONFIG_FORMAT_S32LE */
-
-#elif FIR_HIFIEP
-#if CONFIG_FORMAT_S16LE
-static inline void set_s16_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s16_hifiep;
-	cd->eq_fir_func = eq_fir_s16_hifiep;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-static inline void set_s24_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s24_hifiep;
-	cd->eq_fir_func = eq_fir_s24_hifiep;
-}
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-static inline void set_s32_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s32_hifiep;
-	cd->eq_fir_func = eq_fir_s32_hifiep;
-}
-#endif /* CONFIG_FORMAT_S32LE */
-#else
-/* FIR_GENERIC */
-#if CONFIG_FORMAT_S16LE
-static inline void set_s16_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_s16;
-	cd->eq_fir_func = eq_fir_s16;
-}
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-static inline void set_s24_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_s24;
-	cd->eq_fir_func = eq_fir_s24;
-}
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-static inline void set_s32_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_s32;
-	cd->eq_fir_func = eq_fir_s32;
-}
-#endif /* CONFIG_FORMAT_S32LE */
-#endif
-
-static inline int set_fir_func(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	switch (dev->params.frame_fmt) {
-#if CONFIG_FORMAT_S16LE
-	case SOF_IPC_FRAME_S16_LE:
-		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S16_LE");
-		set_s16_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S24LE
-	case SOF_IPC_FRAME_S24_4LE:
-		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S24_4LE");
-		set_s24_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S32LE
-	case SOF_IPC_FRAME_S32_LE:
-		trace_eq_with_ids(dev, "set_fir_func(), SOF_IPC_FRAME_S32_LE");
-		set_s32_fir(cd);
-		break;
-#endif /* CONFIG_FORMAT_S32LE */
-	default:
-		trace_eq_error_with_ids(dev, "set_fir_func(), invalid frame_fmt");
-		return -EINVAL;
-	}
-	return 0;
-}
-
-/* Pass-trough functions to replace FIR core while not configured for
+/* Pass-through functions to replace FIR core while not configured for
  * response.
  */
 
-#if CONFIG_FORMAT_S16LE
-static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
-				   struct comp_buffer *source,
-				   struct comp_buffer *sink,
-				   int frames, int nch)
+static void eq_fir_passthrough(struct fir_state_32x16 fir[],
+			       struct input_stream_buffer *bsource,
+			       struct output_stream_buffer *bsink,
+			       int frames)
 {
-	int16_t *x;
-	int16_t *y;
-	int i;
-	int n = frames * nch;
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
 
-	for (i = 0; i < n; i++) {
-		x = buffer_read_frag_s16(source, i);
-		y = buffer_write_frag_s16(sink, i);
-		*y = *x;
-	}
-}
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
-				   struct comp_buffer *source,
-				   struct comp_buffer *sink,
-				   int frames, int nch)
-{
-	int32_t *x;
-	int32_t *y;
-	int i;
-	int n = frames * nch;
-
-	for (i = 0; i < n; i++) {
-		x = buffer_read_frag_s32(source, i);
-		y = buffer_write_frag_s32(sink, i);
-		*y = *x;
-	}
-}
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
-
-/* Function to select pass-trough depending on PCM format */
-
-static inline int set_pass_func(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	switch (dev->params.frame_fmt) {
-#if CONFIG_FORMAT_S16LE
-	case SOF_IPC_FRAME_S16_LE:
-		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S16_LE");
-		cd->eq_fir_func_even = eq_fir_s16_passthrough;
-		cd->eq_fir_func = eq_fir_s16_passthrough;
-		break;
-#endif /* CONFIG_FORMAT_S32LE */
-#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
-	case SOF_IPC_FRAME_S24_4LE:
-	case SOF_IPC_FRAME_S32_LE:
-		trace_eq_with_ids(dev, "set_pass_func(), SOF_IPC_FRAME_S32_LE");
-		cd->eq_fir_func_even = eq_fir_s32_passthrough;
-		cd->eq_fir_func = eq_fir_s32_passthrough;
-		break;
-#endif /* CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE */
-	default:
-		trace_eq_error_with_ids(dev, "set_pass_func() error: "
-					"invalid dev->params.frame_fmt");
-		return -EINVAL;
-	}
-	return 0;
+	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
 }
 
-/*
- * EQ control code is next. The processing is in fir_ C modules.
- */
-
-static void eq_fir_free_parameters(struct sof_eq_fir_config **config)
+static void eq_fir_free_delaylines(struct processing_module *mod)
 {
-	rfree(*config);
-	*config = NULL;
-}
-
-static void eq_fir_free_delaylines(struct comp_data *cd)
-{
+	struct comp_data *cd = module_get_private_data(mod);
 	struct fir_state_32x16 *fir = cd->fir;
 	int i = 0;
 
 	/* Free the common buffer for all EQs and point then
 	 * each FIR channel delay line to NULL.
 	 */
-	rfree(cd->fir_delay);
+	mod_free(mod, cd->fir_delay);
 	cd->fir_delay = NULL;
 	cd->fir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir[i].delay = NULL;
 }
 
-static int eq_fir_setup(struct comp_data *cd, int nch)
+static int eq_fir_init_coef(struct comp_dev *dev, struct sof_eq_fir_config *config,
+			    size_t config_size, struct fir_state_32x16 *fir, int nch)
 {
-	struct fir_state_32x16 *fir = cd->fir;
-	struct sof_eq_fir_config *config = cd->config;
-	struct sof_eq_fir_coef_data *lookup[SOF_EQ_FIR_MAX_RESPONSES];
-	struct sof_eq_fir_coef_data *eq;
-	int32_t *fir_delay;
-	int16_t *coef_data;
+	struct sof_fir_coef_data *lookup[SOF_EQ_FIR_MAX_RESPONSES];
+	struct sof_fir_coef_data *eq;
 	int16_t *assign_response;
-	int resp;
+	int16_t *coef_data;
+	size_t coef_words_max;
+	size_t size_sum = 0;
+	int resp = 0;
 	int i;
 	int j;
-	size_t s;
-	size_t size_sum = 0;
+	int s;
 
-	trace_eq("eq_fir_setup(), "
-		 "channels_in_config = %u, number_of_responses = %u",
-		 config->channels_in_config, config->number_of_responses);
+	/* If this function is called with fir==NULL, then it's supposed to validate the
+	 * new configuration without actually altering it.
+	 */
+	if (!fir) {
+		/* Called from validate(), we shall find nch and assign it accordingly,
+		 * as the parameter is not valid
+		 */
+		struct processing_module *mod = comp_mod(dev);
+		struct comp_data *cd = module_get_private_data(mod);
+
+		nch = cd->nch;
+	}
+
+	comp_info(dev, "%u responses, %u channels, stream %d channels",
+		  config->number_of_responses, config->channels_in_config, nch);
 
 	/* Sanity checks */
+	if (config->size != config_size) {
+		comp_err(dev, "Incorrect configuration blob size");
+		return -EINVAL;
+	}
+
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
 	    !config->channels_in_config) {
-		trace_eq_error("eq_fir_setup() error: "
-			       "invalid channels_in_config");
+		comp_err(dev, "invalid channels count");
+		return -EINVAL;
+	}
+	/* channels_in_config indexes into a int16_t array. An odd count would
+	 * leave the coefficient area at a 2-byte alignment, breaking the
+	 * 4-byte aligned int32_t loads in the optimized FIR kernels.
+	 */
+	if (config->channels_in_config & 0x1) {
+		comp_err(dev, "channels_in_config %u must be even",
+			 config->channels_in_config);
 		return -EINVAL;
 	}
 	if (config->number_of_responses > SOF_EQ_FIR_MAX_RESPONSES) {
-		trace_eq_error("eq_fir_setup() error: number_of_responses > "
-			       "SOF_EQ_FIR_MAX_RESPONSES");
+		comp_err(dev, "# of resp exceeds max");
 		return -EINVAL;
 	}
 
-	/* Collect index of respose start positions in all_coefficients[]  */
+	/* Compute the size of the coefficient area in int16_t words from the
+	 * blob's self-declared size. The blob layout is:
+	 *   sizeof(*config) header bytes
+	 *   channels_in_config int16_t assign_response[]
+	 *   coefficient data[]
+	 */
+	if (config->size < sizeof(*config) ||
+	    config->size - sizeof(*config) <
+		(size_t)config->channels_in_config * sizeof(int16_t)) {
+		comp_err(dev, "config size %u too small", config->size);
+		return -EINVAL;
+	}
+	coef_words_max = (config->size - sizeof(*config)) / sizeof(int16_t) -
+		config->channels_in_config;
+
+	/* Collect index of response start positions in all_coefficients[]  */
 	j = 0;
-	assign_response = &config->data[0];
-	coef_data = &config->data[config->channels_in_config];
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
+	coef_data = ASSUME_ALIGNED(&config->data[config->channels_in_config], 4);
 	for (i = 0; i < SOF_EQ_FIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			trace_eq("eq_fir_setup(), "
-				 "index of respose start position = %u", j);
-			eq = (struct sof_eq_fir_coef_data *)&coef_data[j];
+			/* Header must fit before reading length */
+			if (j + SOF_FIR_COEF_NHEADER > coef_words_max) {
+				comp_err(dev, "response %d header out of bounds", i);
+				return -EINVAL;
+			}
+			eq = (struct sof_fir_coef_data *)&coef_data[j];
+			/* Bound length so it is valid and the coefficient data
+			 * stays within the blob.
+			 */
+			if (eq->length <= 0 || eq->length > SOF_FIR_MAX_LENGTH ||
+			    (eq->length & 0x3) ||
+			    j + SOF_FIR_COEF_NHEADER + eq->length > coef_words_max) {
+				comp_err(dev, "response %d length %d out of bounds",
+					 i, eq->length);
+				return -EINVAL;
+			}
 			lookup[i] = eq;
-			j += SOF_EQ_FIR_COEF_NHEADER + coef_data[j];
+			j += SOF_FIR_COEF_NHEADER + eq->length;
 		} else {
 			lookup[i] = NULL;
 		}
@@ -331,578 +174,367 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 	/* Initialize 1st phase */
 	for (i = 0; i < nch; i++) {
 		/* Check for not reading past blob response to channel assign
-		 * map. If the blob has smaller channel map then apply for
-		 * additional channels the response that was used for the first
-		 * channel. This allows to use mono blobs to setup multi
-		 * channel equalization without stopping to an error.
+		 * map. The previous channel response is assigned for any
+		 * additional channels in the stream. It allows to use single
+		 * channel configuration to setup multi channel equalization
+		 * with the same response.
 		 */
 		if (i < config->channels_in_config)
 			resp = assign_response[i];
-		else
-			resp = assign_response[0];
 
 		if (resp < 0) {
 			/* Initialize EQ channel to bypass and continue with
 			 * next channel response.
 			 */
-			fir_reset(&fir[i]);
+			if (fir) {
+				comp_info(dev, "ch %d is set to bypass", i);
+				fir_reset(&fir[i]);
+			}
 			continue;
 		}
 
-		if (resp >= config->number_of_responses)
+		if (resp >= config->number_of_responses) {
+			comp_err(dev, "requested response %d exceeds what has been defined",
+				 resp);
 			return -EINVAL;
+		}
 
 		/* Initialize EQ coefficients. */
 		eq = lookup[resp];
-		s = fir_init_coef(&fir[i], eq);
-		if (s > 0)
+		s = fir_delay_size(eq);
+		if (s > 0) {
 			size_sum += s;
-		else
+		} else {
+			comp_info(dev, "FIR length %d is invalid", eq->length);
 			return -EINVAL;
+		}
 
-		trace_eq("eq_fir_setup(), "
-			 "ch = %d initialized to response = %d", i, resp);
+#if defined FIR_MAX_LENGTH_BUILD_SPECIFIC
+		if (eq->length * nch > FIR_MAX_LENGTH_BUILD_SPECIFIC) {
+			comp_err(dev, "Filter length %d exceeds limitation for build.",
+				 eq->length);
+			return -EINVAL;
+		}
+#endif
+
+		if (fir) {
+			fir_init_coef(&fir[i], eq);
+			comp_info(dev, "ch %d is set to response = %d",
+				  i, resp);
+		}
 	}
+
+	return size_sum;
+}
+
+static void eq_fir_init_delay(struct fir_state_32x16 *fir,
+			      int32_t *delay_start, int nch)
+{
+	int32_t *fir_delay = delay_start;
+	int i;
+
+	/* Initialize 2nd phase to set EQ delay lines pointers */
+	for (i = 0; i < nch; i++) {
+		if (fir[i].length > 0)
+			fir_init_delay(&fir[i], &fir_delay);
+	}
+}
+
+static int eq_fir_setup(struct processing_module *mod, int nch)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int delay_size;
+
+	/* Free existing FIR channels data if it was allocated */
+	eq_fir_free_delaylines(mod);
+
+	/* Update number of channels */
+	cd->nch = nch;
+
+	/* Set coefficients for each channel EQ from coefficient blob */
+	delay_size = eq_fir_init_coef(dev, cd->config, cd->config_size, cd->fir, nch);
+	if (delay_size < 0)
+		return delay_size; /* Contains error code */
 
 	/* If all channels were set to bypass there's no need to
 	 * allocate delay. Just return with success.
 	 */
-	cd->fir_delay = NULL;
-	cd->fir_delay_size = size_sum;
-	if (!size_sum)
+	if (!delay_size)
 		return 0;
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	cd->fir_delay = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
+	cd->fir_delay = mod_alloc(mod, delay_size);
 	if (!cd->fir_delay) {
-		trace_eq_error("eq_fir_setup() error: alloc failed, size = %u",
-			       size_sum);
+		comp_err(dev, "delay allocation failed for size %d", delay_size);
 		return -ENOMEM;
 	}
 
-	/* Initialize 2nd phase to set EQ delay lines pointers */
-	fir_delay = cd->fir_delay;
-	for (i = 0; i < nch; i++) {
-		resp = assign_response[i];
-		if (resp >= 0)
-			fir_init_delay(&fir[i], &fir_delay);
+	memset(cd->fir_delay, 0, delay_size);
+	cd->fir_delay_size = delay_size;
+
+	/* Assign delay line to each channel EQ */
+	eq_fir_init_delay(cd->fir, cd->fir_delay, nch);
+	return 0;
+}
+
+static int eq_fir_check_blob_size(struct comp_dev *dev, size_t size)
+{
+	if (size < sizeof(struct sof_eq_fir_config) || size > SOF_EQ_FIR_MAX_SIZE) {
+		comp_err(dev, "invalid configuration blob, size %zu", size);
+		return -EINVAL;
 	}
 
 	return 0;
 }
 
-static int eq_fir_switch_store(struct fir_state_32x16 fir[],
-			       struct sof_eq_fir_config *config,
-			       uint32_t ch, int32_t response)
+static int eq_fir_validator(struct comp_dev *dev, void *new_data, uint32_t new_data_size)
 {
-	/* Copy assign response from update. The EQ is initialized later
-	 * when all channels have been updated.
-	 */
-	if (!config || ch >= config->channels_in_config)
-		return -EINVAL;
+	int ret;
 
-	config->data[ch] = response;
+	ret = eq_fir_check_blob_size(dev, new_data_size);
+	if (ret < 0)
+		return ret;
 
-	return 0;
+	return eq_fir_init_coef(dev, new_data, new_data_size, NULL, -1);
 }
 
 /*
  * End of algorithm code. Next the standard component methods.
  */
 
-static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
+static int eq_fir_init(struct processing_module *mod)
 {
-	struct comp_dev *dev;
-	struct comp_data *cd;
-	struct sof_ipc_comp_process *fir;
-	struct sof_ipc_comp_process *ipc_fir
-		= (struct sof_ipc_comp_process *)comp;
-	size_t bs = ipc_fir->size;
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
+	struct comp_data *cd = NULL;
 	int i;
-	int ret;
 
-	trace_eq("eq_fir_new()");
+	comp_info(dev, "entry");
 
-	if (IPC_IS_SIZE_INVALID(ipc_fir->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_EQ_FIR, ipc_fir->config);
-		return NULL;
-	}
+	cd = mod_zalloc(mod, sizeof(*cd));
+	if (!cd)
+		return -ENOMEM;
 
-	/* Check first before proceeding with dev and cd that coefficients
-	 * blob size is sane.
-	 */
-	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		trace_eq_error("eq_fir_new() error: coefficients blob size = "
-			       "%u > SOF_EQ_FIR_MAX_SIZE", bs);
-		return NULL;
-	}
-
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_process));
-	if (!dev)
-		return NULL;
-
-	fir = (struct sof_ipc_comp_process *)&dev->comp;
-	ret = memcpy_s(fir, sizeof(*fir), ipc_fir,
-		       sizeof(struct sof_ipc_comp_process));
-	assert(!ret);
-
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
-
-	comp_set_drvdata(dev, cd);
-
-	cd->eq_fir_func_even = NULL;
 	cd->eq_fir_func = NULL;
-	cd->config = NULL;
+	cd->fir_delay = NULL;
+	cd->fir_delay_size = 0;
+	cd->nch = -1;
 
-	/* Allocate and make a copy of the coefficients blob and reset FIR. If
-	 * the EQ is configured later in run-time the size is zero.
-	 */
-	if (bs) {
-		cd->config = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
-		if (!cd->config) {
-			rfree(dev);
-			rfree(cd);
-			return NULL;
-		}
-
-		ret = memcpy_s(cd->config, bs, ipc_fir->data, bs);
-		assert(!ret);
+	/* component model data handler */
+	cd->model_handler = mod_data_blob_handler_new(mod);
+	if (!cd->model_handler) {
+		comp_err(dev, "mod_data_blob_handler_new() failed.");
+		mod_free(mod, cd);
+		return -ENOMEM;
 	}
+
+	md->private = cd;
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
-	dev->state = COMP_STATE_READY;
-	return dev;
-}
-
-static void eq_fir_free(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-
-	trace_eq_with_ids(dev, "eq_fir_free()");
-
-	eq_fir_free_delaylines(cd);
-	eq_fir_free_parameters(&cd->config);
-
-	rfree(cd);
-	rfree(dev);
-}
-
-/* set component audio stream parameters */
-static int eq_fir_params(struct comp_dev *dev)
-{
-	trace_eq_with_ids(dev, "eq_fir_params()");
-
-	/* All configuration work is postponed to prepare(). */
 	return 0;
 }
 
-static int fir_cmd_get_data(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata, int max_size)
+static int eq_fir_free(struct processing_module *mod)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	unsigned char *dst, *src;
-	size_t offset;
-	size_t bs;
-	int ret = 0;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_BINARY:
-		trace_eq_with_ids(dev, "fir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
+	comp_dbg(mod->dev, "entry");
 
-		max_size -= sizeof(struct sof_ipc_ctrl_data) +
-			sizeof(struct sof_abi_hdr);
+	eq_fir_free_delaylines(mod);
+	mod_data_blob_handler_free(mod, cd->model_handler);
 
-		/* Copy back to user space */
-		if (cd->config) {
-			src = (unsigned char *)cd->config;
-			dst = (unsigned char *)cdata->data->data;
-			bs = cd->config->size;
-			cdata->elems_remaining = 0;
-			offset = 0;
-			if (bs > max_size) {
-				bs = (cdata->msg_index + 1) * max_size > bs ?
-					bs - cdata->msg_index * max_size :
-					max_size;
-				offset = cdata->msg_index * max_size;
-				cdata->elems_remaining = cd->config->size -
-					offset;
-			}
-			cdata->num_elems = bs;
-			trace_eq_with_ids(dev, "fir_cmd_get_data(), "
-					  "blob size %zu "
-					  "msg index %u "
-					  "max size %u "
-					  "offset %zu",
-					   bs, cdata->msg_index,
-					   max_size, offset);
-			ret = memcpy_s(dst, ((struct sof_abi_hdr *)
-				       (cdata->data))->size, src + offset,
-				       bs);
-			assert(!ret);
+	mod_free(mod, cd);
 
-			cdata->data->abi = SOF_ABI_VERSION;
-			cdata->data->size = bs;
-		} else {
-			trace_eq_error_with_ids(dev, "fir_cmd_get_data() error:"
-						"invalid cd->config");
-			ret = -EINVAL;
-		}
-		break;
-	default:
-		trace_eq_error_with_ids(dev, "fir_cmd_get_data() error: "
-					"invalid cdata->cmd");
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
+	return 0;
 }
 
-static int fir_cmd_set_data(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata)
+static int eq_fir_get_config(struct processing_module *mod,
+			     uint32_t config_id, uint32_t *data_offset_size,
+			     uint8_t *fragment, size_t fragment_size)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_ctrl_value_comp *compv;
-	unsigned char *dst, *src;
-	uint32_t offset;
-	int i;
-	int ret = 0;
+	struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)fragment;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_ENUM:
-		trace_eq_with_ids(dev, "fir_cmd_set_data(), SOF_CTRL_CMD_ENUM");
-		compv = (struct sof_ipc_ctrl_value_comp *)cdata->data->data;
-		if (cdata->index == SOF_EQ_FIR_IDX_SWITCH) {
-			for (i = 0; i < (int)cdata->num_elems; i++) {
-				trace_eq_with_ids(dev, "fir_cmd_set_data(), "
-						  "SOF_EQ_FIR_IDX_SWITCH, "
-						  "compv index = %u, "
-						  "svalue = %u",
-						  compv[i].index,
-						  compv[i].svalue);
-				ret = eq_fir_switch_store(cd->fir,
-							  cd->config,
-							  compv[i].index,
-							  compv[i].svalue);
-				if (ret < 0) {
-					trace_eq_error_with_ids(dev,
-								"fir_cmd_set_data() "
-								"error: "
-								"eq_fir_switch_store() "
-								"failed");
-					return -EINVAL;
-				}
-			}
-		} else {
-			trace_eq_error_with_ids(dev, "fir_cmd_set_data() error: "
-						"invalid cdata->index = %u",
-						cdata->index);
-			return -EINVAL;
-		}
-		break;
-	case SOF_CTRL_CMD_BINARY:
-		trace_eq_with_ids(dev, "fir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
+	comp_info(mod->dev, "entry");
 
-		if (dev->state != COMP_STATE_READY) {
-			/* It is a valid request but currently this is not
-			 * supported during playback/capture. The driver will
-			 * re-send data in next resume when idle and the new
-			 * EQ configuration will be used when playback/capture
-			 * starts.
-			 */
-			trace_eq_error_with_ids(dev, "fir_cmd_set_data() error: "
-						"driver is busy");
-			return -EBUSY;
-		}
-
-		/* Copy new config, find size from header */
-		trace_eq_with_ids(dev, "fir_cmd_set_data(): "
-				  "blob size: %u msg_index %u",
-				  cdata->num_elems + cdata->elems_remaining,
-				  cdata->msg_index);
-		if (cdata->num_elems + cdata->elems_remaining >
-		    SOF_EQ_FIR_MAX_SIZE)
-			return -EINVAL;
-
-		if (cdata->msg_index == 0) {
-			/* Check and free old config */
-			eq_fir_free_parameters(&cd->config);
-
-			/* Allocate buffer for copy of the blob. */
-			cd->config = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-					     cdata->num_elems +
-					     cdata->elems_remaining);
-
-			if (!cd->config) {
-				trace_eq_error_with_ids(dev, "fir_cmd_set_data() "
-							"error: buffer "
-							"allocation failed");
-				return -EINVAL;
-			}
-			offset = 0;
-		} else {
-			offset = cd->config->size - cdata->elems_remaining -
-				cdata->num_elems;
-		}
-
-		dst = (unsigned char *)cd->config;
-		src = (unsigned char *)cdata->data->data;
-
-		/* Just copy the configuration. The EQ will be initialized in
-		 * prepare().
-		 */
-		ret = memcpy_s(dst + offset, cdata->num_elems +
-			       cdata->elems_remaining - offset, src,
-			       cdata->num_elems);
-		assert(!ret);
-
-		/* we can check data when elems_remaining == 0 */
-		break;
-	default:
-		trace_eq_error_with_ids(dev, "fir_cmd_set_data() "
-					"error: invalid cdata->cmd");
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
+	return comp_data_blob_get_cmd(cd->model_handler, cdata, fragment_size);
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data,
-		      int max_data_size)
+static int eq_fir_set_config(struct processing_module *mod, uint32_t config_id,
+			     enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			     const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			     size_t response_size)
 {
-	struct sof_ipc_ctrl_data *cdata = data;
-	int ret = 0;
+	struct comp_data *cd = module_get_private_data(mod);
 
-	trace_eq_with_ids(dev, "eq_fir_cmd()");
+	comp_info(mod->dev, "entry");
 
-	switch (cmd) {
-	case COMP_CMD_SET_DATA:
-		ret = fir_cmd_set_data(dev, cdata);
-		break;
-	case COMP_CMD_GET_DATA:
-		ret = fir_cmd_get_data(dev, cdata, max_data_size);
-		break;
-	case COMP_CMD_SET_VALUE:
-		trace_eq_with_ids(dev, "eq_fir_cmd(), COMP_CMD_SET_VALUE");
-		break;
-	case COMP_CMD_GET_VALUE:
-		trace_eq_with_ids(dev, "eq_fir_cmd(), COMP_CMD_GET_VALUE");
-		break;
-	default:
-		trace_eq_error_with_ids(dev, "eq_fir_cmd() error: "
-					"invalid command");
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
-static int eq_fir_trigger(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	trace_eq_with_ids(dev, "eq_fir_trigger()");
-
-	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) {
-		assert(cd->eq_fir_func);
-		assert(cd->eq_fir_func_even);
-	}
-
-	return comp_set_state(dev, cmd);
+	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
+				  fragment, fragment_size);
 }
 
 /* copy and process stream data from source to sink buffers */
-static int eq_fir_copy(struct comp_dev *dev)
+static int eq_fir_process(struct processing_module *mod,
+			  struct input_stream_buffer *input_buffers,
+			  int num_input_buffers,
+			  struct output_stream_buffer *output_buffers,
+			  int num_output_buffers)
 {
-	struct comp_copy_limits cl;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct fir_state_32x16 *fir = cd->fir;
-	int nch = dev->params.channels;
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = input_buffers[0].data;
+	uint32_t frame_count = input_buffers[0].size;
+	int ret;
 
-	tracev_eq_with_ids(dev, "eq_fir_copy()");
+	comp_dbg(mod->dev, "entry");
 
-	/* Get source, sink, number of frames etc. to process. */
-	comp_get_copy_limits(dev, &cl);
-
-	/* Check if number of frames to process if it is odd. The
-	 * optimized FIR function to process even number of frames
-	 * is lower load than generic version. In that case process
-	 * one frame with generic FIR and the rest with even frames
-	 * number FIR version.
-	 */
-	if (cl.frames & 0x1) {
-		cl.frames--;
-		cl.source_bytes -= cl.source_frame_bytes;
-		cl.sink_bytes -= cl.sink_frame_bytes;
-
-		/* Run EQ for one frame and update pointers */
-		cd->eq_fir_func(fir, cl.source, cl.sink, 1, nch);
-		comp_update_buffer_consume(cl.source, cl.source_frame_bytes);
-		comp_update_buffer_produce(cl.sink, cl.sink_frame_bytes);
+	/* Check for changed configuration */
+	if (comp_is_new_data_blob_available(cd->model_handler)) {
+		cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
+		if (!cd->config || eq_fir_check_blob_size(mod->dev, cd->config_size) < 0)
+			return -EINVAL;
+		ret = eq_fir_setup(mod, audio_stream_get_channels(source));
+		if (ret < 0) {
+			comp_err(mod->dev, "failed FIR setup");
+			return ret;
+		} else if (cd->fir_delay_size) {
+			comp_dbg(mod->dev, "active");
+			ret = set_fir_func(mod, audio_stream_get_frm_fmt(source));
+			if (ret < 0)
+				return ret;
+		} else {
+			cd->eq_fir_func = eq_fir_passthrough;
+			comp_dbg(mod->dev, "pass-through");
+		}
 	}
 
-	if (cl.frames > 1) {
-		/* Run EQ function */
-		cd->eq_fir_func_even(fir, cl.source, cl.sink, cl.frames, nch);
+	/*
+	 * Process only even number of frames with the FIR function. The
+	 * optimized filter function loads the successive input samples from
+	 * internal delay line with a 64 bit load operation. The other odd
+	 * (or any) number of frames capable FIR version would permanently
+	 * break the delay line alignment if called with odd number of frames
+	 * so it can't be used here.
+	 */
 
-		/* calc new free and available */
-		comp_update_buffer_consume(cl.source, cl.source_bytes);
-		comp_update_buffer_produce(cl.sink, cl.sink_bytes);
+	frame_count &= ~0x1;
+	if (frame_count) {
+		cd->eq_fir_func(cd->fir, &input_buffers[0], &output_buffers[0], frame_count);
+		module_update_buffer_position(&input_buffers[0], &output_buffers[0], frame_count);
 	}
 
 	return 0;
 }
 
-static int eq_fir_prepare(struct comp_dev *dev)
+static void eq_fir_set_alignment(struct audio_stream *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	struct comp_buffer *sourceb;
-	struct comp_buffer *sinkb;
-	uint32_t sink_period_bytes;
-	int ret;
+	const uint32_t byte_align = SOF_FRAME_BYTE_ALIGN;
+	const uint32_t frame_align_req = 2; /* Process multiples of 2 frames */
 
-	trace_eq_with_ids(dev, "eq_fir_prepare()");
+	audio_stream_set_align(byte_align, frame_align_req, source);
+}
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
+static int eq_fir_prepare(struct processing_module *mod,
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_dev *dev = mod->dev;
+	int channels;
+	enum sof_ipc_frame frame_fmt;
+	int ret = 0;
 
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
+	comp_dbg(dev, "entry");
 
 	/* EQ component will only ever have 1 source and 1 sink buffer. */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
-
-	/* get source data format */
-	cd->source_format = comp_frame_fmt(sourceb->source);
-
-	/* get sink data format and period bytes */
-	cd->sink_format = comp_frame_fmt(sinkb->sink);
-	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
-
-	/* Rewrite params format for this component to match the host side. */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.frame_fmt = cd->source_format;
-	else
-		dev->params.frame_fmt = cd->sink_format;
-
-	if (sinkb->size < config->periods_sink * sink_period_bytes) {
-		trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
-					"sink buffer size is insufficient");
-		ret = -ENOMEM;
-		goto err;
+	sourceb = comp_dev_get_first_data_producer(dev);
+	sinkb = comp_dev_get_first_data_consumer(dev);
+	if (!sourceb || !sinkb) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
 	}
 
-	/* Initialize EQ */
-	if (cd->config) {
-		ret = eq_fir_setup(cd, dev->params.channels);
-		if (ret < 0) {
-			trace_eq_error_with_ids(dev, "eq_fir_prepare() error: "
-						"eq_fir_setup failed.");
-			goto err;
-		}
-
-		ret = set_fir_func(dev);
+	ret = eq_fir_params(mod);
+	if (ret < 0) {
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return ret;
 	}
 
-	ret = set_pass_func(dev);
-	return ret;
+	eq_fir_set_alignment(&sourceb->stream);
+	channels = audio_stream_get_channels(&sinkb->stream);
+	frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
 
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
+	cd->eq_fir_func = eq_fir_passthrough;
+	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
+	if (cd->config) {
+		if (eq_fir_check_blob_size(dev, cd->config_size) < 0)
+			return -EINVAL;
+
+		ret = eq_fir_setup(mod, channels);
+		if (ret < 0)
+			comp_err(dev, "eq_fir_setup failed.");
+		else if (cd->fir_delay_size)
+			ret = set_fir_func(mod, frame_fmt);
+		else
+			comp_dbg(dev, "pass-through");
+	}
+
+	if (ret < 0)
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+
+	/* Ensure concurrent changes don't mess with the playback */
+	comp_data_blob_set_validator(cd->model_handler, eq_fir_validator);
+
 	return ret;
 }
 
-static int eq_fir_reset(struct comp_dev *dev)
+static int eq_fir_reset(struct processing_module *mod)
 {
 	int i;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd = module_get_private_data(mod);
 
-	trace_eq_with_ids(dev, "eq_fir_reset()");
+	comp_dbg(mod->dev, "entry");
 
-	eq_fir_free_delaylines(cd);
+	comp_data_blob_set_validator(cd->model_handler, NULL);
 
-	cd->eq_fir_func_even = NULL;
+	eq_fir_free_delaylines(mod);
+
 	cd->eq_fir_func = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
-	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
-static void eq_fir_cache(struct comp_dev *dev, int cmd)
-{
-	struct comp_data *cd;
-
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_eq_with_ids(dev, "eq_fir_cache(), CACHE_WRITEBACK_INV");
-
-		cd = comp_get_drvdata(dev);
-		if (cd->config)
-			dcache_writeback_invalidate_region(cd->config,
-							   cd->config->size);
-		if (cd->fir_delay)
-			dcache_writeback_invalidate_region(cd->fir_delay,
-							   cd->fir_delay_size);
-
-		dcache_writeback_invalidate_region(cd, sizeof(*cd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_eq_with_ids(dev, "eq_fir_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		/* Note: The component data need to be retrieved after
-		 * the dev data has been invalidated.
-		 */
-		cd = comp_get_drvdata(dev);
-		dcache_invalidate_region(cd, sizeof(*cd));
-
-		if (cd->fir_delay)
-			dcache_invalidate_region(cd->fir_delay,
-						 cd->fir_delay_size);
-		if (cd->config)
-			dcache_invalidate_region(cd->config,
-						 cd->config->size);
-
-		break;
-	}
-}
-
-struct comp_driver comp_eq_fir = {
-	.type = SOF_COMP_EQ_FIR,
-	.ops = {
-		.new = eq_fir_new,
+static const struct module_interface eq_fir_interface = {
+		.init = eq_fir_init,
 		.free = eq_fir_free,
-		.params = eq_fir_params,
-		.cmd = eq_fir_cmd,
-		.trigger = eq_fir_trigger,
-		.copy = eq_fir_copy,
+		.set_configuration = eq_fir_set_config,
+		.get_configuration = eq_fir_get_config,
+		.process_audio_stream = eq_fir_process,
 		.prepare = eq_fir_prepare,
 		.reset = eq_fir_reset,
-		.cache = eq_fir_cache,
-	},
 };
 
-static void sys_comp_eq_fir_init(void)
-{
-	comp_register(&comp_eq_fir);
-}
+#if CONFIG_COMP_FIR_MODULE
+/* modular: llext dynamic link */
 
-DECLARE_MODULE(sys_comp_eq_fir_init);
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+static const struct sof_man_module_manifest mod_manifest __section(".module") __used =
+	SOF_LLEXT_MODULE_MANIFEST("EQFIR", &eq_fir_interface, 1, SOF_REG_UUID(eq_fir), 40);
+
+SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
+DECLARE_MODULE_ADAPTER(eq_fir_interface, eq_fir_uuid, eq_fir_tr);
+SOF_MODULE_INIT(eq_fir, sys_comp_module_eq_fir_interface_init);
+
+#endif

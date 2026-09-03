@@ -2,12 +2,16 @@
 
 # Implements build counter and adds it as post-build action for sof
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 set(VERSION_BUILD_COUNTER_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR}/version-build-counter.cmake)
 
 set(BUILD_COUNTER_PATH "${SOF_ROOT_BINARY_DIRECTORY}/.build")
 
+# Among many other differences, the Zephyr build does not invoke
+# sof_add_build_counter_rule() at build time. In other words, Zephyr has
+# never supported incrementing the BLD_COUNTERS: SOF_BUILD is always
+# equal to the starting value below when building with Zephyr.
 if(NOT EXISTS "${BUILD_COUNTER_PATH}")
 	file(WRITE "${BUILD_COUNTER_PATH}" "1")
 endif()

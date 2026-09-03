@@ -1,0 +1,37 @@
+cmake_minimum_required(VERSION 3.20.0)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(test_fast_get)
+
+set(SOF_ROOT "${PROJECT_SOURCE_DIR}/../../../..")
+
+# Set SOF top directory for UUID registry generation
+set(sof_top_dir ${SOF_ROOT})
+
+# Include SOF CMake functions
+include(${SOF_ROOT}/scripts/cmake/misc.cmake)
+include(${SOF_ROOT}/scripts/cmake/uuid-registry.cmake)
+
+target_include_directories(app PRIVATE
+	${SOF_ROOT}/zephyr/include
+	${SOF_ROOT}/src/include
+	${SOF_ROOT}/src/platform/posix/include
+	${PROJECT_BINARY_DIR}/include/generated  # For uuid-registry.h
+)
+
+# Define SOF-specific configurations for unit testing
+target_compile_definitions(app PRIVATE
+	-DCONFIG_ZEPHYR_POSIX=1
+)
+
+target_sources(app PRIVATE
+	test_fast_get_ztest.c
+	${SOF_ROOT}/src/lib/objpool.c
+	${SOF_ROOT}/zephyr/lib/fast-get.c
+	${SOF_ROOT}/test/ztest/unit/common/alloc.c
+)
+
+target_link_libraries(app PRIVATE "-Wl,--wrap=rzalloc,--wrap=rfree,--wrap=sof_heap_alloc,--wrap=sof_heap_free")
+
+# Add RELATIVE_FILE definitions for SOF trace functionality
+sof_append_relative_path_definitions(app)

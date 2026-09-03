@@ -1,0 +1,808 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright(c) 2022 Intel Corporation. All rights reserved.
+ *
+ * Author: Piotr Makaruk <piotr.makaruk@intel.com>
+ */
+
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/component_ext.h>
+#include <sof/audio/pipeline.h>
+#include <sof/common.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/common.h>
+#include <ipc/dai.h>
+#include <ipc4/gateway.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/schedule.h>
+#include <rtos/alloc.h>
+#include <rtos/task.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
+#include <ipc4/error_status.h>
+#include <ipc4/module.h>
+#include <ipc4/pipeline.h>
+#include <sof/ut.h>
+#include <zephyr/pm/policy.h>
+#include <rtos/init.h>
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+#include <ipc4/notification.h>
+#endif
+
+#define DT_NUM_HDA_HOST_IN	DT_PROP(DT_INST(0, intel_adsp_hda_host_in), dma_channels)
+#define DT_NUM_HDA_HOST_OUT	DT_PROP(DT_INST(0, intel_adsp_hda_host_out), dma_channels)
+
+#define DT_NUM_HDA_LINK_IN	DT_PROP(DT_INST(0, intel_adsp_hda_link_in), dma_channels)
+#define DT_NUM_HDA_LINK_OUT	DT_PROP(DT_INST(0, intel_adsp_hda_link_out), dma_channels)
+
+static const struct comp_driver comp_chain_dma;
+static const uint32_t max_chain_number = DT_NUM_HDA_HOST_OUT + DT_NUM_HDA_HOST_IN;
+
+LOG_MODULE_REGISTER(chain_dma, CONFIG_SOF_LOG_LEVEL);
+
+SOF_DEFINE_REG_UUID(chain_dma);
+DECLARE_TR_CTX(chain_dma_tr, SOF_UUID(chain_dma_uuid), LOG_LEVEL_INFO);
+
+/* chain dma component private data */
+struct chain_dma_data {
+	bool first_data_received;
+	/* node id of host HD/A DMA */
+	union ipc4_connector_node_id host_connector_node_id;
+	/* node id of link HD/A DMA */
+	union ipc4_connector_node_id link_connector_node_id;
+	uint32_t *hw_buffer;
+	struct task chain_task;
+	enum sof_ipc_stream_direction stream_direction;
+	/* container size in bytes */
+	uint8_t cs;
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+	bool xrun_notification_sent;
+#endif
+
+	/* local host DMA config */
+	struct sof_dma *dma_host;
+	int chan_host_index;
+	struct dma_config z_config_host;
+	struct dma_block_config dma_block_cfg_host;
+
+	/* local link DMA config */
+	struct sof_dma *dma_link;
+	int chan_link_index;
+	struct dma_config z_config_link;
+	struct dma_block_config dma_block_cfg_link;
+
+	struct comp_buffer *dma_buffer;
+};
+
+static int chain_host_start(struct comp_dev *dev)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	int err;
+
+	if (cd->chan_host_index < 0 || !cd->dma_host) {
+		comp_err(dev, "incomplete initialization detected, aborting host %p",
+			 cd->dma_host);
+		return -ENODEV;
+	}
+
+	err = sof_dma_start(cd->dma_host, cd->chan_host_index);
+	if (err < 0)
+		return err;
+
+	comp_info(dev, "dma_start() host chan_index = %d",
+		  cd->chan_host_index);
+	return 0;
+}
+
+static int chain_link_start(struct comp_dev *dev)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	int err;
+
+	if (cd->chan_link_index < 0 || !cd->dma_link) {
+		comp_err(dev, "incomplete initialization detected, aborting link %p",
+			 cd->dma_link);
+		return -ENODEV;
+	}
+
+	err = sof_dma_start(cd->dma_link, cd->chan_link_index);
+	if (err < 0)
+		return err;
+
+	comp_info(dev, "dma_start() link chan_index = %d",
+		  cd->chan_link_index);
+	return 0;
+}
+
+static int chain_link_stop(struct comp_dev *dev)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	int err;
+
+	if (cd->chan_link_index < 0 || !cd->dma_link) {
+		comp_err(dev, "incomplete initialization detected, aborting link %p",
+			 cd->dma_link);
+		return -ENODEV;
+	}
+
+	err = sof_dma_stop(cd->dma_link, cd->chan_link_index);
+	if (err < 0)
+		return err;
+
+	comp_info(dev, "dma_stop() link chan_index = %d",
+		  cd->chan_link_index);
+
+	return 0;
+}
+
+static int chain_host_stop(struct comp_dev *dev)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	int err;
+
+	if (cd->chan_host_index < 0 || !cd->dma_host) {
+		comp_err(dev, "incomplete initialization detected, aborting host %p",
+			 cd->dma_host);
+		return -ENODEV;
+	}
+
+	err = sof_dma_stop(cd->dma_host, cd->chan_host_index);
+	if (err < 0)
+		return err;
+
+	comp_info(dev, "dma_stop() host chan_index = %d",
+		  cd->chan_host_index);
+
+	return 0;
+}
+
+/* Get size of data, which was consumed by link */
+static size_t chain_get_transferred_data_size(const uint32_t out_read_pos, const uint32_t in_read_pos,
+				       const size_t buff_size)
+{
+	if (out_read_pos >= in_read_pos)
+		return out_read_pos - in_read_pos;
+
+	return buff_size - in_read_pos + out_read_pos;
+}
+
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+static void chain_dma_send_xrun_notif(struct chain_dma_data *cd)
+{
+	uint32_t resource_id = cd->link_connector_node_id.dw;
+	enum sof_ipc_stream_direction dir = cd->stream_direction;
+
+	if (!cd->xrun_notification_sent)
+		cd->xrun_notification_sent = send_gateway_xrun_notif_msg(resource_id, dir);
+}
+#endif
+
+static enum task_state chain_task_run(void *data)
+{
+	size_t link_avail_bytes, link_free_bytes, host_avail_bytes, host_free_bytes;
+	struct chain_dma_data *cd = data;
+	uint32_t link_read_pos, host_read_pos;
+	struct dma_status stat;
+	uint32_t link_type;
+	int ret;
+
+	/* Link DMA can return -EPIPE and current status if xrun occurs, then it is not critical
+	 * and flow shall continue. Other error values will be treated as critical.
+	 */
+	ret = sof_dma_get_status(cd->dma_link, cd->chan_link_index, &stat);
+	switch (ret) {
+	case 0:
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+		cd->xrun_notification_sent = false;
+#endif
+		break;
+	case -EPIPE:
+#if CONFIG_XRUN_NOTIFICATIONS_ENABLE
+		chain_dma_send_xrun_notif(cd);
+#endif
+		tr_warn(&chain_dma_tr, "dma_get_status() link xrun occurred,"
+			" ret = %d", ret);
+		break;
+	default:
+		tr_err(&chain_dma_tr, "dma_get_status() error, ret = %d", ret);
+		return SOF_TASK_STATE_COMPLETED;
+	}
+
+	link_avail_bytes = stat.pending_length;
+	link_free_bytes = stat.free;
+	link_read_pos = stat.read_position;
+
+	/* Host DMA does not report xruns. All error values will be treated as critical. */
+	ret = sof_dma_get_status(cd->dma_host, cd->chan_host_index, &stat);
+	if (ret < 0) {
+		tr_err(&chain_dma_tr, "dma_get_status() error, ret = %d", ret);
+		return SOF_TASK_STATE_COMPLETED;
+	}
+
+	host_avail_bytes = stat.pending_length;
+	host_free_bytes = stat.free;
+	host_read_pos = stat.read_position;
+
+	link_type = cd->link_connector_node_id.f.dma_type;
+	if (link_type == ipc4_hda_link_input_class) {
+		/* CAPTURE:
+		 * When chained Link Input with Host Input immediately start transmitting data
+		 * to host. In this mode task will always stream to host as much data as possible
+		 */
+		const size_t increment = MIN(host_free_bytes, link_avail_bytes);
+
+		ret = sof_dma_reload(cd->dma_host, cd->chan_host_index, increment);
+		if (ret < 0) {
+			tr_err(&chain_dma_tr,
+			       "dma_reload() host error, ret = %d", ret);
+			return SOF_TASK_STATE_COMPLETED;
+		}
+
+		ret = sof_dma_reload(cd->dma_link, cd->chan_link_index, increment);
+		if (ret < 0) {
+			tr_err(&chain_dma_tr,
+			       "dma_reload() link error, ret = %d", ret);
+			return SOF_TASK_STATE_COMPLETED;
+		}
+	} else {
+		/* PLAYBACK:
+		 * When chained Host Output with Link Output then wait for half buffer full. In this
+		 * mode task will update read position based on transferred data size to avoid
+		 * overwriting valid data and write position by half buffer size.
+		 */
+		const size_t buff_size = audio_stream_get_size(&cd->dma_buffer->stream);
+		const size_t half_buff_size = buff_size / 2;
+
+		if (!cd->first_data_received && host_avail_bytes > half_buff_size) {
+			ret = sof_dma_reload(cd->dma_link, cd->chan_link_index,
+					     MIN(host_avail_bytes, link_free_bytes));
+			if (ret < 0) {
+				tr_err(&chain_dma_tr,
+				       "dma_reload() link error, ret = %d", ret);
+				return SOF_TASK_STATE_COMPLETED;
+			}
+			cd->first_data_received = true;
+
+		} else if (cd->first_data_received) {
+			const size_t transferred =
+				chain_get_transferred_data_size(link_read_pos,
+								host_read_pos,
+								buff_size);
+
+			ret = sof_dma_reload(cd->dma_host, cd->chan_host_index,
+					     transferred);
+			if (ret < 0) {
+				tr_err(&chain_dma_tr,
+				       "dma_reload() host error, ret = %d", ret);
+				return SOF_TASK_STATE_COMPLETED;
+			}
+
+			if (host_avail_bytes >= half_buff_size &&
+			    link_free_bytes >= half_buff_size) {
+				ret = sof_dma_reload(cd->dma_link, cd->chan_link_index,
+						     half_buff_size);
+				if (ret < 0) {
+					tr_err(&chain_dma_tr,
+					       "dma_reload() link error, ret = %d", ret);
+					return SOF_TASK_STATE_COMPLETED;
+				}
+			}
+		}
+	}
+	return SOF_TASK_STATE_RESCHEDULE;
+}
+
+static int chain_task_start(struct comp_dev *dev)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	int ret;
+
+	comp_info(dev, "host_dma_id = 0x%08x", cd->host_connector_node_id.dw);
+
+	switch (cd->chain_task.state) {
+	case SOF_TASK_STATE_QUEUED:
+		return 0;
+	case SOF_TASK_STATE_COMPLETED:
+		break;
+	case SOF_TASK_STATE_INIT:
+		break;
+	case SOF_TASK_STATE_FREE:
+		break;
+	default:
+		comp_err(dev, "bad state transition");
+		return -EINVAL;
+	}
+
+	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
+		ret = chain_host_start(dev);
+		if (ret)
+			return ret;
+		ret = chain_link_start(dev);
+		if (ret) {
+			chain_host_stop(dev);
+			return ret;
+		}
+	} else {
+		ret = chain_link_start(dev);
+		if (ret)
+			return ret;
+		ret = chain_host_start(dev);
+		if (ret) {
+			chain_link_stop(dev);
+			return ret;
+		}
+	}
+
+	ret = schedule_task_init_ll(&cd->chain_task, SOF_UUID(chain_dma_uuid),
+				    SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
+				    chain_task_run, cd, 0, 0);
+	if (ret < 0) {
+		comp_err(dev, "ll task initialization failed");
+		goto error_task;
+	}
+
+	ret = schedule_task(&cd->chain_task, 0, 0);
+	if (ret < 0) {
+		comp_err(dev, "ll schedule task failed");
+		schedule_task_free(&cd->chain_task);
+		goto error_task;
+	}
+
+	pm_policy_state_lock_get(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+
+	return 0;
+
+error_task:
+	chain_host_stop(dev);
+	chain_link_stop(dev);
+
+	return ret;
+}
+
+static int chain_task_pause(struct comp_dev *dev)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	int ret, ret2;
+
+	if (cd->chain_task.state == SOF_TASK_STATE_FREE)
+		return 0;
+
+	cd->first_data_received = false;
+	if (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) {
+		ret = chain_host_stop(dev);
+		ret2 = chain_link_stop(dev);
+	} else {
+		ret = chain_link_stop(dev);
+		ret2 = chain_host_stop(dev);
+	}
+	if (!ret)
+		ret = ret2;
+
+	schedule_task_free(&cd->chain_task);
+	pm_policy_state_lock_put(PM_STATE_RUNTIME_IDLE, PM_ALL_SUBSTATES);
+
+	return ret;
+}
+
+__cold static void chain_release(struct comp_dev *dev)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
+
+	if (cd->dma_host) {
+		if (cd->chan_host_index >= 0)
+			sof_dma_release_channel(cd->dma_host, cd->chan_host_index);
+		sof_dma_put(cd->dma_host);
+		cd->dma_host = NULL;
+		cd->chan_host_index = -EINVAL;
+	}
+
+	if (cd->dma_link) {
+		if (cd->chan_link_index >= 0)
+			sof_dma_release_channel(cd->dma_link, cd->chan_link_index);
+		sof_dma_put(cd->dma_link);
+		cd->dma_link = NULL;
+		cd->chan_link_index = -EINVAL;
+	}
+
+	if (cd->dma_buffer) {
+		buffer_free(cd->dma_buffer);
+		cd->dma_buffer = NULL;
+	}
+}
+
+/* Retrieves host connector node id from dma id */
+__cold static int get_connector_node_id(uint32_t dma_id, bool host_type,
+					union ipc4_connector_node_id *connector_node_id)
+{
+	uint32_t max_out, max_in;
+	uint8_t type, type2;
+
+	assert_can_be_cold();
+
+	if (host_type) {
+		type = ipc4_hda_host_output_class;
+		type2 = ipc4_hda_host_input_class;
+		max_out = DT_NUM_HDA_HOST_OUT;
+		max_in = DT_NUM_HDA_HOST_IN;
+	} else {
+		type = ipc4_hda_link_output_class;
+		type2 = ipc4_hda_link_input_class;
+		max_out = DT_NUM_HDA_LINK_OUT;
+		max_in = DT_NUM_HDA_LINK_IN;
+	}
+
+	if (dma_id >= max_out) {
+		type = type2;
+		dma_id -= max_out;
+		if (dma_id >= max_in)
+			return -EINVAL;
+	}
+	connector_node_id->dw = 0;
+	connector_node_id->f.dma_type = type;
+	connector_node_id->f.v_index = dma_id;
+
+	return 0;
+}
+
+__cold static int chain_init(struct comp_dev *dev, void *addr, size_t length)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	struct dma_block_config *dma_block_cfg_host = &cd->dma_block_cfg_host;
+	struct dma_block_config *dma_block_cfg_link = &cd->dma_block_cfg_link;
+	struct dma_config *dma_cfg_host = &cd->z_config_host;
+	struct dma_config *dma_cfg_link = &cd->z_config_link;
+	int channel;
+	int err;
+
+	assert_can_be_cold();
+
+	memset(dma_cfg_host, 0, sizeof(*dma_cfg_host));
+	memset(dma_block_cfg_host, 0, sizeof(*dma_block_cfg_host));
+	dma_cfg_host->block_count = 1;
+	dma_cfg_host->source_data_size = cd->cs;
+	dma_cfg_host->dest_data_size = cd->cs;
+	dma_cfg_host->head_block = dma_block_cfg_host;
+	dma_block_cfg_host->block_size = length;
+
+	memset(dma_cfg_link, 0, sizeof(*dma_cfg_link));
+	memset(dma_block_cfg_link, 0, sizeof(*dma_block_cfg_link));
+	dma_cfg_link->block_count = 1;
+	dma_cfg_link->source_data_size = cd->cs;
+	dma_cfg_link->dest_data_size = cd->cs;
+	dma_cfg_link->head_block  = dma_block_cfg_link;
+	dma_block_cfg_link->block_size = length;
+
+	switch (cd->stream_direction) {
+	case SOF_IPC_STREAM_PLAYBACK:
+		dma_cfg_host->channel_direction = HOST_TO_MEMORY;
+		dma_block_cfg_host->dest_address = (uint32_t)addr;
+		dma_cfg_link->channel_direction = MEMORY_TO_PERIPHERAL;
+		dma_block_cfg_link->source_address = (uint32_t)addr;
+		break;
+	case SOF_IPC_STREAM_CAPTURE:
+		dma_cfg_host->channel_direction = MEMORY_TO_HOST;
+		dma_block_cfg_host->source_address = (uint32_t)addr;
+		dma_cfg_link->channel_direction = PERIPHERAL_TO_MEMORY;
+		dma_block_cfg_link->dest_address = (uint32_t)addr;
+		break;
+	}
+
+	/* get host DMA channel */
+	channel = cd->host_connector_node_id.f.v_index;
+	channel = sof_dma_request_channel(cd->dma_host, channel);
+	if (channel < 0) {
+		comp_err(dev, "host dma_request_channel() failed for %u",
+			 cd->host_connector_node_id.f.v_index);
+		return channel;
+	}
+
+	cd->chan_host_index = channel;
+
+	err = sof_dma_config(cd->dma_host, cd->chan_host_index, dma_cfg_host);
+	if (err < 0) {
+		comp_err(dev, "host dma_config() failed for %d", channel);
+		goto error_host;
+	}
+
+	/* get link DMA channel */
+	channel = cd->link_connector_node_id.f.v_index;
+	channel = sof_dma_request_channel(cd->dma_link, channel);
+	if (channel < 0) {
+		comp_err(dev, "link dma_request_channel() failed for %u",
+			 cd->link_connector_node_id.f.v_index);
+		err = channel;
+		goto error_host;
+	}
+
+	cd->chan_link_index = channel;
+
+	err = sof_dma_config(cd->dma_link, cd->chan_link_index, dma_cfg_link);
+	if (err < 0) {
+		comp_err(dev, "link dma_config() failed for %d", channel);
+		goto error_link;
+	}
+	return 0;
+
+error_link:
+	sof_dma_release_channel(cd->dma_link, cd->chan_link_index);
+error_host:
+	sof_dma_release_channel(cd->dma_host, cd->chan_host_index);
+	return err;
+}
+
+__cold static int chain_task_init(struct comp_dev *dev, uint8_t host_dma_id, uint8_t link_dma_id,
+				  uint32_t fifo_size)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+	struct mod_alloc_ctx *alloc_ctx = NULL;
+	uint32_t addr_align;
+	size_t buff_size;
+	void *buff_addr;
+	uint32_t dir;
+	int ret;
+
+	assert_can_be_cold();
+
+	ret = get_connector_node_id(host_dma_id, true, &cd->host_connector_node_id);
+	if (ret < 0)
+		return ret;
+
+	ret = get_connector_node_id(link_dma_id, false, &cd->link_connector_node_id);
+	if (ret < 0)
+		return ret;
+
+	/* Verify whether HDA gateways can be chained */
+	if (cd->host_connector_node_id.f.dma_type == ipc4_hda_host_output_class) {
+		if (cd->link_connector_node_id.f.dma_type != ipc4_hda_link_output_class)
+			return -EINVAL;
+		cd->stream_direction = SOF_IPC_STREAM_PLAYBACK;
+	}
+	if (cd->host_connector_node_id.f.dma_type == ipc4_hda_host_input_class) {
+		if (cd->link_connector_node_id.f.dma_type != ipc4_hda_link_input_class)
+			return -EINVAL;
+		cd->stream_direction = SOF_IPC_STREAM_CAPTURE;
+	}
+
+	/* request HDA DMA with shared access privilege */
+	dir = (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) ?
+		SOF_DMA_DIR_HMEM_TO_LMEM : SOF_DMA_DIR_LMEM_TO_HMEM;
+
+	cd->dma_host = sof_dma_get(dir, 0, SOF_DMA_DEV_HOST, SOF_DMA_ACCESS_SHARED);
+	if (!cd->dma_host) {
+		comp_err(dev, "dma_get() returned NULL");
+		return -EINVAL;
+	}
+
+	dir = (cd->stream_direction == SOF_IPC_STREAM_PLAYBACK) ?
+		SOF_DMA_DIR_MEM_TO_DEV : SOF_DMA_DIR_DEV_TO_MEM;
+
+	cd->dma_link = sof_dma_get(dir, SOF_DMA_CAP_HDA, SOF_DMA_DEV_HDA, SOF_DMA_ACCESS_SHARED);
+	if (!cd->dma_link) {
+		sof_dma_put(cd->dma_host);
+		comp_err(dev, "dma_get() returned NULL");
+		return -EINVAL;
+	}
+
+	/* retrieve DMA buffer address alignment */
+	ret = sof_dma_get_attribute(cd->dma_host, DMA_ATTR_BUFFER_ADDRESS_ALIGNMENT,
+				    &addr_align);
+	if (ret < 0) {
+		comp_err(dev,
+			 "could not get dma buffer address alignment, err = %d", ret);
+		goto error;
+	}
+
+	switch (cd->link_connector_node_id.f.dma_type) {
+	case ipc4_hda_link_input_class:
+		/* Increasing buffer size for capture path as L1SEN exit takes sometimes
+		 * more than expected. To prevent from glitches and DMA overruns buffer
+		 * is increased 5 times.
+		 */
+		fifo_size *= 5;
+		break;
+	case ipc4_hda_link_output_class:
+		/* Increasing buffer size for playback path as L1SEN exit takes sometimes
+		 * more that expected
+		 * Note, FIFO size must be smaller than half of host buffer size
+		 * (20ms ping pong) to avoid problems with position reporting
+		 * Size increase from default 2ms to 5ms is enough.
+		 */
+		fifo_size *= 5;
+		fifo_size /= 2;
+		break;
+	}
+
+	fifo_size = ALIGN_UP_INTERNAL(fifo_size, addr_align);
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+	alloc_ctx = ipc_get()->ll_alloc;
+#endif
+
+	/* allocate not shared buffer */
+	cd->dma_buffer = buffer_alloc(alloc_ctx, fifo_size,
+				      SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
+				      addr_align, BUFFER_USAGE_NOT_SHARED);
+
+	if (!cd->dma_buffer) {
+		comp_err(dev, "failed to alloc dma buffer");
+		ret = -EINVAL;
+		goto error;
+	}
+
+	/* clear dma buffer */
+	buffer_zero(cd->dma_buffer);
+	buff_addr = audio_stream_get_addr(&cd->dma_buffer->stream);
+	buff_size = audio_stream_get_size(&cd->dma_buffer->stream);
+
+	ret = chain_init(dev, buff_addr, buff_size);
+	if (ret < 0) {
+		buffer_free(cd->dma_buffer);
+		cd->dma_buffer = NULL;
+		goto error;
+	}
+
+	cd->chain_task.state = SOF_TASK_STATE_INIT;
+
+	return 0;
+error:
+	sof_dma_put(cd->dma_host);
+	sof_dma_put(cd->dma_link);
+	return ret;
+}
+
+static int chain_task_trigger(struct comp_dev *dev, int cmd)
+{
+	switch (cmd) {
+	case COMP_TRIGGER_START:
+		return chain_task_start(dev);
+	case COMP_TRIGGER_PAUSE:
+		return chain_task_pause(dev);
+	default:
+		return -EINVAL;
+	}
+}
+
+/*
+ * comp_dev and private data allocation helpers. For user-space LL both
+ * objects must live on the user heap so the (unprivileged) user LL thread
+ * can access them; otherwise the normal component/rmalloc paths are used.
+ */
+#ifdef CONFIG_SOF_USERSPACE_LL
+__cold static struct comp_dev *chain_dev_alloc(const struct comp_driver *drv)
+{
+	struct comp_dev *dev;
+
+	dev = sof_heap_alloc(sof_sys_user_heap_get(),
+			     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+			     sizeof(*dev), 0);
+	if (!dev)
+		return NULL;
+
+	memset(dev, 0, sizeof(*dev));
+	comp_init(drv, dev, sizeof(*dev));
+
+	return dev;
+}
+
+__cold static struct chain_dma_data *chain_cd_alloc(void)
+{
+	struct chain_dma_data *cd;
+
+	cd = sof_heap_alloc(sof_sys_user_heap_get(), SOF_MEM_FLAG_USER, sizeof(*cd), 0);
+	if (cd)
+		memset(cd, 0, sizeof(*cd));
+
+	return cd;
+}
+
+__cold static void chain_dev_free(struct comp_dev *dev)
+{
+	sof_heap_free(sof_sys_user_heap_get(), dev);
+}
+
+__cold static void chain_cd_free(struct chain_dma_data *cd)
+{
+	sof_heap_free(sof_sys_user_heap_get(), cd);
+}
+#else
+__cold static struct comp_dev *chain_dev_alloc(const struct comp_driver *drv)
+{
+	return comp_alloc(drv, sizeof(struct comp_dev));
+}
+
+__cold static struct chain_dma_data *chain_cd_alloc(void)
+{
+	return rzalloc(SOF_MEM_FLAG_USER, sizeof(struct chain_dma_data));
+}
+
+__cold static void chain_dev_free(struct comp_dev *dev)
+{
+	comp_free_device(dev);
+}
+
+__cold static void chain_cd_free(struct chain_dma_data *cd)
+{
+	rfree(cd);
+}
+#endif
+
+__cold static struct comp_dev *chain_task_create(const struct comp_driver *drv,
+						 const struct comp_ipc_config *ipc_config,
+						 const void *ipc_specific_config)
+{
+	const struct ipc4_chain_dma *cdma = (struct ipc4_chain_dma *)ipc_specific_config;
+	const uint32_t host_dma_id = cdma->primary.r.host_dma_id;
+	const uint32_t link_dma_id = cdma->primary.r.link_dma_id;
+	const uint32_t fifo_size = cdma->extension.r.fifo_size;
+	const bool scs = cdma->primary.r.scs;
+	struct chain_dma_data *cd;
+	struct comp_dev *dev;
+	int ret;
+
+	assert_can_be_cold();
+
+	if (host_dma_id >= max_chain_number)
+		return NULL;
+
+	dev = chain_dev_alloc(drv);
+	if (!dev)
+		return NULL;
+
+	cd = chain_cd_alloc();
+	if (!cd)
+		goto error;
+
+	cd->first_data_received = false;
+	cd->cs = scs ? 2 : 4;
+	cd->chain_task.state = SOF_TASK_STATE_INIT;
+	cd->chan_host_index = -EINVAL;
+	cd->chan_link_index = -EINVAL;
+
+	comp_set_drvdata(dev, cd);
+
+	ret = chain_task_init(dev, host_dma_id, link_dma_id, fifo_size);
+	if (!ret)
+		return dev;
+
+	chain_cd_free(cd);
+error:
+	chain_dev_free(dev);
+	return NULL;
+}
+
+__cold static void chain_task_free(struct comp_dev *dev)
+{
+	struct chain_dma_data *cd = comp_get_drvdata(dev);
+
+	assert_can_be_cold();
+
+	chain_release(dev);
+	chain_cd_free(cd);
+	chain_dev_free(dev);
+}
+
+static const struct comp_driver comp_chain_dma = {
+	.uid = SOF_RT_UUID(chain_dma_uuid),
+	.tctx = &chain_dma_tr,
+	.ops = {
+		.create = chain_task_create,
+		.trigger = chain_task_trigger,
+		.free = chain_task_free,
+	},
+};
+
+static struct comp_driver_info comp_chain_dma_info = {
+	.drv = &comp_chain_dma,
+};
+
+UT_STATIC void sys_comp_chain_dma_init(void)
+{
+	comp_register(&comp_chain_dma_info);
+}
+
+DECLARE_MODULE(sys_comp_chain_dma_init);
+SOF_MODULE_INIT(chain_dma, sys_comp_chain_dma_init);

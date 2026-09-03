@@ -10,11 +10,10 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
-#include <sof/lib/cache.h>
-#include <config.h>
+#include <rtos/cache.h>
 
 /* data cache line alignment */
-#define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
+#define PLATFORM_DCACHE_ALIGN	32
 
 /* physical DSP addresses */
 
@@ -45,8 +44,14 @@
 #define SAI_1_BASE	0x59050000
 #define SAI_1_SIZE	0x00010000
 
+#define UUID_ENTRY_ELF_BASE	0x1FFFA000
+#define UUID_ENTRY_ELF_SIZE	0x6000
+
 #define LOG_ENTRY_ELF_BASE	0x20000000
 #define LOG_ENTRY_ELF_SIZE	0x2000000
+
+#define EXT_MANIFEST_ELF_BASE	(LOG_ENTRY_ELF_BASE + LOG_ENTRY_ELF_SIZE)
+#define EXT_MANIFEST_ELF_SIZE	0x2000000
 
 /*
  * The Heap and Stack on i.MX8 are organised like this :-
@@ -106,7 +111,7 @@
 #define HEAP_RT_COUNT64		32
 #define HEAP_RT_COUNT128	32
 #define HEAP_RT_COUNT256	32
-#define HEAP_RT_COUNT512	4
+#define HEAP_RT_COUNT512	32
 #define HEAP_RT_COUNT1024	4
 #define HEAP_RT_COUNT2048	4
 
@@ -140,7 +145,7 @@
 	(SDRAM1_SIZE - SOF_MAILBOX_SIZE - HEAP_RUNTIME_SIZE - SOF_STACK_TOTAL_SIZE -\
 	HEAP_SYS_RUNTIME_SIZE - HEAP_SYSTEM_SIZE)
 
-#define HEAP_BUFFER_BLOCK_SIZE		0x180
+#define HEAP_BUFFER_BLOCK_SIZE		0x100
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 #define PLATFORM_HEAP_SYSTEM		1 /* one per core */
@@ -149,7 +154,7 @@
 #define PLATFORM_HEAP_BUFFER		1
 
 /* Stack configuration */
-#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_SIZE		(CONFIG_SOF_STACK_SIZE)
 #define SOF_STACK_TOTAL_SIZE	SOF_STACK_SIZE
 #define SOF_STACK_BASE		(SDRAM1_BASE + SDRAM1_SIZE)
 #define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
@@ -165,15 +170,38 @@
 
 #define SOF_MEM_RO_SIZE			0x8
 
-#define uncache_to_cache(address)	address
-#define cache_to_uncache(address)	address
-#define is_uncached(address)		0
+#define HEAP_BUF_ALIGNMENT		DCACHE_LINE_SIZE
 
-#define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
+/** \brief EDF task's default stack size in bytes. */
+#define PLATFORM_TASK_DEFAULT_STACK_SIZE	3072
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
-void platform_init_memmap(void);
+
+struct sof;
+
+void platform_init_memmap(struct sof *sof);
+
+#define uncache_to_cache(address)	address
+#define cache_to_uncache(address)	address
+#define cache_to_uncache_init(address)	address
+#define is_uncached(address)		0
+
+/**
+ * \brief Function for keeping shared data synchronized.
+ * It's used after usage of data shared by different cores.
+ * Such data is dynamically allocated with SOF_MEM_FLAG_SHARED
+ * flag. Does nothing, since IMX doesn't support SMP.
+ */
+
+static inline void *platform_rfree_prepare(void *ptr)
+{
+	return ptr;
+}
+
 #endif
+
+#define host_to_local(addr) (addr)
+#define local_to_host(addr) (addr)
 
 #endif /* __PLATFORM_LIB_MEMORY_H__ */
 

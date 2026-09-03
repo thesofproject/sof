@@ -8,13 +8,21 @@
 #include <sof/audio/component.h>
 #include <sof/drivers/edma.h>
 #include <sof/drivers/esai.h>
-#include <sof/lib/alloc.h>
+#include <rtos/interrupt.h>
+#include <rtos/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/uuid.h>
 #include <ipc/dai.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>
+
+LOG_MODULE_REGISTER(esai, CONFIG_SOF_LOG_LEVEL);
+
+SOF_DEFINE_REG_UUID(esai);
+
+DECLARE_TR_CTX(esai_tr, SOF_UUID(esai_uuid), LOG_LEVEL_INFO);
 
 struct esai_pdata {
 	struct {
@@ -33,67 +41,21 @@ struct esai_pdata {
 		uint32_t prrc;
 		uint32_t pcrc;
 	} regs;
+	struct sof_ipc_dai_esai_params params;
 };
 
-static int esai_context_store(struct dai *dai)
+static inline int esai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
+				  const void *spec_config)
 {
-	struct esai_pdata *pdata = dai_get_drvdata(dai);
-
-	if (!pdata)
-		return -EINVAL;
-
-	pdata->regs.ecr = dai_read(dai, REG_ESAI_ECR);
-	pdata->regs.tfcr = dai_read(dai, REG_ESAI_TFCR);
-	pdata->regs.rfcr = dai_read(dai, REG_ESAI_RFCR);
-	pdata->regs.saicr = dai_read(dai, REG_ESAI_SAICR);
-	pdata->regs.tcr = dai_read(dai, REG_ESAI_TCR);
-	pdata->regs.tccr = dai_read(dai, REG_ESAI_TCCR);
-	pdata->regs.rcr = dai_read(dai, REG_ESAI_RCR);
-	pdata->regs.rccr = dai_read(dai, REG_ESAI_RCCR);
-	pdata->regs.tsma = dai_read(dai, REG_ESAI_TSMA);
-	pdata->regs.tsmb = dai_read(dai, REG_ESAI_TSMB);
-	pdata->regs.rsma = dai_read(dai, REG_ESAI_RSMA);
-	pdata->regs.rsmb = dai_read(dai, REG_ESAI_RSMB);
-	pdata->regs.prrc = dai_read(dai, REG_ESAI_PRRC);
-	pdata->regs.pcrc = dai_read(dai, REG_ESAI_PCRC);
-
-	return 0;
-}
-
-static int esai_context_restore(struct dai *dai)
-{
-	struct esai_pdata *pdata = dai_get_drvdata(dai);
-
-	if (!pdata)
-		return -EINVAL;
-
-	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ERST);
-	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ESAIEN);
-	dai_write(dai, REG_ESAI_TFCR, pdata->regs.tfcr);
-	dai_write(dai, REG_ESAI_RFCR, pdata->regs.rfcr);
-	dai_write(dai, REG_ESAI_SAICR, pdata->regs.saicr);
-	dai_write(dai, REG_ESAI_TCCR, pdata->regs.tccr);
-	dai_write(dai, REG_ESAI_RCCR, pdata->regs.rccr);
-	dai_write(dai, REG_ESAI_TSMA, pdata->regs.tsma);
-	dai_write(dai, REG_ESAI_TSMB, pdata->regs.tsmb);
-	dai_write(dai, REG_ESAI_RSMA, pdata->regs.rsma);
-	dai_write(dai, REG_ESAI_RSMB, pdata->regs.rsmb);
-	dai_write(dai, REG_ESAI_PRRC, pdata->regs.prrc);
-	dai_write(dai, REG_ESAI_PCRC, pdata->regs.pcrc);
-	dai_write(dai, REG_ESAI_TCR, pdata->regs.tcr);
-	dai_write(dai, REG_ESAI_RCR, pdata->regs.rcr);
-	dai_write(dai, REG_ESAI_ECR, pdata->regs.ecr);
-
-	return 0;
-}
-
-static inline int esai_set_config(struct dai *dai,
-				 struct sof_ipc_dai_config *config)
-{
+	const struct sof_ipc_dai_config *config = spec_config;
 	uint32_t xcr = 0, xccr = 0, mask;
+	struct esai_pdata *esai = dai_get_drvdata(dai);
 
-	tracev_esai("ESAI: set_config format 0x%04x",
-		    config->format);
+	dai_dbg(dai, "ESAI: set_config format 0x%04x",
+		config->format);
+
+	esai->params = config->esai;
+
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 		/* Data on rising edge of bclk, frame low, 1clk before
@@ -126,10 +88,10 @@ static inline int esai_set_config(struct dai *dai,
 		xccr |= ESAI_xCCR_xCKP | ESAI_xCCR_xHCKP;
 		break;
 	case SOF_DAI_FMT_PDM:
-		trace_esai_error("ESAI: Unsupported format (PDM)");
+		dai_err(dai, "ESAI: Unsupported format (PDM)");
 		return -EINVAL;
 	default:
-		trace_esai_error("ESAI: invalid format");
+		dai_err(dai, "ESAI: invalid format");
 		return -EINVAL;
 	}
 
@@ -150,25 +112,25 @@ static inline int esai_set_config(struct dai *dai,
 		xccr ^= ESAI_xCCR_xCKP | ESAI_xCCR_xHCKP | ESAI_xCCR_xFSP;
 		break;
 	default:
-		trace_esai_error("ESAI: Invalid bit inversion format");
+		dai_err(dai, "ESAI: Invalid bit inversion format");
 		return -EINVAL;
 	}
 
-	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
-	case SOF_DAI_FMT_CBM_CFM:
+	switch (config->format & SOF_DAI_FMT_CLOCK_PROVIDER_MASK) {
+	case SOF_DAI_FMT_CBP_CFP:
 		/* Nothing to do in the registers */
 		break;
-	case SOF_DAI_FMT_CBM_CFS:
+	case SOF_DAI_FMT_CBP_CFC:
 		xccr |= ESAI_xCCR_xFSD;
 		break;
-	case SOF_DAI_FMT_CBS_CFM:
+	case SOF_DAI_FMT_CBC_CFP:
 		xccr |= ESAI_xCCR_xCKD;
 		break;
-	case SOF_DAI_FMT_CBS_CFS:
+	case SOF_DAI_FMT_CBC_CFC:
 		xccr |= ESAI_xCCR_xFSD | ESAI_xCCR_xCKD;
 		break;
 	default:
-		trace_esai_error("ESAI: Invalid clock master-slave configuration");
+		dai_err(dai, "ESAI: Invalid clock provider-consumer configuration");
 		return -EINVAL;
 	}
 
@@ -196,8 +158,8 @@ static inline int esai_set_config(struct dai *dai,
 
 	dai_update_bits(dai, REG_ESAI_TCCR, mask, xccr);
 	/* There is a hardware limitation which prevents tx and rx to be
-	 * simultaneously master or simultaneously slave. As a workaround,
-	 * we will leave tx as master and set rx as slave.
+	 * simultaneously provider or simultaneously consumer. As a workaround,
+	 * we will leave tx as provider and set rx as consumer.
 	 */
 	xccr &= ~(ESAI_xCCR_xCKD | ESAI_xCCR_xFSD);
 	dai_update_bits(dai, REG_ESAI_RCCR, mask, xccr);
@@ -349,7 +311,7 @@ static void esai_stop(struct dai *dai, int direction)
 
 static int esai_trigger(struct dai *dai, int cmd, int direction)
 {
-	tracev_esai("ESAI: trigger");
+	dai_dbg(dai, "ESAI: trigger");
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -360,12 +322,8 @@ static int esai_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_TRIGGER_PAUSE:
 		esai_stop(dai, direction);
 		break;
-	/* Remaining triggers are no-ops */
-	case COMP_TRIGGER_SUSPEND:
-	case COMP_TRIGGER_RESUME:
-		break;
 	default:
-		trace_esai_error("ESAI: invalid trigger cmd %d", cmd);
+		dai_err(dai, "ESAI: invalid trigger cmd %d", cmd);
 		return -EINVAL;
 	}
 	return 0;
@@ -375,17 +333,18 @@ static int esai_probe(struct dai *dai)
 {
 	struct esai_pdata *pdata;
 
-	tracev_esai("ESAI: probe");
+	dai_dbg(dai, "ESAI: probe");
 	if (dai_get_drvdata(dai)) {
-		trace_esai_error("ESAI: Repeated probe, skipping");
+		dai_err(dai, "ESAI: Repeated probe, skipping");
 		return -EEXIST;
 	}
-	pdata = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
-			SOF_MEM_CAPS_RAM, sizeof(*pdata));
+	pdata = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*pdata));
 	if (!pdata) {
-		trace_esai_error("ESAI probe failure, out of memory");
+		dai_err(dai, "ESAI probe failure, out of memory");
 		return -ENOMEM;
 	}
+	dai_set_drvdata(dai, pdata);
+
 	/* ESAI core reset */
 	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ERST | ESAI_ECR_ESAIEN);
 	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ESAIEN);
@@ -404,13 +363,25 @@ static int esai_probe(struct dai *dai)
 	return 0;
 }
 
+static int esai_remove(struct dai *dai)
+{
+	struct esai_pdata *pdata = dai_get_drvdata(dai);
+
+	dai_info(dai, "entry");
+
+	rfree(pdata);
+	dai_set_drvdata(dai, NULL);
+
+	return 0;
+}
+
 static int esai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
 	int handshake = dai->plat_data.fifo[direction].handshake;
 	int channel = EDMA_HS_GET_CHAN(handshake);
 	int irq = irqstr_get_sof_int(EDMA_HS_GET_IRQ(handshake));
 
-	return EDMA_HANDSHAKE(irq, channel);
+	return EDMA_HANDSHAKE(irq, channel, 0);
 }
 
 static int esai_get_fifo(struct dai *dai, int direction, int stream_id)
@@ -420,21 +391,54 @@ static int esai_get_fifo(struct dai *dai, int direction, int stream_id)
 	case DAI_DIR_CAPTURE:
 		return dai_fifo(dai, direction); /* stream_id is unused */
 	default:
-		trace_esai_error("esai_get_fifo(): Invalid direction");
+		dai_err(dai, "Invalid direction");
 		return -EINVAL;
 	}
 }
 
+static int esai_get_fifo_depth(struct dai *dai, int direction)
+{
+	switch (direction) {
+	case DAI_DIR_PLAYBACK:
+	case DAI_DIR_CAPTURE:
+		return dai->plat_data.fifo[direction].depth;
+	default:
+		dai_err(dai, "Invalid direction");
+		return -EINVAL;
+	}
+}
+
+static int esai_get_hw_params(struct dai *dai,
+			      struct sof_ipc_stream_params *params,
+			      int dir)
+{
+	struct esai_pdata *esai = dai_get_drvdata(dai);
+
+	/* ESAI only currently supports these parameters */
+	params->rate = esai->params.fsync_rate;
+	params->channels = 2;
+	params->buffer_fmt = 0;
+	params->frame_fmt = SOF_IPC_FRAME_S24_4LE;
+
+	dai_info(dai, "params->rate = %d, fsync_rate = %d",
+		 params->rate, esai->params.fsync_rate);
+
+	return 0;
+}
+
 const struct dai_driver esai_driver = {
 	.type = SOF_DAI_IMX_ESAI,
+	.uid = SOF_UUID(esai_uuid),
+	.tctx = &esai_tr,
 	.dma_dev = DMA_DEV_ESAI,
 	.ops = {
 		.trigger		= esai_trigger,
 		.set_config		= esai_set_config,
-		.pm_context_store	= esai_context_store,
-		.pm_context_restore	= esai_context_restore,
 		.probe			= esai_probe,
+		.remove			= esai_remove,
 		.get_handshake		= esai_get_handshake,
 		.get_fifo		= esai_get_fifo,
+		.get_fifo_depth		= esai_get_fifo_depth,
+		.get_hw_params		= esai_get_hw_params,
 	},
 };

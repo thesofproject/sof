@@ -2,7 +2,7 @@
  *
  * Copyright(c) 2016 Intel Corporation. All rights reserved.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Curtis Malainey <cujomalainey@chromium.org>
  */
 
 #ifdef __SOF_LIB_DMA_H__
@@ -15,6 +15,12 @@
 
 #define DMA_DEV_PCM			0
 #define DMA_DEV_WAV			1
+
+#define PLATFORM_NUM_DMACS		1
+#define PLATFORM_MAX_DMA_CHAN		1
+
+#define dma_chan_irq(dma, chan)		0
+#define dma_chan_irq_name(dma, chan)	"chan0-irq"
 
 #endif /* __PLATFORM_LIB_DMA_H__ */
 

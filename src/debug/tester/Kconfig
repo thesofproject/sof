@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_TESTER
+	tristate "tester module"
+	default n
+	depends on IPC_MAJOR_4
+	help
+	  Build a tester module. To be used in continuous 
+	  integration process for special test cases that
+	  require a test code injected into the system itself

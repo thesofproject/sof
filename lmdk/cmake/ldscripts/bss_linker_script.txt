@@ -1,0 +1,33 @@
+
+PHDRS {
+    bss_phdr PT_LOAD;
+}
+
+SECTIONS {
+    max_instances = 1;
+    max_instances-1 = max_instances - 1;
+
+    .bss (NOLOAD) : ALIGN(4096) {
+        _first_start = ABSOLUTE(.);
+        *(.first)
+        _first_end = ABSOLUTE(.);
+        _next_start = ABSOLUTE(.);
+        . += (_first_end - _first_start) * max_instances-1;
+        _next_end = ABSOLUTE(.);
+        *(.bss)
+        *(.bss.*)
+
+        /* Heap memory */
+        . = ALIGN(4);
+        __stack = .;
+        _end = .;
+        KEEP(*(.heap_mem))
+
+        /* Use the unused rest of the memory page as a heap */
+        . = ALIGN(4096);
+
+        /* The sbrk function implementation by xtensa incorrectly checks whether the allocated
+           memory block fits in the heap, so we have to add 1 to the end of the heap marker. */
+        _heap_sentry = . + 1;
+    } >HPSRAM_seg : bss_phdr
+}

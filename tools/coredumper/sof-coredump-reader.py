@@ -56,7 +56,7 @@ VALID_ARCHS = {}
 	]]
 ]
 
-# Exception casues:
+# Exception causes:
 # CODE: [Exception cause, excvaddr loaded]
 EXCCAUSE_CODE = {
 	0: ["IllegalInstructionCause: Illegal instruction", False],
@@ -718,7 +718,16 @@ class CoreDumpReader(object):
 			.format(stack_base, stack_dw_num))
 
 		stdoutOpen()
-		stdoutPrint("break *0xbefe0000\nrun\n")
+
+		# disable confirmation request for undefined breakpoint
+		stdoutPrint("set confirm off\n")
+
+		# for XTOS SOF build
+		stdoutPrint("break _MemErrorVector\n")
+		# for Zephyr SOF build
+		stdoutPrint("break _MemoryExceptionVector_text_start\n")
+
+		stdoutPrint("run\n")
 		stdoutPrint(self.core_dump.to_string(1))
 
 		#TODO: make this elegant

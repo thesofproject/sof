@@ -2,105 +2,371 @@
 
 menu "Audio components"
 
-config COMP_DAI
-	bool "DAI component"
+config COMP_BASEFW_IPC4
+	bool "BASEFW component"
 	default y
+	depends on IPC_MAJOR_4
 	help
-	  Select for DAI component
+	  Select for BASEFW component
 
-config COMP_VOLUME
-	bool "Volume component"
-	default y
+config IPC4_BASE_FW_INTEL
+	bool "BASEFW component Intel vendor extensions"
+	depends on COMP_BASEFW_IPC4
 	help
-	  Select for Volume component
+	  Enable Intel vendor extensions for base firmware module.
+	  This implements a set of additional IPC4 properties that
+	  extend the base spec.
 
-config COMP_SRC
-	bool "SRC component"
+config HOST_DMA_RELOAD_DELAY_ENABLE
+	bool "Delay reloading DMA for host interfaces"
 	default y
 	help
-	  Select for SRC component
+	  When deep buffers are used the firmware does not need to have the
+	  buffer refilled every millisecond. Select this option to enable longer
+	  delays and to allow the memory controller to enter power saving modes.
 
-config COMP_FIR
-	bool "FIR component"
-	default y
+config HOST_DMA_RELOAD_THRESHOLD
+	int "DMA buffer threshold in milliseconds to reload DMA"
+	default 2
+	depends on HOST_DMA_RELOAD_DELAY_ENABLE
 	help
-	  Select for FIR component
+	  The DMA buffer threshold in milliseconds to trigger host DMA
+	  reloading.
 
-config COMP_IIR
-	bool "IIR component"
-	default y
+config HOST_DMA_STREAM_SYNCHRONIZATION
+	bool "Stream DMA Transfers Synchronization"
+	default y if ACE
 	help
-	  Select for IIR component
+	  Enable synchronized Firmware Pointer Increment (FPI) register updates of HD-A gateways
+	  belonging to a group defined by the driver. The driver may also specify an update period
+	  for each group, different than the default one determined by the system tick frequency.
+	  This feature will allow host lower power consumption in scenarios with deep buffering.
 
-config COMP_TONE
-	bool "Tone component"
+config HOST_DMA_IPC_POSITION_UPDATES
+	bool "Support for stream position updates via IPC messages"
+	depends on IPC_MAJOR_3
 	default y
 	help
-	  Select for Tone component
+	  Support firmware functionality to report stream position updates
+	  by sending an IPC message whenever one period of audio is transferred.
+	  Most platforms provide more efficient ways to query the DMA status.
 
-config COMP_MIXER
-	bool "Mixer component"
-	default y
-	help
-	  Select for Mixer component
+config COMP_CHAIN_DMA
+	  bool "Chain DMA component"
+	  depends on IPC_MAJOR_4
+	  depends on DMA_INTEL_ADSP_HDA
+	  help
+	    Chain DMA support in hardware
 
-config COMP_MUX
-	bool "MUX component"
+config XRUN_NOTIFICATIONS_ENABLE
+	bool "Enable xrun notification"
 	default y
+	depends on IPC_MAJOR_4
 	help
-	  Select for MUX component
+	  Enable xrun notifications sending to host
 
-config COMP_SWITCH
-	bool "Switch component"
+config IPC4_GATEWAY
+	bool "IPC4 Gateway"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  Select for IPC4 Gateway. IPC4 Gateway is used to transfer audio between
+	  host and DSP without using DMA: via memory window (audio payload) and
+	  IPC4 messages (set/get/flush commands).
+
+config MODULE_MAX_CONNECTIONS
+	int "Module maximum number of connected sink/source modules"
+	default 8
+	help
+	  Specifies the maximum number of sink and source connections a module
+	  may have to other modules.
+
+config COMP_BLOB
+	bool "Large IPC data as compound message blobs"
 	default y
 	help
-	  Select for Switch component
+	 Select to support sending large data blobs to firmware as
+	 multiple IPC messages. Not all components or modules need
+	 this. If unsure, say yes.
+
+config MODULE_MAX_BLOB_SIZE
+	int "Maximum IPC blob size in bytes"
+	default 8192
+	help
+	  Specify the maximum size of IPC4 module blob data that can be
+	  appended to each message.
+
+config COMP_STUBS
+	bool "Build all selected third-party (3P) components with stubs"
+	help
+	  Select to force all 3P blocks to link against stubs rather than their libraries. This
+	  should only be used in testing environments like fuzzers or CI.
 
 config COMP_KPB
 	bool "KPB component"
 	default y
 	help
 	  Select for KPB component
+if COMP_KPB
 
-config COMP_SEL
-	bool "Channel selector component"
+config KPB_FORCE_COPY_TYPE_NORMAL
+	bool "KPB force copy type normal"
 	default y
 	help
-	  Select for SEL component
+	   Select this to force the kpb draining copy type to normal.
+	   Unselecting this will keep the kpb sink copy type unchanged.
 
-config COMP_TEST_KEYPHRASE
-	bool "KEYPHRASE_TEST component"
+endif # COMP_KPB
+
+config COMP_MODULE_ADAPTER
+	bool "Module adapter"
 	default y
 	help
-	  Select for KEYPHRASE_TEST component.
-	  Provides basic functionality for use in testing of keyphrase detection pipelines.
+	  This component is an adapter between SoF components and any external third
+	  party codecs/libraries. In order to make use of it the library itself should
+	  be statically linked with the SoF FW binary image and the codec details, such as its
+	  ID or specific methods provided in generic interface object located under
+	  "src\include\sof\audio\module_adapter\interfaces.h". It is possible to link several
+	  different codecs and use them in parallel.
 
-endmenu
+# --- Kconfig Sources (alphabetical order) ---
+rsource "aria/Kconfig"
+rsource "asrc/Kconfig"
+rsource "codec/Kconfig"
+rsource "copier/Kconfig"
+rsource "crossover/Kconfig"
+rsource "dcblock/Kconfig"
+rsource "drc/Kconfig"
+rsource "eq_fir/Kconfig"
+rsource "eq_iir/Kconfig"
+rsource "google/Kconfig"
+rsource "igo_nr/Kconfig"
+rsource "mfcc/Kconfig"
+rsource "mixer/Kconfig"
+rsource "mixin_mixout/Kconfig"
+rsource "module_adapter/Kconfig"
+rsource "multiband_drc/Kconfig"
+rsource "mux/Kconfig"
+rsource "nxp/Kconfig"
+rsource "phase_vocoder/Kconfig"
+rsource "rtnr/Kconfig"
+rsource "selector/Kconfig"
+rsource "smart_amp/Kconfig"
+rsource "sound_dose/Kconfig"
+rsource "src/Kconfig"
+rsource "stft_process/Kconfig"
+rsource "tdfb/Kconfig"
+rsource "template/Kconfig"
+rsource "tensorflow/Kconfig"
+rsource "tone/Kconfig"
+rsource "up_down_mixer/Kconfig"
+rsource "volume/Kconfig"
+# --- End Kconfig Sources (alphabetical order) ---
+
+rsource "level_multiplier/Kconfig"
+
+endmenu # "Audio components"
 
 menu "Data formats"
+
+config FORMAT_U8
+	bool "Support U8"
+	help
+	  Support unsigned 8 bit processing data format
+
+config FORMAT_A_LAW
+	bool "Support A-law"
+	help
+	  Support 8 bit A-law processing data format.
+
+config FORMAT_MU_LAW
+	bool "Support mu-law"
+	help
+	  Support 8 bit mu-law processing data format.
 
 config FORMAT_S16LE
 	bool "Support S16LE"
 	default y
 	help
-	  Support 16 bit processing data format with sign and in little endian format 
+	  Support 16 bit processing data format with sign and in little endian format
 
 config FORMAT_S24LE
 	bool "Support S24LE"
 	default y
 	help
-	  Support 24 bit processing data format with sign and in little endian format 
+	  Support 24 bit processing data format with sign and in little endian format
+
+config FORMAT_S24_3LE
+	bool "Support S24_3LE"
+	help
+	  Support packed 24 bit processing data format with sign and in little endian format
+
+config FORMAT_S24_4LE_MSB
+	bool "Support S24_4LE_MSB"
+	default y
+	help
+	  Support 24 bit processing data format with sign and in msb 24 bits format
 
 config FORMAT_S32LE
 	bool "Support S32LE"
 	default y
 	help
-	  Support 32 bit processing data format with sign and in little endian format 
+	  Support 32 bit processing data format with sign and in little endian format
 
 config FORMAT_FLOAT
 	bool "Support float"
 	default y
 	help
 	  Support floating point processing data format
+
+config FORMAT_CONVERT_HIFI3
+	bool "HIFI3 optimized conversion"
+	default y
+	help
+	  Use HIFI3 extensions for optimized format conversion (experimental).
+
+config PCM_CONVERTER_FORMAT_U8
+	bool "Support U8"
+	help
+	  Support 8 bit processing data format without sign
+
+config PCM_CONVERTER_FORMAT_A_LAW
+	bool "Support A-law"
+	select MATH_A_LAW_CODEC
+	help
+	  Support 8 bit A-law data format.
+
+config PCM_CONVERTER_FORMAT_MU_LAW
+	bool "Support mu-law"
+	select MATH_MU_LAW_CODEC
+	help
+	  Support 8 bit mu-law data format.
+
+config PCM_CONVERTER_FORMAT_S16LE
+	bool "Support S16LE"
+	default y
+	help
+	  Support 16 bit processing data format with sign and in little endian format
+
+config PCM_CONVERTER_FORMAT_S24LE
+	bool "Support S24LE"
+	default y
+	help
+	  Support 24 bit processing data format with sign and in little endian format
+
+config PCM_CONVERTER_FORMAT_S24_4LE_MSB
+	bool "Support S24_4LE_MSB"
+	default y
+	help
+	  Support 24 bit processing data format with sign and in msb 24 bits format
+
+config PCM_CONVERTER_FORMAT_S24_3LE
+	bool "Support S24_3LE"
+	help
+	  Support packed 24 bit processing data format with sign and in little endian format
+
+config PCM_CONVERTER_FORMAT_S32LE
+	bool "Support S32LE"
+	default y
+	help
+	  Support 32 bit processing data format with sign and in little endian format
+
+config PCM_CONVERTER_FORMAT_S16_4LE
+	bool "Support S16_4LE"
+	default y
+	help
+	  Support the format of signed 16-bit little-endian in the 2 lower bytes
+	  of a 32-bit container. This format is used, for example, by the SSP gateway.
+
+config PCM_CONVERTER_FORMAT_FLOAT
+	bool "Support float"
+	default y
+	help
+	  Support floating point processing data format
+
+config PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
+	bool "Support S16C16 <-> S16C32"
+	help
+	  Support conversion between 16 bit valid sample size in 16 bit container
+	  and 16 bit valid sample size in 32 bit container
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S32_C32
+	bool "Support S16C32 <-> S32C32"
+	help
+	  Support conversion between 16 bit valid sample size in 32 bit container
+	  and 32 bit valid sample size in 32 bit container
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S24_C32
+	bool "Support S16C32 <-> S24C32"
+	help
+	  Support conversion between 16 bit valid sample size in 32 bit container
+	  and 24 bit valid sample size in 32 bit container
+
+config PCM_CONVERTER_FORMAT_S24_C24_AND_S24_C32
+	bool "Support S24C24 <-> S24C32"
+	help
+	  Support conversion between 24 bit valid sample size in 24 bit container
+	  and 24 bit valid sample size in 32 bit container
+
+config PCM_CONVERTER_FORMAT_S24_C32_AND_S24_C24
+	bool "Support S24C32 <-> S24C24"
+	help
+	  Support conversion between 24 bit valid sample size in 32 bit container
+	  and 24 bit valid sample size in 24 bit container
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S16_C32
+	bool "Support S16C32 <-> S16C32"
+	help
+	  Support one-to-one copying conversion for 16 bit valid sample size in
+	  32 bit container
+
+config PCM_CONVERTER_FORMAT_CONVERT_HIFI3
+	bool "HIFI3 optimized conversion"
+	default y
+	help
+	  Use HIFI3 extensions for optimized format conversion (experimental).
+
+config PCM_REMAPPING_CONVERTERS
+	bool "Channel remapping conversions"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  Enable conversion functions that perform both format conversion
+	  and channel remapping simultaneously.
+
+config TRACE_CHANNEL
+	int "TRACE DMA Channel configuration"
+	default 0
+	help
+	  This option is used for custom configuration of trace dma channel other
+	  than zero dma channel.Define macro DMA_TRACE_CHANNEL in platform to
+	  configure the required channel number.
+
+config WRAP_ACTUAL_POSITION
+	bool "Buffer wrapping"
+	help
+	  This option is to update the actual position information on wrap of buffer.
+	  It is not necessary that on wrap, the buffer position would be zero.At wrap,
+	  in some cases based on the period size, the frame may not exactly be at the
+	  end of the buffer and roll over for some bytes from the beginning of the buffer.
+
+config COMP_MODULE_SHARED_LIBRARY_BUILD
+	bool "Build SOF modules as shared libraries"
+	help
+	  Select if you want to build modules as shared objects that can be used to run
+	  pipelines on the host with the testbench or the ALSA plugin.
+
+config DISABLE_DESCRIPTOR_SPLIT
+	bool "Disable descriptor split"
+	help
+	  This option disbale the descriptor split for host p-table.
+
+config DAI_VERBOSE_GLITCH_WARNINGS
+	bool "Enable additional checks and warnings for DAI data flow"
+	  help
+	  Select if you want to enable additional checks and warning logs for
+	  DAI data flow. If DAI copy is called with no data to process,
+	  always emit a warning. This option useful to debug issues with
+	  DAI DMA operation and issues with low-latency scheduling.
 
 endmenu

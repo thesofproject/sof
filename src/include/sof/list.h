@@ -18,6 +18,9 @@ struct list_item {
 	struct list_item *prev;
 };
 
+/* a static list head initialiser */
+#define LIST_INIT(head) {&head, &head}
+
 /* initialise list before any use - list will point to itself */
 static inline void list_init(struct list_item *list)
 {
@@ -83,7 +86,7 @@ static inline int list_item_is_last(struct list_item *item,
 
 /* get the next container object in the list */
 #define list_next_item(object, member) \
-	list_item((object)->member.next, typeof(*(object)), member)
+	list_item((object)->member.next, __typeof__(*(object)), member)
 
 /* list iterator */
 #define list_for_item(item, list) \
@@ -98,4 +101,27 @@ static inline int list_item_is_last(struct list_item *item,
 	for (item = (list)->next, tmp = item->next;\
 		item != (list); \
 		item = tmp, tmp = item->next)
+
+/**
+ * Re-links the list when head address changed (list moved).
+ * @param new_list New address of the head.
+ * @param old_list Old address of the head.
+ */
+static inline void list_relink(struct list_item *new_list,
+			       struct list_item *old_list)
+{
+	struct list_item *li;
+
+	if (new_list->next == old_list) {
+		list_init(new_list);
+	} else {
+		list_for_item(li, new_list)
+			if (li->next == old_list)
+				li->next = new_list; /* for stops here */
+		list_for_item_prev(li, new_list)
+			if (li->prev == old_list)
+				li->prev = new_list; /* for stops here */
+	}
+}
+
 #endif /* __SOF_LIST_H__ */

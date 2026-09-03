@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config SOF_DEBUG_STREAM_SLOT
+	bool "Enable SOF debug stream debug window slot"
+	help
+	  Debug stream is an abstract stream of records of debug
+	  information from SOF system that are streamed from SOF DSP
+	  to the host side for decoding and presentation. This option
+	  enables transferring the records from DSP to host over a
+	  debug window slot. To extract the debugstream see
+	  tools/debug_stream/debug_stream.py.
+
+if SOF_DEBUG_STREAM_SLOT
+
+config SOF_DEBUG_STREAM_SLOT_NUMBER
+	int "Debug window slot where to put debug stream slot"
+	default 3
+	range 0 14
+	help
+	  Which debug slot to reserve for Debug Stream. Remember to map
+	  the slot with MEMORY_WIN_2_SIZE in soc/intel/intel_adsp/Kconfig,
+	  in Zephyr source tree. The slots are 4k in size and one slot is
+	  used for descriptors, so for slot 3 to be mapped, the WIN_2_SIZE
+	  must be (1 + 3) * 4k = 16k or greater.
+
+config SOF_DEBUG_STREAM_THREAD_INFO
+	bool "Enable Zephyr thread info reporting through Debug-Stream"
+	select INIT_STACKS
+	select THREAD_MONITOR
+	select THREAD_STACK_INFO
+	select THREAD_RUNTIME_STATS
+	help
+	  This activates Zephyr thread info reporting through
+	  Debug-Stream. Thread info reports some basic live data from
+	  the Zephyr threads, like stack usage high-water-mark and CPU
+	  usage. Please select THREAD_NAME=y for the thread names more
+	  than just hex numbers.
+
+config SOF_DEBUG_STREAM_THREAD_INFO_INTERVAL
+	int "Thread information collection interval in seconds"
+	depends on SOF_DEBUG_STREAM_THREAD_INFO
+	default 2
+	range 1 10
+	help
+	  Decides how often thread info runs and checks execution cycle
+	  statistics and stack usage.
+
+config SOF_DEBUG_STREAM_THREAD_INFO_TOTAL_CPU_LOAD_TO_LOG
+	bool "Print summarized total CPU load to log subsystem"
+	depends on SOF_DEBUG_STREAM_THREAD_INFO
+	default y
+	help
+	  In addition to printing thread statistics to debug stream,
+	  print the total CPU load (sum of all threads) to
+	  the logging system.
+
+config SOF_DEBUG_STREAM_SLOT_FORCE_MAX_CPUS
+	int "Number of cpu sections slot is divided to"
+	default CORE_COUNT
+	range 1 MP_MAX_NUM_CPUS
+	help
+	  In some situations a high number of cpu sections shrinks the
+	  circular buffer size so much that it limit debugging. With
+	  this option its possible to use fewer sections. The downside
+	  is that the cpus above the number of sections can not send
+	  any debug stream messages.
+
+config SOF_DEBUG_STREAM_TEXT_MSG
+	bool "Enable text message sending through Debug-Stream"
+	help
+	  Enable debug message sending over debug stream. To use this
+	  feature one only needs to enable debug stream with this
+	  config option and print the debug messages with
+	  ds_msg(). See include/user/debug_stream_text_msg.h for
+	  prototype.
+
+config SOF_DEBUG_STREAM_TEXT_MSG_ASSERT_PRINT
+	bool "Enable assert print sending through Debug-Stream"
+	depends on EXCEPTION_DUMP_HOOK && (ASSERT || ASSERT_VERBOSE)
+	select SOF_DEBUG_STREAM_TEXT_MSG
+	help
+	  Enable assert print sending over debug stream as text
+	  message. This feature is also sensitive to Zephyr option
+	  CONFIG_EXCEPTION_DUMP_HOOK_ONLY. If that is set then the
+	  asserts are not printed through printk interface.
+
+endif

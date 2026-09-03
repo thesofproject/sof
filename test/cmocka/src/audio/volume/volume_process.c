@@ -4,13 +4,17 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
+#include "../../util.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
 #include <cmocka.h>
 #include <sof/audio/component.h>
-#include <sof/audio/volume.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <volume/volume.h>
+#include "../module_adapter.h"
 
 /* Add macro for a volume test level. The levels to test with this code
  * are:
@@ -27,23 +31,9 @@
 /* Min S24_4LE format value */
 #define INT24_MIN -8388608
 
-struct vol_test_state {
-	struct comp_dev *dev;
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
-	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink,
-		       struct comp_buffer *source);
-};
-
 struct vol_test_parameters {
 	int32_t volume;
-	uint32_t channels;
-	uint32_t frames;
-	uint32_t buffer_size_ms;
-	uint32_t source_format;
-	uint32_t sink_format;
-	void (*verify)(struct comp_dev *dev, struct comp_buffer *sink,
-		       struct comp_buffer *source);
+	struct processing_module_test_parameters module_parameters;
 };
 
 static void set_volume(int32_t *vol, int32_t value, uint32_t channels)
@@ -56,45 +46,41 @@ static void set_volume(int32_t *vol, int32_t value, uint32_t channels)
 
 static int setup(void **state)
 {
-	struct vol_test_parameters *parameters = *state;
-	struct vol_test_state *vol_state;
-	struct comp_data *cd;
-	uint32_t size = 0;
+	struct vol_test_parameters *vol_parameters = *state;
+	struct processing_module_test_data *vol_state;
+	struct module_data *md;
+	struct vol_data *cd;
 
 	/* allocate new state */
 	vol_state = test_malloc(sizeof(*vol_state));
-
-	/* allocate and set new device */
-	vol_state->dev = test_malloc(COMP_SIZE(struct sof_ipc_comp_volume));
-	vol_state->dev->params.channels = parameters->channels;
-	vol_state->dev->frames = parameters->frames;
+	vol_state->parameters = vol_parameters->module_parameters;
+	vol_state->num_sources = 1;
+	vol_state->num_sinks = 1;
+	module_adapter_test_setup(vol_state);
 
 	/* allocate and set new data */
 	cd = test_malloc(sizeof(*cd));
-	comp_set_drvdata(vol_state->dev, cd);
-	cd->source_format = parameters->source_format;
-	cd->sink_format = parameters->sink_format;
-	cd->scale_vol = vol_get_processing_function(vol_state->dev);
-	set_volume(cd->volume, parameters->volume, parameters->channels);
+	md = &vol_state->mod->priv;
+	md->private = cd;
+	cd->is_passthrough = false;
 
-	/* allocate new sink buffer */
-	vol_state->sink = test_malloc(sizeof(*vol_state->sink));
-	vol_state->dev->params.frame_fmt = parameters->sink_format;
-	size = parameters->frames * comp_frame_bytes(vol_state->dev);
-	vol_state->sink->w_ptr = test_calloc(parameters->buffer_size_ms,
-					     size);
-	vol_state->sink->size = parameters->buffer_size_ms * size;
+	/* malloc memory to store current volume 4 times to ensure the address
+	 * is 8-byte aligned for multi-way xtensa intrinsic operations.
+	 */
+	const size_t vol_size = sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4;
 
-	/* allocate new source buffer */
-	vol_state->source = test_malloc(sizeof(*vol_state->source));
-	vol_state->dev->params.frame_fmt = parameters->source_format;
-	size = parameters->frames * comp_frame_bytes(vol_state->dev);
-	vol_state->source->r_ptr = test_calloc(parameters->buffer_size_ms,
-					       size);
-	vol_state->source->size = parameters->buffer_size_ms * size;
+	cd->vol = test_malloc(vol_size);
 
-	/* assigns verification function */
-	vol_state->verify = parameters->verify;
+	/* number of channels used by the processing functions */
+	cd->channels = vol_state->parameters.channels;
+
+	/* set processing function and volume */
+#if CONFIG_IPC_MAJOR_4
+	cd->scale_vol = vol_get_processing_function(vol_state->mod->dev, cd);
+#else
+	cd->scale_vol = vol_get_processing_function(vol_state->mod->dev, vol_state->sinks[0], cd);
+#endif
+	set_volume(cd->volume, vol_parameters->volume, vol_state->parameters.channels);
 
 	/* assign test state */
 	*state = vol_state;
@@ -104,30 +90,26 @@ static int setup(void **state)
 
 static int teardown(void **state)
 {
-	struct vol_test_state *vol_state = *state;
-	struct comp_data *cd = comp_get_drvdata(vol_state->dev);
+	struct processing_module_test_data *vol_state = *state;
+	struct vol_data *cd = module_get_private_data(vol_state->mod);
 
-	/* free everything */
+	test_free(cd->vol);
 	test_free(cd);
-	test_free(vol_state->dev);
-	test_free(vol_state->sink->w_ptr);
-	test_free(vol_state->sink);
-	test_free(vol_state->source->r_ptr);
-	test_free(vol_state->source);
+	module_adapter_test_free(vol_state);
 	test_free(vol_state);
 
 	return 0;
 }
 
 #if CONFIG_FORMAT_S16LE
-static void fill_source_s16(struct vol_test_state *vol_state)
+static void fill_source_s16(struct processing_module_test_data *vol_state)
 {
 	int64_t val;
-	int16_t *src = (int16_t *)vol_state->source->r_ptr;
+	int16_t *src = (int16_t *)vol_state->sources[0]->stream.r_ptr;
 	int i;
 	int sign = 1;
 
-	for (i = 0; i < vol_state->source->size / sizeof(int16_t); i++) {
+	for (i = 0; i < vol_state->sources[0]->stream.size / sizeof(int16_t); i++) {
 		val = (INT16_MIN + (i >> 1)) * sign;
 		val = (val > INT16_MAX) ? INT16_MAX : val;
 		src[i] = (int16_t)val;
@@ -135,20 +117,20 @@ static void fill_source_s16(struct vol_test_state *vol_state)
 	}
 }
 
-static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
+static void verify_s16_to_s16(struct processing_module *mod, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	const int16_t *src = (int16_t *)source->r_ptr;
-	const int16_t *dst = (int16_t *)sink->w_ptr;
+	struct vol_data *cd = module_get_private_data(mod);
+	const int16_t *src = (int16_t *)source->stream.r_ptr;
+	const int16_t *dst = (int16_t *)sink->stream.w_ptr;
 	double processed;
-	int channels = dev->params.channels;
+	int channels = audio_stream_get_channels(&sink->stream);
 	int channel;
 	int delta;
 	int i;
 	int16_t sample;
 
-	for (i = 0; i < sink->size / sizeof(uint16_t); i += channels) {
+	for (i = 0; i < sink->stream.size / sizeof(uint16_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = src[i + channel] *
 				(double)cd->volume[channel] /
@@ -168,100 +150,15 @@ static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE)
-static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
-			     struct comp_buffer *source)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	const int16_t *src = (int16_t *)source->r_ptr;
-	const int32_t *dst = (int32_t *)sink->w_ptr;
-	double processed;
-	int32_t dst_sample;
-	int32_t sample;
-	int channels = dev->params.channels;
-	int channel;
-	int delta;
-	int i;
-	int shift = 0;
-
-	/* get shift value */
-	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
-	else if (cd->sink_format == SOF_IPC_FRAME_S32_LE)
-		shift = 0;
-
-	for (i = 0; i < sink->size / sizeof(uint32_t); i += channels) {
-		for (channel = 0; channel < channels; channel++) {
-			processed = 65536.0 * (double)src[i + channel] *
-				(double)cd->volume[channel] /
-				(double)VOL_ZERO_DB + 0.5 * (1 << shift);
-			if (processed > INT32_MAX)
-				processed = INT32_MAX;
-
-			if (processed < INT32_MIN)
-				processed = INT32_MIN;
-
-			sample = ((int32_t)processed) >> shift;
-			dst_sample = dst[i + channel];
-			delta = dst_sample - sample;
-			if (delta > 1 || delta < -1)
-				assert_int_equal(dst_sample, sample);
-
-			if (shift && (dst_sample < INT24_MIN ||
-				      dst_sample > INT24_MAX))
-				assert_int_equal(dst_sample, sample);
-		}
-	}
-}
-
-static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			     struct comp_buffer *source)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	const int32_t *src = (int32_t *)source->r_ptr;
-	const int16_t *dst = (int16_t *)sink->w_ptr;
-	double processed;
-	int channels = dev->params.channels;
-	int channel;
-	int delta;
-	int i;
-	int shift = 0;
-	int16_t sample;
-
-	/* get shift value */
-	if (cd->source_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
-
-	for (i = 0; i < sink->size / sizeof(uint16_t); i += channels) {
-		for (channel = 0; channel < channels; channel++) {
-			processed = (double)(src[i + channel] << shift) *
-				(double)cd->volume[channel] /
-				(double)VOL_ZERO_DB;
-			processed = processed / 65536.0 + 0.5;
-			if (processed > INT16_MAX)
-				processed = INT16_MAX;
-
-			if (processed < INT16_MIN)
-				processed = INT16_MIN;
-
-			sample = (int16_t)processed;
-			delta = dst[i + channel] - sample;
-			if (delta > 1 || delta < -1)
-				assert_int_equal(dst[i + channel], sample);
-		}
-	}
-}
-#endif /* CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE) */
-
 #if CONFIG_FORMAT_S24LE
-static void fill_source_s24(struct vol_test_state *vol_state)
+static void fill_source_s24(struct processing_module_test_data *vol_state)
 {
 	int64_t val;
-	int32_t *src = (int32_t *)vol_state->source->r_ptr;
+	int32_t *src = (int32_t *)vol_state->sources[0]->stream.r_ptr;
 	int i;
 	int sign = 1;
 
-	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
+	for (i = 0; i < vol_state->sources[0]->stream.size / sizeof(int32_t); i++) {
 		val = (INT24_MIN + (i >> 1)) * sign;
 		val = (val > INT24_MAX) ? INT24_MAX : val;
 		src[i] = (int32_t)val;
@@ -269,27 +166,23 @@ static void fill_source_s24(struct vol_test_state *vol_state)
 	}
 }
 
-static void verify_s24_to_s24_s32(struct comp_dev *dev,
+static void verify_s24_to_s24_s32(struct processing_module *mod,
 				  struct comp_buffer *sink,
 				  struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	const int32_t *src = (int32_t *)source->r_ptr;
-	const int32_t *dst = (int32_t *)sink->w_ptr;
+	struct vol_data *cd = module_get_private_data(mod);
+	const int32_t *src = (int32_t *)source->stream.r_ptr;
+	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
 	double processed;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = dev->params.channels;
+	int channels = audio_stream_get_channels(&sink->stream);
 	int channel;
 	int delta;
 	int i;
-	int shift = 0;
+	int shift = 8;
 
-	/* get shift value */
-	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
-
-	for (i = 0; i < sink->size / sizeof(uint32_t); i += channels) {
+	for (i = 0; i < sink->stream.size / sizeof(uint32_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = (src[i + channel] << 8) *
 				(double)cd->volume[channel] /
@@ -315,14 +208,14 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 #endif /* CONFIG_FORMAT_S24LE */
 
 #if CONFIG_FORMAT_S32LE
-static void fill_source_s32(struct vol_test_state *vol_state)
+static void fill_source_s32(struct processing_module_test_data *vol_state)
 {
 	int64_t val;
-	int32_t *src = (int32_t *)vol_state->source->r_ptr;
+	int32_t *src = (int32_t *)vol_state->sources[0]->stream.r_ptr;
 	int i;
 	int sign = 1;
 
-	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
+	for (i = 0; i < vol_state->sources[0]->stream.size / sizeof(int32_t); i++) {
 		val = (INT32_MIN + (i >> 1)) * sign;
 		val = (val > INT32_MAX) ? INT32_MAX : val;
 		src[i] = (int32_t)val;
@@ -330,27 +223,23 @@ static void fill_source_s32(struct vol_test_state *vol_state)
 	}
 }
 
-static void verify_s32_to_s24_s32(struct comp_dev *dev,
+static void verify_s32_to_s24_s32(struct processing_module *mod,
 				  struct comp_buffer *sink,
 				  struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
 	double processed;
-	const int32_t *src = (int32_t *)source->r_ptr;
-	const int32_t *dst = (int32_t *)sink->w_ptr;
+	const int32_t *src = (int32_t *)source->stream.r_ptr;
+	const int32_t *dst = (int32_t *)sink->stream.w_ptr;
 	int32_t dst_sample;
 	int32_t sample;
-	int channels = dev->params.channels;
+	int channels = audio_stream_get_channels(&sink->stream);
 	int channel;
 	int delta;
 	int i;
 	int shift = 0;
 
-	/* get shift value */
-	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
-
-	for (i = 0; i < sink->size / sizeof(uint32_t); i += channels) {
+	for (i = 0; i < sink->stream.size / sizeof(uint32_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = src[i + channel] *
 				    (double)cd->volume[channel] /
@@ -377,10 +266,13 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 
 static void test_audio_vol(void **state)
 {
-	struct vol_test_state *vol_state = *state;
-	struct comp_data *cd = comp_get_drvdata(vol_state->dev);
+	struct processing_module_test_data *vol_state = *state;
+	struct processing_module *mod = vol_state->mod;
+	struct vol_data *cd = module_get_private_data(mod);
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
 
-	switch (cd->source_format) {
+	switch (audio_stream_get_frm_fmt(&vol_state->sinks[0]->stream)) {
 	case SOF_IPC_FRAME_S16_LE:
 		fill_source_s16(vol_state);
 		break;
@@ -391,95 +283,65 @@ static void test_audio_vol(void **state)
 	case SOF_IPC_FRAME_FLOAT:
 		fill_source_s32(vol_state);
 		break;
+
+	/* TODO: add 3LE support */
+	/* TODO: add 4LE_MSB support */
+	/* TODO: add U8 support */
+	default:
+		break;
 	}
 
-	cd->scale_vol(vol_state->dev, vol_state->sink, vol_state->source,
-		      vol_state->dev->frames);
+	vol_state->input_buffers[0]->consumed = 0;
+	vol_state->output_buffers[0]->size = 0;
 
-	vol_state->verify(vol_state->dev, vol_state->sink, vol_state->source);
+	source_buf.buf_start = audio_stream_get_addr(&vol_state->sources[0]->stream);
+	source_buf.buf_end = audio_stream_get_end_addr(&vol_state->sources[0]->stream);
+	source_buf.ptr = audio_stream_get_rptr(&vol_state->sources[0]->stream);
+
+	sink_buf.buf_start = audio_stream_get_addr(&vol_state->sinks[0]->stream);
+	sink_buf.buf_end = audio_stream_get_end_addr(&vol_state->sinks[0]->stream);
+	sink_buf.ptr = audio_stream_get_wptr(&vol_state->sinks[0]->stream);
+
+	cd->scale_vol(mod, &source_buf, &sink_buf,
+		      mod->dev->frames, cd->attenuation);
+
+	vol_state->verify(mod, vol_state->sinks[0], vol_state->sources[0]);
 }
 
-static struct vol_test_parameters parameters[] = {
+static struct processing_module_test_parameters test_parameters[] = {
 #if CONFIG_FORMAT_S16LE
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 1 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 2 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 3 */
+	{ 2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
 #endif /* CONFIG_FORMAT_S16LE */
 
 #if CONFIG_FORMAT_S24LE
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 4 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 5 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 6 */
+	{ 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
 #endif /* CONFIG_FORMAT_S24LE */
 
-#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S16LE
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 7 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 8 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 9 */
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 10 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 11 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 12 */
-#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S16LE */
-
 #if CONFIG_FORMAT_S32LE
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 13 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 14 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 15 */
+	{ 2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
 #endif /* CONFIG_FORMAT_S32LE */
-
-#if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 16 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 17 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 18 */
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 19 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 20 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 21 */
-#endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S24LE
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 22 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 23 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 24 */
-	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 25 */
-	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 26 */
-	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 27 */
-#endif /* CONFIG_FORMAT_S32LE && CONFIG_FORMAT_S16LE */
 };
 
 int main(void)
 {
-	int i;
+	struct vol_test_parameters *parameters;
+	uint32_t volume_values[] = {VOL_MAX, VOL_ZERO_DB, VOL_MINUS_80DB};
+	int num_tests = ARRAY_SIZE(test_parameters) * ARRAY_SIZE(volume_values);
+	int i, j, ret;
 
-	struct CMUnitTest tests[ARRAY_SIZE(parameters)];
+	parameters = test_calloc(num_tests, sizeof(struct vol_test_parameters));
+	for (i = 0; i < ARRAY_SIZE(test_parameters); i++) {
+		for (j = 0; j < ARRAY_SIZE(volume_values); j++) {
+			parameters[i * ARRAY_SIZE(test_parameters) + j].volume = volume_values[j];
+			parameters[i * ARRAY_SIZE(test_parameters) + j].module_parameters =
+				test_parameters[i];
+		}
+	}
 
-	for (i = 0; i < ARRAY_SIZE(parameters); i++) {
+	struct CMUnitTest tests[num_tests];
+
+	for (i = 0; i < num_tests; i++) {
 		tests[i].name = "test_audio_vol";
 		tests[i].test_func = test_audio_vol;
 		tests[i].setup_func = setup;
@@ -489,5 +351,9 @@ int main(void)
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
 
-	return cmocka_run_group_tests(tests, NULL, NULL);
+	ret = cmocka_run_group_tests(tests, NULL, NULL);
+
+	test_free(parameters);
+
+	return ret;
 }

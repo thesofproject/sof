@@ -9,11 +9,14 @@ CASE_SENSE_NAMES = NO
 INPUT            = @top_srcdir@/src/include/ipc \
                    @top_srcdir@/src/include/kernel \
 		   @top_srcdir@/src/include/user \
-                   @top_srcdir@/src/include/sof
-EXCLUDE		 =
+                   @top_srcdir@/src/include/sof \
+                   @top_srcdir@/xtos/include \
+                   @top_srcdir@/zephyr/include
+# Exlude some 3rd party codec headers with external references
+EXCLUDE		 = @top_srcdir@/src/include/sof/audio/MaxxEffect
 RECURSIVE	 = YES
 FILE_PATTERNS    = *.c *.h
-EXAMPLE_PATH     = ../test
+EXAMPLE_PATH     = @top_srcdir@/test
 IMAGE_PATH	 =
 QUIET            = YES
 
@@ -26,7 +29,10 @@ INHERIT_DOCS	 = YES
 ENABLED_SECTIONS = ""
 MACRO_EXPANSION  = YES
 EXPAND_ONLY_PREDEF = YES
-PREDEFINED	 = __attribute__(x)=
+PREDEFINED	 = "__attribute__(x)= " \
+		   "CONFIG_FORMAT_S16LE=1" \
+		   "CONFIG_FORMAT_S32LE=1" \
+		   "CONFIG_TRACE=1"
 
 OPTIMIZE_OUTPUT_FOR_C = YES
 TYPEDEF_HIDES_STRUCT = YES
@@ -35,3 +41,4 @@ TYPEDEF_HIDES_STRUCT = YES
 #FILTER_SOURCE_FILES = YES
 
 HTML_TIMESTAMP = NO
+WARN_AS_ERROR = NO

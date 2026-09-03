@@ -8,54 +8,128 @@
 #ifndef __SOF_SCHEDULE_LL_SCHEDULE_DOMAIN_H__
 #define __SOF_SCHEDULE_LL_SCHEDULE_DOMAIN_H__
 
-#include <sof/atomic.h>
-#include <sof/debug/panic.h>
-#include <sof/lib/alloc.h>
+#include <rtos/atomic.h>
+#include <rtos/panic.h>
+#include <rtos/alloc.h>
 #include <sof/lib/cpu.h>
-#include <sof/lib/clk.h>
-#include <sof/spinlock.h>
+#include <rtos/clk.h>
+#include <sof/lib/memory.h>
+#include <rtos/sof.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <stdbool.h>
 #include <stdint.h>
 
+#if defined(CONFIG_AMD)
+#define LL_TIMER_PERIOD_US	500ULL /* 500us period for AMD ACP platforms */
+#else
+#define LL_TIMER_PERIOD_US	1000ULL /* default period in microseconds */
+#endif
+
+/* Default ll watchdog timeout in microseconds.
+ * It was decided to have a timeout of two periods to give a safe margin of time between the start
+ * of the watchdog and its first feeding.
+ */
+#define LL_WATCHDOG_TIMEOUT_US	(2 * LL_TIMER_PERIOD_US)
+
+
 struct dma;
 struct ll_schedule_domain;
 struct task;
 struct timer;
+struct comp_dev;
 
 struct ll_schedule_domain_ops {
 	int (*domain_register)(struct ll_schedule_domain *domain,
-			       uint64_t period, struct task *task,
+			       struct task *task,
 			       void (*handler)(void *arg), void *arg);
-	void (*domain_unregister)(struct ll_schedule_domain *domain,
-				  struct task *task, uint32_t num_tasks);
+	int (*domain_unregister)(struct ll_schedule_domain *domain,
+				 struct task *task, uint32_t num_tasks);
+#if CONFIG_SOF_USERSPACE_LL
+	/*
+	 * Initialize the scheduling thread and perform all privileged setup
+	 * (thread creation, timer init, access grants). Called once from
+	 * kernel context before any user-space domain_register() calls.
+	 */
+	int (*domain_thread_init)(struct ll_schedule_domain *domain,
+				  struct task *task);
+	/* Free resources acquired by domain_thread_init(). Called from
+	 * kernel context when the scheduling context is being torn down.
+	 */
+	void (*domain_thread_free)(struct ll_schedule_domain *domain,
+				   uint32_t num_tasks);
+#endif
 	void (*domain_enable)(struct ll_schedule_domain *domain, int core);
 	void (*domain_disable)(struct ll_schedule_domain *domain, int core);
+#if CONFIG_CROSS_CORE_STREAM
+	/*
+	 * Unlike domain_disable(), these are intended to temporary block LL from
+	 * starting its next cycle. Triggering (e.g., by means of timer interrupt)
+	 * is still enabled and registered but execution of next cycle is blocked.
+	 * Once unblocked, if triggering were previously registered in a blocked
+	 * state -- next cycle execution could start immediately.
+	 */
+	void (*domain_block)(struct ll_schedule_domain *domain);
+	void (*domain_unblock)(struct ll_schedule_domain *domain);
+#endif
 	void (*domain_set)(struct ll_schedule_domain *domain, uint64_t start);
 	void (*domain_clear)(struct ll_schedule_domain *domain);
 	bool (*domain_is_pending)(struct ll_schedule_domain *domain,
-				  struct task *task);
+				  struct task *task, struct comp_dev **comp);
+	void (*domain_task_cancel)(struct ll_schedule_domain *domain, struct task *task);
 };
 
 struct ll_schedule_domain {
-	uint64_t last_tick;		/**< timestamp of last run */
-	spinlock_t *lock;		/**< standard lock */
+	uint64_t next_tick;		/**< ticks just set for next run */
+	uint64_t new_target_tick;	/**< for the next set, used during the reschedule stage */
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct k_mutex *lock;		/**< standard lock */
+#else
+	struct k_spinlock lock;         /**< standard lock */
+#endif
 	atomic_t total_num_tasks;	/**< total number of registered tasks */
-	atomic_t num_clients;		/**< number of registered cores */
+	atomic_t enabled_cores;		/**< number of enabled cores */
 	uint32_t ticks_per_ms;		/**< number of clock ticks per ms */
 	int type;			/**< domain type */
 	int clk;			/**< source clock */
 	bool synchronous;		/**< are tasks should be synchronous */
-	void *private;			/**< pointer to private data */
-	bool registered[PLATFORM_CORE_COUNT];		/**< registered cores */
+	bool full_sync;			/**< tasks should be full synchronous, no time dependent */
+	void *priv_data;		/**< pointer to private data */
+	bool enabled[CONFIG_CORE_COUNT];		/**< enabled cores */
 	const struct ll_schedule_domain_ops *ops;	/**< domain ops */
 };
 
-#define ll_sch_domain_set_pdata(domain, data) ((domain)->private = (data))
+#define ll_sch_domain_set_pdata(domain, data) ((domain)->priv_data = (data))
 
-#define ll_sch_domain_get_pdata(domain) ((domain)->private)
+#define ll_sch_domain_get_pdata(domain) ((domain)->priv_data)
+
+static inline struct ll_schedule_domain *timer_domain_get(void)
+{
+	return sof_get()->platform_timer_domain;
+}
+
+static inline struct ll_schedule_domain *dma_domain_get(void)
+{
+	return sof_get()->platform_dma_domain;
+}
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct task *zephyr_ll_task_alloc(void);
+struct k_heap *zephyr_ll_user_heap(void);
+bool zephyr_ll_user_heap_verify(struct k_heap *heap);
+void zephyr_ll_user_resources_init(void);
+void user_ll_grant_access(struct k_thread *thread, int core);
+void user_ll_lock_sched(int core);
+void user_ll_unlock_sched(int core);
+#ifdef CONFIG_ASSERT
+/* Assert that the calling context already holds the LL lock for 'core'. */
+void user_ll_assert_locked(int core);
+#else
+static inline void user_ll_assert_locked(int core) { ARG_UNUSED(core); }
+#endif
+#endif /* CONFIG_SOF_USERSPACE_LL */
 
 static inline struct ll_schedule_domain *domain_init
 				(int type, int clk, bool synchronous,
@@ -63,72 +137,212 @@ static inline struct ll_schedule_domain *domain_init
 {
 	struct ll_schedule_domain *domain;
 
-	domain = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-			 sizeof(*domain));
+#ifdef CONFIG_SOF_USERSPACE_LL
+	domain = sof_heap_alloc(zephyr_ll_user_heap(), SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				sizeof(*domain), sizeof(void *));
+	if (domain)
+		memset(domain, 0, sizeof(*domain));
+#else
+	domain = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*domain));
+#endif
+	if (!domain)
+		return NULL;
 	domain->type = type;
 	domain->clk = clk;
 	domain->synchronous = synchronous;
+	domain->full_sync = false;
+#ifdef __ZEPHYR__
+	domain->ticks_per_ms = k_ms_to_cyc_ceil64(1);
+#else
 	domain->ticks_per_ms = clock_ms_to_ticks(clk, 1);
+#endif
 	domain->ops = ops;
+	/* maximum value means no tick has been set to timer */
+	domain->next_tick = UINT64_MAX;
+	domain->new_target_tick = UINT64_MAX;
 
-	spinlock_init(&domain->lock);
+#ifdef CONFIG_SOF_USERSPACE_LL
+	/* Allocate mutex dynamically for userspace access */
+	domain->lock = k_object_alloc(K_OBJ_MUTEX);
+	if (!domain->lock) {
+		sof_heap_free(zephyr_ll_user_heap(), domain);
+		return NULL;
+	}
+	k_mutex_init(domain->lock);
+#else
+	k_spinlock_init(&domain->lock);
+#endif
 	atomic_init(&domain->total_num_tasks, 0);
-	atomic_init(&domain->num_clients, 0);
+	atomic_init(&domain->enabled_cores, 0);
 
 	return domain;
 }
 
+/* configure the next interrupt for domain */
+static inline void domain_set(struct ll_schedule_domain *domain, uint64_t start)
+{
+	if (domain->ops->domain_set)
+		domain->ops->domain_set(domain, start);
+	else
+		domain->next_tick = start;
+}
+
+/* clear the interrupt for domain */
+static inline void domain_clear(struct ll_schedule_domain *domain)
+{
+	if (domain->ops->domain_clear)
+		domain->ops->domain_clear(domain);
+
+	/* reset to denote no tick/interrupt is set */
+	domain->next_tick = UINT64_MAX;
+}
+
+/* let the domain know that a task has been cancelled */
+static inline void domain_task_cancel(struct ll_schedule_domain *domain,
+				      struct task *task)
+{
+	if (domain->ops->domain_task_cancel)
+		domain->ops->domain_task_cancel(domain, task);
+}
+
+#if CONFIG_SOF_USERSPACE_LL
+/*
+ * Initialize the scheduling thread and do all privileged setup.
+ * Must be called from kernel context before user-space tasks register.
+ */
+static inline int domain_thread_init(struct ll_schedule_domain *domain,
+				     struct task *task)
+{
+	assert(domain->ops->domain_thread_init);
+
+	return domain->ops->domain_thread_init(domain, task);
+}
+
+/*
+ * Free resources acquired by domain_thread_init().
+ * Must be called from kernel context.
+ */
+static inline void domain_thread_free(struct ll_schedule_domain *domain,
+				      uint32_t num_tasks)
+{
+	if (domain->ops->domain_thread_free)
+		domain->ops->domain_thread_free(domain, num_tasks);
+}
+#endif
+
 static inline int domain_register(struct ll_schedule_domain *domain,
-				  uint64_t period, struct task *task,
+				  struct task *task,
 				  void (*handler)(void *arg), void *arg)
 {
+	int ret;
+
 	assert(domain->ops->domain_register);
 
-	return domain->ops->domain_register(domain, period, task, handler, arg);
+	ret = domain->ops->domain_register(domain, task, handler, arg);
+
+	if (!ret)
+		/* registered one more task, increase the count */
+		atomic_add(&domain->total_num_tasks, 1);
+
+	return ret;
 }
 
 static inline void domain_unregister(struct ll_schedule_domain *domain,
 				     struct task *task, uint32_t num_tasks)
 {
+	int ret;
+
 	assert(domain->ops->domain_unregister);
 
-	domain->ops->domain_unregister(domain, task, num_tasks);
+	/* unregistering a task, decrement the count */
+	if (task)
+		atomic_sub(&domain->total_num_tasks, 1);
+
+	/*
+	 * In some cases .domain_unregister() might not return, terminating the
+	 * current thread, that's why we had to update state before calling it.
+	 */
+	ret = domain->ops->domain_unregister(domain, task, num_tasks);
+	if (ret < 0 && task)
+		/* Failed to unregister the domain, restore state */
+		atomic_add(&domain->total_num_tasks, 1);
 }
 
 static inline void domain_enable(struct ll_schedule_domain *domain, int core)
 {
-	if (domain->ops->domain_enable)
+	if (!domain->enabled[core] && domain->ops->domain_enable) {
 		domain->ops->domain_enable(domain, core);
+		domain->enabled[core] = true;
+		atomic_add(&domain->enabled_cores, 1);
+	}
 }
 
 static inline void domain_disable(struct ll_schedule_domain *domain, int core)
 {
-	if (domain->ops->domain_disable)
+	if (domain->enabled[core] && domain->ops->domain_disable) {
 		domain->ops->domain_disable(domain, core);
+		domain->enabled[core] = false;
+		atomic_sub(&domain->enabled_cores, 1);
+	}
 }
 
-static inline void domain_set(struct ll_schedule_domain *domain, uint64_t start)
+#if CONFIG_CROSS_CORE_STREAM
+static inline void domain_block(struct ll_schedule_domain *domain)
 {
-	if (domain->ops->domain_set)
-		domain->ops->domain_set(domain, start);
+	if (domain->ops->domain_block)
+		domain->ops->domain_block(domain);
 }
 
-static inline void domain_clear(struct ll_schedule_domain *domain)
+static inline void domain_unblock(struct ll_schedule_domain *domain)
 {
-	if (domain->ops->domain_clear)
-		domain->ops->domain_clear(domain);
+	if (domain->ops->domain_unblock)
+		domain->ops->domain_unblock(domain);
 }
+#endif
 
 static inline bool domain_is_pending(struct ll_schedule_domain *domain,
-				     struct task *task)
+				     struct task *task, struct comp_dev **comp)
 {
+	bool ret;
+
 	assert(domain->ops->domain_is_pending);
 
-	return domain->ops->domain_is_pending(domain, task);
+	ret = domain->ops->domain_is_pending(domain, task, comp);
+
+	return ret;
 }
 
-struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
-					     uint64_t timeout);
+
+#ifndef __ZEPHYR__
+struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk);
+#else
+#if CONFIG_DMA_DOMAIN
+#define dma_multi_chan_domain_init(dma_array, num_dma, clk, aggregated_irq)\
+	zephyr_dma_domain_init(dma_array, num_dma, clk)
+struct ll_schedule_domain *zephyr_dma_domain_init(struct dma *dma_array,
+						  uint32_t num_dma,
+						  int clk);
+#endif /* CONFIG_DMA_DOMAIN */
+struct ll_schedule_domain *zephyr_ll_domain(void);
+struct ll_schedule_domain *zephyr_domain_init(int clk);
+#define timer_domain_init(timer, clk) zephyr_domain_init(clk)
+#ifdef CONFIG_SOF_USERSPACE_LL
+struct k_thread *zephyr_domain_thread_tid(struct ll_schedule_domain *domain);
+struct k_thread *zephyr_domain_thread_tid_for_core(int core);
+struct k_mem_domain *zephyr_ll_mem_domain(void);
+struct k_thread *zephyr_ll_domain_thread(void);
+#endif /* CONFIG_SOF_USERSPACE_LL */
+#ifdef CONFIG_SOF_FULL_ZEPHYR_APPLICATION
+__syscall int zephyr_ll_task_sem_alloc(struct task *task);
+__syscall int zephyr_ll_task_sem_free(struct task *task);
+#include <zephyr/syscalls/ll_schedule_domain.h>
+#else
+int z_impl_zephyr_ll_task_sem_alloc(struct task *task);
+int z_impl_zephyr_ll_task_sem_free(struct task *task);
+#define zephyr_ll_task_sem_alloc z_impl_zephyr_ll_task_sem_alloc
+#define zephyr_ll_task_sem_free z_impl_zephyr_ll_task_sem_free
+#endif /* CONFIG_SOF_FULL_ZEPHYR_APPLICATION */
+#endif /* __ZEPHYR__ */
 
 struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 						      uint32_t num_dma, int clk,

@@ -61,9 +61,9 @@ end
 fprintf('Using parameters Fmax=%.1f kHz, Fs=%.1f, ch=%d, Nch=%d, bits_in=%d\n', ...
 	test.f_max/1e3, test.fs/1e3, test.ch, test.nch, test.bits_in);
 
-pid = getpid();
-test.fn_in = sprintf('fr_test_in_%d.%s', pid, test.fmt);
-test.fn_out =  sprintf('fr_test_out_%d.%s', pid, test.fmt);
+id = floor(rand(1,1) * 1e6);
+test.fn_in = sprintf('fr_test_in_%d.%s', id, test.fmt);
+test.fn_out =  sprintf('fr_test_out_%d.%s', id, test.fmt);
 test.f_ref = 997;
 test.f_min = 20;
 

@@ -1,0 +1,570 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2024 Intel Corporation.
+//
+// Author: Kai Vehmanen <kai.vehmanen@linux.intel.com>
+
+#include <zephyr/logging/log_ctrl.h>
+
+#include <rtos/string.h>
+#include <sof/tlv.h>
+#include <sof/lib/dai.h>
+#include <ipc/dai.h>
+
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
+#include <intel_adsp_hda.h>
+#endif
+
+#if CONFIG_ACE_V1X_ART_COUNTER || CONFIG_ACE_V1X_RTC_COUNTER
+#include <zephyr/device.h>
+#include <zephyr/drivers/counter.h>
+#endif
+#include <zephyr/pm/device_runtime.h>
+
+#include <sof/lib/memory.h>
+#include <sof/lib_manager.h>
+
+#include <ipc4/base_fw.h>
+#include <ipc4/alh.h>
+#include <rimage/sof/user/manifest.h>
+#include "copier/copier_gain.h"
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include <sof/audio/mic_privacy_manager.h>
+#endif
+
+#if CONFIG_UAOL_INTEL_ADSP
+#include <sof/audio/intel_uaol.h>
+#endif
+
+struct ipc4_modules_info {
+	uint32_t modules_count;
+	struct sof_man_module modules[0];
+} __packed __aligned(4);
+
+/* Sanity check because a subtraction of those sizes is performed later on */
+STATIC_ASSERT(sizeof(struct ipc4_modules_info) < SOF_IPC_MSG_MAX_SIZE,
+	      invalid_modules_info_struct_size);
+
+/*
+ * TODO: default to value of ACE1.x platforms. This is defined
+ *       in multiple places in Zephyr, mm_drv_intel_adsp.h and
+ *       cavs25/adsp_memory.h, needs to be unified (and defined
+ *       in Zephyr side)
+ */
+#ifndef SRAM_BANK_SIZE
+#define SRAM_BANK_SIZE			(128 * 1024)
+#endif
+
+#define EBB_BANKS_IN_SEGMENT		32
+
+#define PLATFORM_LPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram1)) / SRAM_BANK_SIZE)
+#define PLATFORM_HPSRAM_EBB_COUNT	(DT_REG_SIZE(DT_NODELABEL(sram0)) / SRAM_BANK_SIZE)
+
+#define DT_NUM_SSP_BASE		DT_NUM_INST_STATUS_OKAY(intel_ssp)
+#define DT_NUM_HDA_IN			DT_PROP(DT_INST(0, intel_adsp_hda_link_in), dma_channels)
+#define DT_NUM_HDA_OUT		DT_PROP(DT_INST(0, intel_adsp_hda_link_out), dma_channels)
+
+LOG_MODULE_REGISTER(basefw_intel, CONFIG_SOF_LOG_LEVEL);
+
+__cold int basefw_vendor_fw_config(uint32_t *data_offset, char *data)
+{
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
+
+	assert_can_be_cold();
+
+	tlv_value_uint32_set(tuple, IPC4_SLOW_CLOCK_FREQ_HZ_FW_CFG, IPC4_ALH_CAVS_1_8);
+
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_UAOL_SUPPORT, IS_ENABLED(CONFIG_UAOL_INTEL_ADSP));
+
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_ALH_SUPPORT_LEVEL_FW_CFG, IPC4_ALH_CAVS_1_8);
+
+	tuple = tlv_next(tuple);
+	*data_offset = (int)((char *)tuple - data);
+
+	return 0;
+}
+
+__cold int basefw_vendor_hw_config(uint32_t *data_offset, char *data)
+{
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
+	uint32_t value;
+
+	assert_can_be_cold();
+
+	tlv_value_uint32_set(tuple, IPC4_HP_EBB_COUNT_HW_CFG, PLATFORM_HPSRAM_EBB_COUNT);
+
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_EBB_SIZE_BYTES_HW_CFG, SRAM_BANK_SIZE);
+
+	tuple = tlv_next(tuple);
+	value = SOF_DIV_ROUND_UP(EBB_BANKS_IN_SEGMENT * SRAM_BANK_SIZE, HOST_PAGE_SIZE);
+	tlv_value_uint32_set(tuple, IPC4_TOTAL_PHYS_MEM_PAGES_HW_CFG, value);
+
+	tuple = tlv_next(tuple);
+	/* 2 DMIC dais */
+	value =  DT_NUM_SSP_BASE + DT_NUM_HDA_IN + DT_NUM_HDA_OUT +
+			IPC4_DAI_NUM_ALH_BI_DIR_LINKS + 2;
+	tlv_value_uint32_set(tuple, IPC4_GATEWAY_COUNT_HW_CFG, value);
+
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_LP_EBB_COUNT_HW_CFG, PLATFORM_LPSRAM_EBB_COUNT);
+
+#if defined(CONFIG_SOC_ACE30) || defined(CONFIG_SOC_ACE40)
+	tuple = tlv_next(tuple);
+	tlv_value_uint32_set(tuple, IPC4_I2S_CAPS_HW_CFG, I2S_VER_30_PTL);
+#endif
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	struct privacy_capabilities priv_caps;
+
+	tuple = tlv_next(tuple);
+
+	priv_caps.privacy_version = 1;
+	priv_caps.capabilities_length = 1;
+	priv_caps.capabilities[0] = mic_privacy_get_policy_register();
+
+	tlv_value_set(tuple, IPC4_INTEL_MIC_PRIVACY_CAPS_HW_CFG, sizeof(priv_caps), &priv_caps);
+#endif
+
+	/* Linux 7.0 and older do not enable UAOL for any Intel
+	 * hardware, so below capability check will lead to a DSP
+	 * panic. In strict compatibility mode, bypass the capability
+	 * check. */
+#if !defined(CONFIG_SOF_OS_LINUX_COMPAT_PRIORITY) && defined(CONFIG_UAOL_INTEL_ADSP)
+	tuple = tlv_next(tuple);
+	tlv_value_set_uaol_caps(tuple, IPC4_UAOL_CAPS_HW_CFG);
+#endif
+
+	tuple = tlv_next(tuple);
+	*data_offset = (int)((char *)tuple - data);
+
+	return 0;
+}
+
+__cold struct sof_man_fw_desc *basefw_vendor_get_manifest(void)
+{
+	assert_can_be_cold();
+
+	return (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+}
+
+__cold int basefw_vendor_modules_info_get(uint32_t *data_offset, char *data)
+{
+	assert_can_be_cold();
+
+	struct ipc4_modules_info *const module_info = (struct ipc4_modules_info *)data;
+	const struct sof_man_fw_desc *desc;
+	uint32_t curr_mod_cnt, curr_cpy_size, total_mod_cnt = 0;
+	uint32_t total_size_left = SOF_IPC_MSG_MAX_SIZE - sizeof(struct ipc4_modules_info);
+	int ret;
+
+	for (int lib_id = 0; lib_id < LIB_MANAGER_MAX_LIBS; ++lib_id) {
+		if (lib_id == 0) {
+			desc = basefw_vendor_get_manifest();
+		} else {
+#if CONFIG_LIBRARY_MANAGER
+			desc = lib_manager_get_library_manifest(LIB_MANAGER_PACK_LIB_ID(lib_id));
+#else
+			desc = NULL;
+#endif
+		}
+
+		if (!desc)
+			continue;
+
+		curr_mod_cnt = desc->header.num_module_entries;
+		curr_cpy_size = sizeof(struct sof_man_module) * curr_mod_cnt;
+
+		ret = memcpy_s(&module_info->modules[total_mod_cnt], total_size_left,
+			       (char *)desc + SOF_MAN_MODULE_OFFSET(0), curr_cpy_size);
+		if (ret) {
+			tr_err(&basefw_comp_tr, "Couldn't copy module info for %d lib", lib_id);
+			return IPC4_OUT_OF_MEMORY;
+		}
+
+		/* replace structure id ("$AME" tag) with runtime info */
+		for (uint32_t idx = 0; idx < curr_mod_cnt; ++idx) {
+			uint32_t mod_id = LIB_MANAGER_PACK_MODULE_ID(lib_id, idx);
+
+			module_info->modules[total_mod_cnt + idx].runtime_info.module_id = mod_id;
+			/* TODO: set bit[0] for modules loaded into ADSP memory */
+			module_info->modules[total_mod_cnt + idx].runtime_info.state_flags = 0x0;
+		}
+
+		total_mod_cnt += curr_mod_cnt;
+		total_size_left -= curr_cpy_size;
+	}
+
+	module_info->modules_count = total_mod_cnt;
+
+	*data_offset = sizeof(*module_info) +
+				module_info->modules_count * sizeof(module_info->modules[0]);
+	return IPC4_SUCCESS;
+}
+
+/* There are two types of sram memory : high power mode sram and
+ * low power mode sram. This function retures memory size in page
+ * , memory bank power and usage status of each sram to host driver
+ */
+__cold static int basefw_mem_state_info(uint32_t *data_offset, char *data)
+{
+	struct sof_tlv *tuple = (struct sof_tlv *)data;
+	struct ipc4_sram_state_info info;
+	uint32_t *tuple_data;
+	uint32_t index;
+	uint32_t size;
+	uint16_t *ptr;
+	int i;
+
+	assert_can_be_cold();
+
+	/* set hpsram */
+	info.free_phys_mem_pages = SRAM_BANK_SIZE * PLATFORM_HPSRAM_EBB_COUNT / HOST_PAGE_SIZE;
+	info.ebb_state_dword_count = SOF_DIV_ROUND_UP(PLATFORM_HPSRAM_EBB_COUNT, 32);
+	info.page_alloc_struct.page_alloc_count = PLATFORM_HPSRAM_EBB_COUNT;
+	size = sizeof(info) + info.ebb_state_dword_count * sizeof(uint32_t) +
+		info.page_alloc_struct.page_alloc_count * sizeof(uint32_t);
+	size = ALIGN(size, 4);
+	/* size is also saved as tuple length */
+	tuple_data = rballoc(SOF_MEM_FLAG_USER, size);
+	if (!tuple_data) {
+		LOG_ERR("allocation failed");
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
+	/* save memory info in data array since info length is variable */
+	index = 0;
+	tuple_data[index++] = info.free_phys_mem_pages;
+	tuple_data[index++] = info.ebb_state_dword_count;
+	for (i = 0; i < info.ebb_state_dword_count; i++)
+		tuple_data[index++] = HPSRAM_REGS(i)->HSxPGCTL;
+
+	tuple_data[index++] = info.page_alloc_struct.page_alloc_count;
+	/* TLB is not supported now, so all pages are marked as occupied
+	 * TODO: add page-size allocator and TLB support
+	 */
+	ptr = (uint16_t *)(tuple_data + index);
+	for (i = 0; i < info.page_alloc_struct.page_alloc_count; i++)
+		ptr[i] = 0xfff;
+
+	tlv_value_set(tuple, IPC4_HPSRAM_STATE, size, tuple_data);
+
+	/* set lpsram */
+	info.free_phys_mem_pages = 0;
+	info.ebb_state_dword_count = SOF_DIV_ROUND_UP(PLATFORM_LPSRAM_EBB_COUNT, 32);
+	info.page_alloc_struct.page_alloc_count = PLATFORM_LPSRAM_EBB_COUNT;
+	size = sizeof(info) + info.ebb_state_dword_count * sizeof(uint32_t) +
+		info.page_alloc_struct.page_alloc_count * sizeof(uint32_t);
+	size = ALIGN(size, 4);
+
+	index = 0;
+	tuple_data[index++] = info.free_phys_mem_pages;
+	tuple_data[index++] = info.ebb_state_dword_count;
+	for (i = 0; i < info.ebb_state_dword_count; i++)
+		tuple_data[index++] = LPSRAM_REGS(i)->USxPGCTL;
+
+	tuple_data[index++] = info.page_alloc_struct.page_alloc_count;
+	ptr = (uint16_t *)(tuple_data + index);
+	for (i = 0; i < info.page_alloc_struct.page_alloc_count; i++)
+		ptr[i] = 0xfff;
+
+	tuple = tlv_next(tuple);
+	tlv_value_set(tuple, IPC4_LPSRAM_STATE, size, tuple_data);
+
+	/* calculate total tuple size */
+	tuple = tlv_next(tuple);
+	*data_offset = (int)((char *)tuple - data);
+
+	rfree(tuple_data);
+	return IPC4_SUCCESS;
+}
+
+__cold static uint32_t basefw_get_ext_system_time(uint32_t *data_offset, char *data)
+{
+	assert_can_be_cold();
+
+#if CONFIG_ACE_V1X_ART_COUNTER && CONFIG_ACE_V1X_RTC_COUNTER
+	struct ipc4_ext_system_time *ext_system_time = (struct ipc4_ext_system_time *)(data);
+	struct ipc4_ext_system_time ext_system_time_data = {0};
+	struct ipc4_system_time_info *time_info = basefw_get_system_time_info();
+	uint64_t host_time = ((uint64_t)time_info->host_time.val_u << 32)
+				| (uint64_t)time_info->host_time.val_l;
+	uint64_t dsp_time = ((uint64_t)time_info->dsp_time.val_u << 32)
+				| (uint64_t)time_info->dsp_time.val_l;
+
+	if (host_time == 0 || dsp_time == 0)
+		return IPC4_INVALID_RESOURCE_STATE;
+
+	uint64_t art = 0;
+	uint64_t wallclk = 0;
+	uint64_t rtc = 0;
+
+	const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(ace_art_counter));
+
+	if (!dev) {
+		LOG_DBG("board: ART counter device binding failed");
+		return IPC4_MOD_NOT_INITIALIZED;
+	}
+
+	counter_get_value_64(dev, &art);
+
+	wallclk = sof_cycle_get_64();
+	ext_system_time_data.art_l = (uint32_t)art;
+	ext_system_time_data.art_u = (uint32_t)(art >> 32);
+	uint64_t delta = (wallclk - dsp_time) / (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000000);
+
+	uint64_t new_host_time = (host_time + delta);
+
+	ext_system_time_data.utc_l = (uint32_t)new_host_time;
+	ext_system_time_data.utc_u = (uint32_t)(new_host_time >> 32);
+
+	dev = DEVICE_DT_GET(DT_NODELABEL(ace_rtc_counter));
+
+	if (!dev) {
+		LOG_DBG("board: RTC counter device binding failed");
+		return IPC4_MOD_NOT_INITIALIZED;
+	}
+
+	counter_get_value_64(dev, &rtc);
+	ext_system_time_data.rtc_l = (uint32_t)rtc;
+	ext_system_time_data.rtc_u = (uint32_t)(rtc >> 32);
+
+	memcpy_s(ext_system_time, sizeof(*ext_system_time), &ext_system_time_data,
+		 sizeof(ext_system_time_data));
+	*data_offset = sizeof(struct ipc4_ext_system_time);
+
+	return IPC4_SUCCESS;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+__cold int basefw_vendor_get_large_config(struct comp_dev *dev, uint32_t param_id,
+					  bool first_block, bool last_block,
+					  uint32_t *data_offset, char *data)
+{
+	assert_can_be_cold();
+
+	/* We can use extended param id for both extended and standard param id */
+	union ipc4_extended_param_id extended_param_id;
+
+	extended_param_id.full = param_id;
+
+	uint32_t ret = IPC4_INVALID_REQUEST;
+
+	switch (extended_param_id.part.parameter_type) {
+	case IPC4_MEMORY_STATE_INFO_GET:
+		return basefw_mem_state_info(data_offset, data);
+	case IPC4_EXTENDED_SYSTEM_TIME:
+		ret = basefw_get_ext_system_time(data_offset, data);
+		if (ret == IPC4_UNAVAILABLE) {
+			tr_warn(&basefw_comp_tr,
+				"returning success for get host EXTENDED_SYSTEM_TIME without handling it");
+			return IPC4_SUCCESS;
+		} else {
+			return ret;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+__cold static int fw_config_set_force_l1_exit(const struct sof_tlv *tlv)
+{
+	assert_can_be_cold();
+
+#if defined(CONFIG_SOC_SERIES_INTEL_ADSP_ACE)
+	const uint32_t force = tlv->value[0];
+
+	if (force) {
+		tr_info(&basefw_comp_tr, "FW config set force dmi l0 state");
+		intel_adsp_force_dmi_l0_state();
+	} else {
+		tr_info(&basefw_comp_tr, "FW config set allow dmi l1 state");
+		intel_adsp_allow_dmi_l1_state();
+	}
+
+	return 0;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+__cold static int basefw_set_fw_config(bool first_block, bool last_block,
+				       uint32_t data_offset, const char *data)
+{
+	assert_can_be_cold();
+
+	/* Validate minimum TLV header (type + length fields) is present */
+	if (data_offset < sizeof(struct sof_tlv)) {
+		tr_err(&basefw_comp_tr, "FW_CONFIG payload too small: %u < %zu",
+		       data_offset, sizeof(struct sof_tlv));
+		return IPC4_INVALID_CONFIG_DATA_LEN;
+	}
+
+	const struct sof_tlv *tlv = (const struct sof_tlv *)data;
+
+	/* Validate the TLV value payload fits within the reported buffer size */
+	if (tlv->length > data_offset - sizeof(struct sof_tlv)) {
+		tr_err(&basefw_comp_tr,
+		       "FW_CONFIG TLV value truncated: len %u exceeds payload %u",
+		       tlv->length, data_offset);
+		return IPC4_INVALID_CONFIG_DATA_LEN;
+	}
+
+	switch (tlv->type) {
+	case IPC4_DMI_FORCE_L1_EXIT:
+		if (tlv->length < sizeof(uint32_t)) {
+			tr_err(&basefw_comp_tr, "DMI_FORCE_L1_EXIT value too small: %u",
+			       tlv->length);
+			return IPC4_INVALID_CONFIG_DATA_LEN;
+		}
+		return fw_config_set_force_l1_exit(tlv);
+	default:
+		break;
+	}
+
+	tr_warn(&basefw_comp_tr, "Set FW_CONFIG: no handler for type %u", tlv->type);
+	return 0;
+}
+
+static int basefw_set_mic_priv_policy(bool first_block,
+				      bool last_block,
+				      uint32_t data_offset_or_size,
+				      const char *data)
+{
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	return 0;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+static int basefw_mic_priv_state_changed(bool first_block,
+					 bool last_block,
+					 uint32_t data_offset_or_size,
+					 const char *data)
+{
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	if (data_offset_or_size < sizeof(uint8_t)) {
+		tr_err(&basefw_comp_tr, "mic_priv_state_changed: payload too small: %u",
+		       data_offset_or_size);
+		return IPC4_ERROR_INVALID_PARAM;
+	}
+
+	uint32_t mic_disable_status = (uint32_t)(uint8_t)(*data);
+
+	tr_info(&basefw_comp_tr, "state changed to %u", mic_disable_status);
+	struct mic_privacy_settings settings;
+
+	mic_privacy_fill_settings(&settings, mic_disable_status);
+	mic_privacy_propagate_settings(&settings);
+
+	return 0;
+#else
+	return IPC4_UNAVAILABLE;
+#endif
+}
+
+__cold int basefw_vendor_set_large_config(struct comp_dev *dev, uint32_t param_id,
+					  bool first_block, bool last_block,
+					  uint32_t data_offset, const char *data)
+{
+	assert_can_be_cold();
+
+	switch (param_id) {
+	case IPC4_FW_CONFIG:
+		return basefw_set_fw_config(first_block, last_block, data_offset, data);
+	case IPC4_SET_MIC_PRIVACY_FW_MANAGED_POLICY_MASK:
+		return basefw_set_mic_priv_policy(first_block, last_block, data_offset, data);
+	case IPC4_MIC_PRIVACY_HW_MANAGED_STATE_CHANGE:
+		return basefw_mic_priv_state_changed(first_block, last_block, data_offset, data);
+	default:
+		break;
+	}
+
+	return IPC4_INVALID_REQUEST;
+}
+
+__cold int basefw_vendor_dma_control(uint32_t node_id, const char *config_data, size_t data_size)
+{
+	union ipc4_connector_node_id node = (union ipc4_connector_node_id)node_id;
+	int dai_index = node.f.v_index;
+	int ret, result;
+	enum sof_ipc_dai_type type;
+
+	assert_can_be_cold();
+
+	tr_info(&basefw_comp_tr, "node_id 0x%x, config_data 0x%x, data_size %u",
+		node_id, (uint32_t)config_data, data_size);
+
+	switch (node.f.dma_type) {
+	case ipc4_dmic_link_input_class:
+		/* In DMIC case we don't need to update zephyr dai params */
+		ret = copier_gain_dma_control(node, config_data, data_size,
+					      SOF_DAI_INTEL_DMIC);
+		if (ret) {
+			tr_err(&basefw_comp_tr,
+			       "Failed to update copier gain coefs, error: %d", ret);
+			return IPC4_INVALID_REQUEST;
+		}
+		return IPC4_SUCCESS;
+	case ipc4_i2s_link_output_class:
+	case ipc4_i2s_link_input_class:
+		type = SOF_DAI_INTEL_SSP;
+		break;
+
+#if CONFIG_UAOL_INTEL_ADSP
+	case ipc4_alh_uaol_stream_link_output_class:
+	case ipc4_alh_uaol_stream_link_input_class:
+		type = SOF_DAI_INTEL_UAOL;
+		dai_index = uaol_stream_id_to_hda_link_stream_id(node.f.v_index);
+		if (dai_index < 0) {
+			tr_err(&basefw_comp_tr,
+			       "HDA link stream not found! UAOL node ID: 0x%x", node_id);
+			return IPC4_INVALID_RESOURCE_ID;
+		}
+		break;
+#endif
+
+	default:
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	const struct device *dev = dai_get_device(type, dai_index);
+
+	if (!dev) {
+		tr_err(&basefw_comp_tr,
+		       "Failed to find the DAI device for node_id: 0x%x",
+		       node_id);
+		return IPC4_INVALID_RESOURCE_ID;
+	}
+
+	ret = pm_device_runtime_get(dev);
+	if (ret < 0) {
+		tr_err(&basefw_comp_tr, "Failed to get resume device, error: %d",
+		       ret);
+		return IPC4_FAILURE;
+	}
+
+	result = dai_config_update(dev, config_data, data_size);
+	if (result < 0) {
+		tr_err(&basefw_comp_tr,
+		       "Failed to set DMA control for DAI, error: %d",
+		       result);
+		result = IPC4_FAILURE;
+	}
+
+	ret = pm_device_runtime_put(dev);
+	if (ret < 0)
+		tr_err(&basefw_comp_tr, "Failed to suspend device, error: %d",
+		       ret);
+
+	return result;
+}

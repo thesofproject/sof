@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_MULTIBAND_DRC
+	depends on COMP_IIR && COMP_CROSSOVER && COMP_DRC
+	tristate "Multiband Dynamic Range Compressor component"
+	select CORDIC_FIXED
+	select COMP_BLOB
+	default m if LIBRARY_DEFAULT_MODULAR
+	help
+	  Select for Multiband Dynamic Range Compressor (DRC) component. It
+	  consists of Emphasis Equalizer, n-way Crossover Filter, per-band DRC,
+	  and Deemphasis Equalizer.

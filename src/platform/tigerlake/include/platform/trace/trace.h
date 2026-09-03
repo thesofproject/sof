@@ -10,12 +10,7 @@
 #ifndef __PLATFORM_TRACE_TRACE_H__
 #define __PLATFORM_TRACE_TRACE_H__
 
-#include <sof/lib/mailbox.h>
-#include <sof/lib/memory.h>
-
-/* Platform defined trace code */
-#define platform_trace_point(__x) \
-	mailbox_sw_reg_write(SRAM_REG_FW_TRACEP, (__x))
+#include <cavs/trace/trace.h>
 
 #endif /* __PLATFORM_TRACE_TRACE_H__ */
 

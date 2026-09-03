@@ -1,0 +1,221 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+menu "Processing modules"
+	visible if COMP_MODULE_ADAPTER
+
+	config MODULE_MEMORY_API_CONTAINER_CHUNK_SIZE
+		int "Number of memory containers to allocate at once"
+		default 16
+		help
+		  The per module resource containers are allocated in
+		  chunks. The unused containers are kept in free
+		  list. When the free list is empty the amount of
+		  containers to allocate at once is selected by this
+		  config option.
+
+	config CADENCE_CODEC
+		bool "Cadence codec"
+		help
+		  Select for codecs which conforms to the Cadence API.
+		  This will cause codec adapter component to include header
+		  files specific to CADENCE base codecs.
+
+if CADENCE_CODEC
+	config CADENCE_CODEC_WRAPPER
+		bool 'Cadence codec wrapper'
+		help
+		  Select for cadence_codec_api wrapper function that will allow
+		  users to call into codecs which conforms to the Cadence API without
+		  explicitly knowing/using the entry function symbol name.
+
+	if CADENCE_CODEC_WRAPPER
+		config CADENCE_CODEC_WRAPPER_LIB
+		string "Cadence codec wrapper library name"
+		help
+		  This option is a string and takes the full name of the codec wrapper library binary.
+	endif
+
+	config CADENCE_CODEC_AAC_DEC
+		bool "Cadence AAC decoder"
+		help
+		  Select for Cadence AAC decoder support.
+		  This will cause Cadence codec to include Cadence AAC library
+		  api symbol.
+
+	if CADENCE_CODEC_AAC_DEC
+		config CADENCE_CODEC_AAC_DEC_LIB
+		string "Cadence AAC decoder library name"
+		help
+		  This option is a string and takes the full name of the AAC decoder library binary.
+	endif
+
+	config CADENCE_CODEC_BSAC_DEC
+		bool "Cadence BSAC decoder"
+		help
+		  Select for Cadence BSAC decoder support.
+		  This will cause Cadence codec to include Cadence BSAC library
+		  api symbol.
+
+	if CADENCE_CODEC_BSAC_DEC
+		config CADENCE_CODEC_BSAC_DEC_LIB
+		string "Cadence BSAC decoder library name"
+		help
+		  This option is a string and takes the full name of the BSAC decoder library
+	endif
+
+	config CADENCE_CODEC_DAB_DEC
+		bool "Cadence DAB decoder"
+		help
+		  Select for Cadence DAB decoder support.
+		  This will cause Cadence codec to include Cadence DAB library
+		  api symbol.
+
+	if CADENCE_CODEC_DAB_DEC
+		config CADENCE_CODEC_DAB_DEC_LIB
+		string "Cadence DAB decoder library name"
+		help
+		  This option is a string and takes the full name of the DAB library binary.
+	endif
+
+	config CADENCE_CODEC_DRM_DEC
+		bool "Cadence DRM decoder"
+		help
+		  Select for Cadence DRM decoder support.
+		  This will cause Cadence codec to include Cadence DRM library
+		  api symbol.
+
+	if CADENCE_CODEC_DRM_DEC
+		config CADENCE_CODEC_DRM_DEC_LIB
+		string "Cadence DRM decoder library name"
+		help
+		  This option is a string and takes the full name of the DRM library binary.
+	endif
+
+	config CADENCE_CODEC_MP3_DEC
+		bool "Cadence MP3 decoder"
+		help
+		  Select for Cadence MP3 decoder support.
+		  This will cause Cadence codec to include Cadence MP3 library
+		  api symbol.
+
+	if CADENCE_CODEC_MP3_DEC
+		config CADENCE_CODEC_MP3_DEC_LIB
+		string "Cadence MP3 decoder library name"
+		help
+		  This option is a string and takes the full name of the MP3 library binary.
+	endif
+
+	config CADENCE_CODEC_MP3_ENC
+		bool "Cadence MP3 encoder"
+		help
+		  Select for Cadence MP3 encoder support.
+		  This will cause Cadence codec to include Cadence MP3 library
+		  api symbol.
+
+	if CADENCE_CODEC_MP3_ENC
+		config CADENCE_CODEC_MP3_ENC_LIB
+		string "Cadence MP3 encoder library name"
+		help
+		  This option is a string and takes the full name of the MP3 library binary.
+	endif
+
+	config CADENCE_CODEC_SBC_DEC
+		bool "Cadence SBC decoder"
+		help
+		  Select for Cadence SBC decoder support.
+		  This will cause Cadence codec to include Cadence SBC library
+		  api symbol.
+
+	if CADENCE_CODEC_SBC_DEC
+		config CADENCE_CODEC_SBC_DEC_LIB
+		string "Cadence SBC decoder library name"
+		help
+		  This option is a string and takes the full name of the SBC library binary.
+	endif
+
+
+	config CADENCE_CODEC_VORBIS_DEC
+		bool "Cadence VORBIS decoder"
+		help
+		  Select for Cadence VORBIS decoder support.
+		  This will cause Cadence codec to include Cadence VORBIS library
+		  api symbol.
+
+	if CADENCE_CODEC_VORBIS_DEC
+		config CADENCE_CODEC_VORBIS_DEC_LIB
+		string "Cadence VORBIS decoder library name"
+		help
+		  This option is a string and takes the full name of the VORBIS library binary.
+	endif
+
+	config CADENCE_CODEC_SRC_PP
+		bool "Cadence SRC polyphase"
+		help
+		  Select for Cadence SRC polyphase support.
+		  This will cause Cadence codec to include Cadence SRC library
+		  api symbol.
+
+	if CADENCE_CODEC_SRC_PP
+		config CADENCE_CODEC_SRC_PP_LIB
+		string "Cadence SRC polyphase library name"
+		help
+		  This option is a string and takes the full name of the SRC library binary.
+	endif
+
+	config SOF_COMPRESS_CODEC_PCM_DEC
+		bool "SOF PCM (WAV) decoder"
+		help
+		  Select to enable the PCM (WAV) passthrough decoder. It plugs
+		  into the Cadence codec wrapper but is an open-source
+		  implementation; no Cadence binary is required. To use it,
+		  build tinycompress cplay with the --enable-pcm option.
+
+endif # Cadence
+
+	config COMP_DOLBY_DAX_AUDIO_PROCESSING
+		tristate "Dolby DAX audio processing component"
+		help
+		  Select to include Dolby DAX component. Dolby DAX component implements DAX API.
+		  API definition together with pre-compiled library is shared by Dolby.
+		  If library is not provided, COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK must be true,
+		  then the input will be copied to the output.
+
+	config COMP_DOLBY_DAX_AUDIO_PROCESSING_MOCK
+		bool "Dolby DAX audio processing component mock"
+		default y if COMP_STUBS
+		depends on COMP_DOLBY_DAX_AUDIO_PROCESSING
+		help
+		  Mock DAX audio processing. It allows for compilation check and basic audio
+		  flow checking.
+
+	config PASSTHROUGH_CODEC
+		bool "Passthrough codec"
+		help
+		  Select for a passthrough API codec implementation.
+		  This will cause codec adapter component to include header
+		  files specific to PASSTHROUGH base codecs.
+
+	config WAVES_CODEC
+	tristate "Waves codec"
+	help
+		Select to include Waves codec. Waves codec implements MaxxEffect API.
+		API definition together with pre-compiled library is shared by Waves Audio Ltd.
+		If library is not provided will result in compilation error.
+		For more information, contact consumer@waves.com.
+
+	config WAVES_CODEC_STUB
+	bool "Waves codec stub"
+	depends on WAVES_CODEC != "n"
+	default y if COMP_STUBS
+	help
+		Select to build the waves codec with a stub file. This should only be used for
+		testing or CI.
+
+	config INTEL_MODULES
+	bool "Intel modules"
+	depends on LIBRARY_MANAGER
+	help
+		Select for a Intel modules API implementation.
+		This will cause module adapter component to include IADK module
+		codec code. It will work only when LIBRARY_MANAGER is enabled.
+endmenu

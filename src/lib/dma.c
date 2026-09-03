@@ -4,48 +4,188 @@
 //
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
+#include <rtos/kernel.h>
+#include <sof/audio/audio_stream.h>
 #include <sof/audio/buffer.h>
-#include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
+#include <sof/audio/component.h>
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+#include <sof/audio/mic_privacy_manager.h>
+#endif
+#include <rtos/alloc.h>
+#include <rtos/cache.h>
 #include <sof/lib/dma.h>
-#include <sof/spinlock.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
+#include <rtos/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <module/module/base.h>
+#include "../audio/copier/copier.h"
 
-struct dma_info {
-	struct dma *dma_array;
-	size_t num_dmas;
-};
+LOG_MODULE_REGISTER(dma, CONFIG_SOF_LOG_LEVEL);
 
-static struct dma_info lib_dma = {
-	.dma_array = NULL,
-	.num_dmas = 0
-};
+SOF_DEFINE_REG_UUID(dma);
 
-void dma_install(struct dma *dma_array, size_t num_dmas)
+DECLARE_TR_CTX(dma_tr, SOF_UUID(dma_uuid), LOG_LEVEL_INFO);
+
+#if CONFIG_ZEPHYR_NATIVE_DRIVERS
+static int dma_init(struct sof_dma *dma);
+
+struct sof_dma *z_impl_sof_dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
-	lib_dma.dma_array = dma_array;
-	lib_dma.num_dmas = num_dmas;
-}
-
-struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
-{
-	int users, ret;
+	const struct dma_info *info = dma_info_get();
+	int users, ret = 0;
 	int min_users = INT32_MAX;
-	struct dma *d = NULL, *dmin = NULL;
+	struct sof_dma *d = NULL, *dmin = NULL;
+	k_spinlock_key_t key;
 
-	if (!lib_dma.num_dmas) {
-		trace_error(TRACE_CLASS_DMA, "dma_get(): No DMACs installed");
+	if (!info->num_dmas) {
+		tr_err(&dma_tr, "dma_get(): No DMACs installed");
 		return NULL;
 	}
 
 	/* find DMAC with free channels that matches request */
-	for (d = lib_dma.dma_array; d < lib_dma.dma_array + lib_dma.num_dmas;
+	for (d = info->dma_array; d < info->dma_array + info->num_dmas;
+	     d++) {
+		/* skip if this DMAC does not support the requested dir */
+		if (dir && (d->plat_data.dir & dir) == 0)
+			continue;
+
+		/* skip if this DMAC does not support the requested caps */
+		if (cap && (d->plat_data.caps & cap) == 0)
+			continue;
+
+		/* skip if this DMAC does not support the requested dev */
+		if (dev && (d->plat_data.devs & dev) == 0)
+			continue;
+
+		/* if exclusive access is requested */
+		if (flags & SOF_DMA_ACCESS_EXCLUSIVE) {
+			/* ret DMA with no users */
+			if (!d->sref) {
+				dmin = d;
+				break;
+			}
+		} else {
+			/* get number of users for this DMAC*/
+			users = d->sref;
+
+			/* pick DMAC with the least num of users */
+			if (users < min_users) {
+				dmin = d;
+				min_users = users;
+			}
+		}
+	}
+
+	if (!dmin) {
+		tr_err(&dma_tr, "No DMAC dir %d caps 0x%x dev 0x%x flags 0x%x",
+		       dir, cap, dev, flags);
+
+		for (d = info->dma_array;
+		     d < info->dma_array + info->num_dmas;
+		     d++) {
+			tr_err(&dma_tr, " DMAC ID %d users %d busy channels %ld",
+			       d->plat_data.id, d->sref,
+			       atomic_read(&d->num_channels_busy));
+			tr_err(&dma_tr, "  caps 0x%x dev 0x%x",
+			       d->plat_data.caps, d->plat_data.devs);
+		}
+
+		return NULL;
+	}
+
+	/* return DMAC */
+	tr_dbg(&dma_tr, "dma_get(), dma-probe id = %d",
+	       dmin->plat_data.id);
+
+	/* Shared DMA controllers with multiple channels
+	 * may be requested many times, let the probe()
+	 * do on-first-use initialization.
+	 */
+	key = k_spin_lock(&dmin->lock);
+
+	if (!dmin->sref) {
+		ret = dma_init(dmin);
+		if (ret < 0) {
+			tr_err(&dma_tr, "dma_get(): dma-probe failed id = %d, ret = %d",
+			       dmin->plat_data.id, ret);
+			goto out;
+		}
+	}
+
+	dmin->sref++;
+
+	tr_info(&dma_tr, "dma_get() ID %d sref = %d busy channels %ld",
+		dmin->plat_data.id, dmin->sref,
+		atomic_read(&dmin->num_channels_busy));
+out:
+	k_spin_unlock(&dmin->lock, key);
+	return !ret ? dmin : NULL;
+}
+
+void z_impl_sof_dma_put(struct sof_dma *dma)
+{
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&dma->lock);
+	if (--dma->sref == 0) {
+		sof_heap_free(dma->heap, dma->chan);
+		dma->chan = NULL;
+	}
+
+	tr_info(&dma_tr, "dma_put(), dma = %p, sref = %d",
+		dma, dma->sref);
+	k_spin_unlock(&dma->lock, key);
+}
+
+static int dma_init(struct sof_dma *dma)
+{
+	struct dma_chan_data *chan;
+	struct k_heap *heap = sof_sys_user_heap_get();
+	int i;
+
+	/* allocate dma channels */
+	dma->chan = sof_heap_alloc(heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
+				   sizeof(struct dma_chan_data) * dma->plat_data.channels, 0);
+	if (!dma->chan) {
+		tr_err(&dma_tr, "dma %d allocation of channels failed",
+		       dma->plat_data.id);
+		return -ENOMEM;
+	}
+
+	dma->heap = heap;
+	memset(dma->chan, 0, sizeof(struct dma_chan_data) * dma->plat_data.channels);
+	/* init work */
+	for (i = 0, chan = dma->chan; i < dma->plat_data.channels;
+	     i++, chan++) {
+		chan->dma = dma;
+		chan->index = i;
+	}
+
+	return 0;
+}
+#else
+struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
+{
+	const struct dma_info *info = dma_info_get();
+	int users, ret;
+	int min_users = INT32_MAX;
+	struct dma *d = NULL, *dmin = NULL;
+	k_spinlock_key_t key;
+
+	if (!info->num_dmas) {
+		tr_err(&dma_tr, "dma_get(): No DMACs installed");
+		return NULL;
+	}
+
+	/* find DMAC with free channels that matches request */
+	for (d = info->dma_array; d < info->dma_array + info->num_dmas;
 	     d++) {
 		/* skip if this DMAC does not support the requested dir */
 		if (dir && (d->plat_data.dir & dir) == 0)
@@ -84,90 +224,92 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	}
 
 	if (!dmin) {
-		trace_error(TRACE_CLASS_DMA, "No DMAC dir %d caps 0x%x "
-			    "dev 0x%x flags 0x%x", dir, cap, dev, flags);
+		tr_err(&dma_tr, "No DMAC dir %d caps 0x%x dev 0x%x flags 0x%x",
+		       dir, cap, dev, flags);
 
-		for (d = lib_dma.dma_array;
-		     d < lib_dma.dma_array + lib_dma.num_dmas;
+		for (d = info->dma_array;
+		     d < info->dma_array + info->num_dmas;
 		     d++) {
-			trace_error(TRACE_CLASS_DMA, " DMAC ID %d users %d "
-				    "busy channels %d", d->plat_data.id,
-				    d->sref,
-				    atomic_read(&d->num_channels_busy));
-			trace_error(TRACE_CLASS_DMA, "  caps 0x%x dev 0x%x",
-				    d->plat_data.caps, d->plat_data.devs);
+			tr_err(&dma_tr, " DMAC ID %d users %d busy channels %ld",
+			       d->plat_data.id, d->sref,
+			       atomic_read(&d->num_channels_busy));
+			tr_err(&dma_tr, "  caps 0x%x dev 0x%x",
+			       d->plat_data.caps, d->plat_data.devs);
 		}
+
 		return NULL;
 	}
 
 	/* return DMAC */
-	tracev_event(TRACE_CLASS_DMA, "dma_get(), dma-probe id = %d",
-		     dmin->plat_data.id);
+	tr_dbg(&dma_tr, "dma_get(), dma-probe id = %d",
+	       dmin->plat_data.id);
 
 	/* Shared DMA controllers with multiple channels
 	 * may be requested many times, let the probe()
 	 * do on-first-use initialization.
 	 */
-	spin_lock(dmin->lock);
+	key = k_spin_lock(&dmin->lock);
 
 	ret = 0;
 	if (!dmin->sref) {
-		ret = dma_probe(dmin);
+		ret = dma_probe_legacy(dmin);
 		if (ret < 0) {
-			trace_error(TRACE_CLASS_DMA,
-				    "dma_get() error: dma-probe failed"
-				    " id = %d, ret = %d",
-				    dmin->plat_data.id, ret);
+			tr_err(&dma_tr, "dma_get(): dma-probe failed id = %d, ret = %d",
+			       dmin->plat_data.id, ret);
 		}
 	}
 	if (!ret)
 		dmin->sref++;
 
-	trace_event(TRACE_CLASS_DMA, "dma_get() ID %d sref = %d "
-		    "busy channels %d", dmin->plat_data.id, dmin->sref,
-		    atomic_read(&dmin->num_channels_busy));
+	tr_info(&dma_tr, "dma_get() ID %d sref = %d busy channels %ld",
+		dmin->plat_data.id, dmin->sref,
+		atomic_read(&dmin->num_channels_busy));
 
-	spin_unlock(dmin->lock);
+	k_spin_unlock(&dmin->lock, key);
 	return !ret ? dmin : NULL;
 }
 
 void dma_put(struct dma *dma)
 {
+	k_spinlock_key_t key;
 	int ret;
 
-	spin_lock(dma->lock);
+	key = k_spin_lock(&dma->lock);
 	if (--dma->sref == 0) {
-		ret = dma_remove(dma);
+		ret = dma_remove_legacy(dma);
 		if (ret < 0) {
-			trace_error(TRACE_CLASS_DMA,
-				    "dma_put() error: dma_remove() failed id"
-				    " = %d, ret = %d", dma->plat_data.id, ret);
+			tr_err(&dma_tr, "dma_remove() failed id  = %d, ret = %d",
+			       dma->plat_data.id, ret);
 		}
 	}
-	trace_event(TRACE_CLASS_DMA, "dma_put(), dma = %p, sref = %d",
-		   (uintptr_t)dma, dma->sref);
-	spin_unlock(dma->lock);
+	tr_info(&dma_tr, "dma = %p, sref = %d",
+		dma, dma->sref);
+	k_spin_unlock(&dma->lock, key);
 }
+#endif
 
-int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
-		 int zone,
+int dma_sg_alloc(struct k_heap *heap,
+		 struct dma_sg_elem_array *elem_array,
+		 uint32_t flags,
 		 uint32_t direction,
 		 uint32_t buffer_count, uint32_t buffer_bytes,
 		 uintptr_t dma_buffer_addr, uintptr_t external_addr)
 {
 	int i;
 
-	elem_array->elems = rzalloc(zone, SOF_MEM_CAPS_RAM,
-				    sizeof(struct dma_sg_elem) * buffer_count);
+	elem_array->elems = sof_heap_alloc(heap, SOF_MEM_FLAG_USER,
+					   sizeof(struct dma_sg_elem) * buffer_count, 0);
 	if (!elem_array->elems)
 		return -ENOMEM;
+
+	memset(elem_array->elems, 0, sizeof(struct dma_sg_elem) * buffer_count);
 
 	for (i = 0; i < buffer_count; i++) {
 		elem_array->elems[i].size = buffer_bytes;
 		// TODO: may count offsets once
 		switch (direction) {
-		case DMA_DIR_MEM_TO_DEV:
-		case DMA_DIR_LMEM_TO_HMEM:
+		case SOF_DMA_DIR_MEM_TO_DEV:
+		case SOF_DMA_DIR_LMEM_TO_HMEM:
 			elem_array->elems[i].src = dma_buffer_addr;
 			elem_array->elems[i].dest = external_addr;
 			break;
@@ -183,68 +325,233 @@ int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 	return 0;
 }
 
-void dma_sg_free(struct dma_sg_elem_array *elem_array)
+void dma_sg_free(struct k_heap *heap, struct dma_sg_elem_array *elem_array)
 {
-	rfree(elem_array->elems);
+	sof_heap_free(heap, elem_array->elems);
 	dma_sg_init(elem_array);
 }
 
-void dma_buffer_copy_from(struct comp_buffer *source, struct comp_buffer *sink,
-	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
-	uint32_t bytes)
+int dma_buffer_copy_from(struct comp_buffer *source,
+			 struct comp_buffer *sink,
+			 dma_process_func process, uint32_t source_bytes, uint32_t chmap)
 {
-	uint32_t head = bytes;
-	uint32_t tail = 0;
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int sink_bytes;
+	struct audio_stream *istream = &source->stream;
+	int ret;
+
+	/* WORKAROUND: Given that remapping conversion can alter the number of channels, it's
+	 * necessary to use frames, not samples, to calculate sink_bytes for writeback/produce.
+	 * Unfortunately, the Host DMA imposes size alignment requirement for chunks of data
+	 * being copied. For certain frame sizes, this alignment constraint results in splitting
+	 * the first and/or last frame in the buffer. Consequently, frame-based calculations
+	 * cannot be used with Host DMA. Fortunately, remapping conversion is specifically
+	 * designed for use with IPC4 DAI gateway's device posture feature. IPC4 DAI gateway
+	 * does not have the same size alignment limitations. Therefore, frame-based calculations
+	 * are employed only when necessary —- in the case of IPC4 DAI gateway with remapping
+	 * conversion that modifies number of channels.
+	 */
+	if (source_channels == sink_channels) {
+		/* Sample-based calculations can be used here since the source and sink have
+		 * the same number of samples. Frame-based calculations, however, cannot be used
+		 * in this scenario, as it might involve a gateway that does not supply full frames
+		 * (e.g., the Host gateway).
+		 */
+		source_samples = source_bytes / audio_stream_sample_bytes(istream);
+		sink_bytes = source_samples * audio_stream_sample_bytes(&sink->stream);
+	} else {
+		int frames;
+
+		/* Sample-based calculations cannot be used here since source and sink have
+		 * different number of samples. Fortunately, only IPC4 DAI gateway supports
+		 * remapping conversion -- it's safe to use frame-based calculations in this
+		 * context.
+		 */
+		assert(source_channels);
+		assert(sink_channels);
+
+		frames = source_bytes / audio_stream_frame_bytes(istream);
+		sink_bytes = audio_stream_frame_bytes(&sink->stream) * frames;
+		source_samples = frames * source_channels;
+	}
 
 	/* source buffer contains data copied by DMA */
-	if ((char *)source->r_ptr + bytes > (char *)source->end_addr) {
-		head = (char *)source->end_addr - (char *)source->r_ptr;
-		tail = bytes - head;
-	}
+	audio_stream_invalidate(istream, source_bytes);
 
-	dcache_invalidate_region(source->r_ptr, head);
-	if (tail)
-		dcache_invalidate_region(source->addr, tail);
+	/* process data; the converter consumes cir_buf descriptors */
+	struct cir_buf_source cir_src = {
+		.buf_start = audio_stream_get_addr(istream),
+		.buf_end = audio_stream_get_end_addr(istream),
+		.ptr = audio_stream_get_rptr(istream),
+	};
+	struct cir_buf_sink cir_snk = {
+		.buf_start = audio_stream_get_addr(&sink->stream),
+		.buf_end = audio_stream_get_end_addr(&sink->stream),
+		.ptr = audio_stream_get_wptr(&sink->stream),
+	};
 
-	/* process data */
-	process(source, sink, bytes);
+	ret = process(&cir_src, source_channels, &cir_snk, sink_channels, source_samples, chmap);
 
-	source->r_ptr = (char *)source->r_ptr + bytes;
+	buffer_stream_writeback(sink, sink_bytes);
 
-	/* check for pointer wrap */
-	if (source->r_ptr >= source->end_addr)
-		source->r_ptr = (char *)source->addr +
-			((char *)source->r_ptr - (char *)source->end_addr);
+	/*
+	 * consume istream using audio_stream API because this buffer doesn't
+	 * appear in topology so notifier event is not needed
+	 */
+	audio_stream_consume(istream, source_bytes);
+	comp_update_buffer_produce(sink, sink_bytes);
 
-	comp_update_buffer_produce(sink, bytes);
+	return ret;
 }
 
-void dma_buffer_copy_to(struct comp_buffer *source, struct comp_buffer *sink,
-	void (*process)(struct comp_buffer *, struct comp_buffer *, uint32_t),
-	uint32_t bytes)
+int dma_buffer_copy_to(struct comp_buffer *source,
+		       struct comp_buffer *sink,
+		       dma_process_func process, uint32_t sink_bytes, uint32_t chmap)
 {
-	uint32_t head = bytes;
-	uint32_t tail = 0;
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int source_bytes;
+	struct audio_stream *ostream = &sink->stream;
+	int ret;
 
-	/* process data */
-	process(source, sink, bytes);
+	/* WORKAROUND: Given that remapping conversion can alter the number of channels, it's
+	 * necessary to use frames, not samples, to calculate source_bytes for invalidate/consume.
+	 * Unfortunately, the Host DMA imposes size alignment requirement for chunks of data
+	 * being copied. For certain frame sizes, this alignment constraint results in splitting
+	 * the first and/or last frame in the buffer. Consequently, frame-based calculations
+	 * cannot be used with Host DMA. Fortunately, remapping conversion is specifically
+	 * designed for use with IPC4 DAI gateway's device posture feature. IPC4 DAI gateway
+	 * does not have the same size alignment limitations. Therefore, frame-based calculations
+	 * are employed only when necessary —- in the case of IPC4 DAI gateway with remapping
+	 * conversion that modifies number of channels.
+	 */
+	if (source_channels == sink_channels) {
+		/* Sample-based calculations can be used here since the source and sink have
+		 * the same number of samples. Frame-based calculations, however, cannot be used
+		 * in this scenario, as it might involve a gateway that does not supply full frames
+		 * (e.g., the Host gateway).
+		 */
+		source_samples = sink_bytes / audio_stream_sample_bytes(ostream);
+		source_bytes = source_samples * audio_stream_sample_bytes(&source->stream);
+	} else {
+		int frames;
 
-	/* sink buffer contains data meant to copied to DMA */
-	if ((char *)sink->w_ptr + bytes > (char *)sink->end_addr) {
-		head = (char *)sink->end_addr - (char *)sink->w_ptr;
-		tail = bytes - head;
+		/* Sample-based calculations cannot be used here since source and sink have
+		 * different number of samples. Fortunately, only IPC4 DAI gateway supports
+		 * remapping conversion -- it's safe to use frame-based calculations in this
+		 * context.
+		 */
+		assert(source_channels);
+		assert(sink_channels);
+
+		frames = sink_bytes / audio_stream_frame_bytes(ostream);
+		source_bytes = audio_stream_frame_bytes(&source->stream) * frames;
+		source_samples = frames * source_channels;
 	}
 
-	dcache_writeback_region(sink->w_ptr, head);
-	if (tail)
-		dcache_writeback_region(sink->addr, tail);
+	buffer_stream_invalidate(source, source_bytes);
 
-	sink->w_ptr = (char *)sink->w_ptr + bytes;
+	/* process data; the converter consumes cir_buf descriptors */
+	struct cir_buf_source cir_src = {
+		.buf_start = audio_stream_get_addr(&source->stream),
+		.buf_end = audio_stream_get_end_addr(&source->stream),
+		.ptr = audio_stream_get_rptr(&source->stream),
+	};
+	struct cir_buf_sink cir_snk = {
+		.buf_start = audio_stream_get_addr(ostream),
+		.buf_end = audio_stream_get_end_addr(ostream),
+		.ptr = audio_stream_get_wptr(ostream),
+	};
 
-	/* check for pointer wrap */
-	if (sink->w_ptr >= sink->end_addr)
-		sink->w_ptr = (char *)sink->addr +
-			((char *)sink->w_ptr - (char *)sink->end_addr);
+	ret = process(&cir_src, source_channels, &cir_snk, sink_channels, source_samples, chmap);
 
-	comp_update_buffer_consume(source, bytes);
+	/* sink buffer contains data meant to copied to DMA */
+	audio_stream_writeback(ostream, sink_bytes);
+
+	/*
+	 * produce ostream using audio_stream API because this buffer doesn't
+	 * appear in topology so notifier event is not needed
+	 */
+	audio_stream_produce(ostream, sink_bytes);
+	comp_update_buffer_consume(source, source_bytes);
+
+	return ret;
+}
+
+int stream_copy_from_no_consume(struct comp_dev *dev, struct comp_buffer *source,
+				struct comp_buffer *sink,
+				dma_process_func process, uint32_t source_bytes, uint32_t chmap)
+{
+	int source_channels = audio_stream_get_channels(&source->stream);
+	int sink_channels = audio_stream_get_channels(&sink->stream);
+	int source_samples;
+	int sink_bytes;
+	struct audio_stream *istream = &source->stream;
+	int ret;
+
+	/* WORKAROUND: Given that remapping conversion can alter the number of channels, it's
+	 * necessary to use frames, not samples, to calculate sink_bytes for writeback/produce.
+	 * Unfortunately, the Host DMA imposes size alignment requirement for chunks of data
+	 * being copied. For certain frame sizes, this alignment constraint results in splitting
+	 * the first and/or last frame in the buffer. Consequently, frame-based calculations
+	 * cannot be used with Host DMA. Fortunately, remapping conversion is specifically
+	 * designed for use with IPC4 DAI gateway's device posture feature. IPC4 DAI gateway
+	 * does not have the same size alignment limitations. Therefore, frame-based calculations
+	 * are employed only when necessary —- in the case of IPC4 DAI gateway with remapping
+	 * conversion that modifies number of channels.
+	 */
+	if (source_channels == sink_channels) {
+		/* Sample-based calculations can be used here since the source and sink have
+		 * the same number of samples. Frame-based calculations, however, cannot be used
+		 * in this scenario, as it might involve a gateway that does not supply full frames
+		 * (e.g., the Host gateway).
+		 */
+		source_samples = source_bytes / audio_stream_sample_bytes(istream);
+		sink_bytes = source_samples * audio_stream_sample_bytes(&sink->stream);
+	} else {
+		int frames;
+
+		/* Sample-based calculations cannot be used here since source and sink have
+		 * different number of samples. Fortunately, only IPC4 DAI gateway supports
+		 * remapping conversion -- it's safe to use frame-based calculations in this
+		 * context.
+		 */
+		assert(source_channels);
+		assert(sink_channels);
+
+		frames = source_bytes / audio_stream_frame_bytes(istream);
+		sink_bytes = audio_stream_frame_bytes(&sink->stream) * frames;
+		source_samples = frames * source_channels;
+	}
+
+	/* process data; the converter consumes cir_buf descriptors */
+	struct cir_buf_source cir_src = {
+		.buf_start = audio_stream_get_addr(istream),
+		.buf_end = audio_stream_get_end_addr(istream),
+		.ptr = audio_stream_get_rptr(istream),
+	};
+	struct cir_buf_sink cir_snk = {
+		.buf_start = audio_stream_get_addr(&sink->stream),
+		.buf_end = audio_stream_get_end_addr(&sink->stream),
+		.ptr = audio_stream_get_wptr(&sink->stream),
+	};
+
+	ret = process(&cir_src, source_channels, &cir_snk, sink_channels, source_samples, chmap);
+
+#if CONFIG_INTEL_ADSP_MIC_PRIVACY
+	struct processing_module *mod = comp_mod(dev);
+	struct copier_data *cd = module_get_private_data(mod);
+
+	if (cd->mic_priv)
+		mic_privacy_process(dev, cd->mic_priv, sink, source_samples);
+#endif
+
+	buffer_stream_writeback(sink, sink_bytes);
+
+	comp_update_buffer_produce(sink, sink_bytes);
+
+	return ret;
 }

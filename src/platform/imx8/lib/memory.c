@@ -5,9 +5,10 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <sof/common.h>
-#include <sof/lib/alloc.h>
+#include <sof/lib/mm_heap.h>
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
+#include <rtos/sof.h>
 #include <ipc/topology.h>
 
 /* Heap blocks for system runtime */
@@ -52,7 +53,7 @@ static struct block_map buf_heap_map[] = {
 	BLOCK_DEF(HEAP_BUFFER_BLOCK_SIZE, HEAP_BUFFER_COUNT, buf_block),
 };
 
-struct mm memmap = {
+static struct mm memmap = {
 	.system[0] = {
 		.heap = HEAP_SYSTEM_BASE,
 		.size = HEAP_SYSTEM_SIZE,
@@ -91,7 +92,8 @@ struct mm memmap = {
 			HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE,},
 };
 
-void platform_init_memmap(void)
+void platform_init_memmap(struct sof *sof)
 {
 	/* memmap has been initialized statically as a part of .data */
+	sof->memory_map = &memmap;
 }

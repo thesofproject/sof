@@ -15,13 +15,11 @@
 *.rom
 *.man
 .version
-.tarball-version
 *.x
 .build
 *.dis
 *.lst
 *.log
-.*
 *.html
 *.js
 *.png
@@ -33,9 +31,6 @@
 *.xslt
 *.mbox
 
-doc/doxygen
-*.doxygen
-
 *.gz
 *.xz
 src/arch/xtensa/sof
@@ -46,18 +41,26 @@ src/arch/xtensa/module
 src/arch/xtensa/rom
 src/arch/xtensa/rom-*
 boot_module
-module
-rimage/rimage
 
 tap-driver.sh
 test-driver
 *.trs
+tools/test/audio/reports/*
+tools/test/audio/zeros_in.raw
 
 __pycache__
 
 build*/
-CMakeCache.txt
-CMakeFiles
-doc/*.cmake
-doc/*.ninja
-doc/Makefile
+
+# Eclipse project metadata
+.settings
+.project
+.cproject
+
+/tags
+/TAGS
+
+# cscope files
+cscope.*
+ncscope.*
+

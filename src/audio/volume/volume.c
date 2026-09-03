@@ -7,685 +7,799 @@
 //         Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file audio/volume.c
+ * \file
  * \brief Volume component implementation
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>\n
  *          Keyon Jie <yang.jie@linux.intel.com>\n
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#include <sof/audio/coefficients/volume/windows_fade.h>
+#include <sof/audio/component_ext.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/pipeline.h>
-#include <sof/audio/volume.h>
+#include <sof/audio/ipc-config.h>
+#include <sof/audio/sink_source_utils.h>
 #include <sof/common.h>
-#include <sof/debug/panic.h>
-#include <sof/drivers/ipc.h>
-#include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/panic.h>
+#include <sof/ipc/msg.h>
+#include <rtos/init.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/uuid.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
-#include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
-#include <sof/string.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
+#include <sof/ut.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
+
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/**
- * \brief Synchronize host mmap() volume with real value.
- * \param[in,out] cd Volume component private data.
- * \param[in] chan Channel number.
- */
-static void vol_sync_host(struct comp_data *cd, uint32_t chan)
-{
-	if (!cd->hvol)
-		return;
+LOG_MODULE_REGISTER(volume, CONFIG_SOF_LOG_LEVEL);
 
-	if (chan < SOF_IPC_MAX_CHANNELS) {
-		cd->hvol[chan].value = cd->volume[chan];
-	} else {
-		trace_volume_error("vol_sync_host() error: "
-				   "chan = %u < SOF_IPC_MAX_CHANNELS", chan);
+#include "volume_uuid.h"
+#include "volume.h"
+
+#if CONFIG_FORMAT_S16LE
+/**
+ * \brief Used to find nearest zero crossing frame for 16 bit format.
+ * \param[in,out] source Source circular buffer view.
+ * \param[in] channels Number of channels in the stream.
+ * \param[in] frames Number of frames.
+ * \param[in,out] prev_sum Previous sum of channel samples.
+ */
+static uint32_t vol_zc_get_s16(struct cir_buf_source *source, const int channels,
+			       uint32_t frames, int64_t *prev_sum)
+{
+	uint32_t curr_frames = frames;
+	int32_t sum;
+	const int16_t *x = source->ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	int remaining_samples = frames * channels;
+
+	/* Go to last channel */
+	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
+	while (remaining_samples) {
+		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
+		nmax = VOL_BYTES_TO_S16_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += channels) {
+			sum = 0;
+			for (j = 0; j < channels; j++) {
+				sum += *x;
+				x--;
+			}
+
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
+		}
+		remaining_samples -= n;
+		x = source_cir_buf_rewind_wrap(x, source->buf_start, source->buf_end);
 	}
+
+	/* sign change not detected, process all samples */
+	return frames;
 }
 
+#endif /* CONFIG_FORMAT_S16LE */
+
+#if CONFIG_FORMAT_S24LE
 /**
- * \brief Update volume with target value.
- * \param[in,out] cd Volume component private data.
- * \param[in] chan Channel number.
+ * \brief Used to find nearest zero crossing frame for 24 in 32 bit format.
+ * \param[in,out] source Source circular buffer view.
+ * \param[in] channels Number of channels in the stream.
+ * \param[in] frames Number of frames.
+ * \param[in,out] prev_sum Previous sum of channel samples.
  */
-static void vol_update(struct comp_data *cd, uint32_t chan)
+static uint32_t vol_zc_get_s24(struct cir_buf_source *source, const int channels,
+			       uint32_t frames, int64_t *prev_sum)
 {
-	cd->volume[chan] = cd->tvolume[chan];
-	vol_sync_host(cd, chan);
+	int64_t sum;
+	uint32_t curr_frames = frames;
+	const int32_t *x = source->ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	int remaining_samples = frames * channels;
+
+	/* Go to last channel */
+	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
+	while (remaining_samples) {
+		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
+		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += channels) {
+			sum = 0;
+			for (j = 0; j < channels; j++) {
+				sum += sign_extend_s24(*x);
+				x--;
+			}
+
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
+		}
+		remaining_samples -= n;
+		x = source_cir_buf_rewind_wrap(x, source->buf_start, source->buf_end);
+	}
+
+	/* sign change not detected, process all samples */
+	return frames;
+}
+
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+/**
+ * \brief Used to find nearest zero crossing frame for 32 bit format.
+ * \param[in,out] source Source circular buffer view.
+ * \param[in] channels Number of channels in the stream.
+ * \param[in] frames Number of frames.
+ * \param[in,out] prev_sum Previous sum of channel samples.
+ */
+static uint32_t vol_zc_get_s32(struct cir_buf_source *source, const int channels,
+			       uint32_t frames, int64_t *prev_sum)
+{
+	int64_t sum;
+	uint32_t curr_frames = frames;
+	const int32_t *x = source->ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	int remaining_samples = frames * channels;
+
+	/* Go to last channel */
+	x = cir_buf_wrap(x + remaining_samples - 1, source->buf_start, source->buf_end);
+	while (remaining_samples) {
+		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
+		nmax = VOL_BYTES_TO_S32_SAMPLES(bytes) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += channels) {
+			sum = 0;
+			for (j = 0; j < channels; j++) {
+				sum += *x;
+				x--;
+			}
+
+			/* first sign change */
+			if ((sum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = sum;
+			curr_frames--;
+		}
+		remaining_samples -= n;
+		x = source_cir_buf_rewind_wrap(x, source->buf_start, source->buf_end);
+	}
+
+	/* sign change not detected, process all samples */
+	return frames;
+}
+
+#endif /* CONFIG_FORMAT_S32LE */
+
+/**
+ * \brief Map of formats with dedicated zc functions.
+ *
+ * This is only used during @c .prepare() so it isn't performance-critical.
+ */
+__cold_rodata static const struct comp_zc_func_map zc_func_map[] = {
+#if CONFIG_FORMAT_S16LE
+	{ SOF_IPC_FRAME_S16_LE, vol_zc_get_s16 },
+#endif /* CONFIG_FORMAT_S16LE */
+#if CONFIG_FORMAT_S24LE
+	{ SOF_IPC_FRAME_S24_4LE, vol_zc_get_s24 },
+#endif /* CONFIG_FORMAT_S24LE */
+#if CONFIG_FORMAT_S32LE
+	{ SOF_IPC_FRAME_S32_LE, vol_zc_get_s32 },
+#endif /* CONFIG_FORMAT_S32LE */
+};
+
+#if CONFIG_COMP_VOLUME_LINEAR_RAMP
+/**
+ * \brief Calculate linear ramp function
+ * \param[in,out] dev Component data: ramp start gain, actual gain
+ * \param[in] ramp_time Time spent since ramp start as milliseconds Q29.3
+ * \param[in] channel Current channel to update
+ */
+static inline int32_t volume_linear_ramp(struct vol_data *cd, int32_t ramp_time, int channel)
+{
+	if (!cd->initial_ramp)
+		return cd->tvolume[channel];
+
+	return sat_int32((int64_t)ramp_time * cd->ramp_coef[channel] + cd->rvolume[channel]);
+}
+#endif
+
+#if CONFIG_COMP_VOLUME_WINDOWS_FADE
+/**
+ * \brief Calculate windows fade ramp function
+ * \param[in,out] dev Component data: target gain, ramp start gain, ramp duration
+ * \param[in] ramp_time Time spent since ramp start as milliseconds Q29.3
+ * \param[in] channel Current channel to update
+ */
+
+static inline int32_t volume_windows_fade_ramp(struct vol_data *cd, int32_t ramp_time, int channel)
+{
+	int32_t time_ratio; /* Q2.30 */
+	int32_t pow_value; /* Q2.30 */
+	int32_t volume_delta = cd->tvolume[channel] - cd->rvolume[channel]; /* Q16.16 */
+
+	if (!cd->initial_ramp)
+		return cd->tvolume[channel];
+
+	time_ratio = (((int64_t)ramp_time) << 30) / (cd->initial_ramp << 3);
+	if (volume_delta < 0) {
+		time_ratio = (1 << 30) - time_ratio;
+		pow_value = volume_pow_175(time_ratio);
+		return cd->tvolume[channel] - Q_MULTSR_32X32((int64_t)volume_delta,
+							     pow_value, 16, 30, 16);
+	}
+
+	pow_value = volume_pow_175(time_ratio);
+	return cd->rvolume[channel] + Q_MULTSR_32X32((int64_t)volume_delta, pow_value, 16, 30, 16);
+}
+#endif
+
+void volume_set_ramp_channel_counter(struct vol_data *cd, uint32_t channels_count)
+{
+	int i;
+	bool is_same_volume = true;
+
+	for (i = 1; i < channels_count; i++) {
+		if (cd->tvolume[0] != cd->tvolume[i] || cd->volume[0] != cd->volume[i]) {
+			is_same_volume = false;
+			break;
+		}
+	}
+
+	if (is_same_volume)
+		cd->ramp_channel_counter = 1;
+	else
+		cd->ramp_channel_counter = channels_count;
 }
 
 /**
  * \brief Ramps volume changes over time.
- * \param[in,out] data Volume base component device.
- * \param[in] delay Update time.
- * \return Time until next work.
+ * \param[in,out] vol_data Volume component data
  */
-static enum task_state vol_work(void *data)
+
+/* Note: Using inline saves 0.4 MCPS */
+static inline void volume_ramp(struct processing_module *mod)
 {
-	struct comp_dev *dev = (struct comp_dev *)data;
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t vol;
-	int again = 0;
+	struct vol_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	int32_t new_vol;
+	int32_t tvolume;
+	int32_t volume;
 	int i;
 
-	cd->vol_ramp_active = true;
+	cd->ramp_finished = true;
+	cd->copy_gain = true;
 
-	/* inc/dec each volume if it's not at target */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+	/* Current ramp time in Q29.3 milliseconds. Note that max. ramp length
+	 * can be 1.3s at 192 kHz rate and 5.5s at 48 kHz rate without
+	 * exceeding int32_t range. Inverse of sample rate is 1000/sample_rate
+	 * for milliseconds.
+	 */
+#if defined CONFIG_COMP_VOLUME_WINDOWS_FADE || defined CONFIG_COMP_VOLUME_LINEAR_RAMP
+	int32_t ramp_time = Q_MULTSR_32X32((int64_t)cd->vol_ramp_elapsed_frames,
+					   cd->sample_rate_inv, 0, 31, 3);
+#endif
+
+	/* Update each volume if it's not at target for active channels */
+	for (i = 0; i < cd->ramp_channel_counter; i++) {
 		/* skip if target reached */
-		if (cd->volume[i] == cd->tvolume[i])
+		volume = cd->volume[i];
+		tvolume = cd->tvolume[i];
+		if (volume == tvolume)
 			continue;
 
-		/* Update volume gain with ramp. Linear ramp increment is
-		 * in compatible Q1.16 format with volume.
+		/* Update volume gain with ramp. The ramp gain value is
+		 * calculated from previous gain and ramp time. The slope
+		 * coefficient is calculated in volume_set_chan().
 		 */
-		vol = cd->volume[i];
-		vol += cd->ramp_increment[i];
-		if (cd->volume[i] < cd->tvolume[i]) {
+		switch (cd->ramp_type) {
+#if CONFIG_COMP_VOLUME_WINDOWS_FADE
+		case SOF_VOLUME_WINDOWS_FADE:
+			new_vol = volume_windows_fade_ramp(cd, ramp_time, i);
+			break;
+#endif
+#if CONFIG_COMP_VOLUME_LINEAR_RAMP
+		case SOF_VOLUME_LINEAR:
+		case SOF_VOLUME_LINEAR_ZC:
+			new_vol = volume_linear_ramp(cd, ramp_time, i);
+			break;
+#endif
+		default:
+			new_vol = tvolume;
+		}
+
+		if (volume < tvolume) {
 			/* ramp up, check if ramp completed */
-			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
-				vol_update(cd, i);
-				cd->ramp_increment[i] = 0;
-			} else {
-				cd->volume[i] = vol;
-				again = 1;
-			}
+			if (new_vol < tvolume)
+				cd->ramp_finished = false;
+			else
+				new_vol = tvolume;
 		} else {
 			/* ramp down */
-			if (vol <= 0) {
-				/* cannot ramp down below 0 */
-				vol_update(cd, i);
-				cd->ramp_increment[i] = 0;
-			} else {
-				/* ramp completed ? */
-				if (vol <= cd->tvolume[i] ||
-				    vol <= cd->vol_min) {
-					vol_update(cd, i);
-					cd->ramp_increment[i] = 0;
-				} else {
-					cd->volume[i] = vol;
-					again = 1;
-				}
-			}
+			if (new_vol > tvolume)
+				cd->ramp_finished = false;
+			else
+				new_vol = tvolume;
 		}
+		cd->volume[i] = new_vol;
+	}
+	/* assign other channel volume as the first calculated volume with same volume case */
+	for (i = cd->ramp_channel_counter; i < cd->channels; i++)
+		cd->volume[i] = cd->volume[0];
 
-		/* sync host with new value */
-		vol_sync_host(cd, i);
+	cd->is_passthrough = cd->ramp_finished;
+	for (i = 0; i < cd->channels; i++) {
+		if (cd->volume[i] != VOL_ZERO_DB) {
+			cd->is_passthrough = false;
+			break;
+		}
 	}
 
-	/* do we need to continue ramping */
-	if (again)
-		return SOF_TASK_STATE_RESCHEDULE;
-
-	cd->vol_ramp_active = 0;
-	return SOF_TASK_STATE_COMPLETED;
+	if (cd->is_passthrough)
+		set_volume_process(cd, dev, true);
 }
 
 /**
- * \brief Creates volume component.
- * \param[in,out] data Volume base component device.
- * \param[in] delay Update time.
- * \return Pointer to volume base component device.
+ * \brief Reset state except controls.
  */
-static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
+void volume_reset_state(struct vol_data *cd)
 {
-	struct comp_dev *dev;
-	struct sof_ipc_comp_volume *vol;
-	struct sof_ipc_comp_volume *ipc_vol =
-		(struct sof_ipc_comp_volume *)comp;
-	struct comp_data *cd;
 	int i;
-	int ret;
-
-	trace_volume("volume_new()");
-
-	if (IPC_IS_SIZE_INVALID(ipc_vol->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_VOLUME, ipc_vol->config);
-		return NULL;
-	}
-
-	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_volume));
-	if (!dev)
-		return NULL;
-
-	vol = (struct sof_ipc_comp_volume *)&dev->comp;
-	ret = memcpy_s(vol, sizeof(*vol), ipc_vol,
-		       sizeof(struct sof_ipc_comp_volume));
-	assert(!ret);
-
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
-
-	comp_set_drvdata(dev, cd);
-	schedule_task_init(&cd->volwork, SOF_SCHEDULE_LL_TIMER,
-			   SOF_TASK_PRI_MED, vol_work, NULL, dev, 0, 0);
-
-	/* Set the default volumes. If IPC sets min_value or max_value to
-	 * not-zero, use them. Otherwise set to internal limits and notify
-	 * ramp step calculation about assumed range with the range set to
-	 * zero.
-	 */
-	if (vol->min_value || vol->max_value) {
-		if (vol->min_value < VOL_MIN) {
-			/* Use VOL_MIN instead, no need to stop new(). */
-			cd->vol_min = VOL_MIN;
-			trace_volume_error_with_ids(dev,
-						    "volume_new(): "
-						    "vol->min_value was "
-						    "limited to VOL_MIN.");
-		} else {
-			cd->vol_min = vol->min_value;
-		}
-
-		if (vol->max_value > VOL_MAX) {
-			/* Use VOL_MAX instead, no need to stop new(). */
-			cd->vol_max = VOL_MAX;
-			trace_volume_error_with_ids(dev,
-						    "volume_new(): "
-						    "vol->max_value was "
-						    "limited to VOL_MAX.");
-		} else {
-			cd->vol_max = vol->max_value;
-		}
-
-		cd->vol_ramp_range = vol->max_value - vol->min_value;
-	} else {
-		/* Legacy mode, set the limits to firmware capability where
-		 * VOL_MAX is a very large gain to avoid restricting valid
-		 * requests. The default ramp rate will be computed based
-		 * on 0 - 1.0 gain range assumption when vol_ramp_range
-		 * is set to 0.
-		 */
-		cd->vol_min = VOL_MIN;
-		cd->vol_max = VOL_MAX;
-		cd->vol_ramp_range = 0;
-	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		cd->volume[i]  =  MAX(MIN(cd->vol_max, VOL_ZERO_DB),
-				      cd->vol_min);
-		cd->tvolume[i] = cd->volume[i];
-		cd->mvolume[i] = cd->volume[i];
-		cd->muted[i] = false;
+		cd->rvolume[i] = 0;
+		cd->ramp_coef[i] = 0;
 	}
 
-	cd->vol_ramp_active = false;
-	trace_volume_with_ids(dev,
-			      "vol->initial_ramp = %d, vol->ramp = %d, "
-			      "vol->min_value = %d, vol->max_value = %d",
-			      vol->initial_ramp, vol->ramp,
-			      vol->min_value, vol->max_value);
+	cd->channels = 0;
+	cd->ramp_finished = true;
+	cd->vol_ramp_frames = 0;
+	cd->vol_ramp_elapsed_frames = 0;
+	cd->sample_rate_inv = 0;
+	cd->copy_gain = true;
+	cd->is_passthrough = false;
 
-	dev->state = COMP_STATE_READY;
-	return dev;
+#if CONFIG_COMP_PEAK_VOL
+	memset(cd->peak_regs.peak_meter, 0, sizeof(cd->peak_regs.peak_meter));
+#endif
 }
 
-/**
- * \brief Frees volume component.
- * \param[in,out] dev Volume base component device.
- */
-static void volume_free(struct comp_dev *dev)
+void volume_prepare_ramp(struct comp_dev *dev, struct vol_data *cd)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	int ramp_update_us;
 
-	trace_volume_with_ids(dev, "volume_free()");
+	/* Determine ramp update rate depending on requested ramp length. To
+	 * ensure evenly updated gain envelope with limited fraction resolution
+	 * four presets are used.
+	 */
+	if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FASTEST_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_FASTEST_US;
+	else if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_FAST_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_FAST_US;
+	else if (cd->initial_ramp < VOL_RAMP_UPDATE_THRESHOLD_SLOW_MS)
+		ramp_update_us = VOL_RAMP_UPDATE_SLOW_US;
+	else
+		ramp_update_us = VOL_RAMP_UPDATE_SLOWEST_US;
 
-	/* remove scheduling */
-	schedule_task_free(&cd->volwork);
-
-	rfree(cd);
-	rfree(dev);
+	/* The volume ramp is updated at least once per copy(). If the ramp update
+	 * period is larger than schedule period the frames count for update is set
+	 * to copy schedule equivalent number of frames. This also prevents a divide
+	 * by zero to happen with a combinations of topology parameters for the volume
+	 * component and the pipeline.
+	 */
+	if (ramp_update_us > dev->period)
+		cd->vol_ramp_frames = dev->frames;
+	else
+		cd->vol_ramp_frames = dev->frames / (dev->period / ramp_update_us);
 }
 
-/**
- * \brief Sets volume component audio stream parameters.
- * \param[in,out] dev Volume base component device.
- * \return Error code.
- *
- * All done in prepare() since we need to know source and sink component params.
- */
-static int volume_params(struct comp_dev *dev)
+static void set_linear_ramp_coef(struct vol_data *cd, int chan, bool constant_rate_ramp)
 {
-	trace_volume_with_ids(dev, "volume_params()");
+	int32_t delta;
+	int32_t delta_abs;
+	int32_t coef;
 
-	return 0;
+	if (!cd->initial_ramp)
+		return;
+
+	/* Get volume transition delta and absolute value */
+	delta = cd->tvolume[chan] - cd->volume[chan];
+	if (!delta) {
+		cd->ramp_coef[chan] = 0;
+		return;
+	}
+
+	delta_abs = ABS(delta);
+
+	/* The ramp length (initial_ramp [ms]) describes time of mute
+	 * to vol_max unmuting. Normally the volume ramp has a
+	 * constant linear slope defined this way and variable
+	 * completion time. However in streaming start it is feasible
+	 * to apply the entire topology defined ramp time to unmute to
+	 * any used volume. In this case the ramp rate is not constant.
+	 * Note also the legacy mode without known vol_ramp_range where
+	 * the volume transition always uses the topology defined time.
+	 */
+	if (constant_rate_ramp && cd->vol_ramp_range > 0)
+		coef = cd->vol_ramp_range;
+	else
+		coef = delta_abs;
+
+	/* Divide and round to nearest. Note that there will
+	 * be some accumulated error in ramp time the longer
+	 * the ramp and the smaller the transition is.
+	 */
+	coef = ((int64_t)coef * 2 / cd->initial_ramp + 1) >> 1;
+
+	/* Scale coefficient by 1/8, round */
+	coef = ((coef >> 2) + 1) >> 1;
+
+	/* Ensure ramp coefficient is at least min. non-zero
+	 * fractional value.
+	 */
+	coef = MAX(coef, 1);
+
+	/* Invert sign for volume down ramp step */
+	if (delta < 0)
+		coef = -coef;
+
+	cd->ramp_coef[chan] = coef;
 }
 
 /**
  * \brief Sets channel target volume.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
  * \param[in] chan Channel number.
  * \param[in] vol Target volume.
+ * \param[in] constant_rate_ramp When true do a constant rate
+ *	      and variable time length ramp. When false do
+ *	      a fixed length and variable rate ramp.
  */
-static inline int volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
+int volume_set_chan(struct processing_module *mod, int chan,
+		    int32_t vol, bool constant_rate_ramp)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_volume *pga =
-		COMP_GET_IPC(dev, sof_ipc_comp_volume);
+	struct vol_data *cd = module_get_private_data(mod);
 	int32_t v = vol;
-	int32_t delta;
-	int32_t delta_abs;
-	int32_t inc;
-	int32_t t_us;
 
 	/* Limit received volume gain to MIN..MAX range before applying it.
-	 * MAX is needed for now for the generic C gain arithmetics to prevent
+	 * MAX is needed for now for the generic C gain arithmetic to prevent
 	 * multiplication overflow with the 32 bit value. Non-zero MIN option
 	 * can be useful to prevent totally muted small volume gain.
 	 */
-	if (v <= VOL_MIN) {
+	if (v < cd->vol_min) {
 		/* No need to fail, just trace the event. */
-		trace_volume_error_with_ids(dev, "volume_set_chan: Limited "
-						 "request %d to VOL_MIN.", v);
-		v = VOL_MIN;
+		comp_warn(mod->dev, "Limited request %d to min. %d",
+			  v, cd->vol_min);
+		v = cd->vol_min;
 	}
 
-	if (v > VOL_MAX) {
+	if (v > cd->vol_max) {
 		/* No need to fail, just trace the event. */
-		trace_volume_error_with_ids(dev, "volume_set_chan: Limited "
-						 "request %d to VOL_MAX.", v);
-		v = VOL_MAX;
+		comp_warn(mod->dev, "Limited request %d to max. %d",
+			  v, cd->vol_max);
+		v = cd->vol_max;
 	}
 
 	cd->tvolume[chan] = v;
+	cd->rvolume[chan] = cd->volume[chan];
+	cd->vol_ramp_elapsed_frames = 0;
 
-	/* Check ramp type */
-	switch (pga->ramp) {
-	case SOF_VOLUME_LINEAR:
+	/* Ramp type specific initialize */
+	if (cd->ramp_type == SOF_VOLUME_LINEAR || cd->ramp_type == SOF_VOLUME_LINEAR_ZC)
+		set_linear_ramp_coef(cd, chan, constant_rate_ramp);
 
-		/* Assume the ramp length (initial_ramp [ms]) describes
-		 * time of mute to 0 dB ramp. The actual volume scale min/max
-		 * is not known. If initial_ramp is zero (or negative) use
-		 * step size that reaches 0 dB gain in one step (VOL_ZERO_DB).
-		 */
-		if (pga->initial_ramp > 0)
-			inc = MAX(VOL_RAMP_STEP_CONST / pga->initial_ramp, 1);
-		else
-			inc = VOL_ZERO_DB;
-
-		/* Scale the increment with actual volume range if it was
-		 * passed via IPC.
-		 */
-		if (cd->vol_ramp_range)
-			inc = q_multsr_32x32(inc, cd->vol_ramp_range,
-					     Q_SHIFT_BITS_32(VOL_QXY_Y,
-							     VOL_QXY_Y,
-							     VOL_QXY_Y));
-
-		delta = cd->tvolume[chan] - cd->volume[chan];
-		delta_abs = ABS(delta);
-
-		/* If the ramp completion would take longer than initial_ramp
-		 * increase the step size to make this ramp complete at
-		 * initial_ramp time. Calculate estimated ramp length [us].
-		 */
-		t_us = delta_abs * VOL_RAMP_UPDATE_US / inc;
-		if (t_us > pga->initial_ramp * 1000) {
-			inc = (int32_t)((int64_t)inc * delta_abs / VOL_ZERO_DB);
-			inc = MAX(inc, 1);
-		}
-
-		/* Invert sign for volume down ramp step */
-		if (delta < 0)
-			inc = -inc;
-
-		cd->ramp_increment[chan] = inc;
-		tracev_volume_with_ids(dev, "cd->ramp_increment[%d] = %d", chan,
-				       cd->ramp_increment[chan]);
-		break;
-	case SOF_VOLUME_LOG:
-	case SOF_VOLUME_LINEAR_ZC:
-	case SOF_VOLUME_LOG_ZC:
-	default:
-		trace_volume_error_with_ids(dev, "volume_set_chan() error: "
-					    "invalid ramp type %d", pga->ramp);
-		return -EINVAL;
-	}
+	if (!cd->initial_ramp || cd->ramp_type == SOF_VOLUME_WINDOWS_NO_FADE)
+		cd->volume[chan] = v;
 
 	return 0;
 }
 
 /**
  * \brief Mutes channel.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
  * \param[in] chan Channel number.
  */
-static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
+void volume_set_chan_mute(struct processing_module *mod, int chan)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
 
 	if (!cd->muted[chan]) {
 		cd->mvolume[chan] = cd->tvolume[chan];
-		volume_set_chan(dev, chan, 0);
+		volume_set_chan(mod, chan, 0, true);
 		cd->muted[chan] = true;
 	}
 }
 
 /**
  * \brief Unmutes channel.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
  * \param[in] chan Channel number.
  */
-static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
+void volume_set_chan_unmute(struct processing_module *mod, int chan)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
 
 	if (cd->muted[chan]) {
 		cd->muted[chan] = false;
-		volume_set_chan(dev, chan, cd->mvolume[chan]);
+		volume_set_chan(mod, chan, cd->mvolume[chan], true);
 	}
 }
 
-/**
- * \brief Sets volume control command.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] cdata Control command data.
- * \return Error code.
- */
-static int volume_ctrl_set_cmd(struct comp_dev *dev,
-			       struct sof_ipc_ctrl_data *cdata)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t val;
-	int ch;
-	int j;
-	int ret = 0;
-
-	/* validate */
-	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		trace_volume_error_with_ids(dev, "volume_ctrl_set_cmd() error: "
-					    "invalid cdata->num_elems");
-		return -EINVAL;
-	}
-
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_VOLUME:
-		trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), "
-				      "SOF_CTRL_CMD_VOLUME, "
-				      "cdata->comp_id = %u",
-				      cdata->comp_id);
-		for (j = 0; j < cdata->num_elems; j++) {
-			ch = cdata->chanv[j].channel;
-			val = cdata->chanv[j].value;
-			trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), channel = %d"
-					      ", value = %u", ch, val);
-			if (ch < 0 || ch >= SOF_IPC_MAX_CHANNELS) {
-				trace_volume_error_with_ids(dev,
-							    "volume_ctrl_set_cmd(), illegal channel = %d",
-							    ch);
-				return -EINVAL;
-			}
-
-			if (cd->muted[ch]) {
-				cd->mvolume[ch] = val;
-			} else {
-				ret = volume_set_chan(dev, ch, val);
-				if (ret)
-					return ret;
-			}
-		}
-
-		if (!cd->vol_ramp_active)
-			schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
-				      VOL_RAMP_UPDATE_US);
-		break;
-
-	case SOF_CTRL_CMD_SWITCH:
-		trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), "
-				      "SOF_CTRL_CMD_SWITCH, "
-				      "cdata->comp_id = %u", cdata->comp_id);
-		for (j = 0; j < cdata->num_elems; j++) {
-			ch = cdata->chanv[j].channel;
-			val = cdata->chanv[j].value;
-			trace_volume_with_ids(dev, "volume_ctrl_set_cmd(), channel = %d"
-					      ", value = %u", ch, val);
-			if (ch < 0 || ch >= SOF_IPC_MAX_CHANNELS) {
-				trace_volume_error_with_ids(dev,
-							    "volume_ctrl_set_cmd(), illegal channel = %d",
-							    ch);
-				return -EINVAL;
-			}
-
-			if (val)
-				volume_set_chan_unmute(dev, ch);
-			else
-				volume_set_chan_mute(dev, ch);
-		}
-
-		if (!cd->vol_ramp_active)
-			schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
-				      VOL_RAMP_UPDATE_US);
-		break;
-
-	default:
-		trace_volume_error_with_ids(dev, "volume_ctrl_set_cmd() error: "
-					    "invalid cdata->cmd");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-/**
- * \brief Gets volume control command.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] cdata Control command data.
- * \return Error code.
- */
-static int volume_ctrl_get_cmd(struct comp_dev *dev,
-			       struct sof_ipc_ctrl_data *cdata, int size)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int j;
-
-	/* validate */
-	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
-		trace_volume_error_with_ids(dev, "volume_ctrl_get_cmd() error: "
-					    "invalid cdata->num_elems %u",
-					    cdata->num_elems);
-		return -EINVAL;
-	}
-
-	if (cdata->cmd == SOF_CTRL_CMD_VOLUME ||
-	    cdata->cmd ==  SOF_CTRL_CMD_SWITCH) {
-		trace_volume_with_ids(dev, "volume_ctrl_get_cmd(), "
-				      "SOF_CTRL_CMD_VOLUME / "
-				      "SOF_CTRL_CMD_SWITCH, "
-				      "cdata->comp_id = %u",
-				      cdata->comp_id);
-		for (j = 0; j < cdata->num_elems; j++) {
-			cdata->chanv[j].channel = j;
-			cdata->chanv[j].value = cd->tvolume[j];
-			trace_volume_with_ids(dev, "volume_ctrl_get_cmd(), "
-					      "channel = %u, value = %u",
-					      cdata->chanv[j].channel,
-					      cdata->chanv[j].value);
-		}
-	} else {
-		trace_volume_error_with_ids(dev, "volume_ctrl_get_cmd() error: "
-					    "invalid cdata->cmd");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-/**
- * \brief Used to pass standard and bespoke commands (with data) to component.
- * \param[in,out] dev Volume base component device.
- * \param[in] cmd Command type.
- * \param[in,out] data Control command data.
- * \return Error code.
- */
-static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
-		      int max_data_size)
-{
-	struct sof_ipc_ctrl_data *cdata = data;
-
-	trace_volume_with_ids(dev, "volume_cmd()");
-
-	switch (cmd) {
-	case COMP_CMD_SET_VALUE:
-		return volume_ctrl_set_cmd(dev, cdata);
-	case COMP_CMD_GET_VALUE:
-		return volume_ctrl_get_cmd(dev, cdata, max_data_size);
-	default:
-		return -EINVAL;
-	}
-}
-
-/**
- * \brief Sets volume component state.
- * \param[in,out] dev Volume base component device.
- * \param[in] cmd Command type.
- * \return Error code.
- */
-static int volume_trigger(struct comp_dev *dev, int cmd)
-{
-	trace_volume_with_ids(dev, "volume_trigger()");
-
-	return comp_set_state(dev, cmd);
-}
-
-/**
+/*
  * \brief Copies and processes stream data.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
  * \return Error code.
  */
-static int volume_copy(struct comp_dev *dev)
+static int volume_process(struct processing_module *mod,
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
-	struct comp_copy_limits c;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct vol_data *cd = module_get_private_data(mod);
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	struct cir_buf_source source_buf;
+	struct cir_buf_sink sink_buf;
+	const int nch = cd->channels;
+	size_t source_frame_bytes = source_get_frame_bytes(source);
+	size_t sink_frame_bytes = sink_get_frame_bytes(sink);
+	size_t source_bytes, sink_bytes, bytes;
+	uint32_t avail_frames;
+	uint32_t frames;
+	int64_t prev_sum = 0;
 	int ret;
 
-	tracev_volume_with_ids(dev, "volume_copy()");
+	comp_dbg(mod->dev, "entry");
 
-	/* Get source, sink, number of frames etc. to process. */
-	ret = comp_get_copy_limits(dev, &c);
+	avail_frames = source_sink_avail_frames_aligned(source, sink);
+	if (!avail_frames)
+		return 0;
+
+	source_bytes = avail_frames * source_frame_bytes;
+	sink_bytes = avail_frames * sink_frame_bytes;
+
+	/* acquire source and sink buffers once for the whole available period */
+	ret = source_get_data(source, source_bytes, &source_buf.ptr,
+			      &source_buf.buf_start, &bytes);
+	if (ret < 0)
+		return ret;
+	source_buf.buf_end = (const char *)source_buf.buf_start + bytes;
+
+	ret = sink_get_buffer(sink, sink_bytes, &sink_buf.ptr, &sink_buf.buf_start, &bytes);
 	if (ret < 0) {
-		trace_volume_error_with_ids(dev, "volume_copy(): "
-				   "Failed comp_get_copy_limits()");
+		source_release_data(source, 0);
 		return ret;
 	}
+	sink_buf.buf_end = (char *)sink_buf.buf_start + bytes;
 
-	tracev_volume_with_ids(dev, "volume_copy(), "
-			       "source_bytes = 0x%x, "
-			       "sink_bytes = 0x%x",
-			       c.source_bytes, c.sink_bytes);
+	while (avail_frames) {
+#if CONFIG_COMP_PEAK_VOL
+		volume_update_current_vol_ipc4(cd);
+#endif
+		if (cd->ramp_finished || cd->vol_ramp_frames > avail_frames) {
+			/* without ramping process all at once */
+			frames = avail_frames;
+		} else if (cd->ramp_type == SOF_VOLUME_LINEAR_ZC) {
+			/* with ZC ramping look for next ZC offset */
+			frames = cd->zc_get(&source_buf, nch, cd->vol_ramp_frames, &prev_sum);
+			/* Align frames count to audio stream constraints. If it rounds to zero
+			 * round it up to smallest nonzero aligned frames count.
+			 */
+			frames = source_align_frames_round_nearest(source, frames);
+			if (!frames)
+				frames = source_align_frames_round_up(source, 1);
+		} else {
+			/* During volume ramp align the number of frames used in this
+			 * gain step. Align up since with low rates this would typically
+			 * become zero.
+			 */
+			frames = source_align_frames_round_up(source, cd->vol_ramp_frames);
+		}
 
-	/* copy and scale volume */
-	cd->scale_vol(dev, c.sink, c.source, c.frames);
+		/* Cancel the gain step for ZC or smaller ramp step if it exceeds
+		 * the available frames.
+		 */
+		if (frames > avail_frames)
+			frames = avail_frames;
 
-	/* calculate new free and available */
-	comp_update_buffer_produce(c.sink, c.sink_bytes);
-	comp_update_buffer_consume(c.source, c.source_bytes);
+		if (!cd->ramp_finished) {
+			volume_ramp(mod);
+			cd->vol_ramp_elapsed_frames += frames;
+		}
+
+		/* copy and scale volume */
+		cd->scale_vol(mod, &source_buf, &sink_buf, frames, cd->attenuation);
+
+		/* advance the views by the processed frames */
+		source_buf.ptr = cir_buf_wrap((const char *)source_buf.ptr +
+					      frames * source_frame_bytes,
+					      source_buf.buf_start, source_buf.buf_end);
+		sink_buf.ptr = cir_buf_wrap((char *)sink_buf.ptr + frames * sink_frame_bytes,
+					    sink_buf.buf_start, sink_buf.buf_end);
+
+		avail_frames -= frames;
+	}
+
+	/* commit the consumed and produced data */
+	source_release_data(source, source_bytes);
+	sink_commit_buffer(sink, sink_bytes);
+
+#if CONFIG_COMP_PEAK_VOL
+	cd->peak_cnt++;
+	if (cd->peak_cnt == cd->peak_report_cnt) {
+		cd->peak_cnt = 0;
+		peak_vol_update(cd);
+		memset(cd->peak_regs.peak_meter, 0, sizeof(cd->peak_regs.peak_meter));
+#if SOF_USE_HIFI(4, VOLUME) || SOF_USE_HIFI(5, VOLUME)
+		memset(cd->peak_vol, 0, sizeof(int32_t) * SOF_IPC_MAX_CHANNELS * 4);
+#endif
+	}
+#endif
 
 	return 0;
+}
+
+/*
+ * \brief Retrieves volume zero crossing function.
+ * \param[in,out] dev Volume base component device.
+ */
+static vol_zc_func vol_get_zc_function(struct comp_dev *dev,
+				       struct sof_sink *sink)
+{
+	int i;
+
+	/* map the zc function to frame format */
+	for (i = 0; i < ARRAY_SIZE(zc_func_map); i++) {
+		if (sink_get_valid_fmt(sink) == zc_func_map[i].frame_fmt)
+			return zc_func_map[i].func;
+	}
+
+	return NULL;
+}
+
+/**
+ * \brief Set volume frames alignment limit.
+ * \param[in,out] source Structure pointer of source.
+ */
+static void volume_set_alignment(struct sof_source *source)
+{
+	const int channels = source_get_channels(source);
+
+	/* The source buffer in HiFi5 processing version needs 16 bytes alignment. The
+	 * macro SOF_FRAME_BYTE_ALIGN is set in common.h to the requirement align.
+	 * The VOLUME_HIFI3_HIFI4_FRAME_BYTE_ALIGN_6CH also has the value 16 and the
+	 * same align for 5.1 channels works for HiFi5 too.
+	 *
+	 * In HiFi4 processing version the source align requirement is 8 bytes. While
+	 * the 5.1 format SSE audio requires 16 bytes alignment.
+	 */
+	const uint32_t byte_align =
+		(channels == 6) ? VOLUME_HIFI3_HIFI4_FRAME_BYTE_ALIGN_6CH : SOF_FRAME_BYTE_ALIGN;
+
+	/* On HiFi5 the number of samples to process must be multiple of four for s24/s32
+	 * and multiple of eight for s16. For HiFi4 and HiFi3 the number of samples
+	 * need to be multiple of two for s32 and multiple of four for s16.
+	 * E.g. for s32 format for channels counts of 1, 2, 4, 6, ... the
+	 * frame align need to be 4, 2, 1, 2, ...
+	 */
+#if SOF_USE_HIFI(5, VOLUME)
+	const int n = (source_get_valid_fmt(source) == SOF_IPC_FRAME_S16_LE) ? 8 : 4;
+#else
+	const int n = (source_get_valid_fmt(source) == SOF_IPC_FRAME_S16_LE) ? 4 : 2;
+#endif
+
+	const uint32_t frame_align_req = (uint32_t)(n / gcd(n, channels));
+
+	source_set_alignment_constants(source, byte_align, frame_align_req);
 }
 
 /**
  * \brief Prepares volume component for processing.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
+
  * \return Error code.
  *
  * Volume component is usually first and last in pipelines so it makes sense
  * to also do some type of conversion here.
  */
-static int volume_prepare(struct comp_dev *dev)
+static int volume_prepare(struct processing_module *mod,
+			  struct sof_source **sources, int num_of_sources,
+			  struct sof_sink **sinks, int num_of_sinks)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb;
-	struct comp_buffer *sourceb;
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	uint32_t source_period_bytes;
+	struct vol_data *cd = module_get_private_data(mod);
+	struct module_data *md = &mod->priv;
+	struct comp_dev *dev = mod->dev;
 	uint32_t sink_period_bytes;
-	int i;
 	int ret;
+	int i;
 
-	trace_volume_with_ids(dev, "volume_prepare()");
+	comp_dbg(dev, "entry");
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
-		return ret;
-
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
-	/* volume components will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list,
-				  struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list,
-				struct comp_buffer, source_list);
-
-	/* get source data format and period bytes */
-	cd->source_format = comp_frame_fmt(sourceb->source);
-	source_period_bytes = comp_period_bytes(sourceb->source, dev->frames);
-
-	/* get sink data format and period bytes */
-	cd->sink_format = comp_frame_fmt(sinkb->sink);
-	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
-
-	/* Rewrite params format for this component to match the host side. */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.frame_fmt = cd->source_format;
-	else
-		dev->params.frame_fmt = cd->sink_format;
-
-	if (sinkb->size < config->periods_sink * sink_period_bytes) {
-		trace_volume_error_with_ids(dev, "volume_prepare() error: "
-					    "sink buffer size is insufficient");
-		ret = -ENOMEM;
-		goto err;
+	/* volume component will only ever have 1 sink and source buffer */
+	if (num_of_sources < 1 || num_of_sinks < 1 ) {
+		comp_err(dev, "no source or sink buffer");
+		return -ENOTCONN;
 	}
 
-	/* validate */
-	if (!sink_period_bytes) {
-		trace_volume_error_with_ids(dev, "volume_prepare() error: "
-					    "sink_period_bytes = 0, "
-					    "dev->frames = %u", dev->frames);
-		ret = -EINVAL;
-		goto err;
-	}
-	if (!source_period_bytes) {
-		trace_volume_error_with_ids(dev, "volume_prepare() error: "
-				   "source_period_bytes = 0, "
-				   "dev->frames = %u", dev->frames);
-		ret = -EINVAL;
-		goto err;
-	}
+	ret = volume_peak_prepare(cd, mod);
 
-	cd->scale_vol = vol_get_processing_function(dev);
+	volume_set_alignment(sources[0]);
+
+	/* get sink period bytes */
+	sink_period_bytes = dev->frames * sink_get_frame_bytes(sinks[0]);
+
+	set_volume_process(cd, dev, false);
+
 	if (!cd->scale_vol) {
-		trace_volume_error_with_ids(dev, "volume_prepare() error: "
-					    "invalid cd->scale_vol, "
-					    "cd->source_format = %u, "
-					    "cd->sink_format = %u, "
-					    "dev->params.channels = %u",
-					    cd->source_format, cd->sink_format,
-					    dev->params.channels);
+		comp_err(dev, "invalid cd->scale_vol");
+
 		ret = -EINVAL;
 		goto err;
 	}
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		vol_sync_host(cd, i);
+	cd->zc_get = vol_get_zc_function(dev, sinks[0]);
+	if (!cd->zc_get) {
+		comp_err(dev, "invalid cd->zc_get");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	/* Set current volume to min to ensure ramp starts from minimum
+	 * to previous volume request. Copy() checks for ramp finished
+	 * and executes it if it has not yet finished as result of
+	 * driver commands. Ramp is not constant rate to ensure it lasts
+	 * for entire topology specified time.
+	 */
+	cd->ramp_finished = false;
+
+	cd->channels = sink_get_channels(sinks[0]);
+	if (cd->channels > SOF_IPC_MAX_CHANNELS) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	cd->sample_rate_inv = (int32_t)(1000LL * INT32_MAX /
+					sink_get_rate(sinks[0]));
+
+	for (i = 0; i < cd->channels; i++) {
+		cd->volume[i] = cd->vol_min;
+		volume_set_chan(mod, i, cd->tvolume[i], false);
+		if (cd->volume[i] != cd->tvolume[i])
+			cd->ramp_finished = false;
+	}
+
+	volume_prepare_ramp(dev, cd);
+
+	/*
+	 * volume component does not do any format conversion, so use the buffer size for source
+	 * and sink
+	 */
+	md->mpd.in_buff_size = sink_period_bytes;
+	md->mpd.out_buff_size = sink_period_bytes;
 
 	return 0;
 
@@ -696,70 +810,83 @@ err:
 
 /**
  * \brief Resets volume component.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Volume processing module handle
  * \return Error code.
  */
-static int volume_reset(struct comp_dev *dev)
+static int volume_reset(struct processing_module *mod)
 {
-	trace_volume_with_ids(dev, "volume_reset()");
+	struct vol_data *cd = module_get_private_data(mod);
 
-	comp_set_state(dev, COMP_TRIGGER_RESET);
+	comp_dbg(mod->dev, "entry");
+	volume_reset_state(cd);
 	return 0;
 }
 
 /**
- * \brief Executes cache operation on volume component.
- * \param[in,out] dev Volume base component device.
- * \param[in] cmd Cache command.
+ * \brief Frees volume component.
+ * \param[in,out] mod Volume processing module handle
  */
-static void volume_cache(struct comp_dev *dev, int cmd)
+static int volume_free(struct processing_module *mod)
 {
-	struct comp_data *cd;
+	struct vol_data *cd = module_get_private_data(mod);
 
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		trace_volume_with_ids(dev, "volume_cache(), "
-				      "CACHE_WRITEBACK_INV");
+	comp_dbg(mod->dev, "entry");
 
-		cd = comp_get_drvdata(dev);
+	volume_peak_free(mod);
+	mod_free(mod, cd->vol);
+	mod_free(mod, cd);
 
-		dcache_writeback_invalidate_region(cd, sizeof(*cd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case CACHE_INVALIDATE:
-		trace_volume_with_ids(dev, "volume_cache(), CACHE_INVALIDATE");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		cd = comp_get_drvdata(dev);
-		dcache_invalidate_region(cd, sizeof(*cd));
-		break;
-	}
+	return 0;
 }
 
-/** \brief Volume component definition. */
-struct comp_driver comp_volume = {
-	.type	= SOF_COMP_VOLUME,
-	.ops	= {
-		.new		= volume_new,
-		.free		= volume_free,
-		.params		= volume_params,
-		.cmd		= volume_cmd,
-		.trigger	= volume_trigger,
-		.copy		= volume_copy,
-		.prepare	= volume_prepare,
-		.reset		= volume_reset,
-		.cache		= volume_cache,
-	},
+static const struct module_interface volume_interface = {
+	.init = volume_init,
+	.prepare = volume_prepare,
+	.process = volume_process,
+	.set_configuration = volume_set_config,
+	.get_configuration = volume_get_config,
+	.reset = volume_reset,
+	.free = volume_free
 };
 
-/**
- * \brief Initializes volume component.
- */
-static void sys_comp_volume_init(void)
-{
-	comp_register(&comp_volume);
-}
+#if CONFIG_COMP_GAIN
+static const struct module_interface gain_interface = {
+	.init = volume_init,
+	.prepare = volume_prepare,
+	.process = volume_process,
+	.set_configuration = volume_set_config,
+	.get_configuration = volume_get_config,
+	.reset = volume_reset,
+	.free = volume_free
+};
+#endif
 
-DECLARE_MODULE(sys_comp_volume_init);
+#if CONFIG_COMP_VOLUME_MODULE
+/* modular: llext dynamic link */
+
+#include <module/module/api_ver.h>
+#include <module/module/llext.h>
+#include <rimage/sof/user/manifest.h>
+
+static const struct sof_man_module_manifest mod_manifest[] __section(".module") __used = {
+#if CONFIG_COMP_PEAK_VOL
+	SOF_LLEXT_MODULE_MANIFEST("PEAKVOL", &volume_interface, 1, SOF_REG_UUID(volume4), 10),
+#endif
+#if CONFIG_COMP_GAIN
+	SOF_LLEXT_MODULE_MANIFEST("GAIN", &gain_interface, 1, SOF_REG_UUID(gain), 40),
+#endif
+};
+
+SOF_LLEXT_BUILDINFO;
+
+#else
+
+DECLARE_MODULE_ADAPTER(volume_interface, volume_uuid, volume_tr);
+SOF_MODULE_INIT(volume, sys_comp_module_volume_interface_init);
+
+#if CONFIG_COMP_GAIN
+DECLARE_MODULE_ADAPTER(gain_interface, gain_uuid, gain_tr);
+SOF_MODULE_INIT(gain, sys_comp_module_gain_interface_init);
+#endif
+
+#endif

@@ -2,7 +2,7 @@ function b = stdlpf_get(fu, fs)
 
 %% b = stdlpf_get(fu, fs)
 %
-% Standard loww-pass filter
+% Standard low-pass filter
 %
 % Input
 % fu - upper band-edge frequency

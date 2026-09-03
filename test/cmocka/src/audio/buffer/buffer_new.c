@@ -6,7 +6,10 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/msg.h>
+#include <sof/ipc/topology.h>
+#include <sof/ipc/schedule.h>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -24,12 +27,12 @@ static void test_audio_buffer_new(void **state)
 		.size = 256
 	};
 
-	struct comp_buffer *buf = buffer_new(&test_buf_desc);
+	struct comp_buffer *buf = buffer_new(NULL, &test_buf_desc, BUFFER_USAGE_NOT_SHARED);
 
 	assert_non_null(buf);
-	assert_int_equal(buf->avail, 0);
-	assert_int_equal(buf->free, 256);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr);
+	assert_int_equal(audio_stream_get_avail_bytes(&buf->stream), 0);
+	assert_int_equal(audio_stream_get_free_bytes(&buf->stream), 256);
+	assert_ptr_equal(buf->stream.w_ptr, buf->stream.r_ptr);
 
 	buffer_free(buf);
 }

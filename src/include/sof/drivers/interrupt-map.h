@@ -8,8 +8,6 @@
 #ifndef __SOF_DRIVERS_INTERRUPT_MAP_H__
 #define __SOF_DRIVERS_INTERRUPT_MAP_H__
 
-#include <config.h>
-
 #define SOF_IRQ_PASSIVE_LEVEL	0
 #define SOF_IRQ_ID_SHIFT	29
 #define SOF_IRQ_BIT_SHIFT	24
@@ -40,7 +38,7 @@
 	 | ((_cpu) << SOF_IRQ_CPU_SHIFT)     \
 	 | ((_number) << SOF_IRQ_NUM_SHIFT))
 
-#if CONFIG_IRQ_MAP
+#if CONFIG_XT_IRQ_MAP
 /*
  * IRQs are mapped on 4 levels.
  *

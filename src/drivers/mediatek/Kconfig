@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config TEST_SGEN
+	bool
+	default n
+	help
+	  Note: TEST_SGEN for test only
+	  Define this TEST_SGEN to enable sine tone generator,
+	  then output data to audio memory interface(memif)
+
+config MEDIATEK_DRAM_IMAGE
+	bool "Change image location to DRAM"
+	default n
+	help
+	  Select this to generate the SOF image on DRAM for MediaTek platform.
+	  If the image size cannot fit in the DSP SRAM, enable this option will
+	  move all sections except vector from SRAM to DRAM.
+
+	  If unsure, select "n".

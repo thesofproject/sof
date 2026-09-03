@@ -1,11 +1,32 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-source "src/arch/Kconfig"
+rsource "arch/Kconfig"
 
-source "src/platform/Kconfig"
+rsource "platform/Kconfig"
 
-source "src/drivers/Kconfig"
+rsource "drivers/Kconfig"
 
-source "src/audio/Kconfig"
+rsource "audio/Kconfig"
 
-source "src/trace/Kconfig"
+rsource "trace/Kconfig"
+
+rsource "probe/Kconfig"
+
+rsource "samples/Kconfig"
+
+rsource "schedule/Kconfig"
+rsource "schedule/Kconfig.threads_prio"
+
+rsource "idc/Kconfig"
+
+rsource "ipc/Kconfig"
+
+rsource "math/Kconfig"
+
+rsource "library_manager/Kconfig"
+
+rsource "debug/telemetry/Kconfig"
+
+rsource "debug/debug_stream/Kconfig"
+
+rsource "debug/tester/Kconfig"

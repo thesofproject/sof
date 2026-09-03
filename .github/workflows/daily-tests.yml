@@ -1,0 +1,57 @@
+---
+# https://docs.github.com/en/actions/using-workflows/reusing-workflows
+# https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule
+
+name: Daily tests
+
+# yamllint disable-line rule:truthy
+on:
+  # To configure goto https://crontab.guru/
+  schedule:
+    # daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  # Keep in .yml alphabetical order
+
+  zephyr-stub-all:
+    uses: ./.github/workflows/build_all.yml
+
+  # TODO: separate "fetchPRcommits" which can't work in daily tests
+  # uses: ./.github/workflows/codestyle.yml
+
+  zephyr-fuzz-IPC:
+    uses: ./.github/workflows/ipc_fuzzer.yml
+    with:
+      fuzzing_duration_s: 300
+
+  # A legacy, semi-random mix
+  main-PR-workflows:
+    uses: ./.github/workflows/pull-request.yml
+
+  XTOS-reproducible:
+    uses: ./.github/workflows/repro-build.yml
+
+  rimage:
+    uses: ./.github/workflows/rimage.yml
+
+  zephyr-sparse-analyzer:
+    uses: ./.github/workflows/sparse-zephyr.yml
+
+  user-space-testbench:
+    uses: ./.github/workflows/testbench.yml
+
+  user-space-other-tools:
+    uses: ./.github/workflows/tools.yml
+
+  cmocka-unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+
+  zephyr-builds:
+    uses: ./.github/workflows/zephyr.yml

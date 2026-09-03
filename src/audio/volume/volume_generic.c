@@ -7,16 +7,12 @@
 //         Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file audio/volume_generic.c
- * \brief Volume generic processing implementation
+ * \file
+ * \brief Volume generic processing implementation without peak volume detection
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>\n
  *          Keyon Jie <yang.jie@linux.intel.com>\n
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
-
-#include <sof/audio/volume.h>
-
-#ifdef CONFIG_GENERIC
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
@@ -25,184 +21,15 @@
 #include <ipc/stream.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
-/**
- * \brief Volume gain function
- * \param[in] x   input sample.
- * \param[in] vol gain.
- * \return output sample.
- *
- * Volume multiply for 24 bit input and 16 bit bit output.
- */
-static inline int16_t vol_mult_s24_to_s16(int32_t x, int32_t vol)
-{
-	return (int16_t)q_multsr_sat_32x32_16(sign_extend_s24(x), vol,
-					      Q_SHIFT_BITS_64(23, 16, 15));
-}
+LOG_MODULE_DECLARE(volume_generic, CONFIG_SOF_LOG_LEVEL);
 
-/**
- * \brief Volume s16 to s24 multiply function
- * \param[in] x   input sample.
- * \param[in] vol gain.
- * \return output sample.
- *
- * Volume multiply for 16 bit input and 24 bit bit output.
- */
-static inline int32_t vol_mult_s16_to_s24(int16_t x, int32_t vol)
-{
-	return q_multsr_sat_32x32_24(x, vol, Q_SHIFT_BITS_64(15, 16, 23));
-}
+#include "volume.h"
 
-/**
- * \brief Volume processing from 16 bit to 24/32 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- *
- * Copy and scale volume from 16 bit source buffer
- * to 24/32 bit destination buffer.
- */
-static void vol_s16_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src;
-	int32_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
+#if SOF_USE_HIFI(NONE, VOLUME)
 
-	/* Samples are Q1.15 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s16(source, buff_frag);
-			dest = buffer_write_frag_s32(sink, buff_frag);
-
-			*dest = vol_mult_s16_to_s24(*src, cd->volume[channel]);
-
-			buff_frag++;
-		}
-	}
-}
-
-/**
- * \brief Volume processing from 24/32 bit to 16 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- *
- * Copy and scale volume from 24/32 bit source buffer
- * to 16 bit destination buffer.
- */
-static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int16_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
-
-	/* Samples are Q1.23 --> Q1.15 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s32(source, buff_frag);
-			dest = buffer_write_frag_s16(sink, buff_frag);
-
-			*dest = vol_mult_s24_to_s16(*src, cd->volume[channel]);
-
-			buff_frag++;
-		}
-	}
-}
-#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
-/**
- * \brief Volume s32 to s16 multiply function
- * \param[in] x   input sample.
- * \param[in] vol gain.
- * \return output sample.
- *
- * Volume multiply for 32 bit input and 16 bit bit output.
- */
-static inline int16_t vol_mult_s32_to_s16(int32_t x, int32_t vol)
-{
-	return (int16_t)q_multsr_sat_32x32_16(x, vol,
-					      Q_SHIFT_BITS_64(31, 16, 15));
-}
-
-/**
- * \brief Volume processing from 16 bit to 32 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- *
- * Copy and scale volume from 16 bit source buffer
- * to 32 bit destination buffer.
- */
-static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src;
-	int32_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
-
-	/* Samples are Q1.15 --> Q1.31 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s16(source, buff_frag);
-			dest = buffer_write_frag_s32(sink, buff_frag);
-			*dest = q_multsr_sat_32x32
-				(*src << 8, cd->volume[channel],
-				 Q_SHIFT_BITS_64(23, 16, 31));
-
-			buff_frag++;
-		}
-	}
-}
-
-/**
- * \brief Volume processing from 32 bit to 16 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- *
- * Copy and scale volume from 32 bit source buffer
- * to 16 bit destination buffer.
- */
-static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int16_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
-
-	/* Samples are Q1.31 --> Q1.15 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s32(source, buff_frag);
-			dest = buffer_write_frag_s16(sink, buff_frag);
-
-			*dest = vol_mult_s32_to_s16(*src, cd->volume[channel]);
-
-			buff_frag++;
-		}
-	}
-}
-#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
+#if (!CONFIG_COMP_PEAK_VOL)
 
 #if CONFIG_FORMAT_S24LE
 /**
@@ -211,165 +38,176 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in] vol gain.
  * \return output sample.
  *
- * Volume multiply for 24 bit input and 24 bit bit output.
+ * Volume multiply for 24 bit input and 24 bit output.
  */
 static inline int32_t vol_mult_s24_to_s24(int32_t x, int32_t vol)
 {
-	return q_multsr_sat_32x32_24(sign_extend_s24(x), vol,
-				     Q_SHIFT_BITS_64(23, 16, 23));
+	return q_multsr_sat_32x32_24(sign_extend_s24(x), vol, Q_SHIFT_BITS_64(23, VOL_QXY_Y, 23));
 }
 
 /**
  * \brief Volume processing from 24/32 bit to 24/32 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  *
  * Copy and scale volume from 24/32 bit source buffer
  * to 24/32 bit destination buffer.
  */
-static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
+static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int32_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
+	struct vol_data *cd = module_get_private_data(mod);
+	const int32_t *x, *x0;
+	int32_t *y, *y0;
+	int32_t vol;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	/* Samples are Q1.23 --> Q1.23 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s32(source, buff_frag);
-			dest = buffer_write_frag_s32(sink, buff_frag);
-
-			*dest = vol_mult_s24_to_s24(*src, cd->volume[channel]);
-
-			buff_frag++;
+	x = source->ptr;
+	y = sink->ptr;
+	while (remaining_samples) {
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n = MIN(remaining_samples, nmax);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		n = MIN(n, nmax);
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			vol = cd->volume[j];
+			for (i = 0; i < n; i += nch) {
+				y0[i] = vol_mult_s24_to_s24(x0[i], vol);
+			}
 		}
+		remaining_samples -= n;
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+	}
+}
+
+/**
+ * \brief Volume passthrough from 24/32 bit to 24/32 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ *
+ * Copy and scale volume from 24/32 bit source buffer
+ * to 24/32 bit destination buffer.
+ */
+static void vol_passthrough_s24_to_s24(struct processing_module *mod,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
+				       uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	const int32_t *x;
+	int32_t *y;
+	int nmax, n;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
+
+	x = source->ptr;
+	y = sink->ptr;
+	while (remaining_samples) {
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n = MIN(remaining_samples, nmax);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		n = MIN(n, nmax);
+		memcpy_s(y, n * sizeof(int32_t), x, n * sizeof(int32_t));
+		remaining_samples -= n;
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
-/**
- * \brief Volume s32 to s24 multiply function
- * \param[in] x   input sample.
- * \param[in] vol gain.
- * \return output sample.
- *
- * Volume multiply for 32 bit input and 24 bit bit output.
- */
-static inline int32_t vol_mult_s32_to_s24(int32_t x, int32_t vol)
-{
-	return q_multsr_sat_32x32_24(x, vol, Q_SHIFT_BITS_64(31, 16, 23));
-}
-
-/**
- * \brief Volume processing from 32 bit to 24/32 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- *
- * Copy and scale volume from 32 bit source buffer
- * to 24/32 bit destination buffer.
- */
-static void vol_s32_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int32_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
-
-	/* Samples are Q1.31 --> Q1.23 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s32(source, buff_frag);
-			dest = buffer_write_frag_s32(sink, buff_frag);
-
-			*dest = vol_mult_s32_to_s24(*src, cd->volume[channel]);
-
-			buff_frag++;
-		}
-	}
-}
-
-/**
- * \brief Volume processing from 24/32 bit to 32 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- *
- * Copy and scale volume from 24/32 bit source buffer
- * to 32 bit destination buffer.
- */
-static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int32_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
-
-	/* Samples are Q1.23 --> Q1.31 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s32(source, buff_frag);
-			dest = buffer_write_frag_s32(sink, buff_frag);
-
-			*dest = q_multsr_sat_32x32
-				(sign_extend_s24(*src), cd->volume[channel],
-				 Q_SHIFT_BITS_64(23, 16, 31));
-
-			buff_frag++;
-		}
-	}
-}
-
-#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
 
 #if CONFIG_FORMAT_S32LE
 /**
  * \brief Volume processing from 32 bit to 32 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  *
  * Copy and scale volume from 32 bit source buffer
  * to 32 bit destination buffer.
  */
-static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
+static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src;
-	int32_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
+	struct vol_data *cd = module_get_private_data(mod);
+	const int32_t *x, *x0;
+	int32_t *y, *y0;
+	int32_t vol;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	/* Samples are Q1.31 --> Q1.31 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s32(source, buff_frag);
-			dest = buffer_write_frag_s32(sink, buff_frag);
-
-			*dest = q_multsr_sat_32x32
-				(*src, cd->volume[channel],
-				 Q_SHIFT_BITS_64(31, 16, 31));
-
-			buff_frag++;
+	x = source->ptr;
+	y = sink->ptr;
+	while (remaining_samples) {
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n = MIN(remaining_samples, nmax);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		n = MIN(n, nmax);
+		/* Note: on Xtensa processing one channel volume at time performed slightly
+		 * better than simpler interleaved code version (average 19 us vs. 20 us).
+		 */
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			vol = cd->volume[j];
+			for (i = 0; i < n; i += nch) {
+				y0[i] = q_multsr_sat_32x32(x0[i], vol,
+							   Q_SHIFT_BITS_64(31, VOL_QXY_Y, 31));
+			}
 		}
+		remaining_samples -= n;
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+	}
+}
+
+/**
+ * \brief Volume passthrough from 32 bit to 32 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ *
+ * Copy and scale volume from 32 bit source buffer
+ * to 32 bit destination buffer.
+ */
+static void vol_passthrough_s32_to_s32(struct processing_module *mod,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
+				       uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	const int32_t *x;
+	int32_t *y;
+	int nmax, n;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
+
+	x = source->ptr;
+	y = sink->ptr;
+	while (remaining_samples) {
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n = MIN(remaining_samples, nmax);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		n = MIN(n, nmax);
+		memcpy_s(y, n * sizeof(int32_t), x, n * sizeof(int32_t));
+		remaining_samples -= n;
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
@@ -379,63 +217,97 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
  * \brief Volume processing from 16 bit to 16 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  *
  * Copy and scale volume from 16 bit source buffer
  * to 16 bit destination buffer.
  */
-static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
+static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames, uint32_t attenuation)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src;
-	int16_t *dest;
-	int32_t i;
-	uint32_t channel;
-	uint32_t buff_frag = 0;
+	struct vol_data *cd = module_get_private_data(mod);
+	const int16_t *x, *x0;
+	int16_t *y, *y0;
+	int32_t vol;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
 
-	/* Samples are Q1.15 --> Q1.15 and volume is Q8.16 */
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			src = buffer_read_frag_s16(source, buff_frag);
-			dest = buffer_write_frag_s16(sink, buff_frag);
-
-			*dest = q_multsr_sat_32x32_16
-				(*src, cd->volume[channel],
-				 Q_SHIFT_BITS_32(15, 16, 15));
-
-			buff_frag++;
+	x = source->ptr;
+	y = sink->ptr;
+	while (remaining_samples) {
+		nmax = cir_buf_samples_without_wrap_s16(x, source->buf_end);
+		n = MIN(remaining_samples, nmax);
+		nmax = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
+		n = MIN(n, nmax);
+		for (j = 0; j < nch; j++) {
+			x0 = x + j;
+			y0 = y + j;
+			vol = cd->volume[j];
+			for (i = 0; i < n; i += nch) {
+				y0[i] = q_multsr_sat_32x32_16(x0[i], vol,
+							      Q_SHIFT_BITS_32(15, VOL_QXY_Y, 15));
+			}
 		}
+		remaining_samples -= n;
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+	}
+}
+
+/**
+ * \brief Volume passthrough from 16 bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ *
+ * Copy and scale volume from 16 bit source buffer
+ * to 16 bit destination buffer.
+ */
+static void vol_passthrough_s16_to_s16(struct processing_module *mod,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
+				       uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	const int16_t *x;
+	int16_t *y;
+	int nmax, n;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
+
+	x = source->ptr;
+	y = sink->ptr;
+	while (remaining_samples) {
+		nmax = cir_buf_samples_without_wrap_s16(x, source->buf_end);
+		n = MIN(remaining_samples, nmax);
+		nmax = cir_buf_samples_without_wrap_s16(y, sink->buf_end);
+		n = MIN(n, nmax);
+		memcpy_s(y, n * sizeof(int16_t), x, n * sizeof(int16_t));
+		remaining_samples -= n;
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-
-const struct comp_func_map func_map[] = {
+const struct comp_func_map volume_func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, vol_s16_to_s16},
-#endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, vol_s16_to_s24},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, vol_s24_to_s16},
-#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, vol_s16_to_s32},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, vol_s32_to_s16},
-#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
+	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16, vol_passthrough_s16_to_s16},
+#endif
 #if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24},
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, vol_s32_to_s24},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, vol_s24_to_s32},
-#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
+	{ SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24, vol_passthrough_s24_to_s24},
+#endif
 #if CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, vol_s32_to_s32},
-#endif /* CONFIG_FORMAT_S32LE */
+	{ SOF_IPC_FRAME_S32_LE, vol_s32_to_s32, vol_passthrough_s32_to_s32},
+#endif
 };
 
-const size_t func_count = ARRAY_SIZE(func_map);
+const size_t volume_func_count = ARRAY_SIZE(volume_func_map);
 
+#endif
 #endif

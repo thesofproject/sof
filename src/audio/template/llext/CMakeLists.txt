@@ -1,0 +1,9 @@
+# Copyright (c) 2025 Intel Corporation.
+# SPDX-License-Identifier: Apache-2.0
+
+sof_llext_build("template"
+	SOURCES	../template.c
+		../template-generic.c
+		../template-ipc4.c
+	LIB openmodules
+)

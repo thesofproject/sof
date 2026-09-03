@@ -1,0 +1,200 @@
+# Common defaults for all Intel ADSP SOF targets
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# ---
+# NOTICE! defconfig files cannot override settings that already have
+#         a default set. Thus some settings (especially choice values with
+#         a default), must be set in the board config files even if the value
+#         is same for all Intel DSPs.
+# ---
+
+# SOF / IPC configuration
+# -----------------------
+
+config IPC4_BASE_FW_INTEL
+	default y
+
+# SOF / audio pipeline and module settings
+# ----------------------------------------
+
+config COMP_CHAIN_DMA
+	default y
+
+config COMP_KPB
+	default y
+
+config COMP_UP_DOWN_MIXER
+	default y
+
+config COMP_VOLUME_WINDOWS_FADE
+	default y
+
+config FAST_GET
+	default y
+
+config FORMAT_A_LAW
+	default y
+
+config FORMAT_FLOAT
+	default y
+
+config FORMAT_MU_LAW
+	default y
+
+config FORMAT_U8
+	default y
+
+config PCM_CONVERTER_FORMAT_A_LAW
+	default y
+
+config PCM_CONVERTER_FORMAT_FLOAT
+	default y
+
+config PCM_CONVERTER_FORMAT_MU_LAW
+	default y
+
+config PCM_CONVERTER_FORMAT_S16_C16_AND_S16_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S24_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S32_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S16_C32_AND_S16_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S24_C24_AND_S24_C32
+	default y
+
+config PCM_CONVERTER_FORMAT_S24_C32_AND_S24_C24
+	default y
+
+config PCM_CONVERTER_FORMAT_U8
+	default y
+
+config PIPELINE_2_0
+	default y
+
+# SOF / infrastructure
+# ----------------------------------------
+
+config L3_HEAP
+	default y if ACE
+
+config ZEPHYR_DP_SCHEDULER
+	default y
+
+config ZEPHYR_NATIVE_DRIVERS
+	default y
+
+# SOF / logging
+# ----------------------------------------
+
+config ZEPHYR_LOG
+	default y
+
+# Zephyr / device drivers
+# ----------------------------------------
+
+config CLOCK_CONTROL
+	default y
+
+# note: CONFIG_CLOCK_CONTROL_ADSP is enabled by default
+# based on DT definition.
+
+config DAI
+	default y
+
+config DAI_INTEL_DMIC
+	default y
+
+config DAI_INTEL_SSP
+	default y
+
+config INTEL_ADSP_TIMER
+	default y
+
+config MM_DRV
+	default y
+
+config UAOL
+	default y if ACE
+
+
+# # Zephyr / power settings
+# ----------------------------------------
+
+config PM
+	default y
+
+config PM_DEVICE
+	default y
+
+config PM_DEVICE_RUNTIME
+	default y
+
+config PM_DEVICE_SYSTEM_MANAGED
+	default y
+
+config POWER_DOMAIN
+	default y
+
+# note: POWER_DOMAIN_INTEL_ADSP will be set based on DT
+
+# Zephyr / logging
+# ----------------------------------------
+
+config LOG_BACKEND_ADSP_MTRACE
+	default y
+
+config LOG_FUNC_NAME_PREFIX_ERR
+	default y
+
+config LOG_FUNC_NAME_PREFIX_WRN
+	default y
+
+config LOG_FUNC_NAME_PREFIX_INF
+	default y
+
+config LOG_FUNC_NAME_PREFIX_DBG
+	default y
+
+config LOG_CORE_ID_PREFIX
+	default y
+
+config LOG_TIMESTAMP_64BIT
+	default y
+
+# Zephyr / debugging
+# ----------------------------------------
+
+config ZTEST
+	default SOF_BOOT_TEST_SUPPORTED && SOF_BOOT_TEST_ALLOWED
+
+# Zephyr / core dump
+# ----------------------------------------
+# Enable core dump on all Intel ADSP targets, not just the debug (-d) build,
+# so that firmware crashes can always be analysed offline.
+#
+# DEBUG_COREDUMP has no in-tree default, so configdefault is used to force it
+# on without weakening its "depends on ARCH_SUPPORTS_COREDUMP" dependency
+# (SOC_FAMILY_INTEL_ADSP selects ARCH_SUPPORTS_COREDUMP).
+#
+# The coredump backend and memory-dump amount are Kconfig 'choice' symbols
+# with an in-tree default. As noted above, this defconfig is sourced after the
+# Zephyr tree, so choice defaults cannot be overridden from here; the ADSP
+# memory-window backend and minimal dump are therefore selected in each Intel
+# board .conf file instead.
+
+configdefault DEBUG_COREDUMP
+	default y
+
+# Zephyr / debug slot manager
+# ----------------------------------------
+
+config INTEL_ADSP_DEBUG_SLOT_MANAGER
+	default y
+

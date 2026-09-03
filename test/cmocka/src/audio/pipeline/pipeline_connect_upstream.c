@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/ipc-config.h>
 #include <sof/schedule/edf_schedule.h>
 #include "pipeline_mocks.h"
 #include "pipeline_connection_mocks.h"
@@ -23,6 +24,7 @@ static int setup(void **state)
 
 static int teardown(void **state)
 {
+	free_standard_connect_objects(*state);
 	free(*state);
 	return 0;
 }
@@ -128,13 +130,13 @@ static void test_audio_pipeline_complete_connect_upstream_ignore_source
 	 */
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);
-	test_data->b1->sink = result.sched_comp;
-	test_data->b1->source = test_data->second;
+	comp_buffer_set_sink_component(test_data->b1, result.sched_comp);
+	comp_buffer_set_source_component(test_data->b1, test_data->second);
 	list_item_append(&test_data->b1->source_list,
 					 &test_data->second->bsink_list);
 	list_item_append(&test_data->second->bsource_list,
 					 &test_data->b2->sink_list);
-	test_data->b2->sink = test_data->second;
+	comp_buffer_set_sink_component(test_data->b2, test_data->second);
 
 	/*Testing component*/
 	pipeline_complete(&result, test_data->first, test_data->second);
@@ -148,19 +150,18 @@ static void test_audio_pipeline_complete_connect_downstream_full(void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
+	struct comp_ipc_config *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
-	list_item_append(&result.sched_comp->bsink_list,
-					 &test_data->b1->source_list);
-	test_data->b1->source = result.sched_comp;
-	list_item_append(&test_data->b1->source_list,
-					 &result.sched_comp->bsink_list);
-	test_data->b1->sink = test_data->second;
-	list_item_append(&test_data->b1->sink_list,
-					 &test_data->second->bsource_list);
+	comp = &test_data->second->ipc_config;
+	comp->pipeline_id = PIPELINE_ID_SAME;
+	list_item_append(&result.sched_comp->bsink_list, &test_data->b1->source_list);
+	comp_buffer_set_source_component(test_data->b1, result.sched_comp);
+	list_item_append(&test_data->b1->source_list, &result.sched_comp->bsink_list);
+	comp_buffer_set_sink_component(test_data->b1, test_data->second);
+	list_item_append(&test_data->b1->sink_list, &test_data->second->bsource_list);
 
 	test_data->first->frames = 0;
 	test_data->second->frames = 0;
@@ -177,15 +178,17 @@ static void test_audio_pipeline_complete_connect_upstream_full(void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
+	struct comp_ipc_config *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
+	comp = &test_data->second->ipc_config;
+	comp->pipeline_id = PIPELINE_ID_SAME;
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);
-	test_data->b1->sink = test_data->first;
-	test_data->b1->source = test_data->second;
+	comp_buffer_set_sink_component(test_data->b1, test_data->first);
+	comp_buffer_set_source_component(test_data->b1, test_data->second);
 
 	/*Testing component*/
 	pipeline_complete(&result, test_data->first, test_data->second);
@@ -200,17 +203,17 @@ static void test_audio_pipeline_complete_connect_upstream_other_pipeline
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
+	struct comp_ipc_config *comp;
 
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->second->comp.pipeline_id = PIPELINE_ID_DIFFERENT;
-	list_item_append(&result.sched_comp->bsource_list,
-					 &test_data->b1->sink_list);
-	test_data->b1->sink = test_data->first;
-	test_data->b1->source = test_data->second;
-	list_item_append(&test_data->second->bsource_list,
-					 &test_data->b1->source_list);
+	comp = &test_data->second->ipc_config;
+	comp->pipeline_id = PIPELINE_ID_DIFFERENT;
+	list_item_append(&result.sched_comp->bsource_list, &test_data->b1->sink_list);
+	comp_buffer_set_sink_component(test_data->b1, test_data->first);
+	comp_buffer_set_source_component(test_data->b1, test_data->second);
+	list_item_append(&test_data->second->bsource_list, &test_data->b1->source_list);
 
 	/*Testing component*/
 	pipeline_complete(&result, test_data->first, test_data->second);

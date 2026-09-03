@@ -18,19 +18,151 @@
 
 #include <stdint.h>
 
-/** \addtogroup sof_uapi uAPI
- *  SOF uAPI specification.
- *
- * IPC messages have a prefixed 32 bit identifier made up as follows :-
- *
- * 0xGCCCNNNN where
- * - G is global cmd type (4 bits)
- * - C is command type (12 bits)
- * - N is the ID number (16 bits) - monotonic and overflows
- *
- * This is sent at the start of the IPM message in the mailbox. Messages should
- * not be sent in the doorbell (special exceptions for firmware).
+/**
+ * Common IPC logic uses standard types for abstract IPC features. This means all ABI MAJOR
+ * abstraction is done in the IPC layer only and not in the surrounding infrastructure.
+ */
+#if CONFIG_IPC_MAJOR_3
+#include <ipc3/header.h>
+#elif CONFIG_IPC_MAJOR_4
+#include <ipc4/header.h>
+#endif
 
+/**
+ * Generic IPC Header structure - Header for all IPC structures which provides
+ * abstraction of IPC header implementation for different IPC ABI MAJOR types.
+ */
+struct ipc_cmd_hdr;
+
+#define ipc_to_hdr(x) ((struct ipc_cmd_hdr *)x)
+
+/** \addtogroup sof_uapi uAPI
+ * SOF uAPI specification
+ *
+ * **Overview**
+ *
+ * The SOF Audio DSP firmware defines an Inter-Process Communication
+ * (IPC) interface to facilitate communication with the host.
+ *
+ * The SOF IPC is bi-directional. Messages can be initiated by the
+ * host and acknowledged by the DSP. Similarly, they can be initiated
+ * by the DSP and acknowledged by the host.
+ *
+ * IPC messages are divided into several groups: global, topology,
+ * power management, component, stream, DAI, trace, and a separate
+ * "firmware ready" message. Multiple messages can also be grouped
+ * into a message that belong to a compound group. Most messages are
+ * sent by the host to the DSP; only the following messages are sent
+ * by the DSP to the host:
+ *  - firmware ready: sent only once during initialization
+ *  - trace: optional, contains firmware trace data
+ *  - position update: only used if position data cannot be
+ *    transferred in a memory window or if forced by the kernel
+ *    configuration
+ *
+ * **Message encoding**
+ *
+ * All multi-byte protocol fields are encoded with little-endian
+ * byte-order.
+ *
+ * **Message structure**
+ *
+ * IPC messages have a fixed header and variable length payload.
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Size                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Command                                                       |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * The header contains size of the IPC message and a 32bit Command
+ * identifier with following structure:
+ *
+ * 0xGCCCNNNN is little-endian value where
+ * - G is the Global Type (4 bits)
+ * - C is the Command Type (12 bits)
+ * - N is the ID Number (16 bits) - monotonic and overflows
+ *
+ * The Global and Command Types together define the structure of the
+ * payload. E.g. for topology IPC message COMP_NEW structure is (ABI
+ * 3.17.0 example):
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Size (Total size including Extended Data)                     |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Command (G=TPLG_MSG, C=COMP_NEW)                              |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Component ID                                                  |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Type                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Pipeline ID                                                   |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Core                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Extended Data size                                            |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Type specific payload, size varies based on Component ID.     |
+ *     | Ends at: Total size - Extended Data size                      |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | extended data, including e.g. UUID                            |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * \see sof_ipc_comp
+ *
+ * **Reply Messages**
+ *
+ * Reply messages are defined per Command. The response IPC messages
+ * have a common layout, but some Commands have extended fields
+ * defined. The common format is:
+ *
+ *      0                   1                   2                   3
+ *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Size                                                          |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Command (G=REPLY, C=0)                                        |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     | Error                                                         |
+ *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * \see sof_ipc_reply
+ *
+ * **IPC ABI version compatibility rules**
+ *
+ * 1. FW binaries will only support one MAJOR ABI version which is advertised
+ *    to host at FW boot.
+ *
+ * 2. Host drivers will support the current and older MAJOR ABI versions of
+ *    the IPC ABI (up to a certain age to be determined by market information).
+ *
+ * 3. MINOR and PATCH ABI versions can differ between host and FW but must be
+ *    backwards compatible on both host and FW.
+ *
+ *    IPC messages sizes can be different for sender and receiver if MINOR or
+ *    PATCH ABI versions differ as new fields can be added to the end of
+ *    messages.
+ *
+ *    i) SenderVersion > ReceiverVersion:
+ *           Receiver only copies its own ABI structure size.
+ *
+ *    ii) ReceiverVersion > SenderVersion:
+ *           Receiver copies its own ABI size and zero pads
+ *           new fields. i.e. new structure fields must be non
+ *           zero to be activated.
+ *
+ * Guidelines for extending ABI compatible messages :-
+ *
+ * - i) Use reserved fields.
+ *
+ * - ii) Grow structure at the end.
+ *
+ * - iii) Iff (i) and (ii) are not possible then MAJOR ABI is bumped.
+ *
  *  @{
  */
 
@@ -40,7 +172,7 @@
 
 /** Shift-left bits to extract the global cmd type */
 #define SOF_GLB_TYPE_SHIFT			28
-#define SOF_GLB_TYPE_MASK			(0xf << SOF_GLB_TYPE_SHIFT)
+#define SOF_GLB_TYPE_MASK			(0xfUL << SOF_GLB_TYPE_SHIFT)
 #define SOF_GLB_TYPE(x)				((x) << SOF_GLB_TYPE_SHIFT)
 
 /** @} */
@@ -51,7 +183,7 @@
 
 /** Shift-left bits to extract the command type */
 #define SOF_CMD_TYPE_SHIFT			16
-#define SOF_CMD_TYPE_MASK			(0xfff << SOF_CMD_TYPE_SHIFT)
+#define SOF_CMD_TYPE_MASK			(0xfffL << SOF_CMD_TYPE_SHIFT)
 #define SOF_CMD_TYPE(x)				((x) << SOF_CMD_TYPE_SHIFT)
 
 /** @} */
@@ -71,6 +203,8 @@
 #define SOF_IPC_GLB_TRACE_MSG			SOF_GLB_TYPE(0x9U)
 #define SOF_IPC_GLB_GDB_DEBUG                   SOF_GLB_TYPE(0xAU)
 #define SOF_IPC_GLB_TEST			SOF_GLB_TYPE(0xBU)
+#define SOF_IPC_GLB_PROBE			SOF_GLB_TYPE(0xCU)
+#define SOF_IPC_GLB_DEBUG			SOF_GLB_TYPE(0xDU)
 
 /** @} */
 
@@ -151,6 +285,31 @@
 #define SOF_IPC_TRACE_DMA_PARAMS		SOF_CMD_TYPE(0x001)
 #define SOF_IPC_TRACE_DMA_POSITION		SOF_CMD_TYPE(0x002)
 #define SOF_IPC_TRACE_DMA_PARAMS_EXT		SOF_CMD_TYPE(0x003)
+#define SOF_IPC_TRACE_FILTER_UPDATE		SOF_CMD_TYPE(0x004) /**< ABI3.17 */
+#define SOF_IPC_TRACE_DMA_FREE		SOF_CMD_TYPE(0x005) /**< ABI3.20 */
+
+/** @} */
+
+/** \name DSP Command: Probes
+ *  @{
+ */
+
+#define SOF_IPC_PROBE_INIT			SOF_CMD_TYPE(0x001)
+#define SOF_IPC_PROBE_DEINIT			SOF_CMD_TYPE(0x002)
+#define SOF_IPC_PROBE_DMA_ADD			SOF_CMD_TYPE(0x003)
+#define SOF_IPC_PROBE_DMA_INFO			SOF_CMD_TYPE(0x004)
+#define SOF_IPC_PROBE_DMA_REMOVE		SOF_CMD_TYPE(0x005)
+#define SOF_IPC_PROBE_POINT_ADD			SOF_CMD_TYPE(0x006)
+#define SOF_IPC_PROBE_POINT_INFO		SOF_CMD_TYPE(0x007)
+#define SOF_IPC_PROBE_POINT_REMOVE		SOF_CMD_TYPE(0x008)
+
+ /** @} */
+
+/** \name DSP Command: Debug - additional services
+ *  @{
+ */
+
+#define SOF_IPC_DEBUG_MEM_USAGE			SOF_CMD_TYPE(0x001)
 
 /** @} */
 
@@ -170,8 +329,13 @@
 #define SOF_IPC_MESSAGE_ID(x)			((x) & 0xffff)
 
 /** Maximum message size for mailbox Tx/Rx */
+#if CONFIG_IPC_MAJOR_4
+#define SOF_IPC_MSG_MAX_SIZE			0x1000
+#elif CONFIG_LIBRARY_STATIC || UNIT_TEST
+#define SOF_IPC_MSG_MAX_SIZE			0x2000
+#else
 #define SOF_IPC_MSG_MAX_SIZE			384
-
+#endif
 /** @} */
 
 /**
@@ -182,7 +346,7 @@
  */
 struct sof_ipc_hdr {
 	uint32_t size;			/**< size of structure */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Command Header - Header for all IPC commands. Identifies IPC message.
@@ -193,7 +357,7 @@ struct sof_ipc_hdr {
 struct sof_ipc_cmd_hdr {
 	uint32_t size;			/**< size of structure */
 	uint32_t cmd;			/**< SOF_IPC_GLB_ + cmd */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Generic reply message. Some commands override this with their own reply
@@ -202,7 +366,7 @@ struct sof_ipc_cmd_hdr {
 struct sof_ipc_reply {
 	struct sof_ipc_cmd_hdr hdr;
 	int32_t error;			/**< negative error numbers */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * Compound commands - SOF_IPC_GLB_COMPOUND.
@@ -215,7 +379,7 @@ struct sof_ipc_reply {
 struct sof_ipc_compound_hdr {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t count;		/**< count of 0 means end of compound sequence */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * OOPS header architecture specific data.
@@ -223,7 +387,7 @@ struct sof_ipc_compound_hdr {
 struct sof_ipc_dsp_oops_arch_hdr {
 	uint32_t arch;		/* Identifier of architecture */
 	uint32_t totalsize;	/* Total size of oops message */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /**
  * OOPS header platform specific data.
@@ -236,7 +400,7 @@ struct sof_ipc_dsp_oops_plat_hdr {
 				 * oops message
 				 */
 	uint32_t stackptr;	/* Stack ptr */
-} __attribute__((packed));
+} __attribute__((packed, aligned(4)));
 
 /** @}*/
 

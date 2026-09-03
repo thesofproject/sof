@@ -1,0 +1,159 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+
+config HOST_PTABLE
+	bool
+	default n
+
+config COMPILER_WORKAROUND_CACHE_ATTR
+	bool
+	default n
+	depends on XTENSA
+	help
+	  Select this to activate use of functions instead of macros
+	  to decide whether an address is cacheable or not.
+	  There is a weird optimization bug with gcc10x and gcc8.1
+	  (with -O2 flags) on IMX platforms. See PR #4605.
+
+config COMPILER_INLINE_FUNCTION_OPTION
+        bool
+	default y if CAVS_VERSION_2_5 || ACE
+        default n
+        help
+          When enabled, -fno-inline-function option is not passed to compiler
+
+config COLD_STORE_EXECUTE_DRAM
+        bool "Execute and use cold data and code in DRAM"
+        help
+	  Non-performance critical data and code can be kept in DRAM to be
+	  accessed and executed there without copying to SRAM. Select this
+	  option to enable this feature to save SRAM and to speed up SRAM
+	  copying of performance-critical data and code.
+
+
+config COLD_STORE_EXECUTE_DEBUG
+	bool "Enable checks for cold code on hot paths"
+	depends on !SOF_USERSPACE_LL
+	help
+	  This enables an assert_can_be_cold() check, which causes an exception
+	  if called in the LL task context and assert() evaluation is enabled.
+
+config FAST_GET
+	bool "Enable simple refcounting DRAM data copier"
+	help
+	  Enable simple refcounting DRAM data copier for copying processing
+	  module data from DRAM to SRAM when the data is needed and freeing
+	  the SRAM when the data is not needed anymore. If multiple module
+	  instances need the same chunk the same copy is used with reference
+	  counting. Source is src/lib/fast-get.c. The option should be selected
+	  on platforms, where __cold_rodata is supported.
+
+config SOF_OS_LINUX_COMPAT_PRIORITY
+	bool "Prioritize backwards compatibility for old Linux kernels"
+	help
+	  Build option to maintain maximal backwards compatibility with old
+	  versions of Linux SOF driver. When this is not set, firmware may
+	  require newer version of host, and/or use features that are not
+	  available in stable Linux kernel trees.
+
+rsource "Kconfig.xtos"
+
+rsource "src/Kconfig"
+
+if ZEPHYR_SOF_MODULE
+	rsource "Kconfig.zephyr-log"
+endif
+
+menu "Debug"
+
+config DEBUG
+	bool "Enable debug build"
+	default n
+	help
+	  Select for debug build
+
+config GDB_DEBUG
+	bool "GDB Stub"
+	default n
+	help
+	  Select for GDB debugging
+
+config DEBUG_MEMORY_USAGE_SCAN
+	bool "Memory usage scan"
+	default y
+	help
+	  It enables memory usage scan at demand in runtime.
+	  This feature does not affect standard memory operations,
+	  especially allocation and deallocation.
+
+config DEBUG_IPC_COUNTERS
+	bool "IPC counters"
+	depends on CAVS
+	depends on DEBUG
+	default n
+	help
+	  Select for enabling tracing IPC counter in SRAM_REG mailbox
+
+config DEBUG_IPC_TIMINGS
+	bool "Enable IPC message handling time logging"
+	depends on DEBUG
+	default n
+	help
+	  Adds a logging after IPC handling before putting IPC reply
+	  to send queue. The logging contains both the reply and the
+	  original request message headers and the time that it took
+	  to process the request in micro seconds. The value can be
+	  used to collect statistics on changes in firmware response
+	  times. This also disables the logging of the received
+	  request on core 0 to avoid flooding the logs too much.
+
+config SCHEDULE_LOG_CYCLE_STATISTICS
+	bool "Log cycles per tick statistics for each task separately"
+	default y
+	help
+	  Log DSP cycle usage statistics about once per second (1ms *
+	  1024) for each task separately. The printed data is task's
+	  meta information, average number of cycles/tick, and maximum
+	  number of cycles/tick during the previous 1024 tick period.
+
+config PERFORMANCE_COUNTERS
+	bool "Performance counters"
+	default n
+	help
+	  Enables tracing of simple performance measurements.
+	  A basic use case is to measure number of platform & cpu clock ticks
+	  passed between two checkpoints (init() and stamp()), for example
+	  total time spent on running low latency scheduler tasks.
+	  Platforms that gate cpu clock in wait-for-interrupt calls may also
+	  use the stamp() macro periodically to find out how long the cpu
+	  was in active/sleep state between the calls and estimate the cpu load.
+
+config PERFORMANCE_COUNTERS_COMPONENT
+	bool "Use performance counters to track component execution"
+	default n
+	depends on PERFORMANCE_COUNTERS
+	help
+	  Use performance counters to trace low-latency task execution.
+	  This enables to observe average and peak execution times at
+	  audio component level granularity.
+	  Results are reported via logging subsystem.
+
+config PERFORMANCE_COUNTERS_LL_TASKS
+	bool "Use performance counters to track LL task execution"
+	default n
+	depends on PERFORMANCE_COUNTERS
+	help
+	  Use performance counters to trace low-latency task execution.
+	  This enables to observe average and peak execution times at
+	  task level granularity.
+	  Results are reported via logging subsystem.
+
+config DSP_RESIDENCY_COUNTERS
+	bool "DSP residency counters"
+	default n
+	help
+	  Enables simple DSP residency counters in SRAM_REG mailbox.
+	  R0, R1, R2 are abstract states which can be used differently
+	  based on platform implementation.
+
+endmenu

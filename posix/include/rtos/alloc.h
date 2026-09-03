@@ -1,0 +1,192 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
+ */
+
+/**
+ * \file xtos/include/rtos/alloc.h
+ * \brief Memory Allocation API definition
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * \author Keyon Jie <yang.jie@linux.intel.com>
+ */
+
+#ifndef __SOF_LIB_ALLOC_H__
+#define __SOF_LIB_ALLOC_H__
+
+#include <rtos/bit.h>
+#include <rtos/string.h>
+#include <sof/trace/trace.h>
+#include <user/trace.h>
+
+#include <stddef.h>
+#include <stdint.h>
+
+/** \addtogroup alloc_api Memory Allocation API
+ *  @{
+ */
+
+/** \name Heap zone flags
+ *  @{
+ */
+
+/*
+ * for compatibility with the initial `flags` meaning
+ * SOF_MEM_FLAG_ should start at BIT(2)
+ * the first two positions are reserved for SOF_BUF_ flags
+ */
+
+ /** \brief Allocate DMA-able memory. */
+#define SOF_MEM_FLAG_DMA		BIT(2)
+/** \brief realloc() skips copying the original content. */
+#define SOF_MEM_FLAG_NO_COPY		BIT(3)
+/** \brief Allocate uncached address. */
+#define SOF_MEM_FLAG_COHERENT		BIT(4)
+/** \brief Allocate L3 address. */
+#define SOF_MEM_FLAG_L3			BIT(5)
+/** \brief Allocate Low power memory address. */
+#define SOF_MEM_FLAG_LOW_POWER		BIT(6)
+/** \brief Allocate kernel memory address. */
+#define SOF_MEM_FLAG_KERNEL		BIT(7)
+/** \brief Allocate user memory address. */
+#define SOF_MEM_FLAG_USER		BIT(8)
+/** \brief Allocate shared user memory address. */
+#define SOF_MEM_FLAG_USER_SHARED_BUFFER	BIT(9)
+/** \brief Use allocation method for large buffers. */
+#define SOF_MEM_FLAG_LARGE_BUFFER	BIT(10)
+
+/** @} */
+
+/**
+ * Allocates memory block.
+ * @param flags Flags, see SOF_MEM_FLAG_...
+ * @param bytes Size in bytes.
+ * @param alignment	Alignment in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ */
+void *rmalloc_align(uint32_t flags, size_t bytes,
+		    uint32_t alignment);
+
+/**
+ * Similar to rmalloc_align(), but no alignment can be specified.
+ */
+void *rmalloc(uint32_t flags, size_t bytes);
+
+/**
+ * Similar to rmalloc(), guarantees that returned block is zeroed.
+ */
+void *rzalloc(uint32_t flags, size_t bytes);
+
+/**
+ * Allocates memory block.
+ * @param flags Flags, see SOF_MEM_FLAG_...
+ * @param bytes Size in bytes.
+ * @param alignment Alignment in bytes.
+ * @return Pointer to the allocated memory or NULL if failed.
+ */
+void *rballoc_align(uint32_t flags, size_t bytes,
+		    uint32_t alignment);
+
+/**
+ * Similar to rballoc_align(), returns buffer aligned to PLATFORM_DCACHE_ALIGN.
+ */
+static inline void *rballoc(uint32_t flags, size_t bytes)
+{
+	return rballoc_align(flags, bytes, PLATFORM_DCACHE_ALIGN);
+}
+
+/**
+ * Frees the memory block.
+ * @param ptr Pointer to the memory block.
+ */
+void rfree(void *ptr);
+
+/**
+ * Allocates memory block from the system heap reserved for the specified core.
+ * @param core Core id.
+ * @param bytes Size in bytes.
+ */
+void *rzalloc_core_sys(int core, size_t bytes);
+
+struct k_heap;
+static inline void k_heap_init(struct k_heap *heap, void *mem, size_t bytes)
+{
+}
+void *sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
+		     size_t alignment);
+void sof_heap_free(struct k_heap *heap, void *addr);
+struct k_heap *sof_sys_heap_get(void);
+struct k_heap *sof_sys_user_heap_get(void);
+
+/* Posix version of struct mod_alloc_ctx without vregion support */ 
+struct vregion;
+
+struct mod_alloc_ctx {
+	struct k_heap *heap;
+	struct vregion *vreg;
+};
+
+/**
+ * Allocate memory from a mod_alloc_ctx context.
+ * Dummy version, only heap allocation is supported
+ */
+static inline void *sof_ctx_alloc(struct mod_alloc_ctx *ctx, uint32_t flags,
+				  size_t size, size_t alignment)
+{
+	return sof_heap_alloc(ctx ? ctx->heap : NULL, flags, size, alignment);
+}
+
+/**
+ * Allocate zero-initialized memory from a mod_alloc_ctx context.
+ * @param ctx		Allocation context.
+ * @param flags		Allocation flags (SOF_MEM_FLAG_*).
+ * @param size		Size in bytes.
+ * @param alignment	Required alignment in bytes.
+ * @return Pointer to allocated memory or NULL on failure.
+ */
+static inline void *sof_ctx_zalloc(struct mod_alloc_ctx *ctx, uint32_t flags,
+				   size_t size, size_t alignment)
+{
+	void *ptr = sof_ctx_alloc(ctx, flags, size, alignment);
+
+	if (ptr)
+		memset(ptr, 0, size);
+
+	return ptr;
+}
+
+/**
+ * Free memory allocated from a mod_alloc_ctx context.
+ * @param ctx	Allocation context.
+ * @param ptr	Pointer to free.
+ */
+static inline void sof_ctx_free(struct mod_alloc_ctx *ctx, void *ptr)
+{
+	if (!ptr)
+		return;
+
+	sof_heap_free(ctx ? ctx->heap : NULL, ptr);
+}
+
+/**
+ * Calculates length of the null-terminated string.
+ * @param s String.
+ * @return Length of the string in bytes.
+ */
+int rstrlen(const char *s);
+
+/**
+ * Compares two strings, see man strcmp.
+ * @param s1 First string to compare.
+ * @param s2 Second string to compare.
+ * @return See man strcmp.
+ */
+int rstrcmp(const char *s1, const char *s2);
+
+static inline void l3_heap_save(void) {}
+
+/** @}*/
+
+#endif /* __SOF_LIB_ALLOC_H__ */

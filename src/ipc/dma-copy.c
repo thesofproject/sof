@@ -5,22 +5,24 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/drivers/ipc.h>
+#include <sof/ipc/msg.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/uuid.h>
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <config.h>
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
 /* tracing */
-#define trace_dma(__e)	trace_event(TRACE_CLASS_DMA, __e)
-#define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
-#define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
+LOG_MODULE_REGISTER(dma_copy, CONFIG_SOF_LOG_LEVEL);
 
-#if !CONFIG_DMA_GW
+SOF_DEFINE_REG_UUID(dma_copy);
+
+DECLARE_TR_CTX(dmacpy_tr, SOF_UUID(dma_copy_uuid), LOG_LEVEL_INFO);
+
 static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	int32_t *offset)
 {
@@ -43,36 +45,19 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	}
 
 	/* host offset in beyond end of SG buffer */
-	trace_dma_error("sg_get_elem_at() error: "
-			"host offset in beyond end of SG buffer");
+	tr_err(&dmacpy_tr, "host offset in beyond end of SG buffer");
 	return NULL;
 }
-#endif
 
 /* Copy DSP memory to host memory.
  * Copies DSP memory to host in a single PAGE_SIZE or smaller block. Does not
  * waits/sleeps and can be used in IRQ context.
  */
-#if CONFIG_DMA_GW
 
-int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
-			    int32_t host_offset, void *local_ptr, int32_t size)
-{
-	int ret;
-
-	/* tell gateway to copy */
-	ret = dma_copy(dc->chan, size, 0);
-	if (ret < 0)
-		return ret;
-
-	/* bytes copied */
-	return size;
-}
-
-#else
-
-int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
-			    int32_t host_offset, void *local_ptr, int32_t size)
+static int
+dma_copy_to_host_flags(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		       int32_t host_offset, void *local_ptr, int32_t size,
+		       uint32_t flags)
 {
 	struct dma_sg_config config;
 	struct dma_sg_elem *host_sg_elem;
@@ -85,7 +70,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 
 	/* find host element with host_offset */
 	host_sg_elem = sg_get_elem_at(host_sg, &offset);
-	if (host_sg_elem == NULL)
+	if (!host_sg_elem)
 		return -EINVAL;
 
 	/* set up DMA configuration */
@@ -98,7 +83,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 
 	/* configure local DMA elem */
 	local_sg_elem.dest = host_sg_elem->dest + offset;
-	local_sg_elem.src = (uint32_t)local_ptr;
+	local_sg_elem.src = (uintptr_t)local_ptr;
 	if (size >= HOST_PAGE_SIZE - offset)
 		local_sg_elem.size = HOST_PAGE_SIZE - offset;
 	else
@@ -108,22 +93,32 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	config.elem_array.count = 1;
 
 	/* start the DMA */
-	err = dma_set_config(dc->chan, &config);
+	err = dma_set_config_legacy(dc->chan, &config);
 	if (err < 0)
 		return err;
 
-	err = dma_copy(dc->chan, local_sg_elem.size,
-		       DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
+	err = dma_copy_legacy(dc->chan, local_sg_elem.size,
+			      flags);
 	if (err < 0)
 		return err;
-
-	ipc_dma_trace_send_position();
 
 	/* bytes copied */
 	return local_sg_elem.size;
 }
 
-#endif
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		     int32_t host_offset, void *local_ptr, int32_t size)
+{
+	return dma_copy_to_host_flags(dc, host_sg, host_offset, local_ptr, size,
+				      DMA_COPY_ONE_SHOT | DMA_COPY_BLOCKING);
+}
+
+int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
+			    int32_t host_offset, void *local_ptr, int32_t size)
+{
+	return dma_copy_to_host_flags(dc, host_sg, host_offset, local_ptr, size,
+				      DMA_COPY_ONE_SHOT);
+}
 
 int dma_copy_new(struct dma_copy *dc)
 {
@@ -134,36 +129,30 @@ int dma_copy_new(struct dma_copy *dc)
 	dev = DMA_DEV_HOST;
 	cap = 0;
 	dc->dmac = dma_get(dir, cap, dev, DMA_ACCESS_SHARED);
-	if (dc->dmac == NULL) {
-		trace_dma_error("dma_copy_new() error: dc->dmac = NULL");
+	if (!dc->dmac) {
+		tr_err(&dmacpy_tr, "dc->dmac = NULL");
 		return -ENODEV;
 	}
 
-#if !CONFIG_DMA_GW
 	/* get DMA channel from DMAC0 */
-	dc->chan = dma_channel_get(dc->dmac, 0);
+	dc->chan = dma_channel_get_legacy(dc->dmac, CONFIG_TRACE_CHANNEL);
 	if (!dc->chan) {
-		trace_dma_error("dma_copy_new() error: dc->chan is NULL");
+		tr_err(&dmacpy_tr, "dc->chan is NULL");
 		return -ENODEV;
 	}
-#endif
 
 	return 0;
 }
 
-#if CONFIG_DMA_GW
-
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag)
 {
 	/* get DMA channel from DMAC */
-	dc->chan = dma_channel_get(dc->dmac, stream_tag - 1);
+	dc->chan = dma_channel_get_legacy(dc->dmac, stream_tag - 1);
 	if (!dc->chan) {
-		trace_dma_error("dma_copy_set_stream_tag() error: "
-				"dc->chan is NULL");
+		tr_err(&dmacpy_tr, "dc->chan is NULL");
 		return -EINVAL;
 	}
 
 	return 0;
 }
 
-#endif

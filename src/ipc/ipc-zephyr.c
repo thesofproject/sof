@@ -1,0 +1,363 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2022 Intel Corporation. All rights reserved.
+//
+// Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+//         Keyon Jie <yang.jie@linux.intel.com>
+//         Rander Wang <rander.wang@intel.com>
+//         Serhiy Katsyuba <serhiy.katsyuba@intel.com>
+//         Andrey Borisovich <andrey.borisovich@intel.com>
+//         Adrian Warecki <adrian.warecki@intel.com>
+
+#include <zephyr/autoconf.h>
+
+#include <zephyr/kernel.h>
+#include <zephyr/ipc/ipc_service.h>
+#ifdef CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC
+#include <zephyr/ipc/backends/intel_adsp_host_ipc.h>
+#endif
+#ifdef CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE
+#include <intel_adsp_ipc.h>
+#endif
+
+#include <sof/ipc/common.h>
+
+#include <sof/ipc/schedule.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
+#if defined(CONFIG_PM)
+#include <sof/lib/cpu.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/state.h>
+#include <zephyr/irq.h>
+#include <zephyr/pm/policy.h>
+#else
+#include <sof/lib/pm_runtime.h>
+#endif /* CONFIG_PM */
+#include <sof/lib/uuid.h>
+#include <rtos/wait.h>
+#include <sof/list.h>
+#include <sof/platform.h>
+#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/twb_schedule.h>
+#include <sof/schedule/schedule.h>
+#include <rtos/task.h>
+#include <rtos/spinlock.h>
+#include <ipc/header.h>
+#include <sof/ipc/msg.h>
+#include <ipc4/notification.h>
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+SOF_DEFINE_REG_UUID(zipc_task);
+
+LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
+
+/**
+ * @brief Private data for IPC.
+ *
+ * Written in interrupt context to service incoming IPC message using registered
+ * cAVS IPC Message Handler Callback (message_handler function).
+ * Filled with content of TDR and TDD registers.
+ * When IPC message is read fills ipc_cmd_hdr.
+ */
+static uint32_t g_last_data, g_last_ext_data;
+static struct ipc_ept sof_ipc_ept;
+static struct ipc_ept_cfg sof_ipc_ept_cfg;
+
+BUILD_ASSERT(sizeof(struct ipc_cmd_hdr) == sizeof(uint32_t) * 2,
+	     "ipc_cmd_hdr must be exactly two 32-bit words");
+
+/**
+ * @brief SOF IPC receive callback for Zephyr IPC service.
+ *
+ * This callback is invoked by the Zephyr IPC service backend when a compact 2-word IPC message
+ * arrives from the host. It stores the raw header words in g_last_data/g_last_ext_data and
+ * schedules the SOF IPC task to process the command via ipc_platform_do_cmd().
+ */
+static void sof_ipc_receive_cb(const void *data, size_t len, void *priv)
+{
+	struct ipc *ipc = (struct ipc *)priv;
+	const uint32_t *msg = data;
+	k_spinlock_key_t key;
+
+	__ASSERT(len == sizeof(uint32_t) * 2, "Unexpected IPC message length: %zu", len);
+	__ASSERT(data, "IPC data pointer is NULL");
+
+	key = k_spin_lock(&ipc->lock);
+
+	g_last_data = msg[0];
+	g_last_ext_data = msg[1];
+
+#if CONFIG_DEBUG_IPC_COUNTERS
+	increment_ipc_received_counter();
+#endif
+	ipc_schedule_process(ipc);
+
+	k_spin_unlock(&ipc->lock, key);
+}
+
+#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC)
+/**
+ * @brief IPC device suspend handler callback function.
+ * Checks whether device power state should be actually changed.
+ *
+ * @param dev IPC device.
+ * @param arg IPC struct pointer.
+ */
+static int ipc_device_suspend_handler(const struct device *dev, void *arg)
+{
+	struct ipc *ipc = (struct ipc *)arg;
+
+	int ret = 0;
+
+	if (!(ipc->task_mask & IPC_TASK_POWERDOWN)) {
+		tr_err(&ipc_tr,
+		       "ipc task mask not set to IPC_TASK_POWERDOWN. Current value: %u",
+		       ipc->task_mask);
+		ret = -ENOMSG;
+	}
+
+	if (!ipc->pm_prepare_D3) {
+		tr_err(&ipc_tr, "power state D3 not requested");
+		ret = -EBADMSG;
+	}
+
+	if (!list_is_empty(&ipc->msg_list)) {
+		struct list_item *slist;
+		struct ipc_msg *msg;
+		/* The only possible message that can be added during power transition procedure is
+		 * SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS.
+		 */
+		const uint32_t exp_hdr = SOF_IPC4_NOTIF_HEADER(SOF_IPC4_NOTIFY_LOG_BUFFER_STATUS);
+		bool only_buff_status = true;
+
+		list_for_item(slist, &ipc->msg_list) {
+			msg = container_of(slist, struct ipc_msg, list);
+
+			if (msg->header != exp_hdr)
+				only_buff_status = false;
+		}
+
+		if (only_buff_status) {
+			tr_warn(&ipc_tr, "continuing D3 procedure with the msg in the queue");
+		} else {
+			tr_err(&ipc_tr, "there are queued IPC messages to be sent");
+			ret = -EINPROGRESS;
+		}
+	}
+
+	if (ret != 0)
+		ipc_send_failed_power_transition_response();
+
+	return ret;
+}
+
+/**
+ * @brief IPC device resume handler callback function.
+ * Resets IPC control after context restore.
+ *
+ * @param dev IPC device.
+ * @param arg IPC struct pointer.
+ */
+static int ipc_device_resume_handler(const struct device *dev, void *arg)
+{
+	struct ipc *ipc = (struct ipc *)arg;
+
+	ipc_set_drvdata(ipc, NULL);
+	ipc->task_mask = 0;
+	ipc->pm_prepare_D3 = false;
+
+	/* schedule task */
+#if CONFIG_TWB_IPC_TASK
+	scheduler_twb_task_init(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+							&ipc_task_ops, ipc, 0, "IPC", ZEPHYR_TWB_STACK_SIZE,
+							CONFIG_TWB_THREAD_MEDIUM_PRIORITY, ZEPHYR_TWB_BUDGET_MAX / 2);
+#else
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+			       &ipc_task_ops, ipc, 0, 0);
+#endif
+	return 0;
+}
+#endif /* CONFIG_PM_DEVICE && CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC */
+
+#if CONFIG_DEBUG_IPC_COUNTERS
+
+static inline void increment_ipc_received_counter(void)
+{
+	static uint32_t ipc_received_counter;
+
+	mailbox_sw_reg_write(SRAM_REG_FW_IPC_RECEIVED_COUNT,
+			     ipc_received_counter++);
+}
+
+static inline void increment_ipc_processed_counter(void)
+{
+	static uint32_t ipc_processed_counter;
+	uint32_t *uncache_counter = cache_to_uncache(&ipc_processed_counter);
+
+	mailbox_sw_reg_write(SRAM_REG_FW_IPC_PROCESSED_COUNT,
+			     (*uncache_counter)++);
+}
+
+#endif /* CONFIG_DEBUG_IPC_COUNTERS */
+
+int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
+{
+	uint32_t *chdr = (uint32_t *)hdr;
+
+	/* compact messages are 2 words on CAVS 1.8 onwards */
+	if (words != 2)
+		return 0;
+
+	chdr[0] = g_last_data;
+	chdr[1] = g_last_ext_data;
+
+	return 2; /* number of words read */
+}
+
+int ipc_platform_compact_write_msg(struct ipc_cmd_hdr *hdr, int words)
+{
+	return 0; /* number of words read - not currently used on this platform */
+}
+
+enum task_state ipc_platform_do_cmd(struct ipc *ipc)
+{
+	struct ipc_cmd_hdr *hdr;
+
+	dbg_path_hot_start_watching();
+
+	hdr = ipc_compact_read_msg();
+
+	/* perform command */
+	ipc_cmd(hdr);
+
+	dbg_path_hot_stop_watching();
+
+	if (ipc->task_mask & IPC_TASK_POWERDOWN ||
+	    ipc_get()->pm_prepare_D3) {
+#if defined(CONFIG_PM)
+		/**
+		 * @note For primary core this function
+		 * will only force set lower power state
+		 * in power management settings.
+		 * Core will enter D3 state after exit
+		 * IPC thread during idle.
+		 */
+		cpu_disable_core(PLATFORM_PRIMARY_CORE_ID);
+#else
+		/**
+		 * @note no return - memory will be
+		 * powered off and IPC sent.
+		 */
+		platform_pm_runtime_power_off();
+#endif /* CONFIG_PM  */
+	}
+
+	return SOF_TASK_STATE_COMPLETED;
+}
+
+void ipc_platform_complete_cmd(struct ipc *ipc)
+{
+	ARG_UNUSED(ipc);
+	int ret = ipc_service_release_rx_buffer(&sof_ipc_ept, NULL);
+
+	if (ret < 0)
+		tr_warn(&ipc_tr, "ipc_service_release_rx_buffer() failed: %d", ret);
+
+#if CONFIG_DEBUG_IPC_COUNTERS
+	increment_ipc_processed_counter();
+#endif
+}
+
+int ipc_platform_send_msg(const struct ipc_msg *msg)
+{
+	if (ipc_service_get_tx_buffer_size(&sof_ipc_ept) == 0)
+		return -EBUSY;
+
+	/* prepare the message and copy to mailbox */
+	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
+
+	return ipc_service_send(&sof_ipc_ept, hdr, sizeof(*hdr));
+}
+
+void ipc_platform_send_msg_direct(const struct ipc_msg *msg)
+{
+	/* prepare the message and copy to mailbox */
+	struct ipc_cmd_hdr *hdr = ipc_prepare_to_send(msg);
+	int ret = ipc_service_send_critical(&sof_ipc_ept, hdr, sizeof(*hdr));
+
+	if (ret < 0)
+		tr_err(&ipc_tr, "ipc_service_send_critical() failed: %d", ret);
+}
+
+int ipc_platform_poll_is_host_ready(void)
+{
+	return ipc_service_get_tx_buffer_size(&sof_ipc_ept) > 0;
+}
+
+int platform_ipc_init(struct ipc *ipc)
+{
+	int ret;
+
+	ipc_set_drvdata(ipc, NULL);
+
+	/* schedule task */
+#if CONFIG_TWB_IPC_TASK
+	scheduler_twb_task_init(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+							&ipc_task_ops, ipc, 0, "IPC", ZEPHYR_TWB_STACK_SIZE,
+							CONFIG_TWB_THREAD_MEDIUM_PRIORITY, ZEPHYR_TWB_BUDGET_MAX / 2);
+#else
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+			       &ipc_task_ops, ipc, 0, 0);
+#endif
+	/* configure interrupt - work is done internally by Zephyr API */
+
+	sof_ipc_ept_cfg.name = "sof_ipc";
+	sof_ipc_ept_cfg.prio = 0;
+	sof_ipc_ept_cfg.cb.received = sof_ipc_receive_cb;
+	sof_ipc_ept_cfg.priv = ipc;
+
+	/*
+	 * TODO: INTEL_ADSP_IPC_HOST_DEV is currently hardcoded for Intel ADSP platform.
+	 * This needs to be made generic/configurable when additional vendor IPC backends
+	 * become available (e.g., via devicetree, Kconfig, or platform-specific device selection).
+	 */
+	ret = ipc_service_register_endpoint(INTEL_ADSP_IPC_HOST_DEV,
+					    &sof_ipc_ept, &sof_ipc_ept_cfg);
+	if (ret < 0)
+		return ret;
+
+#if defined(CONFIG_PM_DEVICE) && defined(CONFIG_IPC_SERVICE_BACKEND_INTEL_ADSP_HOST_IPC)
+	intel_adsp_ipc_set_suspend_handler(INTEL_ADSP_IPC_HOST_DEV,
+					   ipc_device_suspend_handler, ipc);
+	intel_adsp_ipc_set_resume_handler(INTEL_ADSP_IPC_HOST_DEV,
+					  ipc_device_resume_handler, ipc);
+#endif
+
+	return 0;
+}
+
+#ifdef CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE
+static bool ipc_wait_complete(const struct device *dev, void *arg)
+{
+	k_sem_give(arg);
+	return false;
+}
+
+void ipc_platform_wait_ack(struct ipc *ipc)
+{
+	static struct k_sem ipc_wait_sem;
+
+	k_sem_init(&ipc_wait_sem, 0, 1);
+
+	intel_adsp_ipc_set_done_handler(INTEL_ADSP_IPC_HOST_DEV, ipc_wait_complete, &ipc_wait_sem);
+
+	if (k_sem_take(&ipc_wait_sem, Z_TIMEOUT_MS(10)) == -EAGAIN)
+		tr_err(&ipc_tr, "Timeout waiting for host ack!");
+
+	intel_adsp_ipc_set_done_handler(INTEL_ADSP_IPC_HOST_DEV, NULL, NULL);
+}
+#endif /* CONFIG_INTEL_ADSP_IPC_OLD_INTERFACE */

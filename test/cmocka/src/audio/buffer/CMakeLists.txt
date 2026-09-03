@@ -2,24 +2,96 @@
 
 cmocka_test(buffer_copy
 	buffer_copy.c
-	mock.c
-	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
+	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
+
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )
 
 cmocka_test(buffer_new
 	buffer_new.c
-	mock.c
-	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
+	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )
 
 cmocka_test(buffer_wrap
 	buffer_wrap.c
-	mock.c
-	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
+	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )
 
 cmocka_test(buffer_write
 	buffer_write.c
-	mock.c
-	${PROJECT_SOURCE_DIR}/src/audio/buffer.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/common_mocks.c
+	${PROJECT_SOURCE_DIR}/test/cmocka/src/notifier_mocks.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/comp_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/buffers/audio_buffer.c
+	${PROJECT_SOURCE_DIR}/src/audio/source_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_api_helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/sink_source_utils.c
+	${PROJECT_SOURCE_DIR}/src/audio/audio_stream.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/source_api.c
+	${PROJECT_SOURCE_DIR}/src/module/audio/sink_api.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc3/helper.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-common.c
+	${PROJECT_SOURCE_DIR}/src/ipc/ipc-helper.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-graph.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-params.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-schedule.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-stream.c
+	${PROJECT_SOURCE_DIR}/src/audio/pipeline/pipeline-xrun.c
+	${PROJECT_SOURCE_DIR}/src/audio/component.c
+	${PROJECT_SOURCE_DIR}/src/math/numbers.c
 )

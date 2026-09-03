@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2016 Intel Corporation. All rights reserved.
+ * Copyright(c) 2016 - 2023 Intel Corporation. All rights reserved.
  *
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
@@ -10,12 +10,28 @@
 #ifndef __SOF_AUDIO_FORMAT_H__
 #define __SOF_AUDIO_FORMAT_H__
 
+#if defined __XCC__
+#include <xtensa/config/core-isa.h>
+#if XCHAL_HAVE_HIFI3 == 1
+#define __AUDIO_FORMAT_GENERIC__	0
+#define __AUDIO_FORMAT_HIFI3__		1
+#else
+/* Generic build for e.g. hifi2 */
+#define __AUDIO_FORMAT_GENERIC__	1
+#define __AUDIO_FORMAT_HIFI3__		0
+#endif /* !XCHAL_HAVE_HIFI3 */
+#else
+/* GCC */
+#define __AUDIO_FORMAT_GENERIC__	1
+#define __AUDIO_FORMAT_HIFI3__		0
+#endif /* !__XCC__ */
+
+#include <ipc/stream.h>
 #include <stdint.h>
 
 /* Maximum and minimum values for 24 bit */
 #define INT24_MAXVALUE  8388607
 #define INT24_MINVALUE -8388608
-
 
 /* Collection of common fractional numbers */
 #define ONE_Q2_30 1073741824 /* Q2.30 1.0 */
@@ -54,6 +70,9 @@
 /* Convert fractional Qnx.ny number x to float */
 #define Q_CONVERT_QTOF(x, ny) ((float)(x) / ((int64_t)1 << (ny)))
 
+/* Convert fractional Qnx.ny number x to double */
+#define Q_CONVERT_QTOD(x, ny) ((double)(x) / ((int64_t)1 << (ny)))
+
 /* A more clever macro for Q-shifts */
 #define Q_SHIFT(x, src_q, dst_q) ((x) >> ((src_q) - (dst_q)))
 #define Q_SHIFT_RND(x, src_q, dst_q) \
@@ -61,6 +80,18 @@
 
 /* Alternative version since compiler does not allow (x >> -1) */
 #define Q_SHIFT_LEFT(x, src_q, dst_q) ((x) << ((dst_q) - (src_q)))
+
+/* Fractional multiplication with shift
+ * Note that the parameters px and py must be cast to (int32_t) if other type.
+ */
+#define Q_MULTS_16X16(px, py, qx, qy, qp) \
+	((px) * (py) >> (((qx) + (qy) - (qp))))
+
+/* Fractional multiplication with shift and round
+ * Note that the parameters px and py must be cast to (int32_t) if other type.
+ */
+#define Q_MULTSR_16X16(px, py, qx, qy, qp) \
+	((((px) * (py) >> ((qx) + (qy) - (qp) - 1)) + 1) >> 1)
 
 /* Fractional multiplication with shift
  * Note that the parameters px and py must be cast to (int64_t) if other type.
@@ -77,6 +108,15 @@
 /* Saturation */
 #define SATP_INT32(x) (((x) > INT32_MAX) ? INT32_MAX : (x))
 #define SATM_INT32(x) (((x) < INT32_MIN) ? INT32_MIN : (x))
+
+/* Inline functions */
+
+#if __AUDIO_FORMAT_GENERIC__
+#include "format_generic.h"
+#endif
+#if __AUDIO_FORMAT_HIFI3__
+#include "format_hifi3.h"
+#endif
 
 static inline int64_t q_mults_32x32(int32_t x, int32_t y, const int shift_bits)
 {
@@ -96,38 +136,6 @@ static inline int32_t q_mults_16x16(int16_t x, int32_t y, const int shift_bits)
 static inline int16_t q_multsr_16x16(int16_t x, int32_t y, const int shift_bits)
 {
 	return ((((int32_t)x * y) >> (shift_bits - 1)) + 1) >> 1;
-}
-
-/* Saturation inline functions */
-
-static inline int32_t sat_int32(int64_t x)
-{
-	if (x > INT32_MAX)
-		return INT32_MAX;
-	else if (x < INT32_MIN)
-		return INT32_MIN;
-	else
-		return (int32_t)x;
-}
-
-static inline int32_t sat_int24(int32_t x)
-{
-	if (x > INT24_MAXVALUE)
-		return INT24_MAXVALUE;
-	else if (x < INT24_MINVALUE)
-		return INT24_MINVALUE;
-	else
-		return x;
-}
-
-static inline int16_t sat_int16(int32_t x)
-{
-	if (x > INT16_MAX)
-		return INT16_MAX;
-	else if (x < INT16_MIN)
-		return INT16_MIN;
-	else
-		return (int16_t)x;
 }
 
 /* Fractional multiplication with shift and saturation */

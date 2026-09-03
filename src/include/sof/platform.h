@@ -45,6 +45,13 @@ int platform_boot_complete(uint32_t boot_message);
  */
 int platform_init(struct sof *sof);
 
+/**
+ * \brief Platform specific context saving routine, called during DSP suspending.
+ * \param[in] sof Context.
+ * \return 0 if successful, error code otherwise.
+ */
+int platform_context_save(struct sof *sof);
+
 /** @}*/
 
 #endif

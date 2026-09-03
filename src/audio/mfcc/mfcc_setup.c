@@ -1,0 +1,533 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2022-2026 Intel Corporation.
+//
+// Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+
+#include <sof/audio/mfcc/mfcc_comp.h>
+#include <sof/audio/component.h>
+#include <sof/audio/audio_stream.h>
+#include <sof/math/auditory.h>
+#include <sof/math/icomplex16.h>
+#include <sof/math/icomplex32.h>
+#include <sof/math/trig.h>
+#include <sof/math/window.h>
+#include <sof/trace/trace.h>
+#include <user/mfcc.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include <sof/audio/mfcc/mfcc_vad.h>
+
+/* Definitions for cepstral lifter */
+#define PI_Q23 Q_CONVERT_FLOAT(3.1415926536, 23)
+#define TWO_PI_Q23 Q_CONVERT_FLOAT(6.2831853072, 23)
+#define ONE_Q9 Q_CONVERT_FLOAT(1, 9)
+
+LOG_MODULE_REGISTER(mfcc_setup, CONFIG_SOF_LOG_LEVEL);
+
+/**
+ * \brief Initialize an MFCC input circular buffer descriptor.
+ *
+ * \param[out] buf Circular buffer descriptor to initialize.
+ * \param[in] base Backing storage (Q1.15 samples).
+ * \param[in] size Buffer length in samples.
+ */
+static void mfcc_init_buffer(struct mfcc_buffer *buf, int16_t *base, int size)
+{
+	buf->addr = base;
+	buf->end_addr = base + size;
+	buf->r_ptr = base;
+	buf->w_ptr = base;
+	buf->s_free = size;
+	buf->s_avail = 0;
+	buf->s_length = size;
+}
+
+/**
+ * \brief Fill \c state->window with the configured analysis window.
+ *
+ * \param[in,out] state MFCC state; \c state->window is written, sized
+ *                      \c state->fft.fft_size and in Q1.15.
+ * \param[in] name Window type identifier from the MFCC configuration.
+ *
+ * \return 0 on success, -EINVAL for an unsupported window type.
+ */
+static int mfcc_get_window(struct mfcc_state *state, enum sof_mfcc_fft_window_type name)
+{
+	struct mfcc_fft *fft = &state->fft;
+
+	switch (name) {
+	case MFCC_RECTANGULAR_WINDOW:
+		win_rectangular_16b(state->window, fft->fft_size);
+		return 0;
+	case MFCC_BLACKMAN_WINDOW:
+		win_blackman_16b(state->window, fft->fft_size, MFCC_BLACKMAN_A0);
+		return 0;
+	case MFCC_HAMMING_WINDOW:
+		win_hamming_16b(state->window, fft->fft_size);
+		return 0;
+	case MFCC_HANN_WINDOW:
+		win_hann_16b(state->window, fft->fft_size);
+		return 0;
+	case MFCC_POVEY_WINDOW:
+		win_povey_16b(state->window, fft->fft_size);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+/* The function returns a vector for multiplying the cepstral coefficients when
+ * cepstral lifter option is enabled. The cepstral lifter value is Q7.9, e.g. 22.0.
+ * The output vector is Q7.9 also and is size (1, num_ceps).
+ *
+ * The lifter function is
+ * coef[i] = 1.0 + 0.5 * lifter * sin(pi * i / lifter), i = 0 to num_ceps-1
+ */
+
+static int mfcc_get_cepstral_lifter(struct processing_module *mod, struct mfcc_cepstral_lifter *cl)
+{
+	int32_t inv_cepstral_lifter;
+	int32_t val;
+	int32_t sin;
+	int i;
+
+	if (cl->num_ceps > DCT_MATRIX_SIZE_MAX)
+		return -EINVAL;
+
+	cl->matrix = mod_mat_matrix_alloc_16b(mod, 1, cl->num_ceps, 9); /* Use Q7.9 */
+	if (!cl->matrix)
+		return -ENOMEM;
+
+	inv_cepstral_lifter = (1 << 30) / cl->cepstral_lifter; /* Q2.30 / Q7.9 -> Q1.21 */
+
+	for (i = 0; i < cl->num_ceps; i++) {
+		val = Q_MULTSR_32X32((int64_t)inv_cepstral_lifter, PI_Q23 * i, 21, 23, 23);
+		val %= TWO_PI_Q23;
+		sin = sin_fixed_32b(Q_SHIFT_LEFT(val, 23, 28)); /* Q4.28 -> Q1.31 */
+		/* Val is Q7.9 make 0.5 multiply with additional shift */
+		val = Q_MULTSR_32X32((int64_t)sin, cl->cepstral_lifter, 31, 9, 9 - 1);
+		val += ONE_Q9;
+		mat_set_scalar_16b(cl->matrix, 0, i, sat_int16(val));
+	}
+
+	return 0;
+}
+
+/* TODO mfcc setup needs to use the config blob, not hard coded parameters.
+ * Also this is a too long function. Split to STFT, Mel filter, etc. parts.
+ */
+/**
+ * \brief Allocate and initialize MFCC runtime state from the config blob.
+ *
+ * Validates the supplied configuration, allocates the input circular
+ * buffer, overlap buffer, window vector, FFT scratch, Mel filterbank,
+ * DCT/cepstral lifter matrices (when \c num_ceps > 0) and VAD state
+ * (when enabled). All allocations are freed on any failure path.
+ *
+ * \param[in,out] mod Processing module that owns the MFCC instance.
+ * \param[in] max_frames Maximum input frames the pipeline will deliver
+ *                       per call; sizes the input buffer.
+ * \param[in] sample_rate Input sample rate in Hz; must match
+ *                        \c config->sample_frequency.
+ * \param[in] channels Number of channels in the input stream.
+ *
+ * \return 0 on success or a negative error code (\c -EINVAL for bad
+ *         configuration, \c -ENOMEM for an allocation failure).
+ */
+int mfcc_setup(struct processing_module *mod, int max_frames, int sample_rate, int channels)
+{
+	struct mfcc_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+	struct sof_mfcc_config *config = cd->config;
+	struct mfcc_state *state = &cd->state;
+	struct mfcc_fft *fft = &state->fft;
+	struct psy_mel_filterbank *fb = &state->melfb;
+	struct dct_plan_16 *dct = &state->dct;
+	int mel_log_32_space;
+	int max_out_per_hop;
+	int out_per_hop;
+	int sink_per_hop;
+	int ret;
+
+	comp_dbg(dev, "entry");
+
+	/* Check size */
+	if (config->size != sizeof(struct sof_mfcc_config)) {
+		comp_err(dev, "Illegal configuration size %d.", config->size);
+		return -EINVAL;
+	}
+
+	/* Check currently hard-coded features to match configuration request */
+	if (!config->round_to_power_of_two || !config->snip_edges ||
+	    config->subtract_mean || config->use_energy) {
+		comp_err(dev, "Can't change currently hard-coded features");
+		return -EINVAL;
+	}
+
+	if (sample_rate <= 0 || sample_rate > MFCC_MAX_SAMPLE_RATE) {
+		comp_err(dev, "Sample rate %d out of range (1..%d Hz)",
+			 sample_rate, MFCC_MAX_SAMPLE_RATE);
+		return -EINVAL;
+	}
+
+	if (config->sample_frequency != sample_rate) {
+		comp_err(dev, "Config sample_frequency does not match stream");
+		return -EINVAL;
+	}
+
+	/* Validate configuration parameters up front so that runtime code
+	 * (executed every hop in the DSP) can skip divide-by-zero / range
+	 * checks. Any later division by these fields is safe after this.
+	 */
+	if (config->frame_length <= 0 || config->frame_shift <= 0 ||
+	    config->frame_shift > config->frame_length) {
+		comp_err(dev, "Illegal frame_length %d or frame_shift %d",
+			 config->frame_length, config->frame_shift);
+		return -EINVAL;
+	}
+
+	if (config->num_mel_bins <= 0) {
+		comp_err(dev, "Illegal num_mel_bins %d", config->num_mel_bins);
+		return -EINVAL;
+	}
+
+	if (config->num_ceps < 0) {
+		comp_err(dev, "Illegal num_ceps %d", config->num_ceps);
+		return -EINVAL;
+	}
+
+	/* cepstral_lifter is used as a divisor in mfcc_get_cepstral_lifter().
+	 * Either disabled (== 0) or strictly positive. Negative values are
+	 * rejected to keep runtime math (every hop in DSP) free of guards.
+	 */
+	if (config->num_ceps > 0 && config->cepstral_lifter < 0) {
+		comp_err(dev, "Illegal cepstral_lifter %d (must be >= 0)",
+			 config->cepstral_lifter);
+		return -EINVAL;
+	}
+
+	cd->max_frames = max_frames;
+	state->sample_rate = sample_rate;
+	state->low_freq = config->low_freq;
+	state->high_freq = (config->high_freq == 0) ? (sample_rate >> 1) : config->high_freq;
+	if (state->low_freq > state->high_freq) {
+		comp_err(dev, "Config high_freq must be larger than low_freq");
+		return -EINVAL;
+	}
+
+	if (config->channel >= channels || (config->channel < 0 && channels != 1)) {
+		comp_err(dev, "Illegal source_channel %d for stream channels %d", config->channel,
+			 channels);
+		return -EINVAL;
+	}
+
+	if (config->channel < 0)
+		state->source_channel = 0;
+	else
+		state->source_channel = config->channel;
+
+	state->mmax = (int32_t)config->mmax_init << 16; /* Q9.7 -> Q9.23 */
+	state->emph.enable = config->preemphasis_coefficient > 0;
+	state->emph.coef = -config->preemphasis_coefficient; /* Negate config parameter */
+	fft->fft_size = config->frame_length;
+	fft->fft_padded_size = 1 << (31 - norm_int32(fft->fft_size)); /* Round up to nearest 2^N */
+	fft->fft_hop_size = config->frame_shift;
+	fft->half_fft_size = (fft->fft_padded_size >> 1) + 1;
+
+	comp_info(dev, "emphasis = %d, fft_size = %d, fft_padded_size = %d, fft_hop_size = %d",
+		  config->preemphasis_coefficient,
+		  fft->fft_size, fft->fft_padded_size, fft->fft_hop_size);
+
+	/* Calculated parameters */
+	state->prev_data_size = fft->fft_size - fft->fft_hop_size;
+	state->buffer_size = fft->fft_size + max_frames;
+
+	/* Allocate buffer input samples and overlap buffer */
+	state->sample_buffers_size = sizeof(int16_t) *
+		(state->buffer_size + state->prev_data_size + fft->fft_size);
+
+	comp_info(dev, "buffer_size = %d, prev_size = %d",
+		  state->buffer_size, state->prev_data_size);
+
+	state->buffers = mod_zalloc(mod, state->sample_buffers_size);
+	if (!state->buffers) {
+		comp_err(dev, "Failed buffer allocate");
+		ret = -ENOMEM;
+		goto exit;
+	}
+
+	mfcc_init_buffer(&state->buf, state->buffers, state->buffer_size);
+	state->prev_data = state->buffers + state->buffer_size;
+	state->window = state->prev_data + state->prev_data_size;
+
+	/* Allocate buffers for FFT input and output data */
+	fft->fft_buffer_size = fft->fft_padded_size * sizeof(struct icomplex32);
+	fft->fft_buf = mod_zalloc(mod, fft->fft_buffer_size);
+	if (!fft->fft_buf) {
+		comp_err(dev, "Failed FFT buffer allocate");
+		ret = -ENOMEM;
+		goto free_buffers;
+	}
+
+	fft->fft_out = mod_zalloc(mod, fft->fft_buffer_size);
+	if (!fft->fft_out) {
+		comp_err(dev, "Failed FFT output allocate");
+		ret = -ENOMEM;
+		goto free_fft_buf;
+	}
+
+	fft->fft_fill_start_idx = 0; /* From config pad_type */
+
+	/* Setup FFT */
+	fft->fft_plan = mod_fft_plan_new(mod, fft->fft_buf, fft->fft_out, fft->fft_padded_size,
+					 MFCC_FFT_BITS);
+	if (!fft->fft_plan) {
+		comp_err(dev, "Failed FFT init");
+		ret = -EINVAL;
+		goto free_fft_out;
+	}
+
+	comp_info(dev, "window = %d, num_mel_bins = %d, num_ceps = %d, norm = %d",
+		  config->window, config->num_mel_bins, config->num_ceps, config->norm);
+	comp_info(dev, "low_freq = %d, high_freq = %d",
+		  state->low_freq, state->high_freq);
+
+	/* Setup window */
+	ret = mfcc_get_window(state, config->window);
+	if (ret < 0) {
+		comp_err(dev, "Failed Window function");
+		goto free_fft_plan;
+	}
+
+	/* Setup Mel auditory filterbank. FFT input and output buffers are used
+	 * as scratch in Mel filterbank initialization. Filterbank get function will
+	 * return error if not sufficient size.
+	 */
+	fb->samplerate = sample_rate;
+	fb->start_freq = state->low_freq;
+	fb->end_freq = state->high_freq;
+	fb->mel_bins = config->num_mel_bins;
+	fb->slaney_normalize = config->norm == MFCC_MEL_NORM_SLANEY; /* True if slaney */
+	fb->mel_log_scale = (enum psy_mel_log_scale)((int)config->mel_log);  /* LOG, LOG10 or DB */
+	fb->fft_bins = fft->fft_padded_size;
+	fb->half_fft_bins = (fft->fft_padded_size >> 1) + 1;
+	fb->scratch_data1 = (int16_t *)fft->fft_buf;
+	fb->scratch_data2 = (int16_t *)fft->fft_out;
+	fb->scratch_length1 = fft->fft_buffer_size / sizeof(int16_t);
+	fb->scratch_length2 = fft->fft_buffer_size / sizeof(int16_t);
+	ret = mod_psy_get_mel_filterbank(mod, fb);
+	if (ret < 0) {
+		comp_err(dev, "Failed Mel filterbank");
+		goto free_fft_plan;
+	}
+
+	/* Setup DCT and cepstral lifter only when num_ceps > 0.
+	 * When num_ceps is zero, skip DCT/lifter and output Mel
+	 * log spectra directly.
+	 */
+	if (config->num_ceps > 0) {
+		dct->num_in = config->num_mel_bins;
+		dct->num_out = config->num_ceps;
+		dct->type = (enum dct_type)config->dct;
+		dct->ortho = true;
+		ret = mod_dct_initialize_16(mod, dct);
+		if (ret < 0) {
+			comp_err(dev, "Failed DCT init");
+			goto free_melfb_data;
+		}
+
+		state->lifter.num_ceps = config->num_ceps;
+		state->lifter.cepstral_lifter = config->cepstral_lifter; /* Q7.9 max 64.0*/
+		if (state->lifter.cepstral_lifter > 0) {
+			ret = mfcc_get_cepstral_lifter(mod, &state->lifter);
+			if (ret < 0) {
+				comp_err(dev, "Failed cepstral lifter");
+				goto free_dct_matrix;
+			}
+		} else {
+			state->lifter.matrix = NULL;
+		}
+
+		state->mel_only = false;
+	} else {
+		comp_info(dev, "num_ceps is 0, Mel log spectra output mode");
+		dct->num_in = config->num_mel_bins;
+		dct->num_out = 0;
+		dct->matrix = NULL;
+		state->lifter.matrix = NULL;
+		state->mel_only = true;
+	}
+
+	/* Scratch overlay during runtime
+	 *
+	 *  +------------------------------------------------------------+
+	 *  | 1. fft_buf[], 32 bits, size x 8, e.g. 512 -> 4096 bytes    |
+	 *  +-------------------------------------+----------------------+
+	 *  | 3. power_spectra[],                 | 6. mel_log_32[],     |
+	 *  |    32 bits, e.g. x257 -> 1028 bytes |    32 bits, e.g. x80 |
+	 *  |                                     |    320 bytes         |
+	 *  +-------------------------------------+----------------------+
+	 *
+	 *  +---------------------------------------------------------------------------------+
+	 *  | 2. fft_out[], 32 bits, size x 8, e.g. 512 -> 4096 bytes                         |
+	 *  +----------------------------------+----------------------------------+-----------+
+	 *  | 4. mel_spectra[],                | 5. cepstral_coef[],              |
+	 *  |    16 bits, e.g. x23 -> 46 bytes |    16 bits, e.g. 13x -> 26 bytes |
+	 *  +----------------------------------+----------------------------------+
+	 *
+	 */
+
+	/* Use FFT buffer as scratch for later computed data */
+	state->power_spectra = (int32_t *)&fft->fft_buf[0];
+	state->mel_log_32 = &state->power_spectra[fft->half_fft_size];
+
+	/* Check that mel_log_32 fits in the remaining fft_buf scratch space */
+	mel_log_32_space = (int)(fft->fft_buffer_size / sizeof(int32_t)) - fft->half_fft_size;
+
+	if (config->num_mel_bins > mel_log_32_space) {
+		comp_err(dev, "num_mel_bins %d exceeds mel_log_32 scratch space %d",
+			 config->num_mel_bins, mel_log_32_space);
+		ret = -EINVAL;
+		goto free_lifter;
+	}
+
+	state->mel_spectra = (struct mat_matrix_16b *)&fft->fft_out[0];
+	if (!state->mel_only) {
+		state->cepstral_coef =
+			(struct mat_matrix_16b *)&state->mel_spectra->data[state->dct.num_in];
+	} else {
+		state->cepstral_coef = NULL;
+	}
+
+	/* Allocate output buffer for multi-period output. Size allows for
+	 * current output data plus leftover from previous period.
+	 */
+	max_out_per_hop = state->mel_only ? dct->num_in : dct->num_out;
+
+	/* Check that output data can be drained within the periods spanned by one
+	 * FFT hop. Each hop consumes fft_hop_size input samples and produces
+	 * max_out_per_hop + header int32_t output values. The sink provides
+	 * at least fft_hop_size * channels int32_t samples per hop (worst case s32).
+	 * If output exceeds this, data accumulates and will eventually overflow.
+	 * This check is not needed in compress output mode where only actual data
+	 * bytes are committed without zero padding.
+	 */
+	out_per_hop = max_out_per_hop + sizeof(state->header) / sizeof(int32_t);
+	sink_per_hop = fft->fft_hop_size * channels;
+
+	if (!config->compress_output && out_per_hop > sink_per_hop) {
+		comp_err(dev, "Output %d int32 per hop exceeds sink capacity %d (hop %d x ch %d)",
+			 out_per_hop, sink_per_hop, fft->fft_hop_size, channels);
+		ret = -EINVAL;
+		goto free_lifter;
+	}
+
+	/* Staging buffer for pending output. Decouples committed data from
+	 * the FFT scratch (mel_log_32) so the next STFT hop can run while a
+	 * previous frame is still being drained across multiple periods.
+	 */
+	state->out_stage_size = max_out_per_hop;
+	state->out_stage = mod_zalloc(mod, max_out_per_hop * sizeof(int32_t));
+	if (!state->out_stage) {
+		comp_err(dev, "Failed output staging buffer allocate");
+		ret = -ENOMEM;
+		goto free_lifter;
+	}
+
+	/* Set initial state for STFT */
+	state->waiting_fill = true;
+	state->prev_samples_valid = false;
+	state->header_pending = false;
+	state->hop_count = 0;
+	memset(&state->header, 0, sizeof(state->header));
+	state->header.magic = MFCC_MAGIC;
+	state->out_data_ptr = NULL;
+	state->out_remain = 0;
+	state->vad_silence_count = 0;
+	state->dtx_trailing_silence = config->dtx_trailing_silence_hops;
+	state->dtx_silence_interval = config->dtx_silence_hops_interval;
+	state->dtx_silence_counter = 0;
+
+	if (config->enable_vad) {
+		ret = mfcc_vad_init(&cd->vad, config->num_mel_bins, sample_rate, mod);
+		if (ret < 0) {
+			comp_err(dev, "Failed VAD init");
+			goto free_out_stage;
+		}
+	}
+
+	comp_dbg(dev, "done");
+	return 0;
+
+free_out_stage:
+	mod_free(mod, state->out_stage);
+
+free_lifter:
+	mod_free(mod, state->lifter.matrix);
+
+free_dct_matrix:
+	mod_free(mod, state->dct.matrix);
+
+free_melfb_data:
+	mod_free(mod, fb->data);
+
+free_fft_plan:
+	mod_fft_plan_free(mod, fft->fft_plan);
+
+free_fft_out:
+	mod_free(mod, fft->fft_out);
+
+free_fft_buf:
+	mod_free(mod, fft->fft_buf);
+
+free_buffers:
+	mod_free(mod, state->buffers);
+
+exit:
+	return ret;
+}
+
+/**
+ * \brief Free a single MFCC allocation and clear the caller's pointer.
+ *
+ * \param[in,out] mod Processing module owning the allocation.
+ * \param[in,out] ptr Address of the pointer to free; set to NULL on return.
+ */
+static void mfcc_free_and_null(struct processing_module *mod, void **ptr)
+{
+	mod_free(mod, *ptr);
+	*ptr = NULL;
+}
+
+/* Free MFCC buffers to prevent leaks on reset->prepare cycles.
+ * mfcc_free_buffers() NULLs the pointers after free.
+ */
+/**
+ * \brief Release all MFCC runtime allocations.
+ *
+ * Frees FFT plan, scratch buffers, input/overlap buffers, Mel
+ * filterbank data, DCT matrix, cepstral lifter matrix, and VAD state.
+ * All freed pointers are set to NULL so the function is safe to call
+ * across repeated reset/prepare cycles.
+ *
+ * \param[in,out] mod Processing module that owns the MFCC instance.
+ */
+void mfcc_free_buffers(struct processing_module *mod)
+{
+	struct mfcc_comp_data *cd = module_get_private_data(mod);
+
+	mod_fft_plan_free(mod, cd->state.fft.fft_plan);
+	cd->state.fft.fft_plan = NULL;
+	mfcc_free_and_null(mod, (void **)&cd->state.fft.fft_buf);
+	mfcc_free_and_null(mod, (void **)&cd->state.fft.fft_out);
+	mfcc_free_and_null(mod, (void **)&cd->state.buffers);
+	mfcc_free_and_null(mod, (void **)&cd->state.melfb.data);
+	mfcc_free_and_null(mod, (void **)&cd->state.dct.matrix);
+	mfcc_free_and_null(mod, (void **)&cd->state.lifter.matrix);
+	mfcc_free_and_null(mod, (void **)&cd->state.out_stage);
+	mfcc_free_and_null(mod, (void **)&cd->vad.noise_floor);
+	mfcc_free_and_null(mod, (void **)&cd->vad.weights);
+}

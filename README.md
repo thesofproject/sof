@@ -1,100 +1,29 @@
 # Sound Open Firmware
 
 ### Status
-[![Build Status](https://travis-ci.org/thesofproject/sof.svg?branch=master)](https://travis-ci.org/thesofproject/sof)
+[![Daily Actions](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml/badge.svg)](https://github.com/thesofproject/sof/actions/workflows/daily-tests.yml)
+[![Zephyr Main Branch](https://github.com/thesofproject/sof/actions/workflows/zephyr-main.yml/badge.svg)](https://github.com/thesofproject/sof/actions/workflows/zephyr-main.yml)
+
+### Community
+
+[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/thesofproject/community)
+
+Additional community support is available via the `#sof` channel in the Zephyr Project Discord server. See the [Resources section of the @zephyrproject-rtos GitHub organization README](https://github.com/zephyrproject-rtos#resources) for Discord access information.
 
 ### Documentation
 
 See [docs](https://thesofproject.github.io/latest/index.html)
 
-### Prerequisites
+## Quickstart
 
-* Docker
-* CMake (version >= 3.10)
+You can easily set up the complete SOF development environment, including Zephyr SDK and QEMU, by running our interactive installer script. To run the installer locally:
 
-### Build Instructions
-
-1. Create directory in checked out repo for build files:
-```
-mkdir build && cd build
+```bash
+curl -fsSLo sdk-install.sh https://raw.githubusercontent.com/thesofproject/vscode-workspace/main/sdk-install.sh
+bash sdk-install.sh
 ```
 
-2. Run configuration for your toolchain:
-
-Baytrail / Cherrytrail:
-
-```
-cmake -DTOOLCHAIN=xtensa-byt-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-byt-elf ..
-```
-
-Haswell / Broadwell:
-
-```
-cmake -DTOOLCHAIN=xtensa-hsw-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-hsw-elf ..
-```
-
-Apollolake:
-
-```
-cmake -DTOOLCHAIN=xtensa-apl-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-apl-elf ..
-```
-
-Cannonlake:
-
-```
-cmake -DTOOLCHAIN=xtensa-cnl-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-cnl-elf ..
-```
-
-3. Apply default config for your platform.
-
-Baytrail:
-
-```
-make baytrail_defconfig
-```
-
-Cherrytrail:
-
-```
-make cherrytrail_defconfig
-```
-
-Haswell:
-
-```
-make haswell_defconfig
-```
-
-Broadwell:
-
-```
-make broadwell_defconfig
-```
-
-Apollolake:
-
-```
-make apollolake_defconfig
-```
-
-Cannonlake:
-
-```
-make cannonlake_defconfig
-```
-
-4. (Optional) Customize your configuration
-
-```
-make menuconfig
-```
-
-5. Build firmware
-
-```
-make bin
-# or `make bin -j<jobs>` for parallel build
-```
+The script will guide you through the process of installing system dependencies, cloning the repositories, configuring Python virtual environments, and setting up the Zephyr SDK and QEMU.
 
 ## Running the tests
 

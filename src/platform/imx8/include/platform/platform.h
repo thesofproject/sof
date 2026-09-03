@@ -12,9 +12,7 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <arch/lib/wait.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/lib/clk.h>
+#include <sof/drivers/mu.h>
 #include <sof/lib/mailbox.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -26,7 +24,7 @@ struct timer;
 #define LPSRAM_SIZE 16384
 
 /* IPC Interrupt */
-#define PLATFORM_IPC_INTERRUPT		IRQ_NUM_MU
+#define PLATFORM_IPC_INTERRUPT		7
 #define PLATFORM_IPC_INTERRUPT_NAME	NULL
 
 /* Host page size */
@@ -59,9 +57,19 @@ struct timer;
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
+#define SRAM_REG_FW_STATUS     0x4
+
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {
+	/* Store the error code in the debug box so the
+	 * application processor can pick it up. Takes up 4 bytes
+	 * from the debug box.
+	 */
+	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, p);
+
+	/* Notify application processor */
+	imx_mu_xcr_rmw(IMX_MU_VERSION, IMX_MU_GCR, IMX_MU_xCR_GIRn(IMX_MU_VERSION, 1), 0);
 }
 
 /**
@@ -69,14 +77,7 @@ static inline void platform_panic(uint32_t p)
  * May be power-optimized using platform specific capabilities.
  * @param level Interrupt level.
  */
-static inline void platform_wait_for_interrupt(int level)
-{
-	arch_wait_for_interrupt(level);
-}
-
-extern struct timer *platform_timer;
-
-extern struct ll_schedule_domain *platform_timer_domain;
+void platform_wait_for_interrupt(int level);
 
 extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;

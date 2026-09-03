@@ -7,7 +7,7 @@
  * Use spaces for formatting as cpp ignore tab sizes.
  */
 
-#include <config.h>
+
 #include <sof/lib/memory.h>
 #include <xtensa/config/core-isa.h>
 
@@ -90,9 +90,15 @@ MEMORY
   sof_sdram1 :
         org = SDRAM1_BASE,
         len = SDRAM1_SIZE
+  static_uuid_entries_seg (!ari) :
+        org = UUID_ENTRY_ELF_BASE,
+        len = UUID_ENTRY_ELF_SIZE
   static_log_entries_seg (!ari) :
         org = LOG_ENTRY_ELF_BASE,
         len = LOG_ENTRY_ELF_SIZE
+  fw_metadata_seg (!ari) :
+        org = EXT_MANIFEST_ELF_BASE,
+        len = EXT_MANIFEST_ELF_SIZE
 }
 
 PHDRS
@@ -122,7 +128,9 @@ PHDRS
   runtime_heap_phdr PT_LOAD;
   buffer_heap_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
+  static_uuid_entries_phdr PT_NOTE;
   static_log_entries_phdr PT_NOTE;
+  metadata_entries_phdr PT_NOTE;
 }
 
 /*  Default entry point:  */
@@ -148,8 +156,18 @@ _memmap_cacheattr_bp_strict = 0x22F22FFF;
 _memmap_cacheattr_wb_allvalid = 0x44224222;
 _memmap_cacheattr_wt_allvalid = 0x11221222;
 _memmap_cacheattr_bp_allvalid = 0x22222222;
+/*
+ * Every 512M in 4GB space has dedicate cache attribute.
+ * 1: write through
+ * 2: cache bypass
+ * 4: write back
+ * F: invalid access
+ */
 _memmap_cacheattr_imx8_wt_allvalid = 0x22212222;
 PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_imx8_wt_allvalid);
+
+_EXT_MAN_ALIGN_ = 16;
+EXTERN(ext_man_fw_ver)
 
 SECTIONS
 {
@@ -321,7 +339,7 @@ SECTIONS
   .module_init : ALIGN(4)
   {
    _module_init_start = ABSOLUTE(.);
-    *(*.module_init)
+    *(*.initcall)
     _module_init_end = ABSOLUTE(.);
   } >sof_sdram0 :sof_sdram0_phdr
 
@@ -363,6 +381,9 @@ SECTIONS
     *(.sdata2.*)
     *(.gnu.linkonce.s2.*)
     KEEP(*(.jcr))
+    _trace_ctx_start = ABSOLUTE(.);
+    *(.trace_ctx)
+    _trace_ctx_end = ABSOLUTE(.);
     _data_end = ABSOLUTE(.);
   } >sof_sdram0 :sof_sdram0_phdr
 
@@ -493,6 +514,11 @@ SECTIONS
     _sof_stack_end = ABSOLUTE(.);
   } >sof_stack :sof_stack_phdr
 
+  .static_uuid_entries (COPY) : ALIGN(1024)
+  {
+    *(*.static_uuids)
+  } > static_uuid_entries_seg :static_uuid_entries_phdr
+
   .static_log_entries (COPY) : ALIGN(1024)
   {
     *(*.static_log*)
@@ -501,5 +527,12 @@ SECTIONS
   .fw_ready : ALIGN(4)
   {
     KEEP (*(.fw_ready))
+    KEEP (*(.fw_ready_metadata))
   } >sof_sdram0 :sof_sdram0_phdr
+
+  .fw_metadata (COPY) : ALIGN(1024)
+  {
+    KEEP (*(.fw_metadata))
+    . = ALIGN(_EXT_MAN_ALIGN_);
+  } >fw_metadata_seg :metadata_entries_phdr
 }

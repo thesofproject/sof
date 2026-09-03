@@ -12,10 +12,14 @@
 
 #include <stdio.h>
 #include <ipc/info.h>
-#include <rimage/file_format.h>
+#include <smex/ldc.h>
+#include <sof/lib/uuid.h>
 
 #define KNRM	"\x1B[0m"
 #define KRED	"\x1B[31m"
+#define KGRN	"\x1B[32m"
+#define KYEL	"\x1B[33m"
+#define KBLU	"\x1B[34m"
 
 struct convert_config {
 	const char *out_file;
@@ -26,6 +30,7 @@ struct convert_config {
 	int trace;
 	const char *ldc_file;
 	FILE* ldc_fd;
+	char *filter_config;
 	int input_std;
 	int version_fw;
 	char *version_file;
@@ -33,6 +38,17 @@ struct convert_config {
 	int use_colors;
 	int serial_fd;
 	int raw_output;
+	int dump_ldc;
+	int hide_location;
+	int relative_timestamps;
+	int8_t time_precision;
+	struct snd_sof_uids_header *uids_dict;
+	struct snd_sof_logs_header *logs_header;
 };
 
-int convert(const struct convert_config *config);
+uint32_t get_uuid_key(const struct sof_uuid_entry *entry);
+
+/* pointer to config for global context */
+extern struct convert_config * const global_config;
+
+int convert(void);

@@ -48,9 +48,9 @@ for ch = test.ch
         test.fs/1e3, test.bits_in, ch, test.nch);
 end
 
-pid = getpid();
-test.fn_in = sprintf('g_test_in_%d.%s', pid, test.fmt);
-test.fn_out = sprintf('g_test_out_%d.%s', pid, test.fmt);
+id = floor(rand(1,1) * 1e6);
+test.fn_in = sprintf('g_test_in_%d.%s', id, test.fmt);
+test.fn_out = sprintf('g_test_out_%d.%s', id, test.fmt);
 test.f = 997;
 
 

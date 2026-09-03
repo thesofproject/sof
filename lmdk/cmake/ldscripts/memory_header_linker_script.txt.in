@@ -1,0 +1,8 @@
+
+MEMORY {
+    HPSRAM_seg : org = ${HPSRAM}, len = 0xFFFFFFFF
+}
+
+PHDRS {
+    HPSRAM_phdr PT_LOAD;
+}

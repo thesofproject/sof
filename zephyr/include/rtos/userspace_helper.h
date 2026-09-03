@@ -1,0 +1,173 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2025 Intel Corporation. All rights reserved.
+ *
+ * Author: Jaroslaw Stelter <jaroslaw.stelter@intel.com>
+ *	   Adrian Warecki <adrian.warecki@intel.com>
+ */
+
+/**
+ * \brief Userspace support functions.
+ */
+#ifndef __ZEPHYR_LIB_USERSPACE_HELPER_H__
+#define __ZEPHYR_LIB_USERSPACE_HELPER_H__
+
+#include <zephyr/kernel.h>
+
+#ifndef CONFIG_USERSPACE
+#define APP_TASK_BSS
+#define APP_TASK_DATA
+#define APP_SYSUSER_BSS
+#define APP_SYSUSER_DATA
+#else
+#include <zephyr/cache.h>
+#include <zephyr/app_memory/app_memdomain.h>
+
+#define USER_MOD_HEAP_SIZE	ALIGN_UP(CONFIG_SOF_ZEPHYR_USERSPACE_MODULE_HEAP_SIZE, \
+					 CONFIG_MM_DRV_PAGE_SIZE)
+#define APP_TASK_BSS	K_APP_BMEM(common_partition)
+#define APP_TASK_DATA	K_APP_DMEM(common_partition)
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+#define APP_SYSUSER_BSS	K_APP_BMEM(sysuser_partition)
+#define APP_SYSUSER_DATA	K_APP_DMEM(sysuser_partition)
+#else
+#define APP_SYSUSER_BSS
+#define APP_SYSUSER_DATA
+#endif
+
+struct processing_module;
+struct userspace_context;
+
+/**
+ * Initialize private processing module heap.
+ * @param N/A.
+ * @return pointer to the k_heap structure.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * The private heap is used only for non-privileged modules for all processing module allocations
+ * that should be isolated. The heap helps to accumulate all dynamic allocations in single memory
+ * region which is then added to modules memory domain.
+ */
+struct k_heap *module_driver_heap_init(void);
+
+/**
+ * Attach common userspace memory partition to a module memory domain.
+ * @param dom - memory domain to attach the common partition to.
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * The common partition contains shared objects required by user-space modules.
+ */
+int user_memory_attach_common_partition(struct k_mem_domain *dom);
+
+#endif
+
+/**
+ * Allocates thread stack memory.
+ * @param stack_size Required stack size.
+ * @param options Stack configuration options
+ *        K_USER - when creating user thread
+ *        0      - when creating kernel thread
+ * @return pointer to the stack or NULL if not created.
+ *
+ * When CONFIG_USERSPACE not set function calls rballoc_align(),
+ * otherwise it uses k_thread_stack_alloc() routine.
+ *
+ */
+void *user_stack_allocate(size_t stack_size, uint32_t options);
+
+/**
+ * Free thread stack memory.
+ * @param p_stack Pointer to the stack.
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * When CONFIG_USERSPACE not set function calls rfree(),
+ * otherwise it uses k_thread_stack_free() routine.
+ *
+ */
+int user_stack_free(void *p_stack);
+
+/**
+ * Free private processing module heap.
+ * @param mod_drv_heap pointer to the k_heap structure.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * Frees private module heap.
+ */
+void module_driver_heap_remove(struct k_heap *mod_drv_heap);
+
+#ifdef CONFIG_USERSPACE
+
+/**
+ * Add access to mailbox.h interface to a user-space thread.
+ *
+ * @param domain memory domain to add the mailbox partitions to
+ * @param thread_id user-space thread for which access is added
+ */
+int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id);
+
+/**
+ * Derive partition attribute from the pointer. If the address is cacheable, sets the cacheable
+ * attribute.
+ *
+ * @param ptr Address of the partition start
+ */
+static inline uint32_t user_get_partition_cache_attr(uintptr_t ptr)
+{
+	return sys_cache_is_ptr_cached(UINT_TO_POINTER(ptr)) ? XTENSA_MMU_CACHED_WB : 0;
+}
+
+/**
+ * Grant DAI device access to a user-space thread.
+ *
+ * @param thread user-space thread for which DAI access is granted
+ */
+void user_grant_dai_access_all(struct k_thread *thread);
+
+/**
+ * Grant DMA device access to a user-space thread.
+ *
+ * @param thread user-space thread for which DMA access is granted
+ */
+void user_grant_dma_access_all(struct k_thread *thread);
+
+#else
+
+static inline int user_access_to_mailbox(struct k_mem_domain *domain, k_tid_t thread_id)
+{
+	return 0;
+}
+
+#endif /* CONFIG_USERSPACE */
+
+#ifdef CONFIG_SOF_USERSPACE_LL
+
+int user_memory_attach_system_user_partition(struct k_mem_domain *dom);
+
+#else
+
+/**
+ * Attach SOF system user memory partition to a memory domain.
+ * @param dom - memory domain to attach the sysuser partition to.
+ *
+ * @return 0 for success, error otherwise.
+ *
+ * @note
+ * Function used only when CONFIG_USERSPACE is set.
+ * The sysuser partition contains shared objects required by user-space modules.
+ */
+static inline int user_memory_attach_system_user_partition(struct k_mem_domain *dom)
+{
+	return 0;
+}
+
+#endif /* CONFIG_SOF_USERSPACE_LL */
+
+#endif /* __ZEPHYR_LIB_USERSPACE_HELPER_H__ */

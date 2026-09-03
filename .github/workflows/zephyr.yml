@@ -1,0 +1,517 @@
+---
+
+name: Zephyr
+
+# 'workflow_dispatch' allows running this workflow manually from the
+# 'Actions' tab
+# yamllint disable-line rule:truthy
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      zephyr_revision:
+        description: 'Zephyr revision to build against'
+        type: string
+        required: false
+        default: 'mnfst'
+
+# Group workflows together to cancel outdated runs, do not cancel manual runs
+concurrency:
+  # eg. 'Zephyr-workflow_dispatch-62137'
+  # eg. 'Zephyr-pull_request-refs/pull/{pr_number}/merge'
+  group: "${{ github.workflow }}-${{ github.event_name }}-\
+          ${{ github.event_name == 'pull_request' && github.ref || github.run_id }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: thesofproject/zephyr-lite:v0.29.3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sof
+          filter: 'tree:0'
+
+      - name: plain west update
+        working-directory: sof
+        run: |
+          : This plain 'west update' does not provide 100% certainty that
+          : all the manifest revisions make sense but it is quick and
+          : will catch many revision problems. Other jobs typically
+          : use 'west update --narrow' which is faster but
+          : also able to fetch "wild" SHA1s from any random place! --narrow
+          : is useful for testing unmerged Zephyr commits but risks
+          : accepting "invalid" ones, this will not.
+
+          west init -l
+          west update --fetch-opt=--filter=tree:0
+
+      # Temporary check until we change west.yml and stop nesting rimage
+      # and tomlc99 inside sof which will cleanly separate them from
+      # XTOS submodules and... temporarily break every CI, which is why
+      # it hasn't been done yet.
+      - name: git submodules consistency
+        working-directory: sof
+        run: |
+          git submodule update --init --recursive
+
+          west update
+          if git status --porcelain=v2 | grep ^ ; then
+             git status
+             echo 'FAIL: inconsistency between git submodules and west.yml!'
+             echo 'See rimage comment in west.yml.'
+             echo 'Always use "git status"'
+             exit 1
+          fi
+
+
+  # Temporary hacks to compile the very first LP64 configuration early
+  # before it becomes supported by the regular
+  # sof/scripts/xtensa-build-zephyr.py configuration script. Then this
+  # job will be disappear, folded back in the regular build-* jobs below.
+  LP64-WIP:
+    runs-on: ubuntu-26.04
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: thesofproject/zephyr-lite:v0.29.3
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sof
+          filter: 'tree:0'
+
+      - name: west update
+        working-directory: sof
+        run: |
+          west init -l
+          west update --narrow --fetch-opt=--filter=tree:0
+
+      - name: print all available sdks in /opt/toolchains/
+        run: |
+          ls -l /opt/toolchains/
+
+      - name: 64 bits build
+        run: |
+          ln -s  /opt/toolchains/zephyr-sdk-*  ~/
+          west build --board imx93_evk/mimx9352/a55 sof/app \
+            -- -DEXTRA_CFLAGS=-Werror -DEXTRA_CXXFLAGS=-Werror \
+            -DEXTRA_AFLAGS=-Werror
+
+  build-linux:
+    runs-on: ubuntu-26.04
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: thesofproject/zephyr-lite:v0.29.3
+    strategy:
+      fail-fast: false
+      matrix:
+        # These keys are kept short because Github's left column is not resizable.
+        # Search "zephyr_revision" and see below what they expand to.
+        zephyr_revision: [
+          "${{ inputs.zephyr_revision || 'mnfst' }}"
+        ]
+        # Using groups to avoid spamming the small results box with too
+        # many lines. Pay attention to COMMAS.
+        IPC_platforms: [
+          # - IPC3 default
+          imx8 imx8x,
+          imx8m imx8ulp,
+          # - IPC4 default, released
+          mtl,
+          lnl,
+          # active development
+          ptl,
+          # Temporary testbed for Zephyr development.
+          tgl,
+          tgl-h
+        ]
+        build_opts: [""]
+        # Sparse matrices are complicated, you must read this page slowly:
+        # https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+        include:
+          # specify one extra -d combination without affecting the main matrix
+          - build_opts: -d
+            zephyr_revision: mnfst
+            IPC_platforms: lnl
+
+          # Due to GitHub size limitations we can't afford to run --all and
+          # duplicate builds already built in previous steps.
+          # This will now build any platform that would've run with --all that
+          # isn't already built above.
+          - zephyr_revision: mnfst
+            IPC_platforms: wcl imx95
+
+    steps:
+      - uses: actions/checkout@v4
+        # Download a full clone to fix `git describe`, sof_version.h and
+        # build reproducibility. sof.git is still small.
+        # This is especially useful for daily builds (but not just).
+        with:
+          fetch-depth: 0
+          filter: 'tree:0'
+          path: sof
+
+      - name: west update
+        working-directory: sof
+        run: |
+          west init -l
+          west update --narrow --fetch-opt=--filter=tree:0
+
+      - name: select zephyr revision
+        run: |
+          if [ 'mnfst' =  '${{ matrix.zephyr_revision }}' ]; then
+             rem_rev=$(git -C zephyr rev-parse HEAD)
+          else
+             case '${{ matrix.zephyr_revision }}' in
+               'zmain') rem_rev='main' ;;
+               *)       echo 'Unknown matrix.zephyr_revision'; exit 1 ;;
+             esac
+             ( cd sof/submanifests/
+               sed -e "s#=sof_zephyr_revision_override=#${rem_rev}#" \
+                 sof-ci-jenkins/zephyr-override-template.yml \
+                 > test-zephyr-main.yml
+             )
+             time west update --narrow  --fetch-opt=--filter=tree:0
+          fi
+
+      # Get some tags to fix `git describe` hence BUILD_VERSION, etc.
+      # Keep in sync with build-windows below
+      - name: Fetch tags for git describe
+        working-directory: zephyr
+        run: |
+          # Because we used git tricks to speed things up, we now have two git
+          # problems:
+          #
+          # 1. git fetch without a refspec fetches zero tag. So `git describe` is
+          # different from everyone else. west normally adds `--tags` as a workaround
+          # but this is inefficient because it fetches ALL tags; so `west --narrow`
+          # does not use --tags.
+          #
+          # 2. west fetches using the remote URL, not the remote name. So remote
+          # branches are missing from --decorate below. Cosmetic but annoying.
+
+          set -x
+          # Fix problem 2. Do NOT assume anything about remote names: nothing is guaranteed.
+          _zurl=$(west list -f '{url}' zephyr)
+          # Use an ugly remote name to avoid a collision
+          git remote add sof_zep_rem "$_zurl"
+          time git fetch --filter=tree:0 sof_zep_rem "$rem_rev"
+          # Fix problem 1. Indirectly fetches useless branches but is very quick thanks to
+          # the --filter
+          time git fetch --filter=tree:0 --tags sof_zep_rem
+
+          west list
+          west status
+          git   log --oneline -n 5 --decorate --graph --no-abbrev-commit
+          git describe --long --always --dirty
+          git describe --long --always --dirty --tags
+
+      - name: print all available sdks in /opt/toolchains/
+        run: |
+          ls -l /opt/toolchains/
+
+      - name: build
+        run: |
+          ./sof/zephyr/docker-build.sh --cmake-args=-DEXTRA_CFLAGS=-Werror \
+            --cmake-args=-DEXTRA_CXXFLAGS=-Werror \
+            --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings' \
+            --cmake-args=--warn-uninitialized \
+            --overlay=sof/app/configs/repro-build.conf \
+            --no-tarball \
+            ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-build ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
+          if-no-files-found: error
+          path: |
+            build-sof-staging
+            ./**/compile_commands.json
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Search "zephyr_revision" and see below what they expand to.
+        zephyr_revision: [
+          "${{ inputs.zephyr_revision || 'mnfst' }}"
+        ]
+        # Using groups to avoid spamming the small results box with too
+        # many lines. Pay attention to COMMAS.
+        platforms: [
+          # - IPC3 default
+          imx8 imx8x,
+          imx8m imx8ulp,
+          # - IPC4 default, released
+          mtl,
+          lnl,
+          # active development
+          ptl,
+          # legacy
+          tgl,
+          tgl-h
+        ]
+        build_opts: [""]
+        # Sparse matrices are complicated, see comments on Linux matrix above.
+        include:
+          - build_opts: -d
+            zephyr_revision: mnfst
+            platforms: lnl
+
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: 'tree:0'
+          path: ./workspace/sof
+
+      # Cache artifacts so we do not overload external servers with downloads
+      # Remember to change step key if you change the tools so old cache is not restored,
+      # or delete cache manually in Github Actions tab
+      - name: Cache unzip
+        id: cache-unzip
+        uses: actions/cache@v4
+        with:
+          path: unzip-5.51-1-bin.zip
+          key: ${{ runner.os }}-cache-unzip-5-51-1
+
+      - name: Cache wget
+        id: cache-wget
+        uses: actions/cache@v4
+        with:
+          path: wget-1.11.4-1-bin.zip
+          key: ${{ runner.os }}-cache-wget-1-11-4-1
+
+      # Keep this SDK version identical to the one in
+      # sof/zephyr/docker-run.sh
+      - name: Cache Zephyr SDK 1.0.1
+        id: cache-zephyr-sdk
+        uses: actions/cache@v4
+        with:
+          path: zephyr-sdk-1.0.1_windows-x86_64_gnu.7z
+          key: ${{ runner.os }}-cache-zephyr-sdk-1-0-1
+
+      # Wget is needed by Zephyr SDK setup.cmd installation script
+      - name: Download wget
+        if: ${{ steps.cache-wget.outputs.cache-hit != 'true' }}
+        run: |
+          curl -L -O http://downloads.sourceforge.net/gnuwin32/wget-1.11.4-1-bin.zip
+
+      - name: Download Zephyr SDK 1.0.1
+        if: ${{ steps.cache-zephyr-sdk.outputs.cache-hit != 'true' }}
+        run: |  # yamllint disable-line rule:line-length
+          curl -L -O `
+          https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v1.0.1/zephyr-sdk-1.0.1_windows-x86_64_gnu.7z
+
+      # Unzips every .zip package to directory matching its name without extension
+      - name: Unzip downloaded packages
+        run: |
+          7z x *.zip -o*
+          7z x *.7z -o*
+
+      - name: Add unzip to system PATH
+        run: |
+          echo "${{ github.workspace }}/unzip-5.51-1-bin/bin" | `
+          Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Add wget to system PATH
+        run: |
+          echo "${{ github.workspace }}/wget-1.11.4-1-bin/bin" | `
+          Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      # Install Zephyr SDK - all toolchains including Host Tools
+      # and registering CMake package in the registry
+      # setup.cmd may not be called in from msys shell as it does not parse
+      # forward slash script input arguments correctly.
+      - name: Install Zephyr SDK
+        run: zephyr-sdk-1.0.1_windows-x86_64_gnu/zephyr-sdk-1.0.1/setup.cmd /t all /h /c
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: West install
+        run: pip3 install west
+
+      - name: West clone
+        working-directory: ${{ github.workspace }}/workspace
+        # Keep in sync with build-linux above
+        run: |
+          west init -l sof
+          west update --narrow --fetch-opt=--filter=tree:0
+
+      - name: select zephyr revision
+        working-directory: ${{ github.workspace }}/workspace
+        run: |
+          if ('mnfst' -eq '${{ matrix.zephyr_revision }}') {
+             $rem_rev = $(git -C zephyr rev-parse HEAD)
+          } else {
+             switch ('${{ matrix.zephyr_revision }}') {
+               'zmain' { $rem_rev = 'main' }
+               default { Write-Error 'Unknown matrix.zephyr_revision'; exit 1 }
+             }
+             Push-Location sof/submanifests/
+             (Get-Content sof-ci-jenkins/zephyr-override-template.yml) `
+               -replace '=sof_zephyr_revision_override=', "$rem_rev" `
+               | Set-Content test-zephyr-main.yml
+             Pop-Location
+             west update --narrow --fetch-opt=--filter=tree:0
+          }
+
+      # Get some tags to fix `git describe` etc., see detailed build-linux comments above.
+      - name: Fetch tags for git describe
+        working-directory: ${{ github.workspace }}/workspace/zephyr
+        # Keep in sync with build-linux above
+        run: |
+          # Set-PSDebug -Trace 2
+          $_rev = "$(git rev-parse HEAD)"
+          $_zurl = "$(west list -f '{url}' zephyr)"
+          git remote add sof_zep_rem "${_zurl}"
+          # Unlike Linux above, hardcode "main" for now. Will make no difference most
+          # of the time but keeps this bit consistent with Linux, tested and ready to use.
+          git fetch --filter=tree:0        sof_zep_rem main
+          git fetch --filter=tree:0 --tags sof_zep_rem
+
+          west list
+          west status
+          git   log --oneline -n 5 --decorate --graph --no-abbrev-commit
+          git describe --long --always --dirty
+          git describe --long --always --dirty --tags
+
+      # Call Setup Python again to save the PIP packages in cache
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        id: cache-python
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: workspace/zephyr/scripts/requirements.txt
+
+      # All requirements will be satisfied if the restored cache matches existing state
+      - name: Validate python PIP cache
+        working-directory: ${{ github.workspace }}/workspace
+        run: pip install -r zephyr/scripts/requirements.txt
+
+      # Ninja has been coming and going, see #8250
+      - name: choco install ninja
+        run: |
+          choco install ninja
+          ninja.exe --version
+
+      # MSYS2 provides gcc x86_64 toolchain, openssl & gperf
+      # Installs in D:/a/_temp/msys64
+      #
+      # Note there is already C:/msys64/ provided by
+      # https://github.com/actions/runner-images/blob/win22/20230918.1/images/win/Windows2022-Readme.md
+      # Is it not good enough? Maybe it could save 20-30s.
+      - name: Initialize MSYS2
+        uses: msys2/setup-msys2@cafece8e6baf9247cf9b1bf95097b0b983cc558d  # v2
+        with:
+          msystem: MSYS
+          install: gcc openssl-devel gperf
+          path-type: inherit
+
+      - name: Build
+        shell: msys2 {0}
+        working-directory: ${{ github.workspace }}/workspace
+        run: python sof/scripts/xtensa-build-zephyr.py
+          --no-interactive
+          --cmake-args=-DEXTRA_CFLAGS=-Werror
+          --cmake-args=-DEXTRA_CXXFLAGS=-Werror
+          --cmake-args=-DEXTRA_AFLAGS='-Werror -Wa,--fatal-warnings'
+          --cmake-args=--warn-uninitialized
+          --overlay=sof/app/configs/repro-build.conf
+          --no-tarball
+          ${{ matrix.build_opts }} ${{ matrix.platforms }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-build ${{ matrix.build_opts }} ${{ matrix.platforms }}
+          if-no-files-found: error
+          path: |
+            ${{ github.workspace }}/workspace/build-sof-staging
+            ${{ github.workspace }}/workspace/**/compile_commands.json
+
+
+  compare-linux-win:
+
+    runs-on: ubuntu-latest
+
+    # - We don't compare _all_ the builds, and
+    # - even when some of the ones we compare fail, we still want to compare the rest.
+    if: ${{ always() }}
+    needs: [build-linux, build-windows]
+
+    steps:
+      - uses: actions/checkout@v4
+        # we need only one script but it's simpler to get the (last
+        # revision of the) whole repo and it takes seconds.
+        with:
+          # Isolate the clone in a subdirectory to make sure globbing
+          # does not catch random SOF files.
+          path: ./sof
+          filter: 'tree:0'
+
+      - name: Download Windows and Linux builds
+        uses: actions/download-artifact@v4
+
+      - name: apt-get dos2unix
+        run: sudo apt-get update; sudo apt-get -y install dos2unix
+
+      - name: Delete and fix expected differences
+        run: |
+          ls -l
+          # run it twice to make sure it's idempotent
+          for i in 0 1; do
+            ./sof/zephyr/scripts/clean-expected-release-differences.sh \
+               windows-build* linux-build*
+          done
+
+      - name: Compare Linux vs Windows builds
+        run: |
+          diffs=0; ls -l
+
+          # Look for a few samples to
+          # check not too much is missing (it happened!)
+          # http://mywiki.wooledge.org/ParsingLs
+          for regdir in 'linux-build *-d *.*' \
+                        'linux-build *.*lnl.*' \
+                        'windows-build *.*mtl.*' \
+                        'windows-build *tgl-h' \
+                        'windows-build *tgl'; do
+            find . -maxdepth 1 | grep -q "\./${regdir}\$" ||
+              { >&2 printf 'Missing %s\n' "${regdir}"; exit 1; }
+          done
+
+          # The disassembly is one of the most important things in this
+          # context, so make sure CONFIG_OUTPUT_DISSASSEMBLY was on.
+          ls -l */build-sof-staging/sof-info/*/zephyr.lst*
+
+          set -x
+          for windir in windows-build*; do
+            lindir=linux-"${windir#windows-}"
+            diff -qr "$lindir" "$windir" || : $((diffs++))
+          done
+          exit $diffs

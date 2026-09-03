@@ -5,572 +5,244 @@
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
+//         Shriram Shastry <malladi.sastry@linux.intel.com>
 
+#include <rtos/symbol.h>
 #include <sof/audio/format.h>
 #include <sof/math/trig.h>
+#include <sof/math/cordic.h>
 #include <stdint.h>
 
-#define SINE_C_Q20 341782638 /* 2*SINE_NQUART/pi in Q12.20 */
-#define SINE_NQUART 512 /* Must be 2^N */
-#define SINE_TABLE_SIZE (SINE_NQUART+1)
+#define CORDIC_SINE_COS_LUT_Q29 652032874 /* deg = 69.586061, int32(1.214505869895220 * 2^29) */
 
-/* An 1/4 period of sine wave as Q1.31 */
-const int32_t sine_table[SINE_TABLE_SIZE] = {
-	0,
-	6588387,
-	13176712,
-	19764913,
-	26352928,
-	32940695,
-	39528151,
-	46115236,
-	52701887,
-	59288042,
-	65873638,
-	72458615,
-	79042909,
-	85626460,
-	92209205,
-	98791081,
-	105372028,
-	111951983,
-	118530885,
-	125108670,
-	131685278,
-	138260647,
-	144834714,
-	151407418,
-	157978697,
-	164548489,
-	171116732,
-	177683365,
-	184248325,
-	190811551,
-	197372981,
-	203932553,
-	210490206,
-	217045877,
-	223599506,
-	230151030,
-	236700388,
-	243247517,
-	249792358,
-	256334847,
-	262874923,
-	269412525,
-	275947592,
-	282480061,
-	289009871,
-	295536961,
-	302061269,
-	308582734,
-	315101294,
-	321616889,
-	328129457,
-	334638936,
-	341145265,
-	347648383,
-	354148229,
-	360644742,
-	367137860,
-	373627523,
-	380113669,
-	386596237,
-	393075166,
-	399550396,
-	406021864,
-	412489512,
-	418953276,
-	425413098,
-	431868915,
-	438320667,
-	444768293,
-	451211734,
-	457650927,
-	464085813,
-	470516330,
-	476942419,
-	483364019,
-	489781069,
-	496193509,
-	502601279,
-	509004318,
-	515402566,
-	521795963,
-	528184448,
-	534567963,
-	540946445,
-	547319836,
-	553688076,
-	560051103,
-	566408860,
-	572761285,
-	579108319,
-	585449903,
-	591785976,
-	598116478,
-	604441351,
-	610760535,
-	617073970,
-	623381597,
-	629683357,
-	635979190,
-	642269036,
-	648552837,
-	654830534,
-	661102068,
-	667367379,
-	673626408,
-	679879097,
-	686125386,
-	692365218,
-	698598533,
-	704825272,
-	711045377,
-	717258790,
-	723465451,
-	729665303,
-	735858287,
-	742044345,
-	748223418,
-	754395449,
-	760560379,
-	766718151,
-	772868706,
-	779011986,
-	785147934,
-	791276492,
-	797397602,
-	803511207,
-	809617248,
-	815715670,
-	821806413,
-	827889421,
-	833964637,
-	840032003,
-	846091463,
-	852142959,
-	858186434,
-	864221832,
-	870249095,
-	876268167,
-	882278991,
-	888281511,
-	894275670,
-	900261412,
-	906238681,
-	912207419,
-	918167571,
-	924119082,
-	930061894,
-	935995952,
-	941921200,
-	947837582,
-	953745043,
-	959643527,
-	965532978,
-	971413341,
-	977284561,
-	983146583,
-	988999351,
-	994842809,
-	1000676905,
-	1006501581,
-	1012316784,
-	1018122458,
-	1023918549,
-	1029705003,
-	1035481765,
-	1041248781,
-	1047005996,
-	1052753356,
-	1058490807,
-	1064218296,
-	1069935767,
-	1075643168,
-	1081340445,
-	1087027543,
-	1092704410,
-	1098370992,
-	1104027236,
-	1109673088,
-	1115308496,
-	1120933406,
-	1126547765,
-	1132151521,
-	1137744620,
-	1143327011,
-	1148898640,
-	1154459455,
-	1160009404,
-	1165548435,
-	1171076495,
-	1176593532,
-	1182099495,
-	1187594332,
-	1193077990,
-	1198550419,
-	1204011566,
-	1209461381,
-	1214899812,
-	1220326808,
-	1225742318,
-	1231146290,
-	1236538675,
-	1241919421,
-	1247288477,
-	1252645793,
-	1257991319,
-	1263325005,
-	1268646799,
-	1273956652,
-	1279254515,
-	1284540337,
-	1289814068,
-	1295075658,
-	1300325059,
-	1305562221,
-	1310787095,
-	1315999631,
-	1321199780,
-	1326387493,
-	1331562722,
-	1336725418,
-	1341875532,
-	1347013016,
-	1352137822,
-	1357249900,
-	1362349204,
-	1367435684,
-	1372509294,
-	1377569985,
-	1382617710,
-	1387652421,
-	1392674071,
-	1397682613,
-	1402677999,
-	1407660183,
-	1412629117,
-	1417584755,
-	1422527050,
-	1427455956,
-	1432371426,
-	1437273414,
-	1442161874,
-	1447036759,
-	1451898025,
-	1456745625,
-	1461579513,
-	1466399644,
-	1471205973,
-	1475998455,
-	1480777044,
-	1485541695,
-	1490292364,
-	1495029005,
-	1499751575,
-	1504460029,
-	1509154322,
-	1513834410,
-	1518500249,
-	1523151796,
-	1527789006,
-	1532411836,
-	1537020243,
-	1541614182,
-	1546193612,
-	1550758488,
-	1555308767,
-	1559844407,
-	1564365366,
-	1568871600,
-	1573363067,
-	1577839726,
-	1582301533,
-	1586748446,
-	1591180425,
-	1595597427,
-	1599999410,
-	1604386334,
-	1608758157,
-	1613114837,
-	1617456334,
-	1621782607,
-	1626093615,
-	1630389318,
-	1634669675,
-	1638934646,
-	1643184190,
-	1647418268,
-	1651636840,
-	1655839867,
-	1660027308,
-	1664199124,
-	1668355276,
-	1672495724,
-	1676620431,
-	1680729357,
-	1684822463,
-	1688899710,
-	1692961061,
-	1697006478,
-	1701035921,
-	1705049354,
-	1709046738,
-	1713028036,
-	1716993211,
-	1720942224,
-	1724875039,
-	1728791619,
-	1732691927,
-	1736575926,
-	1740443580,
-	1744294852,
-	1748129706,
-	1751948106,
-	1755750016,
-	1759535401,
-	1763304223,
-	1767056449,
-	1770792043,
-	1774510970,
-	1778213194,
-	1781898680,
-	1785567395,
-	1789219304,
-	1792854372,
-	1796472564,
-	1800073848,
-	1803658188,
-	1807225552,
-	1810775906,
-	1814309215,
-	1817825448,
-	1821324571,
-	1824806551,
-	1828271355,
-	1831718951,
-	1835149305,
-	1838562387,
-	1841958164,
-	1845336603,
-	1848697673,
-	1852041343,
-	1855367580,
-	1858676354,
-	1861967633,
-	1865241387,
-	1868497585,
-	1871736195,
-	1874957188,
-	1878160534,
-	1881346201,
-	1884514160,
-	1887664382,
-	1890796836,
-	1893911493,
-	1897008324,
-	1900087300,
-	1903148391,
-	1906191569,
-	1909216806,
-	1912224072,
-	1915213339,
-	1918184580,
-	1921137766,
-	1924072870,
-	1926989863,
-	1929888719,
-	1932769410,
-	1935631909,
-	1938476189,
-	1941302224,
-	1944109986,
-	1946899450,
-	1949670588,
-	1952423376,
-	1955157787,
-	1957873795,
-	1960571374,
-	1963250500,
-	1965911147,
-	1968553291,
-	1971176905,
-	1973781966,
-	1976368449,
-	1978936330,
-	1981485584,
-	1984016188,
-	1986528117,
-	1989021349,
-	1991495859,
-	1993951624,
-	1996388621,
-	1998806828,
-	2001206221,
-	2003586778,
-	2005948477,
-	2008291295,
-	2010615209,
-	2012920200,
-	2015206244,
-	2017473320,
-	2019721407,
-	2021950483,
-	2024160528,
-	2026351521,
-	2028523441,
-	2030676268,
-	2032809981,
-	2034924561,
-	2037019987,
-	2039096240,
-	2041153301,
-	2043191149,
-	2045209766,
-	2047209132,
-	2049189230,
-	2051150040,
-	2053091543,
-	2055013722,
-	2056916559,
-	2058800035,
-	2060664132,
-	2062508835,
-	2064334123,
-	2066139982,
-	2067926393,
-	2069693341,
-	2071440807,
-	2073168776,
-	2074877232,
-	2076566159,
-	2078235539,
-	2079885359,
-	2081515602,
-	2083126253,
-	2084717297,
-	2086288719,
-	2087840504,
-	2089372637,
-	2090885104,
-	2092377891,
-	2093850984,
-	2095304369,
-	2096738031,
-	2098151959,
-	2099546138,
-	2100920555,
-	2102275198,
-	2103610053,
-	2104925108,
-	2106220351,
-	2107495769,
-	2108751351,
-	2109987084,
-	2111202958,
-	2112398959,
-	2113575079,
-	2114731304,
-	2115867625,
-	2116984030,
-	2118080510,
-	2119157053,
-	2120213650,
-	2121250291,
-	2122266966,
-	2123263665,
-	2124240379,
-	2125197099,
-	2126133816,
-	2127050521,
-	2127947205,
-	2128823861,
-	2129680479,
-	2130517051,
-	2131333571,
-	2132130029,
-	2132906419,
-	2133662733,
-	2134398965,
-	2135115106,
-	2135811152,
-	2136487094,
-	2137142926,
-	2137778643,
-	2138394239,
-	2138989707,
-	2139565042,
-	2140120239,
-	2140655292,
-	2141170196,
-	2141664947,
-	2142139540,
-	2142593970,
-	2143028233,
-	2143442325,
-	2143836243,
-	2144209981,
-	2144563538,
-	2144896909,
-	2145210091,
-	2145503082,
-	2145775879,
-	2146028479,
-	2146260880,
-	2146473079,
-	2146665075,
-	2146836865,
-	2146988449,
-	2147119824,
-	2147230990,
-	2147321945,
-	2147392689,
-	2147443221,
-	2147473541,
-	2147483647
-};
+#define CORDIC_SINCOS_PIOVERTWO_Q28 421657428	  /* int32(pi / 2 * 2^28) */
+#define CORDIC_SINCOS_PI_Q28 843314857		  /* int32(pi * 2^28) */
+#define CORDIC_SINCOS_TWOPI_Q28 1686629713	  /* int32(2 * pi * 2^28) */
+#define CORDIC_SINCOS_ONEANDHALFPI_Q28 1264972285 /* int32(1.5 * pi * 2^28) */
 
-/* Sine lookup table read */
-static inline int32_t sine_lookup(int idx)
+/**
+ * CORDIC-based approximation of sine and cosine
+ * \+----------+----------------------------------------+--------------------+-------------------+
+ * \|values    |		Q_CONVERT_FLOAT		|(180/pi)*angleInRad |(pi/180)*angleInDeg|
+ * \+----------+----------------------------------------+--------------------+-------------------+
+ * \|379625062 | Q_CONVERT_FLOAT(1.4142135605216026, 28)|    81.0284683480568| 1.41421356052160  |
+ * \|1073741824| Q_CONVERT_FLOAT(1.0000000000000000, 30)|    57.2957795130823| 1.00000000000000  |
+ * \|843314856 | Q_CONVERT_FLOAT(1.5707963258028030, 29)|    89.9999999431572| 1.57079632580280  |
+ * \|1686629713| Q_CONVERT_FLOAT(1.5707963267341256, 30)|    89.9999999965181| 1.57079632673413  |
+ * \+----------+----------------------------------------+--------------------+-------------------+
+ */
+
+#define CORDIC_ARCSINCOS_SQRT2_DIV4_Q30 379625062 /* int32(sqrt(2) / 4 * 2^30) */
+#define CORDIC_ARCSINCOS_ONE_Q30 1073741824	  /* int32(1 * 2^30) */
+
+/**
+ * CORDIC-based approximation of sine, cosine and complex exponential
+ */
+void cordic_approx(int32_t th_rad_fxp, int32_t a_idx, int32_t *sign, int32_t *b_yn, int32_t *xn,
+		   int32_t *th_cdc_fxp)
 {
-	int32_t s;
-	int i1;
+	int32_t direction;
+	int32_t abs_th;
+	int32_t b_idx;
+	int32_t xn_local = CORDIC_SINE_COS_LUT_Q29;
+	int32_t yn_local = 0;
+	int32_t xtmp = CORDIC_SINE_COS_LUT_Q29;
+	int32_t ytmp = 0;
+	int shift;
 
-	i1 = idx & (2 * SINE_NQUART - 1);
-	if (i1 > SINE_NQUART)
-		i1 = 2 * SINE_NQUART - i1;
+	/* Addition or subtraction by a multiple of pi/2 is done in the data type
+	 * of the input. When the fraction length is 29, then the quantization error
+	 * introduced by the addition or subtraction of pi/2 is done with 29 bits of
+	 * precision.Input range of cordicsin must be in the range [-2*pi, 2*pi),
+	 * a signed type with fractionLength = wordLength-4 will fit this range
+	 * without overflow.Increase of fractionLength makes the addition or
+	 * subtraction of a multiple of pi/2 more precise
+	 */
+	abs_th = (th_rad_fxp >= 0) ? th_rad_fxp : -th_rad_fxp;
+	direction = (th_rad_fxp >= 0) ? 1 : -1;
+	*sign = 1;
+	if (abs_th > CORDIC_SINCOS_PIOVERTWO_Q28) {
+		if (abs_th <= CORDIC_SINCOS_ONEANDHALFPI_Q28) {
+			th_rad_fxp -= direction * CORDIC_SINCOS_PI_Q28;
+			*sign = -1;
+		} else {
+			th_rad_fxp -= direction * CORDIC_SINCOS_TWOPI_Q28;
+		}
+	}
 
-	if (idx > 2 * SINE_NQUART)
-		s = -sine_table[i1];
-	else
-		s = sine_table[i1];
+	th_rad_fxp <<= 2;
 
-	return s;
+	/* Calculate the correct coefficient values from rotation angle.
+	 * Find difference between the coefficients from the lookup table
+	 * and those from the calculation
+	 */
+	for (b_idx = 0; b_idx < a_idx; b_idx++) {
+		direction = (th_rad_fxp >= 0) ? 1 : -1;
+		shift = b_idx + 1;
+		th_rad_fxp -= direction * cordic_lookup[b_idx];
+		xn_local -= direction * ytmp;
+		yn_local += direction * xtmp;
+		xtmp = xn_local >> shift;
+		ytmp = yn_local >> shift;
+	}
+
+	/* Write back results once */
+	*xn = xn_local;
+	*b_yn = yn_local;
+	*th_cdc_fxp = th_rad_fxp;
+}
+EXPORT_SYMBOL(cordic_approx);
+
+/**
+ * CORDIC-based approximation for inverse cosine
+ * cosvalue is Q2.30, return value is angle in Q3.29 format
+ */
+int32_t is_scalar_cordic_acos(int32_t cosvalue, int numiters)
+{
+	int32_t xdshift;
+	int32_t ydshift;
+	int32_t yshift;
+	int32_t xshift;
+	int32_t x = 0;
+	int32_t y = 0;
+	int32_t z = 0;
+	int32_t sign;
+	int b_i;
+	int j;
+
+	/* Initialize the variables for the cordic iteration
+	 * angles less than pi/4, we initialize (x,y) along the x-axis.
+	 * angles greater than or equal to pi/4, we initialize (x,y)
+	 * along the y-axis. This improves the accuracy of the algorithm
+	 * near the edge of the domain of convergence
+	 *
+	 * Note: not pi/4 but sqrt(2)/4 is used as the threshold
+	 */
+	if (cosvalue < CORDIC_ARCSINCOS_SQRT2_DIV4_Q30) {
+		y = CORDIC_ARCSINCOS_ONE_Q30;
+		z = PI_DIV2_Q3_29;
+	} else {
+		x = CORDIC_ARCSINCOS_ONE_Q30;
+	}
+
+	/* DCORDIC(Double CORDIC) algorithm */
+	/* Double iterations method consists in the fact that unlike the classical */
+	/* CORDIC method,where the iteration step value changes EVERY time, i.e. on */
+	/* each iteration, in the double iteration method, the iteration step value */
+	/* is repeated twice and changes only through one iteration */
+	for (b_i = 0; b_i < numiters; b_i++) {
+		j = (b_i + 1) << 1;
+		if (j >= 31)
+			j = 31;
+
+		xshift = x >> b_i;
+		yshift = y >> b_i;
+		xdshift = x >> j;
+		ydshift = y >> j;
+		/* Do nothing if x currently equals the target value. Allowed for
+		 * double rotations algorithms, as it is equivalent to rotating by
+		 * the same angle in opposite directions sequentially. Accounts for
+		 * the scaling effect of CORDIC Pseudo-rotations as well.
+		 */
+		if (x == cosvalue) {
+			x += xdshift;
+			y += ydshift;
+		} else {
+			sign = (((x > cosvalue) && (y >= 0)) ||
+				((x < cosvalue) && (y < 0))) ? 1 : -1;
+			x = x - xdshift - sign * yshift;
+			y = y - ydshift + sign * xshift;
+			z += sign * cordic_ilookup[b_i];
+		}
+		cosvalue += cosvalue >> j;
+	}
+	if (z < 0)
+		z = -z;
+
+	return z;
 }
 
-/* Compute fixed point sine with table lookup and interpolation */
-int32_t sin_fixed(int32_t w)
+/**
+ * CORDIC-based approximation for inverse sine
+ * sinvalue is Q2.30, return value is angle in Q2.30 format
+ */
+int32_t is_scalar_cordic_asin(int32_t sinvalue, int numiters)
 {
-	int idx;
-	int32_t frac;
-	int32_t s0;
-	int32_t s1;
-	int32_t delta;
-	int64_t sine;
-	int64_t idx_tmp;
+	int32_t xdshift;
+	int32_t ydshift;
+	int32_t xshift;
+	int32_t yshift;
+	int32_t x = 0;
+	int32_t y = 0;
+	int32_t z = 0;
+	int32_t sign;
+	int b_i;
+	int j;
 
-	/* Q4.28 x Q12.20 -> Q16.48 */
-	idx_tmp = (int64_t)w * SINE_C_Q20;
-	idx = (int)(idx_tmp >> 48); /* Shift to Q0 */
-	idx_tmp = idx_tmp >> 17; /* Shift to Q16.31 */
-	idx_tmp = idx_tmp - (idx << 31); /* Get fraction */
-	frac = (int32_t)idx_tmp; /* Q1.31 */
-	s0 = sine_lookup(idx); /* Q1.31 */
-	s1 = sine_lookup(idx + 1); /* Q1.31 */
-	delta = s1 - s0; /* Q1.31 */
-	/* All Q1.31 */
-	sine = s0 + q_mults_32x32(frac, delta, Q_SHIFT_BITS_64(31, 31, 31));
+	/* Initialize the variables for the cordic iteration
+	 * angles less than pi/4, we initialize (x,y) along the x-axis.
+	 * angles greater than or equal to pi/4, we initialize (x,y)
+	 * along the y-axis. This improves the accuracy of the algorithm
+	 * near the edge of the domain of convergence
+	 *
+	 * Note: Instead of pi/4, sqrt(2)/4 is used as the threshold
+	 */
+	if (sinvalue > CORDIC_ARCSINCOS_SQRT2_DIV4_Q30) {
+		y = CORDIC_ARCSINCOS_ONE_Q30;
+		z = PI_DIV2_Q3_29;
+	} else {
+		x = CORDIC_ARCSINCOS_ONE_Q30;
+	}
 
-	return (int32_t)sine;
+	/* DCORDIC(Double CORDIC) algorithm */
+	/* Double iterations method consists in the fact that unlike the classical */
+	/* CORDIC method,where the iteration step value changes EVERY time, i.e. on */
+	/* each iteration, in the double iteration method, the iteration step value */
+	/* is repeated twice and changes only through one iteration */
+	for (b_i = 0; b_i < numiters; b_i++) {
+		j = (b_i + 1) << 1;
+		if (j >= 31)
+			j = 31;
+
+		xshift = x >> b_i;
+		yshift = y >> b_i;
+		ydshift = y >> j;
+		xdshift = x >> j;
+		/* Do nothing if x currently equals the target value. Allowed for
+		 * double rotations algorithms, as it is equivalent to rotating by
+		 * the same angle in opposite directions sequentially. Accounts for
+		 * the scaling effect of CORDIC Pseudo-rotations as well.
+		 */
+		if (y == sinvalue) {
+			x += xdshift;
+			y += ydshift;
+		} else {
+			sign = (((y >= sinvalue) && (x >= 0)) ||
+				((y < sinvalue) && (x < 0))) ? 1 : -1;
+			x = x - xdshift + sign * yshift;
+			y = y - ydshift - sign * xshift;
+			z -= sign * cordic_ilookup[b_i];
+		}
+		sinvalue += sinvalue >> j;
+	}
+	if (z < 0)
+		z = -z;
+
+	return z;
+}
+
+/**
+ * cmpx_cexp() - CORDIC-based approximation of complex exponential e^(j*THETA)
+ *
+ * The sine and cosine values are in Q2.30 format from cordic_approx()function.
+ */
+void cmpx_cexp(int32_t sign, int32_t b_yn, int32_t xn, cordic_cfg type, struct cordic_cmpx *cexp)
+{
+	cexp->re = sign * xn;
+	cexp->im = sign * b_yn;
+	/*convert Q2.30 to Q1.15*/
+	if (type == EN_16B_CORDIC_CEXP) {
+		cexp->re = sat_int16(Q_SHIFT_RND((cexp->re), 30, 15));
+		cexp->im = sat_int16(Q_SHIFT_RND((cexp->im), 30, 15));
+	}
 }

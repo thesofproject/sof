@@ -1,0 +1,339 @@
+% setup_mfcc()
+%
+% Create binary configuration blobs for the MFCC component.
+% The hex data is written to files in directory
+% tools/topology/topology2/include/components/mfcc.
+
+% SPDX-License-Identifier: BSD-3-Clause
+%
+% Copyright (c) 2018-2026, Intel Corporation.
+
+function setup_mfcc()
+
+	gen_cfg.tplg_ver = 2;
+	gen_cfg.ipc_ver = 4;
+	gen_cfg.tools_path = '../../../../tools/';
+	gen_cfg.mfcc_conf_path = [gen_cfg.tools_path 'topology/topology2/include/components/mfcc/'];
+
+	% Default blob
+	setup = get_mfcc_default_config();
+	setup.tplg_fn = 'default.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+	% Blob for mel spectrogram data
+	setup = get_mel_spectrogram_config();
+	setup.tplg_fn = 'mel80.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+	% Blob for mel spectrogram with compress PCM output
+	setup = get_mel_spectrogram_config();
+	setup.compress_output = true;
+	setup.tplg_fn = 'mel80_compress.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+	% Blob for mel spectrogram with compress PCM output and DTX
+	setup = get_mel_spectrogram_config();
+	setup.compress_output = true;
+	setup.enable_dtx = true;
+	setup.dtx_trailing_silence_hops = 20;
+	setup.dtx_silence_hops_interval = 500;
+	setup.tplg_fn = 'mel80_compress_dtx.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+	% Default MFCC (cepstral) with compress PCM output
+	setup = get_mfcc_default_config();
+	setup.compress_output = true;
+	setup.enable_vad = true;
+	setup.enable_dtx = true;
+	setup.dtx_trailing_silence_hops = 20;
+	setup.dtx_silence_hops_interval = 500;
+	setup.update_controls = true;
+	setup.tplg_fn = 'ceps13_compress_dtx.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
+end
+
+function cfg = get_mfcc_default_config()
+	cfg.blackman_coef = 0.42;
+	cfg.cepstral_lifter = 22.0;
+	cfg.channel = 0; % -1 expect mono, 0 left, 1 right ...
+	cfg.dither = 0.0; % no support
+	cfg.energy_floor = 1.0;
+	cfg.frame_length = 25.0; % ms
+	cfg.frame_shift = 10.0; % ms
+	cfg.high_freq = 0.0; % 0 is Nyquist
+	cfg.htk_compat = false; % no support
+	cfg.low_freq = 20.0; % Hz
+	cfg.num_ceps = 13;
+	cfg.min_duration = 0.0; % no support
+	cfg.norm = 'none'; % Use none or slaney
+	cfg.num_mel_bins = 23;
+	cfg.preemphasis_coefficient = 0; % disable
+	cfg.raw_energy = true;
+	cfg.remove_dc_offset = true;
+	cfg.round_to_power_of_two = true; % must be true
+	cfg.sample_frequency = 16000;
+	cfg.snip_edges = true; % must be true
+	cfg.subtract_mean = false; % must be false
+	cfg.use_energy = false;
+	cfg.vtln_high = -500.0; % no support
+	cfg.vtln_low = 100.0; % no support
+	cfg.vtln_warp = 1.0; % must be 1.0 (vocal tract length normalization)
+	cfg.window_type = 'hamming';
+	cfg.mel_log = 'log'; % Set to 'db' for librosa, set to 'log10' for matlab
+	cfg.pmin = 5e-10; % Set to 1e-10 for librosa
+	cfg.top_db = 200; % Set to 80 for librosa
+	cfg.mel_offset = 0; % For mel_only mode, no impact with num_ceps > 0
+	cfg.mel_scale = 0; % same
+	cfg.mmax_init = 0; % same
+	cfg.mmax_coef = 0; % same
+	cfg.dynamic_mmax = false; % same
+	cfg.enable_vad = false;
+	cfg.enable_dtx = false;
+	cfg.dtx_trailing_silence_hops = 0;
+	cfg.dtx_silence_hops_interval = 0;
+	cfg.update_controls = false;
+	cfg.compress_output = false;
+end
+
+function cfg = get_mel_spectrogram_config()
+	cfg.blackman_coef = 0;
+	cfg.cepstral_lifter = 0;
+	cfg.channel = 0;
+	cfg.dither = 0;
+	cfg.energy_floor = 1.0;
+	cfg.frame_length = 25.0; % 400 samples at 16 kHz
+	cfg.frame_shift = 10.0; % 160 samples at 16 kHz
+	cfg.high_freq = 8000;
+	cfg.htk_compat = false;
+	cfg.low_freq = 0;
+	cfg.num_ceps = 0; % Mel-only mode, no DCT
+	cfg.min_duration = 0;
+	cfg.norm = 'slaney';
+	cfg.num_mel_bins = 80;
+	cfg.preemphasis_coefficient = 0;
+	cfg.raw_energy = false;
+	cfg.remove_dc_offset = false;
+	cfg.round_to_power_of_two = true;
+	cfg.sample_frequency = 16000;
+	cfg.snip_edges = true;
+	cfg.subtract_mean = false;
+	cfg.use_energy = false;
+	cfg.vtln_high = 0;
+	cfg.vtln_low = 0;
+	cfg.vtln_warp = 1.0;
+	cfg.window_type = 'hann';
+	cfg.mel_log = 'log10';
+	cfg.pmin = 1e-10;
+	cfg.top_db = 8; % applied for log10, would be 80 dB clamp for decibels as 10*log10()
+	cfg.mel_offset = 4.0; % For whisper like Mel scale and normalize
+	cfg.mel_scale = 0.25; % For whisper like Mel scale and normalize
+	cfg.mmax_init = 0; % Initial value max Mel value, data clamp is mmax - top_db
+	cfg.mmax_coef = 0; % Dynamic max Mel value decay coefficient (zero lock to found max)
+	cfg.dynamic_mmax = true;
+	cfg.enable_vad = true;
+	cfg.enable_dtx = false;
+	cfg.dtx_trailing_silence_hops = 0;
+	cfg.dtx_silence_hops_interval = 0;
+	cfg.update_controls = true;
+	cfg.compress_output = false;
+end
+
+function export_mfcc_setup(gen_cfg, cfg)
+
+%% Use blob tool from EQ
+addpath([gen_cfg.tools_path 'tune/common']);
+
+%% Blob size, size plus reserved(8) + current parameters
+nbytes_data = 116;
+
+%% Little endian
+sh32 = [0 -8 -16 -24];
+sh16 = [0 -8];
+
+%% Get ABI information
+[abi_bytes, nbytes_abi] = sof_get_abi(nbytes_data, gen_cfg.ipc_ver);
+
+%% Initialize correct size uint8 array
+nbytes = nbytes_abi + nbytes_data;
+b8 = uint8(zeros(1,nbytes));
+
+%% Insert ABI header
+fprintf(1, 'MFCC blob size is %d, ABI header is %d, data is %d\n',nbytes, nbytes_abi, nbytes_data);
+b8(1:nbytes_abi) = abi_bytes;
+j = nbytes_abi + 1;
+
+%% Apply default MFCC configuration, first struct header and reserved, then data
+[b8, j] = add_w32b(nbytes_data, b8, j);
+
+v = q_convert(cfg.mel_offset, 7);                [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.mel_scale, 12);                [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.mmax_init, 7);                 [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.mmax_coef, 15);                [b8, j] = add_w16b(v, b8, j);
+
+v = cfg.dtx_trailing_silence_hops;                [b8, j] = add_w16b(v, b8, j); % DTX trailing silence hops
+v = cfg.dtx_silence_hops_interval;                [b8, j] = add_w16b(v, b8, j); % DTX silence frame interval
+% Reserved
+for i = 1:5
+	[b8, j] = add_w32b(0, b8, j);
+end
+
+v = q_convert(cfg.sample_frequency, 0);          [b8, j] = add_w32b(v, b8, j);
+v = q_convert(cfg.pmin, 31);                     [b8, j] = add_w32b(v, b8, j);
+v = get_mel_log_value(cfg.mel_log);              [b8, j] = add_w32b(v, b8, j); % enum mel_log
+v = get_norm_value(cfg.norm);                    [b8, j] = add_w32b(v, b8, j); % enum norm
+v = 0;                                           [b8, j] = add_w32b(v, b8, j); % enum pad
+v = get_window(cfg);                             [b8, j] = add_w32b(v, b8, j); % enum window
+v = 1;                                           [b8, j] = add_w32b(v, b8, j); % enum dct type
+v = q_convert(cfg.blackman_coef, 15);            [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.cepstral_lifter, 9);           [b8, j] = add_w16b(v, b8, j);
+v = cfg.channel;                                 [b8, j] = add_w16b(v, b8, j);
+v = cfg.dither;                                  [b8, j] = add_w16b(v, b8, j);
+v = round(cfg.frame_length/1000 * cfg.sample_frequency); [b8, j] = add_w16b(v, b8, j);
+v = round(cfg.frame_shift/1000 * cfg.sample_frequency); [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.high_freq, 0);                 [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.low_freq, 0);                  [b8, j] = add_w16b(v, b8, j);
+v = cfg.num_ceps;                                [b8, j] = add_w16b(v, b8, j);
+v = cfg.num_mel_bins;                            [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.preemphasis_coefficient, 15);  [b8, j] = add_w16b(v, b8, j);
+v = q_convert(cfg.top_db, 7);                    [b8, j] = add_w16b(v, b8, j);
+v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_high Qx.y TBD
+v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_low Qx.y TBD
+v = 0;                                           [b8, j] = add_w16b(v, b8, j); % vtln_warp Qx.y TBD
+% reserved16[3]
+for i = 1:3
+	[b8, j] = add_w16b(0, b8, j);
+end
+v = cfg.htk_compat;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.raw_energy;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.remove_dc_offset;                        [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.round_to_power_of_two;                   [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.snip_edges;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.subtract_mean;                           [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.use_energy;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.dynamic_mmax;                            [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.enable_vad;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.enable_dtx;                              [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.update_controls;                         [b8, j] = add_w8b(v, b8, j); % bool
+v = cfg.compress_output;                         [b8, j] = add_w8b(v, b8, j); % bool
+% reserved_bool[4]
+for i = 1:4
+	[b8, j] = add_w8b(0, b8, j);
+end
+
+%% Export
+tplg_fn = [gen_cfg.mfcc_conf_path cfg.tplg_fn];
+switch gen_cfg.tplg_ver
+       case 1
+	       sof_tplg_write(tplg_fn, b8, "DEF_MFCC_PRIV", ...
+			      "Exported with script setup_mfcc.m", ...
+			      "cd src/audio/mfcc/tune; octave setup_mfcc.m");
+       case 2
+	       sof_tplg2_write(tplg_fn, b8, "mfcc_config", ...
+			       "Exported MFCC configuration", ...
+			       "cd src/audio/mfcc/tune; octave setup_mfcc.m");
+       otherwise
+	       error("Illegal tplg_ver, use 1 for topology v1 or 2 topology v2.");
+end
+
+rmpath([gen_cfg.tools_path 'tune/common']);
+
+end
+
+%% Helper functions
+
+function n = get_window(cfg)
+	switch lower(cfg.window_type)
+		case 'rectangular'
+			n = 0;
+		case 'blackman'
+			n = 1;
+		case 'hamming'
+			n = 2;
+		case 'hann'
+			n = 3;
+		case 'povey'
+			n = 4;
+		otherwise
+			error('Unknown window type');
+	end
+end
+
+function n = get_mel_log_value(mel_log)
+	switch lower(mel_log)
+		case 'log'
+			n = 0;
+		case 'log10'
+			n = 1;
+		case 'db'
+			n = 2;
+		otherwise
+			error('Unknown mel_log type');
+	end
+end
+
+function n = get_norm_value(norm)
+	switch lower(norm)
+		case 'none'
+			n = 0;
+		case 'slaney'
+			n = 1;
+		otherwise
+			error('Unknown norm type');
+	end
+end
+
+function bytes = w8b(word)
+bytes = uint8(zeros(1,1));
+bytes(1) = bitand(word, 255);
+end
+
+function bytes = w16b(word)
+sh = [0 -8];
+bytes = uint8(zeros(1,2));
+bytes(1) = bitand(bitshift(word, sh(1)), 255);
+bytes(2) = bitand(bitshift(word, sh(2)), 255);
+end
+
+function bytes = w32b(word)
+sh = [0 -8 -16 -24];
+bytes = uint8(zeros(1,4));
+bytes(1) = bitand(bitshift(word, sh(1)), 255);
+bytes(2) = bitand(bitshift(word, sh(2)), 255);
+bytes(3) = bitand(bitshift(word, sh(3)), 255);
+bytes(4) = bitand(bitshift(word, sh(4)), 255);
+end
+
+function n = q_convert(val, q)
+n = round(val * 2^q);
+end
+
+function [blob8, j] = add_w8b(v, blob8, j)
+if j > length(blob8)
+	error('Blob size is not sufficient');
+end
+blob8(j) = w8b(v);
+j = j + 1;
+end
+
+function [blob8, j] = add_w16b(v, blob8, j)
+if j + 1 > length(blob8)
+	error('Blob size is not sufficient');
+end
+if v < 0
+	v = 2^16 + v;
+end
+blob8(j : j + 1) = w16b(v);
+j = j + 2;
+end
+
+function [blob8, j] = add_w32b(v, blob8, j)
+if j + 3 > length(blob8)
+	error('Blob size is not sufficient');
+end
+if v < 0
+	v = 2^32 + v;
+end
+blob8(j : j + 3) = w32b(v);
+j = j + 4;
+end

@@ -29,7 +29,7 @@
 %
 
 function delete_check(really, f)
-if really && exist(f) == 2
+if really && exist(fullfile('.', f),'file') == 2
         delete(f);
 end
 end

@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2021 Intelligo Technology Inc. All rights reserved.
+ *
+ * Author: Fu-Yun TSUO <fy.tsuo@intelli-go.com>
+ */
+
+#ifndef __SOF_AUDIO_IGO_NR_CONFIG_H__
+#define __SOF_AUDIO_IGO_NR_CONFIG_H__
+
+#include <sof/platform.h>
+#include <sof/audio/audio_stream.h>
+#include <sof/audio/igo_nr/igo_lib.h>
+#include <user/igo_nr.h>
+
+#define IGO_FRAME_SIZE (768)
+#define IGO_NR_IN_BUF_LENGTH (IGO_FRAME_SIZE)
+#define IGO_NR_OUT_BUF_LENGTH (IGO_FRAME_SIZE)
+
+/* IGO_NR component private data */
+struct comp_data {
+	void *p_handle;
+	struct IgoLibInfo igo_lib_info;
+	struct IgoLibConfig igo_lib_config;
+	struct IgoStreamData igo_stream_data_in;
+	struct IgoStreamData igo_stream_data_ref;
+	struct IgoStreamData igo_stream_data_out;
+	struct comp_data_blob_handler *model_handler;
+	int16_t in[IGO_NR_IN_BUF_LENGTH];	    /**< input samples buffer */
+	int16_t out[IGO_NR_IN_BUF_LENGTH];    /**< output samples mix buffer */
+	bool process_enable[SOF_IPC_MAX_CHANNELS];	/**< set if channel process is enabled */
+	bool invalid_param;	/**< sample rate != 16000 */
+	uint32_t sink_rate;	/* Sample rate in Hz */
+	uint32_t source_rate;	/* Sample rate in Hz */
+	uint32_t sink_format;	/* For used PCM sample format */
+	uint32_t source_format;	/* For used PCM sample format */
+	int (*igo_nr_func)(struct comp_data *cd,
+			   struct sof_source *source,
+			   struct sof_sink *sink,
+			   int32_t frames);
+	struct sof_igo_nr_config config;	    /**< blob data buffer */
+};
+
+#endif /* __SOF_AUDIO_IGO_NR_CONFIG_H__ */

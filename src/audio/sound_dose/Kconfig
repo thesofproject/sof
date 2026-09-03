@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_SOUND_DOSE
+	tristate "Sound Dose module"
+	default m if LIBRARY_DEFAULT_MODULAR
+	depends on COMP_MODULE_ADAPTER
+	depends on IPC_MAJOR_4
+	select MATH_IIR
+	select MATH_IIR_DF1
+	select MATH_EXP
+	help
+	  Select this for Sound Dose SOF module. The purpose is
+	  to calculate for audio playback MEL values (momentary
+	  sound exposure level) to provide to user space the data
+	  to compute the sound dose CSD as defined in EN 50332-3.

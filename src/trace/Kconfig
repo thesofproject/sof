@@ -6,16 +6,20 @@ menu "Trace"
 
 config TRACE
 	bool "Trace"
+	default n if ZEPHYR_SOF_MODULE
 	default y
 	help
-	  Enabling traces. All traces (normal and error) are sent by dma.
+	  Enable SOF DMA based traces compatible with the sof-logger tool.
+	  With Zephyr, RTOS side events are not seen in the SOF trace, so native
+	  Zephyr logging (CONFIG_ZEPHYR_LOG) is recommended instead.
 
 config TRACEV
 	bool "Trace verbose"
 	depends on TRACE
 	default n
 	help
-	  Enabling verbose traces.
+	  Enabling verbose traces. tr_dbg() statements depend on this at
+	  compile-time and on run-time filtering below too.
 
 config TRACEE
 	bool "Trace error"
@@ -30,5 +34,106 @@ config TRACEM
 	default n
 	help
 	  Sending all traces by mailbox additionally.
+
+config TRACE_FILTERING
+	bool "Trace filtering"
+	depends on TRACE
+	default y
+	help
+		Filtering of trace messages based on their verbosity level and/or frequency.
+
+config TRACE_FILTERING_VERBOSITY
+	bool "Filter by verbosity"
+	depends on TRACE_FILTERING
+	default y
+	help
+		Filtering by log verbosity level, where maximum verbosity allowed is specified for each
+		context and may be adjusted in runtime. Most basic feature found in every logger.
+
+config TRACE_FILTERING_ADAPTIVE
+	bool "Adaptive rate limiting"
+	depends on TRACE_FILTERING
+	default y
+	help
+		Adaptive filtering of repeating trace messages, tracking up to
+		CONFIG_TRACE_RECENT_ENTRIES_COUNT and suppressing messages repeated in less than
+		CONFIG_TRACE_RECENT_TIME_THRESHOLD microseconds. This filtering and suppression are
+		turned off as soon as the user makes any runtime configuration change using the
+		sof-logger -F flag. Warning: log message parameters (formatted with a conversion
+		specifier %_) are ignored when comparing repeated messages and they are dropped by
+		this filtering.
+
+config TRACE_RECENT_ENTRIES_COUNT
+	int "How many recent log messages are stored"
+	depends on TRACE_FILTERING_ADAPTIVE
+	default 5
+	help
+		The most recent log messages are stored to match the currently processed
+		message. The size of that window affects effectiveness and performance. More recent
+		entries allow to better filter repetitive messages out, but also slightly decrease
+		performance due to the increased number of comparisons necessary.
+
+config TRACE_RECENT_TIME_THRESHOLD
+	int "Period of time considered recent (microseconds)"
+	depends on TRACE_FILTERING_ADAPTIVE
+	default 1500
+	range 1 TRACE_RECENT_MAX_TIME
+	help
+		Period of time during which entries are tracked and will be suppressed if reported again.
+		Entries expire after this time.
+
+config TRACE_RECENT_MAX_TIME
+	int "Maximum period of time that message can be suppressed (microseconds)"
+	depends on TRACE_FILTERING_ADAPTIVE
+	default 5000000
+	help
+		Maximum amount of time message can be suppressed for, due to repeated suppression.
+
+config TRACE_BURST_COUNT
+	int "Allowed amount of rapidly repeated messages, that will not be suppressed by the filter"
+	depends on TRACE_FILTERING_ADAPTIVE
+	default 4
+	help
+		Amount of messages that will pass through the filter even if sent in rapid succession.
+		Allowed message burst size before filter suppresses the message.
+
+config LOG_BACKEND_SOF_PROBE
+	bool "Logging backend with SOF probes"
+	depends on LOG
+	select LOG_OUTPUT
+	help
+		Enable backend for log output via SOF probe interface.
+		Probe interface allows to transmit logs and PCM data, muxed over
+		a shared DMA channel.
+		Logging is enabled by setting up a probe point with
+		probe purpose value of PROBE_PURPOSE_LOGGING.
+
+config LOG_BACKEND_SOF_PROBE_OUTPUT_AUTO_ENABLE
+	bool "Automatically enable probes logging when probe dma is started"
+	depends on LOG_BACKEND_SOF_PROBE
+	help
+		Automatically enable logging as soon as probes DMA
+		starts. This option simplifies probes logging back
+		end usage as there is no need to enable logs after
+		every boot. The probes DMA is still needed before the
+		log output can be enabled.
+
+config LOG_BACKEND_SOF_PROBE_OUTPUT_DICTIONARY
+	bool "Dictionary"
+	select LOG_DICTIONARY_SUPPORT
+	help
+		Set output format of the SOF probe logging backend to
+		Zephyr log dictionary.
+		The resulting log file can be parsed with tools in
+		zephyr/scripts/logging/dictionary
+		A dictionary for the binary is created during build.
+
+config LOG_BACKEND_SOF_PROBE_OUTPUT
+	int "Set logging output format"
+	default 1 if LOG_MIPI_SYST_ENABLE
+	default 2 if LOG_BACKEND_SOF_PROBE_OUTPUT_DICTIONARY
+	default 0 # Text encoding is default
+        help
+                Set the logging format for SOF probe output.
 
 endmenu

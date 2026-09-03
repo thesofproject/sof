@@ -1,136 +1,119 @@
-# SPDX-License-Identifier: BSD-3-Clause
+set(SOF_TOPOLOGY_BINARY_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+set(SOF_ALSA_TOOLS_DIR "${SOF_ROOT_SOURCE_DIRECTORY}/../tools/bin")
+set(ALSATPLG_CMD "${SOF_ALSA_TOOLS_DIR}/alsatplg")
 
-file(GLOB TPLG_DEPS
-	platform/intel/*.m4
-	platform/common/*.m4
-	common/*.m4
-	m4/*.m4
-	sof/*.m4
-)
+# With the Ninja generator, USES_TERMINAL forces the single-job "console"
+# pool, serializing every topology build regardless of -j. Enable this
+# option to force that serialized, easier to debug behavior back on.
+option(TPLG_SEQUENTIAL_BUILD "Build topologies one at a time (for debugging)" OFF)
+if(TPLG_SEQUENTIAL_BUILD)
+	set(TPLG_USES_TERMINAL USES_TERMINAL)
+else()
+	set(TPLG_USES_TERMINAL "")
+endif()
 
-add_custom_target(abi
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/get_abi.sh ${SOF_ROOT_SOURCE_DIRECTORY}
-	DEPENDS ${TPLG_DEPS}
-	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-	VERBATIM
-	USES_TERMINAL
-)
+function(alsatplg_version  OUT_STATUS  OUT_VERSION)
+	execute_process(COMMAND ${ALSATPLG_CMD} --version
+	  RESULT_VARIABLE status
+	  OUTPUT_VARIABLE stdout
+	  OUTPUT_STRIP_TRAILING_WHITESPACE)
+	message(DEBUG "${ALSATPLG_CMD} --version: status=${status}, output=${stdout}")
 
-set(TPLGS
-	"sof-cht-nocodec\;sof-cht-nocodec\;-DPLATFORM=cht"
-	"sof-cht-nocodec\;sof-byt-nocodec\;-DPLATFORM=byt"
-	"sof-cht-max98090\;sof-cht-max98090"
-	"sof-cht-rt5682\;sof-cht-rt5682"
-	"sof-cht-src-50khz-pcm512x\;sof-cht-src-50khz-pcm512x"
-	"sof-hda-generic\;sof-hda-generic\;-DCHANNELS=0"
-	"sof-hda-generic\;sof-hda-generic-2ch\;-DCHANNELS=2"
-	"sof-hda-generic\;sof-hda-generic-4ch\;-DCHANNELS=4"
-	"sof-hda-generic-idisp\;sof-hda-generic-idisp\;-DCHANNELS=0"
-	"sof-hda-generic-idisp\;sof-hda-generic-idisp-2ch\;-DCHANNELS=2"
-	"sof-hda-generic-idisp\;sof-hda-generic-idisp-4ch\;-DCHANNELS=4"
-	"sof-apl-nocodec\;sof-apl-nocodec"
-	"sof-apl-keyword-detect\;sof-apl-keyword-detect"
-	"sof-bdw-codec\;sof-bdw-rt286\;-DCODEC=RT286"
-	"sof-bdw-codec\;sof-bdw-rt5640\;-DCODEC=RT5640"
-	"sof-byt-codec\;sof-byt-rt5640\;-DCODEC=RT5640"
-	"sof-byt-codec\;sof-byt-rt5645\;-DCODEC=RT5645"
-	"sof-byt-codec\;sof-byt-rt5651\;-DCODEC=RT5651"
-	"sof-byt-codec\;sof-byt-rt5682\;-DCODEC=RT5682"
-	"sof-byt-codec\;sof-byt-da7213\;-DCODEC=DA7213"
-	"sof-cnl-rt274\;sof-cnl-rt274"
-	"sof-hsw-rt5640\;sof-hsw-rt5640"
-	"sof-apl-tdf8532\;sof-apl-tdf8532"
-	"sof-apl-pcm512x\;sof-apl-pcm512x"
-	"sof-apl-pcm512x-nohdmi\;sof-apl-pcm512x-nohdmi"
-	"sof-apl-demux-pcm512x\;sof-apl-demux-pcm512x"
-	"sof-apl-rt298\;sof-apl-rt298"
-	"sof-apl-wm8804\;sof-apl-wm8804"
-	"sof-apl-da7219\;sof-apl-da7219"
-	"sof-glk-da7219-kwd\;sof-glk-da7219-kwd"
-	"sof-glk-da7219\;sof-glk-da7219"
-	"sof-glk-rt5682\;sof-glk-rt5682"
-	"sof-icl-nocodec\;sof-icl-nocodec"
-	"sof-apl-eq-pcm512x\;sof-apl-eq-pcm512x"
-	"sof-apl-eq-dmic\;sof-apl-eq-dmic"
-	"sof-apl-src-dmic\;sof-apl-src-dmic"
-	"sof-apl-dmic-a2ch\;sof-apl-dmic-a2ch"
-	"sof-apl-dmic-b2ch\;sof-apl-dmic-b2ch"
-	"sof-apl-dmic-a2ch-b2ch\;sof-apl-dmic-a2ch-b2ch"
-	"sof-apl-dmic-a4ch-b2ch\;sof-apl-dmic-a4ch-b2ch"
-	"sof-apl-dmic-a2ch-b4ch\;sof-apl-dmic-a2ch-b4ch"
-	"sof-apl-dmic\;sof-apl-dmic-4ch\;-DCHANNELS=4"
-	"sof-apl-dmic\;sof-apl-dmic-2ch\;-DCHANNELS=2"
-	"sof-apl-src-50khz-pcm512x\;sof-apl-src-50khz-pcm512x"
-	"sof-icl-dmic-4ch\;sof-icl-dmic-4ch"
-	"sof-icl-rt700\;sof-icl-rt700\;-DPLATFORM=icl"
-	"sof-cml-rt700\;sof-cml-rt700\;-DPLATFORM=cml"
-	"sof-icl-rt711-rt1308-rt715\;sof-icl-rt711-rt1308-rt715\;-DPLATFORM=icl"
-	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-mono-rt715\;-DPLATFORM=cml-mono"
-	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-cml-rt711-rt1308-rt715\;-DPLATFORM=cml"
-	"sof-icl-rt711-rt1308-rt715-hdmi\;sof-icl-rt711-rt1308-rt715-hdmi\;-DPLATFORM=icl"
-	"sof-apl-src-pcm512x\;sof-apl-src-pcm512x"
-	"sof-cml-rt5682\;sof-cml-rt5682\;-DPLATFORM=cml"
-	"sof-cml-rt5682\;sof-whl-rt5682\;-DPLATFORM=whl"
-	"sof-cml-rt5682\;sof-icl-rt5682\;-DPLATFORM=icl"
-	"sof-cml-rt5682-kwd\;sof-cml-rt5682-kwd\;-DPLATFORM=cml"
-	"sof-cml-rt5682-kwd\;sof-whl-rt5682-kwd\;-DPLATFORM=whl"
-	"sof-cml-rt5682-kwd\;sof-icl-rt5682-kwd\;-DPLATFORM=icl"
-	"sof-cml-src-rt5682\;sof-cml-src-rt5682"
-	"sof-cml-demux-rt5682\;sof-cml-demux-rt5682\;-DPLATFORM=cml"
-	"sof-cml-demux-rt5682\;sof-whl-demux-rt5682\;-DPLATFORM=whl"
-	"sof-cnl-nocodec\;sof-cnl-nocodec"
-	"sof-cml-rt5682-max98357a\;sof-cml-rt5682-max98357a\;-DPLATFORM=cml"
-	"sof-cml-demux-rt5682-max98357a\;sof-cml-demux-rt5682-max98357a\;-DPLATFORM=cml"
-	"sof-cml-rt1011-rt5682\;sof-cml-rt1011-rt5682\;-DPLATFORM=cml"
-	"sof-tgl-nocodec\;sof-tgl-nocodec"
-	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308\;-DHDMI=1"
-	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-nohdmi"
-	"sof-imx8qxp-nocodec\;sof-imx8qxp-nocodec"
-	"sof-imx8qxp-cs42888\;sof-imx8qxp-cs42888"
-	"sof-imx8qxp-nocodec-sai\;sof-imx8qxp-nocodec-sai"
-	"sof-imx8qxp-wm8960\;sof-imx8qxp-wm8960"
-)
+	set(${OUT_STATUS} "${status}" PARENT_SCOPE)
 
-add_custom_target(topologies ALL)
+        # Some error messages have already been printed on stderr
+	if(NOT status EQUAL 0)
+	  message(WARNING "${ALSATPLG_CMD} --version returned status: ${status},
+${stdout}")
+	  return()
+	endif()
 
-foreach(tplg ${TPLGS})
-	list(GET tplg 0 input)
-	list(GET tplg 1 output)
-	list(LENGTH tplg tplg_len)
-	math(EXPR num_args "${tplg_len} - 1")
-	set(DEFINES "")
-	if (${num_args} GREATER 1)
-		foreach(index RANGE 2 ${num_args})
-			list(GET tplg ${index} custom_define)
-			list(APPEND DEFINES ${custom_define})
-		endforeach()
+	string(REPLACE "\n" ";" ALSA_VERSION_LIST ${stdout})
+	list(GET ALSA_VERSION_LIST 0 ALSATPLG_VERSION)
+	string(REGEX MATCH "[0-9]\.[0-9]\.*[0-9]*" ALSATPLG_VERSION_NUMBER ${ALSATPLG_VERSION})
+
+	set(${OUT_VERSION} "${ALSATPLG_VERSION_NUMBER}" PARENT_SCOPE)
+endfunction()
+
+
+# Being written in C, `alsatplg` silently ignores some invalid inputs
+# and produces an corrupt .tplg file instead of returning an error code
+# that fails the build.  For instance, alsatplg versions < 1.2.5 silently
+# corrupt `codec_consumer` and turn it into `codec_master` instead.
+# Longer story in #5192.
+alsatplg_version(STATUS ALSATPLG_VERSION_NUMBER)
+if(NOT STATUS EQUAL 0)
+	message(WARNING "${ALSATPLG_CMD} failed: ${STATUS}; all topologies skipped")
+	return()
+else()
+	if(${ALSATPLG_VERSION_NUMBER} VERSION_LESS "1.2.5")
+		message(WARNING "All topologies skipped: minimum alsatplg version 1.2.5,\
+ found ${ALSATPLG_VERSION_NUMBER}.")
+		return()
+	endif()
+	# success
+endif()
+
+
+# This use of VERBOSE relies on original CMake behavior.
+# From the add_custom_command() manual:
+#
+#    Use of VERBATIM is recommended as it enables correct behavior.
+#    When VERBATIM is not given the behavior is platform specific because
+#    there is no protection of tool-specific special characters.
+#
+# This is fine because:
+# - We don't expect alsatplg to work on Windows any time soon.
+# - CMake is too afraid to remove the original, no-VERBATIM behavior:
+#      https://gitlab.kitware.com/cmake/cmake/issues/18849
+#
+# Also note that in alsa-utils commit v1.2.2~15-gcbabe7a3f0cc, alsatplg
+# (accidentally?) started ignoring the verbosity level, now it's just
+# verbose or not.
+macro(add_alsatplg_command)
+	add_custom_command(
+		MAIN_DEPENDENCY ${ARGV0}
+		OUTPUT ${ARGV1}
+		# Warning: before alsa-utils fix 8e71fba810b87c,
+		# permissions are hardcoded and only the user can read
+		# the -o(utput) file.
+		# See bug https://github.com/alsa-project/alsa-utils/issues/126
+		COMMAND ${ALSATPLG_CMD} \$\${VERBOSE:+-v 1} -c ${ARGV0} -o ${ARGV1}
+		${TPLG_USES_TERMINAL}
+	)
+endmacro()
+
+macro(add_alsatplg2_command conf_header conf_target input_name output_name include_path)
+	# command line definitions are optional
+	# Set defines if there is an optional argument
+	if (${ARGC} GREATER 5)
+		set (defines ${ARGV5})
+	else()
+		set (defines "")
 	endif()
 
 	add_custom_command(
-		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf
-		COMMAND m4
-			${DEFINES}
-			-I ${CMAKE_CURRENT_SOURCE_DIR}/m4
-			-I ${CMAKE_CURRENT_SOURCE_DIR}/common
-			-I ${CMAKE_CURRENT_SOURCE_DIR}/platform/common
-			-I ${CMAKE_CURRENT_SOURCE_DIR}
-			-I ${CMAKE_CURRENT_BINARY_DIR}
-			${CMAKE_CURRENT_SOURCE_DIR}/common/abi.m4
-			${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
-			> ${output}.conf
-		DEPENDS abi
-		VERBATIM
-		USES_TERMINAL
-	)
+		MAIN_DEPENDENCY ${input_name}.conf
+		# The conf_header file is the real dependency that
+		# triggers a rebuild. conf_target is the target that
+		# avoids a race to rebuild conf_header. See the CMake FAQ
+		# or (better) Sam Thursfield's blog about custom
+		# targets.
+		DEPENDS ${conf_header} ${conf_target}
+		OUTPUT ${output_name}.tplg
 
-	add_custom_command(
-		OUTPUT ${output}.tplg
-		COMMAND alsatplg -v 1 -c ${output}.conf -o ${output}.tplg
-		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${output}.conf
-		VERBATIM
-		USES_TERMINAL
-	)
+		COMMAND cat ${conf_header} ${input_name}.conf > ${output_name}.conf
 
-	add_custom_target(topology_${output} DEPENDS ${output}.tplg)
-	add_dependencies(topologies topology_${output})
-endforeach()
+		# -p to pre-process Topology2.0 conf file
+		COMMAND ALSA_CONFIG_DIR=${CMAKE_SOURCE_DIR}/topology/topology2 ${ALSATPLG_CMD} \$\${VERBOSE:+-v 1}
+		        -I ${include_path} -D "'${defines}'" -p -c ${output_name}.conf -o ${output_name}.tplg
+		${TPLG_USES_TERMINAL}
+		)
+endmacro()
+
+
+add_custom_target(topologies ALL)
+add_dependencies(topologies topologies1)
+
+add_subdirectory(topology1)
+add_subdirectory(topology2)

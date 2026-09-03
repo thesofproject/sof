@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2024 Google LLC.  All rights reserved.
+ * Author: Andy Ross <andyross@google.com>
+ */
+#ifndef _SOF_PLATFORM_MTK_LIB_MAILBOX_H
+#define _SOF_PLATFORM_MTK_LIB_MAILBOX_H
+
+#include "memory.h"
+
+#define MAILBOX_DSPBOX_BASE MTK_IPC_WIN_BASE(UPBOX)
+#define MAILBOX_DSPBOX_SIZE MTK_IPC_WIN_SIZE(UPBOX)
+
+#define MAILBOX_HOSTBOX_BASE MTK_IPC_WIN_BASE(DOWNBOX)
+#define MAILBOX_HOSTBOX_SIZE MTK_IPC_WIN_SIZE(DOWNBOX)
+
+#define MAILBOX_STREAM_BASE MTK_IPC_WIN_BASE(STREAM)
+#define MAILBOX_STREAM_SIZE MTK_IPC_WIN_SIZE(STREAM)
+
+#endif /* _SOF_PLATFORM_MTK_LIB_MAILBOX_H */

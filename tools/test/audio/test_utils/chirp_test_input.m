@@ -69,8 +69,9 @@ fprintf('Using parameters Fs=%.1f, bits_in=%d', test.fs/1e3, test.bits_in);
 fprintf(', ch=%d', test.ch );
 fprintf(', Nch=%d\n', test.nch );
 
-test.fn_in = sprintf('chirp_test_in.%s', test.fmt);
-test.fn_out =  sprintf('chirp_test_out.%s', test.fmt);
+id = floor(rand(1,1) * 1e6);
+test.fn_in = sprintf('chirp_test_in_%d.%s', id, test.fmt);
+test.fn_out =  sprintf('chirp_test_out_%d.%s', id,  test.fmt);
 
 
 %% Chirp parameters

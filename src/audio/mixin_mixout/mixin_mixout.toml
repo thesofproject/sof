@@ -1,0 +1,88 @@
+#ifndef LOAD_TYPE
+#define LOAD_TYPE "0"
+#endif
+
+	[[module.entry]]
+	name = "MIXIN"
+	uuid = UUIDREG_STR_MIXIN
+	affinity_mask = "0x1"
+	instance_count = "30"
+	domain_types = "0"
+	load_type = LOAD_TYPE
+	module_type = "1"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0,   0,   0xfeef, 0xc,  0x8,   0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+		   1, 0, 0xfeef, 0xc, 0x8, 0x45ff]
+
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+#if CONFIG_METEORLAKE
+	mod_cfg = [0, 0, 0, 0, 296, 4996000, 384, 384, 0, 4996, 0,
+			1, 0, 0, 0, 296, 2652000, 384, 384, 0, 2652, 0,
+			2, 0, 0, 0, 296, 2928000, 512, 512, 0, 2928, 0,
+			3, 0, 0, 0, 296, 2572000, 128, 128, 0, 2572, 0,
+			4, 0, 0, 0, 296, 3760000, 1536, 1536, 0, 3760, 0]
+#elif CONFIG_LUNARLAKE
+	mod_cfg = [0, 0, 0, 0, 296, 2336000, 384, 384, 0, 2336, 0,
+			1, 0, 0, 0, 296, 2344000, 384, 384, 0, 2344, 0,
+			2, 0, 0, 0, 296, 2448000, 512, 512, 0, 2448, 0,
+			3, 0, 0, 0, 296, 2160000, 128, 128, 0, 2160, 0,
+			4, 0, 0, 0, 296, 3268000, 1536, 1536, 0, 3268, 0]
+#elif CONFIG_SOC_ACE30 || CONFIG_SOC_ACE40
+	mod_cfg = [0, 0, 0, 0, 296, 5091000, 384, 384, 0, 5091, 0,
+			1, 0, 0, 0, 296, 5111000, 384, 384, 0, 5111, 0,
+			2, 0, 0, 0, 296, 5195000, 512, 512, 0, 5195, 0,
+			3, 0, 0, 0, 296, 5219000, 128, 128, 0, 5219, 0,
+			4, 0, 0, 0, 296, 5631000, 1536, 1536, 0, 5631, 0]
+#endif
+
+	index = __COUNTER__
+
+	[[module.entry]]
+	name = "MIXOUT"
+	uuid = UUIDREG_STR_MIXOUT
+	affinity_mask = "0x1"
+	instance_count = "30"
+	domain_types = "0"
+	load_type = LOAD_TYPE
+	module_type = "2"
+	auto_start = "0"
+	sched_caps = [1, 0x00008000]
+
+	REM # pin = [dir, type, sample rate, size, container, channel-cfg]
+	pin = [0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			0, 0, 0xfeef, 0xc, 0x8, 0x45ff,
+			1, 0, 0xfeef, 0xc, 0x8, 0x45ff]
+
+	REM # mod_cfg [PAR_0 PAR_1 PAR_2 PAR_3 IS_BYTES CPS IBS OBS MOD_FLAGS CPC OBLS]
+#if CONFIG_METEORLAKE
+	mod_cfg = [0, 0, 0, 0, 520, 2280000, 384, 384, 0, 2280, 0,
+			1, 0, 0, 0, 520, 1988000, 384, 384, 0, 1988, 0,
+			2, 0, 0, 0, 520, 7631000, 512, 512, 0, 7631, 0,
+			3, 0, 0, 0, 520, 1953000, 128, 128, 0, 1953, 0,
+			4, 0, 0, 0, 520, 2301000, 1536, 1536, 0, 2301, 0]
+#elif CONFIG_LUNARLAKE
+	mod_cfg = [0, 0, 0, 0, 520, 2280000, 384, 384, 0, 0, 0,
+			1, 0, 0, 0, 520, 1988000, 384, 384, 0, 0, 0,
+			2, 0, 0, 0, 520, 7631000, 512, 512, 0, 0, 0,
+			3, 0, 0, 0, 520, 1953000, 128, 128, 0, 0, 0,
+			4, 0, 0, 0, 520, 2301000, 1536, 1536, 0, 0, 0]
+#elif CONFIG_SOC_ACE30 || CONFIG_SOC_ACE40
+	mod_cfg = [0, 0, 0, 0, 520, 3999000, 384, 384, 0, 3999, 0,
+			1, 0, 0, 0, 520, 3999000, 384, 384, 0, 3999, 0,
+			2, 0, 0, 0, 520, 4055000, 512, 512, 0, 4055, 0,
+			3, 0, 0, 0, 520, 3987000, 128, 128, 0, 3987, 0,
+			4, 0, 0, 0, 520, 2273000, 1536, 1536, 0, 2273, 0]
+#endif
+
+	index = __COUNTER__

@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config IMX_EDMA
+	bool "i.MX EDMA driver"
+	default n
+	depends on IMX
+	help
+	  Select this to enable support for i.MX EDMA DMA controller.
+
+config IMX_SDMA
+	bool "i.MX SDMA driver"
+	default n
+	depends on IMX
+	help
+	  Select this to enable support for i.MX SDMA DMA controller.
+
+config IMX_ESAI
+	bool "i.MX ESAI driver"
+	default n
+	depends on IMX
+	help
+	  Select this to enable support for i.MX ESAI IP.
+
+config IMX_MICFIL
+	bool "i.MX MICFIL PDM driver"
+	default n
+	depends on IMX
+	select HAVE_SDMA_FIRMWARE
+	help
+	  Select this to enable support for i.MX MICFIL PDM IP. This block implements
+	  the required digital interface to provide a 24-bits audio signal from a PDM
+	  microphone bitstream in a configurable output sampling rate
+
+config IMX_INTERRUPT_IRQSTEER
+	bool
+	default n
+	help
+	  This has to be selected for i.MX NXP platform that have irqsteer.
+	  It enables NXP platforms-specific features.
+
+config IMX_INTERRUPT_GENERIC
+	bool
+	default n
+	help
+	  This has to be selected for i.MX NXP platform that do not have irqsteer.
+	  It enables NXP platforms-specific features.
+
+config HAVE_SDMA_FIRMWARE
+	bool "Enable SDMA firmware load"
+	default n
+	help
+	  Select this to load SDMA firmware to enable additional functionality
+          for SDMA controller.

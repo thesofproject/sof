@@ -1,137 +1,162 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2018-2024 Intel Corporation. All rights reserved.
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <sof/drivers/ipc.h>
+#include <sof/audio/module_adapter/module/generic.h>
+#include <sof/ipc/driver.h>
+#include <sof/ipc/topology.h>
 #include <sof/list.h>
-#include <getopt.h>
-#include <dlfcn.h>
-#include "testbench/common_test.h"
 #include <tplg_parser/topology.h>
+
 #include "testbench/trace.h"
 #include "testbench/file.h"
+#include "testbench/utils.h"
 
-#define TESTBENCH_NCH 2 /* Stereo */
+#include <ctype.h>
+#include <getopt.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <time.h>
 
-/* shared library look up table */
-struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
-	{"file", "", SND_SOC_TPLG_DAPM_AIF_IN, 0, NULL},
-	{"vol", "libsof_volume.so", SND_SOC_TPLG_DAPM_PGA, 0, NULL},
-	{"src", "libsof_src.so", SND_SOC_TPLG_DAPM_SRC, 0, NULL},
-};
-
-/* main firmware context */
-static struct sof sof;
-static int fr_id; /* comp id for fileread */
-static int fw_id; /* comp id for filewrite */
-static int sched_id; /* comp id for scheduling comp */
-
-/* compatible variables, not used */
-intptr_t _comp_init_start, _comp_init_end;
+#define TESTBENCH_NCH	2
 
 /*
- * Parse shared library from user input
- * Currently only handles volume and src comp
- * This function takes in the libraries to be used as an input in the format:
- * "vol=libsof_volume.so,src=libsof_src.so,..."
- * The function parses the above string to identify the following:
- * component type and the library name and sets up the library handle
- * for the component and stores it in the shared library table
+ * Parse output filenames from user input
+ * This function takes in the output filenames as an input in the format:
+ * "output_file1,output_file2,..."
+ * The max supported output filename number is 4, min is 1.
  */
-static void parse_libraries(char *libs)
+static int parse_output_files(char *outputs, struct testbench_prm *tp)
 {
-	char *lib_token = NULL;
-	char *comp_token = NULL;
-	char *token = strtok_r(libs, ",", &lib_token);
+	char *output_token = NULL;
+	char *token = strtok_r(outputs, ",", &output_token);
 	int index;
 
-	while (token) {
+	for (index = 0; index < TB_MAX_OUTPUT_FILE_NUM && token; index++) {
+		/* get output file name with current index */
+		tp->output_file[index] = strdup(token);
 
-		/* get component type */
-		char *token1 = strtok_r(token, "=", &comp_token);
-
-		/* get shared library index from library table */
-		index = get_index_by_name(token1, lib_table);
-
-		if (index < 0) {
-			fprintf(stderr, "error: unsupported comp type\n");
-			break;
-		}
-
-		/* get shared library name */
-		token1 = strtok_r(NULL, "=", &comp_token);
-		if (!token1)
-			break;
-
-		/* set to new name that may be used while loading */
-		strncpy(lib_table[index].library_name, token1,
-			MAX_LIB_NAME_LEN - 1);
-
-		/* next library */
-		token = strtok_r(NULL, ",", &lib_token);
+		/* next output */
+		token = strtok_r(NULL, ",", &output_token);
 	}
+
+	if (index == TB_MAX_OUTPUT_FILE_NUM && token) {
+		fprintf(stderr, "error: max output file number is %d\n",
+			TB_MAX_OUTPUT_FILE_NUM);
+		for (index = 0; index < TB_MAX_OUTPUT_FILE_NUM; index++)
+			free(tp->output_file[index]);
+		return -EINVAL;
+	}
+
+	/* set total output file number */
+	tp->output_file_num = index;
+	return 0;
+}
+
+/*
+ * Parse inputfilenames from user input
+ */
+static int parse_input_files(char *inputs, struct testbench_prm *tp)
+{
+	char *input_token = NULL;
+	char *token = strtok_r(inputs, ",", &input_token);
+	int index;
+
+	for (index = 0; index < TB_MAX_INPUT_FILE_NUM && token; index++) {
+		/* get input file name with current index */
+		tp->input_file[index] = strdup(token);
+
+		/* next input */
+		token = strtok_r(NULL, ",", &input_token);
+	}
+
+	if (index == TB_MAX_INPUT_FILE_NUM && token) {
+		fprintf(stderr, "error: max input file number is %d\n",
+			TB_MAX_INPUT_FILE_NUM);
+		for (index = 0; index < TB_MAX_INPUT_FILE_NUM; index++)
+			free(tp->input_file[index]);
+		return -EINVAL;
+	}
+
+	/* set total input file number */
+	tp->input_file_num = index;
+	return 0;
+}
+
+static int parse_pipelines(char *pipelines, struct testbench_prm *tp)
+{
+	char *output_token = NULL;
+	char *token = strtok_r(pipelines, ",", &output_token);
+	int index;
+
+	for (index = 0; index < TB_MAX_OUTPUT_FILE_NUM && token; index++) {
+		/* get output file name with current index */
+		tp->pipelines[index] = atoi(token);
+
+		/* next output */
+		token = strtok_r(NULL, ",", &output_token);
+	}
+
+	if (index == TB_MAX_OUTPUT_FILE_NUM && token) {
+		fprintf(stderr, "error: max output file number is %d\n",
+			TB_MAX_OUTPUT_FILE_NUM);
+		return -EINVAL;
+	}
+
+	/* set total output file number */
+	tp->pipeline_num = index;
+	return 0;
 }
 
 /* print usage for testbench */
 static void print_usage(char *executable)
 {
-	printf("Usage: %s -i <input_file> -o <output_file> ", executable);
-	printf("-t <tplg_file> -b <input_format> ");
-	printf("-a <comp1=comp1_library,comp2=comp2_library>\n");
-	printf("input_format should be S16_LE, S32_LE, S24_LE or FLOAT_LE\n");
+	printf("Usage: %s <options> -i <input_file> ", executable);
+	printf("-o <output_file1,output_file2,...>\n\n");
+	printf("Options for processing:\n");
+	printf("  -t <topology file>\n\n");
+	printf("Options to control test:\n");
+	printf("  -d <level> Sets the traces print level:\n");
+	printf("     0 all traces are suppressed\n");
+	printf("     1 shows error traces\n");
+	printf("     2 shows warning traces and previous\n");
+	printf("     3 shows info traces and previous\n");
+	printf("     4 shows debug traces and previous, plus other testbench  debug messages\n");
+	printf("  -p <pipeline1,pipeline2,...>\n");
+	printf("  -C <number of copy() iterations>\n");
+	printf("  -P <number of dynamic pipeline iterations>\n");
+	printf("  -s <script file to set controls, with amixer and sleep commands>\n\n");
+	printf("Options for input and output format override:\n");
+	printf("  -b <input_format>, S16_LE, S24_LE, or S32_LE\n");
+	printf("  -c <input channels>\n");
+	printf("  -n <output channels>\n");
+	printf("  -r <input rate>\n");
+	printf("  -R <output rate>\n\n");
+	printf("Help:\n");
+	printf("  -h\n\n");
 	printf("Example Usage:\n");
-	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
-	printf("-r 48000 -R 96000 ");
-	printf("-b S16_LE -a vol=libsof_volume.so\n");
+	printf("%s -r 48000 -c 2 -b S16_LE -i in.raw -o out.raw -t <test.tplg>\n\n", executable);
 }
 
-/* free components */
-static void free_comps(void)
-{
-	struct list_item *clist;
-	struct list_item *temp;
-	struct ipc_comp_dev *icd = NULL;
-
-	list_for_item_safe(clist, temp, &sof.ipc->shared_ctx->comp_list) {
-		icd = container_of(clist, struct ipc_comp_dev, list);
-		switch (icd->type) {
-		case COMP_TYPE_COMPONENT:
-			comp_free(icd->cd);
-			list_item_del(&icd->list);
-			rfree(icd);
-			break;
-		case COMP_TYPE_BUFFER:
-			rfree(icd->cb->addr);
-			rfree(icd->cb);
-			list_item_del(&icd->list);
-			rfree(icd);
-			break;
-		default:
-			rfree(icd->pipeline);
-			list_item_del(&icd->list);
-			rfree(icd);
-			break;
-		}
-	}
-}
-
-static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
+static int parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 {
 	int option = 0;
+	int ret = 0;
 
-	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:")) != -1) {
+	while ((option = getopt(argc, argv, "hd:i:o:t:b:r:R:c:n:C:P:p:s:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
-			tp->input_file = strdup(optarg);
+			ret = parse_input_files(optarg, tp);
 			break;
 
-		/* output sample file */
+		/* output sample files */
 		case 'o':
-			tp->output_file = strdup(optarg);
+			ret = parse_output_files(optarg, tp);
 			break;
 
 		/* topology file */
@@ -142,11 +167,7 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 		/* input samples bit format */
 		case 'b':
 			tp->bits_in = strdup(optarg);
-			break;
-
-		/* override default libraries */
-		case 'a':
-			parse_libraries(optarg);
+			tp->frame_fmt = tplg_find_format(tp->bits_in);
 			break;
 
 		/* input sample rate */
@@ -159,140 +180,354 @@ static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 			tp->fs_out = atoi(optarg);
 			break;
 
-		/* enable debug prints */
+		/* input/output channels */
+		case 'c':
+			tp->channels_in = atoi(optarg);
+			break;
+
+		/* output channels */
+		case 'n':
+			tp->channels_out = atoi(optarg);
+			break;
+
+		/* set debug log level */
 		case 'd':
-			debug = 1;
+			if (isdigit((int)*optarg)) {
+				tp->trace_level = atoi(optarg);
+			} else {
+				fprintf(stderr, "Error: Debug level must be a digit.\n");
+				print_usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
+			break;
+
+		/* number of pipeline copy() iterations */
+		case 'C':
+			tp->copy_iterations = atoi(optarg);
+			tp->copy_check = true;
+			break;
+
+		/* number of dynamic pipeline iterations */
+		case 'P':
+			tp->dynamic_pipeline_iterations = atoi(optarg);
+			break;
+
+		/* output sample files */
+		case 'p':
+			ret = parse_pipelines(optarg, tp);
+			break;
+
+		/* control script file name */
+		case 's':
+			tp->control_file = strdup(optarg);
 			break;
 
 		/* print usage */
 		case 'h':
-		default:
 			print_usage(argv[0]);
-			exit(EXIT_FAILURE);
+			exit(EXIT_SUCCESS);
+
+		default:
+			fprintf(stderr, "unknown option %c\n", option);
+			print_usage(argv[0]);
+			ret = -EINVAL;
 		}
+
+		if (ret < 0)
+			return ret;
 	}
+
+	return ret;
+}
+
+static void test_pipeline_stats(struct testbench_prm *tp, long long delta_t,
+				struct tb_heap_usage_record *heap_records,
+				int heap_records_count)
+{
+	long long file_cycles, pipeline_cycles;
+	float pipeline_mcps;
+	int n_in, n_out, frames_out;
+	int i;
+	int count = 1;
+
+	n_out = 0;
+	n_in = 0;
+	file_cycles = 0;
+	for (i = 0; i < tp->input_file_num; i++) {
+		if (tp->fr[i].id < 0)
+			continue;
+
+		n_in += tp->fr[i].state->n;
+		file_cycles += tp->fr[i].state->cycles_count;
+	}
+
+	for (i = 0; i < tp->output_file_num; i++) {
+		if (tp->fw[i].id < 0)
+			continue;
+
+		n_out += tp->fw[i].state->n;
+		file_cycles += tp->fw[i].state->cycles_count;
+	}
+
+	/* print test summary */
+	printf("==========================================================\n");
+	printf("		           Test Summary %d\n", count);
+	printf("==========================================================\n");
+
+	for (i = 0; i < tp->pipeline_num; i++) {
+		printf("pipeline %d\n", tp->pipelines[i]);
+		tb_show_file_stats(tp, tp->pipelines[i]);
+	}
+
+	printf("Input bit format: %s\n", tp->bits_in);
+	printf("Input sample rate: %d\n", tp->fs_in);
+	printf("Output sample rate: %d\n", tp->fs_out);
+
+	frames_out = n_out / tp->channels_out;
+	printf("Input sample (frame) count: %d (%d)\n", n_in, n_in / tp->channels_in);
+	printf("Output sample (frame) count: %d (%d)\n", n_out, frames_out);
+	if (heap_records_count > 0) {
+		for (i = 0; i < heap_records_count; i++)
+			printf("Heap usage for module %s: %u bytes\n",
+			       heap_records[i].module_name, (uint32_t)heap_records[i].heap_max);
+	}
+
+	printf("\n");
+	if (tp->total_cycles) {
+		pipeline_cycles = tp->total_cycles - file_cycles;
+		pipeline_mcps = (float)pipeline_cycles * tp->fs_out / frames_out / 1e6;
+		if (tb_check_trace(LOG_LEVEL_DEBUG))
+			printf("Warning: Use -d 3 or smaller value to avoid traces to increase MCPS.\n");
+
+		printf("Total execution cycles: %lld\n", tp->total_cycles);
+		printf("File component cycles: %lld\n", file_cycles);
+		printf("Pipeline cycles: %lld\n", pipeline_cycles);
+		printf("Pipeline MCPS: %6.2f\n\n", pipeline_mcps);
+	}
+
+	if (delta_t)
+		printf("Total execution time: %lld us, %.2f x realtime\n\n", delta_t,
+		       (float)frames_out / tp->fs_out * 1000000 / delta_t);
+}
+
+/*
+ * Tester thread, one for each virtual core. This is NOT the thread that will
+ * execute the virtual core.
+ */
+static int pipline_test(struct testbench_prm *tp)
+{
+	struct tb_heap_usage_record heap_usage_records[TB_NUM_WIDGETS_SUPPORTED];
+	struct file_state *out_stat;
+	struct timespec td0 = {0}, td1 = {0};
+	long long delta_t = 0;
+	int64_t next_control_ns;
+	int64_t time_ns;
+	float samples_to_ns;
+	int err;
+	int heap_usage_records_count = 0;
+	int dp_count = 0;
+
+	/* build, run and teardown pipelines */
+	while (dp_count < tp->dynamic_pipeline_iterations) {
+		fprintf(stdout, "pipeline run %d/%d\n", dp_count,
+			tp->dynamic_pipeline_iterations);
+
+		/* print test summary */
+		printf("==========================================================\n");
+		printf("		           Test Start %d\n", dp_count);
+		printf("==========================================================\n");
+
+		err = tb_load_topology(tp);
+		if (err < 0) {
+			fprintf(stderr, "error: topology load %d failed %d\n", dp_count, err);
+			break;
+		}
+
+		err = tb_set_up_all_pipelines(tp);
+		if (err < 0) {
+			fprintf(stderr, "error: pipelines set up %d failed %d\n", dp_count, err);
+			break;
+		}
+
+		err = tb_set_running_state(tp);
+		if (err < 0) {
+			fprintf(stderr, "error: pipelines state set %d failed %d\n", dp_count, err);
+			break;
+		}
+
+		err = tb_find_file_components(tp); /* Track file comp status during copying */
+		if (err < 0) {
+			fprintf(stderr, "error: file component find failed %d\n", err);
+			break;
+		}
+
+		/* Use first file writer to create simulation time. Calculate coefficient
+		 * to calculate current time from file write samples count
+		 */
+		out_stat = tp->fw[0].state;
+		samples_to_ns = 1.0e9 / ((float)out_stat->channels * out_stat->rate);
+
+		/* Apply initial controls time to call again controls handler */
+		err = tb_read_controls(tp, &next_control_ns);
+		if (err) {
+			fprintf(stderr, "error: failed to read control commands.\n");
+			goto out;
+		}
+
+		tb_gettime(&td0);
+
+		while (true) {
+			if (tp->copy_check) {
+				if (tp->copy_iterations-- <= 0)
+					break;
+			}
+
+			if (tb_schedule_pipeline_check_state(tp))
+				break;
+
+			if (next_control_ns) {
+				time_ns = (int64_t)(samples_to_ns * out_stat->n);
+				if (time_ns >= next_control_ns) {
+					err = tb_read_controls(tp, &next_control_ns);
+					if (err) {
+						fprintf(stderr,
+							"error: failed to read control commands.\n");
+						goto out;
+					}
+
+					if (next_control_ns)
+						next_control_ns += time_ns;
+				}
+			}
+		}
+
+		tb_schedule_pipeline_check_state(tp); /* Once more to flush out remaining data */
+		tb_gettime(&td1);
+		delta_t = (td1.tv_sec - td0.tv_sec) * 1000000;
+		delta_t += (td1.tv_nsec - td0.tv_nsec) / 1000;
+		tb_collect_heap_usage(tp, heap_usage_records, &heap_usage_records_count);
+
+out:
+		err = tb_set_reset_state(tp);
+		if (err < 0) {
+			fprintf(stderr, "error: pipeline reset %d failed %d\n",
+				dp_count, err);
+			break;
+		}
+
+		test_pipeline_stats(tp, delta_t, heap_usage_records, heap_usage_records_count);
+
+		err = tb_free_all_pipelines(tp);
+		if (err < 0) {
+			fprintf(stderr, "error: free pipelines %d failed %d\n", dp_count, err);
+			break;
+		}
+
+		tb_free_topology(tp);
+		dp_count++;
+	}
+
+	return 0;
 }
 
 int main(int argc, char **argv)
 {
-	struct testbench_prm tp;
-	struct ipc_comp_dev *pcm_dev;
-	struct pipeline *p;
-	struct sof_ipc_pipe_new *ipc_pipe;
-	struct comp_dev *cd;
-	struct file_comp_data *frcd, *fwcd;
-	char pipeline[DEBUG_MSG_LEN];
-	clock_t tic, toc;
-	double c_realtime, t_exec;
-	int n_in, n_out, ret;
-	int i;
+	struct testbench_prm *tp;
+	int i, ret;
+
+	tp = calloc(1, sizeof(struct testbench_prm));
+	if (!tp)
+		return EXIT_FAILURE;
 
 	/* initialize input and output sample rates, files, etc. */
-	tp.fs_in = 0;
-	tp.fs_out = 0;
-	tp.bits_in = 0;
-	tp.input_file = NULL;
-	tp.output_file = NULL;
+	tp->channels_in = TESTBENCH_NCH;
+	tp->copy_check = false;
+	tp->dynamic_pipeline_iterations = 1;
+	tp->pipeline_string = calloc(1, TB_DEBUG_MSG_LEN);
+	tp->pipelines[0] = 1;
+	tp->pipeline_num = 1;
+	tp->copy_iterations = 1;
+	tp->trace_level = LOG_LEVEL_INFO;
 
 	/* command line arguments*/
-	parse_input_args(argc, argv, &tp);
+	ret = parse_input_args(argc, argv, tp);
+	if (ret < 0)
+		goto out;
 
-	/* check args */
-	if (!tp.tplg_file || !tp.input_file || !tp.output_file || !tp.bits_in) {
+	if (!tp->channels_out)
+		tp->channels_out = tp->channels_in;
+
+	if (!tp->fs_out)
+		tp->fs_out = tp->fs_in;
+
+	/* check mandatory args */
+	if (!tp->tplg_file) {
+		fprintf(stderr, "topology file not specified, use -t file.tplg\n");
 		print_usage(argv[0]);
-		exit(EXIT_FAILURE);
+		ret = EXIT_FAILURE;
+		goto out;
+	}
+
+	if (!tp->input_file_num) {
+		fprintf(stderr, "input files not specified, use -i file1,file2\n");
+		print_usage(argv[0]);
+		ret = EXIT_FAILURE;
+		goto out;
+	}
+
+	if (!tp->output_file_num) {
+		fprintf(stderr, "output files not specified, use -o file1,file2\n");
+		print_usage(argv[0]);
+		ret = EXIT_FAILURE;
+		goto out;
+	}
+
+	if (!tp->bits_in) {
+		fprintf(stderr, "input format not specified, use -b format\n");
+		print_usage(argv[0]);
+		ret = EXIT_FAILURE;
+		goto out;
 	}
 
 	/* initialize ipc and scheduler */
-	if (tb_pipeline_setup(&sof) < 0) {
+	if (tb_setup(sof_get(), tp) < 0) {
 		fprintf(stderr, "error: pipeline init\n");
-		exit(EXIT_FAILURE);
+		ret = EXIT_FAILURE;
+		goto out;
 	}
 
-	/* parse topology file and create pipeline */
-	if (parse_topology(&sof, lib_table, &tp, &fr_id, &fw_id, &sched_id,
-			   pipeline) < 0) {
-		fprintf(stderr, "error: parsing topology\n");
-		exit(EXIT_FAILURE);
+	if (tp->control_file) {
+		tp->control_fh = fopen(tp->control_file, "r");
+		if (!tp->control_fh) {
+			fprintf(stderr, "error: opening script %s (%s).\n",
+				tp->control_file, strerror(errno));
+			ret = -errno;
+			goto out;
+		}
 	}
 
-	/* Get pointers to fileread and filewrite */
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, fw_id);
-	fwcd = comp_get_drvdata(pcm_dev->cd);
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, fr_id);
-	frcd = comp_get_drvdata(pcm_dev->cd);
+	/* build, run and teardown pipelines */
+	pipline_test(tp);
 
-	/* Run pipeline until EOF from fileread */
-	pcm_dev = ipc_get_comp_by_id(sof.ipc, sched_id);
-	p = pcm_dev->cd->pipeline;
-	ipc_pipe = &p->ipc_pipe;
+	/* free other core FW services */
+	tb_free(sof_get());
+	ret = EXIT_SUCCESS;
 
-	/* input and output sample rate */
-	if (!tp.fs_in)
-		tp.fs_in = ipc_pipe->period * ipc_pipe->frames_per_sched;
-
-	if (!tp.fs_out)
-		tp.fs_out = ipc_pipe->period * ipc_pipe->frames_per_sched;
-
-	/* set pipeline params and trigger start */
-	if (tb_pipeline_start(sof.ipc, TESTBENCH_NCH, ipc_pipe, &tp) < 0) {
-		fprintf(stderr, "error: pipeline params\n");
-		exit(EXIT_FAILURE);
-	}
-
-	cd = pcm_dev->cd;
-	tb_enable_trace(false); /* reduce trace output */
-	tic = clock();
-
-	while (frcd->fs.reached_eof == 0)
-		pipeline_schedule_copy(p, 0);
-
-	if (!frcd->fs.reached_eof)
-		printf("warning: possible pipeline xrun\n");
-
-	/* reset and free pipeline */
-	toc = clock();
-	tb_enable_trace(true);
-	ret = pipeline_reset(p, cd);
-	if (ret < 0) {
-		fprintf(stderr, "error: pipeline reset\n");
-		exit(EXIT_FAILURE);
-	}
-
-	n_in = frcd->fs.n;
-	n_out = fwcd->fs.n;
-	t_exec = (double)(toc - tic) / CLOCKS_PER_SEC;
-	c_realtime = (double)n_out / TESTBENCH_NCH / tp.fs_out / t_exec;
-
-	/* free all components/buffers in pipeline */
-	free_comps();
-
-	/* print test summary */
-	printf("==========================================================\n");
-	printf("		           Test Summary\n");
-	printf("==========================================================\n");
-	printf("Test Pipeline:\n");
-	printf("%s\n", pipeline);
-	printf("Input bit format: %s\n", tp.bits_in);
-	printf("Input sample rate: %d\n", tp.fs_in);
-	printf("Output sample rate: %d\n", tp.fs_out);
-	printf("Output written to file: \"%s\"\n", tp.output_file);
-	printf("Input sample count: %d\n", n_in);
-	printf("Output sample count: %d\n", n_out);
-	printf("Total execution time: %.2f us, %.2f x realtime\n",
-	       1e3 * t_exec, c_realtime);
-
+out:
 	/* free all other data */
-	free(tp.bits_in);
-	free(tp.input_file);
-	free(tp.tplg_file);
-	free(tp.output_file);
+	free(tp->bits_in);
+	free(tp->tplg_file);
+	free(tp->control_file);
+	if (tp->control_fh)
+		fclose(tp->control_fh);
 
-	/* close shared library objects */
-	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
-		if (lib_table[i].handle)
-			dlclose(lib_table[i].handle);
-	}
+	for (i = 0; i < tp->output_file_num; i++)
+		free(tp->output_file[i]);
 
-	return EXIT_SUCCESS;
+	for (i = 0; i < tp->input_file_num; i++)
+		free(tp->input_file[i]);
+
+	free(tp->pipeline_string);
+	free(tp);
+	return ret;
 }

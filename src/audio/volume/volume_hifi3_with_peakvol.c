@@ -1,0 +1,429 @@
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// Copyright(c) 2022 Intel Corporation. All rights reserved.
+//
+// Author: Andrula Song <andrula.song@intel.com>
+
+/**
+ * \file
+ * \brief Volume HiFi3 processing implementation with peak volume detection
+ * \authors Andrula Song <andrula.song@intel.com>
+ */
+
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/common.h>
+#include <ipc/stream.h>
+#include <stddef.h>
+#include <stdint.h>
+
+LOG_MODULE_DECLARE(volume_hifi3, CONFIG_SOF_LOG_LEVEL);
+
+#include "volume.h"
+
+#if SOF_USE_HIFI(3, VOLUME)
+
+#if CONFIG_COMP_PEAK_VOL
+
+#include <xtensa/tie/xt_hifi3.h>
+
+#if CONFIG_FORMAT_S24LE
+/**
+ * \brief HiFi3 enabled volume processing from 24/32 bit to 24/32 or 32 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment
+ */
+static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, uint32_t frames,
+			       uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 in_sample;
+	ae_f32x2 out_sample;
+	ae_f32x2 volume;
+	int channel, n, i, m;
+	ae_f32 *in0 = (void *)source->ptr;
+	ae_f32 *out0 = sink->ptr;
+	ae_f32 *in, *out;
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f32) * channels_count;
+	int samples = channels_count * frames;
+	ae_f32x2 peak_vol;
+	uint32_t *peak_meter = cd->peak_regs.peak_meter;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s32(in0, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(out0, sink->buf_end);
+		n = MIN(m, n);
+		for (channel = 0; channel < channels_count; channel++) {
+			peak_vol = AE_ZERO32();
+			/* set start address of sample load */
+			in = in0 + channel;
+			/* set start address of sample store */
+			out = out0  + channel;
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
+			for (i = 0; i < n; i += channels_count) {
+				/* Load the input sample */
+				AE_L32_XP(in_sample, in, inc);
+				/* calc peak vol */
+				peak_vol = AE_MAXABS32S(in_sample, peak_vol);
+
+				/* Multiply the input sample */
+#if COMP_VOLUME_Q8_16
+				out_sample = AE_MULFP32X2RS(AE_SLAI32S(volume, 7),
+							    AE_SLAI32(in_sample, 8));
+				out_sample = AE_SLAI32S(out_sample, 8);
+#elif COMP_VOLUME_Q1_23
+				out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
+				out_sample = AE_SLAI32S(out_sample, 8);
+#elif COMP_VOLUME_Q1_31
+				out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
+#endif
+
+				/* Shift to S24_LE */
+				out_sample = AE_SRAI32(out_sample, 8);
+				/* Store the output sample */
+				AE_S32_L_XP(out_sample, out, inc);
+			}
+			peak_vol = AE_SLAA32S(peak_vol, attenuation + PEAK_24S_32C_ADJUST);
+			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
+		}
+		samples -= n;
+		out0 = cir_buf_wrap(out0 + n, sink->buf_start, sink->buf_end);
+		in0 = cir_buf_wrap(in0 + n, source->buf_start, source->buf_end);
+	}
+}
+
+/**
+ * \brief HiFi3 enabled volume passthrough from 24/32 bit to 24/32 or 32 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment
+ */
+static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
+					   struct cir_buf_source *source,
+					   struct cir_buf_sink *sink, uint32_t frames,
+					   uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 in_sample;
+	int channel, n, i, m;
+	ae_f32 *in0 = (void *)source->ptr;
+	ae_f32 *out0 = sink->ptr;
+	ae_f32 *in, *out;
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f32) * channels_count;
+	int samples = channels_count * frames;
+	ae_f32x2 peak_vol;
+	uint32_t *peak_meter = cd->peak_regs.peak_meter;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s32(in0, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(out0, sink->buf_end);
+		n = MIN(m, n);
+		for (channel = 0; channel < channels_count; channel++) {
+			peak_vol = AE_ZERO32();
+			/* set start address of sample load */
+			in = in0 + channel;
+			/* set start address of sample store */
+			out = out0  + channel;
+			for (i = 0; i < n; i += channels_count) {
+				/* Load the input sample */
+				AE_L32_XP(in_sample, in, inc);
+				/* calc peak vol */
+				peak_vol = AE_MAXABS32S(in_sample, peak_vol);
+				/* Store the output sample */
+				AE_S32_L_XP(in_sample, out, inc);
+			}
+			peak_vol = AE_SLAA32S(peak_vol, attenuation + PEAK_24S_32C_ADJUST);
+			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
+		}
+		samples -= n;
+		out0 = cir_buf_wrap(out0 + n, sink->buf_start, sink->buf_end);
+		in0 = cir_buf_wrap(in0 + n, source->buf_start, source->buf_end);
+	}
+}
+#endif /* CONFIG_FORMAT_S24LE */
+
+#if CONFIG_FORMAT_S32LE
+/**
+ * \brief HiFi3 enabled volume processing from 32 bit to 24/32 or 32 bit.
+ * \param[in,out] mod Pointer to struct processing_module
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment
+ */
+static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, uint32_t frames,
+			       uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 in_sample;
+	ae_f32x2 out_sample;
+	ae_f32x2 volume;
+	int i, n, channel, m;
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f32) * channels_count;
+	int samples = channels_count * frames;
+	ae_f32 *in0 = (void *)source->ptr;
+	ae_f32 *out0 = sink->ptr;
+	ae_f32 *in, *out;
+	ae_f32x2 peak_vol;
+	uint32_t *peak_meter = cd->peak_regs.peak_meter;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s32(in0, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(out0, sink->buf_end);
+		n = MIN(m, n);
+		for (channel = 0; channel < channels_count; channel++) {
+			peak_vol = AE_ZERO32();
+			/* set start address of sample load */
+			in = in0 + channel;
+			/* set start address of sample store */
+			out = out0  + channel;
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
+			for (i = 0; i < n; i += channels_count) {
+				/* Load the input sample */
+				AE_L32_XP(in_sample, in, inc);
+				/* calc peak vol */
+				peak_vol = AE_MAXABS32S(in_sample, peak_vol);
+
+#if COMP_VOLUME_Q1_31
+				out_sample = AE_MULFP32X2RS(volume, in_sample);
+#else
+				/* With Q1.31 x Q1.31 -> Q17.47 HiFi multiplications the result is
+				 * Q8.16 x Q1.31 << 1 >> 16 -> Q9.32, shift left by 15 for Q17.47
+				 * Q1.23 x Q1.31 << 1 >> 16 -> Q2.39, shift left by 8 for Q17.47
+				 */
+				ae_f64 mult0 = AE_MULF32R_HH(volume, in_sample);
+
+				mult0 = AE_SLAI64(mult0, VOLUME_Q17_47_SHIFT);
+				out_sample = AE_ROUND32F48SSYM(mult0);	/* Q2.47 -> Q1.31 */
+#endif
+
+				AE_S32_L_XP(out_sample, out, inc);
+			}
+			peak_vol = AE_SLAA32S(peak_vol, attenuation);
+			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
+		}
+		samples -= n;
+		out0 = cir_buf_wrap(out0 + n, sink->buf_start, sink->buf_end);
+		in0 = cir_buf_wrap(in0 + n, source->buf_start, source->buf_end);
+	}
+}
+
+/**
+ * \brief HiFi3 enabled volume passthrough from 32 bit to 24/32 or 32 bit.
+ * \param[in,out] mod Pointer to struct processing_module
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment
+ */
+static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
+					   struct cir_buf_source *source,
+					   struct cir_buf_sink *sink, uint32_t frames,
+					   uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 in_sample;
+	int i, n, channel, m;
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f32) * channels_count;
+	int samples = channels_count * frames;
+	ae_f32 *in0 = (void *)source->ptr;
+	ae_f32 *out0 = sink->ptr;
+	ae_f32 *in, *out;
+	ae_f32x2 peak_vol;
+	uint32_t *peak_meter = cd->peak_regs.peak_meter;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s32(in0, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(out0, sink->buf_end);
+		n = MIN(m, n);
+		for (channel = 0; channel < channels_count; channel++) {
+			peak_vol = AE_ZERO32();
+			/* set start address of sample load */
+			in = in0 + channel;
+			/* set start address of sample store */
+			out = out0  + channel;
+			for (i = 0; i < n; i += channels_count) {
+				/* Load the input sample */
+				AE_L32_XP(in_sample, in, inc);
+				/* calc peak vol */
+				peak_vol = AE_MAXABS32S(in_sample, peak_vol);
+
+				AE_S32_L_XP(in_sample, out, inc);
+			}
+			peak_vol = AE_SLAA32S(peak_vol, attenuation);
+			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
+		}
+		samples -= n;
+		out0 = cir_buf_wrap(out0 + n, sink->buf_start, sink->buf_end);
+		in0 = cir_buf_wrap(in0 + n, source->buf_start, source->buf_end);
+	}
+}
+#endif /* CONFIG_FORMAT_S32LE */
+
+#if CONFIG_FORMAT_S16LE
+/**
+ * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused for 16bit)
+ */
+static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames,
+			   uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 volume;
+	ae_f32x2 out_sample0;
+	ae_f16x4 in_sample;
+	ae_f16x4 out_sample;
+	int i, n, channel, m;
+	ae_f16 *in;
+	ae_f16 *out;
+	ae_f16 *in0 = (void *)source->ptr;
+	ae_f16 *out0 = sink->ptr;
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f16) * channels_count;
+	int samples = channels_count * frames;
+	ae_f32x2 peak_vol;
+	uint32_t *peak_meter = cd->peak_regs.peak_meter;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s16(in0, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s16(out0, sink->buf_end);
+		n = MIN(m, n);
+		for (channel = 0; channel < channels_count; channel++) {
+			peak_vol = AE_ZERO32();
+			/* set start address of sample load */
+			in = in0 + channel;
+			/* set start address of sample store */
+			out = out0  + channel;
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
+#if COMP_VOLUME_Q8_16
+			/* Shift Q8.16 to Q9.23
+			 * No need to shift Q1.23, it is OK as such
+			 */
+			volume = AE_SLAI32S(volume, 7);
+#endif
+			for (i = 0; i < n; i += channels_count) {
+				/* Load the input sample */
+				AE_L16_XP(in_sample, in, inc);
+
+				/* calc peak vol */
+				peak_vol = AE_MAXABS32S(AE_SEXT32X2D16_32(in_sample), peak_vol);
+				/* Multiply the input sample */
+				out_sample0 = AE_MULFP32X16X2RS_H(volume, in_sample);
+
+#if COMP_VOLUME_Q1_31
+				/* No shift need, the product is Q1.31 */
+#else
+				/* Q9.23 to Q1.31 */
+				out_sample0 = AE_SLAI32S(out_sample0, 8);
+#endif
+
+				/* store the output */
+				out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample0);
+				// AE_SA16X4_IC(out_sample, outu, out);
+				AE_S16_0_XP(out_sample, out, inc);
+			}
+			peak_vol = AE_SLAA32(peak_vol, PEAK_16S_32C_ADJUST);
+			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
+		}
+		out0 = cir_buf_wrap(out0 + n, sink->buf_start, sink->buf_end);
+		in0 = cir_buf_wrap(in0 + n, source->buf_start, source->buf_end);
+		samples -= n;
+	}
+}
+
+/**
+ * \brief HiFi3 enabled volume passthrough from 16 bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused for 16bit)
+ */
+static void vol_passthrough_s16_to_s16(struct processing_module *mod,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
+				       uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f16x4 in_sample;
+	int i, n, channel, m;
+	ae_f16 *in;
+	ae_f16 *out;
+	ae_f16 *in0 = (void *)source->ptr;
+	ae_f16 *out0 = sink->ptr;
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f16) * channels_count;
+	int samples = channels_count * frames;
+	ae_f32x2 peak_vol;
+	uint32_t *peak_meter = cd->peak_regs.peak_meter;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s16(in0, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s16(out0, sink->buf_end);
+		n = MIN(m, n);
+		for (channel = 0; channel < channels_count; channel++) {
+			peak_vol = AE_ZERO32();
+			/* set start address of sample load */
+			in = in0 + channel;
+			/* set start address of sample store */
+			out = out0  + channel;
+			for (i = 0; i < n; i += channels_count) {
+				/* Load the input sample */
+				AE_L16_XP(in_sample, in, inc);
+
+				/* calc peak vol */
+				peak_vol = AE_MAXABS32S(AE_SEXT32X2D16_32(in_sample), peak_vol);
+
+				/* store the output */
+				AE_S16_0_XP(in_sample, out, inc);
+			}
+			peak_vol = AE_SLAA32(peak_vol, PEAK_16S_32C_ADJUST);
+			peak_meter[channel] = AE_MAX32(peak_vol, peak_meter[channel]);
+		}
+		out0 = cir_buf_wrap(out0 + n, sink->buf_start, sink->buf_end);
+		in0 = cir_buf_wrap(in0 + n, source->buf_start, source->buf_end);
+		samples -= n;
+	}
+}
+#endif /* CONFIG_FORMAT_S16LE */
+
+const struct comp_func_map volume_func_map[] = {
+#if CONFIG_FORMAT_S16LE
+	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16, vol_passthrough_s16_to_s16},
+#endif
+#if CONFIG_FORMAT_S24LE
+	{ SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24_s32, vol_passthrough_s24_to_s24_s32},
+#endif
+#if CONFIG_FORMAT_S32LE
+	{ SOF_IPC_FRAME_S32_LE, vol_s32_to_s24_s32, vol_passthrough_s32_to_s24_s32},
+#endif
+};
+
+const size_t volume_func_count = ARRAY_SIZE(volume_func_map);
+#endif
+#endif

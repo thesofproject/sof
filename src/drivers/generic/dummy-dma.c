@@ -25,30 +25,32 @@
  * holds if you have CONFIG_HOST_PTABLE enabled, at least currently.
  */
 
-#include <sof/atomic.h>
+#include <rtos/atomic.h>
 #include <sof/audio/component.h>
-#include <sof/drivers/timer.h>
-#include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
+#include <rtos/timer.h>
+#include <rtos/alloc.h>
+#include <rtos/cache.h>
 #include <sof/lib/dma.h>
+#include <sof/lib/notifier.h>
+#include <sof/lib/uuid.h>
 #include <sof/platform.h>
-#include <sof/spinlock.h>
-#include <sof/string.h>
+#include <rtos/spinlock.h>
+#include <rtos/string.h>
 #include <sof/trace/trace.h>
+#include <sys/types.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
-#include <config.h>
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#define trace_dummydma(__e, ...) \
-	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define tracev_dummydma(__e, ...) \
-	tracev_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
-#define trace_dummydma_error(__e, ...) \
-	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+LOG_MODULE_REGISTER(dummy_dma, CONFIG_SOF_LOG_LEVEL);
+
+SOF_DEFINE_REG_UUID(dummy_dma);
+
+DECLARE_TR_CTX(ddma_tr, SOF_UUID(dummy_dma_uuid), LOG_LEVEL_INFO);
 
 struct dma_chan_pdata {
 	struct dma_sg_elem_array *elems;
@@ -71,8 +73,8 @@ struct dma_chan_pdata {
  * Perform the individual copy of the in-progress DMA SG elem. To copy more
  * data, one should call this function repeatedly.
  */
-static size_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
-				      int bytes)
+static ssize_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
+				       int bytes)
 {
 	int ret;
 	uintptr_t rptr, wptr;
@@ -183,11 +185,11 @@ static size_t dummy_dma_compute_avail_data(struct dma_chan_pdata *pdata)
  * @bytes bytes of data. Will copy exactly this much data if possible, however
  * it will stop short if you try to copy more data than available.
  */
-static size_t dummy_dma_do_copies(struct dma_chan_pdata *pdata, int bytes)
+static ssize_t dummy_dma_do_copies(struct dma_chan_pdata *pdata, int bytes)
 {
 	size_t avail = dummy_dma_compute_avail_data(pdata);
-	size_t copied = 0;
-	size_t crt_copied;
+	ssize_t copied = 0;
+	ssize_t crt_copied;
 
 	if (!avail)
 		return -ENODATA;
@@ -221,10 +223,10 @@ static size_t dummy_dma_do_copies(struct dma_chan_pdata *pdata, int bytes)
 static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 						   unsigned int req_chan)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int i;
 
-	spin_lock_irq(dma->lock, flags);
+	key = k_spin_lock(&dma->lock);
 	for (i = 0; i < dma->plat_data.channels; i++) {
 		/* use channel if it's free */
 		if (dma->chan[i].status == COMP_STATE_INIT) {
@@ -233,13 +235,13 @@ static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 			atomic_add(&dma->num_channels_busy, 1);
 
 			/* return channel */
-			spin_unlock_irq(dma->lock, flags);
+			k_spin_unlock(&dma->lock, key);
 			return &dma->chan[i];
 		}
 	}
-	spin_unlock_irq(dma->lock, flags);
-	trace_dummydma_error("dummy-dmac: %d no free channel",
-			     dma->plat_data.id);
+	k_spin_unlock(&dma->lock, key);
+	tr_err(&ddma_tr, "dummy-dmac: %d no free channel",
+	       dma->plat_data.id);
 	return NULL;
 }
 
@@ -248,9 +250,7 @@ static void dummy_dma_channel_put_unlocked(struct dma_chan_data *channel)
 	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
 
 	/* Reset channel state */
-	channel->cb = NULL;
-	channel->cb_type = 0;
-	channel->cb_data = NULL;
+	notifier_unregister_all(NULL, channel);
 
 	ch->elems = NULL;
 	channel->desc_count = 0;
@@ -272,11 +272,11 @@ static void dummy_dma_channel_put_unlocked(struct dma_chan_data *channel)
  */
 static void dummy_dma_channel_put(struct dma_chan_data *channel)
 {
-	uint32_t flags;
+	k_spinlock_key_t key;
 
-	spin_lock_irq(channel->dma->lock, flags);
+	key = k_spin_lock(&channel->dma->lock);
 	dummy_dma_channel_put_unlocked(channel);
-	spin_unlock_irq(channel->dma->lock, flags);
+	k_spin_unlock(&channel->dma->lock, key);
 }
 
 /* Since copies are synchronous, the triggers do nothing */
@@ -315,7 +315,7 @@ static int dummy_dma_status(struct dma_chan_data *channel,
 	status->r_pos = ch->r_pos;
 	status->w_pos = ch->w_pos;
 
-	status->timestamp = timer_get_system(platform_timer);
+	status->timestamp = sof_cycle_get_64();
 	return 0;
 }
 
@@ -332,15 +332,15 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 				struct dma_sg_config *config)
 {
 	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
-	uint32_t flags;
+	k_spinlock_key_t key;
 	int ret = 0;
 
-	spin_lock_irq(channel->dma->lock, flags);
+	key = k_spin_lock(&channel->dma->lock);
 
 	if (!config->elem_array.count) {
-		trace_dummydma_error("dummy-dmac: %d channel %d no DMA descriptors",
-				     channel->dma->plat_data.id,
-				     channel->index);
+		tr_err(&ddma_tr, "dummy-dmac: %d channel %d no DMA descriptors",
+		       channel->dma->plat_data.id,
+		       channel->index);
 
 		ret = -EINVAL;
 		goto out;
@@ -348,12 +348,12 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 
 	channel->direction = config->direction;
 
-	if (config->direction != DMA_DIR_HMEM_TO_LMEM &&
-	    config->direction != DMA_DIR_LMEM_TO_HMEM) {
+	if (config->direction != SOF_DMA_DIR_HMEM_TO_LMEM &&
+	    config->direction != SOF_DMA_DIR_LMEM_TO_HMEM) {
 		/* Shouldn't even happen though */
-		trace_dummydma_error("dummy-dmac: %d channel %d invalid direction %d",
-				     channel->dma->plat_data.id, channel->index,
-				     config->direction);
+		tr_err(&ddma_tr, "dummy-dmac: %d channel %d invalid direction %d",
+		       channel->dma->plat_data.id, channel->index,
+		       config->direction);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -364,32 +364,8 @@ static int dummy_dma_set_config(struct dma_chan_data *channel,
 
 	channel->status = COMP_STATE_PREPARE;
 out:
-	spin_unlock_irq(channel->dma->lock, flags);
+	k_spin_unlock(&channel->dma->lock, key);
 	return ret;
-}
-
-/* restore DMA context after leaving D3 */
-static int dummy_dma_pm_context_restore(struct dma *dma)
-{
-	/* Virtual device, no hardware registers */
-	return 0;
-}
-
-/* store DMA context after leaving D3 */
-static int dummy_dma_pm_context_store(struct dma *dma)
-{
-	/* Virtual device, no hardware registers */
-	return 0;
-}
-
-static int dummy_dma_set_cb(struct dma_chan_data *channel, int type,
-		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
-		void *data)
-{
-	channel->cb = cb;
-	channel->cb_data = data;
-	channel->cb_type = type;
-	return 0;
 }
 
 /**
@@ -406,22 +382,28 @@ static int dummy_dma_set_cb(struct dma_chan_data *channel, int type,
 static int dummy_dma_copy(struct dma_chan_data *channel, int bytes,
 			  uint32_t flags)
 {
-	struct dma_cb_data next;
+	ssize_t copied;
+	struct dma_cb_data next = {
+		.channel = channel,
+	};
 	struct dma_chan_pdata *pdata = dma_chan_get_data(channel);
 
-	//next.elem.size = do_copy(channel, bytes);
-	next.elem.size = dummy_dma_do_copies(pdata, bytes);
+	copied = dummy_dma_do_copies(pdata, bytes);
+	if (copied < 0)
+		return copied;
+
+	next.elem.size = copied;
 
 	/* Let the user of the driver know how much we copied */
-	if (channel->cb_type & DMA_CB_TYPE_COPY)
-		channel->cb(channel->cb_data, DMA_CB_TYPE_COPY, &next);
+	notifier_event(channel, NOTIFIER_ID_DMA_COPY,
+		       NOTIFIER_TARGET_CORE_LOCAL, &next, sizeof(next));
 
 	return 0;
 }
 
 /**
  * \brief Initialize the driver
- * \param[in] The preallocated DMA controller structure
+ * \param[in] dma The preallocated DMA controller structure
  * \return 0 on success, a negative value on error
  *
  * This function must be called before any other will work. Calling functions
@@ -434,27 +416,25 @@ static int dummy_dma_probe(struct dma *dma)
 	int i;
 
 	if (dma->chan) {
-		trace_dummydma_error("dummy-dmac %d already created!",
-				     dma->plat_data.id);
+		tr_err(&ddma_tr, "dummy-dmac %d already created!",
+		       dma->plat_data.id);
 		return -EEXIST; /* already created */
 	}
 
-	dma->chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
-			    SOF_MEM_CAPS_RAM,
+	dma->chan = rzalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT,
 			    dma->plat_data.channels * sizeof(dma->chan[0]));
 	if (!dma->chan) {
-		trace_dummydma_error("dummy-dmac %d: Out of memory!",
-				     dma->plat_data.id);
+		tr_err(&ddma_tr, "dummy-dmac %d: Out of memory!",
+		       dma->plat_data.id);
 		return -ENOMEM;
 	}
 
-	chanp = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
-			SOF_MEM_CAPS_RAM,
+	chanp = rzalloc(SOF_MEM_FLAG_KERNEL,
 			dma->plat_data.channels * sizeof(chanp[0]));
 	if (!chanp) {
 		rfree(dma->chan);
-		trace_dummydma_error("dummy-dmac %d: Out of memory!",
-				     dma->plat_data.id);
+		tr_err(&ddma_tr, "dummy-dmac %d: Out of memory!",
+		       dma->plat_data.id);
 		dma->chan = NULL;
 		return -ENOMEM;
 	}
@@ -463,7 +443,7 @@ static int dummy_dma_probe(struct dma *dma)
 		dma->chan[i].dma = dma;
 		dma->chan[i].index = i;
 		dma->chan[i].status = COMP_STATE_INIT;
-		dma->chan[i].private = &chanp[i];
+		dma_chan_set_data(&dma->chan[i], &chanp[i]);
 	}
 
 	atomic_init(&dma->num_channels_busy, 0);
@@ -484,7 +464,7 @@ static int dummy_dma_probe(struct dma *dma)
  */
 static int dummy_dma_remove(struct dma *dma)
 {
-	tracev_dummydma("dummy_dma %d -> remove", dma->plat_data.id);
+	tr_dbg(&ddma_tr, "dummy_dma %d -> remove", dma->plat_data.id);
 	if (!dma->chan)
 		return 0;
 
@@ -510,15 +490,15 @@ static int dummy_dma_get_data_size(struct dma_chan_data *channel,
 	uint32_t size = dummy_dma_compute_avail_data(pdata);
 
 	switch (channel->direction) {
-	case DMA_DIR_HMEM_TO_LMEM:
+	case SOF_DMA_DIR_HMEM_TO_LMEM:
 		*avail = size;
 		break;
-	case DMA_DIR_LMEM_TO_HMEM:
+	case SOF_DMA_DIR_LMEM_TO_HMEM:
 		*free = size;
 		break;
 	default:
-		trace_dummydma_error("get_data_size direction: %d",
-				     channel->direction);
+		tr_err(&ddma_tr, "get_data_size direction: %d",
+		       channel->direction);
 		return -EINVAL;
 	}
 	return 0;
@@ -561,9 +541,6 @@ const struct dma_ops dummy_dma_ops = {
 	.copy		= dummy_dma_copy,
 	.status		= dummy_dma_status,
 	.set_config	= dummy_dma_set_config,
-	.set_cb		= dummy_dma_set_cb,
-	.pm_context_restore		= dummy_dma_pm_context_restore,
-	.pm_context_store		= dummy_dma_pm_context_store,
 	.probe		= dummy_dma_probe,
 	.remove		= dummy_dma_remove,
 	.get_data_size	= dummy_dma_get_data_size,

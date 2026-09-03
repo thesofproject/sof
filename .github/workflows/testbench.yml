@@ -1,0 +1,117 @@
+---
+# Tools that can save round-trips to github and a lot of time:
+#
+# yamllint -f parsable pull_request.yml
+# pip3 install ruamel.yaml.cmd
+# yaml merge-expand pull_request.yml exp.yml &&
+#    diff -w -u pull_request.yml exp.yml
+#
+# github.com also has a powerful web editor that can be used without
+# committing.
+
+name: testbench
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - 'main'
+      - 'stable-**'
+      - '**-stable'
+  pull_request:
+    branches:
+      - 'main'
+      - 'stable-**'
+      - '**-stable'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# Group workflows together to cancel outdated runs, do not cancel manual runs
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event_name }}-\
+          ${{ github.event_name == 'pull_request' && github.ref || github.run_id }}"
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - name: Checkout SOF repository (PR source)
+        uses: actions/checkout@v4
+        with:
+          path: sof
+
+      # note: libasound-dev needed for testbench build which still
+      #       requires system ALSA headers to be present
+      - name: apt get
+        run: sudo apt-get update &&
+               sudo apt-get -y install valgrind ninja-build
+                  octave octave-signal automake autoconf libtool
+                  gettext libasound2-dev
+
+      # Ubuntu 24.04 ships autoconf 2.71, but current alsa-lib/alsa-utils
+      # require >= 2.72. Build a newer autoconf from the GNU release
+      # tarball and install it into /usr/local (ahead of /usr/bin in PATH).
+      - name: Install autoconf 2.72
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          wget -q https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.gz
+          tar xf autoconf-2.72.tar.gz
+          cd autoconf-2.72
+          ./configure --prefix=/usr/local
+          make -j"$(nproc)"
+          sudo make install
+          hash -r
+          autoconf --version | head -n1
+
+      - name: Build Alsa-lib
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          git clone https://github.com/thesofproject/alsa-lib.git
+          cd alsa-lib
+          git checkout 08b532cd3da9ac8f683bcb4e4beb9b74c39c1782 -b build
+          ./gitcompile --prefix=${GITHUB_WORKSPACE}/tools
+          make install
+
+      - name: Build Alsa-utils
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          git clone https://github.com/thesofproject/alsa-utils.git
+          cd alsa-utils
+          git checkout 9feb22ba45b48729729c8d194aaf1bc082a6842a -b build
+          ./gitcompile --prefix=${GITHUB_WORKSPACE}/tools \
+             --with-alsa-prefix=${GITHUB_WORKSPACE}/tools \
+             --with-alsa-inc-prefix=${GITHUB_WORKSPACE}/tools/include \
+             --with-sysroot=${GITHUB_WORKSPACE}/tools \
+             --with-udev-rules-dir=${GITHUB_WORKSPACE}/tools \
+             PKG_CONFIG_PATH=${GITHUB_WORKSPACE}/tools \
+             LDFLAGS=-L${GITHUB_WORKSPACE}/tools/lib \
+             --disable-old-symbols \
+             --enable-alsatopology \
+             --with-asound-state-dir=${GITHUB_WORKSPACE}/tools/var/lib/alsa \
+             --with-systemdsystemunitdir=${GITHUB_WORKSPACE}/tools/lib/systemd/system
+          make install
+
+      # testbench needs some topologies.
+      - name: build test topologies
+        run: |
+          CMAKE_BUILD_TYPE=Release ./sof/scripts/build-tools.sh -Y ||
+             VERBOSE=1 NO_PROCESSORS=1 USE_XARGS=no
+          CMAKE_BUILD_TYPE=Release ./sof/scripts/build-tools.sh -Y
+
+      # build testbench
+      - name: build testbench
+        run: |
+          ./sof/scripts/rebuild-testbench.sh ||
+          ./sof/scripts/rebuild-testbench.sh -j 1
+
+      # run testbench
+      - name: run testbench
+        run: |
+          ./sof/scripts/host-testbench.sh

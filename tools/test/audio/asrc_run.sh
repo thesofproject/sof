@@ -1,0 +1,26 @@
+#!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2020 Intel Corporation. All rights reserved.
+
+usage ()
+{
+    echo "Usage:   $1 <bits in> <bits out> <rate in> <rate out> <input> <output>"
+    echo "Example: $1 16 16 32000 48000 input.raw output.raw"
+}
+
+main()
+{
+    local COMP DIRECTION
+
+    if [ $# -ne 6 ]; then
+	usage "$0"
+	exit
+    fi
+
+    COMP=asrc
+    DIRECTION=playback
+
+    ./comp_run.sh $COMP $DIRECTION "$@"
+}
+
+main "$@"

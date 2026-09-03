@@ -15,7 +15,7 @@
 #ifndef __CAVS_DRIVERS_SIDEBAND_IPC_H__
 #define __CAVS_DRIVERS_SIDEBAND_IPC_H__
 
-#include <sof/bit.h>
+#include <rtos/bit.h>
 
 /* DIPCTDR */
 #define IPC_DIPCTDR_BUSY	BIT(31)

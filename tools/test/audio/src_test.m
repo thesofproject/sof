@@ -1,30 +1,39 @@
-function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list)
+function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out_list, full_test, show_plots, comp, xtrun)
 
 %%
 % src_test - test with SRC test bench objective audio quality parameters
 %
-% src_test(bits_in, bits_out, fs_in, fs_out)
+% src_test(bits_in, bits_out, fs_in, fs_out, full_test, show_plots, comp, xtrun)
 %
-% bits_in  - input word length
-% bits_out - output word length
-% fs_in    - vector of rates in
-% fs_out   - vector of rates out
+% bits_in    - input word length
+% bits_out   - output word length
+% fs_in      - vector of rates in, default 8 to 192 kHz
+% fs_out     - vector of rates out, default 8 to 192 kHz
+% full_test  - set to 0 for chirp only, 1 for all, default 1
+% show_plots - set to 1 to see plots, default 0
+% comp       - set to 'src' or 'asrc', default 'src'
+% xtrun      - set to 'xt-run' or 'xt-run --turbo' to test with xt-testbench
+%
+% E.g.
+% src_test(32, 32, 44100, 48000, 1, 1, 'src', 'xt-run --turbo');
 %
 % A default in-out matrix with 32 bits data is tested if the
-% paremeters are omitted.
+% parameters are omitted.
 %
 
 % SPDX-License-Identifier: BSD-3-Clause
-% Copyright(c) 2016 Intel Corporation. All rights reserved.
+% Copyright(c) 2016-2025 Intel Corporation.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
 addpath('std_utils');
 addpath('test_utils');
-addpath('../../tune/src');
+addpath('../../../src/audio/src/tune');
 mkdir_check('plots');
 mkdir_check('reports');
 
 %% Defaults for call parameters
+default_in  = [ 8 11.025 12 16 18.9 22.050 24 32 37.8 44.1 48 50 64 88.2 96 176.4 192] * 1e3;
+default_out = [ 8 11.025 12 16      22.05  24 32      44.1 48 50 64 88.2 96 176.4 192] * 1e3;
 if nargin < 1
 	bits_in = 32;
 end
@@ -32,11 +41,28 @@ if nargin < 2
 	bits_out = 32;
 end
 if nargin < 3
-        fs_in_list = [8 11.025 12 16 22.050 24 32 44.1 48 ...
-			50 64 88.2 96 176.4 192] * 1e3;
+	fs_in_list = default_in;
 end
 if nargin < 4
-	fs_out_list = [8 11.025 12 16 22.05 24 32 44.1 48 50] * 1e3;
+	fs_out_list = default_out;
+end
+if nargin < 5
+	full_test = 1;
+end
+if nargin < 6
+	show_plots = 0;
+end
+if nargin < 7
+	comp = 'src';
+end
+if nargin < 8
+	xtrun = '';
+end
+if isempty(fs_in_list)
+	fs_in_list = default_in;
+end
+if isempty(fs_out_list)
+	fs_out_list = default_out;
 end
 
 %% Generic test pass/fail criteria
@@ -53,12 +79,14 @@ t.aap_db_max = -60;
 t.aip_db_max = -60;
 
 %% Defaults for test
-t.fmt = 'raw';         % Can be 'raw' (fast binary) or 'txt' (debug)
-t.nch = 2;             % Number of channels
-t.ch = 0;              % 1..nch. With value 0 test a randomly selected channel.
-t.bits_in = bits_in;   % Input word length
-t.bits_out = bits_out; % Output word length
-t.full_test = 1;       % 0 is quick check only, 1 is full set
+t.fmt = 'raw';          % Can be 'raw' (fast binary) or 'txt' (debug)
+t.nch = 2;              % Number of channels
+t.ch = 0;               % 1..nch. With value 0 test a randomly selected channel.
+t.bits_in = bits_in;    % Input word length
+t.bits_out = bits_out;  % Output word length
+t.full_test = full_test; % 0 is quick check only, 1 is full set
+t.comp = comp;          % Component to test
+t.xtrun = xtrun;
 
 %% Show graphics or not. With visible plot windows Octave may freeze if too
 %  many windows are kept open. As workaround setting close windows to
@@ -66,8 +94,13 @@ t.full_test = 1;       % 0 is quick check only, 1 is full set
 %  visibility set to to 0 only console text is seen. The plots are
 %  exported into plots directory in png format and can be viewed from
 %  there.
-t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
-t.plot_visible = 'off';    % Use off for batch tests and on for interactive
+if show_plots
+	t.plot_close_windows = 0;
+	t.plot_visible = 'on';
+else
+	t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
+	t.plot_visible = 'off';    % Use off for batch tests and on for interactive
+end
 t.files_delete = 1;        % Set to 0 to inspect the audio data files
 
 %% Init for test loop
@@ -93,7 +126,6 @@ r.n_na = 0;
 for b = 1:n_fso
         for a = 1:n_fsi
                 v = -ones(n_test,1); % Set pass/fail test verdict to not executed
-                tn = 1;
                 t.fs1 = fs_in_list(a);
                 t.fs2 = fs_out_list(b);
                 v(1) = chirp_test(t);
@@ -121,43 +153,45 @@ for b = 1:n_fso
         end
 end
 
+%% Scale frequencies to kHz
+k = 1/1000;
+
 %% Print table with test summary: Gain
 fn = 'reports/g_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.g, r.pf, 'Gain dB');
+print_val('SRC', 'Gain dB', fn, k * fs_in_list, k * fs_out_list, r.g, r.pf);
 
 %% Print table with test summary: FR
 fn = 'reports/fr_src.txt';
-print_fr(fn, fs_in_list, fs_out_list, r.fr_db, r.fr_hz, r.pf);
+print_fr('SRC', fn, k * fs_in_list, k * fs_out_list, r.fr_db, r.fr_hz, r.pf);
 
 %% Print table with test summary: FR
 fn = 'reports/fr_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.fr3db_hz/1e3, r.pf, ...
-        'Frequency response -3 dB 0 - X kHz');
+print_val('SRC', 'Frequency response -3 dB 0 - X kHz', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.fr3db_hz/1e3, r.pf);
 
 %% Print table with test summary: THD+N vs. frequency
 fn = 'reports/thdnf_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.thdnf, r.pf, ...
-        'Worst-case THD+N vs. frequency');
+print_val('SRC', 'Worst-case THD+N vs. frequency', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.thdnf, r.pf);
 
 %% Print table with test summary: DR
 fn = 'reports/dr_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.dr, r.pf, ...
-        'Dynamic range dB (CCIR-RMS)');
+print_val('SRC', 'Dynamic range dB (CCIR-RMS)', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.dr, r.pf);
 
 %% Print table with test summary: AAP
 fn = 'reports/aap_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.aap, r.pf, ...
-        'Attenuation of alias products dB');
+print_val('SRC', 'Attenuation of alias products dB', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.aap, r.pf);
 
 %% Print table with test summary: AIP
 fn = 'reports/aip_src.txt';
-print_val(fn, fs_in_list, fs_out_list, r.aip, r.pf, ...
-        'Attenuation of image products dB');
-
+print_val('SRC', 'Attenuation of image products dB', ...
+	  fn, k * fs_in_list, k * fs_out_list, r.aip, r.pf);
 
 %% Print table with test summary: pass/fail
 fn = 'reports/pf_src.txt';
-print_pf(fn, fs_in_list, fs_out_list, r.pf);
+print_pf('SRC', fn, k * fs_in_list, k * fs_out_list, r.pf, 'chirp/gain/FR/THD+N/DR/AAP/AIP');
 
 fprintf('\n');
 fprintf('Number of passed tests = %d\n', r.n_pass);
@@ -200,7 +234,7 @@ end
 test = g_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -220,16 +254,16 @@ function [fail, pm_range_db, range_hz, fr3db_hz] = fr_test(t)
 test = test_defaults_src(t);
 prm = src_param(t.fs1, t.fs2, test.coef_bits);
 
-test.fr_rp_max_db = prm.rp_tot; % Max. ripple +/- dB allowed
-test.f_lo = 20;                 % For response reporting, measure from 20 Hz
-test.f_hi = 0.99 * min(t.fs1,t.fs2)*prm.c_pb; % to designed filter upper frequency
-test.f_max = 0.99 * min(t.fs1/2, t.fs2/2); % Measure up to Nyquist frequency
+test.fr_rp_max_db = prm.rp_tot;                % Max. ripple +/- dB allowed
+test.fr_lo = 20;                               % Ripple measure from 20 Hz
+test.fr_hi = 0.99 * min(t.fs1,t.fs2)*prm.c_pb; % up to Nyquist frequency
+test.f_max = 0.99 * min(t.fs1/2, t.fs2/2);     % Measure up to Nyquist frequency
 
 %% Create input file
 test = fr_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -237,7 +271,7 @@ test = fr_test_measure(test);
 
 fail = test.fail;
 pm_range_db = test.rp;
-range_hz = [test.f_lo test.f_hi];
+range_hz = [test.fr_lo test.fr_hi];
 fr3db_hz = test.fr3db_hz;
 delete_check(t.files_delete, test.fn_in);
 delete_check(t.files_delete, test.fn_out);
@@ -259,16 +293,14 @@ end
 
 prm = src_param(t.fs1, t.fs2, test.coef_bits);
 test.f_start = 20;
-test.f_end = prm.c_pb*min(t.fs1, t.fs2);
-test.fu = prm.c_pb*min(t.fs1, t.fs2);
-%test.f_end = 0.4535*min(t.fs1, t.fs2);
-%test.fu = 0.4535*min(t.fs1, t.fs2);
+test.f_end = min(prm.c_pb * min(t.fs1, t.fs2), 20e3);
+test.fu = min(prm.c_pb * t.fs2, 20e3); % AES17 5.2.5 standard low pass as 20 kHz
 
 %% Create input file
 test = thdnf_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -297,7 +329,7 @@ end
 test = dr_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -332,7 +364,7 @@ test.f_end = 0.5*t.fs2;
 test = aap_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -365,7 +397,7 @@ test.f_end = t.fs1/2;
 test = aip_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Measure
 test.fs = t.fs2;
@@ -384,7 +416,7 @@ end
 %  in the plot as additional freqiencies than main linear up sweep. The aliasing
 %  can be a line, few lines, or lattice pattern depending the SRC conversion
 %  to test. The main sweep line should be steady level and extend from near
-%  zero freqeuncy to near Nyquist (Fs/2).
+%  zero frequency to near Nyquist (Fs/2).
 
 function fail = chirp_test(t)
 
@@ -395,12 +427,14 @@ test = test_defaults_src(t);
 test = chirp_test_input(test);
 
 %% Run test
-test = test_run_src(test, t);
+test = test_run_src(test);
 
 %% Analyze
 test.fs = t.fs2;
 test = chirp_test_analyze(test);
-src_test_result_print(t, 'Chirp', 'chirpf');
+if test.fail >= 0
+	src_test_result_print(t, 'Chirp', 'chirpf');
+end
 
 % Delete files unless e.g. debugging and need data to run
 delete_check(t.files_delete, test.fn_in);
@@ -414,6 +448,7 @@ end
 %%
 
 function test = test_defaults_src(t)
+test.comp = t.comp;
 test.fmt = t.fmt;
 test.bits_in = t.bits_in;
 test.bits_out = t.bits_out;
@@ -422,9 +457,7 @@ test.ch = t.ch;
 test.fs = t.fs1;
 test.fs1 = t.fs1;
 test.fs2 = t.fs2;
-test.fr_mask_f = [];
-test.fr_mask_lo = [];
-test.fr_mask_hi = [];
+test.xtrun = t.xtrun;
 test.coef_bits = 24; % No need to use actual word length in test
 test.att_rec_db = 0; % Not used in simulation test
 test.quick = 0;      % Test speed is no issue in simulation
@@ -432,172 +465,34 @@ test.plot_visible = t.plot_visible;
 test.plot_channels_combine = 0;
 test.plot_passband_zoom = 1;
 test.plot_fr_axis = [10 100e3 -4 1];
-test.plot_thdn_axis = [10 100e3 -140 -60];
+test.plot_thdn_axis = [10 100e3 -140 -59];
+test.fr_mask_flo = [];
+test.fr_mask_fhi = [];
+test.fr_mask_mlo = [];
+test.fr_mask_mhi = [];
+test.thdnf_mask_f = [];
+test.thdnf_mask_hi = [];
+test.thdnf_max = [];
 end
 
-function test = test_run_src(test, t)
-test.ex = './src_run.sh';
-test.arg = { num2str(t.bits_in), num2str(t.bits_out), num2str(t.fs1), num2str(t.fs2), test.fn_in, test.fn_out};
+function test = test_run_src(test)
+test.fs_in = test.fs1;
+test.fs_out = test.fs2;
+test.extra_opts = '-C 300000'; % Limit to 5 min max, assume 1 ms scheduling
 delete_check(1, test.fn_out);
 test = test_run(test);
 end
 
 function src_test_result_print(t, testverbose, testacronym, ph)
 tstr = sprintf('%s SRC %d, %d', testverbose, t.fs1, t.fs2);
-if nargin > 3
-        title(ph, tstr);
+if nargin > 3 && ~isempty(ph)
+        title(ph, tstr, 'Interpreter', 'none');
 else
-        title(tstr);
+        title(tstr, 'Interpreter', 'none');
 end
 pfn = sprintf('plots/%s_src_%d_%d.png', testacronym, t.fs1, t.fs2);
-% The print command caused a strange error with __osmesa_print__
-% so disable it for now until solved.
-%print(pfn, '-dpng');
+print(pfn, '-dpng');
 if t.plot_close_windows
 	close all;
 end
-end
-
-%% The next are results printing functions
-
-function  print_val(fn, fs_in_list, fs_out_list, val, pf, valstr)
-n_fsi = length(fs_in_list);
-n_fso = length(fs_out_list);
-fh = fopen(fn,'w');
-fprintf(fh,'\n');
-fprintf(fh,'SRC test result: %s\n', valstr);
-fprintf(fh,'%8s, ', 'in \ out');
-for a = 1:n_fso-1
-        fprintf(fh,'%8.1f, ', fs_out_list(a)/1e3);
-end
-fprintf(fh,'%8.1f', fs_out_list(n_fso)/1e3);
-fprintf(fh,'\n');
-for a = 1:n_fsi
-        fprintf(fh,'%8.1f, ', fs_in_list(a)/1e3);
-	for b = 1:n_fso
-                if pf(a,b,1) < 0
-                        cstr = 'x';
-                else
-                        if isnan(val(a,b))
-                                cstr = '-';
-                        else
-                                cstr = sprintf('%8.2f', val(a,b));
-                        end
-                end
-                if b < n_fso
-                        fprintf(fh,'%8s, ', cstr);
-                else
-                        fprintf(fh,'%8s', cstr);
-                end
-        end
-        fprintf(fh,'\n');
-end
-fclose(fh);
-type(fn);
-end
-
-function print_fr(fn, fs_in_list, fs_out_list, fr_db, fr_hz, pf)
-n_fsi = length(fs_in_list);
-n_fso = length(fs_out_list);
-fh = fopen(fn,'w');
-fprintf(fh,'\n');
-fprintf(fh,'SRC test result: Frequency response +/- X.XX dB (YY.Y kHz) \n');
-fprintf(fh,'%8s, ', 'in \ out');
-for a = 1:n_fso-1
-        fprintf(fh,'%12.1f, ', fs_out_list(a)/1e3);
-end
-fprintf(fh,'%12.1f', fs_out_list(n_fso)/1e3);
-fprintf(fh,'\n');
-for a = 1:n_fsi
-        fprintf(fh,'%8.1f, ', fs_in_list(a)/1e3);
-	for b = 1:n_fso
-                if pf(a,b,1) < 0
-                        cstr = 'x';
-                else
-                        cstr = sprintf('%4.2f (%4.1f)', fr_db(a,b), fr_hz(a,b,2)/1e3);
-                end
-                if b < n_fso
-                        fprintf(fh,'%12s, ', cstr);
-                else
-                        fprintf(fh,'%12s', cstr);
-                end
-        end
-        fprintf(fh,'\n');
-end
-fclose(fh);
-type(fn);
-end
-
-function print_fr3db(fn, fs_in_list, fs_out_list, fr3db_hz, pf)
-n_fsi = length(fs_in_list);
-n_fso = length(fs_out_list);
-fh = fopen(fn,'w');
-fprintf(fh,'\n');
-fprintf(fh,'SRC test result: Frequency response -3dB 0 - X.XX kHz\n');
-fprintf(fh,'%8s, ', 'in \ out');
-for a = 1:n_fso-1
-        fprintf(fh,'%8.1f, ', fs_out_list(a)/1e3);
-end
-fprintf(fh,'%8.1f', fs_out_list(n_fso)/1e3);
-fprintf(fh,'\n');
-for a = 1:n_fsi
-        fprintf(fh,'%8.1f, ', fs_in_list(a)/1e3);
-	for b = 1:n_fso
-                if pf(a,b,1) < 0
-                        cstr = 'x';
-                else
-                        cstr = sprintf('%4.1f', fr3db_hz(a,b)/1e3);
-                end
-                if b < n_fso
-                        fprintf(fh,'%8s, ', cstr);
-                else
-                        fprintf(fh,'%8s', cstr);
-                end
-        end
-        fprintf(fh,'\n');
-end
-fclose(fh);
-type(fn);
-end
-
-
-function print_pf(fn, fs_in_list, fs_out_list, pf)
-n_fsi = length(fs_in_list);
-n_fso = length(fs_out_list);
-fh = fopen(fn,'w');
-fprintf(fh,'\n');
-fprintf(fh,'SRC test result: Fails\n');
-fprintf(fh,'%8s, ', 'in \ out');
-for a = 1:n_fso-1
-        fprintf(fh,'%14.1f, ', fs_out_list(a)/1e3);
-end
-fprintf(fh,'%14.1f', fs_out_list(n_fso)/1e3);
-fprintf(fh,'\n');
-spf = size(pf);
-npf = spf(3);
-for a = 1:n_fsi
-        fprintf(fh,'%8.1f, ', fs_in_list(a)/1e3);
-	for b = 1:n_fso
-                if pf(a,b,1) < 0
-                        cstr = 'x';
-                else
-                        cstr = sprintf('%d', pf(a,b,1));
-                        for n=2:npf
-                                if pf(a,b,n) < 0
-                                        cstr = sprintf('%s/x', cstr);
-                                else
-                                        cstr = sprintf('%s/%d', cstr,pf(a,b,n));
-                                end
-                        end
-                end
-                if b < n_fso
-                        fprintf(fh,'%14s, ', cstr);
-                else
-                        fprintf(fh,'%14s', cstr);
-                end
-        end
-        fprintf(fh,'\n');
-end
-fclose(fh);
-type(fn);
 end

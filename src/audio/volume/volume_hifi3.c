@@ -5,271 +5,169 @@
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
- * \file audio/volume_hifi3.c
- * \brief Volume HiFi3 processing implementation
+ * \file
+ * \brief Volume HiFi3 processing implementation without peak volume detection
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
-
-#include <sof/audio/volume.h>
-
-#if defined(__XCC__) && XCHAL_HAVE_HIFI3
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/common.h>
 #include <ipc/stream.h>
-#include <xtensa/tie/xt_hifi3.h>
 #include <stddef.h>
 #include <stdint.h>
 
+LOG_MODULE_DECLARE(volume_hifi3, CONFIG_SOF_LOG_LEVEL);
+
+#include "volume.h"
+
+#if SOF_USE_HIFI(3, VOLUME)
+
+#if (!CONFIG_COMP_PEAK_VOL)
+
+#include <xtensa/tie/xt_hifi3.h>
+
 /**
- * \brief Sets buffer to be circular using HiFi3 functions.
- * \param[in,out] buffer Circular buffer.
+ * \brief store volume gain 4 times for xtensa multi-way intrinsic operations.
+ * Simultaneous processing 2 data.
+ * \param[in,out] cd Volume component private data.
+ * \param[in] channels_count Number of channels to process.
  */
-static void vol_setup_circular(struct comp_buffer *buffer)
+static void vol_store_gain(struct vol_data *cd, const int channels_count)
 {
-	AE_SETCBEGIN0(buffer->addr);
-	AE_SETCEND0(buffer->end_addr);
-}
+	int32_t i;
 
-#if CONFIG_FORMAT_S16LE
-/**
- * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- */
-static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	ae_f64 mult;
-	ae_f32x2 volume;
-	ae_f32x2 out_sample;
-	ae_f16x4 in_sample = AE_ZERO16();
-	size_t channel;
-	int i;
-	ae_int16 *in = (ae_int16 *)source->r_ptr;
-	ae_int16 *out = (ae_int16 *)sink->w_ptr;
-
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			/* Set source as circular buffer */
-			vol_setup_circular(source);
-
-			/* Load the input sample */
-			AE_L16_XC(in_sample, in, sizeof(ae_int16));
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
-
-			/* Multiply the input sample */
-			mult = AE_MULF32X16_L0(volume, in_sample);
-
-			/* Multiply of Q1.31 x Q1.15 gives Q1.47. Multiply of
-			 * Q8.16 x Q1.15 gives Q8.32, so need to shift left
-			 * by 31 to get Q1.63. Sample is Q1.31.
-			 */
-			out_sample = AE_ROUND32F64SSYM(AE_SLAI64S(mult, 31));
-
-			/* Set sink as circular buffer */
-			vol_setup_circular(sink);
-
-			/* Round to Q1.15 and store the output sample */
-			AE_S16_0_XC(AE_ROUND16X4F32SSYM(out_sample, out_sample),
-				    out, sizeof(ae_int16));
-		}
+	/* using for loop instead of memcpy_s(), because for loop costs less cycles */
+	for (i = 0; i < channels_count; i++) {
+		cd->vol[i] = cd->volume[i];
+		cd->vol[i + channels_count * 1] = cd->volume[i];
+		cd->vol[i + channels_count * 2] = cd->volume[i];
+		cd->vol[i + channels_count * 3] = cd->volume[i];
 	}
+	cd->copy_gain = false;
 }
-#endif /* CONFIG_FORMAT_S16LE */
-
-#if CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE)
-/**
- * \brief HiFi3 enabled volume processing from 16 bit to x bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- */
-static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	ae_f64 mult;
-	ae_f32x2 out_sample;
-	ae_f32x2 volume;
-	ae_f16x4 in_sample = AE_ZERO16();
-	size_t channel;
-	int i;
-	int shift = 0;
-	ae_int16 *in = (ae_int16 *)source->r_ptr;
-	ae_int32 *out = (ae_int32 *)sink->w_ptr;
-
-	/* Get value of shift left */
-	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
-
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			/* Set source as circular buffer */
-			vol_setup_circular(source);
-
-			/* Load the input sample */
-			AE_L16_XC(in_sample, in, sizeof(ae_int16));
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
-
-			/* Multiply the input sample */
-			mult = AE_MULF32X16_L0(volume, in_sample);
-
-			/* Multiply of Q31 x Q15 gives Q47. Multiply of
-			 * Q16 x Q15 gives Q32, so need to shift left by 15
-			 * to get Q47. Out_sample is Q31.
-			 */
-			out_sample = AE_ROUND32F48SSYM(AE_SLAI64S(mult, 15));
-
-			/* Shift for S24_LE */
-			out_sample = AE_SRAA32RS(out_sample, shift);
-			out_sample = AE_SLAA32S(out_sample, shift);
-			out_sample = AE_SRAA32(out_sample, shift);
-
-			/* Set sink as circular buffer */
-			vol_setup_circular(sink);
-
-			/* Store the output sample */
-			AE_S32_L_XC(out_sample, out, sizeof(ae_int32));
-		}
-	}
-}
-
-/**
- * \brief HiFi3 enabled volume processing from x bit to 16 bit.
- * \param[in,out] dev Volume base component device.
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- */
-static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	ae_f64 mult;
-	ae_f32x2 volume;
-	ae_f32x2 in_sample = AE_ZERO32();
-	ae_f32x2 out_sample;
-	size_t channel;
-	int i;
-	int shift_left = 0;
-	ae_int32 *in = (ae_int32 *)source->r_ptr;
-	ae_int16 *out = (ae_int16 *)sink->w_ptr;
-
-	/* Get value of shift left */
-	if (cd->source_format == SOF_IPC_FRAME_S24_4LE)
-		shift_left = 8;
-
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			/* Set source as circular buffer */
-			vol_setup_circular(source);
-
-			/* Load the input sample */
-			AE_L32_XC(in_sample, in, sizeof(ae_int32));
-
-			/* Shift left to get the right alignment */
-			in_sample = AE_SLAA32(in_sample, shift_left);
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
-
-			/* Multiply the input sample */
-			mult = AE_MULF32S_LL(volume, in_sample);
-
-			/* Multiplication of Q1.31 x Q1.31 gives Q1.63.
-			 * Now multiplication is Q8.16 x Q1.31, the result
-			 * is Q9.48. Need to shift left by 15 to get Q1.63
-			 * compatible format for round. Sample is Q1.31.
-			 */
-			out_sample = AE_ROUND32F64SSYM(AE_SLAI64S(mult, 15));
-
-			/* Set sink as circular buffer */
-			vol_setup_circular(sink);
-
-			/* Round to Q1.15 and store the output sample */
-			AE_S16_0_XC(AE_ROUND16X4F32SSYM(out_sample, out_sample),
-				    out, sizeof(ae_int16));
-		}
-	}
-}
-#endif /* CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE) */
 
 #if CONFIG_FORMAT_S24LE
 /**
  * \brief HiFi3 enabled volume processing from 24/32 bit to 24/32 or 32 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  */
-static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
+static void vol_s24_to_s24_s32(struct processing_module *mod, struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, uint32_t frames,
+			       uint32_t attenuation)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	ae_f64 mult;
-	ae_f32x2 in_sample = AE_ZERO32();
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 in_sample;
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
-	size_t channel;
-	int i;
-	int shift = 0;
-	ae_int32 *in = (ae_int32 *)source->r_ptr;
-	ae_int32 *out = (ae_int32 *)sink->w_ptr;
+	ae_f32x2 *buf;
+	ae_f32x2 *buf_end;
+	int i, n, m;
+	ae_f32x2 *vol;
+	ae_valign inu;
+	ae_valign outu = AE_ZALIGN64();
+	const ae_f32x2 *in = source->ptr;
+	ae_f32x2 *out = sink->ptr;
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f32x2);
+	int samples = channels_count * frames;
 
-	/* Get value of shift left */
-	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
+	/* to ensure the address is 8-byte aligned and avoid risk of
+	 * error loading of volume gain while the cd->vol would be set
+	 * as circular buffer
+	 */
+	if (cd->copy_gain)
+		vol_store_gain(cd, channels_count);
 
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			/* Set source as circular buffer */
-			vol_setup_circular(source);
+	buf = (ae_f32x2 *)cd->vol;
+	buf_end = (ae_f32x2 *)(cd->vol + channels_count * 2);
+	vol = buf;
+	/* Set buf who stores the volume gain data as circular buffer */
+	AE_SETCBEGIN0(buf);
+	AE_SETCEND0(buf_end);
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
+		n = MIN(m, n);
+		inu = AE_LA64_PP(in);
+		/* process two continuous sample data once */
+		for (i = 0; i < n; i += 2) {
+			/* Load the volume value */
+			AE_L32X2_XC(volume, vol, inc);
 
 			/* Load the input sample */
-			AE_L32_XC(in_sample, in, sizeof(ae_int32));
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
+			AE_LA32X2_IP(in_sample, inu, in);
 
 			/* Multiply the input sample */
-			mult = AE_MULF32S_LL(volume, AE_SLAA32(in_sample, 8));
+#if COMP_VOLUME_Q8_16
+			out_sample = AE_MULFP32X2RS(AE_SLAI32S(volume, 7), AE_SLAI32(in_sample, 8));
+			out_sample = AE_SLAI32S(out_sample, 8);
+#elif COMP_VOLUME_Q1_23
+			out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
+			out_sample = AE_SLAI32S(out_sample, 8);
+#elif COMP_VOLUME_Q1_31
+			out_sample = AE_MULFP32X2RS(volume, AE_SLAI32(in_sample, 8));
+#endif
 
-			/* Multiplication of Q1.31 x Q1.31 gives Q1.63.
-			 * Now multiplication is Q8.16 x Q1.31, the result
-			 * is Q9.48. Need to shift right by one to get Q17.47
-			 * compatible format for round.
-			 */
-			out_sample = AE_ROUND32F48SSYM(AE_SRAI64(mult, 1));
-
-			/* Shift for S24_LE */
-			out_sample = AE_SRAA32RS(out_sample, shift);
-			out_sample = AE_SLAA32S(out_sample, shift);
-			out_sample = AE_SRAA32(out_sample, shift);
-
-			/* Set sink as circular buffer */
-			vol_setup_circular(sink);
+			/* Shift to S24_LE */
+			out_sample = AE_SRAI32(out_sample, 8);
 
 			/* Store the output sample */
-			AE_S32_L_XC(out_sample, out, sizeof(ae_int32));
+			AE_SA32X2_IP(out_sample, outu, out);
 		}
+		AE_SA64POS_FP(outu, out);
+		samples -= n;
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
+	}
+}
+
+/**
+ * \brief HiFi3 enabled volume passthrough from 24/32 bit to 24/32 or 32 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ */
+static void vol_passthrough_s24_to_s24_s32(struct processing_module *mod,
+					   struct cir_buf_source *source,
+					   struct cir_buf_sink *sink, uint32_t frames,
+					   uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 in_sample;
+	int i, n, m;
+	ae_valign inu;
+	ae_valign outu = AE_ZALIGN64();
+	const ae_f32x2 *in = source->ptr;
+	ae_f32x2 *out = sink->ptr;
+	const int channels_count = cd->channels;
+	int samples = channels_count * frames;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
+		n = MIN(m, n);
+		inu = AE_LA64_PP(in);
+		/* process two continuous sample data once */
+		for (i = 0; i < n; i += 2) {
+			/* Load the input sample */
+			AE_LA32X2_IP(in_sample, inu, in);
+			/* Store the output sample */
+			AE_SA32X2_IP(in_sample, outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
+		samples -= n;
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -277,91 +175,273 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 #if CONFIG_FORMAT_S32LE
 /**
  * \brief HiFi3 enabled volume processing from 32 bit to 24/32 or 32 bit.
- * \param[in,out] dev Volume base component device.
+ * \param[in,out] mod Pointer to struct processing_module
  * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
+ * \param[in,out] source Input buffer.
  * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
  */
-static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
+static void vol_s32_to_s24_s32(struct processing_module *mod, struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, uint32_t frames,
+			       uint32_t attenuation)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	ae_f64 mult;
-	ae_f32x2 in_sample = AE_ZERO32();
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 in_sample;
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
-	size_t channel;
-	int shift = 0;
-	int i;
-	ae_int32 *in = (ae_int32 *)source->r_ptr;
-	ae_int32 *out = (ae_int32 *)sink->w_ptr;
+	int i, n, m;
+	ae_f32x2 *buf;
+	ae_f32x2 *buf_end;
+	ae_f32x2 *vol;
+	ae_valign inu;
+	ae_valign outu = AE_ZALIGN64();
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f32x2);
+	int samples = channels_count * frames;
+	const ae_f32x2 *in = source->ptr;
+	ae_f32x2 *out = sink->ptr;
 
-	/* Get value of shift right */
-	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift = 8;
+	/* to ensure the address is 8-byte aligned and avoid risk of
+	 * error loading of volume gain while the cd->vol would be set
+	 * as circular buffer
+	 */
+	if (cd->copy_gain)
+		vol_store_gain(cd, channels_count);
 
-	/* Main processing loop */
-	for (i = 0; i < frames; i++) {
-		/* Processing per channel */
-		for (channel = 0; channel < dev->params.channels; channel++) {
-			/* Set source as circular buffer */
-			vol_setup_circular(source);
+	buf = (ae_f32x2 *)cd->vol;
+	buf_end = (ae_f32x2 *)(cd->vol + channels_count * 2);
+	vol = buf;
+	/* Set buf who stores the volume gain data as circular buffer */
+	AE_SETCBEGIN0(buf);
+	AE_SETCEND0(buf_end);
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
+		n = MIN(m, n);
+		inu = AE_LA64_PP(in);
+		/* process two continuous sample data once */
+		for (i = 0; i < n; i += 2) {
+			/* Load the volume value */
+			AE_L32X2_XC(volume, vol, inc);
 
 			/* Load the input sample */
-			AE_L32_XC(in_sample, in, sizeof(ae_int32));
-
-			/* Load volume */
-			volume = (ae_f32x2)cd->volume[channel];
-
-			/* Multiply the input sample */
-			mult = AE_MULF32S_LL(volume, in_sample);
-
-			/* Multiplication of Q1.31 x Q1.31 gives Q1.63.
-			 * Now multiplication is Q8.16 x Q1.31, the result
-			 * is Q9.48. Need to shift right by one to get Q17.47
-			 * compatible format for round.
+			AE_LA32X2_IP(in_sample, inu, in);
+#if COMP_VOLUME_Q1_31
+			out_sample = AE_MULFP32X2RS(volume, in_sample);
+#else
+			/* With Q1.31 x Q1.31 -> Q17.47 HiFi multiplications the result is
+			 * Q8.16 x Q1.31 << 1 >> 16 -> Q9.32, shift left by 15 for Q17.47
+			 * Q1.23 x Q1.31 << 1 >> 16 -> Q2.39, shift left by 8 for Q17.47
 			 */
-			out_sample = AE_ROUND32F48SSYM(AE_SRAI64(mult, 1));
+			ae_f64 mult0 = AE_MULF32R_HH(volume, in_sample);
+			ae_f64 mult1 = AE_MULF32R_LL(volume, in_sample);
 
-			/* Shift for S24_LE */
-			out_sample = AE_SRAA32RS(out_sample, shift);
-			out_sample = AE_SLAA32S(out_sample, shift);
-			out_sample = AE_SRAA32(out_sample, shift);
-
-			/* Set sink as circular buffer */
-			vol_setup_circular(sink);
-
-			/* Store the output sample */
-			AE_S32_L_XC(out_sample, out, sizeof(ae_int32));
+			mult0 = AE_SLAI64(mult0, VOLUME_Q17_47_SHIFT);
+			mult1 = AE_SLAI64(mult1, VOLUME_Q17_47_SHIFT);
+			out_sample = AE_ROUND32X2F48SSYM(mult0, mult1);	/* Q2.47 -> Q1.31 */
+#endif
+			AE_SA32X2_IP(out_sample, outu, out);
 		}
+		AE_SA64POS_FP(outu, out);
+		samples -= n;
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
+	}
+}
+
+/**
+ * \brief HiFi3 enabled volume passthrough from 32 bit to 24/32 or 32 bit.
+ * \param[in,out] mod Pointer to struct processing_module
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ */
+static void vol_passthrough_s32_to_s24_s32(struct processing_module *mod,
+					   struct cir_buf_source *source,
+					   struct cir_buf_sink *sink, uint32_t frames,
+					   uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 in_sample;
+	int i, n, m;
+	ae_valign inu;
+	ae_valign outu = AE_ZALIGN64();
+	const int channels_count = cd->channels;
+	int samples = channels_count * frames;
+	const ae_f32x2 *in = source->ptr;
+	ae_f32x2 *out = sink->ptr;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s32(in, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s32(out, sink->buf_end);
+		n = MIN(m, n);
+		inu = AE_LA64_PP(in);
+		/* process two continuous sample data once */
+		for (i = 0; i < n; i += 2) {
+			/* Load the input sample */
+			AE_LA32X2_IP(in_sample, inu, in);
+			AE_SA32X2_IP(in_sample, outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
+		samples -= n;
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
-const struct comp_func_map func_map[] = {
 #if CONFIG_FORMAT_S16LE
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, vol_s16_to_s16},
+/**
+ * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ */
+static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source *source,
+			   struct cir_buf_sink *sink, uint32_t frames,
+			   uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f32x2 volume0;
+	ae_f32x2 volume1;
+	ae_f32x2 out_sample0;
+	ae_f32x2 out_sample1;
+	ae_f16x4 in_sample;
+	ae_f16x4 out_sample;
+	int i, n, m;
+	ae_f32x2 *buf;
+	ae_f32x2 *buf_end;
+	ae_f32x2 *vol;
+	ae_valign inu;
+	ae_valign outu = AE_ZALIGN64();
+	const ae_f16x4 *in = source->ptr;
+	ae_f16x4 *out = sink->ptr;
+	const int channels_count = cd->channels;
+	const int inc = sizeof(ae_f32x2);
+	int samples = channels_count * frames;
+
+	/* to ensure the address is 8-byte aligned and avoid risk of
+	 * error loading of volume gain while the cd->vol would be set
+	 * as circular buffer
+	 */
+	if (cd->copy_gain)
+		vol_store_gain(cd, channels_count);
+
+	buf = (ae_f32x2 *)cd->vol;
+	buf_end = (ae_f32x2 *)(cd->vol + channels_count * 4);
+	vol = buf;
+
+	/* Set buf as circular buffer */
+	AE_SETCBEGIN0(buf);
+	AE_SETCEND0(buf_end);
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s16(in, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s16(out, sink->buf_end);
+		n = MIN(m, n);
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < n; i += 4) {
+			/* load first two volume gain */
+			AE_L32X2_XC(volume0, vol, inc);
+
+			/* load second two volume gain */
+			AE_L32X2_XC(volume1, vol, inc);
+
+			/* Load the input sample */
+			AE_LA16X4_IP(in_sample, inu, in);
+
+#if COMP_VOLUME_Q1_31
+			out_sample0 = AE_MULFP32X16X2RS_H(volume0, in_sample);
+			out_sample1 = AE_MULFP32X16X2RS_L(volume1, in_sample);
+#else
+#if COMP_VOLUME_Q8_16
+			/* Shift Q8.16 to Q9.23
+			 * No need to shift Q1.23, it is OK as such
+			 */
+			volume0 = AE_SLAI32S(volume0, 7);
+			volume1 = AE_SLAI32S(volume1, 7);
+#endif
+			/* Multiply the input sample */
+			out_sample0 = AE_MULFP32X16X2RS_H(volume0, in_sample);
+			out_sample1 = AE_MULFP32X16X2RS_L(volume1, in_sample);
+
+			/* Q9.23 to Q1.31 */
+			out_sample0 = AE_SLAI32S(out_sample0, 8);
+			out_sample1 = AE_SLAI32S(out_sample1, 8);
+#endif
+
+			/* store the output */
+			out_sample = AE_ROUND16X4F32SSYM(out_sample0, out_sample1);
+			// AE_SA16X4_IC(out_sample, outu, out);
+			AE_SA16X4_IP(out_sample, outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
+		samples -= n;
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
+	}
+}
+
+/**
+ * \brief HiFi3 enabled volume passthrough from 16 bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Input buffer.
+ * \param[in] frames Number of frames to process.
+ * \param[in] attenuation factor for peakmeter adjustment (unused)
+ */
+static void vol_passthrough_s16_to_s16(struct processing_module *mod,
+				       struct cir_buf_source *source,
+				       struct cir_buf_sink *sink, uint32_t frames,
+				       uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	ae_f16x4 in_sample;
+	int i, n, m;
+	ae_valign inu;
+	ae_valign outu = AE_ZALIGN64();
+	const ae_f16x4 *in = source->ptr;
+	ae_f16x4 *out = sink->ptr;
+	const int channels_count = cd->channels;
+	int samples = channels_count * frames;
+
+	while (samples) {
+		m = cir_buf_samples_without_wrap_s16(in, source->buf_end);
+		n = MIN(m, samples);
+		m = cir_buf_samples_without_wrap_s16(out, sink->buf_end);
+		n = MIN(m, n);
+		inu = AE_LA64_PP(in);
+		for (i = 0; i < n; i += 4) {
+			/* Load the input sample */
+			AE_LA16X4_IP(in_sample, inu, in);
+			AE_SA16X4_IP(in_sample, outu, out);
+		}
+		AE_SA64POS_FP(outu, out);
+		samples -= n;
+		in = cir_buf_wrap(in, source->buf_start, source->buf_end);
+		out = cir_buf_wrap(out, sink->buf_start, sink->buf_end);
+	}
+}
 #endif /* CONFIG_FORMAT_S16LE */
-#if CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE)
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, vol_s16_to_sX},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, vol_sX_to_s16},
-#endif /* CONFIG_FORMAT_S16LE && (CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE) */
-#if CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, vol_s16_to_sX},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, vol_sX_to_s16},
-#endif /* CONFIG_FORMAT_S16LE && CONFIG_FORMAT_S32LE */
+const struct comp_func_map volume_func_map[] = {
+#if CONFIG_FORMAT_S16LE
+	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16, vol_passthrough_s16_to_s16},
+#endif
 #if CONFIG_FORMAT_S24LE
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24_s32},
-#endif /* CONFIG_FORMAT_S24LE */
-#if CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, vol_s24_to_s24_s32},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, vol_s32_to_s24_s32},
-#endif /* CONFIG_FORMAT_S24LE && CONFIG_FORMAT_S32LE */
+	{ SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24_s32, vol_passthrough_s24_to_s24_s32 },
+#endif
 #if CONFIG_FORMAT_S32LE
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, vol_s32_to_s24_s32},
-#endif /* CONFIG_FORMAT_S32LE */
+	{ SOF_IPC_FRAME_S32_LE, vol_s32_to_s24_s32, vol_passthrough_s32_to_s24_s32 },
+#endif
 };
 
-const size_t func_count = ARRAY_SIZE(func_map);
-
+const size_t volume_func_count = ARRAY_SIZE(volume_func_map);
+#endif
 #endif
