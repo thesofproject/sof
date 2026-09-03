@@ -27,6 +27,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc4/module.h>
+#include <ipc4/pipeline.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -194,6 +195,18 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 	memset(alloc, 0, sizeof(*alloc));
 	alloc->heap = heap;
 
+	/* Create vregion for pipeline and its modules if size info is available */
+	if (IS_ENABLED(CONFIG_SOF_VREGIONS) &&
+	    pparams && pparams->mem_data && pparams->mem_data->heap_bytes) {
+		size_t buf_size = pparams->mem_data->heap_bytes;
+		uintptr_t vreg_start;
+
+		alloc->vreg = vregion_create_map(&vreg_start, &buf_size);
+		if (!alloc->vreg)
+			pipe_cl_err("Failed to create pipeline vregion of %zu bytes, using heap",
+				    pparams->mem_data->heap_bytes);
+	}
+
 	/* allocate new pipeline */
 	p = sof_ctx_zalloc(alloc, SOF_MEM_FLAG_USER, sizeof(*p), 0);
 	if (!p) {
@@ -246,7 +259,8 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 free:
 	sof_ctx_free(alloc, p);
 free_alloc:
-	sof_heap_free(heap, alloc);
+	vregion_put(alloc->vreg);
+	rfree(alloc);
 	return NULL;
 }
 
@@ -349,6 +363,10 @@ int pipeline_free(struct pipeline *p)
 
 	/* now free the pipeline */
 	sof_ctx_free(alloc, p);
+
+	/* free alloc context and vregion */
+	if (vregion_put(alloc->vreg))
+		pipe_cl_warn("pipeline vregion still in use");
 	sof_heap_free(alloc->heap, alloc);
 
 	/* show heap status */
@@ -426,6 +444,10 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 
 	p->source_comp = source;
 	p->sink_comp = sink;
+
+	if (p->alloc && p->alloc->vreg)
+		vregion_set_interim(p->alloc->vreg);
+
 	p->status = COMP_STATE_READY;
 
 	/* show heap status */
