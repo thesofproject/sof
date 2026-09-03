@@ -42,7 +42,14 @@ else
 endif
 
 CFLAGS  += -I$(TC_INC)
-LDFLAGS += -L$(TC_LIB) -ltinycompress -Wl,-rpath,$(TC_LIB)
+
+# STATIC=1 links libtinycompress.a fully static, for deployment to targets
+# without the host's glibc/dynamic linker (e.g. an Android DUT via adb push).
+ifeq ($(STATIC),1)
+  LDFLAGS += -static $(TC_LIB)/libtinycompress.a
+else
+  LDFLAGS += -L$(TC_LIB) -ltinycompress -Wl,-rpath,$(TC_LIB)
+endif
 
 # -------------------------------------------------------------------------
 # Targets
@@ -63,3 +70,8 @@ clean:
 # Install to a DUT via scp: make install DUT=root@spider
 install: $(BINARY)
 	scp $(BINARY) $(DUT):/usr/local/bin/$(BINARY)
+
+# Install to an Android DUT: make install-android ANDROID_SERIAL=<serial>
+install-android: $(BINARY)
+	adb $(if $(ANDROID_SERIAL),-s $(ANDROID_SERIAL)) push $(BINARY) /data/local/tmp/$(BINARY)
+	adb $(if $(ANDROID_SERIAL),-s $(ANDROID_SERIAL)) shell chmod 755 /data/local/tmp/$(BINARY)
