@@ -2,10 +2,9 @@
 //
 // WOV (Wake-on-Voice) capture daemon for SOF firmware.
 //
-// Opens a compress PCM device and loops forever capturing keyword-triggered
-// audio.  Each trigger writes a time-stamped WAV file.  The VAD gate kcontrol
-// is polled to detect silence and re-arm the pipeline without closing the
-// compress device.
+// Opens the WOV capture device (compress or plain-PCM, auto-detected) and
+// loops forever capturing keyword-triggered audio to time-stamped WAV
+// files.  The VAD gate kcontrol is polled to detect silence and re-arm.
 //
 // Uses:
 //   tinycompress  - compress PCM device API
@@ -18,6 +17,8 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <inttypes.h>
+#include <limits.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -51,6 +52,8 @@
 #define DRAIN_IDLE_MS         600     /* silence after last bytes → drain done */
 #define DRAIN_TIMEOUT_MS      6000    /* hard timeout for drain */
 #define CTL_DEV_FMT           "/dev/snd/controlC%u"
+#define COMPR_DEV_FMT         "/dev/snd/comprC%uD%u"
+#define PCM_DEV_FMT           "/dev/snd/pcmC%uD%uc"
 
 /* -------------------------------------------------------------------------
  * VAD kcontrol numids (pipeline 100 topology)
@@ -331,6 +334,195 @@ static struct compress *compress_setup(const struct wov_state *s)
 }
 
 /* -------------------------------------------------------------------------
+ * Plain PCM device setup (raw ioctls, no libasound dependency)
+ *
+ * Some WOV topologies use a normal PCM capture node (pcmC*D*c) instead of
+ * a compress node; read() works the same way once hw/sw_params + PREPARE
+ * are done, so the capture loop is unchanged.
+ * ---------------------------------------------------------------------- */
+static void hw_params_any(struct snd_pcm_hw_params *p)
+{
+	unsigned int n;
+
+	memset(p, 0, sizeof(*p));
+	for (n = 0; n < sizeof(p->masks) / sizeof(p->masks[0]); n++)
+		memset(&p->masks[n], 0xff, sizeof(struct snd_mask));
+	for (n = 0; n < sizeof(p->intervals) / sizeof(p->intervals[0]); n++) {
+		p->intervals[n].min = 0;
+		p->intervals[n].max = UINT_MAX;
+	}
+	p->rmask = ~0u;
+	p->info  = ~0u;
+}
+
+static void hw_params_set_mask(struct snd_pcm_hw_params *p, int param, unsigned int bit)
+{
+	struct snd_mask *m = &p->masks[param - SNDRV_PCM_HW_PARAM_FIRST_MASK];
+
+	memset(m, 0, sizeof(*m));
+	m->bits[bit >> 5] |= (1u << (bit & 31));
+}
+
+static void hw_params_set_int(struct snd_pcm_hw_params *p, int param, unsigned int val)
+{
+	struct snd_interval *iv = &p->intervals[param - SNDRV_PCM_HW_PARAM_FIRST_INTERVAL];
+
+	iv->min = iv->max = val;
+	iv->openmin = iv->openmax = 0;
+	iv->integer = 1;
+}
+
+static int pcm_setup(const struct wov_state *s)
+{
+	char path[64];
+	snprintf(path, sizeof(path), PCM_DEV_FMT, s->card, s->device);
+
+	int fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		log_err("open %s: %s", path, strerror(errno));
+		return -1;
+	}
+
+	struct snd_pcm_hw_params hw;
+	hw_params_any(&hw);
+	hw_params_set_mask(&hw, SNDRV_PCM_HW_PARAM_ACCESS, SNDRV_PCM_ACCESS_RW_INTERLEAVED);
+	hw_params_set_mask(&hw, SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FORMAT_S32_LE);
+	hw_params_set_mask(&hw, SNDRV_PCM_HW_PARAM_SUBFORMAT, 0 /* SNDRV_PCM_SUBFORMAT_STD */);
+	hw_params_set_int(&hw, SNDRV_PCM_HW_PARAM_CHANNELS, s->channels);
+	hw_params_set_int(&hw, SNDRV_PCM_HW_PARAM_RATE, s->rate);
+	hw_params_set_int(&hw, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, s->frag_sz);
+	hw_params_set_int(&hw, SNDRV_PCM_HW_PARAM_PERIODS, s->fragments);
+
+	if (ioctl(fd, SNDRV_PCM_IOCTL_HW_PARAMS, &hw) < 0) {
+		log_err("pcm hw_params %s: %s", path, strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	struct snd_pcm_sw_params sw = { 0 };
+	sw.tstamp_mode     = SNDRV_PCM_TSTAMP_NONE;
+	sw.period_step     = 1;
+	sw.avail_min       = s->frag_sz / (s->channels * 4);
+	sw.start_threshold = 1;
+	sw.stop_threshold  = UINT_MAX;
+
+	if (ioctl(fd, SNDRV_PCM_IOCTL_SW_PARAMS, &sw) < 0) {
+		log_err("pcm sw_params %s: %s", path, strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	if (ioctl(fd, SNDRV_PCM_IOCTL_PREPARE) < 0) {
+		log_err("pcm prepare %s: %s", path, strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+/* -------------------------------------------------------------------------
+ * Generic WOV device: dispatches to compress or plain-PCM backend
+ * ---------------------------------------------------------------------- */
+enum wov_dev_mode {
+	WOV_DEV_COMPRESS,
+	WOV_DEV_PCM,
+};
+
+struct wov_dev {
+	enum wov_dev_mode mode;
+	struct compress  *compress;   /* mode == WOV_DEV_COMPRESS */
+	int               pcm_fd;     /* mode == WOV_DEV_PCM */
+};
+
+/* Auto-detect: prefer the compress node if present, else fall back to PCM */
+static bool compr_node_exists(const struct wov_state *s)
+{
+	char path[64];
+	snprintf(path, sizeof(path), COMPR_DEV_FMT, s->card, s->device);
+	return access(path, F_OK) == 0;
+}
+
+static bool wov_dev_open(struct wov_dev *dev, const struct wov_state *s)
+{
+	if (compr_node_exists(s)) {
+		dev->mode     = WOV_DEV_COMPRESS;
+		dev->compress = compress_setup(s);
+		return dev->compress != NULL;
+	}
+
+	dev->mode   = WOV_DEV_PCM;
+	dev->pcm_fd = pcm_setup(s);
+	return dev->pcm_fd >= 0;
+}
+
+static const char *wov_dev_name(const struct wov_dev *dev)
+{
+	return dev->mode == WOV_DEV_COMPRESS ? "compress" : "pcm";
+}
+
+static int wov_dev_start(struct wov_dev *dev)
+{
+	if (dev->mode == WOV_DEV_COMPRESS) {
+		if (compress_start(dev->compress) != 0) {
+			log_err("compress_start: %s", compress_get_error(dev->compress));
+			return -1;
+		}
+		return 0;
+	}
+
+	if (ioctl(dev->pcm_fd, SNDRV_PCM_IOCTL_START) < 0) {
+		log_err("pcm start: %s", strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+/* Returns 0 = data ready, -1 with errno=ETIME on timeout, -1 otherwise on error */
+static int wov_dev_wait(struct wov_dev *dev, int timeout_ms)
+{
+	if (dev->mode == WOV_DEV_COMPRESS)
+		return compress_wait(dev->compress, timeout_ms);
+
+	struct pollfd pfd = { .fd = dev->pcm_fd, .events = POLLIN };
+	int ret = poll(&pfd, 1, timeout_ms);
+	if (ret == 0) {
+		errno = ETIME;
+		return -1;
+	}
+	if (ret < 0)
+		return -1;
+	return 0;
+}
+
+static int wov_dev_read(struct wov_dev *dev, void *buf, unsigned int sz)
+{
+	if (dev->mode == WOV_DEV_COMPRESS)
+		return compress_read(dev->compress, buf, sz);
+
+	int n = read(dev->pcm_fd, buf, sz);
+	if (n < 0)
+		log_err("pcm read: %s", strerror(errno));
+	return n;
+}
+
+static void wov_dev_stop(struct wov_dev *dev)
+{
+	if (dev->mode == WOV_DEV_COMPRESS)
+		compress_stop(dev->compress);
+	else
+		ioctl(dev->pcm_fd, SNDRV_PCM_IOCTL_DROP);
+}
+
+static void wov_dev_close(struct wov_dev *dev)
+{
+	if (dev->mode == WOV_DEV_COMPRESS)
+		compress_close(dev->compress);
+	else
+		close(dev->pcm_fd);
+}
+
+/* -------------------------------------------------------------------------
  * One WOV capture cycle
  * ---------------------------------------------------------------------- */
 enum cycle_result {
@@ -340,7 +532,7 @@ enum cycle_result {
 };
 
 static enum cycle_result run_cycle(const struct wov_state *s,
-				   struct compress *compress,
+				   struct wov_dev *dev,
 				   int cycle_id,
 				   uint64_t *bytes_out)
 {
@@ -372,16 +564,16 @@ static enum cycle_result run_cycle(const struct wov_state *s,
 
 	while (!s->stop) {
 		/* Wait up to POLL_INTERVAL_MS for data, then check VAD status.
-		 * compress_wait returns 0=data_ready, -1=timeout(ETIME) or error. */
-		int ret = compress_wait(compress, POLL_INTERVAL_MS);
+		 * wov_dev_wait returns 0=data_ready, -1=timeout(ETIME) or error. */
+		int ret = wov_dev_wait(dev, POLL_INTERVAL_MS);
 		if (ret < 0 && errno != ETIME) {
-			log_err("compress_wait: %s", compress_get_error(compress));
+			log_err("wov_dev_wait: %s", strerror(errno));
 			result = CYCLE_ERROR;
 			break;
 		}
 
 		if (ret == 0) {
-			int n = compress_read(compress, buf, s->frag_sz);
+			int n = wov_dev_read(dev, buf, s->frag_sz);
 			if (n > 0) {
 				if (!triggered) {
 					triggered = true;
@@ -499,13 +691,15 @@ static void usage(const char *prog)
 		"Usage: %s [options]\n"
 		"\n"
 		"  -c CARD        sound card number (default %d)\n"
-		"  -d DEVICE      compress PCM device (default %d)\n"
+		"  -d DEVICE      compress or PCM device number (default %d)\n"
+		"                 auto-detects compress vs. plain-PCM WOV node\n"
 		"  -n CYCLES      number of WOV cycles, 0=unlimited (default 0)\n"
 		"  -o DIR         output directory for WAV files (default %s)\n"
 		"  -t THRESHOLD   VAD gate threshold in raw S32 energy units\n"
 		"                 0=always open (default), 300000000=lab ambient\n"
 		"  -r RATE        sample rate Hz (default %d)\n"
 		"  -f FRAG_SZ     fragment size bytes (default %d)\n"
+		"  -2             capture 2 channels instead of the default 1\n"
 		"  -v             verbose debug logging\n"
 		"  -h             this help\n"
 		"\n"
@@ -541,7 +735,7 @@ int main(int argc, char *argv[])
 	g_state = &s;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "c:d:n:o:t:r:f:vh")) != -1) {
+	while ((opt = getopt(argc, argv, "c:d:n:o:t:r:f:2vh")) != -1) {
 		switch (opt) {
 		case 'c': s.card          = (unsigned int)atoi(optarg); break;
 		case 'd': s.device        = (unsigned int)atoi(optarg); break;
@@ -550,6 +744,7 @@ int main(int argc, char *argv[])
 		case 't': s.vad_threshold = atoi(optarg);               break;
 		case 'r': s.rate          = (unsigned int)atoi(optarg); break;
 		case 'f': s.frag_sz       = (unsigned int)atoi(optarg); break;
+		case '2': s.channels      = 2;                          break;
 		case 'v': s.verbose       = 1;                          break;
 		case 'h': usage(argv[0]); return 0;
 		default:  usage(argv[0]); return 1;
@@ -564,18 +759,18 @@ int main(int argc, char *argv[])
 		 s.card, s.device, s.rate, s.channels, s.frag_sz,
 		 s.max_cycles ? "limited" : "unlimited");
 
-	/* Open compress device once and keep open for all cycles */
-	struct compress *compress = compress_setup(&s);
-	if (!compress)
+	/* Open the WOV device once (compress or plain-PCM, auto-detected)
+	 * and keep it open for all cycles */
+	struct wov_dev dev = { 0 };
+	if (!wov_dev_open(&dev, &s))
 		return 1;
-	log_state("compress: OPEN card=%u device=%u", s.card, s.device);
+	log_state("%s: OPEN card=%u device=%u", wov_dev_name(&dev), s.card, s.device);
 
-	if (compress_start(compress) != 0) {
-		log_err("compress_start: %s", compress_get_error(compress));
-		compress_close(compress);
+	if (wov_dev_start(&dev) != 0) {
+		wov_dev_close(&dev);
 		return 1;
 	}
-	log_state("compress: RUNNING");
+	log_state("%s: RUNNING", wov_dev_name(&dev));
 
 	/* Write initial VAD threshold if non-zero */
 	if (s.vad_threshold != 0) {
@@ -598,7 +793,7 @@ int main(int argc, char *argv[])
 		log_state("cycle %d: REARM", cycle);
 
 		uint64_t bytes = 0;
-		enum cycle_result r = run_cycle(&s, compress, cycle, &bytes);
+		enum cycle_result r = run_cycle(&s, &dev, cycle, &bytes);
 		total_b += bytes;
 
 		if (r == CYCLE_ERROR) {
@@ -617,10 +812,10 @@ int main(int argc, char *argv[])
 		usleep(300000);
 	}
 
-	compress_stop(compress);
-	log_state("compress: STOP");
-	compress_close(compress);
-	log_state("compress: CLOSE");
+	wov_dev_stop(&dev);
+	log_state("%s: STOP", wov_dev_name(&dev));
+	wov_dev_close(&dev);
+	log_state("%s: CLOSE", wov_dev_name(&dev));
 
 	log_info("done: %d cycle(s), %" PRIu64 " bytes total", cycle, total_b);
 	return 0;
