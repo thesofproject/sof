@@ -39,6 +39,11 @@ extern size_t posix_fuzz_sz;
 static uint8_t fuzz_in[65536];
 static size_t fuzz_in_sz;
 
+/* Set on the driver thread by posix_fuzz_case_begin(), consumed on the EDF
+ * workqueue thread by ipc_platform_do_cmd(). See posix_fuzz_case_begin().
+ */
+static bool posix_fuzz_teardown_pending;
+
 /*
  * posix_ipc_teardown - drop all IPC-tracked objects left over from the
  * previous fuzz testcase so the next one starts from a clean topology.
@@ -194,7 +199,15 @@ static void posix_ipc_teardown(void)
  */
 void posix_fuzz_case_begin(void)
 {
-	posix_ipc_teardown();
+	/*
+	 * Defer the teardown to the EDF workqueue thread (ipc_platform_do_cmd()).
+	 * This runs on the libFuzzer driver thread, where native_sim treats the
+	 * CPU as halted; posix_ipc_teardown() releases spinlocks/mutexes, and
+	 * releasing a spinlock while the system-tick IRQ is pending makes
+	 * native_sim deliver it synchronously and abort ("called from a HW model
+	 * thread").
+	 */
+	posix_fuzz_teardown_pending = true;
 	fuzz_in_sz = 0;
 }
 
@@ -361,6 +374,17 @@ static void fuzz_isr(const void *arg)
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct ipc_cmd_hdr *hdr;
+
+#ifdef CONFIG_ARCH_POSIX_LIBFUZZER
+	/*
+	 * Reclaim the previous testcase's topology in thread context, before
+	 * this testcase's first command. See posix_fuzz_case_begin().
+	 */
+	if (posix_fuzz_teardown_pending) {
+		posix_fuzz_teardown_pending = false;
+		posix_ipc_teardown();
+	}
+#endif
 
 #ifdef CONFIG_IPC_MAJOR_4
 	memset(posix_hostbox, 0, SOF_IPC_MSG_MAX_SIZE);
