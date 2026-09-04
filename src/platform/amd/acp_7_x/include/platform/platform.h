@@ -27,7 +27,7 @@ struct timer;
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
 
 /* IPC Interrupt */
-#define PLATFORM_IPC_INTERRUPT		IRQ_EXT_IPC_LEVEL_3
+#define PLATFORM_IPC_INTERRUPT		5 /* EXT_LEVEL5 */
 #define PLATFORM_IPC_INTERRUPT_NAME	NULL
 
 /* Host page size */
