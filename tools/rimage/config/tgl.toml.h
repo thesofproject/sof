@@ -120,6 +120,10 @@
 #include <audio/template/template.toml>
 #endif
 
+#if defined(CONFIG_COMP_TENSORFLOW) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/tensorflow/tflmcly.toml>
+#endif
+
 #if defined(CONFIG_COMP_LEVEL_MULTIPLIER) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/level_multiplier/level_multiplier.toml>
 #endif

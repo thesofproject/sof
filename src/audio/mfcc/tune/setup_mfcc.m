@@ -31,6 +31,16 @@ function setup_mfcc()
 	setup.tplg_fn = 'mel80_compress.conf';
 	export_mfcc_setup(gen_cfg, setup);
 
+	% Blob for 40-bin/20ms-hop mel spectrogram, matching TFLM micro_speech's
+	% front-end shape (TFLM_FEATURE_SIZE=40, TFLM_FEATURE_STRIDE_MS=20,
+	% TFLM_FEATURE_DURATION_MS=30) for interim wake-word sanity-checking.
+	setup = get_mel_spectrogram_config();
+	setup.frame_length = 30.0; % 480 samples at 16 kHz
+	setup.frame_shift = 20.0; % 320 samples at 16 kHz
+	setup.num_mel_bins = 40;
+	setup.tplg_fn = 'mel40.conf';
+	export_mfcc_setup(gen_cfg, setup);
+
 	% Blob for mel spectrogram with compress PCM output and DTX
 	setup = get_mel_spectrogram_config();
 	setup.compress_output = true;
