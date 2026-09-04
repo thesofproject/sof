@@ -43,7 +43,7 @@ jobs:
 
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with: {submodules: recursive, fetch-depth: 0, filter: 'tree:0'}
 
       - run: cmake -B build-rimage/ -S tools/rimage/ -DCMAKE_C_FLAGS="${_CFLGS}"
@@ -57,7 +57,7 @@ jobs:
   cppcheck:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with: {submodules: recursive, fetch-depth: 0, filter: 'tree:0'}
 
       - name: apt install cppcheck

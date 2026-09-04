@@ -37,7 +37,7 @@ jobs:
     container:
       image: thesofproject/zephyr-lite:v0.29.3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           path: sof
           filter: 'tree:0'
@@ -88,7 +88,7 @@ jobs:
       image: thesofproject/zephyr-lite:v0.29.3
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           path: sof
           filter: 'tree:0'
@@ -157,7 +157,7 @@ jobs:
             IPC_platforms: wcl imx95
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         # Download a full clone to fix `git describe`, sof_version.h and
         # build reproducibility. sof.git is still small.
         # This is especially useful for daily builds (but not just).
@@ -236,7 +236,7 @@ jobs:
             ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: always()
         with:
           name: linux-build ${{ matrix.build_opts }} ${{ matrix.IPC_platforms }}
@@ -278,7 +278,7 @@ jobs:
 
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           filter: 'tree:0'
@@ -289,14 +289,14 @@ jobs:
       # or delete cache manually in Github Actions tab
       - name: Cache unzip
         id: cache-unzip
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: unzip-5.51-1-bin.zip
           key: ${{ runner.os }}-cache-unzip-5-51-1
 
       - name: Cache wget
         id: cache-wget
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: wget-1.11.4-1-bin.zip
           key: ${{ runner.os }}-cache-wget-1-11-4-1
@@ -305,7 +305,7 @@ jobs:
       # sof/zephyr/docker-run.sh
       - name: Cache Zephyr SDK 1.0.1
         id: cache-zephyr-sdk
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: zephyr-sdk-1.0.1_windows-x86_64_gnu.7z
           key: ${{ runner.os }}-cache-zephyr-sdk-1-0-1
@@ -445,7 +445,7 @@ jobs:
           ${{ matrix.build_opts }} ${{ matrix.platforms }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: always()
         with:
           name: windows-build ${{ matrix.build_opts }} ${{ matrix.platforms }}
@@ -465,7 +465,7 @@ jobs:
     needs: [build-linux, build-windows]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         # we need only one script but it's simpler to get the (last
         # revision of the) whole repo and it takes seconds.
         with:
