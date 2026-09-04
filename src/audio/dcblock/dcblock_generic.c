@@ -74,7 +74,7 @@ static int dcblock_s16_default(struct comp_data *cd,
 			if (++ch == nch)
 				ch = 0;
 		}
-		x = cir_buf_wrap((void *)x, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 		remaining_samples -= samples_without_wrap;
 	}
@@ -121,7 +121,7 @@ static int dcblock_s24_default(struct comp_data *cd,
 			if (++ch == nch)
 				ch = 0;
 		}
-		x = cir_buf_wrap((void *)x, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 		remaining_samples -= samples_without_wrap;
 	}
@@ -166,7 +166,7 @@ static int dcblock_s32_default(struct comp_data *cd,
 			if (++ch == nch)
 				ch = 0;
 		}
-		x = cir_buf_wrap((void *)x, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y, sink->buf_start, sink->buf_end);
 		remaining_samples -= samples_without_wrap;
 	}

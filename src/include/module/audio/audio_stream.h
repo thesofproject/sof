@@ -207,6 +207,26 @@ static inline void *cir_buf_wrap(const void *ptr, const void *buf_addr, const vo
 }
 
 /**
+ * Verifies a read pointer and performs rollover when reached the end of the circular buffer.
+ * @param ptr Pointer
+ * @param buf_addr Start address of the circular buffer.
+ * @param buf_end End address of the circular buffer.
+ * @return Pointer, adjusted if necessary.
+ */
+
+static inline const void *source_cir_buf_wrap(const void *ptr, const void *buf_addr,
+					      const void *buf_end)
+{
+	if (ptr >= buf_end)
+		ptr = (const char *)buf_addr +
+			((const char *)ptr - (const char *)buf_end);
+
+	assert((intptr_t)ptr <= (intptr_t)buf_end);
+
+	return ptr;
+}
+
+/**
  * @brief Calculates number of bytes to buffer wrap when reading a circular
  *	  buffer backwards from current pointer towards the buffer start.
  * @param ptr Read or write pointer of circular buffer.

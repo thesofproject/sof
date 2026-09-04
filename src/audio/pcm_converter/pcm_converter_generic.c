@@ -46,7 +46,7 @@ static int pcm_convert_u8_to_s32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_U8_SAMPLES;
@@ -73,7 +73,7 @@ static int pcm_convert_s32_to_u8(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -102,7 +102,7 @@ static int pcm_convert_alaw_to_s32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_U8_SAMPLES;
@@ -129,7 +129,7 @@ static int pcm_convert_s32_to_alaw(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -158,7 +158,7 @@ static int pcm_convert_mulaw_to_s32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_U8_SAMPLES;
@@ -185,7 +185,7 @@ static int pcm_convert_s32_to_mulaw(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -215,7 +215,7 @@ static int pcm_convert_s16_to_s24(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S16_SAMPLES;
@@ -242,7 +242,7 @@ static int pcm_convert_s24_to_s16(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -273,7 +273,7 @@ static int pcm_convert_s16_to_s32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S16_SAMPLES;
@@ -300,7 +300,7 @@ static int pcm_convert_s32_to_s16(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -331,7 +331,7 @@ static int pcm_convert_s24_to_s32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -358,7 +358,7 @@ static int pcm_convert_s32_to_s24(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -385,7 +385,7 @@ static int pcm_convert_s32_to_s24_be(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_samples_without_wrap_s32(src, source->buf_end);
@@ -723,7 +723,7 @@ static int pcm_convert_s16_c16_to_s16_c32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S16_SAMPLES;
@@ -750,7 +750,7 @@ static int pcm_convert_s16_c32_to_s16_c16(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -778,7 +778,7 @@ static int pcm_convert_s16_c32_to_s32_c32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -805,7 +805,7 @@ static int pcm_convert_s32_c32_to_s16_c32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -833,7 +833,7 @@ static int pcm_convert_s16_c32_to_s24_c32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -860,7 +860,7 @@ static int pcm_convert_s24_c32_to_s16_c32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -889,7 +889,7 @@ static int pcm_convert_s24_c24_to_s24_c32(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) / 3;
@@ -917,7 +917,7 @@ static int pcm_convert_s24_c32_to_s24_c24(const struct cir_buf_source *source,
 	size_t nmax, i, n;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;
@@ -950,7 +950,7 @@ static int pcm_convert_s24_c32_to_s24_c24_link_gtw(const struct cir_buf_source *
 	size_t nmax, i = 0, n = 0;
 
 	for (processed = 0; processed < samples; processed += n) {
-		src = cir_buf_wrap(src, source->buf_start, source->buf_end);
+		src = source_cir_buf_wrap(src, source->buf_start, source->buf_end);
 		dst = cir_buf_wrap(dst, sink->buf_start, sink->buf_end);
 		n = samples - processed;
 		nmax = cir_buf_bytes_without_wrap(src, source->buf_end) >> BYTES_TO_S32_SAMPLES;

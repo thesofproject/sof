@@ -84,7 +84,7 @@ static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source 
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -132,7 +132,7 @@ static void vol_passthrough_s24_to_s24(struct processing_module *mod,
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -186,7 +186,7 @@ static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source 
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -237,7 +237,7 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -288,7 +288,7 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
@@ -336,7 +336,7 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 			cd->peak_regs.peak_meter[j] = MAX(tmp, cd->peak_regs.peak_meter[j]);
 		}
 		remaining_samples -= n;
-		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
 		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
 	}
 }
