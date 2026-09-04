@@ -4,7 +4,7 @@
 % Copyright(c) 2026 Intel Corporation.
 
 num_ceps = 13;
-num_mel = 80;
+num_mel = 40;
 
 % MFCC cepstral output files (all int32 output, Q9.23)
 ceps_files = {'mfcc_s16.raw', 'mfcc_s24.raw', 'mfcc_s32.raw'};
