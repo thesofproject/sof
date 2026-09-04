@@ -179,7 +179,10 @@ static int wov_arb_prepare(struct comp_dev *dev)
 
 	comp_info(dev, "wov_arb_prepare");
 
-	cd->active_slot = WOV_ARB_NO_ACTIVE;
+	if (cd->num_slots <= 1)
+		cd->active_slot = 0;
+	else
+		cd->active_slot = WOV_ARB_NO_ACTIVE;
 
 	/* Subscribe to keyword-detected events from any WOV detector. */
 	notifier_register(dev, NULL, NOTIFIER_ID_WOV_DETECT, arb_on_detect, 0);
@@ -331,11 +334,20 @@ static int wov_arb_copy(struct comp_dev *dev)
 
 	sink_free = audio_stream_get_free_bytes(&sink->stream);
 
+	uint32_t num_sources = 0;
+	list_for_item(src_item, &dev->bsource_list) {
+		num_sources++;
+	}
+
+	uint32_t eff_active_slot = cd->active_slot;
+	if (eff_active_slot == WOV_ARB_NO_ACTIVE && num_sources <= 1)
+		eff_active_slot = 0;
+
 	/* First pass: find how many bytes the active source has available. */
 	slot = 0;
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
-		if (slot == cd->active_slot) {
+		if (slot == eff_active_slot) {
 			active_avail = audio_stream_get_avail_bytes(&source->stream);
 			break;
 		}
@@ -352,7 +364,7 @@ static int wov_arb_copy(struct comp_dev *dev)
 	list_for_item(src_item, &dev->bsource_list) {
 		source = list_item(src_item, struct comp_buffer, sink_list);
 
-		if (slot == cd->active_slot && copy_bytes > 0) {
+		if (slot == eff_active_slot && copy_bytes > 0) {
 			uint32_t src_frame_bytes = audio_stream_frame_bytes(&source->stream);
 			uint32_t dst_frame_bytes = audio_stream_frame_bytes(&sink->stream);
 			uint32_t src_frames = copy_bytes / src_frame_bytes;
