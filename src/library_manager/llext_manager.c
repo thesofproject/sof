@@ -52,6 +52,368 @@ extern struct tr_ctx lib_manager_tr;
 
 #define PAGE_SZ		CONFIG_MM_DRV_PAGE_SIZE
 
+#include <zephyr/sys/bitarray.h>
+#include <zephyr/llext/elf.h>
+
+#define LLEXT_LIB_PAGES (CONFIG_LIBRARY_REGION_SIZE / PAGE_SZ)
+SYS_BITARRAY_DEFINE_STATIC(lib_vma_bitarray, LLEXT_LIB_PAGES);
+
+static uintptr_t llext_manager_alloc_vma(size_t size)
+{
+	size_t num_pages = ALIGN_UP(size, PAGE_SZ) / PAGE_SZ;
+	size_t offset;
+	int ret;
+
+	ret = sys_bitarray_alloc(&lib_vma_bitarray, num_pages, &offset);
+	if (ret < 0) {
+		tr_err(&lib_manager_tr, "llext_manager_alloc_vma: failed to allocate %zu pages", num_pages);
+		return 0;
+	}
+
+	return CONFIG_LIBRARY_BASE_ADDRESS + offset * PAGE_SZ;
+}
+
+void llext_manager_free_vma(uintptr_t vma, size_t size)
+{
+	if (!vma || !size)
+		return;
+
+	size_t num_pages = ALIGN_UP(size, PAGE_SZ) / PAGE_SZ;
+	size_t offset = (vma - CONFIG_LIBRARY_BASE_ADDRESS) / PAGE_SZ;
+
+	sys_bitarray_free(&lib_vma_bitarray, num_pages, offset);
+}
+
+static enum llext_mem llext_manager_get_sec_mem_idx(const char *name, const elf_shdr_t *shdr)
+{
+	if (strcmp(name, ".exported_sym") == 0)
+		return LLEXT_MEM_EXPORT;
+
+	switch (shdr->sh_type) {
+	case SHT_NOBITS:
+		return LLEXT_MEM_BSS;
+	case SHT_PROGBITS:
+		if (shdr->sh_flags & SHF_EXECINSTR)
+			return LLEXT_MEM_TEXT;
+		else if (shdr->sh_flags & SHF_WRITE)
+			return LLEXT_MEM_DATA;
+		else
+			return LLEXT_MEM_RODATA;
+	case SHT_PREINIT_ARRAY:
+		return LLEXT_MEM_PREINIT;
+	case SHT_INIT_ARRAY:
+		return LLEXT_MEM_INIT;
+	case SHT_FINI_ARRAY:
+		return LLEXT_MEM_FINI;
+	default:
+		return LLEXT_MEM_COUNT;
+	}
+}
+
+/*
+ * llext_manager_layout_sections() rebases the addresses of recognized
+ * sections in place, directly in the raw ELF buffer, before llext_load()
+ * ever parses the file. Two classes of data in the file still reference the
+ * OLD (pre-rebase) addresses after that mutation, and need fixing up
+ * ourselves:
+ *
+ *  1. .rela.dyn/.rela.plt r_offset fields (byte-for-byte copies from the
+ *     build-time ELF) -- otherwise llext_link_plt()'s llext_file_offset()
+ *     lookup fails ("Offset not found") for every relocation whose target
+ *     section moved.
+ *
+ *  2. R_XTENSA_RELATIVE relocations are a complete no-op in Zephyr's llext
+ *     core whenever ldr_parm->pre_located is set (see
+ *     arch_elf_relocate_local() in arch/xtensa/core/elf.c), under the
+ *     assumption that a pre-located relative relocation's stored pointer
+ *     value is already correct. SOF's rebase step violates that assumption,
+ *     so we must apply the same delta to the pointer VALUE stored at each
+ *     R_XTENSA_RELATIVE's target ourselves.
+ *
+ *  3. .symtab/.dynsym st_value fields: llext_copy_symbols() takes st_value
+ *     as the final absolute address, unmodified, whenever pre_located is
+ *     set (same assumption as above, same violation) -- this feeds both
+ *     llext_find_sym() lookups (R_XTENSA_GLOB_DAT resolution) and exported
+ *     symbol addresses, so stale st_value silently propagates stale
+ *     addresses through both.
+ *
+ * Track the (old_addr, size, delta, section index) of every section
+ * actually rebased during the real (vma_base != 0) pass, then walk the ELF
+ * a second time applying all three fixups above.
+ */
+struct llext_manager_sec_rebase {
+	uintptr_t old_addr;
+	size_t size;
+	ptrdiff_t delta;
+	int shdr_idx;
+};
+
+#define LLEXT_MANAGER_MAX_REBASED_SECTIONS 32
+
+/* Keep in sync with arch/xtensa/core/elf.c -- not exposed via a shared header. */
+#define SOF_LLEXT_R_XTENSA_RELATIVE 5
+
+static ptrdiff_t llext_manager_delta_for_old_addr(const struct llext_manager_sec_rebase *rebase,
+						   int rebase_cnt, uintptr_t old_addr)
+{
+	for (int k = 0; k < rebase_cnt; k++) {
+		if (old_addr >= rebase[k].old_addr && old_addr < rebase[k].old_addr + rebase[k].size)
+			return rebase[k].delta;
+	}
+
+	return 0;
+}
+
+static bool llext_manager_addr_to_file_off(uint8_t *elf_buf, uintptr_t addr, size_t *file_off)
+{
+	elf_ehdr_t *hdr = (elf_ehdr_t *)elf_buf;
+	elf_shdr_t *shdrs = (elf_shdr_t *)(elf_buf + hdr->e_shoff);
+
+	for (int i = 0; i < hdr->e_shnum; i++) {
+		elf_shdr_t *shdr = shdrs + i;
+
+		if (!(shdr->sh_flags & SHF_ALLOC) || !shdr->sh_size)
+			continue;
+
+		if (addr >= shdr->sh_addr && addr < shdr->sh_addr + shdr->sh_size) {
+			*file_off = shdr->sh_offset + (addr - shdr->sh_addr);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static void llext_manager_fixup_rela(uint8_t *elf_buf,
+				      const struct llext_manager_sec_rebase *rebase,
+				      int rebase_cnt)
+{
+	elf_ehdr_t *hdr = (elf_ehdr_t *)elf_buf;
+	elf_shdr_t *shdrs = (elf_shdr_t *)(elf_buf + hdr->e_shoff);
+
+	for (int i = 0; i < hdr->e_shnum; i++) {
+		elf_shdr_t *shdr = shdrs + i;
+
+		if (shdr->sh_type != SHT_RELA)
+			continue;
+
+		int cnt = shdr->sh_size / shdr->sh_entsize;
+		elf_rela_t *relas = (elf_rela_t *)(elf_buf + shdr->sh_offset);
+
+		for (int j = 0; j < cnt; j++) {
+			elf_rela_t *rela = relas + j;
+			ptrdiff_t r_delta = llext_manager_delta_for_old_addr(rebase, rebase_cnt,
+									      rela->r_offset);
+
+			if (!r_delta)
+				continue;
+
+			rela->r_offset += r_delta;
+
+			if (ELF_R_TYPE(rela->r_info) == SOF_LLEXT_R_XTENSA_RELATIVE) {
+				size_t file_off;
+
+				if (llext_manager_addr_to_file_off(elf_buf, rela->r_offset,
+								    &file_off)) {
+					uint32_t *val = (uint32_t *)(elf_buf + file_off);
+					ptrdiff_t v_delta = llext_manager_delta_for_old_addr(
+						rebase, rebase_cnt, *val);
+
+					*val += v_delta;
+				}
+			}
+		}
+	}
+}
+
+static void llext_manager_fixup_symtab(uint8_t *elf_buf,
+					const struct llext_manager_sec_rebase *rebase,
+					int rebase_cnt)
+{
+	elf_ehdr_t *hdr = (elf_ehdr_t *)elf_buf;
+	elf_shdr_t *shdrs = (elf_shdr_t *)(elf_buf + hdr->e_shoff);
+
+	for (int i = 0; i < hdr->e_shnum; i++) {
+		elf_shdr_t *shdr = shdrs + i;
+
+		if (shdr->sh_type != SHT_SYMTAB && shdr->sh_type != SHT_DYNSYM)
+			continue;
+
+		int cnt = shdr->sh_size / shdr->sh_entsize;
+		elf_sym_t *syms = (elf_sym_t *)(elf_buf + shdr->sh_offset);
+
+		for (int j = 0; j < cnt; j++) {
+			elf_sym_t *sym = syms + j;
+			int k;
+
+			for (k = 0; k < rebase_cnt; k++) {
+				if (sym->st_shndx == rebase[k].shdr_idx) {
+					sym->st_value += rebase[k].delta;
+					break;
+				}
+			}
+		}
+	}
+}
+
+static size_t llext_manager_layout_sections(uint8_t *elf_buf, uintptr_t vma_base)
+{
+	elf_ehdr_t *hdr = (elf_ehdr_t *)elf_buf;
+	elf_shdr_t *shdrs = (elf_shdr_t *)(elf_buf + hdr->e_shoff);
+	elf_shdr_t *shstr_shdr = shdrs + hdr->e_shstrndx;
+	const char *shstrtab = (const char *)(elf_buf + shstr_shdr->sh_offset);
+
+	uintptr_t current_vma = vma_base;
+	enum llext_mem last_region = LLEXT_MEM_COUNT;
+	struct llext_manager_sec_rebase rebase[LLEXT_MANAGER_MAX_REBASED_SECTIONS];
+	int rebase_cnt = 0;
+	bool region_opened[LLEXT_MEM_COUNT] = { false };
+	ptrdiff_t region_delta[LLEXT_MEM_COUNT] = { 0 };
+
+	for (int i = 0; i < hdr->e_shnum; i++) {
+		elf_shdr_t *shdr = shdrs + i;
+
+		if (!(shdr->sh_flags & SHF_ALLOC) || shdr->sh_size == 0)
+			continue;
+
+		const char *name = shstrtab + shdr->sh_name;
+		enum llext_mem s_region = llext_manager_get_sec_mem_idx(name, shdr);
+
+		if (s_region == LLEXT_MEM_BSS) {
+			/*
+			 * For layout purposes only, treat .bss as part of the DATA
+			 * region rather than its own distinct region. llext_manager_
+			 * load_module() requires .bss to be immediately contiguous
+			 * with writable DATA (they share a single VMA mapping, since
+			 * .bss has no file backing of its own and just extends
+			 * DATA's mapped-and-zeroed tail). If .bss were laid out as
+			 * its own region, any OTHER region (e.g. .exported_sym)
+			 * appearing between DATA's last member and .bss in file order
+			 * would consume the address range .bss needs to be adjacent
+			 * to, forcing .bss onto a spurious extra page beyond where
+			 * DATA actually ends. Aliasing to LLEXT_MEM_DATA here reuses
+			 * the exact same delta/contiguous-packing path already used
+			 * for DATA members that reappear after such an interruption.
+			 * This only affects the rebased sh_addr written below; it
+			 * does not change which segment .bss is reported under
+			 * elsewhere (that comes from Zephyr's own section type-based
+			 * classification, independent of this local variable).
+			 */
+			s_region = LLEXT_MEM_DATA;
+		}
+
+		if (s_region == LLEXT_MEM_COUNT) {
+			/*
+			 * Not part of any llext region (e.g. .dynamic) and its own
+			 * sh_addr is left untouched below. But it still occupies
+			 * real file space, possibly between two sections of a
+			 * region that IS being repacked here -- account for its
+			 * slot so later same-region sections keep the same
+			 * relative spacing that llext_map_sections()'s ET_DYN
+			 * consistency check (sh_addr delta == sh_offset delta)
+			 * requires.
+			 */
+			current_vma = ALIGN_UP(current_vma, shdr->sh_addralign);
+			current_vma += shdr->sh_size;
+			continue;
+		}
+
+		if (region_opened[s_region]) {
+			/*
+			 * This region already had a section rebased earlier and is
+			 * reappearing now, with a genuinely different region's
+			 * section(s) interleaved in between in file order (e.g.
+			 * .exported_sym sitting between two .data-region members).
+			 * Reuse the region's already-established rebase delta so
+			 * this member keeps the exact same (sh_addr - sh_offset) as
+			 * the region's first member -- that constant delta is what
+			 * llext_map_sections()'s ET_DYN consistency check actually
+			 * requires. Re-packing it back into the forward current_vma
+			 * layout instead (as if it were a fresh region) would insert
+			 * a spurious page-aligned gap that doesn't exist in the
+			 * original file.
+			 */
+			if (vma_base) {
+				uintptr_t old_addr = shdr->sh_addr;
+				uintptr_t new_addr = (uintptr_t)((ptrdiff_t)old_addr +
+								  region_delta[s_region]);
+
+				if (new_addr != old_addr && rebase_cnt < ARRAY_SIZE(rebase)) {
+					rebase[rebase_cnt].old_addr = old_addr;
+					rebase[rebase_cnt].size = shdr->sh_size;
+					rebase[rebase_cnt].delta = region_delta[s_region];
+					rebase[rebase_cnt].shdr_idx = i;
+					rebase_cnt++;
+				}
+				shdr->sh_addr = new_addr;
+
+				/*
+				 * A reopened region's member keeps the region's original
+				 * constant address delta (required above for the ET_DYN
+				 * sh_addr/sh_offset consistency check), which is NOT
+				 * necessarily contiguous with current_vma's independently
+				 * tracked cursor -- any other region's section(s) placed
+				 * (and possibly page-aligned) since this region was last
+				 * open, e.g. .exported_sym, can leave current_vma short of
+				 * where this delta-preserving placement actually ends.
+				 * Re-anchor current_vma to this section's real end so the
+				 * next freshly-opened region's page-alignment starts after
+				 * this region's true extent, not a stale, too-small cursor
+				 * value -- otherwise the next region can be placed
+				 * overlapping this region's tail.
+				 */
+				current_vma = new_addr + shdr->sh_size;
+			}
+
+			/*
+			 * Keep last_region tracking the region of the section that
+			 * ACTUALLY precedes the next one in file order, not just "the
+			 * last freshly-opened region". Without this, a fresh region
+			 * immediately following a reused-region section (e.g. .bss
+			 * right after a re-visited .data member, with .exported_sym
+			 * sandwiched earlier) sees a stale last_region from whatever
+			 * region was last freshly opened (e.g. EXPORT) instead of this
+			 * section's own region (DATA), and wrongly concludes it needs
+			 * yet another PAGE_SZ-aligned transition on top of the one
+			 * already inserted for EXPORT -- stacking two page gaps where
+			 * only one belongs, which desyncs .bss from the writable-data
+			 * region it must remain contiguous with.
+			 */
+			last_region = s_region;
+			continue;
+		}
+
+		if (last_region != LLEXT_MEM_COUNT && last_region != s_region) {
+			current_vma = ALIGN_UP(current_vma, PAGE_SZ);
+		}
+		last_region = s_region;
+
+		current_vma = ALIGN_UP(current_vma, shdr->sh_addralign);
+		if (vma_base) {
+			uintptr_t old_addr = shdr->sh_addr;
+
+			if (old_addr != current_vma && rebase_cnt < ARRAY_SIZE(rebase)) {
+				rebase[rebase_cnt].old_addr = old_addr;
+				rebase[rebase_cnt].size = shdr->sh_size;
+				rebase[rebase_cnt].delta = (ptrdiff_t)current_vma - (ptrdiff_t)old_addr;
+				rebase[rebase_cnt].shdr_idx = i;
+				rebase_cnt++;
+			}
+			region_delta[s_region] = (ptrdiff_t)current_vma - (ptrdiff_t)old_addr;
+			region_opened[s_region] = true;
+			shdr->sh_addr = current_vma;
+		}
+		current_vma += shdr->sh_size;
+	}
+
+	if (vma_base && rebase_cnt) {
+		llext_manager_fixup_rela(elf_buf, rebase, rebase_cnt);
+		llext_manager_fixup_symtab(elf_buf, rebase, rebase_cnt);
+	}
+
+	return current_vma - vma_base;
+}
+
 static int llext_manager_update_flags(void __sparse_cache *vma, size_t size, uint32_t flags)
 {
 	size_t pre_pad_size = (uintptr_t)vma & (PAGE_SZ - 1);
@@ -252,6 +614,11 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 		mctx->segment[LIB_MANAGER_RODATA].addr;
 	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
 
+	/* Exported symbol table (.exported_sym), read-only like .rodata */
+	void __sparse_cache *va_base_export = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_EXPORT].addr;
+	size_t export_size = mctx->segment[LIB_MANAGER_EXPORT].size;
+
 	/* Writable data (.data, .bss and others) */
 	void __sparse_cache *va_base_data = (void __sparse_cache *)
 		mctx->segment[LIB_MANAGER_DATA].addr;
@@ -319,6 +686,12 @@ static int llext_manager_load_module(struct lib_manager_module *mctx)
 	if (ret < 0)
 		goto e_text;
 
+	/* Copy exported symbol table */
+	ret = llext_manager_load_data_from_storage(virtual_region, ldr, ext, LLEXT_MEM_EXPORT,
+						   va_base_export, export_size, 0);
+	if (ret < 0)
+		goto e_rodata;
+
 	/* Copy writable data */
 	/*
 	 * NOTE: va_base_data and data_size refer to an address range that
@@ -371,6 +744,11 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 		mctx->segment[LIB_MANAGER_RODATA].addr;
 	size_t rodata_size = mctx->segment[LIB_MANAGER_RODATA].size;
 
+	/* Exported symbol table (.exported_sym), read-only like .rodata */
+	void __sparse_cache *va_base_export = (void __sparse_cache *)
+		mctx->segment[LIB_MANAGER_EXPORT].addr;
+	size_t export_size = mctx->segment[LIB_MANAGER_EXPORT].size;
+
 	/* Writable data (.data, .bss, etc.) */
 	void __sparse_cache *va_base_data = (void __sparse_cache *)
 		mctx->segment[LIB_MANAGER_DATA].addr;
@@ -417,6 +795,12 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 	if (ret < 0 && !err)
 		err = ret;
 
+	llext_manager_unmap_detached_sections(ldr, ext, LLEXT_MEM_EXPORT,
+					      va_base_export, export_size);
+	ret = llext_manager_align_unmap(va_base_export, export_size);
+	if (ret < 0 && !err)
+		err = ret;
+
 #ifdef CONFIG_SOF_USERSPACE_LL
 	llext_manager_rm_partition(zephyr_ll_mem_domain(), (uintptr_t)shdr, total,
 				   K_MEM_PARTITION_P_RW_U_NA | XTENSA_MMU_CACHED_WB);
@@ -433,6 +817,73 @@ static int llext_manager_unload_module(struct lib_manager_module *mctx)
 static bool llext_manager_section_detached(const elf_shdr_t *shdr)
 {
 	return shdr->sh_addr < SOF_MODULE_DRAM_LINK_END;
+}
+
+/*
+ * Zephyr's llext_load() reads several sections' actual byte content
+ * synchronously, during the load itself -- e.g. llext_export_symbols()
+ * (called unconditionally to build the extension's exported-symbol table
+ * for future dependency resolution) reads .exported_sym, and other parts
+ * of the eager load path read .rodata and friends. This is unlike the
+ * later, on-demand copy SOF performs when a module is actually
+ * instantiated (llext_manager_load_module()), which only runs well after
+ * llext_manager_link() has already called llext_load(). So every
+ * "attached" (non-detached, i.e. real VMA, see
+ * llext_manager_section_detached()) allocated section with real file
+ * content (skipping .bss/SHT_NOBITS, which has none) has to be populated
+ * here, directly from the raw ELF buffer, before llext_load() is invoked
+ * below.
+ */
+static int llext_manager_load_sections_early(uint8_t *elf_buf)
+{
+	elf_ehdr_t *hdr = (elf_ehdr_t *)elf_buf;
+	elf_shdr_t *shdrs = (elf_shdr_t *)(elf_buf + hdr->e_shoff);
+	const struct sys_mm_drv_region *virtual_memory_regions;
+	const struct sys_mm_drv_region *virtual_region;
+	int i;
+
+	virtual_memory_regions = sys_mm_drv_query_memory_regions();
+	if (!virtual_memory_regions)
+		return -EFAULT;
+
+	SYS_MM_DRV_MEMORY_REGION_FOREACH(virtual_memory_regions, virtual_region) {
+		if (virtual_region->attr == VIRTUAL_REGION_LLEXT_LIBRARIES_ATTR)
+			break;
+	}
+
+	if (!virtual_region->size)
+		return -EFAULT;
+
+	for (i = 0; i < hdr->e_shnum; i++) {
+		elf_shdr_t *shdr = shdrs + i;
+		void __sparse_cache *vma;
+		int ret;
+
+		if (!(shdr->sh_flags & SHF_ALLOC) || shdr->sh_size == 0)
+			continue;
+
+		if (shdr->sh_type == SHT_NOBITS)
+			continue;
+
+		if (llext_manager_section_detached(shdr))
+			continue;
+
+		vma = (void __sparse_cache *)(uintptr_t)shdr->sh_addr;
+
+		ret = llext_manager_align_map(virtual_region, vma, shdr->sh_size,
+					      SYS_MM_MEM_PERM_RW);
+		if (ret < 0)
+			return ret;
+
+		ret = memcpy_s((__sparse_force void *)(uintptr_t)shdr->sh_addr, shdr->sh_size,
+			       elf_buf + shdr->sh_offset, shdr->sh_size);
+		if (ret < 0)
+			return ret;
+
+		dcache_writeback_region(vma, shdr->sh_size);
+	}
+
+	return 0;
 }
 
 static int llext_manager_link(const char *name,
@@ -457,6 +908,36 @@ static int llext_manager_link(const char *name,
 	}
 
 	if (!*llext || mctx->mapped) {
+		if (!*llext) {
+			uint8_t *elf_buf = (uint8_t *)mctx->ebl->buf;
+			size_t total_size = llext_manager_layout_sections(elf_buf, 0);
+			if (total_size == 0) {
+				tr_err(&lib_manager_tr, "llext_manager_link: layout sections failed");
+				return -EINVAL;
+			}
+
+			uintptr_t vma_base = llext_manager_alloc_vma(total_size);
+			if (!vma_base) {
+				tr_err(&lib_manager_tr, "llext_manager_link: VMA allocation failed");
+				return -ENOMEM;
+			}
+
+			mctx->vma_base = vma_base;
+			mctx->vma_size = total_size;
+
+			llext_manager_layout_sections(elf_buf, vma_base);
+
+			ret = llext_manager_load_sections_early(elf_buf);
+			if (ret < 0) {
+				tr_err(&lib_manager_tr,
+				       "llext_manager_link: early section copy failed: %d", ret);
+				llext_manager_free_vma(mctx->vma_base, mctx->vma_size);
+				mctx->vma_base = 0;
+				mctx->vma_size = 0;
+				return ret;
+			}
+		}
+
 		/*
 		 * Either the very first time loading this module, or the module
 		 * is already mapped, we just call llext_load() to refcount it
@@ -469,8 +950,15 @@ static int llext_manager_link(const char *name,
 		};
 
 		ret = llext_load(ldr, name, llext, &ldr_parm);
-		if (ret)
+		if (ret) {
+			tr_err(&lib_manager_tr, "llext_load failed: ret=%d", ret);
+			if (mctx->vma_base) {
+				llext_manager_free_vma(mctx->vma_base, mctx->vma_size);
+				mctx->vma_base = 0;
+				mctx->vma_size = 0;
+			}
 			return ret;
+		}
 	}
 
 	/* All code sections */
@@ -508,6 +996,20 @@ static int llext_manager_link(const char *name,
 	tr_dbg(&lib_manager_tr, ".bss: start: %#lx size %#x",
 	       mctx->segment[LIB_MANAGER_BSS].addr,
 	       mctx->segment[LIB_MANAGER_BSS].size);
+
+	/*
+	 * Exported symbol table (.exported_sym). Some toolchains (e.g. GNU ld,
+	 * unlike the Clang LLEXT overlay which merges it into .rodata) keep this
+	 * as its own distinct allocatable section, so it needs its own tracked
+	 * segment and its own copy-from-storage pass, same as .rodata.
+	 */
+	llext_get_region_info(ldr, *llext, LLEXT_MEM_EXPORT, &hdr, NULL, NULL);
+	mctx->segment[LIB_MANAGER_EXPORT].addr = hdr->sh_addr;
+	mctx->segment[LIB_MANAGER_EXPORT].size = hdr->sh_size;
+
+	tr_dbg(&lib_manager_tr, ".exported_sym: start: %#lx size %#x",
+	       mctx->segment[LIB_MANAGER_EXPORT].addr,
+	       mctx->segment[LIB_MANAGER_EXPORT].size);
 
 	*buildinfo = NULL;
 	ret = llext_section_shndx(ldr, *llext, ".mod_buildinfo");
@@ -1185,13 +1687,14 @@ int llext_manager_add_library(uint32_t module_id)
 	}
 
 	for (i = 0; i < ctx->n_mod; i++) {
-		const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id + i);
+		unsigned int idx = ctx->mod[i].start_idx;
+		const struct sof_man_module *mod = lib_manager_get_module_manifest(module_id + idx);
 
 		if (mod->type.load_type == SOF_MAN_MOD_TYPE_LLEXT_AUX) {
 			const struct sof_man_module_manifest *mod_manifest;
 			const struct sof_module_api_build_info *buildinfo;
 
-			ret = llext_manager_link_single(module_id + i, desc, ctx,
+			ret = llext_manager_link_single(module_id + idx, desc, ctx,
 							(const void **)&buildinfo, &mod_manifest);
 			if (ret < 0)
 				return ret;

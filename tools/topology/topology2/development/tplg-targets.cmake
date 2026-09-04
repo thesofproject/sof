@@ -55,6 +55,12 @@ NHLT_BIN=nhlt-sof-lnl-nocodec-fpga-4ch.bin,PASSTHROUGH=true,DMIC_IO_CLK=19200000
 
 "cavs-sdw\;sof-lnl-fpga-rt711-l0\;PLATFORM=lnl,NUM_HDMIS=0,PASSTHROUGH=true"
 
+# HDA generic + KPB-based Wake-on-Voice (microWakeWord) capture branch.
+# Adds a WoV drain PCM and an MFCC/MWW detect PCM tapped off the
+# Analog capture endpoint (module-copier.4.2). Applies to all IPC4
+# HDA platforms; no NHLT differentiation.
+"sof-hda-generic\;sof-hda-generic-mww-kpb\;HDA_CONFIG=mix,HDA_MIC_MWW_KPB_CAPTURE=true"
+
 # HDA topology with passthrough analog codec pipelines
 "sof-hda-generic\;sof-hda-passthrough\;HDA_CONFIG=passthrough"
 # HDA topology with passthrough analog codec pipelines using CHAIN_DMA
@@ -500,6 +506,15 @@ MFCC_FRAME_BYTES=344,MFCC_BLOB=mel"
 "cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-mfcc-ceps-compr\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
 HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_JACK_COMPR_AUDIO_FEATURE_CAPTURE=true,\
 MFCC_FRAME_BYTES=76,MFCC_BLOB=ceps"
+
+# Soundwire topologies with microWakeWord (MWW)/KPB Wake-on-Voice on jack
+"cavs-sdw\;sof-mtl-rt713-l0-rt1316-l12-mww-kpb\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,\
+HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6,SDW_JACK_MWW_KPB_CAPTURE=true"
+
+"cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-mww-kpb\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
+SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\
+SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
+SDW_DMIC_MWW_KPB_CAPTURE=true"
 
 "cavs-sdw\;sof-arl-cs42l43-l0-cs35l56-l23-mfcc-mel-compr\;PLATFORM=mtl,NUM_SDW_AMP_LINKS=2,SDW_DMIC=1,\
 SDW_AMP_FEEDBACK=false,SDW_SPK_STREAM=Playback-SmartAmp,SDW_DMIC_STREAM=Capture-SmartMic,\

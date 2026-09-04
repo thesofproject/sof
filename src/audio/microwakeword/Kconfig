@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_MWW
+	tristate "microWakeWord keyword-spotting component"
+	depends on SOF_STAGING
+	depends on CPP
+	depends on STD_CPP17
+	help
+	  Select for microWakeWord component support. This module runs a
+	  TensorFlow Lite Micro streaming keyword-spotting model (based on
+	  OHF-Voice's micro-wake-word project) on MFCC features and wakes
+	  the host via KPB/WoV when the wake word is detected.
+
+if COMP_MWW
+
+config COMP_MWW_DEBUG_TRACE
+	bool "Verbose per-hop / per-inference debug traces"
+	default n
+	help
+	  Enable mww per-hop and per-inference debug prints in the hot path.
+	  Leave disabled for production and normal capture tuning.
+
+config COMP_MWW_MODEL_FROM_CONTROL
+	bool "Load MWW model from bytes control instead of built-in header"
+	default n
+	help
+	  When enabled, the MWW wake-word model is loaded from a runtime
+	  or topology configuration data blob via binary kcontrol (bytes control)
+	  instead of using the static mww_model_data embedded in the firmware image.
+
+endif # COMP_MWW

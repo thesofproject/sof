@@ -419,7 +419,7 @@ int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
 		/* Use hop counter for frame numbering (independent of VAD enable) */
 		state->header.frame_number = state->hop_count;
 
-		/* Run VAD on the mel log spectrum (available in both modes) */
+		/* Run VAD on the scaled mel log spectrum (available in both modes) */
 		if (config->enable_vad) {
 			mfcc_vad_update(&cd->vad, state->mel_log_32);
 

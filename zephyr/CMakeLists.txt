@@ -102,7 +102,16 @@ function(sof_llext_build module)
 	if(CONFIG_LLEXT_TYPE_ELF_RELOCATABLE)
 		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -r)
 	else()
-		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared)
+		# -Bsymbolic-functions: without this, calls between GLOBAL-visibility
+		# functions defined in different translation units of the SAME llext
+		# module are emitted as PLT calls. Zephyr's llext_link_plt() resolves
+		# PLT symbols only against the base image's export table, this
+		# module's own .exported_sym table, or other already-loaded
+		# extensions -- never against symbols merely defined locally in this
+		# module's own .dynsym. Multi-TU C++ libraries (e.g. TFLite Micro)
+		# call plenty of non-exported internal helpers across .cc files, so
+		# without this flag those calls fail to link at load time.
+		set(EXTRA_LINKER_PARAMS -nostdlib -nodefaultlibs -shared -Wl,-Bsymbolic-functions)
 	endif()
 
 	foreach(path ${SOF_LLEXT_LIBS_PATH})
