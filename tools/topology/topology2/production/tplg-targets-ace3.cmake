@@ -38,6 +38,10 @@ SDW_JACK_OUT_STREAM=Playback-SimpleJack,SDW_JACK_IN_STREAM=Capture-SimpleJack,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-rt721-4ch.bin,DMIC0_ENHANCED_CAPTURE=true,\
 EFX_DMIC0_TDFB_PARAMS=line4_pass,EFX_DMIC0_DRC_PARAMS=dmic_default,\
 DEEPBUFFER_FW_DMA_MS=10,DEEP_BUF_SPK=true"
+# DMIC WoV feature topology; platform-agnostic, shared across PTL/WCL
+"dmic-wov-feature\;sof-dmic-4ch-wov\;PLATFORM=none,NUM_DMICS=4,\
+DMIC0_ID=5,DMIC1_ID=6,DMIC1_ENABLE=false,DMIC1_RATE=16000,INCLUDE_WOV=true"
+
 
 # RT721 eval board with PCH-DMIC, sof_sdw_quirk_table with SOC_SDW_PCH_DMIC, DMIC1 with 96kHz
 "cavs-sdw\;sof-ptl-rt721-4ch-dmic1-96k\;PLATFORM=ptl,SDW_DMIC=1,NUM_SDW_AMP_LINKS=1,NUM_DMICS=4,\
