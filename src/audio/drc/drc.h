@@ -15,6 +15,8 @@
 #include "drc_user.h"
 
 struct audio_stream;
+struct cir_buf_source;
+struct cir_buf_sink;
 struct comp_dev;
 
 /* Define CONFIG_DRC_MAX_PRE_DELAY_FRAMES for the build purposes without Kconfig,
@@ -66,8 +68,8 @@ struct drc_state {
 };
 
 typedef void (*drc_func)(struct processing_module *mod,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
+			 const struct cir_buf_source *source,
+			 struct cir_buf_sink *sink,
 			 uint32_t frames);
 
 /* DRC component private data */
@@ -79,6 +81,7 @@ struct drc_comp_data {
 	bool enabled;                       /**< control processing via blob and switch */
 	bool enable_switch;                 /**< enable switch state */
 	enum sof_ipc_frame source_format;   /**< source frame format */
+	int channels;                       /**< number of channels */
 	drc_func drc_func;                  /**< processing function */
 };
 
@@ -91,8 +94,8 @@ extern const struct drc_proc_fnmap drc_proc_fnmap[];
 extern const size_t drc_proc_fncount;
 
 void drc_default_pass(struct processing_module *mod,
-		      const struct audio_stream *source,
-		      struct audio_stream *sink, uint32_t frames);
+		      const struct cir_buf_source *source,
+		      struct cir_buf_sink *sink, uint32_t frames);
 /**
  * \brief Returns DRC processing function.
  */
