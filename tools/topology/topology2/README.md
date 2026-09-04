@@ -371,6 +371,7 @@ variables such as `DMIC_DRIVER_VERSION`, `SSP_BLOB_VERSION`, and `NUM_HDMIS`.
 
 Supported platforms:
 
+* `cht` — Intel Cherry Trail / Atom (IPC3; currently Yoga Book RT5677 only)
 * `tgl` — Intel Tiger Lake / Alder Lake (CAVS 2.5)
 * `mtl` — Intel Meteor Lake (ACE 1.x)
 * `lnl` — Intel Lunar Lake (ACE 2.x)
@@ -397,10 +398,32 @@ Select the cmake file matching the target platform generation:
 
 | Platform | CMake Target File |
 |---|---|
+| Cherry Trail IPC3 | `tplg-targets-ipc3.cmake` |
 | Tiger Lake / Alder Lake | `tplg-targets-cavs25.cmake` |
 | Meteor Lake | `tplg-targets-ace1.cmake` |
 | Lunar Lake | `tplg-targets-ace2.cmake` |
 | Panther Lake | `tplg-targets-ace3.cmake` |
 | HDA generic | `tplg-targets-hda-generic.cmake` |
+
+### Cherry Trail IPC3
+
+Topology2 describes the source format and does not require the target firmware
+to use IPC4. Cherry Trail firmware uses IPC3, so its targets are built with a
+separate IPC3 ABI manifest and installed under `target/sof-tplg` instead of the
+IPC4/ACE topology directory.
+
+The Yoga Book topology can be built directly with:
+
+```bash
+cmake --build . --target topology2_prod_ipc3_sof-cht-rt5677
+python3 ../tools/topology/topology2/verify-cht-rt5677.py \
+    topology/topology2/production/ipc3/sof-cht-rt5677.tplg
+```
+
+`sof-cht-rt5677.tplg` configures SSP2 for DSP_B with an inverted bit clock and
+non-inverted frame clock, 48 kHz stereo S24_LE, four 25-bit TDM slots, a
+4.8 MHz bit clock, and a 19.2 MHz codec MCLK. These values must stay aligned
+with the Linux `cht-yogabook` machine driver. The verifier parses the compiled
+artifact and rejects changes to the SSP link or the PCM0/PCM1 stereo contract.
 
 Development and testing topologies go in `development/tplg-targets.cmake`.
