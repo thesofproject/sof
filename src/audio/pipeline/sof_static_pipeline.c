@@ -72,10 +72,14 @@ static struct sof_static_pipeline_status g_status = {
 K_MEM_SLAB_DEFINE_STATIC(uac2_rx_slab, 1024, 16, 64);
 K_MEM_SLAB_DEFINE_STATIC(uac2_tx_slab, 1024, 16, 64);
 
-#define PLAYBACK_FU_ID    UAC2_ENTITY_ID(DT_NODELABEL(i2s_fu))
-#define CAPTURE_FU_ID     UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
-#define PLAYBACK_TERM_ID  UAC2_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
-#define CAPTURE_TERM_ID   UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
+#define PLAYBACK_FU_ID       UAC2_ENTITY_ID(DT_NODELABEL(i2s_fu))
+#define PLAYBACK_EQ_FU_ID    UAC2_ENTITY_ID(DT_NODELABEL(pb_eq_fu))
+#define PLAYBACK_DRC_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(pb_drc_fu))
+#define CAPTURE_TDFB_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(cap_tdfb_fu))
+#define CAPTURE_EQ_FU_ID     UAC2_ENTITY_ID(DT_NODELABEL(cap_eq_fu))
+#define CAPTURE_FU_ID        UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
+#define PLAYBACK_TERM_ID     UAC2_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
+#define CAPTURE_TERM_ID      UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
 
 /* Helper to find a registered SOF component driver */
 static const struct comp_driver *sof_static_find_driver(const struct sof_uuid *uuid, uint32_t type)
@@ -269,7 +273,7 @@ int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id,
 	ARG_UNUSED(channel);
 	ARG_UNUSED(user_data);
 
-	LOG_INF("Host set mute: entity=%u, ch=%u, mute=%d", entity_id, channel, mute);
+	LOG_INF("Host set mute/switch: entity=%u, ch=%u, mute=%d", entity_id, channel, mute);
 	if (entity_id == PLAYBACK_FU_ID) {
 		g_status.playback_mute = mute;
 		if (g_comp_vol_playback) {
@@ -282,6 +286,14 @@ int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id,
 				volume_set_chan_unmute(mod, 1);
 			}
 		}
+	} else if (entity_id == PLAYBACK_EQ_FU_ID) {
+		sof_static_pipeline_set_eq_bypass(false, mute);
+	} else if (entity_id == PLAYBACK_DRC_FU_ID) {
+		sof_static_pipeline_set_drc_bypass(mute);
+	} else if (entity_id == CAPTURE_TDFB_FU_ID) {
+		sof_static_pipeline_set_tdfb_bypass(mute);
+	} else if (entity_id == CAPTURE_EQ_FU_ID) {
+		sof_static_pipeline_set_eq_bypass(true, mute);
 	} else if (entity_id == CAPTURE_FU_ID) {
 		g_status.capture_mute = mute;
 		if (g_comp_vol_capture) {
@@ -310,6 +322,14 @@ int sof_uac2_get_feature_mute(const struct device *dev, uint8_t entity_id,
 	}
 	if (entity_id == PLAYBACK_FU_ID) {
 		*mute = g_status.playback_mute;
+	} else if (entity_id == PLAYBACK_EQ_FU_ID) {
+		*mute = g_status.eq_playback_bypassed;
+	} else if (entity_id == PLAYBACK_DRC_FU_ID) {
+		*mute = g_status.drc_playback_bypassed;
+	} else if (entity_id == CAPTURE_TDFB_FU_ID) {
+		*mute = g_status.tdfb_capture_bypassed;
+	} else if (entity_id == CAPTURE_EQ_FU_ID) {
+		*mute = g_status.eq_capture_bypassed;
 	} else if (entity_id == CAPTURE_FU_ID) {
 		*mute = g_status.capture_mute;
 	} else {

@@ -45,9 +45,21 @@
 			volume-control = "host-programmable";
 		};
 
+		pb_eq_fu: pb_eq_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&i2s_fu>;
+			mute-control = "host-programmable";
+		};
+
+		pb_drc_fu: pb_drc_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&pb_eq_fu>;
+			mute-control = "host-programmable";
+		};
+
 		i2s_speaker: i2s_speaker {
 			compatible = "zephyr,uac2-output-terminal";
-			data-source = <&i2s_fu>;
+			data-source = <&pb_drc_fu>;
 			clock-source = <&uac_aclk>;
 			terminal-type = <OUTPUT_TERMINAL_SPEAKER>;
 			assoc-terminal = <&i2s_mic>;
@@ -62,9 +74,21 @@
 			front-right;
 		};
 
-		i2s_in_fu: i2s_in_fu {
+		cap_tdfb_fu: cap_tdfb_fu {
 			compatible = "zephyr,uac2-feature-unit";
 			data-source = <&i2s_mic>;
+			mute-control = "host-programmable";
+		};
+
+		cap_eq_fu: cap_eq_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&cap_tdfb_fu>;
+			mute-control = "host-programmable";
+		};
+
+		i2s_in_fu: i2s_in_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&cap_eq_fu>;
 			mute-control = "host-programmable";
 			volume-control = "host-programmable";
 		};
