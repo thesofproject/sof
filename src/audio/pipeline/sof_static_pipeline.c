@@ -17,6 +17,8 @@
 #include "../eq_iir/eq_iir.h"
 #include "../drc/drc_user.h"
 #include "../drc/drc.h"
+#include <module/ipc4/base-config.h>
+#include "../volume/peak_volume.h"
 #include <rtos/sof.h>
 #include <rtos/alloc.h>
 #include <zephyr/logging/log.h>
@@ -39,6 +41,53 @@ void * const g_drc_force __used = (void *)drc_reset_state;
 #ifndef VOL_MAX
 #define VOL_MAX INT32_MAX
 #endif
+
+static const struct ipc4_base_module_cfg s_default_ipc4_base_cfg = {
+	.ibs = 192,
+	.obs = 192,
+	.is_pages = 1,
+	.audio_fmt = {
+		.sampling_frequency = 48000,
+		.depth = IPC4_DEPTH_16BIT,
+		.ch_map = 0x10,
+		.ch_cfg = IPC4_CHANNEL_CONFIG_STEREO,
+		.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
+		.channels_count = 2,
+		.valid_bit_depth = IPC4_DEPTH_16BIT,
+		.s_type = IPC4_TYPE_SIGNED_INTEGER,
+	},
+};
+
+struct static_ipc4_vol_init_cfg {
+	struct ipc4_base_module_cfg base_cfg;
+	struct ipc4_peak_volume_config config[1];
+};
+
+static const struct static_ipc4_vol_init_cfg s_default_ipc4_vol_cfg = {
+	.base_cfg = {
+		.ibs = 192,
+		.obs = 192,
+		.is_pages = 1,
+		.audio_fmt = {
+			.sampling_frequency = 48000,
+			.depth = IPC4_DEPTH_16BIT,
+			.ch_map = 0x10,
+			.ch_cfg = IPC4_CHANNEL_CONFIG_STEREO,
+			.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
+			.channels_count = 2,
+			.valid_bit_depth = IPC4_DEPTH_16BIT,
+			.s_type = IPC4_TYPE_SIGNED_INTEGER,
+		},
+	},
+	.config = {
+		{
+			.channel_id = 0xffffffff,
+			.target_volume = 0x7FFFFFFF,
+			.curve_type = IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE,
+			.curve_duration = 100000,
+		},
+	},
+};
 
 /* Standard 2-channel 4-band parametric IIR EQ configuration blob (ABI header + sof_eq_iir_config) */
 static const uint32_t sof_default_iir_coef_2ch[51] = {
@@ -618,16 +667,9 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_volume vol_cfg = {
-			.channels = 2,
-			.min_value = 0,
-			.max_value = 0,
-			.ramp = SOF_VOLUME_LINEAR,
-			.initial_ramp = 10,
-		};
 		struct ipc_config_process spec = {
-			.size = sizeof(vol_cfg),
-			.data = (const uint8_t *)&vol_cfg,
+			.size = sizeof(s_default_ipc4_vol_cfg),
+			.data = (const uint8_t *)&s_default_ipc4_vol_cfg,
 		};
 		g_comp_vol_playback = drv_vol->ops.create(drv_vol, &cfg, &spec);
 		if (g_comp_vol_playback) {
@@ -646,7 +688,10 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_process spec = { .size = 0, .data = NULL };
+		struct ipc_config_process spec = {
+			.size = sizeof(s_default_ipc4_base_cfg),
+			.data = (const uint8_t *)&s_default_ipc4_base_cfg,
+		};
 		g_comp_eq_playback = drv_eq->ops.create(drv_eq, &cfg, &spec);
 		if (g_comp_eq_playback) {
 			g_comp_eq_playback->direction = SOF_IPC_STREAM_PLAYBACK;
@@ -666,7 +711,10 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_process spec = { .size = 0, .data = NULL };
+		struct ipc_config_process spec = {
+			.size = sizeof(s_default_ipc4_base_cfg),
+			.data = (const uint8_t *)&s_default_ipc4_base_cfg,
+		};
 		g_comp_drc_playback = drv_drc->ops.create(drv_drc, &cfg, &spec);
 		if (g_comp_drc_playback) {
 			g_comp_drc_playback->direction = SOF_IPC_STREAM_PLAYBACK;
@@ -783,7 +831,10 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_process spec = { .size = 0, .data = NULL };
+		struct ipc_config_process spec = {
+			.size = sizeof(s_default_ipc4_base_cfg),
+			.data = (const uint8_t *)&s_default_ipc4_base_cfg,
+		};
 		g_comp_tdfb_capture = drv_tdfb->ops.create(drv_tdfb, &cfg, &spec);
 		if (g_comp_tdfb_capture) {
 			g_comp_tdfb_capture->direction = SOF_IPC_STREAM_CAPTURE;
@@ -801,7 +852,10 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_process spec = { .size = 0, .data = NULL };
+		struct ipc_config_process spec = {
+			.size = sizeof(s_default_ipc4_base_cfg),
+			.data = (const uint8_t *)&s_default_ipc4_base_cfg,
+		};
 		g_comp_eq_capture = drv_eq->ops.create(drv_eq, &cfg, &spec);
 		if (g_comp_eq_capture) {
 			g_comp_eq_capture->direction = SOF_IPC_STREAM_CAPTURE;
@@ -821,16 +875,9 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_volume vol_cfg = {
-			.channels = 2,
-			.min_value = 0,
-			.max_value = 0,
-			.ramp = SOF_VOLUME_LINEAR,
-			.initial_ramp = 10,
-		};
 		struct ipc_config_process spec = {
-			.size = sizeof(vol_cfg),
-			.data = (const uint8_t *)&vol_cfg,
+			.size = sizeof(s_default_ipc4_vol_cfg),
+			.data = (const uint8_t *)&s_default_ipc4_vol_cfg,
 		};
 		g_comp_vol_capture = drv_vol->ops.create(drv_vol, &cfg, &spec);
 		if (g_comp_vol_capture) {
