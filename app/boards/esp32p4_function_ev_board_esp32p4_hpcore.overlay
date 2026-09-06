@@ -1,0 +1,151 @@
+#include <zephyr/dt-bindings/usb/audio.h>
+#include <zephyr/dt-bindings/pinctrl/esp32p4-pinctrl.h>
+
+/ {
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+	};
+
+	uac2_card: usb_audio2 {
+		compatible = "zephyr,uac2";
+		status = "okay";
+		full-speed;
+		audio-function = <AUDIO_FUNCTION_IO_BOX>;
+
+		uac_aclk: aclk {
+			compatible = "zephyr,uac2-clock-source";
+			clock-type = "internal-programmable";
+			frequency-control = "host-programmable";
+			sampling-frequencies = <48000>;
+			sof-synchronized;
+		};
+
+		pdm_aclk: pdm_aclk {
+			compatible = "zephyr,uac2-clock-source";
+			clock-type = "internal-programmable";
+			frequency-control = "host-programmable";
+			sampling-frequencies = <48000>;
+			sof-synchronized;
+		};
+
+		/* ===== Playback from Host (ISO OUT) ===== */
+		i2s_out_terminal: i2s_out_terminal {
+			compatible = "zephyr,uac2-input-terminal";
+			clock-source = <&uac_aclk>;
+			terminal-type = <USB_TERMINAL_STREAMING>;
+			front-left;
+			front-right;
+		};
+
+		i2s_fu: i2s_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&i2s_out_terminal>;
+			mute-control = "host-programmable";
+			volume-control = "host-programmable";
+		};
+
+		i2s_speaker: i2s_speaker {
+			compatible = "zephyr,uac2-output-terminal";
+			data-source = <&i2s_fu>;
+			clock-source = <&uac_aclk>;
+			terminal-type = <OUTPUT_TERMINAL_SPEAKER>;
+			assoc-terminal = <&i2s_mic>;
+		};
+
+		/* ===== Capture to Host (ISO IN) ===== */
+		i2s_mic: i2s_mic {
+			compatible = "zephyr,uac2-input-terminal";
+			clock-source = <&uac_aclk>;
+			terminal-type = <INPUT_TERMINAL_MICROPHONE>;
+			front-left;
+			front-right;
+		};
+
+		i2s_in_fu: i2s_in_fu {
+			compatible = "zephyr,uac2-feature-unit";
+			data-source = <&i2s_mic>;
+			mute-control = "host-programmable";
+			volume-control = "host-programmable";
+		};
+
+		i2s_in_terminal: i2s_in_terminal {
+			compatible = "zephyr,uac2-output-terminal";
+			data-source = <&i2s_in_fu>;
+			clock-source = <&uac_aclk>;
+			terminal-type = <USB_TERMINAL_STREAMING>;
+		};
+
+		/* Audio Streaming Interfaces */
+		as_i2s_out: as_i2s_out {
+			compatible = "zephyr,uac2-audio-streaming";
+			linked-terminal = <&i2s_out_terminal>;
+			subslot-size = <2>;
+			bit-resolution = <16>;
+		};
+
+		as_i2s_in: as_i2s_in {
+			compatible = "zephyr,uac2-audio-streaming";
+			linked-terminal = <&i2s_in_terminal>;
+			subslot-size = <2>;
+			bit-resolution = <16>;
+		};
+	};
+
+	/* ESP32 DAI Nodes */
+	dai_i2s0: dai@500c6000 {
+		compatible = "espressif,esp32-dai-i2s";
+		status = "okay";
+		reg = <0x500c6000 0x1000>;
+		interrupt-parent = <&intc>;
+		interrupts = <10 1 0>;
+		dai-index = <0>;
+		pinctrl-0 = <&i2s0_default>;
+		pinctrl-names = "default";
+		fifo-depth = <32>;
+	};
+
+	dai_pdm0: dai@500c7000 {
+		compatible = "espressif,esp32-dai-pdm";
+		status = "okay";
+		reg = <0x500c7000 0x1000>;
+		interrupt-parent = <&intc>;
+		interrupts = <11 1 0>;
+		dai-index = <1>;
+		pinctrl-0 = <&i2s1_default>;
+		pinctrl-names = "default";
+		fifo-depth = <32>;
+	};
+};
+
+&pinctrl {
+	i2s0_default: i2s0_default {
+		group1 {
+			pinmux = <ESP32_PINMUX(21, ESP_I2S0_I_BCK_IN, ESP_NOSIG)>,
+				 <ESP32_PINMUX(22, ESP_I2S0_I_WS_IN, ESP_NOSIG)>,
+				 <ESP32_PINMUX(23, ESP_NOSIG, ESP_I2S0_O_SD_OUT)>;
+		};
+		group2 {
+			pinmux = <ESP32_PINMUX(20, ESP_I2S0_I_SD_IN, ESP_NOSIG)>;
+		};
+	};
+
+	i2s1_default: i2s1_default {
+		group1 {
+			pinmux = <ESP32_PINMUX(4, ESP_I2S1_O_BCK_IN, ESP_NOSIG)>,
+				 <ESP32_PINMUX(5, ESP_NOSIG, ESP_I2S1_O_SD_OUT)>,
+				 <ESP32_PINMUX(6, ESP_I2S1_O_WS_IN, ESP_NOSIG)>;
+		};
+		group2 {
+			pinmux = <ESP32_PINMUX(3, ESP_I2S1_I_SD_IN, ESP_NOSIG)>;
+		};
+	};
+};
+
+&spi2 {
+	status = "disabled";
+};
+
+&i2c0 {
+	status = "disabled";
+};

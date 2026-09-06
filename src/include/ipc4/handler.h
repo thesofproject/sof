@@ -95,7 +95,7 @@ int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbind *bu)
  */
 int ipc4_comp_disconnect(struct ipc *ipc, const struct ipc4_module_bind_unbind *bu);
 
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_USERSPACE) && defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 /**
  * \brief Increment the IPC compound message pre-start barrier counter.
  * \ingroup ipc4_envelope_api

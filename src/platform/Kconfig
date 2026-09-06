@@ -187,6 +187,13 @@ config IMX95
 	help
 	  Select if your target platform is imx95-compatible.
 
+config PLATFORM_ESP32P4
+	bool "Build for Espressif ESP32-P4 RISC-V SoC (Zephyr-only)"
+	select ZEPHYR_LOG
+	select ZEPHYR_NATIVE_DRIVERS
+	help
+	  Select if your target platform is Espressif ESP32-P4 RISC-V SoC.
+
 config RENOIR
 	bool "Build for Renoir"
 	select XT_INTERRUPT_LEVEL_5

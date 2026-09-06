@@ -60,9 +60,7 @@ rsource "Kconfig.xtos"
 
 rsource "src/Kconfig"
 
-if ZEPHYR_SOF_MODULE
-	rsource "Kconfig.zephyr-log"
-endif
+rsource "Kconfig.zephyr-log"
 
 menu "Debug"
 

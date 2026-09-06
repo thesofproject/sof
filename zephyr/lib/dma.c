@@ -280,6 +280,18 @@ APP_SYSUSER_DATA struct sof_dma dma[] = {
 	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(host_dma)),
 },
 #endif
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(dma), okay) && defined(CONFIG_PLATFORM_ESP32P4)
+{
+	.plat_data = {
+		.dir		= SOF_DMA_DIR_MEM_TO_DEV | SOF_DMA_DIR_DEV_TO_MEM,
+		.caps		= SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP,
+		.devs		= SOF_DMA_DEV_I2S | SOF_DMA_DEV_PDM,
+		.channels	= 6,
+		.period_count	= 2,
+	},
+	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(dma)),
+},
+#endif
 };
 
 const struct dma_info lib_dma = {

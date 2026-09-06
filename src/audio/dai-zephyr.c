@@ -219,6 +219,14 @@ __cold int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 		cfg.type = DAI_MEDIATEK_AFE;
 		cfg_params = &sof_cfg->afe;
 		break;
+	case SOF_DAI_ESP32_I2S:
+		cfg.type = DAI_ESP32_I2S;
+		cfg_params = NULL;
+		break;
+	case SOF_DAI_ESP32_PDM:
+		cfg.type = DAI_ESP32_PDM;
+		cfg_params = NULL;
+		break;
 	default:
 		return -EINVAL;
 	}

@@ -767,21 +767,28 @@ static int tdfb_process(struct processing_module *mod,
 	 * optimized filter function loads the successive input samples from
 	 * internal delay line with a 64 bit load operation.
 	 */
-	frame_count = MIN(frame_count, cd->max_frames) & ~0x1;
+	int max_f = cd->max_frames > 0 ? cd->max_frames : frame_count;
+	frame_count = MIN(frame_count, max_f) & ~0x1;
 	if (frame_count) {
-		cd->tdfb_func(cd, input_buffers, output_buffers, frame_count);
+		if (cd->tdfb_func) {
+			cd->tdfb_func(cd, input_buffers, output_buffers, frame_count);
+		} else {
+			tdfb_pass_same_format(cd, &input_buffers[0], &output_buffers[0], frame_count);
+		}
 		module_update_buffer_position(input_buffers, output_buffers, frame_count);
 
-		/* Update sound direction estimate */
-		tdfb_direction_estimate(cd, frame_count, audio_stream_get_channels(source));
-		comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
-			 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
+		if (cd->config) {
+			/* Update sound direction estimate */
+			tdfb_direction_estimate(cd, frame_count, audio_stream_get_channels(source));
+			comp_dbg(dev, "tdfb_dint %u %d %d %d", cd->direction.trigger, cd->direction.level,
+				 (int32_t)(cd->direction.level_ambient >> 32), cd->direction.az_slow);
 
-		if (cd->direction_updates && cd->direction_change) {
-			tdfb_send_ipc_notification(mod);
-			cd->direction_change = false;
-			comp_dbg(dev, "tdfb_dupd %d %d",
-				 cd->az_value_estimate, cd->direction.az_slow);
+			if (cd->direction_updates && cd->direction_change) {
+				tdfb_send_ipc_notification(mod);
+				cd->direction_change = false;
+				comp_dbg(dev, "tdfb_dupd %d %d",
+					 cd->az_value_estimate, cd->direction.az_slow);
+			}
 		}
 	}
 
@@ -841,8 +848,14 @@ static int tdfb_prepare(struct processing_module *mod,
 	/* Initialize filter */
 	cd->config = comp_get_data_blob(cd->model_handler, &cd->config_size, NULL);
 	if (!cd->config) {
-		ret = -EINVAL;
-		goto out;
+		if (source_channels == sink_channels) {
+			cd->tdfb_func = tdfb_pass_same_format;
+		} else {
+			set_pass_func(mod, frame_fmt);
+		}
+		cd->max_frames = INT32_MAX;
+		comp_info(dev, "no blob, set to pass-through");
+		return 0;
 	}
 
 	/* Re-validate now that the stream channel counts are cached: the

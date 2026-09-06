@@ -102,6 +102,12 @@ config STATIC_PIPELINE_MAX_ROUTES
 	  Maximum number of static graph connection routes allowed by
 	  the static pipeline loader.
 
+config COMP_USB_AUDIO
+	bool "USB Audio streaming component"
+	default y if PLATFORM_ESP32P4
+	help
+	  Enable USB Audio Class 2 (UAC2) streaming component for SOF.
+
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  depends on IPC_MAJOR_4

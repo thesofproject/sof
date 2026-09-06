@@ -16,6 +16,7 @@ if(NOT CONFIG_COMP_MODULE_SHARED_LIBRARY_BUILD)
 	add_subdirectory(buffers)
 	add_subdirectory(pcm_converter)
 	add_subdirectory(pipeline)
+	add_local_sources_ifdef(CONFIG_COMP_USB_AUDIO sof usb_audio.c)
 
 	if(CONFIG_COMP_BASEFW_IPC4 AND NOT CONFIG_LIBRARY)
 		add_local_sources(sof base_fw.c)
