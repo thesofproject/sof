@@ -154,7 +154,7 @@ void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t terminal,
 			LOG_INF("[SOF Pipeline] Playback Stream START (Terminal %u, Rate %u Hz, 2ch 16-bit)",
 				terminal, g_status.sample_rate ? g_status.sample_rate : 48000);
 			if (g_playback_pipe && g_playback_pipe->source_comp) {
-				pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_START);
+				pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_PRE_START);
 			}
 		} else {
 			LOG_INF("[SOF Pipeline] Playback Stream STOP (Terminal %u)", terminal);
@@ -168,7 +168,7 @@ void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t terminal,
 			LOG_INF("[SOF Pipeline] Capture Stream START (Terminal %u, Rate %u Hz, 2ch 16-bit)",
 				terminal, g_status.sample_rate ? g_status.sample_rate : 48000);
 			if (g_capture_pipe && g_comp_usb_capture) {
-				pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_START);
+				pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_PRE_START);
 			}
 		} else {
 			LOG_INF("[SOF Pipeline] Capture Stream STOP (Terminal %u)", terminal);

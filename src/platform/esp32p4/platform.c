@@ -96,6 +96,37 @@ int platform_context_save(struct sof *sof)
 	return 0;
 }
 
+#include <sof/ipc/common.h>
+#include <sof/ipc/schedule.h>
+#include <sof/ipc/msg.h>
+#include <sof/lib/uuid.h>
+
+SOF_DEFINE_REG_UUID(zipc_task);
+extern struct task_ops ipc_task_ops;
+
+int platform_ipc_init(struct ipc *ipc)
+{
+	ipc_set_drvdata(ipc, NULL);
+	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
+			       &ipc_task_ops, ipc, 0, 0);
+	return 0;
+}
+
+enum task_state ipc_platform_do_cmd(struct ipc *ipc)
+{
+	struct ipc_cmd_hdr *hdr = mailbox_validate();
+
+	if (hdr)
+		ipc_cmd(hdr);
+	return SOF_TASK_STATE_COMPLETED;
+}
+
+int ipc_platform_send_msg(const struct ipc_msg *msg)
+{
+	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
+	return 0;
+}
+
 int platform_init(struct sof *sof)
 {
 	LOG_INF("Initializing ESP32-P4 SOF Platform...");
@@ -119,6 +150,9 @@ int platform_init(struct sof *sof)
 
 	/* Initialize Zephyr native DAI subsystem */
 	dai_init(sof);
+
+	/* Initialize IPC */
+	ipc_init(sof);
 
 	LOG_INF("ESP32-P4 SOF Platform initialized successfully");
 	return 0;
