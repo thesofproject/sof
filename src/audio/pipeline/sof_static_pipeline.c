@@ -42,6 +42,7 @@ void * const g_drc_force __used = (void *)drc_reset_state;
 #define VOL_MAX INT32_MAX
 #endif
 
+#if CONFIG_IPC_MAJOR_4
 static const struct ipc4_base_module_cfg s_default_ipc4_base_cfg = {
 	.ibs = 192,
 	.obs = 192,
@@ -63,7 +64,7 @@ struct static_ipc4_vol_init_cfg {
 	struct ipc4_peak_volume_config config[1];
 };
 
-static const struct static_ipc4_vol_init_cfg s_default_ipc4_vol_cfg = {
+static const struct static_ipc4_vol_init_cfg s_default_vol_cfg = {
 	.base_cfg = {
 		.ibs = 192,
 		.obs = 192,
@@ -88,6 +89,15 @@ static const struct static_ipc4_vol_init_cfg s_default_ipc4_vol_cfg = {
 		},
 	},
 };
+#else
+static const struct ipc_config_volume s_default_vol_cfg = {
+	.channels = 2,
+	.min_value = 0,
+	.max_value = VOL_MAX,
+	.ramp = SOF_VOLUME_LINEAR,
+	.initial_ramp = 0,
+};
+#endif
 
 /* Standard 2-channel 4-band parametric IIR EQ configuration blob (ABI header + sof_eq_iir_config) */
 static const uint32_t sof_default_iir_coef_2ch[51] = {
@@ -132,6 +142,13 @@ static int sof_static_send_comp_config(struct comp_dev *dev, const void *abi_blo
 		return -EINVAL;
 	}
 
+#if CONFIG_IPC_MAJOR_4
+	/* In IPC4, comp_data_blob_set expects raw blob without sof_ipc_ctrl_data header */
+	const uint8_t *raw_data = (const uint8_t *)abi_blob + sizeof(struct sof_abi_hdr);
+	int ret = mod->dev->drv->adapter_ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
+								hdr->size, raw_data,
+								hdr->size, NULL, 0);
+#else
 	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_abi_hdr) + hdr->size;
 	struct sof_ipc_ctrl_data *cdata = rzalloc(SOF_MEM_FLAG_USER, cdata_size);
 	if (!cdata) {
@@ -150,6 +167,9 @@ static int sof_static_send_comp_config(struct comp_dev *dev, const void *abi_blo
 	int ret = mod->dev->drv->adapter_ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
 								hdr->size, (const uint8_t *)cdata,
 								hdr->size, NULL, 0);
+	rfree(cdata);
+#endif
+
 	if (ret < 0) {
 		LOG_ERR("set_configuration failed for comp %d: ret %d", dev->ipc_config.id, ret);
 	} else {
@@ -157,7 +177,6 @@ static int sof_static_send_comp_config(struct comp_dev *dev, const void *abi_blo
 			dev->ipc_config.id, hdr->size);
 	}
 
-	rfree(cdata);
 	return ret;
 }
 
@@ -289,6 +308,7 @@ void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t terminal,
 				terminal, g_status.sample_rate ? g_status.sample_rate : 48000);
 			if (g_playback_pipe && g_playback_pipe->source_comp) {
 				pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_PRE_START);
+				pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_START);
 			}
 		} else {
 			LOG_INF("[SOF Pipeline] Playback Stream STOP (Terminal %u)", terminal);
@@ -303,6 +323,7 @@ void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t terminal,
 				terminal, g_status.sample_rate ? g_status.sample_rate : 48000);
 			if (g_capture_pipe && g_comp_usb_capture) {
 				pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_PRE_START);
+				pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_START);
 			}
 		} else {
 			LOG_INF("[SOF Pipeline] Capture Stream STOP (Terminal %u)", terminal);
@@ -586,6 +607,8 @@ static void sof_static_init_buffer_params(struct comp_buffer *buf, uint32_t dir)
 	audio_stream_set_rate(&buf->stream, 48000);
 	audio_stream_set_channels(&buf->stream, 2);
 	audio_stream_set_frm_fmt(&buf->stream, SOF_IPC_FRAME_S16_LE);
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, 2, &buf->stream);
+	audio_stream_reset(&buf->stream);
 
 	struct sof_sink *sink = audio_buffer_get_sink(&buf->audio_buffer);
 	if (sink) {
@@ -593,6 +616,7 @@ static void sof_static_init_buffer_params(struct comp_buffer *buf, uint32_t dir)
 		sink_set_rate(sink, 48000);
 		sink_set_channels(sink, 2);
 		sink_set_frm_fmt(sink, SOF_IPC_FRAME_S16_LE);
+		sink_set_alignment_constants(sink, SOF_FRAME_BYTE_ALIGN, 2);
 	}
 	struct sof_source *source = audio_buffer_get_source(&buf->audio_buffer);
 	if (source) {
@@ -600,6 +624,7 @@ static void sof_static_init_buffer_params(struct comp_buffer *buf, uint32_t dir)
 		source_set_rate(source, 48000);
 		source_set_channels(source, 2);
 		source_set_frm_fmt(source, SOF_IPC_FRAME_S16_LE);
+		source_set_alignment_constants(source, SOF_FRAME_BYTE_ALIGN, 2);
 	}
 }
 
@@ -635,10 +660,24 @@ int sof_static_pipelines_init(struct sof *sof)
 	const struct comp_driver *drv_eq   = sof_static_find_driver(&eq_iir_uuid, SOF_COMP_MODULE_ADAPTER);
 	const struct comp_driver *drv_drc  = sof_static_find_driver(&drc_uuid, SOF_COMP_MODULE_ADAPTER);
 	const struct comp_driver *drv_tdfb = sof_static_find_driver(&tdfb_uuid, SOF_COMP_MODULE_ADAPTER);
-	const struct comp_driver *drv_dai  = sof_static_find_driver(NULL, SOF_COMP_DAI);
+	const struct comp_driver *drv_dai  = sof_static_find_driver(&dai_uuid, SOF_COMP_DAI);
 
 	LOG_INF("Component Drivers: USB=%p, VOL=%p, EQ=%p, DRC=%p, TDFB=%p, DAI=%p",
 		drv_usb, drv_vol, drv_eq, drv_drc, drv_tdfb, drv_dai);
+
+	#if CONFIG_IPC_MAJOR_4
+	struct ipc_config_process base_proc_spec = {
+		.size = sizeof(s_default_ipc4_base_cfg),
+		.data = (const uint8_t *)&s_default_ipc4_base_cfg,
+	};
+	struct ipc_config_process *proc_spec = &base_proc_spec;
+	#else
+	struct ipc_config_process empty_proc_spec = {
+		.size = 0,
+		.data = NULL,
+	};
+	struct ipc_config_process *proc_spec = &empty_proc_spec;
+	#endif
 
 	/* 3. Construct Playback Pipeline (Pipeline 1: USB -> Vol -> EQ -> DRC -> DAI) */
 	if (drv_usb) {
@@ -668,8 +707,8 @@ int sof_static_pipelines_init(struct sof *sof)
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
 		struct ipc_config_process spec = {
-			.size = sizeof(s_default_ipc4_vol_cfg),
-			.data = (const uint8_t *)&s_default_ipc4_vol_cfg,
+			.size = sizeof(s_default_vol_cfg),
+			.data = (const uint8_t *)&s_default_vol_cfg,
 		};
 		g_comp_vol_playback = drv_vol->ops.create(drv_vol, &cfg, &spec);
 		if (g_comp_vol_playback) {
@@ -688,11 +727,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_process spec = {
-			.size = sizeof(s_default_ipc4_base_cfg),
-			.data = (const uint8_t *)&s_default_ipc4_base_cfg,
-		};
-		g_comp_eq_playback = drv_eq->ops.create(drv_eq, &cfg, &spec);
+		g_comp_eq_playback = drv_eq->ops.create(drv_eq, &cfg, proc_spec);
 		if (g_comp_eq_playback) {
 			g_comp_eq_playback->direction = SOF_IPC_STREAM_PLAYBACK;
 			g_comp_eq_playback->pipeline = g_playback_pipe;
@@ -711,11 +746,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_process spec = {
-			.size = sizeof(s_default_ipc4_base_cfg),
-			.data = (const uint8_t *)&s_default_ipc4_base_cfg,
-		};
-		g_comp_drc_playback = drv_drc->ops.create(drv_drc, &cfg, &spec);
+		g_comp_drc_playback = drv_drc->ops.create(drv_drc, &cfg, proc_spec);
 		if (g_comp_drc_playback) {
 			g_comp_drc_playback->direction = SOF_IPC_STREAM_PLAYBACK;
 			g_comp_drc_playback->pipeline = g_playback_pipe;
@@ -831,11 +862,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_process spec = {
-			.size = sizeof(s_default_ipc4_base_cfg),
-			.data = (const uint8_t *)&s_default_ipc4_base_cfg,
-		};
-		g_comp_tdfb_capture = drv_tdfb->ops.create(drv_tdfb, &cfg, &spec);
+		g_comp_tdfb_capture = drv_tdfb->ops.create(drv_tdfb, &cfg, proc_spec);
 		if (g_comp_tdfb_capture) {
 			g_comp_tdfb_capture->direction = SOF_IPC_STREAM_CAPTURE;
 			g_comp_tdfb_capture->pipeline = g_capture_pipe;
@@ -852,11 +879,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
-		struct ipc_config_process spec = {
-			.size = sizeof(s_default_ipc4_base_cfg),
-			.data = (const uint8_t *)&s_default_ipc4_base_cfg,
-		};
-		g_comp_eq_capture = drv_eq->ops.create(drv_eq, &cfg, &spec);
+		g_comp_eq_capture = drv_eq->ops.create(drv_eq, &cfg, proc_spec);
 		if (g_comp_eq_capture) {
 			g_comp_eq_capture->direction = SOF_IPC_STREAM_CAPTURE;
 			g_comp_eq_capture->pipeline = g_capture_pipe;
@@ -876,8 +899,8 @@ int sof_static_pipelines_init(struct sof *sof)
 			.frame_fmt = SOF_IPC_FRAME_S16_LE,
 		};
 		struct ipc_config_process spec = {
-			.size = sizeof(s_default_ipc4_vol_cfg),
-			.data = (const uint8_t *)&s_default_ipc4_vol_cfg,
+			.size = sizeof(s_default_vol_cfg),
+			.data = (const uint8_t *)&s_default_vol_cfg,
 		};
 		g_comp_vol_capture = drv_vol->ops.create(drv_vol, &cfg, &spec);
 		if (g_comp_vol_capture) {

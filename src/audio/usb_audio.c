@@ -211,7 +211,8 @@ static int usb_audio_copy(struct comp_dev *dev)
 
 			k_spin_unlock(&ring->lock, key);
 
-			audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0, chunk);
+			audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0,
+						      chunk / audio_stream_sample_bytes(&sink->stream));
 			comp_update_buffer_produce(sink, chunk);
 		}
 	} else if (source) {
@@ -223,7 +224,8 @@ static int usb_audio_copy(struct comp_dev *dev)
 			uint8_t temp_buf[256];
 			uint32_t chunk = (copy_bytes > sizeof(temp_buf)) ? sizeof(temp_buf) : copy_bytes;
 
-			audio_stream_copy_to_linear(&source->stream, 0, temp_buf, 0, chunk);
+			audio_stream_copy_to_linear(&source->stream, 0, temp_buf, 0,
+						    chunk / audio_stream_sample_bytes(&source->stream));
 			comp_update_buffer_consume(source, chunk);
 
 			struct usb_audio_ring_buffer *ring = &uad->ring;

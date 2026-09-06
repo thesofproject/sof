@@ -402,6 +402,9 @@ static int drc_prepare(struct processing_module *mod,
 		return -ENOTCONN;
 	}
 
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, 2, &sourceb->stream);
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, 2, &sinkb->stream);
+
 #if CONFIG_IPC_MAJOR_4
 	drc_params(mod);
 #endif
