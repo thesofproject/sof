@@ -304,11 +304,11 @@ int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_for
 		comp_err(mod->dev, "failed IIR setup");
 		return ret;
 	} else if (cd->iir_delay_size) {
-		comp_dbg(mod->dev, "active");
+		comp_info(mod->dev, "IIR EQ mode: ACTIVE (delay_size=%zu)", cd->iir_delay_size);
 		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_configured,
 						   ARRAY_SIZE(fm_configured));
 	} else {
-		comp_dbg(mod->dev, "pass-through");
+		comp_info(mod->dev, "IIR EQ mode: PASSTHROUGH");
 		cd->eq_iir_func = eq_iir_find_func(source_format, sink_format, fm_passthrough,
 						   ARRAY_SIZE(fm_passthrough));
 	}

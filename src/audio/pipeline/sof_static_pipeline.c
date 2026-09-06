@@ -11,6 +11,12 @@
 #include <sof/audio/format.h>
 #include <sof/lib/dai-zephyr.h>
 #include <ipc/topology.h>
+#include <ipc/control.h>
+#include <kernel/header.h>
+#include <user/eq.h>
+#include "../eq_iir/eq_iir.h"
+#include "../drc/drc_user.h"
+#include "../drc/drc.h"
 #include <rtos/sof.h>
 #include <rtos/alloc.h>
 #include <zephyr/logging/log.h>
@@ -33,6 +39,78 @@ void * const g_drc_force __used = (void *)drc_reset_state;
 #ifndef VOL_MAX
 #define VOL_MAX INT32_MAX
 #endif
+
+/* Standard 2-channel 4-band parametric IIR EQ configuration blob (ABI header + sof_eq_iir_config) */
+static const uint32_t sof_default_iir_coef_2ch[51] = {
+	0x00464f53, 0x00000000, 0x000000ac, 0x03013000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x000000ac, 0x00000002, 0x00000001, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000004, 0x00000004, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0xc12c82bd,
+	0x7ed0b52e, 0x1fc7cc0c, 0xc07067e9, 0x1fc7cc0c,
+	0x00000000, 0x00004000, 0xcad0cdef, 0x742e8c5d,
+	0x0cdc9086, 0xe2f11723, 0x10b2f932, 0x00000000,
+	0x00004000, 0xcf45334a, 0x68260de9, 0x0a54e176,
+	0xe5d6cb75, 0x11fc1f3d, 0x00000000, 0x00004000,
+	0xf2940609, 0xe25f3930, 0x0d69ba64, 0x1ad374c8,
+	0x0d69ba64, 0xfffffffb, 0x000045bf
+};
+
+/* Standard Speaker Default DRC compressor configuration blob (ABI header + sof_drc_config) */
+static const uint32_t sof_default_drc_coef[35] = {
+	0x00464f53, 0x00000000, 0x0000006c, 0x0301a000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x0000006c, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000001, 0xe2000000, 0x14000000,
+	0x0a000000, 0x00624dd3, 0x02061b8a, 0x06666666,
+	0x00ba972f, 0x001e0c18, 0xffe04220, 0x0050f44e,
+	0x08349f9a, 0x04d82cd3, 0x0071c71c, 0xff777777,
+	0x001f77d8, 0x00000005, 0x00438000, 0x00047dd7,
+	0x0025cea0, 0x00097dd7, 0x0000b5b1
+};
+
+static int sof_static_send_comp_config(struct comp_dev *dev, const void *abi_blob, size_t abi_blob_total_size)
+{
+	if (!dev)
+		return -EINVAL;
+
+	const struct sof_abi_hdr *hdr = (const struct sof_abi_hdr *)abi_blob;
+	struct processing_module *mod = comp_mod(dev);
+	if (!mod || !mod->dev || !mod->dev->drv || !mod->dev->drv->adapter_ops ||
+	    !mod->dev->drv->adapter_ops->set_configuration) {
+		LOG_ERR("No adapter_ops set_configuration for comp %d", dev->ipc_config.id);
+		return -EINVAL;
+	}
+
+	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_abi_hdr) + hdr->size;
+	struct sof_ipc_ctrl_data *cdata = rzalloc(SOF_MEM_FLAG_USER, cdata_size);
+	if (!cdata) {
+		LOG_ERR("Failed to allocate ctrl_data size %zu", cdata_size);
+		return -ENOMEM;
+	}
+
+	cdata->cmd = SOF_CTRL_CMD_BINARY;
+	cdata->num_elems = hdr->size;
+	cdata->data[0].magic = hdr->magic;
+	cdata->data[0].type = hdr->type;
+	cdata->data[0].size = hdr->size;
+	cdata->data[0].abi = hdr->abi;
+	memcpy_s(cdata->data[0].data, hdr->size, (const uint8_t *)abi_blob + sizeof(struct sof_abi_hdr), hdr->size);
+
+	int ret = mod->dev->drv->adapter_ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
+								hdr->size, (const uint8_t *)cdata,
+								hdr->size, NULL, 0);
+	if (ret < 0) {
+		LOG_ERR("set_configuration failed for comp %d: ret %d", dev->ipc_config.id, ret);
+	} else {
+		LOG_INF("Default DSP configuration loaded for comp %d (%u bytes)",
+			dev->ipc_config.id, hdr->size);
+	}
+
+	rfree(cdata);
+	return ret;
+}
 
 int volume_set_chan(struct processing_module *mod, int chan, int32_t vol, bool constant_rate_ramp);
 void volume_set_chan_mute(struct processing_module *mod, int chan);
@@ -117,9 +195,12 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 	if (g_status.playback_active) {
 		s_sof_diag_cnt++;
 		if (s_sof_diag_cnt % 1000 == 0) {
-			LOG_INF("[SOF UAC2] Playback SOFs: %u, RXFLVL_ep1: %u, XFERCOMPL_ep1: %u, INCOMP_out: %u, Free RX blocks: %u",
-				s_sof_diag_cnt, g_dwc2_rxflvl_ep1_cnt, g_dwc2_xfercompl_ep1_cnt,
-				g_dwc2_incompisoout_cnt, k_mem_slab_num_free_get(&uac2_rx_slab));
+			struct comp_data *cd_eq = g_comp_eq_playback ? module_get_private_data(comp_mod(g_comp_eq_playback)) : NULL;
+			struct drc_comp_data *cd_drc = g_comp_drc_playback ? module_get_private_data(comp_mod(g_comp_drc_playback)) : NULL;
+			LOG_INF("[SOF UAC2] Playback SOFs: %u, Free RX: %u | EQ: %s, DRC: %s",
+				s_sof_diag_cnt, k_mem_slab_num_free_get(&uac2_rx_slab),
+				(cd_eq && cd_eq->eq_iir_func == eq_iir_s16_default) ? "ACTIVE" : "BYPASS",
+				(cd_drc && cd_drc->enabled) ? "ACTIVE" : "BYPASS");
 		}
 	} else {
 		s_sof_diag_cnt = 0;
@@ -572,6 +653,8 @@ int sof_static_pipelines_init(struct sof *sof)
 			g_comp_eq_playback->pipeline = g_playback_pipe;
 			g_comp_eq_playback->period = 1000;
 			g_comp_eq_playback->frames = 48;
+			sof_static_send_comp_config(g_comp_eq_playback, sof_default_iir_coef_2ch,
+						    sizeof(sof_default_iir_coef_2ch));
 		}
 	}
 
@@ -590,6 +673,8 @@ int sof_static_pipelines_init(struct sof *sof)
 			g_comp_drc_playback->pipeline = g_playback_pipe;
 			g_comp_drc_playback->period = 1000;
 			g_comp_drc_playback->frames = 48;
+			sof_static_send_comp_config(g_comp_drc_playback, sof_default_drc_coef,
+						    sizeof(sof_default_drc_coef));
 		}
 	}
 
@@ -723,6 +808,8 @@ int sof_static_pipelines_init(struct sof *sof)
 			g_comp_eq_capture->pipeline = g_capture_pipe;
 			g_comp_eq_capture->period = 1000;
 			g_comp_eq_capture->frames = 48;
+			sof_static_send_comp_config(g_comp_eq_capture, sof_default_iir_coef_2ch,
+						    sizeof(sof_default_iir_coef_2ch));
 		}
 	}
 
@@ -855,10 +942,23 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 
 int sof_static_pipeline_set_eq_bypass(bool is_capture, bool bypass)
 {
+	struct comp_dev *dev = is_capture ? g_comp_eq_capture : g_comp_eq_playback;
+
 	if (is_capture) {
 		g_status.eq_capture_bypassed = bypass;
 	} else {
 		g_status.eq_playback_bypassed = bypass;
+	}
+	if (dev) {
+		struct processing_module *mod = comp_mod(dev);
+		struct comp_data *cd = module_get_private_data(mod);
+		if (cd) {
+			if (bypass) {
+				cd->eq_iir_func = eq_iir_pass;
+			} else if (cd->iir_delay_size) {
+				cd->eq_iir_func = eq_iir_s16_default;
+			}
+		}
 	}
 	LOG_INF("%s EQ bypass set to %d", is_capture ? "Capture" : "Playback", bypass);
 	return 0;
@@ -867,6 +967,13 @@ int sof_static_pipeline_set_eq_bypass(bool is_capture, bool bypass)
 int sof_static_pipeline_set_drc_bypass(bool bypass)
 {
 	g_status.drc_playback_bypassed = bypass;
+	if (g_comp_drc_playback) {
+		struct processing_module *mod = comp_mod(g_comp_drc_playback);
+		struct drc_comp_data *cd = module_get_private_data(mod);
+		if (cd) {
+			cd->enable_switch = !bypass;
+		}
+	}
 	LOG_INF("DRC bypass set to %d", bypass);
 	return 0;
 }
