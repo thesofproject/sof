@@ -186,61 +186,150 @@ static int usb_audio_copy(struct comp_dev *dev)
 
 	if (sink) {
 		/* USB Playback Source -> SOF Sink Buffer */
-		uint32_t free_bytes = audio_stream_get_free_bytes(&sink->stream);
-		uint32_t copy_bytes = (free_bytes < uad->period_bytes) ? free_bytes : uad->period_bytes;
+		enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&sink->stream);
+		if (fmt == SOF_IPC_FRAME_FLOAT) {
+			uint32_t free_frames = audio_stream_get_free_frames(&sink->stream);
+			uint32_t copy_frames = MIN(free_frames, dev->frames ? dev->frames : 48);
 
-		if (copy_bytes > 0) {
-			uint8_t temp_buf[256];
-			uint32_t chunk = (copy_bytes > sizeof(temp_buf)) ? sizeof(temp_buf) : copy_bytes;
+			if (copy_frames > 0) {
+				int16_t s16_buf[96];
+				float f_buf[96];
+				uint32_t frames_to_copy = MIN(copy_frames, 48);
+				uint32_t s16_bytes = frames_to_copy * 2 * sizeof(int16_t);
 
-			struct usb_audio_ring_buffer *ring = &uad->ring;
-			k_spinlock_key_t key = k_spin_lock(&ring->lock);
+				struct usb_audio_ring_buffer *ring = &uad->ring;
+				k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
-			uint32_t available = ring->count;
-			uint32_t to_copy = (chunk > available) ? available : chunk;
+				uint32_t available = ring->count;
+				uint32_t to_copy = MIN(s16_bytes, available);
 
-			for (size_t i = 0; i < to_copy; i++) {
-				temp_buf[i] = ring->buf[ring->tail];
-				ring->tail = (ring->tail + 1) % USB_AUDIO_RING_BUFFER_SIZE;
+				uint8_t *s16_raw = (uint8_t *)s16_buf;
+				for (size_t i = 0; i < to_copy; i++) {
+					s16_raw[i] = ring->buf[ring->tail];
+					ring->tail = (ring->tail + 1) % USB_AUDIO_RING_BUFFER_SIZE;
+				}
+				ring->count -= to_copy;
+
+				if (to_copy < s16_bytes) {
+					memset(s16_raw + to_copy, 0, s16_bytes - to_copy);
+				}
+
+				k_spin_unlock(&ring->lock, key);
+
+				const float scale = 1.0f / 32768.0f;
+				for (size_t i = 0; i < frames_to_copy * 2; i++) {
+					f_buf[i] = (float)s16_buf[i] * scale;
+				}
+
+				audio_stream_copy_from_linear(f_buf, 0, &sink->stream, 0, frames_to_copy * 2);
+				comp_update_buffer_produce(sink, frames_to_copy * 2 * sizeof(float));
 			}
-			ring->count -= to_copy;
+		} else {
+			uint32_t free_bytes = audio_stream_get_free_bytes(&sink->stream);
+			uint32_t copy_bytes = (free_bytes < uad->period_bytes) ? free_bytes : uad->period_bytes;
 
-			if (to_copy < chunk) {
-				memset(temp_buf + to_copy, 0, chunk - to_copy);
+			if (copy_bytes > 0) {
+				uint8_t temp_buf[256];
+				uint32_t chunk = (copy_bytes > sizeof(temp_buf)) ? sizeof(temp_buf) : copy_bytes;
+
+				struct usb_audio_ring_buffer *ring = &uad->ring;
+				k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+				uint32_t available = ring->count;
+				uint32_t to_copy = (chunk > available) ? available : chunk;
+
+				for (size_t i = 0; i < to_copy; i++) {
+					temp_buf[i] = ring->buf[ring->tail];
+					ring->tail = (ring->tail + 1) % USB_AUDIO_RING_BUFFER_SIZE;
+				}
+				ring->count -= to_copy;
+
+				if (to_copy < chunk) {
+					memset(temp_buf + to_copy, 0, chunk - to_copy);
+				}
+
+				k_spin_unlock(&ring->lock, key);
+
+				audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0,
+							      chunk / audio_stream_sample_bytes(&sink->stream));
+				comp_update_buffer_produce(sink, chunk);
 			}
-
-			k_spin_unlock(&ring->lock, key);
-
-			audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0,
-						      chunk / audio_stream_sample_bytes(&sink->stream));
-			comp_update_buffer_produce(sink, chunk);
 		}
 	} else if (source) {
 		/* SOF Source Buffer -> USB Capture Sink */
-		uint32_t avail_bytes = audio_stream_get_avail_bytes(&source->stream);
-		uint32_t copy_bytes = (avail_bytes < uad->period_bytes) ? avail_bytes : uad->period_bytes;
+		enum sof_ipc_frame fmt = audio_stream_get_frm_fmt(&source->stream);
+		if (fmt == SOF_IPC_FRAME_FLOAT) {
+			uint32_t avail_frames = audio_stream_get_avail_frames(&source->stream);
+			uint32_t copy_frames = MIN(avail_frames, dev->frames ? dev->frames : 48);
 
-		if (copy_bytes > 0) {
-			uint8_t temp_buf[256];
-			uint32_t chunk = (copy_bytes > sizeof(temp_buf)) ? sizeof(temp_buf) : copy_bytes;
+			if (copy_frames > 0) {
+				float f_buf[96];
+				int16_t s16_buf[96];
+				uint32_t frames_to_copy = MIN(copy_frames, 48);
 
-			audio_stream_copy_to_linear(&source->stream, 0, temp_buf, 0,
-						    chunk / audio_stream_sample_bytes(&source->stream));
-			comp_update_buffer_consume(source, chunk);
+				audio_stream_copy_to_linear(&source->stream, 0, f_buf, 0, frames_to_copy * 2);
+				comp_update_buffer_consume(source, frames_to_copy * 2 * sizeof(float));
 
-			struct usb_audio_ring_buffer *ring = &uad->ring;
-			k_spinlock_key_t key = k_spin_lock(&ring->lock);
+				const float scale = 32768.0f;
+				for (size_t i = 0; i < frames_to_copy * 2; i++) {
+					float val = f_buf[i] * scale;
+					if (val >= 32767.0f) {
+						s16_buf[i] = 32767;
+					} else if (val <= -32768.0f) {
+						s16_buf[i] = -32768;
+					} else {
+#if defined(__riscv) && defined(__riscv_flen)
+						int32_t r;
+						__asm__ ("fcvt.w.s %0, %1, rne" : "=r"(r) : "f"(val));
+						s16_buf[i] = (int16_t)r;
+#else
+						s16_buf[i] = (int16_t)(val >= 0.0f ? (val + 0.5f) : (val - 0.5f));
+#endif
+					}
+				}
 
-			uint32_t free_space = USB_AUDIO_RING_BUFFER_SIZE - ring->count;
-			uint32_t to_copy = (chunk > free_space) ? free_space : chunk;
+				uint32_t s16_bytes = frames_to_copy * 2 * sizeof(int16_t);
+				struct usb_audio_ring_buffer *ring = &uad->ring;
+				k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
-			for (size_t i = 0; i < to_copy; i++) {
-				ring->buf[ring->head] = temp_buf[i];
-				ring->head = (ring->head + 1) % USB_AUDIO_RING_BUFFER_SIZE;
+				uint32_t free_space = USB_AUDIO_RING_BUFFER_SIZE - ring->count;
+				uint32_t to_copy = MIN(s16_bytes, free_space);
+
+				uint8_t *s16_raw = (uint8_t *)s16_buf;
+				for (size_t i = 0; i < to_copy; i++) {
+					ring->buf[ring->head] = s16_raw[i];
+					ring->head = (ring->head + 1) % USB_AUDIO_RING_BUFFER_SIZE;
+				}
+				ring->count += to_copy;
+
+				k_spin_unlock(&ring->lock, key);
 			}
-			ring->count += to_copy;
+		} else {
+			uint32_t avail_bytes = audio_stream_get_avail_bytes(&source->stream);
+			uint32_t copy_bytes = (avail_bytes < uad->period_bytes) ? avail_bytes : uad->period_bytes;
 
-			k_spin_unlock(&ring->lock, key);
+			if (copy_bytes > 0) {
+				uint8_t temp_buf[256];
+				uint32_t chunk = (copy_bytes > sizeof(temp_buf)) ? sizeof(temp_buf) : copy_bytes;
+
+				audio_stream_copy_to_linear(&source->stream, 0, temp_buf, 0,
+							    chunk / audio_stream_sample_bytes(&source->stream));
+				comp_update_buffer_consume(source, chunk);
+
+				struct usb_audio_ring_buffer *ring = &uad->ring;
+				k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+				uint32_t free_space = USB_AUDIO_RING_BUFFER_SIZE - ring->count;
+				uint32_t to_copy = (chunk > free_space) ? free_space : chunk;
+
+				for (size_t i = 0; i < to_copy; i++) {
+					ring->buf[ring->head] = temp_buf[i];
+					ring->head = (ring->head + 1) % USB_AUDIO_RING_BUFFER_SIZE;
+				}
+				ring->count += to_copy;
+
+				k_spin_unlock(&ring->lock, key);
+			}
 		}
 	}
 

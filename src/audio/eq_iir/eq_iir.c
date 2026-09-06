@@ -307,6 +307,17 @@ void eq_iir_free_delaylines(struct processing_module *mod)
 	cd->iir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir[i].delay = NULL;
+
+#if CONFIG_FORMAT_FLOAT
+	mod_free(mod, cd->iir_delay_float);
+	mod_free(mod, cd->iir_coef_float);
+	cd->iir_delay_float = NULL;
+	cd->iir_coef_float = NULL;
+	cd->iir_delay_float_size = 0;
+	cd->iir_coef_float_size = 0;
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		iir_reset_df1_float(&cd->iir_float[i]);
+#endif
 }
 
 void eq_iir_pass(struct processing_module *mod, const struct cir_buf_source *source,
@@ -374,6 +385,84 @@ int eq_iir_setup(struct processing_module *mod, unsigned int nch)
 	return 0;
 }
 
+#if CONFIG_FORMAT_FLOAT
+int eq_iir_setup_float(struct processing_module *mod, unsigned int nch)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_eq_iir_config *config = cd->config;
+	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
+	int32_t *assign_response;
+	size_t delay_size = 0;
+	size_t coef_size = 0;
+	int resp = 0;
+	unsigned int i;
+	int ret;
+
+	cd->channels = nch;
+
+	eq_iir_free_delaylines(mod);
+
+	if (nch > PLATFORM_MAX_CHANNELS)
+		return -EINVAL;
+
+	ret = eq_iir_walk_config(mod->dev, config, cd->config_size, lookup);
+	if (ret < 0)
+		return ret;
+
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
+	for (i = 0; i < nch; i++) {
+		if (i < config->channels_in_config)
+			resp = assign_response[i];
+
+		if (resp < 0 || resp >= config->number_of_responses) {
+			iir_reset_df1_float(&cd->iir_float[i]);
+			continue;
+		}
+
+		struct sof_eq_iir_header *eq = lookup[resp];
+		int ds = iir_delay_size_df1_float(eq);
+		int cs = iir_coef_size_df1_float(eq);
+		if (ds > 0 && cs > 0) {
+			delay_size += (size_t)ds;
+			coef_size += (size_t)cs;
+		}
+	}
+
+	if (!delay_size)
+		return 0;
+
+	cd->iir_delay_float = mod_zalloc(mod, delay_size);
+	cd->iir_coef_float = mod_zalloc(mod, coef_size);
+	if (!cd->iir_delay_float || !cd->iir_coef_float) {
+		eq_iir_free_delaylines(mod);
+		return -ENOMEM;
+	}
+
+	cd->iir_delay_float_size = delay_size;
+	cd->iir_coef_float_size = coef_size;
+	cd->iir_delay_size = delay_size; /* non-zero marks active */
+
+	float *delay_ptr = cd->iir_delay_float;
+	float *coef_ptr = cd->iir_coef_float;
+
+	for (i = 0; i < nch; i++) {
+		if (i < config->channels_in_config)
+			resp = assign_response[i];
+
+		if (resp < 0 || resp >= config->number_of_responses) {
+			iir_reset_df1_float(&cd->iir_float[i]);
+			continue;
+		}
+
+		struct sof_eq_iir_header *eq = lookup[resp];
+		iir_init_coef_df1_float(&cd->iir_float[i], eq, &coef_ptr);
+		iir_init_delay_df1_float(&cd->iir_float[i], &delay_ptr);
+	}
+
+	return 0;
+}
+#endif
+
 /*
  * End of EQ setup code. Next the standard component methods.
  */
@@ -405,8 +494,12 @@ static int eq_iir_init(struct processing_module *mod)
 	 */
 	comp_data_blob_set_validator(cd->model_handler, eq_iir_validate_config);
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		iir_reset_df1(&cd->iir[i]);
+#if CONFIG_FORMAT_FLOAT
+		iir_reset_df1_float(&cd->iir_float[i]);
+#endif
+	}
 
 	return 0;
 }
@@ -624,8 +717,12 @@ static int eq_iir_reset(struct processing_module *mod)
 	cd->eq_iir_func = NULL;
 	cd->channels = 0;
 	cd->frame_bytes = 0;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		iir_reset_df1(&cd->iir[i]);
+#if CONFIG_FORMAT_FLOAT
+		iir_reset_df1_float(&cd->iir_float[i]);
+#endif
+	}
 
 	return 0;
 }

@@ -267,7 +267,7 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 			struct drc_comp_data *cd_drc = g_comp_drc_playback ? module_get_private_data(comp_mod(g_comp_drc_playback)) : NULL;
 			LOG_INF("[SOF UAC2] Playback SOFs: %u, Free RX: %u | EQ: %s, DRC: %s",
 				s_sof_diag_cnt, k_mem_slab_num_free_get(&uac2_rx_slab),
-				(cd_eq && cd_eq->eq_iir_func == eq_iir_s16_default) ? "ACTIVE" : "BYPASS",
+				(cd_eq && cd_eq->eq_iir_func != eq_iir_pass) ? "ACTIVE" : "BYPASS",
 				(cd_drc && cd_drc->enabled) ? "ACTIVE" : "BYPASS");
 		}
 	} else {
@@ -584,54 +584,56 @@ const struct uac2_ops *sof_get_uac2_ops(void)
 	return &g_uac2_ops;
 }
 
-static void sof_static_init_buffer_params(struct comp_buffer *buf, uint32_t dir)
+static void sof_static_init_buffer_params(struct comp_buffer *buf, uint32_t dir, enum sof_ipc_frame fmt)
 {
 	if (!buf)
 		return;
+
+	uint32_t sample_bytes = (fmt == SOF_IPC_FRAME_FLOAT || fmt == SOF_IPC_FRAME_S32_LE) ? 4 : 2;
 
 	struct sof_ipc_stream_params params;
 	memset(&params, 0, sizeof(params));
 	params.rate = 48000;
 	params.channels = 2;
-	params.frame_fmt = SOF_IPC_FRAME_S16_LE;
-	params.sample_container_bytes = 2;
-	params.sample_valid_bytes = 2;
+	params.frame_fmt = fmt;
+	params.sample_container_bytes = sample_bytes;
+	params.sample_valid_bytes = sample_bytes;
 	params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.host_period_bytes = 48 * 4;
+	params.host_period_bytes = 48 * 2 * sample_bytes;
 	params.direction = dir;
 	params.chmap[0] = SOF_CHMAP_FL;
 	params.chmap[1] = SOF_CHMAP_FR;
 
 	buffer_set_params(buf, &params, BUFFER_UPDATE_FORCE);
-	audio_stream_set_valid_fmt(&buf->stream, SOF_IPC_FRAME_S16_LE);
+	audio_stream_set_valid_fmt(&buf->stream, fmt);
 	audio_stream_set_rate(&buf->stream, 48000);
 	audio_stream_set_channels(&buf->stream, 2);
-	audio_stream_set_frm_fmt(&buf->stream, SOF_IPC_FRAME_S16_LE);
-	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, 2, &buf->stream);
+	audio_stream_set_frm_fmt(&buf->stream, fmt);
+	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, sample_bytes, &buf->stream);
 	audio_stream_reset(&buf->stream);
 
 	struct sof_sink *sink = audio_buffer_get_sink(&buf->audio_buffer);
 	if (sink) {
-		sink_set_valid_fmt(sink, SOF_IPC_FRAME_S16_LE);
+		sink_set_valid_fmt(sink, fmt);
 		sink_set_rate(sink, 48000);
 		sink_set_channels(sink, 2);
-		sink_set_frm_fmt(sink, SOF_IPC_FRAME_S16_LE);
-		sink_set_alignment_constants(sink, SOF_FRAME_BYTE_ALIGN, 2);
+		sink_set_frm_fmt(sink, fmt);
+		sink_set_alignment_constants(sink, SOF_FRAME_BYTE_ALIGN, sample_bytes);
 	}
 	struct sof_source *source = audio_buffer_get_source(&buf->audio_buffer);
 	if (source) {
-		source_set_valid_fmt(source, SOF_IPC_FRAME_S16_LE);
+		source_set_valid_fmt(source, fmt);
 		source_set_rate(source, 48000);
 		source_set_channels(source, 2);
-		source_set_frm_fmt(source, SOF_IPC_FRAME_S16_LE);
-		source_set_alignment_constants(source, SOF_FRAME_BYTE_ALIGN, 2);
+		source_set_frm_fmt(source, fmt);
+		source_set_alignment_constants(source, SOF_FRAME_BYTE_ALIGN, sample_bytes);
 	}
 }
 
 /* Static Pipelines & Graphs Construction */
 int sof_static_pipelines_init(struct sof *sof)
 {
-	LOG_INF("Building SOF static audio processing graphs (Playback & Capture)...");
+	LOG_INF("Building SOF static audio processing graphs (Playback & Capture in Float)...");
 
 	/* 1. Allocate Top-Level Pipeline Containers */
 	g_playback_pipe = pipeline_new(NULL, 1, 0, 1, NULL);
@@ -686,7 +688,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.pipeline_id = 1,
 			.core = 0,
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
+			.frame_fmt = SOF_IPC_FRAME_FLOAT,
 			.type = SOF_COMP_HOST,
 		};
 		g_comp_usb_playback = drv_usb->ops.create(drv_usb, &cfg, NULL);
@@ -704,7 +706,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.pipeline_id = 1,
 			.core = 0,
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
+			.frame_fmt = SOF_IPC_FRAME_FLOAT,
 		};
 		struct ipc_config_process spec = {
 			.size = sizeof(s_default_vol_cfg),
@@ -725,7 +727,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.pipeline_id = 1,
 			.core = 0,
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
+			.frame_fmt = SOF_IPC_FRAME_FLOAT,
 		};
 		g_comp_eq_playback = drv_eq->ops.create(drv_eq, &cfg, proc_spec);
 		if (g_comp_eq_playback) {
@@ -744,7 +746,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.pipeline_id = 1,
 			.core = 0,
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
+			.frame_fmt = SOF_IPC_FRAME_FLOAT,
 		};
 		g_comp_drc_playback = drv_drc->ops.create(drv_drc, &cfg, proc_spec);
 		if (g_comp_drc_playback) {
@@ -788,16 +790,16 @@ int sof_static_pipelines_init(struct sof *sof)
 		}
 	}
 
-	/* Allocate playback intermediate stream buffers */
-	struct comp_buffer *buf_pb_1 = buffer_alloc(NULL, 1024, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_pb_2 = buffer_alloc(NULL, 1024, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_pb_3 = buffer_alloc(NULL, 1024, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_pb_4 = buffer_alloc(NULL, 1024, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
+	/* Allocate playback intermediate stream buffers (Float = 4 bytes/sample -> 2048 bytes) */
+	struct comp_buffer *buf_pb_1 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
+	struct comp_buffer *buf_pb_2 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
+	struct comp_buffer *buf_pb_3 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
+	struct comp_buffer *buf_pb_4 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
 
-	sof_static_init_buffer_params(buf_pb_1, SOF_IPC_STREAM_PLAYBACK);
-	sof_static_init_buffer_params(buf_pb_2, SOF_IPC_STREAM_PLAYBACK);
-	sof_static_init_buffer_params(buf_pb_3, SOF_IPC_STREAM_PLAYBACK);
-	sof_static_init_buffer_params(buf_pb_4, SOF_IPC_STREAM_PLAYBACK);
+	sof_static_init_buffer_params(buf_pb_1, SOF_IPC_STREAM_PLAYBACK, SOF_IPC_FRAME_FLOAT);
+	sof_static_init_buffer_params(buf_pb_2, SOF_IPC_STREAM_PLAYBACK, SOF_IPC_FRAME_FLOAT);
+	sof_static_init_buffer_params(buf_pb_3, SOF_IPC_STREAM_PLAYBACK, SOF_IPC_FRAME_FLOAT);
+	sof_static_init_buffer_params(buf_pb_4, SOF_IPC_STREAM_PLAYBACK, SOF_IPC_FRAME_FLOAT);
 
 	if (g_comp_usb_playback && buf_pb_1 && g_comp_vol_playback) {
 		pipeline_connect(g_comp_usb_playback, buf_pb_1, PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -860,7 +862,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.pipeline_id = 2,
 			.core = 0,
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
+			.frame_fmt = SOF_IPC_FRAME_FLOAT,
 		};
 		g_comp_tdfb_capture = drv_tdfb->ops.create(drv_tdfb, &cfg, proc_spec);
 		if (g_comp_tdfb_capture) {
@@ -877,7 +879,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.pipeline_id = 2,
 			.core = 0,
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
+			.frame_fmt = SOF_IPC_FRAME_FLOAT,
 		};
 		g_comp_eq_capture = drv_eq->ops.create(drv_eq, &cfg, proc_spec);
 		if (g_comp_eq_capture) {
@@ -896,7 +898,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.pipeline_id = 2,
 			.core = 0,
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
+			.frame_fmt = SOF_IPC_FRAME_FLOAT,
 		};
 		struct ipc_config_process spec = {
 			.size = sizeof(s_default_vol_cfg),
@@ -917,7 +919,7 @@ int sof_static_pipelines_init(struct sof *sof)
 			.pipeline_id = 2,
 			.core = 0,
 			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
+			.frame_fmt = SOF_IPC_FRAME_FLOAT,
 			.type = SOF_COMP_HOST,
 		};
 		g_comp_usb_capture = drv_usb->ops.create(drv_usb, &cfg, NULL);
@@ -929,16 +931,16 @@ int sof_static_pipelines_init(struct sof *sof)
 		}
 	}
 
-	/* Allocate capture intermediate stream buffers */
-	struct comp_buffer *buf_cap_1 = buffer_alloc(NULL, 1024, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_cap_2 = buffer_alloc(NULL, 1024, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_cap_3 = buffer_alloc(NULL, 1024, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_cap_4 = buffer_alloc(NULL, 1024, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
+	/* Allocate capture intermediate stream buffers (Float = 4 bytes/sample -> 2048 bytes) */
+	struct comp_buffer *buf_cap_1 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
+	struct comp_buffer *buf_cap_2 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
+	struct comp_buffer *buf_cap_3 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
+	struct comp_buffer *buf_cap_4 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
 
-	sof_static_init_buffer_params(buf_cap_1, SOF_IPC_STREAM_CAPTURE);
-	sof_static_init_buffer_params(buf_cap_2, SOF_IPC_STREAM_CAPTURE);
-	sof_static_init_buffer_params(buf_cap_3, SOF_IPC_STREAM_CAPTURE);
-	sof_static_init_buffer_params(buf_cap_4, SOF_IPC_STREAM_CAPTURE);
+	sof_static_init_buffer_params(buf_cap_1, SOF_IPC_STREAM_CAPTURE, SOF_IPC_FRAME_FLOAT);
+	sof_static_init_buffer_params(buf_cap_2, SOF_IPC_STREAM_CAPTURE, SOF_IPC_FRAME_FLOAT);
+	sof_static_init_buffer_params(buf_cap_3, SOF_IPC_STREAM_CAPTURE, SOF_IPC_FRAME_FLOAT);
+	sof_static_init_buffer_params(buf_cap_4, SOF_IPC_STREAM_CAPTURE, SOF_IPC_FRAME_FLOAT);
 
 	if (g_comp_dai_capture && buf_cap_1 && g_comp_tdfb_capture) {
 		pipeline_connect(g_comp_dai_capture,  buf_cap_1, PPL_CONN_DIR_COMP_TO_BUFFER);
@@ -968,11 +970,11 @@ int sof_static_pipelines_init(struct sof *sof)
 		memset(&prms, 0, sizeof(prms));
 		prms.params.rate = 48000;
 		prms.params.channels = 2;
-		prms.params.frame_fmt = SOF_IPC_FRAME_S16_LE;
-		prms.params.sample_container_bytes = 2;
-		prms.params.sample_valid_bytes = 2;
+		prms.params.frame_fmt = SOF_IPC_FRAME_FLOAT;
+		prms.params.sample_container_bytes = 4;
+		prms.params.sample_valid_bytes = 4;
 		prms.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-		prms.params.host_period_bytes = 48 * 4;
+		prms.params.host_period_bytes = 48 * 8;
 		prms.comp_id = dev_comp_id(g_playback_pipe->source_comp);
 		prms.params.direction = SOF_IPC_STREAM_PLAYBACK;
 		prms.params.chmap[0] = SOF_CHMAP_FL;
@@ -985,11 +987,11 @@ int sof_static_pipelines_init(struct sof *sof)
 		memset(&prms, 0, sizeof(prms));
 		prms.params.rate = 48000;
 		prms.params.channels = 2;
-		prms.params.frame_fmt = SOF_IPC_FRAME_S16_LE;
-		prms.params.sample_container_bytes = 2;
-		prms.params.sample_valid_bytes = 2;
+		prms.params.frame_fmt = SOF_IPC_FRAME_FLOAT;
+		prms.params.sample_container_bytes = 4;
+		prms.params.sample_valid_bytes = 4;
 		prms.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-		prms.params.host_period_bytes = 48 * 4;
+		prms.params.host_period_bytes = 48 * 8;
 		prms.comp_id = dev_comp_id(g_comp_usb_capture);
 		prms.params.direction = SOF_IPC_STREAM_CAPTURE;
 		prms.params.chmap[0] = SOF_CHMAP_FL;
@@ -1026,7 +1028,16 @@ int sof_static_pipeline_set_eq_bypass(bool is_capture, bool bypass)
 			if (bypass) {
 				cd->eq_iir_func = eq_iir_pass;
 			} else if (cd->iir_delay_size) {
+#if CONFIG_FORMAT_FLOAT
+				struct comp_buffer *sourceb = comp_dev_get_first_data_producer(dev);
+				if (sourceb && audio_stream_get_frm_fmt(&sourceb->stream) == SOF_IPC_FRAME_FLOAT) {
+					cd->eq_iir_func = eq_iir_float_default;
+				} else {
+					cd->eq_iir_func = eq_iir_s16_default;
+				}
+#else
 				cd->eq_iir_func = eq_iir_s16_default;
+#endif
 			}
 		}
 	}

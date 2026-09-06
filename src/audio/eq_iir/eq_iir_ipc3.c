@@ -211,6 +211,9 @@ const struct eq_iir_func_map fm_configured[] = {
 #if CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_s32_default},
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	{SOF_IPC_FRAME_FLOAT,   SOF_IPC_FRAME_FLOAT,   eq_iir_float_default},
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 const struct eq_iir_func_map fm_passthrough[] = {
@@ -236,6 +239,9 @@ const struct eq_iir_func_map fm_passthrough[] = {
 #if CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_pass},
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	{SOF_IPC_FRAME_FLOAT,   SOF_IPC_FRAME_FLOAT,   eq_iir_pass},
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 static eq_iir_func eq_iir_find_func(enum sof_ipc_frame source_format,
@@ -298,6 +304,23 @@ int eq_iir_new_blob(struct processing_module *mod, enum sof_ipc_frame source_for
 {
 	struct comp_data *cd = module_get_private_data(mod);
 	int ret;
+
+#if CONFIG_FORMAT_FLOAT
+	if (source_format == SOF_IPC_FRAME_FLOAT) {
+		ret = eq_iir_setup_float(mod, channels);
+		if (ret < 0) {
+			comp_err(mod->dev, "failed float IIR setup");
+			return ret;
+		} else if (cd->iir_delay_size) {
+			comp_info(mod->dev, "IIR EQ mode: ACTIVE FLOAT (delay_size=%zu)", cd->iir_delay_size);
+			cd->eq_iir_func = eq_iir_float_default;
+		} else {
+			comp_info(mod->dev, "IIR EQ mode: PASSTHROUGH FLOAT");
+			cd->eq_iir_func = eq_iir_pass;
+		}
+		return 0;
+	}
+#endif
 
 	ret = eq_iir_setup(mod, channels);
 	if (ret < 0) {

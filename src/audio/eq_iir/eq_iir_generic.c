@@ -174,3 +174,89 @@ void eq_iir_s32_default(struct processing_module *mod, const struct cir_buf_sour
 }
 #endif /* CONFIG_FORMAT_S32LE */
 
+
+#if CONFIG_FORMAT_FLOAT
+void eq_iir_float_default(struct processing_module *mod, const struct cir_buf_source *source,
+			  struct cir_buf_sink *sink, size_t frames)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	const float *x0;
+	float *y0;
+	const float *x;
+	float *y;
+	size_t nmax;
+	size_t n1;
+	size_t n2;
+	unsigned int i;
+	size_t j;
+	size_t n;
+	const unsigned int nch = cd->channels;
+	const size_t samples = frames * nch;
+	size_t processed = 0;
+
+	x = source->ptr;
+	y = sink->ptr;
+	while (processed < samples) {
+		nmax = samples - processed;
+		n1 = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n2 = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		n = MIN(n1, n2);
+		n = MIN(n, nmax);
+		for (i = 0; i < nch; i++) {
+			x0 = x + i;
+			y0 = y + i;
+			struct iir_state_df1_float *filter = &cd->iir_float[i];
+
+			if (!filter->biquads) {
+				for (j = 0; j < n; j += nch) {
+					*y0 = *x0;
+					x0 += nch;
+					y0 += nch;
+				}
+				continue;
+			}
+
+			const float *coefp = filter->coef;
+			float *delay = filter->delay;
+			const unsigned int nbiquads = filter->biquads;
+
+			for (j = 0; j < n; j += nch) {
+				float in = *x0;
+				int c = 0;
+				int d = 0;
+
+				for (unsigned int b = 0; b < nbiquads; b++) {
+					const float b0 = coefp[c + 0];
+					const float b1 = coefp[c + 1];
+					const float b2 = coefp[c + 2];
+					const float a1 = coefp[c + 3];
+					const float a2 = coefp[c + 4];
+
+					const float x1 = delay[d + 0];
+					const float x2 = delay[d + 1];
+					const float y1 = delay[d + 2];
+					const float y2 = delay[d + 3];
+
+					float out = b0 * in + b1 * x1 + b2 * x2 + a1 * y1 + a2 * y2;
+
+					delay[d + 1] = x1;
+					delay[d + 0] = in;
+					delay[d + 3] = y1;
+					delay[d + 2] = out;
+
+					in = out;
+					c += 5;
+					d += 4;
+				}
+
+				*y0 = in;
+				x0 += nch;
+				y0 += nch;
+			}
+		}
+		processed += n;
+		x = source_cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+	}
+}
+#endif /* CONFIG_FORMAT_FLOAT */
