@@ -940,6 +940,9 @@ static int dai_get_dma_slot(struct dai_data *dd, struct comp_dev *dev, uint32_t 
 	return 0;
 }
 
+/* Samples moved per DMA request, as in Linux fsl_sai (FSL_SAI_MAXBURST_TX/RX) */
+#define DAI_ZEPHYR_DMA_MAXBURST_SAMPLES 6
+
 static int dai_set_sg_config(struct dai_data *dd, struct comp_dev *dev, uint32_t period_bytes,
 			     uint32_t period_count)
 {
@@ -1065,10 +1068,10 @@ static int dai_set_dma_config(struct dai_data *dd, struct comp_dev *dev)
 	dma_cfg->source_data_size = config->src_width;
 	dma_cfg->dest_data_size = config->dest_width;
 
-	if (config->burst_elems)
+	/* burst_elems is the DAI FIFO depth, too much to move per DMA request */
+	dma_cfg->source_burst_length = DAI_ZEPHYR_DMA_MAXBURST_SAMPLES * config->src_width;
+	if (config->burst_elems && dma_cfg->source_burst_length > config->burst_elems)
 		dma_cfg->source_burst_length = config->burst_elems;
-	else
-		dma_cfg->source_burst_length = 8;
 
 	dma_cfg->dest_burst_length = dma_cfg->source_burst_length;
 	dma_cfg->cyclic = config->cyclic;
