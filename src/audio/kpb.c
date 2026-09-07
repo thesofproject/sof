@@ -633,7 +633,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb,
 			hb_size -= ca_size;
 			hb->next = kpb->hd.c_hb;
 			/* Do we need another buffer? */
-			if (hb_size > 0) {
+			if (hb_size > 0 && i + 1 < ARRAY_SIZE(hb_mcp)) {
 				/* Yes, we still need at least one more buffer.
 				 * Let's first create new container for it.
 				 */
@@ -734,6 +734,7 @@ static void kpb_free(struct comp_dev *dev)
 	kpb->hd.buffer_size = 0;
 
 	/* remove scheduling */
+	schedule_task_cancel(&kpb->draining_task);
 	schedule_task_free(&kpb->draining_task);
 
 	/* change state */
@@ -1083,17 +1084,21 @@ static int kpb_reset(struct comp_dev *dev)
 	switch (kpb->state) {
 	case KPB_STATE_BUFFERING:
 	case KPB_STATE_DRAINING:
-		/* If a host drain is in progress, terminate gently and let
-		 * kpb_copy complete the reset once scheduled.  When there is
-		 * no host_sink (WOV-only path) the scheduler has already
-		 * stopped by the time RESET arrives, so reset immediately.
+		/* Cancel any scheduled draining task immediately on reset */
+		schedule_task_cancel(&kpb->draining_task);
+
+		/* If a dedicated host drain is in progress to a separate host sink,
+		 * let kpb_copy complete the reset once scheduled.
+		 * If host_sink is NULL or same as sel_sink (unified WOV pipeline),
+		 * or state is BUFFERING, reset immediately.
 		 */
-		if (kpb->host_sink) {
+		if (kpb->host_sink && kpb->host_sink != kpb->sel_sink &&
+		    kpb->state == KPB_STATE_DRAINING) {
 			kpb_change_state(kpb, KPB_STATE_RESETTING);
 			ret = -EBUSY;
 			break;
 		}
-		/* host_sink == NULL: immediate full reset (same as default) */
+		/* host_sink == NULL or unified WOV path: immediate full reset */
 		kpb->hd.buffered = 0;
 		kpb->sel_sink = NULL;
 		kpb->host_sink = NULL;
@@ -1117,6 +1122,7 @@ static int kpb_reset(struct comp_dev *dev)
 		ret = comp_set_state(dev, COMP_TRIGGER_RESET);
 		break;
 	default:
+		schedule_task_cancel(&kpb->draining_task);
 		kpb->hd.buffered = 0;
 		kpb->sel_sink = NULL;
 		kpb->host_sink = NULL;

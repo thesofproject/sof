@@ -72,6 +72,10 @@
 #include <audio/wov_arbiter/wov_arbiter.toml>
 #endif
 
+#if defined(CONFIG_COMP_ECNS) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/ecns/ecns.toml>
+#endif
+
 #if defined(CONFIG_COMP_SEL) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/selector/selector.toml>
 #endif

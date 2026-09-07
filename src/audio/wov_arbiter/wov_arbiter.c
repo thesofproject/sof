@@ -220,11 +220,6 @@ static int wov_arb_reset(struct comp_dev *dev)
 
 	cd->active_slot = WOV_ARB_NO_ACTIVE;
 
-#if CONFIG_IPC_MAJOR_4
-	/* Reset enum control to 0 (Listening) */
-	notify_control_change(dev, 0, 0);
-#endif
-
 	notifier_unregister(dev, NULL, NOTIFIER_ID_WOV_DETECT);
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);

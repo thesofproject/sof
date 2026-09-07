@@ -113,6 +113,16 @@ config COMP_WOV_ARBITER
 	  routes that KPB's drain stream to the host and instructs the remaining
 	  detectors to pause.
 
+config COMP_ECNS
+	bool "ECNS data processing component"
+	default y
+	depends on IPC_MAJOR_4
+	help
+	  Select to build the ECNS (Echo Cancellation and Noise Suppression)
+	  Data Processing (DP) component. Operates with a 20ms period to process
+	  4 DMIC channels (2 mics + 2 echo references) and outputs clean mono
+	  to KPB and clean stereo to host capture.
+
 config COMP_KPB
 	bool "KPB component"
 	default y
