@@ -29,7 +29,118 @@ Audio stream capture and device verification are executed using direct Linux ALS
 
 ## System Architecture
 
-### Component Graph
+The Multi-Slot WOV subsystem supports two primary topology architectures:
+1. **4-Channel Native 16 kHz DMIC with ECNS & Multi-Slot WOV** (PTL, TGL, WCL 4ch native manifests).
+2. **2-Channel DMIC / SSP Direct Multi-Slot WOV** (2ch manifests).
+
+---
+
+### Architecture A: 4-Channel Native 16 kHz DMIC with ECNS & Multi-Slot WOV
+
+In this architecture, a 4-channel 16 kHz DMIC stream (Channels 0, 1 = physical microphones; Channels 2, 3 = echo reference) feeds the **ECNS DP module** running at a 20 ms period (320 samples). The ECNS module outputs:
+- **Pin 0 (mono clean mic)**: routes to KPB (2.0s history depth = 64 KB mono buffer), then fans out via mixin to 3 concurrent WOV detector slots. Upon keyword detection, the WOV arbiter routes the active slot audio (pre-roll + live) to ALSA PCM 11 (`hw:0,11`).
+- **Pin 1 (stereo clean mic)**: routes via a host mixin/mixout bridge to Host Copier 10 (ALSA PCM 10, `hw:0,10`, stereo 16 kHz).
+
+```mermaid
+graph TD
+    subgraph P100["Pipeline 100 — 4ch DMIC Capture  (Core 0, LL 1ms)"]
+        DAI["DAI Copier (dmic01)\n4ch · 16 kHz · S16_LE\nCh 0,1: Mics | Ch 2,3: Echo Ref"]
+        MIX100["mixin 100.1\n(4ch pass-through)"]
+        DAI --> MIX100
+    end
+
+    subgraph P105["Pipeline 105 — ECNS DP Processing  (Core 0, DP 20ms)"]
+        MO105["mixout 105.1\n(4ch input)"]
+        ECNS["ecns.105.1\n(ECNS DP Module, 20ms = 320 frames)\nCh 0,1: Mic | Ch 2,3: Echo Ref"]
+        MIX105_1["mixin 105.1\nPin 0: Ch 0 Mono Clean"]
+        MIX105_2["mixin 105.2\nPin 1: Ch 0,1 Stereo Clean"]
+        MO105 --> ECNS
+        ECNS -- "Pin 0 (Mono)" --> MIX105_1
+        ECNS -- "Pin 1 (Stereo)" --> MIX105_2
+    end
+
+    subgraph P106["Pipeline 106 — KPB History Buffer  (Core 0, DP 20ms)"]
+        MO106["mixout 106.1\n(1ch mono)"]
+        KPB["kpb.106.1\n(2.0s mono history = 64 KB)\n16 kHz · 1ch · S16_LE"]
+        MIX106["mixin 106.1\n(3-fanout mixin)"]
+        MO106 --> KPB --> MIX106
+    end
+
+    subgraph P101["Pipeline 101 — Slot 0 Detector  (Core 0, DP 20ms)"]
+        MO101["mixout 101.1"]
+        D0["detect_test\nSlot 0\n(Male 80–170 Hz)"]
+        MO101 --> D0
+    end
+
+    subgraph P102["Pipeline 102 — Slot 1 Detector  (Core 0, DP 20ms)"]
+        MO102["mixout 102.1"]
+        D1["detect_test\nSlot 1\n(Female 175–270 Hz)"]
+        MO102 --> D1
+    end
+
+    subgraph P103["Pipeline 103 — Slot 2 Detector  (Core 1, DP 20ms)"]
+        MO103["mixout 103.1"]
+        D2["detect_test\nSlot 2\n(Child 275–500 Hz)"]
+        MO103 --> D2
+    end
+
+    subgraph P104["Pipeline 104 — WOV Host PCM Capture  (Core 0, LL 1ms)"]
+        ARB["wov_arbiter.104.1\n(3 input pins, 1 output pin\n1ch mono 16 kHz)"]
+        HC11["host-copier.11\n(hw:0,11 · PCM 11)\n1ch · 16 kHz · S16_LE / S32_LE"]
+        ARB --> HC11
+    end
+
+    subgraph P107["Pipeline 107 — ECNS Host PCM Capture  (Core 0, LL 1ms)"]
+        MO107["mixout 107.1\n(2ch stereo)"]
+        HC10["host-copier.10\n(hw:0,10 · PCM 10)\n2ch · 16 kHz · S16_LE / S32_LE"]
+        MO107 --> HC10
+    end
+
+    MIX100 --> MO105
+    MIX105_1 --> MO106
+    MIX105_2 --> MO107
+    MIX106 --> MO101
+    MIX106 --> MO102
+    MIX106 --> MO103
+
+    D0 --> ARB
+    D1 --> ARB
+    D2 --> ARB
+
+    D0 -. "Notifier WOV_DETECT (slot=0)" .-> ARB
+    D1 -. "Notifier WOV_DETECT (slot=1)" .-> ARB
+    D2 -. "Notifier WOV_DETECT (slot=2)" .-> ARB
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> D0
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> D1
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> D2
+
+    style ECNS fill:#1b4f72,stroke:#555,color:#fff
+    style KPB  fill:#1c4966,stroke:#555,color:#fff
+    style D0   fill:#663300,stroke:#555,color:#fff
+    style D1   fill:#660033,stroke:#555,color:#fff
+    style D2   fill:#003366,stroke:#555,color:#fff
+    style ARB  fill:#4a235a,stroke:#555,color:#fff
+    style HC11 fill:#2d5a27,stroke:#555,color:#fff
+    style HC10 fill:#1e8449,stroke:#555,color:#fff
+```
+
+#### 4-Channel Architecture Specifications
+
+| Property | ECNS Stream (PCM 10) | WOV Stream (PCM 11) |
+|---|---|---|
+| ALSA Device | `hw:0,10` (`pcmC0D10c`) | `hw:0,11` (`pcmC0D11c`) |
+| Sample Rate | 16 kHz | 16 kHz |
+| Channels | 2 (Stereo clean mic) | 1 (Mono clean mic) |
+| Sample Format | S16_LE / S32_LE | S16_LE / S32_LE |
+| History / Pre-roll | Live streaming | 2.0 s (64 KB mono buffer in KPB) |
+| Scheduling | Core 0 (LL 1ms) | Core 0 (LL 1ms arbiter + DP 20ms KPB) |
+| Processing Source | ECNS Pin 1 | ECNS Pin 0 via KPB & WOV Arbiter |
+
+---
+
+### Architecture B: 2-Channel Direct DMIC / SSP Multi-Slot WOV
+
+For 2-channel capture topologies (`dmic-wov-multi-manifest.conf`, `sspX-wov-multi-manifest.conf`):
 
 ```mermaid
 graph TD
@@ -80,15 +191,15 @@ graph TD
     ARB -- "Notifier WOV_CTRL\n(PAUSE/RESUME)" --> D1
     ARB -- "Notifier WOV_CTRL\n(PAUSE/RESUME)" --> D2
 
-    style KPB fill:#1c4966,stroke:#555
-    style D0  fill:#663300,stroke:#555
-    style D1  fill:#660033,stroke:#555
-    style D2  fill:#003366,stroke:#555
-    style ARB fill:#4a235a,stroke:#555
-    style HC  fill:#2d5a27,stroke:#555
+    style KPB fill:#1c4966,stroke:#555,color:#fff
+    style D0  fill:#663300,stroke:#555,color:#fff
+    style D1  fill:#660033,stroke:#555,color:#fff
+    style D2  fill:#003366,stroke:#555,color:#fff
+    style ARB fill:#4a235a,stroke:#555,color:#fff
+    style HC  fill:#2d5a27,stroke:#555,color:#fff
 ```
 
-### Key Design Points
+#### 2-Channel Architecture Specifications
 
 | Property | Value |
 |---|---|
