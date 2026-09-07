@@ -51,6 +51,7 @@ int sof_static_pipeline_set_mute(uint32_t pipeline_id, bool mute);
 int sof_static_pipeline_get_volume(uint32_t pipeline_id, int16_t *volume);
 int sof_static_pipeline_get_mute(uint32_t pipeline_id, bool *mute);
 int sof_static_pipeline_set_playback_active(bool start);
+int sof_static_pipeline_set_capture_active(bool start);
 void sof_static_pipeline_get_status(struct sof_static_pipeline_status *status);
 
 struct uac2_ops;

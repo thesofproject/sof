@@ -81,7 +81,7 @@ The static pipeline registers standard ALSA kcontrols allowing runtime tuning, s
 
 ### Measured Results (48 kHz Stereo, 1 ms period = 48 frames)
 
-#### Performance Comparison: Fixed-Point vs Native Single-Precision Float (Hardware FPU)
+#### 1. Playback Pipeline Performance Comparison (Fixed-Point vs Native Single-Precision Float)
 
 | Processing Mode | Playback EQ (IIR) | Playback DRC | Volume Scaling | Generic C (Fixed) | RISC-V SIMD (Fixed) | Native Float (Hardware FPU) | CPU Load @ 400 MHz (Float) | Improvement vs Fixed SIMD |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -90,6 +90,22 @@ The static pipeline registers standard ALSA kcontrols allowing runtime tuning, s
 | **Mode 3: EQ Active** | `ENABLED` (4-band) | `BYPASS` | 0 dB (Unity) | 52.25 MCPS | 54.83 MCPS | **23.50 MCPS** | 5.88% | **-74.0% EQ Cost** (10.00 vs 38.31 MCPS) |
 | **Mode 4: DRC Active** | `BYPASS` | `ENABLED` | 0 dB (Unity) | 46.50 MCPS | 28.48 MCPS | **31.24 MCPS** | 7.81% | **-14.7% DRC Cost** (17.74 vs 20.52 MCPS) |
 | **Mode 5: Full Active Chain** | `ENABLED` | `ENABLED` | -6 dB (Scaling) | 94.20 MCPS | 73.27 MCPS | **41.20 MCPS** | **10.30%** | **-43.8% Total Pipeline** (41.20 vs 73.27 MCPS) |
+
+#### 2. Capture Pipeline Performance (48 kHz Stereo, Single-Precision Float)
+
+| Processing Mode | Capture TDFB | Capture EQ (IIR) | Capture Volume | Measured Avg MCPS | Peak MCPS | CPU Load @ 400 MHz | Delta over Passthrough |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Mode 1: Base Passthrough** | `BYPASS` | `BYPASS` | 0 dB (Unity) | **12.71 MCPS** | 15.60 MCPS | 3.18% | Base line I2S ADC $\rightarrow$ USB Host |
+| **Mode 2: Volume Active** | `BYPASS` | `BYPASS` | -6 dB (Scaling) | **12.82 MCPS** | 13.63 MCPS | 3.21% | **+0.10 MCPS** |
+| **Mode 3: EQ Active** | `BYPASS` | `ENABLED` (4-band) | 0 dB (Unity) | **22.74 MCPS** | 25.97 MCPS | 5.69% | **+10.03 MCPS** (Hardware FPU) |
+| **Mode 4: TDFB Active** | `ENABLED` | `BYPASS` | 0 dB (Unity) | **12.76 MCPS** | 16.12 MCPS | 3.19% | **+0.05 MCPS** |
+| **Mode 5: Full Capture Chain** | `ENABLED` | `ENABLED` | -6 dB (Scaling) | **22.75 MCPS** | 25.87 MCPS | **5.69%** | Total Capture Processing Chain |
+
+#### 3. Full-Duplex Simultaneous Playback & Capture Performance
+
+| Concurrent Audio Pipelines | Active Processing Elements | Measured Avg MCPS | CPU Load @ 400 MHz |
+|:---|:---|:---:|:---:|
+| **Simultaneous Full Duplex (Playback + Capture)** | Playback (Vol + 4-band EQ + DRC) + Capture (TDFB + 4-band EQ + Vol) | **41.64 MCPS** | **10.41%** |
 
 ---
 

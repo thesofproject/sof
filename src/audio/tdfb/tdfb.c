@@ -43,6 +43,9 @@ LOG_MODULE_REGISTER(tdfb, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(tdfb);
 
+static void tdfb_pass_same_format(struct tdfb_comp_data *cd, struct input_stream_buffer *bsource,
+				  struct output_stream_buffer *bsink, int frames);
+
 static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 {
 	struct tdfb_comp_data *cd = module_get_private_data(mod);
@@ -66,6 +69,12 @@ static inline int set_func(struct processing_module *mod, enum sof_ipc_frame fmt
 		cd->tdfb_func = tdfb_fir_s32;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_FLOAT");
+		cd->tdfb_func = tdfb_pass_same_format;
+		break;
+#endif /* CONFIG_FORMAT_FLOAT */
 	default:
 		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;
@@ -247,6 +256,12 @@ static inline int set_pass_func(struct processing_module *mod, enum sof_ipc_fram
 		cd->tdfb_func = tdfb_pass_s32;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_FLOAT");
+		cd->tdfb_func = tdfb_pass_same_format;
+		break;
+#endif /* CONFIG_FORMAT_FLOAT */
 	default:
 		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;

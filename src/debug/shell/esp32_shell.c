@@ -136,9 +136,23 @@ static int cmd_sof_play(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_sof_cap(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		shell_error(sh, "Usage: sof cap <start|stop>");
+		return -EINVAL;
+	}
+
+	bool start = (strcmp(argv[1], "start") == 0);
+	sof_static_pipeline_set_capture_active(start);
+	shell_print(sh, "Capture pipeline %s.", start ? "STARTED" : "STOPPED");
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(status, NULL, "Print current SOF pipeline and audio interface status", cmd_sof_status),
 	SHELL_CMD(play, NULL, "Start/stop playback pipeline (sof play <start|stop>)", cmd_sof_play),
+	SHELL_CMD(cap, NULL, "Start/stop capture pipeline (sof cap <start|stop>)", cmd_sof_cap),
 	SHELL_CMD(vol, NULL, "Set volume in dB (sof vol <pb|cap> <dB>)", cmd_sof_vol),
 	SHELL_CMD(mode, NULL, "Configure interface clock mode (sof mode <i2s|pdm> <master|slave>)", cmd_sof_mode),
 	SHELL_CMD(eq, NULL, "Control Equalizer bypass (sof eq <playback|capture> <enable|bypass>)", cmd_sof_eq),
