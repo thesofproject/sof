@@ -8,9 +8,9 @@ add_custom_target(topologies2 ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ipc4-tplg
     COMMAND ${CMAKE_COMMAND} -E create_symlink sof-ipc4-tplg ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ace-tplg
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/target/development
-    # copy the topology files only to target
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different production/*.tplg ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ipc4-tplg/
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different development/*.tplg ${CMAKE_CURRENT_BINARY_DIR}/target/development/
+    # copy the topology files only to target, preserving symbolic links
+    COMMAND sh -c "cp -a production/*.tplg \"${CMAKE_CURRENT_BINARY_DIR}/target/sof-ipc4-tplg/\""
+    COMMAND sh -c "cp -a development/*.tplg \"${CMAKE_CURRENT_BINARY_DIR}/target/development/\""
 )
 
 # Check alsatplg version and build topology2 if alsatplg version is
