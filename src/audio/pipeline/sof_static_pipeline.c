@@ -4,202 +4,29 @@
  */
 
 #include <sof/audio/pipeline/sof_static_pipeline.h>
+#include <sof/audio/pipeline/static_pipeline.h>
 #include <sof/audio/usb_audio.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/format.h>
-#include <sof/lib/dai-zephyr.h>
-#include <ipc/topology.h>
-#include <ipc/control.h>
-#include <kernel/header.h>
-#include <user/eq.h>
-#include "../eq_iir/eq_iir.h"
-#include "../drc/drc_user.h"
-#include "../drc/drc.h"
-#include "../tdfb/tdfb.h"
-#include "../tdfb/tdfb_comp.h"
-#include <module/ipc4/base-config.h>
-#include "../volume/peak_volume.h"
-#include <rtos/sof.h>
-#include <rtos/alloc.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/usb/class/usbd_uac2.h>
 #include <zephyr/device.h>
 
 LOG_MODULE_REGISTER(sof_static_pipeline, CONFIG_SOF_LOG_LEVEL);
 
-extern const struct sof_uuid usb_audio_uuid;
-extern const struct sof_uuid volume_uuid;
-extern const struct sof_uuid eq_iir_uuid;
-extern const struct sof_uuid drc_uuid;
-extern const struct sof_uuid tdfb_uuid;
-extern const struct sof_uuid dai_uuid;
+#define PLAYBACK_FU_ID       UAC2_ENTITY_ID(DT_NODELABEL(i2s_fu))
+#define PLAYBACK_EQ_FU_ID    UAC2_ENTITY_ID(DT_NODELABEL(pb_eq_fu))
+#define PLAYBACK_DRC_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(pb_drc_fu))
+#define CAPTURE_TDFB_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(cap_tdfb_fu))
+#define CAPTURE_EQ_FU_ID     UAC2_ENTITY_ID(DT_NODELABEL(cap_eq_fu))
+#define CAPTURE_FU_ID        UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
+#define PLAYBACK_TERM_ID     UAC2_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
+#define CAPTURE_TERM_ID      UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
 
-struct drc_state;
-extern void drc_reset_state(struct processing_module *mod, struct drc_state *state);
-void * const g_drc_force __used = (void *)drc_reset_state;
-
-#ifndef VOL_MAX
-#define VOL_MAX INT32_MAX
-#endif
-
-#if CONFIG_IPC_MAJOR_4
-static const struct ipc4_base_module_cfg s_default_ipc4_base_cfg = {
-	.ibs = 192,
-	.obs = 192,
-	.is_pages = 1,
-	.audio_fmt = {
-		.sampling_frequency = 48000,
-		.depth = IPC4_DEPTH_16BIT,
-		.ch_map = 0x10,
-		.ch_cfg = IPC4_CHANNEL_CONFIG_STEREO,
-		.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-		.channels_count = 2,
-		.valid_bit_depth = IPC4_DEPTH_16BIT,
-		.s_type = IPC4_TYPE_SIGNED_INTEGER,
-	},
-};
-
-struct static_ipc4_vol_init_cfg {
-	struct ipc4_base_module_cfg base_cfg;
-	struct ipc4_peak_volume_config config[1];
-};
-
-static const struct static_ipc4_vol_init_cfg s_default_vol_cfg = {
-	.base_cfg = {
-		.ibs = 192,
-		.obs = 192,
-		.is_pages = 1,
-		.audio_fmt = {
-			.sampling_frequency = 48000,
-			.depth = IPC4_DEPTH_16BIT,
-			.ch_map = 0x10,
-			.ch_cfg = IPC4_CHANNEL_CONFIG_STEREO,
-			.interleaving_style = IPC4_CHANNELS_INTERLEAVED,
-			.channels_count = 2,
-			.valid_bit_depth = IPC4_DEPTH_16BIT,
-			.s_type = IPC4_TYPE_SIGNED_INTEGER,
-		},
-	},
-	.config = {
-		{
-			.channel_id = 0xffffffff,
-			.target_volume = 0x7FFFFFFF,
-			.curve_type = IPC4_AUDIO_CURVE_TYPE_WINDOWS_FADE,
-			.curve_duration = 100000,
-		},
-	},
-};
-#else
-static const struct ipc_config_volume s_default_vol_cfg = {
-	.channels = 2,
-	.min_value = 0,
-	.max_value = VOL_MAX,
-	.ramp = SOF_VOLUME_LINEAR,
-	.initial_ramp = 0,
-};
-#endif
-
-/* Standard 2-channel 4-band parametric IIR EQ configuration blob (ABI header + sof_eq_iir_config) */
-static const uint32_t sof_default_iir_coef_2ch[51] = {
-	0x00464f53, 0x00000000, 0x000000ac, 0x03013000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x000000ac, 0x00000002, 0x00000001, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000004, 0x00000004, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0xc12c82bd,
-	0x7ed0b52e, 0x1fc7cc0c, 0xc07067e9, 0x1fc7cc0c,
-	0x00000000, 0x00004000, 0xcad0cdef, 0x742e8c5d,
-	0x0cdc9086, 0xe2f11723, 0x10b2f932, 0x00000000,
-	0x00004000, 0xcf45334a, 0x68260de9, 0x0a54e176,
-	0xe5d6cb75, 0x11fc1f3d, 0x00000000, 0x00004000,
-	0xf2940609, 0xe25f3930, 0x0d69ba64, 0x1ad374c8,
-	0x0d69ba64, 0xfffffffb, 0x000045bf
-};
-
-/* Standard Speaker Default DRC compressor configuration blob (ABI header + sof_drc_config) */
-static const uint32_t sof_default_drc_coef[35] = {
-	0x00464f53, 0x00000000, 0x0000006c, 0x0301a000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x0000006c, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000001, 0xe2000000, 0x14000000,
-	0x0a000000, 0x00624dd3, 0x02061b8a, 0x06666666,
-	0x00ba972f, 0x001e0c18, 0xffe04220, 0x0050f44e,
-	0x08349f9a, 0x04d82cd3, 0x0071c71c, 0xff777777,
-	0x001f77d8, 0x00000005, 0x00438000, 0x00047dd7,
-	0x0025cea0, 0x00097dd7, 0x0000b5b1
-};
-
-static int sof_static_send_comp_config(struct comp_dev *dev, const void *abi_blob, size_t abi_blob_total_size)
-{
-	if (!dev)
-		return -EINVAL;
-
-	const struct sof_abi_hdr *hdr = (const struct sof_abi_hdr *)abi_blob;
-	struct processing_module *mod = comp_mod(dev);
-	if (!mod || !mod->dev || !mod->dev->drv || !mod->dev->drv->adapter_ops ||
-	    !mod->dev->drv->adapter_ops->set_configuration) {
-		LOG_ERR("No adapter_ops set_configuration for comp %d", dev->ipc_config.id);
-		return -EINVAL;
-	}
-
-#if CONFIG_IPC_MAJOR_4
-	/* In IPC4, comp_data_blob_set expects raw blob without sof_ipc_ctrl_data header */
-	const uint8_t *raw_data = (const uint8_t *)abi_blob + sizeof(struct sof_abi_hdr);
-	int ret = mod->dev->drv->adapter_ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
-								hdr->size, raw_data,
-								hdr->size, NULL, 0);
-#else
-	size_t cdata_size = sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_abi_hdr) + hdr->size;
-	struct sof_ipc_ctrl_data *cdata = rzalloc(SOF_MEM_FLAG_USER, cdata_size);
-	if (!cdata) {
-		LOG_ERR("Failed to allocate ctrl_data size %zu", cdata_size);
-		return -ENOMEM;
-	}
-
-	cdata->cmd = SOF_CTRL_CMD_BINARY;
-	cdata->num_elems = hdr->size;
-	cdata->data[0].magic = hdr->magic;
-	cdata->data[0].type = hdr->type;
-	cdata->data[0].size = hdr->size;
-	cdata->data[0].abi = hdr->abi;
-	memcpy_s(cdata->data[0].data, hdr->size, (const uint8_t *)abi_blob + sizeof(struct sof_abi_hdr), hdr->size);
-
-	int ret = mod->dev->drv->adapter_ops->set_configuration(mod, 0, MODULE_CFG_FRAGMENT_SINGLE,
-								hdr->size, (const uint8_t *)cdata,
-								hdr->size, NULL, 0);
-	rfree(cdata);
-#endif
-
-	if (ret < 0) {
-		LOG_ERR("set_configuration failed for comp %d: ret %d", dev->ipc_config.id, ret);
-	} else {
-		LOG_INF("Default DSP configuration loaded for comp %d (%u bytes)",
-			dev->ipc_config.id, hdr->size);
-	}
-
-	return ret;
-}
-
-int volume_set_chan(struct processing_module *mod, int chan, int32_t vol, bool constant_rate_ramp);
-void volume_set_chan_mute(struct processing_module *mod, int chan);
-void volume_set_chan_unmute(struct processing_module *mod, int chan);
-
-static struct pipeline *g_playback_pipe;
-static struct pipeline *g_capture_pipe;
-
-static struct comp_dev *g_comp_usb_playback;
-static struct comp_dev *g_comp_vol_playback;
-static struct comp_dev *g_comp_eq_playback;
-static struct comp_dev *g_comp_drc_playback;
-static struct comp_dev *g_comp_dai_playback;
-
-static struct comp_dev *g_comp_dai_capture;
-static struct comp_dev *g_comp_tdfb_capture;
-static struct comp_dev *g_comp_eq_capture;
-static struct comp_dev *g_comp_vol_capture;
-static struct comp_dev *g_comp_usb_capture;
+K_MEM_SLAB_DEFINE_STATIC(uac2_rx_slab, 1024, 16, 64);
+K_MEM_SLAB_DEFINE_STATIC(uac2_tx_slab, 1024, 16, 64);
 
 static struct sof_static_pipeline_status g_status = {
 	.playback_active = false,
@@ -217,44 +44,6 @@ static struct sof_static_pipeline_status g_status = {
 	.eq_capture_bypassed = false,
 };
 
-K_MEM_SLAB_DEFINE_STATIC(uac2_rx_slab, 1024, 16, 64);
-K_MEM_SLAB_DEFINE_STATIC(uac2_tx_slab, 1024, 16, 64);
-
-#define PLAYBACK_FU_ID       UAC2_ENTITY_ID(DT_NODELABEL(i2s_fu))
-#define PLAYBACK_EQ_FU_ID    UAC2_ENTITY_ID(DT_NODELABEL(pb_eq_fu))
-#define PLAYBACK_DRC_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(pb_drc_fu))
-#define CAPTURE_TDFB_FU_ID   UAC2_ENTITY_ID(DT_NODELABEL(cap_tdfb_fu))
-#define CAPTURE_EQ_FU_ID     UAC2_ENTITY_ID(DT_NODELABEL(cap_eq_fu))
-#define CAPTURE_FU_ID        UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_fu))
-#define PLAYBACK_TERM_ID     UAC2_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
-#define CAPTURE_TERM_ID      UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
-
-/* Helper to find a registered SOF component driver */
-static const struct comp_driver *sof_static_find_driver(const struct sof_uuid *uuid, uint32_t type)
-{
-	struct comp_driver_list *drivers = comp_drivers_get();
-	struct list_item *clist;
-
-	if (!drivers)
-		return NULL;
-
-	list_for_item(clist, &drivers->list) {
-		struct comp_driver_info *info = container_of(clist, struct comp_driver_info, list);
-		if (uuid && info->drv->uid && !memcmp(info->drv->uid, uuid, UUID_SIZE)) {
-			return info->drv;
-		}
-		if (!uuid && info->drv->type == type) {
-			return info->drv;
-		}
-	}
-	return NULL;
-}
-
-extern volatile uint32_t g_dwc2_rxflvl_ep1_cnt;
-extern volatile uint32_t g_dwc2_xfercompl_ep1_cnt;
-extern volatile uint32_t g_dwc2_incompisoout_cnt;
-extern volatile uint32_t g_dwc2_incompisoin_cnt;
-
 static uint32_t s_sof_diag_cnt;
 
 /* UAC2 Class Callbacks */
@@ -265,12 +54,8 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 	if (g_status.playback_active) {
 		s_sof_diag_cnt++;
 		if (s_sof_diag_cnt % 1000 == 0) {
-			struct comp_data *cd_eq = g_comp_eq_playback ? module_get_private_data(comp_mod(g_comp_eq_playback)) : NULL;
-			struct drc_comp_data *cd_drc = g_comp_drc_playback ? module_get_private_data(comp_mod(g_comp_drc_playback)) : NULL;
-			LOG_INF("[SOF UAC2] Playback SOFs: %u, Free RX: %u | EQ: %s, DRC: %s",
-				s_sof_diag_cnt, k_mem_slab_num_free_get(&uac2_rx_slab),
-				(cd_eq && cd_eq->eq_iir_func != eq_iir_pass) ? "ACTIVE" : "BYPASS",
-				(cd_drc && cd_drc->enabled) ? "ACTIVE" : "BYPASS");
+			LOG_INF("[SOF UAC2] Playback SOFs: %u, Free RX: %u",
+				s_sof_diag_cnt, k_mem_slab_num_free_get(&uac2_rx_slab));
 		}
 	} else {
 		s_sof_diag_cnt = 0;
@@ -306,36 +91,12 @@ void sof_uac2_terminal_update_cb(const struct device *dev, uint8_t terminal,
 	LOG_INF("[UAC2 Terminal] update: terminal %u, enabled %d (PB expected %u, CAP expected %u)",
 		terminal, enabled, PLAYBACK_TERM_ID, CAPTURE_TERM_ID);
 
-	if (terminal == PLAYBACK_TERM_ID) { /* Playback Terminal */
+	if (terminal == PLAYBACK_TERM_ID) {
 		g_status.playback_active = enabled;
-		if (enabled) {
-			LOG_INF("[SOF Pipeline] Playback Stream START (Terminal %u, Rate %u Hz, 2ch 16-bit)",
-				terminal, g_status.sample_rate ? g_status.sample_rate : 48000);
-			if (g_playback_pipe && g_playback_pipe->source_comp) {
-				pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_PRE_START);
-				pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_START);
-			}
-		} else {
-			LOG_INF("[SOF Pipeline] Playback Stream STOP (Terminal %u)", terminal);
-			if (g_playback_pipe && g_playback_pipe->source_comp) {
-				pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_STOP);
-			}
-		}
-	} else if (terminal == CAPTURE_TERM_ID) { /* Capture Terminal */
+		sof_static_pipeline_trigger_by_uac2_term(terminal, enabled);
+	} else if (terminal == CAPTURE_TERM_ID) {
 		g_status.capture_active = enabled;
-		if (enabled) {
-			LOG_INF("[SOF Pipeline] Capture Stream START (Terminal %u, Rate %u Hz, 2ch 16-bit)",
-				terminal, g_status.sample_rate ? g_status.sample_rate : 48000);
-			if (g_capture_pipe && g_comp_usb_capture) {
-				pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_PRE_START);
-				pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_START);
-			}
-		} else {
-			LOG_INF("[SOF Pipeline] Capture Stream STOP (Terminal %u)", terminal);
-			if (g_capture_pipe && g_comp_usb_capture) {
-				pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_STOP);
-			}
-		}
+		sof_static_pipeline_trigger_by_uac2_term(terminal, enabled);
 	}
 }
 
@@ -405,6 +166,7 @@ int sof_uac2_set_sample_rate(const struct device *dev, uint8_t clock_id,
 
 	LOG_INF("Host set sample rate: %u Hz", rate);
 	g_status.sample_rate = rate;
+	sof_static_set_sample_rate(rate);
 	usb_audio_set_playback_rate(rate);
 	usb_audio_set_capture_rate(rate);
 	return 0;
@@ -432,38 +194,19 @@ int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id,
 	LOG_INF("Host set mute/switch: entity=%u, ch=%u, mute=%d", entity_id, channel, mute);
 	if (entity_id == PLAYBACK_FU_ID) {
 		g_status.playback_mute = mute;
-		if (g_comp_vol_playback) {
-			struct processing_module *mod = comp_mod(g_comp_vol_playback);
-			if (mute) {
-				volume_set_chan_mute(mod, 0);
-				volume_set_chan_mute(mod, 1);
-			} else {
-				volume_set_chan_unmute(mod, 0);
-				volume_set_chan_unmute(mod, 1);
-			}
-		}
 	} else if (entity_id == PLAYBACK_EQ_FU_ID) {
-		sof_static_pipeline_set_eq_bypass(false, mute);
+		g_status.eq_playback_bypassed = mute;
 	} else if (entity_id == PLAYBACK_DRC_FU_ID) {
-		sof_static_pipeline_set_drc_bypass(mute);
+		g_status.drc_playback_bypassed = mute;
 	} else if (entity_id == CAPTURE_TDFB_FU_ID) {
-		sof_static_pipeline_set_tdfb_bypass(mute);
+		g_status.tdfb_capture_bypassed = mute;
 	} else if (entity_id == CAPTURE_EQ_FU_ID) {
-		sof_static_pipeline_set_eq_bypass(true, mute);
+		g_status.eq_capture_bypassed = mute;
 	} else if (entity_id == CAPTURE_FU_ID) {
 		g_status.capture_mute = mute;
-		if (g_comp_vol_capture) {
-			struct processing_module *mod = comp_mod(g_comp_vol_capture);
-			if (mute) {
-				volume_set_chan_mute(mod, 0);
-				volume_set_chan_mute(mod, 1);
-			} else {
-				volume_set_chan_unmute(mod, 0);
-				volume_set_chan_unmute(mod, 1);
-			}
-		}
 	}
-	return 0;
+
+	return sof_static_kcontrol_set_by_uac2(entity_id, channel, mute ? 1 : 0, false);
 }
 
 int sof_uac2_get_feature_mute(const struct device *dev, uint8_t entity_id,
@@ -476,47 +219,15 @@ int sof_uac2_get_feature_mute(const struct device *dev, uint8_t entity_id,
 	if (!mute) {
 		return -EINVAL;
 	}
-	if (entity_id == PLAYBACK_FU_ID) {
-		*mute = g_status.playback_mute;
-	} else if (entity_id == PLAYBACK_EQ_FU_ID) {
-		*mute = g_status.eq_playback_bypassed;
-	} else if (entity_id == PLAYBACK_DRC_FU_ID) {
-		*mute = g_status.drc_playback_bypassed;
-	} else if (entity_id == CAPTURE_TDFB_FU_ID) {
-		*mute = g_status.tdfb_capture_bypassed;
-	} else if (entity_id == CAPTURE_EQ_FU_ID) {
-		*mute = g_status.eq_capture_bypassed;
-	} else if (entity_id == CAPTURE_FU_ID) {
-		*mute = g_status.capture_mute;
+
+	int32_t val = 0;
+	int ret = sof_static_kcontrol_get_by_uac2(entity_id, channel, &val, false);
+	if (ret == 0) {
+		*mute = (val != 0);
 	} else {
 		*mute = false;
 	}
 	return 0;
-}
-
-#define SOF_VOL_ZERO_DB BIT(23)
-
-static int32_t uac2_to_sof_volume(int16_t volume)
-{
-	/* UAC2 volume is in Q8.8 dB units (1 unit = 1/256 dB) */
-	/* 0x0000 = 0 dB -> SOF_VOL_ZERO_DB */
-	/* <= -90 dB -> 0 (mute) */
-	if (volume <= -90 * 256) {
-		return 0;
-	}
-	if (volume >= 0) {
-		return SOF_VOL_ZERO_DB - 1;
-	}
-	/* -6.02 dB halves linear amplitude */
-	int32_t db_x10 = (int32_t)(-volume) * 10 / 256;
-	int shift = db_x10 / 60;
-	if (shift >= 31) {
-		return 0;
-	}
-	int rem = db_x10 % 60;
-	uint64_t v = (uint64_t)(SOF_VOL_ZERO_DB - 1) >> shift;
-	v = (v * (60 - rem)) / 60;
-	return (int32_t)v;
 }
 
 int sof_uac2_set_feature_volume(const struct device *dev, uint8_t entity_id,
@@ -529,24 +240,13 @@ int sof_uac2_set_feature_volume(const struct device *dev, uint8_t entity_id,
 	LOG_INF("Host set volume: entity=%u, ch=%u, vol=%d (0x%04x, %d dB)",
 		entity_id, channel, volume, (uint16_t)volume, volume / 256);
 
-	int32_t sof_vol = uac2_to_sof_volume(volume);
-
 	if (entity_id == PLAYBACK_FU_ID) {
 		g_status.playback_volume = volume;
-		if (g_comp_vol_playback) {
-			struct processing_module *mod = comp_mod(g_comp_vol_playback);
-			volume_set_chan(mod, 0, sof_vol, true);
-			volume_set_chan(mod, 1, sof_vol, true);
-		}
 	} else if (entity_id == CAPTURE_FU_ID) {
 		g_status.capture_volume = volume;
-		if (g_comp_vol_capture) {
-			struct processing_module *mod = comp_mod(g_comp_vol_capture);
-			volume_set_chan(mod, 0, sof_vol, true);
-			volume_set_chan(mod, 1, sof_vol, true);
-		}
 	}
-	return 0;
+
+	return sof_static_kcontrol_set_by_uac2(entity_id, channel, volume, true);
 }
 
 int sof_uac2_get_feature_volume(const struct device *dev, uint8_t entity_id,
@@ -589,424 +289,12 @@ const struct uac2_ops *sof_get_uac2_ops(void)
 	return &g_uac2_ops;
 }
 
-static void sof_static_init_buffer_params(struct comp_buffer *buf, uint32_t dir, enum sof_ipc_frame fmt)
-{
-	if (!buf)
-		return;
+extern const struct sof_static_topology g_esp32p4_static_topology;
 
-	uint32_t sample_bytes = (fmt == SOF_IPC_FRAME_FLOAT || fmt == SOF_IPC_FRAME_S32_LE) ? 4 : 2;
-
-	struct sof_ipc_stream_params params;
-	memset(&params, 0, sizeof(params));
-	params.rate = 48000;
-	params.channels = 2;
-	params.frame_fmt = fmt;
-	params.sample_container_bytes = sample_bytes;
-	params.sample_valid_bytes = sample_bytes;
-	params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.host_period_bytes = 48 * 2 * sample_bytes;
-	params.direction = dir;
-	params.chmap[0] = SOF_CHMAP_FL;
-	params.chmap[1] = SOF_CHMAP_FR;
-
-	buffer_set_params(buf, &params, BUFFER_UPDATE_FORCE);
-	audio_stream_set_valid_fmt(&buf->stream, fmt);
-	audio_stream_set_rate(&buf->stream, 48000);
-	audio_stream_set_channels(&buf->stream, 2);
-	audio_stream_set_frm_fmt(&buf->stream, fmt);
-	audio_stream_set_align(SOF_FRAME_BYTE_ALIGN, sample_bytes, &buf->stream);
-	audio_stream_reset(&buf->stream);
-
-	struct sof_sink *sink = audio_buffer_get_sink(&buf->audio_buffer);
-	if (sink) {
-		sink_set_valid_fmt(sink, fmt);
-		sink_set_rate(sink, 48000);
-		sink_set_channels(sink, 2);
-		sink_set_frm_fmt(sink, fmt);
-		sink_set_alignment_constants(sink, SOF_FRAME_BYTE_ALIGN, sample_bytes);
-	}
-	struct sof_source *source = audio_buffer_get_source(&buf->audio_buffer);
-	if (source) {
-		source_set_valid_fmt(source, fmt);
-		source_set_rate(source, 48000);
-		source_set_channels(source, 2);
-		source_set_frm_fmt(source, fmt);
-		source_set_alignment_constants(source, SOF_FRAME_BYTE_ALIGN, sample_bytes);
-	}
-}
-
-/* Static Pipelines & Graphs Construction */
 int sof_static_pipelines_init(struct sof *sof)
 {
-	LOG_INF("Building SOF static audio processing graphs (Playback & Capture in Float)...");
-
-	/* 1. Allocate Top-Level Pipeline Containers */
-	g_playback_pipe = pipeline_new(NULL, 1, 0, 1, NULL);
-	if (!g_playback_pipe) {
-		LOG_ERR("Failed to allocate playback pipeline");
-		return -ENOMEM;
-	}
-	g_playback_pipe->pipeline_id = 1;
-	g_playback_pipe->period = 1000; /* 1ms period */
-	g_playback_pipe->frames_per_sched = 48; /* 48 frames @ 48kHz */
-	g_playback_pipe->time_domain = SOF_TIME_DOMAIN_TIMER;
-
-	g_capture_pipe = pipeline_new(NULL, 2, 0, 6, NULL);
-	if (!g_capture_pipe) {
-		LOG_ERR("Failed to allocate capture pipeline");
-		return -ENOMEM;
-	}
-	g_capture_pipe->pipeline_id = 2;
-	g_capture_pipe->period = 1000;
-	g_capture_pipe->frames_per_sched = 48;
-	g_capture_pipe->time_domain = SOF_TIME_DOMAIN_TIMER;
-
-	/* 2. Lookup Component Drivers */
-	const struct comp_driver *drv_usb  = sof_static_find_driver(&usb_audio_uuid, SOF_COMP_HOST);
-	const struct comp_driver *drv_vol  = sof_static_find_driver(&volume_uuid, SOF_COMP_MODULE_ADAPTER);
-	const struct comp_driver *drv_eq   = sof_static_find_driver(&eq_iir_uuid, SOF_COMP_MODULE_ADAPTER);
-	const struct comp_driver *drv_drc  = sof_static_find_driver(&drc_uuid, SOF_COMP_MODULE_ADAPTER);
-	const struct comp_driver *drv_tdfb = sof_static_find_driver(&tdfb_uuid, SOF_COMP_MODULE_ADAPTER);
-	const struct comp_driver *drv_dai  = sof_static_find_driver(&dai_uuid, SOF_COMP_DAI);
-
-	LOG_INF("Component Drivers: USB=%p, VOL=%p, EQ=%p, DRC=%p, TDFB=%p, DAI=%p",
-		drv_usb, drv_vol, drv_eq, drv_drc, drv_tdfb, drv_dai);
-
-	#if CONFIG_IPC_MAJOR_4
-	struct ipc_config_process base_proc_spec = {
-		.size = sizeof(s_default_ipc4_base_cfg),
-		.data = (const uint8_t *)&s_default_ipc4_base_cfg,
-	};
-	struct ipc_config_process *proc_spec = &base_proc_spec;
-	#else
-	struct ipc_config_process empty_proc_spec = {
-		.size = 0,
-		.data = NULL,
-	};
-	struct ipc_config_process *proc_spec = &empty_proc_spec;
-	#endif
-
-	/* 3. Construct Playback Pipeline (Pipeline 1: USB -> Vol -> EQ -> DRC -> DAI) */
-	if (drv_usb) {
-		struct comp_ipc_config cfg = {
-			.id = 1,
-			.pipeline_id = 1,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_FLOAT,
-			.type = SOF_COMP_HOST,
-		};
-		g_comp_usb_playback = drv_usb->ops.create(drv_usb, &cfg, NULL);
-		if (g_comp_usb_playback) {
-			g_comp_usb_playback->direction = SOF_IPC_STREAM_PLAYBACK;
-			g_comp_usb_playback->pipeline = g_playback_pipe;
-			g_comp_usb_playback->period = 1000;
-			g_comp_usb_playback->frames = 48;
-		}
-	}
-
-	if (drv_vol) {
-		struct comp_ipc_config cfg = {
-			.id = 2,
-			.pipeline_id = 1,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_FLOAT,
-		};
-		struct ipc_config_process spec = {
-			.size = sizeof(s_default_vol_cfg),
-			.data = (const uint8_t *)&s_default_vol_cfg,
-		};
-		g_comp_vol_playback = drv_vol->ops.create(drv_vol, &cfg, &spec);
-		if (g_comp_vol_playback) {
-			g_comp_vol_playback->direction = SOF_IPC_STREAM_PLAYBACK;
-			g_comp_vol_playback->pipeline = g_playback_pipe;
-			g_comp_vol_playback->period = 1000;
-			g_comp_vol_playback->frames = 48;
-		}
-	}
-
-	if (drv_eq) {
-		struct comp_ipc_config cfg = {
-			.id = 3,
-			.pipeline_id = 1,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_FLOAT,
-		};
-		g_comp_eq_playback = drv_eq->ops.create(drv_eq, &cfg, proc_spec);
-		if (g_comp_eq_playback) {
-			g_comp_eq_playback->direction = SOF_IPC_STREAM_PLAYBACK;
-			g_comp_eq_playback->pipeline = g_playback_pipe;
-			g_comp_eq_playback->period = 1000;
-			g_comp_eq_playback->frames = 48;
-			sof_static_send_comp_config(g_comp_eq_playback, sof_default_iir_coef_2ch,
-						    sizeof(sof_default_iir_coef_2ch));
-		}
-	}
-
-	if (drv_drc) {
-		struct comp_ipc_config cfg = {
-			.id = 4,
-			.pipeline_id = 1,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_FLOAT,
-		};
-		g_comp_drc_playback = drv_drc->ops.create(drv_drc, &cfg, proc_spec);
-		if (g_comp_drc_playback) {
-			g_comp_drc_playback->direction = SOF_IPC_STREAM_PLAYBACK;
-			g_comp_drc_playback->pipeline = g_playback_pipe;
-			g_comp_drc_playback->period = 1000;
-			g_comp_drc_playback->frames = 48;
-			sof_static_send_comp_config(g_comp_drc_playback, sof_default_drc_coef,
-						    sizeof(sof_default_drc_coef));
-		}
-	}
-
-	if (drv_dai) {
-		struct comp_ipc_config cfg = {
-			.id = 5,
-			.pipeline_id = 1,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
-		};
-		struct ipc_config_dai dai_cfg = {
-			.type = SOF_DAI_ESP32_I2S,
-			.dai_index = 0,
-			.direction = SOF_IPC_STREAM_PLAYBACK,
-			.sampling_frequency = 48000,
-			.dma_buffer_size = 1024,
-			.format = SOF_DAI_FMT_I2S,
-		};
-		g_comp_dai_playback = drv_dai->ops.create(drv_dai, &cfg, &dai_cfg);
-		if (g_comp_dai_playback) {
-			g_comp_dai_playback->direction = SOF_IPC_STREAM_PLAYBACK;
-			g_comp_dai_playback->pipeline = g_playback_pipe;
-			g_comp_dai_playback->period = 1000;
-			g_comp_dai_playback->frames = 48;
-			struct sof_ipc_dai_config spec_cfg = {
-				.type = SOF_DAI_ESP32_I2S,
-				.dai_index = 0,
-				.format = SOF_DAI_FMT_I2S,
-			};
-			comp_dai_config(g_comp_dai_playback, &dai_cfg, &spec_cfg);
-		}
-	}
-
-	/* Allocate playback intermediate stream buffers (Float = 4 bytes/sample -> 2048 bytes) */
-	struct comp_buffer *buf_pb_1 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_pb_2 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_pb_3 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_pb_4 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-
-	sof_static_init_buffer_params(buf_pb_1, SOF_IPC_STREAM_PLAYBACK, SOF_IPC_FRAME_FLOAT);
-	sof_static_init_buffer_params(buf_pb_2, SOF_IPC_STREAM_PLAYBACK, SOF_IPC_FRAME_FLOAT);
-	sof_static_init_buffer_params(buf_pb_3, SOF_IPC_STREAM_PLAYBACK, SOF_IPC_FRAME_FLOAT);
-	sof_static_init_buffer_params(buf_pb_4, SOF_IPC_STREAM_PLAYBACK, SOF_IPC_FRAME_FLOAT);
-
-	if (g_comp_usb_playback && buf_pb_1 && g_comp_vol_playback) {
-		pipeline_connect(g_comp_usb_playback, buf_pb_1, PPL_CONN_DIR_COMP_TO_BUFFER);
-		pipeline_connect(g_comp_vol_playback, buf_pb_1, PPL_CONN_DIR_BUFFER_TO_COMP);
-	}
-	if (g_comp_vol_playback && buf_pb_2 && g_comp_eq_playback) {
-		pipeline_connect(g_comp_vol_playback, buf_pb_2, PPL_CONN_DIR_COMP_TO_BUFFER);
-		pipeline_connect(g_comp_eq_playback,  buf_pb_2, PPL_CONN_DIR_BUFFER_TO_COMP);
-	}
-	if (g_comp_eq_playback && buf_pb_3 && g_comp_drc_playback) {
-		pipeline_connect(g_comp_eq_playback,  buf_pb_3, PPL_CONN_DIR_COMP_TO_BUFFER);
-		pipeline_connect(g_comp_drc_playback, buf_pb_3, PPL_CONN_DIR_BUFFER_TO_COMP);
-	}
-	if (g_comp_drc_playback && buf_pb_4) {
-		pipeline_connect(g_comp_drc_playback, buf_pb_4, PPL_CONN_DIR_COMP_TO_BUFFER);
-		if (g_comp_dai_playback) {
-			pipeline_connect(g_comp_dai_playback, buf_pb_4, PPL_CONN_DIR_BUFFER_TO_COMP);
-		}
-	}
-
-	g_playback_pipe->source_comp = g_comp_usb_playback;
-	g_playback_pipe->sink_comp = g_comp_dai_playback ? g_comp_dai_playback : g_comp_drc_playback;
-	g_playback_pipe->sched_comp = g_comp_usb_playback;
-
-	/* 4. Construct Capture Pipeline (Pipeline 2: DAI -> TDFB -> EQ -> Vol -> USB) */
-	if (drv_dai) {
-		struct comp_ipc_config cfg = {
-			.id = 6,
-			.pipeline_id = 2,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_S16_LE,
-		};
-		struct ipc_config_dai dai_cfg = {
-			.type = SOF_DAI_ESP32_I2S,
-			.dai_index = 0,
-			.direction = SOF_IPC_STREAM_CAPTURE,
-			.sampling_frequency = 48000,
-			.dma_buffer_size = 1024,
-			.format = SOF_DAI_FMT_I2S,
-		};
-		g_comp_dai_capture = drv_dai->ops.create(drv_dai, &cfg, &dai_cfg);
-		if (g_comp_dai_capture) {
-			g_comp_dai_capture->direction = SOF_IPC_STREAM_CAPTURE;
-			g_comp_dai_capture->pipeline = g_capture_pipe;
-			g_comp_dai_capture->period = 1000;
-			g_comp_dai_capture->frames = 48;
-			struct sof_ipc_dai_config spec_cfg = {
-				.type = SOF_DAI_ESP32_I2S,
-				.dai_index = 0,
-				.format = SOF_DAI_FMT_I2S,
-			};
-			comp_dai_config(g_comp_dai_capture, &dai_cfg, &spec_cfg);
-		}
-	}
-
-	if (drv_tdfb) {
-		struct comp_ipc_config cfg = {
-			.id = 7,
-			.pipeline_id = 2,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_FLOAT,
-		};
-		g_comp_tdfb_capture = drv_tdfb->ops.create(drv_tdfb, &cfg, proc_spec);
-		if (g_comp_tdfb_capture) {
-			g_comp_tdfb_capture->direction = SOF_IPC_STREAM_CAPTURE;
-			g_comp_tdfb_capture->pipeline = g_capture_pipe;
-			g_comp_tdfb_capture->period = 1000;
-			g_comp_tdfb_capture->frames = 48;
-		}
-	}
-
-	if (drv_eq) {
-		struct comp_ipc_config cfg = {
-			.id = 8,
-			.pipeline_id = 2,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_FLOAT,
-		};
-		g_comp_eq_capture = drv_eq->ops.create(drv_eq, &cfg, proc_spec);
-		if (g_comp_eq_capture) {
-			g_comp_eq_capture->direction = SOF_IPC_STREAM_CAPTURE;
-			g_comp_eq_capture->pipeline = g_capture_pipe;
-			g_comp_eq_capture->period = 1000;
-			g_comp_eq_capture->frames = 48;
-			sof_static_send_comp_config(g_comp_eq_capture, sof_default_iir_coef_2ch,
-						    sizeof(sof_default_iir_coef_2ch));
-		}
-	}
-
-	if (drv_vol) {
-		struct comp_ipc_config cfg = {
-			.id = 9,
-			.pipeline_id = 2,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_FLOAT,
-		};
-		struct ipc_config_process spec = {
-			.size = sizeof(s_default_vol_cfg),
-			.data = (const uint8_t *)&s_default_vol_cfg,
-		};
-		g_comp_vol_capture = drv_vol->ops.create(drv_vol, &cfg, &spec);
-		if (g_comp_vol_capture) {
-			g_comp_vol_capture->direction = SOF_IPC_STREAM_CAPTURE;
-			g_comp_vol_capture->pipeline = g_capture_pipe;
-			g_comp_vol_capture->period = 1000;
-			g_comp_vol_capture->frames = 48;
-		}
-	}
-
-	if (drv_usb) {
-		struct comp_ipc_config cfg = {
-			.id = 10,
-			.pipeline_id = 2,
-			.core = 0,
-			.proc_domain = COMP_PROCESSING_DOMAIN_LL,
-			.frame_fmt = SOF_IPC_FRAME_FLOAT,
-			.type = SOF_COMP_HOST,
-		};
-		g_comp_usb_capture = drv_usb->ops.create(drv_usb, &cfg, NULL);
-		if (g_comp_usb_capture) {
-			g_comp_usb_capture->direction = SOF_IPC_STREAM_CAPTURE;
-			g_comp_usb_capture->pipeline = g_capture_pipe;
-			g_comp_usb_capture->period = 1000;
-			g_comp_usb_capture->frames = 48;
-		}
-	}
-
-	/* Allocate capture intermediate stream buffers (Float = 4 bytes/sample -> 2048 bytes) */
-	struct comp_buffer *buf_cap_1 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_cap_2 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_cap_3 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-	struct comp_buffer *buf_cap_4 = buffer_alloc(NULL, 2048, SOF_MEM_FLAG_DMA | SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN, false);
-
-	sof_static_init_buffer_params(buf_cap_1, SOF_IPC_STREAM_CAPTURE, SOF_IPC_FRAME_FLOAT);
-	sof_static_init_buffer_params(buf_cap_2, SOF_IPC_STREAM_CAPTURE, SOF_IPC_FRAME_FLOAT);
-	sof_static_init_buffer_params(buf_cap_3, SOF_IPC_STREAM_CAPTURE, SOF_IPC_FRAME_FLOAT);
-	sof_static_init_buffer_params(buf_cap_4, SOF_IPC_STREAM_CAPTURE, SOF_IPC_FRAME_FLOAT);
-
-	if (g_comp_dai_capture && buf_cap_1 && g_comp_tdfb_capture) {
-		pipeline_connect(g_comp_dai_capture,  buf_cap_1, PPL_CONN_DIR_COMP_TO_BUFFER);
-		pipeline_connect(g_comp_tdfb_capture, buf_cap_1, PPL_CONN_DIR_BUFFER_TO_COMP);
-	}
-	if (g_comp_tdfb_capture && buf_cap_2 && g_comp_eq_capture) {
-		pipeline_connect(g_comp_tdfb_capture, buf_cap_2, PPL_CONN_DIR_COMP_TO_BUFFER);
-		pipeline_connect(g_comp_eq_capture,   buf_cap_2, PPL_CONN_DIR_BUFFER_TO_COMP);
-	}
-	if (g_comp_eq_capture && buf_cap_3 && g_comp_vol_capture) {
-		pipeline_connect(g_comp_eq_capture,  buf_cap_3, PPL_CONN_DIR_COMP_TO_BUFFER);
-		pipeline_connect(g_comp_vol_capture, buf_cap_3, PPL_CONN_DIR_BUFFER_TO_COMP);
-	}
-	if (g_comp_vol_capture && buf_cap_4 && g_comp_usb_capture) {
-		pipeline_connect(g_comp_vol_capture, buf_cap_4, PPL_CONN_DIR_COMP_TO_BUFFER);
-		pipeline_connect(g_comp_usb_capture, buf_cap_4, PPL_CONN_DIR_BUFFER_TO_COMP);
-	}
-
-	g_capture_pipe->source_comp = g_comp_dai_capture ? g_comp_dai_capture : (g_comp_tdfb_capture ? g_comp_tdfb_capture : g_comp_vol_capture);
-	g_capture_pipe->sink_comp = g_comp_usb_capture;
-	g_capture_pipe->sched_comp = g_comp_usb_capture;
-
-	/* 5. Parameterize and Prepare Pipelines */
-	struct sof_ipc_pcm_params prms;
-
-	if (g_playback_pipe->source_comp) {
-		memset(&prms, 0, sizeof(prms));
-		prms.params.rate = 48000;
-		prms.params.channels = 2;
-		prms.params.frame_fmt = SOF_IPC_FRAME_FLOAT;
-		prms.params.sample_container_bytes = 4;
-		prms.params.sample_valid_bytes = 4;
-		prms.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-		prms.params.host_period_bytes = 48 * 8;
-		prms.comp_id = dev_comp_id(g_playback_pipe->source_comp);
-		prms.params.direction = SOF_IPC_STREAM_PLAYBACK;
-		prms.params.chmap[0] = SOF_CHMAP_FL;
-		prms.params.chmap[1] = SOF_CHMAP_FR;
-		pipeline_params(g_playback_pipe, g_playback_pipe->source_comp, &prms);
-		pipeline_prepare(g_playback_pipe, g_playback_pipe->source_comp);
-	}
-
-	if (g_comp_usb_capture) {
-		memset(&prms, 0, sizeof(prms));
-		prms.params.rate = 48000;
-		prms.params.channels = 2;
-		prms.params.frame_fmt = SOF_IPC_FRAME_FLOAT;
-		prms.params.sample_container_bytes = 4;
-		prms.params.sample_valid_bytes = 4;
-		prms.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-		prms.params.host_period_bytes = 48 * 8;
-		prms.comp_id = dev_comp_id(g_comp_usb_capture);
-		prms.params.direction = SOF_IPC_STREAM_CAPTURE;
-		prms.params.chmap[0] = SOF_CHMAP_FL;
-		prms.params.chmap[1] = SOF_CHMAP_FR;
-		pipeline_params(g_capture_pipe, g_comp_usb_capture, &prms);
-		pipeline_prepare(g_capture_pipe, g_comp_usb_capture);
-	}
-
-	LOG_INF("SOF static audio graphs constructed, parameterized, and prepared successfully");
-	return 0;
+	ARG_UNUSED(sof);
+	return sof_static_topology_init(&g_esp32p4_static_topology);
 }
 
 int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_clock_mode mode)
@@ -1019,63 +307,25 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 
 int sof_static_pipeline_set_eq_bypass(bool is_capture, bool bypass)
 {
-	struct comp_dev *dev = is_capture ? g_comp_eq_capture : g_comp_eq_playback;
-
 	if (is_capture) {
 		g_status.eq_capture_bypassed = bypass;
+		return sof_static_kcontrol_set(5, bypass ? 0 : 1);
 	} else {
 		g_status.eq_playback_bypassed = bypass;
+		return sof_static_kcontrol_set(2, bypass ? 0 : 1);
 	}
-	if (dev) {
-		struct processing_module *mod = comp_mod(dev);
-		struct comp_data *cd = module_get_private_data(mod);
-		if (cd) {
-			if (bypass) {
-				cd->eq_iir_func = eq_iir_pass;
-			} else if (cd->iir_delay_size) {
-#if CONFIG_FORMAT_FLOAT
-				struct comp_buffer *sourceb = comp_dev_get_first_data_producer(dev);
-				if (sourceb && audio_stream_get_frm_fmt(&sourceb->stream) == SOF_IPC_FRAME_FLOAT) {
-					cd->eq_iir_func = eq_iir_float_default;
-				} else {
-					cd->eq_iir_func = eq_iir_s16_default;
-				}
-#else
-				cd->eq_iir_func = eq_iir_s16_default;
-#endif
-			}
-		}
-	}
-	LOG_INF("%s EQ bypass set to %d", is_capture ? "Capture" : "Playback", bypass);
-	return 0;
 }
 
 int sof_static_pipeline_set_drc_bypass(bool bypass)
 {
 	g_status.drc_playback_bypassed = bypass;
-	if (g_comp_drc_playback) {
-		struct processing_module *mod = comp_mod(g_comp_drc_playback);
-		struct drc_comp_data *cd = module_get_private_data(mod);
-		if (cd) {
-			cd->enable_switch = !bypass;
-		}
-	}
-	LOG_INF("DRC bypass set to %d", bypass);
-	return 0;
+	return sof_static_kcontrol_set(3, bypass ? 0 : 1);
 }
 
 int sof_static_pipeline_set_tdfb_bypass(bool bypass)
 {
 	g_status.tdfb_capture_bypassed = bypass;
-	if (g_comp_tdfb_capture) {
-		struct processing_module *mod = comp_mod(g_comp_tdfb_capture);
-		struct tdfb_comp_data *cd = module_get_private_data(mod);
-		if (cd) {
-			cd->beam_on = !bypass;
-		}
-	}
-	LOG_INF("TDFB bypass set to %d", bypass);
-	return 0;
+	return sof_static_kcontrol_set(4, bypass ? 0 : 1);
 }
 
 int sof_static_pipeline_set_volume(uint32_t pipeline_id, int16_t volume)
@@ -1121,36 +371,29 @@ int sof_static_pipeline_get_mute(uint32_t pipeline_id, bool *mute)
 int sof_static_pipeline_set_playback_active(bool start)
 {
 	g_status.playback_active = start;
-	if (g_playback_pipe && g_playback_pipe->source_comp) {
-		if (start) {
-			pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_PRE_START);
-			pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_START);
-		} else {
-			pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_STOP);
-		}
-	}
-	LOG_INF("Playback pipeline %s", start ? "STARTED" : "STOPPED");
-	return 0;
+	return sof_static_pipeline_trigger_by_uac2_term(PLAYBACK_TERM_ID, start);
 }
 
 int sof_static_pipeline_set_capture_active(bool start)
 {
 	g_status.capture_active = start;
-	if (g_capture_pipe && g_comp_usb_capture) {
-		if (start) {
-			pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_PRE_START);
-			pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_START);
-		} else {
-			pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_STOP);
-		}
-	}
-	LOG_INF("Capture pipeline %s", start ? "STARTED" : "STOPPED");
-	return 0;
+	return sof_static_pipeline_trigger_by_uac2_term(CAPTURE_TERM_ID, start);
 }
 
 void sof_static_pipeline_get_status(struct sof_static_pipeline_status *status)
 {
-	if (status) {
-		*status = g_status;
-	}
+	if (!status)
+		return;
+
+	*status = g_status;
+
+	int32_t val = 0;
+	if (sof_static_kcontrol_get(2, &val) == 0)
+		status->eq_playback_bypassed = (val == 0);
+	if (sof_static_kcontrol_get(3, &val) == 0)
+		status->drc_playback_bypassed = (val == 0);
+	if (sof_static_kcontrol_get(4, &val) == 0)
+		status->tdfb_capture_bypassed = (val == 0);
+	if (sof_static_kcontrol_get(5, &val) == 0)
+		status->eq_capture_bypassed = (val == 0);
 }

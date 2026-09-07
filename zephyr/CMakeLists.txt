@@ -465,6 +465,7 @@ endif()
 if (CONFIG_PLATFORM_ESP32P4)
 	zephyr_library_sources(
 		${SOF_PLATFORM_PATH}/esp32p4/platform.c
+		${SOF_PLATFORM_PATH}/esp32p4/esp32p4_pipeline_def.c
 		${SOF_PLATFORM_PATH}/esp32p4/lib/clk.c
 		lib/dma.c
 	)
