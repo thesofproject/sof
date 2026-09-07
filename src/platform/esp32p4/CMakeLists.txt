@@ -6,4 +6,5 @@ add_subdirectory(lib)
 
 sof_add_files(
 	platform.c
+	esp32p4_pipeline_def.c
 )
