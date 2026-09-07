@@ -10,6 +10,7 @@ else()
     add_local_sources(sof ffmpeg_dec-stub.c)
   else()
     add_local_sources(sof ffmpeg_dec-ffmpeg.c)
+    add_local_sources(sof ffmpeg_dec-convert.c)
     # Scalar soft-float for the SOF glue that touches float. core-isa.h reports
     # XCHAL_HAVE_FP=1 so LLVM would lower the FLT/FLTP -> Q1.31 sample conversion
     # in ffmpeg_dec_emit_frame() to hardware FP0 ops (lsi/mul.s/trunc.s), which
@@ -24,6 +25,7 @@ else()
     set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-ffmpeg.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-convert.c
         TARGET_DIRECTORY modules_sof
         PROPERTIES COMPILE_OPTIONS "-Xclang;-target-feature;-Xclang;-fp")
     # NOTE: ffmpeg_dec-shims.c / ffmpeg_dec-alloc.c are LLEXT-only (see

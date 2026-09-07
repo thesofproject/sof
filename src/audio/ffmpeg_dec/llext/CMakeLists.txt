@@ -19,6 +19,7 @@ else()
 	set(ffmpeg_dec_srcs
 		../ffmpeg_dec.c
 		../ffmpeg_dec-ffmpeg.c
+		../ffmpeg_dec-convert.c
 		../ffmpeg_dec-shims.c
 		../ffmpeg_dec-alloc.c)
 	# fastmathf provides the single-precision libm the codecs need AND sofm_log2f

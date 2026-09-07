@@ -21,6 +21,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "ffmpeg_dec.h"
+#include "ffmpeg_dec-convert.h"
 
 #include <libavcodec/avcodec.h>
 #include <libavutil/channel_layout.h>
@@ -220,129 +221,13 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 	return 0;
 }
 
-/*
- * Convert one decoded source sample to a signed Q1.31 value (full-scale in a
- * 32-bit word), so it can be re-quantised to any SOF sink format below. The
- * integer paths are what the fixed-point decoders built today exercise (mp3 ->
- * S16, 16-bit FLAC -> S16, 24-bit FLAC -> S32); the float paths cover the
- * planar-float decoders (AAC, Opus) added later.
- */
-/*
- * Branch-free soft-float-free float -> Q1.31 for f in [-1, 1).
- *
- * On this DSP scalar float compiles to libgcc soft-float (no scalar HW-FP0),
- * so the naive `(int32_t)(f * 2147483648.0f)` per sample dominates the whole
- * AAC decode (profiled: ~65-82% of every frame, and its soft-float cost is
- * data-dependent: near-silence cheap, full-scale ~4x). Multiplying an IEEE-754
- * float by 2^31 is EXACT (it only bumps the exponent), and the cast truncates
- * toward zero, so the same value is obtained by shifting the 24-bit significand
- * -- pure integer, constant-time, and bit-exact with the old float path.
- *
- *   f = (-1)^s * M * 2^(e-150),  M = (1<<23)|mant   (normalised)
- *   f * 2^31   = M * 2^(e-119)                       (shift = e-119)
- * |f| >= 1.0 (e >= 127) saturates; denormals/zero (e < 96) round to 0.
- */
-static inline int32_t ffmpeg_dec_f32_to_q31(float f)
-{
-	union { float f; uint32_t u; } v = { .f = f };
-	uint32_t u = v.u;
-	uint32_t sign = u >> 31;
-	int e = (int)((u >> 23) & 0xFF);
-	uint32_t mant = (u & 0x7FFFFFU) | 0x800000U;	/* 24-bit significand */
-	int shift = e - 119;
-	int32_t q;
-
-	if (e >= 127)					/* |f| >= 1.0 -> full scale */
-		return sign ? INT32_MIN : INT32_MAX;
-	if (shift >= 0)
-		q = (int32_t)(mant << shift);
-	else if (shift > -32)
-		q = (int32_t)(mant >> (-shift));
-	else
-		q = 0;
-	return sign ? -q : q;
-}
-
-static inline int32_t ffmpeg_dec_src_to_q31(const uint8_t *p, int fmt)
-{
-	switch (fmt) {
-	case AV_SAMPLE_FMT_U8:
-	case AV_SAMPLE_FMT_U8P:
-		return ((int32_t)*p - 0x80) << 24;
-	case AV_SAMPLE_FMT_S16:
-	case AV_SAMPLE_FMT_S16P:
-		return (int32_t)*(const int16_t *)p << 16;
-	case AV_SAMPLE_FMT_S32:
-	case AV_SAMPLE_FMT_S32P:
-		return *(const int32_t *)p;
-	case AV_SAMPLE_FMT_FLT:
-	case AV_SAMPLE_FMT_FLTP:
-		return ffmpeg_dec_f32_to_q31(*(const float *)p);
-	default:
-		return 0;
-	}
-}
-
-/* Store a Q1.31 sample into @p in the SOF sink frame format @fmt. */
-static inline void ffmpeg_dec_q31_to_sink(uint8_t *p, int32_t v, int fmt)
-{
-	switch (fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		*(int16_t *)p = (int16_t)(v >> 16);
-		break;
-	case SOF_IPC_FRAME_S24_4LE:
-		*(int32_t *)p = v >> 8;		/* 24-bit, sign-extended in 32 */
-		break;
-	case SOF_IPC_FRAME_FLOAT:
-		*(float *)p = (float)v / 2147483648.0f;
-		break;
-	case SOF_IPC_FRAME_S32_LE:
-	default:
-		*(int32_t *)p = v;
-		break;
-	}
-}
-
-/*
- * Convert and interleave one decoded AVFrame into @out. Returns bytes written,
- * or a negative errno if @out cannot hold the frame.
- *
- * The decoder's native sample format need not match the negotiated sink: the
- * SOF IPC4 pipeline propagates the PCM (sink) bit depth back onto this widget's
- * output pin, so e.g. the fixed-point mp3 decoder (S16) must be re-quantised to
- * an S32 sink. Writing the raw decoder samples straight into an S32 sink packs
- * two S16 samples into each S32 slot -> constant harmonic distortion. Convert
- * every sample through a Q1.31 intermediate instead of assuming source == sink.
- */
 static int ffmpeg_dec_emit_frame(struct processing_module *mod, AVFrame *frame,
 				 uint8_t *out, size_t out_size)
 {
 	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
-	int channels = cd->out_channels;
-	int src_bps = av_get_bytes_per_sample(frame->format);
-	int planar = av_sample_fmt_is_planar(frame->format);
-	int sink_bps = channels ? (int)(cd->out_frame_bytes / channels) : 0;
-	size_t need = (size_t)frame->nb_samples * channels * sink_bps;
-	int i, ch;
 
-	if (src_bps <= 0 || sink_bps <= 0 || channels <= 0)
-		return -EINVAL;
-	if (need > out_size)
-		return -ENOSPC;
-
-	for (i = 0; i < frame->nb_samples; i++) {
-		for (ch = 0; ch < channels; ch++) {
-			const uint8_t *src = planar ?
-				frame->data[ch] + (size_t)i * src_bps :
-				frame->data[0] + ((size_t)i * channels + ch) * src_bps;
-			int32_t q = ffmpeg_dec_src_to_q31(src, frame->format);
-
-			ffmpeg_dec_q31_to_sink(out + ((size_t)i * channels + ch) * sink_bps,
-					       q, cd->out_frame_fmt);
-		}
-	}
-
-	return need;
+	return ffmpeg_dec_convert_frame(frame, out, out_size,
+					cd->out_frame_fmt, cd->out_channels);
 }
 
 static int ffmpeg_dec_ff_decode(struct processing_module *mod,

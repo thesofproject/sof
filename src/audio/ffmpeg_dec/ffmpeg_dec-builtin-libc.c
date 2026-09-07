@@ -55,21 +55,21 @@ struct processing_module;
 /* stderr is referenced as a data object by FFmpeg's default log path. */
 void *stderr;
 
-unsigned long fread(void *p, unsigned long sz, unsigned long n, void *stream)
+__attribute__((weak)) unsigned long fread(void *p, unsigned long sz, unsigned long n, void *stream)
 { (void)p; (void)sz; (void)n; (void)stream; return 0; }
-int fclose(void *stream) { (void)stream; return 0; }
-void *fdopen(int fd, const char *mode) { (void)fd; (void)mode; return NULL; }
-int open(const char *path, int flags, ...) { (void)path; (void)flags; return -1; }
-int setvbuf(void *s, char *buf, int mode, size_t size)
+__attribute__((weak)) int fclose(void *stream) { (void)stream; return 0; }
+__attribute__((weak)) void *fdopen(int fd, const char *mode) { (void)fd; (void)mode; return NULL; }
+__attribute__((weak)) int open(const char *path, int flags, ...) { (void)path; (void)flags; return -1; }
+__attribute__((weak)) int setvbuf(void *s, char *buf, int mode, size_t size)
 { (void)s; (void)buf; (void)mode; (void)size; return 0; }
-int sscanf(const char *str, const char *fmt, ...) { (void)str; (void)fmt; return 0; }
-char *getenv(const char *name) { (void)name; return NULL; }
-unsigned long clock(void) { return 0; }
-void *gmtime(const void *timep) { (void)timep; return NULL; }
-long mktime(void *tm) { (void)tm; return -1; }
-size_t strftime(char *s, size_t max, const char *fmt, const void *tm)
+__attribute__((weak)) int sscanf(const char *str, const char *fmt, ...) { (void)str; (void)fmt; return 0; }
+__attribute__((weak)) char *getenv(const char *name) { (void)name; return NULL; }
+__attribute__((weak)) unsigned long clock(void) { return 0; }
+__attribute__((weak)) void *gmtime(const void *timep) { (void)timep; return NULL; }
+__attribute__((weak)) long mktime(void *tm) { (void)tm; return -1; }
+__attribute__((weak)) size_t strftime(char *s, size_t max, const char *fmt, const void *tm)
 { (void)fmt; (void)tm; if (max) s[0] = '\0'; return 0; }
-double strtod(const char *nptr, char **endptr)
+__attribute__((weak)) double strtod(const char *nptr, char **endptr)
 { if (endptr) *endptr = (char *)nptr; return 0; }
 
 /* Zephyr libc runtime errno wrapper referenced by libavutil/avsscanf. */
