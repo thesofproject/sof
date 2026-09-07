@@ -375,4 +375,6 @@ BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt
 # Multi-slot WOV topologies for PTL and WCL
 "dmic-wov-multi-ptl-manifest\;sof-ptl-dmic-wov-multi\;"
 "dmic-wov-multi-wcl-manifest\;sof-wcl-dmic-wov-multi\;"
+"dmic-wov-multi-ptl-4ch-manifest\;sof-ptl-dmic-wov-multi-4ch\;"
+"dmic-wov-multi-wcl-4ch-manifest\;sof-wcl-dmic-wov-multi-4ch\;"
 )

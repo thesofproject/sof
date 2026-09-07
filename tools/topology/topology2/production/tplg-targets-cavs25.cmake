@@ -53,4 +53,7 @@ NUM_SDW_AMP_LINKS=1,SDW_AMP_FEEDBACK=false,SDW_DMIC=1,SDW_DMIC_STREAM=Capture-Sm
 PDM1_MIC_A_ENABLE=1,PDM1_MIC_B_ENABLE=1,\
 PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-adl-rt711-4ch.bin,\
 HDMI1_ID=4,HDMI2_ID=5,HDMI3_ID=6"
+
+# 4-Channel 16kHz Multi-slot WOV topology for TGL
+"dmic-wov-multi-4ch-manifest\;sof-tgl-dmic-wov-multi-4ch\;"
 )

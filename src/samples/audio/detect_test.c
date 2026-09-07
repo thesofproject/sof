@@ -985,8 +985,8 @@ static int test_keyword_params(struct comp_dev *dev,
 		frame_fmt = audio_stream_get_frm_fmt(&sourceb->stream);
 		rate = audio_stream_get_rate(&sourceb->stream);
 
-		if (channels != 1 && channels != 2) {
-			comp_err(dev, "only 1 or 2 channels supported");
+		if (channels != 1 && channels != 2 && channels != 4) {
+			comp_err(dev, "only 1, 2, or 4 channels supported");
 			return -EINVAL;
 		}
 
@@ -1083,10 +1083,10 @@ static int test_keyword_copy(struct comp_dev *dev)
 			uint32_t src_ch = audio_stream_get_channels(&source->stream);
 			int16_t *dst = &cd->dp_buf[cd->dp_write_slot][cd->dp_buf_frames];
 
-			if (src_ch == 2) {
+			if (src_ch > 1) {
 				int16_t *src = (int16_t *)audio_stream_get_rptr(&source->stream);
 				for (uint32_t f = 0; f < copy_frames; f++)
-					dst[f] = src[f * 2];
+					dst[f] = src[f * src_ch];
 			} else {
 				audio_stream_copy_to_linear(&source->stream, 0,
 							    dst, 0, copy_frames);
