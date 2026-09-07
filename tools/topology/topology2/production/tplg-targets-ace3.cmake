@@ -371,4 +371,8 @@ BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt
 "cavs-sdw\;sof-ptl-ssp2-bt-id10\;PLATFORM=ptl,ADD_BT=true,SDW_JACK=false,NUM_HDMIS=0,\
 HEADSET_CODEC=false,HDMI_IN_CAPTURE=false,BT_ID=10,BT_PCM_ID=20,BT_PCM_NAME=Bluetooth,\
 BT_CP_HOST_PIPELINE_ID=201,PREPROCESS_PLUGINS=nhlt,NHLT_BIN=nhlt-sof-ptl-ssp2-bt-id10.bin"
+
+# Multi-slot WOV topologies for PTL and WCL
+"dmic-wov-multi-ptl-manifest\;sof-ptl-dmic-wov-multi\;"
+"dmic-wov-multi-wcl-manifest\;sof-wcl-dmic-wov-multi\;"
 )
