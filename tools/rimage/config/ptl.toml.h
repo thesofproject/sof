@@ -90,6 +90,10 @@ index = __COUNTER__
 #include <audio/kpb.toml>
 #endif
 
+#if defined(CONFIG_COMP_WOV_ARBITER) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/wov_arbiter/wov_arbiter.toml>
+#endif
+
 #if defined(CONFIG_SAMPLE_SMART_AMP) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <samples/audio/smart_amp_test.toml>
 #endif
