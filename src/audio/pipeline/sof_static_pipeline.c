@@ -17,6 +17,8 @@
 #include "../eq_iir/eq_iir.h"
 #include "../drc/drc_user.h"
 #include "../drc/drc.h"
+#include "../tdfb/tdfb.h"
+#include "../tdfb/tdfb_comp.h"
 #include <module/ipc4/base-config.h>
 #include "../volume/peak_volume.h"
 #include <rtos/sof.h>
@@ -1062,6 +1064,13 @@ int sof_static_pipeline_set_drc_bypass(bool bypass)
 int sof_static_pipeline_set_tdfb_bypass(bool bypass)
 {
 	g_status.tdfb_capture_bypassed = bypass;
+	if (g_comp_tdfb_capture) {
+		struct processing_module *mod = comp_mod(g_comp_tdfb_capture);
+		struct tdfb_comp_data *cd = module_get_private_data(mod);
+		if (cd) {
+			cd->beam_on = !bypass;
+		}
+	}
 	LOG_INF("TDFB bypass set to %d", bypass);
 	return 0;
 }
@@ -1106,6 +1115,35 @@ int sof_static_pipeline_get_mute(uint32_t pipeline_id, bool *mute)
 	return -EINVAL;
 }
 
+int sof_static_pipeline_set_playback_active(bool start)
+{
+	g_status.playback_active = start;
+	if (g_playback_pipe && g_playback_pipe->source_comp) {
+		if (start) {
+			pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_PRE_START);
+			pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_START);
+		} else {
+			pipeline_trigger(g_playback_pipe, g_playback_pipe->source_comp, COMP_TRIGGER_STOP);
+		}
+	}
+	LOG_INF("Playback pipeline %s", start ? "STARTED" : "STOPPED");
+	return 0;
+}
+
+int sof_static_pipeline_set_capture_active(bool start)
+{
+	g_status.capture_active = start;
+	if (g_capture_pipe && g_comp_usb_capture) {
+		if (start) {
+			pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_PRE_START);
+			pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_START);
+		} else {
+			pipeline_trigger(g_capture_pipe, g_comp_usb_capture, COMP_TRIGGER_STOP);
+		}
+	}
+	LOG_INF("Capture pipeline %s", start ? "STARTED" : "STOPPED");
+	return 0;
+}
 void sof_static_pipeline_get_status(struct sof_static_pipeline_status *status)
 {
 	if (status) {

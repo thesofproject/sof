@@ -107,8 +107,53 @@ static int cmd_sof_tdfb(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_sof_vol(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 3) {
+		shell_error(sh, "Usage: sof vol <playback|capture|pb|cap> <dB>");
+		return -EINVAL;
+	}
+
+	uint32_t pipe_id = (strcmp(argv[1], "playback") == 0 || strcmp(argv[1], "pb") == 0) ? 1 : 2;
+	int db = atoi(argv[2]);
+	int16_t uac_vol = (int16_t)(db * 256);
+
+	sof_static_pipeline_set_volume(pipe_id, uac_vol);
+	shell_print(sh, "%s volume set to %d dB.", pipe_id == 1 ? "Playback" : "Capture", db);
+	return 0;
+}
+
+static int cmd_sof_play(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		shell_error(sh, "Usage: sof play <start|stop>");
+		return -EINVAL;
+	}
+
+	bool start = (strcmp(argv[1], "start") == 0);
+	sof_static_pipeline_set_playback_active(start);
+	shell_print(sh, "Playback pipeline %s.", start ? "STARTED" : "STOPPED");
+	return 0;
+}
+
+static int cmd_sof_cap(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		shell_error(sh, "Usage: sof cap <start|stop>");
+		return -EINVAL;
+	}
+
+	bool start = (strcmp(argv[1], "start") == 0);
+	sof_static_pipeline_set_capture_active(start);
+	shell_print(sh, "Capture pipeline %s.", start ? "STARTED" : "STOPPED");
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(status, NULL, "Print current SOF pipeline and audio interface status", cmd_sof_status),
+	SHELL_CMD(play, NULL, "Start/stop playback pipeline (sof play <start|stop>)", cmd_sof_play),
+	SHELL_CMD(cap, NULL, "Start/stop capture pipeline (sof cap <start|stop>)", cmd_sof_cap),
+	SHELL_CMD(vol, NULL, "Set volume in dB (sof vol <pb|cap> <dB>)", cmd_sof_vol),
 	SHELL_CMD(mode, NULL, "Configure interface clock mode (sof mode <i2s|pdm> <master|slave>)", cmd_sof_mode),
 	SHELL_CMD(eq, NULL, "Control Equalizer bypass (sof eq <playback|capture> <enable|bypass>)", cmd_sof_eq),
 	SHELL_CMD(drc, NULL, "Control DRC bypass (sof drc <enable|bypass>)", cmd_sof_drc),
