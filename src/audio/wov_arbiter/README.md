@@ -765,38 +765,80 @@ cp /usr/share/alsa/alsa.conf $ALSA_TMP/
 ln -sf $TPLG2/include  $ALSA_TMP/include
 ln -sf $TPLG2/platform $ALSA_TMP/platform
 
-ALSA_CONFIG_DIR=$ALSA_TMP alsatplg \
+# 1. Standard 2-Channel Multi-WOV Topology (with SRC 48k -> 16k)
+ALSA_CONFIG_DIR=$ALSA_TMP ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology alsatplg \
     -I $TPLG2 -p \
     -c tools/topology/topology2/dmic-wov-multi-manifest.conf \
     -o /tmp/sof-tgl-dmic-wov-multi.tplg
+
+# 2. Native 16 kHz 4-Channel Multi-WOV Topology (No SRC, with embedded NHLT)
+ALSA_CONFIG_DIR=$ALSA_TMP ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology alsatplg \
+    -I $TPLG2 -p \
+    -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
+    -o /tmp/sof-tgl-dmic-wov-multi-4ch.tplg
 ```
 
 `ALSA_CONFIG_DIR` must point to a directory that contains `alsa.conf` plus
-`include/` and `platform/` symlinks into `topology2/`.  The `$(pwd)/tools/topology/topology2`
-directory alone does not satisfy this requirement because `/usr/share/alsa/include`
-is absent on most build machines.
+`include/` and `platform/` symlinks into `topology2/`. `ALSA_TOPOLOGY_PLUGIN_DIR` points to
+the directory containing `libalsatplg_module_nhlt.so` so the NHLT preprocessor plugin can
+generate and embed the hardware ACPI NHLT table into the manifest binary.
 
 Copy the compiled topology to the DUT:
 
 ```bash
-scp /tmp/sof-tgl-dmic-wov-multi.tplg \
-    root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/sof-tgl-dmic-wov-multi.tplg
+scp /tmp/sof-tgl-dmic-wov-multi-4ch.tplg \
+    root@<dut>:/lib/firmware/intel/sof-ipc4-tplg/sof-tgl-dmic-wov-multi-4ch.tplg
 ```
 
-Tell the SOF driver which topology to load (edit `/etc/modprobe.d/sof.conf` on the DUT):
+### BIOS NHLT Table Override (`sof_use_tplg_nhlt=1`)
 
-```
-# /etc/modprobe.d/sof.conf (TGL / spider)
-options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-tgl-dmic-wov-multi.tplg
+On development DUTs (such as Spider / Tiger Lake), the BIOS ACPI NHLT table may have
+corrupted checksums or lack endpoint descriptors for non-standard DMIC clock rates
+(such as opening DMIC natively at 16 kHz across 4 channels without an SRC downsampler).
+
+The SOF Linux kernel driver supports **overriding the BIOS NHLT table** using the NHLT
+table embedded in the topology manifest binary.
+
+#### 1. How Topology NHLT is Embedded
+In the topology manifest (`dmic-wov-multi-4ch-manifest.conf`):
+- `Define { PREPROCESS_PLUGINS "nhlt" }` enables the NHLT compiler plugin.
+- `Object.Dai.DMIC` defines the DAI parameters (`sample_rate 16000`, `num_pdm_active 2`, 4 active mics).
+- `Object.Base.manifest.1 { nhlt "true" }` packages the NHLT table into a `SOF_MANIFEST_DATA_TYPE_NHLT` (1) TLV data block inside the compiled `.tplg` binary.
+
+#### 2. Enabling NHLT Override in the SOF Driver
+Set `sof_use_tplg_nhlt=1` for the `snd_sof_intel_hda_common` kernel module.
+
+Edit `/etc/modprobe.d/sof.conf` on the DUT:
+
+```ini
+# /etc/modprobe.d/sof.conf
+options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-tgl-dmic-wov-multi-4ch.tplg
+options snd_sof_intel_hda_common sof_use_tplg_nhlt=1
 ```
 
-Or pass directly at `modprobe` time:
+#### 3. Reloading Driver Stack with NHLT Override
+Because `snd_sof_intel_hda_common` is referenced by child modules, unload the SOF stack in dependency order, then reload with `sof_use_tplg_nhlt=1`:
 
 ```bash
-rmmod snd_sof_pci_intel_tgl
-modprobe snd_sof_pci_intel_tgl \
-    tplg_path=intel/sof-ipc4-tplg \
-    tplg_filename=sof-tgl-dmic-wov-multi.tplg
+ssh root@<dut> '
+  rmmod snd_sof_probes snd_sof_ipc_msg_injector snd_sof_fw_gdb \
+        snd_soc_skl_hda_dsp snd_sof_pci_intel_tgl snd_sof_pci_intel_cnl \
+        snd_sof_intel_hda_generic soundwire_intel snd_sof_intel_hda_sdw_bpt \
+        snd_sof_intel_hda_common snd_sof_intel_hda_mlink snd_sof_intel_hda \
+        snd_sof_pci snd_sof_xtensa_dsp snd_sof
+  modprobe snd_sof_intel_hda_common sof_use_tplg_nhlt=1
+  modprobe snd_sof_pci_intel_tgl
+'
+```
+
+#### 4. Verifying NHLT Override on DUT
+```bash
+# Verify kernel parameter is active
+cat /sys/module/snd_sof_intel_hda_common/parameters/sof_use_tplg_nhlt
+# Output: Y
+
+# Verify 4-channel DMIC audio capture
+arecord -D hw:0,11 -c 4 -r 16000 -f S16_LE -d 3 /tmp/wov_4ch.wav
 ```
 
 ### Build Firmware with WOV Arbiter

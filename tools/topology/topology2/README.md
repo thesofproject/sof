@@ -399,3 +399,61 @@ Select the cmake file matching the target platform generation:
 | HDA generic | `tplg-targets-hda-generic.cmake` |
 
 Development and testing topologies go in `development/tplg-targets.cmake`.
+
+---
+
+## NHLT Preprocessor Plugin & BIOS NHLT Override
+
+When targeting hardware configurations not defined in the motherboard's BIOS ACPI NHLT table (e.g. native 16 kHz 4-channel DMIC audio capture), Topology v2 allows generating and embedding the hardware ACPI NHLT configuration table directly into the `.tplg` binary.
+
+### 1. Enabling NHLT Generation in Manifest
+
+In your top-level topology manifest (e.g. `dmic-wov-multi-4ch-manifest.conf`):
+
+```conf
+Define {
+    PREPROCESS_PLUGINS "nhlt"
+}
+
+# Define DAI hardware configuration
+Object.Dai.DMIC [
+    {
+        name           $DMIC_NAME
+        dai_index      $DMIC_DAI_INDEX
+        driver_version $DMIC_DRIVER_VERSION
+        io_clk         38400000
+        sample_rate    16000
+        num_pdm_active 2
+        ...
+    }
+]
+
+# Package NHLT binary blob into topology manifest
+Object.Base.manifest.1 {
+    name "sof_manifest"
+    nhlt "true"
+    ...
+}
+```
+
+### 2. Compiling with NHLT Plugin
+
+Set `ALSA_TOPOLOGY_PLUGIN_DIR` to the directory containing `libalsatplg_module_nhlt.so`:
+
+```bash
+ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
+alsatplg -I tools/topology/topology2 -p \
+    -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
+    -o build/sof-tgl-dmic-wov-multi-4ch.tplg
+```
+
+### 3. Kernel Driver NHLT Override (`sof_use_tplg_nhlt=1`)
+
+To instruct the Linux SOF driver to use the topology-embedded NHLT table instead of the BIOS ACPI table:
+
+```ini
+# /etc/modprobe.d/sof.conf
+options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-tgl-dmic-wov-multi-4ch.tplg
+options snd_sof_intel_hda_common sof_use_tplg_nhlt=1
+```
