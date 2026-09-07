@@ -44,46 +44,47 @@ graph TD
     subgraph P101["Pipeline 101 — Slot 0  (Core 0)"]
         MO0["mixout 0"]
         D0["detect_test\nSlot 0\n(Male 80–170 Hz)"]
-        VIRT0["virtual.wov0_sink\n(out_drv)"]
-        MO0 --> D0 --> VIRT0
+        MO0 --> D0
     end
 
     subgraph P102["Pipeline 102 — Slot 1  (Core 0)"]
         MO1["mixout 1"]
         D1["detect_test\nSlot 1\n(Female 175–270 Hz)"]
-        VIRT1["virtual.wov1_sink\n(out_drv)"]
-        MO1 --> D1 --> VIRT1
+        MO1 --> D1
     end
 
     subgraph P103["Pipeline 103 — Slot 2 (Multi-slot)  (Core 1)"]
         MO2["mixout 2"]
         D2["detect_test\nSlot 2\n(Child 275–500 Hz)"]
-        VIRT2["virtual.wov2_sink\n(out_drv)"]
-        MO2 --> D2 --> VIRT2
+        MO2 --> D2
     end
 
     subgraph P104["Pipeline 104 — Host Regular PCM Capture  (Core 0)"]
-        MO_HOST["mixout host / wov_arbiter"]
+        ARB["wov_arbiter\n(3 input pins)"]
         HC["host-copier\npcmC0D11c (hw:0,11)\n'DMIC Multi-WOV'"]
-        MO_HOST --> HC
+        ARB --> HC
     end
 
     MIX --> MO0
     MIX --> MO1
     MIX --> MO2
-    MIX --> MO_HOST
 
-    D0 -- "Notifier WOV_DETECT\n(slot_id=0)" --> MO_HOST
-    D1 -- "Notifier WOV_DETECT\n(slot_id=1)" --> MO_HOST
-    D2 -- "Notifier WOV_DETECT\n(slot_id=2)" --> MO_HOST
-    MO_HOST -- "Notifier WOV_CTRL\n(PAUSE/RESUME)" --> D0
-    MO_HOST -- "Notifier WOV_CTRL\n(PAUSE/RESUME)" --> D1
-    MO_HOST -- "Notifier WOV_CTRL\n(PAUSE/RESUME)" --> D2
+    D0 --> ARB
+    D1 --> ARB
+    D2 --> ARB
+
+    D0 -- "Notifier WOV_DETECT\n(slot_id=0)" --> ARB
+    D1 -- "Notifier WOV_DETECT\n(slot_id=1)" --> ARB
+    D2 -- "Notifier WOV_DETECT\n(slot_id=2)" --> ARB
+    ARB -- "Notifier WOV_CTRL\n(PAUSE/RESUME)" --> D0
+    ARB -- "Notifier WOV_CTRL\n(PAUSE/RESUME)" --> D1
+    ARB -- "Notifier WOV_CTRL\n(PAUSE/RESUME)" --> D2
 
     style KPB fill:#1c4966,stroke:#555
     style D0  fill:#663300,stroke:#555
     style D1  fill:#660033,stroke:#555
     style D2  fill:#003366,stroke:#555
+    style ARB fill:#4a235a,stroke:#555
     style HC  fill:#2d5a27,stroke:#555
 ```
 
