@@ -146,7 +146,6 @@ add_library(mww_tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/kernels/internal/quantization_util.cc
 	${TFLM_PATH}/tensorflow/lite/kernels/internal/tensor_ctypes.cc
 	${TFLM_PATH}/tensorflow/lite/kernels/internal/portable_tensor_utils.cc
-	${TFLM_PATH}/tensorflow/lite/kernels/internal/reference/comparisons.cc
 	${TFLM_PATH}/tensorflow/lite/kernels/internal/reference/portable_tensor_utils.cc
 	${TFLM_PATH}/tensorflow/lite/kernels/kernel_util.cc
 	${TFLM_PATH}/tensorflow/lite/micro/kernels/kernel_util.cc
@@ -178,7 +177,6 @@ add_library(mww_tflm_lib STATIC
 	${TFLM_PATH}/tensorflow/lite/micro/micro_resource_variable.cc
 	${TFLM_PATH}/tensorflow/lite/micro/micro_interpreter_context.cc
 	${TFLM_PATH}/tensorflow/lite/micro/fake_micro_context.cc
-	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/ibuffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/persistent_arena_buffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/recording_single_arena_buffer_allocator.cc
 	${TFLM_PATH}/tensorflow/lite/micro/arena_allocator/non_persistent_arena_buffer_allocator.cc
