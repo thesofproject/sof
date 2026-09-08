@@ -75,3 +75,9 @@ arecord -D hw:0,10 -c 2 -r 16000 -f S16_LE -d 3 /tmp/ecns_stereo.wav
 ```bash
 arecord -D hw:0,11 -c 1 -r 16000 -f S16_LE -d 3 /tmp/wov_mono.wav
 ```
+
+---
+
+## Further Reading
+- [Developer Integration Guide: Custom WOV & ECNS Algorithms](../../../doc/developer_guides/wov_ecns_integration_guide.md)
+

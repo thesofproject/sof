@@ -187,3 +187,9 @@ amixer -c 0 cget name='wov_active_slot'
 ### 2. Audio Capture Endpoints
 - **Stereo ECNS Stream** (PCM 10): `arecord -D hw:0,10 -f S16_LE -r 16000 -c 2 -d 5 /tmp/ecns.wav`
 - **Mono WOV Capture Stream** (PCM 11): `arecord -D hw:0,11 -f S16_LE -r 16000 -c 1 -d 5 /tmp/wov.wav` (supports both `S16_LE` and `S32_LE`).
+
+---
+
+## Further Reading
+- [Developer Integration Guide: Custom WOV & ECNS Algorithms](../../../doc/developer_guides/wov_ecns_integration_guide.md)
+
