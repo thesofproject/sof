@@ -72,7 +72,7 @@ static int igo_nr_capture_s16(struct comp_data *cd,
 	int16_t const *x, *x_start, *x_end;
 	int16_t *y1, *y2, *y_start, *y_end;
 	int16_t sample;
-	int x_size, y_size;
+	size_t x_size, y_size;
 	size_t request_size = frames * source_get_frame_bytes(source);
 	int sink_samples_without_wrap;
 	int samples_without_wrap;
@@ -179,7 +179,7 @@ static int igo_nr_capture_s24(struct comp_data *cd,
 {
 	int32_t const *x, *x_start, *x_end;
 	int32_t *y1, *y2, *y_start, *y_end;
-	int x_size, y_size;
+	size_t x_size, y_size;
 	size_t request_size = frames * source_get_frame_bytes(source);
 	int sink_samples_without_wrap;
 	int samples_without_wrap;
@@ -285,7 +285,7 @@ static int igo_nr_capture_s32(struct comp_data *cd,
 {
 	int32_t const *x, *x_start, *x_end;
 	int32_t *y1, *y2, *y_start, *y_end;
-	int x_size, y_size;
+	size_t x_size, y_size;
 	size_t request_size = frames * source_get_frame_bytes(source);
 	int sink_samples_without_wrap;
 	int samples_without_wrap;
