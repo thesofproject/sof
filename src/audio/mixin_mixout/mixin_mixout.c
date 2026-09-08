@@ -717,6 +717,12 @@ static int mixin_prepare(struct processing_module *mod,
 	int ret;
 
 	comp_info(dev, "entry");
+
+	if (!num_of_sinks) {
+		comp_err(dev, "no sink buffer");
+		return -ENOTCONN;
+	}
+
 #if CONFIG_XRUN_NOTIFICATIONS_ENABLE
 	md->eos_delay_configured = false;
 #endif
@@ -787,11 +793,16 @@ static int mixout_prepare(struct processing_module *mod,
 	struct mixout_data *md;
 	int ret, i;
 
+	comp_dbg(dev, "entry");
+
+	if (!num_of_sinks) {
+		comp_err(dev, "no sink buffer");
+		return -ENOTCONN;
+	}
+
 	ret = mixout_params(mod);
 	if (ret < 0)
 		return ret;
-
-	comp_dbg(dev, "entry");
 
 	/*
 	 * Since mixout sink buffer stream is reset on .prepare(), let's
