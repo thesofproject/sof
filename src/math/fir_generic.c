@@ -100,19 +100,31 @@ int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 
 	/* Part 1, loop n1 times */
 	n1 = MIN(n1, taps);
-	for (n = 0; n < n1; n++) {
-		y += (int64_t)(*coef) * (*data);
-		coef++;
-		data--;
+	int n1_2 = n1 & ~1;
+	for (n = 0; n < n1_2; n += 2) {
+		uint32_t c32 = *(const uint32_t *)coef;
+		coef += 2;
+		y += (int64_t)(int16_t)c32 * data[0];
+		y += (int64_t)(int16_t)(c32 >> 16) * data[-1];
+		data -= 2;
+	}
+	for (; n < n1; n++) {
+		y += (int64_t)(*coef++) * (*data--);
 	}
 
 	/* Part 2, un-wrap data, continue n2 times */
 	n2 = taps - n1;
 	data = &fir->delay[length - 1];
-	for (n = 0; n < n2; n++) {
-		y += (int64_t)(*coef) * (*data);
-		coef++;
-		data--;
+	int n2_2 = n2 & ~1;
+	for (n = 0; n < n2_2; n += 2) {
+		uint32_t c32 = *(const uint32_t *)coef;
+		coef += 2;
+		y += (int64_t)(int16_t)c32 * data[0];
+		y += (int64_t)(int16_t)(c32 >> 16) * data[-1];
+		data -= 2;
+	}
+	for (; n < n2; n++) {
+		y += (int64_t)(*coef++) * (*data--);
 	}
 
 	/* Q2.46 -> Q2.31, saturate to Q1.31 */
@@ -158,11 +170,28 @@ void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1, int32_t *
 	/* Part 1, loop n1 times */
 	sample1 = x1;
 	n1 = MIN(n1, taps);
-	for (i = 0; i < n1; i++) {
-		tap = *coef;
-		coef++;
-		sample0 = *data;
-		data--;
+	int n1_2x = n1 & ~1;
+	for (i = 0; i < n1_2x; i += 2) {
+		uint32_t c32 = *(const uint32_t *)coef;
+		int16_t c0 = (int16_t)c32;
+		int16_t c1 = (int16_t)(c32 >> 16);
+		coef += 2;
+
+		int32_t d0 = data[0];
+		int32_t d1 = data[-1];
+		data -= 2;
+
+		a1 += (int64_t)c0 * sample1;
+		a0 += (int64_t)c0 * d0;
+
+		a1 += (int64_t)c1 * d0;
+		a0 += (int64_t)c1 * d1;
+
+		sample1 = d1;
+	}
+	for (; i < n1; i++) {
+		tap = *coef++;
+		sample0 = *data--;
 		a1 += (int64_t)tap * sample1;
 		a0 += (int64_t)tap * sample0;
 		sample1 = sample0;
@@ -171,11 +200,28 @@ void fir_32x16_2x(struct fir_state_32x16 *fir, int32_t x0, int32_t x1, int32_t *
 	/* Part 2, un-wrap data, continue n2 times */
 	n2 = taps - n1;
 	data = &fir->delay[length - 1];
-	for (i = 0; i < n2; i++) {
-		tap = *coef;
-		coef++;
-		sample0 = *data;
-		data--;
+	int n2_2x = n2 & ~1;
+	for (i = 0; i < n2_2x; i += 2) {
+		uint32_t c32 = *(const uint32_t *)coef;
+		int16_t c0 = (int16_t)c32;
+		int16_t c1 = (int16_t)(c32 >> 16);
+		coef += 2;
+
+		int32_t d0 = data[0];
+		int32_t d1 = data[-1];
+		data -= 2;
+
+		a1 += (int64_t)c0 * sample1;
+		a0 += (int64_t)c0 * d0;
+
+		a1 += (int64_t)c1 * d0;
+		a0 += (int64_t)c1 * d1;
+
+		sample1 = d1;
+	}
+	for (; i < n2; i++) {
+		tap = *coef++;
+		sample0 = *data--;
 		a1 += (int64_t)tap * sample1;
 		a0 += (int64_t)tap * sample0;
 		sample1 = sample0;

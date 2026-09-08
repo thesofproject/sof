@@ -51,7 +51,7 @@ if(CONFIG_MATH_FIR STREQUAL "m" AND DEFINED CONFIG_LLEXT)
   add_subdirectory(fir_llext ${PROJECT_BINARY_DIR}/aux1_fir_llext)
   add_dependencies(app aux1_fir)
 elseif(CONFIG_MATH_FIR)
-  list(APPEND base_files fir_generic.c fir_hifi2ep.c fir_hifi3.c fir_hifi5.c)
+  list(APPEND base_files fir_generic.c fir_hifi2ep.c fir_hifi3.c fir_hifi5.c fir_float.c)
 endif()
 
 if(CONFIG_MATH_FFT)
