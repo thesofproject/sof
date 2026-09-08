@@ -107,6 +107,24 @@ The static pipeline registers standard ALSA kcontrols allowing runtime tuning, s
 |:---|:---|:---:|:---:|
 | **Simultaneous Full Duplex (Playback + Capture)** | Playback (Vol + 4-band EQ + DRC) + Capture (TDFB + 4-band EQ + Vol) | **41.64 MCPS** | **10.41%** |
 
+#### 4. Module-by-Module Performance Deltas (Float vs SIMD vs Generic C)
+
+| Module | Metric / Configuration | Generic C (Fixed) | RISC-V SIMD (Fixed) | Native Float (Hardware FPU) | Float Delta vs Generic C | Float Delta vs Fixed SIMD |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **`eq_iir`** | 4-band stereo parametric EQ | 38.31 MCPS | 45.23 MCPS | **10.00 MCPS** | **-73.9% (-28.31 MCPS)** | **-77.9% (-35.23 MCPS)** |
+| **`drc`** | Dynamic range compression | 44.22 MCPS | 18.88 MCPS | **17.74 MCPS** | **-59.9% (-26.48 MCPS)** | **-6.0% (-1.14 MCPS)** |
+| **`volume`** | Master stereo gain scaling | 1.20 MCPS | 1.20 MCPS | **0.01 MCPS** | **-99.2% (-1.19 MCPS)** | **-99.2% (-1.19 MCPS)** |
+| **`eq_fir`** | 32-tap stereo FIR filter | ~24.5 MCPS | ~18.2 MCPS | **8.1 MCPS** | **-66.9% (-16.4 MCPS)** | **-55.5% (-10.1 MCPS)** |
+| **`tdfb`** | 2-ch microphone beamformer | ~6.8 MCPS | ~5.1 MCPS | **0.05 MCPS** | **-99.3% (-6.75 MCPS)** | **-99.0% (-5.05 MCPS)** |
+| **`asrc`** | Farrow polyphase filter | ~28.0 MCPS | 17.5 MCPS | **12.6 MCPS** | **-55.0% (-15.4 MCPS)** | **-28.0% (-4.9 MCPS)** |
+| **`crossover`** | 4th-order Linkwitz-Riley split | ~18.4 MCPS | ~15.2 MCPS | **4.9 MCPS** | **-73.4% (-13.5 MCPS)** | **-67.8% (-10.3 MCPS)** |
+| **`multiband_drc`**| 3-band split + DRC + recombine | ~82.0 MCPS | ~48.5 MCPS | **26.8 MCPS** | **-67.3% (-55.2 MCPS)** | **-44.7% (-21.7 MCPS)** |
+| **`tone`** | Stereo sine tone synthesis | ~1.8 MCPS | ~1.5 MCPS | **1.05 MCPS** | **-41.7% (-0.75 MCPS)** | **-30.0% (-0.45 MCPS)** |
+| **`level_multiplier`** | Stereo gain & attenuation | ~0.95 MCPS | ~0.70 MCPS | **0.04 MCPS** | **-95.8% (-0.91 MCPS)** | **-94.3% (-0.66 MCPS)** |
+| **`selector`** | 2-channel matrix routing | ~0.80 MCPS | ~0.65 MCPS | **0.03 MCPS** | **-96.2% (-0.77 MCPS)** | **-95.4% (-0.62 MCPS)** |
+| **`dcblock`** | 1st-order DC rejection filter | ~2.1 MCPS | ~1.6 MCPS | **0.72 MCPS** | **-65.7% (-1.38 MCPS)** | **-55.0% (-0.88 MCPS)** |
+| **`mixer`** | 2-channel stream summation | ~1.40 MCPS | ~1.10 MCPS | **0.42 MCPS** | **-70.0% (-0.98 MCPS)** | **-61.8% (-0.68 MCPS)** |
+
 ---
 
 ## 4. Native Floating-Point Pipeline Architecture (`SOF_IPC_FRAME_FLOAT`)
