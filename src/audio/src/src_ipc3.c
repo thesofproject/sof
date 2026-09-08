@@ -138,6 +138,12 @@ int src_prepare_general(struct processing_module *mod,
 		cd->polyphase_func = src_polyphase_stage_cir;
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+		cd->data_shift = 0;
+		cd->polyphase_func = src_polyphase_stage_cir_float;
+		break;
+#endif /* CONFIG_FORMAT_FLOAT */
 	default:
 		comp_err(dev, "invalid format %d", source_format);
 		ret = -EINVAL;

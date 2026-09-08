@@ -139,6 +139,10 @@ void src_polyphase_stage_cir(struct src_stage_prm *s);
 void src_polyphase_stage_cir_s16(struct src_stage_prm *s);
 #endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_FLOAT
+void src_polyphase_stage_cir_float(struct src_stage_prm *s);
+#endif /* CONFIG_FORMAT_FLOAT */
+
 int32_t src_input_rates(void);
 
 int32_t src_output_rates(void);
