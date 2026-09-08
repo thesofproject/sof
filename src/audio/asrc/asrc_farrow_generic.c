@@ -119,6 +119,44 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 	}
 }
 
+void asrc_fir_filter_float(struct asrc_farrow *src_obj, float **output_buffers,
+			   int index_output_frame)
+{
+	float prod;
+	const float *filter_p;
+	float *buffer_p;
+	int ch;
+	int n;
+	int i;
+
+	if (src_obj->output_format == ASRC_IOF_INTERLEAVED)
+		i = src_obj->num_channels * index_output_frame;
+	else
+		i = index_output_frame;
+
+	for (ch = 0; ch < src_obj->num_channels; ch++) {
+		filter_p = (const float *)&src_obj->impulse_response[0];
+		buffer_p = (float *)&src_obj->ring_buffers32[ch]
+			[src_obj->buffer_write_position];
+
+		prod = 0.0f;
+
+		/* 4-way unrolled FPU MACs via native fmadd.s */
+		for (n = 0; n <= src_obj->filter_length - 4; n += 4) {
+			prod += buffer_p[0] * filter_p[0];
+			prod += buffer_p[1] * filter_p[1];
+			prod += buffer_p[2] * filter_p[2];
+			prod += buffer_p[3] * filter_p[3];
+			buffer_p += 4;
+			filter_p += 4;
+		}
+		for (; n < src_obj->filter_length; n++)
+			prod += (*buffer_p++) * (*filter_p++);
+
+		output_buffers[ch][i] = prod;
+	}
+}
+
 /* + ALGORITHM SPECIFIC FUNCTIONS */
 
 void asrc_calc_impulse_response_n4(struct asrc_farrow *src_obj)
