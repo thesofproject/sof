@@ -156,6 +156,16 @@ int platform_init(struct sof *sof)
 	mp1_mailbox_send(ACPSMC_MSG_PllPowerState, ACP_AUDIOPLL_POWER_ON_REQ);
 	acp_change_clock_notify(CLK_MAX_CPU_HZ);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
+
+	/*
+	 * Clear DMA linked-list IO stutter and PWA defaults before
+	 * channel setup. ACP_DMA_CH_LINKED_LIST_EN DMAChIOStutEn
+	 * (bits 24:15) defaults to all 1s.
+	 */
+	io_reg_write(PU_REGISTER_BASE + ACP_DMA_CH_LINKED_LIST_EN, 0);
+	io_reg_write(PU_REGISTER_BASE + ACP_DMA_IO_STUT_TIMER_LIMIT, 0);
+	io_reg_write(PU_REGISTER_BASE + ACP_DMA_CH_PWA_CTRL, 0);
+
 	/* init DMA */
 	ret = dmac_init(sof);
 	if (ret < 0) {
