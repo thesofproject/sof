@@ -582,20 +582,60 @@ static int ffmpeg_dec_process(struct processing_module *mod,
 	ffmpeg_dec_copy_from_circular(cd->in_buf, sp, sstart, sbytes, req);
 	memset(cd->in_buf + req, 0, FFMPEG_DEC_INPUT_PADDING);
 
+	/*
+	 * Fast-path direct-to-sink decode:
+	 * When no staged PCM remains from a previous cycle and the sink circular
+	 * buffer has sufficient contiguous space to hold a full decoded frame,
+	 * decode and interleave directly into the sink buffer. This bypasses
+	 * cd->pcm_buf and eliminates an entire intermediate copy per audio sample.
+	 */
+	bool direct_sink = false;
+	uint8_t *dec_out = cd->pcm_buf;
+	size_t dec_out_size = cd->pcm_buf_size;
+	size_t max_frame = (size_t)ffmpeg_dec_max_frame_samples(cd->codec) *
+			   (cd->out_frame_bytes ? (size_t)cd->out_frame_bytes : 8);
+
+	if (!cd->pcm_avail && sink_get_free_size(sink) >= max_frame) {
+		void *dst, *buf_start;
+		size_t buf_size;
+
+		if (sink_get_buffer(sink, max_frame, &dst, &buf_start, &buf_size) == 0) {
+			size_t contiguous = (size_t)((const uint8_t *)buf_start + buf_size -
+						     (const uint8_t *)dst);
+
+			if (contiguous >= max_frame) {
+				direct_sink = true;
+				dec_out = (uint8_t *)dst;
+				dec_out_size = contiguous;
+			} else {
+				/* Not enough contiguous space before circular wrap */
+				sink_commit_buffer(sink, 0);
+			}
+		}
+	}
+
 	ret = cd->backend->decode(mod, cd->in_buf, req, &consumed,
-				  cd->pcm_buf, cd->pcm_buf_size, &produced);
+				  dec_out, dec_out_size, &produced);
 	source_release_data(src, consumed);
 	if (ret) {
+		if (direct_sink)
+			sink_commit_buffer(sink, 0);
 		comp_err(dev, "decode failed %d", ret);
 		return ret;
 	}
 
-	cd->pcm_rd = 0;
-	cd->pcm_avail = produced;
-
-	/* Drain whatever fits this cycle; the rest goes out on the next one. */
-	if (cd->pcm_avail)
-		ffmpeg_dec_drain_pcm(cd, sink);
+	if (direct_sink) {
+		/* Decoded PCM is already in the sink buffer - commit directly! */
+		sink_commit_buffer(sink, produced);
+		cd->pcm_rd = 0;
+		cd->pcm_avail = 0;
+	} else {
+		/* Fallback: PCM was staged in cd->pcm_buf; drain to sink */
+		cd->pcm_rd = 0;
+		cd->pcm_avail = produced;
+		if (cd->pcm_avail)
+			ffmpeg_dec_drain_pcm(cd, sink);
+	}
 	/*
 	 * produced == 0 is NOT end-of-stream. A compressed chunk can end mid-frame
 	 * (variable-size ADTS AAC frames routinely do), leaving the parser holding a

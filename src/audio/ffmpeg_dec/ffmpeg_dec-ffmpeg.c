@@ -262,21 +262,32 @@ static int ffmpeg_dec_ff_decode(struct processing_module *mod,
 		return 0;
 
 	/*
-	 * FFmpeg decoders read AV_INPUT_BUFFER_PADDING_SIZE bytes past the
-	 * packet payload (the bitstream reader over-reads its word cache). The
-	 * parser can hand back a packet pointing into the unpadded host input,
-	 * so copy the payload into the padded scratch and zero the tail before
-	 * decoding.
+	 * Zero-copy fast path: FFmpeg decoders read AV_INPUT_BUFFER_PADDING_SIZE bytes
+	 * past the packet payload. If the packet is already padded, avoid copying:
+	 *   1. ff->pkt->data is in ff->parser->buffer: FFmpeg allocates with padding.
+	 *   2. ff->pkt->data ends at in + in_size: ffmpeg_dec_process() zeroed
+	 *      FFMPEG_DEC_INPUT_PADDING bytes immediately at that offset.
+	 * Only copy to ff->pktbuf if the packet is in the interior of in_buf.
 	 */
 	{
-		size_t pktbuf_sz = cd->out_frame_bytes ?
-			(size_t)cd->out_frame_bytes * 4096 : 65536;
+		bool direct_packet = false;
 
-		if ((size_t)ff->pkt->size + AV_INPUT_BUFFER_PADDING_SIZE <= pktbuf_sz) {
-			memcpy_s(ff->pktbuf, pktbuf_sz, ff->pkt->data, ff->pkt->size);
-			memset(ff->pktbuf + ff->pkt->size, 0,
-			       AV_INPUT_BUFFER_PADDING_SIZE);
-			ff->pkt->data = ff->pktbuf;
+		if (ff->pkt->data < in || ff->pkt->data >= in + in_size) {
+			direct_packet = true;
+		} else if (ff->pkt->data + ff->pkt->size == in + in_size) {
+			direct_packet = true;
+		}
+
+		if (!direct_packet) {
+			size_t pktbuf_sz = cd->out_frame_bytes ?
+				(size_t)cd->out_frame_bytes * 4096 : 65536;
+
+			if ((size_t)ff->pkt->size + AV_INPUT_BUFFER_PADDING_SIZE <= pktbuf_sz) {
+				memcpy_s(ff->pktbuf, pktbuf_sz, ff->pkt->data, ff->pkt->size);
+				memset(ff->pktbuf + ff->pkt->size, 0,
+				       AV_INPUT_BUFFER_PADDING_SIZE);
+				ff->pkt->data = ff->pktbuf;
+			}
 		}
 	}
 
