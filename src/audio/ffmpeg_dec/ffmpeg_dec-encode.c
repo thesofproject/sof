@@ -391,15 +391,43 @@ int ffmpeg_enc_mod_process(struct processing_module *mod,
 	/* S32 interleaved -> S16 (planar or packed per the encoder format). */
 	in = (const int32_t *)e->pcm_in;
 	planar = av_sample_fmt_is_planar(e->frame->format);
-	for (i = 0; i < e->nb; i++)
-		for (c = 0; c < ch; c++) {
-			int16_t s = (int16_t)(in[i * ch + c] >> 16);
-
-			if (planar)
-				((int16_t *)e->frame->data[c])[i] = s;
-			else
-				((int16_t *)e->frame->data[0])[i * ch + c] = s;
+	if (planar && ch == 2) {
+		int16_t *out0 = (int16_t *)e->frame->data[0];
+		int16_t *out1 = (int16_t *)e->frame->data[1];
+		for (i = 0; i + 4 <= e->nb; i += 4) {
+			out0[i + 0] = (int16_t)(in[0] >> 16);
+			out1[i + 0] = (int16_t)(in[1] >> 16);
+			out0[i + 1] = (int16_t)(in[2] >> 16);
+			out1[i + 1] = (int16_t)(in[3] >> 16);
+			out0[i + 2] = (int16_t)(in[4] >> 16);
+			out1[i + 2] = (int16_t)(in[5] >> 16);
+			out0[i + 3] = (int16_t)(in[6] >> 16);
+			out1[i + 3] = (int16_t)(in[7] >> 16);
+			in += 8;
 		}
+		for (; i < e->nb; i++) {
+			out0[i] = (int16_t)(in[0] >> 16);
+			out1[i] = (int16_t)(in[1] >> 16);
+			in += 2;
+		}
+	} else if (planar) {
+		for (c = 0; c < ch; c++) {
+			int16_t *out = (int16_t *)e->frame->data[c];
+			for (i = 0; i < e->nb; i++)
+				out[i] = (int16_t)(in[i * ch + c] >> 16);
+		}
+	} else {
+		int16_t *out = (int16_t *)e->frame->data[0];
+		size_t total = (size_t)e->nb * ch;
+		for (i = 0; i + 4 <= total; i += 4) {
+			out[i + 0] = (int16_t)(in[i + 0] >> 16);
+			out[i + 1] = (int16_t)(in[i + 1] >> 16);
+			out[i + 2] = (int16_t)(in[i + 2] >> 16);
+			out[i + 3] = (int16_t)(in[i + 3] >> 16);
+		}
+		for (; i < total; i++)
+			out[i] = (int16_t)(in[i] >> 16);
+	}
 
 	ret = avcodec_send_frame(e->avctx, e->frame);
 	av_frame_unref(e->frame);
