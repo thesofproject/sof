@@ -222,10 +222,21 @@ static int pcm_convert_s16_to_s24(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S32_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = *src << 8;
-			src++;
-			dst++;
+		size_t n8 = n & ~7;
+		for (i = 0; i < n8; i += 8) {
+			dst[0] = (int32_t)src[0] << 8;
+			dst[1] = (int32_t)src[1] << 8;
+			dst[2] = (int32_t)src[2] << 8;
+			dst[3] = (int32_t)src[3] << 8;
+			dst[4] = (int32_t)src[4] << 8;
+			dst[5] = (int32_t)src[5] << 8;
+			dst[6] = (int32_t)src[6] << 8;
+			dst[7] = (int32_t)src[7] << 8;
+			src += 8;
+			dst += 8;
+		}
+		for (; i < n; i++) {
+			*dst++ = (int32_t)*src++ << 8;
 		}
 	}
 
@@ -249,10 +260,17 @@ static int pcm_convert_s24_to_s16(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S16_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src), 23, 15));
-			src++;
-			dst++;
+		size_t n4 = n & ~3;
+		for (i = 0; i < n4; i += 4) {
+			dst[0] = sat_int16(Q_SHIFT_RND(sign_extend_s24(src[0]), 23, 15));
+			dst[1] = sat_int16(Q_SHIFT_RND(sign_extend_s24(src[1]), 23, 15));
+			dst[2] = sat_int16(Q_SHIFT_RND(sign_extend_s24(src[2]), 23, 15));
+			dst[3] = sat_int16(Q_SHIFT_RND(sign_extend_s24(src[3]), 23, 15));
+			src += 4;
+			dst += 4;
+		}
+		for (; i < n; i++) {
+			*dst++ = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src++), 23, 15));
 		}
 	}
 
@@ -280,10 +298,21 @@ static int pcm_convert_s16_to_s32(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S32_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = *src << 16;
-			src++;
-			dst++;
+		size_t n8 = n & ~7;
+		for (i = 0; i < n8; i += 8) {
+			dst[0] = (int32_t)src[0] << 16;
+			dst[1] = (int32_t)src[1] << 16;
+			dst[2] = (int32_t)src[2] << 16;
+			dst[3] = (int32_t)src[3] << 16;
+			dst[4] = (int32_t)src[4] << 16;
+			dst[5] = (int32_t)src[5] << 16;
+			dst[6] = (int32_t)src[6] << 16;
+			dst[7] = (int32_t)src[7] << 16;
+			src += 8;
+			dst += 8;
+		}
+		for (; i < n; i++) {
+			*dst++ = (int32_t)*src++ << 16;
 		}
 	}
 
@@ -307,10 +336,17 @@ static int pcm_convert_s32_to_s16(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S16_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
-			src++;
-			dst++;
+		size_t n4 = n & ~3;
+		for (i = 0; i < n4; i += 4) {
+			dst[0] = sat_int16(Q_SHIFT_RND(src[0], 31, 15));
+			dst[1] = sat_int16(Q_SHIFT_RND(src[1], 31, 15));
+			dst[2] = sat_int16(Q_SHIFT_RND(src[2], 31, 15));
+			dst[3] = sat_int16(Q_SHIFT_RND(src[3], 31, 15));
+			src += 4;
+			dst += 4;
+		}
+		for (; i < n; i++) {
+			*dst++ = sat_int16(Q_SHIFT_RND(*src++, 31, 15));
 		}
 	}
 
@@ -338,10 +374,21 @@ static int pcm_convert_s24_to_s32(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S32_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = *src << 8;
-			src++;
-			dst++;
+		size_t n8 = n & ~7;
+		for (i = 0; i < n8; i += 8) {
+			dst[0] = src[0] << 8;
+			dst[1] = src[1] << 8;
+			dst[2] = src[2] << 8;
+			dst[3] = src[3] << 8;
+			dst[4] = src[4] << 8;
+			dst[5] = src[5] << 8;
+			dst[6] = src[6] << 8;
+			dst[7] = src[7] << 8;
+			src += 8;
+			dst += 8;
+		}
+		for (; i < n; i++) {
+			*dst++ = *src++ << 8;
 		}
 	}
 
@@ -365,10 +412,17 @@ static int pcm_convert_s32_to_s24(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S32_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = sat_int24(Q_SHIFT_RND(*src, 31, 23));
-			src++;
-			dst++;
+		size_t n4 = n & ~3;
+		for (i = 0; i < n4; i += 4) {
+			dst[0] = sat_int24(Q_SHIFT_RND(src[0], 31, 23));
+			dst[1] = sat_int24(Q_SHIFT_RND(src[1], 31, 23));
+			dst[2] = sat_int24(Q_SHIFT_RND(src[2], 31, 23));
+			dst[3] = sat_int24(Q_SHIFT_RND(src[3], 31, 23));
+			src += 4;
+			dst += 4;
+		}
+		for (; i < n; i++) {
+			*dst++ = sat_int24(Q_SHIFT_RND(*src++, 31, 23));
 		}
 	}
 
