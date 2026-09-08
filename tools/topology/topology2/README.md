@@ -457,3 +457,137 @@ To instruct the Linux SOF driver to use the topology-embedded NHLT table instead
 options snd_sof tplg_path=intel/sof-ipc4-tplg tplg_filename=sof-tgl-dmic-wov-multi-4ch.tplg
 options snd_sof_intel_hda_common sof_use_tplg_nhlt=1
 ```
+
+---
+
+## Multi-Slot microWakeWord (MWW) 4-Channel Architecture
+
+The 4-channel native 16 kHz DMIC architecture integrates Echo Cancellation & Noise Suppression (ECNS), Key Phrase Buffer (KPB), 3 concurrent microWakeWord (MWW) detector instances, and the WOV Arbiter. The identical pipeline topology structure is shared across **Panther Lake (PTL)**, **Tiger Lake (TGL)**, and **Wildcat Lake (WCL)**.
+
+### Pipeline Topology Diagram
+
+```mermaid
+graph TD
+    subgraph P100["Pipeline 100 — 4ch DMIC Capture  (Core 0, LL 1ms)"]
+        DAI["DAI Copier (dmic01 / dmic16k)\n4ch · 16 kHz · S16_LE\nCh 0,1: Mics | Ch 2,3: Echo Ref"]
+        MIX100["mixin 100.1\n(4ch pass-through)"]
+        DAI --> MIX100
+    end
+
+    subgraph P105["Pipeline 105 — ECNS DP Processing  (Core 0, DP 20ms)"]
+        MO105["mixout 105.1\n(4ch input)"]
+        ECNS["ecns.105.1\n(ECNS DP Module, 20ms = 320 frames)\nCh 0,1: Mic | Ch 2,3: Echo Ref"]
+        MIX105_1["mixin 105.1\nPin 0: Ch 0 Mono Clean"]
+        MIX105_2["mixin 105.2\nPin 1: Ch 0,1 Stereo Clean"]
+        MO105 --> ECNS
+        ECNS -- "Pin 0 (Mono)" --> MIX105_1
+        ECNS -- "Pin 1 (Stereo)" --> MIX105_2
+    end
+
+    subgraph P106["Pipeline 106 — KPB History Buffer  (Core 0, DP 20ms)"]
+        MO106["mixout 106.1\n(1ch mono)"]
+        KPB["kpb.106.1\n(2.0s mono history = 64 KB)\n16 kHz · 1ch · S16_LE"]
+        MIX106["mixin 106.1\n(3-way fanout mixin)"]
+        MO106 --> KPB --> MIX106
+    end
+
+    subgraph P101["Pipeline 101 — Slot 0: 'strawberry'  (Core 0, DP 10ms)"]
+        MO101["mixout 101.1"]
+        MFCC0["mfcc.101.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
+        MWW0["mww.101.1\n(microWakeWord)\nModel: 'strawberry'"]
+        MO101 --> MFCC0 --> MWW0
+    end
+
+    subgraph P102["Pipeline 102 — Slot 1: 'banana'  (Core 0, DP 10ms)"]
+        MO102["mixout 102.1"]
+        MFCC1["mfcc.102.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
+        MWW1["mww.102.1\n(microWakeWord)\nModel: 'banana'"]
+        MO102 --> MFCC1 --> MWW1
+    end
+
+    subgraph P103["Pipeline 103 — Slot 2: 'orange'  (Core 0, DP 10ms)"]
+        MO103["mixout 103.1"]
+        MFCC2["mfcc.103.1\n(Mel-40 10ms Compress)\nIBS: 320B | OBS: 184B"]
+        MWW2["mww.103.1\n(microWakeWord)\nModel: 'orange'"]
+        MO103 --> MFCC2 --> MWW2
+    end
+
+    subgraph P104["Pipeline 104 — WOV Host PCM Capture  (Core 0, LL 1ms)"]
+        ARB["wov-arbiter.104.1\n(3 input pins, 1 output pin\n1ch mono 16 kHz)"]
+        HC11["host-copier.11\n(hw:0,11 · PCM 11)\n1ch · 16 kHz · S16_LE / S32_LE"]
+        ARB --> HC11
+    end
+
+    subgraph P107["Pipeline 107 — ECNS Host PCM Capture  (Core 0, LL 1ms)"]
+        MO107["mixout 107.1\n(2ch stereo)"]
+        HC10["host-copier.10\n(hw:0,10 · PCM 10)\n2ch · 16 kHz · S16_LE / S32_LE"]
+        MO107 --> HC10
+    end
+
+    MIX100 --> MO105
+    MIX105_1 --> MO106
+    MIX105_2 --> MO107
+    MIX106 --> MO101
+    MIX106 --> MO102
+    MIX106 --> MO103
+
+    MWW0 --> ARB
+    MWW1 --> ARB
+    MWW2 --> ARB
+
+    MWW0 -. "Notifier WOV_DETECT (slot=0)" .-> ARB
+    MWW1 -. "Notifier WOV_DETECT (slot=1)" .-> ARB
+    MWW2 -. "Notifier WOV_DETECT (slot=2)" .-> ARB
+    MWW0 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    MWW1 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    MWW2 -. "Notifier KPB_CLIENT_EVT (DRAIN 2s)" .-> KPB
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW0
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW1
+    ARB -. "Notifier WOV_CTRL (PAUSE/RESUME)" .-> MWW2
+
+    style ECNS fill:#1b4f72,stroke:#555,color:#fff
+    style KPB  fill:#1c4966,stroke:#555,color:#fff
+    style MFCC0 fill:#7d6608,stroke:#555,color:#fff
+    style MFCC1 fill:#7d6608,stroke:#555,color:#fff
+    style MFCC2 fill:#7d6608,stroke:#555,color:#fff
+    style MWW0 fill:#922b21,stroke:#555,color:#fff
+    style MWW1 fill:#b7950b,stroke:#555,color:#fff
+    style MWW2 fill:#d35400,stroke:#555,color:#fff
+    style ARB  fill:#4a235a,stroke:#555,color:#fff
+    style HC11 fill:#2d5a27,stroke:#555,color:#fff
+    style HC10 fill:#1e8449,stroke:#555,color:#fff
+```
+
+### Supported Manifests & Compilation Commands
+
+| Platform | Manifest File | Target Binary | DMIC Driver Version |
+|---|---|---|---|
+| **Panther Lake (PTL)** | [`dmic-wov-multi-ptl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf) | `sof-ptl-dmic-wov-multi-4ch.tplg` | 5 |
+| **Tiger Lake (TGL)** | [`dmic-wov-multi-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf) | `sof-tgl-dmic-wov-multi-4ch.tplg` | 1 |
+| **Wildcat Lake (WCL)** | [`dmic-wov-multi-wcl-4ch-manifest.conf`](file:///home/lrg/work/sof-tgl/sof-wov/tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf) | `sof-wcl-dmic-wov-multi-4ch.tplg` | 5 |
+
+Compile all three targets:
+
+```bash
+# 1. Panther Lake (PTL)
+ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
+alsatplg -I tools/topology/topology2 -p \
+    -c tools/topology/topology2/dmic-wov-multi-ptl-4ch-manifest.conf \
+    -o build/sof-ptl-dmic-wov-multi-4ch.tplg
+
+# 2. Tiger Lake (TGL)
+ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
+alsatplg -I tools/topology/topology2 -p \
+    -c tools/topology/topology2/dmic-wov-multi-4ch-manifest.conf \
+    -o build/sof-tgl-dmic-wov-multi-4ch.tplg
+
+# 3. Wildcat Lake (WCL)
+ALSA_CONFIG_DIR=tools/topology/topology2 \
+ALSA_TOPOLOGY_PLUGIN_DIR=/usr/lib/alsa-topology \
+alsatplg -I tools/topology/topology2 -p \
+    -c tools/topology/topology2/dmic-wov-multi-wcl-4ch-manifest.conf \
+    -o build/sof-wcl-dmic-wov-multi-4ch.tplg
+```
+
