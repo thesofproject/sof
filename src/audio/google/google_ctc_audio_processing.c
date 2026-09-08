@@ -12,6 +12,7 @@
 #include <sof/audio/data_blob.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/sink_source_utils.h>
 #include <rtos/init.h>
 
 #include <google_ctc_audio_processing.h>
@@ -58,41 +59,45 @@ static inline float convert_int32_to_float(int32_t data)
 static const int kChunkFrames = 48;
 static const int kMaxChannels = 2;
 
-static void ctc_passthrough(const struct audio_stream *source,
-			    struct audio_stream *sink,
-			    struct input_stream_buffer *input_buffers,
-			    struct output_stream_buffer *output_buffers,
-			    uint32_t frames)
+static int ctc_passthrough(struct sof_source *source, struct sof_sink *sink, size_t frames)
 {
-	int n_ch = audio_stream_get_channels(source);
-	int samples = frames * n_ch;
-
-	audio_stream_copy(source, 0, sink, 0, samples);
-	module_update_buffer_position(&input_buffers[0], &output_buffers[0], frames);
+	return source_to_sink_copy(source, sink, true, frames * source_get_frame_bytes(source));
 }
 
 #if CONFIG_FORMAT_S16LE
-static void ctc_s16_default(struct google_ctc_audio_processing_comp_data *cd,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
-			    struct input_stream_buffer *input_buffers,
-			    struct output_stream_buffer *output_buffers,
-			    uint32_t frames)
+static int ctc_s16_default(struct google_ctc_audio_processing_comp_data *cd,
+			   struct sof_source *source,
+			   struct sof_sink *sink,
+			   size_t frames)
 {
-	int n_ch = audio_stream_get_channels(source);
-	int samples = frames * n_ch;
+	unsigned int n_ch = source_get_channels(source);
+	size_t samples = frames * n_ch;
+	const int16_t *src, *src_start;
+	int16_t *dest, *dest_start;
+	size_t src_samples, dest_samples;
+	size_t samples_to_process, samples_to_written;
+	size_t written_samples = 0;
+	int ret;
 
-	int16_t *src = audio_stream_get_rptr(source);
-	int16_t *dest = audio_stream_get_wptr(sink);
+	if (!cd->enabled)
+		return ctc_passthrough(source, sink, frames);
 
-	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s16(source, src));
-	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s16(sink, dest));
-	int written_samples = 0;
+	ret = source_get_data_s16(source, frames * source_get_frame_bytes(source),
+				  &src, &src_start, &src_samples);
+	if (ret)
+		return ret;
 
-	if (!cd->enabled) {
-		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
-		return;
+	ret = sink_get_buffer_s16(sink, frames * sink_get_frame_bytes(sink),
+				  &dest, &dest_start, &dest_samples);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
 	}
+
+	samples_to_process = MIN(samples, cir_buf_samples_without_wrap_s16(src,
+						src_start + src_samples));
+	samples_to_written = MIN(samples, cir_buf_samples_without_wrap_s16(dest,
+						dest_start + dest_samples));
 
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
@@ -101,7 +106,7 @@ static void ctc_s16_default(struct google_ctc_audio_processing_comp_data *cd,
 			convert_float_to_int16(cd->output[cd->next_avail_output_samples]);
 		cd->next_avail_output_samples++;
 	}
-	for (int i = 0; i < samples_to_process; ++i) {
+	for (size_t i = 0; i < samples_to_process; ++i) {
 		cd->input[cd->input_samples++] = convert_int16_to_float(src[i]);
 		if (cd->input_samples == cd->chunk_frames * n_ch) {
 			GoogleCtcAudioProcessingProcess(cd->state, cd->input, cd->output,
@@ -117,37 +122,50 @@ static void ctc_s16_default(struct google_ctc_audio_processing_comp_data *cd,
 			}
 		}
 	}
-	if (written_samples > 0) {
-		dest = audio_stream_wrap(sink, dest + written_samples);
-		output_buffers->size += audio_stream_frame_bytes(sink) * written_samples / n_ch;
+
+	ret = source_release_data(source, samples_to_process * sizeof(int16_t));
+	if (ret) {
+		sink_commit_buffer(sink, 0);
+		return ret;
 	}
-	src = audio_stream_wrap(source, src + samples_to_process);
-	input_buffers->consumed += audio_stream_frame_bytes(source) * samples_to_process / n_ch;
+	return sink_commit_buffer(sink, written_samples * sizeof(int16_t));
 }
 #endif
 
 #if CONFIG_FORMAT_S24LE
-static void ctc_s24_default(struct google_ctc_audio_processing_comp_data *cd,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
-			    struct input_stream_buffer *input_buffers,
-			    struct output_stream_buffer *output_buffers,
-			    uint32_t frames)
+static int ctc_s24_default(struct google_ctc_audio_processing_comp_data *cd,
+			   struct sof_source *source,
+			   struct sof_sink *sink,
+			   size_t frames)
 {
-	int n_ch = audio_stream_get_channels(source);
-	int samples = frames * n_ch;
+	unsigned int n_ch = source_get_channels(source);
+	size_t samples = frames * n_ch;
+	const int32_t *src, *src_start;
+	int32_t *dest, *dest_start;
+	size_t src_samples, dest_samples;
+	size_t samples_to_process, samples_to_written;
+	size_t written_samples = 0;
+	int ret;
 
-	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dest = audio_stream_get_wptr(sink);
+	if (!cd->enabled)
+		return ctc_passthrough(source, sink, frames);
 
-	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s24(source, src));
-	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s24(sink, dest));
-	int written_samples = 0;
+	ret = source_get_data_s32(source, frames * source_get_frame_bytes(source),
+				  &src, &src_start, &src_samples);
+	if (ret)
+		return ret;
 
-	if (!cd->enabled) {
-		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
-		return;
+	ret = sink_get_buffer_s32(sink, frames * sink_get_frame_bytes(sink),
+				  &dest, &dest_start, &dest_samples);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
 	}
+
+	samples_to_process = MIN(samples, cir_buf_samples_without_wrap_s32(src,
+						src_start + src_samples));
+	samples_to_written = MIN(samples, cir_buf_samples_without_wrap_s32(dest,
+						dest_start + dest_samples));
 
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
@@ -156,7 +174,7 @@ static void ctc_s24_default(struct google_ctc_audio_processing_comp_data *cd,
 			convert_float_to_int32(cd->output[cd->next_avail_output_samples]);
 		cd->next_avail_output_samples++;
 	}
-	for (int i = 0; i < samples_to_process; ++i) {
+	for (size_t i = 0; i < samples_to_process; ++i) {
 		cd->input[cd->input_samples++] = convert_int32_to_float(src[i]);
 		if (cd->input_samples == cd->chunk_frames * n_ch) {
 			GoogleCtcAudioProcessingProcess(cd->state, cd->input, cd->output,
@@ -172,37 +190,50 @@ static void ctc_s24_default(struct google_ctc_audio_processing_comp_data *cd,
 			}
 		}
 	}
-	if (written_samples > 0) {
-		dest = audio_stream_wrap(sink, dest + written_samples);
-		output_buffers->size += audio_stream_frame_bytes(sink) * written_samples / n_ch;
+
+	ret = source_release_data(source, samples_to_process * sizeof(int32_t));
+	if (ret) {
+		sink_commit_buffer(sink, written_samples * sizeof(int32_t));
+		return ret;
 	}
-	src = audio_stream_wrap(source, src + samples_to_process);
-	input_buffers->consumed += audio_stream_frame_bytes(source) * samples_to_process / n_ch;
+	return sink_commit_buffer(sink, written_samples * sizeof(int32_t));
 }
 #endif
 
 #if CONFIG_FORMAT_S32LE
-static void ctc_s32_default(struct google_ctc_audio_processing_comp_data *cd,
-			    const struct audio_stream *source,
-			    struct audio_stream *sink,
-			    struct input_stream_buffer *input_buffers,
-			    struct output_stream_buffer *output_buffers,
-			    uint32_t frames)
+static int ctc_s32_default(struct google_ctc_audio_processing_comp_data *cd,
+			   struct sof_source *source,
+			   struct sof_sink *sink,
+			   size_t frames)
 {
-	int n_ch = audio_stream_get_channels(source);
-	int samples = frames * n_ch;
+	unsigned int n_ch = source_get_channels(source);
+	size_t samples = frames * n_ch;
+	const int32_t *src, *src_start;
+	int32_t *dest, *dest_start;
+	size_t src_samples, dest_samples;
+	size_t samples_to_process, samples_to_written;
+	size_t written_samples = 0;
+	int ret;
 
-	int32_t *src = audio_stream_get_rptr(source);
-	int32_t *dest = audio_stream_get_wptr(sink);
+	if (!cd->enabled)
+		return ctc_passthrough(source, sink, frames);
 
-	int samples_to_process = MIN(samples, audio_stream_samples_without_wrap_s32(source, src));
-	int samples_to_written = MIN(samples, audio_stream_samples_without_wrap_s32(sink, dest));
-	int written_samples = 0;
+	ret = source_get_data_s32(source, frames * source_get_frame_bytes(source),
+				  &src, &src_start, &src_samples);
+	if (ret)
+		return ret;
 
-	if (!cd->enabled) {
-		ctc_passthrough(source, sink, input_buffers, output_buffers, frames);
-		return;
+	ret = sink_get_buffer_s32(sink, frames * sink_get_frame_bytes(sink),
+				  &dest, &dest_start, &dest_samples);
+	if (ret) {
+		source_release_data(source, 0);
+		return ret;
 	}
+
+	samples_to_process = MIN(samples, cir_buf_samples_without_wrap_s32(src,
+						src_start + src_samples));
+	samples_to_written = MIN(samples, cir_buf_samples_without_wrap_s32(dest,
+						dest_start + dest_samples));
 
 	// writes previous processed samples to the output.
 	while (cd->next_avail_output_samples < cd->chunk_frames * n_ch &&
@@ -211,7 +242,7 @@ static void ctc_s32_default(struct google_ctc_audio_processing_comp_data *cd,
 			convert_float_to_int32(cd->output[cd->next_avail_output_samples]);
 		cd->next_avail_output_samples++;
 	}
-	for (int i = 0; i < samples_to_process; ++i) {
+	for (size_t i = 0; i < samples_to_process; ++i) {
 		cd->input[cd->input_samples++] = convert_int32_to_float(src[i]);
 		if (cd->input_samples == cd->chunk_frames * n_ch) {
 			GoogleCtcAudioProcessingProcess(cd->state, cd->input, cd->output,
@@ -227,12 +258,13 @@ static void ctc_s32_default(struct google_ctc_audio_processing_comp_data *cd,
 			}
 		}
 	}
-	if (written_samples > 0) {
-		dest = audio_stream_wrap(sink, dest + written_samples);
-		output_buffers->size += audio_stream_frame_bytes(sink) * written_samples / n_ch;
+
+	ret = source_release_data(source, samples_to_process * sizeof(int32_t));
+	if (ret) {
+		sink_commit_buffer(sink, written_samples * sizeof(int32_t));
+		return ret;
 	}
-	src = audio_stream_wrap(source, src + samples_to_process);
-	input_buffers->consumed += audio_stream_frame_bytes(source) * samples_to_process / n_ch;
+	return sink_commit_buffer(sink, written_samples * sizeof(int32_t));
 }
 #endif
 
@@ -345,20 +377,21 @@ static int ctc_prepare(struct processing_module *mod,
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct comp_buffer *source;
-	int num_channels;
+	struct sof_source *source;
+	unsigned int num_channels;
 	uint8_t *config;
 	int config_size;
 
 	comp_info(mod->dev, "entry");
 
-	source = comp_dev_get_first_data_producer(dev);
-	if (!source) {
-		comp_err(dev, "no source buffer");
+	if (!num_of_sources || !num_of_sinks) {
+		comp_err(dev, "no source or sink buffer");
 		return -ENOTCONN;
 	}
 
-	switch (audio_stream_get_frm_fmt(&source->stream)) {
+	source = sources[0];
+
+	switch (source_get_frm_fmt(source)) {
 #if CONFIG_FORMAT_S16LE
 	case SOF_IPC_FRAME_S16_LE:
 		cd->ctc_func = ctc_s16_default;
@@ -379,8 +412,8 @@ static int ctc_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	num_channels = audio_stream_get_channels(&source->stream);
-	if (num_channels > kMaxChannels) {
+	num_channels = source_get_channels(source);
+	if (num_channels > (unsigned int)kMaxChannels) {
 		comp_err(mod->dev, "invalid number of channels");
 		return -EINVAL;
 	}
@@ -394,7 +427,7 @@ static int ctc_prepare(struct processing_module *mod,
 		config_size = 0;
 	}
 	cd->state = GoogleCtcAudioProcessingCreateWithConfig(cd->chunk_frames,
-							     audio_stream_get_rate(&source->stream),
+							     source_get_rate(source),
 							     config,
 							     config_size);
 	if (!cd->state) {
@@ -423,16 +456,16 @@ static int ctc_reset(struct processing_module *mod)
 }
 
 static int ctc_process(struct processing_module *mod,
-		       struct input_stream_buffer *input_buffers,
-		       int num_input_buffers,
-		       struct output_stream_buffer *output_buffers,
-		       int num_output_buffers)
+		       struct sof_source **sources,
+		       int num_of_sources,
+		       struct sof_sink **sinks,
+		       int num_of_sinks)
 {
 	struct google_ctc_audio_processing_comp_data *cd = module_get_private_data(mod);
-	struct audio_stream *source = input_buffers[0].data;
-	struct audio_stream *sink = output_buffers[0].data;
-	uint32_t frames = input_buffers[0].size;
-
+	struct sof_source *source = sources[0];
+	struct sof_sink *sink = sinks[0];
+	size_t frames = MIN(source_get_data_frames_available(source),
+			    sink_get_free_frames(sink));
 	int ret;
 
 	comp_dbg(mod->dev, "entry");
@@ -443,14 +476,13 @@ static int ctc_process(struct processing_module *mod,
 			return ret;
 	}
 
-	cd->ctc_func(cd, source, sink, &input_buffers[0], &output_buffers[0], frames);
-	return 0;
+	return cd->ctc_func(cd, source, sink, frames);
 }
 
 static const struct module_interface google_ctc_audio_processing_interface = {
 	.init  = ctc_init,
 	.free = ctc_free,
-	.process_audio_stream = ctc_process,
+	.process = ctc_process,
 	.prepare = ctc_prepare,
 	.set_configuration = ctc_set_config,
 	.get_configuration = ctc_get_config,
