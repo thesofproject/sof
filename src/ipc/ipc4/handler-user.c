@@ -256,7 +256,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 
 	switch (cmd) {
 	case SOF_IPC4_PIPELINE_STATE_RUNNING:
-		if (ppl_icd->pipeline->expect_eos) {
+		if (ppl_icd->pipeline->source_comp && ppl_icd->pipeline->source_comp->expect_eos) {
 			ipc_cmd_err(&ipc_tr, "pipeline %d: Can't transition from EOS to RUNNING",
 				    ppl_icd->id);
 			return IPC4_INVALID_REQUEST;
@@ -320,7 +320,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 				    ppl_icd->id, status);
 			return IPC4_INVALID_REQUEST;
 		}
-		ppl_icd->pipeline->expect_eos = true;
+		pipeline_set_eos(ppl_icd->pipeline, true);
 		return 0; /* Must return here. Any other transition clears expect_eos. */
 	/* special case - TODO */
 	case SOF_IPC4_PIPELINE_STATE_SAVED:
@@ -334,7 +334,7 @@ int ipc4_pipeline_prepare(struct ipc_comp_dev *ppl_icd, uint32_t cmd)
 	if (ret < 0)
 		return IPC4_INVALID_REQUEST;
 
-	ppl_icd->pipeline->expect_eos = false;
+	pipeline_set_eos(ppl_icd->pipeline, false);
 
 	return ret;
 }
