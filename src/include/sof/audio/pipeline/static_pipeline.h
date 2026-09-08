@@ -280,6 +280,11 @@ int sof_static_kcontrol_get_by_uac2(uint8_t entity_id, uint8_t channel, int32_t 
 int sof_static_pipeline_trigger_by_uac2_term(uint8_t terminal_id, bool start);
 
 /**
+ * @brief Trigger a static pipeline directly by pipeline ID.
+ */
+int sof_static_pipeline_trigger(uint32_t pipeline_id, bool start);
+
+/**
  * @brief Set sample rate across all active static pipelines and endpoints.
  */
 int sof_static_set_sample_rate(uint32_t rate);

@@ -22,6 +22,8 @@
 #include "../volume/peak_volume.h"
 #include <rtos/sof.h>
 #include <rtos/alloc.h>
+#include "../level_multiplier/level_multiplier.h"
+#include <user/selector.h>
 #include <zephyr/logging/log.h>
 #include <string.h>
 
@@ -31,15 +33,17 @@ extern const struct sof_uuid volume_uuid;
 extern const struct sof_uuid eq_iir_uuid;
 extern const struct sof_uuid drc_uuid;
 extern const struct sof_uuid tdfb_uuid;
+extern const struct sof_uuid level_multiplier_uuid;
+extern const struct sof_uuid selector_uuid;
 
 struct drc_state;
 extern void drc_reset_state(struct processing_module *mod, struct drc_state *state);
 void * const g_drc_force __used = (void *)drc_reset_state;
 
-#define MAX_STATIC_PIPELINES    8
-#define MAX_STATIC_COMPS        32
-#define MAX_STATIC_BUFFERS      32
-#define MAX_STATIC_CONTROLS     32
+#define MAX_STATIC_PIPELINES    16
+#define MAX_STATIC_COMPS        64
+#define MAX_STATIC_BUFFERS      64
+#define MAX_STATIC_CONTROLS     64
 
 static const struct sof_static_topology *s_active_topo;
 
@@ -319,17 +323,43 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 				.data = (const uint8_t *)&s_default_vol_cfg,
 			};
 			dev = drv->ops.create(drv, &cfg, &spec);
+		} else if (cdesc->uuid && !memcmp(cdesc->uuid, &selector_uuid, UUID_SIZE)) {
+			static const struct sof_sel_config s_default_sel_cfg = {
+				.in_channels_count = 2,
+				.out_channels_count = 2,
+				.sel_channel = 0,
+			};
+			struct ipc_config_process sel_spec = {
+				.size = sizeof(s_default_sel_cfg),
+				.data = (const uint8_t *)&s_default_sel_cfg,
+			};
+			dev = drv->ops.create(drv, &cfg, &sel_spec);
 		} else {
 #if CONFIG_IPC_MAJOR_4
+			struct ipc4_base_module_cfg mod_base_cfg = s_default_ipc4_base_cfg;
+			if (cdesc->caps.default_fmt == SOF_IPC_FRAME_FLOAT) {
+				mod_base_cfg.audio_fmt.depth = IPC4_DEPTH_32BIT;
+				mod_base_cfg.audio_fmt.valid_bit_depth = IPC4_DEPTH_32BIT;
+				mod_base_cfg.audio_fmt.s_type = IPC4_TYPE_FLOAT;
+				mod_base_cfg.ibs = 48 * 2 * 4;
+				mod_base_cfg.obs = 48 * 2 * 4;
+			} else if (cdesc->caps.default_fmt == SOF_IPC_FRAME_S32_LE) {
+				mod_base_cfg.audio_fmt.depth = IPC4_DEPTH_32BIT;
+				mod_base_cfg.audio_fmt.valid_bit_depth = IPC4_DEPTH_32BIT;
+				mod_base_cfg.audio_fmt.s_type = IPC4_TYPE_SIGNED_INTEGER;
+				mod_base_cfg.ibs = 48 * 2 * 4;
+				mod_base_cfg.obs = 48 * 2 * 4;
+			}
 			struct ipc_config_process base_proc_spec = {
-				.size = sizeof(s_default_ipc4_base_cfg),
-				.data = (const uint8_t *)&s_default_ipc4_base_cfg,
+				.size = sizeof(mod_base_cfg),
+				.data = (const uint8_t *)&mod_base_cfg,
 			};
 			dev = drv->ops.create(drv, &cfg, &base_proc_spec);
 #else
+			static const uint8_t dummy_buf[16] = {0};
 			struct ipc_config_process empty_proc_spec = {
 				.size = 0,
-				.data = NULL,
+				.data = dummy_buf,
 			};
 			dev = drv->ops.create(drv, &cfg, &empty_proc_spec);
 #endif
@@ -496,15 +526,40 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 	switch (ctl->type) {
 	case SOF_STATIC_CTRL_VOLUME:
 		if (mod) {
-			for (uint32_t ch = 0; ch < ctl->channels; ch++) {
-				volume_set_chan(mod, ch, val, true);
+			if (dev->drv->uid && !memcmp(dev->drv->uid, &level_multiplier_uuid, UUID_SIZE)) {
+				struct level_multiplier_comp_data *cd = module_get_private_data(mod);
+				if (cd) {
+					cd->gain = val;
+#if CONFIG_FORMAT_FLOAT
+					cd->gain_f = (float)val / 2147483648.0f;
+#endif
+				}
+			} else {
+				for (uint32_t ch = 0; ch < ctl->channels; ch++) {
+					volume_set_chan(mod, ch, val, true);
+				}
 			}
 		}
 		break;
 
 	case SOF_STATIC_CTRL_SWITCH:
 		if (mod) {
-			if (dev->drv->uid && !memcmp(dev->drv->uid, &volume_uuid, UUID_SIZE)) {
+			if (dev->drv->uid && !memcmp(dev->drv->uid, &level_multiplier_uuid, UUID_SIZE)) {
+				struct level_multiplier_comp_data *cd = module_get_private_data(mod);
+				if (cd) {
+					if (val == 0) {
+						cd->gain = 0;
+#if CONFIG_FORMAT_FLOAT
+						cd->gain_f = 0.0f;
+#endif
+					} else {
+						cd->gain = LEVEL_MULTIPLIER_GAIN_ONE;
+#if CONFIG_FORMAT_FLOAT
+						cd->gain_f = 1.0f;
+#endif
+					}
+				}
+			} else if (dev->drv->uid && !memcmp(dev->drv->uid, &volume_uuid, UUID_SIZE)) {
 				for (uint32_t ch = 0; ch < ctl->channels; ch++) {
 					if (val == 0) {
 						volume_set_chan_mute(mod, ch);
@@ -541,6 +596,19 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 					cd->beam_on = (val != 0);
 				}
 			}
+		}
+		break;
+
+	case SOF_STATIC_CTRL_ENUM:
+		if (dev->drv->uid && !memcmp(dev->drv->uid, &selector_uuid, UUID_SIZE)) {
+			uint8_t cbuf[sizeof(struct sof_ipc_ctrl_data) + sizeof(struct sof_ipc_ctrl_value_chan)] = {0};
+			struct sof_ipc_ctrl_data *cdata = (struct sof_ipc_ctrl_data *)cbuf;
+			cdata->cmd = SOF_CTRL_CMD_ENUM;
+			cdata->type = SOF_CTRL_TYPE_VALUE_CHAN_SET;
+			cdata->num_elems = 1;
+			cdata->chanv[0].channel = 0;
+			cdata->chanv[0].value = val;
+			comp_cmd(dev, COMP_CMD_SET_VALUE, cdata, sizeof(cbuf));
 		}
 		break;
 
@@ -655,10 +723,14 @@ int sof_static_pipeline_trigger_by_uac2_term(uint8_t terminal_id, bool start)
 			struct comp_dev *dev = sof_static_comp_get(cdesc->id);
 			if (pipe && dev) {
 				if (start) {
-					pipeline_trigger(pipe, dev, COMP_TRIGGER_PRE_START);
-					pipeline_trigger(pipe, dev, COMP_TRIGGER_START);
+					if (pipe->status != COMP_STATE_ACTIVE) {
+						pipeline_trigger(pipe, dev, COMP_TRIGGER_PRE_START);
+						pipeline_trigger(pipe, dev, COMP_TRIGGER_START);
+					}
 				} else {
-					pipeline_trigger(pipe, dev, COMP_TRIGGER_STOP);
+					if (pipe->status == COMP_STATE_ACTIVE || pipe->status == COMP_STATE_PAUSED) {
+						pipeline_trigger(pipe, dev, COMP_TRIGGER_STOP);
+					}
 				}
 				LOG_INF("Pipeline %u %s via UAC2 terminal %u", cdesc->pipeline_id,
 					start ? "STARTED" : "STOPPED", terminal_id);
@@ -667,6 +739,30 @@ int sof_static_pipeline_trigger_by_uac2_term(uint8_t terminal_id, bool start)
 		}
 	}
 	return -ENOENT;
+}
+
+int sof_static_pipeline_trigger(uint32_t pipeline_id, bool start)
+{
+	struct pipeline *pipe = sof_static_pipeline_get(pipeline_id);
+	if (!pipe)
+		return -ENOENT;
+
+	struct comp_dev *dev = pipe->sched_comp ? pipe->sched_comp : pipe->source_comp;
+	if (!dev)
+		return -ENODEV;
+
+	if (start) {
+		if (pipe->status != COMP_STATE_ACTIVE) {
+			pipeline_trigger(pipe, dev, COMP_TRIGGER_PRE_START);
+			pipeline_trigger(pipe, dev, COMP_TRIGGER_START);
+		}
+	} else {
+		if (pipe->status == COMP_STATE_ACTIVE || pipe->status == COMP_STATE_PAUSED) {
+			pipeline_trigger(pipe, dev, COMP_TRIGGER_STOP);
+		}
+	}
+	LOG_INF("Pipeline %u %s", pipeline_id, start ? "STARTED" : "STOPPED");
+	return 0;
 }
 
 int sof_static_set_sample_rate(uint32_t rate)
