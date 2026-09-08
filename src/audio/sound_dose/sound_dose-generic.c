@@ -86,7 +86,7 @@ static int sound_dose_s16(const struct processing_module *mod,
 	int16_t sample;
 	int16_t const *x0, *x, *x_start, *x_end;
 	int16_t *y0, *y, *y_start, *y_end;
-	int x_size, y_size;
+	size_t x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
 	int samples = frames * cd->channels;
@@ -186,7 +186,7 @@ static int sound_dose_s32(const struct processing_module *mod,
 	int32_t const *x0, *x, *x_start, *x_end;
 	int32_t *y0, *y, *y_start, *y_end;
 	int32_t weighted;
-	int x_size, y_size;
+	size_t x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
 	int samples = frames * cd->channels;

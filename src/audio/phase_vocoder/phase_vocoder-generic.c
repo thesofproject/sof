@@ -34,7 +34,7 @@ int phase_vocoder_source_s32(struct phase_vocoder_comp_data *cd, struct sof_sour
 	const int32_t mix_gain = cd->mono_mix_coef;
 	int64_t mix;
 	int frames_left;
-	int x_size;
+	size_t x_size;
 	int bytes;
 	int ret;
 	int n1;
@@ -129,7 +129,7 @@ int phase_vocoder_sink_s32(struct phase_vocoder_comp_data *cd, struct sof_sink *
 	int32_t *y, *y_start, *y_end;
 	int frames_remain;
 	int bytes;
-	int y_size;
+	size_t y_size;
 	int ret;
 	int ch, n1, n, i;
 	int stream_channels = cd->stream_channels;
@@ -228,7 +228,7 @@ int phase_vocoder_source_s24(struct phase_vocoder_comp_data *cd, struct sof_sour
 	int64_t mix;
 	int32_t tmp;
 	int frames_left;
-	int x_size;
+	size_t x_size;
 	int bytes;
 	int ret;
 	int n1;
@@ -327,7 +327,7 @@ int phase_vocoder_sink_s24(struct phase_vocoder_comp_data *cd, struct sof_sink *
 	int32_t *y, *y_start, *y_end;
 	int frames_remain;
 	int bytes;
-	int y_size;
+	size_t y_size;
 	int ret;
 	int ch, n1, n, i;
 	int stream_channels = cd->stream_channels;
@@ -424,7 +424,7 @@ int phase_vocoder_source_s16(struct phase_vocoder_comp_data *cd, struct sof_sour
 	int16_t const *x, *x_start, *x_end;
 	int16_t in;
 	int frames_left;
-	int x_size;
+	size_t x_size;
 	int bytes;
 	int ret;
 	int n1;
@@ -523,7 +523,7 @@ int phase_vocoder_sink_s16(struct phase_vocoder_comp_data *cd, struct sof_sink *
 	int16_t sample;
 	int16_t *y, *y_start, *y_end;
 	int frames_remain;
-	int y_size;
+	size_t y_size;
 	int bytes;
 	int ret;
 	int ch, n1, n, i;

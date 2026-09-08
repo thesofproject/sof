@@ -46,7 +46,7 @@ static int level_multiplier_s16(const struct processing_module *mod,
 	ae_int16x8 *y;
 	int16_t const *x_start, *x_end;
 	int16_t *y_start, *y_end;
-	int x_size, y_size;
+	size_t x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
 	int remaining_samples = frames * cd->channels;
@@ -149,7 +149,7 @@ static int level_multiplier_s24(const struct processing_module *mod,
 	ae_int32x4 *y;
 	int32_t const *x_start, *x_end;
 	int32_t *y_start, *y_end;
-	int x_size, y_size;
+	size_t x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
 	int remaining_samples = frames * cd->channels;
@@ -243,7 +243,7 @@ static int level_multiplier_s32(const struct processing_module *mod,
 	ae_int32x4 *y;
 	int32_t const *x_start, *x_end;
 	int32_t *y_start, *y_end;
-	int x_size, y_size;
+	size_t x_size, y_size;
 	int source_samples_without_wrap;
 	int samples_without_wrap;
 	int remaining_samples = frames * cd->channels;
