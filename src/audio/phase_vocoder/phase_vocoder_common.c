@@ -418,7 +418,7 @@ static int phase_vocoder_output_zeros_s32(struct phase_vocoder_comp_data *cd, st
 	int samples = frames * cd->stream_channels;
 	size_t bytes = samples * sizeof(int32_t);
 	int samples_without_wrap;
-	int y_size;
+	size_t y_size;
 	int ret;
 
 	/* Get pointer to sink data in circular buffer, buffer start and size. */
@@ -518,7 +518,7 @@ static int phase_vocoder_output_zeros_s16(struct phase_vocoder_comp_data *cd, st
 	int samples = frames * cd->stream_channels;
 	size_t bytes = samples * sizeof(int16_t);
 	int samples_without_wrap;
-	int y_size;
+	size_t y_size;
 	int ret;
 
 	/* Get pointer to sink data in circular buffer, buffer start and size. */

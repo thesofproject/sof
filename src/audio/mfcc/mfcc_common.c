@@ -54,7 +54,7 @@ void mfcc_source_copy_s16(struct sof_source *source, struct mfcc_buffer *buf,
 	int16_t const *x;
 	int16_t const *x_start;
 	int16_t const *x_end;
-	int x_size;
+	size_t x_size;
 	int num_channels = source_get_channels(source);
 	size_t req_bytes = frames * num_channels * sizeof(int16_t);
 	int16_t *w = buf->w_ptr;
@@ -126,7 +126,7 @@ void mfcc_source_copy_s24(struct sof_source *source, struct mfcc_buffer *buf,
 	int32_t const *x;
 	int32_t const *x_start;
 	int32_t const *x_end;
-	int x_size;
+	size_t x_size;
 	int num_channels = source_get_channels(source);
 	size_t req_bytes = frames * num_channels * sizeof(int32_t);
 	int16_t *w = buf->w_ptr;
@@ -200,7 +200,7 @@ void mfcc_source_copy_s32(struct sof_source *source, struct mfcc_buffer *buf,
 	int32_t const *x;
 	int32_t const *x_start;
 	int32_t const *x_end;
-	int x_size;
+	size_t x_size;
 	int num_channels = source_get_channels(source);
 	size_t req_bytes = frames * num_channels * sizeof(int32_t);
 	int16_t *w = buf->w_ptr;

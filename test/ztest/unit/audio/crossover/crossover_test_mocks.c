@@ -32,14 +32,14 @@ size_t source_get_frame_bytes(struct sof_source *source)
 }
 
 int source_get_data_s16(struct sof_source *source, size_t req_size, int16_t const **data_ptr,
-			int16_t const **buffer_start, int *buffer_samples)
+			int16_t const **buffer_start, size_t *buffer_samples)
 {
 	(void)source; (void)req_size; (void)data_ptr; (void)buffer_start; (void)buffer_samples;
 	return 0;
 }
 
 int source_get_data_s32(struct sof_source *source, size_t req_size, int32_t const **data_ptr,
-			int32_t const **buffer_start, int *buffer_samples)
+			int32_t const **buffer_start, size_t *buffer_samples)
 {
 	(void)source; (void)req_size; (void)data_ptr; (void)buffer_start; (void)buffer_samples;
 	return 0;
@@ -52,14 +52,14 @@ int source_release_data(struct sof_source *source, size_t free_size)
 }
 
 int sink_get_buffer_s16(struct sof_sink *sink, size_t req_size, int16_t **data_ptr,
-			int16_t **buffer_start, int *buffer_samples)
+			int16_t **buffer_start, size_t *buffer_samples)
 {
 	(void)sink; (void)req_size; (void)data_ptr; (void)buffer_start; (void)buffer_samples;
 	return 0;
 }
 
 int sink_get_buffer_s32(struct sof_sink *sink, size_t req_size, int32_t **data_ptr,
-			int32_t **buffer_start, int *buffer_samples)
+			int32_t **buffer_start, size_t *buffer_samples)
 {
 	(void)sink; (void)req_size; (void)data_ptr; (void)buffer_start; (void)buffer_samples;
 	return 0;
