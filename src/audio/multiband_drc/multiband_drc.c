@@ -93,6 +93,72 @@ static int multiband_drc_eq_init_coef_ch(struct processing_module *mod,
 	return 0;
 }
 
+#if CONFIG_FORMAT_FLOAT
+static void multiband_drc_reset_state_float(struct processing_module *mod,
+					    struct multiband_drc_state_float *state)
+{
+	int i;
+
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		multiband_drc_iir_reset_state_ch_float(mod, &state->emphasis[i]);
+
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		crossover_reset_state_ch_float(mod, &state->crossover[i]);
+
+	for (i = 0; i < SOF_MULTIBAND_DRC_MAX_BANDS; i++)
+		drc_reset_state(mod, &state->drc[i]);
+
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		multiband_drc_iir_reset_state_ch_float(mod, &state->deemphasis[i]);
+}
+
+static int multiband_drc_eq_init_coef_ch_float(struct processing_module *mod,
+					       struct sof_eq_iir_biquad *coef,
+					       struct iir_state_df1_float *eq)
+{
+	const float inv_q30 = 1.0f / 1073741824.0f;
+	const float inv_q14 = 1.0f / 16384.0f;
+	float gain_factor;
+	float b_scale;
+	int b;
+
+	eq->coef = mod_zalloc(mod, sizeof(float) * 5 * SOF_EMP_DEEMP_BIQUADS);
+	if (!eq->coef)
+		return -ENOMEM;
+
+	eq->delay = mod_zalloc(mod, sizeof(float) * 4 * SOF_EMP_DEEMP_BIQUADS);
+	if (!eq->delay) {
+		mod_free(mod, eq->coef);
+		eq->coef = NULL;
+		return -ENOMEM;
+	}
+
+	eq->biquads = SOF_EMP_DEEMP_BIQUADS;
+	eq->biquads_in_series = SOF_EMP_DEEMP_BIQUADS;
+
+	for (b = 0; b < SOF_EMP_DEEMP_BIQUADS; b++) {
+		struct sof_eq_iir_biquad *c = &coef[b];
+		float *c_out = &eq->coef[b * 5];
+
+		gain_factor = (float)c->output_gain * inv_q14;
+		if (c->output_shift > 0)
+			gain_factor /= (float)(1 << c->output_shift);
+		else if (c->output_shift < 0)
+			gain_factor *= (float)(1 << (-c->output_shift));
+
+		b_scale = gain_factor * inv_q30;
+
+		c_out[0] = (float)c->b0 * b_scale;
+		c_out[1] = (float)c->b1 * b_scale;
+		c_out[2] = (float)c->b2 * b_scale;
+		c_out[3] = (float)c->a1 * inv_q30;
+		c_out[4] = (float)c->a2 * inv_q30;
+	}
+
+	return 0;
+}
+#endif
+
 static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, uint32_t rate)
 {
 	struct comp_dev *dev = mod->dev;
@@ -123,6 +189,90 @@ static int multiband_drc_init_coef(struct processing_module *mod, int16_t nch, u
 			 config->num_bands);
 		return -EINVAL;
 	}
+
+#if CONFIG_FORMAT_FLOAT
+	if (cd->source_format == SOF_IPC_FRAME_FLOAT) {
+		struct multiband_drc_state_float *state_f = &cd->state_f;
+
+		comp_info(dev, "initializing %i-way crossover float",
+			  config->num_bands);
+
+		/* Crossover: determine the split function */
+		cd->crossover_split_f = crossover_find_split_func_float(config->num_bands);
+		if (!cd->crossover_split_f) {
+			comp_err(dev, "No crossover_split_f for band count(%i)",
+				 config->num_bands);
+			return -EINVAL;
+		}
+
+		/* Crossover: collect the coef array and assign it to every channel */
+		crossover = config->crossover_coef;
+		for (ch = 0; ch < nch; ch++) {
+			ret = crossover_init_coef_ch_float(mod, crossover, &state_f->crossover[ch],
+							   config->num_bands);
+			/* Free all previously allocated blocks in case of an error */
+			if (ret < 0) {
+				comp_err(dev,
+					 "could not assign coeffs to ch %d", ch);
+				goto err_f;
+			}
+		}
+
+		comp_info(dev, "initializing emphasis_eq float");
+
+		/* Emphasis: collect the coef array and assign it to every channel */
+		emphasis = config->emp_coef;
+		for (ch = 0; ch < nch; ch++) {
+			ret = multiband_drc_eq_init_coef_ch_float(mod, emphasis, &state_f->emphasis[ch]);
+			/* Free all previously allocated blocks in case of an error */
+			if (ret < 0) {
+				comp_err(dev, "could not assign coeffs to ch %d",
+					 ch);
+				goto err_f;
+			}
+		}
+
+		comp_info(dev, "initializing deemphasis_eq float");
+
+		/* Deemphasis: collect the coef array and assign it to every channel */
+		deemphasis = config->deemp_coef;
+		for (ch = 0; ch < nch; ch++) {
+			ret = multiband_drc_eq_init_coef_ch_float(mod, deemphasis, &state_f->deemphasis[ch]);
+			/* Free all previously allocated blocks in case of an error */
+			if (ret < 0) {
+				comp_err(dev, "could not assign coeffs to ch %d",
+					 ch);
+				goto err_f;
+			}
+		}
+
+		/* Allocate all DRC pre-delay buffers and set delay time with band number */
+		for (i = 0; i < num_bands; i++) {
+			comp_info(dev, "initializing drc band %d float", i);
+
+			ret = drc_init_pre_delay_buffers(mod, &state_f->drc[i],
+							 sizeof(float), (int)nch);
+			if (ret < 0) {
+				comp_err(dev,
+					 "could not init pre delay buffers");
+				goto err_f;
+			}
+
+			ret = drc_set_pre_delay_time(&state_f->drc[i],
+						     cd->config->drc_coef[i].pre_delay_time, rate);
+			if (ret < 0) {
+				comp_err(dev, "could not set pre delay time");
+				goto err_f;
+			}
+		}
+
+		return 0;
+
+err_f:
+		multiband_drc_reset_state_float(mod, state_f);
+		return ret;
+	}
+#endif
 
 	comp_info(dev, "initializing %i-way crossover",
 		  config->num_bands);
@@ -210,7 +360,12 @@ static int multiband_drc_setup(struct processing_module *mod, int16_t channels,
 	struct multiband_drc_comp_data *cd = module_get_private_data(mod);
 
 	/* Reset any previous state */
-	multiband_drc_reset_state(mod, &cd->state);
+#if CONFIG_FORMAT_FLOAT
+	if (cd->source_format == SOF_IPC_FRAME_FLOAT)
+		multiband_drc_reset_state_float(mod, &cd->state_f);
+	else
+#endif
+		multiband_drc_reset_state(mod, &cd->state);
 
 	/* Setup Crossover, Emphasis EQ, Deemphasis EQ, and DRC */
 	return multiband_drc_init_coef(mod, channels, rate);
@@ -268,6 +423,9 @@ static int multiband_drc_init(struct processing_module *mod)
 	md->private = cd;
 	cd->multiband_drc_func = NULL;
 	cd->crossover_split = NULL;
+#if CONFIG_FORMAT_FLOAT
+	cd->crossover_split_f = NULL;
+#endif
 	/* Initialize to enabled is a workaround for IPC4 kernel version 6.6 and
 	 * before where the processing is never enabled via switch control. New
 	 * kernel sends the IPC4 switch control and sets this to desired state
@@ -426,11 +584,19 @@ static int multiband_drc_reset(struct processing_module *mod)
 
 	comp_info(mod->dev, "entry");
 
-	multiband_drc_reset_state(mod, &cd->state);
+#if CONFIG_FORMAT_FLOAT
+	if (cd->source_format == SOF_IPC_FRAME_FLOAT)
+		multiband_drc_reset_state_float(mod, &cd->state_f);
+	else
+#endif
+		multiband_drc_reset_state(mod, &cd->state);
 
 	cd->source_format = 0;
 	cd->multiband_drc_func = NULL;
 	cd->crossover_split = NULL;
+#if CONFIG_FORMAT_FLOAT
+	cd->crossover_split_f = NULL;
+#endif
 
 	return 0;
 }
