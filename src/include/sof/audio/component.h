@@ -647,6 +647,7 @@ struct comp_dev {
 	/* runtime */
 	uint16_t state;		   /**< COMP_STATE_ */
 	uint32_t frames;	   /**< number of frames we copy to sink */
+	bool expect_eos;	   /**< end of stream expected */
 	struct pipeline *pipeline; /**< pipeline we belong to */
 
 	struct task *task;	/**< component's processing task used

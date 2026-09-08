@@ -541,7 +541,7 @@ int cadence_codec_process_data(struct processing_module *mod,
 		return 0;
 	}
 
-	if (dev->pipeline->expect_eos) {
+	if (dev->expect_eos) {
 		/* Signal that the stream is expected to end anytime soon */
 		API_CALL(cd, XA_API_CMD_INPUT_OVER, 0, NULL, ret);
 		if (ret != LIB_NO_ERROR) {
@@ -596,7 +596,7 @@ int cadence_codec_process_data(struct processing_module *mod,
 		return ret;
 	}
 
-	if (dev->pipeline->expect_eos) {
+	if (dev->expect_eos) {
 		/*
 		 * AAC decoder cannot signal DONE, check if it stopped
 		 * producing data when EOS is expected

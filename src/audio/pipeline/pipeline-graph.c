@@ -344,6 +344,42 @@ int pipeline_free(struct pipeline *p)
 	return 0;
 }
 
+static int pipeline_comp_set_eos(struct comp_dev *current,
+				 struct comp_buffer *calling_buf,
+				 struct pipeline_walk_context *ctx, int dir)
+{
+	if (ctx->comp_data != (void *)current->pipeline)
+		return 0;
+
+	current->expect_eos = *(bool *)ctx->buff_data;
+
+	return pipeline_for_each_comp(current, ctx, dir);
+}
+
+void pipeline_set_eos(struct pipeline *p, bool eos)
+{
+	struct pipeline_walk_context walk_ctx = {
+		.comp_func = pipeline_comp_set_eos,
+		.comp_data = p,
+		.buff_data = &eos,
+	};
+	struct comp_dev *start;
+	int dir;
+
+	if (!p->source_comp || !p->sink_comp)
+		return;
+
+	if (p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
+		dir = PPL_DIR_UPSTREAM;
+		start = p->sink_comp;
+	} else {
+		dir = PPL_DIR_DOWNSTREAM;
+		start = p->source_comp;
+	}
+
+	walk_ctx.comp_func(start, NULL, &walk_ctx, dir);
+}
+
 static int pipeline_comp_complete(struct comp_dev *current,
 				  struct comp_buffer *calling_buf,
 				  struct pipeline_walk_context *ctx, int dir)
