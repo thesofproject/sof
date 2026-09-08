@@ -47,7 +47,7 @@ int stft_process_source_s32(struct stft_comp_data *cd, struct sof_source *source
 	struct stft_process_state *state = &cd->state;
 	struct stft_process_buffer *ibuf;
 	int32_t const *x, *x_start, *x_end;
-	int x_size;
+	size_t x_size;
 	int bytes = frames * cd->frame_bytes;
 	int frames_left = frames;
 	int ret;
@@ -114,7 +114,7 @@ int stft_process_sink_s32(struct stft_comp_data *cd, struct sof_sink *sink, int 
 	int frames_remain = frames;
 	int channels = cd->channels;
 	int bytes = frames * cd->frame_bytes;
-	int y_size;
+	size_t y_size;
 	int ret;
 	int ch, n1, n, i;
 
@@ -175,7 +175,7 @@ int stft_process_source_s16(struct stft_comp_data *cd, struct sof_source *source
 	struct stft_process_buffer *ibuf;
 	int16_t const *x, *x_start, *x_end;
 	int16_t in;
-	int x_size;
+	size_t x_size;
 	int channels = cd->channels;
 	int bytes = frames * cd->frame_bytes;
 	int frames_left = frames;
@@ -234,7 +234,7 @@ int stft_process_sink_s16(struct stft_comp_data *cd, struct sof_sink *sink, int 
 	int frames_remain = frames;
 	int channels = cd->channels;
 	int bytes = frames * cd->frame_bytes;
-	int y_size;
+	size_t y_size;
 	int ret;
 	int ch, n1, n, i;
 
@@ -474,7 +474,7 @@ static int stft_process_output_zeros_s32(struct stft_comp_data *cd, struct sof_s
 	int samples = frames * cd->channels;
 	size_t bytes = samples * sizeof(int32_t);
 	int samples_without_wrap;
-	int y_size;
+	size_t y_size;
 	int ret;
 
 	/* Get pointer to sink data in circular buffer, buffer start and size. */
@@ -535,7 +535,7 @@ static int stft_process_output_zeros_s16(struct stft_comp_data *cd, struct sof_s
 	int samples = frames * cd->channels;
 	size_t bytes = samples * sizeof(int16_t);
 	int samples_without_wrap;
-	int y_size;
+	size_t y_size;
 	int ret;
 
 	/* Get pointer to sink data in circular buffer, buffer start and size. */
