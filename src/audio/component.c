@@ -506,7 +506,7 @@ static bool comp_check_eos(struct comp_dev *dev)
 	enum sof_audio_buffer_state sink_state = AUDIOBUF_STATE_INITIAL;
 	struct comp_buffer *buffer;
 
-	if (!dev->pipeline->expect_eos)
+	if (!dev->expect_eos)
 		return false;
 
 	comp_dev_for_each_producer(dev, buffer) {
