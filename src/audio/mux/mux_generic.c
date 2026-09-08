@@ -168,7 +168,7 @@ static int demux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 			size_t frames, struct mux_look_up *lookup)
 {
 	int16_t *y, *y_start, *y_end;
-	int y_size;
+	size_t y_size;
 	struct cir_buf_sink sink_buf;
 	struct cir_buf_source source_buf;
 	size_t bytes = frames * sink_get_frame_bytes(sink);
@@ -412,7 +412,7 @@ static int demux_s32le(struct comp_dev *dev, struct sof_sink *sink,
 			size_t frames, struct mux_look_up *lookup)
 {
 	int32_t *y, *y_start, *y_end;
-	int y_size;
+	size_t y_size;
 	struct cir_buf_sink sink_buf;
 	struct cir_buf_source source_buf;
 	size_t bytes = frames * sink_get_frame_bytes(sink);

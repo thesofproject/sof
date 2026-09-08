@@ -137,8 +137,8 @@ static int crossover_s16_default(struct comp_data *cd,
 	int32_t out[SOF_CROSSOVER_MAX_STREAMS];
 	struct crossover_state *state;
 	int16_t const *x, *x_start, *x_end;
-	int x_samples, y_samples;
-	int nch = source_get_channels(source);
+	size_t x_samples, y_samples;
+	unsigned int nch = source_get_channels(source);
 	size_t bytes = frames * source_get_frame_bytes(source);
 	int active_sinks = 0;
 	int remaining_samples;
@@ -215,8 +215,8 @@ static int crossover_s24_default(struct comp_data *cd,
 	int32_t out[SOF_CROSSOVER_MAX_STREAMS];
 	struct crossover_state *state;
 	int32_t const *x, *x_start, *x_end;
-	int x_samples, y_samples;
-	int nch = source_get_channels(source);
+	size_t x_samples, y_samples;
+	unsigned int nch = source_get_channels(source);
 	size_t bytes = frames * source_get_frame_bytes(source);
 	int active_sinks = 0;
 	int remaining_samples;
@@ -307,8 +307,8 @@ static int crossover_s32_default(struct comp_data *cd,
 	int32_t out[SOF_CROSSOVER_MAX_STREAMS];
 	struct crossover_state *state;
 	int32_t const *x, *x_start, *x_end;
-	int x_samples, y_samples;
-	int nch = source_get_channels(source);
+	size_t x_samples, y_samples;
+	unsigned int nch = source_get_channels(source);
 	size_t bytes = frames * source_get_frame_bytes(source);
 	int active_sinks = 0;
 	int remaining_samples;

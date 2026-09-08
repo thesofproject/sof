@@ -40,7 +40,7 @@ static int sel_s16le_1ch(struct comp_dev *dev, struct sof_sink *sink, struct sof
 	const unsigned int nch = source_get_channels(source);
 	const int16_t *src, *src_start, *src_ch;
 	int16_t *dst, *dst_start;
-	int src_samples, dst_samples;
+	size_t src_samples, dst_samples;
 	size_t i, n, processed = 0;
 	int ret;
 
@@ -92,7 +92,7 @@ static int sel_s16le_nch(struct comp_dev *dev, struct sof_sink *sink,
 	const unsigned int nch = source_get_channels(source);
 	const int16_t *src, *src_start;
 	int16_t *dst, *dst_start;
-	int src_samples, dst_samples;
+	size_t src_samples, dst_samples;
 	size_t n, processed = 0;
 	int ret;
 
@@ -142,7 +142,7 @@ static int sel_s32le_1ch(struct comp_dev *dev, struct sof_sink *sink, struct sof
 	const unsigned int nch = source_get_channels(source);
 	const int32_t *src, *src_ch, *src_start;
 	int32_t *dst, *dst_start;
-	int src_samples, dst_samples;
+	size_t src_samples, dst_samples;
 	size_t i, n, processed = 0;
 	int ret;
 
@@ -193,7 +193,7 @@ static int sel_s32le_nch(struct comp_dev *dev, struct sof_sink *sink, struct sof
 	const unsigned int nch = source_get_channels(source);
 	const int32_t *src, *src_start;
 	int32_t *dst, *dst_start;
-	int src_samples, dst_samples;
+	size_t src_samples, dst_samples;
 	size_t n, processed = 0;
 	int ret;
 
