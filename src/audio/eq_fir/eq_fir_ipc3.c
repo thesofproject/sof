@@ -39,6 +39,12 @@ int set_fir_func(struct processing_module *mod, enum sof_ipc_frame fmt)
 		set_s32_fir(cd);
 		break;
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+		comp_dbg(mod->dev, "SOF_IPC_FRAME_FLOAT");
+		set_float_fir(cd);
+		break;
+#endif /* CONFIG_FORMAT_FLOAT */
 	default:
 		comp_err(mod->dev, "invalid frame_fmt");
 		return -EINVAL;
