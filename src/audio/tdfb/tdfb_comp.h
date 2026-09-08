@@ -45,6 +45,10 @@
 /* Process max 10% more frames than one period */
 #define TDFB_MAX_FRAMES_MULT_Q14 Q_CONVERT_FLOAT(1.10, 14)
 
+#if CONFIG_FORMAT_FLOAT
+#include <sof/math/fir_float.h>
+#endif
+
 /* TDFB component private data */
 
 struct tdfb_direction_data {
@@ -72,7 +76,12 @@ struct tdfb_direction_data {
 };
 
 struct tdfb_comp_data {
-	struct fir_state_32x16 fir[SOF_TDFB_FIR_MAX_COUNT]; /**< FIR state */
+	union {
+		struct fir_state_32x16 fir[SOF_TDFB_FIR_MAX_COUNT]; /**< FIR state */
+#if CONFIG_FORMAT_FLOAT
+		struct fir_state_float fir_f[SOF_TDFB_FIR_MAX_COUNT];
+#endif
+	};
 	struct comp_data_blob_handler *model_handler;
 	struct sof_tdfb_config *config;	    /**< pointer to setup blob */
 	struct sof_tdfb_angle *filter_angles;
@@ -80,9 +89,24 @@ struct tdfb_comp_data {
 	struct sof_ipc_ctrl_data *ctrl_data;
 	struct ipc_msg *msg;
 	struct tdfb_direction_data direction;
-	int32_t in[TDFB_IN_BUF_LENGTH];	    /**< input samples buffer */
-	int32_t out[TDFB_IN_BUF_LENGTH];    /**< output samples mix buffer */
+	union {
+		int32_t in[TDFB_IN_BUF_LENGTH];	    /**< input samples buffer */
+#if CONFIG_FORMAT_FLOAT
+		float in_f[TDFB_IN_BUF_LENGTH];
+#endif
+	};
+	union {
+		int32_t out[TDFB_IN_BUF_LENGTH];    /**< output samples mix buffer */
+#if CONFIG_FORMAT_FLOAT
+		float out_f[TDFB_IN_BUF_LENGTH];
+#endif
+	};
 	int32_t *fir_delay;		    /**< pointer to allocated RAM */
+#if CONFIG_FORMAT_FLOAT
+	float *fir_coef_f;
+	size_t fir_coef_f_size;
+	enum sof_ipc_frame source_format;
+#endif
 	int16_t *input_channel_select;	    /**< For each FIR define in ch */
 	int16_t *output_channel_mix;	    /**< For each FIR define out ch */
 	int16_t *output_stream_mix;         /**< for each FIR define stream */
@@ -119,6 +143,12 @@ void tdfb_fir_s24(struct tdfb_comp_data *cd,
 void tdfb_fir_s32(struct tdfb_comp_data *cd,
 		  struct input_stream_buffer *bsource,
 		  struct output_stream_buffer *bsink, int frames);
+#endif
+
+#if CONFIG_FORMAT_FLOAT
+void tdfb_fir_float(struct tdfb_comp_data *cd,
+		    struct input_stream_buffer *bsource,
+		    struct output_stream_buffer *bsink, int frames);
 #endif
 
 int tdfb_direction_init(struct processing_module *mod, int32_t fs, int channels);
