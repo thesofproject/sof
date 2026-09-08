@@ -43,9 +43,15 @@ LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL); /*DBG*/
 
 /* av_malloc's ALIGN is at most 64 in this build; satisfy it for every block. */
 #define FFMPEG_DEC_ALLOC_ALIGN	64
-/* Working-set heap: one ~541 KiB av_tx MDCT table alloc + decoder context /
- * channel elements. 768 KiB gives comfortable headroom. */
+/* Working-set heap: AAC-LC needs ~768 KiB (one ~541 KiB av_tx MDCT table alloc +
+ * decoder context). FLAC/MP3/Opus only need a small fraction of this, so sizing
+ * to 576 KiB reclaims over 300 KiB for sof_heap to accommodate the 64 KiB DP stack.
+ */
+#if defined(CONFIG_FFMPEG_DEC_AAC)
 #define FFMPEG_DEC_HEAP_BYTES	(880 * 1024)
+#else
+#define FFMPEG_DEC_HEAP_BYTES	(576 * 1024)
+#endif
 
 extern void *__real_malloc(size_t size);
 extern void __real_free(void *ptr);

@@ -131,6 +131,19 @@ static void get_codec_info(struct sof_tlv **tuple)
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
 #endif
+#ifdef CONFIG_FFMPEG_DEC_OPUS
+	/* Opus decode is provided by the ffmpeg_dec (libavcodec) module.
+	 * Advertise OPUS_RAW and BESPOKE, and also FLAC/MP3 for CLI compatibility.
+	 */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_OPUS_RAW, SOF_IPC_STREAM_PLAYBACK);
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK);
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_FLAC, SOF_IPC_STREAM_PLAYBACK);
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
+#endif
 
 	if (!codec_info.count)
 		return;

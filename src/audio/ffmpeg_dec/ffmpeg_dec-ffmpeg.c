@@ -173,9 +173,18 @@ static int ffmpeg_dec_ff_configure(struct processing_module *mod)
 
 	ffmpeg_dec_libc_bind(mod);
 
-	/* Some codecs (FLAC, Opus, Vorbis, AAC-in-MP4) need their setup header
-	 * in avctx->extradata before avcodec_open2().
+	/* Filter extradata by codec:
+	 *  - FLAC needs the 34-byte STREAMINFO.
+	 *  - Opus needs "OpusHead" (RFC 7845) or NULL (falls back to built-in stereo default).
+	 *    If the topology carries a FLAC header, ignore it so Opus uses its default.
 	 */
+	if (cd->codec == FFMPEG_DEC_CODEC_OPUS && cd->extradata && cd->extradata_size) {
+		if (cd->extradata_size < 8 || memcmp(cd->extradata, "OpusHead", 8) != 0) {
+			comp_info(dev, "ignoring non-Opus extradata from topology");
+			cd->extradata_size = 0;
+		}
+	}
+
 	if (cd->extradata && cd->extradata_size) {
 		av_freep(&ff->avctx->extradata);
 		ff->avctx->extradata =
