@@ -22,12 +22,10 @@
 
 struct google_ctc_audio_processing_comp_data;
 
-typedef void (*ctc_func)(struct google_ctc_audio_processing_comp_data *cd,
-			 const struct audio_stream *source,
-			 struct audio_stream *sink,
-			 struct input_stream_buffer *input_buffers,
-			 struct output_stream_buffer *output_buffers,
-			 uint32_t frames);
+typedef int (*ctc_func)(struct google_ctc_audio_processing_comp_data *cd,
+			struct sof_source *source,
+			struct sof_sink *sink,
+			size_t frames);
 
 struct google_ctc_audio_processing_comp_data {
 	float *input;
