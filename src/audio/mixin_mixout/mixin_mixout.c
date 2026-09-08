@@ -732,6 +732,9 @@ static int mixin_prepare(struct processing_module *mod,
 	case SOF_IPC_FRAME_S16_LE:
 	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
+#if CONFIG_FORMAT_FLOAT
+	case SOF_IPC_FRAME_FLOAT:
+#endif
 		mixin_get_processing_functions(fmt, &md->mix, &md->gain_mix);
 		break;
 	default:

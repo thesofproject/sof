@@ -536,6 +536,9 @@ const struct comp_func_map mux_func_map[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, &mux_s32le, &demux_s32le },
 #endif
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, &mux_s32le, &demux_s32le },
+#endif
 };
 
 void mux_prepare_look_up_table(struct processing_module *mod)
