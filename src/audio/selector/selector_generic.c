@@ -383,6 +383,62 @@ static void sel_s32le(struct processing_module *mod, struct input_stream_buffer 
 
 	module_update_buffer_position(bsource, bsink, frames);
 }
+#if CONFIG_FORMAT_FLOAT
+static void process_frame_float(float dst[], int dst_channels,
+				const float src[], int src_channels,
+				struct ipc4_selector_coeffs_config *coeffs_config)
+{
+	float accum;
+	int i, j;
+
+	for (i = 0; i < dst_channels; i++) {
+		accum = 0.0f;
+		for (j = 0; j < src_channels; j++) {
+			int16_t c = coeffs_config->coeffs[i][j];
+			if (c != 0)
+				accum += src[j] * ((float)c * (1.0f / 1024.0f));
+		}
+		dst[i] = accum;
+	}
+}
+
+static void sel_float(struct processing_module *mod, struct input_stream_buffer *bsource,
+		      struct output_stream_buffer *bsink, uint32_t frames)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
+	float *src = (float *)audio_stream_get_rptr(source);
+	float *dest = (float *)audio_stream_get_wptr(sink);
+	int nmax;
+	int i;
+	int n;
+	int processed = 0;
+	int source_frame_bytes = audio_stream_frame_bytes(source);
+	int sink_frame_bytes = audio_stream_frame_bytes(sink);
+	int n_chan_source = MIN(SEL_SOURCE_CHANNELS_MAX, audio_stream_get_channels(source));
+	int n_chan_sink = MIN(SEL_SINK_CHANNELS_MAX, audio_stream_get_channels(sink));
+
+	while (processed < frames) {
+		n = frames - processed;
+		nmax = audio_stream_bytes_without_wrap(source, src) / source_frame_bytes;
+		n = MIN(n, nmax);
+		nmax = audio_stream_bytes_without_wrap(sink, dest) / sink_frame_bytes;
+		n = MIN(n, nmax);
+		for (i = 0; i < n; i++) {
+			process_frame_float(dest, n_chan_sink, src, n_chan_source,
+					    &cd->coeffs_config);
+			src += audio_stream_get_channels(source);
+			dest += audio_stream_get_channels(sink);
+		}
+		src = audio_stream_wrap(source, src);
+		dest = audio_stream_wrap(sink, dest);
+		processed += n;
+	}
+
+	module_update_buffer_position(bsource, bsink, frames);
+}
+#endif /* CONFIG_FORMAT_FLOAT */
 #endif /* CONFIG_FORMAT_S32LE */
 #endif
 
@@ -403,6 +459,11 @@ const struct comp_func_map func_table[] = {
 	{SOF_IPC_FRAME_S32_LE, 2, sel_s32le_nch},
 	{SOF_IPC_FRAME_S32_LE, 4, sel_s32le_nch},
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	{SOF_IPC_FRAME_FLOAT, 1, sel_s32le_1ch},
+	{SOF_IPC_FRAME_FLOAT, 2, sel_s32le_nch},
+	{SOF_IPC_FRAME_FLOAT, 4, sel_s32le_nch},
+#endif /* CONFIG_FORMAT_FLOAT */
 #else
 #if CONFIG_FORMAT_S16LE
 	{SOF_IPC_FRAME_S16_LE, 0, sel_s16le},
@@ -412,6 +473,9 @@ const struct comp_func_map func_table[] = {
 #endif
 #if CONFIG_FORMAT_S32LE
 	{SOF_IPC_FRAME_S32_LE, 0, sel_s32le},
+#endif
+#if CONFIG_FORMAT_FLOAT
+	{SOF_IPC_FRAME_FLOAT, 0, sel_float},
 #endif
 #endif
 };
