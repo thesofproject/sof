@@ -781,18 +781,22 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	struct mod_alloc_ctx *alloc;
 
 #if CONFIG_ZEPHYR_DP_SCHEDULER
-	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP &&
-	    sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+	bool src_is_dp = source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP;
+	bool sink_is_dp = sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP;
+#ifdef CONFIG_DP_TO_DP_BIND
+	bool dp_to_dp = src_is_dp && sink_is_dp;
+#else
+	if (src_is_dp && sink_is_dp) {
 		tr_err(&ipc_tr, "DP to DP binding is not supported: can't bind %x to %x",
 		       src_id, sink_id);
 		return IPC4_INVALID_REQUEST;
 	}
-
+#endif
 	struct comp_dev *dp;
 
-	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+	if (sink_is_dp)
 		dp = sink;
-	else if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
+	else if (src_is_dp)
 		dp = source;
 	else
 		dp = NULL;
@@ -865,8 +869,8 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 	 *
 	 *	size = 2*max(obs of source module, ibs of destination module)
 	 *	(obs and ibs is single buffer size)
-	 * in case of DP -> LL
-	 *	size = 2*ibs of destination (LL) module. DP queue will handle obs of DP module
+	 * in case of DP -> LL or DP -> DP
+	 *	size = 2*ibs of destination module. DP queue will handle obs of DP module
 	 */
 	if (source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_LL)
 		buf_size = MAX(ibs, obs) * 2;
@@ -901,12 +905,13 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 #if CONFIG_ZEPHYR_DP_SCHEDULER
 	struct ring_buffer *ring_buffer = NULL;
 
-	if (sink->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP ||
-	    source->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+	if (src_is_dp || sink_is_dp) {
 		struct processing_module *srcmod = comp_mod(source);
 		struct module_data *src_module_data = &srcmod->priv;
 		struct processing_module *dstmod = comp_mod(sink);
 		struct module_data *dst_module_data = &dstmod->priv;
+		bool is_shared = audio_buffer_is_shared(&buffer->audio_buffer);
+		uint32_t buf_id = buf_get_id(buffer);
 
 		/*
 		 * Handle cases where the size of the ring buffer depends on the
@@ -918,16 +923,40 @@ __cold int ipc4_comp_connect(struct ipc *ipc, const struct ipc4_module_bind_unbi
 		 */
 		ring_buffer = ring_buffer_create(dp, MAX(ibs, dst_module_data->mpd.in_buff_size),
 						 MAX(obs, src_module_data->mpd.out_buff_size),
-						 audio_buffer_is_shared(&buffer->audio_buffer),
-						 buf_get_id(buffer));
+						 is_shared, buf_id);
 		if (!ring_buffer) {
 			buffer_free(buffer);
 			return IPC4_OUT_OF_MEMORY;
 		}
 
-		/* data destination module needs to use ring_buffer */
-		audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, dp == source,
-						     &ring_buffer->audio_buffer);
+#ifdef CONFIG_DP_TO_DP_BIND
+		/*
+		 * When CONFIG_DP_TO_DP_BIND is enabled, keep the DP module vregion
+		 * alive for the lifetime of this ring_buffer (dropped in ring_buffer_free()).
+		 */
+		if (ring_buffer->audio_buffer.alloc)
+			vregion_get(ring_buffer->audio_buffer.alloc->vreg);
+#endif
+
+#ifdef CONFIG_DP_TO_DP_BIND
+		if (dp_to_dp) {
+			/*
+			 * DP-to-DP binding: both source and sink are DP modules.
+			 * A single shared ring_buffer is attached on both sides
+			 * of the comp_buffer, so source DP writes directly to it
+			 * and sink DP reads directly from it without copying.
+			 */
+			audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, true,
+							     &ring_buffer->audio_buffer);
+			audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, false,
+							     &ring_buffer->audio_buffer);
+		} else
+#endif
+		{
+			/* data destination module needs to use ring_buffer */
+			audio_buffer_attach_secondary_buffer(&buffer->audio_buffer, dp == source,
+							     &ring_buffer->audio_buffer);
+		}
 	}
 
 #endif /* CONFIG_ZEPHYR_DP_SCHEDULER */
