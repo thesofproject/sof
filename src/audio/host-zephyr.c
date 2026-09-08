@@ -396,7 +396,7 @@ static inline bool host_handle_eos(struct host_data *hd, struct comp_dev *dev,
 	struct sof_audio_buffer *buffer = &hd->local_buffer->audio_buffer;
 	enum sof_audio_buffer_state state = audio_buffer_get_state(buffer);
 
-	if (!dev->pipeline->expect_eos)
+	if (!dev->expect_eos)
 		return false;
 
 	if (!avail_samples) {
