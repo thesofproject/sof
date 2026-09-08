@@ -7,9 +7,11 @@ add_custom_target(topologies2 ALL
     # Create directory structure to be provided for deployment
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ipc4-tplg
     COMMAND ${CMAKE_COMMAND} -E create_symlink sof-ipc4-tplg ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ace-tplg
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/target/sof-tplg
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/target/development
     # copy the topology files only to target
     COMMAND ${CMAKE_COMMAND} -E copy_if_different production/*.tplg ${CMAKE_CURRENT_BINARY_DIR}/target/sof-ipc4-tplg/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different production/ipc3/*.tplg ${CMAKE_CURRENT_BINARY_DIR}/target/sof-tplg/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different development/*.tplg ${CMAKE_CURRENT_BINARY_DIR}/target/development/
 )
 
@@ -35,6 +37,18 @@ add_custom_command(OUTPUT abi.conf
 )
 add_custom_target(abi_target
 	DEPENDS abi.conf
+)
+
+# Atom platforms use IPC3 even when the source topology is written using the
+# topology2 object model. Keep a separate ABI manifest so IPC3 and IPC4 output
+# can be built together without changing the existing production topologies.
+add_custom_command(OUTPUT abi-ipc3.conf
+	COMMAND > abi-ipc3.conf ${CMAKE_CURRENT_SOURCE_DIR}/get_abi.sh
+		${SOF_ROOT_SOURCE_DIRECTORY} "ipc3"
+	DEPENDS ${SOF_ROOT_SOURCE_DIRECTORY}/src/include/kernel/abi.h
+)
+add_custom_target(abi_ipc3_target
+	DEPENDS abi-ipc3.conf
 )
 
 add_dependencies(topologies2 topology2_dev topology2_prod)

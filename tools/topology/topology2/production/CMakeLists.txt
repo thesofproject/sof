@@ -8,6 +8,7 @@ include(tplg-targets-ace2.cmake)
 include(tplg-targets-ace3.cmake)
 include(tplg-targets-ace4.cmake)
 include(tplg-targets-imx8.cmake)
+include(tplg-targets-ipc3.cmake)
 
 add_custom_target(topology2_prod)
 
@@ -31,4 +32,27 @@ foreach(tplg ${TPLGS})
 
 	add_custom_target(topology2_prod_${output} DEPENDS ${output}.tplg)
 	add_dependencies(topology2_prod topology2_prod_${output})
+endforeach()
+
+# IPC3 topologies are kept in a separate build subdirectory so the deployment
+# step cannot accidentally install them as IPC4/ACE topology files.
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ipc3)
+
+foreach(tplg ${IPC3_TPLGS})
+	set(defines "")
+	list(LENGTH tplg length)
+	list(GET tplg 0 input)
+	list(GET tplg 1 output)
+
+	math(EXPR last_index "${length}-1")
+	if (${last_index} EQUAL 2)
+		list(GET tplg ${last_index} defines)
+	endif()
+
+	add_alsatplg2_command("${CMAKE_CURRENT_BINARY_DIR}/../abi-ipc3.conf" abi_ipc3_target
+	  "${CMAKE_CURRENT_SOURCE_DIR}/../${input}" "ipc3/${output}"
+	  "${CMAKE_CURRENT_SOURCE_DIR}/../" "${defines}")
+
+	add_custom_target(topology2_prod_ipc3_${output} DEPENDS ipc3/${output}.tplg)
+	add_dependencies(topology2_prod topology2_prod_ipc3_${output})
 endforeach()
