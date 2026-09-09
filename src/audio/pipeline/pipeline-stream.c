@@ -179,12 +179,29 @@ int pipeline_copy(struct pipeline *p)
 
 	PPL_LOCK(p->core);
 
+	/*
+	 * Freeing the endpoint component of a pipeline clears p->source_comp
+	 * or p->sink_comp. The driver does not free the components of a
+	 * running pipeline, but out of order IPCs or a misbehaving host must
+	 * not crash the DSP, so skip the copy if an endpoint is gone.
+	 */
+	if (!p->source_comp) {
+		PPL_UNLOCK();
+		return 0;
+	}
+
 	if (p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dir = PPL_DIR_UPSTREAM;
 		start = p->sink_comp;
 	} else {
 		dir = PPL_DIR_DOWNSTREAM;
 		start = p->source_comp;
+	}
+
+	/* The endpoint at the start of the copy walk is gone, see above */
+	if (!start) {
+		PPL_UNLOCK();
+		return 0;
 	}
 
 	data.start = start;
