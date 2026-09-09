@@ -13,6 +13,13 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/usb/class/usbd_uac2.h>
 #include <zephyr/device.h>
+#include <zephyr/drivers/dai.h>
+#include <sof/lib/dai.h>
+#include <ipc/dai.h>
+#include <soc/i2s_struct.h>
+#include <soc/gpio_struct.h>
+#include <soc/io_mux_struct.h>
+#include <soc/hp_sys_clkrst_struct.h>
 
 LOG_MODULE_REGISTER(sof_static_pipeline, CONFIG_SOF_LOG_LEVEL);
 
@@ -25,15 +32,15 @@ LOG_MODULE_REGISTER(sof_static_pipeline, CONFIG_SOF_LOG_LEVEL);
 #define PLAYBACK_TERM_ID     UAC2_ENTITY_ID(DT_NODELABEL(i2s_out_terminal))
 #define CAPTURE_TERM_ID      UAC2_ENTITY_ID(DT_NODELABEL(i2s_in_terminal))
 
-K_MEM_SLAB_DEFINE_STATIC(uac2_rx_slab, 1024, 16, 64);
-K_MEM_SLAB_DEFINE_STATIC(uac2_tx_slab, 1024, 16, 64);
+K_MEM_SLAB_DEFINE_STATIC(uac2_rx_slab, 256, 32, 64);
+K_MEM_SLAB_DEFINE_STATIC(uac2_tx_slab, 256, 64, 64);
 
 static struct sof_static_pipeline_status g_status = {
 	.playback_active = false,
 	.capture_active = false,
 	.sample_rate = 48000,
 	.active_interface = SOF_AUDIO_IF_I2S,
-	.clock_mode = SOF_CLOCK_SLAVE,
+	.clock_mode = SOF_CLOCK_MASTER,
 	.playback_volume = 0,
 	.playback_mute = false,
 	.capture_volume = 0,
@@ -51,11 +58,27 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 {
 	ARG_UNUSED(user_data);
 
-	if (g_status.playback_active) {
+	if (g_status.playback_active || g_status.capture_active) {
 		s_sof_diag_cnt++;
 		if (s_sof_diag_cnt % 1000 == 0) {
-			LOG_INF("[SOF UAC2] Playback SOFs: %u, Free RX: %u",
-				s_sof_diag_cnt, k_mem_slab_num_free_get(&uac2_rx_slab));
+			LOG_INF("[DIAG SOF %u] tx_start=%u, rx_start=%u, int_raw=0x%08x, state=0x%08x | I2S0: rx_conf=0x%08x, rx_conf1=0x%08x, rx_tdm=0x%08x, rx_eof=%u",
+				s_sof_diag_cnt,
+				(unsigned int)I2S0.tx_conf.tx_start,
+				(unsigned int)I2S0.rx_conf.rx_start,
+				(unsigned int)I2S0.int_raw.val,
+				(unsigned int)I2S0.state.val,
+				(unsigned int)I2S0.rx_conf.val,
+				(unsigned int)I2S0.rx_conf1.val,
+				(unsigned int)I2S0.rx_tdm_ctrl.val,
+				(unsigned int)I2S0.rx_eof_num.rx_eof_num);
+			LOG_INF("[DIAG GPIOS] lo=0x%08x, hi=0x%08x (G2 lvl=%u, G3 lvl=%u, G20(DIN)=%u, G21(BCK)=%u, G22(WS)=%u, G23(DOUT)=%u)",
+				(uint32_t)GPIO.in.val, (uint32_t)GPIO.in1.val,
+				(uint32_t)((GPIO.in.val >> 2) & 1),
+				(uint32_t)((GPIO.in.val >> 3) & 1),
+				(uint32_t)((GPIO.in.val >> 20) & 1),
+				(uint32_t)((GPIO.in.val >> 21) & 1),
+				(uint32_t)((GPIO.in.val >> 22) & 1),
+				(uint32_t)((GPIO.in.val >> 23) & 1));
 		}
 	} else {
 		s_sof_diag_cnt = 0;
@@ -70,12 +93,29 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 
 		void *buf = NULL;
 		if (k_mem_slab_alloc(&uac2_tx_slab, &buf, K_NO_WAIT) == 0) {
-			usb_audio_fetch_capture_data(buf, frame_bytes);
-			if (g_status.capture_mute) {
-				memset(buf, 0, frame_bytes);
-			}
-			if (usbd_uac2_send(dev, CAPTURE_TERM_ID, buf, frame_bytes) < 0) {
+			if (usb_audio_peek_capture_data(buf, frame_bytes)) {
+				if (g_status.capture_mute) {
+					memset(buf, 0, frame_bytes);
+				}
+				int ret = usbd_uac2_send(dev, CAPTURE_TERM_ID, buf, frame_bytes);
+				if (ret == 0) {
+					usb_audio_consume_capture_data(frame_bytes);
+				} else {
+					static uint32_t s_send_fail_cnt;
+					s_send_fail_cnt++;
+					if (s_send_fail_cnt <= 10 || s_send_fail_cnt % 100 == 0) {
+						LOG_WRN("[UAC2 SEND RET %d (%u)] data retained in ring buffer", ret, s_send_fail_cnt);
+					}
+					k_mem_slab_free(&uac2_tx_slab, buf);
+				}
+			} else {
 				k_mem_slab_free(&uac2_tx_slab, buf);
+			}
+		} else {
+			static uint32_t s_slab_alloc_fails;
+			s_slab_alloc_fails++;
+			if (s_slab_alloc_fails <= 10 || s_slab_alloc_fails % 100 == 0) {
+				LOG_WRN("[UAC2 TX SLAB FULL %u] Failed to allocate TX slab block!", s_slab_alloc_fails);
 			}
 		}
 	}
@@ -294,7 +334,21 @@ extern const struct sof_static_topology g_esp32p4_static_topology;
 int sof_static_pipelines_init(struct sof *sof)
 {
 	ARG_UNUSED(sof);
-	return sof_static_topology_init(&g_esp32p4_static_topology);
+	int ret = sof_static_topology_init(&g_esp32p4_static_topology);
+	if (ret < 0)
+		return ret;
+
+	uint8_t mac[6] = {0};
+	extern int esp_efuse_mac_get_default(uint8_t *mac);
+	esp_efuse_mac_get_default(mac);
+
+	if (mac[5] == 0x17) {
+		g_status.clock_mode = SOF_CLOCK_MASTER;
+	} else {
+		g_status.clock_mode = SOF_CLOCK_SLAVE;
+	}
+
+	return sof_static_pipeline_set_clock_mode(SOF_AUDIO_IF_I2S, g_status.clock_mode);
 }
 
 int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_clock_mode mode)
@@ -302,6 +356,52 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 	g_status.active_interface = iface;
 	g_status.clock_mode = mode;
 	LOG_INF("Set interface %d clock mode to %s", iface, mode == SOF_CLOCK_MASTER ? "MASTER" : "SLAVE");
+
+	if (iface == SOF_AUDIO_IF_I2S) {
+		uint32_t sof_format = (mode == SOF_CLOCK_MASTER) ?
+			(SOF_DAI_FMT_I2S | SOF_DAI_FMT_CBC_CFC) :
+			(SOF_DAI_FMT_I2S | SOF_DAI_FMT_CBP_CFP);
+
+		struct ipc_config_dai dai_cfg = {
+			.type = SOF_DAI_ESP32_I2S,
+			.dai_index = 0,
+			.format = sof_format,
+			.sampling_frequency = g_status.sample_rate ? g_status.sample_rate : 48000,
+		};
+		struct sof_ipc_dai_config spec_cfg = {
+			.type = SOF_DAI_ESP32_I2S,
+			.dai_index = 0,
+			.format = sof_format,
+		};
+		struct dai *dai = dai_get(SOF_DAI_ESP32_I2S, 0, DAI_CREAT);
+		if (dai) {
+			dai_set_config(dai, &dai_cfg, &spec_cfg, sizeof(spec_cfg));
+			dai_put(dai);
+		}
+
+		const struct device *dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(dai_i2s0));
+		if (dev && device_is_ready(dev)) {
+			struct dai_config cfg = {
+				.type = DAI_ESP32_I2S,
+				.dai_index = 0,
+				.channels = 2,
+				.rate = g_status.sample_rate ? g_status.sample_rate : 48000,
+				.format = (mode == SOF_CLOCK_MASTER) ?
+					(DAI_PROTO_I2S | DAI_CBC_CFC) :
+					(DAI_PROTO_I2S | DAI_CBP_CFP),
+				.word_size = 16,
+			};
+			int ret = dai_config_set(dev, &cfg, NULL, 0);
+			if (ret < 0) {
+				LOG_ERR("Failed to set DAI I2S config: %d", ret);
+				return ret;
+			}
+			LOG_INF("DAI I2S hardware successfully switched to %s mode",
+				mode == SOF_CLOCK_MASTER ? "MASTER" : "SLAVE");
+		} else {
+			LOG_WRN("DAI I2S device not ready or not found");
+		}
+	}
 	return 0;
 }
 

@@ -287,7 +287,7 @@ APP_SYSUSER_DATA struct sof_dma dma[] = {
 		.caps		= SOF_DMA_CAP_GP_LP | SOF_DMA_CAP_GP_HP,
 		.devs		= SOF_DMA_DEV_I2S | SOF_DMA_DEV_PDM,
 		.channels	= 6,
-		.period_count	= 2,
+		.period_count	= 64,
 	},
 	.z_dev		= DEVICE_DT_GET(DT_NODELABEL(dma)),
 },

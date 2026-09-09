@@ -71,13 +71,13 @@ static const struct sof_static_comp esp32p4_comps[] = {
 	SOF_STATIC_COMP_HOST(
 		.id = 1, .pipeline_id = 1, .name = "USB_PB",
 		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2),
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2),
 		.ep.usb.terminal_id = PLAYBACK_TERM_ID
 	),
 	SOF_STATIC_COMP_MODULE(
 		.id = 2, .pipeline_id = 1, .name = "VOL_PB",
 		.uuid = &volume_uuid, .direction = SOF_IPC_STREAM_PLAYBACK,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2)
 	),
 	SOF_STATIC_COMP_MODULE(
 		.id = 3, .pipeline_id = 1, .name = "EQ_PB",
@@ -126,12 +126,12 @@ static const struct sof_static_comp esp32p4_comps[] = {
 	SOF_STATIC_COMP_MODULE(
 		.id = 9, .pipeline_id = 2, .name = "VOL_CAP",
 		.uuid = &volume_uuid, .direction = SOF_IPC_STREAM_CAPTURE,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2)
 	),
 	SOF_STATIC_COMP_HOST(
 		.id = 10, .pipeline_id = 2, .name = "USB_CAP",
 		.uuid = &usb_audio_uuid, .direction = SOF_IPC_STREAM_CAPTURE,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2),
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2),
 		.ep.usb.terminal_id = CAPTURE_TERM_ID
 	),
 
@@ -163,17 +163,17 @@ static const struct sof_static_comp esp32p4_comps[] = {
  * ------------------------------------------------------------------------- */
 static const struct sof_static_buffer esp32p4_buffers[] = {
 	/* Playback Buffers */
-	SOF_STATIC_BUFFER(.id = 1, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 2, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 1, .size = 2048, .fmt = SOF_IPC_FRAME_S16_LE),
+	SOF_STATIC_BUFFER(.id = 2, .size = 2048, .fmt = SOF_IPC_FRAME_S16_LE),
 	SOF_STATIC_BUFFER(.id = 3, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
 	SOF_STATIC_BUFFER(.id = 4, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
 	SOF_STATIC_BUFFER(.id = 9, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
 
 	/* Capture Buffers */
-	SOF_STATIC_BUFFER(.id = 5, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 5, .size = 2048, .fmt = SOF_IPC_FRAME_S16_LE),
 	SOF_STATIC_BUFFER(.id = 6, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
 	SOF_STATIC_BUFFER(.id = 7, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 8, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 8, .size = 2048, .fmt = SOF_IPC_FRAME_S16_LE),
 
 	/* Test Pipeline Buffers */
 	SOF_STATIC_BUFFER(.id = 11, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
@@ -185,17 +185,12 @@ static const struct sof_static_buffer esp32p4_buffers[] = {
  * 3. Pipeline Connections / Graph Routing
  * ------------------------------------------------------------------------- */
 static const struct sof_static_route esp32p4_routes[] = {
-	/* Playback Route: USB_PB (1) -> [1] -> MIXER (14) -> [2] -> VOL_PB (2) -> [3] -> EQ_PB (3) -> [4] -> DRC_PB (4) -> [9] -> DAI (5) */
-	SOF_STATIC_ROUTE(.src_comp_id = 1, .buffer_id = 1, .sink_comp_id = 14),
-	SOF_STATIC_ROUTE(.src_comp_id = 14, .buffer_id = 2, .sink_comp_id = 2),
-	SOF_STATIC_ROUTE(.src_comp_id = 2, .buffer_id = 3, .sink_comp_id = 3),
-	SOF_STATIC_ROUTE(.src_comp_id = 3, .buffer_id = 4, .sink_comp_id = 4),
-	SOF_STATIC_ROUTE(.src_comp_id = 4, .buffer_id = 9, .sink_comp_id = 5),
+	/* Playback Route: USB_PB (1) -> [1] -> VOL_PB (2) -> [2] -> DAI (5) */
+	SOF_STATIC_ROUTE(.src_comp_id = 1, .buffer_id = 1, .sink_comp_id = 2),
+	SOF_STATIC_ROUTE(.src_comp_id = 2, .buffer_id = 2, .sink_comp_id = 5),
 
-	/* Capture Route: DAI (6) -> [5] -> TDFB (7) -> [6] -> EQ (8) -> [7] -> VOL (9) -> [8] -> USB (10) */
-	SOF_STATIC_ROUTE(.src_comp_id = 6, .buffer_id = 5, .sink_comp_id = 7),
-	SOF_STATIC_ROUTE(.src_comp_id = 7, .buffer_id = 6, .sink_comp_id = 8),
-	SOF_STATIC_ROUTE(.src_comp_id = 8, .buffer_id = 7, .sink_comp_id = 9),
+	/* Capture Route: DAI (6) -> [5] -> VOL (9) -> [8] -> USB (10) */
+	SOF_STATIC_ROUTE(.src_comp_id = 6, .buffer_id = 5, .sink_comp_id = 9),
 	SOF_STATIC_ROUTE(.src_comp_id = 9, .buffer_id = 8, .sink_comp_id = 10),
 
 	/* Test Route: TONE (11) -> [11] -> LEVEL (12) -> [12] -> SEL (13) -> [13] -> MIXER (14) */
@@ -214,7 +209,7 @@ static const struct sof_static_pcm esp32p4_pcms[] = {
 		.direction = SOF_IPC_STREAM_PLAYBACK,
 		.pipeline_id = 1,
 		.host_comp_id = 1,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2)
 	),
 	SOF_STATIC_PCM(
 		.pcm_id = 1,
@@ -222,7 +217,7 @@ static const struct sof_static_pcm esp32p4_pcms[] = {
 		.direction = SOF_IPC_STREAM_CAPTURE,
 		.pipeline_id = 2,
 		.host_comp_id = 10,
-		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_FLOAT, 48000, 2)
+		.caps = SOF_STATIC_CAPS(SOF_IPC_FRAME_S16_LE, 48000, 2)
 	),
 };
 
@@ -233,37 +228,37 @@ static const struct sof_static_kcontrol esp32p4_controls[] = {
 	SOF_STATIC_KCONTROL_VOLUME(
 		.id = 1, .name = "Master Playback Volume",
 		.target_comp_id = 2,
-		.min = 0, .max = 0x7FFFFFFF, .def = 0x7FFFFFFF, .channels = 2,
+		.min = 0, .max = 65536, .def = 65536, .channels = 2,
 		.uac2_entity_id = PLAYBACK_FU_ID
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
 		.id = 2, .name = "Playback EQ Switch",
 		.target_comp_id = 3,
-		.def = 1, /* 1 = Enabled, 0 = Bypassed */
+		.def = 0, /* 1 = Enabled, 0 = Bypassed */
 		.uac2_entity_id = PLAYBACK_EQ_FU_ID
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
 		.id = 3, .name = "Playback DRC Switch",
 		.target_comp_id = 4,
-		.def = 1,
+		.def = 0,
 		.uac2_entity_id = PLAYBACK_DRC_FU_ID
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
 		.id = 4, .name = "Capture TDFB Switch",
 		.target_comp_id = 7,
-		.def = 1,
+		.def = 0,
 		.uac2_entity_id = CAPTURE_TDFB_FU_ID
 	),
 	SOF_STATIC_KCONTROL_SWITCH(
 		.id = 5, .name = "Capture EQ Switch",
 		.target_comp_id = 8,
-		.def = 1,
+		.def = 0,
 		.uac2_entity_id = CAPTURE_EQ_FU_ID
 	),
 	SOF_STATIC_KCONTROL_VOLUME(
 		.id = 6, .name = "Master Capture Volume",
 		.target_comp_id = 9,
-		.min = 0, .max = 0x7FFFFFFF, .def = 0x7FFFFFFF, .channels = 2,
+		.min = 0, .max = 65536, .def = 65536, .channels = 2,
 		.uac2_entity_id = CAPTURE_FU_ID
 	),
 	SOF_STATIC_KCONTROL_VOLUME(
