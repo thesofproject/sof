@@ -130,8 +130,15 @@ struct vregion *vregion_create(size_t memsize)
 	 */
 	total_size = ALIGN_UP(memsize, CONFIG_MM_DRV_PAGE_SIZE);
 
-	/* allocate vregion metadata separately to keep it inaccessible to the user */
-	vr = rmalloc(0, sizeof(*vr));
+	/*
+	 * allocate vregion metadata separately to keep it inaccessible to the
+	 * user. The vregion is created on the DP module's own core but is
+	 * later read/written from other cores too (e.g. buffer_new() on the
+	 * IPC core routes through it for buffers connecting to this module),
+	 * so it must be coherent - plain cached memory left writes from the
+	 * creating core invisible to other cores without an explicit flush.
+	 */
+	vr = rmalloc(SOF_MEM_FLAG_KERNEL | SOF_MEM_FLAG_COHERENT, sizeof(*vr));
 	if (!vr)
 		return NULL;
 
