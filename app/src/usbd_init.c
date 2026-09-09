@@ -34,6 +34,8 @@ USBD_DESC_MANUFACTURER_DEFINE(sample_mfr, CONFIG_SAMPLE_USBD_MANUFACTURER);
 
 USBD_DESC_PRODUCT_DEFINE(spider_product, "SOF ESP32P4 USB Spider");
 USBD_DESC_PRODUCT_DEFINE(aphid_product, "SOF ESP32P4 USB Aphid");
+USBD_DESC_PRODUCT_DEFINE(pallas_product, "SOF ESP32P4 USB Pallas");
+USBD_DESC_PRODUCT_DEFINE(ceres_product, "SOF ESP32P4 USB Ceres");
 USBD_DESC_PRODUCT_DEFINE(default_product, "SOF ESP32P4 USB");
 
 USBD_DESC_STRING_DEFINE(clock_master_str, "Clock Master", USBD_DUT_STRING_INTERFACE);
@@ -91,6 +93,14 @@ struct usbd_context *sample_usbd_setup_device(usbd_msg_cb_t msg_cb)
 		LOG_INF("Board Identity: APHID I2S DUT (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
 		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 		product_desc = &aphid_product;
+	} else if (mac[5] == 0x17) {
+		LOG_INF("Board Identity: PALLAS TX MASTER (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
+		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		product_desc = &pallas_product;
+	} else if (mac[5] == 0x6C || mac[5] == 0x6c) {
+		LOG_INF("Board Identity: CERES RX SLAVE (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
+		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		product_desc = &ceres_product;
 	} else {
 		LOG_INF("Board Identity: Generic ESP32-P4 (MAC %02X:%02X:%02X:%02X:%02X:%02X)",
 		        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
