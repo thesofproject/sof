@@ -590,6 +590,14 @@ static int llext_manager_mod_find(const struct lib_manager_mod_ctx *ctx, unsigne
 {
 	unsigned int i;
 
+	/*
+	 * n_mod == 0 is reachable for a genuine (non-NULL) library context, e.g.
+	 * before its module segments are registered - without this check the
+	 * i == 0 case below reads ctx->mod[-1], out of bounds.
+	 */
+	if (!ctx->n_mod)
+		return -ENOENT;
+
 	for (i = 0; i < ctx->n_mod; i++)
 		if (ctx->mod[i].start_idx > idx)
 			break;
@@ -1002,6 +1010,11 @@ e_text:
 int llext_manager_add_domain(const uint32_t component_id, struct k_mem_domain *domain)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
+
+	/* Native (base firmware) modules aren't managed by lib_manager, nothing to add */
+	if (!LIB_MANAGER_GET_LIB_ID(module_id))
+		return 0;
+
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	const int mod_idx = llext_manager_mod_find(ctx, entry_index);
@@ -1087,6 +1100,11 @@ static int llext_manager_rm_mod_domain(struct lib_manager_module *mctx, struct k
 int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *domain)
 {
 	const uint32_t module_id = IPC4_MOD_ID(component_id);
+
+	/* Native (base firmware) modules aren't managed by lib_manager, nothing to remove */
+	if (!LIB_MANAGER_GET_LIB_ID(module_id))
+		return 0;
+
 	struct lib_manager_mod_ctx *ctx = lib_manager_get_mod_ctx(module_id);
 	const uint32_t entry_index = LIB_MANAGER_GET_MODULE_INDEX(module_id);
 	const int mod_idx = llext_manager_mod_find(ctx, entry_index);
