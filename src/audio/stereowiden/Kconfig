@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_STEREOWIDEN
+	tristate "FFmpeg Stereo Widener (stereowiden) module"
+	default n
+	help
+	  Select to enable the stereo widener spatial audio module.
+	  Expands the stereo soundstage for laptop speakers and headsets.
+
+if COMP_STEREOWIDEN
+
+config COMP_STEREOWIDEN_STUB
+	bool "Build with pass-through stub backend"
+	default n
+	help
+	  Select to build with the pass-through stub backend instead of real stereowiden.
+
+config STEREOWIDEN_DELAY_MS
+	int "Default delay time (ms)"
+	default 20
+	range 1 20
+	help
+	  Crossfeed delay time in milliseconds (default 20 ms).
+
+endif # COMP_STEREOWIDEN

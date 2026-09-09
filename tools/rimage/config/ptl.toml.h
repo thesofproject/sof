@@ -141,6 +141,18 @@ index = __COUNTER__
 #include <audio/alimiter/alimiter.toml>
 #endif
 
+#if defined(CONFIG_COMP_STEREOWIDEN) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/stereowiden/stereowiden.toml>
+#endif
+
+#if defined(CONFIG_COMP_EQUALIZER) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/equalizer/equalizer.toml>
+#endif
+
+#if defined(CONFIG_COMP_ACOMPRESSOR) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/acompressor/acompressor.toml>
+#endif
+
 #if defined(CONFIG_COMP_WEBRTC_VAD) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/webrtc_vad/webrtc_vad.toml>
 #endif

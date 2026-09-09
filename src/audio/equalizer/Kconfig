@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_EQUALIZER
+	tristate "FFmpeg Parametric Equalizer (equalizer) module"
+	default n
+	help
+	  Select to enable the parametric biquad equalizer module.
+	  Provides 3-band acoustic tuning for laptop speakers and headsets.
+
+if COMP_EQUALIZER
+
+config COMP_EQUALIZER_STUB
+	bool "Build with pass-through stub backend"
+	default n
+	help
+	  Select to build with the pass-through stub backend instead of real equalizer.
+
+endif # COMP_EQUALIZER

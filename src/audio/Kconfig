@@ -169,6 +169,9 @@ rsource "webrtc_ns2/Kconfig"
 rsource "webrtc_agc/Kconfig"
 rsource "webrtc_hpf/Kconfig"
 rsource "alimiter/Kconfig"
+rsource "stereowiden/Kconfig"
+rsource "equalizer/Kconfig"
+rsource "acompressor/Kconfig"
 # --- End Kconfig Sources (alphabetical order) ---
 
 rsource "level_multiplier/Kconfig"

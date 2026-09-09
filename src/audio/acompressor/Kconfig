@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_ACOMPRESSOR
+	tristate "FFmpeg Dynamic Range Compressor (acompressor) module"
+	default n
+	help
+	  Select to enable the dynamic range compressor module.
+	  Provides downward dynamic range compression with configurable attack/release.
+
+if COMP_ACOMPRESSOR
+
+config COMP_ACOMPRESSOR_STUB
+	bool "Build with pass-through stub backend"
+	default n
+	help
+	  Select to build with the pass-through stub backend instead of real acompressor.
+
+config ACOMPRESSOR_ATTACK_MS
+	int "Default attack time (ms)"
+	default 20
+	range 1 500
+	help
+	  Attack time in milliseconds (default 20 ms).
+
+config ACOMPRESSOR_RELEASE_MS
+	int "Default release time (ms)"
+	default 250
+	range 10 2000
+	help
+	  Release time in milliseconds (default 250 ms).
+
+config ACOMPRESSOR_RATIO
+	int "Default compression ratio"
+	default 3
+	range 1 20
+	help
+	  Compression ratio (e.g. 3 for 3:1).
+
+endif # COMP_ACOMPRESSOR
