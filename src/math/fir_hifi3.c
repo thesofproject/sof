@@ -12,7 +12,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/math/fir_hifi3.h>
 #include <user/fir.h>
-#include <xtensa/config/defs.h>
+#include <xtensa/config/core-isa.h>
 #include <xtensa/tie/xt_hifi3.h>
 #include <rtos/symbol.h>
 #include <errno.h>

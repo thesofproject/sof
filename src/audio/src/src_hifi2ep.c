@@ -12,7 +12,7 @@
 
 #include "src_common.h"
 
-#include <xtensa/config/defs.h>
+#include <xtensa/config/core-isa.h>
 #include <xtensa/tie/xt_hifi2.h>
 #include <stddef.h>
 #include <stdint.h>
