@@ -14,6 +14,7 @@
 # docker run -it  -v <insert sof dir here>:/home/sof/work/sof.git --user `id -u` sof ./incremental.sh
 #
 
+# Test Only - add more
 FROM ubuntu:22.04
 # pick random high value to intentionally mismatch local UID
 ARG UID=1999
