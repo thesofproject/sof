@@ -97,7 +97,7 @@ struct ipc4_cadence_module_cfg {
 } __packed __aligned(4);
 #endif
 
-extern struct cadence_api cadence_api_table[];
+extern const struct cadence_api cadence_api_table[];
 
 int cadence_codec_set_configuration(struct processing_module *mod, uint32_t config_id,
 				    enum module_cfg_fragment_position pos,

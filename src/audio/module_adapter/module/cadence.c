@@ -13,7 +13,7 @@ LOG_MODULE_REGISTER(cadence_codec, CONFIG_SOF_LOG_LEVEL);
 /*****************************************************************************/
 /* Cadence API functions array						     */
 /*****************************************************************************/
-struct cadence_api cadence_api_table[] = {
+const struct cadence_api cadence_api_table[] = {
 #ifdef CONFIG_CADENCE_CODEC_WRAPPER
 	{
 		.id = CADENCE_CODEC_WRAPPER_ID,
