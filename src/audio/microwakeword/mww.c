@@ -89,14 +89,14 @@ int DebugVsnprintf(char *buffer, size_t buf_size, const char *format,
 /* Soft mel-log AGC (units: Q9.23, matches MFCC output). One decade = +10 dB.
  * Target +2.5 dB (+0.25 in Q9.23), floor -20 dB. Attack: instant clamp so peak+gain
  * never exceeds MEL_CLIP_MAX_Q23 (+1.0, +10 dB). Release: dual-rate additive recovery:
- *   - Normal release during silence (VAD == 0): ~0.5 dB/s (100 hops/s).
- *   - Super-slow leak during speech (VAD == 1): ~0.05 dB/s (1/10th speed) to guarantee
+ *   - Normal release during silence (VAD == 0): ~1.0 dB/s (100 hops/s).
+ *   - Super-slow leak during speech (VAD == 1): ~0.05 dB/s (1/20th normal release) to guarantee
  *     the AGC never stays permanently trapped at minimum gain even if VAD gets stuck.
  */
 #define MWW_AGC_GAIN_TARGET_Q23        2097152 /* +2.5 dB (0.25 * 2^23) */
 #define MWW_AGC_GAIN_FLOOR_Q23         -16777216 /* -20 dB, int32(-20 * 0.1 * 2^23) */
-#define MWW_AGC_RELEASE_STEP_Q23       4194 /* 0.5 dB/s, int32((0.5 * 0.1 / 100) * 2^23) */
-#define MWW_AGC_RELEASE_STEP_SPEECH_Q23 419 /* 0.05 dB/s, 1/10th normal release */
+#define MWW_AGC_RELEASE_STEP_Q23       8389 /* 1.0 dB/s, int32((1.0 * 0.1 / 100) * 2^23) */
+#define MWW_AGC_RELEASE_STEP_SPEECH_Q23 419 /* 0.05 dB/s, 1/20th normal release */
 
 /* The range -1.0 to +1.0 of Q9.23 Mel values is scaled to +/-1.0 Q1.7. */
 #define MEL_OFFSET_Q23          0 /* 0 */
