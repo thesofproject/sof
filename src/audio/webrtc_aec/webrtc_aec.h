@@ -27,6 +27,7 @@
 
 /* AECm operates on 10 ms frames. Max 16 kHz × 10 ms = 160 samples/channel. */
 #define WEBRTC_AEC_FRAME_SAMPLES_MAX	160
+#define WEBRTC_AEC_FIFO_FRAMES		(WEBRTC_AEC_FRAME_SAMPLES_MAX * 2)
 
 /* Maximum supported channel count (AECm is mono; multi-ch runs N instances). */
 #define WEBRTC_AEC_CHANNELS_MAX		4
@@ -99,13 +100,14 @@ struct webrtc_aec_comp_data {
 	/* Processing frame size at proc_rate. */
 	int frame_samples;    /* proc_rate * 10 / 1000 */
 
-	/* Accumulation state: we collect frames until a full 10 ms block. */
-	int buffered_frames;
+	/* Accumulation and lookahead FIFO state. */
+	int buffered_in_frames;
+	int buffered_out_frames;
 
 	/* Per-channel S16 scratch buffers. */
-	int16_t mic_buf[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_MAX];
-	int16_t ref_buf[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_MAX];
-	int16_t out_buf[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_MAX];
+	int16_t mic_buf[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FIFO_FRAMES];
+	int16_t ref_buf[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FIFO_FRAMES];
+	int16_t out_fifo[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FIFO_FRAMES];
 
 	/* Ref stream liveness (IPC4: always active). */
 	bool last_ref_ok;

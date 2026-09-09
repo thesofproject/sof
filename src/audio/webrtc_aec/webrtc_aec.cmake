@@ -22,10 +22,11 @@ if(NOT EXISTS "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/ae
     "Run 'west update' or pass -DSOF_WEBRTC_APM_SRC_DIR=<path>.")
 endif()
 
-get_filename_component(_tc_dir  "${CMAKE_C_COMPILER}" DIRECTORY)
-get_filename_component(_tc_name "${CMAKE_C_COMPILER}" NAME)
-string(REGEX REPLACE "gcc$" "" _tc_prefix_name "${_tc_name}")
-set(_aecm_cross_prefix "${_tc_dir}/${_tc_prefix_name}")
+if(NOT DEFINED CMAKE_AR)
+  set(_aecm_ar "ar")
+else()
+  set(_aecm_ar "${CMAKE_AR}")
+endif()
 
 set(WEBRTC_AECM_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-aecm-install"
     CACHE INTERNAL "webrtc_aec: AECm library install prefix")
@@ -69,8 +70,8 @@ for f in \$SRCS; do
   ${CMAKE_C_COMPILER} \$CFLAGS -c \"\$f\" -o \"$OBJ/\${bn}.o\"
 done
 
-${_aecm_cross_prefix}ar rcs \"$INST/lib/libwebrtc_aecm.a\" \"$OBJ\"/*.o
-cp $SRC/modules/audio_processing/aecm/echo_control_mobile.h \"$INST/include/\"
+${_aecm_ar} rcs \"$INST/lib/libwebrtc_aecm.a\" \"$OBJ\"/*.o
+cp $SRC/modules/audio_processing/aecm/include/echo_control_mobile.h \"$INST/include/\"
 ")
 
 add_custom_command(

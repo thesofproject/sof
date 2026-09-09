@@ -122,8 +122,8 @@ static int webrtc_aec_real_process_ch(struct processing_module *mod,
 	}
 
 	/* Process near-end (mic) and produce echo-cancelled output.
-	 * The third parameter (near_end_noiseless) can be NULL. */
-	ret = WebRtcAecm_Process(rd->aecm[ch], mic, NULL, out, frame_samples, 0);
+	 * Pass 20 ms nominal sound card buffer delay. */
+	ret = WebRtcAecm_Process(rd->aecm[ch], mic, NULL, out, frame_samples, 20);
 	if (ret) {
 		comp_err(mod->dev, "webrtc_aec: Process ch%d failed %d", ch, ret);
 		return ret;
