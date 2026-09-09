@@ -6,6 +6,7 @@
  */
 
 #include "stereowiden.h"
+#include <ipc4/header.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
@@ -38,6 +39,7 @@ __cold static int stereowiden_init(struct processing_module *mod)
 	md->private = cd;
 	cd->backend = stereowiden_active_backend;
 	cd->enabled = true;
+	cd->extra_wide = false;
 	cd->delay_ms = CONFIG_STEREOWIDEN_DELAY_MS;
 	/* Q30 defaults: drymix = 0.8, crossfeed = 0.3, feedback = 0.3 */
 	cd->drymix = (int32_t)((int64_t)858993459LL);
@@ -161,12 +163,75 @@ __cold static int stereowiden_free(struct processing_module *mod)
 	return 0;
 }
 
+static int stereowiden_set_config(struct processing_module *mod, uint32_t param_id,
+				  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				  size_t response_size)
+{
+	struct stereowiden_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+
+	if (param_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		const struct sof_ipc4_control_msg_payload *ctl =
+			(const struct sof_ipc4_control_msg_payload *)fragment;
+
+		if (ctl->num_elems != 1) {
+			comp_err(dev, "stereowiden: invalid num_elems %d", ctl->num_elems);
+			return -EINVAL;
+		}
+
+		if (ctl->id == 0) {
+			cd->enabled = (ctl->chanv[0].value != 0);
+			comp_info(dev, "stereowiden: switch enable = %d", cd->enabled);
+			return 0;
+		} else if (ctl->id == 1) {
+			cd->extra_wide = (ctl->chanv[0].value != 0);
+			/* 0.3 normal (322122547) vs 0.6 wide (644245094) in Q30 */
+			cd->crossfeed = cd->extra_wide ? 644245094 : 322122547;
+			comp_info(dev, "stereowiden: extra wide = %d (crossfeed=%d)",
+				  cd->extra_wide, cd->crossfeed);
+			return 0;
+		}
+
+		comp_err(dev, "stereowiden: unknown control id %d", ctl->id);
+		return -EINVAL;
+	}
+
+	comp_err(dev, "stereowiden: unsupported param_id 0x%x", param_id);
+	return -EINVAL;
+}
+
+static int stereowiden_get_config(struct processing_module *mod, uint32_t config_id,
+				  uint32_t *data_offset_size, uint8_t *fragment,
+				  size_t fragment_size)
+{
+	struct stereowiden_comp_data *cd = module_get_private_data(mod);
+
+	if (config_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		struct sof_ipc4_control_msg_payload *ctl =
+			(struct sof_ipc4_control_msg_payload *)fragment;
+		ctl->num_elems = 1;
+		ctl->chanv[0].channel = 0;
+		if (ctl->id == 1)
+			ctl->chanv[0].value = cd->extra_wide ? 1 : 0;
+		else
+			ctl->chanv[0].value = cd->enabled ? 1 : 0;
+		*data_offset_size = sizeof(struct sof_ipc4_control_msg_payload) +
+				    sizeof(struct sof_ipc4_ctrl_value_chan);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static const struct module_interface stereowiden_interface = {
-	.init    = stereowiden_init,
-	.prepare = stereowiden_prepare,
-	.process = stereowiden_process,
-	.reset   = stereowiden_reset,
-	.free    = stereowiden_free,
+	.init              = stereowiden_init,
+	.prepare           = stereowiden_prepare,
+	.process           = stereowiden_process,
+	.set_configuration = stereowiden_set_config,
+	.get_configuration = stereowiden_get_config,
+	.reset             = stereowiden_reset,
+	.free              = stereowiden_free,
 };
 
 #if CONFIG_COMP_STEREOWIDEN_MODULE

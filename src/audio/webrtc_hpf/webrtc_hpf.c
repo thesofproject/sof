@@ -6,6 +6,7 @@
  */
 
 #include "webrtc_hpf.h"
+#include <ipc4/header.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
@@ -158,12 +159,66 @@ __cold static int webrtc_hpf_free(struct processing_module *mod)
 	return 0;
 }
 
+static int webrtc_hpf_set_config(struct processing_module *mod, uint32_t param_id,
+				 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				 size_t response_size)
+{
+	struct webrtc_hpf_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+
+	if (param_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		const struct sof_ipc4_control_msg_payload *ctl =
+			(const struct sof_ipc4_control_msg_payload *)fragment;
+
+		if (ctl->num_elems != 1) {
+			comp_err(dev, "webrtc_hpf: invalid num_elems %d", ctl->num_elems);
+			return -EINVAL;
+		}
+
+		if (ctl->id == 0) {
+			cd->enabled = (ctl->chanv[0].value != 0);
+			comp_info(dev, "webrtc_hpf: switch enable = %d", cd->enabled);
+			return 0;
+		}
+
+		comp_err(dev, "webrtc_hpf: unknown control id %d", ctl->id);
+		return -EINVAL;
+	}
+
+	comp_err(dev, "webrtc_hpf: unsupported param_id 0x%x", param_id);
+	return -EINVAL;
+}
+
+static int webrtc_hpf_get_config(struct processing_module *mod, uint32_t config_id,
+				 uint32_t *data_offset_size, uint8_t *fragment,
+				 size_t fragment_size)
+{
+	struct webrtc_hpf_comp_data *cd = module_get_private_data(mod);
+
+	if (config_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		struct sof_ipc4_control_msg_payload *ctl =
+			(struct sof_ipc4_control_msg_payload *)fragment;
+		ctl->id = 0;
+		ctl->num_elems = 1;
+		ctl->chanv[0].channel = 0;
+		ctl->chanv[0].value = cd->enabled ? 1 : 0;
+		*data_offset_size = sizeof(struct sof_ipc4_control_msg_payload) +
+				    sizeof(struct sof_ipc4_ctrl_value_chan);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static const struct module_interface webrtc_hpf_interface = {
-	.init    = webrtc_hpf_init,
-	.prepare = webrtc_hpf_prepare,
-	.process = webrtc_hpf_process,
-	.reset   = webrtc_hpf_reset,
-	.free    = webrtc_hpf_free,
+	.init              = webrtc_hpf_init,
+	.prepare           = webrtc_hpf_prepare,
+	.process           = webrtc_hpf_process,
+	.set_configuration = webrtc_hpf_set_config,
+	.get_configuration = webrtc_hpf_get_config,
+	.reset             = webrtc_hpf_reset,
+	.free              = webrtc_hpf_free,
 };
 
 #if CONFIG_COMP_WEBRTC_HPF_MODULE

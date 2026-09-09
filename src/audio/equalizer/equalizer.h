@@ -43,10 +43,13 @@ struct equalizer_comp_data {
 	int channels;
 	int rate;
 	bool enabled;
+	bool bass_boost;
 };
 
 extern const struct equalizer_backend equalizer_real_backend;
 extern const struct equalizer_backend equalizer_stub_backend;
+
+void equalizer_update_coeffs(struct equalizer_comp_data *cd);
 
 void equalizer_process_s16(struct equalizer_comp_data *cd,
 			   const int16_t *src, int16_t *dst,

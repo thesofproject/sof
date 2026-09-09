@@ -6,6 +6,7 @@
  */
 
 #include "webrtc_agc.h"
+#include <ipc4/header.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
@@ -163,12 +164,66 @@ __cold static int webrtc_agc_free(struct processing_module *mod)
 	return 0;
 }
 
+static int webrtc_agc_set_config(struct processing_module *mod, uint32_t param_id,
+				 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				 size_t response_size)
+{
+	struct webrtc_agc_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+
+	if (param_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		const struct sof_ipc4_control_msg_payload *ctl =
+			(const struct sof_ipc4_control_msg_payload *)fragment;
+
+		if (ctl->num_elems != 1) {
+			comp_err(dev, "webrtc_agc: invalid num_elems %d", ctl->num_elems);
+			return -EINVAL;
+		}
+
+		if (ctl->id == 0) {
+			cd->enabled = (ctl->chanv[0].value != 0);
+			comp_info(dev, "webrtc_agc: switch enable = %d", cd->enabled);
+			return 0;
+		}
+
+		comp_err(dev, "webrtc_agc: unknown control id %d", ctl->id);
+		return -EINVAL;
+	}
+
+	comp_err(dev, "webrtc_agc: unsupported param_id 0x%x", param_id);
+	return -EINVAL;
+}
+
+static int webrtc_agc_get_config(struct processing_module *mod, uint32_t config_id,
+				 uint32_t *data_offset_size, uint8_t *fragment,
+				 size_t fragment_size)
+{
+	struct webrtc_agc_comp_data *cd = module_get_private_data(mod);
+
+	if (config_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		struct sof_ipc4_control_msg_payload *ctl =
+			(struct sof_ipc4_control_msg_payload *)fragment;
+		ctl->id = 0;
+		ctl->num_elems = 1;
+		ctl->chanv[0].channel = 0;
+		ctl->chanv[0].value = cd->enabled ? 1 : 0;
+		*data_offset_size = sizeof(struct sof_ipc4_control_msg_payload) +
+				    sizeof(struct sof_ipc4_ctrl_value_chan);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static const struct module_interface webrtc_agc_interface = {
-	.init    = webrtc_agc_init,
-	.prepare = webrtc_agc_prepare,
-	.process = webrtc_agc_process,
-	.reset   = webrtc_agc_reset,
-	.free    = webrtc_agc_free,
+	.init              = webrtc_agc_init,
+	.prepare           = webrtc_agc_prepare,
+	.process           = webrtc_agc_process,
+	.set_configuration = webrtc_agc_set_config,
+	.get_configuration = webrtc_agc_get_config,
+	.reset             = webrtc_agc_reset,
+	.free              = webrtc_agc_free,
 };
 
 #if CONFIG_COMP_WEBRTC_AGC_MODULE

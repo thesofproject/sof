@@ -40,6 +40,7 @@ struct acompressor_comp_data {
 	int attack_ms;
 	int release_ms;
 	bool enabled;
+	bool heavy_ratio;
 };
 
 extern const struct acompressor_backend acompressor_real_backend;

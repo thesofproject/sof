@@ -42,6 +42,7 @@ struct stereowiden_comp_data {
 	int rate;
 	int delay_ms;
 	bool enabled;
+	bool extra_wide;
 };
 
 extern const struct stereowiden_backend stereowiden_real_backend;

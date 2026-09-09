@@ -44,6 +44,35 @@ static const int32_t coeffs_16k[3][5] = {
 	{ 1239937714,  -104460284,  214295730,    90458879,  185572456 }
 };
 
+/* Low Shelf 150 Hz (+8.0 dB) Bass Boost coefficients */
+static const int32_t coeffs_48k_bass_boost[5] = {
+	1080689931, -2123605358, 1043564357, -2123800651, 1050317171
+};
+
+static const int32_t coeffs_16k_bass_boost[5] = {
+	1094710047, -2074729625, 985735455, -2076449798, 1004983505
+};
+
+void equalizer_update_coeffs(struct equalizer_comp_data *cd)
+{
+	const int32_t (*c_ptr)[5] = (cd->rate <= 16000) ? coeffs_16k : coeffs_48k;
+	const int32_t *b0_coeffs = (cd->rate <= 16000) ? coeffs_16k_bass_boost : coeffs_48k_bass_boost;
+
+	if (cd->bass_boost) {
+		cd->bands[0].b0 = b0_coeffs[0];
+		cd->bands[0].b1 = b0_coeffs[1];
+		cd->bands[0].b2 = b0_coeffs[2];
+		cd->bands[0].a1 = b0_coeffs[3];
+		cd->bands[0].a2 = b0_coeffs[4];
+	} else {
+		cd->bands[0].b0 = c_ptr[0][0];
+		cd->bands[0].b1 = c_ptr[0][1];
+		cd->bands[0].b2 = c_ptr[0][2];
+		cd->bands[0].a1 = c_ptr[0][3];
+		cd->bands[0].a2 = c_ptr[0][4];
+	}
+}
+
 void equalizer_process_s16(struct equalizer_comp_data *cd,
 			   const int16_t *src, int16_t *dst,
 			   size_t frames)
@@ -103,13 +132,17 @@ static int equalizer_filter_prepare(struct processing_module *mod)
 	const int32_t (*c_ptr)[5] = (cd->rate <= 16000) ? coeffs_16k : coeffs_48k;
 	int band, ch;
 
-	for (band = 0; band < EQUALIZER_BANDS_MAX; band++) {
+	equalizer_update_coeffs(cd);
+
+	for (band = 1; band < EQUALIZER_BANDS_MAX; band++) {
 		cd->bands[band].b0 = c_ptr[band][0];
 		cd->bands[band].b1 = c_ptr[band][1];
 		cd->bands[band].b2 = c_ptr[band][2];
 		cd->bands[band].a1 = c_ptr[band][3];
 		cd->bands[band].a2 = c_ptr[band][4];
+	}
 
+	for (band = 0; band < EQUALIZER_BANDS_MAX; band++) {
 		for (ch = 0; ch < EQUALIZER_CHANNELS_MAX; ch++) {
 			cd->bands[band].d1[ch] = 0;
 			cd->bands[band].d2[ch] = 0;

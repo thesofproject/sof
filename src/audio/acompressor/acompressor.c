@@ -6,6 +6,7 @@
  */
 
 #include "acompressor.h"
+#include <ipc4/header.h>
 #include <sof/audio/module_adapter/module/generic.h>
 #include <rtos/alloc.h>
 #include <rtos/init.h>
@@ -38,6 +39,7 @@ __cold static int acompressor_init(struct processing_module *mod)
 	md->private = cd;
 	cd->backend = acompressor_active_backend;
 	cd->enabled = true;
+	cd->heavy_ratio = false;
 	cd->attack_ms = CONFIG_ACOMPRESSOR_ATTACK_MS;
 	cd->release_ms = CONFIG_ACOMPRESSOR_RELEASE_MS;
 	cd->ratio = CONFIG_ACOMPRESSOR_RATIO;
@@ -164,12 +166,74 @@ __cold static int acompressor_free(struct processing_module *mod)
 	return 0;
 }
 
+static int acompressor_set_config(struct processing_module *mod, uint32_t param_id,
+				  enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				  const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				  size_t response_size)
+{
+	struct acompressor_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+
+	if (param_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		const struct sof_ipc4_control_msg_payload *ctl =
+			(const struct sof_ipc4_control_msg_payload *)fragment;
+
+		if (ctl->num_elems != 1) {
+			comp_err(dev, "acompressor: invalid num_elems %d", ctl->num_elems);
+			return -EINVAL;
+		}
+
+		if (ctl->id == 0) {
+			cd->enabled = (ctl->chanv[0].value != 0);
+			comp_info(dev, "acompressor: switch enable = %d", cd->enabled);
+			return 0;
+		} else if (ctl->id == 1) {
+			cd->heavy_ratio = (ctl->chanv[0].value != 0);
+			cd->ratio = cd->heavy_ratio ? 8 : 3;
+			comp_info(dev, "acompressor: heavy ratio = %d (ratio=%d)",
+				  cd->heavy_ratio, cd->ratio);
+			return 0;
+		}
+
+		comp_err(dev, "acompressor: unknown control id %d", ctl->id);
+		return -EINVAL;
+	}
+
+	comp_err(dev, "acompressor: unsupported param_id 0x%x", param_id);
+	return -EINVAL;
+}
+
+static int acompressor_get_config(struct processing_module *mod, uint32_t config_id,
+				  uint32_t *data_offset_size, uint8_t *fragment,
+				  size_t fragment_size)
+{
+	struct acompressor_comp_data *cd = module_get_private_data(mod);
+
+	if (config_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		struct sof_ipc4_control_msg_payload *ctl =
+			(struct sof_ipc4_control_msg_payload *)fragment;
+		ctl->num_elems = 1;
+		ctl->chanv[0].channel = 0;
+		if (ctl->id == 1)
+			ctl->chanv[0].value = cd->heavy_ratio ? 1 : 0;
+		else
+			ctl->chanv[0].value = cd->enabled ? 1 : 0;
+		*data_offset_size = sizeof(struct sof_ipc4_control_msg_payload) +
+				    sizeof(struct sof_ipc4_ctrl_value_chan);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static const struct module_interface acompressor_interface = {
-	.init    = acompressor_init,
-	.prepare = acompressor_prepare,
-	.process = acompressor_process,
-	.reset   = acompressor_reset,
-	.free    = acompressor_free,
+	.init              = acompressor_init,
+	.prepare           = acompressor_prepare,
+	.process           = acompressor_process,
+	.set_configuration = acompressor_set_config,
+	.get_configuration = acompressor_get_config,
+	.reset             = acompressor_reset,
+	.free              = acompressor_free,
 };
 
 #if CONFIG_COMP_ACOMPRESSOR_MODULE
