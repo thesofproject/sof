@@ -145,8 +145,8 @@
 &pinctrl {
 	i2s0_default: i2s0_default {
 		group1 {
-			pinmux = <ESP32_PINMUX(21, ESP_I2S0_I_BCK_IN, ESP_NOSIG)>,
-				 <ESP32_PINMUX(22, ESP_I2S0_I_WS_IN, ESP_NOSIG)>,
+			pinmux = <ESP32_PINMUX(21, ESP_I2S0_O_BCK_IN, ESP_I2S0_O_BCK_OUT)>,
+				 <ESP32_PINMUX(22, ESP_I2S0_O_WS_IN, ESP_I2S0_O_WS_OUT)>,
 				 <ESP32_PINMUX(23, ESP_NOSIG, ESP_I2S0_O_SD_OUT)>;
 		};
 		group2 {
