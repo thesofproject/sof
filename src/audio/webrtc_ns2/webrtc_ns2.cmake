@@ -22,10 +22,11 @@ if(NOT EXISTS "${SOF_RNNOISE_SRC_DIR}/src/denoise.c")
     "-DSOF_RNNOISE_SRC_DIR=<path>.")
 endif()
 
-get_filename_component(_tc_dir  "${CMAKE_C_COMPILER}" DIRECTORY)
-get_filename_component(_tc_name "${CMAKE_C_COMPILER}" NAME)
-string(REGEX REPLACE "gcc$" "" _tc_prefix_name "${_tc_name}")
-set(_rnn_cross_prefix "${_tc_dir}/${_tc_prefix_name}")
+if(NOT DEFINED CMAKE_AR)
+  set(_rnn_ar "ar")
+else()
+  set(_rnn_ar "${CMAKE_AR}")
+endif()
 
 set(WEBRTC_NS2_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-install"
     CACHE INTERNAL "webrtc_ns2: RNNoise library install prefix")
@@ -60,7 +61,7 @@ for f in \$SRCS; do
   ${CMAKE_C_COMPILER} \$CFLAGS -c \"\$f\" -o \"$OBJ/\${bn}.o\"
 done
 
-${_rnn_cross_prefix}ar rcs \"$INST/lib/librnnoise.a\" \"$OBJ\"/*.o
+${_rnn_ar} rcs \"$INST/lib/librnnoise.a\" \"$OBJ\"/*.o
 cp \"$INC/rnnoise.h\" \"$INST/include/\"
 ")
 

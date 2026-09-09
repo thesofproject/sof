@@ -132,13 +132,18 @@ static int webrtc_ns2_rnn_reset(struct processing_module *mod)
 	struct webrtc_ns2_rnn_data *rd = cd->backend_data;
 	int c;
 
-	/*
-	 * RNNoise has no reset API; re-initialise each instance in-place
-	 * using rnnoise_init() to clear the GRU hidden state.
-	 */
+	if (!rd)
+		return 0;
+
 	for (c = 0; c < rd->num_channels; c++) {
-		if (rd->st[c])
-			rnnoise_init(rd->st[c], NULL);
+		if (rd->st[c]) {
+			rnnoise_destroy(rd->st[c]);
+			rd->st[c] = rnnoise_create(NULL);
+			if (!rd->st[c]) {
+				comp_err(mod->dev, "webrtc_ns2: reset failed ch%d", c);
+				return -ENOMEM;
+			}
+		}
 	}
 	return 0;
 }

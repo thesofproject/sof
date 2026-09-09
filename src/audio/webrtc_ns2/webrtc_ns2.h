@@ -21,6 +21,7 @@
 /* RNNoise is strictly 48 kHz, 10 ms frames. */
 #define WEBRTC_NS2_SAMPLE_RATE		48000
 #define WEBRTC_NS2_FRAME_SAMPLES	480    /* 10 ms at 48 kHz */
+#define WEBRTC_NS2_FIFO_FRAMES		(WEBRTC_NS2_FRAME_SAMPLES * 2)
 #define WEBRTC_NS2_CHANNELS_MAX		CONFIG_WEBRTC_NS2_CHANNELS_MAX
 
 /**
@@ -65,11 +66,12 @@ struct webrtc_ns2_comp_data {
 
 	int      channels;
 	bool     is_s32;           /* true when pipeline format is S32_LE */
-	int      buffered_frames;  /* frames accumulated toward 480 */
+	int      buffered_in_frames;
+	int      buffered_out_frames;
 
-	/* Per-channel float scratch buffers (480 samples each). */
-	float    in_buf[WEBRTC_NS2_CHANNELS_MAX][WEBRTC_NS2_FRAME_SAMPLES];
-	float    out_buf[WEBRTC_NS2_CHANNELS_MAX][WEBRTC_NS2_FRAME_SAMPLES];
+	/* Per-channel float scratch buffers (960 samples each). */
+	float    in_buf[WEBRTC_NS2_CHANNELS_MAX][WEBRTC_NS2_FIFO_FRAMES];
+	float    out_fifo[WEBRTC_NS2_CHANNELS_MAX][WEBRTC_NS2_FIFO_FRAMES];
 
 	/* VAD: last decision and threshold. */
 	int      last_vad;

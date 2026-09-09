@@ -68,7 +68,7 @@ static inline void float_to_sink(struct webrtc_ns2_comp_data *cd,
 
 		for (i = 0; i < n_frames; i++) {
 			for (c = 0; c < ch; c++) {
-				float f = cd->out_buf[c][i] * NS2_S32_SCALE;
+				float f = cd->out_fifo[c][i] * NS2_S32_SCALE;
 
 				f = f >  2147483647.0f ?  2147483647.0f :
 				    f < -2147483648.0f ? -2147483648.0f : f;
@@ -80,7 +80,7 @@ static inline void float_to_sink(struct webrtc_ns2_comp_data *cd,
 
 		for (i = 0; i < n_frames; i++) {
 			for (c = 0; c < ch; c++) {
-				float f = cd->out_buf[c][i] * NS2_S16_SCALE;
+				float f = cd->out_fifo[c][i] * NS2_S16_SCALE;
 
 				f = f >  32767.0f ?  32767.0f :
 				    f < -32768.0f ? -32768.0f : f;
@@ -183,7 +183,10 @@ __cold static int webrtc_ns2_prepare(struct processing_module *mod,
 		}
 	}
 
-	cd->buffered_frames = 0;
+	cd->buffered_in_frames = 0;
+	for (ret = 0; ret < cd->channels; ret++)
+		memset(cd->out_fifo[ret], 0, sizeof(float) * WEBRTC_NS2_FRAME_SAMPLES);
+	cd->buffered_out_frames = WEBRTC_NS2_FRAME_SAMPLES;
 	cd->last_vad = -1; /* unknown */
 	cd->configured = true;
 	return 0;
@@ -204,8 +207,13 @@ static int webrtc_ns2_process(struct processing_module *mod,
 	const void *rd_ptr, *rd_start;
 	void *wr_ptr, *wr_start;
 	size_t buf_sz;
-	int ret, frames_rem, chunk;
+	int ret, drain, c;
 
+	if (n <= 0)
+		return 0;
+
+	/* Cap to available space in input FIFO */
+	n = MIN(n, WEBRTC_NS2_FIFO_FRAMES - cd->buffered_in_frames);
 	if (n <= 0)
 		return 0;
 
@@ -221,55 +229,59 @@ static int webrtc_ns2_process(struct processing_module *mod,
 		return ret;
 	}
 
-	/*
-	 * Accumulate into in_buf[], process full 480-sample frames,
-	 * drain denoised samples from out_buf[] into the sink write pointer.
-	 * Both rd_ptr and wr_ptr advance by frame_bytes * n total.
-	 */
-	const char *rp = rd_ptr;
-	char *wp = wr_ptr;
+	/* Convert input PCM -> per-channel float buffer */
+	src_to_float(cd, rd_ptr, n, cd->buffered_in_frames);
+	cd->buffered_in_frames += n;
 
-	for (frames_rem = n; frames_rem > 0; frames_rem -= chunk) {
-		chunk = MIN(frames_rem,
-			    WEBRTC_NS2_FRAME_SAMPLES - cd->buffered_frames);
+	/* Process complete 480-sample blocks into out_fifo */
+	while (cd->buffered_in_frames >= WEBRTC_NS2_FRAME_SAMPLES &&
+	       cd->buffered_out_frames + WEBRTC_NS2_FRAME_SAMPLES <= WEBRTC_NS2_FIFO_FRAMES) {
+		float vad_prob = 0.0f, ch_prob;
 
-		src_to_float(cd, rp, chunk, cd->buffered_frames);
-		rp += chunk * frame_bytes;
-		cd->buffered_frames += chunk;
+		for (c = 0; c < cd->channels; c++) {
+			ch_prob = cd->backend->process_ch(
+					mod,
+					cd->in_buf[c],
+					&cd->out_fifo[c][cd->buffered_out_frames], c);
+			if (ch_prob >= 0.0f)
+				vad_prob += ch_prob;
+		}
+		vad_prob /= (float)cd->channels;
 
-		if (cd->buffered_frames >= WEBRTC_NS2_FRAME_SAMPLES) {
-			float vad_prob = 0.0f, ch_prob;
-			int c;
+		cd->buffered_out_frames += WEBRTC_NS2_FRAME_SAMPLES;
+		cd->buffered_in_frames -= WEBRTC_NS2_FRAME_SAMPLES;
 
-			for (c = 0; c < cd->channels; c++) {
-				ch_prob = cd->backend->process_ch(
-						mod,
-						cd->in_buf[c],
-						cd->out_buf[c], c);
-				/* Average VAD probability across channels. */
-				if (ch_prob >= 0.0f)
-					vad_prob += ch_prob;
-			}
-			vad_prob /= (float)cd->channels;
-
-			/* Write denoised samples to sink. */
-			float_to_sink(cd, wp, WEBRTC_NS2_FRAME_SAMPLES);
-			wp += WEBRTC_NS2_FRAME_SAMPLES * frame_bytes;
-
-			cd->buffered_frames = 0;
+		if (cd->buffered_in_frames > 0) {
+			for (c = 0; c < cd->channels; c++)
+				memmove(cd->in_buf[c],
+					cd->in_buf[c] + WEBRTC_NS2_FRAME_SAMPLES,
+					(size_t)cd->buffered_in_frames * sizeof(float));
+		}
 
 #if CONFIG_WEBRTC_NS2_VAD_NOTIFY
-			{
-				int vad = (vad_prob >= cd->vad_threshold) ? 1 : 0;
+		{
+			int vad = (vad_prob >= cd->vad_threshold) ? 1 : 0;
 
-				if (vad != cd->last_vad) {
-					notifier_event(mod->dev, NOTIFIER_ID_VAD,
-						       NOTIFIER_TARGET_CORE_LOCAL,
-						       &vad, sizeof(vad));
-					cd->last_vad = vad;
-				}
+			if (vad != cd->last_vad) {
+				notifier_event(mod->dev, NOTIFIER_ID_VAD,
+					       NOTIFIER_TARGET_CORE_LOCAL,
+					       &vad, sizeof(vad));
+				cd->last_vad = vad;
 			}
+		}
 #endif
+	}
+
+	/* Drain exactly n frames from out_fifo to maintain symmetric period I/O */
+	drain = MIN(n, cd->buffered_out_frames);
+	if (drain > 0) {
+		float_to_sink(cd, wr_ptr, drain);
+		cd->buffered_out_frames -= drain;
+		if (cd->buffered_out_frames > 0) {
+			for (c = 0; c < cd->channels; c++)
+				memmove(cd->out_fifo[c],
+					cd->out_fifo[c] + drain,
+					(size_t)cd->buffered_out_frames * sizeof(float));
 		}
 	}
 
@@ -281,9 +293,13 @@ static int webrtc_ns2_process(struct processing_module *mod,
 static int webrtc_ns2_reset(struct processing_module *mod)
 {
 	struct webrtc_ns2_comp_data *cd = module_get_private_data(mod);
+	int c;
 
 	comp_dbg(mod->dev, "webrtc_ns2: reset");
-	cd->buffered_frames = 0;
+	cd->buffered_in_frames = 0;
+	for (c = 0; c < cd->channels; c++)
+		memset(cd->out_fifo[c], 0, sizeof(float) * WEBRTC_NS2_FRAME_SAMPLES);
+	cd->buffered_out_frames = WEBRTC_NS2_FRAME_SAMPLES;
 	cd->last_vad = -1;
 
 	if (cd->backend->reset)

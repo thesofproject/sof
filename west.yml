@@ -101,11 +101,11 @@ manifest:
       remote: webrtc-apm
 
     # rnnoise — xiph/rnnoise deep-learning noise suppressor (webrtc_ns2).
-    # Pure C, BSD-3-Clause. Pinned at Feb-2025 tip (post RNNoise 2.0 refactor).
+    # Pure C, BSD-3-Clause. Pinned at v0.1.1 (self-contained model weights in rnn_data.c).
     - name: rnnoise
       repo-path: rnnoise
       path: modules/audio/rnnoise
-      revision: 70f1d256acd4b34a572f999a05c87bf00b67730d
+      revision: 6cbfd53eb348a8d394e0757b4025c6ded34eb2b6
       remote: rnnoise
 
     - name: zephyr
