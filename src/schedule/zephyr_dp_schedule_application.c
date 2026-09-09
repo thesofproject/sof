@@ -54,6 +54,14 @@ struct ipc4_flat {
 			struct sof_source *source[CONFIG_MODULE_MAX_CONNECTIONS];
 			struct sof_sink *sink[CONFIG_MODULE_MAX_CONNECTIONS];
 		} pipeline_state;
+		/*
+		 * SOF_IPC4_MOD_INIT_INSTANCE: a by-value copy of the caller's
+		 * ext_data. The original lives on the calling thread's stack,
+		 * which the DP thread's memory domain doesn't have access to.
+		 * The pointers it contains reference the IPC mailbox, which stays
+		 * valid and is covered by the DP thread's SOF_DP_PART_CFG partition.
+		 */
+		struct module_ext_init_data init_instance;
 	};
 };
 
@@ -72,6 +80,12 @@ static int ipc_thread_flatten(unsigned int cmd, const union scheduler_dp_thread_
 	case SOF_IPC4_MOD_UNBIND:
 		flat->bind.bu = *param->bind_data->ipc4_data;
 		flat->bind.type = param->bind_data->bind_type;
+		break;
+	case SOF_IPC4_MOD_INIT_INSTANCE:
+		if (param->ext_data)
+			flat->init_instance = *param->ext_data;
+		else
+			flat->init_instance = (struct module_ext_init_data){ 0 };
 		break;
 	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
 		flat->pipeline_state.trigger_cmd = param->pipeline_state.trigger_cmd;
@@ -133,7 +147,13 @@ static void ipc_thread_unflatten_run(struct processing_module *pmod, struct ipc4
 		flat->ret = ops->free(pmod);
 		break;
 	case SOF_IPC4_MOD_INIT_INSTANCE:
+		/*
+		 * Repoint ext_data at the copy ipc_thread_flatten() made in DP-thread-
+		 * accessible memory; the original caller-stack copy is out of reach here.
+		 */
+		pmod->priv.cfg.ext_data = &flat->init_instance;
 		flat->ret = ops->init(pmod);
+		pmod->priv.cfg.ext_data = NULL;
 		break;
 	case SOF_IPC4_GLB_SET_PIPELINE_STATE:
 		switch (flat->pipeline_state.trigger_cmd) {
