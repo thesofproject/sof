@@ -66,6 +66,16 @@ size_t usb_audio_fetch_capture_data(void *dst, size_t bytes)
 	struct usb_audio_ring_buffer *ring = &g_capture_data->ring;
 	k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
+	/* Prebuffer at stream start to provide a stable jitter margin */
+	if (!g_capture_data->started) {
+		if (ring->count < USB_AUDIO_PREBUFFER_BYTES) {
+			k_spin_unlock(&ring->lock, key);
+			memset(dst, 0, bytes);
+			return bytes;
+		}
+		g_capture_data->started = true;
+	}
+
 	uint32_t to_read = (bytes > ring->count) ? ring->count : bytes;
 	uint8_t *d = (uint8_t *)dst;
 
@@ -76,11 +86,76 @@ size_t usb_audio_fetch_capture_data(void *dst, size_t bytes)
 	ring->count -= to_read;
 
 	if (to_read < bytes) {
+		static uint32_t s_cap_underrun_cnt;
+		s_cap_underrun_cnt++;
+		if (s_cap_underrun_cnt <= 5 || s_cap_underrun_cnt % 100 == 0) {
+			LOG_WRN("[CAP UNDERRUN %u] to_read=%u < bytes=%u, ring_count=%u",
+				s_cap_underrun_cnt, to_read, bytes, ring->count);
+		}
 		memset(d + to_read, 0, bytes - to_read);
 	}
 
 	k_spin_unlock(&ring->lock, key);
 	return bytes;
+}
+
+bool usb_audio_peek_capture_data(void *dst, size_t bytes)
+{
+	if (!g_capture_data || !g_capture_data->active) {
+		memset(dst, 0, bytes);
+		return false;
+	}
+
+	struct usb_audio_ring_buffer *ring = &g_capture_data->ring;
+	k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+	/* Prebuffer at stream start to provide a stable jitter margin */
+	if (!g_capture_data->started) {
+		if (ring->count < USB_AUDIO_PREBUFFER_BYTES) {
+			k_spin_unlock(&ring->lock, key);
+			memset(dst, 0, bytes);
+			return false;
+		}
+		g_capture_data->started = true;
+	}
+
+	uint32_t to_read = (bytes > ring->count) ? ring->count : bytes;
+	uint8_t *d = (uint8_t *)dst;
+	uint32_t tail = ring->tail;
+
+	for (size_t i = 0; i < to_read; i++) {
+		d[i] = ring->buf[tail];
+		tail = (tail + 1) % USB_AUDIO_RING_BUFFER_SIZE;
+	}
+
+	if (to_read < bytes) {
+		static uint32_t s_cap_underrun_cnt;
+		s_cap_underrun_cnt++;
+		if (s_cap_underrun_cnt <= 5 || s_cap_underrun_cnt % 100 == 0) {
+			LOG_WRN("[CAP UNDERRUN %u] to_read=%u < bytes=%u, ring_count=%u",
+				s_cap_underrun_cnt, to_read, bytes, ring->count);
+		}
+		memset(d + to_read, 0, bytes - to_read);
+	}
+
+	k_spin_unlock(&ring->lock, key);
+	return true;
+}
+
+void usb_audio_consume_capture_data(size_t bytes)
+{
+	if (!g_capture_data || !g_capture_data->active) {
+		return;
+	}
+
+	struct usb_audio_ring_buffer *ring = &g_capture_data->ring;
+	k_spinlock_key_t key = k_spin_lock(&ring->lock);
+
+	uint32_t to_consume = (bytes > ring->count) ? ring->count : bytes;
+	ring->tail = (ring->tail + to_consume) % USB_AUDIO_RING_BUFFER_SIZE;
+	ring->count -= to_consume;
+
+	k_spin_unlock(&ring->lock, key);
 }
 
 static struct comp_dev *usb_audio_new(const struct comp_driver *drv,
@@ -164,13 +239,21 @@ static int usb_audio_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
 		uad->active = true;
+		uad->started = false;
 		dev->state = COMP_STATE_ACTIVE;
 		break;
 	case COMP_TRIGGER_STOP:
-	case COMP_TRIGGER_PAUSE:
+	case COMP_TRIGGER_PAUSE: {
 		uad->active = false;
+		uad->started = false;
+		k_spinlock_key_t key = k_spin_lock(&uad->ring.lock);
+		uad->ring.head = 0;
+		uad->ring.tail = 0;
+		uad->ring.count = 0;
+		k_spin_unlock(&uad->ring.lock, key);
 		dev->state = COMP_STATE_READY;
 		break;
+	}
 	default:
 		break;
 	}
@@ -200,6 +283,18 @@ static int usb_audio_copy(struct comp_dev *dev)
 				struct usb_audio_ring_buffer *ring = &uad->ring;
 				k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
+				/* Prebuffer at playback start to provide a stable jitter margin */
+				if (!uad->started) {
+					if (ring->count < USB_AUDIO_PREBUFFER_BYTES) {
+						k_spin_unlock(&ring->lock, key);
+						memset(f_buf, 0, frames_to_copy * 2 * sizeof(float));
+						audio_stream_copy_from_linear(f_buf, 0, &sink->stream, 0, frames_to_copy * 2);
+						comp_update_buffer_produce(sink, frames_to_copy * 2 * sizeof(float));
+						return 0;
+					}
+					uad->started = true;
+				}
+
 				uint32_t available = ring->count;
 				uint32_t to_copy = MIN(s16_bytes, available);
 
@@ -211,6 +306,12 @@ static int usb_audio_copy(struct comp_dev *dev)
 				ring->count -= to_copy;
 
 				if (to_copy < s16_bytes) {
+					static uint32_t s_pb_underrun_cnt;
+					s_pb_underrun_cnt++;
+					if (s_pb_underrun_cnt <= 5 || s_pb_underrun_cnt % 100 == 0) {
+						LOG_WRN("[PB UNDERRUN %u] to_copy=%u < s16_bytes=%u, ring_count=%u",
+							s_pb_underrun_cnt, to_copy, s16_bytes, ring->count);
+					}
 					memset(s16_raw + to_copy, 0, s16_bytes - to_copy);
 				}
 
@@ -226,17 +327,48 @@ static int usb_audio_copy(struct comp_dev *dev)
 			}
 		} else {
 			uint32_t free_bytes = audio_stream_get_free_bytes(&sink->stream);
-			uint32_t copy_bytes = (free_bytes < uad->period_bytes) ? free_bytes : uad->period_bytes;
+			uint32_t max_copy = dev->frames ? (dev->frames * 4 * uad->frame_bytes) : (4 * uad->period_bytes);
+			uint32_t to_transfer = MIN(free_bytes, max_copy);
 
-			if (copy_bytes > 0) {
+			while (to_transfer >= uad->period_bytes) {
 				uint8_t temp_buf[256];
-				uint32_t chunk = (copy_bytes > sizeof(temp_buf)) ? sizeof(temp_buf) : copy_bytes;
+				uint32_t chunk = MIN(to_transfer, sizeof(temp_buf));
+				chunk = (chunk / uad->period_bytes) * uad->period_bytes;
 
 				struct usb_audio_ring_buffer *ring = &uad->ring;
 				k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
+				/* Prebuffer at playback start to provide a stable jitter margin */
+				if (!uad->started) {
+					if (ring->count < USB_AUDIO_PREBUFFER_BYTES) {
+						k_spin_unlock(&ring->lock, key);
+						memset(temp_buf, 0, uad->period_bytes);
+						audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0,
+									      uad->period_bytes / audio_stream_sample_bytes(&sink->stream));
+						comp_update_buffer_produce(sink, uad->period_bytes);
+						return 0;
+					}
+					uad->started = true;
+				}
+
 				uint32_t available = ring->count;
-				uint32_t to_copy = (chunk > available) ? available : chunk;
+				if (available < uad->period_bytes) {
+					static uint32_t s_pb_underrun_cnt;
+					s_pb_underrun_cnt++;
+					if (s_pb_underrun_cnt <= 5 || s_pb_underrun_cnt % 100 == 0) {
+						LOG_WRN("[PB UNDERRUN %u] available=%u < period_bytes=%u",
+							s_pb_underrun_cnt, available, uad->period_bytes);
+					}
+					memset(temp_buf, 0, uad->period_bytes);
+					k_spin_unlock(&ring->lock, key);
+					audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0,
+								      uad->period_bytes / audio_stream_sample_bytes(&sink->stream));
+					comp_update_buffer_produce(sink, uad->period_bytes);
+					break;
+				}
+
+				uint32_t to_copy = MIN(chunk, available);
+				to_copy = (to_copy / uad->period_bytes) * uad->period_bytes;
 
 				for (size_t i = 0; i < to_copy; i++) {
 					temp_buf[i] = ring->buf[ring->tail];
@@ -244,15 +376,12 @@ static int usb_audio_copy(struct comp_dev *dev)
 				}
 				ring->count -= to_copy;
 
-				if (to_copy < chunk) {
-					memset(temp_buf + to_copy, 0, chunk - to_copy);
-				}
-
 				k_spin_unlock(&ring->lock, key);
 
 				audio_stream_copy_from_linear(temp_buf, 0, &sink->stream, 0,
-							      chunk / audio_stream_sample_bytes(&sink->stream));
-				comp_update_buffer_produce(sink, chunk);
+							      to_copy / audio_stream_sample_bytes(&sink->stream));
+				comp_update_buffer_produce(sink, to_copy);
+				to_transfer -= to_copy;
 			}
 		}
 	} else if (source) {
@@ -306,21 +435,26 @@ static int usb_audio_copy(struct comp_dev *dev)
 			}
 		} else {
 			uint32_t avail_bytes = audio_stream_get_avail_bytes(&source->stream);
-			uint32_t copy_bytes = (avail_bytes < uad->period_bytes) ? avail_bytes : uad->period_bytes;
 
-			if (copy_bytes > 0) {
-				uint8_t temp_buf[256];
-				uint32_t chunk = (copy_bytes > sizeof(temp_buf)) ? sizeof(temp_buf) : copy_bytes;
-
-				audio_stream_copy_to_linear(&source->stream, 0, temp_buf, 0,
-							    chunk / audio_stream_sample_bytes(&source->stream));
-				comp_update_buffer_consume(source, chunk);
+			while (avail_bytes > 0) {
+				uint8_t temp_buf[512];
+				uint32_t chunk = MIN(avail_bytes, sizeof(temp_buf));
 
 				struct usb_audio_ring_buffer *ring = &uad->ring;
 				k_spinlock_key_t key = k_spin_lock(&ring->lock);
 
 				uint32_t free_space = USB_AUDIO_RING_BUFFER_SIZE - ring->count;
-				uint32_t to_copy = (chunk > free_space) ? free_space : chunk;
+				uint32_t to_copy = MIN(chunk, free_space);
+
+				if (to_copy == 0) {
+					k_spin_unlock(&ring->lock, key);
+					break;
+				}
+
+				audio_stream_copy_to_linear(&source->stream, 0, temp_buf, 0,
+							    to_copy / audio_stream_sample_bytes(&source->stream));
+				comp_update_buffer_consume(source, to_copy);
+				avail_bytes -= to_copy;
 
 				for (size_t i = 0; i < to_copy; i++) {
 					ring->buf[ring->head] = temp_buf[i];
@@ -346,6 +480,7 @@ static int usb_audio_reset(struct comp_dev *dev)
 {
 	struct usb_audio_data *uad = comp_get_drvdata(dev);
 	uad->active = false;
+	uad->started = false;
 	uad->ring.head = 0;
 	uad->ring.tail = 0;
 	uad->ring.count = 0;
