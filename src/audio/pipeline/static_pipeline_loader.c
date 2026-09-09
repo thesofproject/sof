@@ -316,6 +316,13 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 					.format = cdesc->ep.dai.format,
 				};
 				comp_dai_config(dev, &dai_cfg, &spec_cfg);
+
+				struct dai *dai = dai_get(cdesc->ep.dai.dai_type, cdesc->ep.dai.dai_index,
+							  DAI_CREAT);
+				if (dai) {
+					dai_set_config(dai, &dai_cfg, &spec_cfg, sizeof(spec_cfg));
+					dai_put(dai);
+				}
 			}
 		} else if (cdesc->uuid && !memcmp(cdesc->uuid, &volume_uuid, UUID_SIZE)) {
 			struct ipc_config_process spec = {
@@ -459,6 +466,7 @@ int sof_static_topology_init(const struct sof_static_topology *topo)
 	for (size_t i = 0; i < topo->num_controls && i < MAX_STATIC_CONTROLS; i++) {
 		const struct sof_static_kcontrol *ctl = &topo->controls[i];
 		s_control_vals[i] = ctl->def;
+		sof_static_kcontrol_set(ctl->id, ctl->def);
 		LOG_INF("Kcontrol [%u] '%s' (comp %u, type %d, def %d)",
 			ctl->id, ctl->name, ctl->target_comp_id, ctl->type, ctl->def);
 	}
@@ -649,14 +657,14 @@ int sof_static_kcontrol_find_by_name(const char *name)
 	return -ENOENT;
 }
 
-#define SOF_VOL_ZERO_DB BIT(23)
+#define SOF_VOL_ZERO_DB 65536
 
 static int32_t uac2_to_sof_volume(int16_t volume)
 {
 	if (volume <= -90 * 256)
 		return 0;
 	if (volume >= 0)
-		return SOF_VOL_ZERO_DB - 1;
+		return SOF_VOL_ZERO_DB;
 
 	int32_t db_x10 = (int32_t)(-volume) * 10 / 256;
 	int shift = db_x10 / 60;
@@ -664,7 +672,7 @@ static int32_t uac2_to_sof_volume(int16_t volume)
 		return 0;
 
 	int rem = db_x10 % 60;
-	uint64_t v = (uint64_t)(SOF_VOL_ZERO_DB - 1) >> shift;
+	uint64_t v = (uint64_t)SOF_VOL_ZERO_DB >> shift;
 	v = (v * (60 - rem)) / 60;
 	return (int32_t)v;
 }
