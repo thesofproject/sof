@@ -1,4 +1,5 @@
 *.o
+!tools/rimage_parser/*.o
 *.Po
 *.so*
 *~
