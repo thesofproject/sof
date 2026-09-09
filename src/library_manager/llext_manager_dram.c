@@ -35,6 +35,15 @@ __imrdata static struct lib_manager_dram_storage lib_manager_dram;
 /* Store LLEXT manager context in DRAM to be restored during the next boot. */
 int llext_manager_store_to_dram(void)
 {
+	/*
+	 * If IMR context save is disabled, HP-SRAM and L3 heap memory are lost
+	 * on suspend/resume, but IMR remains persistent. Skip saving to avoid
+	 * restoring stale pointers.
+	 */
+	if (!IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE)) {
+		return 0;
+	}
+
 	struct ext_library *_ext_lib = ext_lib_get();
 	unsigned int i, j, k, l, n_lib, n_mod, n_llext, n_sect, n_sym;
 	size_t buf_size;
@@ -161,6 +170,15 @@ int llext_manager_store_to_dram(void)
 
 int llext_manager_restore_from_dram(void)
 {
+	/*
+	 * If IMR context save is disabled, the L3 heap and HP-SRAM memory were lost.
+	 * The saved context will contain stale pointers, so cleanly re-initialize instead.
+	 */
+	if (!IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE)) {
+		lib_manager_init();
+		return 0;
+	}
+
 	lib_manager_init();
 
 	struct ext_library *_ext_lib = ext_lib_get();

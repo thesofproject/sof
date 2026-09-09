@@ -838,7 +838,11 @@ static int heap_init(void)
 
 		arch_mem_map(l3_heap_start, va, l3_heap_size, K_MEM_PERM_RW | K_MEM_CACHE_WB);
 #endif
-		if (l3_heap_copy.heap.heap) {
+		/*
+		 * If IMR context save is disabled, the L3 heap memory is lost during
+		 * suspend/resume, so do not restore from the stale copy.
+		 */
+		if (IS_ENABLED(CONFIG_ADSP_IMR_CONTEXT_SAVE) && l3_heap_copy.heap.heap) {
 			l3_heap = l3_heap_copy;
 		} else {
 			l3_heap.heap.init_mem = l3_heap_start;
