@@ -135,7 +135,7 @@ def parse_mtrace(file_path):
 
 
 def plot_mww_diagnostics(hops, probs, detects, kpb_triggers, summaries,
-                         output_path, title=None, threshold=65,
+                         output_path, title=None, threshold=60,
                          raw_units=False, show_vad=True, dpi=150):
     """Plot MWW diagnostics across 5 synchronized subplots."""
     if not hops:
@@ -304,8 +304,8 @@ def main():
         help="Output PNG image path (default: <input_stem>_mww.png or mww_mtrace.png for stdin)"
     )
     parser.add_argument(
-        "-t", "--threshold", type=int, default=65,
-        help="Wake word detection probability threshold in percent (default: 65)"
+        "-t", "--threshold", type=int, default=60,
+        help="Wake word detection probability threshold in percent (default: 60)"
     )
     parser.add_argument(
         "--raw-units", action="store_true",
