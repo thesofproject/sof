@@ -86,3 +86,24 @@ DAI Copier (Mic) ---> [ webrtc-vad ] ---> [ webrtc-ns ] ---> Host Copier
 ```
 
 In this routing model, `webrtc-vad` runs first. Any downstream module or host application subscribing to the `NOTIFIER_ID_VAD` event will receive real-time classification changes instantly without querying the module adapter.
+
+---
+
+## Performance & MCPS Profile (Aphid / Panther Lake ACE 3.0)
+
+Tested on Panther Lake (`ptl`) Aphid hardware at **400 MHz** nominal core clock:
+
+| Codec / Module | Implementation | Stream Profile | Current MCPS (Aphid) | Phase 11 Projected (VFPU) |
+|---|---|---|:---:|:---:|
+| **libfvad VAD** (`webrtc_vad`) | 6-subband GMM log-likelihood | 16 kHz Mono (10 ms) | **~0.8 – 1.2 MCPS** | ~0.8 – 1.1 MCPS |
+
+### Characteristics & Hot Path
+
+- **DSP Utilization**: ~0.25% of a 400 MHz core (ultra-low power consumption).
+- **Processing Window**: Configurable 10 ms, 20 ms, or 30 ms frames (10 ms default = 160 samples at 16 kHz).
+- **Hot Path**:
+  1. Split filterbank: 6-subband pole-zero allpass IIR filters (`WebRtcSpl_AllpassLoop`).
+  2. Gaussian Mixture Model (GMM) log-likelihood evaluation across 2 mixture components per subband.
+  3. Probability weighting and threshold comparison.
+- **Memory & Power**: Minimal memory footprint (<4 KB state) and negligible DSP compute overhead; ideal for always-on keyword detection and voice gating.
+

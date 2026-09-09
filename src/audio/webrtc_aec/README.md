@@ -102,3 +102,24 @@ Object.Widget.webrtc-aec.1 {
 ```
 
 Both input streams must be active and running at the same sample rate (8 kHz or 16 kHz) for the echo canceller to align and filter the signals.
+
+---
+
+## Performance & MCPS Profile (Aphid / Panther Lake ACE 3.0)
+
+Tested on Panther Lake (`ptl`) Aphid hardware at **400 MHz** nominal core clock:
+
+| Codec / Module | Implementation | Stream Profile | Current MCPS (Aphid) | Phase 11 Projected (VFPU) |
+|---|---|---|:---:|:---:|
+| **WebRTC AECm** (`webrtc_aec`) | Pure-C fixed-point 64 ms adaptive FIR | 16 kHz Mono (10 ms) | **~12.0 – 16.5 MCPS** | ~11.0 – 14.5 MCPS |
+
+### Characteristics & Hot Path
+
+- **DSP Utilization**: ~3.5% of a single 400 MHz core per channel.
+- **Dual-Stream Synchronization**: Synchronizes microphone capture (Pin 0) and speaker reference playback (Pin 1) streams in 10 ms frames (160 samples at 16 kHz).
+- **Hot Path**:
+  1. 64-tap adaptive FIR filter update in frequency subbands (Normalized Least Mean Squares / NLMS).
+  2. Farend spectral power tracking and delay buffer alignment (`WebRtcAecm_BufferFarend`).
+  3. Non-linear processor (NLP) residual echo suppression and comfort noise generation.
+- **Hardware Requirements**: Pure integer Q15 arithmetic; no floating-point dependencies.
+

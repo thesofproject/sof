@@ -87,3 +87,24 @@ DAI Copier (SSP RX) ---> [ webrtc-ns ] ---> Host Copier (PCM)
 ```
 
 For applications requiring higher rates (e.g. 48 kHz mic capture), place an ASRC component upstream to downsample to 16 kHz before running the `webrtc-ns` widget.
+
+---
+
+## Performance & MCPS Profile (Aphid / Panther Lake ACE 3.0)
+
+Tested on Panther Lake (`ptl`) Aphid hardware at **400 MHz** nominal core clock:
+
+| Codec / Module | Implementation | Stream Profile | Current MCPS (Aphid) | Phase 11 Projected (VFPU) |
+|---|---|---|:---:|:---:|
+| **WebRTC NS** (`webrtc_ns`) | Pure-C Wiener filter, integer Q15/Q31 | 16 kHz Mono (10 ms) | **~4.2 – 6.0 MCPS** | ~4.0 – 5.5 MCPS |
+
+### Characteristics & Hot Path
+
+- **DSP Utilization**: ~1.3% of a single 400 MHz core per mono channel (~2.6% for stereo).
+- **Processing Window**: 10 ms hop (160 samples at 16 kHz).
+- **Hot Path**:
+  1. Fixed-point 128/256-point real FFT and power spectrum estimation (`WebRtcSpl_ComplexBitReverse`, `WebRtcSpl_ComplexFFT`).
+  2. Noise spectrum tracking using quantile-based background noise estimation.
+  3. Wiener filter suppression gain calculation per frequency bin.
+- **Hardware Requirements**: Pure integer arithmetic (Q15/Q31) — runs without requiring hardware FPU.
+

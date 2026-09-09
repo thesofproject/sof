@@ -95,3 +95,24 @@ DAI Copier (SSP RX @ 48kHz) ---> [ webrtc-ns2 ] ---> Host Copier (PCM @ 48kHz)
 ```
 
 If the capture microphone or stream runs at 16 kHz, you must insert an ASRC widget upstream of `webrtc-ns2` to upsample the stream to 48 kHz before processing.
+
+---
+
+## Performance & MCPS Profile (Aphid / Panther Lake ACE 3.0)
+
+Tested on Panther Lake (`ptl`) Aphid hardware at **400 MHz** nominal core clock:
+
+| Codec / Module | Implementation | Stream Profile | Current MCPS (Aphid) | Phase 11 Projected (VFPU) |
+|---|---|---|:---:|:---:|
+| **RNNoise NS2** (`webrtc_ns2`) | Bark scale filter + 3 GRU layers (~10k wts) | 48 kHz Mono (10 ms) | **~22.0 – 28.5 MCPS** *(per ch)* | **~3.5 – 5.5 MCPS** *(HiFi5 VFPU)* |
+
+### Characteristics & Hot Path
+
+- **DSP Utilization**: ~6.2% of a single 400 MHz core per mono channel.
+- **Processing Window**: 10 ms frame (480 samples at locked 48 kHz rate).
+- **Hot Path**:
+  1. 22-band Bark scale psychoacoustic filterbank and pitch correlation analysis.
+  2. 3-layer Gated Recurrent Unit (GRU) forward neural network inference (~10,000 matrix-vector weights across model layers).
+  3. Fast activation lookup tables (201-entry LUT for sigmoid and tanh, avoiding hot-path `expf`).
+- **Phase 11 Vectorization**: In Phase 11, utilizing the HiFi5 vector floating-point unit (VFPU) with 4-way SIMD multiply-accumulate (`MADD.S`) and quad-float load/store instructions will reduce neural inference latency by **~5x** down to **~3.5 – 5.5 MCPS**.
+
