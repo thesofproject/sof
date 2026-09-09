@@ -177,7 +177,16 @@ int ffmpeg_af_mod_prepare(struct processing_module *mod,
 int ffmpeg_af_mod_process(struct processing_module *mod,
 			  struct sof_source **sources, int num_of_sources,
 			  struct sof_sink **sinks, int num_of_sinks);
+bool ffmpeg_af_is_ready_to_process(struct processing_module *mod,
+				   struct sof_source **sources, int num_of_sources,
+				   struct sof_sink **sinks, int num_of_sinks);
+int ffmpeg_af_mod_reset(struct processing_module *mod);
 int ffmpeg_af_mod_free(struct processing_module *mod);
+
+#if CONFIG_IPC_MAJOR_4
+struct ipc_msg *ffmpeg_dec_eos_notification_init(struct processing_module *mod);
+void ffmpeg_dec_signal_eos(struct processing_module *mod, struct sof_sink *sink);
+#endif
 
 /* Backend instance provided by the selected backend translation unit
  * (ffmpeg_dec-stub.c or ffmpeg_dec-ffmpeg.c).

@@ -70,7 +70,104 @@ __attribute__((weak)) long mktime(void *tm) { (void)tm; return -1; }
 __attribute__((weak)) size_t strftime(char *s, size_t max, const char *fmt, const void *tm)
 { (void)fmt; (void)tm; if (max) s[0] = '\0'; return 0; }
 __attribute__((weak)) double strtod(const char *nptr, char **endptr)
-{ if (endptr) *endptr = (char *)nptr; return 0; }
+{
+	const char *s = nptr;
+	double val = 0.0;
+	double sign = 1.0;
+	double frac = 0.0;
+	double div = 1.0;
+	int has_digits = 0;
+
+	while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
+		s++;
+
+	if (*s == '-') {
+		sign = -1.0;
+		s++;
+	} else if (*s == '+') {
+		s++;
+	}
+
+	if ((s[0] == 'i' || s[0] == 'I') &&
+	    (s[1] == 'n' || s[1] == 'N') &&
+	    (s[2] == 'f' || s[2] == 'F')) {
+		s += 3;
+		if (endptr)
+			*endptr = (char *)s;
+		return sign * (1.0 / 0.0);
+	}
+	if ((s[0] == 'n' || s[0] == 'N') &&
+	    (s[1] == 'a' || s[1] == 'A') &&
+	    (s[2] == 'n' || s[2] == 'N')) {
+		s += 3;
+		if (endptr)
+			*endptr = (char *)s;
+		return 0.0 / 0.0;
+	}
+
+	while (*s >= '0' && *s <= '9') {
+		has_digits = 1;
+		val = val * 10.0 + (double)(*s - '0');
+		s++;
+	}
+
+	if (*s == '.') {
+		s++;
+		while (*s >= '0' && *s <= '9') {
+			has_digits = 1;
+			div *= 10.0;
+			frac = frac * 10.0 + (double)(*s - '0');
+			s++;
+		}
+		val += frac / div;
+	}
+
+	if (has_digits && (*s == 'e' || *s == 'E')) {
+		const char *es = s + 1;
+		int exp_sign = 1;
+		int exp_val = 0;
+		int exp_digits = 0;
+		double p = 1.0;
+		int i;
+
+		if (*es == '-') {
+			exp_sign = -1;
+			es++;
+		} else if (*es == '+') {
+			es++;
+		}
+		while (*es >= '0' && *es <= '9') {
+			exp_digits = 1;
+			exp_val = exp_val * 10 + (*es - '0');
+			es++;
+		}
+		if (exp_digits) {
+			for (i = 0; i < exp_val; i++)
+				p *= 10.0;
+			if (exp_sign < 0)
+				val /= p;
+			else
+				val *= p;
+			s = es;
+		}
+	}
+
+	if (!has_digits) {
+		if (endptr)
+			*endptr = (char *)nptr;
+		return 0.0;
+	}
+
+	if (endptr)
+		*endptr = (char *)s;
+
+	return sign * val;
+}
+
+__attribute__((weak)) float strtof(const char *nptr, char **endptr)
+{
+	return (float)strtod(nptr, endptr);
+}
 
 /* Zephyr libc runtime errno wrapper referenced by libavutil/avsscanf. */
 int z_errno_wrap(void) { return 0; }

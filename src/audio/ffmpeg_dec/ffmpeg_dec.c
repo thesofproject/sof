@@ -30,6 +30,57 @@ SOF_DEFINE_REG_UUID(ffmpeg_dec);
 /* Creates logging data for the component */
 LOG_MODULE_REGISTER(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
 
+#if CONFIG_IPC_MAJOR_4
+/*
+ * Build the module notification the driver expects to unblock compress_drain().
+ * The kernel's compress EOS handler (sof_ipc4_compr_drain_done) matches on the
+ * COMPR "magic" event id, so use the same template the Cadence decoder does.
+ */
+__cold struct ipc_msg *ffmpeg_dec_eos_notification_init(struct processing_module *mod)
+{
+	struct comp_ipc_config *ipc_config = &mod->dev->ipc_config;
+	struct sof_ipc4_notify_module_data *msg_data;
+	union ipc4_notification_header primary;
+	struct ipc_msg *msg;
+
+	primary.dat = 0;
+	primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
+	primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
+	primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
+	primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
+
+	msg = ipc_msg_w_ext_init(primary.dat, 0, sizeof(*msg_data));
+	if (!msg)
+		return NULL;
+
+	msg_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
+	msg_data->instance_id = IPC4_INST_ID(ipc_config->id);
+	msg_data->module_id = IPC4_MOD_ID(ipc_config->id);
+	msg_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_COMPR_MAGIC_VAL;
+	msg_data->event_data_size = 0;
+
+	return msg;
+}
+
+/*
+ * Report that the compress drain is complete: send the EOS notification (which
+ * unblocks the host's compress_drain()) exactly once, and mark the sink so the
+ * end-of-stream state propagates downstream to the DAI.
+ */
+void ffmpeg_dec_signal_eos(struct processing_module *mod, struct sof_sink *sink)
+{
+	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
+
+	if (cd->eos_sent || !cd->eos_msg)
+		return;
+
+	ipc_msg_send(cd->eos_msg, NULL, false);
+	cd->eos_sent = true;
+	audio_buffer_set_eos(sof_audio_buffer_from_sink(sink));
+	comp_info(mod->dev, "EOS: compress drain complete");
+}
+#endif /* CONFIG_IPC_MAJOR_4 */
+
 /* Decoder-mode ops (compressed -> PCM). In filter mode the module uses the
  * avfilter-graph PCM effect ops (ffmpeg_dec-filter.c); in encode mode the
  * PCM->compressed ops (ffmpeg_dec-encode.c) instead.
@@ -67,57 +118,6 @@ int ffmpeg_dec_store_extradata(struct processing_module *mod,
 	comp_info(dev, "stored %zu bytes of codec extradata", size);
 	return 0;
 }
-
-#if CONFIG_IPC_MAJOR_4
-/*
- * Build the module notification the driver expects to unblock compress_drain().
- * The kernel's compress EOS handler (sof_ipc4_compr_drain_done) matches on the
- * COMPR "magic" event id, so use the same template the Cadence decoder does.
- */
-__cold static struct ipc_msg *ffmpeg_dec_eos_notification_init(struct processing_module *mod)
-{
-	struct comp_ipc_config *ipc_config = &mod->dev->ipc_config;
-	struct sof_ipc4_notify_module_data *msg_data;
-	union ipc4_notification_header primary;
-	struct ipc_msg *msg;
-
-	primary.dat = 0;
-	primary.r.notif_type = SOF_IPC4_MODULE_NOTIFICATION;
-	primary.r.type = SOF_IPC4_GLB_NOTIFICATION;
-	primary.r.rsp = SOF_IPC4_MESSAGE_DIR_MSG_REQUEST;
-	primary.r.msg_tgt = SOF_IPC4_MESSAGE_TARGET_FW_GEN_MSG;
-
-	msg = ipc_msg_w_ext_init(primary.dat, 0, sizeof(*msg_data));
-	if (!msg)
-		return NULL;
-
-	msg_data = (struct sof_ipc4_notify_module_data *)msg->tx_data;
-	msg_data->instance_id = IPC4_INST_ID(ipc_config->id);
-	msg_data->module_id = IPC4_MOD_ID(ipc_config->id);
-	msg_data->event_id = SOF_IPC4_NOTIFY_MODULE_EVENTID_COMPR_MAGIC_VAL;
-	msg_data->event_data_size = 0;
-
-	return msg;
-}
-
-/*
- * Report that the compress drain is complete: send the EOS notification (which
- * unblocks the host's compress_drain()) exactly once, and mark the sink so the
- * end-of-stream state propagates downstream to the DAI.
- */
-static void ffmpeg_dec_signal_eos(struct processing_module *mod, struct sof_sink *sink)
-{
-	struct ffmpeg_dec_comp_data *cd = module_get_private_data(mod);
-
-	if (cd->eos_sent || !cd->eos_msg)
-		return;
-
-	ipc_msg_send(cd->eos_msg, NULL, false);
-	cd->eos_sent = true;
-	audio_buffer_set_eos(sof_audio_buffer_from_sink(sink));
-	comp_info(mod->dev, "EOS: compress drain complete");
-}
-#endif /* CONFIG_IPC_MAJOR_4 */
 
 /*
  * Largest number of PCM samples-per-channel one decoded frame of @codec can
@@ -781,11 +781,25 @@ static const struct module_interface ffmpeg_dec_interface = {
 	.free = ffmpeg_enc_mod_free
 };
 #elif CONFIG_FFMPEG_DEC_FILTER_MODE
+__cold static int
+ffmpeg_af_mod_set_config(struct processing_module *mod, uint32_t config_id,
+			 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+			 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+			 size_t response_size)
+{
+	assert_can_be_cold();
+	return module_set_configuration(mod, config_id, pos, data_offset_size, fragment,
+					fragment_size, response, response_size);
+}
+
 /* PCM source/sink effect driving an avfilter graph (ffmpeg_dec-filter.c). */
 static const struct module_interface ffmpeg_dec_interface = {
 	.init = ffmpeg_af_mod_init,
 	.prepare = ffmpeg_af_mod_prepare,
 	.process = ffmpeg_af_mod_process,
+	.is_ready_to_process = ffmpeg_af_is_ready_to_process,
+	.set_configuration = ffmpeg_af_mod_set_config,
+	.reset = ffmpeg_af_mod_reset,
 	.free = ffmpeg_af_mod_free
 };
 #else

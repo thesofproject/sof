@@ -442,6 +442,14 @@ $CC -fPIC -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
 endif()
 
 # --- 4. Configure + make + install (out-of-tree; source must be clean) ---
+set(_ff_byproducts
+	${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
+	${FFMPEG_INSTALL_DIR}/lib/libavutil.a
+	${FFMPEG_INSTALL_DIR}/lib/libswresample.a)
+if(CONFIG_FFMPEG_BUILD_AVFILTER)
+	list(APPEND _ff_byproducts ${FFMPEG_INSTALL_DIR}/lib/libavfilter.a)
+endif()
+
 ExternalProject_Add(ffmpeg_ext
 	DEPENDS ${_ff_shine_dep}
 	SOURCE_DIR      "${SOF_FFMPEG_SRC_DIR}"
@@ -473,9 +481,7 @@ ExternalProject_Add(ffmpeg_ext
 	INSTALL_COMMAND make install
 		${_ff_cold_rename}
 	BUILD_BYPRODUCTS
-		${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
-		${FFMPEG_INSTALL_DIR}/lib/libavutil.a
-		${FFMPEG_INSTALL_DIR}/lib/libswresample.a
+		${_ff_byproducts}
 )
 
 message(STATUS "ffmpeg_dec: cross-building FFmpeg decoders [${_ff_dec_csv}] from ${SOF_FFMPEG_SRC_DIR}")

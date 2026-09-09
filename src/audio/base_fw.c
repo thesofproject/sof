@@ -144,6 +144,13 @@ static void get_codec_info(struct sof_tlv **tuple)
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_PLAYBACK);
 #endif
+#ifdef CONFIG_FFMPEG_DEC_FILTER_MODE
+	/* Filter mode (PCM in, PCM out with avfilter like afftdn) via compressed PCM stream. */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_PCM, SOF_IPC_STREAM_PLAYBACK);
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_BESPOKE, SOF_IPC_STREAM_PLAYBACK);
+#endif
 
 	if (!codec_info.count)
 		return;

@@ -22,10 +22,18 @@ else()
     # zephyr/CMakeLists.txt, a different directory scope -- so the property
     # must target THAT scope via TARGET_DIRECTORY, else CMake silently
     # ignores it and the glue keeps hardware FP0.
-    set_source_files_properties(
+    set(_ffmpeg_dec_sources
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-ffmpeg.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-convert.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-convert.c)
+    if(CONFIG_FFMPEG_DEC_FILTER_MODE)
+      list(APPEND _ffmpeg_dec_sources ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-filter.c)
+    endif()
+    if(CONFIG_FFMPEG_DEC_ENCODE_MODE)
+      list(APPEND _ffmpeg_dec_sources ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg_dec-encode.c)
+    endif()
+    set_source_files_properties(
+        ${_ffmpeg_dec_sources}
         TARGET_DIRECTORY modules_sof
         PROPERTIES COMPILE_OPTIONS "-Xclang;-target-feature;-Xclang;-fp")
     # NOTE: ffmpeg_dec-shims.c / ffmpeg_dec-alloc.c are LLEXT-only (see
@@ -52,6 +60,10 @@ else()
       add_local_sources(sof ffmpeg_dec-encode.c)
     endif()
 
+    # Filter mode (PCM -> avfilter -> PCM): add the filter backend.
+    if(CONFIG_FFMPEG_DEC_FILTER_MODE)
+      add_local_sources(sof ffmpeg_dec-filter.c)
+    endif()
 
     # Built-in (=y) real backend: cross-build the FFmpeg archive via ffmpeg.cmake
     # and statically link it into the base firmware. Mirrors the google_rtc =y
@@ -74,6 +86,9 @@ else()
       # stubs in ffmpeg_dec-builtin-libc.c). FLAC is integer-only so it never
       # calls libm at runtime, but the references still resolve to real kernels
       # now, and lossy decoders (AAC/Opus/Vorbis) need them to decode correctly.
+      if(CONFIG_FFMPEG_BUILD_AVFILTER)
+        target_link_libraries(SOF INTERFACE avfilter)
+      endif()
       target_link_libraries(SOF INTERFACE avcodec swresample avutil)
       # Encode mode: libshine MP3 encoder archive (built by ffmpeg.cmake
       # section 3b when FFMPEG_ENC_MP3 is set). Linked AFTER avcodec,
