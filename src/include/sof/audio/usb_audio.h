@@ -18,6 +18,7 @@
 			    0x92, 0x76, 0x2f, 0xbb, 0x27, 0xc6, 0x2d, 0x01)
 
 #define USB_AUDIO_RING_BUFFER_SIZE 16384
+#define USB_AUDIO_PREBUFFER_BYTES 3840 /* 20ms at 48kHz stereo 16-bit */
 
 struct usb_audio_ring_buffer {
 	uint8_t buf[USB_AUDIO_RING_BUFFER_SIZE];
@@ -35,10 +36,13 @@ struct usb_audio_data {
 	uint32_t period_bytes;
 	enum sof_ipc_stream_direction direction;
 	bool active;
+	bool started;
 };
 
 void usb_audio_feed_playback_data(const void *src, size_t bytes);
 size_t usb_audio_fetch_capture_data(void *dst, size_t bytes);
+bool usb_audio_peek_capture_data(void *dst, size_t bytes);
+void usb_audio_consume_capture_data(size_t bytes);
 void usb_audio_set_playback_rate(uint32_t rate);
 void usb_audio_set_capture_rate(uint32_t rate);
 
