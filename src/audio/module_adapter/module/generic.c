@@ -206,9 +206,9 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 		return NULL;
 	}
 
-	/* Allocate buffer memory for module */
-	void *ptr = sof_heap_alloc(res->alloc->heap, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER,
-				   size, alignment);
+	/* Allocate buffer memory for module, same as mod_alloc_ext() */
+	void *ptr = sof_ctx_alloc(res->alloc, SOF_MEM_FLAG_USER | SOF_MEM_FLAG_LARGE_BUFFER,
+				  size, alignment);
 
 	if (!ptr) {
 		comp_err(mod->dev, "Failed to alloc %zu bytes %zu alignment for comp %#x.",
