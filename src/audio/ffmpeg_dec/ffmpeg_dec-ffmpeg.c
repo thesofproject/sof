@@ -131,7 +131,12 @@ static int ffmpeg_dec_ff_init(struct processing_module *mod)
 		return -ENOMEM;
 
 	id = ffmpeg_dec_av_codec_id(cd->codec);
-	ff->codec = avcodec_find_decoder(id);
+#if defined(CONFIG_FFMPEG_DEC_AAC)
+	if (cd->codec == FFMPEG_DEC_CODEC_AAC)
+		ff->codec = avcodec_find_decoder_by_name("aac_fixed");
+	if (!ff->codec)
+#endif
+		ff->codec = avcodec_find_decoder(id);
 	if (!ff->codec) {
 		comp_err(dev, "no libavcodec decoder for codec %d", cd->codec);
 		mod_free(mod, ff);

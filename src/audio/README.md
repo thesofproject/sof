@@ -13,6 +13,7 @@ The `ffmpeg_dec` framework wraps embedded-optimized audio decoders, encoders, an
 - **Opus Decoder**: Multi-rate speech and audio decoding combining CELT and SILK modes.
 - **Format Engine**: 4-way unrolled planar $\leftrightarrow$ interleaved transposition and S16/S24/S32 conversion.
 - **MP3 Encoder (`libshine`)**: Ultra-fast fixed-point MP3 encoding using single-cycle 32x32 MAC instructions.
+- **AAC-LC Decoder**: High-performance integer AAC Low Complexity decoding via `aac_fixed` accelerated with Xtensa SIMD fixed-point DSP kernels.
 - **FFmpeg `afftdn` Filter**: On-DSP frequency-domain Wiener noise profiling and spectral subtraction.
 
 ### 2. Voice Processing & Noise Reduction Modules
@@ -34,6 +35,7 @@ All modules have been verified on **Intel Panther Lake (PTL / ACE 3.0)** Aphid h
 | **Opus Decoder** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | CELT/SILK hybrid, fast postfilter/deemphasis | 48 kHz Stereo, 128 kbps (20 ms) | **~14.0 – 19.5 MCPS** | **~7.0 – 10.0 MCPS** *(CELT float)* |
 | **Format Engine** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | 4-way unrolled planar $\leftrightarrow$ interleaved | 48 kHz Stereo, S16/S24/S32 | **~0.4 – 0.8 MCPS** | ~0.3 – 0.6 MCPS |
 | **MP3 Encoder** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | Single-cycle 32x32 MACs (`libshine`), LUTs | 48 kHz Stereo, 128–192 kbps (24 ms) | **~18.0 – 24.5 MCPS** | ~16.0 – 21.0 MCPS |
+| **AAC-LC Decoder** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | Fast fixed-point `aac_fixed`, Xtensa SIMD | 48 kHz Stereo, 128–276 kbps (21.3 ms) | **~8.0 – 11.5 MCPS** | **~7.5 – 10.0 MCPS** *(MDCT float)* |
 | **FFmpeg `afftdn`** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | 1024/2048-pt STFT Wiener gate, fast `sqrtf` | 48 kHz Stereo (12.5 ms hop) | **~28.0 – 38.0 MCPS** | **~6.0 – 9.0 MCPS** *(HiFi5 VFPU)* |
 | **WebRTC NS** | [`webrtc_ns`](webrtc_ns/README.md) | Pure-C Wiener filter, integer Q15/Q31 | 16 kHz Mono (10 ms) | **~4.2 – 6.0 MCPS** | ~4.0 – 5.5 MCPS |
 | **libfvad VAD** | [`webrtc_vad`](webrtc_vad/README.md) | 6-subband GMM log-likelihood | 16 kHz Mono (10 ms) | **~0.8 – 1.2 MCPS** | ~0.8 – 1.1 MCPS |

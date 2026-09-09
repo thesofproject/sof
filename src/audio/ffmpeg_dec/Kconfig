@@ -33,11 +33,11 @@ config FFMPEG_DEC_FLAC
 	  math. Enables --enable-decoder=flac in the libavcodec build.
 
 config FFMPEG_DEC_AAC
-	bool "AAC-LC decoder"
+	bool "AAC-LC decoder (fixed-point)"
 	help
-	  AAC Low Complexity decoder. Pulls in the single-precision float
-	  math layer (see FFMPEG_DEC_FLOAT_MATH). Enables
-	  --enable-decoder=aac in the libavcodec build.
+	  AAC Low Complexity decoder (fixed-point 32-bit integer). Enables
+	  --enable-decoder=aac_fixed in the libavcodec build. Operates in
+	  pure 32-bit fixed-point arithmetic without software-float emulation.
 
 config FFMPEG_DEC_OPUS
 	bool "Opus decoder"

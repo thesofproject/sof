@@ -114,6 +114,7 @@ Evaluated on Panther Lake (`ptl`) Aphid hardware running nominal **400 MHz** DSP
 | **Opus Decoder** (`ffmpeg_dec`) | CELT/SILK hybrid, fast postfilter/deemphasis | 48 kHz Stereo, 128 kbps (20 ms) | **~14.0 – 19.5 MCPS** | **~7.0 – 10.0 MCPS** *(CELT float)* |
 | **Format Engine** (`ffmpeg_dec-convert`) | 4-way unrolled planar $\leftrightarrow$ interleaved | 48 kHz Stereo, S16/S24/S32 | **~0.4 – 0.8 MCPS** | ~0.3 – 0.6 MCPS |
 | **MP3 Encoder** (`libshine`) | Single-cycle 32x32 MACs, precomputed LUTs | 48 kHz Stereo, 128–192 kbps (24 ms) | **~18.0 – 24.5 MCPS** | ~16.0 – 21.0 MCPS |
+| **AAC-LC Decoder** (`ffmpeg_dec`) | Fast fixed-point `aac_fixed`, Xtensa SIMD | 48 kHz Stereo, 128–276 kbps (21.3 ms) | **~8.0 – 11.5 MCPS** | **~7.5 – 10.0 MCPS** *(MDCT float)* |
 | **FFmpeg `afftdn`** (`libavfilter`) | 1024/2048-pt STFT Wiener gate, fast `sqrtf` | 48 kHz Stereo (12.5 ms hop) | **~28.0 – 38.0 MCPS** | **~6.0 – 9.0 MCPS** *(HiFi5 VFPU)* |
 
 ### Architectural Analysis & Hot Paths
@@ -142,7 +143,13 @@ Evaluated on Panther Lake (`ptl`) Aphid hardware running nominal **400 MHz** DSP
    - **Hot Path**: Polyphase subband analysis filterbank, 32-point MDCT, psychoacoustic energy calculation, and non-linear quantizer inner loops.
    - **Optimization**: Fully fixed-point implementation with single-cycle 32x32-bit multiply-accumulate (MAC) instructions and precomputed lookup tables.
 
-6. **FFmpeg `afftdn` Spectral Denoising Filter (~28.0 – 38.0 MCPS @ 48 kHz Stereo)**:
+6. **AAC-LC Decoder (~8.0 – 11.5 MCPS @ 48 kHz Stereo)**:
+   - **Load**: ~2.4% DSP utilization on a 400 MHz core (<3%).
+   - **Hot Path**: Huffman bitstream decoding, M/S stereo coupling (`butterflies_fixed_xtensa`), 1024-point integer IMDCT (`AV_TX_INT32_MDCT`), and windowing/overlap-add (`vector_fmul_window_xtensa`).
+   - **Optimization**: Implemented Xtensa SIMD fixed-point kernels (`fixed_dsp_init.c`) with 4-way unrolled 32x32-bit multiply-accumulate operations; eliminated all software-emulated floating-point libcalls, reducing compute load from >900 MCPS down to ~8.0 – 11.5 MCPS.
+   - **Phase 11 Vectorization**: Projected to achieve ~7.5 – 10.0 MCPS when offloading 1024-point IMDCT twiddle and butterfly stages to the hardware HiFi5 vector FPU.
+
+7. **FFmpeg `afftdn` Spectral Denoising Filter (~28.0 – 38.0 MCPS @ 48 kHz Stereo)**:
    - **Load**: ~8.2% DSP utilization.
    - **Hot Path**: 1024/2048-point forward and inverse STFT, noise profile spectral power tracking, Wiener gain computation, and fast `sqrtf` approximation.
    - **Phase 11 Vectorization**: Projected to achieve ~4x speedup (~6.0 – 9.0 MCPS) when offloading complex FFT butterflies and vector gain multiplication to the HiFi5 4-way vector floating-point unit (VFPU).
