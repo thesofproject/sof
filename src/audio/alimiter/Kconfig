@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_ALIMITER
+	tristate "FFmpeg Lookahead Peak Limiter (alimiter) module"
+	default n
+	help
+	  Select to enable the lookahead peak limiter module.
+	  Prevents clipping and protects downstream DAC/speakers using a smooth lookahead window.
+
+if COMP_ALIMITER
+
+config COMP_ALIMITER_STUB
+	bool "Build with pass-through stub backend"
+	default n
+	help
+	  Select to build with the pass-through stub backend instead of the real limiter.
+
+config ALIMITER_ATTACK_MS
+	int "Default lookahead attack time (ms)"
+	default 5
+	range 1 10
+	help
+	  Lookahead buffer window in milliseconds (default 5 ms).
+
+config ALIMITER_RELEASE_MS
+	int "Default release recovery time (ms)"
+	default 50
+	range 5 500
+	help
+	  Linear gain release recovery time in milliseconds (default 50 ms).
+
+endif # COMP_ALIMITER

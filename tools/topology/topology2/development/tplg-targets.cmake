@@ -234,6 +234,8 @@ DEEPBUFFER_FW_DMA_MS=false,HDA_ANALOG_CAPTURE_RATE=96000,HDA_ANALOG_PLAYBACK_RAT
 # be built alongside or independently of the decode COMPR_FFMPEG path above.
 "sof-hda-generic\;sof-hda-generic-ffmpeg-mp3-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
 "sof-hda-generic\;sof-hda-generic-ffmpeg-aac-enc-compr\;HDA_CONFIG=mix,COMPR_FFMPEG_ENC=true"
+"sof-hda-generic\;sof-hda-generic-top3\;HDA_CONFIG=mix,TOP3_PROCESSING=true"
+"sof-hda-top3\;sof-hda-top3\;HDA_CONFIG=mix,TOP3_PROCESSING=true"
 
 # SDW + DMIC + HDMI, with 16 kHz DMIC1
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k\;PLATFORM=mtl,\

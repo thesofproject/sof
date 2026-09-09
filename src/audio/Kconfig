@@ -168,6 +168,7 @@ rsource "webrtc_aec/Kconfig"
 rsource "webrtc_ns2/Kconfig"
 rsource "webrtc_agc/Kconfig"
 rsource "webrtc_hpf/Kconfig"
+rsource "alimiter/Kconfig"
 # --- End Kconfig Sources (alphabetical order) ---
 
 rsource "level_multiplier/Kconfig"

@@ -129,6 +129,34 @@ index = __COUNTER__
 #include <audio/dcblock/dcblock.toml>
 #endif
 
+#if defined(CONFIG_COMP_WEBRTC_HPF) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/webrtc_hpf/webrtc_hpf.toml>
+#endif
+
+#if defined(CONFIG_COMP_WEBRTC_AGC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/webrtc_agc/webrtc_agc.toml>
+#endif
+
+#if defined(CONFIG_COMP_ALIMITER) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/alimiter/alimiter.toml>
+#endif
+
+#if defined(CONFIG_COMP_WEBRTC_VAD) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/webrtc_vad/webrtc_vad.toml>
+#endif
+
+#if defined(CONFIG_COMP_WEBRTC_NS) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/webrtc_ns/webrtc_ns.toml>
+#endif
+
+#if defined(CONFIG_COMP_WEBRTC_AEC) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/webrtc_aec/webrtc_aec.toml>
+#endif
+
+#if defined(CONFIG_COMP_WEBRTC_NS2) || defined(LLEXT_FORCE_ALL_MODULAR)
+#include <audio/webrtc_ns2/webrtc_ns2.toml>
+#endif
+
 #if defined(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING) || defined(LLEXT_FORCE_ALL_MODULAR)
 #include <audio/google/google_rtc_audio_processing.toml>
 #endif
