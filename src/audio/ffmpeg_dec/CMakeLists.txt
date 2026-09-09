@@ -98,6 +98,13 @@ else()
         target_link_libraries(SOF INTERFACE shine)
         add_dependencies(modules_sof shine_ext)
       endif()
+      if(CONFIG_FFMPEG_ENC_AAC)
+        target_link_directories(SOF INTERFACE ${VO_AACENC_INSTALL}/lib)
+        target_link_libraries(SOF INTERFACE vo-aacenc)
+        target_include_directories(SOF INTERFACE ${VO_AACENC_INSTALL}/include)
+        zephyr_include_directories(${VO_AACENC_INSTALL}/include)
+        add_dependencies(modules_sof vo_aacenc_ext)
+      endif()
       # libm (newlib double math) LAST so libav*/libshine references
       # (modf/cos/sin/log/sqrt/exp2) resolve against it.
       target_link_libraries(SOF INTERFACE ${FFMPEG_TARGET_LIBM})

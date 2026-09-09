@@ -104,6 +104,14 @@ static void get_codec_info(struct sof_tlv **tuple)
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_MP3, SOF_IPC_STREAM_CAPTURE);
 #endif
+#if defined(CONFIG_FFMPEG_ENC_AAC)
+	/* AAC encode (capture) is provided by the ffmpeg_dec module in
+	 * encode mode (vo-aacenc).
+	 */
+	codec_info.items[codec_info.count++] =
+		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_AAC, SOF_IPC_STREAM_CAPTURE);
+#endif
+
 #ifdef CONFIG_CADENCE_CODEC_VORBIS_DEC
 	codec_info.items[codec_info.count++] =
 		SET_CODEC_INFO_ITEM(SND_AUDIOCODEC_VORBIS, SOF_IPC_STREAM_PLAYBACK);

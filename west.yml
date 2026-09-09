@@ -20,6 +20,9 @@ manifest:
     # libshine fixed-point MP3 encoder for FFMPEG_ENC_MP3 (upstream mirror).
     - name: shine
       url-base: https://github.com/toots
+    # vo-aacenc fixed-point AAC encoder for FFMPEG_ENC_AAC (SOF fork).
+    - name: vo-aacenc
+      url-base: https://github.com/lgirdwood
     # libfvad: pure-C BSD-3 extraction of the WebRTC GMM VAD for the
     # webrtc_vad module (CONFIG_COMP_WEBRTC_VAD). Cross-built by
     # src/audio/webrtc_vad/webrtc_vad.cmake.
@@ -82,6 +85,14 @@ manifest:
       path: modules/audio/shine
       revision: ab5e3526b64af1a2eaa43aa6f441a7312e013519
       remote: shine
+
+    # vo-aacenc: pure 32-bit fixed-point AAC-LC encoder for FFMPEG_ENC_AAC.
+    # Cross-built by ffmpeg.cmake.
+    - name: vo-aacenc
+      repo-path: vo-aacenc
+      path: modules/audio/vo-aacenc
+      revision: c823d30ac87a09ab22903b716b22c87de5bfdf9b
+      remote: vo-aacenc
 
     # libfvad: standalone WebRTC GMM VAD for the webrtc_vad module.
     # Cross-built by src/audio/webrtc_vad/webrtc_vad.cmake.

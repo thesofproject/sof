@@ -115,6 +115,7 @@ Evaluated on Panther Lake (`ptl`) Aphid hardware running nominal **400 MHz** DSP
 | **Format Engine** (`ffmpeg_dec-convert`) | 4-way unrolled planar $\leftrightarrow$ interleaved | 48 kHz Stereo, S16/S24/S32 | **~0.4 – 0.8 MCPS** | ~0.3 – 0.6 MCPS |
 | **MP3 Encoder** (`libshine`) | Single-cycle 32x32 MACs, precomputed LUTs | 48 kHz Stereo, 128–192 kbps (24 ms) | **~18.0 – 24.5 MCPS** | ~16.0 – 21.0 MCPS |
 | **AAC-LC Decoder** (`ffmpeg_dec`) | Fast fixed-point `aac_fixed`, Xtensa SIMD | 48 kHz Stereo, 128–276 kbps (21.3 ms) | **~8.0 – 11.5 MCPS** | **~7.5 – 10.0 MCPS** *(MDCT float)* |
+| **AAC-LC Encoder** (`vo-aacenc`) | Pure 32-bit fixed-point, Xtensa hardware ops (`mulsh`, `nsa`, `clamps`) | 48 kHz Stereo, 128 kbps (21.3 ms) | **~18.5 – 21.5 MCPS** | ~16.0 – 19.0 MCPS |
 | **FFmpeg `afftdn`** (`libavfilter`) | 1024/2048-pt STFT Wiener gate, fast `sqrtf` | 48 kHz Stereo (12.5 ms hop) | **~28.0 – 38.0 MCPS** | **~6.0 – 9.0 MCPS** *(HiFi5 VFPU)* |
 
 ### Architectural Analysis & Hot Paths
@@ -153,4 +154,10 @@ Evaluated on Panther Lake (`ptl`) Aphid hardware running nominal **400 MHz** DSP
    - **Load**: ~8.2% DSP utilization.
    - **Hot Path**: 1024/2048-point forward and inverse STFT, noise profile spectral power tracking, Wiener gain computation, and fast `sqrtf` approximation.
    - **Phase 11 Vectorization**: Projected to achieve ~4x speedup (~6.0 – 9.0 MCPS) when offloading complex FFT butterflies and vector gain multiplication to the HiFi5 4-way vector floating-point unit (VFPU).
+
+8. **AAC-LC Encoder (`vo-aacenc`, ~18.5 – 21.5 MCPS @ 48 kHz Stereo, 128 kbps)**:
+   - **Load**: ~4.8% DSP utilization on a 400 MHz core.
+   - **Hot Path**: 1024-point integer MDCT filter bank, psychoacoustic band energy calculation (`CalcBandEnergy` / `CalcBandEnergyMS`), Temporal Noise Shaping (TNS) autocorrelation, and Huffman bitstream packing.
+   - **Optimization**: Pure 32-bit fixed-point integer implementation (`CONFIG_FPU=n`); inner loops accelerated with Xtensa hardware instructions: `mulsh` (32x32 signed high product), `nsa` (single-cycle normalization shift count), and `clamps` (single-cycle 16-bit saturation). Band energy and TNS autocorrelation unrolled 4-way.
+   - **Phase 11 Vectorization**: Projected to achieve ~16.0 – 19.0 MCPS when offloading 1024-point MDCT to the hardware HiFi5 vector unit.
 

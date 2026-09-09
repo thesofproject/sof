@@ -441,6 +441,73 @@ $CC -fPIC -c ${CMAKE_CURRENT_BINARY_DIR}/shine_cfgstub.c \\
 	message(STATUS "ffmpeg_dec: enabling MP3 encoder via libshine (${SHINE_SRC})")
 endif()
 
+# --- 3c. AAC encoder via vo-aacenc (fixed-point integer AAC-LC) ---
+set(_ff_vo_aacenc_dep "")
+if(CONFIG_FFMPEG_ENC_AAC)
+	set(VO_AACENC_SRC "${sof_top_dir}/../modules/audio/vo-aacenc")
+	if(NOT EXISTS "${VO_AACENC_SRC}/common/include/voAAC.h")
+		message(FATAL_ERROR "ffmpeg_dec: vo-aacenc source not at '${VO_AACENC_SRC}'; run 'west update'")
+	endif()
+	set(VO_AACENC_INSTALL "${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-install")
+	file(MAKE_DIRECTORY "${VO_AACENC_INSTALL}/lib" "${VO_AACENC_INSTALL}/include/vo-aacenc")
+
+	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-build.sh"
+"#!/bin/sh
+set -e
+export PATH=${_tc_dir}:\$PATH
+CC=\"${_ff_cc}\"
+mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-obj
+SRCS=\"\
+${VO_AACENC_SRC}/common/cmnMemory.c \
+${VO_AACENC_SRC}/aacenc/basic_op/basicop2.c \
+${VO_AACENC_SRC}/aacenc/basic_op/oper_32b.c \
+${VO_AACENC_SRC}/aacenc/src/aac_rom.c \
+${VO_AACENC_SRC}/aacenc/src/aacenc.c \
+${VO_AACENC_SRC}/aacenc/src/aacenc_core.c \
+${VO_AACENC_SRC}/aacenc/src/adj_thr.c \
+${VO_AACENC_SRC}/aacenc/src/band_nrg.c \
+${VO_AACENC_SRC}/aacenc/src/bit_cnt.c \
+${VO_AACENC_SRC}/aacenc/src/bitbuffer.c \
+${VO_AACENC_SRC}/aacenc/src/bitenc.c \
+${VO_AACENC_SRC}/aacenc/src/block_switch.c \
+${VO_AACENC_SRC}/aacenc/src/channel_map.c \
+${VO_AACENC_SRC}/aacenc/src/dyn_bits.c \
+${VO_AACENC_SRC}/aacenc/src/grp_data.c \
+${VO_AACENC_SRC}/aacenc/src/interface.c \
+${VO_AACENC_SRC}/aacenc/src/line_pe.c \
+${VO_AACENC_SRC}/aacenc/src/memalign.c \
+${VO_AACENC_SRC}/aacenc/src/ms_stereo.c \
+${VO_AACENC_SRC}/aacenc/src/pre_echo_control.c \
+${VO_AACENC_SRC}/aacenc/src/psy_configuration.c \
+${VO_AACENC_SRC}/aacenc/src/psy_main.c \
+${VO_AACENC_SRC}/aacenc/src/qc_main.c \
+${VO_AACENC_SRC}/aacenc/src/quantize.c \
+${VO_AACENC_SRC}/aacenc/src/sf_estim.c \
+${VO_AACENC_SRC}/aacenc/src/spreading.c \
+${VO_AACENC_SRC}/aacenc/src/stat_bits.c \
+${VO_AACENC_SRC}/aacenc/src/tns.c \
+${VO_AACENC_SRC}/aacenc/src/transform.c \
+\"
+for f in \$SRCS; do
+	\$CC -O2 -DNDEBUG -fPIC -mlongcalls -mtext-section-literals -D__unused= \\
+		-I${VO_AACENC_SRC}/aacenc/inc \\
+		-I${VO_AACENC_SRC}/aacenc/basic_op \\
+		-I${VO_AACENC_SRC}/common/include \\
+		-c \"\$f\" \\
+		-o ${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-obj/\$(basename \"\$f\").o
+done
+${_ff_cross_prefix}ar rcs ${VO_AACENC_INSTALL}/lib/libvo-aacenc.a ${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-obj/*.o
+cp ${VO_AACENC_SRC}/common/include/*.h ${VO_AACENC_INSTALL}/include/vo-aacenc/
+")
+	add_custom_command(
+		OUTPUT "${VO_AACENC_INSTALL}/lib/libvo-aacenc.a"
+		COMMAND sh "${CMAKE_CURRENT_BINARY_DIR}/vo-aacenc-build.sh"
+		VERBATIM)
+	add_custom_target(vo_aacenc_ext DEPENDS "${VO_AACENC_INSTALL}/lib/libvo-aacenc.a")
+	set(_ff_vo_aacenc_dep vo_aacenc_ext)
+	message(STATUS "ffmpeg_dec: enabling AAC encoder via vo-aacenc (${VO_AACENC_SRC})")
+endif()
+
 # --- 4. Configure + make + install (out-of-tree; source must be clean) ---
 set(_ff_byproducts
 	${FFMPEG_INSTALL_DIR}/lib/libavcodec.a
@@ -451,7 +518,7 @@ if(CONFIG_FFMPEG_BUILD_AVFILTER)
 endif()
 
 ExternalProject_Add(ffmpeg_ext
-	DEPENDS ${_ff_shine_dep}
+	DEPENDS ${_ff_shine_dep} ${_ff_vo_aacenc_dep}
 	SOURCE_DIR      "${SOF_FFMPEG_SRC_DIR}"
 	BUILD_IN_SOURCE 0
 	CONFIGURE_COMMAND

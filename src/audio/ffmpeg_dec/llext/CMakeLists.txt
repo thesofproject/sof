@@ -44,6 +44,10 @@ else()
 		list(APPEND ffmpeg_dec_libs shine)
 		list(APPEND ffmpeg_dec_libpaths "${SHINE_INSTALL}/lib")
 	endif()
+	if(CONFIG_FFMPEG_ENC_AAC)
+		list(APPEND ffmpeg_dec_libs vo-aacenc)
+		list(APPEND ffmpeg_dec_libpaths "${VO_AACENC_INSTALL}/lib")
+	endif()
 
 	# Cold split: module code must also use -mlongcalls to reach FFmpeg code
 	# that now lives in the far (DRAM) .cold region.
@@ -52,9 +56,14 @@ else()
 		set(ffmpeg_dec_cflags -mlongcalls)
 	endif()
 
+	set(ffmpeg_dec_includes "${FFMPEG_INSTALL_DIR}/include")
+	if(CONFIG_FFMPEG_ENC_AAC)
+		list(APPEND ffmpeg_dec_includes "${VO_AACENC_INSTALL}/include")
+	endif()
+
 	sof_llext_build("ffmpeg_dec"
 		SOURCES ${ffmpeg_dec_srcs}
-		INCLUDES  "${FFMPEG_INSTALL_DIR}/include"
+		INCLUDES  ${ffmpeg_dec_includes}
 		LIBS_PATH ${ffmpeg_dec_libpaths}
 		LIBS ${ffmpeg_dec_libs}
 		CFLAGS ${ffmpeg_dec_cflags}

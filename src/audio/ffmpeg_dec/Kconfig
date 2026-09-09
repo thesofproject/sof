@@ -60,6 +60,13 @@ config FFMPEG_ENC_MP3
 	  no float math dependency. The encoder is built into the archive; a module
 	  encode path (PCM->MP3) is a separate build mode.
 
+config FFMPEG_ENC_AAC
+	bool "AAC-LC encoder (vo-aacenc, fixed-point)"
+	help
+	  MPEG-4 AAC Low Complexity encoder via vo-aacenc, a lightweight 32-bit
+	  fixed-point integer encoder (west-pinned). Pure integer fixed-point, no
+	  float math dependency. Output is a standard ADTS AAC elementary stream.
+
 comment "FFmpeg audio filters (libavfilter; need the avfilter-graph backend to run)"
 
 config FFMPEG_FILTER_AFFTDN
@@ -73,13 +80,24 @@ config FFMPEG_FILTER_AFFTDN
 
 config FFMPEG_DEC_ENCODE_MODE
 	bool "Build as an audio encoder (PCM -> compressed) instead of a decoder [EXPERIMENTAL]"
-	select FFMPEG_ENC_MP3
 	help
 	  Build the module as an encoder: PCM in, compressed elementary stream out
-	  (MP3 via libshine), driven with avcodec_send_frame/avcodec_receive_packet
-	  (the reverse of the decoder). Selects the libshine MP3 encoder. Do not set
-	  together with FFMPEG_DEC_FILTER_MODE. Structurally complete and load-ready;
-	  real-time framing (MP3 fixed 1152-sample frames) needs on-hardware tuning.
+	  (AAC-LC via vo-aacenc or MP3 via libshine). Do not set together with
+	  FFMPEG_DEC_FILTER_MODE.
+
+choice
+	prompt "Default encoder for encode mode"
+	depends on FFMPEG_DEC_ENCODE_MODE
+	default FFMPEG_ENC_DEFAULT_AAC
+
+config FFMPEG_ENC_DEFAULT_AAC
+	bool "AAC-LC (vo-aacenc, fixed-point)"
+	select FFMPEG_ENC_AAC
+
+config FFMPEG_ENC_DEFAULT_MP3
+	bool "MP3 (libshine, fixed-point)"
+	select FFMPEG_ENC_MP3
+endchoice
 
 config FFMPEG_DEC_FILTER_MODE
 	bool "Build as a PCM filter effect instead of a decoder [EXPERIMENTAL]"
