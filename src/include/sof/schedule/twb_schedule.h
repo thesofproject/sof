@@ -49,7 +49,7 @@
 /**
  * \brief default static stack size for each TWB thread
  */
-#define ZEPHYR_TWB_STACK_SIZE 8192
+#define ZEPHYR_TWB_STACK_SIZE 32768
 
 /**
  * \brief max budget limit

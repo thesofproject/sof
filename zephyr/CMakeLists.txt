@@ -110,6 +110,28 @@ function(sof_llext_build module)
 		set(EXTRA_LINKER_PARAMS ${EXTRA_LINKER_PARAMS} -L${path})
 	endforeach()
 
+	# When using LLVM Clang for xtensa cross-compilation, the cmake linker
+	# driver (clang) defaults to the host linker (ld/x86_64). Add --target
+	# and --ld-path to ensure the xtensa cross-linker is used for LLEXT.
+	# The xtensa linker path is already set in CMAKE_EXE_LINKER_FLAGS by
+	# Zephyr's xtensa-toolchain.cmake via --ld-path=<path>.
+	if("${ARCH}" STREQUAL "xtensa" AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+		# Extract --ld-path value from CMAKE_EXE_LINKER_FLAGS (set by Zephyr toolchain cmake)
+		string(REGEX MATCH "--ld-path=[^ ]+" _ld_path_flag "${CMAKE_EXE_LINKER_FLAGS}")
+		# Use the CONFIG_LLVM_TARGET_TRIPLE or derive from board/SOC info
+		# The xtensa GNU target triple is derived from the SDK linker path
+		string(REGEX MATCH "--ld-path=.*/([^/]+)/bin" _triple_match "${CMAKE_EXE_LINKER_FLAGS}")
+		if(_triple_match)
+			set(_compiler_target "${CMAKE_MATCH_1}")
+		else()
+			set(_compiler_target "xtensa-intel_ace15_mtpm_zephyr-elf")
+		endif()
+		set(EXTRA_LINKER_PARAMS ${EXTRA_LINKER_PARAMS}
+			--target=${_compiler_target}
+			${_ld_path_flag}
+		)
+	endif()
+
 	get_target_property(proc_in_file ${module} lib_output)
 	get_target_property(proc_out_file ${module} pkg_input)
 	get_target_property(proc_pkg_file ${module} pkg_output)
