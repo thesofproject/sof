@@ -8,6 +8,34 @@ else()
   if(CONFIG_COMP_WEBRTC_NS_STUB)
     add_local_sources(sof webrtc_ns-stub.c)
   else()
+    if(NOT DEFINED SOF_WEBRTC_APM_SRC_DIR)
+      set(SOF_WEBRTC_APM_SRC_DIR "${sof_top_dir}/../modules/audio/webrtc-apm"
+          CACHE PATH "webrtc-audio-processing 0.3.x source directory")
+    endif()
+    cmake_path(NORMAL_PATH SOF_WEBRTC_APM_SRC_DIR)
+
+    zephyr_include_directories(
+      "${SOF_WEBRTC_APM_SRC_DIR}"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/ns/include"
+    )
+
+    zephyr_compile_definitions(
+      WEBRTC_ARCH_32_BITS
+      WEBRTC_ARCH_LITTLE_ENDIAN
+    )
+
     add_local_sources(sof webrtc_ns-webrtc.c)
+    add_local_sources(sof
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/ns/noise_suppression.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/ns/ns_core.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/fft4g.c"
+    )
+    set_source_files_properties(
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/ns/noise_suppression.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/ns/ns_core.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/fft4g.c"
+      TARGET_DIRECTORY modules_sof
+      PROPERTIES COMPILE_OPTIONS "-Wno-double-promotion;-Wno-implicit-function-declaration"
+    )
   endif()
 endif()

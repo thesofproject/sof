@@ -24,6 +24,7 @@
  * Maximum: 10 ms at 48 kHz = 480 samples/channel.
  */
 #define WEBRTC_NS_FRAME_SAMPLES_MAX	480
+#define WEBRTC_NS_FIFO_FRAMES		(WEBRTC_NS_FRAME_SAMPLES_MAX * 2)
 
 /* Maximum channel count supported. */
 #define WEBRTC_NS_CHANNELS_MAX		8
@@ -76,9 +77,10 @@ struct webrtc_ns_backend {
  * @in_frame_bytes:   Bytes per frame at pipeline rate.
  * @proc_frame_samples: Samples per 10 ms at proc_rate (per channel).
  * @in_frame_samples: Samples per 10 ms at in_rate (per channel).
- * @buffered_frames:  Samples currently in accumulator.
- * @in_buf:           Float planar input accumulator [ch][frame_samples].
- * @out_buf:          Float planar output buffer [ch][frame_samples].
+ * @buffered_in_frames: Samples currently in input accumulator.
+ * @buffered_out_frames: Samples currently ready in output FIFO.
+ * @in_buf:           Float planar input accumulator [ch][FIFO_FRAMES].
+ * @out_fifo:         Float planar output buffer [ch][FIFO_FRAMES].
  * @configured:       True once backend has been opened.
  */
 struct webrtc_ns_comp_data {
@@ -90,9 +92,10 @@ struct webrtc_ns_comp_data {
 	int	 in_frame_bytes;
 	int	 proc_frame_samples;
 	int	 in_frame_samples;
-	int	 buffered_frames;
-	float	 in_buf[WEBRTC_NS_CHANNELS_MAX][WEBRTC_NS_FRAME_SAMPLES_MAX];
-	float	 out_buf[WEBRTC_NS_CHANNELS_MAX][WEBRTC_NS_FRAME_SAMPLES_MAX];
+	int	 buffered_in_frames;
+	int	 buffered_out_frames;
+	float	 in_buf[WEBRTC_NS_CHANNELS_MAX][WEBRTC_NS_FIFO_FRAMES];
+	float	 out_fifo[WEBRTC_NS_CHANNELS_MAX][WEBRTC_NS_FIFO_FRAMES];
 	const float *in_ptrs[WEBRTC_NS_CHANNELS_MAX];
 	float	*out_ptrs[WEBRTC_NS_CHANNELS_MAX];
 	bool	 configured;

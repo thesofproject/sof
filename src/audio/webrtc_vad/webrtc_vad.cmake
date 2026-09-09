@@ -25,13 +25,11 @@ if(NOT EXISTS "${SOF_LIBFVAD_SRC_DIR}/src/fvad.c")
     "-DSOF_LIBFVAD_SRC_DIR=<path-to-libfvad-checkout>.")
 endif()
 
-# --- 2. Derive cross toolchain prefix from Zephyr target compiler ---
-# e.g. .../bin/xtensa-intel_ace30_ptl_zephyr-elf-gcc
-#   -> prefix .../bin/xtensa-intel_ace30_ptl_zephyr-elf-
-get_filename_component(_tc_dir  "${CMAKE_C_COMPILER}" DIRECTORY)
-get_filename_component(_tc_name "${CMAKE_C_COMPILER}" NAME)
-string(REGEX REPLACE "gcc$" "" _tc_prefix_name "${_tc_name}")
-set(_fvad_cross_prefix "${_tc_dir}/${_tc_prefix_name}")
+if(NOT DEFINED CMAKE_AR)
+  set(_fvad_ar "ar")
+else()
+  set(_fvad_ar "${CMAKE_AR}")
+endif()
 
 # --- 3. Output directories ---
 set(LIBFVAD_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libfvad-install"
@@ -74,7 +72,7 @@ for f in \$SRCS; do
     -c \"\$f\" -o \"$OBJ/\${bn}.o\"
 done
 
-${_fvad_cross_prefix}ar rcs \"$INST/lib/libfvad.a\" \"$OBJ\"/*.o
+${_fvad_ar} rcs \"$INST/lib/libfvad.a\" \"$OBJ\"/*.o
 cp $SRC/include/fvad.h \"$INST/include/fvad.h\"
 ")
 

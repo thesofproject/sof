@@ -54,7 +54,7 @@ __cold static int webrtc_ns_init(struct processing_module *mod)
 	/* Wire up permanent planar buffer pointer arrays. */
 	for (i = 0; i < WEBRTC_NS_CHANNELS_MAX; i++) {
 		cd->in_ptrs[i]  = cd->in_buf[i];
-		cd->out_ptrs[i] = cd->out_buf[i];
+		cd->out_ptrs[i] = cd->out_fifo[i];
 	}
 
 	comp_info(dev, "webrtc_ns: backend '%s'", cd->backend->name);
@@ -148,13 +148,17 @@ __cold static int webrtc_ns_prepare(struct processing_module *mod,
 		}
 	}
 
-	cd->buffered_frames = 0;
+	cd->buffered_in_frames = 0;
+	/* Prime lookahead output FIFO with silence to maintain symmetric period I/O */
+	for (ret = 0; ret < cd->channels; ret++)
+		memset(cd->out_fifo[ret], 0, sizeof(float) * cd->proc_frame_samples);
+	cd->buffered_out_frames = cd->proc_frame_samples;
 	cd->configured = true;
 	return 0;
 }
 
 /**
- * s32_to_float() - Convert interleaved S32 samples to planar float.
+ * s32_to_float() - Convert interleaved S32 samples to planar float in S16 scale.
  * @cd:       Module private data (channels, proc_frame_samples).
  * @src:      Source pointer (interleaved S32, raw[ch]).
  * @n_frames: Number of frames (each frame has cd->channels samples).
@@ -167,12 +171,11 @@ static void s32_to_float(struct webrtc_ns_comp_data *cd,
 
 	for (i = 0; i < n_frames; i++)
 		for (c = 0; c < cd->channels; c++)
-			cd->in_buf[c][frame0 + i] =
-				(float)src[i * cd->channels + c] / WEBRTC_NS_S32_SCALE;
+			cd->in_buf[c][frame0 + i] = (float)(src[i * cd->channels + c] >> 16);
 }
 
 /**
- * s16_to_float() - Convert interleaved S16 samples to planar float.
+ * s16_to_float() - Convert interleaved S16 samples to planar float in S16 scale.
  */
 static void s16_to_float(struct webrtc_ns_comp_data *cd,
 			 const int16_t *src, int n_frames, int frame0)
@@ -181,8 +184,7 @@ static void s16_to_float(struct webrtc_ns_comp_data *cd,
 
 	for (i = 0; i < n_frames; i++)
 		for (c = 0; c < cd->channels; c++)
-			cd->in_buf[c][frame0 + i] =
-				(float)src[i * cd->channels + c] / WEBRTC_NS_S16_SCALE;
+			cd->in_buf[c][frame0 + i] = (float)src[i * cd->channels + c];
 }
 
 /**
@@ -195,11 +197,11 @@ static void float_to_s32(struct webrtc_ns_comp_data *cd,
 
 	for (i = 0; i < n_frames; i++) {
 		for (c = 0; c < cd->channels; c++) {
-			float f = cd->out_buf[c][i] * WEBRTC_NS_S32_SCALE;
+			float f = cd->out_fifo[c][i];
 
-			f = f >  2147483647.0f ?  2147483647.0f :
-			    f < -2147483648.0f ? -2147483648.0f : f;
-			dst[i * cd->channels + c] = (int32_t)f;
+			f = f >  32767.0f ?  32767.0f :
+			    f < -32768.0f ? -32768.0f : f;
+			dst[i * cd->channels + c] = (int32_t)f << 16;
 		}
 	}
 }
@@ -214,7 +216,7 @@ static void float_to_s16(struct webrtc_ns_comp_data *cd,
 
 	for (i = 0; i < n_frames; i++) {
 		for (c = 0; c < cd->channels; c++) {
-			float f = cd->out_buf[c][i] * WEBRTC_NS_S16_SCALE;
+			float f = cd->out_fifo[c][i];
 
 			f = f >  32767.0f ?  32767.0f :
 			    f < -32768.0f ? -32768.0f : f;
@@ -224,10 +226,7 @@ static void float_to_s16(struct webrtc_ns_comp_data *cd,
 }
 
 /**
- * webrtc_ns_process() - Run NS on accumulated 10 ms frames.
- *
- * The pipeline period may be shorter than 10 ms, so we accumulate interleaved
- * PCM → planar float until we have a full NS frame, then process and drain.
+ * webrtc_ns_process() - Run NS on accumulated 10 ms frames with lookahead FIFO.
  */
 static int webrtc_ns_process(struct processing_module *mod,
 			     struct sof_source **sources, int num_of_sources,
@@ -243,8 +242,13 @@ static int webrtc_ns_process(struct processing_module *mod,
 	size_t nbytes, buf_size;
 	void const *rd_ptr, *buf_start;
 	void *wr_ptr, *wr_buf_start;
-	int ret;
+	int ret, drain, c;
 
+	if (n <= 0)
+		return 0;
+
+	/* Cap to available space in in_buf */
+	n = MIN(n, WEBRTC_NS_FIFO_FRAMES - cd->buffered_in_frames);
 	if (n <= 0)
 		return 0;
 
@@ -262,49 +266,69 @@ static int webrtc_ns_process(struct processing_module *mod,
 
 	/* Convert input to planar float, accumulating into in_buf[]. */
 	if (fmt == SOF_IPC_FRAME_S32_LE)
-		s32_to_float(cd, rd_ptr, n, cd->buffered_frames);
+		s32_to_float(cd, rd_ptr, n, cd->buffered_in_frames);
 	else
-		s16_to_float(cd, rd_ptr, n, cd->buffered_frames);
+		s16_to_float(cd, rd_ptr, n, cd->buffered_in_frames);
 
 	source_release_data(src, nbytes);
-
-	cd->buffered_frames += n;
+	cd->buffered_in_frames += n;
 
 	/*
 	 * Process complete NS frames. Each call consumes proc_frame_samples.
 	 * Any partial frame remains in in_buf[] for the next cycle.
 	 */
-	while (cd->buffered_frames >= cd->proc_frame_samples) {
+	while (cd->buffered_in_frames >= cd->proc_frame_samples &&
+	       cd->buffered_out_frames + cd->proc_frame_samples <= WEBRTC_NS_FIFO_FRAMES) {
 		int fs = cd->proc_frame_samples;
+		const float *in_ptrs[WEBRTC_NS_CHANNELS_MAX];
+		float *out_ptrs[WEBRTC_NS_CHANNELS_MAX];
 
-		ret = cd->backend->process(mod,
-					   (const float *const *)cd->in_ptrs,
-					   cd->out_ptrs, fs);
+		for (c = 0; c < cd->channels; c++) {
+			in_ptrs[c] = cd->in_buf[c];
+			out_ptrs[c] = &cd->out_fifo[c][cd->buffered_out_frames];
+		}
+
+		ret = cd->backend->process(mod, in_ptrs, out_ptrs, fs);
 		if (ret) {
 			comp_err(mod->dev, "webrtc_ns: backend process error %d", ret);
-			/* On error: fall back to pass-through for this frame. */
-			int c;
-
 			for (c = 0; c < cd->channels; c++)
-				memcpy(cd->out_buf[c], cd->in_buf[c],
+				memcpy(&cd->out_fifo[c][cd->buffered_out_frames],
+				       cd->in_buf[c],
 				       (size_t)fs * sizeof(float));
 		}
 
-		/* Write processed frame to sink. */
-		if (fmt == SOF_IPC_FRAME_S32_LE)
-			float_to_s32(cd, wr_ptr, fs);
-		else
-			float_to_s16(cd, wr_ptr, fs);
+		cd->buffered_out_frames += fs;
+		cd->buffered_in_frames -= fs;
 
-		/* Slide remaining samples to front of in_buf[]. */
-		cd->buffered_frames -= fs;
-		if (cd->buffered_frames > 0) {
-			int c;
-
+		if (cd->buffered_in_frames > 0) {
 			for (c = 0; c < cd->channels; c++)
 				memmove(cd->in_buf[c], cd->in_buf[c] + fs,
-					(size_t)cd->buffered_frames * sizeof(float));
+					(size_t)cd->buffered_in_frames * sizeof(float));
 		}
+	}
+
+	/* Drain n frames from out_fifo to sink */
+	drain = MIN(n, cd->buffered_out_frames);
+	if (drain > 0) {
+		if (fmt == SOF_IPC_FRAME_S32_LE)
+			float_to_s32(cd, wr_ptr, drain);
+		else
+			float_to_s16(cd, wr_ptr, drain);
+
+		cd->buffered_out_frames -= drain;
+		if (cd->buffered_out_frames > 0) {
+			for (c = 0; c < cd->channels; c++)
+				memmove(cd->out_fifo[c], cd->out_fifo[c] + drain,
+					(size_t)cd->buffered_out_frames * sizeof(float));
+		}
+	}
+
+	/* If buffered_out_frames was somehow less than n, zero remainder */
+	if (drain < n) {
+		size_t rem_bytes = (size_t)(n - drain) * source_get_frame_bytes(src);
+		char *zero_dest = (char *)wr_ptr + (size_t)drain * source_get_frame_bytes(src);
+
+		memset(zero_dest, 0, rem_bytes);
 	}
 
 	sink_commit_buffer(snk, nbytes);
@@ -317,9 +341,13 @@ static int webrtc_ns_process(struct processing_module *mod,
 static int webrtc_ns_reset(struct processing_module *mod)
 {
 	struct webrtc_ns_comp_data *cd = module_get_private_data(mod);
+	int c;
 
 	comp_dbg(mod->dev, "webrtc_ns: reset");
-	cd->buffered_frames = 0;
+	cd->buffered_in_frames = 0;
+	for (c = 0; c < cd->channels; c++)
+		memset(cd->out_fifo[c], 0, sizeof(float) * cd->proc_frame_samples);
+	cd->buffered_out_frames = cd->proc_frame_samples;
 
 	if (cd->backend->reset)
 		return cd->backend->reset(mod);

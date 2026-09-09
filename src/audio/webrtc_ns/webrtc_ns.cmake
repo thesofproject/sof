@@ -26,11 +26,11 @@ if(NOT EXISTS "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/ns/ns_c
     "-DSOF_WEBRTC_APM_SRC_DIR=<path>.")
 endif()
 
-# Derive cross-toolchain prefix from the Zephyr compiler path.
-get_filename_component(_tc_dir  "${CMAKE_C_COMPILER}" DIRECTORY)
-get_filename_component(_tc_name "${CMAKE_C_COMPILER}" NAME)
-string(REGEX REPLACE "gcc$" "" _tc_prefix_name "${_tc_name}")
-set(_ns_cross_prefix "${_tc_dir}/${_tc_prefix_name}")
+if(NOT DEFINED CMAKE_AR)
+  set(_ns_ar "ar")
+else()
+  set(_ns_ar "${CMAKE_AR}")
+endif()
 
 set(WEBRTC_NS_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-install"
     CACHE INTERNAL "webrtc_ns: NS library install prefix")
@@ -46,17 +46,12 @@ OBJ=${CMAKE_CURRENT_BINARY_DIR}/webrtc-ns-obj
 
 mkdir -p \"$OBJ\" \"$INST/lib\" \"$INST/include\"
 
-CFLAGS=\"-O2 -fPIC -I$SRC -I$SRC/common_audio/signal_processing/include\"
+CFLAGS=\"-O2 -fPIC -DWEBRTC_ARCH_32_BITS -DWEBRTC_ARCH_LITTLE_ENDIAN -I${SOF_WEBRTC_APM_SRC_DIR} -I$SRC/modules/audio_processing/ns/include\"
 
 SRCS=\"
+  $SRC/modules/audio_processing/ns/noise_suppression.c
   $SRC/modules/audio_processing/ns/ns_core.c
-  $SRC/modules/audio_processing/ns/ns_fft.c
-  $SRC/common_audio/signal_processing/complex_fft.c
-  $SRC/common_audio/signal_processing/division_operations.c
-  $SRC/common_audio/signal_processing/energy.c
-  $SRC/common_audio/signal_processing/get_scaling_square.c
-  $SRC/common_audio/signal_processing/real_fft.c
-  $SRC/common_audio/signal_processing/spl_inl.c
+  $SRC/common_audio/fft4g.c
 \"
 
 for f in \$SRCS; do
@@ -64,7 +59,7 @@ for f in \$SRCS; do
   ${CMAKE_C_COMPILER} \$CFLAGS -c \"\$f\" -o \"$OBJ/\${bn}.o\"
 done
 
-${_ns_cross_prefix}ar rcs \"$INST/lib/libwebrtc_ns.a\" \"$OBJ\"/*.o
+${_ns_ar} rcs \"$INST/lib/libwebrtc_ns.a\" \"$OBJ\"/*.o
 cp $SRC/modules/audio_processing/ns/include/noise_suppression.h \"$INST/include/\"
 ")
 

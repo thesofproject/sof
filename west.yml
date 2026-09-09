@@ -29,7 +29,7 @@ manifest:
     # WebRTC Noise Suppression module (CONFIG_COMP_WEBRTC_NS). Pure-C subset,
     # no abseil. Cross-built by src/audio/webrtc_ns/webrtc_ns.cmake.
     - name: webrtc-apm
-      url-base: https://gitlab.freedesktop.org/gstreamer
+      url-base: https://gitlab.freedesktop.org/pulseaudio
     # rnnoise: xiph/rnnoise deep-learning noise suppressor used by webrtc_ns2.
     # Pure C, BSD-3-Clause. Pinned at Feb-2025 tip.
     - name: rnnoise
