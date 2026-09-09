@@ -23,6 +23,9 @@ struct tf_classify {
 	int categories;
 	const char *error;
 	float predictions[TFLM_CATEGORY_COUNT];
+	int op_count;
+	uint32_t node_cycles[10];
+	int node_codes[10];
 };
 
 /* Export of C++ APIs into C namespace for linkage */
