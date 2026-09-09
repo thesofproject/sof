@@ -49,6 +49,7 @@ tools/test/audio/reports/*
 tools/test/audio/zeros_in.raw
 
 __pycache__
+.checkpatch-camelcase.git.*
 
 build*/
 
