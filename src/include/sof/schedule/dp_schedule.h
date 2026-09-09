@@ -17,6 +17,7 @@
 #include <ipc4/pipeline.h>
 
 struct processing_module;
+struct module_ext_init_data;
 
 /**
  *
@@ -115,6 +116,11 @@ struct sof_sink;
  */
 union scheduler_dp_thread_ipc_param {
 	const struct bind_info *bind_data;
+	/* SOF_IPC4_MOD_INIT_INSTANCE: ext_data points to the caller's stack frame and is
+	 * only valid until scheduler_dp_thread_ipc() returns; ipc_thread_flatten() copies
+	 * it by value into DP-thread-accessible memory before the DP thread runs init().
+	 */
+	const struct module_ext_init_data *ext_data;
 	struct {
 		unsigned int trigger_cmd;
 		enum ipc4_pipeline_state state;

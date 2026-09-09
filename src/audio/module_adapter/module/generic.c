@@ -124,9 +124,13 @@ int module_init(struct processing_module *mod)
 
 	/* Now we can proceed with module specific initialization */
 #if CONFIG_SOF_USERSPACE_APPLICATION
-	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP)
-		ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_INIT_INSTANCE, NULL);
-	else
+	if (mod->dev->ipc_config.proc_domain == COMP_PROCESSING_DOMAIN_DP) {
+		union scheduler_dp_thread_ipc_param param = {
+			.ext_data = mod->priv.cfg.ext_data,
+		};
+
+		ret = scheduler_dp_thread_ipc(mod, SOF_IPC4_MOD_INIT_INSTANCE, &param);
+	} else
 #endif
 		ret = interface->init(mod);
 
