@@ -34,11 +34,19 @@
 LOG_MODULE_DECLARE(ffmpeg_dec, CONFIG_SOF_LOG_LEVEL);
 
 #ifndef CONFIG_FFMPEG_AF_FILTER_NAME
+#if defined(CONFIG_FFMPEG_FILTER_DEFAULT_ALIMITER) || (defined(CONFIG_FFMPEG_FILTER_ALIMITER) && !defined(CONFIG_FFMPEG_FILTER_AFFTDN))
+#define CONFIG_FFMPEG_AF_FILTER_NAME	"alimiter"
+#else
 #define CONFIG_FFMPEG_AF_FILTER_NAME	"afftdn"
+#endif
 #endif
 
 #ifndef CONFIG_FFMPEG_AF_FILTER_ARGS
+#if defined(CONFIG_FFMPEG_FILTER_DEFAULT_ALIMITER) || (defined(CONFIG_FFMPEG_FILTER_ALIMITER) && !defined(CONFIG_FFMPEG_FILTER_AFFTDN))
+#define CONFIG_FFMPEG_AF_FILTER_ARGS	"limit=0.95:attack=5:release=50:level=1"
+#else
 #define CONFIG_FFMPEG_AF_FILTER_ARGS	"nr=28:nf=-20"
+#endif
 #endif
 
 
@@ -536,12 +544,42 @@ static void ffmpeg_af_store_out_frame(struct ffmpeg_af_graph *g, const AVFrame *
 {
 	uint8_t *dst = g->pcm_out + g->pcm_out_count * g->out_frame_bytes;
 
-	if (g->out_frame_bytes == g->channels * sizeof(int16_t)) {
-		ffmpeg_af_fltp_to_s16((const float *const *)frame->data,
-				      (int16_t *)dst, g->channels, nb_samples);
+	if (frame->format == AV_SAMPLE_FMT_DBL) {
+		const double *src = (const double *)frame->data[0];
+		int total = nb_samples * g->channels;
+		int i;
+
+		if (g->out_frame_bytes == g->channels * sizeof(int16_t)) {
+			int16_t *dst16 = (int16_t *)dst;
+			for (i = 0; i < total; i++) {
+				double v = src[i] * 32768.0;
+				if (v >= 32767.0)
+					dst16[i] = 32767;
+				else if (v <= -32768.0)
+					dst16[i] = -32768;
+				else
+					dst16[i] = (int16_t)v;
+			}
+		} else {
+			int32_t *dst32 = (int32_t *)dst;
+			for (i = 0; i < total; i++) {
+				double v = src[i] * 2147483648.0;
+				if (v >= 2147483647.0)
+					dst32[i] = 2147483647;
+				else if (v <= -2147483648.0)
+					dst32[i] = (int32_t)-2147483648LL;
+				else
+					dst32[i] = (int32_t)v;
+			}
+		}
 	} else {
-		ffmpeg_af_fltp_to_s32((const float *const *)frame->data,
-				      (int32_t *)dst, g->channels, nb_samples);
+		if (g->out_frame_bytes == g->channels * sizeof(int16_t)) {
+			ffmpeg_af_fltp_to_s16((const float *const *)frame->data,
+					      (int16_t *)dst, g->channels, nb_samples);
+		} else {
+			ffmpeg_af_fltp_to_s32((const float *const *)frame->data,
+					      (int32_t *)dst, g->channels, nb_samples);
+		}
 	}
 	g->pcm_out_count += nb_samples;
 }
@@ -723,9 +761,13 @@ int ffmpeg_af_mod_process(struct processing_module *mod,
 
 	/* Lazy open: runs once on the module's DP thread with deep stack */
 	if (!cd->configured) {
-		printk("[ffmpeg_af] lazy open entering on DP thread...\n");
-		ret = ffmpeg_af_open(cd->af_graph, CONFIG_FFMPEG_AF_FILTER_NAME,
-				     AV_SAMPLE_FMT_FLTP);
+		enum AVSampleFormat fmt = AV_SAMPLE_FMT_FLTP;
+		if (strcmp(CONFIG_FFMPEG_AF_FILTER_NAME, "alimiter") == 0)
+			fmt = AV_SAMPLE_FMT_DBL;
+
+		printk("[ffmpeg_af] lazy open entering on DP thread (filter=%s fmt=%d)...\n",
+		       CONFIG_FFMPEG_AF_FILTER_NAME, fmt);
+		ret = ffmpeg_af_open(cd->af_graph, CONFIG_FFMPEG_AF_FILTER_NAME, fmt);
 		printk("[ffmpeg_af] lazy open done ret=%d\n", ret);
 		if (ret < 0) {
 			comp_err(dev, "ffmpeg_af_open failed %d", ret);
@@ -787,11 +829,20 @@ int ffmpeg_af_mod_process(struct processing_module *mod,
 		}
 	}
 
-	/* 3. Process at most one filter frame through afftdn to yield to scheduler and IDC. */
+	/* 3. Process at most one filter frame through filter to yield to scheduler and IDC. */
 	if ((int)g->pcm_in_count >= g->frame_size &&
 	    (int)(g->pcm_out_cap - g->pcm_out_count) >= g->frame_size) {
-		ffmpeg_af_s16_to_fltp(g->pcm_in, (float *const *)g->in_frame->data,
-				      g->channels, g->frame_size);
+		if (g->in_frame->format == AV_SAMPLE_FMT_DBL) {
+			double *dst = (double *)g->in_frame->data[0];
+			int total = g->frame_size * g->channels;
+			int i;
+
+			for (i = 0; i < total; i++)
+				dst[i] = (double)g->pcm_in[i] * (1.0 / 32768.0);
+		} else {
+			ffmpeg_af_s16_to_fltp(g->pcm_in, (float *const *)g->in_frame->data,
+					      g->channels, g->frame_size);
+		}
 
 		if (g->pcm_in_count > (size_t)g->frame_size)
 			memmove(g->pcm_in, &g->pcm_in[g->frame_size * g->channels],

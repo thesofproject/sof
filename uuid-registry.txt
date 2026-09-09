@@ -183,6 +183,8 @@ c790b11d-5d14-e54e-be36ba4ad732cc14 webrtc_vad
 0fc8faef-945f-004b-8d5f315047f1136a webrtc_ns
 e5da7b5b-133a-ba46-b517651d6300bb83 webrtc_aec
 eacfacdc-2a87-c942-97e894c917a740db webrtc_ns2
+0af7b529-9dc7-4bee-a8b159e8fbe414f3 webrtc_agc
+6dfb1bea-d858-4ef7-92abcf5b4ee48159 webrtc_hpf
 d944281a-afe9-4695-a043d7f62b89538e waves
 13c8bc59-c4fa-4ad1-b93ace97cd30acc7 wdt
 300aaad4-45d2-8313-25d05e1d6086cdd1 zephyr

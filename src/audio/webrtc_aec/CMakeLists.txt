@@ -48,13 +48,11 @@ else()
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/spl_sqrt.c"
     )
 
-    if(NOT CONFIG_COMP_WEBRTC_VAD OR CONFIG_COMP_WEBRTC_VAD_STUB)
-      add_local_sources(sof
-        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/division_operations.c"
-        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_by_2_internal.c"
-        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_fractional.c"
-      )
-    endif()
+    add_local_sources(sof
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/division_operations.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_by_2_internal.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_fractional.c"
+    )
 
     set_source_files_properties(
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/echo_control_mobile.c"

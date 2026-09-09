@@ -25,17 +25,22 @@ else()
     add_local_sources(sof webrtc_vad-fvad.c)
     add_local_sources(sof
       "${SOF_LIBFVAD_SRC_DIR}/src/fvad.c"
-      "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/division_operations.c"
       "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/energy.c"
       "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/get_scaling_square.c"
       "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/resample_48khz.c"
-      "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/resample_by_2_internal.c"
-      "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/resample_fractional.c"
       "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/spl_inl.c"
       "${SOF_LIBFVAD_SRC_DIR}/src/vad/vad_core.c"
       "${SOF_LIBFVAD_SRC_DIR}/src/vad/vad_filterbank.c"
       "${SOF_LIBFVAD_SRC_DIR}/src/vad/vad_gmm.c"
       "${SOF_LIBFVAD_SRC_DIR}/src/vad/vad_sp.c"
     )
+    if((NOT CONFIG_COMP_WEBRTC_AEC OR CONFIG_COMP_WEBRTC_AEC_STUB) AND
+       (NOT CONFIG_COMP_WEBRTC_AGC OR CONFIG_COMP_WEBRTC_AGC_STUB))
+      add_local_sources(sof
+        "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/division_operations.c"
+        "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/resample_by_2_internal.c"
+        "${SOF_LIBFVAD_SRC_DIR}/src/signal_processing/resample_fractional.c"
+      )
+    endif()
   endif()
 endif()

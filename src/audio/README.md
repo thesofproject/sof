@@ -16,12 +16,15 @@ The `ffmpeg_dec` framework wraps embedded-optimized audio decoders, encoders, an
 - **AAC-LC Decoder**: High-performance integer AAC Low Complexity decoding via `aac_fixed` accelerated with Xtensa SIMD fixed-point DSP kernels.
 - **AAC-LC Encoder (`vo-aacenc`)**: Pure 32-bit fixed-point AAC-LC encoding accelerated with Xtensa `mulsh`, `nsa`, and `clamps` instructions.
 - **FFmpeg `afftdn` Filter**: On-DSP frequency-domain Wiener noise profiling and spectral subtraction.
+- **FFmpeg `alimiter` Filter**: Lookahead brickwall peak limiter providing guaranteed clipping prevention and smart speaker protection.
 
 ### 2. Voice Processing & Noise Reduction Modules
 - **WebRTC Noise Suppression (`webrtc_ns`)**: Pure-C fixed-point spectral Wiener filter for stationary noise suppression at 8 kHz and 16 kHz.
 - **WebRTC Voice Activity Detection (`webrtc_vad`)**: Pure-C Q15 Gaussian Mixture Model (GMM) classifier (`libfvad`), broadcasting speech/silence decisions via `NOTIFIER_ID_VAD`.
 - **WebRTC Acoustic Echo Cancellation (`webrtc_aec`)**: Dual-input fixed-point mobile echo canceller (AECm) with 64-tap adaptive FIR filtering and non-linear residual suppression.
 - **RNNoise Neural Noise Suppression (`webrtc_ns2`)**: Deep recurrent neural network (3-layer GRU) combined with 22-band Bark scale filtering for non-stationary noise cancellation at 48 kHz.
+- **WebRTC High-Pass Filter (`webrtc_hpf`)**: 2nd-order cascaded biquad IIR filter for DC offset elimination and mechanical rumble rejection (<80/100 Hz).
+- **WebRTC Automatic Gain Control (`webrtc_agc`)**: Pure-C fixed-point adaptive digital volume leveling (`digital_agc.c`) with configurable target dBFS and compression limiter.
 
 ---
 
@@ -39,10 +42,13 @@ All modules have been verified on **Intel Panther Lake (PTL / ACE 3.0)** Aphid h
 | **AAC-LC Decoder** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | Fast fixed-point `aac_fixed`, Xtensa SIMD | 48 kHz Stereo, 128–276 kbps (21.3 ms) | **~8.0 – 11.5 MCPS** | **~7.5 – 10.0 MCPS** *(MDCT float)* |
 | **AAC-LC Encoder** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | Pure 32-bit fixed-point (`vo-aacenc`), Xtensa SIMD | 48 kHz Stereo, 128 kbps (21.3 ms) | **~18.5 – 21.5 MCPS** | ~16.0 – 19.0 MCPS |
 | **FFmpeg `afftdn`** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | 1024/2048-pt STFT Wiener gate, fast `sqrtf` | 48 kHz Stereo (12.5 ms hop) | **~28.0 – 38.0 MCPS** | **~6.0 – 9.0 MCPS** *(HiFi5 VFPU)* |
+| **FFmpeg `alimiter`** | [`ffmpeg_dec`](ffmpeg_dec/README.md) | Double-precision lookahead brickwall peak limiter | 48 kHz Stereo (5 ms lookahead) | **~1.95 MCPS** | ~1.5 – 1.8 MCPS |
 | **WebRTC NS** | [`webrtc_ns`](webrtc_ns/README.md) | Pure-C Wiener filter, integer Q15/Q31 | 16 kHz Mono (10 ms) | **~4.2 – 6.0 MCPS** | ~4.0 – 5.5 MCPS |
 | **libfvad VAD** | [`webrtc_vad`](webrtc_vad/README.md) | 6-subband GMM log-likelihood | 16 kHz Mono (10 ms) | **~0.8 – 1.2 MCPS** | ~0.8 – 1.1 MCPS |
 | **WebRTC AECm** | [`webrtc_aec`](webrtc_aec/README.md) | Pure-C fixed-point 64 ms adaptive FIR | 16 kHz Mono (10 ms) | **~12.0 – 16.5 MCPS** | ~11.0 – 14.5 MCPS |
 | **RNNoise NS2** | [`webrtc_ns2`](webrtc_ns2/README.md) | Bark scale filter + 3 GRU layers (~10k wts) | 48 kHz Mono (10 ms) | **~22.0 – 28.5 MCPS** *(per ch)* | **~3.5 – 5.5 MCPS** *(HiFi5 VFPU)* |
+| **WebRTC HPF** | [`webrtc_hpf`](webrtc_hpf/README.md) | 2nd-order cascaded biquad IIR (<80/100 Hz) | 48 kHz Stereo (10 ms) | **~0.15 – 1.34 MCPS** | ~0.10 – 0.80 MCPS |
+| **WebRTC AGC** | [`webrtc_agc`](webrtc_agc/README.md) | Pure-C fixed-point Digital AGC & limiter | 16/48 kHz (10 ms, per ch) | **~1.45 MCPS** *(per ch)* | ~1.20 – 1.35 MCPS |
 
 ---
 

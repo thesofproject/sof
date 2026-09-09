@@ -60,6 +60,9 @@ if(CONFIG_FFMPEG_BUILD_AVFILTER)
 	if(CONFIG_FFMPEG_FILTER_AFFTDN)
 		list(APPEND _ff_filters afftdn)
 	endif()
+	if(CONFIG_FFMPEG_FILTER_ALIMITER)
+		list(APPEND _ff_filters alimiter)
+	endif()
 	list(JOIN _ff_filters "," _ff_filt_csv)
 	# abuffer/abuffersink feed/drain a filter graph; aformat negotiates format.
 	set(_ff_avfilter_cfg

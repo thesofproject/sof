@@ -78,6 +78,12 @@ config FFMPEG_FILTER_AFFTDN
 	  once the module gains an avfilter-graph backend; selecting it here just
 	  builds the filter into the archive.
 
+config FFMPEG_FILTER_ALIMITER
+	bool "Lookahead peak limiter (alimiter)"
+	help
+	  Build FFmpeg's lookahead brickwall peak limiter into libavfilter.
+	  Prevents digital clipping and provides smart speaker protection.
+
 config FFMPEG_DEC_ENCODE_MODE
 	bool "Build as an audio encoder (PCM -> compressed) instead of a decoder [EXPERIMENTAL]"
 	help
@@ -101,24 +107,37 @@ endchoice
 
 config FFMPEG_DEC_FILTER_MODE
 	bool "Build as a PCM filter effect instead of a decoder [EXPERIMENTAL]"
-	select FFMPEG_FILTER_AFFTDN
 	help
 	  Build the module as a PCM source->sink effect that runs an FFmpeg
-	  audio filter graph (default afftdn noise reduction) via the modern
-	  .process interface, instead of the compressed-stream decoder. Turns on
-	  libavfilter and the fast float math. Structurally complete and
+	  audio filter graph (default afftdn noise reduction or alimiter peak limiter)
+	  via the modern .process interface, instead of the compressed-stream decoder.
+	  Turns on libavfilter and float math. Structurally complete and
 	  load-ready; real-time latency/format tuning needs on-hardware bring-up.
+
+choice
+	prompt "Default filter for filter mode"
+	depends on FFMPEG_DEC_FILTER_MODE
+	default FFMPEG_FILTER_DEFAULT_AFFTDN
+
+config FFMPEG_FILTER_DEFAULT_AFFTDN
+	bool "FFT noise reduction (afftdn)"
+	select FFMPEG_FILTER_AFFTDN
+
+config FFMPEG_FILTER_DEFAULT_ALIMITER
+	bool "Lookahead peak limiter (alimiter)"
+	select FFMPEG_FILTER_ALIMITER
+endchoice
 
 # Turns on libavfilter in the FFmpeg cross-build when any filter is selected.
 config FFMPEG_BUILD_AVFILTER
 	bool
-	default y if FFMPEG_FILTER_AFFTDN
+	default y if FFMPEG_FILTER_AFFTDN || FFMPEG_FILTER_ALIMITER
 
 # Selected automatically when a decoder or filter that needs IEEE float math is
 # built. Gates compilation of the fast single-precision libm (fastmathf.c).
 config FFMPEG_DEC_FLOAT_MATH
 	bool
-	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_DEC_MP3 || FFMPEG_FILTER_AFFTDN
+	default y if FFMPEG_DEC_AAC || FFMPEG_DEC_OPUS || FFMPEG_DEC_MP3 || FFMPEG_FILTER_AFFTDN || FFMPEG_FILTER_ALIMITER
 
 config FFMPEG_DEC_COLD_SPLIT
 	bool "Place cold FFmpeg code (av_cold init/setup) in DRAM [EXPERIMENTAL]"
