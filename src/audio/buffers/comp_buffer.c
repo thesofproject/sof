@@ -172,10 +172,7 @@ static void comp_buffer_free(struct sof_audio_buffer *audio_buffer)
 
 	assert(!IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || alloc);
 
-	if (alloc)
-		sof_ctx_free(alloc, buffer->stream.addr);
-	else
-		sof_heap_free(sof_sys_user_heap_get(), buffer->stream.addr);
+	sof_ctx_free(alloc, buffer->stream.addr);
 
 	if (alloc && alloc->vreg) {
 		vregion_free(alloc->vreg, buffer);
@@ -273,12 +270,7 @@ struct comp_buffer *buffer_alloc(struct mod_alloc_ctx *alloc, size_t size, uint3
 
 	assert(!IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || alloc);
 
-	if (alloc)
-		stream_addr = sof_ctx_alloc(alloc, flags, size, align);
-	else
-		stream_addr = sof_heap_alloc(sof_sys_user_heap_get(),
-					     flags | SOF_MEM_FLAG_LARGE_BUFFER, size, align);
-
+	stream_addr = sof_ctx_alloc(alloc, flags | SOF_MEM_FLAG_LARGE_BUFFER, size, align);
 	if (!stream_addr) {
 		tr_err(&buffer_tr, "could not alloc size = %zu bytes of flags = 0x%x",
 		       size, flags);
@@ -288,11 +280,7 @@ struct comp_buffer *buffer_alloc(struct mod_alloc_ctx *alloc, size_t size, uint3
 	buffer = buffer_alloc_struct(alloc, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
-
-		if (alloc)
-			sof_ctx_free(alloc, stream_addr);
-		else
-			sof_heap_free(sof_sys_user_heap_get(), stream_addr);
+		sof_ctx_free(alloc, stream_addr);
 	}
 
 	return buffer;
@@ -322,13 +310,8 @@ struct comp_buffer *buffer_alloc_range(struct mod_alloc_ctx *alloc, size_t prefe
 	assert(!IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || alloc);
 
 	for (size = preferred_size; size >= minimum_size; size -= minimum_size) {
-		if (alloc)
-			stream_addr = sof_ctx_alloc(alloc, flags, size, align);
-		else
-			stream_addr = sof_heap_alloc(sof_sys_user_heap_get(),
-						     flags | SOF_MEM_FLAG_LARGE_BUFFER, size,
-						     align);
-
+		stream_addr = sof_ctx_alloc(alloc, flags | SOF_MEM_FLAG_LARGE_BUFFER,
+					    size, align);
 		if (stream_addr)
 			break;
 	}
@@ -344,11 +327,7 @@ struct comp_buffer *buffer_alloc_range(struct mod_alloc_ctx *alloc, size_t prefe
 	buffer = buffer_alloc_struct(alloc, stream_addr, size, flags, is_shared);
 	if (!buffer) {
 		tr_err(&buffer_tr, "could not alloc buffer structure");
-
-		if (alloc)
-			sof_ctx_free(alloc, stream_addr);
-		else
-			sof_heap_free(sof_sys_user_heap_get(), stream_addr);
+		sof_ctx_free(alloc, stream_addr);
 	}
 
 	return buffer;
@@ -384,12 +363,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 
 	assert(!IS_ENABLED(CONFIG_SOF_USERSPACE_LL) || alloc);
 
-	if (alloc)
-		new_ptr = sof_ctx_alloc(alloc, buffer->flags, size, alignment);
-	else
-		new_ptr = sof_heap_alloc(sof_sys_user_heap_get(),
-					 buffer->flags | SOF_MEM_FLAG_LARGE_BUFFER, size,
-					 alignment);
+	new_ptr = sof_ctx_alloc(alloc, buffer->flags | SOF_MEM_FLAG_LARGE_BUFFER, size, alignment);
 
 	/* we couldn't allocate bigger chunk */
 	if (!new_ptr && size > audio_stream_get_size(&buffer->stream)) {
@@ -400,11 +374,7 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size, uint32_t alignmen
 
 	/* use bigger chunk, else just use the old chunk but set smaller */
 	if (new_ptr) {
-		if (alloc)
-			sof_ctx_free(alloc, audio_stream_get_addr(&buffer->stream));
-		else
-			sof_heap_free(sof_sys_user_heap_get(), audio_stream_get_addr(&buffer->stream));
-
+		sof_ctx_free(alloc, audio_stream_get_addr(&buffer->stream));
 		audio_stream_set_addr(&buffer->stream, new_ptr);
 	}
 
@@ -441,13 +411,8 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 
 	for (new_size = preferred_size; new_size >= minimum_size;
 	     new_size -= minimum_size) {
-		if (alloc)
-			new_ptr = sof_ctx_alloc(alloc, buffer->flags, new_size, alignment);
-		else
-			new_ptr = sof_heap_alloc(sof_sys_user_heap_get(),
-						 buffer->flags | SOF_MEM_FLAG_LARGE_BUFFER,
-						 new_size, alignment);
-
+		new_ptr = sof_ctx_alloc(alloc, buffer->flags | SOF_MEM_FLAG_LARGE_BUFFER,
+					new_size, alignment);
 		if (new_ptr)
 			break;
 	}
@@ -461,11 +426,7 @@ int buffer_set_size_range(struct comp_buffer *buffer, size_t preferred_size, siz
 
 	/* use bigger chunk, else just use the old chunk but set smaller */
 	if (new_ptr) {
-		if (alloc)
-			sof_ctx_free(alloc, audio_stream_get_addr(&buffer->stream));
-		else
-			sof_heap_free(sof_sys_user_heap_get(), audio_stream_get_addr(&buffer->stream));
-
+		sof_ctx_free(alloc, audio_stream_get_addr(&buffer->stream));
 		audio_stream_set_addr(&buffer->stream, new_ptr);
 	}
 
