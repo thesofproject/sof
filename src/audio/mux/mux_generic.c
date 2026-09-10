@@ -35,8 +35,8 @@ static void mux_check_for_wrap(struct cir_buf_sink *sink,
 			cir_buf_wrap(lookup->copy_elem[elem].dest,
 				     sink->buf_start, sink->buf_end);
 		lookup->copy_elem[elem].src =
-			cir_buf_wrap(lookup->copy_elem[elem].src,
-				     (void *)source->buf_start, (void *)source->buf_end);
+			source_cir_buf_wrap(lookup->copy_elem[elem].src,
+				     source->buf_start, source->buf_end);
 	}
 }
 
@@ -52,7 +52,7 @@ static void demux_check_for_wrap(struct cir_buf_sink *sink,
 			cir_buf_wrap(lookup->copy_elem[elem].dest,
 				     sink->buf_start, sink->buf_end);
 		lookup->copy_elem[elem].src =
-			cir_buf_wrap(lookup->copy_elem[elem].src,
+			source_cir_buf_wrap(lookup->copy_elem[elem].src,
 				     source->buf_start, source->buf_end);
 	}
 }
@@ -65,18 +65,18 @@ static uint32_t demux_calc_frames_without_wrap_s16(struct cir_buf_sink *sink,
 {
 	uint32_t frames;
 	uint32_t min_frames;
-	void *ptr;
+	const void *ptr;
 
 	/* for demux we process each source buffer separately - dest/src for
 	 * each copy_elem refers to the same sink/source buffer, so min_frames
 	 * calculation based only on lookup table first element is sufficient.
 	 */
-	ptr = (int16_t *)lookup->copy_elem[0].dest -
+	ptr = (const int16_t *)lookup->copy_elem[0].dest -
 		lookup->copy_elem[0].out_ch;
 	min_frames = circ_buf_frames_without_wrap(ptr, sink->buf_end, sizeof(int16_t),
 						  lookup->copy_elem[0].dest_inc);
 
-	ptr = (int16_t *)lookup->copy_elem[0].src -
+	ptr = (const int16_t *)lookup->copy_elem[0].src -
 		lookup->copy_elem[0].in_ch;
 	frames = circ_buf_frames_without_wrap(ptr, source->buf_end, sizeof(int16_t),
 					      lookup->copy_elem[0].src_inc);
@@ -94,13 +94,13 @@ static uint32_t mux_calc_frames_without_wrap_s16(struct cir_buf_sink *sink,
 	uint32_t frames;
 	uint32_t min_frames;
 	uint32_t elem;
-	void *ptr;
+	const void *ptr;
 
 	/* dest pointer for all copy_elems in lookup refers to the same
 	 * sink buffer (mux has one sink buffer), so dest min_frames
 	 * calculation based only on lookup table first element is sufficient.
 	 */
-	ptr = (int16_t *)lookup->copy_elem[0].dest -
+	ptr = (const int16_t *)lookup->copy_elem[0].dest -
 		lookup->copy_elem[0].out_ch;
 	min_frames = circ_buf_frames_without_wrap(ptr, sink->buf_end, sizeof(int16_t),
 						  lookup->copy_elem[0].dest_inc);
@@ -108,7 +108,7 @@ static uint32_t mux_calc_frames_without_wrap_s16(struct cir_buf_sink *sink,
 	for (elem = 0; elem < lookup->num_elems; elem++) {
 		source = &source_bufs[lookup->copy_elem[elem].stream_id];
 
-		ptr = (int16_t *)lookup->copy_elem[elem].src -
+		ptr = (const int16_t *)lookup->copy_elem[elem].src -
 			lookup->copy_elem[elem].in_ch;
 		frames = circ_buf_frames_without_wrap(ptr, source->buf_end, sizeof(int16_t),
 						      lookup->copy_elem[elem].src_inc);
@@ -132,7 +132,7 @@ static void mux_init_look_up_pointers_s16(struct sof_sink *sink,
 	for (elem = 0; elem < lookup->num_elems; elem++) {
 		sid = lookup->copy_elem[elem].stream_id;
 
-		lookup->copy_elem[elem].src = (int16_t *)source_bufs[sid].ptr +
+		lookup->copy_elem[elem].src = (const int16_t *)source_bufs[sid].ptr +
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source_get_channels(sources[sid]);
 
@@ -152,7 +152,7 @@ static void demux_init_look_up_pointers_s16(struct sof_sink *sink,
 
 	/* init pointers */
 	for (elem = 0; elem < lookup->num_elems; elem++) {
-		lookup->copy_elem[elem].src = (int16_t *)source_buf->ptr +
+		lookup->copy_elem[elem].src = (const int16_t *)source_buf->ptr +
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source_get_channels(source);
 
@@ -198,7 +198,7 @@ static int demux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 	demux_init_look_up_pointers_s16(sink, &sink_buf, source, &source_buf, lookup);
 
 	while (frames) {
-		int16_t *src = (int16_t *)lookup->copy_elem[0].src -
+		const int16_t *src = (const int16_t *)lookup->copy_elem[0].src -
 			lookup->copy_elem[0].in_ch;
 		int16_t *dst = (int16_t *)lookup->copy_elem[0].dest -
 			lookup->copy_elem[0].out_ch;
@@ -210,7 +210,7 @@ static int demux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < lookup->num_elems; elem++) {
-				src = (int16_t *)lookup->copy_elem[elem].src;
+				src = (const int16_t *)lookup->copy_elem[elem].src;
 				dst = (int16_t *)lookup->copy_elem[elem].dest;
 				*dst = *src;
 				lookup->copy_elem[elem].src = src +
@@ -248,7 +248,7 @@ static void mux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 		      struct mux_look_up *lookup)
 {
 	uint32_t i;
-	int16_t *src;
+	const int16_t *src;
 	int16_t *dst;
 	uint32_t elem;
 	uint32_t frames_without_wrap;
@@ -268,7 +268,7 @@ static void mux_s16le(struct comp_dev *dev, struct sof_sink *sink,
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < lookup->num_elems; elem++) {
-				src = (int16_t *)lookup->copy_elem[elem].src;
+				src = (const int16_t *)lookup->copy_elem[elem].src;
 				dst = (int16_t *)lookup->copy_elem[elem].dest;
 				*dst = *src;
 				lookup->copy_elem[elem].src = src +
@@ -295,20 +295,22 @@ static uint32_t mux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
 	uint32_t frames;
 	uint32_t min_frames;
 	uint32_t elem;
-	void *ptr;
+	const void *ptr;
 
 	/* dest pointer for all copy_elems in lookup refers to the same
 	 * sink buffer (mux has one sink buffer), so dest min_frames
 	 * calculation based only on lookup table first element is sufficient.
 	 */
-	ptr = (int32_t *)lookup->copy_elem[0].dest - lookup->copy_elem[0].out_ch;
+	ptr = (const int32_t *)lookup->copy_elem[0].dest -
+		lookup->copy_elem[0].out_ch;
 	min_frames = circ_buf_frames_without_wrap(ptr, sink->buf_end, sizeof(int32_t),
 						  lookup->copy_elem[0].dest_inc);
 
 	for (elem = 0; elem < lookup->num_elems; elem++) {
 		source = &source_bufs[lookup->copy_elem[elem].stream_id];
 
-		ptr = (int32_t *)lookup->copy_elem[elem].src - lookup->copy_elem[elem].in_ch;
+		ptr = (const int32_t *)lookup->copy_elem[elem].src -
+			lookup->copy_elem[elem].in_ch;
 		frames = circ_buf_frames_without_wrap(ptr, source->buf_end, sizeof(int32_t),
 						      lookup->copy_elem[elem].src_inc);
 
@@ -324,17 +326,19 @@ static uint32_t demux_calc_frames_without_wrap_s32(struct cir_buf_sink *sink,
 {
 	uint32_t frames;
 	uint32_t min_frames;
-	void *ptr;
+	const void *ptr;
 
 	/* for demux we process each source buffer separately - dest/src for
 	 * each copy_elem refers to the same sink/source buffer, so min_frames
 	 * calculation based only on lookup table first element is sufficient.
 	 */
-	ptr = (int32_t *)lookup->copy_elem[0].dest - lookup->copy_elem[0].out_ch;
+	ptr = (const int32_t *)lookup->copy_elem[0].dest -
+		lookup->copy_elem[0].out_ch;
 	min_frames = circ_buf_frames_without_wrap(ptr, sink->buf_end, sizeof(int32_t),
 						  lookup->copy_elem[0].dest_inc);
 
-	ptr = (int32_t *)lookup->copy_elem[0].src - lookup->copy_elem[0].in_ch;
+	ptr = (const int32_t *)lookup->copy_elem[0].src -
+		lookup->copy_elem[0].in_ch;
 	frames = circ_buf_frames_without_wrap(ptr, source->buf_end, sizeof(int32_t),
 					      lookup->copy_elem[0].src_inc);
 
@@ -356,7 +360,7 @@ static void mux_init_look_up_pointers_s32(struct sof_sink *sink,
 	for (elem = 0; elem < lookup->num_elems; elem++) {
 		sid = lookup->copy_elem[elem].stream_id;
 
-		lookup->copy_elem[elem].src = (int32_t *)source_bufs[sid].ptr +
+		lookup->copy_elem[elem].src = (const int32_t *)source_bufs[sid].ptr +
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source_get_channels(sources[sid]);
 
@@ -376,7 +380,7 @@ static void demux_init_look_up_pointers_s32(struct sof_sink *sink,
 
 	/* init pointers */
 	for (elem = 0; elem < lookup->num_elems; elem++) {
-		lookup->copy_elem[elem].src = (int32_t *)source_buf->ptr +
+		lookup->copy_elem[elem].src = (const int32_t *)source_buf->ptr +
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source_get_channels(source);
 
@@ -438,7 +442,7 @@ static int demux_s32le(struct comp_dev *dev, struct sof_sink *sink,
 	demux_init_look_up_pointers_s32(sink, &sink_buf, source, &source_buf, lookup);
 
 	while (frames) {
-		int32_t *src = (int32_t *)lookup->copy_elem[0].src -
+		const int32_t *src = (const int32_t *)lookup->copy_elem[0].src -
 			lookup->copy_elem[0].in_ch;
 		int32_t *dst = (int32_t *)lookup->copy_elem[0].dest -
 			lookup->copy_elem[0].out_ch;
@@ -450,7 +454,7 @@ static int demux_s32le(struct comp_dev *dev, struct sof_sink *sink,
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < lookup->num_elems; elem++) {
-				src = (int32_t *)lookup->copy_elem[elem].src;
+				src = (const int32_t *)lookup->copy_elem[elem].src;
 				dst = (int32_t *)lookup->copy_elem[elem].dest;
 				*dst = *src;
 				lookup->copy_elem[elem].src = src +
@@ -488,7 +492,7 @@ static void mux_s32le(struct comp_dev *dev, struct sof_sink *sink,
 		      struct mux_look_up *lookup)
 {
 	uint32_t i;
-	int32_t *src;
+	const int32_t *src;
 	int32_t *dst;
 	uint32_t elem;
 	uint32_t frames_without_wrap;
@@ -508,7 +512,7 @@ static void mux_s32le(struct comp_dev *dev, struct sof_sink *sink,
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < lookup->num_elems; elem++) {
-				src = (int32_t *)lookup->copy_elem[elem].src;
+				src = (const int32_t *)lookup->copy_elem[elem].src;
 				dst = (int32_t *)lookup->copy_elem[elem].dest;
 				*dst = *src;
 				lookup->copy_elem[elem].src = src +
