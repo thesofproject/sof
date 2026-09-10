@@ -26,12 +26,20 @@ enum sof_clock_mode {
 	SOF_CLOCK_DMIC = 2,
 };
 
+enum sof_audio_route {
+	SOF_AUDIO_ROUTE_USB_DAI = 0,
+	SOF_AUDIO_ROUTE_BT_DAI = 1,
+	SOF_AUDIO_ROUTE_USB_BT = 2,
+};
+
 struct sof_static_pipeline_status {
 	bool playback_active;
 	bool capture_active;
 	uint32_t sample_rate;
 	enum sof_audio_interface active_interface;
 	enum sof_clock_mode clock_mode;
+	enum sof_audio_route audio_route;
+	bool bt_stream_enabled;
 	int16_t playback_volume;
 	bool playback_mute;
 	int16_t capture_volume;
@@ -45,6 +53,8 @@ struct sof_static_pipeline_status {
 int sof_static_pipelines_init(struct sof *sof);
 int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_clock_mode mode);
 int sof_static_pipeline_set_dmic_injector(bool enable);
+int sof_static_pipeline_set_bt_stream(bool enable);
+int sof_static_pipeline_set_route(enum sof_audio_route route);
 int sof_static_pipeline_set_eq_bypass(bool is_capture, bool bypass);
 int sof_static_pipeline_set_drc_bypass(bool bypass);
 int sof_static_pipeline_set_tdfb_bypass(bool bypass);

@@ -6,6 +6,8 @@
 #include <sof/audio/pipeline/sof_static_pipeline.h>
 #include <sof/audio/pipeline/static_pipeline.h>
 #include <sof/audio/usb_audio.h>
+#include <sof/audio/bt_audio.h>
+#include <sof/audio/bt_service.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
@@ -42,6 +44,8 @@ static struct sof_static_pipeline_status g_status = {
 	.sample_rate = 48000,
 	.active_interface = SOF_AUDIO_IF_I2S,
 	.clock_mode = SOF_CLOCK_MASTER,
+	.audio_route = SOF_AUDIO_ROUTE_USB_DAI,
+	.bt_stream_enabled = false,
 	.playback_volume = 0,
 	.playback_mute = false,
 	.capture_volume = 0,
@@ -94,13 +98,24 @@ void sof_uac2_sof_cb(const struct device *dev, void *user_data)
 
 		void *buf = NULL;
 		if (k_mem_slab_alloc(&uac2_tx_slab, &buf, K_NO_WAIT) == 0) {
-			if (usb_audio_peek_capture_data(buf, frame_bytes)) {
+			bool have_data = false;
+			if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
+				have_data = bt_audio_peek_capture_data(buf, frame_bytes);
+			} else {
+				have_data = usb_audio_peek_capture_data(buf, frame_bytes);
+			}
+
+			if (have_data) {
 				if (g_status.capture_mute) {
 					memset(buf, 0, frame_bytes);
 				}
 				int ret = usbd_uac2_send(dev, CAPTURE_TERM_ID, buf, frame_bytes);
 				if (ret == 0) {
-					usb_audio_consume_capture_data(frame_bytes);
+					if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
+						bt_audio_consume_capture_data(frame_bytes);
+					} else {
+						usb_audio_consume_capture_data(frame_bytes);
+					}
 				} else {
 					static uint32_t s_send_fail_cnt;
 					s_send_fail_cnt++;
@@ -169,7 +184,11 @@ void sof_uac2_data_recv_cb(const struct device *dev, uint8_t terminal,
 	}
 
 	if (buf && size > 0) {
-		usb_audio_feed_playback_data(buf, size);
+		if (g_status.audio_route == SOF_AUDIO_ROUTE_USB_BT) {
+			bt_audio_feed_playback_data(buf, size);
+		} else {
+			usb_audio_feed_playback_data(buf, size);
+		}
 	}
 	if (buf) {
 		k_mem_slab_free(&uac2_rx_slab, buf);
@@ -606,6 +625,25 @@ int sof_static_pipeline_set_capture_active(bool start)
 	return sof_static_pipeline_trigger_by_uac2_term(CAPTURE_TERM_ID, start);
 }
 
+int sof_static_pipeline_set_bt_stream(bool enable)
+{
+	g_status.bt_stream_enabled = enable;
+	if (enable) {
+		return bt_service_start_broadcast();
+	} else {
+		return bt_service_stop_broadcast();
+	}
+}
+
+int sof_static_pipeline_set_route(enum sof_audio_route route)
+{
+	g_status.audio_route = route;
+	LOG_INF("SOF pipeline audio route switched to %s",
+		route == SOF_AUDIO_ROUTE_USB_DAI ? "USB <-> DAI" :
+		(route == SOF_AUDIO_ROUTE_BT_DAI ? "BT <-> DAI" : "USB <-> BT"));
+	return 0;
+}
+
 void sof_static_pipeline_get_status(struct sof_static_pipeline_status *status)
 {
 	if (!status)
@@ -622,4 +660,8 @@ void sof_static_pipeline_get_status(struct sof_static_pipeline_status *status)
 		status->tdfb_capture_bypassed = (val == 0);
 	if (sof_static_kcontrol_get(5, &val) == 0)
 		status->eq_capture_bypassed = (val == 0);
+	if (sof_static_kcontrol_get(8, &val) == 0)
+		status->bt_stream_enabled = (val != 0);
+	if (sof_static_kcontrol_get(10, &val) == 0)
+		status->audio_route = (enum sof_audio_route)val;
 }

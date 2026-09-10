@@ -20,6 +20,7 @@ extern const struct sof_uuid tone_uuid;
 extern const struct sof_uuid level_multiplier_uuid;
 extern const struct sof_uuid selector_uuid;
 extern const struct sof_uuid mixer_uuid;
+extern const struct sof_uuid bt_audio_uuid;
 
 /* UAC2 Device Tree Entity IDs (static constant initializers) */
 #define UAC2_STATIC_ENTITY_ID(node) (DT_NODE_CHILD_IDX(node) + 1)
@@ -265,6 +266,24 @@ static const struct sof_static_kcontrol esp32p4_controls[] = {
 		.id = 7, .name = "DMIC Injector Switch",
 		.target_comp_id = 5,
 		.def = 0,
+		.uac2_entity_id = 0
+	),
+	SOF_STATIC_KCONTROL_SWITCH(
+		.id = 8, .name = "BT Audio Stream Switch",
+		.target_comp_id = 1,
+		.def = 0,
+		.uac2_entity_id = 0
+	),
+	SOF_STATIC_KCONTROL_VOLUME(
+		.id = 9, .name = "BT Stream Volume",
+		.target_comp_id = 1,
+		.min = 0, .max = 65536, .def = 65536, .channels = 2,
+		.uac2_entity_id = 0
+	),
+	SOF_STATIC_KCONTROL_ENUM(
+		.id = 10, .name = "Audio Endpoint Route",
+		.target_comp_id = 1,
+		.min = 0, .max = 2, .def = 0, .channels = 1,
 		.uac2_entity_id = 0
 	),
 	SOF_STATIC_KCONTROL_VOLUME(

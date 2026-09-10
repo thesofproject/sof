@@ -532,6 +532,18 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 		return sof_static_pipeline_set_dmic_injector(val != 0);
 	}
 
+	if (ctl->id == 8 || (ctl->name && !strcmp(ctl->name, "BT Audio Stream Switch"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return sof_static_pipeline_set_bt_stream(val != 0);
+	}
+
+	if (ctl->id == 10 || (ctl->name && !strcmp(ctl->name, "Audio Endpoint Route"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return sof_static_pipeline_set_route((enum sof_audio_route)val);
+	}
+
 	struct comp_dev *dev = sof_static_comp_get(ctl->target_comp_id);
 	if (!dev)
 		return -ENODEV;

@@ -57,6 +57,12 @@ config COMP_USB_AUDIO
 	help
 	  Enable USB Audio Class 2 (UAC2) streaming component for SOF.
 
+config COMP_BT_AUDIO
+	bool "Bluetooth Audio streaming component"
+	default y if PLATFORM_ESP32P4
+	help
+	  Enable Bluetooth Audio streaming component for SOF.
+
 config COMP_CHAIN_DMA
 	  bool "Chain DMA component"
 	  depends on IPC_MAJOR_4

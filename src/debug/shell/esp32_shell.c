@@ -13,6 +13,8 @@
 #include <soc/hp_sys_clkrst_struct.h>
 #include <soc/gpio_sig_map.h>
 #include <sof/audio/usb_audio.h>
+#include <sof/audio/bt_service.h>
+#include <sof/audio/bt_audio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -31,6 +33,10 @@ static int cmd_sof_status(const struct shell *sh, size_t argc, char **argv)
 	shell_print(sh, "  Clock Mode:        %s",
 		    status.clock_mode == SOF_CLOCK_MASTER ? "MASTER" :
 		    (status.clock_mode == SOF_CLOCK_DMIC ? "DMIC INJECTOR" : "SLAVE (Default)"));
+	shell_print(sh, "  Audio Route:       %s",
+		    status.audio_route == SOF_AUDIO_ROUTE_USB_DAI ? "USB <-> DAI (Default)" :
+		    (status.audio_route == SOF_AUDIO_ROUTE_BT_DAI ? "BT <-> DAI" : "USB <-> BT"));
+	shell_print(sh, "  BT Audio Stream:   %s", status.bt_stream_enabled ? "ENABLED" : "DISABLED");
 	shell_print(sh, "  Sample Rate:       %u Hz", status.sample_rate);
 	shell_print(sh, "  Playback Volume:   %d dB (Mute: %s)", status.playback_volume / 256, status.playback_mute ? "YES" : "NO");
 	shell_print(sh, "  Capture Volume:    %d dB (Mute: %s)", status.capture_volume / 256, status.capture_mute ? "YES" : "NO");
@@ -351,6 +357,111 @@ static int cmd_sof_regs(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_sof_bt_status(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	struct bt_service_status st;
+	bt_service_get_status(&st);
+
+	shell_print(sh, "=== Bluetooth LE Audio / C6 Co-Processor Status ===");
+	shell_print(sh, "  ESP32-C6 Power:    %s (GPIO 54 asserted)", st.c6_powered ? "ON" : "OFF");
+	shell_print(sh, "  Link State:        %s",
+		    st.state == BT_STATE_DISABLED ? "DISABLED" :
+		    (st.state == BT_STATE_READY ? "READY" :
+		    (st.state == BT_STATE_BROADCASTING ? "BROADCASTING" :
+		    (st.state == BT_STATE_RECEIVING ? "RECEIVING" : "SCANNING"))));
+	shell_print(sh, "  Profile / Codec:   BAP Broadcast / LC3 @ %u Hz 2ch (10ms ISO SDU)", st.sample_rate);
+	shell_print(sh, "  TX Packets / Bytes:%u pkts / %u bytes", st.tx_packets, st.tx_bytes);
+	shell_print(sh, "  RX Packets / Bytes:%u pkts / %u bytes", st.rx_packets, st.rx_bytes);
+	shell_print(sh, "  Link RSSI:         %d dBm", st.rssi);
+	shell_print(sh, "====================================================");
+	return 0;
+}
+
+static int cmd_sof_bt_broadcast(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		shell_error(sh, "Usage: sof bt broadcast <start|stop>");
+		return -EINVAL;
+	}
+
+	if (strcmp(argv[1], "start") == 0) {
+		sof_static_kcontrol_set(8, 1);
+		shell_print(sh, "Bluetooth LE Audio broadcast started.");
+	} else if (strcmp(argv[1], "stop") == 0) {
+		sof_static_kcontrol_set(8, 0);
+		shell_print(sh, "Bluetooth LE Audio broadcast stopped.");
+	} else {
+		shell_error(sh, "Invalid argument: %s (choose start or stop)", argv[1]);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int cmd_sof_bt_scan(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	bt_service_start_scan();
+	shell_print(sh, "Scanning for nearby LE Audio broadcast sources...");
+	return 0;
+}
+
+static int cmd_sof_bt_power(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		shell_error(sh, "Usage: sof bt power <on|off>");
+		return -EINVAL;
+	}
+
+	bool on = (strcmp(argv[1], "on") == 0 || strcmp(argv[1], "1") == 0);
+	bt_service_power_c6(on);
+	shell_print(sh, "ESP32-C6 power %s.", on ? "ON" : "OFF");
+	return 0;
+}
+
+static int cmd_sof_route(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		struct sof_static_pipeline_status status;
+		sof_static_pipeline_get_status(&status);
+		shell_print(sh, "Current Audio Route: %s",
+			    status.audio_route == SOF_AUDIO_ROUTE_USB_DAI ? "USB <-> DAI (Default)" :
+			    (status.audio_route == SOF_AUDIO_ROUTE_BT_DAI ? "BT <-> DAI" : "USB <-> BT"));
+		shell_print(sh, "Usage: sof route <usb_dai|bt_dai|usb_bt>");
+		return 0;
+	}
+
+	enum sof_audio_route route;
+	if (strcmp(argv[1], "usb_dai") == 0 || strcmp(argv[1], "dai") == 0 || strcmp(argv[1], "0") == 0) {
+		route = SOF_AUDIO_ROUTE_USB_DAI;
+	} else if (strcmp(argv[1], "bt_dai") == 0 || strcmp(argv[1], "bt") == 0 || strcmp(argv[1], "1") == 0) {
+		route = SOF_AUDIO_ROUTE_BT_DAI;
+	} else if (strcmp(argv[1], "usb_bt") == 0 || strcmp(argv[1], "2") == 0) {
+		route = SOF_AUDIO_ROUTE_USB_BT;
+	} else {
+		shell_error(sh, "Invalid route: %s (choose usb_dai, bt_dai, or usb_bt)", argv[1]);
+		return -EINVAL;
+	}
+
+	sof_static_kcontrol_set(10, (int32_t)route);
+	shell_print(sh, "Audio route set to %s.",
+		    route == SOF_AUDIO_ROUTE_USB_DAI ? "USB <-> DAI (Default)" :
+		    (route == SOF_AUDIO_ROUTE_BT_DAI ? "BT <-> DAI" : "USB <-> BT"));
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(bt_cmds,
+	SHELL_CMD(status, NULL, "Print Bluetooth LE Audio / C6 coprocessor status", cmd_sof_bt_status),
+	SHELL_CMD(broadcast, NULL, "Start/stop LE Audio broadcast (sof bt broadcast <start|stop>)", cmd_sof_bt_broadcast),
+	SHELL_CMD(scan, NULL, "Scan for nearby LE Audio devices", cmd_sof_bt_scan),
+	SHELL_CMD(power, NULL, "Control ESP32-C6 power (sof bt power <on|off>)", cmd_sof_bt_power),
+	SHELL_SUBCMD_SET_END
+);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(status, NULL, "Print current SOF pipeline and audio interface status", cmd_sof_status),
 	SHELL_CMD(regs, NULL, "Dump I2S1/PDM hardware registers", cmd_sof_regs),
@@ -362,6 +473,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(mute, NULL, "Set pipeline mute (sof mute <pb|cap> <on|off>)", cmd_sof_mute),
 	SHELL_CMD(mode, NULL, "Configure interface clock mode (sof mode <i2s|pdm> <master|slave|dmic>)", cmd_sof_mode),
 	SHELL_CMD(dmic, NULL, "Control PDM DMIC injector mode (sof dmic <enable|bypass>)", cmd_sof_dmic),
+	SHELL_CMD(bt, &bt_cmds, "Bluetooth LE Audio commands (sof bt <status|broadcast|scan|power>)", NULL),
+	SHELL_CMD(route, NULL, "Audio routing (sof route <usb_dai|bt_dai|usb_bt>)", cmd_sof_route),
 	SHELL_CMD(eq, NULL, "Control Equalizer bypass (sof eq <playback|capture> <enable|bypass>)", cmd_sof_eq),
 	SHELL_CMD(drc, NULL, "Control DRC bypass (sof drc <enable|bypass>)", cmd_sof_drc),
 	SHELL_CMD(tdfb, NULL, "Control TDFB beamformer bypass (sof tdfb <enable|bypass>)", cmd_sof_tdfb),
