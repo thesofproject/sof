@@ -28,7 +28,9 @@ static int cmd_sof_status(const struct shell *sh, size_t argc, char **argv)
 	shell_print(sh, "  Playback Pipeline: %s", status.playback_active ? "RUNNING" : "STOPPED");
 	shell_print(sh, "  Capture Pipeline:  %s", status.capture_active ? "RUNNING" : "STOPPED");
 	shell_print(sh, "  Active Interface:  %s", status.active_interface == SOF_AUDIO_IF_I2S ? "I2S0" : "PDM0");
-	shell_print(sh, "  Clock Mode:        %s", status.clock_mode == SOF_CLOCK_MASTER ? "MASTER" : "SLAVE (Default)");
+	shell_print(sh, "  Clock Mode:        %s",
+		    status.clock_mode == SOF_CLOCK_MASTER ? "MASTER" :
+		    (status.clock_mode == SOF_CLOCK_DMIC ? "DMIC INJECTOR" : "SLAVE (Default)"));
 	shell_print(sh, "  Sample Rate:       %u Hz", status.sample_rate);
 	shell_print(sh, "  Playback Volume:   %d dB (Mute: %s)", status.playback_volume / 256, status.playback_mute ? "YES" : "NO");
 	shell_print(sh, "  Capture Volume:    %d dB (Mute: %s)", status.capture_volume / 256, status.capture_mute ? "YES" : "NO");
@@ -44,7 +46,7 @@ static int cmd_sof_status(const struct shell *sh, size_t argc, char **argv)
 static int cmd_sof_mode(const struct shell *sh, size_t argc, char **argv)
 {
 	if (argc < 3) {
-		shell_error(sh, "Usage: sof mode <i2s|pdm> <master|slave>");
+		shell_error(sh, "Usage: sof mode <i2s|pdm> <master|slave|dmic>");
 		return -EINVAL;
 	}
 
@@ -63,13 +65,33 @@ static int cmd_sof_mode(const struct shell *sh, size_t argc, char **argv)
 		mode = SOF_CLOCK_MASTER;
 	} else if (strcmp(argv[2], "slave") == 0) {
 		mode = SOF_CLOCK_SLAVE;
+	} else if (strcmp(argv[2], "dmic") == 0) {
+		if (iface != SOF_AUDIO_IF_PDM) {
+			shell_error(sh, "DMIC mode is only supported on PDM interface");
+			return -EINVAL;
+		}
+		mode = SOF_CLOCK_DMIC;
 	} else {
-		shell_error(sh, "Invalid mode: %s (choose master or slave)", argv[2]);
+		shell_error(sh, "Invalid mode: %s (choose master, slave, or dmic)", argv[2]);
 		return -EINVAL;
 	}
 
 	sof_static_pipeline_set_clock_mode(iface, mode);
 	shell_print(sh, "Interface %s set to %s mode.", argv[1], argv[2]);
+	return 0;
+}
+
+static int cmd_sof_dmic(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		shell_error(sh, "Usage: sof dmic <enable|bypass>");
+		return -EINVAL;
+	}
+
+	bool enable = (strcmp(argv[1], "enable") == 0 || strcmp(argv[1], "1") == 0);
+	sof_static_kcontrol_set(7, enable ? 1 : 0);
+	shell_print(sh, "PDM DMIC injector mode %s.",
+		enable ? "ENABLED (Clock Receiver / Data Transmitter)" : "DISABLED (Master TX)");
 	return 0;
 }
 
@@ -338,7 +360,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(cap, NULL, "Start/stop capture pipeline (sof cap <start|stop>)", cmd_sof_cap),
 	SHELL_CMD(vol, NULL, "Set volume in dB (sof vol <pb|cap> <dB>)", cmd_sof_vol),
 	SHELL_CMD(mute, NULL, "Set pipeline mute (sof mute <pb|cap> <on|off>)", cmd_sof_mute),
-	SHELL_CMD(mode, NULL, "Configure interface clock mode (sof mode <i2s|pdm> <master|slave>)", cmd_sof_mode),
+	SHELL_CMD(mode, NULL, "Configure interface clock mode (sof mode <i2s|pdm> <master|slave|dmic>)", cmd_sof_mode),
+	SHELL_CMD(dmic, NULL, "Control PDM DMIC injector mode (sof dmic <enable|bypass>)", cmd_sof_dmic),
 	SHELL_CMD(eq, NULL, "Control Equalizer bypass (sof eq <playback|capture> <enable|bypass>)", cmd_sof_eq),
 	SHELL_CMD(drc, NULL, "Control DRC bypass (sof drc <enable|bypass>)", cmd_sof_drc),
 	SHELL_CMD(tdfb, NULL, "Control TDFB beamformer bypass (sof tdfb <enable|bypass>)", cmd_sof_tdfb),
