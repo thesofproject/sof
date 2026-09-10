@@ -80,8 +80,9 @@ static int webrtc_aec_real_configure(struct processing_module *mod, int sample_r
 			goto err;
 		}
 
-		config.cngMode         = suppression;
-		config.echoMode        = (filter_len_ms == 128) ? 4 :
+		config.cngMode         = (cd->high_suppression || suppression > 0) ? AecmTrue : AecmFalse;
+		config.echoMode        = cd->high_suppression ? 4 :
+					 (filter_len_ms == 128) ? 4 :
 					 (filter_len_ms == 64)  ? 3 :
 					 (filter_len_ms == 32)  ? 2 : 3;
 		ret = WebRtcAecm_set_config(rd->aecm[c], config);
@@ -92,8 +93,8 @@ static int webrtc_aec_real_configure(struct processing_module *mod, int sample_r
 	}
 
 	rd->num_channels = num_channels;
-	comp_info(mod->dev, "webrtc_aec: AECm rate=%d filter=%dms cng=%d ch=%d",
-		  sample_rate_hz, filter_len_ms, suppression, num_channels);
+	comp_info(mod->dev, "webrtc_aec: AECm rate=%d filter=%dms cng=%d echoMode=%d ch=%d",
+		  sample_rate_hz, filter_len_ms, config.cngMode, config.echoMode, num_channels);
 	return 0;
 
 err:
@@ -104,6 +105,34 @@ err:
 		}
 	}
 	return -ENOMEM;
+}
+
+static int webrtc_aec_real_set_suppression(struct processing_module *mod, bool high_suppression)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	struct webrtc_aec_real_data *rd = cd->backend_data;
+	AecmConfig config;
+	int c, ret;
+
+	if (!rd)
+		return 0;
+
+	config.cngMode = high_suppression ? AecmTrue : AecmFalse;
+	config.echoMode = high_suppression ? 4 : 3;
+
+	for (c = 0; c < rd->num_channels; c++) {
+		if (!rd->aecm[c])
+			continue;
+		ret = WebRtcAecm_set_config(rd->aecm[c], config);
+		if (ret) {
+			comp_err(mod->dev, "webrtc_aec: set_config failed %d ch%d", ret, c);
+			return ret;
+		}
+	}
+
+	comp_info(mod->dev, "webrtc_aec: updated suppression high=%d echoMode=%d",
+		  high_suppression, config.echoMode);
+	return 0;
 }
 
 static int webrtc_aec_real_process_ch(struct processing_module *mod,
@@ -169,10 +198,11 @@ static int webrtc_aec_real_free(struct processing_module *mod)
 }
 
 const struct webrtc_aec_backend webrtc_aec_backend = {
-	.name       = "aecm",
-	.init       = webrtc_aec_real_init,
-	.configure  = webrtc_aec_real_configure,
-	.process_ch = webrtc_aec_real_process_ch,
-	.reset      = webrtc_aec_real_reset,
-	.free       = webrtc_aec_real_free,
+	.name            = "aecm",
+	.init            = webrtc_aec_real_init,
+	.configure       = webrtc_aec_real_configure,
+	.set_suppression = webrtc_aec_real_set_suppression,
+	.process_ch      = webrtc_aec_real_process_ch,
+	.reset           = webrtc_aec_real_reset,
+	.free            = webrtc_aec_real_free,
 };

@@ -25,8 +25,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* AECm operates on 10 ms frames. Max 16 kHz × 10 ms = 160 samples/channel. */
-#define WEBRTC_AEC_FRAME_SAMPLES_MAX	160
+/* AECm operates on 10 ms frames.
+ * At 16 kHz: 160 samples/channel.
+ * At 48 kHz: 480 samples/channel (resampled to/from 16 kHz for AECm).
+ */
+#define WEBRTC_AEC_FRAME_SAMPLES_16K	160
+#define WEBRTC_AEC_FRAME_SAMPLES_48K	480
+#define WEBRTC_AEC_FRAME_SAMPLES_MAX	WEBRTC_AEC_FRAME_SAMPLES_48K
 #define WEBRTC_AEC_FIFO_FRAMES		(WEBRTC_AEC_FRAME_SAMPLES_MAX * 2)
 
 /* Maximum supported channel count (AECm is mono; multi-ch runs N instances). */
@@ -34,6 +39,19 @@
 
 /* Maximum DMA buffer alignment. */
 #define WEBRTC_AEC_MEM_ALIGN		64
+
+/* Fixed-point 48kHz <-> 16kHz resampler states (WebRTC APM SPL). */
+struct webrtc_aec_state_48_to_16 {
+	int32_t s_48_48[16];
+	int32_t s_48_32[8];
+	int32_t s_32_16[8];
+};
+
+struct webrtc_aec_state_16_to_48 {
+	int32_t s_16_32[8];
+	int32_t s_32_24[8];
+	int32_t s_24_48[8];
+};
 
 /**
  * struct webrtc_aec_backend - AECm backend operations.
@@ -53,6 +71,9 @@ struct webrtc_aec_backend {
 	 */
 	int (*configure)(struct processing_module *mod, int sample_rate_hz,
 			 int filter_len_ms, int suppression, int num_channels);
+
+	/* Runtime update of suppression / echo mode. */
+	int (*set_suppression)(struct processing_module *mod, bool high_suppression);
 
 	/**
 	 * Process one 10 ms frame (interleaved S16 mic + ref → interleaved S16 out).
@@ -84,6 +105,10 @@ struct webrtc_aec_comp_data {
 	const struct webrtc_aec_backend *backend;
 	void *backend_data;
 
+	/* Runtime ALSA mixer controls */
+	bool enabled;          /* master bypass switch (ctl->id == 0) */
+	bool high_suppression; /* suppression level switch (ctl->id == 1) */
+
 	/* Source routing (resolved in prepare). */
 	int mic_src;          /* index into sources[] for microphone */
 	int ref_src;          /* index into sources[] for echo reference */
@@ -96,9 +121,10 @@ struct webrtc_aec_comp_data {
 	int ref_frame_bytes;  /* bytes per pipeline frame on ref input */
 	int out_frame_bytes;
 	bool is_s32;          /* true for S32_LE pipeline */
+	bool needs_resample;  /* true when rate == 48000 and proc_rate == 16000 */
 
 	/* Processing frame size at proc_rate. */
-	int frame_samples;    /* proc_rate * 10 / 1000 */
+	int frame_samples;    /* pipeline frames per 10 ms */
 
 	/* Accumulation and lookahead FIFO state. */
 	int buffered_in_frames;
@@ -108,6 +134,12 @@ struct webrtc_aec_comp_data {
 	int16_t mic_buf[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FIFO_FRAMES];
 	int16_t ref_buf[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FIFO_FRAMES];
 	int16_t out_fifo[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FIFO_FRAMES];
+
+	/* Resampler state for 48kHz <-> 16kHz */
+	struct webrtc_aec_state_48_to_16 mic_resamp[WEBRTC_AEC_CHANNELS_MAX];
+	struct webrtc_aec_state_48_to_16 ref_resamp[WEBRTC_AEC_CHANNELS_MAX];
+	struct webrtc_aec_state_16_to_48 out_resamp[WEBRTC_AEC_CHANNELS_MAX];
+	int32_t resamp_tmpmem[512];
 
 	/* Ref stream liveness (IPC4: always active). */
 	bool last_ref_ok;

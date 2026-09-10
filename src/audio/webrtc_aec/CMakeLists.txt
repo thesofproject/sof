@@ -27,6 +27,7 @@ else()
     )
 
     add_local_sources(sof webrtc_aec-aecm.c)
+    add_local_sources(sof webrtc_aec-shims.c)
     add_local_sources(sof
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/echo_control_mobile.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core.c"
@@ -52,6 +53,7 @@ else()
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/division_operations.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_by_2_internal.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_fractional.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_48khz.c"
     )
 
     set_source_files_properties(
@@ -73,8 +75,11 @@ else()
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/randomization_functions.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/spl_init.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/spl_sqrt.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_48khz.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_by_2_internal.c"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_fractional.c"
       TARGET_DIRECTORY modules_sof
-      PROPERTIES COMPILE_OPTIONS "-Wno-double-promotion;-Wno-implicit-function-declaration;-Wno-unused-function"
+      PROPERTIES COMPILE_OPTIONS "-Wno-double-promotion;-Wno-implicit-function-declaration;-Wno-unused-function;-Dmalloc=webrtc_malloc;-Dcalloc=webrtc_calloc;-Drealloc=webrtc_realloc;-Dfree=webrtc_free"
     )
   endif()
 endif()

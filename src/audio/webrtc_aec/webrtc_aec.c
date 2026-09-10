@@ -19,6 +19,7 @@
 #include <module/audio/source_api.h>
 #include <module/audio/sink_api.h>
 #include <ipc4/aec.h>
+#include <ipc4/header.h>
 #include <sof/math/numbers.h>
 #include <rtos/init.h>
 #include <rtos/string.h>
@@ -26,6 +27,27 @@
 #include <errno.h>
 #include <stdint.h>
 #include "webrtc_aec.h"
+
+#if !CONFIG_COMP_WEBRTC_AEC_STUB
+#include <signal_processing_library.h>
+#else
+static inline void WebRtcSpl_Resample48khzTo16khz(const int16_t *in, int16_t *out, void *state, int32_t *tmp)
+{
+	(void)in; (void)out; (void)state; (void)tmp;
+}
+static inline void WebRtcSpl_ResetResample48khzTo16khz(void *state)
+{
+	(void)state;
+}
+static inline void WebRtcSpl_Resample16khzTo48khz(const int16_t *in, int16_t *out, void *state, int32_t *tmp)
+{
+	(void)in; (void)out; (void)state; (void)tmp;
+}
+static inline void WebRtcSpl_ResetResample16khzTo48khz(void *state)
+{
+	(void)state;
+}
+#endif
 
 SOF_DEFINE_REG_UUID(webrtc_aec);
 LOG_MODULE_REGISTER(webrtc_aec, CONFIG_SOF_LOG_LEVEL);
@@ -138,6 +160,8 @@ __cold static int webrtc_aec_init(struct processing_module *mod)
 
 	md->private = cd;
 	cd->backend = &webrtc_aec_backend;
+	cd->enabled = true;
+	cd->high_suppression = false;
 
 	/* Two input pins: mic + echo reference. */
 	mod->max_sources = 2;
@@ -166,49 +190,72 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 
 	assert_can_be_cold();
 
-	if (num_of_sources != 2 || num_of_sinks != 1) {
-		comp_err(dev, "webrtc_aec: need 2 sources and 1 sink (got %d/%d)",
+	if ((num_of_sources != 1 && num_of_sources != 2) || num_of_sinks != 1) {
+		comp_err(dev, "webrtc_aec: need 1 or 2 sources and 1 sink (got %d/%d)",
 			 num_of_sources, num_of_sinks);
 		return -EINVAL;
 	}
 
-	/*
-	 * Resolve which source is mic and which is echo reference.
-	 * The mic is the one on the same pipeline as the output sink.
-	 * This matches google_rtc_audio_processing.c exactly.
-	 */
-	cd->ref_src = (source_get_pipeline_id(sources[0]) == sink_get_pipeline_id(sinks[0]));
-	cd->mic_src = cd->ref_src ? 0 : 1;
+	if (num_of_sources == 1) {
+		cd->mic_src = 0;
+		cd->ref_src = -1;
+	} else if (source_get_pipeline_id(sources[0]) == sink_get_pipeline_id(sinks[0]) &&
+	    source_get_pipeline_id(sources[1]) != sink_get_pipeline_id(sinks[0])) {
+		cd->mic_src = 0;
+		cd->ref_src = 1;
+	} else if (source_get_pipeline_id(sources[1]) == sink_get_pipeline_id(sinks[0]) &&
+		   source_get_pipeline_id(sources[0]) != sink_get_pipeline_id(sinks[0])) {
+		cd->mic_src = 1;
+		cd->ref_src = 0;
+	} else {
+		cd->mic_src = 0;
+		cd->ref_src = 1;
+	}
 
 	mic_fmt  = source_get_frm_fmt(sources[cd->mic_src]);
-	ref_fmt  = source_get_frm_fmt(sources[cd->ref_src]);
 	mic_rate = source_get_rate(sources[cd->mic_src]);
-	ref_rate = source_get_rate(sources[cd->ref_src]);
 	cd->channels = source_get_channels(sources[cd->mic_src]);
+
+	if (cd->ref_src >= 0) {
+		ref_fmt  = source_get_frm_fmt(sources[cd->ref_src]);
+		ref_rate = source_get_rate(sources[cd->ref_src]);
+		if (mic_rate != ref_rate) {
+			comp_err(dev, "webrtc_aec: mic_rate %d != ref_rate %d", mic_rate, ref_rate);
+			return -EINVAL;
+		}
+	} else {
+		ref_fmt  = mic_fmt;
+		ref_rate = mic_rate;
+	}
 
 	if (cd->channels > WEBRTC_AEC_CHANNELS_MAX) {
 		comp_err(dev, "webrtc_aec: too many channels %d (max %d)",
 			 cd->channels, WEBRTC_AEC_CHANNELS_MAX);
 		return -EINVAL;
 	}
-
-	if (mic_rate != ref_rate) {
-		comp_err(dev, "webrtc_aec: mic_rate %d != ref_rate %d", mic_rate, ref_rate);
-		return -EINVAL;
-	}
 	cd->rate = mic_rate;
 
-	/* AECm supports only 8 and 16 kHz natively. */
-	cd->proc_rate = CONFIG_WEBRTC_AEC_SAMPLE_RATE_HZ;
-	if (cd->proc_rate != 8000 && cd->proc_rate != 16000) {
-		comp_err(dev, "webrtc_aec: invalid proc_rate %d (must be 8000 or 16000)",
-			 cd->proc_rate);
+	/* AECm operates at 16 kHz or 8 kHz natively.
+	 * When the pipeline operates at 48 kHz, we use WebRTC APM's fixed-point
+	 * resampler to downsample 48kHz -> 16kHz for AECm and upsample 16kHz -> 48kHz.
+	 */
+	if (cd->rate == 48000) {
+		cd->proc_rate = 16000;
+		cd->needs_resample = true;
+		cd->frame_samples = WEBRTC_AEC_FRAME_SAMPLES_48K; /* 480 samples per 10 ms */
+		for (ret = 0; ret < cd->channels; ret++) {
+			WebRtcSpl_ResetResample48khzTo16khz((void *)&cd->mic_resamp[ret]);
+			WebRtcSpl_ResetResample48khzTo16khz((void *)&cd->ref_resamp[ret]);
+			WebRtcSpl_ResetResample16khzTo48khz((void *)&cd->out_resamp[ret]);
+		}
+	} else if (cd->rate == 16000 || cd->rate == 8000) {
+		cd->proc_rate = cd->rate;
+		cd->needs_resample = false;
+		cd->frame_samples = (cd->proc_rate * 10) / 1000;
+	} else {
+		comp_err(dev, "webrtc_aec: unsupported pipeline rate %d (must be 48000, 16000, or 8000)",
+			 cd->rate);
 		return -EINVAL;
-	}
-
-	if (cd->rate != cd->proc_rate) {
-		comp_warn(dev, "webrtc_aec: pipeline rate %d != AECm rate %d; "
-			  "pipeline resampling required upstream", cd->rate, cd->proc_rate);
 	}
 
 	if ((mic_fmt != SOF_IPC_FRAME_S16_LE && mic_fmt != SOF_IPC_FRAME_S32_LE) ||
@@ -220,9 +267,9 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 
 	cd->is_s32 = (mic_fmt == SOF_IPC_FRAME_S32_LE);
 	cd->mic_frame_bytes = source_get_frame_bytes(sources[cd->mic_src]);
-	cd->ref_frame_bytes = source_get_frame_bytes(sources[cd->ref_src]);
+	cd->ref_frame_bytes = cd->ref_src >= 0 ?
+		source_get_frame_bytes(sources[cd->ref_src]) : cd->mic_frame_bytes;
 	cd->out_frame_bytes = sink_get_frame_bytes(sinks[0]);
-	cd->frame_samples   = (cd->proc_rate * 10) / 1000; /* 10 ms */
 
 	if (cd->frame_samples > WEBRTC_AEC_FRAME_SAMPLES_MAX) {
 		comp_err(dev, "webrtc_aec: frame_samples %d exceeds max %d",
@@ -230,14 +277,15 @@ __cold static int webrtc_aec_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
-	comp_info(dev, "webrtc_aec: mic_src=%d ref_src=%d rate=%d/%d ch=%d frame=%d %s",
+	comp_info(dev, "webrtc_aec: mic_src=%d ref_src=%d rate=%d/%d ch=%d frame=%d %s resamp=%d",
 		  cd->mic_src, cd->ref_src, cd->rate, cd->proc_rate, cd->channels,
-		  cd->frame_samples, cd->is_s32 ? "S32" : "S16");
+		  cd->frame_samples, cd->is_s32 ? "S32" : "S16", cd->needs_resample);
 
 #ifdef CONFIG_IPC_MAJOR_4
 	/* Apply reference format override from topology pin descriptor. */
-	ipc4_update_source_format(sources[cd->ref_src],
-				  &mod->priv.cfg.input_pins[1].audio_fmt);
+	if (cd->ref_src >= 0)
+		ipc4_update_source_format(sources[cd->ref_src],
+					  &mod->priv.cfg.input_pins[1].audio_fmt);
 #endif
 
 	if (cd->backend->configure) {
@@ -266,10 +314,10 @@ static int webrtc_aec_process(struct processing_module *mod,
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct sof_source *mic = sources[cd->mic_src];
-	struct sof_source *ref = sources[cd->ref_src];
+	struct sof_source *ref = cd->ref_src >= 0 ? sources[cd->ref_src] : NULL;
 	struct sof_sink   *out = sinks[0];
 	int fmic = (int)source_get_data_frames_available(mic);
-	int fref = (int)source_get_data_frames_available(ref);
+	int fref = ref ? (int)source_get_data_frames_available(ref) : 0;
 	int n, drain, c;
 
 	if (fmic <= 0)
@@ -305,16 +353,54 @@ static int webrtc_aec_process(struct processing_module *mod,
 		int fs = cd->frame_samples;
 		int ret;
 
-		for (c = 0; c < cd->channels; c++) {
-			ret = cd->backend->process_ch(mod,
-						      cd->mic_buf[c],
-						      cd->ref_buf[c],
-						      &cd->out_fifo[c][cd->buffered_out_frames],
-						      fs, c);
-			if (ret) {
+		if (!cd->enabled) {
+			/* Bypassed: pass mic straight through */
+			for (c = 0; c < cd->channels; c++) {
 				memcpy(&cd->out_fifo[c][cd->buffered_out_frames],
 				       cd->mic_buf[c],
 				       (size_t)fs * sizeof(int16_t));
+			}
+		} else if (cd->needs_resample) {
+			/* 48 kHz -> 16 kHz -> AECm -> 48 kHz */
+			for (c = 0; c < cd->channels; c++) {
+				int16_t mic16[WEBRTC_AEC_FRAME_SAMPLES_16K];
+				int16_t ref16[WEBRTC_AEC_FRAME_SAMPLES_16K];
+				int16_t out16[WEBRTC_AEC_FRAME_SAMPLES_16K];
+
+				WebRtcSpl_Resample48khzTo16khz(cd->mic_buf[c], mic16,
+							      (void *)&cd->mic_resamp[c],
+							      cd->resamp_tmpmem);
+				WebRtcSpl_Resample48khzTo16khz(cd->ref_buf[c], ref16,
+							      (void *)&cd->ref_resamp[c],
+							      cd->resamp_tmpmem);
+
+				ret = cd->backend->process_ch(mod,
+							      mic16,
+							      ref16,
+							      out16,
+							      WEBRTC_AEC_FRAME_SAMPLES_16K,
+							      c);
+				if (ret)
+					memcpy(out16, mic16, sizeof(out16));
+
+				WebRtcSpl_Resample16khzTo48khz(out16,
+							      &cd->out_fifo[c][cd->buffered_out_frames],
+							      (void *)&cd->out_resamp[c],
+							      cd->resamp_tmpmem);
+			}
+		} else {
+			/* Native 16 kHz or 8 kHz */
+			for (c = 0; c < cd->channels; c++) {
+				ret = cd->backend->process_ch(mod,
+							      cd->mic_buf[c],
+							      cd->ref_buf[c],
+							      &cd->out_fifo[c][cd->buffered_out_frames],
+							      fs, c);
+				if (ret) {
+					memcpy(&cd->out_fifo[c][cd->buffered_out_frames],
+					       cd->mic_buf[c],
+					       (size_t)fs * sizeof(int16_t));
+				}
 			}
 		}
 
@@ -378,12 +464,78 @@ __cold static int webrtc_aec_free(struct processing_module *mod)
 	return 0;
 }
 
+static int webrtc_aec_set_config(struct processing_module *mod, uint32_t param_id,
+				 enum module_cfg_fragment_position pos, uint32_t data_offset_size,
+				 const uint8_t *fragment, size_t fragment_size, uint8_t *response,
+				 size_t response_size)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+	struct comp_dev *dev = mod->dev;
+
+	if (param_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		const struct sof_ipc4_control_msg_payload *ctl =
+			(const struct sof_ipc4_control_msg_payload *)fragment;
+
+		if (ctl->num_elems != 1) {
+			comp_err(dev, "webrtc_aec: invalid num_elems %d", ctl->num_elems);
+			return -EINVAL;
+		}
+
+		if (ctl->id == 0) {
+			cd->enabled = (ctl->chanv[0].value != 0);
+			comp_info(dev, "webrtc_aec: switch enable = %d", cd->enabled);
+			return 0;
+		}
+		if (ctl->id == 1) {
+			cd->high_suppression = (ctl->chanv[0].value != 0);
+			comp_info(dev, "webrtc_aec: high suppression = %d", cd->high_suppression);
+			if (cd->backend && cd->backend->set_suppression)
+				return cd->backend->set_suppression(mod, cd->high_suppression);
+			return 0;
+		}
+
+		comp_err(dev, "webrtc_aec: unknown control id %d", ctl->id);
+		return -EINVAL;
+	}
+
+	comp_err(dev, "webrtc_aec: unsupported param_id 0x%x", param_id);
+	return -EINVAL;
+}
+
+static int webrtc_aec_get_config(struct processing_module *mod, uint32_t config_id,
+				 uint32_t *data_offset_size, uint8_t *fragment,
+				 size_t fragment_size)
+{
+	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
+
+	if (config_id == SOF_IPC4_SWITCH_CONTROL_PARAM_ID) {
+		struct sof_ipc4_control_msg_payload *ctl =
+			(struct sof_ipc4_control_msg_payload *)fragment;
+		ctl->num_elems = 1;
+		ctl->chanv[0].channel = 0;
+		if (ctl->id == 0) {
+			ctl->chanv[0].value = cd->enabled ? 1 : 0;
+		} else if (ctl->id == 1) {
+			ctl->chanv[0].value = cd->high_suppression ? 1 : 0;
+		} else {
+			return -EINVAL;
+		}
+		*data_offset_size = sizeof(struct sof_ipc4_control_msg_payload) +
+				    sizeof(struct sof_ipc4_ctrl_value_chan);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static const struct module_interface webrtc_aec_interface = {
-	.init    = webrtc_aec_init,
-	.prepare = webrtc_aec_prepare,
-	.process = webrtc_aec_process,
-	.reset   = webrtc_aec_reset,
-	.free    = webrtc_aec_free,
+	.init              = webrtc_aec_init,
+	.prepare           = webrtc_aec_prepare,
+	.process           = webrtc_aec_process,
+	.set_configuration = webrtc_aec_set_config,
+	.get_configuration = webrtc_aec_get_config,
+	.reset             = webrtc_aec_reset,
+	.free              = webrtc_aec_free,
 };
 
 #if CONFIG_COMP_WEBRTC_AEC_MODULE

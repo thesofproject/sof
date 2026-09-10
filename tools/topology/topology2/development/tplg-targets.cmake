@@ -238,8 +238,8 @@ DEEPBUFFER_FW_DMA_MS=false,HDA_ANALOG_CAPTURE_RATE=96000,HDA_ANALOG_PLAYBACK_RAT
 "sof-hda-top3\;sof-hda-top3\;HDA_CONFIG=mix,TOP3_PROCESSING=true"
 "sof-hda-generic\;sof-hda-generic-next3\;HDA_CONFIG=mix,NEXT3_PROCESSING=true"
 "sof-hda-next3\;sof-hda-next3\;HDA_CONFIG=mix,NEXT3_PROCESSING=true"
-"sof-hda-generic\;sof-hda-generic-top6\;HDA_CONFIG=mix,TOP6_PROCESSING=true"
-"sof-hda-top6\;sof-hda-top6\;HDA_CONFIG=mix,TOP6_PROCESSING=true"
+"sof-hda-generic\;sof-hda-generic-top6\;HDA_CONFIG=mix,TOP6_PROCESSING=true,AEC_PROCESSING=true"
+"sof-hda-top6\;sof-hda-top6\;HDA_CONFIG=mix,TOP6_PROCESSING=true,AEC_PROCESSING=true"
 
 # SDW + DMIC + HDMI, with 16 kHz DMIC1
 "cavs-sdw\;sof-mtl-sdw-cs42l42-l0-max98363-l2-4ch-48k-16k\;PLATFORM=mtl,\

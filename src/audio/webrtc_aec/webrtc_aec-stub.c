@@ -37,6 +37,13 @@ static int webrtc_aec_stub_process_ch(struct processing_module *mod,
 	return 0;
 }
 
+static int webrtc_aec_stub_set_suppression(struct processing_module *mod, bool high_suppression)
+{
+	(void)mod;
+	(void)high_suppression;
+	return 0;
+}
+
 static int webrtc_aec_stub_reset(struct processing_module *mod)
 {
 	(void)mod;
@@ -50,10 +57,11 @@ static int webrtc_aec_stub_free(struct processing_module *mod)
 }
 
 const struct webrtc_aec_backend webrtc_aec_backend = {
-	.name       = "stub",
-	.init       = webrtc_aec_stub_init,
-	.configure  = webrtc_aec_stub_configure,
-	.process_ch = webrtc_aec_stub_process_ch,
-	.reset      = webrtc_aec_stub_reset,
-	.free       = webrtc_aec_stub_free,
+	.name            = "stub",
+	.init            = webrtc_aec_stub_init,
+	.configure       = webrtc_aec_stub_configure,
+	.set_suppression = webrtc_aec_stub_set_suppression,
+	.process_ch      = webrtc_aec_stub_process_ch,
+	.reset           = webrtc_aec_stub_reset,
+	.free            = webrtc_aec_stub_free,
 };
