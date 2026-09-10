@@ -625,6 +625,13 @@ void *rmalloc_align(uint32_t flags, size_t bytes, uint32_t alignment)
 		ptr = heap_alloc_aligned(heap, alignment, bytes);
 	}
 
+#if CONFIG_VIRTUAL_HEAP
+	if (!ptr && heap == &sof_heap && virtual_buffers_heap) {
+		tr_warn(&zephyr_tr, "system heap allocation of %zu failed, trying VMH", bytes);
+		ptr = virtual_heap_alloc(virtual_buffers_heap, flags, bytes, alignment);
+	}
+#endif
+
 	return ptr;
 }
 EXPORT_SYMBOL(rmalloc_align);
@@ -781,10 +788,21 @@ void *z_impl_sof_heap_alloc(struct k_heap *heap, uint32_t flags, size_t bytes,
 		heap = &sof_heap;
 	}
 
-	if (flags & SOF_MEM_FLAG_COHERENT)
-		return heap_alloc_aligned(heap, alignment, bytes);
+	void *ptr;
 
-	return (__sparse_force void *)heap_alloc_aligned_cached(heap, alignment, bytes);
+	if (flags & SOF_MEM_FLAG_COHERENT)
+		ptr = heap_alloc_aligned(heap, alignment, bytes);
+	else
+		ptr = (__sparse_force void *)heap_alloc_aligned_cached(heap, alignment, bytes);
+
+#if CONFIG_VIRTUAL_HEAP
+	if (!ptr && heap == &sof_heap && virtual_buffers_heap) {
+		tr_warn(&zephyr_tr, "system heap allocation of %zu failed, trying VMH", bytes);
+		ptr = virtual_heap_alloc(virtual_buffers_heap, flags, bytes, alignment);
+	}
+#endif
+
+	return ptr;
 }
 
 void z_impl_sof_heap_free(struct k_heap *heap, void *addr)
