@@ -261,6 +261,12 @@ static const struct sof_static_kcontrol esp32p4_controls[] = {
 		.min = 0, .max = 65536, .def = 65536, .channels = 2,
 		.uac2_entity_id = CAPTURE_FU_ID
 	),
+	SOF_STATIC_KCONTROL_SWITCH(
+		.id = 7, .name = "DMIC Injector Switch",
+		.target_comp_id = 5,
+		.def = 0,
+		.uac2_entity_id = 0
+	),
 	SOF_STATIC_KCONTROL_VOLUME(
 		.id = 11, .name = "Test Level Gain",
 		.target_comp_id = 12,

@@ -365,30 +365,14 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 {
 	g_status.active_interface = iface;
 	g_status.clock_mode = mode;
-	LOG_INF("Set interface %d clock mode to %s", iface, mode == SOF_CLOCK_MASTER ? "MASTER" : "SLAVE");
+	LOG_INF("Set interface %d clock mode to %s", iface,
+		mode == SOF_CLOCK_MASTER ? "MASTER" : (mode == SOF_CLOCK_DMIC ? "DMIC (SLAVE TX)" : "SLAVE"));
 
 	uint32_t sof_format = 0;
 	if (iface == SOF_AUDIO_IF_I2S) {
 		sof_format = (mode == SOF_CLOCK_MASTER) ?
 			(SOF_DAI_FMT_I2S | SOF_DAI_FMT_CBC_CFC) :
 			(SOF_DAI_FMT_I2S | SOF_DAI_FMT_CBP_CFP);
-
-		struct ipc_config_dai dai_cfg = {
-			.type = SOF_DAI_ESP32_I2S,
-			.dai_index = 0,
-			.format = sof_format,
-			.sampling_frequency = g_status.sample_rate ? g_status.sample_rate : 48000,
-		};
-		struct sof_ipc_dai_config spec_cfg = {
-			.type = SOF_DAI_ESP32_I2S,
-			.dai_index = 0,
-			.format = sof_format,
-		};
-		struct dai *dai = dai_get(SOF_DAI_ESP32_I2S, 0, DAI_CREAT);
-		if (dai) {
-			dai_set_config(dai, &dai_cfg, &spec_cfg, sizeof(spec_cfg));
-			dai_put(dai);
-		}
 
 		const struct device *dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(dai_i2s0));
 		if (dev && device_is_ready(dev)) {
@@ -426,23 +410,6 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 			(SOF_DAI_FMT_PDM | SOF_DAI_FMT_CBC_CFC) :
 			(SOF_DAI_FMT_PDM | SOF_DAI_FMT_CBP_CFP);
 
-		struct ipc_config_dai dai_cfg = {
-			.type = SOF_DAI_ESP32_PDM,
-			.dai_index = 1,
-			.format = sof_format,
-			.sampling_frequency = g_status.sample_rate ? g_status.sample_rate : 48000,
-		};
-		struct sof_ipc_dai_config spec_cfg = {
-			.type = SOF_DAI_ESP32_PDM,
-			.dai_index = 1,
-			.format = sof_format,
-		};
-		struct dai *dai = dai_get(SOF_DAI_ESP32_PDM, 1, DAI_CREAT);
-		if (dai) {
-			dai_set_config(dai, &dai_cfg, &spec_cfg, sizeof(spec_cfg));
-			dai_put(dai);
-		}
-
 		const struct device *dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(dai_pdm0));
 		if (dev && device_is_ready(dev)) {
 			uint32_t rate = g_status.sample_rate ? g_status.sample_rate : 48000;
@@ -461,6 +428,7 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 				.format = (mode == SOF_CLOCK_MASTER) ?
 					(DAI_PROTO_PDM | DAI_CBC_CFC) :
 					(DAI_PROTO_PDM | DAI_CBP_CFP),
+				.options = (mode == SOF_CLOCK_DMIC) ? 1 : 0,
 				.word_size = word_size,
 				.block_size = frames_per_period * channels * bytes_per_sample,
 			};
@@ -470,7 +438,7 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 				return ret;
 			}
 			LOG_INF("DAI PDM hardware successfully switched to %s mode",
-				mode == SOF_CLOCK_MASTER ? "MASTER" : "SLAVE");
+				mode == SOF_CLOCK_MASTER ? "MASTER" : (mode == SOF_CLOCK_DMIC ? "DMIC INJECTOR" : "SLAVE"));
 		} else {
 			LOG_WRN("DAI PDM device not ready or not found");
 		}
@@ -572,6 +540,18 @@ int sof_static_pipeline_set_tdfb_bypass(bool bypass)
 {
 	g_status.tdfb_capture_bypassed = bypass;
 	return sof_static_kcontrol_set(4, bypass ? 0 : 1);
+}
+
+int sof_static_pipeline_set_dmic_injector(bool enable)
+{
+	if (enable) {
+		return sof_static_pipeline_set_clock_mode(SOF_AUDIO_IF_PDM, SOF_CLOCK_DMIC);
+	} else {
+		if (g_status.clock_mode == SOF_CLOCK_DMIC) {
+			return sof_static_pipeline_set_clock_mode(SOF_AUDIO_IF_PDM, SOF_CLOCK_MASTER);
+		}
+		return 0;
+	}
 }
 
 int sof_static_pipeline_set_volume(uint32_t pipeline_id, int16_t volume)

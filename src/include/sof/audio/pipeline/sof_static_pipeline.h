@@ -23,6 +23,7 @@ enum sof_audio_interface {
 enum sof_clock_mode {
 	SOF_CLOCK_SLAVE = 0,
 	SOF_CLOCK_MASTER = 1,
+	SOF_CLOCK_DMIC = 2,
 };
 
 struct sof_static_pipeline_status {
@@ -43,6 +44,7 @@ struct sof_static_pipeline_status {
 
 int sof_static_pipelines_init(struct sof *sof);
 int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_clock_mode mode);
+int sof_static_pipeline_set_dmic_injector(bool enable);
 int sof_static_pipeline_set_eq_bypass(bool is_capture, bool bypass);
 int sof_static_pipeline_set_drc_bypass(bool bypass);
 int sof_static_pipeline_set_tdfb_bypass(bool bypass);
