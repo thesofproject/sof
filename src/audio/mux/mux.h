@@ -50,7 +50,7 @@ struct mux_copy_elem {
 	uint32_t out_ch;
 
 	void *dest;
-	void *src;
+	const void *src;
 
 	uint32_t dest_inc;
 	uint32_t src_inc;
