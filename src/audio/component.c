@@ -88,11 +88,11 @@ int comp_set_adapter_ops(const struct comp_driver *drv, const struct module_inte
 			 */
 			if (!info->adapter_ops) {
 				tr_err(&comp_tr, "NULL adapter ops ptr for %pU!",
-				       info->drv->tctx->uuid_p);
+				       SOF_DRV_UID_NAME(info->drv));
 				return -EINVAL;
 			}
 
-			tr_dbg(&comp_tr, "update uuid %pU", info->drv->tctx->uuid_p);
+			tr_dbg(&comp_tr, "update uuid %pU", SOF_DRV_UID_NAME(info->drv));
 			*info->adapter_ops = ops;
 			return 0;
 		}
