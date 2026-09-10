@@ -163,22 +163,22 @@ static const struct sof_static_comp esp32p4_comps[] = {
  * ------------------------------------------------------------------------- */
 static const struct sof_static_buffer esp32p4_buffers[] = {
 	/* Playback Buffers */
-	SOF_STATIC_BUFFER(.id = 1, .size = 2048, .fmt = SOF_IPC_FRAME_S16_LE),
-	SOF_STATIC_BUFFER(.id = 2, .size = 2048, .fmt = SOF_IPC_FRAME_S16_LE),
-	SOF_STATIC_BUFFER(.id = 3, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 4, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 9, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 1, .size = 3072, .fmt = SOF_IPC_FRAME_S16_LE),
+	SOF_STATIC_BUFFER(.id = 2, .size = 3072, .fmt = SOF_IPC_FRAME_S16_LE),
+	SOF_STATIC_BUFFER(.id = 3, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 4, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 9, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
 
 	/* Capture Buffers */
-	SOF_STATIC_BUFFER(.id = 5, .size = 2048, .fmt = SOF_IPC_FRAME_S16_LE),
-	SOF_STATIC_BUFFER(.id = 6, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 7, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 8, .size = 2048, .fmt = SOF_IPC_FRAME_S16_LE),
+	SOF_STATIC_BUFFER(.id = 5, .size = 3072, .fmt = SOF_IPC_FRAME_S16_LE),
+	SOF_STATIC_BUFFER(.id = 6, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 7, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 8, .size = 3072, .fmt = SOF_IPC_FRAME_S16_LE),
 
 	/* Test Pipeline Buffers */
-	SOF_STATIC_BUFFER(.id = 11, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 12, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
-	SOF_STATIC_BUFFER(.id = 13, .size = 2048, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 11, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 12, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
+	SOF_STATIC_BUFFER(.id = 13, .size = 3072, .fmt = SOF_IPC_FRAME_FLOAT),
 };
 
 /* -------------------------------------------------------------------------
