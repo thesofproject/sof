@@ -16,6 +16,7 @@
 #include <rtos/sof.h>
 #include <sof/init.h>
 #include <sof/audio/pipeline/sof_static_pipeline.h>
+#include <sof/audio/bt_service.h>
 #endif
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
@@ -71,6 +72,11 @@ static int sof_app_main(void)
 	} else {
 		LOG_ERR("Failed to initialize USB device context");
 	}
+
+#if defined(CONFIG_COMP_BT_AUDIO)
+	/* Initialize Bluetooth Audio Service and power on ESP32-C6 coprocessor */
+	bt_service_init();
+#endif
 #endif
 
 #ifdef CONFIG_ARCH_POSIX_LIBFUZZER
