@@ -567,7 +567,9 @@ static int lib_manager_start_agent(const struct comp_driver *drv,
 	agent_params.module_id = IPC4_MOD_ID(config->id);
 	agent_params.instance_id = IPC4_INST_ID(config->id);
 	agent_params.core_id = config->core;
+#if !CONFIG_ZEPHYR_LOG
 	agent_params.log_handle = (uint32_t)drv->tctx;
+#endif
 	agent_params.mod_cfg = &mod_cfg;
 
 #if CONFIG_SOF_USERSPACE_PROXY

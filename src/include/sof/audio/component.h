@@ -129,17 +129,11 @@ enum {
  *  @{
  */
 
-/** \brief Retrieves trace context from the component driver */
-#define trace_comp_drv_get_tr_ctx(drv_p) ((drv_p)->tctx)
-
 /** \brief Retrieves id (-1 = undefined) from the component driver */
 #define trace_comp_drv_get_id(drv_p) (-1)
 
 /** \brief Retrieves subid (-1 = undefined) from the component driver */
 #define trace_comp_drv_get_subid(drv_p) (-1)
-
-/** \brief Retrieves trace context from the component device */
-#define trace_comp_get_tr_ctx(comp_p) (&(comp_p)->tctx)
 
 /** \brief Retrieves id (pipe id) from the component device */
 #define trace_comp_get_id(comp_p) ((comp_p)->ipc_config.pipeline_id)
@@ -178,6 +172,12 @@ enum {
 					   trace_comp_get_subid(comp_p), ##__VA_ARGS__)
 
 #else
+/** \brief Retrieves trace context from the component driver */
+#define trace_comp_drv_get_tr_ctx(drv_p) ((drv_p)->tctx)
+
+/** \brief Retrieves trace context from the component device */
+#define trace_comp_get_tr_ctx(comp_p) (&(comp_p)->tctx)
+
 /* class (driver) level (no device object) tracing */
 
 /** \brief Trace error message from component driver (no comp instance) */
@@ -580,6 +580,12 @@ struct comp_ops {
 	uint64_t (*get_total_data_processed)(struct comp_dev *dev, uint32_t stream_no, bool input);
 };
 
+#if CONFIG_ZEPHYR_LOG
+#define SOF_DRV_UID_NAME(drv) (drv)->uid
+#else
+#define SOF_DRV_UID_NAME(drv) (drv)->tctx->uuid_p
+#endif
+
 /**
  * Audio component base driver "class"
  * - used by all other component types.
@@ -587,7 +593,9 @@ struct comp_ops {
 struct comp_driver {
 	uint32_t type;					/**< SOF_COMP_ for driver */
 	const struct sof_uuid *uid;			/**< Address to UUID value */
+#if !CONFIG_ZEPHYR_LOG
 	struct tr_ctx *tctx;				/**< Pointer to trace context */
+#endif
 	struct comp_ops ops;				/**< component operations */
 	const struct module_interface *adapter_ops;	/**< module specific operations.
 							  * Intended to replace the ops field.
@@ -667,7 +675,9 @@ struct comp_dev {
 				  *  across cores
 				  */
 	struct comp_ipc_config ipc_config;	/**< Component IPC configuration */
+#if !CONFIG_ZEPHYR_LOG
 	struct tr_ctx tctx;	/**< trace settings */
+#endif
 
 	/* common runtime configuration for downstream/upstream */
 	uint32_t direction;	/**< enum sof_ipc_stream_direction */
@@ -867,7 +877,7 @@ static inline void comp_init(const struct comp_driver *drv,
 	dev->state = COMP_STATE_INIT;
 	list_init(&dev->bsink_list);
 	list_init(&dev->bsource_list);
-#ifndef __ZEPHYR__
+#if !CONFIG_ZEPHYR_LOG
 	memcpy_s(&dev->tctx, sizeof(dev->tctx),
 		 trace_comp_drv_get_tr_ctx(dev->drv), sizeof(struct tr_ctx));
 #endif
