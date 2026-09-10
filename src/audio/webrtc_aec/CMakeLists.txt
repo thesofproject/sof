@@ -18,6 +18,7 @@ else()
       "${SOF_WEBRTC_APM_SRC_DIR}"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/include"
+      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/include"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/include"
     )
 
@@ -26,12 +27,25 @@ else()
       WEBRTC_ARCH_LITTLE_ENDIAN
     )
 
-    add_local_sources(sof webrtc_aec-aecm.c)
+    if(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
+      add_local_sources(sof webrtc_aec-aec.c webrtc_aec-math.c)
+      add_local_sources(sof
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/echo_cancellation.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/aec_core.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/aec_rdft.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/aec_resampler.c"
+      )
+    else()
+      add_local_sources(sof webrtc_aec-aecm.c)
+      add_local_sources(sof
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/echo_control_mobile.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core_c.c"
+      )
+    endif()
+
     add_local_sources(sof webrtc_aec-shims.c)
     add_local_sources(sof
-      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/echo_control_mobile.c"
-      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core.c"
-      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core_c.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/ring_buffer.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/utility/delay_estimator.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/utility/delay_estimator_wrapper.c"
@@ -56,10 +70,7 @@ else()
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_48khz.c"
     )
 
-    set_source_files_properties(
-      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/echo_control_mobile.c"
-      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core.c"
-      "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core_c.c"
+    set(_webrtc_aec_srcs
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/ring_buffer.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/utility/delay_estimator.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/utility/delay_estimator_wrapper.c"
@@ -78,8 +89,35 @@ else()
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_48khz.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_by_2_internal.c"
       "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/signal_processing/resample_fractional.c"
+    )
+
+    list(APPEND _webrtc_aec_srcs
+      ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-shims.c
+    )
+
+    if(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
+      list(APPEND _webrtc_aec_srcs
+        ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-aec.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-math.c
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/echo_cancellation.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/aec_core.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/aec_rdft.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/aec_resampler.c"
+      )
+    else()
+      list(APPEND _webrtc_aec_srcs
+        ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-aecm.c
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/echo_control_mobile.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core.c"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aecm/aecm_core_c.c"
+      )
+    endif()
+
+    set_source_files_properties(
+      ${_webrtc_aec_srcs}
       TARGET_DIRECTORY modules_sof
-      PROPERTIES COMPILE_OPTIONS "-Wno-double-promotion;-Wno-implicit-function-declaration;-Wno-unused-function;-Dmalloc=webrtc_malloc;-Dcalloc=webrtc_calloc;-Drealloc=webrtc_realloc;-Dfree=webrtc_free"
+      PROPERTIES COMPILE_OPTIONS "-O3;-Xclang;-target-feature;-Xclang;-fp;-Wno-double-promotion;-Wno-implicit-function-declaration;-Wno-unused-function;-Dmalloc=webrtc_malloc;-Dcalloc=webrtc_calloc;-Drealloc=webrtc_realloc;-Dfree=webrtc_free"
     )
   endif()
 endif()

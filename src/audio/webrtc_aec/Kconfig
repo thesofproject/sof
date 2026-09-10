@@ -24,14 +24,29 @@ config COMP_WEBRTC_AEC
 
 if COMP_WEBRTC_AEC
 
+choice WEBRTC_AEC_BACKEND
+	prompt "WebRTC AEC processing backend"
+	default WEBRTC_AEC_BACKEND_FLOAT
+
+config WEBRTC_AEC_BACKEND_FLOAT
+	bool "Classic Float AEC (Multidelay Block Frequency Domain with hardware FPU)"
+	help
+	  Single-precision floating-point AEC using partitioned-block
+	  frequency domain adaptive filtering (MDF) accelerated by the
+	  hardware FPU and HiFi4 VFPU.
+
+config WEBRTC_AEC_BACKEND_AECM
+	bool "AECm (Mobile fixed-point integer AEC)"
+	help
+	  Pure integer Q15 fixed-point echo cancellation. Low memory (~12 KB/ch)
+	  and low CPU (~1.5 MCPS).
+
 config COMP_WEBRTC_AEC_STUB
-	bool "WebRTC AECm stub backend (no WebRTC source dependency)"
-	default y if COMP_STUBS
+	bool "WebRTC AEC stub backend (no WebRTC source dependency)"
 	help
 	  Build the webrtc_aec module against a dependency-free stub backend
-	  that passes microphone audio through without modification. Useful
-	  for CI validation, topology testing, and LLEXT packaging without
-	  the cross-built WebRTC AECm archive.
+	  that passes microphone audio through without modification.
+endchoice
 
 config WEBRTC_AEC_FILTER_LEN_MS
 	int "AECm adaptive filter length in ms (32, 64 or 128)"

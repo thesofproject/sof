@@ -29,7 +29,7 @@ void *webrtc_malloc(size_t size)
 	if (size == 0)
 		return NULL;
 
-	hdr = rballoc(SOF_MEM_FLAG_USER, size + sizeof(*hdr));
+	hdr = sof_heap_alloc(sof_sys_heap_get(), SOF_MEM_FLAG_USER, size + sizeof(*hdr), 8);
 	if (!hdr)
 		return NULL;
 
@@ -50,9 +50,9 @@ void webrtc_free(void *ptr)
 	hdr = ((struct webrtc_mem_hdr *)ptr) - 1;
 	if (hdr->magic == WEBRTC_MEM_MAGIC) {
 		hdr->magic = 0;
-		rfree(hdr);
+		sof_heap_free(sof_sys_heap_get(), hdr);
 	} else {
-		rfree(ptr);
+		sof_heap_free(sof_sys_heap_get(), ptr);
 	}
 }
 
