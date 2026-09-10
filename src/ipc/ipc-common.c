@@ -437,15 +437,6 @@ int ipc_user_forward_cmd(uint32_t primary, uint32_t extension, unsigned int core
 	pdata->ipc_msg_ext = extension;
 	pdata->ipc = ipc;
 
-	/*
-	 * Forwarding the first IPC to this core, wait for its userspace IPC
-	 * thread to start
-	 */
-	if (pdata->init_needed[core]) {
-		pdata->init_needed[core] = false;
-		k_sem_take(pdata->sem, K_FOREVER);
-	}
-
 	/* Prevent host completion until user thread finishes */
 	key = k_spin_lock(&ipc->lock);
 	ipc->task_mask |= IPC_TASK_IN_THREAD;
@@ -598,9 +589,6 @@ __cold int ipc_user_init_secondary(unsigned int core)
 	}
 
 	k_thread_access_grant(ipc_user->thread[core], ipc_user->audio_thread[core]);
-	ipc_user->init_needed[core] = true;
-
-	/* Wait for user thread startup — consumes the initial k_sem_give from thread */
 	return 0;
 }
 
@@ -619,7 +607,7 @@ __cold static void ipc_user_init(void)
 	struct ipc_user *ipc_user = sof_heap_alloc(sof_sys_user_heap_get(),
 						   SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT,
 						   sizeof(*ipc_user), 0);
-	int ret;
+	int ret, core;
 
 	if (!ipc_user) {
 		LOG_ERR("user IPC pdata alloc failed");
@@ -627,6 +615,11 @@ __cold static void ipc_user_init(void)
 	}
 
 	assert_can_be_cold();
+
+	for (core = 0; core < CONFIG_CORE_COUNT; core++) {
+		if (core != PLATFORM_PRIMARY_CORE_ID)
+			ipc_user->init_needed[core] = true;
+	}
 
 	ipc_user->sem = k_object_alloc(K_OBJ_SEM);
 	if (!ipc_user->sem) {

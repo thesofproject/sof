@@ -328,6 +328,23 @@ __cold static int ipc4_module_process_d0ix(struct ipc4_message_request *ipc4)
 	return 0;
 }
 
+/* block until core has powered-up (in user-ll builds) */
+__cold static void ipc_sec_core_sync_boot(uint32_t core_id)
+{
+#ifdef CONFIG_SOF_USERSPACE_LL
+	struct ipc *ipc = ipc_get();
+	struct ipc_user *ipc_user = ipc->ipc_user_pdata;
+
+	assert(core_id != PLATFORM_PRIMARY_CORE_ID);
+
+	if (ipc_user->init_needed[core_id]) {
+		/* wait for IPC thread (ipc_user_thread_fn()) */
+		k_sem_take(ipc_user->sem, K_FOREVER);
+		ipc_user->init_needed[core_id] = false;
+	}
+#endif
+}
+
 /* enable/disable cores according to the state mask */
 __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 {
@@ -385,6 +402,7 @@ __cold static int ipc4_module_process_dx(struct ipc4_message_request *ipc4)
 				ipc_cmd_err(&ipc_tr, "failed to enable core %d", core_id);
 				return IPC4_FAILURE;
 			}
+			ipc_sec_core_sync_boot(core_id);
 		} else {
 			cpu_disable_core(core_id);
 			if (cpu_is_core_enabled(core_id)) {
