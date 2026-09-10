@@ -122,6 +122,15 @@ static const ams_uuid_t ams_kpd_msg_uuid = AMS_KPD_MSG_UUID;
 
 struct mww_comp_data {
 	struct comp_data_blob_handler *model_handler;
+#if CONFIG_COMP_MWW_MODEL_FROM_CONTROL
+	/* Copy of the model blob placed in the module's own vregion so the DP
+	 * user thread can read it during mww_prepare()/MWW_SetModel().
+	 * comp_get_data_blob() must not be called from the DP thread because
+	 * the blob handler lives in kernel-only memory.
+	 */
+	void *model_data;
+	size_t model_size;
+#endif
 	struct mww_classify mwc;
 	struct kpb_client client_data;
 	uint32_t drain_req_ms;
@@ -262,14 +271,22 @@ static int mww_prepare(struct processing_module *mod,
 	unsigned char *model_ptr = NULL;
 
 #if CONFIG_COMP_MWW_MODEL_FROM_CONTROL
-	size_t blob_size;
-
-	model_ptr = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
-	if (!model_ptr || !blob_size) {
-		comp_err(dev, "MWW: model blob not set from control");
-		return -EINVAL;
+	/* Use the cached copy that mww_set_config() placed in the module's
+	 * vregion. Calling comp_get_data_blob() here would fault because
+	 * mww_prepare() runs in the DP user thread when
+	 * CONFIG_SOF_USERSPACE_APPLICATION=y, and the blob handler is
+	 * allocated from kernel-only memory.
+	 *
+	 * If no model has been set yet (e.g. PipeWire probing pcm101 before
+	 * userspace has written the byte control), skip inference setup and
+	 * let the pipeline complete open/close without a hard error.
+	 */
+	if (!cd->model_data || !cd->model_size) {
+		comp_warn(dev, "MWW: no model blob set from control; passthrough");
+		return 0;
 	}
-	comp_info(dev, "MWW: loaded model from control blob, size=%zu", blob_size);
+	model_ptr = cd->model_data;
+	comp_info(dev, "MWW: using cached model blob, size=%zu", cd->model_size);
 #endif
 
 	ret = MWW_SetModel(&cd->mwc, model_ptr);
@@ -535,6 +552,14 @@ __cold static int mww_free(struct processing_module *mod)
 
 	MWW_Free();
 
+#if CONFIG_COMP_MWW_MODEL_FROM_CONTROL
+	if (cd->model_data) {
+		mod_free(mod, cd->model_data);
+		cd->model_data = NULL;
+		cd->model_size = 0;
+	}
+#endif
+
 	mod_data_blob_handler_free(mod, cd->model_handler);
 	mod_free(mod, cd);
 	return 0;
@@ -546,6 +571,7 @@ __cold static int mww_set_config(struct processing_module *mod, uint32_t param_i
 	size_t response_size)
 {
 	struct mww_comp_data *cd = module_get_private_data(mod);
+	int ret;
 
 	if (mod->dev->state != COMP_STATE_INIT && mod->dev->state != COMP_STATE_READY) {
 		comp_warn(mod->dev, "mww_set_config(): model update ignored while not idle (state %d)",
@@ -553,8 +579,48 @@ __cold static int mww_set_config(struct processing_module *mod, uint32_t param_i
 		return 0;
 	}
 
-	return comp_data_blob_set(cd->model_handler, pos, data_offset_size,
-				  fragment, fragment_size);
+	ret = comp_data_blob_set(cd->model_handler, pos, data_offset_size,
+				 fragment, fragment_size);
+	if (ret < 0)
+		return ret;
+
+#if CONFIG_COMP_MWW_MODEL_FROM_CONTROL
+	/* When the blob is fully received, cache a copy in the module's own
+	 * vregion so mww_prepare() can access it from the DP user thread.
+	 * This function runs in the IPC (kernel) context, so it is safe to
+	 * call comp_get_data_blob() here.
+	 */
+	if (pos == MODULE_CFG_FRAGMENT_SINGLE || pos == MODULE_CFG_FRAGMENT_LAST) {
+		size_t blob_size = 0;
+		void *blob;
+
+		blob = comp_get_data_blob(cd->model_handler, &blob_size, NULL);
+		if (!blob || !blob_size) {
+			comp_err(mod->dev, "mww_set_config(): empty blob after set");
+			return -EINVAL;
+		}
+
+		if (cd->model_data) {
+			mod_free(mod, cd->model_data);
+			cd->model_data = NULL;
+			cd->model_size = 0;
+		}
+
+		cd->model_data = mod_alloc(mod, blob_size);
+		if (!cd->model_data) {
+			comp_err(mod->dev, "mww_set_config(): model copy alloc failed (%zu B)",
+				 blob_size);
+			return -ENOMEM;
+		}
+
+		memcpy(cd->model_data, blob, blob_size);
+		cd->model_size = blob_size;
+		comp_info(mod->dev, "mww_set_config(): cached model blob, size=%zu",
+			  blob_size);
+	}
+#endif
+
+	return 0;
 }
 
 __cold static int mww_get_config(struct processing_module *mod,
