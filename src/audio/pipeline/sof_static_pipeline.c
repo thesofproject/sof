@@ -15,6 +15,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/dai.h>
 #include <sof/lib/dai.h>
+#include <sof/lib/dai-zephyr.h>
 #include <ipc/dai.h>
 #include <soc/i2s_struct.h>
 #include <soc/gpio_struct.h>
@@ -246,7 +247,8 @@ int sof_uac2_set_feature_mute(const struct device *dev, uint8_t entity_id,
 		g_status.capture_mute = mute;
 	}
 
-	return sof_static_kcontrol_set_by_uac2(entity_id, channel, mute ? 1 : 0, false);
+	sof_static_kcontrol_set_by_uac2(entity_id, channel, mute ? 1 : 0, false);
+	return 0;
 }
 
 int sof_uac2_get_feature_mute(const struct device *dev, uint8_t entity_id,
@@ -258,6 +260,14 @@ int sof_uac2_get_feature_mute(const struct device *dev, uint8_t entity_id,
 
 	if (!mute) {
 		return -EINVAL;
+	}
+
+	if (entity_id == PLAYBACK_FU_ID) {
+		*mute = g_status.playback_mute;
+		return 0;
+	} else if (entity_id == CAPTURE_FU_ID) {
+		*mute = g_status.capture_mute;
+		return 0;
 	}
 
 	int32_t val = 0;
@@ -357,8 +367,9 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 	g_status.clock_mode = mode;
 	LOG_INF("Set interface %d clock mode to %s", iface, mode == SOF_CLOCK_MASTER ? "MASTER" : "SLAVE");
 
+	uint32_t sof_format = 0;
 	if (iface == SOF_AUDIO_IF_I2S) {
-		uint32_t sof_format = (mode == SOF_CLOCK_MASTER) ?
+		sof_format = (mode == SOF_CLOCK_MASTER) ?
 			(SOF_DAI_FMT_I2S | SOF_DAI_FMT_CBC_CFC) :
 			(SOF_DAI_FMT_I2S | SOF_DAI_FMT_CBP_CFP);
 
@@ -381,15 +392,24 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 
 		const struct device *dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(dai_i2s0));
 		if (dev && device_is_ready(dev)) {
+			uint32_t rate = g_status.sample_rate ? g_status.sample_rate : 48000;
+			uint32_t channels = 2;
+			uint32_t word_size = 16;
+			uint32_t bytes_per_sample = word_size / 8;
+			uint32_t frames_per_period = rate / 1000;
+			if (frames_per_period == 0) {
+				frames_per_period = 48;
+			}
 			struct dai_config cfg = {
 				.type = DAI_ESP32_I2S,
 				.dai_index = 0,
-				.channels = 2,
-				.rate = g_status.sample_rate ? g_status.sample_rate : 48000,
+				.channels = channels,
+				.rate = rate,
 				.format = (mode == SOF_CLOCK_MASTER) ?
 					(DAI_PROTO_I2S | DAI_CBC_CFC) :
 					(DAI_PROTO_I2S | DAI_CBP_CFP),
-				.word_size = 16,
+				.word_size = word_size,
+				.block_size = frames_per_period * channels * bytes_per_sample,
 			};
 			int ret = dai_config_set(dev, &cfg, NULL, 0);
 			if (ret < 0) {
@@ -401,7 +421,133 @@ int sof_static_pipeline_set_clock_mode(enum sof_audio_interface iface, enum sof_
 		} else {
 			LOG_WRN("DAI I2S device not ready or not found");
 		}
+	} else if (iface == SOF_AUDIO_IF_PDM) {
+		sof_format = (mode == SOF_CLOCK_MASTER) ?
+			(SOF_DAI_FMT_PDM | SOF_DAI_FMT_CBC_CFC) :
+			(SOF_DAI_FMT_PDM | SOF_DAI_FMT_CBP_CFP);
+
+		struct ipc_config_dai dai_cfg = {
+			.type = SOF_DAI_ESP32_PDM,
+			.dai_index = 1,
+			.format = sof_format,
+			.sampling_frequency = g_status.sample_rate ? g_status.sample_rate : 48000,
+		};
+		struct sof_ipc_dai_config spec_cfg = {
+			.type = SOF_DAI_ESP32_PDM,
+			.dai_index = 1,
+			.format = sof_format,
+		};
+		struct dai *dai = dai_get(SOF_DAI_ESP32_PDM, 1, DAI_CREAT);
+		if (dai) {
+			dai_set_config(dai, &dai_cfg, &spec_cfg, sizeof(spec_cfg));
+			dai_put(dai);
+		}
+
+		const struct device *dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(dai_pdm0));
+		if (dev && device_is_ready(dev)) {
+			uint32_t rate = g_status.sample_rate ? g_status.sample_rate : 48000;
+			uint32_t channels = 2;
+			uint32_t word_size = 16;
+			uint32_t bytes_per_sample = word_size / 8;
+			uint32_t frames_per_period = rate / 1000;
+			if (frames_per_period == 0) {
+				frames_per_period = 48;
+			}
+			struct dai_config cfg = {
+				.type = DAI_ESP32_PDM,
+				.dai_index = 1,
+				.channels = channels,
+				.rate = rate,
+				.format = (mode == SOF_CLOCK_MASTER) ?
+					(DAI_PROTO_PDM | DAI_CBC_CFC) :
+					(DAI_PROTO_PDM | DAI_CBP_CFP),
+				.word_size = word_size,
+				.block_size = frames_per_period * channels * bytes_per_sample,
+			};
+			int ret = dai_config_set(dev, &cfg, NULL, 0);
+			if (ret < 0) {
+				LOG_ERR("Failed to set DAI PDM config: %d", ret);
+				return ret;
+			}
+			LOG_INF("DAI PDM hardware successfully switched to %s mode",
+				mode == SOF_CLOCK_MASTER ? "MASTER" : "SLAVE");
+		} else {
+			LOG_WRN("DAI PDM device not ready or not found");
+		}
 	}
+
+	/* Update static pipeline DAI components (comp 5 = PB DAI, comp 6 = CAP DAI) */
+	uint32_t target_dai_type = (iface == SOF_AUDIO_IF_PDM) ? SOF_DAI_ESP32_PDM : SOF_DAI_ESP32_I2S;
+	uint32_t target_dai_index = (iface == SOF_AUDIO_IF_PDM) ? 1 : 0;
+
+	struct comp_dev *dev_pb = sof_static_comp_get(5);
+	if (dev_pb) {
+		struct dai_data *dd = comp_get_drvdata(dev_pb);
+		if (dd) {
+			if (dd->dai) {
+				dai_put(dd->dai);
+			}
+			dd->dai = dai_get(target_dai_type, target_dai_index, DAI_CREAT);
+			dd->ipc_config.type = target_dai_type;
+			dd->ipc_config.dai_index = target_dai_index;
+			dd->ipc_config.format = sof_format;
+			dev_pb->state = COMP_STATE_READY;
+		}
+	}
+
+	struct comp_dev *dev_cap = sof_static_comp_get(6);
+	if (dev_cap) {
+		struct dai_data *dd = comp_get_drvdata(dev_cap);
+		if (dd) {
+			if (dd->dai) {
+				dai_put(dd->dai);
+			}
+			dd->dai = dai_get(target_dai_type, target_dai_index, DAI_CREAT);
+			dd->ipc_config.type = target_dai_type;
+			dd->ipc_config.dai_index = target_dai_index;
+			dd->ipc_config.format = sof_format;
+			dev_cap->state = COMP_STATE_READY;
+		}
+	}
+
+	/* Reset and re-prepare pipelines 1 and 2 with updated DAI configuration */
+	for (uint32_t pid = 1; pid <= 2; pid++) {
+		struct pipeline *pipe = sof_static_pipeline_get(pid);
+		if (!pipe)
+			continue;
+
+		struct comp_dev *host_or_sched = pipe->sched_comp ? pipe->sched_comp : pipe->source_comp;
+		if (!host_or_sched)
+			continue;
+
+		pipeline_reset(pipe, host_or_sched);
+
+		struct sof_ipc_pcm_params prms;
+		memset(&prms, 0, sizeof(prms));
+		uint32_t rate = g_status.sample_rate ? g_status.sample_rate : 48000;
+		uint32_t channels = 2;
+		prms.params.rate = rate;
+		prms.params.channels = channels;
+		prms.params.frame_fmt = host_or_sched->ipc_config.frame_fmt;
+		uint32_t sbytes = (prms.params.frame_fmt == SOF_IPC_FRAME_FLOAT ||
+				   prms.params.frame_fmt == SOF_IPC_FRAME_S32_LE) ? 4 : 2;
+		prms.params.sample_container_bytes = sbytes;
+		prms.params.sample_valid_bytes = sbytes;
+		prms.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
+		uint32_t frames_per_ms = rate / 1000;
+		if (frames_per_ms == 0) {
+			frames_per_ms = 48;
+		}
+		prms.params.host_period_bytes = frames_per_ms * channels * sbytes;
+		prms.comp_id = dev_comp_id(host_or_sched);
+		prms.params.direction = (pid == 1) ? SOF_IPC_STREAM_PLAYBACK : SOF_IPC_STREAM_CAPTURE;
+		prms.params.chmap[0] = SOF_CHMAP_FL;
+		prms.params.chmap[1] = SOF_CHMAP_FR;
+
+		pipeline_params(pipe, host_or_sched, &prms);
+		pipeline_prepare(pipe, host_or_sched);
+	}
+
 	return 0;
 }
 

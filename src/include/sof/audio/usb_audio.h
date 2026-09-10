@@ -45,5 +45,7 @@ bool usb_audio_peek_capture_data(void *dst, size_t bytes);
 void usb_audio_consume_capture_data(size_t bytes);
 void usb_audio_set_playback_rate(uint32_t rate);
 void usb_audio_set_capture_rate(uint32_t rate);
+void usb_audio_set_tone(bool enable);
+bool usb_audio_get_tone(void);
 
 #endif /* __SOF_AUDIO_USB_AUDIO_H__ */

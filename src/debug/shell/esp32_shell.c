@@ -7,6 +7,12 @@
 #include <zephyr/shell/shell.h>
 #include <sof/audio/pipeline/sof_static_pipeline.h>
 #include <sof/audio/pipeline/static_pipeline.h>
+#include <soc/i2s_struct.h>
+#include <soc/gpio_struct.h>
+#include <soc/io_mux_struct.h>
+#include <soc/hp_sys_clkrst_struct.h>
+#include <soc/gpio_sig_map.h>
+#include <sof/audio/usb_audio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -124,6 +130,21 @@ static int cmd_sof_vol(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_sof_mute(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 3) {
+		shell_error(sh, "Usage: sof mute <playback|capture|pb|cap> <on|off|1|0>");
+		return -EINVAL;
+	}
+
+	uint32_t pipe_id = (strcmp(argv[1], "playback") == 0 || strcmp(argv[1], "pb") == 0) ? 1 : 2;
+	bool mute = (strcmp(argv[2], "on") == 0 || strcmp(argv[2], "1") == 0 || strcmp(argv[2], "yes") == 0);
+
+	sof_static_pipeline_set_mute(pipe_id, mute);
+	shell_print(sh, "%s mute set to %s.", pipe_id == 1 ? "Playback" : "Capture", mute ? "ON" : "OFF");
+	return 0;
+}
+
 static int cmd_sof_play(const struct shell *sh, size_t argc, char **argv)
 {
 	if (argc < 2) {
@@ -134,6 +155,19 @@ static int cmd_sof_play(const struct shell *sh, size_t argc, char **argv)
 	bool start = (strcmp(argv[1], "start") == 0);
 	sof_static_pipeline_set_playback_active(start);
 	shell_print(sh, "Playback pipeline %s.", start ? "STARTED" : "STOPPED");
+	return 0;
+}
+
+static int cmd_sof_tone(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		shell_print(sh, "Test tone generator is currently %s.", usb_audio_get_tone() ? "ON" : "OFF");
+		return 0;
+	}
+
+	bool enable = (strcmp(argv[1], "on") == 0 || strcmp(argv[1], "1") == 0 || strcmp(argv[1], "start") == 0);
+	usb_audio_set_tone(enable);
+	shell_print(sh, "Test tone generator set to %s.", enable ? "ON" : "OFF");
 	return 0;
 }
 
@@ -225,12 +259,85 @@ static int cmd_sof_ctl(const struct shell *sh, size_t argc, char **argv)
 	return -EINVAL;
 }
 
+static int cmd_sof_regs(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_print(sh, "=== I2S0 / PDM Registers ===");
+	shell_print(sh, "  I2S0.tx_conf:         0x%08x (tx_start=%u, tx_pdm_en=%u, tx_tdm_en=%u, tx_slave=%u, bck_div=%u)",
+		(uint32_t)I2S0.tx_conf.val,
+		(uint32_t)I2S0.tx_conf.tx_start,
+		(uint32_t)I2S0.tx_conf.tx_pdm_en,
+		(uint32_t)I2S0.tx_conf.tx_tdm_en,
+		(uint32_t)I2S0.tx_conf.tx_slave_mod,
+		(uint32_t)I2S0.tx_conf.tx_bck_div_num);
+	shell_print(sh, "  I2S0.tx_pcm2pdm_conf: 0x%08x (conv_en=%u, osr2=%u, dac_en=%u, dac_2out=%u)",
+		(uint32_t)I2S0.tx_pcm2pdm_conf.val,
+		(uint32_t)I2S0.tx_pcm2pdm_conf.pcm2pdm_conv_en,
+		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_pdm_sinc_osr2,
+		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_pdm_dac_mode_en,
+		(uint32_t)I2S0.tx_pcm2pdm_conf.tx_pdm_dac_2out_en);
+	shell_print(sh, "  I2S0.tx_pcm2pdm_conf1:0x%08x (fp=%u, fs=%u)",
+		(uint32_t)I2S0.tx_pcm2pdm_conf1.val,
+		(uint32_t)I2S0.tx_pcm2pdm_conf1.tx_pdm_fp,
+		(uint32_t)I2S0.tx_pcm2pdm_conf1.tx_pdm_fs);
+	shell_print(sh, "  I2S0.tx_conf1:        0x%08x (bits_mod=%u, chan_bits=%u, half_bits=%u)",
+		(uint32_t)I2S0.tx_conf1.val,
+		(uint32_t)I2S0.tx_conf1.tx_bits_mod,
+		(uint32_t)I2S0.tx_conf1.tx_tdm_chan_bits,
+		(uint32_t)I2S0.tx_conf1.tx_half_sample_bits);
+	shell_print(sh, "  I2S0.rx_conf:         0x%08x (rx_start=%u, rx_pdm_en=%u, rx_tdm_en=%u, rx_slave=%u)",
+		(uint32_t)I2S0.rx_conf.val,
+		(uint32_t)I2S0.rx_conf.rx_start,
+		(uint32_t)I2S0.rx_conf.rx_pdm_en,
+		(uint32_t)I2S0.rx_conf.rx_tdm_en,
+		(uint32_t)I2S0.rx_conf.rx_slave_mod);
+	shell_print(sh, "  I2S0.rx_conf1:        0x%08x (bits_mod=%u, chan_bits=%u, half_bits=%u)",
+		(uint32_t)I2S0.rx_conf1.val,
+		(uint32_t)I2S0.rx_conf1.rx_bits_mod,
+		(uint32_t)I2S0.rx_conf1.rx_tdm_chan_bits,
+		(uint32_t)I2S0.rx_conf1.rx_half_sample_bits);
+	shell_print(sh, "  I2S0.rx_pdm2pcm_conf: 0x%08x (conv_en=%u, dsr16=%u, amp=%u)",
+		(uint32_t)I2S0.rx_pdm2pcm_conf.val,
+		(uint32_t)I2S0.rx_pdm2pcm_conf.rx_pdm2pcm_en,
+		(uint32_t)I2S0.rx_pdm2pcm_conf.rx_pdm_sinc_dsr_16_en,
+		(uint32_t)I2S0.rx_pdm2pcm_conf.rx_pdm2pcm_amplify_num);
+	shell_print(sh, "  GPIO Matrix:          G3_out=0x%08x (sel=%u), G4_out=0x%08x (sel=%u), G5_out=0x%08x (sel=%u)",
+		(uint32_t)GPIO.func_out_sel_cfg[3].val,
+		(uint32_t)GPIO.func_out_sel_cfg[3].out_sel,
+		(uint32_t)GPIO.func_out_sel_cfg[4].val,
+		(uint32_t)GPIO.func_out_sel_cfg[4].out_sel,
+		(uint32_t)GPIO.func_out_sel_cfg[5].val,
+		(uint32_t)GPIO.func_out_sel_cfg[5].out_sel);
+	shell_print(sh, "  GPIO Level / In:      GPIO_IN=0x%08x, G3_in=%u, G4_in=%u, G5_in=%u",
+		(uint32_t)GPIO.in.val,
+		(uint32_t)((GPIO.in.val >> 3) & 1),
+		(uint32_t)((GPIO.in.val >> 4) & 1),
+		(uint32_t)((GPIO.in.val >> 5) & 1));
+	shell_print(sh, "  IO_MUX:               IO_MUX[3]=0x%08x, IO_MUX[4]=0x%08x, IO_MUX[5]=0x%08x",
+		(uint32_t)IO_MUX.gpio[3].val,
+		(uint32_t)IO_MUX.gpio[4].val,
+		(uint32_t)IO_MUX.gpio[5].val);
+	shell_print(sh, "  HP_SYS_CLKRST:        ctrl11=0x%08x (rx_src=%u), ctrl13=0x%08x (tx_src=%u, tx_div_n=%u)",
+		(uint32_t)HP_SYS_CLKRST.peri_clk_ctrl11.val,
+		(uint32_t)HP_SYS_CLKRST.peri_clk_ctrl11.reg_i2s0_rx_clk_src_sel,
+		(uint32_t)HP_SYS_CLKRST.peri_clk_ctrl13.val,
+		(uint32_t)HP_SYS_CLKRST.peri_clk_ctrl13.reg_i2s0_tx_clk_src_sel,
+		(uint32_t)HP_SYS_CLKRST.peri_clk_ctrl13.reg_i2s0_tx_div_n);
+	shell_print(sh, "============================");
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sof_cmds,
 	SHELL_CMD(status, NULL, "Print current SOF pipeline and audio interface status", cmd_sof_status),
+	SHELL_CMD(regs, NULL, "Dump I2S1/PDM hardware registers", cmd_sof_regs),
 	SHELL_CMD(ctl, NULL, "List or set static kcontrols (sof ctl <list|get|set>)", cmd_sof_ctl),
 	SHELL_CMD(play, NULL, "Start/stop playback pipeline (sof play <start|stop>)", cmd_sof_play),
+	SHELL_CMD(tone, NULL, "Generate 1000 Hz test tone (sof tone <on|off>)", cmd_sof_tone),
 	SHELL_CMD(cap, NULL, "Start/stop capture pipeline (sof cap <start|stop>)", cmd_sof_cap),
 	SHELL_CMD(vol, NULL, "Set volume in dB (sof vol <pb|cap> <dB>)", cmd_sof_vol),
+	SHELL_CMD(mute, NULL, "Set pipeline mute (sof mute <pb|cap> <on|off>)", cmd_sof_mute),
 	SHELL_CMD(mode, NULL, "Configure interface clock mode (sof mode <i2s|pdm> <master|slave>)", cmd_sof_mode),
 	SHELL_CMD(eq, NULL, "Control Equalizer bypass (sof eq <playback|capture> <enable|bypass>)", cmd_sof_eq),
 	SHELL_CMD(drc, NULL, "Control DRC bypass (sof drc <enable|bypass>)", cmd_sof_drc),
