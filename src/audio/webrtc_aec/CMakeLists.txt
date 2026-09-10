@@ -27,7 +27,59 @@ else()
       WEBRTC_ARCH_LITTLE_ENDIAN
     )
 
-    if(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
+    if(CONFIG_WEBRTC_AEC_BACKEND_AEC3)
+      if(DEFINED CONFIG_SOC_TOOLCHAIN_NAME)
+        set(_xtensa_target "${CONFIG_SOC_TOOLCHAIN_NAME}")
+      else()
+        set(_xtensa_target "intel_ace30_ptl")
+      endif()
+      set(_sdk_cxx_dir "/home/lrg/zephyr-sdk-1.0.1/gnu/xtensa-${_xtensa_target}_zephyr-elf/xtensa-${_xtensa_target}_zephyr-elf")
+
+      target_include_directories(zephyr_interface SYSTEM BEFORE INTERFACE
+        $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_dir}/include/c++/14.3.0>
+        $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_dir}/include/c++/14.3.0/xtensa-${_xtensa_target}_zephyr-elf>
+        $<$<COMPILE_LANGUAGE:CXX>:${_sdk_cxx_dir}/include>
+      )
+
+      # Do not link heavy libstdc++.a to prevent out-of-range relocations and unwinder bloat.
+      # Minimal C++ runtime, new/delete, and exception stubs are provided in webrtc_aec3_shims.cpp.
+
+      add_local_sources(sof
+        webrtc_aec-aec3.c
+        webrtc_aec-math.c
+        webrtc_aec3_wrapper.cpp
+        webrtc_aec3_shims.cpp
+      )
+
+      file(GLOB _aec3_srcs
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec3/*.cc"
+      )
+      list(FILTER _aec3_srcs EXCLUDE REGEX ".*_(avx2|neon|mips|sse2)\\.cc$")
+
+      set(_aec3_support_srcs
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/api/audio/echo_canceller3_config.cc"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/common_audio/third_party/ooura/fft_size_128/ooura_fft.cc"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/high_pass_filter.cc"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/utility/cascaded_biquad_filter.cc"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec3_buffer/audio_buffer.cc"
+        "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/logging/apm_data_dumper.cc"
+      )
+
+      add_local_sources(sof ${_aec3_srcs} ${_aec3_support_srcs})
+
+      set(_aec3_cxx_all
+        ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec3_wrapper.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec3_shims.cpp
+        ${_aec3_srcs}
+        ${_aec3_support_srcs}
+      )
+
+      set_source_files_properties(
+        ${_aec3_cxx_all}
+        TARGET_DIRECTORY modules_sof
+        PROPERTIES COMPILE_OPTIONS "-std=c++17;-fno-exceptions;-fno-rtti;-O3;-fno-vectorize;-fno-slp-vectorize;-Xclang;-target-feature;-Xclang;-fp;-DWEBRTC_POSIX;-DWEBRTC_ARCH_GENERIC;-DWEBRTC_APM_DEBUG_DUMP=0;-DRTC_DISABLE_METRICS;-DNDEBUG;-Wno-macro-redefined;-Wno-unused-function;-Wno-double-promotion"
+      )
+    elseif(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
       add_local_sources(sof webrtc_aec-aec.c webrtc_aec-math.c)
       add_local_sources(sof
         "${SOF_WEBRTC_APM_SRC_DIR}/webrtc/modules/audio_processing/aec/echo_cancellation.c"
@@ -96,7 +148,12 @@ else()
       ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-shims.c
     )
 
-    if(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
+    if(CONFIG_WEBRTC_AEC_BACKEND_AEC3)
+      list(APPEND _webrtc_aec_srcs
+        ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-aec3.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-math.c
+      )
+    elseif(CONFIG_WEBRTC_AEC_BACKEND_FLOAT)
       list(APPEND _webrtc_aec_srcs
         ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-aec.c
         ${CMAKE_CURRENT_SOURCE_DIR}/webrtc_aec-math.c

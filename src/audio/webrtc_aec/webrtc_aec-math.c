@@ -42,7 +42,7 @@ static float aec_log2f(float x)
 }
 
 /* --- fast exp2f: split x = n + f, degree-3 polynomial --- */
-static float aec_exp2f(float x)
+float exp2f(float x)
 {
 	int n;
 	float f, p;
@@ -67,7 +67,7 @@ float powf(float x, float y)
 {
 	if (x <= 0.0f)
 		return (x == 0.0f && y > 0.0f) ? 0.0f : 1.0f;
-	if (x >= 0.999f)
+	if (x >= 0.9999f && x <= 1.0001f)
 		return 1.0f;
 	if (y == 0.0f)
 		return 1.0f;
@@ -76,8 +76,8 @@ float powf(float x, float y)
 	if (y == 2.0f)
 		return x * x;
 	if (y == 0.5f)
-		return sqrtf(x);
-	return aec_exp2f(y * aec_log2f(x));
+		return __builtin_sqrtf(x);
+	return exp2f((float)(y * aec_log2f(x)));
 }
 
 double pow(double x, double y)
@@ -118,7 +118,9 @@ float sinf(float x)
 {
 	/* Normalize x in [0, 2pi) to [0, 16) */
 	const float rad_to_idx = 2.54647909f; /* 16 / (2 * pi) */
-	int idx = (int)(x * rad_to_idx) & 15;
+	int idx = (int)(x * rad_to_idx) % 16;
+	if (idx < 0)
+		idx += 16;
 	return sin_table_16[idx];
 }
 
@@ -130,7 +132,9 @@ double sin(double x)
 float cosf(float x)
 {
 	const float rad_to_idx = 2.54647909f;
-	int idx = ((int)(x * rad_to_idx) + 4) & 15;
+	int idx = ((int)(x * rad_to_idx) + 4) % 16;
+	if (idx < 0)
+		idx += 16;
 	return sin_table_16[idx];
 }
 

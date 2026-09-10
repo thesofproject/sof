@@ -35,6 +35,20 @@ config WEBRTC_AEC_BACKEND_FLOAT
 	  frequency domain adaptive filtering (MDF) accelerated by the
 	  hardware FPU and HiFi4 VFPU.
 
+config WEBRTC_AEC_BACKEND_AEC3
+	bool "Modern WebRTC AEC3 (State-of-the-art C++17 Echo Canceller)"
+	help
+	  Modern WebRTC AEC3 with matched filter delay estimator, multi-partition
+	  linear adaptive filter, non-linear suppression, and full-band ERLE estimator.
+
+config WEBRTC_AEC_PERF_TELEMETRY
+	bool "Enable AEC3 cycle profiling telemetry via printk"
+	default y
+	depends on WEBRTC_AEC_BACKEND_AEC3
+	help
+	  Periodically emits [AEC3_P1] and [AEC3_P2] cycle count breakdowns
+	  every 200ms to monitor DSP cycle budgets.
+
 config WEBRTC_AEC_BACKEND_AECM
 	bool "AECm (Mobile fixed-point integer AEC)"
 	help

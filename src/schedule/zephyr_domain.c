@@ -37,7 +37,7 @@ LOG_MODULE_DECLARE(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 #error "Zephyr uses 19.2MHz clock derived from SSP which must be enabled."
 #endif
 
-#define ZEPHYR_LL_STACK_SIZE	8192
+#define ZEPHYR_LL_STACK_SIZE	16384
 
 #if CONFIG_SOF_USERSPACE_LL
 K_THREAD_STACK_ARRAY_DEFINE(ll_sched_stack, CONFIG_CORE_COUNT, ZEPHYR_LL_STACK_SIZE);
