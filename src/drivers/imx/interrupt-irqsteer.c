@@ -23,6 +23,7 @@ LOG_MODULE_REGISTER(irq_imx, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(interrupt);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(irq_i_tr, SOF_UUID(interrupt_uuid), LOG_LEVEL_INFO);
 
 /*

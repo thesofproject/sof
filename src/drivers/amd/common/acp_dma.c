@@ -25,6 +25,7 @@
 #include <sof/probe/probe.h>
 
 SOF_DEFINE_REG_UUID(acpdma);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(acpdma_tr, SOF_UUID(acpdma_uuid), LOG_LEVEL_INFO);
 #define PROBE_UPDATE_POS_MASK	0x80000000
 #define PROBE_BUFFER_WATERMARK	(16 * 1024)

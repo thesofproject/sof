@@ -151,7 +151,7 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 out:
 	if (drv)
 		tr_dbg(&comp_tr, "get_drv(), found driver type %d, uuid %pU",
-		       drv->type, drv->tctx->uuid_p);
+		       drv->type, SOF_DRV_UID_NAME(drv));
 
 	return drv;
 }
@@ -361,7 +361,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	}
 
 	tr_info(&comp_tr, "comp new %pU type %d id %d.%d",
-		drv->tctx->uuid_p, comp->type, comp->pipeline_id, comp->id);
+		SOF_DRV_UID_NAME(drv), comp->type, comp->pipeline_id, comp->id);
 
 	/* build the component */
 	if (comp_specific_builder(comp, &spec) < 0) {

@@ -17,6 +17,7 @@
 
 SOF_DEFINE_REG_UUID(sgen_mt8365);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(sgen_tr, SOF_UUID(sgen_mt8365_uuid), LOG_LEVEL_INFO);
 
 /*

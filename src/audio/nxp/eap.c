@@ -31,6 +31,7 @@
 
 LOG_MODULE_REGISTER(nxp_eap, CONFIG_SOF_LOG_LEVEL);
 SOF_DEFINE_REG_UUID(nxp_eap);
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(nxp_eap_tr, SOF_UUID(nxp_eap_uuid), LOG_LEVEL_INFO);
 
 #define NXP_EAP_DEFAULT_MAX_BLOCK_SIZE 480

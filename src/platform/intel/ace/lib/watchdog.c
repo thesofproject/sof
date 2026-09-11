@@ -23,6 +23,7 @@ LOG_MODULE_REGISTER(wdt, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(wdt);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(wdt_tr, SOF_UUID(wdt_uuid), LOG_LEVEL_INFO);
 
 static const struct device *const watchdog = DEVICE_DT_GET(DT_NODELABEL(adsp_watchdog));

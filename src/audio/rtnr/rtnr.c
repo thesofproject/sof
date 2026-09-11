@@ -62,6 +62,7 @@ LOG_MODULE_REGISTER(rtnr, CONFIG_SOF_LOG_LEVEL);
 /* UUID 5c7ca334-e15d-11eb-ba80-0242ac130004 */
 SOF_DEFINE_REG_UUID(rtnr);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(rtnr_tr, SOF_UUID(rtnr_uuid), LOG_LEVEL_INFO);
 
 /* Generic processing */

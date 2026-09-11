@@ -36,6 +36,7 @@ LOG_MODULE_REGISTER(pipe, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(pipe);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(pipe_tr, SOF_UUID(pipe_uuid), LOG_LEVEL_INFO);
 
 /* number of pipeline stream metadata objects we export in mailbox */
@@ -201,7 +202,7 @@ struct pipeline *pipeline_new(struct k_heap *heap, uint32_t pipeline_id, uint32_
 	p->status = COMP_STATE_INIT;
 	p->trigger.cmd = COMP_TRIGGER_NO_ACTION;
 
-#ifndef CONFIG_SOF_USERSPACE_LL
+#if !CONFIG_SOF_USERSPACE_LL && !CONFIG_ZEPHYR_LOG
 	/*
 	 * pipe_tr lives in the .trace_ctx section, which is not mapped into
 	 * the sysuser partition, so it cannot be read from a user-mode thread.

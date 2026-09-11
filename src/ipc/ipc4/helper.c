@@ -1321,7 +1321,7 @@ __cold static const struct comp_driver *ipc4_search_for_drv(const void *uuid)
 		info = container_of(clist, struct comp_driver_info, list);
 		if (!memcmp(info->drv->uid, uuid, UUID_SIZE)) {
 			tr_dbg(&comp_tr, "found type %d, uuid %pU",
-			       info->drv->type, info->drv->tctx->uuid_p);
+			       info->drv->type, SOF_DRV_UID_NAME(info->drv));
 			drv = info->drv;
 			break;
 		}

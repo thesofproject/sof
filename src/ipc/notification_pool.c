@@ -21,6 +21,7 @@ LOG_MODULE_REGISTER(notification_pool, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(notification_pool);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(notif_tr, SOF_UUID(notification_pool_uuid), LOG_LEVEL_INFO);
 
 struct ipc_notif_pool_item {

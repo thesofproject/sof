@@ -41,6 +41,7 @@ LOG_MODULE_REGISTER(dma_trace, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dma_trace);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dt_tr, SOF_UUID(dma_trace_uuid), LOG_LEVEL_INFO);
 
 SOF_DEFINE_REG_UUID(dma_trace_task);

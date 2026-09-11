@@ -41,9 +41,6 @@ struct buffer_cb_transact;
 /* buffer tracing */
 extern struct tr_ctx buffer_tr;
 
-/** \brief Retrieves trace context from the buffer */
-#define trace_buf_get_tr_ctx(buf_ptr) (&(buf_ptr)->tctx)
-
 /** \brief Retrieves subid (comp id) from the buffer */
 #define buf_get_id(buf_ptr) ((buf_ptr)->stream.runtime_stream_params.id)
 
@@ -68,6 +65,9 @@ extern struct tr_ctx buffer_tr;
 					   buf_get_id(buf_ptr), ##__VA_ARGS__)
 
 #else
+/** \brief Retrieves trace context from the buffer */
+#define trace_buf_get_tr_ctx(buf_ptr) (&(buf_ptr)->tctx)
+
 /** \brief Trace error message from buffer */
 #define buf_err(buf_ptr, __e, ...)						\
 	trace_dev_err(trace_buf_get_tr_ctx, buffer_pipeline_id,			\
@@ -136,7 +136,10 @@ struct comp_buffer {
 	/* configuration */
 	uint32_t flags;
 	uint32_t core;
+
+#if !CONFIG_ZEPHYR_LOG
 	struct tr_ctx tctx;			/* trace settings */
+#endif
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */

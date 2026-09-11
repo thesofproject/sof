@@ -38,6 +38,13 @@
 #define IPC_MOD_CMD(v) .cmd = v,
 #endif
 
+/* Zephyr's tr_*() macros ignore the trace context, no need to store it */
+#if CONFIG_ZEPHYR_LOG
+#define SET_MODULE_ADAPTER_TCTX(tr)
+#else
+#define SET_MODULE_ADAPTER_TCTX(tr) .tctx = &(tr),
+#endif
+
 /*
  * \brief Macro to declare a module adapter component.
  * \param adapter - name of the module.
@@ -52,7 +59,7 @@
 static const struct comp_driver comp_##adapter##_module = { \
 	.type = SOF_COMP_MODULE_ADAPTER, \
 	.uid = SOF_RT_UUID(uuid), \
-	.tctx = &(tr), \
+	SET_MODULE_ADAPTER_TCTX(tr) \
 	.ops = { \
 		.create = module_adapter_new, \
 		.prepare = module_adapter_prepare, \

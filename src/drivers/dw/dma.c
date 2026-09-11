@@ -48,6 +48,7 @@ LOG_MODULE_REGISTER(dw_dma, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(dw_dma);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(dwdma_tr, SOF_UUID(dw_dma_uuid), LOG_LEVEL_INFO);
 
 /* pointer data for DW DMA buffer */

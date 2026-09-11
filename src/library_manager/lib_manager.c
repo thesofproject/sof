@@ -55,6 +55,7 @@ LOG_MODULE_REGISTER(lib_manager, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(lib_manager);
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(lib_manager_tr, SOF_UUID(lib_manager_uuid), LOG_LEVEL_INFO);
 
 struct lib_manager_dma_ext {
@@ -566,7 +567,9 @@ static int lib_manager_start_agent(const struct comp_driver *drv,
 	agent_params.module_id = IPC4_MOD_ID(config->id);
 	agent_params.instance_id = IPC4_INST_ID(config->id);
 	agent_params.core_id = config->core;
+#if !CONFIG_ZEPHYR_LOG
 	agent_params.log_handle = (uint32_t)drv->tctx;
+#endif
 	agent_params.mod_cfg = &mod_cfg;
 
 #if CONFIG_SOF_USERSPACE_PROXY
@@ -817,7 +820,9 @@ static void lib_manager_prepare_module_adapter(struct comp_driver *drv, const st
 	drv->type = SOF_COMP_MODULE_ADAPTER;
 	drv->uid_cp = *uuid;
 	drv->uid = &drv->uid_cp;
+#if !CONFIG_ZEPHYR_LOG
 	drv->tctx = &lib_manager_tr;
+#endif
 	drv->ops.create = lib_manager_module_create;
 	drv->ops.prepare = module_adapter_prepare;
 	drv->ops.params = module_adapter_params;

@@ -150,6 +150,7 @@ static const struct module_interface passthrough_interface = {
 	.free = passthrough_codec_free
 };
 
+/* unused with Zephyr, generates no output */
 DECLARE_TR_CTX(passthrough_tr, SOF_UUID(passthrough_uuid), LOG_LEVEL_INFO);
 DECLARE_MODULE_ADAPTER(passthrough_interface, passthrough_uuid, passthrough_tr);
 SOF_MODULE_INIT(passthrough, sys_comp_module_passthrough_interface_init);
