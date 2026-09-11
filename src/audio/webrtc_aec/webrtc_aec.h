@@ -87,6 +87,19 @@ struct webrtc_aec_backend {
 			  const int16_t *mic, const int16_t *ref, int16_t *out,
 			  int frame_samples, int ch);
 
+	/**
+	 * Process complete multi-channel 10 ms frame.
+	 * If provided, called instead of per-channel process_ch loop.
+	 * @mic:  array of mic channel pointers
+	 * @ref:  array of echo reference channel pointers
+	 * @out:  array of output channel pointers
+	 */
+	int (*process_frame)(struct processing_module *mod,
+			     const int16_t *const *mic,
+			     const int16_t *const *ref,
+			     int16_t *const *out,
+			     int frame_samples, int num_channels);
+
 	/* Reset adaptive filters (keep configuration). Called from reset(). */
 	int (*reset)(struct processing_module *mod);
 

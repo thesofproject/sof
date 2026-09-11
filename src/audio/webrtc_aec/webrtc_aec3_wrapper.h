@@ -16,10 +16,10 @@ extern "C" {
 
 typedef struct webrtc_aec3_inst webrtc_aec3_inst_t;
 
-webrtc_aec3_inst_t* webrtc_aec3_create(int sample_rate_hz, int num_channels);
+webrtc_aec3_inst_t* webrtc_aec3_create(int sample_rate_hz, int num_render_channels, int num_capture_channels);
 int webrtc_aec3_init(webrtc_aec3_inst_t* inst, int sample_rate_hz);
-int webrtc_aec3_buffer_farend(webrtc_aec3_inst_t* inst, const float* ref, size_t num_samples);
-int webrtc_aec3_process(webrtc_aec3_inst_t* inst, const float* const* mic, size_t num_bands,
+int webrtc_aec3_buffer_farend(webrtc_aec3_inst_t* inst, const float* const* ref, size_t num_render_channels, size_t num_samples);
+int webrtc_aec3_process(webrtc_aec3_inst_t* inst, const float* const* mic, size_t num_capture_channels,
                         float* const* out, size_t num_samples);
 int webrtc_aec3_set_suppression(webrtc_aec3_inst_t* inst, bool high_suppression);
 void webrtc_aec3_free(webrtc_aec3_inst_t* inst);

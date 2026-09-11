@@ -14,15 +14,17 @@ struct webrtc_aec3_inst {
     std::unique_ptr<webrtc::AudioBuffer> render_buf;
     std::unique_ptr<webrtc::AudioBuffer> capture_buf;
     int sample_rate_hz;
-    int num_channels;
+    int num_render_channels;
+    int num_capture_channels;
 };
 
 extern "C" {
 
-webrtc_aec3_inst_t* webrtc_aec3_create(int sample_rate_hz, int num_channels) {
+webrtc_aec3_inst_t* webrtc_aec3_create(int sample_rate_hz, int num_render_channels, int num_capture_channels) {
     auto inst = std::make_unique<webrtc_aec3_inst>();
     inst->sample_rate_hz = sample_rate_hz;
-    inst->num_channels = num_channels;
+    inst->num_render_channels = num_render_channels;
+    inst->num_capture_channels = num_capture_channels;
 
     webrtc::EchoCanceller3Config config;
     config.delay.use_external_delay_estimator = true;
@@ -45,17 +47,19 @@ webrtc_aec3_inst_t* webrtc_aec3_create(int sample_rate_hz, int num_channels) {
     // Disable reverb modeling in nonlinear mode to reduce cycle count
     config.echo_model.model_reverb_in_nonlinear_mode = false;
 
+    // Multi-channel downmixing: downmix stereo render reference to mono for linear subtractor
+    config.multi_channel.detect_stereo_content = false;
+
     webrtc::EchoCanceller3Config::Validate(&config);
     inst->aec3 = std::make_unique<webrtc::EchoCanceller3>(
-        config, std::nullopt, sample_rate_hz, num_channels, num_channels);
+        config, std::nullopt, sample_rate_hz, num_render_channels, num_capture_channels);
     inst->aec3->SetAudioBufferDelay(40);
     inst->aec3->SetCaptureOutputUsage(true);
 
-
     inst->render_buf = std::make_unique<webrtc::AudioBuffer>(
-        sample_rate_hz, num_channels, sample_rate_hz, num_channels, sample_rate_hz, num_channels);
+        sample_rate_hz, num_render_channels, sample_rate_hz, num_render_channels, sample_rate_hz, num_render_channels);
     inst->capture_buf = std::make_unique<webrtc::AudioBuffer>(
-        sample_rate_hz, num_channels, sample_rate_hz, num_channels, sample_rate_hz, num_channels);
+        sample_rate_hz, num_capture_channels, sample_rate_hz, num_capture_channels, sample_rate_hz, num_capture_channels);
 
     return inst.release();
 }
@@ -66,29 +70,37 @@ int webrtc_aec3_init(webrtc_aec3_inst_t* inst, int sample_rate_hz) {
     return 0;
 }
 
-int webrtc_aec3_buffer_farend(webrtc_aec3_inst_t* inst, const float* ref, size_t num_samples) {
+int webrtc_aec3_buffer_farend(webrtc_aec3_inst_t* inst, const float* const* ref, size_t num_render_channels, size_t num_samples) {
     if (!inst || !inst->aec3 || !ref) return -1;
     if (num_samples != 160) return -1;
+    if (num_render_channels != (size_t)inst->num_render_channels) return -1;
 
-    float* dst = inst->render_buf->split_bands(0)[0];
-    std::memcpy(dst, ref, num_samples * sizeof(float));
+    for (size_t ch = 0; ch < num_render_channels; ++ch) {
+        float* dst = inst->render_buf->split_bands(ch)[0];
+        std::memcpy(dst, ref[ch], num_samples * sizeof(float));
+    }
 
     inst->aec3->AnalyzeRender(inst->render_buf.get());
     return 0;
 }
 
-int webrtc_aec3_process(webrtc_aec3_inst_t* inst, const float* const* mic, size_t num_bands,
+int webrtc_aec3_process(webrtc_aec3_inst_t* inst, const float* const* mic, size_t num_capture_channels,
                         float* const* out, size_t num_samples) {
     if (!inst || !inst->aec3 || !mic || !out) return -1;
     if (num_samples != 160) return -1;
+    if (num_capture_channels != (size_t)inst->num_capture_channels) return -1;
 
-    float* dst = inst->capture_buf->split_bands(0)[0];
-    std::memcpy(dst, mic[0], num_samples * sizeof(float));
+    for (size_t ch = 0; ch < num_capture_channels; ++ch) {
+        float* dst = inst->capture_buf->split_bands(ch)[0];
+        std::memcpy(dst, mic[ch], num_samples * sizeof(float));
+    }
 
     inst->aec3->ProcessCapture(inst->capture_buf.get(), false);
 
-    const float* src = inst->capture_buf->split_bands(0)[0];
-    std::memcpy(out[0], src, num_samples * sizeof(float));
+    for (size_t ch = 0; ch < num_capture_channels; ++ch) {
+        const float* src = inst->capture_buf->split_bands(ch)[0];
+        std::memcpy(out[ch], src, num_samples * sizeof(float));
+    }
     return 0;
 }
 

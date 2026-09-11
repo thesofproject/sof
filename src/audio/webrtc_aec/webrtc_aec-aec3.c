@@ -24,9 +24,9 @@ struct webrtc_aec3_data {
 	webrtc_aec3_inst_t *aec3;
 	int     num_channels;
 	int     suppression;
-	float   ref_f[WEBRTC_AEC_FRAME_SAMPLES_16K];
-	float   mic_f[WEBRTC_AEC_FRAME_SAMPLES_16K];
-	float   out_f[WEBRTC_AEC_FRAME_SAMPLES_16K];
+	float   ref_f[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_16K];
+	float   mic_f[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_16K];
+	float   out_f[WEBRTC_AEC_CHANNELS_MAX][WEBRTC_AEC_FRAME_SAMPLES_16K];
 };
 
 static int webrtc_aec3_backend_init(struct processing_module *mod)
@@ -57,11 +57,12 @@ static int webrtc_aec3_backend_configure(struct processing_module *mod, int samp
 	rd->num_channels = 0;
 	rd->suppression  = suppression;
 
-	int aec_channels = (num_channels > 1) ? 1 : num_channels;
+	int aec_channels = (num_channels > WEBRTC_AEC_CHANNELS_MAX) ? WEBRTC_AEC_CHANNELS_MAX : num_channels;
 
-	rd->aec3 = webrtc_aec3_create(sample_rate_hz, aec_channels);
+	rd->aec3 = webrtc_aec3_create(sample_rate_hz, aec_channels, aec_channels);
 	if (!rd->aec3) {
-		comp_err(mod->dev, "webrtc_aec: webrtc_aec3_create() failed rate=%d", sample_rate_hz);
+		comp_err(mod->dev, "webrtc_aec: webrtc_aec3_create() failed rate=%d ch=%d",
+			 sample_rate_hz, aec_channels);
 		return -ENOMEM;
 	}
 
@@ -84,50 +85,55 @@ static int webrtc_aec3_backend_set_suppression(struct processing_module *mod, bo
 	return 0;
 }
 
-static int webrtc_aec3_backend_process_ch(struct processing_module *mod,
-					  const int16_t *mic, const int16_t *ref, int16_t *out,
-					  int frame_samples, int ch)
+static int webrtc_aec3_backend_process_frame(struct processing_module *mod,
+					     const int16_t *const *mic,
+					     const int16_t *const *ref,
+					     int16_t *const *out,
+					     int frame_samples, int num_channels)
 {
 	struct webrtc_aec_comp_data *cd = module_get_private_data(mod);
 	struct webrtc_aec3_data *rd = cd->backend_data;
-	const float *const nearend[1] = { rd->mic_f };
-	float *const out_ptrs[1] = { rd->out_f };
-	int i, ret;
+	const float *nearend[WEBRTC_AEC_CHANNELS_MAX];
+	const float *farend[WEBRTC_AEC_CHANNELS_MAX];
+	float *out_ptrs[WEBRTC_AEC_CHANNELS_MAX];
+	int i, ch, ret;
 
 	static uint32_t aec3_frames = 0;
 	static uint64_t aec3_ref_cyc = 0;
 	static uint64_t aec3_mic_cyc = 0;
 	uint32_t t0, t1, t2;
 
-	if (frame_samples > WEBRTC_AEC_FRAME_SAMPLES_16K)
+	if (frame_samples > WEBRTC_AEC_FRAME_SAMPLES_16K || num_channels > WEBRTC_AEC_CHANNELS_MAX)
 		return -EINVAL;
 
-	if (ch >= rd->num_channels || !rd->aec3) {
-		memcpy(out, mic, (size_t)frame_samples * sizeof(int16_t));
+	if (num_channels != rd->num_channels || !rd->aec3) {
+		for (ch = 0; ch < num_channels; ch++)
+			memcpy(out[ch], mic[ch], (size_t)frame_samples * sizeof(int16_t));
 		return 0;
 	}
 
-	/* Convert ref to float and buffer far-end */
-	for (i = 0; i < frame_samples; i++)
-		rd->ref_f[i] = (float)ref[i];
+	for (ch = 0; ch < num_channels; ch++) {
+		for (i = 0; i < frame_samples; i++) {
+			rd->ref_f[ch][i] = (float)ref[ch][i];
+			rd->mic_f[ch][i] = (float)mic[ch][i];
+		}
+		farend[ch] = rd->ref_f[ch];
+		nearend[ch] = rd->mic_f[ch];
+		out_ptrs[ch] = rd->out_f[ch];
+	}
 
 	t0 = k_cycle_get_32();
-	ret = webrtc_aec3_buffer_farend(rd->aec3, rd->ref_f, (size_t)frame_samples);
+	ret = webrtc_aec3_buffer_farend(rd->aec3, farend, (size_t)num_channels, (size_t)frame_samples);
 	t1 = k_cycle_get_32();
 	if (ret) {
-		comp_err(mod->dev, "webrtc_aec: AEC3 BufferFarend ch%d failed %d", ch, ret);
+		comp_err(mod->dev, "webrtc_aec: AEC3 BufferFarend failed %d", ret);
 		return ret;
 	}
 
-	/* Convert mic to float */
-	for (i = 0; i < frame_samples; i++)
-		rd->mic_f[i] = (float)mic[i];
-
-	/* Process capture (mic) and cancel echo */
-	ret = webrtc_aec3_process(rd->aec3, nearend, 1, out_ptrs, (size_t)frame_samples);
+	ret = webrtc_aec3_process(rd->aec3, nearend, (size_t)num_channels, out_ptrs, (size_t)frame_samples);
 	t2 = k_cycle_get_32();
 	if (ret) {
-		comp_err(mod->dev, "webrtc_aec: AEC3 Process ch%d failed %d", ch, ret);
+		comp_err(mod->dev, "webrtc_aec: AEC3 Process failed %d", ret);
 		return ret;
 	}
 
@@ -135,25 +141,38 @@ static int webrtc_aec3_backend_process_ch(struct processing_module *mod,
 	aec3_mic_cyc += (uint64_t)(t2 - t1);
 	aec3_frames++;
 	if (aec3_frames % 20 == 0) {
-		comp_info(mod->dev, "webrtc_aec3 perf: f=%u ref=%u kcyc mic=%u kcyc tot=%u kcyc",
+		comp_info(mod->dev, "webrtc_aec3 stereo perf: f=%u ref=%u kcyc mic=%u kcyc tot=%u kcyc",
 			  aec3_frames,
 			  (uint32_t)(aec3_ref_cyc / (aec3_frames * 1000)),
 			  (uint32_t)(aec3_mic_cyc / (aec3_frames * 1000)),
 			  (uint32_t)((aec3_ref_cyc + aec3_mic_cyc) / (aec3_frames * 1000)));
 	}
 
-	/* Convert float output back to int16_t with saturation and rounding */
-	for (i = 0; i < frame_samples; i++) {
-		float val = rd->out_f[i];
-		if (val > 32767.0f)
-			out[i] = 32767;
-		else if (val < -32768.0f)
-			out[i] = -32768;
-		else
-			out[i] = (int16_t)(val + (val >= 0.0f ? 0.5f : -0.5f));
+	for (ch = 0; ch < num_channels; ch++) {
+		for (i = 0; i < frame_samples; i++) {
+			float val = rd->out_f[ch][i];
+			if (val > 32767.0f)
+				out[ch][i] = 32767;
+			else if (val < -32768.0f)
+				out[ch][i] = -32768;
+			else
+				out[ch][i] = (int16_t)(val + (val >= 0.0f ? 0.5f : -0.5f));
+		}
 	}
 
 	return 0;
+}
+
+static int webrtc_aec3_backend_process_ch(struct processing_module *mod,
+					  const int16_t *mic, const int16_t *ref, int16_t *out,
+					  int frame_samples, int ch)
+{
+	const int16_t *mic_arr[1] = { mic };
+	const int16_t *ref_arr[1] = { ref };
+	int16_t *out_arr[1] = { out };
+
+	(void)ch;
+	return webrtc_aec3_backend_process_frame(mod, mic_arr, ref_arr, out_arr, frame_samples, 1);
 }
 
 static int webrtc_aec3_backend_reset(struct processing_module *mod)
@@ -190,6 +209,7 @@ const struct webrtc_aec_backend webrtc_aec_backend = {
 	.configure       = webrtc_aec3_backend_configure,
 	.set_suppression = webrtc_aec3_backend_set_suppression,
 	.process_ch      = webrtc_aec3_backend_process_ch,
+	.process_frame   = webrtc_aec3_backend_process_frame,
 	.reset           = webrtc_aec3_backend_reset,
 	.free            = webrtc_aec3_backend_free,
 };
