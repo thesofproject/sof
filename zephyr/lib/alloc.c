@@ -301,8 +301,6 @@ static void *virtual_heap_alloc(struct vmh_heap *heap, uint32_t flags, size_t by
 	return mem;
 }
 
-extern int _unused_ram_start_marker;
-
 /**
  * Checks whether pointer is from virtual memory range.
  * @param ptr Pointer to memory being checked.
@@ -311,8 +309,9 @@ extern int _unused_ram_start_marker;
 static bool is_virtual_heap_pointer(void *ptr)
 {
 	uintptr_t virtual_heap_start =
-		POINTER_TO_UINT(sys_cache_cached_ptr_get(&_unused_ram_start_marker));
-	uintptr_t virtual_heap_end = CONFIG_KERNEL_VM_BASE + CONFIG_KERNEL_VM_SIZE;
+		POINTER_TO_UINT(adsp_mm_get_unused_l2_start_aligned());
+	uintptr_t virtual_heap_end = virtual_heap_start +
+		CONFIG_SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE;
 
 	if (!sys_cache_is_ptr_cached(ptr))
 		ptr = (__sparse_force void *)sys_cache_cached_ptr_get(ptr);
