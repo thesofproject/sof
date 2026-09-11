@@ -19,11 +19,9 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 	int16_t *src[PLATFORM_MAX_CHANNELS];
 	int16_t *dest;
 	int32_t val;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = audio_stream_get_channels(sink);
-	int samples = frames * nch;
+	size_t nmax, ns, n, i, processed = 0;
+	uint32_t j;
+	int samples = frames * audio_stream_get_channels(sink);
 
 	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
@@ -33,8 +31,8 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 		nmax = samples - processed;
 		n = audio_stream_samples_without_wrap_s16(sink, dest);
 		n = MIN(n, nmax);
-		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_samples_without_wrap_s16(sources[i], src[i]);
+		for (j = 0; j < num_sources; j++) {
+			ns = audio_stream_samples_without_wrap_s16(sources[j], src[j]);
 			n = MIN(n, ns);
 		}
 		for (i = 0; i < n; i++) {
@@ -50,8 +48,8 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 		}
 		processed += n;
 		dest = audio_stream_wrap(sink, dest);
-		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
+		for (j = 0; j < num_sources; j++)
+			src[j] = audio_stream_wrap(sources[j], src[j]);
 	}
 }
 #endif /* CONFIG_FORMAT_S16LE */
@@ -62,15 +60,13 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
-	int32_t *src[PLATFORM_MAX_CHANNELS];
+	const int32_t *src[PLATFORM_MAX_CHANNELS];
+	size_t nmax, ns, n, i, processed = 0;
 	int32_t *dest;
+	uint32_t j;
 	int32_t val;
 	int32_t x;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = audio_stream_get_channels(sink);
-	int samples = frames * nch;
+	int samples = frames * audio_stream_get_channels(sink);
 
 	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
@@ -80,8 +76,8 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
 		nmax = samples - processed;
 		n = audio_stream_samples_without_wrap_s24(sink, dest);
 		n = MIN(n, nmax);
-		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_samples_without_wrap_s24(sources[i], src[i]);
+		for (j = 0; j < num_sources; j++) {
+			ns = audio_stream_samples_without_wrap_s24(sources[j], src[j]);
 			n = MIN(n, ns);
 		}
 		for (i = 0; i < n; i++) {
@@ -98,8 +94,8 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
 		}
 		processed += n;
 		dest = audio_stream_wrap(sink, dest);
-		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
+		for (j = 0; j < num_sources; j++)
+			src[j] = audio_stream_wrap(sources[j], src[j]);
 	}
 }
 #endif /* CONFIG_FORMAT_S24LE */
@@ -110,14 +106,12 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t num_sources,
 		      uint32_t frames)
 {
-	int32_t *src[PLATFORM_MAX_CHANNELS];
+	const int32_t *src[PLATFORM_MAX_CHANNELS];
+	size_t nmax, ns, i, n, processed = 0;
 	int32_t *dest;
 	int64_t val;
-	int nmax;
-	int i, j, n, ns;
-	int processed = 0;
-	int nch = audio_stream_get_channels(sink);
-	int samples = frames * nch;
+	uint32_t j;
+	size_t samples = frames * audio_stream_get_channels(sink);
 
 	dest = audio_stream_get_wptr(sink);
 	for (j = 0; j < num_sources; j++)
@@ -127,8 +121,8 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 		nmax = samples - processed;
 		n = audio_stream_samples_without_wrap_s32(sink, dest);
 		n = MIN(n, nmax);
-		for (i = 0; i < num_sources; i++) {
-			ns = audio_stream_samples_without_wrap_s32(sources[i], src[i]);
+		for (j = 0; j < num_sources; j++) {
+			ns = audio_stream_samples_without_wrap_s32(sources[j], src[j]);
 			n = MIN(n, ns);
 		}
 		for (i = 0; i < n; i++) {
@@ -144,8 +138,8 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 		}
 		processed += n;
 		dest = audio_stream_wrap(sink, dest);
-		for (i = 0; i < num_sources; i++)
-			src[i] = audio_stream_wrap(sources[i], src[i]);
+		for (j = 0; j < num_sources; j++)
+			src[j] = audio_stream_wrap(sources[j], src[j]);
 	}
 }
 #endif /* CONFIG_FORMAT_S32LE */

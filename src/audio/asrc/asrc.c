@@ -46,8 +46,8 @@ static void src_copy_s32(struct processing_module *mod,
 	int32_t *buf;
 	const int32_t *src = source->ptr;
 	int32_t *snk = sink->ptr;
-	int n_wrap_src;
-	int n_wrap_snk;
+	size_t n_wrap_src;
+	size_t n_wrap_snk;
 	int n_copy;
 	unsigned int n;
 	int ret;
@@ -118,8 +118,8 @@ static void src_copy_s16(struct processing_module *mod,
 	const int16_t *src = source->ptr;
 	int16_t *snk = sink->ptr;
 	int16_t *buf;
-	int n_wrap_src;
-	int n_wrap_snk;
+	size_t n_wrap_src;
+	size_t n_wrap_snk;
 	int n_copy;
 	int s_copy;
 	int ret;

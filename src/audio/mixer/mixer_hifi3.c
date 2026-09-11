@@ -26,8 +26,9 @@ static void mix_n_s16(struct comp_dev *dev, struct audio_stream *sink,
 	ae_int32x2 val2;
 	ae_int32x2 sample_1;
 	ae_int32x2 sample_2;
-	unsigned int n, m, nmax, i, j, left_samples;
-	unsigned int samples = frames * audio_stream_get_channels(sink);
+	size_t n, m, nmax, i, left_samples;
+	uint32_t j;
+	size_t samples = frames * audio_stream_get_channels(sink);
 
 	for (j = 0; j < num_sources; j++)
 		in[j] = audio_stream_get_rptr(sources[j]);
@@ -78,8 +79,9 @@ static void mix_n_s24(struct comp_dev *dev, struct audio_stream *sink,
 	ae_int32x2 *out = audio_stream_get_wptr(sink);
 	ae_int32x2 val;
 	ae_int32x2 sample = AE_ZERO32();
-	unsigned int n, m, nmax, i, j, left_samples;
-	unsigned int samples = frames * audio_stream_get_channels(sink);
+	size_t n, m, nmax, i, left_samples;
+	uint32_t j;
+	size_t samples = frames * audio_stream_get_channels(sink);
 
 	for (j = 0; j < num_sources; j++)
 		in[j] = audio_stream_get_rptr(sources[j]);
@@ -124,9 +126,10 @@ static void mix_n_s32(struct comp_dev *dev, struct audio_stream *sink,
 	ae_int64 sample;
 	ae_int64 val;
 	ae_int32x2 res;
-	unsigned int n, nmax, i, j, left_samples;
-	unsigned int m = 0;
-	unsigned int samples = frames * audio_stream_get_channels(sink);
+	size_t n, nmax, i, left_samples;
+	size_t m = 0;
+	uint32_t j;
+	size_t samples = frames * audio_stream_get_channels(sink);
 
 	for (j = 0; j < num_sources; j++)
 		in[j] = audio_stream_get_rptr(sources[j]);

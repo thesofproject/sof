@@ -36,7 +36,7 @@ int source_get_data(struct sof_source *source, size_t req_size,
 EXPORT_SYMBOL(source_get_data);
 
 int source_get_data_s16(struct sof_source *source, size_t req_size, int16_t const **data_ptr,
-			int16_t const **buffer_start, int *buffer_samples)
+			int16_t const **buffer_start, size_t *buffer_samples)
 {
 	size_t buffer_size;
 	int ret;
@@ -52,7 +52,7 @@ int source_get_data_s16(struct sof_source *source, size_t req_size, int16_t cons
 EXPORT_SYMBOL(source_get_data_s16);
 
 int source_get_data_s32(struct sof_source *source, size_t req_size, int32_t const **data_ptr,
-			int32_t const **buffer_start, int *buffer_samples)
+			int32_t const **buffer_start, size_t *buffer_samples)
 {
 	size_t buffer_size;
 	int ret;
