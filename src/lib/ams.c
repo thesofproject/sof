@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <sof/lib/ams.h>
 #include <zephyr/kernel.h>
+#include <rtos/symbol.h>
 
 LOG_MODULE_REGISTER(ams, CONFIG_SOF_LOG_LEVEL);
 
@@ -284,9 +285,8 @@ static uint32_t ams_push_slot(struct ams_shared_context __sparse_cache *ctx_shar
 
 	for (uint32_t i = 0; i < ARRAY_SIZE(ctx_shared->slots); ++i) {
 		if (ctx_shared->slot_uses[i] == 0) {
-			/* the slot only carries the payload struct (read back
-			 * via u.msg); message points to a caller-owned buffer
-			 * rather than inline data, so copy exactly the struct
+			/* the slot carries the payload struct (read back
+			 * via u.msg) and inline message data
 			 */
 			err = memcpy_s((__sparse_force void *)ctx_shared->slots[i].u.msg_raw,
 				       sizeof(ctx_shared->slots[i].u.msg_raw),
@@ -294,6 +294,23 @@ static uint32_t ams_push_slot(struct ams_shared_context __sparse_cache *ctx_shar
 
 			if (err != 0)
 				return AMS_INVALID_SLOT;
+
+			if (msg->message && msg->message_length > 0) {
+				size_t max_data = sizeof(ctx_shared->slots[i].u.msg_raw) -
+						  sizeof(*msg);
+
+				if (msg->message_length > max_data) {
+					tr_err(&ams_tr, "Message too large: %u > %zu",
+					       msg->message_length, max_data);
+					return AMS_INVALID_SLOT;
+				}
+
+				err = memcpy_s((__sparse_force void *)(ctx_shared->slots[i].u.msg_raw + sizeof(*msg)),
+					       max_data,
+					       msg->message, msg->message_length);
+				if (err != 0)
+					return AMS_INVALID_SLOT;
+			}
 
 			ctx_shared->slots[i].module_id = module_id;
 			ctx_shared->slots[i].instance_id = instance_id;
@@ -468,6 +485,8 @@ int ams_send(const struct ams_message_payload *const ams_message_payload)
 					 AMS_INVALID_SLOT);
 }
 
+EXPORT_SYMBOL(ams_send);
+
 int ams_message_send_mi(struct async_message_service *ams,
 			const struct ams_message_payload *const ams_message_payload,
 			uint16_t target_module, uint16_t target_instance)
@@ -488,12 +507,26 @@ static int ams_process_slot(struct async_message_service *ams, uint32_t slot)
 {
 	struct ams_shared_context __sparse_cache *shared_c;
 	struct ams_message_payload msg;
+	uint8_t msg_buf[256];
 	uint16_t module_id;
 	uint16_t instance_id;
 
 	shared_c = ams_acquire(ams->ams_context->shared);
 
 	msg = shared_c->slots[slot].u.msg;
+	if (msg.message && msg.message_length > 0) {
+		if (msg.message_length <= sizeof(msg_buf)) {
+			if (memcpy_s(msg_buf, sizeof(msg_buf),
+				     (__sparse_force void *)(shared_c->slots[slot].u.msg_raw + sizeof(msg)),
+				     msg.message_length) != 0) {
+				ams_release(shared_c);
+				return -EINVAL;
+			}
+			msg.message = msg_buf;
+		} else {
+			msg.message = (__sparse_force uint8_t *)(shared_c->slots[slot].u.msg_raw + sizeof(msg));
+		}
+	}
 	module_id = shared_c->slots[slot].module_id;
 	instance_id = shared_c->slots[slot].instance_id;
 

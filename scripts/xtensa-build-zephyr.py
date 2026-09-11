@@ -1174,6 +1174,10 @@ def install_lib(platform, sof_output_dir, abs_build_dir, platform_wconfig):
 				symlink_or_copy(lib_install_dir, lib_name,
 						lib_dir, alias_libname)
 
+		for uuid in lib_uuids.get(key, []):
+			linkname = uuid + '.bin'
+			symlink_or_copy(lib_install_dir, lib_name, sof_lib_dir, linkname)
+
 def install_platform(platform, sof_output_dir, platf_build_environ, platform_wconfig):
 
 	# Keep in sync with caller

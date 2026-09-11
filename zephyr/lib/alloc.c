@@ -258,8 +258,8 @@ static void *l3_heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t by
 
 #if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 	sys_heap_runtime_stats_get(&h->heap, &stats);
-	tr_info(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
-		stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
+	tr_dbg(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
+	       stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
 #endif
 
 	return ret;
@@ -422,8 +422,8 @@ static void *heap_alloc_aligned(struct k_heap *h, size_t min_align, size_t bytes
 
 #if CONFIG_SYS_HEAP_RUNTIME_STATS && CONFIG_IPC_MAJOR_4
 	sys_heap_runtime_stats_get(&h->heap, &stats);
-	tr_info(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
-		stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
+	tr_dbg(&zephyr_tr, "heap allocated: %u free: %u max allocated: %u",
+	       stats.allocated_bytes, stats.free_bytes, stats.max_allocated_bytes);
 #endif
 
 	return ret;

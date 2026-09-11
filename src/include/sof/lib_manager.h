@@ -94,6 +94,7 @@ enum {
 	LIB_MANAGER_DATA,
 	LIB_MANAGER_RODATA,
 	LIB_MANAGER_BSS,
+	LIB_MANAGER_EXPORT,
 	LIB_MANAGER_COLD,
 	LIB_MANAGER_COLDRODATA,
 	LIB_MANAGER_N_SEGMENTS,
@@ -118,6 +119,8 @@ struct lib_manager_module {
 	bool mapped;
 	bool domain_dp;
 	struct lib_manager_segment_desc segment[LIB_MANAGER_N_SEGMENTS];
+	uintptr_t vma_base;
+	size_t vma_size;
 };
 
 struct lib_manager_mod_ctx {

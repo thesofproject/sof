@@ -71,6 +71,38 @@ SOF_DEFINE_REG_UUID(kpb);
 
 SOF_DEFINE_REG_UUID(kpb_task);
 
+/* Cross-core keyword-detected notify slot: written by the detector (may be
+ * on a secondary core), polled by kpb_copy() on the KPB home core.
+ */
+static struct {
+	uint32_t pending;
+	uint32_t drain_req_ms;
+} __aligned(PLATFORM_DCACHE_ALIGN) kpb_notify_slot;
+
+void kpb_notify_request_drain(uint32_t drain_req_ms)
+{
+	kpb_notify_slot.drain_req_ms = drain_req_ms;
+	kpb_notify_slot.pending = 1;
+	dcache_writeback_region((__sparse_force void __sparse_cache *)&kpb_notify_slot,
+				sizeof(kpb_notify_slot));
+	LOG_INF("kpb_notify_request_drain: drain_req=%u ms", drain_req_ms);
+}
+
+bool kpb_notify_poll_drain(uint32_t *drain_req_ms)
+{
+	dcache_invalidate_region((__sparse_force void __sparse_cache *)&kpb_notify_slot,
+				 sizeof(kpb_notify_slot));
+	if (!kpb_notify_slot.pending)
+		return false;
+
+	*drain_req_ms = kpb_notify_slot.drain_req_ms;
+	kpb_notify_slot.pending = 0;
+	dcache_writeback_region((__sparse_force void __sparse_cache *)&kpb_notify_slot,
+				sizeof(kpb_notify_slot));
+	LOG_INF("kpb_notify_poll_drain: pending -> drain_req=%u ms", *drain_req_ms);
+	return true;
+}
+
 /* KPB private data, runtime data */
 struct comp_data {
 	enum kpb_state state; /**< current state of KPB component */
@@ -935,11 +967,19 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 #endif /* CONFIG_IPC_MAJOR_4 */
 
+#if CONFIG_IPC_MAJOR_4
+	/* On IPC4 sel_sink is populated by kpb_bind() when the detector
+	 * pipeline connects, which may happen after WoV Capture is prepared.
+	 */
+	if (!kpb->sel_sink)
+		comp_info(dev, "sel_sink not yet bound; will be set by kpb_bind()");
+#else
 	if (!kpb->sel_sink) {
 		comp_err(dev, "could not find sink: sel_sink %p",
 			 kpb->sel_sink);
 		ret = -EIO;
 	}
+#endif
 
 	kpb->sync_draining_mode = true;
 
@@ -1229,13 +1269,47 @@ static int kpb_copy(struct comp_dev *dev)
 
 	switch (kpb->state) {
 	case KPB_STATE_RUN:
+		/* Cross-core keyword-detected poll: if the detector requested
+		 * draining while we were in RUN state, kick off draining here.
+		 */
+		{
+			uint32_t drain_ms;
+
+			if (kpb_notify_poll_drain(&drain_ms)) {
+				struct kpb_client cli = {
+					.id = 0,
+					.drain_req = drain_ms,
+					.r_ptr = NULL,
+					.sink = NULL,
+				};
+
+				kpb_init_draining(dev, &cli);
+			}
+		}
 		/* In normal RUN state we simply copy to our sink. */
 		sink = kpb->sel_sink;
 		ret = PPL_STATUS_PATH_STOP;
 
 		if (!sink) {
-			comp_err(dev, "no sink.");
-			ret = -EINVAL;
+			/* IPC4: detector pipeline may not be bound yet.
+			 * Buffer input into history and drop downstream copy.
+			 */
+			copy_bytes = audio_stream_get_avail_bytes(&source->stream);
+			if (copy_bytes) {
+				if (copy_bytes <= kpb->hd.buffer_size) {
+					ret = kpb_buffer_data(dev, source, copy_bytes);
+					if (ret) {
+						comp_err(dev, "internal buffering failed.");
+						break;
+					}
+					kpb->hd.buffered +=
+						MIN(kpb->hd.buffer_size -
+							kpb->hd.buffered,
+						    copy_bytes);
+				}
+				comp_update_buffer_consume(source, copy_bytes);
+			}
+			ret = PPL_STATUS_PATH_STOP;
 			break;
 		}
 
@@ -1320,15 +1394,22 @@ static int kpb_copy(struct comp_dev *dev)
 		sink = kpb->host_sink;
 
 		if (!sink) {
-			comp_err(dev, "no sink.");
-			ret = -EINVAL;
+			/* Host copier tore down (e.g. arecord stopped).
+			 * Transition back to RUN so the KPB pipeline can
+			 * be paused/reset cleanly by the kernel instead of
+			 * failing xrun recovery.
+			 */
+			comp_info(dev, "host_sink gone, back to RUN");
+			kpb_change_state(kpb, KPB_STATE_RUN);
+			ret = 0;
 			break;
 		}
 
 		/* Validate sink */
 		if (!audio_stream_get_wptr(&sink->stream)) {
-			comp_err(dev, "invalid host sink pointers.");
-			ret = -EINVAL;
+			comp_info(dev, "host_sink stream not ready, back to RUN");
+			kpb_change_state(kpb, KPB_STATE_RUN);
+			ret = 0;
 			break;
 		}
 

@@ -7,6 +7,7 @@
 
 #include <ipc4/ams_helpers.h>
 #include <sof/audio/component.h>
+#include <rtos/symbol.h>
 
 #if CONFIG_AMS
 
@@ -75,5 +76,9 @@ void ams_helper_prepare_payload(const struct comp_dev *dev,
 	payload->message_length = message_size;
 	payload->message = message;
 }
+
+EXPORT_SYMBOL(ams_helper_register_producer);
+EXPORT_SYMBOL(ams_helper_unregister_producer);
+EXPORT_SYMBOL(ams_helper_prepare_payload);
 
 #endif /* CONFIG_AMS */
