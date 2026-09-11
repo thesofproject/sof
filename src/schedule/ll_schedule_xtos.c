@@ -186,7 +186,7 @@ static inline void dsp_load_check(struct task *task, uint32_t cycles0, uint32_t 
 		task->cycles_cnt = 0;
 	}
 }
-#endif
+#endif /* CONFIG_SCHEDULE_LOG_CYCLE_STATISTICS */
 
 static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 {
@@ -724,7 +724,7 @@ out:
 
 	return 0;
 }
-#endif
+#endif /* CONFIG_SCHEDULE_LL_NO_RESCHEDULE_TASK */
 
 #if CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY
 static void scheduler_free_ll(void *data, uint32_t flags)
@@ -742,7 +742,7 @@ static void scheduler_free_ll(void *data, uint32_t flags)
 
 	irq_local_enable(irq_flags);
 }
-#endif
+#endif /* CONFIG_SOF_BOOT_TEST_STANDALONE || CONFIG_LIBRARY */
 
 static void ll_scheduler_recalculate_tasks(struct ll_schedule_data *sch,
 					   struct clock_notify_data *clk_data)

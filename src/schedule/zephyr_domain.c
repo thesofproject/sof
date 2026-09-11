@@ -124,7 +124,7 @@ static void zephyr_domain_thread_fn(void *p1, void *p2, void *p3)
 					       &zephyr_domain->block_mutex, K_FOREVER);
 			k_mutex_unlock(&zephyr_domain->block_mutex);
 		}
-#endif
+#endif /* CONFIG_CROSS_CORE_STREAM */
 
 		if (dt->handler)
 			dt->handler(dt->arg);
@@ -562,7 +562,7 @@ static void zephyr_domain_unblock(struct ll_schedule_domain *domain)
 	k_condvar_broadcast(&zephyr_domain->block_condvar);
 	k_mutex_unlock(&zephyr_domain->block_mutex);
 }
-#endif
+#endif /* CONFIG_CROSS_CORE_STREAM */
 
 APP_TASK_DATA static const struct ll_schedule_domain_ops zephyr_domain_ops = {
 #ifdef CONFIG_SOF_USERSPACE_LL

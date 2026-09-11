@@ -97,7 +97,7 @@ static inline void ipc4_send_reply(struct ipc4_message_reply *reply)
 	ret = memcpy_s(ipc->comp_data, sizeof(*reply), reply, sizeof(*reply));
 	assert(!ret);
 }
-#else
+#else /* CONFIG_LIBRARY */
 static inline struct ipc4_message_request *ipc4_get_message_request(void)
 {
 	/* ignoring _hdr as it does not contain valid data in IPC4/IDC case */
@@ -112,7 +112,7 @@ static inline void ipc4_send_reply(struct ipc4_message_reply *reply)
 	ipc_msg_send(&msg_reply, data, true);
 }
 
-#endif
+#endif /* CONFIG_LIBRARY */
 
 __cold static bool is_any_ppl_active(void)
 {
@@ -186,7 +186,7 @@ void z_vrfy_ipc_compound_post_start(uint32_t msg_id, int ret, bool delayed)
 	z_impl_ipc_compound_post_start(msg_id, ret, delayed);
 }
 #include <zephyr/syscalls/ipc_compound_post_start_mrsh.c>
-#endif
+#endif /* CONFIG_USERSPACE */
 
 void ipc_compound_msg_done(uint32_t msg_id, int error)
 {
@@ -247,7 +247,7 @@ int z_vrfy_ipc_wait_for_compound_msg(void)
 }
 #include <zephyr/syscalls/ipc_wait_for_compound_msg_mrsh.c>
 #endif
-#endif
+#endif /* CONFIG_LIBRARY */
 
 #if CONFIG_LIBRARY_MANAGER
 __cold static int ipc4_load_library(struct ipc4_message_request *ipc4)
@@ -266,7 +266,7 @@ __cold static int ipc4_load_library(struct ipc4_message_request *ipc4)
 
 	return IPC4_SUCCESS;
 }
-#endif
+#endif /* CONFIG_LIBRARY_MANAGER */
 
 static int ipc4_process_glb_message(struct ipc4_message_request *ipc4)
 {
@@ -564,7 +564,7 @@ void ipc_send_buffer_status_notify(void)
 
 	ipc_msg_send(&msg_notify, NULL, true);
 }
-#endif
+#endif /* CONFIG_LOG_BACKEND_ADSP_MTRACE */
 
 void z_impl_ipc_msg_reply(struct sof_ipc_reply *reply)
 {

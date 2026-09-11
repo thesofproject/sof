@@ -225,7 +225,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 			}
 		}
 	}
-#endif
+#endif /* defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0) */
 		break;
 	case SOF_DAI_AMD_SDW:
 #if defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0)
@@ -265,7 +265,7 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 		pin_data->instance = DAI_INDEX_INVALID;
 		dev_data->dai_index_ptr = pin_data;
 	}
-#endif
+#endif /* defined(CONFIG_AMD) && !defined(CONFIG_SOC_ACP_6_0) */
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
 		break;
@@ -390,7 +390,7 @@ void dai_dma_release(struct dai_data *dd, struct comp_dev *dev)
 		dd->chan->dev_data = NULL;
 		dd->chan = NULL;
 	}
-#endif
+#endif /* CONFIG_ZEPHYR_NATIVE_DRIVERS */
 }
 
 int dai_config(struct dai_data *dd, struct comp_dev *dev, struct ipc_config_dai *common_config,

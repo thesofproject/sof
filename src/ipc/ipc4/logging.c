@@ -260,7 +260,7 @@ int ipc4_logging_enable_logs(bool first_block,
 	return IPC4_UNKNOWN_MESSAGE_TYPE;
 }
 
-#endif
+#endif /* CONFIG_LOG_BACKEND_ADSP_MTRACE */
 
 int ipc4_logging_shutdown(void)
 {

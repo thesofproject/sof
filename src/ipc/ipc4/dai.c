@@ -74,7 +74,7 @@ void dai_set_link_hda_config(uint16_t *link_config,
 		return;
 	}
 	*link_config = link_cfg.full;
-#endif
+#endif /* ACE_VERSION > ACE_VERSION_1_5 */
 }
 
 int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void *spec_config)

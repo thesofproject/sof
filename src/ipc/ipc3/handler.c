@@ -191,7 +191,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 
 	return true;
 }
-#endif
+#endif /* CONFIG_HOST_PTABLE */
 
 /* allocate a new stream */
 static int ipc_stream_pcm_params(uint32_t stream)
@@ -305,7 +305,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	}
 
 pipe_params:
-#endif
+#endif /* CONFIG_HOST_PTABLE */
 
 	/* configure pipeline audio params */
 	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd,
@@ -694,7 +694,7 @@ static int ipc_pm_context_save(uint32_t header)
 
 	/* write the context to the host driver */
 	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
-#endif
+#endif /* !defined(CONFIG_LIBRARY) && !defined(CONFIG_ZEPHYR_POSIX) */
 	ipc_get()->pm_prepare_D3 = 1;
 
 	return 0;
@@ -866,7 +866,7 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	/* host buffer size for DMA trace */
 	dmat->host_size = params.buffer.size;
-#endif
+#endif /* CONFIG_HOST_PTABLE */
 
 	err = dma_trace_enable(dmat);
 	if (err < 0) {
@@ -956,7 +956,7 @@ static int ipc_glb_trace_message(uint32_t header)
 		return -EINVAL;
 	}
 }
-#else
+#else /* CONFIG_TRACE */
 static int ipc_glb_trace_message(uint32_t header)
 {
 	/* Return success, as the protocol provides no way to inform
@@ -965,7 +965,7 @@ static int ipc_glb_trace_message(uint32_t header)
 	 */
 	return 0;
 }
-#endif
+#endif /* CONFIG_TRACE */
 
 static int ipc_glb_gdb_debug(uint32_t header)
 {
@@ -1174,14 +1174,14 @@ static int ipc_glb_probe(uint32_t header)
 		return -EINVAL;
 	}
 }
-#else
+#else /* CONFIG_PROBE */
 static inline int ipc_glb_probe(uint32_t header)
 {
 	ipc_cmd_err(&ipc_tr, "Probes not enabled by Kconfig.");
 
 	return -EINVAL;
 }
-#endif
+#endif /* CONFIG_PROBE */
 
 /*
  * Topology IPC Operations.
@@ -1490,7 +1490,7 @@ struct ipc_cmd_hdr *ipc_compact_read_msg(void)
 
 	return NULL;
 }
-#endif
+#endif /* CONFIG_CAVS */
 
 /* prepare the message using ABI major layout */
 struct ipc_cmd_hdr *ipc_prepare_to_send(const struct ipc_msg *msg)
@@ -1539,7 +1539,7 @@ static int ipc_fw_ready(void)
 	 *	contiguously in the hostbox)
 	 */
 	return platform_boot_complete(0);
-#else
+#else /* CONFIG_IMX93_A55 */
 	/* any other platform should not receive SOF_IPC_FW_READY from host */
 	return -EINVAL;
 #endif /* CONFIG_IMX93_A55 */

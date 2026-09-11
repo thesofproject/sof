@@ -198,7 +198,7 @@ static int llext_manager_rm_partition(struct k_mem_domain *domain,
 	tr_dbg(&lib_manager_tr, "remove %#zx @ %lx partition", part.size, part.start);
 	return k_mem_domain_remove_partition(domain, &part);
 }
-#endif
+#endif /* CONFIG_USERSPACE */
 
 static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr,
 						  const struct llext *ext,
@@ -230,7 +230,7 @@ static void llext_manager_unmap_detached_sections(const struct llext_loader *ldr
 							    ((uint8_t *)region_addr + s_offset),
 							    shdr->sh_size, 0);
 	}
-#endif
+#endif /* CONFIG_MMU */
 }
 
 #ifdef CONFIG_USERSPACE
@@ -1116,7 +1116,7 @@ int llext_manager_rm_domain(const uint32_t component_id, struct k_mem_domain *do
 
 	return llext_manager_rm_mod_domain(mctx, domain);
 }
-#endif
+#endif /* CONFIG_USERSPACE */
 
 int llext_manager_free_module(const uint32_t component_id)
 {

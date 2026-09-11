@@ -689,4 +689,4 @@ void z_vrfy_scheduler_dp_internal_free(struct task *task)
 	return z_impl_scheduler_dp_internal_free(task);
 }
 #include <zephyr/syscalls/scheduler_dp_internal_free_mrsh.c>
-#endif
+#endif /* CONFIG_USERSPACE */
