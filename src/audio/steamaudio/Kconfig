@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config COMP_STEAMAUDIO
+	tristate "Steam Audio spatial offload component"
+	default y
+	help
+	  Select for Steam Audio spatial audio offload component.
+	  Provides 3D binaural HRTF spatialization, direct sound modeling,
+	  3-band biquad IIR filtering, 8-channel Householder Feedback Delay
+	  Network (FDN) reverberation, 1st-order Ambisonics rotation/decoding,
+	  and on-chip DSP BVH ray tracing for real-time room acoustic simulation.
