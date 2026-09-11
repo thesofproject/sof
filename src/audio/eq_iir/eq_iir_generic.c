@@ -431,6 +431,87 @@ static void eq_iir_init_delay(struct iir_state_df1 *iir,
 	}
 }
 
+#if CONFIG_FORMAT_FLOAT
+void eq_iir_float_default(struct processing_module *mod, struct input_stream_buffer *bsource,
+			  struct output_stream_buffer *bsink, uint32_t frames)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct audio_stream *source = bsource->data;
+	struct audio_stream *sink = bsink->data;
+	const int nch = audio_stream_get_channels(source);
+	const int samples = frames * nch;
+	int processed = 0;
+
+	float *x = audio_stream_get_rptr(source);
+	float *y = audio_stream_get_wptr(sink);
+
+	while (processed < samples) {
+		const int nmax = samples - processed;
+		const int n1 = audio_stream_bytes_without_wrap(source, x) >> 2;
+		const int n2 = audio_stream_bytes_without_wrap(sink, y) >> 2;
+		int n = MIN(n1, n2);
+		n = MIN(n, nmax);
+
+		for (int i = 0; i < nch; i++) {
+			float *x0 = x + i;
+			float *y0 = y + i;
+			struct iir_state_df1_float *filter = &cd->iir_float[i];
+
+			if (!filter->biquads) {
+				for (int j = 0; j < n; j += nch) {
+					*y0 = *x0;
+					x0 += nch;
+					y0 += nch;
+				}
+				continue;
+			}
+
+			const float *coefp = filter->coef;
+			float *delay = filter->delay;
+			const unsigned int nbiquads = filter->biquads;
+
+			for (int j = 0; j < n; j += nch) {
+				float in = *x0;
+				int c = 0;
+				int d = 0;
+
+				for (unsigned int b = 0; b < nbiquads; b++) {
+					const float b0 = coefp[c + 0];
+					const float b1 = coefp[c + 1];
+					const float b2 = coefp[c + 2];
+					const float a1 = coefp[c + 3];
+					const float a2 = coefp[c + 4];
+
+					const float x1 = delay[d + 0];
+					const float x2 = delay[d + 1];
+					const float y1 = delay[d + 2];
+					const float y2 = delay[d + 3];
+
+					float out = b0 * in + b1 * x1 + b2 * x2 + a1 * y1 + a2 * y2;
+
+					delay[d + 1] = x1;
+					delay[d + 0] = in;
+					delay[d + 3] = y1;
+					delay[d + 2] = out;
+
+					in = out;
+					c += 5;
+					d += 4;
+				}
+
+				*y0 = in;
+				x0 += nch;
+				y0 += nch;
+			}
+		}
+
+		processed += n;
+		x = audio_stream_wrap(source, x + n);
+		y = audio_stream_wrap(sink, y + n);
+	}
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 void eq_iir_free_delaylines(struct processing_module *mod)
 {
 	struct comp_data *cd = module_get_private_data(mod);
@@ -445,6 +526,17 @@ void eq_iir_free_delaylines(struct processing_module *mod)
 	cd->iir_delay_size = 0;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir[i].delay = NULL;
+
+#if CONFIG_FORMAT_FLOAT
+	mod_free(mod, cd->iir_delay_float);
+	mod_free(mod, cd->iir_coef_float);
+	cd->iir_delay_float = NULL;
+	cd->iir_coef_float = NULL;
+	cd->iir_delay_float_size = 0;
+	cd->iir_coef_float_size = 0;
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		iir_reset_df1_float(&cd->iir_float[i]);
+#endif
 }
 
 void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsource,
@@ -455,6 +547,81 @@ void eq_iir_pass(struct processing_module *mod, struct input_stream_buffer *bsou
 
 	audio_stream_copy(source, 0, sink, 0, frames * audio_stream_get_channels(source));
 }
+
+#if CONFIG_FORMAT_FLOAT
+int eq_iir_setup_float(struct processing_module *mod, int nch)
+{
+	struct comp_data *cd = module_get_private_data(mod);
+	struct sof_eq_iir_config *config = cd->config;
+	struct sof_eq_iir_header *lookup[SOF_EQ_IIR_MAX_RESPONSES];
+	int32_t *assign_response;
+	int delay_size = 0;
+	int coef_size = 0;
+	int resp = 0;
+	int ret;
+
+	eq_iir_free_delaylines(mod);
+
+	if (nch > PLATFORM_MAX_CHANNELS)
+		return -EINVAL;
+
+	ret = eq_iir_walk_config(mod->dev, config, cd->config_size, lookup);
+	if (ret < 0)
+		return ret;
+
+	assign_response = ASSUME_ALIGNED(&config->data[0], 4);
+	for (int i = 0; i < nch; i++) {
+		if (i < config->channels_in_config)
+			resp = assign_response[i];
+
+		if (resp < 0 || resp >= config->number_of_responses) {
+			iir_reset_df1_float(&cd->iir_float[i]);
+			continue;
+		}
+
+		struct sof_eq_iir_header *eq = lookup[resp];
+		int ds = iir_delay_size_df1_float(eq);
+		int cs = iir_coef_size_df1_float(eq);
+		if (ds > 0 && cs > 0) {
+			delay_size += ds;
+			coef_size += cs;
+		}
+	}
+
+	if (!delay_size)
+		return 0;
+
+	cd->iir_delay_float = mod_zalloc(mod, delay_size);
+	cd->iir_coef_float = mod_zalloc(mod, coef_size);
+	if (!cd->iir_delay_float || !cd->iir_coef_float) {
+		eq_iir_free_delaylines(mod);
+		return -ENOMEM;
+	}
+
+	cd->iir_delay_float_size = delay_size;
+	cd->iir_coef_float_size = coef_size;
+	cd->iir_delay_size = delay_size; /* non-zero marks active */
+
+	float *delay_ptr = cd->iir_delay_float;
+	float *coef_ptr = cd->iir_coef_float;
+
+	for (int i = 0; i < nch; i++) {
+		if (i < config->channels_in_config)
+			resp = assign_response[i];
+
+		if (resp < 0 || resp >= config->number_of_responses) {
+			iir_reset_df1_float(&cd->iir_float[i]);
+			continue;
+		}
+
+		struct sof_eq_iir_header *eq = lookup[resp];
+		iir_init_coef_df1_float(&cd->iir_float[i], eq, &coef_ptr);
+		iir_init_delay_df1_float(&cd->iir_float[i], &delay_ptr);
+	}
+
+	return 0;
+}
+#endif
 
 int eq_iir_setup(struct processing_module *mod, int nch)
 {

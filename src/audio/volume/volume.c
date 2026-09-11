@@ -196,6 +196,46 @@ static uint32_t vol_zc_get_s32(struct cir_buf_source *source, const int channels
 
 #endif /* CONFIG_FORMAT_S32LE */
 
+#if CONFIG_FORMAT_FLOAT
+static uint32_t vol_zc_get_float(struct cir_buf_source *source, const int channels,
+				 uint32_t frames, int64_t *prev_sum)
+{
+	uint32_t curr_frames = frames;
+	const float *x = source->ptr;
+	int bytes;
+	int nmax;
+	int i, j, n;
+	int remaining_samples = frames * channels;
+
+	/* Go to last channel */
+	x = cir_buf_wrap((const char *)x + (remaining_samples - 1) * sizeof(float),
+			 source->buf_start, source->buf_end);
+	while (remaining_samples) {
+		bytes = cir_buf_bytes_without_wrap_rewind(x, source->buf_start);
+		nmax = (bytes / sizeof(float)) + 1;
+		n = MIN(nmax, remaining_samples);
+		for (i = 0; i < n; i += channels) {
+			float sum = 0.0f;
+			for (j = 0; j < channels; j++) {
+				sum += *x;
+				x--;
+			}
+
+			int32_t isum = (int32_t)(sum * 32768.0f);
+			if ((isum ^ *prev_sum) < 0)
+				return curr_frames;
+
+			*prev_sum = isum;
+			curr_frames--;
+		}
+		remaining_samples -= n;
+		x = source_cir_buf_rewind_wrap(x, source->buf_start, source->buf_end);
+	}
+
+	return frames;
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 /**
  * \brief Map of formats with dedicated zc functions.
  *
@@ -211,6 +251,9 @@ __cold_rodata static const struct comp_zc_func_map zc_func_map[] = {
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, vol_zc_get_s32 },
 #endif /* CONFIG_FORMAT_S32LE */
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, vol_zc_get_float },
+#endif /* CONFIG_FORMAT_FLOAT */
 };
 
 #if CONFIG_COMP_VOLUME_LINEAR_RAMP

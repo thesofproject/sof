@@ -295,6 +295,78 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
+#if CONFIG_FORMAT_FLOAT
+static void vol_float_to_float(struct processing_module *mod,
+			       struct cir_buf_source *source,
+			       struct cir_buf_sink *sink, uint32_t frames,
+			       uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	const float *x;
+	float *y;
+	int nmax, n, i, j;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
+	float vol_f[PLATFORM_MAX_CHANNELS];
+
+	for (j = 0; j < nch; j++) {
+#if COMP_VOLUME_Q8_16
+		vol_f[j] = (float)cd->volume[j] * (1.0f / 65536.0f);
+#elif COMP_VOLUME_Q1_31
+		vol_f[j] = (float)cd->volume[j] * (1.0f / 2147483648.0f);
+#else
+		vol_f[j] = (float)cd->volume[j] * (1.0f / 8388608.0f);
+#endif
+	}
+
+	x = source->ptr;
+	y = sink->ptr;
+	while (remaining_samples) {
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n = MIN(remaining_samples, nmax);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		n = MIN(n, nmax);
+		for (j = 0; j < nch; j++) {
+			const float *x0 = x + j;
+			float *y0 = y + j;
+			const float vol = vol_f[j];
+			for (i = 0; i < n; i += nch) {
+				y0[i] = x0[i] * vol;
+			}
+		}
+		remaining_samples -= n;
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+	}
+}
+
+static void vol_passthrough_float_to_float(struct processing_module *mod,
+					   struct cir_buf_source *source,
+					   struct cir_buf_sink *sink, uint32_t frames,
+					   uint32_t attenuation)
+{
+	struct vol_data *cd = module_get_private_data(mod);
+	const float *x;
+	float *y;
+	int nmax, n;
+	const int nch = cd->channels;
+	int remaining_samples = frames * nch;
+
+	x = source->ptr;
+	y = sink->ptr;
+	while (remaining_samples) {
+		nmax = cir_buf_samples_without_wrap_s32(x, source->buf_end);
+		n = MIN(remaining_samples, nmax);
+		nmax = cir_buf_samples_without_wrap_s32(y, sink->buf_end);
+		n = MIN(n, nmax);
+		memcpy_s(y, n * sizeof(float), x, n * sizeof(float));
+		remaining_samples -= n;
+		x = cir_buf_wrap(x + n, source->buf_start, source->buf_end);
+		y = cir_buf_wrap(y + n, sink->buf_start, sink->buf_end);
+	}
+}
+#endif /* CONFIG_FORMAT_FLOAT */
+
 const struct comp_func_map volume_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, vol_s16_to_s16, vol_passthrough_s16_to_s16},
@@ -304,6 +376,9 @@ const struct comp_func_map volume_func_map[] = {
 #endif
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, vol_s32_to_s32, vol_passthrough_s32_to_s32},
+#endif
+#if CONFIG_FORMAT_FLOAT
+	{ SOF_IPC_FRAME_FLOAT, vol_float_to_float, vol_passthrough_float_to_float},
 #endif
 };
 

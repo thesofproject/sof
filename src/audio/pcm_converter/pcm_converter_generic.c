@@ -222,10 +222,21 @@ static int pcm_convert_s16_to_s24(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S32_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = *src << 8;
-			src++;
-			dst++;
+		size_t n8 = n & ~7;
+		for (i = 0; i < n8; i += 8) {
+			dst[0] = (int32_t)src[0] << 8;
+			dst[1] = (int32_t)src[1] << 8;
+			dst[2] = (int32_t)src[2] << 8;
+			dst[3] = (int32_t)src[3] << 8;
+			dst[4] = (int32_t)src[4] << 8;
+			dst[5] = (int32_t)src[5] << 8;
+			dst[6] = (int32_t)src[6] << 8;
+			dst[7] = (int32_t)src[7] << 8;
+			src += 8;
+			dst += 8;
+		}
+		for (; i < n; i++) {
+			*dst++ = (int32_t)*src++ << 8;
 		}
 	}
 
@@ -249,10 +260,17 @@ static int pcm_convert_s24_to_s16(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S16_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src), 23, 15));
-			src++;
-			dst++;
+		size_t n4 = n & ~3;
+		for (i = 0; i < n4; i += 4) {
+			dst[0] = sat_int16(Q_SHIFT_RND(sign_extend_s24(src[0]), 23, 15));
+			dst[1] = sat_int16(Q_SHIFT_RND(sign_extend_s24(src[1]), 23, 15));
+			dst[2] = sat_int16(Q_SHIFT_RND(sign_extend_s24(src[2]), 23, 15));
+			dst[3] = sat_int16(Q_SHIFT_RND(sign_extend_s24(src[3]), 23, 15));
+			src += 4;
+			dst += 4;
+		}
+		for (; i < n; i++) {
+			*dst++ = sat_int16(Q_SHIFT_RND(sign_extend_s24(*src++), 23, 15));
 		}
 	}
 
@@ -280,10 +298,21 @@ static int pcm_convert_s16_to_s32(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S32_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = *src << 16;
-			src++;
-			dst++;
+		size_t n8 = n & ~7;
+		for (i = 0; i < n8; i += 8) {
+			dst[0] = (int32_t)src[0] << 16;
+			dst[1] = (int32_t)src[1] << 16;
+			dst[2] = (int32_t)src[2] << 16;
+			dst[3] = (int32_t)src[3] << 16;
+			dst[4] = (int32_t)src[4] << 16;
+			dst[5] = (int32_t)src[5] << 16;
+			dst[6] = (int32_t)src[6] << 16;
+			dst[7] = (int32_t)src[7] << 16;
+			src += 8;
+			dst += 8;
+		}
+		for (; i < n; i++) {
+			*dst++ = (int32_t)*src++ << 16;
 		}
 	}
 
@@ -307,10 +336,17 @@ static int pcm_convert_s32_to_s16(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S16_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = sat_int16(Q_SHIFT_RND(*src, 31, 15));
-			src++;
-			dst++;
+		size_t n4 = n & ~3;
+		for (i = 0; i < n4; i += 4) {
+			dst[0] = sat_int16(Q_SHIFT_RND(src[0], 31, 15));
+			dst[1] = sat_int16(Q_SHIFT_RND(src[1], 31, 15));
+			dst[2] = sat_int16(Q_SHIFT_RND(src[2], 31, 15));
+			dst[3] = sat_int16(Q_SHIFT_RND(src[3], 31, 15));
+			src += 4;
+			dst += 4;
+		}
+		for (; i < n; i++) {
+			*dst++ = sat_int16(Q_SHIFT_RND(*src++, 31, 15));
 		}
 	}
 
@@ -338,10 +374,21 @@ static int pcm_convert_s24_to_s32(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S32_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = *src << 8;
-			src++;
-			dst++;
+		size_t n8 = n & ~7;
+		for (i = 0; i < n8; i += 8) {
+			dst[0] = src[0] << 8;
+			dst[1] = src[1] << 8;
+			dst[2] = src[2] << 8;
+			dst[3] = src[3] << 8;
+			dst[4] = src[4] << 8;
+			dst[5] = src[5] << 8;
+			dst[6] = src[6] << 8;
+			dst[7] = src[7] << 8;
+			src += 8;
+			dst += 8;
+		}
+		for (; i < n; i++) {
+			*dst++ = *src++ << 8;
 		}
 	}
 
@@ -365,10 +412,17 @@ static int pcm_convert_s32_to_s24(const struct cir_buf_source *source,
 		n = MIN(n, nmax);
 		nmax = cir_buf_bytes_without_wrap(dst, sink->buf_end) >> BYTES_TO_S32_SAMPLES;
 		n = MIN(n, nmax);
-		for (i = 0; i < n; i++) {
-			*dst = sat_int24(Q_SHIFT_RND(*src, 31, 23));
-			src++;
-			dst++;
+		size_t n4 = n & ~3;
+		for (i = 0; i < n4; i += 4) {
+			dst[0] = sat_int24(Q_SHIFT_RND(src[0], 31, 23));
+			dst[1] = sat_int24(Q_SHIFT_RND(src[1], 31, 23));
+			dst[2] = sat_int24(Q_SHIFT_RND(src[2], 31, 23));
+			dst[3] = sat_int24(Q_SHIFT_RND(src[3], 31, 23));
+			src += 4;
+			dst += 4;
+		}
+		for (; i < n; i++) {
+			*dst++ = sat_int24(Q_SHIFT_RND(*src++, 31, 23));
 		}
 	}
 
@@ -458,7 +512,7 @@ static inline int32_t _pcm_shift(int32_t d, int32_t a)
  *            Use '0' for normal conversion to integers
  * \return (int32_t)src * 2**pow
  */
-static int32_t _pcm_convert_f_to_i(int32_t src, int32_t pow)
+static __maybe_unused int32_t _pcm_convert_f_to_i(int32_t src, int32_t pow)
 {
 	int32_t exponent, mantissa, dst;
 
@@ -492,7 +546,7 @@ static int32_t _pcm_convert_f_to_i(int32_t src, int32_t pow)
  *          operations library inclusion by compiler, when in whole topology
  *          only external component needs float input
  */
-static int32_t _pcm_convert_i_to_f(int32_t src, int32_t pow)
+static __maybe_unused int32_t _pcm_convert_i_to_f(int32_t src, int32_t pow)
 {
 	int sign, mantissa, exponent, dst, abs_clz;
 
@@ -512,6 +566,49 @@ static int32_t _pcm_convert_i_to_f(int32_t src, int32_t pow)
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && (CONFIG_PCM_CONVERTER_FORMAT_S16LE || CONFIG_PCM_CONVERTER_FORMAT_S24LE || CONFIG_PCM_CONVERTER_FORMAT_S32LE) */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S16LE
+#if CONFIG_FPU
+static inline int32_t float_to_int32_rnd(float val)
+{
+#if defined(__riscv) && defined(__riscv_flen)
+	int32_t res;
+	__asm__ ("fcvt.w.s %0, %1, rne" : "=r"(res) : "f"(val));
+	return res;
+#else
+	return (int32_t)(val >= 0.0f ? (val + 0.5f) : (val - 0.5f));
+#endif
+}
+
+static void pcm_convert_s16_to_f_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const int16_t *src = psrc;
+	float *dst = pdst;
+	const float scale = 1.0f / 32768.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = (float)src[i] * scale;
+}
+
+static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const float *src = psrc;
+	int16_t *dst = pdst;
+	const float scale = 32768.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++) {
+		float val = src[i] * scale;
+		if (val >= 32767.0f)
+			dst[i] = 32767;
+		else if (val <= -32768.0f)
+			dst[i] = -32768;
+		else
+			dst[i] = (int16_t)float_to_int32_rnd(val);
+	}
+}
+#else
 static void pcm_convert_s16_to_f_lin(const void *psrc, void *pdst,
 				     size_t samples)
 {
@@ -537,6 +634,7 @@ static void pcm_convert_f_to_s16_lin(const void *psrc, void *pdst,
 	for (i = 0; i < samples; i++)
 		dst[i] = sat_int16(_pcm_convert_f_to_i(src[i], 15));
 }
+#endif
 
 static int pcm_convert_s16_to_f(const struct cir_buf_source *source,
 				uint32_t src_channels, struct cir_buf_sink *sink,
@@ -556,6 +654,38 @@ static int pcm_convert_f_to_s16(const struct cir_buf_source *source,
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S16LE */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S24LE
+#if CONFIG_FPU
+static void pcm_convert_s24_to_f_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const int32_t *src = psrc;
+	float *dst = pdst;
+	const float scale = 1.0f / 8388608.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = (float)sign_extend_s24(src[i]) * scale;
+}
+
+static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const float *src = psrc;
+	int32_t *dst = pdst;
+	const float scale = 8388608.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++) {
+		float val = src[i] * scale;
+		if (val >= 8388607.0f)
+			dst[i] = 8388607;
+		else if (val <= -8388608.0f)
+			dst[i] = -8388608;
+		else
+			dst[i] = float_to_int32_rnd(val);
+	}
+}
+#else
 static void pcm_convert_s24_to_f_lin(const void *psrc, void *pdst,
 				     size_t samples)
 {
@@ -581,6 +711,7 @@ static void pcm_convert_f_to_s24_lin(const void *psrc, void *pdst,
 	for (i = 0; i < samples; i++)
 		dst[i] = sat_int24(_pcm_convert_f_to_i(src[i], 23));
 }
+#endif
 
 static int pcm_convert_s24_to_f(const struct cir_buf_source *source,
 				uint32_t src_channels, struct cir_buf_sink *sink,
@@ -600,6 +731,38 @@ static int pcm_convert_f_to_s24(const struct cir_buf_source *source,
 #endif /* CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S24LE */
 
 #if CONFIG_PCM_CONVERTER_FORMAT_FLOAT && CONFIG_PCM_CONVERTER_FORMAT_S32LE
+#if CONFIG_FPU
+static void pcm_convert_s32_to_f_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const int32_t *src = psrc;
+	float *dst = pdst;
+	const float scale = 1.0f / 2147483648.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++)
+		dst[i] = (float)src[i] * scale;
+}
+
+static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
+				     size_t samples)
+{
+	const float *src = psrc;
+	int32_t *dst = pdst;
+	const float scale = 2147483648.0f;
+	size_t i;
+
+	for (i = 0; i < samples; i++) {
+		float val = src[i] * scale;
+		if (val >= 2147483647.0f)
+			dst[i] = 2147483647;
+		else if (val <= -2147483648.0f)
+			dst[i] = -2147483648LL;
+		else
+			dst[i] = float_to_int32_rnd(val);
+	}
+}
+#else
 static void pcm_convert_s32_to_f_lin(const void *psrc, void *pdst,
 				     size_t samples)
 {
@@ -625,6 +788,7 @@ static void pcm_convert_f_to_s32_lin(const void *psrc, void *pdst,
 	for (i = 0; i < samples; i++)
 		dst[i] = _pcm_convert_f_to_i(src[i], 31);
 }
+#endif
 
 static int pcm_convert_s32_to_f(const struct cir_buf_source *source,
 				uint32_t src_channels, struct cir_buf_sink *sink,

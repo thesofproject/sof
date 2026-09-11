@@ -230,7 +230,7 @@ int lib_manager_mod_create_priv(const struct comp_driver *drv,
 				struct userspace_context **userspace,
 				const struct module_interface **ops);
 
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_USERSPACE) && defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall int lib_manager_free_module(const uint32_t component_id);
 
 #include <zephyr/syscalls/lib_manager.h>

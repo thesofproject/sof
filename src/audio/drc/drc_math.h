@@ -78,6 +78,52 @@ static inline int32_t drc_asin_fixed(int32_t x)
 }
 #endif /* DRC_USE_CORDIC_ASIN */
 
+#elif SOF_USE_RISCV_SIMD(DRC)
+
+#define PI_OVER_TWO_Q30 1686629713 /* Q_CONVERT_FLOAT(1.57079632679489661923, 30); pi/2 */
+#define TWO_OVER_PI_Q30 683565248  /* Q_CONVERT_FLOAT(0.63661977236758134, 30); 2/pi */
+
+static inline int32_t drc_get_lshift(int32_t qa, int32_t qb, int32_t qy)
+{
+	return qy - qa - qb + 31;
+}
+
+static inline int32_t drc_mult_lshift(int32_t a, int32_t b, int32_t lshift)
+{
+	int64_t prod = ((int64_t)a) * b;
+	int32_t shift_r = 31 - lshift;
+
+	if (shift_r > 0) {
+		prod += (1LL << (shift_r - 1));
+		prod >>= shift_r;
+	} else if (shift_r < 0) {
+		prod <<= (-shift_r);
+	}
+	if (prod > INT32_MAX)
+		return INT32_MAX;
+	if (prod < INT32_MIN)
+		return INT32_MIN;
+	return (int32_t)prod;
+}
+
+static inline int32_t drc_sin_fixed(int32_t x)
+{
+	const int32_t lshift = drc_get_lshift(30, 30, 28);
+	int32_t denorm_x = drc_mult_lshift(x, PI_OVER_TWO_Q30, lshift);
+
+	return sofm_lut_sin_fixed_16b(denorm_x) << 16;
+}
+
+#ifdef DRC_USE_CORDIC_ASIN
+static inline int32_t drc_asin_fixed(int32_t x)
+{
+	const int32_t lshift = drc_get_lshift(30, 30, 30);
+	int32_t asin_val = asin_fixed_16b(x);
+
+	return drc_mult_lshift(asin_val << 16, TWO_OVER_PI_Q30, lshift);
+}
+#endif /* DRC_USE_CORDIC_ASIN */
+
 #else
 
 /*

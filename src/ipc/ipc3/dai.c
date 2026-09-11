@@ -49,6 +49,8 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	case SOF_DAI_INTEL_SSP:
 		COMPILER_FALLTHROUGH;
 	case SOF_DAI_INTEL_DMIC:
+	case SOF_DAI_ESP32_I2S:
+	case SOF_DAI_ESP32_PDM:
 		channel = 0;
 		break;
 	case SOF_DAI_INTEL_HDA:
@@ -268,6 +270,10 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 #endif
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
+		break;
+	case SOF_DAI_ESP32_I2S:
+	case SOF_DAI_ESP32_PDM:
+		dd->config.burst_elems = 16;
 		break;
 	default:
 		/* other types of DAIs not handled for now */

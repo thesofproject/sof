@@ -1026,8 +1026,13 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	uint32_t frames;
 	int ret;
 
-	frames = audio_stream_avail_frames_aligned(&mod->source_comp_buffer->stream,
-						   &mod->sink_comp_buffer->stream);
+	if (!mod->sink_comp_buffer->sink) {
+		frames = audio_stream_get_avail_frames(&mod->source_comp_buffer->stream);
+	} else {
+		frames = audio_stream_avail_frames_aligned(&mod->source_comp_buffer->stream,
+							   &mod->sink_comp_buffer->stream);
+	}
+
 	mod->input_buffers[0].size = frames;
 	mod->input_buffers[0].consumed = 0;
 	mod->input_buffers[0].data = &mod->source_comp_buffer->stream;
@@ -1045,7 +1050,7 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	/* Note: Source buffer state is not checked to enable mixout to generate zero
 	 * PCM codes when source is not active.
 	 */
-	if (comp_buffer_get_sink_state(mod->sink_comp_buffer) == dev->state)
+	if (!mod->sink_comp_buffer->sink || comp_buffer_get_sink_state(mod->sink_comp_buffer) == dev->state)
 		num_output_buffers = 1;
 
 	ret = module_process_legacy(mod, mod->input_buffers, 1,
@@ -1062,8 +1067,12 @@ static int module_adapter_audio_stream_copy_1to1(struct comp_dev *dev)
 	if (!mod->skip_sink_buffer_writeback) /* TODO: add mod->is_multi_core && optimization */
 		buffer_stream_writeback(mod->sink_comp_buffer, mod->output_buffers[0].size);
 
-	if (mod->output_buffers[0].size)
+	if (mod->output_buffers[0].size) {
 		comp_update_buffer_produce(mod->sink_comp_buffer, mod->output_buffers[0].size);
+		if (!mod->sink_comp_buffer->sink) {
+			comp_update_buffer_consume(mod->sink_comp_buffer, mod->output_buffers[0].size);
+		}
+	}
 
 	return ret;
 }

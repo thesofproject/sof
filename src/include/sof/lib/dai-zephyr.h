@@ -306,9 +306,7 @@ void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev);
  */
 void dai_release_llp_slot(struct dai_data *dd);
 
-/**
- * \brief Retrieve a pointer to the Zephyr device structure for a DAI of a given type and index.
- */
+#if defined(CONFIG_USERSPACE)
 __syscall const struct device *dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
 
 /**
@@ -320,5 +318,10 @@ const struct device **dai_get_device_list(size_t *count);
 /** @}*/
 
 #include <zephyr/syscalls/dai-zephyr.h>
+#else
+const struct device *z_impl_dai_get_device(enum sof_ipc_dai_type type, uint32_t index);
+#define dai_get_device z_impl_dai_get_device
+const struct device **dai_get_device_list(size_t *count);
+#endif
 
 #endif /* __SOF_LIB_DAI_ZEPHYR_H__ */

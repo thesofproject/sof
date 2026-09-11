@@ -37,4 +37,10 @@ choice "DRC_SIMD_LEVEL_SELECT"
 		bool
 		help
 			This option used to build DRC generic code.
+
+	config DRC_RISCV_SIMD
+		prompt "choose RISC-V SIMD optimized DRC module"
+		bool
+		help
+			This option used to build RISC-V SIMD optimized DRC code
 endchoice

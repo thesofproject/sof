@@ -8,6 +8,10 @@ if(CONFIG_ZEPHYR_POSIX)
 	set(ARCH host)
 	set(PLATFORM "posix")
 	set(PLATFORM_HEADERS "posix")
+elseif(CONFIG_PLATFORM_ESP32P4)
+	set(ARCH host)
+	set(PLATFORM "esp32p4")
+	set(PLATFORM_HEADERS "esp32p4")
 else()
 	# firmware build supports only xtensa arch for now
 	set(ARCH xtensa)
@@ -174,6 +178,7 @@ target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/include)
 target_include_directories(SOF INTERFACE ${SOF_SRC_PATH}/arch/${ARCH}/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/third_party/include)
 target_include_directories(SOF INTERFACE ${sof_top_dir}/zephyr/include)
+target_include_directories(SOF INTERFACE ${PROJECT_BINARY_DIR}/include/generated)
 
 # SOF module init
 zephyr_library_named(modules_sof)
@@ -196,7 +201,7 @@ zephyr_include_directories(${SOF_SRC_PATH}/include/sof/audio/module_adapter/libr
 
 # XTOS duplicate in sof/scripts/misc.cmake; keep in sync
 macro(is_zephyr ret)
-	if(CONFIG_ZEPHYR_SOF_MODULE)
+	if(CONFIG_ZEPHYR_SOF_MODULE OR CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 		set(${ret} TRUE)
 	else()
 		set(${ret} FALSE)
@@ -223,6 +228,41 @@ macro(sof_list_append_ifdef feature_toggle list)
     list(APPEND ${list} ${ARGN})
   endif()
 endmacro()
+
+# Setup SOF directories
+set(SOF_ROOT_SOURCE_DIRECTORY ${sof_top_dir})
+set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# This generated/ directory is shared with Zephyr.
+# PROJECT_BINARY_DIR is build/zephyr/
+set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
+file(MAKE_DIRECTORY ${GENERATED_DIRECTORY})
+
+set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
+
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(PYTHON3 "${Python3_EXECUTABLE}")
+set(PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
+
+if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
+target_compile_options(SOF INTERFACE -fno-inline-functions)
+endif()
+
+# SOF needs `typeof`, `__VA_ARGS__` and maybe other GNU C99
+# extensions. TODO other flags required ?
+target_compile_options(SOF INTERFACE $<$<COMPILE_LANGUAGE:C,ASM>: -std=gnu99>)
+
+# Toolchain info
+add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_FLAGS="${OPTIMIZATION_FLAG}")
+
+# create version information
+include(../scripts/cmake/version.cmake)
+
+include(../scripts/cmake/uuid-registry.cmake)
+add_dependencies(modules_sof uuid_reg_h)
+if(TARGET app)
+	add_dependencies(app uuid_reg_h)
+endif()
 
 # directories with auxiliary modules need to be listed first
 # - llext dependencies need to added to linkage first
@@ -422,6 +462,18 @@ if (CONFIG_SOC_MIMX9352_A55)
 	set(PLATFORM "imx93_a55")
 endif()
 
+if (CONFIG_PLATFORM_ESP32P4)
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/esp32p4/platform.c
+		${SOF_PLATFORM_PATH}/esp32p4/esp32p4_pipeline_def.c
+		${SOF_PLATFORM_PATH}/esp32p4/lib/clk.c
+		lib/dma.c
+	)
+
+	set(PLATFORM "esp32p4")
+	zephyr_include_directories(${SOF_PLATFORM_PATH}/esp32p4/include)
+endif()
+
 if (CONFIG_SOC_MIMX9596_M7)
 
 	zephyr_library_sources(
@@ -616,9 +668,9 @@ zephyr_library_sources_ifdef(CONFIG_SOF_BOOT_TEST
        boot_test.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_SHELL
-       sof_shell.c
-)
+if (CONFIG_SHELL AND NOT CONFIG_PLATFORM_ESP32P4)
+       zephyr_library_sources(sof_shell.c)
+endif()
 
 zephyr_syscall_header(include/sof/lib/cpu.h)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE syscall/cpu.c)
@@ -646,35 +698,6 @@ target_link_libraries(SOF INTERFACE zephyr_interface)
 
 # Linker snippet for the UUID table
 zephyr_linker_sources("ROM_SECTIONS" uuid-snippet.ld)
-
-# Setup SOF directories
-set(SOF_ROOT_SOURCE_DIRECTORY ${sof_top_dir})
-set(SOF_ROOT_BINARY_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# This generated/ directory is shared with Zephyr.
-# PROJECT_BINARY_DIR is build/zephyr/
-set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/include/generated)
-
-set(VERSION_H_PATH ${GENERATED_DIRECTORY}/sof_versions.h)
-
-find_package(Python3 COMPONENTS Interpreter)
-set(PYTHON3 "${Python3_EXECUTABLE}")
-
-if (NOT CONFIG_COMPILER_INLINE_FUNCTION_OPTION)
-target_compile_options(SOF INTERFACE -fno-inline-functions)
-endif()
-
-# SOF needs `typeof`, `__VA_ARGS__` and maybe other GNU C99
-# extensions. TODO other flags required ?
-target_compile_options(SOF INTERFACE $<$<COMPILE_LANGUAGE:C,ASM>: -std=gnu99>)
-
-# Toolchain info
-add_definitions(-DXCC_TOOLS_VERSION="${ZEPHYR_TOOLCHAIN_VARIANT}" -DCC_OPTIMIZE_FLAGS="${OPTIMIZATION_FLAG}")
-
-# create version information
-include(../scripts/cmake/version.cmake)
-
-include(../scripts/cmake/uuid-registry.cmake)
 
 # Create Trace realtive file paths
 sof_append_relative_path_definitions(modules_sof)

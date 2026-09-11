@@ -185,7 +185,7 @@ struct module_processing_data {
 /*****************************************************************************/
 int module_load_config(struct comp_dev *dev, const void *cfg, size_t size);
 int module_init(struct processing_module *mod);
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_USERSPACE) && defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall void *mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
 #else
 void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t alignment);
@@ -193,7 +193,7 @@ void *z_impl_mod_balloc_align(struct processing_module *mod, size_t size, size_t
 #endif
 void mod_resource_init(struct processing_module *mod);
 void mod_heap_info(struct processing_module *mod, size_t *size, uintptr_t *start);
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_USERSPACE) && defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall void *mod_alloc_ext(struct processing_module *mod, uint32_t flags, size_t size,
 			      size_t alignment);
 __syscall int mod_free(struct processing_module *mod, const void *ptr);
@@ -302,7 +302,7 @@ static inline void mod_ipc_msg_free(struct processing_module *mod,
 }
 
 #if CONFIG_COMP_BLOB
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_USERSPACE) && defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall struct comp_data_blob_handler *mod_data_blob_handler_new(struct processing_module *mod);
 #else
 struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processing_module *mod);
@@ -311,7 +311,7 @@ struct comp_data_blob_handler *z_impl_mod_data_blob_handler_new(struct processin
 void mod_data_blob_handler_free(struct processing_module *mod, struct comp_data_blob_handler *dbh);
 #endif
 #if CONFIG_FAST_GET
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_USERSPACE) && defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 __syscall const void *mod_fast_get(struct processing_module *mod, const void * const dram_ptr,
 				   size_t size);
 #else
@@ -546,7 +546,7 @@ static inline uint32_t module_get_lpt(struct processing_module *mod)
 	return mod->dev->period;
 }
 
-#if defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
+#if defined(CONFIG_USERSPACE) && defined(__ZEPHYR__) && defined(CONFIG_SOF_FULL_ZEPHYR_APPLICATION)
 #include <zephyr/syscalls/generic.h>
 #endif
 

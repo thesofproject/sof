@@ -49,8 +49,12 @@ static void crossover_reset_state(struct processing_module *mod)
 	struct comp_data *cd = module_get_private_data(mod);
 	int i;
 
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		crossover_reset_state_ch(mod, &cd->state[i]);
+#if CONFIG_FORMAT_FLOAT
+		crossover_reset_state_ch_float(mod, &cd->state_f[i]);
+#endif
+	}
 }
 
 /**
@@ -227,6 +231,88 @@ int crossover_init_coef_ch(struct processing_module *mod,
 	return 0;
 }
 
+#if CONFIG_FORMAT_FLOAT
+static int crossover_init_coef_lr4_float(struct processing_module *mod,
+					 struct sof_eq_iir_biquad *coef,
+					 struct iir_state_df1_float *lr4)
+{
+	const float inv_q30 = 1.0f / 1073741824.0f;
+	const float inv_q14 = 1.0f / 16384.0f;
+	float gain_factor;
+	float b_scale;
+	float b0, b1, b2, a1, a2;
+
+	lr4->coef = mod_zalloc(mod, 2 * 5 * sizeof(float));
+	if (!lr4->coef)
+		return -ENOMEM;
+
+	lr4->delay = mod_zalloc(mod, 2 * 4 * sizeof(float));
+	if (!lr4->delay) {
+		mod_free(mod, lr4->coef);
+		lr4->coef = NULL;
+		return -ENOMEM;
+	}
+
+	lr4->biquads = CROSSOVER_LR4_NUM_BIQUADS;
+	lr4->biquads_in_series = CROSSOVER_LR4_NUM_BIQUADS;
+
+	gain_factor = (float)coef->output_gain * inv_q14;
+	if (coef->output_shift > 0)
+		gain_factor /= (float)(1 << coef->output_shift);
+	else if (coef->output_shift < 0)
+		gain_factor *= (float)(1 << (-coef->output_shift));
+
+	b_scale = gain_factor * inv_q30;
+
+	b0 = (float)coef->b0 * b_scale;
+	b1 = (float)coef->b1 * b_scale;
+	b2 = (float)coef->b2 * b_scale;
+	a1 = (float)coef->a1 * inv_q30;
+	a2 = (float)coef->a2 * inv_q30;
+
+	/* Biquad 1 */
+	lr4->coef[0] = b0;
+	lr4->coef[1] = b1;
+	lr4->coef[2] = b2;
+	lr4->coef[3] = a1;
+	lr4->coef[4] = a2;
+
+	/* Biquad 2 (identical coefficients in series) */
+	lr4->coef[5] = b0;
+	lr4->coef[6] = b1;
+	lr4->coef[7] = b2;
+	lr4->coef[8] = a1;
+	lr4->coef[9] = a2;
+
+	return 0;
+}
+
+int crossover_init_coef_ch_float(struct processing_module *mod,
+				 struct sof_eq_iir_biquad *coef,
+				 struct crossover_state_float *ch_state,
+				 int32_t num_sinks)
+{
+	int32_t i;
+	int32_t j = 0;
+	int32_t num_lr4s = num_sinks == CROSSOVER_2WAY_NUM_SINKS ? 1 : 3;
+	int err;
+
+	for (i = 0; i < num_lr4s; i++) {
+		err = crossover_init_coef_lr4_float(mod, &coef[j],
+						    &ch_state->lowpass[i]);
+		if (err < 0)
+			return -EINVAL;
+		err = crossover_init_coef_lr4_float(mod, &coef[j + 1],
+						    &ch_state->highpass[i]);
+		if (err < 0)
+			return -EINVAL;
+		j += 2;
+	}
+
+	return 0;
+}
+#endif
+
 /**
  * \brief Initializes the coefficients of the crossover filter
  *	  and assign them to the first nch channels.
@@ -257,8 +343,14 @@ static int crossover_init_coef(struct processing_module *mod, int nch)
 	/* Collect the coef array and assign it to every channel */
 	crossover = config->coef;
 	for (ch = 0; ch < nch; ch++) {
-		err = crossover_init_coef_ch(mod, crossover, &cd->state[ch],
-					     config->num_sinks);
+#if CONFIG_FORMAT_FLOAT
+		if (cd->source_format == SOF_IPC_FRAME_FLOAT)
+			err = crossover_init_coef_ch_float(mod, crossover, &cd->state_f[ch],
+							   config->num_sinks);
+		else
+#endif
+			err = crossover_init_coef_ch(mod, crossover, &cd->state[ch],
+						     config->num_sinks);
 		/* Free all previously allocated blocks in case of an error */
 		if (err < 0) {
 			comp_err(mod->dev, "could not assign coefficients to ch %d",
@@ -625,12 +717,25 @@ static int crossover_prepare(struct processing_module *mod,
 			return -EINVAL;
 		}
 
-		cd->crossover_split = crossover_find_split_func(cd->config->num_sinks);
-		if (!cd->crossover_split) {
-			comp_err(dev, "No split function matching num_sinks %i",
-				 cd->config->num_sinks);
-			return -EINVAL;
+#if CONFIG_FORMAT_FLOAT
+		if (cd->source_format == SOF_IPC_FRAME_FLOAT) {
+			cd->crossover_split_f = crossover_find_split_func_float(cd->config->num_sinks);
+			if (!cd->crossover_split_f) {
+				comp_err(dev, "No float split function matching num_sinks %i",
+					 cd->config->num_sinks);
+				return -EINVAL;
+			}
+		} else {
+#endif
+			cd->crossover_split = crossover_find_split_func(cd->config->num_sinks);
+			if (!cd->crossover_split) {
+				comp_err(dev, "No split function matching num_sinks %i",
+					 cd->config->num_sinks);
+				return -EINVAL;
+			}
+#if CONFIG_FORMAT_FLOAT
 		}
+#endif
 	} else {
 		comp_info(dev, "setting crossover to passthrough mode");
 

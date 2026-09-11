@@ -40,10 +40,16 @@ void asrc_fir_filter16(struct asrc_farrow *src_obj, int16_t **output_buffers,
 		/* Initialise the accumulator */
 		prod = 0;
 
-		/* Iterate over the filter bins.
-		 * Data is Q1.15, coefficients are Q1.30. Prod will be Qx.45.
-		 */
-		for (n = 0; n < src_obj->filter_length; n++)
+		/* 4-way unrolled convolution for ILP / RISC-V SIMD pipeline */
+		for (n = 0; n <= src_obj->filter_length - 4; n += 4) {
+			prod += (int64_t)buffer_p[0] * filter_p[0];
+			prod += (int64_t)buffer_p[1] * filter_p[1];
+			prod += (int64_t)buffer_p[2] * filter_p[2];
+			prod += (int64_t)buffer_p[3] * filter_p[3];
+			buffer_p += 4;
+			filter_p += 4;
+		}
+		for (; n < src_obj->filter_length; n++)
 			prod += (int64_t)(*buffer_p++) * (*filter_p++);
 
 		/* Shift left after accumulation, because interim
@@ -88,14 +94,16 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 		/* Initialise the accumulator */
 		prod = 0;
 
-		/* Iterate over the filter bins. Data is Q1.31, coefficients
-		 * are Q1.22. They are down scaled by 1 shift. In addition
-		 * there C is implementation specific right shift by 8. It
-		 * gives headroom to calculate up to 256 taps FIR. The use
-		 * of 24 bits of 32 bits is not a practical limitation for
-		 * quality. The product is Qx.54.
-		 */
-		for (n = 0; n < src_obj->filter_length; n++)
+		/* 4-way unrolled convolution for ILP / RISC-V SIMD pipeline */
+		for (n = 0; n <= src_obj->filter_length - 4; n += 4) {
+			prod += (int64_t)buffer_p[0] * (filter_p[0] >> 8);
+			prod += (int64_t)buffer_p[1] * (filter_p[1] >> 8);
+			prod += (int64_t)buffer_p[2] * (filter_p[2] >> 8);
+			prod += (int64_t)buffer_p[3] * (filter_p[3] >> 8);
+			buffer_p += 4;
+			filter_p += 4;
+		}
+		for (; n < src_obj->filter_length; n++)
 			prod += (int64_t)(*buffer_p++) * (*filter_p++ >> 8);
 
 		/* Shift left after accumulation, because interim
@@ -108,6 +116,44 @@ void asrc_fir_filter32(struct asrc_farrow *src_obj, int32_t **output_buffers,
 		 * buffers
 		 */
 		output_buffers[ch][i] = prod32;
+	}
+}
+
+void asrc_fir_filter_float(struct asrc_farrow *src_obj, float **output_buffers,
+			   int index_output_frame)
+{
+	float prod;
+	const float *filter_p;
+	float *buffer_p;
+	int ch;
+	int n;
+	int i;
+
+	if (src_obj->output_format == ASRC_IOF_INTERLEAVED)
+		i = src_obj->num_channels * index_output_frame;
+	else
+		i = index_output_frame;
+
+	for (ch = 0; ch < src_obj->num_channels; ch++) {
+		filter_p = (const float *)&src_obj->impulse_response[0];
+		buffer_p = (float *)&src_obj->ring_buffers32[ch]
+			[src_obj->buffer_write_position];
+
+		prod = 0.0f;
+
+		/* 4-way unrolled FPU MACs via native fmadd.s */
+		for (n = 0; n <= src_obj->filter_length - 4; n += 4) {
+			prod += buffer_p[0] * filter_p[0];
+			prod += buffer_p[1] * filter_p[1];
+			prod += buffer_p[2] * filter_p[2];
+			prod += buffer_p[3] * filter_p[3];
+			buffer_p += 4;
+			filter_p += 4;
+		}
+		for (; n < src_obj->filter_length; n++)
+			prod += (*buffer_p++) * (*filter_p++);
+
+		output_buffers[ch][i] = prod;
 	}
 }
 
