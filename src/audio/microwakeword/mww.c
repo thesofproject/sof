@@ -166,22 +166,12 @@ static int mww_notify_kpb(struct processing_module *mod)
 {
 	struct mww_comp_data *cd = module_get_private_data(mod);
 	struct comp_dev *dev = mod->dev;
-	struct ams_message_payload ams_payload;
 
 	comp_info(dev, "MWW keyword trigger -> notifying KPB to begin draining");
 
-	cd->client_data.r_ptr = NULL;
-	cd->client_data.sink = NULL;
-	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
-	cd->client_data.drain_req = cd->drain_req_ms;
-
-	dcache_writeback_region(&cd->client_data, sizeof(cd->client_data));
-
-	ams_helper_prepare_payload(dev, &ams_payload, cd->kpd_uuid_id,
-				   (uint8_t *)&cd->client_data,
-				   sizeof(struct kpb_client));
-
-	return ams_send(&ams_payload);
+	/* Cross-core-safe polling notify (AMS/IDC path was unstable). */
+	kpb_notify_request_drain(cd->drain_req_ms);
+	return 0;
 }
 #else
 static int mww_notify_kpb(struct processing_module *mod)
