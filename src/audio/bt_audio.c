@@ -191,10 +191,13 @@ static struct comp_dev *bt_audio_new(const struct comp_driver *drv,
 
 	dev->ipc_config = *config;
 
-	bad = rzalloc(SOF_MEM_FLAG_KERNEL, sizeof(*bad));
-	if (!bad) {
-		rfree(dev);
-		return NULL;
+	/* Use static instances to avoid dynamic heap allocations */
+	if (config->pipeline_id == 1 || config->id == 15) {
+		bad = &s_bt_playback_inst;
+		g_bt_playback_data = bad;
+	} else {
+		bad = &s_bt_capture_inst;
+		g_bt_capture_data = bad;
 	}
 
 	comp_set_drvdata(dev, bad);
@@ -203,12 +206,6 @@ static struct comp_dev *bt_audio_new(const struct comp_driver *drv,
 	bad->channels = 2;
 	bad->frame_bytes = 4;
 	bad->period_bytes = (bad->sample_rate / 1000) * bad->frame_bytes;
-
-	if (config->pipeline_id == 1 || config->id == 15) {
-		g_bt_playback_data = bad;
-	} else {
-		g_bt_capture_data = bad;
-	}
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -225,7 +222,7 @@ static void bt_audio_free(struct comp_dev *dev)
 		g_bt_capture_data = NULL;
 	}
 
-	rfree(bad);
+	/* bad points to static BSS instance, do not rfree */
 	rfree(dev);
 }
 

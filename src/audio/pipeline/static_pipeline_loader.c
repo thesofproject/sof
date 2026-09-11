@@ -5,6 +5,7 @@
 
 #include <sof/audio/pipeline/static_pipeline.h>
 #include <sof/audio/pipeline/sof_static_pipeline.h>
+#include <sof/audio/bt_service.h>
 #include <sof/audio/component_ext.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
@@ -542,6 +543,12 @@ int sof_static_kcontrol_set(uint32_t ctrl_id, int32_t val)
 		s_control_vals[ctl_idx] = val;
 		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
 		return sof_static_pipeline_set_route((enum sof_audio_route)val);
+	}
+
+	if (ctl->id == 14 || (ctl->name && !strcmp(ctl->name, "BT Audio Format"))) {
+		s_control_vals[ctl_idx] = val;
+		LOG_INF("Kcontrol [%u] '%s' set to %d", ctl->id, ctl->name, val);
+		return bt_service_set_format((enum bt_audio_format)val);
 	}
 
 	struct comp_dev *dev = sof_static_comp_get(ctl->target_comp_id);
