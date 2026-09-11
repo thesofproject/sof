@@ -13,6 +13,7 @@
 #include <sof/math/auditory.h>
 #include <sof/math/fft.h>
 #include <sof/math/matrix.h>
+#include <sof/math/pcan.h>
 #include <sof/math/sqrt.h>
 #include <sof/math/trig.h>
 #include <sof/math/window.h>
@@ -354,6 +355,11 @@ int mfcc_stft_process(struct processing_module *mod, struct mfcc_comp_data *cd)
 		mel_scale_shift = input_shift - fft->fft_plan->len;
 		psy_apply_mel_filterbank_32(&state->melfb, fft->fft_out, state->power_spectra,
 					    state->mel_log_32, mel_scale_shift);
+
+		if (state->pcan.enable_pcan) {
+			pcan_update_noise_estimate(&state->pcan, (const uint32_t *)state->mel_log_32);
+			pcan_apply(&state->pcan, (uint32_t *)state->mel_log_32);
+		}
 
 		if (state->mel_only) {
 			/* In Mel-only mode output Mel log spectra directly */

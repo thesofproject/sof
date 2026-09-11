@@ -11,6 +11,8 @@ manifest:
       url-base: https://github.com/thesofproject
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
+    - name: tensorflow
+      url-base: https://github.com/tensorflow
 
   # When upgrading projects here please run git log --oneline in the
   # project and if not too long then include the output in your commit
@@ -40,6 +42,12 @@ manifest:
       repo-path: tomlc99
       path: sof/tools/rimage/tomlc99
       revision: e3a03f5ec7d8d33be705c5ce8a632d998ce9b4d1
+
+    - name: tflite-micro
+      repo-path: tflite-micro
+      path: tflite-micro
+      revision: e86d97b6237f88ab5925c0b41e3e3589a1560d86
+      remote: tensorflow
 
     - name: zephyr
       repo-path: zephyr

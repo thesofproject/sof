@@ -2,6 +2,9 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+	add_compile_options(-mllvm --text-section-literals=false)
+endif()
 if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 	message(FATAL_ERROR
 		" In-source builds are not supported.\n"
@@ -58,7 +61,10 @@ set(CMAKE_ASM_FLAGS -DASSEMBLY)
 # that may be exported / installed
 add_library(sof_public_headers INTERFACE)
 
-target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
+target_include_directories(sof_public_headers INTERFACE
+	${PROJECT_SOURCE_DIR}/src/include
+	${PROJECT_SOURCE_DIR}/../tflite-micro
+)
 
 # interface library that is used only as container for sof binary options
 # other targets can use it to build with the same options
