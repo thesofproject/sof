@@ -82,6 +82,11 @@ When cross-compiling FFmpeg for Xtensa DSP targets, disable unnecessary componen
 - `CONFIG_FFMPEG_DEC_FLOAT_MATH`: Automatically selected to pull in optimized floating-point shims (`fastmathf.c`).
 - `CONFIG_FFMPEG_DEC_COLD_SPLIT`: Relocates initialization tables and code to DRAM to conserve fast SRAM.
 
+#### Memory Management & Footprint Optimization
+- **`avutil/tx` Table Capping**: Capped maximum transform size in `tx.c` to 2048 samples (maximum needed for AAC-LC and STFT filtering), reducing `.bss` static footprint from over **17 MB down to 415 KB**.
+- **SOF Memory Shimming (`ffmpeg_dec-shims.c`)**: Overrides `av_malloc`, `av_realloc`, `av_free`, `av_calloc` to route directly into SOF's `rballoc` sys/user memory pools, preventing heap fragmentation in bare-metal DSP runtime.
+- **DRAM Cold Split**: Relocates one-time initialization tables, Huffman decoding trees, and coefficient arrays into low-cost system DRAM, keeping high-speed SRAM free for real-time audio sample buffers.
+
 ---
 
 ## Usage & Topology
