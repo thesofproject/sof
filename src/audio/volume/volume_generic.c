@@ -63,9 +63,10 @@ static void vol_s24_to_s24(struct processing_module *mod, struct cir_buf_source 
 	const int32_t *x, *x0;
 	int32_t *y, *y0;
 	int32_t vol;
-	int nmax, n, i, j;
+	size_t nmax, n, i;
+	int j;
 	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 
 	x = source->ptr;
 	y = sink->ptr;
@@ -107,9 +108,9 @@ static void vol_passthrough_s24_to_s24(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x;
 	int32_t *y;
-	int nmax, n;
+	size_t nmax, n;
 	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 
 	x = source->ptr;
 	y = sink->ptr;
@@ -145,9 +146,10 @@ static void vol_s32_to_s32(struct processing_module *mod, struct cir_buf_source 
 	const int32_t *x, *x0;
 	int32_t *y, *y0;
 	int32_t vol;
-	int nmax, n, i, j;
+	size_t nmax, n, i;
+	int j;
 	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 
 	x = source->ptr;
 	y = sink->ptr;
@@ -193,9 +195,9 @@ static void vol_passthrough_s32_to_s32(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	const int32_t *x;
 	int32_t *y;
-	int nmax, n;
+	size_t nmax, n;
 	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 
 	x = source->ptr;
 	y = sink->ptr;
@@ -231,9 +233,10 @@ static void vol_s16_to_s16(struct processing_module *mod, struct cir_buf_source 
 	const int16_t *x, *x0;
 	int16_t *y, *y0;
 	int32_t vol;
-	int nmax, n, i, j;
+	size_t nmax, n, i;
+	int j;
 	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 
 	x = source->ptr;
 	y = sink->ptr;
@@ -276,9 +279,9 @@ static void vol_passthrough_s16_to_s16(struct processing_module *mod,
 	struct vol_data *cd = module_get_private_data(mod);
 	const int16_t *x;
 	int16_t *y;
-	int nmax, n;
+	size_t nmax, n;
 	const int nch = cd->channels;
-	int remaining_samples = frames * nch;
+	size_t remaining_samples = frames * nch;
 
 	x = source->ptr;
 	y = sink->ptr;
