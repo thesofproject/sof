@@ -241,12 +241,23 @@ static int mfcc_prepare(struct processing_module *mod,
 
 	/* Initialize MFCC, max_frames is set to dev->frames + 4 */
 	if (cd->config && data_size > 0) {
-		ret = mfcc_setup(mod, dev->frames + 4, audio_stream_get_rate(&sourceb->stream),
+		uint32_t src_rate = audio_stream_get_rate(&sourceb->stream);
+
+		ret = mfcc_setup(mod, dev->frames + 4, src_rate,
 				 audio_stream_get_channels(&sourceb->stream));
 		if (ret < 0) {
 			comp_err(dev, "setup failed.");
 			return ret;
 		}
+
+		/* Set DP scheduling period from FFT hop cadence; sink rate is
+		 * not yet propagated at prepare time so module_adapter cannot
+		 * derive it from mod->sinks[].
+		 */
+		if (src_rate && cd->state.fft.fft_hop_size)
+			dev->period = (uint32_t)(1000000ULL *
+						 cd->state.fft.fft_hop_size /
+						 src_rate);
 	} else {
 		comp_err(dev, "configuration is missing.");
 		return -EINVAL;
