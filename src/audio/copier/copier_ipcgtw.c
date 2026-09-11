@@ -4,6 +4,9 @@
 
 #include <sof/audio/module_adapter/module/generic.h>
 #include <sof/audio/component_ext.h>
+#include <sof/audio/audio_buffer.h>
+#include <sof/audio/sink_api.h>
+#include <sof/audio/source_api.h>
 #include <sof/trace/trace.h>
 #include <sof/lib/memory.h>
 #include <sof/ut.h>
@@ -30,65 +33,99 @@ static struct comp_dev *find_ipcgtw_by_node_id(union ipc4_connector_node_id node
 	return NULL;
 }
 
-static inline void audio_stream_copy_bytes_from_linear(const void *linear_source,
-						       struct audio_stream *sink,
-						       unsigned int bytes)
+static int sink_copy_bytes_from_linear(const void *linear_source,
+				       struct sof_sink *sink, size_t bytes)
 {
 	const uint8_t *src = (const uint8_t *)linear_source;
-	uint8_t *snk = audio_stream_wrap(sink, audio_stream_get_wptr(sink));
-	size_t bytes_snk, bytes_copied;
+	uint8_t *snk, *snk_begin, *snk_end;
+	size_t remaining = bytes;
+	size_t snk_size;
+	int ret;
 
-	while (bytes) {
-		bytes_snk = audio_stream_bytes_without_wrap(sink, snk);
-		bytes_copied = MIN(bytes, bytes_snk);
-		memcpy_s(snk, bytes_copied, src, bytes_copied);
-		bytes -= bytes_copied;
-		src += bytes_copied;
-		snk = audio_stream_wrap(sink, snk + bytes_copied);
+	if (!bytes)
+		return 0;
+
+	ret = sink_get_buffer(sink, bytes, (void **)&snk, (void **)&snk_begin, &snk_size);
+	if (ret)
+		return ret;
+
+	snk_end = snk_begin + snk_size;
+	while (remaining) {
+		size_t chunk = MIN(remaining, (size_t)cir_buf_bytes_without_wrap(snk, snk_end));
+
+		ret = memcpy_s(snk, chunk, src, chunk);
+		if (ret) {
+			sink_commit_buffer(sink, bytes - remaining);
+			return ret;
+		}
+
+		remaining -= chunk;
+		src += chunk;
+		snk = cir_buf_wrap(snk + chunk, snk_begin, snk_end);
 	}
+
+	return sink_commit_buffer(sink, bytes);
 }
 
-static inline
-void audio_stream_copy_bytes_to_linear(const struct audio_stream *source,
-				       void *linear_sink, unsigned int bytes)
+static int source_copy_bytes_to_linear(struct sof_source *source,
+				       void *linear_sink, size_t bytes)
 {
-	uint8_t *src = audio_stream_wrap(source, audio_stream_get_rptr(source));
+	const uint8_t *src, *src_begin, *src_end;
 	uint8_t *snk = (uint8_t *)linear_sink;
-	size_t bytes_src, bytes_copied;
+	size_t remaining = bytes;
+	size_t src_size;
+	int ret;
 
-	while (bytes) {
-		bytes_src = audio_stream_bytes_without_wrap(source, src);
-		bytes_copied = MIN(bytes, bytes_src);
-		memcpy_s(snk, bytes_copied, src, bytes_copied);
-		bytes -= bytes_copied;
-		src = audio_stream_wrap(source, src + bytes_copied);
-		snk += bytes_copied;
+	if (!bytes)
+		return 0;
+
+	ret = source_get_data(source, bytes, (const void **)&src,
+			      (const void **)&src_begin, &src_size);
+	if (ret)
+		return ret;
+
+	src_end = src_begin + src_size;
+	while (remaining) {
+		size_t chunk = MIN(remaining, (size_t)cir_buf_bytes_without_wrap(src, src_end));
+
+		ret = memcpy_s(snk, chunk, src, chunk);
+		if (ret) {
+			source_release_data(source, bytes - remaining);
+			return ret;
+		}
+
+		remaining -= chunk;
+		snk += chunk;
+		src = cir_buf_wrap(src + chunk, src_begin, src_end);
 	}
+
+	return source_release_data(source, bytes);
 }
 
-static inline struct comp_buffer *get_buffer(struct comp_dev *dev)
+static inline struct sof_source *ipcgtw_get_source(struct comp_dev *dev)
 {
-	if (dev->direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (list_is_empty(&dev->bsink_list))
-			return NULL;
-		return comp_dev_get_first_data_consumer(dev);
-	}
+	struct processing_module *mod = comp_mod(dev);
 
-	assert(dev->direction == SOF_IPC_STREAM_CAPTURE);
+	return mod->num_of_sources ? mod->sources[0] : NULL;
+}
 
-	if (list_is_empty(&dev->bsource_list))
-		return NULL;
-	return comp_dev_get_first_data_producer(dev);
+static inline struct sof_sink *ipcgtw_get_sink(struct comp_dev *dev)
+{
+	struct processing_module *mod = comp_mod(dev);
+
+	return mod->num_of_sinks ? mod->sinks[0] : NULL;
 }
 
 int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 			  void *reply_payload, uint32_t *reply_payload_size)
 {
 	const struct ipc4_ipc_gateway_cmd_data *in;
-	struct comp_dev *dev;
-	struct comp_buffer *buf;
-	uint32_t data_size;
 	struct ipc4_ipc_gateway_cmd_data_reply *out;
+	struct sof_source *source = NULL;
+	struct sof_sink *sink = NULL;
+	struct comp_dev *dev;
+	uint32_t data_size;
+	int ret;
 
 	dcache_invalidate_region((__sparse_force void __sparse_cache *)MAILBOX_HOSTBOX_BASE,
 				 sizeof(struct ipc4_ipc_gateway_cmd_data));
@@ -101,28 +138,31 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 	comp_dbg(dev, "%x %x",
 		 cmd->primary.dat, cmd->extension.dat);
 
-	buf = get_buffer(dev);
-
-	if (!buf) {
-		/* NOTE: this func is called from IPC processing task and can be potentially
-		 * called before pipeline start even before buffer has been attached. In such
-		 * case do not report error but return 0 bytes available for GET_DATA and
-		 * 0 bytes free for SET_DATA.
-		 */
-		comp_warn(dev, "no buffer found");
-	}
-
 	out = (struct ipc4_ipc_gateway_cmd_data_reply *)reply_payload;
 
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		sink = ipcgtw_get_sink(dev);
+	else
+		source = ipcgtw_get_source(dev);
+
+	/*
+	 * NOTE: this func is called from the IPC processing task and can potentially be
+	 * called before pipeline start, even before the buffer has been attached. In that
+	 * case the sink/source handles are not available yet, so do not report an error but
+	 * return 0 bytes available for GET_DATA and 0 bytes free for SET_DATA.
+	 */
+	if (!sink && !source)
+		comp_warn(dev, "no buffer found");
+	
 	switch (cmd->primary.r.cmd) {
 	case IPC4_IPCGWCMD_GET_DATA:
-		if (buf) {
+		if (source) {
 			data_size = MIN(cmd->extension.r.data_size, SOF_IPC_MSG_MAX_SIZE - 4);
-			data_size = MIN(data_size, audio_stream_get_avail_bytes(&buf->stream));
-			buffer_stream_invalidate(buf, data_size);
-			audio_stream_copy_bytes_to_linear(&buf->stream, out->payload, data_size);
-			comp_update_buffer_consume(buf, data_size);
-			out->u.size_avail = audio_stream_get_avail_bytes(&buf->stream);
+			data_size = MIN(data_size, source_get_data_available(source));
+			ret = source_copy_bytes_to_linear(source, out->payload, data_size);
+			if (ret)
+				return ret;
+			out->u.size_avail = source_get_data_available(source);
 			*reply_payload_size = data_size + 4;
 		} else {
 			out->u.size_avail = 0;
@@ -131,18 +171,17 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 		break;
 
 	case IPC4_IPCGWCMD_SET_DATA:
-		if (buf) {
+		if (sink) {
 			data_size = MIN(cmd->extension.r.data_size,
-					audio_stream_get_free_bytes(&buf->stream));
+					sink_get_free_size(sink));
 			dcache_invalidate_region((__sparse_force void __sparse_cache *)
 						 MAILBOX_HOSTBOX_BASE,
 						 data_size +
 						 offsetof(struct ipc4_ipc_gateway_cmd_data,
 							  payload));
-			audio_stream_copy_bytes_from_linear(in->payload, &buf->stream,
-							    data_size);
-			buffer_stream_writeback(buf, data_size);
-			comp_update_buffer_produce(buf, data_size);
+			ret = sink_copy_bytes_from_linear(in->payload, sink, data_size);
+			if (ret)
+				return ret;
 			out->u.size_consumed = data_size;
 			*reply_payload_size = 4;
 		} else {
@@ -153,8 +192,10 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 
 	case IPC4_IPCGWCMD_FLUSH_DATA:
 		*reply_payload_size = 0;
-		if (buf)
-			audio_stream_reset(&buf->stream);
+		if (sink)
+			audio_buffer_reset(sof_audio_buffer_from_sink(sink));
+		else if (source)
+			audio_buffer_reset(sof_audio_buffer_from_source(source));
 		break;
 
 	default:
@@ -169,13 +210,23 @@ int copier_ipcgtw_process(const struct ipc4_ipcgtw_cmd *cmd,
 int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 			 struct sof_ipc_stream_params *params)
 {
+	struct sof_sink *sink = NULL;
+	struct sof_source *source = NULL;
 	struct comp_buffer *buf;
 	int err;
 
 	comp_dbg(dev, "ipcgtw_params()");
 
-	buf = get_buffer(dev);
-	if (!buf) {
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		sink = ipcgtw_get_sink(dev);
+	else
+		source = ipcgtw_get_source(dev);
+
+	if (sink)
+		buf = comp_buffer_get_from_sink(sink);
+	else if (source)
+		buf = comp_buffer_get_from_source(source);
+	else {
 		comp_err(dev, "no buffer found");
 		return -EINVAL;
 	}
@@ -194,13 +245,20 @@ int copier_ipcgtw_params(struct ipcgtw_data *ipcgtw_data, struct comp_dev *dev,
 
 void copier_ipcgtw_reset(struct comp_dev *dev)
 {
-	struct comp_buffer *buf = get_buffer(dev);
+	struct sof_sink *sink = NULL;
+	struct sof_source *source = NULL;
 
-	if (buf) {
-		audio_stream_reset(&buf->stream);
-	} else {
+	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
+		sink = ipcgtw_get_sink(dev);
+	else
+		source = ipcgtw_get_source(dev);
+
+	if (sink)
+		audio_buffer_reset(sof_audio_buffer_from_sink(sink));
+	else if (source)
+		audio_buffer_reset(sof_audio_buffer_from_source(source));
+	else
 		comp_warn(dev, "no buffer found");
-	}
 }
 
 __cold int copier_ipcgtw_create(struct processing_module *mod,
