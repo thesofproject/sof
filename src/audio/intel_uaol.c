@@ -4,6 +4,7 @@
  */
 
 #include <zephyr/drivers/uaol.h>
+#include <rtos/alloc.h>
 #include <rtos/string.h>
 #include <sof/tlv.h>
 #include <sof/audio/component_ext.h>
@@ -281,18 +282,20 @@ int setup_uaol_feedback_dma(struct dai_data *dd, struct comp_dev *dev)
 	dd->uaol.fb_dma_buf_size = 4 * 8 * 2;
 
 	/* TODO: perhaps get alignment by reading DMA alignment attribute? */
-	dd->uaol.fb_dma_buf = (uint32_t *)rballoc_align(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
-						      dd->uaol.fb_dma_buf_size, 64);
+	dd->uaol.fb_dma_buf = sof_heap_alloc(dd->alloc_ctx.heap,
+					     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_DMA,
+					     dd->uaol.fb_dma_buf_size, 64);
 	if (!dd->uaol.fb_dma_buf) {
 		comp_err(dev, "UAOL feedback buffer allocation failed!");
 		return -ENOMEM;
 	}
 	memset(dd->uaol.fb_dma_buf, 0, dd->uaol.fb_dma_buf_size);
 
-	dma_cfg = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-			  sizeof(struct dma_config));
+	dma_cfg = sof_heap_alloc(dd->alloc_ctx.heap,
+				 SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
+				 sizeof(struct dma_config), 0);
 	if (!dma_cfg) {
-		rfree(dd->uaol.fb_dma_buf);
+		sof_heap_free(dd->alloc_ctx.heap, dd->uaol.fb_dma_buf);
 		dd->uaol.fb_dma_buf = NULL;
 		comp_err(dev, "dma_cfg allocation failed");
 		return -ENOMEM;
@@ -308,11 +311,13 @@ int setup_uaol_feedback_dma(struct dai_data *dd, struct comp_dev *dev)
 	dma_cfg->cyclic = 1;
 	dma_cfg->block_count = 1;
 
-	dma_cfg->head_block = rballoc(SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT | SOF_MEM_FLAG_DMA,
-					      sizeof(struct dma_block_config));
+	dma_cfg->head_block = sof_heap_alloc(dd->alloc_ctx.heap,
+					     SOF_MEM_FLAG_USER | SOF_MEM_FLAG_COHERENT |
+						SOF_MEM_FLAG_DMA,
+					     sizeof(struct dma_block_config), 0);
 	if (!dma_cfg->head_block) {
-		rfree(dma_cfg);
-		rfree(dd->uaol.fb_dma_buf);
+		sof_heap_free(dd->alloc_ctx.heap, dma_cfg);
+		sof_heap_free(dd->alloc_ctx.heap, dd->uaol.fb_dma_buf);
 		dd->uaol.fb_dma_buf = NULL;
 		comp_err(dev, "dma_block_config allocation failed");
 		return -ENOMEM;
@@ -330,9 +335,9 @@ int setup_uaol_feedback_dma(struct dai_data *dd, struct comp_dev *dev)
 
 	dd->uaol.fb_chan_idx = sof_dma_request_channel(dd->dma, channel);
 	if (dd->uaol.fb_chan_idx < 0) {
-		rfree(dma_cfg->head_block);
-		rfree(dma_cfg);
-		rfree(dd->uaol.fb_dma_buf);
+		sof_heap_free(dd->alloc_ctx.heap, dma_cfg->head_block);
+		sof_heap_free(dd->alloc_ctx.heap, dma_cfg);
+		sof_heap_free(dd->alloc_ctx.heap, dd->uaol.fb_dma_buf);
 		dd->uaol.fb_dma_buf = NULL;
 		comp_err(dev, "dma_request_channel() failed");
 		return -EIO;
@@ -348,13 +353,13 @@ int setup_uaol_feedback_dma(struct dai_data *dd, struct comp_dev *dev)
 void uaol_free(struct dai_data *dd)
 {
 	if (dd->uaol.fb_z_config) {
-		rfree(dd->uaol.fb_z_config->head_block);
-		rfree(dd->uaol.fb_z_config);
+		sof_heap_free(dd->alloc_ctx.heap, dd->uaol.fb_z_config->head_block);
+		sof_heap_free(dd->alloc_ctx.heap, dd->uaol.fb_z_config);
 		dd->uaol.fb_z_config = NULL;
 	}
 
 	if (dd->uaol.fb_dma_buf) {
-		rfree(dd->uaol.fb_dma_buf);
+		sof_heap_free(dd->alloc_ctx.heap, dd->uaol.fb_dma_buf);
 		dd->uaol.fb_dma_buf = NULL;
 		dd->uaol.fb_dma_buf_size = 0;
 	}

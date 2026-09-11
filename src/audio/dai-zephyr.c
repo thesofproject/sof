@@ -1282,7 +1282,8 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 			dd->ipc_config.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* resampling might generate 1 extra frame; DSRC only works with 32-bit data */
 		size_t dsrc_buf_size = (dev->frames + 1) * dd->ipc_config.gtw_fmt->channels_count * 4;
-		dd->uaol.dsrc_buf = buffer_alloc_range(NULL, dsrc_buf_size, dsrc_buf_size,
+		dd->uaol.dsrc_buf = buffer_alloc_range(&dd->alloc_ctx, dsrc_buf_size,
+						       dsrc_buf_size,
 					       SOF_MEM_FLAG_USER, PLATFORM_DCACHE_ALIGN,
 					       BUFFER_USAGE_NOT_SHARED);
 		if (!dd->uaol.dsrc_buf) {
