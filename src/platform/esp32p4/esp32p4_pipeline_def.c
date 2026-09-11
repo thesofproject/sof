@@ -304,6 +304,12 @@ static const struct sof_static_kcontrol esp32p4_controls[] = {
 		.min = 0, .max = 1, .def = 0, .channels = 1,
 		.uac2_entity_id = 0
 	),
+	SOF_STATIC_KCONTROL_ENUM(
+		.id = 14, .name = "BT Audio Format",
+		.target_comp_id = 1,
+		.min = 0, .max = 6, .def = 0, .channels = 1,
+		.uac2_entity_id = 0
+	),
 };
 
 /* -------------------------------------------------------------------------

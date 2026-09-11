@@ -364,6 +364,7 @@ static int cmd_sof_bt_status(const struct shell *sh, size_t argc, char **argv)
 
 	struct bt_service_status st;
 	bt_service_get_status(&st);
+	const struct bt_audio_format_desc *desc = bt_service_get_current_format_desc();
 
 	shell_print(sh, "=== Bluetooth LE Audio / C6 Co-Processor Status ===");
 	shell_print(sh, "  ESP32-C6 Power:    %s (GPIO 54 asserted)", st.c6_powered ? "ON" : "OFF");
@@ -372,11 +373,54 @@ static int cmd_sof_bt_status(const struct shell *sh, size_t argc, char **argv)
 		    (st.state == BT_STATE_READY ? "READY" :
 		    (st.state == BT_STATE_BROADCASTING ? "BROADCASTING" :
 		    (st.state == BT_STATE_RECEIVING ? "RECEIVING" : "SCANNING"))));
-	shell_print(sh, "  Profile / Codec:   BAP Broadcast / LC3 @ %u Hz 2ch (10ms ISO SDU)", st.sample_rate);
+	shell_print(sh, "  Active Format:     %s (%s)", desc ? desc->name : "unknown", desc ? desc->codec_name : "LC3");
+	shell_print(sh, "  Audio Quality:     %u Hz, %u-bit stereo, %u kbps (%u.%u ms SDU, %u B PCM)",
+		    st.sample_rate, desc ? desc->bit_depth : 16, st.bitrate_kbps,
+		    desc ? (desc->frame_duration_us / 1000) : 10,
+		    desc ? ((desc->frame_duration_us % 1000) / 100) : 0,
+		    st.frame_bytes);
 	shell_print(sh, "  TX Packets / Bytes:%u pkts / %u bytes", st.tx_packets, st.tx_bytes);
 	shell_print(sh, "  RX Packets / Bytes:%u pkts / %u bytes", st.rx_packets, st.rx_bytes);
 	shell_print(sh, "  Link RSSI:         %d dBm", st.rssi);
 	shell_print(sh, "====================================================");
+	return 0;
+}
+
+static int cmd_sof_bt_format(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		enum bt_audio_format current = bt_service_get_format();
+		shell_print(sh, "=== Available Bluetooth Audio Formats ===");
+		shell_print(sh, "  ID | Format Key | Codec      | Sample Rate | Bits | Frame | Bitrate  | Frame PCM");
+		shell_print(sh, "-----+------------+------------+-------------+------+-------+----------+----------");
+		for (int i = 0; i < BT_AUDIO_FMT_COUNT; i++) {
+			const struct bt_audio_format_desc *d = bt_service_get_format_desc((enum bt_audio_format)i);
+			if (!d) continue;
+			char cur_mark = (i == (int)current) ? '*' : ' ';
+			shell_print(sh, " %c%d | %-10s | %-10s | %6u Hz   | %2u   | %2u.%1u ms| %4u kbps| %5u B",
+				    cur_mark, i, d->name, d->codec_name, d->sample_rate, d->bit_depth,
+				    d->frame_duration_us / 1000, (d->frame_duration_us % 1000) / 100,
+				    d->bitrate_kbps, d->frame_bytes);
+		}
+		shell_print(sh, "=========================================");
+		shell_print(sh, "Usage: sof bt format <name|id>");
+		return 0;
+	}
+
+	enum bt_audio_format target_fmt;
+	char *endptr;
+	long val = strtol(argv[1], &endptr, 10);
+	if (*endptr == '\0' && val >= 0 && val < BT_AUDIO_FMT_COUNT) {
+		target_fmt = (enum bt_audio_format)val;
+	} else if (bt_service_format_from_name(argv[1], &target_fmt) != 0) {
+		shell_error(sh, "Unknown format: %s. Run 'sof bt format' to see available formats.", argv[1]);
+		return -EINVAL;
+	}
+
+	sof_static_kcontrol_set(14, (int32_t)target_fmt);
+	const struct bt_audio_format_desc *desc = bt_service_get_format_desc(target_fmt);
+	shell_print(sh, "Bluetooth audio format switched to: %s (%s @ %u Hz, %u kbps)",
+		    desc->name, desc->codec_name, desc->sample_rate, desc->bitrate_kbps);
 	return 0;
 }
 
@@ -456,6 +500,7 @@ static int cmd_sof_route(const struct shell *sh, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(bt_cmds,
 	SHELL_CMD(status, NULL, "Print Bluetooth LE Audio / C6 coprocessor status", cmd_sof_bt_status),
+	SHELL_CMD(format, NULL, "Get or set BT audio format (sof bt format [name|id])", cmd_sof_bt_format),
 	SHELL_CMD(broadcast, NULL, "Start/stop LE Audio broadcast (sof bt broadcast <start|stop>)", cmd_sof_bt_broadcast),
 	SHELL_CMD(scan, NULL, "Scan for nearby LE Audio devices", cmd_sof_bt_scan),
 	SHELL_CMD(power, NULL, "Control ESP32-C6 power (sof bt power <on|off>)", cmd_sof_bt_power),
