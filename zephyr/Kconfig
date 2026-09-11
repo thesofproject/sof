@@ -84,7 +84,7 @@ config SOF_ZEPHYR_HEAP_SIZE
 	hex "Size of the Zephyr heap for SOF"
 	default 0x40000 if VIRTUAL_HEAP
 	default 0xF0000 if SOC_ACE15_MTPM || SOC_ACE20_LNL
-	default 0xD0000 if SOC_ACE30 || SOC_ACE40
+	default 0x100000 if SOC_ACE30 || SOC_ACE40
 	default 0x0
 	help
 	 Support scaling of the heap size for different platforms and different types
@@ -119,6 +119,7 @@ config SOF_ZEPHYR_SHARED_BUFFER_HEAP_SIZE
 config VIRTUAL_HEAP_EXTENDED
 	bool "Extend the Virtual Heap configuration with additional buffers"
 	depends on MM_DRV_INTEL_ADSP_MTL_TLB
+	depends on VIRTUAL_HEAP
 	default y
 	help
 	  Enable additional Virtual Heap buffers. Some configurations need this
@@ -129,7 +130,8 @@ config SOF_ZEPHYR_VIRTUAL_HEAP_REGION_SIZE
 	hex "Size in bytes of virtual memory region for virtual heap shared for all cores"
 	depends on MM_DRV_INTEL_ADSP_MTL_TLB
 	default 0x140000 if VIRTUAL_HEAP_EXTENDED
-	default 0x100000
+	default 0x100000 if VIRTUAL_HEAP
+	default 0x0
 	help
 	  This config defines size of virtual heap region shared between all cores
 
