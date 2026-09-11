@@ -72,6 +72,7 @@ function setup_mfcc()
 	setup.low_freq = 125;
 	setup.high_freq = 7500;
 	setup.compress_output = true;
+	setup.update_controls = false;
 	setup.tplg_fn = 'mel40_10ms_compress.conf';
 	export_mfcc_setup(gen_cfg, setup);
 
